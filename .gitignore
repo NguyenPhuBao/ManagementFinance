@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# Build output
+dist/
+build/
+out/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# AI / Agent tools (khong phai source code)
+.agents/
+.codegraph/
+AI-SETUP.md
+karpathy-guidelines.md
+ai-delivery-workflow.md
+
+# AI-generated design (Stitch)
+stitch/
+
+# Misc
+.cache/
+coverage/
