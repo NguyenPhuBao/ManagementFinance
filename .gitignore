@@ -30,9 +30,7 @@ npm-debug.log*
 # AI / Agent tools (khong phai source code)
 .agents/
 .codegraph/
-AI-SETUP.md
-karpathy-guidelines.md
-ai-delivery-workflow.md
+copilot-instructions.md
 
 # AI-generated design (Stitch)
 stitch/

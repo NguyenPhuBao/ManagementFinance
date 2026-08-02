@@ -1,0 +1,79 @@
+﻿/* ============================================
+   WealthCommand Admin - Global Styles
+   Entry point for all CSS
+   ============================================ */
+
+@import './styles/theme.css';
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-outline-variant);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-outline);
+}
+
+/* Material Symbols base style */
+.material-symbols-outlined {
+  font-variation-settings:
+    'FILL' 0,
+    'wght' 400,
+    'GRAD' 0,
+    'opsz' 24;
+  font-size: 24px;
+  vertical-align: middle;
+}
+
+.material-symbols-outlined.filled {
+  font-variation-settings:
+    'FILL' 1,
+    'wght' 400,
+    'GRAD' 0,
+    'opsz' 24;
+}
+
+/* Stat card hover effect */
+.stat-card {
+  background-color: #ffffff;
+  border: 1px solid var(--color-outline-variant);
+  border-radius: var(--radius-xl);
+  padding: 24px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(11, 28, 48, 0.05);
+}
+
+/* Modal overlay */
+.modal-overlay {
+  background-color: rgba(11, 28, 48, 0.5);
+}
+
+/* Loading overlay */
+.loading-overlay {
+  background-color: rgba(248, 249, 255, 0.6);
+  backdrop-filter: blur(2px);
+}
+
+/* Table row fade animation */
+.table-fade {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+/* Notification dropdown */
+.notification-dropdown-shadow {
+  box-shadow: 0 12px 24px rgba(11, 28, 48, 0.1);
+}
