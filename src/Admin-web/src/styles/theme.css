@@ -1,0 +1,223 @@
+/* ============================================
+   WealthCommand Admin - Design System Tokens
+   Based on "Fiscal Precision" theme from Stitch
+   ============================================ */
+
+:root {
+  /* === Primary Colors === */
+  --color-primary: #006c49;
+  --color-primary-container: #10b981;
+  --color-primary-fixed: #6ffbbe;
+  --color-primary-fixed-dim: #4edea3;
+  --color-surface-tint: #006c49;
+  --color-inverse-primary: #4edea3;
+  --color-on-primary: #ffffff;
+  --color-on-primary-container: #00422b;
+  --color-on-primary-fixed: #002113;
+  --color-on-primary-fixed-variant: #005236;
+
+  /* === Secondary Colors === */
+  --color-secondary: #565e74;
+  --color-secondary-container: #dae2fd;
+  --color-secondary-fixed: #dae2fd;
+  --color-secondary-fixed-dim: #bec6e0;
+  --color-on-secondary: #ffffff;
+  --color-on-secondary-container: #5c647a;
+  --color-on-secondary-fixed: #131b2e;
+  --color-on-secondary-fixed-variant: #3f465c;
+
+  /* === Tertiary Colors === */
+  --color-tertiary: #5c5f61;
+  --color-tertiary-container: #a0a3a5;
+  --color-tertiary-fixed: #e0e3e5;
+  --color-tertiary-fixed-dim: #c4c7c9;
+  --color-on-tertiary: #ffffff;
+  --color-on-tertiary-container: #36393b;
+  --color-on-tertiary-fixed: #191c1e;
+  --color-on-tertiary-fixed-variant: #444749;
+
+  /* === Error Colors === */
+  --color-error: #ba1a1a;
+  --color-error-container: #ffdad6;
+  --color-on-error: #ffffff;
+  --color-on-error-container: #93000a;
+
+  /* === Surface & Background === */
+  --color-background: #f8f9ff;
+  --color-on-background: #0b1c30;
+  --color-surface: #f8f9ff;
+  --color-surface-bright: #f8f9ff;
+  --color-surface-dim: #cbdbf5;
+  --color-surface-container: #e5eeff;
+  --color-surface-container-low: #eff4ff;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-high: #dce9ff;
+  --color-surface-container-highest: #d3e4fe;
+  --color-surface-variant: #d3e4fe;
+  --color-on-surface: #0b1c30;
+  --color-on-surface-variant: #3c4a42;
+  --color-inverse-surface: #213145;
+  --color-inverse-on-surface: #eaf1ff;
+
+  /* === Outline === */
+  --color-outline: #6c7a71;
+  --color-outline-variant: #bbcabf;
+
+  /* === Typography === */
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* === Font Sizes === */
+  --fs-display-lg: 36px;
+  --fs-headline-md: 24px;
+  --fs-headline-sm: 20px;
+  --fs-body-lg: 16px;
+  --fs-body-md: 14px;
+  --fs-label-md: 12px;
+  --fs-tabular-nums: 14px;
+
+  /* === Line Heights === */
+  --lh-display-lg: 44px;
+  --lh-headline-md: 32px;
+  --lh-headline-sm: 28px;
+  --lh-body-lg: 24px;
+  --lh-body-md: 20px;
+  --lh-label-md: 16px;
+  --lh-tabular-nums: 20px;
+
+  /* === Font Weights === */
+  --fw-bold: 700;
+  --fw-semibold: 600;
+  --fw-medium: 500;
+  --fw-regular: 400;
+
+  /* === Spacing === */
+  --spacing-page: 24px;
+  --spacing-gutter: 24px;
+  --spacing-card-gap: 24px;
+  --spacing-stack-lg: 24px;
+  --spacing-stack-md: 16px;
+  --spacing-stack-sm: 8px;
+
+  /* === Border Radius === */
+  --radius-default: 2px;
+  --radius-lg: 4px;
+  --radius-xl: 8px;
+  --radius-full: 12px;
+
+  /* === Sidebar === */
+  --sidebar-width: 280px;
+
+  /* === Header === */
+  --header-height: 64px;
+}
+
+/* ============================================
+   Global Reset & Base Styles
+   ============================================ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-family: var(--font-family);
+  font-size: var(--fs-body-md);
+  line-height: var(--lh-body-md);
+  color: var(--color-on-background);
+  background-color: var(--color-background);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* ============================================
+   Utility Classes
+   ============================================ */
+
+.text-display-lg {
+  font-size: var(--fs-display-lg);
+  line-height: var(--lh-display-lg);
+  font-weight: var(--fw-bold);
+  letter-spacing: -0.02em;
+}
+
+.text-headline-md {
+  font-size: var(--fs-headline-md);
+  line-height: var(--lh-headline-md);
+  font-weight: var(--fw-semibold);
+  letter-spacing: -0.01em;
+}
+
+.text-headline-sm {
+  font-size: var(--fs-headline-sm);
+  line-height: var(--lh-headline-sm);
+  font-weight: var(--fw-semibold);
+}
+
+.text-body-lg {
+  font-size: var(--fs-body-lg);
+  line-height: var(--lh-body-lg);
+  font-weight: var(--fw-regular);
+}
+
+.text-body-md {
+  font-size: var(--fs-body-md);
+  line-height: var(--lh-body-md);
+  font-weight: var(--fw-regular);
+}
+
+.text-label-md {
+  font-size: var(--fs-label-md);
+  line-height: var(--lh-label-md);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.text-tabular-nums {
+  font-size: var(--fs-tabular-nums);
+  line-height: var(--lh-tabular-nums);
+  font-weight: var(--fw-medium);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Ant Design Overrides removed, ConfigProvider handles theme now */
+
+/* ============================================
+   Animations
+   ============================================ */
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
