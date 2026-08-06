@@ -1,38 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Table, Typography, Input, Space, Button, Tag, Modal, Select, Radio, Card, Tooltip } from 'antd';
-import { SearchOutlined, FilterOutlined, EyeOutlined } from '@ant-design/icons';
 import { USER_STATUS_LABELS } from '../../utils/constants';
 
-const { Title, Text } = Typography;
-const { Option } = Select;
-
-// Mock user data from Stitch design
 const MOCK_USERS = [
-  { id: 'USR-001', name: 'Nguyễn Văn An', email: 'an.nguyen@example.com', phone: '0901234567', status: 'active', location: 'TP. Hồ Chí Minh', address: '123 Đường Lê Lợi, Quận 1', role: 'Người dùng chuẩn' },
-  { id: 'USR-002', name: 'Trần Thị Bích', email: 'bich.tran@example.com', phone: '0912345678', status: 'inactive', location: 'Hà Nội', address: '456 Đường Nguyễn Huệ, Hoàn Kiếm', role: 'Người dùng chuẩn' },
-  { id: 'USR-003', name: 'Lê Minh Đạt', email: 'dat.le@example.com', phone: '0987654321', status: 'active', location: 'Đà Nẵng', address: '789 Đường Hải Phòng, Hải Châu', role: 'Người dùng chuẩn' },
-  { id: 'USR-004', name: 'Phạm Hoàng Nam', email: 'nam.pham@example.com', phone: '0934567890', status: 'active', location: 'Cần Thơ', address: '321 Đường 30/4, Ninh Kiều', role: 'Người dùng chuẩn' },
-  { id: 'USR-005', name: 'Vũ Thị Lan', email: 'lan.vu@example.com', phone: '0945678901', status: 'inactive', location: 'TP. Hồ Chí Minh', address: '654 Đường Võ Văn Tần, Quận 3', role: 'Người dùng chuẩn' },
-  { id: 'USR-006', name: 'Đặng Văn Hùng', email: 'hung.dang@example.com', phone: '0956789012', status: 'active', location: 'Hà Nội', address: '987 Đường Láng, Đống Đa', role: 'Người dùng chuẩn' },
-  { id: 'USR-007', name: 'Hoàng Minh Tú', email: 'tu.hoang@example.com', phone: '0967890123', status: 'active', location: 'Đà Nẵng', address: '147 Đường Nguyễn Văn Linh', role: 'Người dùng chuẩn' },
-  { id: 'USR-008', name: 'Bùi Thị Mai', email: 'mai.bui@example.com', phone: '0978901234', status: 'inactive', location: 'TP. Hồ Chí Minh', address: '258 Đường Cách Mạng Tháng 8', role: 'Người dùng chuẩn' },
-  { id: 'USR-009', name: 'Đỗ Anh Quân', email: 'quan.do@example.com', phone: '0989012345', status: 'active', location: 'Hà Nội', address: '369 Đường Trần Duy Hưng', role: 'Người dùng chuẩn' },
-  { id: 'USR-010', name: 'Lý Gia Bảo', email: 'bao.ly@example.com', phone: '0990123456', status: 'active', location: 'Cần Thơ', address: '753 Đường 3/2', role: 'Người dùng chuẩn' },
-  { id: 'USR-011', name: 'Ngô Quốc Khánh', email: 'khanh.ngo@example.com', phone: '0901112223', status: 'active', location: 'TP. Hồ Chí Minh', address: '852 Đường Phan Đăng Lưu', role: 'Người dùng chuẩn' },
-  { id: 'USR-012', name: 'Mai Thanh Trúc', email: 'truc.mai@example.com', phone: '0912223334', status: 'inactive', location: 'Đà Nẵng', address: '951 Đường Lê Duẩn', role: 'Người dùng chuẩn' },
-  { id: 'USR-013', name: 'Đinh Văn Tiến', email: 'tien.dinh@example.com', phone: '0983334445', status: 'active', location: 'Hà Nội', address: '753 Đường Giải Phóng', role: 'Người dùng chuẩn' },
-  { id: 'USR-014', name: 'Lương Minh Tuấn', email: 'tuan.luong@example.com', phone: '0934445556', status: 'active', location: 'TP. Hồ Chí Minh', address: '159 Đường Nguyễn Thị Minh Khai', role: 'Người dùng chuẩn' },
-  { id: 'USR-015', name: 'Võ Hoàng Yến', email: 'yen.vo@example.com', phone: '0945556667', status: 'inactive', location: 'Cần Thơ', address: '357 Đường Trần Phú', role: 'Người dùng chuẩn' },
-  { id: 'USR-016', name: 'Trương Văn Lâm', email: 'lam.truong@example.com', phone: '0956667778', status: 'active', location: 'Đà Nẵng', address: '951 Đường Tôn Đức Thắng', role: 'Người dùng chuẩn' },
-  { id: 'USR-017', name: 'Hà Thị Ngọc', email: 'ngoc.ha@example.com', phone: '0967778889', status: 'active', location: 'Hà Nội', address: '456 Đường Kim Mã', role: 'Người dùng chuẩn' },
-  { id: 'USR-018', name: 'Cao Thanh Sơn', email: 'son.cao@example.com', phone: '0978889990', status: 'inactive', location: 'TP. Hồ Chí Minh', address: '789 Đường Điện Biên Phủ', role: 'Người dùng chuẩn' },
-  { id: 'USR-019', name: 'Tô Mỹ Duyên', email: 'duyen.to@example.com', phone: '0989990001', status: 'active', location: 'Đà Nẵng', address: '123 Đường Hoàng Sa', role: 'Người dùng chuẩn' },
-  { id: 'USR-020', name: 'Phan Văn Toàn', email: 'toan.phan@example.com', phone: '0990001112', status: 'active', location: 'Cần Thơ', address: '456 Đường Mậu Thân', role: 'Người dùng chuẩn' },
-  { id: 'USR-021', name: 'Lâm Hải Đăng', email: 'dang.lam@example.com', phone: '0901213141', status: 'active', location: 'Hà Nội', address: '789 Đường Hoàng Quốc Việt', role: 'Người dùng chuẩn' },
-  { id: 'USR-022', name: 'Chu Thị Kim', email: 'kim.chu@example.com', phone: '0912324252', status: 'inactive', location: 'TP. Hồ Chí Minh', address: '321 Đường Lý Tự Trọng', role: 'Người dùng chuẩn' },
-  { id: 'USR-023', name: 'Tạ Minh Châu', email: 'chau.ta@example.com', phone: '0987675747', status: 'active', location: 'Đà Nẵng', address: '654 Đường Phan Chu Trinh', role: 'Người dùng chuẩn' },
-  { id: 'USR-024', name: 'Mạc Văn Cường', email: 'cuong.mac@example.com', phone: '0934546474', status: 'active', location: 'Hà Nội', address: '987 Đường Xuân Thủy', role: 'Người dùng chuẩn' },
+  { id: 'USR-001', name: 'Nguyễn Văn An', email: 'an.nguyen@example.com', phone: '0901234567', status: 'active', location: 'TP. Hồ Chí Minh' },
+  { id: 'USR-002', name: 'Trần Thị Bích', email: 'bich.tran@example.com', phone: '0912345678', status: 'inactive', location: 'Hà Nội' },
+  { id: 'USR-003', name: 'Lê Minh Đạt', email: 'dat.le@example.com', phone: '0987654321', status: 'active', location: 'Đà Nẵng' },
+  { id: 'USR-004', name: 'Phạm Hoàng Nam', email: 'nam.pham@example.com', phone: '0934567890', status: 'active', location: 'Cần Thơ' },
+  { id: 'USR-005', name: 'Vũ Thị Lan', email: 'lan.vu@example.com', phone: '0945678901', status: 'inactive', location: 'TP. Hồ Chí Minh' },
+  { id: 'USR-006', name: 'Đặng Văn Hùng', email: 'hung.dang@example.com', phone: '0956789012', status: 'active', location: 'Hà Nội' },
+  { id: 'USR-007', name: 'Hoàng Minh Tú', email: 'tu.hoang@example.com', phone: '0967890123', status: 'active', location: 'Đà Nẵng' },
 ];
 
 const UserListPage = () => {
@@ -40,8 +17,16 @@ const UserListPage = () => {
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState(MOCK_USERS);
   const [search, setSearch] = useState('');
-  const [showFilterModal, setShowFilterModal] = useState(false);
+  
+  const [modals, setModals] = useState({
+      filter: false,
+      blockAlert: false
+  });
+  const [userToBlock, setUserToBlock] = useState(null);
+
   const [filter, setFilter] = useState({ location: 'all', status: 'all' });
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const filteredUsers = users.filter((u) => {
     const matchSearch = u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()) || u.phone.includes(search);
@@ -54,153 +39,224 @@ const UserListPage = () => {
     return matchSearch && matchStatus && matchLocation;
   });
 
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  const start = (currentPage - 1) * itemsPerPage;
+  const end = Math.min(start + itemsPerPage, filteredUsers.length);
+  const pageData = filteredUsers.slice(start, end);
+
   useEffect(() => {
     const timer = setTimeout(() => setLoading(false), 500);
     return () => clearTimeout(timer);
   }, []);
 
-  const toggleUserStatus = (userId) => {
-    setUsers(users.map(u => (u.id === userId ? { ...u, status: u.status === 'active' ? 'inactive' : 'active' } : u)));
+  const toggleModal = (modalName, isOpen) => {
+    setModals(prev => ({ ...prev, [modalName]: isOpen }));
   };
 
-  const columns = [
-    {
-      title: 'STT',
-      key: 'index',
-      render: (text, record, index) => <Text type="secondary">{String(index + 1).padStart(2, '0')}</Text>,
-      width: 80,
-    },
-    {
-      title: 'HỌ TÊN',
-      dataIndex: 'name',
-      key: 'name',
-      render: (text) => <Text strong>{text}</Text>,
-    },
-    {
-      title: 'EMAIL',
-      dataIndex: 'email',
-      key: 'email',
-      render: (text) => <Text type="secondary">{text}</Text>,
-    },
-    {
-      title: 'SỐ ĐIỆN THOẠI',
-      dataIndex: 'phone',
-      key: 'phone',
-      render: (text) => <Text type="secondary">{text}</Text>,
-    },
-    {
-      title: 'TRẠNG THÁI',
-      dataIndex: 'status',
-      key: 'status',
-      render: (status) => (
-        <Tag color={status === 'active' ? 'success' : 'default'} style={{ borderRadius: 9999, fontWeight: 600 }}>
-          {USER_STATUS_LABELS[status]}
-        </Tag>
-      ),
-    },
-    {
-      title: 'HÀNH ĐỘNG',
-      key: 'action',
-      align: 'right',
-      render: (_, record) => {
-        const isActive = record.status === 'active';
-        return (
-          <Space>
-            <Button 
-              type={isActive ? "default" : "primary"}
-              danger={isActive}
-              onClick={() => toggleUserStatus(record.id)}
-            >
-              {isActive ? 'Vô hiệu hóa' : 'Kích hoạt'}
-            </Button>
-            <Tooltip title="Xem chi tiết">
-              <Button 
-                icon={<EyeOutlined />} 
-                onClick={() => navigate(`/users/${record.id}`, { state: { user: record } })}
-              />
-            </Tooltip>
-          </Space>
-        );
-      },
-    },
-  ];
+  const handleBlockClick = (user) => {
+    setUserToBlock(user);
+    toggleModal('blockAlert', true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const confirmBlock = () => {
+    if (userToBlock) {
+      setUsers(users.map(u => (u.id === userToBlock.id ? { ...u, status: u.status === 'active' ? 'inactive' : 'active' } : u)));
+      setUserToBlock(null);
+    }
+    toggleModal('blockAlert', false);
+  };
 
   return (
-    <div>
-      {/* Page Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <Title level={3} style={{ margin: 0 }}>Quản lý người dùng</Title>
-        <Space>
-          <Input
-            placeholder="Tìm kiếm người dùng..."
-            prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ width: 256, borderRadius: 6 }}
-          />
-          <Button icon={<FilterOutlined />} onClick={() => setShowFilterModal(true)}>
-            Lọc
-          </Button>
-        </Space>
+    <div className="bg-surface-bright relative p-4 md:p-6 min-h-full">
+      {modals.blockAlert && (
+          <div className="mb-6 bg-surface-container-low border border-error-container rounded-lg p-4 flex flex-col md:flex-row items-center justify-between gap-4 animate-in fade-in zoom-in-95 duration-200">
+              <div className="flex items-center gap-3 text-on-surface">
+                  <span className="material-symbols-outlined text-error">warning</span>
+                  <p className="font-body-lg">
+                      Bạn có chắc chắn muốn {userToBlock?.status === 'active' ? 'khóa' : 'kích hoạt'} tài khoản <strong>{userToBlock?.name}</strong> hay không?
+                  </p>
+              </div>
+              <div className="flex items-center gap-3">
+                  <button className="px-4 py-1.5 bg-error text-white rounded font-label-md hover:opacity-90 transition-colors cursor-pointer shadow-sm" onClick={confirmBlock}>Xác nhận</button>
+                  <button className="px-4 py-1.5 bg-surface-container-high text-on-surface rounded font-label-md hover:bg-surface-container-low transition-colors cursor-pointer" onClick={() => { setUserToBlock(null); toggleModal('blockAlert', false); }}>Hủy bỏ</button>
+              </div>
+          </div>
+      )}
+
+      <div className="max-w-[1440px] mx-auto w-full">
+          <div className="flex flex-col md:flex-row md:items-center justify-between mb-stack-lg gap-4">
+              <div>
+                  <h2 className="font-headline-md text-headline-md text-on-surface m-0">Quản lý người dùng</h2>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                  <div className="relative w-full md:w-64">
+                      <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px]">search</span>
+                      <input 
+                          className="w-full pl-10 pr-4 py-2 border border-outline-variant rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary-container focus:border-transparent font-body-md text-body-md text-on-surface shadow-sm" 
+                          placeholder="Tìm kiếm người dùng..." 
+                          type="text"
+                          value={search}
+                          onChange={(e) => setSearch(e.target.value)}
+                      />
+                  </div>
+                  <button className="px-4 py-2 border border-outline rounded text-on-surface font-label-md text-label-md hover:bg-surface-container-low transition-colors flex items-center gap-2 cursor-pointer shadow-sm bg-white" onClick={() => toggleModal('filter', true)}>
+                      <span className="material-symbols-outlined text-[18px]">filter_alt</span>Bộ lọc
+                  </button>
+              </div>
+          </div>
+
+          <div className="bg-white border border-outline-variant rounded-xl overflow-hidden shadow-sm relative">
+              {loading && (
+                <div className="absolute inset-0 bg-white bg-opacity-70 z-10 flex items-center justify-center">
+                  <span className="material-symbols-outlined animate-spin text-primary text-3xl">progress_activity</span>
+                </div>
+              )}
+              <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse min-w-[800px]">
+                      <thead>
+                          <tr className="bg-surface-container-low border-b border-outline-variant">
+                              <th className="px-6 py-4 w-12 text-center">
+                                  <input type="checkbox" className="w-4 h-4 rounded border-outline-variant text-primary focus:ring-primary cursor-pointer" />
+                              </th>
+                              <th className="px-6 py-4 font-label-md text-label-md text-on-surface uppercase">Họ tên</th>
+                              <th className="px-6 py-4 font-label-md text-label-md text-on-surface uppercase">Email</th>
+                              <th className="px-6 py-4 font-label-md text-label-md text-on-surface uppercase">Số điện thoại</th>
+                              <th className="px-6 py-4 font-label-md text-label-md text-on-surface uppercase text-center">Trạng thái</th>
+                              <th className="px-6 py-4 font-label-md text-label-md text-on-surface uppercase text-right">Hành động</th>
+                          </tr>
+                      </thead>
+                      <tbody className="font-body-md text-body-md text-on-surface">
+                          {pageData.length > 0 ? (
+                            pageData.map((item, index) => {
+                                const isLastRow = index === pageData.length - 1;
+                                const rowClass = isLastRow ? 'hover:bg-surface-container-low transition-all duration-200' : 'border-b border-surface-container-high hover:bg-surface-container-low transition-all duration-200';
+                                const isActive = item.status === 'active';
+                                return (
+                                    <tr key={item.id} className={rowClass}>
+                                        <td className="px-6 py-4 text-center">
+                                            <input type="checkbox" className="w-4 h-4 rounded border-outline-variant text-primary focus:ring-primary cursor-pointer" />
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-sm">
+                                                    {item.name.charAt(0)}
+                                                </div>
+                                                <span className="font-semibold">{item.name}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-on-surface-variant">{item.email}</td>
+                                        <td className="px-6 py-4 text-on-surface-variant font-tabular-nums">{item.phone}</td>
+                                        <td className="px-6 py-4 text-center">
+                                            <span className={`inline-flex items-center px-2 py-1 rounded-full font-label-md text-[10px] ${isActive ? 'bg-[#dcfce7] text-[#166534]' : 'bg-surface-container-high text-secondary'}`}>
+                                              {USER_STATUS_LABELS[item.status] || item.status}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <button 
+                                                className={`px-3 py-1.5 rounded font-label-md text-[12px] transition-colors shadow-sm cursor-pointer border ${isActive ? 'bg-white border-error text-error hover:bg-error-container' : 'bg-primary border-primary text-white hover:bg-surface-tint'}`} 
+                                                onClick={() => handleBlockClick(item)}
+                                            >
+                                                {isActive ? 'Khóa' : 'Mở khóa'}
+                                            </button>
+                                            <button className="p-1.5 text-secondary hover:text-primary transition-colors ml-2 border border-transparent hover:border-on-background rounded cursor-pointer" onClick={() => navigate(`/users/${item.id}`, { state: { user: item } })} title="Xem chi tiết">
+                                                <span className="material-symbols-outlined text-[20px]">visibility</span>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                );
+                            })
+                          ) : (
+                            <tr>
+                              <td colSpan="6" className="px-6 py-8 text-center text-on-surface-variant">
+                                Không tìm thấy người dùng nào.
+                              </td>
+                            </tr>
+                          )}
+                      </tbody>
+                  </table>
+              </div>
+              
+              <div className="px-6 py-4 border-t border-outline-variant bg-surface-bright flex flex-col md:flex-row items-center justify-between gap-4">
+                  <span className="font-tabular-nums text-tabular-nums text-on-surface-variant">Hiển thị {filteredUsers.length > 0 ? start + 1 : 0} - {end} của {filteredUsers.length} người dùng</span>
+                  <div className="flex items-center gap-1">
+                      <button 
+                          className={`p-1 rounded transition-colors cursor-pointer active:opacity-80 ${currentPage === 1 ? 'text-outline pointer-events-none' : 'text-on-surface hover:bg-surface-container-low'}`}
+                          onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
+                          disabled={currentPage === 1}
+                      >
+                          <span className="material-symbols-outlined text-[20px]">chevron_left</span>
+                      </button>
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                          <button
+                              key={page}
+                              className={page === currentPage 
+                                  ? 'w-8 h-8 rounded bg-primary-container text-white font-tabular-nums text-tabular-nums flex items-center justify-center shadow-sm cursor-pointer active:scale-95 transition-all'
+                                  : 'w-8 h-8 rounded hover:bg-surface-container-low text-on-surface font-tabular-nums text-tabular-nums flex items-center justify-center transition-colors cursor-pointer active:scale-95'
+                              }
+                              onClick={() => setCurrentPage(page)}
+                          >
+                              {page}
+                          </button>
+                      ))}
+                      <button 
+                          className={`p-1 rounded transition-colors cursor-pointer active:opacity-80 ${currentPage === totalPages || totalPages === 0 ? 'text-outline pointer-events-none' : 'text-on-surface hover:bg-surface-container-low'}`}
+                          onClick={() => currentPage < totalPages && setCurrentPage(currentPage + 1)}
+                          disabled={currentPage === totalPages || totalPages === 0}
+                      >
+                          <span className="material-symbols-outlined text-[20px]">chevron_right</span>
+                      </button>
+                  </div>
+              </div>
+          </div>
       </div>
 
-      {/* Table */}
-      <Card bordered={false} bodyStyle={{ padding: 0 }}>
-        <Table
-          columns={columns}
-          dataSource={filteredUsers}
-          rowKey="id"
-          loading={loading}
-          pagination={{ 
-            pageSize: 10, 
-            showSizeChanger: false, 
-            showTotal: (total, range) => `Hiển thị ${range[0]} - ${range[1]} của ${total} người dùng` 
-          }}
-        />
-      </Card>
-
       {/* Filter Modal */}
-      <Modal
-        title="Lọc dữ liệu"
-        open={showFilterModal}
-        onCancel={() => setShowFilterModal(false)}
-        onOk={() => setShowFilterModal(false)}
-        okText="Áp dụng"
-        cancelText="Hủy"
-      >
-        <Space direction="vertical" style={{ width: '100%', marginTop: 16 }} size="large">
-          <div>
-            <Text strong style={{ display: 'block', marginBottom: 8, textTransform: 'uppercase', fontSize: 12 }}>
-              Khu vực (Location)
-            </Text>
-            <Select 
-              style={{ width: '100%' }} 
-              value={filter.location} 
-              onChange={(v) => setFilter({ ...filter, location: v })}
-            >
-              <Option value="all">Tất cả khu vực</Option>
-              <Option value="hcm">TP. Hồ Chí Minh</Option>
-              <Option value="hn">Hà Nội</Option>
-              <Option value="dn">Đà Nẵng</Option>
-              <Option value="ct">Cần Thơ</Option>
-            </Select>
+      {modals.filter && (
+          <div className="fixed inset-0 bg-on-background/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-lg w-full max-w-sm shadow-xl overflow-hidden animate-in fade-in zoom-in duration-200">
+                  <div className="px-6 py-4 border-b border-outline-variant flex items-center justify-between bg-surface">
+                      <h3 className="font-headline-sm text-on-surface m-0">Lọc dữ liệu</h3>
+                      <button className="text-on-surface-variant hover:text-on-surface cursor-pointer" onClick={() => toggleModal('filter', false)}>
+                          <span className="material-symbols-outlined">close</span>
+                      </button>
+                  </div>
+                  <div className="p-6 space-y-5">
+                      <div>
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-on-surface mb-2">Khu vực (Location)</label>
+                          <select value={filter.location} onChange={e => setFilter({...filter, location: e.target.value})} className="w-full px-3 py-2 border border-outline-variant rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md bg-white h-[40px] cursor-pointer">
+                              <option value="all">Tất cả khu vực</option>
+                              <option value="hcm">TP. Hồ Chí Minh</option>
+                              <option value="hn">Hà Nội</option>
+                              <option value="dn">Đà Nẵng</option>
+                              <option value="ct">Cần Thơ</option>
+                          </select>
+                      </div>
+                      <div>
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-on-surface mb-3">Trạng thái</label>
+                          <div className="space-y-3">
+                              <label className="flex items-center gap-3 cursor-pointer group">
+                                  <input type="radio" name="status" value="all" checked={filter.status === 'all'} onChange={e => setFilter({ ...filter, status: e.target.value })} className="w-4 h-4 text-primary focus:ring-primary border-outline-variant" />
+                                  <span className="text-on-surface font-body-md group-hover:text-primary transition-colors">Tất cả</span>
+                              </label>
+                              <label className="flex items-center gap-3 cursor-pointer group">
+                                  <input type="radio" name="status" value="active" checked={filter.status === 'active'} onChange={e => setFilter({ ...filter, status: e.target.value })} className="w-4 h-4 text-primary focus:ring-primary border-outline-variant" />
+                                  <span className="text-on-surface font-body-md group-hover:text-primary transition-colors">{USER_STATUS_LABELS['active']}</span>
+                              </label>
+                              <label className="flex items-center gap-3 cursor-pointer group">
+                                  <input type="radio" name="status" value="inactive" checked={filter.status === 'inactive'} onChange={e => setFilter({ ...filter, status: e.target.value })} className="w-4 h-4 text-primary focus:ring-primary border-outline-variant" />
+                                  <span className="text-on-surface font-body-md group-hover:text-primary transition-colors">{USER_STATUS_LABELS['inactive']}</span>
+                              </label>
+                          </div>
+                      </div>
+                  </div>
+                  <div className="px-6 py-4 bg-surface-bright border-t border-outline-variant flex justify-end gap-3">
+                      <button className="px-4 py-2 border border-outline rounded text-on-surface font-label-md hover:bg-surface-container-low transition-colors cursor-pointer" onClick={() => { setFilter({ location: 'all', status: 'all' }); toggleModal('filter', false); }}>Đặt lại</button>
+                      <button className="px-4 py-2 bg-primary text-white rounded font-label-md hover:bg-surface-tint transition-colors cursor-pointer shadow-sm" onClick={() => toggleModal('filter', false)}>Áp dụng</button>
+                  </div>
+              </div>
           </div>
-          <div>
-            <Text strong style={{ display: 'block', marginBottom: 8, textTransform: 'uppercase', fontSize: 12 }}>
-              Trạng thái
-            </Text>
-            <Radio.Group 
-              value={filter.status} 
-              onChange={(e) => setFilter({ ...filter, status: e.target.value })}
-              style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
-            >
-              <Radio value="all">Tất cả</Radio>
-              <Radio value="active">{USER_STATUS_LABELS['active']}</Radio>
-              <Radio value="inactive">{USER_STATUS_LABELS['inactive']}</Radio>
-            </Radio.Group>
-          </div>
-        </Space>
-      </Modal>
+      )}
     </div>
   );
 };
