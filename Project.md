@@ -163,6 +163,8 @@ Role (1) ──▶ Account (N) ──▶ User (1)
 | `phone` | VARCHAR(15) | Số điện thoại |
 | `address` | VARCHAR(255) | Địa chỉ |
 | `location` | CHAR(5) | Mã khu vực |
+| `created_at` | TIMESTAMP | Ngày tạo |
+| `updated_at` | TIMESTAMP | Ngày cập nhật |
 | `idaccount` | INT FK→Account UNIQUE | 1-1 với Account |
 
 ##### Bảng Category
@@ -196,6 +198,8 @@ Role (1) ──▶ Account (N) ──▶ User (1)
 | `device_name` | VARCHAR(100) | Tên thiết bị |
 | `ip_address` | VARCHAR(45) | IP lúc cấp |
 | `user_agent` | TEXT | User-Agent |
+| `created_at` | TIMESTAMP | Thời gian tạo |
+| `updated_at` | TIMESTAMP | Thời gian cập nhật |
 | **Indexes** | `token_hash`, `idaccount`, `expiry`, `revoked` | |
 | **Trigger** | `updated_at` tự động cập nhật | |
 | **Constraint** | `expiry > created_at` | |
@@ -237,8 +241,14 @@ Role (1) ──▶ Account (N) ──▶ User (1)
 | **SPA Routing** | React Router DOM v6 |
 | **API calls** | Axios → REST endpoints của backend |
 | **Real-time** | Socket.IO-client → lắng nghe sự kiện (user mới, job thất bại) |
-| **UI Components** | Ant Design |
-| **Authentication** | JWT, lưu token trong memory/cookie (httponly) |
+| **UI Components** | Tailwind CSS v4 (Sử dụng native HTML elements, hoàn toàn không dùng UI Framework như Ant Design) |
+| **Authentication** | JWT, lưu token trong localStorage và React Context |
+
+#### 3.4.1 Cấu trúc & Nguyên tắc thiết kế Frontend
+- **Tối ưu hóa UI/UX**: Loại bỏ hoàn toàn `antd` và các thư viện UI component framework. Giao diện được xây dựng bằng pure HTML tags kết hợp Tailwind CSS utility classes để tối ưu performance, rút gọn bundle size và đạt tính tùy biến cao nhất.
+- **Tailwind CSS v4**: Tích hợp thông qua `@tailwindcss/postcss`. File cấu hình `tailwind.config.js` được giữ lại qua `@config` directive trong `index.css` để định nghĩa custom design tokens (mã màu, spacing, typography).
+- **Responsive & Layout**: Sử dụng CSS Grid/Flexbox kết hợp các class tiện ích của Tailwind. Bố cục chính gồm `AppLayout` bao bọc `Sidebar` (menu điều hướng) và `Header` (hiển thị thông tin auth/actions).
+- **State Management**: Sử dụng React Context (`AuthContext`) cho global state (thông tin user, trạng thái đăng nhập) và local state (`useState`, `useEffect`) cho các logic UI nội bộ tại từng trang (chẳng hạn: Filter Modal, Table Search, Data Fetching).
 
 ### 3.5 Luồng Dữ Liệu Điển Hình
 
@@ -382,7 +392,7 @@ ManagementFinance/
 | **ai** | Phân loại giao dịch, OCR, SMS parsing, chatbot |
 | **notification** | Push notification (FCM/APNs), email |
 
-### 4.2 Admin-web — React SPA (Vite + Ant Design)
+### 4.2 Admin-web — React SPA (Vite + Tailwind CSS)
 
 ```
 src/
@@ -423,7 +433,7 @@ src/
 | Module | Framework / Language | Database / Tools | Notes |
 |---|---|---|---|
 | **Backend** | NodeJS + ExpressJS | PostgreSQL (CSDL chính), Redis + BullMQ (cache & queue) | Modular Monolithic, Event-Driven, Layer Pattern |
-| **Admin-web** | ReactJS + Vite | Ant Design, React Router DOM v6, Axios, Socket.IO-client | SPA, real-time event |
+| **Admin-web** | ReactJS + Vite | Tailwind CSS, React Router DOM v6, Axios, Socket.IO-client | SPA, real-time event |
 | **Client-app** | Dart + Flutter | SQLite (local DB), Dio (HTTP client), BloC (state management) | Offline-first, tự động đồng bộ real-time khi có internet |
 
 ---

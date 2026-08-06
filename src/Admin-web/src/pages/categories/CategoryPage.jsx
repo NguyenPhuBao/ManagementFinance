@@ -1,12 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Input, Space, Tag, Typography, Modal, Form, Select, Card, Popconfirm } from 'antd';
-import { SearchOutlined, FilterOutlined, PlusOutlined, EditOutlined, DeleteOutlined, SyncOutlined } from '@ant-design/icons';
 import { TRANSACTION_TYPE_LABELS } from '../../utils/constants';
 
-const { Title, Text } = Typography;
-const { Option } = Select;
-
-// Mock data from Stitch design
 const MOCK_CATEGORIES = [
   { id: 1, icon: 'restaurant', name: 'Ăn uống', keywords: 'ăn uống, food, restaurant, cafe, grabfood, shopeefood', isDefault: true, type: 'expense' },
   { id: 2, icon: 'commute', name: 'Di chuyển', keywords: 'di chuyển, taxi, grab, be, xăng, vé xe, gửi xe', isDefault: false, type: 'expense' },
@@ -17,44 +11,29 @@ const MOCK_CATEGORIES = [
   { id: 7, icon: 'health_and_safety', name: 'Sức khỏe', keywords: 'thuốc, bệnh viện, khám bệnh, bảo hiểm', isDefault: true, type: 'expense' },
   { id: 8, icon: 'school', name: 'Giáo dục', keywords: 'học phí, sách vở, khóa học', isDefault: true, type: 'expense' },
   { id: 9, icon: 'savings', name: 'Tiết kiệm', keywords: 'gửi tiết kiệm, heo đất, đầu tư', isDefault: false, type: 'income' },
-  { id: 10, icon: 'redeem', name: 'Quà tặng', keywords: 'quà tặng, biếu, mừng tuổi', isDefault: false, type: 'expense' },
-  { id: 11, icon: 'flight', name: 'Du lịch', keywords: 'vé máy bay, khách sạn, tour, visa', isDefault: false, type: 'expense' },
-  { id: 12, icon: 'theater_comedy', name: 'Giải trí', keywords: 'phim, netflix, spotify, game, concert', isDefault: false, type: 'expense' },
-  { id: 13, icon: 'build', name: 'Sửa chữa', keywords: 'sửa xe, sửa nhà, bảo trì, thay nhớt', isDefault: false, type: 'expense' },
-  { id: 14, icon: 'local_atm', name: 'Lãi tiết kiệm', keywords: 'lãi ngân hàng, cổ tức, lãi suất', isDefault: true, type: 'income' },
-  { id: 15, icon: 'styler', name: 'Làm đẹp', keywords: 'cắt tóc, mỹ phẩm, spa, skincare', isDefault: false, type: 'expense' },
-  { id: 16, icon: 'volunteer_activism', name: 'Từ thiện', keywords: 'quyên góp, ủng hộ, giúp đỡ', isDefault: false, type: 'expense' },
-  { id: 17, icon: 'pets', name: 'Thú cưng', keywords: 'thức ăn chó mèo, thú y, cát vệ sinh', isDefault: false, type: 'expense' },
-  { id: 18, icon: 'work', name: 'Kinh doanh', keywords: 'doanh thu, bán hàng, lợi nhuận', isDefault: false, type: 'income' },
-  { id: 19, icon: 'handyman', name: 'Dụng cụ', keywords: 'kìm, búa, tua vít, máy khoan', isDefault: false, type: 'expense' },
-  { id: 20, icon: 'fastfood', name: 'Ăn uống ngoài', keywords: 'nhà hàng, tiệc tùng, liên hoan', isDefault: false, type: 'expense' },
-  { id: 21, icon: 'security', name: 'Bảo hiểm', keywords: 'bảo hiểm nhân thọ, bảo hiểm y tế', isDefault: true, type: 'expense' },
-  { id: 22, icon: 'account_balance', name: 'Thuế', keywords: 'thuế thu nhập cá nhân, thuế đất', isDefault: false, type: 'expense' },
-  { id: 23, icon: 'atm', name: 'Tiền mặt', keywords: 'rút tiền, tiền mặt, ví, cash', isDefault: true, type: 'debt' },
-  { id: 24, icon: 'volunteer_activism', name: 'Từ thiện', keywords: 'quyên góp, ủng hộ, từ thiện', isDefault: false, type: 'expense' },
-  { id: 25, icon: 'trending_up', name: 'Đầu tư', keywords: 'chứng khoán, cổ phiếu, lãi đầu tư', isDefault: false, type: 'income' },
 ];
-
-const getTypeBadgeColor = (type) => {
-  switch (type) {
-    case 'income': return 'success';
-    case 'expense': return 'error';
-    case 'debt': return 'default';
-    default: return 'default';
-  }
-};
 
 const CategoryPage = () => {
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState(MOCK_CATEGORIES);
   const [search, setSearch] = useState('');
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showFilterModal, setShowFilterModal] = useState(false);
+  
+  const [modals, setModals] = useState({
+      add: false,
+      edit: false,
+      filter: false,
+      deleteAlert: false,
+      syncAlert: false,
+  });
   const [editingCategory, setEditingCategory] = useState(null);
+  const [categoryToDelete, setCategoryToDelete] = useState(null);
 
-  const [form] = Form.useForm();
+  const [form, setForm] = useState({ name: '', isDefault: 'yes', type: 'expense', keywords: '' });
   const [filter, setFilter] = useState({ isDefault: 'all', type: 'all' });
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const filtered = categories.filter(c =>
     (c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -63,218 +42,321 @@ const CategoryPage = () => {
     (filter.type === 'all' || c.type === filter.type)
   );
 
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const start = (currentPage - 1) * itemsPerPage;
+  const end = Math.min(start + itemsPerPage, filtered.length);
+  const pageData = filtered.slice(start, end);
+
   useEffect(() => {
     const timer = setTimeout(() => setLoading(false), 500);
     return () => clearTimeout(timer);
   }, []);
 
-  const handleAdd = (values) => {
-    const newCategory = {
-      id: categories.length + 1,
-      icon: 'category',
-      ...values,
-      isDefault: values.isDefault === 'yes',
-    };
-    setCategories([...categories, newCategory]);
-    setShowAddModal(false);
-    form.resetFields();
+  const toggleModal = (modalName, isOpen) => {
+    setModals(prev => ({ ...prev, [modalName]: isOpen }));
   };
 
-  const handleEdit = (values) => {
-    if (!editingCategory) return;
-    setCategories(categories.map(c =>
-      c.id === editingCategory.id ? { ...c, ...values, isDefault: values.isDefault === 'yes' } : c
-    ));
-    setShowEditModal(false);
-    setEditingCategory(null);
+  const handleSave = (e) => {
+    e.preventDefault();
+    if (editingCategory) {
+      setCategories(categories.map(c =>
+        c.id === editingCategory.id ? { ...c, ...form, isDefault: form.isDefault === 'yes' } : c
+      ));
+      toggleModal('edit', false);
+    } else {
+      const newCategory = {
+        id: categories.length + 1,
+        icon: 'category',
+        ...form,
+        isDefault: form.isDefault === 'yes',
+      };
+      setCategories([...categories, newCategory]);
+      toggleModal('add', false);
+    }
   };
 
-  const handleDelete = (id) => {
-    setCategories(categories.filter(c => c.id !== id));
+  const confirmDelete = () => {
+    if (categoryToDelete) {
+      setCategories(categories.filter(c => c.id !== categoryToDelete));
+      setCategoryToDelete(null);
+    }
+    toggleModal('deleteAlert', false);
+  };
+
+  const handleDeleteClick = (id) => {
+    setCategoryToDelete(id);
+    toggleModal('deleteAlert', true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const openEditModal = (cat) => {
     setEditingCategory(cat);
-    form.setFieldsValue({
+    setForm({
       name: cat.name,
       keywords: cat.keywords,
       isDefault: cat.isDefault ? 'yes' : 'no',
       type: cat.type
     });
-    setShowEditModal(true);
+    toggleModal('edit', true);
   };
 
   const startAdd = () => {
-    form.resetFields();
-    form.setFieldsValue({ isDefault: 'yes', type: 'expense' });
-    setShowAddModal(true);
+    setEditingCategory(null);
+    setForm({ name: '', isDefault: 'yes', type: 'expense', keywords: '' });
+    toggleModal('add', true);
   };
 
-  const syncCategories = () => {
-    Modal.confirm({
-      title: 'Đồng bộ danh mục',
-      content: 'Bạn có chắc chắn muốn đồng bộ các danh mục mặc định?',
-      onOk: () => {
-        // sync logic
-      }
-    });
+  const handleSyncConfirm = () => {
+    toggleModal('syncAlert', false);
+    // sync logic placeholder
   };
 
-  const columns = [
-    {
-      title: 'TÊN DANH MỤC',
-      dataIndex: 'name',
-      key: 'name',
-      render: (text, record) => (
-        <Space>
-          <div style={{ width: 32, height: 32, borderRadius: '50%', backgroundColor: '#e5eeff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}>
-            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{record.icon}</span>
-          </div>
-          <Text strong>{text}</Text>
-        </Space>
-      ),
-    },
-    {
-      title: 'KEYWORD NHẬN DIỆN',
-      dataIndex: 'keywords',
-      key: 'keywords',
-      render: (text) => <Text type="secondary">{text}</Text>
-    },
-    {
-      title: 'MẶC ĐỊNH',
-      dataIndex: 'isDefault',
-      key: 'isDefault',
-      render: (isDefault) => <Text type="secondary">{isDefault ? 'Yes' : 'No'}</Text>
-    },
-    {
-      title: 'LOẠI',
-      dataIndex: 'type',
-      key: 'type',
-      render: (type) => (
-        <Tag color={getTypeBadgeColor(type)} style={{ borderRadius: 9999, fontWeight: 600 }}>
-          {TRANSACTION_TYPE_LABELS[type] || type}
-        </Tag>
-      )
-    },
-    {
-      title: 'HÀNH ĐỘNG',
-      key: 'action',
-      align: 'right',
-      render: (_, record) => (
-        <Space size="middle">
-          <Button type="text" icon={<EditOutlined />} onClick={() => openEditModal(record)} />
-          <Popconfirm title="Bạn có chắc muốn xóa danh mục này?" onConfirm={() => handleDelete(record.id)}>
-            <Button type="text" danger icon={<DeleteOutlined />} />
-          </Popconfirm>
-        </Space>
-      ),
-    },
-  ];
+  const getTypeBadgeClass = (type) => {
+    if (type === 'income') return 'bg-[#dcfce7] text-[#166534]';
+    if (type === 'expense') return 'bg-error-container text-on-error-container';
+    return 'bg-surface-container-high text-on-surface';
+  };
 
   return (
-    <div>
-      {/* Page Header */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
-        <Title level={3} style={{ margin: 0 }}>Quản lý danh mục mặc định</Title>
-        <Space wrap>
-          <Input
-            placeholder="Tìm kiếm danh mục..."
-            prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ width: 256, borderRadius: 6 }}
-          />
-          <Button icon={<FilterOutlined />} onClick={() => setShowFilterModal(true)}>
-            Lọc
-          </Button>
-          <Button type="primary" icon={<PlusOutlined />} onClick={startAdd}>
-            Thêm danh mục mới
-          </Button>
-        </Space>
+    <div className="bg-surface-bright relative p-4 md:p-6 min-h-full">
+      {modals.deleteAlert && (
+          <div className="mb-6 bg-surface-container-low border border-error-container rounded-lg p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3 text-on-surface">
+                  <span className="material-symbols-outlined text-error">warning</span>
+                  <p className="font-body-lg">Bạn có chắc muốn xóa danh mục này hay không?</p>
+              </div>
+              <div className="flex items-center gap-3">
+                  <button className="px-4 py-1.5 bg-error text-white rounded font-label-md hover:opacity-90 transition-colors cursor-pointer" onClick={confirmDelete}>Xác nhận</button>
+                  <button className="px-4 py-1.5 bg-surface-container-high text-on-surface rounded font-label-md hover:bg-surface-container-low transition-colors cursor-pointer" onClick={() => { setCategoryToDelete(null); toggleModal('deleteAlert', false); }}>Hủy bỏ</button>
+              </div>
+          </div>
+      )}
+
+      <div className="max-w-[1440px] mx-auto w-full">
+          {modals.syncAlert && (
+              <div className="mb-6 bg-surface-container-low border border-primary-container rounded-lg p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 text-on-surface">
+                      <span className="material-symbols-outlined text-primary">info</span>
+                      <p className="font-body-lg">Bạn có chắc chắn muốn đồng bộ các danh mục mặc định?</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                      <button className="px-4 py-1.5 bg-primary text-white rounded font-label-md hover:bg-surface-tint transition-colors cursor-pointer" onClick={handleSyncConfirm}>Xác nhận</button>
+                      <button className="px-4 py-1.5 bg-error text-white rounded font-label-md hover:opacity-90 transition-colors cursor-pointer" onClick={() => toggleModal('syncAlert', false)}>Hủy bỏ</button>
+                  </div>
+              </div>
+          )}
+
+          <div className="flex flex-col md:flex-row md:items-center justify-between mb-stack-lg gap-4">
+              <div>
+                  <h2 className="font-headline-md text-headline-md text-on-surface m-0">Quản lý danh mục mặc định</h2>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                  <div className="relative w-full md:w-64">
+                      <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px]">search</span>
+                      <input 
+                          className="w-full pl-10 pr-4 py-2 border border-outline-variant rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary-container focus:border-transparent font-body-md text-body-md text-on-surface shadow-sm" 
+                          placeholder="Tìm kiếm danh mục..." 
+                          type="text"
+                          value={search}
+                          onChange={(e) => setSearch(e.target.value)}
+                      />
+                  </div>
+                  <button className="px-4 py-2 border border-outline rounded text-on-surface font-label-md text-label-md hover:bg-surface-container-low transition-colors flex items-center gap-2 cursor-pointer" onClick={() => toggleModal('filter', true)}>
+                      <span className="material-symbols-outlined text-[18px]">filter_alt</span>Lọc
+                  </button>
+                  <button className="px-4 py-2 border rounded font-label-md text-label-md transition-colors flex items-center gap-2 bg-primary text-white border-transparent hover:bg-surface-tint shadow-sm cursor-pointer" onClick={startAdd}>
+                      Thêm danh mục mới
+                  </button>
+              </div>
+          </div>
+
+          <div className="bg-white border border-outline-variant rounded-xl overflow-hidden shadow-sm relative">
+              {loading && (
+                <div className="absolute inset-0 bg-white bg-opacity-70 z-10 flex items-center justify-center">
+                  <span className="material-symbols-outlined animate-spin text-primary text-3xl">progress_activity</span>
+                </div>
+              )}
+              <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                      <thead>
+                          <tr className="bg-surface-container-low border-b border-outline-variant">
+                              <th className="px-6 py-4 font-label-md text-label-md text-on-surface uppercase">Tên danh mục</th>
+                              <th className="px-6 py-4 font-label-md text-label-md text-on-surface uppercase">Keyword nhận diện</th>
+                              <th className="px-6 py-4 font-label-md text-label-md text-on-surface uppercase">MẶC ĐỊNH</th>
+                              <th className="px-6 py-4 font-label-md text-label-md text-on-surface uppercase">Loại</th>
+                              <th className="px-6 py-4 font-label-md text-label-md text-on-surface uppercase text-right">Hành động</th>
+                          </tr>
+                      </thead>
+                      <tbody className="font-body-md text-body-md text-on-surface">
+                          {pageData.length > 0 ? (
+                            pageData.map((item, index) => {
+                                const isLastRow = index === pageData.length - 1;
+                                const rowClass = isLastRow ? 'hover:bg-surface-container-low transition-all duration-200' : 'border-b border-surface-container-high hover:bg-surface-container-low transition-all duration-200';
+                                return (
+                                    <tr key={item.id} className={rowClass}>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-primary">
+                                                    <span className="material-symbols-outlined text-[18px]">{item.icon}</span>
+                                                </div>
+                                                <span className="font-semibold">{item.name}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-on-surface-variant max-w-[300px] truncate" title={item.keywords}>{item.keywords}</td>
+                                        <td className="px-6 py-4 text-on-surface-variant">{item.isDefault ? 'Yes' : 'No'}</td>
+                                        <td className="px-6 py-4">
+                                            <span className={`inline-flex items-center px-2 py-1 rounded-full font-label-md text-[10px] ${getTypeBadgeClass(item.type)}`}>
+                                              {TRANSACTION_TYPE_LABELS[item.type] || item.type}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <button className="p-1 text-secondary hover:text-primary transition-colors border border-transparent hover:border-on-background rounded cursor-pointer" onClick={() => openEditModal(item)} title="Sửa">
+                                                <span className="material-symbols-outlined text-[20px]">edit</span>
+                                            </button>
+                                            <button className="p-1 text-secondary hover:text-error transition-colors ml-2 border border-transparent hover:border-on-background rounded cursor-pointer" onClick={() => handleDeleteClick(item.id)} title="Xóa">
+                                                <span className="material-symbols-outlined text-[20px]">delete</span>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                );
+                            })
+                          ) : (
+                            <tr>
+                              <td colSpan="5" className="px-6 py-8 text-center text-on-surface-variant">
+                                Không tìm thấy danh mục nào.
+                              </td>
+                            </tr>
+                          )}
+                      </tbody>
+                  </table>
+              </div>
+              
+              <div className="px-6 py-4 border-t border-outline-variant bg-surface-bright flex flex-col md:flex-row items-center justify-between gap-4">
+                  <span className="font-tabular-nums text-tabular-nums text-on-surface-variant">Hiển thị {filtered.length > 0 ? start + 1 : 0} - {end} của {filtered.length} danh mục</span>
+                  <div className="flex items-center gap-1">
+                      <button 
+                          className={`p-1 rounded transition-colors cursor-pointer active:opacity-80 ${currentPage === 1 ? 'text-outline pointer-events-none' : 'text-on-surface hover:bg-surface-container-low'}`}
+                          onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
+                          disabled={currentPage === 1}
+                      >
+                          <span className="material-symbols-outlined text-[20px]">chevron_left</span>
+                      </button>
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                          <button
+                              key={page}
+                              className={page === currentPage 
+                                  ? 'w-8 h-8 rounded bg-primary-container text-white font-tabular-nums text-tabular-nums flex items-center justify-center shadow-sm cursor-pointer active:scale-95 transition-all'
+                                  : 'w-8 h-8 rounded hover:bg-surface-container-low text-on-surface font-tabular-nums text-tabular-nums flex items-center justify-center transition-colors cursor-pointer active:scale-95'
+                              }
+                              onClick={() => setCurrentPage(page)}
+                          >
+                              {page}
+                          </button>
+                      ))}
+                      <button 
+                          className={`p-1 rounded transition-colors cursor-pointer active:opacity-80 ${currentPage === totalPages || totalPages === 0 ? 'text-outline pointer-events-none' : 'text-on-surface hover:bg-surface-container-low'}`}
+                          onClick={() => currentPage < totalPages && setCurrentPage(currentPage + 1)}
+                          disabled={currentPage === totalPages || totalPages === 0}
+                      >
+                          <span className="material-symbols-outlined text-[20px]">chevron_right</span>
+                      </button>
+                  </div>
+              </div>
+              <div className="px-6 py-4 flex justify-end border-t border-outline-variant bg-surface-container-lowest">
+                  <button className="px-4 py-2 bg-primary text-white rounded font-label-md text-label-md hover:bg-surface-tint transition-colors flex items-center gap-2 shadow-sm cursor-pointer" onClick={() => toggleModal('syncAlert', true)}>
+                      <span className="material-symbols-outlined text-[18px]">sync</span>Đồng bộ danh mục
+                  </button>
+              </div>
+          </div>
       </div>
 
-      <Card bordered={false} bodyStyle={{ padding: 0 }}>
-        <Table
-          columns={columns}
-          dataSource={filtered}
-          rowKey="id"
-          loading={loading}
-          pagination={{ pageSize: 10, showSizeChanger: false, showTotal: (total, range) => `Hiển thị ${range[0]} - ${range[1]} của ${total} danh mục` }}
-        />
-        <div style={{ padding: '16px 24px', borderTop: '1px solid #f0f0f0', display: 'flex', justifyContent: 'flex-end', backgroundColor: '#fafafa', borderRadius: '0 0 8px 8px' }}>
-          <Button type="primary" icon={<SyncOutlined />} onClick={syncCategories}>
-            Đồng bộ danh mục
-          </Button>
-        </div>
-      </Card>
-
       {/* Add / Edit Modal */}
-      <Modal
-        title={editingCategory ? "Chỉnh sửa danh mục" : "Thêm danh mục mới"}
-        open={showAddModal || showEditModal}
-        onCancel={() => { setShowAddModal(false); setShowEditModal(false); setEditingCategory(null); }}
-        onOk={() => form.submit()}
-        okText="Lưu"
-        cancelText="Hủy"
-      >
-        <Form form={form} layout="vertical" onFinish={editingCategory ? handleEdit : handleAdd} style={{ marginTop: 16 }}>
-          <Form.Item name="name" label="Tên danh mục" rules={[{ required: true, message: 'Vui lòng nhập tên danh mục' }]}>
-            <Input placeholder="Nhập tên danh mục" />
-          </Form.Item>
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item name="isDefault" label="Mặc định">
-                <Select>
-                  <Option value="yes">Yes</Option>
-                  <Option value="no">No</Option>
-                </Select>
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="type" label="Phân loại">
-                <Select>
-                  {Object.keys(TRANSACTION_TYPE_LABELS).map(key => (
-                    <Option key={key} value={key}>{TRANSACTION_TYPE_LABELS[key]}</Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
-          </Row>
-          <Form.Item name="keywords" label="Keyword nhận diện danh mục">
-            <Input.TextArea rows={3} placeholder="ăn uống, food, nhà hàng..." />
-          </Form.Item>
-        </Form>
-      </Modal>
+      {(modals.add || modals.edit) && (
+          <div className="fixed inset-0 bg-on-background/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-lg w-full max-w-lg shadow-xl overflow-hidden animate-in fade-in zoom-in duration-200">
+                  <div className="px-6 py-4 border-b border-outline-variant flex items-center justify-between">
+                      <h3 className="font-headline-sm text-on-surface m-0">
+                        {modals.edit ? 'Chỉnh sửa danh mục' : 'Thêm danh mục mới'}
+                      </h3>
+                      <button className="text-on-surface-variant hover:text-on-surface cursor-pointer" onClick={() => toggleModal(modals.edit ? 'edit' : 'add', false)}>
+                          <span className="material-symbols-outlined">close</span>
+                      </button>
+                  </div>
+                  <form onSubmit={handleSave}>
+                    <div className="p-6 space-y-4">
+                        <div>
+                            <label className="block font-label-md text-on-surface mb-1">Tên danh mục <span className="text-error">*</span></label>
+                            <input required value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="w-full px-3 py-2 border border-outline-variant rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md h-[40px]" placeholder="Nhập tên danh mục" type="text"/>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 items-start">
+                            <div>
+                                <label className="block font-label-md text-on-surface mb-1">Mặc định</label>
+                                <select value={form.isDefault} onChange={e => setForm({...form, isDefault: e.target.value})} className="w-full px-3 py-2 border border-outline-variant rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md bg-white h-[40px] cursor-pointer">
+                                    <option value="yes">Yes</option>
+                                    <option value="no">No</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block font-label-md text-on-surface mb-1">Phân loại</label>
+                                <select value={form.type} onChange={e => setForm({...form, type: e.target.value})} className="w-full px-3 py-2 border border-outline-variant rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md bg-white h-[40px] cursor-pointer">
+                                    {Object.keys(TRANSACTION_TYPE_LABELS).map(key => (
+                                      <option key={key} value={key}>{TRANSACTION_TYPE_LABELS[key]}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block font-label-md text-on-surface mb-1">Keyword nhận diện danh mục</label>
+                            <textarea value={form.keywords} onChange={e => setForm({...form, keywords: e.target.value})} className="w-full px-3 py-2 border border-outline-variant rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md resize-none" placeholder="ăn uống, food, nhà hàng..." rows="3"></textarea>
+                        </div>
+                    </div>
+                    <div className="px-6 py-4 bg-surface-bright border-t border-outline-variant flex justify-end gap-3">
+                        <button type="button" className="px-4 py-2 border border-outline rounded text-on-surface font-label-md hover:bg-surface-container-low transition-colors cursor-pointer" onClick={() => toggleModal(modals.edit ? 'edit' : 'add', false)}>Hủy</button>
+                        <button type="submit" className="px-4 py-2 bg-primary text-white rounded font-label-md hover:bg-surface-tint transition-colors cursor-pointer">Lưu</button>
+                    </div>
+                  </form>
+              </div>
+          </div>
+      )}
 
       {/* Filter Modal */}
-      <Modal
-        title="Lọc danh mục"
-        open={showFilterModal}
-        onCancel={() => setShowFilterModal(false)}
-        onOk={() => setShowFilterModal(false)}
-        okText="Áp dụng"
-        cancelText="Đặt lại"
-      >
-        <Space direction="vertical" style={{ width: '100%', marginTop: 16 }}>
-          <div>
-            <Text strong style={{ display: 'block', marginBottom: 8 }}>Mặc định</Text>
-            <Select style={{ width: '100%' }} value={filter.isDefault} onChange={(v) => setFilter({...filter, isDefault: v})}>
-              <Option value="all">Tất cả</Option>
-              <Option value="yes">Yes</Option>
-              <Option value="no">No</Option>
-            </Select>
+      {modals.filter && (
+          <div className="fixed inset-0 bg-on-background/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-lg w-full max-w-sm shadow-xl overflow-hidden animate-in fade-in zoom-in duration-200">
+                  <div className="px-6 py-4 border-b border-outline-variant flex items-center justify-between">
+                      <h3 className="font-headline-sm text-on-surface m-0">Lọc danh mục</h3>
+                      <button className="text-on-surface-variant hover:text-on-surface cursor-pointer" onClick={() => toggleModal('filter', false)}>
+                          <span className="material-symbols-outlined">close</span>
+                      </button>
+                  </div>
+                  <div className="p-6 space-y-4">
+                      <div className="grid grid-cols-2 gap-4 items-start">
+                          <div>
+                              <label className="block font-label-md text-on-surface mb-1">Mặc định</label>
+                              <select value={filter.isDefault} onChange={e => setFilter({...filter, isDefault: e.target.value})} className="w-full px-3 py-2 border border-outline-variant rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md bg-white h-[40px] cursor-pointer">
+                                  <option value="all">Tất cả</option>
+                                  <option value="yes">Yes</option>
+                                  <option value="no">No</option>
+                              </select>
+                          </div>
+                          <div>
+                              <label className="block font-label-md text-on-surface mb-1">Loại danh mục</label>
+                              <select value={filter.type} onChange={e => setFilter({...filter, type: e.target.value})} className="w-full px-3 py-2 border border-outline-variant rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md bg-white h-[40px] cursor-pointer">
+                                  <option value="all">Tất cả</option>
+                                  {Object.keys(TRANSACTION_TYPE_LABELS).map(key => (
+                                      <option key={key} value={key}>{TRANSACTION_TYPE_LABELS[key]}</option>
+                                  ))}
+                              </select>
+                          </div>
+                      </div>
+                  </div>
+                  <div className="px-6 py-4 bg-surface-bright border-t border-outline-variant flex justify-end gap-3">
+                      <button className="px-4 py-2 border border-outline rounded text-on-surface font-label-md hover:bg-surface-container-low transition-colors cursor-pointer" onClick={() => { setFilter({ isDefault: 'all', type: 'all' }); toggleModal('filter', false); }}>Đặt lại</button>
+                      <button className="px-4 py-2 bg-primary text-white rounded font-label-md hover:bg-surface-tint transition-colors cursor-pointer" onClick={() => toggleModal('filter', false)}>Áp dụng</button>
+                  </div>
+              </div>
           </div>
-          <div>
-            <Text strong style={{ display: 'block', marginBottom: 8 }}>Loại danh mục</Text>
-            <Select style={{ width: '100%' }} value={filter.type} onChange={(v) => setFilter({...filter, type: v})}>
-              <Option value="all">Tất cả</Option>
-              {Object.keys(TRANSACTION_TYPE_LABELS).map(key => (
-                <Option key={key} value={key}>{TRANSACTION_TYPE_LABELS[key]}</Option>
-              ))}
-            </Select>
-          </div>
-        </Space>
-      </Modal>
+      )}
     </div>
   );
 };

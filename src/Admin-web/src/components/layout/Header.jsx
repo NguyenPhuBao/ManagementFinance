@@ -1,90 +1,54 @@
 import React, { useState } from 'react';
-import { Layout, Input, Badge, Dropdown, Avatar, Button, Typography, Space } from 'antd';
-import { SearchOutlined, BellOutlined, MenuOutlined, UserOutlined } from '@ant-design/icons';
 
-const { Header: AntHeader } = Layout;
-const { Text } = Typography;
-
-const Header = ({ collapsed, onMenuToggle }) => {
+const Header = ({ onMenuToggle }) => {
   const [searchValue, setSearchValue] = useState('');
-
-  const notificationItems = [
-    {
-      key: '1',
-      label: (
-        <div style={{ textAlign: 'center', padding: '12px 0' }}>
-          <span className="material-symbols-outlined" style={{ fontSize: 24, color: '#94a3b8', marginBottom: 8, display: 'block' }}>
-            notifications_off
-          </span>
-          <Text type="secondary">Danh sách thông báo trống</Text>
-        </div>
-      ),
-    }
-  ];
+  const [showNotifications, setShowNotifications] = useState(false);
 
   return (
-    <AntHeader
-      style={{
-        padding: '0 24px',
-        background: '#ffffff',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        borderBottom: '1px solid #e2e8f0',
-        position: 'sticky',
-        top: 0,
-        zIndex: 30,
-        height: 64,
-        lineHeight: '64px',
-      }}
-    >
-      {/* Left side */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1 }}>
-        <Button
-          type="text"
-          icon={<MenuOutlined />}
-          onClick={onMenuToggle}
-          style={{
-            fontSize: '16px',
-            width: 40,
-            height: 40,
-            display: 'none', // Shown on mobile in real responsive setup
-          }}
-          className="mobile-menu-btn"
-        />
-        
-        <Text strong style={{ fontSize: 20 }}>
-          Personal Finance Admin
-        </Text>
+    <header className="fixed top-0 right-0 left-0 md:left-[280px] h-16 bg-surface border-b border-outline-variant flex items-center justify-between px-page-padding z-30">
+      <div className="flex items-center gap-4">
+        <button onClick={onMenuToggle} className="md:hidden text-on-surface hover:text-primary transition-colors">
+          <span className="material-symbols-outlined">menu</span>
+        </button>
+        <div className="font-headline-sm text-headline-sm font-semibold text-on-surface md:hidden">Personal Finance Admin</div>
+      </div>
 
-        {/* Search */}
-        <div style={{ maxWidth: 400, width: '100%', marginLeft: 16 }}>
-          <Input
+      <div className="hidden md:flex items-center flex-1 ml-4 mr-8">
+        <div className="relative w-full max-w-md">
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+          <input
+            type="text"
+            className="w-full pl-10 pr-4 py-2 bg-surface-container-low border border-outline-variant rounded-full text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors font-body-md text-body-md placeholder-on-surface-variant"
             placeholder="Search..."
-            prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
             value={searchValue}
             onChange={(e) => setSearchValue(e.target.value)}
-            style={{ borderRadius: 20, backgroundColor: '#eff4ff', border: '1px solid #e2e8f0' }}
           />
         </div>
       </div>
 
-      {/* Right side */}
-      <Space size={24} align="center">
-        {/* Notifications */}
-        <Dropdown menu={{ items: notificationItems }} placement="bottomRight" trigger={['click']}>
-          <Badge dot offset={[-4, 4]} style={{ backgroundColor: '#ba1a1a' }}>
-            <Button type="text" shape="circle" icon={<BellOutlined style={{ fontSize: 20, color: '#64748b' }} />} />
-          </Badge>
-        </Dropdown>
-
-        {/* User avatar */}
-        <Avatar
-          style={{ backgroundColor: '#dae2fd', color: '#5c647a', border: '1px solid #e2e8f0', cursor: 'pointer' }}
-          icon={<UserOutlined />}
-        />
-      </Space>
-    </AntHeader>
+      <div className="flex items-center gap-2 relative">
+        <button 
+          className="p-2 rounded-full text-on-surface-variant hover:bg-surface-container-low transition-all cursor-pointer active:opacity-80 relative"
+          onClick={() => setShowNotifications(!showNotifications)}
+        >
+          <span className="material-symbols-outlined">notifications</span>
+          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-error rounded-full"></span>
+        </button>
+        
+        {showNotifications && (
+          <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl shadow-[0_12px_24px_rgba(11,28,48,0.1)] border border-outline-variant z-50">
+            <div className="p-6 flex flex-col items-center justify-center gap-3 text-center">
+              <span className="material-symbols-outlined text-secondary text-[32px] opacity-50">notifications_off</span>
+              <p className="text-secondary font-body-md">Danh sách thông báo trống</p>
+            </div>
+          </div>
+        )}
+        
+        <div className="ml-2 w-8 h-8 rounded-full bg-secondary-container overflow-hidden border border-outline-variant flex-shrink-0">
+          <img alt="Admin User Profile" className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDoaRQFFasB3oo7h6BMWvwP3TbbgITuwpZ5a9CKkAOFy7XG6SLVrhi-Kdtks5RVbuhEkU1Ix7b1vbRyLZ-UQ14RqwpL32T2JmZYHhQTEueyBj-xnQyFXwiqKUdjdf-z-Fn3kvJuvGRbOiEQh6k8_tB4urRNnGPfDielXNVcw3DaKa6bgObMYp5KsZVt29Af3EGHiU-Qzv4WsBRvJk6d47l9PqDJ3QWHRVm6Ga-Za6MuHnjNHcBRa9mH" />
+        </div>
+      </div>
+    </header>
   );
 };
 

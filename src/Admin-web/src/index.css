@@ -1,79 +1,45 @@
-﻿/* ============================================
-   WealthCommand Admin - Global Styles
-   Entry point for all CSS
-   ============================================ */
+@import "tailwindcss";
+@config "../tailwind.config.js";
 
-@import './styles/theme.css';
-
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+@layer components {
+  .bento-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+  }
+  @media (min-width: 1024px) {
+    .bento-grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+  .stat-card {
+    background-color: #ffffff;
+    border: 1px solid #E2E8F0;
+    border-radius: 0.5rem;
+    padding: 24px;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  }
+  .modal-overlay {
+    background-color: rgba(11, 28, 48, 0.5); /* on-background with opacity */
+  }
+  .chart-container {
+    height: 200px;
+    width: 100%;
+    position: relative;
+  }
+  .loading-overlay {
+    background-color: rgba(248, 249, 255, 0.6);
+    backdrop-filter: blur(2px);
+  }
+  path {
+    transition: d 0.5s ease-in-out;
+  }
 }
 
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--color-outline-variant);
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-outline);
-}
-
-/* Material Symbols base style */
-.material-symbols-outlined {
-  font-variation-settings:
-    'FILL' 0,
-    'wght' 400,
-    'GRAD' 0,
-    'opsz' 24;
-  font-size: 24px;
-  vertical-align: middle;
-}
-
-.material-symbols-outlined.filled {
-  font-variation-settings:
-    'FILL' 1,
-    'wght' 400,
-    'GRAD' 0,
-    'opsz' 24;
-}
-
-/* Stat card hover effect */
-.stat-card {
-  background-color: #ffffff;
-  border: 1px solid var(--color-outline-variant);
-  border-radius: var(--radius-xl);
-  padding: 24px;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(11, 28, 48, 0.05);
-}
-
-/* Modal overlay */
-.modal-overlay {
-  background-color: rgba(11, 28, 48, 0.5);
-}
-
-/* Loading overlay */
-.loading-overlay {
-  background-color: rgba(248, 249, 255, 0.6);
-  backdrop-filter: blur(2px);
-}
-
-/* Table row fade animation */
-.table-fade {
-  animation: fadeIn 0.3s ease-in-out;
-}
-
-/* Notification dropdown */
-.notification-dropdown-shadow {
-  box-shadow: 0 12px 24px rgba(11, 28, 48, 0.1);
+body {
+  @apply bg-background text-on-background font-body-md antialiased;
 }
