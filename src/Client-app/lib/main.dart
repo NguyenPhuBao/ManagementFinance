@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'core/constants/app_router.dart';
+import 'core/di/injection_container.dart';
 import 'shared/theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await setupDependencies();
   runApp(const FlowMoneyApp());
 }
 
