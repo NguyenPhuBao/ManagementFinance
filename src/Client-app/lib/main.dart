@@ -1,18 +1,22 @@
 import 'package:flutter/material.dart';
+import 'core/constants/app_router.dart';
+import 'shared/theme/app_theme.dart';
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const FlowMoneyApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class FlowMoneyApp extends StatelessWidget {
+  const FlowMoneyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: Scaffold(
-        body: Center(child: Text('FlowMoney')),
-      ),
+    return MaterialApp.router(
+      title: 'FlowMoney',
+      theme: AppTheme.lightTheme,
+      routerConfig: AppRouter.router,
+      debugShowCheckedModeBanner: false,
     );
   }
 }
