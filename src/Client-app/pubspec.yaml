@@ -1,0 +1,51 @@
+name: flowmoney
+description: FlowMoney - Personal Finance Management App
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management
+  flutter_bloc: ^8.1.6
+  equatable: ^2.0.5
+
+  # Navigation
+  go_router: ^14.6.2
+
+  # Dependency injection
+  get_it: ^7.7.0
+
+  # Local database
+  drift: ^2.21.0
+  sqlite3_flutter_libs: ^0.5.24
+  path_provider: ^2.1.4
+  path: ^1.9.0
+
+  # HTTP
+  dio: ^5.7.0
+
+  # Connectivity & sync
+  connectivity_plus: ^6.1.1
+  uuid: ^4.5.1
+
+  # Security
+  flutter_secure_storage: ^9.2.2
+
+  # UI & fonts
+  google_fonts: ^6.2.1
+  intl: ^0.19.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  drift_dev: ^2.21.0
+  build_runner: ^2.4.13
+
+flutter:
+  uses-material-design: true
