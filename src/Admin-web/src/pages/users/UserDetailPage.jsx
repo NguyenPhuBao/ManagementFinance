@@ -1,18 +1,43 @@
-﻿import React from 'react';
-import { useParams, useLocation, useNavigate } from 'react-router-dom';
+﻿import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { USER_STATUS_LABELS } from '../../utils/constants';
+import adminApi from '../../api/admin.api';
 
 const UserDetailPage = () => {
   const { id } = useParams();
-  const location = useLocation();
   const navigate = useNavigate();
-  const user = location.state?.user;
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const res = await adminApi.getUserById(id);
+        setUser(res.data);
+      } catch (err) {
+        setError(err.response?.data?.message || 'Không tìm thấy người dùng');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUser();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div style={{ textAlign: 'center', padding: 48 }}>
+        <span className="material-symbols-outlined animate-spin" style={{ fontSize: 48, color: 'var(--color-primary)' }}>progress_activity</span>
+        <h3 style={{ fontSize: 20, fontWeight: 600, marginTop: 16 }}>Đang tải...</h3>
+      </div>
+    );
+  }
 
   if (!user) {
     return (
       <div style={{ textAlign: 'center', padding: 48 }}>
         <span className="material-symbols-outlined" style={{ fontSize: 48, color: 'var(--color-outline)' }}>person_off</span>
-        <h3 style={{ fontSize: 20, fontWeight: 600, marginTop: 16 }}>Không tìm thấy người dùng</h3>
+        <h3 style={{ fontSize: 20, fontWeight: 600, marginTop: 16 }}>{error || 'Không tìm thấy người dùng'}</h3>
         <button onClick={() => navigate('/users')} style={{ marginTop: 16, padding: '8px 16px', backgroundColor: 'var(--color-primary)', color: '#ffffff', border: 'none', borderRadius: 8, cursor: 'pointer' }}>
           Quay lại danh sách
         </button>
@@ -20,7 +45,7 @@ const UserDetailPage = () => {
     );
   }
 
-  const isActive = user.status === 'active';
+  const isActive = user.status === 'Active';
 
   return (
     <div>
@@ -56,7 +81,7 @@ const UserDetailPage = () => {
             backgroundColor: isActive ? '#dcfce7' : '#f1f5f9',
             color: isActive ? '#166534' : '#475569',
           }}>
-            {USER_STATUS_LABELS[user.status]}
+            {USER_STATUS_LABELS[user.status?.toLowerCase()] || user.status}
           </span>
         </div>
 
@@ -67,11 +92,11 @@ const UserDetailPage = () => {
           </h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <DetailItem label="ID User" value={user.id} />
-            <DetailItem label="Họ tên" value={user.name} />
+            <DetailItem label="Họ tên" value={user.fullname} />
             <DetailItem label="Email" value={user.email} />
-            <DetailItem label="Số điện thoại" value={user.phone} />
-            <DetailItem label="Địa chỉ" value={user.address} />
-            <DetailItem label="Vị trí" value={user.location} />
+            <DetailItem label="Số điện thoại" value={user.phone || '—'} />
+            <DetailItem label="Địa chỉ" value={user.address || '—'} />
+            <DetailItem label="Khu vực" value={user.location || '—'} />
           </div>
         </div>
 
@@ -83,10 +108,10 @@ const UserDetailPage = () => {
             Thông tin tài khoản
           </h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <DetailItem label="ID Account" value={`ACC-${user.id.split('-')[1]}`} />
-            <DetailItem label="Username" value={user.email.split('@')[0]} />
-            <DetailItem label="Trạng thái" value={USER_STATUS_LABELS[user.status]} />
-            <DetailItem label="Vai trò" value={user.role} />
+            <DetailItem label="ID Account" value={user.id} />
+            <DetailItem label="Username" value={user.username} />
+            <DetailItem label="Trạng thái" value={USER_STATUS_LABELS[user.status?.toLowerCase()] || user.status} />
+            <DetailItem label="Vai trò" value={user.rolename} />
           </div>
         </div>
       </div>

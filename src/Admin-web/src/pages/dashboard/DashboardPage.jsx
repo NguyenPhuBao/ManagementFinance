@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TIME_FILTERS, TIME_FILTER_LABELS } from '../../utils/constants';
+import adminApi from '../../api/admin.api';
 
 const StatCard = ({ icon, title, value, badge, badgeColor }) => (
   <div className="bg-white rounded-xl p-5 shadow-sm border border-outline-variant hover:shadow-md transition-shadow relative overflow-hidden group">
@@ -24,29 +25,76 @@ const StatCard = ({ icon, title, value, badge, badgeColor }) => (
 
 const DashboardPage = () => {
   const [loading, setLoading] = useState(true);
-  const [timeFilter, setTimeFilter] = useState(TIME_FILTERS.MONTH);
-  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [timeFilter, setTimeFilter] = useState(TIME_FILTERS.TODAY);
+  const now = new Date();
+  const [monthYear, setMonthYear] = useState({ month: now.getMonth() + 1, year: now.getFullYear() });
+  const [showMonthPicker, setShowMonthPicker] = useState(false);
 
-  // Simulated data
-  const stats = {
-    totalUsers: { value: '12,205', badge: '12%', badgeColor: 'green' },
-    totalCategories: { value: '48', badge: null },
-    systemUptime: { value: '99.9%', badge: 'Ổn định' },
-    newUsersToday: { value: '331', badge: '5%', badgeColor: 'green' },
-    loginAvg: '91',
-    loginPeak: '113',
+  const MONTH_NAMES = ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
+                       'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
+
+  const isFutureMonth = (m, y) => {
+    const nowDate = new Date();
+    return y > nowDate.getFullYear() || (y === nowDate.getFullYear() && m > nowDate.getMonth() + 1);
   };
+
+  const selectMonth = (month) => {
+    if (isFutureMonth(month, monthYear.year)) return;
+    setMonthYear(prev => ({ ...prev, month }));
+    setShowMonthPicker(false);
+  };
+
+  const monthLabel = `${MONTH_NAMES[monthYear.month - 1]}/${monthYear.year}`;
+
+  // Dữ liệu thực từ API
+  const [totalUsers, setTotalUsers] = useState(null);
+  const [totalCategories, setTotalCategories] = useState(null);
+  const [newUsers, setNewUsers] = useState({ current: 0, previous: 0, growth: 0 });
+
+  // 2 API không phụ thuộc thời gian — gọi 1 lần khi mount
+  useEffect(() => {
+    const fetchStaticStats = async () => {
+      try {
+        const [usersRes, catRes] = await Promise.all([
+          adminApi.getTotalUsers(),
+          adminApi.getTotalCategories(),
+        ]);
+        setTotalUsers(usersRes.data.total);
+        setTotalCategories(catRes.data.total);
+      } catch (err) {
+        console.error('Lỗi tải thống kê tổng:', err);
+      }
+    };
+    fetchStaticStats();
+  }, []);
+
+  // API phụ thuộc tháng — gọi mỗi khi monthYear thay đổi
+  useEffect(() => {
+    const fetchTimedStats = async () => {
+      try {
+        const res = await adminApi.getUserToTime(monthYear.month, monthYear.year);
+        setNewUsers(res.data);
+      } catch (err) {
+        console.error('Lỗi tải thống kê theo tháng:', err);
+      }
+    };
+    fetchTimedStats();
+    const timer = setTimeout(() => setLoading(false), 300);
+    return () => clearTimeout(timer);
+  }, [monthYear.month, monthYear.year]);
+
+  // Data hiển thị
+  const totalUsersDisplay = totalUsers !== null ? totalUsers.toLocaleString('vi-VN') : '—';
+  const totalCategoriesDisplay = totalCategories !== null ? totalCategories.toLocaleString('vi-VN') : '—';
+  const growthSign = newUsers.growth >= 0 ? '+' : '';
+  const growthBadge = `${growthSign}${newUsers.growth}%`;
+  const growthColor = newUsers.growth >= 0 ? 'green' : 'red';
 
   const recentActivities = [
     { key: '1', user: 'Nguyễn Văn A', action: 'Tạo giao dịch mới', time: '10:45 AM' },
     { key: '2', user: 'Trần Thị B', action: 'Cập nhật hồ sơ', time: '09:12 AM' },
     { key: '3', user: 'Lê Văn C', action: 'Xóa danh mục', time: 'Hôm qua' },
   ];
-
-  useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 500);
-    return () => clearTimeout(timer);
-  }, [timeFilter]);
 
   return (
     <div className="max-w-[1440px] mx-auto w-full p-4 md:p-6 space-y-6 bg-surface-bright min-h-full relative overflow-hidden">
@@ -62,7 +110,86 @@ const DashboardPage = () => {
               <p className="font-body-lg text-on-surface-variant mt-2 max-w-xl">Dữ liệu tài chính và hoạt động được cập nhật liên tục để cung cấp cái nhìn toàn diện về hiệu suất.</p>
           </div>
           
-          <div className="flex bg-white p-1 rounded-lg border border-outline-variant shadow-sm self-start md:self-auto">
+          <div className="relative self-start md:self-auto">
+              <button
+                onClick={() => setShowMonthPicker(!showMonthPicker)}
+                className="flex items-center gap-2 bg-white px-4 py-2 rounded-lg border border-outline-variant shadow-sm hover:border-primary transition-colors cursor-pointer font-label-md text-[13px] text-on-surface"
+              >
+                <span className="material-symbols-outlined text-primary text-[18px]">calendar_month</span>
+                {monthLabel}
+                <span className="material-symbols-outlined text-on-surface-variant text-[16px]">arrow_drop_down</span>
+              </button>
+
+              {/* Month Picker Modal */}
+              {showMonthPicker && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowMonthPicker(false)} />
+                  <div className="absolute right-0 top-full mt-2 bg-white rounded-xl border border-outline-variant shadow-xl z-50 p-4 w-[280px] animate-in fade-in zoom-in-95 duration-150">
+                  {/* Year navigation */}
+                  <div className="flex items-center justify-between mb-3">
+                    <button
+                      onClick={() => setMonthYear(prev => ({ ...prev, year: prev.year - 1 }))}
+                      className="p-1 rounded hover:bg-surface-container-low text-on-surface-variant cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">chevron_left</span>
+                    </button>
+                    <span className="font-semibold text-on-surface">{monthYear.year}</span>
+                    <button
+                      onClick={() => {
+                        if (monthYear.year < new Date().getFullYear()) {
+                          setMonthYear(prev => ({ ...prev, year: prev.year + 1 }));
+                        }
+                      }}
+                      className={`p-1 rounded text-on-surface-variant cursor-pointer ${monthYear.year >= new Date().getFullYear() ? 'opacity-30 pointer-events-none' : 'hover:bg-surface-container-low'}`}
+                    >
+                      <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+                    </button>
+                  </div>
+
+                  {/* Month grid */}
+                  <div className="grid grid-cols-3 gap-2">
+                    {MONTH_NAMES.map((name, idx) => {
+                      const monthNum = idx + 1;
+                      const isSelected = monthNum === monthYear.month && monthYear.year === (now.getMonth() + 1 <= monthNum ? now.getFullYear() : monthYear.year);
+                      const disabled = isFutureMonth(monthNum, monthYear.year);
+                      return (
+                        <button
+                          key={monthNum}
+                          onClick={() => selectMonth(monthNum)}
+                          disabled={disabled}
+                          className={`py-2 rounded-lg text-[13px] font-medium transition-colors cursor-pointer
+                            ${monthNum === monthYear.month ? 'bg-primary text-white shadow-sm' : 'hover:bg-surface-container-low text-on-surface'}
+                            ${disabled ? 'opacity-30 pointer-events-none' : ''}
+                          `}
+                        >
+                          {name.replace('Tháng ', 'T')}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                </>
+              )}
+          </div>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 relative">
+          {loading && (
+            <div className="absolute inset-0 bg-white/50 backdrop-blur-[2px] z-10 flex items-center justify-center rounded-xl">
+              <span className="material-symbols-outlined animate-spin text-primary text-3xl">progress_activity</span>
+            </div>
+          )}
+          <StatCard icon="group" title="Tổng người dùng" value={totalUsersDisplay} />
+          <StatCard icon="category" title="Tổng danh mục" value={totalCategoriesDisplay} />
+          <StatCard icon="dns" title="Uptime Hệ thống" value="99.9%" badge="Ổn định" />
+          <StatCard icon="person_add" title="Người dùng mới" value={newUsers.current.toLocaleString('vi-VN')} badge={growthBadge} badgeColor={growthColor} />
+      </div>
+
+      {/* Bộ lọc theo ngày — dùng cho biểu đồ */}
+      <div className="flex items-center gap-3">
+          <span className="font-label-md text-[13px] text-on-surface-variant font-semibold">Lọc theo:</span>
+          <div className="flex bg-white p-1 rounded-lg border border-outline-variant shadow-sm">
               {Object.entries(TIME_FILTER_LABELS).map(([key, label]) => (
                 <button
                     key={key}
@@ -75,19 +202,6 @@ const DashboardPage = () => {
                 </button>
               ))}
           </div>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 relative">
-          {loading && (
-            <div className="absolute inset-0 bg-white/50 backdrop-blur-[2px] z-10 flex items-center justify-center rounded-xl">
-              <span className="material-symbols-outlined animate-spin text-primary text-3xl">progress_activity</span>
-            </div>
-          )}
-          <StatCard icon="group" title="Tổng người dùng" value={stats.totalUsers.value} badge={stats.totalUsers.badge} badgeColor={stats.totalUsers.badgeColor} />
-          <StatCard icon="category" title="Tổng danh mục" value={stats.totalCategories.value} badge={stats.totalCategories.badge} />
-          <StatCard icon="dns" title="Uptime Hệ thống" value={stats.systemUptime.value} badge={stats.systemUptime.badge} />
-          <StatCard icon="person_add" title="Người dùng mới" value={stats.newUsersToday.value} badge={stats.newUsersToday.badge} badgeColor={stats.newUsersToday.badgeColor} />
       </div>
 
       {/* Main Content Grid */}
@@ -106,9 +220,6 @@ const DashboardPage = () => {
                       Hoạt động gần đây
                   </h2>
                   <div className="flex items-center gap-2">
-                      <button onClick={() => setShowFilterModal(true)} className="p-1.5 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded transition-colors cursor-pointer" title="Lọc hoạt động">
-                          <span className="material-symbols-outlined text-[20px]">filter_list</span>
-                      </button>
                       <button className="text-primary font-label-md text-[13px] font-semibold hover:underline cursor-pointer px-2">Xem tất cả</button>
                   </div>
               </div>
@@ -177,11 +288,11 @@ const DashboardPage = () => {
               <div className="grid grid-cols-2 gap-4 pt-5 border-t border-outline-variant relative z-10">
                   <div className="bg-surface-container-lowest p-3 rounded-lg text-center">
                       <p className="font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider">Trung bình</p>
-                      <p className="font-display-sm font-bold text-primary m-0">{stats.loginAvg}/h</p>
+                      <p className="font-display-sm font-bold text-primary m-0">—/h</p>
                   </div>
                   <div className="bg-surface-container-lowest p-3 rounded-lg text-center">
                       <p className="font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider">Đỉnh điểm</p>
-                      <p className="font-display-sm font-bold text-on-surface m-0">{stats.loginPeak}/h</p>
+                      <p className="font-display-sm font-bold text-on-surface m-0">—/h</p>
                   </div>
               </div>
           </div>
@@ -271,52 +382,6 @@ const DashboardPage = () => {
               </div>
           </div>
       </div>
-      
-      {/* Filter Modal */}
-      {showFilterModal && (
-        <div className="fixed inset-0 bg-on-background/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-xl w-full max-w-md shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-outline-variant flex justify-between items-center bg-surface-container-lowest">
-              <h3 className="font-title-lg font-bold m-0 text-on-surface flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary">filter_list</span>
-                Lọc hoạt động
-              </h3>
-              <button onClick={() => setShowFilterModal(false)} className="text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low p-1 rounded-full transition-colors cursor-pointer">
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
-            
-            <div className="p-6 flex flex-col gap-5">
-              <div>
-                <label className="block font-label-md text-on-surface mb-1">Hành động</label>
-                <input type="text" placeholder="Nhập hành động..." className="w-full px-4 py-2 border border-outline-variant rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all font-body-md" />
-              </div>
-              
-              <div>
-                <label className="block font-label-md text-on-surface mb-1">Người dùng</label>
-                <div className="relative">
-                  <select className="w-full px-4 py-2 border border-outline-variant rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all appearance-none cursor-pointer font-body-md bg-white">
-                    <option value="">Tất cả người dùng</option>
-                    <option value="1">Nguyễn Văn A</option>
-                    <option value="2">Trần Thị B</option>
-                    <option value="3">Lê Văn C</option>
-                  </select>
-                  <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant">expand_more</span>
-                </div>
-              </div>
-            </div>
-            
-            <div className="px-6 py-4 border-t border-outline-variant flex justify-end gap-3 bg-surface-container-lowest">
-              <button onClick={() => setShowFilterModal(false)} className="px-5 py-2 rounded-lg font-label-md text-on-surface border border-outline-variant hover:bg-surface-container-low transition-colors cursor-pointer">
-                Hủy
-              </button>
-              <button onClick={() => setShowFilterModal(false)} className="px-5 py-2 rounded-lg font-label-md bg-primary text-white hover:bg-surface-tint shadow-sm transition-colors cursor-pointer">
-                Áp dụng
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

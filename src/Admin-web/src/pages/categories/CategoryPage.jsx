@@ -1,21 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { TRANSACTION_TYPE_LABELS } from '../../utils/constants';
+import adminApi from '../../api/admin.api';
 
-const MOCK_CATEGORIES = [
-  { id: 1, icon: 'restaurant', name: 'Ăn uống', keywords: 'ăn uống, food, restaurant, cafe, grabfood, shopeefood', isDefault: true, type: 'expense' },
-  { id: 2, icon: 'commute', name: 'Di chuyển', keywords: 'di chuyển, taxi, grab, be, xăng, vé xe, gửi xe', isDefault: false, type: 'expense' },
-  { id: 3, icon: 'payments', name: 'Lương', keywords: 'lương, salary, thưởng, bonus, thu nhập, được cho', isDefault: true, type: 'income' },
-  { id: 4, icon: 'home', name: 'Nhà ở', keywords: 'tiền nhà, rent, điện, nước, internet, wifi, cáp', isDefault: true, type: 'expense' },
-  { id: 5, icon: 'shopping_cart', name: 'Mua sắm', keywords: 'shopee, lazada, tiki, siêu thị, bách hóa xanh', isDefault: true, type: 'expense' },
-  { id: 6, icon: 'credit_score', name: 'Trả nợ', keywords: 'trả nợ, thanh toán thẻ, lãi vay', isDefault: false, type: 'debt' },
-  { id: 7, icon: 'health_and_safety', name: 'Sức khỏe', keywords: 'thuốc, bệnh viện, khám bệnh, bảo hiểm', isDefault: true, type: 'expense' },
-  { id: 8, icon: 'school', name: 'Giáo dục', keywords: 'học phí, sách vở, khóa học', isDefault: true, type: 'expense' },
-  { id: 9, icon: 'savings', name: 'Tiết kiệm', keywords: 'gửi tiết kiệm, heo đất, đầu tư', isDefault: false, type: 'income' },
-];
+const CLASSIFY_MAP = { thu: 'income', chi: 'expense', 'vay/no': 'debt' };
+const TYPE_TO_CLASSIFY = { income: 'thu', expense: 'chi', debt: 'vay/no' };
 
 const CategoryPage = () => {
   const [loading, setLoading] = useState(true);
-  const [categories, setCategories] = useState(MOCK_CATEGORIES);
+  const [categories, setCategories] = useState([]);
   const [search, setSearch] = useState('');
   
   const [modals, setModals] = useState({
@@ -28,7 +20,7 @@ const CategoryPage = () => {
   const [editingCategory, setEditingCategory] = useState(null);
   const [categoryToDelete, setCategoryToDelete] = useState(null);
 
-  const [form, setForm] = useState({ name: '', isDefault: 'yes', type: 'expense', keywords: '' });
+  const [form, setForm] = useState({ name: '', isDefault: 'yes', type: 'expense' });
   const [filter, setFilter] = useState({ isDefault: 'all', type: 'all' });
 
   // Pagination states
@@ -36,8 +28,7 @@ const CategoryPage = () => {
   const itemsPerPage = 10;
 
   const filtered = categories.filter(c =>
-    (c.name.toLowerCase().includes(search.toLowerCase()) ||
-    c.keywords.toLowerCase().includes(search.toLowerCase())) &&
+    c.name.toLowerCase().includes(search.toLowerCase()) &&
     (filter.isDefault === 'all' || (filter.isDefault === 'yes' ? c.isDefault : !c.isDefault)) &&
     (filter.type === 'all' || c.type === filter.type)
   );
@@ -47,40 +38,71 @@ const CategoryPage = () => {
   const end = Math.min(start + itemsPerPage, filtered.length);
   const pageData = filtered.slice(start, end);
 
+  const fetchCategories = async () => {
+    try {
+      const res = await adminApi.getCategories();
+      const mapped = res.data.map((c) => ({
+        id: c.id,
+        name: c.name,
+        type: CLASSIFY_MAP[c.classify] || 'expense',
+        classify: c.classify,
+        isDefault: c.is_default,
+        created_by: c.created_by_name || c.created_by || '—',
+        created_at: c.created_at,
+      }));
+      setCategories(mapped);
+    } catch (err) {
+      console.error('Lỗi tải danh mục:', err);
+    }
+  };
+
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 500);
-    return () => clearTimeout(timer);
+    fetchCategories().finally(() => setLoading(false));
   }, []);
 
   const toggleModal = (modalName, isOpen) => {
     setModals(prev => ({ ...prev, [modalName]: isOpen }));
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
-    if (editingCategory) {
-      setCategories(categories.map(c =>
-        c.id === editingCategory.id ? { ...c, ...form, isDefault: form.isDefault === 'yes' } : c
-      ));
-      toggleModal('edit', false);
-    } else {
-      const newCategory = {
-        id: categories.length + 1,
-        icon: 'category',
-        ...form,
-        isDefault: form.isDefault === 'yes',
+    setLoading(true);
+    try {
+      const payload = {
+        name: form.name,
+        classify: TYPE_TO_CLASSIFY[form.type] || 'chi',
+        is_default: form.isDefault === 'yes',
       };
-      setCategories([...categories, newCategory]);
-      toggleModal('add', false);
+      if (editingCategory) {
+        await adminApi.updateCategory(editingCategory.id, payload);
+        toggleModal('edit', false);
+        setEditingCategory(null);
+      } else {
+        await adminApi.createCategory(payload);
+        toggleModal('add', false);
+      }
+      setForm({ name: '', isDefault: 'yes', type: 'expense' });
+      await fetchCategories();
+    } catch (err) {
+      console.error('Lỗi lưu danh mục:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const confirmDelete = () => {
-    if (categoryToDelete) {
-      setCategories(categories.filter(c => c.id !== categoryToDelete));
+  const confirmDelete = async () => {
+    if (!categoryToDelete) return;
+    setLoading(true);
+    try {
+      await adminApi.deleteCategory(categoryToDelete);
       setCategoryToDelete(null);
+      toggleModal('deleteAlert', false);
+      await fetchCategories();
+    } catch (err) {
+      console.error('Lỗi xóa danh mục:', err);
+    } finally {
+      setLoading(false);
     }
-    toggleModal('deleteAlert', false);
   };
 
   const handleDeleteClick = (id) => {
@@ -93,16 +115,15 @@ const CategoryPage = () => {
     setEditingCategory(cat);
     setForm({
       name: cat.name,
-      keywords: cat.keywords,
       isDefault: cat.isDefault ? 'yes' : 'no',
-      type: cat.type
+      type: cat.type,
     });
     toggleModal('edit', true);
   };
 
   const startAdd = () => {
     setEditingCategory(null);
-    setForm({ name: '', isDefault: 'yes', type: 'expense', keywords: '' });
+    setForm({ name: '', isDefault: 'yes', type: 'expense' });
     toggleModal('add', true);
   };
 
@@ -181,9 +202,8 @@ const CategoryPage = () => {
                       <thead>
                           <tr className="bg-surface-container-low border-b border-outline-variant">
                               <th className="px-6 py-4 font-label-md text-label-md text-on-surface uppercase">Tên danh mục</th>
-                              <th className="px-6 py-4 font-label-md text-label-md text-on-surface uppercase">Keyword nhận diện</th>
-                              <th className="px-6 py-4 font-label-md text-label-md text-on-surface uppercase">MẶC ĐỊNH</th>
                               <th className="px-6 py-4 font-label-md text-label-md text-on-surface uppercase">Loại</th>
+                              <th className="px-6 py-4 font-label-md text-label-md text-on-surface uppercase">Phân loại</th>
                               <th className="px-6 py-4 font-label-md text-label-md text-on-surface uppercase text-right">Hành động</th>
                           </tr>
                       </thead>
@@ -197,18 +217,17 @@ const CategoryPage = () => {
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-primary">
-                                                    <span className="material-symbols-outlined text-[18px]">{item.icon}</span>
+                                                    <span className="material-symbols-outlined text-[18px]">category</span>
                                                 </div>
                                                 <span className="font-semibold">{item.name}</span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 text-on-surface-variant max-w-[300px] truncate" title={item.keywords}>{item.keywords}</td>
-                                        <td className="px-6 py-4 text-on-surface-variant">{item.isDefault ? 'Yes' : 'No'}</td>
                                         <td className="px-6 py-4">
                                             <span className={`inline-flex items-center px-2 py-1 rounded-full font-label-md text-[10px] ${getTypeBadgeClass(item.type)}`}>
                                               {TRANSACTION_TYPE_LABELS[item.type] || item.type}
                                             </span>
                                         </td>
+                                        <td className="px-6 py-4 text-on-surface-variant">{item.isDefault ? 'Hệ thống' : 'Tùy chỉnh'}</td>
                                         <td className="px-6 py-4 text-right">
                                             <button className="p-1 text-secondary hover:text-primary transition-colors border border-transparent hover:border-on-background rounded cursor-pointer" onClick={() => openEditModal(item)} title="Sửa">
                                                 <span className="material-symbols-outlined text-[20px]">edit</span>
@@ -222,7 +241,7 @@ const CategoryPage = () => {
                             })
                           ) : (
                             <tr>
-                              <td colSpan="5" className="px-6 py-8 text-center text-on-surface-variant">
+                              <td colSpan="4" className="px-6 py-8 text-center text-on-surface-variant">
                                 Không tìm thấy danh mục nào.
                               </td>
                             </tr>
@@ -304,10 +323,6 @@ const CategoryPage = () => {
                                     ))}
                                 </select>
                             </div>
-                        </div>
-                        <div>
-                            <label className="block font-label-md text-on-surface mb-1">Keyword nhận diện danh mục</label>
-                            <textarea value={form.keywords} onChange={e => setForm({...form, keywords: e.target.value})} className="w-full px-3 py-2 border border-outline-variant rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md resize-none" placeholder="ăn uống, food, nhà hàng..." rows="3"></textarea>
                         </div>
                     </div>
                     <div className="px-6 py-4 bg-surface-bright border-t border-outline-variant flex justify-end gap-3">
