@@ -64,3 +64,4 @@ docs/superpowers/specs/
 .superpowers/
 .stitch/
 plugins/
+src/Backend/prisma/migrations/
