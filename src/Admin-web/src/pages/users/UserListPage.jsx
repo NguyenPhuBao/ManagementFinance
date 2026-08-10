@@ -1,21 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { USER_STATUS_LABELS } from '../../utils/constants';
-
-const MOCK_USERS = [
-  { id: 'USR-001', name: 'Nguyễn Văn An', email: 'an.nguyen@example.com', phone: '0901234567', status: 'active', location: 'TP. Hồ Chí Minh' },
-  { id: 'USR-002', name: 'Trần Thị Bích', email: 'bich.tran@example.com', phone: '0912345678', status: 'inactive', location: 'Hà Nội' },
-  { id: 'USR-003', name: 'Lê Minh Đạt', email: 'dat.le@example.com', phone: '0987654321', status: 'active', location: 'Đà Nẵng' },
-  { id: 'USR-004', name: 'Phạm Hoàng Nam', email: 'nam.pham@example.com', phone: '0934567890', status: 'active', location: 'Cần Thơ' },
-  { id: 'USR-005', name: 'Vũ Thị Lan', email: 'lan.vu@example.com', phone: '0945678901', status: 'inactive', location: 'TP. Hồ Chí Minh' },
-  { id: 'USR-006', name: 'Đặng Văn Hùng', email: 'hung.dang@example.com', phone: '0956789012', status: 'active', location: 'Hà Nội' },
-  { id: 'USR-007', name: 'Hoàng Minh Tú', email: 'tu.hoang@example.com', phone: '0967890123', status: 'active', location: 'Đà Nẵng' },
-];
+import adminApi from '../../api/admin.api';
+import UserDetailModal from '../../components/common/UserDetailModal';
 
 const UserListPage = () => {
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [users, setUsers] = useState(MOCK_USERS);
+  const [users, setUsers] = useState([]);
   const [search, setSearch] = useState('');
   
   const [modals, setModals] = useState({
@@ -23,19 +13,20 @@ const UserListPage = () => {
       blockAlert: false
   });
   const [userToBlock, setUserToBlock] = useState(null);
+  const [detailUserId, setDetailUserId] = useState(null);
 
   const [filter, setFilter] = useState({ location: 'all', status: 'all' });
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
   const filteredUsers = users.filter((u) => {
-    const matchSearch = u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()) || u.phone.includes(search);
+    const matchSearch = u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()) || (u.phone || '').includes(search);
     const matchStatus = filter.status === 'all' || u.status === filter.status;
     const matchLocation = filter.location === 'all' || 
-      (filter.location === 'hcm' && u.location === 'TP. Hồ Chí Minh') ||
-      (filter.location === 'hn' && u.location === 'Hà Nội') ||
-      (filter.location === 'dn' && u.location === 'Đà Nẵng') ||
-      (filter.location === 'ct' && u.location === 'Cần Thơ');
+      (filter.location === 'hcm' && (u.address || '').toLowerCase().includes('hồ chí minh')) ||
+      (filter.location === 'hn' && (u.address || '').toLowerCase().includes('hà nội')) ||
+      (filter.location === 'dn' && (u.address || '').toLowerCase().includes('đà nẵng')) ||
+      (filter.location === 'ct' && (u.address || '').toLowerCase().includes('cần thơ'));
     return matchSearch && matchStatus && matchLocation;
   });
 
@@ -45,8 +36,27 @@ const UserListPage = () => {
   const pageData = filteredUsers.slice(start, end);
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 500);
-    return () => clearTimeout(timer);
+    const fetchUsers = async () => {
+      try {
+        const res = await adminApi.getUsers();
+        const mapped = res.data.map((u) => ({
+          id: u.id,
+          name: u.fullname,
+          email: u.email,
+          phone: u.phone || '—',
+          status: u.status ? u.status.toLowerCase() : 'active',
+          address: u.address || '',
+          username: u.username,
+          created_at: u.created_at,
+        }));
+        setUsers(mapped);
+      } catch (err) {
+        console.error('Lỗi tải danh sách người dùng:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUsers();
   }, []);
 
   const toggleModal = (modalName, isOpen) => {
@@ -59,22 +69,32 @@ const UserListPage = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const confirmBlock = () => {
-    if (userToBlock) {
-      setUsers(users.map(u => (u.id === userToBlock.id ? { ...u, status: u.status === 'active' ? 'inactive' : 'active' } : u)));
-      setUserToBlock(null);
+  const confirmBlock = async () => {
+    if (!userToBlock) return;
+    try {
+      await adminApi.updateUserStatus(userToBlock.id);
+      // Cập nhật UI local sau khi API thành công
+      setUsers(users.map(u =>
+        u.id === userToBlock.id
+          ? { ...u, status: u.status === 'active' ? 'inactive' : 'active' }
+          : u
+      ));
+    } catch (err) {
+      console.error('Lỗi cập nhật trạng thái:', err);
     }
+    setUserToBlock(null);
     toggleModal('blockAlert', false);
   };
 
   return (
+    <>
     <div className="bg-surface-bright relative p-4 md:p-6 min-h-full">
       {modals.blockAlert && (
           <div className="mb-6 bg-surface-container-low border border-error-container rounded-lg p-4 flex flex-col md:flex-row items-center justify-between gap-4 animate-in fade-in zoom-in-95 duration-200">
               <div className="flex items-center gap-3 text-on-surface">
                   <span className="material-symbols-outlined text-error">warning</span>
                   <p className="font-body-lg">
-                      Bạn có chắc chắn muốn {userToBlock?.status === 'active' ? 'khóa' : 'kích hoạt'} tài khoản <strong>{userToBlock?.name}</strong> hay không?
+                      Bạn có chắc chắn muốn {userToBlock?.status === 'active' ? 'vô hiệu hóa' : 'kích hoạt'} tài khoản <strong>{userToBlock?.name}</strong> hay không?
                   </p>
               </div>
               <div className="flex items-center gap-3">
@@ -157,9 +177,9 @@ const UserListPage = () => {
                                                 className={`px-3 py-1.5 rounded font-label-md text-[12px] transition-colors shadow-sm cursor-pointer border ${isActive ? 'bg-white border-error text-error hover:bg-error-container' : 'bg-primary border-primary text-white hover:bg-surface-tint'}`} 
                                                 onClick={() => handleBlockClick(item)}
                                             >
-                                                {isActive ? 'Khóa' : 'Mở khóa'}
+                                                {isActive ? 'Vô hiệu hóa' : 'Kích hoạt'}
                                             </button>
-                                            <button className="p-1.5 text-secondary hover:text-primary transition-colors ml-2 border border-transparent hover:border-on-background rounded cursor-pointer" onClick={() => navigate(`/users/${item.id}`, { state: { user: item } })} title="Xem chi tiết">
+                                            <button className="p-1.5 text-secondary hover:text-primary transition-colors ml-2 border border-transparent hover:border-on-background rounded cursor-pointer" onClick={() => setDetailUserId(item.id)} title="Xem chi tiết">
                                                 <span className="material-symbols-outlined text-[20px]">visibility</span>
                                             </button>
                                         </td>
@@ -258,6 +278,12 @@ const UserListPage = () => {
           </div>
       )}
     </div>
+
+    {/* User Detail Modal */}
+    {detailUserId && (
+      <UserDetailModal userId={detailUserId} onClose={() => setDetailUserId(null)} />
+    )}
+    </>
   );
 };
 

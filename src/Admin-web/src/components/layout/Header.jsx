@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 
 const Header = ({ onMenuToggle }) => {
-  const [searchValue, setSearchValue] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
 
   return (
@@ -11,19 +10,6 @@ const Header = ({ onMenuToggle }) => {
           <span className="material-symbols-outlined">menu</span>
         </button>
         <div className="font-headline-sm text-headline-sm font-semibold text-on-surface md:hidden">Personal Finance Admin</div>
-      </div>
-
-      <div className="hidden md:flex items-center flex-1 ml-4 mr-8">
-        <div className="relative w-full max-w-md">
-          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
-          <input
-            type="text"
-            className="w-full pl-10 pr-4 py-2 bg-surface-container-low border border-outline-variant rounded-full text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors font-body-md text-body-md placeholder-on-surface-variant"
-            placeholder="Search..."
-            value={searchValue}
-            onChange={(e) => setSearchValue(e.target.value)}
-          />
-        </div>
       </div>
 
       <div className="flex items-center gap-2 relative">
