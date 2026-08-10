@@ -1594,6 +1594,108 @@ Tài liệu đặc tả đồng bộ dữ liệu hai chiều giữa Client (Drif
   - `GET /api/sync/pull?since=<timestamp>`: Client kéo các thay đổi mới nhất từ server.
 - **Conflict Resolution**: Áp dụng chiến lược **Last-Write-Wins (LWW)** dựa trên mốc thời gian `updatedAt`.
 
+---
+
+## 9. Client-app
+
+### 9.1 Tích Hợp Authentication (Client-app ↔ Backend)
+
+> Hoàn thành: 2026-08-09
+
+#### 9.1.1 Kết nối thực tế Client-app với Backend
+
+| Thành phần | Mô tả |
+|---|---|
+| `AppConstants.baseUrl` | `http://localhost:3000/api` |
+| `AuthRemoteDataSourceImpl` | Gọi API thực tế qua Dio: `POST /auth/login`, `POST /auth/register` |
+| `AuthRepositoryImpl` | Lưu `accessToken` + `refreshToken` vào SecureStorage |
+| `UserModel` | Mapping từ response backend: `idaccount`, `username`, `fullname`, `rolename` |
+
+#### 9.1.2 AuthBloc — Scope
+
+`AuthBloc` khởi tạo **một lần duy nhất** tại `main.dart` trong `MultiBlocProvider`. Tất cả các trang dùng chung instance này qua `context.read<AuthBloc>()`.
+
+- **`LoginPage`**: `BlocListener<AuthBloc>` → `LoginSubmitted(email: username, password: password)`
+- **`RegisterPage`**: `BlocListener<AuthBloc>` → `RegisterSubmitted(name, fullname, email, password)`
+- **`ProfilePage`**: Nút Đăng xuất → dialog xác nhận → `LogoutRequested()` → `context.go('/login')`
+
+#### 9.1.3 Offline Access
+
+```
+Lần đầu đăng nhập (bắt buộc online)
+    → accessToken lưu SecureStorage
+    → userJson cache SecureStorage (key: offline_user_data)
+
+App khởi động:
+    main.dart đọc accessToken
+    → Có token  → initialLocation = '/home'  (offline OK)
+    → Không có  → initialLocation = '/login' (phải online)
+
+Đăng xuất:
+    → Xóa token + xóa offline cache
+    → Phải đăng nhập online lần sau
+```
+
+**Package bổ sung:** `crypto: ^3.0.6` (SHA-256 hash mật khẩu)
+
+#### 9.1.4 CORS & Port cố định
+
+| Service | Port |
+|---|---|
+| Backend (Node.js) | `3000` — `npm run dev` |
+| Client-app (Flutter Web) | `9090` — `flutter run -d chrome --web-port 9090` |
+| `CORS_ORIGIN` trong `.env` | `http://localhost:9090` |
+
+#### 9.1.5 Files đã thay đổi
+
+| File | Thay đổi |
+|---|---|
+| `core/constants/app_constants.dart` | baseUrl + offline cache keys |
+| `auth/data/datasources/auth_remote_data_source.dart` | Dio API thực, `NetworkException` |
+| `auth/data/repositories/auth_repository_impl.dart` | Online login, offline cache, logout xóa cache |
+| `auth/presentation/bloc/auth_event.dart` | `RegisterSubmitted` thêm `fullname` |
+| `auth/presentation/pages/login_page.dart` | BlocListener root, field username |
+| `auth/presentation/pages/register_page.dart` | BlocListener root, thêm username/fullname |
+| `profile/presentation/pages/profile_page.dart` | Nút Đăng xuất + dialog xác nhận |
+| `core/constants/app_router.dart` | `createRouter(initialRoute)` factory |
+| `main.dart` | Check token trước start → set initialLocation |
+| `src/Backend/.env` | `CORS_ORIGIN=http://localhost:9090` |
+| `pubspec.yaml` | `crypto: ^3.0.6` |
+
+---
+
+### 9.2. Tiến Độ Phát Triển & Kiến Trúc Core Offline-First (Cập nhật 2026-08-10)
+
+#### 9.2.1 Cấu Trúc Core Infrastructure (Client-app)
+
+Dự án Flutter Client-app đã triển khai hoàn thiện tầng Core hạ tầng Offline-first:
+
+- **Database Engine**: Drift ORM (SQLite) hỗ trợ WAL Mode, Foreign Keys, MigrationStrategy và seed dữ liệu danh mục mặc định.
+- **Data Access Objects (DAOs)**: Triển khai 6 DAOs tương ứng với 6 bảng cốt lõi (`Wallet`, `Transaction`, `Category`, `Budget`, `Bill`, `Goal`).
+- **SyncEngine**: Triển khai cơ chế đồng bộ nền `SyncEngine` hỗ trợ debounce, lắng nghe kết nối mạng (Connectivity Listener) và quản lý hàng chờ Pending Queue.
+- **Dependency Injection**: Cấu hình GetIt DI (`injection_container.dart`) đăng ký singleton cho `AppDatabase`, `SyncEngine`, `WalletLocalDataSource`, `WalletRepository`, `WalletCubit`.
+- **Formatting & Exceptions**: Bổ sung `CurrencyFormatter` (locale `vi_VN`) và phân cấp ngoại lệ `AppExceptions` (`NetworkException`, `ServerException`, `CacheException`, `AuthException`, `ValidationException`).
+
+#### 9.2.2 Chức Năng Quản Lý Ví (Wallet Feature - Plan 4)
+
+- **Data Layer**:
+  - `WalletEntity` (model domain)
+  - `WalletLocalDataSourceImpl` (thao tác trực tiếp Drift DB)
+  - `WalletRepositoryImpl` (quản lý UUID, tự động xử lý xung đột ví mặc định, trigger SyncEngine)
+- **State Management**: `WalletCubit` xử lý 6 sealed states (`WalletInitial`, `WalletLoading`, `WalletLoaded`, `WalletError`, `WalletActionSuccess`, `WalletActionFailure`) hỗ trợ Optimistic UI.
+- **Presentation Layer**:
+  - `WalletListPage`: Hiển thị danh sách ví, số dư tổng, dialog xóa ví và xử lý state real-time.
+  - `WalletAddPage`: Form tạo ví mới với validation, tích hợp `WalletCubit`.
+
+#### 9.2.3 Quy Chuẩn Đặc Tả Đồng Bộ Backend (Backend Sync Spec)
+
+Tài liệu đặc tả đồng bộ dữ liệu hai chiều giữa Client (Drift SQLite) và Backend (PostgreSQL NestJS) đã được khởi tạo tại [`2026-08-10-backend-sync-spec.md`](./docs/superpowers/plans/2026-08-10-backend-sync-spec.md):
+
+- **Database Models Backend**: Định nghĩa 5 Prisma models tương ứng (`Wallet`, `Transaction`, `Budget`, `Bill`, `Goal`) sử dụng UUID Primary Key (`VARCHAR(36)`).
+- **API Push & Pull**:
+  - `POST /api/sync/push`: Client gửi mảng batch các thao tác (`create`, `update`, `delete`) kèm client timestamp.
+  - `GET /api/sync/pull?since=<timestamp>`: Client kéo các thay đổi mới nhất từ server.
+- **Conflict Resolution**: Áp dụng chiến lược **Last-Write-Wins (LWW)** dựa trên mốc thời gian `updatedAt`.
 
 
 
