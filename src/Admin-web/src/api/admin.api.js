@@ -1,21 +1,26 @@
 ﻿import axiosClient from './axios-client';
 
 const adminApi = {
-  // Dashboard
+  // Dashboard — thống kê
+  getTotalUsers: () => axiosClient.get('/admin/totaluser'),
+  getTotalCategories: () => axiosClient.get('/admin/totalcategories'),
+  getUserToTime: (month, year) => axiosClient.get('/admin/getusertotime', { params: { month, year } }),
+
+  // Dashboard (các API khác sẽ bổ sung sau)
   getDashboardStats: (timeFilter) => axiosClient.get('/admin/dashboard', { params: { period: timeFilter } }),
   getRecentActivities: (params) => axiosClient.get('/admin/activities', { params }),
   getLoginStats: () => axiosClient.get('/admin/login-stats'),
 
   // Users
-  getUsers: (params) => axiosClient.get('/admin/users', { params }),
-  getUserById: (id) => axiosClient.get(`/admin/users/${id}`),
-  updateUserStatus: (id, status) => axiosClient.patch(`/admin/users/${id}/status`, { status }),
+  getUsers: () => axiosClient.get('/admin/getuser'),
+  getUserById: (id) => axiosClient.get(`/admin/getuser/${id}`),
+  updateUserStatus: (id) => axiosClient.patch(`/admin/updatestatus/${id}`),
 
   // Categories
-  getCategories: (params) => axiosClient.get('/admin/categories', { params }),
-  createCategory: (data) => axiosClient.post('/admin/categories', data),
-  updateCategory: (id, data) => axiosClient.put(`/admin/categories/${id}`, data),
-  deleteCategory: (id) => axiosClient.delete(`/admin/categories/${id}`),
+  getCategories: () => axiosClient.get('/admin/getcategory'),
+  createCategory: (data) => axiosClient.post('/admin/addcategory', data),
+  updateCategory: (id, data) => axiosClient.put(`/admin/updatecategory/${id}`, data),
+  deleteCategory: (id) => axiosClient.delete(`/admin/deletecategory/${id}`),
   syncCategories: () => axiosClient.post('/admin/categories/sync'),
 
   // System

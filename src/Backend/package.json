@@ -4,7 +4,7 @@
   "description": "WealthCommand Backend - Personal Finance Management",
   "main": "index.js",
   "scripts": {
-    "dev": "node --watch index.js",
+    "dev": "nodemon index.js",
     "start": "node index.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev --name init",
@@ -26,6 +26,7 @@
     "winston": "^3.14.0"
   },
   "devDependencies": {
+    "nodemon": "^3.1.14",
     "prisma": "^6.0.0"
   }
 }
