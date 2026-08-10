@@ -1,5 +1,6 @@
 # Client-app Plan 1: Foundation — Project Setup, Theme, Navigation & DI
 
+> **Trạng thái:** ✅ HOÀN THÀNH — 2026-08-10
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Tạo Flutter project hoàn chỉnh với cấu trúc thư mục đúng kiến trúc, theme, navigation (GoRouter), và dependency injection (GetIt) sẵn sàng để các feature sau cài vào.
@@ -1104,15 +1105,15 @@ git commit -m "chore: add linting rules and verify clean build"
 
 ## Checklist hoàn thành Plan 1
 
-- [ ] Task 1: Flutter project + tất cả packages cài thành công
-- [ ] Task 2: Cấu trúc thư mục đầy đủ theo spec
-- [ ] Task 3: Theme — Colors, TextStyles, ThemeData
-- [ ] Task 4: Shared widgets (Loading, Error, Empty, ConfirmDialog, AppCard)
-- [ ] Task 5: Bottom Navigation Bar + MainShell
-- [ ] Task 6: GoRouter với 23 routes + placeholder pages
-- [ ] Task 7: GetIt DI scaffold
-- [ ] Task 8: Lint clean, build APK thành công
+- [x] Task 1: Flutter project + tất cả packages cài thành công
+- [x] Task 2: Cấu trúc thư mục đầy đủ theo spec
+- [x] Task 3: Theme — Colors, TextStyles, ThemeData
+- [x] Task 4: Shared widgets (Loading, Error, Empty, ConfirmDialog, AppCard)
+- [x] Task 5: Bottom Navigation Bar + MainShell
+- [x] Task 6: GoRouter với 23 routes + placeholder pages
+- [x] Task 7: GetIt DI scaffold
+- [x] Task 8: Lint clean, build APK thành công
 
 **Kết quả sau Plan 1:** App chạy được, navigate qua tất cả màn hình (placeholder), theme đúng màu FlowMoney, sẵn sàng cho Plan 2 (Auth feature).
 
-**Plan tiếp theo:** `2026-08-09-client-app-plan-2-auth.md`
+**Plan tiếp theo:** `2026-08-10-client-app-plan-2-auth.md` ✅ HOÀN THÀNH

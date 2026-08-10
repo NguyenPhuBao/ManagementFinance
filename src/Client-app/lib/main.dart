@@ -1,31 +1,59 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'core/constants/app_constants.dart';
 import 'core/constants/app_router.dart';
 import 'core/di/injection_container.dart';
 import 'shared/theme/app_theme.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 
+// ignore_for_file: avoid_print
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await setupDependencies();
-  runApp(const FlowMoneyApp());
+
+  // Kiểm tra token trước khi khởi động UI
+  // → Có token  = đã đăng nhập → vào /home trực tiếp (offline OK)
+  // → Không token = chưa đăng nhập hoặc đã đăng xuất → bắt buộc online login
+  const storage = FlutterSecureStorage();
+  final token = await storage.read(key: AppConstants.accessTokenKey);
+  final hasToken = token != null && token.isNotEmpty;
+  final initialRoute = hasToken ? '/home' : '/login';
+
+  // Tạo AuthBloc một lần trước khi runApp để có thể truyền vào GoRouter
+  final authBloc = sl<AuthBloc>();
+
+  // Restore auth state từ token đã lưu → GoRouter redirect guard hoạt động đúng ngay từ đầu
+  if (hasToken) {
+    authBloc.add(AuthCheckRequested());
+  }
+
+  runApp(FlowMoneyApp(initialRoute: initialRoute, authBloc: authBloc));
 }
 
 class FlowMoneyApp extends StatelessWidget {
-  const FlowMoneyApp({super.key});
+  final String initialRoute;
+  final AuthBloc authBloc;
+
+  const FlowMoneyApp({
+    super.key,
+    required this.initialRoute,
+    required this.authBloc,
+  });
 
   @override
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider<AuthBloc>(
-          create: (context) => sl<AuthBloc>()..add(AuthCheckRequested()),
-        ),
+        // Dùng .value vì instance đã được tạo sẵn trong main()
+        BlocProvider<AuthBloc>.value(value: authBloc),
       ],
       child: MaterialApp.router(
         title: 'FlowMoney',
         theme: AppTheme.lightTheme,
-        routerConfig: AppRouter.router,
+        // Truyền cả initialRoute lẫn authBloc vào router
+        routerConfig: AppRouter.createRouter(initialRoute, authBloc),
         debugShowCheckedModeBanner: false,
       ),
     );
