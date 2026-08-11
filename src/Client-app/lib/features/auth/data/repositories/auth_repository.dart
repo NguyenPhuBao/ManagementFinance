@@ -5,4 +5,5 @@ abstract class AuthRepository {
   Future<UserModel> register(String username, String fullname, String email, String password);
   Future<void> logout();
   Future<bool> checkAuthStatus();
+  Future<UserModel?> getCurrentUser();
 }

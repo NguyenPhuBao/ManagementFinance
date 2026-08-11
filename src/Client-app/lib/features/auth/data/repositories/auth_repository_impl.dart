@@ -89,6 +89,20 @@ class AuthRepositoryImpl implements AuthRepository {
     return token != null && token.isNotEmpty;
   }
 
+  @override
+  Future<UserModel?> getCurrentUser() async {
+    final userDataStr = await secureStorage.read(key: AppConstants.offlineUserDataKey);
+    if (userDataStr != null && userDataStr.isNotEmpty) {
+      try {
+        final json = jsonDecode(userDataStr) as Map<String, dynamic>;
+        return UserModel.fromJson(json);
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
+  }
+
   // ─── Private: cache offline credentials ─────────────────────────────────
   Future<void> _cacheOfflineCredentials(
     String username,

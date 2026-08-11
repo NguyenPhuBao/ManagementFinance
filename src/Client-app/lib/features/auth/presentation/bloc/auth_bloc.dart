@@ -24,7 +24,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     try {
       final isLoggedIn = await authRepository.checkAuthStatus();
       if (isLoggedIn) {
-        emit(const AuthSuccess()); // Mock success if token exists
+        final user = await authRepository.getCurrentUser();
+        emit(AuthSuccess(user: user));
       } else {
         emit(AuthUnauthenticated());
       }

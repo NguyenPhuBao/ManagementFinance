@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -103,26 +105,63 @@ class HomePage extends StatelessWidget {
       child: SafeArea(
         child: Column(
           children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              child: const Row(
-                children: [
-                  CircleAvatar(
-                    radius: 30,
-                    backgroundColor: AppColors.primaryContainer,
-                    child: Icon(Icons.person, size: 30, color: AppColors.primary),
-                  ),
-                  SizedBox(width: 16),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            BlocBuilder<AuthBloc, AuthState>(
+              builder: (context, state) {
+                final user = (state is AuthSuccess) ? state.user : null;
+                final name = (user?.name != null && user!.name.isNotEmpty)
+                    ? user.name
+                    : ((user?.username != null && user!.username.isNotEmpty)
+                        ? user.username
+                        : 'Người dùng');
+                final email = user?.email ?? '';
+
+                return Container(
+                  padding: const EdgeInsets.all(24),
+                  child: Row(
                     children: [
-                      Text('Người dùng', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary)),
-                      SizedBox(height: 4),
-                      Text('premium@flowmoney.vn', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                      CircleAvatar(
+                        radius: 30,
+                        backgroundColor: AppColors.primaryContainer,
+                        child: Text(
+                          name.isNotEmpty ? name[0].toUpperCase() : 'U',
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              name,
+                              style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.primary),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            if (email.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                email,
+                                style: const TextStyle(
+                                    fontSize: 12, color: AppColors.textSecondary),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
                     ],
                   ),
-                ],
-              ),
+                );
+              },
             ),
             const Divider(color: AppColors.outlineVariant),
             Expanded(
