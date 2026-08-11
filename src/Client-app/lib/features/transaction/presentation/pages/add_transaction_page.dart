@@ -13,6 +13,131 @@ class AddTransactionPage extends StatefulWidget {
 class _AddTransactionPageState extends State<AddTransactionPage> {
   int _selectedSegment = 0; // 0: Chi tiêu, 1: Thu nhập, 2: Chuyển khoản
   String _amountString = "0";
+  String _selectedWalletName = 'Ví chính • 15.000.000đ';
+  String _destinationWalletName = 'Tài khoản Tiết kiệm • 50.000.000đ';
+
+  void _showWalletPickerBottomSheet(BuildContext context, {required bool isDestination}) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        final wallets = [
+          {'name': 'Ví chính', 'balance': '15.000.000đ', 'type': 'Ví tiền mặt', 'icon': Icons.account_balance_wallet},
+          {'name': 'Techcombank', 'balance': '35.250.000đ', 'type': 'Tài khoản ngân hàng', 'icon': Icons.account_balance},
+          {'name': 'Tài khoản Tiết kiệm', 'balance': '50.000.000đ', 'type': 'Sổ tiết kiệm', 'icon': Icons.savings},
+          {'name': 'Momo Wallet', 'balance': '2.500.000đ', 'type': 'Ví điện tử', 'icon': Icons.account_balance_wallet_outlined},
+        ];
+
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    isDestination ? 'Chọn ví đích' : 'Chọn ví thanh toán',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: AppColors.textSecondary),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ...wallets.map((wallet) {
+                final walletStr = "${wallet['name']} • ${wallet['balance']}";
+                final isSelected = isDestination
+                    ? _destinationWalletName == walletStr
+                    : _selectedWalletName == walletStr;
+
+                return InkWell(
+                  onTap: () {
+                    setState(() {
+                      if (isDestination) {
+                        _destinationWalletName = walletStr;
+                      } else {
+                        _selectedWalletName = walletStr;
+                      }
+                    });
+                    Navigator.pop(ctx);
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                    margin: const EdgeInsets.only(bottom: 8),
+                    decoration: BoxDecoration(
+                      color: isSelected ? AppColors.surfaceContainerHigh : Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: const BoxDecoration(
+                            color: AppColors.surfaceContainer,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(wallet['icon'] as IconData, color: AppColors.primary, size: 20),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                wallet['name'] as String,
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                wallet['type'] as String,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Text(
+                          wallet['balance'] as String,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        if (isSelected) ...[
+                          const SizedBox(width: 8),
+                          const Icon(Icons.check_circle, color: AppColors.secondary, size: 20),
+                        ]
+                      ],
+                    ),
+                  ),
+                );
+              }),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   void _onKeyPress(String key) {
     setState(() {
@@ -201,6 +326,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   }
 
   Widget _buildFormCard() {
+    bool isTransfer = _selectedSegment == 2;
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -215,23 +342,58 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       ),
       child: Column(
         children: [
-          _buildFormRow(
-            icon: Icons.category,
-            label: 'Danh mục',
-            valueWidget: const Text(
-              'Chọn danh mục',
-              style: TextStyle(fontSize: 16, color: AppColors.primary),
+          if (!isTransfer) ...[
+            _buildFormRow(
+              icon: Icons.account_balance_wallet_outlined,
+              label: 'Ví thanh toán',
+              valueWidget: Text(
+                _selectedWalletName,
+                style: const TextStyle(fontSize: 16, color: AppColors.primary, fontWeight: FontWeight.w500),
+              ),
+              showArrow: true,
+              onTap: () => _showWalletPickerBottomSheet(context, isDestination: false),
             ),
-            showArrow: true,
-            onTap: () => context.push('/add/category'),
-          ),
+            Divider(height: 1, indent: 64, color: AppColors.outlineVariant.withValues(alpha: 0.3)),
+            _buildFormRow(
+              icon: Icons.category,
+              label: 'Danh mục',
+              valueWidget: const Text(
+                'Chọn danh mục',
+                style: TextStyle(fontSize: 16, color: AppColors.primary),
+              ),
+              showArrow: true,
+              onTap: () => context.push('/add/category'),
+            ),
+          ] else ...[
+            _buildFormRow(
+              icon: Icons.account_balance_wallet_outlined,
+              label: 'Ví nguồn (Từ ví)',
+              valueWidget: Text(
+                _selectedWalletName,
+                style: const TextStyle(fontSize: 16, color: AppColors.primary, fontWeight: FontWeight.w500),
+              ),
+              showArrow: true,
+              onTap: () => _showWalletPickerBottomSheet(context, isDestination: false),
+            ),
+            Divider(height: 1, indent: 64, color: AppColors.outlineVariant.withValues(alpha: 0.3)),
+            _buildFormRow(
+              icon: Icons.account_balance_wallet,
+              label: 'Ví đích (Đến ví)',
+              valueWidget: Text(
+                _destinationWalletName,
+                style: const TextStyle(fontSize: 16, color: AppColors.primary, fontWeight: FontWeight.w500),
+              ),
+              showArrow: true,
+              onTap: () => _showWalletPickerBottomSheet(context, isDestination: true),
+            ),
+          ],
           Divider(height: 1, indent: 64, color: AppColors.outlineVariant.withValues(alpha: 0.3)),
           _buildFormRow(
             icon: Icons.notes,
             label: 'Ghi chú',
             valueWidget: const Text(
               'Thêm ghi chú cho giao dịch...',
-              style: TextStyle(fontSize: 16, color: AppColors.outlineVariant), // Mocking TextField placeholder
+              style: TextStyle(fontSize: 16, color: AppColors.outlineVariant),
             ),
             showArrow: false,
           ),
