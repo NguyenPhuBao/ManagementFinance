@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/database/app_database.dart';
+import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 
 class ChooseCategoryPage extends StatefulWidget {
-  const ChooseCategoryPage({super.key});
+  final int idaccount;
+
+  const ChooseCategoryPage({
+    super.key,
+    this.idaccount = 1,
+  });
 
   @override
   State<ChooseCategoryPage> createState() => _ChooseCategoryPageState();
@@ -11,17 +18,51 @@ class ChooseCategoryPage extends StatefulWidget {
 
 class _ChooseCategoryPageState extends State<ChooseCategoryPage> {
   int _selectedTab = 0; // 0: Khoản chi, 1: Khoản thu
+  List<Category> _categories = [];
+  bool _isLoading = true;
+  String _searchQuery = '';
 
-  final List<Map<String, dynamic>> _categories = [
-    {'icon': Icons.restaurant, 'label': 'Ăn uống'},
-    {'icon': Icons.shopping_bag, 'label': 'Mua sắm'},
-    {'icon': Icons.directions_car, 'label': 'Di chuyển'},
-    {'icon': Icons.receipt_long, 'label': 'Hóa đơn'},
-    {'icon': Icons.monitor_heart, 'label': 'Sức khỏe'},
-    {'icon': Icons.school, 'label': 'Giáo dục'},
-    {'icon': Icons.attractions, 'label': 'Giải trí'},
-    {'icon': Icons.category, 'label': 'Khác'},
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    setState(() => _isLoading = true);
+    final classify = _selectedTab == 0 ? 'chi' : 'thu';
+    final db = sl<AppDatabase>();
+    final list = await db.categoryDao.getByClassify(widget.idaccount, classify);
+    setState(() {
+      _categories = list;
+      _isLoading = false;
+    });
+  }
+
+  IconData _getCategoryIcon(String iconName) {
+    switch (iconName) {
+      case 'restaurant': return Icons.restaurant;
+      case 'directions_car': return Icons.directions_car;
+      case 'shopping_bag': return Icons.shopping_bag;
+      case 'local_hospital': return Icons.local_hospital;
+      case 'school': return Icons.school;
+      case 'sports_esports': return Icons.sports_esports;
+      case 'home': return Icons.home;
+      case 'receipt': return Icons.receipt;
+      case 'attach_money': return Icons.attach_money;
+      case 'trending_up': return Icons.trending_up;
+      case 'card_giftcard': return Icons.card_giftcard;
+      case 'work': return Icons.work;
+      default: return Icons.category;
+    }
+  }
+
+  List<Category> get _filteredCategories {
+    if (_searchQuery.isEmpty) return _categories;
+    return _categories
+        .where((c) => c.name.toLowerCase().contains(_searchQuery.toLowerCase()))
+        .toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +76,7 @@ class _ChooseCategoryPageState extends State<ChooseCategoryPage> {
           onPressed: () => context.pop(),
         ),
         title: const Text(
-          'Thêm giao dịch',
+          'Chọn danh mục',
           style: TextStyle(
             color: AppColors.primary,
             fontWeight: FontWeight.w600,
@@ -55,7 +96,9 @@ class _ChooseCategoryPageState extends State<ChooseCategoryPage> {
                     const SizedBox(height: 16),
                     _buildSearchBar(),
                     const SizedBox(height: 24),
-                    _buildCategoriesGrid(),
+                    _isLoading
+                        ? const Center(child: CircularProgressIndicator())
+                        : _buildCategoriesGrid(),
                   ],
                 ),
               ),
@@ -85,12 +128,15 @@ class _ChooseCategoryPageState extends State<ChooseCategoryPage> {
 
   Widget _buildSegmentButton(int index, String title) {
     bool isSelected = _selectedTab == index;
-    
+
     return GestureDetector(
       onTap: () {
-        setState(() {
-          _selectedTab = index;
-        });
+        if (_selectedTab != index) {
+          setState(() {
+            _selectedTab = index;
+          });
+          _loadCategories();
+        }
       },
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -125,8 +171,13 @@ class _ChooseCategoryPageState extends State<ChooseCategoryPage> {
         color: AppColors.surfaceContainerLow,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: const TextField(
-        decoration: InputDecoration(
+      child: TextField(
+        onChanged: (val) {
+          setState(() {
+            _searchQuery = val;
+          });
+        },
+        decoration: const InputDecoration(
           hintText: 'Tìm kiếm nhóm...',
           hintStyle: TextStyle(color: AppColors.outlineVariant, fontSize: 14),
           prefixIcon: Icon(Icons.search, color: AppColors.outline),
@@ -138,6 +189,18 @@ class _ChooseCategoryPageState extends State<ChooseCategoryPage> {
   }
 
   Widget _buildCategoriesGrid() {
+    final list = _filteredCategories;
+
+    if (list.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(32.0),
+        child: Text(
+          'Không tìm thấy danh mục',
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+      );
+    }
+
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -147,13 +210,12 @@ class _ChooseCategoryPageState extends State<ChooseCategoryPage> {
         mainAxisSpacing: 24,
         crossAxisSpacing: 8,
       ),
-      itemCount: _categories.length,
+      itemCount: list.length,
       itemBuilder: (context, index) {
-        final cat = _categories[index];
+        final cat = list[index];
         return InkWell(
           onTap: () {
-            // For now just pop with value or visual selection
-            context.pop();
+            context.pop(cat);
           },
           child: Column(
             children: [
@@ -161,15 +223,17 @@ class _ChooseCategoryPageState extends State<ChooseCategoryPage> {
                 width: 56,
                 height: 56,
                 decoration: const BoxDecoration(
-                  color: Color(0xFFE3E3DF), // surface-container-highest
+                  color: Color(0xFFE3E3DF),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(cat['icon'], color: const Color(0xFF444748)), // on-surface-variant
+                child: Icon(_getCategoryIcon(cat.icon), color: const Color(0xFF444748)),
               ),
               const SizedBox(height: 8),
               Text(
-                cat['label'],
+                cat.name,
                 textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
