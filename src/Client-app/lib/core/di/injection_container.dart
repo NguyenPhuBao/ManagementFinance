@@ -17,6 +17,9 @@ import '../../features/wallet/data/datasources/wallet_local_data_source.dart';
 import '../../features/wallet/data/repositories/wallet_repository.dart';
 import '../../features/wallet/data/repositories/wallet_repository_impl.dart';
 import '../../features/wallet/presentation/bloc/wallet_cubit.dart';
+import '../../features/transaction/data/datasources/transaction_local_data_source.dart';
+import '../../features/transaction/data/repositories/transaction_repository.dart';
+import '../../features/transaction/presentation/bloc/transaction_bloc.dart';
 
 /// Service locator — dùng `sl<T>()` để resolve dependencies
 final GetIt sl = GetIt.instance;
@@ -84,6 +87,20 @@ Future<void> setupDependencies() async {
   );
   sl.registerFactory<GoalCubit>(
     () => GoalCubit(repository: sl()),
+  );
+
+  // ── 7. Features — Transaction ─────────────────────────────────────────────
+  sl.registerLazySingleton<TransactionLocalDataSource>(
+    () => TransactionLocalDataSourceImpl(db: sl()),
+  );
+  sl.registerLazySingleton<TransactionRepository>(
+    () => TransactionRepositoryImpl(localDataSource: sl()),
+  );
+  sl.registerFactory<TransactionBloc>(
+    () => TransactionBloc(
+      transactionRepository: sl(),
+      syncEngine: sl<SyncEngine>(),
+    ),
   );
 
   await sl.allReady();
