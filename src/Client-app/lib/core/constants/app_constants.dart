@@ -1,7 +1,15 @@
+import 'package:flutter/foundation.dart';
+
 class AppConstants {
   // API
-  // Web/Chrome: dùng localhost. Android emulator: đổi lại 10.0.2.2
-  static const String baseUrl = 'http://localhost:3000/api';
+  // Web/Desktop: dùng localhost. Android emulator: 10.0.2.2 (alias đến localhost của máy host)
+  static String get baseUrl {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      return 'http://10.0.2.2:3000/api';
+    }
+    return 'http://localhost:3000/api';
+  }
+
   static const Duration connectionTimeout = Duration(seconds: 30);
   static const Duration receiveTimeout = Duration(seconds: 30);
 
