@@ -3,6 +3,7 @@ import '../models/goal_entity.dart';
 abstract class GoalRepository {
   Future<List<GoalEntity>> getGoals(int idaccount);
   Stream<List<GoalEntity>> watchGoals(int idaccount);
+  Future<GoalEntity?> getGoalById(String id);
   Future<GoalEntity> addGoal({
     required int idaccount,
     required String name,

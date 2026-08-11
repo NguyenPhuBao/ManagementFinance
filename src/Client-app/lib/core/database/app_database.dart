@@ -1,9 +1,5 @@
-import 'dart:io';
 import 'package:drift/drift.dart';
-import 'package:drift/native.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as p;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'connection/connection.dart';
 
 import 'tables/wallets_table.dart';
 import 'tables/transactions_table.dart';
@@ -50,7 +46,7 @@ part 'app_database.g.dart';
   ],
 )
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(_openConnection());
+  AppDatabase() : super(openConnection());
   AppDatabase.forTesting(super.e);
 
   @override
@@ -130,17 +126,4 @@ class AppDatabase extends _$AppDatabase {
   }
 }
 
-// ── Database connection factory ───────────────────────────────────────────────
-LazyDatabase _openConnection() {
-  return LazyDatabase(() async {
-    if (kIsWeb) {
-      // Web: dùng in-memory (flutter web không persist qua session)
-      // TODO: đổi sang WebDatabase khi cần persist trên web
-      return NativeDatabase.memory();
-    }
 
-    final dbFolder = await getApplicationDocumentsDirectory();
-    final file = File(p.join(dbFolder.path, 'flowmoney.db'));
-    return NativeDatabase.createInBackground(file);
-  });
-}

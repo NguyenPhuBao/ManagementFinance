@@ -218,7 +218,16 @@ class _GoalPageContent extends StatelessWidget {
                             ),
                           ],
                         ),
-                        onTap: () {},
+                        onTap: () async {
+                          await context.push('/goals/${goal.id}');
+                          if (context.mounted) {
+                            final authState = context.read<AuthBloc>().state;
+                            final idaccount = (authState is AuthSuccess && authState.user != null)
+                                ? (int.tryParse(authState.user!.id) ?? 1)
+                                : 1;
+                            context.read<GoalCubit>().loadGoals(idaccount);
+                          }
+                        },
                       ),
                     );
                   }),

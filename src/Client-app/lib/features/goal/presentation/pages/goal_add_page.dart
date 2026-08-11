@@ -43,6 +43,7 @@ class _GoalAddPageContent extends StatefulWidget {
 class _GoalAddPageContentState extends State<_GoalAddPageContent> {
   final _nameController = TextEditingController();
   final _targetAmountController = TextEditingController();
+  final _depositAmountController = TextEditingController();
   DateTime _targetDate = DateTime.now().add(const Duration(days: 365));
   bool _autoDeposit = true;
   bool _isMonthly = true;
@@ -51,10 +52,38 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
   WalletEntity? _selectedSourceWallet;
 
   @override
+  void initState() {
+    super.initState();
+    _targetAmountController.addListener(_recalculateSuggestedDeposit);
+    _depositAmountController.addListener(() => setState(() {}));
+  }
+
+  @override
   void dispose() {
     _nameController.dispose();
     _targetAmountController.dispose();
+    _depositAmountController.dispose();
     super.dispose();
+  }
+
+  void _recalculateSuggestedDeposit() {
+    final rawAmount = _targetAmountController.text.replaceAll(RegExp(r'[^\d]'), '');
+    final targetAmount = double.tryParse(rawAmount) ?? 0.0;
+    if (targetAmount <= 0) return;
+
+    final days = _targetDate.difference(DateTime.now()).inDays;
+    final periods = _isMonthly
+        ? ((days <= 0 ? 30 : days) / 30.0).ceil()
+        : ((days <= 0 ? 7 : days) / 7.0).ceil();
+    if (periods <= 0) return;
+
+    final suggested = (targetAmount / periods).ceilToDouble();
+    final formatter = NumberFormat.currency(locale: 'vi_VN', symbol: '', decimalDigits: 0);
+
+    if (_depositAmountController.text.isEmpty) {
+      _depositAmountController.text = formatter.format(suggested).trim();
+    }
+    setState(() {});
   }
 
   Future<void> _selectDate() async {
@@ -65,7 +94,10 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
       lastDate: DateTime.now().add(const Duration(days: 3650)),
     );
     if (picked != null) {
-      setState(() => _targetDate = picked);
+      setState(() {
+        _targetDate = picked;
+      });
+      _recalculateSuggestedDeposit();
     }
   }
 
@@ -98,6 +130,22 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
           targetAmount: targetAmount,
           targetDate: _targetDate,
         );
+  }
+
+  DateTime _calculateEstimatedCompletionDate() {
+    final rawTarget = _targetAmountController.text.replaceAll(RegExp(r'[^\d]'), '');
+    final targetAmount = double.tryParse(rawTarget) ?? 0.0;
+
+    final rawDeposit = _depositAmountController.text.replaceAll(RegExp(r'[^\d]'), '');
+    final depositAmount = double.tryParse(rawDeposit) ?? 0.0;
+
+    if (targetAmount <= 0 || depositAmount <= 0) {
+      return _targetDate;
+    }
+
+    final periodsNeeded = (targetAmount / depositAmount).ceil();
+    final daysNeeded = periodsNeeded * (_isMonthly ? 30 : 7);
+    return DateTime.now().add(Duration(days: daysNeeded));
   }
 
   void _showWalletPickerBottomSheet({
@@ -307,6 +355,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
   @override
   Widget build(BuildContext context) {
     final currencyFormatter = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ', decimalDigits: 0);
+    final estimatedCompletionDate = _calculateEstimatedCompletionDate();
 
     return BlocListener<GoalCubit, GoalState>(
       listener: (context, state) {
@@ -331,7 +380,6 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
         builder: (context, walletState) {
           final wallets = (walletState is WalletLoaded) ? walletState.wallets : <WalletEntity>[];
 
-          // Auto-select initial wallets if available
           if (wallets.isNotEmpty) {
             _selectedSavingsWallet ??= wallets.firstWhere(
               (w) => w.type == 'investment' || w.type == 'bank',
@@ -573,6 +621,16 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                           ),
                           if (_autoDeposit) ...[
                             const SizedBox(height: 16),
+                            _buildLabel('SỐ TIỀN TRÍCH MỖI KỲ (VNĐ)'),
+                            const SizedBox(height: 4),
+                            _buildTextField(
+                              controller: _depositAmountController,
+                              hint: '5.000.000đ',
+                              textColor: AppColors.income,
+                              isBold: true,
+                              keyboardType: TextInputType.number,
+                            ),
+                            const SizedBox(height: 16),
                             _buildLabel('CHU KỲ TRÍCH'),
                             const SizedBox(height: 4),
                             Container(
@@ -585,7 +643,10 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                                 children: [
                                   Expanded(
                                     child: GestureDetector(
-                                      onTap: () => setState(() => _isMonthly = false),
+                                      onTap: () {
+                                        setState(() => _isMonthly = false);
+                                        _recalculateSuggestedDeposit();
+                                      },
                                       child: Container(
                                         padding: const EdgeInsets.symmetric(vertical: 8),
                                         decoration: BoxDecoration(
@@ -614,7 +675,10 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                                   ),
                                   Expanded(
                                     child: GestureDetector(
-                                      onTap: () => setState(() => _isMonthly = true),
+                                      onTap: () {
+                                        setState(() => _isMonthly = true);
+                                        _recalculateSuggestedDeposit();
+                                      },
                                       child: Container(
                                         padding: const EdgeInsets.symmetric(vertical: 8),
                                         decoration: BoxDecoration(
@@ -696,11 +760,13 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                                 ),
                                 children: [
                                   const TextSpan(text: 'AI Dự đoán: ', style: TextStyle(fontWeight: FontWeight.bold)),
-                                  const TextSpan(text: 'Bạn sẽ đạt mục tiêu đúng hạn chót vào '),
+                                  const TextSpan(text: 'Dự kiến bạn sẽ đạt mục tiêu vào '),
                                   TextSpan(
-                                      text: DateFormat('MM/yyyy').format(_targetDate),
+                                      text: DateFormat('MM/yyyy').format(estimatedCompletionDate),
                                       style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.income)),
-                                  const TextSpan(text: ' dựa trên chu kỳ trích tiền tự động.'),
+                                  TextSpan(
+                                      text:
+                                          ' với mức trích ${_depositAmountController.text.isNotEmpty ? _depositAmountController.text : "0"}đ / ${_isMonthly ? "tháng" : "tuần"}.'),
                                 ],
                               ),
                             ),
