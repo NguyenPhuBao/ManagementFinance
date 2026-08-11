@@ -38,6 +38,7 @@ stitch/
 # Misc
 .cache/
 coverage/
+.worktrees/
 
 # Flutter & Dart (Client-app)
 .dart_tool/
@@ -64,4 +65,4 @@ docs/superpowers/specs/
 .superpowers/
 .stitch/
 plugins/
-src/Backend/prisma/migrations/
+src/Backend/prisma/migrations/
