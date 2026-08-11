@@ -6,11 +6,11 @@ import 'goal_repository.dart';
 
 class GoalRepositoryImpl implements GoalRepository {
   final GoalLocalDataSource localDataSource;
-  final SyncEngine syncEngine;
+  final SyncEngine? syncEngine;
 
   GoalRepositoryImpl({
     required this.localDataSource,
-    required this.syncEngine,
+    this.syncEngine,
   });
 
   @override
@@ -24,19 +24,14 @@ class GoalRepositoryImpl implements GoalRepository {
   }
 
   @override
-  Future<GoalEntity?> getGoalById(String id) {
-    return localDataSource.getGoalById(id);
-  }
-
-  @override
   Future<GoalEntity> addGoal({
     required int idaccount,
     required String name,
     required double targetAmount,
     required DateTime targetDate,
-    String icon = 'flag',
-    String colour = '#4CAF50',
-    String note = '',
+    String? icon,
+    String? colour,
+    String? note,
   }) async {
     final goal = GoalEntity(
       id: const Uuid().v4(),
@@ -45,27 +40,32 @@ class GoalRepositoryImpl implements GoalRepository {
       targetAmount: targetAmount,
       currentAmount: 0.0,
       targetDate: targetDate,
-      icon: icon,
-      colour: colour,
-      note: note,
+      icon: icon ?? 'flag',
+      colour: colour ?? '#4CAF50',
+      note: note ?? '',
+      isCompleted: false,
+      isDeleted: false,
       syncStatus: 'pending',
       updatedAt: DateTime.now(),
     );
 
-    await localDataSource.insertGoal(goal);
-    syncEngine.scheduleSync();
+    await localDataSource.addGoal(goal);
+    syncEngine?.scheduleSync();
     return goal;
   }
 
   @override
-  Future<void> updateAmount({required String id, required double newAmount}) async {
+  Future<void> updateAmount({
+    required String id,
+    required double newAmount,
+  }) async {
     await localDataSource.updateGoalAmount(id, newAmount);
-    syncEngine.scheduleSync();
+    syncEngine?.scheduleSync();
   }
 
   @override
   Future<void> deleteGoal(String id) async {
     await localDataSource.deleteGoal(id);
-    syncEngine.scheduleSync();
+    syncEngine?.scheduleSync();
   }
 }
