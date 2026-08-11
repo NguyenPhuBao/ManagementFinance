@@ -1,142 +1,77 @@
-# Transaction Offline Management Design
+# Thiết Kế Chi Tiết Module Giao Dịch Offline-First (Transaction Module Specification)
 
-## 1. Overview
-Hệ thống quản lý Giao dịch (Transaction) theo kiến trúc **Offline-First** cho ứng dụng Flutter. 
-Người dùng có thể Thêm, Xem, Lọc và Xóa các giao dịch thu/chi/chuyển khoản khi không có kết nối mạng. Tất cả dữ liệu được lưu trực tiếp vào cơ sở dữ liệu SQLite local (`Drift`) và tự động cập nhật số dư các Ví liên quan. Khi có mạng, `SyncEngine` sẽ tự động đồng bộ bản ghi `pending` lên Backend.
-
----
-
-## 2. Architecture & Component Isolation
-
-```
-[ UI Components ]
-  ├── AddTransactionPage (Giao diện nhập giao dịch)
-  ├── ChooseCategoryPage (Giao diện chọn danh mục)
-  └── TransactionListPage / Home (Hiển thị giao dịch)
-         │
-         ▼
-[ State Management ]
-  └── TransactionBloc (Xử lý sự kiện & phát State)
-         │
-         ▼
-[ Domain / Repository Layer ]
-  └── TransactionRepository & Impl
-         │
-         ▼
-[ Local Data Layer ]
-  └── TransactionLocalDataSource (Thực thi Drift Transaction nguyên tố)
-         │
-         ├── TransactionsTable (Drift SQLite)
-         └── WalletsTable (Drift SQLite - Cập nhật số dư)
-```
+> **Ngày tạo:** 2026-08-11  
+> **Trạng thái:** Đã phê duyệt  
+> **Người phụ trách:** Antigravity AI & Nguyễn Phú Bảo  
 
 ---
 
-## 3. Data Schema & Models
-
-### 3.1 `TransactionEntity` (`lib/features/transaction/data/models/transaction_entity.dart`)
-- **Trường dữ liệu:**
-  - `id`: `String` (UUIDv4)
-  - `walletId`: `String` (ID Ví nguồn)
-  - `idaccount`: `int` (ID tài khoản)
-  - `categoryId`: `String?` (ID Danh mục, null nếu chuyển khoản)
-  - `amount`: `double` (Số tiền giao dịch)
-  - `type`: `String` (`'chi'` | `'thu'` | `'transfer'` | `'adjustment'`)
-  - `note`: `String` (Ghi chú)
-  - `date`: `DateTime` (Thời gian giao dịch)
-  - `images`: `List<String>` (Danh sách đường dẫn hình ảnh đính kèm)
-  - `syncStatus`: `String` (`'pending'` | `'synced'`)
-  - `updatedAt`: `DateTime`
-  - `isDeleted`: `bool`
-
-- **Mapping Methods:**
-  - `fromDrift(Transaction d)`
-  - `toCompanion()`
+## 1. Mục Tiêu
+Triển khai module quản lý Giao dịch (Transaction) theo kiến trúc **Offline-First**, cho phép người dùng ghi nhận thu nhập, chi tiêu, và chuyển khoản giữa các ví ngay cả khi không có kết nối mạng. Dữ liệu được ghi trực tiếp vào cơ sở dữ liệu SQLite local (thông qua Drift) và tự động tính toán lại số dư ví tương ứng ngay lập tức.
 
 ---
 
-## 4. Local Data Source & Atomic Balance Logic
+## 2. Kiến Trúc Dữ Liệu & Nghiệp Vụ Ví (Wallet Balance Adjustment Rules)
 
-### 4.1 `TransactionLocalDataSource`
-- `Future<List<TransactionEntity>> getTransactions(int idaccount)`
-- `Stream<List<TransactionEntity>> watchTransactions(int idaccount)`
-- `Future<List<TransactionEntity>> getTransactionsByMonth(int idaccount, int year, int month)`
-- `Future<Map<String, double>> getSummaryByMonth(int idaccount, int year, int month)`
-- `Future<void> addTransaction(TransactionEntity transaction, {String? destinationWalletId})`
-- `Future<void> deleteTransaction(TransactionEntity transaction)`
+### 2.1 Mẫu Dữ Liệu (`TransactionEntity`)
+- `id`: `String` (UUID v4 client tạo)
+- `walletId`: `String` (Ví nguồn)
+- `idaccount`: `int` (ID tài khoản người dùng)
+- `categoryId`: `String?` (ID danh mục thu/chi)
+- `amount`: `double` (Số tiền giao dịch)
+- `type`: `String` (`'chi'` | `'thu'` | `'transfer'`)
+- `note`: `String` (Ghi chú)
+- `date`: `DateTime` (Thời gian giao dịch)
+- `images`: `List<String>` (Đường dẫn danh sách hình ảnh hóa đơn/chứng từ)
+- `syncStatus`: `String` (`'pending'` | `'synced'`)
+- `updatedAt`: `DateTime`
+- `isDeleted`: `bool`
 
-### 4.2 Logic Cập nhật Số dư Nguyên tố (Atomic Operations)
-Mọi thao tác ghi dữ liệu được thực thi trong một `db.transaction(() async { ... })`:
+### 2.2 Quy Tắc Cập Nhật Số Dư Ví Tự Động
+Mọi thao tác thêm/xóa giao dịch sẽ cập nhật bảng `Wallets` trong SQLite cùng một transaction:
 
-1. **Chi tiêu (`type == 'chi'`)**:
-   - Thêm bản ghi vào `TransactionsTable`.
-   - Giảm `wallet.balance` theo `amount`.
-   - Đánh dấu `wallet.syncStatus = 'pending'`, `updatedAt = DateTime.now()`.
-
-2. **Thu nhập (`type == 'thu'`)**:
-   - Thêm bản ghi vào `TransactionsTable`.
-   - Tăng `wallet.balance` theo `amount`.
-   - Đánh dấu `wallet.syncStatus = 'pending'`, `updatedAt = DateTime.now()`.
-
-3. **Chuyển khoản (`type == 'transfer'`)**:
-   - Thêm 2 bản ghi giao dịch (1 Chi từ Ví Nguồn, 1 Thu tới Ví Đích).
-   - Giảm số dư Ví Nguồn theo `amount`.
-   - Tăng số dư Ví Đích theo `amount`.
-
-4. **Xóa giao dịch**:
-   - Cập nhật `isDeleted = true`, `syncStatus = 'pending'` cho bản ghi giao dịch.
-   - Hoàn lại số dư ví tương ứng (Giao dịch chi tiêu bị xóa -> cộng lại tiền vào ví; giao dịch thu nhập bị xóa -> trừ tiền khỏi ví).
+| Thao Tác | Loại Giao Dịch | Biến Động Ví Nguồn (`walletId`) | Biến Động Ví Đích (`destinationWalletId`) |
+|---|---|---|---|
+| **Thêm mới** | Chi tiêu (`chi`) | `balance = balance - amount` | Không ảnh hưởng |
+| **Thêm mới** | Thu nhập (`thu`) | `balance = balance + amount` | Không ảnh hưởng |
+| **Thêm mới** | Chuyển khoản (`transfer`) | `balance = balance - amount` | `balance = balance + amount` |
+| **Xóa** | Chi tiêu (`chi`) | `balance = balance + amount` | Không ảnh hưởng |
+| **Xóa** | Thu nhập (`thu`) | `balance = balance - amount` | Không ảnh hưởng |
+| **Xóa** | Chuyển khoản (`transfer`) | `balance = balance + amount` | `balance = balance - amount` |
 
 ---
 
-## 5. State Management (Transaction BLoC)
+## 3. Cấu Trúc Các Component
 
-### 5.1 Events (`transaction_event.dart`)
-- `LoadTransactionsEvent({required int idaccount})`
-- `TransactionsUpdatedEvent(List<TransactionEntity> transactions)`
-- `AddTransactionEvent({required TransactionEntity transaction, String? destinationWalletId})`
-- `DeleteTransactionEvent(TransactionEntity transaction)`
-- `FilterMonthEvent({required int year, required int month})`
+### 3.1 Data Layer (`lib/features/transaction/data/`)
+1. `TransactionLocalDataSource`:
+   - Interface & Impl truy vấn qua Drift `TransactionDao` & `WalletDao`.
+2. `TransactionRepositoryImpl`:
+   - Thực thi các phương thức: `watchTransactions(idaccount, month, year)`, `addTransaction(...)`, `deleteTransaction(id)`.
+   - Đưa thay đổi vào hàng đợi đồng bộ (`SyncEngine`).
 
-### 5.2 States (`transaction_state.dart`)
-- `TransactionInitialState`
-- `TransactionLoadingState`
-- `TransactionLoadedState`
-  - `transactions`: `List<TransactionEntity>`
-  - `monthlyTransactions`: `List<TransactionEntity>`
-  - `totalIncome`: `double`
-  - `totalExpense`: `double`
-  - `selectedYear`: `int`
-  - `selectedMonth`: `int`
-  - `isSubmitting`: `bool`
-  - `actionSuccess`: `bool?`
-  - `errorMessage`: `String?`
-- `TransactionErrorState`
+### 3.2 State Management Layer (`lib/features/transaction/presentation/bloc/`)
+1. `TransactionState`:
+   - `TransactionInitial`
+   - `TransactionLoading`
+   - `TransactionLoaded(List<TransactionEntity> transactions, double totalIncome, double totalExpense)`
+   - `TransactionError(String message)`
+2. `TransactionCubit`:
+   - Quản lý luồng stream `watchTransactions` và các thao tác thêm/xóa giao dịch.
 
-### 5.3 Background Sync Trigger
-Khi `AddTransactionEvent` hoặc `DeleteTransactionEvent` thực thi thành công tại SQLite local:
-- Gọi `SyncEngine.instance.triggerSync()` để tự động kích hoạt đồng bộ lên Backend nếu có mạng internet.
-
----
-
-## 6. UI Integration & Dependency Injection
-
-1. **`AddTransactionPage`**:
-   - Lấy danh sách ví từ SQLite thông qua `WalletDao` / `WalletBloc` để hiển thị trong bottom sheet chọn ví.
-   - Lấy danh mục được chọn từ `ChooseCategoryPage`.
-   - Xử lý bàn phím nhập số tiền và kiểm tra điều kiện validation (`amount > 0`).
-   - Tạo UUIDv4 cho ID giao dịch và dispatch `AddTransactionEvent`.
-
-2. **`ChooseCategoryPage`**:
-   - Truy vấn dữ liệu danh mục từ `CategoryDao` phân loại theo `'chi'` / `'thu'`.
-   - Trả đối tượng danh mục được chọn về `AddTransactionPage`.
-
-3. **Dependency Injection (`injection_container.dart`)**:
-   - Đăng ký `TransactionLocalDataSource`, `TransactionRepository`, và `TransactionBloc`.
+### 3.3 UI Layer (`lib/features/transaction/presentation/pages/`)
+1. `AddTransactionPage`:
+   - Giao diện form thêm mới 3 tab: **Chi tiêu**, **Thu nhập**, **Chuyển khoản**.
+   - Tự động load danh sách ví người dùng và danh mục chi tiêu/thu nhập.
+2. `ChooseCategoryPage`:
+   - Hiển thị danh mục phân loại theo `chi` hoặc `thu`.
+3. `TransactionPage`:
+   - Hiển thị danh sách lọc theo tháng/năm, nhóm theo từng ngày với tổng thu/chi trong ngày.
 
 ---
 
-## 7. Verification Plan
-- Chạy `flutter analyze` kiểm tra lỗi cú pháp và cảnh báo context.
-- Thực thi thêm giao dịch Thu nhập, Chi tiêu, Chuyển khoản offline và kiểm tra số dư Ví thay đổi chính xác.
-- Kiểm tra danh sách giao dịch hiển thị realtime trên UI.
+## 4. Kế Hoạch Kiểm Thử (Verification Plan)
+1. **Kiểm thử thêm giao dịch Chi tiêu:** Kiểm tra số dư ví nguồn bị trừ chính xác trong DB SQLite local.
+2. **Kiểm thử thêm giao dịch Chuyển khoản:** Kiểm tra ví nguồn bị trừ và ví đích được cộng đồng thời.
+3. **Kiểm thử xóa giao dịch:** Kiểm tra số dư của các ví liên quan được hoàn lại nguyên trạng.
+4. **Kiểm thử phản hồi thời gian thực (Reactive UI):** Giao diện danh sách tự động cập nhật ngay khi giao dịch mới được tạo.
