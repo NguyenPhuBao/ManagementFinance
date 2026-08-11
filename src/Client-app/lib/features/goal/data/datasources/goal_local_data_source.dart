@@ -4,8 +4,7 @@ import '../models/goal_entity.dart';
 abstract class GoalLocalDataSource {
   Future<List<GoalEntity>> getGoals(int idaccount);
   Stream<List<GoalEntity>> watchGoals(int idaccount);
-  Future<GoalEntity?> getGoalById(String id);
-  Future<void> insertGoal(GoalEntity goal);
+  Future<void> addGoal(GoalEntity goal);
   Future<void> updateGoalAmount(String id, double newAmount);
   Future<void> deleteGoal(String id);
 }
@@ -23,19 +22,13 @@ class GoalLocalDataSourceImpl implements GoalLocalDataSource {
 
   @override
   Stream<List<GoalEntity>> watchGoals(int idaccount) {
-    return db.goalDao
-        .watchAll(idaccount)
-        .map((list) => list.map((g) => GoalEntity.fromDrift(g)).toList());
+    return db.goalDao.watchAll(idaccount).map(
+          (list) => list.map((g) => GoalEntity.fromDrift(g)).toList(),
+        );
   }
 
   @override
-  Future<GoalEntity?> getGoalById(String id) async {
-    final g = await db.goalDao.getById(id);
-    return g != null ? GoalEntity.fromDrift(g) : null;
-  }
-
-  @override
-  Future<void> insertGoal(GoalEntity goal) async {
+  Future<void> addGoal(GoalEntity goal) async {
     await db.goalDao.insert(goal.toCompanion());
   }
 
