@@ -33,6 +33,8 @@ class GoalAddPage extends StatelessWidget {
   }
 }
 
+enum DepositFrequency { daily, weekly, monthly }
+
 class _GoalAddPageContent extends StatefulWidget {
   const _GoalAddPageContent();
 
@@ -46,7 +48,10 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
   final _depositAmountController = TextEditingController();
   DateTime _targetDate = DateTime.now().add(const Duration(days: 365));
   bool _autoDeposit = true;
-  bool _isMonthly = true;
+  DepositFrequency _frequency = DepositFrequency.monthly;
+
+  bool _isRecalculatingFromDeposit = false;
+  bool _isRecalculatingFromDate = false;
 
   WalletEntity? _selectedSavingsWallet;
   WalletEntity? _selectedSourceWallet;
@@ -54,8 +59,8 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
   @override
   void initState() {
     super.initState();
-    _targetAmountController.addListener(_recalculateSuggestedDeposit);
-    _depositAmountController.addListener(() => setState(() {}));
+    _targetAmountController.addListener(_onTargetAmountOrDateChanged);
+    _depositAmountController.addListener(_onDepositAmountChanged);
   }
 
   @override
@@ -66,23 +71,82 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
     super.dispose();
   }
 
-  void _recalculateSuggestedDeposit() {
+  int get _cycleDays {
+    switch (_frequency) {
+      case DepositFrequency.daily:
+        return 1;
+      case DepositFrequency.weekly:
+        return 7;
+      case DepositFrequency.monthly:
+        return 30;
+    }
+  }
+
+  String get _frequencyLabel {
+    switch (_frequency) {
+      case DepositFrequency.daily:
+        return 'ngày';
+      case DepositFrequency.weekly:
+        return 'tuần';
+      case DepositFrequency.monthly:
+        return 'tháng';
+    }
+  }
+
+  void _onTargetAmountOrDateChanged() {
+    if (_isRecalculatingFromDeposit) return;
+    _isRecalculatingFromDate = true;
+
     final rawAmount = _targetAmountController.text.replaceAll(RegExp(r'[^\d]'), '');
     final targetAmount = double.tryParse(rawAmount) ?? 0.0;
-    if (targetAmount <= 0) return;
+    if (targetAmount <= 0) {
+      _isRecalculatingFromDate = false;
+      return;
+    }
 
-    final days = _targetDate.difference(DateTime.now()).inDays;
-    final periods = _isMonthly
-        ? ((days <= 0 ? 30 : days) / 30.0).ceil()
-        : ((days <= 0 ? 7 : days) / 7.0).ceil();
-    if (periods <= 0) return;
+    final totalDays = _targetDate.difference(DateTime.now()).inDays;
+    final validDays = totalDays <= 0 ? _cycleDays : totalDays;
+    final periods = (validDays / _cycleDays.toDouble()).ceil();
+    if (periods <= 0) {
+      _isRecalculatingFromDate = false;
+      return;
+    }
 
     final suggested = (targetAmount / periods).ceilToDouble();
     final formatter = NumberFormat.currency(locale: 'vi_VN', symbol: '', decimalDigits: 0);
 
-    if (_depositAmountController.text.isEmpty) {
-      _depositAmountController.text = formatter.format(suggested).trim();
+    final formattedStr = formatter.format(suggested).trim();
+    if (_depositAmountController.text != formattedStr) {
+      _depositAmountController.value = TextEditingValue(
+        text: formattedStr,
+        selection: TextSelection.collapsed(offset: formattedStr.length),
+      );
     }
+
+    _isRecalculatingFromDate = false;
+    setState(() {});
+  }
+
+  void _onDepositAmountChanged() {
+    if (_isRecalculatingFromDate) return;
+
+    final rawTarget = _targetAmountController.text.replaceAll(RegExp(r'[^\d]'), '');
+    final targetAmount = double.tryParse(rawTarget) ?? 0.0;
+
+    final rawDeposit = _depositAmountController.text.replaceAll(RegExp(r'[^\d]'), '');
+    final depositAmount = double.tryParse(rawDeposit) ?? 0.0;
+
+    if (targetAmount <= 0 || depositAmount <= 0) return;
+
+    _isRecalculatingFromDeposit = true;
+    final periodsNeeded = (targetAmount / depositAmount).ceil();
+    final daysNeeded = (periodsNeeded * _cycleDays).clamp(1, 36500);
+
+    try {
+      _targetDate = DateTime.now().add(Duration(days: daysNeeded));
+    } catch (_) {}
+
+    _isRecalculatingFromDeposit = false;
     setState(() {});
   }
 
@@ -97,7 +161,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
       setState(() {
         _targetDate = picked;
       });
-      _recalculateSuggestedDeposit();
+      _onTargetAmountOrDateChanged();
     }
   }
 
@@ -143,23 +207,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
   }
 
   DateTime _calculateEstimatedCompletionDate() {
-    final rawTarget = _targetAmountController.text.replaceAll(RegExp(r'[^\d]'), '');
-    final targetAmount = double.tryParse(rawTarget) ?? 0.0;
-
-    final rawDeposit = _depositAmountController.text.replaceAll(RegExp(r'[^\d]'), '');
-    final depositAmount = double.tryParse(rawDeposit) ?? 0.0;
-
-    if (targetAmount <= 0 || depositAmount <= 0) {
-      return _targetDate;
-    }
-
-    final periodsNeeded = (targetAmount / depositAmount).ceil();
-    final daysNeeded = (periodsNeeded * (_isMonthly ? 30 : 7)).clamp(0, 36500);
-    try {
-      return DateTime.now().add(Duration(days: daysNeeded));
-    } catch (_) {
-      return _targetDate;
-    }
+    return _targetDate;
   }
 
   void _showWalletPickerBottomSheet({
@@ -646,19 +694,32 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Row(
-                                children: [
-                                  Expanded(
+                                children: DepositFrequency.values.map((freq) {
+                                  final isSelected = _frequency == freq;
+                                  String label;
+                                  switch (freq) {
+                                    case DepositFrequency.daily:
+                                      label = 'Hàng ngày';
+                                      break;
+                                    case DepositFrequency.weekly:
+                                      label = 'Hàng tuần';
+                                      break;
+                                    case DepositFrequency.monthly:
+                                      label = 'Hàng tháng';
+                                      break;
+                                  }
+                                  return Expanded(
                                     child: GestureDetector(
                                       onTap: () {
-                                        setState(() => _isMonthly = false);
-                                        _recalculateSuggestedDeposit();
+                                        setState(() => _frequency = freq);
+                                        _onTargetAmountOrDateChanged();
                                       },
                                       child: Container(
                                         padding: const EdgeInsets.symmetric(vertical: 8),
                                         decoration: BoxDecoration(
-                                          color: !_isMonthly ? Colors.white : Colors.transparent,
+                                          color: isSelected ? Colors.white : Colors.transparent,
                                           borderRadius: BorderRadius.circular(8),
-                                          boxShadow: !_isMonthly
+                                          boxShadow: isSelected
                                               ? [
                                                   BoxShadow(
                                                     color: Colors.black.withValues(alpha: 0.05),
@@ -669,49 +730,17 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                                         ),
                                         alignment: Alignment.center,
                                         child: Text(
-                                          'Hàng tuần',
+                                          label,
                                           style: TextStyle(
                                             fontSize: 12,
-                                            fontWeight: !_isMonthly ? FontWeight.bold : FontWeight.normal,
-                                            color: !_isMonthly ? AppColors.income : AppColors.textSecondary,
+                                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                            color: isSelected ? AppColors.income : AppColors.textSecondary,
                                           ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                  Expanded(
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        setState(() => _isMonthly = true);
-                                        _recalculateSuggestedDeposit();
-                                      },
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(vertical: 8),
-                                        decoration: BoxDecoration(
-                                          color: _isMonthly ? Colors.white : Colors.transparent,
-                                          borderRadius: BorderRadius.circular(8),
-                                          boxShadow: _isMonthly
-                                              ? [
-                                                  BoxShadow(
-                                                    color: Colors.black.withValues(alpha: 0.05),
-                                                    blurRadius: 2,
-                                                  )
-                                                ]
-                                              : null,
-                                        ),
-                                        alignment: Alignment.center,
-                                        child: Text(
-                                          'Hàng tháng',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: _isMonthly ? FontWeight.bold : FontWeight.normal,
-                                            color: _isMonthly ? AppColors.income : AppColors.textSecondary,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                                  );
+                                }).toList(),
                               ),
                             ),
                             const SizedBox(height: 16),
@@ -766,13 +795,13 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                                 ),
                                 children: [
                                   const TextSpan(text: 'AI Dự đoán: ', style: TextStyle(fontWeight: FontWeight.bold)),
-                                  const TextSpan(text: 'Dự kiến bạn sẽ đạt mục tiêu vào '),
+                                  const TextSpan(text: 'Dự kiến bạn sẽ đạt mục tiêu vào ngày '),
                                   TextSpan(
-                                      text: DateFormat('MM/yyyy').format(estimatedCompletionDate),
+                                      text: DateFormat('dd/MM/yyyy').format(estimatedCompletionDate),
                                       style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.income)),
                                   TextSpan(
                                       text:
-                                          ' với mức trích ${_depositAmountController.text.isNotEmpty ? _depositAmountController.text : "0"}đ / ${_isMonthly ? "tháng" : "tuần"}.'),
+                                          ' với mức trích ${_depositAmountController.text.isNotEmpty ? _depositAmountController.text : "0"}đ / $_frequencyLabel.'),
                                 ],
                               ),
                             ),
