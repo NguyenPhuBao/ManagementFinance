@@ -1,7 +1,7 @@
 # Client–Backend Sync Contract
 
 **Version:** 2.0 (proposed)  
-**Status:** Approved client design; implementation pending  
+**Status:** Approved design; implementation pending
 **Owner:** Client-app team; backend must implement this contract before real sync is enabled.
 
 ## 1. Global conventions

@@ -4,7 +4,7 @@
 
 **Owner:** Client-app team
 
-**Contract:** [Client–Backend Sync Contract](../../client-backend-sync-contract.md)
+**Contract:** [Client–Backend Sync Contract](client-backend-sync-contract.md)
 
 ## Goal
 
