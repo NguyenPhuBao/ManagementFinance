@@ -9,6 +9,10 @@ import '../../features/auth/data/datasources/auth_remote_data_source.dart';
 import '../../features/auth/data/repositories/auth_repository.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
+import '../../features/goal/data/datasources/goal_local_data_source.dart';
+import '../../features/goal/data/repositories/goal_repository.dart';
+import '../../features/goal/data/repositories/goal_repository_impl.dart';
+import '../../features/goal/presentation/bloc/goal_cubit.dart';
 import '../../features/wallet/data/datasources/wallet_local_data_source.dart';
 import '../../features/wallet/data/repositories/wallet_repository.dart';
 import '../../features/wallet/data/repositories/wallet_repository_impl.dart';
@@ -71,8 +75,16 @@ Future<void> setupDependencies() async {
     () => WalletCubit(repository: sl()),
   );
 
-  // ── 6. Features — Transaction, Category (Plan 5-6) ───────────────────────
-  // Thêm dần theo từng Plan
+  // ── 6. Features — Goal ────────────────────────────────────────────────────
+  sl.registerLazySingleton<GoalLocalDataSource>(
+    () => GoalLocalDataSourceImpl(db: sl()),
+  );
+  sl.registerLazySingleton<GoalRepository>(
+    () => GoalRepositoryImpl(localDataSource: sl(), syncEngine: sl()),
+  );
+  sl.registerFactory<GoalCubit>(
+    () => GoalCubit(repository: sl()),
+  );
 
   await sl.allReady();
 }
