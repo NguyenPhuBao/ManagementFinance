@@ -1,4 +1,5 @@
-part of 'goal_cubit.dart';
+import 'package:equatable/equatable.dart';
+import '../../data/models/goal_entity.dart';
 
 abstract class GoalState extends Equatable {
   const GoalState();
@@ -7,13 +8,9 @@ abstract class GoalState extends Equatable {
   List<Object?> get props => [];
 }
 
-class GoalInitial extends GoalState {
-  const GoalInitial();
-}
+class GoalInitial extends GoalState {}
 
-class GoalLoading extends GoalState {
-  const GoalLoading();
-}
+class GoalLoading extends GoalState {}
 
 class GoalLoaded extends GoalState {
   final List<GoalEntity> goals;
@@ -30,24 +27,9 @@ class GoalLoaded extends GoalState {
   List<Object?> get props => [goals, totalTargetAmount, totalCurrentAmount];
 }
 
-class GoalOperating extends GoalState {
-  final List<GoalEntity> goals;
-  const GoalOperating(this.goals);
-
-  @override
-  List<Object?> get props => [goals];
-}
-
-class GoalOperationSuccess extends GoalState {
-  final String message;
-  const GoalOperationSuccess(this.message);
-
-  @override
-  List<Object?> get props => [message];
-}
-
 class GoalError extends GoalState {
   final String message;
+
   const GoalError(this.message);
 
   @override

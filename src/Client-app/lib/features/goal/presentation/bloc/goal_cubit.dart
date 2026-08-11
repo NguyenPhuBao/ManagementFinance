@@ -1,24 +1,52 @@
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:equatable/equatable.dart';
 import '../../data/models/goal_entity.dart';
 import '../../data/repositories/goal_repository.dart';
-
-part 'goal_state.dart';
+import 'goal_state.dart';
 
 class GoalCubit extends Cubit<GoalState> {
-  final GoalRepository _repository;
+  final GoalRepository repository;
+  StreamSubscription<List<GoalEntity>>? _goalsSubscription;
 
-  GoalCubit({required GoalRepository repository})
-      : _repository = repository,
-        super(const GoalInitial());
+  GoalCubit({required this.repository}) : super(GoalInitial());
+
+  void watchGoals(int idaccount) {
+    emit(GoalLoading());
+    _goalsSubscription?.cancel();
+    _goalsSubscription = repository.watchGoals(idaccount).listen(
+      (goals) {
+        final totalTarget = goals.fold<double>(
+          0.0,
+          (sum, g) => sum + g.targetAmount,
+        );
+        final totalCurrent = goals.fold<double>(
+          0.0,
+          (sum, g) => sum + g.currentAmount,
+        );
+        emit(GoalLoaded(
+          goals: goals,
+          totalTargetAmount: totalTarget,
+          totalCurrentAmount: totalCurrent,
+        ));
+      },
+      onError: (error) {
+        emit(GoalError(error.toString()));
+      },
+    );
+  }
 
   Future<void> loadGoals(int idaccount) async {
-    emit(const GoalLoading());
+    emit(GoalLoading());
     try {
-      final goals = await _repository.getGoals(idaccount);
-      final totalTarget = goals.fold<double>(0, (sum, g) => sum + g.targetAmount);
-      final totalCurrent = goals.fold<double>(0, (sum, g) => sum + g.currentAmount);
-
+      final goals = await repository.getGoals(idaccount);
+      final totalTarget = goals.fold<double>(
+        0.0,
+        (sum, g) => sum + g.targetAmount,
+      );
+      final totalCurrent = goals.fold<double>(
+        0.0,
+        (sum, g) => sum + g.currentAmount,
+      );
       emit(GoalLoaded(
         goals: goals,
         totalTargetAmount: totalTarget,
@@ -34,12 +62,12 @@ class GoalCubit extends Cubit<GoalState> {
     required String name,
     required double targetAmount,
     required DateTime targetDate,
-    String icon = 'flag',
-    String colour = '#4CAF50',
-    String note = '',
+    String? icon,
+    String? colour,
+    String? note,
   }) async {
     try {
-      await _repository.addGoal(
+      await repository.addGoal(
         idaccount: idaccount,
         name: name,
         targetAmount: targetAmount,
@@ -48,32 +76,33 @@ class GoalCubit extends Cubit<GoalState> {
         colour: colour,
         note: note,
       );
-      emit(const GoalOperationSuccess('Tạo mục tiêu thành công!'));
-      await loadGoals(idaccount);
     } catch (e) {
       emit(GoalError(e.toString()));
     }
   }
 
   Future<void> updateAmount({
-    required int idaccount,
     required String id,
     required double newAmount,
   }) async {
     try {
-      await _repository.updateAmount(id: id, newAmount: newAmount);
-      await loadGoals(idaccount);
+      await repository.updateAmount(id: id, newAmount: newAmount);
     } catch (e) {
       emit(GoalError(e.toString()));
     }
   }
 
-  Future<void> deleteGoal({required int idaccount, required String id}) async {
+  Future<void> deleteGoal(String id) async {
     try {
-      await _repository.deleteGoal(id);
-      await loadGoals(idaccount);
+      await repository.deleteGoal(id);
     } catch (e) {
       emit(GoalError(e.toString()));
     }
+  }
+
+  @override
+  Future<void> close() {
+    _goalsSubscription?.cancel();
+    return super.close();
   }
 }
