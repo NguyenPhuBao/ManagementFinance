@@ -101,7 +101,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
   }
 
   void _showWalletPickerBottomSheet({
-    required BuildContext context,
+    required BuildContext mainContext,
     required String title,
     required List<WalletEntity> wallets,
     required WalletEntity? selectedWallet,
@@ -110,7 +110,8 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
     final currencyFormatter = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ', decimalDigits: 0);
 
     showModalBottomSheet(
-      context: context,
+      context: mainContext,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -118,6 +119,9 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
       builder: (ctx) {
         return Container(
           padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(mainContext).size.height * 0.7,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -133,22 +137,72 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                 ),
               ),
               const SizedBox(height: 16),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primary,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      await mainContext.push('/wallets/add');
+                      if (mainContext.mounted) {
+                        final authState = mainContext.read<AuthBloc>().state;
+                        final idaccount = (authState is AuthSuccess && authState.user != null)
+                            ? (int.tryParse(authState.user!.id) ?? 1)
+                            : 1;
+                        mainContext.read<WalletCubit>().loadWallets(idaccount);
+                      }
+                    },
+                    icon: const Icon(Icons.add, size: 18, color: AppColors.income),
+                    label: const Text(
+                      'Tạo ví mới',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.income,
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
               if (wallets.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.all(24),
+                Padding(
+                  padding: const EdgeInsets.all(24),
                   child: Center(
-                    child: Text(
-                      'Chưa có ví nào. Hãy tạo ví trong mục Quản lý Ví.',
-                      style: TextStyle(color: AppColors.textSecondary),
+                    child: Column(
+                      children: [
+                        const Text(
+                          'Chưa có ví nào trong hệ thống.',
+                          style: TextStyle(color: AppColors.textSecondary),
+                        ),
+                        const SizedBox(height: 12),
+                        ElevatedButton.icon(
+                          onPressed: () async {
+                            Navigator.pop(ctx);
+                            await mainContext.push('/wallets/add');
+                            if (mainContext.mounted) {
+                              final authState = mainContext.read<AuthBloc>().state;
+                              final idaccount = (authState is AuthSuccess && authState.user != null)
+                                  ? (int.tryParse(authState.user!.id) ?? 1)
+                                  : 1;
+                              mainContext.read<WalletCubit>().loadWallets(idaccount);
+                            }
+                          },
+                          icon: const Icon(Icons.add),
+                          label: const Text('Thêm Ví Mới Ngay'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.income,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 )
@@ -156,9 +210,45 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                 Flexible(
                   child: ListView.separated(
                     shrinkWrap: true,
-                    itemCount: wallets.length,
+                    itemCount: wallets.length + 1,
                     separatorBuilder: (_, __) => const Divider(height: 1),
                     itemBuilder: (ctx, index) {
+                      if (index == wallets.length) {
+                        return ListTile(
+                          leading: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: AppColors.income.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.add, color: AppColors.income),
+                          ),
+                          title: const Text(
+                            '+ Thêm ví mới ngay',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.income,
+                            ),
+                          ),
+                          subtitle: const Text(
+                            'Tạo ví mới để liên kết tích lũy',
+                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          ),
+                          onTap: () async {
+                            Navigator.pop(ctx);
+                            await mainContext.push('/wallets/add');
+                            if (mainContext.mounted) {
+                              final authState = mainContext.read<AuthBloc>().state;
+                              final idaccount = (authState is AuthSuccess && authState.user != null)
+                                  ? (int.tryParse(authState.user!.id) ?? 1)
+                                  : 1;
+                              mainContext.read<WalletCubit>().loadWallets(idaccount);
+                            }
+                          },
+                        );
+                      }
+
                       final wallet = wallets[index];
                       final isSelected = selectedWallet?.id == wallet.id;
                       Color itemColor;
@@ -416,7 +506,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                             iconColor: AppColors.income,
                             onTap: () {
                               _showWalletPickerBottomSheet(
-                                context: context,
+                                mainContext: context,
                                 title: 'Chọn Ví Tích Lũy Liên Kết',
                                 wallets: wallets,
                                 selectedWallet: _selectedSavingsWallet,
@@ -566,7 +656,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                               iconColor: AppColors.primary,
                               onTap: () {
                                 _showWalletPickerBottomSheet(
-                                  context: context,
+                                  mainContext: context,
                                   title: 'Chọn Ví Nguồn Trích Tiền',
                                   wallets: wallets,
                                   selectedWallet: _selectedSourceWallet,
