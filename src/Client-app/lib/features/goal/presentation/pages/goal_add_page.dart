@@ -154,8 +154,12 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
     }
 
     final periodsNeeded = (targetAmount / depositAmount).ceil();
-    final daysNeeded = periodsNeeded * (_isMonthly ? 30 : 7);
-    return DateTime.now().add(Duration(days: daysNeeded));
+    final daysNeeded = (periodsNeeded * (_isMonthly ? 30 : 7)).clamp(0, 36500);
+    try {
+      return DateTime.now().add(Duration(days: daysNeeded));
+    } catch (_) {
+      return _targetDate;
+    }
   }
 
   void _showWalletPickerBottomSheet({
