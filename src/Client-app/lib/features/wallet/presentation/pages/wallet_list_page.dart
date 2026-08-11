@@ -10,15 +10,12 @@ import '../../../../shared/theme/app_colors.dart';
 import '../bloc/wallet_cubit.dart';
 import '../../data/models/wallet_entity.dart';
 
-/// WalletListPage — hiển thị danh sách ví thực từ DB local.
-///
-/// Sử dụng BlocProvider để inject WalletCubit, load data ngay khi mount.
+/// WalletListPage — hiển thị danh sách ví thực từ DB local chuẩn thiết kế Stitch UI.
 class WalletListPage extends StatelessWidget {
   const WalletListPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Lấy idaccount từ AuthBloc
     final authState = context.read<AuthBloc>().state;
     final user = (authState is AuthSuccess) ? authState.user : null;
     final idaccount = int.tryParse(user?.id ?? '') ?? 0;
@@ -30,11 +27,18 @@ class WalletListPage extends StatelessWidget {
   }
 }
 
-class _WalletListView extends StatelessWidget {
+class _WalletListView extends StatefulWidget {
   final int idaccount;
   final UserModel? user;
 
   const _WalletListView({required this.idaccount, required this.user});
+
+  @override
+  State<_WalletListView> createState() => _WalletListViewState();
+}
+
+class _WalletListViewState extends State<_WalletListView> {
+  final Map<String, bool> _walletSwitches = {};
 
   @override
   Widget build(BuildContext context) {
@@ -49,15 +53,11 @@ class _WalletListView extends StatelessWidget {
             fontSize: 20,
           ),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.background,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.primary),
           onPressed: () => context.pop(),
-        ),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1.0),
-          child: Container(color: AppColors.outlineVariant, height: 1.0),
         ),
       ),
       body: BlocConsumer<WalletCubit, WalletState>(
@@ -86,7 +86,7 @@ class _WalletListView extends StatelessWidget {
             WalletLoading() => const Center(child: CircularProgressIndicator()),
             WalletError(:final message) => _ErrorView(
                 message: message,
-                onRetry: () => context.read<WalletCubit>().loadWallets(idaccount),
+                onRetry: () => context.read<WalletCubit>().loadWallets(widget.idaccount),
               ),
             WalletLoaded(:final wallets, :final totalBalance) ||
             WalletOperating(:final wallets, :final totalBalance) ||
@@ -109,15 +109,17 @@ class _WalletListView extends StatelessWidget {
       children: [
         SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20.0),
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildOverviewCard(totalBalance),
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
+                _buildWalletListHeader(context),
+                const SizedBox(height: 12),
                 _buildWalletList(context, wallets),
-                const SizedBox(height: 32),
-                _buildBankIntegration(context),
+                const SizedBox(height: 24),
+                _buildBankIntegrationSection(context),
                 const SizedBox(height: 32),
               ],
             ),
@@ -134,15 +136,15 @@ class _WalletListView extends StatelessWidget {
 
   Widget _buildOverviewCard(double totalBalance) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
       width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 20,
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 16,
             offset: const Offset(0, 4),
           ),
         ],
@@ -151,22 +153,22 @@ class _WalletListView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'TỔNG SỐ DƯ',
+            'TỔNG TÀI SẢN',
             style: TextStyle(
               fontSize: 12,
               letterSpacing: 0.6,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w700,
               color: AppColors.textSecondary,
             ),
           ),
           const SizedBox(height: 8),
           Text(
             CurrencyFormatter.format(totalBalance),
-            style: TextStyle(
-              fontSize: 36,
-              letterSpacing: -0.8,
-              fontWeight: FontWeight.w600,
-              color: totalBalance >= 0 ? AppColors.primary : AppColors.error,
+            style: const TextStyle(
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
+              letterSpacing: -0.5,
+              color: AppColors.primary,
             ),
           ),
         ],
@@ -174,72 +176,103 @@ class _WalletListView extends StatelessWidget {
     );
   }
 
-  Widget _buildWalletList(BuildContext context, List<WalletEntity> wallets) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildWalletListHeader(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 4),
-          child: Text(
-            'DANH SÁCH VÍ',
+        const Text(
+          'DANH SÁCH VÍ',
+          style: TextStyle(
+            fontSize: 12,
+            letterSpacing: 0.6,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        GestureDetector(
+          onTap: () {
+            // Action sắp xếp ví
+          },
+          child: const Text(
+            'SẮP XẾP',
             style: TextStyle(
               fontSize: 12,
               letterSpacing: 0.6,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        // Danh sách ví từ DB
-        ...wallets.map((w) => Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: _WalletItem(
-            wallet: w,
-            onTap: () async {
-              final result = await context.push('/wallets/${w.id}/edit');
-              // Reload nếu có thay đổi
-              if (result == true && context.mounted) {
-                context.read<WalletCubit>().loadWallets(idaccount);
-              }
-            },
-            onDelete: () => _confirmDelete(context, w),
-          ),
-        )),
-        // Nút thêm ví
-        InkWell(
-          onTap: () async {
-            final result = await context.push('/wallets/add');
-            if (result == true && context.mounted) {
-              context.read<WalletCubit>().loadWallets(idaccount);
-            }
-          },
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 24),
-            decoration: BoxDecoration(
-              border: Border.all(color: AppColors.outlineVariant, width: 2),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.add_circle, color: AppColors.textSecondary),
-                SizedBox(width: 8),
-                Text(
-                  'Thêm ví mới',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
+              fontWeight: FontWeight.bold,
+              color: AppColors.secondary,
             ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildWalletList(BuildContext context, List<WalletEntity> wallets) {
+    return Column(
+      children: [
+        ...wallets.map((w) {
+          final isSwitched = _walletSwitches[w.id] ?? true;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _WalletItem(
+              wallet: w,
+              isSwitched: isSwitched,
+              onToggleSwitch: (val) {
+                setState(() {
+                  _walletSwitches[w.id] = val;
+                });
+              },
+              onTap: () async {
+                final result = await context.push('/wallets/${w.id}/edit');
+                if (result == true && context.mounted) {
+                  context.read<WalletCubit>().loadWallets(widget.idaccount);
+                }
+              },
+              onDelete: () => _confirmDelete(context, w),
+            ),
+          );
+        }),
+        _buildAddWalletButton(context),
+      ],
+    );
+  }
+
+  Widget _buildAddWalletButton(BuildContext context) {
+    return InkWell(
+      onTap: () async {
+        final result = await context.push('/wallets/add');
+        if (result == true && context.mounted) {
+          context.read<WalletCubit>().loadWallets(widget.idaccount);
+        }
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.6),
+          border: Border.all(
+            color: AppColors.outlineVariant.withValues(alpha: 0.6),
+            width: 1.5,
+          ),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.add_circle_outline, color: AppColors.primary, size: 20),
+            SizedBox(width: 8),
+            Text(
+              'Thêm ví mới',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primary,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -265,53 +298,87 @@ class _WalletListView extends StatelessWidget {
     );
     if (confirm == true && context.mounted) {
       context.read<WalletCubit>().deleteWallet(
-        walletId:   wallet.id,
+        walletId: wallet.id,
         walletName: wallet.name,
-        idaccount:  idaccount,
+        idaccount: widget.idaccount,
       );
     }
   }
 
-  Widget _buildBankIntegration(BuildContext context) {
+  Widget _buildBankIntegrationSection(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 4),
-          child: Text(
-            'LIÊN KẾT NGÂN HÀNG',
-            style: TextStyle(
-              fontSize: 12,
-              letterSpacing: 0.6,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textSecondary,
-            ),
+        const Text(
+          'LIÊN KẾT NGÂN HÀNG',
+          style: TextStyle(
+            fontSize: 12,
+            letterSpacing: 0.6,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textSecondary,
           ),
         ),
-        const SizedBox(height: 8),
-        GestureDetector(
+        const SizedBox(height: 12),
+        InkWell(
           onTap: () => context.push('/wallets/bank-link'),
+          borderRadius: BorderRadius.circular(16),
           child: Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 20,
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 16,
                   offset: const Offset(0, 4),
                 ),
               ],
             ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Row(
               children: [
-                Text(
-                  'Liên kết ngân hàng',
-                  style: TextStyle(fontSize: 16, color: AppColors.primary),
+                Container(
+                  width: 44,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceContainerHigh,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 10,
+                        height: 10,
+                        decoration: const BoxDecoration(
+                          color: Colors.redAccent,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Container(
+                        width: 10,
+                        height: 10,
+                        decoration: const BoxDecoration(
+                          color: Colors.blueAccent,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                Icon(Icons.chevron_right, color: AppColors.textSecondary),
+                const SizedBox(width: 16),
+                const Expanded(
+                  child: Text(
+                    'Liên kết tài khoản ngân hàng',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+                const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 20),
               ],
             ),
           ),
@@ -321,28 +388,39 @@ class _WalletListView extends StatelessWidget {
   }
 }
 
-// ── Wallet item card ──────────────────────────────────────────────────────────
-
 class _WalletItem extends StatelessWidget {
   final WalletEntity wallet;
+  final bool isSwitched;
+  final ValueChanged<bool>? onToggleSwitch;
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
 
   const _WalletItem({
     required this.wallet,
+    required this.isSwitched,
+    this.onToggleSwitch,
     this.onTap,
     this.onDelete,
   });
 
-  Color get _iconColor => _hexToColor(wallet.colour);
-  Color get _iconBg    => _hexToColor(wallet.colour).withValues(alpha: 0.15);
-
-  static Color _hexToColor(String hex) {
-    final h = hex.replaceAll('#', '');
-    if (h.length == 6) {
-      return Color(int.parse('FF$h', radix: 16));
+  Color get _iconColor {
+    if (wallet.type == 'debt' || wallet.balance < 0) {
+      return const Color(0xFFD32F2F);
+    }
+    if (wallet.isDefault || wallet.type == 'cash') {
+      return const Color(0xFF2E7D32);
     }
     return AppColors.primary;
+  }
+
+  Color get _iconBg {
+    if (wallet.type == 'debt' || wallet.balance < 0) {
+      return const Color(0xFFFFEBEE);
+    }
+    if (wallet.isDefault || wallet.type == 'cash') {
+      return const Color(0xFFC8E6C9);
+    }
+    return AppColors.surfaceContainerHigh;
   }
 
   IconData get _iconData => switch (wallet.type) {
@@ -356,6 +434,8 @@ class _WalletItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isNegative = wallet.balance < 0;
+    final bool useSwitch = wallet.type == 'bank';
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
@@ -366,8 +446,8 @@ class _WalletItem extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 20,
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 16,
               offset: const Offset(0, 4),
             ),
           ],
@@ -376,13 +456,16 @@ class _WalletItem extends StatelessWidget {
           children: [
             // Icon
             Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(color: _iconBg, shape: BoxShape.circle),
-              child: Icon(_iconData, color: _iconColor),
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: _iconBg,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(_iconData, color: _iconColor, size: 22),
             ),
-            const SizedBox(width: 16),
-            // Name + Balance
+            const SizedBox(width: 14),
+            // Title + Badge + Balance
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -392,25 +475,25 @@ class _WalletItem extends StatelessWidget {
                       Text(
                         wallet.name,
                         style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
                           color: AppColors.primary,
                         ),
                       ),
                       if (wallet.isDefault) ...[
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 6),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFA4F1B2),
-                            borderRadius: BorderRadius.circular(16),
+                            color: const Color(0xFFC8E6C9),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                           child: const Text(
                             'MẶC ĐỊNH',
                             style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF24703E),
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF2E7D32),
                             ),
                           ),
                         ),
@@ -421,37 +504,46 @@ class _WalletItem extends StatelessWidget {
                   Text(
                     CurrencyFormatter.format(wallet.balance),
                     style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
                       color: isNegative ? AppColors.error : AppColors.primary,
                     ),
                   ),
                 ],
               ),
             ),
-            // Actions
-            PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert, color: AppColors.textSecondary),
-              onSelected: (value) {
-                if (value == 'edit') onTap?.call();
-                if (value == 'delete') onDelete?.call();
-              },
-              itemBuilder: (_) => const [
-                PopupMenuItem(value: 'edit',   child: Text('Chỉnh sửa')),
-                PopupMenuItem(
-                  value: 'delete',
-                  child: Text('Xóa ví', style: TextStyle(color: Colors.red)),
+            // Trailing action
+            if (useSwitch)
+              Transform.scale(
+                scale: 0.8,
+                child: Switch(
+                  value: isSwitched,
+                  activeThumbColor: Colors.white,
+                  activeTrackColor: AppColors.secondary,
+                  onChanged: onToggleSwitch,
                 ),
-              ],
-            ),
+              )
+            else
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert, color: AppColors.textSecondary, size: 20),
+                onSelected: (value) {
+                  if (value == 'edit') onTap?.call();
+                  if (value == 'delete') onDelete?.call();
+                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'edit', child: Text('Chỉnh sửa')),
+                  PopupMenuItem(
+                    value: 'delete',
+                    child: Text('Xóa ví', style: TextStyle(color: Colors.red)),
+                  ),
+                ],
+              ),
           ],
         ),
       ),
     );
   }
 }
-
-// ── Error view ────────────────────────────────────────────────────────────────
 
 class _ErrorView extends StatelessWidget {
   final String message;
