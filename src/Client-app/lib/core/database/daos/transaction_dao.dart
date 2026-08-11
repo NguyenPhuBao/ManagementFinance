@@ -58,6 +58,20 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     return getByDateRange(idaccount, from, to);
   }
 
+  /// Stream lọc theo tháng realtime
+  Stream<List<Transaction>> watchByMonth(int idaccount, int year, int month) {
+    final from = DateTime(year, month, 1);
+    final to   = DateTime(year, month + 1, 0, 23, 59, 59);
+    return (select(transactions)
+          ..where((t) =>
+              t.idaccount.equals(idaccount) &
+              t.isDeleted.equals(false) &
+              t.date.isBiggerOrEqualValue(from) &
+              t.date.isSmallerOrEqualValue(to))
+          ..orderBy([(t) => OrderingTerm.desc(t.date)]))
+        .watch();
+  }
+
   /// Tổng thu/chi theo tháng
   Future<Map<String, double>> getSummaryByMonth(
     int idaccount,
