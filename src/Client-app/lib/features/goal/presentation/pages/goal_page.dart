@@ -19,7 +19,7 @@ class GoalPage extends StatelessWidget {
         final idaccount = (authState is AuthSuccess && authState.user != null)
             ? (int.tryParse(authState.user!.id) ?? 1)
             : 1;
-        return sl<GoalCubit>()..loadGoals(idaccount);
+        return sl<GoalCubit>()..watchGoals(idaccount);
       },
       child: const _GoalPageContent(),
     );
@@ -76,7 +76,7 @@ class _GoalPageContent extends StatelessWidget {
                       final idaccount = (authState is AuthSuccess && authState.user != null)
                           ? (int.tryParse(authState.user!.id) ?? 1)
                           : 1;
-                      context.read<GoalCubit>().loadGoals(idaccount);
+                      context.read<GoalCubit>().watchGoals(idaccount);
                     },
                     child: const Text('Thử lại'),
                   ),

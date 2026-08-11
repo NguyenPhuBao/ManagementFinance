@@ -4,6 +4,8 @@ import '../../data/models/goal_entity.dart';
 import '../../data/repositories/goal_repository.dart';
 import 'goal_state.dart';
 
+export 'goal_state.dart';
+
 class GoalCubit extends Cubit<GoalState> {
   final GoalRepository repository;
   StreamSubscription<List<GoalEntity>>? _goalsSubscription;

@@ -129,7 +129,17 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
           name: name,
           targetAmount: targetAmount,
           targetDate: _targetDate,
+        ).then((_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Tạo mục tiêu tiết kiệm thành công!'),
+            backgroundColor: AppColors.income,
+          ),
         );
+        context.pop();
+      }
+    });
   }
 
   DateTime _calculateEstimatedCompletionDate() {
@@ -359,15 +369,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
 
     return BlocListener<GoalCubit, GoalState>(
       listener: (context, state) {
-        if (state is GoalOperationSuccess) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: AppColors.income,
-            ),
-          );
-          context.pop();
-        } else if (state is GoalError) {
+        if (state is GoalError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Lỗi: ${state.message}'),

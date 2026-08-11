@@ -24,6 +24,11 @@ class GoalRepositoryImpl implements GoalRepository {
   }
 
   @override
+  Future<GoalEntity?> getGoalById(String id) {
+    return localDataSource.getGoalById(id);
+  }
+
+  @override
   Future<GoalEntity> addGoal({
     required int idaccount,
     required String name,
