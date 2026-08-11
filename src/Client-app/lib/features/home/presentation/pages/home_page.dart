@@ -28,7 +28,7 @@ class HomePage extends StatelessWidget {
               const SizedBox(height: 32),
               _buildStatsGrid(),
               const SizedBox(height: 32),
-              _buildRecentTransactions(),
+              _buildRecentTransactions(context),
               const SizedBox(height: 32),
               _buildBudgetProgress(),
               const SizedBox(height: 32),
@@ -482,7 +482,7 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildRecentTransactions() {
+  Widget _buildRecentTransactions(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -499,7 +499,7 @@ class HomePage extends StatelessWidget {
               ),
             ),
             TextButton(
-              onPressed: () {},
+              onPressed: () => context.push('/transactions'),
               child: const Text('Xem tất cả', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 13)),
             ),
           ],

@@ -11,6 +11,7 @@ import '../../features/analytics/presentation/pages/analytics_page.dart';
 import '../../features/analytics/presentation/pages/export_report_page.dart';
 import '../../features/transaction/presentation/pages/add_transaction_page.dart';
 import '../../features/transaction/presentation/pages/choose_category_page.dart';
+import '../../features/transaction/presentation/pages/transaction_page.dart';
 import '../../features/budget/presentation/pages/budget_page.dart';
 import '../../features/budget/presentation/pages/budget_rules_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
@@ -127,7 +128,11 @@ class AppRouter {
             builder: (_, __) => const ExportReportPage(),
           ),
 
-          // Add transaction
+          // Transactions
+          GoRoute(
+            path: '/transactions',
+            builder: (_, __) => const TransactionPage(),
+          ),
           GoRoute(
             path: '/add',
             builder: (_, __) => const AddTransactionPage(),
