@@ -91,10 +91,14 @@ Future<void> setupDependencies() async {
 
   // ── 7. Features — Transaction ─────────────────────────────────────────────
   sl.registerLazySingleton<TransactionLocalDataSource>(
-    () => TransactionLocalDataSourceImpl(db: sl()),
+    () => TransactionLocalDataSourceImpl(sl<AppDatabase>()),
   );
   sl.registerLazySingleton<TransactionRepository>(
-    () => TransactionRepositoryImpl(localDataSource: sl()),
+    () => TransactionRepositoryImpl(
+      localDataSource: sl(),
+      walletDao: sl<AppDatabase>().walletDao,
+      syncEngine: sl(),
+    ),
   );
   sl.registerFactory<TransactionBloc>(
     () => TransactionBloc(

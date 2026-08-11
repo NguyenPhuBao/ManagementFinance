@@ -27,11 +27,16 @@ class TransactionBloc extends Bloc<TransactionEvent, TransactionState> {
     Emitter<TransactionState> emit,
   ) async {
     emit(TransactionLoadingState());
-    await _subscription?.cancel();
+    final now = DateTime.now();
+    _subscribeMonth(event.idaccount, now.year, now.month);
+  }
+
+  void _subscribeMonth(int idaccount, int year, int month) {
+    _subscription?.cancel();
     _subscription = transactionRepository
-        .watchTransactions(event.idaccount)
+        .watchTransactionsByMonth(idaccount, year, month)
         .listen((list) {
-      add(TransactionsUpdatedEvent(list));
+      add(TransactionsUpdatedEvent(list, year: year, month: month));
     });
   }
 
@@ -39,25 +44,14 @@ class TransactionBloc extends Bloc<TransactionEvent, TransactionState> {
     TransactionsUpdatedEvent event,
     Emitter<TransactionState> emit,
   ) {
-    final now = DateTime.now();
-    final year = state is TransactionLoadedState
-        ? (state as TransactionLoadedState).selectedYear
-        : now.year;
-    final month = state is TransactionLoadedState
-        ? (state as TransactionLoadedState).selectedMonth
-        : now.month;
-
-    _emitLoadedState(event.transactions, year, month, emit);
+    _emitLoadedState(event.transactions, event.year, event.month, emit);
   }
 
   void _onFilterMonth(
     FilterMonthEvent event,
     Emitter<TransactionState> emit,
   ) {
-    if (state is TransactionLoadedState) {
-      final curr = state as TransactionLoadedState;
-      _emitLoadedState(curr.transactions, event.year, event.month, emit);
-    }
+    _subscribeMonth(1, event.year, event.month);
   }
 
   Future<void> _onAddTransaction(

@@ -18,10 +18,12 @@ class LoadTransactionsEvent extends TransactionEvent {
 
 class TransactionsUpdatedEvent extends TransactionEvent {
   final List<TransactionEntity> transactions;
-  const TransactionsUpdatedEvent(this.transactions);
+  final int year;
+  final int month;
+  const TransactionsUpdatedEvent(this.transactions, {required this.year, required this.month});
 
   @override
-  List<Object?> get props => [transactions];
+  List<Object?> get props => [transactions, year, month];
 }
 
 class AddTransactionEvent extends TransactionEvent {
