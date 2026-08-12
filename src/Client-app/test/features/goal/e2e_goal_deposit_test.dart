@@ -117,4 +117,62 @@ void main() {
     final updatedGoal = await repository.getGoalById(goal.id);
     expect(updatedGoal?.currentAmount, 1500000.0);
   });
+
+  test('Goal deposit with explicit targetWalletId credits Wallet A and deducts Wallet B', () async {
+    // 1. Setup Wallet A (Savings) and Wallet B (Source)
+    await db.walletDao.insert(
+      WalletsCompanion.insert(
+        id: 'w_A',
+        idaccount: 1,
+        name: 'Ví Tích Lũy A',
+        balance: const Value(2000000.0),
+        updatedAt: DateTime.now(),
+      ),
+    );
+    await db.walletDao.insert(
+      WalletsCompanion.insert(
+        id: 'w_B',
+        idaccount: 1,
+        name: 'Ví Rút Tiền B',
+        balance: const Value(8000000.0),
+        updatedAt: DateTime.now(),
+      ),
+    );
+
+    // 2. Goal linked to Wallet A
+    final goal = await repository.addGoal(
+      idaccount: 1,
+      name: 'Mua Tủ Lạnh',
+      targetAmount: 10000000.0,
+      targetDate: DateTime.now().add(const Duration(days: 90)),
+      walletId: 'w_A',
+    );
+
+    // 3. User deposits from Wallet B into Goal (linked to Wallet A)
+    await repository.depositToGoal(
+      goalId: goal.id,
+      goalName: goal.name,
+      depositAmount: 3000000.0,
+      walletId: 'w_B',
+      targetWalletId: 'w_A',
+      idaccount: 1,
+    );
+
+    // 4. Wallet B deducted: 8.000.000 - 3.000.000 = 5.000.000đ
+    final walletB = await db.walletDao.getById('w_B');
+    expect(walletB?.balance, 5000000.0);
+
+    // 5. Wallet A credited: 2.000.000 + 3.000.000 = 5.000.000đ
+    final walletA = await db.walletDao.getById('w_A');
+    expect(walletA?.balance, 5000000.0);
+
+    // 6. Verify Income & Expense transactions
+    final txsB = await db.transactionDao.getByWallet('w_B');
+    expect(txsB.first.type, 'chi');
+    expect(txsB.first.amount, 3000000.0);
+
+    final txsA = await db.transactionDao.getByWallet('w_A');
+    expect(txsA.first.type, 'thu');
+    expect(txsA.first.amount, 3000000.0);
+  });
 }

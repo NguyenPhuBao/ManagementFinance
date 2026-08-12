@@ -67,10 +67,13 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
 
     final amountController = TextEditingController();
     final currencyFormatter = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ', decimalDigits: 0);
-    Wallet selectedSourceWallet = wallets.first;
     final targetWallet = _goal!.walletId != null
         ? wallets.firstWhere((w) => w.id == _goal!.walletId, orElse: () => wallets.first)
-        : null;
+        : (wallets.length > 1 ? wallets.last : null);
+    Wallet selectedSourceWallet = wallets.firstWhere(
+      (w) => targetWallet != null ? w.id != targetWallet.id : true,
+      orElse: () => wallets.first,
+    );
 
     showModalBottomSheet(
       context: context,
@@ -207,11 +210,12 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                         goalName: _goal!.name,
                         depositAmount: deposit,
                         walletId: selectedSourceWallet.id,
-                        targetWalletId: _goal!.walletId,
+                        targetWalletId: _goal!.walletId ?? targetWallet?.id,
                         idaccount: accountId,
                       );
                       if (ctx.mounted) Navigator.pop(ctx);
                       if (!mounted) return;
+                      context.read<WalletCubit>().loadWallets(accountId);
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text('Đã gửi thêm ${currencyFormatter.format(deposit)} vào mục tiêu!'),
