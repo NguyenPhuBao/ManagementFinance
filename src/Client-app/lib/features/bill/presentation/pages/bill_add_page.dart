@@ -5,6 +5,7 @@ import 'package:drift/drift.dart' as drift;
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/database/app_database.dart';
+import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../bloc/bill_bloc.dart';
 import '../bloc/bill_event.dart';
@@ -37,7 +38,7 @@ class _BillAddPageState extends State<BillAddPage> {
   }
 
   Future<void> _loadWallets() async {
-    final db = context.read<AppDatabase>();
+    final db = sl<AppDatabase>();
     final wallets = await db.walletDao.getAll(1);
     if (mounted) {
       setState(() {

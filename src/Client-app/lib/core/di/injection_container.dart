@@ -118,6 +118,7 @@ Future<void> setupDependencies() async {
     () => BillRepositoryImpl(
       dataSource: sl<BillLocalDataSource>(),
       db: sl<AppDatabase>(),
+      syncEngine: sl<SyncEngine>(),
     ),
   );
   sl.registerFactory<BillBloc>(

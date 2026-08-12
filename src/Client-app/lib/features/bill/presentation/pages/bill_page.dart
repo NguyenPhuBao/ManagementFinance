@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/database/app_database.dart';
+import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../bloc/bill_bloc.dart';
 import '../bloc/bill_event.dart';
@@ -25,7 +26,7 @@ class _BillPageState extends State<BillPage> {
   }
 
   void _showPayModal(BuildContext context, Bill bill) async {
-    final db = context.read<AppDatabase>();
+    final db = sl<AppDatabase>();
     final wallets = await db.walletDao.getAll(1);
 
     if (!context.mounted) return;

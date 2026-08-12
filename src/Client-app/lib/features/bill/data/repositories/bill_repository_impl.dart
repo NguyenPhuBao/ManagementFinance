@@ -1,14 +1,20 @@
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/database/app_database.dart';
+import '../../../../core/sync/sync_engine.dart';
 import '../datasources/bill_local_datasource.dart';
 import 'bill_repository.dart';
 
 class BillRepositoryImpl implements BillRepository {
   final BillLocalDataSource dataSource;
   final AppDatabase db;
+  final SyncEngine? syncEngine;
 
-  BillRepositoryImpl({required this.dataSource, required this.db});
+  BillRepositoryImpl({
+    required this.dataSource,
+    required this.db,
+    this.syncEngine,
+  });
 
   @override
   Stream<List<Bill>> watchBills(int idaccount) {
@@ -21,18 +27,21 @@ class BillRepositoryImpl implements BillRepository {
   }
 
   @override
-  Future<void> addBill(BillsCompanion bill) {
-    return dataSource.insertBill(bill);
+  Future<void> addBill(BillsCompanion bill) async {
+    await dataSource.insertBill(bill);
+    syncEngine?.scheduleSync();
   }
 
   @override
-  Future<void> editBill(BillsCompanion bill) {
-    return dataSource.insertBill(bill);
+  Future<void> editBill(BillsCompanion bill) async {
+    await dataSource.insertBill(bill);
+    syncEngine?.scheduleSync();
   }
 
   @override
-  Future<void> deleteBill(String id) {
-    return dataSource.softDeleteBill(id);
+  Future<void> deleteBill(String id) async {
+    await dataSource.softDeleteBill(id);
+    syncEngine?.scheduleSync();
   }
 
   @override
@@ -111,5 +120,7 @@ class BillRepositoryImpl implements BillRepository {
         ),
       );
     }
+
+    syncEngine?.scheduleSync();
   }
 }
