@@ -20,6 +20,10 @@ import '../../features/wallet/presentation/bloc/wallet_cubit.dart';
 import '../../features/transaction/data/datasources/transaction_local_data_source.dart';
 import '../../features/transaction/data/repositories/transaction_repository.dart';
 import '../../features/transaction/presentation/bloc/transaction_bloc.dart';
+import '../../features/bill/data/datasources/bill_local_datasource.dart';
+import '../../features/bill/data/repositories/bill_repository.dart';
+import '../../features/bill/data/repositories/bill_repository_impl.dart';
+import '../../features/bill/presentation/bloc/bill_bloc.dart';
 
 /// Service locator — dùng `sl<T>()` để resolve dependencies
 final GetIt sl = GetIt.instance;
@@ -105,6 +109,19 @@ Future<void> setupDependencies() async {
       transactionRepository: sl(),
       syncEngine: sl<SyncEngine>(),
     ),
+  );
+  // ── 8. Features — Bill ───────────────────────────────────────────────────
+  sl.registerLazySingleton<BillLocalDataSource>(
+    () => BillLocalDataSource(sl<AppDatabase>()),
+  );
+  sl.registerLazySingleton<BillRepository>(
+    () => BillRepositoryImpl(
+      dataSource: sl<BillLocalDataSource>(),
+      db: sl<AppDatabase>(),
+    ),
+  );
+  sl.registerFactory<BillBloc>(
+    () => BillBloc(repository: sl<BillRepository>()),
   );
 
   await sl.allReady();

@@ -23,10 +23,14 @@ import '../../features/wallet/presentation/pages/wallet_edit_page.dart';
 import '../../features/wallet/presentation/pages/bank_link_page.dart';
 import '../../features/category/presentation/pages/category_page.dart';
 import '../../features/category/presentation/pages/category_group_page.dart';
+import '../../features/category/presentation/pages/category_add_page.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../di/injection_container.dart';
+import '../database/app_database.dart';
+import '../../features/bill/presentation/bloc/bill_bloc.dart';
 import '../../features/bill/presentation/pages/bill_page.dart';
 import '../../features/bill/presentation/pages/bill_add_page.dart';
 import '../../features/bill/presentation/pages/bill_edit_page.dart';
-import '../../features/bill/presentation/pages/bill_delete_page.dart';
 import '../../features/goal/presentation/pages/goal_page.dart';
 import '../../features/goal/presentation/pages/goal_add_page.dart';
 import '../../features/goal/presentation/pages/goal_detail_page.dart';
@@ -171,6 +175,7 @@ class AppRouter {
 
           // Category
           GoRoute(path: '/categories', builder: (_, __) => const CategoryPage()),
+          GoRoute(path: '/categories/add', builder: (_, __) => const CategoryAddPage()),
           GoRoute(
               path: '/categories/group',
               builder: (_, __) => const CategoryGroupPage()),
@@ -178,24 +183,27 @@ class AppRouter {
           // Bill
           GoRoute(
             path: '/bills',
-            builder: (_, __) => const BillPage(),
-            routes: [
-              GoRoute(
-                path: 'delete',
-                parentNavigatorKey: _rootNavigatorKey,
-                builder: (_, __) => const BillDeletePage(id: '1'),
-              ),
-            ],
+            builder: (_, __) => BlocProvider<BillBloc>(
+              create: (_) => sl<BillBloc>(),
+              child: const BillPage(),
+            ),
           ),
-          GoRoute(path: '/bills/add', builder: (_, __) => const BillAddPage()),
+          GoRoute(
+            path: '/bills/add',
+            builder: (_, __) => BlocProvider<BillBloc>(
+              create: (_) => sl<BillBloc>(),
+              child: const BillAddPage(),
+            ),
+          ),
           GoRoute(
             path: '/bills/:id/edit',
-            builder: (_, s) => BillEditPage(id: s.pathParameters['id']!),
-          ),
-          GoRoute(
-            path: '/bills/:id/delete',
-            parentNavigatorKey: _rootNavigatorKey,
-            builder: (_, s) => BillDeletePage(id: s.pathParameters['id']!),
+            builder: (_, s) => BlocProvider<BillBloc>(
+              create: (_) => sl<BillBloc>(),
+              child: BillEditPage(
+                id: s.pathParameters['id']!,
+                bill: s.extra as Bill?,
+              ),
+            ),
           ),
 
           // Goal
