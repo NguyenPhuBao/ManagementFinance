@@ -252,29 +252,24 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     final remaining = (_goal!.targetAmount - _goal!.currentAmount).clamp(0.0, double.infinity);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: AppColors.background,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.primary),
-          onPressed: () => context.pop(),
-        ),
         title: Text(
           _goal!.name,
           style: const TextStyle(
             color: AppColors.primary,
             fontWeight: FontWeight.bold,
-            fontSize: 18,
+            fontSize: 20,
           ),
         ),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: false,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.primary),
+          onPressed: () => context.pop(),
+        ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_outlined, color: AppColors.primary),
-            onPressed: () {
-              // TODO: Chỉnh sửa mục tiêu
-            },
-          ),
           IconButton(
             icon: const Icon(Icons.delete_outline, color: AppColors.error),
             onPressed: () {
@@ -308,96 +303,80 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
+      body: SafeArea(
         child: Column(
           children: [
-            const SizedBox(height: 16),
-            _buildTargetCard(currencyFormatter, percentValue, remaining),
-            const SizedBox(height: 24),
-            Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-              ),
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                children: [
-                  _buildStatsGrid(currencyFormatter),
-                  const SizedBox(height: 24),
-                  _buildHistorySection(),
-                ],
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    _buildCircularProgress(percentValue),
+                    const SizedBox(height: 32),
+                    _buildAmountInfo(currencyFormatter, remaining),
+                    const SizedBox(height: 24),
+                    _buildInsightBox(),
+                    const SizedBox(height: 32),
+                    _buildHistorySection(currencyFormatter),
+                  ],
+                ),
               ),
             ),
+            _buildBottomButtons(),
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomButtons(),
     );
   }
 
-  Widget _buildTargetCard(NumberFormat currencyFormatter, double percentValue, double remaining) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0),
-      child: Column(
+  Widget _buildCircularProgress(double percentValue) {
+    return SizedBox(
+      width: 220,
+      height: 220,
+      child: Stack(
+        alignment: Alignment.center,
         children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.flag_rounded,
-              color: AppColors.primary,
-              size: 40,
+          SizedBox(
+            width: 220,
+            height: 220,
+            child: CircularProgressIndicator(
+              value: 1.0,
+              strokeWidth: 16,
+              color: AppColors.surfaceContainerHigh.withValues(alpha: 0.5),
             ),
           ),
-          const SizedBox(height: 16),
-          Text(
-            currencyFormatter.format(_goal!.currentAmount),
-            style: const TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-              color: AppColors.primary,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            ' / ${currencyFormatter.format(_goal!.targetAmount)}',
-            style: const TextStyle(
-              fontSize: 16,
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 24),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: LinearProgressIndicator(
+          SizedBox(
+            width: 220,
+            height: 220,
+            child: CircularProgressIndicator(
               value: percentValue,
-              minHeight: 12,
-              backgroundColor: const Color(0xFFE2E8F0),
-              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+              strokeWidth: 16,
+              color: const Color(0xFF2E6B27),
+              backgroundColor: Colors.transparent,
+              strokeCap: StrokeCap.round,
             ),
           ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                '${(percentValue * 100).toStringAsFixed(0)}% đã đạt',
+                '${(percentValue * 100).toStringAsFixed(1)}%',
                 style: const TextStyle(
-                  fontSize: 12,
+                  fontSize: 32,
                   fontWeight: FontWeight.bold,
                   color: AppColors.primary,
+                  letterSpacing: -0.5,
                 ),
               ),
+              const SizedBox(height: 4),
               Text(
-                'Còn thiếu ${currencyFormatter.format(remaining)}',
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
+                'ĐÃ HOÀN THÀNH',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.onSurfaceVariant.withValues(alpha: 0.8),
+                  letterSpacing: 0.5,
                 ),
               ),
             ],
@@ -407,107 +386,112 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     );
   }
 
-  Widget _buildStatsGrid(NumberFormat currencyFormatter) {
-    final formattedDate = DateFormat('MM/yyyy').format(_goal!.targetDate);
+  Widget _buildAmountInfo(NumberFormat currencyFormatter, double remaining) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Text(
+              currencyFormatter.format(_goal!.currentAmount),
+              style: const TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.w900,
+                color: AppColors.primary,
+                letterSpacing: -1,
+              ),
+            ),
+            Text(
+              ' / ${currencyFormatter.format(_goal!.targetAmount)}',
+              style: TextStyle(
+                fontSize: 14,
+                color: AppColors.onSurfaceVariant.withValues(alpha: 0.8),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        RichText(
+          text: TextSpan(
+            style: TextStyle(
+              fontSize: 14,
+              color: AppColors.onSurfaceVariant.withValues(alpha: 0.8),
+            ),
+            children: [
+              const TextSpan(text: 'Còn lại '),
+              TextSpan(
+                text: currencyFormatter.format(remaining),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primary,
+                ),
+              ),
+              const TextSpan(text: ' để đạt mục tiêu'),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 
+  Widget _buildInsightBox() {
+    final formattedDate = DateFormat('MM/yyyy').format(_goal!.targetDate);
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(20),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.4)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.calendar_today_outlined,
-                    color: AppColors.primary,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'HẠN MỤC TIÊU',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textSecondary,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      formattedDate,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFC3EBBB),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.lightbulb,
+              color: Color(0xFF2E6B27),
+              size: 24,
             ),
           ),
-          Container(
-            height: 36,
-            width: 1,
-            color: Colors.grey[300],
-          ),
+          const SizedBox(width: 16),
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(left: 16.0),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.auto_graph_outlined,
-                      color: AppColors.primary,
-                      size: 20,
-                    ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'HẠN ĐỊNH MỤC TIÊU: THÁNG $formattedDate',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                    letterSpacing: 0.2,
                   ),
-                  const SizedBox(width: 12),
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'TRẠNG THÁI',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textSecondary,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        'Đang tích lũy',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Theo dõi tiến độ tích lũy để đạt được mục tiêu trước hạn chót.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.onSurfaceVariant.withValues(alpha: 0.9),
+                    height: 1.4,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],
@@ -515,21 +499,38 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     );
   }
 
-  Widget _buildHistorySection() {
-    final currencyFormatter = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ', decimalDigits: 0);
+  Widget _buildHistorySection(NumberFormat currencyFormatter) {
     final accountId = _getAccountId(context);
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Row(
+        Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'Lịch sử tích lũy',
+            const Text(
+              'LỊCH SỬ TÍCH LŨY',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 12,
                 fontWeight: FontWeight.bold,
-                color: AppColors.primary,
+                color: AppColors.onSurfaceVariant,
+                letterSpacing: 0.5,
+              ),
+            ),
+            TextButton(
+              onPressed: () {},
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF2E6B27),
+                padding: EdgeInsets.zero,
+                minimumSize: const Size(50, 30),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: const Text(
+                'Xem tất cả',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],
@@ -555,7 +556,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: txs.length,
-              separatorBuilder: (_, __) => const Divider(height: 16),
+              separatorBuilder: (_, __) => const SizedBox(height: 16),
               itemBuilder: (context, index) {
                 final tx = txs[index];
                 final dateStr = DateFormat('dd/MM/yyyy HH:mm').format(tx.date as DateTime);
@@ -622,46 +623,38 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
   Widget _buildBottomButtons() {
     return Container(
       padding: const EdgeInsets.all(24.0),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 10,
-            offset: Offset(0, -5),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: SizedBox(
-          width: double.infinity,
-          height: 54,
-          child: ElevatedButton(
-            onPressed: _showDepositDialog,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              elevation: 0,
-            ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.add, color: Colors.white),
-                SizedBox(width: 8),
-                Text(
-                  'Gửi thêm tiền vào mục tiêu',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
+        border: Border(
+          top: BorderSide(
+            color: AppColors.outlineVariant.withValues(alpha: 0.3),
+            width: 1,
           ),
         ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ElevatedButton(
+            onPressed: _showDepositDialog,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.black,
+              foregroundColor: Colors.white,
+              minimumSize: const Size(double.infinity, 56),
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text(
+              'Gửi thêm tiết kiệm',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
