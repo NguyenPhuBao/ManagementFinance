@@ -72,13 +72,18 @@ class _WalletListViewState extends State<_WalletListView> {
               ),
             );
           } else if (state is WalletError) {
+            final cleanMsg = state.message
+                .replaceAll('CacheException: ', '')
+                .replaceAll('Exception: ', '');
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(state.message),
+                content: Text(cleanMsg),
                 backgroundColor: AppColors.error,
                 behavior: SnackBarBehavior.floating,
+                duration: const Duration(seconds: 4),
               ),
             );
+            context.read<WalletCubit>().loadWallets(widget.idaccount);
           }
         },
         builder: (context, state) {
