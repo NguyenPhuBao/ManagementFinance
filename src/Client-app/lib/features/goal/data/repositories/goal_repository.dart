@@ -22,6 +22,7 @@ abstract class GoalRepository {
     required String goalName,
     required double depositAmount,
     required String walletId,
+    String? targetWalletId,
     required int idaccount,
   });
   Stream<dynamic> watchGoalTransactions(int idaccount, String goalName);

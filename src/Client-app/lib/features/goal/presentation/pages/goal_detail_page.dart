@@ -67,7 +67,13 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
 
     final amountController = TextEditingController();
     final currencyFormatter = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ', decimalDigits: 0);
-    Wallet selectedWallet = wallets.first;
+    Wallet selectedSourceWallet = wallets.first;
+    Wallet? selectedTargetWallet = wallets.length > 1
+        ? wallets.firstWhere(
+            (w) => (w.type == 'investment' || w.type == 'bank') && w.id != selectedSourceWallet.id,
+            orElse: () => wallets.last,
+          )
+        : wallets.first;
 
     showModalBottomSheet(
       context: context,
@@ -140,14 +146,14 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                   ),
                   const SizedBox(height: 16),
                   const Text(
-                    'Chọn ví nguồn thanh toán',
+                    '1. Chọn ví nguồn thanh toán (Trừ tiền)',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: AppColors.onSurfaceVariant,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
@@ -156,22 +162,60 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                     ),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<Wallet>(
-                        value: selectedWallet,
+                        value: selectedSourceWallet,
                         isExpanded: true,
                         icon: const Icon(Icons.expand_more, color: AppColors.primary),
                         items: wallets.map((w) {
                           return DropdownMenuItem<Wallet>(
                             value: w,
                             child: Text(
-                              '${w.name} (${currencyFormatter.format(w.balance)})',
+                              '${w.name} (Số dư: ${currencyFormatter.format(w.balance)})',
                               style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                             ),
                           );
                         }).toList(),
                         onChanged: (val) {
                           if (val != null) {
-                            setModalState(() => selectedWallet = val);
+                            setModalState(() => selectedSourceWallet = val);
                           }
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    '2. Chọn ví mục tiêu / tiết kiệm (Cộng tiền nhận)',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<Wallet?>(
+                        value: selectedTargetWallet,
+                        isExpanded: true,
+                        icon: const Icon(Icons.expand_more, color: AppColors.primary),
+                        items: [
+                          ...wallets.map((w) {
+                            return DropdownMenuItem<Wallet?>(
+                              value: w,
+                              child: Text(
+                                '${w.name} (Số dư: ${currencyFormatter.format(w.balance)})',
+                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                              ),
+                            );
+                          }),
+                        ],
+                        onChanged: (val) {
+                          setModalState(() => selectedTargetWallet = val);
                         },
                       ),
                     ),
@@ -192,21 +236,22 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                         goalId: widget.id,
                         goalName: _goal!.name,
                         depositAmount: deposit,
-                        walletId: selectedWallet.id,
+                        walletId: selectedSourceWallet.id,
+                        targetWalletId: selectedTargetWallet?.id,
                         idaccount: accountId,
                       );
                       if (ctx.mounted) Navigator.pop(ctx);
                       if (!mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('Đã gửi thêm ${currencyFormatter.format(deposit)} vào mục tiêu!'),
+                          content: Text('Đã tích lũy ${currencyFormatter.format(deposit)} vào ví ${selectedTargetWallet?.name ?? 'mục tiêu'}!'),
                           backgroundColor: AppColors.income,
                         ),
                       );
                       _loadGoal();
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
+                      backgroundColor: Colors.black,
                       foregroundColor: Colors.white,
                       minimumSize: const Size(double.infinity, 50),
                       shape: RoundedRectangleBorder(

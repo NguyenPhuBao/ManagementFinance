@@ -99,6 +99,7 @@ class GoalCubit extends Cubit<GoalState> {
     required String goalName,
     required double depositAmount,
     required String walletId,
+    String? targetWalletId,
     required int idaccount,
   }) async {
     try {
@@ -107,6 +108,7 @@ class GoalCubit extends Cubit<GoalState> {
         goalName: goalName,
         depositAmount: depositAmount,
         walletId: walletId,
+        targetWalletId: targetWalletId,
         idaccount: idaccount,
       );
       loadGoals(idaccount);

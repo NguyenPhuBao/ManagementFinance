@@ -64,4 +64,34 @@ void main() {
     expect(txs.first.amount, 1000000.0);
     expect(txs.first.note, 'Tích lũy mục tiêu: Mua Laptop');
   });
+
+  test('depositToGoal with targetWalletId deducts source wallet and credits target wallet', () async {
+    await db.walletDao.insert(
+      WalletsCompanion.insert(
+        id: 'w2_savings',
+        idaccount: 1,
+        name: 'Ví Tiết Kiệm',
+        balance: const Value(1000000.0),
+        updatedAt: DateTime.now(),
+      ),
+    );
+
+    await repository.depositToGoal(
+      goalId: 'g1',
+      goalName: 'Mua Laptop',
+      depositAmount: 1000000.0,
+      walletId: 'w1',
+      targetWalletId: 'w2_savings',
+      idaccount: 1,
+    );
+
+    final sourceWallet = await db.walletDao.getById('w1');
+    expect(sourceWallet?.balance, 4000000.0);
+
+    final targetWallet = await db.walletDao.getById('w2_savings');
+    expect(targetWallet?.balance, 2000000.0);
+
+    final txs = await db.transactionDao.getAll(1);
+    expect(txs.length, 2);
+  });
 }

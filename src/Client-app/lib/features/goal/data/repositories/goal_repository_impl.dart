@@ -78,6 +78,7 @@ class GoalRepositoryImpl implements GoalRepository {
     required String goalName,
     required double depositAmount,
     required String walletId,
+    String? targetWalletId,
     required int idaccount,
   }) async {
     final goal = await localDataSource.getGoalById(goalId);
@@ -87,17 +88,18 @@ class GoalRepositoryImpl implements GoalRepository {
     }
 
     if (db != null) {
-      final wallet = await db!.walletDao.getById(walletId);
-      if (wallet != null) {
-        final newBalance = wallet.balance - depositAmount;
+      final now = DateTime.now();
+
+      // 1. Deduct from Source Wallet
+      final sourceWallet = await db!.walletDao.getById(walletId);
+      if (sourceWallet != null) {
+        final newBalance = sourceWallet.balance - depositAmount;
         await db!.walletDao.updateBalance(walletId, newBalance);
       }
 
-      final transactionId = const Uuid().v4();
-      final now = DateTime.now();
       await db!.transactionDao.insert(
         TransactionsCompanion.insert(
-          id: transactionId,
+          id: const Uuid().v4(),
           idaccount: idaccount,
           walletId: walletId,
           amount: depositAmount,
@@ -108,6 +110,29 @@ class GoalRepositoryImpl implements GoalRepository {
           updatedAt: now,
         ),
       );
+
+      // 2. Add to Target / Savings Wallet (if selected & different from source wallet)
+      if (targetWalletId != null && targetWalletId.isNotEmpty && targetWalletId != walletId) {
+        final targetWallet = await db!.walletDao.getById(targetWalletId);
+        if (targetWallet != null) {
+          final newTargetBalance = targetWallet.balance + depositAmount;
+          await db!.walletDao.updateBalance(targetWalletId, newTargetBalance);
+        }
+
+        await db!.transactionDao.insert(
+          TransactionsCompanion.insert(
+            id: const Uuid().v4(),
+            idaccount: idaccount,
+            walletId: targetWalletId,
+            amount: depositAmount,
+            type: 'thu',
+            note: Value('Tích lũy nhận từ ${sourceWallet?.name ?? 'Ví nguồn'}: $goalName'),
+            date: now,
+            syncStatus: const Value('pending'),
+            updatedAt: now,
+          ),
+        );
+      }
     }
 
     syncEngine?.scheduleSync();
