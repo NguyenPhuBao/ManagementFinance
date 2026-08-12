@@ -87,7 +87,11 @@ Future<void> setupDependencies() async {
     () => GoalLocalDataSourceImpl(db: sl()),
   );
   sl.registerLazySingleton<GoalRepository>(
-    () => GoalRepositoryImpl(localDataSource: sl(), syncEngine: sl()),
+    () => GoalRepositoryImpl(
+      localDataSource: sl(),
+      db: sl<AppDatabase>(),
+      syncEngine: sl(),
+    ),
   );
   sl.registerFactory<GoalCubit>(
     () => GoalCubit(repository: sl()),

@@ -1,4 +1,6 @@
+import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
+import '../../../../core/database/app_database.dart';
 import '../../../../core/sync/sync_engine.dart';
 import '../datasources/goal_local_data_source.dart';
 import '../models/goal_entity.dart';
@@ -6,10 +8,12 @@ import 'goal_repository.dart';
 
 class GoalRepositoryImpl implements GoalRepository {
   final GoalLocalDataSource localDataSource;
+  final AppDatabase? db;
   final SyncEngine? syncEngine;
 
   GoalRepositoryImpl({
     required this.localDataSource,
+    this.db,
     this.syncEngine,
   });
 
@@ -66,6 +70,55 @@ class GoalRepositoryImpl implements GoalRepository {
   }) async {
     await localDataSource.updateGoalAmount(id, newAmount);
     syncEngine?.scheduleSync();
+  }
+
+  @override
+  Future<void> depositToGoal({
+    required String goalId,
+    required String goalName,
+    required double depositAmount,
+    required String walletId,
+    required int idaccount,
+  }) async {
+    final goal = await localDataSource.getGoalById(goalId);
+    if (goal != null) {
+      final newGoalAmount = goal.currentAmount + depositAmount;
+      await localDataSource.updateGoalAmount(goalId, newGoalAmount);
+    }
+
+    if (db != null) {
+      final wallet = await db!.walletDao.getById(walletId);
+      if (wallet != null) {
+        final newBalance = wallet.balance - depositAmount;
+        await db!.walletDao.updateBalance(walletId, newBalance);
+      }
+
+      final transactionId = const Uuid().v4();
+      final now = DateTime.now();
+      await db!.transactionDao.insert(
+        TransactionsCompanion.insert(
+          id: transactionId,
+          idaccount: idaccount,
+          walletId: walletId,
+          amount: depositAmount,
+          type: 'chi',
+          note: Value('Tích lũy mục tiêu: $goalName'),
+          date: now,
+          syncStatus: const Value('pending'),
+          updatedAt: now,
+        ),
+      );
+    }
+
+    syncEngine?.scheduleSync();
+  }
+
+  @override
+  Stream<dynamic> watchGoalTransactions(int idaccount, String goalName) {
+    if (db != null) {
+      return db!.transactionDao.watchByNotePattern(idaccount, 'Tích lũy mục tiêu: $goalName');
+    }
+    return Stream.value([]);
   }
 
   @override

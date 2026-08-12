@@ -17,5 +17,13 @@ abstract class GoalRepository {
     required String id,
     required double newAmount,
   });
+  Future<void> depositToGoal({
+    required String goalId,
+    required String goalName,
+    required double depositAmount,
+    required String walletId,
+    required int idaccount,
+  });
+  Stream<dynamic> watchGoalTransactions(int idaccount, String goalName);
   Future<void> deleteGoal(String id);
 }
