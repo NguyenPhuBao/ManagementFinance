@@ -32,8 +32,13 @@ model account {
   User         User?
   role         role           @relation(fields: [idrole], references: [idrole], onUpdate: NoAction, map: "fk_account_role")
   auditlog     auditlog[]
+  bill         bill[]
+  budget       budget[]
   category     category[]
+  goal         goal[]
   refreshtoken refreshtoken[]
+  transaction  transaction[]
+  wallet       wallet[]
 }
 
 model auditlog {
@@ -47,14 +52,19 @@ model auditlog {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model category {
-  idcategory   Int       @id @default(autoincrement())
-  namecategory String    @db.VarChar(100)
-  classify     String    @db.VarChar(10)
-  is_default   Boolean?  @default(false)
+  uuid         String         @id @db.VarChar(36)
+  idcategory   Int            @unique @default(autoincrement())
+  namecategory String         @db.VarChar(100)
+  classify     String         @db.VarChar(10)
+  is_default   Boolean?       @default(false)
   created_by   Int
-  created_at   DateTime? @default(now()) @db.Timestamp(6)
-  updated_at   DateTime? @default(now()) @db.Timestamp(6)
-  account      account   @relation(fields: [created_by], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_category_account")
+  created_at   DateTime?      @default(now()) @db.Timestamp(6)
+  updated_at   DateTime?      @default(now()) @db.Timestamp(6)
+  account      account        @relation(fields: [created_by], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_category_account")
+  transaction  transaction[]
+  budget       budget[]
+
+  @@index([uuid], map: "idx_category_uuid")
 }
 
 model role {
@@ -83,4 +93,103 @@ model refreshtoken {
   @@index([expiry], map: "idx_refreshtoken_expiry")
   @@index([revoked], map: "idx_refreshtoken_revoked")
   @@index([token_hash], map: "idx_refreshtoken_token_hash")
+}
+
+model bill {
+  id         String    @id @db.VarChar(36)
+  idaccount  Int
+  name       String    @db.VarChar(100)
+  amount     Decimal   @db.Decimal(15, 2)
+  due_date   DateTime  @db.Timestamp(6)
+  is_paid    Boolean?  @default(false)
+  recurrence String?   @default("monthly") @db.VarChar(20)
+  icon       String?   @default("receipt") @db.VarChar(50)
+  colour     String?   @default("#4CAF50") @db.VarChar(10)
+  note       String?   @default("")
+  is_deleted Boolean?  @default(false)
+  updated_at DateTime  @db.Timestamp(6)
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  account    account   @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_bill_account")
+
+  @@index([idaccount], map: "idx_bill_account")
+}
+
+model budget {
+  id          String    @id @db.VarChar(36)
+  idaccount   Int
+  category_id String?   @db.VarChar(36)
+  amount      Decimal   @db.Decimal(15, 2)
+  period      String    @default("monthly") @db.VarChar(20)
+  start_date  DateTime  @db.Timestamp(6)
+  end_date    DateTime? @db.Timestamp(6)
+  note        String?   @default("")
+  is_deleted  Boolean?  @default(false)
+  updated_at  DateTime  @db.Timestamp(6)
+  created_at  DateTime? @default(now()) @db.Timestamp(6)
+  account     account   @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_budget_account")
+  category    category? @relation(fields: [category_id], references: [uuid], onDelete: SetNull, onUpdate: NoAction, map: "fk_budget_category")
+
+  @@index([idaccount], map: "idx_budget_account")
+}
+
+model goal {
+  id             String    @id @db.VarChar(36)
+  idaccount      Int
+  name           String    @db.VarChar(100)
+  target_amount  Decimal   @db.Decimal(15, 2)
+  current_amount Decimal?  @default(0) @db.Decimal(15, 2)
+  target_date    DateTime  @db.Timestamp(6)
+  icon           String?   @default("flag") @db.VarChar(50)
+  colour         String?   @default("#4CAF50") @db.VarChar(10)
+  note           String?   @default("")
+  is_completed   Boolean?  @default(false)
+  is_deleted     Boolean?  @default(false)
+  updated_at     DateTime  @db.Timestamp(6)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  account        account   @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_goal_account")
+
+  @@index([idaccount], map: "idx_goal_account")
+}
+
+model transaction {
+  id          String    @id @db.VarChar(36)
+  idaccount   Int
+  wallet_id   String    @db.VarChar(36)
+  category_id String?   @db.VarChar(36)
+  amount      Decimal   @db.Decimal(15, 2)
+  type        String    @db.VarChar(20)
+  note        String?   @default("")
+  date        DateTime  @db.Timestamp(6)
+  images      String?   @default("[]")
+  is_deleted  Boolean?  @default(false)
+  updated_at  DateTime  @db.Timestamp(6)
+  created_at  DateTime? @default(now()) @db.Timestamp(6)
+  account     account   @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_transaction_account")
+  wallet      wallet    @relation(fields: [wallet_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_transaction_wallet")
+  category    category? @relation(fields: [category_id], references: [uuid], onDelete: SetNull, onUpdate: NoAction, map: "fk_transaction_category")
+
+  @@index([idaccount], map: "idx_transaction_account")
+  @@index([date], map: "idx_transaction_date")
+  @@index([updated_at], map: "idx_transaction_updated")
+  @@index([wallet_id], map: "idx_transaction_wallet")
+}
+
+model wallet {
+  id          String        @id @db.VarChar(36)
+  idaccount   Int
+  name        String        @db.VarChar(100)
+  type        String        @default("cash") @db.VarChar(20)
+  balance     Decimal       @default(0) @db.Decimal(15, 2)
+  currency    String        @default("VND") @db.VarChar(10)
+  icon        String?       @default("wallet") @db.VarChar(50)
+  colour      String?       @default("#4CAF50") @db.VarChar(10)
+  is_default  Boolean?      @default(false)
+  is_deleted  Boolean?      @default(false)
+  updated_at  DateTime      @db.Timestamp(6)
+  created_at  DateTime?     @default(now()) @db.Timestamp(6)
+  transaction transaction[]
+  account     account       @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_wallet_account")
+
+  @@index([idaccount], map: "idx_wallet_account")
+  @@index([updated_at], map: "idx_wallet_updated")
 }

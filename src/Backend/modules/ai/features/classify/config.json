@@ -1,0 +1,9 @@
+{
+  "confidenceThreshold": 0.3,
+  "modelVersion": "v1",
+  "modelPath": "./pipeline/model.v1.bin",
+  "labelsPath": "./pipeline/labels.json",
+  "fallbackCategoryId": null,
+  "maxInputLength": 500,
+  "batchSize": 10
+}
