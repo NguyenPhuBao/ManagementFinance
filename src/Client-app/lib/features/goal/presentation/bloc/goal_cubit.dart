@@ -94,6 +94,27 @@ class GoalCubit extends Cubit<GoalState> {
     }
   }
 
+  Future<void> depositToGoal({
+    required String goalId,
+    required String goalName,
+    required double depositAmount,
+    required String walletId,
+    required int idaccount,
+  }) async {
+    try {
+      await repository.depositToGoal(
+        goalId: goalId,
+        goalName: goalName,
+        depositAmount: depositAmount,
+        walletId: walletId,
+        idaccount: idaccount,
+      );
+      loadGoals(idaccount);
+    } catch (e) {
+      emit(GoalError(e.toString()));
+    }
+  }
+
   Future<void> deleteGoal(String id) async {
     try {
       await repository.deleteGoal(id);
