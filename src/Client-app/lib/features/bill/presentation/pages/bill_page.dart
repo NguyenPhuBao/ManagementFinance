@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../auth/presentation/bloc/auth_bloc.dart';
+import '../../auth/presentation/bloc/auth_state.dart';
 import '../bloc/bill_bloc.dart';
 import '../bloc/bill_event.dart';
 import '../bloc/bill_state.dart';
@@ -18,16 +20,30 @@ class BillPage extends StatefulWidget {
 }
 
 class _BillPageState extends State<BillPage> {
+  int _getAccountId(BuildContext context) {
+    final authState = context.read<AuthBloc>().state;
+    if (authState is AuthSuccess && authState.user != null) {
+      return int.tryParse(authState.user!.id) ?? 1;
+    }
+    return 1;
+  }
+
   @override
   void initState() {
     super.initState();
-    // Default account id is 1
-    context.read<BillBloc>().add(LoadBillsEvent(idaccount: 1));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final accountId = _getAccountId(context);
+      context.read<BillBloc>().add(LoadBillsEvent(idaccount: accountId));
+    });
   }
 
   void _showPayModal(BuildContext context, Bill bill) async {
     final db = sl<AppDatabase>();
-    final wallets = await db.walletDao.getAll(1);
+    final accountId = _getAccountId(context);
+    var wallets = await db.walletDao.getAll(accountId);
+    if (wallets.isEmpty) {
+      wallets = await db.walletDao.getAllNonDeleted();
+    }
 
     if (!context.mounted) return;
 
@@ -48,7 +64,7 @@ class _BillPageState extends State<BillPage> {
                 PayBillEvent(
                   bill: bill,
                   walletId: wallet.id,
-                  idaccount: 1,
+                  idaccount: accountId,
                 ),
               );
         },

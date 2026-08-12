@@ -5,6 +5,8 @@ import 'package:drift/drift.dart' as drift;
 import 'package:intl/intl.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../auth/presentation/bloc/auth_bloc.dart';
+import '../../auth/presentation/bloc/auth_state.dart';
 import '../bloc/bill_bloc.dart';
 import '../bloc/bill_event.dart';
 
@@ -23,6 +25,13 @@ class BillEditPage extends StatefulWidget {
 }
 
 class _BillEditPageState extends State<BillEditPage> {
+  int _getAccountId(BuildContext context) {
+    final authState = context.read<AuthBloc>().state;
+    if (authState is AuthSuccess && authState.user != null) {
+      return int.tryParse(authState.user!.id) ?? 1;
+    }
+    return 1;
+  }
   late TextEditingController _nameController;
   late TextEditingController _amountController;
   late TextEditingController _noteController;
@@ -72,7 +81,7 @@ class _BillEditPageState extends State<BillEditPage> {
 
     final updatedBill = BillsCompanion(
       id: drift.Value(widget.id),
-      idaccount: const drift.Value(1),
+      idaccount: drift.Value(_getAccountId(context)),
       name: drift.Value(name),
       amount: drift.Value(amount),
       dueDate: drift.Value(_selectedDueDate),

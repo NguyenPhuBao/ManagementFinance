@@ -7,6 +7,8 @@ import 'package:uuid/uuid.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../auth/presentation/bloc/auth_bloc.dart';
+import '../../auth/presentation/bloc/auth_state.dart';
 import '../bloc/bill_bloc.dart';
 import '../bloc/bill_event.dart';
 
@@ -31,15 +33,29 @@ class _BillAddPageState extends State<BillAddPage> {
   List<Wallet> _wallets = [];
   Wallet? _selectedWallet;
 
+  int _getAccountId(BuildContext context) {
+    final authState = context.read<AuthBloc>().state;
+    if (authState is AuthSuccess && authState.user != null) {
+      return int.tryParse(authState.user!.id) ?? 1;
+    }
+    return 1;
+  }
+
   @override
   void initState() {
     super.initState();
-    _loadWallets();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadWallets();
+    });
   }
 
   Future<void> _loadWallets() async {
+    final accountId = _getAccountId(context);
     final db = sl<AppDatabase>();
-    final wallets = await db.walletDao.getAll(1);
+    var wallets = await db.walletDao.getAll(accountId);
+    if (wallets.isEmpty) {
+      wallets = await db.walletDao.getAllNonDeleted();
+    }
     if (mounted) {
       setState(() {
         _wallets = wallets;
@@ -79,10 +95,11 @@ class _BillAddPageState extends State<BillAddPage> {
 
     final billId = const Uuid().v4();
     final now = DateTime.now();
+    final accountId = _getAccountId(context);
 
     final newBill = BillsCompanion.insert(
       id: billId,
-      idaccount: 1,
+      idaccount: accountId,
       name: name,
       amount: amount,
       dueDate: _selectedDueDate,
