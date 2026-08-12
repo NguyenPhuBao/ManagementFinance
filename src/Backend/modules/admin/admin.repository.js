@@ -94,6 +94,7 @@ const adminRepository = {
   async getAllCategories() {
     return prisma.category.findMany({
       select: {
+        uuid: true,
         idcategory: true,
         namecategory: true,
         classify: true,
@@ -113,8 +114,10 @@ const adminRepository = {
   },
 
   async createCategory(data) {
+    const crypto = require('crypto');
     return prisma.category.create({
       data: {
+        uuid: crypto.randomUUID(),
         namecategory: data.name,
         classify: data.classify,
         is_default: data.is_default || false,
@@ -123,9 +126,9 @@ const adminRepository = {
     });
   },
 
-  async updateCategory(id, data) {
+  async updateCategory(uuid, data) {
     return prisma.category.update({
-      where: { idcategory: id },
+      where: { uuid },
       data: {
         namecategory: data.name,
         classify: data.classify,
@@ -134,9 +137,9 @@ const adminRepository = {
     });
   },
 
-  async deleteCategory(id) {
+  async deleteCategory(uuid) {
     return prisma.category.delete({
-      where: { idcategory: id },
+      where: { uuid },
     });
   },
 };

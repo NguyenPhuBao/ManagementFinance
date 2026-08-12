@@ -16,6 +16,10 @@ async function bootstrap() {
     const redisOk = await verifyRedisConnection();
     if (!redisOk) {
       logger.warn('Redis unavailable — running without cache/queues');
+    } else {
+      // 2b. Start workers (BullMQ) — chỉ khi Redis available
+      logger.info('Starting AI Worker...');
+      require('./workers/ai.worker');
     }
 
     // 3. Start Express server
