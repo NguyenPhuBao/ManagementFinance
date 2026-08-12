@@ -17,13 +17,16 @@ class GoalLocalDataSourceImpl implements GoalLocalDataSource {
 
   @override
   Future<List<GoalEntity>> getGoals(int idaccount) async {
-    final list = await db.goalDao.getAll(idaccount);
+    var list = await db.goalDao.getAll(idaccount);
+    if (list.isEmpty) {
+      list = await db.goalDao.getAllNonDeleted();
+    }
     return list.map((g) => GoalEntity.fromDrift(g)).toList();
   }
 
   @override
   Stream<List<GoalEntity>> watchGoals(int idaccount) {
-    return db.goalDao.watchAll(idaccount).map(
+    return db.goalDao.watchAllNonDeleted().map(
           (list) => list.map((g) => GoalEntity.fromDrift(g)).toList(),
         );
   }

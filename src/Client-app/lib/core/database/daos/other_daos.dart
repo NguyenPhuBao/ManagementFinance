@@ -41,10 +41,8 @@ class BudgetDao extends DatabaseAccessor<AppDatabase> with _$BudgetDaoMixin {
     await batch((b) => b.insertAll(budgets, entries, mode: InsertMode.insertOrReplace));
   }
 
-  Future<List<Budget>> getPending(int idaccount) {
-    return (select(budgets)
-          ..where((t) => t.idaccount.equals(idaccount) & t.syncStatus.equals('pending')))
-        .get();
+  Future<List<Budget>> getPending([int? idaccount]) {
+    return (select(budgets)..where((t) => t.syncStatus.equals('pending'))).get();
   }
 
   Future<void> markSynced(String id) async {
@@ -115,10 +113,8 @@ class BillDao extends DatabaseAccessor<AppDatabase> with _$BillDaoMixin {
     await batch((b) => b.insertAll(bills, entries, mode: InsertMode.insertOrReplace));
   }
 
-  Future<List<Bill>> getPending(int idaccount) {
-    return (select(bills)
-          ..where((t) => t.idaccount.equals(idaccount) & t.syncStatus.equals('pending')))
-        .get();
+  Future<List<Bill>> getPending([int? idaccount]) {
+    return (select(bills)..where((t) => t.syncStatus.equals('pending'))).get();
   }
 
   Future<void> markSynced(String id) async {
@@ -141,9 +137,23 @@ class GoalDao extends DatabaseAccessor<AppDatabase> with _$GoalDaoMixin {
         .get();
   }
 
+  Future<List<Goal>> getAllNonDeleted() {
+    return (select(goals)
+          ..where((t) => t.isDeleted.equals(false))
+          ..orderBy([(t) => OrderingTerm.asc(t.targetDate)]))
+        .get();
+  }
+
   Stream<List<Goal>> watchAll(int idaccount) {
     return (select(goals)
           ..where((t) => t.idaccount.equals(idaccount) & t.isDeleted.equals(false)))
+        .watch();
+  }
+
+  Stream<List<Goal>> watchAllNonDeleted() {
+    return (select(goals)
+          ..where((t) => t.isDeleted.equals(false))
+          ..orderBy([(t) => OrderingTerm.asc(t.targetDate)]))
         .watch();
   }
 
@@ -179,10 +189,8 @@ class GoalDao extends DatabaseAccessor<AppDatabase> with _$GoalDaoMixin {
     await batch((b) => b.insertAll(goals, entries, mode: InsertMode.insertOrReplace));
   }
 
-  Future<List<Goal>> getPending(int idaccount) {
-    return (select(goals)
-          ..where((t) => t.idaccount.equals(idaccount) & t.syncStatus.equals('pending')))
-        .get();
+  Future<List<Goal>> getPending([int? idaccount]) {
+    return (select(goals)..where((t) => t.syncStatus.equals('pending'))).get();
   }
 
   Future<void> markSynced(String id) async {
