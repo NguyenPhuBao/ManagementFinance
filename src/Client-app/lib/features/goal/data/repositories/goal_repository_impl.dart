@@ -89,12 +89,33 @@ class GoalRepositoryImpl implements GoalRepository {
       await localDataSource.updateGoalAmount(goalId, newGoalAmount);
     }
 
-    final effectiveTargetWalletId = (targetWalletId != null && targetWalletId.isNotEmpty)
+    var effectiveTargetWalletId = (targetWalletId != null && targetWalletId.isNotEmpty)
         ? targetWalletId
         : goal?.walletId;
 
     if (db != null) {
       final now = DateTime.now();
+
+      // Fallback: If effectiveTargetWalletId is null, find target wallet and link to goal
+      if (effectiveTargetWalletId == null || effectiveTargetWalletId.isEmpty) {
+        var allWallets = await db!.walletDao.getAll(idaccount);
+        if (allWallets.isEmpty) {
+          allWallets = await db!.walletDao.getAllNonDeleted();
+        }
+        final otherWallets = allWallets.where((w) => w.id != walletId).toList();
+        if (otherWallets.isNotEmpty) {
+          final foundWallet = otherWallets.firstWhere(
+            (w) => (w.type == 'investment' || w.type == 'bank'),
+            orElse: () => otherWallets.first,
+          );
+          effectiveTargetWalletId = foundWallet.id;
+
+          // Permanently link this walletId to the goal in SQLite
+          await (db!.update(db!.goals)..where((t) => t.id.equals(goalId))).write(
+            GoalsCompanion(walletId: Value(effectiveTargetWalletId)),
+          );
+        }
+      }
 
       // 1. Deduct from Source Wallet
       final sourceWallet = await db!.walletDao.getById(walletId);
@@ -117,29 +138,29 @@ class GoalRepositoryImpl implements GoalRepository {
         ),
       );
 
-      // 2. Add to Target / Savings Wallet (if present & different from source wallet)
-      if (effectiveTargetWalletId != null &&
-          effectiveTargetWalletId.isNotEmpty &&
-          effectiveTargetWalletId != walletId) {
+      // 2. Add to Target / Savings Wallet
+      if (effectiveTargetWalletId != null && effectiveTargetWalletId.isNotEmpty) {
         final targetWallet = await db!.walletDao.getById(effectiveTargetWalletId);
         if (targetWallet != null) {
           final newTargetBalance = targetWallet.balance + depositAmount;
           await db!.walletDao.updateBalance(effectiveTargetWalletId, newTargetBalance);
         }
 
-        await db!.transactionDao.insert(
-          TransactionsCompanion.insert(
-            id: const Uuid().v4(),
-            idaccount: idaccount,
-            walletId: effectiveTargetWalletId,
-            amount: depositAmount,
-            type: 'thu',
-            note: Value('Tích lũy nhận từ ${sourceWallet?.name ?? 'Ví nguồn'}: $goalName'),
-            date: now,
-            syncStatus: const Value('pending'),
-            updatedAt: now,
-          ),
-        );
+        if (effectiveTargetWalletId != walletId) {
+          await db!.transactionDao.insert(
+            TransactionsCompanion.insert(
+              id: const Uuid().v4(),
+              idaccount: idaccount,
+              walletId: effectiveTargetWalletId,
+              amount: depositAmount,
+              type: 'thu',
+              note: Value('Tích lũy nhận từ ${sourceWallet?.name ?? 'Ví nguồn'}: $goalName'),
+              date: now,
+              syncStatus: const Value('pending'),
+              updatedAt: now,
+            ),
+          );
+        }
       }
     }
 
