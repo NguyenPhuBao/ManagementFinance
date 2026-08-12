@@ -2076,3 +2076,23 @@ Tài liệu đặc tả đồng bộ dữ liệu hai chiều giữa Client (Drif
   - `POST /api/sync/push`: Client gửi mảng batch các thao tác (`create`, `update`, `delete`) kèm client timestamp.
   - `GET /api/sync/pull?since=<timestamp>`: Client kéo các thay đổi mới nhất từ server.
 - **Conflict Resolution**: Áp dụng chiến lược **Last-Write-Wins (LWW)** dựa trên mốc thời gian `updatedAt`.
+
+---
+
+### 9.3 Cập Nhật Tiến Độ & Hoàn Thành Cơ Chế Đồng Bộ 2 Chiều (Cập nhật 2026-08-12)
+
+#### 9.3.1 Hoàn Thành 100% Đồng Bộ 2 Chiều (Push & Pull) Cho 6 Mô-Đun Dữ Liệu Cốt Lõi
+Hệ thống **SyncEngine** phía Client-app đã hoàn thiện đồng bộ hai chiều toàn diện giữa SQLite local (Drift) và PostgreSQL Server (Express/Prisma):
+
+1. **Ví tài chính (Wallets)**: Đồng bộ đầy đủ số dư, tên ví, loại ví, màu sắc, biểu tượng, xóa mềm (`is_deleted`), bảo đảm khớp UUID và cập nhật tự động lên UI.
+2. **Giao dịch Thu/Chi (Transactions)**: Đồng bộ thông tin giao dịch, loại Thu/Chi, số tiền, ngày tạo, ghi chú. Xử lý an toàn Ràng buộc khóa ngoại `category_id` (gửi `null` khi danh mục chưa liên kết trên backend), tự động khớp `localId` và trạng thái `synced`.
+3. **Danh mục Chi tiêu (Categories)**: Đồng bộ danh mục tùy chỉnh do người dùng tạo; cô lập danh mục hệ thống mặc định.
+4. **Ngân sách Chi tiêu (Budgets)**: Đồng bộ ngân sách chi tiêu giới hạn theo chu kỳ/tháng.
+5. **Hóa đơn & Dịch vụ (Bills)**: Đồng bộ lịch nhắc hóa đơn, số tiền, ngày đến hạn và trạng thái đã thanh toán.
+6. **Mục tiêu Tiết kiệm (Goals)**: Đồng bộ tiến độ tích lũy, số tiền mục tiêu và số tiền hiện tại.
+
+#### 9.3.2 Tích Hợp Tự Động Đồng Bộ Tức Thì Khi Đăng Nhập & Cô Lập Dữ Liệu
+- **Immediate Sync On Login**: Ngay khi đăng nhập thành công (`AuthSuccess`) hoặc khi màn hình Trang chủ (`HomePage`) mở ra, `SyncEngine.start(idaccount)` tự động kích hoạt quy trình Push & Pull dữ liệu lập tức mà không cần chờ người dùng thực hiện bất kỳ thao tác nào.
+- **Account Data Isolation**: Khôi phục bộ lọc `idaccount` nghiêm ngặt trên tất cả các DAOs local (`WalletDao`, `TransactionDao`, `CategoryDao`, `BudgetDao`, `BillDao`, `GoalDao`). Khi đăng xuất (`LogoutRequested`), `SyncEngine.stop()` tự động xóa checkpoint `_lastPullTime`, đảm bảo dữ liệu giữa các tài khoản người dùng được cô lập tuyệt đối 100%.
+- **Response Unpacking**: Khắc phục triệt để việc bóc tách gói tin kết quả bọc `ResponseHandler` (`topData['data']['results']` và `topData['data']['data']`), báo log chính xác `1/1 synced successfully`.
+- **Tài liệu đặc tả**: Đã tạo và lưu trữ đầy đủ tài liệu chi tiết tại [`docs/sync/SYNC_DOCUMENTATION.md`](./docs/sync/SYNC_DOCUMENTATION.md) và [`docs/bill/BILL_DOCUMENTATION.md`](./docs/bill/BILL_DOCUMENTATION.md).
