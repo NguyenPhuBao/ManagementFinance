@@ -6,7 +6,6 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
-import '../../../auth/presentation/bloc/auth_state.dart';
 import '../../data/models/goal_entity.dart';
 import '../../data/repositories/goal_repository.dart';
 
