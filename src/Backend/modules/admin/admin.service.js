@@ -158,7 +158,7 @@ const adminService = {
   async getCategories() {
     const cats = await adminRepository.getAllCategories();
     return cats.map((c) => ({
-      id: c.idcategory,
+      id: c.uuid,
       name: c.namecategory,
       classify: c.classify,
       is_default: c.is_default,
@@ -176,21 +176,21 @@ const adminService = {
       is_default: data.is_default || false,
       created_by: idaccount,
     });
-    return { id: result.idcategory, name: result.namecategory, classify: result.classify };
+    return { id: result.uuid, name: result.namecategory, classify: result.classify };
   },
 
-  async updateCategory(id, data) {
-    const result = await adminRepository.updateCategory(id, {
+  async updateCategory(uuid, data) {
+    const result = await adminRepository.updateCategory(uuid, {
       name: data.name,
       classify: data.classify,
       is_default: data.is_default,
     });
-    return { id: result.idcategory, name: result.namecategory, classify: result.classify };
+    return { id: result.uuid, name: result.namecategory, classify: result.classify };
   },
 
-  async deleteCategory(id) {
-    await adminRepository.deleteCategory(id);
-    return { id };
+  async deleteCategory(uuid) {
+    await adminRepository.deleteCategory(uuid);
+    return { id: uuid };
   },
 };
 

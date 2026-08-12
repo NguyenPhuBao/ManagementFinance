@@ -124,16 +124,21 @@ ModuleName/
 - **User**: `postgres`
 - **Schema**: `public`
 - Quản lý schema qua **migration** (Prisma) + **SQL script** (`database/`)
-- Script khởi tạo: `database/)1_CSDL_Admin.sql` + `database/)2_create_refreshtoken_table.sql`
+- Script khởi tạo: `database/)1_CSDL_Admin.sql` + `database/)2_create_refreshtoken_table.sql` + `database/)3_Update_Sync.sql`
 
-##### Sơ đồ quan hệ (6 bảng)
+##### Sơ đồ quan hệ (11 bảng — cập nhật 2026-08-11)
 
 ```
 Role (1) ──▶ Account (N) ──▶ User (1)
                 │
                 ├──▶ RefreshToken (N)
-                ├──▶ Category (N)
-                └──▶ AuditLog (N)
+                ├──▶ Category (N)      ← Thêm uuid VARCHAR(36) UNIQUE
+                ├──▶ AuditLog (N)
+                ├──▶ Wallet (N)        ← UUID PK, sync từ client
+                ├──▶ Transaction (N)   ← UUID PK, FK→Wallet
+                ├──▶ Budget (N)        ← UUID PK
+                ├──▶ Bill (N)          ← UUID PK
+                └──▶ Goal (N)          ← UUID PK
 ```
 
 ##### Bảng Role
@@ -174,8 +179,10 @@ Role (1) ──▶ Account (N) ──▶ User (1)
 | `namecategory` | VARCHAR(100) | Tên danh mục |
 | `classify` | VARCHAR(10) | `thu` / `chi` / `vay/no` |
 | `is_default` | BOOLEAN | Danh mục mặc định hệ thống? |
+| `uuid` | VARCHAR(36) UNIQUE | UUID để đồng bộ với Client-app |
 | `created_by` | INT FK→Account | Người tạo |
 | `created_at` / `updated_at` | TIMESTAMP | Thời gian |
+| **Indexes** | `idx_category_uuid` (uuid) | |
 
 ##### Bảng AuditLog
 | Cột | Kiểu | Mô tả |
@@ -203,6 +210,81 @@ Role (1) ──▶ Account (N) ──▶ User (1)
 | **Indexes** | `token_hash`, `idaccount`, `expiry`, `revoked` | |
 | **Trigger** | `updated_at` tự động cập nhật | |
 | **Constraint** | `expiry > created_at` | |
+
+##### Bảng Wallet (🆕 2026-08-11)
+| Cột | Kiểu | Mô tả |
+|-----|------|-------|
+| `id` | VARCHAR(36) PK | UUID do client tạo |
+| `idaccount` | INT FK→Account | Chủ sở hữu |
+| `name` | VARCHAR(100) | Tên ví |
+| `type` | VARCHAR(20) DEFAULT 'cash' | cash/bank/ewallet/investment/debt |
+| `balance` | DECIMAL(15,2) | Số dư |
+| `currency` | VARCHAR(10) DEFAULT 'VND' | Tiền tệ |
+| `icon` | VARCHAR(50) | Icon |
+| `colour` | VARCHAR(10) | Màu sắc |
+| `is_default` | BOOLEAN | Ví mặc định? |
+| `is_deleted` | BOOLEAN DEFAULT FALSE | Soft delete |
+| `updated_at` | TIMESTAMP NOT NULL | Dùng cho LWW conflict |
+| `created_at` | TIMESTAMP | |
+| **Indexes** | `idaccount`, `updated_at` | |
+
+##### Bảng Transaction (🆕 2026-08-11)
+| Cột | Kiểu | Mô tả |
+|-----|------|-------|
+| `id` | VARCHAR(36) PK | UUID do client tạo |
+| `idaccount` | INT FK→Account | Chủ sở hữu |
+| `wallet_id` | VARCHAR(36) FK→Wallet | Ví chứa giao dịch |
+| `category_id` | VARCHAR(36) NULL | UUID của category (null cho transfer) |
+| `amount` | DECIMAL(15,2) | Số tiền |
+| `type` | VARCHAR(20) | thu/chi/transfer/adjustment |
+| `note` | TEXT | Ghi chú |
+| `date` | TIMESTAMP | Ngày giao dịch |
+| `images` | TEXT DEFAULT '[]' | JSON array ảnh hóa đơn |
+| `is_deleted` | BOOLEAN DEFAULT FALSE | Soft delete |
+| `updated_at` | TIMESTAMP NOT NULL | Dùng cho LWW conflict |
+| `created_at` | TIMESTAMP | |
+| **Indexes** | `idaccount`, `wallet_id`, `date`, `updated_at` | |
+
+##### Bảng Budget (🆕 2026-08-11)
+| Cột | Kiểu | Mô tả |
+|-----|------|-------|
+| `id` | VARCHAR(36) PK | UUID do client tạo |
+| `idaccount` | INT FK→Account | Chủ sở hữu |
+| `category_id` | VARCHAR(36) NULL | UUID danh mục |
+| `amount` | DECIMAL(15,2) | Hạn mức |
+| `period` | VARCHAR(20) DEFAULT 'monthly' | weekly/monthly/yearly |
+| `start_date` / `end_date` | TIMESTAMP | Thời gian áp dụng |
+| `is_deleted` | BOOLEAN DEFAULT FALSE | Soft delete |
+| `updated_at` | TIMESTAMP NOT NULL | |
+| **Indexes** | `idaccount` | |
+
+##### Bảng Bill (🆕 2026-08-11)
+| Cột | Kiểu | Mô tả |
+|-----|------|-------|
+| `id` | VARCHAR(36) PK | UUID do client tạo |
+| `idaccount` | INT FK→Account | Chủ sở hữu |
+| `name` | VARCHAR(100) | Tên hóa đơn |
+| `amount` | DECIMAL(15,2) | Số tiền |
+| `due_date` | TIMESTAMP | Ngày đến hạn |
+| `is_paid` | BOOLEAN | Đã thanh toán? |
+| `recurrence` | VARCHAR(20) DEFAULT 'monthly' | once/weekly/monthly/yearly |
+| `is_deleted` | BOOLEAN DEFAULT FALSE | Soft delete |
+| `updated_at` | TIMESTAMP NOT NULL | |
+| **Indexes** | `idaccount` | |
+
+##### Bảng Goal (🆕 2026-08-11)
+| Cột | Kiểu | Mô tả |
+|-----|------|-------|
+| `id` | VARCHAR(36) PK | UUID do client tạo |
+| `idaccount` | INT FK→Account | Chủ sở hữu |
+| `name` | VARCHAR(100) | Tên mục tiêu |
+| `target_amount` | DECIMAL(15,2) | Số tiền mục tiêu |
+| `current_amount` | DECIMAL(15,2) DEFAULT 0 | Đã tiết kiệm |
+| `target_date` | TIMESTAMP | Ngày đích |
+| `is_completed` | BOOLEAN DEFAULT FALSE | Đã hoàn thành? |
+| `is_deleted` | BOOLEAN DEFAULT FALSE | Soft delete |
+| `updated_at` | TIMESTAMP NOT NULL | |
+| **Indexes** | `idaccount` | |
 
 #### 3.2.5 Xác Thực & Phân Quyền
 
@@ -282,11 +364,13 @@ Thất bại → Đẩy thông báo client → người dùng nhập tay
 #### 3.5.3 Đồng Bộ Hàng Loạt (Sync)
 
 ```
-Client: POST /sync (mảng operations: create/update/delete)
+Client: POST /api/sync/push { operations: [{entity, operation, payload}] }
   ↓
-Backend: Xử lý tuần tự trong transaction → đảm bảo toàn vẹn
+Backend: Xử lý batch → LWW conflict → 200 OK { results: [...], summary: {...} }
   ↓
 Backend → Client: Danh sách kết quả + conflicts → Client cập nhật local DB
+  ↓
+Client: GET /api/sync/pull?since=<timestamp> → kéo data từ thiết bị khác
 ```
 
 ### 3.6 Bảo Mật & Hiệu Suất
@@ -1172,11 +1256,13 @@ Tesseract.js:                              F011
 ├─────────────────────────────────────────────────────────┤
 │                  DATA SOURCES                            │
 │  ┌──────────┐  ┌──────────────┐  ┌────────────────────┐ │
-│  │ Category │  │ Transaction  │  │ User Behavior      │ │
-│  │ Data     │  │ History      │  │ (time, frequency,  │ │
-│  │ (29 cats)│  │ (amount,     │  │  category patterns)│ │
-│  │          │  │  description)│  │                    │ │
+│  │ Category │  │ Transaction  │  │ Budget / Goal      │ │
+│  │ (29 cats)│  │ (UUID, amt,  │  │ (target, deadline, │ │
+│  │ classify │  │  description │  │  strategy rules)   │ │
+│  │ thu/chi  │  │  categoryId) │  │                    │ │
 │  └──────────┘  └──────────────┘  └────────────────────┘ │
+│                  ↑ Sync từ Client-app qua                │
+│                  POST /api/sync/push (LWW conflict)       │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -1198,15 +1284,17 @@ Tesseract.js:                              F011
 
 **Luồng**:
 ```
-Mobile → tạo giao dịch → sync về backend
+Mobile → tạo giao dịch → lưu Drift SQLite (sync_status=pending)
+  → SyncEngine push batch → POST /api/sync/push
+  → Backend lưu Transaction (UUID, description, amount, categoryId=null)
   → emit transaction.created
   → AI Worker pick job ai-classify-transaction
   → load model → predict category từ description
-  → cập nhật category cho transaction
+  → cập nhật categoryId cho transaction
   → emit transaction.classified
 ```
 
-> Phân loại giao dịch OFFLINE trên mobile do thành viên khác đảm nhiệm (dùng model nhúng trong Flutter).
+> **Lưu ý**: Transaction model dùng UUID Primary Key (`VARCHAR(36)`) theo sync spec. Client có thể phân loại offline trước (dùng model Flutter), backend AI classify là bước bổ sung để tăng độ chính xác.
 
 #### 8.1.6. AI Phân tích hành vi chi tiêu (F013)
 
@@ -1219,6 +1307,8 @@ Mobile → tạo giao dịch → sync về backend
 - So sánh với tháng trước / cùng kỳ năm trước
 
 **Output**: JSON phân tích + insight text (có thể dùng LLM để paraphrase insight thành ngôn ngữ tự nhiên).
+
+> **Dữ liệu đầu vào**: Transaction history từ PostgreSQL (UUID), Category (classify: thu/chi/vay-no), Budget targets. Client-app đồng bộ qua `POST /api/sync/push`.
 
 #### 8.1.7. AI Dự báo chi tiêu (F014)
 
@@ -1325,7 +1415,7 @@ Quy trình 5 bước áp dụng cho F012, F013, F014, F016 (core):
 
 | Bước | Công cụ | Output |
 |------|---------|--------|
-| 1. Data Collect | SQL query từ PostgreSQL (qua Prisma) | CSV/JSON raw |
+| 1. Data Collect | SQL query từ PostgreSQL qua Prisma (Transaction JOIN Category JOIN Budget JOIN Goal, tất cả dùng UUID) | CSV/JSON raw |
 | 2. Prep & Clean | Node.js script (lodash, csv-parser) | Train/test split (80/20) |
 | 3. Train & Evaluate | Python script (scikit-learn/fastText/Prophet) gọi từ Node.js qua `child_process` | Model file + metrics |
 | 4. Export Model | fastText `.bin` / ONNX `.onnx` / Prophet `.json` | File model nhẹ (~1-10MB) |
@@ -1459,36 +1549,234 @@ DEV (hiện tại):               PRODUCTION (tương lai):
 | F016 | Phân bổ dòng tiền | Rule Engine + GPT-4o-mini | Pure JS + OpenAI SDK | REST API |
 | F017 | Chatbot AI | GPT-4o-mini + fallback | OpenAI SDK + multi-provider | REST API |
 
-#### 8.1.16. Files dự kiến (đầy đủ)
+#### 8.1.16. Cấu trúc thư mục Module AI (Feature-based, chuẩn kỹ thuật)
 
-| Tầng | File |
-|------|------|
-| **Backend** | `modules/ai/ai.controller.js` (mới) |
-| | `modules/ai/ai.service.js` (mới) |
-| | `modules/ai/ai.repository.js` (mới) |
-| | `modules/ai/ai.validation.js` (mới) |
-| | `modules/ai/ai.jobs.js` (mới — enqueue helpers) |
-| | `modules/ai/llm/llmClient.js` (mới — multi-provider) |
-| | `modules/ai/llm/openaiProvider.js` (mới) |
-| | `modules/ai/llm/huggingfaceProvider.js` (mới) |
-| | `modules/ai/llm/groqProvider.js` (mới) |
-| | `modules/ai/llm/rate-limiter.js` (mới) |
-| | `modules/ai/llm/cache.js` (mới — Redis-backed) |
-| | `modules/ai/prompts/financial-advice.txt` (mới) |
-| | `modules/ai/prompts/budget-explanation.txt` (mới) |
-| | `modules/ai/prompts/chatbot-system.txt` (mới) |
-| | `api/ai.routes.js` (cập nhật) |
-| | `workers/ai.worker.js` (cập nhật — classify + OCR) |
-| **Models** | `models/transaction-classifier/` (train.py + model.bin + data) |
-| | `models/behavior-analyzer/` (train.py + centroids.json) |
-| | `models/expense-forecaster/` (train.py + prophet-model.json) |
-| | `models/budget-allocator/strategies.json` |
+Mỗi chức năng AI có không gian riêng dưới `features/`, tổ chức theo chuẩn AI Service với đầy đủ preprocessing, inference, pipeline, testing, config:
+
+```
+modules/ai/
+├── ai.controller.js              # Router chung, phân phối đến feature controller
+├── ai.validation.js              # Validation chung
+├── ai.jobs.js                    # Enqueue helpers
+├── config.js                     # Model paths, thresholds, hyperparams
+├── features/
+│   ├── classify/                 # F012 — AI Phân loại giao dịch
+│   │   ├── classify.controller.js
+│   │   ├── classify.service.js   # Gọi predict + update DB
+│   │   ├── classify.repository.js
+│   │   ├── classify.preprocess.js # Text cleaning, tokenization, feature extraction
+│   │   ├── classify.inference.js  # Load model + predict, xuất {categoryId, confidence}
+│   │   ├── config.json           # confidenceThreshold, modelVersion, maxTokens
+│   │   ├── __tests__/
+│   │   │   ├── preprocess.test.js
+│   │   │   └── inference.test.js
+│   │   └── pipeline/
+│   │       ├── train.py          # Python training script (fastText supervised)
+│   │       ├── evaluate.py       # Cross-validation, accuracy, F1-score
+│   │       ├── export.py         # Export model .bin, labels.json
+│   │       ├── training-data.csv # ~500-1000 mẫu {description, category}
+│   │       ├── model.v1.bin      # Model version 1
+│   │       ├── model.v2.bin      # Model version 2 (sau retrain)
+│   │       ├── labels.json       # CategoryId mapping
+│   │       └── metrics.json      # Accuracy, precision/recall per category
+│   ├── ocr/                      # F011 — OCR hóa đơn
+│   ├── behavior/                 # F013 — Phân tích hành vi
+│   ├── forecast/                 # F014 — Dự báo chi tiêu
+│   ├── advice/                   # F015 — Lời khuyên tài chính
+│   ├── budget/                   # F016 — Phân bổ dòng tiền
+│   └── chatbot/                  # F017 — Chatbot AI
+├── llm/                          # Dùng chung cho F015, F016, F017
+│   ├── llmClient.js              # Multi-provider singleton
+│   ├── openaiProvider.js
+│   ├── huggingfaceProvider.js
+│   ├── groqProvider.js
+│   ├── rate-limiter.js
+│   └── cache.js                  # Redis-backed LLM cache
+└── prompts/                      # Prompt templates
+    ├── financial-advice.txt
+    ├── budget-explanation.txt
+    └── chatbot-system.txt
+```
+
+**Nguyên tắc thiết kế:**
+- **Feature isolation**: Mỗi feature có controller/service/repository riêng, không phụ thuộc chéo
+- **Preprocessing riêng**: Mỗi model có logic làm sạch text/tokenize riêng phù hợp với loại dữ liệu
+- **Inference tách biệt**: Tách khỏi worker để unit test được, debug được, mock được
+- **Pipeline rõ ràng**: train → evaluate → export theo interface thống nhất
+- **Model versioning**: `model.v1.bin`, `model.v2.bin` để rollback, A/B test
+- **Config per feature**: `config.json` chứa confidence threshold, model path, hyperparams
+- **Dùng chung llm/ + prompts/**: Tránh duplicate code giữa F015, F016, F017
+- **Vẫn là 1 service**: 1 process Node.js, 1 container Docker, không phải microservices
+
+#### 8.1.17. Build F012 — Phần 1: Nền móng AI (vỏ) ✅ Done — 2026-08-11
+
+**Mục tiêu**: Tạo pipeline HTTP → BullMQ → Worker hoạt động end-to-end, chưa có model predict thật.
+
+**API**: `POST /api/ai/classify`
+
+| Method | Auth | Body | Success | Error |
+|--------|------|------|---------|-------|
+| POST | Bearer (user) | `{ transactionId: string }` | 202 `{ transactionId, jobId, status: "queued" }` | 400 (validation), 401 (no auth), 404 (not found) |
+
+**Files đã implement:**
+
+| File | Vai trò |
+|------|---------|
+| `api/ai.routes.js` | `POST /classify` + `authenticate` + `validate(classifySchema)` |
+| `modules/ai/ai.controller.js` | Router chung, gọi `classifyController.handleClassify()` |
+| `modules/ai/ai.validation.js` | `classifySchema`: transactionId required, string, 1-36 chars |
+| `modules/ai/ai.jobs.js` | `enqueueClassifyJob(id, description)` → BullMQ `aiClassify` queue |
+| `features/classify/classify.controller.js` | Nhận transactionId → gọi service |
+| `features/classify/classify.service.js` | `requestClassify(id)`: lấy description từ DB → enqueue job → 202 |
+| `features/classify/classify.repository.js` | `getTransactionById(id)`: query Prisma. Hiện trả về mock data vì bảng Transaction chưa có trong schema |
+| `workers/ai.worker.js` | Lắng nghe queue `ai-classify-transaction`, log job (chưa predict) |
+| `index.js` | Thêm `require('./workers/ai.worker')` sau khi Redis connected |
+
+**Luồng hoạt động:**
+
+```
+Client → POST /api/ai/classify { transactionId: "uuid" }
+  → authenticate (user)
+  → validate(classifySchema)
+  → aiController.classify()
+    → classifyController.handleClassify(transactionId)
+      → classifyService.requestClassify(transactionId)
+        → classifyRepository.getTransactionById(id) → { id, description }
+        → aiJobs.enqueueClassifyJob(id, description) → BullMQ
+      ← 202 { transactionId, jobId, status: "queued" }
+  → Worker pick job → log "Processing..." → done
+```
+
+**Kết quả test:**
+
+| Test case | Status | Response |
+|-----------|--------|----------|
+| Hợp lệ `POST /classify { transactionId }` | 202 | `{ transactionId, jobId, status: "queued" }` |
+| Thiếu `transactionId` | 400 | `Validation failed` |
+| Không có token | 401 | `Missing or invalid token` |
+
+> **Ghi chú**: Repository hiện trả về mock data `{ id, description: "Giao dich mau..." }` vì bảng Transaction chưa có trong Prisma schema. Khi schema được cập nhật, chỉ cần xóa `if (!prisma.transaction)` guard — code tự hoạt động.
 
 ### 8.2. Module Notification
 
 ### 8.3. Module Bank
 
-### 8.4. Module Sync
+### 8.4. Module Sync — 🚧 Đã lên kế hoạch (2026-08-11)
+
+#### 8.4.1. Tổng quan
+
+| Mã | Chức năng | Endpoint | Trạng thái |
+|----|----------|----------|-----------|
+| **F018** | Nhận batch operations từ client | `POST /api/sync/push` | ⬜ Chưa làm |
+| **F019** | Trả data mới cho client | `GET /api/sync/pull` | ⬜ Chưa làm |
+| **F020** | Trạng thái sync | `GET /api/sync/status` | ⬜ Chưa làm |
+
+**Mô hình**: Client-Led Sync (Offline-First), Client tự tạo UUID, Backend là source of truth.
+
+**6 entity được sync**: wallet, transaction, budget, bill, goal, category — tất cả dùng UUID PK, thống nhất LWW conflict resolution.
+
+#### 8.4.2. Nguyên tắc thiết kế
+
+| Nguyên tắc | Cách làm |
+|------------|----------|
+| **Client tự tạo UUID** | Backend không sinh ID, chỉ validate UUID format |
+| **Last-Write-Wins (LWW)** | So sánh `updated_at` — bản mới hơn thắng |
+| **Soft delete** | Không DELETE, chỉ set `is_deleted = true` |
+| **Idempotent** | Push cùng record nhiều lần không lỗi |
+| **Ownership check** | `payload.idaccount` phải khớp với JWT token |
+
+#### 8.4.3. API Endpoints
+
+| Endpoint | Method | Auth | Mô tả |
+|----------|--------|------|-------|
+| `/api/sync/push` | POST | Bearer (user) | Nhận batch operations, upsert với LWW |
+| `/api/sync/pull?since=&entities=` | GET | Bearer (user) | Trả data mới cho client |
+| `/api/sync/status` | GET | Bearer (user) | Trạng thái sync (nice-to-have) |
+
+#### 8.4.4. POST /api/sync/push — Chi tiết
+
+**Request**:
+```json
+{
+  "clientId": "device-uuid",
+  "pushedAt": "2026-08-11T10:30:00.000Z",
+  "operations": [
+    {
+      "localId": "uuid-from-client",
+      "entity": "wallet|transaction|budget|bill|goal",
+      "operation": "create|update|delete",
+      "payload": { "id": "uuid", "idaccount": 1, "updatedAt": "...", ... }
+    }
+  ]
+}
+```
+
+**Response**:
+```json
+{
+  "results": [
+    { "localId": "uuid", "status": "synced|conflict|error", "serverRecord?": {...} }
+  ],
+  "summary": { "total": 3, "synced": 2, "conflicts": 1, "errors": 0 }
+}
+```
+
+**Conflict Resolution Logic**:
+```
+Nếu record chưa tồn tại → INSERT → status: 'synced'
+Nếu record tồn tại:
+  - clientTime > serverTime → UPSERT → status: 'synced'
+  - clientTime ≤ serverTime → giữ server → status: 'conflict' + serverRecord
+  - operation='delete' → UPDATE is_deleted=true (soft delete)
+```
+
+#### 8.4.5. GET /api/sync/pull — Chi tiết
+
+| Param | Required | Mô tả |
+|-------|----------|-------|
+| `since` | ✅ | ISO datetime — lấy records có `updated_at > since` |
+| `entities` | ❌ | Comma-separated: `wallet,transaction,budget,bill,goal`. Mặc định: all |
+
+**Response**:
+```json
+{
+  "pulledAt": "2026-08-11T10:30:05.000Z",
+  "hasMore": false,
+  "data": {
+    "wallets": [...], "transactions": [...], "budgets": [...],
+    "bills": [...], "goals": [...]
+  }
+}
+```
+
+#### 8.4.6. Security
+
+- Tất cả endpoints yêu cầu `authenticate` (JWT)
+- Validate `payload.idaccount === req.user.idaccount` → nếu sai → 403
+- Validate entity type, operation type, UUID format
+
+#### 8.4.7. Cấu trúc Module Sync
+
+```
+modules/sync/
+├── sync.controller.js     # Handle push/pull/status
+├── sync.service.js        # Core: processBatch(), LWW logic
+├── sync.repository.js     # CRUD per entity (wallet, txn, budget, bill, goal)
+├── sync.validation.js     # Validate operations payload
+└── sync.events.js         # (đã có sẵn) Emit sync.completed
+```
+
+#### 8.4.8. Thứ tự triển khai
+
+| Giai đoạn | API | Mô tả | Ước lượng |
+|-----------|-----|-------|-----------|
+| **S1** | — | Nền móng: routes + controller + validation | 0.5 ngày |
+| **S2** | `POST /push` | Batch upsert với LWW conflict resolution | 1.5-2 ngày |
+| **S3** | `GET /pull` | Query data theo since + entities filter | 0.5-1 ngày |
+| **S4** | Security | Ownership check + input validation | 0.5 ngày |
+| **S5** | `GET /status` | Trạng thái sync (nice-to-have) | 0.5 ngày |
+
+> ✅ **Category UUID PK**: Đã convert 2026-08-12. Category dùng `uuid` (VARCHAR(36)) làm Primary Key, đồng bộ với `transaction.category_id` và `budget.category_id` qua FK constraint. Sync module xử lý category như 5 entity còn lại (wallet, transaction, budget, bill, goal).
 
 
 ---
@@ -1593,109 +1881,3 @@ Tài liệu đặc tả đồng bộ dữ liệu hai chiều giữa Client (Drif
   - `POST /api/sync/push`: Client gửi mảng batch các thao tác (`create`, `update`, `delete`) kèm client timestamp.
   - `GET /api/sync/pull?since=<timestamp>`: Client kéo các thay đổi mới nhất từ server.
 - **Conflict Resolution**: Áp dụng chiến lược **Last-Write-Wins (LWW)** dựa trên mốc thời gian `updatedAt`.
-
----
-
-## 9. Client-app
-
-### 9.1 Tích Hợp Authentication (Client-app ↔ Backend)
-
-> Hoàn thành: 2026-08-09
-
-#### 9.1.1 Kết nối thực tế Client-app với Backend
-
-| Thành phần | Mô tả |
-|---|---|
-| `AppConstants.baseUrl` | `http://localhost:3000/api` |
-| `AuthRemoteDataSourceImpl` | Gọi API thực tế qua Dio: `POST /auth/login`, `POST /auth/register` |
-| `AuthRepositoryImpl` | Lưu `accessToken` + `refreshToken` vào SecureStorage |
-| `UserModel` | Mapping từ response backend: `idaccount`, `username`, `fullname`, `rolename` |
-
-#### 9.1.2 AuthBloc — Scope
-
-`AuthBloc` khởi tạo **một lần duy nhất** tại `main.dart` trong `MultiBlocProvider`. Tất cả các trang dùng chung instance này qua `context.read<AuthBloc>()`.
-
-- **`LoginPage`**: `BlocListener<AuthBloc>` → `LoginSubmitted(email: username, password: password)`
-- **`RegisterPage`**: `BlocListener<AuthBloc>` → `RegisterSubmitted(name, fullname, email, password)`
-- **`ProfilePage`**: Nút Đăng xuất → dialog xác nhận → `LogoutRequested()` → `context.go('/login')`
-
-#### 9.1.3 Offline Access
-
-```
-Lần đầu đăng nhập (bắt buộc online)
-    → accessToken lưu SecureStorage
-    → userJson cache SecureStorage (key: offline_user_data)
-
-App khởi động:
-    main.dart đọc accessToken
-    → Có token  → initialLocation = '/home'  (offline OK)
-    → Không có  → initialLocation = '/login' (phải online)
-
-Đăng xuất:
-    → Xóa token + xóa offline cache
-    → Phải đăng nhập online lần sau
-```
-
-**Package bổ sung:** `crypto: ^3.0.6` (SHA-256 hash mật khẩu)
-
-#### 9.1.4 CORS & Port cố định
-
-| Service | Port |
-|---|---|
-| Backend (Node.js) | `3000` — `npm run dev` |
-| Client-app (Flutter Web) | `9090` — `flutter run -d chrome --web-port 9090` |
-| `CORS_ORIGIN` trong `.env` | `http://localhost:9090` |
-
-#### 9.1.5 Files đã thay đổi
-
-| File | Thay đổi |
-|---|---|
-| `core/constants/app_constants.dart` | baseUrl + offline cache keys |
-| `auth/data/datasources/auth_remote_data_source.dart` | Dio API thực, `NetworkException` |
-| `auth/data/repositories/auth_repository_impl.dart` | Online login, offline cache, logout xóa cache |
-| `auth/presentation/bloc/auth_event.dart` | `RegisterSubmitted` thêm `fullname` |
-| `auth/presentation/pages/login_page.dart` | BlocListener root, field username |
-| `auth/presentation/pages/register_page.dart` | BlocListener root, thêm username/fullname |
-| `profile/presentation/pages/profile_page.dart` | Nút Đăng xuất + dialog xác nhận |
-| `core/constants/app_router.dart` | `createRouter(initialRoute)` factory |
-| `main.dart` | Check token trước start → set initialLocation |
-| `src/Backend/.env` | `CORS_ORIGIN=http://localhost:9090` |
-| `pubspec.yaml` | `crypto: ^3.0.6` |
-
----
-
-### 9.2. Tiến Độ Phát Triển & Kiến Trúc Core Offline-First (Cập nhật 2026-08-10)
-
-#### 9.2.1 Cấu Trúc Core Infrastructure (Client-app)
-
-Dự án Flutter Client-app đã triển khai hoàn thiện tầng Core hạ tầng Offline-first:
-
-- **Database Engine**: Drift ORM (SQLite) hỗ trợ WAL Mode, Foreign Keys, MigrationStrategy và seed dữ liệu danh mục mặc định.
-- **Data Access Objects (DAOs)**: Triển khai 6 DAOs tương ứng với 6 bảng cốt lõi (`Wallet`, `Transaction`, `Category`, `Budget`, `Bill`, `Goal`).
-- **SyncEngine**: Triển khai cơ chế đồng bộ nền `SyncEngine` hỗ trợ debounce, lắng nghe kết nối mạng (Connectivity Listener) và quản lý hàng chờ Pending Queue.
-- **Dependency Injection**: Cấu hình GetIt DI (`injection_container.dart`) đăng ký singleton cho `AppDatabase`, `SyncEngine`, `WalletLocalDataSource`, `WalletRepository`, `WalletCubit`.
-- **Formatting & Exceptions**: Bổ sung `CurrencyFormatter` (locale `vi_VN`) và phân cấp ngoại lệ `AppExceptions` (`NetworkException`, `ServerException`, `CacheException`, `AuthException`, `ValidationException`).
-
-#### 9.2.2 Chức Năng Quản Lý Ví (Wallet Feature - Plan 4)
-
-- **Data Layer**:
-  - `WalletEntity` (model domain)
-  - `WalletLocalDataSourceImpl` (thao tác trực tiếp Drift DB)
-  - `WalletRepositoryImpl` (quản lý UUID, tự động xử lý xung đột ví mặc định, trigger SyncEngine)
-- **State Management**: `WalletCubit` xử lý 6 sealed states (`WalletInitial`, `WalletLoading`, `WalletLoaded`, `WalletError`, `WalletActionSuccess`, `WalletActionFailure`) hỗ trợ Optimistic UI.
-- **Presentation Layer**:
-  - `WalletListPage`: Hiển thị danh sách ví, số dư tổng, dialog xóa ví và xử lý state real-time.
-  - `WalletAddPage`: Form tạo ví mới với validation, tích hợp `WalletCubit`.
-
-#### 9.2.3 Quy Chuẩn Đặc Tả Đồng Bộ Backend (Backend Sync Spec)
-
-Tài liệu đặc tả đồng bộ dữ liệu hai chiều giữa Client (Drift SQLite) và Backend (PostgreSQL NestJS) đã được khởi tạo tại [`2026-08-10-backend-sync-spec.md`](./docs/superpowers/plans/2026-08-10-backend-sync-spec.md):
-
-- **Database Models Backend**: Định nghĩa 5 Prisma models tương ứng (`Wallet`, `Transaction`, `Budget`, `Bill`, `Goal`) sử dụng UUID Primary Key (`VARCHAR(36)`).
-- **API Push & Pull**:
-  - `POST /api/sync/push`: Client gửi mảng batch các thao tác (`create`, `update`, `delete`) kèm client timestamp.
-  - `GET /api/sync/pull?since=<timestamp>`: Client kéo các thay đổi mới nhất từ server.
-- **Conflict Resolution**: Áp dụng chiến lược **Last-Write-Wins (LWW)** dựa trên mốc thời gian `updatedAt`.
-
-
-
