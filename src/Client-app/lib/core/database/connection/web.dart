@@ -3,6 +3,7 @@ import 'package:drift/web.dart';
 
 QueryExecutor connect() {
   return LazyDatabase(() async {
-    return WebDatabase('flowmoney');
+    // ignore: experimental_member_use
+    return WebDatabase.withStorage(DriftWebStorage.indexedDb('flowmoney'));
   });
 }

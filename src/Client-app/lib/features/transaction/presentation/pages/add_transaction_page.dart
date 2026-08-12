@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
+import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../data/models/transaction_entity.dart';
 import '../bloc/transaction_bloc.dart';
@@ -50,20 +51,30 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   }
 
   Future<void> _loadWallets() async {
+    final authState = context.read<AuthBloc>().state;
+    final user = (authState is AuthSuccess) ? authState.user : null;
+    final userIdAccount = int.tryParse(user?.id ?? '') ?? widget.idaccount;
+
     final db = sl<AppDatabase>();
-    final list = await db.walletDao.getAll(widget.idaccount);
-    setState(() {
-      _wallets = list;
-      if (_wallets.isNotEmpty) {
-        _selectedWallet = _wallets.first;
-        if (_wallets.length > 1) {
-          _destinationWallet = _wallets[1];
+    final list = await db.walletDao.getAll(userIdAccount);
+
+    if (mounted) {
+      setState(() {
+        _wallets = list;
+        if (_wallets.isNotEmpty) {
+          _selectedWallet = _wallets.first;
+          if (_wallets.length > 1) {
+            _destinationWallet = _wallets[1];
+          } else {
+            _destinationWallet = _wallets.first;
+          }
         } else {
-          _destinationWallet = _wallets.first;
+          _selectedWallet = null;
+          _destinationWallet = null;
         }
-      }
-      _isLoadingWallets = false;
-    });
+        _isLoadingWallets = false;
+      });
+    }
   }
 
   void _showWalletPickerBottomSheet(BuildContext context, {required bool isDestination}) {
@@ -278,10 +289,14 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         ? 'chi'
         : (_selectedSegment == 1 ? 'thu' : 'transfer');
 
+    final authState = context.read<AuthBloc>().state;
+    final user = (authState is AuthSuccess) ? authState.user : null;
+    final userIdAccount = int.tryParse(user?.id ?? '') ?? widget.idaccount;
+
     final tx = TransactionEntity(
       id: const Uuid().v4(),
       walletId: _selectedWallet!.id,
-      idaccount: widget.idaccount,
+      idaccount: userIdAccount,
       categoryId: _selectedSegment == 2 ? 'cat_transfer' : _selectedCategory!.id,
       amount: amount,
       type: type,

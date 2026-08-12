@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+import '../../../../core/database/app_database.dart';
+import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 
@@ -9,6 +12,9 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final db = sl<AppDatabase>();
+    final formatter = NumberFormat('#,###', 'vi_VN');
+
     return Scaffold(
       backgroundColor: AppColors.background,
       drawer: _buildDrawer(context),
@@ -22,13 +28,90 @@ class HomePage extends StatelessWidget {
               const SizedBox(height: 32),
               _buildHeroSection(context),
               const SizedBox(height: 32),
-              _buildAssetCard(),
+
+              // Reactive Total Asset Balance from SQLite Wallets
+              Builder(
+                builder: (context) {
+                  final authState = context.watch<AuthBloc>().state;
+                  int? currentUserId;
+                  if (authState is AuthSuccess && authState.user != null) {
+                    currentUserId = int.tryParse(authState.user!.id);
+                  }
+
+                  final walletStream = (currentUserId != null)
+                      ? db.walletDao.watchAll(currentUserId)
+                      : Stream<List<Wallet>>.value([]);
+
+                  return StreamBuilder<List<Wallet>>(
+                    stream: walletStream,
+                    builder: (context, snapshot) {
+                      final wallets = snapshot.data ?? [];
+                      final totalBalance = wallets.fold<double>(0.0, (sum, w) => sum + w.balance);
+                      if (snapshot.hasData) {
+                        debugPrint('📊 [SQLite DB Log] Wallets count: ${wallets.length} | Total balance: ${formatter.format(totalBalance)}đ');
+                        for (final w in wallets) {
+                          debugPrint('   • Ví "${w.name}" (Account ${w.idaccount}): ${formatter.format(w.balance)}đ');
+                        }
+                      }
+                      return _buildAssetCard(totalBalance, formatter);
+                    },
+                  );
+                },
+              ),
               const SizedBox(height: 32),
+
               _buildQuickActions(context),
               const SizedBox(height: 32),
-              _buildStatsGrid(),
-              const SizedBox(height: 32),
-              _buildRecentTransactions(context),
+
+              // Reactive Monthly Stats & Recent Transactions from SQLite Transactions (Filtered by User)
+              Builder(
+                builder: (context) {
+                  final authState = context.watch<AuthBloc>().state;
+                  int? currentUserId;
+                  if (authState is AuthSuccess && authState.user != null) {
+                    currentUserId = int.tryParse(authState.user!.id);
+                  }
+
+                  final txStream = (currentUserId != null)
+                      ? db.transactionDao.watchAll(currentUserId)
+                      : Stream<List<Transaction>>.value([]);
+
+                  return StreamBuilder<List<Transaction>>(
+                    stream: txStream,
+                    builder: (context, snapshot) {
+                      final transactions = snapshot.data ?? [];
+                      final now = DateTime.now();
+
+                      if (snapshot.hasData) {
+                        debugPrint('💳 [SQLite DB Log] Transactions count: ${transactions.length}');
+                        for (final t in transactions.take(5)) {
+                          debugPrint('   • Giao dịch: [${t.type.toUpperCase()}] ${formatter.format(t.amount)}đ | Ghi chú: ${t.note} | Account: ${t.idaccount}');
+                        }
+                      }
+
+                      double monthlyIncome = 0;
+                      double monthlyExpense = 0;
+
+                      for (final t in transactions) {
+                        if (t.date.year == now.year && t.date.month == now.month) {
+                          if (t.type == 'thu') monthlyIncome += t.amount;
+                          if (t.type == 'chi') monthlyExpense += t.amount;
+                        }
+                      }
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildStatsGrid(monthlyIncome, monthlyExpense, formatter),
+                          const SizedBox(height: 32),
+                          _buildRecentTransactions(context, transactions.take(5).toList(), formatter),
+                        ],
+                      );
+                    },
+                  );
+                },
+              ),
+
               const SizedBox(height: 32),
               _buildBudgetProgress(),
               const SizedBox(height: 32),
@@ -96,8 +179,6 @@ class HomePage extends StatelessWidget {
       ],
     );
   }
-
-
 
   Widget _buildDrawer(BuildContext context) {
     return Drawer(
@@ -286,7 +367,7 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildAssetCard() {
+  Widget _buildAssetCard(double totalBalance, NumberFormat formatter) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -308,7 +389,7 @@ class HomePage extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Tổng số dư',
+                'Tổng số dư ví',
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w500,
@@ -322,7 +403,7 @@ class HomePage extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Text(
-                  '+2.5% tháng này',
+                  'Số dư thực tế',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -333,10 +414,10 @@ class HomePage extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          const Text(
-            '18.500.000đ',
-            style: TextStyle(
-              fontSize: 36,
+          Text(
+            '${formatter.format(totalBalance)}đ',
+            style: const TextStyle(
+              fontSize: 34,
               fontWeight: FontWeight.bold,
               letterSpacing: -1,
               color: AppColors.primary,
@@ -356,28 +437,32 @@ class HomePage extends StatelessWidget {
           icon: Icons.account_balance_wallet_outlined,
           label: 'Thêm thu',
           isDark: true,
-          onTap: () {},
+          onTap: () => context.push('/add'),
         ),
         _buildActionItem(
           context: context,
           icon: Icons.payments_outlined,
           label: 'Thêm chi',
           isDark: true,
-          onTap: () {},
+          onTap: () => context.push('/add'),
         ),
         _buildActionItem(
           context: context,
           icon: Icons.sync_alt,
           label: 'Chuyển',
           isDark: false,
-          onTap: () {},
+          onTap: () => context.push('/add'),
         ),
         _buildActionItem(
           context: context,
           icon: Icons.qr_code_scanner,
           label: 'Quét',
           isDark: false,
-          onTap: () {},
+          onTap: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Tính năng Quét QR đang phát triển')),
+            );
+          },
         ),
       ],
     );
@@ -429,15 +514,16 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildStatsGrid() {
+  Widget _buildStatsGrid(double income, double expense, NumberFormat formatter) {
+    final net = income - expense;
     return Row(
       children: [
-        Expanded(child: _buildStatCard('Thu nhập', '25M', 0.8, AppColors.income)),
+        Expanded(child: _buildStatCard('Thu nhập', '${formatter.format(income)}đ', income > 0 ? 0.8 : 0.0, AppColors.income)),
         const SizedBox(width: 12),
-        Expanded(child: _buildStatCard('Chi tiêu', '6.5M', 0.4, AppColors.error)),
+        Expanded(child: _buildStatCard('Chi tiêu', '${formatter.format(expense)}đ', expense > 0 ? 0.4 : 0.0, AppColors.error)),
         const SizedBox(width: 12),
         Expanded(
-            child: _buildStatCard('Tiết kiệm', '12M', 0.6, const Color(0xFF3B82F6))),
+            child: _buildStatCard('Thu net', '${net >= 0 ? '+' : ''}${formatter.format(net)}đ', net != 0 ? 0.6 : 0.0, const Color(0xFF3B82F6))),
       ],
     );
   }
@@ -464,10 +550,12 @@ class HomePage extends StatelessWidget {
           Text(
             amount,
             style: const TextStyle(
-              fontSize: 18,
+              fontSize: 16,
               fontWeight: FontWeight.bold,
               color: AppColors.primary,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 12),
           LinearProgressIndicator(
@@ -482,7 +570,11 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildRecentTransactions(BuildContext context) {
+  Widget _buildRecentTransactions(
+    BuildContext context,
+    List<Transaction> transactions,
+    NumberFormat formatter,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -500,17 +592,62 @@ class HomePage extends StatelessWidget {
             ),
             TextButton(
               onPressed: () => context.push('/transactions'),
-              child: const Text('Xem tất cả', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 13)),
+              child: const Text('Xem tất cả',
+                  style: TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13)),
             ),
           ],
         ),
         const SizedBox(height: 8),
-        _buildTransactionItem('Highlands Coffee', 'Ăn uống • 09:30', '- 55.000đ',
-            '☕', AppColors.error),
-        _buildTransactionItem('Lương tháng 10', 'Thu nhập • Hôm qua', '+ 25.000.000đ',
-            '💼', AppColors.income),
-        _buildTransactionItem('GrabRide', 'Di chuyển • Hôm qua', '- 32.000đ',
-            '🚕', AppColors.error),
+        if (transactions.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(24),
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Column(
+              children: [
+                Icon(Icons.receipt_long, color: AppColors.outline, size: 36),
+                SizedBox(height: 8),
+                Text(
+                  'Chưa có giao dịch nào',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          ...transactions.map((tx) {
+            final isExpense = tx.type == 'chi';
+            final isIncome = tx.type == 'thu';
+            final amountPrefix = isExpense ? '-' : (isIncome ? '+' : '');
+            final amountColor = isExpense
+                ? AppColors.error
+                : (isIncome ? AppColors.income : AppColors.primary);
+            final emoji = isExpense ? '💸' : (isIncome ? '💰' : '🔄');
+            final title = tx.note.isNotEmpty
+                ? tx.note
+                : (isExpense
+                    ? 'Khoản chi'
+                    : (isIncome ? 'Khoản thu' : 'Chuyển khoản'));
+            final subtitle = DateFormat('dd/MM • HH:mm').format(tx.date);
+
+            return _buildTransactionItem(
+              title,
+              subtitle,
+              '$amountPrefix ${formatter.format(tx.amount)}đ',
+              emoji,
+              amountColor,
+            );
+          }),
       ],
     );
   }
@@ -610,7 +747,7 @@ class HomePage extends StatelessWidget {
                               color: AppColors.primary)),
                     ],
                   ),
-                  const Text('4tr5 / 5tr',
+                  const Text('Chưa thiết lập',
                       style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
@@ -621,14 +758,14 @@ class HomePage extends StatelessWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(6),
                 child: const LinearProgressIndicator(
-                  value: 4.5 / 5.0,
+                  value: 0.0,
                   backgroundColor: AppColors.background,
-                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.error),
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
                   minHeight: 12,
                 ),
               ),
               const SizedBox(height: 8),
-              const Text('Còn lại 500.000đ cho 15 ngày tiếp theo',
+              const Text('Vào trang Ngân sách để lập kế hoạch chi tiêu',
                   style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
             ],
           ),
@@ -670,7 +807,7 @@ class HomePage extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           const Text(
-            'Tốc độ chi tiêu cho Ăn uống đang cao hơn 20% so với tháng trước. Gợi ý giảm ăn ngoài để đảm bảo mục tiêu tiết kiệm.',
+            'Thêm thêm giao dịch thu/chi hàng ngày để trợ lý AI phân tích và đưa ra lời khuyên tài chính cá nhân hóa.',
             style: TextStyle(
                 fontSize: 14, color: Colors.white70, height: 1.5, letterSpacing: 0),
           ),

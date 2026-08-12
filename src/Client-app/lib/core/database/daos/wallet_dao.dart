@@ -18,6 +18,22 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
         .get();
   }
 
+  /// Lấy tất cả ví chưa bị xóa (fallback nếu không khớp idaccount)
+  Future<List<Wallet>> getAllNonDeleted() {
+    return (select(wallets)
+          ..where((t) => t.isDeleted.equals(false))
+          ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)]))
+        .get();
+  }
+
+  /// Stream tất cả ví chưa bị xóa realtime
+  Stream<List<Wallet>> watchAllNonDeleted() {
+    return (select(wallets)
+          ..where((t) => t.isDeleted.equals(false))
+          ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)]))
+        .watch();
+  }
+
   /// Stream theo dõi thay đổi realtime — dùng trong BlocBuilder
   Stream<List<Wallet>> watchAll(int idaccount) {
     return (select(wallets)

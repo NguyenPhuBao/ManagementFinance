@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'core/constants/app_constants.dart';
 import 'core/constants/app_router.dart';
 import 'core/di/injection_container.dart';
@@ -11,6 +12,7 @@ import 'features/auth/presentation/bloc/auth_bloc.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('vi_VN', null);
   await setupDependencies();
 
   // Kiểm tra token trước khi khởi động UI

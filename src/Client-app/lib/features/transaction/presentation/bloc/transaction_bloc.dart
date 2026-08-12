@@ -22,10 +22,13 @@ class TransactionBloc extends Bloc<TransactionEvent, TransactionState> {
     on<FilterMonthEvent>(_onFilterMonth);
   }
 
+  int? _currentIdAccount;
+
   Future<void> _onLoadTransactions(
     LoadTransactionsEvent event,
     Emitter<TransactionState> emit,
   ) async {
+    _currentIdAccount = event.idaccount;
     emit(TransactionLoadingState());
     final now = DateTime.now();
     _subscribeMonth(event.idaccount, now.year, now.month);
@@ -51,31 +54,60 @@ class TransactionBloc extends Bloc<TransactionEvent, TransactionState> {
     FilterMonthEvent event,
     Emitter<TransactionState> emit,
   ) {
-    _subscribeMonth(1, event.year, event.month);
+    if (_currentIdAccount != null) {
+      _subscribeMonth(_currentIdAccount!, event.year, event.month);
+    }
   }
 
   Future<void> _onAddTransaction(
     AddTransactionEvent event,
     Emitter<TransactionState> emit,
   ) async {
-    if (state is TransactionLoadedState) {
-      final curr = state as TransactionLoadedState;
-      emit(curr.copyWith(isSubmitting: true, actionSuccess: null));
+    final currState = state is TransactionLoadedState ? (state as TransactionLoadedState) : null;
+    if (currState != null) {
+      emit(currState.copyWith(isSubmitting: true, actionSuccess: null));
     }
+
     try {
       await transactionRepository.addTransaction(
         event.transaction,
         destinationWalletId: event.destinationWalletId,
       );
       syncEngine?.scheduleSync();
+
       if (state is TransactionLoadedState) {
         final curr = state as TransactionLoadedState;
         emit(curr.copyWith(isSubmitting: false, actionSuccess: true));
+      } else {
+        final now = DateTime.now();
+        emit(TransactionLoadedState(
+          transactions: const [],
+          monthlyTransactions: const [],
+          totalIncome: 0,
+          totalExpense: 0,
+          selectedYear: now.year,
+          selectedMonth: now.month,
+          isSubmitting: false,
+          actionSuccess: true,
+        ));
       }
     } catch (e) {
       if (state is TransactionLoadedState) {
         final curr = state as TransactionLoadedState;
         emit(curr.copyWith(
+          isSubmitting: false,
+          actionSuccess: false,
+          errorMessage: e.toString(),
+        ));
+      } else {
+        final now = DateTime.now();
+        emit(TransactionLoadedState(
+          transactions: const [],
+          monthlyTransactions: const [],
+          totalIncome: 0,
+          totalExpense: 0,
+          selectedYear: now.year,
+          selectedMonth: now.month,
           isSubmitting: false,
           actionSuccess: false,
           errorMessage: e.toString(),

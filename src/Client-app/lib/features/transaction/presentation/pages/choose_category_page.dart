@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
+import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../../../shared/theme/app_colors.dart';
 
 class ChooseCategoryPage extends StatefulWidget {
@@ -32,7 +34,12 @@ class _ChooseCategoryPageState extends State<ChooseCategoryPage> {
     setState(() => _isLoading = true);
     final classify = _selectedTab == 0 ? 'chi' : 'thu';
     final db = sl<AppDatabase>();
-    final list = await db.categoryDao.getByClassify(widget.idaccount, classify);
+
+    final authState = context.read<AuthBloc>().state;
+    final user = (authState is AuthSuccess) ? authState.user : null;
+    final userIdAccount = int.tryParse(user?.id ?? '') ?? widget.idaccount;
+
+    final list = await db.categoryDao.getByClassify(userIdAccount, classify);
     setState(() {
       _categories = list;
       _isLoading = false;

@@ -27,6 +27,14 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
         .watch();
   }
 
+  /// Stream tất cả giao dịch chưa xóa realtime (dùng cho fallback/Home)
+  Stream<List<Transaction>> watchAllNonDeleted() {
+    return (select(transactions)
+          ..where((t) => t.isDeleted.equals(false))
+          ..orderBy([(t) => OrderingTerm.desc(t.date)]))
+        .watch();
+  }
+
   /// Lọc theo ví
   Future<List<Transaction>> getByWallet(String walletId) {
     return (select(transactions)

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../data/models/transaction_entity.dart';
 import '../bloc/transaction_bloc.dart';
 import '../bloc/transaction_event.dart';
@@ -48,9 +49,15 @@ class _TransactionPageState extends State<TransactionPage> {
 
   @override
   Widget build(BuildContext context) {
+    final authState = context.watch<AuthBloc>().state;
+    int currentUserId = widget.idaccount;
+    if (authState is AuthSuccess && authState.user != null) {
+      currentUserId = int.tryParse(authState.user!.id) ?? widget.idaccount;
+    }
+
     return BlocProvider<TransactionBloc>(
       create: (context) => sl<TransactionBloc>()
-        ..add(LoadTransactionsEvent(idaccount: widget.idaccount)),
+        ..add(LoadTransactionsEvent(idaccount: currentUserId)),
       child: Builder(
         builder: (blocContext) {
           return Scaffold(
