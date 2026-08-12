@@ -38,6 +38,7 @@ class GoalRepositoryImpl implements GoalRepository {
     required String name,
     required double targetAmount,
     required DateTime targetDate,
+    String? walletId,
     String? icon,
     String? colour,
     String? note,
@@ -49,6 +50,7 @@ class GoalRepositoryImpl implements GoalRepository {
       targetAmount: targetAmount,
       currentAmount: 0.0,
       targetDate: targetDate,
+      walletId: walletId,
       icon: icon ?? 'flag',
       colour: colour ?? '#4CAF50',
       note: note ?? '',
@@ -87,6 +89,10 @@ class GoalRepositoryImpl implements GoalRepository {
       await localDataSource.updateGoalAmount(goalId, newGoalAmount);
     }
 
+    final effectiveTargetWalletId = (targetWalletId != null && targetWalletId.isNotEmpty)
+        ? targetWalletId
+        : goal?.walletId;
+
     if (db != null) {
       final now = DateTime.now();
 
@@ -111,19 +117,21 @@ class GoalRepositoryImpl implements GoalRepository {
         ),
       );
 
-      // 2. Add to Target / Savings Wallet (if selected & different from source wallet)
-      if (targetWalletId != null && targetWalletId.isNotEmpty && targetWalletId != walletId) {
-        final targetWallet = await db!.walletDao.getById(targetWalletId);
+      // 2. Add to Target / Savings Wallet (if present & different from source wallet)
+      if (effectiveTargetWalletId != null &&
+          effectiveTargetWalletId.isNotEmpty &&
+          effectiveTargetWalletId != walletId) {
+        final targetWallet = await db!.walletDao.getById(effectiveTargetWalletId);
         if (targetWallet != null) {
           final newTargetBalance = targetWallet.balance + depositAmount;
-          await db!.walletDao.updateBalance(targetWalletId, newTargetBalance);
+          await db!.walletDao.updateBalance(effectiveTargetWalletId, newTargetBalance);
         }
 
         await db!.transactionDao.insert(
           TransactionsCompanion.insert(
             id: const Uuid().v4(),
             idaccount: idaccount,
-            walletId: targetWalletId,
+            walletId: effectiveTargetWalletId,
             amount: depositAmount,
             type: 'thu',
             note: Value('Tích lũy nhận từ ${sourceWallet?.name ?? 'Ví nguồn'}: $goalName'),

@@ -193,6 +193,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
           name: name,
           targetAmount: targetAmount,
           targetDate: _targetDate,
+          walletId: _selectedSavingsWallet?.id,
         ).then((_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

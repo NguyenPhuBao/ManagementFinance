@@ -9,6 +9,7 @@ abstract class GoalRepository {
     required String name,
     required double targetAmount,
     required DateTime targetDate,
+    String? walletId,
     String? icon,
     String? colour,
     String? note,

@@ -8,6 +8,7 @@ class GoalEntity {
   final double targetAmount;
   final double currentAmount;
   final DateTime targetDate;
+  final String? walletId;
   final String icon;
   final String colour;
   final String note;
@@ -23,6 +24,7 @@ class GoalEntity {
     required this.targetAmount,
     this.currentAmount = 0.0,
     required this.targetDate,
+    this.walletId,
     this.icon = 'flag',
     this.colour = '#4CAF50',
     this.note = '',
@@ -40,6 +42,7 @@ class GoalEntity {
       targetAmount: d.targetAmount,
       currentAmount: d.currentAmount,
       targetDate: d.targetDate,
+      walletId: d.walletId,
       icon: d.icon,
       colour: d.colour,
       note: d.note,
@@ -58,6 +61,7 @@ class GoalEntity {
       targetAmount: targetAmount,
       currentAmount: Value(currentAmount),
       targetDate: targetDate,
+      walletId: Value(walletId),
       icon: Value(icon),
       colour: Value(colour),
       note: Value(note),
@@ -75,6 +79,7 @@ class GoalEntity {
     double? targetAmount,
     double? currentAmount,
     DateTime? targetDate,
+    String? walletId,
     String? icon,
     String? colour,
     String? note,
@@ -90,6 +95,7 @@ class GoalEntity {
       targetAmount: targetAmount ?? this.targetAmount,
       currentAmount: currentAmount ?? this.currentAmount,
       targetDate: targetDate ?? this.targetDate,
+      walletId: walletId ?? this.walletId,
       icon: icon ?? this.icon,
       colour: colour ?? this.colour,
       note: note ?? this.note,
