@@ -851,6 +851,13 @@ Notification Worker:
 |----|----------|-------------------|--------|-----------|
 | **F003** | Thống kê tổng quan | Admin | admin | 🚧 Đang phát triển |
 
+### 6.5 Chức năng Đồng bộ dữ liệu (Sync)
+| Mã | Chức năng | Đối tượng sử dụng | Module | Trạng thái |
+|----|----------|-------------------|--------|-----------|
+| **F018** | Đồng bộ dữ liệu từ client lên server (Push) | User (Mobile-app) | sync | ✅ Done |
+| **F019** | Kéo dữ liệu mới từ server về client (Pull) | User (Mobile-app) | sync | ✅ Done |
+| **F020** | Trạng thái đồng bộ (Status) | User (Mobile-app) | sync | ✅ Done |
+
 ---
 
 ## 7. Đặc Tả & Yêu Cầu Nghiệp Vụ & API
@@ -1200,6 +1207,127 @@ Dashboard có 3 lựa chọn thống kê theo thời gian: **Hôm nay**, **7 ng�
 | | `api/admin.routes.js` |
 | **Frontend** | `pages/categories/CategoryPage.jsx` |
 | | `api/admin.api.js` |
+
+### 7.5 F018-F020 — Đồng bộ dữ liệu (Sync)
+
+#### 7.5.1 Thông tin chung
+
+| Thuộc tính | Giá trị |
+|------------|---------|
+| **Mã chức năng** | F018, F019, F020 |
+| **Tên chức năng** | Đồng bộ dữ liệu Client-Server |
+| **Actor chính** | User (Mobile-app) |
+| **Mức độ ưu tiên** | Cao |
+| **Trạng thái** | ✅ Đã hoàn thành (MVP) |
+| **Phiên bản** | v1.0 — 2026-08-12 |
+
+#### 7.5.2 Mô tả
+
+- **F018 — Push**: Client gửi batch operations (create/update/delete) lên server. Backend xử lý LWW conflict resolution, trả kết quả từng operation.
+- **F019 — Pull**: Client kéo data mới từ server theo `since` timestamp, có thể filter theo entity.
+- **F020 — Status**: Client kiểm tra trạng thái sync (số lượng record mỗi entity).
+
+**Nguyên tắc**:
+- Client tự tạo UUID cho mọi record (Backend không sinh ID)
+- LWW (Last-Write-Wins): so sánh `updated_at`, bản mới hơn thắng
+- Soft delete: set `is_deleted=true`, không DELETE thật
+- Ownership: `payload.idaccount` phải khớp JWT token
+- Category: system default (is_default=true) không được sửa/xóa từ client
+- Idempotent: push cùng record nhiều lần không lỗi
+- Batch limit: tối đa 1000 operations/push
+
+#### 7.5.3 API Endpoints
+
+| Endpoint | Method | Auth | Mô tả |
+|----------|--------|------|-------|
+| `/api/sync/push` | POST | Bearer (user) | Nhận batch operations, upsert với LWW |
+| `/api/sync/pull?since=&entities=` | GET | Bearer (user) | Trả data mới cho client |
+| `/api/sync/status` | GET | Bearer (user) | Trạng thái sync (entity counts) |
+
+#### 7.5.4 Request/Response
+
+**POST /api/sync/push**:
+```json
+// Request
+{
+  "clientId": "device-uuid",
+  "pushedAt": "2026-08-12T10:30:00.000Z",
+  "operations": [{
+    "localId": "op-001",
+    "entity": "wallet|transaction|budget|bill|goal|category",
+    "operation": "create|update|delete",
+    "payload": { "id": "uuid", "idaccount": 1, "updated_at": "...", ... }
+  }]
+}
+
+// Response
+{
+  "success": true,
+  "data": {
+    "clientId": "device-uuid",
+    "results": [
+      { "localId": "op-001", "status": "synced|conflict|error", "serverRecord?": {...} }
+    ],
+    "summary": { "total": 3, "synced": 2, "conflicts": 1, "errors": 0 },
+    "serverTime": "2026-08-12T10:30:01.000Z"
+  }
+}
+```
+
+**GET /api/sync/pull?since=ISO&entities=wallet,transaction**:
+```json
+{
+  "success": true,
+  "data": {
+    "pulledAt": "2026-08-12T10:30:05.000Z",
+    "hasMore": false,
+    "maxSince": { "wallet": "2026-08-12T09:00:00.000Z" },
+    "data": { "wallets": [...], "transactions": [...], ... }
+  }
+}
+```
+
+**GET /api/sync/status**:
+```json
+{
+  "success": true,
+  "data": {
+    "idaccount": 1,
+    "lastSyncAt": "2026-08-12T10:30:01.000Z",
+    "entities": {
+      "wallets": { "count": 2 },
+      "transactions": { "count": 150 },
+      "budgets": { "count": 3 },
+      "bills": { "count": 5 },
+      "goals": { "count": 1 },
+      "categories": { "count": 28 }
+    }
+  }
+}
+```
+
+#### 7.5.5 Conflict Resolution Logic
+
+```
+Nếu record chưa tồn tại → INSERT → status: 'synced'
+Nếu record tồn tại:
+  - clientTime > serverTime → UPSERT → status: 'synced'
+  - clientTime ≤ serverTime → giữ server → status: 'conflict' + serverRecord
+  - operation='delete':
+    - 5 entity (wallet/txn/budget/bill/goal) → UPDATE is_deleted=true
+    - category → DELETE (hard, chỉ user-created, cấm system default)
+```
+
+#### 7.5.6 Files liên quan
+
+| Tầng | File |
+|------|------|
+| **Backend** | `api/sync.routes.js` |
+| | `modules/sync/sync.controller.js` |
+| | `modules/sync/sync.service.js` |
+| | `modules/sync/sync.repository.js` |
+| | `modules/sync/sync.validation.js` |
+| | `modules/sync/sync.events.js` (placeholder) |
 
 
 ## 8. Build Module Backend (liên quan 1 phần Mobile)
@@ -1661,19 +1789,29 @@ Client → POST /api/ai/classify { transactionId: "uuid" }
 
 ### 8.3. Module Bank
 
-### 8.4. Module Sync — 🚧 Đã lên kế hoạch (2026-08-11)
+### 8.4. Module Sync — ✅ Done (MVP — 2026-08-12)
 
 #### 8.4.1. Tổng quan
 
 | Mã | Chức năng | Endpoint | Trạng thái |
 |----|----------|----------|-----------|
-| **F018** | Nhận batch operations từ client | `POST /api/sync/push` | ⬜ Chưa làm |
-| **F019** | Trả data mới cho client | `GET /api/sync/pull` | ⬜ Chưa làm |
-| **F020** | Trạng thái sync | `GET /api/sync/status` | ⬜ Chưa làm |
+| **F018** | Nhận batch operations từ client | `POST /api/sync/push` | ✅ Done (S1) |
+| **F019** | Trả data mới cho client | `GET /api/sync/pull` | ✅ Done (S1) |
+| **F020** | Trạng thái sync | `GET /api/sync/status` | ✅ Done (S1) |
 
 **Mô hình**: Client-Led Sync (Offline-First), Client tự tạo UUID, Backend là source of truth.
 
 **6 entity được sync**: wallet, transaction, budget, bill, goal, category — tất cả dùng UUID PK, thống nhất LWW conflict resolution.
+
+**Files đã implement (2026-08-12):**
+
+| File | Vai trò |
+|------|---------|
+| `api/sync.routes.js` | `POST /push`, `GET /pull`, `GET /status` + `authenticate` |
+| `modules/sync/sync.controller.js` | Xử lý request/response, gọi service |
+| `modules/sync/sync.service.js` | Core: processPush (LWW), processPull (filter), getStatus |
+| `modules/sync/sync.repository.js` | CRUD 6 entity: upsert, pull, softDelete, count |
+| `modules/sync/sync.validation.js` | Validate push/pull payload, UUID format, entity types |
 
 #### 8.4.2. Nguyên tắc thiết kế
 
@@ -1703,9 +1841,9 @@ Client → POST /api/ai/classify { transactionId: "uuid" }
   "operations": [
     {
       "localId": "uuid-from-client",
-      "entity": "wallet|transaction|budget|bill|goal",
+      "entity": "wallet|transaction|budget|bill|goal|category",
       "operation": "create|update|delete",
-      "payload": { "id": "uuid", "idaccount": 1, "updatedAt": "...", ... }
+      "payload": { "id": "uuid", "idaccount": 1, "updated_at": "...", ... }
     }
   ]
 }
@@ -1735,7 +1873,7 @@ Nếu record tồn tại:
 | Param | Required | Mô tả |
 |-------|----------|-------|
 | `since` | ✅ | ISO datetime — lấy records có `updated_at > since` |
-| `entities` | ❌ | Comma-separated: `wallet,transaction,budget,bill,goal`. Mặc định: all |
+| `entities` | ❌ | Comma-separated: `wallet,transaction,budget,bill,goal,category`. Mặc định: all |
 
 **Response**:
 ```json
@@ -1760,23 +1898,80 @@ Nếu record tồn tại:
 ```
 modules/sync/
 ├── sync.controller.js     # Handle push/pull/status
-├── sync.service.js        # Core: processBatch(), LWW logic
-├── sync.repository.js     # CRUD per entity (wallet, txn, budget, bill, goal)
-├── sync.validation.js     # Validate operations payload
-└── sync.events.js         # (đã có sẵn) Emit sync.completed
+├── sync.service.js        # Core: processPush (LWW), processPull (filter), getStatus
+├── sync.repository.js     # CRUD 6 entity: upsert, pull, softDelete, count, lookup
+├── sync.validation.js     # Validate push/pull payload, UUID format, entity types
+└── sync.events.js         # (placeholder) Emit sync.completed
 ```
 
 #### 8.4.8. Thứ tự triển khai
 
-| Giai đoạn | API | Mô tả | Ước lượng |
-|-----------|-----|-------|-----------|
-| **S1** | — | Nền móng: routes + controller + validation | 0.5 ngày |
-| **S2** | `POST /push` | Batch upsert với LWW conflict resolution | 1.5-2 ngày |
-| **S3** | `GET /pull` | Query data theo since + entities filter | 0.5-1 ngày |
-| **S4** | Security | Ownership check + input validation | 0.5 ngày |
-| **S5** | `GET /status` | Trạng thái sync (nice-to-have) | 0.5 ngày |
+| Giai đoạn | API | Mô tả | Ước lượng | Trạng thái |
+|-----------|-----|-------|-----------|-----------|
+| **S1** | — | Nền móng: routes + controller + validation | 0.5 ngày | ✅ Done |
+| **S2** | `POST /push` | Batch upsert với LWW conflict resolution | 1.5-2 ngày | ✅ Done |
+| **S3** | `GET /pull` | Query data theo since + entities filter | 0.5-1 ngày | ✅ Done |
+| **S4** | Security | Ownership check + input validation | 0.5 ngày | ✅ Done |
+| **S5** | `GET /status` | Trạng thái sync (nice-to-have) | 0.5 ngày | ✅ Done |
 
-> ✅ **Category UUID PK**: Đã convert 2026-08-12. Category dùng `uuid` (VARCHAR(36)) làm Primary Key, đồng bộ với `transaction.category_id` và `budget.category_id` qua FK constraint. Sync module xử lý category như 5 entity còn lại (wallet, transaction, budget, bill, goal).
+> ✅ **Sync Module MVP hoàn thành — 2026-08-12**: Toàn bộ 5 giai đoạn S1-S5 đã implement trong 1 lượt. 10/10 test cases pass (401, 400, 200 push/pull/status, ownership). 6 entity (wallet, transaction, budget, bill, goal, category) dùng chung pattern LWW. Sync module tạm dừng ở mức MVP — sẵn sàng cho Client-app tích hợp.
+
+#### 8.4.9. Giai đoạn 2 — Enhancements (đề xuất, chưa làm)
+
+> ⏳ **Tạm dừng**: Sync module đã đạt MVP, các enhancement dưới đây sẽ triển khai sau khi các module khác (Bank, Notification, AI) hoàn thiện.
+
+| Mã | Enhancement | Mô tả | Ưu tiên |
+|----|-------------|-------|---------|
+| **E1** | Real-time push | Socket.IO thông báo cho client khi có data mới từ thiết bị khác (tránh phải poll `GET /pull` liên tục). Backend emit `sync.remote-change` → client pull ngay. | 🔴 Cao |
+| **E2** | Pagination cho pull | `GET /pull?since=&entities=&limit=200&cursor=` — tránh quá tải khi user có nhiều data. Response thêm `nextCursor` để client gọi tiếp. | 🟡 Trung bình |
+| **E3** | Delta sync | Chỉ gửi fields thay đổi thay vì toàn bộ record, giảm bandwidth. Thêm `changedFields` vào response pull. | 🟢 Thấp |
+| **E4** | Sync analytics | Ghi audit log mỗi lần sync (device, thời gian, số lượng, conflicts). Hỗ trợ debug và monitoring. | 🟢 Thấp |
+| **E5** | Retry queue | Push thất bại → tự động retry với BullMQ (`sync-retry` queue). Client nhận thông báo khi retry hoàn tất. | 🟢 Thấp |
+
+**Luồng E1 (Real-time push) — đề xuất:**
+```
+Thiết bị A: push transaction mới → Backend: sync.completed
+  ↓
+Event Bus: sync.remote-change { idaccount, entity, recordId }
+  ↓
+Socket.IO → emit đến tất cả thiết bị của idaccount đó
+  ↓
+Thiết bị B: nhận event → gọi GET /pull?since=lastPullTime
+```
+
+#### 8.4.10. Lưu ý: Thêm entity mới cần cập nhật code (không tự động)
+
+> ⚠️ **Quan trọng**: Sync module dùng hardcoded registry — KHÔNG tự động nhận diện bảng mới trong CSDL. Khi thêm entity mới (vd: `debt`, `saving`, `loan`...), cần cập nhật code ở 3 file.
+
+##### Vị trí cần sửa khi thêm entity mới
+
+| # | File | Thay đổi | Dòng |
+|---|------|----------|------|
+| 1 | `sync.validation.js` | Thêm entity vào `VALID_ENTITIES` | 1 |
+| 2 | `sync.service.js` | Thêm 1 dòng vào `UPSERT_MAP`, `PULL_MAP`, `ENTITY_KEYS` | 3 |
+| 3 | `sync.repository.js` | Thêm 4 methods: `upsertXxx`, `getXxxsByAccount`, `getXxxById`, `countXxx` + update `softDelete` | ~30 |
+
+**Pattern nhất quán**: Copy-paste từ entity có sẵn → đổi tên → thêm validation riêng. Mỗi entity mới ~5-10 phút.
+
+##### Tại sao không dùng dynamic/reflection?
+
+Không phải lỗi — là **chủ đích**, vì mỗi entity có logic riêng không thể generic:
+
+| Entity | Đặc thù riêng |
+|--------|--------------|
+| `wallet` | Có `balance`, `currency`, `type` enum |
+| `transaction` | Có `wallet_id` FK, `category_id` FK, `type` enum |
+| `category` | Upsert check `is_default`, delete hard-delete (không soft) |
+| `budget` | Có `start_date` < `end_date` constraint |
+| `bill` | Có `recurrence` enum |
+| `goal` | Có `current_amount` ≤ `target_amount` logic |
+
+##### Khi nào nên refactor sang registry pattern?
+
+Hiện tại với 6 entity — quản lý thủ công đơn giản, ít bug. Cân nhắc refactor nếu:
+- Số entity > 15
+- Nhiều entity có logic giống hệt nhau (chỉ khác tên bảng)
+- Cần cho phép client tự định nghĩa entity type mới
 
 
 ---

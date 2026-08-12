@@ -3,6 +3,40 @@ const { prisma } = require('../../config/db');
 const syncRepository = {
   // ── Category ────────────────────────────────────────────
 
+  async upsertCategory(data) {
+    const existing = await prisma.category.findUnique({ where: { uuid: data.id } });
+    if (!existing) {
+      return prisma.category.create({
+        data: {
+          uuid: data.id,
+          namecategory: data.namecategory || data.name,
+          classify: data.classify || 'chi',
+          is_default: data.is_default ?? false,
+          created_by: data.idaccount,
+        },
+      });
+    }
+    // Chỉ user tạo mới được update category của mình, admin thì luôn được
+    if (existing.is_default && existing.created_by !== data.idaccount) {
+      throw new Error('Cannot modify system default category');
+    }
+    if (new Date(data.updated_at) > new Date(existing.updated_at)) {
+      return prisma.category.update({
+        where: { uuid: data.id },
+        data: {
+          namecategory: data.namecategory || data.name,
+          classify: data.classify,
+          is_default: data.is_default,
+        },
+      });
+    }
+    return null;
+  },
+
+  async getCategoryById(uuid) {
+    return prisma.category.findUnique({ where: { uuid } });
+  },
+
   async getCategoriesByAccount(idaccount, since) {
     return prisma.category.findMany({
       where: {
@@ -143,9 +177,73 @@ const syncRepository = {
     });
   },
 
+  // ── Lookup by ID (for conflict resolution) ──────────────
+
+  async getWalletById(id) {
+    return prisma.wallet.findUnique({ where: { id } });
+  },
+
+  async getTransactionById(id) {
+    return prisma.transaction.findUnique({ where: { id } });
+  },
+
+  async getBudgetById(id) {
+    return prisma.budget.findUnique({ where: { id } });
+  },
+
+  async getBillById(id) {
+    return prisma.bill.findUnique({ where: { id } });
+  },
+
+  async getGoalById(id) {
+    return prisma.goal.findUnique({ where: { id } });
+  },
+
+  // ── Count (for status endpoint) ─────────────────────────
+
+  async countWallet(idaccount) {
+    return prisma.wallet.count({ where: { idaccount } });
+  },
+
+  async countTransaction(idaccount) {
+    return prisma.transaction.count({ where: { idaccount } });
+  },
+
+  async countBudget(idaccount) {
+    return prisma.budget.count({ where: { idaccount } });
+  },
+
+  async countBill(idaccount) {
+    return prisma.bill.count({ where: { idaccount } });
+  },
+
+  async countGoal(idaccount) {
+    return prisma.goal.count({ where: { idaccount } });
+  },
+
+  async countCategory(idaccount) {
+    return prisma.category.count({
+      where: {
+        OR: [
+          { is_default: true },
+          { created_by: idaccount },
+        ],
+      },
+    });
+  },
+
   // ── Soft delete utility ─────────────────────────────────
 
   async softDelete(entity, id) {
+    // Category: hard delete (no is_deleted column), only user-created
+    if (entity === 'category') {
+      const cat = await prisma.category.findUnique({ where: { uuid: id } });
+      if (!cat) return null;
+      if (cat.is_default) throw new Error('Cannot delete system default category');
+      await prisma.category.delete({ where: { uuid: id } });
+      return { id, deleted: true };
+    }
+
     const models = { wallet: prisma.wallet, transaction: prisma.transaction, budget: prisma.budget, bill: prisma.bill, goal: prisma.goal };
     const model = models[entity];
     if (!model) throw new Error(`Entity không hợp lệ: ${entity}`);
