@@ -74,7 +74,7 @@ Hệ thống gồm **3 phần tách biệt nhưng liên kết** với nhau:
 
 | Nguyên tắc | Mô tả |
 |------------|-------|
-| **Modularity** | Backend tổ chức thành các module độc lập theo nghiệp vụ (User, Wallet, Category, Transaction, Budget, Saving, Debt, Automation, Analytics, Notification, AI). Mỗi module có controller, service, repository riêng, giao tiếp qua HTTP và sự kiện. |
+| **Modularity** | Hệ thống phân thành 13 module theo 3 nhóm (xem Section 6). Backend đảm nhận 6 module cần internet (Auth, Admin, Sync, Bank, AI, Notification); các module nghiệp vụ còn lại chạy trên Mobile — Backend chỉ đồng bộ/lưu trữ. |
 | **Event-Driven** | Các module kết nối lỏng lẻo qua event bus (Redis Pub/Sub + BullMQ). Tác vụ nặng (AI, OCR, thông báo) đẩy vào queue xử lý bất đồng bộ → API phản hồi nhanh. |
 | **Offline-First** | Client-app (Flutter) lưu dữ liệu cục bộ SQLite, cho phép CRUD ngay cả khi không có mạng. Khi có kết nối → đồng bộ hai chiều với backend qua conflict resolution. |
 | **Separation of Concerns** | Backend là trung tâm dữ liệu tập trung (source of truth). Client tự xử lý validation, tính toán tạm thời, không giữ logic nghiệp vụ phức tạp trên backend cho client. |
@@ -111,9 +111,10 @@ ModuleName/
 |----------|-------|
 | `ai-classify-transaction` | Gọi AI model phân loại danh mục cho giao dịch |
 | `ocr-process-receipt` | Xử lý ảnh hóa đơn, trích xuất thông tin |
-| `sms-parse` | Phân tích SMS ngân hàng → tạo giao dịch |
+| `bank-webhook` | Xử lý webhook biến động số dư từ Casso (tạo Transaction bất đồng bộ) |
 | `send-notification` | Gửi email/push notification |
-| `sync-data` | Xử lý đồng bộ batch từ client |
+
+> **Lưu ý**: SMS parsing chạy **offline trên Mobile** (không qua backend). Sync xử lý **đồng bộ qua REST API** (`/api/sync/push`), không cần queue.
 
 - **Redis**: Cache dữ liệu truy cập nhiều (danh mục, tỉ giá) + broker cho BullMQ
 
@@ -124,19 +125,19 @@ ModuleName/
 - **User**: `postgres`
 - **Schema**: `public`
 - Quản lý schema qua **migration** (Prisma) + **SQL script** (`database/`)
-- Script khởi tạo: `database/)1_CSDL_Admin.sql` + `database/)2_create_refreshtoken_table.sql` + `database/)3_Update_Sync.sql`
+- Script khởi tạo: `database/)1_CSDL_Admin.sql` + `database/)2_create_refreshtoken_table.sql` + `database/)3_Update_Sync.sql` + `database/)4_Convert_Category_UUID.sql`
 
-##### Sơ đồ quan hệ (11 bảng — cập nhật 2026-08-11)
+##### Sơ đồ quan hệ (11 bảng — cập nhật 2026-08-12)
 
 ```
 Role (1) ──▶ Account (N) ──▶ User (1)
                 │
                 ├──▶ RefreshToken (N)
-                ├──▶ Category (N)      ← Thêm uuid VARCHAR(36) UNIQUE
+                ├──▶ Category (N)      ← UUID PK
                 ├──▶ AuditLog (N)
                 ├──▶ Wallet (N)        ← UUID PK, sync từ client
-                ├──▶ Transaction (N)   ← UUID PK, FK→Wallet
-                ├──▶ Budget (N)        ← UUID PK
+                ├──▶ Transaction (N)   ← UUID PK, FK→Wallet, FK→Category
+                ├──▶ Budget (N)        ← UUID PK, FK→Category
                 ├──▶ Bill (N)          ← UUID PK
                 └──▶ Goal (N)          ← UUID PK
 ```
@@ -172,17 +173,17 @@ Role (1) ──▶ Account (N) ──▶ User (1)
 | `updated_at` | TIMESTAMP | Ngày cập nhật |
 | `idaccount` | INT FK→Account UNIQUE | 1-1 với Account |
 
-##### Bảng Category
+##### Bảng Category (🔄 2026-08-12 — UUID PK)
 | Cột | Kiểu | Mô tả |
 |-----|------|-------|
-| `idcategory` | INT PK (auto) | ID danh mục |
+| `uuid` | VARCHAR(36) PK | UUID — Primary Key, đồng bộ với Client-app |
+| `idcategory` | INT UNIQUE (auto) | ID số (giữ lại cho backward compat) |
 | `namecategory` | VARCHAR(100) | Tên danh mục |
 | `classify` | VARCHAR(10) | `thu` / `chi` / `vay/no` |
 | `is_default` | BOOLEAN | Danh mục mặc định hệ thống? |
-| `uuid` | VARCHAR(36) UNIQUE | UUID để đồng bộ với Client-app |
 | `created_by` | INT FK→Account | Người tạo |
 | `created_at` / `updated_at` | TIMESTAMP | Thời gian |
-| **Indexes** | `idx_category_uuid` (uuid) | |
+| **Indexes** | `idx_category_uuid` (uuid), `category_idcategory_unique` (idcategory) | |
 
 ##### Bảng AuditLog
 | Cột | Kiểu | Mô tả |
@@ -234,7 +235,7 @@ Role (1) ──▶ Account (N) ──▶ User (1)
 | `id` | VARCHAR(36) PK | UUID do client tạo |
 | `idaccount` | INT FK→Account | Chủ sở hữu |
 | `wallet_id` | VARCHAR(36) FK→Wallet | Ví chứa giao dịch |
-| `category_id` | VARCHAR(36) NULL | UUID của category (null cho transfer) |
+| `category_id` | VARCHAR(36) NULL FK→Category | UUID của category (null cho transfer) |
 | `amount` | DECIMAL(15,2) | Số tiền |
 | `type` | VARCHAR(20) | thu/chi/transfer/adjustment |
 | `note` | TEXT | Ghi chú |
@@ -250,7 +251,7 @@ Role (1) ──▶ Account (N) ──▶ User (1)
 |-----|------|-------|
 | `id` | VARCHAR(36) PK | UUID do client tạo |
 | `idaccount` | INT FK→Account | Chủ sở hữu |
-| `category_id` | VARCHAR(36) NULL | UUID danh mục |
+| `category_id` | VARCHAR(36) NULL FK→Category | UUID danh mục |
 | `amount` | DECIMAL(15,2) | Hạn mức |
 | `period` | VARCHAR(20) DEFAULT 'monthly' | weekly/monthly/yearly |
 | `start_date` / `end_date` | TIMESTAMP | Thời gian áp dụng |
@@ -308,7 +309,7 @@ Role (1) ──▶ Account (N) ──▶ User (1)
 |------|---------------------|-------|
 | **Local DB** | SQLite (sqflite/drift) | Mirror schema backend + `sync_status` (pending/synced/conflict) + `updated_at` |
 | **Repository** | Repository Pattern | Abstract nguồn dữ liệu (local/remote), ưu tiên đọc local |
-| **Sync Engine** | `POST /sync` | Gửi mảng operations, backend xử lý & trả kết quả |
+| **Sync Engine** | `POST /api/sync/push` + `GET /api/sync/pull` | Push mảng operations lên server (LWW) & pull data về |
 | **Conflict Resolution** | Backend = source of truth | Ưu tiên theo timestamp, báo conflict nếu cần |
 | **Real-time** | Socket.IO | Backend push sự kiện → client cập nhật local DB + UI |
 | **State Management** | BLoC | Mỗi màn hình có BLoC riêng (loading/loaded/error) |
@@ -339,26 +340,28 @@ Role (1) ──▶ Account (N) ──▶ User (1)
 ```
 Client: Tạo transaction (sync_status=pending) → SQLite → UI hiển thị ngay
   ↓ (khi có mạng)
-Client: POST /transactions
+Client: POST /api/sync/push (batch operations)
   ↓
-Backend: Tạo transaction → emit transaction.created
+Backend: Upsert transaction (LWW) → emit transaction.created
   ↓
-AI Service: Phân loại category
-Analytics Service: Cập nhật báo cáo
-Notification Service: Gửi thông báo
+AI Worker: Phân loại category (bất đồng bộ)
+Notification Worker: Gửi thông báo (bất đồng bộ)
   ↓
 Backend → Client: Thành công → sync_status=synced
+  ↓
+Client: GET /api/sync/pull → cập nhật từ thiết bị khác
 ```
 
-#### 3.5.2 Tự Động Hóa Từ SMS
+#### 3.5.2 Tự Động Hóa Từ SMS (offline — Mobile)
 
 ```
-SMS → API /automation/sms → Backend → Queue sms-parse → 202 Accepted
+SMS ngân hàng → Mobile đọc & parse (offline, không cần internet)
   ↓
-Worker: AI/NLP trích xuất (số tiền, nội dung, ngày, danh mục)
+Regex/NLP trích xuất (số tiền, nội dung, ngày)
   ↓
-Thành công → Tạo transaction + emit event
-Thất bại → Đẩy thông báo client → người dùng nhập tay
+Tạo transaction tạm (sync_status=pending) → UI hiển thị ngay
+  ↓ (khi có mạng)
+SyncEngine: POST /api/sync/push → Backend upsert
 ```
 
 #### 3.5.3 Đồng Bộ Hàng Loạt (Sync)
@@ -400,6 +403,7 @@ Nếu traffic tăng → tách module thành microservices riêng, giao tiếp qu
 | **Redis** | Redis Cloud free tier (30MB) / Upstash Redis free / Oracle Cloud Always Free |
 | **AI Phân loại** | Hugging Face API free / OpenAI credit free / tự train model nhỏ |
 | **OCR** | Tesseract.js (miễn phí) / Google Cloud Vision (1000 ảnh/tháng free) |
+| **Bank Integration** | Casso gói SPONSOR (free: 12 tài khoản + 100 giao dịch/tháng) |
 | **SMS Parsing** | Regex trên client → giảm tải server |
 | **Hosting** | Oracle Cloud Always Free (4 ARM core, 24GB RAM) / Google Cloud e2-micro |
 | **Admin-web** | Serve từ Express static middleware hoặc Vercel/Netlify (miễn phí) |
@@ -467,13 +471,15 @@ ManagementFinance/
 
 #### 📌 4.1.1. 6 Module Backend — Vai trò
 
+> Backend đảm nhận 6 module cần internet. Các module nghiệp vụ còn lại (Category, Wallet, Transaction, Budget, Bill, Goal, Analytics) chạy trên Mobile — Backend chỉ đồng bộ/lưu trữ dữ liệu.
+
 | Module | Chức năng chính |
 |--------|-----------------|
 | **auth** | Đăng ký, đăng nhập, cấp JWT, refresh token |
-| **admin** | Quản lý user, dashboard thống kê, cấu hình hệ thống, queue status |
+| **admin** | Quản lý user, quản lý danh mục mặc định, dashboard thống kê |
 | **sync** | Nhận batch operations từ client, conflict resolution |
-| **bank** | Webhook ngân hàng, SMS, tỷ giá, lãi suất |
-| **ai** | Phân loại giao dịch, OCR, SMS parsing, chatbot |
+| **bank** | Liên kết ngân hàng (Casso), số dư, lịch sử giao dịch, webhook biến động số dư |
+| **ai** | Phân loại GD, OCR, phân tích hành vi, dự báo, lời khuyên, chatbot |
 | **notification** | Push notification (FCM/APNs), email |
 
 ### 4.2 Admin-web — React SPA (Vite + Tailwind CSS)
@@ -529,21 +535,22 @@ src/
 
 **BullMQ** là thư viện hàng đợi (queue) dành cho Node.js, xây dựng trên nền tảng Redis. Là phiên bản kế thừa hiện đại của thư viện Bull, được viết lại bằng TypeScript.
 
-BullMQ giúp quản lý và xử lý các **tác vụ nền (background jobs)** như: gửi email hàng loạt, xử lý ảnh, xuất báo cáo dữ liệu, gọi AI phân loại, OCR hóa đơn, SMS parsing.
+BullMQ giúp quản lý và xử lý các **tác vụ nền (background jobs)** như: gửi email hàng loạt, xử lý ảnh, xuất báo cáo dữ liệu, gọi AI phân loại, OCR hóa đơn, xử lý webhook ngân hàng.
 
 **Đặc điểm:**
 - **Tiết kiệm CPU**: Dùng Redis Stream pub/sub để Redis **chủ động thông báo** cho worker khi có job mới (không polling)
 - **Hỗ trợ phân tán**: Nhiều worker trên nhiều server khác nhau, cùng truy cập Redis trung tâm để lấy job
 - **Nhiều tính năng**: FIFO/LIFO, ưu tiên (priority), job trì hoãn (delayed), job lặp (repeatable cron), retry với backoff
 
-**Trong dự án**: Backend sử dụng 5 queue (định nghĩa tại `core/queue.js`):
+**Trong dự án**: Backend sử dụng 4 queue (định nghĩa tại `core/queue.js`):
 | Queue | Mục đích |
 |-------|----------|
 | `ai-classify-transaction` | Gọi AI phân loại danh mục cho giao dịch |
 | `ocr-process-receipt` | Xử lý ảnh hóa đơn, trích xuất thông tin |
-| `sms-parse` | Phân tích SMS ngân hàng → tạo giao dịch |
+| `bank-webhook` | Xử lý webhook biến động số dư từ Casso |
 | `send-notification` | Gửi email/push notification đến user |
-| `sync-data` | Xử lý đồng bộ batch từ client |
+
+> SMS parsing chạy **offline trên Mobile**; Sync xử lý **đồng bộ qua REST API** — không dùng queue.
 
 ##### Queue (Hàng đợi)
 
@@ -590,7 +597,7 @@ Ngân hàng (bên ngoài) → POST /api/bank/webhook (có sự kiện mới)
   ↓
 Backend nhận webhook → validate payload → 200 OK (xác nhận đã nhận)
   ↓ (bất đồng bộ)
-Enqueue job vào BullMQ (vd: sms-parse, ai-classify-transaction)
+Enqueue job vào BullMQ (vd: bank-webhook, ai-classify-transaction)
   ↓
 Worker pick job → xử lý → lưu DB → emit event qua Event Bus
 ```
@@ -600,7 +607,7 @@ Worker pick job → xử lý → lưu DB → emit event qua Event Bus
 - Job có retry nếu xử lý thất bại
 - Có thể theo dõi trạng thái job (completed/failed)
 
-**Trong dự án**: Module `bank` xử lý webhook từ ngân hàng (SMS, tỷ giá). Module `ai` xử lý webhook OCR. Cả hai đều đẩy job vào BullMQ để worker xử lý bất đồng bộ.
+**Trong dự án**: Module `bank` xử lý webhook biến động số dư từ Casso → tạo Transaction. Module `ai` xử lý OCR hóa đơn. Cả hai đều đẩy job vào BullMQ để worker xử lý bất đồng bộ.
 
 ##### REST API + Emit Event
 
@@ -608,7 +615,7 @@ Worker pick job → xử lý → lưu DB → emit event qua Event Bus
 
 **Luồng hoạt động:**
 ```
-Client → POST /api/sync (gửi dữ liệu)
+Client → POST /api/sync/push (gửi batch operations)
   ↓
 Controller → Service: xử lý nghiệp vụ chính (lưu DB, validate)
   ↓
@@ -618,8 +625,7 @@ EventBus.publish('transaction.created', payload)  ← Emit Event (bất đồng 
   ↓
 Các subscriber lắng nghe:
   ├── AI Worker: phân loại danh mục giao dịch
-  ├── Notification Worker: gửi thông báo qua Socket.IO
-  └── Analytics: cập nhật báo cáo thống kê
+  └── Notification Worker: gửi thông báo qua Socket.IO
 ```
 
 **Nguyên tắc:**
@@ -635,7 +641,7 @@ Các subscriber lắng nghe:
 | Công nghệ | Module áp dụng | Vai trò cụ thể |
 |-----------|---------------|----------------|
 | **Express + REST API** | Tất cả 6 module | Nhận request từ admin-web & client-app |
-| **BullMQ** | bank, ai, notification, sync | Xử lý job nặng bất đồng bộ (OCR, SMS, AI, email, sync batch) |
+| **BullMQ** | bank, ai, notification | Xử lý job nặng bất đồng bộ (OCR, AI, email, webhook) |
 | **Event Bus (Redis Pub/Sub)** | Tất cả module | Phát sự kiện liên module (transaction.created, user.registered...) |
 | **Socket.IO** | notification | Push real-time: thông báo, audit log, hiệu năng hệ thống |
 | **Workers** | bank, ai, notification | Process độc lập lắng nghe BullMQ queue + Event Bus |
@@ -668,9 +674,9 @@ Các subscriber lắng nghe:
 │                     │              │                         │
 │  ai-classify        │              │  transaction.created    │
 │  ocr-process        │              │  user.registered        │
-│  sms-parse          │              │  sync.completed         │
-│  send-notification  │              │  category.updated       │
-│  sync-data          │              │  bank.webhook.received  │
+│  bank-webhook       │              │  sync.completed         │
+│  send-notification  │              │  transaction.classified │
+│                     │              │  bank.webhook.received  │
 └────────┬────────────┘              └────────┬────────────────┘
          │                                    │
          ▼                                    ▼
@@ -731,32 +737,35 @@ Admin-web → PATCH /api/admin/updatestatus/:id
 **Module Sync** — Đồng bộ (REST API + Emit Event)
 
 ```
-Client-app → POST /api/sync {operations: [{type, entity, data}...]}
+Client-app → POST /api/sync/push {operations: [{entity, operation, payload}...]}
   → authenticate (user)
-  → syncController.processSync()
-  → syncService.processBatch()
-    → Xử lý tuần tự từng operation trong DB transaction
-    → Lưu kết quả (thành công/thất bại/conflict)
-    → 200 OK {results: [...], conflicts: [...]}
-    → EventBus.publish('sync.completed', {userId, stats})
+  → syncController.push()
+  → syncService.processPush()
+    → Xử lý tuần tự từng operation (LWW conflict resolution)
+    → Lưu kết quả (synced/conflict/error)
+    → 200 OK {results: [...], summary: {...}}
+    → EventBus.publish('sync.completed', {idaccount, summary})
        ↓
        Notification Worker subscribe → Socket.IO → admin-web
+
+Client-app → GET /api/sync/pull?since=<timestamp>
+  → syncController.pull() → syncService.processPull()
+    → 200 OK {data: {wallets, transactions, ...}}
 ```
 
-**Module Bank** — Ngân hàng (Webhook + BullMQ Jobs)
+**Module Bank** — Ngân hàng (Casso + Webhook + BullMQ Jobs)
 
 ```
-Ngân hàng → POST /api/bank/webhook {type: 'sms', data: {...}}
+Casso → POST /api/bank/webhook (biến động số dư: transaction_id, amount, transfer_type...)
   → bankController.receiveWebhook()
-  → 200 OK (xác nhận đã nhận, không xử lý ngay)
-  → Enqueue job vào BullMQ: sms-parse
+  → verify signature → 200 OK (xác nhận đã nhận, không xử lý ngay)
+  → Enqueue job vào BullMQ: bank-webhook
      ↓
      bank.worker.js pick job
-     → AI/NLP trích xuất (số tiền, nội dung, danh mục)
-     → Thành công: tạo transaction + EventBus.publish('transaction.created')
-     → Thất bại: EventBus.publish('sms.parse.failed', {error})
+     → Chống trùng (UNIQUE provider + transaction_id)
+     → Tạo Transaction (dedupe) + EventBus.publish('transaction.created')
         ↓
-        Notification Worker → Socket.IO → admin-web (cảnh báo)
+        Notification Worker → Socket.IO → admin-web
 ```
 
 **Module AI** — Trí tuệ nhân tạo (REST API + BullMQ Jobs)
@@ -825,50 +834,146 @@ Notification Worker:
 
 ## 6. Chức Năng Chính (Features)
 
-### 6.1 Chức năng Đăng nhập & Đăng ký
-| Mã | Chức năng | Đối tượng sử dụng | Module | Trạng thái |
-|----|----------|-------------------|--------|-----------|
-| **F001** | Đăng nhập hệ thống | Admin, User | auth | ✅ Done |
-| **F002** | Đăng ký tài khoản | User (Mobile-app) | auth | ✅ Done |
+> Các chức năng được xây dựng tại **Backend**, **Mobile**, hoặc **Backend + Mobile** tùy theo nhu cầu người dùng. Phân loại thành **3 nhóm chính với 13 module**.
 
-### 6.2 Chức năng Quản lý người dùng (Admin)
-| Mã | Chức năng | Đối tượng sử dụng | Module | Trạng thái |
-|----|----------|-------------------|--------|-----------|
-| **F004** | Xem danh sách người dùng | Admin | admin | ✅ Done |
-| **F005** | Xem chi tiết người dùng | Admin | admin | ✅ Done |
-| **F006** | Kích hoạt / Vô hiệu hóa tài khoản | Admin | admin | ✅ Done |
+### Nhóm A — Domain Modules (Nghiệp vụ cốt lõi)
 
-### 6.3 Chức năng Quản lý danh mục (Admin)
-| Mã | Chức năng | Đối tượng sử dụng | Module | Trạng thái |
-|----|----------|-------------------|--------|-----------|
-| **F007** | Xem danh sách danh mục | Admin | admin | ✅ Done |
-| **F008** | Thêm danh mục mới | Admin | admin | ✅ Done |
-| **F009** | Sửa danh mục | Admin | admin | ✅ Done |
-| **F010** | Xóa danh mục | Admin | admin | ✅ Done |
+#### A1. User Management
+| STT | Chức năng | Location | Actor |
+|-----|-----------|----------|-------|
+| 1 | Đăng ký | Backend | User |
+| 2 | Đăng nhập | Backend + Mobile | Admin + User |
+| 3 | Đăng xuất | Backend + Mobile | Admin + User |
+| 4 | Đổi mật khẩu | Backend + Mobile | Admin + User |
+| 5 | Quên mật khẩu | Mobile | User |
+| 6 | Yêu cầu xóa tài khoản | Mobile | User |
+| 7 | Quản lý Profile cá nhân | Mobile | User |
 
-### 6.4 Chức năng Dashboard (Admin)
-| Mã | Chức năng | Đối tượng sử dụng | Module | Trạng thái |
-|----|----------|-------------------|--------|-----------|
-| **F003** | Thống kê tổng quan | Admin | admin | 🚧 Đang phát triển |
+#### A2. Category Management
+| STT | Chức năng | Location | Actor |
+|-----|-----------|----------|-------|
+| 1 | Quản lý danh mục cá nhân | Mobile | User |
+| 2 | Phân loại danh mục (thu / chi / vay-nợ) | Mobile | User |
+| 3 | Gom nhóm danh mục | Mobile | User |
+| 4 | Thiết lập từ khóa nhận diện danh mục (dùng cho cả AI & NoAI) | Mobile | User |
+| 5 | Phân loại danh mục | Mobile | User |
 
-### 6.5 Chức năng Đồng bộ dữ liệu (Sync)
-| Mã | Chức năng | Đối tượng sử dụng | Module | Trạng thái |
-|----|----------|-------------------|--------|-----------|
-| **F018** | Đồng bộ dữ liệu từ client lên server (Push) | User (Mobile-app) | sync | ✅ Done |
-| **F019** | Kéo dữ liệu mới từ server về client (Pull) | User (Mobile-app) | sync | ✅ Done |
-| **F020** | Trạng thái đồng bộ (Status) | User (Mobile-app) | sync | ✅ Done |
+#### A3. Wallet Management
+| STT | Chức năng | Location | Actor |
+|-----|-----------|----------|-------|
+| 1 | Quản lý ví ảo (Thêm, xóa, sửa) | Mobile | User |
+| 2 | Thiết lập ví ảo mặc định | Mobile | User |
+| 3 | Kích hoạt / vô hiệu hóa ví | Mobile | User |
+| 4 | Liên kết ngân hàng | Backend + Mobile | User |
+
+#### A4. Transaction Management
+| STT | Chức năng | Location | Actor |
+|-----|-----------|----------|-------|
+| 1 | Quản lý giao dịch thủ công (Thêm, xóa, sửa) | Mobile | User |
+| 2 | Xem danh sách giao dịch | Mobile | User |
+| 3 | Chuyển tiền nội bộ | Mobile | User |
+| 4 | Tạo giao dịch từ SMS | Mobile | User |
+| 5 | Tạo giao dịch từ OCR (offline) | Mobile | User |
+| 6 | Tạo giao dịch từ biến động số dư NH (webhook) | Backend | User |
+| 7 | Khử trùng lặp dữ liệu | Backend + Mobile | User |
+
+#### A5. Budget Management
+| STT | Chức năng | Location | Actor |
+|-----|-----------|----------|-------|
+| 1 | Quản lý ngân sách (Thêm, xóa, sửa) | Mobile | User |
+| 2 | Thiết lập ngưỡng cảnh báo | Mobile | User |
+| 3 | Thiết lập quy tắc phân bổ ngân sách | Mobile | User |
+| 4 | Xem lịch sử giao dịch ngân sách | Mobile | User |
+
+#### A6. Bill & Subscription Management
+| STT | Chức năng | Location | Actor |
+|-----|-----------|----------|-------|
+| 1 | Quản lý hóa đơn | Mobile | User |
+| 2 | Liên kết tài khoản thanh toán | Mobile | User |
+| 3 | Thiết lập thanh toán định kỳ | Mobile | User |
+| 4 | Xem lịch sử thanh toán | Mobile | User |
+
+#### A7. Goal Management
+| STT | Chức năng | Location | Actor |
+|-----|-----------|----------|-------|
+| 1 | Quản lý mục tiêu tài chính (Thêm, xóa, sửa) | Mobile | User |
+| 2 | Tự động tạo giao dịch tiết kiệm (Schedule) | Mobile | User |
+| 3 | Dự đoán thời gian hoàn thành | Mobile | User |
+
+#### A8. Analytics & Reporting
+| STT | Chức năng | Location | Actor |
+|-----|-----------|----------|-------|
+| 1 | Tổng hợp kết quả thu chi | Mobile | User |
+| 2 | So sánh tỷ trọng Phân loại danh mục — biểu đồ tròn (thu, chi, vay/nợ) | Mobile | User |
+| 3 | So sánh tỷ trọng Loại danh mục — biểu đồ tròn | Mobile | User |
+| 4 | So sánh tỷ lệ Cho vay + thu nợ — Biểu đồ cột | Mobile | User |
+| 5 | So sánh tỷ lệ Đi vay + Trả nợ — Biểu đồ cột | Mobile | User |
+| 6 | Xu hướng dòng tiền theo Phân loại danh mục (thu chi) — Biểu đồ đường (2 đường thu chi) | Mobile | User |
+| 7 | Xu hướng dòng tiền theo loại danh mục — Biểu đồ đường (1 đường) | Mobile | User |
+| 8 | Xu hướng của dòng tiền tự do (thu nhập sau khi trả nợ) | Mobile | User |
+| 9 | Biến động của Khoản vay qua các kỳ (Đi vay + Lãi vay) | Mobile | User |
+| 10 | Image1.png | Mobile | User |
+| 11 | Image2.png | Mobile | User |
+
+### Nhóm B — Capability Modules (Năng lực hỗ trợ xuyên suốt)
+
+#### B9. AI
+| STT | Chức năng | Location | Actor |
+|-----|-----------|----------|-------|
+| 1 | Chatbot AI | Backend | User |
+| 2 | OCR AI | Backend | User |
+| 3 | AI phân loại giao dịch | Backend | User |
+| 4 | AI phân tích hành vi chi tiêu | Backend | User |
+| 5 | AI dự báo chi tiêu | Backend | User |
+| 6 | AI đưa ra lời khuyên tài chính | Backend | User |
+| 7 | AI đề xuất quy tắc phân bổ dòng tiền (Budget + Goal) | Backend | User |
+
+#### B10. Notification
+> Phát sinh dần trong quá trình làm & ghi nhận sau.
+
+| STT | Chức năng | Location | Actor |
+|-----|-----------|----------|-------|
+| … | … | Backend + Mobile | User + Admin |
+
+#### B11. Sync
+| STT | Chức năng | Location | Actor |
+|-----|-----------|----------|-------|
+| 1 | Đồng bộ dữ liệu Mobile → Backend (push, LWW) | Backend + Mobile | User |
+| 2 | Đồng bộ dữ liệu Backend → Mobile (pull — xóa app tải lại) | Backend + Mobile | User |
+
+#### B12. Bank
+| STT | Chức năng | Location | Actor |
+|-----|-----------|----------|-------|
+| 1 | Liên kết ngân hàng (OAuth Casso) | Backend + Mobile | User |
+| 2 | Quản lý liên kết ngân hàng (xem/hủy) | Backend + Mobile | User + Admin |
+| 3 | Lấy danh sách Ngân hàng + số dư | Backend | User |
+| 4 | Lấy lịch sử giao dịch | Backend | User |
+| 5 | Nhận giao dịch realtime (webhook) | Backend | User |
+
+### Nhóm C — Platform (Quản trị hệ thống)
+
+#### C13. Admin
+| STT | Chức năng | Location | Actor |
+|-----|-----------|----------|-------|
+| 1 | Quản lý người dùng (xem/khóa/mở khóa) | Backend | Admin |
+| 2 | Quản lý danh mục mặc định (Thêm, xóa, sửa, đồng bộ) | Backend | Admin |
+| 3 | Dashboard thống kê | Backend | Admin |
+
+> Một vài chức năng khác như backup/restore v.v… sẽ bổ sung sau.
 
 ---
 
 ## 7. Đặc Tả & Yêu Cầu Nghiệp Vụ & API
 
-### 7.1 F001 — Đăng Nhập Hệ Thống
+> Định danh theo **Module + Chức năng** (bỏ mã F). Module chưa triển khai chỉ tạo khung — bổ sung đặc tả chi tiết khi bắt đầu build.
 
-#### 7.1.1 Thông tin chung
+### 7.1 A1 — User Management
+
+#### 7.1.1 Đăng nhập — Thông tin chung
 
 | Thuộc tính | Giá trị |
 |------------|---------|
-| **Mã chức năng** | F001 |
+| **Mã chức năng** | A1 — Đăng nhập |
 | **Tên chức năng** | Đăng nhập hệ thống |
 | **Actor chính** | Admin, User |
 | **Actor phụ** | Hệ thống (Backend, CSDL) |
@@ -1014,218 +1119,60 @@ Kẻ tấn công dùng Refresh Token đã bị revoked:
 | **CSDL** | `database/)1_CSDL_Admin.sql` (Role, Account, User) |
 | | `database/)2_create_refreshtoken_table.sql` (RefreshToken) |
 
-### 7.2 F003 — Dashboard Admin (Thống kê)
+### 7.2 A2 — Category Management
 
-#### 7.2.1 Thông tin chung
+⏳ Chưa đặc tả — bổ sung khi triển khai.
 
-| Thuộc tính | Giá trị |
-|------------|---------|
-| **Mã chức năng** | F003 |
-| **Tên chức năng** | Dashboard — Thống kê hệ thống |
-| **Actor chính** | Admin |
-| **Mức độ ưu tiên** | Cao |
-| **Trạng thái** | 🚧 Đang phát triển |
-| **Phiên bản** | v1.0 — 2026-08-06 |
+### 7.3 A3 — Wallet Management
 
-#### 7.2.2 Nguyên tắc chung
+⏳ Chưa đặc tả — bổ sung khi triển khai.
 
-Dashboard có 3 lựa chọn thống kê theo thời gian: **Hôm nay**, **7 ngày**, **30 ngày**.
-- Mặc định khi truy cập dashboard: **Hôm nay**
-- Khi người dùng chọn khoảng thời gian khác → tự động tải lại dữ liệu và gọi API tương ứng
-- Các API tổng (không phụ thuộc thời gian) chỉ gọi 1 lần khi mount, không gọi lại khi đổi bộ lọc
-- Tất cả API dashboard yêu cầu `authenticate` + `authorize('admin')`
-- Khi truy vấn dữ liệu người dùng: chỉ tính user (`idrole = 2`), không tính admin (`idrole = 1`)
+### 7.4 A4 — Transaction Management
 
-#### 7.2.3 API Endpoints
+⏳ Chưa đặc tả — bổ sung khi triển khai.
 
-| Endpoint | Method | Auth | Mô tả |
-|----------|--------|------|-------|
-| `/api/admin/totaluser` | GET | Admin | Tổng số người dùng (toàn bộ, không filter thời gian) |
-| `/api/admin/totalcategories` | GET | Admin | Tổng số danh mục (toàn bộ, không filter thời gian) |
-| `/api/admin/getusertotime` | GET | Admin | Số lượng người dùng mới + tỷ lệ tăng trưởng theo khoảng thời gian |
+### 7.5 A5 — Budget Management
 
-#### 7.2.4 API Chi tiết
+⏳ Chưa đặc tả — bổ sung khi triển khai.
 
-##### GET /api/admin/totaluser
+### 7.6 A6 — Bill & Subscription Management
 
-**Query params**: Không
+⏳ Chưa đặc tả — bổ sung khi triển khai.
 
-**Response**:
-```json
-{
-  "success": true,
-  "data": { "total": 2 }
-}
-```
+### 7.7 A7 — Goal Management
 
-##### GET /api/admin/totalcategories
+⏳ Chưa đặc tả — bổ sung khi triển khai.
 
-**Query params**: Không
+### 7.8 A8 — Analytics & Reporting
 
-**Response**:
-```json
-{
-  "success": true,
-  "data": { "total": 0 }
-}
-```
+⏳ Chưa đặc tả — bổ sung khi triển khai.
 
-##### GET /api/admin/getusertotime
+### 7.9 B9 — AI
 
-**Query params**:
+⏳ Chưa đặc tả — chi tiết build xem Section 8.5.
 
-| Param | Kiểu | Required | Default | Mô tả |
-|-------|------|----------|---------|-------|
-| `period` | string | No | `today` | `today` / `7days` / `30days` |
+### 7.10 B10 — Notification
 
-**Luồng xử lý**:
-1. Xác định 2 khoảng thời gian: Current (được chọn) và Previous (tương ứng trước đó)
-   - `today`: Hôm nay vs Hôm qua
-   - `7days`: 7 ngày gần nhất vs 7 ngày trước đó (day 8→14)
-   - `30days`: 30 ngày gần nhất vs 30 ngày trước đó (day 31→60)
-2. Đếm số user (`idrole = 2`) trong từng khoảng
-3. Tính growth: `((current - previous) / previous) * 100`
-   - Nếu `previous = 0` → growth = `100%`
-   - Nếu dữ liệu không đủ ngày → vẫn tính bình thường
+⏳ Chưa đặc tả — phát sinh dần trong quá trình làm & ghi nhận sau.
 
-**Response**:
-```json
-{
-  "success": true,
-  "data": {
-    "period": "today",
-    "current": 2,
-    "previous": 0,
-    "growth": 100
-  }
-}
-```
+### 7.11 B11 — Sync (✅ MVP)
 
-#### 7.2.5 Mapping Frontend
-
-| Card trên Dashboard | API | Gọi khi |
-|---------------------|-----|---------|
-| Tổng người dùng | `GET /api/admin/totaluser` | Mount (1 lần) |
-| Tổng danh mục | `GET /api/admin/totalcategories` | Mount (1 lần) |
-| Người dùng mới (+ growth%) | `GET /api/admin/getusertotime?period=` | Mount + mỗi lần đổi time filter |
-
-#### 7.2.6 Files liên quan
-
-| Tầng | File |
-|------|------|
-| **Backend** | `modules/admin/admin.controller.js` |
-| | `modules/admin/admin.service.js` |
-| | `modules/admin/admin.repository.js` |
-| | `api/admin.routes.js` |
-| **Frontend** | `pages/dashboard/DashboardPage.jsx` |
-| | `api/admin.api.js` |
-| | `utils/constants.js` (TIME_FILTERS) |
-
-### 7.3 F004-006 — Quản lý người dùng (Admin)
-
-#### 7.3.1 Thông tin chung
+#### 7.11.1 Thông tin chung
 
 | Thuộc tính | Giá trị |
 |------------|---------|
-| **Mã chức năng** | F004, F005, F006 |
-| **Tên chức năng** | Quản lý người dùng |
-| **Actor chính** | Admin |
-| **Mức độ ưu tiên** | Cao |
-| **Trạng thái** | ✅ Đã hoàn thành |
-| **Phiên bản** | v1.0 — 2026-08-09 |
-
-#### 7.3.2 Mô tả
-
-- **F004 — Xem danh sách người dùng**: Hiển thị toàn bộ user (idrole=2) dạng bảng có phân trang, lọc theo trạng thái & khu vực. Mỗi dòng hiển thị: họ tên, email, số điện thoại, trạng thái, nút hành động.
-- **F005 — Xem chi tiết người dùng**: Bấm nút xem chi tiết → mở modal hiển thị đầy đủ thông tin cá nhân + tài khoản, gọi API `GET /getuser/:id`.
-- **F006 — Kích hoạt / Vô hiệu hóa**: Bấm nút "Vô hiệu hóa" / "Kích hoạt" → hiển thị alert xác nhận → gọi `PATCH /updatestatus/:id` → cập nhật trạng thái trong DB → render lại UI.
-
-#### 7.3.3 API Endpoints
-
-| Endpoint | Method | Auth | Mô tả |
-|----------|--------|------|-------|
-| `/api/admin/getuser` | GET | Admin | Lấy danh sách người dùng (idrole=2) |
-| `/api/admin/getuser/:id` | GET | Admin | Lấy chi tiết người dùng theo iduser |
-| `/api/admin/updatestatus/:id` | PATCH | Admin | Toggle trạng thái Active↔Inactive |
-
-#### 7.3.4 Files liên quan
-
-| Tầng | File |
-|------|------|
-| **Backend** | `modules/admin/admin.controller.js` |
-| | `modules/admin/admin.service.js` |
-| | `modules/admin/admin.repository.js` |
-| | `api/admin.routes.js` |
-| **Frontend** | `pages/users/UserListPage.jsx` |
-| | `components/common/UserDetailModal.jsx` |
-| | `api/admin.api.js` |
-
-### 7.4 F007-010 — Quản lý danh mục (Admin)
-
-#### 7.4.1 Thông tin chung
-
-| Thuộc tính | Giá trị |
-|------------|---------|
-| **Mã chức năng** | F007, F008, F009, F010 |
-| **Tên chức năng** | Quản lý danh mục |
-| **Actor chính** | Admin |
-| **Mức độ ưu tiên** | Cao |
-| **Trạng thái** | ✅ Đã hoàn thành |
-| **Phiên bản** | v1.0 — 2026-08-09 |
-
-#### 7.4.2 Mô tả
-
-- **F007 — Xem danh sách danh mục**: Hiển thị toàn bộ category dạng bảng có phân trang, lọc theo loại & mặc định. Mỗi dòng: tên danh mục, loại (thu/chi/vay-no), phân loại (hệ thống/tùy chỉnh), nút sửa/xóa.
-- **F008 — Thêm danh mục**: Mở modal form (tên, loại, mặc định) → `POST /addcategory` → render lại.
-- **F009 — Sửa danh mục**: Bấm nút sửa → mở modal với dữ liệu đã lưu từ lần load trước (không gọi lại API) → `PUT /updatecategory/:id` → render lại.
-- **F010 — Xóa danh mục**: Bấm nút xóa → alert xác nhận → `DELETE /deletecategory/:id` → render lại.
-
-#### 7.4.3 API Endpoints
-
-| Endpoint | Method | Auth | Mô tả |
-|----------|--------|------|-------|
-| `/api/admin/getcategory` | GET | Admin | Lấy danh sách danh mục |
-| `/api/admin/addcategory` | POST | Admin | Thêm danh mục mới |
-| `/api/admin/updatecategory/:id` | PUT | Admin | Sửa danh mục |
-| `/api/admin/deletecategory/:id` | DELETE | Admin | Xóa danh mục |
-
-#### 7.4.4 Mapping classify ↔ type
-
-| Frontend (form.type) | Backend (classify) | Hiển thị |
-|----------------------|---------------------|----------|
-| `income` | `thu` | Thu nhập |
-| `expense` | `chi` | Chi phí |
-| `debt` | `vay/no` | Vay/nợ |
-
-#### 7.4.5 Files liên quan
-
-| Tầng | File |
-|------|------|
-| **Backend** | `modules/admin/admin.controller.js` |
-| | `modules/admin/admin.service.js` |
-| | `modules/admin/admin.repository.js` |
-| | `api/admin.routes.js` |
-| **Frontend** | `pages/categories/CategoryPage.jsx` |
-| | `api/admin.api.js` |
-
-### 7.5 F018-F020 — Đồng bộ dữ liệu (Sync)
-
-#### 7.5.1 Thông tin chung
-
-| Thuộc tính | Giá trị |
-|------------|---------|
-| **Mã chức năng** | F018, F019, F020 |
+| **Mã chức năng** | B11 — Đồng bộ dữ liệu |
 | **Tên chức năng** | Đồng bộ dữ liệu Client-Server |
 | **Actor chính** | User (Mobile-app) |
 | **Mức độ ưu tiên** | Cao |
 | **Trạng thái** | ✅ Đã hoàn thành (MVP) |
 | **Phiên bản** | v1.0 — 2026-08-12 |
 
-#### 7.5.2 Mô tả
+#### 7.11.2 Mô tả
 
-- **F018 — Push**: Client gửi batch operations (create/update/delete) lên server. Backend xử lý LWW conflict resolution, trả kết quả từng operation.
-- **F019 — Pull**: Client kéo data mới từ server theo `since` timestamp, có thể filter theo entity.
-- **F020 — Status**: Client kiểm tra trạng thái sync (số lượng record mỗi entity).
+- **Push**: Client gửi batch operations (create/update/delete) lên server. Backend xử lý LWW conflict resolution, trả kết quả từng operation.
+- **Pull**: Client kéo data mới từ server theo `since` timestamp, có thể filter theo entity.
+- **Status**: Client kiểm tra trạng thái sync (số lượng record mỗi entity).
 
 **Nguyên tắc**:
 - Client tự tạo UUID cho mọi record (Backend không sinh ID)
@@ -1236,7 +1183,7 @@ Dashboard có 3 lựa chọn thống kê theo thời gian: **Hôm nay**, **7 ng�
 - Idempotent: push cùng record nhiều lần không lỗi
 - Batch limit: tối đa 1000 operations/push
 
-#### 7.5.3 API Endpoints
+#### 7.11.3 API Endpoints
 
 | Endpoint | Method | Auth | Mô tả |
 |----------|--------|------|-------|
@@ -1244,7 +1191,7 @@ Dashboard có 3 lựa chọn thống kê theo thời gian: **Hôm nay**, **7 ng�
 | `/api/sync/pull?since=&entities=` | GET | Bearer (user) | Trả data mới cho client |
 | `/api/sync/status` | GET | Bearer (user) | Trạng thái sync (entity counts) |
 
-#### 7.5.4 Request/Response
+#### 7.11.4 Request/Response
 
 **POST /api/sync/push**:
 ```json
@@ -1306,7 +1253,7 @@ Dashboard có 3 lựa chọn thống kê theo thời gian: **Hôm nay**, **7 ng�
 }
 ```
 
-#### 7.5.5 Conflict Resolution Logic
+#### 7.11.5 Conflict Resolution Logic
 
 ```
 Nếu record chưa tồn tại → INSERT → status: 'synced'
@@ -1318,7 +1265,7 @@ Nếu record tồn tại:
     - category → DELETE (hard, chỉ user-created, cấm system default)
 ```
 
-#### 7.5.6 Files liên quan
+#### 7.11.6 Files liên quan
 
 | Tầng | File |
 |------|------|
@@ -1329,29 +1276,320 @@ Nếu record tồn tại:
 | | `modules/sync/sync.validation.js` |
 | | `modules/sync/sync.events.js` (placeholder) |
 
+### 7.12 B12 — Bank
 
-## 8. Build Module Backend (liên quan 1 phần Mobile)
+⏳ Chưa đặc tả — chi tiết build xem Section 8.4.
 
-### 8.1. Module AI
+### 7.13 C13 — Admin
 
-#### 8.1.1. Tổng quan
+#### 7.13.1 Dashboard — Thống kê hệ thống (🚧)
 
-| Mã | Chức năng | Phương án AI | Trạng thái |
-|----|----------|-------------|-----------|
-| **F011** | OCR hóa đơn | Tesseract.js (self-hosted) | ⬜ Chưa làm |
-| **F012** | AI phân loại giao dịch | Self-train model (fastText/BERT-tiny) | ⬜ Chưa làm |
-| **F013** | AI Phân tích hành vi chi tiêu | Algorithmic + Self-train | ⬜ Chưa làm |
-| **F014** | AI Dự báo chi tiêu | Self-train model (time-series) | ⬜ Chưa làm |
-| **F015** | AI Đưa lời khuyên tài chính | LLM API (OpenAI/HuggingFace) | ⬜ Chưa làm |
-| **F016** | AI Đề xuất phân bổ dòng tiền | Algorithmic + LLM API giải thích | ⬜ Chưa làm |
-| **F017** | Chatbot AI | LLM API (OpenAI/HuggingFace) | ⬜ Chưa làm (sau cùng) |
+| Thuộc tính | Giá trị |
+|------------|---------|
+| **Mã chức năng** | C13 — Dashboard |
+| **Trạng thái** | 🚧 Đang phát triển |
 
-#### 8.1.2. Chiến lược AI: Self-train Model vs LLM API
+**Nguyên tắc chung**:
+- 3 lựa chọn thống kê: **Hôm nay**, **7 ngày**, **30 ngày**; mặc định **Hôm nay**
+- Các API tổng (không phụ thuộc thời gian) chỉ gọi 1 lần khi mount
+- Tất cả API dashboard yêu cầu `authenticate` + `authorize('admin')`
+- Chỉ tính user (`idrole = 2`), không tính admin (`idrole = 1`)
+
+| Endpoint | Method | Mô tả |
+|----------|--------|-------|
+| `/api/admin/totaluser` | GET | Tổng số người dùng |
+| `/api/admin/totalcategories` | GET | Tổng số danh mục |
+| `/api/admin/getusertotime?period=` | GET | Người dùng mới + tăng trưởng theo kỳ (today/7days/30days) |
+
+#### 7.13.2 Quản lý người dùng (✅)
+
+| Endpoint | Method | Mô tả |
+|----------|--------|-------|
+| `/api/admin/getuser` | GET | Danh sách người dùng (idrole=2) |
+| `/api/admin/getuser/:id` | GET | Chi tiết người dùng theo iduser |
+| `/api/admin/updatestatus/:id` | PATCH | Toggle trạng thái Active↔Inactive |
+
+#### 7.13.3 Quản lý danh mục mặc định (✅)
+
+| Endpoint | Method | Mô tả |
+|----------|--------|-------|
+| `/api/admin/getcategory` | GET | Danh sách danh mục |
+| `/api/admin/addcategory` | POST | Thêm danh mục |
+| `/api/admin/updatecategory/:id` | PUT | Sửa danh mục |
+| `/api/admin/deletecategory/:id` | DELETE | Xóa danh mục |
+
+**Mapping classify ↔ type**: `income`↔`thu`, `expense`↔`chi`, `debt`↔`vay/no`
+
+#### 7.13.4 Files liên quan
+
+| Tầng | File |
+|------|------|
+| **Backend** | `modules/admin/admin.controller.js`, `admin.service.js`, `admin.repository.js`, `api/admin.routes.js` |
+| **Frontend** | `pages/dashboard/DashboardPage.jsx`, `pages/users/UserListPage.jsx`, `pages/categories/CategoryPage.jsx`, `api/admin.api.js` |
+
+
+## 8. Build Module Backend
+
+> Backend gồm 6 module: Auth, Admin, Sync, Bank, AI, Notification. Đặc tả nghiệp vụ chi tiết xem Section 7.
+
+### 8.1. Module Auth — ✅ Done
+
+Module xác thực & quản lý người dùng (phần backend). Đặc tả chi tiết: **Section 7.1 A1**.
+
+| Endpoint | Method | Trạng thái |
+|----------|--------|-----------|
+| `/api/auth/login` | POST | ✅ |
+| `/api/auth/register` | POST | ✅ |
+| `/api/auth/refresh` | POST | ✅ |
+| `/api/auth/me` | GET | ✅ |
+| `/api/auth/logout` | POST | ✅ |
+
+**Files**: `modules/auth/auth.controller.js`, `auth.service.js`, `auth.repository.js`, `auth.validation.js`, `api/auth.routes.js`
+
+### 8.2. Module Admin — ✅ Done
+
+Module quản trị (dashboard, user, danh mục mặc định). Đặc tả chi tiết: **Section 7.13 C13**.
+
+| Nhóm | Endpoints |
+|------|-----------|
+| Dashboard | `/api/admin/totaluser`, `/api/admin/totalcategories`, `/api/admin/getusertotime` |
+| User | `/api/admin/getuser`, `/api/admin/getuser/:id`, `/api/admin/updatestatus/:id` |
+| Category | `/api/admin/getcategory`, `/api/admin/addcategory`, `/api/admin/updatecategory/:id`, `/api/admin/deletecategory/:id` |
+
+**Files**: `modules/admin/admin.controller.js`, `admin.service.js`, `admin.repository.js`, `api/admin.routes.js`
+
+### 8.3. Module Sync — ✅ Done (MVP — 2026-08-12)
+
+#### 8.3.1. Tổng quan
+
+| Chức năng | Endpoint | Trạng thái |
+|----------|----------|-----------|
+| Nhận batch operations từ client | `POST /api/sync/push` | ✅ Done |
+| Trả data mới cho client | `GET /api/sync/pull` | ✅ Done |
+| Trạng thái sync | `GET /api/sync/status` | ✅ Done |
+
+**Mô hình**: Client-Led Sync (Offline-First), Client tự tạo UUID, Backend là source of truth.
+
+**6 entity được sync**: wallet, transaction, budget, bill, goal, category — tất cả dùng UUID PK, thống nhất LWW conflict resolution.
+
+**Files đã implement (2026-08-12):**
+
+| File | Vai trò |
+|------|---------|
+| `api/sync.routes.js` | `POST /push`, `GET /pull`, `GET /status` + `authenticate` |
+| `modules/sync/sync.controller.js` | Xử lý request/response, gọi service |
+| `modules/sync/sync.service.js` | Core: processPush (LWW), processPull (filter), getStatus |
+| `modules/sync/sync.repository.js` | CRUD 6 entity: upsert, pull, softDelete, count |
+| `modules/sync/sync.validation.js` | Validate push/pull payload, UUID format, entity types |
+
+#### 8.3.2. Nguyên tắc thiết kế
+
+| Nguyên tắc | Cách làm |
+|------------|----------|
+| **Client tự tạo UUID** | Backend không sinh ID, chỉ validate UUID format |
+| **Last-Write-Wins (LWW)** | So sánh `updated_at` — bản mới hơn thắng |
+| **Soft delete** | Không DELETE, chỉ set `is_deleted = true` |
+| **Idempotent** | Push cùng record nhiều lần không lỗi |
+| **Ownership check** | `payload.idaccount` phải khớp với JWT token |
+
+#### 8.3.3. Conflict Resolution Logic
 
 ```
-Self-train model (fastText/LSTM/Prophet):  F012, F013, F014, F016 (core)
-LLM API (OpenAI/HuggingFace):              F015, F016 (explanation), F017
-Tesseract.js:                              F011
+Nếu record chưa tồn tại → INSERT → status: 'synced'
+Nếu record tồn tại:
+  - clientTime > serverTime → UPSERT → status: 'synced'
+  - clientTime ≤ serverTime → giữ server → status: 'conflict' + serverRecord
+  - operation='delete' → UPDATE is_deleted=true (soft delete)
+```
+
+#### 8.3.4. Thứ tự triển khai
+
+| Giai đoạn | API | Mô tả | Trạng thái |
+|-----------|-----|-------|-----------|
+| **S1** | — | Nền móng: routes + controller + validation | ✅ Done |
+| **S2** | `POST /push` | Batch upsert với LWW conflict resolution | ✅ Done |
+| **S3** | `GET /pull` | Query data theo since + entities filter | ✅ Done |
+| **S4** | Security | Ownership check + input validation | ✅ Done |
+| **S5** | `GET /status` | Trạng thái sync | ✅ Done |
+
+> ✅ **Sync Module MVP hoàn thành — 2026-08-12**: 10/10 test cases pass. 6 entity dùng chung pattern LWW. Tạm dừng ở mức MVP — sẵn sàng cho Client-app tích hợp.
+
+#### 8.3.5. Giai đoạn 2 — Enhancements (đề xuất, chưa làm)
+
+| Mã | Enhancement | Mô tả | Ưu tiên |
+|----|-------------|-------|---------|
+| **E1** | Real-time push | Socket.IO báo client khi có data mới từ thiết bị khác | 🔴 Cao |
+| **E2** | Pagination cho pull | `limit` + `cursor` tránh quá tải | 🟡 Trung bình |
+| **E3** | Delta sync | Chỉ gửi fields thay đổi | 🟢 Thấp |
+| **E4** | Sync analytics | Audit log mỗi lần sync | 🟢 Thấp |
+| **E5** | Retry queue | BullMQ retry push thất bại | 🟢 Thấp |
+
+#### 8.3.6. Lưu ý: Thêm entity mới cần cập nhật code (không tự động)
+
+> ⚠️ Sync module dùng hardcoded registry — KHÔNG tự động nhận diện bảng mới. Thêm entity mới cần sửa 3 file: `sync.validation.js` (VALID_ENTITIES), `sync.service.js` (UPSERT_MAP/PULL_MAP/ENTITY_KEYS), `sync.repository.js` (4 methods).
+
+### 8.4. Module Bank — 🚧 Đã lên kế hoạch (Casso — 2026-08-13)
+
+#### 8.4.1. Tổng quan & Quyết định nhà cung cấp
+
+| Chức năng | Endpoint | Trạng thái |
+|----------|----------|-----------|
+| Liên kết ngân hàng (OAuth) | `POST /api/bank/oauth-url` + `POST /api/bank/callback` | ⬜ Chưa làm |
+| Danh sách NH + số dư | `GET /api/bank/accounts` | ⬜ Chưa làm |
+| Lịch sử giao dịch | `GET /api/bank/transactions` | ⬜ Chưa làm |
+| Nhận giao dịch realtime | `POST /api/bank/webhook` | ⬜ Chưa làm |
+
+**Nhà cung cấp: Casso** (thay thế SePay Bank Hub)
+
+| Lý do chọn Casso | Chi tiết |
+|------------------|----------|
+| Không cần pháp nhân công ty | Cá nhân/sinh viên đăng ký được (qua Google Form) |
+| Giá rẻ, có gói free | SPONSOR: 12 tài khoản + 100 giao dịch/tháng |
+| Đủ API | Số dư (`balance`), giao dịch, webhook, OAuth 2.0 multi-user |
+| Multi-user qua OAuth 2.0 | Mỗi user cấp quyền → access token riêng |
+
+**So sánh nhanh Casso vs SePay:**
+
+| Tiêu chí | Casso (đã chọn) | SePay Bank Hub (bỏ) |
+|----------|-----------------|---------------------|
+| Rào cản đăng ký | ✅ Cá nhân OK | ❌ Cần pháp nhân |
+| Endpoint số dư | ✅ `balance` | ✅ `accumulated` |
+| Liên kết | OAuth redirect | Hosted Link WebView |
+| Free tier | 2 req/phút | B2B thương lượng |
+
+#### 8.4.2. Vai trò Casso trong hệ thống
+
+Casso là **Bank Integration Provider** — hệ thống không phụ thuộc trực tiếp từng ngân hàng:
+
+```
+┌──────────────────────────────────────────────┐
+│          PERSONAL FINANCE SYSTEM             │
+│  User → Financial Account (wallet) → Bank Connection
+│  Transaction / Budget / Goal / AI ...        │
+└──────────────────────┬───────────────────────┘
+                       │  OAuth 2.0 + REST API
+                       ↓
+┌──────────────────────────────────────────────┐
+│                   CASSO                       │
+└──────────────────────┬───────────────────────┘
+              ┌────────┼────────┐
+              ↓        ↓        ↓
+             MB       VCB      BIDV
+```
+
+#### 8.4.3. Mô hình dữ liệu — tách 2 khái niệm
+
+- **Financial Account** = bảng `wallet` hiện có (type=BANK/CASH/SAVINGS)
+- **Casso Bank Account** = bảng `bank_account` mới (accountNumber, balance...)
+- Quan hệ: `wallet` (1) ─ (0..1) `bank_account`
+
+```
+User (idaccount)
+  ├── casso_access_token (mã hóa)      ← lưu trong bảng mới hoặc cột User
+  ├── casso_refresh_token (mã hóa)     ← refresh không hết hạn
+  │
+  ├── wallet (Financial Account, type=BANK)   ← BẢNG ĐÃ CÓ
+  │     └── bank_account (Casso link)          ← BẢNG MỚI
+  │           ├── casso_account_id
+  │           ├── account_number, account_name
+  │           ├── bank_name, bank_code_name
+  │           ├── balance
+  │           └── connect_status
+  │
+  └── transaction  ← thêm: provider='casso', external_transaction_id (tid)
+                     UNIQUE(provider, external_transaction_id) chống trùng
+```
+
+#### 8.4.4. Luồng liên kết ngân hàng (OAuth 2.0 Authorization Code)
+
+```
+1. User bấm "Liên kết ngân hàng" → Client gọi POST /api/bank/oauth-url
+2. Backend tạo authorization URL (oauth.casso.vn/auth/authorize) → trả client
+3. Client mở WebView/browser → user đăng nhập Casso + cấp quyền
+4. Casso redirect về redirect_uri?code=... (callback của backend)
+5. Backend đổi code → access_token + refresh_token (POST oauth.casso.vn/auth/token)
+6. Backend lưu token (mã hóa) → gọi GET /v2/accounts lấy NH + balance
+7. Backend gọi GET /v2/transactions → sync lịch sử giao dịch
+8. Từ nay: Casso webhook → giao dịch mới → Backend tạo Transaction
+```
+
+> **Lưu ý quan trọng**: User phải **có tài khoản Casso + đã liên kết NH trong Casso** (my.casso.vn) trước. OAuth chỉ cấp quyền cho app đọc dữ liệu — KHÔNG phải là bước link NH.
+
+#### 8.4.5. API Endpoints (Backend → Client)
+
+| Endpoint | Method | Auth | Mô tả |
+|----------|--------|------|-------|
+| `/api/bank/oauth-url` | POST | Bearer (user) | Trả authorization URL để mở WebView |
+| `/api/bank/callback` | GET | Public (code) | Nhận code → đổi token → lưu |
+| `/api/bank/accounts` | GET | Bearer (user) | Danh sách NH + số dư (proxy `/v2/accounts`) |
+| `/api/bank/balance/:id` | GET | Bearer (user) | Số dư 1 tài khoản |
+| `/api/bank/transactions?since=` | GET | Bearer (user) | Lịch sử giao dịch (proxy `/v2/transactions`) |
+| `/api/bank/webhook` | POST | Public (verify) | Nhận giao dịch mới từ Casso |
+
+#### 8.4.6. Cấu trúc Module Bank
+
+```
+modules/bank/
+├── bank.controller.js      # HTTP handlers
+├── bank.service.js         # Business logic + orchestration
+├── bank.repository.js      # DB: bank_account + transaction + user token
+├── bank.validation.js      # Validate input
+├── bank.jobs.js            # Enqueue helpers
+├── casso/                  # 🆕 Adapter tách biệt provider
+│   ├── casso.client.js     # Gọi Casso API (token refresh tự động)
+│   └── casso.webhook.js    # Verify + parse webhook payload
+└── bank.worker.js          # Xử lý webhook bất đồng bộ
+```
+
+#### 8.4.7. Webhook Casso
+
+- 1 webhook endpoint nhận giao dịch mới (khác SePay có 2 kênh Events + IPN)
+- Payload giao dịch có `tid` (dedupe), `amount`, `runningBalance`, `description`
+- Response nhanh: validate → lưu → publish event (BullMQ) → 200
+- Chống trùng: `UNIQUE(provider='casso', external_transaction_id=tid)`
+
+#### 8.4.8. Quy tắc nghiệp vụ (bắt buộc)
+
+1. **Webhook trả 200 nhanh** — không làm AI/report inline, đẩy qua BullMQ
+2. **Chuyển khoản nội bộ** (MB→VCB) = INTERNAL_TRANSFER, không tính expense
+3. **Unlink giữ lịch sử** — chỉ set connection inactive
+4. **Reconciliation** — webhook + định kỳ pull `/v2/transactions` + đối chiếu `balance`
+5. **Historical sync** khi link + realtime webhook sau đó
+6. **Token an toàn** — access_token/refresh_token mã hóa, refresh tự động (TTL 6h)
+
+#### 8.4.9. Thứ tự triển khai
+
+| GĐ | Nội dung | Ước lượng |
+|----|----------|-----------|
+| **GĐ1** | DB: bảng `bank_account` + cột provider/external_transaction_id + Prisma | 0.5 ngày |
+| **GĐ2** | `casso.client.js` (getToken/refresh + accounts + transactions) | 1 ngày |
+| **GĐ3** | OAuth flow: oauth-url + callback + lưu token | 0.5-1 ngày |
+| **GĐ4** | Routes + Controller + Service + Repository (accounts/balance/transactions) | 1 ngày |
+| **GĐ5** | Webhook handler + worker → tạo Transaction (chống trùng) | 0.5-1 ngày |
+| **GĐ6** | Test sandbox + tài khoản demo Casso | 0.5 ngày |
+
+> ⚠️ **Điều kiện tiên quyết**: Cần đăng ký developer app Casso (Google Form) để nhận `client_id` + `client_secret`. Khi chưa có → dùng mock trong `casso.client.js` (giống pattern AI module).
+
+### 8.5. Module AI
+
+#### 8.5.1. Tổng quan
+
+| Chức năng | Phương án AI | Trạng thái |
+|----------|-------------|-----------|
+| OCR hóa đơn | Tesseract.js (self-hosted) | ⬜ Chưa làm |
+| AI phân loại giao dịch | Self-train model (fastText/BERT-tiny) | ⬜ Chưa làm |
+| AI Phân tích hành vi chi tiêu | Algorithmic + Self-train | ⬜ Chưa làm |
+| AI Dự báo chi tiêu | Self-train model (time-series) | ⬜ Chưa làm |
+| AI Đưa lời khuyên tài chính | LLM API (OpenAI/HuggingFace) | ⬜ Chưa làm |
+| AI Đề xuất phân bổ dòng tiền | Algorithmic + LLM API giải thích | ⬜ Chưa làm |
+| Chatbot AI | LLM API (OpenAI/HuggingFace) | ⬜ Chưa làm (sau cùng) |
+
+#### 8.5.2. Chiến lược AI: Self-train Model vs LLM API
+
+```
+Self-train model (fastText/LSTM/Prophet):  Phân loại GD, Phân tích hành vi, Dự báo, Budget math
+LLM API (OpenAI/HuggingFace):              Lời khuyên, Giải thích Budget, Chatbot
+Tesseract.js:                              OCR
 ```
 
 | Phương án | Dùng cho | Lý do |
@@ -1359,7 +1597,7 @@ Tesseract.js:                              F011
 | **Self-train model** | Phân loại giao dịch, Phân tích hành vi, Dự báo chi tiêu, Budget math | Output cố định / dữ liệu có cấu trúc / không cần sinh ngôn ngữ |
 | **LLM API** | Chatbot, Lời khuyên tài chính, Giải thích Budget | Cần NLU + NLG (sinh ngôn ngữ tự nhiên), cá nhân hóa |
 
-#### 8.1.3. Kiến trúc AI (3 lớp)
+#### 8.5.3. Kiến trúc AI (3 lớp)
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -1394,7 +1632,7 @@ Tesseract.js:                              F011
 └─────────────────────────────────────────────────────────┘
 ```
 
-#### 8.1.4. OCR hóa đơn (F011)
+#### 8.5.4. OCR hóa đơn
 
 **Công nghệ**: Tesseract.js (self-hosted, miễn phí)
 
@@ -1402,9 +1640,7 @@ Tesseract.js:                              F011
 - **Offline (mobile)**: Google ML Kit / Tesseract on-device → trích xuất số tiền, cửa hàng, ngày → tạo giao dịch tạm → sync về backend.
 - **Online (backend)**: Gửi ảnh hóa đơn → `POST /api/ai/ocr` → enqueue job `ocr-process-receipt` → Tesseract.js parse text → tạo transaction + emit event.
 
-**Xây dựng**: Chi tiết cách xây dựng, giai đoạn tiến độ xây dựng được ghi chép lại ở đây
-
-#### 8.1.5. AI phân loại giao dịch (F012)
+#### 8.5.5. AI phân loại giao dịch
 
 **Công nghệ**: Self-train model (fastText hoặc BERT-tiny), chạy trên Node.js
 
@@ -1422,9 +1658,9 @@ Mobile → tạo giao dịch → lưu Drift SQLite (sync_status=pending)
   → emit transaction.classified
 ```
 
-> **Lưu ý**: Transaction model dùng UUID Primary Key (`VARCHAR(36)`) theo sync spec. Client có thể phân loại offline trước (dùng model Flutter), backend AI classify là bước bổ sung để tăng độ chính xác.
+> **Lưu ý**: Client có thể phân loại offline trước (dùng model Flutter), backend AI classify là bước bổ sung để tăng độ chính xác.
 
-#### 8.1.6. AI Phân tích hành vi chi tiêu (F013)
+#### 8.5.6. AI Phân tích hành vi chi tiêu
 
 **Công nghệ**: Algorithmic (pattern recognition) + Self-train model
 
@@ -1434,105 +1670,65 @@ Mobile → tạo giao dịch → lưu Drift SQLite (sync_status=pending)
 - Phát hiện bất thường (transaction vượt ngưỡng, category mới xuất hiện đột ngột)
 - So sánh với tháng trước / cùng kỳ năm trước
 
-**Output**: JSON phân tích + insight text (có thể dùng LLM để paraphrase insight thành ngôn ngữ tự nhiên).
-
-> **Dữ liệu đầu vào**: Transaction history từ PostgreSQL (UUID), Category (classify: thu/chi/vay-no), Budget targets. Client-app đồng bộ qua `POST /api/sync/push`.
-
-#### 8.1.7. AI Dự báo chi tiêu (F014)
+#### 8.5.7. AI Dự báo chi tiêu
 
 **Công nghệ**: Self-train time-series model (Prophet, ARIMA, hoặc LSTM nhẹ)
 
-**Mô tả**: Dựa trên lịch sử giao dịch 3-6 tháng gần nhất:
-- Dự báo tổng chi tiêu tháng tới
-- Dự báo chi tiêu theo từng danh mục
-- Gợi ý ngân sách phù hợp
+**Mô tả**: Dựa trên lịch sử giao dịch 3-6 tháng gần nhất: dự báo tổng chi tiêu tháng tới, theo danh mục, gợi ý ngân sách.
 
-#### 8.1.8. AI Đưa lời khuyên tài chính (F015)
+#### 8.5.8. AI Đưa lời khuyên tài chính
 
 **Công nghệ**: LLM API (OpenAI GPT-4o-mini / HuggingFace free inference)
 
-**Rate Limit**: 1 lần/giờ/user | **Cache TTL**: 1 giờ | **Max Tokens**: 300 
+**Rate Limit**: 1 lần/giờ/user | **Cache TTL**: 1 giờ | **Max Tokens**: 300
 
-**Mô tả**: Kết hợp kết quả từ F013 (phân tích) + F014 (dự báo) → prompt LLM sinh lời khuyên cá nhân hóa. 
+**Mô tả**: Kết hợp F013 (phân tích) + F014 (dự báo) → prompt LLM sinh lời khuyên cá nhân hóa.
 
-**Prompt Template** (`modules/ai/prompts/financial-advice.txt`): 
-```text 
-[SYSTEM] 
-Bạn là cố vấn tài chính cá nhân chuyên nghiệp, tên là WealthWise. 
-Nguyên tắc: Chỉ đưa lời khuyên dựa trên dữ liệu thực tế, không phỏng đoán. Dùng tiếng Việt, thân thiện. Mỗi lời khuyên không quá 2 câu. 
+**Prompt Template** (`modules/ai/prompts/financial-advice.txt`):
+```text
+[SYSTEM]
+Bạn là cố vấn tài chính cá nhân chuyên nghiệp, tên là WealthWise.
+Nguyên tắc: Chỉ đưa lời khuyên dựa trên dữ liệu thực tế, không phỏng đoán. Dùng tiếng Việt, thân thiện. Mỗi lời khuyên không quá 2 câu.
 
-[CONTEXT] 
-Người dùng: {{fullname}} - Tháng: {{month}}/{{year}} 
-Thu nhập: {{income}} VNĐ | Tổng chi: {{totalExpense}} VNĐ ({{expensePercent}}%) 
-Top 5 danh mục chi: {{topCategories}} 
-So với tháng trước: {{expenseChange}}% 
-Cảnh báo: {{warnings}} 
+[CONTEXT]
+Người dùng: {{fullname}} - Tháng: {{month}}/{{year}}
+Thu nhập: {{income}} VNĐ | Tổng chi: {{totalExpense}} VNĐ ({{expensePercent}}%)
+Top 5 danh mục chi: {{topCategories}}
+So với tháng trước: {{expenseChange}}%
+Cảnh báo: {{warnings}}
 
-[QUESTION] Đưa ra 2-3 lời khuyên cụ thể để cải thiện tài chính tháng này. 
+[QUESTION] Đưa ra 2-3 lời khuyên cụ thể để cải thiện tài chính tháng này.
 
-[FORMAT] JSON: {"advice": [{"priority":"high|medium|low","category":"...","message":"..."}], "summary":"..."} 
-``` 
-#### 8.1.9. AI Đề xuất phân bổ dòng tiền (F016)
+[FORMAT] JSON: {"advice": [{"priority":"high|medium|low","category":"...","message":"..."}], "summary":"..."}
+```
+
+#### 8.5.9. AI Đề xuất phân bổ dòng tiền
 
 **Công nghệ**: Algorithmic (core: 50/30/20, zero-based...) + LLM API (giải thích)
 
-**Rate Limit (LLM)**: 2 lần/giờ/user | **Cache TTL**: 1 giờ | **Max Tokens**: 300 
+**Rate Limit (LLM)**: 2 lần/giờ/user | **Cache TTL**: 1 giờ | **Max Tokens**: 300
 
-**Mô tả**: 
-- **Core**: Tính toán phân bổ ngân sách tự động từ thu nhập, lịch sử chi tiêu, mục tiêu 
-- **LLM**: Cá nhân hóa giải thích 
+#### 8.5.10. Chatbot AI
 
-**Prompt Template** (`modules/ai/prompts/budget-explanation.txt`): 
-```text 
-[SYSTEM] 
-Bạn là chuyên gia lập ngân sách cá nhân. Nhiệm vụ: Giải thích lý do đề xuất phân bổ ngân sách. Dùng tiếng Việt, thân thiện, mỗi quy tắc không quá 3 câu. 
+**Công nghệ**: LLM API (OpenAI GPT-4o-mini) với multi-provider fallback (HuggingFace → Groq)
 
-[CONTEXT] 
-Người dùng: {{fullname}} | Thu nhập: {{income}} VNĐ | Quy tắc: {{strategyName}} 
-Phân bổ đề xuất: {{allocations}} 
-Lịch sử 3 tháng: {{historySummary}} 
-Mục tiêu: {{goals}} 
+**Rate Limit**: 10 lần/phút/user | **Cache TTL**: 5 phút | **Max Tokens**: 500
 
-[QUESTION] Giải thích lý do đề xuất và cách giúp đạt mục tiêu. 
-
-[FORMAT] JSON: {"explanations":[{"category":"...","why":"...","tip":"..."}],"summary":"..."} 
-``` 
-#### 8.1.10. Chatbot AI (F017)
-
-**Công nghệ**: LLM API (OpenAI GPT-4o-mini) với multi-provider fallback (HuggingFace → Groq) 
-
-**Rate Limit**: 10 lần/phút/user | **Cache TTL**: 5 phút (context-based) | **Max Tokens**: 500 
-
-**Mô tả**: User chat hỏi về tình hình tài chính. Phát triển **sau cùng**, khi F012-F016 đã hoàn thiện. 
-
-**Prompt Template** (`modules/ai/prompts/chatbot-system.txt`): 
-```text 
-[SYSTEM] 
-Bạn là WealthWise Assistant, trợ lý tài chính cá nhân thông minh, thân thiện. 
-VAI TRÒ: Trả lời câu hỏi về tài chính cá nhân. Giải thích khái niệm đơn giản. Giúp hiểu thói quen chi tiêu. 
-RÀNG BUỘC: CHỈ trả lời dựa trên dữ liệu được cung cấp. Ngoài phạm vi tài chính → từ chối lịch sự. Không đủ dữ liệu → thông báo trung thực. Dùng tiếng Việt, tự nhiên. Mỗi câu ≤ 4 câu. Không khuyên đầu tư. 
-
-DỮ LIỆU NGƯỜI DÙNG: {{userContext}} 
-LỊCH SỬ TRÒ CHUYỆN: {{chatHistory}} 
-``` 
-
-#### 8.1.11. Thứ tự triển khai
+#### 8.5.11. Thứ tự triển khai
 
 | Giai đoạn | Nội dung | Ước lượng |
 |-----------|----------|-----------|
 | **1** | ai.service.js + ai.controller.js + ai.routes.js (nền móng) | 1-2 ngày |
-| **2** | F012 — Chuẩn bị dữ liệu + train model phân loại giao dịch | 2-3 ngày |
-| **3** | F012 — BullMQ worker: predict → update DB → emit event | 1 ngày |
-| **4** | F011 — OCR backend: Tesseract.js + endpoint + worker | 2-3 ngày |
-| **5** | F013 — Phân tích hành vi chi tiêu (algorithmic) | 2-3 ngày |
-| **6** | F014 — Dự báo chi tiêu (time-series model) | 2-3 ngày |
-| **7** | F015 — Lời khuyên tài chính (LLM API) | 1-2 ngày |
-| **8** | F016 — Đề xuất phân bổ dòng tiền (algorithmic + LLM) | 2-3 ngày |
-| **9** | F017 — Chatbot AI (LLM API) | 2-3 ngày |
+| **2** | Phân loại GD — Chuẩn bị dữ liệu + train model | 2-3 ngày |
+| **3** | Phân loại GD — BullMQ worker: predict → update DB → emit event | 1 ngày |
+| **4** | OCR backend: Tesseract.js + endpoint + worker | 2-3 ngày |
+| **5** | Phân tích hành vi chi tiêu (algorithmic) | 2-3 ngày |
+| **6** | Dự báo chi tiêu (time-series model) | 2-3 ngày |
+| **7** | Lời khuyên tài chính (LLM API) | 1-2 ngày |
+| **8** | Đề xuất phân bổ dòng tiền (algorithmic + LLM) | 2-3 ngày |
+| **9** | Chatbot AI (LLM API) | 2-3 ngày |
 
-#### 8.1.12. Quy trình chuẩn xây dựng Self-train Models
-
-Quy trình 5 bước áp dụng cho F012, F013, F014, F016 (core):
+#### 8.5.12. Quy trình chuẩn xây dựng Self-train Models
 
 ```
 ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐
@@ -1543,45 +1739,22 @@ Quy trình 5 bước áp dụng cho F012, F013, F014, F016 (core):
 
 | Bước | Công cụ | Output |
 |------|---------|--------|
-| 1. Data Collect | SQL query từ PostgreSQL qua Prisma (Transaction JOIN Category JOIN Budget JOIN Goal, tất cả dùng UUID) | CSV/JSON raw |
+| 1. Data Collect | SQL query từ PostgreSQL qua Prisma | CSV/JSON raw |
 | 2. Prep & Clean | Node.js script (lodash, csv-parser) | Train/test split (80/20) |
-| 3. Train & Evaluate | Python script (scikit-learn/fastText/Prophet) gọi từ Node.js qua `child_process` | Model file + metrics |
+| 3. Train & Evaluate | Python script (scikit-learn/fastText/Prophet) | Model file + metrics |
 | 4. Export Model | fastText `.bin` / ONNX `.onnx` / Prophet `.json` | File model nhẹ (~1-10MB) |
 | 5. Serve | Node.js load model trong ai.worker.js | Inference qua BullMQ |
 
-**Bảng model chi tiết:**
-
-| Model | Thuật toán | Library | Input | Output |
-|-------|-----------|---------|-------|--------|
-| **Transaction Classifier** (F012) | fastText (supervised) | `fasttext.js` / Python fastText | `description` (text) | `{categoryId, confidence}` |
-| **Behavior Analyzer** (F013) | K-Means Clustering + Rule Engine | `ml-kmeans` (JS) hoặc scikit-learn | `{userId, transactions[]}` | `{clusters, insights, anomalies}` |
-| **Expense Forecaster** (F014) | Prophet / ARIMA | Python `prophet` hoặc `statsmodels` | `{userId, monthlyTotals[]}` | `{nextMonth, byCategory[]}` |
-| **Budget Allocator** (F016 core) | Rule Engine (50/30/20, zero-based) | Pure Node.js (không cần model) | `{income, history, goals}` | `{rules: [{category, amount, cap}]}` |
-
 **Cấu trúc thư mục models:**
-
 ```
 models/
-├── transaction-classifier/
-│   ├── train.py              # Python training script
-│   ├── training-data.csv     # Sample data
-│   ├── model.bin             # Exported fastText model
-│   ├── labels.json           # Category mapping
-│   └── metrics.json          # Accuracy, F1-score
-├── behavior-analyzer/
-│   ├── train.py
-│   ├── centroids.json        # K-Means cluster centers
-│   └── rules.json            # Business rules config
-├── expense-forecaster/
-│   ├── train.py
-│   ├── prophet-model.json    # Serialized Prophet model
-│   └── metrics.json
-└── budget-allocator/
-    └── strategies.json       # 50/30/20, zero-based configs
+├── transaction-classifier/  (train.py, training-data.csv, model.bin, labels.json, metrics.json)
+├── behavior-analyzer/        (train.py, centroids.json, rules.json)
+├── expense-forecaster/       (train.py, prophet-model.json, metrics.json)
+└── budget-allocator/         (strategies.json)
 ```
 
-**Training script convention** — mỗi model 1 file `train.py` với interface thống nhất:
-
+**Training script convention** — mỗi model 1 file `train.py`:
 ```python
 import sys, json
 def train(data_path, output_path):
@@ -1592,389 +1765,68 @@ if __name__ == "__main__":
     print(json.dumps(metrics))
 ```
 
-Gọi từ Node.js: `const metrics = execSync(\`python models/transaction-classifier/train.py "${dataPath}" "${outputPath}"\`);`
+#### 8.5.13. Kiến trúc LLM API (lời khuyên, giải thích budget, chatbot)
 
-#### 8.1.13. Kiến trúc LLM API (F015, F016 explanation, F017)
+**Multi-provider với fallback** — `modules/ai/llm/llmClient.js`:
 
-**Multi-provider với fallback** — `modules/ai/llm/llmClient.js` (singleton):
+| Provider | Model | Giới hạn free |
+|----------|-------|---------------|
+| **OpenAI** | GPT-4o-mini | $5 credit |
+| **HuggingFace** | mistral-7b / zephyr-7b | Free (rate limit) |
+| **Groq** | llama-3.1-8b | Free (~30 req/min) |
 
-| Provider | Model | Dùng cho | Giới hạn free |
-|----------|-------|----------|---------------|
-| **OpenAI** | GPT-4o-mini | Primary (chatbot, advice) | $5 credit |
-| **HuggingFace** | mistral-7b / zephyr-7b | Fallback #1 | Free (rate limit) |
-| **Groq** | llama-3.1-8b | Fallback #2 | Free (~30 req/min) |
+**Rate Limiter** (`llm/rate-limiter.js`) + **LLM Cache** (`llm/cache.js`, Redis-backed).
 
-```js
-// llmClient.js — thử từng provider đến khi thành công
-const providers = [openaiProvider, huggingfaceProvider, groqProvider];
-async function chat(messages, options) {
-  for (const p of providers) {
-    try { return await p.chat(messages, options); }
-    catch { logger.warn(`Provider ${p.name} failed, trying next...`); }
-  }
-  throw new Error('All LLM providers failed');
-}
-```
+**Thư mục prompts:** `modules/ai/prompts/` — financial-advice.txt, budget-explanation.txt, chatbot-system.txt
 
-**Rate Limiter** (`modules/ai/llm/rate-limiter.js`): In-memory sliding window per user. Trả về 429 nếu vượt giới hạn.
+#### 8.5.14. Kiến trúc Worker: Chạy chung vs Chạy riêng
 
-**LLM Cache** (`modules/ai/llm/cache.js`): Redis-backed, TTL theo từng chức năng (xem bảng dưới), key = `llm:cache:{functionName}:{userId}:{contextHash}`.
-
-**Bảng cấu hình per function:**
-
-| Function | Rate Limit | Cache TTL | Max Tokens | Priority |
-|----------|-----------|-----------|------------|----------|
-| F015 — Lời khuyên | 1/giờ/user | 1 giờ | 300 | Thấp |
-| F016 — Giải thích Budget | 2/giờ/user | 1 giờ | 300 | Thấp |
-| F017 — Chatbot | 10/phút/user | 5 phút | 500 | Cao |
-
-**Thư mục prompts:**
-```
-modules/ai/prompts/
-├── financial-advice.txt       # F015
-├── budget-explanation.txt     # F016
-└── chatbot-system.txt         # F017
-```
-
-#### 8.1.14. Kiến trúc Worker: Chạy chung vs Chạy riêng
-
-| Tiêu chí | Chạy chung (cùng process Express) | Chạy riêng (process độc lập) |
-|----------|-----------------------------------|------------------------------|
-| **Khởi động** | 1 lệnh `node index.js` | Cần script riêng, PM2/Docker |
-| **Memory** | Chia sẻ RAM với API | RAM riêng, không ảnh hưởng API |
-| **CPU** | Cạnh tranh CPU, risk block event loop | CPU riêng, không block API |
-| **Code sharing** | Import trực tiếp service/repository | Cần shared package |
-| **Deploy** | 1 container | 2+ container |
-| **Scale** | Cùng nhau (không linh hoạt) | Độc lập |
-| **Debug** | 1 log stream | Log riêng |
-| **Phù hợp** | Model nhẹ (<10MB), dev/local | Model nặng (>100MB), production |
-
-**Đề xuất cho dự án:**
-
-```
-DEV (hiện tại):               PRODUCTION (tương lai):
-┌─────────────────────┐        ┌──────────────┐   ┌──────────────┐
-│  Express + Workers   │        │  Express API  │   │  AI Worker   │
-│  (cùng process)      │   →    │  (container 1)│   │  (container 2)│
-│  - fastText (<10MB)  │        │  - HTTP only  │   │  - fastText  │
-│  - Tesseract.js       │        │  - Redis      │   │  - Tesseract │
-│  - LLM calls         │        │  - BullMQ     │   │  - LLM calls │
-└─────────────────────┘        └──────────────┘   └──────────────┘
-```
-
-- **GĐ1 (hiện tại)**: Chạy chung — đơn giản, model fastText nhẹ (~5MB) không ảnh hưởng event loop.
+- **GĐ1 (hiện tại)**: Chạy chung — model fastText nhẹ (~5MB) không ảnh hưởng event loop.
 - **GĐ2 (production)**: Tách worker riêng khi cần scale hoặc model nặng hơn.
 
-#### 8.1.15. Tổng kết công nghệ theo chức năng
-
-| F# | Chức năng | Model/API | Thư viện | Interface |
-|----|----------|-----------|----------|-----------|
-| F011 | OCR | Tesseract.js | `tesseract.js` | Worker + BullMQ |
-| F012 | Phân loại GD | fastText | Python fastText → `.bin` → `fasttext.js` | Worker + BullMQ |
-| F013 | Phân tích hành vi | K-Means + Rules | `ml-kmeans` / scikit-learn | REST API |
-| F014 | Dự báo chi tiêu | Prophet | Python prophet → `.json` | REST API |
-| F015 | Lời khuyên TC | GPT-4o-mini | OpenAI SDK + multi-provider | REST API |
-| F016 | Phân bổ dòng tiền | Rule Engine + GPT-4o-mini | Pure JS + OpenAI SDK | REST API |
-| F017 | Chatbot AI | GPT-4o-mini + fallback | OpenAI SDK + multi-provider | REST API |
-
-#### 8.1.16. Cấu trúc thư mục Module AI (Feature-based, chuẩn kỹ thuật)
-
-Mỗi chức năng AI có không gian riêng dưới `features/`, tổ chức theo chuẩn AI Service với đầy đủ preprocessing, inference, pipeline, testing, config:
+#### 8.5.15. Cấu trúc thư mục Module AI (Feature-based)
 
 ```
 modules/ai/
-├── ai.controller.js              # Router chung, phân phối đến feature controller
+├── ai.controller.js              # Router chung
 ├── ai.validation.js              # Validation chung
 ├── ai.jobs.js                    # Enqueue helpers
-├── config.js                     # Model paths, thresholds, hyperparams
+├── config.js                     # Model paths, thresholds
 ├── features/
-│   ├── classify/                 # F012 — AI Phân loại giao dịch
-│   │   ├── classify.controller.js
-│   │   ├── classify.service.js   # Gọi predict + update DB
-│   │   ├── classify.repository.js
-│   │   ├── classify.preprocess.js # Text cleaning, tokenization, feature extraction
-│   │   ├── classify.inference.js  # Load model + predict, xuất {categoryId, confidence}
-│   │   ├── config.json           # confidenceThreshold, modelVersion, maxTokens
+│   ├── classify/                 # AI Phân loại giao dịch
+│   │   ├── classify.controller.js / service.js / repository.js
+│   │   ├── classify.preprocess.js / inference.js / config.json
 │   │   ├── __tests__/
-│   │   │   ├── preprocess.test.js
-│   │   │   └── inference.test.js
-│   │   └── pipeline/
-│   │       ├── train.py          # Python training script (fastText supervised)
-│   │       ├── evaluate.py       # Cross-validation, accuracy, F1-score
-│   │       ├── export.py         # Export model .bin, labels.json
-│   │       ├── training-data.csv # ~500-1000 mẫu {description, category}
-│   │       ├── model.v1.bin      # Model version 1
-│   │       ├── model.v2.bin      # Model version 2 (sau retrain)
-│   │       ├── labels.json       # CategoryId mapping
-│   │       └── metrics.json      # Accuracy, precision/recall per category
-│   ├── ocr/                      # F011 — OCR hóa đơn
-│   ├── behavior/                 # F013 — Phân tích hành vi
-│   ├── forecast/                 # F014 — Dự báo chi tiêu
-│   ├── advice/                   # F015 — Lời khuyên tài chính
-│   ├── budget/                   # F016 — Phân bổ dòng tiền
-│   └── chatbot/                  # F017 — Chatbot AI
-├── llm/                          # Dùng chung cho F015, F016, F017
-│   ├── llmClient.js              # Multi-provider singleton
-│   ├── openaiProvider.js
-│   ├── huggingfaceProvider.js
-│   ├── groqProvider.js
-│   ├── rate-limiter.js
-│   └── cache.js                  # Redis-backed LLM cache
+│   │   └── pipeline/ (train.py, evaluate.py, export.py, training-data.csv, model.bin, labels.json, metrics.json)
+│   ├── ocr/                      # OCR hóa đơn
+│   ├── behavior/                 # Phân tích hành vi
+│   ├── forecast/                 # Dự báo chi tiêu
+│   ├── advice/                   # Lời khuyên tài chính
+│   ├── budget/                   # Phân bổ dòng tiền
+│   └── chatbot/                  # Chatbot AI
+├── llm/                          # Dùng chung cho advice/budget/chatbot
+│   ├── llmClient.js / openaiProvider.js / huggingfaceProvider.js
+│   ├── groqProvider.js / rate-limiter.js / cache.js
 └── prompts/                      # Prompt templates
-    ├── financial-advice.txt
-    ├── budget-explanation.txt
-    └── chatbot-system.txt
 ```
 
-**Nguyên tắc thiết kế:**
-- **Feature isolation**: Mỗi feature có controller/service/repository riêng, không phụ thuộc chéo
-- **Preprocessing riêng**: Mỗi model có logic làm sạch text/tokenize riêng phù hợp với loại dữ liệu
-- **Inference tách biệt**: Tách khỏi worker để unit test được, debug được, mock được
-- **Pipeline rõ ràng**: train → evaluate → export theo interface thống nhất
-- **Model versioning**: `model.v1.bin`, `model.v2.bin` để rollback, A/B test
-- **Config per feature**: `config.json` chứa confidence threshold, model path, hyperparams
-- **Dùng chung llm/ + prompts/**: Tránh duplicate code giữa F015, F016, F017
-- **Vẫn là 1 service**: 1 process Node.js, 1 container Docker, không phải microservices
+#### 8.5.16. Build nền móng AI (vỏ) ✅ Done — 2026-08-11
 
-#### 8.1.17. Build F012 — Phần 1: Nền móng AI (vỏ) ✅ Done — 2026-08-11
-
-**Mục tiêu**: Tạo pipeline HTTP → BullMQ → Worker hoạt động end-to-end, chưa có model predict thật.
-
-**API**: `POST /api/ai/classify`
+**API**: `POST /api/ai/classify` — pipeline HTTP → BullMQ → Worker (chưa có model thật).
 
 | Method | Auth | Body | Success | Error |
 |--------|------|------|---------|-------|
-| POST | Bearer (user) | `{ transactionId: string }` | 202 `{ transactionId, jobId, status: "queued" }` | 400 (validation), 401 (no auth), 404 (not found) |
+| POST | Bearer (user) | `{ transactionId: string }` | 202 `{ transactionId, jobId, status: "queued" }` | 400/401/404 |
 
-**Files đã implement:**
+**Files đã implement**: `api/ai.routes.js`, `modules/ai/ai.controller.js`, `ai.validation.js`, `ai.jobs.js`, `features/classify/*`, `workers/ai.worker.js`, `index.js`.
 
-| File | Vai trò |
-|------|---------|
-| `api/ai.routes.js` | `POST /classify` + `authenticate` + `validate(classifySchema)` |
-| `modules/ai/ai.controller.js` | Router chung, gọi `classifyController.handleClassify()` |
-| `modules/ai/ai.validation.js` | `classifySchema`: transactionId required, string, 1-36 chars |
-| `modules/ai/ai.jobs.js` | `enqueueClassifyJob(id, description)` → BullMQ `aiClassify` queue |
-| `features/classify/classify.controller.js` | Nhận transactionId → gọi service |
-| `features/classify/classify.service.js` | `requestClassify(id)`: lấy description từ DB → enqueue job → 202 |
-| `features/classify/classify.repository.js` | `getTransactionById(id)`: query Prisma. Hiện trả về mock data vì bảng Transaction chưa có trong schema |
-| `workers/ai.worker.js` | Lắng nghe queue `ai-classify-transaction`, log job (chưa predict) |
-| `index.js` | Thêm `require('./workers/ai.worker')` sau khi Redis connected |
+**Kết quả test**: 202 (hợp lệ), 400 (thiếu transactionId), 401 (không token) — all PASS.
 
-**Luồng hoạt động:**
+> **Ghi chú**: Repository trả mock data vì bảng Transaction chưa có trong schema lúc build. Khi schema cập nhật, xóa `if (!prisma.transaction)` guard là code tự hoạt động.
 
-```
-Client → POST /api/ai/classify { transactionId: "uuid" }
-  → authenticate (user)
-  → validate(classifySchema)
-  → aiController.classify()
-    → classifyController.handleClassify(transactionId)
-      → classifyService.requestClassify(transactionId)
-        → classifyRepository.getTransactionById(id) → { id, description }
-        → aiJobs.enqueueClassifyJob(id, description) → BullMQ
-      ← 202 { transactionId, jobId, status: "queued" }
-  → Worker pick job → log "Processing..." → done
-```
+### 8.6. Module Notification
 
-**Kết quả test:**
-
-| Test case | Status | Response |
-|-----------|--------|----------|
-| Hợp lệ `POST /classify { transactionId }` | 202 | `{ transactionId, jobId, status: "queued" }` |
-| Thiếu `transactionId` | 400 | `Validation failed` |
-| Không có token | 401 | `Missing or invalid token` |
-
-> **Ghi chú**: Repository hiện trả về mock data `{ id, description: "Giao dich mau..." }` vì bảng Transaction chưa có trong Prisma schema. Khi schema được cập nhật, chỉ cần xóa `if (!prisma.transaction)` guard — code tự hoạt động.
-
-### 8.2. Module Notification
-
-### 8.3. Module Bank
-
-### 8.4. Module Sync — ✅ Done (MVP — 2026-08-12)
-
-#### 8.4.1. Tổng quan
-
-| Mã | Chức năng | Endpoint | Trạng thái |
-|----|----------|----------|-----------|
-| **F018** | Nhận batch operations từ client | `POST /api/sync/push` | ✅ Done (S1) |
-| **F019** | Trả data mới cho client | `GET /api/sync/pull` | ✅ Done (S1) |
-| **F020** | Trạng thái sync | `GET /api/sync/status` | ✅ Done (S1) |
-
-**Mô hình**: Client-Led Sync (Offline-First), Client tự tạo UUID, Backend là source of truth.
-
-**6 entity được sync**: wallet, transaction, budget, bill, goal, category — tất cả dùng UUID PK, thống nhất LWW conflict resolution.
-
-**Files đã implement (2026-08-12):**
-
-| File | Vai trò |
-|------|---------|
-| `api/sync.routes.js` | `POST /push`, `GET /pull`, `GET /status` + `authenticate` |
-| `modules/sync/sync.controller.js` | Xử lý request/response, gọi service |
-| `modules/sync/sync.service.js` | Core: processPush (LWW), processPull (filter), getStatus |
-| `modules/sync/sync.repository.js` | CRUD 6 entity: upsert, pull, softDelete, count |
-| `modules/sync/sync.validation.js` | Validate push/pull payload, UUID format, entity types |
-
-#### 8.4.2. Nguyên tắc thiết kế
-
-| Nguyên tắc | Cách làm |
-|------------|----------|
-| **Client tự tạo UUID** | Backend không sinh ID, chỉ validate UUID format |
-| **Last-Write-Wins (LWW)** | So sánh `updated_at` — bản mới hơn thắng |
-| **Soft delete** | Không DELETE, chỉ set `is_deleted = true` |
-| **Idempotent** | Push cùng record nhiều lần không lỗi |
-| **Ownership check** | `payload.idaccount` phải khớp với JWT token |
-
-#### 8.4.3. API Endpoints
-
-| Endpoint | Method | Auth | Mô tả |
-|----------|--------|------|-------|
-| `/api/sync/push` | POST | Bearer (user) | Nhận batch operations, upsert với LWW |
-| `/api/sync/pull?since=&entities=` | GET | Bearer (user) | Trả data mới cho client |
-| `/api/sync/status` | GET | Bearer (user) | Trạng thái sync (nice-to-have) |
-
-#### 8.4.4. POST /api/sync/push — Chi tiết
-
-**Request**:
-```json
-{
-  "clientId": "device-uuid",
-  "pushedAt": "2026-08-11T10:30:00.000Z",
-  "operations": [
-    {
-      "localId": "uuid-from-client",
-      "entity": "wallet|transaction|budget|bill|goal|category",
-      "operation": "create|update|delete",
-      "payload": { "id": "uuid", "idaccount": 1, "updated_at": "...", ... }
-    }
-  ]
-}
-```
-
-**Response**:
-```json
-{
-  "results": [
-    { "localId": "uuid", "status": "synced|conflict|error", "serverRecord?": {...} }
-  ],
-  "summary": { "total": 3, "synced": 2, "conflicts": 1, "errors": 0 }
-}
-```
-
-**Conflict Resolution Logic**:
-```
-Nếu record chưa tồn tại → INSERT → status: 'synced'
-Nếu record tồn tại:
-  - clientTime > serverTime → UPSERT → status: 'synced'
-  - clientTime ≤ serverTime → giữ server → status: 'conflict' + serverRecord
-  - operation='delete' → UPDATE is_deleted=true (soft delete)
-```
-
-#### 8.4.5. GET /api/sync/pull — Chi tiết
-
-| Param | Required | Mô tả |
-|-------|----------|-------|
-| `since` | ✅ | ISO datetime — lấy records có `updated_at > since` |
-| `entities` | ❌ | Comma-separated: `wallet,transaction,budget,bill,goal,category`. Mặc định: all |
-
-**Response**:
-```json
-{
-  "pulledAt": "2026-08-11T10:30:05.000Z",
-  "hasMore": false,
-  "data": {
-    "wallets": [...], "transactions": [...], "budgets": [...],
-    "bills": [...], "goals": [...]
-  }
-}
-```
-
-#### 8.4.6. Security
-
-- Tất cả endpoints yêu cầu `authenticate` (JWT)
-- Validate `payload.idaccount === req.user.idaccount` → nếu sai → 403
-- Validate entity type, operation type, UUID format
-
-#### 8.4.7. Cấu trúc Module Sync
-
-```
-modules/sync/
-├── sync.controller.js     # Handle push/pull/status
-├── sync.service.js        # Core: processPush (LWW), processPull (filter), getStatus
-├── sync.repository.js     # CRUD 6 entity: upsert, pull, softDelete, count, lookup
-├── sync.validation.js     # Validate push/pull payload, UUID format, entity types
-└── sync.events.js         # (placeholder) Emit sync.completed
-```
-
-#### 8.4.8. Thứ tự triển khai
-
-| Giai đoạn | API | Mô tả | Ước lượng | Trạng thái |
-|-----------|-----|-------|-----------|-----------|
-| **S1** | — | Nền móng: routes + controller + validation | 0.5 ngày | ✅ Done |
-| **S2** | `POST /push` | Batch upsert với LWW conflict resolution | 1.5-2 ngày | ✅ Done |
-| **S3** | `GET /pull` | Query data theo since + entities filter | 0.5-1 ngày | ✅ Done |
-| **S4** | Security | Ownership check + input validation | 0.5 ngày | ✅ Done |
-| **S5** | `GET /status` | Trạng thái sync (nice-to-have) | 0.5 ngày | ✅ Done |
-
-> ✅ **Sync Module MVP hoàn thành — 2026-08-12**: Toàn bộ 5 giai đoạn S1-S5 đã implement trong 1 lượt. 10/10 test cases pass (401, 400, 200 push/pull/status, ownership). 6 entity (wallet, transaction, budget, bill, goal, category) dùng chung pattern LWW. Sync module tạm dừng ở mức MVP — sẵn sàng cho Client-app tích hợp.
-
-#### 8.4.9. Giai đoạn 2 — Enhancements (đề xuất, chưa làm)
-
-> ⏳ **Tạm dừng**: Sync module đã đạt MVP, các enhancement dưới đây sẽ triển khai sau khi các module khác (Bank, Notification, AI) hoàn thiện.
-
-| Mã | Enhancement | Mô tả | Ưu tiên |
-|----|-------------|-------|---------|
-| **E1** | Real-time push | Socket.IO thông báo cho client khi có data mới từ thiết bị khác (tránh phải poll `GET /pull` liên tục). Backend emit `sync.remote-change` → client pull ngay. | 🔴 Cao |
-| **E2** | Pagination cho pull | `GET /pull?since=&entities=&limit=200&cursor=` — tránh quá tải khi user có nhiều data. Response thêm `nextCursor` để client gọi tiếp. | 🟡 Trung bình |
-| **E3** | Delta sync | Chỉ gửi fields thay đổi thay vì toàn bộ record, giảm bandwidth. Thêm `changedFields` vào response pull. | 🟢 Thấp |
-| **E4** | Sync analytics | Ghi audit log mỗi lần sync (device, thời gian, số lượng, conflicts). Hỗ trợ debug và monitoring. | 🟢 Thấp |
-| **E5** | Retry queue | Push thất bại → tự động retry với BullMQ (`sync-retry` queue). Client nhận thông báo khi retry hoàn tất. | 🟢 Thấp |
-
-**Luồng E1 (Real-time push) — đề xuất:**
-```
-Thiết bị A: push transaction mới → Backend: sync.completed
-  ↓
-Event Bus: sync.remote-change { idaccount, entity, recordId }
-  ↓
-Socket.IO → emit đến tất cả thiết bị của idaccount đó
-  ↓
-Thiết bị B: nhận event → gọi GET /pull?since=lastPullTime
-```
-
-#### 8.4.10. Lưu ý: Thêm entity mới cần cập nhật code (không tự động)
-
-> ⚠️ **Quan trọng**: Sync module dùng hardcoded registry — KHÔNG tự động nhận diện bảng mới trong CSDL. Khi thêm entity mới (vd: `debt`, `saving`, `loan`...), cần cập nhật code ở 3 file.
-
-##### Vị trí cần sửa khi thêm entity mới
-
-| # | File | Thay đổi | Dòng |
-|---|------|----------|------|
-| 1 | `sync.validation.js` | Thêm entity vào `VALID_ENTITIES` | 1 |
-| 2 | `sync.service.js` | Thêm 1 dòng vào `UPSERT_MAP`, `PULL_MAP`, `ENTITY_KEYS` | 3 |
-| 3 | `sync.repository.js` | Thêm 4 methods: `upsertXxx`, `getXxxsByAccount`, `getXxxById`, `countXxx` + update `softDelete` | ~30 |
-
-**Pattern nhất quán**: Copy-paste từ entity có sẵn → đổi tên → thêm validation riêng. Mỗi entity mới ~5-10 phút.
-
-##### Tại sao không dùng dynamic/reflection?
-
-Không phải lỗi — là **chủ đích**, vì mỗi entity có logic riêng không thể generic:
-
-| Entity | Đặc thù riêng |
-|--------|--------------|
-| `wallet` | Có `balance`, `currency`, `type` enum |
-| `transaction` | Có `wallet_id` FK, `category_id` FK, `type` enum |
-| `category` | Upsert check `is_default`, delete hard-delete (không soft) |
-| `budget` | Có `start_date` < `end_date` constraint |
-| `bill` | Có `recurrence` enum |
-| `goal` | Có `current_amount` ≤ `target_amount` logic |
-
-##### Khi nào nên refactor sang registry pattern?
-
-Hiện tại với 6 entity — quản lý thủ công đơn giản, ít bug. Cân nhắc refactor nếu:
-- Số entity > 15
-- Nhiều entity có logic giống hệt nhau (chỉ khác tên bảng)
-- Cần cho phép client tự định nghĩa entity type mới
-
-
----
+> ⏳ Chưa triển khai — phát sinh dần trong quá trình làm & ghi nhận sau.
 
 ## 9. Client-app
 
