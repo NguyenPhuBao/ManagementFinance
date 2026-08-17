@@ -1,4 +1,4 @@
-﻿const { Queue, Worker } = require('bullmq');
+const { Queue, Worker } = require('bullmq');
 const logger = require('./logger');
 
 const connection = {
@@ -13,6 +13,7 @@ const queues = {
   smsParse: new Queue('sms-parse', { connection }),
   sendNotification: new Queue('send-notification', { connection }),
   syncData: new Queue('sync-data', { connection }),
+  bankWebhook: new Queue('bank-webhook', { connection }),
 };
 
 // Helper: add job to a queue

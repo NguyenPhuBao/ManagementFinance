@@ -86,9 +86,12 @@ function validatePush(body) {
         }
 
         // For transaction: validate type if provided
-        if (op.entity === 'transaction' && op.payload.type) {
-          if (!['thu', 'chi', 'transfer', 'adjustment'].includes(op.payload.type)) {
+        if (op.entity === 'transaction') {
+          if (op.payload.type && !['thu', 'chi', 'transfer', 'adjustment'].includes(op.payload.type)) {
             errors.push(`${prefix}.payload.type must be thu/chi/transfer/adjustment`);
+          }
+          if (op.payload.provider && !['manual', 'casso'].includes(op.payload.provider)) {
+            errors.push(`${prefix}.payload.provider must be manual/casso`);
           }
         }
       }
