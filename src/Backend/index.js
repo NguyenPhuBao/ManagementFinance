@@ -1,4 +1,4 @@
-﻿require('dotenv').config();
+require('dotenv').config();
 const app = require('./app');
 const config = require('./config');
 const logger = require('./core/logger');
@@ -20,6 +20,9 @@ async function bootstrap() {
       // 2b. Start workers (BullMQ) — chỉ khi Redis available
       logger.info('Starting AI Worker...');
       require('./workers/ai.worker');
+      
+      logger.info('Starting Bank Worker...');
+      require('./workers/bank.worker');
     }
 
     // 3. Start Express server
