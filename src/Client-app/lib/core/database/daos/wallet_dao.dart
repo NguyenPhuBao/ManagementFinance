@@ -18,7 +18,6 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
         .get();
   }
 
-  /// Lấy tất cả ví chưa bị xóa (fallback nếu không khớp idaccount)
   Future<List<Wallet>> getAllNonDeleted() {
     return (select(wallets)
           ..where((t) => t.isDeleted.equals(false))
@@ -26,15 +25,7 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
         .get();
   }
 
-  /// Stream tất cả ví chưa bị xóa realtime
-  Stream<List<Wallet>> watchAllNonDeleted() {
-    return (select(wallets)
-          ..where((t) => t.isDeleted.equals(false))
-          ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)]))
-        .watch();
-  }
-
-  /// Stream theo dõi thay đổi realtime — dùng trong BlocBuilder
+  /// Stream tất cả ví của user realtime — dùng trong BlocBuilder
   Stream<List<Wallet>> watchAll(int idaccount) {
     return (select(wallets)
           ..where((t) => t.idaccount.equals(idaccount) & t.isDeleted.equals(false))
@@ -58,11 +49,8 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
   }
 
   /// Lấy các record chưa sync (pending)
-  Future<List<Wallet>> getPending(int idaccount) {
-    return (select(wallets)
-          ..where((t) =>
-              t.idaccount.equals(idaccount) & t.syncStatus.equals('pending')))
-        .get();
+  Future<List<Wallet>> getPending([int? idaccount]) {
+    return (select(wallets)..where((t) => t.syncStatus.equals('pending'))).get();
   }
 
   // ── WRITE ─────────────────────────────────────────────────────────────────

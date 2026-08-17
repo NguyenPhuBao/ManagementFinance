@@ -15,13 +15,15 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   bool _isSuccess = false;
 
   void _handleSubmit() async {
-    if (_emailController.text.isEmpty) return;
+    if (_emailController.text.trim().isEmpty) return;
 
     setState(() {
       _isLoading = true;
     });
 
-    // Simulate API call
+    // TODO: Gọi authRepository.forgotPassword(_emailController.text.trim())
+    // Khi Backend sẵn sàng, thay Future.delayed bằng:
+    // await authRepository.forgotPassword(_emailController.text.trim());
     await Future.delayed(const Duration(milliseconds: 1500));
 
     if (mounted) {
@@ -29,6 +31,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         _isLoading = false;
         _isSuccess = true;
       });
+      // Truyền email sang OtpPage để hiển thị và dùng khi gọi verifyOtp
+      context.push('/otp', extra: _emailController.text.trim());
     }
   }
 

@@ -40,7 +40,7 @@ class SettingsPage extends StatelessWidget {
             const SizedBox(height: 24),
             _buildSecurityPreferencesCard(context),
             const SizedBox(height: 24),
-            _buildDangerZoneCard(),
+            _buildDangerZoneCard(context),
           ],
         ),
       ),
@@ -246,7 +246,7 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  Widget _buildDangerZoneCard() {
+  Widget _buildDangerZoneCard(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -289,7 +289,7 @@ class SettingsPage extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           OutlinedButton(
-            onPressed: () {},
+            onPressed: () => context.push('/settings/delete-account'),
             style: OutlinedButton.styleFrom(
               foregroundColor: const Color(0xFFF1453B),
               side: const BorderSide(color: Color(0xFFF1453B), width: 2),

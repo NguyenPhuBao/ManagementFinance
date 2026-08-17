@@ -144,6 +144,20 @@ Role (1) ──▶ Account (N) ──▶ User (1)
                 └──▶ Goal (N)          ← UUID PK
 ```
 
+> 🆕 **2026-08-17 (12 bảng)**: Thêm bảng `otp_code` phục vụ luồng Quên mật khẩu và Đổi email.
+
+##### Bảng otp_code (🆕 2026-08-17)
+| Cột | Kiểu | Mô tả |
+|-----|------|-------|
+| `id` | INT PK (auto) | ID bản ghi |
+| `email` | VARCHAR(100) | Email nhận OTP |
+| `code_hash` | VARCHAR(255) | SHA-256 của OTP gốc (không lưu OTP plaintext) |
+| `purpose` | VARCHAR(30) | `'reset_password'` hoặc `'change_email'` |
+| `is_used` | BOOLEAN | Đã sử dụng chưa (set `true` ngay sau verify) |
+| `expires_at` | TIMESTAMP | Thời điểm hết hạn (`now + 10 phút`) |
+| `created_at` | TIMESTAMP | Ngày tạo |
+| **Indexes** | `(email, purpose)`, `(expires_at)` | Tối ưu query tìm OTP hợp lệ |
+
 ##### Bảng Role
 | Cột | Kiểu | Mô tả |
 |-----|------|-------|
@@ -161,6 +175,8 @@ Role (1) ──▶ Account (N) ──▶ User (1)
 | `created_at` | TIMESTAMP | Ngày tạo |
 | `updated_at` | TIMESTAMP | Ngày cập nhật |
 | `idrole` | INT FK→Role | 1=admin, 2=user |
+
+> 🆕 **2026-08-17**: Thêm giá trị `'Deleted'` vào cột `status` để hỗ trợ **soft delete tài khoản**. Khi status = `'Deleted'`, tài khoản không thể đăng nhập và toàn bộ refresh token bị revoke. Data vẫn giữ nguyên trong DB cho mục đích audit.
 
 ##### Bảng User
 | Cột | Kiểu | Mô tả |
@@ -304,6 +320,22 @@ Role (1) ──▶ Account (N) ──▶ User (1)
   - `POST /api/auth/refresh` — Làm mới token (public)
   - `GET /api/auth/me` — Lấy thông tin từ token (cần Bearer token)
   - `POST /api/auth/logout` — Đăng xuất, revoke tất cả token (cần Bearer token)
+
+> 🆕 **2026-08-17 — Endpoints bổ sung (chưa implement, Backend cần làm):**
+>
+> | Method | Endpoint | Auth | Mô tả |
+> |--------|----------|------|-------|
+> | POST | `/api/auth/forgot-password` | Public | Gửi OTP qua email để khôi phục mật khẩu |
+> | POST | `/api/auth/verify-otp` | Public | Xác minh OTP → trả `reset_token` JWT 15 phút |
+> | POST | `/api/auth/reset-password` | Public | Đặt lại mật khẩu bằng `reset_token` |
+> | PATCH | `/api/auth/change-password` | JWT | Đổi mật khẩu + revoke toàn bộ session |
+> | DELETE | `/api/auth/account` | JWT | Xóa mềm tài khoản (`status='Deleted'`) |
+> | GET | `/api/auth/profile` | JWT | Lấy thông tin User đầy đủ |
+> | PATCH | `/api/auth/profile` | JWT | Cập nhật fullname, phone, address, location |
+> | POST | `/api/auth/profile/request-email-change` | JWT | Gửi OTP xác minh đến email mới |
+> | PATCH | `/api/auth/profile/confirm-email-change` | JWT | Xác nhận OTP → cập nhật email |
+>
+> Xem tài liệu đầy đủ: `docs/superpowers/specs/2026-08-17-auth-backend-implementation-guide.md`
 
 ### 3.3 Kiến Trúc Client-app (Offline-first, Flutter)
 
@@ -1952,3 +1984,63 @@ Hệ thống **SyncEngine** phía Client-app đã hoàn thiện đồng bộ hai
 - **Account Data Isolation**: Khôi phục bộ lọc `idaccount` nghiêm ngặt trên tất cả các DAOs local (`WalletDao`, `TransactionDao`, `CategoryDao`, `BudgetDao`, `BillDao`, `GoalDao`). Khi đăng xuất (`LogoutRequested`), `SyncEngine.stop()` tự động xóa checkpoint `_lastPullTime`, đảm bảo dữ liệu giữa các tài khoản người dùng được cô lập tuyệt đối 100%.
 - **Response Unpacking**: Khắc phục triệt để việc bóc tách gói tin kết quả bọc `ResponseHandler` (`topData['data']['results']` và `topData['data']['data']`), báo log chính xác `1/1 synced successfully`.
 - **Tài liệu đặc tả**: Đã tạo và lưu trữ đầy đủ tài liệu chi tiết tại [`docs/sync/SYNC_DOCUMENTATION.md`](./docs/sync/SYNC_DOCUMENTATION.md) và [`docs/bill/BILL_DOCUMENTATION.md`](./docs/bill/BILL_DOCUMENTATION.md).
+
+---
+
+### 9.4 Phân Tích & Thiết Kế Module Auth — Chuẩn Bị Hoàn Thiện (Cập nhật 2026-08-17)
+
+#### 9.4.1 Giao Diện Mới Đã Thêm (Client-app)
+
+Ba màn hình mới đã được thêm vào Client-app:
+
+| Màn hình | File | Mô tả |
+|----------|------|-------|
+| Xác thực OTP | `lib/features/auth/presentation/pages/otp_page.dart` | Nhập mã OTP 6 số, hiển thị email đích |
+| Đặt mật khẩu mới | `lib/features/auth/presentation/pages/reset_password_page.dart` | Nhập và xác nhận mật khẩu mới |
+| Xác nhận xóa tài khoản | `lib/features/profile/presentation/pages/delete_account_page.dart` | Xác nhận bằng mật khẩu (không phải gõ chữ "XÓA") |
+
+#### 9.4.2 Quyết Định Thiết Kế Auth Module
+
+| # | Câu hỏi | Quyết định |
+|---|---------|-----------|
+| Q1 | Kênh gửi OTP | **Email** (SMTP/Nodemailer) |
+| Q2 | Cơ chế xóa tài khoản | **Xóa mềm ngay** — `status = 'Deleted'` |
+| Q3 | Đổi mật khẩu | **Revoke toàn bộ session** trên mọi thiết bị |
+| Q4 | Trường cho phép sửa Profile | **fullname, phone, address, location** — Email cần OTP riêng |
+
+#### 9.4.3 Client-app — Đã Triển Khai
+
+- **Navigation routing**: `ForgotPasswordPage → OtpPage(email) → ResetPasswordPage(reset_token)` kết nối đúng qua GoRouter `extra` parameter
+- **`AuthRemoteDataSource`**: Khai báo và implement đầy đủ 10 method mới (tất cả call đúng endpoint API)
+- **`AuthRepository` + `AuthRepositoryImpl`**: Thêm 9 method mới; `logout()` giờ gọi API server trước khi xóa local token
+- **`OtpPage`**: Nhận và hiển thị email, truyền `reset_token` sang màn hình tiếp theo
+- **`ResetPasswordPage`**: Nhận `resetToken` param từ router
+
+> Các phần `// TODO:` trong code là điểm kết nối API thực, đang dùng `Future.delayed` tạm. Khi Backend triển khai endpoint là bỏ delay và uncomment lời gọi API.
+
+#### 9.4.4 Backend — Chờ Triển Khai
+
+Tài liệu đầy đủ đã được viết tại `docs/superpowers/specs/2026-08-17-auth-backend-implementation-guide.md`.
+
+9 endpoint mới cần Backend implement (theo thứ tự ưu tiên):
+
+| Priority | Endpoint | Lý do |
+|----------|----------|-------|
+| 1 | `PATCH /api/auth/change-password` | Không phụ thuộc OTP |
+| 2 | `DELETE /api/auth/account` | Không phụ thuộc OTP |
+| 3 | `GET/PATCH /api/auth/profile` | Không phụ thuộc OTP |
+| 4 | `POST /api/auth/forgot-password` | Cần email service |
+| 5 | `POST /api/auth/verify-otp` | Cần bảng otp_code |
+| 6 | `POST /api/auth/reset-password` | Cần verify-otp xong trước |
+| 7 | `POST/PATCH /api/auth/profile/*email-change` | Phụ thuộc cả OTP + profile |
+
+#### 9.4.5 CSDL — Thay Đổi Cần Migration
+
+```bash
+# 1. Thêm model otp_code vào prisma/schema.prisma
+# 2. Thêm 'Deleted' vào CHECK constraint account.status
+# 3. Chạy:
+npx prisma migrate dev --name add_otp_code_and_deleted_status
+npx prisma generate
+```
+

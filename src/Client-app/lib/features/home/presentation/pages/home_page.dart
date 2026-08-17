@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
+import '../../../../core/sync/sync_engine.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 
@@ -14,6 +15,15 @@ class HomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final db = sl<AppDatabase>();
     final formatter = NumberFormat('#,###', 'vi_VN');
+
+    final authState = context.watch<AuthBloc>().state;
+    int? currentUserId;
+    if (authState is AuthSuccess && authState.user != null) {
+      currentUserId = int.tryParse(authState.user!.id);
+      if (currentUserId != null && sl.isRegistered<SyncEngine>()) {
+        sl<SyncEngine>().start(idaccount: currentUserId);
+      }
+    }
 
     return Scaffold(
       backgroundColor: AppColors.background,

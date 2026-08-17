@@ -57,15 +57,9 @@ coverage/
 *.db-journal
 
 # Documentation Plans
-docs/superpowers/plans/PROGRESS.md
-docs/superpowers/plans/2026-08-10-client-app-plan-2-auth.md
-docs/superpowers/plans/2026-08-09-client-app-plan-1-foundation.md
+docs/superpowers/*
+!docs/superpowers/auth/
 src/Backend/prisma/seed_roles.js
-docs/superpowers/plans/2026-08-11-add-transaction-wallet-selection-plan.md
-docs/superpowers/plans/2026-08-11-goal-offline-plan.md
-docs/superpowers/plans/2026-08-11-user-data-isolation-update.md
-docs/superpowers/plans/2026-08-11-add-transaction-wallet-selection-plan.md
-docs/superpowers/specs/
 .superpowers/
 .stitch/
 plugins/

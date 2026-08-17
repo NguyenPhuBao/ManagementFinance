@@ -11,7 +11,7 @@ import 'auth_repository.dart';
 ///
 /// Nguyên tắc:
 /// - Login / Register: bắt buộc online → lưu tokens + cache offline
-/// - Logout: xóa sạch mọi token và offline cache → buộc login online lần sau
+/// - Logout: gọi API revoke token trên server, rồi xóa sạch local token và offline cache
 /// - checkAuthStatus: chỉ kiểm tra có accessToken không (offline-safe)
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource remoteDataSource;
@@ -29,7 +29,6 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<UserModel> login(String username, String password) async {
     final data = await remoteDataSource.login(username, password);
 
-    // Lưu cả 2 tokens qua abstraction
     await localDataSource.saveTokens(
       accessToken:  data['accessToken']  as String,
       refreshToken: data['refreshToken'] as String,
@@ -37,10 +36,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
     final userJson = data['user'] as Map<String, dynamic>;
     final user = UserModel.fromJson(userJson);
-
-    // Cache thông tin offline (để app hoạt động khi mất mạng SAU KHI đã login)
     await _cacheOfflineCredentials(username, password, userJson);
-
     return user;
   }
 
@@ -52,12 +48,7 @@ class AuthRepositoryImpl implements AuthRepository {
     String email,
     String password,
   ) async {
-    final data = await remoteDataSource.register(
-      username,
-      fullname,
-      email,
-      password,
-    );
+    final data = await remoteDataSource.register(username, fullname, email, password);
 
     await localDataSource.saveTokens(
       accessToken:  data['accessToken']  as String,
@@ -66,20 +57,21 @@ class AuthRepositoryImpl implements AuthRepository {
 
     final userJson = data['user'] as Map<String, dynamic>;
     await _cacheOfflineCredentials(username, password, userJson);
-
     return UserModel.fromJson(userJson);
   }
 
-  // ─── Logout: xóa tất cả token + offline cache ───────────────────────────
+  // ─── Logout: gọi API revoke token + xóa tất cả local data ───────────────
   @override
   Future<void> logout() async {
-    // Xóa qua abstraction (accessToken + refreshToken)
-    await localDataSource.deleteTokens();
-
-    // Xóa offline cache → bắt buộc đăng nhập online lần sau
-    await secureStorage.delete(key: AppConstants.offlineUsernameKey);
-    await secureStorage.delete(key: AppConstants.offlinePasswordHashKey);
-    await secureStorage.delete(key: AppConstants.offlineUserDataKey);
+    final accessToken = await localDataSource.getAccessToken();
+    if (accessToken != null && accessToken.isNotEmpty) {
+      try {
+        await remoteDataSource.logout(accessToken);
+      } catch (_) {
+        // Bỏ qua lỗi network — vẫn xóa local token
+      }
+    }
+    await _clearLocalData();
   }
 
   // ─── Kiểm tra có token không (offline-safe) ─────────────────────────────
@@ -103,24 +95,89 @@ class AuthRepositoryImpl implements AuthRepository {
     return null;
   }
 
-  // ─── Private: cache offline credentials ─────────────────────────────────
+  // ─── Đổi mật khẩu (cần Backend: PATCH /auth/change-password) ────────────
+  @override
+  Future<void> changePassword(String currentPassword, String newPassword) async {
+    await remoteDataSource.changePassword(currentPassword, newPassword);
+    // Server revoke toàn bộ session → xóa local token, buộc đăng nhập lại
+    await _clearLocalData();
+  }
+
+  // ─── Quên mật khẩu (cần Backend: POST /auth/forgot-password) ─────────────
+  @override
+  Future<void> forgotPassword(String email) async {
+    await remoteDataSource.forgotPassword(email);
+  }
+
+  // ─── Xác minh OTP (cần Backend: POST /auth/verify-otp) ──────────────────
+  @override
+  Future<String> verifyOtp(String email, String otp) async {
+    return remoteDataSource.verifyOtp(email, otp);
+  }
+
+  // ─── Đặt lại mật khẩu (cần Backend: POST /auth/reset-password) ──────────
+  @override
+  Future<void> resetPassword(String resetToken, String newPassword) async {
+    await remoteDataSource.resetPassword(resetToken, newPassword);
+  }
+
+  // ─── Xóa tài khoản (cần Backend: DELETE /auth/account) ───────────────────
+  @override
+  Future<void> deleteAccount(String password) async {
+    await remoteDataSource.deleteAccount(password);
+    await _clearLocalData();
+  }
+
+  // ─── Lấy thông tin profile (cần Backend: GET /auth/profile) ─────────────
+  @override
+  Future<Map<String, dynamic>> getProfile() async {
+    return remoteDataSource.getProfile();
+  }
+
+  // ─── Cập nhật profile (cần Backend: PATCH /auth/profile) ────────────────
+  @override
+  Future<void> updateProfile({
+    String? fullname,
+    String? phone,
+    String? address,
+    String? location,
+  }) async {
+    await remoteDataSource.updateProfile(
+      fullname: fullname,
+      phone: phone,
+      address: address,
+      location: location,
+    );
+  }
+
+  // ─── Yêu cầu đổi email (cần Backend: POST /auth/profile/request-email-change) ─
+  @override
+  Future<void> requestEmailChange(String newEmail) async {
+    await remoteDataSource.requestEmailChange(newEmail);
+  }
+
+  // ─── Xác nhận đổi email (cần Backend: PATCH /auth/profile/confirm-email-change) ─
+  @override
+  Future<void> confirmEmailChange(String newEmail, String otp) async {
+    await remoteDataSource.confirmEmailChange(newEmail, otp);
+  }
+
+  // ─── Private helpers ─────────────────────────────────────────────────────
+  Future<void> _clearLocalData() async {
+    await localDataSource.deleteTokens();
+    await secureStorage.delete(key: AppConstants.offlineUsernameKey);
+    await secureStorage.delete(key: AppConstants.offlinePasswordHashKey);
+    await secureStorage.delete(key: AppConstants.offlineUserDataKey);
+  }
+
   Future<void> _cacheOfflineCredentials(
     String username,
     String password,
     Map<String, dynamic> userJson,
   ) async {
-    await secureStorage.write(
-      key:   AppConstants.offlineUsernameKey,
-      value: username,
-    );
-    await secureStorage.write(
-      key:   AppConstants.offlinePasswordHashKey,
-      value: _hashPassword(password),
-    );
-    await secureStorage.write(
-      key:   AppConstants.offlineUserDataKey,
-      value: jsonEncode(userJson),
-    );
+    await secureStorage.write(key: AppConstants.offlineUsernameKey, value: username);
+    await secureStorage.write(key: AppConstants.offlinePasswordHashKey, value: _hashPassword(password));
+    await secureStorage.write(key: AppConstants.offlineUserDataKey, value: jsonEncode(userJson));
   }
 
   String _hashPassword(String password) {

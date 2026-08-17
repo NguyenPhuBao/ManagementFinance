@@ -9,17 +9,24 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
     with _$CategoryDaoMixin {
   CategoryDao(super.db);
 
-  /// Lấy tất cả danh mục (default + của user)
-  Future<List<Category>> getAll(int idaccount) {
-    return (select(categories)
+  /// Lấy tất cả danh mục (khử trùng lặp theo tên)
+  Future<List<Category>> getAll(int idaccount) async {
+    final list = await (select(categories)
           ..where((t) =>
               (t.idaccount.equals(0) | t.idaccount.equals(idaccount)) &
               t.isDeleted.equals(false))
           ..orderBy([
-            (t) => OrderingTerm.desc(t.isDefault),
+            (t) => OrderingTerm.desc(t.idaccount),
             (t) => OrderingTerm.asc(t.name),
           ]))
         .get();
+
+    final Map<String, Category> uniqueMap = {};
+    for (final cat in list) {
+      final key = '${cat.classify}_${cat.name.trim().toLowerCase()}';
+      uniqueMap.putIfAbsent(key, () => cat);
+    }
+    return uniqueMap.values.toList();
   }
 
   Stream<List<Category>> watchAll(int idaccount) {
@@ -27,19 +34,40 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
           ..where((t) =>
               (t.idaccount.equals(0) | t.idaccount.equals(idaccount)) &
               t.isDeleted.equals(false))
-          ..orderBy([(t) => OrderingTerm.asc(t.name)]))
-        .watch();
+          ..orderBy([
+            (t) => OrderingTerm.desc(t.idaccount),
+            (t) => OrderingTerm.asc(t.name),
+          ]))
+        .watch()
+        .map((list) {
+      final Map<String, Category> uniqueMap = {};
+      for (final cat in list) {
+        final key = '${cat.classify}_${cat.name.trim().toLowerCase()}';
+        uniqueMap.putIfAbsent(key, () => cat);
+      }
+      return uniqueMap.values.toList();
+    });
   }
 
-  /// Lọc theo classify: 'thu' | 'chi' | 'vay_no'
-  Future<List<Category>> getByClassify(int idaccount, String classify) {
-    return (select(categories)
+  /// Lọc theo classify: 'thu' | 'chi' | 'vay_no' (khử trùng lặp theo tên)
+  Future<List<Category>> getByClassify(int idaccount, String classify) async {
+    final list = await (select(categories)
           ..where((t) =>
               (t.idaccount.equals(0) | t.idaccount.equals(idaccount)) &
               t.classify.equals(classify) &
               t.isDeleted.equals(false))
-          ..orderBy([(t) => OrderingTerm.desc(t.isDefault)]))
+          ..orderBy([
+            (t) => OrderingTerm.desc(t.idaccount),
+            (t) => OrderingTerm.asc(t.name),
+          ]))
         .get();
+
+    final Map<String, Category> uniqueMap = {};
+    for (final cat in list) {
+      final key = cat.name.trim().toLowerCase();
+      uniqueMap.putIfAbsent(key, () => cat);
+    }
+    return uniqueMap.values.toList();
   }
 
   Future<void> insert(CategoriesCompanion entry) async {
@@ -68,10 +96,11 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
-  Future<List<Category>> getPending(int idaccount) {
-    return (select(categories)
-          ..where((t) =>
-              t.idaccount.equals(idaccount) & t.syncStatus.equals('pending')))
-        .get();
+  Future<List<Category>> getPending([int? idaccount]) {
+    return (select(categories)..where((t) => t.syncStatus.equals('pending'))).get();
+  }
+
+  Future<Category?> getById(String id) {
+    return (select(categories)..where((t) => t.id.equals(id))).getSingleOrNull();
   }
 }

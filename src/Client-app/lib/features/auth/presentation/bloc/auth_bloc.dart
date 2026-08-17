@@ -1,4 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/di/injection_container.dart';
+import '../../../../core/sync/sync_engine.dart';
 import '../../data/repositories/auth_repository.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
@@ -25,6 +27,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final isLoggedIn = await authRepository.checkAuthStatus();
       if (isLoggedIn) {
         final user = await authRepository.getCurrentUser();
+        if (sl.isRegistered<SyncEngine>()) {
+          final idAcc = int.tryParse(user?.id ?? '') ?? 1;
+          sl<SyncEngine>().start(idaccount: idAcc);
+        }
         emit(AuthSuccess(user: user));
       } else {
         emit(AuthUnauthenticated());
@@ -41,9 +47,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(AuthLoading());
     try {
       final user = await authRepository.login(event.email, event.password);
+      if (sl.isRegistered<SyncEngine>()) {
+        final idAcc = int.tryParse(user.id) ?? 1;
+        sl<SyncEngine>().start(idaccount: idAcc);
+      }
       emit(AuthSuccess(user: user));
     } catch (e) {
-      // In production, catch specific exceptions and parse messages safely
       emit(AuthError(message: e.toString().replaceAll('Exception: ', '')));
     }
   }
@@ -56,6 +65,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     try {
       final user = await authRepository.register(
           event.name, event.fullname, event.email, event.password);
+      if (sl.isRegistered<SyncEngine>()) {
+        final idAcc = int.tryParse(user.id) ?? 1;
+        sl<SyncEngine>().start(idaccount: idAcc);
+      }
       emit(AuthSuccess(user: user));
     } catch (e) {
       emit(AuthError(message: e.toString().replaceAll('Exception: ', '')));
@@ -67,6 +80,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     emit(AuthLoading());
+    if (sl.isRegistered<SyncEngine>()) {
+      sl<SyncEngine>().stop();
+    }
     await authRepository.logout();
     emit(AuthUnauthenticated());
   }

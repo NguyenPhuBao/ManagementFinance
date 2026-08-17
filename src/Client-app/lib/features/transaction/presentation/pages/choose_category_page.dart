@@ -46,22 +46,60 @@ class _ChooseCategoryPageState extends State<ChooseCategoryPage> {
     });
   }
 
-  IconData _getCategoryIcon(String iconName) {
+  IconData _getCategoryIcon(String iconName, [String? categoryName]) {
     switch (iconName) {
       case 'restaurant': return Icons.restaurant;
       case 'directions_car': return Icons.directions_car;
       case 'shopping_bag': return Icons.shopping_bag;
+      case 'receipt_long':
+      case 'receipt': return Icons.receipt_long;
+      case 'movie': return Icons.movie;
+      case 'sports_esports': return Icons.sports_esports;
+      case 'favorite': return Icons.favorite;
       case 'local_hospital': return Icons.local_hospital;
       case 'school': return Icons.school;
-      case 'sports_esports': return Icons.sports_esports;
       case 'home': return Icons.home;
-      case 'receipt': return Icons.receipt;
-      case 'attach_money': return Icons.attach_money;
-      case 'trending_up': return Icons.trending_up;
-      case 'card_giftcard': return Icons.card_giftcard;
       case 'work': return Icons.work;
-      default: return Icons.category;
+      case 'card_giftcard': return Icons.card_giftcard;
+      case 'trending_up': return Icons.trending_up;
+      case 'laptop': return Icons.laptop;
+      case 'person_add': return Icons.person_add;
+      case 'person_remove': return Icons.person_remove;
+      case 'payment': return Icons.payment;
+      case 'attach_money': return Icons.attach_money;
+      case 'more_horiz': return Icons.more_horiz;
     }
+
+    if (categoryName != null) {
+      final name = categoryName.toLowerCase();
+      if (name.contains('ăn') || name.contains('uống')) return Icons.restaurant;
+      if (name.contains('xe') || name.contains('di chuyển')) return Icons.directions_car;
+      if (name.contains('sắm')) return Icons.shopping_bag;
+      if (name.contains('y tế') || name.contains('sức khoẻ') || name.contains('sức khỏe') || name.contains('thuốc')) return Icons.local_hospital;
+      if (name.contains('học') || name.contains('giáo dục')) return Icons.school;
+      if (name.contains('trí') || name.contains('game') || name.contains('phim')) return Icons.sports_esports;
+      if (name.contains('nhà')) return Icons.home;
+      if (name.contains('đơn') || name.contains('dịch vụ')) return Icons.receipt_long;
+      if (name.contains('lương')) return Icons.work;
+      if (name.contains('thưởng') || name.contains('quà')) return Icons.card_giftcard;
+      if (name.contains('đầu tư') || name.contains('lãi')) return Icons.trending_up;
+      if (name.contains('vay') || name.contains('nợ')) return Icons.attach_money;
+    }
+
+    return Icons.category;
+  }
+
+  Color _parseColor(String? colorHex) {
+    if (colorHex == null || colorHex.isEmpty) return const Color(0xFF10B981);
+    try {
+      final hex = colorHex.replaceAll('#', '');
+      if (hex.length == 6) {
+        return Color(int.parse('FF$hex', radix: 16));
+      } else if (hex.length == 8) {
+        return Color(int.parse(hex, radix: 16));
+      }
+    } catch (_) {}
+    return const Color(0xFF10B981);
   }
 
   List<Category> get _filteredCategories {
@@ -220,6 +258,7 @@ class _ChooseCategoryPageState extends State<ChooseCategoryPage> {
       itemCount: list.length,
       itemBuilder: (context, index) {
         final cat = list[index];
+        final catColor = _parseColor(cat.colour);
         return InkWell(
           onTap: () {
             context.pop(cat);
@@ -229,11 +268,14 @@ class _ChooseCategoryPageState extends State<ChooseCategoryPage> {
               Container(
                 width: 56,
                 height: 56,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFE3E3DF),
+                decoration: BoxDecoration(
+                  color: catColor.withOpacity(0.15),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(_getCategoryIcon(cat.icon), color: const Color(0xFF444748)),
+                child: Icon(
+                  _getCategoryIcon(cat.icon, cat.name),
+                  color: catColor,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
@@ -258,7 +300,12 @@ class _ChooseCategoryPageState extends State<ChooseCategoryPage> {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
       child: ElevatedButton.icon(
-        onPressed: () {},
+        onPressed: () async {
+          final created = await context.push<bool>('/categories/add');
+          if (created == true) {
+            _loadCategories();
+          }
+        },
         icon: const Icon(Icons.add, color: Colors.white, size: 18),
         label: const Text(
           'Thêm nhóm mới',
