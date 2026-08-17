@@ -39,6 +39,7 @@ model account {
   refreshtoken refreshtoken[]
   transaction  transaction[]
   wallet       wallet[]
+  bank_account bank_account[]
 }
 
 model auditlog {
@@ -156,15 +157,17 @@ model transaction {
   idaccount   Int
   wallet_id   String    @db.VarChar(36)
   category_id String?   @db.VarChar(36)
-  amount      Decimal   @db.Decimal(15, 2)
-  type        String    @db.VarChar(20)
-  note        String?   @default("")
-  date        DateTime  @db.Timestamp(6)
-  images      String?   @default("[]")
-  is_deleted  Boolean?  @default(false)
-  updated_at  DateTime  @db.Timestamp(6)
-  created_at  DateTime? @default(now()) @db.Timestamp(6)
-  account     account   @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_transaction_account")
+  amount                  Decimal   @db.Decimal(15, 2)
+  type                    String    @db.VarChar(20)
+  note                    String?   @default("")
+  date                    DateTime  @db.Timestamp(6)
+  images                  String?   @default("[]")
+  is_deleted              Boolean?  @default(false)
+  updated_at              DateTime  @db.Timestamp(6)
+  created_at              DateTime? @default(now()) @db.Timestamp(6)
+  provider                String?   @default("manual") @db.VarChar(30)
+  external_transaction_id String?   @db.VarChar(100)
+  account                 account   @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_transaction_account")
   wallet      wallet    @relation(fields: [wallet_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_transaction_wallet")
   category    category? @relation(fields: [category_id], references: [uuid], onDelete: SetNull, onUpdate: NoAction, map: "fk_transaction_category")
 
@@ -172,6 +175,7 @@ model transaction {
   @@index([date], map: "idx_transaction_date")
   @@index([updated_at], map: "idx_transaction_updated")
   @@index([wallet_id], map: "idx_transaction_wallet")
+  @@unique([provider, external_transaction_id], map: "uq_transaction_external")
 }
 
 model wallet {
@@ -192,4 +196,21 @@ model wallet {
 
   @@index([idaccount], map: "idx_wallet_account")
   @@index([updated_at], map: "idx_wallet_updated")
+}
+
+model bank_account {
+  id               String    @id @db.VarChar(36)
+  idaccount        Int
+  casso_account_id String    @unique @db.VarChar(100)
+  account_number   String    @db.VarChar(50)
+  account_name     String    @db.VarChar(255)
+  bank_name        String    @db.VarChar(100)
+  balance          Decimal?  @default(0) @db.Decimal(15, 2)
+  connect_status   String?   @default("active") @db.VarChar(20)
+  created_at       DateTime? @default(now()) @db.Timestamp(6)
+  updated_at       DateTime? @default(now()) @db.Timestamp(6)
+  account          account   @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_bank_account_owner")
+
+  @@index([idaccount], map: "idx_bank_account_owner")
+  @@index([connect_status], map: "idx_bank_account_status")
 }

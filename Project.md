@@ -127,6 +127,8 @@ ModuleName/
 - Quản lý schema qua **migration** (Prisma) + **SQL script** (`database/`)
 - Script khởi tạo: `database/)1_CSDL_Admin.sql` + `database/)2_create_refreshtoken_table.sql` + `database/)3_Update_Sync.sql` + `database/)4_Convert_Category_UUID.sql`
 
+> **Quy tắc bắt buộc**: Khi có sự thay đổi CSDL, luôn phải cập nhật Module Sync theo CSDL mới - theo template Sync đã có & đang dùng.
+
 ##### Sơ đồ quan hệ (11 bảng — cập nhật 2026-08-12)
 
 ```
@@ -1359,6 +1361,8 @@ Module quản trị (dashboard, user, danh mục mặc định). Đặc tả chi
 **Files**: `modules/admin/admin.controller.js`, `admin.service.js`, `admin.repository.js`, `api/admin.routes.js`
 
 ### 8.3. Module Sync — ✅ Done (MVP — 2026-08-12)
+
+> **Quy tắc bắt buộc**: Khi có sự thay đổi CSDL, luôn phải cập nhật Module Sync theo CSDL mới - theo template Sync đã có & đang dùng.
 
 #### 8.3.1. Tổng quan
 
