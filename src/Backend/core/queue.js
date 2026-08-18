@@ -1,11 +1,15 @@
 const { Queue, Worker } = require('bullmq');
 const logger = require('./logger');
 
-const connection = {
+const Redis = require('ioredis');
+
+const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
+  maxRetriesPerRequest: null,
+});
+/**const connection = {
   host: process.env.REDIS_HOST || 'localhost',
   port: parseInt(process.env.REDIS_PORT, 10) || 6379,
-};
-
+}; */
 // Queue definitions
 const queues = {
   aiClassify: new Queue('ai-classify-transaction', { connection }),

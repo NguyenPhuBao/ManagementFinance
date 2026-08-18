@@ -104,7 +104,17 @@ const authController = {
     try {
       const { password } = req.body;
       await authService.deleteAccount(req.user.idaccount, password);
-      return ResponseHandler.success(res, null, 'Tài khoản đã được xóa');
+      return ResponseHandler.success(res, null, 'Tài khoản của bạn sẽ bị xóa sau 30 ngày. Đăng nhập lại để hủy yêu cầu.');
+    } catch (error) {
+      const statusCode = error.statusCode || 500;
+      return ResponseHandler.error(res, error.message, statusCode);
+    }
+  },
+
+  async cancelDelete(req, res) {
+    try {
+      await authService.cancelDeletion(req.user.idaccount);
+      return ResponseHandler.success(res, null, 'Yêu cầu xóa tài khoản đã được hủy thành công');
     } catch (error) {
       const statusCode = error.statusCode || 500;
       return ResponseHandler.error(res, error.message, statusCode);
