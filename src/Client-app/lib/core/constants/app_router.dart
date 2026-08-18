@@ -6,26 +6,34 @@ import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
 import '../../features/auth/presentation/pages/forgot_password_page.dart';
+import '../../features/auth/presentation/pages/otp_page.dart';
+import '../../features/auth/presentation/pages/reset_password_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/analytics/presentation/pages/analytics_page.dart';
 import '../../features/analytics/presentation/pages/export_report_page.dart';
 import '../../features/transaction/presentation/pages/add_transaction_page.dart';
 import '../../features/transaction/presentation/pages/choose_category_page.dart';
+import '../../features/transaction/presentation/pages/transaction_page.dart';
 import '../../features/budget/presentation/pages/budget_page.dart';
 import '../../features/budget/presentation/pages/budget_rules_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/profile/presentation/pages/settings_page.dart';
 import '../../features/profile/presentation/pages/change_password_page.dart';
+import '../../features/profile/presentation/pages/delete_account_page.dart';
 import '../../features/wallet/presentation/pages/wallet_list_page.dart';
 import '../../features/wallet/presentation/pages/wallet_add_page.dart';
 import '../../features/wallet/presentation/pages/wallet_edit_page.dart';
 import '../../features/wallet/presentation/pages/bank_link_page.dart';
 import '../../features/category/presentation/pages/category_page.dart';
 import '../../features/category/presentation/pages/category_group_page.dart';
+import '../../features/category/presentation/pages/category_add_page.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../di/injection_container.dart';
+import '../database/app_database.dart';
+import '../../features/bill/presentation/bloc/bill_bloc.dart';
 import '../../features/bill/presentation/pages/bill_page.dart';
 import '../../features/bill/presentation/pages/bill_add_page.dart';
 import '../../features/bill/presentation/pages/bill_edit_page.dart';
-import '../../features/bill/presentation/pages/bill_delete_page.dart';
 import '../../features/goal/presentation/pages/goal_page.dart';
 import '../../features/goal/presentation/pages/goal_add_page.dart';
 import '../../features/goal/presentation/pages/goal_detail_page.dart';
@@ -51,7 +59,7 @@ class GoRouterRefreshStream extends ChangeNotifier {
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 
 // Routes công khai — không cần đăng nhập
-const _publicRoutes = {'/login', '/register', '/forgot-password'};
+const _publicRoutes = {'/login', '/register', '/forgot-password', '/otp', '/reset-password'};
 
 class AppRouter {
   /// Tạo GoRouter với:
@@ -91,6 +99,20 @@ class AppRouter {
           GoRoute(
               path: '/forgot-password',
               builder: (_, __) => const ForgotPasswordPage()),
+          GoRoute(
+            path: '/otp',
+            builder: (_, state) {
+              final email = state.extra as String? ?? '';
+              return OtpPage(email: email);
+            },
+          ),
+          GoRoute(
+            path: '/reset-password',
+            builder: (_, state) {
+              final resetToken = state.extra as String? ?? '';
+              return ResetPasswordPage(resetToken: resetToken);
+            },
+          ),
 
           // Main app với Bottom Navigation (4 tabs)
           StatefulShellRoute.indexedStack(
@@ -127,7 +149,11 @@ class AppRouter {
             builder: (_, __) => const ExportReportPage(),
           ),
 
-          // Add transaction
+          // Transactions
+          GoRoute(
+            path: '/transactions',
+            builder: (_, __) => const TransactionPage(),
+          ),
           GoRoute(
             path: '/add',
             builder: (_, __) => const AddTransactionPage(),
@@ -166,6 +192,7 @@ class AppRouter {
 
           // Category
           GoRoute(path: '/categories', builder: (_, __) => const CategoryPage()),
+          GoRoute(path: '/categories/add', builder: (_, __) => const CategoryAddPage()),
           GoRoute(
               path: '/categories/group',
               builder: (_, __) => const CategoryGroupPage()),
@@ -173,24 +200,27 @@ class AppRouter {
           // Bill
           GoRoute(
             path: '/bills',
-            builder: (_, __) => const BillPage(),
-            routes: [
-              GoRoute(
-                path: 'delete',
-                parentNavigatorKey: _rootNavigatorKey,
-                builder: (_, __) => const BillDeletePage(id: '1'),
-              ),
-            ],
+            builder: (_, __) => BlocProvider<BillBloc>(
+              create: (_) => sl<BillBloc>(),
+              child: const BillPage(),
+            ),
           ),
-          GoRoute(path: '/bills/add', builder: (_, __) => const BillAddPage()),
+          GoRoute(
+            path: '/bills/add',
+            builder: (_, __) => BlocProvider<BillBloc>(
+              create: (_) => sl<BillBloc>(),
+              child: const BillAddPage(),
+            ),
+          ),
           GoRoute(
             path: '/bills/:id/edit',
-            builder: (_, s) => BillEditPage(id: s.pathParameters['id']!),
-          ),
-          GoRoute(
-            path: '/bills/:id/delete',
-            parentNavigatorKey: _rootNavigatorKey,
-            builder: (_, s) => BillDeletePage(id: s.pathParameters['id']!),
+            builder: (_, s) => BlocProvider<BillBloc>(
+              create: (_) => sl<BillBloc>(),
+              child: BillEditPage(
+                id: s.pathParameters['id']!,
+                bill: s.extra as Bill?,
+              ),
+            ),
           ),
 
           // Goal
@@ -207,6 +237,9 @@ class AppRouter {
           GoRoute(
               path: '/settings/change-password',
               builder: (_, __) => const ChangePasswordPage()),
+          GoRoute(
+              path: '/settings/delete-account',
+              builder: (_, __) => const DeleteAccountPage()),
         ],
       );
 }

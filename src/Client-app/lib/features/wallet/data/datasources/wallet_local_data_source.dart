@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/database/app_database.dart';
 import '../../../../core/errors/app_exceptions.dart';
@@ -107,8 +108,31 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
   @override
   Future<void> softDelete(String id) async {
     try {
+      final wallet = await _db.walletDao.getById(id);
+      if (wallet != null) {
+        // 1. Ràng buộc 1: Ví có tiền (balance != 0)
+        if (wallet.balance != 0) {
+          final formatted = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ', decimalDigits: 0).format(wallet.balance);
+          throw CacheException('Ví "${wallet.name}" đang có số dư ($formatted). Vui lòng điều chuyển số dư về 0đ trước khi xóa!');
+        }
+
+        // 2. Ràng buộc 2: Ví đã có giao dịch phát sinh
+        final txs = await _db.transactionDao.getByWallet(id);
+        if (txs.isNotEmpty) {
+          throw CacheException('Ví "${wallet.name}" đã có ${txs.length} giao dịch phát sinh. Không thể xóa ví để bảo toàn lịch sử tài chính!');
+        }
+
+        // 3. Ràng buộc 3: Ví đang liên kết với Mục tiêu tiết kiệm
+        final goals = await _db.goalDao.getAllNonDeleted();
+        final linkedGoals = goals.where((g) => g.walletId == id).toList();
+        if (linkedGoals.isNotEmpty) {
+          throw CacheException('Ví "${wallet.name}" đang liên kết với mục tiêu "${linkedGoals.first.name}". Vui lòng gỡ liên kết trước khi xóa!');
+        }
+      }
+
       await _db.walletDao.softDelete(id);
     } catch (e) {
+      if (e is CacheException) rethrow;
       throw CacheException('Không thể xóa ví: $e');
     }
   }

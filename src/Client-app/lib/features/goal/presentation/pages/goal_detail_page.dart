@@ -1,19 +1,282 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+import '../../../../core/database/app_database.dart';
+import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../wallet/presentation/bloc/wallet_cubit.dart';
+import '../../data/models/goal_entity.dart';
+import '../../data/repositories/goal_repository.dart';
 
-class GoalDetailPage extends StatelessWidget {
+class GoalDetailPage extends StatefulWidget {
   final String id;
   const GoalDetailPage({super.key, required this.id});
 
   @override
+  State<GoalDetailPage> createState() => _GoalDetailPageState();
+}
+
+class _GoalDetailPageState extends State<GoalDetailPage> {
+  late final GoalRepository _goalRepository;
+  GoalEntity? _goal;
+  bool _isLoading = true;
+
+  int _getAccountId(BuildContext context) {
+    final authState = context.read<AuthBloc>().state;
+    if (authState is AuthSuccess && authState.user != null) {
+      return int.tryParse(authState.user!.id) ?? 1;
+    }
+    return 1;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _goalRepository = sl<GoalRepository>();
+    _loadGoal();
+  }
+
+  Future<void> _loadGoal() async {
+    setState(() => _isLoading = true);
+    final goal = await _goalRepository.getGoalById(widget.id);
+    if (mounted) {
+      setState(() {
+        _goal = goal;
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _showDepositDialog() async {
+    if (_goal == null) return;
+    final db = sl<AppDatabase>();
+    final accountId = _getAccountId(context);
+    var wallets = await db.walletDao.getAll(accountId);
+    if (wallets.isEmpty) {
+      wallets = await db.walletDao.getAllNonDeleted();
+    }
+
+    if (!mounted) return;
+    if (wallets.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng tạo ít nhất 1 ví trước khi gửi tiết kiệm.')),
+      );
+      return;
+    }
+
+    final amountController = TextEditingController();
+    final currencyFormatter = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ', decimalDigits: 0);
+    final targetWallet = _goal!.walletId != null
+        ? wallets.firstWhere((w) => w.id == _goal!.walletId, orElse: () => wallets.first)
+        : (wallets.length > 1 ? wallets.last : null);
+    Wallet selectedSourceWallet = wallets.firstWhere(
+      (w) => targetWallet != null ? w.id != targetWallet.id : true,
+      orElse: () => wallets.first,
+    );
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                top: 20,
+                left: 20,
+                right: 20,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Gửi thêm tiền vào ${_goal!.name}',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Số tiền hiện tại: ${currencyFormatter.format(_goal!.currentAmount)} / ${currencyFormatter.format(_goal!.targetAmount)}',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  if (targetWallet != null) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      'Ví nhận tiền tích lũy: ${targetWallet.name}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF2E6B27),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: amountController,
+                    keyboardType: TextInputType.number,
+                    autofocus: true,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.income,
+                    ),
+                    decoration: InputDecoration(
+                      labelText: 'Nhập số tiền muốn tích lũy thêm (VNĐ)',
+                      hintText: 'e.g. 1.000.000',
+                      filled: true,
+                      fillColor: AppColors.surfaceContainerLow,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Chọn ví nguồn thanh toán (Trừ tiền)',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<Wallet>(
+                        value: selectedSourceWallet,
+                        isExpanded: true,
+                        icon: const Icon(Icons.expand_more, color: AppColors.primary),
+                        items: wallets.map((w) {
+                          return DropdownMenuItem<Wallet>(
+                            value: w,
+                            child: Text(
+                              '${w.name} (Số dư: ${currencyFormatter.format(w.balance)})',
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          if (val != null) {
+                            setModalState(() => selectedSourceWallet = val);
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: () async {
+                      final raw = amountController.text.replaceAll(RegExp(r'[^\d]'), '');
+                      final deposit = double.tryParse(raw) ?? 0.0;
+                      if (deposit <= 0) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Vui lòng nhập số tiền hợp lệ')),
+                        );
+                        return;
+                      }
+
+                      await _goalRepository.depositToGoal(
+                        goalId: widget.id,
+                        goalName: _goal!.name,
+                        depositAmount: deposit,
+                        walletId: selectedSourceWallet.id,
+                        targetWalletId: _goal!.walletId ?? targetWallet?.id,
+                        idaccount: accountId,
+                      );
+                      if (ctx.mounted) Navigator.pop(ctx);
+                      if (!mounted) return;
+                      context.read<WalletCubit>().loadWallets(accountId);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Đã gửi thêm ${currencyFormatter.format(deposit)} vào mục tiêu!'),
+                          backgroundColor: AppColors.income,
+                        ),
+                      );
+                      _loadGoal();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.black,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Xác nhận gửi tiết kiệm',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(backgroundColor: Colors.white, elevation: 0),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_goal == null) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(backgroundColor: Colors.white, elevation: 0),
+        body: const Center(child: Text('Không tìm thấy mục tiêu')),
+      );
+    }
+
+    final currencyFormatter = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ', decimalDigits: 0);
+    final percentValue = _goal!.targetAmount > 0
+        ? (_goal!.currentAmount / _goal!.targetAmount).clamp(0.0, 1.0)
+        : 0.0;
+    final remaining = (_goal!.targetAmount - _goal!.currentAmount).clamp(0.0, double.infinity);
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text(
-          'Mua MacBook Pro',
-          style: TextStyle(
+        title: Text(
+          _goal!.name,
+          style: const TextStyle(
             color: AppColors.primary,
             fontWeight: FontWeight.bold,
             fontSize: 20,
@@ -28,9 +291,34 @@ class GoalDetailPage extends StatelessWidget {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings_outlined, color: AppColors.primary),
+            icon: const Icon(Icons.delete_outline, color: AppColors.error),
             onPressed: () {
-              // Navigate to settings / edit page
+              showDialog(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Xóa mục tiêu'),
+                  content: Text('Bạn có chắc chắn muốn xóa mục tiêu "${_goal!.name}"?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('Hủy'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () async {
+                        Navigator.pop(ctx);
+                        await _goalRepository.deleteGoal(widget.id);
+                        if (!mounted) return;
+                        context.pop();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.error,
+                        foregroundColor: Colors.white,
+                      ),
+                      child: const Text('Xóa'),
+                    ),
+                  ],
+                ),
+              );
             },
           ),
         ],
@@ -44,13 +332,13 @@ class GoalDetailPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    _buildCircularProgress(),
+                    _buildCircularProgress(percentValue),
                     const SizedBox(height: 32),
-                    _buildAmountInfo(),
+                    _buildAmountInfo(currencyFormatter, remaining),
                     const SizedBox(height: 24),
                     _buildInsightBox(),
                     const SizedBox(height: 32),
-                    _buildHistoryList(),
+                    _buildHistorySection(currencyFormatter),
                   ],
                 ),
               ),
@@ -62,14 +350,13 @@ class GoalDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _buildCircularProgress() {
+  Widget _buildCircularProgress(double percentValue) {
     return SizedBox(
       width: 220,
       height: 220,
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Background circle
           SizedBox(
             width: 220,
             height: 220,
@@ -79,25 +366,23 @@ class GoalDetailPage extends StatelessWidget {
               color: AppColors.surfaceContainerHigh.withValues(alpha: 0.5),
             ),
           ),
-          // Foreground progress
-          const SizedBox(
+          SizedBox(
             width: 220,
             height: 220,
             child: CircularProgressIndicator(
-              value: 0.375,
+              value: percentValue,
               strokeWidth: 16,
-              color: Color(0xFF2E6B27), // Darker green as seen in image
+              color: const Color(0xFF2E6B27),
               backgroundColor: Colors.transparent,
               strokeCap: StrokeCap.round,
             ),
           ),
-          // Center Text
           Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                '37.5%',
-                style: TextStyle(
+              Text(
+                '${(percentValue * 100).toStringAsFixed(1)}%',
+                style: const TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
                   color: AppColors.primary,
@@ -121,7 +406,7 @@ class GoalDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _buildAmountInfo() {
+  Widget _buildAmountInfo(NumberFormat currencyFormatter, double remaining) {
     return Column(
       children: [
         Row(
@@ -129,17 +414,17 @@ class GoalDetailPage extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.baseline,
           textBaseline: TextBaseline.alphabetic,
           children: [
-            const Text(
-              '15.000.000đ',
-              style: TextStyle(
-                fontSize: 36,
+            Text(
+              currencyFormatter.format(_goal!.currentAmount),
+              style: const TextStyle(
+                fontSize: 32,
                 fontWeight: FontWeight.w900,
                 color: AppColors.primary,
                 letterSpacing: -1,
               ),
             ),
             Text(
-              ' / 40.000.000đ',
+              ' / ${currencyFormatter.format(_goal!.targetAmount)}',
               style: TextStyle(
                 fontSize: 14,
                 color: AppColors.onSurfaceVariant.withValues(alpha: 0.8),
@@ -155,16 +440,16 @@ class GoalDetailPage extends StatelessWidget {
               fontSize: 14,
               color: AppColors.onSurfaceVariant.withValues(alpha: 0.8),
             ),
-            children: const [
-              TextSpan(text: 'Còn lại '),
+            children: [
+              const TextSpan(text: 'Còn lại '),
               TextSpan(
-                text: '25.000.000đ',
-                style: TextStyle(
+                text: currencyFormatter.format(remaining),
+                style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   color: AppColors.primary,
                 ),
               ),
-              TextSpan(text: ' để đạt mục tiêu'),
+              const TextSpan(text: ' để đạt mục tiêu'),
             ],
           ),
         ),
@@ -173,6 +458,7 @@ class GoalDetailPage extends StatelessWidget {
   }
 
   Widget _buildInsightBox() {
+    final formattedDate = DateFormat('MM/yyyy').format(_goal!.targetDate);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -193,11 +479,11 @@ class GoalDetailPage extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: const Color(0xFFC3EBBB), // Light green background for icon
+              color: const Color(0xFFC3EBBB),
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(
-              Icons.lightbulb, // Or a custom lightbulb
+              Icons.lightbulb,
               color: Color(0xFF2E6B27),
               size: 24,
             ),
@@ -207,9 +493,9 @@ class GoalDetailPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'DỰ BÁO HOÀN THÀNH: THÁNG 12/2026',
-                  style: TextStyle(
+                Text(
+                  'HẠN ĐỊNH MỤC TIÊU: THÁNG $formattedDate',
+                  style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: AppColors.primary,
@@ -218,9 +504,9 @@ class GoalDetailPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Dựa trên tốc độ tiết kiệm hiện tại\n(5tr/tháng)',
+                  'Theo dõi tiến độ tích lũy để đạt được mục tiêu trước hạn chót.',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 13,
                     color: AppColors.onSurfaceVariant.withValues(alpha: 0.9),
                     height: 1.4,
                   ),
@@ -233,7 +519,9 @@ class GoalDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _buildHistoryList() {
+  Widget _buildHistorySection(NumberFormat currencyFormatter) {
+    final accountId = _getAccountId(context);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -268,65 +556,83 @@ class GoalDetailPage extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 16),
-        ListView.separated(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: 3,
-          separatorBuilder: (context, index) => const SizedBox(height: 16),
-          itemBuilder: (context, index) {
-            // Mock data for the 3 items shown in design
-            final months = ['tháng 7', 'tháng 6', 'tháng 5'];
-            final dates = ['15/07/2026', '15/06/2026', '15/05/2026'];
-            
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFF0F5EE), // Very light green tone
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.savings_outlined, // Replace with piggy bank if available
-                    color: Color(0xFF2E6B27),
-                    size: 24,
+        StreamBuilder<dynamic>(
+          stream: _goalRepository.watchGoalTransactions(accountId, _goal?.name ?? ''),
+          builder: (context, snapshot) {
+            final txs = (snapshot.data as List<dynamic>?) ?? [];
+            if (txs.isEmpty) {
+              return const Padding(
+                padding: EdgeInsets.all(16),
+                child: Center(
+                  child: Text(
+                    'Chưa có khoản tích lũy nào.',
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
                   ),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Gửi tiết kiệm ${months[index]}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primary,
-                          fontSize: 15,
-                        ),
+              );
+            }
+
+            return ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: txs.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 16),
+              itemBuilder: (context, index) {
+                final tx = txs[index];
+                final dateStr = DateFormat('dd/MM/yyyy HH:mm').format(tx.date as DateTime);
+                final amount = (tx.amount as double);
+
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF0F5EE),
+                        shape: BoxShape.circle,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        dates[index],
-                        style: TextStyle(
-                          color: AppColors.onSurfaceVariant.withValues(alpha: 0.7),
-                          fontSize: 12,
-                        ),
+                      child: const Icon(
+                        Icons.savings_outlined,
+                        color: Color(0xFF2E6B27),
+                        size: 24,
                       ),
-                    ],
-                  ),
-                ),
-                const Text(
-                  '+5.000.000đ',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: Color(0xFF2E6B27), // Dark green color
-                  ),
-                ),
-              ],
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            tx.note.toString(),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary,
+                              fontSize: 15,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            dateStr,
+                            style: TextStyle(
+                              color: AppColors.onSurfaceVariant.withValues(alpha: 0.7),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      '+${currencyFormatter.format(amount)}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Color(0xFF2E6B27),
+                      ),
+                    ),
+                  ],
+                );
+              },
             );
           },
         ),
@@ -350,7 +656,7 @@ class GoalDetailPage extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           ElevatedButton(
-            onPressed: () {},
+            onPressed: _showDepositDialog,
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.black,
               foregroundColor: Colors.white,
@@ -368,28 +674,8 @@ class GoalDetailPage extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 12),
-          OutlinedButton(
-            onPressed: () {},
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.black,
-              minimumSize: const Size(double.infinity, 56),
-              side: const BorderSide(color: Colors.black12, width: 1.5),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: const Text(
-              'Chỉnh sửa mục tiêu',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
         ],
       ),
     );
   }
 }
-

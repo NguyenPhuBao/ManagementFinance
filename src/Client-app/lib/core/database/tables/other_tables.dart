@@ -56,6 +56,7 @@ class Goals extends Table {
   RealColumn   get targetAmount  => real()();
   RealColumn   get currentAmount => real().withDefault(const Constant(0.0))();
   DateTimeColumn get targetDate  => dateTime()();
+  TextColumn   get walletId => text().nullable()();
   TextColumn   get icon   => text().withDefault(const Constant('flag'))();
   TextColumn   get colour => text().withDefault(const Constant('#4CAF50'))();
   TextColumn   get note   => text().withDefault(const Constant(''))();

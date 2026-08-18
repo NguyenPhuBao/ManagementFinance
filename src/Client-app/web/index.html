@@ -31,6 +31,19 @@
 
   <title>flowmoney</title>
   <link rel="manifest" href="manifest.json">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
+  <script>
+    if (window.initSqlJs) {
+      var _origInitSqlJs = window.initSqlJs;
+      window.initSqlJs = function(config) {
+        config = config || {};
+        config.locateFile = function(file) {
+          return 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/' + file;
+        };
+        return _origInitSqlJs(config);
+      };
+    }
+  </script>
 </head>
 <body>
   <!--

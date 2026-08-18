@@ -1,8 +1,12 @@
-﻿import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+
+import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../data/models/wallet_entity.dart';
+import '../../data/repositories/wallet_repository.dart';
 
 class WalletEditPage extends StatefulWidget {
   final String id;
@@ -13,35 +17,78 @@ class WalletEditPage extends StatefulWidget {
 }
 
 class _WalletEditPageState extends State<WalletEditPage> {
-  final TextEditingController _balanceController = TextEditingController(text: '35.000.000');
-  final TextEditingController _nameController = TextEditingController(text: 'Techcombank Chính');
+  final TextEditingController _balanceController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
   final NumberFormat _currencyFormat = NumberFormat.decimalPattern('vi_VN');
 
+  bool _isLoading = true;
+  bool _isSaving = false;
+  WalletEntity? _wallet;
+
   int _selectedTypeIndex = 0;
-  final List<String> _walletTypes = ['Ngân hàng', 'Tiền mặt', 'Ví điện tử', 'Thẻ tín dụng'];
+  final List<String> _walletTypes = ['Tiền mặt', 'Ngân hàng', 'Ví điện tử', 'Thẻ tín dụng'];
+  final List<String> _walletTypeKeys = ['cash', 'bank', 'ewallet', 'debt'];
 
   int _selectedIconIndex = 0;
   final List<IconData> _iconOptions = [
-    Icons.account_balance,
     Icons.account_balance_wallet,
+    Icons.payments,
     Icons.credit_card,
     Icons.savings,
-    Icons.payments,
+    Icons.account_balance,
   ];
+  final List<String> _iconKeys = ['wallet', 'payments', 'credit_card', 'savings', 'bank'];
 
   int _selectedColorIndex = 0;
   final List<Color> _colorOptions = [
-    const Color(0xFF006E1C),
-    Colors.blue.shade600,
-    Colors.yellow.shade500,
-    Colors.red.shade600,
-    Colors.purple.shade600,
-    Colors.teal.shade500,
+    AppColors.secondary,
+    const Color(0xFF1A73E8),
+    const Color(0xFFF4B400),
+    const Color(0xFFEA4335),
+    const Color(0xFFA142F4),
+    const Color(0xFF00ACC1),
   ];
+  final List<String> _colorHexes = ['#4CAF50', '#1A73E8', '#F4B400', '#EA4335', '#A142F4', '#00ACC1'];
 
-  bool _isDefault = true;
+  bool _isDefault = false;
   bool _includeInTotal = true;
   bool _isActive = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWalletData();
+  }
+
+  Future<void> _loadWalletData() async {
+    try {
+      final repo = sl<WalletRepository>();
+      final wallet = await repo.getById(widget.id);
+      if (wallet != null && mounted) {
+        setState(() {
+          _wallet = wallet;
+          _nameController.text = wallet.name;
+          _balanceController.text = _currencyFormat.format(wallet.balance.toInt());
+
+          final typeIdx = _walletTypeKeys.indexOf(wallet.type);
+          if (typeIdx != -1) _selectedTypeIndex = typeIdx;
+
+          final iconIdx = _iconKeys.indexOf(wallet.icon);
+          if (iconIdx != -1) _selectedIconIndex = iconIdx;
+
+          final colorIdx = _colorHexes.indexOf(wallet.colour);
+          if (colorIdx != -1) _selectedColorIndex = colorIdx;
+
+          _isDefault = wallet.isDefault;
+          _isLoading = false;
+        });
+      } else if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -50,8 +97,82 @@ class _WalletEditPageState extends State<WalletEditPage> {
     super.dispose();
   }
 
+  Future<void> _saveWallet() async {
+    if (_wallet == null) return;
+    final name = _nameController.text.trim();
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Vui lòng nhập tên ví'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final rawBalance = _balanceController.text.replaceAll(',', '').replaceAll('.', '');
+    final balance = double.tryParse(rawBalance) ?? 0.0;
+    final colour = _colorHexes[_selectedColorIndex];
+    final iconKey = _iconKeys[_selectedIconIndex];
+
+    setState(() => _isSaving = true);
+    try {
+      final updatedWallet = _wallet!.copyWith(
+        name: name,
+        type: _walletTypeKeys[_selectedTypeIndex],
+        balance: balance,
+        icon: iconKey,
+        colour: colour,
+        isDefault: _isDefault,
+        updatedAt: DateTime.now(),
+      );
+
+      await sl<WalletRepository>().updateWallet(updatedWallet);
+      if (mounted) context.pop(true);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi khi cập nhật ví: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  Future<void> _deleteWallet() async {
+    if (_wallet == null) return;
+    setState(() => _isSaving = true);
+    try {
+      await sl<WalletRepository>().deleteWallet(widget.id);
+      if (mounted) context.pop(true);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi khi xóa ví: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: _buildAppBar(),
@@ -68,7 +189,7 @@ class _WalletEditPageState extends State<WalletEditPage> {
               _buildDeleteButton(),
               const SizedBox(height: 24.0),
               _buildSaveButton(),
-              const SizedBox(height: 60.0), // Padding for bottom nav
+              const SizedBox(height: 60.0),
             ],
           ),
         ),
@@ -94,17 +215,26 @@ class _WalletEditPageState extends State<WalletEditPage> {
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: () {},
-          child: const Text(
-            'Cập nhật',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: AppColors.primary,
-            ),
-          ),
-        ),
+        _isSaving
+            ? const Padding(
+                padding: EdgeInsets.all(12),
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              )
+            : TextButton(
+                onPressed: _saveWallet,
+                child: const Text(
+                  'Cập nhật',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.secondary,
+                  ),
+                ),
+              ),
         const SizedBox(width: 8),
       ],
     );
@@ -414,7 +544,7 @@ class _WalletEditPageState extends State<WalletEditPage> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
+      builder: (ctx) => Container(
         padding: const EdgeInsets.all(24),
         decoration: const BoxDecoration(
           color: Colors.white,
@@ -442,10 +572,10 @@ class _WalletEditPageState extends State<WalletEditPage> {
               ),
             ),
             const SizedBox(height: 12),
-            const Text(
-              'Tất cả giao dịch, mục tiêu và dữ liệu liên quan đến ví này sẽ bị xóa vĩnh viễn và không thể khôi phục.',
+            Text(
+              'Bạn có chắc muốn xóa ví "${_wallet?.name ?? ''}"?\nCác dữ liệu liên quan sẽ bị xóa.',
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 14,
                 color: AppColors.textSecondary,
               ),
@@ -455,7 +585,7 @@ class _WalletEditPageState extends State<WalletEditPage> {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () => Navigator.pop(ctx),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       side: const BorderSide(color: AppColors.outlineVariant),
@@ -468,8 +598,8 @@ class _WalletEditPageState extends State<WalletEditPage> {
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () {
-                      Navigator.pop(context);
-                      context.pop(); // Giả lập xóa thành công & quay về list
+                      Navigator.pop(ctx);
+                      _deleteWallet();
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFBA1A1A),
@@ -491,7 +621,7 @@ class _WalletEditPageState extends State<WalletEditPage> {
 
   Widget _buildSaveButton() {
     return ElevatedButton(
-      onPressed: () {},
+      onPressed: _isSaving ? null : _saveWallet,
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.primaryContainer,
         foregroundColor: Colors.white,
@@ -502,13 +632,19 @@ class _WalletEditPageState extends State<WalletEditPage> {
         ),
         elevation: 8,
       ),
-      child: const Text(
-        'Lưu & Cập Nhật Ví',
-        style: TextStyle(
-          fontSize: 24,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
+      child: _isSaving
+          ? const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+            )
+          : const Text(
+              'Lưu & Cập Nhật Ví',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
     );
   }
 }

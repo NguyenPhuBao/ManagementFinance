@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../shared/theme/app_colors.dart';
@@ -137,79 +137,99 @@ class ProfilePage extends StatelessWidget {
   }
 
   Widget _buildProfileHeader() {
-    return Column(
-      children: [
-        SizedBox(
-          width: 120, 
-          height: 120,
-          child: Stack(
-            children: [
-              Center(
-                child: Container(
-                  width: 112,
-                  height: 112,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 4),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: ClipOval(
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, state) {
+        final user = (state is AuthSuccess) ? state.user : null;
+        final name = (user?.name != null && user!.name.isNotEmpty)
+            ? user.name
+            : ((user?.username != null && user!.username.isNotEmpty)
+                ? user.username
+                : 'Người dùng');
+        final email = user?.email ?? '';
+
+        return Column(
+          children: [
+            SizedBox(
+              width: 120,
+              height: 120,
+              child: Stack(
+                children: [
+                  Center(
                     child: Container(
-                      color: const Color(0xFFC4E0E5), // Light blue background behind avatar
-                      child: Image.network(
-                        'https://lh3.googleusercontent.com/aida-public/AB6AXuDr3HXU-fxN7pFWJsgdzZyTWfH6OZr3cBJvaYeZK96XMJc7wUwjzMMJXuhRNw2MvspU3vwTWVYi0MGQeZFaxdOsAwSjyfYH8m49xop0-yzImKS6pWe0KXE9GEZQul1wqO8j1MCDFj-5u7ufVQwMZYfRgO29YfEb06naLbazbvQlNDyoqxXgdSP3hw0mfTXbkuEFBACFYmm6tUzXtU8kIaY_P8Vj6gCeZw4kHlvC10bliSIBICZJADEpuahgyaWkds1qJsG6AFQvnf8',
-                        fit: BoxFit.cover,
+                      width: 112,
+                      height: 112,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 4),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: ClipOval(
+                        child: Container(
+                          color: const Color(0xFFC4E0E5),
+                          child: Center(
+                            child: Text(
+                              name.isNotEmpty ? name[0].toUpperCase() : 'U',
+                              style: const TextStyle(
+                                fontSize: 40,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ),
-              Positioned(
-                bottom: 4,
-                right: 4,
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
+                  Positioned(
+                    bottom: 4,
+                    right: 4,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
-                    ],
+                      child: const Icon(Icons.edit, color: Colors.white, size: 18),
+                    ),
                   ),
-                  child: const Icon(Icons.edit, color: Colors.white, size: 18),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              name,
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: AppColors.primary,
+              ),
+            ),
+            if (email.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                email,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textSecondary,
                 ),
               ),
             ],
-          ),
-        ),
-        const SizedBox(height: 24),
-        const Text(
-          'Nguyễn Văn A',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: AppColors.primary,
-          ),
-        ),
-        const SizedBox(height: 4),
-        const Text(
-          'nguyenvana@email.com',
-          style: TextStyle(
-            fontSize: 14,
-            color: AppColors.textSecondary,
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 

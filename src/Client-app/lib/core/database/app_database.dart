@@ -1,9 +1,5 @@
-import 'dart:io';
 import 'package:drift/drift.dart';
-import 'package:drift/native.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as p;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'connection/connection.dart';
 
 import 'tables/wallets_table.dart';
 import 'tables/transactions_table.dart';
@@ -50,11 +46,11 @@ part 'app_database.g.dart';
   ],
 )
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(_openConnection());
+  AppDatabase() : super(openConnection());
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration {
@@ -65,8 +61,9 @@ class AppDatabase extends _$AppDatabase {
         await _seedDefaultCategories();
       },
       onUpgrade: (Migrator m, int from, int to) async {
-        // Thêm migrations theo version khi cần:
-        // if (from < 2) { await m.addColumn(wallets, wallets.someNewColumn); }
+        if (from < 2) {
+          await m.addColumn(goals, goals.walletId);
+        }
       },
       beforeOpen: (details) async {
         // Bật foreign key constraints (SQLite tắt mặc định)
@@ -74,6 +71,12 @@ class AppDatabase extends _$AppDatabase {
         // Tối ưu performance
         await customStatement('PRAGMA journal_mode = WAL');
         await customStatement('PRAGMA synchronous = NORMAL');
+        // Fail-safe migration cho wallet_id trên DB cũ
+        try {
+          await customStatement('ALTER TABLE goals ADD COLUMN wallet_id TEXT;');
+        } catch (_) {
+          // Cột đã tồn tại hoặc đã được tạo bởi Drift migration
+        }
       },
     );
   }
@@ -130,17 +133,4 @@ class AppDatabase extends _$AppDatabase {
   }
 }
 
-// ── Database connection factory ───────────────────────────────────────────────
-LazyDatabase _openConnection() {
-  return LazyDatabase(() async {
-    if (kIsWeb) {
-      // Web: dùng in-memory (flutter web không persist qua session)
-      // TODO: đổi sang WebDatabase khi cần persist trên web
-      return NativeDatabase.memory();
-    }
 
-    final dbFolder = await getApplicationDocumentsDirectory();
-    final file = File(p.join(dbFolder.path, 'flowmoney.db'));
-    return NativeDatabase.createInBackground(file);
-  });
-}

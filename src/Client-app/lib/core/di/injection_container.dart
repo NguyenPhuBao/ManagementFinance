@@ -9,10 +9,21 @@ import '../../features/auth/data/datasources/auth_remote_data_source.dart';
 import '../../features/auth/data/repositories/auth_repository.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
+import '../../features/goal/data/datasources/goal_local_data_source.dart';
+import '../../features/goal/data/repositories/goal_repository.dart';
+import '../../features/goal/data/repositories/goal_repository_impl.dart';
+import '../../features/goal/presentation/bloc/goal_cubit.dart';
 import '../../features/wallet/data/datasources/wallet_local_data_source.dart';
 import '../../features/wallet/data/repositories/wallet_repository.dart';
 import '../../features/wallet/data/repositories/wallet_repository_impl.dart';
 import '../../features/wallet/presentation/bloc/wallet_cubit.dart';
+import '../../features/transaction/data/datasources/transaction_local_data_source.dart';
+import '../../features/transaction/data/repositories/transaction_repository.dart';
+import '../../features/transaction/presentation/bloc/transaction_bloc.dart';
+import '../../features/bill/data/datasources/bill_local_datasource.dart';
+import '../../features/bill/data/repositories/bill_repository.dart';
+import '../../features/bill/data/repositories/bill_repository_impl.dart';
+import '../../features/bill/presentation/bloc/bill_bloc.dart';
 
 /// Service locator — dùng `sl<T>()` để resolve dependencies
 final GetIt sl = GetIt.instance;
@@ -71,8 +82,52 @@ Future<void> setupDependencies() async {
     () => WalletCubit(repository: sl()),
   );
 
-  // ── 6. Features — Transaction, Category (Plan 5-6) ───────────────────────
-  // Thêm dần theo từng Plan
+  // ── 6. Features — Goal ────────────────────────────────────────────────────
+  sl.registerLazySingleton<GoalLocalDataSource>(
+    () => GoalLocalDataSourceImpl(db: sl()),
+  );
+  sl.registerLazySingleton<GoalRepository>(
+    () => GoalRepositoryImpl(
+      localDataSource: sl(),
+      db: sl<AppDatabase>(),
+      syncEngine: sl(),
+    ),
+  );
+  sl.registerFactory<GoalCubit>(
+    () => GoalCubit(repository: sl()),
+  );
+
+  // ── 7. Features — Transaction ─────────────────────────────────────────────
+  sl.registerLazySingleton<TransactionLocalDataSource>(
+    () => TransactionLocalDataSourceImpl(sl<AppDatabase>()),
+  );
+  sl.registerLazySingleton<TransactionRepository>(
+    () => TransactionRepositoryImpl(
+      localDataSource: sl(),
+      walletDao: sl<AppDatabase>().walletDao,
+      syncEngine: sl(),
+    ),
+  );
+  sl.registerFactory<TransactionBloc>(
+    () => TransactionBloc(
+      transactionRepository: sl(),
+      syncEngine: sl<SyncEngine>(),
+    ),
+  );
+  // ── 8. Features — Bill ───────────────────────────────────────────────────
+  sl.registerLazySingleton<BillLocalDataSource>(
+    () => BillLocalDataSource(sl<AppDatabase>()),
+  );
+  sl.registerLazySingleton<BillRepository>(
+    () => BillRepositoryImpl(
+      dataSource: sl<BillLocalDataSource>(),
+      db: sl<AppDatabase>(),
+      syncEngine: sl<SyncEngine>(),
+    ),
+  );
+  sl.registerFactory<BillBloc>(
+    () => BillBloc(repository: sl<BillRepository>()),
+  );
 
   await sl.allReady();
 }

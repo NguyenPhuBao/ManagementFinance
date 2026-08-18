@@ -1,6 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:drift/drift.dart' as drift;
+import 'package:intl/intl.dart';
+import 'package:uuid/uuid.dart';
+import '../../../../core/database/app_database.dart';
+import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/bloc/auth_state.dart';
+import '../bloc/bill_bloc.dart';
+import '../bloc/bill_event.dart';
 
 class BillAddPage extends StatefulWidget {
   const BillAddPage({super.key});
@@ -10,10 +20,113 @@ class BillAddPage extends StatefulWidget {
 }
 
 class _BillAddPageState extends State<BillAddPage> {
-  String _selectedCycle = 'monthly';
+  final _nameController = TextEditingController();
+  final _amountController = TextEditingController();
+  final _noteController = TextEditingController();
+
+  DateTime _selectedDueDate = DateTime.now().add(const Duration(days: 7));
+  String _selectedCycle = 'monthly'; // 'weekly' | 'monthly' | 'yearly' | 'once'
   bool _pushNotificationsEnabled = true;
   bool _autoPayEnabled = true;
   String _selectedReminderDay = '1';
+
+  List<Wallet> _wallets = [];
+  Wallet? _selectedWallet;
+
+  int _getAccountId(BuildContext context) {
+    final authState = context.read<AuthBloc>().state;
+    if (authState is AuthSuccess && authState.user != null) {
+      return int.tryParse(authState.user!.id) ?? 1;
+    }
+    return 1;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadWallets();
+    });
+  }
+
+  Future<void> _loadWallets() async {
+    final accountId = _getAccountId(context);
+    final db = sl<AppDatabase>();
+    var wallets = await db.walletDao.getAll(accountId);
+    if (wallets.isEmpty) {
+      wallets = await db.walletDao.getAllNonDeleted();
+    }
+    if (mounted) {
+      setState(() {
+        _wallets = wallets;
+        if (wallets.isNotEmpty) {
+          _selectedWallet = wallets.first;
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _amountController.dispose();
+    _noteController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final name = _nameController.text.trim();
+    final amountText = _amountController.text.trim();
+    final amount = double.tryParse(amountText);
+
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng nhập tên dịch vụ / hóa đơn')),
+      );
+      return;
+    }
+
+    if (amount == null || amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng nhập số tiền hợp lệ (> 0)')),
+      );
+      return;
+    }
+
+    final billId = const Uuid().v4();
+    final now = DateTime.now();
+    final accountId = _getAccountId(context);
+
+    final newBill = BillsCompanion.insert(
+      id: billId,
+      idaccount: accountId,
+      name: name,
+      amount: amount,
+      dueDate: _selectedDueDate,
+      isPaid: const drift.Value(false),
+      recurrence: drift.Value(_selectedCycle),
+      note: drift.Value(_noteController.text.trim()),
+      syncStatus: const drift.Value('pending'),
+      updatedAt: now,
+    );
+
+    context.read<BillBloc>().add(AddBillEvent(bill: newBill));
+    context.pop();
+  }
+
+  Future<void> _pickDueDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDueDate,
+      firstDate: DateTime.now().subtract(const Duration(days: 30)),
+      lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
+    );
+    if (picked != null) {
+      setState(() {
+        _selectedDueDate = picked;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +151,7 @@ class _BillAddPageState extends State<BillAddPage> {
           Padding(
             padding: const EdgeInsets.only(right: 16.0, top: 12.0, bottom: 12.0),
             child: ElevatedButton(
-              onPressed: () {},
+              onPressed: _submit,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryContainer,
                 foregroundColor: AppColors.onSecondaryContainer,
@@ -74,6 +187,8 @@ class _BillAddPageState extends State<BillAddPage> {
   }
 
   Widget _buildFormCard() {
+    final dateFormatter = DateFormat('dd/MM/yyyy');
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -93,49 +208,71 @@ class _BillAddPageState extends State<BillAddPage> {
           _buildInputLabel('TÊN DỊCH VỤ / HÓA ĐƠN'),
           const SizedBox(height: 8),
           _buildTextField(
+            controller: _nameController,
             icon: Icons.payments_outlined,
             placeholder: 'e.g. Netflix Premium',
           ),
           const SizedBox(height: 16),
-          
+
           _buildInputLabel('SỐ TIỀN ĐỊNH KỲ'),
           const SizedBox(height: 8),
           _buildTextField(
+            controller: _amountController,
             icon: Icons.monetization_on_outlined,
             placeholder: '0đ',
             keyboardType: TextInputType.number,
           ),
           const SizedBox(height: 16),
-          
+
           const Divider(color: AppColors.outlineVariant, height: 1),
           const SizedBox(height: 16),
-          
+
           _buildInputLabel('NGÀY ĐẾN HẠN THANH TOÁN'),
           const SizedBox(height: 8),
-          _buildTextField(
-            icon: Icons.calendar_month_outlined,
-            placeholder: 'Ngày 25 hàng tháng',
+          InkWell(
+            onTap: _pickDueDate,
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppColors.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                children: [
+                  const Icon(Icons.calendar_month_outlined, color: AppColors.outline, size: 24),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Ngày ${dateFormatter.format(_selectedDueDate)}',
+                    style: const TextStyle(fontSize: 16, color: AppColors.primary),
+                  ),
+                  const Spacer(),
+                  const Icon(Icons.edit_calendar, color: AppColors.outline, size: 20),
+                ],
+              ),
+            ),
           ),
           const SizedBox(height: 16),
-          
+
           _buildInputLabel('CHU KỲ'),
           const SizedBox(height: 8),
           _buildCycleSelector(),
           const SizedBox(height: 16),
-          
+
           const Divider(color: AppColors.outlineVariant, height: 1),
           const SizedBox(height: 16),
-          
+
           _buildInputLabel('VÍ THANH TOÁN NGUỒN'),
           const SizedBox(height: 8),
-          _buildDropdownField(
-            icon: Icons.account_balance_wallet_outlined,
-            value: 'Techcombank - 35.000.000đ',
-            items: [
-              'Techcombank - 35.000.000đ',
-              'Momo Wallet - 2.500.000đ',
-              'Cash - 1.200.000đ',
-            ],
+          _buildWalletDropdownField(),
+
+          const SizedBox(height: 16),
+          _buildInputLabel('GHI CHÚ'),
+          const SizedBox(height: 8),
+          _buildTextField(
+            controller: _noteController,
+            icon: Icons.notes_outlined,
+            placeholder: 'Thêm ghi chú (tùy chọn)...',
           ),
         ],
       ),
@@ -168,7 +305,7 @@ class _BillAddPageState extends State<BillAddPage> {
                   Text(
                     'Bật nhắc nhở thông báo đẩy',
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: 14,
                       fontWeight: FontWeight.w500,
                       color: AppColors.primary,
                     ),
@@ -183,16 +320,18 @@ class _BillAddPageState extends State<BillAddPage> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              _buildReminderDayChip('Trước 1 ngày', '1'),
-              const SizedBox(width: 8),
-              _buildReminderDayChip('Trước 3 ngày', '3'),
-              const SizedBox(width: 8),
-              _buildReminderDayChip('Trước 5 ngày', '5'),
-            ],
-          ),
+          if (_pushNotificationsEnabled) ...[
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                _buildReminderDayChip('Trước 1 ngày', '1'),
+                const SizedBox(width: 8),
+                _buildReminderDayChip('Trước 3 ngày', '3'),
+                const SizedBox(width: 8),
+                _buildReminderDayChip('Trước 5 ngày', '5'),
+              ],
+            ),
+          ],
           const SizedBox(height: 16),
           const Divider(color: AppColors.outlineVariant, height: 1),
           const SizedBox(height: 16),
@@ -209,7 +348,7 @@ class _BillAddPageState extends State<BillAddPage> {
                       Text(
                         'Tự động tạo giao dịch',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 14,
                           fontWeight: FontWeight.w500,
                           color: AppColors.primary,
                         ),
@@ -251,6 +390,7 @@ class _BillAddPageState extends State<BillAddPage> {
   }
 
   Widget _buildTextField({
+    required TextEditingController controller,
     required IconData icon,
     required String placeholder,
     TextInputType? keyboardType,
@@ -267,6 +407,7 @@ class _BillAddPageState extends State<BillAddPage> {
           const SizedBox(width: 12),
           Expanded(
             child: TextField(
+              controller: controller,
               keyboardType: keyboardType,
               style: const TextStyle(fontSize: 16, color: AppColors.primary),
               decoration: InputDecoration(
@@ -282,11 +423,7 @@ class _BillAddPageState extends State<BillAddPage> {
     );
   }
 
-  Widget _buildDropdownField({
-    required IconData icon,
-    required String value,
-    required List<String> items,
-  }) {
+  Widget _buildWalletDropdownField() {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surfaceContainerLow,
@@ -295,23 +432,27 @@ class _BillAddPageState extends State<BillAddPage> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
-          Icon(icon, color: AppColors.outline, size: 24),
+          const Icon(Icons.account_balance_wallet_outlined, color: AppColors.outline, size: 24),
           const SizedBox(width: 12),
           Expanded(
             child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: value,
+              child: DropdownButton<Wallet>(
+                value: _selectedWallet,
                 icon: const Icon(Icons.expand_more, color: AppColors.outline),
                 isExpanded: true,
                 style: const TextStyle(fontSize: 16, color: AppColors.primary),
                 dropdownColor: Colors.white,
-                onChanged: (String? newValue) {
-                  // Handle change
+                onChanged: (Wallet? newValue) {
+                  if (newValue != null) {
+                    setState(() {
+                      _selectedWallet = newValue;
+                    });
+                  }
                 },
-                items: items.map<DropdownMenuItem<String>>((String item) {
-                  return DropdownMenuItem<String>(
-                    value: item,
-                    child: Text(item),
+                items: _wallets.map<DropdownMenuItem<Wallet>>((Wallet wallet) {
+                  return DropdownMenuItem<Wallet>(
+                    value: wallet,
+                    child: Text('${wallet.name} - ${wallet.balance.toStringAsFixed(0)}đ'),
                   );
                 }).toList(),
               ),
@@ -331,75 +472,44 @@ class _BillAddPageState extends State<BillAddPage> {
       ),
       child: Row(
         children: [
-          Expanded(
-            child: GestureDetector(
-              onTap: () => setState(() => _selectedCycle = 'monthly'),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: _selectedCycle == 'monthly'
-                      ? Colors.white
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(6),
-                  boxShadow: _selectedCycle == 'monthly'
-                      ? [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 2,
-                            offset: const Offset(0, 1),
-                          )
-                        ]
-                      : null,
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  'Hàng tháng',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: _selectedCycle == 'monthly'
-                        ? AppColors.primary
-                        : AppColors.onSurfaceVariant,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: GestureDetector(
-              onTap: () => setState(() => _selectedCycle = 'yearly'),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: _selectedCycle == 'yearly'
-                      ? Colors.white
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(6),
-                  boxShadow: _selectedCycle == 'yearly'
-                      ? [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 2,
-                            offset: const Offset(0, 1),
-                          )
-                        ]
-                      : null,
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  'Hàng năm',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: _selectedCycle == 'yearly'
-                        ? AppColors.primary
-                        : AppColors.onSurfaceVariant,
-                  ),
-                ),
-              ),
-            ),
-          ),
+          _buildCycleOption('Hàng tuần', 'weekly'),
+          _buildCycleOption('Hàng tháng', 'monthly'),
+          _buildCycleOption('Hàng năm', 'yearly'),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCycleOption(String label, String value) {
+    final isSelected = _selectedCycle == value;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _selectedCycle = value),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 2,
+                      offset: const Offset(0, 1),
+                    )
+                  ]
+                : null,
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: isSelected ? AppColors.primary : AppColors.onSurfaceVariant,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -446,7 +556,7 @@ class _BillAddPageState extends State<BillAddPage> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () {},
+          onTap: _submit,
           borderRadius: BorderRadius.circular(12),
           child: const Padding(
             padding: EdgeInsets.symmetric(vertical: 16),
