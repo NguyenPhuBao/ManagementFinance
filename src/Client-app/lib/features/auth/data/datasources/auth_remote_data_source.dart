@@ -101,7 +101,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     try {
       final response = await dio.patch(
         '/auth/change-password',
-        data: {'current_password': currentPassword, 'new_password': newPassword},
+        data: {'currentPassword': currentPassword, 'newPassword': newPassword},
       );
       if (response.data['success'] != true) {
         throw Exception(response.data['message'] ?? 'Đổi mật khẩu thất bại');
@@ -132,7 +132,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         data: {'email': email, 'otp': otp},
       );
       if (response.data['success'] == true) {
-        return response.data['data']['reset_token'] as String;
+        // Backend trả về resetToken (camelCase)
+        return response.data['data']['resetToken'] as String;
       }
       throw Exception(response.data['message'] ?? 'OTP không hợp lệ');
     } on DioException catch (e) {
@@ -147,7 +148,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     try {
       final response = await dio.post(
         '/auth/reset-password',
-        data: {'reset_token': resetToken, 'new_password': newPassword},
+        data: {'resetToken': resetToken, 'newPassword': newPassword},
       );
       if (response.data['success'] != true) {
         throw Exception(response.data['message'] ?? 'Đặt lại mật khẩu thất bại');
@@ -221,7 +222,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     try {
       final response = await dio.post(
         '/auth/profile/request-email-change',
-        data: {'new_email': newEmail},
+        data: {'newEmail': newEmail},
       );
       if (response.data['success'] != true) {
         throw Exception(response.data['message'] ?? 'Không thể gửi OTP');
@@ -238,7 +239,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     try {
       final response = await dio.patch(
         '/auth/profile/confirm-email-change',
-        data: {'new_email': newEmail, 'otp': otp},
+        data: {'newEmail': newEmail, 'otp': otp},
       );
       if (response.data['success'] != true) {
         throw Exception(response.data['message'] ?? 'Xác nhận thất bại');

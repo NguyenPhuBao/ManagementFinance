@@ -1,12 +1,13 @@
 # Spec: Module Auth & Quản lý Tài khoản — FlowMoney
-**Ngày:** 2026-08-17 | **Tác giả:** AI BA  
-**Phạm vi:** 7 chức năng Auth/Account — CSDL + Backend API + Flutter Client-app
+**Ngày:** 2026-08-17 | **Cập nhật lần cuối:** 2026-08-18 | **Tác giả:** AI BA  
+**Phạm vi:** 7 chức năng Auth/Account — CSDL + Backend API + Flutter Client-app  
+**Trạng thái:** ✅ **HOÀN THIỆN** — Backend + Client-app đã implement đầy đủ (2026-08-18)
 
 ---
 
 ## 1. Bối cảnh & Mục tiêu
 
-Module Auth đảm nhiệm toàn bộ vòng đời tài khoản người dùng: đăng ký, đăng nhập, bảo mật phiên làm việc và quản lý thông tin cá nhân. Hiện tại chỉ có 2/7 chức năng hoàn chỉnh. Spec này xác định rõ những gì cần bổ sung ở 3 tầng để hoàn thiện module.
+Module Auth đảm nhiệm toàn bộ vòng đời tài khoản người dùng: đăng ký, đăng nhập, bảo mật phiên làm việc và quản lý thông tin cá nhân. **Tính đến 2026-08-18, toàn bộ 7/7 chức năng đã được implement đầy đủ ở cả Backend lẫn Client-app.** Spec này ghi lại thiết kế và các quyết định kỹ thuật đã được thực thi.
 
 ---
 
@@ -83,12 +84,12 @@ model otp_code {
 
 **Quản lý Profile (JWT required):**
 
-| Method | Endpoint | Mô tả |
-|--------|----------|-------|
-| GET | `/api/auth/profile` | Lấy thông tin User đầy đủ |
-| PATCH | `/api/auth/profile` | Cập nhật fullname, phone, address, location |
-| POST | `/api/auth/profile/request-email-change` | Gửi OTP xác minh đến email mới |
-| PATCH | `/api/auth/profile/confirm-email-change` | Xác nhận OTP → cập nhật email |
+| Method | Endpoint | Trạng thái |
+|--------|----------|----------|
+| GET | `/api/auth/profile` | ✅ Implemented |
+| PATCH | `/api/auth/profile` | ✅ Implemented |
+| POST | `/api/auth/profile/request-email-change` | ✅ Implemented |
+| PATCH | `/api/auth/profile/confirm-email-change` | ✅ Implemented |
 
 ### 4.3 Logic nghiệp vụ quan trọng
 
@@ -119,17 +120,23 @@ Future<void> requestEmailChange(String newEmail);
 Future<void> confirmEmailChange(String email, String otp);
 ```
 
-### 5.2 Kết nối UI
+### 5.2 Trạng thái kết nối UI (2026-08-18)
 
-| File | Trạng thái | Việc cần làm |
-|------|-----------|-------------|
-| `forgot_password_page.dart` | UI có, chưa gọi API | Gọi `forgotPassword(email)` → push `/otp` kèm `email` |
-| `otp_page.dart` | UI có, chưa gọi API | Nhận `email` từ router `extra` → `verifyOtp()` → push `/reset-password` kèm `reset_token` |
-| `reset_password_page.dart` | UI có, chưa gọi API | Nhận `reset_token` → `resetPassword()` → go `/login` |
-| `change_password_page.dart` | UI có, chưa gọi API | `changePassword()` → logout local → go `/login` |
-| `delete_account_page.dart` | UI có, chưa gọi API | `deleteAccount(password)` → logout local → go `/login` |
-| `profile_page.dart` | Mock data | `getProfile()` khi khởi tạo |
-| `settings_page.dart` | Nút logout chưa gọi API | `logout()` → xóa local token → go `/login` |
+| File | Trạng thái | Ghi chú |
+|------|-----------|--------|
+| `forgot_password_page.dart` | ✅ Đã kết nối API | Gọi `forgotPassword(email)` → push `/otp` |
+| `otp_page.dart` | ✅ Đã kết nối API | `verifyOtp()` → nhận `resetToken` → push `/reset-password` |
+| `reset_password_page.dart` | ✅ Đã kết nối API | `resetPassword(resetToken, newPwd)` → go `/login` |
+| `change_password_page.dart` | ✅ Đã kết nối API | `changePassword()` + Form validation → go `/login` |
+| `delete_account_page.dart` | ✅ Đã kết nối API | `deleteAccount(password)` + AuthBloc.logout → go `/login` |
+| `edit_profile_page.dart` | ✅ Trang mới tạo | `getProfile()` khi init + `updateProfile()` khi save |
+| `settings_page.dart` | ✅ Đã kết nối nav | Nút "Thông tin cá nhân" + icon edit → `/settings/edit-profile` |
+
+**Lưu ý field mapping (Backend dùng camelCase):**
+- `changePassword`: gửi `currentPassword`, `newPassword` (không phải snake_case)
+- `resetPassword`: gửi `resetToken`, `newPassword`
+- `requestEmailChange`: gửi `newEmail`
+- `confirmEmailChange`: gửi `newEmail`, `otp`
 
 ### 5.3 Truyền data giữa màn hình OTP
 
@@ -165,11 +172,16 @@ Tạo `core/email.service.js` dùng **Nodemailer**. Template email OTP bằng ti
 
 ## 8. Definition of Done
 
-- [ ] Migration `otp_code` thành công
-- [ ] `account.status` nhận thêm giá trị `'Deleted'`
-- [ ] 9 endpoint mới trả đúng HTTP status và response format
-- [ ] OTP gửi email hoạt động thực tế
-- [ ] OTP hết hạn sau 10 phút, không dùng lại được
-- [ ] Đổi mật khẩu → revoke toàn bộ session
-- [ ] Xóa tài khoản → status Deleted, không đăng nhập lại được
-- [ ] Client-app gọi API đúng, xử lý lỗi và hiển thị thông báo
+- [x] Migration `otp_code` thành công
+- [x] `account.status` nhận thêm giá trị `'Deleted'`
+- [x] 9 endpoint mới trả đúng HTTP status và response format
+- [x] Email Service (`email.service.js`) dùng Nodemailer với mock mode khi chưa cấu hình SMTP
+- [x] OTP hết hạn sau 10 phút, không dùng lại được
+- [x] Đổi mật khẩu → revoke toàn bộ session
+- [x] Xóa tài khoản → status Deleted, không đăng nhập lại được
+- [x] Client-app gọi API đúng, xử lý lỗi và hiển thị thông báo
+- [x] Field names thống nhất camelCase giữa Client và Backend
+- [x] Trang `edit_profile_page.dart` mới tạo với load/save profile
+- [x] Route `/settings/edit-profile` đã đăng ký trong `app_router.dart`
+
+> **OTP thực tế:** Email service hiện dùng mock mode (log OTP ra console) khi `SMTP_USER` chưa được cấu hình thật. Để gửi email thật, cập nhật `.env` với SMTP credentials hợp lệ.

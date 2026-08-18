@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../../auth/data/repositories/auth_repository.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -13,26 +15,34 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   final TextEditingController _emailController = TextEditingController();
   bool _isLoading = false;
   bool _isSuccess = false;
+  String? _errorMessage;
+
+  final AuthRepository _authRepository = sl<AuthRepository>();
 
   void _handleSubmit() async {
-    if (_emailController.text.trim().isEmpty) return;
+    final email = _emailController.text.trim();
+    if (email.isEmpty) return;
 
     setState(() {
       _isLoading = true;
+      _errorMessage = null;
     });
 
-    // TODO: Gọi authRepository.forgotPassword(_emailController.text.trim())
-    // Khi Backend sẵn sàng, thay Future.delayed bằng:
-    // await authRepository.forgotPassword(_emailController.text.trim());
-    await Future.delayed(const Duration(milliseconds: 1500));
-
-    if (mounted) {
+    try {
+      await _authRepository.forgotPassword(email);
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
         _isSuccess = true;
       });
       // Truyền email sang OtpPage để hiển thị và dùng khi gọi verifyOtp
-      context.push('/otp', extra: _emailController.text.trim());
+      context.push('/otp', extra: email);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
+      });
     }
   }
 
@@ -123,6 +133,28 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                                 fillColor: Colors.white,
                               ),
                             ),
+                            const SizedBox(height: 16),
+                            if (_errorMessage != null)
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: AppColors.error.withValues(alpha: 0.08),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.error_outline, color: AppColors.error, size: 16),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        _errorMessage!,
+                                        style: const TextStyle(color: AppColors.error, fontSize: 13),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             const SizedBox(height: 24),
 
                             ElevatedButton(

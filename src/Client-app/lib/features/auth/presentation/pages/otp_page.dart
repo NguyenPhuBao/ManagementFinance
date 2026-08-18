@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../../auth/data/repositories/auth_repository.dart';
 
 class OtpPage extends StatefulWidget {
   final String email;
@@ -16,6 +18,9 @@ class _OtpPageState extends State<OtpPage> {
   late List<TextEditingController> _controllers;
   late List<FocusNode> _focusNodes;
   bool _isLoading = false;
+  String? _errorMessage;
+
+  final AuthRepository _authRepository = sl<AuthRepository>();
 
   @override
   void initState() {
@@ -50,20 +55,25 @@ class _OtpPageState extends State<OtpPage> {
 
     setState(() {
       _isLoading = true;
+      _errorMessage = null;
     });
 
-    // TODO: Gọi authRepository.verifyOtp(widget.email, otp)
-    // Khi Backend sẵn sàng, thay Future.delayed bằng:
-    // final resetToken = await authRepository.verifyOtp(widget.email, otp);
-    // context.push('/reset-password', extra: resetToken);
-    await Future.delayed(const Duration(milliseconds: 1500));
-
-    if (mounted) {
+    try {
+      final resetToken = await _authRepository.verifyOtp(widget.email, otp);
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      context.push('/reset-password', extra: resetToken);
+    } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
+        // Xóa OTP khi sai để nhập lại
+        for (final c in _controllers) {
+          c.clear();
+        }
+        _focusNodes.first.requestFocus();
       });
-      // Truyền reset_token sang trang ResetPassword (hiện tạm dùng chuỗi rỗng)
-      context.push('/reset-password', extra: '');
     }
   }
 
@@ -171,8 +181,31 @@ class _OtpPageState extends State<OtpPage> {
                             );
                           }),
                         ),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 16),
+                        if (_errorMessage != null)
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: AppColors.error.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.error_outline, color: AppColors.error, size: 16),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _errorMessage!,
+                                    style: const TextStyle(color: AppColors.error, fontSize: 13),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        const SizedBox(height: 16),
                         ElevatedButton(
+
                           onPressed: _isLoading ? null : _handleSubmit,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
