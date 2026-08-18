@@ -4,10 +4,15 @@ const crypto = require("crypto");
 const config = require("../../config");
 const { prisma } = require("../../config/db");
 const authRepository = require("./auth.repository");
+const emailService = require("../../core/email.service");
 const logger = require("../../core/logger");
 
 function hashToken(token) {
   return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+function hashOtp(otp) {
+  return crypto.createHash('sha256').update(otp).digest('hex');
 }
 
 function getTokenExpiry(idrole) {
@@ -204,6 +209,144 @@ const authService = {
     });
     logger.info("All tokens revoked", { idaccount, count: result.count });
     return result.count;
+  },
+
+  // ---------- CHANGE PASSWORD ----------
+  async changePassword(idaccount, currentPassword, newPassword) {
+    const account = await authRepository.findAccountById(idaccount);
+    if (!account) throw Object.assign(new Error("Tài khoản không tồn tại"), { statusCode: 404 });
+
+    const isMatch = await bcrypt.compare(currentPassword, account.password);
+    if (!isMatch) throw Object.assign(new Error("Mật khẩu hiện tại không đúng"), { statusCode: 400 });
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedNew = await bcrypt.hash(newPassword, salt);
+    await authRepository.updatePassword(idaccount, hashedNew);
+
+    await this.revokeAllTokens(idaccount);
+    logger.info("Password changed, all tokens revoked", { idaccount });
+  },
+
+  // ---------- FORGOT PASSWORD ----------
+  async forgotPassword(email) {
+    const userRecord = await authRepository.findAccountByEmail(email);
+    if (!userRecord) return; // Không tiết lộ email có tồn tại hay không
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const codeHash = hashOtp(otp);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    await authRepository.createOtp(email, codeHash, 'reset_password', expiresAt);
+    await emailService.sendOtp(email, otp, 'reset_password');
+    logger.info("OTP sent for forgot password", { email });
+  },
+
+  // ---------- VERIFY OTP ----------
+  async verifyOtp(email, otp) {
+    const codeHash = hashOtp(otp);
+    const record = await authRepository.findValidOtp(email, codeHash, 'reset_password');
+    if (!record) throw Object.assign(new Error("Mã OTP không hợp lệ hoặc đã hết hạn"), { statusCode: 400 });
+
+    await authRepository.markOtpUsed(record.id);
+
+    const resetToken = jwt.sign({ email, purpose: 'reset_password' }, config.jwt.accessSecret, { expiresIn: '15m' });
+    logger.info("OTP verified, reset token issued", { email });
+    return resetToken;
+  },
+
+  // ---------- RESET PASSWORD ----------
+  async resetPassword(resetToken, newPassword) {
+    let payload;
+    try {
+      payload = jwt.verify(resetToken, config.jwt.accessSecret);
+    } catch {
+      throw Object.assign(new Error("Token không hợp lệ hoặc đã hết hạn"), { statusCode: 401 });
+    }
+    if (payload.purpose !== 'reset_password') throw Object.assign(new Error("Token không hợp lệ"), { statusCode: 401 });
+
+    const userRecord = await authRepository.findAccountByEmail(payload.email);
+    if (!userRecord) throw Object.assign(new Error("Tài khoản không tồn tại"), { statusCode: 404 });
+
+    const idaccount = userRecord.account.idaccount;
+    const salt = await bcrypt.genSalt(10);
+    const hashedNew = await bcrypt.hash(newPassword, salt);
+    
+    await authRepository.updatePassword(idaccount, hashedNew);
+    await this.revokeAllTokens(idaccount);
+    logger.info("Password reset successfully", { email: payload.email });
+  },
+
+  // ---------- DELETE ACCOUNT ----------
+  async deleteAccount(idaccount, password) {
+    const account = await authRepository.findAccountById(idaccount);
+    if (!account) throw Object.assign(new Error("Tài khoản không tồn tại"), { statusCode: 404 });
+
+    const isMatch = await bcrypt.compare(password, account.password);
+    if (!isMatch) throw Object.assign(new Error("Mật khẩu không đúng"), { statusCode: 400 });
+
+    await authRepository.softDeleteAccount(idaccount);
+    await this.revokeAllTokens(idaccount);
+    logger.info("Account soft-deleted", { idaccount });
+  },
+
+  // ---------- GET PROFILE ----------
+  async getProfile(idaccount) {
+    const user = await authRepository.getProfile(idaccount);
+    if (!user) throw Object.assign(new Error("Không tìm thấy thông tin người dùng"), { statusCode: 404 });
+    return {
+      fullname: user.fullname,
+      email: user.email,
+      phone: user.phone,
+      address: user.address,
+      location: user.location,
+    };
+  },
+
+  // ---------- UPDATE PROFILE ----------
+  async updateProfile(idaccount, data) {
+    const allowed = {};
+    if (data.fullname !== undefined) allowed.fullname = data.fullname;
+    if (data.phone !== undefined) allowed.phone = data.phone;
+    if (data.address !== undefined) allowed.address = data.address;
+    if (data.location !== undefined) allowed.location = data.location;
+
+    const updated = await authRepository.updateProfile(idaccount, allowed);
+    return {
+      fullname: updated.fullname,
+      email: updated.email,
+      phone: updated.phone,
+      address: updated.address,
+      location: updated.location,
+    };
+  },
+
+  // ---------- REQUEST EMAIL CHANGE ----------
+  async requestEmailChange(idaccount, newEmail) {
+    const existing = await authRepository.findAccountByEmail(newEmail);
+    if (existing) throw Object.assign(new Error("Email này đã được sử dụng bởi tài khoản khác"), { statusCode: 409 });
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const codeHash = hashOtp(otp);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    await authRepository.createOtp(newEmail, codeHash, 'change_email', expiresAt);
+    await emailService.sendOtp(newEmail, otp, 'change_email');
+    logger.info("OTP sent for email change", { newEmail, idaccount });
+  },
+
+  // ---------- CONFIRM EMAIL CHANGE ----------
+  async confirmEmailChange(idaccount, newEmail, otp) {
+    const codeHash = hashOtp(otp);
+    const record = await authRepository.findValidOtp(newEmail, codeHash, 'change_email');
+    if (!record) throw Object.assign(new Error("Mã OTP không hợp lệ hoặc đã hết hạn"), { statusCode: 400 });
+
+    await authRepository.markOtpUsed(record.id);
+    await authRepository.updateEmail(idaccount, newEmail);
+    
+    // Thu hồi token để user phải đăng nhập lại với email mới (optional, nhưng an toàn hơn)
+    await this.revokeAllTokens(idaccount);
+    
+    logger.info("Email changed successfully", { newEmail, idaccount });
   },
 };
 

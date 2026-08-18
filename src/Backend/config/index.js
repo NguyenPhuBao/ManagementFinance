@@ -1,4 +1,4 @@
-﻿const path = require('path');
+const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 const config = {
@@ -37,6 +37,14 @@ const config = {
   },
 
   logLevel: process.env.LOG_LEVEL || 'debug',
+
+  smtp: {
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: parseInt(process.env.SMTP_PORT, 10) || 587,
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+    from: process.env.SMTP_FROM || '"FlowMoney" <no-reply@flowmoney.app>',
+  },
 };
 
 module.exports = config;
