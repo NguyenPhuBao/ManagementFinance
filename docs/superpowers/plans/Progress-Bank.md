@@ -242,13 +242,13 @@ Verify `Secure-Token` header bằng `CASSO_WEBHOOK_SECRET`.
 
 | # | Việc cần làm | File | Trạng thái | Ghi chú |
 |---|---|---|---|---|
-| 1 | Tạo SQL Script | `database/)5_Bank_Module.sql` | 🔴 Chưa làm | Có thể làm ngay |
-| 2 | Cập nhật Prisma + generate | `prisma/schema.prisma` | 🔴 Chưa làm | Có thể làm ngay |
-| 3 | Cập nhật Module Sync | `modules/sync/sync.*.js` | 🔴 Chưa làm | **Quy tắc bắt buộc** |
-| 4 | Thêm queue bank-webhook | `core/queue.js` | 🔴 Chưa làm | Có thể làm ngay |
-| 5 | Viết bank worker | `workers/bank.worker.js` | 🔴 Chưa làm | Có thể làm ngay |
-| 6 | Đăng ký bank worker | `index.js` | 🔴 Chưa làm | Có thể làm ngay |
-| 7 | Cập nhật .env | `.env` | 🔴 Chưa làm | Đổi tên biến Casso |
+| 1 | Tạo SQL Script | `database/)5_Bank_Module.sql` | ✅ Đã xong | |
+| 2 | Cập nhật Prisma + generate | `prisma/schema.prisma` | ✅ Đã xong | |
+| 3 | Cập nhật Module Sync | `modules/sync/sync.*.js` | ✅ Đã xong | **Quy tắc bắt buộc** |
+| 4 | Thêm queue bank-webhook | `core/queue.js` | ✅ Đã xong | |
+| 5 | Viết bank worker | `workers/bank.worker.js` | ✅ Đã xong | |
+| 6 | Đăng ký bank worker | `index.js` | ✅ Đã xong | |
+| 7 | Cập nhật .env | `.env` | ✅ Đã xong | Đổi tên biến Casso |
 | 8 | Viết bank.client.js | `modules/bank/bank.client.js` | 🔴 Chưa làm | Dùng CASSO_API_KEY từ .env |
 | 9 | Viết bank.webhook.js | `modules/bank/bank.webhook.js` | 🔴 Chưa làm | Verify signature |
 | 10 | Viết bank.repository.js | `modules/bank/bank.repository.js` | 🔴 Chưa làm | |

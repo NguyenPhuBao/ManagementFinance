@@ -55,6 +55,103 @@ const authController = {
       return ResponseHandler.error(res, error.message);
     }
   },
+
+  async changePassword(req, res) {
+    try {
+      const { currentPassword, newPassword } = req.body;
+      await authService.changePassword(req.user.idaccount, currentPassword, newPassword);
+      return ResponseHandler.success(res, null, 'Đổi mật khẩu thành công. Vui lòng đăng nhập lại.');
+    } catch (error) {
+      const statusCode = error.statusCode || 500;
+      return ResponseHandler.error(res, error.message, statusCode);
+    }
+  },
+
+  async forgotPassword(req, res) {
+    try {
+      const { email } = req.body;
+      await authService.forgotPassword(email);
+      return ResponseHandler.success(res, null, 'Nếu email tồn tại, hệ thống đã gửi mã OTP.');
+    } catch (error) {
+      const statusCode = error.statusCode || 500;
+      return ResponseHandler.error(res, error.message, statusCode);
+    }
+  },
+
+  async verifyOtp(req, res) {
+    try {
+      const { email, otp } = req.body;
+      const resetToken = await authService.verifyOtp(email, otp);
+      return ResponseHandler.success(res, { resetToken }, 'Xác thực OTP thành công');
+    } catch (error) {
+      const statusCode = error.statusCode || 500;
+      return ResponseHandler.error(res, error.message, statusCode);
+    }
+  },
+
+  async resetPassword(req, res) {
+    try {
+      const { resetToken, newPassword } = req.body;
+      await authService.resetPassword(resetToken, newPassword);
+      return ResponseHandler.success(res, null, 'Đặt lại mật khẩu thành công');
+    } catch (error) {
+      const statusCode = error.statusCode || 500;
+      return ResponseHandler.error(res, error.message, statusCode);
+    }
+  },
+
+  async deleteAccount(req, res) {
+    try {
+      const { password } = req.body;
+      await authService.deleteAccount(req.user.idaccount, password);
+      return ResponseHandler.success(res, null, 'Tài khoản đã được xóa');
+    } catch (error) {
+      const statusCode = error.statusCode || 500;
+      return ResponseHandler.error(res, error.message, statusCode);
+    }
+  },
+
+  async getProfile(req, res) {
+    try {
+      const profile = await authService.getProfile(req.user.idaccount);
+      return ResponseHandler.success(res, profile, 'Lấy thông tin thành công');
+    } catch (error) {
+      const statusCode = error.statusCode || 500;
+      return ResponseHandler.error(res, error.message, statusCode);
+    }
+  },
+
+  async updateProfile(req, res) {
+    try {
+      const updated = await authService.updateProfile(req.user.idaccount, req.body);
+      return ResponseHandler.success(res, updated, 'Cập nhật thông tin thành công');
+    } catch (error) {
+      const statusCode = error.statusCode || 500;
+      return ResponseHandler.error(res, error.message, statusCode);
+    }
+  },
+
+  async requestEmailChange(req, res) {
+    try {
+      const { newEmail } = req.body;
+      await authService.requestEmailChange(req.user.idaccount, newEmail);
+      return ResponseHandler.success(res, null, 'Đã gửi mã OTP đến email mới');
+    } catch (error) {
+      const statusCode = error.statusCode || 500;
+      return ResponseHandler.error(res, error.message, statusCode);
+    }
+  },
+
+  async confirmEmailChange(req, res) {
+    try {
+      const { newEmail, otp } = req.body;
+      await authService.confirmEmailChange(req.user.idaccount, newEmail, otp);
+      return ResponseHandler.success(res, null, 'Cập nhật email thành công. Vui lòng đăng nhập lại.');
+    } catch (error) {
+      const statusCode = error.statusCode || 500;
+      return ResponseHandler.error(res, error.message, statusCode);
+    }
+  },
 };
 
 module.exports = authController;
