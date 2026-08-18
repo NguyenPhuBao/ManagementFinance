@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../../auth/data/repositories/auth_repository.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
 
 class DeleteAccountPage extends StatefulWidget {
   const DeleteAccountPage({super.key});
@@ -13,6 +17,9 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
   final _formKey = GlobalKey<FormState>();
   final _confirmController = TextEditingController();
   bool _isLoading = false;
+  String? _errorMessage;
+
+  final AuthRepository _authRepository = sl<AuthRepository>();
 
   @override
   void dispose() {
@@ -46,17 +53,21 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
 
     setState(() {
       _isLoading = true;
+      _errorMessage = null;
     });
 
-    // Simulate API call
-    await Future.delayed(const Duration(milliseconds: 2000));
-
-    if (mounted) {
+    try {
+      await _authRepository.deleteAccount(_confirmController.text);
+      if (!mounted) return;
+      // Revoke local auth state trước khi navigate
+      context.read<AuthBloc>().add(LogoutRequested());
+      context.go('/login');
+    } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
       });
-      // Logout and redirect to login
-      context.go('/login');
     }
   }
 
@@ -175,8 +186,31 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
                               fillColor: Colors.white,
                             ),
                           ),
-                          const SizedBox(height: 32),
+                          const SizedBox(height: 16),
+                          if (_errorMessage != null)
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: AppColors.error.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.error_outline, color: AppColors.error, size: 16),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      _errorMessage!,
+                                      style: const TextStyle(color: AppColors.error, fontSize: 13),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          const SizedBox(height: 16),
                           ElevatedButton(
+
                             onPressed: _isLoading ? null : _handleDelete,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.error,

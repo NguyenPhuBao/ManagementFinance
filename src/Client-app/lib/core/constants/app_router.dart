@@ -20,6 +20,7 @@ import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/profile/presentation/pages/settings_page.dart';
 import '../../features/profile/presentation/pages/change_password_page.dart';
 import '../../features/profile/presentation/pages/delete_account_page.dart';
+import '../../features/profile/presentation/pages/edit_profile_page.dart';
 import '../../features/wallet/presentation/pages/wallet_list_page.dart';
 import '../../features/wallet/presentation/pages/wallet_add_page.dart';
 import '../../features/wallet/presentation/pages/wallet_edit_page.dart';
@@ -240,6 +241,9 @@ class AppRouter {
           GoRoute(
               path: '/settings/delete-account',
               builder: (_, __) => const DeleteAccountPage()),
+          GoRoute(
+              path: '/settings/edit-profile',
+              builder: (_, __) => const EditProfilePage()),
         ],
       );
 }

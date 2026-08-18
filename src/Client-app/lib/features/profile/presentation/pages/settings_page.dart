@@ -141,7 +141,7 @@ class SettingsPage extends StatelessWidget {
               ),
               IconButton(
                 icon: const Icon(Icons.edit, color: AppColors.textSecondary),
-                onPressed: () {},
+                onPressed: () => context.push('/settings/edit-profile'),
               ),
             ],
           ),
@@ -183,7 +183,7 @@ class SettingsPage extends StatelessWidget {
             icon: Icons.person_outline,
             title: 'Thông tin cá nhân',
             trailing: const Icon(Icons.chevron_right, color: AppColors.textSecondary),
-            onTap: () {},
+            onTap: () => context.push('/settings/edit-profile'),
           ),
           const Divider(height: 1, color: AppColors.outlineVariant),
           _buildActionItem(

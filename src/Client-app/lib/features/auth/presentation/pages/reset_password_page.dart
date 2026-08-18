@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../../auth/data/repositories/auth_repository.dart';
 
 class ResetPasswordPage extends StatefulWidget {
   final String resetToken;
@@ -18,6 +20,9 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  String? _errorMessage;
+
+  final AuthRepository _authRepository = sl<AuthRepository>();
 
   @override
   void dispose() {
@@ -31,17 +36,16 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
 
     setState(() {
       _isLoading = true;
+      _errorMessage = null;
     });
 
-    // TODO: Gọi authRepository.resetPassword(widget.resetToken, _passwordController.text)
-    // Khi Backend sẵn sàng, thay Future.delayed bằng:
-    // await authRepository.resetPassword(widget.resetToken, _passwordController.text);
-    await Future.delayed(const Duration(milliseconds: 1500));
-
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
+    try {
+      await _authRepository.resetPassword(
+        widget.resetToken,
+        _passwordController.text,
+      );
+      if (!mounted) return;
+      setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Mật khẩu đã được đặt lại thành công! Vui lòng đăng nhập lại.'),
@@ -49,6 +53,12 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
         ),
       );
       context.go('/login');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
+      });
     }
   }
 
@@ -224,8 +234,32 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                               fillColor: Colors.white,
                             ),
                           ),
-                          const SizedBox(height: 32),
+                          if (_errorMessage != null) ...[
+                            const SizedBox(height: 12),
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: AppColors.error.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.error_outline, color: AppColors.error, size: 16),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      _errorMessage!,
+                                      style: const TextStyle(color: AppColors.error, fontSize: 13),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 24),
                           ElevatedButton(
+
                             onPressed: _isLoading ? null : _handleSubmit,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primary,
