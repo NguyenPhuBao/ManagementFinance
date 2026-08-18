@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -25,10 +26,11 @@ model account {
   idaccount    Int            @id @default(autoincrement())
   username     String         @unique @db.VarChar(50)
   password     String         @db.VarChar(255)
-  status       String         @default("Active") @db.VarChar(10)
-  created_at   DateTime?      @default(now()) @db.Timestamp(6)
-  updated_at   DateTime?      @default(now()) @db.Timestamp(6)
-  idrole       Int
+  status              String         @default("Active") @db.VarChar(20)
+  scheduled_delete_at DateTime?      @db.Timestamp(6)
+  created_at          DateTime?      @default(now()) @db.Timestamp(6)
+  updated_at          DateTime?      @default(now()) @db.Timestamp(6)
+  idrole              Int
   User         User?
   role         role           @relation(fields: [idrole], references: [idrole], onUpdate: NoAction, map: "fk_account_role")
   auditlog     auditlog[]

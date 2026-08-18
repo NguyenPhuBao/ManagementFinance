@@ -32,6 +32,7 @@ router.post('/reset-password', validate(resetPasswordSchema), authController.res
 
 // === ACCOUNT MANAGEMENT ===
 router.delete('/account', authenticate, validate(deleteAccountSchema), authController.deleteAccount);
+router.post('/cancel-delete', authenticate, authController.cancelDelete);
 
 // === PROFILE MANAGEMENT ===
 router.get('/profile', authenticate, authController.getProfile);

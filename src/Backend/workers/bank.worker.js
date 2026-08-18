@@ -4,20 +4,24 @@ const { prisma } = require('../config/db');
 const { v4: uuidv4 } = require('uuid');
 const eventBus = require('../core/event-bus');
 
-const connection = {
+const Redis = require('ioredis');
+/**const connection = {
   host: process.env.REDIS_HOST || 'localhost',
   port: parseInt(process.env.REDIS_PORT, 10) || 6379,
-};
+}; */
+const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
+  maxRetriesPerRequest: null,
+});
 
 const bankWorker = new Worker(
   'bank-webhook',
   async (job) => {
     const { cassoTx } = job.data;
-    
+
     // Casso webhook transaction payload thường có cấu trúc:
     // tid, amount, description, cusum_balance, when, subAccId
     const { tid, amount, description, cusum_balance, when, subAccId } = cassoTx;
-    
+
     logger.info('Bank Worker: Processing webhook transaction', { jobId: job.id, tid });
 
     // 1. Tìm tài khoản NH dựa trên subAccId (số tài khoản)

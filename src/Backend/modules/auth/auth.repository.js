@@ -87,10 +87,26 @@ const authRepository = {
     });
   },
 
-  async softDeleteAccount(idaccount) {
+  async scheduleDeletion(idaccount) {
+    const scheduledAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // +30 days
     return prisma.account.update({
       where: { idaccount },
-      data: { status: 'Deleted', updated_at: new Date() },
+      data: {
+        status: 'PendingDelete',
+        scheduled_delete_at: scheduledAt,
+        updated_at: new Date(),
+      },
+    });
+  },
+
+  async cancelDeletion(idaccount) {
+    return prisma.account.update({
+      where: { idaccount },
+      data: {
+        status: 'Active',
+        scheduled_delete_at: null,
+        updated_at: new Date(),
+      },
     });
   },
 

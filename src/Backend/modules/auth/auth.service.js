@@ -133,9 +133,35 @@ const authService = {
     if (!req) req = {};
     const account = await authRepository.findAccountByUsername(username);
     if (!account) throw Object.assign(new Error("Sai tai khoan hoac mat khau"), { statusCode: 401 });
-    if (account.status !== "Active") throw Object.assign(new Error("Tai khoan da bi vo hieu hoa"), { statusCode: 403 });
-    const isMatch = await bcrypt.compare(password, account.password);
-    if (!isMatch) throw Object.assign(new Error("Sai tai khoan hoac mat khau"), { statusCode: 401 });
+
+    let pendingDeleteCancelled = false;
+
+    if (account.status === 'PendingDelete') {
+      if (account.scheduled_delete_at && account.scheduled_delete_at > new Date()) {
+        // Còn trong 30 ngày → cho đăng nhập, tự động hủy yêu cầu xóa
+        const isMatch = await bcrypt.compare(password, account.password);
+        if (!isMatch) throw Object.assign(new Error("Sai tai khoan hoac mat khau"), { statusCode: 401 });
+
+        await authRepository.cancelDeletion(account.idaccount);
+        pendingDeleteCancelled = true;
+        logger.info("PendingDelete account recovered on login", { username: account.username });
+      } else {
+        // Hết 30 ngày → từ chối đăng nhập
+        throw Object.assign(
+          new Error("Tài khoản đã hết thời gian khôi phục (30 ngày). Vui lòng liên hệ hỗ trợ."),
+          { statusCode: 403 }
+        );
+      }
+    } else if (account.status === 'Deleted') {
+      throw Object.assign(new Error("Tài khoản đã bị xóa vĩnh viễn"), { statusCode: 403 });
+    } else if (account.status !== 'Active') {
+      throw Object.assign(new Error("Tai khoan da bi vo hieu hoa"), { statusCode: 403 });
+    }
+
+    if (!pendingDeleteCancelled) {
+      const isMatch = await bcrypt.compare(password, account.password);
+      if (!isMatch) throw Object.assign(new Error("Sai tai khoan hoac mat khau"), { statusCode: 401 });
+    }
 
     const payload = {
       idaccount: account.idaccount,
@@ -152,6 +178,7 @@ const authService = {
     return {
       accessToken,
       refreshToken,
+      pendingDeleteCancelled,
       user: {
         idaccount: account.idaccount,
         username: account.username,
@@ -284,9 +311,25 @@ const authService = {
     const isMatch = await bcrypt.compare(password, account.password);
     if (!isMatch) throw Object.assign(new Error("Mật khẩu không đúng"), { statusCode: 400 });
 
-    await authRepository.softDeleteAccount(idaccount);
+    await authRepository.scheduleDeletion(idaccount);
     await this.revokeAllTokens(idaccount);
-    logger.info("Account soft-deleted", { idaccount });
+    logger.info("Account scheduled for deletion (30 days grace period)", { idaccount });
+  },
+
+  // ---------- CANCEL DELETION ----------
+  async cancelDeletion(idaccount) {
+    const account = await authRepository.findAccountById(idaccount);
+    if (!account) throw Object.assign(new Error("Tài khoản không tồn tại"), { statusCode: 404 });
+
+    if (account.status !== 'PendingDelete') {
+      throw Object.assign(new Error("Tài khoản không ở trạng thái chờ xóa"), { statusCode: 400 });
+    }
+    if (account.scheduled_delete_at && account.scheduled_delete_at <= new Date()) {
+      throw Object.assign(new Error("Đã hết thời gian khôi phục (30 ngày)"), { statusCode: 403 });
+    }
+
+    await authRepository.cancelDeletion(idaccount);
+    logger.info("Account deletion cancelled by user", { idaccount });
   },
 
   // ---------- GET PROFILE ----------
