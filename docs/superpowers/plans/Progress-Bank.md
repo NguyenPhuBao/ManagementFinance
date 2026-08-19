@@ -143,122 +143,75 @@ CREATE INDEX idx_transaction_provider ON transaction(provider);
 
 ---
 
-## Giai Đoạn 1 — Nền Móng Database & Bất Đồng Bộ (Có thể làm ngay)
+## Giai Đoạn 1 — Nền Móng Database, Bất Đồng Bộ & SQLite (Có thể làm ngay)
 
-### Bước 1.1 — `database/)5_Bank_Module.sql`
+### Tại Backend:
+- **Bước 1.1 — `database/)5_Bank_Module.sql`**: Tạo bảng `bank_account` + ALTER `transaction`. 
+- **Bước 1.2 — `prisma/schema.prisma`**: Thêm model `bank_account`, cập nhật model `transaction`.
+- **Bước 1.3 — Cập nhật Module Sync**: Thêm `provider` và `external_transaction_id` vào allowed list trong `sync.validation.js` và `sync.repository.js`.
+- **Bước 1.4 & 1.5 & 1.6 — Worker**: Khởi tạo queue `bank-webhook`, viết `bank.worker.js` và đăng ký trong `index.js`.
+- **Bước 1.7 — `.env`**: Đổi sang `CASSO_API_KEY`, `CASSO_WEBHOOK_SECRET`.
 
-Tạo bảng `bank_account` + ALTER `transaction`. **Không tạo `bank_connection`.**
-
-### Bước 1.2 — Cập nhật `prisma/schema.prisma` + `npx prisma generate`
-
-Thêm model `bank_account`, cập nhật model `transaction`.
-
-### Bước 1.3 — Cập nhật Module Sync (Quy tắc bắt buộc)
-
-Vì `transaction` có thêm 2 cột mới (`provider`, `external_transaction_id`):
-- `sync.validation.js`: Thêm 2 field vào allowed list
-- `sync.repository.js`: Đảm bảo upsert không bỏ sót 2 cột mới
-
-### Bước 1.4 — Thêm queue `bank-webhook` vào `core/queue.js`
-
-### Bước 1.5 — Viết `workers/bank.worker.js` (đầy đủ logic)
-
-Theo pattern `ai.worker.js`:
-1. Lắng nghe queue `bank-webhook`
-2. Parse payload webhook Casso (`tid`, `amount`, `runningBalance`, `bankAccountId`)
-3. Khử trùng: kiểm tra `{provider:'casso', external_transaction_id:tid}` đã tồn tại chưa
-4. Tạo `transaction` mới với `provider='casso'`
-5. Cập nhật `bank_account.balance = runningBalance`
-6. `EventBus.publish('transaction.created', {...})`
-
-### Bước 1.6 — Đăng ký `bank.worker` trong `index.js`
-
-Thêm vào khối `if (redisOk)`:
-```js
-logger.info('Starting Bank Worker...');
-require('./workers/bank.worker');
-```
-
-### Bước 1.7 — Cập nhật `.env`
-
-Xóa `CASSO_CLIENT_ID`, `CASSO_CLIENT_SECRET`. Thêm `CASSO_API_KEY`, `CASSO_WEBHOOK_SECRET`.
+### Tại Client-app (Flutter):
+- **Bước 1.8 — Cập nhật SQLite**: Thêm 2 cột `provider`, `external_transaction_id` vào bảng `transaction` trong CSDL nội bộ.
+- **Bước 1.9 — Cập nhật Model & SyncEngine**: Đảm bảo luồng đồng bộ (Pull/Push) từ Backend trả về không bị rớt mất 2 trường mới này.
 
 ---
 
-## Giai Đoạn 2 — Core Module Bank (Có thể làm ngay)
+## Giai Đoạn 2 — Core Module Bank & Giao Diện Người Dùng (Có thể làm ngay)
 
-### Bước 2.1 — `bank.client.js`
+### Tại Backend:
+- **Bước 2.1 — `bank.client.js`**: Gọi API Casso (lấy accounts, transactions).
+- **Bước 2.2 — `bank.webhook.js`**: Verify chữ ký `Secure-Token`.
+- **Bước 2.3 & 2.4 — Repo & Service**: Xử lý logic lưu thông tin thẻ NH, cập nhật số dư, đẩy vào hàng đợi webhook.
+- **Bước 2.5 — Controller & Routes**: Mở các API `/api/bank/accounts`, `/api/bank/transactions`, và `/api/bank/webhook`.
 
-Gọi Casso API dùng `process.env.CASSO_API_KEY`:
-- `getAccounts()` → GET `api.casso.vn/v2/accounts`
-- `getTransactions(since)` → GET `api.casso.vn/v2/transactions`
-
-### Bước 2.2 — `bank.webhook.js`
-
-Verify `Secure-Token` header bằng `CASSO_WEBHOOK_SECRET`.
-
-### Bước 2.3 — `bank.repository.js`
-
-- `upsertBankAccounts(idaccount, cassoAccountList[])` — Lưu/cập nhật danh sách NH
-- `findTransactionByExternalId(provider, externalId)` — Kiểm tra trùng lặp
-- `createTransactionFromWebhook(data)` — Tạo giao dịch mới
-- `updateBankBalance(cassoAccountId, balance)` — Cập nhật số dư
-- `getBankAccountsByUser(idaccount)` — Lấy danh sách NH của user
-
-### Bước 2.4 — `bank.service.js`
-
-- `getAccounts(idaccount)` → gọi Casso API → cập nhật DB → trả về
-- `getTransactions(idaccount, since)` → gọi Casso API → trả về
-- `enqueueWebhookJob(payload)` → `enqueue('bankWebhook', ...)`
-
-### Bước 2.5 — `bank.validation.js`, `bank.jobs.js`, `bank.controller.js`, `bank.routes.js`
-
-**Endpoints:**
-
-| Method | Path | Auth | Mô tả |
-|---|---|---|---|
-| GET | `/api/bank/accounts` | Bearer (user) | Danh sách NH + số dư của user |
-| GET | `/api/bank/transactions` | Bearer (user) | Lịch sử giao dịch NH |
-| POST | `/api/bank/webhook` | Public (verify sig) | Nhận webhook Casso → enqueue → 200 OK |
+### Tại Client-app (Flutter):
+- **Bước 2.6 — UI Danh sách Ngân hàng**: Thêm màn hình gọi API `/api/bank/accounts` để hiển thị các tài khoản ngân hàng đã liên kết và số dư realtime.
+- **Bước 2.7 — Cập nhật UI Giao dịch**: Hiển thị badge/icon nhận diện các giao dịch có `provider='casso'` (Giao dịch tự động).
 
 ---
 
 ## Giai Đoạn 3 — Deploy Lên Cloud (Bắt buộc trước khi webhook hoạt động)
 
-### Bước 3.1 — PostgreSQL → Supabase
-### Bước 3.2 — Backend → Vercel / Railway
-### Bước 3.3 — Cấu hình Webhook Casso (cần URL public từ bước 3.2)
+- **Bước 3.1 — PostgreSQL → Supabase**: Đẩy DB lên Cloud. (✅ Đã xong)
+- **Bước 3.2 — Backend → Render**: Deploy Node.js lên Render. (✅ Đã xong)
+- **Bước 3.3 — Admin-web → Vercel**: Deploy Admin-web. (✅ Đã xong)
+- **Bước 3.4 — Cập nhật Config Client-app**: Đổi base URL trong Flutter trỏ về `https://managementfinance.onrender.com/api`.
+- **Bước 3.5 — Cấu hình Webhook Casso**: Lên my.casso.vn nhập URL Webhook Render.
 
 ---
 
-## Giai Đoạn 4 — Admin Web
+## Giai Đoạn 4 — Admin Web & Realtime
 
-### Bước 4.1 — Nhúng Widget Casso (không tự xây giao diện)
-### Bước 4.2 — Audit Log Webhook Realtime (Socket.IO)
+### Tại Admin-web (React/Vite):
+- **Bước 4.1 — Nhúng Widget Casso**: Tạo màn hình cho phép Admin (hoặc người dùng) liên kết tài khoản ngân hàng qua giao diện Widget của Casso.
+- **Bước 4.2 — Audit Log Realtime**: Lắng nghe Socket.IO từ Backend để báo cáo trạng thái webhook (nhận tiền) ngay lập tức trên dashboard.
+
+### Tại Client-app (Flutter):
+- **Bước 4.3 — Push Notification (Tùy chọn)**: Hiển thị thông báo cục bộ khi nhận được giao dịch từ Casso thông qua Sync/Socket.
 
 ---
 
-## Bảng Tiến Độ
+## Bảng Tiến Độ Toàn Hệ Thống
 
-| # | Việc cần làm | File | Trạng thái | Ghi chú |
+| # | Nền tảng | Việc cần làm | Trạng thái | Ghi chú |
 |---|---|---|---|---|
-| 1 | Tạo SQL Script | `database/)5_Bank_Module.sql` | ✅ Đã xong | |
-| 2 | Cập nhật Prisma + generate | `prisma/schema.prisma` | ✅ Đã xong | |
-| 3 | Cập nhật Module Sync | `modules/sync/sync.*.js` | ✅ Đã xong | **Quy tắc bắt buộc** |
-| 4 | Thêm queue bank-webhook | `core/queue.js` | ✅ Đã xong | |
-| 5 | Viết bank worker | `workers/bank.worker.js` | ✅ Đã xong | |
-| 6 | Đăng ký bank worker | `index.js` | ✅ Đã xong | |
-| 7 | Cập nhật .env | `.env` | ✅ Đã xong | Đổi tên biến Casso |
-| 8 | Viết bank.client.js | `modules/bank/bank.client.js` | 🔴 Chưa làm | Dùng CASSO_API_KEY từ .env |
-| 9 | Viết bank.webhook.js | `modules/bank/bank.webhook.js` | 🔴 Chưa làm | Verify signature |
-| 10 | Viết bank.repository.js | `modules/bank/bank.repository.js` | 🔴 Chưa làm | |
-| 11 | Viết bank.service.js | `modules/bank/bank.service.js` | 🔴 Chưa làm | |
-| 12 | Viết bank.validation.js | `modules/bank/bank.validation.js` | 🔴 Chưa làm | |
-| 13 | Viết bank.jobs.js | `modules/bank/bank.jobs.js` | 🔴 Chưa làm | |
-| 14 | Viết bank.controller.js | `modules/bank/bank.controller.js` | 🔴 Chưa làm | |
-| 15 | Cập nhật bank.routes.js | `api/bank.routes.js` | 🔴 Chưa làm | |
-| 16 | Deploy PostgreSQL → Supabase | — | 🔴 Chưa làm | **Bắt buộc trước webhook** |
-| 17 | Deploy Backend → Vercel/Railway | — | 🔴 Chưa làm | **Bắt buộc trước webhook** |
-| 18 | Cấu hình Webhook trên Casso | — | 🔴 Chưa làm | **Sau khi có URL public** |
-| 19 | Admin: Nhúng widget Casso | `Admin-web/pages/...` | 🔴 Chưa làm | |
-| 20 | Admin: Audit log realtime | `Admin-web/pages/...` | 🔴 Chưa làm | |
+| 1 | Backend | Tạo SQL Script `)5_Bank_Module.sql` | ✅ Đã xong | |
+| 2 | Backend | Cập nhật Prisma + generate | ✅ Đã xong | |
+| 3 | Backend | Cập nhật Module Sync cho 2 field mới | ✅ Đã xong | **Bắt buộc** |
+| 4 | Backend | Set up queue & worker (`bank.worker.js`) | ✅ Đã xong | |
+| 5 | Backend | Đăng ký worker & cập nhật `.env` | ✅ Đã xong | |
+| 6 | Client | Thêm 2 field mới vào SQLite & SyncEngine | 🔴 Chưa làm | Chống mất dữ liệu đồng bộ |
+| 7 | Backend | Viết `bank.client.js` & `bank.webhook.js` | 🔴 Chưa làm | Dùng `CASSO_API_KEY` |
+| 8 | Backend | Viết repo, service, controller, routes | 🔴 Chưa làm | Cốt lõi của webhook |
+| 9 | Client | UI Quản lý tài khoản NH (gọi API) | 🔴 Chưa làm | Xem số dư NH |
+| 10 | Client | UI phân biệt giao dịch thủ công / casso | 🔴 Chưa làm | |
+| 11 | Backend | Deploy PostgreSQL → Supabase | ✅ Đã xong | Đã có URL Supabase |
+| 12 | Backend | Deploy Backend → Render | ✅ Đã xong | URL: managementfinance.onrender.com |
+| 13 | Admin | Deploy Admin-web → Vercel | ✅ Đã xong | URL: management-finance-gamma.vercel.app |
+| 14 | Client | Cập nhật Base URL trỏ lên Render | 🔴 Chưa làm | Trước khi build app |
+| 15 | Casso | Đăng ký Webhook trên portal my.casso.vn | 🔴 Chưa làm | Cần Backend hoàn thiện (task 7, 8) |
+| 16 | Admin | Nhúng Widget Casso để link tài khoản | 🔴 Chưa làm | |
+| 17 | Admin | Lắng nghe Socket.IO hiển thị audit log | 🔴 Chưa làm | |
+| 18 | Client | Push notification khi nhận webhook | 🔴 Chưa làm | Tùy chọn nâng cao |
