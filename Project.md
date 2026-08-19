@@ -1375,13 +1375,22 @@ Nếu record tồn tại:
 
 Module xác thực & quản lý người dùng (phần backend). Đặc tả chi tiết: **Section 7.1 A1**.
 
-| Endpoint | Method | Trạng thái |
-|----------|--------|-----------|
-| `/api/auth/login` | POST | ✅ |
-| `/api/auth/register` | POST | ✅ |
-| `/api/auth/refresh` | POST | ✅ |
-| `/api/auth/me` | GET | ✅ |
-| `/api/auth/logout` | POST | ✅ |
+| Endpoint | Method | Trạng thái | Ghi chú |
+|----------|--------|-----------|---------|
+| `/api/auth/login` | POST | ✅ | Tự động khôi phục nếu tài khoản đang PendingDelete |
+| `/api/auth/register` | POST | ✅ | |
+| `/api/auth/refresh` | POST | ✅ | |
+| `/api/auth/me` | GET | ✅ | |
+| `/api/auth/logout` | POST | ✅ | |
+| `/api/auth/change-password` | POST | ✅ | Yêu cầu mật khẩu cũ |
+| `/api/auth/forgot-password` | POST | ✅ | Gửi mã OTP 6 số qua email (qua BullMQ) |
+| `/api/auth/verify-otp` | POST | ✅ | Xác thực mã OTP (hiệu lực 5 phút) |
+| `/api/auth/reset-password` | POST | ✅ | Đặt lại mật khẩu bằng temp_token (hiệu lực 15 phút) |
+| `/api/auth/profile` | GET/PATCH| ✅ | Xem và cập nhật thông tin cá nhân (tên, số ĐT, địa chỉ) |
+| `/api/auth/profile/request-email-change` | POST | ✅ | Gửi OTP xác nhận đổi email |
+| `/api/auth/profile/confirm-email-change` | PATCH| ✅ | Xác nhận OTP và đổi email |
+| `/api/auth/account` | DELETE | ✅ | Xóa tài khoản (Ân hạn 30 ngày - PendingDelete) |
+| `/api/auth/cancel-delete` | POST | ✅ | Hủy yêu cầu xóa tài khoản |
 
 **Files**: `modules/auth/auth.controller.js`, `auth.service.js`, `auth.repository.js`, `auth.validation.js`, `api/auth.routes.js`
 
@@ -1408,6 +1417,8 @@ Module quản trị (dashboard, user, danh mục mặc định). Đặc tả chi
 | Nhận batch operations từ client | `POST /api/sync/push` | ✅ Done |
 | Trả data mới cho client | `GET /api/sync/pull` | ✅ Done |
 | Trạng thái sync | `GET /api/sync/status` | ✅ Done |
+
+> 🆕 **Cập nhật 2026-08-17:** Module Sync đã được cập nhật (`sync.validation.js`) để hỗ trợ đồng bộ các trường mới `provider` (manual/casso) và `external_transaction_id` của bảng `transaction` phục vụ cho tích hợp Webhook Ngân hàng.
 
 **Mô hình**: Client-Led Sync (Offline-First), Client tự tạo UUID, Backend là source of truth.
 
@@ -1469,147 +1480,26 @@ Nếu record tồn tại:
 
 > ⚠️ Sync module dùng hardcoded registry — KHÔNG tự động nhận diện bảng mới. Thêm entity mới cần sửa 3 file: `sync.validation.js` (VALID_ENTITIES), `sync.service.js` (UPSERT_MAP/PULL_MAP/ENTITY_KEYS), `sync.repository.js` (4 methods).
 
-### 8.4. Module Bank — 🚧 Đã lên kế hoạch (Casso — 2026-08-13)
+### 8.4. Module Bank — 🚧 Đang triển khai (Casso)
 
-#### 8.4.1. Tổng quan & Quyết định nhà cung cấp
+> **Lưu ý quan trọng:** Kiến trúc và toàn bộ tiến trình triển khai của Module Bank được quản lý tập trung và chi tiết tại file `docs/superpowers/plans/Progress-Bank.md`. Dưới đây chỉ là tóm tắt.
+
+#### 8.4.1. Tổng quan & Kiến trúc mới (Cập nhật 2026-08-17)
 
 | Chức năng | Endpoint | Trạng thái |
 |----------|----------|-----------|
-| Liên kết ngân hàng (OAuth) | `POST /api/bank/oauth-url` + `POST /api/bank/callback` | ⬜ Chưa làm |
+| Nhận giao dịch realtime (Webhook) | `POST /api/bank/webhook` | 🚧 Đang làm |
 | Danh sách NH + số dư | `GET /api/bank/accounts` | ⬜ Chưa làm |
 | Lịch sử giao dịch | `GET /api/bank/transactions` | ⬜ Chưa làm |
-| Nhận giao dịch realtime | `POST /api/bank/webhook` | ⬜ Chưa làm |
 
-**Nhà cung cấp: Casso** (thay thế SePay Bank Hub)
+**Nhà cung cấp: Casso**
+Kiến trúc đã được thiết kế lại tối giản và bảo mật hơn:
+- **❌ Bỏ hoàn toàn OAuth 2.0 per-user**: Không dùng `bank_connection` để lưu trữ token.
+- **✅ 1 API Key duy nhất**: Toàn bộ Backend dùng chung 1 `CASSO_API_KEY` duy nhất (lưu trong `.env`) được cấp bởi Portal Admin của Casso.
+- **✅ Bảng `bank_account`**: Ánh xạ tài khoản ngân hàng (của Casso) với `idaccount` (của User) để xác định quyền sở hữu.
+- **✅ Webhook & Queue**: Giao dịch từ ngân hàng đẩy qua Webhook, đưa vào BullMQ (`bank-webhook`), sau đó `bank.worker.js` sẽ xử lý, lưu vào DB và gọi `SyncEngine` đẩy xuống điện thoại.
 
-| Lý do chọn Casso | Chi tiết |
-|------------------|----------|
-| Không cần pháp nhân công ty | Cá nhân/sinh viên đăng ký được (qua Google Form) |
-| Giá rẻ, có gói free | SPONSOR: 12 tài khoản + 100 giao dịch/tháng |
-| Đủ API | Số dư (`balance`), giao dịch, webhook, OAuth 2.0 multi-user |
-| Multi-user qua OAuth 2.0 | Mỗi user cấp quyền → access token riêng |
 
-**So sánh nhanh Casso vs SePay:**
-
-| Tiêu chí | Casso (đã chọn) | SePay Bank Hub (bỏ) |
-|----------|-----------------|---------------------|
-| Rào cản đăng ký | ✅ Cá nhân OK | ❌ Cần pháp nhân |
-| Endpoint số dư | ✅ `balance` | ✅ `accumulated` |
-| Liên kết | OAuth redirect | Hosted Link WebView |
-| Free tier | 2 req/phút | B2B thương lượng |
-
-#### 8.4.2. Vai trò Casso trong hệ thống
-
-Casso là **Bank Integration Provider** — hệ thống không phụ thuộc trực tiếp từng ngân hàng:
-
-```
-┌──────────────────────────────────────────────┐
-│          PERSONAL FINANCE SYSTEM             │
-│  User → Financial Account (wallet) → Bank Connection
-│  Transaction / Budget / Goal / AI ...        │
-└──────────────────────┬───────────────────────┘
-                       │  OAuth 2.0 + REST API
-                       ↓
-┌──────────────────────────────────────────────┐
-│                   CASSO                       │
-└──────────────────────┬───────────────────────┘
-              ┌────────┼────────┐
-              ↓        ↓        ↓
-             MB       VCB      BIDV
-```
-
-#### 8.4.3. Mô hình dữ liệu — tách 2 khái niệm
-
-- **Financial Account** = bảng `wallet` hiện có (type=BANK/CASH/SAVINGS)
-- **Casso Bank Account** = bảng `bank_account` mới (accountNumber, balance...)
-- Quan hệ: `wallet` (1) ─ (0..1) `bank_account`
-
-```
-User (idaccount)
-  ├── casso_access_token (mã hóa)      ← lưu trong bảng mới hoặc cột User
-  ├── casso_refresh_token (mã hóa)     ← refresh không hết hạn
-  │
-  ├── wallet (Financial Account, type=BANK)   ← BẢNG ĐÃ CÓ
-  │     └── bank_account (Casso link)          ← BẢNG MỚI
-  │           ├── casso_account_id
-  │           ├── account_number, account_name
-  │           ├── bank_name, bank_code_name
-  │           ├── balance
-  │           └── connect_status
-  │
-  └── transaction  ← thêm: provider='casso', external_transaction_id (tid)
-                     UNIQUE(provider, external_transaction_id) chống trùng
-```
-
-#### 8.4.4. Luồng liên kết ngân hàng (OAuth 2.0 Authorization Code)
-
-```
-1. User bấm "Liên kết ngân hàng" → Client gọi POST /api/bank/oauth-url
-2. Backend tạo authorization URL (oauth.casso.vn/auth/authorize) → trả client
-3. Client mở WebView/browser → user đăng nhập Casso + cấp quyền
-4. Casso redirect về redirect_uri?code=... (callback của backend)
-5. Backend đổi code → access_token + refresh_token (POST oauth.casso.vn/auth/token)
-6. Backend lưu token (mã hóa) → gọi GET /v2/accounts lấy NH + balance
-7. Backend gọi GET /v2/transactions → sync lịch sử giao dịch
-8. Từ nay: Casso webhook → giao dịch mới → Backend tạo Transaction
-```
-
-> **Lưu ý quan trọng**: User phải **có tài khoản Casso + đã liên kết NH trong Casso** (my.casso.vn) trước. OAuth chỉ cấp quyền cho app đọc dữ liệu — KHÔNG phải là bước link NH.
-
-#### 8.4.5. API Endpoints (Backend → Client)
-
-| Endpoint | Method | Auth | Mô tả |
-|----------|--------|------|-------|
-| `/api/bank/oauth-url` | POST | Bearer (user) | Trả authorization URL để mở WebView |
-| `/api/bank/callback` | GET | Public (code) | Nhận code → đổi token → lưu |
-| `/api/bank/accounts` | GET | Bearer (user) | Danh sách NH + số dư (proxy `/v2/accounts`) |
-| `/api/bank/balance/:id` | GET | Bearer (user) | Số dư 1 tài khoản |
-| `/api/bank/transactions?since=` | GET | Bearer (user) | Lịch sử giao dịch (proxy `/v2/transactions`) |
-| `/api/bank/webhook` | POST | Public (verify) | Nhận giao dịch mới từ Casso |
-
-#### 8.4.6. Cấu trúc Module Bank
-
-```
-modules/bank/
-├── bank.controller.js      # HTTP handlers
-├── bank.service.js         # Business logic + orchestration
-├── bank.repository.js      # DB: bank_account + transaction + user token
-├── bank.validation.js      # Validate input
-├── bank.jobs.js            # Enqueue helpers
-├── casso/                  # 🆕 Adapter tách biệt provider
-│   ├── casso.client.js     # Gọi Casso API (token refresh tự động)
-│   └── casso.webhook.js    # Verify + parse webhook payload
-└── bank.worker.js          # Xử lý webhook bất đồng bộ
-```
-
-#### 8.4.7. Webhook Casso
-
-- 1 webhook endpoint nhận giao dịch mới (khác SePay có 2 kênh Events + IPN)
-- Payload giao dịch có `tid` (dedupe), `amount`, `runningBalance`, `description`
-- Response nhanh: validate → lưu → publish event (BullMQ) → 200
-- Chống trùng: `UNIQUE(provider='casso', external_transaction_id=tid)`
-
-#### 8.4.8. Quy tắc nghiệp vụ (bắt buộc)
-
-1. **Webhook trả 200 nhanh** — không làm AI/report inline, đẩy qua BullMQ
-2. **Chuyển khoản nội bộ** (MB→VCB) = INTERNAL_TRANSFER, không tính expense
-3. **Unlink giữ lịch sử** — chỉ set connection inactive
-4. **Reconciliation** — webhook + định kỳ pull `/v2/transactions` + đối chiếu `balance`
-5. **Historical sync** khi link + realtime webhook sau đó
-6. **Token an toàn** — access_token/refresh_token mã hóa, refresh tự động (TTL 6h)
-
-#### 8.4.9. Thứ tự triển khai
-
-| GĐ | Nội dung | Ước lượng |
-|----|----------|-----------|
-| **GĐ1** | DB: bảng `bank_account` + cột provider/external_transaction_id + Prisma | 0.5 ngày |
-| **GĐ2** | `casso.client.js` (getToken/refresh + accounts + transactions) | 1 ngày |
-| **GĐ3** | OAuth flow: oauth-url + callback + lưu token | 0.5-1 ngày |
-| **GĐ4** | Routes + Controller + Service + Repository (accounts/balance/transactions) | 1 ngày |
-| **GĐ5** | Webhook handler + worker → tạo Transaction (chống trùng) | 0.5-1 ngày |
-| **GĐ6** | Test sandbox + tài khoản demo Casso | 0.5 ngày |
-
-> ⚠️ **Điều kiện tiên quyết**: Cần đăng ký developer app Casso (Google Form) để nhận `client_id` + `client_secret`. Khi chưa có → dùng mock trong `casso.client.js` (giống pattern AI module).
 
 ### 8.5. Module AI
 
@@ -2049,3 +1939,33 @@ npx prisma migrate dev --name add_otp_code_and_deleted_status
 npx prisma generate
 ```
 
+## 10. Deploy Cloud Backend & Admin-web
+
+Để phục vụ cho việc tích hợp Webhook (đặc biệt là Module Bank tích hợp Casso yêu cầu URL public), dự án đã được triển khai lên môi trường Cloud với cấu trúc phân tán như sau:
+
+### 10.1. Kiến trúc triển khai
+
+| Thành phần | Nền tảng Cloud | URL / Connection | Ghi chú |
+|---|---|---|---|
+| **Cơ sở dữ liệu (Database)** | **Supabase** | `postgresql://...` | Cung cấp PostgreSQL mạnh mẽ. Sử dụng `DATABASE_URL` (pooler) cho kết nối ứng dụng và `DIRECT_URL` cho Prisma migration. |
+| **Redis (Message Queue)** | **Upstash** | `rediss://...` | Nền tảng serverless Redis. Cung cấp URL cho BullMQ để chạy Background Workers (AI, Bank webhook). |
+| **Backend (Node.js/Express)** | **Render** | `https://managementfinance.onrender.com` | Triển khai từ thư mục `src/Backend`. Dùng Web Service trên Render để đảm bảo tiến trình Node.js và các worker chạy liên tục 24/7 (không bị sleep như Vercel). |
+| **Admin-web (React/Vite)** | **Vercel** | `https://management-finance-gamma.vercel.app` | Triển khai từ thư mục `src/Admin-web`. Tối ưu hóa cực tốt cho Frontend tĩnh. Giao tiếp với Backend thông qua các biến môi trường API. |
+
+### 10.2. Các biến môi trường quan trọng (Environment Variables)
+
+**Tại Backend (Render):**
+Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết yếu để Backend hoạt động:
+- `DATABASE_URL`: URL kết nối Supabase (chế độ Transaction pooler)
+- `DIRECT_URL`: URL kết nối Supabase (chế độ Session - cho Prisma)
+- `REDIS_URL`: URL kết nối Upstash Redis
+- `JWT_SECRET`, `JWT_EXPIRES_IN`, `JWT_REFRESH_EXPIRES_IN`: Phục vụ Module Auth
+- `MAIL_USER`, `MAIL_PASS`: Cấu hình gửi email (NodeMailer)
+- `CASSO_API_KEY`, `CASSO_WEBHOOK_SECRET`: Phục vụ Module Bank (Casso)
+
+**Tại Admin-web (Vercel):**
+- `VITE_API_BASE_URL`: `https://managementfinance.onrender.com/api`
+- `VITE_SOCKET_URL`: `https://managementfinance.onrender.com`
+
+**Tại Client-app (Flutter):**
+- Cần cập nhật hằng số URL trỏ về `https://managementfinance.onrender.com/api` khi build app thật.
