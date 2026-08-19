@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const bankController = require('../modules/bank/bank.controller');
-const { authenticate } = require('../core/middleware/auth.middleware');
+const { authenticate } = require('../middleware/auth');
 
 // GET /api/bank/accounts - Lấy danh sách tài khoản ngân hàng (Yêu cầu đăng nhập)
 router.get('/accounts', authenticate, bankController.getAccounts);
