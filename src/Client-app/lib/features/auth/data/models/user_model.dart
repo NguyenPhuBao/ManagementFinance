@@ -4,6 +4,9 @@ class UserModel {
   final String name;     // fullname
   final String email;
   final String rolename;
+  /// true nếu tài khoản vừa được khôi phục tự động từ trạng thái PendingDelete
+  /// khi người dùng đăng nhập lại trong thời gian ân hạn 30 ngày.
+  final bool pendingDeleteCancelled;
 
   UserModel({
     required this.id,
@@ -11,6 +14,7 @@ class UserModel {
     required this.name,
     required this.email,
     this.rolename = 'user',
+    this.pendingDeleteCancelled = false,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -32,4 +36,23 @@ class UserModel {
       'rolename':  rolename,
     };
   }
+
+  UserModel copyWith({
+    String? id,
+    String? username,
+    String? name,
+    String? email,
+    String? rolename,
+    bool? pendingDeleteCancelled,
+  }) {
+    return UserModel(
+      id:                     id ?? this.id,
+      username:               username ?? this.username,
+      name:                   name ?? this.name,
+      email:                  email ?? this.email,
+      rolename:               rolename ?? this.rolename,
+      pendingDeleteCancelled: pendingDeleteCancelled ?? this.pendingDeleteCancelled,
+    );
+  }
 }
+

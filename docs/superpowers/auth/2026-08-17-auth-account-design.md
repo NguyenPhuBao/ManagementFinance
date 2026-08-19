@@ -1,7 +1,7 @@
 # Spec: Module Auth & Quản lý Tài khoản — FlowMoney
-**Ngày:** 2026-08-17 | **Cập nhật lần cuối:** 2026-08-18 | **Tác giả:** AI BA  
+**Ngày:** 2026-08-17 | **Cập nhật lần cuối:** 2026-08-19 | **Tác giả:** AI BA  
 **Phạm vi:** 7 chức năng Auth/Account — CSDL + Backend API + Flutter Client-app  
-**Trạng thái:** ✅ **HOÀN THIỆN** — Backend + Client-app đã implement đầy đủ (2026-08-18)
+**Trạng thái:** ✅ **HOÀN THIỆN** — Backend + Client-app đã implement đầy đủ (2026-08-19)
 
 ---
 
@@ -16,7 +16,7 @@ Module Auth đảm nhiệm toàn bộ vòng đời tài khoản người dùng: 
 | # | Câu hỏi | Quyết định |
 |---|---------|-----------|
 | Q1 | Kênh gửi OTP | **Email** (SMTP/SendGrid) |
-| Q2 | Cơ chế xóa tài khoản | **Xóa mềm ngay** — `status = 'Deleted'` |
+| Q2 | Cơ chế xóa tài khoản | **Ân hạn 30 ngày** — `status = 'PendingDelete'` + `scheduled_delete_at = now + 30d`. Trong 30 ngày user đăng nhập lại → tự động khôi phục. Sau 30 ngày → từ chối đăng nhập. _(Thay đổi từ 2026-08-18: bỏ phương án xóa mềm ngay)_ |
 | Q3 | Đổi mật khẩu | **Revoke toàn bộ session** trên mọi thiết bị |
 | Q4 | Trường cho phép sửa Profile | **fullname, phone, address, location** (email cần OTP xác minh riêng) |
 
@@ -24,10 +24,28 @@ Module Auth đảm nhiệm toàn bộ vòng đời tài khoản người dùng: 
 
 ## 3. Thay đổi CSDL (Prisma Schema)
 
-### 3.1 Bảng `account` — thêm giá trị status mới
+### 3.1 Bảng `account` — thêm giá trị status + trường mới
 
-Thêm `'Deleted'` vào CHECK constraint của cột `status`.  
-Khi xóa tài khoản: cập nhật `account.status = 'Deleted'` và revoke tất cả refresh token. Data vẫn giữ lại trong DB cho mục đích audit.
+Mở rộng cột `status` lên `VarChar(20)` và thêm cột `scheduled_delete_at DateTime?`:
+
+```prisma
+model account {
+  // ...
+  status              String    @default("Active") @db.VarChar(20)  // Active | Inactive | PendingDelete | Deleted
+  scheduled_delete_at DateTime? @db.Timestamp(6)                    // Thời điểm xóa sau 30 ngày
+  // ...
+}
+```
+
+**Các trạng thái hợp lệ của `status`:**
+| Giá trị | Ý nghĩa |
+|---|---|
+| `Active` | Tài khoản hoạt động bình thường |
+| `Inactive` | Bị admin khóa |
+| `PendingDelete` | Đang trong thời gian ân hạn 30 ngày chờ xóa |
+| `Deleted` | Đã bị xóa vĩnh viễn (không thể đăng nhập) |
+
+Khi yêu cầu xóa tài khoản: `status = 'PendingDelete'`, `scheduled_delete_at = now + 30 ngày`, revoke tất cả refresh token. Data giữ trong DB cho mục đích audit.
 
 ### 3.2 Bảng `otp_code` — MỚI
 
@@ -80,7 +98,8 @@ model otp_code {
 | Method | Endpoint | Mô tả |
 |--------|----------|-------|
 | PATCH | `/api/auth/change-password` | Đổi mật khẩu + revoke tất cả session |
-| DELETE | `/api/auth/account` | Xóa mềm: `status='Deleted'` + revoke tokens |
+| DELETE | `/api/auth/account` | Đặt lịch xóa: `status='PendingDelete'` + `scheduled_delete_at = +30d` + revoke tokens |
+| POST | `/api/auth/cancel-delete` | Hủy yêu cầu xóa: `status='Active'` + xóa `scheduled_delete_at` |
 
 **Quản lý Profile (JWT required):**
 
@@ -99,13 +118,17 @@ model otp_code {
 
 **`PATCH /change-password`:** Verify mật khẩu cũ → hash mới → cập nhật → **revoke toàn bộ refresh token** (Q3=A).
 
-**`DELETE /account`:** Verify password → `account.status = 'Deleted'` → revoke toàn bộ token.
+**`DELETE /account`:** Verify password → `account.status = 'PendingDelete'` + `scheduled_delete_at = now + 30 ngày` → revoke toàn bộ token → HTTP 200 với message mô tả ân hạn 30 ngày.
+
+**`POST /cancel-delete`:** Kiểm tra `status === 'PendingDelete'` + còn trong ân hạn → `status = 'Active'` + `scheduled_delete_at = null`.
+
+**`POST /login` (logic bổ sung):** Nếu `status === 'PendingDelete'` và còn trong 30 ngày → verify password → `cancelDeletion()` → cấp token bình thường + trả `pendingDeleteCancelled: true` trong response. Client-app dùng field này để hiển thị dialog thông báo khôi phục.
 
 ---
 
 ## 5. Flutter Client-app
 
-### 5.1 Methods cần thêm vào `AuthRemoteDataSource`
+### 5.1 Methods trong `AuthRemoteDataSource` (đã implement)
 
 ```dart
 Future<void> logout();
@@ -113,14 +136,17 @@ Future<void> changePassword(String currentPassword, String newPassword);
 Future<void> forgotPassword(String email);
 Future<String> verifyOtp(String email, String otp);
 Future<void> resetPassword(String resetToken, String newPassword);
-Future<void> deleteAccount(String password);
+Future<void> deleteAccount(String password);   // Gọi DELETE /auth/account → PendingDelete
+Future<void> cancelDelete();                   // Gọi POST /auth/cancel-delete → khôi phục Active
 Future<Map<String, dynamic>> getProfile();
 Future<void> updateProfile({String? fullname, String? phone, String? address, String? location});
 Future<void> requestEmailChange(String newEmail);
-Future<void> confirmEmailChange(String email, String otp);
+Future<void> confirmEmailChange(String newEmail, String otp);
 ```
 
-### 5.2 Trạng thái kết nối UI (2026-08-18)
+**`UserModel`** được bổ sung field `pendingDeleteCancelled` (bool, default=false) và method `copyWith`. Field này được set `true` khi login response từ backend trả `pendingDeleteCancelled: true` (tài khoản vừa được khôi phục tự động).
+
+### 5.2 Trạng thái kết nối UI (cập nhật 2026-08-19)
 
 | File | Trạng thái | Ghi chú |
 |------|-----------|--------|
@@ -128,7 +154,8 @@ Future<void> confirmEmailChange(String email, String otp);
 | `otp_page.dart` | ✅ Đã kết nối API | `verifyOtp()` → nhận `resetToken` → push `/reset-password` |
 | `reset_password_page.dart` | ✅ Đã kết nối API | `resetPassword(resetToken, newPwd)` → go `/login` |
 | `change_password_page.dart` | ✅ Đã kết nối API | `changePassword()` + Form validation → go `/login` |
-| `delete_account_page.dart` | ✅ Đã kết nối API | `deleteAccount(password)` + AuthBloc.logout → go `/login` |
+| `delete_account_page.dart` | ✅ Cập nhật UI ân hạn 30 ngày | `deleteAccount()` → dialog thông báo 30 ngày → logout. Có nút **Hủy yêu cầu** gọi `cancelDelete()`. Timeline 3 mốc trực quan. |
+| `login_page.dart` | ✅ Xử lý khôi phục tự động | Khi `AuthSuccess.user.pendingDeleteCancelled == true` → hiện dialog "Tài khoản đã được khôi phục" trước khi vào `/home` |
 | `edit_profile_page.dart` | ✅ Trang mới tạo | `getProfile()` khi init + `updateProfile()` khi save |
 | `settings_page.dart` | ✅ Đã kết nối nav | Nút "Thông tin cá nhân" + icon edit → `/settings/edit-profile` |
 
@@ -173,14 +200,20 @@ Tạo `core/email.service.js` dùng **Nodemailer**. Template email OTP bằng ti
 ## 8. Definition of Done
 
 - [x] Migration `otp_code` thành công
-- [x] `account.status` nhận thêm giá trị `'Deleted'`
-- [x] 9 endpoint mới trả đúng HTTP status và response format
+- [x] Bảng `account` mở rộng `status` VarChar(20) + thêm cột `scheduled_delete_at DateTime?`
+- [x] `account.status` hỗ trợ đầy đủ: `Active` | `Inactive` | `PendingDelete` | `Deleted`
+- [x] 10 endpoint Auth trả đúng HTTP status và response format (thêm `POST /cancel-delete` so với spec gốc)
 - [x] Email Service (`email.service.js`) dùng Nodemailer với mock mode khi chưa cấu hình SMTP
 - [x] OTP hết hạn sau 10 phút, không dùng lại được
 - [x] Đổi mật khẩu → revoke toàn bộ session
-- [x] Xóa tài khoản → status Deleted, không đăng nhập lại được
+- [x] Xóa tài khoản → `status = 'PendingDelete'` + ân hạn 30 ngày (không xóa ngay)
+- [x] Đăng nhập lại khi `PendingDelete` + còn trong 30 ngày → tự động khôi phục + trả `pendingDeleteCancelled: true`
+- [x] Hủy yêu cầu xóa thủ công qua `POST /cancel-delete`
 - [x] Client-app gọi API đúng, xử lý lỗi và hiển thị thông báo
 - [x] Field names thống nhất camelCase giữa Client và Backend
+- [x] `delete_account_page.dart` cập nhật UI ân hạn 30 ngày: timeline 3 mốc, dialog đúng nội dung, nút hủy yêu cầu
+- [x] `login_page.dart` xử lý `pendingDeleteCancelled` → hiện dialog "Tài khoản đã được khôi phục"
+- [x] `UserModel` bổ sung `pendingDeleteCancelled` + `copyWith`
 - [x] Trang `edit_profile_page.dart` mới tạo với load/save profile
 - [x] Route `/settings/edit-profile` đã đăng ký trong `app_router.dart`
 

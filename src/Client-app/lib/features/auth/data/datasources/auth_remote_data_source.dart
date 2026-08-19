@@ -21,6 +21,7 @@ abstract class AuthRemoteDataSource {
   Future<String> verifyOtp(String email, String otp);
   Future<void> resetPassword(String resetToken, String newPassword);
   Future<void> deleteAccount(String password);
+  Future<void> cancelDelete();
   Future<Map<String, dynamic>> getProfile();
   Future<void> updateProfile({String? fullname, String? phone, String? address, String? location});
   Future<void> requestEmailChange(String newEmail);
@@ -40,7 +41,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         data: {'username': username, 'password': password},
       );
       if (response.data['success'] == true) {
-        return response.data['data'] as Map<String, dynamic>;
+        final data = response.data['data'] as Map<String, dynamic>;
+        // Đính kèm pendingDeleteCancelled từ data nếu backend trả về
+        return data;
       }
       throw Exception(response.data['message'] ?? 'Đăng nhập thất bại');
     } on DioException catch (e) {
@@ -168,7 +171,21 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         data: {'password': password},
       );
       if (response.data['success'] != true) {
-        throw Exception(response.data['message'] ?? 'Xóa tài khoản thất bại');
+        throw Exception(response.data['message'] ?? 'Yêu cầu xóa tài khoản thất bại');
+      }
+    } on DioException catch (e) {
+      if (_isNetworkError(e)) throw const NetworkException();
+      final msg = e.response?.data?['message'] ?? 'Lỗi máy chủ';
+      throw Exception(msg);
+    }
+  }
+
+  @override
+  Future<void> cancelDelete() async {
+    try {
+      final response = await dio.post('/auth/cancel-delete');
+      if (response.data['success'] != true) {
+        throw Exception(response.data['message'] ?? 'Hủy yêu cầu xóa tài khoản thất bại');
       }
     } on DioException catch (e) {
       if (_isNetworkError(e)) throw const NetworkException();

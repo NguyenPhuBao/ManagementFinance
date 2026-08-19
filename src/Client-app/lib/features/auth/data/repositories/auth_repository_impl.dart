@@ -24,7 +24,7 @@ class AuthRepositoryImpl implements AuthRepository {
     required this.secureStorage,
   });
 
-  // ─── Login online → lưu token + cache offline credential ────────────────
+  // ─── Login online → lưu token + cache offline credential ──────────────────────────
   @override
   Future<UserModel> login(String username, String password) async {
     final data = await remoteDataSource.login(username, password);
@@ -37,7 +37,10 @@ class AuthRepositoryImpl implements AuthRepository {
     final userJson = data['user'] as Map<String, dynamic>;
     final user = UserModel.fromJson(userJson);
     await _cacheOfflineCredentials(username, password, userJson);
-    return user;
+
+    // Đính kèm pendingDeleteCancelled vào user trường hợp tài khoản vừa được khôi phục
+    final pendingDeleteCancelled = data['pendingDeleteCancelled'] as bool? ?? false;
+    return user.copyWith(pendingDeleteCancelled: pendingDeleteCancelled);
   }
 
   // ─── Register (chỉ online) ───────────────────────────────────────────────
@@ -121,11 +124,17 @@ class AuthRepositoryImpl implements AuthRepository {
     await remoteDataSource.resetPassword(resetToken, newPassword);
   }
 
-  // ─── Xóa tài khoản (cần Backend: DELETE /auth/account) ───────────────────
+  // ─── Xóa tài khoản (gửi yêu cầu ân hạn 30 ngày: DELETE /auth/account) ───────────
   @override
   Future<void> deleteAccount(String password) async {
     await remoteDataSource.deleteAccount(password);
     await _clearLocalData();
+  }
+
+  // ─── Hủy yêu cầu xóa tài khoản (POST /auth/cancel-delete) ─────────────────────
+  @override
+  Future<void> cancelDelete() async {
+    await remoteDataSource.cancelDelete();
   }
 
   // ─── Lấy thông tin profile (cần Backend: GET /auth/profile) ─────────────
