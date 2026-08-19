@@ -13,6 +13,7 @@ abstract class AuthRepository {
   Future<String> verifyOtp(String email, String otp);
   Future<void> resetPassword(String resetToken, String newPassword);
   Future<void> deleteAccount(String password);
+  Future<void> cancelDelete();
   Future<Map<String, dynamic>> getProfile();
   Future<void> updateProfile({String? fullname, String? phone, String? address, String? location});
   Future<void> requestEmailChange(String newEmail);

@@ -31,9 +31,45 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     // Lắng nghe AuthBloc từ root
     return BlocListener<AuthBloc, AuthState>(
-      listener: (context, state) {
+      listener: (context, state) async {
         if (state is AuthSuccess) {
-          context.go('/home');
+          // Kiểm tra tài khoản vừa được khôi phục từ PendingDelete
+          final user = state.user;
+          if (user != null && user.pendingDeleteCancelled) {
+            await showDialog<void>(
+              context: context,
+              barrierDismissible: false,
+              builder: (ctx) => AlertDialog(
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
+                title: const Row(
+                  children: [
+                    Icon(Icons.check_circle, color: Color(0xFF006E1C)),
+                    SizedBox(width: 8),
+                    Flexible(child: Text('Tài khoản đã được khôi phục')),
+                  ],
+                ),
+                content: const Text(
+                  'Tài khoản của bạn đã được khôi phục thành công!\n\n'
+                  'Yêu cầu xóa tài khoản trước đó đã bị hủy bỏ. Chào mừng bạn trở lại!',
+                  style: TextStyle(height: 1.5),
+                ),
+                actions: [
+                  ElevatedButton(
+                    onPressed: () => ctx.pop(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF006E1C),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8)),
+                    ),
+                    child: const Text('Tiếp tục'),
+                  ),
+                ],
+              ),
+            );
+          }
+          if (context.mounted) context.go('/home');
         } else if (state is AuthError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(

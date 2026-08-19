@@ -1,7 +1,8 @@
 # Backend Guide: Xóa tài khoản với thời gian ân hạn 30 ngày
 
 **Ngày:** 2026-08-18 | **Yêu cầu từ:** Client-app team  
-**Phạm vi:** Thay đổi logic `DELETE /api/auth/account` + thêm endpoint `POST /api/auth/cancel-delete`
+**Phạm vi:** Thay đổi logic `DELETE /api/auth/account` + thêm endpoint `POST /api/auth/cancel-delete`  
+**Trạng thái:** ✅ **ĐÃ IMPLEMENT** — Backend (2026-08-18) + Client-app (2026-08-19)
 
 ---
 
