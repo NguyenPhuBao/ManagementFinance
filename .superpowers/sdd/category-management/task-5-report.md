@@ -26,3 +26,9 @@ Both approved screens were confirmed in Stitch project `5106367939423432838`:
 - Add Transaction suggestion: `20700200afbc4d5f98962bc9be79b780`
 
 The chooser’s direct Stitch `get_screen` call returned `Request contains an invalid argument`, but `list_screens` exposed its title, screenshot, and HTML metadata. No required screen asset was missing.
+
+## Follow-up: stale async suggestion guard
+
+- Captured the request segment and classify before loading selectable categories and keywords. A completed request is ignored when the active transaction type has changed.
+- Added a delayed-future widget regression: start an expense suggestion, switch to income before the category future completes, then complete the old request and verify no stale suggestion card is rendered.
+- Verification after the fix: focused widget suite 8 passing tests; full Client-app suite 47 passing tests.

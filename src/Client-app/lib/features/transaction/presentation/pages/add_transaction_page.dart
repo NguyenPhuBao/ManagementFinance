@@ -131,9 +131,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   }
 
   Future<void> _loadSuggestion(String note) async {
+    final requestedSegment = _selectedSegment;
+    final requestedClassify = _classify;
     final categories = await _categoryRepository.selectableChildren(
       accountId: _accountId(),
-      classify: _classify,
+      classify: requestedClassify,
     );
     final keywordLists = await Future.wait(
       categories.map(
@@ -157,6 +159,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       candidates: candidates,
     );
     if (!mounted ||
+        _selectedSegment != requestedSegment ||
+        _classify != requestedClassify ||
         _selectedSegment == 2 ||
         _selectedCategory != null ||
         _noteController.text.trim() != note) {
@@ -533,6 +537,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     }
 
     return GestureDetector(
+      key: Key('transaction-type-$index'),
       onTap: () {
         setState(() {
           _selectedSegment = index;

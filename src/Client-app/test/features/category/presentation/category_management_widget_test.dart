@@ -360,6 +360,45 @@ void main() {
     expect(find.text('Gợi ý danh mục'), findsNothing);
     expect(find.text('Ăn uống'), findsOneWidget);
   });
+
+  testWidgets('ignores a delayed suggestion after the transaction type changes',
+      (tester) async {
+    final food = category(id: 'food', name: 'Ăn uống');
+    final expenseCategories = Completer<List<Category>>();
+    final repository = _FakeCategoryRepository(
+      selectableLoader: (_, classify) =>
+          classify == 'chi' ? expenseCategories.future : Future.value(const []),
+      keywords: {
+        food.id: ['grabfood']
+      },
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AddTransactionPage(
+          transactionBloc: TransactionBloc(
+            transactionRepository: _FakeTransactionRepository(),
+          ),
+          categoryRepository: repository,
+          wallets: [_wallet()],
+          idaccount: 1,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), 'Thanh toán GrabFood');
+    await tester.pump();
+    tester
+        .widget<GestureDetector>(find.byKey(const Key('transaction-type-1')))
+        .onTap!();
+    await tester.pump();
+
+    expenseCategories.complete([food]);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Gợi ý danh mục'), findsNothing);
+  });
 }
 
 Wallet _wallet() => Wallet(
@@ -382,9 +421,12 @@ class _FakeCategoryRepository implements CategoryManagementRepository {
       {CategoryTree? tree,
       Map<String, CategoryTree>? trees,
       List<Category> selectable = const [],
+      Future<List<Category>> Function(int accountId, String classify)?
+          selectableLoader,
       Map<String, List<String>> keywords = const {}})
       : _trees = trees ?? {'chi': tree ?? _emptyTree},
         _selectable = selectable,
+        _selectableLoader = selectableLoader,
         _keywords = keywords;
 
   static final _emptyTree = CategoryTree(
@@ -395,6 +437,8 @@ class _FakeCategoryRepository implements CategoryManagementRepository {
 
   final Map<String, CategoryTree> _trees;
   final List<Category> _selectable;
+  final Future<List<Category>> Function(int accountId, String classify)?
+      _selectableLoader;
   final Map<String, List<String>> _keywords;
   List<String>? savedKeywords;
   CategoryChildDraft? savedChild;
@@ -453,8 +497,11 @@ class _FakeCategoryRepository implements CategoryManagementRepository {
   Future<List<Category>> selectableChildren({
     required int accountId,
     required String classify,
-  }) async =>
-      _selectable.where((category) => category.classify == classify).toList();
+  }) =>
+      _selectableLoader?.call(accountId, classify) ??
+      Future.value(
+        _selectable.where((category) => category.classify == classify).toList(),
+      );
 }
 
 class _FakeTransactionRepository implements TransactionRepository {
