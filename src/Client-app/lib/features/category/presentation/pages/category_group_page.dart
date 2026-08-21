@@ -1,36 +1,47 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../../../core/database/app_database.dart';
+import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../data/models/category_tree.dart';
+import '../../data/repositories/category_management_repository.dart';
 
 class CategoryGroupPage extends StatefulWidget {
-  const CategoryGroupPage({super.key});
+  const CategoryGroupPage({
+    super.key,
+    this.groupId,
+    this.repository,
+    this.accountId,
+  });
+
+  final String? groupId;
+  final CategoryManagementRepository? repository;
+  final int? accountId;
 
   @override
   State<CategoryGroupPage> createState() => _CategoryGroupPageState();
 }
 
 class _CategoryGroupPageState extends State<CategoryGroupPage> {
-  final TextEditingController _nameController = TextEditingController();
-  int _selectedIconIndex = 0;
-  bool _isExpense = true;
-  
-  final List<IconData> _iconOptions = [
-    Icons.folder,
-    Icons.home,
-    Icons.shopping_cart,
-    Icons.payments,
-    Icons.directions_car,
-    Icons.restaurant,
-  ];
+  late final CategoryManagementRepository _repository;
+  final _nameController = TextEditingController();
+  final Set<String> _selectedChildIds = <String>{};
+  List<Category> _children = [];
+  String _classify = 'chi';
+  String _icon = 'folder';
+  String _colour = '#10B981';
+  bool _loading = true;
+  bool _saving = false;
 
-  final List<Map<String, dynamic>> _childCategories = [
-    {'title': 'Tiền điện', 'selected': true},
-    {'title': 'Tiền nước', 'selected': true},
-    {'title': 'Internet', 'selected': true},
-    {'title': 'Ăn uống', 'selected': false},
-    {'title': 'Mua sắm', 'selected': false},
-    {'title': 'Giải trí', 'selected': false},
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _repository = widget.repository ?? sl<CategoryManagementRepository>();
+    _load();
+  }
 
   @override
   void dispose() {
@@ -38,452 +49,314 @@ class _CategoryGroupPageState extends State<CategoryGroupPage> {
     super.dispose();
   }
 
+  int get _accountId {
+    if (widget.accountId != null) return widget.accountId!;
+    final state = context.read<AuthBloc>().state;
+    return int.tryParse((state is AuthSuccess ? state.user?.id : null) ?? '') ??
+        1;
+  }
+
+  Future<void> _load() async {
+    if (widget.groupId != null) {
+      const classifies = ['chi', 'thu', 'vay_no'];
+      final trees = await Future.wait(classifies.map(
+        (classify) =>
+            _repository.loadTree(accountId: _accountId, classify: classify),
+      ));
+      for (final tree in trees) {
+        for (final node in tree.groups) {
+          if (node.group.id != widget.groupId) continue;
+          _nameController.text = node.group.name;
+          _classify = node.group.classify;
+          _icon = node.group.icon;
+          _colour = node.group.colour;
+          _selectedChildIds.addAll(node.children.map((child) => child.id));
+          break;
+        }
+      }
+    }
+    await _loadChildren();
+    if (mounted) setState(() => _loading = false);
+  }
+
+  Future<void> _loadChildren() async {
+    final children = await _repository.selectableChildren(
+      accountId: _accountId,
+      classify: _classify,
+    );
+    if (!mounted) return;
+    setState(() {
+      _children = children
+          .where((child) =>
+              !child.isDefault &&
+              !child.isDeleted &&
+              child.idaccount == _accountId)
+          .toList();
+      _selectedChildIds.retainAll(_children.map((child) => child.id).toSet());
+    });
+  }
+
+  Future<void> _save() async {
+    if (_saving) return;
+    setState(() => _saving = true);
+    try {
+      await _repository.saveGroup(CategoryGroupDraft(
+        id: widget.groupId,
+        accountId: _accountId,
+        name: _nameController.text,
+        classify: _classify,
+        icon: _icon,
+        colour: _colour,
+        childIds: _selectedChildIds.toList(),
+      ));
+      if (mounted && context.canPop()) context.pop();
+    } on CategoryValidationException catch (error) {
+      if (mounted) _message(error.message);
+    } catch (_) {
+      if (mounted) _message('Không thể lưu nhóm danh mục. Vui lòng thử lại.');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _delete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Xóa nhóm danh mục?'),
+        content: const Text('Các danh mục con sẽ trở về Chưa nhóm.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Hủy')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Xóa nhóm'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await _repository.deleteGroup(
+          accountId: _accountId, groupId: widget.groupId!);
+      if (mounted && context.canPop()) context.pop();
+    } on CategoryValidationException catch (error) {
+      if (mounted) _message(error.message);
+    }
+  }
+
+  void _message(String message) => ScaffoldMessenger.of(context)
+      .showSnackBar(SnackBar(content: Text(message)));
+
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: _buildAppBar(),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildParentCategorySection(),
-              const SizedBox(height: 32.0),
-              _buildChildCategorySection(),
-              const SizedBox(height: 24.0),
-              _buildStickyActionButton(),
-              const SizedBox(height: 48.0), // Bottom padding
-            ],
-          ),
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => context.pop()),
+          title: Text(
+              widget.groupId == null ? 'Thêm nhóm danh mục' : 'Chỉnh sửa nhóm'),
+          actions: [
+            TextButton(
+                onPressed: _saving ? null : _save, child: const Text('Lưu')),
+          ],
         ),
-      ),
-    );
-  }
-
-  PreferredSizeWidget _buildAppBar() {
-    return AppBar(
-      backgroundColor: AppColors.surface,
-      elevation: 0,
-      centerTitle: true,
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(1.0),
-        child: Container(
-          color: AppColors.outlineVariant,
-          height: 1.0,
-        ),
-      ),
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: AppColors.primary),
-        onPressed: () => context.pop(),
-      ),
-      title: const Text(
-        'Gom Nhóm Danh Mục',
-        style: TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
-          color: AppColors.onSurface,
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () {},
-          child: const Text(
-            'Lưu',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: AppColors.primary,
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-      ],
-    );
-  }
-
-  Widget _buildParentCategorySection() {
-    return Container(
-      padding: const EdgeInsets.all(20.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            offset: const Offset(0, 4),
-            blurRadius: 12,
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'TÊN NHÓM LỚN (DANH MỤC CHA)',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.05,
-              color: AppColors.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 8.0),
-          TextField(
-            controller: _nameController,
-            decoration: InputDecoration(
-              hintText: 'e.g. Chi tiêu Sinh hoạt',
-              hintStyle: const TextStyle(color: AppColors.outline),
-              filled: true,
-              fillColor: AppColors.surfaceContainerLowest,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFE8E8E4)),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFE8E8E4)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.primaryContainer, width: 2),
-              ),
-            ),
-            style: const TextStyle(fontSize: 14, color: AppColors.onSurface),
-          ),
-          const SizedBox(height: 24.0),
-          const Text(
-            'CHỌN BIỂU TƯỢNG NHÓM',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.05,
-              color: AppColors.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 12.0),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: List.generate(_iconOptions.length, (index) {
-                final isSelected = index == _selectedIconIndex;
-                return GestureDetector(
-                  onTap: () => setState(() => _selectedIconIndex = index),
-                  child: Container(
-                    width: 48,
-                    height: 48,
-                    margin: const EdgeInsets.only(right: 16.0),
-                    decoration: BoxDecoration(
-                      color: isSelected ? AppColors.primaryContainer : AppColors.surfaceContainerHigh,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      _iconOptions[index],
-                      color: isSelected ? Colors.white : AppColors.onSurfaceVariant,
-                      size: 24,
-                    ),
-                  ),
-                );
-              }),
-            ),
-          ),
-          const SizedBox(height: 24.0),
-          Row(
-            children: [
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => setState(() => _isExpense = true),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12.0),
-                    decoration: BoxDecoration(
-                      color: _isExpense ? Colors.white : AppColors.surfaceContainerLow,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: _isExpense ? AppColors.primary : const Color(0xFFE8E8E4),
-                        width: 2,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.arrow_downward,
-                          size: 20,
-                          color: _isExpense ? AppColors.primary : AppColors.onSurfaceVariant,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Khoản chi',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: _isExpense ? AppColors.primary : AppColors.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12.0),
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => setState(() => _isExpense = false),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12.0),
-                    decoration: BoxDecoration(
-                      color: !_isExpense ? Colors.white : AppColors.surfaceContainerLow,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: !_isExpense ? AppColors.primary : const Color(0xFFE8E8E4),
-                        width: 2,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.arrow_upward,
-                          size: 20,
-                          color: !_isExpense ? AppColors.primary : AppColors.onSurfaceVariant,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Khoản thu',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: !_isExpense ? AppColors.primary : AppColors.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildChildCategorySection() {
-    final selectedCount = _childCategories.where((c) => c['selected']).length;
-    
-    return Container(
-      padding: const EdgeInsets.all(20.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            offset: const Offset(0, 4),
-            blurRadius: 12,
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Chọn danh mục con gộp vào nhóm',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: AppColors.onSurface,
-            ),
-          ),
-          const SizedBox(height: 24.0),
-          Wrap(
-            spacing: 8.0,
-            runSpacing: 8.0,
-            children: _childCategories.map((category) {
-              final isSelected = category['selected'] as bool;
-              return GestureDetector(
-                onTap: () {
-                  setState(() {
-                    category['selected'] = !isSelected;
-                  });
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                  decoration: BoxDecoration(
-                    color: isSelected ? AppColors.primaryContainer : const Color(0xFFEEEEEA),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: isSelected ? Colors.transparent : Colors.transparent, // CSS had hover:border-outline, so default transparent
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        category['title'],
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: isSelected ? Colors.white : const Color(0xFF46464C),
-                          letterSpacing: 0.05,
-                        ),
-                      ),
-                      if (isSelected) ...[
-                        const SizedBox(width: 4.0),
-                        const Icon(Icons.check, size: 16, color: Colors.white),
-                      ],
-                    ],
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 24.0),
-          Container(
-            padding: const EdgeInsets.all(16.0),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: AppColors.outlineVariant,
-                style: BorderStyle.solid, // Note: standard Flutter border doesn't support dashed easily out of box, assuming solid for now
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+        body: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : SafeArea(
+                child: Column(
                   children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            offset: const Offset(0, 4),
-                            blurRadius: 12,
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.folder_open,
-                        color: AppColors.primaryContainer,
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(width: 12.0),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      child: ListView(
+                        padding: const EdgeInsets.all(16),
                         children: [
-                          const Text(
-                            'CẤU TRÚC XEM TRƯỚC',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.05,
-                              color: AppColors.onSurfaceVariant,
+                          const Text('Tên nhóm lớn (danh mục cha)',
+                              style: TextStyle(fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 8),
+                          TextField(
+                            controller: _nameController,
+                            decoration: const InputDecoration(
+                                hintText: 'e.g. Chi tiêu Sinh hoạt'),
+                          ),
+                          const SizedBox(height: 24),
+                          const Text('Chọn biểu tượng nhóm',
+                              style: TextStyle(fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 12),
+                          _GroupIconPicker(
+                              selected: _icon,
+                              onChanged: (value) =>
+                                  setState(() => _icon = value)),
+                          const SizedBox(height: 24),
+                          const Text('Loại giao dịch',
+                              style: TextStyle(fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 8),
+                          _GroupTypeSelector(
+                            selected: _classify,
+                            onChanged: (value) async {
+                              if (value == _classify) return;
+                              setState(() => _classify = value);
+                              await _loadChildren();
+                            },
+                          ),
+                          const SizedBox(height: 24),
+                          const Text('Chọn danh mục con gộp vào nhóm',
+                              style: TextStyle(fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 8),
+                          Card(
+                            child: Column(
+                              children: _children.isEmpty
+                                  ? const [
+                                      Padding(
+                                        padding: EdgeInsets.all(16),
+                                        child: Text(
+                                            'Chưa có danh mục con phù hợp'),
+                                      ),
+                                    ]
+                                  : _children
+                                      .map((child) => CheckboxListTile(
+                                            value: _selectedChildIds
+                                                .contains(child.id),
+                                            title: Text(child.name),
+                                            subtitle: Text(
+                                                child.parentId == null
+                                                    ? 'Chưa nhóm'
+                                                    : 'Đang ở nhóm khác'),
+                                            onChanged: (selected) =>
+                                                setState(() {
+                                              selected == true
+                                                  ? _selectedChildIds
+                                                      .add(child.id)
+                                                  : _selectedChildIds
+                                                      .remove(child.id);
+                                            }),
+                                          ))
+                                      .toList(),
                             ),
                           ),
-                          Row(
-                            children: [
-                              Text(
-                                _nameController.text.isNotEmpty ? _nameController.text : 'Chi tiêu Sinh hoạt',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.onSurface,
-                                ),
-                              ),
-                              const Icon(Icons.chevron_right, color: AppColors.outline, size: 20),
-                              Text(
-                                '($selectedCount danh mục)',
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.normal,
-                                  color: AppColors.primary,
-                                ),
-                              ),
-                            ],
-                          ),
+                          const SizedBox(height: 16),
+                          _Preview(
+                              name: _nameController.text,
+                              children: _children
+                                  .where((child) =>
+                                      _selectedChildIds.contains(child.id))
+                                  .toList()),
+                          if (widget.groupId != null) ...[
+                            const SizedBox(height: 20),
+                            OutlinedButton.icon(
+                              onPressed: _delete,
+                              style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.error),
+                              icon: const Icon(Icons.delete_outline),
+                              label: const Text('Xóa nhóm'),
+                            ),
+                          ],
                         ],
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: ElevatedButton.icon(
+                        onPressed: _saving ? null : _save,
+                        icon: const Icon(Icons.save_outlined),
+                        label:
+                            Text(_saving ? 'Đang lưu...' : 'Lưu Nhóm Danh Mục'),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16.0),
-                Padding(
-                  padding: const EdgeInsets.only(left: 48.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: _childCategories
-                        .where((c) => c['selected'] == true)
-                        .map((c) => Padding(
-                              padding: const EdgeInsets.only(bottom: 8.0),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 6,
-                                    height: 6,
-                                    decoration: const BoxDecoration(
-                                      color: AppColors.primary,
-                                      shape: BoxShape.circle,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8.0),
-                                  Text(
-                                    c['title'],
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      color: AppColors.onSurfaceVariant,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ))
-                        .toList(),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+              ),
+      );
+}
 
-  Widget _buildStickyActionButton() {
-    return ElevatedButton(
-      onPressed: () {},
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.primaryContainer,
-        foregroundColor: Colors.white,
-        minimumSize: const Size(double.infinity, 50),
-        padding: const EdgeInsets.symmetric(vertical: 16.0),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+class _GroupTypeSelector extends StatelessWidget {
+  const _GroupTypeSelector({required this.selected, required this.onChanged});
+  final String selected;
+  final ValueChanged<String> onChanged;
+  static const labels = {
+    'chi': 'Khoản chi',
+    'thu': 'Khoản thu',
+    'vay_no': 'Vay / nợ'
+  };
+
+  @override
+  Widget build(BuildContext context) => Row(
+        children: labels.entries
+            .map((entry) => Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: Text(entry.value),
+                      selected: selected == entry.key,
+                      onSelected: (_) => onChanged(entry.key),
+                    ),
+                  ),
+                ))
+            .toList(),
+      );
+}
+
+class _GroupIconPicker extends StatelessWidget {
+  const _GroupIconPicker({required this.selected, required this.onChanged});
+  final String selected;
+  final ValueChanged<String> onChanged;
+  static const icons = {
+    'folder': Icons.folder_outlined,
+    'home': Icons.home_outlined,
+    'restaurant': Icons.restaurant_outlined,
+    'shopping_bag': Icons.shopping_bag_outlined
+  };
+
+  @override
+  Widget build(BuildContext context) => Wrap(
+        spacing: 12,
+        children: icons.entries
+            .map((entry) => InkResponse(
+                  onTap: () => onChanged(entry.key),
+                  child: CircleAvatar(
+                    backgroundColor: selected == entry.key
+                        ? AppColors.primary
+                        : AppColors.surfaceContainer,
+                    foregroundColor: selected == entry.key
+                        ? Colors.white
+                        : AppColors.textPrimary,
+                    child: Icon(entry.value),
+                  ),
+                ))
+            .toList(),
+      );
+}
+
+class _Preview extends StatelessWidget {
+  const _Preview({required this.name, required this.children});
+  final String name;
+  final List<Category> children;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(12),
         ),
-        elevation: 8,
-      ),
-      child: const Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.save, size: 24),
-          SizedBox(width: 8.0),
-          Text(
-            'Lưu Nhóm Danh Mục',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('CẤU TRÚC XEM TRƯỚC',
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textSecondary)),
+            const SizedBox(height: 8),
+            Text(
+                '${name.isEmpty ? 'Nhóm danh mục' : name} (${children.length} danh mục)',
+                style: const TextStyle(fontWeight: FontWeight.w600)),
+            ...children.map((child) => Padding(
+                  padding: const EdgeInsets.only(top: 8, left: 16),
+                  child: Text('• ${child.name}'),
+                )),
+          ],
+        ),
+      );
 }

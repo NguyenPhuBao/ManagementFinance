@@ -192,11 +192,41 @@ class AppRouter {
               builder: (_, __) => const BudgetRulesPage()),
 
           // Category
-          GoRoute(path: '/categories', builder: (_, __) => const CategoryPage()),
-          GoRoute(path: '/categories/add', builder: (_, __) => const CategoryAddPage()),
+          GoRoute(
+              path: '/categories', builder: (_, __) => const CategoryPage()),
+          GoRoute(
+              path: '/categories/add',
+              redirect: (_, __) => '/categories/child/new'),
           GoRoute(
               path: '/categories/group',
-              builder: (_, __) => const CategoryGroupPage()),
+              redirect: (_, __) => '/categories/group/new'),
+          GoRoute(
+            path: '/categories/child/new',
+            builder: (_, __) => const CategoryAddPage(),
+          ),
+          GoRoute(
+            path: '/categories/child/:id/edit',
+            builder: (_, state) => CategoryAddPage(
+              categoryId: state.pathParameters['id']!,
+            ),
+          ),
+          GoRoute(
+            path: '/categories/group/new',
+            builder: (_, __) => const CategoryGroupPage(),
+          ),
+          GoRoute(
+            path: '/categories/group/:id/edit',
+            builder: (_, state) => CategoryGroupPage(
+              groupId: state.pathParameters['id']!,
+            ),
+          ),
+          GoRoute(
+            path: '/categories/:id/keywords',
+            builder: (_, state) => CategoryAddPage(
+              categoryId: state.pathParameters['id']!,
+              keywordOnly: true,
+            ),
+          ),
 
           // Bill
           GoRoute(
