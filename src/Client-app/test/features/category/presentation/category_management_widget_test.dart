@@ -7,6 +7,7 @@ import 'package:flowmoney/features/category/presentation/pages/category_add_page
 import 'package:flowmoney/features/category/presentation/pages/category_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 void main() {
   final now = DateTime(2026, 8, 21);
@@ -37,6 +38,29 @@ void main() {
 
   Widget app(Widget child) => MaterialApp(home: child);
 
+  Widget categoryRouter(_FakeCategoryRepository repository) {
+    final router = GoRouter(
+      initialLocation: '/categories',
+      routes: [
+        GoRoute(
+          path: '/categories',
+          builder: (_, __) =>
+              CategoryPage(repository: repository, accountId: 1),
+        ),
+        GoRoute(
+          path: '/categories/:id/keywords',
+          builder: (_, state) => CategoryAddPage(
+            categoryId: state.pathParameters['id']!,
+            keywordOnly: true,
+            repository: repository,
+            accountId: 1,
+          ),
+        ),
+      ],
+    );
+    return MaterialApp.router(routerConfig: router);
+  }
+
   testWidgets(
       'renders management tree sections and keeps defaults keyword-only',
       (tester) async {
@@ -62,10 +86,7 @@ void main() {
       ),
     );
 
-    await tester.pumpWidget(app(CategoryPage(
-      repository: repository,
-      accountId: 1,
-    )));
+    await tester.pumpWidget(categoryRouter(repository));
     await tester.pump();
 
     expect(find.text('Nhóm của bạn'), findsOneWidget);
@@ -78,6 +99,11 @@ void main() {
     await tester.tap(find.text('Nhóm nhà'));
     await tester.pump();
     expect(find.text('Tiền nhà'), findsOneWidget);
+
+    await tester.tap(find.text('Từ khóa của tôi'));
+    await tester.pumpAndSettle();
+    expect(find.text('Từ khóa của tôi'), findsWidgets);
+    expect(find.text('Tên danh mục'), findsNothing);
   });
 
   testWidgets(
@@ -100,7 +126,6 @@ void main() {
 
     await tester.enterText(
         find.byKey(const Key('keyword-input')), 'GrabFood, đồ ăn');
-    await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pump();
     expect(find.text('GrabFood'), findsOneWidget);
     expect(find.text('đồ ăn'), findsOneWidget);
@@ -108,6 +133,34 @@ void main() {
     await tester.tap(find.text('Lưu từ khóa'));
     await tester.pump();
     expect(repository.savedKeywords, ['GrabFood', 'đồ ăn']);
+  });
+
+  testWidgets('direct default child edit opens keyword-only UI',
+      (tester) async {
+    final defaultCategory = category(
+      id: 'default-food',
+      name: 'Ăn uống',
+      isDefault: true,
+    );
+    final repository = _FakeCategoryRepository(
+      tree: CategoryTree(
+        groups: const [],
+        ungroupedChildren: const [],
+        defaultChildren: [defaultCategory],
+      ),
+    );
+
+    await tester.pumpWidget(app(CategoryAddPage(
+      categoryId: defaultCategory.id,
+      repository: repository,
+      accountId: 1,
+    )));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Từ khóa của tôi'), findsWidgets);
+    expect(find.text('Tên danh mục'), findsNothing);
+    expect(find.text('Loại giao dịch'), findsNothing);
+    expect(find.text('Nhóm cha'), findsNothing);
   });
 
   testWidgets('confirming a different-type parent applies its type once',
@@ -153,6 +206,11 @@ void main() {
     await tester.tap(find.text('Xác nhận'));
     await tester.pumpAndSettle();
     expect(find.text('Khoản thu'), findsWidgets);
+    await tester.enterText(find.byType(TextField).first, 'Lương');
+    await tester.tap(find.text('Lưu danh mục'));
+    await tester.pump();
+    expect(repository.savedChild?.parentId, incomeGroup.id);
+    expect(repository.savedChild?.classify, 'thu');
   });
 
   testWidgets('cancelling a different-type parent keeps the child ungrouped',

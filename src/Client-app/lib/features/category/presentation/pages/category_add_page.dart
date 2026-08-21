@@ -57,8 +57,11 @@ class _CategoryAddPageState extends State<CategoryAddPage> {
   String? _parentId;
   String _icon = 'restaurant';
   String _colour = '#10B981';
+  bool _showKeywordOnly = false;
   bool _loading = true;
   bool _saving = false;
+
+  bool get _isKeywordOnly => widget.keywordOnly || _showKeywordOnly;
 
   @override
   void initState() {
@@ -112,6 +115,19 @@ class _CategoryAddPageState extends State<CategoryAddPage> {
         ? null
         : categories.where((item) => item.id == widget.categoryId).firstOrNull;
     if (current != null) {
+      if (current.isDefault) {
+        _keywords.addAll(await _repository.loadKeywords(
+          accountId: _accountId,
+          categoryId: current.id,
+        ));
+        if (mounted) {
+          setState(() {
+            _showKeywordOnly = true;
+            _loading = false;
+          });
+        }
+        return;
+      }
       _nameController.text = current.name;
       _classify = current.classify;
       _parentId = current.parentId;
@@ -150,13 +166,8 @@ class _CategoryAddPageState extends State<CategoryAddPage> {
 
   void _onKeywordChanged(String value) {
     if (!value.contains(',')) return;
-    final parts = value.split(',');
-    _addKeywords(parts.take(parts.length - 1));
-    final remainder = parts.last;
-    _keywordController.value = TextEditingValue(
-      text: remainder,
-      selection: TextSelection.collapsed(offset: remainder.length),
-    );
+    _addKeywords(value.split(','));
+    _keywordController.clear();
   }
 
   Future<void> _chooseParent(String? parentId) async {
@@ -198,7 +209,7 @@ class _CategoryAddPageState extends State<CategoryAddPage> {
     if (_saving) return;
     setState(() => _saving = true);
     try {
-      if (widget.keywordOnly) {
+      if (_isKeywordOnly) {
         await _repository.saveKeywords(
           accountId: _accountId,
           categoryId: widget.categoryId!,
@@ -239,7 +250,7 @@ class _CategoryAddPageState extends State<CategoryAddPage> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.pop(),
         ),
-        title: Text(widget.keywordOnly
+        title: Text(_isKeywordOnly
             ? 'Từ khóa của tôi'
             : editing
                 ? 'Chỉnh sửa danh mục'
@@ -247,7 +258,7 @@ class _CategoryAddPageState extends State<CategoryAddPage> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : widget.keywordOnly
+          : _isKeywordOnly
               ? _keywordOnlyBody()
               : _formBody(editing),
     );
