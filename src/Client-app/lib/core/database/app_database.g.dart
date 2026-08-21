@@ -1226,6 +1226,32 @@ class $CategoriesTable extends Categories
       defaultConstraints:
           GeneratedColumn.constraintIsAlways('CHECK ("is_deleted" IN (0, 1))'),
       defaultValue: const Constant(false));
+  static const VerificationMeta _parentIdMeta =
+      const VerificationMeta('parentId');
+  @override
+  late final GeneratedColumn<String> parentId = GeneratedColumn<String>(
+      'parent_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _isGroupMeta =
+      const VerificationMeta('isGroup');
+  @override
+  late final GeneratedColumn<bool> isGroup = GeneratedColumn<bool>(
+      'is_group', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_group" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _isLocalOnlyMeta =
+      const VerificationMeta('isLocalOnly');
+  @override
+  late final GeneratedColumn<bool> isLocalOnly = GeneratedColumn<bool>(
+      'is_local_only', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("is_local_only" IN (0, 1))'),
+      defaultValue: const Constant(false));
   static const VerificationMeta _syncStatusMeta =
       const VerificationMeta('syncStatus');
   @override
@@ -1250,6 +1276,9 @@ class $CategoriesTable extends Categories
         colour,
         isDefault,
         isDeleted,
+        parentId,
+        isGroup,
+        isLocalOnly,
         syncStatus,
         updatedAt
       ];
@@ -1302,6 +1331,20 @@ class $CategoriesTable extends Categories
       context.handle(_isDeletedMeta,
           isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta));
     }
+    if (data.containsKey('parent_id')) {
+      context.handle(_parentIdMeta,
+          parentId.isAcceptableOrUnknown(data['parent_id']!, _parentIdMeta));
+    }
+    if (data.containsKey('is_group')) {
+      context.handle(_isGroupMeta,
+          isGroup.isAcceptableOrUnknown(data['is_group']!, _isGroupMeta));
+    }
+    if (data.containsKey('is_local_only')) {
+      context.handle(
+          _isLocalOnlyMeta,
+          isLocalOnly.isAcceptableOrUnknown(
+              data['is_local_only']!, _isLocalOnlyMeta));
+    }
     if (data.containsKey('sync_status')) {
       context.handle(
           _syncStatusMeta,
@@ -1339,6 +1382,12 @@ class $CategoriesTable extends Categories
           .read(DriftSqlType.bool, data['${effectivePrefix}is_default'])!,
       isDeleted: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}is_deleted'])!,
+      parentId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}parent_id']),
+      isGroup: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_group'])!,
+      isLocalOnly: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_local_only'])!,
       syncStatus: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}sync_status'])!,
       updatedAt: attachedDatabase.typeMapping
@@ -1361,6 +1410,9 @@ class Category extends DataClass implements Insertable<Category> {
   final String colour;
   final bool isDefault;
   final bool isDeleted;
+  final String? parentId;
+  final bool isGroup;
+  final bool isLocalOnly;
   final String syncStatus;
   final DateTime updatedAt;
   const Category(
@@ -1372,6 +1424,9 @@ class Category extends DataClass implements Insertable<Category> {
       required this.colour,
       required this.isDefault,
       required this.isDeleted,
+      this.parentId,
+      required this.isGroup,
+      required this.isLocalOnly,
       required this.syncStatus,
       required this.updatedAt});
   @override
@@ -1385,6 +1440,11 @@ class Category extends DataClass implements Insertable<Category> {
     map['colour'] = Variable<String>(colour);
     map['is_default'] = Variable<bool>(isDefault);
     map['is_deleted'] = Variable<bool>(isDeleted);
+    if (!nullToAbsent || parentId != null) {
+      map['parent_id'] = Variable<String>(parentId);
+    }
+    map['is_group'] = Variable<bool>(isGroup);
+    map['is_local_only'] = Variable<bool>(isLocalOnly);
     map['sync_status'] = Variable<String>(syncStatus);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -1400,6 +1460,11 @@ class Category extends DataClass implements Insertable<Category> {
       colour: Value(colour),
       isDefault: Value(isDefault),
       isDeleted: Value(isDeleted),
+      parentId: parentId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(parentId),
+      isGroup: Value(isGroup),
+      isLocalOnly: Value(isLocalOnly),
       syncStatus: Value(syncStatus),
       updatedAt: Value(updatedAt),
     );
@@ -1417,6 +1482,9 @@ class Category extends DataClass implements Insertable<Category> {
       colour: serializer.fromJson<String>(json['colour']),
       isDefault: serializer.fromJson<bool>(json['isDefault']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
+      parentId: serializer.fromJson<String?>(json['parentId']),
+      isGroup: serializer.fromJson<bool>(json['isGroup']),
+      isLocalOnly: serializer.fromJson<bool>(json['isLocalOnly']),
       syncStatus: serializer.fromJson<String>(json['syncStatus']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -1433,6 +1501,9 @@ class Category extends DataClass implements Insertable<Category> {
       'colour': serializer.toJson<String>(colour),
       'isDefault': serializer.toJson<bool>(isDefault),
       'isDeleted': serializer.toJson<bool>(isDeleted),
+      'parentId': serializer.toJson<String?>(parentId),
+      'isGroup': serializer.toJson<bool>(isGroup),
+      'isLocalOnly': serializer.toJson<bool>(isLocalOnly),
       'syncStatus': serializer.toJson<String>(syncStatus),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -1447,6 +1518,9 @@ class Category extends DataClass implements Insertable<Category> {
           String? colour,
           bool? isDefault,
           bool? isDeleted,
+          Value<String?> parentId = const Value.absent(),
+          bool? isGroup,
+          bool? isLocalOnly,
           String? syncStatus,
           DateTime? updatedAt}) =>
       Category(
@@ -1458,6 +1532,9 @@ class Category extends DataClass implements Insertable<Category> {
         colour: colour ?? this.colour,
         isDefault: isDefault ?? this.isDefault,
         isDeleted: isDeleted ?? this.isDeleted,
+        parentId: parentId.present ? parentId.value : this.parentId,
+        isGroup: isGroup ?? this.isGroup,
+        isLocalOnly: isLocalOnly ?? this.isLocalOnly,
         syncStatus: syncStatus ?? this.syncStatus,
         updatedAt: updatedAt ?? this.updatedAt,
       );
@@ -1471,6 +1548,10 @@ class Category extends DataClass implements Insertable<Category> {
       colour: data.colour.present ? data.colour.value : this.colour,
       isDefault: data.isDefault.present ? data.isDefault.value : this.isDefault,
       isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
+      parentId: data.parentId.present ? data.parentId.value : this.parentId,
+      isGroup: data.isGroup.present ? data.isGroup.value : this.isGroup,
+      isLocalOnly:
+          data.isLocalOnly.present ? data.isLocalOnly.value : this.isLocalOnly,
       syncStatus:
           data.syncStatus.present ? data.syncStatus.value : this.syncStatus,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -1488,6 +1569,9 @@ class Category extends DataClass implements Insertable<Category> {
           ..write('colour: $colour, ')
           ..write('isDefault: $isDefault, ')
           ..write('isDeleted: $isDeleted, ')
+          ..write('parentId: $parentId, ')
+          ..write('isGroup: $isGroup, ')
+          ..write('isLocalOnly: $isLocalOnly, ')
           ..write('syncStatus: $syncStatus, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1495,8 +1579,20 @@ class Category extends DataClass implements Insertable<Category> {
   }
 
   @override
-  int get hashCode => Object.hash(id, idaccount, name, classify, icon, colour,
-      isDefault, isDeleted, syncStatus, updatedAt);
+  int get hashCode => Object.hash(
+      id,
+      idaccount,
+      name,
+      classify,
+      icon,
+      colour,
+      isDefault,
+      isDeleted,
+      parentId,
+      isGroup,
+      isLocalOnly,
+      syncStatus,
+      updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1509,6 +1605,9 @@ class Category extends DataClass implements Insertable<Category> {
           other.colour == this.colour &&
           other.isDefault == this.isDefault &&
           other.isDeleted == this.isDeleted &&
+          other.parentId == this.parentId &&
+          other.isGroup == this.isGroup &&
+          other.isLocalOnly == this.isLocalOnly &&
           other.syncStatus == this.syncStatus &&
           other.updatedAt == this.updatedAt);
 }
@@ -1522,6 +1621,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
   final Value<String> colour;
   final Value<bool> isDefault;
   final Value<bool> isDeleted;
+  final Value<String?> parentId;
+  final Value<bool> isGroup;
+  final Value<bool> isLocalOnly;
   final Value<String> syncStatus;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -1534,6 +1636,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     this.colour = const Value.absent(),
     this.isDefault = const Value.absent(),
     this.isDeleted = const Value.absent(),
+    this.parentId = const Value.absent(),
+    this.isGroup = const Value.absent(),
+    this.isLocalOnly = const Value.absent(),
     this.syncStatus = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1547,6 +1652,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     this.colour = const Value.absent(),
     this.isDefault = const Value.absent(),
     this.isDeleted = const Value.absent(),
+    this.parentId = const Value.absent(),
+    this.isGroup = const Value.absent(),
+    this.isLocalOnly = const Value.absent(),
     this.syncStatus = const Value.absent(),
     required DateTime updatedAt,
     this.rowid = const Value.absent(),
@@ -1564,6 +1672,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     Expression<String>? colour,
     Expression<bool>? isDefault,
     Expression<bool>? isDeleted,
+    Expression<String>? parentId,
+    Expression<bool>? isGroup,
+    Expression<bool>? isLocalOnly,
     Expression<String>? syncStatus,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -1577,6 +1688,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       if (colour != null) 'colour': colour,
       if (isDefault != null) 'is_default': isDefault,
       if (isDeleted != null) 'is_deleted': isDeleted,
+      if (parentId != null) 'parent_id': parentId,
+      if (isGroup != null) 'is_group': isGroup,
+      if (isLocalOnly != null) 'is_local_only': isLocalOnly,
       if (syncStatus != null) 'sync_status': syncStatus,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -1592,6 +1706,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       Value<String>? colour,
       Value<bool>? isDefault,
       Value<bool>? isDeleted,
+      Value<String?>? parentId,
+      Value<bool>? isGroup,
+      Value<bool>? isLocalOnly,
       Value<String>? syncStatus,
       Value<DateTime>? updatedAt,
       Value<int>? rowid}) {
@@ -1604,6 +1721,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       colour: colour ?? this.colour,
       isDefault: isDefault ?? this.isDefault,
       isDeleted: isDeleted ?? this.isDeleted,
+      parentId: parentId ?? this.parentId,
+      isGroup: isGroup ?? this.isGroup,
+      isLocalOnly: isLocalOnly ?? this.isLocalOnly,
       syncStatus: syncStatus ?? this.syncStatus,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -1637,6 +1757,15 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     if (isDeleted.present) {
       map['is_deleted'] = Variable<bool>(isDeleted.value);
     }
+    if (parentId.present) {
+      map['parent_id'] = Variable<String>(parentId.value);
+    }
+    if (isGroup.present) {
+      map['is_group'] = Variable<bool>(isGroup.value);
+    }
+    if (isLocalOnly.present) {
+      map['is_local_only'] = Variable<bool>(isLocalOnly.value);
+    }
     if (syncStatus.present) {
       map['sync_status'] = Variable<String>(syncStatus.value);
     }
@@ -1660,7 +1789,412 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
           ..write('colour: $colour, ')
           ..write('isDefault: $isDefault, ')
           ..write('isDeleted: $isDeleted, ')
+          ..write('parentId: $parentId, ')
+          ..write('isGroup: $isGroup, ')
+          ..write('isLocalOnly: $isLocalOnly, ')
           ..write('syncStatus: $syncStatus, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $CategoryKeywordsTable extends CategoryKeywords
+    with TableInfo<$CategoryKeywordsTable, CategoryKeyword> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CategoryKeywordsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _idaccountMeta =
+      const VerificationMeta('idaccount');
+  @override
+  late final GeneratedColumn<int> idaccount = GeneratedColumn<int>(
+      'idaccount', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _categoryIdMeta =
+      const VerificationMeta('categoryId');
+  @override
+  late final GeneratedColumn<String> categoryId = GeneratedColumn<String>(
+      'category_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _keywordMeta =
+      const VerificationMeta('keyword');
+  @override
+  late final GeneratedColumn<String> keyword = GeneratedColumn<String>(
+      'keyword', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _normalizedKeywordMeta =
+      const VerificationMeta('normalizedKeyword');
+  @override
+  late final GeneratedColumn<String> normalizedKeyword =
+      GeneratedColumn<String>('normalized_keyword', aliasedName, false,
+          type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        idaccount,
+        categoryId,
+        keyword,
+        normalizedKeyword,
+        createdAt,
+        updatedAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'category_keywords';
+  @override
+  VerificationContext validateIntegrity(Insertable<CategoryKeyword> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('idaccount')) {
+      context.handle(_idaccountMeta,
+          idaccount.isAcceptableOrUnknown(data['idaccount']!, _idaccountMeta));
+    } else if (isInserting) {
+      context.missing(_idaccountMeta);
+    }
+    if (data.containsKey('category_id')) {
+      context.handle(
+          _categoryIdMeta,
+          categoryId.isAcceptableOrUnknown(
+              data['category_id']!, _categoryIdMeta));
+    } else if (isInserting) {
+      context.missing(_categoryIdMeta);
+    }
+    if (data.containsKey('keyword')) {
+      context.handle(_keywordMeta,
+          keyword.isAcceptableOrUnknown(data['keyword']!, _keywordMeta));
+    } else if (isInserting) {
+      context.missing(_keywordMeta);
+    }
+    if (data.containsKey('normalized_keyword')) {
+      context.handle(
+          _normalizedKeywordMeta,
+          normalizedKeyword.isAcceptableOrUnknown(
+              data['normalized_keyword']!, _normalizedKeywordMeta));
+    } else if (isInserting) {
+      context.missing(_normalizedKeywordMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+        {idaccount, categoryId, normalizedKeyword},
+      ];
+  @override
+  CategoryKeyword map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CategoryKeyword(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      idaccount: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}idaccount'])!,
+      categoryId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}category_id'])!,
+      keyword: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}keyword'])!,
+      normalizedKeyword: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}normalized_keyword'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+    );
+  }
+
+  @override
+  $CategoryKeywordsTable createAlias(String alias) {
+    return $CategoryKeywordsTable(attachedDatabase, alias);
+  }
+}
+
+class CategoryKeyword extends DataClass implements Insertable<CategoryKeyword> {
+  final String id;
+  final int idaccount;
+  final String categoryId;
+  final String keyword;
+  final String normalizedKeyword;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const CategoryKeyword(
+      {required this.id,
+      required this.idaccount,
+      required this.categoryId,
+      required this.keyword,
+      required this.normalizedKeyword,
+      required this.createdAt,
+      required this.updatedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['idaccount'] = Variable<int>(idaccount);
+    map['category_id'] = Variable<String>(categoryId);
+    map['keyword'] = Variable<String>(keyword);
+    map['normalized_keyword'] = Variable<String>(normalizedKeyword);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  CategoryKeywordsCompanion toCompanion(bool nullToAbsent) {
+    return CategoryKeywordsCompanion(
+      id: Value(id),
+      idaccount: Value(idaccount),
+      categoryId: Value(categoryId),
+      keyword: Value(keyword),
+      normalizedKeyword: Value(normalizedKeyword),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory CategoryKeyword.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CategoryKeyword(
+      id: serializer.fromJson<String>(json['id']),
+      idaccount: serializer.fromJson<int>(json['idaccount']),
+      categoryId: serializer.fromJson<String>(json['categoryId']),
+      keyword: serializer.fromJson<String>(json['keyword']),
+      normalizedKeyword: serializer.fromJson<String>(json['normalizedKeyword']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'idaccount': serializer.toJson<int>(idaccount),
+      'categoryId': serializer.toJson<String>(categoryId),
+      'keyword': serializer.toJson<String>(keyword),
+      'normalizedKeyword': serializer.toJson<String>(normalizedKeyword),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  CategoryKeyword copyWith(
+          {String? id,
+          int? idaccount,
+          String? categoryId,
+          String? keyword,
+          String? normalizedKeyword,
+          DateTime? createdAt,
+          DateTime? updatedAt}) =>
+      CategoryKeyword(
+        id: id ?? this.id,
+        idaccount: idaccount ?? this.idaccount,
+        categoryId: categoryId ?? this.categoryId,
+        keyword: keyword ?? this.keyword,
+        normalizedKeyword: normalizedKeyword ?? this.normalizedKeyword,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
+  CategoryKeyword copyWithCompanion(CategoryKeywordsCompanion data) {
+    return CategoryKeyword(
+      id: data.id.present ? data.id.value : this.id,
+      idaccount: data.idaccount.present ? data.idaccount.value : this.idaccount,
+      categoryId:
+          data.categoryId.present ? data.categoryId.value : this.categoryId,
+      keyword: data.keyword.present ? data.keyword.value : this.keyword,
+      normalizedKeyword: data.normalizedKeyword.present
+          ? data.normalizedKeyword.value
+          : this.normalizedKeyword,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CategoryKeyword(')
+          ..write('id: $id, ')
+          ..write('idaccount: $idaccount, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('keyword: $keyword, ')
+          ..write('normalizedKeyword: $normalizedKeyword, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, idaccount, categoryId, keyword,
+      normalizedKeyword, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CategoryKeyword &&
+          other.id == this.id &&
+          other.idaccount == this.idaccount &&
+          other.categoryId == this.categoryId &&
+          other.keyword == this.keyword &&
+          other.normalizedKeyword == this.normalizedKeyword &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class CategoryKeywordsCompanion extends UpdateCompanion<CategoryKeyword> {
+  final Value<String> id;
+  final Value<int> idaccount;
+  final Value<String> categoryId;
+  final Value<String> keyword;
+  final Value<String> normalizedKeyword;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const CategoryKeywordsCompanion({
+    this.id = const Value.absent(),
+    this.idaccount = const Value.absent(),
+    this.categoryId = const Value.absent(),
+    this.keyword = const Value.absent(),
+    this.normalizedKeyword = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CategoryKeywordsCompanion.insert({
+    required String id,
+    required int idaccount,
+    required String categoryId,
+    required String keyword,
+    required String normalizedKeyword,
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        idaccount = Value(idaccount),
+        categoryId = Value(categoryId),
+        keyword = Value(keyword),
+        normalizedKeyword = Value(normalizedKeyword),
+        createdAt = Value(createdAt),
+        updatedAt = Value(updatedAt);
+  static Insertable<CategoryKeyword> custom({
+    Expression<String>? id,
+    Expression<int>? idaccount,
+    Expression<String>? categoryId,
+    Expression<String>? keyword,
+    Expression<String>? normalizedKeyword,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (idaccount != null) 'idaccount': idaccount,
+      if (categoryId != null) 'category_id': categoryId,
+      if (keyword != null) 'keyword': keyword,
+      if (normalizedKeyword != null) 'normalized_keyword': normalizedKeyword,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CategoryKeywordsCompanion copyWith(
+      {Value<String>? id,
+      Value<int>? idaccount,
+      Value<String>? categoryId,
+      Value<String>? keyword,
+      Value<String>? normalizedKeyword,
+      Value<DateTime>? createdAt,
+      Value<DateTime>? updatedAt,
+      Value<int>? rowid}) {
+    return CategoryKeywordsCompanion(
+      id: id ?? this.id,
+      idaccount: idaccount ?? this.idaccount,
+      categoryId: categoryId ?? this.categoryId,
+      keyword: keyword ?? this.keyword,
+      normalizedKeyword: normalizedKeyword ?? this.normalizedKeyword,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (idaccount.present) {
+      map['idaccount'] = Variable<int>(idaccount.value);
+    }
+    if (categoryId.present) {
+      map['category_id'] = Variable<String>(categoryId.value);
+    }
+    if (keyword.present) {
+      map['keyword'] = Variable<String>(keyword.value);
+    }
+    if (normalizedKeyword.present) {
+      map['normalized_keyword'] = Variable<String>(normalizedKeyword.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CategoryKeywordsCompanion(')
+          ..write('id: $id, ')
+          ..write('idaccount: $idaccount, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('keyword: $keyword, ')
+          ..write('normalizedKeyword: $normalizedKeyword, ')
+          ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -3514,6 +4048,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $WalletsTable wallets = $WalletsTable(this);
   late final $TransactionsTable transactions = $TransactionsTable(this);
   late final $CategoriesTable categories = $CategoriesTable(this);
+  late final $CategoryKeywordsTable categoryKeywords =
+      $CategoryKeywordsTable(this);
   late final $BudgetsTable budgets = $BudgetsTable(this);
   late final $BillsTable bills = $BillsTable(this);
   late final $GoalsTable goals = $GoalsTable(this);
@@ -3528,8 +4064,15 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
-  List<DatabaseSchemaEntity> get allSchemaEntities =>
-      [wallets, transactions, categories, budgets, bills, goals];
+  List<DatabaseSchemaEntity> get allSchemaEntities => [
+        wallets,
+        transactions,
+        categories,
+        categoryKeywords,
+        budgets,
+        bills,
+        goals
+      ];
 }
 
 typedef $$WalletsTableCreateCompanionBuilder = WalletsCompanion Function({
@@ -4275,6 +4818,9 @@ typedef $$CategoriesTableCreateCompanionBuilder = CategoriesCompanion Function({
   Value<String> colour,
   Value<bool> isDefault,
   Value<bool> isDeleted,
+  Value<String?> parentId,
+  Value<bool> isGroup,
+  Value<bool> isLocalOnly,
   Value<String> syncStatus,
   required DateTime updatedAt,
   Value<int> rowid,
@@ -4288,6 +4834,9 @@ typedef $$CategoriesTableUpdateCompanionBuilder = CategoriesCompanion Function({
   Value<String> colour,
   Value<bool> isDefault,
   Value<bool> isDeleted,
+  Value<String?> parentId,
+  Value<bool> isGroup,
+  Value<bool> isLocalOnly,
   Value<String> syncStatus,
   Value<DateTime> updatedAt,
   Value<int> rowid,
@@ -4325,6 +4874,15 @@ class $$CategoriesTableFilterComposer
 
   ColumnFilters<bool> get isDeleted => $composableBuilder(
       column: $table.isDeleted, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get parentId => $composableBuilder(
+      column: $table.parentId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isGroup => $composableBuilder(
+      column: $table.isGroup, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isLocalOnly => $composableBuilder(
+      column: $table.isLocalOnly, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get syncStatus => $composableBuilder(
       column: $table.syncStatus, builder: (column) => ColumnFilters(column));
@@ -4366,6 +4924,15 @@ class $$CategoriesTableOrderingComposer
   ColumnOrderings<bool> get isDeleted => $composableBuilder(
       column: $table.isDeleted, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get parentId => $composableBuilder(
+      column: $table.parentId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isGroup => $composableBuilder(
+      column: $table.isGroup, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isLocalOnly => $composableBuilder(
+      column: $table.isLocalOnly, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get syncStatus => $composableBuilder(
       column: $table.syncStatus, builder: (column) => ColumnOrderings(column));
 
@@ -4406,6 +4973,15 @@ class $$CategoriesTableAnnotationComposer
   GeneratedColumn<bool> get isDeleted =>
       $composableBuilder(column: $table.isDeleted, builder: (column) => column);
 
+  GeneratedColumn<String> get parentId =>
+      $composableBuilder(column: $table.parentId, builder: (column) => column);
+
+  GeneratedColumn<bool> get isGroup =>
+      $composableBuilder(column: $table.isGroup, builder: (column) => column);
+
+  GeneratedColumn<bool> get isLocalOnly => $composableBuilder(
+      column: $table.isLocalOnly, builder: (column) => column);
+
   GeneratedColumn<String> get syncStatus => $composableBuilder(
       column: $table.syncStatus, builder: (column) => column);
 
@@ -4444,6 +5020,9 @@ class $$CategoriesTableTableManager extends RootTableManager<
             Value<String> colour = const Value.absent(),
             Value<bool> isDefault = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
+            Value<String?> parentId = const Value.absent(),
+            Value<bool> isGroup = const Value.absent(),
+            Value<bool> isLocalOnly = const Value.absent(),
             Value<String> syncStatus = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
@@ -4457,6 +5036,9 @@ class $$CategoriesTableTableManager extends RootTableManager<
             colour: colour,
             isDefault: isDefault,
             isDeleted: isDeleted,
+            parentId: parentId,
+            isGroup: isGroup,
+            isLocalOnly: isLocalOnly,
             syncStatus: syncStatus,
             updatedAt: updatedAt,
             rowid: rowid,
@@ -4470,6 +5052,9 @@ class $$CategoriesTableTableManager extends RootTableManager<
             Value<String> colour = const Value.absent(),
             Value<bool> isDefault = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
+            Value<String?> parentId = const Value.absent(),
+            Value<bool> isGroup = const Value.absent(),
+            Value<bool> isLocalOnly = const Value.absent(),
             Value<String> syncStatus = const Value.absent(),
             required DateTime updatedAt,
             Value<int> rowid = const Value.absent(),
@@ -4483,6 +5068,9 @@ class $$CategoriesTableTableManager extends RootTableManager<
             colour: colour,
             isDefault: isDefault,
             isDeleted: isDeleted,
+            parentId: parentId,
+            isGroup: isGroup,
+            isLocalOnly: isLocalOnly,
             syncStatus: syncStatus,
             updatedAt: updatedAt,
             rowid: rowid,
@@ -4505,6 +5093,212 @@ typedef $$CategoriesTableProcessedTableManager = ProcessedTableManager<
     $$CategoriesTableUpdateCompanionBuilder,
     (Category, BaseReferences<_$AppDatabase, $CategoriesTable, Category>),
     Category,
+    PrefetchHooks Function()>;
+typedef $$CategoryKeywordsTableCreateCompanionBuilder
+    = CategoryKeywordsCompanion Function({
+  required String id,
+  required int idaccount,
+  required String categoryId,
+  required String keyword,
+  required String normalizedKeyword,
+  required DateTime createdAt,
+  required DateTime updatedAt,
+  Value<int> rowid,
+});
+typedef $$CategoryKeywordsTableUpdateCompanionBuilder
+    = CategoryKeywordsCompanion Function({
+  Value<String> id,
+  Value<int> idaccount,
+  Value<String> categoryId,
+  Value<String> keyword,
+  Value<String> normalizedKeyword,
+  Value<DateTime> createdAt,
+  Value<DateTime> updatedAt,
+  Value<int> rowid,
+});
+
+class $$CategoryKeywordsTableFilterComposer
+    extends Composer<_$AppDatabase, $CategoryKeywordsTable> {
+  $$CategoryKeywordsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get idaccount => $composableBuilder(
+      column: $table.idaccount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get categoryId => $composableBuilder(
+      column: $table.categoryId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get keyword => $composableBuilder(
+      column: $table.keyword, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get normalizedKeyword => $composableBuilder(
+      column: $table.normalizedKeyword,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$CategoryKeywordsTableOrderingComposer
+    extends Composer<_$AppDatabase, $CategoryKeywordsTable> {
+  $$CategoryKeywordsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get idaccount => $composableBuilder(
+      column: $table.idaccount, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get categoryId => $composableBuilder(
+      column: $table.categoryId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get keyword => $composableBuilder(
+      column: $table.keyword, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get normalizedKeyword => $composableBuilder(
+      column: $table.normalizedKeyword,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$CategoryKeywordsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CategoryKeywordsTable> {
+  $$CategoryKeywordsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get idaccount =>
+      $composableBuilder(column: $table.idaccount, builder: (column) => column);
+
+  GeneratedColumn<String> get categoryId => $composableBuilder(
+      column: $table.categoryId, builder: (column) => column);
+
+  GeneratedColumn<String> get keyword =>
+      $composableBuilder(column: $table.keyword, builder: (column) => column);
+
+  GeneratedColumn<String> get normalizedKeyword => $composableBuilder(
+      column: $table.normalizedKeyword, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$CategoryKeywordsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $CategoryKeywordsTable,
+    CategoryKeyword,
+    $$CategoryKeywordsTableFilterComposer,
+    $$CategoryKeywordsTableOrderingComposer,
+    $$CategoryKeywordsTableAnnotationComposer,
+    $$CategoryKeywordsTableCreateCompanionBuilder,
+    $$CategoryKeywordsTableUpdateCompanionBuilder,
+    (
+      CategoryKeyword,
+      BaseReferences<_$AppDatabase, $CategoryKeywordsTable, CategoryKeyword>
+    ),
+    CategoryKeyword,
+    PrefetchHooks Function()> {
+  $$CategoryKeywordsTableTableManager(
+      _$AppDatabase db, $CategoryKeywordsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CategoryKeywordsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CategoryKeywordsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CategoryKeywordsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<int> idaccount = const Value.absent(),
+            Value<String> categoryId = const Value.absent(),
+            Value<String> keyword = const Value.absent(),
+            Value<String> normalizedKeyword = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              CategoryKeywordsCompanion(
+            id: id,
+            idaccount: idaccount,
+            categoryId: categoryId,
+            keyword: keyword,
+            normalizedKeyword: normalizedKeyword,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required int idaccount,
+            required String categoryId,
+            required String keyword,
+            required String normalizedKeyword,
+            required DateTime createdAt,
+            required DateTime updatedAt,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              CategoryKeywordsCompanion.insert(
+            id: id,
+            idaccount: idaccount,
+            categoryId: categoryId,
+            keyword: keyword,
+            normalizedKeyword: normalizedKeyword,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$CategoryKeywordsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $CategoryKeywordsTable,
+    CategoryKeyword,
+    $$CategoryKeywordsTableFilterComposer,
+    $$CategoryKeywordsTableOrderingComposer,
+    $$CategoryKeywordsTableAnnotationComposer,
+    $$CategoryKeywordsTableCreateCompanionBuilder,
+    $$CategoryKeywordsTableUpdateCompanionBuilder,
+    (
+      CategoryKeyword,
+      BaseReferences<_$AppDatabase, $CategoryKeywordsTable, CategoryKeyword>
+    ),
+    CategoryKeyword,
     PrefetchHooks Function()>;
 typedef $$BudgetsTableCreateCompanionBuilder = BudgetsCompanion Function({
   required String id,
@@ -5356,6 +6150,8 @@ class $AppDatabaseManager {
       $$TransactionsTableTableManager(_db, _db.transactions);
   $$CategoriesTableTableManager get categories =>
       $$CategoriesTableTableManager(_db, _db.categories);
+  $$CategoryKeywordsTableTableManager get categoryKeywords =>
+      $$CategoryKeywordsTableTableManager(_db, _db.categoryKeywords);
   $$BudgetsTableTableManager get budgets =>
       $$BudgetsTableTableManager(_db, _db.budgets);
   $$BillsTableTableManager get bills =>

@@ -1,10 +1,11 @@
 import 'package:drift/drift.dart';
+import 'package:uuid/uuid.dart';
 import '../app_database.dart';
 import '../tables/categories_table.dart';
 
 part 'category_dao.g.dart';
 
-@DriftAccessor(tables: [Categories])
+@DriftAccessor(tables: [Categories, CategoryKeywords])
 class CategoryDao extends DatabaseAccessor<AppDatabase>
     with _$CategoryDaoMixin {
   CategoryDao(super.db);
@@ -47,6 +48,96 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
       }
       return uniqueMap.values.toList();
     });
+  }
+
+  Stream<List<Category>> watchCategoryRows(int accountId, String classify) {
+    return (select(categories)
+          ..where((t) =>
+              (t.idaccount.equals(0) | t.idaccount.equals(accountId)) &
+              t.classify.equals(classify) &
+              t.isDeleted.equals(false))
+          ..orderBy([
+            (t) => OrderingTerm.desc(t.idaccount),
+            (t) => OrderingTerm.asc(t.name),
+          ]))
+        .watch();
+  }
+
+  Future<List<Category>> getCategoryRows(int accountId, String classify) {
+    return (select(categories)
+          ..where((t) =>
+              (t.idaccount.equals(0) | t.idaccount.equals(accountId)) &
+              t.classify.equals(classify) &
+              t.isDeleted.equals(false))
+          ..orderBy([
+            (t) => OrderingTerm.desc(t.idaccount),
+            (t) => OrderingTerm.asc(t.name),
+          ]))
+        .get();
+  }
+
+  Future<List<String>> getKeywords(int accountId, String categoryId) async {
+    final rows = await (select(categoryKeywords)
+          ..where((t) =>
+              t.idaccount.equals(accountId) & t.categoryId.equals(categoryId))
+          ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
+        .get();
+    return rows.map((row) => row.keyword).toList();
+  }
+
+  Future<void> replaceKeywords({
+    required int accountId,
+    required String categoryId,
+    required Iterable<String> keywords,
+    required DateTime now,
+  }) {
+    final uniqueKeywords = <String, String>{};
+    for (final keyword in keywords) {
+      final displayKeyword = keyword.trim();
+      final normalizedKeyword = _normalizeKeyword(displayKeyword);
+      if (normalizedKeyword.isNotEmpty) {
+        uniqueKeywords.putIfAbsent(normalizedKeyword, () => displayKeyword);
+      }
+    }
+
+    return transaction(() async {
+      await (delete(categoryKeywords)
+            ..where((t) =>
+                t.idaccount.equals(accountId) & t.categoryId.equals(categoryId)))
+          .go();
+      if (uniqueKeywords.isEmpty) {
+        return;
+      }
+      await batch((batch) {
+        batch.insertAll(
+          categoryKeywords,
+          uniqueKeywords.entries
+              .map(
+                (entry) => CategoryKeywordsCompanion.insert(
+                  id: const Uuid().v4(),
+                  idaccount: accountId,
+                  categoryId: categoryId,
+                  keyword: entry.value,
+                  normalizedKeyword: entry.key,
+                  createdAt: now,
+                  updatedAt: now,
+                ),
+              )
+              .toList(),
+        );
+      });
+    });
+  }
+
+  Future<List<Category>> getSyncableCategories(int accountId) {
+    return (select(categories)
+          ..where((t) =>
+              t.idaccount.equals(accountId) & t.isLocalOnly.equals(false)))
+        .get();
+  }
+
+  String _normalizeKeyword(String keyword) {
+    return keyword.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
   }
 
   /// Lọc theo classify: 'thu' | 'chi' | 'vay_no' (khử trùng lặp theo tên)
