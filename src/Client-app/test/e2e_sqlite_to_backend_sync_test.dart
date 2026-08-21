@@ -126,6 +126,7 @@ void main() {
     const idaccount = 1;
     const walletId = 'wallet-e2e-100';
     const txId = 'tx-e2e-200';
+    const serverCategoryId = 'server-category-e2e';
     const localGroupId = 'local-group-e2e';
     const localChildId = 'local-child-e2e';
 
@@ -171,6 +172,16 @@ void main() {
         classify: 'chi',
         isGroup: const Value(true),
         isLocalOnly: const Value(true),
+        updatedAt: DateTime.now(),
+      ),
+    );
+    await db.categoryDao.insert(
+      CategoriesCompanion.insert(
+        id: serverCategoryId,
+        idaccount: idaccount,
+        name: 'Server-backed category',
+        classify: 'chi',
+        isLocalOnly: const Value(false),
         updatedAt: DateTime.now(),
       ),
     );
@@ -238,12 +249,15 @@ void main() {
           .map((operation) => operation['localId']),
       isNot(contains(localChildId)),
     );
-    for (final operation in dioClient.adapter.pushedOperations) {
-      expect(
-        (operation['payload'] as Map<String, dynamic>).keys,
-        isNot(containsAll(['parentId', 'isGroup', 'isLocalOnly', 'keywords'])),
-      );
-    }
+    final categoryOperation = dioClient.adapter.pushedOperations.singleWhere(
+      (operation) => operation['localId'] == serverCategoryId,
+    );
+    final categoryPayload =
+        categoryOperation['payload'] as Map<String, dynamic>;
+    expect(categoryPayload, isNot(contains('parentId')));
+    expect(categoryPayload, isNot(contains('isGroup')));
+    expect(categoryPayload, isNot(contains('isLocalOnly')));
+    expect(categoryPayload, isNot(contains('keywords')));
 
     print(
         '✅ BƯỚC 2 HOÀN THÀNH: Gửi API Backend THÀNH CÔNG và CẬP NHẬT SQLITE LOCAL sang trạng thái: synced');
