@@ -45,6 +45,12 @@ const config = {
     pass: process.env.SMTP_PASS,
     from: process.env.SMTP_FROM || '"FlowMoney" <no-reply@flowmoney.app>',
   },
+
+  casso: {
+    apiUrl: process.env.CASSO_API_URL || 'https://api.casso.vn/v2',
+    apiKey: process.env.CASSO_API_KEY,
+    webhookSecret: process.env.CASSO_WEBHOOK_SECRET,
+  },
 };
 
 module.exports = config;

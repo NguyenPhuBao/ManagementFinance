@@ -6,17 +6,12 @@ const Redis = require('ioredis');
 const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
   maxRetriesPerRequest: null,
 });
-/**const connection = {
-  host: process.env.REDIS_HOST || 'localhost',
-  port: parseInt(process.env.REDIS_PORT, 10) || 6379,
-}; */
-// Queue definitions
+
+// Queue definitions (4 queue — khớp Project.md 3.2.3)
 const queues = {
   aiClassify: new Queue('ai-classify-transaction', { connection }),
   ocrProcess: new Queue('ocr-process-receipt', { connection }),
-  smsParse: new Queue('sms-parse', { connection }),
   sendNotification: new Queue('send-notification', { connection }),
-  syncData: new Queue('sync-data', { connection }),
   bankWebhook: new Queue('bank-webhook', { connection }),
 };
 

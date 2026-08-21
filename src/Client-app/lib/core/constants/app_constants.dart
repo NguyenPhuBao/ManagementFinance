@@ -4,10 +4,12 @@ class AppConstants {
   // API
   // Web/Desktop: dùng localhost. Android emulator: 10.0.2.2 (alias đến localhost của máy host)
   static String get baseUrl {
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+    /**if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
       return 'http://10.0.2.2:3000/api';
     }
-    return 'http://localhost:3000/api';
+    return 'http://localhost:3000/api';*/
+    // Cloud Backend (Render)
+    return 'https://managementfinance.onrender.com/api';
   }
 
   static const Duration connectionTimeout = Duration(seconds: 30);
