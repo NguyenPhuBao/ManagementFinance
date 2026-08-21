@@ -7,6 +7,9 @@ import 'package:uuid/uuid.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
+import '../../../../features/category/data/models/category_suggestion.dart';
+import '../../../../features/category/data/repositories/category_management_repository.dart';
+import '../../../../features/category/data/services/category_suggestion_engine.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../data/models/transaction_entity.dart';
 import '../bloc/transaction_bloc.dart';
@@ -15,10 +18,18 @@ import '../bloc/transaction_state.dart';
 
 class AddTransactionPage extends StatefulWidget {
   final int idaccount;
+  final CategoryManagementRepository? categoryRepository;
+  final List<Wallet>? wallets;
+  final CategorySuggestionEngine suggestionEngine;
+  final TransactionBloc? transactionBloc;
 
   const AddTransactionPage({
     super.key,
     this.idaccount = 1,
+    this.categoryRepository,
+    this.wallets,
+    this.suggestionEngine = const CategorySuggestionEngine(),
+    this.transactionBloc,
   });
 
   @override
@@ -28,29 +39,46 @@ class AddTransactionPage extends StatefulWidget {
 class _AddTransactionPageState extends State<AddTransactionPage> {
   int _selectedSegment = 0; // 0: Chi tiêu, 1: Thu nhập, 2: Chuyển khoản
   String _amountString = "0";
-  
+
   List<Wallet> _wallets = [];
   Wallet? _selectedWallet;
   Wallet? _destinationWallet;
   Category? _selectedCategory;
-  
+  CategorySuggestion? _suggestion;
+
   DateTime _selectedDate = DateTime.now();
   final TextEditingController _noteController = TextEditingController();
   bool _isLoadingWallets = true;
 
+  CategoryManagementRepository get _categoryRepository =>
+      widget.categoryRepository ?? sl<CategoryManagementRepository>();
+
   @override
   void initState() {
     super.initState();
+    _noteController.addListener(_onNoteChanged);
     _loadWallets();
   }
 
   @override
   void dispose() {
+    _noteController.removeListener(_onNoteChanged);
     _noteController.dispose();
     super.dispose();
   }
 
   Future<void> _loadWallets() async {
+    final configuredWallets = widget.wallets;
+    if (configuredWallets != null) {
+      setState(() {
+        _wallets = configuredWallets;
+        _selectedWallet = _wallets.isEmpty ? null : _wallets.first;
+        _destinationWallet =
+            _wallets.length > 1 ? _wallets[1] : _selectedWallet;
+        _isLoadingWallets = false;
+      });
+      return;
+    }
     final authState = context.read<AuthBloc>().state;
     final user = (authState is AuthSuccess) ? authState.user : null;
     final userIdAccount = int.tryParse(user?.id ?? '') ?? widget.idaccount;
@@ -77,7 +105,68 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     }
   }
 
-  void _showWalletPickerBottomSheet(BuildContext context, {required bool isDestination}) {
+  int _accountId() {
+    try {
+      final authState = context.read<AuthBloc>().state;
+      if (authState is AuthSuccess) {
+        return int.tryParse(authState.user?.id ?? '') ?? widget.idaccount;
+      }
+    } catch (_) {
+      // The isolated picker test does not provide an auth bloc.
+    }
+    return widget.idaccount;
+  }
+
+  String get _classify => _selectedSegment == 0 ? 'chi' : 'thu';
+
+  void _onNoteChanged() {
+    final note = _noteController.text.trim();
+    if (note.isEmpty || _selectedSegment == 2 || _selectedCategory != null) {
+      if (_suggestion != null && mounted) {
+        setState(() => _suggestion = null);
+      }
+      return;
+    }
+    _loadSuggestion(note);
+  }
+
+  Future<void> _loadSuggestion(String note) async {
+    final categories = await _categoryRepository.selectableChildren(
+      accountId: _accountId(),
+      classify: _classify,
+    );
+    final keywordLists = await Future.wait(
+      categories.map(
+        (category) => _categoryRepository.loadKeywords(
+          accountId: _accountId(),
+          categoryId: category.id,
+        ),
+      ),
+    );
+    final candidates = <CategoryKeywordCandidate>[];
+    for (var index = 0; index < categories.length; index++) {
+      for (final keyword in keywordLists[index]) {
+        candidates.add(
+          CategoryKeywordCandidate(
+              category: categories[index], keyword: keyword),
+        );
+      }
+    }
+    final suggestion = widget.suggestionEngine.suggest(
+      rawText: note,
+      candidates: candidates,
+    );
+    if (!mounted ||
+        _selectedSegment == 2 ||
+        _selectedCategory != null ||
+        _noteController.text.trim() != note) {
+      return;
+    }
+    setState(() => _suggestion = suggestion);
+  }
+
+  void _showWalletPickerBottomSheet(BuildContext context,
+      {required bool isDestination}) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
@@ -103,7 +192,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close, color: AppColors.textSecondary),
+                    icon:
+                        const Icon(Icons.close, color: AppColors.textSecondary),
                     onPressed: () => Navigator.pop(ctx),
                   ),
                 ],
@@ -112,7 +202,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
               if (_wallets.isEmpty)
                 const Padding(
                   padding: EdgeInsets.all(16.0),
-                  child: Text('Chưa có ví nào', style: TextStyle(color: AppColors.textSecondary)),
+                  child: Text('Chưa có ví nào',
+                      style: TextStyle(color: AppColors.textSecondary)),
                 )
               else
                 ..._wallets.map((wallet) {
@@ -133,10 +224,13 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                     },
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 12, horizontal: 12),
                       margin: const EdgeInsets.only(bottom: 8),
                       decoration: BoxDecoration(
-                        color: isSelected ? AppColors.surfaceContainerHigh : Colors.transparent,
+                        color: isSelected
+                            ? AppColors.surfaceContainerHigh
+                            : Colors.transparent,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
@@ -148,7 +242,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                               color: AppColors.surfaceContainer,
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.account_balance_wallet, color: AppColors.primary, size: 20),
+                            child: const Icon(Icons.account_balance_wallet,
+                                color: AppColors.primary, size: 20),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -184,7 +279,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                           ),
                           if (isSelected) ...[
                             const SizedBox(width: 8),
-                            const Icon(Icons.check_circle, color: AppColors.secondary, size: 20),
+                            const Icon(Icons.check_circle,
+                                color: AppColors.secondary, size: 20),
                           ]
                         ],
                       ),
@@ -297,7 +393,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       id: const Uuid().v4(),
       walletId: _selectedWallet!.id,
       idaccount: userIdAccount,
-      categoryId: _selectedSegment == 2 ? 'cat_transfer' : _selectedCategory!.id,
+      categoryId:
+          _selectedSegment == 2 ? 'cat_transfer' : _selectedCategory!.id,
       amount: amount,
       type: type,
       note: _noteController.text.trim(),
@@ -311,82 +408,93 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     context.read<TransactionBloc>().add(
           AddTransactionEvent(
             transaction: tx,
-            destinationWalletId: _selectedSegment == 2 ? _destinationWallet?.id : null,
+            destinationWalletId:
+                _selectedSegment == 2 ? _destinationWallet?.id : null,
           ),
         );
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider<TransactionBloc>(
-      create: (context) => sl<TransactionBloc>(),
-      child: BlocConsumer<TransactionBloc, TransactionState>(
-        listener: (context, state) {
-          if (state is TransactionLoadedState) {
-            if (state.actionSuccess == true) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Thêm giao dịch thành công!')),
-              );
-              context.pop(true);
-            } else if (state.actionSuccess == false && state.errorMessage != null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Lỗi: ${state.errorMessage}')),
-              );
-            }
+    final content = BlocConsumer<TransactionBloc, TransactionState>(
+      listener: (context, state) {
+        if (state is TransactionLoadedState) {
+          if (state.actionSuccess == true) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Thêm giao dịch thành công!')),
+            );
+            context.pop(true);
+          } else if (state.actionSuccess == false &&
+              state.errorMessage != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Lỗi: ${state.errorMessage}')),
+            );
           }
-        },
-        builder: (context, state) {
-          return Scaffold(
-            backgroundColor: AppColors.background,
-            appBar: AppBar(
-              backgroundColor: Colors.white,
-              elevation: 0,
-              leading: IconButton(
-                icon: const Icon(Icons.arrow_back, color: AppColors.primary, size: 28),
-                onPressed: () => context.pop(),
-              ),
-              title: const Text(
-                'Thêm giao dịch',
-                style: TextStyle(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 20,
-                ),
-              ),
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.more_vert, color: AppColors.primary),
-                  onPressed: () {},
-                ),
-              ],
+        }
+      },
+      builder: (context, state) {
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          appBar: AppBar(
+            backgroundColor: Colors.white,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back,
+                  color: AppColors.primary, size: 28),
+              onPressed: () => context.pop(),
             ),
-            body: SafeArea(
-              child: Column(
-                children: [
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                      child: Column(
-                        children: [
-                          _buildSegmentControl(),
-                          const SizedBox(height: 32),
-                          _buildAmountDisplay(),
-                          const SizedBox(height: 32),
-                          _buildFormCard(context),
-                          const SizedBox(height: 16),
-                          _buildNumericKeyboard(),
-                        ],
-                      ),
+            title: const Text(
+              'Thêm giao dịch',
+              style: TextStyle(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w600,
+                fontSize: 20,
+              ),
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.more_vert, color: AppColors.primary),
+                onPressed: () {},
+              ),
+            ],
+          ),
+          body: SafeArea(
+            child: Column(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 16),
+                    child: Column(
+                      children: [
+                        _buildSegmentControl(),
+                        const SizedBox(height: 32),
+                        _buildAmountDisplay(),
+                        const SizedBox(height: 32),
+                        _buildFormCard(context),
+                        const SizedBox(height: 16),
+                        _buildNumericKeyboard(),
+                      ],
                     ),
                   ),
-                  _buildSaveButton(context, state),
-                ],
-              ),
+                ),
+                _buildSaveButton(context, state),
+              ],
             ),
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
+    final transactionBloc = widget.transactionBloc;
+    return transactionBloc == null
+        ? BlocProvider<TransactionBloc>(
+            create: (context) => sl<TransactionBloc>(),
+            child: content,
+          )
+        : BlocProvider<TransactionBloc>.value(
+            value: transactionBloc,
+            child: content,
+          );
   }
 
   Widget _buildSegmentControl() {
@@ -428,6 +536,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       onTap: () {
         setState(() {
           _selectedSegment = index;
+          _suggestion = null;
         });
       },
       child: Container(
@@ -509,57 +618,95 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
               label: 'Ví thanh toán',
               valueWidget: Text(
                 walletDisplay,
-                style: const TextStyle(fontSize: 16, color: AppColors.primary, fontWeight: FontWeight.w500),
+                style: const TextStyle(
+                    fontSize: 16,
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w500),
               ),
               showArrow: true,
-              onTap: () => _showWalletPickerBottomSheet(context, isDestination: false),
+              onTap: () =>
+                  _showWalletPickerBottomSheet(context, isDestination: false),
             ),
-            Divider(height: 1, indent: 64, color: AppColors.outlineVariant.withValues(alpha: 0.3)),
+            Divider(
+                height: 1,
+                indent: 64,
+                color: AppColors.outlineVariant.withValues(alpha: 0.3)),
             _buildFormRow(
               icon: Icons.category,
               label: 'Danh mục',
               valueWidget: Text(
-                _selectedCategory != null ? _selectedCategory!.name : 'Chọn danh mục',
+                _selectedCategory != null
+                    ? _selectedCategory!.name
+                    : 'Chọn danh mục',
                 style: TextStyle(
                   fontSize: 16,
-                  color: _selectedCategory != null ? AppColors.primary : AppColors.outlineVariant,
-                  fontWeight: _selectedCategory != null ? FontWeight.w500 : FontWeight.normal,
+                  color: _selectedCategory != null
+                      ? AppColors.primary
+                      : AppColors.outlineVariant,
+                  fontWeight: _selectedCategory != null
+                      ? FontWeight.w500
+                      : FontWeight.normal,
                 ),
               ),
               showArrow: true,
               onTap: () async {
-                final selected = await context.push<Category>('/add/category');
+                final selected = await context.push<Category>(
+                  '/add/category',
+                  extra: _classify,
+                );
                 if (selected != null) {
                   setState(() {
                     _selectedCategory = selected;
+                    _suggestion = null;
                   });
                 }
               },
             ),
+            if (_suggestion != null) ...[
+              Divider(
+                  height: 1,
+                  indent: 64,
+                  color: AppColors.outlineVariant.withValues(alpha: 0.3)),
+              _buildSuggestionCard(_suggestion!),
+            ],
           ] else ...[
             _buildFormRow(
               icon: Icons.account_balance_wallet_outlined,
               label: 'Ví nguồn (Từ ví)',
               valueWidget: Text(
                 walletDisplay,
-                style: const TextStyle(fontSize: 16, color: AppColors.primary, fontWeight: FontWeight.w500),
+                style: const TextStyle(
+                    fontSize: 16,
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w500),
               ),
               showArrow: true,
-              onTap: () => _showWalletPickerBottomSheet(context, isDestination: false),
+              onTap: () =>
+                  _showWalletPickerBottomSheet(context, isDestination: false),
             ),
-            Divider(height: 1, indent: 64, color: AppColors.outlineVariant.withValues(alpha: 0.3)),
+            Divider(
+                height: 1,
+                indent: 64,
+                color: AppColors.outlineVariant.withValues(alpha: 0.3)),
             _buildFormRow(
               icon: Icons.account_balance_wallet,
               label: 'Ví đích (Đến ví)',
               valueWidget: Text(
                 destWalletDisplay,
-                style: const TextStyle(fontSize: 16, color: AppColors.primary, fontWeight: FontWeight.w500),
+                style: const TextStyle(
+                    fontSize: 16,
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w500),
               ),
               showArrow: true,
-              onTap: () => _showWalletPickerBottomSheet(context, isDestination: true),
+              onTap: () =>
+                  _showWalletPickerBottomSheet(context, isDestination: true),
             ),
           ],
-          Divider(height: 1, indent: 64, color: AppColors.outlineVariant.withValues(alpha: 0.3)),
+          Divider(
+              height: 1,
+              indent: 64,
+              color: AppColors.outlineVariant.withValues(alpha: 0.3)),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
@@ -571,7 +718,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                     color: AppColors.surfaceContainerHigh,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.notes, color: AppColors.textSecondary, size: 20),
+                  child: const Icon(Icons.notes,
+                      color: AppColors.textSecondary, size: 20),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -579,16 +727,21 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                     controller: _noteController,
                     decoration: const InputDecoration(
                       hintText: 'Thêm ghi chú cho giao dịch...',
-                      hintStyle: TextStyle(fontSize: 14, color: AppColors.outlineVariant),
+                      hintStyle: TextStyle(
+                          fontSize: 14, color: AppColors.outlineVariant),
                       border: InputBorder.none,
                     ),
-                    style: const TextStyle(fontSize: 16, color: AppColors.primary),
+                    style:
+                        const TextStyle(fontSize: 16, color: AppColors.primary),
                   ),
                 ),
               ],
             ),
           ),
-          Divider(height: 1, indent: 64, color: AppColors.outlineVariant.withValues(alpha: 0.3)),
+          Divider(
+              height: 1,
+              indent: 64,
+              color: AppColors.outlineVariant.withValues(alpha: 0.3)),
           _buildFormRow(
             icon: Icons.calendar_today,
             label: 'Ngày',
@@ -603,6 +756,53 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       ),
     );
   }
+
+  Widget _buildSuggestionCard(CategorySuggestion suggestion) => Container(
+        width: double.infinity,
+        margin: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Gợi ý danh mục',
+              style: TextStyle(
+                  fontWeight: FontWeight.w700, color: AppColors.primary),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              suggestion.category.name,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Khớp với “${suggestion.matchedKeyword}” trong ghi chú.',
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                TextButton(
+                  onPressed: () => setState(() => _suggestion = null),
+                  child: const Text('Bỏ qua'),
+                ),
+                const Spacer(),
+                ElevatedButton(
+                  onPressed: () => setState(() {
+                    _selectedCategory = suggestion.category;
+                    _suggestion = null;
+                  }),
+                  child: const Text('Chọn danh mục này'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
 
   Widget _buildFormRow({
     required IconData icon,
@@ -657,10 +857,22 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
 
   Widget _buildNumericKeyboard() {
     final keys = [
-      '7', '8', '9', 'backspace',
-      '4', '5', '6', '+',
-      '1', '2', '3', '-',
-      '.', '0', '000', 'done'
+      '7',
+      '8',
+      '9',
+      'backspace',
+      '4',
+      '5',
+      '6',
+      '+',
+      '1',
+      '2',
+      '3',
+      '-',
+      '.',
+      '0',
+      '000',
+      'done'
     ];
 
     return GridView.builder(
@@ -675,7 +887,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       ),
       itemBuilder: (context, index) {
         final keyStr = keys[index];
-        bool isOperator = keyStr == 'backspace' || keyStr == '+' || keyStr == '-';
+        bool isOperator =
+            keyStr == 'backspace' || keyStr == '+' || keyStr == '-';
         bool isDone = keyStr == 'done';
 
         return Material(
@@ -712,7 +925,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
 
   Widget _buildKeyContent(String keyStr, bool isDone) {
     if (keyStr == 'backspace') {
-      return const Icon(Icons.backspace_outlined, size: 24, color: AppColors.primary);
+      return const Icon(Icons.backspace_outlined,
+          size: 24, color: AppColors.primary);
     }
     if (keyStr == 'done') {
       return const Icon(Icons.check, size: 28, color: Colors.white);
@@ -720,12 +934,16 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     if (keyStr == '+' || keyStr == '-') {
       return Text(
         keyStr,
-        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.normal, color: AppColors.primary),
+        style: const TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.normal,
+            color: AppColors.primary),
       );
     }
     return Text(
       keyStr,
-      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: AppColors.primary),
+      style: const TextStyle(
+          fontSize: 20, fontWeight: FontWeight.w600, color: AppColors.primary),
     );
   }
 

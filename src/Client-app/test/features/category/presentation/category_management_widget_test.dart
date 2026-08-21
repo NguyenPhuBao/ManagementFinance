@@ -5,6 +5,11 @@ import 'package:flowmoney/features/category/data/models/category_tree.dart';
 import 'package:flowmoney/features/category/data/repositories/category_management_repository.dart';
 import 'package:flowmoney/features/category/presentation/pages/category_add_page.dart';
 import 'package:flowmoney/features/category/presentation/pages/category_page.dart';
+import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
+import 'package:flowmoney/features/transaction/data/repositories/transaction_repository.dart';
+import 'package:flowmoney/features/transaction/presentation/bloc/transaction_bloc.dart';
+import 'package:flowmoney/features/transaction/presentation/pages/add_transaction_page.dart';
+import 'package:flowmoney/features/transaction/presentation/pages/choose_category_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -260,12 +265,127 @@ void main() {
     expect(repository.savedChild?.parentId, isNull);
     expect(repository.savedChild?.classify, 'chi');
   });
+
+  testWidgets('group tap does not return a selection but leaf tap does',
+      (tester) async {
+    final group = category(id: 'group-food', name: 'Ăn uống', isGroup: true);
+    final child = category(
+      id: 'grab-food',
+      name: 'GrabFood',
+      parentId: group.id,
+    );
+    final repository = _FakeCategoryRepository(
+      tree: CategoryTree(
+        groups: [
+          CategoryGroupNode(group: group, children: [child])
+        ],
+        ungroupedChildren: const [],
+        defaultChildren: const [],
+      ),
+    );
+    Category? returned;
+    final router = GoRouter(
+      initialLocation: '/start',
+      routes: [
+        GoRoute(
+          path: '/start',
+          builder: (context, state) => Scaffold(
+            body: Center(
+              child: ElevatedButton(
+                onPressed: () async {
+                  returned = await context.push<Category>('/category');
+                },
+                child: const Text('Mở chọn danh mục'),
+              ),
+            ),
+          ),
+        ),
+        GoRoute(
+          path: '/category',
+          builder: (context, state) => ChooseCategoryPage(
+            repository: repository,
+            idaccount: 1,
+          ),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.tap(find.text('Mở chọn danh mục'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Ăn uống'));
+    await tester.pump();
+    expect(returned, isNull);
+    expect(find.text('GrabFood'), findsOneWidget);
+
+    await tester.tap(find.text('GrabFood'));
+    await tester.pumpAndSettle();
+    expect(returned?.id, child.id);
+  });
+
+  testWidgets('suggestion is shown without selection and applies on acceptance',
+      (tester) async {
+    final food = category(id: 'food', name: 'Ăn uống');
+    final repository = _FakeCategoryRepository(
+      selectable: [food],
+      keywords: {
+        food.id: ['grabfood']
+      },
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AddTransactionPage(
+          transactionBloc: TransactionBloc(
+            transactionRepository: _FakeTransactionRepository(),
+          ),
+          categoryRepository: repository,
+          wallets: [_wallet()],
+          idaccount: 1,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), 'Thanh toán GrabFood');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Gợi ý danh mục'), findsOneWidget);
+    expect(find.text('Ăn uống'), findsOneWidget);
+    expect(find.text('Chọn danh mục'), findsOneWidget);
+
+    await tester.tap(find.text('Chọn danh mục này'));
+    await tester.pump();
+    expect(find.text('Gợi ý danh mục'), findsNothing);
+    expect(find.text('Ăn uống'), findsOneWidget);
+  });
 }
+
+Wallet _wallet() => Wallet(
+      id: 'cash',
+      idaccount: 1,
+      name: 'Tiền mặt',
+      type: 'cash',
+      balance: 100000,
+      currency: 'VND',
+      icon: 'wallet',
+      colour: '#10B981',
+      isDefault: true,
+      isDeleted: false,
+      syncStatus: 'pending',
+      updatedAt: DateTime(2026, 8, 21),
+    );
 
 class _FakeCategoryRepository implements CategoryManagementRepository {
   _FakeCategoryRepository(
-      {CategoryTree? tree, Map<String, CategoryTree>? trees})
-      : _trees = trees ?? {'chi': tree ?? _emptyTree};
+      {CategoryTree? tree,
+      Map<String, CategoryTree>? trees,
+      List<Category> selectable = const [],
+      Map<String, List<String>> keywords = const {}})
+      : _trees = trees ?? {'chi': tree ?? _emptyTree},
+        _selectable = selectable,
+        _keywords = keywords;
 
   static final _emptyTree = CategoryTree(
     groups: const [],
@@ -274,6 +394,8 @@ class _FakeCategoryRepository implements CategoryManagementRepository {
   );
 
   final Map<String, CategoryTree> _trees;
+  final List<Category> _selectable;
+  final Map<String, List<String>> _keywords;
   List<String>? savedKeywords;
   CategoryChildDraft? savedChild;
 
@@ -305,7 +427,7 @@ class _FakeCategoryRepository implements CategoryManagementRepository {
     required int accountId,
     required String categoryId,
   }) async =>
-      const [];
+      _keywords[categoryId] ?? const [];
 
   @override
   Future<void> saveChild(CategoryChildDraft draft) async {
@@ -332,5 +454,27 @@ class _FakeCategoryRepository implements CategoryManagementRepository {
     required int accountId,
     required String classify,
   }) async =>
-      const [];
+      _selectable.where((category) => category.classify == classify).toList();
+}
+
+class _FakeTransactionRepository implements TransactionRepository {
+  @override
+  Future<void> addTransaction(
+    TransactionEntity transaction, {
+    String? destinationWalletId,
+  }) async {}
+
+  @override
+  Future<void> deleteTransaction(
+    TransactionEntity transaction, {
+    String? destinationWalletId,
+  }) async {}
+
+  @override
+  Stream<List<TransactionEntity>> watchTransactionsByMonth(
+    int idaccount,
+    int year,
+    int month,
+  ) =>
+      const Stream.empty();
 }
