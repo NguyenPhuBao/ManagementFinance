@@ -18,6 +18,7 @@ void main() {
     bool isGroup = false,
     bool isDefault = false,
     bool isDeleted = false,
+    bool isLocalOnly = true,
   }) {
     return db.categoryDao.insert(CategoriesCompanion.insert(
       id: id,
@@ -27,7 +28,7 @@ void main() {
       parentId: Value(parentId),
       isGroup: Value(isGroup),
       isDefault: Value(isDefault),
-      isLocalOnly: const Value(true),
+      isLocalOnly: Value(isLocalOnly),
       isDeleted: Value(isDeleted),
       updatedAt: DateTime(2026, 8, 21),
     ));
@@ -58,7 +59,7 @@ void main() {
 
   test('rejects duplicate child name in one scope but permits another group',
       () async {
-    await repository.saveGroup(const CategoryGroupDraft(
+    await repository.saveGroup(CategoryGroupDraft(
       id: 'group-food',
       accountId: 1,
       name: 'Food',
@@ -67,7 +68,7 @@ void main() {
       colour: '#FF5722',
       childIds: [],
     ));
-    await repository.saveGroup(const CategoryGroupDraft(
+    await repository.saveGroup(CategoryGroupDraft(
       id: 'group-work',
       accountId: 1,
       name: 'Work',
@@ -76,7 +77,7 @@ void main() {
       colour: '#2196F3',
       childIds: [],
     ));
-    await repository.saveChild(const CategoryChildDraft(
+    await repository.saveChild(CategoryChildDraft(
       id: 'child-coffee-food',
       accountId: 1,
       name: ' Coffee ',
@@ -88,7 +89,7 @@ void main() {
     ));
 
     await expectLater(
-      repository.saveChild(const CategoryChildDraft(
+      repository.saveChild(CategoryChildDraft(
         id: 'child-coffee-duplicate',
         accountId: 1,
         name: 'coffee',
@@ -101,7 +102,7 @@ void main() {
       throwsA(isA<CategoryValidationException>()),
     );
 
-    await repository.saveChild(const CategoryChildDraft(
+    await repository.saveChild(CategoryChildDraft(
       id: 'child-coffee-work',
       accountId: 1,
       name: 'coffee',
@@ -131,7 +132,7 @@ void main() {
         ['GrabFood']);
 
     await expectLater(
-      repository.saveChild(const CategoryChildDraft(
+      repository.saveChild(CategoryChildDraft(
         id: 'cat-food',
         accountId: 1,
         name: 'Changed food',
@@ -166,5 +167,153 @@ void main() {
         children.map((category) => category.id), isNot(contains('group-food')));
     expect(children.map((category) => category.id),
         isNot(contains('child-deleted')));
+  });
+
+  test('rejects duplicate child names that would share a reassigned group',
+      () async {
+    await insertCategory(id: 'group-food', name: 'Food', isGroup: true);
+    await insertCategory(id: 'group-work', name: 'Work', isGroup: true);
+    await insertCategory(
+      id: 'coffee-food',
+      name: ' Coffee ',
+      parentId: 'group-food',
+    );
+    await insertCategory(
+      id: 'coffee-work',
+      name: 'coffee',
+      parentId: 'group-work',
+    );
+
+    await expectLater(
+      repository.saveGroup(CategoryGroupDraft(
+        id: 'group-food',
+        accountId: 1,
+        name: 'Renamed food',
+        classify: 'chi',
+        icon: 'restaurant',
+        colour: '#FF5722',
+        childIds: ['coffee-food', 'coffee-work'],
+      )),
+      throwsA(isA<CategoryValidationException>()),
+    );
+
+    expect((await db.categoryDao.getById('group-food'))!.name, 'Food');
+    expect(
+        (await db.categoryDao.getById('coffee-work'))!.parentId, 'group-work');
+  });
+
+  test('rejects cross-account existing child and group IDs before mutation',
+      () async {
+    await insertCategory(
+      id: 'other-child',
+      name: 'Other child',
+      accountId: 2,
+    );
+    await insertCategory(
+      id: 'other-group',
+      name: 'Other group',
+      accountId: 2,
+      isGroup: true,
+    );
+
+    await expectLater(
+      repository.saveChild(CategoryChildDraft(
+        id: 'other-child',
+        accountId: 1,
+        name: 'Hijacked child',
+        classify: 'chi',
+        parentId: null,
+        icon: 'category',
+        colour: '#4CAF50',
+        keywords: [],
+      )),
+      throwsA(isA<CategoryValidationException>()),
+    );
+    await expectLater(
+      repository.saveGroup(CategoryGroupDraft(
+        id: 'other-group',
+        accountId: 1,
+        name: 'Hijacked group',
+        classify: 'chi',
+        icon: 'category',
+        colour: '#4CAF50',
+        childIds: [],
+      )),
+      throwsA(isA<CategoryValidationException>()),
+    );
+
+    expect((await db.categoryDao.getById('other-child'))!.idaccount, 2);
+    expect((await db.categoryDao.getById('other-group'))!.idaccount, 2);
+  });
+
+  test('rejects deletion of a non-local personal child', () async {
+    await insertCategory(
+      id: 'server-child',
+      name: 'Server child',
+      isLocalOnly: false,
+    );
+
+    await expectLater(
+      repository.deleteChild(accountId: 1, childId: 'server-child'),
+      throwsA(isA<CategoryValidationException>()),
+    );
+
+    expect((await db.categoryDao.getById('server-child'))!.isDeleted, isFalse);
+  });
+
+  test('rolls back group deletion when the group update fails', () async {
+    await insertCategory(id: 'group-food', name: 'Food', isGroup: true);
+    await insertCategory(
+      id: 'child-coffee',
+      name: 'Coffee',
+      parentId: 'group-food',
+    );
+    await db.customStatement('''
+      CREATE TRIGGER fail_group_delete
+      BEFORE UPDATE ON categories
+      WHEN NEW.id = 'group-food'
+      BEGIN
+        SELECT RAISE(ABORT, 'group deletion blocked');
+      END;
+    ''');
+
+    await expectLater(
+      repository.deleteGroup(accountId: 1, groupId: 'group-food'),
+      throwsA(isA<Exception>()),
+    );
+
+    expect((await db.categoryDao.getById('group-food'))!.isDeleted, isFalse);
+    expect(
+        (await db.categoryDao.getById('child-coffee'))!.parentId, 'group-food');
+  });
+
+  test('draft list fields are defensive and unmodifiable', () {
+    final keywords = <String>['coffee'];
+    final childIds = <String>['child-coffee'];
+    final childDraft = CategoryChildDraft(
+      accountId: 1,
+      name: 'Coffee',
+      classify: 'chi',
+      parentId: null,
+      icon: 'local_cafe',
+      colour: '#795548',
+      keywords: keywords,
+    );
+    final groupDraft = CategoryGroupDraft(
+      accountId: 1,
+      name: 'Food',
+      classify: 'chi',
+      icon: 'restaurant',
+      colour: '#FF5722',
+      childIds: childIds,
+    );
+
+    keywords.add('latte');
+    childIds.add('child-latte');
+
+    expect(childDraft.keywords, ['coffee']);
+    expect(groupDraft.childIds, ['child-coffee']);
+    expect(() => childDraft.keywords.add('tea'), throwsUnsupportedError);
+    expect(() => groupDraft.childIds.add('child-tea'), throwsUnsupportedError);
   });
 }

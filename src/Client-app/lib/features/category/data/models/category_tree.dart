@@ -1,11 +1,13 @@
 import '../../../../core/database/app_database.dart';
 
 class CategoryTree {
-  const CategoryTree({
-    required this.groups,
-    required this.ungroupedChildren,
-    required this.defaultChildren,
-  });
+  CategoryTree({
+    required List<CategoryGroupNode> groups,
+    required List<Category> ungroupedChildren,
+    required List<Category> defaultChildren,
+  })  : groups = List.unmodifiable(groups),
+        ungroupedChildren = List.unmodifiable(ungroupedChildren),
+        defaultChildren = List.unmodifiable(defaultChildren);
 
   final List<CategoryGroupNode> groups;
   final List<Category> ungroupedChildren;
@@ -13,14 +15,18 @@ class CategoryTree {
 }
 
 class CategoryGroupNode {
-  const CategoryGroupNode({required this.group, required this.children});
+  CategoryGroupNode({
+    required Category group,
+    required List<Category> children,
+  })  : group = group,
+        children = List.unmodifiable(children);
 
   final Category group;
   final List<Category> children;
 }
 
 class CategoryChildDraft {
-  const CategoryChildDraft({
+  CategoryChildDraft({
     this.id,
     required this.accountId,
     required this.name,
@@ -28,8 +34,8 @@ class CategoryChildDraft {
     required this.parentId,
     required this.icon,
     required this.colour,
-    required this.keywords,
-  });
+    required List<String> keywords,
+  }) : keywords = List.unmodifiable(keywords);
 
   final String? id;
   final int accountId;
@@ -42,15 +48,15 @@ class CategoryChildDraft {
 }
 
 class CategoryGroupDraft {
-  const CategoryGroupDraft({
+  CategoryGroupDraft({
     this.id,
     required this.accountId,
     required this.name,
     required this.classify,
     required this.icon,
     required this.colour,
-    required this.childIds,
-  });
+    required List<String> childIds,
+  }) : childIds = List.unmodifiable(childIds);
 
   final String? id;
   final int accountId;

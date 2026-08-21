@@ -80,6 +80,7 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
     final existing =
         draft.id == null ? null : await db.categoryDao.getById(draft.id!);
     _rejectDefault(existing);
+    _requireOwnership(existing, draft.accountId);
     if (existing?.isGroup == true) {
       throw const CategoryValidationException(
           'Nhóm danh mục không thể là danh mục con.');
@@ -134,6 +135,7 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
       final existing =
           draft.id == null ? null : await db.categoryDao.getById(draft.id!);
       _rejectDefault(existing);
+      _requireOwnership(existing, draft.accountId);
       if (existing != null && !existing.isGroup) {
         throw const CategoryValidationException(
             'Danh mục con không thể là nhóm.');
@@ -163,6 +165,11 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
           );
         }
         children.add(child);
+      }
+      if (_hasDuplicateAssignedChildName(children)) {
+        throw const CategoryValidationException(
+          'Tên danh mục đã tồn tại trong phạm vi này.',
+        );
       }
 
       final id = draft.id ?? const Uuid().v4();
@@ -210,7 +217,8 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
     if (child == null ||
         child.idaccount != accountId ||
         child.isDeleted ||
-        child.isGroup) {
+        child.isGroup ||
+        !child.isLocalOnly) {
       throw const CategoryValidationException(
           'Chỉ có thể xóa danh mục con cá nhân.');
     }
@@ -373,6 +381,14 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
             _normalize(category.name) == _normalize(name),
       );
 
+  bool _hasDuplicateAssignedChildName(Iterable<Category> children) {
+    final names = <String>{};
+    for (final child in children) {
+      if (!names.add(_normalize(child.name))) return true;
+    }
+    return false;
+  }
+
   void _requireName(String name) {
     if (name.isEmpty) {
       throw const CategoryValidationException(
@@ -384,6 +400,14 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
     if (category?.isDefault == true) {
       throw const CategoryValidationException(
         'Danh mục mặc định chỉ cho phép sửa từ khóa.',
+      );
+    }
+  }
+
+  void _requireOwnership(Category? category, int accountId) {
+    if (category != null && category.idaccount != accountId) {
+      throw const CategoryValidationException(
+        'Danh mục không thuộc tài khoản này.',
       );
     }
   }
