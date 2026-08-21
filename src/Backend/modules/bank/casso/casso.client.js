@@ -1,11 +1,11 @@
 const axios = require('axios');
 const logger = require('../../../core/logger');
+const config = require('../../../config');
 
-const CASSO_API_URL = 'https://api.casso.vn/v2';
-const getApiKey = () => process.env.CASSO_API_KEY;
+const getApiKey = () => config.casso.apiKey;
 
 const cassoClient = axios.create({
-  baseURL: CASSO_API_URL,
+  baseURL: config.casso.apiUrl,
 });
 
 // Thêm interceptor để luôn đính kèm API Key

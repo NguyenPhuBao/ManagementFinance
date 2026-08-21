@@ -1,4 +1,5 @@
 const logger = require('../../../core/logger');
+const config = require('../../../config');
 
 /**
  * Verify webhook request từ Casso
@@ -6,7 +7,7 @@ const logger = require('../../../core/logger');
  * Ta so sánh nó với CASSO_WEBHOOK_SECRET.
  */
 function verifySignature(req) {
-  const secret = process.env.CASSO_WEBHOOK_SECRET;
+  const secret = config.casso.webhookSecret;
   if (!secret) {
     logger.error('CASSO_WEBHOOK_SECRET is not configured in .env');
     return false;
