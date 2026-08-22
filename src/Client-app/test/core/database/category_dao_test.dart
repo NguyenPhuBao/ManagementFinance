@@ -86,6 +86,55 @@ void main() {
     expect(keywordTable.read<String>('name'), 'category_keywords');
   });
 
+  test('migrates v3 category data and creates group membership storage',
+      () async {
+    await db.close();
+    final upgraded = AppDatabase.forTesting(NativeDatabase.memory(
+      setup: (database) {
+        database.execute('''
+          CREATE TABLE categories (
+            id TEXT NOT NULL PRIMARY KEY,
+            idaccount INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            classify TEXT NOT NULL,
+            icon TEXT NOT NULL DEFAULT 'category',
+            colour TEXT NOT NULL DEFAULT '#4CAF50',
+            is_default INTEGER NOT NULL DEFAULT 0,
+            is_deleted INTEGER NOT NULL DEFAULT 0,
+            parent_id TEXT,
+            is_group INTEGER NOT NULL DEFAULT 0,
+            is_local_only INTEGER NOT NULL DEFAULT 0,
+            sync_status TEXT NOT NULL DEFAULT 'pending',
+            updated_at INTEGER NOT NULL
+          )
+        ''');
+        database.execute('''
+          CREATE TABLE category_keywords (
+            id TEXT NOT NULL PRIMARY KEY,
+            idaccount INTEGER NOT NULL,
+            category_id TEXT NOT NULL,
+            keyword TEXT NOT NULL,
+            normalized_keyword TEXT NOT NULL,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL,
+            UNIQUE (idaccount, category_id, normalized_keyword)
+          )
+        ''');
+        database.execute('PRAGMA user_version = 3');
+      },
+    ));
+    addTearDown(upgraded.close);
+
+    final membershipTable = await upgraded
+        .customSelect(
+          "SELECT name FROM sqlite_master WHERE type = 'table' "
+          "AND name = 'category_group_memberships'",
+        )
+        .getSingle();
+
+    expect(membershipTable.read<String>('name'), 'category_group_memberships');
+  });
+
   test('returns raw visible category rows from both category row APIs',
       () async {
     final now = DateTime(2026, 8, 21);
@@ -222,6 +271,101 @@ void main() {
     );
 
     expect(await db.categoryDao.getKeywords(1, 'cat_food'), isEmpty);
+  });
+
+  test('keeps group memberships isolated by account', () async {
+    final now = DateTime(2026, 8, 21);
+    await db.categoryDao.replaceGroupMemberships(
+      accountId: 1,
+      groupId: 'group-food',
+      categoryIds: ['cat_food'],
+      now: now,
+    );
+    await db.categoryDao.replaceGroupMemberships(
+      accountId: 2,
+      groupId: 'group-food',
+      categoryIds: ['cat_transport'],
+      now: now,
+    );
+
+    expect(
+      (await db.categoryDao.getGroupMemberships(1))
+          .map((membership) => membership.categoryId),
+      ['cat_food'],
+    );
+    expect(
+      (await db.categoryDao.getGroupMemberships(2))
+          .map((membership) => membership.categoryId),
+      ['cat_transport'],
+    );
+  });
+
+  test('replaces only the supplied category IDs for a group', () async {
+    final now = DateTime(2026, 8, 21);
+    await db.categoryDao.replaceGroupMemberships(
+      accountId: 1,
+      groupId: 'group-food',
+      categoryIds: ['cat_food', 'cat_drink', 'cat_food'],
+      now: now,
+    );
+    await db.categoryDao.replaceGroupMemberships(
+      accountId: 1,
+      groupId: 'group-transport',
+      categoryIds: ['cat_transport'],
+      now: now,
+    );
+
+    expect(
+      (await db.categoryDao.getGroupMemberships(1))
+          .where((membership) => membership.groupId == 'group-food')
+          .map((membership) => membership.categoryId),
+      unorderedEquals(['cat_food', 'cat_drink']),
+    );
+
+    await db.categoryDao.replaceGroupMemberships(
+      accountId: 1,
+      groupId: 'group-food',
+      categoryIds: ['cat_grocery'],
+      now: now,
+    );
+
+    final memberships = await db.categoryDao.getGroupMemberships(1);
+    expect(
+      memberships
+          .where((membership) => membership.groupId == 'group-food')
+          .map((membership) => membership.categoryId),
+      ['cat_grocery'],
+    );
+    expect(
+      memberships
+          .where((membership) => membership.groupId == 'group-transport')
+          .map((membership) => membership.categoryId),
+      ['cat_transport'],
+    );
+  });
+
+  test('removes group memberships without affecting another group', () async {
+    final now = DateTime(2026, 8, 21);
+    await db.categoryDao.replaceGroupMemberships(
+      accountId: 1,
+      groupId: 'group-food',
+      categoryIds: ['cat_food'],
+      now: now,
+    );
+    await db.categoryDao.replaceGroupMemberships(
+      accountId: 1,
+      groupId: 'group-transport',
+      categoryIds: ['cat_transport'],
+      now: now,
+    );
+
+    await db.categoryDao.removeGroupMemberships(1, 'group-food');
+
+    expect(
+      (await db.categoryDao.getGroupMemberships(1))
+          .map((membership) => membership.categoryId),
+      ['cat_transport'],
+    );
   });
 
   test('returns only syncable categories for the requested account', () async {

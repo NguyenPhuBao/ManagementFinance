@@ -5,7 +5,11 @@ import '../tables/categories_table.dart';
 
 part 'category_dao.g.dart';
 
-@DriftAccessor(tables: [Categories, CategoryKeywords])
+@DriftAccessor(tables: [
+  Categories,
+  CategoryKeywords,
+  CategoryGroupMemberships,
+])
 class CategoryDao extends DatabaseAccessor<AppDatabase>
     with _$CategoryDaoMixin {
   CategoryDao(super.db);
@@ -126,6 +130,58 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
               .toList(),
         );
       });
+    });
+  }
+
+  Future<List<CategoryGroupMembership>> getGroupMemberships(int accountId) {
+    return (select(categoryGroupMemberships)
+          ..where((t) => t.idaccount.equals(accountId))
+          ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
+        .get();
+  }
+
+  Future<void> replaceGroupMemberships({
+    required int accountId,
+    required String groupId,
+    required Iterable<String> categoryIds,
+    required DateTime now,
+  }) async {
+    final uniqueCategoryIds = categoryIds.toSet();
+
+    await transaction(() async {
+      await (delete(categoryGroupMemberships)
+            ..where((t) =>
+                t.idaccount.equals(accountId) & t.groupId.equals(groupId)))
+          .go();
+      if (uniqueCategoryIds.isEmpty) {
+        return;
+      }
+      await batch((batch) {
+        batch.insertAll(
+          categoryGroupMemberships,
+          uniqueCategoryIds
+              .map(
+                (categoryId) => CategoryGroupMembershipsCompanion.insert(
+                  id: const Uuid().v4(),
+                  idaccount: accountId,
+                  groupId: groupId,
+                  categoryId: categoryId,
+                  createdAt: now,
+                  updatedAt: now,
+                ),
+              )
+              .toList(),
+        );
+      });
+    });
+  }
+
+  Future<void> removeGroupMemberships(int accountId, String groupId) async {
+    await transaction(() async {
+      await (delete(categoryGroupMemberships)
+            ..where((t) =>
+                t.idaccount.equals(accountId) & t.groupId.equals(groupId)))
+          .go();
     });
   }
 

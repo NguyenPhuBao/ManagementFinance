@@ -33,6 +33,7 @@ part 'app_database.g.dart';
     Transactions,
     Categories,
     CategoryKeywords,
+    CategoryGroupMemberships,
     Budgets,
     Bills,
     Goals,
@@ -51,7 +52,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration {
@@ -70,6 +71,9 @@ class AppDatabase extends _$AppDatabase {
           await m.addColumn(categories, categories.isGroup);
           await m.addColumn(categories, categories.isLocalOnly);
           await m.createTable(categoryKeywords);
+        }
+        if (from < 4) {
+          await m.createTable(categoryGroupMemberships);
         }
       },
       beforeOpen: (details) async {

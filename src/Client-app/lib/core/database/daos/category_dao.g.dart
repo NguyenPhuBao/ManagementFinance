@@ -7,6 +7,8 @@ mixin _$CategoryDaoMixin on DatabaseAccessor<AppDatabase> {
   $CategoriesTable get categories => attachedDatabase.categories;
   $CategoryKeywordsTable get categoryKeywords =>
       attachedDatabase.categoryKeywords;
+  $CategoryGroupMembershipsTable get categoryGroupMemberships =>
+      attachedDatabase.categoryGroupMemberships;
   CategoryDaoManager get managers => CategoryDaoManager(this);
 }
 
@@ -18,4 +20,7 @@ class CategoryDaoManager {
   $$CategoryKeywordsTableTableManager get categoryKeywords =>
       $$CategoryKeywordsTableTableManager(
           _db.attachedDatabase, _db.categoryKeywords);
+  $$CategoryGroupMembershipsTableTableManager get categoryGroupMemberships =>
+      $$CategoryGroupMembershipsTableTableManager(
+          _db.attachedDatabase, _db.categoryGroupMemberships);
 }

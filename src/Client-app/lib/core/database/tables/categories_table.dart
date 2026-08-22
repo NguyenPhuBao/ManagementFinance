@@ -50,3 +50,20 @@ class CategoryKeywords extends Table {
     {idaccount, categoryId, normalizedKeyword},
   ];
 }
+
+class CategoryGroupMemberships extends Table {
+  TextColumn get id => text()();
+  IntColumn get idaccount => integer()();
+  TextColumn get groupId => text()();
+  TextColumn get categoryId => text()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+
+  @override
+  List<Set<Column>> get uniqueKeys => [
+    {idaccount, categoryId},
+  ];
+}

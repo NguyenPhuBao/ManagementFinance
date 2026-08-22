@@ -2202,6 +2202,365 @@ class CategoryKeywordsCompanion extends UpdateCompanion<CategoryKeyword> {
   }
 }
 
+class $CategoryGroupMembershipsTable extends CategoryGroupMemberships
+    with TableInfo<$CategoryGroupMembershipsTable, CategoryGroupMembership> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CategoryGroupMembershipsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _idaccountMeta =
+      const VerificationMeta('idaccount');
+  @override
+  late final GeneratedColumn<int> idaccount = GeneratedColumn<int>(
+      'idaccount', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _groupIdMeta =
+      const VerificationMeta('groupId');
+  @override
+  late final GeneratedColumn<String> groupId = GeneratedColumn<String>(
+      'group_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _categoryIdMeta =
+      const VerificationMeta('categoryId');
+  @override
+  late final GeneratedColumn<String> categoryId = GeneratedColumn<String>(
+      'category_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, idaccount, groupId, categoryId, createdAt, updatedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'category_group_memberships';
+  @override
+  VerificationContext validateIntegrity(
+      Insertable<CategoryGroupMembership> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('idaccount')) {
+      context.handle(_idaccountMeta,
+          idaccount.isAcceptableOrUnknown(data['idaccount']!, _idaccountMeta));
+    } else if (isInserting) {
+      context.missing(_idaccountMeta);
+    }
+    if (data.containsKey('group_id')) {
+      context.handle(_groupIdMeta,
+          groupId.isAcceptableOrUnknown(data['group_id']!, _groupIdMeta));
+    } else if (isInserting) {
+      context.missing(_groupIdMeta);
+    }
+    if (data.containsKey('category_id')) {
+      context.handle(
+          _categoryIdMeta,
+          categoryId.isAcceptableOrUnknown(
+              data['category_id']!, _categoryIdMeta));
+    } else if (isInserting) {
+      context.missing(_categoryIdMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+        {idaccount, categoryId},
+      ];
+  @override
+  CategoryGroupMembership map(Map<String, dynamic> data,
+      {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CategoryGroupMembership(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      idaccount: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}idaccount'])!,
+      groupId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}group_id'])!,
+      categoryId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}category_id'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+    );
+  }
+
+  @override
+  $CategoryGroupMembershipsTable createAlias(String alias) {
+    return $CategoryGroupMembershipsTable(attachedDatabase, alias);
+  }
+}
+
+class CategoryGroupMembership extends DataClass
+    implements Insertable<CategoryGroupMembership> {
+  final String id;
+  final int idaccount;
+  final String groupId;
+  final String categoryId;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const CategoryGroupMembership(
+      {required this.id,
+      required this.idaccount,
+      required this.groupId,
+      required this.categoryId,
+      required this.createdAt,
+      required this.updatedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['idaccount'] = Variable<int>(idaccount);
+    map['group_id'] = Variable<String>(groupId);
+    map['category_id'] = Variable<String>(categoryId);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  CategoryGroupMembershipsCompanion toCompanion(bool nullToAbsent) {
+    return CategoryGroupMembershipsCompanion(
+      id: Value(id),
+      idaccount: Value(idaccount),
+      groupId: Value(groupId),
+      categoryId: Value(categoryId),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory CategoryGroupMembership.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CategoryGroupMembership(
+      id: serializer.fromJson<String>(json['id']),
+      idaccount: serializer.fromJson<int>(json['idaccount']),
+      groupId: serializer.fromJson<String>(json['groupId']),
+      categoryId: serializer.fromJson<String>(json['categoryId']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'idaccount': serializer.toJson<int>(idaccount),
+      'groupId': serializer.toJson<String>(groupId),
+      'categoryId': serializer.toJson<String>(categoryId),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  CategoryGroupMembership copyWith(
+          {String? id,
+          int? idaccount,
+          String? groupId,
+          String? categoryId,
+          DateTime? createdAt,
+          DateTime? updatedAt}) =>
+      CategoryGroupMembership(
+        id: id ?? this.id,
+        idaccount: idaccount ?? this.idaccount,
+        groupId: groupId ?? this.groupId,
+        categoryId: categoryId ?? this.categoryId,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
+  CategoryGroupMembership copyWithCompanion(
+      CategoryGroupMembershipsCompanion data) {
+    return CategoryGroupMembership(
+      id: data.id.present ? data.id.value : this.id,
+      idaccount: data.idaccount.present ? data.idaccount.value : this.idaccount,
+      groupId: data.groupId.present ? data.groupId.value : this.groupId,
+      categoryId:
+          data.categoryId.present ? data.categoryId.value : this.categoryId,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CategoryGroupMembership(')
+          ..write('id: $id, ')
+          ..write('idaccount: $idaccount, ')
+          ..write('groupId: $groupId, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, idaccount, groupId, categoryId, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CategoryGroupMembership &&
+          other.id == this.id &&
+          other.idaccount == this.idaccount &&
+          other.groupId == this.groupId &&
+          other.categoryId == this.categoryId &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class CategoryGroupMembershipsCompanion
+    extends UpdateCompanion<CategoryGroupMembership> {
+  final Value<String> id;
+  final Value<int> idaccount;
+  final Value<String> groupId;
+  final Value<String> categoryId;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const CategoryGroupMembershipsCompanion({
+    this.id = const Value.absent(),
+    this.idaccount = const Value.absent(),
+    this.groupId = const Value.absent(),
+    this.categoryId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CategoryGroupMembershipsCompanion.insert({
+    required String id,
+    required int idaccount,
+    required String groupId,
+    required String categoryId,
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        idaccount = Value(idaccount),
+        groupId = Value(groupId),
+        categoryId = Value(categoryId),
+        createdAt = Value(createdAt),
+        updatedAt = Value(updatedAt);
+  static Insertable<CategoryGroupMembership> custom({
+    Expression<String>? id,
+    Expression<int>? idaccount,
+    Expression<String>? groupId,
+    Expression<String>? categoryId,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (idaccount != null) 'idaccount': idaccount,
+      if (groupId != null) 'group_id': groupId,
+      if (categoryId != null) 'category_id': categoryId,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CategoryGroupMembershipsCompanion copyWith(
+      {Value<String>? id,
+      Value<int>? idaccount,
+      Value<String>? groupId,
+      Value<String>? categoryId,
+      Value<DateTime>? createdAt,
+      Value<DateTime>? updatedAt,
+      Value<int>? rowid}) {
+    return CategoryGroupMembershipsCompanion(
+      id: id ?? this.id,
+      idaccount: idaccount ?? this.idaccount,
+      groupId: groupId ?? this.groupId,
+      categoryId: categoryId ?? this.categoryId,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (idaccount.present) {
+      map['idaccount'] = Variable<int>(idaccount.value);
+    }
+    if (groupId.present) {
+      map['group_id'] = Variable<String>(groupId.value);
+    }
+    if (categoryId.present) {
+      map['category_id'] = Variable<String>(categoryId.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CategoryGroupMembershipsCompanion(')
+          ..write('id: $id, ')
+          ..write('idaccount: $idaccount, ')
+          ..write('groupId: $groupId, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
   @override
   final GeneratedDatabase attachedDatabase;
@@ -4050,6 +4409,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $CategoriesTable categories = $CategoriesTable(this);
   late final $CategoryKeywordsTable categoryKeywords =
       $CategoryKeywordsTable(this);
+  late final $CategoryGroupMembershipsTable categoryGroupMemberships =
+      $CategoryGroupMembershipsTable(this);
   late final $BudgetsTable budgets = $BudgetsTable(this);
   late final $BillsTable bills = $BillsTable(this);
   late final $GoalsTable goals = $GoalsTable(this);
@@ -4069,6 +4430,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         transactions,
         categories,
         categoryKeywords,
+        categoryGroupMemberships,
         budgets,
         bills,
         goals
@@ -5300,6 +5662,201 @@ typedef $$CategoryKeywordsTableProcessedTableManager = ProcessedTableManager<
     ),
     CategoryKeyword,
     PrefetchHooks Function()>;
+typedef $$CategoryGroupMembershipsTableCreateCompanionBuilder
+    = CategoryGroupMembershipsCompanion Function({
+  required String id,
+  required int idaccount,
+  required String groupId,
+  required String categoryId,
+  required DateTime createdAt,
+  required DateTime updatedAt,
+  Value<int> rowid,
+});
+typedef $$CategoryGroupMembershipsTableUpdateCompanionBuilder
+    = CategoryGroupMembershipsCompanion Function({
+  Value<String> id,
+  Value<int> idaccount,
+  Value<String> groupId,
+  Value<String> categoryId,
+  Value<DateTime> createdAt,
+  Value<DateTime> updatedAt,
+  Value<int> rowid,
+});
+
+class $$CategoryGroupMembershipsTableFilterComposer
+    extends Composer<_$AppDatabase, $CategoryGroupMembershipsTable> {
+  $$CategoryGroupMembershipsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get idaccount => $composableBuilder(
+      column: $table.idaccount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get groupId => $composableBuilder(
+      column: $table.groupId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get categoryId => $composableBuilder(
+      column: $table.categoryId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$CategoryGroupMembershipsTableOrderingComposer
+    extends Composer<_$AppDatabase, $CategoryGroupMembershipsTable> {
+  $$CategoryGroupMembershipsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get idaccount => $composableBuilder(
+      column: $table.idaccount, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get groupId => $composableBuilder(
+      column: $table.groupId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get categoryId => $composableBuilder(
+      column: $table.categoryId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$CategoryGroupMembershipsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CategoryGroupMembershipsTable> {
+  $$CategoryGroupMembershipsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get idaccount =>
+      $composableBuilder(column: $table.idaccount, builder: (column) => column);
+
+  GeneratedColumn<String> get groupId =>
+      $composableBuilder(column: $table.groupId, builder: (column) => column);
+
+  GeneratedColumn<String> get categoryId => $composableBuilder(
+      column: $table.categoryId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$CategoryGroupMembershipsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $CategoryGroupMembershipsTable,
+    CategoryGroupMembership,
+    $$CategoryGroupMembershipsTableFilterComposer,
+    $$CategoryGroupMembershipsTableOrderingComposer,
+    $$CategoryGroupMembershipsTableAnnotationComposer,
+    $$CategoryGroupMembershipsTableCreateCompanionBuilder,
+    $$CategoryGroupMembershipsTableUpdateCompanionBuilder,
+    (
+      CategoryGroupMembership,
+      BaseReferences<_$AppDatabase, $CategoryGroupMembershipsTable,
+          CategoryGroupMembership>
+    ),
+    CategoryGroupMembership,
+    PrefetchHooks Function()> {
+  $$CategoryGroupMembershipsTableTableManager(
+      _$AppDatabase db, $CategoryGroupMembershipsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CategoryGroupMembershipsTableFilterComposer(
+                  $db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CategoryGroupMembershipsTableOrderingComposer(
+                  $db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CategoryGroupMembershipsTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<int> idaccount = const Value.absent(),
+            Value<String> groupId = const Value.absent(),
+            Value<String> categoryId = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              CategoryGroupMembershipsCompanion(
+            id: id,
+            idaccount: idaccount,
+            groupId: groupId,
+            categoryId: categoryId,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required int idaccount,
+            required String groupId,
+            required String categoryId,
+            required DateTime createdAt,
+            required DateTime updatedAt,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              CategoryGroupMembershipsCompanion.insert(
+            id: id,
+            idaccount: idaccount,
+            groupId: groupId,
+            categoryId: categoryId,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$CategoryGroupMembershipsTableProcessedTableManager
+    = ProcessedTableManager<
+        _$AppDatabase,
+        $CategoryGroupMembershipsTable,
+        CategoryGroupMembership,
+        $$CategoryGroupMembershipsTableFilterComposer,
+        $$CategoryGroupMembershipsTableOrderingComposer,
+        $$CategoryGroupMembershipsTableAnnotationComposer,
+        $$CategoryGroupMembershipsTableCreateCompanionBuilder,
+        $$CategoryGroupMembershipsTableUpdateCompanionBuilder,
+        (
+          CategoryGroupMembership,
+          BaseReferences<_$AppDatabase, $CategoryGroupMembershipsTable,
+              CategoryGroupMembership>
+        ),
+        CategoryGroupMembership,
+        PrefetchHooks Function()>;
 typedef $$BudgetsTableCreateCompanionBuilder = BudgetsCompanion Function({
   required String id,
   required int idaccount,
@@ -6152,6 +6709,9 @@ class $AppDatabaseManager {
       $$CategoriesTableTableManager(_db, _db.categories);
   $$CategoryKeywordsTableTableManager get categoryKeywords =>
       $$CategoryKeywordsTableTableManager(_db, _db.categoryKeywords);
+  $$CategoryGroupMembershipsTableTableManager get categoryGroupMemberships =>
+      $$CategoryGroupMembershipsTableTableManager(
+          _db, _db.categoryGroupMemberships);
   $$BudgetsTableTableManager get budgets =>
       $$BudgetsTableTableManager(_db, _db.budgets);
   $$BillsTableTableManager get bills =>
