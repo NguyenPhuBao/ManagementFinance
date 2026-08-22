@@ -116,10 +116,12 @@ void main() {
     await tester.pump();
     expect(find.text('Tiền nhà'), findsOneWidget);
 
-    await tester.tap(find.text('Từ khóa của tôi'));
+    await tester.tap(find.text('Tiền nhà'));
     await tester.pumpAndSettle();
     expect(find.text('Từ khóa của tôi'), findsWidgets);
     expect(find.text('Tên danh mục'), findsNothing);
+    expect(find.text('Loại giao dịch'), findsNothing);
+    expect(find.text('Nhóm cha'), findsNothing);
   });
 
   testWidgets('add menu opens the parent-group creation route', (tester) async {
@@ -172,6 +174,7 @@ void main() {
     final defaultCategory = category(
       id: 'default-food',
       name: 'Ăn uống',
+      idaccount: 0,
       isDefault: true,
     );
     final repository = _FakeCategoryRepository(
@@ -201,6 +204,7 @@ void main() {
     final defaultCategory = category(
       id: 'default-food',
       name: 'Ăn uống',
+      idaccount: 0,
       isDefault: true,
     );
     final repository = _FakeCategoryRepository(selectable: [defaultCategory]);
