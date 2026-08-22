@@ -40,8 +40,45 @@ deleted. Deleting a child must not affect historical transactions.
 
 System/default categories are globally owned (`owner_account_id`/current client
 `idaccount` equals `0`) and are read-only as category metadata. They may be
-shown to every account, but no account may rename, reparent, group, or delete
-them.
+shown to every account, but no account may rename, reparent, or delete them.
+Their per-account group placement is represented only by the separate
+membership record below; it must never mutate the global category row.
+
+## Deferred default-category group membership contract
+
+To place a global default category under a personal group, the backend needs a
+separate, account-scoped membership resource. This is intentionally not the
+category record's `parent_id`.
+
+```json
+{
+  "id": "cgm_8a2e",
+  "account_id": 42,
+  "group_id": "grp_home",
+  "category_id": "cat_food",
+  "updated_at": "2026-08-21T09:30:00.000Z"
+}
+```
+
+Required validation and storage rules:
+
+- `group_id` must reference an active, personal, same-account group; the group
+  and default category must have the same `classify`.
+- `category_id` must reference an active global default category. It remains
+  read-only category metadata and a transaction-picker leaf.
+- Enforce uniqueness on `(account_id, category_id)`, so a default category can
+  belong to at most one personal group for that account.
+- Index memberships by `(account_id, group_id)` for tree assembly, and retain a
+  lookup on `(account_id, category_id)` for uniqueness and reassignment.
+
+### Current local-only fence
+
+The Client-app currently stores default-category memberships only in SQLite.
+They are excluded from sync payloads and must be preserved when category data
+is pulled. Do not add this resource to backend/admin/sync flows until the
+contract above, authorization, indexes, tombstones, and conflict rules are
+deployed together; removing this fence requires a separately reviewed client
+migration.
 
 Keywords are separate, account-scoped records, not a shared field on a default
 category. A record contains at least:

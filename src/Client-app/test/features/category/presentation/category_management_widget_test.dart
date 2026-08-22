@@ -4,6 +4,7 @@ import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
 import 'package:flowmoney/features/category/data/repositories/category_management_repository.dart';
 import 'package:flowmoney/features/category/presentation/pages/category_add_page.dart';
+import 'package:flowmoney/features/category/presentation/pages/category_group_page.dart';
 import 'package:flowmoney/features/category/presentation/pages/category_page.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/transaction/data/repositories/transaction_repository.dart';
@@ -20,6 +21,7 @@ void main() {
   Category category({
     required String id,
     required String name,
+    int idaccount = 1,
     String classify = 'chi',
     bool isGroup = false,
     bool isDefault = false,
@@ -27,7 +29,7 @@ void main() {
   }) =>
       Category(
         id: id,
-        idaccount: 1,
+        idaccount: idaccount,
         name: name,
         classify: classify,
         icon: 'category',
@@ -81,7 +83,8 @@ void main() {
     final child = category(
       id: 'rent',
       name: 'Tiền nhà',
-      parentId: group.id,
+      idaccount: 0,
+      isDefault: true,
     );
     final ungrouped = category(id: 'coffee', name: 'Cà phê');
     final defaultCategory = category(
@@ -192,6 +195,37 @@ void main() {
     expect(find.text('Nhóm cha'), findsNothing);
   });
 
+  testWidgets(
+      'default category is a selectable read-only member in the group form',
+      (tester) async {
+    final defaultCategory = category(
+      id: 'default-food',
+      name: 'Ăn uống',
+      isDefault: true,
+    );
+    final repository = _FakeCategoryRepository(selectable: [defaultCategory]);
+
+    await tester.pumpWidget(app(CategoryGroupPage(
+      repository: repository,
+      accountId: 1,
+    )));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ăn uống'), findsOneWidget);
+    expect(
+      find.text('Danh mục mặc định • Chỉ có thể sửa từ khóa'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('Ăn uống'));
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), 'Chi tiêu hàng ngày');
+    await tester.tap(find.text('Lưu Nhóm Danh Mục'));
+    await tester.pump();
+
+    expect(repository.savedGroup?.childIds, [defaultCategory.id]);
+  });
+
   testWidgets('confirming a different-type parent applies its type once',
       (tester) async {
     final incomeGroup = category(
@@ -290,13 +324,14 @@ void main() {
     expect(repository.savedChild?.classify, 'chi');
   });
 
-  testWidgets('group tap does not return a selection but leaf tap does',
+  testWidgets('grouped default remains a transaction-picker leaf target',
       (tester) async {
     final group = category(id: 'group-food', name: 'Ăn uống', isGroup: true);
     final child = category(
       id: 'grab-food',
       name: 'GrabFood',
-      parentId: group.id,
+      idaccount: 0,
+      isDefault: true,
     );
     final repository = _FakeCategoryRepository(
       tree: CategoryTree(
@@ -466,6 +501,7 @@ class _FakeCategoryRepository implements CategoryManagementRepository {
   final Map<String, List<String>> _keywords;
   List<String>? savedKeywords;
   CategoryChildDraft? savedChild;
+  CategoryGroupDraft? savedGroup;
 
   @override
   Stream<CategoryTree> watchTree({
@@ -503,7 +539,9 @@ class _FakeCategoryRepository implements CategoryManagementRepository {
   }
 
   @override
-  Future<void> saveGroup(CategoryGroupDraft draft) async {}
+  Future<void> saveGroup(CategoryGroupDraft draft) async {
+    savedGroup = draft;
+  }
 
   @override
   Future<void> deleteChild({

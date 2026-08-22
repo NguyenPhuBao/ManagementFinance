@@ -86,12 +86,7 @@ class _CategoryGroupPageState extends State<CategoryGroupPage> {
     );
     if (!mounted) return;
     setState(() {
-      _children = children
-          .where((child) =>
-              !child.isDefault &&
-              !child.isDeleted &&
-              child.idaccount == _accountId)
-          .toList();
+      _children = children.where((child) => !child.isDeleted).toList();
       _selectedChildIds.retainAll(_children.map((child) => child.id).toSet());
     });
   }
@@ -219,8 +214,9 @@ class _CategoryGroupPageState extends State<CategoryGroupPage> {
                                             value: _selectedChildIds
                                                 .contains(child.id),
                                             title: Text(child.name),
-                                            subtitle: Text(
-                                                child.parentId == null
+                                            subtitle: Text(child.isDefault
+                                                ? 'Danh mục mặc định • Chỉ có thể sửa từ khóa'
+                                                : child.parentId == null
                                                     ? 'Chưa nhóm'
                                                     : 'Đang ở nhóm khác'),
                                             onChanged: (selected) =>
