@@ -133,6 +133,60 @@ void main() {
     expect(await db.categoryDao.getGroupMemberships(2), isEmpty);
   });
 
+  test('moves a default membership when saving a second personal group',
+      () async {
+    await insertCategory(
+      id: 'default-utilities',
+      name: 'Utilities',
+      accountId: 0,
+      isDefault: true,
+      isLocalOnly: false,
+    );
+    await repository.saveGroup(CategoryGroupDraft(
+      id: 'group-home',
+      accountId: 1,
+      name: 'Home',
+      classify: 'chi',
+      icon: 'home',
+      colour: '#4CAF50',
+      childIds: ['default-utilities'],
+    ));
+    await repository.saveGroup(CategoryGroupDraft(
+      id: 'group-work',
+      accountId: 1,
+      name: 'Work',
+      classify: 'chi',
+      icon: 'work',
+      colour: '#2196F3',
+      childIds: [],
+    ));
+
+    await repository.saveGroup(CategoryGroupDraft(
+      id: 'group-work',
+      accountId: 1,
+      name: 'Work',
+      classify: 'chi',
+      icon: 'work',
+      colour: '#2196F3',
+      childIds: ['default-utilities'],
+    ));
+
+    final tree = await repository.loadTree(accountId: 1, classify: 'chi');
+    final home =
+        tree.groups.singleWhere((node) => node.group.id == 'group-home');
+    final work =
+        tree.groups.singleWhere((node) => node.group.id == 'group-work');
+    final memberships = await db.categoryDao.getGroupMemberships(1);
+
+    expect(home.children, isEmpty);
+    expect(work.children.map((category) => category.id), ['default-utilities']);
+    expect(memberships, hasLength(1));
+    expect(memberships.single.groupId, 'group-work');
+    expect(memberships.single.categoryId, 'default-utilities');
+    expect(
+        (await db.categoryDao.getById('default-utilities'))!.parentId, isNull);
+  });
+
   test('watchTree resolves membership-only changes without category writes',
       () async {
     await insertCategory(

@@ -120,6 +120,16 @@ void main() {
             UNIQUE (idaccount, category_id, normalized_keyword)
           )
         ''');
+        database.execute('''
+          INSERT INTO categories (
+            id, idaccount, name, classify, icon, colour,
+            is_default, is_deleted, parent_id, is_group, is_local_only,
+            sync_status, updated_at
+          ) VALUES (
+            'legacy-food', 1, 'Legacy food', 'chi', 'category', '#4CAF50',
+            0, 0, NULL, 0, 0, 'synced', 1787270400000
+          )
+        ''');
         database.execute('PRAGMA user_version = 3');
       },
     ));
@@ -133,6 +143,8 @@ void main() {
         .getSingle();
 
     expect(membershipTable.read<String>('name'), 'category_group_memberships');
+    expect((await upgraded.categoryDao.getById('legacy-food'))!.name,
+        'Legacy food');
   });
 
   test('returns raw visible category rows from both category row APIs',
@@ -341,6 +353,42 @@ void main() {
           .where((membership) => membership.groupId == 'group-transport')
           .map((membership) => membership.categoryId),
       ['cat_transport'],
+    );
+  });
+
+  test('moves a requested membership from another group in the same account',
+      () async {
+    final now = DateTime(2026, 8, 21);
+    await db.categoryDao.replaceGroupMemberships(
+      accountId: 1,
+      groupId: 'group-food',
+      categoryIds: ['cat_food', 'cat_drink'],
+      now: now,
+    );
+
+    await db.categoryDao.replaceGroupMemberships(
+      accountId: 1,
+      groupId: 'group-home',
+      categoryIds: ['cat_food'],
+      now: now,
+    );
+
+    final memberships = await db.categoryDao.getGroupMemberships(1);
+    expect(
+      memberships.where((membership) => membership.categoryId == 'cat_food'),
+      hasLength(1),
+    );
+    expect(
+      memberships
+          .singleWhere((membership) => membership.categoryId == 'cat_food')
+          .groupId,
+      'group-home',
+    );
+    expect(
+      memberships
+          .singleWhere((membership) => membership.categoryId == 'cat_drink')
+          .groupId,
+      'group-food',
     );
   });
 

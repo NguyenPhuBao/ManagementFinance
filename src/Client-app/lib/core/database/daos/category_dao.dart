@@ -156,6 +156,11 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
       if (uniqueCategoryIds.isEmpty) {
         return;
       }
+      await (delete(categoryGroupMemberships)
+            ..where((t) =>
+                t.idaccount.equals(accountId) &
+                t.categoryId.isIn(uniqueCategoryIds)))
+          .go();
       await batch((batch) {
         batch.insertAll(
           categoryGroupMemberships,
