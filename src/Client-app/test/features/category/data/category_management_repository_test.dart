@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart' hide isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -114,6 +116,10 @@ void main() {
       ['default-utilities'],
     );
     expect(
+      accountOneTree.ungroupedChildren.map((category) => category.id),
+      isNot(contains('default-utilities')),
+    );
+    expect(
       accountTwoTree.ungroupedChildren.map((category) => category.id),
       contains('default-utilities'),
     );
@@ -125,6 +131,95 @@ void main() {
       ['default-utilities'],
     );
     expect(await db.categoryDao.getGroupMemberships(2), isEmpty);
+  });
+
+  test('watchTree resolves membership-only changes without category writes',
+      () async {
+    await insertCategory(
+      id: 'default-utilities',
+      name: 'Utilities',
+      accountId: 0,
+      isDefault: true,
+      isLocalOnly: false,
+    );
+    await insertCategory(id: 'group-home', name: 'Home', isGroup: true);
+
+    final trees = StreamIterator(
+      repository.watchTree(accountId: 1, classify: 'chi'),
+    );
+    addTearDown(trees.cancel);
+
+    expect(
+      await trees.moveNext().timeout(const Duration(seconds: 5)),
+      isTrue,
+    );
+    expect(
+      trees.current.ungroupedChildren.map((category) => category.id),
+      contains('default-utilities'),
+    );
+
+    await db.categoryDao.replaceGroupMemberships(
+      accountId: 1,
+      groupId: 'group-home',
+      categoryIds: ['default-utilities'],
+      now: DateTime(2026, 8, 22),
+    );
+
+    expect(
+      await trees.moveNext().timeout(const Duration(seconds: 5)),
+      isTrue,
+    );
+    expect(
+      trees.current.groups.single.children.map((category) => category.id),
+      ['default-utilities'],
+    );
+    expect(
+      trees.current.ungroupedChildren.map((category) => category.id),
+      isNot(contains('default-utilities')),
+    );
+
+    await db.categoryDao.removeGroupMemberships(1, 'group-home');
+
+    expect(
+      await trees.moveNext().timeout(const Duration(seconds: 5)),
+      isTrue,
+    );
+    expect(
+      trees.current.groups.single.children.map((category) => category.id),
+      isEmpty,
+    );
+    expect(
+      trees.current.ungroupedChildren.map((category) => category.id),
+      contains('default-utilities'),
+    );
+  });
+
+  test('rejects a default child that does not match the group classify',
+      () async {
+    await insertCategory(
+      id: 'default-salary',
+      name: 'Salary',
+      accountId: 0,
+      classify: 'thu',
+      isDefault: true,
+      isLocalOnly: false,
+    );
+
+    await expectLater(
+      repository.saveGroup(CategoryGroupDraft(
+        id: 'group-home',
+        accountId: 1,
+        name: 'Home',
+        classify: 'chi',
+        icon: 'home',
+        colour: '#4CAF50',
+        childIds: ['default-salary'],
+      )),
+      throwsA(isA<CategoryValidationException>()),
+    );
+
+    expect(await db.categoryDao.getById('group-home'), isNull);
+    expect(await db.categoryDao.getGroupMemberships(1), isEmpty);
   });
 
   test(
@@ -366,6 +461,19 @@ void main() {
       name: 'Coffee',
       parentId: 'group-food',
     );
+    await insertCategory(
+      id: 'default-utilities',
+      name: 'Utilities',
+      accountId: 0,
+      isDefault: true,
+      isLocalOnly: false,
+    );
+    await db.categoryDao.replaceGroupMemberships(
+      accountId: 1,
+      groupId: 'group-food',
+      categoryIds: ['default-utilities'],
+      now: DateTime(2026, 8, 22),
+    );
     await db.customStatement('''
       CREATE TRIGGER fail_group_delete
       BEFORE UPDATE ON categories
@@ -383,6 +491,11 @@ void main() {
     expect((await db.categoryDao.getById('group-food'))!.isDeleted, isFalse);
     expect(
         (await db.categoryDao.getById('child-coffee'))!.parentId, 'group-food');
+    expect(
+      (await db.categoryDao.getGroupMemberships(1))
+          .map((membership) => membership.categoryId),
+      ['default-utilities'],
+    );
   });
 
   test('draft list fields are defensive and unmodifiable', () {
