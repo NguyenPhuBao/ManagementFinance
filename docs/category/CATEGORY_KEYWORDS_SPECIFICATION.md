@@ -1,5 +1,14 @@
 # ĐẶC TẢ KỸ THUẬT: TÍNH NĂNG TỪ KHÓA AI NHẬN DIỆN DANH MỤC (CATEGORY KEYWORDS)
 
+> **Trạng thái cập nhật 2026-08-22:** Phần mô tả `Categories.keywords` và các
+> payload đồng bộ trong tài liệu cũ này không còn phản ánh Client-app hiện tại.
+> Client dùng bảng local `category_keywords` với khóa
+> `(account_id, category_id, normalized_keyword)`; nhóm danh mục và từ khóa vẫn
+> local-only. Backend cần dùng
+> [`CATEGORY_MANAGEMENT_BACKEND_HANDOFF.md`](CATEGORY_MANAGEMENT_BACKEND_HANDOFF.md)
+> làm hợp đồng triển khai/sync mới, không thêm trường `keywords` vào payload
+> category hiện hữu chỉ dựa trên tài liệu này.
+
 > **Tài liệu tham chiếu thiết kế & hướng dẫn mở rộng cho Client-app và Backend về sau.**  
 > **Phiên bản:** 1.0  
 > **Ngày cập nhật:** 12/08/2026  

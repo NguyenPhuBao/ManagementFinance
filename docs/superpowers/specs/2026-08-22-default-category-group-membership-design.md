@@ -45,3 +45,18 @@ Test the following before implementation:
 ## Scope
 
 Only Client-app schema, repository, category/group UI, picker tests, and client-owned backend handoff documentation may change. Backend and Admin-web source remain untouched.
+
+## Implementation record — 2026-08-22
+
+Implemented in commits `ec675f2`, `11372bc`, `0b9dfc6`, `48b1f45`,
+`feaec9e`, and `a938f36`.
+
+- SQLite schema v4 adds `category_group_memberships` with unique
+  `(accountId, categoryId)` membership per user.
+- Repository tree assembly is reactive to membership-only changes, prevents a
+  default from appearing twice, and atomically moves a default from one
+  personal group to another.
+- The group form permits a global default (`idaccount = 0`) as a selectable
+  member while retaining its keyword-only read-only form; the transaction
+  picker still treats it as a leaf.
+- `flutter test --no-pub` passed 60/60 tests after the final reassignment fix.

@@ -6,6 +6,25 @@
 > Until then, the client must not add these fields or keyword records to the
 > existing category sync payload.
 
+## Client implementation status — 2026-08-22
+
+The Client-app has implemented this module locally in SQLite schema v4:
+
+- Personal groups and personal children remain `is_local_only` category rows.
+- `category_group_memberships` stores an account-scoped placement of a shared
+  default category under a personal group; it never writes the global default
+  category's `parent_id`.
+- An unassigned default appears in `Chưa nhóm`. It can be selected in the
+  personal-group form, appears below that group after assignment, and remains a
+  transaction-selectable leaf.
+- Saving group B with a default already assigned to group A atomically moves
+  that account's membership from A to B while retaining unrelated memberships.
+- Deleting a group removes its memberships and returns affected defaults to
+  `Chưa nhóm`.
+
+These behaviors are deliberately **local-only**. Backend and Admin-web code
+must not infer that the resource is already synchronized.
+
 ## Category records
 
 Keep the existing stable category identifier as `id`/`uuid`. A backend category
@@ -68,6 +87,10 @@ Required validation and storage rules:
   read-only category metadata and a transaction-picker leaf.
 - Enforce uniqueness on `(account_id, category_id)`, so a default category can
   belong to at most one personal group for that account.
+- Treat an upsert for an existing `(account_id, category_id)` with a different
+  `group_id` as an atomic move: replace that category's prior membership rather
+  than returning a uniqueness error. Memberships for other categories in the
+  old group must remain unchanged.
 - Index memberships by `(account_id, group_id)` for tree assembly, and retain a
   lookup on `(account_id, category_id)` for uniqueness and reassignment.
 
