@@ -55,7 +55,7 @@ class _CategoryPageState extends State<CategoryPage> {
           tooltip: 'Thêm danh mục',
           backgroundColor: AppColors.primary,
           foregroundColor: AppColors.onPrimary,
-          onPressed: () => context.push('/categories/child/new'),
+          onPressed: () => _showCreateCategoryMenu(context),
           child: const Icon(Icons.add),
         ),
         body: StreamBuilder<CategoryTree>(
@@ -165,6 +165,35 @@ class _CategoryPageState extends State<CategoryPage> {
                     ),
             ),
         ],
+      ),
+    );
+  }
+
+  void _showCreateCategoryMenu(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.category_outlined),
+              title: const Text('Tạo danh mục con'),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                context.push('/categories/child/new');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.account_tree_outlined),
+              title: const Text('Tạo nhóm danh mục'),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                context.push('/categories/group/new');
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

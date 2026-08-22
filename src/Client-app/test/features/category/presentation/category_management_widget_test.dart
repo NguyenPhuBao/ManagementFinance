@@ -61,6 +61,14 @@ void main() {
             accountId: 1,
           ),
         ),
+        GoRoute(
+          path: '/categories/child/new',
+          builder: (_, __) => const Scaffold(body: Text('Tạo danh mục con')),
+        ),
+        GoRoute(
+          path: '/categories/group/new',
+          builder: (_, __) => const Scaffold(body: Text('Tạo nhóm danh mục')),
+        ),
       ],
     );
     return MaterialApp.router(routerConfig: router);
@@ -109,6 +117,22 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Từ khóa của tôi'), findsWidgets);
     expect(find.text('Tên danh mục'), findsNothing);
+  });
+
+  testWidgets('add menu opens the parent-group creation route', (tester) async {
+    final repository = _FakeCategoryRepository();
+
+    await tester.pumpWidget(categoryRouter(repository));
+    await tester.pump();
+
+    await tester.tap(find.byTooltip('Thêm danh mục'));
+    await tester.pumpAndSettle();
+    expect(find.text('Tạo danh mục con'), findsOneWidget);
+    expect(find.text('Tạo nhóm danh mục'), findsOneWidget);
+
+    await tester.tap(find.text('Tạo nhóm danh mục'));
+    await tester.pumpAndSettle();
+    expect(find.text('Tạo nhóm danh mục'), findsOneWidget);
   });
 
   testWidgets(
