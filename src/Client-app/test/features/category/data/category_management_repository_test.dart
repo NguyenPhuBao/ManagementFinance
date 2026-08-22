@@ -57,6 +57,104 @@ void main() {
     expect((await db.categoryDao.getById('child-coffee'))!.isDeleted, isFalse);
   });
 
+  test('lists an unassigned default leaf with ungrouped children', () async {
+    await insertCategory(
+      id: 'default-utilities',
+      name: 'Utilities',
+      accountId: 0,
+      isDefault: true,
+      isLocalOnly: false,
+    );
+
+    final tree = await repository.loadTree(accountId: 1, classify: 'chi');
+
+    expect(
+      tree.ungroupedChildren.map((category) => category.id),
+      contains('default-utilities'),
+    );
+    expect(tree.defaultChildren, isEmpty);
+  });
+
+  test('groups a default leaf only for its account without changing global row',
+      () async {
+    await insertCategory(
+      id: 'default-utilities',
+      name: 'Utilities',
+      accountId: 0,
+      isDefault: true,
+      isLocalOnly: false,
+    );
+    await repository.saveGroup(CategoryGroupDraft(
+      id: 'group-home',
+      accountId: 1,
+      name: 'Home',
+      classify: 'chi',
+      icon: 'home',
+      colour: '#4CAF50',
+      childIds: [],
+    ));
+
+    await repository.saveGroup(CategoryGroupDraft(
+      id: 'group-home',
+      accountId: 1,
+      name: 'Home',
+      classify: 'chi',
+      icon: 'home',
+      colour: '#4CAF50',
+      childIds: ['default-utilities'],
+    ));
+
+    final accountOneTree =
+        await repository.loadTree(accountId: 1, classify: 'chi');
+    final accountTwoTree =
+        await repository.loadTree(accountId: 2, classify: 'chi');
+
+    expect(
+      accountOneTree.groups.single.children.map((category) => category.id),
+      ['default-utilities'],
+    );
+    expect(
+      accountTwoTree.ungroupedChildren.map((category) => category.id),
+      contains('default-utilities'),
+    );
+    expect(
+        (await db.categoryDao.getById('default-utilities'))!.parentId, isNull);
+    expect(
+      (await db.categoryDao.getGroupMemberships(1))
+          .map((membership) => membership.categoryId),
+      ['default-utilities'],
+    );
+    expect(await db.categoryDao.getGroupMemberships(2), isEmpty);
+  });
+
+  test(
+      'deleting a group clears default memberships and returns leaves ungrouped',
+      () async {
+    await insertCategory(
+      id: 'default-utilities',
+      name: 'Utilities',
+      accountId: 0,
+      isDefault: true,
+      isLocalOnly: false,
+    );
+    await insertCategory(id: 'group-home', name: 'Home', isGroup: true);
+    await db.categoryDao.replaceGroupMemberships(
+      accountId: 1,
+      groupId: 'group-home',
+      categoryIds: ['default-utilities'],
+      now: DateTime(2026, 8, 22),
+    );
+
+    await repository.deleteGroup(accountId: 1, groupId: 'group-home');
+
+    expect(await db.categoryDao.getGroupMemberships(1), isEmpty);
+    final tree = await repository.loadTree(accountId: 1, classify: 'chi');
+    expect(
+      tree.ungroupedChildren.map((category) => category.id),
+      contains('default-utilities'),
+    );
+  });
+
   test('rejects duplicate child name in one scope but permits another group',
       () async {
     await repository.saveGroup(CategoryGroupDraft(

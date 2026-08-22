@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
@@ -52,10 +54,42 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
   Stream<CategoryTree> watchTree({
     required int accountId,
     required String classify,
-  }) =>
-      db.categoryDao
-          .watchCategoryRows(accountId, classify)
-          .map((rows) => _treeFromRows(rows, accountId));
+  }) {
+    late final StreamSubscription<List<Category>> categorySubscription;
+    late final StreamSubscription<List<CategoryGroupMembership>>
+        membershipSubscription;
+    List<Category>? categoryRows;
+    List<CategoryGroupMembership>? memberships;
+
+    late final StreamController<CategoryTree> controller;
+    controller = StreamController<CategoryTree>(
+      onListen: () {
+        void publish() {
+          if (categoryRows == null || memberships == null) return;
+          controller.add(_treeFromRows(categoryRows!, accountId, memberships!));
+        }
+
+        categorySubscription = db.categoryDao
+            .watchCategoryRows(accountId, classify)
+            .listen((rows) {
+          categoryRows = rows;
+          publish();
+        }, onError: controller.addError);
+        membershipSubscription = (db.select(db.categoryGroupMemberships)
+              ..where((row) => row.idaccount.equals(accountId)))
+            .watch()
+            .listen((rows) {
+          memberships = rows;
+          publish();
+        }, onError: controller.addError);
+      },
+      onCancel: () async {
+        await categorySubscription.cancel();
+        await membershipSubscription.cancel();
+      },
+    );
+    return controller.stream;
+  }
 
   @override
   Future<CategoryTree> loadTree({
@@ -65,6 +99,7 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
       _treeFromRows(
         await db.categoryDao.getCategoryRows(accountId, classify),
         accountId,
+        await db.categoryDao.getGroupMemberships(accountId),
       );
 
   @override
@@ -152,21 +187,37 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
       }
 
       final childIds = draft.childIds.toSet();
-      final children = <Category>[];
+      final personalChildren = <Category>[];
+      final defaultChildren = <Category>[];
+      final defaultChildIds = <String>[];
       for (final childId in childIds) {
         final child = await db.categoryDao.getById(childId);
-        if (child == null ||
-            child.idaccount != draft.accountId ||
-            child.isDefault ||
-            child.isDeleted ||
-            child.isGroup) {
+        if (child == null || child.isDeleted || child.isGroup) {
           throw const CategoryValidationException(
             'Chỉ có thể thêm danh mục con cá nhân hợp lệ vào nhóm.',
           );
         }
-        children.add(child);
+        if (child.isDefault) {
+          if (child.idaccount != 0 || child.classify != draft.classify) {
+            throw const CategoryValidationException(
+              'Chỉ có thể thêm danh mục mặc định hợp lệ cùng loại vào nhóm.',
+            );
+          }
+          defaultChildren.add(child);
+          defaultChildIds.add(child.id);
+        } else {
+          if (child.idaccount != draft.accountId) {
+            throw const CategoryValidationException(
+              'Chỉ có thể thêm danh mục con cá nhân hợp lệ vào nhóm.',
+            );
+          }
+          personalChildren.add(child);
+        }
       }
-      if (_hasDuplicateAssignedChildName(children)) {
+      if (_hasDuplicateAssignedChildName([
+        ...personalChildren,
+        ...defaultChildren,
+      ])) {
         throw const CategoryValidationException(
           'Tên danh mục đã tồn tại trong phạm vi này.',
         );
@@ -194,7 +245,7 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
                 row.parentId.equals(id)))
           .write(CategoriesCompanion(
               parentId: const Value(null), updatedAt: Value(now)));
-      for (final child in children) {
+      for (final child in personalChildren) {
         await (db.update(db.categories)
               ..where((row) => row.id.equals(child.id)))
             .write(CategoriesCompanion(
@@ -204,6 +255,12 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
           updatedAt: Value(now),
         ));
       }
+      await db.categoryDao.replaceGroupMemberships(
+        accountId: draft.accountId,
+        groupId: id,
+        categoryIds: defaultChildIds,
+        now: now,
+      );
     });
   }
 
@@ -251,6 +308,7 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
                 row.idaccount.equals(accountId) & row.parentId.equals(groupId)))
           .write(CategoriesCompanion(
               parentId: const Value(null), updatedAt: Value(now)));
+      await db.categoryDao.removeGroupMemberships(accountId, groupId);
       await (db.update(db.categories)..where((row) => row.id.equals(groupId)))
           .write(CategoriesCompanion(
         isDeleted: const Value(true),
@@ -296,7 +354,11 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
           .where((category) => !category.isGroup)
           .toList();
 
-  CategoryTree _treeFromRows(List<Category> rows, int accountId) {
+  CategoryTree _treeFromRows(
+    List<Category> rows,
+    int accountId,
+    List<CategoryGroupMembership> memberships,
+  ) {
     final groups = rows
         .where((category) =>
             category.idaccount == accountId &&
@@ -306,29 +368,40 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
         .toList();
     final children = rows
         .where((category) =>
-            category.idaccount == accountId &&
             !category.isGroup &&
-            !category.isDefault)
+            (category.idaccount == accountId || category.isDefault))
         .toList();
     final groupIds = groups.map((group) => group.id).toSet();
+    final defaultChildIds = children
+        .where((category) => category.isDefault)
+        .map((category) => category.id)
+        .toSet();
+    final membershipGroupByDefaultId = <String, String>{
+      for (final membership in memberships)
+        if (groupIds.contains(membership.groupId) &&
+            defaultChildIds.contains(membership.categoryId))
+          membership.categoryId: membership.groupId,
+    };
     return CategoryTree(
       groups: groups
           .map(
             (group) => CategoryGroupNode(
               group: group,
               children: children
-                  .where((child) => child.parentId == group.id)
+                  .where((child) =>
+                      (!child.isDefault && child.parentId == group.id) ||
+                      (child.isDefault &&
+                          membershipGroupByDefaultId[child.id] == group.id))
                   .toList(),
             ),
           )
           .toList(),
       ungroupedChildren: children
-          .where((child) =>
-              child.parentId == null || !groupIds.contains(child.parentId))
+          .where((child) => child.isDefault
+              ? !membershipGroupByDefaultId.containsKey(child.id)
+              : child.parentId == null || !groupIds.contains(child.parentId))
           .toList(),
-      defaultChildren: rows
-          .where((category) => category.isDefault && !category.isGroup)
-          .toList(),
+      defaultChildren: const [],
     );
   }
 
