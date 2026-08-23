@@ -81,6 +81,16 @@ class $WalletsTable extends Wallets with TableInfo<$WalletsTable, Wallet> {
       defaultConstraints:
           GeneratedColumn.constraintIsAlways('CHECK ("is_deleted" IN (0, 1))'),
       defaultValue: const Constant(false));
+  static const VerificationMeta _includeInTotalMeta =
+      const VerificationMeta('includeInTotal');
+  @override
+  late final GeneratedColumn<bool> includeInTotal = GeneratedColumn<bool>(
+      'include_in_total', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("include_in_total" IN (0, 1))'),
+      defaultValue: const Constant(true));
   static const VerificationMeta _syncStatusMeta =
       const VerificationMeta('syncStatus');
   @override
@@ -107,6 +117,7 @@ class $WalletsTable extends Wallets with TableInfo<$WalletsTable, Wallet> {
         colour,
         isDefault,
         isDeleted,
+        includeInTotal,
         syncStatus,
         updatedAt
       ];
@@ -165,6 +176,12 @@ class $WalletsTable extends Wallets with TableInfo<$WalletsTable, Wallet> {
       context.handle(_isDeletedMeta,
           isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta));
     }
+    if (data.containsKey('include_in_total')) {
+      context.handle(
+          _includeInTotalMeta,
+          includeInTotal.isAcceptableOrUnknown(
+              data['include_in_total']!, _includeInTotalMeta));
+    }
     if (data.containsKey('sync_status')) {
       context.handle(
           _syncStatusMeta,
@@ -206,6 +223,8 @@ class $WalletsTable extends Wallets with TableInfo<$WalletsTable, Wallet> {
           .read(DriftSqlType.bool, data['${effectivePrefix}is_default'])!,
       isDeleted: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}is_deleted'])!,
+      includeInTotal: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}include_in_total'])!,
       syncStatus: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}sync_status'])!,
       updatedAt: attachedDatabase.typeMapping
@@ -232,6 +251,9 @@ class Wallet extends DataClass implements Insertable<Wallet> {
   final String colour;
   final bool isDefault;
   final bool isDeleted;
+
+  /// Nếu true: số dư ví được cộng vào tổng tài sản trên dashboard
+  final bool includeInTotal;
   final String syncStatus;
   final DateTime updatedAt;
   const Wallet(
@@ -245,6 +267,7 @@ class Wallet extends DataClass implements Insertable<Wallet> {
       required this.colour,
       required this.isDefault,
       required this.isDeleted,
+      required this.includeInTotal,
       required this.syncStatus,
       required this.updatedAt});
   @override
@@ -260,6 +283,7 @@ class Wallet extends DataClass implements Insertable<Wallet> {
     map['colour'] = Variable<String>(colour);
     map['is_default'] = Variable<bool>(isDefault);
     map['is_deleted'] = Variable<bool>(isDeleted);
+    map['include_in_total'] = Variable<bool>(includeInTotal);
     map['sync_status'] = Variable<String>(syncStatus);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -277,6 +301,7 @@ class Wallet extends DataClass implements Insertable<Wallet> {
       colour: Value(colour),
       isDefault: Value(isDefault),
       isDeleted: Value(isDeleted),
+      includeInTotal: Value(includeInTotal),
       syncStatus: Value(syncStatus),
       updatedAt: Value(updatedAt),
     );
@@ -296,6 +321,7 @@ class Wallet extends DataClass implements Insertable<Wallet> {
       colour: serializer.fromJson<String>(json['colour']),
       isDefault: serializer.fromJson<bool>(json['isDefault']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
+      includeInTotal: serializer.fromJson<bool>(json['includeInTotal']),
       syncStatus: serializer.fromJson<String>(json['syncStatus']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -314,6 +340,7 @@ class Wallet extends DataClass implements Insertable<Wallet> {
       'colour': serializer.toJson<String>(colour),
       'isDefault': serializer.toJson<bool>(isDefault),
       'isDeleted': serializer.toJson<bool>(isDeleted),
+      'includeInTotal': serializer.toJson<bool>(includeInTotal),
       'syncStatus': serializer.toJson<String>(syncStatus),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -330,6 +357,7 @@ class Wallet extends DataClass implements Insertable<Wallet> {
           String? colour,
           bool? isDefault,
           bool? isDeleted,
+          bool? includeInTotal,
           String? syncStatus,
           DateTime? updatedAt}) =>
       Wallet(
@@ -343,6 +371,7 @@ class Wallet extends DataClass implements Insertable<Wallet> {
         colour: colour ?? this.colour,
         isDefault: isDefault ?? this.isDefault,
         isDeleted: isDeleted ?? this.isDeleted,
+        includeInTotal: includeInTotal ?? this.includeInTotal,
         syncStatus: syncStatus ?? this.syncStatus,
         updatedAt: updatedAt ?? this.updatedAt,
       );
@@ -358,6 +387,9 @@ class Wallet extends DataClass implements Insertable<Wallet> {
       colour: data.colour.present ? data.colour.value : this.colour,
       isDefault: data.isDefault.present ? data.isDefault.value : this.isDefault,
       isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
+      includeInTotal: data.includeInTotal.present
+          ? data.includeInTotal.value
+          : this.includeInTotal,
       syncStatus:
           data.syncStatus.present ? data.syncStatus.value : this.syncStatus,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -377,6 +409,7 @@ class Wallet extends DataClass implements Insertable<Wallet> {
           ..write('colour: $colour, ')
           ..write('isDefault: $isDefault, ')
           ..write('isDeleted: $isDeleted, ')
+          ..write('includeInTotal: $includeInTotal, ')
           ..write('syncStatus: $syncStatus, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -384,8 +417,20 @@ class Wallet extends DataClass implements Insertable<Wallet> {
   }
 
   @override
-  int get hashCode => Object.hash(id, idaccount, name, type, balance, currency,
-      icon, colour, isDefault, isDeleted, syncStatus, updatedAt);
+  int get hashCode => Object.hash(
+      id,
+      idaccount,
+      name,
+      type,
+      balance,
+      currency,
+      icon,
+      colour,
+      isDefault,
+      isDeleted,
+      includeInTotal,
+      syncStatus,
+      updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -400,6 +445,7 @@ class Wallet extends DataClass implements Insertable<Wallet> {
           other.colour == this.colour &&
           other.isDefault == this.isDefault &&
           other.isDeleted == this.isDeleted &&
+          other.includeInTotal == this.includeInTotal &&
           other.syncStatus == this.syncStatus &&
           other.updatedAt == this.updatedAt);
 }
@@ -415,6 +461,7 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
   final Value<String> colour;
   final Value<bool> isDefault;
   final Value<bool> isDeleted;
+  final Value<bool> includeInTotal;
   final Value<String> syncStatus;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -429,6 +476,7 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
     this.colour = const Value.absent(),
     this.isDefault = const Value.absent(),
     this.isDeleted = const Value.absent(),
+    this.includeInTotal = const Value.absent(),
     this.syncStatus = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -444,6 +492,7 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
     this.colour = const Value.absent(),
     this.isDefault = const Value.absent(),
     this.isDeleted = const Value.absent(),
+    this.includeInTotal = const Value.absent(),
     this.syncStatus = const Value.absent(),
     required DateTime updatedAt,
     this.rowid = const Value.absent(),
@@ -462,6 +511,7 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
     Expression<String>? colour,
     Expression<bool>? isDefault,
     Expression<bool>? isDeleted,
+    Expression<bool>? includeInTotal,
     Expression<String>? syncStatus,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -477,6 +527,7 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
       if (colour != null) 'colour': colour,
       if (isDefault != null) 'is_default': isDefault,
       if (isDeleted != null) 'is_deleted': isDeleted,
+      if (includeInTotal != null) 'include_in_total': includeInTotal,
       if (syncStatus != null) 'sync_status': syncStatus,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -494,6 +545,7 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
       Value<String>? colour,
       Value<bool>? isDefault,
       Value<bool>? isDeleted,
+      Value<bool>? includeInTotal,
       Value<String>? syncStatus,
       Value<DateTime>? updatedAt,
       Value<int>? rowid}) {
@@ -508,6 +560,7 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
       colour: colour ?? this.colour,
       isDefault: isDefault ?? this.isDefault,
       isDeleted: isDeleted ?? this.isDeleted,
+      includeInTotal: includeInTotal ?? this.includeInTotal,
       syncStatus: syncStatus ?? this.syncStatus,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -547,6 +600,9 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
     if (isDeleted.present) {
       map['is_deleted'] = Variable<bool>(isDeleted.value);
     }
+    if (includeInTotal.present) {
+      map['include_in_total'] = Variable<bool>(includeInTotal.value);
+    }
     if (syncStatus.present) {
       map['sync_status'] = Variable<String>(syncStatus.value);
     }
@@ -572,6 +628,7 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
           ..write('colour: $colour, ')
           ..write('isDefault: $isDefault, ')
           ..write('isDeleted: $isDeleted, ')
+          ..write('includeInTotal: $includeInTotal, ')
           ..write('syncStatus: $syncStatus, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -4448,6 +4505,7 @@ typedef $$WalletsTableCreateCompanionBuilder = WalletsCompanion Function({
   Value<String> colour,
   Value<bool> isDefault,
   Value<bool> isDeleted,
+  Value<bool> includeInTotal,
   Value<String> syncStatus,
   required DateTime updatedAt,
   Value<int> rowid,
@@ -4463,6 +4521,7 @@ typedef $$WalletsTableUpdateCompanionBuilder = WalletsCompanion Function({
   Value<String> colour,
   Value<bool> isDefault,
   Value<bool> isDeleted,
+  Value<bool> includeInTotal,
   Value<String> syncStatus,
   Value<DateTime> updatedAt,
   Value<int> rowid,
@@ -4525,6 +4584,10 @@ class $$WalletsTableFilterComposer
 
   ColumnFilters<bool> get isDeleted => $composableBuilder(
       column: $table.isDeleted, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get includeInTotal => $composableBuilder(
+      column: $table.includeInTotal,
+      builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get syncStatus => $composableBuilder(
       column: $table.syncStatus, builder: (column) => ColumnFilters(column));
@@ -4593,6 +4656,10 @@ class $$WalletsTableOrderingComposer
   ColumnOrderings<bool> get isDeleted => $composableBuilder(
       column: $table.isDeleted, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<bool> get includeInTotal => $composableBuilder(
+      column: $table.includeInTotal,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get syncStatus => $composableBuilder(
       column: $table.syncStatus, builder: (column) => ColumnOrderings(column));
 
@@ -4638,6 +4705,9 @@ class $$WalletsTableAnnotationComposer
 
   GeneratedColumn<bool> get isDeleted =>
       $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+
+  GeneratedColumn<bool> get includeInTotal => $composableBuilder(
+      column: $table.includeInTotal, builder: (column) => column);
 
   GeneratedColumn<String> get syncStatus => $composableBuilder(
       column: $table.syncStatus, builder: (column) => column);
@@ -4700,6 +4770,7 @@ class $$WalletsTableTableManager extends RootTableManager<
             Value<String> colour = const Value.absent(),
             Value<bool> isDefault = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
+            Value<bool> includeInTotal = const Value.absent(),
             Value<String> syncStatus = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
@@ -4715,6 +4786,7 @@ class $$WalletsTableTableManager extends RootTableManager<
             colour: colour,
             isDefault: isDefault,
             isDeleted: isDeleted,
+            includeInTotal: includeInTotal,
             syncStatus: syncStatus,
             updatedAt: updatedAt,
             rowid: rowid,
@@ -4730,6 +4802,7 @@ class $$WalletsTableTableManager extends RootTableManager<
             Value<String> colour = const Value.absent(),
             Value<bool> isDefault = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
+            Value<bool> includeInTotal = const Value.absent(),
             Value<String> syncStatus = const Value.absent(),
             required DateTime updatedAt,
             Value<int> rowid = const Value.absent(),
@@ -4745,6 +4818,7 @@ class $$WalletsTableTableManager extends RootTableManager<
             colour: colour,
             isDefault: isDefault,
             isDeleted: isDeleted,
+            includeInTotal: includeInTotal,
             syncStatus: syncStatus,
             updatedAt: updatedAt,
             rowid: rowid,

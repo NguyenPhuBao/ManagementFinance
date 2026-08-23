@@ -23,8 +23,10 @@ class Wallets extends Table {
   TextColumn get currency => text().withDefault(const Constant('VND'))();
   TextColumn get icon     => text().withDefault(const Constant('wallet'))();
   TextColumn get colour   => text().withDefault(const Constant('#4CAF50'))();
-  BoolColumn get isDefault => boolean().withDefault(const Constant(false))();
-  BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
+  BoolColumn get isDefault       => boolean().withDefault(const Constant(false))();
+  BoolColumn get isDeleted       => boolean().withDefault(const Constant(false))();
+  /// Nếu true: số dư ví được cộng vào tổng tài sản trên dashboard
+  BoolColumn get includeInTotal  => boolean().withDefault(const Constant(true))();
 
   // ── Sync fields ──────────────────────────────────────────────────────────
   TextColumn get syncStatus => text().withDefault(const Constant('pending'))();

@@ -25,33 +25,35 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
   // ── Helpers ──────────────────────────────────────────────────────────────
 
   WalletEntity _toEntity(Wallet w) => WalletEntity(
-    id:         w.id,
-    idaccount:  w.idaccount,
-    name:       w.name,
-    type:       w.type,
-    balance:    w.balance,
-    currency:   w.currency,
-    icon:       w.icon,
-    colour:     w.colour,
-    isDefault:  w.isDefault,
-    isDeleted:  w.isDeleted,
-    syncStatus: w.syncStatus,
-    updatedAt:  w.updatedAt,
+    id:             w.id,
+    idaccount:      w.idaccount,
+    name:           w.name,
+    type:           w.type,
+    balance:        w.balance,
+    currency:       w.currency,
+    icon:           w.icon,
+    colour:         w.colour,
+    isDefault:      w.isDefault,
+    isDeleted:      w.isDeleted,
+    includeInTotal: w.includeInTotal,
+    syncStatus:     w.syncStatus,
+    updatedAt:      w.updatedAt,
   );
 
   WalletsCompanion _toCompanion(WalletEntity e) => WalletsCompanion(
-    id:         Value(e.id),
-    idaccount:  Value(e.idaccount),
-    name:       Value(e.name),
-    type:       Value(e.type),
-    balance:    Value(e.balance),
-    currency:   Value(e.currency),
-    icon:       Value(e.icon),
-    colour:     Value(e.colour),
-    isDefault:  Value(e.isDefault),
-    isDeleted:  Value(e.isDeleted),
-    syncStatus: Value(e.syncStatus),
-    updatedAt:  Value(e.updatedAt),
+    id:             Value(e.id),
+    idaccount:      Value(e.idaccount),
+    name:           Value(e.name),
+    type:           Value(e.type),
+    balance:        Value(e.balance),
+    currency:       Value(e.currency),
+    icon:           Value(e.icon),
+    colour:         Value(e.colour),
+    isDefault:      Value(e.isDefault),
+    isDeleted:      Value(e.isDeleted),
+    includeInTotal: Value(e.includeInTotal),
+    syncStatus:     Value(e.syncStatus),
+    updatedAt:      Value(e.updatedAt),
   );
 
   // ── READ ─────────────────────────────────────────────────────────────────
@@ -123,7 +125,7 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
         }
 
         // 3. Ràng buộc 3: Ví đang liên kết với Mục tiêu tiết kiệm
-        final goals = await _db.goalDao.getAllNonDeleted();
+        final goals = await _db.goalDao.getAll(wallet.idaccount);
         final linkedGoals = goals.where((g) => g.walletId == id).toList();
         if (linkedGoals.isNotEmpty) {
           throw CacheException('Ví "${wallet.name}" đang liên kết với mục tiêu "${linkedGoals.first.name}". Vui lòng gỡ liên kết trước khi xóa!');

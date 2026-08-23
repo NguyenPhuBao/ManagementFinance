@@ -17,6 +17,7 @@ class WalletEntity extends Equatable {
   final String colour;
   final bool isDefault;
   final bool isDeleted;
+  final bool includeInTotal;
   final String syncStatus;
   final DateTime updatedAt;
 
@@ -31,6 +32,7 @@ class WalletEntity extends Equatable {
     this.colour = '#4CAF50',
     this.isDefault = false,
     this.isDeleted = false,
+    this.includeInTotal = true,
     this.syncStatus = 'pending',
     required this.updatedAt,
   });
@@ -55,6 +57,7 @@ class WalletEntity extends Equatable {
     String? colour,
     bool? isDefault,
     bool? isDeleted,
+    bool? includeInTotal,
     String? syncStatus,
     DateTime? updatedAt,
   }) {
@@ -67,14 +70,15 @@ class WalletEntity extends Equatable {
       currency:    currency    ?? this.currency,
       icon:        icon        ?? this.icon,
       colour:      colour      ?? this.colour,
-      isDefault:   isDefault   ?? this.isDefault,
-      isDeleted:   isDeleted   ?? this.isDeleted,
-      syncStatus:  syncStatus  ?? this.syncStatus,
-      updatedAt:   updatedAt   ?? this.updatedAt,
+      isDefault:      isDefault      ?? this.isDefault,
+      isDeleted:      isDeleted      ?? this.isDeleted,
+      includeInTotal: includeInTotal ?? this.includeInTotal,
+      syncStatus:     syncStatus     ?? this.syncStatus,
+      updatedAt:      updatedAt      ?? this.updatedAt,
     );
   }
 
   @override
   List<Object?> get props => [id, idaccount, name, type, balance,
-      currency, icon, colour, isDefault, isDeleted, syncStatus, updatedAt];
+      currency, icon, colour, isDefault, isDeleted, includeInTotal, syncStatus, updatedAt];
 }

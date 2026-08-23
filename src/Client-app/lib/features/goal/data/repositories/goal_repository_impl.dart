@@ -87,6 +87,16 @@ class GoalRepositoryImpl implements GoalRepository {
     if (goal != null) {
       final newGoalAmount = goal.currentAmount + depositAmount;
       await localDataSource.updateGoalAmount(goalId, newGoalAmount);
+
+      // Đánh dấu hoàn thành nếu đã đạt mục tiêu
+      if (newGoalAmount >= goal.targetAmount && db != null) {
+        await (db!.update(db!.goals)..where((t) => t.id.equals(goalId))).write(
+          const GoalsCompanion(
+            isCompleted: Value(true),
+            syncStatus: Value('pending'),
+          ),
+        );
+      }
     }
 
     var effectiveTargetWalletId = (targetWalletId != null && targetWalletId.isNotEmpty)

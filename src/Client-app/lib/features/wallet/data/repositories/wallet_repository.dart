@@ -25,6 +25,7 @@ abstract class WalletRepository {
     String icon,
     String colour,
     bool isDefault,
+    bool includeInTotal,
   });
 
   /// Cập nhật ví
@@ -33,6 +34,6 @@ abstract class WalletRepository {
   /// Xoá mềm ví
   Future<void> deleteWallet(String id);
 
-  /// Tổng số dư tất cả ví (không tính ví đã xoá)
+  /// Tổng số dư các ví có includeInTotal = true (không tính ví đã xoá)
   Future<double> getTotalBalance(int idaccount);
 }

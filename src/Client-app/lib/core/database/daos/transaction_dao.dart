@@ -42,6 +42,7 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     return (select(transactions)
           ..where((t) =>
               t.isDeleted.equals(false) &
+              t.idaccount.equals(idaccount) &
               t.note.like('%$pattern%'))
           ..orderBy([(t) => OrderingTerm.desc(t.date)]))
         .watch();

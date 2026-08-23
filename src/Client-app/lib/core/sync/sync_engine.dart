@@ -397,6 +397,7 @@ class SyncEngine {
                 targetDate: Value(
                     DateTime.tryParse(g['target_date']?.toString() ?? '') ??
                         DateTime.now()),
+                walletId: Value(g['wallet_id']?.toString()),
                 isDeleted: Value(g['is_deleted'] == true),
                 syncStatus: const Value('synced'),
                 updatedAt: Value(
@@ -442,6 +443,7 @@ class SyncEngine {
           'colour': w.colour,
           'is_default': w.isDefault,
           'is_deleted': w.isDeleted,
+          'include_in_total': w.includeInTotal,
           'updated_at': w.updatedAt.toUtc().toIso8601String(),
           'idaccount': w.idaccount > 0 ? w.idaccount : (_currentIdaccount ?? 1),
         },
@@ -565,6 +567,7 @@ class SyncEngine {
           'target_amount': g.targetAmount,
           'current_amount': g.currentAmount,
           'target_date': g.targetDate.toUtc().toIso8601String(),
+          'wallet_id': g.walletId != null ? _toValidUuid(g.walletId!) : null,
           'is_deleted': g.isDeleted,
           'updated_at': g.updatedAt.toUtc().toIso8601String(),
           'idaccount': g.idaccount > 0 ? g.idaccount : (_currentIdaccount ?? 1),
