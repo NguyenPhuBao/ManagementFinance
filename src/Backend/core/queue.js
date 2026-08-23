@@ -33,4 +33,11 @@ async function enqueue(queueName, jobName, data, opts = {}) {
   }
 }
 
-module.exports = { queues, enqueue, connection };
+// Helper: get a queue instance by key (camelCase) or by queue name (kebab-case)
+function getQueue(name) {
+  if (!name) return null;
+  if (queues[name]) return queues[name];
+  return Object.values(queues).find((q) => q && q.name === name) || null;
+}
+
+module.exports = { queues, enqueue, getQueue, connection };

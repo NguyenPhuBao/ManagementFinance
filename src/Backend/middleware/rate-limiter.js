@@ -6,6 +6,8 @@ const generalLimiter = rateLimit({
   max: config.rateLimit.max,
   standardHeaders: true,
   legacyHeaders: false,
+  // Miễn rate limit cho webhook Casso (đẩy dữ liệu burst, tránh bị 429)
+  skip: (req) => req.originalUrl && req.originalUrl.startsWith('/api/bank/webhook'),
   message: {
     success: false,
     message: 'Too many requests, please try again later.',
