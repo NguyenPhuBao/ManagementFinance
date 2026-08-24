@@ -52,7 +52,6 @@ class _WalletEditPageState extends State<WalletEditPage> {
 
   bool _isDefault = false;
   bool _includeInTotal = true;
-  bool _isActive = true;
 
   @override
   void initState() {
@@ -80,6 +79,7 @@ class _WalletEditPageState extends State<WalletEditPage> {
           if (colorIdx != -1) _selectedColorIndex = colorIdx;
 
           _isDefault = wallet.isDefault;
+          _includeInTotal = wallet.includeInTotal;
           _isLoading = false;
         });
       } else if (mounted) {
@@ -111,7 +111,8 @@ class _WalletEditPageState extends State<WalletEditPage> {
       return;
     }
 
-    final rawBalance = _balanceController.text.replaceAll(',', '').replaceAll('.', '');
+    // vi_VN locale dùng '.' làm phân tách nghìn (vd: 1.000.000)
+    final rawBalance = _balanceController.text.replaceAll('.', '');
     final balance = double.tryParse(rawBalance) ?? 0.0;
     final colour = _colorHexes[_selectedColorIndex];
     final iconKey = _iconKeys[_selectedIconIndex];
@@ -119,13 +120,14 @@ class _WalletEditPageState extends State<WalletEditPage> {
     setState(() => _isSaving = true);
     try {
       final updatedWallet = _wallet!.copyWith(
-        name: name,
-        type: _walletTypeKeys[_selectedTypeIndex],
-        balance: balance,
-        icon: iconKey,
-        colour: colour,
-        isDefault: _isDefault,
-        updatedAt: DateTime.now(),
+        name:           name,
+        type:           _walletTypeKeys[_selectedTypeIndex],
+        balance:        balance,
+        icon:           iconKey,
+        colour:         colour,
+        isDefault:      _isDefault,
+        includeInTotal: _includeInTotal,
+        updatedAt:      DateTime.now(),
       );
 
       await sl<WalletRepository>().updateWallet(updatedWallet);
@@ -341,13 +343,16 @@ class _WalletEditPageState extends State<WalletEditPage> {
                         FilteringTextInputFormatter.digitsOnly,
                       ],
                       onChanged: (value) {
-                        if (value.isNotEmpty) {
-                          final number = int.parse(value);
+                        final digitsOnly = value.replaceAll('.', '');
+                        if (digitsOnly.isNotEmpty) {
+                          final number = int.tryParse(digitsOnly) ?? 0;
                           final formatted = _currencyFormat.format(number);
-                          _balanceController.value = TextEditingValue(
-                            text: formatted,
-                            selection: TextSelection.collapsed(offset: formatted.length),
-                          );
+                          if (_balanceController.text != formatted) {
+                            _balanceController.value = TextEditingValue(
+                              text: formatted,
+                              selection: TextSelection.collapsed(offset: formatted.length),
+                            );
+                          }
                         }
                       },
                     ),
@@ -468,12 +473,6 @@ class _WalletEditPageState extends State<WalletEditPage> {
             title: 'Tính vào tổng tài sản',
             value: _includeInTotal,
             onChanged: (val) => setState(() => _includeInTotal = val),
-          ),
-          const Divider(height: 1, color: AppColors.borderSubtle),
-          _buildSwitchTile(
-            title: 'Kích hoạt hoạt động',
-            value: _isActive,
-            onChanged: (val) => setState(() => _isActive = val),
           ),
         ],
       ),

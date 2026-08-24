@@ -42,19 +42,21 @@ class WalletRepositoryImpl implements WalletRepository {
     String icon = 'wallet',
     String colour = '#4CAF50',
     bool isDefault = false,
+    bool includeInTotal = true,
   }) async {
     final wallet = WalletEntity(
-      id:         _uuid.v4(),
-      idaccount:  idaccount,
-      name:       name,
-      type:       type,
-      balance:    balance,
-      currency:   currency,
-      icon:       icon,
-      colour:     colour,
-      isDefault:  isDefault,
-      syncStatus: 'pending',
-      updatedAt:  DateTime.now(),
+      id:             _uuid.v4(),
+      idaccount:      idaccount,
+      name:           name,
+      type:           type,
+      balance:        balance,
+      currency:       currency,
+      icon:           icon,
+      colour:         colour,
+      isDefault:      isDefault,
+      includeInTotal: includeInTotal,
+      syncStatus:     'pending',
+      updatedAt:      DateTime.now(),
     );
 
     // Nếu isDefault = true, bỏ mặc định của ví cũ trước
@@ -95,6 +97,9 @@ class WalletRepositoryImpl implements WalletRepository {
   @override
   Future<double> getTotalBalance(int idaccount) async {
     final wallets = await _localDataSource.getAll(idaccount);
-    return wallets.fold<double>(0.0, (sum, w) => sum + w.balance);
+    // Chỉ cộng ví có includeInTotal = true
+    return wallets
+        .where((w) => w.includeInTotal)
+        .fold<double>(0.0, (sum, w) => sum + w.balance);
   }
 }

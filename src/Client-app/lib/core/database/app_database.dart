@@ -32,6 +32,8 @@ part 'app_database.g.dart';
     Wallets,
     Transactions,
     Categories,
+    CategoryKeywords,
+    CategoryGroupMemberships,
     Budgets,
     Bills,
     Goals,
@@ -50,7 +52,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration {
@@ -63,6 +65,19 @@ class AppDatabase extends _$AppDatabase {
       onUpgrade: (Migrator m, int from, int to) async {
         if (from < 2) {
           await m.addColumn(goals, goals.walletId);
+        }
+        if (from < 3) {
+          await m.addColumn(categories, categories.parentId);
+          await m.addColumn(categories, categories.isGroup);
+          await m.addColumn(categories, categories.isLocalOnly);
+          await m.createTable(categoryKeywords);
+        }
+        if (from < 4) {
+          await m.createTable(categoryGroupMemberships);
+        }
+        if (from < 5) {
+          // Thêm cột includeInTotal cho việc tính vào tổng tài sản
+          await m.addColumn(wallets, wallets.includeInTotal);
         }
       },
       beforeOpen: (details) async {

@@ -71,10 +71,25 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     final targetWallet = _goal!.walletId != null
         ? wallets.firstWhere((w) => w.id == _goal!.walletId, orElse: () => wallets.first)
         : (wallets.length > 1 ? wallets.last : null);
-    Wallet selectedSourceWallet = wallets.firstWhere(
-      (w) => targetWallet != null ? w.id != targetWallet.id : true,
-      orElse: () => wallets.first,
-    );
+
+    // Danh sách ví nguồn: loại bỏ ví tiết kiệm (targetWallet)
+    final sourceWallets = targetWallet != null
+        ? wallets.where((w) => w.id != targetWallet.id).toList()
+        : wallets;
+
+    if (sourceWallets.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Không có ví nguồn khả dụng. Vui lòng tạo ít nhất 1 ví khác.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    Wallet selectedSourceWallet = sourceWallets.first;
 
     showModalBottomSheet(
       context: context,
@@ -177,7 +192,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                         value: selectedSourceWallet,
                         isExpanded: true,
                         icon: const Icon(Icons.expand_more, color: AppColors.primary),
-                        items: wallets.map((w) {
+                        items: sourceWallets.map((w) {
                           return DropdownMenuItem<Wallet>(
                             value: w,
                             child: Text(
@@ -202,6 +217,20 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                       if (deposit <= 0) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Vui lòng nhập số tiền hợp lệ')),
+                        );
+                        return;
+                      }
+
+                      // Kiểm tra số dư ví nguồn
+                      if (deposit > selectedSourceWallet.balance) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Số dư ví "${selectedSourceWallet.name}" không đủ. '
+                              'Hiện có: ${currencyFormatter.format(selectedSourceWallet.balance)}',
+                            ),
+                            backgroundColor: Colors.red,
+                          ),
                         );
                         return;
                       }

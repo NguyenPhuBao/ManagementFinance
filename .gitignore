@@ -56,9 +56,15 @@ coverage/
 *.db
 *.db-journal
 
-# Documentation Plans
-docs/superpowers/*
-!docs/superpowers/auth/
+# Documentation — chỉ push docs/superpowers/backend/ (tài liệu backend cần đọc)
+docs/bill/
+docs/category/
+docs/deploy_Cloud/
+docs/superpowers/auth/
+docs/superpowers/client-app/
+docs/superpowers/plans/
+docs/superpowers/specs/
+docs/superpowers/sync/
 src/Backend/prisma/seed_roles.js
 .superpowers/
 .stitch/

@@ -113,7 +113,7 @@ class GoalCubit extends Cubit<GoalState> {
         targetWalletId: targetWalletId,
         idaccount: idaccount,
       );
-      loadGoals(idaccount);
+      // watchGoals stream sẽ tự động cập nhật UI — không cần gọi loadGoals
     } catch (e) {
       emit(GoalError(e.toString()));
     }

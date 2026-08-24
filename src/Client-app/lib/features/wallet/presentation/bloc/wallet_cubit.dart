@@ -52,6 +52,7 @@ class WalletCubit extends Cubit<WalletState> {
     String icon   = 'wallet',
     String colour = '#4CAF50',
     bool isDefault = false,
+    bool includeInTotal = true,
   }) async {
     final currentState = state;
     final currentWallets = switch (currentState) {
@@ -76,6 +77,7 @@ class WalletCubit extends Cubit<WalletState> {
         icon:      icon,
         colour:    colour,
         isDefault: isDefault,
+        includeInTotal: includeInTotal,
       );
 
       final updated = [...currentWallets, wallet];

@@ -62,7 +62,6 @@ class _WalletAddFormState extends State<_WalletAddForm> {
 
   bool _isDefault = true;
   bool _includeInTotal = true;
-  bool _isActive = true;
 
   // Map type index sang type key
   final List<String> _walletTypeKeys = ['cash', 'bank', 'ewallet', 'debt'];
@@ -84,8 +83,9 @@ class _WalletAddFormState extends State<_WalletAddForm> {
       return;
     }
 
-    // Parse số dư — bỏ dấu phẩy
-    final rawBalance = _balanceController.text.replaceAll(',', '').replaceAll('.', '');
+    // vi_VN locale dùng '.' làm phân tách nghìn (vd: 1.000.000)
+    // Chỉ cần xóa dấu '.' để lấy số nguyên
+    final rawBalance = _balanceController.text.replaceAll('.', '');
     final balance = double.tryParse(rawBalance) ?? 0.0;
     final colour = ['#4CAF50', '#1A73E8', '#F4B400', '#EA4335', '#A142F4', '#00ACC1'][_selectedColorIndex];
     final iconKey = ['wallet', 'payments', 'credit_card', 'savings', 'bank'][_selectedIconIndex];
@@ -100,6 +100,7 @@ class _WalletAddFormState extends State<_WalletAddForm> {
         icon:      iconKey,
         colour:    colour,
         isDefault: _isDefault,
+        includeInTotal: _includeInTotal,
       );
       if (mounted) context.pop(true); // true = có thay đổi
     } finally {
@@ -224,13 +225,18 @@ class _WalletAddFormState extends State<_WalletAddForm> {
                     FilteringTextInputFormatter.digitsOnly,
                   ],
                   onChanged: (value) {
-                    if (value.isNotEmpty) {
-                      final number = int.parse(value);
+                    // value ở đây là raw digits-only (nhờ FilteringTextInputFormatter)
+                    // nhưng sau khi set lại text thì lần sau value là formatted → cần strip
+                    final digitsOnly = value.replaceAll('.', '');
+                    if (digitsOnly.isNotEmpty) {
+                      final number = int.tryParse(digitsOnly) ?? 0;
                       final formatted = _currencyFormat.format(number);
-                      _balanceController.value = TextEditingValue(
-                        text: formatted,
-                        selection: TextSelection.collapsed(offset: formatted.length),
-                      );
+                      if (_balanceController.text != formatted) {
+                        _balanceController.value = TextEditingValue(
+                          text: formatted,
+                          selection: TextSelection.collapsed(offset: formatted.length),
+                        );
+                      }
                     }
                   },
                 ),
@@ -434,12 +440,6 @@ class _WalletAddFormState extends State<_WalletAddForm> {
             title: 'Tính vào tổng số dư tài sản',
             value: _includeInTotal,
             onChanged: (val) => setState(() => _includeInTotal = val),
-          ),
-          const Divider(height: 1, color: AppColors.borderSubtle, indent: 20, endIndent: 20),
-          _buildSwitchTile(
-            title: 'Trạng thái hoạt động',
-            value: _isActive,
-            onChanged: (val) => setState(() => _isActive = val),
           ),
         ],
       ),

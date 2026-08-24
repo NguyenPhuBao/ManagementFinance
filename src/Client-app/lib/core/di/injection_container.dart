@@ -24,6 +24,8 @@ import '../../features/bill/data/datasources/bill_local_datasource.dart';
 import '../../features/bill/data/repositories/bill_repository.dart';
 import '../../features/bill/data/repositories/bill_repository_impl.dart';
 import '../../features/bill/presentation/bloc/bill_bloc.dart';
+import '../../features/category/data/repositories/category_management_repository.dart';
+import '../../features/category/data/services/category_suggestion_engine.dart';
 
 /// Service locator — dùng `sl<T>()` để resolve dependencies
 final GetIt sl = GetIt.instance;
@@ -127,6 +129,14 @@ Future<void> setupDependencies() async {
   );
   sl.registerFactory<BillBloc>(
     () => BillBloc(repository: sl<BillRepository>()),
+  );
+
+  // ── 9. Features — Category management (local-only) ───────────────────────
+  sl.registerLazySingleton<CategoryManagementRepository>(
+    () => CategoryManagementRepositoryImpl(db: sl<AppDatabase>()),
+  );
+  sl.registerLazySingleton<CategorySuggestionEngine>(
+    () => const CategorySuggestionEngine(),
   );
 
   await sl.allReady();
