@@ -84,19 +84,20 @@ Backend hiện tại (Node.js Express + Prisma + BullMQ) có **6 module internet
 
 **⚠️ LWW**: Giữ nguyên so sánh `updated_at` → `Update_at`.
 
-### 2.5. Module Bank — `src/Backend/modules/bank/` + `workers/bank.worker.js`
+### 2.5. Module Bank — `src/Backend/modules/bank/` + `workers/bank.worker.js` (✅ ĐÃ HOÀN THÀNH)
 
-| File | Thay đổi |
+| File | Thay đổi & Trạng thái |
 |---|---|
-| `bank.repository.js` | `upsertBankAccounts` field `casso_account_id` → `Id_casso_account`; `createTransactionFromWebhook` dùng `Create_at` (từ `when`), `Bank_tran_id` (từ `tid`), `Provider='Casso'`, **`Idcategory=NULL` (chờ phân loại)** |
-| `bank.service.js` | Không đổi nhiều (pass-through) |
-| `bank.controller.js` | Response field mới |
-| `workers/bank.worker.js` | Tạo transaction: `date` → `Create_at`; `external_transaction_id` → `Bank_tran_id`; `type='Transaction'`; **Amount giữ dấu ±** (không `Math.abs` — dương = vào, âm = ra); tìm/tạo ví `Type='Banking'` + `Id_bank_casso` |
-| `casso/casso.client.js` | Không đổi |
+| `bank.repository.js` | ✅ `upsertBankAccounts` tự sinh `id_bank_account: uuidv4()`, map `id_casso_account`, fallback tên trường; `createTransactionFromWebhook` dùng `Create_at`, `Bank_tran_id`, `Provider='Casso'`, `Idcategory=NULL` |
+| `bank.service.js` | ✅ `enqueueWebhookJob` bóc tách linh hoạt payload (Array / Single Object / Direct Array) đẩy vào BullMQ queue |
+| `bank.controller.js` | ✅ `handleWebhook` xác thực qua `casso.webhook.js`, trả về 200 graceful khi có lỗi nội bộ để tránh loop retry |
+| `casso/casso.webhook.js` | ✅ `verifySignature` dùng `crypto.timingSafeEqual` chống Timing Attacks |
+| `workers/bank.worker.js` | ✅ Tạo transaction: `Create_at` (từ `when`), `Bank_tran_id` (từ `tid`/`id`), `type='Transaction'`; **Amount giữ dấu ±**; tìm/tạo ví `Type='Banking'` + `Id_bank_casso` (tên ví truncate ≤ 100); fallback `cusum_balance` + log warning; phát sự kiện `transaction.created` (`transactionId: newTx.idtran`) |
+| `casso/casso.client.js` | ✅ Tương thích 100% |
 
 **✅ Luồng webhook (PO quyết):** Ghi transaction TRƯỚC (Amount giữ dấu, `Idcategory=NULL`) → sau đó worker phân loại category (`Idcategory`) cập nhật — giao dịch không chờ phân loại.
 
-**⚠️ Chống trùng**: `findTransactionByExternalId` → tìm theo `(Provider='Casso', Bank_tran_id)`.
+**⚠️ Chống trùng**: `findTransactionByExternalId` → tìm theo `(Provider='Casso', Bank_tran_id)` khớp unique constraint `uq_transaction_external`.
 
 ### 2.6. Module AI — `src/Backend/modules/ai/`
 

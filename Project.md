@@ -1480,24 +1480,27 @@ Nếu record tồn tại:
 
 > ⚠️ Sync module dùng hardcoded registry — KHÔNG tự động nhận diện bảng mới. Thêm entity mới cần sửa 3 file: `sync.validation.js` (VALID_ENTITIES), `sync.service.js` (UPSERT_MAP/PULL_MAP/ENTITY_KEYS), `sync.repository.js` (4 methods).
 
-### 8.4. Module Bank — 🚧 Đang triển khai (Casso)
+### 8.4. Module Bank — ✅ Hoàn thành (Casso)
 
-> **Lưu ý quan trọng:** Kiến trúc và toàn bộ tiến trình triển khai của Module Bank được quản lý tập trung và chi tiết tại file `docs/superpowers/plans/Progress-Bank.md`. Dưới đây chỉ là tóm tắt.
+> **Lưu ý:** Kiến trúc và kiểm thử của Module Bank được đồng bộ theo CSDL mới (13 bảng v2).
 
-#### 8.4.1. Tổng quan & Kiến trúc mới (Cập nhật 2026-08-17)
+#### 8.4.1. Tổng quan & Kiến trúc (Cập nhật 2026-08-26)
 
-| Chức năng | Endpoint | Trạng thái |
-|----------|----------|-----------|
-| Nhận giao dịch realtime (Webhook) | `POST /api/bank/webhook` | 🚧 Đang làm |
-| Danh sách NH + số dư | `GET /api/bank/accounts` | ⬜ Chưa làm |
-| Lịch sử giao dịch | `GET /api/bank/transactions` | ⬜ Chưa làm |
+| Chức năng | Endpoint | Trạng thái | Ghi chú |
+|----------|----------|-----------|---------|
+| Nhận giao dịch realtime (Webhook) | `POST /api/bank/webhook` | ✅ Hoàn thành | Tích hợp BullMQ + Worker + chống trùng `(Provider, Bank_tran_id)` + TimingSafeEqual |
+| Danh sách NH + số dư | `GET /api/bank/accounts` | ✅ Hoàn thành | Tự động đồng bộ từ Casso API vào bảng `bank_account` (`Id_bank_account` UUID PK) |
+| Lịch sử giao dịch | `GET /api/bank/transactions` | ✅ Hoàn thành | Truy vấn lịch sử trực tiếp qua Casso API |
 
 **Nhà cung cấp: Casso**
-Kiến trúc đã được thiết kế lại tối giản và bảo mật hơn:
+Kiến trúc đã được thiết kế lại tối giản, bảo mật và tương thích 100% CSDL mới:
 - **❌ Bỏ hoàn toàn OAuth 2.0 per-user**: Không dùng `bank_connection` để lưu trữ token.
 - **✅ 1 API Key duy nhất**: Toàn bộ Backend dùng chung 1 `CASSO_API_KEY` duy nhất (lưu trong `.env`) được cấp bởi Portal Admin của Casso.
-- **✅ Bảng `bank_account`**: Ánh xạ tài khoản ngân hàng (của Casso) với `idaccount` (của User) để xác định quyền sở hữu.
-- **✅ Webhook & Queue**: Giao dịch từ ngân hàng đẩy qua Webhook, đưa vào BullMQ (`bank-webhook`), sau đó `bank.worker.js` sẽ xử lý, lưu vào DB và gọi `SyncEngine` đẩy xuống điện thoại.
+- **✅ Bảo mật Webhook**: Xác thực `Secure-Token` bằng `crypto.timingSafeEqual` chống Timing Attacks. Khi queue gặp sự cố nội bộ, trả HTTP 200 graceful để tránh Casso spam retry.
+- **✅ Bảng `bank_account`**: Ánh xạ tài khoản ngân hàng (của Casso) với `idaccount` (của User) để xác định quyền sở hữu (`Id_bank_account` UUID PK tự sinh).
+- **✅ Bảng `wallet`**: Ví tạo từ liên kết ngân hàng có `Type = 'Banking'`, gắn `Id_bank_casso`, độ dài tên ví `VARCHAR(100)`.
+- **✅ Bóc tách Webhook an toàn (Defensive Parsing)**: Hỗ trợ linh hoạt payload (Array / Single Object), fallback đa nguồn cho `account_number` (`subAccId`/`bank_sub_acc_id`), `bank_tran_id` (`tid`/`id`), `Amount` (giữ nguyên dấu ±), `Note` (`description`/`memo`), và tính toán số dư cộng dồn khi thiếu `cusum_balance` (kèm log cảnh báo).
+- **✅ Webhook & Queue**: Giao dịch từ ngân hàng đẩy qua Webhook, đưa vào BullMQ (`bank-webhook`), sau đó `bank.worker.js` xử lý, lưu vào DB và phát sự kiện `transaction.created` (`transactionId = newTx.idtran`).
 
 
 

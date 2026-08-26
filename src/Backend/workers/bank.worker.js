@@ -17,16 +17,34 @@ const bankWorker = new Worker(
   'bank-webhook',
   async (job) => {
     const { cassoTx } = job.data;
+    if (!cassoTx || typeof cassoTx !== 'object') {
+      logger.warn('Bank Worker: Invalid job payload, skipping', { jobId: job.id });
+      return;
+    }
 
-    // Casso webhook transaction payload thường có cấu trúc:
-    // tid, amount, description, cusum_balance, when, subAccId
-    const { tid, amount, description, cusum_balance, when, subAccId } = cassoTx;
+    // 1. Trích xuất an toàn với fallback đa nguồn (Casso v2 / Casso Flow)
+    const tid = cassoTx.tid || (cassoTx.id ? String(cassoTx.id) : null);
+    const subAccId = cassoTx.subAccId || cassoTx.bank_sub_acc_id || cassoTx.bankSubAccId || cassoTx.accountNumber;
+    const amount = Number(cassoTx.amount) || 0;
+    const description = cassoTx.description || cassoTx.memo || 'Giao dịch ngân hàng';
+    const rawCusum = cassoTx.cusum_balance !== undefined ? cassoTx.cusum_balance : cassoTx.cusumBalance;
+    const when = cassoTx.when || cassoTx.transactionDate || cassoTx.createdAt;
 
-    logger.info('Bank Worker: Processing webhook transaction', { jobId: job.id, tid });
+    logger.info('Bank Worker: Processing webhook transaction', { jobId: job.id, tid, subAccId, amount });
 
-    // 1. Tìm tài khoản NH dựa trên subAccId (số tài khoản)
+    if (!subAccId) {
+      logger.warn('Bank Worker: Missing account number in webhook payload', { jobId: job.id, cassoTx });
+      return;
+    }
+
+    if (!tid) {
+      logger.warn('Bank Worker: Missing transaction ID (tid/id) in webhook payload', { jobId: job.id, cassoTx });
+      return;
+    }
+
+    // 2. Tìm tài khoản NH dựa trên subAccId (số tài khoản)
     const bankAcc = await prisma.bank_account.findFirst({
-      where: { account_number: subAccId, connect_status: 'active', delete_at: null }
+      where: { account_number: String(subAccId), connect_status: 'active', delete_at: null }
     });
 
     if (!bankAcc) {
@@ -36,7 +54,7 @@ const bankWorker = new Worker(
 
     const { idaccount } = bankAcc;
 
-    // 2. Khử trùng lặp qua (provider, bank_tran_id) — CSDL mới
+    // 3. Khử trùng lặp qua (provider, bank_tran_id) — CSDL mới
     const existing = await prisma.transaction.findFirst({
       where: {
         provider: 'Casso',
@@ -49,14 +67,33 @@ const bankWorker = new Worker(
       return;
     }
 
-    // 3. Tìm hoặc tạo ví đồng bộ (wallet) tương ứng với tài khoản NH này
+    // 4. Tìm hoặc tạo ví đồng bộ (wallet) tương ứng với tài khoản NH này
     // CSDL mới: ví từ Casso = Type 'Banking' + Id_bank_casso
-    const walletName = `${bankAcc.bank_name} - ${bankAcc.account_number}`;
     let wallet = await prisma.wallet.findFirst({
       where: { idaccount, id_bank_casso: bankAcc.id_bank_account, delete_at: null }
     });
 
+    // Tính toán số dư mới: ưu tiên cusum_balance từ ngân hàng, nếu thiếu sẽ fallback cộng dồn
+    let newBalance;
+    if (rawCusum !== undefined && rawCusum !== null) {
+      newBalance = Number(rawCusum);
+    } else {
+      // Prisma Decimal -> Number để tính toán an toàn
+      newBalance = Number(bankAcc.balance) + amount;
+      logger.warn('Bank Worker: cusum_balance is missing in webhook payload, fallback to current balance + amount', {
+        tid,
+        accountNumber: bankAcc.account_number,
+        currentBalance: Number(bankAcc.balance),
+        amount,
+        computedNewBalance: newBalance
+      });
+    }
+
     if (!wallet) {
+      const bankDisplayName = bankAcc.bank_name || 'Bank';
+      const rawWalletName = `${bankDisplayName} - ${bankAcc.account_number}`;
+      const walletName = rawWalletName.length > 100 ? rawWalletName.substring(0, 100) : rawWalletName;
+
       wallet = await prisma.wallet.create({
         data: {
           idwallet: uuidv4(),
@@ -64,15 +101,16 @@ const bankWorker = new Worker(
           name: walletName,
           type: 'Banking',
           id_bank_casso: bankAcc.id_bank_account,
-          balance: cusum_balance,
+          balance: newBalance,
           update_at: new Date()
         }
       });
     }
 
-    // 4. Tạo giao dịch mới
+    // 5. Tạo giao dịch mới
     // CSDL mới: Amount GIỮ DẤU ± (dương = vào, âm = ra), type = Transaction, Idcategory = NULL chờ phân loại
-    const txDate = new Date(when);
+    const parsedDate = when ? new Date(when) : new Date();
+    const txDate = isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
 
     const newTx = await prisma.transaction.create({
       data: {
@@ -82,7 +120,7 @@ const bankWorker = new Worker(
         amount: amount, // giữ nguyên dấu từ Casso
         type: 'Transaction',
         note: description,
-        create_at: isNaN(txDate) ? new Date() : txDate,
+        create_at: txDate,
         update_at: new Date(),
         provider: 'Casso',
         bank_tran_id: String(tid),
@@ -90,23 +128,23 @@ const bankWorker = new Worker(
       }
     });
 
-    // 5. Cập nhật số dư
+    // 6. Cập nhật số dư cho cả bank_account và wallet
     await prisma.bank_account.update({
       where: { id_bank_account: bankAcc.id_bank_account },
-      data: { balance: cusum_balance, update_at: new Date() }
+      data: { balance: newBalance, update_at: new Date() }
     });
 
     await prisma.wallet.update({
       where: { idwallet: wallet.idwallet },
-      data: { balance: cusum_balance, update_at: new Date() }
+      data: { balance: newBalance, update_at: new Date() }
     });
 
-    // 6. Phát sự kiện để báo cho Sync/Notification/Classify
+    // 7. Phát sự kiện để báo cho Sync/Notification/Classify
     if (eventBus && eventBus.publish) {
-      await eventBus.publish('transaction.created', { transactionId: newTx.id, idaccount });
+      await eventBus.publish('transaction.created', { transactionId: newTx.idtran, idaccount });
     }
 
-    logger.info('Bank Worker: Webhook transaction processed successfully', { jobId: job.id, tid });
+    logger.info('Bank Worker: Webhook transaction processed successfully', { jobId: job.id, tid, idtran: newTx.idtran });
   },
   {
     connection,

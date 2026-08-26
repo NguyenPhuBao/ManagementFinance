@@ -1,10 +1,11 @@
+const crypto = require('crypto');
 const logger = require('../../../core/logger');
 const config = require('../../../config');
 
 /**
  * Verify webhook request từ Casso
  * Casso sẽ gửi một header `secure-token` (thường biến thành `secure-token` trong nodejs headers).
- * Ta so sánh nó với CASSO_WEBHOOK_SECRET.
+ * Ta so sánh nó với CASSO_WEBHOOK_SECRET bằng timingSafeEqual chống timing attack.
  */
 function verifySignature(req) {
   const secret = config.casso.webhookSecret;
@@ -16,12 +17,19 @@ function verifySignature(req) {
   // Node.js Express chuyển headers thành lowercase
   const secureToken = req.headers['secure-token'];
 
-  if (!secureToken) {
-    logger.warn('Webhook missing Secure-Token header');
+  if (!secureToken || typeof secureToken !== 'string') {
+    logger.warn('Webhook missing or invalid Secure-Token header');
     return false;
   }
 
-  return secureToken === secret;
+  const tokenBuffer = Buffer.from(secureToken);
+  const secretBuffer = Buffer.from(secret);
+
+  if (tokenBuffer.length !== secretBuffer.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(tokenBuffer, secretBuffer);
 }
 
 module.exports = {

@@ -153,7 +153,7 @@ model wallet {
   idwallet        String    @id @db.VarChar(36) @map("Idwallet")
   idaccount       Int       @map("Idaccount")
   id_bank_casso   String?   @db.VarChar(36) @map("Id_bank_casso")
-  name            String    @db.VarChar(40) @map("Name")
+  name            String    @db.VarChar(100) @map("Name")
   type            String    @default("Cash") @db.VarChar(10) @map("Type")
   balance         Decimal   @default(0) @db.Decimal(15, 2) @map("Balance")
   currency        String    @default("VND") @db.VarChar(3) @map("Currency")
