@@ -1,4 +1,5 @@
 const { prisma } = require('../../config/db');
+const { v4: uuidv4 } = require('uuid');
 
 const bankRepository = {
   /**
@@ -10,11 +11,11 @@ const bankRepository = {
     for (const acc of cassoAccountList) {
       const cassoAccountId = String(acc.id);
 
-      const data = {
+      const updateData = {
         idaccount: idaccount,
         id_casso_account: cassoAccountId,
-        account_number: acc.bankSubAccId || 'UNKNOWN',
-        account_name: acc.virtualAccountName || 'Unknown Name',
+        account_number: acc.bankSubAccId || acc.accountNumber || 'UNKNOWN',
+        account_name: acc.accountName || acc.virtualAccountName || 'Unknown Name',
         bank_name: acc.bankAbbrName || acc.bankName || 'Unknown Bank',
         balance: acc.balance || 0,
         connect_status: 'active',
@@ -23,8 +24,11 @@ const bankRepository = {
 
       const upserted = await prisma.bank_account.upsert({
         where: { id_casso_account: cassoAccountId },
-        update: data,
-        create: data
+        update: updateData,
+        create: {
+          id_bank_account: uuidv4(),
+          ...updateData
+        }
       });
       results.push(upserted);
     }

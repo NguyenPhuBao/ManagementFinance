@@ -110,7 +110,7 @@
 | Idwallet | varchar(36) | PK - uuid | Mã định danh ví ảo |
 | Idaccount | int | FK - Account (Idaccount) | Ví thuộc về ai - Mã tài khoản |
 | Id_bank_casso | varchar(36) | FK - Bank_account (Id_bank_account) - NULL | Mã định danh ngân hàng từ Casso nếu đó là ví được tạo từ liên kết ngân hàng |
-| Name | nvarchar(40) | | Tên ví |
+| Name | nvarchar(100) | | Tên ví |
 | Type | varchar(10) | Check in (Cash, Bank, Saving, Banking) - Default Cash | Loại ví: Cash - ví tiền mặt ảo; Bank - ví ngân hàng ảo do **người dùng tự tạo**; Saving - ví tiết kiệm ảo; Banking - ví ngân hàng **chỉ tạo từ liên kết Casso**, người dùng KHÔNG tự tạo thủ công được |
 | Balance | decimal(15,2) | Default 0 | Số dư ví |
 | Currency | Varchar(3) | Check in (VND, USD, RUP, NDT…) - Default VND | Loại tiền tệ |

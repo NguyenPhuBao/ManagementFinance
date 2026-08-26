@@ -139,7 +139,7 @@ CREATE TABLE "wallet" (
     "Idwallet"        VARCHAR(36)   NOT NULL,
     "Idaccount"       INTEGER       NOT NULL,
     "Id_bank_casso"   VARCHAR(36),
-    "Name"            VARCHAR(40)   NOT NULL,
+    "Name"            VARCHAR(100)  NOT NULL,
     "Type"            VARCHAR(10)   NOT NULL DEFAULT 'Cash',
     "Balance"         DECIMAL(15,2) NOT NULL DEFAULT 0,
     "Currency"        VARCHAR(3)    NOT NULL DEFAULT 'VND',

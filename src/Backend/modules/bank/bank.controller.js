@@ -61,10 +61,12 @@ const bankController = {
         message: 'ok'
       });
     } catch (error) {
-      logger.error('Webhook error:', error);
-      // Vẫn nên trả 200 cho Casso nếu lỗi không phải do Authentication để họ khỏi gửi lại nhiều lần (tùy yêu cầu)
-      // Nhưng theo chuẩn thì 500
-      next(error);
+      logger.error('Webhook processing error:', { error: error.message, stack: error.stack });
+      // Trả 200 kèm error code để Casso không retry spam vô hạn làm nghẽn hệ thống khi có sự cố nội bộ
+      return res.status(200).json({
+        error: 1,
+        message: 'Webhook received but internal processing encountered an error'
+      });
     }
   }
 };

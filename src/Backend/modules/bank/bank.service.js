@@ -35,10 +35,19 @@ const bankService = {
       throw new Error('Bank webhook queue is not initialized');
     }
     
-    // Payload của Casso thường trả về mảng các giao dịch trong trường `data`
-    const records = payload.data || [];
+    // Chuẩn hoá records: hỗ trợ cả Array, Single Object, hoặc rỗng
+    let records = [];
+    if (Array.isArray(payload.data)) {
+      records = payload.data;
+    } else if (payload.data && typeof payload.data === 'object') {
+      records = [payload.data];
+    } else if (Array.isArray(payload)) {
+      records = payload;
+    }
     
     for (const record of records) {
+      if (!record || typeof record !== 'object') continue;
+      const tid = record.tid || record.id || 'UNKNOWN';
       await queue.add('casso_webhook', { cassoTx: record }, {
         attempts: 3,
         backoff: {
@@ -46,7 +55,7 @@ const bankService = {
           delay: 2000
         }
       });
-      logger.info(`Enqueued webhook transaction to bank-webhook queue`, { tid: record.tid });
+      logger.info(`Enqueued webhook transaction to bank-webhook queue`, { tid });
     }
   }
 };
