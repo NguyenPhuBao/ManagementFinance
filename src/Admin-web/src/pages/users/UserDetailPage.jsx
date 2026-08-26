@@ -96,7 +96,7 @@ const UserDetailPage = () => {
             <DetailItem label="Email" value={user.email} />
             <DetailItem label="Số điện thoại" value={user.phone || '—'} />
             <DetailItem label="Địa chỉ" value={user.address || '—'} />
-            <DetailItem label="Khu vực" value={user.location || '—'} />
+            <DetailItem label="Mã vùng" value={user.country_code || '—'} />
           </div>
         </div>
 

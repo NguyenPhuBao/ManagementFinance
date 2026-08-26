@@ -17,7 +17,7 @@ const adminRepository = {
     return prisma.user.count({
       where: {
         account: { idrole: 2 },
-        created_at: {
+        create_at: {
           gte: start,
           lte: end,
         },
@@ -36,8 +36,8 @@ const adminRepository = {
         email: true,
         phone: true,
         address: true,
-        location: true,
-        created_at: true,
+        country_code: true,
+        create_at: true,
         account: {
           select: {
             username: true,
@@ -45,7 +45,7 @@ const adminRepository = {
           },
         },
       },
-      orderBy: { created_at: 'desc' },
+      orderBy: { create_at: 'desc' },
     });
   },
 
@@ -58,9 +58,9 @@ const adminRepository = {
         email: true,
         phone: true,
         address: true,
-        location: true,
-        created_at: true,
-        updated_at: true,
+        country_code: true,
+        create_at: true,
+        update_at: true,
         account: {
           select: {
             username: true,
@@ -93,14 +93,19 @@ const adminRepository = {
 
   async getAllCategories() {
     return prisma.category.findMany({
+      where: { delete_at: null },
       select: {
-        uuid: true,
         idcategory: true,
-        namecategory: true,
+        create_by: true,
+        name_category: true,
         classify: true,
         is_default: true,
-        created_at: true,
-        updated_at: true,
+        is_group: true,
+        idgroup: true,
+        keyword: true,
+        icon: true,
+        create_at: true,
+        update_at: true,
         account: {
           select: {
             idaccount: true,
@@ -109,7 +114,7 @@ const adminRepository = {
           },
         },
       },
-      orderBy: { created_at: 'desc' },
+      orderBy: { create_at: 'desc' },
     });
   },
 
@@ -117,29 +122,35 @@ const adminRepository = {
     const crypto = require('crypto');
     return prisma.category.create({
       data: {
-        uuid: crypto.randomUUID(),
-        namecategory: data.name,
+        idcategory: crypto.randomUUID(),
+        create_by: data.created_by,
+        name_category: data.name,
         classify: data.classify,
         is_default: data.is_default || false,
-        created_by: data.created_by,
+        keyword: data.keyword || null,
+        icon: data.icon || null,
       },
     });
   },
 
-  async updateCategory(uuid, data) {
+  async updateCategory(idcategory, data) {
     return prisma.category.update({
-      where: { uuid },
+      where: { idcategory },
       data: {
-        namecategory: data.name,
+        name_category: data.name,
         classify: data.classify,
         is_default: data.is_default,
+        keyword: data.keyword,
+        icon: data.icon,
       },
     });
   },
 
-  async deleteCategory(uuid) {
-    return prisma.category.delete({
-      where: { uuid },
+  async deleteCategory(idcategory) {
+    // CSDL mới: xóa mềm (Delete_at)
+    return prisma.category.update({
+      where: { idcategory },
+      data: { delete_at: new Date() },
     });
   },
 };

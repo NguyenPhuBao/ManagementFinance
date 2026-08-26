@@ -85,9 +85,9 @@ const adminController = {
 
   async addCategory(req, res) {
     try {
-      const { name, classify, is_default } = req.body;
+      const { name, classify, is_default, keyword, icon } = req.body;
       if (!name || !classify) return ResponseHandler.badRequest(res, 'Thiếu tên hoặc loại danh mục');
-      const result = await adminService.addCategory({ name, classify, is_default }, req.user.idaccount);
+      const result = await adminService.addCategory({ name, classify, is_default, keyword, icon }, req.user.idaccount);
       return ResponseHandler.created(res, result, 'Thêm danh mục thành công');
     } catch (error) {
       logger.error('addCategory failed', { error: error.message });
@@ -97,13 +97,13 @@ const adminController = {
 
   async updateCategory(req, res) {
     try {
-      const uuid = req.params.id;
-      if (!uuid || typeof uuid !== 'string' || uuid.length < 32) {
-        return ResponseHandler.badRequest(res, 'UUID danh mục không hợp lệ');
+      const id = req.params.id;
+      if (!id || typeof id !== 'string' || id.length < 32) {
+        return ResponseHandler.badRequest(res, 'ID danh mục không hợp lệ');
       }
-      const { name, classify, is_default } = req.body;
+      const { name, classify, is_default, keyword, icon } = req.body;
       if (!name || !classify) return ResponseHandler.badRequest(res, 'Thiếu tên hoặc loại danh mục');
-      const result = await adminService.updateCategory(uuid, { name, classify, is_default });
+      const result = await adminService.updateCategory(id, { name, classify, is_default, keyword, icon });
       return ResponseHandler.success(res, result, 'Cập nhật danh mục thành công');
     } catch (error) {
       logger.error('updateCategory failed', { error: error.message });
@@ -113,11 +113,11 @@ const adminController = {
 
   async deleteCategory(req, res) {
     try {
-      const uuid = req.params.id;
-      if (!uuid || typeof uuid !== 'string' || uuid.length < 32) {
-        return ResponseHandler.badRequest(res, 'UUID danh mục không hợp lệ');
+      const id = req.params.id;
+      if (!id || typeof id !== 'string' || id.length < 32) {
+        return ResponseHandler.badRequest(res, 'ID danh mục không hợp lệ');
       }
-      const result = await adminService.deleteCategory(uuid);
+      const result = await adminService.deleteCategory(id);
       return ResponseHandler.success(res, result, 'Xóa danh mục thành công');
     } catch (error) {
       logger.error('deleteCategory failed', { error: error.message });

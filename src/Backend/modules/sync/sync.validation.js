@@ -71,27 +71,27 @@ function validatePush(body) {
           errors.push(`${prefix}.payload.idaccount is required`);
         }
 
-        // Validate updated_at for LWW
-        if (!op.payload.updated_at) {
-          errors.push(`${prefix}.payload.updated_at is required`);
-        } else if (!isValidISO(op.payload.updated_at)) {
-          errors.push(`${prefix}.payload.updated_at must be a valid ISO 8601 datetime`);
+        // Validate update_at for LWW (CSDL mới: update_at)
+        if (!op.payload.update_at) {
+          errors.push(`${prefix}.payload.update_at is required`);
+        } else if (!isValidISO(op.payload.update_at)) {
+          errors.push(`${prefix}.payload.update_at must be a valid ISO 8601 datetime`);
         }
 
-        // For category: validate classify if provided
+        // For category: validate classify if provided (CSDL mới: Thu/Chi/Vay-no)
         if (op.entity === 'category' && op.payload.classify) {
-          if (!['thu', 'chi', 'vay/no'].includes(op.payload.classify)) {
-            errors.push(`${prefix}.payload.classify must be thu/chi/vay-no`);
+          if (!['Thu', 'Chi', 'Vay/no'].includes(op.payload.classify)) {
+            errors.push(`${prefix}.payload.classify must be Thu/Chi/Vay-no`);
           }
         }
 
-        // For transaction: validate type if provided
+        // For transaction: validate type + provider if provided (CSDL mới)
         if (op.entity === 'transaction') {
-          if (op.payload.type && !['thu', 'chi', 'transfer', 'adjustment'].includes(op.payload.type)) {
-            errors.push(`${prefix}.payload.type must be thu/chi/transfer/adjustment`);
+          if (op.payload.type && !['Transaction', 'Transfer'].includes(op.payload.type)) {
+            errors.push(`${prefix}.payload.type must be Transaction/Transfer`);
           }
-          if (op.payload.provider && !['manual', 'casso'].includes(op.payload.provider)) {
-            errors.push(`${prefix}.payload.provider must be manual/casso`);
+          if (op.payload.provider && !['Manual', 'Casso', 'SMS', 'OCR'].includes(op.payload.provider)) {
+            errors.push(`${prefix}.payload.provider must be Manual/Casso/SMS/OCR`);
           }
         }
       }

@@ -8,225 +8,310 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-model User {
-  iduser     Int       @id @default(autoincrement())
-  fullname   String    @db.VarChar(100)
-  email      String    @unique @db.VarChar(100)
-  phone      String?   @db.VarChar(15)
-  address    String?   @db.VarChar(255)
-  location   String?   @db.Char(5)
-  created_at DateTime? @default(now()) @db.Timestamp(6)
-  updated_at DateTime? @default(now()) @db.Timestamp(6)
-  idaccount  Int       @unique
-  account    account   @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_user_account")
-}
-
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model account {
-  idaccount    Int            @id @default(autoincrement())
-  username     String         @unique @db.VarChar(50)
-  password     String         @db.VarChar(255)
-  status              String         @default("Active") @db.VarChar(20)
-  scheduled_delete_at DateTime?      @db.Timestamp(6)
-  created_at          DateTime?      @default(now()) @db.Timestamp(6)
-  updated_at          DateTime?      @default(now()) @db.Timestamp(6)
-  idrole              Int
-  User         User?
-  role         role           @relation(fields: [idrole], references: [idrole], onUpdate: NoAction, map: "fk_account_role")
-  auditlog     auditlog[]
-  bank_account bank_account[]
-  bill         bill[]
-  budget       budget[]
-  category     category[]
-  goal         goal[]
-  refreshtoken refreshtoken[]
-  transaction  transaction[]
-  wallet       wallet[]
-}
-
-model auditlog {
-  idlog     Int       @id @default(autoincrement())
-  idaccount Int
-  action    String?
-  details   String?
-  time      DateTime? @default(now()) @db.Timestamp(6)
-  account   account   @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_actionlog_account")
-}
-
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model category {
-  idcategory   Int           @unique(map: "category_idcategory_unique") @default(autoincrement())
-  namecategory String        @db.VarChar(100)
-  classify     String        @db.VarChar(10)
-  is_default   Boolean?      @default(false)
-  created_by   Int
-  created_at   DateTime?     @default(now()) @db.Timestamp(6)
-  updated_at   DateTime?     @default(now()) @db.Timestamp(6)
-  uuid         String        @id @unique @db.VarChar(36)
-  budget       budget[]
-  account      account       @relation(fields: [created_by], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_category_account")
-  transaction  transaction[]
-
-  @@index([uuid], map: "idx_category_uuid")
-}
-
+/// Bảng vai trò (2.1)
 model role {
-  idrole      Int       @id @default(autoincrement())
-  rolename    String    @unique @db.VarChar(50)
-  description String?   @db.VarChar(255)
+  idrole      Int              @id @default(autoincrement()) @map("Idrole")
+  rolename    String           @unique @db.VarChar(20) @map("Rolename")
+  description String?          @db.Text @map("Description")
   account     account[]
+
+  @@map("role")
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// Bảng tài khoản (2.2)
+model account {
+  idaccount  Int              @id @default(autoincrement()) @map("Idaccount")
+  idrole     Int              @map("Idrole")
+  email      String           @unique @db.VarChar(100) @map("Email")
+  username   String           @unique @db.VarChar(255) @map("Username")
+  password   String           @db.VarChar(255) @map("Password")
+  status     String           @default("Active") @db.VarChar(20) @map("Status")
+  type       String           @default("Basic") @db.VarChar(20) @map("Type")
+  create_at  DateTime         @default(now()) @db.Timestamp(6) @map("Create_at")
+  update_at  DateTime?        @db.Timestamp(6) @map("Update_at")
+  delete_at  DateTime?        @db.Timestamp(6) @map("Delete_at")
+
+  role         role           @relation(fields: [idrole], references: [idrole], onUpdate: NoAction, map: "fk_account_role")
+  User         User?
+  auditlog     auditlog[]
+  otp_code     otp_code[]
+  refreshtoken refreshtoken[]
+  category     category[]
+  bank_account bank_account[]
+  wallet       wallet[]
+  budget       budget[]
+  bill         bill[]
+  goal         goal[]
+  transaction  transaction[]
+
+  @@index([idrole], map: "idx_account_role")
+  @@map("account")
+}
+
+/// Bảng người dùng (2.3)
+model User {
+  iduser       Int       @id @default(autoincrement()) @map("Iduser")
+  idaccount    Int       @unique @map("Idaccount")
+  fullname     String    @db.VarChar(100) @map("Fullname")
+  email        String    @unique @db.VarChar(100) @map("Email")
+  phone        String?   @db.VarChar(15) @map("Phone")
+  address      String?   @db.Text @map("Address")
+  country_code String?   @db.Char(4) @map("Country_code")
+  create_at    DateTime  @default(now()) @db.Timestamp(6) @map("Create_at")
+  update_at    DateTime? @db.Timestamp(6) @map("Update_at")
+  delete_at    DateTime? @db.Timestamp(6) @map("Delete_at")
+
+  account account @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_user_account")
+
+  @@map("user")
+}
+
+/// Bảng nhật ký audit (2.4) — theo dõi yêu cầu gửi về backend
+model auditlog {
+  idlog     Int       @id @default(autoincrement()) @map("Idlog")
+  idaccount Int       @map("Idaccount")
+  request   String    @db.VarChar(200) @map("Request")
+  time_req  DateTime  @default(now()) @db.Timestamp(6) @map("TimeReq")
+  time_res  DateTime  @default(now()) @db.Timestamp(6) @map("TimeRes")
+
+  account account @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_auditlog_account")
+
+  @@index([idaccount], map: "idx_auditlog_account")
+  @@map("audit_log")
+}
+
+/// Bảng mã OTP (2.5)
+model otp_code {
+  id_otp     Int       @id @default(autoincrement()) @map("Id_otp")
+  idaccount  Int       @map("Idaccount")
+  email      String    @db.VarChar(100) @map("Email")
+  code_hash  String    @db.VarChar(255) @map("code_hash")
+  purpose    String    @db.VarChar(30) @map("purpose")
+  is_used    Boolean   @default(false) @map("is_used")
+  expires_at DateTime  @db.Timestamp(6) @map("expires_at")
+  created_at DateTime  @default(now()) @db.Timestamp(6) @map("created_at")
+
+  account account @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_otp_account")
+
+  @@index([idaccount, purpose], map: "idx_otp_account_purpose")
+  @@index([expires_at], map: "idx_otp_expires")
+  @@map("otp_code")
+}
+
+/// Bảng danh mục (2.6) — nhóm (is_group) & con (idgroup tự tham chiếu)
+model category {
+  idcategory   String    @id @db.VarChar(36) @map("Idcategory")
+  create_by    Int       @default(1) @map("Create_by")
+  name_category String   @db.VarChar(200) @map("NameCategory")
+  classify     String    @db.VarChar(10) @map("Classify")
+  is_default   Boolean   @default(false) @map("Is_default")
+  is_group     Boolean   @default(false) @map("Is_group")
+  idgroup      String?   @db.VarChar(36) @map("Idgroup")
+  keyword      String?   @db.VarChar(500) @map("Keyword")
+  icon         String?   @db.VarChar(20) @map("Icon")
+  create_at    DateTime? @default(now()) @db.Timestamp(6) @map("Create_at")
+  update_at    DateTime? @default(now()) @db.Timestamp(6) @map("Update_at")
+  delete_at    DateTime? @db.Timestamp(6) @map("Delete_at")
+
+  account    account      @relation(fields: [create_by], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_category_account")
+  parent     category?    @relation("CategoryTree", fields: [idgroup], references: [idcategory], onDelete: SetNull, onUpdate: NoAction, map: "fk_category_parent")
+  children   category[]   @relation("CategoryTree")
+  budget     budget[]
+  bill       bill[]
+  transaction transaction[]
+
+  @@index([idcategory], map: "idx_category_id")
+  @@index([idgroup], map: "idx_category_group")
+  @@index([create_by], map: "idx_category_create_by")
+  @@map("category")
+}
+
+/// Bảng tài khoản ngân hàng (2.7)
+model bank_account {
+  id_bank_account  String     @id @db.VarChar(36) @map("Id_bank_account")
+  idaccount        Int        @map("Idaccount")
+  id_casso_account String     @unique @db.VarChar(100) @map("Id_casso_account")
+  account_number   String     @db.VarChar(50) @map("Account_number")
+  account_name     String     @db.VarChar(255) @map("Account_name")
+  bank_name        String     @db.VarChar(100) @map("Bank_name")
+  balance          Decimal    @default(0) @db.Decimal(15, 2) @map("Balance")
+  connect_status   String     @default("active") @db.VarChar(20) @map("Connect_status")
+  create_at        DateTime?  @default(now()) @db.Timestamp(6) @map("Create_at")
+  update_at        DateTime?  @default(now()) @db.Timestamp(6) @map("Update_at")
+  delete_at        DateTime?  @db.Timestamp(6) @map("Delete_at")
+
+  account account @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_bank_account_owner")
+  wallet  wallet[]
+
+  @@index([idaccount], map: "idx_bank_account_owner")
+  @@index([connect_status], map: "idx_bank_account_status")
+  @@map("bank_account")
+}
+
+/// Bảng ví (2.8)
+model wallet {
+  idwallet        String    @id @db.VarChar(36) @map("Idwallet")
+  idaccount       Int       @map("Idaccount")
+  id_bank_casso   String?   @db.VarChar(36) @map("Id_bank_casso")
+  name            String    @db.VarChar(40) @map("Name")
+  type            String    @default("Cash") @db.VarChar(10) @map("Type")
+  balance         Decimal   @default(0) @db.Decimal(15, 2) @map("Balance")
+  currency        String    @default("VND") @db.VarChar(3) @map("Currency")
+  status          String    @default("Active") @db.VarChar(10) @map("Status")
+  include_in_total Boolean  @default(true) @map("IncludeInTotal")
+  is_default      Boolean   @default(false) @map("Is_default")
+  icon            String?   @default("wallet") @db.VarChar(20) @map("Icon")
+  color           String?   @default("#4CAF50") @db.VarChar(20) @map("Color")
+  create_at       DateTime  @default(now()) @db.Timestamp(6) @map("Create_at")
+  update_at       DateTime  @db.Timestamp(6) @map("Update_at")
+  delete_at       DateTime? @db.Timestamp(6) @map("Delete_at")
+
+  account         account       @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_wallet_account")
+  bank_account    bank_account? @relation(fields: [id_bank_casso], references: [id_bank_account], onDelete: SetNull, onUpdate: NoAction, map: "fk_wallet_bank")
+  transaction     transaction[] @relation("WalletTx")
+  transfer_tx     transaction[] @relation("TransferWallet")
+  bill            bill[]
+  goal            goal[]
+
+  @@index([idaccount], map: "idx_wallet_account")
+  @@index([id_bank_casso], map: "idx_wallet_bank")
+  @@index([update_at], map: "idx_wallet_updated")
+  @@map("wallet")
+}
+
+/// Bảng ngân sách (2.9)
+model budget {
+  idbudget       String    @id @db.VarChar(36) @map("Idbudget")
+  idaccount      Int       @map("Idaccount")
+  idcategory     String?   @db.VarChar(36) @map("Idcategory")
+  total_amount   Decimal   @db.Decimal(15, 2) @map("TotalAmount")
+  spent          Decimal   @default(0) @db.Decimal(15, 2) @map("Spent")
+  remaining      Decimal?  @db.Decimal(15, 2) @map("Remaining")
+  percent_spent  Int       @default(0) @map("PercentSpent")
+  over_spending  String    @default("Over") @db.VarChar(20) @map("OverSpending")
+  over_amount    Decimal?  @db.Decimal(15, 2) @map("OverAmount")
+  start          DateTime  @db.Timestamp(6) @map("Start")
+  end            DateTime? @db.Timestamp(6) @map("End")
+  recurrence     Boolean   @default(false) @map("Recurrence")
+  time_recurrence String   @db.VarChar(10) @map("Time_recurrence")
+  note           String?   @db.Text @map("Note")
+  create_at      DateTime  @default(now()) @db.Timestamp(6) @map("Create_at")
+  update_at      DateTime  @db.Timestamp(6) @map("Update_at")
+  delete_at      DateTime? @db.Timestamp(6) @map("Delete_at")
+
+  account  account   @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_budget_account")
+  category category? @relation(fields: [idcategory], references: [idcategory], onUpdate: NoAction, map: "fk_budget_category")
+
+  @@index([idaccount], map: "idx_budget_account")
+  @@index([idcategory], map: "idx_budget_category")
+  @@map("budget")
+}
+
+/// Bảng hóa đơn (2.10) — Idwallet & Idcategory bắt buộc
+model bill {
+  idbill         String    @id @db.VarChar(36) @map("Idbill")
+  idaccount      Int       @map("Idaccount")
+  idwallet       String    @db.VarChar(36) @map("Idwallet")
+  idcategory     String    @db.VarChar(36) @map("Idcategory")
+  name           String    @db.VarChar(100) @map("Name")
+  amount         Decimal   @db.Decimal(15, 2) @map("Amount")
+  due_date       DateTime  @db.Timestamp(6) @map("due_date")
+  pay_status     Boolean   @default(false) @map("Pay_status")
+  recurrence     Boolean   @default(false) @map("Recurrence")
+  time_recurrence String   @db.VarChar(10) @map("Time_recurrence")
+  icon           String?   @default("receipt") @db.VarChar(20) @map("Icon")
+  color          String?   @default("#4CAF50") @db.VarChar(20) @map("Color")
+  note           String?   @db.Text @map("Note")
+  create_at      DateTime  @default(now()) @db.Timestamp(6) @map("Create_at")
+  update_at      DateTime  @db.Timestamp(6) @map("Update_at")
+  delete_at      DateTime? @db.Timestamp(6) @map("Delete_at")
+
+  account  account  @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_bill_account")
+  wallet   wallet   @relation(fields: [idwallet], references: [idwallet], onUpdate: NoAction, map: "fk_bill_wallet")
+  category category @relation(fields: [idcategory], references: [idcategory], onUpdate: NoAction, map: "fk_bill_category")
+
+  @@index([idaccount], map: "idx_bill_account")
+  @@index([idwallet], map: "idx_bill_wallet")
+  @@index([idcategory], map: "idx_bill_category")
+  @@map("bill")
+}
+
+/// Bảng mục tiêu (2.11) — Idwallet nullable (chưa gán ví đích)
+model goal {
+  idgoal          String    @id @db.VarChar(36) @map("Idgoal")
+  idaccount       Int       @map("Idaccount")
+  idwallet        String?   @db.VarChar(36) @map("Idwallet")
+  name            String    @db.VarChar(100) @map("Name")
+  target_amount   Decimal   @db.Decimal(15, 2) @map("Target_amount")
+  current_amount  Decimal   @default(0) @db.Decimal(15, 2) @map("Current_amount")
+  target_date     DateTime  @db.Timestamp(6) @map("Target_date")
+  status_complete Boolean   @default(false) @map("Status_complete")
+  icon            String?   @default("flag") @db.VarChar(20) @map("Icon")
+  color           String?   @default("#4CAF50") @db.VarChar(20) @map("Color")
+  note            String?   @db.Text @map("Note")
+  create_at       DateTime  @default(now()) @db.Timestamp(6) @map("Create_at")
+  update_at       DateTime  @db.Timestamp(6) @map("Update_at")
+  delete_at       DateTime? @db.Timestamp(6) @map("Delete_at")
+
+  account account  @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_goal_account")
+  wallet  wallet?  @relation(fields: [idwallet], references: [idwallet], onDelete: SetNull, onUpdate: NoAction, map: "fk_goal_wallet")
+
+  @@index([idaccount], map: "idx_goal_account")
+  @@index([idwallet], map: "idx_goal_wallet")
+  @@map("goal")
+}
+
+/// Bảng giao dịch (2.12) — Amount giữ dấu ±, Provider chống trùng
+model transaction {
+  idtran          String    @id @db.VarChar(36) @map("Idtran")
+  idaccount       Int       @map("Idaccount")
+  idwallet        String    @db.VarChar(36) @map("Idwallet")
+  idcategory      String?   @db.VarChar(36) @map("Idcategory")
+  amount          Decimal   @db.Decimal(15, 2) @map("Amount")
+  type            String    @db.VarChar(20) @map("Type")
+  provider        String    @default("Manual") @db.VarChar(40) @map("Provider")
+  note            String?   @db.Text @map("Note")
+  images          String?   @db.Text @map("Images")
+  create_at       DateTime  @default(now()) @db.Timestamp(6) @map("Create_at")
+  update_at       DateTime  @db.Timestamp(6) @map("Update_at")
+  delete_at       DateTime? @db.Timestamp(6) @map("Delete_at")
+  wallet_transfer String?   @db.VarChar(36) @map("Wallet_Transfer")
+  bank_tran_id    String?   @db.VarChar(100) @map("Bank_tran_id")
+
+  account         account  @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_transaction_account")
+  category        category? @relation(fields: [idcategory], references: [idcategory], onUpdate: NoAction, map: "fk_transaction_category")
+  wallet          wallet   @relation("WalletTx", fields: [idwallet], references: [idwallet], onDelete: Cascade, onUpdate: NoAction, map: "fk_transaction_wallet")
+  transfer_wallet wallet?  @relation("TransferWallet", fields: [wallet_transfer], references: [idwallet], onDelete: SetNull, onUpdate: NoAction, map: "fk_transaction_wallet_transfer")
+
+  @@unique([provider, bank_tran_id], map: "uq_transaction_external")
+  @@index([idaccount], map: "idx_transaction_account")
+  @@index([idwallet], map: "idx_transaction_wallet")
+  @@index([idcategory], map: "idx_transaction_category")
+  @@index([create_at], map: "idx_transaction_create")
+  @@index([update_at], map: "idx_transaction_updated")
+  @@index([provider], map: "idx_transaction_provider")
+  @@map("transaction")
+}
+
+/// Bảng refresh token (2.13)
 model refreshtoken {
-  idtoken     Int       @id @default(autoincrement())
-  token_hash  String    @unique @db.VarChar(255)
-  idaccount   Int
-  idrole      Int       @default(2)
-  expiry      DateTime  @db.Timestamp(6)
-  revoked     Boolean?  @default(false)
-  device_name String?   @db.VarChar(100)
-  ip_address  String?   @db.VarChar(45)
-  user_agent  String?
-  created_at  DateTime? @default(now()) @db.Timestamp(6)
-  updated_at  DateTime? @default(now()) @db.Timestamp(6)
-  account     account   @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_refreshtoken_account")
+  idtoken     Int       @id @default(autoincrement()) @map("Idtoken")
+  token_hash  String    @unique @db.VarChar(255) @map("Token_hash")
+  idaccount   Int       @map("Idaccount")
+  idrole      Int       @default(2) @map("Idrole")
+  expiry      DateTime  @db.Timestamp(6) @map("Expiry")
+  revoked     Boolean   @default(false) @map("Revoked")
+  device_name String?   @db.VarChar(100) @map("Device_name")
+  ip_address  String?   @db.VarChar(45) @map("Ip_address")
+  user_agent  String?   @db.Text @map("User_agent")
+  create_at   DateTime  @default(now()) @db.Timestamp(6) @map("Create_at")
+  update_at   DateTime  @default(now()) @db.Timestamp(6) @map("Update_at")
+
+  account account @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_refreshtoken_account")
 
   @@index([idaccount], map: "idx_refreshtoken_account")
   @@index([expiry], map: "idx_refreshtoken_expiry")
   @@index([revoked], map: "idx_refreshtoken_revoked")
   @@index([token_hash], map: "idx_refreshtoken_token_hash")
-}
-
-model bill {
-  id         String    @id @db.VarChar(36)
-  idaccount  Int
-  name       String    @db.VarChar(100)
-  amount     Decimal   @db.Decimal(15, 2)
-  due_date   DateTime  @db.Timestamp(6)
-  is_paid    Boolean?  @default(false)
-  recurrence String?   @default("monthly") @db.VarChar(20)
-  icon       String?   @default("receipt") @db.VarChar(50)
-  colour     String?   @default("#4CAF50") @db.VarChar(10)
-  note       String?   @default("")
-  is_deleted Boolean?  @default(false)
-  updated_at DateTime  @db.Timestamp(6)
-  created_at DateTime? @default(now()) @db.Timestamp(6)
-  account    account   @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_bill_account")
-
-  @@index([idaccount], map: "idx_bill_account")
-}
-
-model budget {
-  id          String    @id @db.VarChar(36)
-  idaccount   Int
-  category_id String?   @db.VarChar(36)
-  amount      Decimal   @db.Decimal(15, 2)
-  period      String    @default("monthly") @db.VarChar(20)
-  start_date  DateTime  @db.Timestamp(6)
-  end_date    DateTime? @db.Timestamp(6)
-  note        String?   @default("")
-  is_deleted  Boolean?  @default(false)
-  updated_at  DateTime  @db.Timestamp(6)
-  created_at  DateTime? @default(now()) @db.Timestamp(6)
-  account     account   @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_budget_account")
-  category    category? @relation(fields: [category_id], references: [uuid], onUpdate: NoAction, map: "fk_budget_category")
-
-  @@index([idaccount], map: "idx_budget_account")
-}
-
-model goal {
-  id             String    @id @db.VarChar(36)
-  idaccount      Int
-  name           String    @db.VarChar(100)
-  target_amount  Decimal   @db.Decimal(15, 2)
-  current_amount Decimal?  @default(0) @db.Decimal(15, 2)
-  target_date    DateTime  @db.Timestamp(6)
-  icon           String?   @default("flag") @db.VarChar(50)
-  colour         String?   @default("#4CAF50") @db.VarChar(10)
-  note           String?   @default("")
-  is_completed   Boolean?  @default(false)
-  is_deleted     Boolean?  @default(false)
-  updated_at     DateTime  @db.Timestamp(6)
-  created_at     DateTime? @default(now()) @db.Timestamp(6)
-  account        account   @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_goal_account")
-
-  @@index([idaccount], map: "idx_goal_account")
-}
-
-model transaction {
-  id                      String    @id @db.VarChar(36)
-  idaccount               Int
-  wallet_id               String    @db.VarChar(36)
-  category_id             String?   @db.VarChar(36)
-  amount                  Decimal   @db.Decimal(15, 2)
-  type                    String    @db.VarChar(20)
-  note                    String?   @default("")
-  date                    DateTime  @db.Timestamp(6)
-  images                  String?   @default("[]")
-  is_deleted              Boolean?  @default(false)
-  updated_at              DateTime  @db.Timestamp(6)
-  created_at              DateTime? @default(now()) @db.Timestamp(6)
-  provider                String?   @default("manual") @db.VarChar(30)
-  external_transaction_id String?   @db.VarChar(100)
-  account                 account   @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_transaction_account")
-  category                category? @relation(fields: [category_id], references: [uuid], onUpdate: NoAction, map: "fk_transaction_category")
-  wallet                  wallet    @relation(fields: [wallet_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_transaction_wallet")
-
-  @@unique([provider, external_transaction_id], map: "uq_transaction_external")
-  @@index([idaccount], map: "idx_transaction_account")
-  @@index([date], map: "idx_transaction_date")
-  @@index([updated_at], map: "idx_transaction_updated")
-  @@index([wallet_id], map: "idx_transaction_wallet")
-  @@index([provider], map: "idx_transaction_provider")
-}
-
-model wallet {
-  id          String        @id @db.VarChar(36)
-  idaccount   Int
-  name        String        @db.VarChar(100)
-  type        String        @default("cash") @db.VarChar(20)
-  balance     Decimal       @default(0) @db.Decimal(15, 2)
-  currency    String        @default("VND") @db.VarChar(10)
-  icon        String?       @default("wallet") @db.VarChar(50)
-  colour      String?       @default("#4CAF50") @db.VarChar(10)
-  is_default  Boolean?      @default(false)
-  is_deleted  Boolean?      @default(false)
-  updated_at  DateTime      @db.Timestamp(6)
-  created_at  DateTime?     @default(now()) @db.Timestamp(6)
-  transaction transaction[]
-  account     account       @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_wallet_account")
-
-  @@index([idaccount], map: "idx_wallet_account")
-  @@index([updated_at], map: "idx_wallet_updated")
-}
-
-model bank_account {
-  id               String    @id @db.VarChar(36)
-  idaccount        Int
-  casso_account_id String    @unique @db.VarChar(100)
-  account_number   String    @db.VarChar(50)
-  account_name     String    @db.VarChar(255)
-  bank_name        String    @db.VarChar(100)
-  balance          Decimal?  @default(0) @db.Decimal(15, 2)
-  connect_status   String?   @default("active") @db.VarChar(20)
-  created_at       DateTime? @default(now()) @db.Timestamp(6)
-  updated_at       DateTime? @default(now()) @db.Timestamp(6)
-  account          account   @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_bank_account_owner")
-
-  @@index([idaccount], map: "idx_bank_account_owner")
-  @@index([connect_status], map: "idx_bank_account_status")
-}
-
-model otp_code {
-  id         Int       @id @default(autoincrement())
-  email      String    @db.VarChar(100)
-  code_hash  String    @db.VarChar(255)
-  purpose    String    @db.VarChar(30)
-  is_used    Boolean   @default(false)
-  expires_at DateTime  @db.Timestamp(6)
-  created_at DateTime  @default(now()) @db.Timestamp(6)
-
-  @@index([email, purpose])
-  @@index([expires_at])
+  @@map("refreshtoken")
 }

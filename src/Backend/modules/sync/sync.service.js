@@ -137,9 +137,9 @@ const syncService = {
       data[key] = records;
       totalRecords += records.length;
 
-      // Track max updated_at per entity for client checkpoint
+      // Track max update_at per entity for client checkpoint (CSDL mới: update_at)
       if (records.length > 0) {
-        maxSince[entity] = records[records.length - 1].updated_at;
+        maxSince[entity] = records[records.length - 1].update_at;
       }
     }
 

@@ -42,7 +42,7 @@ const updateProfileSchema = {
   fullname: { required: false, type: 'string', minLength: 2, maxLength: 100 },
   phone: { required: false, type: 'string', minLength: 8, maxLength: 15 },
   address: { required: false, type: 'string', maxLength: 255 },
-  location: { required: false, type: 'string', maxLength: 5 },
+  country_code: { required: false, type: 'string', maxLength: 4 },
 };
 
 const requestEmailChangeSchema = {
