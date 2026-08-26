@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { TRANSACTION_TYPE_LABELS } from '../../utils/constants';
 import adminApi from '../../api/admin.api';
 
-const CLASSIFY_MAP = { thu: 'income', chi: 'expense', 'vay/no': 'debt' };
-const TYPE_TO_CLASSIFY = { income: 'thu', expense: 'chi', debt: 'vay/no' };
+const CLASSIFY_MAP = { Thu: 'income', Chi: 'expense', 'Vay/no': 'debt' };
+const TYPE_TO_CLASSIFY = { income: 'Thu', expense: 'Chi', debt: 'Vay/no' };
 
 const CategoryPage = () => {
   const [loading, setLoading] = useState(true);

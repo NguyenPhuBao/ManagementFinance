@@ -1,28 +1,28 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const { prisma } = require('../../config/db');
 
 const bankRepository = {
   /**
    * Lưu hoặc cập nhật danh sách thẻ ngân hàng lấy từ Casso
+   * CSDL mới: casso_account_id → id_casso_account, update_at
    */
   async upsertBankAccounts(idaccount, cassoAccountList) {
     const results = [];
     for (const acc of cassoAccountList) {
       const cassoAccountId = String(acc.id);
-      
+
       const data = {
         idaccount: idaccount,
-        casso_account_id: cassoAccountId,
+        id_casso_account: cassoAccountId,
         account_number: acc.bankSubAccId || 'UNKNOWN',
         account_name: acc.virtualAccountName || 'Unknown Name',
         bank_name: acc.bankAbbrName || acc.bankName || 'Unknown Bank',
         balance: acc.balance || 0,
         connect_status: 'active',
-        updated_at: new Date()
+        update_at: new Date()
       };
 
       const upserted = await prisma.bank_account.upsert({
-        where: { casso_account_id: cassoAccountId },
+        where: { id_casso_account: cassoAccountId },
         update: data,
         create: data
       });
@@ -32,35 +32,36 @@ const bankRepository = {
   },
 
   /**
-   * Lấy danh sách tài khoản ngân hàng của 1 user
+   * Lấy danh sách tài khoản ngân hàng của 1 user (chỉ tài khoản đang hoạt động)
    */
   async getBankAccountsByUser(idaccount) {
     return prisma.bank_account.findMany({
-      where: { idaccount }
+      where: { idaccount, delete_at: null }
     });
   },
 
   /**
    * Cập nhật số dư tài khoản ngân hàng từ webhook
    */
-  async updateBankBalance(cassoAccountId, balance) {
+  async updateBankBalance(idCassoAccount, balance) {
     return prisma.bank_account.update({
-      where: { casso_account_id: cassoAccountId },
+      where: { id_casso_account: idCassoAccount },
       data: {
         balance: balance,
-        updated_at: new Date()
+        update_at: new Date()
       }
     });
   },
 
   /**
-   * Tìm giao dịch dựa trên external_id để tránh duplicate (Webhook)
+   * Tìm giao dịch dựa trên (provider, bank_tran_id) để tránh duplicate (Webhook)
+   * CSDL mới: external_transaction_id → bank_tran_id
    */
   async findTransactionByExternalId(provider, externalId) {
     return prisma.transaction.findFirst({
       where: {
         provider: provider,
-        external_transaction_id: externalId
+        bank_tran_id: externalId
       }
     });
   },
@@ -73,13 +74,13 @@ const bankRepository = {
       data: data
     });
   },
-  
+
   /**
-   * Tìm bank_account bằng casso_account_id
+   * Tìm bank_account bằng id_casso_account
    */
   async findBankAccountByCassoId(cassoAccountId) {
     return prisma.bank_account.findUnique({
-      where: { casso_account_id: cassoAccountId }
+      where: { id_casso_account: cassoAccountId }
     });
   }
 };

@@ -137,7 +137,7 @@ const authService = {
     let pendingDeleteCancelled = false;
 
     if (account.status === 'PendingDelete') {
-      if (account.scheduled_delete_at && account.scheduled_delete_at > new Date()) {
+      if (account.delete_at && account.delete_at > new Date()) {
         // Còn trong 30 ngày → cho đăng nhập, tự động hủy yêu cầu xóa
         const isMatch = await bcrypt.compare(password, account.password);
         if (!isMatch) throw Object.assign(new Error("Sai tai khoan hoac mat khau"), { statusCode: 401 });
@@ -256,27 +256,32 @@ const authService = {
 
   // ---------- FORGOT PASSWORD ----------
   async forgotPassword(email) {
-    const userRecord = await authRepository.findAccountByEmail(email);
-    if (!userRecord) return; // Không tiết lộ email có tồn tại hay không
+    const accountRecord = await authRepository.findAccountByEmail(email);
+    if (!accountRecord) return; // Không tiết lộ email có tồn tại hay không
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const codeHash = hashOtp(otp);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-    await authRepository.createOtp(email, codeHash, 'reset_password', expiresAt);
+    // CSDL mới: OTP cần idaccount (FK)
+    await authRepository.createOtp(email, accountRecord.idaccount, codeHash, 'reset_password', expiresAt);
     await emailService.sendOtp(email, otp, 'reset_password');
-    logger.info("OTP sent for forgot password", { email });
+    logger.info("OTP sent for forgot password", { email, idaccount: accountRecord.idaccount });
   },
 
   // ---------- VERIFY OTP ----------
   async verifyOtp(email, otp) {
     const codeHash = hashOtp(otp);
-    const record = await authRepository.findValidOtp(email, codeHash, 'reset_password');
+    // CSDL mới: tra OTP theo idaccount → tìm account từ email trước
+    const accountRecord = await authRepository.findAccountByEmail(email);
+    if (!accountRecord) throw Object.assign(new Error("Email không tồn tại"), { statusCode: 400 });
+
+    const record = await authRepository.findValidOtp(accountRecord.idaccount, codeHash, 'reset_password');
     if (!record) throw Object.assign(new Error("Mã OTP không hợp lệ hoặc đã hết hạn"), { statusCode: 400 });
 
-    await authRepository.markOtpUsed(record.id);
+    await authRepository.markOtpUsed(record.id_otp);
 
-    const resetToken = jwt.sign({ email, purpose: 'reset_password' }, config.jwt.accessSecret, { expiresIn: '15m' });
+    const resetToken = jwt.sign({ email, idaccount: accountRecord.idaccount, purpose: 'reset_password' }, config.jwt.accessSecret, { expiresIn: '15m' });
     logger.info("OTP verified, reset token issued", { email });
     return resetToken;
   },
@@ -291,13 +296,13 @@ const authService = {
     }
     if (payload.purpose !== 'reset_password') throw Object.assign(new Error("Token không hợp lệ"), { statusCode: 401 });
 
-    const userRecord = await authRepository.findAccountByEmail(payload.email);
-    if (!userRecord) throw Object.assign(new Error("Tài khoản không tồn tại"), { statusCode: 404 });
+    const accountRecord = await authRepository.findAccountByEmail(payload.email);
+    if (!accountRecord) throw Object.assign(new Error("Tài khoản không tồn tại"), { statusCode: 404 });
 
-    const idaccount = userRecord.account.idaccount;
+    const idaccount = accountRecord.idaccount;
     const salt = await bcrypt.genSalt(10);
     const hashedNew = await bcrypt.hash(newPassword, salt);
-    
+
     await authRepository.updatePassword(idaccount, hashedNew);
     await this.revokeAllTokens(idaccount);
     logger.info("Password reset successfully", { email: payload.email });
@@ -324,7 +329,7 @@ const authService = {
     if (account.status !== 'PendingDelete') {
       throw Object.assign(new Error("Tài khoản không ở trạng thái chờ xóa"), { statusCode: 400 });
     }
-    if (account.scheduled_delete_at && account.scheduled_delete_at <= new Date()) {
+    if (account.delete_at && account.delete_at <= new Date()) {
       throw Object.assign(new Error("Đã hết thời gian khôi phục (30 ngày)"), { statusCode: 403 });
     }
 
@@ -341,7 +346,7 @@ const authService = {
       email: user.email,
       phone: user.phone,
       address: user.address,
-      location: user.location,
+      country_code: user.country_code,
     };
   },
 
@@ -351,7 +356,7 @@ const authService = {
     if (data.fullname !== undefined) allowed.fullname = data.fullname;
     if (data.phone !== undefined) allowed.phone = data.phone;
     if (data.address !== undefined) allowed.address = data.address;
-    if (data.location !== undefined) allowed.location = data.location;
+    if (data.country_code !== undefined) allowed.country_code = data.country_code;
 
     const updated = await authRepository.updateProfile(idaccount, allowed);
     return {
@@ -359,7 +364,7 @@ const authService = {
       email: updated.email,
       phone: updated.phone,
       address: updated.address,
-      location: updated.location,
+      country_code: updated.country_code,
     };
   },
 
@@ -372,7 +377,8 @@ const authService = {
     const codeHash = hashOtp(otp);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-    await authRepository.createOtp(newEmail, codeHash, 'change_email', expiresAt);
+    // CSDL mới: OTP cần idaccount
+    await authRepository.createOtp(newEmail, idaccount, codeHash, 'change_email', expiresAt);
     await emailService.sendOtp(newEmail, otp, 'change_email');
     logger.info("OTP sent for email change", { newEmail, idaccount });
   },
@@ -380,15 +386,16 @@ const authService = {
   // ---------- CONFIRM EMAIL CHANGE ----------
   async confirmEmailChange(idaccount, newEmail, otp) {
     const codeHash = hashOtp(otp);
-    const record = await authRepository.findValidOtp(newEmail, codeHash, 'change_email');
+    const record = await authRepository.findValidOtp(idaccount, codeHash, 'change_email');
     if (!record) throw Object.assign(new Error("Mã OTP không hợp lệ hoặc đã hết hạn"), { statusCode: 400 });
 
-    await authRepository.markOtpUsed(record.id);
+    await authRepository.markOtpUsed(record.id_otp);
+    // CSDL mới: updateEmail đồng bộ cả 2 bảng (Account.Email + User.Email)
     await authRepository.updateEmail(idaccount, newEmail);
-    
+
     // Thu hồi token để user phải đăng nhập lại với email mới (optional, nhưng an toàn hơn)
     await this.revokeAllTokens(idaccount);
-    
+
     logger.info("Email changed successfully", { newEmail, idaccount });
   },
 };

@@ -68,7 +68,7 @@ const UserDetailModal = ({ userId, onClose }) => {
                   <RowItem label="Email" value={user.email} />
                   <RowItem label="Số điện thoại" value={user.phone || '—'} />
                   <RowItem label="Địa chỉ" value={user.address || '—'} />
-                  <RowItem label="Khu vực" value={user.location || '—'} />
+                  <RowItem label="Mã vùng" value={user.country_code || '—'} />
                 </div>
               </div>
 

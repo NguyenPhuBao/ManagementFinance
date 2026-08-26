@@ -115,10 +115,10 @@ const adminService = {
       email: u.email,
       phone: u.phone,
       address: u.address,
-      location: u.location,
+      country_code: u.country_code,
       username: u.account.username,
       status: u.account.status,
-      created_at: u.created_at,
+      created_at: u.create_at,
     }));
   },
 
@@ -131,12 +131,12 @@ const adminService = {
       email: u.email,
       phone: u.phone,
       address: u.address,
-      location: u.location,
+      country_code: u.country_code,
       username: u.account.username,
       status: u.account.status,
       rolename: u.account.role.rolename,
-      created_at: u.created_at,
-      updated_at: u.updated_at,
+      created_at: u.create_at,
+      updated_at: u.update_at,
     };
   },
 
@@ -158,14 +158,18 @@ const adminService = {
   async getCategories() {
     const cats = await adminRepository.getAllCategories();
     return cats.map((c) => ({
-      id: c.uuid,
-      name: c.namecategory,
+      id: c.idcategory,
+      name: c.name_category,
       classify: c.classify,
       is_default: c.is_default,
+      is_group: c.is_group,
+      idgroup: c.idgroup,
+      keyword: c.keyword,
+      icon: c.icon,
       created_by: c.account ? c.account.username : null,
       created_by_name: c.account?.User?.fullname || null,
-      created_at: c.created_at,
-      updated_at: c.updated_at,
+      created_at: c.create_at,
+      updated_at: c.update_at,
     }));
   },
 
@@ -174,23 +178,27 @@ const adminService = {
       name: data.name,
       classify: data.classify,
       is_default: data.is_default || false,
+      keyword: data.keyword,
+      icon: data.icon,
       created_by: idaccount,
     });
-    return { id: result.uuid, name: result.namecategory, classify: result.classify };
+    return { id: result.idcategory, name: result.name_category, classify: result.classify };
   },
 
-  async updateCategory(uuid, data) {
-    const result = await adminRepository.updateCategory(uuid, {
+  async updateCategory(idcategory, data) {
+    const result = await adminRepository.updateCategory(idcategory, {
       name: data.name,
       classify: data.classify,
       is_default: data.is_default,
+      keyword: data.keyword,
+      icon: data.icon,
     });
-    return { id: result.uuid, name: result.namecategory, classify: result.classify };
+    return { id: result.idcategory, name: result.name_category, classify: result.classify };
   },
 
-  async deleteCategory(uuid) {
-    await adminRepository.deleteCategory(uuid);
-    return { id: uuid };
+  async deleteCategory(idcategory) {
+    await adminRepository.deleteCategory(idcategory);
+    return { id: idcategory };
   },
 };
 

@@ -12,9 +12,13 @@ const authRepository = {
   },
 
   async findAccountByEmail(email) {
-    return prisma.user.findFirst({
+    // CSDL mới: Account.Email là unique — tìm trực tiếp trên account
+    return prisma.account.findUnique({
       where: { email },
-      include: { account: { include: { role: { select: { idrole: true, rolename: true } } } } },
+      include: {
+        role: { select: { idrole: true, rolename: true } },
+        User: { select: { iduser: true, fullname: true, email: true } },
+      },
     });
   },
 
@@ -23,8 +27,10 @@ const authRepository = {
       const account = await tx.account.create({
         data: {
           username: data.username,
+          email: data.email, // CSDL mới: Account bắt buộc có email (đồng bộ User.email)
           password: data.hashedPassword,
           status: 'Active',
+          type: 'Basic', // CSDL mới: loại tài khoản mặc định
           idrole: 2,
         },
       });
@@ -44,16 +50,18 @@ const authRepository = {
     });
   },
 
-  async createOtp(email, codeHash, purpose, expiresAt) {
+  async createOtp(email, idaccount, codeHash, purpose, expiresAt) {
+    // CSDL mới: OTP có Idaccount FK
     return prisma.otp_code.create({
-      data: { email, code_hash: codeHash, purpose, expires_at: expiresAt, is_used: false },
+      data: { email, idaccount, code_hash: codeHash, purpose, expires_at: expiresAt, is_used: false },
     });
   },
 
-  async findValidOtp(email, codeHash, purpose) {
+  async findValidOtp(idaccount, codeHash, purpose) {
+    // CSDL mới: tra theo idaccount + purpose
     return prisma.otp_code.findFirst({
       where: {
-        email,
+        idaccount,
         code_hash: codeHash,
         purpose,
         is_used: false,
@@ -63,9 +71,9 @@ const authRepository = {
     });
   },
 
-  async markOtpUsed(id) {
+  async markOtpUsed(idOtp) {
     return prisma.otp_code.update({
-      where: { id },
+      where: { id_otp: idOtp },
       data: { is_used: true },
     });
   },
@@ -83,18 +91,19 @@ const authRepository = {
   async updatePassword(idaccount, hashedPassword) {
     return prisma.account.update({
       where: { idaccount },
-      data: { password: hashedPassword, updated_at: new Date() },
+      data: { password: hashedPassword, update_at: new Date() },
     });
   },
 
   async scheduleDeletion(idaccount) {
     const scheduledAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // +30 days
+    // CSDL mới: dùng Delete_at thay scheduled_delete_at
     return prisma.account.update({
       where: { idaccount },
       data: {
         status: 'PendingDelete',
-        scheduled_delete_at: scheduledAt,
-        updated_at: new Date(),
+        delete_at: scheduledAt,
+        update_at: new Date(),
       },
     });
   },
@@ -104,8 +113,8 @@ const authRepository = {
       where: { idaccount },
       data: {
         status: 'Active',
-        scheduled_delete_at: null,
-        updated_at: new Date(),
+        delete_at: null,
+        update_at: new Date(),
       },
     });
   },
@@ -117,17 +126,25 @@ const authRepository = {
   },
 
   async updateProfile(idaccount, data) {
+    // CSDL mới: location → country_code
     return prisma.user.update({
       where: { idaccount },
-      data: { ...data, updated_at: new Date() },
+      data: { ...data, update_at: new Date() },
     });
   },
 
   async updateEmail(idaccount, newEmail) {
-    return prisma.user.update({
-      where: { idaccount },
-      data: { email: newEmail, updated_at: new Date() },
-    });
+    // CSDL mới: User.Email phải đồng bộ Account.Email → cập nhật CẢ 2 bảng trong 1 transaction
+    return prisma.$transaction([
+      prisma.user.update({
+        where: { idaccount },
+        data: { email: newEmail, update_at: new Date() },
+      }),
+      prisma.account.update({
+        where: { idaccount },
+        data: { email: newEmail, update_at: new Date() },
+      }),
+    ]);
   },
 };
 
