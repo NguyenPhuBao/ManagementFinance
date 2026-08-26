@@ -12,14 +12,14 @@ class BudgetDao extends DatabaseAccessor<AppDatabase> with _$BudgetDaoMixin {
 
   Future<List<Budget>> getAll(int idaccount) {
     return (select(budgets)
-          ..where((t) => t.idaccount.equals(idaccount) & t.isDeleted.equals(false))
+          ..where((t) => t.idaccount.equals(idaccount) & t.deletedAt.isNull())
           ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)]))
         .get();
   }
 
   Stream<List<Budget>> watchAll(int idaccount) {
     return (select(budgets)
-          ..where((t) => t.idaccount.equals(idaccount) & t.isDeleted.equals(false)))
+          ..where((t) => t.idaccount.equals(idaccount) & t.deletedAt.isNull()))
         .watch();
   }
 
@@ -28,11 +28,13 @@ class BudgetDao extends DatabaseAccessor<AppDatabase> with _$BudgetDaoMixin {
   }
 
   Future<void> softDelete(String id) async {
+    final now = DateTime.now();
     await (update(budgets)..where((t) => t.id.equals(id))).write(
       BudgetsCompanion(
         isDeleted: const Value(true),
+        deletedAt: Value(now),
         syncStatus: const Value('pending'),
-        updatedAt: Value(DateTime.now()),
+        updatedAt: Value(now),
       ),
     );
   }
@@ -60,14 +62,14 @@ class BillDao extends DatabaseAccessor<AppDatabase> with _$BillDaoMixin {
 
   Future<List<Bill>> getAll(int idaccount) {
     return (select(bills)
-          ..where((t) => t.idaccount.equals(idaccount) & t.isDeleted.equals(false))
+          ..where((t) => t.idaccount.equals(idaccount) & t.deletedAt.isNull())
           ..orderBy([(t) => OrderingTerm.asc(t.dueDate)]))
         .get();
   }
 
   Stream<List<Bill>> watchAll(int idaccount) {
     return (select(bills)
-          ..where((t) => t.idaccount.equals(idaccount) & t.isDeleted.equals(false))
+          ..where((t) => t.idaccount.equals(idaccount) & t.deletedAt.isNull())
           ..orderBy([(t) => OrderingTerm.asc(t.dueDate)]))
         .watch();
   }
@@ -79,7 +81,7 @@ class BillDao extends DatabaseAccessor<AppDatabase> with _$BillDaoMixin {
     return (select(bills)
           ..where((t) =>
               t.idaccount.equals(idaccount) &
-              t.isDeleted.equals(false) &
+              t.deletedAt.isNull() &
               t.isPaid.equals(false) &
               t.dueDate.isSmallerOrEqualValue(limit)))
         .get();
@@ -100,11 +102,13 @@ class BillDao extends DatabaseAccessor<AppDatabase> with _$BillDaoMixin {
   }
 
   Future<void> softDelete(String id) async {
+    final now = DateTime.now();
     await (update(bills)..where((t) => t.id.equals(id))).write(
       BillsCompanion(
         isDeleted: const Value(true),
+        deletedAt: Value(now),
         syncStatus: const Value('pending'),
-        updatedAt: Value(DateTime.now()),
+        updatedAt: Value(now),
       ),
     );
   }
@@ -132,27 +136,27 @@ class GoalDao extends DatabaseAccessor<AppDatabase> with _$GoalDaoMixin {
 
   Future<List<Goal>> getAll(int idaccount) {
     return (select(goals)
-          ..where((t) => t.idaccount.equals(idaccount) & t.isDeleted.equals(false))
+          ..where((t) => t.idaccount.equals(idaccount) & t.deletedAt.isNull())
           ..orderBy([(t) => OrderingTerm.asc(t.targetDate)]))
         .get();
   }
 
   Future<List<Goal>> getAllNonDeleted() {
     return (select(goals)
-          ..where((t) => t.isDeleted.equals(false))
+          ..where((t) => t.deletedAt.isNull())
           ..orderBy([(t) => OrderingTerm.asc(t.targetDate)]))
         .get();
   }
 
   Stream<List<Goal>> watchAll(int idaccount) {
     return (select(goals)
-          ..where((t) => t.idaccount.equals(idaccount) & t.isDeleted.equals(false)))
+          ..where((t) => t.idaccount.equals(idaccount) & t.deletedAt.isNull()))
         .watch();
   }
 
   Stream<List<Goal>> watchAllNonDeleted() {
     return (select(goals)
-          ..where((t) => t.isDeleted.equals(false))
+          ..where((t) => t.deletedAt.isNull())
           ..orderBy([(t) => OrderingTerm.asc(t.targetDate)]))
         .watch();
   }
@@ -176,11 +180,13 @@ class GoalDao extends DatabaseAccessor<AppDatabase> with _$GoalDaoMixin {
   }
 
   Future<void> softDelete(String id) async {
+    final now = DateTime.now();
     await (update(goals)..where((t) => t.id.equals(id))).write(
       GoalsCompanion(
         isDeleted: const Value(true),
+        deletedAt: Value(now),
         syncStatus: const Value('pending'),
-        updatedAt: Value(DateTime.now()),
+        updatedAt: Value(now),
       ),
     );
   }

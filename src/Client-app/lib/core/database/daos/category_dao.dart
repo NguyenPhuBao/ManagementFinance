@@ -19,7 +19,7 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
     final list = await (select(categories)
           ..where((t) =>
               (t.idaccount.equals(0) | t.idaccount.equals(idaccount)) &
-              t.isDeleted.equals(false))
+              t.deletedAt.isNull())
           ..orderBy([
             (t) => OrderingTerm.desc(t.idaccount),
             (t) => OrderingTerm.asc(t.name),
@@ -38,7 +38,7 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
     return (select(categories)
           ..where((t) =>
               (t.idaccount.equals(0) | t.idaccount.equals(idaccount)) &
-              t.isDeleted.equals(false))
+              t.deletedAt.isNull())
           ..orderBy([
             (t) => OrderingTerm.desc(t.idaccount),
             (t) => OrderingTerm.asc(t.name),
@@ -190,12 +190,17 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
     });
   }
 
+  /// Lấy tất cả category của user cần sync lên backend (syncStatus = 'pending')
+  /// Bao gồm cả category đã xóa mềm (để backend cập nhật delete_at).
+  /// Không bao gồm category hệ thống (idaccount = 0) vì backend đã có sẵn.
   Future<List<Category>> getSyncableCategories(int accountId) {
     return (select(categories)
           ..where((t) =>
-              t.idaccount.equals(accountId) & t.isLocalOnly.equals(false)))
+              t.idaccount.equals(accountId) &
+              t.syncStatus.equals('pending')))
         .get();
   }
+
 
   String _normalizeKeyword(String keyword) {
     return keyword.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
@@ -207,7 +212,7 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
           ..where((t) =>
               (t.idaccount.equals(0) | t.idaccount.equals(idaccount)) &
               t.classify.equals(classify) &
-              t.isDeleted.equals(false))
+              t.deletedAt.isNull())
           ..orderBy([
             (t) => OrderingTerm.desc(t.idaccount),
             (t) => OrderingTerm.asc(t.name),
@@ -227,11 +232,13 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
   }
 
   Future<void> softDelete(String id) async {
+    final now = DateTime.now();
     await (update(categories)..where((t) => t.id.equals(id))).write(
       CategoriesCompanion(
         isDeleted: const Value(true),
+        deletedAt: Value(now),
         syncStatus: const Value('pending'),
-        updatedAt: Value(DateTime.now()),
+        updatedAt: Value(now),
       ),
     );
   }

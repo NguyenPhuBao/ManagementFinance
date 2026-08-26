@@ -464,8 +464,7 @@ class SyncEngine {
         payload: {
           'id': validId,
           'wallet_id': validWalletId,
-          'category_id':
-              null, // Đặt null để tránh lỗi Foreign Key fk_transaction_category trên PostgreSQL Backend
+          'category_id': t.categoryId != null ? _toValidUuid(t.categoryId!) : null,
           'amount': t.amount,
           'type': t.type,
           'note': t.note,

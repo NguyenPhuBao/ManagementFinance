@@ -27,10 +27,14 @@ class Wallets extends Table {
   BoolColumn get isDeleted       => boolean().withDefault(const Constant(false))();
   /// Nếu true: số dư ví được cộng vào tổng tài sản trên dashboard
   BoolColumn get includeInTotal  => boolean().withDefault(const Constant(true))();
+  
+  TextColumn get bankCassoId => text().nullable()();
+  TextColumn get status      => text().withDefault(const Constant('active'))();
 
   // ── Sync fields ──────────────────────────────────────────────────────────
   TextColumn get syncStatus => text().withDefault(const Constant('pending'))();
   DateTimeColumn get updatedAt => dateTime()();
+  DateTimeColumn get deletedAt => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
