@@ -33,39 +33,81 @@ const ENTITY_KEYS = {
   category: 'categories',
 };
 
+const ENTITY_PK_MAP = {
+  wallet: 'idwallet',
+  transaction: 'idtran',
+  budget: 'idbudget',
+  bill: 'idbill',
+  goal: 'idgoal',
+  category: 'idcategory',
+};
+
+// Dependency order to avoid Foreign Key violations:
+// Create/Update: category (10) -> wallet (20) -> budget/bill/goal (30) -> transaction (40)
+// Delete: transaction (60) -> budget/bill/goal (70) -> wallet (80) -> category (90)
+const ENTITY_PRIORITY = {
+  category: 10,
+  wallet: 20,
+  budget: 30,
+  bill: 30,
+  goal: 30,
+  transaction: 40,
+};
+
+function getOperationWeight(op) {
+  const entityWeight = ENTITY_PRIORITY[op.entity] || 50;
+  if (op.operation === 'delete') {
+    return 100 - entityWeight;
+  }
+  return entityWeight;
+}
+
 const syncService = {
   /**
    * POST /api/sync/push — Xử lý batch operations từ client
    */
   async processPush(idaccount, operations) {
-    const results = [];
+    const results = new Array(operations.length);
     let synced = 0;
     let conflicts = 0;
     let errors = 0;
 
-    for (const op of operations) {
+    // Sắp xếp operations theo thứ tự phụ thuộc (FK dependency)
+    const indexedOps = operations.map((op, idx) => ({ op, idx }));
+    indexedOps.sort((a, b) => getOperationWeight(a.op) - getOperationWeight(b.op));
+
+    for (const { op, idx } of indexedOps) {
       try {
         const { localId, entity, operation, payload } = op;
 
-        // Ownership check
-        if (payload.idaccount !== idaccount) {
-          results.push({
+        // Ownership check (type-safe comparison)
+        if (Number(payload.idaccount) !== Number(idaccount)) {
+          results[idx] = {
             localId,
             status: 'error',
             message: 'Ownership mismatch: payload.idaccount does not match token',
-          });
+          };
           errors++;
           continue;
+        }
+
+        // Normalize payload fields
+        payload.idaccount = Number(payload.idaccount);
+        if (!payload.id) {
+          const pkField = ENTITY_PK_MAP[entity];
+          if (pkField && payload[pkField]) {
+            payload.id = payload[pkField];
+          }
         }
 
         // Handle delete
         if (operation === 'delete') {
           const deleted = await syncRepository.softDelete(entity, payload.id);
-          results.push({
+          results[idx] = {
             localId,
             status: deleted ? 'synced' : 'error',
             message: deleted ? undefined : 'Record not found',
-          });
+          };
           if (deleted) synced++; else errors++;
           continue;
         }
@@ -73,7 +115,7 @@ const syncService = {
         // Handle create/update (upsert with LWW)
         const upsertFn = syncRepository[UPSERT_MAP[entity]];
         if (!upsertFn) {
-          results.push({ localId, status: 'error', message: `Unknown entity: ${entity}` });
+          results[idx] = { localId, status: 'error', message: `Unknown entity: ${entity}` };
           errors++;
           continue;
         }
@@ -83,24 +125,24 @@ const syncService = {
         if (result === null) {
           // Conflict — server version mới hơn
           const serverRecord = await syncRepository[`get${entity.charAt(0).toUpperCase() + entity.slice(1)}ById`]?.(payload.id);
-          results.push({
+          results[idx] = {
             localId,
             status: 'conflict',
             message: 'Server version is newer',
             serverRecord: serverRecord || null,
-          });
+          };
           conflicts++;
         } else {
-          results.push({ localId, status: 'synced' });
+          results[idx] = { localId, status: 'synced' };
           synced++;
         }
       } catch (err) {
         logger.error('Sync push operation failed', { localId: op.localId, error: err.message });
-        results.push({
+        results[idx] = {
           localId: op.localId,
           status: 'error',
           message: err.message,
-        });
+        };
         errors++;
       }
     }

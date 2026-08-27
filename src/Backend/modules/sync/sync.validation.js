@@ -9,9 +9,21 @@ function isValidUUID(str) {
 
 function isValidISO(str) {
   if (typeof str !== 'string') return false;
+  // Match ISO 8601 datetime formats: YYYY-MM-DDTHH:mm:ss(.sss)?(Z|[+-]HH:mm)?
+  const isoRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?(Z|[+-]\d{2}:?\d{2})$/i;
+  if (!isoRegex.test(str)) return false;
   const d = new Date(str);
-  return d instanceof Date && !isNaN(d) && str === d.toISOString();
+  return d instanceof Date && !isNaN(d.getTime());
 }
+
+const ENTITY_PK_MAP = {
+  wallet: 'idwallet',
+  transaction: 'idtran',
+  budget: 'idbudget',
+  bill: 'idbill',
+  goal: 'idgoal',
+  category: 'idcategory',
+};
 
 /**
  * Validate POST /api/sync/push body
@@ -61,14 +73,21 @@ function validatePush(body) {
       if (!op.payload || typeof op.payload !== 'object') {
         errors.push(`${prefix}.payload is required (object)`);
       } else {
-        // Validate UUID for entity id
-        if (!isValidUUID(op.payload.id)) {
-          errors.push(`${prefix}.payload.id must be a valid UUID`);
+        // Resolve entity ID from payload.id or exact entity PK field (avoiding foreign key collision)
+        const pkField = ENTITY_PK_MAP[op.entity];
+        const entityId = op.payload.id || (pkField && op.payload[pkField]);
+
+        if (!entityId || !isValidUUID(entityId)) {
+          errors.push(`${prefix}.payload.id (or ${pkField || 'PK'}) must be a valid UUID`);
+        } else {
+          op.payload.id = entityId; // Normalize to payload.id
         }
 
-        // Validate idaccount exists
+        // Validate idaccount exists and is a valid number/numeric string
         if (op.payload.idaccount === undefined || op.payload.idaccount === null) {
           errors.push(`${prefix}.payload.idaccount is required`);
+        } else if (isNaN(Number(op.payload.idaccount))) {
+          errors.push(`${prefix}.payload.idaccount must be a valid number`);
         }
 
         // Validate update_at for LWW (CSDL mới: update_at)
