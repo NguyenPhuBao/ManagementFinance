@@ -13,14 +13,14 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
   /// Lấy tất cả ví của user (không xóa mềm)
   Future<List<Wallet>> getAll(int idaccount) {
     return (select(wallets)
-          ..where((t) => t.idaccount.equals(idaccount) & t.isDeleted.equals(false))
+          ..where((t) => t.idaccount.equals(idaccount) & t.deletedAt.isNull())
           ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)]))
         .get();
   }
 
   Future<List<Wallet>> getAllNonDeleted() {
     return (select(wallets)
-          ..where((t) => t.isDeleted.equals(false))
+          ..where((t) => t.deletedAt.isNull())
           ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)]))
         .get();
   }
@@ -28,7 +28,7 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
   /// Stream tất cả ví của user realtime — dùng trong BlocBuilder
   Stream<List<Wallet>> watchAll(int idaccount) {
     return (select(wallets)
-          ..where((t) => t.idaccount.equals(idaccount) & t.isDeleted.equals(false))
+          ..where((t) => t.idaccount.equals(idaccount) & t.deletedAt.isNull())
           ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)]))
         .watch();
   }
@@ -44,7 +44,7 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
           ..where((t) =>
               t.idaccount.equals(idaccount) &
               t.isDefault.equals(true) &
-              t.isDeleted.equals(false)))
+              t.deletedAt.isNull()))
         .getSingleOrNull();
   }
 
@@ -66,13 +66,15 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
         .write(entry);
   }
 
-  /// Xoá mềm ví (isDeleted = true, syncStatus = 'pending')
+  /// Xoá mềm ví — set deletedAt (DB v2) & isDeleted (backward compat)
   Future<void> softDelete(String id) async {
+    final now = DateTime.now();
     await (update(wallets)..where((t) => t.id.equals(id))).write(
       WalletsCompanion(
         isDeleted: const Value(true),
+        deletedAt: Value(now),
         syncStatus: const Value('pending'),
-        updatedAt: Value(DateTime.now()),
+        updatedAt: Value(now),
       ),
     );
   }

@@ -15,7 +15,7 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
   Future<List<Transaction>> getAll(int idaccount) {
     return (select(transactions)
           ..where(
-              (t) => t.idaccount.equals(idaccount) & t.isDeleted.equals(false))
+              (t) => t.idaccount.equals(idaccount) & t.deletedAt.isNull())
           ..orderBy([(t) => OrderingTerm.desc(t.date)]))
         .get();
   }
@@ -24,7 +24,7 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
   Stream<List<Transaction>> watchAll(int idaccount) {
     return (select(transactions)
           ..where(
-              (t) => t.idaccount.equals(idaccount) & t.isDeleted.equals(false))
+              (t) => t.idaccount.equals(idaccount) & t.deletedAt.isNull())
           ..orderBy([(t) => OrderingTerm.desc(t.date)]))
         .watch();
   }
@@ -32,7 +32,7 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
   /// Stream tất cả giao dịch chưa xóa realtime (dùng cho fallback/Home)
   Stream<List<Transaction>> watchAllNonDeleted() {
     return (select(transactions)
-          ..where((t) => t.isDeleted.equals(false))
+          ..where((t) => t.deletedAt.isNull())
           ..orderBy([(t) => OrderingTerm.desc(t.date)]))
         .watch();
   }
@@ -41,7 +41,7 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
   Stream<List<Transaction>> watchByNotePattern(int idaccount, String pattern) {
     return (select(transactions)
           ..where((t) =>
-              t.isDeleted.equals(false) &
+              t.deletedAt.isNull() &
               t.idaccount.equals(idaccount) &
               t.note.like('%$pattern%'))
           ..orderBy([(t) => OrderingTerm.desc(t.date)]))
@@ -52,7 +52,7 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
   Future<List<Transaction>> getByWallet(String walletId) {
     return (select(transactions)
           ..where(
-              (t) => t.walletId.equals(walletId) & t.isDeleted.equals(false))
+              (t) => t.walletId.equals(walletId) & t.deletedAt.isNull())
           ..orderBy([(t) => OrderingTerm.desc(t.date)]))
         .get();
   }
@@ -66,7 +66,7 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     return (select(transactions)
           ..where((t) =>
               t.idaccount.equals(idaccount) &
-              t.isDeleted.equals(false) &
+              t.deletedAt.isNull() &
               t.date.isBiggerOrEqualValue(from) &
               t.date.isSmallerOrEqualValue(to))
           ..orderBy([(t) => OrderingTerm.desc(t.date)]))
@@ -87,7 +87,7 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     return (select(transactions)
           ..where((t) =>
               t.idaccount.equals(idaccount) &
-              t.isDeleted.equals(false) &
+              t.deletedAt.isNull() &
               t.date.isBiggerOrEqualValue(from) &
               t.date.isSmallerOrEqualValue(to))
           ..orderBy([(t) => OrderingTerm.desc(t.date)]))
@@ -125,11 +125,13 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
   }
 
   Future<void> softDelete(String id) async {
+    final now = DateTime.now();
     await (update(transactions)..where((t) => t.id.equals(id))).write(
       TransactionsCompanion(
         isDeleted: const Value(true),
+        deletedAt: Value(now),
         syncStatus: const Value('pending'),
-        updatedAt: Value(DateTime.now()),
+        updatedAt: Value(now),
       ),
     );
   }

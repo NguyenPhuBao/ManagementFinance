@@ -25,6 +25,10 @@ class Categories extends Table {
   BoolColumn get isGroup => boolean().withDefault(const Constant(false))();
   BoolColumn get isLocalOnly => boolean().withDefault(const Constant(false))();
 
+  // ── Soft delete (DB v2) ───────────────────────────────────────────────────
+  /// deletedAt: NULL = đang dùng, có giá trị = đã xóa mềm (đồng bộ với backend)
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+
   // ── Sync fields ──────────────────────────────────────────────────────────
   TextColumn     get syncStatus => text().withDefault(const Constant('pending'))();
   DateTimeColumn get updatedAt  => dateTime()();

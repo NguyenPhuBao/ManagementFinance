@@ -52,7 +52,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration {
@@ -78,6 +78,48 @@ class AppDatabase extends _$AppDatabase {
         if (from < 5) {
           // Thêm cột includeInTotal cho việc tính vào tổng tài sản
           await m.addColumn(wallets, wallets.includeInTotal);
+        }
+        if (from < 6) {
+          // ── Wallets (DB v2) ──────────────────────────────────────────────
+          // Id_bank_casso: liên kết bank_account khi Type='Banking'
+          await m.addColumn(wallets, wallets.bankCassoId);
+          // Status: 'Active' | 'Inactive'
+          await m.addColumn(wallets, wallets.status);
+          // deletedAt: soft delete timestamp
+          await m.addColumn(wallets, wallets.deletedAt);
+
+          // ── Transactions (DB v2) ─────────────────────────────────────────
+          // provider: 'Manual' | 'Casso' | 'SMS' | 'OCR'
+          await m.addColumn(transactions, transactions.provider);
+          // walletTransfer: ví đích khi chuyển khoản nội bộ
+          await m.addColumn(transactions, transactions.walletTransfer);
+          // bankTranId: ID giao dịch từ ngân hàng
+          await m.addColumn(transactions, transactions.bankTranId);
+          // deletedAt: soft delete timestamp
+          await m.addColumn(transactions, transactions.deletedAt);
+
+          // ── Categories (DB v2) ───────────────────────────────────────────
+          await m.addColumn(categories, categories.deletedAt);
+
+          // ── Budgets (DB v2) ──────────────────────────────────────────────
+          await m.addColumn(budgets, budgets.spent);
+          await m.addColumn(budgets, budgets.remaining);
+          await m.addColumn(budgets, budgets.percentSpent);
+          await m.addColumn(budgets, budgets.overSpending);
+          await m.addColumn(budgets, budgets.overAmount);
+          await m.addColumn(budgets, budgets.recurrence);
+          await m.addColumn(budgets, budgets.timeRecurrence);
+          await m.addColumn(budgets, budgets.deletedAt);
+
+          // ── Bills (DB v2) ────────────────────────────────────────────────
+          await m.addColumn(bills, bills.walletId);
+          await m.addColumn(bills, bills.categoryId);
+          await m.addColumn(bills, bills.isRecurrence);
+          await m.addColumn(bills, bills.timeRecurrence);
+          await m.addColumn(bills, bills.deletedAt);
+
+          // ── Goals (DB v2) ────────────────────────────────────────────────
+          await m.addColumn(goals, goals.deletedAt);
         }
       },
       beforeOpen: (details) async {
@@ -147,5 +189,3 @@ class AppDatabase extends _$AppDatabase {
     await categoryDao.upsertAll(companions);
   }
 }
-
-
