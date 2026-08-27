@@ -1,65 +1,63 @@
 # API Spec — Đăng ký có xác thực OTP qua Email
 
-> **Tình trạng:** Cần Backend implement  
-> Viết bởi: Client-app team  
-> Ngày: 2026-08-26
+> **Tình trạng:** ✅ **Backend ĐÃ TRIỂN KHAI & TEST HOÀN TẤT (100% PASS)**  
+> **Backend Base URL:** `http://localhost:3000/api` (Local) / `https://managementfinance.onrender.com/api` (Cloud)  
+> **Cập nhật lần cuối:** 2026-08-27  
 
 ---
 
-## Tổng quan luồng mới
+## 📌 1. Tổng quan luồng đăng ký mới
 
 ```
-Luồng CŨ (hiện tại):
-POST /auth/register → Tạo tài khoản + trả về token ngay
-
-Luồng MỚI (yêu cầu):
-POST /auth/register/send-otp  → Kiểm tra trùng + Gửi OTP về email (CHƯA tạo account)
-  ↓ (user nhập OTP)
-POST /auth/register/verify-otp → Xác thực OTP + Tạo tài khoản + Trả về token
+Người dùng điền form đăng ký
+  ↓
+Client App gọi: POST /api/auth/register/send-otp
+  ↓ (Backend kiểm tra trùng lặp email/username, tạo OTP & gửi email xác thực)
+Client App chuyển sang màn hình nhập OTP (Đếm ngược 10 phút)
+  ↓ (Người dùng nhập OTP 6 số)
+Client App gọi: POST /api/auth/register/verify-otp (gửi kèm toàn bộ form + OTP)
+  ↓ (Backend xác thực OTP, tạo Account + User, cấp token)
+Client App nhận JWT accessToken + refreshToken, lưu vào local storage và chuyển vào trang chủ!
 ```
 
 ---
 
-## API 1 — Gửi OTP đăng ký
+## 🚀 2. Chi tiết các Endpoint cho Client-App
 
-### `POST /auth/register/send-otp`
+### 🔹 API 1: Gửi OTP Đăng ký
 
-**Mô tả:** Kiểm tra username/email chưa tồn tại, gửi OTP 6 số về email. Chưa tạo tài khoản ở bước này.
+* **Endpoint:** `POST /api/auth/register/send-otp`
+* **Quyền hạn (Auth):** Public (Không cần token)
+* **Tác dụng:** 
+  - Kiểm tra xem `username` và `email` đã bị ai sử dụng chưa.
+  - Sinh mã OTP 6 số ngẫu nhiên, lưu vào bảng `otp_code` với hiệu lực 10 phút.
+  - Gửi email chứa mã OTP đến địa chỉ email đăng ký.
+  - **CHƯA** tạo tài khoản ở bước này.
 
-**Request Body:**
+#### Request Header:
+```http
+Content-Type: application/json
+```
+
+#### Request Body:
 ```json
 {
   "username": "nguyenvana",
   "fullname": "Nguyễn Văn A",
   "email": "nguyenvana@gmail.com",
-  "password": "secret123",
-  "phone": "0901234567"   // optional
+  "password": "secretPassword123",
+  "phone": "0901234567"
 }
 ```
 
-**Validation (giữ nguyên như registerSchema cũ):**
-- `username`: required, string, 3–50 ký tự
-- `password`: required, string, 6–100 ký tự
-- `fullname`: required, string, 2–100 ký tự
-- `email`: required, string, 5–100 ký tự
-- `phone`: optional, string, 8–15 ký tự
+* **Validation Rules:**
+  - `username`: Bắt buộc, chuỗi từ 3 đến 50 ký tự.
+  - `password`: Bắt buộc, chuỗi từ 6 đến 100 ký tự.
+  - `fullname`: Bắt buộc, chuỗi từ 2 đến 100 ký tự.
+  - `email`: Bắt buộc, định dạng email hợp lệ, từ 5 đến 100 ký tự.
+  - `phone`: Tùy chọn (optional), chuỗi từ 8 đến 15 ký tự.
 
-**Logic backend cần làm:**
-1. Kiểm tra `username` đã tồn tại → 409 nếu trùng
-2. Kiểm tra `email` đã tồn tại → 409 nếu trùng
-3. Tạo OTP 6 số ngẫu nhiên
-4. Hash OTP, lưu vào bảng `otp_code` với:
-   - `email` = email đăng ký
-   - `idaccount` = null (chưa có account) hoặc dùng một sentinel value
-   - `purpose` = `'register'`
-   - `expires_at` = `now + 10 phút`
-5. **LƯU TẠM** thông tin đăng ký vào cache (Redis, TTL 15 phút):
-   - Key: `register_pending:{email}`
-   - Value: `{ username, fullname, email, hashedPassword, phone }`
-   - Hoặc đơn giản hơn: Không lưu cache, bắt client gửi lại toàn bộ data ở bước 2
-6. Gửi email OTP (dùng `emailService.sendOtp(email, otp, 'register')`)
-
-**Response 200 OK:**
+#### Response Thành công (HTTP 200 OK):
 ```json
 {
   "success": true,
@@ -68,54 +66,74 @@ POST /auth/register/verify-otp → Xác thực OTP + Tạo tài khoản + Trả 
 }
 ```
 
-**Response 409 Conflict:**
+#### Response Lỗi (HTTP 409 Conflict):
+* Khi username đã tồn tại:
 ```json
 {
   "success": false,
   "message": "Username đã được sử dụng"
 }
 ```
+* Khi email đã tồn tại:
+```json
+{
+  "success": false,
+  "message": "Email đã được sử dụng"
+}
+```
+
+#### Response Lỗi (HTTP 400 Bad Request):
+* Khi thiếu trường dữ liệu hoặc sai định dạng validation:
+```json
+{
+  "success": false,
+  "message": "Validation error: email must be a valid email"
+}
+```
 
 ---
 
-## API 2 — Xác thực OTP + Tạo tài khoản
+### 🔹 API 2: Xác thực OTP & Tạo tài khoản
 
-### `POST /auth/register/verify-otp`
+* **Endpoint:** `POST /api/auth/register/verify-otp`
+* **Quyền hạn (Auth):** Public (Không cần token)
+* **Tác dụng:**
+  - Kiểm tra tính hợp lệ và thời hạn của mã OTP.
+  - Đánh dấu mã OTP đã được sử dụng.
+  - Kiểm tra lại race condition username/email.
+  - Tạo bản ghi mới trong bảng `account` và `user` (CSDL Supabase).
+  - Cấp cặp JWT `accessToken` (thời hạn 7 ngày) và `refreshToken` (thời hạn 90 ngày).
+  - Trả về thông tin người dùng và token để Client App tự động đăng nhập.
 
-**Mô tả:** Xác thực mã OTP, nếu đúng thì tạo tài khoản và trả về token đăng nhập ngay.
+#### Request Header:
+```http
+Content-Type: application/json
+```
 
-**Request Body (Option A — Client gửi lại toàn bộ data, đơn giản hơn):**
+#### Request Body:
 ```json
 {
   "username": "nguyenvana",
   "fullname": "Nguyễn Văn A",
   "email": "nguyenvana@gmail.com",
-  "password": "secret123",
+  "password": "secretPassword123",
   "phone": "0901234567",
-  "otp": "123456"
+  "otp": "654321"
 }
 ```
 
-> **Khuyến nghị:** Dùng Option A (client gửi lại toàn bộ). Đơn giản hơn, không cần Redis cache. Backend hash lại password khi tạo account.
+* **Validation Rules:**
+  - Tất cả các trường của API 1.
+  - `otp`: Bắt buộc, chuỗi đúng 6 chữ số.
 
-**Logic backend cần làm:**
-1. Hash OTP đầu vào
-2. Tìm OTP record trong `otp_code` theo `email`, `purpose = 'register'`, `is_used = false`, `expires_at > now`
-3. Nếu không tìm thấy → 400 "OTP không hợp lệ hoặc đã hết hạn"
-4. Mark OTP là đã dùng (`is_used = true`)
-5. Kiểm tra lại `username` / `email` chưa bị ai đăng ký trong lúc chờ OTP (race condition)
-6. Tạo account + user (dùng lại logic của `register()` cũ)
-7. Tạo JWT accessToken + refreshToken
-8. Trả về giống response của `POST /auth/register` hiện tại
-
-**Response 201 Created:**
+#### Response Thành công (HTTP 201 Created):
 ```json
 {
   "success": true,
   "message": "Đăng ký thành công",
   "data": {
-    "accessToken": "eyJ...",
-    "refreshToken": "eyJ...",
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
     "user": {
       "idaccount": 5,
       "username": "nguyenvana",
@@ -127,7 +145,8 @@ POST /auth/register/verify-otp → Xác thực OTP + Tạo tài khoản + Trả 
 }
 ```
 
-**Response 400:**
+#### Response Lỗi (HTTP 400 Bad Request):
+* Khi mã OTP không đúng hoặc đã quá hạn 10 phút:
 ```json
 {
   "success": false,
@@ -135,53 +154,41 @@ POST /auth/register/verify-otp → Xác thực OTP + Tạo tài khoản + Trả 
 }
 ```
 
----
-
-## Xử lý bảng `otp_code` với `purpose = 'register'`
-
-Bảng `otp_code` hiện tại đang có FK `idaccount` bắt buộc. Cần điều chỉnh:
-
-**Option A (Khuyến nghị):** Cho phép `idaccount` nullable với `purpose = 'register'`
-```sql
--- Sửa schema Prisma:
-idaccount  Int?   -- nullable cho register OTP
+#### Response Lỗi (HTTP 409 Conflict):
+* Nếu tài khoản bị đăng ký trùng trước đó:
+```json
+{
+  "success": false,
+  "message": "Email đã được sử dụng"
+}
 ```
 
-**Option B:** Dùng `idaccount = 0` là sentinel value (không cần thay đổi schema)
+---
 
-> Hãy thống nhất với team rồi cập nhật schema tương ứng.
+## ⚙️ 3. Chi tiết Thay đổi Kỹ thuật phía Backend
+
+1. **CSDL (Supabase PostgreSQL)**:
+   - Cột `otp_code.Idaccount` đã được đổi thành `INT NULL` (cho phép `NULL` khi đăng ký vì người dùng chưa có tài khoản).
+   - Đã thêm index `idx_otp_email_purpose` trên `(Email, purpose)` để tối ưu tốc độ tra cứu OTP.
+   - Đã chạy `prisma db push` thành công lên Supabase.
+
+2. **Email Service (`email.service.js`)**:
+   - Thêm template gửi OTP đăng ký với tiêu đề: *"Mã OTP xác thực đăng ký tài khoản — FlowMoney"*.
+   - Hỗ trợ gửi qua SMTP Gmail (hoặc Mock log nếu không cấu hình SMTP).
+
+3. **Backward Compatibility**:
+   - Endpoint `POST /api/auth/register` (luồng cũ không OTP) vẫn được giữ lại với trạng thái `@deprecated` để đảm bảo hệ thống không bị lỗi nếu client phiên bản cũ gọi vào.
 
 ---
 
-## Email template cần thêm
+## ✅ 4. Checklist Hoàn thành Backend
 
-Hàm `emailService.sendOtp(email, otp, purpose)` hiện hỗ trợ:
-- `'reset_password'`
-- `'change_email'`
+- [x] Sửa schema Prisma `otp_code.idaccount` nullable & chạy `prisma db push`.
+- [x] Tạo `sendRegisterOtpSchema` và `verifyRegisterOtpSchema` trong `auth.validation.js`.
+- [x] Thêm hàm `findValidOtpByEmail` trong `auth.repository.js`.
+- [x] Thêm `sendRegisterOtp` và `verifyRegisterOtp` trong `auth.service.js`.
+- [x] Thêm Controller handlers trong `auth.controller.js`.
+- [x] Khai báo routes trong `api/auth.routes.js`.
+- [x] Cập nhật `email.service.js` với tiêu đề email đăng ký.
+- [x] Chạy kiểm thử tự động toàn diện: **100% PASS** (Gửi OTP, Check trùng, Chặn sai OTP, Xác thực đúng OTP, Cấp token, Đăng nhập ngay sau khi tạo).
 
-**Cần thêm:** `'register'` — tiêu đề email khác ("Xác thực đăng ký tài khoản FlowMoney")
-
----
-
-## Giữ backward compat: `POST /auth/register` cũ
-
-> ⚠️ **Quyết định cần thống nhất:**
-
-| Phương án | Ưu | Nhược |
-|---|---|---|
-| Giữ `POST /auth/register` (không OTP) | Không breaking | Không có xác thực email |
-| Deprecated `POST /auth/register`, chỉ dùng flow mới | Clean | Client cũ bị lỗi |
-| Giữ cả 2, flow mới là optional (flag `requireOtp`) | Linh hoạt | Phức tạp hơn |
-
-**Khuyến nghị client-app:** Phương án **Deprecated** (chỉ dùng flow mới), vì client-app sẽ cập nhật đồng thời khi backend deploy.
-
----
-
-## Tóm tắt việc backend cần làm
-
-- [ ] Thêm API `POST /auth/register/send-otp`
-- [ ] Thêm API `POST /auth/register/verify-otp`
-- [ ] Xử lý `idaccount` nullable trong `otp_code` cho purpose `'register'`
-- [ ] Thêm email template cho `'register'` trong `emailService`
-- [ ] (Optional) Thêm email template gửi OTP vào `email.service.js` với subject phù hợp
-- [ ] Thông báo cho client-app khi API sẵn sàng để client-app cập nhật flow

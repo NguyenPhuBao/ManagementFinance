@@ -83,7 +83,7 @@ model auditlog {
 /// Bảng mã OTP (2.5)
 model otp_code {
   id_otp     Int       @id @default(autoincrement()) @map("Id_otp")
-  idaccount  Int       @map("Idaccount")
+  idaccount  Int?      @map("Idaccount")
   email      String    @db.VarChar(100) @map("Email")
   code_hash  String    @db.VarChar(255) @map("code_hash")
   purpose    String    @db.VarChar(30) @map("purpose")
@@ -91,9 +91,10 @@ model otp_code {
   expires_at DateTime  @db.Timestamp(6) @map("expires_at")
   created_at DateTime  @default(now()) @db.Timestamp(6) @map("created_at")
 
-  account account @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_otp_account")
+  account account? @relation(fields: [idaccount], references: [idaccount], onDelete: SetNull, onUpdate: NoAction, map: "fk_otp_account")
 
   @@index([idaccount, purpose], map: "idx_otp_account_purpose")
+  @@index([email, purpose], map: "idx_otp_email_purpose")
   @@index([expires_at], map: "idx_otp_expires")
   @@map("otp_code")
 }

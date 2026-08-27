@@ -51,17 +51,38 @@ const authRepository = {
   },
 
   async createOtp(email, idaccount, codeHash, purpose, expiresAt) {
-    // CSDL mới: OTP có Idaccount FK
+    // CSDL mới: OTP có Idaccount FK (nullable đối với mục đích 'register')
     return prisma.otp_code.create({
-      data: { email, idaccount, code_hash: codeHash, purpose, expires_at: expiresAt, is_used: false },
+      data: { 
+        email, 
+        idaccount: idaccount || null, 
+        code_hash: codeHash, 
+        purpose, 
+        expires_at: expiresAt, 
+        is_used: false 
+      },
     });
   },
 
   async findValidOtp(idaccount, codeHash, purpose) {
-    // CSDL mới: tra theo idaccount + purpose
+    // Tra theo idaccount + purpose (cho reset_password, change_email)
     return prisma.otp_code.findFirst({
       where: {
         idaccount,
+        code_hash: codeHash,
+        purpose,
+        is_used: false,
+        expires_at: { gt: new Date() },
+      },
+      orderBy: { created_at: 'desc' },
+    });
+  },
+
+  async findValidOtpByEmail(email, codeHash, purpose) {
+    // Tra theo email + purpose (cho register khi chưa có idaccount)
+    return prisma.otp_code.findFirst({
+      where: {
+        email,
         code_hash: codeHash,
         purpose,
         is_used: false,
