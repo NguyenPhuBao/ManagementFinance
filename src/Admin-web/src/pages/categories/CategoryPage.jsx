@@ -9,6 +9,7 @@ const CategoryPage = () => {
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState([]);
   const [search, setSearch] = useState('');
+  const [syncToast, setSyncToast] = useState(null);
   
   const [modals, setModals] = useState({
       add: false,
@@ -47,7 +48,7 @@ const CategoryPage = () => {
         type: CLASSIFY_MAP[c.classify] || 'expense',
         classify: c.classify,
         isDefault: c.is_default,
-        created_by: c.created_by_name || c.created_by || '—',
+        created_by: c.created_by_name || c.created_by || (c.is_default ? 'Hệ thống' : 'Người dùng'),
         created_at: c.created_at,
       }));
       setCategories(mapped);
@@ -70,7 +71,7 @@ const CategoryPage = () => {
     try {
       const payload = {
         name: form.name,
-        classify: TYPE_TO_CLASSIFY[form.type] || 'chi',
+        classify: TYPE_TO_CLASSIFY[form.type] || 'Chi',
         is_default: form.isDefault === 'yes',
       };
       if (editingCategory) {
@@ -127,9 +128,18 @@ const CategoryPage = () => {
     toggleModal('add', true);
   };
 
-  const handleSyncConfirm = () => {
+  const handleSyncConfirm = async () => {
     toggleModal('syncAlert', false);
-    // sync logic placeholder
+    setLoading(true);
+    try {
+      await fetchCategories();
+      setSyncToast('Đã đồng bộ và làm mới danh mục hệ thống thành công!');
+      setTimeout(() => setSyncToast(null), 3500);
+    } catch (err) {
+      console.error('Lỗi đồng bộ danh mục:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getTypeBadgeClass = (type) => {
@@ -140,6 +150,18 @@ const CategoryPage = () => {
 
   return (
     <div className="bg-surface-bright relative p-4 md:p-6 min-h-full">
+      {syncToast && (
+          <div className="mb-6 bg-[#dcfce7] border border-[#86efac] text-[#166534] rounded-lg p-4 flex items-center justify-between gap-4 animate-in fade-in duration-200">
+              <div className="flex items-center gap-3">
+                  <span className="material-symbols-outlined text-[#166534]">check_circle</span>
+                  <p className="font-body-lg font-semibold">{syncToast}</p>
+              </div>
+              <button className="text-[#166534] hover:opacity-75 cursor-pointer" onClick={() => setSyncToast(null)}>
+                  <span className="material-symbols-outlined">close</span>
+              </button>
+          </div>
+      )}
+
       {modals.deleteAlert && (
           <div className="mb-6 bg-surface-container-low border border-error-container rounded-lg p-4 flex flex-col md:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-3 text-on-surface">
@@ -204,6 +226,7 @@ const CategoryPage = () => {
                               <th className="px-6 py-4 font-label-md text-label-md text-on-surface uppercase">Tên danh mục</th>
                               <th className="px-6 py-4 font-label-md text-label-md text-on-surface uppercase">Loại</th>
                               <th className="px-6 py-4 font-label-md text-label-md text-on-surface uppercase">Phân loại</th>
+                              <th className="px-6 py-4 font-label-md text-label-md text-on-surface uppercase">Người tạo</th>
                               <th className="px-6 py-4 font-label-md text-label-md text-on-surface uppercase text-right">Hành động</th>
                           </tr>
                       </thead>
@@ -227,7 +250,14 @@ const CategoryPage = () => {
                                               {TRANSACTION_TYPE_LABELS[item.type] || item.type}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 text-on-surface-variant">{item.isDefault ? 'Hệ thống' : 'Tùy chỉnh'}</td>
+                                        <td className="px-6 py-4 text-on-surface-variant">
+                                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs ${item.isDefault ? 'bg-primary/10 text-primary font-medium' : 'bg-surface-container text-on-surface-variant'}`}>
+                                            {item.isDefault ? 'Hệ thống' : 'Tùy chỉnh'}
+                                          </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-on-surface-variant text-sm">
+                                          {item.created_by}
+                                        </td>
                                         <td className="px-6 py-4 text-right">
                                             <button className="p-1 text-secondary hover:text-primary transition-colors border border-transparent hover:border-on-background rounded cursor-pointer" onClick={() => openEditModal(item)} title="Sửa">
                                                 <span className="material-symbols-outlined text-[20px]">edit</span>
@@ -241,7 +271,7 @@ const CategoryPage = () => {
                             })
                           ) : (
                             <tr>
-                              <td colSpan="4" className="px-6 py-8 text-center text-on-surface-variant">
+                              <td colSpan="5" className="px-6 py-8 text-center text-on-surface-variant">
                                 Không tìm thấy danh mục nào.
                               </td>
                             </tr>

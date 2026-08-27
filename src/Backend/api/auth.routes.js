@@ -48,4 +48,8 @@ router.patch('/profile', authenticate, validate(updateProfileSchema), authContro
 router.post('/profile/request-email-change', authenticate, validate(requestEmailChangeSchema), authController.requestEmailChange);
 router.patch('/profile/confirm-email-change', authenticate, validate(confirmEmailChangeSchema), authController.confirmEmailChange);
 
+// === AUDIT LOG & RECENT ACTIVITIES ===
+const authorize = require('../middleware/authorize');
+router.get('/recent-activities', authenticate, authorize('admin'), authController.getRecentActivities);
+
 module.exports = router;

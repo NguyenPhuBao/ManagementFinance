@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { USER_STATUS_LABELS } from '../../utils/constants';
 import adminApi from '../../api/admin.api';
@@ -45,7 +45,7 @@ const UserDetailPage = () => {
     );
   }
 
-  const isActive = user.status === 'Active';
+  const isActive = user.status?.toLowerCase() === 'active';
 
   return (
     <div>

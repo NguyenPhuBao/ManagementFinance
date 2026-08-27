@@ -62,12 +62,14 @@ CREATE TABLE "user" (
 -- 2.4. BẢNG AUDIT_LOG
 -- ============================================================================
 CREATE TABLE "audit_log" (
-    "Idlog"     SERIAL       NOT NULL,
-    "Idaccount" INTEGER      NOT NULL,
-    "Request"   VARCHAR(200) NOT NULL,
-    "TimeReq"   TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "TimeRes"   TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT "audit_log_pkey" PRIMARY KEY ("Idlog")
+    "Idlog"      SERIAL       NOT NULL,
+    "Idaccount"  INTEGER      NOT NULL,
+    "Request"    VARCHAR(200) NOT NULL,
+    "Req_status" VARCHAR(20)  NOT NULL DEFAULT 'Pass',
+    "TimeReq"    TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "TimeRes"    TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "audit_log_pkey" PRIMARY KEY ("Idlog"),
+    CONSTRAINT "ck_auditlog_req_status" CHECK ("Req_status" IN ('Accepted', 'Rejected', 'Interrupted', 'Pending', 'Processing', 'Pass', 'Fail'))
 );
 
 -- ============================================================================

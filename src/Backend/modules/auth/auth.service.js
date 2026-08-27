@@ -498,6 +498,115 @@ const authService = {
 
     logger.info("Email changed successfully", { newEmail, idaccount });
   },
+
+  // ---------- AUDIT LOG HELPERS ----------
+  determineReqStatus(res, req) {
+    if (req.auditStatus) {
+      return req.auditStatus;
+    }
+    const statusCode = res.statusCode || 200;
+    if (statusCode >= 200 && statusCode < 300) {
+      return 'Pass';
+    }
+    if (statusCode === 400 || statusCode === 401 || statusCode === 403 || statusCode === 429) {
+      return 'Rejected';
+    }
+    if (statusCode >= 500) {
+      return 'Fail';
+    }
+    return 'Pass';
+  },
+
+  formatActionName(method, path) {
+    const p = (path || '').toLowerCase();
+    const m = (method || 'GET').toUpperCase();
+
+    if (p.includes('/auth/login')) return 'Đăng nhập hệ thống';
+    if (p.includes('/auth/register')) return 'Đăng ký tài khoản';
+    if (p.includes('/auth/logout')) return 'Đăng xuất';
+    if (p.includes('/auth/refresh')) return 'Làm mới phiên đăng nhập';
+    if (p.includes('/auth/forgot-password')) return 'Yêu cầu đặt lại mật khẩu';
+    if (p.includes('/auth/verify-otp')) return 'Xác thực mã OTP';
+    if (p.includes('/auth/reset-password')) return 'Đặt lại mật khẩu';
+    if (p.includes('/auth/change-password')) return 'Đổi mật khẩu';
+    if (p.includes('/auth/profile') && m === 'PUT') return 'Cập nhật hồ sơ';
+    if (p.includes('/auth/profile') && m === 'GET') return 'Xem thông tin cá nhân';
+
+    if (p.includes('/sync/push')) return 'Đồng bộ dữ liệu (Push)';
+    if (p.includes('/sync/pull')) return 'Tải dữ liệu đồng bộ (Pull)';
+    if (p.includes('/sync/full')) return 'Đồng bộ toàn bộ dữ liệu';
+
+    if (p.includes('/bank/sync')) return 'Đồng bộ giao dịch ngân hàng';
+    if (p.includes('/bank/webhook')) return 'Webhook biến động số dư';
+    if (p.includes('/bank/connect') || p.includes('/bank/link')) return 'Liên kết tài khoản ngân hàng';
+
+    if (p.includes('/ai/chat')) return 'Hỏi đáp trợ lý tài chính AI';
+    if (p.includes('/ai/classify')) return 'Phân loại giao dịch AI';
+
+    if (p.includes('/admin/updatestatus')) return 'Khóa/mở khóa tài khoản';
+    if (p.includes('/admin/addcategory')) return 'Tạo danh mục hệ thống';
+    if (p.includes('/admin/updatecategory')) return 'Cập nhật danh mục hệ thống';
+    if (p.includes('/admin/deletecategory')) return 'Xóa danh mục hệ thống';
+
+    return `${m} ${path}`;
+  },
+
+  async recordAuditLog(data) {
+    try {
+      const reqStatus = data.req_status || 'Pass';
+      const log = await authRepository.createAuditLog({
+        idaccount: data.idaccount,
+        request: data.request,
+        req_status: reqStatus,
+        time_req: data.time_req,
+        time_res: data.time_res,
+      });
+
+      // Format time string
+      const date = new Date(data.time_req || Date.now());
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+      const timeFormatted = `${hours}:${minutes}`;
+
+      // Emit real-time event to Admin-web
+      const { emitAuditActivity } = require('../../core/socket');
+      emitAuditActivity({
+        id: log.idlog,
+        idaccount: data.idaccount,
+        user: data.userDetails?.fullname || data.userDetails?.username || `User #${data.idaccount}`,
+        action: data.request,
+        status: reqStatus,
+        time: timeFormatted,
+        time_req: log.time_req,
+        time_res: log.time_res,
+      });
+
+      return log;
+    } catch (err) {
+      logger.error('Failed to record audit log', { error: err.message, idaccount: data.idaccount });
+    }
+  },
+
+  async getRecentActivities(limit = 10) {
+    const logs = await authRepository.getRecentAuditLogs(limit);
+    return logs.map((log) => {
+      const date = new Date(log.time_req);
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+      const timeFormatted = `${hours}:${minutes}`;
+
+      return {
+        id: log.idlog,
+        idaccount: log.idaccount,
+        user: log.account?.User?.fullname || log.account?.username || `User #${log.idaccount}`,
+        action: log.request,
+        status: log.req_status || 'Pass',
+        time: timeFormatted,
+        time_req: log.time_req,
+        time_res: log.time_res,
+      };
+    });
+  },
 };
 
 module.exports = authService;

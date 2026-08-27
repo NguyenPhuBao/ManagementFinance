@@ -167,6 +167,50 @@ const authRepository = {
       }),
     ]);
   },
+
+  async createAuditLog(data) {
+    return prisma.auditlog.create({
+      data: {
+        idaccount: data.idaccount,
+        request: (data.request || '').substring(0, 200),
+        req_status: data.req_status || 'Pass',
+        time_req: data.time_req || new Date(),
+        time_res: data.time_res || new Date(),
+      },
+    });
+  },
+
+  async getRecentAuditLogs(limit = 10) {
+    return prisma.auditlog.findMany({
+      take: limit,
+      orderBy: { time_req: 'desc' },
+      include: {
+        account: {
+          select: {
+            idaccount: true,
+            username: true,
+            User: {
+              select: {
+                fullname: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  },
+
+  async findAccountByUsernameOrEmail(identifier) {
+    if (!identifier) return null;
+    return prisma.account.findFirst({
+      where: {
+        OR: [{ username: identifier }, { email: identifier }],
+      },
+      include: {
+        User: { select: { fullname: true } },
+      },
+    });
+  },
 };
 
 module.exports = authRepository;

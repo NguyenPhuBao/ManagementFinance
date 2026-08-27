@@ -17,6 +17,11 @@ const authController = {
   async verifyRegisterOtp(req, res) {
     try {
       const result = await authService.verifyRegisterOtp(req.body, req);
+      if (result.user) {
+        req.auditAccountId = result.user.idaccount;
+        req.auditAccountFullname = result.user.fullname;
+        req.auditAccountUsername = result.user.username;
+      }
       return ResponseHandler.created(res, result, 'Đăng ký thành công');
     } catch (error) {
       const statusCode = error.statusCode || 500;
@@ -28,6 +33,11 @@ const authController = {
   async register(req, res) {
     try {
       const result = await authService.register(req.body, req);
+      if (result.user) {
+        req.auditAccountId = result.user.idaccount;
+        req.auditAccountFullname = result.user.fullname;
+        req.auditAccountUsername = result.user.username;
+      }
       return ResponseHandler.created(res, result, 'Dang ky thanh cong');
     } catch (error) {
       const statusCode = error.statusCode || 500;
@@ -39,6 +49,11 @@ const authController = {
     try {
       const { username, password } = req.body;
       const result = await authService.login(username, password, req);
+      if (result.user) {
+        req.auditAccountId = result.user.idaccount;
+        req.auditAccountFullname = result.user.fullname;
+        req.auditAccountUsername = result.user.username;
+      }
       return ResponseHandler.success(res, result, 'Đăng nhập thành công');
     } catch (error) {
       const statusCode = error.statusCode || 500;
@@ -179,6 +194,17 @@ const authController = {
       const { newEmail, otp } = req.body;
       await authService.confirmEmailChange(req.user.idaccount, newEmail, otp);
       return ResponseHandler.success(res, null, 'Cập nhật email thành công. Vui lòng đăng nhập lại.');
+    } catch (error) {
+      const statusCode = error.statusCode || 500;
+      return ResponseHandler.error(res, error.message, statusCode);
+    }
+  },
+
+  async getRecentActivities(req, res) {
+    try {
+      const limit = parseInt(req.query.limit) || 10;
+      const activities = await authService.getRecentActivities(limit);
+      return ResponseHandler.success(res, activities, 'Lấy lịch sử hoạt động thành công');
     } catch (error) {
       const statusCode = error.statusCode || 500;
       return ResponseHandler.error(res, error.message, statusCode);

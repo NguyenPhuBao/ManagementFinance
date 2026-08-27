@@ -1,9 +1,11 @@
 require('dotenv').config();
+const http = require('http');
 const app = require('./app');
 const config = require('./config');
 const logger = require('./core/logger');
 const { verifyConnection } = require('./config/db');
 const { verifyRedisConnection } = require('./config/redis');
+const { initSocket } = require('./core/socket');
 
 async function bootstrap() {
   try {
@@ -25,8 +27,12 @@ async function bootstrap() {
       require('./workers/bank.worker');
     }
 
-    // 3. Start Express server
-    app.listen(config.port, config.host, () => {
+    // 3. Create HTTP Server & Initialize Socket.io
+    const httpServer = http.createServer(app);
+    initSocket(httpServer);
+
+    // 4. Start listening
+    httpServer.listen(config.port, config.host, () => {
       logger.info(`WealthCommand Backend running at http://${config.host}:${config.port}`);
       logger.info(`Environment: ${config.env}`);
       logger.info(`Database: PersonFinance @ PostgreSQL`);

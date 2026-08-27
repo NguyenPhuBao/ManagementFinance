@@ -1,4 +1,4 @@
-﻿import axiosClient from './axios-client';
+import axiosClient from './axios-client';
 
 const adminApi = {
   // Dashboard — thống kê
@@ -8,7 +8,7 @@ const adminApi = {
 
   // Dashboard (các API khác sẽ bổ sung sau)
   getDashboardStats: (timeFilter) => axiosClient.get('/admin/dashboard', { params: { period: timeFilter } }),
-  getRecentActivities: (params) => axiosClient.get('/admin/activities', { params }),
+  getRecentActivities: (params) => axiosClient.get('/auth/recent-activities', { params }),
   getLoginStats: () => axiosClient.get('/admin/login-stats'),
 
   // Users
