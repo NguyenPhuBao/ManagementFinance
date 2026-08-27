@@ -48,10 +48,12 @@ function generateTokens(payload, idrole) {
 }
 
 function getDeviceInfo(req) {
+  const headers = (req && req.headers) ? req.headers : {};
+  const userAgent = headers["user-agent"] || null;
   return {
-    ip_address: req.ip || null,
-    user_agent: req.headers["user-agent"] || null,
-    device_name: (req.headers["user-agent"] || "").substring(0, 100),
+    ip_address: (req && req.ip) || null,
+    user_agent: userAgent,
+    device_name: (userAgent || "").substring(0, 100),
   };
 }
 
@@ -74,7 +76,105 @@ async function saveRefreshToken(token, payload, req) {
 }
 
 const authService = {
-  // ---------- REGISTER (User) ----------
+  // ---------- REGISTER OTP: SEND OTP ----------
+  async sendRegisterOtp(data) {
+    // 1. Kiểm tra username đã tồn tại chưa
+    const existingUsername = await authRepository.findAccountByUsername(data.username);
+    if (existingUsername) {
+      throw Object.assign(new Error("Username đã được sử dụng"), { statusCode: 409 });
+    }
+
+    // 2. Kiểm tra email đã tồn tại chưa
+    const existingEmail = await authRepository.findAccountByEmail(data.email);
+    if (existingEmail) {
+      throw Object.assign(new Error("Email đã được sử dụng"), { statusCode: 409 });
+    }
+
+    // 3. Sinh mã OTP 6 số ngẫu nhiên
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const codeHash = hashOtp(otp);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 phút
+
+    // 4. Lưu vào bảng otp_code với idaccount = null, purpose = 'register'
+    await authRepository.createOtp(data.email, null, codeHash, 'register', expiresAt);
+
+    // 5. Gửi email OTP
+    await emailService.sendOtp(data.email, otp, 'register');
+    logger.info("Register OTP sent", { email: data.email, username: data.username });
+
+    return {
+      message: "Mã OTP đã được gửi đến email của bạn. Hiệu lực 10 phút.",
+    };
+  },
+
+  // ---------- REGISTER OTP: VERIFY OTP & CREATE ACCOUNT ----------
+  async verifyRegisterOtp(data, req) {
+    if (!req) req = {};
+
+    // 1. Hash OTP đầu vào
+    const codeHash = hashOtp(data.otp);
+
+    // 2. Tìm OTP record hợp lệ theo email và purpose = 'register'
+    const record = await authRepository.findValidOtpByEmail(data.email, codeHash, 'register');
+    if (!record) {
+      throw Object.assign(new Error("Mã OTP không hợp lệ hoặc đã hết hạn"), { statusCode: 400 });
+    }
+
+    // 3. Đánh dấu OTP đã sử dụng
+    await authRepository.markOtpUsed(record.id_otp);
+
+    // 4. Kiểm tra lại race condition (tránh trường hợp username/email bị đăng ký trong lúc chờ nhập OTP)
+    const existingUsername = await authRepository.findAccountByUsername(data.username);
+    if (existingUsername) {
+      throw Object.assign(new Error("Username đã được sử dụng"), { statusCode: 409 });
+    }
+
+    const existingEmail = await authRepository.findAccountByEmail(data.email);
+    if (existingEmail) {
+      throw Object.assign(new Error("Email đã được sử dụng"), { statusCode: 409 });
+    }
+
+    // 5. Hash mật khẩu
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(data.password, salt);
+
+    // 6. Tạo account + user trong transaction
+    const account = await authRepository.createAccountWithUser({
+      username: data.username,
+      hashedPassword,
+      fullname: data.fullname,
+      email: data.email,
+      phone: data.phone || null,
+    });
+
+    // 7. Tạo JWT payload
+    const payload = {
+      idaccount: account.idaccount,
+      username: account.username,
+      idrole: account.idrole,
+      rolename: account.role.rolename,
+    };
+
+    // 8. Generate tokens & lưu refresh token
+    const { accessToken, refreshToken } = generateTokens(payload, 2);
+    await saveRefreshToken(refreshToken, payload, req);
+
+    logger.info("User registered via OTP successfully", { username: account.username, idaccount: account.idaccount });
+
+    return {
+      accessToken,
+      refreshToken,
+      user: {
+        idaccount: account.idaccount,
+        username: account.username,
+        rolename: account.role.rolename,
+        fullname: account.User.fullname,
+        email: account.User.email,
+      },
+    };
+  },
+
+  // ---------- REGISTER (User - Deprecated, giữ tương thích) ----------
   async register(data, req) {
     if (!req) req = {};
 

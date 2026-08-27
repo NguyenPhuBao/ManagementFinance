@@ -75,7 +75,7 @@ CREATE TABLE "audit_log" (
 -- ============================================================================
 CREATE TABLE "otp_code" (
     "Id_otp"    SERIAL       NOT NULL,
-    "Idaccount" INTEGER      NOT NULL,
+    "Idaccount" INTEGER,
     "Email"     VARCHAR(100) NOT NULL,
     "code_hash" VARCHAR(255) NOT NULL,
     "purpose"   VARCHAR(30)  NOT NULL,
@@ -309,6 +309,7 @@ CREATE TABLE "refreshtoken" (
 CREATE INDEX "idx_account_role" ON "account" ("Idrole");
 CREATE INDEX "idx_auditlog_account" ON "audit_log" ("Idaccount");
 CREATE INDEX "idx_otp_account_purpose" ON "otp_code" ("Idaccount", "purpose");
+CREATE INDEX "idx_otp_email_purpose" ON "otp_code" ("Email", "purpose");
 CREATE INDEX "idx_otp_expires" ON "otp_code" ("expires_at");
 CREATE INDEX "idx_category_group" ON "category" ("Idgroup");
 CREATE INDEX "idx_category_create_by" ON "category" ("Create_by");
@@ -345,7 +346,7 @@ ALTER TABLE "user" ADD CONSTRAINT "fk_user_account"
 ALTER TABLE "audit_log" ADD CONSTRAINT "fk_auditlog_account"
     FOREIGN KEY ("Idaccount") REFERENCES "account" ("Idaccount") ON DELETE CASCADE ON UPDATE NO ACTION;
 ALTER TABLE "otp_code" ADD CONSTRAINT "fk_otp_account"
-    FOREIGN KEY ("Idaccount") REFERENCES "account" ("Idaccount") ON DELETE CASCADE ON UPDATE NO ACTION;
+    FOREIGN KEY ("Idaccount") REFERENCES "account" ("Idaccount") ON DELETE SET NULL ON UPDATE NO ACTION;
 ALTER TABLE "category" ADD CONSTRAINT "fk_category_account"
     FOREIGN KEY ("Create_by") REFERENCES "account" ("Idaccount") ON DELETE CASCADE ON UPDATE NO ACTION;
 ALTER TABLE "category" ADD CONSTRAINT "fk_category_parent"

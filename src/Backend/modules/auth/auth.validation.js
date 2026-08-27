@@ -54,8 +54,16 @@ const confirmEmailChangeSchema = {
   otp: { required: true, type: 'string', minLength: 6, maxLength: 6 },
 };
 
+const sendRegisterOtpSchema = registerSchema;
+
+const verifyRegisterOtpSchema = {
+  ...registerSchema,
+  otp: { required: true, type: 'string', minLength: 6, maxLength: 6 },
+};
+
 module.exports = { 
   loginSchema, refreshSchema, registerSchema,
+  sendRegisterOtpSchema, verifyRegisterOtpSchema,
   changePasswordSchema, forgotPasswordSchema, verifyOtpSchema, resetPasswordSchema,
   deleteAccountSchema, updateProfileSchema, requestEmailChangeSchema, confirmEmailChangeSchema
 };

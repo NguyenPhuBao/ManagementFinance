@@ -5,11 +5,19 @@ const validate = require('../middleware/validator');
 const { authenticate } = require('../middleware/auth');
 const { 
   loginSchema, refreshSchema, registerSchema,
+  sendRegisterOtpSchema, verifyRegisterOtpSchema,
   changePasswordSchema, forgotPasswordSchema, verifyOtpSchema, resetPasswordSchema,
   deleteAccountSchema, updateProfileSchema, requestEmailChangeSchema, confirmEmailChangeSchema
 } = require('../modules/auth/auth.validation');
 
-// POST /api/auth/register — public (dang ky user)
+// === REGISTER OTP FLOW (MỚI) ===
+// POST /api/auth/register/send-otp — Gửi mã OTP xác thực đăng ký về email
+router.post('/register/send-otp', validate(sendRegisterOtpSchema), authController.sendRegisterOtp);
+
+// POST /api/auth/register/verify-otp — Xác thực OTP, tạo tài khoản và trả token đăng nhập
+router.post('/register/verify-otp', validate(verifyRegisterOtpSchema), authController.verifyRegisterOtp);
+
+// POST /api/auth/register — DEPRECATED (Giữ tương thích ngược)
 router.post('/register', validate(registerSchema), authController.register);
 
 // POST /api/auth/login — public

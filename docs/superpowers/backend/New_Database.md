@@ -59,11 +59,11 @@
 | Tên cột | Kiểu dữ liệu | Ràng buộc | Ý nghĩa |
 |---|---|---|---|
 | Id_otp | int | PK - Auto increment | Mã định danh otp |
-| Idaccount | int | FK - Account (Idaccount) | Tài khoản thực hiện yêu cầu OTP - Mã tài khoản |
+| Idaccount | int | FK - Account (Idaccount) - **NULL** khi đăng ký tài khoản (chưa có account) | Tài khoản thực hiện yêu cầu OTP - Mã tài khoản |
 | Email | varchar(100) | | Email |
 | code_hash | varchar(255) | | Otp đã được mã hóa |
-| purpose | varchar(30) | | Mục đích |
-| is_used | Boolean | | Đã được dùng - TRUE hay là chưa dùng - FALSE |
+| purpose | varchar(30) | | Mục đích (register, reset_password, change_email) |
+| is_used | Boolean | Default FALSE | Đã được dùng - TRUE hay là chưa dùng - FALSE |
 | expires_at | Timestamp | Default Getdate() + 10 minutes | Hết hạn vào thời điểm nào |
 | created_at | Timestamp | Default Getdate() | OTP được tạo vào thời điểm nào |
 

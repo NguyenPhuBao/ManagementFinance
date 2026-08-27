@@ -3,6 +3,28 @@ const ResponseHandler = require('../../core/response-handler');
 const logger = require('../../core/logger');
 
 const authController = {
+  async sendRegisterOtp(req, res) {
+    try {
+      const result = await authService.sendRegisterOtp(req.body);
+      return ResponseHandler.success(res, null, result.message);
+    } catch (error) {
+      const statusCode = error.statusCode || 500;
+      logger.warn('Send register OTP failed', { email: req.body.email, error: error.message });
+      return ResponseHandler.error(res, error.message, statusCode);
+    }
+  },
+
+  async verifyRegisterOtp(req, res) {
+    try {
+      const result = await authService.verifyRegisterOtp(req.body, req);
+      return ResponseHandler.created(res, result, 'Đăng ký thành công');
+    } catch (error) {
+      const statusCode = error.statusCode || 500;
+      logger.warn('Verify register OTP failed', { email: req.body.email, error: error.message });
+      return ResponseHandler.error(res, error.message, statusCode);
+    }
+  },
+
   async register(req, res) {
     try {
       const result = await authService.register(req.body, req);

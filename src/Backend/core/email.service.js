@@ -14,9 +14,14 @@ const transporter = nodemailer.createTransport({
 
 const emailService = {
   async sendOtp(email, otp, purpose) {
-    const subject = purpose === 'reset_password'
-      ? 'Mã OTP khôi phục mật khẩu — FlowMoney'
-      : 'Mã OTP xác nhận đổi email — FlowMoney';
+    let subject = 'Mã OTP xác thực — FlowMoney';
+    if (purpose === 'register') {
+      subject = 'Mã OTP xác thực đăng ký tài khoản — FlowMoney';
+    } else if (purpose === 'reset_password') {
+      subject = 'Mã OTP khôi phục mật khẩu — FlowMoney';
+    } else if (purpose === 'change_email') {
+      subject = 'Mã OTP xác nhận đổi email — FlowMoney';
+    }
 
     const html = `
       <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:24px;border:1px solid #e0e0e0;border-radius:8px;">
