@@ -45,6 +45,7 @@ function mapEntityFields(entity, data) {
       if (m.id) { m.idbill = m.id; delete m.id; }
       if (m.walletId !== undefined) { m.idwallet = m.walletId; delete m.walletId; }
       if (m.categoryId !== undefined) { m.idcategory = m.categoryId; delete m.categoryId; }
+      if (m.dueDate !== undefined) { m.due_date = new Date(m.dueDate); delete m.dueDate; }
       if (m.payStatus !== undefined) { m.pay_status = m.payStatus; delete m.payStatus; }
       if (m.timeRecurrence !== undefined) { m.time_recurrence = m.timeRecurrence; delete m.timeRecurrence; }
       if (m.updatedAt !== undefined) { m.update_at = new Date(m.updatedAt); delete m.updatedAt; }
@@ -53,12 +54,16 @@ function mapEntityFields(entity, data) {
     case 'goal':
       if (m.id) { m.idgoal = m.id; delete m.id; }
       if (m.walletId !== undefined) { m.idwallet = m.walletId; delete m.walletId; }
+      if (m.targetAmount !== undefined) { m.target_amount = m.targetAmount; delete m.targetAmount; }
+      if (m.currentAmount !== undefined) { m.current_amount = m.currentAmount; delete m.currentAmount; }
+      if (m.targetDate !== undefined) { m.target_date = new Date(m.targetDate); delete m.targetDate; }
       if (m.statusComplete !== undefined) { m.status_complete = m.statusComplete; delete m.statusComplete; }
       if (m.updatedAt !== undefined) { m.update_at = new Date(m.updatedAt); delete m.updatedAt; }
       if (m.isDeleted !== undefined) { m.delete_at = m.isDeleted ? new Date() : null; delete m.isDeleted; }
       break;
     case 'category':
       if (m.id) { m.idcategory = m.id; delete m.id; }
+      if (m.idaccount !== undefined) { m.create_by = m.idaccount; delete m.idaccount; }
       if (m.createdBy !== undefined) { m.create_by = m.createdBy; delete m.createdBy; }
       if (m.nameCategory !== undefined) { m.name_category = m.nameCategory; delete m.nameCategory; }
       if (m.isGroup !== undefined) { m.is_group = m.isGroup; delete m.isGroup; }
@@ -85,7 +90,7 @@ const syncRepository = {
           idcategory: mapped.idcategory,
           create_by: mapped.create_by ?? 1,
           name_category: mapped.name_category || mapped.name || 'Chưa đặt tên',
-          classify: mapped.classify || 'chi',
+          classify: mapped.classify || 'Chi',
           is_default: mapped.is_default ?? false,
           is_group: mapped.is_group ?? false,
           idgroup: mapped.idgroup || null,
@@ -95,9 +100,12 @@ const syncRepository = {
         },
       });
     }
-    // Chỉ user tạo mới được update category của mình
+    // Chỉ user tạo mới được update category của mình, system category không được sửa bởi user thường
     if (existing.is_default && existing.create_by !== mapped.create_by) {
       throw new Error('Cannot modify system default category');
+    }
+    if (!existing.is_default && mapped.create_by && existing.create_by !== mapped.create_by) {
+      throw new Error('Cannot modify category belonging to another user');
     }
     if (new Date(mapped.update_at) > new Date(existing.update_at)) {
       return prisma.category.update({
