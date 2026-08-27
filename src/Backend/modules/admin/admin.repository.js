@@ -4,19 +4,23 @@ const adminRepository = {
   async countUsers() {
     return prisma.user.count({
       where: {
-        account: { idrole: 2 },
+        delete_at: null,
+        account: { idrole: 2, delete_at: null },
       },
     });
   },
 
   async countCategories() {
-    return prisma.category.count();
+    return prisma.category.count({
+      where: { delete_at: null },
+    });
   },
 
   async countUsersByRange(start, end) {
     return prisma.user.count({
       where: {
-        account: { idrole: 2 },
+        delete_at: null,
+        account: { idrole: 2, delete_at: null },
         create_at: {
           gte: start,
           lte: end,
@@ -28,7 +32,8 @@ const adminRepository = {
   async getAllUsers() {
     return prisma.user.findMany({
       where: {
-        account: { idrole: 2 },
+        delete_at: null,
+        account: { idrole: 2, delete_at: null },
       },
       select: {
         iduser: true,
@@ -129,6 +134,7 @@ const adminRepository = {
         is_default: data.is_default || false,
         keyword: data.keyword || null,
         icon: data.icon || null,
+        update_at: new Date(),
       },
     });
   },
@@ -142,15 +148,23 @@ const adminRepository = {
         is_default: data.is_default,
         keyword: data.keyword,
         icon: data.icon,
+        update_at: new Date(),
       },
     });
   },
 
   async deleteCategory(idcategory) {
-    // CSDL mới: xóa mềm (Delete_at)
+    // CSDL mới: xóa mềm (Delete_at) và unlink category con nếu là group
+    const cat = await prisma.category.findUnique({ where: { idcategory } });
+    if (cat && cat.is_group) {
+      await prisma.category.updateMany({
+        where: { idgroup: idcategory },
+        data: { idgroup: null, update_at: new Date() },
+      });
+    }
     return prisma.category.update({
       where: { idcategory },
-      data: { delete_at: new Date() },
+      data: { delete_at: new Date(), update_at: new Date() },
     });
   },
 };

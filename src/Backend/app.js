@@ -4,6 +4,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const config = require('./config');
 const { generalLimiter } = require('./middleware/rate-limiter');
+const auditLogMiddleware = require('./middleware/audit-log.middleware');
 const errorHandler = require('./middleware/error-handler');
 const apiRoutes = require('./api');
 const logger = require('./core/logger');
@@ -32,6 +33,9 @@ if (config.env === 'development') {
 
 // Rate limiting
 app.use('/api/', generalLimiter);
+
+// Audit log middleware
+app.use(auditLogMiddleware);
 
 // Health check (no auth required)
 app.get('/health', async (req, res) => {

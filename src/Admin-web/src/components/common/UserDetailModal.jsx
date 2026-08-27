@@ -54,7 +54,7 @@ const UserDetailModal = ({ userId, onClose }) => {
               {/* Status badge */}
               <div className="flex justify-between items-center pb-4 border-b border-outline-variant/50">
                 <span className="font-label-sm text-on-surface-variant uppercase">Trạng thái</span>
-                <span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${user.status === 'Active' ? 'bg-[#dcfce7] text-[#166534]' : 'bg-surface-container-high text-secondary'}`}>
+                <span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${user.status?.toLowerCase() === 'active' ? 'bg-[#dcfce7] text-[#166534]' : 'bg-surface-container-high text-secondary'}`}>
                   {USER_STATUS_LABELS[user.status?.toLowerCase()] || user.status}
                 </span>
               </div>

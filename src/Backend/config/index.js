@@ -28,7 +28,11 @@ const config = {
   },
 
   cors: {
-    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+    origin: process.env.CORS_ORIGIN
+      ? (process.env.CORS_ORIGIN.includes(',')
+          ? process.env.CORS_ORIGIN.split(',').map((s) => s.trim())
+          : (process.env.CORS_ORIGIN === '*' ? '*' : process.env.CORS_ORIGIN))
+      : ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:5174'],
   },
 
   rateLimit: {

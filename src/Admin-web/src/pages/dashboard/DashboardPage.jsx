@@ -1,6 +1,69 @@
 import React, { useState, useEffect } from 'react';
+import { io } from 'socket.io-client';
 import { TIME_FILTERS, TIME_FILTER_LABELS } from '../../utils/constants';
 import adminApi from '../../api/admin.api';
+
+const STATUS_CONFIG = {
+  Pass: {
+    label: 'Thành công',
+    bg: 'bg-[#dcfce7]',
+    text: 'text-[#166534]',
+    border: 'border-[#86efac]',
+    icon: 'check_circle',
+  },
+  Processing: {
+    label: 'Đang xử lý',
+    bg: 'bg-[#dbeafe]',
+    text: 'text-[#1e40af]',
+    border: 'border-[#93c5fd]',
+    icon: 'sync',
+  },
+  Pending: {
+    label: 'Chờ xử lý',
+    bg: 'bg-[#f3e8ff]',
+    text: 'text-[#6b21a8]',
+    border: 'border-[#d8b4fe]',
+    icon: 'hourglass_empty',
+  },
+  Accepted: {
+    label: 'Đã tiếp nhận',
+    bg: 'bg-[#ccfbf1]',
+    text: 'text-[#115e59]',
+    border: 'border-[#99f6e4]',
+    icon: 'done',
+  },
+  Rejected: {
+    label: 'Bị từ chối',
+    bg: 'bg-[#fee2e2]',
+    text: 'text-[#991b1b]',
+    border: 'border-[#fca5a5]',
+    icon: 'block',
+  },
+  Fail: {
+    label: 'Thất bại',
+    bg: 'bg-[#fef2f2]',
+    text: 'text-[#b91c1c]',
+    border: 'border-[#fecaca]',
+    icon: 'cancel',
+  },
+  Interrupted: {
+    label: 'Ngắt quãng',
+    bg: 'bg-[#fef3c7]',
+    text: 'text-[#92400e]',
+    border: 'border-[#fde68a]',
+    icon: 'warning',
+  },
+};
+
+const getStatusBadge = (status) => {
+  const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.Pass;
+  return (
+    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-label-md text-[11px] font-semibold border ${cfg.bg} ${cfg.text} ${cfg.border}`}>
+      <span className="material-symbols-outlined text-[13px]">{cfg.icon}</span>
+      {cfg.label}
+    </span>
+  );
+};
 
 const StatCard = ({ icon, title, value, badge, badgeColor }) => (
   <div className="bg-white rounded-xl p-5 shadow-sm border border-outline-variant hover:shadow-md transition-shadow relative overflow-hidden group">
@@ -50,6 +113,7 @@ const DashboardPage = () => {
   const [totalUsers, setTotalUsers] = useState(null);
   const [totalCategories, setTotalCategories] = useState(null);
   const [newUsers, setNewUsers] = useState({ current: 0, previous: 0, growth: 0 });
+  const [recentActivities, setRecentActivities] = useState([]);
 
   // 2 API không phụ thuộc thời gian — gọi 1 lần khi mount
   useEffect(() => {
@@ -66,6 +130,59 @@ const DashboardPage = () => {
       }
     };
     fetchStaticStats();
+  }, []);
+
+  // Lấy danh sách hoạt động gần đây & Lắng nghe Real-time Socket.io
+  useEffect(() => {
+    // 1. Fetch initial activities
+    const fetchActivities = async () => {
+      try {
+        const res = await adminApi.getRecentActivities({ limit: 10 });
+        if (res.data && Array.isArray(res.data)) {
+          setRecentActivities(res.data.map(item => ({
+            key: item.id ? String(item.id) : Math.random().toString(),
+            id: item.id,
+            user: item.user || 'Người dùng',
+            action: item.action || 'Yêu cầu hệ thống',
+            status: item.status || 'Pass',
+            time: item.time || 'Vừa xong',
+            isNew: false,
+          })));
+        }
+      } catch (err) {
+        console.error('Lỗi tải lịch sử hoạt động:', err);
+      }
+    };
+    fetchActivities();
+
+    // 2. Connect Socket.io for Real-time Updates
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3000' : window.location.origin);
+    const socket = io(socketUrl, {
+      path: '/socket.io',
+      transports: ['websocket', 'polling'],
+      reconnectionAttempts: 5,
+    });
+
+    socket.on('audit_activity', (data) => {
+      const newActivity = {
+        key: data.id ? String(data.id) : Date.now().toString(),
+        id: data.id,
+        user: data.user || 'Người dùng',
+        action: data.action || 'Yêu cầu hệ thống',
+        status: data.status || 'Pass',
+        time: data.time || 'Vừa xong',
+        isNew: true,
+      };
+
+      setRecentActivities((prev) => {
+        const filtered = prev.filter(item => item.id !== newActivity.id);
+        return [newActivity, ...filtered].slice(0, 10);
+      });
+    });
+
+    return () => {
+      socket.disconnect();
+    };
   }, []);
 
   // API phụ thuộc tháng — gọi mỗi khi monthYear thay đổi
@@ -89,12 +206,6 @@ const DashboardPage = () => {
   const growthSign = newUsers.growth >= 0 ? '+' : '';
   const growthBadge = `${growthSign}${newUsers.growth}%`;
   const growthColor = newUsers.growth >= 0 ? 'green' : 'red';
-
-  const recentActivities = [
-    { key: '1', user: 'Nguyễn Văn A', action: 'Tạo giao dịch mới', time: '10:45 AM' },
-    { key: '2', user: 'Trần Thị B', action: 'Cập nhật hồ sơ', time: '09:12 AM' },
-    { key: '3', user: 'Lê Văn C', action: 'Xóa danh mục', time: 'Hôm qua' },
-  ];
 
   return (
     <div className="max-w-[1440px] mx-auto w-full p-4 md:p-6 space-y-6 bg-surface-bright min-h-full relative overflow-hidden">
@@ -220,34 +331,57 @@ const DashboardPage = () => {
                       Hoạt động gần đây
                   </h2>
                   <div className="flex items-center gap-2">
-                      <button className="text-primary font-label-md text-[13px] font-semibold hover:underline cursor-pointer px-2">Xem tất cả</button>
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#dcfce7] text-[#166534] font-label-md text-[11px] font-semibold border border-[#86efac]">
+                          <span className="relative flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#166534] opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-[#166534]"></span>
+                          </span>
+                          Real-time
+                      </span>
                   </div>
               </div>
               
               <div className="flex-1 overflow-x-auto">
-                  <table className="w-full text-left border-collapse min-w-[500px]">
+                  <table className="w-full text-left border-collapse min-w-[560px]">
                       <thead>
                           <tr className="bg-surface-container-low/50">
                               <th className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">Người dùng</th>
                               <th className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">Hành động</th>
+                              <th className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">Trạng thái</th>
                               <th className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold text-right">Thời gian</th>
                           </tr>
                       </thead>
                       <tbody className="divide-y divide-outline-variant/50">
-                          {recentActivities.map(activity => (
-                              <tr key={activity.key} className="hover:bg-surface-container-lowest transition-colors group">
-                                  <td className="py-3 px-5">
-                                      <div className="flex items-center gap-3">
-                                          <div className="w-8 h-8 rounded-full bg-secondary/10 text-secondary flex items-center justify-center font-bold text-sm shadow-sm group-hover:scale-105 transition-transform">
-                                              {activity.user.split(' ').pop().charAt(0)}
-                                          </div>
-                                          <span className="font-body-md font-semibold text-on-surface">{activity.user}</span>
-                                      </div>
-                                  </td>
-                                  <td className="py-3 px-5 text-on-surface-variant font-body-md">{activity.action}</td>
-                                  <td className="py-3 px-5 text-on-surface-variant font-body-sm text-right whitespace-nowrap">{activity.time}</td>
-                              </tr>
-                          ))}
+                          {recentActivities.length > 0 ? (
+                            recentActivities.map(activity => (
+                                <tr key={activity.key} className={`hover:bg-surface-container-lowest transition-colors group ${activity.isNew ? 'bg-primary/5 animate-pulse duration-1000' : ''}`}>
+                                    <td className="py-3 px-5">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-secondary/10 text-secondary flex items-center justify-center font-bold text-sm shadow-sm group-hover:scale-105 transition-transform">
+                                                {(activity.user || 'U').split(' ').pop().charAt(0)}
+                                            </div>
+                                            <span className="font-body-md font-semibold text-on-surface">{activity.user}</span>
+                                        </div>
+                                    </td>
+                                    <td className="py-3 px-5 text-on-surface-variant font-body-md">
+                                        <span className="inline-flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0"></span>
+                                            {activity.action}
+                                        </span>
+                                    </td>
+                                    <td className="py-3 px-5 whitespace-nowrap">
+                                        {getStatusBadge(activity.status)}
+                                    </td>
+                                    <td className="py-3 px-5 text-on-surface-variant font-body-sm text-right whitespace-nowrap">{activity.time}</td>
+                                </tr>
+                            ))
+                          ) : (
+                            <tr>
+                                <td colSpan="4" className="py-8 text-center text-on-surface-variant font-body-md">
+                                    Chưa có hoạt động nào được ghi nhận.
+                                </td>
+                            </tr>
+                          )}
                       </tbody>
                   </table>
               </div>
