@@ -4,7 +4,7 @@ const adminApi = {
   // Dashboard — thống kê
   getTotalUsers: () => axiosClient.get('/admin/totaluser'),
   getTotalCategories: () => axiosClient.get('/admin/totalcategories'),
-  getUserToTime: (month, year) => axiosClient.get('/admin/getusertotime', { params: { month, year } }),
+  getUserToTime: (params) => axiosClient.get('/admin/getusertotime', { params: typeof params === 'object' ? params : { period: params } }),
 
   // Dashboard (các API khác sẽ bổ sung sau)
   getDashboardStats: (timeFilter) => axiosClient.get('/admin/dashboard', { params: { period: timeFilter } }),

@@ -242,50 +242,71 @@ const StatCard = ({ icon, title, value, badge, badgeColor }) => (
 
 const DashboardPage = () => {
   const [loading, setLoading] = useState(true);
-  const [timeFilter, setTimeFilter] = useState(TIME_FILTERS.TODAY);
   const now = new Date();
-  const [monthYear, setMonthYear] = useState({ month: now.getMonth() + 1, year: now.getFullYear() });
-  const [showMonthPicker, setShowMonthPicker] = useState(false);
+
+  // 1. Global Filter State: 'today' (Mặc định) | '7days' | '1month' | '1year' | 'custom'
+  const [timeFilter, setTimeFilter] = useState('today');
+  const [customFilter, setCustomFilter] = useState({
+    mode: 'day', // 'day' | 'month' | 'year'
+    date: `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`,
+    month: now.getMonth() + 1,
+    year: now.getFullYear(),
+    label: `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()}`,
+  });
+
+  // Date Picker Modal View State
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [pickerTab, setPickerTab] = useState('day'); // 'day' | 'month' | 'year'
+  const [viewYear, setViewYear] = useState(now.getFullYear());
+  const [viewMonth, setViewMonth] = useState(now.getMonth() + 1);
 
   const MONTH_NAMES = ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
                        'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
 
+  const isFutureDate = (d, m, y) => {
+    const target = new Date(y, m - 1, d, 23, 59, 59);
+    return target.getTime() > now.getTime();
+  };
+
   const isFutureMonth = (m, y) => {
-    const nowDate = new Date();
-    return y > nowDate.getFullYear() || (y === nowDate.getFullYear() && m > nowDate.getMonth() + 1);
+    return y > now.getFullYear() || (y === now.getFullYear() && m > now.getMonth() + 1);
   };
 
-  const selectMonth = (month) => {
-    if (isFutureMonth(month, monthYear.year)) return;
-    setMonthYear(prev => ({ ...prev, month }));
-    setShowMonthPicker(false);
+  const isFutureYear = (y) => {
+    return y > now.getFullYear();
   };
 
-  const monthLabel = `${MONTH_NAMES[monthYear.month - 1]}/${monthYear.year}`;
-
-  // Dữ liệu thực từ API
+  // 2. Data State
   const [totalUsers, setTotalUsers] = useState(null);
   const [totalCategories, setTotalCategories] = useState(null);
   const [newUsers, setNewUsers] = useState({ current: 0, previous: 0, growth: 0 });
-  const [recentActivities, setRecentActivities] = useState([]);
 
-  // Thống kê Tần suất đăng nhập (7days, 1month, 1year)
-  const [loginPeriod, setLoginPeriod] = useState('1month');
+  // Thống kê Biểu đồ (Ăn theo Global Filter)
   const [loginStats, setLoginStats] = useState({
     summary: { total: 0, max: 0, avg: 0 },
     timeline: [],
   });
   const [loadingLogin, setLoadingLogin] = useState(false);
 
-  // Thống kê Lưu lượng Request (24hours, 7days, 1month, 1year)
-  const [requestPeriod, setRequestPeriod] = useState('1month');
   const [requestStats, setRequestStats] = useState({
     summary: { total: 0, max: 0, avg: 0 },
     timeline: [],
   });
   const [loadingRequest, setLoadingRequest] = useState(false);
 
-  // 2 API không phụ thuộc thời gian — gọi 1 lần khi mount
+  // 3. Table Hoạt động người dùng (Phân trang ngược: 1 là cũ nhất, N là mới nhất, mặc định mở N với 5/page)
+  const [recentActivities, setRecentActivities] = useState([]);
+  const [activityPage, setActivityPage] = useState(null); // null ban đầu để chờ totalPages từ backend
+  const [activityLimit, setActivityLimit] = useState(5);
+  const [activityPagination, setActivityPagination] = useState({
+    total: 0,
+    page: 1,
+    limit: 5,
+    totalPages: 1,
+  });
+  const [loadingActivities, setLoadingActivities] = useState(false);
+
+  // Static stats (Tổng user & Tổng category) — fetch 1 lần
   useEffect(() => {
     const fetchStaticStats = async () => {
       try {
@@ -302,66 +323,86 @@ const DashboardPage = () => {
     fetchStaticStats();
   }, []);
 
-  // Tải thống kê tần suất đăng nhập khi loginPeriod thay đổi
+  // Fetch Dashboard Stats khi Global Filter thay đổi
   useEffect(() => {
-    const fetchLoginStats = async () => {
-      setLoadingLogin(true);
-      try {
-        const res = await adminApi.getLoginStats({ period: loginPeriod });
-        if (res.data) {
-          setLoginStats(res.data);
-        }
-      } catch (err) {
-        console.error('Lỗi tải thống kê đăng nhập:', err);
-      } finally {
-        setLoadingLogin(false);
+    let filterParams = {};
+    if (timeFilter === 'custom') {
+      if (customFilter.mode === 'day') {
+        filterParams = { customType: 'date', date: customFilter.date };
+      } else if (customFilter.mode === 'month') {
+        filterParams = { customType: 'month', month: customFilter.month, year: customFilter.year };
+      } else if (customFilter.mode === 'year') {
+        filterParams = { customType: 'year', year: customFilter.year };
       }
-    };
-    fetchLoginStats();
-  }, [loginPeriod]);
+    } else {
+      filterParams = { period: timeFilter };
+    }
 
-  // Tải thống kê lưu lượng request khi requestPeriod thay đổi
-  useEffect(() => {
-    const fetchRequestStats = async () => {
+    const fetchAllDashboardData = async () => {
+      setLoadingLogin(true);
       setLoadingRequest(true);
       try {
-        const res = await adminApi.getRequestStats({ period: requestPeriod });
-        if (res.data) {
-          setRequestStats(res.data);
-        }
+        const [usersTimeRes, loginRes, reqRes] = await Promise.all([
+          adminApi.getUserToTime(filterParams),
+          adminApi.getLoginStats(filterParams),
+          adminApi.getRequestStats(filterParams),
+        ]);
+        if (usersTimeRes.data) setNewUsers(usersTimeRes.data);
+        if (loginRes.data) setLoginStats(loginRes.data);
+        if (reqRes.data) setRequestStats(reqRes.data);
       } catch (err) {
-        console.error('Lỗi tải thống kê request:', err);
+        console.error('Lỗi tải dữ liệu dashboard theo bộ lọc:', err);
       } finally {
+        setLoadingLogin(false);
         setLoadingRequest(false);
+        setLoading(false);
       }
     };
-    fetchRequestStats();
-  }, [requestPeriod]);
 
-  // Lấy danh sách hoạt động gần đây & Lắng nghe Real-time Socket.io
-  useEffect(() => {
-    // 1. Fetch initial activities
-    const fetchActivities = async () => {
-      try {
-        const res = await adminApi.getRecentActivities({ limit: 10 });
-        if (res.data && Array.isArray(res.data)) {
-          setRecentActivities(res.data.map(item => ({
-            key: item.id ? String(item.id) : Math.random().toString(),
-            id: item.id,
-            user: item.user || 'Người dùng',
-            action: item.action || 'Yêu cầu hệ thống',
-            status: item.status || 'Pass',
-            time: item.time || 'Vừa xong',
-            isNew: false,
-          })));
+    fetchAllDashboardData();
+  }, [timeFilter, customFilter]);
+
+  // Fetch Hoạt động người dùng theo phân trang
+  const fetchActivities = async (targetPage, limit) => {
+    setLoadingActivities(true);
+    try {
+      const res = await adminApi.getRecentActivities({
+        page: targetPage || undefined,
+        limit: limit || activityLimit,
+        sort: 'asc', // Trang 1 = cũ nhất, Trang N = mới nhất
+      });
+
+      if (res.data) {
+        const { items, pagination } = res.data;
+        // Đảo ngược danh sách trong trang hiện tại để bản ghi mới hơn nằm ở hàng trên
+        setRecentActivities((items || []).slice().reverse().map(item => ({
+          key: item.id ? String(item.id) : Math.random().toString(),
+          id: item.id,
+          user: item.user || 'Người dùng',
+          action: item.action || 'Yêu cầu hệ thống',
+          status: item.status || 'Pass',
+          time: item.time || 'Vừa xong',
+          isNew: false,
+        })));
+
+        setActivityPagination(pagination);
+        if (activityPage === null || targetPage === undefined) {
+          setActivityPage(pagination.totalPages);
         }
-      } catch (err) {
-        console.error('Lỗi tải lịch sử hoạt động:', err);
       }
-    };
-    fetchActivities();
+    } catch (err) {
+      console.error('Lỗi tải lịch sử hoạt động:', err);
+    } finally {
+      setLoadingActivities(false);
+    }
+  };
 
-    // 2. Connect Socket.io for Real-time Updates
+  useEffect(() => {
+    fetchActivities(activityPage, activityLimit);
+  }, [activityPage, activityLimit]);
+
+  // Lắng nghe Real-time Socket.io
+  useEffect(() => {
     const socketUrl = import.meta.env.VITE_SOCKET_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3000' : window.location.origin);
     const socket = io(socketUrl, {
       path: '/socket.io',
@@ -380,9 +421,23 @@ const DashboardPage = () => {
         isNew: true,
       };
 
-      setRecentActivities((prev) => {
-        const filtered = prev.filter(item => item.id !== newActivity.id);
-        return [newActivity, ...filtered].slice(0, 10);
+      // Nếu người dùng đang ở trang mới nhất (totalPages), thêm bản ghi vào đầu bảng
+      setActivityPagination((prev) => {
+        const newTotal = prev.total + 1;
+        const newTotalPages = Math.max(1, Math.ceil(newTotal / prev.limit));
+        return {
+          ...prev,
+          total: newTotal,
+          totalPages: newTotalPages,
+        };
+      });
+
+      setActivityPage((currentPage) => {
+        setRecentActivities((prevList) => {
+          const filtered = prevList.filter(item => item.id !== newActivity.id);
+          return [newActivity, ...filtered].slice(0, activityLimit);
+        });
+        return currentPage;
       });
 
       // Cập nhật real-time vào biểu đồ lưu lượng request
@@ -425,29 +480,72 @@ const DashboardPage = () => {
     return () => {
       socket.disconnect();
     };
-  }, []);
+  }, [activityLimit]);
 
-  // API phụ thuộc tháng — gọi mỗi khi monthYear thay đổi
-  useEffect(() => {
-    const fetchTimedStats = async () => {
-      try {
-        const res = await adminApi.getUserToTime(monthYear.month, monthYear.year);
-        setNewUsers(res.data);
-      } catch (err) {
-        console.error('Lỗi tải thống kê theo tháng:', err);
-      }
-    };
-    fetchTimedStats();
-    const timer = setTimeout(() => setLoading(false), 300);
-    return () => clearTimeout(timer);
-  }, [monthYear.month, monthYear.year]);
+  // Handlers chọn Date Picker
+  const handleSelectDay = (day) => {
+    if (isFutureDate(day, viewMonth, viewYear)) return;
+    const dayStr = day.toString().padStart(2, '0');
+    const monthStr = viewMonth.toString().padStart(2, '0');
+    setCustomFilter({
+      mode: 'day',
+      date: `${viewYear}-${monthStr}-${dayStr}`,
+      month: viewMonth,
+      year: viewYear,
+      label: `${dayStr}/${monthStr}/${viewYear}`,
+    });
+    setTimeFilter('custom');
+    setShowDatePicker(false);
+  };
 
-  // Data hiển thị
+  const handleSelectMonth = (month) => {
+    if (isFutureMonth(month, viewYear)) return;
+    const monthStr = month.toString().padStart(2, '0');
+    setCustomFilter({
+      mode: 'month',
+      date: `${viewYear}-${monthStr}-01`,
+      month: month,
+      year: viewYear,
+      label: `Tháng ${month}/${viewYear}`,
+    });
+    setTimeFilter('custom');
+    setShowDatePicker(false);
+  };
+
+  const handleSelectYear = (year) => {
+    if (isFutureYear(year)) return;
+    setCustomFilter({
+      mode: 'year',
+      date: `${year}-01-01`,
+      month: 1,
+      year: year,
+      label: `Năm ${year}`,
+    });
+    setTimeFilter('custom');
+    setShowDatePicker(false);
+  };
+
+  // Calendar calculations for Tab Ngày
+  const daysInViewMonth = new Date(viewYear, viewMonth, 0).getDate();
+  const firstDayOffset = (() => {
+    const d = new Date(viewYear, viewMonth - 1, 1).getDay();
+    return d === 0 ? 6 : d - 1; // 0 = Thứ 2, 6 = CN
+  })();
+
+  // Data hiển thị Card
   const totalUsersDisplay = totalUsers !== null ? totalUsers.toLocaleString('vi-VN') : '—';
   const totalCategoriesDisplay = totalCategories !== null ? totalCategories.toLocaleString('vi-VN') : '—';
   const growthSign = newUsers.growth >= 0 ? '+' : '';
   const growthBadge = `${growthSign}${newUsers.growth}%`;
   const growthColor = newUsers.growth >= 0 ? 'green' : 'red';
+
+  // Pagination display values
+  const currPage = activityPagination.page || 1;
+  const startItem = activityPagination.total > 0 ? (currPage - 1) * activityPagination.limit + 1 : 0;
+  const endItem = Math.min(currPage * activityPagination.limit, activityPagination.total);
+
+  // Filter Button Label
+  const customButtonLabel = timeFilter === 'custom' ? customFilter.label : `${MONTH_NAMES[now.getMonth()]}/${now.getFullYear()}`;
 
   return (
     <div className="max-w-[1440px] mx-auto w-full p-4 md:p-6 space-y-6 bg-surface-bright min-h-full relative overflow-hidden">
@@ -456,7 +554,7 @@ const DashboardPage = () => {
       <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl -z-10 translate-x-1/3 -translate-y-1/3"></div>
       <div className="absolute bottom-0 left-0 w-96 h-96 bg-secondary/5 rounded-full blur-3xl -z-10 -translate-x-1/3 translate-y-1/3"></div>
       
-      {/* Header section */}
+      {/* Header section & Global Filter */}
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
           <div className="relative">
               <h1 className="font-display-md text-display-md font-bold text-on-surface m-0 tracking-tight">Tổng quan hệ thống</h1>
@@ -464,7 +562,7 @@ const DashboardPage = () => {
           </div>
           
           <div className="flex flex-wrap items-center gap-3 self-start lg:self-auto">
-              {/* Bộ lọc thời gian: Hôm nay, 7 Ngày, 1 Tháng, 1 Năm */}
+              {/* Bộ lọc nhanh: Hôm nay, 7 Ngày, 1 Tháng, 1 Năm */}
               <div className="flex bg-white p-1 rounded-lg border border-outline-variant shadow-sm">
                   {Object.entries(TIME_FILTER_LABELS).map(([key, label]) => (
                     <button
@@ -479,72 +577,216 @@ const DashboardPage = () => {
                   ))}
               </div>
 
-              {/* Month Picker Dropdown */}
+              {/* Bộ lọc chi tiết: Ngày (dd/mm/yyyy), Tháng (mm/yyyy), Năm (yyyy) */}
               <div className="relative">
                 <button
-                  onClick={() => setShowMonthPicker(!showMonthPicker)}
-                  className="flex items-center gap-2 bg-white px-4 py-2 rounded-lg border border-outline-variant shadow-sm hover:border-primary transition-colors cursor-pointer font-label-md text-[13px] text-on-surface"
+                  onClick={() => setShowDatePicker(!showDatePicker)}
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-lg border shadow-sm transition-colors cursor-pointer font-label-md text-[13px] ${
+                    timeFilter === 'custom'
+                      ? 'bg-primary/10 border-primary text-primary font-semibold'
+                      : 'bg-white border-outline-variant text-on-surface hover:border-primary'
+                  }`}
                 >
                   <span className="material-symbols-outlined text-primary text-[18px]">calendar_month</span>
-                  {monthLabel}
+                  {customButtonLabel}
                   <span className="material-symbols-outlined text-on-surface-variant text-[16px]">arrow_drop_down</span>
                 </button>
 
-                {/* Month Picker Modal */}
-                {showMonthPicker && (
+                {/* Custom Date Picker Modal */}
+                {showDatePicker && (
                   <>
-                    <div className="fixed inset-0 z-40" onClick={() => setShowMonthPicker(false)} />
-                    <div className="absolute right-0 top-full mt-2 bg-white rounded-xl border border-outline-variant shadow-xl z-50 p-4 w-[280px] animate-in fade-in zoom-in-95 duration-150">
-                    {/* Year navigation */}
-                    <div className="flex items-center justify-between mb-3">
-                      <button
-                        onClick={() => setMonthYear(prev => ({ ...prev, year: prev.year - 1 }))}
-                        className="p-1 rounded hover:bg-surface-container-low text-on-surface-variant cursor-pointer"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">chevron_left</span>
-                      </button>
-                      <span className="font-semibold text-on-surface">{monthYear.year}</span>
-                      <button
-                        onClick={() => {
-                          if (monthYear.year < new Date().getFullYear()) {
-                            setMonthYear(prev => ({ ...prev, year: prev.year + 1 }));
-                          }
-                        }}
-                        className={`p-1 rounded text-on-surface-variant cursor-pointer ${monthYear.year >= new Date().getFullYear() ? 'opacity-30 pointer-events-none' : 'hover:bg-surface-container-low'}`}
-                      >
-                        <span className="material-symbols-outlined text-[18px]">chevron_right</span>
-                      </button>
-                    </div>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowDatePicker(false)} />
+                    <div className="absolute right-0 top-full mt-2 bg-white rounded-xl border border-outline-variant shadow-xl z-50 p-4 w-[310px] animate-in fade-in zoom-in-95 duration-150">
+                      
+                      {/* Mode Selector Tabs: Ngày | Tháng | Năm */}
+                      <div className="flex bg-surface-container-low p-1 rounded-lg mb-3">
+                        <button
+                          onClick={() => setPickerTab('day')}
+                          className={`flex-1 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                            pickerTab === 'day' ? 'bg-white text-primary shadow-xs' : 'text-on-surface-variant hover:text-on-surface'
+                          }`}
+                        >
+                          Theo Ngày
+                        </button>
+                        <button
+                          onClick={() => setPickerTab('month')}
+                          className={`flex-1 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                            pickerTab === 'month' ? 'bg-white text-primary shadow-xs' : 'text-on-surface-variant hover:text-on-surface'
+                          }`}
+                        >
+                          Theo Tháng
+                        </button>
+                        <button
+                          onClick={() => setPickerTab('year')}
+                          className={`flex-1 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                            pickerTab === 'year' ? 'bg-white text-primary shadow-xs' : 'text-on-surface-variant hover:text-on-surface'
+                          }`}
+                        >
+                          Theo Năm
+                        </button>
+                      </div>
 
-                    {/* Month grid */}
-                    <div className="grid grid-cols-3 gap-2">
-                      {MONTH_NAMES.map((name, idx) => {
-                        const monthNum = idx + 1;
-                        const isSelected = monthNum === monthYear.month && monthYear.year === (now.getMonth() + 1 <= monthNum ? now.getFullYear() : monthYear.year);
-                        const disabled = isFutureMonth(monthNum, monthYear.year);
-                        return (
-                          <button
-                            key={monthNum}
-                            onClick={() => selectMonth(monthNum)}
-                            disabled={disabled}
-                            className={`py-2 rounded-lg text-[13px] font-medium transition-colors cursor-pointer
-                              ${monthNum === monthYear.month ? 'bg-primary text-white shadow-sm' : 'hover:bg-surface-container-low text-on-surface'}
-                              ${disabled ? 'opacity-30 pointer-events-none' : ''}
-                            `}
-                          >
-                            {name.replace('Tháng ', 'T')}
-                          </button>
-                        );
-                      })}
+                      {/* --- TAB 1: THEO NGÀY --- */}
+                      {pickerTab === 'day' && (
+                        <div>
+                          {/* Navigation Tháng / Năm */}
+                          <div className="flex items-center justify-between mb-2">
+                            <button
+                              onClick={() => {
+                                if (viewMonth === 1) {
+                                  setViewMonth(12);
+                                  setViewYear(v => v - 1);
+                                } else {
+                                  setViewMonth(v => v - 1);
+                                }
+                              }}
+                              className="p-1 rounded hover:bg-surface-container-low text-on-surface-variant cursor-pointer"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">chevron_left</span>
+                            </button>
+                            <span className="font-semibold text-[13px] text-on-surface">
+                              Tháng {viewMonth}/{viewYear}
+                            </span>
+                            <button
+                              onClick={() => {
+                                if (!isFutureMonth(viewMonth === 12 ? 1 : viewMonth + 1, viewMonth === 12 ? viewYear + 1 : viewYear)) {
+                                  if (viewMonth === 12) {
+                                    setViewMonth(1);
+                                    setViewYear(v => v + 1);
+                                  } else {
+                                    setViewMonth(v => v + 1);
+                                  }
+                                }
+                              }}
+                              disabled={isFutureMonth(viewMonth === 12 ? 1 : viewMonth + 1, viewMonth === 12 ? viewYear + 1 : viewYear)}
+                              className={`p-1 rounded text-on-surface-variant cursor-pointer ${
+                                isFutureMonth(viewMonth === 12 ? 1 : viewMonth + 1, viewMonth === 12 ? viewYear + 1 : viewYear)
+                                  ? 'opacity-30 pointer-events-none'
+                                  : 'hover:bg-surface-container-low'
+                              }`}
+                            >
+                              <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+                            </button>
+                          </div>
+
+                          {/* Thứ trong tuần */}
+                          <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-semibold text-on-surface-variant mb-1">
+                            <span>T2</span><span>T3</span><span>T4</span><span>T5</span><span>T6</span><span>T7</span><span className="text-error">CN</span>
+                          </div>
+
+                          {/* Grid Ngày */}
+                          <div className="grid grid-cols-7 gap-1">
+                            {Array.from({ length: firstDayOffset }).map((_, i) => (
+                              <div key={`empty-${i}`} className="w-8 h-8" />
+                            ))}
+                            {Array.from({ length: daysInViewMonth }).map((_, i) => {
+                              const day = i + 1;
+                              const isSelected = timeFilter === 'custom' && customFilter.mode === 'day' && customFilter.date === `${viewYear}-${viewMonth.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+                              const isToday = day === now.getDate() && viewMonth === (now.getMonth() + 1) && viewYear === now.getFullYear();
+                              const disabled = isFutureDate(day, viewMonth, viewYear);
+
+                              return (
+                                <button
+                                  key={day}
+                                  onClick={() => handleSelectDay(day)}
+                                  disabled={disabled}
+                                  className={`w-8 h-8 text-[12px] font-medium rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
+                                    isSelected
+                                      ? 'bg-primary text-white shadow-xs font-bold'
+                                      : isToday
+                                      ? 'border border-primary text-primary font-bold hover:bg-primary/10'
+                                      : 'hover:bg-surface-container-low text-on-surface'
+                                  } ${disabled ? 'opacity-25 pointer-events-none' : ''}`}
+                                >
+                                  {day}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* --- TAB 2: THEO THÁNG --- */}
+                      {pickerTab === 'month' && (
+                        <div>
+                          <div className="flex items-center justify-between mb-3">
+                            <button
+                              onClick={() => setViewYear(v => v - 1)}
+                              className="p-1 rounded hover:bg-surface-container-low text-on-surface-variant cursor-pointer"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">chevron_left</span>
+                            </button>
+                            <span className="font-semibold text-on-surface text-[14px]">Năm {viewYear}</span>
+                            <button
+                              onClick={() => {
+                                if (viewYear < now.getFullYear()) setViewYear(v => v + 1);
+                              }}
+                              disabled={viewYear >= now.getFullYear()}
+                              className={`p-1 rounded text-on-surface-variant cursor-pointer ${viewYear >= now.getFullYear() ? 'opacity-30 pointer-events-none' : 'hover:bg-surface-container-low'}`}
+                            >
+                              <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+                            </button>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-2">
+                            {MONTH_NAMES.map((name, idx) => {
+                              const monthNum = idx + 1;
+                              const isSelected = timeFilter === 'custom' && customFilter.mode === 'month' && customFilter.month === monthNum && customFilter.year === viewYear;
+                              const disabled = isFutureMonth(monthNum, viewYear);
+                              return (
+                                <button
+                                  key={monthNum}
+                                  onClick={() => handleSelectMonth(monthNum)}
+                                  disabled={disabled}
+                                  className={`py-2 rounded-lg text-[12px] font-medium transition-colors cursor-pointer ${
+                                    isSelected
+                                      ? 'bg-primary text-white shadow-xs font-bold'
+                                      : 'hover:bg-surface-container-low text-on-surface'
+                                  } ${disabled ? 'opacity-25 pointer-events-none' : ''}`}
+                                >
+                                  {name.replace('Tháng ', 'T')}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* --- TAB 3: THEO NĂM --- */}
+                      {pickerTab === 'year' && (
+                        <div>
+                          <div className="text-center font-semibold text-on-surface text-[13px] mb-3">
+                            Chọn năm cần thống kê
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                            {[now.getFullYear() - 4, now.getFullYear() - 3, now.getFullYear() - 2, now.getFullYear() - 1, now.getFullYear()].map((year) => {
+                              const isSelected = timeFilter === 'custom' && customFilter.mode === 'year' && customFilter.year === year;
+                              return (
+                                <button
+                                  key={year}
+                                  onClick={() => handleSelectYear(year)}
+                                  className={`py-2.5 rounded-lg text-[13px] font-medium transition-colors cursor-pointer ${
+                                    isSelected
+                                      ? 'bg-primary text-white shadow-xs font-bold'
+                                      : 'hover:bg-surface-container-low text-on-surface'
+                                  }`}
+                                >
+                                  {year}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
                     </div>
-                  </div>
                   </>
                 )}
               </div>
           </div>
       </div>
 
-      {/* Stats Grid */}
+      {/* Stats Grid — Hoàn toàn ăn theo Global Filter */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 relative">
           {loading && (
             <div className="absolute inset-0 bg-white/50 backdrop-blur-[2px] z-10 flex items-center justify-center rounded-xl">
@@ -557,15 +799,9 @@ const DashboardPage = () => {
           <StatCard icon="person_add" title="Người dùng mới" value={newUsers.current.toLocaleString('vi-VN')} badge={growthBadge} badgeColor={growthColor} />
       </div>
 
-      {/* Main Content Grid */}
+      {/* Main Content Grid: Recent Activities (with Pagination) & Charts */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 relative">
-          {loading && (
-            <div className="absolute inset-0 bg-white/50 backdrop-blur-[2px] z-10 flex items-center justify-center rounded-xl">
-              <span className="material-symbols-outlined animate-spin text-primary text-3xl">progress_activity</span>
-            </div>
-          )}
-          
-          {/* Recent Activity */}
+          {/* Table: Hoạt động gần đây (có Phân trang ngược) */}
           <div className="xl:col-span-2 bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden flex flex-col h-full">
               <div className="p-5 border-b border-outline-variant flex items-center justify-between bg-surface-container-lowest">
                   <h2 className="font-title-lg text-title-lg font-bold text-on-surface m-0 flex items-center gap-2">
@@ -583,7 +819,12 @@ const DashboardPage = () => {
                   </div>
               </div>
               
-              <div className="flex-1 overflow-x-auto">
+              <div className="flex-1 overflow-x-auto relative min-h-[220px]">
+                  {loadingActivities && (
+                    <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] z-10 flex items-center justify-center">
+                      <span className="material-symbols-outlined animate-spin text-primary text-2xl">progress_activity</span>
+                    </div>
+                  )}
                   <table className="w-full text-left border-collapse min-w-[560px]">
                       <thead>
                           <tr className="bg-surface-container-low/50">
@@ -627,38 +868,90 @@ const DashboardPage = () => {
                       </tbody>
                   </table>
               </div>
+
+              {/* Table Pagination Toolbar */}
+              <div className="p-3.5 px-5 border-t border-outline-variant flex flex-col sm:flex-row items-center justify-between gap-3 bg-surface-container-lowest text-[12px] text-on-surface-variant">
+                  {/* Left: Item Range */}
+                  <div>
+                    <span>{startItem} - {endItem} of {activityPagination.total} items</span>
+                  </div>
+
+                  {/* Right: Page Size & Pagination Buttons */}
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1.5">
+                      <select
+                        value={activityLimit}
+                        onChange={(e) => {
+                          const newLimit = parseInt(e.target.value, 10);
+                          setActivityLimit(newLimit);
+                          // Khi đổi limit, reset sang trang mới nhất
+                          setActivityPage(null);
+                        }}
+                        className="bg-white border border-outline-variant rounded-md px-2.5 py-1 text-[12px] text-on-surface font-medium cursor-pointer focus:outline-none focus:border-primary"
+                      >
+                        <option value={5}>5 / page</option>
+                        <option value={10}>10 / page</option>
+                        <option value={20}>20 / page</option>
+                      </select>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      {/* Prev Button */}
+                      <button
+                        onClick={() => setActivityPage(prev => Math.max(1, (prev || 1) - 1))}
+                        disabled={currPage <= 1}
+                        className={`w-7 h-7 flex items-center justify-center rounded border border-outline-variant/60 text-on-surface transition-colors cursor-pointer ${
+                          currPage <= 1 ? 'opacity-30 pointer-events-none' : 'hover:bg-surface-container-low'
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[16px]">chevron_left</span>
+                      </button>
+
+                      {/* Page numbers: 1 is oldest, N is newest */}
+                      {Array.from({ length: activityPagination.totalPages }).map((_, idx) => {
+                        const pageNum = idx + 1;
+                        const isActive = pageNum === currPage;
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => setActivityPage(pageNum)}
+                            className={`w-7 h-7 flex items-center justify-center rounded text-[12px] font-medium transition-colors cursor-pointer ${
+                              isActive
+                                ? 'border border-primary text-primary font-bold bg-primary/5'
+                                : 'border border-transparent text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+
+                      {/* Next Button */}
+                      <button
+                        onClick={() => setActivityPage(prev => Math.min(activityPagination.totalPages, (prev || 1) + 1))}
+                        disabled={currPage >= activityPagination.totalPages}
+                        className={`w-7 h-7 flex items-center justify-center rounded border border-outline-variant/60 text-on-surface transition-colors cursor-pointer ${
+                          currPage >= activityPagination.totalPages ? 'opacity-30 pointer-events-none' : 'hover:bg-surface-container-low'
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[16px]">chevron_right</span>
+                      </button>
+                    </div>
+                  </div>
+              </div>
           </div>
           
-          {/* Login Stats */}
+          {/* Biểu đồ 1: Tần suất Đăng nhập (Ăn theo Global Filter, đã gỡ bộ lọc con) */}
           <div className="bg-white rounded-xl border border-outline-variant shadow-sm p-5 flex flex-col h-full relative overflow-hidden group">
               <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-colors duration-500"></div>
               
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+              <div className="flex justify-between items-start mb-5">
                   <div>
                       <h2 className="font-title-lg text-title-lg font-bold text-on-surface m-0 flex items-center gap-2">
                           <span className="material-symbols-outlined text-primary text-[22px]">bar_chart</span>
                           Đăng nhập
                       </h2>
                       <p className="font-body-sm text-on-surface-variant mt-0.5">Tần suất người dùng đăng nhập</p>
-                  </div>
-                  <div className="flex bg-surface-container-low p-0.5 rounded-lg border border-outline-variant/50 self-start sm:self-auto">
-                      {[
-                        { key: '7days', label: '7 ngày' },
-                        { key: '1month', label: '1 tháng' },
-                        { key: '1year', label: '1 năm' },
-                      ].map(tab => (
-                        <button
-                          key={tab.key}
-                          onClick={() => setLoginPeriod(tab.key)}
-                          className={`px-2.5 py-1 rounded-md text-[12px] font-medium transition-all cursor-pointer ${
-                            loginPeriod === tab.key
-                              ? 'bg-primary text-white font-semibold shadow-sm'
-                              : 'text-on-surface-variant hover:text-on-surface hover:bg-white/60'
-                          }`}
-                        >
-                          {tab.label}
-                        </button>
-                      ))}
                   </div>
               </div>
               
@@ -679,20 +972,20 @@ const DashboardPage = () => {
                   <div className="bg-surface-container-lowest p-3 rounded-lg text-center border border-outline-variant/30">
                       <p className="font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider text-[11px]">Trung bình</p>
                       <p className="font-title-lg font-bold text-primary m-0">
-                        {(loginStats.summary?.avg || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">/{loginPeriod === '1year' ? 'thg' : 'ngày'}</span>
+                        {(loginStats.summary?.avg || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">lượt</span>
                       </p>
                   </div>
                   <div className="bg-surface-container-lowest p-3 rounded-lg text-center border border-outline-variant/30">
                       <p className="font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider text-[11px]">Đỉnh điểm</p>
                       <p className="font-title-lg font-bold text-on-surface m-0">
-                        {(loginStats.summary?.max || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">/{loginPeriod === '1year' ? 'thg' : 'ngày'}</span>
+                        {(loginStats.summary?.max || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">lượt</span>
                       </p>
                   </div>
               </div>
           </div>
       </div>
 
-      {/* Real-time Requests Area Chart */}
+      {/* Biểu đồ 2: Lưu lượng Request (Ăn theo Global Filter, đã gỡ bộ lọc con) */}
       <div className="bg-white rounded-xl border border-outline-variant shadow-sm p-5 md:p-6 overflow-hidden relative">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5 relative z-10">
               <div>
@@ -702,7 +995,7 @@ const DashboardPage = () => {
                   </h2>
                   <p className="font-body-sm text-on-surface-variant mt-0.5">Giám sát tải hệ thống và lưu lượng yêu cầu</p>
               </div>
-              <div className="flex items-center flex-wrap gap-3">
+              <div className="flex items-center gap-3">
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#dcfce7] text-[#166534] font-label-md text-[11px] font-semibold border border-[#86efac]">
                       <span className="relative flex h-2 w-2">
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#166534] opacity-75"></span>
@@ -710,27 +1003,6 @@ const DashboardPage = () => {
                       </span>
                       Live Mode
                   </span>
-
-                  <div className="flex bg-surface-container-low p-0.5 rounded-lg border border-outline-variant/50">
-                      {[
-                        { key: '24hours', label: '24 giờ' },
-                        { key: '7days', label: '7 ngày' },
-                        { key: '1month', label: '1 tháng' },
-                        { key: '1year', label: '1 năm' },
-                      ].map(tab => (
-                        <button
-                          key={tab.key}
-                          onClick={() => setRequestPeriod(tab.key)}
-                          className={`px-3 py-1 rounded-md text-[12px] font-medium transition-all cursor-pointer ${
-                            requestPeriod === tab.key
-                              ? 'bg-primary text-white font-semibold shadow-sm'
-                              : 'text-on-surface-variant hover:text-on-surface hover:bg-white/60'
-                          }`}
-                        >
-                          {tab.label}
-                        </button>
-                      ))}
-                  </div>
               </div>
           </div>
           
@@ -751,13 +1023,13 @@ const DashboardPage = () => {
               <div className="bg-surface-container-lowest p-3 rounded-lg text-center border border-outline-variant/30">
                   <p className="font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider text-[11px]">Trung bình lưu lượng</p>
                   <p className="font-title-lg font-bold text-primary m-0">
-                    {(requestStats.summary?.avg || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">req/{requestPeriod === '24hours' ? 'giờ' : (requestPeriod === '1year' ? 'thg' : 'ngày')}</span>
+                    {(requestStats.summary?.avg || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">req</span>
                   </p>
               </div>
               <div className="bg-surface-container-lowest p-3 rounded-lg text-center border border-outline-variant/30">
                   <p className="font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider text-[11px]">Lưu lượng lớn nhất</p>
                   <p className="font-title-lg font-bold text-on-surface m-0">
-                    {(requestStats.summary?.max || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">req/{requestPeriod === '24hours' ? 'giờ' : (requestPeriod === '1year' ? 'thg' : 'ngày')}</span>
+                    {(requestStats.summary?.max || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">req</span>
                   </p>
               </div>
               <div className="bg-surface-container-lowest p-3 rounded-lg text-center border border-outline-variant/30">

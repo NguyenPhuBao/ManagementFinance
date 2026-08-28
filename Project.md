@@ -208,14 +208,16 @@ Role (1) ──▶ Account (N) ──▶ User (1)
 | `created_at` / `updated_at` | TIMESTAMP | Thời gian |
 | **Indexes** | `idx_category_uuid` (uuid), `category_idcategory_unique` (idcategory) | |
 
-##### Bảng AuditLog
+##### Bảng AuditLog (🔄 Cập nhật 2026-08-28 — Ghi nhận request real-time & Req_status)
 | Cột | Kiểu | Mô tả |
 |-----|------|-------|
-| `idlog` | INT PK (auto) | ID log |
-| `idaccount` | INT FK→Account | Tài khoản thực hiện |
-| `action` | TEXT | Hành động |
-| `details` | TEXT | Chi tiết |
-| `time` | TIMESTAMP | Thời gian |
+| `Idlog` | INT PK (auto) | ID log |
+| `Idaccount` | INT FK→Account | Tài khoản thực hiện yêu cầu |
+| `Request` | VARCHAR(200) | Tên thao tác / endpoint yêu cầu (ví dụ: `Đăng nhập hệ thống`, `Lấy danh sách người dùng`) |
+| `Req_status` | VARCHAR(20) | Trạng thái yêu cầu: `Accepted`, `Rejected`, `Interrupted`, `Pending`, `Processing`, `Pass`, `Fail` |
+| `TimeReq` | TIMESTAMP | Thời điểm backend tiếp nhận yêu cầu |
+| `TimeRes` | TIMESTAMP | Thời điểm backend xử lý xong và phản hồi |
+| **Indexes** | `idx_auditlog_account` (`Idaccount`), `idx_auditlog_timereq` (`TimeReq`) | Tối ưu truy vấn phân trang và thống kê |
 
 ##### Bảng RefreshToken
 | Cột | Kiểu | Mô tả |
@@ -861,7 +863,71 @@ Notification Worker:
 
 #### 5.3.1. Các khái niệm
 
+##### React 18 + Vite (SPA)
+- **Vite**: Build tool thế hệ mới với tốc độ HMR (Hot Module Replacement) tức thì, build bundle production tối ưu (`npm run build`).
+- **React Router DOM v6**: Định tuyến ứng dụng trang đơn (SPA) với Protected Routes kiểm tra quyền `admin` (`idrole === 1`).
+- **Axios Client**: Cấu hình tập trung `baseURL`, tự động gắn Bearer token từ `localStorage`, tự động xử lý refresh token khi token hết hạn và bóc tách dữ liệu phản hồi từ `ResponseHandler`.
+
+##### Tailwind CSS v4 (No Heavy UI Libraries)
+- **Kiến trúc Pure HTML & Tailwind Utility**: Loại bỏ hoàn toàn Ant Design (`antd`) hoặc Material UI để đạt hiệu năng tải trang tối đa, bundle nhẹ (~380kB gzipped) và khả năng tùy biến giao diện cao cấp (glassmorphism, gradients, micro-animations).
+- **Design Tokens**: Tùy biến mã màu thương hiệu (`primary`, `secondary`, `surface-bright`, `outline-variant`), typography và layout grid trực tiếp trong hệ thống thiết kế.
+
+##### Socket.IO-Client (Real-time Dashboard)
+- Kết nối Socket.IO tới Backend tại path `/socket.io` với fallback cơ chế `websocket` → `polling`.
+- Lắng nghe sự kiện `audit_activity`: nhận log thời gian thực khi client-app/admin gửi request tới server, tự động cập nhật bảng Hoạt động gần đây và cập nhật tức thì 2 biểu đồ (Lưu lượng request & Tần suất đăng nhập).
+
+##### Interactive SVG Line Charts
+- Biểu đồ đường vector SVG thuần túy được thiết kế tối ưu, không phụ thuộc thư viện chart nặng.
+- Hỗ trợ tooltip interactive hiển thị giá trị, hover point, đường gradient màu mượt mà, render timeline động theo 24 giờ, 7 ngày, 30 ngày, 12 tháng hoặc theo ngày/tháng/năm tùy chọn.
+
 #### 5.3.2. Cách áp dụng + luồng nghiệp vụ xử lý
+
+##### 1. Luồng Xác thực & Phân quyền Admin-web
+```
+Admin truy cập /login → Nhập Username & Password
+  ↓
+POST /api/auth/login → Backend kiểm tra (idrole=1)
+  ↓
+Lưu accessToken + refreshToken vào localStorage
+  ↓
+Điều hướng tới /dashboard → ProtectedRoute kiểm tra token hợp lệ
+```
+
+##### 2. Luồng Bộ lọc Toàn cục Dashboard (Global Filter)
+```
+Header Dashboard: Người dùng chọn mốc thời gian
+  ├── Nhanh: Hôm nay (24h) | 7 Ngày (7 ngày qua) | 1 Tháng (30 ngày qua) | 1 Năm (12 tháng qua)
+  └── Chi tiết (Date Picker 3 Mode):
+      ├── Theo Ngày: dd/mm/yyyy
+      ├── Theo Tháng: mm/yyyy
+      └── Theo Năm: yyyy
+  ↓
+Global Filter Context kích hoạt đồng thời 3 API:
+  ├── adminApi.getUserToTime(params)   → Tính số User mới & % tăng trưởng so với kỳ trước
+  ├── adminApi.getLoginStats(params)   → Vẽ biểu đồ Tần suất đăng nhập (timeline + Avg/Max)
+  └── adminApi.getRequestStats(params) → Vẽ biểu đồ Lưu lượng Request (timeline + Avg/Max/Total)
+  (Toàn bộ Stat Cards & Biểu đồ đồng bộ theo cùng 1 mốc thời gian)
+```
+
+##### 3. Luồng Bảng Hoạt động & Phân trang Ngược (Inverted Table Pagination)
+```
+Khi load trang: Gọi GET /api/auth/recent-activities?page=N&limit=5&sort=asc
+  ↓
+Backend trả về: { items, pagination: { total, page, limit, totalPages } }
+  ↓
+Quy ước hiển thị:
+  - Trang 1 = Dữ liệu cũ nhất hệ thống
+  - Trang N (totalPages) = Dữ liệu mới nhất hệ thống
+  - Mặc định khi load trang: Mở ngay Trang N với kích thước 5 items/page
+  - Trong trang hiện tại, đảo ngược danh sách để bản ghi mới nhất nằm ở hàng đầu tiên
+  ↓
+Real-time Socket.IO:
+  Khi có event 'audit_activity' từ backend:
+  - Tăng tổng số bản ghi (total += 1)
+  - Nếu admin đang đứng ở Trang N: Chèn ngay bản ghi mới vào đầu bảng (giới hạn theo limit)
+  - Tự động cộng dồn count vào timeline của biểu đồ Request & biểu đồ Đăng nhập
+```
+
 
 ### 5.4. Chi tiết công nghệ áp dụng Client-App
 
@@ -1762,6 +1828,46 @@ modules/ai/
 
 > ⏳ Chưa triển khai — phát sinh dần trong quá trình làm & ghi nhận sau.
 
+### 8.7. Module Admin & Admin-Web Integration (Cập nhật 2026-08-28)
+
+#### 8.7.1. Danh sách Endpoints Module Admin & Auth Analytics
+
+| Method | Endpoint | Auth | Quyền | Mô tả |
+|--------|----------|------|-------|-------|
+| `GET` | `/api/admin/totaluser` | JWT | `admin` | Lấy tổng số lượng người dùng hệ thống (`idrole=2`, `delete_at=null`) |
+| `GET` | `/api/admin/totalcategories` | JWT | `admin` | Lấy tổng số danh mục mặc định của hệ thống (`is_default=true`, `delete_at=null`) |
+| `GET` | `/api/admin/getusertotime` | JWT | `admin` | Thống kê số người dùng mới theo mốc thời gian và tính tỷ lệ tăng trưởng (%) so với kỳ trước. Hỗ trợ query: `period` (`today`, `7days`, `1month`, `1year`) hoặc `customType` (`date`, `month`, `year`) |
+| `GET` | `/api/admin/login-stats` | JWT | `admin` | Thống kê tần suất đăng nhập của người dùng. Trả về timeline và summary metrics (`total`, `max`, `avg`). Hỗ trợ bộ lọc thời gian toàn cục |
+| `GET` | `/api/admin/request-stats` | JWT | `admin` | Thống kê lưu lượng request toàn hệ thống (dựa trên bảng `audit_log`). Trả về timeline và summary metrics (`total`, `max`, `avg`). Hỗ trợ bộ lọc thời gian toàn cục |
+| `GET` | `/api/auth/recent-activities` | JWT | `admin` | Lấy danh sách hoạt động / request gần đây kèm phân trang ngược: `page`, `limit` (5/10/20), `sort` (`asc`). Metadata gồm: `total`, `page`, `limit`, `totalPages` |
+| `GET` | `/api/admin/getuser` | JWT | `admin` | Lấy danh sách tất cả người dùng kèm trạng thái và thông tin tài khoản |
+| `GET` | `/api/admin/getuser/:id` | JWT | `admin` | Lấy chi tiết thông tin 1 người dùng |
+| `PATCH` | `/api/admin/updatestatus/:id` | JWT | `admin` | Chuyển đổi trạng thái tài khoản người dùng (`Active` ↔ `Inactive`) |
+| `GET` | `/api/admin/getcategory` | JWT | `admin` | Lấy danh sách danh mục mặc định |
+| `POST` | `/api/admin/addcategory` | JWT | `admin` | Thêm mới danh mục mặc định |
+| `PUT` | `/api/admin/updatecategory/:id` | JWT | `admin` | Cập nhật thông tin danh mục mặc định |
+| `DELETE` | `/api/admin/deletecategory/:id` | JWT | `admin` | Xóa mềm danh mục mặc định (`delete_at = now`) |
+| `POST` | `/api/admin/categories/sync` | JWT | `admin` | Đồng bộ danh mục mặc định |
+
+#### 8.7.2. Cơ chế Bộ lọc Thời gian Toàn cục (Global Filter Context)
+- **Tập trung hóa:** Thay vì mỗi biểu đồ có bộ lọc riêng lẻ, Dashboard của Admin-web sử dụng một bộ lọc toàn cục duy nhất tại Header để điều phối dữ liệu cho tất cả các thẻ Card và Biểu đồ.
+- **Hỗ trợ 2 nhóm lựa chọn:**
+  1. **Lọc nhanh:** `today` (Hôm nay / 24 giờ qua - Mặc định), `7days` (7 ngày qua), `1month` (30 ngày qua), `1year` (12 tháng qua).
+  2. **Lọc chi tiết (Date Picker 3 Mode):**
+     - Theo Ngày: `dd/mm/yyyy` (24 timeline points `00:00` - `23:00`).
+     - Theo Tháng: `mm/yyyy` (1..N timeline points tương ứng với số ngày trong tháng).
+     - Theo Năm: `yyyy` (12 timeline points `Thg 01` - `Thg 12`).
+
+#### 8.7.3. Cơ chế Bảng Hoạt động Real-time & Phân trang Ngược
+- **Mô hình Phân trang:**
+  - Trang 1 là các bản ghi cũ nhất trong lịch sử.
+  - Trang $N$ (`totalPages`) là các bản ghi mới nhất.
+  - Mặc định khi tải trang: Tự động tải Trang $N$ với phân trang mặc định `5 / page`.
+  - Bên trong trang $N$, danh sách được sắp xếp ngược (`reverse`) để bản ghi mới nhất nằm ngay trên cùng.
+- **Tích hợp Real-time Socket.IO:**
+  - Backend phát sự kiện `audit_activity` qua Socket.IO khi có request đến.
+  - Admin-web tự động tăng tổng số bản ghi và đẩy bản ghi mới vào đầu bảng nếu đang đứng ở trang mới nhất.
+
 ## 9. Client-app
 
 ### 9.1 Tích Hợp Authentication (Client-app ↔ Backend)
@@ -1972,3 +2078,38 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
 
 **Tại Client-app (Flutter):**
 - Cần cập nhật hằng số URL trỏ về `https://managementfinance.onrender.com/api` khi build app thật.
+
+---
+
+## 11. Cập Nhật Tiến Độ & Hoàn Thành Module Admin & Admin-Web (2026-08-28)
+
+### 11.1. Tái cấu trúc giao diện Admin-web & Loại bỏ hoàn toàn Ant Design
+- Giao diện Admin-web đã được thiết kế lại toàn diện, chuyển đổi 100% sang Pure HTML + Tailwind CSS v4, tối ưu hóa tốc độ phản hồi và phong cách thẩm mỹ cao cấp (Modern FinTech UI).
+- Hoàn thiện các trang:
+  - **Login Page (`/login`)**: Đăng nhập phân quyền admin, validation form, animation loading.
+  - **Dashboard Page (`/dashboard`)**: Tổng quan hệ thống, 4 Stat Cards, 2 biểu đồ phân tích thời gian thực, bảng nhật ký audit log.
+  - **Users Management (`/users`)**: Danh sách người dùng, tìm kiếm, lọc trạng thái, xem chi tiết, khóa/mở khóa tài khoản.
+  - **Categories Management (`/categories`)**: Danh mục mặc định hệ thống, thêm/sửa/xóa mềm/đồng bộ danh mục.
+  - **System Monitor (`/system/queue`, `/system/config`)**: Giám sát hàng đợi BullMQ và cấu hình hệ thống.
+
+### 11.2. Thống nhất Bộ lọc Toàn cục Dashboard (Global Unified Filter)
+- Bộ lọc đặt tại Header Dashboard, mặc định là **Hôm nay** (`today` = 24 giờ của ngày hôm nay).
+- Hỗ trợ các mốc lọc:
+  - Hôm nay (`today`)
+  - 7 Ngày (`7days`)
+  - 1 Tháng (`1month` = 30 ngày qua)
+  - 1 Năm (`1year` = 12 tháng qua)
+  - Date Picker Modal 3 Chế độ: **Theo Ngày (`dd/mm/yyyy`)**, **Theo Tháng (`mm/yyyy`)**, **Theo Năm (`yyyy`)**.
+- Bộ lọc áp dụng đồng bộ cho:
+  - **Card Người dùng mới & % Tăng trưởng** (`getUserToTime`).
+  - **Biểu đồ Tần suất Đăng nhập** (`getLoginStats`): Timeline mượt mà + Avg/Max metrics.
+  - **Biểu đồ Lưu lượng Request** (`getRequestStats`): Timeline mượt mà + Avg/Max/Total metrics.
+- Đã loại bỏ các nút lọc con cục bộ trên các biểu đồ để tránh phân mảnh trải nghiệm.
+
+### 11.3. Bảng Theo Dõi Hoạt Động Thời Gian Thực & Phân Trang Ngược
+- Kết nối **Socket.IO** lắng nghe event `audit_activity`: tự động ghi nhận mọi request đến backend và cập nhật tức thì lên Dashboard.
+- **Quy tắc phân trang ngược**:
+  - Trang 1 là các bản ghi cũ nhất trong lịch sử.
+  - Trang $N$ là các bản ghi mới nhất.
+  - Mặc định khi vào trang mở Trang $N$ với phân trang `5 / page` (hỗ trợ `5 / page`, `10 / page`, `20 / page`).
+  - Thanh toolbar hiển thị phạm vi bản ghi (`start - end of total items`) và điều hướng trang trực quan.

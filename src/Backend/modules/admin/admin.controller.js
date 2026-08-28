@@ -25,11 +25,8 @@ const adminController = {
 
   async getUserToTime(req, res) {
     try {
-      const now = new Date();
-      const month = parseInt(req.query.month, 10) || now.getMonth() + 1;
-      const year = parseInt(req.query.year, 10) || now.getFullYear();
-      const result = await adminService.getUserToTime(month, year);
-      return ResponseHandler.success(res, result, 'Thống kê người dùng theo tháng');
+      const result = await adminService.getUserToTime(req.query);
+      return ResponseHandler.success(res, result, 'Thống kê người dùng theo thời gian');
     } catch (error) {
       logger.error('getUserToTime failed', { error: error.message });
       return ResponseHandler.error(res, error.message);
@@ -127,8 +124,7 @@ const adminController = {
 
   async getLoginStats(req, res) {
     try {
-      const period = req.query.period || '1month';
-      const result = await adminService.getLoginStats(period);
+      const result = await adminService.getLoginStats(req.query);
       return ResponseHandler.success(res, result, 'Thống kê tần suất đăng nhập');
     } catch (error) {
       logger.error('getLoginStats failed', { error: error.message });
@@ -138,8 +134,7 @@ const adminController = {
 
   async getRequestStats(req, res) {
     try {
-      const period = req.query.period || '1month';
-      const result = await adminService.getRequestStats(period);
+      const result = await adminService.getRequestStats(req.query);
       return ResponseHandler.success(res, result, 'Thống kê lưu lượng request');
     } catch (error) {
       logger.error('getRequestStats failed', { error: error.message });

@@ -587,9 +587,11 @@ const authService = {
     }
   },
 
-  async getRecentActivities(limit = 10) {
-    const logs = await authRepository.getRecentAuditLogs(limit);
-    return logs.map((log) => {
+  async getRecentActivities(options = {}) {
+    const opts = typeof options === 'number' ? { limit: options } : options;
+    const { total, page, limit, totalPages, items } = await authRepository.getRecentAuditLogs(opts);
+
+    const formattedItems = items.map((log) => {
       const date = new Date(log.time_req);
       const hours = date.getHours().toString().padStart(2, '0');
       const minutes = date.getMinutes().toString().padStart(2, '0');
@@ -606,6 +608,16 @@ const authService = {
         time_res: log.time_res,
       };
     });
+
+    return {
+      items: formattedItems,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages,
+      },
+    };
   },
 };
 
