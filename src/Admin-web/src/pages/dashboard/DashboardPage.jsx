@@ -72,8 +72,9 @@ const InteractiveLineChart = ({
   gradientFrom = '#3b82f6',
   gradientTo = '#1d4ed8',
   unit = 'lượt',
+  format = 'day',
   loading = false,
-  height = 180,
+  height = 200,
 }) => {
   const [hoverIndex, setHoverIndex] = useState(null);
 
@@ -96,16 +97,18 @@ const InteractiveLineChart = ({
   const counts = data.map((d) => d.count);
   const maxVal = Math.max(...counts, 5);
   const minVal = 0;
-  const paddingX = 40;
-  const paddingY = 25;
+  const paddingLeft = 40;
+  const paddingRight = 45;
+  const paddingTop = 20;
+  const paddingBottom = 40;
   const width = 1000;
-  const svgHeight = 300;
-  const drawWidth = width - paddingX * 2;
-  const drawHeight = svgHeight - paddingY * 2;
+  const svgHeight = 280;
+  const drawWidth = width - paddingLeft - paddingRight;
+  const drawHeight = svgHeight - paddingTop - paddingBottom;
 
   const points = data.map((item, index) => {
-    const x = data.length === 1 ? width / 2 : paddingX + (index / (data.length - 1)) * drawWidth;
-    const y = paddingY + drawHeight - ((item.count - minVal) / (maxVal - minVal)) * drawHeight;
+    const x = data.length === 1 ? width / 2 : paddingLeft + (index / (data.length - 1)) * drawWidth;
+    const y = paddingTop + drawHeight - ((item.count - minVal) / (maxVal - minVal)) * drawHeight;
     return { x, y, label: item.label, count: item.count };
   });
 
@@ -121,11 +124,48 @@ const InteractiveLineChart = ({
     pathD += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p1.x} ${p1.y}`;
   }
 
-  const areaD = `${pathD} L ${points[points.length - 1].x} ${svgHeight - paddingY} L ${points[0].x} ${svgHeight - paddingY} Z`;
+  const areaD = `${pathD} L ${points[points.length - 1].x} ${paddingTop + drawHeight} L ${points[0].x} ${paddingTop + drawHeight} Z`;
 
-  // Select 5-6 evenly spaced labels to display on X-axis
-  const labelStep = Math.max(1, Math.floor(data.length / 6));
-  const displayLabels = data.filter((_, idx) => idx % labelStep === 0 || idx === data.length - 1);
+  // Determine X-axis ticks and Unit label
+  let xUnit = 'Ngày';
+  let xTicks = [];
+
+  const isMonthFormat = format === 'month' || (data.length === 12 && data[0]?.label?.startsWith('Thg'));
+  const isHourFormat = format === 'hour' || (data.length === 24 && data[0]?.label?.includes(':'));
+
+  if (isMonthFormat) {
+    xUnit = 'Tháng';
+    // Đánh số đầy đủ 01 -> 12 cho tất cả 12 tháng
+    xTicks = points.map((pt, idx) => ({
+      x: pt.x,
+      text: (idx + 1).toString().padStart(2, '0'),
+    }));
+  } else if (isHourFormat) {
+    xUnit = 'Giờ';
+    // 24 giờ: hiển thị các mốc chẵn 00, 02, 04, ..., 22 và mốc cuối 23
+    xTicks = points
+      .filter((_, idx) => idx % 2 === 0 || idx === points.length - 1)
+      .map((pt) => ({
+        x: pt.x,
+        text: pt.label.split(':')[0] || '',
+      }));
+  } else if (data.length <= 8) {
+    xUnit = 'Ngày';
+    // 7 ngày: hiển thị đủ cả 7 ngày
+    xTicks = points.map((pt) => ({
+      x: pt.x,
+      text: pt.label,
+    }));
+  } else {
+    xUnit = 'Ngày';
+    // 30 / 31 ngày: hiển thị cách đều các ngày 01, 05, 10, 15, 20, 25, 30
+    xTicks = points
+      .filter((_, idx) => idx % 5 === 0 || idx === points.length - 1)
+      .map((pt) => ({
+        x: pt.x,
+        text: pt.label.split('/')[0] || '',
+      }));
+  }
 
   const hoveredPoint = hoverIndex !== null && points[hoverIndex] ? points[hoverIndex] : null;
 
@@ -142,7 +182,7 @@ const InteractiveLineChart = ({
         >
           <defs>
             <linearGradient id={`${gradientId}-area`} x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor={strokeColor} stopOpacity="0.25" />
+              <stop offset="0%" stopColor={strokeColor} stopOpacity="0.22" />
               <stop offset="100%" stopColor={strokeColor} stopOpacity="0.0" />
             </linearGradient>
             <linearGradient id={`${gradientId}-line`} x1="0%" y1="0%" x2="100%" y2="0%">
@@ -152,9 +192,14 @@ const InteractiveLineChart = ({
           </defs>
 
           {/* Grid lines */}
-          <line x1={paddingX} y1={paddingY} x2={width - paddingX} y2={paddingY} stroke="currentColor" className="text-outline-variant/30" strokeWidth="1" strokeDasharray="4 4" vectorEffect="non-scaling-stroke" />
-          <line x1={paddingX} y1={paddingY + drawHeight / 2} x2={width - paddingX} y2={paddingY + drawHeight / 2} stroke="currentColor" className="text-outline-variant/30" strokeWidth="1" strokeDasharray="4 4" vectorEffect="non-scaling-stroke" />
-          <line x1={paddingX} y1={svgHeight - paddingY} x2={width - paddingX} y2={svgHeight - paddingY} stroke="currentColor" className="text-outline-variant/40" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+          <line x1={paddingLeft} y1={paddingTop} x2={width - paddingRight} y2={paddingTop} stroke="currentColor" className="text-outline-variant/30" strokeWidth="1" strokeDasharray="4 4" vectorEffect="non-scaling-stroke" />
+          <line x1={paddingLeft} y1={paddingTop + drawHeight / 2} x2={width - paddingRight} y2={paddingTop + drawHeight / 2} stroke="currentColor" className="text-outline-variant/30" strokeWidth="1" strokeDasharray="4 4" vectorEffect="non-scaling-stroke" />
+          <line x1={paddingLeft} y1={paddingTop + drawHeight} x2={width - paddingRight} y2={paddingTop + drawHeight} stroke="currentColor" className="text-outline-variant/50" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+
+          {/* Y Axis min/max labels inside SVG */}
+          <text x={paddingLeft - 8} y={paddingTop + 4} textAnchor="end" fill="#64748b" fontSize="11" fontWeight="600" fontFamily="Inter, sans-serif">{maxVal.toLocaleString('vi-VN')}</text>
+          <text x={paddingLeft - 8} y={paddingTop + drawHeight / 2 + 4} textAnchor="end" fill="#64748b" fontSize="11" fontWeight="600" fontFamily="Inter, sans-serif">{Math.round(maxVal / 2).toLocaleString('vi-VN')}</text>
+          <text x={paddingLeft - 8} y={paddingTop + drawHeight + 4} textAnchor="end" fill="#64748b" fontSize="11" fontWeight="600" fontFamily="Inter, sans-serif">0</text>
 
           {/* Area fill */}
           <path d={areaD} fill={`url(#${gradientId}-area)`} />
@@ -189,10 +234,39 @@ const InteractiveLineChart = ({
             );
           })}
 
+          {/* X Axis ticks (Aligned exactly with coordinates) */}
+          {xTicks.map((tick, idx) => (
+            <text
+              key={idx}
+              x={tick.x}
+              y={paddingTop + drawHeight + 22}
+              textAnchor="middle"
+              fill="#64748b"
+              fontSize={data.length > 20 ? 11 : 12}
+              fontWeight="500"
+              fontFamily="Inter, sans-serif"
+            >
+              {tick.text}
+            </text>
+          ))}
+
+          {/* X Unit label placed on the right of the X axis */}
+          <text
+            x={width - 5}
+            y={paddingTop + drawHeight + 22}
+            textAnchor="end"
+            fill="#64748b"
+            fontSize="12"
+            fontWeight="600"
+            fontFamily="Inter, sans-serif"
+          >
+            ({xUnit})
+          </text>
+
           {/* Active Tooltip on SVG */}
           {hoveredPoint && (
             <g transform={`translate(${Math.min(Math.max(hoveredPoint.x, 60), width - 60)}, ${Math.max(hoveredPoint.y - 45, 10)})`}>
-              <rect x="-45" y="0" width="90" height="34" rx="6" fill="#1e293b" opacity="0.95" />
+              <rect x="-48" y="0" width="96" height="34" rx="6" fill="#0f172a" opacity="0.95" />
               <text x="0" y="14" fill="#94a3b8" fontSize="10" fontFamily="Inter, sans-serif" textAnchor="middle">{hoveredPoint.label}</text>
               <text x="0" y="27" fill="#ffffff" fontSize="11" fontWeight="bold" fontFamily="Inter, sans-serif" textAnchor="middle">
                 {hoveredPoint.count.toLocaleString('vi-VN')} {unit}
@@ -200,20 +274,6 @@ const InteractiveLineChart = ({
             </g>
           )}
         </svg>
-
-        {/* Y Axis min/max labels */}
-        <div className="absolute left-0 top-0 bottom-4 flex flex-col justify-between text-[10px] text-on-surface-variant font-medium pointer-events-none pr-1">
-          <span>{maxVal.toLocaleString('vi-VN')}</span>
-          <span>{Math.round(maxVal / 2).toLocaleString('vi-VN')}</span>
-          <span>0</span>
-        </div>
-      </div>
-
-      {/* X Axis labels */}
-      <div className="flex justify-between mt-2 px-6 text-[11px] text-on-surface-variant font-medium">
-        {displayLabels.map((item, idx) => (
-          <span key={idx}>{item.label}</span>
-        ))}
       </div>
     </div>
   );
@@ -285,18 +345,20 @@ const DashboardPage = () => {
   const [loginStats, setLoginStats] = useState({
     summary: { total: 0, max: 0, avg: 0 },
     timeline: [],
+    format: 'hour',
   });
   const [loadingLogin, setLoadingLogin] = useState(false);
 
   const [requestStats, setRequestStats] = useState({
     summary: { total: 0, max: 0, avg: 0 },
     timeline: [],
+    format: 'hour',
   });
   const [loadingRequest, setLoadingRequest] = useState(false);
 
-  // 3. Table Hoạt động người dùng (Phân trang ngược: 1 là cũ nhất, N là mới nhất, mặc định mở N với 5/page)
+  // 3. Table Hoạt động người dùng (Trang 1 = mới nhất, phân trang 1 -> 2 -> 3...)
   const [recentActivities, setRecentActivities] = useState([]);
-  const [activityPage, setActivityPage] = useState(null); // null ban đầu để chờ totalPages từ backend
+  const [activityPage, setActivityPage] = useState(1);
   const [activityLimit, setActivityLimit] = useState(5);
   const [activityPagination, setActivityPagination] = useState({
     total: 0,
@@ -305,6 +367,20 @@ const DashboardPage = () => {
     totalPages: 1,
   });
   const [loadingActivities, setLoadingActivities] = useState(false);
+
+  // Helper tính danh sách số trang thông minh (tối đa 3 trang quanh trang hiện tại + ...)
+  const getPageNumbers = (curr, total) => {
+    if (total <= 5) {
+      return Array.from({ length: total }, (_, i) => i + 1);
+    }
+    if (curr <= 2) {
+      return [1, 2, 3, '...', total];
+    }
+    if (curr >= total - 1) {
+      return [1, '...', total - 2, total - 1, total];
+    }
+    return [1, '...', curr - 1, curr, curr + 1, '...', total];
+  };
 
   // Static stats (Tổng user & Tổng category) — fetch 1 lần
   useEffect(() => {
@@ -362,20 +438,20 @@ const DashboardPage = () => {
     fetchAllDashboardData();
   }, [timeFilter, customFilter]);
 
-  // Fetch Hoạt động người dùng theo phân trang
+  // Fetch Hoạt động người dùng theo phân trang (Trang 1 = mới nhất, sort: 'desc')
   const fetchActivities = async (targetPage, limit) => {
     setLoadingActivities(true);
     try {
+      const pageToFetch = targetPage || activityPage || 1;
       const res = await adminApi.getRecentActivities({
-        page: targetPage || undefined,
+        page: pageToFetch,
         limit: limit || activityLimit,
-        sort: 'asc', // Trang 1 = cũ nhất, Trang N = mới nhất
+        sort: 'desc',
       });
 
       if (res.data) {
         const { items, pagination } = res.data;
-        // Đảo ngược danh sách trong trang hiện tại để bản ghi mới hơn nằm ở hàng trên
-        setRecentActivities((items || []).slice().reverse().map(item => ({
+        setRecentActivities((items || []).map(item => ({
           key: item.id ? String(item.id) : Math.random().toString(),
           id: item.id,
           user: item.user || 'Người dùng',
@@ -386,9 +462,6 @@ const DashboardPage = () => {
         })));
 
         setActivityPagination(pagination);
-        if (activityPage === null || targetPage === undefined) {
-          setActivityPage(pagination.totalPages);
-        }
       }
     } catch (err) {
       console.error('Lỗi tải lịch sử hoạt động:', err);
@@ -421,7 +494,7 @@ const DashboardPage = () => {
         isNew: true,
       };
 
-      // Nếu người dùng đang ở trang mới nhất (totalPages), thêm bản ghi vào đầu bảng
+      // Tăng tổng số lượng bản ghi
       setActivityPagination((prev) => {
         const newTotal = prev.total + 1;
         const newTotalPages = Math.max(1, Math.ceil(newTotal / prev.limit));
@@ -432,11 +505,14 @@ const DashboardPage = () => {
         };
       });
 
+      // Nếu đang ở Trang 1 (mới nhất), chèn ngay bản ghi mới vào đầu bảng
       setActivityPage((currentPage) => {
-        setRecentActivities((prevList) => {
-          const filtered = prevList.filter(item => item.id !== newActivity.id);
-          return [newActivity, ...filtered].slice(0, activityLimit);
-        });
+        if (currentPage === 1) {
+          setRecentActivities((prevList) => {
+            const filtered = prevList.filter(item => item.id !== newActivity.id);
+            return [newActivity, ...filtered].slice(0, activityLimit);
+          });
+        }
         return currentPage;
       });
 
@@ -539,7 +615,7 @@ const DashboardPage = () => {
   const growthBadge = `${growthSign}${newUsers.growth}%`;
   const growthColor = newUsers.growth >= 0 ? 'green' : 'red';
 
-  // Pagination display values
+  // Pagination display values (Trang 1: 1 - 5 of 36 items)
   const currPage = activityPagination.page || 1;
   const startItem = activityPagination.total > 0 ? (currPage - 1) * activityPagination.limit + 1 : 0;
   const endItem = Math.min(currPage * activityPagination.limit, activityPagination.total);
@@ -799,163 +875,172 @@ const DashboardPage = () => {
           <StatCard icon="person_add" title="Người dùng mới" value={newUsers.current.toLocaleString('vi-VN')} badge={growthBadge} badgeColor={growthColor} />
       </div>
 
-      {/* Main Content Grid: Recent Activities (with Pagination) & Charts */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 relative">
-          {/* Table: Hoạt động gần đây (có Phân trang ngược) */}
-          <div className="xl:col-span-2 bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden flex flex-col h-full">
-              <div className="p-5 border-b border-outline-variant flex items-center justify-between bg-surface-container-lowest">
-                  <h2 className="font-title-lg text-title-lg font-bold text-on-surface m-0 flex items-center gap-2">
-                      <span className="material-symbols-outlined text-primary text-[22px]">history</span>
-                      Hoạt động gần đây
-                  </h2>
-                  <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#dcfce7] text-[#166534] font-label-md text-[11px] font-semibold border border-[#86efac]">
-                          <span className="relative flex h-2 w-2">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#166534] opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-2 w-2 bg-[#166534]"></span>
-                          </span>
-                          Real-time
+      {/* 1. Table: Hoạt động gần đây (Full-width, Phân trang 1 -> 2 -> 3, Trang 1 = mới nhất) */}
+      <div className="w-full bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden flex flex-col relative">
+          <div className="p-5 border-b border-outline-variant flex items-center justify-between bg-surface-container-lowest">
+              <h2 className="font-title-lg text-title-lg font-bold text-on-surface m-0 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-primary text-[22px]">history</span>
+                  Hoạt động gần đây
+              </h2>
+              <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#dcfce7] text-[#166534] font-label-md text-[11px] font-semibold border border-[#86efac]">
+                      <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#166534] opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-[#166534]"></span>
                       </span>
-                  </div>
-              </div>
-              
-              <div className="flex-1 overflow-x-auto relative min-h-[220px]">
-                  {loadingActivities && (
-                    <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] z-10 flex items-center justify-center">
-                      <span className="material-symbols-outlined animate-spin text-primary text-2xl">progress_activity</span>
-                    </div>
-                  )}
-                  <table className="w-full text-left border-collapse min-w-[560px]">
-                      <thead>
-                          <tr className="bg-surface-container-low/50">
-                              <th className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">Người dùng</th>
-                              <th className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">Hành động</th>
-                              <th className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">Trạng thái</th>
-                              <th className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold text-right">Thời gian</th>
-                          </tr>
-                      </thead>
-                      <tbody className="divide-y divide-outline-variant/50">
-                          {recentActivities.length > 0 ? (
-                            recentActivities.map(activity => (
-                                <tr key={activity.key} className={`hover:bg-surface-container-lowest transition-colors group ${activity.isNew ? 'bg-primary/5 animate-pulse duration-1000' : ''}`}>
-                                    <td className="py-3 px-5">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-secondary/10 text-secondary flex items-center justify-center font-bold text-sm shadow-sm group-hover:scale-105 transition-transform">
-                                                {(activity.user || 'U').split(' ').pop().charAt(0)}
-                                            </div>
-                                            <span className="font-body-md font-semibold text-on-surface">{activity.user}</span>
-                                        </div>
-                                    </td>
-                                    <td className="py-3 px-5 text-on-surface-variant font-body-md">
-                                        <span className="inline-flex items-center gap-2">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0"></span>
-                                            {activity.action}
-                                        </span>
-                                    </td>
-                                    <td className="py-3 px-5 whitespace-nowrap">
-                                        {getStatusBadge(activity.status)}
-                                    </td>
-                                    <td className="py-3 px-5 text-on-surface-variant font-body-sm text-right whitespace-nowrap">{activity.time}</td>
-                                </tr>
-                            ))
-                          ) : (
-                            <tr>
-                                <td colSpan="4" className="py-8 text-center text-on-surface-variant font-body-md">
-                                    Chưa có hoạt động nào được ghi nhận.
-                                </td>
-                            </tr>
-                          )}
-                      </tbody>
-                  </table>
-              </div>
-
-              {/* Table Pagination Toolbar */}
-              <div className="p-3.5 px-5 border-t border-outline-variant flex flex-col sm:flex-row items-center justify-between gap-3 bg-surface-container-lowest text-[12px] text-on-surface-variant">
-                  {/* Left: Item Range */}
-                  <div>
-                    <span>{startItem} - {endItem} of {activityPagination.total} items</span>
-                  </div>
-
-                  {/* Right: Page Size & Pagination Buttons */}
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1.5">
-                      <select
-                        value={activityLimit}
-                        onChange={(e) => {
-                          const newLimit = parseInt(e.target.value, 10);
-                          setActivityLimit(newLimit);
-                          // Khi đổi limit, reset sang trang mới nhất
-                          setActivityPage(null);
-                        }}
-                        className="bg-white border border-outline-variant rounded-md px-2.5 py-1 text-[12px] text-on-surface font-medium cursor-pointer focus:outline-none focus:border-primary"
-                      >
-                        <option value={5}>5 / page</option>
-                        <option value={10}>10 / page</option>
-                        <option value={20}>20 / page</option>
-                      </select>
-                    </div>
-
-                    <div className="flex items-center gap-1">
-                      {/* Prev Button */}
-                      <button
-                        onClick={() => setActivityPage(prev => Math.max(1, (prev || 1) - 1))}
-                        disabled={currPage <= 1}
-                        className={`w-7 h-7 flex items-center justify-center rounded border border-outline-variant/60 text-on-surface transition-colors cursor-pointer ${
-                          currPage <= 1 ? 'opacity-30 pointer-events-none' : 'hover:bg-surface-container-low'
-                        }`}
-                      >
-                        <span className="material-symbols-outlined text-[16px]">chevron_left</span>
-                      </button>
-
-                      {/* Page numbers: 1 is oldest, N is newest */}
-                      {Array.from({ length: activityPagination.totalPages }).map((_, idx) => {
-                        const pageNum = idx + 1;
-                        const isActive = pageNum === currPage;
-                        return (
-                          <button
-                            key={pageNum}
-                            onClick={() => setActivityPage(pageNum)}
-                            className={`w-7 h-7 flex items-center justify-center rounded text-[12px] font-medium transition-colors cursor-pointer ${
-                              isActive
-                                ? 'border border-primary text-primary font-bold bg-primary/5'
-                                : 'border border-transparent text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
-                            }`}
-                          >
-                            {pageNum}
-                          </button>
-                        );
-                      })}
-
-                      {/* Next Button */}
-                      <button
-                        onClick={() => setActivityPage(prev => Math.min(activityPagination.totalPages, (prev || 1) + 1))}
-                        disabled={currPage >= activityPagination.totalPages}
-                        className={`w-7 h-7 flex items-center justify-center rounded border border-outline-variant/60 text-on-surface transition-colors cursor-pointer ${
-                          currPage >= activityPagination.totalPages ? 'opacity-30 pointer-events-none' : 'hover:bg-surface-container-low'
-                        }`}
-                      >
-                        <span className="material-symbols-outlined text-[16px]">chevron_right</span>
-                      </button>
-                    </div>
-                  </div>
+                      Real-time
+                  </span>
               </div>
           </div>
           
-          {/* Biểu đồ 1: Tần suất Đăng nhập (Ăn theo Global Filter, đã gỡ bộ lọc con) */}
-          <div className="bg-white rounded-xl border border-outline-variant shadow-sm p-5 flex flex-col h-full relative overflow-hidden group">
+          <div className="flex-1 overflow-x-auto relative min-h-[220px]">
+              {loadingActivities && (
+                <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] z-10 flex items-center justify-center">
+                  <span className="material-symbols-outlined animate-spin text-primary text-2xl">progress_activity</span>
+                </div>
+              )}
+              <table className="w-full text-left border-collapse min-w-[560px]">
+                  <thead>
+                      <tr className="bg-surface-container-low/50">
+                          <th className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">Người dùng</th>
+                          <th className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">Hành động</th>
+                          <th className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">Trạng thái</th>
+                          <th className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold text-right">Thời gian</th>
+                      </tr>
+                  </thead>
+                  <tbody className="divide-y divide-outline-variant/50">
+                      {recentActivities.length > 0 ? (
+                        recentActivities.map(activity => (
+                            <tr key={activity.key} className={`hover:bg-surface-container-lowest transition-colors group ${activity.isNew ? 'bg-primary/5 animate-pulse duration-1000' : ''}`}>
+                                <td className="py-3 px-5">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-secondary/10 text-secondary flex items-center justify-center font-bold text-sm shadow-sm group-hover:scale-105 transition-transform">
+                                            {(activity.user || 'U').split(' ').pop().charAt(0)}
+                                        </div>
+                                        <span className="font-body-md font-semibold text-on-surface">{activity.user}</span>
+                                    </div>
+                                </td>
+                                <td className="py-3 px-5 text-on-surface-variant font-body-md">
+                                    <span className="inline-flex items-center gap-2">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0"></span>
+                                        {activity.action}
+                                    </span>
+                                </td>
+                                <td className="py-3 px-5 whitespace-nowrap">
+                                    {getStatusBadge(activity.status)}
+                                </td>
+                                <td className="py-3 px-5 text-on-surface-variant font-body-sm text-right whitespace-nowrap">{activity.time}</td>
+                            </tr>
+                        ))
+                      ) : (
+                        <tr>
+                            <td colSpan="4" className="py-8 text-center text-on-surface-variant font-body-md">
+                                Chưa có hoạt động nào được ghi nhận.
+                            </td>
+                        </tr>
+                      )}
+                  </tbody>
+              </table>
+          </div>
+
+          {/* Table Pagination Toolbar */}
+          <div className="p-3.5 px-5 border-t border-outline-variant flex flex-col sm:flex-row items-center justify-between gap-3 bg-surface-container-lowest text-[12px] text-on-surface-variant">
+              {/* Left: Item Range */}
+              <div>
+                <span>{startItem} - {endItem} of {activityPagination.total} items</span>
+              </div>
+
+              {/* Right: Page Size & Pagination Buttons */}
+              <div className="flex items-center gap-3">
+                {/* Custom Styled Select (hết bị đè mũi tên) */}
+                <div className="relative inline-flex items-center">
+                  <select
+                    value={activityLimit}
+                    onChange={(e) => {
+                      const newLimit = parseInt(e.target.value, 10);
+                      setActivityLimit(newLimit);
+                      setActivityPage(1);
+                    }}
+                    className="appearance-none bg-white border border-outline-variant rounded-md pl-3 pr-8 py-1 text-[12px] text-on-surface font-medium cursor-pointer focus:outline-none focus:border-primary shadow-2xs"
+                  >
+                    <option value={5}>5 / page</option>
+                    <option value={10}>10 / page</option>
+                    <option value={20}>20 / page</option>
+                  </select>
+                  <span className="material-symbols-outlined text-[18px] text-on-surface-variant pointer-events-none absolute right-1.5">
+                    arrow_drop_down
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  {/* Prev Button */}
+                  <button
+                    onClick={() => setActivityPage(prev => Math.max(1, (prev || 1) - 1))}
+                    disabled={currPage <= 1}
+                    className={`w-7 h-7 flex items-center justify-center rounded border border-outline-variant/60 text-on-surface transition-colors cursor-pointer ${
+                      currPage <= 1 ? 'opacity-30 pointer-events-none' : 'hover:bg-surface-container-low'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[16px]">chevron_left</span>
+                  </button>
+
+                  {/* Smart Page numbers (tối đa 3 trang quanh trang hiện tại + ...) */}
+                  {getPageNumbers(currPage, activityPagination.totalPages).map((p, idx) => {
+                    if (p === '...') {
+                      return (
+                        <span key={`ellipsis-${idx}`} className="w-7 h-7 flex items-center justify-center text-on-surface-variant font-medium text-[12px]">
+                          ...
+                        </span>
+                      );
+                    }
+                    const isActive = p === currPage;
+                    return (
+                      <button
+                        key={p}
+                        onClick={() => setActivityPage(p)}
+                        className={`w-7 h-7 flex items-center justify-center rounded text-[12px] font-medium transition-colors cursor-pointer ${
+                          isActive
+                            ? 'border border-primary text-primary font-bold bg-primary/10'
+                            : 'border border-transparent text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    );
+                  })}
+
+                  {/* Next Button */}
+                  <button
+                    onClick={() => setActivityPage(prev => Math.min(activityPagination.totalPages, (prev || 1) + 1))}
+                    disabled={currPage >= activityPagination.totalPages}
+                    className={`w-7 h-7 flex items-center justify-center rounded border border-outline-variant/60 text-on-surface transition-colors cursor-pointer ${
+                      currPage >= activityPagination.totalPages ? 'opacity-30 pointer-events-none' : 'hover:bg-surface-container-low'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[16px]">chevron_right</span>
+                  </button>
+                </div>
+              </div>
+          </div>
+      </div>
+
+      {/* 2. Charts Grid: Luôn nằm DƯỚI Table Hoạt động gần đây */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Biểu đồ 1: Tần suất Đăng nhập */}
+          <div className="bg-white rounded-xl border border-outline-variant shadow-sm p-5 md:p-6 flex flex-col h-full relative overflow-hidden group">
               <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-colors duration-500"></div>
               
-              <div className="flex justify-between items-start mb-5">
+              <div className="flex justify-between items-start mb-4">
                   <div>
                       <h2 className="font-title-lg text-title-lg font-bold text-on-surface m-0 flex items-center gap-2">
                           <span className="material-symbols-outlined text-primary text-[22px]">bar_chart</span>
                           Đăng nhập
                       </h2>
-                      <p className="font-body-sm text-on-surface-variant mt-0.5">Tần suất người dùng đăng nhập</p>
+                      <p className="font-body-sm text-on-surface-variant mt-0.5">Tần suất đăng nhập</p>
                   </div>
               </div>
               
-              <div className="flex-1 flex flex-col justify-center min-h-[190px] mb-5 relative">
+              <div className="flex-1 flex flex-col justify-center min-h-[200px] mb-4 relative">
                   <InteractiveLineChart
                     data={loginStats.timeline}
                     gradientId="loginChartGrad"
@@ -963,8 +1048,9 @@ const DashboardPage = () => {
                     gradientFrom="#3b82f6"
                     gradientTo="#1d4ed8"
                     unit="lượt"
+                    format={loginStats.format || 'day'}
                     loading={loadingLogin}
-                    height={190}
+                    height={200}
                   />
               </div>
               
@@ -983,60 +1069,61 @@ const DashboardPage = () => {
                   </div>
               </div>
           </div>
-      </div>
 
-      {/* Biểu đồ 2: Lưu lượng Request (Ăn theo Global Filter, đã gỡ bộ lọc con) */}
-      <div className="bg-white rounded-xl border border-outline-variant shadow-sm p-5 md:p-6 overflow-hidden relative">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5 relative z-10">
-              <div>
-                  <h2 className="font-title-lg text-title-lg font-bold text-on-surface m-0 flex items-center gap-2">
-                      <span className="material-symbols-outlined text-primary text-[22px]">ssid_chart</span>
-                      Lưu lượng Request
-                  </h2>
-                  <p className="font-body-sm text-on-surface-variant mt-0.5">Giám sát tải hệ thống và lưu lượng yêu cầu</p>
-              </div>
-              <div className="flex items-center gap-3">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#dcfce7] text-[#166534] font-label-md text-[11px] font-semibold border border-[#86efac]">
-                      <span className="relative flex h-2 w-2">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#166534] opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-[#166534]"></span>
+          {/* Biểu đồ 2: Lưu lượng Request */}
+          <div className="bg-white rounded-xl border border-outline-variant shadow-sm p-5 md:p-6 flex flex-col h-full relative overflow-hidden group">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 relative z-10">
+                  <div>
+                      <h2 className="font-title-lg text-title-lg font-bold text-on-surface m-0 flex items-center gap-2">
+                          <span className="material-symbols-outlined text-primary text-[22px]">ssid_chart</span>
+                          Lưu lượng Request
+                      </h2>
+                      <p className="font-body-sm text-on-surface-variant mt-0.5">Giám sát tải hệ thống và lưu lượng yêu cầu</p>
+                  </div>
+                  <div className="flex items-center gap-3 self-start sm:self-auto">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#dcfce7] text-[#166534] font-label-md text-[11px] font-semibold border border-[#86efac]">
+                          <span className="relative flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#166534] opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-[#166534]"></span>
+                          </span>
+                          Live Mode
                       </span>
-                      Live Mode
-                  </span>
+                  </div>
               </div>
-          </div>
-          
-          <div className="w-full relative mt-2 bg-surface-container-lowest rounded-lg p-4 border border-outline-variant/30">
-              <InteractiveLineChart
-                data={requestStats.timeline}
-                gradientId="reqChartGrad"
-                strokeColor="#0284c7"
-                gradientFrom="#38bdf8"
-                gradientTo="#0284c7"
-                unit="req"
-                loading={loadingRequest}
-                height={220}
-              />
-          </div>
+              
+              <div className="flex-1 flex flex-col justify-center min-h-[200px] mb-4 relative">
+                  <InteractiveLineChart
+                    data={requestStats.timeline}
+                    gradientId="reqChartGrad"
+                    strokeColor="#0284c7"
+                    gradientFrom="#38bdf8"
+                    gradientTo="#0284c7"
+                    unit="req"
+                    format={requestStats.format || 'day'}
+                    loading={loadingRequest}
+                    height={200}
+                  />
+              </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-5 mt-4 border-t border-outline-variant relative z-10">
-              <div className="bg-surface-container-lowest p-3 rounded-lg text-center border border-outline-variant/30">
-                  <p className="font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider text-[11px]">Trung bình lưu lượng</p>
-                  <p className="font-title-lg font-bold text-primary m-0">
-                    {(requestStats.summary?.avg || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">req</span>
-                  </p>
-              </div>
-              <div className="bg-surface-container-lowest p-3 rounded-lg text-center border border-outline-variant/30">
-                  <p className="font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider text-[11px]">Lưu lượng lớn nhất</p>
-                  <p className="font-title-lg font-bold text-on-surface m-0">
-                    {(requestStats.summary?.max || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">req</span>
-                  </p>
-              </div>
-              <div className="bg-surface-container-lowest p-3 rounded-lg text-center border border-outline-variant/30">
-                  <p className="font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider text-[11px]">Tổng số Request</p>
-                  <p className="font-title-lg font-bold text-secondary m-0">
-                    {(requestStats.summary?.total || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">req</span>
-                  </p>
+              <div className="grid grid-cols-3 gap-3 pt-4 border-t border-outline-variant relative z-10">
+                  <div className="bg-surface-container-lowest p-3 rounded-lg text-center border border-outline-variant/30">
+                      <p className="font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider text-[11px]">Trung bình</p>
+                      <p className="font-title-lg font-bold text-primary m-0">
+                        {(requestStats.summary?.avg || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">req</span>
+                      </p>
+                  </div>
+                  <div className="bg-surface-container-lowest p-3 rounded-lg text-center border border-outline-variant/30">
+                      <p className="font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider text-[11px]">Đỉnh điểm</p>
+                      <p className="font-title-lg font-bold text-on-surface m-0">
+                        {(requestStats.summary?.max || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">req</span>
+                      </p>
+                  </div>
+                  <div className="bg-surface-container-lowest p-3 rounded-lg text-center border border-outline-variant/30">
+                      <p className="font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider text-[11px]">Tổng Request</p>
+                      <p className="font-title-lg font-bold text-secondary m-0">
+                        {(requestStats.summary?.total || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">req</span>
+                      </p>
+                  </div>
               </div>
           </div>
       </div>

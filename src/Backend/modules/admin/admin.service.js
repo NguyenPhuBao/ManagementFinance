@@ -160,13 +160,14 @@ const adminService = {
 
     return {
       period: resolvedPeriod,
+      format,
       label,
       summary: {
         total,
         max,
         avg,
       },
-      timeline: buckets.map(({ label, count }) => ({ label, count })),
+      timeline: buckets.map(({ key, label, count }) => ({ key, label, count })),
     };
   },
 
@@ -203,13 +204,14 @@ const adminService = {
 
     return {
       period: resolvedPeriod,
+      format,
       label,
       summary: {
         total,
         max,
         avg,
       },
-      timeline: buckets.map(({ label, count }) => ({ label, count })),
+      timeline: buckets.map(({ key, label, count }) => ({ key, label, count })),
     };
   },
 };
