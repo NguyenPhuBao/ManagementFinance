@@ -11,6 +11,9 @@ const logger = require('./core/logger');
 
 const app = express();
 
+// Trust reverse proxy (Render, Cloudflare, Nginx) for correct client IP
+app.set('trust proxy', 1);
+
 // Security
 app.use(helmet());
 
