@@ -66,6 +66,7 @@ CREATE TABLE "audit_log" (
     "Idaccount"  INTEGER      NOT NULL,
     "Request"    VARCHAR(200) NOT NULL,
     "Req_status" VARCHAR(20)  NOT NULL DEFAULT 'Pass',
+    "Reason"     VARCHAR(200),
     "TimeReq"    TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "TimeRes"    TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "audit_log_pkey" PRIMARY KEY ("Idlog"),

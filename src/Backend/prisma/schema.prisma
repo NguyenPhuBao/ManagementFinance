@@ -72,6 +72,7 @@ model auditlog {
   idaccount  Int       @map("Idaccount")
   request    String    @db.VarChar(200) @map("Request")
   req_status String    @default("Pass") @db.VarChar(20) @map("Req_status")
+  reason     String?   @db.VarChar(200) @map("Reason")
   time_req   DateTime  @default(now()) @db.Timestamp(6) @map("TimeReq")
   time_res   DateTime  @default(now()) @db.Timestamp(6) @map("TimeRes")
 

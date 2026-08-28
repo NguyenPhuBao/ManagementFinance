@@ -1,4 +1,4 @@
-﻿class ResponseHandler {
+class ResponseHandler {
   static success(res, data = null, message = 'OK', statusCode = 200) {
     return res.status(statusCode).json({
       success: true,
@@ -13,6 +13,10 @@
   }
 
   static error(res, message = 'Internal Server Error', statusCode = 500, errors = null) {
+    if (res.locals) {
+      res.locals.errorMessage = message;
+      if (errors) res.locals.errorDetails = errors;
+    }
     return res.status(statusCode).json({
       success: false,
       message,

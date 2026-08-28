@@ -456,6 +456,7 @@ const DashboardPage = () => {
           id: item.id,
           user: item.user || 'Người dùng',
           action: item.action || 'Yêu cầu hệ thống',
+          reason: item.reason || null,
           status: item.status || 'Pass',
           time: item.time || 'Vừa xong',
           isNew: false,
@@ -489,6 +490,7 @@ const DashboardPage = () => {
         id: data.id,
         user: data.user || 'Người dùng',
         action: data.action || 'Yêu cầu hệ thống',
+        reason: data.reason || null,
         status: data.status || 'Pass',
         time: data.time || 'Vừa xong',
         isNew: true,
@@ -899,11 +901,12 @@ const DashboardPage = () => {
                   <span className="material-symbols-outlined animate-spin text-primary text-2xl">progress_activity</span>
                 </div>
               )}
-              <table className="w-full text-left border-collapse min-w-[560px]">
+              <table className="w-full text-left border-collapse min-w-[640px]">
                   <thead>
                       <tr className="bg-surface-container-low/50">
                           <th className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">Người dùng</th>
                           <th className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">Hành động</th>
+                          <th className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">Lý do</th>
                           <th className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">Trạng thái</th>
                           <th className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold text-right">Thời gian</th>
                       </tr>
@@ -920,11 +923,18 @@ const DashboardPage = () => {
                                         <span className="font-body-md font-semibold text-on-surface">{activity.user}</span>
                                     </div>
                                 </td>
-                                <td className="py-3 px-5 text-on-surface-variant font-body-md">
+                                <td className="py-3 px-5 text-on-surface-variant font-body-md whitespace-nowrap">
                                     <span className="inline-flex items-center gap-2">
                                         <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0"></span>
                                         {activity.action}
                                     </span>
+                                </td>
+                                <td className="py-3 px-5 text-on-surface-variant font-body-sm max-w-[200px] truncate" title={activity.reason || ''}>
+                                    {activity.reason ? (
+                                      <span className="text-on-surface-variant/90">{activity.reason}</span>
+                                    ) : (
+                                      <span className="text-outline-variant/80">—</span>
+                                    )}
                                 </td>
                                 <td className="py-3 px-5 whitespace-nowrap">
                                     {getStatusBadge(activity.status)}
@@ -934,7 +944,7 @@ const DashboardPage = () => {
                         ))
                       ) : (
                         <tr>
-                            <td colSpan="4" className="py-8 text-center text-on-surface-variant font-body-md">
+                            <td colSpan="5" className="py-8 text-center text-on-surface-variant font-body-md">
                                 Chưa có hoạt động nào được ghi nhận.
                             </td>
                         </tr>

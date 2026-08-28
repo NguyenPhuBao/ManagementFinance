@@ -35,7 +35,8 @@ function auditLogMiddleware(req, res, next) {
       }
 
       const req_status = authService.determineReqStatus(res, req);
-      const actionName = authService.formatActionName(req.method, path);
+      const reason = authService.determineReqReason(res, req);
+      const actionName = authService.formatActionName(req.method, path, req);
 
       // Xác định idaccount đã xác thực hoặc từ payload
       const initialId = req.user?.idaccount || req.auditAccountId;
@@ -75,6 +76,7 @@ function auditLogMiddleware(req, res, next) {
             idaccount: Number(targetId),
             request: actionName,
             req_status,
+            reason,
             time_req,
             time_res,
             userDetails,
