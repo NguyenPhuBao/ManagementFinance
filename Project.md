@@ -2157,4 +2157,12 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
 - **Fullscreen Blocking Overlay (`z-[9999]`)**:
   - Khi Admin bấm **Xác nhận** kích hoạt/vô hiệu hóa tài khoản, toàn bộ màn hình sẽ được làm mờ nhẹ (`backdrop-blur-sm` + `bg-black/40`), vô hiệu hóa mọi thao tác click chuột để ngăn người dùng bấm nhiều lần (chống double-click / race condition).
   - Hiển thị spinner xoay vòng mượt mà và hộp thông báo trạng thái ở chính giữa màn hình (*"Đang vô hiệu hóa tài khoản"* hoặc *"Đang kích hoạt tài khoản"*).
-  - Nút "Xác nhận" và "Hủy bỏ" trong thanh Alert tự động disable và hiển thị icon loading cho đến khi Backend phản hồi thành công.
+  - Nút "Xác nhận" và "Hủy bỏ" trong thanh Alert tự động disable và hiển thị icon loading cho đến khi Backend phản hồi thành công.
+
+### 11.8. Quản Lý Danh Mục Mặc Định: Fullscreen Loading & Chống Trùng Lặp Thao Tác (Double-Submit Guard)
+- **Fullscreen Blocking Overlay & Khóa toàn màn hình**:
+  - Khi Thêm mới, Chỉnh sửa, Xóa hoặc Đồng bộ danh mục, hệ thống tự động kích hoạt lớp phủ làm mờ toàn màn hình (`z-[9999]`) và spinner xoay tròn trung tâm kèm trạng thái cụ thể (*"Đang tạo danh mục mới..."*, *"Đang cập nhật danh mục..."*, *"Đang xóa danh mục..."*, *"Đang đồng bộ danh mục hệ thống..."*).
+  - Khóa toàn bộ input và nút bấm (`disabled`) trong modal/alert nhằm triệt tiêu hoàn toàn nguy cơ người dùng click nhiều lần (spam click) khi mạng/CSDL cloud xử lý chậm.
+- **Bảo vệ chống trùng lặp 2 lớp (Frontend Guard & Backend Validation)**:
+  - **Frontend**: Khóa hàm submit ngay khi phát hiện `processing.isProcessing = true`.
+  - **Backend**: Trong `admin.service.js`, chỉ kiểm tra trùng lặp tên + phân loại danh mục (`insensitive mode`) đối với các danh mục mặc định hệ thống (`is_default: true`). Đối với danh mục tùy chỉnh của người dùng (`is_default: false`), hệ thống cho phép trùng tên để người dùng khác nhau có thể tạo danh mục tự do theo nhu cầu cá nhân.
