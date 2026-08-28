@@ -180,10 +180,18 @@ const authRepository = {
     });
   },
 
-  async getRecentAuditLogs(limit = 10) {
-    return prisma.auditlog.findMany({
-      take: limit,
-      orderBy: { time_req: 'desc' },
+  async getRecentAuditLogs({ page, limit = 5, sort = 'asc' } = {}) {
+    const total = await prisma.auditlog.count();
+    const parsedLimit = parseInt(limit) || 5;
+    const totalPages = Math.max(1, Math.ceil(total / parsedLimit));
+    const parsedPage = page ? parseInt(page) : totalPages;
+
+    const skip = Math.max(0, (parsedPage - 1) * parsedLimit);
+
+    const items = await prisma.auditlog.findMany({
+      skip,
+      take: parsedLimit,
+      orderBy: { time_req: sort === 'desc' ? 'desc' : 'asc' },
       include: {
         account: {
           select: {
@@ -198,6 +206,14 @@ const authRepository = {
         },
       },
     });
+
+    return {
+      total,
+      page: parsedPage,
+      limit: parsedLimit,
+      totalPages,
+      items,
+    };
   },
 
   async findAccountByUsernameOrEmail(identifier) {

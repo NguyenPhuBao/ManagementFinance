@@ -202,8 +202,10 @@ const authController = {
 
   async getRecentActivities(req, res) {
     try {
-      const limit = parseInt(req.query.limit) || 10;
-      const activities = await authService.getRecentActivities(limit);
+      const page = req.query.page ? parseInt(req.query.page, 10) : undefined;
+      const limit = parseInt(req.query.limit, 10) || 5;
+      const sort = req.query.sort || 'asc';
+      const activities = await authService.getRecentActivities({ page, limit, sort });
       return ResponseHandler.success(res, activities, 'Lấy lịch sử hoạt động thành công');
     } catch (error) {
       const statusCode = error.statusCode || 500;
