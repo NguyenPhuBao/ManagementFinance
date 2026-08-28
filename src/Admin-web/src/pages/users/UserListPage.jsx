@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { USER_STATUS_LABELS } from '../../utils/constants';
 import adminApi from '../../api/admin.api';
 import UserDetailModal from '../../components/common/UserDetailModal';
+import Pagination from '../../components/common/Pagination';
 
 const UserListPage = () => {
   const [loading, setLoading] = useState(true);
@@ -18,7 +19,7 @@ const UserListPage = () => {
 
   const [filter, setFilter] = useState({ location: 'all', status: 'all' });
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [pageSize, setPageSize] = useState(10);
 
   const filteredUsers = users.filter((u) => {
     const matchSearch = u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()) || (u.phone || '').includes(search);
@@ -31,10 +32,14 @@ const UserListPage = () => {
     return matchSearch && matchStatus && matchLocation;
   });
 
-  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
-  const start = (currentPage - 1) * itemsPerPage;
-  const end = Math.min(start + itemsPerPage, filteredUsers.length);
+  const totalPages = Math.ceil(filteredUsers.length / pageSize) || 1;
+  const start = (currentPage - 1) * pageSize;
+  const end = Math.min(start + pageSize, filteredUsers.length);
   const pageData = filteredUsers.slice(start, end);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filter]);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -231,37 +236,18 @@ const UserListPage = () => {
                   </table>
               </div>
               
-              <div className="px-6 py-4 border-t border-outline-variant bg-surface-bright flex flex-col md:flex-row items-center justify-between gap-4">
-                  <span className="font-tabular-nums text-tabular-nums text-on-surface-variant">Hiển thị {filteredUsers.length > 0 ? start + 1 : 0} - {end} của {filteredUsers.length} người dùng</span>
-                  <div className="flex items-center gap-1">
-                      <button 
-                          className={`p-1 rounded transition-colors cursor-pointer active:opacity-80 ${currentPage === 1 ? 'text-outline pointer-events-none' : 'text-on-surface hover:bg-surface-container-low'}`}
-                          onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
-                          disabled={currentPage === 1}
-                      >
-                          <span className="material-symbols-outlined text-[20px]">chevron_left</span>
-                      </button>
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                          <button
-                              key={page}
-                              className={page === currentPage 
-                                  ? 'w-8 h-8 rounded bg-primary-container text-white font-tabular-nums text-tabular-nums flex items-center justify-center shadow-sm cursor-pointer active:scale-95 transition-all'
-                                  : 'w-8 h-8 rounded hover:bg-surface-container-low text-on-surface font-tabular-nums text-tabular-nums flex items-center justify-center transition-colors cursor-pointer active:scale-95'
-                              }
-                              onClick={() => setCurrentPage(page)}
-                          >
-                              {page}
-                          </button>
-                      ))}
-                      <button 
-                          className={`p-1 rounded transition-colors cursor-pointer active:opacity-80 ${currentPage === totalPages || totalPages === 0 ? 'text-outline pointer-events-none' : 'text-on-surface hover:bg-surface-container-low'}`}
-                          onClick={() => currentPage < totalPages && setCurrentPage(currentPage + 1)}
-                          disabled={currentPage === totalPages || totalPages === 0}
-                      >
-                          <span className="material-symbols-outlined text-[20px]">chevron_right</span>
-                      </button>
-                  </div>
-              </div>
+              <Pagination
+                currentPage={currentPage}
+                pageSize={pageSize}
+                total={filteredUsers.length}
+                pageSizeOptions={[5, 10, 20, 50]}
+                onPageChange={(page) => setCurrentPage(page)}
+                onPageSizeChange={(newSize) => {
+                  setPageSize(newSize);
+                  setCurrentPage(1);
+                }}
+                itemLabel="người dùng"
+              />
           </div>
       </div>
 

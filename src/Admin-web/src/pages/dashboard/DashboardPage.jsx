@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
 import { TIME_FILTERS, TIME_FILTER_LABELS } from '../../utils/constants';
 import adminApi from '../../api/admin.api';
+import Pagination from '../../components/common/Pagination';
 
 const STATUS_CONFIG = {
   Pass: {
@@ -954,84 +955,18 @@ const DashboardPage = () => {
           </div>
 
           {/* Table Pagination Toolbar */}
-          <div className="p-3.5 px-5 border-t border-outline-variant flex flex-col sm:flex-row items-center justify-between gap-3 bg-surface-container-lowest text-[12px] text-on-surface-variant">
-              {/* Left: Item Range */}
-              <div>
-                <span>{startItem} - {endItem} of {activityPagination.total} items</span>
-              </div>
-
-              {/* Right: Page Size & Pagination Buttons */}
-              <div className="flex items-center gap-3">
-                {/* Custom Styled Select (hết bị đè mũi tên) */}
-                <div className="relative inline-flex items-center">
-                  <select
-                    value={activityLimit}
-                    onChange={(e) => {
-                      const newLimit = parseInt(e.target.value, 10);
-                      setActivityLimit(newLimit);
-                      setActivityPage(1);
-                    }}
-                    className="appearance-none bg-white border border-outline-variant rounded-md pl-3 pr-8 py-1 text-[12px] text-on-surface font-medium cursor-pointer focus:outline-none focus:border-primary shadow-2xs"
-                  >
-                    <option value={5}>5 / page</option>
-                    <option value={10}>10 / page</option>
-                    <option value={20}>20 / page</option>
-                  </select>
-                  <span className="material-symbols-outlined text-[18px] text-on-surface-variant pointer-events-none absolute right-1.5">
-                    arrow_drop_down
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-1">
-                  {/* Prev Button */}
-                  <button
-                    onClick={() => setActivityPage(prev => Math.max(1, (prev || 1) - 1))}
-                    disabled={currPage <= 1}
-                    className={`w-7 h-7 flex items-center justify-center rounded border border-outline-variant/60 text-on-surface transition-colors cursor-pointer ${
-                      currPage <= 1 ? 'opacity-30 pointer-events-none' : 'hover:bg-surface-container-low'
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-[16px]">chevron_left</span>
-                  </button>
-
-                  {/* Smart Page numbers (tối đa 3 trang quanh trang hiện tại + ...) */}
-                  {getPageNumbers(currPage, activityPagination.totalPages).map((p, idx) => {
-                    if (p === '...') {
-                      return (
-                        <span key={`ellipsis-${idx}`} className="w-7 h-7 flex items-center justify-center text-on-surface-variant font-medium text-[12px]">
-                          ...
-                        </span>
-                      );
-                    }
-                    const isActive = p === currPage;
-                    return (
-                      <button
-                        key={p}
-                        onClick={() => setActivityPage(p)}
-                        className={`w-7 h-7 flex items-center justify-center rounded text-[12px] font-medium transition-colors cursor-pointer ${
-                          isActive
-                            ? 'border border-primary text-primary font-bold bg-primary/10'
-                            : 'border border-transparent text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
-                        }`}
-                      >
-                        {p}
-                      </button>
-                    );
-                  })}
-
-                  {/* Next Button */}
-                  <button
-                    onClick={() => setActivityPage(prev => Math.min(activityPagination.totalPages, (prev || 1) + 1))}
-                    disabled={currPage >= activityPagination.totalPages}
-                    className={`w-7 h-7 flex items-center justify-center rounded border border-outline-variant/60 text-on-surface transition-colors cursor-pointer ${
-                      currPage >= activityPagination.totalPages ? 'opacity-30 pointer-events-none' : 'hover:bg-surface-container-low'
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-[16px]">chevron_right</span>
-                  </button>
-                </div>
-              </div>
-          </div>
+          <Pagination
+            currentPage={currPage}
+            pageSize={activityLimit}
+            total={activityPagination.total}
+            pageSizeOptions={[5, 10, 20, 50]}
+            onPageChange={(page) => setActivityPage(page)}
+            onPageSizeChange={(newLimit) => {
+              setActivityLimit(newLimit);
+              setActivityPage(1);
+            }}
+            itemLabel="items"
+          />
       </div>
 
       {/* 2. Biểu đồ 1: Tần suất Đăng nhập (1 Hàng riêng, Full-width) */}
