@@ -421,10 +421,11 @@ Client: GET /api/sync/pull?since=<timestamp> → kéo data từ thiết bị kh�
 
 | Hạng mục | Giải pháp |
 |----------|-----------|
-| **Kết nối** | HTTPS toàn bộ |
-| **Rate Limiting** | API nhạy cảm |
-| **Input Validation** | Joi / Zod |
-| **Logging** | Winston / Pino (request, lỗi, queue job) |
+| **Kết nối** | HTTPS toàn bộ + Reverse Proxy (`trust proxy: 1`) |
+| **Rate Limiting** | `express-rate-limit`: Tự động miễn trừ cho Authenticated Users (Client-app/Admin có JWT Token); hỗ trợ tắt hoàn toàn bằng `RATE_LIMIT_MAX=0` hoặc `RATE_LIMIT_ENABLED=false` trong `.env` |
+| **Input Validation** | Joi (Schema validation cho Auth, Admin, Sync, v.v.) |
+| **Audit Logging** | Ghi nhận real-time mọi request vào bảng `audit_log` + broadcast qua Socket.IO |
+| **Logging** | Winston (request, lỗi, queue job) |
 | **Monitoring** | Sentry (lỗi), Prometheus/Grafana (CPU, memory, queue size) |
 
 ### 3.7 Triển Khai (Deployment)
@@ -2118,14 +2119,24 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
 
 ### 11.4. Bố Cục Trang & Tối Ưu Hiển Thị Trục X Biểu Đồ
 - **Bố cục giao diện Dashboard**:
-  - Bảng *Hoạt động gần đây* nằm toàn bộ chiều rộng (Full-width).
-  - Biểu đồ *Tần suất đăng nhập* và *Lưu lượng Request* luôn nằm **dưới** bảng Hoạt động gần đây trên mọi kích thước màn hình (lưới 2 cột cân xứng trên Desktop/Laptop, 1 cột trên Mobile).
+  - Bảng *Hoạt động gần đây* chiếm trọn 1 hàng full-width ở trên.
+  - Biểu đồ *Tần suất đăng nhập* chiếm trọn 1 hàng riêng biệt (Full-width) nằm ngay dưới bảng Hoạt động gần đây.
+  - Biểu đồ *Lưu lượng Request* chiếm trọn 1 hàng riêng biệt (Full-width) nằm tiếp theo ở dưới cùng.
+  - 2 biểu đồ hoàn toàn không nằm chung hàng mà xếp chồng dọc (1 biểu đồ / 1 hàng) tạo không gian trực quan rộng rãi, rõ nét và hiển thị trọn vẹn mọi điểm dữ liệu.
 - **Tối ưu hóa Trục X cho 2 Biểu đồ**:
   - Đổi phụ đề biểu đồ đăng nhập thành *"Tần suất đăng nhập"*.
-  - Đơn vị đo hiển thị rõ ràng ở góc phải trục X: `(Tháng)`, `(Ngày)`, `(Giờ)`.
+  - Đơn vị đo hiển thị rõ ràng ở góc phải trục X: `(Tháng)`, `(Ngày)`, `(Giờ)` với khoảng đệm an toàn, không bị đè vào nhãn điểm dữ liệu cuối (`12` hay `23` hay `30`).
+  - Phía bên trái trục X có khoảng cách đệm an toàn giữa giá trị `0` của trục Y và nhãn điểm `01` / `00`.
   - Trục X tính toán tọa độ SVG chính xác tuyệt đối với các điểm dữ liệu:
     - **1 Năm**: Hiển thị đầy đủ 12 tháng dạng `01` -> `12` kèm đơn vị `(Tháng)`.
     - **Hôm nay**: Hiển thị các mốc giờ `00`, `02`, `04`...`22`, `23` kèm đơn vị `(Giờ)`.
     - **1 Tháng (30 ngày)**: Hiển thị mốc ngày `01`, `05`, `10`, `15`, `20`, `25`, `30` kèm đơn vị `(Ngày)`.
     - **7 Ngày**: Hiển thị đầy đủ 7 ngày dạng `dd/mm` kèm đơn vị `(Ngày)`.
-  - Tooltip khi hover vẫn hiển thị chi tiết tên đầy đủ và số liệu.
+  - Tooltip khi hover vẫn hiển thị chi tiết tên đầy đủ và số liệu.
+
+### 11.5. Cơ Chế Rate Limiting Linh Hoạt & Trải Nghiệm Người Dùng
+- **Người dùng Client-app & Admin-web (Đã đăng nhập - Có Token JWT)**:
+  - Tự động được **miễn giới hạn request** (`skip: (req) => !!req.headers.authorization`), cho phép người dùng thao tác liên tục, xem/sửa giao dịch, đồng bộ dữ liệu mượt mà 24/7 mà không lo bị chặn 429.
+- **Bật / Tắt Rate Limit linh hoạt qua `.env`**:
+  - Hỗ trợ đặt `RATE_LIMIT_MAX=0` hoặc `RATE_LIMIT_ENABLED=false` trong `.env` để tắt hoàn toàn rate limiter trên mọi môi trường nếu muốn mở tự do 100%.
+  - Tích hợp `app.set('trust proxy', 1)` để khi chạy trên Cloud (Render, Cloudflare), IP của client được nhận diện chính xác qua reverse proxy.

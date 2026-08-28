@@ -37,7 +37,8 @@ const config = {
 
   rateLimit: {
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 900000,
-    max: parseInt(process.env.RATE_LIMIT_MAX, 10) || 100,
+    max: process.env.RATE_LIMIT_MAX !== undefined ? parseInt(process.env.RATE_LIMIT_MAX, 10) : 1000,
+    enabled: process.env.RATE_LIMIT_ENABLED !== 'false' && process.env.RATE_LIMIT_MAX !== '0',
   },
 
   logLevel: process.env.LOG_LEVEL || 'debug',
