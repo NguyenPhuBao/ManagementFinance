@@ -2151,4 +2151,10 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - Tự động trích xuất lý do chi tiết từ `res.locals.errorMessage` hoặc mapping mã lỗi HTTP.
 - **Phân định rõ ràng hành động quản trị tài khoản**:
   - Khi Admin cập nhật trạng thái người dùng sang `Inactive`: Ghi nhận chuẩn xác **"Khóa tài khoản"**.
-  - Khi Admin cập nhật trạng thái người dùng sang `Active`: Ghi nhận chuẩn xác **"Mở khóa tài khoản"**.
+  - Khi Admin cập nhật trạng thái người dùng sang `Active`: Ghi nhận chuẩn xác **"Mở khóa tài khoản"**.
+
+### 11.7. Trải Nghiệm Khóa/Kích Hoạt Tài Khoản: Fullscreen Loading & Blocking Overlay
+- **Fullscreen Blocking Overlay (`z-[9999]`)**:
+  - Khi Admin bấm **Xác nhận** kích hoạt/vô hiệu hóa tài khoản, toàn bộ màn hình sẽ được làm mờ nhẹ (`backdrop-blur-sm` + `bg-black/40`), vô hiệu hóa mọi thao tác click chuột để ngăn người dùng bấm nhiều lần (chống double-click / race condition).
+  - Hiển thị spinner xoay vòng mượt mà và hộp thông báo trạng thái ở chính giữa màn hình (*"Đang vô hiệu hóa tài khoản"* hoặc *"Đang kích hoạt tài khoản"*).
+  - Nút "Xác nhận" và "Hủy bỏ" trong thanh Alert tự động disable và hiển thị icon loading cho đến khi Backend phản hồi thành công.
