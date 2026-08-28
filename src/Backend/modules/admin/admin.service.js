@@ -102,10 +102,29 @@ const adminService = {
   },
 
   async addCategory(data, idaccount) {
+    const trimmedName = (data.name || '').trim();
+    const isDefault = data.is_default === true || data.is_default === 'true';
+    const { prisma } = require('../../config/db');
+
+    // Chỉ kiểm tra trùng lặp với danh mục mặc định hệ thống (is_default === true)
+    if (isDefault) {
+      const existing = await prisma.category.findFirst({
+        where: {
+          name_category: { equals: trimmedName, mode: 'insensitive' },
+          classify: data.classify,
+          is_default: true,
+          delete_at: null,
+        },
+      });
+      if (existing) {
+        throw Object.assign(new Error(`Danh mục mặc định "${trimmedName}" (${data.classify}) đã tồn tại trong hệ thống`), { statusCode: 400 });
+      }
+    }
+
     const result = await adminRepository.createCategory({
-      name: data.name,
+      name: trimmedName,
       classify: data.classify,
-      is_default: data.is_default || false,
+      is_default: isDefault,
       keyword: data.keyword,
       icon: data.icon,
       created_by: idaccount,
@@ -114,10 +133,30 @@ const adminService = {
   },
 
   async updateCategory(idcategory, data) {
+    const trimmedName = (data.name || '').trim();
+    const isDefault = data.is_default === true || data.is_default === 'true';
+    const { prisma } = require('../../config/db');
+
+    // Chỉ kiểm tra trùng lặp với danh mục mặc định hệ thống (is_default === true)
+    if (isDefault) {
+      const existing = await prisma.category.findFirst({
+        where: {
+          idcategory: { not: idcategory },
+          name_category: { equals: trimmedName, mode: 'insensitive' },
+          classify: data.classify,
+          is_default: true,
+          delete_at: null,
+        },
+      });
+      if (existing) {
+        throw Object.assign(new Error(`Danh mục mặc định "${trimmedName}" (${data.classify}) đã tồn tại trong hệ thống`), { statusCode: 400 });
+      }
+    }
+
     const result = await adminRepository.updateCategory(idcategory, {
-      name: data.name,
+      name: trimmedName,
       classify: data.classify,
-      is_default: data.is_default,
+      is_default: isDefault,
       keyword: data.keyword,
       icon: data.icon,
     });

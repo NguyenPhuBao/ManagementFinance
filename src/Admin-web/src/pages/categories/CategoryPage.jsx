@@ -20,6 +20,7 @@ const CategoryPage = () => {
   });
   const [editingCategory, setEditingCategory] = useState(null);
   const [categoryToDelete, setCategoryToDelete] = useState(null);
+  const [processing, setProcessing] = useState({ isProcessing: false, text: '' });
 
   const [form, setForm] = useState({ name: '', isDefault: 'yes', type: 'expense' });
   const [filter, setFilter] = useState({ isDefault: 'all', type: 'all' });
@@ -67,10 +68,14 @@ const CategoryPage = () => {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    if (processing.isProcessing) return; // Chặn bấm nhiều lần
+    
+    const actionText = editingCategory ? 'Đang cập nhật danh mục...' : 'Đang tạo danh mục mới...';
+    setProcessing({ isProcessing: true, text: actionText });
+
     try {
       const payload = {
-        name: form.name,
+        name: form.name.trim(),
         classify: TYPE_TO_CLASSIFY[form.type] || 'Chi',
         is_default: form.isDefault === 'yes',
       };
@@ -86,14 +91,15 @@ const CategoryPage = () => {
       await fetchCategories();
     } catch (err) {
       console.error('Lỗi lưu danh mục:', err);
+      alert(err.response?.data?.message || err.message || 'Lỗi lưu danh mục');
     } finally {
-      setLoading(false);
+      setProcessing({ isProcessing: false, text: '' });
     }
   };
 
   const confirmDelete = async () => {
-    if (!categoryToDelete) return;
-    setLoading(true);
+    if (!categoryToDelete || processing.isProcessing) return; // Chặn bấm xóa nhiều lần
+    setProcessing({ isProcessing: true, text: 'Đang xóa danh mục...' });
     try {
       await adminApi.deleteCategory(categoryToDelete);
       setCategoryToDelete(null);
@@ -101,8 +107,9 @@ const CategoryPage = () => {
       await fetchCategories();
     } catch (err) {
       console.error('Lỗi xóa danh mục:', err);
+      alert(err.response?.data?.message || err.message || 'Lỗi xóa danh mục');
     } finally {
-      setLoading(false);
+      setProcessing({ isProcessing: false, text: '' });
     }
   };
 
@@ -129,8 +136,9 @@ const CategoryPage = () => {
   };
 
   const handleSyncConfirm = async () => {
+    if (processing.isProcessing) return;
     toggleModal('syncAlert', false);
-    setLoading(true);
+    setProcessing({ isProcessing: true, text: 'Đang đồng bộ danh mục hệ thống...' });
     try {
       await fetchCategories();
       setSyncToast('Đã đồng bộ và làm mới danh mục hệ thống thành công!');
@@ -138,7 +146,7 @@ const CategoryPage = () => {
     } catch (err) {
       console.error('Lỗi đồng bộ danh mục:', err);
     } finally {
-      setLoading(false);
+      setProcessing({ isProcessing: false, text: '' });
     }
   };
 
@@ -149,6 +157,24 @@ const CategoryPage = () => {
   };
 
   return (
+    <>
+    {/* Full-screen Loading Overlay & Operation Blocker */}
+    {processing.isProcessing && (
+      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[9999] flex flex-col items-center justify-center pointer-events-auto select-none animate-in fade-in duration-200">
+        <div className="bg-white/95 backdrop-blur-md px-8 py-6 rounded-2xl shadow-2xl border border-outline-variant flex flex-col items-center gap-4 text-center max-w-xs mx-4">
+          <div className="relative flex items-center justify-center">
+            <span className="material-symbols-outlined animate-spin text-primary text-5xl">progress_activity</span>
+          </div>
+          <div className="space-y-1">
+            <h4 className="font-title-md font-bold text-on-surface text-base">
+              {processing.text || 'Đang xử lý yêu cầu'}
+            </h4>
+            <p className="font-body-sm text-on-surface-variant text-xs">Vui lòng chờ trong giây lát...</p>
+          </div>
+        </div>
+      </div>
+    )}
+
     <div className="bg-surface-bright relative p-4 md:p-6 min-h-full">
       {syncToast && (
           <div className="mb-6 bg-[#dcfce7] border border-[#86efac] text-[#166534] rounded-lg p-4 flex items-center justify-between gap-4 animate-in fade-in duration-200">
@@ -169,8 +195,21 @@ const CategoryPage = () => {
                   <p className="font-body-lg">Bạn có chắc muốn xóa danh mục này hay không?</p>
               </div>
               <div className="flex items-center gap-3">
-                  <button className="px-4 py-1.5 bg-error text-white rounded font-label-md hover:opacity-90 transition-colors cursor-pointer" onClick={confirmDelete}>Xác nhận</button>
-                  <button className="px-4 py-1.5 bg-surface-container-high text-on-surface rounded font-label-md hover:bg-surface-container-low transition-colors cursor-pointer" onClick={() => { setCategoryToDelete(null); toggleModal('deleteAlert', false); }}>Hủy bỏ</button>
+                  <button 
+                    disabled={processing.isProcessing}
+                    className="px-4 py-1.5 bg-error text-white rounded font-label-md hover:opacity-90 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2" 
+                    onClick={confirmDelete}
+                  >
+                    {processing.isProcessing && <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>}
+                    Xác nhận
+                  </button>
+                  <button 
+                    disabled={processing.isProcessing}
+                    className="px-4 py-1.5 bg-surface-container-high text-on-surface rounded font-label-md hover:bg-surface-container-low transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" 
+                    onClick={() => { setCategoryToDelete(null); toggleModal('deleteAlert', false); }}
+                  >
+                    Hủy bỏ
+                  </button>
               </div>
           </div>
       )}
@@ -183,8 +222,21 @@ const CategoryPage = () => {
                       <p className="font-body-lg">Bạn có chắc chắn muốn đồng bộ các danh mục mặc định?</p>
                   </div>
                   <div className="flex items-center gap-3">
-                      <button className="px-4 py-1.5 bg-primary text-white rounded font-label-md hover:bg-surface-tint transition-colors cursor-pointer" onClick={handleSyncConfirm}>Xác nhận</button>
-                      <button className="px-4 py-1.5 bg-error text-white rounded font-label-md hover:opacity-90 transition-colors cursor-pointer" onClick={() => toggleModal('syncAlert', false)}>Hủy bỏ</button>
+                      <button 
+                        disabled={processing.isProcessing}
+                        className="px-4 py-1.5 bg-primary text-white rounded font-label-md hover:bg-surface-tint transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2" 
+                        onClick={handleSyncConfirm}
+                      >
+                        {processing.isProcessing && <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>}
+                        Xác nhận
+                      </button>
+                      <button 
+                        disabled={processing.isProcessing}
+                        className="px-4 py-1.5 bg-error text-white rounded font-label-md hover:opacity-90 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" 
+                        onClick={() => toggleModal('syncAlert', false)}
+                      >
+                        Hủy bỏ
+                      </button>
                   </div>
               </div>
           )}
@@ -327,7 +379,11 @@ const CategoryPage = () => {
                       <h3 className="font-headline-sm text-on-surface m-0">
                         {modals.edit ? 'Chỉnh sửa danh mục' : 'Thêm danh mục mới'}
                       </h3>
-                      <button className="text-on-surface-variant hover:text-on-surface cursor-pointer" onClick={() => toggleModal(modals.edit ? 'edit' : 'add', false)}>
+                      <button 
+                        disabled={processing.isProcessing}
+                        className="text-on-surface-variant hover:text-on-surface cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" 
+                        onClick={() => toggleModal(modals.edit ? 'edit' : 'add', false)}
+                      >
                           <span className="material-symbols-outlined">close</span>
                       </button>
                   </div>
@@ -335,19 +391,37 @@ const CategoryPage = () => {
                     <div className="p-6 space-y-4">
                         <div>
                             <label className="block font-label-md text-on-surface mb-1">Tên danh mục <span className="text-error">*</span></label>
-                            <input required value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="w-full px-3 py-2 border border-outline-variant rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md h-[40px]" placeholder="Nhập tên danh mục" type="text"/>
+                            <input 
+                              required 
+                              disabled={processing.isProcessing}
+                              value={form.name} 
+                              onChange={e => setForm({...form, name: e.target.value})} 
+                              className="w-full px-3 py-2 border border-outline-variant rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md h-[40px] disabled:bg-surface-container-low disabled:cursor-not-allowed" 
+                              placeholder="Nhập tên danh mục" 
+                              type="text"
+                            />
                         </div>
                         <div className="grid grid-cols-2 gap-4 items-start">
                             <div>
                                 <label className="block font-label-md text-on-surface mb-1">Mặc định</label>
-                                <select value={form.isDefault} onChange={e => setForm({...form, isDefault: e.target.value})} className="w-full px-3 py-2 border border-outline-variant rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md bg-white h-[40px] cursor-pointer">
+                                <select 
+                                  disabled={processing.isProcessing}
+                                  value={form.isDefault} 
+                                  onChange={e => setForm({...form, isDefault: e.target.value})} 
+                                  className="w-full px-3 py-2 border border-outline-variant rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md bg-white h-[40px] cursor-pointer disabled:bg-surface-container-low disabled:cursor-not-allowed"
+                                >
                                     <option value="yes">Yes</option>
                                     <option value="no">No</option>
                                 </select>
                             </div>
                             <div>
                                 <label className="block font-label-md text-on-surface mb-1">Phân loại</label>
-                                <select value={form.type} onChange={e => setForm({...form, type: e.target.value})} className="w-full px-3 py-2 border border-outline-variant rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md bg-white h-[40px] cursor-pointer">
+                                <select 
+                                  disabled={processing.isProcessing}
+                                  value={form.type} 
+                                  onChange={e => setForm({...form, type: e.target.value})} 
+                                  className="w-full px-3 py-2 border border-outline-variant rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md bg-white h-[40px] cursor-pointer disabled:bg-surface-container-low disabled:cursor-not-allowed"
+                                >
                                     {Object.keys(TRANSACTION_TYPE_LABELS).map(key => (
                                       <option key={key} value={key}>{TRANSACTION_TYPE_LABELS[key]}</option>
                                     ))}
@@ -356,8 +430,22 @@ const CategoryPage = () => {
                         </div>
                     </div>
                     <div className="px-6 py-4 bg-surface-bright border-t border-outline-variant flex justify-end gap-3">
-                        <button type="button" className="px-4 py-2 border border-outline rounded text-on-surface font-label-md hover:bg-surface-container-low transition-colors cursor-pointer" onClick={() => toggleModal(modals.edit ? 'edit' : 'add', false)}>Hủy</button>
-                        <button type="submit" className="px-4 py-2 bg-primary text-white rounded font-label-md hover:bg-surface-tint transition-colors cursor-pointer">Lưu</button>
+                        <button 
+                          type="button" 
+                          disabled={processing.isProcessing}
+                          className="px-4 py-2 border border-outline rounded text-on-surface font-label-md hover:bg-surface-container-low transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" 
+                          onClick={() => toggleModal(modals.edit ? 'edit' : 'add', false)}
+                        >
+                          Hủy
+                        </button>
+                        <button 
+                          type="submit" 
+                          disabled={processing.isProcessing}
+                          className="px-4 py-2 bg-primary text-white rounded font-label-md hover:bg-surface-tint transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        >
+                          {processing.isProcessing && <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>}
+                          Lưu
+                        </button>
                     </div>
                   </form>
               </div>
@@ -403,6 +491,7 @@ const CategoryPage = () => {
           </div>
       )}
     </div>
+    </>
   );
 };
 
