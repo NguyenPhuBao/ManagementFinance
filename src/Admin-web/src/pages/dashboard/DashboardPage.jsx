@@ -627,6 +627,24 @@ const DashboardPage = () => {
   const customButtonLabel = timeFilter === 'custom' ? customFilter.label : `${MONTH_NAMES[now.getMonth()]}/${now.getFullYear()}`;
 
   return (
+    <>
+    {/* Full-screen Loading Overlay & Operation Blocker when applying filters / loading dashboard data */}
+    {(loadingLogin || loadingRequest || loading) && (
+      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[9999] flex flex-col items-center justify-center pointer-events-auto select-none animate-in fade-in duration-200">
+        <div className="bg-white/95 backdrop-blur-md px-8 py-6 rounded-2xl shadow-2xl border border-outline-variant flex flex-col items-center gap-4 text-center max-w-xs mx-4">
+          <div className="relative flex items-center justify-center">
+            <span className="material-symbols-outlined animate-spin text-primary text-5xl">progress_activity</span>
+          </div>
+          <div className="space-y-1">
+            <h4 className="font-title-md font-bold text-on-surface text-base">
+              Đang tải dữ liệu báo cáo
+            </h4>
+            <p className="font-body-sm text-on-surface-variant text-xs">Vui lòng chờ trong giây lát...</p>
+          </div>
+        </div>
+      </div>
+    )}
+
     <div className="max-w-[1440px] mx-auto w-full p-4 md:p-6 space-y-6 bg-surface-bright min-h-full relative overflow-hidden">
       
       {/* Abstract Background Elements */}
@@ -1070,6 +1088,7 @@ const DashboardPage = () => {
           </div>
       </div>
     </div>
+    </>
   );
 };
 

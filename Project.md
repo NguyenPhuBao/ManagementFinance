@@ -2175,4 +2175,9 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
     - Menu dropdown chọn số lượng bản ghi hiển thị trên mỗi trang (`5 / page`, `10 / page`, `20 / page`, `50 / page`).
     - Nút điều hướng Trước (`<`) / Sau (`>`).
     - Thuật toán hiển thị số trang thông minh dạng rút gọn với dấu ba chấm (`1`, `2`, `3`, `...`, `42`) khi danh sách có nhiều trang.
-    - Tự động reset về trang 1 khi thay đổi bộ lọc tìm kiếm hoặc thay đổi số lượng bản ghi mỗi trang.
+    - Tự động reset về trang 1 khi thay đổi bộ lọc tìm kiếm hoặc thay đổi số lượng bản ghi mỗi trang.
+
+### 11.10. Dashboard: Fullscreen Loading Overlay Khi Thay Đổi Bộ Lọc Thời Gian
+- **Trải nghiệm mượt mà & Khóa thao tác (`z-[9999]`)**:
+  - Khi Admin chọn bộ lọc thời gian mới (*Hôm nay, 7 Ngày, 1 Tháng, 1 Năm* hoặc *Tùy chỉnh Ngày/Tháng/Năm*), hệ thống tự động kích hoạt lớp phủ làm mờ toàn màn hình (`backdrop-blur-sm` + `bg-black/40`) kèm spinner xoay vòng trung tâm và thông báo *"Đang tải dữ liệu báo cáo - Vui lòng chờ trong giây lát..."*.
+  - Ngăn ngừa người dùng bấm liên tục đổi bộ lọc khi các API báo cáo thống kê và biểu đồ đang được tổng hợp từ máy chủ.
