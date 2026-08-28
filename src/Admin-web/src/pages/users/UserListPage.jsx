@@ -13,6 +13,7 @@ const UserListPage = () => {
       blockAlert: false
   });
   const [userToBlock, setUserToBlock] = useState(null);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
   const [detailUserId, setDetailUserId] = useState(null);
 
   const [filter, setFilter] = useState({ location: 'all', status: 'all' });
@@ -70,24 +71,44 @@ const UserListPage = () => {
   };
 
   const confirmBlock = async () => {
-    if (!userToBlock) return;
+    if (!userToBlock || updatingStatus) return;
+    setUpdatingStatus(true);
     try {
       await adminApi.updateUserStatus(userToBlock.id);
       // Cập nhật UI local sau khi API thành công
-      setUsers(users.map(u =>
+      setUsers(prev => prev.map(u =>
         u.id === userToBlock.id
           ? { ...u, status: u.status === 'active' ? 'inactive' : 'active' }
           : u
       ));
+      setUserToBlock(null);
+      toggleModal('blockAlert', false);
     } catch (err) {
       console.error('Lỗi cập nhật trạng thái:', err);
+    } finally {
+      setUpdatingStatus(false);
     }
-    setUserToBlock(null);
-    toggleModal('blockAlert', false);
   };
 
   return (
     <>
+    {/* Full-screen Loading Overlay & Operation Blocker */}
+    {updatingStatus && (
+      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[9999] flex flex-col items-center justify-center pointer-events-auto select-none animate-in fade-in duration-200">
+        <div className="bg-white/95 backdrop-blur-md px-8 py-6 rounded-2xl shadow-2xl border border-outline-variant flex flex-col items-center gap-4 text-center max-w-xs mx-4">
+          <div className="relative flex items-center justify-center">
+            <span className="material-symbols-outlined animate-spin text-primary text-5xl">progress_activity</span>
+          </div>
+          <div className="space-y-1">
+            <h4 className="font-title-md font-bold text-on-surface text-base">
+              {userToBlock?.status === 'active' ? 'Đang vô hiệu hóa tài khoản' : 'Đang kích hoạt tài khoản'}
+            </h4>
+            <p className="font-body-sm text-on-surface-variant text-xs">Vui lòng chờ trong giây lát...</p>
+          </div>
+        </div>
+      </div>
+    )}
+
     <div className="bg-surface-bright relative p-4 md:p-6 min-h-full">
       {modals.blockAlert && (
           <div className="mb-6 bg-surface-container-low border border-error-container rounded-lg p-4 flex flex-col md:flex-row items-center justify-between gap-4 animate-in fade-in zoom-in-95 duration-200">
@@ -98,8 +119,21 @@ const UserListPage = () => {
                   </p>
               </div>
               <div className="flex items-center gap-3">
-                  <button className="px-4 py-1.5 bg-error text-white rounded font-label-md hover:opacity-90 transition-colors cursor-pointer shadow-sm" onClick={confirmBlock}>Xác nhận</button>
-                  <button className="px-4 py-1.5 bg-surface-container-high text-on-surface rounded font-label-md hover:bg-surface-container-low transition-colors cursor-pointer" onClick={() => { setUserToBlock(null); toggleModal('blockAlert', false); }}>Hủy bỏ</button>
+                  <button 
+                    disabled={updatingStatus}
+                    className="px-4 py-1.5 bg-error text-white rounded font-label-md hover:opacity-90 transition-colors cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2" 
+                    onClick={confirmBlock}
+                  >
+                    {updatingStatus && <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>}
+                    Xác nhận
+                  </button>
+                  <button 
+                    disabled={updatingStatus}
+                    className="px-4 py-1.5 bg-surface-container-high text-on-surface rounded font-label-md hover:bg-surface-container-low transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" 
+                    onClick={() => { setUserToBlock(null); toggleModal('blockAlert', false); }}
+                  >
+                    Hủy bỏ
+                  </button>
               </div>
           </div>
       )}
