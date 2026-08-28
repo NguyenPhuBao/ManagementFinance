@@ -27,7 +27,9 @@ function auditLogMiddleware(req, res, next) {
         path.includes('/auth/recent-activities') ||
         path.includes('/admin/totaluser') ||
         path.includes('/admin/totalcategories') ||
-        path.includes('/admin/getusertotime')
+        path.includes('/admin/getusertotime') ||
+        path.includes('/admin/login-stats') ||
+        path.includes('/admin/request-stats')
       ) {
         return;
       }

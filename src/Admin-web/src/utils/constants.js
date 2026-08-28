@@ -1,4 +1,4 @@
-﻿// ============================================
+// ============================================
 // WealthCommand Admin - Constants
 // ============================================
 
@@ -53,13 +53,15 @@ export const USER_STATUS_LABELS = {
 export const TIME_FILTERS = {
   TODAY: 'today',
   WEEK: '7days',
-  MONTH: '30days',
+  MONTH: '1month',
+  YEAR: '1year',
 };
 
 export const TIME_FILTER_LABELS = {
   today: 'Hôm nay',
   '7days': '7 Ngày',
-  '30days': '30 Ngày',
+  '1month': '1 Tháng',
+  '1year': '1 Năm',
 };
 
 // System status

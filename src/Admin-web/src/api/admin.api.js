@@ -9,7 +9,8 @@ const adminApi = {
   // Dashboard (các API khác sẽ bổ sung sau)
   getDashboardStats: (timeFilter) => axiosClient.get('/admin/dashboard', { params: { period: timeFilter } }),
   getRecentActivities: (params) => axiosClient.get('/auth/recent-activities', { params }),
-  getLoginStats: () => axiosClient.get('/admin/login-stats'),
+  getLoginStats: (params) => axiosClient.get('/admin/login-stats', { params }),
+  getRequestStats: (params) => axiosClient.get('/admin/request-stats', { params }),
 
   // Users
   getUsers: () => axiosClient.get('/admin/getuser'),

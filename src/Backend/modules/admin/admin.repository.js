@@ -167,6 +167,41 @@ const adminRepository = {
       data: { delete_at: new Date(), update_at: new Date() },
     });
   },
+
+  async getLoginLogsByRange(startDate, endDate) {
+    return prisma.auditlog.findMany({
+      where: {
+        request: { contains: 'Đăng nhập' },
+        time_req: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+      select: {
+        idlog: true,
+        time_req: true,
+        req_status: true,
+      },
+      orderBy: { time_req: 'asc' },
+    });
+  },
+
+  async getRequestLogsByRange(startDate, endDate) {
+    return prisma.auditlog.findMany({
+      where: {
+        time_req: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+      select: {
+        idlog: true,
+        time_req: true,
+        req_status: true,
+      },
+      orderBy: { time_req: 'asc' },
+    });
+  },
 };
 
 module.exports = adminRepository;
