@@ -124,6 +124,28 @@ const adminController = {
       return ResponseHandler.error(res, error.message);
     }
   },
+
+  async getLoginStats(req, res) {
+    try {
+      const period = req.query.period || '1month';
+      const result = await adminService.getLoginStats(period);
+      return ResponseHandler.success(res, result, 'Thống kê tần suất đăng nhập');
+    } catch (error) {
+      logger.error('getLoginStats failed', { error: error.message });
+      return ResponseHandler.error(res, error.message);
+    }
+  },
+
+  async getRequestStats(req, res) {
+    try {
+      const period = req.query.period || '1month';
+      const result = await adminService.getRequestStats(period);
+      return ResponseHandler.success(res, result, 'Thống kê lưu lượng request');
+    } catch (error) {
+      logger.error('getRequestStats failed', { error: error.message });
+      return ResponseHandler.error(res, error.message);
+    }
+  },
 };
 
 module.exports = adminController;

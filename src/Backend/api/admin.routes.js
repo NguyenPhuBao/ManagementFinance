@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const router = express.Router();
 const adminController = require('../modules/admin/admin.controller');
 const { authenticate } = require('../middleware/auth');
@@ -11,6 +11,8 @@ router.use(authenticate, authorize('admin'));
 router.get('/totaluser', adminController.totalUsers);
 router.get('/totalcategories', adminController.totalCategories);
 router.get('/getusertotime', adminController.getUserToTime);
+router.get('/login-stats', adminController.getLoginStats);
+router.get('/request-stats', adminController.getRequestStats);
 
 // Quản lý người dùng
 router.get('/getuser', adminController.getUsers);

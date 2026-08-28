@@ -200,6 +200,167 @@ const adminService = {
     await adminRepository.deleteCategory(idcategory);
     return { id: idcategory };
   },
+
+  async getLoginStats(period = '1month') {
+    const { startDate, endDate, buckets, format, period: resolvedPeriod } = generateBuckets(period);
+    const logs = await adminRepository.getLoginLogsByRange(startDate, endDate);
+
+    const bucketMap = new Map();
+    buckets.forEach((b) => bucketMap.set(b.key, b));
+
+    for (const log of logs) {
+      const d = new Date(log.time_req);
+      let key;
+      if (format === 'hour') {
+        key = d.getHours().toString().padStart(2, '0');
+      } else if (format === 'month') {
+        const month = (d.getMonth() + 1).toString().padStart(2, '0');
+        key = `${d.getFullYear()}-${month}`;
+      } else {
+        const day = d.getDate().toString().padStart(2, '0');
+        const month = (d.getMonth() + 1).toString().padStart(2, '0');
+        key = `${d.getFullYear()}-${month}-${day}`;
+      }
+
+      if (bucketMap.has(key)) {
+        bucketMap.get(key).count += 1;
+      }
+    }
+
+    const counts = buckets.map((b) => b.count);
+    const total = counts.reduce((acc, c) => acc + c, 0);
+    const max = counts.length > 0 ? Math.max(...counts) : 0;
+    const avg = counts.length > 0 ? Math.round(total / counts.length) : 0;
+
+    return {
+      period: resolvedPeriod,
+      summary: {
+        total,
+        max,
+        avg,
+      },
+      timeline: buckets.map(({ label, count }) => ({ label, count })),
+    };
+  },
+
+  async getRequestStats(period = '1month') {
+    const { startDate, endDate, buckets, format, period: resolvedPeriod } = generateBuckets(period);
+    const logs = await adminRepository.getRequestLogsByRange(startDate, endDate);
+
+    const bucketMap = new Map();
+    buckets.forEach((b) => bucketMap.set(b.key, b));
+
+    for (const log of logs) {
+      const d = new Date(log.time_req);
+      let key;
+      if (format === 'hour') {
+        key = d.getHours().toString().padStart(2, '0');
+      } else if (format === 'month') {
+        const month = (d.getMonth() + 1).toString().padStart(2, '0');
+        key = `${d.getFullYear()}-${month}`;
+      } else {
+        const day = d.getDate().toString().padStart(2, '0');
+        const month = (d.getMonth() + 1).toString().padStart(2, '0');
+        key = `${d.getFullYear()}-${month}-${day}`;
+      }
+
+      if (bucketMap.has(key)) {
+        bucketMap.get(key).count += 1;
+      }
+    }
+
+    const counts = buckets.map((b) => b.count);
+    const total = counts.reduce((acc, c) => acc + c, 0);
+    const max = counts.length > 0 ? Math.max(...counts) : 0;
+    const avg = counts.length > 0 ? Math.round(total / counts.length) : 0;
+
+    return {
+      period: resolvedPeriod,
+      summary: {
+        total,
+        max,
+        avg,
+      },
+      timeline: buckets.map(({ label, count }) => ({ label, count })),
+    };
+  },
 };
+
+function generateBuckets(period) {
+  const now = new Date();
+  const normalized = (period || '1month').toLowerCase();
+
+  if (normalized === '7days' || normalized === '7d') {
+    const buckets = [];
+    const startDate = new Date(now);
+    startDate.setDate(startDate.getDate() - 6);
+    startDate.setHours(0, 0, 0, 0);
+
+    const endDate = new Date(now);
+    endDate.setHours(23, 59, 59, 999);
+
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(startDate);
+      d.setDate(d.getDate() + i);
+      const day = d.getDate().toString().padStart(2, '0');
+      const month = (d.getMonth() + 1).toString().padStart(2, '0');
+      const key = `${d.getFullYear()}-${month}-${day}`;
+      const label = `${day}/${month}`;
+      buckets.push({ key, label, count: 0 });
+    }
+    return { startDate, endDate, buckets, format: 'day', period: '7days' };
+  }
+
+  if (normalized === '1year' || normalized === '1y' || normalized === '12months' || normalized === 'year') {
+    const buckets = [];
+    const startDate = new Date(now.getFullYear(), now.getMonth() - 11, 1, 0, 0, 0, 0);
+    const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - 11 + i, 1);
+      const month = (d.getMonth() + 1).toString().padStart(2, '0');
+      const year = d.getFullYear();
+      const key = `${year}-${month}`;
+      const label = `Thg ${month}`;
+      buckets.push({ key, label, count: 0 });
+    }
+    return { startDate, endDate, buckets, format: 'month', period: '1year' };
+  }
+
+  if (normalized === '24hours' || normalized === '24h' || normalized === 'hour' || normalized === 'today') {
+    const buckets = [];
+    const startDate = new Date(now);
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(now);
+    endDate.setHours(23, 59, 59, 999);
+
+    for (let h = 0; h < 24; h++) {
+      const key = h.toString().padStart(2, '0');
+      const label = `${key}:00`;
+      buckets.push({ key, label, count: 0 });
+    }
+    return { startDate, endDate, buckets, format: 'hour', period: '24hours' };
+  }
+
+  // Default: 1month (30 days)
+  const buckets = [];
+  const startDate = new Date(now);
+  startDate.setDate(startDate.getDate() - 29);
+  startDate.setHours(0, 0, 0, 0);
+
+  const endDate = new Date(now);
+  endDate.setHours(23, 59, 59, 999);
+
+  for (let i = 0; i < 30; i++) {
+    const d = new Date(startDate);
+    d.setDate(d.getDate() + i);
+    const day = d.getDate().toString().padStart(2, '0');
+    const month = (d.getMonth() + 1).toString().padStart(2, '0');
+    const key = `${d.getFullYear()}-${month}-${day}`;
+    const label = `${day}/${month}`;
+    buckets.push({ key, label, count: 0 });
+  }
+  return { startDate, endDate, buckets, format: 'day', period: '1month' };
+}
 
 module.exports = adminService;
