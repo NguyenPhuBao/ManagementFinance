@@ -97,8 +97,8 @@ const InteractiveLineChart = ({
   const counts = data.map((d) => d.count);
   const maxVal = Math.max(...counts, 5);
   const minVal = 0;
-  const paddingLeft = 40;
-  const paddingRight = 45;
+  const paddingLeft = 50;
+  const paddingRight = 70;
   const paddingTop = 20;
   const paddingBottom = 40;
   const width = 1000;
@@ -197,9 +197,9 @@ const InteractiveLineChart = ({
           <line x1={paddingLeft} y1={paddingTop + drawHeight} x2={width - paddingRight} y2={paddingTop + drawHeight} stroke="currentColor" className="text-outline-variant/50" strokeWidth="1" vectorEffect="non-scaling-stroke" />
 
           {/* Y Axis min/max labels inside SVG */}
-          <text x={paddingLeft - 8} y={paddingTop + 4} textAnchor="end" fill="#64748b" fontSize="11" fontWeight="600" fontFamily="Inter, sans-serif">{maxVal.toLocaleString('vi-VN')}</text>
-          <text x={paddingLeft - 8} y={paddingTop + drawHeight / 2 + 4} textAnchor="end" fill="#64748b" fontSize="11" fontWeight="600" fontFamily="Inter, sans-serif">{Math.round(maxVal / 2).toLocaleString('vi-VN')}</text>
-          <text x={paddingLeft - 8} y={paddingTop + drawHeight + 4} textAnchor="end" fill="#64748b" fontSize="11" fontWeight="600" fontFamily="Inter, sans-serif">0</text>
+          <text x={paddingLeft - 12} y={paddingTop + 4} textAnchor="end" fill="#64748b" fontSize="11" fontWeight="600" fontFamily="Inter, sans-serif">{maxVal.toLocaleString('vi-VN')}</text>
+          <text x={paddingLeft - 12} y={paddingTop + drawHeight / 2 + 4} textAnchor="end" fill="#64748b" fontSize="11" fontWeight="600" fontFamily="Inter, sans-serif">{Math.round(maxVal / 2).toLocaleString('vi-VN')}</text>
+          <text x={paddingLeft - 12} y={paddingTop + drawHeight + 4} textAnchor="end" fill="#64748b" fontSize="11" fontWeight="600" fontFamily="Inter, sans-serif">0</text>
 
           {/* Area fill */}
           <path d={areaD} fill={`url(#${gradientId}-area)`} />
@@ -1024,106 +1024,103 @@ const DashboardPage = () => {
           </div>
       </div>
 
-      {/* 2. Charts Grid: Luôn nằm DƯỚI Table Hoạt động gần đây */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Biểu đồ 1: Tần suất Đăng nhập */}
-          <div className="bg-white rounded-xl border border-outline-variant shadow-sm p-5 md:p-6 flex flex-col h-full relative overflow-hidden group">
-              <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-colors duration-500"></div>
-              
-              <div className="flex justify-between items-start mb-4">
-                  <div>
-                      <h2 className="font-title-lg text-title-lg font-bold text-on-surface m-0 flex items-center gap-2">
-                          <span className="material-symbols-outlined text-primary text-[22px]">bar_chart</span>
-                          Đăng nhập
-                      </h2>
-                      <p className="font-body-sm text-on-surface-variant mt-0.5">Tần suất đăng nhập</p>
-                  </div>
-              </div>
-              
-              <div className="flex-1 flex flex-col justify-center min-h-[200px] mb-4 relative">
-                  <InteractiveLineChart
-                    data={loginStats.timeline}
-                    gradientId="loginChartGrad"
-                    strokeColor="#2563eb"
-                    gradientFrom="#3b82f6"
-                    gradientTo="#1d4ed8"
-                    unit="lượt"
-                    format={loginStats.format || 'day'}
-                    loading={loadingLogin}
-                    height={200}
-                  />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-3 pt-4 border-t border-outline-variant relative z-10">
-                  <div className="bg-surface-container-lowest p-3 rounded-lg text-center border border-outline-variant/30">
-                      <p className="font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider text-[11px]">Trung bình</p>
-                      <p className="font-title-lg font-bold text-primary m-0">
-                        {(loginStats.summary?.avg || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">lượt</span>
-                      </p>
-                  </div>
-                  <div className="bg-surface-container-lowest p-3 rounded-lg text-center border border-outline-variant/30">
-                      <p className="font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider text-[11px]">Đỉnh điểm</p>
-                      <p className="font-title-lg font-bold text-on-surface m-0">
-                        {(loginStats.summary?.max || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">lượt</span>
-                      </p>
-                  </div>
+      {/* 2. Biểu đồ 1: Tần suất Đăng nhập (1 Hàng riêng, Full-width) */}
+      <div className="w-full bg-white rounded-xl border border-outline-variant shadow-sm p-5 md:p-6 flex flex-col relative overflow-hidden group">
+          <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-colors duration-500"></div>
+          
+          <div className="flex justify-between items-start mb-4">
+              <div>
+                  <h2 className="font-title-lg text-title-lg font-bold text-on-surface m-0 flex items-center gap-2">
+                      <span className="material-symbols-outlined text-primary text-[22px]">bar_chart</span>
+                      Đăng nhập
+                  </h2>
+                  <p className="font-body-sm text-on-surface-variant mt-0.5">Tần suất đăng nhập</p>
               </div>
           </div>
+          
+          <div className="flex-1 flex flex-col justify-center min-h-[220px] mb-4 relative">
+              <InteractiveLineChart
+                data={loginStats.timeline}
+                gradientId="loginChartGrad"
+                strokeColor="#2563eb"
+                gradientFrom="#3b82f6"
+                gradientTo="#1d4ed8"
+                unit="lượt"
+                format={loginStats.format || 'day'}
+                loading={loadingLogin}
+                height={220}
+              />
+          </div>
+          
+          <div className="grid grid-cols-2 sm:grid-cols-2 gap-4 pt-4 border-t border-outline-variant relative z-10">
+              <div className="bg-surface-container-lowest p-3 rounded-lg text-center border border-outline-variant/30">
+                  <p className="font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider text-[11px]">Trung bình</p>
+                  <p className="font-title-lg font-bold text-primary m-0">
+                    {(loginStats.summary?.avg || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">lượt</span>
+                  </p>
+              </div>
+              <div className="bg-surface-container-lowest p-3 rounded-lg text-center border border-outline-variant/30">
+                  <p className="font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider text-[11px]">Đỉnh điểm</p>
+                  <p className="font-title-lg font-bold text-on-surface m-0">
+                    {(loginStats.summary?.max || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">lượt</span>
+                  </p>
+              </div>
+          </div>
+      </div>
 
-          {/* Biểu đồ 2: Lưu lượng Request */}
-          <div className="bg-white rounded-xl border border-outline-variant shadow-sm p-5 md:p-6 flex flex-col h-full relative overflow-hidden group">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 relative z-10">
-                  <div>
-                      <h2 className="font-title-lg text-title-lg font-bold text-on-surface m-0 flex items-center gap-2">
-                          <span className="material-symbols-outlined text-primary text-[22px]">ssid_chart</span>
-                          Lưu lượng Request
-                      </h2>
-                      <p className="font-body-sm text-on-surface-variant mt-0.5">Giám sát tải hệ thống và lưu lượng yêu cầu</p>
-                  </div>
-                  <div className="flex items-center gap-3 self-start sm:self-auto">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#dcfce7] text-[#166534] font-label-md text-[11px] font-semibold border border-[#86efac]">
-                          <span className="relative flex h-2 w-2">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#166534] opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-2 w-2 bg-[#166534]"></span>
-                          </span>
-                          Live Mode
+      {/* 3. Biểu đồ 2: Lưu lượng Request (1 Hàng riêng, Full-width) */}
+      <div className="w-full bg-white rounded-xl border border-outline-variant shadow-sm p-5 md:p-6 flex flex-col relative overflow-hidden group">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 relative z-10">
+              <div>
+                  <h2 className="font-title-lg text-title-lg font-bold text-on-surface m-0 flex items-center gap-2">
+                      <span className="material-symbols-outlined text-primary text-[22px]">ssid_chart</span>
+                      Lưu lượng Request
+                  </h2>
+                  <p className="font-body-sm text-on-surface-variant mt-0.5">Giám sát tải hệ thống và lưu lượng yêu cầu</p>
+              </div>
+              <div className="flex items-center gap-3 self-start sm:self-auto">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#dcfce7] text-[#166534] font-label-md text-[11px] font-semibold border border-[#86efac]">
+                      <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#166534] opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-[#166534]"></span>
                       </span>
-                  </div>
+                      Live Mode
+                  </span>
               </div>
-              
-              <div className="flex-1 flex flex-col justify-center min-h-[200px] mb-4 relative">
-                  <InteractiveLineChart
-                    data={requestStats.timeline}
-                    gradientId="reqChartGrad"
-                    strokeColor="#0284c7"
-                    gradientFrom="#38bdf8"
-                    gradientTo="#0284c7"
-                    unit="req"
-                    format={requestStats.format || 'day'}
-                    loading={loadingRequest}
-                    height={200}
-                  />
-              </div>
+          </div>
+          
+          <div className="flex-1 flex flex-col justify-center min-h-[220px] mb-4 relative">
+              <InteractiveLineChart
+                data={requestStats.timeline}
+                gradientId="reqChartGrad"
+                strokeColor="#0284c7"
+                gradientFrom="#38bdf8"
+                gradientTo="#0284c7"
+                unit="req"
+                format={requestStats.format || 'day'}
+                loading={loadingRequest}
+                height={220}
+              />
+          </div>
 
-              <div className="grid grid-cols-3 gap-3 pt-4 border-t border-outline-variant relative z-10">
-                  <div className="bg-surface-container-lowest p-3 rounded-lg text-center border border-outline-variant/30">
-                      <p className="font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider text-[11px]">Trung bình</p>
-                      <p className="font-title-lg font-bold text-primary m-0">
-                        {(requestStats.summary?.avg || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">req</span>
-                      </p>
-                  </div>
-                  <div className="bg-surface-container-lowest p-3 rounded-lg text-center border border-outline-variant/30">
-                      <p className="font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider text-[11px]">Đỉnh điểm</p>
-                      <p className="font-title-lg font-bold text-on-surface m-0">
-                        {(requestStats.summary?.max || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">req</span>
-                      </p>
-                  </div>
-                  <div className="bg-surface-container-lowest p-3 rounded-lg text-center border border-outline-variant/30">
-                      <p className="font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider text-[11px]">Tổng Request</p>
-                      <p className="font-title-lg font-bold text-secondary m-0">
-                        {(requestStats.summary?.total || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">req</span>
-                      </p>
-                  </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-outline-variant relative z-10">
+              <div className="bg-surface-container-lowest p-3 rounded-lg text-center border border-outline-variant/30">
+                  <p className="font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider text-[11px]">Trung bình</p>
+                  <p className="font-title-lg font-bold text-primary m-0">
+                    {(requestStats.summary?.avg || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">req</span>
+                  </p>
+              </div>
+              <div className="bg-surface-container-lowest p-3 rounded-lg text-center border border-outline-variant/30">
+                  <p className="font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider text-[11px]">Đỉnh điểm</p>
+                  <p className="font-title-lg font-bold text-on-surface m-0">
+                    {(requestStats.summary?.max || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">req</span>
+                  </p>
+              </div>
+              <div className="bg-surface-container-lowest p-3 rounded-lg text-center border border-outline-variant/30">
+                  <p className="font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider text-[11px]">Tổng Request</p>
+                  <p className="font-title-lg font-bold text-secondary m-0">
+                    {(requestStats.summary?.total || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">req</span>
+                  </p>
               </div>
           </div>
       </div>
