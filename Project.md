@@ -208,13 +208,14 @@ Role (1) ──▶ Account (N) ──▶ User (1)
 | `created_at` / `updated_at` | TIMESTAMP | Thời gian |
 | **Indexes** | `idx_category_uuid` (uuid), `category_idcategory_unique` (idcategory) | |
 
-##### Bảng AuditLog (🔄 Cập nhật 2026-08-28 — Ghi nhận request real-time & Req_status)
+##### Bảng AuditLog (🔄 Cập nhật 2026-08-28 — Ghi nhận request real-time, Req_status & Reason)
 | Cột | Kiểu | Mô tả |
 |-----|------|-------|
 | `Idlog` | INT PK (auto) | ID log |
 | `Idaccount` | INT FK→Account | Tài khoản thực hiện yêu cầu |
-| `Request` | VARCHAR(200) | Tên thao tác / endpoint yêu cầu (ví dụ: `Đăng nhập hệ thống`, `Lấy danh sách người dùng`) |
+| `Request` | VARCHAR(200) | Tên thao tác / endpoint yêu cầu (ví dụ: `Đăng nhập hệ thống`, `Khóa tài khoản`, `Mở khóa tài khoản`) |
 | `Req_status` | VARCHAR(20) | Trạng thái yêu cầu: `Accepted`, `Rejected`, `Interrupted`, `Pending`, `Processing`, `Pass`, `Fail` |
+| `Reason` | VARCHAR(200) NULL | Lý do kết quả các Req bị chặn, bị ngắt quãng, xử lý thất bại (401, 403, 429, 400, 500, Interrupted) |
 | `TimeReq` | TIMESTAMP | Thời điểm backend tiếp nhận yêu cầu |
 | `TimeRes` | TIMESTAMP | Thời điểm backend xử lý xong và phản hồi |
 | **Indexes** | `idx_auditlog_account` (`Idaccount`), `idx_auditlog_timereq` (`TimeReq`) | Tối ưu truy vấn phân trang và thống kê |
@@ -2109,6 +2110,9 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
 
 ### 11.3. Bảng Theo Dõi Hoạt Động Thời Gian Thực & Phân Trang Chuẩn
 - Kết nối **Socket.IO** lắng nghe event `audit_activity`: tự động ghi nhận mọi request đến backend và cập nhật tức thì lên Dashboard.
+- **Cấu trúc cột bảng Hoạt động gần đây**:
+  - `Người dùng` | `Hành động` | `Lý do` | `Trạng thái` | `Thời gian`.
+  - Cột **Lý do (Reason)**: Hiển thị nguyên nhân chi tiết khi request bị từ chối/bị chặn/lỗi nghiệp vụ/ngắt kết nối hoặc `—` nếu request thành công bình thường.
 - **Quy tắc phân trang chuẩn**:
   - Trang 1 luôn là các bản ghi mới nhất trong lịch sử (mặc định mở Trang 1).
   - Trang $N$ là các bản ghi cũ hơn theo thứ tự thời gian.
@@ -2139,4 +2143,12 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - Tự động được **miễn giới hạn request** (`skip: (req) => !!req.headers.authorization`), cho phép người dùng thao tác liên tục, xem/sửa giao dịch, đồng bộ dữ liệu mượt mà 24/7 mà không lo bị chặn 429.
 - **Bật / Tắt Rate Limit linh hoạt qua `.env`**:
   - Hỗ trợ đặt `RATE_LIMIT_MAX=0` hoặc `RATE_LIMIT_ENABLED=false` trong `.env` để tắt hoàn toàn rate limiter trên mọi môi trường nếu muốn mở tự do 100%.
-  - Tích hợp `app.set('trust proxy', 1)` để khi chạy trên Cloud (Render, Cloudflare), IP của client được nhận diện chính xác qua reverse proxy.
+  - Tích hợp `app.set('trust proxy', 1)` để khi chạy trên Cloud (Render, Cloudflare), IP của client được nhận diện chính xác qua reverse proxy.
+
+### 11.6. Nâng Cấp Audit Log: Cột Reason & Phân Định Khóa/Mở Khóa Tài Khoản
+- **Cột Reason (`VARCHAR(200) NULL`)**:
+  - Ghi nhận nguyên nhân request bị từ chối, lỗi hoặc gián đoạn (401, 403, 429, 400, 500, Interrupted).
+  - Tự động trích xuất lý do chi tiết từ `res.locals.errorMessage` hoặc mapping mã lỗi HTTP.
+- **Phân định rõ ràng hành động quản trị tài khoản**:
+  - Khi Admin cập nhật trạng thái người dùng sang `Inactive`: Ghi nhận chuẩn xác **"Khóa tài khoản"**.
+  - Khi Admin cập nhật trạng thái người dùng sang `Active`: Ghi nhận chuẩn xác **"Mở khóa tài khoản"**.

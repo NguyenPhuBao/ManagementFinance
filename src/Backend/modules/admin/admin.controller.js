@@ -62,6 +62,7 @@ const adminController = {
       if (isNaN(iduser)) return ResponseHandler.badRequest(res, 'ID người dùng không hợp lệ');
       const result = await adminService.updateStatus(iduser);
       logger.info('User status updated', { iduser, ...result });
+      req.auditActionName = result.newStatus === 'Active' ? 'Mở khóa tài khoản' : 'Khóa tài khoản';
       return ResponseHandler.success(res, result, 'Cập nhật trạng thái thành công');
     } catch (error) {
       const statusCode = error.statusCode || 500;

@@ -517,7 +517,46 @@ const authService = {
     return 'Pass';
   },
 
-  formatActionName(method, path) {
+  determineReqReason(res, req) {
+    if (req.auditReason) {
+      return String(req.auditReason).substring(0, 200);
+    }
+    if (req.auditStatus === 'Interrupted') {
+      return 'Yêu cầu bị ngắt kết nối giữa chừng';
+    }
+
+    const statusCode = res.statusCode || 200;
+    if (statusCode >= 200 && statusCode < 300) {
+      return null;
+    }
+
+    const customMsg = res.locals?.errorMessage;
+
+    let reasonText = customMsg;
+    if (!reasonText) {
+      if (statusCode === 401) {
+        reasonText = 'Chưa đăng nhập hoặc Token không hợp lệ';
+      } else if (statusCode === 403) {
+        reasonText = 'Không có quyền truy cập quản trị';
+      } else if (statusCode === 429) {
+        reasonText = 'Quá giới hạn tần suất yêu cầu (Too Many Requests)';
+      } else if (statusCode === 400) {
+        reasonText = 'Dữ liệu yêu cầu không hợp lệ (Bad Request)';
+      } else if (statusCode === 404) {
+        reasonText = 'Không tìm thấy tài nguyên';
+      } else if (statusCode >= 500) {
+        reasonText = 'Lỗi máy chủ nội bộ trong quá trình xử lý';
+      }
+    }
+
+    return reasonText ? String(reasonText).substring(0, 200) : null;
+  },
+
+  formatActionName(method, path, req) {
+    if (req && req.auditActionName) {
+      return req.auditActionName;
+    }
+
     const p = (path || '').toLowerCase();
     const m = (method || 'GET').toUpperCase();
 
@@ -558,6 +597,7 @@ const authService = {
         idaccount: data.idaccount,
         request: data.request,
         req_status: reqStatus,
+        reason: data.reason || null,
         time_req: data.time_req,
         time_res: data.time_res,
       });
@@ -575,6 +615,7 @@ const authService = {
         idaccount: data.idaccount,
         user: data.userDetails?.fullname || data.userDetails?.username || `User #${data.idaccount}`,
         action: data.request,
+        reason: data.reason || null,
         status: reqStatus,
         time: timeFormatted,
         time_req: log.time_req,
@@ -602,6 +643,7 @@ const authService = {
         idaccount: log.idaccount,
         user: log.account?.User?.fullname || log.account?.username || `User #${log.idaccount}`,
         action: log.request,
+        reason: log.reason || null,
         status: log.req_status || 'Pass',
         time: timeFormatted,
         time_req: log.time_req,

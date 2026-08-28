@@ -76,6 +76,8 @@ const adminService = {
     await adminRepository.updateAccountStatus(iduser, newStatus);
     return {
       id: iduser,
+      username: u.account.username,
+      fullname: u.fullname,
       previousStatus: currentStatus,
       newStatus,
     };
