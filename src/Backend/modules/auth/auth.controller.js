@@ -202,9 +202,9 @@ const authController = {
 
   async getRecentActivities(req, res) {
     try {
-      const page = req.query.page ? parseInt(req.query.page, 10) : undefined;
+      const page = parseInt(req.query.page, 10) || 1;
       const limit = parseInt(req.query.limit, 10) || 5;
-      const sort = req.query.sort || 'asc';
+      const sort = req.query.sort || 'desc';
       const activities = await authService.getRecentActivities({ page, limit, sort });
       return ResponseHandler.success(res, activities, 'Lấy lịch sử hoạt động thành công');
     } catch (error) {

@@ -2106,10 +2106,26 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - **Biểu đồ Lưu lượng Request** (`getRequestStats`): Timeline mượt mà + Avg/Max/Total metrics.
 - Đã loại bỏ các nút lọc con cục bộ trên các biểu đồ để tránh phân mảnh trải nghiệm.
 
-### 11.3. Bảng Theo Dõi Hoạt Động Thời Gian Thực & Phân Trang Ngược
+### 11.3. Bảng Theo Dõi Hoạt Động Thời Gian Thực & Phân Trang Chuẩn
 - Kết nối **Socket.IO** lắng nghe event `audit_activity`: tự động ghi nhận mọi request đến backend và cập nhật tức thì lên Dashboard.
-- **Quy tắc phân trang ngược**:
-  - Trang 1 là các bản ghi cũ nhất trong lịch sử.
-  - Trang $N$ là các bản ghi mới nhất.
-  - Mặc định khi vào trang mở Trang $N$ với phân trang `5 / page` (hỗ trợ `5 / page`, `10 / page`, `20 / page`).
-  - Thanh toolbar hiển thị phạm vi bản ghi (`start - end of total items`) và điều hướng trang trực quan.
+- **Quy tắc phân trang chuẩn**:
+  - Trang 1 luôn là các bản ghi mới nhất trong lịch sử (mặc định mở Trang 1).
+  - Trang $N$ là các bản ghi cũ hơn theo thứ tự thời gian.
+  - Phân trang hỗ trợ các tùy chọn: `5 / page`, `10 / page`, `20 / page`.
+  - Bộ phân trang thông minh (Smart Pagination Window): hiển thị tối đa 3 số trang xung quanh trang hiện tại kết hợp dấu `...` thu gọn (vd: `1 2 3 ... 8` hoặc `1 ... 3 4 5 ... 8`), ngăn tràn vỡ giao diện.
+  - Sửa dropdown chọn số dòng hiển thị (`appearance-none` + icon tùy chỉnh) tránh hiện tượng đè mũi tên vào chữ.
+  - Thanh toolbar hiển thị phạm vi bản ghi (`1 - 5 of 36 items`) và điều hướng trang trực quan.
+
+### 11.4. Bố Cục Trang & Tối Ưu Hiển Thị Trục X Biểu Đồ
+- **Bố cục giao diện Dashboard**:
+  - Bảng *Hoạt động gần đây* nằm toàn bộ chiều rộng (Full-width).
+  - Biểu đồ *Tần suất đăng nhập* và *Lưu lượng Request* luôn nằm **dưới** bảng Hoạt động gần đây trên mọi kích thước màn hình (lưới 2 cột cân xứng trên Desktop/Laptop, 1 cột trên Mobile).
+- **Tối ưu hóa Trục X cho 2 Biểu đồ**:
+  - Đổi phụ đề biểu đồ đăng nhập thành *"Tần suất đăng nhập"*.
+  - Đơn vị đo hiển thị rõ ràng ở góc phải trục X: `(Tháng)`, `(Ngày)`, `(Giờ)`.
+  - Trục X tính toán tọa độ SVG chính xác tuyệt đối với các điểm dữ liệu:
+    - **1 Năm**: Hiển thị đầy đủ 12 tháng dạng `01` -> `12` kèm đơn vị `(Tháng)`.
+    - **Hôm nay**: Hiển thị các mốc giờ `00`, `02`, `04`...`22`, `23` kèm đơn vị `(Giờ)`.
+    - **1 Tháng (30 ngày)**: Hiển thị mốc ngày `01`, `05`, `10`, `15`, `20`, `25`, `30` kèm đơn vị `(Ngày)`.
+    - **7 Ngày**: Hiển thị đầy đủ 7 ngày dạng `dd/mm` kèm đơn vị `(Ngày)`.
+  - Tooltip khi hover vẫn hiển thị chi tiết tên đầy đủ và số liệu.
