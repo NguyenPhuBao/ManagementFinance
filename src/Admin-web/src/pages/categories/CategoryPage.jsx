@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { TRANSACTION_TYPE_LABELS } from '../../utils/constants';
 import adminApi from '../../api/admin.api';
+import Pagination from '../../components/common/Pagination';
 
 const CLASSIFY_MAP = { Thu: 'income', Chi: 'expense', 'Vay/no': 'debt' };
 const TYPE_TO_CLASSIFY = { income: 'Thu', expense: 'Chi', debt: 'Vay/no' };
@@ -27,7 +28,7 @@ const CategoryPage = () => {
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [pageSize, setPageSize] = useState(10);
 
   const filtered = categories.filter(c =>
     c.name.toLowerCase().includes(search.toLowerCase()) &&
@@ -35,10 +36,14 @@ const CategoryPage = () => {
     (filter.type === 'all' || c.type === filter.type)
   );
 
-  const totalPages = Math.ceil(filtered.length / itemsPerPage);
-  const start = (currentPage - 1) * itemsPerPage;
-  const end = Math.min(start + itemsPerPage, filtered.length);
+  const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+  const start = (currentPage - 1) * pageSize;
+  const end = Math.min(start + pageSize, filtered.length);
   const pageData = filtered.slice(start, end);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filter]);
 
   const fetchCategories = async () => {
     try {
@@ -332,37 +337,18 @@ const CategoryPage = () => {
                   </table>
               </div>
               
-              <div className="px-6 py-4 border-t border-outline-variant bg-surface-bright flex flex-col md:flex-row items-center justify-between gap-4">
-                  <span className="font-tabular-nums text-tabular-nums text-on-surface-variant">Hiển thị {filtered.length > 0 ? start + 1 : 0} - {end} của {filtered.length} danh mục</span>
-                  <div className="flex items-center gap-1">
-                      <button 
-                          className={`p-1 rounded transition-colors cursor-pointer active:opacity-80 ${currentPage === 1 ? 'text-outline pointer-events-none' : 'text-on-surface hover:bg-surface-container-low'}`}
-                          onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
-                          disabled={currentPage === 1}
-                      >
-                          <span className="material-symbols-outlined text-[20px]">chevron_left</span>
-                      </button>
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                          <button
-                              key={page}
-                              className={page === currentPage 
-                                  ? 'w-8 h-8 rounded bg-primary-container text-white font-tabular-nums text-tabular-nums flex items-center justify-center shadow-sm cursor-pointer active:scale-95 transition-all'
-                                  : 'w-8 h-8 rounded hover:bg-surface-container-low text-on-surface font-tabular-nums text-tabular-nums flex items-center justify-center transition-colors cursor-pointer active:scale-95'
-                              }
-                              onClick={() => setCurrentPage(page)}
-                          >
-                              {page}
-                          </button>
-                      ))}
-                      <button 
-                          className={`p-1 rounded transition-colors cursor-pointer active:opacity-80 ${currentPage === totalPages || totalPages === 0 ? 'text-outline pointer-events-none' : 'text-on-surface hover:bg-surface-container-low'}`}
-                          onClick={() => currentPage < totalPages && setCurrentPage(currentPage + 1)}
-                          disabled={currentPage === totalPages || totalPages === 0}
-                      >
-                          <span className="material-symbols-outlined text-[20px]">chevron_right</span>
-                      </button>
-                  </div>
-              </div>
+              <Pagination
+                currentPage={currentPage}
+                pageSize={pageSize}
+                total={filtered.length}
+                pageSizeOptions={[5, 10, 20, 50]}
+                onPageChange={(page) => setCurrentPage(page)}
+                onPageSizeChange={(newSize) => {
+                  setPageSize(newSize);
+                  setCurrentPage(1);
+                }}
+                itemLabel="danh mục"
+              />
               <div className="px-6 py-4 flex justify-end border-t border-outline-variant bg-surface-container-lowest">
                   <button className="px-4 py-2 bg-primary text-white rounded font-label-md text-label-md hover:bg-surface-tint transition-colors flex items-center gap-2 shadow-sm cursor-pointer" onClick={() => toggleModal('syncAlert', true)}>
                       <span className="material-symbols-outlined text-[18px]">sync</span>Đồng bộ danh mục

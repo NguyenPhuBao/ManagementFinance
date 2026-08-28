@@ -2165,4 +2165,14 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - Khóa toàn bộ input và nút bấm (`disabled`) trong modal/alert nhằm triệt tiêu hoàn toàn nguy cơ người dùng click nhiều lần (spam click) khi mạng/CSDL cloud xử lý chậm.
 - **Bảo vệ chống trùng lặp 2 lớp (Frontend Guard & Backend Validation)**:
   - **Frontend**: Khóa hàm submit ngay khi phát hiện `processing.isProcessing = true`.
-  - **Backend**: Trong `admin.service.js`, chỉ kiểm tra trùng lặp tên + phân loại danh mục (`insensitive mode`) đối với các danh mục mặc định hệ thống (`is_default: true`). Đối với danh mục tùy chỉnh của người dùng (`is_default: false`), hệ thống cho phép trùng tên để người dùng khác nhau có thể tạo danh mục tự do theo nhu cầu cá nhân.
+  - **Backend**: Trong `admin.service.js`, chỉ kiểm tra trùng lặp tên + phân loại danh mục (`insensitive mode`) đối với các danh mục mặc định hệ thống (`is_default: true`). Đối với danh mục tùy chỉnh của người dùng (`is_default: false`), hệ thống cho phép trùng tên để người dùng khác nhau có thể tạo danh mục tự do theo nhu cầu cá nhân.
+
+### 11.9. Chuẩn Hóa Thanh Phân Trang Toàn Hệ Thống (Unified Pagination Component)
+- **Component dùng chung (`src/Admin-web/src/components/common/Pagination.jsx`)**:
+  - Tích hợp đồng nhất trên cả 3 trang: **Dashboard (Hoạt động gần đây)**, **User Management (Quản lý người dùng)** và **Category Management (Quản lý danh mục)**.
+  - **Bên trái**: Hiển thị phạm vi bản ghi rõ ràng `{start} - {end} of {total} {items/người dùng/danh mục}`.
+  - **Bên phải**:
+    - Menu dropdown chọn số lượng bản ghi hiển thị trên mỗi trang (`5 / page`, `10 / page`, `20 / page`, `50 / page`).
+    - Nút điều hướng Trước (`<`) / Sau (`>`).
+    - Thuật toán hiển thị số trang thông minh dạng rút gọn với dấu ba chấm (`1`, `2`, `3`, `...`, `42`) khi danh sách có nhiều trang.
+    - Tự động reset về trang 1 khi thay đổi bộ lọc tìm kiếm hoặc thay đổi số lượng bản ghi mỗi trang.
