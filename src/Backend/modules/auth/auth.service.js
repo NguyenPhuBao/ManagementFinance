@@ -583,9 +583,11 @@ const authService = {
     if (p.includes('/ai/classify')) return 'Phân loại giao dịch AI';
 
     if (p.includes('/admin/updatestatus')) return 'Khóa/mở khóa tài khoản';
+    if (p.includes('/admin/getcategory')) return 'Lấy danh sách danh mục';
     if (p.includes('/admin/addcategory')) return 'Tạo danh mục hệ thống';
     if (p.includes('/admin/updatecategory')) return 'Cập nhật danh mục hệ thống';
     if (p.includes('/admin/deletecategory')) return 'Xóa danh mục hệ thống';
+    if (p.includes('/admin/getuser')) return 'Lấy danh sách người dùng';
 
     return `${m} ${path}`;
   },
