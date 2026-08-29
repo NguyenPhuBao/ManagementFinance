@@ -22,6 +22,21 @@ const authRepository = {
     });
   },
 
+  async findAccountByUsernameOrEmail(identifier) {
+    return prisma.account.findFirst({
+      where: {
+        OR: [
+          { username: identifier },
+          { email: identifier },
+        ],
+      },
+      include: {
+        role: { select: { idrole: true, rolename: true } },
+        User: { select: { iduser: true, fullname: true, email: true } },
+      },
+    });
+  },
+
   async createAccountWithUser(data) {
     return prisma.$transaction(async (tx) => {
       const account = await tx.account.create({

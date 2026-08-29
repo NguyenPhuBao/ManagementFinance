@@ -2180,4 +2180,18 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
 ### 11.10. Dashboard: Fullscreen Loading Overlay Khi Thay Đổi Bộ Lọc Thời Gian
 - **Trải nghiệm mượt mà & Khóa thao tác (`z-[9999]`)**:
   - Khi Admin chọn bộ lọc thời gian mới (*Hôm nay, 7 Ngày, 1 Tháng, 1 Năm* hoặc *Tùy chỉnh Ngày/Tháng/Năm*), hệ thống tự động kích hoạt lớp phủ làm mờ toàn màn hình (`backdrop-blur-sm` + `bg-black/40`) kèm spinner xoay vòng trung tâm và thông báo *"Đang tải dữ liệu báo cáo - Vui lòng chờ trong giây lát..."*.
-  - Ngăn ngừa người dùng bấm liên tục đổi bộ lọc khi các API báo cáo thống kê và biểu đồ đang được tổng hợp từ máy chủ.
+  - Ngăn ngừa người dùng bấm liên tục đổi bộ lọc khi các API báo cáo thống kê và biểu đồ đang được tổng hợp từ máy chủ.
+
+### 11.11. Bộ Kiểm Thử Trạng Thái Request & Lý Do Chặn (Test Suite: Req Status & Reason)
+- **Thư mục lưu trữ**: `Test/test_req_statuses.js` và `Test/run_test.bat` (được đưa vào `.gitignore` để không đẩy lên GitHub).
+- **Phạm vi kiểm thử 9 kịch bản tự động**:
+  1. `Pass` (HTTP 200/201): Đăng nhập thành công (`Reason: null`).
+  2. `Pass` (HTTP 200): Lấy danh sách danh mục với Token hợp lệ (`Reason: null`).
+  3. `Pass` (HTTP 200): Khóa / Mở khóa tài khoản (Ghi nhận rõ `"Khóa tài khoản"` / `"Mở khóa tài khoản"`).
+  4. `Rejected` (HTTP 401): Gọi API không kèm Authorization Token (`Reason: "Chưa đăng nhập hoặc Token không hợp lệ"`).
+  5. `Rejected` (HTTP 401): Đăng nhập sai mật khẩu (`Reason: "Sai tai khoan hoac mat khau"`).
+  6. `Rejected` (HTTP 400): Thêm danh mục thiếu tên/loại (`Reason: "Thiếu tên hoặc loại danh mục"`).
+  7. `Rejected` (HTTP 403): User thường gọi API Quản trị Admin (`Reason: "Không có quyền truy cập quản trị"`).
+  8. `Fail` (HTTP 500): Lỗi máy chủ nội bộ (`Reason: "Lỗi máy chủ nội bộ trong quá trình xử lý"`).
+  9. `Interrupted`: Request bị ngắt kết nối giữa chừng (`Reason: "Yêu cầu bị ngắt kết nối giữa chừng"`).
+- **Tự động đối chiếu CSDL Supabase**: Script trực tiếp truy vấn bảng `audit_log` qua Prisma để xác thực dữ liệu được lưu chuẩn xác 100%.

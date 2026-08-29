@@ -70,3 +70,7 @@ src/Backend/prisma/seed_roles.js
 .stitch/
 plugins/
 src/Backend/prisma/migrations/
+
+# Test Suites (Local test scripts)
+Test/
+test/
