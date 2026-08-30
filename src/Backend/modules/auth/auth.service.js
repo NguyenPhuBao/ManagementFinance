@@ -499,33 +499,67 @@ const authService = {
     logger.info("Email changed successfully", { newEmail, idaccount });
   },
 
-  // ---------- AUDIT LOG HELPERS ----------
+  // ---------- AUDIT LOG HELPERS (7 TRẠNG THÁI CHUẨN) ----------
+  // 1. Accepted    (202 / Đã tiếp nhận đưa vào queue)
+  // 2. Pending     (Chờ worker/queue xử lý)
+  // 3. Processing  (Đang tính toán/xử lý ngầm)
+  // 4. Pass        (200, 201 / Thành công)
+  // 5. Rejected    (400, 401, 403, 429 / Bị từ chối, chặn)
+  // 6. Fail        (500+ / Lỗi hệ thống, crash máy chủ)
+  // 7. Interrupted (Client ngắt kết nối giữa chừng)
+  VALID_REQ_STATUSES: ['Accepted', 'Rejected', 'Interrupted', 'Pending', 'Processing', 'Pass', 'Fail'],
+
   determineReqStatus(res, req) {
-    if (req.auditStatus) {
+    // 1. Nếu có trạng thái gán chủ động từ middleware/worker (Pending, Processing, Interrupted, Accepted...)
+    if (req && req.auditStatus && this.VALID_REQ_STATUSES.includes(req.auditStatus)) {
       return req.auditStatus;
     }
-    const statusCode = res.statusCode || 200;
+
+    const statusCode = (res && res.statusCode) || 200;
+
+    // 2. HTTP 202 -> Accepted (Đã tiếp nhận xử lý ngầm)
+    if (statusCode === 202) {
+      return 'Accepted';
+    }
+
+    // 3. HTTP 200..299 -> Pass (Thành công)
     if (statusCode >= 200 && statusCode < 300) {
       return 'Pass';
     }
+
+    // 4. HTTP 400, 401, 403, 429 -> Rejected (Bị máy chủ từ chối / chặn)
     if (statusCode === 400 || statusCode === 401 || statusCode === 403 || statusCode === 429) {
       return 'Rejected';
     }
+
+    // 5. HTTP 500+ -> Fail (Lỗi máy chủ nội bộ)
     if (statusCode >= 500) {
       return 'Fail';
     }
+
     return 'Pass';
   },
 
   determineReqReason(res, req) {
-    if (req.auditReason) {
+    if (req && req.auditReason) {
       return String(req.auditReason).substring(0, 200);
     }
-    if (req.auditStatus === 'Interrupted') {
+
+    const auditStatus = req && req.auditStatus;
+    if (auditStatus === 'Interrupted') {
       return 'Yêu cầu bị ngắt kết nối giữa chừng';
     }
+    if (auditStatus === 'Pending') {
+      return 'Yêu cầu đang nằm trong hàng đợi chờ xử lý';
+    }
+    if (auditStatus === 'Processing') {
+      return 'Yêu cầu đang trong tiến trình xử lý';
+    }
+    if (auditStatus === 'Accepted') {
+      return null;
+    }
 
-    const statusCode = res.statusCode || 200;
+    const statusCode = (res && res.statusCode) || 200;
     if (statusCode >= 200 && statusCode < 300) {
       return null;
     }
