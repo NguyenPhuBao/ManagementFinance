@@ -2184,7 +2184,7 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
 
 ### 11.11. Bộ Kiểm Thử Trạng Thái Request & Lý Do Chặn (Test Suite: Req Status & Reason)
 - **Thư mục lưu trữ**: `Test/test_req_statuses.js` và `Test/run_test.bat` (được đưa vào `.gitignore` để không đẩy lên GitHub).
-- **Phạm vi kiểm thử 9 kịch bản tự động**:
+- **Phạm vi kiểm thử 12 kịch bản tự động cho đủ 7 trạng thái**:
   1. `Pass` (HTTP 200/201): Đăng nhập thành công (`Reason: null`).
   2. `Pass` (HTTP 200): Lấy danh sách danh mục với Token hợp lệ (`Reason: null`).
   3. `Pass` (HTTP 200): Khóa / Mở khóa tài khoản (Ghi nhận rõ `"Khóa tài khoản"` / `"Mở khóa tài khoản"`).
@@ -2194,4 +2194,21 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   7. `Rejected` (HTTP 403): User thường gọi API Quản trị Admin (`Reason: "Không có quyền truy cập quản trị"`).
   8. `Fail` (HTTP 500): Lỗi máy chủ nội bộ (`Reason: "Lỗi máy chủ nội bộ trong quá trình xử lý"`).
   9. `Interrupted`: Request bị ngắt kết nối giữa chừng (`Reason: "Yêu cầu bị ngắt kết nối giữa chừng"`).
-- **Tự động đối chiếu CSDL Supabase**: Script trực tiếp truy vấn bảng `audit_log` qua Prisma để xác thực dữ liệu được lưu chuẩn xác 100%.
+  10. `Accepted`: Tiếp nhận yêu cầu xử lý ngầm (`Reason: null`).
+  11. `Pending`: Hàng đợi chờ tới lượt xử lý (`Reason: "Yêu cầu đang nằm trong hàng đợi chờ xử lý"`).
+  12. `Processing`: Đang trong tiến trình xử lý (`Reason: "Yêu cầu đang trong tiến trình xử lý"`).
+
+### 11.12. Đồng Bộ & Cập Nhật CSDL Theo Chuẩn Mới (New_Database.md - 2026-08-30)
+- **Nâng cấp CSDL Supabase PostgreSQL & Prisma Schema**:
+  - **`Role`**: Chuẩn hóa `Rolename` `varchar(40)`.
+  - **`Account` / `User`**: Cập nhật `Type` `varchar(7)` (`Basic`, `Premium`), bổ sung `Update_at` mặc định `now()`.
+  - **`Audit_log`**: Chuẩn hóa `Req_status` `varchar(12)`.
+  - **`Category`**: `Classify` `varchar(7)`, `Keyword` `Text` (phân tách dấu `;`).
+  - **`Bank_account`**: `Connect_status` `varchar(12)` (`Active`, `expired`, `Disconnected`).
+  - **`Wallet`**: `Name` `varchar(40)`, `Type` `varchar(7)`, `Status` `varchar(7)`.
+  - **`Budget`**: Thêm mới `Threshold_Warning_Amount`, `Threshold_Warning_Percent`, `Nexttime_recurrence`. Bỏ các cột tính toán tĩnh `Remaining`, `PercentSpent`.
+  - **`Bill`**: Thêm mới `Start_date`, `Time_notification`. Đổi `Pay_status` sang `varchar(7)` (`Pending`, `Payed`, `Overdue`). Đổi tên cột `Due_date`.
+  - **`Goal`**: Thêm mới `Start_date`, `Cycle_take_money`, `Time_cycle_take_money`, `Recurrence`, `Time_recurrence`.
+  - **`Transaction`**: Chuẩn hóa đổi tên `Wallet_Transfer` $\rightarrow$ `Idwallet_transfer`, `Create_at` $\rightarrow$ `DateTransaction`, `Delete_at` $\rightarrow$ `Deleted_at`.
+  - **`RefreshToken`**: Chuẩn hóa đổi tên `Expiry` $\rightarrow$ `Expired`, `Revoked` $\rightarrow$ `Status`.
+- **Trạng thái thực thi**: Đã push schema lên Supabase và khởi tạo Prisma Client thành công 100%.
