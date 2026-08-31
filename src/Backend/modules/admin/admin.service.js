@@ -44,7 +44,9 @@ const adminService = {
       country_code: u.country_code,
       username: u.account.username,
       status: u.account.status,
+      type: u.account.type || 'Basic',
       created_at: u.create_at,
+      updated_at: u.account.update_at || u.update_at,
     }));
   },
 
@@ -60,9 +62,10 @@ const adminService = {
       country_code: u.country_code,
       username: u.account.username,
       status: u.account.status,
+      type: u.account.type || 'Basic',
       rolename: u.account.role.rolename,
       created_at: u.create_at,
-      updated_at: u.update_at,
+      updated_at: u.account.update_at || u.update_at,
     };
   },
 
@@ -104,6 +107,10 @@ const adminService = {
   async addCategory(data, idaccount) {
     const trimmedName = (data.name || '').trim();
     const isDefault = data.is_default === true || data.is_default === 'true';
+    const validClassifies = ['Thu', 'Chi', 'Vay', 'no'];
+    if (!validClassifies.includes(data.classify)) {
+      throw Object.assign(new Error(`Loại danh mục '${data.classify}' không hợp lệ. Phải là Thu/Chi/Vay/no`), { statusCode: 400 });
+    }
     const { prisma } = require('../../config/db');
 
     // Chỉ kiểm tra trùng lặp với danh mục mặc định hệ thống (is_default === true)
@@ -135,6 +142,10 @@ const adminService = {
   async updateCategory(idcategory, data) {
     const trimmedName = (data.name || '').trim();
     const isDefault = data.is_default === true || data.is_default === 'true';
+    const validClassifies = ['Thu', 'Chi', 'Vay', 'no'];
+    if (data.classify && !validClassifies.includes(data.classify)) {
+      throw Object.assign(new Error(`Loại danh mục '${data.classify}' không hợp lệ. Phải là Thu/Chi/Vay/no`), { statusCode: 400 });
+    }
     const { prisma } = require('../../config/db');
 
     // Chỉ kiểm tra trùng lặp với danh mục mặc định hệ thống (is_default === true)

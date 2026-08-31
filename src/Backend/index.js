@@ -31,6 +31,10 @@ async function bootstrap() {
     const httpServer = http.createServer(app);
     initSocket(httpServer);
 
+    // 3b. Initialize Notification Service Listeners
+    const notificationService = require('./modules/notification/notification.service');
+    await notificationService.initNotificationListeners();
+
     // 4. Start listening
     httpServer.listen(config.port, config.host, () => {
       logger.info(`WealthCommand Backend running at http://${config.host}:${config.port}`);

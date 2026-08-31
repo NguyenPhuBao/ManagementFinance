@@ -73,7 +73,7 @@ function validatePush(body) {
       if (!op.payload || typeof op.payload !== 'object') {
         errors.push(`${prefix}.payload is required (object)`);
       } else {
-        // Resolve entity ID from payload.id or exact entity PK field (avoiding foreign key collision)
+        // Resolve entity ID from payload.id or exact entity PK field
         const pkField = ENTITY_PK_MAP[op.entity];
         const entityId = op.payload.id || (pkField && op.payload[pkField]);
 
@@ -90,27 +90,57 @@ function validatePush(body) {
           errors.push(`${prefix}.payload.idaccount must be a valid number`);
         }
 
-        // Validate update_at for LWW (CSDL mới: update_at)
-        if (!op.payload.update_at) {
+        // Validate update_at for LWW
+        const updateAtVal = op.payload.update_at || op.payload.updatedAt;
+        if (!updateAtVal) {
           errors.push(`${prefix}.payload.update_at is required`);
-        } else if (!isValidISO(op.payload.update_at)) {
+        } else if (!isValidISO(updateAtVal)) {
           errors.push(`${prefix}.payload.update_at must be a valid ISO 8601 datetime`);
         }
 
-        // For category: validate classify if provided (CSDL mới: Thu/Chi/Vay-no)
+        // For category: validate classify if provided (Thu, Chi, Vay/no)
         if (op.entity === 'category' && op.payload.classify) {
-          if (!['Thu', 'Chi', 'Vay/no'].includes(op.payload.classify)) {
-            errors.push(`${prefix}.payload.classify must be Thu/Chi/Vay-no`);
+          const validClassify = ['Thu', 'Chi', 'Vay/no', 'Vay/ng', 'thu', 'chi'];
+          if (!validClassify.includes(op.payload.classify)) {
+            errors.push(`${prefix}.payload.classify must be Thu, Chi, or Vay/no`);
           }
         }
 
-        // For transaction: validate type + provider if provided (CSDL mới)
+        // For transaction: validate type + provider if provided
         if (op.entity === 'transaction') {
-          if (op.payload.type && !['Transaction', 'Transfer'].includes(op.payload.type)) {
-            errors.push(`${prefix}.payload.type must be Transaction/Transfer`);
+          if (op.payload.type) {
+            const validTypes = ['Transaction', 'Transfer', 'Expense', 'Income', 'Debt', 'Loan'];
+            if (!validTypes.includes(op.payload.type)) {
+              errors.push(`${prefix}.payload.type must be Transaction/Transfer/Expense/Income`);
+            }
           }
-          if (op.payload.provider && !['Manual', 'Casso', 'SMS', 'OCR'].includes(op.payload.provider)) {
-            errors.push(`${prefix}.payload.provider must be Manual/Casso/SMS/OCR`);
+          if (op.payload.provider) {
+            const validProviders = ['Manual', 'BankSync', 'Casso', 'SMS', 'ORC', 'OCR', 'Bill'];
+            if (!validProviders.includes(op.payload.provider)) {
+              errors.push(`${prefix}.payload.provider must be Manual/BankSync/Casso/SMS/ORC/Bill`);
+            }
+          }
+          if (op.payload.status) {
+            const validTxStatuses = ['Pending', 'Confirmed', 'Rejected', 'Fail'];
+            if (!validTxStatuses.includes(op.payload.status)) {
+              errors.push(`${prefix}.payload.status must be Pending/Confirmed/Rejected/Fail`);
+            }
+          }
+        }
+
+        // For bill: validate pay_status if provided
+        if (op.entity === 'bill' && op.payload.pay_status !== undefined && typeof op.payload.pay_status === 'string') {
+          const validStatuses = ['Pending', 'Payed', 'Overdue'];
+          if (!validStatuses.includes(op.payload.pay_status)) {
+            errors.push(`${prefix}.payload.pay_status must be Pending, Payed, or Overdue`);
+          }
+        }
+
+        // For budget: validate over_spending if provided
+        if (op.entity === 'budget' && op.payload.over_spending) {
+          const validOver = ['Stop', 'Over'];
+          if (!validOver.includes(op.payload.over_spending)) {
+            errors.push(`${prefix}.payload.over_spending must be Stop or Over`);
           }
         }
       }

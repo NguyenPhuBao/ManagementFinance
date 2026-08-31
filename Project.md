@@ -2211,4 +2211,68 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - **`Goal`**: Thêm mới `Start_date`, `Cycle_take_money`, `Time_cycle_take_money`, `Recurrence`, `Time_recurrence`.
   - **`Transaction`**: Chuẩn hóa đổi tên `Wallet_Transfer` $\rightarrow$ `Idwallet_transfer`, `Create_at` $\rightarrow$ `DateTransaction`, `Delete_at` $\rightarrow$ `Deleted_at`.
   - **`RefreshToken`**: Chuẩn hóa đổi tên `Expiry` $\rightarrow$ `Expired`, `Revoked` $\rightarrow$ `Status`.
-- **Trạng thái thực thi**: Đã push schema lên Supabase và khởi tạo Prisma Client thành công 100%.
+- **Trạng thái thực thi**: Đã push schema lên Supabase và khởi tạo Prisma Client thành công 100%.
+
+### 11.13. Tối Ưu Hóa Module Sync Theo CSDL Mới (2026-08-31)
+- **Tập tin cập nhật**:
+  - `src/Backend/modules/sync/sync.validation.js`: Bổ sung kiểm tra hợp lệ cho các cột mới và Enum chuẩn (`Thu/Chi/Vay/no`, `Pending/Payed/Overdue`, `Stop/Over`, `BankSync/Manual/Casso/ORC/SMS/Bill`).
+  - `src/Backend/modules/sync/sync.repository.js`:
+    - **Transaction**: Chuẩn hóa `date_transaction`, `idwallet_transfer`, `deleted_at`.
+    - **Budget**: Bổ sung `threshold_warning_amount`, `threshold_warning_percent`, `nexttime_recurrence`, loại bỏ các cột tính toán tĩnh cũ.
+    - **Bill**: Bổ sung `start_date`, `due_date`, `pay_status` (`Pending/Payed/Overdue`), `time_notification`.
+    - **Goal**: Bổ sung `start_date`, `cycle_take_money`, `time_cycle_take_money`, `status_complete` (`'True'/'False'`), `recurrence`, `time_recurrence`.
+    - **Soft Delete**: Tự động nhận diện chính xác cột `deleted_at` (bảng `transaction`) và `delete_at` (các bảng còn lại).
+- **Kiểm thử tự động**: File `Test/test_sync_new_schema.js` kiểm tra toàn bộ luồng Batch Push 7 entities, Pull dữ liệu kèm các cột mới và Soft Delete $\rightarrow$ **PASS 100%**.
+
+### 11.14. Nâng Cấp & Chuẩn Hóa Module Auth Theo CSDL Mới (2026-08-31)
+- **Tập tin cập nhật**:
+  - `src/Backend/modules/auth/auth.repository.js`:
+    - Gán `Type: 'Basic'` mặc định và `Status: 'Active'` khi tạo tài khoản mới.
+    - Chuẩn hóa `purpose` bảng `OTP_code` thành: `'Register'`, `'Reset_password'`, `'Change_email'`.
+    - Cập nhật `getProfile`, `updateProfile` trả về đầy đủ `country_code`, `type`, `status`.
+  - `src/Backend/modules/auth/auth.service.js`:
+    - **RefreshToken**: Cập nhật ánh xạ sang cột `Expired` (thay vì `Expiry`) và `Status: false/true` (thay vì `Revoked`).
+    - **Session & Response**: Mở rộng payload JWT và dữ liệu trả về cho các endpoint `login`, `register`, `me`: bổ sung `type`, `status`, `phone`, `country_code`.
+    - **Token Reuse Detection**: Tự động thu hồi toàn bộ token của tài khoản khi phát hiện token cũ đã bị revoke (`Status = true`).
+- **Kiểm thử tự động**:
+  - `Test/test_auth_new_schema.js`: Kiểm thử trọn vẹn luồng Đăng ký OTP $\rightarrow$ Đăng nhập $\rightarrow$ Refresh Token $\rightarrow$ Logout $\rightarrow$ Profile $\rightarrow$ **PASS 100%**.
+  - `Test/test_req_statuses.js`: Kiểm thử hồi quy 12/12 trạng thái Request & Audit Log $\rightarrow$ **PASS 100%**.
+
+### 11.15. Nâng Cấp Module Bank & Mở Rộng Độ Dài Tên Ví Wallet (2026-08-31)
+- **Cập nhật CSDL Supabase PostgreSQL & Prisma Schema**:
+  - Cột `Name` trong bảng `Wallet` được nâng cấp từ `varchar(40)` lên `varchar(100)` theo chỉ đạo của PO để lưu trữ trọn vẹn tên ví ngân hàng dài.
+- **Tập tin cập nhật**:
+  - `src/Backend/modules/bank/bank.repository.js`: Chuẩn hóa `Connect_status = 'Active'` và dùng `crypto.randomUUID()`.
+  - `src/Backend/workers/bank.worker.js`:
+    - Gán `date_transaction: txDate` (ánh xạ `DateTransaction`) khi tạo giao dịch từ webhook ngân hàng.
+    - Gán `provider: 'BankSync'` và hỗ trợ tên ví dài tối đa 100 ký tự.
+- **Kiểm thử tự động**:
+  - `Test/test_bank_new_schema.js`: Kiểm thử luồng Upsert Bank Account từ Casso $\rightarrow$ Tạo ví liên kết với Name dài 73+ ký tự $\rightarrow$ Tạo giao dịch webhook $\rightarrow$ Chống trùng lặp (Idempotency) $\rightarrow$ **PASS 100%**.
+
+### 11.16. Hoàn Thiện 100% Module Bank & Tách Biệt Module Notification (2026-08-31)
+- **Cập nhật CSDL Supabase PostgreSQL & Prisma Schema**:
+  - Bổ sung cột **`Status`** (`Varchar(10)`) vào bảng **`Transaction`** với ràng buộc `Check in (Pending, Confirmed, Rejected, Fail) - Default Confirmed`.
+  - Các giao dịch tự động từ `BankSync`, `SMS`, `ORC` được khởi tạo là `Pending` chờ duyệt; giao dịch `Manual` mặc định là `Confirmed`.
+- **Tập tin cập nhật**:
+  - `src/Backend/modules/bank/bank.repository.js`: Bổ sung `getPendingTransactions`, `confirmTransaction`, `rejectTransaction`, `failTransaction`.
+  - `src/Backend/modules/bank/bank.service.js` & `bank.controller.js` & `bank.routes.js`:
+    - Thêm API `GET /api/bank/pending-transactions` (lấy danh sách giao dịch chờ duyệt).
+    - Thêm API `POST /api/bank/confirm-transaction` (xác nhận duyệt và gán danh mục).
+    - Thêm API `POST /api/bank/reject-transaction` (từ chối giao dịch ngân hàng).
+  - `src/Backend/workers/bank.worker.js`: Tạo giao dịch với `status: 'Pending'` và phát sự kiện `bank_transaction.pending` lên EventBus.
+  - `src/Backend/modules/notification/notification.service.js`: Lắng nghe sự kiện `bank_transaction.pending` từ EventBus và phát Socket.io realtime `bank_transaction.incoming` tới phòng riêng `account_${idaccount}` của Client. Tách biệt hoàn toàn xử lý thông báo khỏi Module Bank.
+  - `src/Backend/modules/sync/sync.validation.js` & `sync.repository.js`: Bổ sung hỗ trợ và validation cho trường `status` (`Pending`, `Confirmed`, `Rejected`, `Fail`).
+- **Kiểm thử tự động**:
+  - `Test/test_bank_full_flow.js`: Kiểm thử trọn vẹn luồng Webhook Casso $\rightarrow$ Ghi nhận `Pending` $\rightarrow$ Phát sự kiện Notification $\rightarrow$ Lấy danh sách Pending $\rightarrow$ Duyệt `Confirmed` $\rightarrow$ Từ chối `Rejected` $\rightarrow$ Đồng bộ Sync $\rightarrow$ **PASS 100%**.
+  - `Test/test_sync_new_schema.js`: Hồi quy Module Sync $\rightarrow$ **PASS 100%**.
+
+### 11.17. Tối Ưu Hóa & Nâng Cấp Module Admin Theo CSDL Mới (2026-08-31)
+- **Tập tin cập nhật**:
+  - `src/Backend/modules/admin/admin.repository.js`:
+    - Bổ sung `type: true` (Basic/Premium) và `update_at: true` trong các truy vấn người dùng `getAllUsers`, `getUserById`.
+    - Chuẩn hóa truy vấn `auditlog` cho `getLoginLogsByRange` và `getRequestLogsByRange`.
+  - `src/Backend/modules/admin/admin.service.js`:
+    - Map `type: u.account.type || 'Basic'` và `updated_at` vào DTO trả về cho Admin Web.
+    - Validate ràng buộc `classify` (`Thu`, `Chi`, `Vay`, `no`) trong `addCategory` và `updateCategory`.
+- **Kiểm thử tự động**:
+  - `Test/test_admin_new_schema.js`: Kiểm thử trọn vẹn Dashboard Stats, User Management, Category Management, Audit Log Stats $\rightarrow$ **PASS 100%**.
