@@ -1,14 +1,10 @@
 const { Worker } = require('bullmq');
+const { randomUUID } = require('crypto');
 const logger = require('../core/logger');
 const { prisma } = require('../config/db');
-const { v4: uuidv4 } = require('uuid');
 const eventBus = require('../core/event-bus');
 
 const Redis = require('ioredis');
-/**const connection = {
-  host: process.env.REDIS_HOST || 'localhost',
-  port: parseInt(process.env.REDIS_PORT, 10) || 6379,
-}; */
 const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
   maxRetriesPerRequest: null,
 });
@@ -44,7 +40,11 @@ const bankWorker = new Worker(
 
     // 2. Tìm tài khoản NH dựa trên subAccId (số tài khoản)
     const bankAcc = await prisma.bank_account.findFirst({
-      where: { account_number: String(subAccId), connect_status: 'active', delete_at: null }
+      where: {
+        account_number: String(subAccId),
+        connect_status: { in: ['Active', 'active'] },
+        delete_at: null,
+      },
     });
 
     if (!bankAcc) {
@@ -57,9 +57,9 @@ const bankWorker = new Worker(
     // 3. Khử trùng lặp qua (provider, bank_tran_id) — CSDL mới
     const existing = await prisma.transaction.findFirst({
       where: {
-        provider: 'Casso',
-        bank_tran_id: String(tid)
-      }
+        provider: { in: ['BankSync', 'Casso'] },
+        bank_tran_id: String(tid),
+      },
     });
 
     if (existing) {
@@ -70,7 +70,7 @@ const bankWorker = new Worker(
     // 4. Tìm hoặc tạo ví đồng bộ (wallet) tương ứng với tài khoản NH này
     // CSDL mới: ví từ Casso = Type 'Banking' + Id_bank_casso
     let wallet = await prisma.wallet.findFirst({
-      where: { idaccount, id_bank_casso: bankAcc.id_bank_account, delete_at: null }
+      where: { idaccount, id_bank_casso: bankAcc.id_bank_account, delete_at: null },
     });
 
     // Tính toán số dư mới: ưu tiên cusum_balance từ ngân hàng, nếu thiếu sẽ fallback cộng dồn
@@ -85,62 +85,73 @@ const bankWorker = new Worker(
         accountNumber: bankAcc.account_number,
         currentBalance: Number(bankAcc.balance),
         amount,
-        computedNewBalance: newBalance
+        computedNewBalance: newBalance,
       });
     }
 
     if (!wallet) {
       const bankDisplayName = bankAcc.bank_name || 'Bank';
       const rawWalletName = `${bankDisplayName} - ${bankAcc.account_number}`;
+      // CSDL mới: name nvarchar(100)
       const walletName = rawWalletName.length > 100 ? rawWalletName.substring(0, 100) : rawWalletName;
 
       wallet = await prisma.wallet.create({
         data: {
-          idwallet: uuidv4(),
+          idwallet: randomUUID(),
           idaccount,
           name: walletName,
           type: 'Banking',
           id_bank_casso: bankAcc.id_bank_account,
           balance: newBalance,
-          update_at: new Date()
-        }
+          update_at: new Date(),
+        },
       });
     }
 
     // 5. Tạo giao dịch mới
-    // CSDL mới: Amount GIỮ DẤU ± (dương = vào, âm = ra), type = Transaction, Idcategory = NULL chờ phân loại
+    // CSDL mới: date_transaction, provider = 'BankSync', bank_tran_id
     const parsedDate = when ? new Date(when) : new Date();
     const txDate = isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
 
     const newTx = await prisma.transaction.create({
       data: {
-        idtran: uuidv4(),
+        idtran: randomUUID(),
         idaccount,
         idwallet: wallet.idwallet,
-        amount: amount, // giữ nguyên dấu từ Casso
+        amount: amount, // giữ nguyên dấu từ Casso (dương = vào, âm = ra)
         type: 'Transaction',
+        status: 'Pending', // CSDL mới: Giao dịch ngân hàng luôn khởi tạo Pending chờ người dùng duyệt
         note: description,
-        create_at: txDate,
+        date_transaction: txDate, // CSDL mới: DateTransaction
         update_at: new Date(),
-        provider: 'Casso',
+        provider: 'BankSync', // CSDL mới: BankSync
         bank_tran_id: String(tid),
-        idcategory: null // chờ AI phân loại sau
-      }
+        idcategory: null, // chờ AI phân loại và người dùng duyệt
+      },
     });
 
     // 6. Cập nhật số dư cho cả bank_account và wallet
     await prisma.bank_account.update({
       where: { id_bank_account: bankAcc.id_bank_account },
-      data: { balance: newBalance, update_at: new Date() }
+      data: { balance: newBalance, update_at: new Date() },
     });
 
     await prisma.wallet.update({
       where: { idwallet: wallet.idwallet },
-      data: { balance: newBalance, update_at: new Date() }
+      data: { balance: newBalance, update_at: new Date() },
     });
 
-    // 7. Phát sự kiện để báo cho Sync/Notification/Classify
+    // 7. Phát sự kiện sang Module Notification và EventBus hệ thống
     if (eventBus && eventBus.publish) {
+      await eventBus.publish('bank_transaction.pending', {
+        idtran: newTx.idtran,
+        idaccount,
+        amount: newTx.amount,
+        bankName: bankAcc.bank_name,
+        accountNumber: bankAcc.account_number,
+        description: newTx.note,
+        date: newTx.date_transaction,
+      });
       await eventBus.publish('transaction.created', { transactionId: newTx.idtran, idaccount });
     }
 

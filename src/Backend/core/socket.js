@@ -21,6 +21,15 @@ function initSocket(httpServer) {
   io.on('connection', (socket) => {
     logger.info(`[Socket] Client connected: ${socket.id}`);
 
+    // Cho phép client join room theo idaccount để nhận thông báo riêng tư
+    socket.on('join_account', (idaccount) => {
+      if (idaccount) {
+        const room = `account_${idaccount}`;
+        socket.join(room);
+        logger.info(`[Socket] Client ${socket.id} joined room ${room}`);
+      }
+    });
+
     socket.on('disconnect', (reason) => {
       logger.info(`[Socket] Client disconnected: ${socket.id} (${reason})`);
     });
@@ -58,8 +67,30 @@ function emitAuditActivity(activityData) {
   }
 }
 
+/**
+ * Phát thông báo giao dịch ngân hàng mới tới Client-app của user
+ * @param {number} idaccount 
+ * @param {Object} txData 
+ */
+function emitBankTransaction(idaccount, txData) {
+  if (!io) {
+    logger.warn('[Socket] Attempted to emit bank transaction before Socket.io initialized');
+    return;
+  }
+  try {
+    const room = `account_${idaccount}`;
+    io.to(room).emit('bank_transaction.incoming', txData);
+    // Đồng thời phát chung để client đang ở chế độ broadcast cũng nhận được
+    io.emit(`bank_transaction:${idaccount}`, txData);
+    logger.info(`[Socket] Emitted bank_transaction.incoming to room ${room}`, { idtran: txData.idtran });
+  } catch (error) {
+    logger.error('[Socket] Failed to emit bank transaction', { error: error.message });
+  }
+}
+
 module.exports = {
   initSocket,
   getIO,
   emitAuditActivity,
+  emitBankTransaction,
 };

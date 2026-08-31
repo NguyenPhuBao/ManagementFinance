@@ -20,7 +20,6 @@ const bankService = {
 
   /**
    * Lấy lịch sử giao dịch (Chủ yếu từ Casso trực tiếp nếu cần xem nhanh)
-   * Tuy nhiên giao dịch thực tế sẽ được webhook đẩy về DB.
    */
   async getTransactions(fromDate) {
     return cassoClient.getTransactions(fromDate);
@@ -52,12 +51,50 @@ const bankService = {
         attempts: 3,
         backoff: {
           type: 'exponential',
-          delay: 2000
-        }
+          delay: 2000,
+        },
       });
       logger.info(`Enqueued webhook transaction to bank-webhook queue`, { tid });
     }
-  }
+  },
+
+  /**
+   * Lấy danh sách các giao dịch ngân hàng đang ở trạng thái Pending của người dùng
+   */
+  async getPendingTransactions(idaccount) {
+    return bankRepository.getPendingTransactions(idaccount);
+  },
+
+  /**
+   * Xác nhận duyệt giao dịch ngân hàng (Gán danh mục, chuyển sang Confirmed)
+   */
+  async confirmTransaction(idaccount, { idtran, idcategory, note }) {
+    if (!idtran) {
+      throw new Error('Thiếu idtran của giao dịch cần xác nhận');
+    }
+
+    try {
+      const updated = await bankRepository.confirmTransaction(idtran, idaccount, { idcategory, note });
+      logger.info('Bank transaction confirmed successfully', { idtran, idaccount, idcategory });
+      return updated;
+    } catch (error) {
+      logger.error('Failed to confirm bank transaction, marking as Fail', { idtran, idaccount, error: error.message });
+      await bankRepository.failTransaction(idtran, idaccount).catch(() => {});
+      throw error;
+    }
+  },
+
+  /**
+   * Từ chối giao dịch ngân hàng (Chuyển sang Rejected)
+   */
+  async rejectTransaction(idaccount, idtran) {
+    if (!idtran) {
+      throw new Error('Thiếu idtran của giao dịch cần từ chối');
+    }
+    const rejected = await bankRepository.rejectTransaction(idtran, idaccount);
+    logger.info('Bank transaction rejected', { idtran, idaccount });
+    return rejected;
+  },
 };
 
 module.exports = bankService;

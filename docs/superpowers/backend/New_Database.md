@@ -33,7 +33,7 @@
 |---|---|---|---|
 | Iduser | int | PK Auto Increment | Mã người dùng |
 | Idaccount | int | FK Account(Idaccount), UNIQUE | Người dùng có tài khoản là gì - Mã tài khoản |
-| Fullname | nvarchar(10 0) | | Họ & tên |
+| Fullname | nvarchar(100) | | Họ & tên |
 | Email | varchar(100) | UNIQUE | Email người dùng |
 | Phone | varchar(15) | NULL | Số điện thoại |
 | Address | Text | NULL | Địa chỉ người dùng |
@@ -108,7 +108,7 @@
 | Idwallet | varchar(36) | PK - uuid | Mã định danh ví ảo |
 | Idaccount | int | FK - Account (Idaccount) | Ví thuộc về ai - Mã tài khoản |
 | Id_bank_casso | varchar(136) | FK - Account_Bank (Id_bank_account) - NULL | Mã định danh ngân hàng từ Casso nếu đó là ví được tạo từ liên kết ngân hàng |
-| Name | nvarchar(40) | | Tên ví |
+| Name | nvarchar(100) | | Tên ví |
 | Type | varchar(7) | Check in (Cash, Bank, Saving, Banking) - Default | Loại ví: - Cash: ví tiền mặt ảo - Bank: ví ngân hàng ảo |
 | Balance | decimal(15,2) | Default 0 | Số dư ví |
 | Currency | Varchar(3) | Check in (VND, USD) - Default VND | Loại tiền tệ |
@@ -203,6 +203,7 @@
 | Bank_tran_id | varchar(100) | NULL | Mã giao dịch nhận được phía liên kết ngân hàng khi có giao dịch - chống trùng |
 | Amount | Decimal(15,2) | | Số tiền giao dịch |
 | Type | Varchar(20) | Check in (Transaction, Transfer) | Loại giao dịch: - Transaction là giao dịch biến động số dư. - Transfer là chuyển đổi số tiền, không phải là giao dịch biến động số dư. |
+| Status | Varchar(10) | Check in (Pending, Confirmed, Rejected, Fail) - Default Confirmed | Trạng thái của 1 giao dịch: - Pending: Giao dịch phát hiện từ Ngân hàng (Casso)/SMS/OCR đang chờ người dùng duyệt & chọn danh mục. - Confirmed: Giao dịch đã được xác nhận chính thức, được tính vào báo cáo & ngân sách. - Rejected: Giao dịch bị người dùng từ chối / loại bỏ. - Fail: giao dịch đã được xác nhận xử lý nhưng do lỗi backend nên xử lý thất bại. (Lưu ý: Các giao dịch từ SMS, ORC, BankSync mặc định là Pending khi vừa ghi nhận; giao dịch Manual mặc định là Confirmed) |
 | Provider | Varchar(40) | Check in (Manual, BankSync, SMS, ORC, Bill) | Nguồn tạo giao dịch, Chống trùng theo nguồn: - Manual: giao dịch tạo thủ công - BankSync: Ngân hàng được liên kết - SMS: tin nhắn SMS - ORC: đọc dữ liệu từ hình ảnh - Bill: thanh toán hóa đơn theo chu kỳ |
 | Note | Text | | Ghi chú cho giao dịch |
 | Images | Text | Null | Hình ảnh đi kèm giao dịch |

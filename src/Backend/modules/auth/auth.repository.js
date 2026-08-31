@@ -1,12 +1,22 @@
 const { prisma } = require('../../config/db');
 
+// Chuẩn hóa purpose sang enum CSDL (Register, Reset_password, Change_email)
+function normalizePurpose(p) {
+  if (!p) return 'Register';
+  const lower = p.toLowerCase();
+  if (lower.includes('register')) return 'Register';
+  if (lower.includes('reset') || lower.includes('password')) return 'Reset_password';
+  if (lower.includes('email')) return 'Change_email';
+  return p;
+}
+
 const authRepository = {
   async findAccountByUsername(username) {
     return prisma.account.findUnique({
       where: { username },
       include: {
         role: { select: { idrole: true, rolename: true } },
-        User:   { select: { iduser: true, fullname: true, email: true } },
+        User: { select: { iduser: true, fullname: true, email: true, phone: true, country_code: true, address: true } },
       },
     });
   },
@@ -17,12 +27,13 @@ const authRepository = {
       where: { email },
       include: {
         role: { select: { idrole: true, rolename: true } },
-        User: { select: { iduser: true, fullname: true, email: true } },
+        User: { select: { iduser: true, fullname: true, email: true, phone: true, country_code: true, address: true } },
       },
     });
   },
 
   async findAccountByUsernameOrEmail(identifier) {
+    if (!identifier) return null;
     return prisma.account.findFirst({
       where: {
         OR: [
@@ -32,7 +43,7 @@ const authRepository = {
       },
       include: {
         role: { select: { idrole: true, rolename: true } },
-        User: { select: { iduser: true, fullname: true, email: true } },
+        User: { select: { iduser: true, fullname: true, email: true, phone: true, country_code: true, address: true } },
       },
     });
   },
@@ -45,7 +56,7 @@ const authRepository = {
           email: data.email, // CSDL mới: Account bắt buộc có email (đồng bộ User.email)
           password: data.hashedPassword,
           status: 'Active',
-          type: 'Basic', // CSDL mới: loại tài khoản mặc định
+          type: data.type || 'Basic', // CSDL mới: loại tài khoản mặc định Basic
           idrole: 2,
         },
       });
@@ -54,38 +65,46 @@ const authRepository = {
           fullname: data.fullname,
           email: data.email,
           phone: data.phone || null,
+          country_code: data.country_code || null,
           idaccount: account.idaccount,
         },
       });
       return {
         ...account,
         role: { idrole: 2, rolename: 'user' },
-        User: { iduser: user.iduser, fullname: user.fullname, email: user.email },
+        User: {
+          iduser: user.iduser,
+          fullname: user.fullname,
+          email: user.email,
+          phone: user.phone,
+          country_code: user.country_code,
+        },
       };
     });
   },
 
   async createOtp(email, idaccount, codeHash, purpose, expiresAt) {
-    // CSDL mới: OTP có Idaccount FK (nullable đối với mục đích 'register')
+    // CSDL mới: OTP có Idaccount FK (nullable đối với mục đích 'Register')
+    const normalized = normalizePurpose(purpose);
     return prisma.otp_code.create({
-      data: { 
-        email, 
-        idaccount: idaccount || null, 
-        code_hash: codeHash, 
-        purpose, 
-        expires_at: expiresAt, 
-        is_used: false 
+      data: {
+        email,
+        idaccount: idaccount || null,
+        code_hash: codeHash,
+        purpose: normalized,
+        expires_at: expiresAt,
+        is_used: false,
       },
     });
   },
 
   async findValidOtp(idaccount, codeHash, purpose) {
-    // Tra theo idaccount + purpose (cho reset_password, change_email)
+    const normalized = normalizePurpose(purpose);
     return prisma.otp_code.findFirst({
       where: {
         idaccount,
         code_hash: codeHash,
-        purpose,
+        purpose: { in: [normalized, purpose, purpose.toLowerCase()] },
         is_used: false,
         expires_at: { gt: new Date() },
       },
@@ -94,12 +113,12 @@ const authRepository = {
   },
 
   async findValidOtpByEmail(email, codeHash, purpose) {
-    // Tra theo email + purpose (cho register khi chưa có idaccount)
+    const normalized = normalizePurpose(purpose);
     return prisma.otp_code.findFirst({
       where: {
         email,
         code_hash: codeHash,
-        purpose,
+        purpose: { in: [normalized, purpose, purpose.toLowerCase()] },
         is_used: false,
         expires_at: { gt: new Date() },
       },
@@ -119,7 +138,7 @@ const authRepository = {
       where: { idaccount },
       include: {
         role: { select: { idrole: true, rolename: true } },
-        User: true,
+        User: { select: { iduser: true, fullname: true, email: true, phone: true, country_code: true, address: true } },
       },
     });
   },
@@ -158,14 +177,33 @@ const authRepository = {
   async getProfile(idaccount) {
     return prisma.user.findUnique({
       where: { idaccount },
+      include: {
+        account: {
+          select: {
+            username: true,
+            status: true,
+            type: true,
+            idrole: true,
+            role: { select: { rolename: true } },
+          },
+        },
+      },
     });
   },
 
   async updateProfile(idaccount, data) {
-    // CSDL mới: location → country_code
     return prisma.user.update({
       where: { idaccount },
       data: { ...data, update_at: new Date() },
+      include: {
+        account: {
+          select: {
+            username: true,
+            status: true,
+            type: true,
+          },
+        },
+      },
     });
   },
 
@@ -231,19 +269,6 @@ const authRepository = {
       items,
     };
   },
-
-  async findAccountByUsernameOrEmail(identifier) {
-    if (!identifier) return null;
-    return prisma.account.findFirst({
-      where: {
-        OR: [{ username: identifier }, { email: identifier }],
-      },
-      include: {
-        User: { select: { fullname: true } },
-      },
-    });
-  },
 };
 
 module.exports = authRepository;
-

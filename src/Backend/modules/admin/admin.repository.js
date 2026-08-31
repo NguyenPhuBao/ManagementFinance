@@ -1,3 +1,4 @@
+const { randomUUID } = require('crypto');
 const { prisma } = require('../../config/db');
 
 const adminRepository = {
@@ -43,10 +44,14 @@ const adminRepository = {
         address: true,
         country_code: true,
         create_at: true,
+        update_at: true,
         account: {
           select: {
+            idaccount: true,
             username: true,
             status: true,
+            type: true,
+            update_at: true,
           },
         },
       },
@@ -68,9 +73,12 @@ const adminRepository = {
         update_at: true,
         account: {
           select: {
+            idaccount: true,
             username: true,
             status: true,
+            type: true,
             idrole: true,
+            update_at: true,
             role: { select: { rolename: true } },
           },
         },
@@ -83,14 +91,22 @@ const adminRepository = {
       where: { iduser, account: { idrole: 2 } },
       data: {
         account: {
-          update: { status: newStatus },
+          update: {
+            status: newStatus,
+            update_at: new Date(),
+          },
         },
+        update_at: new Date(),
       },
       select: {
         iduser: true,
         fullname: true,
         account: {
-          select: { status: true },
+          select: {
+            username: true,
+            status: true,
+            type: true,
+          },
         },
       },
     });
@@ -124,10 +140,9 @@ const adminRepository = {
   },
 
   async createCategory(data) {
-    const crypto = require('crypto');
     return prisma.category.create({
       data: {
-        idcategory: crypto.randomUUID(),
+        idcategory: randomUUID(),
         create_by: data.created_by,
         name_category: data.name,
         classify: data.classify,

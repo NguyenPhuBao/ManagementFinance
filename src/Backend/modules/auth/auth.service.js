@@ -67,7 +67,8 @@ async function saveRefreshToken(token, payload, req) {
       token_hash: hashToken(token),
       idaccount: payload.idaccount,
       idrole: payload.idrole,
-      expiry: new Date(decoded.exp * 1000),
+      expired: new Date(decoded.exp * 1000), // CSDL mới: Expired
+      status: false, // CSDL mới: Status = false (còn hiệu lực)
       ip_address: device.ip_address,
       user_agent: device.user_agent,
       device_name: device.device_name,
@@ -95,8 +96,8 @@ const authService = {
     const codeHash = hashOtp(otp);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 phút
 
-    // 4. Lưu vào bảng otp_code với idaccount = null, purpose = 'register'
-    await authRepository.createOtp(data.email, null, codeHash, 'register', expiresAt);
+    // 4. Lưu vào bảng otp_code với idaccount = null, purpose = 'Register'
+    await authRepository.createOtp(data.email, null, codeHash, 'Register', expiresAt);
 
     // 5. Gửi email OTP
     await emailService.sendOtp(data.email, otp, 'register');
@@ -114,8 +115,8 @@ const authService = {
     // 1. Hash OTP đầu vào
     const codeHash = hashOtp(data.otp);
 
-    // 2. Tìm OTP record hợp lệ theo email và purpose = 'register'
-    const record = await authRepository.findValidOtpByEmail(data.email, codeHash, 'register');
+    // 2. Tìm OTP record hợp lệ theo email và purpose = 'Register'
+    const record = await authRepository.findValidOtpByEmail(data.email, codeHash, 'Register');
     if (!record) {
       throw Object.assign(new Error("Mã OTP không hợp lệ hoặc đã hết hạn"), { statusCode: 400 });
     }
@@ -123,7 +124,7 @@ const authService = {
     // 3. Đánh dấu OTP đã sử dụng
     await authRepository.markOtpUsed(record.id_otp);
 
-    // 4. Kiểm tra lại race condition (tránh trường hợp username/email bị đăng ký trong lúc chờ nhập OTP)
+    // 4. Kiểm tra lại race condition
     const existingUsername = await authRepository.findAccountByUsername(data.username);
     if (existingUsername) {
       throw Object.assign(new Error("Username đã được sử dụng"), { statusCode: 409 });
@@ -145,6 +146,8 @@ const authService = {
       fullname: data.fullname,
       email: data.email,
       phone: data.phone || null,
+      country_code: data.country_code || null,
+      type: 'Basic',
     });
 
     // 7. Tạo JWT payload
@@ -153,6 +156,8 @@ const authService = {
       username: account.username,
       idrole: account.idrole,
       rolename: account.role.rolename,
+      type: account.type || 'Basic',
+      status: account.status || 'Active',
     };
 
     // 8. Generate tokens & lưu refresh token
@@ -170,6 +175,10 @@ const authService = {
         rolename: account.role.rolename,
         fullname: account.User.fullname,
         email: account.User.email,
+        phone: account.User.phone,
+        country_code: account.User.country_code,
+        type: account.type || 'Basic',
+        status: account.status || 'Active',
       },
     };
   },
@@ -201,6 +210,8 @@ const authService = {
       fullname: data.fullname,
       email: data.email,
       phone: data.phone || null,
+      country_code: data.country_code || null,
+      type: 'Basic',
     });
 
     // 5. Tao JWT payload
@@ -209,6 +220,8 @@ const authService = {
       username: account.username,
       idrole: account.idrole,
       rolename: account.role.rolename,
+      type: account.type || 'Basic',
+      status: account.status || 'Active',
     };
 
     // 6. Generate tokens (user role = 2)
@@ -226,9 +239,14 @@ const authService = {
         rolename: account.role.rolename,
         fullname: account.User.fullname,
         email: account.User.email,
+        phone: account.User.phone,
+        country_code: account.User.country_code,
+        type: account.type || 'Basic',
+        status: account.status || 'Active',
       },
     };
   },
+
   async login(username, password, req) {
     if (!req) req = {};
     const account = await authRepository.findAccountByUsername(username);
@@ -268,6 +286,8 @@ const authService = {
       username: account.username,
       idrole: account.idrole,
       rolename: account.role.rolename,
+      type: account.type || 'Basic',
+      status: account.status || 'Active',
     };
 
     const { accessToken, refreshToken } = generateTokens(payload, account.idrole);
@@ -284,7 +304,11 @@ const authService = {
         username: account.username,
         rolename: account.role.rolename,
         fullname: account.User ? account.User.fullname : "",
-        email: account.User ? account.User.email : "",
+        email: account.User ? account.User.email : (account.email || ""),
+        phone: account.User ? account.User.phone : null,
+        country_code: account.User ? account.User.country_code : null,
+        type: account.type || 'Basic',
+        status: account.status || 'Active',
       },
     };
   },
@@ -296,19 +320,22 @@ const authService = {
     const tokenHash = hashToken(oldRefreshToken);
     const storedToken = await prisma.refreshtoken.findUnique({ where: { token_hash: tokenHash } });
 
-    if (!storedToken || storedToken.revoked) {
-      if (storedToken && storedToken.revoked) {
+    // CSDL mới: Status = true nghĩa là token ĐÃ bị thu hồi
+    if (!storedToken || storedToken.status === true) {
+      if (storedToken && storedToken.status === true) {
+        // Thu hồi toàn bộ token của tài khoản nếu phát hiện dùng lại token đã revoke (Token Reuse Detection)
         await prisma.refreshtoken.updateMany({
-          where: { idaccount: storedToken.idaccount, revoked: false },
-          data: { revoked: true },
+          where: { idaccount: storedToken.idaccount, status: false },
+          data: { status: true },
         });
         logger.warn("Reused revoked refresh token - all tokens revoked", { idaccount: storedToken.idaccount });
       }
       throw Object.assign(new Error("Refresh token khong hop le"), { statusCode: 401 });
     }
 
-    if (new Date() > new Date(storedToken.expiry)) {
-      await prisma.refreshtoken.update({ where: { idtoken: storedToken.idtoken }, data: { revoked: true } });
+    // CSDL mới: Expired thay cho Expiry
+    if (new Date() > new Date(storedToken.expired)) {
+      await prisma.refreshtoken.update({ where: { idtoken: storedToken.idtoken }, data: { status: true } });
       throw Object.assign(new Error("Refresh token da het han, vui long dang nhap lai"), { statusCode: 401 });
     }
 
@@ -316,12 +343,14 @@ const authService = {
     try {
       payload = jwt.verify(oldRefreshToken, config.jwt.refreshSecret);
     } catch (err) {
-      await prisma.refreshtoken.update({ where: { idtoken: storedToken.idtoken }, data: { revoked: true } });
+      await prisma.refreshtoken.update({ where: { idtoken: storedToken.idtoken }, data: { status: true } });
       throw Object.assign(new Error("Refresh token khong hop le"), { statusCode: 401 });
     }
 
-    await prisma.refreshtoken.update({ where: { idtoken: storedToken.idtoken }, data: { revoked: true } });
+    // Thu hồi token cũ
+    await prisma.refreshtoken.update({ where: { idtoken: storedToken.idtoken }, data: { status: true } });
 
+    // Cấp token mới
     const { accessToken, refreshToken } = generateTokens(payload, payload.idrole);
     await saveRefreshToken(refreshToken, payload, req);
 
@@ -330,9 +359,10 @@ const authService = {
   },
 
   async revokeAllTokens(idaccount) {
+    // CSDL mới: Status = false là còn hiệu lực -> update thành true
     const result = await prisma.refreshtoken.updateMany({
-      where: { idaccount, revoked: false },
-      data: { revoked: true },
+      where: { idaccount, status: false },
+      data: { status: true },
     });
     logger.info("All tokens revoked", { idaccount, count: result.count });
     return result.count;
@@ -363,8 +393,8 @@ const authService = {
     const codeHash = hashOtp(otp);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-    // CSDL mới: OTP cần idaccount (FK)
-    await authRepository.createOtp(email, accountRecord.idaccount, codeHash, 'reset_password', expiresAt);
+    // CSDL mới: OTP cần idaccount (FK), purpose = 'Reset_password'
+    await authRepository.createOtp(email, accountRecord.idaccount, codeHash, 'Reset_password', expiresAt);
     await emailService.sendOtp(email, otp, 'reset_password');
     logger.info("OTP sent for forgot password", { email, idaccount: accountRecord.idaccount });
   },
@@ -376,7 +406,7 @@ const authService = {
     const accountRecord = await authRepository.findAccountByEmail(email);
     if (!accountRecord) throw Object.assign(new Error("Email không tồn tại"), { statusCode: 400 });
 
-    const record = await authRepository.findValidOtp(accountRecord.idaccount, codeHash, 'reset_password');
+    const record = await authRepository.findValidOtp(accountRecord.idaccount, codeHash, 'Reset_password');
     if (!record) throw Object.assign(new Error("Mã OTP không hợp lệ hoặc đã hết hạn"), { statusCode: 400 });
 
     await authRepository.markOtpUsed(record.id_otp);
@@ -447,6 +477,10 @@ const authService = {
       phone: user.phone,
       address: user.address,
       country_code: user.country_code,
+      type: user.account?.type || 'Basic',
+      status: user.account?.status || 'Active',
+      username: user.account?.username,
+      rolename: user.account?.role?.rolename || 'user',
     };
   },
 
@@ -465,6 +499,8 @@ const authService = {
       phone: updated.phone,
       address: updated.address,
       country_code: updated.country_code,
+      type: updated.account?.type || 'Basic',
+      status: updated.account?.status || 'Active',
     };
   },
 
@@ -477,8 +513,8 @@ const authService = {
     const codeHash = hashOtp(otp);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-    // CSDL mới: OTP cần idaccount
-    await authRepository.createOtp(newEmail, idaccount, codeHash, 'change_email', expiresAt);
+    // CSDL mới: OTP cần idaccount, purpose = 'Change_email'
+    await authRepository.createOtp(newEmail, idaccount, codeHash, 'Change_email', expiresAt);
     await emailService.sendOtp(newEmail, otp, 'change_email');
     logger.info("OTP sent for email change", { newEmail, idaccount });
   },
@@ -486,53 +522,38 @@ const authService = {
   // ---------- CONFIRM EMAIL CHANGE ----------
   async confirmEmailChange(idaccount, newEmail, otp) {
     const codeHash = hashOtp(otp);
-    const record = await authRepository.findValidOtp(idaccount, codeHash, 'change_email');
+    const record = await authRepository.findValidOtp(idaccount, codeHash, 'Change_email');
     if (!record) throw Object.assign(new Error("Mã OTP không hợp lệ hoặc đã hết hạn"), { statusCode: 400 });
 
     await authRepository.markOtpUsed(record.id_otp);
     // CSDL mới: updateEmail đồng bộ cả 2 bảng (Account.Email + User.Email)
     await authRepository.updateEmail(idaccount, newEmail);
 
-    // Thu hồi token để user phải đăng nhập lại với email mới (optional, nhưng an toàn hơn)
+    // Thu hồi token để user phải đăng nhập lại với email mới
     await this.revokeAllTokens(idaccount);
 
     logger.info("Email changed successfully", { newEmail, idaccount });
   },
 
   // ---------- AUDIT LOG HELPERS (7 TRẠNG THÁI CHUẨN) ----------
-  // 1. Accepted    (202 / Đã tiếp nhận đưa vào queue)
-  // 2. Pending     (Chờ worker/queue xử lý)
-  // 3. Processing  (Đang tính toán/xử lý ngầm)
-  // 4. Pass        (200, 201 / Thành công)
-  // 5. Rejected    (400, 401, 403, 429 / Bị từ chối, chặn)
-  // 6. Fail        (500+ / Lỗi hệ thống, crash máy chủ)
-  // 7. Interrupted (Client ngắt kết nối giữa chừng)
   VALID_REQ_STATUSES: ['Accepted', 'Rejected', 'Interrupted', 'Pending', 'Processing', 'Pass', 'Fail'],
 
   determineReqStatus(res, req) {
-    // 1. Nếu có trạng thái gán chủ động từ middleware/worker (Pending, Processing, Interrupted, Accepted...)
     if (req && req.auditStatus && this.VALID_REQ_STATUSES.includes(req.auditStatus)) {
       return req.auditStatus;
     }
 
     const statusCode = (res && res.statusCode) || 200;
 
-    // 2. HTTP 202 -> Accepted (Đã tiếp nhận xử lý ngầm)
     if (statusCode === 202) {
       return 'Accepted';
     }
-
-    // 3. HTTP 200..299 -> Pass (Thành công)
     if (statusCode >= 200 && statusCode < 300) {
       return 'Pass';
     }
-
-    // 4. HTTP 400, 401, 403, 429 -> Rejected (Bị máy chủ từ chối / chặn)
     if (statusCode === 400 || statusCode === 401 || statusCode === 403 || statusCode === 429) {
       return 'Rejected';
     }
-
-    // 5. HTTP 500+ -> Fail (Lỗi máy chủ nội bộ)
     if (statusCode >= 500) {
       return 'Fail';
     }

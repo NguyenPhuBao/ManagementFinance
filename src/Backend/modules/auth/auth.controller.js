@@ -80,6 +80,8 @@ const authController = {
       username: req.user.username,
       idrole: req.user.idrole,
       rolename: req.user.rolename,
+      type: req.user.type || 'Basic',
+      status: req.user.status || 'Active',
     }, 'Token hợp lệ');
   },
 
