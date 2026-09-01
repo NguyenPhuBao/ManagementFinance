@@ -16,6 +16,7 @@ import '../../features/goal/presentation/bloc/goal_cubit.dart';
 import '../../features/wallet/data/datasources/wallet_local_data_source.dart';
 import '../../features/wallet/data/repositories/wallet_repository.dart';
 import '../../features/wallet/data/repositories/wallet_repository_impl.dart';
+import '../../features/wallet/data/services/default_account_data_initializer.dart';
 import '../../features/wallet/presentation/bloc/wallet_cubit.dart';
 import '../../features/transaction/data/datasources/transaction_local_data_source.dart';
 import '../../features/transaction/data/repositories/transaction_repository.dart';
@@ -62,14 +63,17 @@ Future<void> setupDependencies() async {
   sl.registerLazySingleton<AuthRepository>(
     () => AuthRepositoryImpl(
       remoteDataSource: sl(),
-      localDataSource:  sl(),
-      secureStorage:    sl(),
+      localDataSource: sl(),
+      secureStorage: sl(),
     ),
   );
 
   // BLoC (factory → tạo mới mỗi lần gọi sl<AuthBloc>())
   sl.registerFactory<AuthBloc>(
-    () => AuthBloc(authRepository: sl()),
+    () => AuthBloc(
+      authRepository: sl(),
+      defaultAccountDataInitializer: sl(),
+    ),
   );
 
   // ── 5. Features — Wallet ──────────────────────────────────────────────────
@@ -78,6 +82,9 @@ Future<void> setupDependencies() async {
   );
   sl.registerLazySingleton<WalletRepository>(
     () => WalletRepositoryImpl(localDataSource: sl(), syncEngine: sl()),
+  );
+  sl.registerLazySingleton<DefaultAccountDataInitializer>(
+    () => DefaultAccountDataInitializer(sl()),
   );
   // Factory: tạo WalletCubit mới cho mỗi trang, tự hủy khi trang đóng
   sl.registerFactory<WalletCubit>(

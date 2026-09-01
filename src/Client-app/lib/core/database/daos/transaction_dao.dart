@@ -114,7 +114,12 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
 
   /// Pending sync records
   Future<List<Transaction>> getPending([int? idaccount]) {
-    return (select(transactions)..where((t) => t.syncStatus.equals('pending')))
+    return (select(transactions)
+          ..where((t) =>
+              t.syncStatus.equals('pending') &
+              (idaccount == null
+                  ? const Constant(true)
+                  : t.idaccount.equals(idaccount))))
         .get();
   }
 

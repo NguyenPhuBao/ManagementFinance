@@ -91,12 +91,14 @@ class _WalletListViewState extends State<_WalletListView> {
             WalletLoading() => const Center(child: CircularProgressIndicator()),
             WalletError(:final message) => _ErrorView(
                 message: message,
-                onRetry: () => context.read<WalletCubit>().loadWallets(widget.idaccount),
+                onRetry: () =>
+                    context.read<WalletCubit>().loadWallets(widget.idaccount),
               ),
             WalletLoaded(:final wallets, :final totalBalance) ||
             WalletOperating(:final wallets, :final totalBalance) ||
             WalletOperationSuccess(:final wallets, :final totalBalance) =>
-              _buildContent(context, wallets, totalBalance, state is WalletOperating),
+              _buildContent(
+                  context, wallets, totalBalance, state is WalletOperating),
             _ => const Center(child: CircularProgressIndicator()),
           };
         },
@@ -114,7 +116,8 @@ class _WalletListViewState extends State<_WalletListView> {
       children: [
         SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -303,10 +306,10 @@ class _WalletListViewState extends State<_WalletListView> {
     );
     if (confirm == true && context.mounted) {
       context.read<WalletCubit>().deleteWallet(
-        walletId: wallet.id,
-        walletName: wallet.name,
-        idaccount: widget.idaccount,
-      );
+            walletId: wallet.id,
+            walletName: wallet.name,
+            idaccount: widget.idaccount,
+          );
     }
   }
 
@@ -383,7 +386,8 @@ class _WalletListViewState extends State<_WalletListView> {
                     ),
                   ),
                 ),
-                const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 20),
+                const Icon(Icons.chevron_right,
+                    color: AppColors.textSecondary, size: 20),
               ],
             ),
           ),
@@ -429,12 +433,13 @@ class _WalletItem extends StatelessWidget {
   }
 
   IconData get _iconData => switch (wallet.type) {
-    'bank'       => Icons.account_balance,
-    'ewallet'    => Icons.account_balance_wallet,
-    'investment' => Icons.trending_up,
-    'debt'       => Icons.credit_card,
-    _            => Icons.payments,
-  };
+        'bank' => Icons.account_balance,
+        'saving' => Icons.savings,
+        'ewallet' => Icons.account_balance_wallet,
+        'investment' => Icons.trending_up,
+        'debt' => Icons.credit_card,
+        _ => Icons.payments,
+      };
 
   @override
   Widget build(BuildContext context) {
@@ -488,7 +493,8 @@ class _WalletItem extends StatelessWidget {
                       if (wallet.isDefault) ...[
                         const SizedBox(width: 6),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
                             color: const Color(0xFFC8E6C9),
                             borderRadius: BorderRadius.circular(12),
@@ -530,7 +536,8 @@ class _WalletItem extends StatelessWidget {
               )
             else
               PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert, color: AppColors.textSecondary, size: 20),
+                icon: const Icon(Icons.more_vert,
+                    color: AppColors.textSecondary, size: 20),
                 onSelected: (value) {
                   if (value == 'edit') onTap?.call();
                   if (value == 'delete') onDelete?.call();

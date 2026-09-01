@@ -262,4 +262,11 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
   Future<Category?> getById(String id) {
     return (select(categories)..where((t) => t.id.equals(id))).getSingleOrNull();
   }
+
+  /// Tìm category cùng tên để ánh xạ category mặc định cục bộ sang UUID server.
+  Future<List<Category>> getByName(String name) {
+    return (select(categories)
+          ..where((t) => t.name.equals(name) & t.deletedAt.isNull()))
+        .get();
+  }
 }

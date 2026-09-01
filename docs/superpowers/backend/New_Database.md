@@ -75,7 +75,7 @@
 | Idcategory | varchar(36) | PK - uuid | Mã danh mục |
 | Create_by | int | FK - Account (Idaccount) | Ai là người tạo danh mục - mã tài khoản |
 | NameCategory | nvarchar(200) | | Tên danh mục |
-| Classify | nvarchar(7) | Check in (Thu, Chi, Vay/ng) | Phân loại danh mục |
+| Classify | nvarchar(7) | Check in (Thu, Chi, Vay/no) | Phân loại danh mục |
 | Is_default | Boolean | Default False | Có phải danh mục mặc định hay không: - có - TRUE - không - FALSE Danh mục mặc định là các danh mục sẽ có sẵn với mọi tài khoản. |
 | Is_group | Boolean | Default False | Danh mục này có phải danh mục cha hay không |
 | Idgroup | varchar(36) | NULL | Danh mục này thuộc nhóm danh mục nào - lấy id tương ứng của danh mục đó - Null thì là danh mục 1 cấp - có giá trị là danh mục thuộc nhóm danh mục nào đó |
@@ -96,7 +96,7 @@
 | Account_name | varchar(255) | | Chủ sở hữu từ Casso - Real Bank |
 | Bank_name | varchar(100) | | Tên ngân hàng từ Casso - Real Bank |
 | Balance | decimal(15,2) | Default 0 | Số dư ban đầu từ Casso - Real Bank |
-| Connect_status | varchar(12) | Check in (Active, expired, Disconnected) | Trạng thái kết nối ngân hàng với Casso: - Active: đang kết nối bình thường. - Expired: phiên xác thực kết nối hoặc API Token, cần xác thực kết nối lại. - Disconnected: Người dùng chủ động ngắt kết nối tài khoản ngân hàng. |
+| Connect_status | varchar(12) | Check in (Active, Expired, Disconnected) | Trạng thái kết nối ngân hàng với Casso: - Active: đang kết nối bình thường. - Expired: phiên xác thực kết nối hoặc API Token, cần xác thực kết nối lại. - Disconnected: Người dùng chủ động ngắt kết nối tài khoản ngân hàng. |
 | Create_at | Timestamp | default Now() | Thời điểm tạo kết nối |
 | Update_at | Timestamp | default Now() | Thời điểm cập nhật số dư hoặc trạng thái liên kết mới nhất |
 | Delete_at | Timestamp | NULL | Thời điểm ngắt kết nối |
@@ -294,7 +294,7 @@
 | PK | `Id_bank_account` |
 | FK | `Idaccount` → `Account(Idaccount)` |
 | Unique | `Id_casso_account` — 1 tài khoản Casso chỉ liên kết 1 lần |
-| Check | `Connect_status IN (Active, Inactive)` |
+| Check | `Connect_status IN (Active, Expired, Disconnected)` |
 | Default | `Connect_status='Active'` |
 | Index | `Idaccount` |
 
@@ -327,7 +327,7 @@
 | PK | `Idbill` |
 | FK | `Idaccount` → `Account(Idaccount)`; `Idwallet` → `Wallet(Idwallet)` (**BẮT BUỘC** — bắt buộc chọn ví khi tạo bill); `Idcategory` → `Category(Idcategory)` (**BẮT BUỘC** — bắt buộc chọn danh mục khi tạo bill) |
 | Check | `Amount > 0`; `Time_recurrence IN (Week, Month, Quarter, Year)` |
-| Default | `Pay_status=FALSE` |
+| Default | `Pay_status='Pending'` |
 | Index | `Idaccount`; `Idwallet`; `Idcategory` |
 
 ### 3.2.11. Goal

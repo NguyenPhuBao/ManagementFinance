@@ -5,6 +5,7 @@ import '../../shared/widgets/main_shell.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
+import '../../features/auth/presentation/pages/register_otp_page.dart';
 import '../../features/auth/presentation/pages/forgot_password_page.dart';
 import '../../features/auth/presentation/pages/otp_page.dart';
 import '../../features/auth/presentation/pages/reset_password_page.dart';
@@ -63,6 +64,7 @@ final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 const _publicRoutes = {
   '/login',
   '/register',
+  '/register/verify-otp',
   '/forgot-password',
   '/otp',
   '/reset-password'
@@ -82,21 +84,10 @@ class AppRouter {
 
         // ─── Redirect guard tập trung ─────────────────────────────────────
         redirect: (BuildContext context, GoRouterState state) {
-          final authState = authBloc.state;
-          final isGoingPublic = _publicRoutes.contains(state.matchedLocation);
-
-          // AuthInitial = chưa xác định → không redirect, chờ state
-          if (authState is AuthInitial || authState is AuthLoading) return null;
-
-          final isAuthed = authState is AuthSuccess;
-
-          // Chưa đăng nhập → bắt buộc về /login
-          if (!isAuthed && !isGoingPublic) return '/login';
-
-          // Đã đăng nhập → không cho vào lại trang login
-          if (isAuthed && isGoingPublic) return '/home';
-
-          return null; // Không cần redirect
+          return authRedirect(
+            authState: authBloc.state,
+            matchedLocation: state.matchedLocation,
+          );
         },
 
         routes: [
@@ -111,6 +102,19 @@ class AppRouter {
             builder: (_, state) {
               final email = state.extra as String? ?? '';
               return OtpPage(email: email);
+            },
+          ),
+          GoRoute(
+            path: '/register/verify-otp',
+            redirect: (_, state) =>
+                _registerOtpState(state, authBloc.state) == null
+                    ? '/register'
+                    : null,
+            builder: (_, state) {
+              final registerState = _registerOtpState(state, authBloc.state);
+              return registerState != null
+                  ? RegisterOtpPage(registerState: registerState)
+                  : const RegisterPage();
             },
           ),
           GoRoute(
@@ -286,4 +290,34 @@ class AppRouter {
               builder: (_, __) => const EditProfilePage()),
         ],
       );
+
+  static String? authRedirect({
+    required AuthState authState,
+    required String matchedLocation,
+  }) {
+    final isGoingPublic = _publicRoutes.contains(matchedLocation);
+
+    // Startup restoration may keep the requested route while token state is
+    // unresolved. Other loading states come from user-initiated auth actions.
+    if (authState is AuthInitial || authState is AuthChecking) return null;
+    if (authState is AuthLoading) {
+      return isGoingPublic ? null : '/login';
+    }
+
+    final isAuthed = authState is AuthSuccess;
+    if (!isAuthed && !isGoingPublic) return '/login';
+    if (isAuthed && isGoingPublic) return '/home';
+
+    return null;
+  }
+
+  static RegisterOtpSent? _registerOtpState(
+    GoRouterState routerState,
+    AuthState authState,
+  ) {
+    final extra = routerState.extra;
+    if (extra is RegisterOtpSent) return extra;
+    if (authState is RegisterOtpFlowState) return authState.registration;
+    return null;
+  }
 }

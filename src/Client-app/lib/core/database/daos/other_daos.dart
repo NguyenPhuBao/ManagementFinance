@@ -44,7 +44,11 @@ class BudgetDao extends DatabaseAccessor<AppDatabase> with _$BudgetDaoMixin {
   }
 
   Future<List<Budget>> getPending([int? idaccount]) {
-    return (select(budgets)..where((t) => t.syncStatus.equals('pending'))).get();
+    return (select(budgets)
+          ..where((t) =>
+              t.syncStatus.equals('pending') &
+              (idaccount == null ? const Constant(true) : t.idaccount.equals(idaccount))))
+        .get();
   }
 
   Future<void> markSynced(String id) async {
@@ -118,7 +122,11 @@ class BillDao extends DatabaseAccessor<AppDatabase> with _$BillDaoMixin {
   }
 
   Future<List<Bill>> getPending([int? idaccount]) {
-    return (select(bills)..where((t) => t.syncStatus.equals('pending'))).get();
+    return (select(bills)
+          ..where((t) =>
+              t.syncStatus.equals('pending') &
+              (idaccount == null ? const Constant(true) : t.idaccount.equals(idaccount))))
+        .get();
   }
 
   Future<void> markSynced(String id) async {
@@ -196,7 +204,11 @@ class GoalDao extends DatabaseAccessor<AppDatabase> with _$GoalDaoMixin {
   }
 
   Future<List<Goal>> getPending([int? idaccount]) {
-    return (select(goals)..where((t) => t.syncStatus.equals('pending'))).get();
+    return (select(goals)
+          ..where((t) =>
+              t.syncStatus.equals('pending') &
+              (idaccount == null ? const Constant(true) : t.idaccount.equals(idaccount))))
+        .get();
   }
 
   Future<void> markSynced(String id) async {

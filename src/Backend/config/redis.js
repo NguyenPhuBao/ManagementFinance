@@ -1,4 +1,4 @@
-﻿const Redis = require('ioredis');
+const Redis = require('ioredis');
 const logger = require('../core/logger');
 
 const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {

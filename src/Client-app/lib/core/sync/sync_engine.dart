@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' hide Category;
 import 'package:drift/drift.dart';
 
@@ -7,6 +8,7 @@ import '../api/dio_client.dart';
 import '../database/app_database.dart';
 import 'sync_models.dart';
 import 'category_icon_registry.dart';
+import 'sync_payload_normalizer.dart';
 
 /// SyncEngine — bộ máy đồng bộ offline-first.
 ///
@@ -56,7 +58,7 @@ class SyncEngine {
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
   /// Khởi động SyncEngine sau khi user đăng nhập thành công.
-  void start({required int idaccount}) {
+  Future<void> start({required int idaccount}) async {
     _currentIdaccount = idaccount;
     _lastPullTime =
         null; // Clear checkpoint để tài khoản vừa đăng nhập kéo toàn bộ dữ liệu mới ngay lập tức
@@ -67,12 +69,12 @@ class SyncEngine {
       final hasConnection = results.any((r) => r != ConnectivityResult.none);
       if (hasConnection) {
         debugPrint('[SyncEngine] Network restored — scheduling sync');
-        syncNow();
+        unawaited(syncNow());
       }
     });
 
     // Kích hoạt đồng bộ LẬP TỨC ngay khi vừa đăng nhập (không cần chờ thao tác)
-    syncNow();
+    await syncNow();
   }
 
   /// Dừng SyncEngine khi logout.
@@ -87,9 +89,9 @@ class SyncEngine {
   // ── Trigger ───────────────────────────────────────────────────────────────
 
   /// Kích hoạt đồng bộ LẬP TỨC (Immediate Sync) không cần chờ timer debounce.
-  void syncNow() {
+  Future<void> syncNow() async {
     _debounceTimer?.cancel();
-    _runSync();
+    await _runSync();
   }
 
   /// Đặt lịch sync với debounce — gọi liên tiếp chỉ trigger 1 lần.
@@ -141,9 +143,10 @@ class SyncEngine {
     try {
       // 1. Push local pending ops to Backend
       final ops = await _collectPendingOps(accountId);
+      SyncResult? pushResult;
       if (ops.isNotEmpty) {
-        final result = await _sendBatch(ops);
-        debugPrint('[SyncEngine] Push complete: $result');
+        pushResult = await _sendBatch(ops);
+        debugPrint('[SyncEngine] Push complete: $pushResult');
       } else {
         debugPrint(
             '[SyncEngine] No pending local ops — proceeding to Pull from backend');
@@ -151,6 +154,16 @@ class SyncEngine {
 
       // 2. Pull all updated data from Backend PostgreSQL to SQLite local
       await _pullFromBackend(accountId);
+
+      // A failed transaction can reference an old local default-category ID.
+      // Retry once after Pull has supplied the Backend category UUIDs.
+      if (pushResult != null && pushResult.failed > 0) {
+        final retryOps = await _collectPendingOps(accountId);
+        if (retryOps.isNotEmpty) {
+          final retryResult = await _sendBatch(retryOps);
+          debugPrint('[SyncEngine] Push retry complete: $retryResult');
+        }
+      }
 
       _setStatus(SyncStatus.idle);
     } catch (e) {
@@ -193,21 +206,23 @@ class SyncEngine {
           if (wallets.isNotEmpty) {
             final companions = wallets.map((w) {
               return WalletsCompanion(
-                id: Value(w['id'].toString()),
+                id: Value((w['idwallet'] ?? w['id']).toString()),
                 idaccount:
                     Value(int.tryParse(w['idaccount'].toString()) ?? accountId),
                 name: Value(w['name'].toString()),
-                type: Value(w['type']?.toString() ?? 'cash'),
+                type: Value(SyncPayloadNormalizer.walletTypeFromBackend(
+                    w['type']?.toString() ?? 'Cash')),
                 balance: Value(
                     (num.tryParse(w['balance'].toString()) ?? 0.0).toDouble()),
                 currency: Value(w['currency']?.toString() ?? 'VND'),
                 icon: Value(w['icon']?.toString() ?? 'wallet'),
-                colour: Value(w['colour']?.toString() ?? '#4CAF50'),
+                colour: Value(
+                    (w['color'] ?? w['colour'])?.toString() ?? '#4CAF50'),
                 isDefault: Value(w['is_default'] == true),
-                isDeleted: Value(w['is_deleted'] == true),
+                isDeleted: Value(w['delete_at'] != null),
                 syncStatus: const Value('synced'),
                 updatedAt: Value(
-                    DateTime.tryParse(w['updated_at']?.toString() ?? '') ??
+                    DateTime.tryParse(w['update_at']?.toString() ?? '') ??
                         DateTime.now()),
               );
             }).toList();
@@ -223,21 +238,26 @@ class SyncEngine {
           if (transactions.isNotEmpty) {
             final companions = transactions.map((t) {
               return TransactionsCompanion(
-                id: Value(t['id'].toString()),
+                id: Value((t['idtran'] ?? t['id']).toString()),
                 idaccount:
                     Value(int.tryParse(t['idaccount'].toString()) ?? accountId),
-                walletId: Value(t['wallet_id'].toString()),
-                categoryId: Value(t['category_id']?.toString()),
-                amount: Value(
-                    (num.tryParse(t['amount'].toString()) ?? 0.0).toDouble()),
-                type: Value(t['type']?.toString() ?? 'chi'),
+                walletId: Value((t['idwallet'] ?? t['wallet_id']).toString()),
+                categoryId: Value((t['idcategory'] ?? t['category_id'])?.toString()),
+                amount: Value((num.tryParse(t['amount'].toString()) ?? 0.0)
+                    .abs()
+                    .toDouble()),
+                type: Value(SyncPayloadNormalizer.transactionTypeFromBackend(
+                  t['type']?.toString() ?? 'Transaction',
+                  num.tryParse(t['amount'].toString()) ?? 0,
+                )),
                 note: Value(t['note']?.toString() ?? ''),
-                date: Value(DateTime.tryParse(t['date']?.toString() ?? '') ??
+                date: Value(DateTime.tryParse(
+                        (t['date_transaction'] ?? t['date'])?.toString() ?? '') ??
                     DateTime.now()),
-                isDeleted: Value(t['is_deleted'] == true),
+                isDeleted: Value(t['deleted_at'] != null),
                 syncStatus: const Value('synced'),
                 updatedAt: Value(
-                    DateTime.tryParse(t['updated_at']?.toString() ?? '') ??
+                    DateTime.tryParse(t['update_at']?.toString() ?? '') ??
                         DateTime.now()),
               );
             }).toList();
@@ -253,8 +273,15 @@ class SyncEngine {
           if (categories.isNotEmpty) {
             final List<CategoriesCompanion> companions = [];
             for (final c in categories) {
-              final catUuid = (c['uuid'] ?? c['id']).toString();
-              final catName = (c['namecategory'] ?? c['name'] ?? '').toString();
+              final catUuid = (c['idcategory'] ?? c['uuid'] ?? c['id'])
+                  .toString();
+              if (catUuid.isEmpty || catUuid == 'null') {
+                debugPrint('[SyncEngine] Skipping category without an ID.');
+                continue;
+              }
+              final catName =
+                  (c['name_category'] ?? c['namecategory'] ?? c['name'] ?? '')
+                      .toString();
               final rawIcon = c['icon']?.toString();
               final rawColor = c['colour']?.toString();
 
@@ -297,18 +324,22 @@ class SyncEngine {
 
               companions.add(CategoriesCompanion(
                 id: Value(catUuid),
-                idaccount: Value(int.tryParse(
-                        (c['created_by'] ?? c['idaccount'] ?? 0).toString()) ??
-                    0),
+                idaccount: Value(c['is_default'] == true
+                    ? 0
+                    : (int.tryParse(
+                            (c['created_by'] ?? c['idaccount'] ?? 0)
+                                .toString()) ??
+                        0)),
                 name: Value(catName),
-                classify: Value(c['classify']?.toString() ?? 'chi'),
+                classify: Value(SyncPayloadNormalizer.categoryClassifyFromBackend(
+                    c['classify']?.toString() ?? 'Chi')),
                 icon: Value(finalIcon),
                 colour: Value(finalColor),
                 isDefault: Value(c['is_default'] == true),
                 isDeleted: const Value(false),
                 syncStatus: const Value('synced'),
                 updatedAt: Value(
-                    DateTime.tryParse(c['updated_at']?.toString() ?? '') ??
+                    DateTime.tryParse(c['update_at']?.toString() ?? '') ??
                         DateTime.now()),
               ));
             }
@@ -456,6 +487,14 @@ class SyncEngine {
     for (final t in pendingTx) {
       final validId = _toValidUuid(t.id);
       final validWalletId = _toValidUuid(t.walletId);
+      final validCategoryId = await _resolveCategoryId(t.categoryId);
+      if (t.categoryId != null && validCategoryId == null) {
+        debugPrint(
+          '[SyncEngine] Deferring transaction ${t.id}: '
+          'category ${t.categoryId} is not available on backend yet.',
+        );
+        continue;
+      }
       ops.add(SyncOperation(
         localId: t.id,
         entity: SyncEntityType.transaction,
@@ -464,7 +503,7 @@ class SyncEngine {
         payload: {
           'id': validId,
           'wallet_id': validWalletId,
-          'category_id': t.categoryId != null ? _toValidUuid(t.categoryId!) : null,
+          'category_id': validCategoryId,
           'amount': t.amount,
           'type': t.type,
           'note': t.note,
@@ -596,6 +635,32 @@ class SyncEngine {
     return uuidRegex.hasMatch(id);
   }
 
+  Future<String?> _resolveCategoryId(String? categoryId) async {
+    if (categoryId == null) return null;
+
+    final localCategory = await _db.categoryDao.getById(categoryId);
+    if (localCategory == null) return null;
+    if (!localCategory.isDefault) {
+      return _isValidUuidFormat(categoryId) ? categoryId : null;
+    }
+
+    final categoriesWithSameName =
+        await _db.categoryDao.getByName(localCategory.name);
+    for (final category in categoriesWithSameName) {
+      if (_isValidUuidFormat(category.id) &&
+          category.id != localCategory.id &&
+          category.isDefault &&
+          SyncPayloadNormalizer.sameCategoryClassify(
+            category.classify,
+            localCategory.classify,
+          )) {
+        return category.id;
+      }
+    }
+
+    return _isValidUuidFormat(categoryId) ? categoryId : null;
+  }
+
   // ── Send batch to backend ─────────────────────────────────────────────────
 
   Future<SyncResult> _sendBatch(List<SyncOperation> ops) async {
@@ -608,7 +673,19 @@ class SyncEngine {
         data: {
           'clientId': 'flutter-client-app',
           'pushedAt': nowUtcIso,
-          'operations': ops.map((op) => op.toJson()).toList(),
+          'operations': ops.map((op) {
+            final operation = op.toJson();
+            operation['payload'] = switch (op.entity) {
+              SyncEntityType.wallet =>
+                SyncPayloadNormalizer.walletForPush(op.payload),
+              SyncEntityType.transaction =>
+                SyncPayloadNormalizer.transactionForPush(op.payload),
+              SyncEntityType.category =>
+                SyncPayloadNormalizer.categoryForPush(op.payload),
+              _ => SyncPayloadNormalizer.forPush(op.payload),
+            };
+            return operation;
+          }).toList(),
         },
       );
 
@@ -621,6 +698,7 @@ class SyncEngine {
         int succeeded = 0;
         int failed = 0;
         final List<String> conflictIds = [];
+        final List<String> errorMessages = [];
 
         for (final item in results) {
           final respLocalId = item['localId'] as String?;
@@ -640,6 +718,12 @@ class SyncEngine {
                 conflictIds.add(op.localId);
               } else {
                 failed++;
+                final message = item['message']?.toString() ?? 'Unknown error';
+                errorMessages.add(message);
+                debugPrint(
+                  '[SyncEngine] Push failed: entity=${op.entity.name}, '
+                  'localId=${op.localId}, reason=$message',
+                );
               }
             }
           }
@@ -652,8 +736,16 @@ class SyncEngine {
           succeeded: succeeded,
           failed: failed,
           conflictIds: conflictIds,
+          errorMessages: errorMessages,
         );
       }
+    } on DioException catch (e) {
+      debugPrint(
+        '[SyncEngine] Sync push rejected: ${e.response?.data ?? e.message}',
+      );
+      debugPrint(
+        '[SyncEngine] HTTP Sync API Error: $e — Will retry when online',
+      );
     } catch (e) {
       debugPrint(
           '[SyncEngine] HTTP Sync API Error: $e — Will retry when online');

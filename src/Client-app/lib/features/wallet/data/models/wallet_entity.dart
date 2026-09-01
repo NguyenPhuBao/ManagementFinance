@@ -10,7 +10,8 @@ class WalletEntity extends Equatable {
   final String id;
   final int idaccount;
   final String name;
-  final String type;      // 'cash' | 'bank' | 'ewallet' | 'investment' | 'debt'
+  final String
+      type; // 'cash' | 'saving' | 'bank' | 'ewallet' | 'investment' | 'debt'
   final double balance;
   final String currency;
   final String icon;
@@ -39,12 +40,13 @@ class WalletEntity extends Equatable {
 
   /// Label hiển thị loại ví
   String get typeLabel => switch (type) {
-    'bank'       => 'Ngân hàng',
-    'ewallet'    => 'Ví điện tử',
-    'investment' => 'Đầu tư',
-    'debt'       => 'Thẻ tín dụng',
-    _            => 'Tiền mặt',
-  };
+        'bank' => 'Ngân hàng',
+        'saving' => 'Tiết kiệm',
+        'ewallet' => 'Ví điện tử',
+        'investment' => 'Đầu tư',
+        'debt' => 'Thẻ tín dụng',
+        _ => 'Tiền mặt',
+      };
 
   WalletEntity copyWith({
     String? id,
@@ -62,23 +64,36 @@ class WalletEntity extends Equatable {
     DateTime? updatedAt,
   }) {
     return WalletEntity(
-      id:          id          ?? this.id,
-      idaccount:   idaccount   ?? this.idaccount,
-      name:        name        ?? this.name,
-      type:        type        ?? this.type,
-      balance:     balance     ?? this.balance,
-      currency:    currency    ?? this.currency,
-      icon:        icon        ?? this.icon,
-      colour:      colour      ?? this.colour,
-      isDefault:      isDefault      ?? this.isDefault,
-      isDeleted:      isDeleted      ?? this.isDeleted,
+      id: id ?? this.id,
+      idaccount: idaccount ?? this.idaccount,
+      name: name ?? this.name,
+      type: type ?? this.type,
+      balance: balance ?? this.balance,
+      currency: currency ?? this.currency,
+      icon: icon ?? this.icon,
+      colour: colour ?? this.colour,
+      isDefault: isDefault ?? this.isDefault,
+      isDeleted: isDeleted ?? this.isDeleted,
       includeInTotal: includeInTotal ?? this.includeInTotal,
-      syncStatus:     syncStatus     ?? this.syncStatus,
-      updatedAt:      updatedAt      ?? this.updatedAt,
+      syncStatus: syncStatus ?? this.syncStatus,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 
   @override
-  List<Object?> get props => [id, idaccount, name, type, balance,
-      currency, icon, colour, isDefault, isDeleted, includeInTotal, syncStatus, updatedAt];
+  List<Object?> get props => [
+        id,
+        idaccount,
+        name,
+        type,
+        balance,
+        currency,
+        icon,
+        colour,
+        isDefault,
+        isDeleted,
+        includeInTotal,
+        syncStatus,
+        updatedAt
+      ];
 }

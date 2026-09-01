@@ -10,9 +10,6 @@ class NetworkException implements Exception {
 
 abstract class AuthRemoteDataSource {
   Future<Map<String, dynamic>> login(String username, String password);
-  Future<Map<String, dynamic>> register(
-      String username, String fullname, String email, String password,
-      {String? phone});
 
   // --- Các method cần Backend endpoint ---
   Future<void> logout(String accessToken);
@@ -23,9 +20,27 @@ abstract class AuthRemoteDataSource {
   Future<void> deleteAccount(String password);
   Future<void> cancelDelete();
   Future<Map<String, dynamic>> getProfile();
-  Future<void> updateProfile({String? fullname, String? phone, String? address, String? location});
+  Future<void> updateProfile(
+      {String? fullname, String? phone, String? address, String? location});
   Future<void> requestEmailChange(String newEmail);
   Future<void> confirmEmailChange(String newEmail, String otp);
+
+  // --- OTP Register ---
+  Future<void> registerSendOtp({
+    required String username,
+    required String fullname,
+    required String email,
+    required String password,
+    String? phone,
+  });
+  Future<Map<String, dynamic>> registerVerifyOtp({
+    required String username,
+    required String fullname,
+    required String email,
+    required String password,
+    required String otp,
+    String? phone,
+  });
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -54,36 +69,6 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
-  Future<Map<String, dynamic>> register(
-    String username,
-    String fullname,
-    String email,
-    String password, {
-    String? phone,
-  }) async {
-    try {
-      final body = <String, dynamic>{
-        'username': username,
-        'fullname': fullname,
-        'email': email,
-        'password': password,
-      };
-      if (phone != null && phone.isNotEmpty) body['phone'] = phone;
-      final response = await dio.post('/auth/register', data: body);
-      if (response.data['success'] == true) {
-        return response.data['data'] as Map<String, dynamic>;
-      }
-      throw Exception(response.data['message'] ?? 'Đăng ký thất bại');
-    } on DioException catch (e) {
-      if (_isNetworkError(e)) {
-        throw const NetworkException('Không có mạng. Vui lòng thử lại khi có kết nối.');
-      }
-      final msg = e.response?.data?['message'] ?? 'Lỗi máy chủ';
-      throw Exception(msg);
-    }
-  }
-
-  @override
   Future<void> logout(String accessToken) async {
     try {
       await dio.post(
@@ -100,7 +85,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
-  Future<void> changePassword(String currentPassword, String newPassword) async {
+  Future<void> changePassword(
+      String currentPassword, String newPassword) async {
     try {
       final response = await dio.patch(
         '/auth/change-password',
@@ -154,7 +140,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         data: {'resetToken': resetToken, 'newPassword': newPassword},
       );
       if (response.data['success'] != true) {
-        throw Exception(response.data['message'] ?? 'Đặt lại mật khẩu thất bại');
+        throw Exception(
+            response.data['message'] ?? 'Đặt lại mật khẩu thất bại');
       }
     } on DioException catch (e) {
       if (_isNetworkError(e)) throw const NetworkException();
@@ -171,7 +158,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         data: {'password': password},
       );
       if (response.data['success'] != true) {
-        throw Exception(response.data['message'] ?? 'Yêu cầu xóa tài khoản thất bại');
+        throw Exception(
+            response.data['message'] ?? 'Yêu cầu xóa tài khoản thất bại');
       }
     } on DioException catch (e) {
       if (_isNetworkError(e)) throw const NetworkException();
@@ -185,7 +173,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     try {
       final response = await dio.post('/auth/cancel-delete');
       if (response.data['success'] != true) {
-        throw Exception(response.data['message'] ?? 'Hủy yêu cầu xóa tài khoản thất bại');
+        throw Exception(
+            response.data['message'] ?? 'Hủy yêu cầu xóa tài khoản thất bại');
       }
     } on DioException catch (e) {
       if (_isNetworkError(e)) throw const NetworkException();
@@ -261,6 +250,68 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       if (response.data['success'] != true) {
         throw Exception(response.data['message'] ?? 'Xác nhận thất bại');
       }
+    } on DioException catch (e) {
+      if (_isNetworkError(e)) throw const NetworkException();
+      final msg = e.response?.data?['message'] ?? 'Lỗi máy chủ';
+      throw Exception(msg);
+    }
+  }
+
+  // ─── OTP Register ─────────────────────────────────────────────────────────
+
+  @override
+  Future<void> registerSendOtp({
+    required String username,
+    required String fullname,
+    required String email,
+    required String password,
+    String? phone,
+  }) async {
+    try {
+      final body = <String, dynamic>{
+        'username': username,
+        'fullname': fullname,
+        'email': email,
+        'password': password,
+      };
+      if (phone != null && phone.isNotEmpty) body['phone'] = phone;
+      final response = await dio.post('/auth/register/send-otp', data: body);
+      if (response.data['success'] != true) {
+        throw Exception(response.data['message'] ?? 'Không thể gửi OTP');
+      }
+    } on DioException catch (e) {
+      if (_isNetworkError(e)) {
+        throw const NetworkException(
+            'Không có mạng. Vui lòng thử lại khi có kết nối.');
+      }
+      final msg = e.response?.data?['message'] ?? 'Lỗi máy chủ';
+      throw Exception(msg);
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> registerVerifyOtp({
+    required String username,
+    required String fullname,
+    required String email,
+    required String password,
+    required String otp,
+    String? phone,
+  }) async {
+    try {
+      final body = <String, dynamic>{
+        'username': username,
+        'fullname': fullname,
+        'email': email,
+        'password': password,
+        'otp': otp,
+      };
+      if (phone != null && phone.isNotEmpty) body['phone'] = phone;
+      final response = await dio.post('/auth/register/verify-otp', data: body);
+      if (response.data['success'] == true) {
+        return response.data['data'] as Map<String, dynamic>;
+      }
+      throw Exception(response.data['message'] ?? 'OTP không hợp lệ');
     } on DioException catch (e) {
       if (_isNetworkError(e)) throw const NetworkException();
       final msg = e.response?.data?['message'] ?? 'Lỗi máy chủ';

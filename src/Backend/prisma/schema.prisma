@@ -126,6 +126,7 @@ model category {
   @@index([idcategory], map: "idx_category_id")
   @@index([idgroup], map: "idx_category_group")
   @@index([create_by], map: "idx_category_create_by")
+  @@unique([create_by, name_category, classify], map: "uq_category_owner_name_classify")
   @@map("category")
 }
 
