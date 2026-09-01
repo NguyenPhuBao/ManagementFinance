@@ -1,362 +1,376 @@
 # 1. Quy tắc chung
-- Tại SQLite với mọi bảng đều có thêm cột Sync_status
-- uuid là id tự sinh được thiết lập tại Client-app. Backend chỉ đảm nhận việc ghi nhận mã.
-- **Cơ chế xóa mềm**: dùng cột `Delete_at`. Nếu cột `Delete_at` **có giá trị** (Timestamp) thì nghĩa là dữ liệu đã bị xóa mềm; nếu cột **rỗng** (NULL) thì dữ liệu đang dùng (chưa bị xóa).
-- Bảng Audit_log dùng để theo dõi yêu cầu gửi về backend - không theo dõi hoạt động của người dùng
-# 2. CSDL
+- Tại SQLite với mọi bảng đều có thêm cột `Sync_status`.
+- `uuid` là id tự sinh được thiết lập tại Client-app. Backend chỉ đảm nhận việc ghi nhận mã (trừ các bảng hệ thống: `Role`, `Account`, `User`, `Audit_log`, `OTP_code`, `RefreshToken` dùng `int auto-increment`).
+- **Cơ chế xóa mềm**: dùng cột `Delete_at` (hoặc `Deleted_at` đối với bảng `Transaction`). Nếu cột **có giá trị** (Timestamp) thì nghĩa là dữ liệu đã bị xóa mềm; nếu cột **rỗng** (NULL) thì dữ liệu đang dùng (chưa bị xóa). Tuyệt đối không dùng lệnh `DELETE` vật lý đối với dữ liệu người dùng.
+- Bảng `Audit_log` dùng để theo dõi yêu cầu gửi về backend — không theo dõi hoạt động của người dùng.
+
+---
+
+# 2. Cấu Trúc Bảng CSDL Chi Tiết
+
 ## 2.1. Bảng Role
+Bảng lưu trữ danh sách các vai trò trong hệ thống (Admin, User).
 
 | Tên cột | Kiểu dữ liệu | Ràng buộc | Ý nghĩa |
 |---|---|---|---|
 | Idrole | int | PK - Auto increment | Mã vai trò |
-| Rolename | varchar(40) | unique | Tên vai trò |
+| Rolename | varchar(40) | Unique | Tên vai trò (admin, user) |
 | Description | text | NULL | Mô tả vai trò |
 
 ## 2.2. Bảng Account
+Bảng tài khoản đăng nhập hệ thống.
 
 | Tên cột | Kiểu dữ liệu | Ràng buộc | Ý nghĩa |
 |---|---|---|---|
 | Idaccount | int | PK - Auto increment | Mã tài khoản |
 | Idrole | int | FK - Role (Idrole) | Tài khoản có vai trò gì - Mã vai trò |
-| Email | varchar(100) | | Email |
+| Email | varchar(100) | Unique | Email đăng nhập |
 | Username | varchar(255) | Unique | Tên đăng nhập |
-| Password | varchar(255) | Hash | Mật khẩu - bắt buộc băm |
+| Password | varchar(255) | Hash | Mật khẩu — bắt buộc băm bcrypt/argon2 |
 | Status | varchar(20) | Check in (Active, Inactive, PendingDelete, Deleted) - Default Active | Trạng thái tài khoản |
-| Type | varchar(7) | Check in (Basic, Premium) - Default Basic | Loại tài khoản, cơ bản hay là premium |
+| Type | varchar(7) | Check in (Basic, Premium) - Default Basic | Loại gói tài khoản (Basic / Premium) |
 | Create_at | Timestamp | Default Now() | Thời điểm tạo tài khoản |
 | Update_at | Timestamp | Default Now() | Thời điểm cập nhật tài khoản |
 | Delete_at | Timestamp | NULL | Thời điểm xóa tài khoản |
 
 ## 2.3. Bảng User
+Bảng lưu thông tin cá nhân của người dùng (quan hệ 1-1 với Account).
 
 | Tên cột | Kiểu dữ liệu | Ràng buộc | Ý nghĩa |
 |---|---|---|---|
-| Iduser | int | PK Auto Increment | Mã người dùng |
-| Idaccount | int | FK Account(Idaccount), UNIQUE | Người dùng có tài khoản là gì - Mã tài khoản |
-| Fullname | nvarchar(100) | | Họ & tên |
-| Email | varchar(100) | UNIQUE | Email người dùng |
+| Iduser | int | PK - Auto increment | Mã người dùng |
+| Idaccount | int | FK - Account(Idaccount), UNIQUE | Mã tài khoản sở hữu thông tin này |
+| Fullname | nvarchar(100) | | Họ và tên |
+| Email | varchar(100) | Unique | Email người dùng (đồng bộ với Account.Email) |
 | Phone | varchar(15) | NULL | Số điện thoại |
 | Address | Text | NULL | Địa chỉ người dùng |
-| Country_code | char(4) | NULL | Mã vùng/quốc gia (+84, +0, +1, +86 .... ) |
-| Create_at | Timestamp | Default Now() | Thời điểm tạo người dùng |
-| Update_at | Timestamp | Default Now() | Thời điểm cập nhật người dùng |
-| Delete_at | Timestamp | NULL | Thời điểm xóa người dùng |
+| Country_code | char(4) | NULL | Mã vùng/quốc gia (+84, +1, ...) |
+| Create_at | Timestamp | Default Now() | Thời điểm tạo thông tin |
+| Update_at | Timestamp | Default Now() | Thời điểm cập nhật thông tin |
+| Delete_at | Timestamp | NULL | Thời điểm xóa thông tin |
 
 ## 2.4. Bảng Audit_log
-- Bảng Audit_log dùng để theo dõi yêu cầu gửi về backend - không theo dõi hoạt động của người dùng
+Bảng nhật ký kiểm toán theo dõi các request gửi về backend.
 
 | Tên cột | Kiểu dữ liệu | Ràng buộc | Ý nghĩa |
 |---|---|---|---|
 | Idlog | int | PK - Auto increment | Mã log |
-| Idaccount | int | FK - Account (Idaccount) | Tài khoản thực hiện yêu cầu - Mã tài khoản |
-| Request | Varchar(200) | | Yêu cầu từ client -> server |
-| Req_status | Varchar(12) | Check in (Accepted, Rejected, Interrupted, Pending, Processing, Pass, Fail) | Trạng thái yêu cầu - yêu cầu đã được giải quyết chưa ?<br>- Accepted: đã qua kiểm duyệt, sẽ đi vào xử lý.<br>- Rejected: không qua kiểm duyệt, không được đi vào xử lý, bị chặn.<br>- Interrupted: Đã qua kiểm duyệt nhưng bị ngắt quãng, không đẩy vào hàng đợi xử lý được.<br>- Pending: Đã vượt qua kiểm duyệt, được nạp vào hàng chờ & đang chờ để được xử lý.<br>- Processing: đang xử lý yêu cầu.<br>- Pass: Yêu cầu đã được xử lý & gửi về client-app.<br>- Fail: yêu cầu xử lý thất bại & gửi lỗi về client-app. |
-| Reason | Varchar(200) | NULL | Ghi nhận lý do kết quả các Req thất bại, bị ngắt quãng, xử lý thất bại. |
-| TimeReq | Timestamp | Default Getdate() | Thời gian yêu cầu được gửi đến |
-| TimeRes | Timestamp | Default Getdate() | Thời gian yêu cầu đã được giải quyết & gửi đi. |
+| Idaccount | int | FK - Account (Idaccount) | Tài khoản thực hiện yêu cầu |
+| Request | Varchar(200) | | Tên hành động yêu cầu |
+| Req_status | Varchar(12) | Check in (Accepted, Rejected, Interrupted, Pending, Processing, Pass, Fail) - Default Pass | Trạng thái xử lý yêu cầu |
+| Reason | Varchar(200) | NULL | Ghi nhận lý do thất bại / bị chặn |
+| TimeReq | Timestamp | Default Now() | Thời gian yêu cầu được gửi đến |
+| TimeRes | Timestamp | Default Now() | Thời gian yêu cầu hoàn tất phản hồi |
 
 ## 2.5. Bảng OTP_code
+Bảng mã OTP phục vụ xác thực email, đổi mật khẩu, đổi email.
 
 | Tên cột | Kiểu dữ liệu | Ràng buộc | Ý nghĩa |
 |---|---|---|---|
-| Id_otp | int | PK - Auto increment | Mã định danh otp |
-| Idaccount | int | FK - Account (Idaccount) | Tài khoản thực hiện yêu cầu OTP - Mã tài khoản |
-| Email | varchar(100) | | Email |
-| code_hash | varchar(255) | | Otp đã được mã hóa |
-| purpose | varchar(20) | Check in (Register, Reset_password, Change_email) | Mục đích |
-| is_used | Boolean | Default False | Đã được dùng-TRUE hay là chưa dùng-FALSE |
-| expires_at | Timestamp | Default Now() + 10 minutes | Hết hạn vào thời điểm nào, Mặc định 10 phút sau khi tạo |
-| created_at | Timestamp | Default Now() | Opt được tạo vào thời điểm nào |
+| Id_otp | int | PK - Auto increment | Mã định danh OTP |
+| Idaccount | int | FK - Account (Idaccount), NULL | Tài khoản yêu cầu OTP (NULL khi đăng ký mới) |
+| Email | varchar(100) | | Email nhận mã OTP |
+| code_hash | varchar(255) | | Mã OTP đã băm |
+| purpose | varchar(20) | Check in (Register, Reset_password, Change_email) | Mục đích gửi mã OTP |
+| is_used | Boolean | Default False | Đã sử dụng (TRUE) hay chưa dùng (FALSE) |
+| expires_at | Timestamp | Default Now() + 10 minutes | Thời điểm hết hạn (mặc định 10 phút) |
+| created_at | Timestamp | Default Now() | Thời điểm tạo mã OTP |
 
 ## 2.6. Bảng Category
+Bảng danh mục thu chi — hỗ trợ phân cấp cha/con 2 cấp (nhóm và danh mục con).
 
 | Tên cột | Kiểu dữ liệu | Ràng buộc | Ý nghĩa |
 |---|---|---|---|
-| Idcategory | varchar(36) | PK - uuid | Mã danh mục |
-| Create_by | int | FK - Account (Idaccount) | Ai là người tạo danh mục - mã tài khoản |
+| Idcategory | varchar(36) | PK - UUID v4 | Mã danh mục |
+| Create_by | int | FK - Account (Idaccount) | Tài khoản tạo danh mục |
 | NameCategory | nvarchar(200) | | Tên danh mục |
-| Classify | nvarchar(7) | Check in (Thu, Chi, Vay/no) | Phân loại danh mục |
-| Is_default | Boolean | Default False | Có phải danh mục mặc định hay không: - có - TRUE - không - FALSE Danh mục mặc định là các danh mục sẽ có sẵn với mọi tài khoản. |
-| Is_group | Boolean | Default False | Danh mục này có phải danh mục cha hay không |
-| Idgroup | varchar(36) | NULL | Danh mục này thuộc nhóm danh mục nào - lấy id tương ứng của danh mục đó - Null thì là danh mục 1 cấp - có giá trị là danh mục thuộc nhóm danh mục nào đó |
-| Keyword | Text | NULL | Các từ khóa giúp hệ thống nhận diện danh mục, Mỗi keyword cách nhau bởi dấu `;` |
-| Icon | varchar(20) | | Icon danh mục |
-| Create_at | Timestamp | Default Now() | Thời điểm danh mục được tạo |
-| Update_at | Timestamp | Default Now() | Thời điểm danh mục đã được cập nhật |
-| Delete_at | Timestamp | NULL | Thời điểm danh mục bị xóa |
+| Classify | nvarchar(7) | Check in (Thu, Chi, Vay/nợ) | Phân loại danh mục: Thu (Thu nhập), Chi (Chi tiêu), Vay/nợ (Vay mượn/Nợ nần) |
+| Is_default | Boolean | Default False | Danh mục mặc định hệ thống (TRUE) hay người dùng tự tạo (FALSE) |
+| Is_group | Boolean | Default False | Có phải danh mục cha / nhóm hay không |
+| Idgroup | varchar(36) | NULL, FK Category(Idcategory) | Thuộc nhóm danh mục nào (NULL nếu là nhóm hoặc danh mục độc lập) |
+| Keyword | Text | NULL | Các từ khóa nhận diện danh mục, phân cách bởi dấu `;` |
+| Icon | varchar(20) | NULL | Tên icon danh mục |
+| Create_at | Timestamp | Default Now() | Thời điểm tạo danh mục |
+| Update_at | Timestamp | Default Now() | Thời điểm cập nhật danh mục |
+| Delete_at | Timestamp | NULL | Thời điểm xóa mềm danh mục |
 
 ## 2.7. Bảng Bank_account
+Bảng tài khoản ngân hàng liên kết qua Casso Open Banking API.
 
 | Tên cột | Kiểu dữ liệu | Ràng buộc | Ý nghĩa |
 |---|---|---|---|
-| Id_bank_account | varchar(36) | PK - uuid | Mã định danh cho tài khoản ngân hàng tại hệ thống |
-| Idaccount | int | FK - Account (Idaccount) | Tài khoản ngân hàng này thuộc về ai trong hệ thống này - mã tài khoản |
-| Id_casso_account | varchar(100) | Unique | Mã định danh cho tài khoản ngân hàng phía Casso |
-| Account_number | varchar(50) | | Số tài khoản từ Casso - Real Bank |
-| Account_name | varchar(255) | | Chủ sở hữu từ Casso - Real Bank |
-| Bank_name | varchar(100) | | Tên ngân hàng từ Casso - Real Bank |
-| Balance | decimal(15,2) | Default 0 | Số dư ban đầu từ Casso - Real Bank |
-| Connect_status | varchar(12) | Check in (Active, Expired, Disconnected) | Trạng thái kết nối ngân hàng với Casso: - Active: đang kết nối bình thường. - Expired: phiên xác thực kết nối hoặc API Token, cần xác thực kết nối lại. - Disconnected: Người dùng chủ động ngắt kết nối tài khoản ngân hàng. |
-| Create_at | Timestamp | default Now() | Thời điểm tạo kết nối |
-| Update_at | Timestamp | default Now() | Thời điểm cập nhật số dư hoặc trạng thái liên kết mới nhất |
-| Delete_at | Timestamp | NULL | Thời điểm ngắt kết nối |
+| Id_bank_account | varchar(36) | PK - UUID v4 | Mã định danh tài khoản ngân hàng trong hệ thống |
+| Idaccount | int | FK - Account (Idaccount) | Tài khoản người dùng sở hữu liên kết này |
+| Id_casso_account | varchar(100) | Unique | Mã định danh tài khoản ngân hàng phía Casso |
+| Account_number | varchar(50) | | Số tài khoản ngân hàng |
+| Account_name | varchar(255) | | Tên chủ sở hữu tài khoản ngân hàng |
+| Bank_name | varchar(100) | | Tên ngân hàng |
+| Balance | decimal(15,2) | Default 0 | Số dư tài khoản ngân hàng |
+| Connect_status | varchar(12) | Check in (Active, Expired, Disconnected) - Default Active | Trạng thái kết nối: Active (Đang kết nối), Expired (Hết hạn Token), Disconnected (Đã ngắt kết nối) |
+| Create_at | Timestamp | Default Now() | Thời điểm liên kết |
+| Update_at | Timestamp | Default Now() | Thời điểm cập nhật số dư / trạng thái |
+| Delete_at | Timestamp | NULL | Thời điểm xóa mềm liên kết |
 
 ## 2.8. Bảng Wallet
+Bảng ví tiền của người dùng (Ví tiền mặt, Ví ngân hàng liên kết, Ví tiết kiệm).
 
 | Tên cột | Kiểu dữ liệu | Ràng buộc | Ý nghĩa |
 |---|---|---|---|
-| Idwallet | varchar(36) | PK - uuid | Mã định danh ví ảo |
-| Idaccount | int | FK - Account (Idaccount) | Ví thuộc về ai - Mã tài khoản |
-| Id_bank_casso | varchar(136) | FK - Account_Bank (Id_bank_account) - NULL | Mã định danh ngân hàng từ Casso nếu đó là ví được tạo từ liên kết ngân hàng |
-| Name | nvarchar(100) | | Tên ví |
-| Type | varchar(7) | Check in (Cash, Bank, Saving, Banking) - Default | Loại ví: - Cash: ví tiền mặt ảo - Bank: ví ngân hàng ảo |
+| Idwallet | varchar(36) | PK - UUID v4 | Mã định danh ví |
+| Idaccount | int | FK - Account (Idaccount) | Tài khoản sở hữu ví |
+| Id_bank_casso | varchar(36) | FK - Bank_account(Id_bank_account), NULL | Liên kết tài khoản ngân hàng Casso (nếu là ví Banking) |
+| Name | nvarchar(100) | | Tên ví (hỗ trợ tối đa 100 ký tự) |
+| Type | varchar(7) | Check in (Cash, Bank, Saving, Banking) - Default Cash | Loại ví: Cash (Tiền mặt), Bank (Ngân hàng tự tạo), Saving (Tiết kiệm), Banking (Tự động từ Casso) |
 | Balance | decimal(15,2) | Default 0 | Số dư ví |
-| Currency | Varchar(3) | Check in (VND, USD) - Default VND | Loại tiền tệ |
-| Status | Varchar(7) | Check in (Active, Inactive) - default Active | Trạng thái ví: - Active: đang hoạt động - Inactive: ngừng hoạt động |
-| IncludelnTotalI | Boolean | Default TRUE | Ví này có được tính vào tổng tiền hay không (TRUE được tính; FALSE không được tính) |
-| Icon | Varchar(20) | | Icon ví |
-| Color | Varchar(20) | | Màu ví |
-| Is_default | Boolean | Default False | Có phải là ví mặc định hay không ? |
-| Create_at | Timestamp | default Now() | Thời điểm Ví được tạo |
-| Update_at | Timestamp | default Now() | Thời điểm Ví được cập nhật |
-| Delete_at | Timestamp | NULL | Thời điểm Ví được xóa mềm |
+| Currency | Varchar(3) | Check in (VND, USD) - Default VND | Đơn vị tiền tệ |
+| Status | Varchar(7) | Check in (Active, Inactive) - Default Active | Trạng thái ví |
+| IncludeInTotal | Boolean | Default TRUE | Có tính vào tổng tài sản hay không (TRUE: có, FALSE: không) |
+| Is_default | Boolean | Default False | Có phải ví mặc định hay không |
+| Icon | Varchar(20) | NULL | Icon ví |
+| Color | Varchar(20) | NULL | Màu hiển thị ví |
+| Create_at | Timestamp | Default Now() | Thời điểm tạo ví |
+| Update_at | Timestamp | Default Now() | Thời điểm cập nhật ví |
+| Delete_at | Timestamp | NULL | Thời điểm xóa mềm ví |
 
 ## 2.9. Bảng Budget
+Bảng hạn mức ngân sách chi tiêu.
 
 | Tên cột | Kiểu dữ liệu | Ràng buộc | Ý nghĩa |
 |---|---|---|---|
-| Idbudget | varchar(36) | PK - uuid | Mã định danh ngân sách |
-| Idaccount | int | FK - Account (Idaccount) | Ngân sách này thuộc về ai - mã tài khoản |
-| Idcategory | varchar(36) | FK - Category (Idcategory) | Ngân sách này dùng cho mục đích chi tiêu nào - mã danh mục |
-| TotalAmount | Decimal(15, 2) | | Tổng tiền ngân sách |
-| Spent | Decimal(15, 2) | Default 0 | Số tiền đã chi |
-| Threshold_Warning_Amount | Decimal(15, 2) | NULL | Còn bao nhiêu tiền thì cảnh báo. |
-| Threshold_Warning_Percent | Decimal(15, 2) | NULL, Default 0 - Check (>=0 && <=100) | Đã dùng tới bao nhiêu % số tiền thì sẽ nhận cảnh báo. |
-| OverSpending | Varchar(7) | Check in (Stop, Over) - Default Over | Có cho phép chi tiêu vượt hạn mức hay không |
-| OverAmount | Decimal(2) | NULL | Số tiền cho phép vượt là bao nhiêu. |
+| Idbudget | varchar(36) | PK - UUID v4 | Mã ngân sách |
+| Idaccount | int | FK - Account (Idaccount) | Tài khoản sở hữu ngân sách |
+| Idcategory | varchar(36) | FK - Category (Idcategory), NULL | Danh mục áp dụng (NULL = Ngân sách tổng) |
+| TotalAmount | Decimal(15, 2) | Check (> 0) | Tổng tiền hạn mức ngân sách |
+| Spent | Decimal(15, 2) | Default 0 | Số tiền thực tế đã chi |
+| Threshold_Warning_Amount | Decimal(15, 2) | NULL | Số tiền còn lại chạm ngưỡng cảnh báo |
+| Threshold_Warning_Percent | Decimal(15, 2) | NULL, Default 0 - Check (>= 0 AND <= 100) | Phần trăm đã chi chạm ngưỡng cảnh báo (%) |
+| OverSpending | Varchar(7) | Check in (Stop, Over) - Default Over | Cho phép chi tiêu vượt hạn mức (Over) hay chặn lại (Stop) |
+| OverAmount | Decimal(15, 2) | NULL | Số tiền tối đa cho phép vượt hạn mức |
 | Start | Timestamp | | Thời điểm bắt đầu ngân sách |
-| End | Timestamp | NULL | Thời điểm kết thúc ngân sách, đặt null nghĩa là ngân sách không kết thúc |
-| Recurrence | Boolean | Default FALSE | Cho phép lặp lại ngân sách hay không: False - không; True - có |
-| Time_recurrence | varchar(7) | Check in (Day, Week, Month, Quarter, Year), NULL | Thời gian lặp lại ngân sách là bao lâu: |
-| Nexttime_recurrence | Timestamp | NULL | Thời điểm bắt đầu ngân sách mới - Tùy thuộc vào Time Recurrence mà thuật toán hệ thống sẽ nhận diện thời điểm bắt đầu ngân sách mới |
-| Note | text | NULL | Ghi chú thêm cho ngân sách |
-| Create_at | Timestamp | Default Now() | Ngân sách được tạo vào ngày |
-| Update_at | Timestamp | Default Now() | Thời điểm ngân sách được cập nhật |
-| Delete_at | Timestamp | NULL | Ngân sách bị xóa vào ngày |
+| End | Timestamp | NULL | Thời điểm kết thúc ngân sách (NULL = không thời hạn) |
+| Recurrence | Boolean | Default FALSE | Tự động lặp lại ngân sách chu kỳ tiếp theo (TRUE/FALSE) |
+| Time_recurrence | varchar(7) | Check in (Day, Week, Month, Quarter, Year), NULL | Chu kỳ lặp lại ngân sách |
+| Nexttime_recurrence | Timestamp | NULL | Thời điểm bắt đầu chu kỳ ngân sách tiếp theo |
+| Note | text | NULL | Ghi chú ngân sách |
+| Create_at | Timestamp | Default Now() | Thời điểm tạo ngân sách |
+| Update_at | Timestamp | Default Now() | Thời điểm cập nhật ngân sách |
+| Delete_at | Timestamp | NULL | Thời điểm xóa mềm ngân sách |
 
 ## 2.10. Bảng Bill
+Bảng quản lý hóa đơn định kỳ phải trả (Tiền điện, nước, internet, thuê nhà...).
 
 | Tên cột | Kiểu dữ liệu | Ràng buộc | Ý nghĩa |
 |---|---|---|---|
-| Idbill | varchar(36) | PK - uuid | Mã hóa đơn |
-| Idaccount | Int | FK Account(Idaccount) | Hóa đơn này thuộc về ai - mã tài khoản |
-| Idwallet | varchar(36) | FK Wallet (Idwallet) | Hóa đơn này dùng ví nào để chi trả - mã ví |
-| Idcategory | varchar(36) | FK Category(Idcategory) | Hóa đơn này thuộc danh mục nào - mã danh mục |
+| Idbill | varchar(36) | PK - UUID v4 | Mã hóa đơn |
+| Idaccount | Int | FK - Account(Idaccount) | Tài khoản sở hữu hóa đơn |
+| Idwallet | varchar(36) | FK - Wallet (Idwallet) | Ví dự kiến chi trả hóa đơn (bắt buộc) |
+| Idcategory | varchar(36) | FK - Category(Idcategory) | Danh mục chi tiêu của hóa đơn (bắt buộc) |
 | Name | varchar(100) | | Tên hóa đơn |
-| Amount | Decimal(15,2) | | Số tiền hóa đơn phải chi trả |
-| Start_date | Timestamp | | Ngày bắt đầu hóa đơn |
-| Due_date | Timestamp | | Hạn chi trả hóa đơn |
-| Pay_status | varchar(7) | Check in (Pending, Payed, Overdue) | Trạng thái thanh toán: <br> - Pending: đang chờ thanh toán <br> - Payed: đã thanh toán <br> - Overdue: đã quá hạn thanh toán |
-| Recurrence | Boolean | Default False | Cho phép lặp lại hóa đơn hay không: False - không; True - có |
-| Time_recurrence | varchar(7) | Check in (Day, Week, Month, Quarter, Year) | Thời gian lặp lại hóa đơn là bao lâu: <br> Mỗi ngày 1 lần, Mỗi tuần 1 lần, mỗi tháng 1 lần, mỗi quý (3 tháng) 1 lần, mỗi năm 1 lần. |
-| Time_notification | varchar(7) | Check in (1, 3, 5, 7) | Thời gian mà hóa đơn sẽ thông báo khi gắn đến hạn. |
-| Icon | varchar(20) | | Icon hóa đơn |
-| Color | varchar(20) | | Màu hóa đơn |
-| Note | Text | NULL | Ghi chú thêm cho hóa đơn |
-| Create_at | Timestamp | Default Now() | Hóa đơn được tạo vào ngày |
-| Update_at | Timestamp | Default Now() | Hóa đơn được cập nhật vào ngày |
-| Delete_at | Timestamp | NULL | Hóa đơn bị xóa vào ngày |
+| Amount | Decimal(15,2) | Check (> 0) | Số tiền hóa đơn |
+| Start_date | Timestamp | Default Now() | Ngày bắt đầu tính hóa đơn |
+| Due_date | Timestamp | | Hạn thanh toán hóa đơn |
+| Pay_status | varchar(7) | Check in (Pending, Payed, Overdue) - Default Pending | Trạng thái thanh toán: Pending (Chờ trả), Payed (Đã trả), Overdue (Quá hạn) |
+| Recurrence | Boolean | Default False | Cho phép lặp lại hóa đơn theo chu kỳ (TRUE/FALSE) |
+| Time_recurrence | varchar(7) | Check in (Day, Week, Month, Quarter, Year), NULL | Chu kỳ lặp lại hóa đơn |
+| Time_notification | varchar(7) | Check in (1, 3, 5, 7), NULL | Số ngày nhắc nhở trước khi đến hạn |
+| Icon | varchar(20) | NULL | Icon hóa đơn |
+| Color | varchar(20) | NULL | Màu sắc hóa đơn |
+| Note | Text | NULL | Ghi chú thêm |
+| Create_at | Timestamp | Default Now() | Thời điểm tạo hóa đơn |
+| Update_at | Timestamp | Default Now() | Thời điểm cập nhật hóa đơn |
+| Delete_at | Timestamp | NULL | Thời điểm xóa mềm hóa đơn |
 
 ## 2.11. Bảng Goal
+Bảng mục tiêu tích lũy và tiết kiệm tiền.
 
 | Tên cột | Kiểu dữ liệu | Ràng buộc | Ý nghĩa |
 |---|---|---|---|
-| Idgoal | varchar(36) | PK - uuid | Mã mục tiêu tiết kiệm |
-| Idaccount | Int | FK Account (Idaccount) | Mục tiêu tiết kiệm này là của ai - mã tài khoản |
-| Idwallet | varchar(36) | FK Wallet (Idwallet) | Khoản tiền tiết kiệm được lưu tại ví nào - mã ví |
+| Idgoal | varchar(36) | PK - UUID v4 | Mã mục tiêu |
+| Idaccount | Int | FK - Account (Idaccount) | Tài khoản sở hữu mục tiêu |
+| Idwallet | varchar(36) | FK - Wallet (Idwallet), NULL | Ví lưu trữ khoản tiền tiết kiệm (NULL nếu chưa chọn) |
 | Name | varchar(100) | | Tên mục tiêu |
-| Target_amount | Decimal(15,2) | | Số tiền cần đạt |
-| Current_amount | Decimal(15,2) | Default 0 | Số tiền hiện có |
-| Start_date | Timestamp | | Ngày bắt đầu mục tiêu |
+| Target_amount | Decimal(15,2) | Check (> 0) | Số tiền mục tiêu cần đạt |
+| Current_amount | Decimal(15,2) | Default 0, Check (>= 0) | Số tiền hiện đã tích lũy được |
+| Start_date | Timestamp | Default Now() | Ngày bắt đầu tích lũy |
 | Target_date | Timestamp | | Hạn hoàn thành mục tiêu |
-| Cycle_take_money | varchar(7) | Check in (Day, Week, Month, Quarter, Year) | Chu kỳ tiết kiệm là bao lâu |
-| Time_cycle_take_money | Timestamp | | Thời điểm trích tiền tiết kiệm cụ thể - dựa vào Cycle_take_money để biết thời điểm chính xác. |
-| Status_complete | varchar(20) | Default False | Trạng thái hoàn thành mục tiêu |
-| Recurrence | Boolean | Default False | Cho phép lặp lại mục tiêu hay không: False - không; True - có |
-| Time_recurrence | varchar(7) | Check in (Day, Week, Month, Quarter, Year) | Thời gian lặp lại mục tiêu là bao lâu: Mỗi ngày 1 lần, Mỗi tuần 1 lần, mỗi tháng 1 lần, mỗi quý (3 tháng) 1 lần, mỗi năm 1 lần. |
-| Icon | varchar(20) | | Icon mục tiêu |
-| Color | varchar(20) | | Màu mục tiêu |
-| Note | Text | NULL | Ghi chú thêm cho mục tiêu |
-| Create_at | Timestamp | Default Now() | Mục tiêu được tạo vào ngày |
-| Update_at | Timestamp | Default Now() | Mục tiêu được cập nhật vào ngày |
-| Delete_at | Timestamp | NULL | Mục tiêu bị xóa vào ngày |
+| Cycle_take_money | varchar(7) | Check in (Day, Week, Month, Quarter, Year), NULL | Chu kỳ trích tiền tiết kiệm |
+| Time_cycle_take_money | Timestamp | NULL | Thời điểm cụ thể trích tiền trong chu kỳ |
+| Status_complete | varchar(20) | Check in (True, False) - Default False | Trạng thái đã hoàn thành mục tiêu hay chưa |
+| Recurrence | Boolean | Default False | Cho phép lặp lại mục tiêu sau khi hoàn thành |
+| Time_recurrence | varchar(7) | Check in (Day, Week, Month, Quarter, Year), NULL | Chu kỳ lặp lại mục tiêu |
+| Icon | varchar(20) | NULL | Icon mục tiêu |
+| Color | varchar(20) | NULL | Màu sắc mục tiêu |
+| Note | Text | NULL | Ghi chú thêm |
+| Create_at | Timestamp | Default Now() | Thời điểm tạo mục tiêu |
+| Update_at | Timestamp | Default Now() | Thời điểm cập nhật mục tiêu |
+| Delete_at | Timestamp | NULL | Thời điểm xóa mềm mục tiêu |
 
 ## 2.12. Bảng Transaction
+Bảng lưu trữ mọi giao dịch thu, chi, chuyển khoản, đồng bộ ngân hàng, quét OCR và SMS.
 
 | Tên cột | Kiểu dữ liệu | Ràng buộc | Ý nghĩa |
 |---|---|---|---|
-| Idtran | varchar(36) | PK - uuid | Mã giao dịch |
-| Idaccount | Int | FK Account(Idaccount) | Giao dịch do ai thực hiện - mã tài khoản |
-| Idwallet | varchar(36) | FK Wallet (Idwallet) | Giao dịch do ví nào thực hiện - mã ví |
-| Idcategory | varchar(36) | FK Category(Idcategory) | Giao dịch cho danh mục nào - mã danh mục |
-| Idwallet_transfer | varchar(36) | NULL, FK Wallet (Idwallet) | Ví nhận tiền khi loại giao dịch là transfer |
-| Bank_tran_id | varchar(100) | NULL | Mã giao dịch nhận được phía liên kết ngân hàng khi có giao dịch - chống trùng |
-| Amount | Decimal(15,2) | | Số tiền giao dịch |
-| Type | Varchar(20) | Check in (Transaction, Transfer) | Loại giao dịch: - Transaction là giao dịch biến động số dư. - Transfer là chuyển đổi số tiền, không phải là giao dịch biến động số dư. |
-| Status | Varchar(10) | Check in (Pending, Confirmed, Rejected, Fail) - Default Confirmed | Trạng thái của 1 giao dịch: - Pending: Giao dịch phát hiện từ Ngân hàng (Casso)/SMS/OCR đang chờ người dùng duyệt & chọn danh mục. - Confirmed: Giao dịch đã được xác nhận chính thức, được tính vào báo cáo & ngân sách. - Rejected: Giao dịch bị người dùng từ chối / loại bỏ. - Fail: giao dịch đã được xác nhận xử lý nhưng do lỗi backend nên xử lý thất bại. (Lưu ý: Các giao dịch từ SMS, ORC, BankSync mặc định là Pending khi vừa ghi nhận; giao dịch Manual mặc định là Confirmed) |
-| Provider | Varchar(40) | Check in (Manual, BankSync, SMS, ORC, Bill) | Nguồn tạo giao dịch, Chống trùng theo nguồn: - Manual: giao dịch tạo thủ công - BankSync: Ngân hàng được liên kết - SMS: tin nhắn SMS - ORC: đọc dữ liệu từ hình ảnh - Bill: thanh toán hóa đơn theo chu kỳ |
-| Note | Text | | Ghi chú cho giao dịch |
-| Images | Text | Null | Hình ảnh đi kèm giao dịch |
-| DateTransaction | Timestamp | Default Now() | Thời điểm giao dịch |
+| Idtran | varchar(36) | PK - UUID v4 | Mã giao dịch |
+| Idaccount | Int | FK - Account(Idaccount) | Tài khoản thực hiện giao dịch |
+| Idwallet | varchar(36) | FK - Wallet (Idwallet) | Ví thực hiện giao dịch (hoặc ví chuyển đi) |
+| Idcategory | varchar(36) | FK - Category(Idcategory), NULL | Danh mục giao dịch (NULL khi là Transfer hoặc giao dịch chưa phân loại) |
+| Idwallet_transfer | varchar(36) | FK - Wallet (Idwallet), NULL | Ví nhận tiền khi loại giao dịch là Transfer |
+| Bank_tran_id | varchar(100) | NULL | Mã giao dịch từ phía ngân hàng / hóa đơn (phục vụ chống trùng) |
+| Amount | Decimal(15,2) | Check (!= 0) | Số tiền giao dịch (giữ dấu ±: dương = tiền vào, âm = tiền ra) |
+| Type | Varchar(20) | Check in (Transaction, Transfer) | Loại giao dịch: Transaction (Biến động số dư), Transfer (Chuyển khoản nội bộ) |
+| Status | Varchar(10) | Check in (Pending, Confirmed, Rejected, Fail) - Default Confirmed | Trạng thái giao dịch: Pending (Chờ duyệt), Confirmed (Đã xác nhận), Rejected (Từ chối), Fail (Lỗi xử lý) |
+| Provider | Varchar(40) | Check in (Manual, BankSync, SMS, ORC, Bill) - Default Manual | Nguồn tạo giao dịch: Manual (Thủ công), BankSync (Ngân hàng Casso), SMS (Tin nhắn), ORC (OCR hóa đơn), Bill (Hóa đơn) |
+| Note | Text | NULL | Ghi chú chi tiết giao dịch |
+| Images | Text | NULL | Đường dẫn ảnh đính kèm (hóa đơn, chứng từ) |
+| DateTransaction | Timestamp | Default Now() | Thời điểm giao dịch thực tế xảy ra |
 | Update_at | Timestamp | Default Now() | Thời điểm cập nhật giao dịch |
-| Deleted_at | Timestamp | Null | Thời điểm xóa giao dịch |
+| Deleted_at | Timestamp | NULL | Thời điểm xóa mềm giao dịch |
 
 ## 2.13. Bảng RefreshToken
+Bảng lưu trữ Refresh Token đã cấp cho các phiên đăng nhập.
 
 | Tên cột | Kiểu dữ liệu | Ràng buộc | Ý nghĩa |
 |---|---|---|---|
-| Idtoken | int | PK Auto increment | Mã định danh cho token được cấp |
-| Token_hash | varchar(255) | Unique | Token được cấp đã băm 1 chiều |
-| Idaccount | int | FK Account | Mã tài khoản được cấp token |
-| Idrole | int | FK Role (Idrole) | Quyền của tài khoản được cấp, áp dụng thời hạn sống của token - Admin: 7 ngày - User: 30 ngày |
-| Expired | Timestamp | | Thời điểm hết hạn token, Vượt quá thời gian này token không thể làm mới |
-| Status | Boolean | Default False | True - đã thu hồi False - còn hiệu lực |
-| Device_na | varchar(100) | NULL | Tên thiết bị đăng nhập |
-| IP_address | varchar(45) | NULL | Địa chỉ IP lúc đăng nhập |
-| User_agent | Text | NULL | Chuỗi thông tin môi trường của trình duyệt / mobile |
+| Idtoken | int | PK - Auto increment | Mã định danh token |
+| Token_hash | varchar(255) | Unique | Chuỗi token đã băm 1 chiều |
+| Idaccount | int | FK - Account (Idaccount) | Tài khoản được cấp token |
+| Idrole | int | FK - Role (Idrole) - Default 2 | Quyền của tài khoản tại thời điểm cấp token |
+| Expired | Timestamp | | Thời điểm hết hạn của token |
+| Status | Boolean | Default False | Trạng thái token: FALSE (Còn hiệu lực), TRUE (Đã thu hồi / Revoked) |
+| Device_name | varchar(100) | NULL | Tên thiết bị đăng nhập |
+| IP_address | varchar(45) | NULL | Địa chỉ IP đăng nhập |
+| User_agent | Text | NULL | Thông tin trình duyệt / OS / thiết bị |
 | Create_at | Timestamp | Default Now() | Thời điểm cấp token |
 | Update_at | Timestamp | Default Now() | Thời điểm làm mới token |
 
-# 3. Ràng buộc CSDL
+---
+
+# 3. Tổng Hợp Ràng Buộc CSDL Chuẩn (100% Khớp Phần 2)
 
 ## 3.1. Quy tắc chung
-
-- **PK**: Mọi bảng offline-first dùng `varchar(36) uuid` do **Client sinh** — Backend chỉ ghi nhận mã, không tự sinh (trừ `Role`, `Account`, `User`, `Audit_log`, `OTP_code`, `RefreshToken` dùng `int auto-increment`).
-- **FK → Account**: Mọi bảng nghiệp vụ (`Category`, `Bank_account`, `Wallet`, `Budget`, `Bill`, `Goal`, `Transaction`, `RefreshToken`) có `Idaccount` làm FK → `Account(Idaccount)`, với `ON DELETE CASCADE` (xóa tài khoản → xóa toàn bộ dữ liệu con).
-- **Soft delete**: Các bảng có cột `Delete_at` — nếu cột `Delete_at` **có giá trị** (Timestamp) thì dữ liệu đã bị xóa mềm; nếu **rỗng** (NULL) thì dữ liệu đang dùng. Không dùng `DELETE` vật lý.
-- **Sync**: Mọi bảng offline-first (client) có thêm cột `Sync_status`; quyết định bản ghi nào hợp lệ dựa trên `Update_at` (Last-Write-Wins).
+- **Khóa chính (PK)**: Mọi bảng offline-first (`Category`, `Bank_account`, `Wallet`, `Budget`, `Bill`, `Goal`, `Transaction`) dùng `varchar(36) UUID v4` do **Client-app sinh** khi tạo mới ngoại tuyến. Các bảng hệ thống dùng `int auto-increment`.
+- **Khóa ngoại (FK) liên kết Account**: Các bảng dữ liệu con trỏ về `Account(Idaccount)` với ràng buộc `ON DELETE CASCADE`.
+- **Cơ chế Xóa mềm (Soft Delete)**: Sử dụng `Delete_at` (hoặc `Deleted_at` cho `Transaction`). Khi xóa mềm, ghi nhận `Timestamp` hiện tại và đồng bộ `Update_at = Now()`. Không dùng `DELETE` vật lý.
+- **Xung đột & Đồng bộ (LWW)**: Áp dụng thuật toán Last-Write-Wins dựa trên `Update_at`.
 
 ## 3.2. Chi tiết ràng buộc từng bảng
 
 ### 3.2.1. Role
 | Loại | Ràng buộc |
 |---|---|
-| PK | `Idrole` |
+| PK | `Idrole` (int auto-increment) |
 | Unique | `Rolename` |
 
 ### 3.2.2. Account
 | Loại | Ràng buộc |
 |---|---|
-| PK | `Idaccount` |
-| FK | `Idrole` → `Role(Idrole)` |
+| PK | `Idaccount` (int auto-increment) |
+| FK | `Idrole` $\rightarrow$ `Role(Idrole)` |
 | Unique | `Email`, `Username` |
-| Check | `Status IN (Active, Inactive, PendingDelete, Deleted)`; `Type IN (Basic, Premium)` |
-| Default | `Status='Active'`, `Type='Basic'` |
+| Check | `Status IN ('Active', 'Inactive', 'PendingDelete', 'Deleted')`; `Type IN ('Basic', 'Premium')` |
+| Default | `Status = 'Active'`, `Type = 'Basic'`, `Create_at = Now()`, `Update_at = Now()` |
 
 ### 3.2.3. User
 | Loại | Ràng buộc |
 |---|---|
-| PK | `Iduser` |
-| FK | `Idaccount` → `Account(Idaccount)` |
-| Unique | `Idaccount` (1 user ↔ 1 account), `Email` |
-| Đồng bộ | **`User.Email` PHẢI đồng bộ với `Account.Email`** (cùng giá trị). Khi đổi email phải cập nhật cả 2 bảng trong cùng transaction. |
+| PK | `Iduser` (int auto-increment) |
+| FK | `Idaccount` $\rightarrow$ `Account(Idaccount)` (`ON DELETE CASCADE`) |
+| Unique | `Idaccount` (1 User ↔ 1 Account), `Email` |
+| Đồng bộ | `User.Email` luôn đồng bộ với `Account.Email`. |
 
 ### 3.2.4. Audit_log
 | Loại | Ràng buộc |
 |---|---|
-| PK | `Idlog` |
-| FK | `Idaccount` → `Account(Idaccount)` |
-| Index | `Idaccount` (truy vấn theo tài khoản) |
+| PK | `Idlog` (int auto-increment) |
+| FK | `Idaccount` $\rightarrow$ `Account(Idaccount)` (`ON DELETE CASCADE`) |
+| Check | `Req_status IN ('Accepted', 'Rejected', 'Interrupted', 'Pending', 'Processing', 'Pass', 'Fail')` |
+| Default | `Req_status = 'Pass'`, `TimeReq = Now()`, `TimeRes = Now()` |
+| Index | `Idaccount` |
 
 ### 3.2.5. OTP_code
 | Loại | Ràng buộc |
 |---|---|
-| PK | `Id_otp` |
-| FK | `Idaccount` → `Account(Idaccount)` |
-| Index | `(Idaccount, purpose)` — lấy OTP còn hạn theo tài khoản & mục đích; `(Email, purpose)` — tra theo email; `expires_at` — dọn OTP hết hạn |
-| Check | `expires_at > created_at` |
+| PK | `Id_otp` (int auto-increment) |
+| FK | `Idaccount` $\rightarrow$ `Account(Idaccount)` (`ON DELETE SET NULL`) |
+| Check | `purpose IN ('Register', 'Reset_password', 'Change_email')`; `expires_at > created_at` |
+| Default | `is_used = FALSE`, `created_at = Now()`, `expires_at = Now() + INTERVAL '10 minutes'` |
+| Index | `(Idaccount, purpose)`, `(Email, purpose)`, `expires_at` |
 
 ### 3.2.6. Category
 | Loại | Ràng buộc |
 |---|---|
-| PK | `Idcategory` |
-| FK | `Create_by` → `Account(Idaccount)`; `Idgroup` → `Category(Idcategory)` (tự tham chiếu, nhóm) |
-| Check | `Classify IN (Thu, Chi, Vay/no)` |
-| Unique | `(Create_by, NameCategory, Classify)` — không trùng tên danh mục trong cùng phân loại của 1 tài khoản |
-| Unique | `(NameCategory, Classify)` **WHERE `Is_default = TRUE`** — không trùng tên danh mục mặc định toàn cục (do admin quản lý; `Create_by` = `idaccount` admin đọc từ DB) |
-| Check (Idgroup) | Parent phải là danh mục nhóm: `Is_group = TRUE`, cùng `Create_by` (cùng tài khoản), `Is_default = FALSE`, và group đó có `Idgroup IS NULL` (không cho nhóm lồng nhau) |
-| Check (Is_group) | Group (`Is_group = TRUE`): `Idgroup IS NULL` (nhóm cấp cao nhất); Con (`Is_group = FALSE`): có thể có `Idgroup` (con của nhóm) hoặc `NULL` (chưa nhóm) |
-| Index | `Create_by`; `Idgroup` |
+| PK | `Idcategory` (varchar(36) UUID) |
+| FK | `Create_by` $\rightarrow$ `Account(Idaccount)` (`ON DELETE CASCADE`); `Idgroup` $\rightarrow$ `Category(Idcategory)` (`ON DELETE SET NULL`) |
+| Check | `Classify IN ('Thu', 'Chi', 'Vay/nợ')` |
+| Default | `Is_default = FALSE`, `Is_group = FALSE`, `Create_at = Now()`, `Update_at = Now()` |
+| Unique | `(Create_by, NameCategory, Classify)` — Không trùng tên danh mục trong cùng phân loại của 1 tài khoản |
+| Check Phân cấp | Nhóm (`Is_group = TRUE`): `Idgroup IS NULL`. Danh mục con (`Is_group = FALSE`): có thể có `Idgroup` hoặc `NULL` (không cho phép lồng quá 2 cấp). |
+| Index | `Idcategory`, `Idgroup`, `Create_by` |
 
 ### 3.2.7. Bank_account
 | Loại | Ràng buộc |
 |---|---|
-| PK | `Id_bank_account` |
-| FK | `Idaccount` → `Account(Idaccount)` |
-| Unique | `Id_casso_account` — 1 tài khoản Casso chỉ liên kết 1 lần |
-| Check | `Connect_status IN (Active, Expired, Disconnected)` |
-| Default | `Connect_status='Active'` |
-| Index | `Idaccount` |
+| PK | `Id_bank_account` (varchar(36) UUID) |
+| FK | `Idaccount` $\rightarrow$ `Account(Idaccount)` (`ON DELETE CASCADE`) |
+| Unique | `Id_casso_account` (1 tài khoản ngân hàng Casso chỉ liên kết 1 lần duy nhất) |
+| Check | `Connect_status IN ('Active', 'Expired', 'Disconnected')` |
+| Default | `Balance = 0`, `Connect_status = 'Active'`, `Create_at = Now()`, `Update_at = Now()` |
+| Index | `Idaccount`, `Connect_status` |
 
 ### 3.2.8. Wallet
 | Loại | Ràng buộc |
 |---|---|
-| PK | `Idwallet` |
-| FK | `Idaccount` → `Account(Idaccount)`; `Id_bank_casso` → `Bank_account(Id_bank_account)` (`ON DELETE SET NULL`) |
-| Check | `Type IN (Cash, Bank, Saving, Banking)`; `Currency IN (VND, USD, ...)` |
-| Default | `Type='Cash'`, `Balance=0`, `Currency='VND'`, `Status='Active'`, `IncludeInTotal=TRUE`, `Is_default=FALSE` |
-| Unique | `(Idaccount, Name)` — không trùng tên ví trong cùng tài khoản |
-| Unique | `Id_bank_casso` **WHERE NOT NULL** — 1 tài khoản NH chỉ tạo 1 ví bank (không trùng ví) |
-| Unique | `(Idaccount)` **WHERE `Type='Saving'` AND `Delete_at IS NULL`** — tối đa 1 ví tiết kiệm cứng mỗi tài khoản |
-| Unique | `(Idaccount)` **WHERE `Is_default=TRUE` AND `Delete_at IS NULL`** — tối đa 1 ví tự thiết lập mặc định mỗi tài khoản |
-| Check (Banking) | `Type='Banking'` → bắt buộc `Id_bank_casso NOT NULL` (chỉ tạo từ liên kết Casso, user không tự tạo); `Type != 'Banking'` → `Id_bank_casso` phải NULL |
-| Index | `Idaccount`; `Id_bank_casso` |
+| PK | `Idwallet` (varchar(36) UUID) |
+| FK | `Idaccount` $\rightarrow$ `Account(Idaccount)` (`ON DELETE CASCADE`); `Id_bank_casso` $\rightarrow$ `Bank_account(Id_bank_account)` (`ON DELETE SET NULL`) |
+| Check | `Type IN ('Cash', 'Bank', 'Saving', 'Banking')`; `Currency IN ('VND', 'USD')`; `Status IN ('Active', 'Inactive')` |
+| Default | `Type = 'Cash'`, `Balance = 0`, `Currency = 'VND'`, `Status = 'Active'`, `IncludeInTotal = TRUE`, `Is_default = FALSE` |
+| Unique | `(Idaccount, Name)` — Không trùng tên ví trong cùng 1 tài khoản |
+| Unique | `Id_bank_casso` **WHERE NOT NULL** — 1 tài khoản ngân hàng chỉ tạo tối đa 1 ví Banking |
+| Index | `Idaccount`, `Id_bank_casso`, `Update_at` |
 
 ### 3.2.9. Budget
 | Loại | Ràng buộc |
 |---|---|
-| PK | `Idbudget` |
-| FK | `Idaccount` → `Account(Idaccount)`; `Idcategory` → `Category(Idcategory)` (**NULL = ngân sách tổng**) |
-| Check | `TotalAmount > 0`; `PercentSpent BETWEEN 0 AND 100`; `Time_recurrence IN (Week, Month, Quarter, Year)`; `End > Start` |
-| Default | `Spent=0`, `PercentSpent=0`, `OverSpending='Over'`, `Recurrence=FALSE` |
-| Index | `Idaccount`; `Idcategory` |
+| PK | `Idbudget` (varchar(36) UUID) |
+| FK | `Idaccount` $\rightarrow$ `Account(Idaccount)` (`ON DELETE CASCADE`); `Idcategory` $\rightarrow$ `Category(Idcategory)` (`ON DELETE SET NULL`, NULL = Ngân sách tổng) |
+| Check | `TotalAmount > 0`; `Spent >= 0`; `Threshold_Warning_Percent >= 0 AND Threshold_Warning_Percent <= 100`; `OverSpending IN ('Stop', 'Over')`; `Time_recurrence IN ('Day', 'Week', 'Month', 'Quarter', 'Year')` |
+| Default | `Spent = 0`, `Threshold_Warning_Percent = 0`, `OverSpending = 'Over'`, `Recurrence = FALSE` |
+| Index | `Idaccount`, `Idcategory` |
 
 ### 3.2.10. Bill
 | Loại | Ràng buộc |
 |---|---|
-| PK | `Idbill` |
-| FK | `Idaccount` → `Account(Idaccount)`; `Idwallet` → `Wallet(Idwallet)` (**BẮT BUỘC** — bắt buộc chọn ví khi tạo bill); `Idcategory` → `Category(Idcategory)` (**BẮT BUỘC** — bắt buộc chọn danh mục khi tạo bill) |
-| Check | `Amount > 0`; `Time_recurrence IN (Week, Month, Quarter, Year)` |
-| Default | `Pay_status='Pending'` |
-| Index | `Idaccount`; `Idwallet`; `Idcategory` |
+| PK | `Idbill` (varchar(36) UUID) |
+| FK | `Idaccount` $\rightarrow$ `Account(Idaccount)` (`ON DELETE CASCADE`); `Idwallet` $\rightarrow$ `Wallet(Idwallet)`; `Idcategory` $\rightarrow$ `Category(Idcategory)` |
+| Check | `Amount > 0`; `Pay_status IN ('Pending', 'Payed', 'Overdue')`; `Time_recurrence IN ('Day', 'Week', 'Month', 'Quarter', 'Year')`; `Time_notification IN ('1', '3', '5', '7')` |
+| Default | `Pay_status = 'Pending'`, `Recurrence = FALSE`, `Time_notification = '3'` |
+| Index | `Idaccount`, `Idwallet`, `Idcategory` |
 
 ### 3.2.11. Goal
 | Loại | Ràng buộc |
 |---|---|
-| PK | `Idgoal` |
-| FK | `Idaccount` → `Account(Idaccount)`; `Idwallet` → `Wallet(Idwallet)` (**NULL** = chưa liên kết ví đích, gán lần đầu khi nạp tiền; `ON DELETE SET NULL` — xóa ví không xóa mục tiêu) |
-| Check | `Target_amount > 0`; `Current_amount >= 0` |
-| Default | `Status_complete=FALSE` |
-| Index | `Idaccount`; `Idwallet` |
+| PK | `Idgoal` (varchar(36) UUID) |
+| FK | `Idaccount` $\rightarrow$ `Account(Idaccount)` (`ON DELETE CASCADE`); `Idwallet` $\rightarrow$ `Wallet(Idwallet)` (`ON DELETE SET NULL`) |
+| Check | `Target_amount > 0`; `Current_amount >= 0`; `Status_complete IN ('True', 'False')`; `Cycle_take_money IN ('Day', 'Week', 'Month', 'Quarter', 'Year')` |
+| Default | `Current_amount = 0`, `Status_complete = 'False'`, `Recurrence = FALSE` |
+| Index | `Idaccount`, `Idwallet` |
 
 ### 3.2.12. Transaction
 | Loại | Ràng buộc |
 |---|---|
-| PK | `Idtran` |
-| FK | `Idaccount` → `Account(Idaccount)`; `Idwallet` → `Wallet(Idwallet)`; `Idcategory` → `Category(Idcategory)`; `Wallet_Transfer` → `Wallet(Idwallet)` |
-| Check | `Type IN (Transaction, Transfer)`; `Provider IN (Manual, Casso, SMS, OCR)`; **`Amount != 0`** (giữ dấu ±: dương = vào, âm = ra) |
-| Check (đồng bộ) | `Provider IN ('Casso','SMS')` → `Bank_tran_id IS NOT NULL`; `Provider IN ('Manual','OCR')` → `Bank_tran_id IS NULL` |
-| Unique | **`(Provider, Bank_tran_id)`** (chống trùng **theo nguồn** — giao dịch cùng nguồn & cùng mã ngân hàng chỉ có 1 bản ghi) |
-| Index | `Idaccount`; `Idwallet`; `Idcategory`; `Create_at`; `Provider`; `Bank_tran_id` |
-| Default | `Provider='Manual'`, `Images=NULL`, `Wallet_Transfer=NULL`, `Bank_tran_id=NULL` |
-| Ghi chú luồng | Giao dịch webhook Casso: **ghi vào CSDL TRƯỚC** (Amount giữ dấu, `Idcategory=NULL`) → **phân loại danh mục SAU** (AI/worker cập nhật `Idcategory`) |
+| PK | `Idtran` (varchar(36) UUID) |
+| FK | `Idaccount` $\rightarrow$ `Account(Idaccount)` (`ON DELETE CASCADE`); `Idwallet` $\rightarrow$ `Wallet(Idwallet)` (`ON DELETE CASCADE`); `Idcategory` $\rightarrow$ `Category(Idcategory)` (`ON DELETE SET NULL`); `Idwallet_transfer` $\rightarrow$ `Wallet(Idwallet)` (`ON DELETE SET NULL`) |
+| Check | `Type IN ('Transaction', 'Transfer')`; `Status IN ('Pending', 'Confirmed', 'Rejected', 'Fail')`; `Provider IN ('Manual', 'BankSync', 'SMS', 'ORC', 'Bill')`; `Amount != 0` |
+| Default | `Type = 'Transaction'`, `Status = 'Confirmed'`, `Provider = 'Manual'`, `DateTransaction = Now()` |
+| Unique | `(Provider, Bank_tran_id)` **WHERE Bank_tran_id IS NOT NULL** (Chống trùng giao dịch ngân hàng / hóa đơn theo nguồn) |
+| Index | `Idaccount`, `Idwallet`, `Idcategory`, `Status`, `Provider`, `DateTransaction`, `Update_at` |
 
 ### 3.2.13. RefreshToken
 | Loại | Ràng buộc |
 |---|---|
-| PK | `Idtoken` |
-| FK | `Idaccount` → `Account(Idaccount)` (`ON DELETE CASCADE`) |
+| PK | `Idtoken` (int auto-increment) |
+| FK | `Idaccount` $\rightarrow$ `Account(Idaccount)` (`ON DELETE CASCADE`); `Idrole` $\rightarrow$ `Role(Idrole)` |
 | Unique | `Token_hash` |
-| Index | `Idaccount`; `Expiry` (dọn token hết hạn); `Revoked`; `Token_hash` |
-| Default | `Idrole=2`, `Revoked=FALSE` |
-| Check | `Expiry > Create_at` |
+| Check | `Expired > Create_at` |
+| Default | `Idrole = 2`, `Status = FALSE` (FALSE: còn hiệu lực, TRUE: đã thu hồi), `Create_at = Now()`, `Update_at = Now()` |
+| Index | `Idaccount`, `Expired`, `Status`, `Token_hash` |

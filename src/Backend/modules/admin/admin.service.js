@@ -107,9 +107,9 @@ const adminService = {
   async addCategory(data, idaccount) {
     const trimmedName = (data.name || '').trim();
     const isDefault = data.is_default === true || data.is_default === 'true';
-    const validClassifies = ['Thu', 'Chi', 'Vay', 'no'];
+    const validClassifies = ['Thu', 'Chi', 'Vay/nợ', 'Vay/no', 'Vay', 'no'];
     if (!validClassifies.includes(data.classify)) {
-      throw Object.assign(new Error(`Loại danh mục '${data.classify}' không hợp lệ. Phải là Thu/Chi/Vay/no`), { statusCode: 400 });
+      throw Object.assign(new Error(`Loại danh mục '${data.classify}' không hợp lệ. Phải là Thu, Chi, hoặc Vay/nợ`), { statusCode: 400 });
     }
     const { prisma } = require('../../config/db');
 
@@ -142,9 +142,9 @@ const adminService = {
   async updateCategory(idcategory, data) {
     const trimmedName = (data.name || '').trim();
     const isDefault = data.is_default === true || data.is_default === 'true';
-    const validClassifies = ['Thu', 'Chi', 'Vay', 'no'];
+    const validClassifies = ['Thu', 'Chi', 'Vay/nợ', 'Vay/no', 'Vay', 'no'];
     if (data.classify && !validClassifies.includes(data.classify)) {
-      throw Object.assign(new Error(`Loại danh mục '${data.classify}' không hợp lệ. Phải là Thu/Chi/Vay/no`), { statusCode: 400 });
+      throw Object.assign(new Error(`Loại danh mục '${data.classify}' không hợp lệ. Phải là Thu, Chi, hoặc Vay/nợ`), { statusCode: 400 });
     }
     const { prisma } = require('../../config/db');
 
