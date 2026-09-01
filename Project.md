@@ -2273,6 +2273,21 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
     - Chuẩn hóa truy vấn `auditlog` cho `getLoginLogsByRange` và `getRequestLogsByRange`.
   - `src/Backend/modules/admin/admin.service.js`:
     - Map `type: u.account.type || 'Basic'` và `updated_at` vào DTO trả về cho Admin Web.
-    - Validate ràng buộc `classify` (`Thu`, `Chi`, `Vay`, `no`) trong `addCategory` và `updateCategory`.
+    - Validate ràng buộc `classify` (`Thu`, `Chi`, `Vay/nợ`, `Vay/no`) trong `addCategory` và `updateCategory`.
 - **Kiểm thử tự động**:
-  - `Test/test_admin_new_schema.js`: Kiểm thử trọn vẹn Dashboard Stats, User Management, Category Management, Audit Log Stats $\rightarrow$ **PASS 100%**.
+  - `Test/test_admin_new_schema.js`: Kiểm thử trọn vẹn Dashboard Stats, User Management, Category Management, Audit Log Stats $\rightarrow$ **PASS 100%**.
+
+### 11.18. Đồng Bộ Toàn Diện & Xóa Bỏ Mâu Thuẫn Trong Đặc Tả CSDL New_Database.md (2026-09-01)
+- **Rà soát & Chuẩn hóa Nguồn sự thật (`docs/superpowers/backend/New_Database.md`)**:
+  - **`Category.Classify`**: Đồng bộ 100% giữa Bảng mục 2.6 và Ràng buộc mục 3.2.6 thành `nvarchar(7) Check in (Thu, Chi, Vay/nợ)`.
+  - **`Bank_account.Connect_status`**: Chuẩn hóa thành `varchar(12) Check in (Active, Expired, Disconnected) - Default Active`, loại bỏ hoàn toàn mâu thuẫn `Active, Inactive` cũ.
+  - **`Bill.Pay_status`**: Chuẩn hóa thành `varchar(7) Check in (Pending, Payed, Overdue) - Default Pending`, xóa bỏ mâu thuẫn gán giá trị boolean `FALSE`.
+  - **`Budget`**: Xóa bỏ các cột cũ `PercentSpent` ở phần ràng buộc 3.2.9, đồng bộ chuẩn xác với `Threshold_Warning_Amount`, `Threshold_Warning_Percent` (Check `>= 0 AND <= 100`), `Nexttime_recurrence`.
+  - **`Goal.Status_complete`**: Chuẩn hóa `varchar(20) Check in (True, False) - Default 'False'`.
+  - **`Transaction`**: Đồng bộ ràng buộc `Status IN (Pending, Confirmed, Rejected, Fail)` và `Provider IN (Manual, BankSync, SMS, ORC, Bill)`.
+  - **`RefreshToken`**: Đồng bộ `Expired` và `Status (Boolean Default False)`.
+  - **`Wallet`**: Khắc phục lỗi chính tả `IncludeInTotal` và sửa `Id_bank_casso` thành `varchar(36)`.
+- **Tập tin Backend cập nhật**:
+  - `src/Backend/modules/sync/sync.validation.js` & `src/Backend/modules/admin/admin.service.js`: Hỗ trợ đầy đủ phân loại danh mục `Vay/nợ` và `Vay/no`.
+- **Kiểm thử tự động**:
+  - Toàn bộ test suite `test_bank_full_flow.js`, `test_admin_new_schema.js`, `test_sync_new_schema.js` đạt **PASS 100%**.
