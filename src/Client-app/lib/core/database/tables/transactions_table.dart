@@ -22,8 +22,14 @@ class Transactions extends Table {
   TextColumn   get type    => text()();
   // 'Transaction' | 'Transfer' (theo backend v2)
 
-  /// Provider: nguồn tạo giao dịch
-  /// 'Manual' | 'Casso' | 'SMS' | 'OCR'
+  /// status: trạng thái giao dịch — 'Pending' | 'Confirmed' | 'Rejected' | 'Fail'
+  /// Mặc định 'Confirmed' (khớp backend default)
+  TextColumn get status => text().withDefault(const Constant('Confirmed'))();
+
+  /// provider: nguồn tạo giao dịch
+  /// Backend values: 'Manual' | 'BankSync' | 'SMS' | 'ORC' | 'Bill'
+  /// Client legacy:  'Manual' | 'Casso'   | 'SMS' | 'OCR'
+  /// Sync mapper sẽ chuẩn hoá: Casso→BankSync, OCR→ORC
   TextColumn get provider => text().withDefault(const Constant('Manual'))();
 
   TextColumn   get note    => text().withDefault(const Constant(''))();

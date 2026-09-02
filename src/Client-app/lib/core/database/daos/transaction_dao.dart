@@ -152,4 +152,34 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
       b.insertAll(transactions, entries, mode: InsertMode.insertOrReplace);
     });
   }
+
+  /// Repair: tìm các transaction đã 'synced' cục bộ nhưng có thể bị mất categoryId
+  /// trên backend (do defensive null guard cũ). Bump updatedAt → đánh dấu pending
+  /// để sync engine gửi lại với đúng categoryId (LWW sẽ thắng vì updatedAt mới hơn).
+  ///
+  /// Chỉ gọi sau khi categories đã được pull về đủ từ backend.
+  Future<int> repairSyncedTransactionsWithCategory() async {
+    final now = DateTime.now();
+    // Lấy tất cả synced transactions có categoryId khác null
+    final synced = await (select(transactions)
+          ..where((t) =>
+              t.syncStatus.equals('synced') &
+              t.categoryId.isNotNull() &
+              t.deletedAt.isNull()))
+        .get();
+
+    int repaired = 0;
+    for (final tx in synced) {
+      if (tx.categoryId == null) continue;
+      // Bump updatedAt → pending để re-push với đúng categoryId
+      await (update(transactions)..where((t) => t.id.equals(tx.id))).write(
+        TransactionsCompanion(
+          syncStatus: const Value('pending'),
+          updatedAt: Value(now),
+        ),
+      );
+      repaired++;
+    }
+    return repaired;
+  }
 }

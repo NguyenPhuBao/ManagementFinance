@@ -52,7 +52,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration {
@@ -120,6 +120,41 @@ class AppDatabase extends _$AppDatabase {
 
           // ── Goals (DB v2) ────────────────────────────────────────────────
           await m.addColumn(goals, goals.deletedAt);
+        }
+        if (from < 7) {
+          // ── Align SQLite schema with backend PostgreSQL (New_Database.md) ──
+
+          // Transactions: thêm status giao dịch
+          await m.addColumn(transactions, transactions.status);
+
+          // Bills: thêm payStatus (thay thế isPaid boolean)
+          await m.addColumn(bills, bills.payStatus);
+          // Bills: thêm startDate (Start_date từ backend)
+          await m.addColumn(bills, bills.startDate);
+          // Bills: thêm timeNotification (số ngày nhắc trước hạn)
+          await m.addColumn(bills, bills.timeNotification);
+
+          // Budgets: thêm thresholdWarningAmount
+          await m.addColumn(budgets, budgets.thresholdWarningAmount);
+          // Budgets: thêm nextTimeRecurrence
+          await m.addColumn(budgets, budgets.nextTimeRecurrence);
+
+          // Goals: thêm startDate
+          await m.addColumn(goals, goals.startDate);
+          // Goals: thêm cycleTakeMoney
+          await m.addColumn(goals, goals.cycleTakeMoney);
+          // Goals: thêm timeCycleTakeMoney
+          await m.addColumn(goals, goals.timeCycleTakeMoney);
+          // Goals: thêm recurrence
+          await m.addColumn(goals, goals.recurrence);
+          // Goals: thêm timeRecurrence
+          await m.addColumn(goals, goals.timeRecurrence);
+
+          // Migrate isPaid → payStatus cho Bills đã có dữ liệu
+          await customStatement(
+            "UPDATE bills SET pay_status = CASE WHEN is_paid = 1 THEN 'Payed' ELSE 'Pending' END "
+            "WHERE pay_status = 'Pending'",
+          );
         }
       },
       beforeOpen: (details) async {

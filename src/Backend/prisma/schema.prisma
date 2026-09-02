@@ -112,8 +112,8 @@ model category {
   idgroup       String?   @db.VarChar(36) @map("Idgroup")
   keyword       String?   @db.Text @map("Keyword")
   icon          String?   @db.VarChar(20) @map("Icon")
-  create_at     DateTime? @default(now()) @db.Timestamp(6) @map("Create_at")
-  update_at     DateTime? @default(now()) @db.Timestamp(6) @map("Update_at")
+  create_at     DateTime  @default(now()) @db.Timestamp(6) @map("Create_at")
+  update_at     DateTime  @default(now()) @db.Timestamp(6) @map("Update_at")
   delete_at     DateTime? @db.Timestamp(6) @map("Delete_at")
 
   account    account      @relation(fields: [create_by], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_category_account")
@@ -140,8 +140,8 @@ model bank_account {
   bank_name        String     @db.VarChar(100) @map("Bank_name")
   balance          Decimal    @default(0) @db.Decimal(15, 2) @map("Balance")
   connect_status   String     @default("Active") @db.VarChar(12) @map("Connect_status")
-  create_at        DateTime?  @default(now()) @db.Timestamp(6) @map("Create_at")
-  update_at        DateTime?  @default(now()) @db.Timestamp(6) @map("Update_at")
+  create_at        DateTime   @default(now()) @db.Timestamp(6) @map("Create_at")
+  update_at        DateTime   @default(now()) @db.Timestamp(6) @map("Update_at")
   delete_at        DateTime?  @db.Timestamp(6) @map("Delete_at")
 
   account account @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_bank_account_owner")
@@ -205,7 +205,7 @@ model budget {
   delete_at                  DateTime? @db.Timestamp(6) @map("Delete_at")
 
   account  account   @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_budget_account")
-  category category? @relation(fields: [idcategory], references: [idcategory], onUpdate: NoAction, map: "fk_budget_category")
+  category category? @relation(fields: [idcategory], references: [idcategory], onDelete: SetNull, onUpdate: NoAction, map: "fk_budget_category")
 
   @@index([idaccount], map: "idx_budget_account")
   @@index([idcategory], map: "idx_budget_category")
@@ -234,8 +234,8 @@ model bill {
   delete_at         DateTime? @db.Timestamp(6) @map("Delete_at")
 
   account  account  @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_bill_account")
-  wallet   wallet   @relation(fields: [idwallet], references: [idwallet], onUpdate: NoAction, map: "fk_bill_wallet")
-  category category @relation(fields: [idcategory], references: [idcategory], onUpdate: NoAction, map: "fk_bill_category")
+  wallet   wallet   @relation(fields: [idwallet], references: [idwallet], onDelete: Restrict, onUpdate: NoAction, map: "fk_bill_wallet")
+  category category @relation(fields: [idcategory], references: [idcategory], onDelete: Restrict, onUpdate: NoAction, map: "fk_bill_category")
 
   @@index([idaccount], map: "idx_bill_account")
   @@index([idwallet], map: "idx_bill_wallet")
@@ -282,7 +282,7 @@ model transaction {
   idwallet_transfer  String?   @db.VarChar(36) @map("Idwallet_transfer")
   bank_tran_id       String?   @db.VarChar(100) @map("Bank_tran_id")
   amount             Decimal   @db.Decimal(15, 2) @map("Amount")
-  type               String    @db.VarChar(20) @map("Type")
+  type               String    @default("Transaction") @db.VarChar(20) @map("Type")
   status             String    @default("Confirmed") @db.VarChar(10) @map("Status")
   provider           String    @default("Manual") @db.VarChar(40) @map("Provider")
   note               String?   @db.Text @map("Note")

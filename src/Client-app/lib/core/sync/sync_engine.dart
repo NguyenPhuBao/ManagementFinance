@@ -344,6 +344,8 @@ class SyncEngine {
               ));
             }
             await _db.categoryDao.upsertAll(companions);
+            // Xóa category seed cục bộ (cat_food...) đã có bản UUID từ backend
+            await _db.categoryDao.removeDuplicateLocalSeedCategories();
             debugPrint(
                 '[SyncEngine] Pulled & Saved ${categories.length} categories into SQLite local.');
           }
@@ -455,7 +457,40 @@ class SyncEngine {
     final ops = <SyncOperation>[];
     final now = DateTime.now();
 
-    // Wallets
+    // ── 1. Categories (phải đứng TRƯỚC transactions/budgets/bills) ────────────
+    // Transaction.idcategory, Budget.idcategory, Bill.idcategory đều FK → category
+    // Nếu categories push sau thì backend báo FK constraint violation.
+    final syncableCategories =
+        await _db.categoryDao.getSyncableCategories(idaccount);
+    for (final c in syncableCategories) {
+      final validId = _toValidUuid(c.id);
+      String validClassify = c.classify;
+      if (validClassify == 'vay_no' || validClassify == 'vay-no') {
+        validClassify = 'vay/no';
+      }
+      ops.add(SyncOperation(
+        localId: c.id,
+        entity: SyncEntityType.category,
+        operation:
+            c.isDeleted ? SyncOperationType.delete : SyncOperationType.update,
+        payload: {
+          'id': validId,
+          'name': c.name,
+          'namecategory': c.name,
+          'classify': validClassify,
+          'icon': c.icon,
+          'colour': c.colour,
+          'is_default': c.isDefault,
+          'is_deleted': c.isDeleted,
+          'updated_at': c.updatedAt.toUtc().toIso8601String(),
+          'idaccount': c.idaccount > 0 ? c.idaccount : (_currentIdaccount ?? 1),
+        },
+        createdAt: now,
+      ));
+    }
+
+    // ── 2. Wallets (phải đứng TRƯỚC transactions/bills/goals) ─────────────────
+    // Transaction.idwallet, Bill.idwallet, Goal.idwallet đều FK → wallet
     final pendingWallets = await _db.walletDao.getPending(idaccount);
     for (final w in pendingWallets) {
       final validId = _toValidUuid(w.id);
@@ -482,7 +517,48 @@ class SyncEngine {
       ));
     }
 
-    // Transactions
+    // ── 1b. Bổ sung categories mà pending transactions tham chiếu ────────────
+    // Chỉ bổ sung USER category (idaccount == currentIdaccount) chưa có trên backend.
+    // KHÔNG bổ sung default/global categories (idaccount == 0) — backend đã có sẵn.
+    final currentAccount = _currentIdaccount ?? idaccount;
+    final alreadyInBatch = ops.map((o) => o.localId).toSet();
+    final pendingTxForCatCheck = await _db.transactionDao.getPending(idaccount);
+    for (final t in pendingTxForCatCheck) {
+      if (t.categoryId == null) continue;
+      final resolvedId = await _resolveCategoryId(t.categoryId);
+      if (resolvedId == null) continue;
+      if (alreadyInBatch.contains(resolvedId)) continue;
+      final cat = await _db.categoryDao.getById(resolvedId);
+      if (cat == null) continue;
+      // Chỉ push category thuộc user hiện tại — bỏ qua global/default (idaccount=0)
+      if (cat.idaccount != currentAccount) continue;
+      // Thêm category này vào batch để đảm bảo nó tồn tại trên backend
+      String validClassify = cat.classify;
+      if (validClassify == 'vay_no' || validClassify == 'vay-no') {
+        validClassify = 'vay/no';
+      }
+      ops.add(SyncOperation(
+        localId: cat.id,
+        entity: SyncEntityType.category,
+        operation: cat.isDeleted ? SyncOperationType.delete : SyncOperationType.update,
+        payload: {
+          'id': _toValidUuid(cat.id),
+          'name': cat.name,
+          'namecategory': cat.name,
+          'classify': validClassify,
+          'icon': cat.icon,
+          'colour': cat.colour,
+          'is_default': cat.isDefault,
+          'is_deleted': cat.isDeleted,
+          'updated_at': cat.updatedAt.toUtc().toIso8601String(),
+          'idaccount': currentAccount,
+        },
+        createdAt: now,
+      ));
+      alreadyInBatch.add(resolvedId);
+    }
+
+    // ── 3. Transactions (sau category + wallet vì FK → cả 2) ──────────────────
     final pendingTx = await _db.transactionDao.getPending(idaccount);
     for (final t in pendingTx) {
       final validId = _toValidUuid(t.id);
@@ -516,37 +592,7 @@ class SyncEngine {
       ));
     }
 
-    // Categories
-    final syncableCategories =
-        await _db.categoryDao.getSyncableCategories(idaccount);
-    for (final c in syncableCategories) {
-      final validId = _toValidUuid(c.id);
-      String validClassify = c.classify;
-      if (validClassify == 'vay_no' || validClassify == 'vay-no') {
-        validClassify = 'vay/no';
-      }
-      ops.add(SyncOperation(
-        localId: c.id,
-        entity: SyncEntityType.category,
-        operation:
-            c.isDeleted ? SyncOperationType.delete : SyncOperationType.update,
-        payload: {
-          'id': validId,
-          'name': c.name,
-          'namecategory': c.name,
-          'classify': validClassify,
-          'icon': c.icon,
-          'colour': c.colour,
-          'is_default': c.isDefault,
-          'is_deleted': c.isDeleted,
-          'updated_at': c.updatedAt.toUtc().toIso8601String(),
-          'idaccount': c.idaccount > 0 ? c.idaccount : (_currentIdaccount ?? 1),
-        },
-        createdAt: now,
-      ));
-    }
-
-    // Budgets, Bills, Goals
+    // ── 4. Budgets (sau category + wallet) ────────────────────────────────────
     for (final b in await _db.budgetDao.getPending(idaccount)) {
       final validId = _toValidUuid(b.id);
       final validCatId =
@@ -569,6 +615,8 @@ class SyncEngine {
         createdAt: now,
       ));
     }
+
+    // ── 5. Bills (sau category + wallet) ──────────────────────────────────────
     for (final bill in await _db.billDao.getPending(idaccount)) {
       final validId = _toValidUuid(bill.id);
       ops.add(SyncOperation(
@@ -592,6 +640,8 @@ class SyncEngine {
         createdAt: now,
       ));
     }
+
+    // ── 6. Goals (sau wallet) ──────────────────────────────────────────────────
     for (final g in await _db.goalDao.getPending(idaccount)) {
       final validId = _toValidUuid(g.id);
       ops.add(SyncOperation(
@@ -616,6 +666,7 @@ class SyncEngine {
 
     return ops;
   }
+
 
   String _toValidUuid(String id) {
     final uuidRegex = RegExp(

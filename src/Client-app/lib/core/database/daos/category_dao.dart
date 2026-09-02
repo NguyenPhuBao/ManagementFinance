@@ -64,11 +64,31 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
             (t) => OrderingTerm.desc(t.idaccount),
             (t) => OrderingTerm.asc(t.name),
           ]))
-        .watch();
+        .watch()
+        .map((list) {
+      // Khử trùng lặp theo tên — ưu tiên giữ bản có UUID hợp lệ từ backend
+      final uuidRegex = RegExp(
+        r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+        caseSensitive: false,
+      );
+      final Map<String, Category> uniqueMap = {};
+      for (final cat in list) {
+        final key = cat.name.trim().toLowerCase();
+        final existing = uniqueMap[key];
+        if (existing == null) {
+          uniqueMap[key] = cat;
+        } else if (uuidRegex.hasMatch(cat.id) && !uuidRegex.hasMatch(existing.id)) {
+          // Ưu tiên bản UUID (từ backend) hơn bản seed cục bộ
+          uniqueMap[key] = cat;
+        }
+      }
+      return uniqueMap.values.toList()
+        ..sort((a, b) => a.name.compareTo(b.name));
+    });
   }
 
-  Future<List<Category>> getCategoryRows(int accountId, String classify) {
-    return (select(categories)
+  Future<List<Category>> getCategoryRows(int accountId, String classify) async {
+    final list = await (select(categories)
           ..where((t) =>
               (t.idaccount.equals(0) | t.idaccount.equals(accountId)) &
               t.classify.equals(classify) &
@@ -78,6 +98,24 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
             (t) => OrderingTerm.asc(t.name),
           ]))
         .get();
+
+    // Khử trùng lặp theo tên — ưu tiên giữ bản có UUID hợp lệ từ backend
+    final uuidRegex = RegExp(
+      r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+      caseSensitive: false,
+    );
+    final Map<String, Category> uniqueMap = {};
+    for (final cat in list) {
+      final key = cat.name.trim().toLowerCase();
+      final existing = uniqueMap[key];
+      if (existing == null) {
+        uniqueMap[key] = cat;
+      } else if (uuidRegex.hasMatch(cat.id) && !uuidRegex.hasMatch(existing.id)) {
+        uniqueMap[key] = cat;
+      }
+    }
+    return uniqueMap.values.toList()
+      ..sort((a, b) => a.name.compareTo(b.name));
   }
 
   Future<List<String>> getKeywords(int accountId, String categoryId) async {
@@ -268,5 +306,39 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
     return (select(categories)
           ..where((t) => t.name.equals(name) & t.deletedAt.isNull()))
         .get();
+  }
+
+  /// Xóa các category seed cục bộ (ID dạng 'cat_food') khi đã có bản UUID
+  /// tương ứng từ backend (cùng tên + classify + isDefault).
+  /// Gọi sau mỗi lần pull để dọn sạch duplicate.
+  Future<void> removeDuplicateLocalSeedCategories() async {
+    final uuidRegex = RegExp(
+      r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+      caseSensitive: false,
+    );
+
+    // Lấy tất cả default categories
+    final all = await (select(categories)
+          ..where((t) => t.isDefault.equals(true) & t.deletedAt.isNull()))
+        .get();
+
+    // Nhóm theo key (name + classify)
+    final Map<String, List<Category>> groups = {};
+    for (final cat in all) {
+      final key = '${cat.classify}|${cat.name.trim().toLowerCase()}';
+      groups.putIfAbsent(key, () => []).add(cat);
+    }
+
+    // Với mỗi nhóm có > 1 bản: xóa bản non-UUID, giữ bản UUID
+    for (final group in groups.values) {
+      if (group.length <= 1) continue;
+      final hasUuid = group.any((c) => uuidRegex.hasMatch(c.id));
+      if (!hasUuid) continue;
+
+      final toDelete = group.where((c) => !uuidRegex.hasMatch(c.id)).toList();
+      for (final old in toDelete) {
+        await (delete(categories)..where((t) => t.id.equals(old.id))).go();
+      }
+    }
   }
 }
