@@ -108,7 +108,35 @@ const bankWorker = new Worker(
       });
     }
 
-    // 5. Tạo giao dịch mới
+    // 5. Tự động gọi AI Phân loại giao dịch (Classify AI 3-Tier)
+    let predictedCategoryId = null;
+    try {
+      const classifyService = require('../modules/ai/features/classify/classify.service');
+      const predicted = await classifyService.classifySingle(idaccount, {
+        text: description,
+        amount,
+        merchant: bankAcc.bank_name || '',
+        source: 'BankSync',
+        counterpart_name: cassoTx.corresponsiveName || '',
+      });
+      if (predicted && predicted.category_id) {
+        predictedCategoryId = predicted.category_id;
+        logger.info('Bank Worker: Transaction auto-classified by AI', {
+          tid,
+          categoryId: predicted.category_id,
+          categoryName: predicted.category_name,
+          confidence: predicted.confidence,
+          tier: predicted.tier_used,
+        });
+      }
+    } catch (classifyErr) {
+      logger.warn('Bank Worker: Auto-classification failed, keeping category as null', {
+        tid,
+        error: classifyErr.message,
+      });
+    }
+
+    // 6. Tạo giao dịch mới
     // CSDL mới: date_transaction, provider = 'BankSync', bank_tran_id
     const parsedDate = when ? new Date(when) : new Date();
     const txDate = isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
@@ -126,7 +154,7 @@ const bankWorker = new Worker(
         update_at: new Date(),
         provider: 'BankSync', // CSDL mới: BankSync
         bank_tran_id: String(tid),
-        idcategory: null, // chờ AI phân loại và người dùng duyệt
+        idcategory: predictedCategoryId, // Gán idcategory do AI dự đoán (hoặc null nếu chưa phân loại)
       },
     });
 

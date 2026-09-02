@@ -15,7 +15,7 @@ Client-app cần cập nhật cấu trúc các bảng SQLite cục bộ trên th
 | **`budget`** | • `threshold_warning_amount`: `REAL`<br>• `threshold_warning_percent`: `REAL`<br>• `nexttime_recurrence`: `DATETIME`<br>• *(Bỏ các cột tính toán tĩnh `remaining`, `percent_spent`)* | Cảnh báo ngân sách dựa trên ngưỡng phần trăm hoặc số tiền thực tế. |
 | **`bill`** | • `start_date`: `DATETIME`<br>• `due_date`: `DATETIME`<br>• `pay_status`: `TEXT` (`Pending`, `Payed`, `Overdue`)<br>• `time_notification`: `TEXT` | Quản lý hóa đơn định kỳ và trạng thái thanh toán chu kỳ mới. |
 | **`goal`** | • `start_date`: `DATETIME`<br>• `cycle_take_money`: `TEXT`<br>• `time_cycle_take_money`: `DATETIME`<br>• `status_complete`: `TEXT` (`'True'`/`'False'`)<br>• `recurrence`: `INTEGER` (Boolean)<br>• `time_recurrence`: `TEXT` | Hỗ trợ chu kỳ tích lũy tiền vào mục tiêu tiết kiệm. |
-| **`category`** | • `classify`: `TEXT` (`Thu`, `Chi`, `Vay`, `no`)<br>• `keyword`: `TEXT` | Lưu chuỗi từ khóa phân cách dấu `;` để phục vụ bộ so khớp Keyword Matcher khi offline. |
+| **`category`** | • `classify`: `TEXT` (`Thu`, `Chi`, `Vay/nợ` hoặc `Vay/no`)<br>• `keyword`: `TEXT` | Lưu chuỗi từ khóa phân cách dấu `;` để phục vụ bộ so khớp Keyword Matcher khi offline. |
 
 ---
 
@@ -43,7 +43,7 @@ Client-app cần xây dựng các màn hình và luồng giao dịch ngân hàng
 * Gọi API chuyên biệt: **`GET /api/bank/pending-transactions`**.
 * Hiển thị danh sách các giao dịch biến động số dư từ Casso đang ở trạng thái `Pending`:
   * Số tiền ($\pm$), Ngân hàng, Số tài khoản, Thời gian, Nội dung chuyển khoản.
-  * Danh mục gợi ý (từ AI hoặc từ bộ Keyword Matcher).
+  * Danh mục gợi ý (do AI phân loại sẵn từ Backend hoặc bộ Keyword Matcher).
 * **Nút bấm hành động:**
   * **"Duyệt / Xác nhận"** $\rightarrow$ Gọi `POST /api/bank/confirm-transaction` với `{ idtran, idcategory, note }`.
   * **"Từ chối"** $\rightarrow$ Gọi `POST /api/bank/reject-transaction` với `{ idtran }`.
@@ -65,12 +65,34 @@ Client-app cần xây dựng các màn hình và luồng giao dịch ngân hàng
 
 ---
 
-## 5. Bộ So Khớp Danh Mục Ngoại Tuyến (Offline Keyword Matcher)
+## 5. Tích Hợp Module AI Phân Loại Giao Dịch (AI Classification Client)
 
-* **Nghiệp vụ khi mất mạng (Offline Fallback):**
-  * Khi giao dịch ngân hàng / SMS / OCR được nạp vào máy trong lúc không có Internet:
-  * Client-app quét cột `Category.Keyword` lưu trong SQLite cục bộ (ví dụ danh mục *"Ăn uống"* có keywords: `cafe;coffee;bun bo;pho;highlands;the coffee house`).
-  * Tự động chọn sẵn danh mục khớp nhất trên giao diện để người dùng chỉ cần 1 chạm bấm **"Duyệt"**.
+Client-app cần tích hợp các điểm chạm (touchpoints) với Backend Module AI:
+
+### 5.1. Khi Nhập Tay Giao Dịch (Manual Entry)
+* Khi người dùng gõ vào ô ghi chú (note) hoặc tên đơn vị bán:
+  * Gọi `POST /api/ai/classify/single` kèm `{ text, amount, merchant }`.
+  * Tự động chọn sẵn danh mục tốt nhất (`category_id`) và hiển thị chip Top-3 `suggested_categories` để người dùng chọn nhanh chỉ với 1 chạm.
+
+### 5.2. Khi Đọc Tin Nhắn SMS Banking
+* Khi ứng dụng nhận tin nhắn SMS biến động số dư:
+  * Trích xuất nội dung tin nhắn và gọi `POST /api/ai/classify/single`.
+  * Tự động điền danh mục phù hợp trước khi hiển thị dialog xác nhận.
+
+### 5.3. Khi Quét Hóa Đơn Mua Sắm (Receipt OCR)
+* Sau khi trích xuất danh sách các món hàng con trong hóa đơn:
+  * Gọi `POST /api/ai/classify/batch` với mảng `items: [{ item_id, text, amount }]`.
+  * Nhận kết quả phân loại từng món hàng để hiển thị lên bảng chi tiết hóa đơn.
+
+### 5.4. Vòng Lặp Tự Học Cá Nhân Hóa (Feedback Loop)
+* Mỗi khi người dùng chủ động chọn lại một danh mục khác so với gợi ý của AI:
+  * Client-app tự động gọi ngầm `POST /api/ai/classify/feedback` kèm `{ idcategory, rawText }`.
+  * Backend sẽ tự động ghi nhớ từ khóa vào `Category.Keyword` trong DB. Ở các lần giao dịch sau, AI sẽ nhận diện chuẩn xác 100% thói quen của người dùng này!
+
+### 5.5. Bộ So Khớp Ngoại Tuyến (Offline Keyword Matcher - Offline Parity)
+* **Khi mất mạng (Offline):**
+  * Client-app sử dụng bộ so khớp từ khóa cục bộ chạy trên SQLite (đọc cột `Category.Keyword` của các danh mục).
+  * Đảm bảo tính nhất quán (Parity) giữa Online (Backend 3-Tier) và Offline (SQLite Keyword Matcher).
 
 ---
 
@@ -83,6 +105,7 @@ Client-app cần xây dựng các màn hình và luồng giao dịch ngân hàng
 | **Auth** | `POST` | `/api/auth/login` | Đăng nhập lấy AccessToken + RefreshToken |
 | **Auth** | `POST` | `/api/auth/refresh` | Làm mới AccessToken |
 | **Auth** | `POST` | `/api/auth/logout` | Đăng xuất |
+| **Auth** | `GET` | `/api/auth/me` | Lấy thông tin tài khoản hiện tại |
 | **Sync** | `POST` | `/api/sync/batch` | Đẩy hàng loạt thao tác offline lên server |
 | **Sync** | `GET` | `/api/sync/pull` | Kéo dữ liệu mới nhất từ server về máy |
 | **Sync** | `GET` | `/api/sync/status` | Kiểm tra tổng số lượng bản ghi |
@@ -90,3 +113,6 @@ Client-app cần xây dựng các màn hình và luồng giao dịch ngân hàng
 | **Bank** | `GET` | `/api/bank/pending-transactions` | Lấy danh sách giao dịch ngân hàng chờ duyệt |
 | **Bank** | `POST` | `/api/bank/confirm-transaction` | Xác nhận duyệt giao dịch & gán danh mục |
 | **Bank** | `POST` | `/api/bank/reject-transaction` | Từ chối giao dịch ngân hàng |
+| **AI Classify** | `POST` | `/api/ai/classify/single` | Gợi ý danh mục cho 1 giao dịch (SMS, Nhập tay) |
+| **AI Classify** | `POST` | `/api/ai/classify/batch` | Gợi ý danh mục hàng loạt cho các món trong hóa đơn OCR |
+| **AI Classify** | `POST` | `/api/ai/classify/feedback` | Ghi nhận phản hồi người dùng để AI tự học |
