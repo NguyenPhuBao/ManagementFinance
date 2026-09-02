@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/database/app_database.dart';
+import '../../../../core/sync/sync_engine.dart';
 import '../models/category_tree.dart';
 
 class CategoryValidationException implements Exception {
@@ -46,9 +47,14 @@ abstract class CategoryManagementRepository {
 }
 
 class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
-  CategoryManagementRepositoryImpl({required this.db});
+  CategoryManagementRepositoryImpl({required this.db, this.syncEngine});
 
   final AppDatabase db;
+
+  /// Kích hoạt đồng bộ nền sau mỗi lần ghi danh mục — cùng cách wallet/
+  /// transaction/goal/bill repository đang làm. Nullable để test dựng
+  /// repository mà không cần SyncEngine.
+  final SyncEngine? syncEngine;
 
   @override
   Stream<CategoryTree> watchTree({
@@ -106,7 +112,12 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
   Future<void> saveChild(CategoryChildDraft draft) async {
     final name = draft.name.trim();
     _requireName(name);
-    if (draft.parentId == draft.id) {
+    // Chỉ chặn khi ĐANG SỬA một danh mục đã có (draft.id != null).
+    // Với danh mục TẠO MỚI, draft.id == null; nếu người dùng để nguyên lựa
+    // chọn mặc định "Chưa nhóm" thì parentId cũng == null → `parentId == id`
+    // là `null == null` (true) và sẽ chặn nhầm toàn bộ luồng tạo danh mục
+    // không thuộc nhóm nào.
+    if (draft.id != null && draft.parentId == draft.id) {
       throw const CategoryValidationException(
         'Danh mục không thể là nhóm của chính nó.',
       );
@@ -150,7 +161,9 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
       parentId: Value(draft.parentId),
       isGroup: const Value(false),
       isDefault: const Value(false),
-      isLocalOnly: const Value(true),
+      // Danh mục người dùng được đồng bộ lên backend (backend lưu cả
+      // Is_group lẫn Idgroup), nên không còn là dữ liệu chỉ-có-ở-client.
+      isLocalOnly: const Value(false),
       syncStatus: const Value('pending'),
       updatedAt: now,
     ));
@@ -160,11 +173,12 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
       keywords: draft.keywords,
       now: now,
     );
+    syncEngine?.scheduleSync();
   }
 
   @override
-  Future<void> saveGroup(CategoryGroupDraft draft) {
-    return db.transaction(() async {
+  Future<void> saveGroup(CategoryGroupDraft draft) async {
+    await db.transaction(() async {
       final name = draft.name.trim();
       _requireName(name);
       final existing =
@@ -234,24 +248,29 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
         colour: Value(draft.colour),
         isGroup: const Value(true),
         isDefault: const Value(false),
-        isLocalOnly: const Value(true),
+        isLocalOnly: const Value(false),
         syncStatus: const Value('pending'),
         updatedAt: now,
       ));
 
+      // Gỡ các danh mục con cũ ra khỏi nhóm — parentId đổi nên phải đẩy lại.
       await (db.update(db.categories)
             ..where((row) =>
                 row.idaccount.equals(draft.accountId) &
                 row.parentId.equals(id)))
           .write(CategoriesCompanion(
-              parentId: const Value(null), updatedAt: Value(now)));
+        parentId: const Value(null),
+        syncStatus: const Value('pending'),
+        updatedAt: Value(now),
+      ));
       for (final child in personalChildren) {
         await (db.update(db.categories)
               ..where((row) => row.id.equals(child.id)))
             .write(CategoriesCompanion(
           parentId: Value(id),
           classify: Value(draft.classify),
-          isLocalOnly: const Value(true),
+          // parentId đổi → phải đồng bộ lên backend (Idgroup).
+          syncStatus: const Value('pending'),
           updatedAt: Value(now),
         ));
       }
@@ -262,6 +281,7 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
         now: now,
       );
     });
+    syncEngine?.scheduleSync();
   }
 
   @override
@@ -271,50 +291,60 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
   }) async {
     final child = await db.categoryDao.getById(childId);
     _rejectDefault(child);
+    // Không còn kiểm tra `isLocalOnly`: danh mục người dùng giờ đều được đồng
+    // bộ nên cờ đó luôn false. _rejectDefault() ở trên + kiểm tra idaccount
+    // dưới đây đã đủ chặn xoá nhầm danh mục mặc định / của tài khoản khác.
     if (child == null ||
         child.idaccount != accountId ||
         child.isDeleted ||
-        child.isGroup ||
-        !child.isLocalOnly) {
+        child.isGroup) {
       throw const CategoryValidationException(
           'Chỉ có thể xóa danh mục con cá nhân.');
     }
     await (db.update(db.categories)..where((row) => row.id.equals(childId)))
         .write(CategoriesCompanion(
       isDeleted: const Value(true),
+      // Đánh dấu pending để thao tác xoá được đẩy lên backend (delete_at).
+      syncStatus: const Value('pending'),
       updatedAt: Value(DateTime.now()),
     ));
+    syncEngine?.scheduleSync();
   }
 
   @override
   Future<void> deleteGroup({
     required int accountId,
     required String groupId,
-  }) {
-    return db.transaction(() async {
+  }) async {
+    await db.transaction(() async {
       final group = await db.categoryDao.getById(groupId);
       _rejectDefault(group);
       if (group == null ||
           group.idaccount != accountId ||
           !group.isGroup ||
-          group.isDeleted ||
-          !group.isLocalOnly) {
+          group.isDeleted) {
         throw const CategoryValidationException(
             'Chỉ có thể xóa nhóm danh mục cá nhân.');
       }
       final now = DateTime.now();
+      // Gỡ con ra khỏi nhóm trước — parentId đổi nên phải đẩy lại.
       await (db.update(db.categories)
             ..where((row) =>
                 row.idaccount.equals(accountId) & row.parentId.equals(groupId)))
           .write(CategoriesCompanion(
-              parentId: const Value(null), updatedAt: Value(now)));
+        parentId: const Value(null),
+        syncStatus: const Value('pending'),
+        updatedAt: Value(now),
+      ));
       await db.categoryDao.removeGroupMemberships(accountId, groupId);
       await (db.update(db.categories)..where((row) => row.id.equals(groupId)))
           .write(CategoriesCompanion(
         isDeleted: const Value(true),
+        syncStatus: const Value('pending'),
         updatedAt: Value(now),
       ));
     });
+    syncEngine?.scheduleSync();
   }
 
   @override
@@ -363,8 +393,7 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
         .where((category) =>
             category.idaccount == accountId &&
             category.isGroup &&
-            !category.isDefault &&
-            category.isLocalOnly)
+            !category.isDefault)
         .toList();
     final children = rows
         .where((category) =>
@@ -415,8 +444,7 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
         parent.idaccount != accountId ||
         !parent.isGroup ||
         parent.isDefault ||
-        parent.isDeleted ||
-        !parent.isLocalOnly) {
+        parent.isDeleted) {
       throw const CategoryValidationException('Nhóm cha không hợp lệ.');
     }
     return parent;

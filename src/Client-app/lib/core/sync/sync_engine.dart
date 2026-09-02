@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' hide Category;
 import 'package:drift/drift.dart';
 
@@ -7,6 +8,8 @@ import '../api/dio_client.dart';
 import '../database/app_database.dart';
 import 'sync_models.dart';
 import 'category_icon_registry.dart';
+import 'sync_checkpoint_store.dart';
+import 'sync_payload_normalizer.dart';
 
 /// SyncEngine — bộ máy đồng bộ offline-first.
 ///
@@ -39,27 +42,54 @@ class SyncEngine {
   final _statusController = StreamController<SyncStatus>.broadcast();
   Stream<SyncStatus> get statusStream => _statusController.stream;
 
+  final _sessionInvalidController = StreamController<void>.broadcast();
+
+  /// Phát tín hiệu khi server cho thấy phiên đăng nhập trỏ tới một tài khoản
+  /// không còn tồn tại (vỡ khoá ngoại `fk_*_account` khi đẩy dữ liệu).
+  ///
+  /// Dùng kênh RIÊNG chứ không nhét vào [statusStream], vì `stop()` kết thúc
+  /// bằng `_setStatus(idle)` nên sẽ ghi đè mất trạng thái lỗi vừa phát.
+  Stream<void> get sessionInvalidStream => _sessionInvalidController.stream;
+
+  void _emitSessionInvalid() {
+    if (_disposed || _sessionInvalidController.isClosed) return;
+    _sessionInvalidController.add(null);
+  }
+
   Timer? _debounceTimer;
+  Timer? _periodicTimer;
   StreamSubscription? _connectivitySub;
   int? _currentIdaccount;
 
   static const _debounceSeconds = 2;
 
+  /// Chu kỳ đồng bộ nền. Nếu không có, thiết bị này sẽ không bao giờ biết thiết
+  /// bị khác vừa thay đổi gì cho tới khi chính nó ghi dữ liệu hoặc đổi mạng.
+  static const _periodicSyncMinutes = 15;
+
+  /// Nơi lưu mốc pull gần nhất. Null (thường là trong test) → chỉ giữ trong RAM
+  /// như hành vi cũ.
+  final SyncCheckpointStore? _checkpointStore;
+
   SyncEngine({
     required DioClient dioClient,
     required AppDatabase db,
     Connectivity? connectivity,
+    SyncCheckpointStore? checkpointStore,
   })  : _dioClient = dioClient,
         _db = db,
+        _checkpointStore = checkpointStore,
         _connectivity = connectivity ?? Connectivity();
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
   /// Khởi động SyncEngine sau khi user đăng nhập thành công.
-  void start({required int idaccount}) {
+  Future<void> start({required int idaccount}) async {
     _currentIdaccount = idaccount;
-    _lastPullTime =
-        null; // Clear checkpoint để tài khoản vừa đăng nhập kéo toàn bộ dữ liệu mới ngay lập tức
+    // Khôi phục mốc pull đã lưu để không phải kéo lại toàn bộ dữ liệu mỗi lần
+    // mở app. Nếu SQLite cục bộ rỗng, _pullFromBackend vẫn tự ép full pull nên
+    // không sợ thiếu dữ liệu khi cài lại app.
+    _lastPullTime = await _checkpointStore?.read(idaccount);
 
     // Lắng nghe thay đổi kết nối
     _connectivitySub?.cancel();
@@ -67,33 +97,48 @@ class SyncEngine {
       final hasConnection = results.any((r) => r != ConnectivityResult.none);
       if (hasConnection) {
         debugPrint('[SyncEngine] Network restored — scheduling sync');
-        syncNow();
+        unawaited(syncNow());
       }
     });
 
+    // Đồng bộ nền định kỳ để nhận thay đổi từ thiết bị khác.
+    _periodicTimer?.cancel();
+    _periodicTimer = Timer.periodic(
+      const Duration(minutes: _periodicSyncMinutes),
+      (_) => unawaited(syncNow()),
+    );
+
     // Kích hoạt đồng bộ LẬP TỨC ngay khi vừa đăng nhập (không cần chờ thao tác)
-    syncNow();
+    await syncNow();
   }
 
   /// Dừng SyncEngine khi logout.
   void stop() {
     _debounceTimer?.cancel();
+    _periodicTimer?.cancel();
+    _periodicTimer = null;
     _connectivitySub?.cancel();
     _currentIdaccount = null;
-    _lastPullTime = null; // Clear checkpoint khi đăng xuất
+    // Chỉ xoá mốc trong RAM. Mốc đã lưu được giữ lại theo từng idaccount để lần
+    // đăng nhập sau vẫn pull tăng dần; nếu dữ liệu cục bộ đã bị xoá thì
+    // _pullFromBackend tự ép full pull.
+    _lastPullTime = null;
     _setStatus(SyncStatus.idle);
   }
 
   // ── Trigger ───────────────────────────────────────────────────────────────
 
   /// Kích hoạt đồng bộ LẬP TỨC (Immediate Sync) không cần chờ timer debounce.
-  void syncNow() {
+  Future<void> syncNow() async {
     _debounceTimer?.cancel();
-    _runSync();
+    await _runSync();
   }
 
   /// Đặt lịch sync với debounce — gọi liên tiếp chỉ trigger 1 lần.
   void scheduleSync() {
+    // Sau logout, `stop()` đặt _currentIdaccount = null nhưng các repository
+    // vẫn tiếp tục gọi scheduleSync() sau mỗi lần ghi — bỏ qua cho rẻ.
+    if (_currentIdaccount == null) return;
     _debounceTimer?.cancel();
     _debounceTimer = Timer(
       const Duration(seconds: _debounceSeconds),
@@ -109,19 +154,18 @@ class SyncEngine {
   DateTime? _lastPullTime;
 
   Future<void> _runSync() async {
-    int accountId = _currentIdaccount ?? 1;
-    if (_currentIdaccount == null || _currentIdaccount == 1) {
-      final wallets = await _db.walletDao.getAllNonDeleted();
-      if (wallets.isNotEmpty && wallets.first.idaccount > 0) {
-        accountId = wallets.first.idaccount;
-        _currentIdaccount = accountId;
-      } else {
-        final txs = await _db.transactionDao.getAll(0);
-        if (txs.isNotEmpty && txs.first.idaccount > 0) {
-          accountId = txs.first.idaccount;
-          _currentIdaccount = accountId;
-        }
-      }
+    // Danh tính CHỈ đến từ phiên đăng nhập, không bao giờ suy ra từ dữ liệu
+    // trong SQLite. Trước đây khi `_currentIdaccount` là null hoặc 1, engine
+    // đọc `walletDao.getAllNonDeleted()` (không lọc tài khoản) và lấy
+    // `idaccount` của ví đầu tiên — đủ để làm sống lại một tài khoản đã bị xoá,
+    // hoặc chiếm danh tính của admin (idaccount = 1 vốn là tài khoản THẬT chứ
+    // không phải giá trị "chưa biết").
+    if (_disposed) return;
+    final accountId = _currentIdaccount;
+    if (accountId == null || accountId <= 0) {
+      debugPrint('[SyncEngine] Chưa có phiên đăng nhập — bỏ qua đồng bộ');
+      _setStatus(SyncStatus.idle);
+      return;
     }
     if (_status == SyncStatus.syncing) return; // Tránh concurrent sync
 
@@ -141,16 +185,41 @@ class SyncEngine {
     try {
       // 1. Push local pending ops to Backend
       final ops = await _collectPendingOps(accountId);
+      SyncResult? pushResult;
       if (ops.isNotEmpty) {
-        final result = await _sendBatch(ops);
-        debugPrint('[SyncEngine] Push complete: $result');
+        pushResult = await _sendBatch(ops);
+        debugPrint('[SyncEngine] Push complete: $pushResult');
       } else {
         debugPrint(
             '[SyncEngine] No pending local ops — proceeding to Pull from backend');
       }
 
+      // Phiên trỏ tới tài khoản không còn tồn tại → thử lại là vô ích, và mỗi
+      // chu kỳ lại nhân đôi số request hỏng. Dừng hẳn và báo ra ngoài.
+      if (pushResult != null && pushResult.hasSessionInvalid) {
+        debugPrint('[SyncEngine] Phiên đăng nhập không còn hợp lệ — dừng đồng bộ');
+        _emitSessionInvalid();
+        _setStatus(SyncStatus.idle);
+        return;
+      }
+
       // 2. Pull all updated data from Backend PostgreSQL to SQLite local
       await _pullFromBackend(accountId);
+
+      // Một transaction thất bại có thể đang trỏ tới ID danh mục mặc định cũ;
+      // Pull xong mới có UUID từ backend nên đáng thử lại MỘT lần.
+      // Chỉ thử lại khi thật sự có lỗi thuộc loại tạm thời — trước đây điều
+      // kiện chỉ là `failed > 0` nên lỗi vĩnh viễn cũng bị gửi lại mỗi chu kỳ.
+      if (pushResult != null && pushResult.hasRetryableFailure) {
+        final retryOps = await _collectPendingOps(accountId);
+        if (retryOps.isNotEmpty) {
+          final retryResult = await _sendBatch(retryOps);
+          debugPrint('[SyncEngine] Push retry complete: $retryResult');
+          if (retryResult.hasSessionInvalid) {
+            _emitSessionInvalid();
+          }
+        }
+      }
 
       _setStatus(SyncStatus.idle);
     } catch (e) {
@@ -193,21 +262,23 @@ class SyncEngine {
           if (wallets.isNotEmpty) {
             final companions = wallets.map((w) {
               return WalletsCompanion(
-                id: Value(w['id'].toString()),
+                id: Value((w['idwallet'] ?? w['id']).toString()),
                 idaccount:
                     Value(int.tryParse(w['idaccount'].toString()) ?? accountId),
                 name: Value(w['name'].toString()),
-                type: Value(w['type']?.toString() ?? 'cash'),
+                type: Value(SyncPayloadNormalizer.walletTypeFromBackend(
+                    w['type']?.toString() ?? 'Cash')),
                 balance: Value(
                     (num.tryParse(w['balance'].toString()) ?? 0.0).toDouble()),
                 currency: Value(w['currency']?.toString() ?? 'VND'),
                 icon: Value(w['icon']?.toString() ?? 'wallet'),
-                colour: Value(w['colour']?.toString() ?? '#4CAF50'),
+                colour: Value(
+                    (w['color'] ?? w['colour'])?.toString() ?? '#4CAF50'),
                 isDefault: Value(w['is_default'] == true),
-                isDeleted: Value(w['is_deleted'] == true),
+                isDeleted: Value(w['delete_at'] != null),
                 syncStatus: const Value('synced'),
                 updatedAt: Value(
-                    DateTime.tryParse(w['updated_at']?.toString() ?? '') ??
+                    DateTime.tryParse(w['update_at']?.toString() ?? '') ??
                         DateTime.now()),
               );
             }).toList();
@@ -223,21 +294,29 @@ class SyncEngine {
           if (transactions.isNotEmpty) {
             final companions = transactions.map((t) {
               return TransactionsCompanion(
-                id: Value(t['id'].toString()),
+                id: Value((t['idtran'] ?? t['id']).toString()),
                 idaccount:
                     Value(int.tryParse(t['idaccount'].toString()) ?? accountId),
-                walletId: Value(t['wallet_id'].toString()),
-                categoryId: Value(t['category_id']?.toString()),
-                amount: Value(
-                    (num.tryParse(t['amount'].toString()) ?? 0.0).toDouble()),
-                type: Value(t['type']?.toString() ?? 'chi'),
+                walletId: Value((t['idwallet'] ?? t['wallet_id']).toString()),
+                categoryId: Value((t['idcategory'] ?? t['category_id'])?.toString()),
+                walletTransfer: Value(
+                    (t['idwallet_transfer'] ?? t['wallet_transfer'])
+                        ?.toString()),
+                amount: Value((num.tryParse(t['amount'].toString()) ?? 0.0)
+                    .abs()
+                    .toDouble()),
+                type: Value(SyncPayloadNormalizer.transactionTypeFromBackend(
+                  t['type']?.toString() ?? 'Transaction',
+                  num.tryParse(t['amount'].toString()) ?? 0,
+                )),
                 note: Value(t['note']?.toString() ?? ''),
-                date: Value(DateTime.tryParse(t['date']?.toString() ?? '') ??
+                date: Value(DateTime.tryParse(
+                        (t['date_transaction'] ?? t['date'])?.toString() ?? '') ??
                     DateTime.now()),
-                isDeleted: Value(t['is_deleted'] == true),
+                isDeleted: Value(t['deleted_at'] != null),
                 syncStatus: const Value('synced'),
                 updatedAt: Value(
-                    DateTime.tryParse(t['updated_at']?.toString() ?? '') ??
+                    DateTime.tryParse(t['update_at']?.toString() ?? '') ??
                         DateTime.now()),
               );
             }).toList();
@@ -253,8 +332,15 @@ class SyncEngine {
           if (categories.isNotEmpty) {
             final List<CategoriesCompanion> companions = [];
             for (final c in categories) {
-              final catUuid = (c['uuid'] ?? c['id']).toString();
-              final catName = (c['namecategory'] ?? c['name'] ?? '').toString();
+              final catUuid = (c['idcategory'] ?? c['uuid'] ?? c['id'])
+                  .toString();
+              if (catUuid.isEmpty || catUuid == 'null') {
+                debugPrint('[SyncEngine] Skipping category without an ID.');
+                continue;
+              }
+              final catName =
+                  (c['name_category'] ?? c['namecategory'] ?? c['name'] ?? '')
+                      .toString();
               final rawIcon = c['icon']?.toString();
               final rawColor = c['colour']?.toString();
 
@@ -297,22 +383,53 @@ class SyncEngine {
 
               companions.add(CategoriesCompanion(
                 id: Value(catUuid),
-                idaccount: Value(int.tryParse(
-                        (c['created_by'] ?? c['idaccount'] ?? 0).toString()) ??
-                    0),
+                idaccount: Value(c['is_default'] == true
+                    ? 0
+                    : (int.tryParse(
+                            // Backend Prisma field là `create_by` (không có
+                            // 'd'). Giữ 'created_by'/'idaccount' làm fallback
+                            // để tương thích ngược nếu payload thay đổi.
+                            (c['create_by'] ?? c['created_by'] ?? c['idaccount'] ?? 0)
+                                .toString()) ??
+                        0)),
                 name: Value(catName),
-                classify: Value(c['classify']?.toString() ?? 'chi'),
+                classify: Value(SyncPayloadNormalizer.categoryClassifyFromBackend(
+                    c['classify']?.toString() ?? 'Chi')),
                 icon: Value(finalIcon),
                 colour: Value(finalColor),
                 isDefault: Value(c['is_default'] == true),
-                isDeleted: const Value(false),
+                // Cấu trúc nhóm do backend lưu (Is_group / Idgroup). BẮT BUỘC
+                // phải đọc lại: upsertAll dùng InsertMode.insertOrReplace nên
+                // cột nào không gán sẽ bị đưa về mặc định — trước đây điều này
+                // xoá sạch nhóm và quan hệ cha–con ở local sau mỗi lần pull.
+                isGroup: Value(c['is_group'] == true),
+                parentId: Value((c['idgroup'] ?? c['parent_id'])?.toString()),
+                // Đọc cờ xoá từ payload như các thực thể khác. Trước đây ghi
+                // cứng `false`, nên danh mục đã xoá mềm trên server bị HỒI SINH
+                // thành chưa-xoá sau mỗi lần pull — backend không lọc
+                // `delete_at` khi trả dữ liệu nên nó vẫn nằm trong response.
+                isDeleted: Value(c['delete_at'] != null),
                 syncStatus: const Value('synced'),
                 updatedAt: Value(
-                    DateTime.tryParse(c['updated_at']?.toString() ?? '') ??
+                    DateTime.tryParse(c['update_at']?.toString() ?? '') ??
                         DateTime.now()),
               ));
             }
             await _db.categoryDao.upsertAll(companions);
+            // Repair TRƯỚC: cập nhật categoryId từ 'cat_food' → UUID trong các
+            // pending transactions. PHẢI chạy trước removeDuplicateLocalSeedCategories()
+            // vì _resolveCategoryId cần getById('cat_food') để đọc tên category rồi
+            // tìm UUID cùng tên — nếu seed 'cat_food' đã bị xóa trước, getById() trả
+            // về null và repair sẽ luôn thất bại (transaction bị defer vĩnh viễn).
+            final repaired = await _db.transactionDao
+                .repairPendingTransactionsCategoryId(_resolveCategoryId);
+            if (repaired > 0) {
+              debugPrint(
+                  '[SyncEngine] Repaired $repaired transactions: updated categoryId to UUID.');
+            }
+            // Xóa category seed cục bộ (cat_food...) đã có bản UUID từ backend —
+            // chạy SAU repair ở trên để không xóa mất row mà repair cần đọc.
+            await _db.categoryDao.removeDuplicateLocalSeedCategories();
             debugPrint(
                 '[SyncEngine] Pulled & Saved ${categories.length} categories into SQLite local.');
           }
@@ -323,22 +440,50 @@ class SyncEngine {
               [];
           if (budgets.isNotEmpty) {
             final companions = budgets.map((b) {
+              // Backend trả field Prisma thật: idbudget, idcategory,
+              // total_amount, start, end, delete_at, update_at (không phải
+              // id/category_id/amount/start_date/is_deleted/updated_at).
               return BudgetsCompanion(
-                id: Value(b['id'].toString()),
+                id: Value((b['idbudget'] ?? b['id']).toString()),
                 idaccount:
                     Value(int.tryParse(b['idaccount'].toString()) ?? accountId),
-                categoryId: Value(b['category_id']?.toString()),
-                amount: Value(
-                    (num.tryParse(b['amount'].toString()) ?? 0.0).toDouble()),
-                period: Value(b['period']?.toString() ?? 'thang'),
-                startDate: Value(
-                    DateTime.tryParse(b['start_date']?.toString() ?? '') ??
-                        DateTime.now()),
-                isDeleted: Value(b['is_deleted'] == true),
+                categoryId: Value((b['idcategory'] ?? b['category_id'])?.toString()),
+                amount: Value((num.tryParse(
+                            (b['total_amount'] ?? b['amount']).toString()) ??
+                        0.0)
+                    .toDouble()),
+                spent: Value(
+                    (num.tryParse((b['spent'] ?? 0).toString()) ?? 0.0)
+                        .toDouble()),
+                thresholdWarningAmount: Value(
+                    b['threshold_warning_amount'] != null
+                        ? num
+                            .tryParse(b['threshold_warning_amount'].toString())
+                            ?.toDouble()
+                        : null),
+                overSpending: Value(b['over_spending']?.toString() ?? 'Over'),
+                overAmount: Value(b['over_amount'] != null
+                    ? num.tryParse(b['over_amount'].toString())?.toDouble()
+                    : null),
+                startDate: Value(DateTime.tryParse(
+                        (b['start'] ?? b['start_date'])?.toString() ?? '') ??
+                    DateTime.now()),
+                endDate: Value((b['end'] ?? b['end_date']) != null
+                    ? DateTime.tryParse((b['end'] ?? b['end_date']).toString())
+                    : null),
+                recurrence: Value(b['recurrence'] == true),
+                timeRecurrence:
+                    Value(b['time_recurrence']?.toString() ?? 'Month'),
+                nextTimeRecurrence: Value(b['nexttime_recurrence'] != null
+                    ? DateTime.tryParse(b['nexttime_recurrence'].toString())
+                    : null),
+                note: Value(b['note']?.toString() ?? ''),
+                isDeleted: Value(b['delete_at'] != null),
                 syncStatus: const Value('synced'),
-                updatedAt: Value(
-                    DateTime.tryParse(b['updated_at']?.toString() ?? '') ??
-                        DateTime.now()),
+                updatedAt: Value(DateTime.tryParse(
+                        (b['update_at'] ?? b['updated_at'])?.toString() ??
+                            '') ??
+                    DateTime.now()),
               );
             }).toList();
             await _db.budgetDao.upsertAll(companions);
@@ -352,24 +497,43 @@ class SyncEngine {
                   [];
           if (bills.isNotEmpty) {
             final companions = bills.map((bill) {
+              // Backend trả field Prisma thật: idbill, idwallet, idcategory,
+              // start_date, due_date, pay_status, delete_at, update_at
+              // (không phải id/is_paid/is_deleted/updated_at).
+              final payStatus = bill['pay_status']?.toString() ?? 'Pending';
               return BillsCompanion(
-                id: Value(bill['id'].toString()),
+                id: Value((bill['idbill'] ?? bill['id']).toString()),
                 idaccount: Value(
                     int.tryParse(bill['idaccount'].toString()) ?? accountId),
+                walletId:
+                    Value((bill['idwallet'] ?? bill['wallet_id'])?.toString()),
+                categoryId: Value(
+                    (bill['idcategory'] ?? bill['category_id'])?.toString()),
                 name: Value(bill['name'].toString()),
                 amount: Value((num.tryParse(bill['amount'].toString()) ?? 0.0)
                     .toDouble()),
+                startDate: Value(bill['start_date'] != null
+                    ? DateTime.tryParse(bill['start_date'].toString())
+                    : null),
                 dueDate: Value(
                     DateTime.tryParse(bill['due_date']?.toString() ?? '') ??
                         DateTime.now()),
-                isPaid: Value(bill['is_paid'] == true),
-                recurrence:
-                    Value(bill['recurrence']?.toString() ?? 'hang_thang'),
-                isDeleted: Value(bill['is_deleted'] == true),
+                payStatus: Value(payStatus),
+                isPaid: Value(payStatus == 'Payed'),
+                timeNotification: Value(bill['time_notification']?.toString()),
+                isRecurrence: Value(bill['recurrence'] == true),
+                timeRecurrence:
+                    Value(bill['time_recurrence']?.toString() ?? 'Month'),
+                icon: Value(bill['icon']?.toString() ?? 'receipt'),
+                colour: Value(bill['color']?.toString() ?? '#4CAF50'),
+                note: Value(bill['note']?.toString() ?? ''),
+                isDeleted: Value(bill['delete_at'] != null),
                 syncStatus: const Value('synced'),
-                updatedAt: Value(
-                    DateTime.tryParse(bill['updated_at']?.toString() ?? '') ??
-                        DateTime.now()),
+                updatedAt: Value(DateTime.tryParse(
+                        (bill['update_at'] ?? bill['updated_at'])
+                                ?.toString() ??
+                            '') ??
+                    DateTime.now()),
               );
             }).toList();
             await _db.billDao.upsertAll(companions);
@@ -383,8 +547,11 @@ class SyncEngine {
                   [];
           if (goals.isNotEmpty) {
             final companions = goals.map((g) {
+              // Backend trả field Prisma thật: idgoal, idwallet,
+              // status_complete, delete_at, update_at (không phải
+              // id/wallet_id/is_deleted/updated_at).
               return GoalsCompanion(
-                id: Value(g['id'].toString()),
+                id: Value((g['idgoal'] ?? g['id']).toString()),
                 idaccount:
                     Value(int.tryParse(g['idaccount'].toString()) ?? accountId),
                 name: Value(g['name'].toString()),
@@ -394,15 +561,30 @@ class SyncEngine {
                 currentAmount: Value(
                     (num.tryParse(g['current_amount'].toString()) ?? 0.0)
                         .toDouble()),
+                startDate: Value(g['start_date'] != null
+                    ? DateTime.tryParse(g['start_date'].toString())
+                    : null),
                 targetDate: Value(
                     DateTime.tryParse(g['target_date']?.toString() ?? '') ??
                         DateTime.now()),
-                walletId: Value(g['wallet_id']?.toString()),
-                isDeleted: Value(g['is_deleted'] == true),
+                walletId: Value((g['idwallet'] ?? g['wallet_id'])?.toString()),
+                cycleTakeMoney: Value(g['cycle_take_money']?.toString()),
+                timeCycleTakeMoney: Value(g['time_cycle_take_money'] != null
+                    ? DateTime.tryParse(g['time_cycle_take_money'].toString())
+                    : null),
+                recurrence: Value(g['recurrence'] == true),
+                timeRecurrence: Value(g['time_recurrence']?.toString()),
+                icon: Value(g['icon']?.toString() ?? 'flag'),
+                colour: Value(g['color']?.toString() ?? '#4CAF50'),
+                note: Value(g['note']?.toString() ?? ''),
+                isCompleted:
+                    Value(g['status_complete']?.toString() == 'True'),
+                isDeleted: Value(g['delete_at'] != null),
                 syncStatus: const Value('synced'),
-                updatedAt: Value(
-                    DateTime.tryParse(g['updated_at']?.toString() ?? '') ??
-                        DateTime.now()),
+                updatedAt: Value(DateTime.tryParse(
+                        (g['update_at'] ?? g['updated_at'])?.toString() ??
+                            '') ??
+                    DateTime.now()),
               );
             }).toList();
             await _db.goalDao.upsertAll(companions);
@@ -410,12 +592,38 @@ class SyncEngine {
                 '[SyncEngine] Pulled & Saved ${goals.length} goals into SQLite local.');
           }
 
-          _lastPullTime = DateTime.now();
+          // Mốc mới = `update_at` LỚN NHẤT trong dữ liệu vừa nhận, KHÔNG phải
+          // DateTime.now() của client: backend lọc `update_at > since` theo
+          // đồng hồ của nó, nên lấy giờ client sẽ bỏ sót bản ghi khi hai đồng
+          // hồ lệch nhau. Không nhận được bản ghi nào thì giữ nguyên mốc cũ
+          // (cùng lắm là pull lại một ít, không bao giờ mất dữ liệu).
+          final newest = _newestUpdateAt(payloadData);
+          if (newest != null) {
+            _lastPullTime = newest;
+            await _checkpointStore?.write(accountId, newest);
+          }
         }
       }
     } catch (e) {
       debugPrint('[SyncEngine] HTTP Sync Pull Error: $e');
     }
+  }
+
+  /// Tìm `update_at` mới nhất trong toàn bộ payload pull (mọi loại thực thể).
+  static DateTime? _newestUpdateAt(Map<String, dynamic> payloadData) {
+    DateTime? newest;
+    for (final value in payloadData.values) {
+      if (value is! List) continue;
+      for (final row in value) {
+        if (row is! Map) continue;
+        final raw = (row['update_at'] ?? row['updated_at'])?.toString();
+        if (raw == null) continue;
+        final parsed = DateTime.tryParse(raw)?.toUtc();
+        if (parsed == null) continue;
+        if (newest == null || parsed.isAfter(newest)) newest = parsed;
+      }
+    }
+    return newest;
   }
 
   // ── Collect pending operations ────────────────────────────────────────────
@@ -424,7 +632,50 @@ class SyncEngine {
     final ops = <SyncOperation>[];
     final now = DateTime.now();
 
-    // Wallets
+    // ── 1. Categories (phải đứng TRƯỚC transactions/budgets/bills) ────────────
+    // Transaction.idcategory, Budget.idcategory, Bill.idcategory đều FK → category
+    // Nếu categories push sau thì backend báo FK constraint violation.
+    final syncableCategories =
+        await _db.categoryDao.getSyncableCategories(idaccount);
+    // Nhóm phải được đẩy TRƯỚC danh mục con của nó: backend có khoá ngoại
+    // fk_category_parent (Idgroup → Idcategory), con đi trước sẽ vi phạm FK.
+    syncableCategories.sort((a, b) {
+      if (a.isGroup == b.isGroup) return 0;
+      return a.isGroup ? -1 : 1;
+    });
+    for (final c in syncableCategories) {
+      final validId = _toValidUuid(c.id);
+      String validClassify = c.classify;
+      if (validClassify == 'vay_no' || validClassify == 'vay-no') {
+        validClassify = 'vay/no';
+      }
+      ops.add(SyncOperation(
+        localId: c.id,
+        entity: SyncEntityType.category,
+        operation:
+            c.isDeleted ? SyncOperationType.delete : SyncOperationType.update,
+        payload: {
+          'id': validId,
+          'name': c.name,
+          'namecategory': c.name,
+          'classify': validClassify,
+          'icon': c.icon,
+          'colour': c.colour,
+          'is_default': c.isDefault,
+          'is_deleted': c.isDeleted,
+          // Cấu trúc nhóm — backend mapEntityFields() nhận camelCase:
+          // isGroup → Is_group, parentId → Idgroup.
+          'isGroup': c.isGroup,
+          'parentId': c.parentId != null ? _toValidUuid(c.parentId!) : null,
+          'updated_at': c.updatedAt.toUtc().toIso8601String(),
+          'idaccount': c.idaccount > 0 ? c.idaccount : (_currentIdaccount ?? 1),
+        },
+        createdAt: now,
+      ));
+    }
+
+    // ── 2. Wallets (phải đứng TRƯỚC transactions/bills/goals) ─────────────────
+    // Transaction.idwallet, Bill.idwallet, Goal.idwallet đều FK → wallet
     final pendingWallets = await _db.walletDao.getPending(idaccount);
     for (final w in pendingWallets) {
       final validId = _toValidUuid(w.id);
@@ -451,11 +702,63 @@ class SyncEngine {
       ));
     }
 
-    // Transactions
+    // ── 1b. Bổ sung categories mà pending transactions tham chiếu ────────────
+    // Chỉ bổ sung USER category (idaccount == currentIdaccount) chưa có trên backend.
+    // KHÔNG bổ sung default/global categories (idaccount == 0) — backend đã có sẵn.
+    final currentAccount = _currentIdaccount ?? idaccount;
+    final alreadyInBatch = ops.map((o) => o.localId).toSet();
+    final pendingTxForCatCheck = await _db.transactionDao.getPending(idaccount);
+    for (final t in pendingTxForCatCheck) {
+      if (t.categoryId == null) continue;
+      final resolvedId = await _resolveCategoryId(t.categoryId);
+      if (resolvedId == null) continue;
+      if (alreadyInBatch.contains(resolvedId)) continue;
+      final cat = await _db.categoryDao.getById(resolvedId);
+      if (cat == null) continue;
+      // Chỉ push category thuộc user hiện tại — bỏ qua global/default (idaccount=0)
+      if (cat.idaccount != currentAccount) continue;
+      // Thêm category này vào batch để đảm bảo nó tồn tại trên backend
+      String validClassify = cat.classify;
+      if (validClassify == 'vay_no' || validClassify == 'vay-no') {
+        validClassify = 'vay/no';
+      }
+      ops.add(SyncOperation(
+        localId: cat.id,
+        entity: SyncEntityType.category,
+        operation: cat.isDeleted ? SyncOperationType.delete : SyncOperationType.update,
+        payload: {
+          'id': _toValidUuid(cat.id),
+          'name': cat.name,
+          'namecategory': cat.name,
+          'classify': validClassify,
+          'icon': cat.icon,
+          'colour': cat.colour,
+          'is_default': cat.isDefault,
+          'is_deleted': cat.isDeleted,
+          'isGroup': cat.isGroup,
+          'parentId':
+              cat.parentId != null ? _toValidUuid(cat.parentId!) : null,
+          'updated_at': cat.updatedAt.toUtc().toIso8601String(),
+          'idaccount': currentAccount,
+        },
+        createdAt: now,
+      ));
+      alreadyInBatch.add(resolvedId);
+    }
+
+    // ── 3. Transactions (sau category + wallet vì FK → cả 2) ──────────────────
     final pendingTx = await _db.transactionDao.getPending(idaccount);
     for (final t in pendingTx) {
       final validId = _toValidUuid(t.id);
       final validWalletId = _toValidUuid(t.walletId);
+      final validCategoryId = await _resolveCategoryId(t.categoryId);
+      if (t.categoryId != null && validCategoryId == null) {
+        debugPrint(
+          '[SyncEngine] Deferring transaction ${t.id}: '
+          'category ${t.categoryId} is not available on backend yet.',
+        );
+        continue;
+      }
       ops.add(SyncOperation(
         localId: t.id,
         entity: SyncEntityType.transaction,
@@ -464,7 +767,11 @@ class SyncEngine {
         payload: {
           'id': validId,
           'wallet_id': validWalletId,
-          'category_id': t.categoryId != null ? _toValidUuid(t.categoryId!) : null,
+          'category_id': validCategoryId,
+          // Ví đích khi type = 'transfer' — backend đọc trực tiếp
+          // `idwallet_transfer` (bỏ qua nếu không phải giao dịch chuyển khoản).
+          'idwallet_transfer':
+              t.walletTransfer != null ? _toValidUuid(t.walletTransfer!) : null,
           'amount': t.amount,
           'type': t.type,
           'note': t.note,
@@ -477,37 +784,11 @@ class SyncEngine {
       ));
     }
 
-    // Categories
-    final syncableCategories =
-        await _db.categoryDao.getSyncableCategories(idaccount);
-    for (final c in syncableCategories) {
-      final validId = _toValidUuid(c.id);
-      String validClassify = c.classify;
-      if (validClassify == 'vay_no' || validClassify == 'vay-no') {
-        validClassify = 'vay/no';
-      }
-      ops.add(SyncOperation(
-        localId: c.id,
-        entity: SyncEntityType.category,
-        operation:
-            c.isDeleted ? SyncOperationType.delete : SyncOperationType.update,
-        payload: {
-          'id': validId,
-          'name': c.name,
-          'namecategory': c.name,
-          'classify': validClassify,
-          'icon': c.icon,
-          'colour': c.colour,
-          'is_default': c.isDefault,
-          'is_deleted': c.isDeleted,
-          'updated_at': c.updatedAt.toUtc().toIso8601String(),
-          'idaccount': c.idaccount > 0 ? c.idaccount : (_currentIdaccount ?? 1),
-        },
-        createdAt: now,
-      ));
-    }
-
-    // Budgets, Bills, Goals
+    // ── 4. Budgets (sau category + wallet) ────────────────────────────────────
+    // Payload dùng đúng tên field Prisma của backend (idcategory, total_amount,
+    // start, over_spending, ...) vì backend mapEntityFields() chỉ nhận diện
+    // các key camelCase cụ thể (totalAmount, categoryId, ...) — gửi sẵn tên
+    // snake_case cuối cùng để tránh lệ thuộc vào việc mapper có khớp hay không.
     for (final b in await _db.budgetDao.getPending(idaccount)) {
       final validId = _toValidUuid(b.id);
       final validCatId =
@@ -519,10 +800,19 @@ class SyncEngine {
             b.isDeleted ? SyncOperationType.delete : SyncOperationType.update,
         payload: {
           'id': validId,
-          'category_id': validCatId,
-          'amount': b.amount,
-          'period': b.period,
-          'start_date': b.startDate.toUtc().toIso8601String(),
+          'idcategory': validCatId,
+          'total_amount': b.amount,
+          'spent': b.spent,
+          'threshold_warning_amount': b.thresholdWarningAmount,
+          'over_spending': b.overSpending,
+          'over_amount': b.overAmount,
+          'start': b.startDate.toUtc().toIso8601String(),
+          'end': b.endDate?.toUtc().toIso8601String(),
+          'recurrence': b.recurrence,
+          'time_recurrence': b.timeRecurrence,
+          'nexttime_recurrence':
+              b.nextTimeRecurrence?.toUtc().toIso8601String(),
+          'note': b.note,
           'is_deleted': b.isDeleted,
           'updated_at': b.updatedAt.toUtc().toIso8601String(),
           'idaccount': b.idaccount > 0 ? b.idaccount : (_currentIdaccount ?? 1),
@@ -530,8 +820,18 @@ class SyncEngine {
         createdAt: now,
       ));
     }
+
+    // ── 5. Bills (sau category + wallet) ──────────────────────────────────────
+    // idwallet/idcategory là NOT NULL trên backend — bắt buộc phải gửi kèm.
+    // Lưu ý: form tạo/sửa bill hiện tại (bill_edit_page.dart) chưa cho chọn
+    // ví/danh mục nên các giá trị này có thể vẫn null cho tới khi UI đó được
+    // bổ sung — đây là việc ngoài phạm vi sync engine.
     for (final bill in await _db.billDao.getPending(idaccount)) {
       final validId = _toValidUuid(bill.id);
+      final validWalletId =
+          bill.walletId != null ? _toValidUuid(bill.walletId!) : null;
+      final validCategoryId =
+          bill.categoryId != null ? _toValidUuid(bill.categoryId!) : null;
       ops.add(SyncOperation(
         localId: bill.id,
         entity: SyncEntityType.bill,
@@ -540,11 +840,19 @@ class SyncEngine {
             : SyncOperationType.update,
         payload: {
           'id': validId,
+          'idwallet': validWalletId,
+          'idcategory': validCategoryId,
           'name': bill.name,
           'amount': bill.amount,
+          'start_date': bill.startDate?.toUtc().toIso8601String(),
           'due_date': bill.dueDate.toUtc().toIso8601String(),
-          'is_paid': bill.isPaid,
-          'recurrence': bill.recurrence,
+          'pay_status': bill.payStatus,
+          'recurrence': bill.isRecurrence,
+          'time_recurrence': bill.timeRecurrence,
+          'time_notification': bill.timeNotification,
+          'icon': bill.icon,
+          'color': bill.colour,
+          'note': bill.note,
           'is_deleted': bill.isDeleted,
           'updated_at': bill.updatedAt.toUtc().toIso8601String(),
           'idaccount':
@@ -553,6 +861,8 @@ class SyncEngine {
         createdAt: now,
       ));
     }
+
+    // ── 6. Goals (sau wallet) ──────────────────────────────────────────────────
     for (final g in await _db.goalDao.getPending(idaccount)) {
       final validId = _toValidUuid(g.id);
       ops.add(SyncOperation(
@@ -565,8 +875,18 @@ class SyncEngine {
           'name': g.name,
           'target_amount': g.targetAmount,
           'current_amount': g.currentAmount,
+          'start_date': g.startDate?.toUtc().toIso8601String(),
           'target_date': g.targetDate.toUtc().toIso8601String(),
-          'wallet_id': g.walletId != null ? _toValidUuid(g.walletId!) : null,
+          'idwallet': g.walletId != null ? _toValidUuid(g.walletId!) : null,
+          'cycle_take_money': g.cycleTakeMoney,
+          'time_cycle_take_money':
+              g.timeCycleTakeMoney?.toUtc().toIso8601String(),
+          'status_complete': g.isCompleted ? 'True' : 'False',
+          'recurrence': g.recurrence,
+          'time_recurrence': g.timeRecurrence,
+          'icon': g.icon,
+          'color': g.colour,
+          'note': g.note,
           'is_deleted': g.isDeleted,
           'updated_at': g.updatedAt.toUtc().toIso8601String(),
           'idaccount': g.idaccount > 0 ? g.idaccount : (_currentIdaccount ?? 1),
@@ -577,6 +897,7 @@ class SyncEngine {
 
     return ops;
   }
+
 
   String _toValidUuid(String id) {
     final uuidRegex = RegExp(
@@ -596,6 +917,41 @@ class SyncEngine {
     return uuidRegex.hasMatch(id);
   }
 
+  Future<String?> _resolveCategoryId(String? categoryId) async {
+    if (categoryId == null) return null;
+
+    final localCategory = await _db.categoryDao.getById(categoryId);
+    if (localCategory == null) return null;
+
+    // Non-default user category: chỉ cần UUID hợp lệ
+    if (!localCategory.isDefault) {
+      return _isValidUuidFormat(categoryId) ? categoryId : null;
+    }
+
+    // Default category đã có UUID hợp lệ (từ backend) → dùng luôn
+    // KHÔNG tìm UUID khác — tránh trả về UUID sai từ account khác
+    if (_isValidUuidFormat(categoryId)) {
+      return categoryId;
+    }
+
+    // Default category với ID dạng 'cat_food' → tìm UUID tương ứng theo tên
+    final categoriesWithSameName =
+        await _db.categoryDao.getByName(localCategory.name);
+    for (final category in categoriesWithSameName) {
+      if (_isValidUuidFormat(category.id) &&
+          category.id != localCategory.id &&
+          category.isDefault &&
+          SyncPayloadNormalizer.sameCategoryClassify(
+            category.classify,
+            localCategory.classify,
+          )) {
+        return category.id;
+      }
+    }
+
+    return null; // Chưa có UUID tương ứng — defer transaction
+  }
+
   // ── Send batch to backend ─────────────────────────────────────────────────
 
   Future<SyncResult> _sendBatch(List<SyncOperation> ops) async {
@@ -608,7 +964,19 @@ class SyncEngine {
         data: {
           'clientId': 'flutter-client-app',
           'pushedAt': nowUtcIso,
-          'operations': ops.map((op) => op.toJson()).toList(),
+          'operations': ops.map((op) {
+            final operation = op.toJson();
+            operation['payload'] = switch (op.entity) {
+              SyncEntityType.wallet =>
+                SyncPayloadNormalizer.walletForPush(op.payload),
+              SyncEntityType.transaction =>
+                SyncPayloadNormalizer.transactionForPush(op.payload),
+              SyncEntityType.category =>
+                SyncPayloadNormalizer.categoryForPush(op.payload),
+              _ => SyncPayloadNormalizer.forPush(op.payload),
+            };
+            return operation;
+          }).toList(),
         },
       );
 
@@ -621,6 +989,8 @@ class SyncEngine {
         int succeeded = 0;
         int failed = 0;
         final List<String> conflictIds = [];
+        final List<String> errorMessages = [];
+        final List<SyncOpFailure> failures = [];
 
         for (final item in results) {
           final respLocalId = item['localId'] as String?;
@@ -638,8 +1008,26 @@ class SyncEngine {
                 succeeded++;
               } else if (status == 'conflict') {
                 conflictIds.add(op.localId);
+                debugPrint(
+                  '[SyncEngine] Push conflict: entity=${op.entity.name}, '
+                  'localId=${op.localId}',
+                );
               } else {
                 failed++;
+                final message = item['message']?.toString() ?? 'Unknown error';
+                errorMessages.add(message);
+                final kind = _classifyFailure(message);
+                failures.add(SyncOpFailure(
+                  localId: op.localId,
+                  entity: op.entity,
+                  message: message,
+                  kind: kind,
+                ));
+                debugPrint(
+                  '[SyncEngine] Push failed [${kind.name}]: '
+                  'entity=${op.entity.name}, localId=${op.localId}, '
+                  'reason=$message',
+                );
               }
             }
           }
@@ -652,8 +1040,17 @@ class SyncEngine {
           succeeded: succeeded,
           failed: failed,
           conflictIds: conflictIds,
+          errorMessages: errorMessages,
+          failures: failures,
         );
       }
+    } on DioException catch (e) {
+      debugPrint(
+        '[SyncEngine] Sync push rejected: ${e.response?.data ?? e.message}',
+      );
+      debugPrint(
+        '[SyncEngine] HTTP Sync API Error: $e — Will retry when online',
+      );
     } catch (e) {
       debugPrint(
           '[SyncEngine] HTTP Sync API Error: $e — Will retry when online');
@@ -683,16 +1080,52 @@ class SyncEngine {
     }
   }
 
+  // ── Phân loại lỗi đẩy dữ liệu ─────────────────────────────────────────────
+
+  /// Khoá ngoại trỏ tới bảng `account` bị vỡ nghĩa là `idaccount` đang dùng
+  /// không tồn tại trên server — tức phiên đăng nhập đã chết.
+  /// Khớp `fk_category_account`, `fk_transaction_account`, `fk_wallet_account`…
+  static final RegExp _accountFkPattern =
+      RegExp(r'fk_\w+_account', caseSensitive: false);
+
+  static SyncFailureKind _classifyFailure(String message) {
+    if (_accountFkPattern.hasMatch(message)) {
+      // Đây chỉ là TÍN HIỆU. Quyết định đăng xuất do AuthBloc đưa ra sau khi
+      // hỏi lại server bằng verifySession() — không bao giờ dựa mỗi vào việc
+      // khớp chuỗi tên constraint (dễ vỡ khi đổi tên hoặc đổi version Prisma).
+      return SyncFailureKind.sessionInvalid;
+    }
+    // Các khoá ngoại KHÁC (category/wallet/parent) thường chỉ là sai thứ tự
+    // đẩy: Pull xong là đẩy lại được.
+    if (message.contains('Foreign key constraint')) {
+      return SyncFailureKind.transient;
+    }
+    // Sai chủ sở hữu = dòng dữ liệu sót của tài khoản khác. KHÔNG phải phiên
+    // chết — đăng xuất ở đây là sai; dữ liệu đó cần được dọn thay vì thử lại.
+    if (message.contains('Ownership mismatch')) {
+      return SyncFailureKind.permanent;
+    }
+    return SyncFailureKind.transient;
+  }
+
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   void _setStatus(SyncStatus s) {
     _status = s;
+    // Timer debounce/định kỳ và listener kết nối có thể kích hoạt SAU khi engine
+    // đã bị huỷ; khi đó `add()` trên controller đã đóng sẽ ném
+    // "Bad state: Cannot add new events after calling close".
+    if (_disposed || _statusController.isClosed) return;
     _statusController.add(s);
   }
 
+  bool _disposed = false;
+
   void dispose() {
+    _disposed = true;
     stop();
     _statusController.close();
+    _sessionInvalidController.close();
   }
 
   static String _defaultIconForCategoryName(String name) {

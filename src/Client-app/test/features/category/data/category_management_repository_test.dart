@@ -493,19 +493,21 @@ void main() {
     expect((await db.categoryDao.getById('other-group'))!.idaccount, 2);
   });
 
-  test('rejects deletion of a non-local personal child', () async {
+  // Danh mục người dùng giờ được đồng bộ với backend (isLocalOnly = false),
+  // nên chúng PHẢI xoá được — việc xoá sẽ đẩy delete_at lên backend.
+  // Danh mục mặc định vẫn được _rejectDefault() bảo vệ như cũ.
+  test('deletes a synced personal child and marks it for sync', () async {
     await insertCategory(
       id: 'server-child',
       name: 'Server child',
       isLocalOnly: false,
     );
 
-    await expectLater(
-      repository.deleteChild(accountId: 1, childId: 'server-child'),
-      throwsA(isA<CategoryValidationException>()),
-    );
+    await repository.deleteChild(accountId: 1, childId: 'server-child');
 
-    expect((await db.categoryDao.getById('server-child'))!.isDeleted, isFalse);
+    final deleted = (await db.categoryDao.getById('server-child'))!;
+    expect(deleted.isDeleted, isTrue);
+    expect(deleted.syncStatus, 'pending');
   });
 
   test('rolls back group deletion when the group update fails', () async {

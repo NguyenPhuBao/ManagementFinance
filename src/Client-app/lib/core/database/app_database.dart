@@ -52,7 +52,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration {
@@ -121,6 +121,41 @@ class AppDatabase extends _$AppDatabase {
           // ── Goals (DB v2) ────────────────────────────────────────────────
           await m.addColumn(goals, goals.deletedAt);
         }
+        if (from < 7) {
+          // ── Align SQLite schema with backend PostgreSQL (New_Database.md) ──
+
+          // Transactions: thêm status giao dịch
+          await m.addColumn(transactions, transactions.status);
+
+          // Bills: thêm payStatus (thay thế isPaid boolean)
+          await m.addColumn(bills, bills.payStatus);
+          // Bills: thêm startDate (Start_date từ backend)
+          await m.addColumn(bills, bills.startDate);
+          // Bills: thêm timeNotification (số ngày nhắc trước hạn)
+          await m.addColumn(bills, bills.timeNotification);
+
+          // Budgets: thêm thresholdWarningAmount
+          await m.addColumn(budgets, budgets.thresholdWarningAmount);
+          // Budgets: thêm nextTimeRecurrence
+          await m.addColumn(budgets, budgets.nextTimeRecurrence);
+
+          // Goals: thêm startDate
+          await m.addColumn(goals, goals.startDate);
+          // Goals: thêm cycleTakeMoney
+          await m.addColumn(goals, goals.cycleTakeMoney);
+          // Goals: thêm timeCycleTakeMoney
+          await m.addColumn(goals, goals.timeCycleTakeMoney);
+          // Goals: thêm recurrence
+          await m.addColumn(goals, goals.recurrence);
+          // Goals: thêm timeRecurrence
+          await m.addColumn(goals, goals.timeRecurrence);
+
+          // Migrate isPaid → payStatus cho Bills đã có dữ liệu
+          await customStatement(
+            "UPDATE bills SET pay_status = CASE WHEN is_paid = 1 THEN 'Payed' ELSE 'Pending' END "
+            "WHERE pay_status = 'Pending'",
+          );
+        }
       },
       beforeOpen: (details) async {
         // Bật foreign key constraints (SQLite tắt mặc định)
@@ -146,6 +181,55 @@ class AppDatabase extends _$AppDatabase {
   @override BudgetDao      get budgetDao      => BudgetDao(this);
   @override BillDao        get billDao        => BillDao(this);
   @override GoalDao        get goalDao        => GoalDao(this);
+
+  // ── Dọn dữ liệu của các tài khoản khác ────────────────────────────────────
+
+  /// Xoá mọi dòng dữ liệu KHÔNG thuộc [keepIdaccount] khỏi SQLite cục bộ.
+  ///
+  /// Vì sao cần: dữ liệu sót lại của một tài khoản cũ trên cùng thiết bị là
+  /// dữ liệu chết — mọi truy vấn `getPending`/`getSyncableCategories` đều lọc
+  /// theo tài khoản hiện tại nên chúng không bao giờ được đẩy lên nữa, nhưng
+  /// chúng vẫn có thể bị đọc nhầm (ví dụ các truy vấn `*NonDeleted` không lọc
+  /// tài khoản) và làm sống lại một `idaccount` đã chết.
+  ///
+  /// GIỮ NGUYÊN danh mục mặc định (`idaccount = 0`) — đó là dữ liệu dùng chung,
+  /// không thuộc tài khoản nào.
+  ///
+  /// Xoá bảng con trước bảng cha vì `beforeOpen` bật `PRAGMA foreign_keys = ON`.
+  Future<int> purgeDataForOtherAccounts(int keepIdaccount) async {
+    if (keepIdaccount <= 0) return 0;
+    var removed = 0;
+    await transaction(() async {
+      removed += await (delete(categoryKeywords)
+            ..where((t) => t.idaccount.equals(keepIdaccount).not()))
+          .go();
+      removed += await (delete(categoryGroupMemberships)
+            ..where((t) => t.idaccount.equals(keepIdaccount).not()))
+          .go();
+      removed += await (delete(transactions)
+            ..where((t) => t.idaccount.equals(keepIdaccount).not()))
+          .go();
+      removed += await (delete(budgets)
+            ..where((t) => t.idaccount.equals(keepIdaccount).not()))
+          .go();
+      removed += await (delete(bills)
+            ..where((t) => t.idaccount.equals(keepIdaccount).not()))
+          .go();
+      removed += await (delete(goals)
+            ..where((t) => t.idaccount.equals(keepIdaccount).not()))
+          .go();
+      // idaccount = 0 là danh mục mặc định dùng chung → giữ lại.
+      removed += await (delete(categories)
+            ..where((t) =>
+                t.idaccount.equals(keepIdaccount).not() &
+                t.idaccount.equals(0).not()))
+          .go();
+      removed += await (delete(wallets)
+            ..where((t) => t.idaccount.equals(keepIdaccount).not()))
+          .go();
+    });
+    return removed;
+  }
 
   // ── Seed default categories ───────────────────────────────────────────────
   Future<void> _seedDefaultCategories() async {

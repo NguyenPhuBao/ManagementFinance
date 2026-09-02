@@ -50,7 +50,11 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
 
   /// Lấy các record chưa sync (pending)
   Future<List<Wallet>> getPending([int? idaccount]) {
-    return (select(wallets)..where((t) => t.syncStatus.equals('pending'))).get();
+    return (select(wallets)
+          ..where((t) =>
+              t.syncStatus.equals('pending') &
+              (idaccount == null ? const Constant(true) : t.idaccount.equals(idaccount))))
+        .get();
   }
 
   // ── WRITE ─────────────────────────────────────────────────────────────────
@@ -97,10 +101,11 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
     );
   }
 
-  /// Upsert nhiều wallets (dùng khi sync từ server về)
+  /// Upsert nhiều wallets (dùng khi sync từ server về) — chỉ cập nhật cột có
+  /// trong companion (xem chú thích ở CategoryDao.upsertAll).
   Future<void> upsertAll(List<WalletsCompanion> entries) async {
     await batch((b) {
-      b.insertAll(wallets, entries, mode: InsertMode.insertOrReplace);
+      b.insertAllOnConflictUpdate(wallets, entries);
     });
   }
 }

@@ -28,6 +28,10 @@ class Budgets extends Table {
   RealColumn get overAmount   => real().nullable()();
   // OverAmount: số tiền vượt ngân sách (nullable)
 
+  // ── Threshold warning fields ─────────────────────────────────────────────
+  RealColumn get thresholdWarningAmount  => real().nullable()();
+  // Threshold_Warning_Amount: số tiền còn lại chạm ngưỡng cảnh báo
+
   // ── Time fields ───────────────────────────────────────────────────────────
   DateTimeColumn get startDate  => dateTime()();
   DateTimeColumn get endDate    => dateTime().nullable()();
@@ -43,6 +47,10 @@ class Budgets extends Table {
   TextColumn get period => text().withDefault(const Constant('monthly'))();
 
   TextColumn get note      => text().withDefault(const Constant(''))();
+
+  /// nextTimeRecurrence: thời điểm bắt đầu chu kỳ ngân sách tiếp theo
+  DateTimeColumn get nextTimeRecurrence => dateTime().nullable()();
+  // Nexttime_recurrence từ backend
 
   // ── Soft delete (DB v2) ───────────────────────────────────────────────────
   /// deletedAt: NULL = đang dùng, có giá trị = đã xóa mềm
@@ -75,8 +83,21 @@ class Bills extends Table {
   // ── Business fields ───────────────────────────────────────────────────────
   TextColumn get name       => text()();
   RealColumn get amount     => real()();
+
+  /// startDate: ngày bắt đầu tính hoá đơn (Start_date từ backend)
+  DateTimeColumn get startDate => dateTime().nullable()();
+
   DateTimeColumn get dueDate => dateTime()();
-  BoolColumn get isPaid      => boolean().withDefault(const Constant(false))();
+
+  /// payStatus: trạng thái thanh toán — 'Pending' | 'Payed' | 'Overdue'
+  /// Thay thế isPaid (boolean) để biểu diễn đủ 3 trạng thái từ backend
+  TextColumn get payStatus => text().withDefault(const Constant('Pending'))();
+
+  /// isPaid: giữ backward compat — TRUE = Payed, FALSE = Pending
+  BoolColumn get isPaid => boolean().withDefault(const Constant(false))();
+
+  /// timeNotification: số ngày nhắc trước khi đến hạn — '1' | '3' | '5' | '7'
+  TextColumn get timeNotification => text().nullable()();
 
   // ── Recurrence (DB v2: tách thành bool + time) ───────────────────────────
   /// isRecurrence: có lặp lại định kỳ không (DB v2: Recurrence bool)
@@ -114,9 +135,25 @@ class Goals extends Table {
   TextColumn   get name          => text()();
   RealColumn   get targetAmount  => real()();
   RealColumn   get currentAmount => real().withDefault(const Constant(0.0))();
+
+  /// startDate: ngày bắt đầu tích luỹ (Start_date từ backend)
+  DateTimeColumn get startDate => dateTime().nullable()();
+
   DateTimeColumn get targetDate  => dateTime()();
   TextColumn   get walletId      => text().nullable()();
   // Idwallet nullable: chưa gán ví đích tiết kiệm
+
+  /// cycleTakeMoney: chu kỳ trích tiền — 'Day'|'Week'|'Month'|'Quarter'|'Year'
+  TextColumn get cycleTakeMoney => text().nullable()();
+
+  /// timeCycleTakeMoney: thời điểm cụ thể trích tiền trong chu kỳ
+  DateTimeColumn get timeCycleTakeMoney => dateTime().nullable()();
+
+  /// recurrence: tự động lặp lại mục tiêu sau khi hoàn thành
+  BoolColumn get recurrence => boolean().withDefault(const Constant(false))();
+
+  /// timeRecurrence: chu kỳ lặp lại — 'Day'|'Week'|'Month'|'Quarter'|'Year'
+  TextColumn get timeRecurrence => text().nullable()();
 
   TextColumn   get icon   => text().withDefault(const Constant('flag'))();
   TextColumn   get colour => text().withDefault(const Constant('#4CAF50'))();

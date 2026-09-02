@@ -3,6 +3,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../core/api/dio_client.dart';
 import '../../core/database/app_database.dart';
+import '../../core/sync/sync_checkpoint_store.dart';
 import '../../core/sync/sync_engine.dart';
 import '../../features/auth/data/datasources/auth_local_data_source.dart';
 import '../../features/auth/data/datasources/auth_remote_data_source.dart';
@@ -16,6 +17,7 @@ import '../../features/goal/presentation/bloc/goal_cubit.dart';
 import '../../features/wallet/data/datasources/wallet_local_data_source.dart';
 import '../../features/wallet/data/repositories/wallet_repository.dart';
 import '../../features/wallet/data/repositories/wallet_repository_impl.dart';
+import '../../features/wallet/data/services/default_account_data_initializer.dart';
 import '../../features/wallet/presentation/bloc/wallet_cubit.dart';
 import '../../features/transaction/data/datasources/transaction_local_data_source.dart';
 import '../../features/transaction/data/repositories/transaction_repository.dart';
@@ -45,7 +47,13 @@ Future<void> setupDependencies() async {
 
   // ── 4. Core: SyncEngine (offline-first sync) ────────────────────────────
   sl.registerLazySingleton<SyncEngine>(
-    () => SyncEngine(dioClient: sl(), db: sl()),
+    () => SyncEngine(
+      dioClient: sl(),
+      db: sl(),
+      checkpointStore: const SecureStorageSyncCheckpointStore(
+        FlutterSecureStorage(),
+      ),
+    ),
   );
 
   // ── 3. Features — Auth ────────────────────────────────────────────────────
@@ -62,14 +70,17 @@ Future<void> setupDependencies() async {
   sl.registerLazySingleton<AuthRepository>(
     () => AuthRepositoryImpl(
       remoteDataSource: sl(),
-      localDataSource:  sl(),
-      secureStorage:    sl(),
+      localDataSource: sl(),
+      secureStorage: sl(),
     ),
   );
 
   // BLoC (factory → tạo mới mỗi lần gọi sl<AuthBloc>())
   sl.registerFactory<AuthBloc>(
-    () => AuthBloc(authRepository: sl()),
+    () => AuthBloc(
+      authRepository: sl(),
+      defaultAccountDataInitializer: sl(),
+    ),
   );
 
   // ── 5. Features — Wallet ──────────────────────────────────────────────────
@@ -78,6 +89,9 @@ Future<void> setupDependencies() async {
   );
   sl.registerLazySingleton<WalletRepository>(
     () => WalletRepositoryImpl(localDataSource: sl(), syncEngine: sl()),
+  );
+  sl.registerLazySingleton<DefaultAccountDataInitializer>(
+    () => DefaultAccountDataInitializer(sl()),
   );
   // Factory: tạo WalletCubit mới cho mỗi trang, tự hủy khi trang đóng
   sl.registerFactory<WalletCubit>(
@@ -133,7 +147,10 @@ Future<void> setupDependencies() async {
 
   // ── 9. Features — Category management (local-only) ───────────────────────
   sl.registerLazySingleton<CategoryManagementRepository>(
-    () => CategoryManagementRepositoryImpl(db: sl<AppDatabase>()),
+    () => CategoryManagementRepositoryImpl(
+      db: sl<AppDatabase>(),
+      syncEngine: sl<SyncEngine>(),
+    ),
   );
   sl.registerLazySingleton<CategorySuggestionEngine>(
     () => const CategorySuggestionEngine(),

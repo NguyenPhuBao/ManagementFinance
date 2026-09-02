@@ -114,7 +114,12 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
 
   /// Pending sync records
   Future<List<Transaction>> getPending([int? idaccount]) {
-    return (select(transactions)..where((t) => t.syncStatus.equals('pending')))
+    return (select(transactions)
+          ..where((t) =>
+              t.syncStatus.equals('pending') &
+              (idaccount == null
+                  ? const Constant(true)
+                  : t.idaccount.equals(idaccount))))
         .get();
   }
 
@@ -142,9 +147,56 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
+  /// Ghi dữ liệu pull về — chỉ cập nhật cột có trong companion (xem chú thích
+  /// ở CategoryDao.upsertAll). Tránh việc pull xoá mất walletTransfer,
+  /// bankTranId, status, provider, images... vì mapper pull không gán chúng.
   Future<void> upsertAll(List<TransactionsCompanion> entries) async {
     await batch((b) {
-      b.insertAll(transactions, entries, mode: InsertMode.insertOrReplace);
+      b.insertAllOnConflictUpdate(transactions, entries);
     });
+  }
+
+  /// Cập nhật categoryId của transaction (dùng khi repair cat_food → UUID)
+  Future<void> updateCategoryId(String transactionId, String? newCategoryId) async {
+    await (update(transactions)..where((t) => t.id.equals(transactionId))).write(
+      TransactionsCompanion(
+        categoryId: Value(newCategoryId),
+        syncStatus: const Value('pending'),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  /// Repair: cập nhật categoryId từ local seed (cat_food) sang UUID từ backend,
+  /// sau đó mark pending để re-push.
+  ///
+  /// Truyền vào [resolveUuid]: hàm async nhận categoryId cũ → trả về UUID hợp lệ (hoặc null).
+  /// Gọi sau khi categories được pull về đầy đủ từ backend.
+  Future<int> repairPendingTransactionsCategoryId(
+    Future<String?> Function(String? categoryId) resolveUuid,
+  ) async {
+    // Lấy tất cả PENDING transactions có categoryId dạng non-UUID (local seed)
+    final uuidRegex = RegExp(
+      r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+      caseSensitive: false,
+    );
+    final pending = await (select(transactions)
+          ..where((t) =>
+              t.syncStatus.equals('pending') &
+              t.categoryId.isNotNull() &
+              t.deletedAt.isNull()))
+        .get();
+
+    int repaired = 0;
+    for (final tx in pending) {
+      if (tx.categoryId == null) continue;
+      if (uuidRegex.hasMatch(tx.categoryId!)) continue; // đã là UUID → bỏ qua
+      // categoryId là dạng 'cat_food' → resolve sang UUID
+      final uuid = await resolveUuid(tx.categoryId);
+      if (uuid == null) continue;
+      await updateCategoryId(tx.id, uuid);
+      repaired++;
+    }
+    return repaired;
   }
 }
