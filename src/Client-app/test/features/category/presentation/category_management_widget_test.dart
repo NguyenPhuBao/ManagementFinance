@@ -475,6 +475,10 @@ Wallet _wallet() => Wallet(
       colour: '#10B981',
       isDefault: true,
       isDeleted: false,
+      // Hai trường bắt buộc được thêm ở schema v5/v6 (includeInTotal, status)
+      // — thiếu chúng thì cả file test này không biên dịch được.
+      includeInTotal: true,
+      status: 'active',
       syncStatus: 'pending',
       updatedAt: DateTime(2026, 8, 21),
     );

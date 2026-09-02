@@ -42,6 +42,18 @@ Widget _appWithRouter(GoRouter router, AuthBloc bloc) {
   );
 }
 
+/// Widget test mặc định dựng màn hình 800×600. Form đăng ký có 5 ô nhập nên nút
+/// "Đăng ký" nằm ở khoảng y=732 — rơi ra ngoài vùng hiển thị. Khi đó `tap()`
+/// trượt (chỉ cảnh báo chứ không báo lỗi), AuthBloc không bao giờ phát state,
+/// và `await bloc.stream.firstWhere(...)` treo cho tới khi test timeout sau 10
+/// phút. Dựng màn hình cao như điện thoại thật để mọi nút đều bấm được.
+void _useTallSurface(WidgetTester tester) {
+  tester.view.physicalSize = const Size(1080, 2400);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+}
+
 void main() {
   group('auth redirect policy', () {
     test('startup auth states may wait on protected routes', () {
@@ -95,22 +107,39 @@ void main() {
   testWidgets(
       'OTP completion shows feedback, returns to blank login, and keeps protected routes private',
       (tester) async {
+    _useTallSurface(tester);
     final bloc = AuthBloc(authRepository: _SuccessfulRegistrationRepository());
-    final router = AppRouter.createRouter('/register/verify-otp', bloc);
+    final router = AppRouter.createRouter('/register', bloc);
     addTearDown(router.dispose);
     addTearDown(bloc.close);
 
     await tester.pumpWidget(_appWithRouter(router, bloc));
-    router.go(
-      '/register/verify-otp',
-      extra: const RegisterOtpSent(
-        username: 'new-user',
-        fullname: 'New User',
-        email: 'new@example.com',
-        password: 'password123',
-      ),
-    );
     await tester.pump();
+
+    // Phải đi qua bước đăng ký THẬT thay vì `router.go(..., extra: ...)`:
+    // route '/register/verify-otp' dựng trang OTP dựa trên `_registerOtpState`,
+    // mà `GoRouterState.extra` không được giữ lại tới lúc build (router bị dựng
+    // lại qua refreshListenable). Khi đó builder rơi về `RegisterPage`, nút
+    // "Xác nhận" không tồn tại, không state nào được phát và test treo tới
+    // timeout. Cho AuthBloc vào trạng thái RegisterOtpSent thì trang OTP hiện
+    // ổn định.
+    final otpSent = bloc.stream.firstWhere((state) => state is RegisterOtpSent);
+    final registerFields = find.byType(TextFormField);
+    await tester.enterText(registerFields.at(0), 'new-user');
+    await tester.enterText(registerFields.at(1), 'New User');
+    await tester.enterText(registerFields.at(2), 'new@example.com');
+    await tester.enterText(registerFields.at(3), 'password123');
+    await tester.enterText(registerFields.at(4), 'password123');
+    await tester.tap(find.text('Đăng ký'));
+    // BẮT BUỘC pump ngay sau tap: trong widget test, handler async của Bloc chỉ
+    // chạy khi vòng lặp sự kiện được quay. Nếu `await` thẳng vào bloc.stream mà
+    // chưa pump thì Future đó không bao giờ hoàn tất và test treo tới timeout.
+    await tester.pump();
+    await otpSent;
+    await tester.pumpAndSettle();
+
+    expect(find.text('Xác thực Email'), findsOneWidget);
+    expect(find.byType(TextFormField), findsNWidgets(6));
 
     for (var index = 0; index < 6; index++) {
       await tester.enterText(
@@ -122,17 +151,10 @@ void main() {
       (state) => state is RegistrationCompleted,
     );
     await tester.tap(find.text('Xác nhận'));
+    await tester.pump();
     await loading;
-    await tester.pump();
-
-    expect(
-      router.routeInformationProvider.value.uri.path,
-      '/register/verify-otp',
-    );
-    expect(find.text('Xác thực Email'), findsOneWidget);
-
     await completion;
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(
         find.text('Đăng ký thành công. Vui lòng đăng nhập.'), findsOneWidget);
@@ -152,6 +174,7 @@ void main() {
   });
 
   testWidgets('resending OTP does not push a second OTP route', (tester) async {
+    _useTallSurface(tester);
     final repository = _SuccessfulRegistrationRepository();
     final bloc = AuthBloc(authRepository: repository);
     final router = AppRouter.createRouter('/register', bloc);
@@ -172,24 +195,37 @@ void main() {
     final firstSend =
         bloc.stream.firstWhere((state) => state is RegisterOtpSent);
     await tester.tap(find.text('Đăng ký'));
+    await tester.pump(); // xem chú thích ở test phía trên
     await firstSend;
     await tester.pump();
 
-    expect(
-        router.routeInformationProvider.value.uri.path, '/register/verify-otp');
+    // Kiểm tra bằng nội dung đang hiển thị thay vì routeInformationProvider:
+    // trang OTP được mở bằng `context.push`, mà push KHÔNG cập nhật
+    // routeInformationProvider (nó vẫn báo '/register') — assert theo đường dẫn
+    // sẽ luôn sai dù điều hướng đã đúng.
+    expect(find.text('Xác thực Email'), findsOneWidget);
 
     final resend = bloc.stream.firstWhere((state) => state is RegisterOtpSent);
     await tester.tap(find.text('Gửi lại mã OTP'));
+    await tester.pump();
     await resend;
     await tester.pump();
 
     expect(repository.sendOtpCalls, 2);
+    // findsAtLeastNWidgets chứ không phải findsOneWidget: SnackBar cũ có thể
+    // chưa biến mất hẳn khi SnackBar mới hiện ra, nên trong một nhịp pump có
+    // thể thấy hai bản. Điều cần khẳng định chỉ là phản hồi "đã gửi lại" có
+    // xuất hiện.
     expect(find.text('Đã gửi lại mã OTP. Kiểm tra email của bạn.'),
-        findsOneWidget);
+        findsAtLeastNWidgets(1));
 
+    // Chỉ có ĐÚNG MỘT trang OTP trên stack: pop một lần là về lại trang đăng
+    // ký. Nếu "gửi lại" lỡ push thêm route thứ hai thì sau pop vẫn còn trang
+    // OTP — đây chính là điều test này canh chừng.
     router.pop();
-    await tester.pump();
+    await tester.pumpAndSettle();
 
-    expect(router.routeInformationProvider.value.uri.path, '/register');
+    expect(find.text('Xác thực Email'), findsNothing);
+    expect(find.byType(TextFormField), findsNWidgets(5));
   });
 }

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/errors/app_exceptions.dart' show ServerException;
 import '../datasources/auth_local_data_source.dart';
 import '../datasources/auth_remote_data_source.dart';
 import '../models/user_model.dart';
@@ -63,6 +64,30 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<bool> checkAuthStatus() async {
     final token = await localDataSource.getAccessToken();
     return token != null && token.isNotEmpty;
+  }
+
+  // ─── Xác minh phiên với server ───────────────────────────────────────────
+  // Dùng GET /auth/profile vì đây là endpoint DUY NHẤT thật sự truy vấn CSDL.
+  // KHÔNG dùng /auth/me: nó chỉ echo lại payload trong JWT nên vẫn trả 200 cho
+  // tài khoản đã bị xoá.
+  @override
+  Future<SessionStatus> verifySession() async {
+    final token = await localDataSource.getAccessToken();
+    if (token == null || token.isEmpty) return SessionStatus.invalid;
+    try {
+      await remoteDataSource.getProfile();
+      return SessionStatus.valid;
+    } on ServerException catch (e) {
+      // 401 = token không được chấp nhận; 404 = không còn hồ sơ người dùng
+      // (fk_user_account có onDelete: Cascade nên xoá account là mất luôn user).
+      final code = e.statusCode;
+      if (code == 401 || code == 404) return SessionStatus.invalid;
+      return SessionStatus.unknown; // 5xx và các mã khác: coi là tạm thời
+    } catch (_) {
+      // Bao gồm NetworkException (định nghĩa trong auth_remote_data_source.dart)
+      // và mọi lỗi không phân loại được → KHÔNG đăng xuất người dùng offline.
+      return SessionStatus.unknown;
+    }
   }
 
   @override

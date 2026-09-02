@@ -39,8 +39,9 @@ class BudgetDao extends DatabaseAccessor<AppDatabase> with _$BudgetDaoMixin {
     );
   }
 
+  /// Chỉ cập nhật cột có trong companion (xem chú thích ở CategoryDao.upsertAll).
   Future<void> upsertAll(List<BudgetsCompanion> entries) async {
-    await batch((b) => b.insertAll(budgets, entries, mode: InsertMode.insertOrReplace));
+    await batch((b) => b.insertAllOnConflictUpdate(budgets, entries));
   }
 
   Future<List<Budget>> getPending([int? idaccount]) {
@@ -117,8 +118,9 @@ class BillDao extends DatabaseAccessor<AppDatabase> with _$BillDaoMixin {
     );
   }
 
+  /// Chỉ cập nhật cột có trong companion (xem chú thích ở CategoryDao.upsertAll).
   Future<void> upsertAll(List<BillsCompanion> entries) async {
-    await batch((b) => b.insertAll(bills, entries, mode: InsertMode.insertOrReplace));
+    await batch((b) => b.insertAllOnConflictUpdate(bills, entries));
   }
 
   Future<List<Bill>> getPending([int? idaccount]) {
@@ -199,8 +201,9 @@ class GoalDao extends DatabaseAccessor<AppDatabase> with _$GoalDaoMixin {
     );
   }
 
+  /// Chỉ cập nhật cột có trong companion (xem chú thích ở CategoryDao.upsertAll).
   Future<void> upsertAll(List<GoalsCompanion> entries) async {
-    await batch((b) => b.insertAll(goals, entries, mode: InsertMode.insertOrReplace));
+    await batch((b) => b.insertAllOnConflictUpdate(goals, entries));
   }
 
   Future<List<Goal>> getPending([int? idaccount]) {

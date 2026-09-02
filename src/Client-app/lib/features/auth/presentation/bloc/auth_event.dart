@@ -9,6 +9,10 @@ abstract class AuthEvent extends Equatable {
 
 class AuthCheckRequested extends AuthEvent {}
 
+/// SyncEngine phát hiện phiên đang trỏ tới một tài khoản không còn tồn tại
+/// trên server (đẩy dữ liệu bị vỡ khoá ngoại `fk_*_account`).
+class SessionInvalidated extends AuthEvent {}
+
 class LoginSubmitted extends AuthEvent {
   final String email;
   final String password;

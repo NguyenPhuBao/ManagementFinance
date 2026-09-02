@@ -182,6 +182,55 @@ class AppDatabase extends _$AppDatabase {
   @override BillDao        get billDao        => BillDao(this);
   @override GoalDao        get goalDao        => GoalDao(this);
 
+  // ── Dọn dữ liệu của các tài khoản khác ────────────────────────────────────
+
+  /// Xoá mọi dòng dữ liệu KHÔNG thuộc [keepIdaccount] khỏi SQLite cục bộ.
+  ///
+  /// Vì sao cần: dữ liệu sót lại của một tài khoản cũ trên cùng thiết bị là
+  /// dữ liệu chết — mọi truy vấn `getPending`/`getSyncableCategories` đều lọc
+  /// theo tài khoản hiện tại nên chúng không bao giờ được đẩy lên nữa, nhưng
+  /// chúng vẫn có thể bị đọc nhầm (ví dụ các truy vấn `*NonDeleted` không lọc
+  /// tài khoản) và làm sống lại một `idaccount` đã chết.
+  ///
+  /// GIỮ NGUYÊN danh mục mặc định (`idaccount = 0`) — đó là dữ liệu dùng chung,
+  /// không thuộc tài khoản nào.
+  ///
+  /// Xoá bảng con trước bảng cha vì `beforeOpen` bật `PRAGMA foreign_keys = ON`.
+  Future<int> purgeDataForOtherAccounts(int keepIdaccount) async {
+    if (keepIdaccount <= 0) return 0;
+    var removed = 0;
+    await transaction(() async {
+      removed += await (delete(categoryKeywords)
+            ..where((t) => t.idaccount.equals(keepIdaccount).not()))
+          .go();
+      removed += await (delete(categoryGroupMemberships)
+            ..where((t) => t.idaccount.equals(keepIdaccount).not()))
+          .go();
+      removed += await (delete(transactions)
+            ..where((t) => t.idaccount.equals(keepIdaccount).not()))
+          .go();
+      removed += await (delete(budgets)
+            ..where((t) => t.idaccount.equals(keepIdaccount).not()))
+          .go();
+      removed += await (delete(bills)
+            ..where((t) => t.idaccount.equals(keepIdaccount).not()))
+          .go();
+      removed += await (delete(goals)
+            ..where((t) => t.idaccount.equals(keepIdaccount).not()))
+          .go();
+      // idaccount = 0 là danh mục mặc định dùng chung → giữ lại.
+      removed += await (delete(categories)
+            ..where((t) =>
+                t.idaccount.equals(keepIdaccount).not() &
+                t.idaccount.equals(0).not()))
+          .go();
+      removed += await (delete(wallets)
+            ..where((t) => t.idaccount.equals(keepIdaccount).not()))
+          .go();
+    });
+    return removed;
+  }
+
   // ── Seed default categories ───────────────────────────────────────────────
   Future<void> _seedDefaultCategories() async {
     final now = DateTime.now();

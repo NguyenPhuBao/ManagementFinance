@@ -1,6 +1,13 @@
 import 'package:dio/dio.dart';
 
+import '../../../../core/errors/app_exceptions.dart' show ServerException;
+
 /// Exception riêng cho lỗi mạng (không có internet / timeout).
+///
+/// CẢNH BÁO: trùng tên với `NetworkException` trong
+/// `core/errors/app_exceptions.dart`. File này ném class ĐỊNH NGHĨA Ở ĐÂY.
+/// Đừng bắt lỗi theo kiểu ở tầng bloc — dùng `AuthRepository.verifySession()`
+/// để repository tự phân loại, tránh import nhầm file rồi catch không khớp.
 class NetworkException implements Exception {
   final String message;
   const NetworkException([this.message = 'Không có kết nối mạng']);
@@ -193,8 +200,12 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       throw Exception(response.data['message'] ?? 'Không lấy được thông tin');
     } on DioException catch (e) {
       if (_isNetworkError(e)) throw const NetworkException();
-      final msg = e.response?.data?['message'] ?? 'Lỗi máy chủ';
-      throw Exception(msg);
+      // Giữ lại statusCode: 401/404 là dấu hiệu phiên trỏ tới tài khoản không
+      // còn tồn tại, cần phân biệt với lỗi 5xx tạm thời.
+      throw ServerException(
+        message: (e.response?.data?['message'] ?? 'Lỗi máy chủ').toString(),
+        statusCode: e.response?.statusCode,
+      );
     }
   }
 

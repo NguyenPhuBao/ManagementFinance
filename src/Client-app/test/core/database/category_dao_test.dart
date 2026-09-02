@@ -3,6 +3,105 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 
+/// Các bảng ngoài `categories` ở hình dạng **trước v5**, để migration thật có
+/// thể chạy trên CSDL giả.
+///
+/// Migration từ v2/v3 lên bản hiện tại có `ALTER TABLE` trên wallets,
+/// transactions, budgets, bills, goals. CSDL giả chỉ có mỗi bảng `categories`
+/// sẽ làm migration chết ở bước `from < 5` với lỗi "no such table: wallets" —
+/// một lỗi CỦA FIXTURE, không phải của migration.
+///
+/// Cố tình BỎ những cột mà migration sẽ tự thêm (include_in_total,
+/// bank_casso_id, status, provider, wallet_transfer, bank_tran_id, deleted_at,
+/// spent, over_spending, pay_status, start_date của bills, ...) để phần
+/// `addColumn` được thực thi đúng như trên máy người dùng thật.
+// `database` là sqlite3.Database do NativeDatabase.memory(setup:) truyền vào.
+// Dùng dynamic để khỏi phải thêm `sqlite3` làm phụ thuộc trực tiếp.
+void _createLegacyNonCategoryTables(dynamic database) {
+  database.execute('''
+    CREATE TABLE wallets (
+      id TEXT NOT NULL PRIMARY KEY,
+      idaccount INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'cash',
+      balance REAL NOT NULL DEFAULT 0,
+      currency TEXT NOT NULL DEFAULT 'VND',
+      icon TEXT NOT NULL DEFAULT 'wallet',
+      colour TEXT NOT NULL DEFAULT '#4CAF50',
+      is_default INTEGER NOT NULL DEFAULT 0,
+      is_deleted INTEGER NOT NULL DEFAULT 0,
+      sync_status TEXT NOT NULL DEFAULT 'pending',
+      updated_at INTEGER NOT NULL
+    )
+  ''');
+  database.execute('''
+    CREATE TABLE transactions (
+      id TEXT NOT NULL PRIMARY KEY,
+      wallet_id TEXT NOT NULL,
+      idaccount INTEGER NOT NULL,
+      category_id TEXT,
+      amount REAL NOT NULL,
+      type TEXT NOT NULL,
+      note TEXT NOT NULL DEFAULT '',
+      date INTEGER NOT NULL,
+      images TEXT NOT NULL DEFAULT '[]',
+      sync_status TEXT NOT NULL DEFAULT 'pending',
+      updated_at INTEGER NOT NULL,
+      is_deleted INTEGER NOT NULL DEFAULT 0
+    )
+  ''');
+  database.execute('''
+    CREATE TABLE budgets (
+      id TEXT NOT NULL PRIMARY KEY,
+      idaccount INTEGER NOT NULL,
+      category_id TEXT,
+      amount REAL NOT NULL,
+      start_date INTEGER NOT NULL,
+      end_date INTEGER,
+      period TEXT NOT NULL DEFAULT 'monthly',
+      note TEXT NOT NULL DEFAULT '',
+      is_deleted INTEGER NOT NULL DEFAULT 0,
+      sync_status TEXT NOT NULL DEFAULT 'pending',
+      updated_at INTEGER NOT NULL
+    )
+  ''');
+  database.execute('''
+    CREATE TABLE bills (
+      id TEXT NOT NULL PRIMARY KEY,
+      idaccount INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      amount REAL NOT NULL,
+      due_date INTEGER NOT NULL,
+      is_paid INTEGER NOT NULL DEFAULT 0,
+      recurrence TEXT NOT NULL DEFAULT 'monthly',
+      icon TEXT NOT NULL DEFAULT 'receipt',
+      colour TEXT NOT NULL DEFAULT '#4CAF50',
+      note TEXT NOT NULL DEFAULT '',
+      is_deleted INTEGER NOT NULL DEFAULT 0,
+      sync_status TEXT NOT NULL DEFAULT 'pending',
+      updated_at INTEGER NOT NULL
+    )
+  ''');
+  database.execute('''
+    CREATE TABLE goals (
+      id TEXT NOT NULL PRIMARY KEY,
+      idaccount INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      target_amount REAL NOT NULL,
+      current_amount REAL NOT NULL DEFAULT 0,
+      target_date INTEGER NOT NULL,
+      wallet_id TEXT,
+      icon TEXT NOT NULL DEFAULT 'flag',
+      colour TEXT NOT NULL DEFAULT '#4CAF50',
+      note TEXT NOT NULL DEFAULT '',
+      is_completed INTEGER NOT NULL DEFAULT 0,
+      is_deleted INTEGER NOT NULL DEFAULT 0,
+      sync_status TEXT NOT NULL DEFAULT 'pending',
+      updated_at INTEGER NOT NULL
+    )
+  ''');
+}
+
 void main() {
   late AppDatabase db;
 
@@ -60,6 +159,7 @@ void main() {
             0, 0, 'synced', 1787270400000
           )
         ''');
+        _createLegacyNonCategoryTables(database);
         database.execute('PRAGMA user_version = 2');
       },
     ));
@@ -130,6 +230,7 @@ void main() {
             0, 0, NULL, 0, 0, 'synced', 1787270400000
           )
         ''');
+        _createLegacyNonCategoryTables(database);
         database.execute('PRAGMA user_version = 3');
       },
     ));
@@ -147,9 +248,22 @@ void main() {
         'Legacy food');
   });
 
-  test('returns raw visible category rows from both category row APIs',
-      () async {
+  // Hai API này KHÔNG trả về hàng thô: chúng khử trùng lặp theo tên (thêm có
+  // chủ đích để sửa lỗi danh mục hiển thị trùng khi bản seed cục bộ 'cat_food'
+  // và bản UUID từ backend cùng tồn tại). Test này khoá lại đúng hành vi đó.
+  test(
+      'chỉ trả về danh mục nhìn thấy được, đã khử trùng lặp theo tên, '
+      'từ cả hai API', () async {
     final now = DateTime(2026, 8, 21);
+    await db.categoryDao.insert(CategoriesCompanion.insert(
+      id: 'global-transport',
+      idaccount: 0,
+      name: 'Transport',
+      classify: 'chi',
+      isDefault: const Value(true),
+      updatedAt: now,
+    ));
+    // Trùng tên với 'personal-food' bên dưới → hai cái sẽ bị gộp làm một.
     await db.categoryDao.insert(CategoriesCompanion.insert(
       id: 'global-food',
       idaccount: 0,
@@ -185,11 +299,17 @@ void main() {
     final fetchedRows = await db.categoryDao.getCategoryRows(1, 'chi');
 
     for (final rows in [watchedRows, fetchedRows]) {
-      expect(rows.map((row) => row.id),
-          containsAll(['global-food', 'personal-food']));
-      expect(rows.map((row) => row.id), isNot(contains('deleted-food')));
-      expect(rows.map((row) => row.id), isNot(contains('other-account-food')));
-      expect(rows.where((row) => row.name == 'Food'), hasLength(2));
+      final ids = rows.map((row) => row.id);
+      // Danh mục mặc định (idaccount = 0) vẫn hiển thị cho người dùng.
+      expect(ids, contains('global-transport'));
+      // Đã xoá mềm và của tài khoản khác thì không hiện.
+      expect(ids, isNot(contains('deleted-food')));
+      expect(ids, isNot(contains('other-account-food')));
+      // Trùng tên "Food" chỉ còn MỘT — bản của chính người dùng thắng bản mặc
+      // định vì truy vấn sắp xếp theo idaccount giảm dần.
+      expect(rows.where((row) => row.name == 'Food'), hasLength(1));
+      expect(ids, contains('personal-food'));
+      expect(ids, isNot(contains('global-food')));
     }
   });
 

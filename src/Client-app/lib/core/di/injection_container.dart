@@ -3,6 +3,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../core/api/dio_client.dart';
 import '../../core/database/app_database.dart';
+import '../../core/sync/sync_checkpoint_store.dart';
 import '../../core/sync/sync_engine.dart';
 import '../../features/auth/data/datasources/auth_local_data_source.dart';
 import '../../features/auth/data/datasources/auth_remote_data_source.dart';
@@ -46,7 +47,13 @@ Future<void> setupDependencies() async {
 
   // ── 4. Core: SyncEngine (offline-first sync) ────────────────────────────
   sl.registerLazySingleton<SyncEngine>(
-    () => SyncEngine(dioClient: sl(), db: sl()),
+    () => SyncEngine(
+      dioClient: sl(),
+      db: sl(),
+      checkpointStore: const SecureStorageSyncCheckpointStore(
+        FlutterSecureStorage(),
+      ),
+    ),
   );
 
   // ── 3. Features — Auth ────────────────────────────────────────────────────
@@ -140,7 +147,10 @@ Future<void> setupDependencies() async {
 
   // ── 9. Features — Category management (local-only) ───────────────────────
   sl.registerLazySingleton<CategoryManagementRepository>(
-    () => CategoryManagementRepositoryImpl(db: sl<AppDatabase>()),
+    () => CategoryManagementRepositoryImpl(
+      db: sl<AppDatabase>(),
+      syncEngine: sl<SyncEngine>(),
+    ),
   );
   sl.registerLazySingleton<CategorySuggestionEngine>(
     () => const CategorySuggestionEngine(),

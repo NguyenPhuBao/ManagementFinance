@@ -231,11 +231,15 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
   /// Lấy tất cả category của user cần sync lên backend (syncStatus = 'pending')
   /// Bao gồm cả category đã xóa mềm (để backend cập nhật delete_at).
   /// Không bao gồm category hệ thống (idaccount = 0) vì backend đã có sẵn.
+  /// Không bao gồm category `isLocalOnly` — đó là nhóm danh mục và các danh mục
+  /// nằm trong nhóm; chúng mang dữ liệu chỉ có ở client (parentId/isGroup) mà
+  /// backend không mô hình hoá, nên không được đẩy lên.
   Future<List<Category>> getSyncableCategories(int accountId) {
     return (select(categories)
           ..where((t) =>
               t.idaccount.equals(accountId) &
-              t.syncStatus.equals('pending')))
+              t.syncStatus.equals('pending') &
+              t.isLocalOnly.equals(false)))
         .get();
   }
 
@@ -281,9 +285,14 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
+  /// Ghi dữ liệu pull về. Dùng `insertAllOnConflictUpdate` (INSERT ... ON
+  /// CONFLICT DO UPDATE) để CHỈ cập nhật những cột có mặt trong companion.
+  /// KHÔNG dùng `insertOrReplace`: nó thay cả hàng, nên mọi cột không được gán
+  /// (parentId, isGroup, syncStatus, ...) sẽ bị đưa về mặc định — từng làm mất
+  /// sạch cấu trúc nhóm danh mục sau mỗi lần pull.
   Future<void> upsertAll(List<CategoriesCompanion> entries) async {
     await batch((b) {
-      b.insertAll(categories, entries, mode: InsertMode.insertOrReplace);
+      b.insertAllOnConflictUpdate(categories, entries);
     });
   }
 
