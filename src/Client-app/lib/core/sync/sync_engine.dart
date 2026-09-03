@@ -180,6 +180,20 @@ class SyncEngine {
     _cancelBackoffRetry();
   }
 
+  bool _hasCompletedPull = false;
+
+  /// Đã kéo dữ liệu về thành công ít nhất một lần trong phiên này chưa.
+  ///
+  /// Dùng để biết khi nào **đã có thể tin** vào nội dung SQLite cục bộ. Trước
+  /// khi pull xong, một CSDL rỗng không phân biệt được với "tài khoản chưa có
+  /// gì" — và `PersonalDefaultCategories` từng vấp đúng chỗ đó: nó tạo 5 danh
+  /// mục trên một máy mới trong khi tài khoản đã có sẵn chúng ở backend, sinh
+  /// ra 5 thao tác đẩy hỏng vĩnh viễn (G14).
+  ///
+  /// Cố ý **không** suy ra từ `_lastPullTime`: mốc đó chỉ được đặt khi có dữ
+  /// liệu trả về, nên tài khoản mới toanh sẽ mãi trông như chưa pull lần nào.
+  bool get hasCompletedPull => _hasCompletedPull;
+
   /// Nơi lưu mốc pull gần nhất. Null (thường là trong test) → chỉ giữ trong RAM
   /// như hành vi cũ.
   final SyncCheckpointStore? _checkpointStore;
@@ -237,6 +251,9 @@ class SyncEngine {
     _periodicTimer = null;
     _connectivitySub?.cancel();
     _currentIdaccount = null;
+    // Phiên sau có thể là tài khoản khác — cờ của phiên này không nói được gì
+    // về CSDL cục bộ của tài khoản đó.
+    _hasCompletedPull = false;
     _resetBackoff();
     // Chỉ xoá mốc trong RAM. Mốc đã lưu được giữ lại theo từng idaccount để lần
     // đăng nhập sau vẫn pull tăng dần; nếu dữ liệu cục bộ đã bị xoá thì
@@ -771,6 +788,10 @@ class SyncEngine {
             _lastPullTime = newest;
             await _checkpointStore?.write(accountId, newest);
           }
+          // Cờ RIÊNG, không suy ra từ `_lastPullTime`: mốc đó chỉ được đặt khi
+          // có dữ liệu trả về, nên một tài khoản mới toanh (chưa có gì trên
+          // server) sẽ mãi mãi trông như "chưa pull lần nào".
+          _hasCompletedPull = true;
         }
       }
     } catch (e) {

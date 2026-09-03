@@ -576,7 +576,7 @@ src/Backend/
 - **Migration `isLocalOnly`** (v7→v8): nhóm danh mục tạo trước 2026-09-02 quay lại được hàng đợi đẩy *(G11)*
 - **`AuthInterceptor` không còn xoá token trong im lặng**: phát `sessionExpiredStream`, AuthBloc nghe song song với SyncEngine *(G12)*
 - **Hẹn lại chu kỳ đồng bộ bị giãn cách từ chối** *(G13)* — trước đây nhánh chặn chỉ `return`, thay đổi ghi trong lúc giãn cách phải chờ tới lần mở app sau
-- **Test: 232/232 pass** (~15 giây), 31 file — cả 31 file đều đã được git theo dõi
+- **Test: 237/237 pass** (~15 giây), 31 file — cả 31 file đều đã được git theo dõi
 
 ### 🔄 Việc còn dang dở
 
@@ -627,16 +627,22 @@ app**, cho thấy một hậu quả mà không tài liệu nào ghi trước đ�
 5. **Mọi thay đổi khác** (ví, giao dịch, ngân sách) bị đẩy chậm theo. Đã đo: một
    thao tác xoá ngân sách hợp lệ không lên tới backend cho tới lần mở app sau.
 
-**Nguyên nhân bước 1 nằm ở client, và sửa được ở client.**
-`PersonalDefaultCategories.ensureForAccount()` **có** kiểm trùng theo tên chuẩn
-hoá, nhưng chạy **trước** `SyncEngine.start()` — trên máy mới thì CSDL cục bộ
-còn rỗng nên phép kiểm không thấy gì. Đây **không** phải hệ quả của
-`CATEGORY_STABLE_IDS.md` như bản ghi đầu tiên (`25915ec`) quy nhầm.
+**Nguyên nhân bước 1 nằm ở client — ✅ đã sửa 2026-09-04.**
+`PersonalDefaultCategories` **có** kiểm trùng theo tên chuẩn hoá, nhưng chạy
+**trước** `SyncEngine.start()`, nên trên máy mới thì CSDL cục bộ còn rỗng và
+phép kiểm không thấy gì. Đây **không** phải hệ quả của `CATEGORY_STABLE_IDS.md`
+như bản ghi đầu tiên (`25915ec`) quy nhầm.
 
-Chi tiết và hai hướng sửa ở **G14** trong `docs/CLIENT_APP_KNOWN_GAPS.md`; phần
-backend cần làm (mã lỗi ổn định, vai trò lớp phòng thủ thứ hai) ở khung đỏ đầu
-`CATEGORY_NAME_UNIQUENESS.md`. Phần độ trễ đã giảm bớt ở **G13** (hẹn lại chu kỳ
-bị giãn cách từ chối), nhưng nguyên nhân gốc vẫn nguyên.
+Nay tách làm hai giai đoạn: `convertLegacyRows()` chạy trước đồng bộ và chỉ đụng
+máy còn hàng seed `cat_*`; `ensureMissing()` chạy **sau** khi pull xong, và chỉ
+khi `SyncEngine.hasCompletedPull` — pull hỏng thì hoãn tới lần mở app sau chứ
+không tạo mù. Chi tiết ở **G14** trong `docs/CLIENT_APP_KNOWN_GAPS.md`.
+
+> ⚠️ Bản vá ngăn phát sinh mới, **không dọn** bản trùng đã có trên máy đã lỡ tạo.
+> Cách dọn ghi ở cuối G14.
+
+Phần backend (mã lỗi ổn định, vai trò lớp phòng thủ thứ hai) ở khung đỏ đầu
+`CATEGORY_NAME_UNIQUENESS.md`. Phần độ trễ giảm bớt ở **G13**.
 
 ### 🚀 Bắt đầu từ đâu ở phiên sau
 

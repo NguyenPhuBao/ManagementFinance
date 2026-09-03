@@ -169,7 +169,15 @@ Bốn test canh vùng này ở `test/core/sync/sync_failure_handling_test.dart`,
 
 ---
 
-### G14 — 5 danh mục cá nhân đẩy hỏng vĩnh viễn, kéo theo mọi thứ khác chậm · 🔧 SỬA ĐƯỢC Ở CLIENT
+### ~~G14 — 5 danh mục cá nhân đẩy hỏng vĩnh viễn, kéo theo mọi thứ khác chậm~~ · ✅ ĐÃ SỬA Ở CLIENT (2026-09-04)
+
+> **Bản vá:** `PersonalDefaultCategories` tách làm hai giai đoạn. `convertLegacyRows()` chạy trước chu kỳ đồng bộ đầu tiên và **chỉ đụng tới máy còn hàng seed `cat_*`** — máy sạch thì không tạo gì. `ensureMissing()` chạy **sau** khi pull xong, lúc đã biết tài khoản thật sự đang có những gì. `auth_bloc` gọi hai giai đoạn đúng thứ tự ở cả đường đăng nhập lẫn khôi phục phiên, và chỉ gọi giai đoạn 2 khi `SyncEngine.hasCompletedPull` — pull hỏng thì hoãn tới lần mở app sau chứ không tạo mù.
+>
+> Cũng vá luôn một lỗ hổng có sẵn từ bản gốc: hàng seed `cat_*` **tự khớp tên với chính nó**, bị dùng làm đích trỏ tới rồi bị xoá mềm ngay sau — giao dịch kết thúc ở một danh mục đã xoá. Nay `_findOwned` loại chính hàng đó ra khỏi tập ứng viên.
+>
+> 8 test canh vùng này ở `test/features/category/data/personal_default_categories_test.dart`.
+>
+> ⚠️ **Máy đã lỡ tạo bản trùng thì vẫn còn kẹt.** Bản vá ngăn phát sinh mới, không dọn hậu quả cũ. Muốn dọn cần một bước khử trùng lặp sau pull — xem cuối mục này.
 
 Đo được trên app thật ngày 2026-09-04 với tài khoản có sẵn dữ liệu, bằng cách đọc log của `SyncEngine` trong trình duyệt:
 
@@ -204,6 +212,14 @@ Hai hướng sửa, đều thuần client:
 - **Khử trùng lặp sau pull.** `removeDuplicateLocalSeedCategories()` đã làm việc tương tự nhưng chỉ cho `isDefault = true` và chỉ xoá bản có id không phải UUID — không xử lý được hai danh mục **người dùng** cùng tên mà cả hai đều là UUID. Cần mở rộng, kèm repoint tham chiếu trước khi xoá (repoint TRƯỚC, xoá SAU — đảo lại chính là lỗi 11.6).
 
 **Phần thuộc backend là lớp phòng thủ thứ hai, không phải điều kiện tiên quyết:** cho `/sync/push` trả mã lỗi ổn định `CATEGORY_NAME_DUPLICATE` thay vì message rỗng, để client xếp được vào `permanent` bằng một dòng trong `_classifyFailure`. Đáng làm vì **mọi** vi phạm trùng tên khác cũng sẽ hỏng theo đúng kiểu này, không riêng 5 danh mục trên.
+
+#### Còn lại: dọn hậu quả trên máy đã lỡ tạo bản trùng
+
+Bản vá ngăn phát sinh mới nhưng **không dọn** những bản trùng đã có. Máy nào đã chạy bản client cũ và tạo ra 5 danh mục trùng thì chúng vẫn nằm ở `pending` và vẫn hỏng mỗi chu kỳ.
+
+Cách dọn cần một bước khử trùng lặp chạy **sau pull**: tìm hai danh mục cùng tài khoản, cùng tên đã chuẩn hoá, một bản `synced` (từ backend) và một bản `pending` (do máy này tạo) → repoint mọi tham chiếu sang bản `synced` rồi xoá **vật lý** bản `pending`. Xoá vật lý là đúng ở đây: bản đó chưa từng tồn tại trên server nên không có gì để đồng bộ, còn xoá mềm sẽ để lại một thao tác đẩy vô nghĩa.
+
+`removeDuplicateLocalSeedCategories()` đã làm việc gần giống nhưng chỉ cho `isDefault = true` và chỉ xoá bản có id không phải UUID — hai danh mục người dùng mà cả hai đều là UUID thì nó không chạm tới. Nhớ **repoint TRƯỚC, xoá SAU** (đảo lại chính là lỗi 11.6).
 
 ---
 

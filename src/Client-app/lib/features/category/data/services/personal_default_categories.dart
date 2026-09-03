@@ -50,23 +50,72 @@ class PersonalDefaultCategories {
     PersonalCategorySpec('cat_collect', 'Thu nợ', 'vay_no', 'attach_money', '#4CAF50'),
   ];
 
-  Future<void> ensureForAccount(int idaccount) async {
+  /// Giai đoạn 1 — chạy **TRƯỚC** chu kỳ đồng bộ đầu tiên.
+  ///
+  /// Chuyển dữ liệu đang trỏ vào hàng seed `cat_*` sang danh mục cá nhân, rồi
+  /// xoá mềm hàng seed. Phải xong trước khi đồng bộ chạm vào, nếu không chu kỳ
+  /// đầu tiên sẽ gặp dữ liệu dở dang.
+  ///
+  /// **Chỉ đụng tới máy thật sự còn hàng `cat_*`.** Máy sạch thì không tạo gì —
+  /// đây là điểm khác so với bản trước 2026-09-04, và là bản vá cho G14: hàm
+  /// này chạy trước lần pull đầu tiên, lúc CSDL cục bộ còn rỗng, nên tạo danh
+  /// mục ở đây là **tạo mù**. Trên một máy mới, nó sinh ra đúng những bản trùng
+  /// tên với bản đã có trên backend; đẩy lên thì hỏng vĩnh viễn và kéo cả engine
+  /// vào giãn cách. Xem G14 trong `docs/CLIENT_APP_KNOWN_GAPS.md`.
+  Future<void> convertLegacyRows(int idaccount) async {
     if (idaccount <= 0) return; // danh tính chỉ đến từ phiên đăng nhập
     final owned = await db.categoryDao.getNamesInUse(idaccount);
 
     for (final spec in specs) {
-      final target = normalizeCategoryName(spec.name);
-      final existing = owned
-          .where((c) =>
-              !c.isDefault && normalizeCategoryName(c.name) == target)
-          .toList();
+      final legacy = await db.categoryDao.getById(spec.legacyId);
+      if (legacy == null || legacy.isDeleted) continue;
 
-      final categoryId = existing.isNotEmpty
-          ? existing.first.id
-          : await _create(spec, idaccount);
-
+      // Chỉ tới đây mới cần một danh mục đích để trỏ vào — tạo mới là hợp lý
+      // vì đã có dữ liệu thật đang trỏ vào hàng seed.
+      //
+      // Loại chính hàng seed ra khỏi tập ứng viên: nó cùng tên với `spec` nên
+      // phép so tên sẽ khớp chính nó, và khi đó dữ liệu bị "chuyển" về đúng chỗ
+      // cũ rồi hàng đó bị xoá mềm ngay sau — giao dịch kết thúc ở một danh mục
+      // đã xoá. Bình thường hàng seed mang `isDefault = true` nên đã bị
+      // `_findOwned` loại sẵn; điều kiện này canh trường hợp máy nào đó có nó ở
+      // dạng danh mục riêng.
+      final candidate = _findOwned(owned, spec, exceptId: spec.legacyId);
+      final categoryId = candidate?.id ?? await _create(spec, idaccount);
       await _convertLegacyRow(spec, idaccount, categoryId);
     }
+  }
+
+  /// Giai đoạn 2 — chạy **SAU** khi pull xong.
+  ///
+  /// Tạo những danh mục mà tài khoản còn thiếu. Chờ tới sau pull vì lúc đó mới
+  /// biết tài khoản thật sự đang có gì: 5 danh mục này có thể đã được một máy
+  /// khác tạo và đẩy lên từ trước.
+  Future<void> ensureMissing(int idaccount) async {
+    if (idaccount <= 0) return;
+    final owned = await db.categoryDao.getNamesInUse(idaccount);
+
+    for (final spec in specs) {
+      if (_findOwned(owned, spec) != null) continue;
+      await _create(spec, idaccount);
+    }
+  }
+
+  /// Danh mục **riêng của tài khoản** trùng tên với [spec], hoặc null.
+  ///
+  /// Cố ý loại danh mục mặc định: chúng không đẩy lên được, nên một danh mục
+  /// mặc định cùng tên mà tính là "đã có" sẽ khiến tài khoản mãi mãi không có
+  /// bản riêng — mà bản riêng mới là bản đồng bộ được.
+  Category? _findOwned(
+    List<Category> owned,
+    PersonalCategorySpec spec, {
+    String? exceptId,
+  }) {
+    final target = normalizeCategoryName(spec.name);
+    for (final c in owned) {
+      if (c.id == exceptId) continue;
+      if (!c.isDefault && normalizeCategoryName(c.name) == target) return c;
+    }
+    return null;
   }
 
   Future<String> _create(PersonalCategorySpec spec, int idaccount) async {

@@ -118,13 +118,22 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         // người dùng mở lại app mà không đăng xuất/đăng nhập lại thì dữ liệu
         // rác của tài khoản cũ vẫn nằm nguyên trong máy.
         await sl<AppDatabase>().purgeDataForOtherAccounts(idAcc);
-        // Tạo/chuyển đổi các danh mục mà bộ mặc định của backend không có.
-        // Chạy TRƯỚC start(): chúng ở trạng thái chờ đẩy, và việc chuyển dữ
-        // liệu cũ phải xong trước khi chu kỳ đồng bộ đầu tiên chạm vào.
-        if (sl.isRegistered<PersonalDefaultCategories>()) {
-          await sl<PersonalDefaultCategories>().ensureForAccount(idAcc);
-        }
-        sl<SyncEngine>().start(idaccount: idAcc);
+        final personal = sl.isRegistered<PersonalDefaultCategories>()
+            ? sl<PersonalDefaultCategories>()
+            : null;
+        // Chuyển dữ liệu trỏ vào hàng seed `cat_*` cũ. Chạy TRƯỚC start(): việc
+        // này phải xong trước khi chu kỳ đồng bộ đầu tiên chạm vào.
+        await personal?.convertLegacyRows(idAcc);
+        final engine = sl<SyncEngine>();
+        // Không await ở đường mở app: chờ một vòng mạng ở đây làm màn hình đầu
+        // tiên đứng hình. Nối phần tạo danh mục vào sau bằng `then`.
+        unawaited(engine.start(idaccount: idAcc).then((_) async {
+          // Pull hỏng (mất mạng, server lỗi) thì CSDL cục bộ chưa đáng tin —
+          // tạo danh mục lúc này chính là lỗi G14. Bỏ qua, lần mở app sau thử
+          // lại.
+          if (!engine.hasCompletedPull) return;
+          await personal?.ensureMissing(idAcc);
+        }));
       }
       emit(AuthSuccess(user: user));
     } catch (e) {
@@ -152,13 +161,20 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         // dòng dữ liệu sót lại từ tài khoản cũ sẽ bị đẩy đi dưới id cũ và
         // luôn thất bại (Ownership mismatch hoặc vỡ khoá ngoại).
         await sl<AppDatabase>().purgeDataForOtherAccounts(idAcc);
-        // Tạo/chuyển đổi các danh mục mà bộ mặc định của backend không có.
-        // Chạy TRƯỚC start(): chúng ở trạng thái chờ đẩy, và việc chuyển dữ
-        // liệu cũ phải xong trước khi chu kỳ đồng bộ đầu tiên chạm vào.
-        if (sl.isRegistered<PersonalDefaultCategories>()) {
-          await sl<PersonalDefaultCategories>().ensureForAccount(idAcc);
+        final personal = sl.isRegistered<PersonalDefaultCategories>()
+            ? sl<PersonalDefaultCategories>()
+            : null;
+        // Chuyển dữ liệu trỏ vào hàng seed `cat_*` cũ. Chạy TRƯỚC start(): việc
+        // này phải xong trước khi chu kỳ đồng bộ đầu tiên chạm vào.
+        await personal?.convertLegacyRows(idAcc);
+        final engine = sl<SyncEngine>();
+        await engine.start(idaccount: idAcc);
+        // Tạo phần danh mục còn thiếu SAU khi đã pull. Chạy trước pull thì trên
+        // một máy mới, CSDL cục bộ còn rỗng nên phép kiểm trùng không thấy gì và
+        // sẽ đẻ ra 5 bản trùng tên với bản đã có trên backend — xem G14.
+        if (engine.hasCompletedPull) {
+          await personal?.ensureMissing(idAcc);
         }
-        await sl<SyncEngine>().start(idaccount: idAcc);
         await defaultAccountDataInitializer?.ensureForAccount(idAcc);
       }
       emit(AuthSuccess(user: user));
