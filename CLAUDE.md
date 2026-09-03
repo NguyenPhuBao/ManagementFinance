@@ -38,7 +38,7 @@
 4. **Tên trường sai thì im lặng, không báo lỗi.** Payload đi qua ba nơi định nghĩa độc lập (client dựng tay → `SyncPayloadNormalizer` → `mapEntityFields` phía backend). Thêm trường mới cho sync thì **phải** cập nhật `sync_payload_contract_test.dart` cùng lúc.
 
 5. **Không xoá vật lý dữ liệu người dùng** — dùng soft delete (`delete_at` / `isDeleted`).
-   - ⚠️ Backend **không nhất quán tên cột**: bảng `category` dùng `Delete_at`, bảng `transaction` dùng `Deleted_at`. Đừng suy tên từ bảng này sang bảng kia — mở `schema.prisma` ra đọc.
+   - ⚠️ Backend **không nhất quán tên cột**, ít nhất ba kiểu: `category` dùng `Delete_at`, `transaction` dùng `Deleted_at`, và cột ngày của giao dịch là `DateTransaction` (không gạch dưới) chứ không phải `Date_transaction`. Đừng suy tên từ bảng này sang bảng kia — mở `schema.prisma` ra đọc. Truy vấn sai tên cột ở PostgreSQL thì báo lỗi ngay, nhưng viết sai trong payload đồng bộ thì **im lặng** (quy tắc 4).
 
 6. **`.gitignore` dòng 77 có `test/`** → mọi file test tạo mới đều bị git bỏ qua **âm thầm**. Nhớ `git add -f`, nếu không công sức viết test sẽ biến mất khỏi repo.
 
@@ -53,7 +53,7 @@
 ## Lệnh hay dùng
 
 ```bash
-# Test (chạy từ src/Client-app) — hiện 228/228 pass, ~15 giây
+# Test (chạy từ src/Client-app) — hiện 232/232 pass, ~15 giây
 flutter test
 flutter analyze          # mức nền: 29 issue, KHÔNG có error
 

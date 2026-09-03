@@ -153,6 +153,49 @@ Kênh `sessionInvalidStream` thêm trong phiên 2026-09-02 mới chỉ nối t�
 
 ---
 
+### ~~G13 — Kích hoạt đồng bộ bị giãn cách từ chối thì không được hẹn lại~~ · ✅ ĐÃ SỬA (2026-09-04)
+
+Phát hiện khi chạy app thật, không phải khi đọc mã: xoá một ngân sách trong lúc engine đang giãn cách thì thao tác đó **không lên tới backend**, kể cả sau khi giãn cách đã hết. Phải chờ tới lần mở app sau.
+
+Đây là kiểu hỏng tệ nhất về mặt trải nghiệm: mục biến mất khỏi màn hình ngay lập tức nên người dùng tin là xong, trong khi máy khác vẫn thấy nó nguyên vẹn.
+
+**Nguyên nhân:** nhánh giãn cách trong `_runSync` chỉ `debugPrint` rồi `return`. Ba nguồn kích hoạt còn lại đều thưa hoặc ngẫu nhiên — timer 15 phút, đổi trạng thái mạng, và `start()` lúc mở app — nên khoảng chờ thật dài hơn bậc giãn cách rất nhiều. Đã đo: chờ thêm 60 giây **sau** mốc hết giãn cách vẫn không có lệnh đẩy nào.
+
+**Bản vá:** `_scheduleBackoffRetry()` — từ chối một yêu cầu đồng bộ nghĩa là **nợ người gọi một lần chạy**, nên hẹn giờ chạy lại đúng lúc hết giãn cách. Nhiều kích hoạt bị chặn liên tiếp dùng chung một hẹn giờ, nếu không thì mỗi lần ghi dữ liệu lại đẩy mốc chạy lại lùi về sau.
+
+Bốn test canh vùng này ở `test/core/sync/sync_failure_handling_test.dart`, nhóm G2.
+
+> ⚠️ Bản vá này chỉ rút ngắn **độ trễ**. Nguyên nhân khiến engine rơi vào giãn cách ngay từ đầu vẫn còn nguyên — xem G14.
+
+---
+
+### G14 — 5 danh mục cá nhân đẩy hỏng vĩnh viễn, kéo theo mọi thứ khác chậm · ⛔ CHẶN Ở BACKEND
+
+Đo được trên app thật ngày 2026-09-04 với tài khoản có sẵn dữ liệu, bằng cách đọc log của `SyncEngine` trong trình duyệt:
+
+```
+[SyncEngine] Push failed [transient]: entity=category, localId=6d16eab1-…, reason=
+… (5 danh mục, lặp lại ở MỌI chu kỳ)
+[SyncEngine] Real Sync Complete: 0/5 synced successfully.
+[SyncEngine] Đang trong thời gian giãn cách sau 2 chu kỳ hỏng — hoãn tới 19:50:31
+```
+
+**Chuỗi nguyên nhân**, đã đối chiếu bằng truy vấn PostgreSQL:
+
+1. Backend **đã có** 5 danh mục cá nhân của tài khoản (Chi khác, Thu khác, Làm thêm, Trả nợ, Thu nợ), mỗi cái một UUID.
+2. Trên một máy chưa từng chạy app, `PersonalDefaultCategories.ensureForAccount()` sinh lại đúng 5 danh mục đó với **UUID mới** — vì ID không ổn định giữa các máy (xem `CATEGORY_STABLE_IDS.md`).
+3. Đẩy lên vi phạm quy tắc trùng tên → backend trả `status: failed` **kèm message rỗng**.
+4. `reason` rỗng nên `_classifyFailure` không nhận ra được gì, xếp vào `transient` → **thử lại vĩnh viễn**.
+5. Mọi chu kỳ đồng bộ vì thế kết thúc ở trạng thái hỏng → giãn cách luỹ tiến 30s → 1p → 5p → 15p → 60p.
+
+**Bán kính ảnh hưởng rộng hơn tài liệu cũ ghi.** `CATEGORY_NAME_UNIQUENESS.md` mô tả hậu quả là "vi phạm trùng tên hỏng âm thầm". Thực tế nặng hơn: 5 thao tác hỏng vĩnh viễn này giữ engine trong giãn cách gần như liên tục, nên **mọi thay đổi khác** — ví, giao dịch, ngân sách — đều bị đẩy chậm theo. G13 chỉ rút ngắn độ trễ đó, không xoá được nó.
+
+**Client sửa được một phần** khi backend gửi mã lỗi ổn định: thêm `if (code == 'CATEGORY_NAME_DUPLICATE') return SyncFailureKind.permanent;` vào `_classifyFailure` (`lib/core/sync/sync_engine.dart`). Khi đó 5 thao tác kia bị chặn theo thời gian như mọi lỗi vĩnh viễn khác thay vì kéo cả chu kỳ xuống. **Hiện chưa làm được** vì backend trả message rỗng, client không có gì để nhận diện.
+
+**Sửa tận gốc thuộc backend**, theo thứ tự: `CATEGORY_STABLE_IDS.md` (ID ổn định, để máy mới không sinh lại danh mục trùng) → `CATEGORY_NAME_UNIQUENESS.md` (trả mã lỗi ổn định thay vì message rỗng).
+
+---
+
 ## 2. Vấn đề đã biết nhưng thuộc về Backend
 
 Xem hai tài liệu riêng trong `docs/superpowers/backend/`:

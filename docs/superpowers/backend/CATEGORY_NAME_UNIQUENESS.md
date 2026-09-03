@@ -20,10 +20,49 @@
 >
 > Dữ liệu thật kiểm ngày 2026-09-04: **20 danh mục, 0 vi phạm** ở cả ba phép kiểm ở mục 4.2 và 4.3 — vẫn chưa cần chuyển đổi dữ liệu.
 
+> ## 🔴 ĐO ĐƯỢC TRÊN APP THẬT 2026-09-04 — hậu quả rộng hơn tài liệu này mô tả
+>
+> Tài liệu này vẫn ghi hậu quả là "vi phạm trùng tên hỏng âm thầm khi đồng bộ".
+> Chạy app thật cho thấy nó **kéo chậm toàn bộ việc đồng bộ**, không riêng danh mục.
+>
+> Kịch bản: tài khoản đã có 5 danh mục cá nhân trên backend (Chi khác, Thu khác,
+> Làm thêm, Trả nợ, Thu nợ). Đăng nhập trên một **máy mới**. Vì ID danh mục không
+> ổn định giữa các máy (xem `CATEGORY_STABLE_IDS.md`),
+> `PersonalDefaultCategories` sinh lại đúng 5 danh mục đó với UUID khác. Log của
+> `SyncEngine` trong trình duyệt:
+>
+> ```
+> [SyncEngine] Push failed [transient]: entity=category, localId=6d16eab1-…, reason=
+> … (5 danh mục, lặp ở MỌI chu kỳ)
+> [SyncEngine] Real Sync Complete: 0/5 synced successfully.
+> [SyncEngine] Đang trong thời gian giãn cách sau 2 chu kỳ hỏng — hoãn tới 19:50:31
+> ```
+>
+> **Điểm mấu chốt: `reason=` rỗng.** `/sync/push` trả `status: "failed"` mà không
+> kèm message lẫn mã lỗi. Client không có gì để nhận diện nên xếp vào `transient`
+> và **thử lại vĩnh viễn**. Mọi chu kỳ đồng bộ vì thế kết thúc ở trạng thái hỏng,
+> kích hoạt giãn cách luỹ tiến 30s → 1p → 5p → 15p → 60p — và **mọi thay đổi
+> khác** (ví, giao dịch, ngân sách) bị đẩy chậm theo. Đã đo: một thao tác xoá
+> ngân sách hoàn toàn hợp lệ không lên tới backend cho tới lần mở app sau.
+>
+> **Việc rẻ nhất mà backend làm được ngay, độc lập với mục 4:** cho `/sync/push`
+> trả một **mã lỗi ổn định** khi từ chối vì trùng tên:
+>
+> ```json
+> { "localId": "...", "status": "failed", "code": "CATEGORY_NAME_DUPLICATE",
+>   "message": "Tên danh mục đã tồn tại trong tài khoản này" }
+> ```
+>
+> Có mã đó, client thêm đúng **một dòng** vào `_classifyFailure` để xếp nó thành
+> `permanent`; thao tác hỏng sẽ bị chặn theo thời gian như mọi lỗi vĩnh viễn khác
+> thay vì kéo cả chu kỳ xuống. Bản thân việc trả mã lỗi **không** sửa được nguyên
+> nhân gốc — cái đó nằm ở `CATEGORY_STABLE_IDS.md` — nhưng nó ngăn một lỗi của
+> danh mục làm hỏng trải nghiệm của toàn bộ phần còn lại.
+
 **Người nhận:** đội Backend
 **Trạng thái:** Client-app **đã thi hành xong**. Admin-web **đã thi hành một phần** (cập nhật 2026-09-04, xem khung ở đầu tài liệu). CSDL và đường `/sync/push` thì **chưa**.
-**Mức độ:** đang có đường ghi dữ liệu vi phạm quy tắc, và một đường **hỏng âm thầm** khi đồng bộ.
-**Ngày khảo sát:** 2026-09-03 · **Kiểm lại:** 2026-09-04 sau khi gộp `main` tới `0e8f0b2`.
+**Mức độ:** đang có đường ghi dữ liệu vi phạm quy tắc, một đường **hỏng âm thầm** khi đồng bộ, và — theo phép đo 2026-09-04 — làm **chậm đồng bộ của mọi thực thể khác**.
+**Ngày khảo sát:** 2026-09-03 · **Kiểm lại:** 2026-09-04 sau khi gộp `main` tới `0e8f0b2`, và đo trên app thật cùng ngày.
 
 ---
 

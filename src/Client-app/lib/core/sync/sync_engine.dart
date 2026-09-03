@@ -82,6 +82,51 @@ class SyncEngine {
   int _consecutiveFailures = 0;
   DateTime? _nextAllowedSyncAt;
 
+  /// Hẹn giờ chạy lại chu kỳ đã bị nhánh giãn cách từ chối.
+  ///
+  /// Cần vì các nguồn kích hoạt còn lại đều thưa hoặc ngẫu nhiên: timer 15
+  /// phút, đổi trạng thái mạng, và `start()` lúc mở app. Trước bản vá này,
+  /// nhánh chặn chỉ `return` — một thay đổi ghi trong lúc giãn cách nằm chờ
+  /// đúng một trong ba nguồn đó, dài hơn bậc giãn cách rất nhiều.
+  ///
+  /// Đo được trên app thật (2026-09-04): xoá một ngân sách trong lúc engine
+  /// đang giãn cách thì thao tác **không** lên tới backend, kể cả sau khi hết
+  /// giãn cách; phải mở lại app mới đẩy được. Người dùng thấy mục biến mất
+  /// ngay nên tin là đã xong, còn máy khác vẫn thấy nó nguyên vẹn.
+  Timer? _backoffRetryTimer;
+  DateTime? _backoffRetryAt;
+
+  /// Mốc mà hẹn giờ chạy lại sẽ nổ, `null` khi không nợ ai lần chạy nào.
+  @visibleForTesting
+  DateTime? get backoffRetryAt => _backoffRetryAt;
+
+  /// Hẹn chạy lại đúng lúc [until] — mốc hết giãn cách.
+  ///
+  /// Cố ý **không** dựng hẹn giờ mới cho mỗi lần bị chặn: mỗi thao tác ghi đều
+  /// gọi `scheduleSync()`, nên làm vậy sẽ đẩy mốc chạy lại lùi mãi về sau.
+  void _scheduleBackoffRetry(DateTime until) {
+    if (_disposed) return;
+    if (_backoffRetryAt == until && (_backoffRetryTimer?.isActive ?? false)) {
+      return;
+    }
+    _backoffRetryTimer?.cancel();
+    _backoffRetryAt = until;
+    final remaining = until.difference(_now());
+    _backoffRetryTimer = Timer(
+      remaining.isNegative ? Duration.zero : remaining,
+      () {
+        _backoffRetryAt = null;
+        unawaited(_runSync());
+      },
+    );
+  }
+
+  void _cancelBackoffRetry() {
+    _backoffRetryTimer?.cancel();
+    _backoffRetryTimer = null;
+    _backoffRetryAt = null;
+  }
+
   /// Đồng hồ — tiêm được để test không phải chờ thật 30 giây.
   final DateTime Function() _now;
 
@@ -130,6 +175,9 @@ class SyncEngine {
   void _resetBackoff() {
     _consecutiveFailures = 0;
     _nextAllowedSyncAt = null;
+    // Không còn giãn cách thì cũng không còn gì để chờ — một hẹn giờ sót lại
+    // chỉ chạy thêm một chu kỳ thừa.
+    _cancelBackoffRetry();
   }
 
   /// Nơi lưu mốc pull gần nhất. Null (thường là trong test) → chỉ giữ trong RAM
@@ -249,6 +297,10 @@ class SyncEngine {
     if (blockedUntil != null && _now().isBefore(blockedUntil)) {
       debugPrint('[SyncEngine] Đang trong thời gian giãn cách sau '
           '$_consecutiveFailures chu kỳ hỏng — hoãn tới $blockedUntil');
+      // Từ chối một yêu cầu đồng bộ nghĩa là NỢ người gọi một lần chạy. Chỉ
+      // `return` ở đây thì thay đổi vừa ghi nằm chờ một nguồn kích hoạt khác —
+      // timer 15 phút, đổi mạng, hoặc lần mở app sau.
+      _scheduleBackoffRetry(blockedUntil);
       _setStatus(SyncStatus.pending);
       return;
     }

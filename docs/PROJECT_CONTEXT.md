@@ -575,7 +575,8 @@ src/Backend/
 - **`conflict` được giải quyết**: LWW đã phân xử, server thắng → đánh dấu đã đồng bộ thay vì đẩy lại vô hạn *(G9)*
 - **Migration `isLocalOnly`** (v7→v8): nhóm danh mục tạo trước 2026-09-02 quay lại được hàng đợi đẩy *(G11)*
 - **`AuthInterceptor` không còn xoá token trong im lặng**: phát `sessionExpiredStream`, AuthBloc nghe song song với SyncEngine *(G12)*
-- **Test: 228/228 pass** (~15 giây), 31 file — cả 31 file đều đã được git theo dõi
+- **Hẹn lại chu kỳ đồng bộ bị giãn cách từ chối** *(G13)* — trước đây nhánh chặn chỉ `return`, thay đổi ghi trong lúc giãn cách phải chờ tới lần mở app sau
+- **Test: 232/232 pass** (~15 giây), 31 file — cả 31 file đều đã được git theo dõi
 
 ### 🔄 Việc còn dang dở
 
@@ -611,17 +612,37 @@ Ba điểm cần biết khi đụng vào vùng này:
   - Ngưỡng phần trăm lưu **0–100** để khớp `Decimal(15,2)` của backend; quy về tỉ lệ đúng một chỗ ở `BudgetEntity.warningRatio`. Thứ tự ưu tiên khi cảnh báo: ngưỡng theo số tiền → ngưỡng theo phần trăm → mốc mặc định 90%.
   - Việc này làm lộ một lỗi **fixture** trong `category_dao_test.dart`: bảng `budgets` giả luôn ở hình dạng trước v5 kể cả khi test khai `user_version = 7`/`9` — một trạng thái không tồn tại trên máy thật, vì migration là cộng dồn. Nay `_createLegacyNonCategoryTables` nhận tham số `atVersion`.
 
+### 🔴 Đồng bộ đang bị kéo chậm bởi 5 danh mục hỏng (đo trên app thật 2026-09-04)
+
+Chạy app thật với một tài khoản đã có dữ liệu, trên một máy **chưa từng chạy
+app**, cho thấy một hậu quả mà không tài liệu nào ghi trước đó:
+
+1. Backend đã có 5 danh mục cá nhân của tài khoản; máy mới sinh lại đúng 5 danh
+   mục đó với **UUID khác** (ID không ổn định giữa các máy).
+2. Đẩy lên vi phạm quy tắc trùng tên → `/sync/push` trả `failed` **kèm message
+   rỗng**.
+3. `reason` rỗng nên `_classifyFailure` xếp vào `transient` → thử lại vĩnh viễn.
+4. Mọi chu kỳ đồng bộ kết thúc ở trạng thái hỏng → giãn cách luỹ tiến
+   30s → 1p → 5p → 15p → 60p.
+5. **Mọi thay đổi khác** (ví, giao dịch, ngân sách) bị đẩy chậm theo. Đã đo: một
+   thao tác xoá ngân sách hợp lệ không lên tới backend cho tới lần mở app sau.
+
+Chi tiết ở **G14** trong `docs/CLIENT_APP_KNOWN_GAPS.md` và khung đỏ đầu
+`CATEGORY_NAME_UNIQUENESS.md`. Phần độ trễ đã được giảm bớt ở **G13** (hẹn lại
+chu kỳ bị giãn cách từ chối), nhưng nguyên nhân gốc vẫn nguyên.
+
 ### 🚀 Bắt đầu từ đâu ở phiên sau
 
-Ghi ngày 2026-09-03 khi tạm dừng mảng danh mục/đồng bộ để chuyển sang chức năng
-khác. Thứ tự đề nghị, việc rẻ nhất trước:
+Ghi ngày 2026-09-03, cập nhật 2026-09-04 sau khi đo trên app thật. Thứ tự đề
+nghị, việc rẻ nhất trước:
 
-1. **Nếu backend đã xong `CATEGORY_NAME_UNIQUENESS`** → client cần đúng **một
-   dòng**: thêm `if (code == 'CATEGORY_NAME_DUPLICATE') return
+1. **Nếu backend đã trả mã lỗi ổn định cho vi phạm trùng tên** → client cần đúng
+   **một dòng**: thêm `if (code == 'CATEGORY_NAME_DUPLICATE') return
    SyncFailureKind.permanent;` vào `_classifyFailure`
-   (`lib/core/sync/sync_engine.dart:1275`). Không có nó, vi phạm trùng tên rơi
-   vào nhánh `return SyncFailureKind.transient` ở cuối hàm và bị **đẩy lại mãi**.
-   Nhớ viết test tái hiện trước.
+   (`lib/core/sync/sync_engine.dart`). Không có nó, vi phạm trùng tên rơi vào
+   nhánh `return SyncFailureKind.transient` ở cuối hàm và bị **đẩy lại mãi** —
+   đây chính là thứ đang kéo chậm đồng bộ, xem mục trên. Nhớ viết test tái hiện
+   trước.
 2. **Bốn tài liệu chờ backend** trong `docs/superpowers/backend/`, thứ tự:
    `CATEGORY_KEYWORD_SYNC` (có **lỗ hổng phân quyền**, bản vá chỉ vài dòng và
    độc lập với phần thiết kế bảng mới) → `CATEGORY_NAME_UNIQUENESS` →

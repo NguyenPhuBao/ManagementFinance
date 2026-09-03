@@ -358,6 +358,96 @@ void main() {
             'động — bắt họ ngồi chờ hết một chu kỳ backoff cũ là sai.',
       );
     });
+
+    // ── Kích hoạt bị chặn phải được hẹn lại ─────────────────────────────────
+    //
+    // Đo được trên app thật ngày 2026-09-04: xoá một ngân sách trong lúc engine
+    // đang giãn cách thì thao tác đó KHÔNG lên tới backend, kể cả sau khi hết
+    // giãn cách — phải chờ tới lần mở app sau. Người dùng thấy mục biến mất
+    // ngay nên tin là đã xong, còn máy khác thì vẫn thấy nó nguyên vẹn.
+    //
+    // Nguyên nhân: nhánh chặn chỉ `return`, không hẹn lại. Các nguồn kích hoạt
+    // còn lại đều thưa hoặc ngẫu nhiên (timer 15 phút, đổi mạng, mở app), nên
+    // khoảng chờ thật dài hơn bậc giãn cách rất nhiều.
+
+    test('Kích hoạt bị chặn vì giãn cách phải được hẹn lại, không bị bỏ rơi',
+        () async {
+      await seedPendingCategory();
+      final adapter = _FailingAdapter(
+          'Ownership mismatch: payload.idaccount does not match token');
+      final engine = await failingEngine(adapter);
+
+      expect(engine.backoffRetryAt, isNull,
+          reason: 'Chưa có kích hoạt nào bị chặn thì chưa nợ ai lần chạy nào.');
+
+      await engine.syncNow(); // bị chặn vì đang trong giãn cách
+
+      expect(
+        engine.backoffRetryAt,
+        engine.nextAllowedSyncAt,
+        reason: 'Engine vừa từ chối một yêu cầu đồng bộ, nên nó NỢ người gọi '
+            'một lần chạy. Không hẹn lại thì thay đổi vừa ghi nằm chờ một '
+            'nguồn kích hoạt khác — có thể tới 15 phút, hoặc tới lần mở app '
+            'sau.',
+      );
+    });
+
+    test('Hết giãn cách thì hẹn giờ tự nổ và đẩy lại, không cần ai kích hoạt',
+        () async {
+      await seedPendingCategory();
+      final adapter = _FailingAdapter(
+          'Ownership mismatch: payload.idaccount does not match token');
+      final engine = await failingEngine(adapter);
+      final pushesTruoc = adapter.pushCallCount;
+
+      // Đẩy đồng hồ tới sát mốc hết giãn cách để hẹn giờ chỉ còn ~150ms thật —
+      // test không phải chờ đủ 30 giây.
+      clock = clock
+          .add(const Duration(seconds: 30) - const Duration(milliseconds: 150));
+      await engine.syncNow();
+      expect(engine.backoffRetryAt, isNotNull);
+      expect(adapter.pushCallCount, pushesTruoc,
+          reason: 'Vẫn còn trong giãn cách nên chưa được gửi gì.');
+
+      // Tới lúc hẹn giờ nổ thì đồng hồ đã qua mốc.
+      clock = clock.add(const Duration(seconds: 1));
+      await Future<void>.delayed(const Duration(milliseconds: 700));
+
+      expect(adapter.pushCallCount, greaterThan(pushesTruoc),
+          reason: 'Hẹn giờ phải tự chạy lại chu kỳ. Chỉ ghi nhớ mốc mà không '
+              'có gì đánh thức thì cũng như không hẹn.');
+    });
+
+    test('Nhiều kích hoạt bị chặn liên tiếp dùng chung một hẹn giờ', () async {
+      await seedPendingCategory();
+      final adapter = _FailingAdapter(
+          'Ownership mismatch: payload.idaccount does not match token');
+      final engine = await failingEngine(adapter);
+
+      await engine.syncNow();
+      final hen1 = engine.backoffRetryAt;
+      await engine.syncNow();
+      await engine.syncNow();
+
+      expect(engine.backoffRetryAt, hen1,
+          reason: 'Mỗi lần ghi dữ liệu đều gọi scheduleSync. Dựng hẹn giờ mới '
+              'cho từng lần sẽ đẩy mốc chạy lại lùi mãi về sau.');
+    });
+
+    test('stop() huỷ luôn hẹn giờ đang chờ', () async {
+      await seedPendingCategory();
+      final adapter = _FailingAdapter(
+          'Ownership mismatch: payload.idaccount does not match token');
+      final engine = await failingEngine(adapter);
+      await engine.syncNow();
+      expect(engine.backoffRetryAt, isNotNull);
+
+      engine.stop();
+
+      expect(engine.backoffRetryAt, isNull,
+          reason: 'Sau đăng xuất, một hẹn giờ còn sống sẽ chạy đồng bộ cho tài '
+              'khoản vừa thoát.');
+    });
   });
 
   group('Trạng thái thất bại theo từng bản ghi (G3)', () {
