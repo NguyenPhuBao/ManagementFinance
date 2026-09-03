@@ -26,10 +26,9 @@
 > Chạy app thật cho thấy nó **kéo chậm toàn bộ việc đồng bộ**, không riêng danh mục.
 >
 > Kịch bản: tài khoản đã có 5 danh mục cá nhân trên backend (Chi khác, Thu khác,
-> Làm thêm, Trả nợ, Thu nợ). Đăng nhập trên một **máy mới**. Vì ID danh mục không
-> ổn định giữa các máy (xem `CATEGORY_STABLE_IDS.md`),
-> `PersonalDefaultCategories` sinh lại đúng 5 danh mục đó với UUID khác. Log của
-> `SyncEngine` trong trình duyệt:
+> Làm thêm, Trả nợ, Thu nợ). Đăng nhập trên một **máy mới**. Client sinh lại đúng
+> 5 danh mục đó với UUID khác — **nguyên nhân này thuộc về client**, xem ghi chú
+> ở cuối khung. Log của `SyncEngine` trong trình duyệt:
 >
 > ```
 > [SyncEngine] Push failed [transient]: entity=category, localId=6d16eab1-…, reason=
@@ -55,9 +54,21 @@
 >
 > Có mã đó, client thêm đúng **một dòng** vào `_classifyFailure` để xếp nó thành
 > `permanent`; thao tác hỏng sẽ bị chặn theo thời gian như mọi lỗi vĩnh viễn khác
-> thay vì kéo cả chu kỳ xuống. Bản thân việc trả mã lỗi **không** sửa được nguyên
-> nhân gốc — cái đó nằm ở `CATEGORY_STABLE_IDS.md` — nhưng nó ngăn một lỗi của
-> danh mục làm hỏng trải nghiệm của toàn bộ phần còn lại.
+> thay vì kéo cả chu kỳ xuống.
+>
+> ### Nguyên nhân gốc thuộc về client — backend không phải chờ nó
+>
+> Bản đầu của khung này quy sai cho `CATEGORY_STABLE_IDS.md`. Kiểm lại mã nguồn
+> thì không phải: `PersonalDefaultCategories.ensureForAccount()` **có** kiểm
+> trùng theo tên đã chuẩn hoá trước khi tạo. Vấn đề là **thứ tự** — nó chạy
+> trước `SyncEngine.start()` (chủ ý, để việc chuyển dữ liệu `cat_*` cũ xong
+> trước chu kỳ đồng bộ đầu tiên). Trên máy mới, CSDL cục bộ rỗng nên phép kiểm
+> không thấy gì, tạo 5 UUID mới; pull sau đó mới kéo về 5 bản của backend.
+>
+> Nghĩa là **client tự sửa được** phần gốc, không phải chờ backend. Phần backend
+> ở trên (mã lỗi ổn định) vẫn đáng làm, nhưng với vai trò **lớp phòng thủ thứ
+> hai**: bất kỳ vi phạm trùng tên nào khác cũng sẽ hỏng theo đúng kiểu này
+> chừng nào `/sync/push` còn trả message rỗng.
 
 **Người nhận:** đội Backend
 **Trạng thái:** Client-app **đã thi hành xong**. Admin-web **đã thi hành một phần** (cập nhật 2026-09-04, xem khung ở đầu tài liệu). CSDL và đường `/sync/push` thì **chưa**.

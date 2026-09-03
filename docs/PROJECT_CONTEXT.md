@@ -618,7 +618,7 @@ Chạy app thật với một tài khoản đã có dữ liệu, trên một má
 app**, cho thấy một hậu quả mà không tài liệu nào ghi trước đó:
 
 1. Backend đã có 5 danh mục cá nhân của tài khoản; máy mới sinh lại đúng 5 danh
-   mục đó với **UUID khác** (ID không ổn định giữa các máy).
+   mục đó với **UUID khác**.
 2. Đẩy lên vi phạm quy tắc trùng tên → `/sync/push` trả `failed` **kèm message
    rỗng**.
 3. `reason` rỗng nên `_classifyFailure` xếp vào `transient` → thử lại vĩnh viễn.
@@ -627,9 +627,16 @@ app**, cho thấy một hậu quả mà không tài liệu nào ghi trước đ�
 5. **Mọi thay đổi khác** (ví, giao dịch, ngân sách) bị đẩy chậm theo. Đã đo: một
    thao tác xoá ngân sách hợp lệ không lên tới backend cho tới lần mở app sau.
 
-Chi tiết ở **G14** trong `docs/CLIENT_APP_KNOWN_GAPS.md` và khung đỏ đầu
-`CATEGORY_NAME_UNIQUENESS.md`. Phần độ trễ đã được giảm bớt ở **G13** (hẹn lại
-chu kỳ bị giãn cách từ chối), nhưng nguyên nhân gốc vẫn nguyên.
+**Nguyên nhân bước 1 nằm ở client, và sửa được ở client.**
+`PersonalDefaultCategories.ensureForAccount()` **có** kiểm trùng theo tên chuẩn
+hoá, nhưng chạy **trước** `SyncEngine.start()` — trên máy mới thì CSDL cục bộ
+còn rỗng nên phép kiểm không thấy gì. Đây **không** phải hệ quả của
+`CATEGORY_STABLE_IDS.md` như bản ghi đầu tiên (`25915ec`) quy nhầm.
+
+Chi tiết và hai hướng sửa ở **G14** trong `docs/CLIENT_APP_KNOWN_GAPS.md`; phần
+backend cần làm (mã lỗi ổn định, vai trò lớp phòng thủ thứ hai) ở khung đỏ đầu
+`CATEGORY_NAME_UNIQUENESS.md`. Phần độ trễ đã giảm bớt ở **G13** (hẹn lại chu kỳ
+bị giãn cách từ chối), nhưng nguyên nhân gốc vẫn nguyên.
 
 ### 🚀 Bắt đầu từ đâu ở phiên sau
 
