@@ -319,27 +319,13 @@ const CategoryPage = () => {
                                         <td className="px-6 py-4 text-on-surface-variant text-sm">
                                           {item.created_by}
                                         </td>
-                                        <td className="px-6 py-4 w-72 max-w-[280px] md:max-w-[320px]">
+                                        <td className="px-6 py-4 w-72 max-w-[280px] md:max-w-[340px]">
                                           {item.keyword ? (
                                             <div 
-                                              className="overflow-x-auto overflow-y-hidden pb-1 max-w-full scrollbar-thin scrollbar-thumb-outline-variant hover:scrollbar-thumb-primary transition-colors"
+                                              className="w-full bg-[#f8fafc] border border-outline-variant rounded px-2.5 pt-1.5 pb-1 text-xs text-black font-medium font-mono whitespace-nowrap overflow-x-scroll keyword-scrollbar select-all cursor-text shadow-xs"
                                               title={item.keyword}
                                             >
-                                              <div className="flex items-center gap-1.5 whitespace-nowrap">
-                                                {item.keyword.split(';').map((kw, i) => {
-                                                  const cleanKw = kw.trim();
-                                                  if (!cleanKw) return null;
-                                                  return (
-                                                    <span 
-                                                      key={i} 
-                                                      className="inline-block px-2 py-0.5 bg-surface-container text-on-surface rounded text-xs font-mono border border-outline-variant/60 max-w-[130px] truncate"
-                                                      title={cleanKw}
-                                                    >
-                                                      {cleanKw}
-                                                    </span>
-                                                  );
-                                                })}
-                                              </div>
+                                              {item.keyword}
                                             </div>
                                           ) : (
                                             <span className="text-outline italic text-xs">Chưa có</span>
@@ -427,11 +413,11 @@ const CategoryPage = () => {
                               value={form.keyword} 
                               onChange={e => setForm({...form, keyword: e.target.value})} 
                               className="w-full px-3 py-2 border border-outline-variant rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md min-h-[72px] resize-none disabled:bg-surface-container-low disabled:cursor-not-allowed text-sm" 
-                              placeholder="Ví dụ: cafe; highlands; trà sữa; ăn sáng; phở" 
+                              placeholder="Ví dụ: cafe, highlands, trà sữa, ăn sáng, phở" 
                               rows={2}
                             />
                             <p className="text-[11px] text-on-surface-variant mt-0.5">
-                              Nhập các từ khóa phân cách bởi dấu chấm phẩy (;). Giúp bộ máy AI tự động nhận diện danh mục khi phân loại giao dịch.
+                              Nhập các từ khóa phân cách bởi dấu phẩy (,). Giúp bộ máy AI tự động nhận diện danh mục khi phân loại giao dịch.
                             </p>
                         </div>
                         <div className="grid grid-cols-2 gap-4 items-start">
