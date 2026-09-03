@@ -66,7 +66,7 @@ function matchNLP(cleanInfo, categories, context = {}) {
     if (!cat) continue;
 
     const catName = (cat.namecategory || '').toLowerCase();
-    const catKeywords = (cat.keyword || '').toLowerCase().replace(/;/g, ' ');
+    const catKeywords = (cat.keyword || '').toLowerCase().replace(/[,]/g, ' ');
     const docText = `${catName} ${catKeywords}`.trim();
     const docNoTone = removeVietnameseTones(docText);
 
