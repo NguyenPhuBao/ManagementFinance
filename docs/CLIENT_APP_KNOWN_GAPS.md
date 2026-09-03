@@ -167,7 +167,7 @@ Client **không** phụ thuộc vào việc backend có sửa hay không.
 
 ## 3. Lưu ý về kiểm thử
 
-Trạng thái hiện tại (đã chạy thật, không phải đếm tay): `flutter test` toàn bộ **139/139 pass** trong ~8 giây, trên **25 file test / 6040 dòng**. Trước phiên 2026-09-02 là 56 pass / 9 fail và mất hơn 10 phút (một test treo tới timeout).
+Trạng thái hiện tại (đã chạy thật, không phải đếm tay): `flutter test` toàn bộ **144/144 pass** trong ~8 giây, trên **25 file test / 6236 dòng**. Trước phiên 2026-09-02 là 56 pass / 9 fail và mất hơn 10 phút (một test treo tới timeout).
 
 > ⚠️ **`.gitignore` dòng 77 có `test/`** — luật này khớp mọi thư mục tên `test` ở mọi cấp, và **đã tồn tại từ trước** phiên 2026-09-02 (kiểm chứng: `git diff .gitignore` chỉ thêm đúng một dòng `src/Backend/scripts/seed_roles.js`).
 >

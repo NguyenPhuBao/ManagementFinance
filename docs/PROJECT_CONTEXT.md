@@ -241,11 +241,13 @@ SyncEngine._runSync()
 
 | Loại | Nhận diện | Xử lý |
 |---|---|---|
-| `sessionInvalid` | khớp `fk_\w+_account` | Phát `sessionInvalidStream` → AuthBloc hỏi lại server → đăng xuất nếu server phủ nhận. Không thử lại. |
-| `transient` | khoá ngoại khác, lỗi chưa rõ | Thử lại 1 lần sau khi Pull |
-| `permanent` | `Ownership mismatch` | Không thử lại, **không** đăng xuất (đó là dữ liệu rác của tài khoản khác) |
+| `sessionInvalid` | `results[i].code == 'ACCOUNT_NOT_FOUND'` (**ưu tiên**), hoặc HTTP **401** cho cả batch; dự phòng: khớp `fk_*_account` trong thông báo Prisma | Phát `sessionInvalidStream` → AuthBloc hỏi lại server → đăng xuất nếu server phủ nhận. Không thử lại. |
+| `transient` | khoá ngoại khác, lỗi chưa rõ, hoặc cả batch không tới nơi (`transportFailed`) | Thử lại 1 lần sau khi Pull — trừ khi `transportFailed`, khi đó để giãn cách luỹ tiến lo |
+| `permanent` | `Ownership mismatch` | Không thử lại, **không** đăng xuất (đó là dữ liệu rác của tài khoản khác). Bản ghi bị chặn theo thời gian qua `syncBlockedUntil` |
 
-Việc khớp chuỗi tên constraint chỉ là **tín hiệu**; quyết định đăng xuất do server đưa ra qua `verifySession()`.
+Từ 2026-09-03 backend gắn mã lỗi ổn định `ACCOUNT_NOT_FOUND` vào từng phần tử `results[]` và trả **HTTP 401** khi *toàn bộ* thao tác trong batch hỏng vì lý do đó. Client ưu tiên hai tín hiệu này; nhánh khớp chuỗi tên constraint chỉ còn là **dự phòng** cho backend chưa cập nhật (nó vỡ khi đổi tên constraint hoặc nâng version Prisma, mà không báo lỗi gì).
+
+Dù nhận diện bằng cách nào, đó cũng chỉ là **tín hiệu**; quyết định đăng xuất do server đưa ra qua `verifySession()`.
 
 ### Mốc đồng bộ (checkpoint)
 
@@ -526,7 +528,7 @@ src/Backend/
 - **`conflict` được giải quyết**: LWW đã phân xử, server thắng → đánh dấu đã đồng bộ thay vì đẩy lại vô hạn *(G9)*
 - **Migration `isLocalOnly`** (v7→v8): nhóm danh mục tạo trước 2026-09-02 quay lại được hàng đợi đẩy *(G11)*
 - **`AuthInterceptor` không còn xoá token trong im lặng**: phát `sessionExpiredStream`, AuthBloc nghe song song với SyncEngine *(G12)*
-- **Test: 139/139 pass** (~8 giây), 25 file / 6040 dòng — cả 25 file đều đã được git theo dõi
+- **Test: 144/144 pass** (~8 giây), 25 file / 6236 dòng — cả 25 file đều đã được git theo dõi
 
 ### 🔄 Việc còn dang dở
 
@@ -536,7 +538,7 @@ Xem đầy đủ tại **`docs/CLIENT_APP_KNOWN_GAPS.md`**. Phiên 2026-09-03 đ
 
 > ⚠️ **`.gitignore` dòng 77 vẫn có `test/`.** Luật này đã cắn lần thứ hai: hai file test tạo ngày 2026-09-03 cũng bị chặn âm thầm và phải `git add -f`. Mọi file test tạo **mới** vẫn sẽ bị bỏ qua trong im lặng.
 
-Vấn đề cần backend xử lý: **`SESSION_VALIDITY_FINDINGS.md`**, **`CATEGORY_CLASSIFY_ALIGNMENT.md`** và **`CATEGORY_GROUP_MEMBERSHIP_SYNC.md`** (đều trong `docs/superpowers/backend/`).
+Vấn đề thuộc backend (trong `docs/superpowers/backend/`): **`SESSION_VALIDITY_FINDINGS.md`** ✅ đã xong, **`CATEGORY_CLASSIFY_ALIGNMENT.md`** ✅ đã xong (còn một bước nhỏ thu hẹp `sync.validation.js`), **`CATEGORY_GROUP_MEMBERSHIP_SYNC.md`** ⛔ chưa làm — đây là thứ duy nhất còn chặn G10.
 
 ### ❌ Chưa làm / Tiếp theo
 - Analytics (báo cáo chi tiết)

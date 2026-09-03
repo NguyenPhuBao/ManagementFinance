@@ -464,6 +464,186 @@ void main() {
       expect(row?.syncError, isNull);
     });
   });
+
+  group('Nhận diện phiên chết qua hợp đồng backend mới (2026-09-03)', () {
+    late DateTime clock;
+    DateTime now() => clock;
+
+    setUp(() => clock = DateTime(2026, 9, 3, 9, 0, 0));
+
+    Future<_Probe> runWithAdapter(HttpClientAdapter adapter) async {
+      final engine = SyncEngine(
+        dioClient: _AdapterClient(adapter),
+        db: db,
+        connectivity: _Online(),
+        now: now,
+      );
+      addTearDown(engine.dispose);
+      var signalled = false;
+      final sub = engine.sessionInvalidStream.listen((_) => signalled = true);
+      final done = engine.statusStream.where((s) => s.isTerminal).first;
+      await engine.start(idaccount: accountId);
+      await done.timeout(const Duration(seconds: 5));
+      final status = engine.status;
+      await sub.cancel();
+      return _Probe(sessionInvalid: signalled, finalStatus: status);
+    }
+
+    test(
+        'Mã ACCOUNT_NOT_FOUND được tin, kể cả khi thông báo lỗi KHÔNG khớp regex cũ',
+        () async {
+      await seedPendingCategory();
+      // Backend đổi tên constraint / nâng version Prisma → chuỗi thông báo đổi
+      // theo, nhưng `code` thì ổn định. Đây chính là kịch bản mà
+      // SESSION_VALIDITY_FINDINGS.md gọi là "hỏng âm thầm".
+      final adapter = _CodedFailureAdapter(
+        code: 'ACCOUNT_NOT_FOUND',
+        message: 'Ràng buộc dữ liệu bị vi phạm ở tầng lưu trữ',
+      );
+
+      final r = await runWithAdapter(adapter);
+
+      expect(
+        r.sessionInvalid,
+        isTrue,
+        reason: 'Client phải tin trường `code` ổn định do backend gửi. Nếu chỉ '
+            'khớp regex fk_*_account trên thông báo Prisma thì đổi tên '
+            'constraint là mất luôn khả năng phát hiện phiên chết, mà không có '
+            'lỗi nào báo ra.',
+      );
+      expect(r.finalStatus, SyncStatus.authExpired);
+      expect(adapter.pushCallCount, 1, reason: 'Phiên chết thì không thử lại');
+    });
+
+    test('Regex cũ vẫn là đường dự phòng khi backend chưa gửi `code`', () async {
+      await seedPendingCategory();
+      final adapter = _CodedFailureAdapter(
+        code: null,
+        message: 'Foreign key constraint violated on the constraint: '
+            '`fk_category_account`',
+      );
+
+      final r = await runWithAdapter(adapter);
+
+      expect(r.sessionInvalid, isTrue,
+          reason: 'Không được bỏ regex: backend cũ vẫn đang chạy ở máy khác.');
+    });
+
+    test('HTTP 401 từ /sync/push được hiểu là phiên chết, không phải lỗi mạng',
+        () async {
+      await seedPendingCategory();
+      final adapter = _StatusOnlyAdapter(401);
+
+      final r = await runWithAdapter(adapter);
+
+      expect(
+        r.sessionInvalid,
+        isTrue,
+        reason: 'Từ 2026-09-03 backend trả 401 cho CẢ batch khi mọi thao tác '
+            'đều hỏng vì tài khoản không còn tồn tại. Trước đây nhánh '
+            'DioException trả về SyncResult có `failures` RỖNG nên '
+            'hasSessionInvalid là false — engine im lặng, và việc phát hiện '
+            'phiên chết phụ thuộc hoàn toàn vào đường vòng qua AuthInterceptor.',
+      );
+      expect(r.finalStatus, SyncStatus.authExpired);
+      expect(adapter.pushCallCount, 1);
+    });
+
+    test('Lỗi 5xx là sự cố truyền tải: KHÔNG coi là phiên chết, không thử lại',
+        () async {
+      await seedPendingCategory();
+      final adapter = _StatusOnlyAdapter(503);
+
+      final r = await runWithAdapter(adapter);
+
+      expect(r.sessionInvalid, isFalse,
+          reason: 'Máy chủ sự cố không phải phiên chết — đăng xuất người dùng '
+              'ở đây là phá vỡ cam kết offline-first.');
+      expect(r.finalStatus, SyncStatus.error);
+      expect(adapter.pushCallCount, 1,
+          reason: 'Cả batch không tới nơi thì thử lại ngay trong cùng chu kỳ '
+              'là vô ích; giãn cách luỹ tiến (G2) lo phần thử lại.');
+    });
+  });
+}
+
+class _Probe {
+  _Probe({required this.sessionInvalid, required this.finalStatus});
+  final bool sessionInvalid;
+  final SyncStatus finalStatus;
+}
+
+/// Trả về `results` có kèm trường `code` như backend từ 2026-09-03.
+class _CodedFailureAdapter implements HttpClientAdapter {
+  _CodedFailureAdapter({required this.code, required this.message});
+
+  final String? code;
+  final String message;
+  int pushCallCount = 0;
+
+  @override
+  Future<ResponseBody> fetch(
+      RequestOptions o, Stream<List<int>>? s, Future<void>? c) async {
+    if (o.path.contains('/sync/push')) {
+      pushCallCount++;
+      final ops =
+          (o.data as Map<String, dynamic>)['operations'] as List<dynamic>;
+      return ResponseBody.fromString(
+        jsonEncode({
+          'status': 'success',
+          'results': ops
+              .map((op) => {
+                    'localId': op['localId'],
+                    'status': 'error',
+                    'message': message,
+                    if (code != null) 'code': code,
+                  })
+              .toList(),
+        }),
+        200,
+        headers: {
+          Headers.contentTypeHeader: ['application/json']
+        },
+      );
+    }
+    return ResponseBody.fromString(jsonEncode({'data': const {}}), 200,
+        headers: {
+          Headers.contentTypeHeader: ['application/json']
+        });
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+/// Trả về đúng một mã HTTP cho /sync/push (không có thân `results`).
+class _StatusOnlyAdapter implements HttpClientAdapter {
+  _StatusOnlyAdapter(this.status);
+
+  final int status;
+  int pushCallCount = 0;
+
+  @override
+  Future<ResponseBody> fetch(
+      RequestOptions o, Stream<List<int>>? s, Future<void>? c) async {
+    if (o.path.contains('/sync/push')) {
+      pushCallCount++;
+      return ResponseBody.fromString(
+        jsonEncode({'success': false, 'message': 'Account no longer exists'}),
+        status,
+        headers: {
+          Headers.contentTypeHeader: ['application/json']
+        },
+      );
+    }
+    return ResponseBody.fromString(jsonEncode({'data': const {}}), 200,
+        headers: {
+          Headers.contentTypeHeader: ['application/json']
+        });
+  }
+
+  @override
+  void close({bool force = false}) {}
 }
 
 class _AdapterClient implements DioClient {

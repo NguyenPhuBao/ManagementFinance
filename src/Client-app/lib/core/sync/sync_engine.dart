@@ -1136,7 +1136,10 @@ class SyncEngine {
                 failed++;
                 final message = item['message']?.toString() ?? 'Unknown error';
                 errorMessages.add(message);
-                final kind = _classifyFailure(message);
+                final kind = _classifyFailure(
+                  message,
+                  code: item['code'] as String?,
+                );
                 failures.add(SyncOpFailure(
                   localId: op.localId,
                   entity: op.entity,
@@ -1179,11 +1182,54 @@ class SyncEngine {
         );
       }
     } on DioException catch (e) {
-      debugPrint(
-        '[SyncEngine] Sync push rejected: ${e.response?.data ?? e.message}',
-      );
-      debugPrint(
-        '[SyncEngine] HTTP Sync API Error: $e — Will retry when online',
+      final statusCode = e.response?.statusCode;
+      final reason = e.response?.data?.toString() ?? e.message ?? '$e';
+      debugPrint('[SyncEngine] Sync push rejected [HTTP $statusCode]: $reason');
+
+      // Từ 2026-09-03, backend trả 401 cho CẢ batch khi mọi thao tác đều hỏng
+      // vì tài khoản không còn tồn tại (xem SESSION_VALIDITY_FINDINGS.md, F3).
+      //
+      // Trước đây nhánh này trả về một SyncResult có `failures` RỖNG, nên
+      // `hasSessionInvalid` luôn false: engine không phát tín hiệu, và việc
+      // phát hiện phiên chết phụ thuộc hoàn toàn vào đường vòng qua
+      // AuthInterceptor. Nay báo đúng ngay tại đây.
+      if (statusCode == 401) {
+        return SyncResult(
+          totalOps: ops.length,
+          succeeded: 0,
+          failed: ops.length,
+          errorMessages: [reason],
+          failures: [
+            for (final op in ops)
+              SyncOpFailure(
+                localId: op.localId,
+                entity: op.entity,
+                message: reason,
+                kind: SyncFailureKind.sessionInvalid,
+              ),
+          ],
+        );
+      }
+
+      // Cả batch không tới nơi (mất mạng, timeout, 5xx). Đánh dấu
+      // `transportFailed` để KHÔNG thử lại ngay trong cùng chu kỳ — việc thử
+      // lại do giãn cách luỹ tiến lo, và cũng để không nhầm thành lỗi dữ liệu
+      // rồi chặn oan từng bản ghi.
+      return SyncResult(
+        totalOps: ops.length,
+        succeeded: 0,
+        failed: ops.length,
+        transportFailed: true,
+        errorMessages: [reason],
+        failures: [
+          for (final op in ops)
+            SyncOpFailure(
+              localId: op.localId,
+              entity: op.entity,
+              message: reason,
+              kind: SyncFailureKind.transient,
+            ),
+        ],
       );
     } catch (e) {
       debugPrint(
@@ -1216,13 +1262,24 @@ class SyncEngine {
 
   // ── Phân loại lỗi đẩy dữ liệu ─────────────────────────────────────────────
 
+  /// Mã lỗi ổn định do backend gắn cho lỗi vỡ khoá ngoại tới bảng `account`
+  /// (có từ 2026-09-03, xem `docs/superpowers/backend/SESSION_VALIDITY_FINDINGS.md`).
+  static const String accountNotFoundCode = 'ACCOUNT_NOT_FOUND';
+
   /// Khoá ngoại trỏ tới bảng `account` bị vỡ nghĩa là `idaccount` đang dùng
   /// không tồn tại trên server — tức phiên đăng nhập đã chết.
   /// Khớp `fk_category_account`, `fk_transaction_account`, `fk_wallet_account`…
   static final RegExp _accountFkPattern =
       RegExp(r'fk_\w+_account', caseSensitive: false);
 
-  static SyncFailureKind _classifyFailure(String message) {
+  static SyncFailureKind _classifyFailure(String message, {String? code}) {
+    // Ưu tiên mã lỗi ổn định. Khớp chuỗi thông báo của Prisma là cách làm dễ
+    // vỡ: đổi tên constraint hay nâng version Prisma là mất khả năng phát hiện
+    // phiên chết, mà KHÔNG có lỗi nào báo ra.
+    if (code == accountNotFoundCode) {
+      return SyncFailureKind.sessionInvalid;
+    }
+    // Dự phòng cho backend chưa cập nhật — vẫn còn đang chạy ở máy khác.
     if (_accountFkPattern.hasMatch(message)) {
       // Đây chỉ là TÍN HIỆU. Quyết định đăng xuất do AuthBloc đưa ra sau khi
       // hỏi lại server bằng verifySession() — không bao giờ dựa mỗi vào việc

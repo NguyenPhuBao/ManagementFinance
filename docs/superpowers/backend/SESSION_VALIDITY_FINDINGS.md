@@ -1,5 +1,25 @@
 # Phiên đăng nhập vẫn dùng được sau khi tài khoản đã bị xoá
 
+> ## ✅ ĐÃ ĐƯỢC BACKEND XỬ LÝ — 2026-09-03
+>
+> Đã kiểm chứng bằng cách đọc mã nguồn sau khi gộp `main`:
+>
+> - **F1** — `middleware/auth.js` nay có `isAccountValid()` truy vấn `prisma.account`,
+>   kèm cache in-memory TTL 60 giây và `invalidateAccountCache()` đúng như cảnh báo
+>   về hiệu năng ở Đề xuất 1. Có thêm nhánh dự phòng: CSDL lỗi tạm thời thì cho qua
+>   thay vì chặn oan người dùng.
+> - **F3** — `sync.service.js` gắn `code: 'ACCOUNT_NOT_FOUND'` vào từng phần tử
+>   `results[]`, và `sync.controller.js` trả **HTTP 401** khi *toàn bộ* thao tác
+>   trong batch hỏng vì lý do đó.
+>
+> **Phía client đã bám theo hợp đồng mới** (cùng ngày): `_classifyFailure()` ưu tiên
+> `code`, và nhánh 401 trong `_sendBatch` nay tạo đúng `SyncOpFailure` loại
+> `sessionInvalid` thay vì trả về danh sách rỗng. Khoá lại ở
+> `test/core/sync/sync_failure_handling_test.dart` và `sync_payload_contract_test.dart`.
+>
+> Phần còn lại của tài liệu giữ nguyên làm hồ sơ điều tra.
+
+
 **Người nhận:** đội Backend
 **Bối cảnh:** sự cố ngày 2026-09-02 — client liên tục nhận lỗi vỡ khoá ngoại `fk_category_account` / `fk_transaction_account` khi thêm danh mục.
 **Trạng thái:** phía Client-app đã xử lý xong (chi tiết ở mục 5). Tài liệu này ghi lại **các điểm thuộc backend** để đội backend cân nhắc — chưa có dòng mã backend nào bị thay đổi.

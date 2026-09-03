@@ -340,4 +340,20 @@ void main() {
           reason: 'backend dùng "status_complete" dạng chuỗi "True"');
     });
   });
+
+  group('PUSH RESULT — hợp đồng chiều ngược lại (backend → client)', () {
+    test('Mã lỗi "tài khoản không tồn tại" phải khớp đúng chuỗi backend gửi',
+        () {
+      expect(
+        SyncEngine.accountNotFoundCode,
+        'ACCOUNT_NOT_FOUND',
+        reason: 'Backend gắn `code` này vào từng phần tử `results[]` của '
+            '/sync/push khi lỗi vỡ khoá ngoại tới bảng account '
+            '(sync.service.js, từ 2026-09-03). Đây là tên trường đi qua ranh '
+            'giới hai phía y như payload đẩy lên: lệch một ký tự thì client '
+            'lặng lẽ quay về khớp regex trên thông báo Prisma, và không có lỗi '
+            'nào báo ra. Đổi chuỗi này thì phải đổi cả backend cùng lúc.',
+      );
+    });
+  });
 }
