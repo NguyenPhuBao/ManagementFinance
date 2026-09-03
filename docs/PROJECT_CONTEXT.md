@@ -596,6 +596,33 @@ Vấn đề thuộc backend (trong `docs/superpowers/backend/`), kiểm lại ng
 | `CATEGORY_STABLE_IDS.md` | ⛔ Chưa — `seed.js` vẫn `crypto.randomUUID()` |
 | `CATEGORY_GROUP_MEMBERSHIP_SYNC.md` | ⛔ Chưa — thứ duy nhất còn chặn G10 |
 
+### 🚀 Bắt đầu từ đâu ở phiên sau
+
+Ghi ngày 2026-09-03 khi tạm dừng mảng danh mục/đồng bộ để chuyển sang chức năng
+khác. Thứ tự đề nghị, việc rẻ nhất trước:
+
+1. **Nếu backend đã xong `CATEGORY_NAME_UNIQUENESS`** → client cần đúng **một
+   dòng**: thêm `if (code == 'CATEGORY_NAME_DUPLICATE') return
+   SyncFailureKind.permanent;` vào `_classifyFailure`
+   (`lib/core/sync/sync_engine.dart:1275`). Không có nó, vi phạm trùng tên rơi
+   vào nhánh `return SyncFailureKind.transient` ở cuối hàm và bị **đẩy lại mãi**.
+   Nhớ viết test tái hiện trước.
+2. **Bốn tài liệu chờ backend** trong `docs/superpowers/backend/`, thứ tự:
+   `CATEGORY_KEYWORD_SYNC` (có **lỗ hổng phân quyền**, bản vá chỉ vài dòng và
+   độc lập với phần thiết kế bảng mới) → `CATEGORY_NAME_UNIQUENESS` →
+   `CATEGORY_STABLE_IDS` → `CATEGORY_GROUP_MEMBERSHIP_SYNC`. Trạng thái từng cái
+   ở bảng ngay trên.
+3. **G10** là mục dang dở duy nhất còn lại ở client, bị chặn ở mục 2 dòng cuối.
+4. **Kịch bản nâng cấp CSDL v7 → v10 chưa từng chạy thật** (chỉ có test). Người
+   dùng đã quyết định không chạy. Ghi lại vì: nếu sau này có báo cáo **mất danh
+   mục** hoặc **giao dịch không đồng bộ sau khi cập nhật app**, đây là chỗ nghi
+   đầu tiên. Cách kiểm: dựng worktree ở `ea0941b`, chạy bản cũ để sinh CSDL v7,
+   rồi mở bản mới **cùng origin**.
+
+Muốn xác minh thay đổi ngoài bộ test thì dùng skill **`chay-app`** (Chrome
+headless + truy vấn PostgreSQL). ⚠️ Skill đó nằm trong `.claude/` nên **không
+được push** — chỉ có trên máy đã dựng nó.
+
 ### ❌ Chưa làm / Tiếp theo
 - Analytics (báo cáo chi tiết)
 - AI chat integration hoàn chỉnh
