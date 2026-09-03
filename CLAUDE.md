@@ -39,14 +39,19 @@
 
 6. **`.gitignore` dòng 77 có `test/`** → mọi file test tạo mới đều bị git bỏ qua **âm thầm**. Nhớ `git add -f`, nếu không công sức viết test sẽ biến mất khỏi repo.
 
+7. **Tên danh mục là duy nhất trong phạm vi một tài khoản** — **không** tính `classify`, **không** tính nhóm cha, và tính **cả danh mục mặc định** (chúng dùng chung không gian tên với danh mục người dùng). Hàng đã xoá mềm không giữ chỗ; so tên bỏ qua hoa/thường và khoảng trắng thừa. Hai tài khoản khác nhau thì được trùng tên.
+   - Thi hành ở `CategoryManagementRepositoryImpl._hasDuplicateName()`. **Đừng** thay nó bằng `getCategoryRows` — hàm đó lọc theo `classify` và khử trùng lặp theo tên, tức loại đi đúng những hàng cần đối chiếu.
+   - Phép kiểm tra **chỉ chạy khi tên thật sự đổi**, để người dùng còn sửa được danh mục cũ do bản client trước tạo ra. Đây là chủ ý, không phải lỗ hổng.
+   - **CSDL chưa thi hành quy tắc này** và lệch theo cả hai chiều → vi phạm lọt qua sẽ hỏng **âm thầm** ở bước đẩy dữ liệu. Chi tiết ở mục 4 của `docs/PROJECT_CONTEXT.md`.
+
 ---
 
 ## Lệnh hay dùng
 
 ```bash
-# Test (chạy từ src/Client-app) — hiện 116/116 pass, ~6 giây
+# Test (chạy từ src/Client-app) — hiện 144/144 pass, ~8 giây
 flutter test
-flutter analyze          # mức nền: 32 issue, KHÔNG có error
+flutter analyze          # mức nền: 29 issue, KHÔNG có error
 
 # Sau khi sửa Drift tables/DAOs
 dart run build_runner build --delete-conflicting-outputs
@@ -64,4 +69,4 @@ cd src/Client-app && flutter run -d chrome --web-port 9090
 
 Bộ test là lưới an toàn chính của dự án này — nhiều lỗi trong quá khứ hỏng **âm thầm** (không exception, không log). Khi sửa lỗi, viết test tái hiện **trước**, và ghi rõ trong `reason:` của assertion là nó canh chừng điều gì.
 
-Vùng chưa có test nào: `auth_interceptor.dart`, và các feature `budget`, `analytics`, `home`, `profile`, `ai_chat`.
+Vùng chưa có test nào: các feature `budget`, `analytics`, `home`, `profile`, `ai_chat`. (`auth_interceptor.dart` đã có test từ 2026-09-03.)

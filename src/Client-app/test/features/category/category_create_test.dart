@@ -179,7 +179,7 @@ void main() {
     await repo.saveGroup(CategoryGroupDraft(
       id: null,
       accountId: accountId,
-      name: 'Ăn uống',
+      name: 'Thú cưng', // KHÔNG dùng tên trùng danh mục mặc định đã seed
       classify: 'chi',
       icon: 'restaurant',
       colour: '#10B981',
@@ -197,7 +197,7 @@ void main() {
       db: db,
       connectivity: _OnlineOnce(),
     );
-    final done = realSync.statusStream.where((s) => s == SyncStatus.idle).first;
+    final done = realSync.statusStream.where((s) => s.isTerminal).first;
     realSync.start(idaccount: accountId);
     await done.timeout(const Duration(seconds: 5));
 
@@ -249,7 +249,7 @@ void main() {
       db: db,
       connectivity: _OnlineOnce(),
     );
-    final done = realSync.statusStream.where((s) => s == SyncStatus.idle).first;
+    final done = realSync.statusStream.where((s) => s.isTerminal).first;
     realSync.start(idaccount: accountId);
     await done.timeout(const Duration(seconds: 5));
 
@@ -292,7 +292,7 @@ void main() {
       db: db,
       connectivity: _OnlineOnce(),
     );
-    final done = realSync.statusStream.where((s) => s == SyncStatus.idle).first;
+    final done = realSync.statusStream.where((s) => s.isTerminal).first;
     realSync.start(idaccount: accountId);
     await done.timeout(const Duration(seconds: 5));
 
@@ -343,7 +343,7 @@ void main() {
       db: db,
       connectivity: _OnlineOnce(),
     );
-    final done = realSync.statusStream.where((s) => s == SyncStatus.idle).first;
+    final done = realSync.statusStream.where((s) => s.isTerminal).first;
     realSync.start(idaccount: accountId);
     await done.timeout(const Duration(seconds: 5));
 
@@ -361,7 +361,7 @@ void main() {
     await repo.saveGroup(CategoryGroupDraft(
       id: null,
       accountId: accountId,
-      name: 'Ăn uống',
+      name: 'Thú cưng', // KHÔNG dùng tên trùng danh mục mặc định đã seed
       classify: 'chi',
       icon: 'restaurant',
       colour: '#10B981',

@@ -304,7 +304,253 @@ void main() {
     );
   });
 
-  test('rejects duplicate child name in one scope but permits another group',
+  group('Tên danh mục là duy nhất trong phạm vi tài khoản', () {
+    // Quy tắc đã chốt: trong phạm vi một tài khoản, tên danh mục là duy nhất —
+    // bất kể `classify`, bất kể nằm trong nhóm nào, và nhóm / danh mục con /
+    // danh mục MẶC ĐỊNH dùng chung một không gian tên. So tên không phân biệt
+    // hoa thường và gom khoảng trắng thừa; hàng đã xoá mềm không giữ chỗ.
+    //
+    // Lưu ý khi thêm test ở đây: `AppDatabase.forTesting` chạy `onCreate` nên
+    // CSDL đã có sẵn 18 danh mục mặc định (Ăn uống, Di chuyển, Lương, Giải
+    // trí…). Đặt tên trùng một trong số đó thì lệnh tạo ĐẦU TIÊN đã bị chặn —
+    // dùng tên nằm ngoài danh sách seed cho các test không nhắm vào danh mục
+    // mặc định.
+
+    Future<void> makeGroup(String id, String name, {String classify = 'chi'}) =>
+        repository.saveGroup(CategoryGroupDraft(
+          id: id,
+          accountId: 1,
+          name: name,
+          classify: classify,
+          icon: 'folder',
+          colour: '#2196F3',
+          childIds: const [],
+        ));
+
+    Future<void> makeChild(
+      String id,
+      String name, {
+      String classify = 'chi',
+      String? parentId,
+    }) =>
+        repository.saveChild(CategoryChildDraft(
+          id: id,
+          accountId: 1,
+          name: name,
+          classify: classify,
+          parentId: parentId,
+          icon: 'local_cafe',
+          colour: '#795548',
+          keywords: const [],
+        ));
+
+    test('Trùng tên khác CLASSIFY vẫn bị chặn', () async {
+      await makeChild('thu-cung-chi', 'Thú cưng', classify: 'chi');
+
+      await expectLater(
+        makeChild('thu-cung-thu', 'Thú cưng', classify: 'thu'),
+        throwsA(isA<CategoryValidationException>()),
+        reason: 'Khoá duy nhất KHÔNG có classify. Trước đây bộ kiểm tra gọi '
+            '`getCategoryRows(accountId, classify)` nên nó không bao giờ nhìn '
+            'thấy danh mục thuộc loại khác — một danh mục trùng tên lọt qua '
+            'client rồi vỡ ràng buộc ở PostgreSQL, và hỏng âm thầm.',
+      );
+    });
+
+    test('Trùng tên ở NHÓM CHA KHÁC vẫn bị chặn', () async {
+      await makeGroup('nhom-a', 'Nhóm A');
+      await makeGroup('nhom-b', 'Nhóm B');
+      await makeChild('ca-phe-a', 'Cà phê', parentId: 'nhom-a');
+
+      await expectLater(
+        makeChild('ca-phe-b', 'Cà phê', parentId: 'nhom-b'),
+        throwsA(isA<CategoryValidationException>()),
+        reason: 'Mỗi nhóm KHÔNG phải một không gian tên riêng. Trước đây '
+            '`parentId` nằm trong khoá kiểm tra nên client cho tạo, còn '
+            'PostgreSQL (unique không có Idgroup) thì chặn.',
+      );
+    });
+
+    test('Nhóm và danh mục con dùng CHUNG một không gian tên', () async {
+      await makeGroup('nhom-thu-cung', 'Thú cưng');
+
+      await expectLater(
+        makeChild('con-thu-cung', 'Thú cưng'),
+        throwsA(isA<CategoryValidationException>()),
+        reason: 'Trước đây hai hàm kiểm tra loại trừ lẫn nhau qua cờ isGroup, '
+            'nên một nhóm và một danh mục con trùng tên đều lọt qua.',
+      );
+    });
+
+    test('Danh mục con chặn ngược lại việc đặt tên nhóm trùng', () async {
+      await makeChild('con-sach-vo', 'Sách vở');
+
+      await expectLater(
+        makeGroup('nhom-sach-vo', 'Sách vở'),
+        throwsA(isA<CategoryValidationException>()),
+      );
+    });
+
+    test('So tên bỏ qua hoa/thường và khoảng trắng thừa', () async {
+      await makeChild('goc', '  Cà   Phê ');
+
+      await expectLater(
+        makeChild('bien-the', 'cà phê'),
+        throwsA(isA<CategoryValidationException>()),
+      );
+    });
+
+    test('Danh mục đã xoá mềm KHÔNG giữ chỗ tên', () async {
+      await insertCategory(id: 'da-xoa', name: 'Thú cưng', isDeleted: true);
+
+      await makeChild('tao-lai', 'Thú cưng');
+
+      expect((await db.categoryDao.getById('tao-lai'))!.name, 'Thú cưng');
+    });
+
+    test('Tên của TÀI KHOẢN KHÁC không chặn', () async {
+      await insertCategory(
+        id: 'cua-nguoi-khac',
+        name: 'Thú cưng',
+        accountId: 2,
+      );
+
+      await makeChild('cua-minh', 'Thú cưng');
+
+      expect((await db.categoryDao.getById('cua-minh'))!.name, 'Thú cưng');
+    });
+
+    test('Sửa chính danh mục đó thì không tự coi là trùng', () async {
+      await makeChild('tu-sua', 'Thú cưng');
+
+      await makeChild('tu-sua', 'Thú Cưng');
+
+      expect((await db.categoryDao.getById('tu-sua'))!.name, 'Thú Cưng');
+    });
+
+    // ── Trùng với danh mục MẶC ĐỊNH ─────────────────────────────────────────
+    // Các test dưới đây cố ý dùng thẳng danh mục mặc định do `onCreate` seed
+    // sẵn, thay vì tự chèn — như vậy mới đúng thứ người dùng thật gặp phải.
+
+    test('KHÔNG được đặt trùng tên với danh mục mặc định', () async {
+      await expectLater(
+        makeChild('rieng-an-uong', 'Ăn uống'),
+        throwsA(isA<CategoryValidationException>()),
+        reason: 'Danh mục mặc định và danh mục người dùng dùng CHUNG một không '
+            'gian tên: người dùng nhìn thấy cả hai trong cùng một danh sách '
+            'chọn, nên hai mục trùng tên là không phân biệt được.',
+      );
+    });
+
+    test('Trùng tên danh mục mặc định vẫn bị chặn dù khác loại', () async {
+      // 'Lương' được seed là danh mục THU.
+      await expectLater(
+        makeChild('chi-luong', 'Lương', classify: 'chi'),
+        throwsA(isA<CategoryValidationException>()),
+        reason: 'Classify không nằm trong khoá, kể cả khi phía kia là danh mục '
+            'mặc định.',
+      );
+    });
+
+    test('Nhóm cũng không được trùng tên với danh mục mặc định', () async {
+      await expectLater(
+        makeGroup('nhom-di-chuyen', 'Di chuyển'),
+        throwsA(isA<CategoryValidationException>()),
+      );
+    });
+
+    test('So tên với danh mục mặc định cũng bỏ qua hoa/thường', () async {
+      await expectLater(
+        makeChild('rieng-mua-sam', '  mua   SẮM '),
+        throwsA(isA<CategoryValidationException>()),
+      );
+    });
+
+    test('Danh mục mặc định ĐÃ XOÁ thì không giữ chỗ tên', () async {
+      await insertCategory(
+        id: 'mac-dinh-da-xoa',
+        name: 'Du lịch',
+        accountId: 0,
+        isDefault: true,
+        isDeleted: true,
+        isLocalOnly: false,
+      );
+
+      await makeChild('rieng-du-lich', 'Du lịch');
+
+      expect((await db.categoryDao.getById('rieng-du-lich'))!.name, 'Du lịch');
+    });
+
+    // ── Dữ liệu cũ tạo ra khi quy tắc còn lỏng ──────────────────────────────
+    // Bản client trước 2026-09-03 loại danh mục mặc định khỏi phép kiểm tra,
+    // nên máy người dùng có thể đang có một danh mục riêng trùng tên với danh
+    // mục mặc định. Chặn tuyệt đối sẽ khiến họ KHÔNG sửa nổi danh mục đó nữa,
+    // kể cả chỉ đổi icon — vì vậy phép kiểm tra chỉ chạy khi tên thật sự đổi.
+
+    test('Sửa danh mục cũ đang trùng tên danh mục mặc định thì vẫn lưu được',
+        () async {
+      // Dựng thẳng vào CSDL để tái hiện dữ liệu do bản cũ tạo ra.
+      await insertCategory(id: 'cu-an-uong', name: 'Ăn uống');
+
+      await repository.saveChild(CategoryChildDraft(
+        id: 'cu-an-uong',
+        accountId: 1,
+        name: 'Ăn uống',
+        classify: 'chi',
+        parentId: null,
+        icon: 'restaurant',
+        colour: '#FF5722',
+        keywords: const [],
+      ));
+
+      final row = await db.categoryDao.getById('cu-an-uong');
+      expect(row!.icon, 'restaurant',
+          reason: 'Người dùng phải sửa được icon/màu của danh mục cũ mà không '
+              'bị bắt đổi tên trước.');
+      expect(row.name, 'Ăn uống');
+    });
+
+    test('Nhưng ĐỔI TÊN danh mục cũ sang một tên đã bị chiếm thì vẫn bị chặn',
+        () async {
+      await insertCategory(id: 'cu-an-uong', name: 'Ăn uống');
+
+      await expectLater(
+        makeChild('cu-an-uong', 'Di chuyển'),
+        throwsA(isA<CategoryValidationException>()),
+        reason: 'Nới lỏng chỉ áp cho trường hợp GIỮ NGUYÊN tên. Đổi sang tên '
+            'khác vẫn phải qua đủ phép kiểm tra.',
+      );
+    });
+
+    test('Nhóm cũ trùng tên danh mục mặc định cũng sửa được', () async {
+      await insertCategory(id: 'nhom-cu', name: 'Mua sắm', isGroup: true);
+
+      await repository.saveGroup(CategoryGroupDraft(
+        id: 'nhom-cu',
+        accountId: 1,
+        name: 'Mua sắm',
+        classify: 'chi',
+        icon: 'shopping_bag',
+        colour: '#9C27B0',
+        childIds: const [],
+      ));
+
+      expect((await db.categoryDao.getById('nhom-cu'))!.icon, 'shopping_bag');
+    });
+
+    test('Đổi hoa/thường của chính tên đó vẫn được coi là KHÔNG đổi tên',
+        () async {
+      await insertCategory(id: 'cu-an-uong', name: 'Ăn uống');
+
+      await makeChild('cu-an-uong', '  ăn   UỐNG ');
+
+      expect((await db.categoryDao.getById('cu-an-uong'))!.name, 'ăn   UỐNG',
+          reason: 'So tên bỏ qua hoa/thường và khoảng trắng, nên đây vẫn là '
+              'cùng một tên — không được coi là đổi tên rồi chặn.');
+    });
+  });
+
+  test('rejects a duplicate child name regardless of which group it goes into',
       () async {
     await repository.saveGroup(CategoryGroupDraft(
       id: 'group-food',
@@ -349,16 +595,24 @@ void main() {
       throwsA(isA<CategoryValidationException>()),
     );
 
-    await repository.saveChild(CategoryChildDraft(
-      id: 'child-coffee-work',
-      accountId: 1,
-      name: 'coffee',
-      classify: 'chi',
-      parentId: 'group-work',
-      icon: 'local_cafe',
-      colour: '#795548',
-      keywords: [],
-    ));
+    // Trước 2026-09-03 khối dưới đây được coi là HỢP LỆ: mỗi nhóm là một không
+    // gian tên riêng. Quy tắc đã chốt lại — tên là duy nhất trong phạm vi tài
+    // khoản, bất kể nhóm cha — và PostgreSQL vốn vẫn luôn chặn trường hợp này
+    // (unique không có Idgroup), nên hành vi cũ chỉ tạo ra dữ liệu đẩy lên là
+    // hỏng.
+    await expectLater(
+      repository.saveChild(CategoryChildDraft(
+        id: 'child-coffee-work',
+        accountId: 1,
+        name: 'coffee',
+        classify: 'chi',
+        parentId: 'group-work',
+        icon: 'local_cafe',
+        colour: '#795548',
+        keywords: [],
+      )),
+      throwsA(isA<CategoryValidationException>()),
+    );
   });
 
   test('allows default keywords but rejects default mutation and deletion',

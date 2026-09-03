@@ -40,6 +40,7 @@ void main() {
         isDeleted: false,
         isLocalOnly: !isDefault,
         syncStatus: 'pending',
+        syncRetryCount: 0,
         updatedAt: now,
       );
 
@@ -480,6 +481,7 @@ Wallet _wallet() => Wallet(
       includeInTotal: true,
       status: 'active',
       syncStatus: 'pending',
+      syncRetryCount: 0,
       updatedAt: DateTime(2026, 8, 21),
     );
 

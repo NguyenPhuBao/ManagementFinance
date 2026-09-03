@@ -10,9 +10,11 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/api/dio_client.dart';
+import 'package:flowmoney/core/api/interceptors/auth_interceptor.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/di/injection_container.dart';
 import 'package:flowmoney/core/sync/sync_engine.dart';
@@ -69,6 +71,26 @@ class _SpySyncEngine extends SyncEngine {
   }
 }
 
+/// Cho phép test tự phát tín hiệu "token vừa bị xoá" như interceptor thật sẽ
+/// làm khi `/auth/refresh` thất bại, mà không phải dựng cả một vòng HTTP 401.
+class _SpyAuthInterceptor extends AuthInterceptor {
+  _SpyAuthInterceptor()
+      : super(secureStorage: const FlutterSecureStorage());
+
+  final _expired = StreamController<void>.broadcast();
+
+  @override
+  Stream<void> get sessionExpiredStream => _expired.stream;
+
+  void triggerTokensCleared() => _expired.add(null);
+
+  @override
+  void dispose() {
+    _expired.close();
+    super.dispose();
+  }
+}
+
 class _FakeAuthRepository implements AuthRepository {
   _FakeAuthRepository({required this.session, this.cachedUser});
 
@@ -106,6 +128,7 @@ UserModel _user(String id) => UserModel(
 void main() {
   late AppDatabase db;
   late _SpySyncEngine sync;
+  late _SpyAuthInterceptor interceptor;
 
   setUp(() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
@@ -115,12 +138,15 @@ void main() {
       connectivity: _Offline(),
     );
     sl.registerSingleton<SyncEngine>(sync);
+    interceptor = _SpyAuthInterceptor();
+    sl.registerSingleton<AuthInterceptor>(interceptor);
     sl.registerSingleton<AppDatabase>(db);
   });
 
   tearDown(() async {
     await sl.reset();
     sync.dispose();
+    interceptor.dispose();
     await db.close();
   });
 
@@ -263,6 +289,55 @@ void main() {
               'phiên bản — không được đăng xuất chỉ vì khớp chuỗi');
       expect(repo.logoutCalls, 0);
       expect(sync.stopCalls, 0);
+    });
+
+    test(
+        'AuthInterceptor xoá token → bloc cũng phản ứng, không chỉ SyncEngine',
+        () async {
+      final repo = _FakeAuthRepository(
+        session: SessionStatus.valid,
+        cachedUser: _user('9'),
+      );
+      final bloc = AuthBloc(authRepository: repo);
+      addTearDown(bloc.close);
+      final loggedIn = bloc.stream.where((s) => s is AuthSuccess).first;
+      bloc.add(AuthCheckRequested());
+      await loggedIn.timeout(const Duration(seconds: 5));
+
+      repo.sessionOverride = SessionStatus.invalid;
+      final after = bloc.stream.first;
+      interceptor.triggerTokensCleared();
+
+      expect(
+        await after.timeout(const Duration(seconds: 5)),
+        isA<AuthUnauthenticated>(),
+        reason: 'Canh chừng G12: kênh sessionInvalidStream trước đây chỉ nối '
+            'từ SyncEngine. Khi refresh token hỏng, interceptor xoá token mà '
+            'không ai hay, app kẹt ở AuthSuccess với kho token rỗng.',
+      );
+      expect(repo.logoutCalls, 1);
+    });
+
+    test(
+        'Interceptor báo mất token nhưng server nói phiên vẫn sống → KHÔNG đăng xuất',
+        () async {
+      final repo = _FakeAuthRepository(
+        session: SessionStatus.valid,
+        cachedUser: _user('10'),
+      );
+      final bloc = AuthBloc(authRepository: repo);
+      addTearDown(bloc.close);
+      final loggedIn = bloc.stream.where((s) => s is AuthSuccess).first;
+      bloc.add(AuthCheckRequested());
+      await loggedIn.timeout(const Duration(seconds: 5));
+
+      interceptor.triggerTokensCleared();
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+
+      expect(bloc.state, isA<AuthSuccess>(),
+          reason: 'Mất token có thể do một lần refresh trượt vì mạng chập '
+              'chờn; quyết định đăng xuất vẫn phải do server đưa ra.');
+      expect(repo.logoutCalls, 0);
     });
   });
 

@@ -118,6 +118,28 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
       ..sort((a, b) => a.name.compareTo(b.name));
   }
 
+  /// Mọi danh mục đang CHIẾM CHỖ tên trong phạm vi một tài khoản.
+  ///
+  /// Gồm danh mục do chính tài khoản tạo **và** danh mục mặc định (dùng chung,
+  /// `idaccount = 0`): người dùng nhìn thấy cả hai trong cùng một danh sách nên
+  /// hai mục trùng tên là không phân biệt được. Hàng đã xoá mềm không chiếm chỗ.
+  ///
+  /// Quy tắc: tên là duy nhất trong phạm vi này, **bất kể `classify`** và
+  /// **bất kể nằm trong nhóm nào**; nhóm và danh mục con dùng chung không gian
+  /// tên.
+  ///
+  /// Cố ý KHÔNG dùng `getCategoryRows`: hàm đó lọc sẵn theo `classify` và còn
+  /// khử trùng lặp theo tên trước khi trả về — tức chính những hàng cần đối
+  /// chiếu lại bị nó loại đi, khiến phép kiểm tra báo "không trùng" nhầm.
+  Future<List<Category>> getNamesInUse(int accountId) {
+    return (select(categories)
+          ..where((t) =>
+              (t.idaccount.equals(accountId) | t.isDefault.equals(true)) &
+              t.isDeleted.equals(false) &
+              t.deletedAt.isNull()))
+        .get();
+  }
+
   Future<List<String>> getKeywords(int accountId, String categoryId) async {
     final rows = await (select(categoryKeywords)
           ..where((t) =>
@@ -298,7 +320,31 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
 
   Future<void> markSynced(String id) async {
     await (update(categories)..where((t) => t.id.equals(id))).write(
-      const CategoriesCompanion(syncStatus: Value('synced')),
+      const CategoriesCompanion(
+        syncStatus: Value('synced'),
+        // Đẩy thành công thì xoá sạch dấu vết thất bại cũ — nếu không, bản ghi
+        // vẫn mang syncBlockedUntil của lần hỏng trước và bị chặn oan.
+        syncRetryCount: Value(0),
+        syncError: Value(null),
+        syncBlockedUntil: Value(null),
+      ),
+    );
+  }
+
+  /// Chặn bản ghi khỏi hàng đợi đẩy cho tới [until] sau một lần đẩy thất bại.
+  ///
+  /// KHÔNG bỏ trạng thái 'pending': hết hạn chặn là bản ghi tự quay lại hàng
+  /// đợi. Xem chú thích ở định nghĩa bảng để biết vì sao không dùng
+  /// syncStatus = 'failed'.
+  Future<void> markSyncBlocked(String id, DateTime until, String error) async {
+    final current =
+        await (select(categories)..where((t) => t.id.equals(id))).getSingleOrNull();
+    await (update(categories)..where((t) => t.id.equals(id))).write(
+      CategoriesCompanion(
+        syncRetryCount: Value((current?.syncRetryCount ?? 0) + 1),
+        syncError: Value(error),
+        syncBlockedUntil: Value(until),
+      ),
     );
   }
 

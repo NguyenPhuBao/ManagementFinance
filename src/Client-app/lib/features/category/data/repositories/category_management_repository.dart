@@ -137,15 +137,14 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
       parentId: draft.parentId,
     );
     final classify = parent?.classify ?? draft.classify;
-    if (await _hasDuplicateChildName(
+    if (await _hasDuplicateName(
       accountId: draft.accountId,
-      classify: classify,
-      parentId: draft.parentId,
       excludingId: draft.id,
       name: name,
+      currentName: existing?.name,
     )) {
       throw const CategoryValidationException(
-        'Tên danh mục đã tồn tại trong phạm vi này.',
+        'Tên danh mục đã tồn tại. Mỗi tài khoản không được có hai danh mục trùng tên, kể cả khác loại hay khác nhóm.',
       );
     }
 
@@ -189,14 +188,14 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
         throw const CategoryValidationException(
             'Danh mục con không thể là nhóm.');
       }
-      if (await _hasDuplicateGroupName(
+      if (await _hasDuplicateName(
         accountId: draft.accountId,
-        classify: draft.classify,
         excludingId: draft.id,
         name: name,
+        currentName: existing?.name,
       )) {
         throw const CategoryValidationException(
-          'Tên danh mục đã tồn tại trong phạm vi này.',
+          'Tên danh mục đã tồn tại. Mỗi tài khoản không được có hai danh mục trùng tên, kể cả khác loại hay khác nhóm.',
         );
       }
 
@@ -233,7 +232,7 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
         ...defaultChildren,
       ])) {
         throw const CategoryValidationException(
-          'Tên danh mục đã tồn tại trong phạm vi này.',
+          'Tên danh mục đã tồn tại. Mỗi tài khoản không được có hai danh mục trùng tên, kể cả khác loại hay khác nhóm.',
         );
       }
 
@@ -450,37 +449,39 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
     return parent;
   }
 
-  Future<bool> _hasDuplicateGroupName({
+  /// Tên danh mục đã bị chiếm trong phạm vi tài khoản chưa.
+  ///
+  /// Khoá duy nhất là **(phạm vi tài khoản, tên đã chuẩn hoá)** — không có
+  /// `classify`, không có nhóm cha; nhóm, danh mục con và cả danh mục MẶC ĐỊNH
+  /// dùng chung một không gian tên, vì người dùng nhìn thấy tất cả trong cùng
+  /// một danh sách chọn.
+  ///
+  /// Lưu ý về mức chặt: PostgreSQL hiện vẫn ràng buộc theo
+  /// `(Create_by, NameCategory, Classify)` — tức KHÁC quy tắc này ở cả hai
+  /// chiều. Client chặt hơn ở chỗ bỏ `classify` và tính cả danh mục mặc định;
+  /// nhưng CSDL lại chặt hơn ở chỗ hàng đã xoá mềm vẫn giữ chỗ và tên phân biệt
+  /// hoa/thường. Cho tới khi backend thay hai unique index, đây là nơi DUY NHẤT
+  /// bảo đảm quy tắc — mà `/sync/push` chỉ đánh dấu thao tác hỏng là `failed`
+  /// nên vi phạm lọt qua sẽ không hiện ra màn hình.
+  Future<bool> _hasDuplicateName({
     required int accountId,
-    required String classify,
     required String? excludingId,
     required String name,
-  }) async =>
-      (await db.categoryDao.getCategoryRows(accountId, classify)).any(
-        (category) =>
-            category.idaccount == accountId &&
-            category.isGroup &&
-            !category.isDefault &&
-            category.id != excludingId &&
-            _normalize(category.name) == _normalize(name),
-      );
+    String? currentName,
+  }) async {
+    final target = _normalize(name);
 
-  Future<bool> _hasDuplicateChildName({
-    required int accountId,
-    required String classify,
-    required String? parentId,
-    required String? excludingId,
-    required String name,
-  }) async =>
-      (await db.categoryDao.getCategoryRows(accountId, classify)).any(
-        (category) =>
-            category.idaccount == accountId &&
-            !category.isGroup &&
-            !category.isDefault &&
-            category.parentId == parentId &&
-            category.id != excludingId &&
-            _normalize(category.name) == _normalize(name),
-      );
+    // Đang SỬA mà không đổi tên thì không xét trùng nữa. Bản client trước
+    // 2026-09-03 loại danh mục mặc định khỏi phép kiểm tra, nên máy người dùng
+    // có thể đang giữ một danh mục riêng trùng tên với danh mục mặc định.
+    // Chặn tuyệt đối sẽ khiến họ không sửa nổi danh mục đó nữa — kể cả chỉ đổi
+    // icon — và không có cách nào thoát ngoài việc đổi tên.
+    if (currentName != null && _normalize(currentName) == target) return false;
+
+    final inUse = await db.categoryDao.getNamesInUse(accountId);
+    return inUse.any((category) =>
+        category.id != excludingId && _normalize(category.name) == target);
+  }
 
   bool _hasDuplicateAssignedChildName(Iterable<Category> children) {
     final names = <String>{};

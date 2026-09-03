@@ -143,7 +143,31 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
 
   Future<void> markSynced(String id) async {
     await (update(transactions)..where((t) => t.id.equals(id))).write(
-      const TransactionsCompanion(syncStatus: Value('synced')),
+      const TransactionsCompanion(
+        syncStatus: Value('synced'),
+        // Đẩy thành công thì xoá sạch dấu vết thất bại cũ — nếu không, bản ghi
+        // vẫn mang syncBlockedUntil của lần hỏng trước và bị chặn oan.
+        syncRetryCount: Value(0),
+        syncError: Value(null),
+        syncBlockedUntil: Value(null),
+      ),
+    );
+  }
+
+  /// Chặn bản ghi khỏi hàng đợi đẩy cho tới [until] sau một lần đẩy thất bại.
+  ///
+  /// KHÔNG bỏ trạng thái 'pending': hết hạn chặn là bản ghi tự quay lại hàng
+  /// đợi. Xem chú thích ở định nghĩa bảng để biết vì sao không dùng
+  /// syncStatus = 'failed'.
+  Future<void> markSyncBlocked(String id, DateTime until, String error) async {
+    final current =
+        await (select(transactions)..where((t) => t.id.equals(id))).getSingleOrNull();
+    await (update(transactions)..where((t) => t.id.equals(id))).write(
+      TransactionsCompanion(
+        syncRetryCount: Value((current?.syncRetryCount ?? 0) + 1),
+        syncError: Value(error),
+        syncBlockedUntil: Value(until),
+      ),
     );
   }
 

@@ -58,6 +58,15 @@ class Budgets extends Table {
   BoolColumn     get isDeleted => boolean().withDefault(const Constant(false))();
 
   TextColumn     get syncStatus => text().withDefault(const Constant('pending'))();
+
+  // ── Trạng thái thất bại khi đẩy (G3) ──────────────────────────────────────
+  // Cố ý KHÔNG đổi `syncStatus` sang 'failed' rồi loại bản ghi khỏi `getPending`:
+  // nhiều lỗi hợp lệ chỉ tự khỏi SAU khi Pull xong (ví dụ giao dịch còn trỏ tới
+  // ID danh mục mặc định cũ), nên loại vĩnh viễn sẽ giết luôn cơ chế thử lại đó.
+  // Chặn theo THỜI GIAN: hết `syncBlockedUntil` là bản ghi tự quay lại hàng đợi.
+  IntColumn      get syncRetryCount    => integer().withDefault(const Constant(0))();
+  TextColumn     get syncError         => text().nullable()();
+  DateTimeColumn get syncBlockedUntil  => dateTime().nullable()();
   DateTimeColumn get updatedAt  => dateTime()();
 
   @override
@@ -119,6 +128,15 @@ class Bills extends Table {
   BoolColumn     get isDeleted => boolean().withDefault(const Constant(false))();
 
   TextColumn     get syncStatus => text().withDefault(const Constant('pending'))();
+
+  // ── Trạng thái thất bại khi đẩy (G3) ──────────────────────────────────────
+  // Cố ý KHÔNG đổi `syncStatus` sang 'failed' rồi loại bản ghi khỏi `getPending`:
+  // nhiều lỗi hợp lệ chỉ tự khỏi SAU khi Pull xong (ví dụ giao dịch còn trỏ tới
+  // ID danh mục mặc định cũ), nên loại vĩnh viễn sẽ giết luôn cơ chế thử lại đó.
+  // Chặn theo THỜI GIAN: hết `syncBlockedUntil` là bản ghi tự quay lại hàng đợi.
+  IntColumn      get syncRetryCount    => integer().withDefault(const Constant(0))();
+  TextColumn     get syncError         => text().nullable()();
+  DateTimeColumn get syncBlockedUntil  => dateTime().nullable()();
   DateTimeColumn get updatedAt  => dateTime()();
 
   @override
@@ -166,6 +184,15 @@ class Goals extends Table {
   BoolColumn     get isDeleted => boolean().withDefault(const Constant(false))();
 
   TextColumn     get syncStatus => text().withDefault(const Constant('pending'))();
+
+  // ── Trạng thái thất bại khi đẩy (G3) ──────────────────────────────────────
+  // Cố ý KHÔNG đổi `syncStatus` sang 'failed' rồi loại bản ghi khỏi `getPending`:
+  // nhiều lỗi hợp lệ chỉ tự khỏi SAU khi Pull xong (ví dụ giao dịch còn trỏ tới
+  // ID danh mục mặc định cũ), nên loại vĩnh viễn sẽ giết luôn cơ chế thử lại đó.
+  // Chặn theo THỜI GIAN: hết `syncBlockedUntil` là bản ghi tự quay lại hàng đợi.
+  IntColumn      get syncRetryCount    => integer().withDefault(const Constant(0))();
+  TextColumn     get syncError         => text().nullable()();
+  DateTimeColumn get syncBlockedUntil  => dateTime().nullable()();
   DateTimeColumn get updatedAt  => dateTime()();
 
   @override

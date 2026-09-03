@@ -222,7 +222,7 @@ void main() {
 
     // 3. Khởi động SyncEngine
     final syncCompleted = syncEngine.statusStream
-        .where((status) => status == SyncStatus.idle)
+        .where((status) => status.isTerminal)
         .first;
     syncEngine.start(idaccount: idaccount);
     await syncCompleted.timeout(const Duration(seconds: 3));
@@ -301,7 +301,7 @@ void main() {
     };
 
     final syncCompleted = syncEngine.statusStream
-        .where((status) => status == SyncStatus.idle)
+        .where((status) => status.isTerminal)
         .first;
     syncEngine.start(idaccount: idaccount);
     await syncCompleted.timeout(const Duration(seconds: 3));
@@ -383,7 +383,7 @@ void main() {
     // (chưa có bản UUID) nên transaction bị defer (không push). Sau đó Pull
     // trả về category UUID → repair phải cập nhật categoryId 'cat_food' → UUID.
     final firstSyncDone =
-        syncEngine.statusStream.where((s) => s == SyncStatus.idle).first;
+        syncEngine.statusStream.where((s) => s.isTerminal).first;
     syncEngine.start(idaccount: idaccount);
     await firstSyncDone.timeout(const Duration(seconds: 3));
 
@@ -412,7 +412,7 @@ void main() {
     // UUID hợp lệ nên phải push thành công lên backend.
     dioClient.adapter.pullData = const {}; // không còn gì mới để pull
     final secondSyncDone =
-        syncEngine.statusStream.where((s) => s == SyncStatus.idle).first;
+        syncEngine.statusStream.where((s) => s.isTerminal).first;
     await syncEngine.syncNow();
     await secondSyncDone.timeout(const Duration(seconds: 3));
 

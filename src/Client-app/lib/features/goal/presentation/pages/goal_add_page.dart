@@ -4,20 +4,17 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
-import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../wallet/data/models/wallet_entity.dart';
 import '../../../wallet/presentation/bloc/wallet_cubit.dart';
 import '../bloc/goal_cubit.dart';
+import '../../../../core/auth/current_account.dart';
 
 class GoalAddPage extends StatelessWidget {
   const GoalAddPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final authState = context.read<AuthBloc>().state;
-    final idaccount = (authState is AuthSuccess && authState.user != null)
-        ? (int.tryParse(authState.user!.id) ?? 1)
-        : 1;
+    final idaccount = currentAccountIdOrNull(context) ?? 0;
 
     return MultiBlocProvider(
       providers: [
@@ -183,10 +180,18 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
       return;
     }
 
-    final authState = context.read<AuthBloc>().state;
-    final idaccount = (authState is AuthSuccess && authState.user != null)
-        ? (int.tryParse(authState.user!.id) ?? 1)
-        : 1;
+    // Đây là đường GHI: `?? 0` không dùng được ở đây (mục tiêu sẽ thuộc về
+    // "không ai"), và `?? 1` thì còn tệ hơn — ghi vào tài khoản admin thật.
+    final idaccount = currentAccountIdOrNull(context);
+    if (idaccount == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Chưa xác định được tài khoản đăng nhập. '
+              'Vui lòng đăng nhập lại trước khi tạo mục tiêu.'),
+        ),
+      );
+      return;
+    }
 
     context.read<GoalCubit>().addGoal(
           idaccount: idaccount,
@@ -264,10 +269,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                       Navigator.pop(ctx);
                       await mainContext.push('/wallets/add');
                       if (mainContext.mounted) {
-                        final authState = mainContext.read<AuthBloc>().state;
-                        final idaccount = (authState is AuthSuccess && authState.user != null)
-                            ? (int.tryParse(authState.user!.id) ?? 1)
-                            : 1;
+                        final idaccount = currentAccountIdOrNull(mainContext) ?? 0;
                         mainContext.read<WalletCubit>().loadWallets(idaccount);
                       }
                     },
@@ -299,10 +301,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                             Navigator.pop(ctx);
                             await mainContext.push('/wallets/add');
                             if (mainContext.mounted) {
-                              final authState = mainContext.read<AuthBloc>().state;
-                              final idaccount = (authState is AuthSuccess && authState.user != null)
-                                  ? (int.tryParse(authState.user!.id) ?? 1)
-                                  : 1;
+                              final idaccount = currentAccountIdOrNull(mainContext) ?? 0;
                               mainContext.read<WalletCubit>().loadWallets(idaccount);
                             }
                           },
@@ -350,10 +349,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                             Navigator.pop(ctx);
                             await mainContext.push('/wallets/add');
                             if (mainContext.mounted) {
-                              final authState = mainContext.read<AuthBloc>().state;
-                              final idaccount = (authState is AuthSuccess && authState.user != null)
-                                  ? (int.tryParse(authState.user!.id) ?? 1)
-                                  : 1;
+                              final idaccount = currentAccountIdOrNull(mainContext) ?? 0;
                               mainContext.read<WalletCubit>().loadWallets(idaccount);
                             }
                           },

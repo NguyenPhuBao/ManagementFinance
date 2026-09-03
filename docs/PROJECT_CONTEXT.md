@@ -134,10 +134,39 @@ dart run build_runner watch --delete-conflicting-outputs
    - **Client SQLite**: lưu với `idaccount = 0` (quy ước nội bộ = "global, không thuộc user nào")
 2. **User categories** (`is_default = false`, `create_by = idaccount`): Danh mục tự tạo của người dùng
 
-**Unique constraint trên category:**
-```sql
-UNIQUE (Create_by, NameCategory, Classify)  -- uq_category_owner_name_classify
-```
+### Quy tắc trùng tên danh mục
+
+**Quy tắc nghiệp vụ (chốt 2026-09-03).** Trong phạm vi **một tài khoản**, tên danh mục là **duy nhất**:
+
+| Yếu tố | Có nằm trong khoá không |
+|---|---|
+| Chủ sở hữu (`Create_by` / `idaccount`) | **có** — hai tài khoản khác nhau được trùng tên |
+| Tên danh mục (đã chuẩn hoá) | **có** |
+| `Classify` | **không** — một tài khoản không được có "Ăn uống" cả Thu lẫn Chi |
+| Nhóm cha (`Idgroup` / `parentId`) | **không** — hai nhóm không phải hai không gian tên riêng |
+| `Is_group` | **không** — nhóm và danh mục con dùng chung không gian tên |
+
+Thêm hai điều:
+
+- **Danh mục mặc định dùng chung không gian tên với danh mục người dùng.** Người dùng nhìn thấy cả hai trong cùng một danh sách chọn nên hai mục trùng tên là không phân biệt được. Vì danh mục mặc định là hàng dùng chung, tên của nó chiếm chỗ với **mọi** tài khoản.
+- **Hàng đã xoá mềm không giữ chỗ**, và so tên **không phân biệt hoa/thường**, gom khoảng trắng thừa: `trim().toLowerCase()` rồi gộp mọi dãy khoảng trắng thành một dấu cách.
+
+**Nơi thi hành — chỉ có client:**
+
+`CategoryManagementRepositoryImpl._hasDuplicateName()` quét qua `CategoryDao.getNamesInUse(accountId)`. Cố ý **không** dùng `getCategoryRows`: hàm đó lọc sẵn theo `classify` và còn khử trùng lặp theo tên trước khi trả về, tức chính những hàng cần đối chiếu lại bị nó loại đi.
+
+Phép kiểm tra **chỉ chạy khi tên thật sự đổi**. Bản client trước 2026-09-03 loại danh mục mặc định khỏi phép kiểm tra, nên máy người dùng có thể đang giữ một danh mục riêng trùng tên với danh mục mặc định; chặn tuyệt đối sẽ khiến họ không sửa nổi danh mục đó nữa, kể cả chỉ đổi icon.
+
+> ⚠️ **CSDL CHƯA thi hành quy tắc này.** PostgreSQL vẫn đang giữ:
+>
+> ```sql
+> UNIQUE (Create_by, NameCategory, Classify)                        -- uq_category_owner_name_classify
+> UNIQUE (NameCategory, Classify) WHERE Is_default = TRUE           -- uq_category_default_name_classify
+> ```
+>
+> Hai ràng buộc này lệch quy tắc theo **cả hai chiều**: lỏng hơn ở `Classify`, ở việc tách khoá riêng cho danh mục mặc định và ở so tên phân biệt hoa/thường; nhưng **chặt hơn** ở chỗ hàng đã xoá mềm vẫn giữ chỗ — nên xoá một danh mục rồi tạo lại cùng tên sẽ được client cho qua mà CSDL từ chối, và `/sync/push` chỉ đánh dấu thao tác đó `failed` nên **hỏng âm thầm**.
+>
+> Việc cần backend làm, kèm SQL và cách kiểm chứng: `docs/superpowers/backend/CATEGORY_NAME_UNIQUENESS.md`.
 
 ---
 
@@ -241,11 +270,13 @@ SyncEngine._runSync()
 
 | Loại | Nhận diện | Xử lý |
 |---|---|---|
-| `sessionInvalid` | khớp `fk_\w+_account` | Phát `sessionInvalidStream` → AuthBloc hỏi lại server → đăng xuất nếu server phủ nhận. Không thử lại. |
-| `transient` | khoá ngoại khác, lỗi chưa rõ | Thử lại 1 lần sau khi Pull |
-| `permanent` | `Ownership mismatch` | Không thử lại, **không** đăng xuất (đó là dữ liệu rác của tài khoản khác) |
+| `sessionInvalid` | `results[i].code == 'ACCOUNT_NOT_FOUND'` (**ưu tiên**), hoặc HTTP **401** cho cả batch; dự phòng: khớp `fk_*_account` trong thông báo Prisma | Phát `sessionInvalidStream` → AuthBloc hỏi lại server → đăng xuất nếu server phủ nhận. Không thử lại. |
+| `transient` | khoá ngoại khác, lỗi chưa rõ, hoặc cả batch không tới nơi (`transportFailed`) | Thử lại 1 lần sau khi Pull — trừ khi `transportFailed`, khi đó để giãn cách luỹ tiến lo |
+| `permanent` | `Ownership mismatch` | Không thử lại, **không** đăng xuất (đó là dữ liệu rác của tài khoản khác). Bản ghi bị chặn theo thời gian qua `syncBlockedUntil` |
 
-Việc khớp chuỗi tên constraint chỉ là **tín hiệu**; quyết định đăng xuất do server đưa ra qua `verifySession()`.
+Từ 2026-09-03 backend gắn mã lỗi ổn định `ACCOUNT_NOT_FOUND` vào từng phần tử `results[]` và trả **HTTP 401** khi *toàn bộ* thao tác trong batch hỏng vì lý do đó. Client ưu tiên hai tín hiệu này; nhánh khớp chuỗi tên constraint chỉ còn là **dự phòng** cho backend chưa cập nhật (nó vỡ khi đổi tên constraint hoặc nâng version Prisma, mà không báo lỗi gì).
+
+Dù nhận diện bằng cách nào, đó cũng chỉ là **tín hiệu**; quyết định đăng xuất do server đưa ra qua `verifySession()`.
 
 ### Mốc đồng bộ (checkpoint)
 
@@ -472,6 +503,7 @@ src/Backend/
 6. **`idaccount` CHỈ đến từ phiên đăng nhập** — tuyệt đối không suy ra từ dữ liệu trong SQLite, và không bao giờ mặc định về `1` (đó là tài khoản admin thật)
 7. **Pull dùng `insertAllOnConflictUpdate`, KHÔNG dùng `insertOrReplace`** — xem mục 11.8
 8. **Thêm trường mới cho sync** → cập nhật `test/core/sync/sync_payload_contract_test.dart` cùng lúc. Tên trường đi qua ba nơi định nghĩa độc lập (client dựng tay → `SyncPayloadNormalizer` → `mapEntityFields` phía backend); một tên sai **không gây lỗi, chỉ lặng lẽ bị bỏ qua**
+9. **Tên danh mục là duy nhất trong phạm vi tài khoản** — không tính `classify`, không tính nhóm cha, và tính CẢ danh mục mặc định. Xem mục 4. Hiện chỉ client thi hành; CSDL vẫn giữ ràng buộc cũ nên vi phạm lọt qua sẽ hỏng âm thầm ở bước đẩy dữ liệu.
 
 ---
 
@@ -490,7 +522,7 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-02)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-03)
 
 ### 🔐 Xác thực phiên đăng nhập
 
@@ -500,35 +532,43 @@ src/Backend/
 - Trả về `SessionStatus { valid, invalid, unknown }`. Chỉ **401/404** mới là `invalid`; mọi mã khác kể cả 5xx và mất mạng đều là `unknown` → **không** đăng xuất, giữ cam kết offline-first.
 - Việc phân loại lỗi nằm ở **repository**, không phải bloc, vì dự án có **hai class `NetworkException` trùng tên** ở hai file khác nhau — bắt lỗi theo kiểu ở tầng trên rất dễ import nhầm.
 - Hai đường phát hiện phiên chết: **lúc mở app** (`_onAuthCheckRequested`) và **đang chạy** (tín hiệu `sessionInvalidStream` từ SyncEngine khi đẩy dữ liệu vỡ khoá ngoại `fk_*_account`).
-- Khi đăng nhập, `purgeDataForOtherAccounts(idAcc)` xoá dữ liệu cục bộ của tài khoản khác (giữ nguyên danh mục mặc định `idaccount = 0`).
-- Mọi fallback `?? 1` đã được gỡ khỏi AuthBloc — **`idaccount = 1` là tài khoản admin THẬT**, không phải giá trị "chưa biết".
+- `purgeDataForOtherAccounts(idAcc)` xoá dữ liệu cục bộ của tài khoản khác (giữ nguyên danh mục mặc định `idaccount = 0`). Chạy ở **cả hai** đường vào: đăng nhập (`auth_bloc.dart:106`) và khôi phục phiên lúc mở app (`auth_bloc.dart:134`).
+- **Không còn fallback `?? 1` ở bất kỳ đâu** — `idaccount = 1` là tài khoản admin THẬT, không phải giá trị "chưa biết". Đã gỡ khỏi AuthBloc, `sync_engine.dart` (6 chỗ, G8) và 4 trang UI của bill/goal (G4, nay dùng `core/auth/current_account.dart` trả `int?`).
 
 ### ✅ Đã hoàn thành
 - Schema PostgreSQL aligned với New_Database.md (migration đã apply)
-- SQLite schema (Drift) aligned với backend schema — `schemaVersion = 7`
+- SQLite schema (Drift) aligned với backend schema — `schemaVersion = 9`
 - Sync engine: thứ tự batch đúng, nhóm danh mục đẩy trước danh mục con
 - FK violation fix: `_resolveCategoryId` + step 1b
 - Category dedup trong UI
 - Ownership mismatch fix
 - `repairPendingTransactionsCategoryId` (cat_food → UUID) — **chạy TRƯỚC** dedup
-- **Đồng bộ nhóm danh mục hai chiều** (`isGroup` / `idgroup`) — backend vốn đã hỗ trợ sẵn, client trước đây không gửi
+- **Đồng bộ nhóm danh mục hai chiều** (`isGroup` / `idgroup`)
 - **Pull không còn ghi đè nguyên hàng**: cả 6 DAO dùng `insertAllOnConflictUpdate`
 - **Checkpoint đồng bộ bền vững** giữa các lần mở app, lấy theo `update_at` lớn nhất
 - **Đồng bộ định kỳ 15 phút**
 - **Phân loại lỗi đẩy dữ liệu** + phát hiện phiên chết
-- **Test: 114/114 pass** (~8 giây), 23 file / 5121 dòng
+- **Dọn dữ liệu tài khoản khác chạy cả khi khôi phục phiên** *(G6)*
+- **Pull đọc cờ xoá của danh mục**, không còn hồi sinh danh mục đã xoá *(G7)*
+- **Trạng thái kết thúc phản ánh kết quả thật**: thêm `SyncStatus.authExpired`; chu kỳ còn thao tác hỏng kết thúc ở `error` *(G1)*
+- **Giãn cách luỹ tiến** 30s → 1p → 5p → 15p → 60p sau các chu kỳ hỏng liên tiếp *(G2)*
+- **Trạng thái thất bại theo từng bản ghi**: `syncRetryCount` / `syncError` / `syncBlockedUntil` trên cả 6 bảng; lỗi vĩnh viễn bị chặn theo THỜI GIAN chứ không loại vĩnh viễn *(G3)*
+- **Không còn `?? 1` ở bất kỳ đâu**: `_collectPendingOps` dùng thẳng tham số `idaccount` *(G8)*, và 4 trang UI đổi sang `core/auth/current_account.dart` trả `int?` *(G4)*
+- **Bỏ mọi nhánh đọc không lọc tài khoản ở tầng UI** và `isLocalDbEmpty` tính theo tài khoản hiện tại *(G4/G5)*
+- **`conflict` được giải quyết**: LWW đã phân xử, server thắng → đánh dấu đã đồng bộ thay vì đẩy lại vô hạn *(G9)*
+- **Migration `isLocalOnly`** (v7→v8): nhóm danh mục tạo trước 2026-09-02 quay lại được hàng đợi đẩy *(G11)*
+- **`AuthInterceptor` không còn xoá token trong im lặng**: phát `sessionExpiredStream`, AuthBloc nghe song song với SyncEngine *(G12)*
+- **Test: 144/144 pass** (~8 giây), 25 file / 6236 dòng — cả 25 file đều đã được git theo dõi
 
 ### 🔄 Việc còn dang dở
 
-Xem đầy đủ tại **`docs/CLIENT_APP_KNOWN_GAPS.md`** — 12 mục kèm lý do hoãn và bán kính ảnh hưởng. Đáng chú ý nhất:
+Xem đầy đủ tại **`docs/CLIENT_APP_KNOWN_GAPS.md`**. Phiên 2026-09-03 đã đóng 9/10 mục còn mở; **chỉ còn G10**:
 
-- `purgeDataForOtherAccounts()` mới chỉ chạy khi **đăng nhập**, chưa chạy khi khôi phục phiên
-- Chiều pull ghi cứng `isDeleted = false` cho mọi danh mục
-- Chưa có exponential backoff; chưa có cột trạng thái lỗi trong schema
-- `getAllNonDeleted()` không lọc theo tài khoản — còn 5 nơi gọi
-- **45/114 test (39,5%) không được git theo dõi** do `.gitignore` có dòng `test/`
+- **G10 — `CategoryGroupMemberships` không bao giờ được đồng bộ.** ⛔ **Không sửa được ở client**: backend không có bảng membership và cũng không có `SyncEntityType` tương ứng (`UPSERT_MAP`/`ENTITY_PRIORITY` chỉ có 6 entity), nên thêm entity mới ở client sẽ chỉ nhận `Unknown entity` và kẹt vĩnh viễn. Việc gán danh mục **mặc định** vào nhóm vì thế chỉ tồn tại trên một máy. Đề xuất chi tiết: `docs/superpowers/backend/CATEGORY_GROUP_MEMBERSHIP_SYNC.md`.
 
-Vấn đề cần backend xử lý: **`docs/superpowers/backend/SESSION_VALIDITY_FINDINGS.md`** và **`CATEGORY_CLASSIFY_ALIGNMENT.md`**.
+> ⚠️ **`.gitignore` dòng 77 vẫn có `test/`.** Luật này đã cắn lần thứ hai: hai file test tạo ngày 2026-09-03 cũng bị chặn âm thầm và phải `git add -f`. Mọi file test tạo **mới** vẫn sẽ bị bỏ qua trong im lặng.
+
+Vấn đề thuộc backend (trong `docs/superpowers/backend/`): **`SESSION_VALIDITY_FINDINGS.md`** ✅ đã xong, **`CATEGORY_CLASSIFY_ALIGNMENT.md`** ✅ đã xong (còn một bước nhỏ thu hẹp `sync.validation.js`), **`CATEGORY_GROUP_MEMBERSHIP_SYNC.md`** ⛔ chưa làm — đây là thứ duy nhất còn chặn G10, **`CATEGORY_KEYWORD_SYNC.md`** ⛔ (từ khoá phân loại không đồng bộ + thiếu kiểm quyền sở hữu khi ghi từ khoá), và **`CATEGORY_NAME_UNIQUENESS.md`** ⛔ (ràng buộc trùng tên danh mục ở CSDL khác quy tắc nghiệp vụ — client đã thi hành đúng, CSDL chưa).
 
 ### ❌ Chưa làm / Tiếp theo
 - Analytics (báo cáo chi tiết)

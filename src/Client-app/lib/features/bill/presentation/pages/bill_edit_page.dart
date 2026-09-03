@@ -5,8 +5,7 @@ import 'package:drift/drift.dart' as drift;
 import 'package:intl/intl.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../shared/theme/app_colors.dart';
-import '../../../auth/presentation/bloc/auth_bloc.dart';
-import '../../../auth/presentation/bloc/auth_state.dart';
+import '../../../../core/auth/current_account.dart';
 import '../bloc/bill_bloc.dart';
 import '../bloc/bill_event.dart';
 
@@ -25,13 +24,6 @@ class BillEditPage extends StatefulWidget {
 }
 
 class _BillEditPageState extends State<BillEditPage> {
-  int _getAccountId(BuildContext context) {
-    final authState = context.read<AuthBloc>().state;
-    if (authState is AuthSuccess && authState.user != null) {
-      return int.tryParse(authState.user!.id) ?? 1;
-    }
-    return 1;
-  }
   late TextEditingController _nameController;
   late TextEditingController _amountController;
   late TextEditingController _noteController;
@@ -77,11 +69,24 @@ class _BillEditPageState extends State<BillEditPage> {
       return;
     }
 
+    // Sửa hoá đơn cũng ghi lại idaccount. Trước đây chỗ này rơi về 1 khi trạng
+    // thái đăng nhập chưa sẵn sàng, tức chuyển hoá đơn sang tài khoản admin.
+    final accountId = currentAccountIdOrNull(context);
+    if (accountId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Chưa xác định được tài khoản đăng nhập. '
+              'Vui lòng đăng nhập lại trước khi sửa hoá đơn.'),
+        ),
+      );
+      return;
+    }
+
     final now = DateTime.now();
 
     final updatedBill = BillsCompanion(
       id: drift.Value(widget.id),
-      idaccount: drift.Value(_getAccountId(context)),
+      idaccount: drift.Value(accountId),
       name: drift.Value(name),
       amount: drift.Value(amount),
       dueDate: drift.Value(_selectedDueDate),

@@ -1,5 +1,21 @@
 # Thống nhất giá trị `Classify` cho danh mục Vay/nợ
 
+> ## ✅ ĐÃ CHỌN LỰA CHỌN A — 2026-09-03 (còn 1 bước nhỏ)
+>
+> Backend đã chốt `Vay/no` đúng như khuyến nghị:
+>
+> - `New_Database.md` đã sửa (dòng 87 và 304) → `Check in (Thu, Chi, Vay/no)`. ✅
+> - `sync.service.js` chuẩn hoá mọi biến thể (`Vay/nợ`, `Vay`, `no`, `vay_no`,
+>   `vay_nợ`, `Vay/ng`) về `Vay/no` trước khi ghi. ✅
+> - **Còn thiếu — bước 3:** `sync.validation.js` dòng 103 vẫn chấp nhận danh sách
+>   rộng `['Thu','Chi','Vay/nợ','Vay/no','Vay/ng','Vay','no','thu','chi']`.
+>   Thu hẹp về đúng `['Thu','Chi','Vay/no']` để giá trị sai bị chặn sớm thay vì
+>   trôi xuống tận CHECK constraint. Không gấp: `sync.service.js` đã chuẩn hoá
+>   trước khi ghi nên hiện không có đường nào để giá trị sai lọt xuống CSDL.
+>
+> Phía client không phải đổi gì: hằng số `canonicalDebtClassify` vốn đã là `Vay/no`.
+
+
 **Người nhận:** đội Backend
 **Trạng thái:** cần quyết định + thực hiện phía backend. Phía Client-app đã xử lý xong phần của mình.
 **Mức độ:** không gây lỗi ở hiện tại, nhưng sẽ làm **hỏng toàn bộ đồng bộ danh mục vay/nợ** nếu làm sai thứ tự.

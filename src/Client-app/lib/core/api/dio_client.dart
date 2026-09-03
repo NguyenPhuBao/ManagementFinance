@@ -12,8 +12,17 @@ import 'interceptors/auth_interceptor.dart';
 class DioClient {
   final Dio _dio;
 
-  DioClient({required FlutterSecureStorage secureStorage})
-      : _dio = Dio(
+  /// [authInterceptor] được tiêm từ DI để cả app dùng chung ĐÚNG MỘT instance:
+  /// AuthBloc nghe `sessionExpiredStream` của nó, và tín hiệu đó chỉ có nghĩa
+  /// khi phát ra từ chính interceptor đang nằm trên đường request.
+  ///
+  /// Cố ý KHÔNG lộ interceptor thành thuộc tính public: nơi cần nó đã lấy qua
+  /// `sl<AuthInterceptor>()`, còn thêm thành viên vào giao diện này sẽ bắt bảy
+  /// lớp giả `implements DioClient` trong bộ test phải khai báo theo.
+  DioClient({
+    required FlutterSecureStorage secureStorage,
+    AuthInterceptor? authInterceptor,
+  }) : _dio = Dio(
           BaseOptions(
             baseUrl: AppConstants.baseUrl,
             connectTimeout: AppConstants.connectionTimeout,
@@ -21,9 +30,8 @@ class DioClient {
             headers: {'Content-Type': 'application/json'},
           ),
         ) {
-    // Gắn AuthInterceptor
     _dio.interceptors.add(
-      AuthInterceptor(secureStorage: secureStorage),
+      authInterceptor ?? AuthInterceptor(secureStorage: secureStorage),
     );
   }
 

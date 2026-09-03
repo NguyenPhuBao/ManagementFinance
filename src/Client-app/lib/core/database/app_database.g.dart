@@ -112,6 +112,26 @@ class $WalletsTable extends Wallets with TableInfo<$WalletsTable, Wallet> {
       type: DriftSqlType.string,
       requiredDuringInsert: false,
       defaultValue: const Constant('pending'));
+  static const VerificationMeta _syncRetryCountMeta =
+      const VerificationMeta('syncRetryCount');
+  @override
+  late final GeneratedColumn<int> syncRetryCount = GeneratedColumn<int>(
+      'sync_retry_count', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _syncErrorMeta =
+      const VerificationMeta('syncError');
+  @override
+  late final GeneratedColumn<String> syncError = GeneratedColumn<String>(
+      'sync_error', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _syncBlockedUntilMeta =
+      const VerificationMeta('syncBlockedUntil');
+  @override
+  late final GeneratedColumn<DateTime> syncBlockedUntil =
+      GeneratedColumn<DateTime>('sync_blocked_until', aliasedName, true,
+          type: DriftSqlType.dateTime, requiredDuringInsert: false);
   static const VerificationMeta _updatedAtMeta =
       const VerificationMeta('updatedAt');
   @override
@@ -140,6 +160,9 @@ class $WalletsTable extends Wallets with TableInfo<$WalletsTable, Wallet> {
         bankCassoId,
         status,
         syncStatus,
+        syncRetryCount,
+        syncError,
+        syncBlockedUntil,
         updatedAt,
         deletedAt
       ];
@@ -220,6 +243,22 @@ class $WalletsTable extends Wallets with TableInfo<$WalletsTable, Wallet> {
           syncStatus.isAcceptableOrUnknown(
               data['sync_status']!, _syncStatusMeta));
     }
+    if (data.containsKey('sync_retry_count')) {
+      context.handle(
+          _syncRetryCountMeta,
+          syncRetryCount.isAcceptableOrUnknown(
+              data['sync_retry_count']!, _syncRetryCountMeta));
+    }
+    if (data.containsKey('sync_error')) {
+      context.handle(_syncErrorMeta,
+          syncError.isAcceptableOrUnknown(data['sync_error']!, _syncErrorMeta));
+    }
+    if (data.containsKey('sync_blocked_until')) {
+      context.handle(
+          _syncBlockedUntilMeta,
+          syncBlockedUntil.isAcceptableOrUnknown(
+              data['sync_blocked_until']!, _syncBlockedUntilMeta));
+    }
     if (data.containsKey('updated_at')) {
       context.handle(_updatedAtMeta,
           updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
@@ -267,6 +306,12 @@ class $WalletsTable extends Wallets with TableInfo<$WalletsTable, Wallet> {
           .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
       syncStatus: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}sync_status'])!,
+      syncRetryCount: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}sync_retry_count'])!,
+      syncError: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}sync_error']),
+      syncBlockedUntil: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}sync_blocked_until']),
       updatedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
       deletedAt: attachedDatabase.typeMapping
@@ -299,6 +344,9 @@ class Wallet extends DataClass implements Insertable<Wallet> {
   final String? bankCassoId;
   final String status;
   final String syncStatus;
+  final int syncRetryCount;
+  final String? syncError;
+  final DateTime? syncBlockedUntil;
   final DateTime updatedAt;
   final DateTime? deletedAt;
   const Wallet(
@@ -316,6 +364,9 @@ class Wallet extends DataClass implements Insertable<Wallet> {
       this.bankCassoId,
       required this.status,
       required this.syncStatus,
+      required this.syncRetryCount,
+      this.syncError,
+      this.syncBlockedUntil,
       required this.updatedAt,
       this.deletedAt});
   @override
@@ -337,6 +388,13 @@ class Wallet extends DataClass implements Insertable<Wallet> {
     }
     map['status'] = Variable<String>(status);
     map['sync_status'] = Variable<String>(syncStatus);
+    map['sync_retry_count'] = Variable<int>(syncRetryCount);
+    if (!nullToAbsent || syncError != null) {
+      map['sync_error'] = Variable<String>(syncError);
+    }
+    if (!nullToAbsent || syncBlockedUntil != null) {
+      map['sync_blocked_until'] = Variable<DateTime>(syncBlockedUntil);
+    }
     map['updated_at'] = Variable<DateTime>(updatedAt);
     if (!nullToAbsent || deletedAt != null) {
       map['deleted_at'] = Variable<DateTime>(deletedAt);
@@ -362,6 +420,13 @@ class Wallet extends DataClass implements Insertable<Wallet> {
           : Value(bankCassoId),
       status: Value(status),
       syncStatus: Value(syncStatus),
+      syncRetryCount: Value(syncRetryCount),
+      syncError: syncError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncError),
+      syncBlockedUntil: syncBlockedUntil == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncBlockedUntil),
       updatedAt: Value(updatedAt),
       deletedAt: deletedAt == null && nullToAbsent
           ? const Value.absent()
@@ -387,6 +452,10 @@ class Wallet extends DataClass implements Insertable<Wallet> {
       bankCassoId: serializer.fromJson<String?>(json['bankCassoId']),
       status: serializer.fromJson<String>(json['status']),
       syncStatus: serializer.fromJson<String>(json['syncStatus']),
+      syncRetryCount: serializer.fromJson<int>(json['syncRetryCount']),
+      syncError: serializer.fromJson<String?>(json['syncError']),
+      syncBlockedUntil:
+          serializer.fromJson<DateTime?>(json['syncBlockedUntil']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
     );
@@ -409,6 +478,9 @@ class Wallet extends DataClass implements Insertable<Wallet> {
       'bankCassoId': serializer.toJson<String?>(bankCassoId),
       'status': serializer.toJson<String>(status),
       'syncStatus': serializer.toJson<String>(syncStatus),
+      'syncRetryCount': serializer.toJson<int>(syncRetryCount),
+      'syncError': serializer.toJson<String?>(syncError),
+      'syncBlockedUntil': serializer.toJson<DateTime?>(syncBlockedUntil),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
     };
@@ -429,6 +501,9 @@ class Wallet extends DataClass implements Insertable<Wallet> {
           Value<String?> bankCassoId = const Value.absent(),
           String? status,
           String? syncStatus,
+          int? syncRetryCount,
+          Value<String?> syncError = const Value.absent(),
+          Value<DateTime?> syncBlockedUntil = const Value.absent(),
           DateTime? updatedAt,
           Value<DateTime?> deletedAt = const Value.absent()}) =>
       Wallet(
@@ -446,6 +521,11 @@ class Wallet extends DataClass implements Insertable<Wallet> {
         bankCassoId: bankCassoId.present ? bankCassoId.value : this.bankCassoId,
         status: status ?? this.status,
         syncStatus: syncStatus ?? this.syncStatus,
+        syncRetryCount: syncRetryCount ?? this.syncRetryCount,
+        syncError: syncError.present ? syncError.value : this.syncError,
+        syncBlockedUntil: syncBlockedUntil.present
+            ? syncBlockedUntil.value
+            : this.syncBlockedUntil,
         updatedAt: updatedAt ?? this.updatedAt,
         deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
       );
@@ -469,6 +549,13 @@ class Wallet extends DataClass implements Insertable<Wallet> {
       status: data.status.present ? data.status.value : this.status,
       syncStatus:
           data.syncStatus.present ? data.syncStatus.value : this.syncStatus,
+      syncRetryCount: data.syncRetryCount.present
+          ? data.syncRetryCount.value
+          : this.syncRetryCount,
+      syncError: data.syncError.present ? data.syncError.value : this.syncError,
+      syncBlockedUntil: data.syncBlockedUntil.present
+          ? data.syncBlockedUntil.value
+          : this.syncBlockedUntil,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
     );
@@ -491,6 +578,9 @@ class Wallet extends DataClass implements Insertable<Wallet> {
           ..write('bankCassoId: $bankCassoId, ')
           ..write('status: $status, ')
           ..write('syncStatus: $syncStatus, ')
+          ..write('syncRetryCount: $syncRetryCount, ')
+          ..write('syncError: $syncError, ')
+          ..write('syncBlockedUntil: $syncBlockedUntil, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt')
           ..write(')'))
@@ -513,6 +603,9 @@ class Wallet extends DataClass implements Insertable<Wallet> {
       bankCassoId,
       status,
       syncStatus,
+      syncRetryCount,
+      syncError,
+      syncBlockedUntil,
       updatedAt,
       deletedAt);
   @override
@@ -533,6 +626,9 @@ class Wallet extends DataClass implements Insertable<Wallet> {
           other.bankCassoId == this.bankCassoId &&
           other.status == this.status &&
           other.syncStatus == this.syncStatus &&
+          other.syncRetryCount == this.syncRetryCount &&
+          other.syncError == this.syncError &&
+          other.syncBlockedUntil == this.syncBlockedUntil &&
           other.updatedAt == this.updatedAt &&
           other.deletedAt == this.deletedAt);
 }
@@ -552,6 +648,9 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
   final Value<String?> bankCassoId;
   final Value<String> status;
   final Value<String> syncStatus;
+  final Value<int> syncRetryCount;
+  final Value<String?> syncError;
+  final Value<DateTime?> syncBlockedUntil;
   final Value<DateTime> updatedAt;
   final Value<DateTime?> deletedAt;
   final Value<int> rowid;
@@ -570,6 +669,9 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
     this.bankCassoId = const Value.absent(),
     this.status = const Value.absent(),
     this.syncStatus = const Value.absent(),
+    this.syncRetryCount = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.syncBlockedUntil = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -589,6 +691,9 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
     this.bankCassoId = const Value.absent(),
     this.status = const Value.absent(),
     this.syncStatus = const Value.absent(),
+    this.syncRetryCount = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.syncBlockedUntil = const Value.absent(),
     required DateTime updatedAt,
     this.deletedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -611,6 +716,9 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
     Expression<String>? bankCassoId,
     Expression<String>? status,
     Expression<String>? syncStatus,
+    Expression<int>? syncRetryCount,
+    Expression<String>? syncError,
+    Expression<DateTime>? syncBlockedUntil,
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? deletedAt,
     Expression<int>? rowid,
@@ -630,6 +738,9 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
       if (bankCassoId != null) 'bank_casso_id': bankCassoId,
       if (status != null) 'status': status,
       if (syncStatus != null) 'sync_status': syncStatus,
+      if (syncRetryCount != null) 'sync_retry_count': syncRetryCount,
+      if (syncError != null) 'sync_error': syncError,
+      if (syncBlockedUntil != null) 'sync_blocked_until': syncBlockedUntil,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (deletedAt != null) 'deleted_at': deletedAt,
       if (rowid != null) 'rowid': rowid,
@@ -651,6 +762,9 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
       Value<String?>? bankCassoId,
       Value<String>? status,
       Value<String>? syncStatus,
+      Value<int>? syncRetryCount,
+      Value<String?>? syncError,
+      Value<DateTime?>? syncBlockedUntil,
       Value<DateTime>? updatedAt,
       Value<DateTime?>? deletedAt,
       Value<int>? rowid}) {
@@ -669,6 +783,9 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
       bankCassoId: bankCassoId ?? this.bankCassoId,
       status: status ?? this.status,
       syncStatus: syncStatus ?? this.syncStatus,
+      syncRetryCount: syncRetryCount ?? this.syncRetryCount,
+      syncError: syncError ?? this.syncError,
+      syncBlockedUntil: syncBlockedUntil ?? this.syncBlockedUntil,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
       rowid: rowid ?? this.rowid,
@@ -720,6 +837,15 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
     if (syncStatus.present) {
       map['sync_status'] = Variable<String>(syncStatus.value);
     }
+    if (syncRetryCount.present) {
+      map['sync_retry_count'] = Variable<int>(syncRetryCount.value);
+    }
+    if (syncError.present) {
+      map['sync_error'] = Variable<String>(syncError.value);
+    }
+    if (syncBlockedUntil.present) {
+      map['sync_blocked_until'] = Variable<DateTime>(syncBlockedUntil.value);
+    }
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
@@ -749,6 +875,9 @@ class WalletsCompanion extends UpdateCompanion<Wallet> {
           ..write('bankCassoId: $bankCassoId, ')
           ..write('status: $status, ')
           ..write('syncStatus: $syncStatus, ')
+          ..write('syncRetryCount: $syncRetryCount, ')
+          ..write('syncError: $syncError, ')
+          ..write('syncBlockedUntil: $syncBlockedUntil, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('rowid: $rowid')
@@ -859,6 +988,26 @@ class $TransactionsTable extends Transactions
       type: DriftSqlType.string,
       requiredDuringInsert: false,
       defaultValue: const Constant('pending'));
+  static const VerificationMeta _syncRetryCountMeta =
+      const VerificationMeta('syncRetryCount');
+  @override
+  late final GeneratedColumn<int> syncRetryCount = GeneratedColumn<int>(
+      'sync_retry_count', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _syncErrorMeta =
+      const VerificationMeta('syncError');
+  @override
+  late final GeneratedColumn<String> syncError = GeneratedColumn<String>(
+      'sync_error', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _syncBlockedUntilMeta =
+      const VerificationMeta('syncBlockedUntil');
+  @override
+  late final GeneratedColumn<DateTime> syncBlockedUntil =
+      GeneratedColumn<DateTime>('sync_blocked_until', aliasedName, true,
+          type: DriftSqlType.dateTime, requiredDuringInsert: false);
   static const VerificationMeta _updatedAtMeta =
       const VerificationMeta('updatedAt');
   @override
@@ -892,6 +1041,9 @@ class $TransactionsTable extends Transactions
         bankTranId,
         deletedAt,
         syncStatus,
+        syncRetryCount,
+        syncError,
+        syncBlockedUntil,
         updatedAt,
         isDeleted
       ];
@@ -984,6 +1136,22 @@ class $TransactionsTable extends Transactions
           syncStatus.isAcceptableOrUnknown(
               data['sync_status']!, _syncStatusMeta));
     }
+    if (data.containsKey('sync_retry_count')) {
+      context.handle(
+          _syncRetryCountMeta,
+          syncRetryCount.isAcceptableOrUnknown(
+              data['sync_retry_count']!, _syncRetryCountMeta));
+    }
+    if (data.containsKey('sync_error')) {
+      context.handle(_syncErrorMeta,
+          syncError.isAcceptableOrUnknown(data['sync_error']!, _syncErrorMeta));
+    }
+    if (data.containsKey('sync_blocked_until')) {
+      context.handle(
+          _syncBlockedUntilMeta,
+          syncBlockedUntil.isAcceptableOrUnknown(
+              data['sync_blocked_until']!, _syncBlockedUntilMeta));
+    }
     if (data.containsKey('updated_at')) {
       context.handle(_updatedAtMeta,
           updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
@@ -1033,6 +1201,12 @@ class $TransactionsTable extends Transactions
           .read(DriftSqlType.dateTime, data['${effectivePrefix}deleted_at']),
       syncStatus: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}sync_status'])!,
+      syncRetryCount: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}sync_retry_count'])!,
+      syncError: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}sync_error']),
+      syncBlockedUntil: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}sync_blocked_until']),
       updatedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
       isDeleted: attachedDatabase.typeMapping
@@ -1077,6 +1251,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   /// deletedAt: NULL = đang dùng, có giá trị = đã xóa mềm
   final DateTime? deletedAt;
   final String syncStatus;
+  final int syncRetryCount;
+  final String? syncError;
+  final DateTime? syncBlockedUntil;
   final DateTime updatedAt;
   final bool isDeleted;
   const Transaction(
@@ -1095,6 +1272,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       this.bankTranId,
       this.deletedAt,
       required this.syncStatus,
+      required this.syncRetryCount,
+      this.syncError,
+      this.syncBlockedUntil,
       required this.updatedAt,
       required this.isDeleted});
   @override
@@ -1123,6 +1303,13 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       map['deleted_at'] = Variable<DateTime>(deletedAt);
     }
     map['sync_status'] = Variable<String>(syncStatus);
+    map['sync_retry_count'] = Variable<int>(syncRetryCount);
+    if (!nullToAbsent || syncError != null) {
+      map['sync_error'] = Variable<String>(syncError);
+    }
+    if (!nullToAbsent || syncBlockedUntil != null) {
+      map['sync_blocked_until'] = Variable<DateTime>(syncBlockedUntil);
+    }
     map['updated_at'] = Variable<DateTime>(updatedAt);
     map['is_deleted'] = Variable<bool>(isDeleted);
     return map;
@@ -1153,6 +1340,13 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           ? const Value.absent()
           : Value(deletedAt),
       syncStatus: Value(syncStatus),
+      syncRetryCount: Value(syncRetryCount),
+      syncError: syncError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncError),
+      syncBlockedUntil: syncBlockedUntil == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncBlockedUntil),
       updatedAt: Value(updatedAt),
       isDeleted: Value(isDeleted),
     );
@@ -1177,6 +1371,10 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       bankTranId: serializer.fromJson<String?>(json['bankTranId']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
       syncStatus: serializer.fromJson<String>(json['syncStatus']),
+      syncRetryCount: serializer.fromJson<int>(json['syncRetryCount']),
+      syncError: serializer.fromJson<String?>(json['syncError']),
+      syncBlockedUntil:
+          serializer.fromJson<DateTime?>(json['syncBlockedUntil']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
     );
@@ -1200,6 +1398,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       'bankTranId': serializer.toJson<String?>(bankTranId),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
       'syncStatus': serializer.toJson<String>(syncStatus),
+      'syncRetryCount': serializer.toJson<int>(syncRetryCount),
+      'syncError': serializer.toJson<String?>(syncError),
+      'syncBlockedUntil': serializer.toJson<DateTime?>(syncBlockedUntil),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'isDeleted': serializer.toJson<bool>(isDeleted),
     };
@@ -1221,6 +1422,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           Value<String?> bankTranId = const Value.absent(),
           Value<DateTime?> deletedAt = const Value.absent(),
           String? syncStatus,
+          int? syncRetryCount,
+          Value<String?> syncError = const Value.absent(),
+          Value<DateTime?> syncBlockedUntil = const Value.absent(),
           DateTime? updatedAt,
           bool? isDeleted}) =>
       Transaction(
@@ -1240,6 +1444,11 @@ class Transaction extends DataClass implements Insertable<Transaction> {
         bankTranId: bankTranId.present ? bankTranId.value : this.bankTranId,
         deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
         syncStatus: syncStatus ?? this.syncStatus,
+        syncRetryCount: syncRetryCount ?? this.syncRetryCount,
+        syncError: syncError.present ? syncError.value : this.syncError,
+        syncBlockedUntil: syncBlockedUntil.present
+            ? syncBlockedUntil.value
+            : this.syncBlockedUntil,
         updatedAt: updatedAt ?? this.updatedAt,
         isDeleted: isDeleted ?? this.isDeleted,
       );
@@ -1265,6 +1474,13 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
       syncStatus:
           data.syncStatus.present ? data.syncStatus.value : this.syncStatus,
+      syncRetryCount: data.syncRetryCount.present
+          ? data.syncRetryCount.value
+          : this.syncRetryCount,
+      syncError: data.syncError.present ? data.syncError.value : this.syncError,
+      syncBlockedUntil: data.syncBlockedUntil.present
+          ? data.syncBlockedUntil.value
+          : this.syncBlockedUntil,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
     );
@@ -1288,6 +1504,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           ..write('bankTranId: $bankTranId, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('syncStatus: $syncStatus, ')
+          ..write('syncRetryCount: $syncRetryCount, ')
+          ..write('syncError: $syncError, ')
+          ..write('syncBlockedUntil: $syncBlockedUntil, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('isDeleted: $isDeleted')
           ..write(')'))
@@ -1311,6 +1530,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       bankTranId,
       deletedAt,
       syncStatus,
+      syncRetryCount,
+      syncError,
+      syncBlockedUntil,
       updatedAt,
       isDeleted);
   @override
@@ -1332,6 +1554,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           other.bankTranId == this.bankTranId &&
           other.deletedAt == this.deletedAt &&
           other.syncStatus == this.syncStatus &&
+          other.syncRetryCount == this.syncRetryCount &&
+          other.syncError == this.syncError &&
+          other.syncBlockedUntil == this.syncBlockedUntil &&
           other.updatedAt == this.updatedAt &&
           other.isDeleted == this.isDeleted);
 }
@@ -1352,6 +1577,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
   final Value<String?> bankTranId;
   final Value<DateTime?> deletedAt;
   final Value<String> syncStatus;
+  final Value<int> syncRetryCount;
+  final Value<String?> syncError;
+  final Value<DateTime?> syncBlockedUntil;
   final Value<DateTime> updatedAt;
   final Value<bool> isDeleted;
   final Value<int> rowid;
@@ -1371,6 +1599,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.bankTranId = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.syncStatus = const Value.absent(),
+    this.syncRetryCount = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.syncBlockedUntil = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1391,6 +1622,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.bankTranId = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.syncStatus = const Value.absent(),
+    this.syncRetryCount = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.syncBlockedUntil = const Value.absent(),
     required DateTime updatedAt,
     this.isDeleted = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1417,6 +1651,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Expression<String>? bankTranId,
     Expression<DateTime>? deletedAt,
     Expression<String>? syncStatus,
+    Expression<int>? syncRetryCount,
+    Expression<String>? syncError,
+    Expression<DateTime>? syncBlockedUntil,
     Expression<DateTime>? updatedAt,
     Expression<bool>? isDeleted,
     Expression<int>? rowid,
@@ -1437,6 +1674,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       if (bankTranId != null) 'bank_tran_id': bankTranId,
       if (deletedAt != null) 'deleted_at': deletedAt,
       if (syncStatus != null) 'sync_status': syncStatus,
+      if (syncRetryCount != null) 'sync_retry_count': syncRetryCount,
+      if (syncError != null) 'sync_error': syncError,
+      if (syncBlockedUntil != null) 'sync_blocked_until': syncBlockedUntil,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (isDeleted != null) 'is_deleted': isDeleted,
       if (rowid != null) 'rowid': rowid,
@@ -1459,6 +1699,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       Value<String?>? bankTranId,
       Value<DateTime?>? deletedAt,
       Value<String>? syncStatus,
+      Value<int>? syncRetryCount,
+      Value<String?>? syncError,
+      Value<DateTime?>? syncBlockedUntil,
       Value<DateTime>? updatedAt,
       Value<bool>? isDeleted,
       Value<int>? rowid}) {
@@ -1478,6 +1721,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       bankTranId: bankTranId ?? this.bankTranId,
       deletedAt: deletedAt ?? this.deletedAt,
       syncStatus: syncStatus ?? this.syncStatus,
+      syncRetryCount: syncRetryCount ?? this.syncRetryCount,
+      syncError: syncError ?? this.syncError,
+      syncBlockedUntil: syncBlockedUntil ?? this.syncBlockedUntil,
       updatedAt: updatedAt ?? this.updatedAt,
       isDeleted: isDeleted ?? this.isDeleted,
       rowid: rowid ?? this.rowid,
@@ -1532,6 +1778,15 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     if (syncStatus.present) {
       map['sync_status'] = Variable<String>(syncStatus.value);
     }
+    if (syncRetryCount.present) {
+      map['sync_retry_count'] = Variable<int>(syncRetryCount.value);
+    }
+    if (syncError.present) {
+      map['sync_error'] = Variable<String>(syncError.value);
+    }
+    if (syncBlockedUntil.present) {
+      map['sync_blocked_until'] = Variable<DateTime>(syncBlockedUntil.value);
+    }
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
@@ -1562,6 +1817,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
           ..write('bankTranId: $bankTranId, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('syncStatus: $syncStatus, ')
+          ..write('syncRetryCount: $syncRetryCount, ')
+          ..write('syncError: $syncError, ')
+          ..write('syncBlockedUntil: $syncBlockedUntil, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('rowid: $rowid')
@@ -1672,6 +1930,26 @@ class $CategoriesTable extends Categories
       type: DriftSqlType.string,
       requiredDuringInsert: false,
       defaultValue: const Constant('pending'));
+  static const VerificationMeta _syncRetryCountMeta =
+      const VerificationMeta('syncRetryCount');
+  @override
+  late final GeneratedColumn<int> syncRetryCount = GeneratedColumn<int>(
+      'sync_retry_count', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _syncErrorMeta =
+      const VerificationMeta('syncError');
+  @override
+  late final GeneratedColumn<String> syncError = GeneratedColumn<String>(
+      'sync_error', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _syncBlockedUntilMeta =
+      const VerificationMeta('syncBlockedUntil');
+  @override
+  late final GeneratedColumn<DateTime> syncBlockedUntil =
+      GeneratedColumn<DateTime>('sync_blocked_until', aliasedName, true,
+          type: DriftSqlType.dateTime, requiredDuringInsert: false);
   static const VerificationMeta _updatedAtMeta =
       const VerificationMeta('updatedAt');
   @override
@@ -1693,6 +1971,9 @@ class $CategoriesTable extends Categories
         isLocalOnly,
         deletedAt,
         syncStatus,
+        syncRetryCount,
+        syncError,
+        syncBlockedUntil,
         updatedAt
       ];
   @override
@@ -1768,6 +2049,22 @@ class $CategoriesTable extends Categories
           syncStatus.isAcceptableOrUnknown(
               data['sync_status']!, _syncStatusMeta));
     }
+    if (data.containsKey('sync_retry_count')) {
+      context.handle(
+          _syncRetryCountMeta,
+          syncRetryCount.isAcceptableOrUnknown(
+              data['sync_retry_count']!, _syncRetryCountMeta));
+    }
+    if (data.containsKey('sync_error')) {
+      context.handle(_syncErrorMeta,
+          syncError.isAcceptableOrUnknown(data['sync_error']!, _syncErrorMeta));
+    }
+    if (data.containsKey('sync_blocked_until')) {
+      context.handle(
+          _syncBlockedUntilMeta,
+          syncBlockedUntil.isAcceptableOrUnknown(
+              data['sync_blocked_until']!, _syncBlockedUntilMeta));
+    }
     if (data.containsKey('updated_at')) {
       context.handle(_updatedAtMeta,
           updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
@@ -1809,6 +2106,12 @@ class $CategoriesTable extends Categories
           .read(DriftSqlType.dateTime, data['${effectivePrefix}deleted_at']),
       syncStatus: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}sync_status'])!,
+      syncRetryCount: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}sync_retry_count'])!,
+      syncError: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}sync_error']),
+      syncBlockedUntil: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}sync_blocked_until']),
       updatedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
     );
@@ -1836,6 +2139,9 @@ class Category extends DataClass implements Insertable<Category> {
   /// deletedAt: NULL = đang dùng, có giá trị = đã xóa mềm (đồng bộ với backend)
   final DateTime? deletedAt;
   final String syncStatus;
+  final int syncRetryCount;
+  final String? syncError;
+  final DateTime? syncBlockedUntil;
   final DateTime updatedAt;
   const Category(
       {required this.id,
@@ -1851,6 +2157,9 @@ class Category extends DataClass implements Insertable<Category> {
       required this.isLocalOnly,
       this.deletedAt,
       required this.syncStatus,
+      required this.syncRetryCount,
+      this.syncError,
+      this.syncBlockedUntil,
       required this.updatedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1872,6 +2181,13 @@ class Category extends DataClass implements Insertable<Category> {
       map['deleted_at'] = Variable<DateTime>(deletedAt);
     }
     map['sync_status'] = Variable<String>(syncStatus);
+    map['sync_retry_count'] = Variable<int>(syncRetryCount);
+    if (!nullToAbsent || syncError != null) {
+      map['sync_error'] = Variable<String>(syncError);
+    }
+    if (!nullToAbsent || syncBlockedUntil != null) {
+      map['sync_blocked_until'] = Variable<DateTime>(syncBlockedUntil);
+    }
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
   }
@@ -1895,6 +2211,13 @@ class Category extends DataClass implements Insertable<Category> {
           ? const Value.absent()
           : Value(deletedAt),
       syncStatus: Value(syncStatus),
+      syncRetryCount: Value(syncRetryCount),
+      syncError: syncError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncError),
+      syncBlockedUntil: syncBlockedUntil == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncBlockedUntil),
       updatedAt: Value(updatedAt),
     );
   }
@@ -1916,6 +2239,10 @@ class Category extends DataClass implements Insertable<Category> {
       isLocalOnly: serializer.fromJson<bool>(json['isLocalOnly']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
       syncStatus: serializer.fromJson<String>(json['syncStatus']),
+      syncRetryCount: serializer.fromJson<int>(json['syncRetryCount']),
+      syncError: serializer.fromJson<String?>(json['syncError']),
+      syncBlockedUntil:
+          serializer.fromJson<DateTime?>(json['syncBlockedUntil']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
   }
@@ -1936,6 +2263,9 @@ class Category extends DataClass implements Insertable<Category> {
       'isLocalOnly': serializer.toJson<bool>(isLocalOnly),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
       'syncStatus': serializer.toJson<String>(syncStatus),
+      'syncRetryCount': serializer.toJson<int>(syncRetryCount),
+      'syncError': serializer.toJson<String?>(syncError),
+      'syncBlockedUntil': serializer.toJson<DateTime?>(syncBlockedUntil),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
   }
@@ -1954,6 +2284,9 @@ class Category extends DataClass implements Insertable<Category> {
           bool? isLocalOnly,
           Value<DateTime?> deletedAt = const Value.absent(),
           String? syncStatus,
+          int? syncRetryCount,
+          Value<String?> syncError = const Value.absent(),
+          Value<DateTime?> syncBlockedUntil = const Value.absent(),
           DateTime? updatedAt}) =>
       Category(
         id: id ?? this.id,
@@ -1969,6 +2302,11 @@ class Category extends DataClass implements Insertable<Category> {
         isLocalOnly: isLocalOnly ?? this.isLocalOnly,
         deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
         syncStatus: syncStatus ?? this.syncStatus,
+        syncRetryCount: syncRetryCount ?? this.syncRetryCount,
+        syncError: syncError.present ? syncError.value : this.syncError,
+        syncBlockedUntil: syncBlockedUntil.present
+            ? syncBlockedUntil.value
+            : this.syncBlockedUntil,
         updatedAt: updatedAt ?? this.updatedAt,
       );
   Category copyWithCompanion(CategoriesCompanion data) {
@@ -1988,6 +2326,13 @@ class Category extends DataClass implements Insertable<Category> {
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
       syncStatus:
           data.syncStatus.present ? data.syncStatus.value : this.syncStatus,
+      syncRetryCount: data.syncRetryCount.present
+          ? data.syncRetryCount.value
+          : this.syncRetryCount,
+      syncError: data.syncError.present ? data.syncError.value : this.syncError,
+      syncBlockedUntil: data.syncBlockedUntil.present
+          ? data.syncBlockedUntil.value
+          : this.syncBlockedUntil,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
   }
@@ -2008,6 +2353,9 @@ class Category extends DataClass implements Insertable<Category> {
           ..write('isLocalOnly: $isLocalOnly, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('syncStatus: $syncStatus, ')
+          ..write('syncRetryCount: $syncRetryCount, ')
+          ..write('syncError: $syncError, ')
+          ..write('syncBlockedUntil: $syncBlockedUntil, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
@@ -2028,6 +2376,9 @@ class Category extends DataClass implements Insertable<Category> {
       isLocalOnly,
       deletedAt,
       syncStatus,
+      syncRetryCount,
+      syncError,
+      syncBlockedUntil,
       updatedAt);
   @override
   bool operator ==(Object other) =>
@@ -2046,6 +2397,9 @@ class Category extends DataClass implements Insertable<Category> {
           other.isLocalOnly == this.isLocalOnly &&
           other.deletedAt == this.deletedAt &&
           other.syncStatus == this.syncStatus &&
+          other.syncRetryCount == this.syncRetryCount &&
+          other.syncError == this.syncError &&
+          other.syncBlockedUntil == this.syncBlockedUntil &&
           other.updatedAt == this.updatedAt);
 }
 
@@ -2063,6 +2417,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
   final Value<bool> isLocalOnly;
   final Value<DateTime?> deletedAt;
   final Value<String> syncStatus;
+  final Value<int> syncRetryCount;
+  final Value<String?> syncError;
+  final Value<DateTime?> syncBlockedUntil;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
   const CategoriesCompanion({
@@ -2079,6 +2436,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     this.isLocalOnly = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.syncStatus = const Value.absent(),
+    this.syncRetryCount = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.syncBlockedUntil = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -2096,6 +2456,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     this.isLocalOnly = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.syncStatus = const Value.absent(),
+    this.syncRetryCount = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.syncBlockedUntil = const Value.absent(),
     required DateTime updatedAt,
     this.rowid = const Value.absent(),
   })  : id = Value(id),
@@ -2117,6 +2480,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     Expression<bool>? isLocalOnly,
     Expression<DateTime>? deletedAt,
     Expression<String>? syncStatus,
+    Expression<int>? syncRetryCount,
+    Expression<String>? syncError,
+    Expression<DateTime>? syncBlockedUntil,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
   }) {
@@ -2134,6 +2500,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       if (isLocalOnly != null) 'is_local_only': isLocalOnly,
       if (deletedAt != null) 'deleted_at': deletedAt,
       if (syncStatus != null) 'sync_status': syncStatus,
+      if (syncRetryCount != null) 'sync_retry_count': syncRetryCount,
+      if (syncError != null) 'sync_error': syncError,
+      if (syncBlockedUntil != null) 'sync_blocked_until': syncBlockedUntil,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -2153,6 +2522,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       Value<bool>? isLocalOnly,
       Value<DateTime?>? deletedAt,
       Value<String>? syncStatus,
+      Value<int>? syncRetryCount,
+      Value<String?>? syncError,
+      Value<DateTime?>? syncBlockedUntil,
       Value<DateTime>? updatedAt,
       Value<int>? rowid}) {
     return CategoriesCompanion(
@@ -2169,6 +2541,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       isLocalOnly: isLocalOnly ?? this.isLocalOnly,
       deletedAt: deletedAt ?? this.deletedAt,
       syncStatus: syncStatus ?? this.syncStatus,
+      syncRetryCount: syncRetryCount ?? this.syncRetryCount,
+      syncError: syncError ?? this.syncError,
+      syncBlockedUntil: syncBlockedUntil ?? this.syncBlockedUntil,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
     );
@@ -2216,6 +2591,15 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     if (syncStatus.present) {
       map['sync_status'] = Variable<String>(syncStatus.value);
     }
+    if (syncRetryCount.present) {
+      map['sync_retry_count'] = Variable<int>(syncRetryCount.value);
+    }
+    if (syncError.present) {
+      map['sync_error'] = Variable<String>(syncError.value);
+    }
+    if (syncBlockedUntil.present) {
+      map['sync_blocked_until'] = Variable<DateTime>(syncBlockedUntil.value);
+    }
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
@@ -2241,6 +2625,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
           ..write('isLocalOnly: $isLocalOnly, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('syncStatus: $syncStatus, ')
+          ..write('syncRetryCount: $syncRetryCount, ')
+          ..write('syncError: $syncError, ')
+          ..write('syncBlockedUntil: $syncBlockedUntil, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -3151,6 +3538,26 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
       type: DriftSqlType.string,
       requiredDuringInsert: false,
       defaultValue: const Constant('pending'));
+  static const VerificationMeta _syncRetryCountMeta =
+      const VerificationMeta('syncRetryCount');
+  @override
+  late final GeneratedColumn<int> syncRetryCount = GeneratedColumn<int>(
+      'sync_retry_count', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _syncErrorMeta =
+      const VerificationMeta('syncError');
+  @override
+  late final GeneratedColumn<String> syncError = GeneratedColumn<String>(
+      'sync_error', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _syncBlockedUntilMeta =
+      const VerificationMeta('syncBlockedUntil');
+  @override
+  late final GeneratedColumn<DateTime> syncBlockedUntil =
+      GeneratedColumn<DateTime>('sync_blocked_until', aliasedName, true,
+          type: DriftSqlType.dateTime, requiredDuringInsert: false);
   static const VerificationMeta _updatedAtMeta =
       const VerificationMeta('updatedAt');
   @override
@@ -3179,6 +3586,9 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
         deletedAt,
         isDeleted,
         syncStatus,
+        syncRetryCount,
+        syncError,
+        syncBlockedUntil,
         updatedAt
       ];
   @override
@@ -3296,6 +3706,22 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
           syncStatus.isAcceptableOrUnknown(
               data['sync_status']!, _syncStatusMeta));
     }
+    if (data.containsKey('sync_retry_count')) {
+      context.handle(
+          _syncRetryCountMeta,
+          syncRetryCount.isAcceptableOrUnknown(
+              data['sync_retry_count']!, _syncRetryCountMeta));
+    }
+    if (data.containsKey('sync_error')) {
+      context.handle(_syncErrorMeta,
+          syncError.isAcceptableOrUnknown(data['sync_error']!, _syncErrorMeta));
+    }
+    if (data.containsKey('sync_blocked_until')) {
+      context.handle(
+          _syncBlockedUntilMeta,
+          syncBlockedUntil.isAcceptableOrUnknown(
+              data['sync_blocked_until']!, _syncBlockedUntilMeta));
+    }
     if (data.containsKey('updated_at')) {
       context.handle(_updatedAtMeta,
           updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
@@ -3353,6 +3779,12 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
           .read(DriftSqlType.bool, data['${effectivePrefix}is_deleted'])!,
       syncStatus: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}sync_status'])!,
+      syncRetryCount: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}sync_retry_count'])!,
+      syncError: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}sync_error']),
+      syncBlockedUntil: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}sync_blocked_until']),
       updatedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
     );
@@ -3391,6 +3823,9 @@ class Budget extends DataClass implements Insertable<Budget> {
   final DateTime? deletedAt;
   final bool isDeleted;
   final String syncStatus;
+  final int syncRetryCount;
+  final String? syncError;
+  final DateTime? syncBlockedUntil;
   final DateTime updatedAt;
   const Budget(
       {required this.id,
@@ -3413,6 +3848,9 @@ class Budget extends DataClass implements Insertable<Budget> {
       this.deletedAt,
       required this.isDeleted,
       required this.syncStatus,
+      required this.syncRetryCount,
+      this.syncError,
+      this.syncBlockedUntil,
       required this.updatedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3452,6 +3890,13 @@ class Budget extends DataClass implements Insertable<Budget> {
     }
     map['is_deleted'] = Variable<bool>(isDeleted);
     map['sync_status'] = Variable<String>(syncStatus);
+    map['sync_retry_count'] = Variable<int>(syncRetryCount);
+    if (!nullToAbsent || syncError != null) {
+      map['sync_error'] = Variable<String>(syncError);
+    }
+    if (!nullToAbsent || syncBlockedUntil != null) {
+      map['sync_blocked_until'] = Variable<DateTime>(syncBlockedUntil);
+    }
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
   }
@@ -3492,6 +3937,13 @@ class Budget extends DataClass implements Insertable<Budget> {
           : Value(deletedAt),
       isDeleted: Value(isDeleted),
       syncStatus: Value(syncStatus),
+      syncRetryCount: Value(syncRetryCount),
+      syncError: syncError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncError),
+      syncBlockedUntil: syncBlockedUntil == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncBlockedUntil),
       updatedAt: Value(updatedAt),
     );
   }
@@ -3522,6 +3974,10 @@ class Budget extends DataClass implements Insertable<Budget> {
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
       syncStatus: serializer.fromJson<String>(json['syncStatus']),
+      syncRetryCount: serializer.fromJson<int>(json['syncRetryCount']),
+      syncError: serializer.fromJson<String?>(json['syncError']),
+      syncBlockedUntil:
+          serializer.fromJson<DateTime?>(json['syncBlockedUntil']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
   }
@@ -3550,6 +4006,9 @@ class Budget extends DataClass implements Insertable<Budget> {
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
       'isDeleted': serializer.toJson<bool>(isDeleted),
       'syncStatus': serializer.toJson<String>(syncStatus),
+      'syncRetryCount': serializer.toJson<int>(syncRetryCount),
+      'syncError': serializer.toJson<String?>(syncError),
+      'syncBlockedUntil': serializer.toJson<DateTime?>(syncBlockedUntil),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
   }
@@ -3575,6 +4034,9 @@ class Budget extends DataClass implements Insertable<Budget> {
           Value<DateTime?> deletedAt = const Value.absent(),
           bool? isDeleted,
           String? syncStatus,
+          int? syncRetryCount,
+          Value<String?> syncError = const Value.absent(),
+          Value<DateTime?> syncBlockedUntil = const Value.absent(),
           DateTime? updatedAt}) =>
       Budget(
         id: id ?? this.id,
@@ -3601,6 +4063,11 @@ class Budget extends DataClass implements Insertable<Budget> {
         deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
         isDeleted: isDeleted ?? this.isDeleted,
         syncStatus: syncStatus ?? this.syncStatus,
+        syncRetryCount: syncRetryCount ?? this.syncRetryCount,
+        syncError: syncError.present ? syncError.value : this.syncError,
+        syncBlockedUntil: syncBlockedUntil.present
+            ? syncBlockedUntil.value
+            : this.syncBlockedUntil,
         updatedAt: updatedAt ?? this.updatedAt,
       );
   Budget copyWithCompanion(BudgetsCompanion data) {
@@ -3639,6 +4106,13 @@ class Budget extends DataClass implements Insertable<Budget> {
       isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
       syncStatus:
           data.syncStatus.present ? data.syncStatus.value : this.syncStatus,
+      syncRetryCount: data.syncRetryCount.present
+          ? data.syncRetryCount.value
+          : this.syncRetryCount,
+      syncError: data.syncError.present ? data.syncError.value : this.syncError,
+      syncBlockedUntil: data.syncBlockedUntil.present
+          ? data.syncBlockedUntil.value
+          : this.syncBlockedUntil,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
   }
@@ -3666,6 +4140,9 @@ class Budget extends DataClass implements Insertable<Budget> {
           ..write('deletedAt: $deletedAt, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('syncStatus: $syncStatus, ')
+          ..write('syncRetryCount: $syncRetryCount, ')
+          ..write('syncError: $syncError, ')
+          ..write('syncBlockedUntil: $syncBlockedUntil, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
@@ -3693,6 +4170,9 @@ class Budget extends DataClass implements Insertable<Budget> {
         deletedAt,
         isDeleted,
         syncStatus,
+        syncRetryCount,
+        syncError,
+        syncBlockedUntil,
         updatedAt
       ]);
   @override
@@ -3719,6 +4199,9 @@ class Budget extends DataClass implements Insertable<Budget> {
           other.deletedAt == this.deletedAt &&
           other.isDeleted == this.isDeleted &&
           other.syncStatus == this.syncStatus &&
+          other.syncRetryCount == this.syncRetryCount &&
+          other.syncError == this.syncError &&
+          other.syncBlockedUntil == this.syncBlockedUntil &&
           other.updatedAt == this.updatedAt);
 }
 
@@ -3743,6 +4226,9 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
   final Value<DateTime?> deletedAt;
   final Value<bool> isDeleted;
   final Value<String> syncStatus;
+  final Value<int> syncRetryCount;
+  final Value<String?> syncError;
+  final Value<DateTime?> syncBlockedUntil;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
   const BudgetsCompanion({
@@ -3766,6 +4252,9 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     this.deletedAt = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.syncStatus = const Value.absent(),
+    this.syncRetryCount = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.syncBlockedUntil = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -3790,6 +4279,9 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     this.deletedAt = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.syncStatus = const Value.absent(),
+    this.syncRetryCount = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.syncBlockedUntil = const Value.absent(),
     required DateTime updatedAt,
     this.rowid = const Value.absent(),
   })  : id = Value(id),
@@ -3818,6 +4310,9 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     Expression<DateTime>? deletedAt,
     Expression<bool>? isDeleted,
     Expression<String>? syncStatus,
+    Expression<int>? syncRetryCount,
+    Expression<String>? syncError,
+    Expression<DateTime>? syncBlockedUntil,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
   }) {
@@ -3844,6 +4339,9 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
       if (deletedAt != null) 'deleted_at': deletedAt,
       if (isDeleted != null) 'is_deleted': isDeleted,
       if (syncStatus != null) 'sync_status': syncStatus,
+      if (syncRetryCount != null) 'sync_retry_count': syncRetryCount,
+      if (syncError != null) 'sync_error': syncError,
+      if (syncBlockedUntil != null) 'sync_blocked_until': syncBlockedUntil,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -3870,6 +4368,9 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
       Value<DateTime?>? deletedAt,
       Value<bool>? isDeleted,
       Value<String>? syncStatus,
+      Value<int>? syncRetryCount,
+      Value<String?>? syncError,
+      Value<DateTime?>? syncBlockedUntil,
       Value<DateTime>? updatedAt,
       Value<int>? rowid}) {
     return BudgetsCompanion(
@@ -3894,6 +4395,9 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
       deletedAt: deletedAt ?? this.deletedAt,
       isDeleted: isDeleted ?? this.isDeleted,
       syncStatus: syncStatus ?? this.syncStatus,
+      syncRetryCount: syncRetryCount ?? this.syncRetryCount,
+      syncError: syncError ?? this.syncError,
+      syncBlockedUntil: syncBlockedUntil ?? this.syncBlockedUntil,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
     );
@@ -3964,6 +4468,15 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     if (syncStatus.present) {
       map['sync_status'] = Variable<String>(syncStatus.value);
     }
+    if (syncRetryCount.present) {
+      map['sync_retry_count'] = Variable<int>(syncRetryCount.value);
+    }
+    if (syncError.present) {
+      map['sync_error'] = Variable<String>(syncError.value);
+    }
+    if (syncBlockedUntil.present) {
+      map['sync_blocked_until'] = Variable<DateTime>(syncBlockedUntil.value);
+    }
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
@@ -3996,6 +4509,9 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
           ..write('deletedAt: $deletedAt, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('syncStatus: $syncStatus, ')
+          ..write('syncRetryCount: $syncRetryCount, ')
+          ..write('syncError: $syncError, ')
+          ..write('syncBlockedUntil: $syncBlockedUntil, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -4147,6 +4663,26 @@ class $BillsTable extends Bills with TableInfo<$BillsTable, Bill> {
       type: DriftSqlType.string,
       requiredDuringInsert: false,
       defaultValue: const Constant('pending'));
+  static const VerificationMeta _syncRetryCountMeta =
+      const VerificationMeta('syncRetryCount');
+  @override
+  late final GeneratedColumn<int> syncRetryCount = GeneratedColumn<int>(
+      'sync_retry_count', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _syncErrorMeta =
+      const VerificationMeta('syncError');
+  @override
+  late final GeneratedColumn<String> syncError = GeneratedColumn<String>(
+      'sync_error', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _syncBlockedUntilMeta =
+      const VerificationMeta('syncBlockedUntil');
+  @override
+  late final GeneratedColumn<DateTime> syncBlockedUntil =
+      GeneratedColumn<DateTime>('sync_blocked_until', aliasedName, true,
+          type: DriftSqlType.dateTime, requiredDuringInsert: false);
   static const VerificationMeta _updatedAtMeta =
       const VerificationMeta('updatedAt');
   @override
@@ -4175,6 +4711,9 @@ class $BillsTable extends Bills with TableInfo<$BillsTable, Bill> {
         deletedAt,
         isDeleted,
         syncStatus,
+        syncRetryCount,
+        syncError,
+        syncBlockedUntil,
         updatedAt
       ];
   @override
@@ -4288,6 +4827,22 @@ class $BillsTable extends Bills with TableInfo<$BillsTable, Bill> {
           syncStatus.isAcceptableOrUnknown(
               data['sync_status']!, _syncStatusMeta));
     }
+    if (data.containsKey('sync_retry_count')) {
+      context.handle(
+          _syncRetryCountMeta,
+          syncRetryCount.isAcceptableOrUnknown(
+              data['sync_retry_count']!, _syncRetryCountMeta));
+    }
+    if (data.containsKey('sync_error')) {
+      context.handle(_syncErrorMeta,
+          syncError.isAcceptableOrUnknown(data['sync_error']!, _syncErrorMeta));
+    }
+    if (data.containsKey('sync_blocked_until')) {
+      context.handle(
+          _syncBlockedUntilMeta,
+          syncBlockedUntil.isAcceptableOrUnknown(
+              data['sync_blocked_until']!, _syncBlockedUntilMeta));
+    }
     if (data.containsKey('updated_at')) {
       context.handle(_updatedAtMeta,
           updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
@@ -4343,6 +4898,12 @@ class $BillsTable extends Bills with TableInfo<$BillsTable, Bill> {
           .read(DriftSqlType.bool, data['${effectivePrefix}is_deleted'])!,
       syncStatus: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}sync_status'])!,
+      syncRetryCount: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}sync_retry_count'])!,
+      syncError: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}sync_error']),
+      syncBlockedUntil: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}sync_blocked_until']),
       updatedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
     );
@@ -4396,6 +4957,9 @@ class Bill extends DataClass implements Insertable<Bill> {
   final DateTime? deletedAt;
   final bool isDeleted;
   final String syncStatus;
+  final int syncRetryCount;
+  final String? syncError;
+  final DateTime? syncBlockedUntil;
   final DateTime updatedAt;
   const Bill(
       {required this.id,
@@ -4418,6 +4982,9 @@ class Bill extends DataClass implements Insertable<Bill> {
       this.deletedAt,
       required this.isDeleted,
       required this.syncStatus,
+      required this.syncRetryCount,
+      this.syncError,
+      this.syncBlockedUntil,
       required this.updatedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -4452,6 +5019,13 @@ class Bill extends DataClass implements Insertable<Bill> {
     }
     map['is_deleted'] = Variable<bool>(isDeleted);
     map['sync_status'] = Variable<String>(syncStatus);
+    map['sync_retry_count'] = Variable<int>(syncRetryCount);
+    if (!nullToAbsent || syncError != null) {
+      map['sync_error'] = Variable<String>(syncError);
+    }
+    if (!nullToAbsent || syncBlockedUntil != null) {
+      map['sync_blocked_until'] = Variable<DateTime>(syncBlockedUntil);
+    }
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
   }
@@ -4488,6 +5062,13 @@ class Bill extends DataClass implements Insertable<Bill> {
           : Value(deletedAt),
       isDeleted: Value(isDeleted),
       syncStatus: Value(syncStatus),
+      syncRetryCount: Value(syncRetryCount),
+      syncError: syncError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncError),
+      syncBlockedUntil: syncBlockedUntil == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncBlockedUntil),
       updatedAt: Value(updatedAt),
     );
   }
@@ -4516,6 +5097,10 @@ class Bill extends DataClass implements Insertable<Bill> {
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
       syncStatus: serializer.fromJson<String>(json['syncStatus']),
+      syncRetryCount: serializer.fromJson<int>(json['syncRetryCount']),
+      syncError: serializer.fromJson<String?>(json['syncError']),
+      syncBlockedUntil:
+          serializer.fromJson<DateTime?>(json['syncBlockedUntil']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
   }
@@ -4543,6 +5128,9 @@ class Bill extends DataClass implements Insertable<Bill> {
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
       'isDeleted': serializer.toJson<bool>(isDeleted),
       'syncStatus': serializer.toJson<String>(syncStatus),
+      'syncRetryCount': serializer.toJson<int>(syncRetryCount),
+      'syncError': serializer.toJson<String?>(syncError),
+      'syncBlockedUntil': serializer.toJson<DateTime?>(syncBlockedUntil),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
   }
@@ -4568,6 +5156,9 @@ class Bill extends DataClass implements Insertable<Bill> {
           Value<DateTime?> deletedAt = const Value.absent(),
           bool? isDeleted,
           String? syncStatus,
+          int? syncRetryCount,
+          Value<String?> syncError = const Value.absent(),
+          Value<DateTime?> syncBlockedUntil = const Value.absent(),
           DateTime? updatedAt}) =>
       Bill(
         id: id ?? this.id,
@@ -4592,6 +5183,11 @@ class Bill extends DataClass implements Insertable<Bill> {
         deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
         isDeleted: isDeleted ?? this.isDeleted,
         syncStatus: syncStatus ?? this.syncStatus,
+        syncRetryCount: syncRetryCount ?? this.syncRetryCount,
+        syncError: syncError.present ? syncError.value : this.syncError,
+        syncBlockedUntil: syncBlockedUntil.present
+            ? syncBlockedUntil.value
+            : this.syncBlockedUntil,
         updatedAt: updatedAt ?? this.updatedAt,
       );
   Bill copyWithCompanion(BillsCompanion data) {
@@ -4625,6 +5221,13 @@ class Bill extends DataClass implements Insertable<Bill> {
       isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
       syncStatus:
           data.syncStatus.present ? data.syncStatus.value : this.syncStatus,
+      syncRetryCount: data.syncRetryCount.present
+          ? data.syncRetryCount.value
+          : this.syncRetryCount,
+      syncError: data.syncError.present ? data.syncError.value : this.syncError,
+      syncBlockedUntil: data.syncBlockedUntil.present
+          ? data.syncBlockedUntil.value
+          : this.syncBlockedUntil,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
   }
@@ -4652,6 +5255,9 @@ class Bill extends DataClass implements Insertable<Bill> {
           ..write('deletedAt: $deletedAt, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('syncStatus: $syncStatus, ')
+          ..write('syncRetryCount: $syncRetryCount, ')
+          ..write('syncError: $syncError, ')
+          ..write('syncBlockedUntil: $syncBlockedUntil, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
@@ -4679,6 +5285,9 @@ class Bill extends DataClass implements Insertable<Bill> {
         deletedAt,
         isDeleted,
         syncStatus,
+        syncRetryCount,
+        syncError,
+        syncBlockedUntil,
         updatedAt
       ]);
   @override
@@ -4705,6 +5314,9 @@ class Bill extends DataClass implements Insertable<Bill> {
           other.deletedAt == this.deletedAt &&
           other.isDeleted == this.isDeleted &&
           other.syncStatus == this.syncStatus &&
+          other.syncRetryCount == this.syncRetryCount &&
+          other.syncError == this.syncError &&
+          other.syncBlockedUntil == this.syncBlockedUntil &&
           other.updatedAt == this.updatedAt);
 }
 
@@ -4729,6 +5341,9 @@ class BillsCompanion extends UpdateCompanion<Bill> {
   final Value<DateTime?> deletedAt;
   final Value<bool> isDeleted;
   final Value<String> syncStatus;
+  final Value<int> syncRetryCount;
+  final Value<String?> syncError;
+  final Value<DateTime?> syncBlockedUntil;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
   const BillsCompanion({
@@ -4752,6 +5367,9 @@ class BillsCompanion extends UpdateCompanion<Bill> {
     this.deletedAt = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.syncStatus = const Value.absent(),
+    this.syncRetryCount = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.syncBlockedUntil = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -4776,6 +5394,9 @@ class BillsCompanion extends UpdateCompanion<Bill> {
     this.deletedAt = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.syncStatus = const Value.absent(),
+    this.syncRetryCount = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.syncBlockedUntil = const Value.absent(),
     required DateTime updatedAt,
     this.rowid = const Value.absent(),
   })  : id = Value(id),
@@ -4805,6 +5426,9 @@ class BillsCompanion extends UpdateCompanion<Bill> {
     Expression<DateTime>? deletedAt,
     Expression<bool>? isDeleted,
     Expression<String>? syncStatus,
+    Expression<int>? syncRetryCount,
+    Expression<String>? syncError,
+    Expression<DateTime>? syncBlockedUntil,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
   }) {
@@ -4829,6 +5453,9 @@ class BillsCompanion extends UpdateCompanion<Bill> {
       if (deletedAt != null) 'deleted_at': deletedAt,
       if (isDeleted != null) 'is_deleted': isDeleted,
       if (syncStatus != null) 'sync_status': syncStatus,
+      if (syncRetryCount != null) 'sync_retry_count': syncRetryCount,
+      if (syncError != null) 'sync_error': syncError,
+      if (syncBlockedUntil != null) 'sync_blocked_until': syncBlockedUntil,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -4855,6 +5482,9 @@ class BillsCompanion extends UpdateCompanion<Bill> {
       Value<DateTime?>? deletedAt,
       Value<bool>? isDeleted,
       Value<String>? syncStatus,
+      Value<int>? syncRetryCount,
+      Value<String?>? syncError,
+      Value<DateTime?>? syncBlockedUntil,
       Value<DateTime>? updatedAt,
       Value<int>? rowid}) {
     return BillsCompanion(
@@ -4878,6 +5508,9 @@ class BillsCompanion extends UpdateCompanion<Bill> {
       deletedAt: deletedAt ?? this.deletedAt,
       isDeleted: isDeleted ?? this.isDeleted,
       syncStatus: syncStatus ?? this.syncStatus,
+      syncRetryCount: syncRetryCount ?? this.syncRetryCount,
+      syncError: syncError ?? this.syncError,
+      syncBlockedUntil: syncBlockedUntil ?? this.syncBlockedUntil,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
     );
@@ -4946,6 +5579,15 @@ class BillsCompanion extends UpdateCompanion<Bill> {
     if (syncStatus.present) {
       map['sync_status'] = Variable<String>(syncStatus.value);
     }
+    if (syncRetryCount.present) {
+      map['sync_retry_count'] = Variable<int>(syncRetryCount.value);
+    }
+    if (syncError.present) {
+      map['sync_error'] = Variable<String>(syncError.value);
+    }
+    if (syncBlockedUntil.present) {
+      map['sync_blocked_until'] = Variable<DateTime>(syncBlockedUntil.value);
+    }
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
@@ -4978,6 +5620,9 @@ class BillsCompanion extends UpdateCompanion<Bill> {
           ..write('deletedAt: $deletedAt, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('syncStatus: $syncStatus, ')
+          ..write('syncRetryCount: $syncRetryCount, ')
+          ..write('syncError: $syncError, ')
+          ..write('syncBlockedUntil: $syncBlockedUntil, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -5121,6 +5766,26 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
       type: DriftSqlType.string,
       requiredDuringInsert: false,
       defaultValue: const Constant('pending'));
+  static const VerificationMeta _syncRetryCountMeta =
+      const VerificationMeta('syncRetryCount');
+  @override
+  late final GeneratedColumn<int> syncRetryCount = GeneratedColumn<int>(
+      'sync_retry_count', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _syncErrorMeta =
+      const VerificationMeta('syncError');
+  @override
+  late final GeneratedColumn<String> syncError = GeneratedColumn<String>(
+      'sync_error', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _syncBlockedUntilMeta =
+      const VerificationMeta('syncBlockedUntil');
+  @override
+  late final GeneratedColumn<DateTime> syncBlockedUntil =
+      GeneratedColumn<DateTime>('sync_blocked_until', aliasedName, true,
+          type: DriftSqlType.dateTime, requiredDuringInsert: false);
   static const VerificationMeta _updatedAtMeta =
       const VerificationMeta('updatedAt');
   @override
@@ -5148,6 +5813,9 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
         deletedAt,
         isDeleted,
         syncStatus,
+        syncRetryCount,
+        syncError,
+        syncBlockedUntil,
         updatedAt
       ];
   @override
@@ -5263,6 +5931,22 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
           syncStatus.isAcceptableOrUnknown(
               data['sync_status']!, _syncStatusMeta));
     }
+    if (data.containsKey('sync_retry_count')) {
+      context.handle(
+          _syncRetryCountMeta,
+          syncRetryCount.isAcceptableOrUnknown(
+              data['sync_retry_count']!, _syncRetryCountMeta));
+    }
+    if (data.containsKey('sync_error')) {
+      context.handle(_syncErrorMeta,
+          syncError.isAcceptableOrUnknown(data['sync_error']!, _syncErrorMeta));
+    }
+    if (data.containsKey('sync_blocked_until')) {
+      context.handle(
+          _syncBlockedUntilMeta,
+          syncBlockedUntil.isAcceptableOrUnknown(
+              data['sync_blocked_until']!, _syncBlockedUntilMeta));
+    }
     if (data.containsKey('updated_at')) {
       context.handle(_updatedAtMeta,
           updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
@@ -5317,6 +6001,12 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
           .read(DriftSqlType.bool, data['${effectivePrefix}is_deleted'])!,
       syncStatus: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}sync_status'])!,
+      syncRetryCount: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}sync_retry_count'])!,
+      syncError: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}sync_error']),
+      syncBlockedUntil: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}sync_blocked_until']),
       updatedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
     );
@@ -5360,6 +6050,9 @@ class Goal extends DataClass implements Insertable<Goal> {
   final DateTime? deletedAt;
   final bool isDeleted;
   final String syncStatus;
+  final int syncRetryCount;
+  final String? syncError;
+  final DateTime? syncBlockedUntil;
   final DateTime updatedAt;
   const Goal(
       {required this.id,
@@ -5381,6 +6074,9 @@ class Goal extends DataClass implements Insertable<Goal> {
       this.deletedAt,
       required this.isDeleted,
       required this.syncStatus,
+      required this.syncRetryCount,
+      this.syncError,
+      this.syncBlockedUntil,
       required this.updatedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -5416,6 +6112,13 @@ class Goal extends DataClass implements Insertable<Goal> {
     }
     map['is_deleted'] = Variable<bool>(isDeleted);
     map['sync_status'] = Variable<String>(syncStatus);
+    map['sync_retry_count'] = Variable<int>(syncRetryCount);
+    if (!nullToAbsent || syncError != null) {
+      map['sync_error'] = Variable<String>(syncError);
+    }
+    if (!nullToAbsent || syncBlockedUntil != null) {
+      map['sync_blocked_until'] = Variable<DateTime>(syncBlockedUntil);
+    }
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
   }
@@ -5453,6 +6156,13 @@ class Goal extends DataClass implements Insertable<Goal> {
           : Value(deletedAt),
       isDeleted: Value(isDeleted),
       syncStatus: Value(syncStatus),
+      syncRetryCount: Value(syncRetryCount),
+      syncError: syncError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncError),
+      syncBlockedUntil: syncBlockedUntil == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncBlockedUntil),
       updatedAt: Value(updatedAt),
     );
   }
@@ -5481,6 +6191,10 @@ class Goal extends DataClass implements Insertable<Goal> {
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
       syncStatus: serializer.fromJson<String>(json['syncStatus']),
+      syncRetryCount: serializer.fromJson<int>(json['syncRetryCount']),
+      syncError: serializer.fromJson<String?>(json['syncError']),
+      syncBlockedUntil:
+          serializer.fromJson<DateTime?>(json['syncBlockedUntil']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
   }
@@ -5507,6 +6221,9 @@ class Goal extends DataClass implements Insertable<Goal> {
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
       'isDeleted': serializer.toJson<bool>(isDeleted),
       'syncStatus': serializer.toJson<String>(syncStatus),
+      'syncRetryCount': serializer.toJson<int>(syncRetryCount),
+      'syncError': serializer.toJson<String?>(syncError),
+      'syncBlockedUntil': serializer.toJson<DateTime?>(syncBlockedUntil),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
   }
@@ -5531,6 +6248,9 @@ class Goal extends DataClass implements Insertable<Goal> {
           Value<DateTime?> deletedAt = const Value.absent(),
           bool? isDeleted,
           String? syncStatus,
+          int? syncRetryCount,
+          Value<String?> syncError = const Value.absent(),
+          Value<DateTime?> syncBlockedUntil = const Value.absent(),
           DateTime? updatedAt}) =>
       Goal(
         id: id ?? this.id,
@@ -5556,6 +6276,11 @@ class Goal extends DataClass implements Insertable<Goal> {
         deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
         isDeleted: isDeleted ?? this.isDeleted,
         syncStatus: syncStatus ?? this.syncStatus,
+        syncRetryCount: syncRetryCount ?? this.syncRetryCount,
+        syncError: syncError.present ? syncError.value : this.syncError,
+        syncBlockedUntil: syncBlockedUntil.present
+            ? syncBlockedUntil.value
+            : this.syncBlockedUntil,
         updatedAt: updatedAt ?? this.updatedAt,
       );
   Goal copyWithCompanion(GoalsCompanion data) {
@@ -5593,6 +6318,13 @@ class Goal extends DataClass implements Insertable<Goal> {
       isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
       syncStatus:
           data.syncStatus.present ? data.syncStatus.value : this.syncStatus,
+      syncRetryCount: data.syncRetryCount.present
+          ? data.syncRetryCount.value
+          : this.syncRetryCount,
+      syncError: data.syncError.present ? data.syncError.value : this.syncError,
+      syncBlockedUntil: data.syncBlockedUntil.present
+          ? data.syncBlockedUntil.value
+          : this.syncBlockedUntil,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
   }
@@ -5619,33 +6351,40 @@ class Goal extends DataClass implements Insertable<Goal> {
           ..write('deletedAt: $deletedAt, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('syncStatus: $syncStatus, ')
+          ..write('syncRetryCount: $syncRetryCount, ')
+          ..write('syncError: $syncError, ')
+          ..write('syncBlockedUntil: $syncBlockedUntil, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
-      id,
-      idaccount,
-      name,
-      targetAmount,
-      currentAmount,
-      startDate,
-      targetDate,
-      walletId,
-      cycleTakeMoney,
-      timeCycleTakeMoney,
-      recurrence,
-      timeRecurrence,
-      icon,
-      colour,
-      note,
-      isCompleted,
-      deletedAt,
-      isDeleted,
-      syncStatus,
-      updatedAt);
+  int get hashCode => Object.hashAll([
+        id,
+        idaccount,
+        name,
+        targetAmount,
+        currentAmount,
+        startDate,
+        targetDate,
+        walletId,
+        cycleTakeMoney,
+        timeCycleTakeMoney,
+        recurrence,
+        timeRecurrence,
+        icon,
+        colour,
+        note,
+        isCompleted,
+        deletedAt,
+        isDeleted,
+        syncStatus,
+        syncRetryCount,
+        syncError,
+        syncBlockedUntil,
+        updatedAt
+      ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -5669,6 +6408,9 @@ class Goal extends DataClass implements Insertable<Goal> {
           other.deletedAt == this.deletedAt &&
           other.isDeleted == this.isDeleted &&
           other.syncStatus == this.syncStatus &&
+          other.syncRetryCount == this.syncRetryCount &&
+          other.syncError == this.syncError &&
+          other.syncBlockedUntil == this.syncBlockedUntil &&
           other.updatedAt == this.updatedAt);
 }
 
@@ -5692,6 +6434,9 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
   final Value<DateTime?> deletedAt;
   final Value<bool> isDeleted;
   final Value<String> syncStatus;
+  final Value<int> syncRetryCount;
+  final Value<String?> syncError;
+  final Value<DateTime?> syncBlockedUntil;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
   const GoalsCompanion({
@@ -5714,6 +6459,9 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     this.deletedAt = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.syncStatus = const Value.absent(),
+    this.syncRetryCount = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.syncBlockedUntil = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -5737,6 +6485,9 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     this.deletedAt = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.syncStatus = const Value.absent(),
+    this.syncRetryCount = const Value.absent(),
+    this.syncError = const Value.absent(),
+    this.syncBlockedUntil = const Value.absent(),
     required DateTime updatedAt,
     this.rowid = const Value.absent(),
   })  : id = Value(id),
@@ -5765,6 +6516,9 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     Expression<DateTime>? deletedAt,
     Expression<bool>? isDeleted,
     Expression<String>? syncStatus,
+    Expression<int>? syncRetryCount,
+    Expression<String>? syncError,
+    Expression<DateTime>? syncBlockedUntil,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
   }) {
@@ -5789,6 +6543,9 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
       if (deletedAt != null) 'deleted_at': deletedAt,
       if (isDeleted != null) 'is_deleted': isDeleted,
       if (syncStatus != null) 'sync_status': syncStatus,
+      if (syncRetryCount != null) 'sync_retry_count': syncRetryCount,
+      if (syncError != null) 'sync_error': syncError,
+      if (syncBlockedUntil != null) 'sync_blocked_until': syncBlockedUntil,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -5814,6 +6571,9 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
       Value<DateTime?>? deletedAt,
       Value<bool>? isDeleted,
       Value<String>? syncStatus,
+      Value<int>? syncRetryCount,
+      Value<String?>? syncError,
+      Value<DateTime?>? syncBlockedUntil,
       Value<DateTime>? updatedAt,
       Value<int>? rowid}) {
     return GoalsCompanion(
@@ -5836,6 +6596,9 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
       deletedAt: deletedAt ?? this.deletedAt,
       isDeleted: isDeleted ?? this.isDeleted,
       syncStatus: syncStatus ?? this.syncStatus,
+      syncRetryCount: syncRetryCount ?? this.syncRetryCount,
+      syncError: syncError ?? this.syncError,
+      syncBlockedUntil: syncBlockedUntil ?? this.syncBlockedUntil,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
     );
@@ -5902,6 +6665,15 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     if (syncStatus.present) {
       map['sync_status'] = Variable<String>(syncStatus.value);
     }
+    if (syncRetryCount.present) {
+      map['sync_retry_count'] = Variable<int>(syncRetryCount.value);
+    }
+    if (syncError.present) {
+      map['sync_error'] = Variable<String>(syncError.value);
+    }
+    if (syncBlockedUntil.present) {
+      map['sync_blocked_until'] = Variable<DateTime>(syncBlockedUntil.value);
+    }
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
@@ -5933,6 +6705,9 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
           ..write('deletedAt: $deletedAt, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('syncStatus: $syncStatus, ')
+          ..write('syncRetryCount: $syncRetryCount, ')
+          ..write('syncError: $syncError, ')
+          ..write('syncBlockedUntil: $syncBlockedUntil, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -5991,6 +6766,9 @@ typedef $$WalletsTableCreateCompanionBuilder = WalletsCompanion Function({
   Value<String?> bankCassoId,
   Value<String> status,
   Value<String> syncStatus,
+  Value<int> syncRetryCount,
+  Value<String?> syncError,
+  Value<DateTime?> syncBlockedUntil,
   required DateTime updatedAt,
   Value<DateTime?> deletedAt,
   Value<int> rowid,
@@ -6010,6 +6788,9 @@ typedef $$WalletsTableUpdateCompanionBuilder = WalletsCompanion Function({
   Value<String?> bankCassoId,
   Value<String> status,
   Value<String> syncStatus,
+  Value<int> syncRetryCount,
+  Value<String?> syncError,
+  Value<DateTime?> syncBlockedUntil,
   Value<DateTime> updatedAt,
   Value<DateTime?> deletedAt,
   Value<int> rowid,
@@ -6085,6 +6866,17 @@ class $$WalletsTableFilterComposer
 
   ColumnFilters<String> get syncStatus => $composableBuilder(
       column: $table.syncStatus, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get syncRetryCount => $composableBuilder(
+      column: $table.syncRetryCount,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get syncError => $composableBuilder(
+      column: $table.syncError, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get syncBlockedUntil => $composableBuilder(
+      column: $table.syncBlockedUntil,
+      builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnFilters(column));
@@ -6166,6 +6958,17 @@ class $$WalletsTableOrderingComposer
   ColumnOrderings<String> get syncStatus => $composableBuilder(
       column: $table.syncStatus, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get syncRetryCount => $composableBuilder(
+      column: $table.syncRetryCount,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get syncError => $composableBuilder(
+      column: $table.syncError, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get syncBlockedUntil => $composableBuilder(
+      column: $table.syncBlockedUntil,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
 
@@ -6223,6 +7026,15 @@ class $$WalletsTableAnnotationComposer
 
   GeneratedColumn<String> get syncStatus => $composableBuilder(
       column: $table.syncStatus, builder: (column) => column);
+
+  GeneratedColumn<int> get syncRetryCount => $composableBuilder(
+      column: $table.syncRetryCount, builder: (column) => column);
+
+  GeneratedColumn<String> get syncError =>
+      $composableBuilder(column: $table.syncError, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get syncBlockedUntil => $composableBuilder(
+      column: $table.syncBlockedUntil, builder: (column) => column);
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
@@ -6289,6 +7101,9 @@ class $$WalletsTableTableManager extends RootTableManager<
             Value<String?> bankCassoId = const Value.absent(),
             Value<String> status = const Value.absent(),
             Value<String> syncStatus = const Value.absent(),
+            Value<int> syncRetryCount = const Value.absent(),
+            Value<String?> syncError = const Value.absent(),
+            Value<DateTime?> syncBlockedUntil = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<DateTime?> deletedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
@@ -6308,6 +7123,9 @@ class $$WalletsTableTableManager extends RootTableManager<
             bankCassoId: bankCassoId,
             status: status,
             syncStatus: syncStatus,
+            syncRetryCount: syncRetryCount,
+            syncError: syncError,
+            syncBlockedUntil: syncBlockedUntil,
             updatedAt: updatedAt,
             deletedAt: deletedAt,
             rowid: rowid,
@@ -6327,6 +7145,9 @@ class $$WalletsTableTableManager extends RootTableManager<
             Value<String?> bankCassoId = const Value.absent(),
             Value<String> status = const Value.absent(),
             Value<String> syncStatus = const Value.absent(),
+            Value<int> syncRetryCount = const Value.absent(),
+            Value<String?> syncError = const Value.absent(),
+            Value<DateTime?> syncBlockedUntil = const Value.absent(),
             required DateTime updatedAt,
             Value<DateTime?> deletedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
@@ -6346,6 +7167,9 @@ class $$WalletsTableTableManager extends RootTableManager<
             bankCassoId: bankCassoId,
             status: status,
             syncStatus: syncStatus,
+            syncRetryCount: syncRetryCount,
+            syncError: syncError,
+            syncBlockedUntil: syncBlockedUntil,
             updatedAt: updatedAt,
             deletedAt: deletedAt,
             rowid: rowid,
@@ -6410,6 +7234,9 @@ typedef $$TransactionsTableCreateCompanionBuilder = TransactionsCompanion
   Value<String?> bankTranId,
   Value<DateTime?> deletedAt,
   Value<String> syncStatus,
+  Value<int> syncRetryCount,
+  Value<String?> syncError,
+  Value<DateTime?> syncBlockedUntil,
   required DateTime updatedAt,
   Value<bool> isDeleted,
   Value<int> rowid,
@@ -6431,6 +7258,9 @@ typedef $$TransactionsTableUpdateCompanionBuilder = TransactionsCompanion
   Value<String?> bankTranId,
   Value<DateTime?> deletedAt,
   Value<String> syncStatus,
+  Value<int> syncRetryCount,
+  Value<String?> syncError,
+  Value<DateTime?> syncBlockedUntil,
   Value<DateTime> updatedAt,
   Value<bool> isDeleted,
   Value<int> rowid,
@@ -6506,6 +7336,17 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<String> get syncStatus => $composableBuilder(
       column: $table.syncStatus, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get syncRetryCount => $composableBuilder(
+      column: $table.syncRetryCount,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get syncError => $composableBuilder(
+      column: $table.syncError, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get syncBlockedUntil => $composableBuilder(
+      column: $table.syncBlockedUntil,
+      builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnFilters(column));
@@ -6586,6 +7427,17 @@ class $$TransactionsTableOrderingComposer
   ColumnOrderings<String> get syncStatus => $composableBuilder(
       column: $table.syncStatus, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get syncRetryCount => $composableBuilder(
+      column: $table.syncRetryCount,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get syncError => $composableBuilder(
+      column: $table.syncError, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get syncBlockedUntil => $composableBuilder(
+      column: $table.syncBlockedUntil,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
 
@@ -6664,6 +7516,15 @@ class $$TransactionsTableAnnotationComposer
   GeneratedColumn<String> get syncStatus => $composableBuilder(
       column: $table.syncStatus, builder: (column) => column);
 
+  GeneratedColumn<int> get syncRetryCount => $composableBuilder(
+      column: $table.syncRetryCount, builder: (column) => column);
+
+  GeneratedColumn<String> get syncError =>
+      $composableBuilder(column: $table.syncError, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get syncBlockedUntil => $composableBuilder(
+      column: $table.syncBlockedUntil, builder: (column) => column);
+
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 
@@ -6729,6 +7590,9 @@ class $$TransactionsTableTableManager extends RootTableManager<
             Value<String?> bankTranId = const Value.absent(),
             Value<DateTime?> deletedAt = const Value.absent(),
             Value<String> syncStatus = const Value.absent(),
+            Value<int> syncRetryCount = const Value.absent(),
+            Value<String?> syncError = const Value.absent(),
+            Value<DateTime?> syncBlockedUntil = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
             Value<int> rowid = const Value.absent(),
@@ -6749,6 +7613,9 @@ class $$TransactionsTableTableManager extends RootTableManager<
             bankTranId: bankTranId,
             deletedAt: deletedAt,
             syncStatus: syncStatus,
+            syncRetryCount: syncRetryCount,
+            syncError: syncError,
+            syncBlockedUntil: syncBlockedUntil,
             updatedAt: updatedAt,
             isDeleted: isDeleted,
             rowid: rowid,
@@ -6769,6 +7636,9 @@ class $$TransactionsTableTableManager extends RootTableManager<
             Value<String?> bankTranId = const Value.absent(),
             Value<DateTime?> deletedAt = const Value.absent(),
             Value<String> syncStatus = const Value.absent(),
+            Value<int> syncRetryCount = const Value.absent(),
+            Value<String?> syncError = const Value.absent(),
+            Value<DateTime?> syncBlockedUntil = const Value.absent(),
             required DateTime updatedAt,
             Value<bool> isDeleted = const Value.absent(),
             Value<int> rowid = const Value.absent(),
@@ -6789,6 +7659,9 @@ class $$TransactionsTableTableManager extends RootTableManager<
             bankTranId: bankTranId,
             deletedAt: deletedAt,
             syncStatus: syncStatus,
+            syncRetryCount: syncRetryCount,
+            syncError: syncError,
+            syncBlockedUntil: syncBlockedUntil,
             updatedAt: updatedAt,
             isDeleted: isDeleted,
             rowid: rowid,
@@ -6863,6 +7736,9 @@ typedef $$CategoriesTableCreateCompanionBuilder = CategoriesCompanion Function({
   Value<bool> isLocalOnly,
   Value<DateTime?> deletedAt,
   Value<String> syncStatus,
+  Value<int> syncRetryCount,
+  Value<String?> syncError,
+  Value<DateTime?> syncBlockedUntil,
   required DateTime updatedAt,
   Value<int> rowid,
 });
@@ -6880,6 +7756,9 @@ typedef $$CategoriesTableUpdateCompanionBuilder = CategoriesCompanion Function({
   Value<bool> isLocalOnly,
   Value<DateTime?> deletedAt,
   Value<String> syncStatus,
+  Value<int> syncRetryCount,
+  Value<String?> syncError,
+  Value<DateTime?> syncBlockedUntil,
   Value<DateTime> updatedAt,
   Value<int> rowid,
 });
@@ -6931,6 +7810,17 @@ class $$CategoriesTableFilterComposer
 
   ColumnFilters<String> get syncStatus => $composableBuilder(
       column: $table.syncStatus, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get syncRetryCount => $composableBuilder(
+      column: $table.syncRetryCount,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get syncError => $composableBuilder(
+      column: $table.syncError, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get syncBlockedUntil => $composableBuilder(
+      column: $table.syncBlockedUntil,
+      builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnFilters(column));
@@ -6984,6 +7874,17 @@ class $$CategoriesTableOrderingComposer
   ColumnOrderings<String> get syncStatus => $composableBuilder(
       column: $table.syncStatus, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get syncRetryCount => $composableBuilder(
+      column: $table.syncRetryCount,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get syncError => $composableBuilder(
+      column: $table.syncError, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get syncBlockedUntil => $composableBuilder(
+      column: $table.syncBlockedUntil,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
 }
@@ -7036,6 +7937,15 @@ class $$CategoriesTableAnnotationComposer
   GeneratedColumn<String> get syncStatus => $composableBuilder(
       column: $table.syncStatus, builder: (column) => column);
 
+  GeneratedColumn<int> get syncRetryCount => $composableBuilder(
+      column: $table.syncRetryCount, builder: (column) => column);
+
+  GeneratedColumn<String> get syncError =>
+      $composableBuilder(column: $table.syncError, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get syncBlockedUntil => $composableBuilder(
+      column: $table.syncBlockedUntil, builder: (column) => column);
+
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 }
@@ -7076,6 +7986,9 @@ class $$CategoriesTableTableManager extends RootTableManager<
             Value<bool> isLocalOnly = const Value.absent(),
             Value<DateTime?> deletedAt = const Value.absent(),
             Value<String> syncStatus = const Value.absent(),
+            Value<int> syncRetryCount = const Value.absent(),
+            Value<String?> syncError = const Value.absent(),
+            Value<DateTime?> syncBlockedUntil = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -7093,6 +8006,9 @@ class $$CategoriesTableTableManager extends RootTableManager<
             isLocalOnly: isLocalOnly,
             deletedAt: deletedAt,
             syncStatus: syncStatus,
+            syncRetryCount: syncRetryCount,
+            syncError: syncError,
+            syncBlockedUntil: syncBlockedUntil,
             updatedAt: updatedAt,
             rowid: rowid,
           ),
@@ -7110,6 +8026,9 @@ class $$CategoriesTableTableManager extends RootTableManager<
             Value<bool> isLocalOnly = const Value.absent(),
             Value<DateTime?> deletedAt = const Value.absent(),
             Value<String> syncStatus = const Value.absent(),
+            Value<int> syncRetryCount = const Value.absent(),
+            Value<String?> syncError = const Value.absent(),
+            Value<DateTime?> syncBlockedUntil = const Value.absent(),
             required DateTime updatedAt,
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -7127,6 +8046,9 @@ class $$CategoriesTableTableManager extends RootTableManager<
             isLocalOnly: isLocalOnly,
             deletedAt: deletedAt,
             syncStatus: syncStatus,
+            syncRetryCount: syncRetryCount,
+            syncError: syncError,
+            syncBlockedUntil: syncBlockedUntil,
             updatedAt: updatedAt,
             rowid: rowid,
           ),
@@ -7571,6 +8493,9 @@ typedef $$BudgetsTableCreateCompanionBuilder = BudgetsCompanion Function({
   Value<DateTime?> deletedAt,
   Value<bool> isDeleted,
   Value<String> syncStatus,
+  Value<int> syncRetryCount,
+  Value<String?> syncError,
+  Value<DateTime?> syncBlockedUntil,
   required DateTime updatedAt,
   Value<int> rowid,
 });
@@ -7595,6 +8520,9 @@ typedef $$BudgetsTableUpdateCompanionBuilder = BudgetsCompanion Function({
   Value<DateTime?> deletedAt,
   Value<bool> isDeleted,
   Value<String> syncStatus,
+  Value<int> syncRetryCount,
+  Value<String?> syncError,
+  Value<DateTime?> syncBlockedUntil,
   Value<DateTime> updatedAt,
   Value<int> rowid,
 });
@@ -7670,6 +8598,17 @@ class $$BudgetsTableFilterComposer
 
   ColumnFilters<String> get syncStatus => $composableBuilder(
       column: $table.syncStatus, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get syncRetryCount => $composableBuilder(
+      column: $table.syncRetryCount,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get syncError => $composableBuilder(
+      column: $table.syncError, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get syncBlockedUntil => $composableBuilder(
+      column: $table.syncBlockedUntil,
+      builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnFilters(column));
@@ -7749,6 +8688,17 @@ class $$BudgetsTableOrderingComposer
   ColumnOrderings<String> get syncStatus => $composableBuilder(
       column: $table.syncStatus, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get syncRetryCount => $composableBuilder(
+      column: $table.syncRetryCount,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get syncError => $composableBuilder(
+      column: $table.syncError, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get syncBlockedUntil => $composableBuilder(
+      column: $table.syncBlockedUntil,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
 }
@@ -7822,6 +8772,15 @@ class $$BudgetsTableAnnotationComposer
   GeneratedColumn<String> get syncStatus => $composableBuilder(
       column: $table.syncStatus, builder: (column) => column);
 
+  GeneratedColumn<int> get syncRetryCount => $composableBuilder(
+      column: $table.syncRetryCount, builder: (column) => column);
+
+  GeneratedColumn<String> get syncError =>
+      $composableBuilder(column: $table.syncError, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get syncBlockedUntil => $composableBuilder(
+      column: $table.syncBlockedUntil, builder: (column) => column);
+
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 }
@@ -7869,6 +8828,9 @@ class $$BudgetsTableTableManager extends RootTableManager<
             Value<DateTime?> deletedAt = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
             Value<String> syncStatus = const Value.absent(),
+            Value<int> syncRetryCount = const Value.absent(),
+            Value<String?> syncError = const Value.absent(),
+            Value<DateTime?> syncBlockedUntil = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -7893,6 +8855,9 @@ class $$BudgetsTableTableManager extends RootTableManager<
             deletedAt: deletedAt,
             isDeleted: isDeleted,
             syncStatus: syncStatus,
+            syncRetryCount: syncRetryCount,
+            syncError: syncError,
+            syncBlockedUntil: syncBlockedUntil,
             updatedAt: updatedAt,
             rowid: rowid,
           ),
@@ -7917,6 +8882,9 @@ class $$BudgetsTableTableManager extends RootTableManager<
             Value<DateTime?> deletedAt = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
             Value<String> syncStatus = const Value.absent(),
+            Value<int> syncRetryCount = const Value.absent(),
+            Value<String?> syncError = const Value.absent(),
+            Value<DateTime?> syncBlockedUntil = const Value.absent(),
             required DateTime updatedAt,
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -7941,6 +8909,9 @@ class $$BudgetsTableTableManager extends RootTableManager<
             deletedAt: deletedAt,
             isDeleted: isDeleted,
             syncStatus: syncStatus,
+            syncRetryCount: syncRetryCount,
+            syncError: syncError,
+            syncBlockedUntil: syncBlockedUntil,
             updatedAt: updatedAt,
             rowid: rowid,
           ),
@@ -7984,6 +8955,9 @@ typedef $$BillsTableCreateCompanionBuilder = BillsCompanion Function({
   Value<DateTime?> deletedAt,
   Value<bool> isDeleted,
   Value<String> syncStatus,
+  Value<int> syncRetryCount,
+  Value<String?> syncError,
+  Value<DateTime?> syncBlockedUntil,
   required DateTime updatedAt,
   Value<int> rowid,
 });
@@ -8008,6 +8982,9 @@ typedef $$BillsTableUpdateCompanionBuilder = BillsCompanion Function({
   Value<DateTime?> deletedAt,
   Value<bool> isDeleted,
   Value<String> syncStatus,
+  Value<int> syncRetryCount,
+  Value<String?> syncError,
+  Value<DateTime?> syncBlockedUntil,
   Value<DateTime> updatedAt,
   Value<int> rowid,
 });
@@ -8081,6 +9058,17 @@ class $$BillsTableFilterComposer extends Composer<_$AppDatabase, $BillsTable> {
 
   ColumnFilters<String> get syncStatus => $composableBuilder(
       column: $table.syncStatus, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get syncRetryCount => $composableBuilder(
+      column: $table.syncRetryCount,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get syncError => $composableBuilder(
+      column: $table.syncError, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get syncBlockedUntil => $composableBuilder(
+      column: $table.syncBlockedUntil,
+      builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnFilters(column));
@@ -8158,6 +9146,17 @@ class $$BillsTableOrderingComposer
   ColumnOrderings<String> get syncStatus => $composableBuilder(
       column: $table.syncStatus, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get syncRetryCount => $composableBuilder(
+      column: $table.syncRetryCount,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get syncError => $composableBuilder(
+      column: $table.syncError, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get syncBlockedUntil => $composableBuilder(
+      column: $table.syncBlockedUntil,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
 }
@@ -8231,6 +9230,15 @@ class $$BillsTableAnnotationComposer
   GeneratedColumn<String> get syncStatus => $composableBuilder(
       column: $table.syncStatus, builder: (column) => column);
 
+  GeneratedColumn<int> get syncRetryCount => $composableBuilder(
+      column: $table.syncRetryCount, builder: (column) => column);
+
+  GeneratedColumn<String> get syncError =>
+      $composableBuilder(column: $table.syncError, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get syncBlockedUntil => $composableBuilder(
+      column: $table.syncBlockedUntil, builder: (column) => column);
+
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 }
@@ -8278,6 +9286,9 @@ class $$BillsTableTableManager extends RootTableManager<
             Value<DateTime?> deletedAt = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
             Value<String> syncStatus = const Value.absent(),
+            Value<int> syncRetryCount = const Value.absent(),
+            Value<String?> syncError = const Value.absent(),
+            Value<DateTime?> syncBlockedUntil = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -8302,6 +9313,9 @@ class $$BillsTableTableManager extends RootTableManager<
             deletedAt: deletedAt,
             isDeleted: isDeleted,
             syncStatus: syncStatus,
+            syncRetryCount: syncRetryCount,
+            syncError: syncError,
+            syncBlockedUntil: syncBlockedUntil,
             updatedAt: updatedAt,
             rowid: rowid,
           ),
@@ -8326,6 +9340,9 @@ class $$BillsTableTableManager extends RootTableManager<
             Value<DateTime?> deletedAt = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
             Value<String> syncStatus = const Value.absent(),
+            Value<int> syncRetryCount = const Value.absent(),
+            Value<String?> syncError = const Value.absent(),
+            Value<DateTime?> syncBlockedUntil = const Value.absent(),
             required DateTime updatedAt,
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -8350,6 +9367,9 @@ class $$BillsTableTableManager extends RootTableManager<
             deletedAt: deletedAt,
             isDeleted: isDeleted,
             syncStatus: syncStatus,
+            syncRetryCount: syncRetryCount,
+            syncError: syncError,
+            syncBlockedUntil: syncBlockedUntil,
             updatedAt: updatedAt,
             rowid: rowid,
           ),
@@ -8392,6 +9412,9 @@ typedef $$GoalsTableCreateCompanionBuilder = GoalsCompanion Function({
   Value<DateTime?> deletedAt,
   Value<bool> isDeleted,
   Value<String> syncStatus,
+  Value<int> syncRetryCount,
+  Value<String?> syncError,
+  Value<DateTime?> syncBlockedUntil,
   required DateTime updatedAt,
   Value<int> rowid,
 });
@@ -8415,6 +9438,9 @@ typedef $$GoalsTableUpdateCompanionBuilder = GoalsCompanion Function({
   Value<DateTime?> deletedAt,
   Value<bool> isDeleted,
   Value<String> syncStatus,
+  Value<int> syncRetryCount,
+  Value<String?> syncError,
+  Value<DateTime?> syncBlockedUntil,
   Value<DateTime> updatedAt,
   Value<int> rowid,
 });
@@ -8486,6 +9512,17 @@ class $$GoalsTableFilterComposer extends Composer<_$AppDatabase, $GoalsTable> {
 
   ColumnFilters<String> get syncStatus => $composableBuilder(
       column: $table.syncStatus, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get syncRetryCount => $composableBuilder(
+      column: $table.syncRetryCount,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get syncError => $composableBuilder(
+      column: $table.syncError, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get syncBlockedUntil => $composableBuilder(
+      column: $table.syncBlockedUntil,
+      builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnFilters(column));
@@ -8562,6 +9599,17 @@ class $$GoalsTableOrderingComposer
   ColumnOrderings<String> get syncStatus => $composableBuilder(
       column: $table.syncStatus, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get syncRetryCount => $composableBuilder(
+      column: $table.syncRetryCount,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get syncError => $composableBuilder(
+      column: $table.syncError, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get syncBlockedUntil => $composableBuilder(
+      column: $table.syncBlockedUntil,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
 }
@@ -8632,6 +9680,15 @@ class $$GoalsTableAnnotationComposer
   GeneratedColumn<String> get syncStatus => $composableBuilder(
       column: $table.syncStatus, builder: (column) => column);
 
+  GeneratedColumn<int> get syncRetryCount => $composableBuilder(
+      column: $table.syncRetryCount, builder: (column) => column);
+
+  GeneratedColumn<String> get syncError =>
+      $composableBuilder(column: $table.syncError, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get syncBlockedUntil => $composableBuilder(
+      column: $table.syncBlockedUntil, builder: (column) => column);
+
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 }
@@ -8678,6 +9735,9 @@ class $$GoalsTableTableManager extends RootTableManager<
             Value<DateTime?> deletedAt = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
             Value<String> syncStatus = const Value.absent(),
+            Value<int> syncRetryCount = const Value.absent(),
+            Value<String?> syncError = const Value.absent(),
+            Value<DateTime?> syncBlockedUntil = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -8701,6 +9761,9 @@ class $$GoalsTableTableManager extends RootTableManager<
             deletedAt: deletedAt,
             isDeleted: isDeleted,
             syncStatus: syncStatus,
+            syncRetryCount: syncRetryCount,
+            syncError: syncError,
+            syncBlockedUntil: syncBlockedUntil,
             updatedAt: updatedAt,
             rowid: rowid,
           ),
@@ -8724,6 +9787,9 @@ class $$GoalsTableTableManager extends RootTableManager<
             Value<DateTime?> deletedAt = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
             Value<String> syncStatus = const Value.absent(),
+            Value<int> syncRetryCount = const Value.absent(),
+            Value<String?> syncError = const Value.absent(),
+            Value<DateTime?> syncBlockedUntil = const Value.absent(),
             required DateTime updatedAt,
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -8747,6 +9813,9 @@ class $$GoalsTableTableManager extends RootTableManager<
             deletedAt: deletedAt,
             isDeleted: isDeleted,
             syncStatus: syncStatus,
+            syncRetryCount: syncRetryCount,
+            syncError: syncError,
+            syncBlockedUntil: syncBlockedUntil,
             updatedAt: updatedAt,
             rowid: rowid,
           ),
