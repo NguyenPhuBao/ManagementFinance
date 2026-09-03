@@ -385,7 +385,7 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
   ///
   /// ## Vì sao cần (G14)
   ///
-  /// Bản client trước 2026-09-04 tạo 5 danh mục cá nhân **trước** lần pull đầu
+  /// Bản client trước 2026-09-03 tạo 5 danh mục cá nhân **trước** lần pull đầu
   /// tiên. Trên một máy mới, SQLite còn rỗng nên phép kiểm trùng không thấy gì
   /// và nó sinh ra bản trùng tên với bản tài khoản đã có trên backend. Đẩy lên
   /// thì vi phạm quy tắc trùng tên, `/sync/push` trả `failed` kèm message rỗng,

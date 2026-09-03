@@ -73,4 +73,4 @@ cd src/Client-app && flutter run -d chrome --web-port 9090
 
 Bộ test là lưới an toàn chính của dự án này — nhiều lỗi trong quá khứ hỏng **âm thầm** (không exception, không log). Khi sửa lỗi, viết test tái hiện **trước**, và ghi rõ trong `reason:` của assertion là nó canh chừng điều gì.
 
-Vùng chưa có test nào: các feature `analytics`, `home`, `profile`, `ai_chat`. (`auth_interceptor.dart` có test từ 2026-09-03; `budget` có test từ 2026-09-04.)
+Vùng chưa có test nào: các feature `analytics`, `home`, `profile`, `ai_chat`. (`auth_interceptor.dart` có test từ 2026-09-03; `budget` có test từ 2026-09-03.)

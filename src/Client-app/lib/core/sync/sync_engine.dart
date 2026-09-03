@@ -89,7 +89,7 @@ class SyncEngine {
   /// nhánh chặn chỉ `return` — một thay đổi ghi trong lúc giãn cách nằm chờ
   /// đúng một trong ba nguồn đó, dài hơn bậc giãn cách rất nhiều.
   ///
-  /// Đo được trên app thật (2026-09-04): xoá một ngân sách trong lúc engine
+  /// Đo được trên app thật (2026-09-03): xoá một ngân sách trong lúc engine
   /// đang giãn cách thì thao tác **không** lên tới backend, kể cả sau khi hết
   /// giãn cách; phải mở lại app mới đẩy được. Người dùng thấy mục biến mất
   /// ngay nên tin là đã xong, còn máy khác vẫn thấy nó nguyên vẹn.

@@ -843,7 +843,7 @@ void main() {
 
   // ── Dọn hậu quả của G14 ────────────────────────────────────────────────────
   //
-  // Bản client trước 2026-09-04 tạo 5 danh mục cá nhân TRƯỚC lần pull đầu tiên,
+  // Bản client trước 2026-09-03 tạo 5 danh mục cá nhân TRƯỚC lần pull đầu tiên,
   // nên trên máy mới nó sinh ra bản trùng tên với bản đã có trên backend. Bản vá
   // ngăn phát sinh mới, nhưng máy đã lỡ tạo thì vẫn giữ những hàng `pending` đó
   // và chúng hỏng ở MỌI chu kỳ đẩy — kéo cả engine vào giãn cách.

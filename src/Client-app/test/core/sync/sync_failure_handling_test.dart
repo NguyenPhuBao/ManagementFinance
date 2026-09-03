@@ -361,7 +361,7 @@ void main() {
 
     // ── Kích hoạt bị chặn phải được hẹn lại ─────────────────────────────────
     //
-    // Đo được trên app thật ngày 2026-09-04: xoá một ngân sách trong lúc engine
+    // Đo được trên app thật ngày 2026-09-03: xoá một ngân sách trong lúc engine
     // đang giãn cách thì thao tác đó KHÔNG lên tới backend, kể cả sau khi hết
     // giãn cách — phải chờ tới lần mở app sau. Người dùng thấy mục biến mất
     // ngay nên tin là đã xong, còn máy khác thì vẫn thấy nó nguyên vẹn.

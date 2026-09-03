@@ -1,6 +1,6 @@
 # Quy tắc trùng tên danh mục: ràng buộc CSDL đang khác quy tắc nghiệp vụ
 
-> ## ⚠️ CẬP NHẬT 2026-09-04 — đã làm một phần, còn bốn khoảng hở
+> ## ⚠️ CẬP NHẬT 2026-09-03 — đã làm một phần, còn bốn khoảng hở
 >
 > `admin.service.js` nay **đã cài quy tắc**, ở cả `addCategory` và `updateCategory`
 > (có loại trừ chính bản ghi đang sửa). Ba điểm khớp hoàn toàn với client:
@@ -18,9 +18,9 @@
 >
 > Nghĩa là dữ liệu đi qua app vẫn **chỉ được client chặn**. Mục 4.1–4.3 dưới đây vẫn cần làm nguyên vẹn; mục 4.3 nay có thể tái dùng logic đã viết trong `admin.service.js` thay vì viết mới.
 >
-> Dữ liệu thật kiểm ngày 2026-09-04: **20 danh mục, 0 vi phạm** ở cả ba phép kiểm ở mục 4.2 và 4.3 — vẫn chưa cần chuyển đổi dữ liệu.
+> Dữ liệu thật kiểm ngày 2026-09-03: **20 danh mục, 0 vi phạm** ở cả ba phép kiểm ở mục 4.2 và 4.3 — vẫn chưa cần chuyển đổi dữ liệu.
 
-> ## 🔴 ĐO ĐƯỢC TRÊN APP THẬT 2026-09-04 — hậu quả rộng hơn tài liệu này mô tả
+> ## 🔴 ĐO ĐƯỢC TRÊN APP THẬT 2026-09-03 — hậu quả rộng hơn tài liệu này mô tả
 >
 > Tài liệu này vẫn ghi hậu quả là "vi phạm trùng tên hỏng âm thầm khi đồng bộ".
 > Chạy app thật cho thấy nó **kéo chậm toàn bộ việc đồng bộ**, không riêng danh mục.
@@ -71,9 +71,9 @@
 > chừng nào `/sync/push` còn trả message rỗng.
 
 **Người nhận:** đội Backend
-**Trạng thái:** Client-app **đã thi hành xong**. Admin-web **đã thi hành một phần** (cập nhật 2026-09-04, xem khung ở đầu tài liệu). CSDL và đường `/sync/push` thì **chưa**.
-**Mức độ:** đang có đường ghi dữ liệu vi phạm quy tắc, một đường **hỏng âm thầm** khi đồng bộ, và — theo phép đo 2026-09-04 — làm **chậm đồng bộ của mọi thực thể khác**.
-**Ngày khảo sát:** 2026-09-03 · **Kiểm lại:** 2026-09-04 sau khi gộp `main` tới `0e8f0b2`, và đo trên app thật cùng ngày.
+**Trạng thái:** Client-app **đã thi hành xong**. Admin-web **đã thi hành một phần** (cập nhật 2026-09-03, xem khung ở đầu tài liệu). CSDL và đường `/sync/push` thì **chưa**.
+**Mức độ:** đang có đường ghi dữ liệu vi phạm quy tắc, một đường **hỏng âm thầm** khi đồng bộ, và — theo phép đo 2026-09-03 — làm **chậm đồng bộ của mọi thực thể khác**.
+**Ngày khảo sát:** 2026-09-03 · **Kiểm lại cùng ngày** sau khi gộp `main` tới `0e8f0b2`, và đo trên app thật.
 
 ---
 

@@ -1,6 +1,6 @@
 # Từ khoá phân loại danh mục: hai kho dữ liệu độc lập, không có đường nối
 
-> ## ⚠️ CẬP NHẬT 2026-09-04 — lỗ hổng phân quyền VẪN CÒN NGUYÊN
+> ## ⚠️ CẬP NHẬT 2026-09-03 — lỗ hổng phân quyền VẪN CÒN NGUYÊN
 >
 > `classify.repository.js` có được sửa trong đợt vừa rồi, nhưng **chỉ đổi ký tự
 > tách từ khoá** (`split(/[,;]/)` thành `split(',')`). Phần phân quyền ở mục 4
@@ -22,7 +22,7 @@
 **Người nhận:** đội Backend
 **Trạng thái:** cần backend quyết định. Phía Client-app **không thể tự nối** (lý do ở mục 3).
 **Mức độ:** không gây lỗi hiện tại, nhưng làm tính năng AI tự học **không nhận được dữ liệu từ client**, và có một lỗ hổng phân quyền đi kèm (mục 4).
-**Ngày khảo sát:** 2026-09-03 · **Kiểm lại:** 2026-09-04 sau khi gộp `main` tới `0e8f0b2`.
+**Ngày khảo sát:** 2026-09-03 · **Kiểm lại cùng ngày** sau khi gộp `main` tới `0e8f0b2`.
 
 ---
 

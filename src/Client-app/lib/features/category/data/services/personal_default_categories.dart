@@ -57,7 +57,7 @@ class PersonalDefaultCategories {
   /// đầu tiên sẽ gặp dữ liệu dở dang.
   ///
   /// **Chỉ đụng tới máy thật sự còn hàng `cat_*`.** Máy sạch thì không tạo gì —
-  /// đây là điểm khác so với bản trước 2026-09-04, và là bản vá cho G14: hàm
+  /// đây là điểm khác so với bản trước 2026-09-03, và là bản vá cho G14: hàm
   /// này chạy trước lần pull đầu tiên, lúc CSDL cục bộ còn rỗng, nên tạo danh
   /// mục ở đây là **tạo mù**. Trên một máy mới, nó sinh ra đúng những bản trùng
   /// tên với bản đã có trên backend; đẩy lên thì hỏng vĩnh viễn và kéo cả engine

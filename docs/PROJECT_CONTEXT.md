@@ -587,7 +587,7 @@ Xem đầy đủ tại **`docs/CLIENT_APP_KNOWN_GAPS.md`**. Phiên 2026-09-03 đ
 
 > ⚠️ **`.gitignore` dòng 77 vẫn có `test/`.** Luật này đã cắn lần thứ hai: hai file test tạo ngày 2026-09-03 cũng bị chặn âm thầm và phải `git add -f`. Mọi file test tạo **mới** vẫn sẽ bị bỏ qua trong im lặng.
 
-Vấn đề thuộc backend (trong `docs/superpowers/backend/`), kiểm lại ngày **2026-09-04** sau khi gộp `main` tới `0e8f0b2`:
+Vấn đề thuộc backend (trong `docs/superpowers/backend/`), kiểm lại ngày **2026-09-03** sau khi gộp `main` tới `0e8f0b2`:
 
 | Tài liệu | Trạng thái |
 |---|---|
@@ -598,7 +598,7 @@ Vấn đề thuộc backend (trong `docs/superpowers/backend/`), kiểm lại ng
 | `CATEGORY_STABLE_IDS.md` | ⛔ Chưa — `seed.js` vẫn `crypto.randomUUID()` |
 | `CATEGORY_GROUP_MEMBERSHIP_SYNC.md` | ⛔ Chưa — thứ duy nhất còn chặn G10 |
 
-### 💰 Ngân sách (2026-09-04)
+### 💰 Ngân sách (2026-09-03)
 
 Trước phiên này, `budget` là feature **duy nhất bị đứt đoạn ở giữa**: bảng Drift, DAO và cả hai chiều đồng bộ đã hoàn chỉnh, nhưng UI là dữ liệu giả cứng — `budgetDao` không có một lời gọi nào từ mã sản xuất ngoài `SyncEngine`, và nút "Lưu" ở trang cấu hình là `onPressed: () {}`.
 
@@ -608,12 +608,12 @@ Ba điểm cần biết khi đụng vào vùng này:
 
 - **Số "đã chi" được tính lại ở client từ bảng `transactions`, không đọc cột `Spent`.** Cột đó tồn tại ở cả hai phía nhưng **không bên nào cập nhật**: backend không có tác vụ nền, còn giao dịch thì người dùng ghi được khi offline. `BudgetRepositoryImpl` ghi kết quả xuống cột bằng `cacheSpent()` để lần đẩy sau gửi đúng số — hàm đó cố ý **không** đụng `syncStatus` lẫn `updatedAt`, nếu không mỗi lần mở trang lại sinh một thao tác đẩy và LWW cho client thắng oan.
 - **Ba phần trong bản dựng hình bị bỏ vì không có chỗ lưu:** "Tên ngân sách" (backend không có cột tên), "Danh mục áp dụng" nhiều danh mục (`Idcategory` chỉ giữ được một), và "Quy tắc phân bổ 50/30/20" (không có bảng nào lưu, và nó nói về chia *thu nhập* chứ không phải hạn mức). Giữ lại chúng dưới dạng giao diện không lưu được gì sẽ tái lập đúng vấn đề cũ: người dùng bấm Lưu và tưởng đã lưu.
-- **Lược đồ `budgets` đã khớp backend (v11, 2026-09-04).** Thêm `threshold_warning_percent` (backend có từ DB v2, client thì chưa — ngưỡng cảnh báo theo phần trăm vì thế không bao giờ sang được máy khác) và bỏ ba cột backend không có: `remaining`, `percent_spent` (chỉ là `amount - spent` và `spent / amount`, nay tính ở `BudgetEntity`) và `period` (đã bị `time_recurrence` thay thế từ DB v2).
+- **Lược đồ `budgets` đã khớp backend (v11, 2026-09-03).** Thêm `threshold_warning_percent` (backend có từ DB v2, client thì chưa — ngưỡng cảnh báo theo phần trăm vì thế không bao giờ sang được máy khác) và bỏ ba cột backend không có: `remaining`, `percent_spent` (chỉ là `amount - spent` và `spent / amount`, nay tính ở `BudgetEntity`) và `period` (đã bị `time_recurrence` thay thế từ DB v2).
   - Migration dùng `TableMigration` chứ không phải `ALTER TABLE ... DROP COLUMN`: cú pháp đó chỉ có từ SQLite 3.35, mà phiên bản đi kèm khác nhau giữa Android, iOS và web.
   - Ngưỡng phần trăm lưu **0–100** để khớp `Decimal(15,2)` của backend; quy về tỉ lệ đúng một chỗ ở `BudgetEntity.warningRatio`. Thứ tự ưu tiên khi cảnh báo: ngưỡng theo số tiền → ngưỡng theo phần trăm → mốc mặc định 90%.
   - Việc này làm lộ một lỗi **fixture** trong `category_dao_test.dart`: bảng `budgets` giả luôn ở hình dạng trước v5 kể cả khi test khai `user_version = 7`/`9` — một trạng thái không tồn tại trên máy thật, vì migration là cộng dồn. Nay `_createLegacyNonCategoryTables` nhận tham số `atVersion`.
 
-### 🔴 Đồng bộ đang bị kéo chậm bởi 5 danh mục hỏng (đo trên app thật 2026-09-04)
+### 🔴 Đồng bộ đang bị kéo chậm bởi 5 danh mục hỏng (đo trên app thật 2026-09-03)
 
 Chạy app thật với một tài khoản đã có dữ liệu, trên một máy **chưa từng chạy
 app**, cho thấy một hậu quả mà không tài liệu nào ghi trước đó:
@@ -628,7 +628,7 @@ app**, cho thấy một hậu quả mà không tài liệu nào ghi trước đ�
 5. **Mọi thay đổi khác** (ví, giao dịch, ngân sách) bị đẩy chậm theo. Đã đo: một
    thao tác xoá ngân sách hợp lệ không lên tới backend cho tới lần mở app sau.
 
-**Nguyên nhân bước 1 nằm ở client — ✅ đã sửa 2026-09-04.**
+**Nguyên nhân bước 1 nằm ở client — ✅ đã sửa 2026-09-03.**
 `PersonalDefaultCategories` **có** kiểm trùng theo tên chuẩn hoá, nhưng chạy
 **trước** `SyncEngine.start()`, nên trên máy mới thì CSDL cục bộ còn rỗng và
 phép kiểm không thấy gì. Đây **không** phải hệ quả của `CATEGORY_STABLE_IDS.md`
@@ -649,7 +649,7 @@ Phần backend (mã lỗi ổn định, vai trò lớp phòng thủ thứ hai) �
 
 ### 🚀 Bắt đầu từ đâu ở phiên sau
 
-Ghi ngày 2026-09-03, cập nhật 2026-09-04 sau khi đo trên app thật. Thứ tự đề
+Ghi và cập nhật ngày 2026-09-03, sau khi đo trên app thật. Thứ tự đề
 nghị, việc rẻ nhất trước:
 
 1. **Nếu backend đã trả mã lỗi ổn định cho vi phạm trùng tên** → client cần đúng

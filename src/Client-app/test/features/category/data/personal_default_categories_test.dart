@@ -80,7 +80,7 @@ void main() {
 
   // ── G14: tạo danh mục phải chờ tới SAU lần pull đầu tiên ──────────────────
   //
-  // Đo được trên app thật 2026-09-04. Đăng nhập trên một máy **chưa từng chạy
+  // Đo được trên app thật 2026-09-03. Đăng nhập trên một máy **chưa từng chạy
   // app** vào tài khoản đã có sẵn 5 danh mục này ở backend: client sinh lại
   // đúng 5 danh mục đó với UUID mới, đẩy lên thì vi phạm quy tắc trùng tên,
   // backend trả `failed` **kèm message rỗng** nên `_classifyFailure` xếp vào
