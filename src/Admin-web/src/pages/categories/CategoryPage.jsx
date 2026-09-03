@@ -76,14 +76,37 @@ const CategoryPage = () => {
     e.preventDefault();
     if (processing.isProcessing) return; // Chặn bấm nhiều lần
     
+    const trimmedName = form.name.trim();
+    if (!trimmedName) {
+      alert('Vui lòng nhập tên danh mục');
+      return;
+    }
+
+    const nameLower = trimmedName.toLowerCase();
+    const isDefaultBool = form.isDefault === 'yes';
+
+    // 1. Pre-validation Nhóm 2: Is_default & namecategory (Client-side instant feedback)
+    if (isDefaultBool) {
+      const dupDefault = categories.find((c) =>
+        c.isDefault &&
+        c.name &&
+        c.name.trim().toLowerCase() === nameLower &&
+        (!editingCategory || c.id !== editingCategory.id)
+      );
+      if (dupDefault) {
+        alert(`Danh mục hệ thống "${dupDefault.name}" đã tồn tại trong hệ thống. Không được phép tạo/đổi trùng tên!`);
+        return;
+      }
+    }
+
     const actionText = editingCategory ? 'Đang cập nhật danh mục...' : 'Đang tạo danh mục mới...';
     setProcessing({ isProcessing: true, text: actionText });
 
     try {
       const payload = {
-        name: form.name.trim(),
+        name: trimmedName,
         classify: TYPE_TO_CLASSIFY[form.type] || 'Chi',
-        is_default: form.isDefault === 'yes',
+        is_default: isDefaultBool,
         keyword: form.keyword ? form.keyword.trim() : null,
       };
       if (editingCategory) {

@@ -39,10 +39,16 @@ const classifyRepository = {
         },
       });
 
-      return categories.map((c) => ({
-        ...c,
-        namecategory: c.name_category,
-      }));
+      return categories.map((c) => {
+        const rawName = c.name_category || '';
+        const rawKeyword = c.keyword || '';
+        return {
+          ...c,
+          namecategory: rawName,
+          namecategory_lower: rawName.trim().toLowerCase(),
+          keyword_lower: rawKeyword.trim().toLowerCase(),
+        };
+      });
     } catch (error) {
       logger.error('ClassifyRepository.getUserCategories failed', { error: error.message, idaccount });
       return [];
@@ -66,19 +72,21 @@ const classifyRepository = {
         throw Object.assign(new Error('Khong tim thay danh muc'), { statusCode: 404 });
       }
 
+      // Tách bằng dấu phẩy ',' chuẩn theo chỉ đạo của PO (không phụ thuộc khoảng trắng)
       const existingKeywords = (category.keyword || '')
-        .split(/[,;]/)
-        .map((k) => k.trim())
+        .split(',')
+        .map((k) => k.trim().toLowerCase())
         .filter(Boolean);
 
       const normalizedNewKw = newKeyword.trim().toLowerCase();
 
       // Tránh trùng lặp từ khóa
-      if (!existingKeywords.some((k) => k.toLowerCase() === normalizedNewKw)) {
+      if (!existingKeywords.includes(normalizedNewKw)) {
         existingKeywords.push(normalizedNewKw);
       }
 
-      const updatedKeywordStr = existingKeywords.join(', ');
+      // Nối từ khóa bằng dấu phẩy ',' không có khoảng trắng theo chỉ đạo của PO
+      const updatedKeywordStr = existingKeywords.join(',');
 
       return await prisma.category.update({
         where: { idcategory },
