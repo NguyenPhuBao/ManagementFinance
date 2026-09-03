@@ -20,6 +20,7 @@
 | Làm tiếp phía client | `docs/CLIENT_APP_KNOWN_GAPS.md` — các mục dang dở kèm **lý do hoãn** và **bán kính ảnh hưởng** |
 | Việc thuộc backend | `docs/superpowers/backend/SESSION_VALIDITY_FINDINGS.md` và `CATEGORY_CLASSIFY_ALIGNMENT.md` |
 | Đụng vào đồng bộ | `src/Client-app/test/core/sync/sync_payload_contract_test.dart` — đọc **như tài liệu**, đây là nơi duy nhất ghi hợp đồng tên trường giữa hai phía |
+| Đụng vào danh mục | `docs/CATEGORY_RATIONALE.md` — **lý do** của từng thay đổi, bằng chứng đo được, và các phương án đã loại bỏ. Đọc trước khi định "dọn dẹp" vùng này |
 
 > ⚠️ **Tài liệu là ảnh chụp, không phải nguồn sự thật.** Luôn đối chiếu với mã nguồn thật trước khi kết luận. Phiên 2026-09-02 có nhiều kết luận sai vì tin vào tài liệu/trí nhớ thay vì mở file ra đọc.
 

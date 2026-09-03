@@ -136,6 +136,8 @@ dart run build_runner watch --delete-conflicting-outputs
 
 ### Quy tắc trùng tên danh mục
 
+> **Lý do** buộc phải thay đổi, bằng chứng đo được và các phương án đã cân nhắc rồi loại bỏ: `docs/CATEGORY_RATIONALE.md`. Đọc file đó trước khi định "dọn dẹp" vùng này.
+
 **Quy tắc nghiệp vụ (chốt 2026-09-03).** Trong phạm vi **một tài khoản**, tên danh mục là **duy nhất**:
 
 | Yếu tố | Có nằm trong khoá không |
