@@ -447,24 +447,31 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
     return parent;
   }
 
-  /// Tên danh mục đã tồn tại trong phạm vi tài khoản chưa.
+  /// Tên danh mục đã bị chiếm trong phạm vi tài khoản chưa.
   ///
-  /// Khoá duy nhất là **(idaccount, tên đã chuẩn hoá)** — không có `classify`,
-  /// không có nhóm cha, và nhóm dùng chung không gian tên với danh mục con.
-  /// Đây là quy tắc nghiệp vụ đã chốt, và cũng là thứ PostgreSQL vốn ràng buộc
-  /// chặt hơn client: trước đây client cho tạo rồi thao tác đẩy lên mới vỡ
-  /// constraint — mà `/sync/push` chỉ đánh dấu `failed`, không báo gì ra màn
-  /// hình.
+  /// Khoá duy nhất là **(phạm vi tài khoản, tên đã chuẩn hoá)** — không có
+  /// `classify`, không có nhóm cha; nhóm, danh mục con và cả danh mục MẶC ĐỊNH
+  /// dùng chung một không gian tên, vì người dùng nhìn thấy tất cả trong cùng
+  /// một danh sách chọn.
+  ///
+  /// Lưu ý về mức chặt: PostgreSQL hiện vẫn ràng buộc theo
+  /// `(Create_by, NameCategory, Classify)` — tức KHÁC quy tắc này ở cả hai
+  /// chiều. Client chặt hơn ở chỗ bỏ `classify` và tính cả danh mục mặc định;
+  /// nhưng CSDL lại chặt hơn ở chỗ hàng đã xoá mềm vẫn giữ chỗ và tên phân biệt
+  /// hoa/thường. Cho tới khi backend thay hai unique index, đây là nơi DUY NHẤT
+  /// bảo đảm quy tắc — mà `/sync/push` chỉ đánh dấu thao tác hỏng là `failed`
+  /// nên vi phạm lọt qua sẽ không hiện ra màn hình.
   Future<bool> _hasDuplicateName({
     required int accountId,
     required String? excludingId,
     required String name,
   }) async {
     final target = _normalize(name);
-    final owned = await db.categoryDao.getOwnedForNameCheck(accountId);
-    return owned.any((category) =>
+    final inUse = await db.categoryDao.getNamesInUse(accountId);
+    return inUse.any((category) =>
         category.id != excludingId && _normalize(category.name) == target);
   }
+
   bool _hasDuplicateAssignedChildName(Iterable<Category> children) {
     final names = <String>{};
     for (final child in children) {

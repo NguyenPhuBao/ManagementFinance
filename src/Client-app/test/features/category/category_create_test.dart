@@ -179,7 +179,7 @@ void main() {
     await repo.saveGroup(CategoryGroupDraft(
       id: null,
       accountId: accountId,
-      name: 'Ăn uống',
+      name: 'Thú cưng', // KHÔNG dùng tên trùng danh mục mặc định đã seed
       classify: 'chi',
       icon: 'restaurant',
       colour: '#10B981',
@@ -361,7 +361,7 @@ void main() {
     await repo.saveGroup(CategoryGroupDraft(
       id: null,
       accountId: accountId,
-      name: 'Ăn uống',
+      name: 'Thú cưng', // KHÔNG dùng tên trùng danh mục mặc định đã seed
       classify: 'chi',
       icon: 'restaurant',
       colour: '#10B981',

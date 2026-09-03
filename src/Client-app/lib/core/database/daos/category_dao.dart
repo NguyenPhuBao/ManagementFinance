@@ -118,20 +118,23 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
       ..sort((a, b) => a.name.compareTo(b.name));
   }
 
-  /// Danh mục do CHÍNH tài khoản này tạo và chưa bị xoá — dùng để xét trùng tên.
+  /// Mọi danh mục đang CHIẾM CHỖ tên trong phạm vi một tài khoản.
   ///
-  /// Quy tắc: tên là duy nhất trong phạm vi tài khoản, **bất kể `classify`** và
-  /// **bất kể nằm trong nhóm nào**; nhóm và danh mục con dùng chung một không
-  /// gian tên. Danh mục mặc định là không gian tên RIÊNG nên bị loại khỏi đây.
+  /// Gồm danh mục do chính tài khoản tạo **và** danh mục mặc định (dùng chung,
+  /// `idaccount = 0`): người dùng nhìn thấy cả hai trong cùng một danh sách nên
+  /// hai mục trùng tên là không phân biệt được. Hàng đã xoá mềm không chiếm chỗ.
+  ///
+  /// Quy tắc: tên là duy nhất trong phạm vi này, **bất kể `classify`** và
+  /// **bất kể nằm trong nhóm nào**; nhóm và danh mục con dùng chung không gian
+  /// tên.
   ///
   /// Cố ý KHÔNG dùng `getCategoryRows`: hàm đó lọc sẵn theo `classify` và còn
   /// khử trùng lặp theo tên trước khi trả về — tức chính những hàng cần đối
   /// chiếu lại bị nó loại đi, khiến phép kiểm tra báo "không trùng" nhầm.
-  Future<List<Category>> getOwnedForNameCheck(int accountId) {
+  Future<List<Category>> getNamesInUse(int accountId) {
     return (select(categories)
           ..where((t) =>
-              t.idaccount.equals(accountId) &
-              t.isDefault.equals(false) &
+              (t.idaccount.equals(accountId) | t.isDefault.equals(true)) &
               t.isDeleted.equals(false) &
               t.deletedAt.isNull()))
         .get();
