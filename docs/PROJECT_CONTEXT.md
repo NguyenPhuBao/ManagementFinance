@@ -134,10 +134,39 @@ dart run build_runner watch --delete-conflicting-outputs
    - **Client SQLite**: lưu với `idaccount = 0` (quy ước nội bộ = "global, không thuộc user nào")
 2. **User categories** (`is_default = false`, `create_by = idaccount`): Danh mục tự tạo của người dùng
 
-**Unique constraint trên category:**
-```sql
-UNIQUE (Create_by, NameCategory, Classify)  -- uq_category_owner_name_classify
-```
+### Quy tắc trùng tên danh mục
+
+**Quy tắc nghiệp vụ (chốt 2026-09-03).** Trong phạm vi **một tài khoản**, tên danh mục là **duy nhất**:
+
+| Yếu tố | Có nằm trong khoá không |
+|---|---|
+| Chủ sở hữu (`Create_by` / `idaccount`) | **có** — hai tài khoản khác nhau được trùng tên |
+| Tên danh mục (đã chuẩn hoá) | **có** |
+| `Classify` | **không** — một tài khoản không được có "Ăn uống" cả Thu lẫn Chi |
+| Nhóm cha (`Idgroup` / `parentId`) | **không** — hai nhóm không phải hai không gian tên riêng |
+| `Is_group` | **không** — nhóm và danh mục con dùng chung không gian tên |
+
+Thêm hai điều:
+
+- **Danh mục mặc định dùng chung không gian tên với danh mục người dùng.** Người dùng nhìn thấy cả hai trong cùng một danh sách chọn nên hai mục trùng tên là không phân biệt được. Vì danh mục mặc định là hàng dùng chung, tên của nó chiếm chỗ với **mọi** tài khoản.
+- **Hàng đã xoá mềm không giữ chỗ**, và so tên **không phân biệt hoa/thường**, gom khoảng trắng thừa: `trim().toLowerCase()` rồi gộp mọi dãy khoảng trắng thành một dấu cách.
+
+**Nơi thi hành — chỉ có client:**
+
+`CategoryManagementRepositoryImpl._hasDuplicateName()` quét qua `CategoryDao.getNamesInUse(accountId)`. Cố ý **không** dùng `getCategoryRows`: hàm đó lọc sẵn theo `classify` và còn khử trùng lặp theo tên trước khi trả về, tức chính những hàng cần đối chiếu lại bị nó loại đi.
+
+Phép kiểm tra **chỉ chạy khi tên thật sự đổi**. Bản client trước 2026-09-03 loại danh mục mặc định khỏi phép kiểm tra, nên máy người dùng có thể đang giữ một danh mục riêng trùng tên với danh mục mặc định; chặn tuyệt đối sẽ khiến họ không sửa nổi danh mục đó nữa, kể cả chỉ đổi icon.
+
+> ⚠️ **CSDL CHƯA thi hành quy tắc này.** PostgreSQL vẫn đang giữ:
+>
+> ```sql
+> UNIQUE (Create_by, NameCategory, Classify)                        -- uq_category_owner_name_classify
+> UNIQUE (NameCategory, Classify) WHERE Is_default = TRUE           -- uq_category_default_name_classify
+> ```
+>
+> Hai ràng buộc này lệch quy tắc theo **cả hai chiều**: lỏng hơn ở `Classify`, ở việc tách khoá riêng cho danh mục mặc định và ở so tên phân biệt hoa/thường; nhưng **chặt hơn** ở chỗ hàng đã xoá mềm vẫn giữ chỗ — nên xoá một danh mục rồi tạo lại cùng tên sẽ được client cho qua mà CSDL từ chối, và `/sync/push` chỉ đánh dấu thao tác đó `failed` nên **hỏng âm thầm**.
+>
+> Việc cần backend làm, kèm SQL và cách kiểm chứng: `docs/superpowers/backend/CATEGORY_NAME_UNIQUENESS.md`.
 
 ---
 
@@ -474,6 +503,7 @@ src/Backend/
 6. **`idaccount` CHỈ đến từ phiên đăng nhập** — tuyệt đối không suy ra từ dữ liệu trong SQLite, và không bao giờ mặc định về `1` (đó là tài khoản admin thật)
 7. **Pull dùng `insertAllOnConflictUpdate`, KHÔNG dùng `insertOrReplace`** — xem mục 11.8
 8. **Thêm trường mới cho sync** → cập nhật `test/core/sync/sync_payload_contract_test.dart` cùng lúc. Tên trường đi qua ba nơi định nghĩa độc lập (client dựng tay → `SyncPayloadNormalizer` → `mapEntityFields` phía backend); một tên sai **không gây lỗi, chỉ lặng lẽ bị bỏ qua**
+9. **Tên danh mục là duy nhất trong phạm vi tài khoản** — không tính `classify`, không tính nhóm cha, và tính CẢ danh mục mặc định. Xem mục 4. Hiện chỉ client thi hành; CSDL vẫn giữ ràng buộc cũ nên vi phạm lọt qua sẽ hỏng âm thầm ở bước đẩy dữ liệu.
 
 ---
 
