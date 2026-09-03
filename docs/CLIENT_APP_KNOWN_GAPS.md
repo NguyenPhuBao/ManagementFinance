@@ -239,6 +239,22 @@ Xoá vật lý là ngoại lệ có chủ ý của quy tắc 5: hàng `pending` 
 
 ---
 
+### G15 — Bản ghi vừa hết hạn vừa hỏng đồng bộ thì không sửa được · ⏸️ HOÃN CÓ CHỦ Ý (2026-09-04)
+
+Tab **"Đã hết hạn"** của trang ngân sách khoá cả sửa lẫn xoá — đúng yêu cầu: số liệu đã chốt sổ không được đổi về sau. Nhưng khoá đó không phân biệt "đã chốt sổ" với "hỏng, chưa bao giờ lên tới server".
+
+Một ngân sách rơi vào **cả hai** trạng thái sẽ kẹt không lối thoát: nó không đẩy lên được (backend từ chối vĩnh viễn), và người dùng cũng không mở ra sửa hay xoá được. `SyncEngine` chặn nó theo thời gian nên hàng đợi đồng bộ vẫn thông — các thay đổi khác không bị kéo chậm — nhưng bản ghi đó nằm lại mãi.
+
+**Đã gặp thật** ngày 2026-09-04: một ngân sách bị sửa thành `end = start`, vi phạm `chk_budget_end_after_start`. Cách thoát duy nhất là xoá dữ liệu site của trình duyệt rồi pull lại từ server.
+
+**Vì sao hoãn.** Người dùng cân nhắc và quyết định giữ nguyên: tab hết hạn là nền cho phần thống kê/báo cáo sẽ làm sau, nới khoá bây giờ sẽ phải tính lại khi làm tới đó.
+
+**Bán kính rủi ro còn lại — hẹp.** Cần một bản ghi đồng thời hết hạn *và* có lỗi đẩy vĩnh viễn. Nguồn gây lỗi chính đã bị bịt cùng ngày: form không còn tạo ra được `end ≤ start` (ô ngày kết thúc chỉ đọc khi theo chu kỳ, và có phép kiểm thứ tự ngày cho "Ngày cụ thể"). Còn lại là các lỗi vĩnh viễn khác từ backend — `Ownership mismatch`, vi phạm ràng buộc khác, trùng khoá — vốn hiếm và thường đi kèm dữ liệu đã hỏng sẵn.
+
+**Hướng sửa khi quay lại.** Bản ghi có `syncError` phải luôn mở sửa/xoá được, kể cả ở tab hết hạn, kèm dấu hiệu trên thẻ cho biết nó chưa đồng bộ được. Khoá thao tác là để bảo vệ số liệu đã chốt, không phải để nhốt dữ liệu hỏng.
+
+---
+
 ## 2. Vấn đề đã biết nhưng thuộc về Backend
 
 Xem hai tài liệu riêng trong `docs/superpowers/backend/`:
@@ -249,6 +265,7 @@ Xem hai tài liệu riêng trong `docs/superpowers/backend/`:
 - **`CATEGORY_KEYWORD_SYNC.md`** — từ khoá phân loại tồn tại ở hai kho độc lập, không có đường nối; kèm một lỗ hổng phân quyền trong `POST /api/ai/classify/feedback`.
 - **`CATEGORY_NAME_UNIQUENESS.md`** — hai unique index của `category` đang khác quy tắc nghiệp vụ theo cả hai chiều; client đã thi hành đúng quy tắc, CSDL thì chưa.
 - **`CATEGORY_STABLE_IDS.md`** — ID danh mục mặc định sinh ngẫu nhiên mỗi lần seed, nên tên bị dùng làm khoá nối giữa hai phía; đây là nguyên nhân gốc của các lỗi 11.3–11.6.
+- **`2026-09-04-backend-idempotent-delete.md`** — ba lỗ hổng của `/sync/push`: xoá một bản ghi không tồn tại bị trả về là lỗi (làm client đẩy lại vĩnh viễn); `message` là nguyên văn stack trace Prisma kèm đường dẫn máy chủ; và `budget.time_recurrence = null` bị ép về `'Month'`, **chặn hẳn** lựa chọn ngân sách "Ngày cụ thể".
 
 Client **không** phụ thuộc vào việc backend có sửa hay không.
 

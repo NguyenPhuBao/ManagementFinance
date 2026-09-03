@@ -581,8 +581,9 @@ src/Backend/
 
 ### 🔄 Việc còn dang dở
 
-Xem đầy đủ tại **`docs/CLIENT_APP_KNOWN_GAPS.md`**. Phiên 2026-09-03 đã đóng 9/10 mục còn mở; **chỉ còn G10**:
+Xem đầy đủ tại **`docs/CLIENT_APP_KNOWN_GAPS.md`**. Phiên 2026-09-03 đã đóng 9/10 mục còn mở; nay còn **G10** và **G15**:
 
+- **G15 — Bản ghi vừa hết hạn vừa hỏng đồng bộ thì không sửa được.** ⏸️ **Hoãn có chủ ý** (2026-09-04): tab "Đã hết hạn" khoá sửa/xoá, nên một ngân sách vừa quá hạn vừa bị backend từ chối vĩnh viễn sẽ nằm lại mãi — hàng đợi đồng bộ vẫn thông vì `SyncEngine` chặn nó theo thời gian, nhưng người dùng không chữa được. Giữ nguyên vì tab đó là nền cho phần thống kê/báo cáo sẽ làm sau. Bán kính rủi ro hẹp: nguồn gây lỗi chính (form tạo ra `end ≤ start`) đã bịt cùng ngày.
 - **G10 — `CategoryGroupMemberships` không bao giờ được đồng bộ.** ⛔ **Không sửa được ở client**: backend không có bảng membership và cũng không có `SyncEntityType` tương ứng (`UPSERT_MAP`/`ENTITY_PRIORITY` chỉ có 6 entity), nên thêm entity mới ở client sẽ chỉ nhận `Unknown entity` và kẹt vĩnh viễn. Việc gán danh mục **mặc định** vào nhóm vì thế chỉ tồn tại trên một máy. Đề xuất chi tiết: `docs/superpowers/backend/CATEGORY_GROUP_MEMBERSHIP_SYNC.md`.
 
 > ⚠️ **`.gitignore` dòng 77 vẫn có `test/`.** Luật này đã cắn lần thứ hai: hai file test tạo ngày 2026-09-03 cũng bị chặn âm thầm và phải `git add -f`. Mọi file test tạo **mới** vẫn sẽ bị bỏ qua trong im lặng.
@@ -597,6 +598,7 @@ Vấn đề thuộc backend (trong `docs/superpowers/backend/`), kiểm lại ng
 | `CATEGORY_KEYWORD_SYNC.md` | ⛔ Chưa — **lỗ hổng phân quyền còn nguyên** (đợt sửa vừa rồi chỉ đổi ký tự tách từ khoá) |
 | `CATEGORY_STABLE_IDS.md` | ⛔ Chưa — `seed.js` vẫn `crypto.randomUUID()` |
 | `CATEGORY_GROUP_MEMBERSHIP_SYNC.md` | ⛔ Chưa — thứ duy nhất còn chặn G10 |
+| `2026-09-04-backend-idempotent-delete.md` | ⛔ Chưa — hai việc. **(A)** `/sync/push` trả lỗi khi xoá bản ghi server không có, làm client kẹt vĩnh viễn. **(B)** `message` là nguyên văn stack trace Prisma (lộ đường dẫn máy chủ + nội dung hàng), client phải dò chuỗi để phân loại. **(C)** `upsertBudget` ép `time_recurrence = null` thành `'Month'`, **chặn hẳn** lựa chọn "Ngày cụ thể" và làm ngân sách tự hết hạn sớm sau khi pull. A và B client đã vá tạm bằng **khớp chuỗi** (`record not found`, `23514`) nên dễ vỡ im lặng; C thì client **không vá được** |
 
 ### 💰 Ngân sách (2026-09-03)
 

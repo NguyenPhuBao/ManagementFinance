@@ -27,6 +27,12 @@
 |---|---|
 | [CATEGORY_MANAGEMENT_BACKEND_HANDOFF.md](./CATEGORY_MANAGEMENT_BACKEND_HANDOFF.md) | Thêm `parent_id`, `is_group`, `is_deleted`, `updated_at` vào `category`; thêm bảng `category_keywords` và `category_group_memberships` |
 
+### Sửa lỗi — làm được ngay, không phụ thuộc bước nào
+
+| File | Việc cần làm |
+|---|---|
+| [2026-09-04-backend-idempotent-delete.md](./2026-09-04-backend-idempotent-delete.md) | Ba việc độc lập trong `/sync/push`. **(A)** Coi "xoá bản ghi không tồn tại" là **thành công** — hiện trả `error: Record not found` khiến client đẩy lại vĩnh viễn và kéo chậm toàn bộ hàng đợi. **(B)** Trả `code` lỗi ổn định thay vì nguyên văn stack trace Prisma, thứ đang để lộ đường dẫn máy chủ và nội dung hàng dữ liệu. **(C)** Giữ nguyên `budget.time_recurrence = null` thay vì ép về `'Month'` — đang chặn hẳn tính năng ngân sách "Ngày cụ thể", và làm ngân sách tự hết hạn sớm sau khi pull. Cả ba chỉ sửa logic, không cần migration |
+
 ---
 
 ## Sơ đồ thứ tự implement
