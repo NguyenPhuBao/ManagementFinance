@@ -50,7 +50,8 @@ class _FakeRepository implements BudgetRepository {
     DateTime? startDate,
     DateTime? endDate,
     bool recurrence = true,
-    String timeRecurrence = BudgetRecurrence.month,
+    String? timeRecurrence = BudgetRecurrence.month,
+    DateTime? nextTimeRecurrence,
     String note = '',
   }) async {
     calls.add('addBudget($idaccount)');
@@ -82,10 +83,16 @@ class _FakeRepository implements BudgetRepository {
   }
 }
 
+/// Đồng hồ đóng băng của bộ test này. Việc phân tab hỏi "hết hạn chưa", nên để
+/// giờ thật thì kết quả đổi theo ngày chạy test.
+final _bayGio = DateTime(2026, 6, 15, 12);
+
 BudgetView _view({
   String id = 'b1',
   double amount = 1000000,
   double spent = 0,
+  bool recurrence = true,
+  DateTime? endDate,
 }) {
   return BudgetView(
     budget: BudgetEntity(
@@ -94,6 +101,8 @@ BudgetView _view({
       amount: amount,
       spent: spent,
       startDate: DateTime(2026, 6, 1),
+      endDate: endDate,
+      recurrence: recurrence,
       updatedAt: DateTime(2026, 6, 1),
     ),
   );
@@ -105,7 +114,7 @@ void main() {
 
   setUp(() {
     repo = _FakeRepository();
-    cubit = BudgetCubit(repository: repo);
+    cubit = BudgetCubit(repository: repo, clock: () => _bayGio);
   });
 
   tearDown(() => cubit.close());
@@ -177,6 +186,66 @@ void main() {
       expect(state.isEmpty, isTrue);
       expect(state.percentSpent, 0.0,
           reason: 'Chia 0 cho 0 ra NaN sẽ làm FractionallySizedBox ném lỗi.');
+    });
+  });
+
+  group('Phân tab đang hoạt động / đã hết hạn', () {
+    test('ngân sách quá ngày kết thúc rơi sang tab hết hạn', () async {
+      repo.budgets = [
+        _view(id: 'con-chay'),
+        _view(id: 'het-han', endDate: DateTime(2026, 6, 10)),
+      ];
+
+      await cubit.loadBudgets(7);
+
+      final state = cubit.state as BudgetLoaded;
+      expect(state.active.map((v) => v.budget.id), ['con-chay']);
+      expect(state.expired.map((v) => v.budget.id), ['het-han'],
+          reason: 'Ngân sách hết hạn phải tách hẳn ra: tab đó khoá sửa và xoá, '
+              'nên xếp nhầm sang tab đang chạy là mở lại đúng hai thao tác vừa '
+              'khoá.');
+    });
+
+    test('ngân sách lặp lại không ngày kết thúc luôn ở tab đang hoạt động',
+        () async {
+      repo.budgets = [_view(recurrence: true)];
+
+      await cubit.loadBudgets(7);
+
+      expect((cubit.state as BudgetLoaded).expired, isEmpty,
+          reason: 'Đây là cấu hình mặc định của mọi ngân sách hiện có — xếp '
+              'nhầm chúng vào tab hết hạn là khoá sửa/xoá toàn bộ dữ liệu người '
+              'dùng.');
+    });
+
+    test('tổng chỉ cộng ngân sách đang hoạt động', () async {
+      repo.budgets = [
+        _view(id: 'con-chay', amount: 1000000, spent: 400000),
+        _view(
+          id: 'het-han',
+          amount: 9000000,
+          spent: 8000000,
+          endDate: DateTime(2026, 6, 10),
+        ),
+      ];
+
+      await cubit.loadBudgets(7);
+
+      final state = cubit.state as BudgetLoaded;
+      expect(state.totalAmount, 1000000,
+          reason: 'Thẻ "Còn lại tháng này" nói về tiền còn tiêu được. Cộng cả '
+              'hạn mức của một ngân sách đã chết vào thì con số đó vô nghĩa.');
+      expect(state.totalSpent, 400000);
+    });
+
+    test('chỉ có ngân sách hết hạn thì trang không còn là rỗng', () async {
+      repo.budgets = [_view(id: 'het-han', endDate: DateTime(2026, 6, 10))];
+
+      await cubit.loadBudgets(7);
+
+      expect((cubit.state as BudgetLoaded).isEmpty, isFalse,
+          reason: 'Hiện màn hình "Chưa có ngân sách nào" trong khi tab hết hạn '
+              'đang có dữ liệu sẽ khiến người dùng tưởng mất sạch.');
     });
   });
 

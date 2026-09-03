@@ -52,7 +52,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration {
@@ -257,6 +257,19 @@ class AppDatabase extends _$AppDatabase {
             budgets,
             newColumns: [budgets.thresholdWarningPercent],
           ));
+        }
+        if (from < 12) {
+          // `time_recurrence` từ `NOT NULL DEFAULT 'Month'` thành nullable.
+          //
+          // null = ngân sách KHÔNG theo chu kỳ nào ("Ngày cụ thể"): người dùng
+          // tự đặt ngày kết thúc. Backend vốn đã chấp nhận trạng thái đó —
+          // ràng buộc `chk_budget_time_recurrence` là `IS NULL OR IN (...)` —
+          // chỉ client là không lưu nổi.
+          //
+          // `TableMigration` không có `newColumns`: cột đã tồn tại, chỉ đổi
+          // ràng buộc NOT NULL. Drift dựng bảng theo lược đồ mới rồi chép dữ
+          // liệu sang, nên giá trị cũ ('Week', 'Month'…) giữ nguyên.
+          await m.alterTable(TableMigration(budgets));
         }
       },
       beforeOpen: (details) async {

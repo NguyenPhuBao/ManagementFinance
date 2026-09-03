@@ -14,9 +14,16 @@ export 'budget_state.dart';
 /// như mọi thực thể khác.
 class BudgetCubit extends Cubit<BudgetState> {
   final BudgetRepository repository;
+
+  /// Nguồn thời gian dùng để phân tab. Tách ra để test không phụ thuộc đồng hồ
+  /// máy chạy nó: "hết hạn chưa" là câu hỏi về thời điểm.
+  final DateTime Function() clock;
+
   StreamSubscription<List<BudgetView>>? _subscription;
 
-  BudgetCubit({required this.repository}) : super(const BudgetInitial());
+  BudgetCubit({required this.repository, DateTime Function()? clock})
+      : clock = clock ?? DateTime.now,
+        super(const BudgetInitial());
 
   /// Theo dõi danh sách ngân sách. Phát lại cả khi có giao dịch mới.
   ///
@@ -49,15 +56,27 @@ class BudgetCubit extends Cubit<BudgetState> {
     }
   }
 
+  /// Chia danh sách thành hai tab và cộng tổng **chỉ trên tab đang hoạt động**.
   BudgetLoaded _loadedFrom(List<BudgetView> views) {
+    final now = clock();
+    final active = <BudgetView>[];
+    final expired = <BudgetView>[];
     var amount = 0.0;
     var spent = 0.0;
+
     for (final v in views) {
+      if (v.budget.isExpired(now)) {
+        expired.add(v);
+        continue;
+      }
+      active.add(v);
       amount += v.budget.amount;
       spent += v.budget.spent;
     }
+
     return BudgetLoaded(
-      budgets: views,
+      active: active,
+      expired: expired,
       totalAmount: amount,
       totalSpent: spent,
     );
@@ -99,7 +118,8 @@ class BudgetCubit extends Cubit<BudgetState> {
     DateTime? startDate,
     DateTime? endDate,
     bool recurrence = true,
-    String timeRecurrence = BudgetRecurrence.month,
+    String? timeRecurrence = BudgetRecurrence.month,
+    DateTime? nextTimeRecurrence,
     String note = '',
   }) async {
     if (idaccount == null || idaccount <= 0) {
@@ -118,6 +138,7 @@ class BudgetCubit extends Cubit<BudgetState> {
         endDate: endDate,
         recurrence: recurrence,
         timeRecurrence: timeRecurrence,
+        nextTimeRecurrence: nextTimeRecurrence,
         note: note,
       );
       emit(const BudgetSaved('Đã tạo ngân sách.'));

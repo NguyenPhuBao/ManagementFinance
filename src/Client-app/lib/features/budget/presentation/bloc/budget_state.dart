@@ -19,16 +19,28 @@ class BudgetLoading extends BudgetState {
 }
 
 class BudgetLoaded extends BudgetState {
-  final List<BudgetView> budgets;
+  /// Ngân sách còn trong hạn dùng — tab "Đang hoạt động". Sửa và xoá được.
+  final List<BudgetView> active;
 
-  /// Tổng hạn mức của mọi ngân sách đang chạy.
+  /// Ngân sách đã qua hạn — tab "Đã hết hạn". Chỉ xem được chi tiết.
+  ///
+  /// Tách thành hai danh sách ngay ở state thay vì để giao diện tự lọc: điều
+  /// kiện hết hạn quyết định luôn việc khoá sửa/xoá, nên nó phải có **một** chỗ
+  /// đúng duy nhất chứ không phải lặp lại ở mỗi widget.
+  final List<BudgetView> expired;
+
+  /// Tổng hạn mức, **chỉ cộng ngân sách đang hoạt động**.
+  ///
+  /// Thẻ tổng quan nói về số tiền còn tiêu được; gộp cả hạn mức của một ngân
+  /// sách đã chết vào thì con số đó không còn nghĩa gì.
   final double totalAmount;
 
-  /// Tổng đã chi, tính từ bảng giao dịch.
+  /// Tổng đã chi của các ngân sách đang hoạt động, tính từ bảng giao dịch.
   final double totalSpent;
 
   const BudgetLoaded({
-    required this.budgets,
+    required this.active,
+    required this.expired,
     required this.totalAmount,
     required this.totalSpent,
   });
@@ -42,10 +54,13 @@ class BudgetLoaded extends BudgetState {
     return ratio > 1.0 ? 1.0 : ratio;
   }
 
-  bool get isEmpty => budgets.isEmpty;
+  /// Rỗng chỉ khi **cả hai** tab đều không có gì. Hiện màn hình "Chưa có ngân
+  /// sách nào" trong lúc tab hết hạn đang có dữ liệu sẽ làm người dùng tưởng
+  /// mất sạch.
+  bool get isEmpty => active.isEmpty && expired.isEmpty;
 
   @override
-  List<Object?> get props => [budgets, totalAmount, totalSpent];
+  List<Object?> get props => [active, expired, totalAmount, totalSpent];
 }
 
 /// Trang cấu hình đã có đủ thứ cần để dựng form.

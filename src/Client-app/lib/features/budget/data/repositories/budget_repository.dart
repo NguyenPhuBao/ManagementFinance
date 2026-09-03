@@ -12,6 +12,12 @@ abstract class BudgetRepository {
 
   Future<BudgetView?> getBudgetById(String id, {DateTime? now});
 
+  /// [categoryId] là **bắt buộc**: một ngân sách thuộc về đúng một danh mục.
+  /// Truyền null sẽ bị từ chối — "ngân sách tổng" đã bỏ từ 2026-09-04. Hàng cũ
+  /// mang giá trị null vẫn đọc và sửa được, chỉ không tạo mới được nữa.
+  ///
+  /// [nextTimeRecurrence] là **mốc neo chu kỳ** — xem tài liệu ở trường cùng
+  /// tên trong [BudgetEntity].
   Future<BudgetEntity> addBudget({
     required int idaccount,
     required double amount,
@@ -22,7 +28,8 @@ abstract class BudgetRepository {
     DateTime? startDate,
     DateTime? endDate,
     bool recurrence,
-    String timeRecurrence,
+    String? timeRecurrence,
+    DateTime? nextTimeRecurrence,
     String note,
   });
 

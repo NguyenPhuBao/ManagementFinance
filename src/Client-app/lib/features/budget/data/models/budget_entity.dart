@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import '../../../../core/database/app_database.dart';
+import 'budget_period.dart';
 
 /// Chu kỳ lặp của ngân sách — dùng đúng tập giá trị backend nhận ở cột
 /// `Time_recurrence` (`VarChar(7)`).
@@ -11,11 +12,17 @@ class BudgetRecurrence {
 
   static const all = [week, month, quarter, year];
 
-  static String label(String value) => switch (value) {
+  /// Nhãn hiển thị. `null` = không theo chu kỳ nào, tức "Ngày cụ thể".
+  ///
+  /// Nhận null thay vì bắt nơi gọi tự kiểm: cột `time_recurrence` nullable từ
+  /// v12, nên mọi chỗ hiển thị đều phải xử lý trường hợp đó — gom về một nhãn
+  /// duy nhất ở đây thì không nơi nào quên.
+  static String label(String? value) => switch (value) {
         week => 'Hàng tuần',
         quarter => 'Hàng quý',
         year => 'Hàng năm',
-        _ => 'Hàng tháng',
+        month => 'Hàng tháng',
+        _ => 'Ngày cụ thể',
       };
 }
 
@@ -68,14 +75,29 @@ class BudgetEntity {
 
   final DateTime startDate;
 
-  /// null = không có hạn kết thúc; chu kỳ suy ra từ [recurrence].
+  /// null = không có hạn kết thúc do người dùng đặt; khi đó [recurrence] quyết
+  /// định ngân sách chạy mãi hay dừng sau kỳ đầu.
   final DateTime? endDate;
 
+  /// true = lặp lại từng chu kỳ cho tới [endDate] (hoặc mãi mãi nếu không có).
+  /// false = chạy đúng **một** chu kỳ rồi hết hạn.
   final bool recurrence;
 
-  /// `Week` | `Month` | `Quarter` | `Year`.
-  final String timeRecurrence;
+  /// `Week` | `Month` | `Quarter` | `Year`, hoặc **null**.
+  ///
+  /// null = ngân sách **không theo chu kỳ** nào — người dùng chọn "Ngày cụ thể"
+  /// và tự đặt [endDate]. Khi đó cả vòng đời là một kỳ duy nhất.
+  final String? timeRecurrence;
 
+  /// Mốc chu kỳ kế tiếp, nếu bản ghi mang sẵn giá trị.
+  ///
+  /// **Client không ghi cột này.** Chu kỳ neo vào [startDate], nên mốc kế tiếp
+  /// suy ra được từ [startDate] và [timeRecurrence] — lưu thêm một bản sao chỉ
+  /// tạo ra thứ có thể lệch, đúng lý do `remaining` và `percent_spent` đã bị bỏ
+  /// ở lược đồ v11.
+  ///
+  /// Vẫn đọc và đẩy lại nguyên vẹn vì hàng kéo về từ backend hoặc Admin-web có
+  /// thể mang giá trị; khi có, nó được tôn trọng làm mốc gốc.
   final DateTime? nextTimeRecurrence;
   final String note;
 
@@ -156,51 +178,104 @@ class BudgetEntity {
     return rawPercentSpent >= (warningRatio ?? defaultWarningRatio);
   }
 
-  // ── Chu kỳ hiện tại ─────────────────────────────────────────────────────────
+  // ── Chu kỳ và hạn dùng ──────────────────────────────────────────────────────
+
+  /// Mốc gốc để nhảy chu kỳ: cuối kỳ đầu tiên.
+  ///
+  /// Bình thường là đúng một chu kỳ kể từ ngày bắt đầu. Hàng kéo về từ backend
+  /// có thể mang sẵn [nextTimeRecurrence] khác, khi đó nó được tôn trọng.
+  ///
+  /// Không có chu kỳ ("Ngày cụ thể") thì cả vòng đời là **một kỳ duy nhất**,
+  /// đóng ở [endDate].
+  ///
+  /// Thiếu **cả hai** thì rơi về chu kỳ tháng, tức giá trị mặc định của cột
+  /// trước v12. Đó là dữ liệu vô nghĩa mà form không tạo ra được — "Ngày cụ
+  /// thể" bắt buộc có ngày kết thúc — nhưng hàng cũ ghi thẳng vào SQLite hoặc
+  /// kéo về từ một backend chưa cập nhật thì có. Trả kỳ rỗng ở đây là để số
+  /// "đã chi" đứng im ở 0 vĩnh viễn, không exception, không log.
+  DateTime get _anchor {
+    final cycle = timeRecurrence;
+    if (cycle == null) {
+      final het = endDate;
+      if (het != null) return het;
+      return advancePeriod(startDate, BudgetRecurrence.month);
+    }
+    return nextTimeRecurrence ?? advancePeriod(startDate, cycle);
+  }
+
+  /// Thời khắc ngân sách ngừng theo dõi, hoặc null nếu chạy mãi.
+  ///
+  /// Là **biên mở**: kỳ chạy tới trước thời khắc này. Thứ tự: ngày kết thúc
+  /// người dùng đặt và cuối kỳ đầu (khi tắt lặp lại) — cái nào tới trước thì
+  /// thắng. Bật lặp lại mà không đặt ngày kết thúc thì không bao giờ hết hạn,
+  /// và đó là cấu hình mặc định của mọi ngân sách hiện có.
+  DateTime? get expiresAt {
+    final byCycle = recurrence ? null : _anchor;
+    final byDate = endDate;
+    if (byDate == null) return byCycle;
+    if (byCycle == null) return byDate;
+    return byCycle.isBefore(byDate) ? byCycle : byDate;
+  }
+
+  /// Đã qua hạn dùng chưa. [now] truyền vào được để test không phụ thuộc đồng
+  /// hồ máy.
+  bool isExpired([DateTime? now]) {
+    final until = expiresAt;
+    if (until == null) return false;
+    return !(now ?? DateTime.now()).isBefore(until);
+  }
 
   /// Khoảng thời gian dùng để cộng các khoản chi.
   ///
-  /// Ba trường hợp, theo thứ tự ưu tiên:
-  /// 1. Có [endDate] → dùng đúng khoảng đó, kể cả khi đã qua.
-  /// 2. [recurrence] bật → chu kỳ đang chạy, tính bằng cách nhảy từ
-  ///    [startDate] theo [timeRecurrence] cho tới khi trùm được [now].
-  /// 3. Còn lại → từ [startDate] tới [now].
+  /// Kỳ đầu chạy từ [startDate] tới [_anchor]; các kỳ sau nhảy từ chính mốc đó.
+  /// Nhảy dồn từ kết quả đã kẹp sẽ làm ngân sách bắt đầu ngày 31 tụt dần về
+  /// ngày 28 và không bao giờ quay lại — xem `advancePeriodFrom`.
   ///
-  /// [now] truyền vào được để test không phụ thuộc đồng hồ máy.
+  /// Ngân sách **đã hết hạn** chốt ở kỳ cuối thay vì trôi tiếp theo đồng hồ:
+  /// nếu không, số "đã chi" của một ngân sách chết vẫn tăng mỗi khi người dùng
+  /// ghi giao dịch mới.
   ({DateTime from, DateTime to}) currentPeriod([DateTime? now]) {
-    final moment = now ?? DateTime.now();
+    final until = expiresAt;
+    var moment = now ?? DateTime.now();
 
-    if (endDate != null) {
-      return (from: startDate, to: endDate!);
-    }
-    if (!recurrence) {
-      // `to` không bao giờ được nhỏ hơn `from`: ngân sách đặt cho tương lai thì
-      // khoảng cộng dồn là rỗng chứ không phải đảo ngược.
-      return (
-        from: startDate,
-        to: moment.isBefore(startDate) ? startDate : moment
-      );
+    // `to` không bao giờ được nhỏ hơn `from`: ngân sách đặt cho tương lai thì
+    // khoảng cộng dồn là rỗng chứ không phải đảo ngược.
+    if (moment.isBefore(startDate)) return (from: startDate, to: startDate);
+
+    if (until != null && !moment.isBefore(until)) {
+      moment = until.subtract(const Duration(microseconds: 1));
+      if (moment.isBefore(startDate)) moment = startDate;
     }
 
+    final anchor = _anchor;
+    final cycle = timeRecurrence;
     var from = startDate;
-    var to = _advance(from);
-    // Chặn trên 1000 vòng: chu kỳ dữ liệu hỏng (ví dụ startDate năm 1970 kèm
-    // chu kỳ tuần) không được treo giao diện.
-    var guard = 0;
-    while (to.isBefore(moment) && guard++ < 1000) {
-      from = to;
-      to = _advance(from);
+    var to = anchor;
+
+    // Không có chu kỳ thì không có kỳ thứ hai để nhảy sang — trả luôn kỳ duy
+    // nhất. Bỏ nhánh này thì vòng dưới gọi `advancePeriodFrom` với một chu kỳ
+    // null và rơi vào nhánh mặc định (tháng), tức tự bịa ra chu kỳ tháng cho
+    // một ngân sách người dùng cố ý đặt là "Ngày cụ thể".
+    if (cycle != null || endDate == null) {
+      // Chặn trên 1000 vòng: dữ liệu hỏng (ví dụ ngày bắt đầu năm 1970 kèm chu
+      // kỳ tuần) không được treo giao diện.
+      var steps = 0;
+      while (!moment.isBefore(to) && steps < 1000) {
+        steps++;
+        from = to;
+        to = advancePeriodFrom(
+          anchor: anchor,
+          steps: steps,
+          timeRecurrence: cycle ?? BudgetRecurrence.month,
+        );
+      }
     }
+
+    // Ngày kết thúc cắt ngắn kỳ cuối, nếu không thì giao dịch ghi sau ngày
+    // người dùng đặt là hết vẫn bị tính vào.
+    if (until != null && until.isBefore(to)) to = until;
     return (from: from, to: to);
   }
-
-  DateTime _advance(DateTime from) => switch (timeRecurrence) {
-        BudgetRecurrence.week => from.add(const Duration(days: 7)),
-        BudgetRecurrence.quarter =>
-          DateTime(from.year, from.month + 3, from.day),
-        BudgetRecurrence.year => DateTime(from.year + 1, from.month, from.day),
-        _ => DateTime(from.year, from.month + 1, from.day),
-      };
 
   // ── Chuyển đổi ──────────────────────────────────────────────────────────────
 
@@ -260,7 +335,9 @@ class BudgetEntity {
     DateTime? startDate,
     DateTime? Function()? endDate,
     bool? recurrence,
-    String? timeRecurrence,
+    // Hàm chứ không phải giá trị: "Ngày cụ thể" cần đặt được về null, mà
+    // `?? this.timeRecurrence` thì không bao giờ cho phép điều đó.
+    String? Function()? timeRecurrence,
     DateTime? Function()? nextTimeRecurrence,
     String? note,
     bool? isDeleted,
@@ -283,7 +360,8 @@ class BudgetEntity {
       startDate: startDate ?? this.startDate,
       endDate: endDate != null ? endDate() : this.endDate,
       recurrence: recurrence ?? this.recurrence,
-      timeRecurrence: timeRecurrence ?? this.timeRecurrence,
+      timeRecurrence:
+          timeRecurrence != null ? timeRecurrence() : this.timeRecurrence,
       nextTimeRecurrence: nextTimeRecurrence != null
           ? nextTimeRecurrence()
           : this.nextTimeRecurrence,

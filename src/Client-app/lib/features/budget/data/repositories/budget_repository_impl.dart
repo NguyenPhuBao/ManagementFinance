@@ -23,10 +23,15 @@ class BudgetRepositoryImpl implements BudgetRepository {
   final BudgetLocalDataSource localDataSource;
   final SyncEngine? syncEngine;
 
+  /// Nguồn thời gian cho phép kiểm trùng danh mục. Tách ra để test không phụ
+  /// thuộc đồng hồ máy chạy nó: "đã hết hạn hay chưa" là câu hỏi về thời điểm.
+  final DateTime Function() clock;
+
   BudgetRepositoryImpl({
     required this.localDataSource,
     this.syncEngine,
-  });
+    DateTime Function()? clock,
+  }) : clock = clock ?? DateTime.now;
 
   // ── Đọc ─────────────────────────────────────────────────────────────────────
 
@@ -133,7 +138,8 @@ class BudgetRepositoryImpl implements BudgetRepository {
     DateTime? startDate,
     DateTime? endDate,
     bool recurrence = true,
-    String timeRecurrence = BudgetRecurrence.month,
+    String? timeRecurrence = BudgetRecurrence.month,
+    DateTime? nextTimeRecurrence,
     String note = '',
   }) async {
     // `idaccount` CHỈ đến từ phiên đăng nhập. Không suy ra từ dữ liệu SQLite và
@@ -148,6 +154,14 @@ class BudgetRepositoryImpl implements BudgetRepository {
     if (amount <= 0) {
       throw ArgumentError.value(amount, 'amount', 'Hạn mức phải lớn hơn 0');
     }
+    if (categoryId == null || categoryId.isEmpty) {
+      throw ArgumentError.value(
+        categoryId,
+        'categoryId',
+        'Hãy chọn danh mục cho ngân sách này',
+      );
+    }
+    await _assertCategoryFree(idaccount: idaccount, categoryId: categoryId);
 
     final now = DateTime.now();
     final budget = BudgetEntity(
@@ -165,6 +179,7 @@ class BudgetRepositoryImpl implements BudgetRepository {
       endDate: endDate,
       recurrence: recurrence,
       timeRecurrence: timeRecurrence,
+      nextTimeRecurrence: nextTimeRecurrence,
       note: note,
       isDeleted: false,
       syncStatus: 'pending',
@@ -182,10 +197,49 @@ class BudgetRepositoryImpl implements BudgetRepository {
       throw ArgumentError.value(
           budget.amount, 'amount', 'Hạn mức phải lớn hơn 0');
     }
+    final categoryId = budget.categoryId;
+    if (categoryId != null) {
+      // Bỏ qua chính hàng đang sửa, nếu không người dùng không sửa nổi hạn mức
+      // của ngân sách họ vừa tạo.
+      await _assertCategoryFree(
+        idaccount: budget.idaccount,
+        categoryId: categoryId,
+        exceptBudgetId: budget.id,
+      );
+    }
     await localDataSource.updateBudget(
       budget.copyWith(updatedAt: DateTime.now(), syncStatus: 'pending'),
     );
     syncEngine?.scheduleSync();
+  }
+
+  /// Ném [ArgumentError] nếu [categoryId] đã có một ngân sách **đang chạy**.
+  ///
+  /// Vì sao cần: thẻ tổng quan cộng dồn mọi ngân sách, nên hai ngân sách cùng
+  /// danh mục sẽ đếm số đã chi hai lần — tổng "còn lại" sai mà giao diện không
+  /// có dấu hiệu nào.
+  ///
+  /// Ngân sách **đã hết hạn không giữ chỗ**: người dùng phải đặt được hạn mức
+  /// mới cho kỳ sau mà không phải xoá lịch sử. Hàng xoá mềm cũng không giữ chỗ
+  /// vì `BudgetDao.getAll` đã lọc chúng ra.
+  Future<void> _assertCategoryFree({
+    required int idaccount,
+    required String categoryId,
+    String? exceptBudgetId,
+  }) async {
+    final now = clock();
+    final rows = await localDataSource.getBudgets(idaccount);
+    final vuong = rows.any((b) =>
+        b.id != exceptBudgetId &&
+        b.categoryId == categoryId &&
+        !b.isExpired(now));
+    if (vuong) {
+      throw ArgumentError.value(
+        categoryId,
+        'categoryId',
+        'Danh mục này đã có một ngân sách đang chạy',
+      );
+    }
   }
 
   @override

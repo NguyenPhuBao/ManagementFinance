@@ -37,6 +37,9 @@ void main() {
       // syncEngine để null: test này đo logic tính toán, không đo việc đẩy dữ
       // liệu. Repository phải chạy được khi chưa có engine.
       syncEngine: null,
+      // Đóng băng đồng hồ: phép kiểm trùng danh mục hỏi "ngân sách kia hết hạn
+      // chưa", nên để giờ thật thì kết quả test đổi theo ngày chạy.
+      clock: () => now,
     );
 
     await db.walletDao.insert(WalletsCompanion(
@@ -138,8 +141,19 @@ void main() {
       expect(views.single.budget.spent, 200000);
     });
 
-    test('ngân sách tổng (không danh mục) cộng mọi khoản chi', () async {
-      await taoNganSach(categoryId: null);
+    test('ngân sách tổng cũ (không danh mục) cộng mọi khoản chi', () async {
+      // Ghi thẳng vào SQLite: từ 2026-09-04 đường ghi từ chối `categoryId`
+      // null, nhưng hàng cũ và hàng kéo về từ backend vẫn còn ở dạng này và
+      // phải hiển thị đúng.
+      await db.budgetDao.insert(BudgetsCompanion(
+        id: const Value('budget-tong-cu'),
+        idaccount: const Value(idaccount),
+        categoryId: const Value(null),
+        amount: const Value(5000000),
+        startDate: Value(dauThang),
+        recurrence: const Value(true),
+        updatedAt: Value(now),
+      ));
       await ghiGiaoDich(id: 't1', amount: 200000, categoryId: anUong);
       await ghiGiaoDich(id: 't2', amount: 800000, categoryId: muaSam);
       await ghiGiaoDich(id: 't3', amount: 50000, categoryId: null);
@@ -195,17 +209,33 @@ void main() {
       expect(views.single.budget.spent, 70000);
     });
 
-    test('không lặp thì cộng dồn từ ngày bắt đầu tới hiện tại', () async {
+    test('không lặp thì chỉ tính đúng một chu kỳ rồi hết hạn', () async {
       await taoNganSach(
         startDate: DateTime(2026, 1, 1),
         recurrence: false,
       );
-      await ghiGiaoDich(id: 't1', amount: 400000, date: DateTime(2026, 2, 3));
-      await ghiGiaoDich(id: 't2', amount: 100000, date: now);
+      await ghiGiaoDich(
+          id: 'trong-ky', amount: 400000, date: DateTime(2026, 1, 20));
+      await ghiGiaoDich(
+          id: 'sau-khi-het-han', amount: 100000, date: DateTime(2026, 2, 3));
 
-      final views = await repo.getBudgets(idaccount, now: now);
+      final view = (await repo.getBudgets(idaccount, now: now)).single;
 
-      expect(views.single.budget.spent, 500000);
+      expect(
+        view.budget.spent,
+        400000,
+        reason: 'Đổi ngữ nghĩa ngày 2026-09-04: "không lặp" trước đây nghĩa là '
+            'cộng dồn từ ngày bắt đầu tới mãi mãi, nay là chạy ĐÚNG MỘT chu kỳ '
+            '(1/1–1/2) rồi hết hạn. Khoản ghi ngày 3/2 nằm ngoài kỳ nên không '
+            'được tính; nếu nó lọt vào thì một ngân sách đã chết vẫn tiếp tục '
+            'ăn giao dịch mới.',
+      );
+      expect(
+        view.budget.isExpired(now),
+        isTrue,
+        reason: 'Ngày chạy test là 15/6, kỳ duy nhất đã đóng từ 1/2 — ngân sách '
+            'này phải nằm ở tab "Đã hết hạn" và bị khoá sửa/xoá.',
+      );
     });
 
     test('ngân sách đặt cho tương lai chưa tính khoản nào', () async {
@@ -391,6 +421,111 @@ void main() {
       expect(phatRa.last, 120000,
           reason: 'Thanh tiến trình phải nhúc nhích ngay khi ghi khoản chi, '
               'không đợi người dùng mở lại trang.');
+    });
+  });
+
+  group('Một ngân sách cho đúng một danh mục', () {
+    test('từ chối tạo ngân sách thứ hai cho danh mục đang có ngân sách',
+        () async {
+      await taoNganSach(categoryId: anUong);
+
+      expect(
+        () => taoNganSach(categoryId: anUong),
+        throwsA(isA<ArgumentError>()),
+        reason: 'Thẻ tổng quan cộng dồn mọi ngân sách, nên hai ngân sách cùng '
+            'danh mục sẽ đếm số đã chi HAI LẦN — tổng "còn lại" sai mà không '
+            'có dấu hiệu nào trên giao diện.',
+      );
+    });
+
+    test('cho phép tạo lại sau khi ngân sách cũ của danh mục đã hết hạn',
+        () async {
+      await taoNganSach(
+        categoryId: anUong,
+        startDate: DateTime(2026, 1, 1),
+        recurrence: false,
+      );
+
+      // Kỳ duy nhất 1/1–1/2 đã đóng trước `now` (15/6).
+      final moi = await taoNganSach(categoryId: anUong, startDate: dauThang);
+
+      expect(moi.categoryId, anUong,
+          reason: 'Ngân sách hết hạn không giữ chỗ: người dùng phải đặt được '
+              'hạn mức mới cho kỳ sau, nếu không họ buộc phải xoá lịch sử.');
+    });
+
+    test('hàng đã xoá mềm không giữ chỗ', () async {
+      final cu = await taoNganSach(categoryId: anUong);
+      await repo.deleteBudget(cu.id);
+
+      final moi = await taoNganSach(categoryId: anUong);
+
+      expect(moi.id, isNot(cu.id));
+    });
+
+    test('vẫn cho tạo ngân sách cho danh mục khác', () async {
+      await taoNganSach(categoryId: anUong);
+
+      final moi = await taoNganSach(categoryId: muaSam);
+
+      expect(moi.categoryId, muaSam);
+    });
+
+    test('từ chối tạo ngân sách không gắn danh mục nào', () async {
+      expect(
+        () => taoNganSach(categoryId: null),
+        throwsA(isA<ArgumentError>()),
+        reason: 'Anh đã chốt bỏ "Ngân sách tổng": một ngân sách phải thuộc về '
+            'đúng một danh mục cụ thể.',
+      );
+    });
+
+    test('sửa ngân sách mà không đổi danh mục thì không tự chặn chính nó',
+        () async {
+      final b = await taoNganSach(categoryId: anUong);
+
+      await repo.updateBudget(b.copyWith(amount: 9000000));
+
+      final sau = (await repo.getBudgetById(b.id))!.budget;
+      expect(sau.amount, 9000000,
+          reason: 'Phép kiểm trùng phải bỏ qua chính hàng đang sửa, nếu không '
+              'người dùng không bao giờ sửa nổi hạn mức.');
+    });
+
+    test('từ chối chuyển ngân sách sang danh mục đã có ngân sách khác',
+        () async {
+      await taoNganSach(categoryId: anUong);
+      final b = await taoNganSach(categoryId: muaSam);
+
+      expect(
+        () => repo.updateBudget(b.copyWith(categoryId: () => anUong)),
+        throwsA(isA<ArgumentError>()),
+        reason: 'Chặn ở lúc tạo mà bỏ ngỏ lúc sửa thì người dùng vẫn đi vòng '
+            'được, và lỗi đếm hai lần quay lại y nguyên.',
+      );
+    });
+
+    test('ngân sách tổng cũ từ backend vẫn đọc được, chỉ không tạo mới',
+        () async {
+      // Ghi thẳng vào SQLite: mô phỏng hàng kéo về từ backend, nơi quy tắc mới
+      // chưa được thi hành.
+      await db.budgetDao.insert(BudgetsCompanion(
+        id: const Value('budget-tong-cu'),
+        idaccount: const Value(idaccount),
+        categoryId: const Value(null),
+        amount: const Value(3000000),
+        startDate: Value(dauThang),
+        updatedAt: Value(now),
+      ));
+
+      final views = await repo.getBudgets(idaccount, now: now);
+
+      expect(
+        views.map((v) => v.budget.id),
+        contains('budget-tong-cu'),
+        reason: 'Giấu hàng cũ đi là làm người dùng mất dữ liệu trong im lặng. '
+            'Quy tắc mới chỉ chặn ở đường ghi.',
+      );
     });
   });
 }

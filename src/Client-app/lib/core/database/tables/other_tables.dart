@@ -53,8 +53,15 @@ class Budgets extends Table {
   BoolColumn get recurrence     => boolean().withDefault(const Constant(false))();
   // Recurrence: có lặp lại định kỳ không
 
-  TextColumn get timeRecurrence => text().withDefault(const Constant('Month'))();
-  // Time_recurrence: 'Week' | 'Month' | 'Quarter' | 'Year'
+  /// Time_recurrence: 'Week' | 'Month' | 'Quarter' | 'Year', hoặc **null**.
+  ///
+  /// null = ngân sách **không theo chu kỳ** nào: người dùng chọn "Ngày cụ thể"
+  /// và tự đặt ngày kết thúc. Backend biểu diễn đúng như vậy — ràng buộc
+  /// `chk_budget_time_recurrence` là `IS NULL OR IN (...)`.
+  ///
+  /// Thành nullable ở v12. Trước đó cột là `NOT NULL DEFAULT 'Month'` nên
+  /// trạng thái "không chu kỳ" không lưu nổi ở client dù backend vẫn nhận.
+  TextColumn get timeRecurrence => text().nullable()();
 
   // Đã bỏ ở v11: `period` ('weekly'/'monthly'/'yearly'). Đây là cột của lược
   // đồ trước DB v2, bị `time_recurrence` ('Week'/'Month'/'Quarter'/'Year') thay

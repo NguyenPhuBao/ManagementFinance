@@ -149,6 +149,10 @@ void main() {
         categoryId: const Value(categoryId),
         amount: const Value(500000),
         startDate: Value(now),
+        // Client không tự sinh giá trị cho cột này (chu kỳ neo vào ngày bắt
+        // đầu), nhưng hàng kéo về từ backend hoặc Admin-web có thể mang sẵn —
+        // và khi đó phải được đẩy lại nguyên vẹn.
+        nextTimeRecurrence: Value(DateTime.utc(2026, 10, 5)),
         syncStatus: const Value('pending'),
         updatedAt: Value(now),
       ));
@@ -232,6 +236,15 @@ void main() {
           'nexttime_recurrence', 'note', 'is_deleted', 'update_at',
           'idaccount',
         },
+      );
+    });
+
+    test('budget — mốc chu kỳ có sẵn phải được đẩy lại nguyên vẹn', () {
+      expect(
+        payloadOf('budget')['nexttime_recurrence'],
+        '2026-10-05T00:00:00.000Z',
+        reason: 'Bỏ rơi cột này khi đẩy sẽ xoá mốc mà máy khác đã đặt: backend '
+            'lưu null, và chu kỳ lặng lẽ nhảy về neo theo ngày bắt đầu.',
       );
     });
 

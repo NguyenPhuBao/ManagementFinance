@@ -3482,10 +3482,8 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
       const VerificationMeta('timeRecurrence');
   @override
   late final GeneratedColumn<String> timeRecurrence = GeneratedColumn<String>(
-      'time_recurrence', aliasedName, false,
-      type: DriftSqlType.string,
-      requiredDuringInsert: false,
-      defaultValue: const Constant('Month'));
+      'time_recurrence', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _noteMeta = const VerificationMeta('note');
   @override
   late final GeneratedColumn<String> note = GeneratedColumn<String>(
@@ -3739,8 +3737,8 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
           .read(DriftSqlType.dateTime, data['${effectivePrefix}end_date']),
       recurrence: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}recurrence'])!,
-      timeRecurrence: attachedDatabase.typeMapping.read(
-          DriftSqlType.string, data['${effectivePrefix}time_recurrence'])!,
+      timeRecurrence: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}time_recurrence']),
       note: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}note'])!,
       nextTimeRecurrence: attachedDatabase.typeMapping.read(
@@ -3790,7 +3788,16 @@ class Budget extends DataClass implements Insertable<Budget> {
   final DateTime startDate;
   final DateTime? endDate;
   final bool recurrence;
-  final String timeRecurrence;
+
+  /// Time_recurrence: 'Week' | 'Month' | 'Quarter' | 'Year', hoặc **null**.
+  ///
+  /// null = ngân sách **không theo chu kỳ** nào: người dùng chọn "Ngày cụ thể"
+  /// và tự đặt ngày kết thúc. Backend biểu diễn đúng như vậy — ràng buộc
+  /// `chk_budget_time_recurrence` là `IS NULL OR IN (...)`.
+  ///
+  /// Thành nullable ở v12. Trước đó cột là `NOT NULL DEFAULT 'Month'` nên
+  /// trạng thái "không chu kỳ" không lưu nổi ở client dù backend vẫn nhận.
+  final String? timeRecurrence;
   final String note;
 
   /// nextTimeRecurrence: thời điểm bắt đầu chu kỳ ngân sách tiếp theo
@@ -3817,7 +3824,7 @@ class Budget extends DataClass implements Insertable<Budget> {
       required this.startDate,
       this.endDate,
       required this.recurrence,
-      required this.timeRecurrence,
+      this.timeRecurrence,
       required this.note,
       this.nextTimeRecurrence,
       this.deletedAt,
@@ -3854,7 +3861,9 @@ class Budget extends DataClass implements Insertable<Budget> {
       map['end_date'] = Variable<DateTime>(endDate);
     }
     map['recurrence'] = Variable<bool>(recurrence);
-    map['time_recurrence'] = Variable<String>(timeRecurrence);
+    if (!nullToAbsent || timeRecurrence != null) {
+      map['time_recurrence'] = Variable<String>(timeRecurrence);
+    }
     map['note'] = Variable<String>(note);
     if (!nullToAbsent || nextTimeRecurrence != null) {
       map['next_time_recurrence'] = Variable<DateTime>(nextTimeRecurrence);
@@ -3899,7 +3908,9 @@ class Budget extends DataClass implements Insertable<Budget> {
           ? const Value.absent()
           : Value(endDate),
       recurrence: Value(recurrence),
-      timeRecurrence: Value(timeRecurrence),
+      timeRecurrence: timeRecurrence == null && nullToAbsent
+          ? const Value.absent()
+          : Value(timeRecurrence),
       note: Value(note),
       nextTimeRecurrence: nextTimeRecurrence == null && nullToAbsent
           ? const Value.absent()
@@ -3938,7 +3949,7 @@ class Budget extends DataClass implements Insertable<Budget> {
       startDate: serializer.fromJson<DateTime>(json['startDate']),
       endDate: serializer.fromJson<DateTime?>(json['endDate']),
       recurrence: serializer.fromJson<bool>(json['recurrence']),
-      timeRecurrence: serializer.fromJson<String>(json['timeRecurrence']),
+      timeRecurrence: serializer.fromJson<String?>(json['timeRecurrence']),
       note: serializer.fromJson<String>(json['note']),
       nextTimeRecurrence:
           serializer.fromJson<DateTime?>(json['nextTimeRecurrence']),
@@ -3970,7 +3981,7 @@ class Budget extends DataClass implements Insertable<Budget> {
       'startDate': serializer.toJson<DateTime>(startDate),
       'endDate': serializer.toJson<DateTime?>(endDate),
       'recurrence': serializer.toJson<bool>(recurrence),
-      'timeRecurrence': serializer.toJson<String>(timeRecurrence),
+      'timeRecurrence': serializer.toJson<String?>(timeRecurrence),
       'note': serializer.toJson<String>(note),
       'nextTimeRecurrence': serializer.toJson<DateTime?>(nextTimeRecurrence),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
@@ -3996,7 +4007,7 @@ class Budget extends DataClass implements Insertable<Budget> {
           DateTime? startDate,
           Value<DateTime?> endDate = const Value.absent(),
           bool? recurrence,
-          String? timeRecurrence,
+          Value<String?> timeRecurrence = const Value.absent(),
           String? note,
           Value<DateTime?> nextTimeRecurrence = const Value.absent(),
           Value<DateTime?> deletedAt = const Value.absent(),
@@ -4023,7 +4034,8 @@ class Budget extends DataClass implements Insertable<Budget> {
         startDate: startDate ?? this.startDate,
         endDate: endDate.present ? endDate.value : this.endDate,
         recurrence: recurrence ?? this.recurrence,
-        timeRecurrence: timeRecurrence ?? this.timeRecurrence,
+        timeRecurrence:
+            timeRecurrence.present ? timeRecurrence.value : this.timeRecurrence,
         note: note ?? this.note,
         nextTimeRecurrence: nextTimeRecurrence.present
             ? nextTimeRecurrence.value
@@ -4178,7 +4190,7 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
   final Value<DateTime> startDate;
   final Value<DateTime?> endDate;
   final Value<bool> recurrence;
-  final Value<String> timeRecurrence;
+  final Value<String?> timeRecurrence;
   final Value<String> note;
   final Value<DateTime?> nextTimeRecurrence;
   final Value<DateTime?> deletedAt;
@@ -4311,7 +4323,7 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
       Value<DateTime>? startDate,
       Value<DateTime?>? endDate,
       Value<bool>? recurrence,
-      Value<String>? timeRecurrence,
+      Value<String?>? timeRecurrence,
       Value<String>? note,
       Value<DateTime?>? nextTimeRecurrence,
       Value<DateTime?>? deletedAt,
@@ -8426,7 +8438,7 @@ typedef $$BudgetsTableCreateCompanionBuilder = BudgetsCompanion Function({
   required DateTime startDate,
   Value<DateTime?> endDate,
   Value<bool> recurrence,
-  Value<String> timeRecurrence,
+  Value<String?> timeRecurrence,
   Value<String> note,
   Value<DateTime?> nextTimeRecurrence,
   Value<DateTime?> deletedAt,
@@ -8451,7 +8463,7 @@ typedef $$BudgetsTableUpdateCompanionBuilder = BudgetsCompanion Function({
   Value<DateTime> startDate,
   Value<DateTime?> endDate,
   Value<bool> recurrence,
-  Value<String> timeRecurrence,
+  Value<String?> timeRecurrence,
   Value<String> note,
   Value<DateTime?> nextTimeRecurrence,
   Value<DateTime?> deletedAt,
@@ -8740,7 +8752,7 @@ class $$BudgetsTableTableManager extends RootTableManager<
             Value<DateTime> startDate = const Value.absent(),
             Value<DateTime?> endDate = const Value.absent(),
             Value<bool> recurrence = const Value.absent(),
-            Value<String> timeRecurrence = const Value.absent(),
+            Value<String?> timeRecurrence = const Value.absent(),
             Value<String> note = const Value.absent(),
             Value<DateTime?> nextTimeRecurrence = const Value.absent(),
             Value<DateTime?> deletedAt = const Value.absent(),
@@ -8790,7 +8802,7 @@ class $$BudgetsTableTableManager extends RootTableManager<
             required DateTime startDate,
             Value<DateTime?> endDate = const Value.absent(),
             Value<bool> recurrence = const Value.absent(),
-            Value<String> timeRecurrence = const Value.absent(),
+            Value<String?> timeRecurrence = const Value.absent(),
             Value<String> note = const Value.absent(),
             Value<DateTime?> nextTimeRecurrence = const Value.absent(),
             Value<DateTime?> deletedAt = const Value.absent(),

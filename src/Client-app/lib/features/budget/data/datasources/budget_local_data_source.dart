@@ -84,6 +84,9 @@ class BudgetLocalDataSourceImpl implements BudgetLocalDataSource {
         endDate: Value(budget.endDate),
         recurrence: Value(budget.recurrence),
         timeRecurrence: Value(budget.timeRecurrence),
+        // Mốc neo chu kỳ. Thiếu dòng này thì người dùng đổi mốc rồi bấm Lưu mà
+        // chu kỳ vẫn chạy theo mốc cũ — không lỗi, không thông báo.
+        nextTimeRecurrence: Value(budget.nextTimeRecurrence),
         note: Value(budget.note),
         syncStatus: const Value('pending'),
         updatedAt: Value(budget.updatedAt),
