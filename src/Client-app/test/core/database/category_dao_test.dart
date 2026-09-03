@@ -1,4 +1,4 @@
-import 'package:drift/drift.dart' hide isNull;
+import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flowmoney/core/database/app_database.dart';
@@ -839,5 +839,217 @@ void main() {
       reason: 'Đổi tên chứ KHÔNG xoá hàng — xoá hàng seed trước khi giao dịch '
           'được repoint chính là lỗi 11.6.',
     );
+  });
+
+  // ── Dọn hậu quả của G14 ────────────────────────────────────────────────────
+  //
+  // Bản client trước 2026-09-04 tạo 5 danh mục cá nhân TRƯỚC lần pull đầu tiên,
+  // nên trên máy mới nó sinh ra bản trùng tên với bản đã có trên backend. Bản vá
+  // ngăn phát sinh mới, nhưng máy đã lỡ tạo thì vẫn giữ những hàng `pending` đó
+  // và chúng hỏng ở MỌI chu kỳ đẩy — kéo cả engine vào giãn cách.
+  //
+  // `mergeDuplicatePersonalCategories` dọn nốt: chuyển tham chiếu sang bản của
+  // server rồi xoá VẬT LÝ bản cục bộ. Xoá vật lý là đúng ở đây — bản đó chưa
+  // từng tồn tại trên server nên không có gì để đồng bộ, còn xoá mềm sẽ để lại
+  // một thao tác đẩy vô nghĩa.
+
+  group('mergeDuplicatePersonalCategories — dọn bản trùng do máy tự tạo', () {
+    const acc = 7;
+    const idServer = '11111111-1111-4111-8111-111111111111';
+    const idLocal = '22222222-2222-4222-8222-222222222222';
+
+    Future<void> catRieng(
+      String id,
+      String name, {
+      String classify = 'chi',
+      String syncStatus = 'pending',
+      String? parentId,
+      bool isGroup = false,
+    }) =>
+        db.categoryDao.insert(CategoriesCompanion.insert(
+          id: id,
+          idaccount: acc,
+          name: name,
+          classify: classify,
+          isDefault: const Value(false),
+          isGroup: Value(isGroup),
+          parentId: Value(parentId),
+          syncStatus: Value(syncStatus),
+          updatedAt: DateTime(2026, 9, 4),
+        ));
+
+    // Cố ý KHÔNG dùng `getAll`: hàm đó khử trùng lặp theo (classify, tên chuẩn
+    // hoá) trước khi trả về, tức giấu đúng những hàng nhóm test này đang đo.
+    // `getNamesInUse` trả nguyên hàng thật trong bảng.
+    Future<List<Category>> conLai() async =>
+        (await db.categoryDao.getNamesInUse(acc))
+            .where((c) => !c.isDefault)
+            .toList();
+
+    setUp(() async {
+      await db.walletDao.insert(WalletsCompanion.insert(
+        id: 'w-1',
+        idaccount: acc,
+        name: 'Tiền mặt',
+        updatedAt: DateTime(2026, 9, 4),
+      ));
+    });
+
+    test('bản pending trùng tên bị gộp vào bản đã có trên server', () async {
+      await catRieng(idServer, 'Chi khác', syncStatus: 'synced');
+      await catRieng(idLocal, 'Chi khác');
+
+      final gop = await db.categoryDao.mergeDuplicatePersonalCategories(acc);
+
+      expect(gop, 1);
+      final rows = await conLai();
+      expect(rows, hasLength(1));
+      expect(rows.single.id, idServer,
+          reason: 'Bản của server là bản THẬT — nó đã tồn tại ở nơi khác. Giữ '
+              'bản cục bộ thì thao tác đẩy của nó vẫn hỏng mãi.');
+      expect(await db.categoryDao.getById(idLocal), isNull,
+          reason: 'Xoá VẬT LÝ: bản này chưa từng lên server nên không có gì để '
+              'đồng bộ; xoá mềm sẽ để lại một thao tác đẩy vô nghĩa.');
+    });
+
+    test('giao dịch được chuyển sang bản của server TRƯỚC khi xoá', () async {
+      await catRieng(idServer, 'Chi khác', syncStatus: 'synced');
+      await catRieng(idLocal, 'Chi khác');
+      await db.transactionDao.insert(TransactionsCompanion.insert(
+        id: 'tx-1',
+        walletId: 'w-1',
+        idaccount: acc,
+        amount: 50000,
+        type: 'chi',
+        date: DateTime(2026, 9, 4),
+        categoryId: const Value(idLocal),
+        updatedAt: DateTime(2026, 9, 4),
+      ));
+
+      await db.categoryDao.mergeDuplicatePersonalCategories(acc);
+
+      final tx = (await db.transactionDao.getAll(acc)).single;
+      expect(tx.categoryId, idServer,
+          reason: 'Xoá trước, repoint sau thì giao dịch trỏ vào một hàng không '
+              'còn tồn tại — đúng lỗi 11.6.');
+      expect(tx.syncStatus, 'pending',
+          reason: 'Giao dịch vừa đổi danh mục nên phải được đẩy lại.');
+    });
+
+    test('không có bản synced nào thì KHÔNG xoá gì', () async {
+      await catRieng(idServer, 'Chi khác');
+      await catRieng(idLocal, 'Chi khác');
+
+      final gop = await db.categoryDao.mergeDuplicatePersonalCategories(acc);
+
+      expect(gop, 0);
+      expect(await conLai(), hasLength(2),
+          reason: 'Cả hai đều chưa lên server thì không có bằng chứng bản nào '
+              'là bản thật. Đoán bừa rồi xoá là mất dữ liệu người dùng.');
+    });
+
+    test('không bao giờ xoá một bản đã synced', () async {
+      await catRieng(idServer, 'Chi khác', syncStatus: 'synced');
+      await catRieng(idLocal, 'chi  KHÁC', syncStatus: 'synced');
+
+      final gop = await db.categoryDao.mergeDuplicatePersonalCategories(acc);
+
+      expect(gop, 0);
+      expect(await conLai(), hasLength(2),
+          reason: 'Hai bản cùng tên mà cả hai đều có trên server là chuyện của '
+              'dữ liệu backend. Client xoá bên nào cũng là xoá dữ liệu thật.');
+    });
+
+    test('khớp tên theo dạng chuẩn hoá, không phải so chuỗi thô', () async {
+      await catRieng(idServer, 'Chi khác', syncStatus: 'synced');
+      await catRieng(idLocal, 'chi  KHÁC');
+
+      await db.categoryDao.mergeDuplicatePersonalCategories(acc);
+
+      expect(await conLai(), hasLength(1),
+          reason: 'Backend so tên sau chuẩn hoá nên vẫn coi là trùng; so chuỗi '
+              'thô ở client sẽ bỏ sót đúng những bản đang gây hỏng.');
+    });
+
+    test('bỏ qua tài khoản khác và danh mục mặc định', () async {
+      await catRieng(idServer, 'Chi khác', syncStatus: 'synced');
+      await catRieng(idLocal, 'Chi khác');
+      // Cùng tên nhưng của tài khoản khác — không được đụng tới.
+      await db.categoryDao.insert(CategoriesCompanion.insert(
+        id: '33333333-3333-4333-8333-333333333333',
+        idaccount: 99,
+        name: 'Chi khác',
+        classify: 'chi',
+        updatedAt: DateTime(2026, 9, 4),
+      ));
+      // Danh mục mặc định cùng tên — dùng chung, không thuộc tài khoản nào.
+      await db.categoryDao.insert(CategoriesCompanion.insert(
+        id: 'cat_default_other',
+        idaccount: 0,
+        name: 'Chi khác',
+        classify: 'chi',
+        isDefault: const Value(true),
+        updatedAt: DateTime(2026, 9, 4),
+      ));
+
+      await db.categoryDao.mergeDuplicatePersonalCategories(acc);
+
+      expect(
+          await db.categoryDao.getById('33333333-3333-4333-8333-333333333333'),
+          isNotNull);
+      expect(await db.categoryDao.getById('cat_default_other'), isNotNull);
+    });
+
+    test('danh mục con đang trỏ vào bản bị xoá được chuyển sang bản giữ lại',
+        () async {
+      await catRieng(idServer, 'Nhóm A', syncStatus: 'synced', isGroup: true);
+      await catRieng(idLocal, 'Nhóm A', isGroup: true);
+      await catRieng('44444444-4444-4444-8444-444444444444', 'Con',
+          parentId: idLocal);
+
+      await db.categoryDao.mergeDuplicatePersonalCategories(acc);
+
+      final con = await db.categoryDao
+          .getById('44444444-4444-4444-8444-444444444444');
+      expect(con!.parentId, idServer,
+          reason: 'Bỏ sót parentId thì danh mục con trỏ vào một hàng đã bị xoá '
+              'vật lý, và cây danh mục đứt ở giữa.');
+    });
+
+    test('từ khoá của bản bị xoá được chuyển sang, không tạo bản trùng',
+        () async {
+      await catRieng(idServer, 'Chi khác', syncStatus: 'synced');
+      await catRieng(idLocal, 'Chi khác');
+      await db.categoryDao.replaceKeywords(
+        accountId: acc,
+        categoryId: idLocal,
+        keywords: ['cà phê', 'trà sữa'],
+        now: DateTime(2026, 9, 4),
+      );
+      await db.categoryDao.replaceKeywords(
+        accountId: acc,
+        categoryId: idServer,
+        keywords: ['cà phê'],
+        now: DateTime(2026, 9, 4),
+      );
+
+      await db.categoryDao.mergeDuplicatePersonalCategories(acc);
+
+      final kw = await db.categoryDao.getKeywords(acc, idServer);
+      expect(kw.toSet(), {'cà phê', 'trà sữa'},
+          reason: 'Từ khoá là dữ liệu người dùng gõ tay — chuyển sang chứ '
+              'không vứt. "cà phê" đã có bên đích nên không nhân đôi.');
+      expect(await db.categoryDao.getKeywords(acc, idLocal), isEmpty);
+    });
+
+    test('không có gì trùng thì không đụng vào gì', () async {
+      await catRieng(idServer, 'Chi khác', syncStatus: 'synced');
+      await catRieng(idLocal, 'Thu khác', classify: 'thu');
+
+      final gop = await db.categoryDao.mergeDuplicatePersonalCategories(acc);
+
+      expect(gop, 0);
+      expect(await conLai(), hasLength(2));
+    });
   });
 }

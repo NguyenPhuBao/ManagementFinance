@@ -576,7 +576,8 @@ src/Backend/
 - **Migration `isLocalOnly`** (v7→v8): nhóm danh mục tạo trước 2026-09-02 quay lại được hàng đợi đẩy *(G11)*
 - **`AuthInterceptor` không còn xoá token trong im lặng**: phát `sessionExpiredStream`, AuthBloc nghe song song với SyncEngine *(G12)*
 - **Hẹn lại chu kỳ đồng bộ bị giãn cách từ chối** *(G13)* — trước đây nhánh chặn chỉ `return`, thay đổi ghi trong lúc giãn cách phải chờ tới lần mở app sau
-- **Test: 237/237 pass** (~15 giây), 31 file — cả 31 file đều đã được git theo dõi
+- **Danh mục cá nhân không còn sinh trùng trên máy mới** *(G14)* — tạo sau lần pull đầu tiên thay vì trước, kèm bước khử trùng lặp dọn hậu quả trên máy đã lỡ tạo
+- **Test: 246/246 pass** (~15 giây), 31 file — cả 31 file đều đã được git theo dõi
 
 ### 🔄 Việc còn dang dở
 
@@ -638,8 +639,10 @@ máy còn hàng seed `cat_*`; `ensureMissing()` chạy **sau** khi pull xong, v�
 khi `SyncEngine.hasCompletedPull` — pull hỏng thì hoãn tới lần mở app sau chứ
 không tạo mù. Chi tiết ở **G14** trong `docs/CLIENT_APP_KNOWN_GAPS.md`.
 
-> ⚠️ Bản vá ngăn phát sinh mới, **không dọn** bản trùng đã có trên máy đã lỡ tạo.
-> Cách dọn ghi ở cuối G14.
+Máy đã lỡ tạo bản trùng thì `CategoryDao.mergeDuplicatePersonalCategories()`
+dọn nốt sau mỗi lần pull: gom theo tên chuẩn hoá, giữ bản `synced`, repoint mọi
+tham chiếu rồi **xoá vật lý** bản `pending` — ngoại lệ có chủ ý của quy tắc 5, vì
+hàng đó chưa từng tồn tại trên server. Chi tiết ở cuối G14.
 
 Phần backend (mã lỗi ổn định, vai trò lớp phòng thủ thứ hai) ở khung đỏ đầu
 `CATEGORY_NAME_UNIQUENESS.md`. Phần độ trễ giảm bớt ở **G13**.
@@ -662,7 +665,7 @@ nghị, việc rẻ nhất trước:
    `CATEGORY_STABLE_IDS` → `CATEGORY_GROUP_MEMBERSHIP_SYNC`. Trạng thái từng cái
    ở bảng ngay trên.
 3. **G10** là mục dang dở duy nhất còn lại ở client, bị chặn ở mục 2 dòng cuối.
-4. **Kịch bản nâng cấp CSDL v7 → v10 chưa từng chạy thật** (chỉ có test). Người
+4. **Kịch bản nâng cấp CSDL v7 → v11 chưa từng chạy thật** (chỉ có test). Người
    dùng đã quyết định không chạy. Ghi lại vì: nếu sau này có báo cáo **mất danh
    mục** hoặc **giao dịch không đồng bộ sau khi cập nhật app**, đây là chỗ nghi
    đầu tiên. Cách kiểm: dựng worktree ở `ea0941b`, chạy bản cũ để sinh CSDL v7,

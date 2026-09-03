@@ -53,7 +53,7 @@
 ## Lệnh hay dùng
 
 ```bash
-# Test (chạy từ src/Client-app) — hiện 237/237 pass, ~15 giây
+# Test (chạy từ src/Client-app) — hiện 246/246 pass, ~15 giây
 flutter test
 flutter analyze          # mức nền: 29 issue, KHÔNG có error
 

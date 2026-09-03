@@ -177,7 +177,7 @@ Bốn test canh vùng này ở `test/core/sync/sync_failure_handling_test.dart`,
 >
 > 8 test canh vùng này ở `test/features/category/data/personal_default_categories_test.dart`.
 >
-> ⚠️ **Máy đã lỡ tạo bản trùng thì vẫn còn kẹt.** Bản vá ngăn phát sinh mới, không dọn hậu quả cũ. Muốn dọn cần một bước khử trùng lặp sau pull — xem cuối mục này.
+> **Máy đã lỡ tạo bản trùng cũng đã tự thoát được.** Bản vá trên ngăn phát sinh mới; bước khử trùng lặp sau pull dọn nốt hậu quả cũ — xem cuối mục này.
 
 Đo được trên app thật ngày 2026-09-04 với tài khoản có sẵn dữ liệu, bằng cách đọc log của `SyncEngine` trong trình duyệt:
 
@@ -213,13 +213,29 @@ Hai hướng sửa, đều thuần client:
 
 **Phần thuộc backend là lớp phòng thủ thứ hai, không phải điều kiện tiên quyết:** cho `/sync/push` trả mã lỗi ổn định `CATEGORY_NAME_DUPLICATE` thay vì message rỗng, để client xếp được vào `permanent` bằng một dòng trong `_classifyFailure`. Đáng làm vì **mọi** vi phạm trùng tên khác cũng sẽ hỏng theo đúng kiểu này, không riêng 5 danh mục trên.
 
-#### Còn lại: dọn hậu quả trên máy đã lỡ tạo bản trùng
+#### Dọn hậu quả trên máy đã lỡ tạo bản trùng · ✅ ĐÃ LÀM (2026-09-04)
 
-Bản vá ngăn phát sinh mới nhưng **không dọn** những bản trùng đã có. Máy nào đã chạy bản client cũ và tạo ra 5 danh mục trùng thì chúng vẫn nằm ở `pending` và vẫn hỏng mỗi chu kỳ.
+Bản vá thứ tự chỉ ngăn phát sinh mới. Máy nào đã chạy bản client cũ và tạo ra 5 danh mục trùng thì chúng vẫn nằm ở `pending` và vẫn hỏng mỗi chu kỳ. `CategoryDao.mergeDuplicatePersonalCategories(idaccount)` dọn nốt phần đó, chạy **sau pull**, ngay sau `removeDuplicateLocalSeedCategories()` trong `SyncEngine`.
 
-Cách dọn cần một bước khử trùng lặp chạy **sau pull**: tìm hai danh mục cùng tài khoản, cùng tên đã chuẩn hoá, một bản `synced` (từ backend) và một bản `pending` (do máy này tạo) → repoint mọi tham chiếu sang bản `synced` rồi xoá **vật lý** bản `pending`. Xoá vật lý là đúng ở đây: bản đó chưa từng tồn tại trên server nên không có gì để đồng bộ, còn xoá mềm sẽ để lại một thao tác đẩy vô nghĩa.
+Cách nó chọn bản giữ lại:
 
-`removeDuplicateLocalSeedCategories()` đã làm việc gần giống nhưng chỉ cho `isDefault = true` và chỉ xoá bản có id không phải UUID — hai danh mục người dùng mà cả hai đều là UUID thì nó không chạm tới. Nhớ **repoint TRƯỚC, xoá SAU** (đảo lại chính là lỗi 11.6).
+- Gom các danh mục **không mặc định, chưa xoá** của tài khoản theo `normalizeCategoryName` — không tính `classify`, đúng quy tắc 7.
+- Chỉ hành động khi nhóm có **đúng một** bản `synced` — đó là bản backend công nhận. Không bản nào hoặc nhiều hơn một thì bỏ qua, không đoán bừa.
+- Chỉ hấp thụ các bản `pending`. Một hàng đã `synced` không bao giờ bị xoá — nó có thể đang được máy khác dùng.
+
+`_absorbCategory()` **repoint TRƯỚC, xoá SAU** (đảo lại chính là lỗi 11.6):
+
+1. `repointCategoryReferences()` — giao dịch, ngân sách, hoá đơn.
+2. `parentId` của các danh mục con.
+3. Từ khoá phân loại — bỏ qua những từ khoá bản giữ lại đã có, vì khoá duy nhất là `(idaccount, categoryId, normalizedKeyword)`.
+4. Xoá thành viên nhóm của bản bị hấp thụ.
+5. **Xoá vật lý** hàng đó.
+
+Xoá vật lý là ngoại lệ có chủ ý của quy tắc 5: hàng `pending` này **chưa từng tồn tại trên server**, nên không có gì để đồng bộ; xoá mềm sẽ để lại đúng một thao tác đẩy vô nghĩa — thứ đang gây ra chính vấn đề này.
+
+`removeDuplicateLocalSeedCategories()` vẫn giữ nguyên vai trò cũ: nó chỉ lo cho `isDefault = true` và chỉ xoá bản có id không phải UUID. Hai hàm bổ sung nhau chứ không chồng nhau.
+
+9 test canh vùng này ở `test/core/database/category_dao_test.dart`, nhóm `mergeDuplicatePersonalCategories — dọn bản trùng do máy tự tạo`.
 
 ---
 

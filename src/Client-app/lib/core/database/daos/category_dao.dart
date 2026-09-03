@@ -380,6 +380,140 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
   /// Xóa các category seed cục bộ (ID dạng 'cat_food') khi đã có bản UUID
   /// tương ứng từ backend (cùng tên + classify + isDefault).
   /// Gọi sau mỗi lần pull để dọn sạch duplicate.
+  /// Gộp danh mục **người dùng** bị trùng tên: bản cục bộ chưa từng lên server
+  /// được nhập vào bản mà server đã có, rồi xoá hẳn.
+  ///
+  /// ## Vì sao cần (G14)
+  ///
+  /// Bản client trước 2026-09-04 tạo 5 danh mục cá nhân **trước** lần pull đầu
+  /// tiên. Trên một máy mới, SQLite còn rỗng nên phép kiểm trùng không thấy gì
+  /// và nó sinh ra bản trùng tên với bản tài khoản đã có trên backend. Đẩy lên
+  /// thì vi phạm quy tắc trùng tên, `/sync/push` trả `failed` kèm message rỗng,
+  /// client xếp vào `transient` và **thử lại vĩnh viễn** — mọi chu kỳ đồng bộ
+  /// kết thúc hỏng và giãn cách luỹ tiến kéo chậm mọi thay đổi khác.
+  ///
+  /// Bản vá ở `PersonalDefaultCategories` chỉ ngăn phát sinh mới. Hàm này dọn
+  /// nốt cho máy đã lỡ tạo, để nó tự thoát mà không phải cài lại app.
+  ///
+  /// ## Ba ràng buộc an toàn
+  ///
+  /// - **Chỉ xoá bản `pending`.** Bản `synced` đã tồn tại ở nơi khác; xoá nó là
+  ///   xoá dữ liệu thật của người dùng.
+  /// - **Phải có đúng một bản `synced` làm nơi nhập vào.** Cả nhóm đều `pending`
+  ///   thì không có bằng chứng bản nào là bản thật — để nguyên.
+  /// - **Repoint TRƯỚC, xoá SAU.** Đảo lại thì giao dịch trỏ vào một hàng không
+  ///   còn tồn tại — đúng lỗi 11.6.
+  ///
+  /// Xoá **vật lý** chứ không xoá mềm: bản này chưa từng lên server nên không có
+  /// gì để đồng bộ, còn xoá mềm sẽ để lại một thao tác đẩy vô nghĩa.
+  ///
+  /// Trả về số bản đã gộp.
+  Future<int> mergeDuplicatePersonalCategories(int idaccount) async {
+    if (idaccount <= 0) return 0;
+
+    final rows = await (select(categories)
+          ..where((t) =>
+              t.idaccount.equals(idaccount) &
+              t.isDefault.equals(false) &
+              t.isDeleted.equals(false) &
+              t.deletedAt.isNull()))
+        .get();
+
+    // Gom theo tên đã chuẩn hoá — KHÔNG tính `classify`. Quy tắc trùng tên của
+    // dự án không có `classify` trong khoá, nên gom theo cặp (tên, classify) sẽ
+    // bỏ sót đúng những bản backend từ chối.
+    final byName = <String, List<Category>>{};
+    for (final c in rows) {
+      byName.putIfAbsent(normalizeCategoryName(c.name), () => []).add(c);
+    }
+
+    var merged = 0;
+    for (final group in byName.values) {
+      if (group.length <= 1) continue;
+
+      Category? keeper;
+      for (final c in group) {
+        if (c.syncStatus == 'synced') {
+          keeper = c;
+          break;
+        }
+      }
+      if (keeper == null) continue;
+
+      // Có từ hai bản `synced` trở lên nghĩa là dữ liệu backend tự nó đã trùng
+      // — chuyện của backend, client xoá bên nào cũng là xoá dữ liệu thật.
+      final syncedCount = group.where((c) => c.syncStatus == 'synced').length;
+      if (syncedCount > 1) continue;
+
+      for (final victim in group) {
+        if (victim.id == keeper.id) continue;
+        if (victim.syncStatus != 'pending') continue;
+        await _absorbCategory(idaccount, victim.id, keeper.id);
+        merged++;
+      }
+    }
+    return merged;
+  }
+
+  /// Chuyển mọi thứ đang trỏ vào [fromId] sang [toId] rồi xoá hẳn [fromId].
+  Future<void> _absorbCategory(int idaccount, String fromId, String toId) async {
+    // Giao dịch / ngân sách / hoá đơn — dùng lại đường đã có.
+    await attachedDatabase.repointCategoryReferences(
+      idaccount: idaccount,
+      fromCategoryId: fromId,
+      toCategoryId: toId,
+    );
+
+    await transaction(() async {
+      // Danh mục con đang coi bản bị xoá là nhóm cha. Bỏ sót thì cây danh mục
+      // đứt ở giữa vì `parentId` trỏ vào một hàng đã bị xoá vật lý.
+      await (update(categories)
+            ..where((t) =>
+                t.idaccount.equals(idaccount) & t.parentId.equals(fromId)))
+          .write(CategoriesCompanion(
+        parentId: Value(toId),
+        syncStatus: const Value('pending'),
+        updatedAt: Value(DateTime.now()),
+      ));
+
+      // Từ khoá là chữ người dùng gõ tay — chuyển sang chứ không vứt. Bỏ những
+      // từ bên đích đã có, vì `(idaccount, categoryId, normalizedKeyword)` là
+      // khoá duy nhất và chèn trùng sẽ vỡ.
+      final daCo = await (select(categoryKeywords)
+            ..where((t) =>
+                t.idaccount.equals(idaccount) & t.categoryId.equals(toId)))
+          .get();
+      final daCoSet = daCo.map((k) => k.normalizedKeyword).toSet();
+
+      final cuaVictim = await (select(categoryKeywords)
+            ..where((t) =>
+                t.idaccount.equals(idaccount) & t.categoryId.equals(fromId)))
+          .get();
+      for (final k in cuaVictim) {
+        if (daCoSet.contains(k.normalizedKeyword)) continue;
+        await (update(categoryKeywords)..where((t) => t.id.equals(k.id)))
+            .write(CategoryKeywordsCompanion(
+          categoryId: Value(toId),
+          updatedAt: Value(DateTime.now()),
+        ));
+      }
+      await (delete(categoryKeywords)
+            ..where((t) =>
+                t.idaccount.equals(idaccount) & t.categoryId.equals(fromId)))
+          .go();
+
+      // Quan hệ nhóm chỉ tồn tại ở máy này (chưa đồng bộ được, xem G10) và bản
+      // bị xoá cũng chỉ ở máy này — xoá theo, không có gì để giữ.
+      await (delete(categoryGroupMemberships)
+            ..where((t) =>
+                t.idaccount.equals(idaccount) &
+                (t.groupId.equals(fromId) | t.categoryId.equals(fromId))))
+          .go();
+
+      await (delete(categories)..where((t) => t.id.equals(fromId))).go();
+    });
+  }
+
   Future<void> removeDuplicateLocalSeedCategories() async {
     final uuidRegex = RegExp(
       r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',

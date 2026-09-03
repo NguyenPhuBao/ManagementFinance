@@ -605,6 +605,17 @@ class SyncEngine {
             // Xóa category seed cục bộ (cat_food...) đã có bản UUID từ backend —
             // chạy SAU repair ở trên để không xóa mất row mà repair cần đọc.
             await _db.categoryDao.removeDuplicateLocalSeedCategories();
+            // Dọn bản trùng do chính máy này tạo ra trước khi kịp pull (G14).
+            // Chạy SAU cùng: hai bước trên vừa dựng lại quan hệ, giờ mới nhìn
+            // được toàn cảnh tài khoản đang có gì. Không dọn thì mỗi bản trùng
+            // là một thao tác đẩy hỏng vĩnh viễn, và giãn cách luỹ tiến kéo
+            // chậm mọi thay đổi khác.
+            final gopTrung = await _db.categoryDao
+                .mergeDuplicatePersonalCategories(accountId);
+            if (gopTrung > 0) {
+              debugPrint(
+                  '[SyncEngine] Đã gộp $gopTrung danh mục trùng tên do máy này tự tạo.');
+            }
             debugPrint(
                 '[SyncEngine] Pulled & Saved ${categories.length} categories into SQLite local.');
           }
