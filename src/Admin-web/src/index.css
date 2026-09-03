@@ -7,11 +7,13 @@
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 24px;
   }
+
   @media (min-width: 1024px) {
     .bento-grid {
       grid-template-columns: repeat(4, 1fr);
     }
   }
+
   .stat-card {
     background-color: #ffffff;
     border: 1px solid #E2E8F0;
@@ -19,22 +21,28 @@
     padding: 24px;
     transition: transform 0.2s, box-shadow 0.2s;
   }
+
   .stat-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   }
+
   .modal-overlay {
-    background-color: rgba(11, 28, 48, 0.5); /* on-background with opacity */
+    background-color: rgba(11, 28, 48, 0.5);
+    /* on-background with opacity */
   }
+
   .chart-container {
     height: 200px;
     width: 100%;
     position: relative;
   }
+
   .loading-overlay {
     background-color: rgba(248, 249, 255, 0.6);
     backdrop-filter: blur(2px);
   }
+
   path {
     transition: d 0.5s ease-in-out;
   }
@@ -42,4 +50,23 @@
 
 body {
   @apply bg-background text-on-background font-body-md antialiased;
+}
+
+/* Custom visible horizontal scrollbar for keyword input box */
+.keyword-scrollbar::-webkit-scrollbar {
+  height: 6px !important;
+}
+
+.keyword-scrollbar::-webkit-scrollbar-track {
+  background: #f1f5f9 !important;
+  border-radius: 9999px !important;
+}
+
+.keyword-scrollbar::-webkit-scrollbar-thumb {
+  background: #94a3b8 !important;
+  border-radius: 9999px !important;
+}
+
+.keyword-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #64748b !important;
 }
