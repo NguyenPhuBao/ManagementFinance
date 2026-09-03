@@ -23,8 +23,33 @@ class BudgetDao extends DatabaseAccessor<AppDatabase> with _$BudgetDaoMixin {
         .watch();
   }
 
+  Future<Budget?> getById(String id) {
+    return (select(budgets)..where((t) => t.id.equals(id))).getSingleOrNull();
+  }
+
   Future<void> insert(BudgetsCompanion entry) async {
     await into(budgets).insert(entry, mode: InsertMode.insertOrReplace);
+  }
+
+  /// Cập nhật một phần: chỉ ghi những cột có mặt trong [entry].
+  ///
+  /// Cố ý KHÔNG dùng `insert(..., insertOrReplace)` như [insert]: chế độ đó
+  /// thay cả hàng nên mọi cột không gán bị đưa về mặc định — chính là cách
+  /// cấu trúc nhóm danh mục từng bị xoá sạch sau mỗi lần pull.
+  Future<void> updateBudget(String id, BudgetsCompanion entry) async {
+    await (update(budgets)..where((t) => t.id.equals(id))).write(entry);
+  }
+
+  /// Ghi lại số đã chi tính từ bảng giao dịch.
+  ///
+  /// Cố ý KHÔNG đụng `syncStatus` lẫn `updatedAt`: giá trị này được suy ra từ
+  /// dữ liệu đã có sẵn ở local chứ không phải người dùng sửa. Nếu đánh dấu
+  /// `pending` ở đây thì mỗi lần mở trang ngân sách lại sinh một thao tác đẩy
+  /// mới, và `updatedAt` nhảy lên sẽ khiến LWW cho client thắng oan trước một
+  /// thay đổi thật từ máy khác.
+  Future<void> updateSpent(String id, double spent) async {
+    await (update(budgets)..where((t) => t.id.equals(id)))
+        .write(BudgetsCompanion(spent: Value(spent)));
   }
 
   Future<void> softDelete(String id) async {

@@ -1,38 +1,82 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../shared/theme/app_colors.dart';
 
-class BudgetRulesPage extends StatefulWidget {
-  const BudgetRulesPage({super.key});
+import '../../../../core/auth/current_account.dart';
+import '../../../../core/di/injection_container.dart';
+import '../../../../core/utils/currency_formatter.dart';
+import '../../../../shared/theme/app_colors.dart';
+import '../../data/models/budget_entity.dart';
+import '../bloc/budget_cubit.dart';
+import '../widgets/budget_visuals.dart';
+
+/// Tạo hoặc sửa một ngân sách.
+///
+/// `?id=<uuid>` trên đường dẫn nghĩa là sửa; không có thì là tạo mới.
+///
+/// ## Vì sao form này khác bản dựng hình ban đầu
+///
+/// Bản mockup có ba phần không có chỗ nào để lưu:
+/// - **"Tên ngân sách"** — backend không có cột tên (`model budget` trong
+///   `schema.prisma`). Danh tính của ngân sách là *danh mục + chu kỳ*.
+/// - **"Danh mục áp dụng" nhiều danh mục** — cột `Idcategory` chỉ giữ được
+///   MỘT. Muốn đặt hạn mức cho ba danh mục thì tạo ba ngân sách.
+/// - **"Quy tắc phân bổ 50/30/20"** — không có bảng nào lưu, và nó nói về việc
+///   chia *thu nhập* chứ không phải hạn mức của một ngân sách. Đây là một
+///   feature riêng, không thuộc phạm vi lần này.
+///
+/// Giữ lại chúng dưới dạng giao diện không lưu được gì sẽ tái lập đúng vấn đề
+/// cũ: người dùng bấm Lưu và tưởng đã lưu.
+class BudgetRulesPage extends StatelessWidget {
+  /// null = tạo mới.
+  final String? budgetId;
+
+  const BudgetRulesPage({super.key, this.budgetId});
 
   @override
-  State<BudgetRulesPage> createState() => _BudgetRulesPageState();
-}
+  Widget build(BuildContext context) {
+    final idaccount = currentAccountIdOrNull(context);
 
-class _BudgetRulesPageState extends State<BudgetRulesPage> {
-  bool _isMonthly = true;
-  bool _sendNotifications = true;
-  
-  final List<String> _selectedCategories = [
-    'Ăn uống',
-    'Mua sắm',
-    'Giải trí',
-  ];
-
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Text(
-        title.toUpperCase(),
-        style: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textSecondary,
-          letterSpacing: 1.2,
-        ),
-      ),
+    return BlocProvider<BudgetCubit>(
+      create: (_) =>
+          sl<BudgetCubit>()..loadEditor(idaccount, budgetId: budgetId),
+      child: _BudgetRulesContent(idaccount: idaccount),
     );
   }
+}
+
+class _BudgetRulesContent extends StatelessWidget {
+  final int? idaccount;
+  const _BudgetRulesContent({required this.idaccount});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocConsumer<BudgetCubit, BudgetState>(
+      listenWhen: (_, s) => s is BudgetSaved,
+      listener: (context, state) {
+        if (state is! BudgetSaved) return;
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(state.message)));
+        context.pop();
+      },
+      buildWhen: (_, s) =>
+          s is BudgetEditorReady || s is BudgetLoading || s is BudgetError,
+      builder: (context, state) => switch (state) {
+        BudgetEditorReady() => _BudgetForm(state: state, idaccount: idaccount),
+        BudgetError(:final message) => _ErrorScaffold(message: message),
+        _ => const Scaffold(
+            backgroundColor: AppColors.background,
+            body: Center(child: CircularProgressIndicator()),
+          ),
+      },
+    );
+  }
+}
+
+class _ErrorScaffold extends StatelessWidget {
+  final String message;
+  const _ErrorScaffold({required this.message});
 
   @override
   Widget build(BuildContext context) {
@@ -45,9 +89,123 @@ class _BudgetRulesPageState extends State<BudgetRulesPage> {
           icon: const Icon(Icons.arrow_back, color: AppColors.primary),
           onPressed: () => context.pop(),
         ),
-        title: const Text(
-          'Cấu hình Ngân sách',
-          style: TextStyle(
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: AppColors.textSecondary),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Form ────────────────────────────────────────────────────────────────────
+
+class _BudgetForm extends StatefulWidget {
+  final BudgetEditorReady state;
+  final int? idaccount;
+
+  const _BudgetForm({required this.state, required this.idaccount});
+
+  @override
+  State<_BudgetForm> createState() => _BudgetFormState();
+}
+
+class _BudgetFormState extends State<_BudgetForm> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _amountController;
+  late final TextEditingController _thresholdController;
+  late final TextEditingController _noteController;
+
+  String? _categoryId;
+  late String _timeRecurrence;
+  late String _overSpending;
+  late DateTime _startDate;
+
+  @override
+  void initState() {
+    super.initState();
+    final b = widget.state.editing;
+    _amountController = TextEditingController(
+        text: b == null ? '' : b.amount.round().toString());
+    _thresholdController = TextEditingController(
+        text: b?.thresholdWarningAmount?.round().toString() ?? '');
+    _noteController = TextEditingController(text: b?.note ?? '');
+    _categoryId = b?.categoryId;
+    _timeRecurrence = b?.timeRecurrence ?? BudgetRecurrence.month;
+    _overSpending = b?.overSpending ?? BudgetOverSpending.over;
+    final now = DateTime.now();
+    _startDate = b?.startDate ?? DateTime(now.year, now.month, 1);
+  }
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    _thresholdController.dispose();
+    _noteController.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    final cubit = context.read<BudgetCubit>();
+    final amount = CurrencyFormatter.parse(_amountController.text) ?? 0;
+    final threshold = _thresholdController.text.trim().isEmpty
+        ? null
+        : CurrencyFormatter.parse(_thresholdController.text);
+    final note = _noteController.text.trim();
+
+    final editing = widget.state.editing;
+    if (editing == null) {
+      cubit.addBudget(
+        idaccount: widget.idaccount,
+        amount: amount,
+        categoryId: _categoryId,
+        thresholdWarningAmount: threshold,
+        overSpending: _overSpending,
+        startDate: _startDate,
+        // Ngân sách luôn lặp lại: hạn mức tiêu dùng một lần rồi thôi gần như
+        // không có nghĩa. Ai cần khoảng cố định thì đặt `endDate` — chưa có ô
+        // nhập nên chưa mở ra ở form này.
+        recurrence: true,
+        timeRecurrence: _timeRecurrence,
+        note: note,
+      );
+    } else {
+      cubit.updateBudget(editing.copyWith(
+        categoryId: () => _categoryId,
+        amount: amount,
+        thresholdWarningAmount: () => threshold,
+        overSpending: _overSpending,
+        startDate: _startDate,
+        timeRecurrence: _timeRecurrence,
+        note: note,
+      ));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final creating = widget.state.isCreating;
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.primary),
+          onPressed: () => context.pop(),
+        ),
+        title: Text(
+          creating ? 'Tạo ngân sách' : 'Sửa ngân sách',
+          style: const TextStyle(
             color: AppColors.primary,
             fontWeight: FontWeight.bold,
             fontSize: 20,
@@ -55,451 +213,345 @@ class _BudgetRulesPageState extends State<BudgetRulesPage> {
         ),
         actions: [
           TextButton(
-            onPressed: () {},
+            onPressed: _save,
             child: const Text(
               'Lưu',
               style: TextStyle(
-                color: AppColors.income,
-                fontWeight: FontWeight.bold,
-              ),
+                  color: AppColors.income, fontWeight: FontWeight.bold),
             ),
           ),
         ],
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Section 1: Thiết lập Ngân sách
-              _buildSectionTitle('Thiết lập Ngân sách'),
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _sectionTitle('Thiết lập ngân sách'),
+                _card(Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Tên ngân sách
-                    const Text(
-                      'Tên ngân sách',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AppColors.outline,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                    _label('Danh mục áp dụng'),
                     const SizedBox(height: 8),
-                    TextFormField(
-                      initialValue: 'Ngân sách Chi tiêu Tháng 7',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        color: AppColors.primary,
-                      ),
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: AppColors.surfaceContainerLow,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      ),
-                    ),
+                    _categoryPicker(),
                     const SizedBox(height: 16),
-                    
-                    // Hạn mức
-                    const Text(
-                      'Hạn mức chi tiêu',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AppColors.outline,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                    _label('Hạn mức chi tiêu'),
                     const SizedBox(height: 8),
-                    TextFormField(
-                      initialValue: '10.000.000đ',
-                      keyboardType: TextInputType.number,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: AppColors.surfaceContainerLow,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      ),
-                    ),
+                    _amountField(),
                     const SizedBox(height: 16),
-                    
-                    // Chu kỳ
-                    const Text(
-                      'Chu kỳ',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AppColors.outline,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                    _label('Chu kỳ'),
                     const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () => setState(() => _isMonthly = true),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              decoration: BoxDecoration(
-                                color: _isMonthly ? AppColors.primary : Colors.transparent,
-                                border: Border.all(
-                                  color: _isMonthly ? AppColors.primary : AppColors.outlineVariant,
-                                  width: 2,
-                                ),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                'Hàng tháng',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: _isMonthly ? Colors.white : AppColors.textSecondary,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () => setState(() => _isMonthly = false),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              decoration: BoxDecoration(
-                                color: !_isMonthly ? AppColors.primary : Colors.transparent,
-                                border: Border.all(
-                                  color: !_isMonthly ? AppColors.primary : AppColors.outlineVariant,
-                                  width: 2,
-                                ),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                'Hàng tuần',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: !_isMonthly ? Colors.white : AppColors.textSecondary,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                    _recurrencePicker(),
                     const SizedBox(height: 16),
-                    
-                    // Danh mục
-                    const Text(
-                      'Danh mục áp dụng',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AppColors.outline,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                    _label('Bắt đầu từ'),
                     const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        ..._selectedCategories.map((item) => Chip(
-                          label: Text(item),
-                          labelStyle: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.white,
-                          ),
-                          backgroundColor: AppColors.primary,
-                          deleteIconColor: Colors.white,
-                          onDeleted: () {
-                            setState(() {
-                              _selectedCategories.remove(item);
-                            });
-                          },
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            side: BorderSide.none,
-                          ),
-                        )),
-                        ActionChip(
-                          label: const Text('Thêm'),
-                          avatar: const Icon(Icons.add, size: 16, color: AppColors.outline),
-                          labelStyle: const TextStyle(fontSize: 12, color: AppColors.outline),
-                          backgroundColor: Colors.transparent,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            side: const BorderSide(color: AppColors.outlineVariant, style: BorderStyle.none), // We use dashed in html, but solid here for simplicity or customize later
-                          ),
-                          onPressed: () {
-                            // Add logic
-                          },
-                        ),
-                      ],
-                    ),
+                    _startDatePicker(),
                   ],
-                ),
-              ),
-              const SizedBox(height: 32),
-
-              // Section 2: Ngưỡng cảnh báo chi tiêu
-              _buildSectionTitle('Ngưỡng cảnh báo chi tiêu'),
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
+                )),
+                const SizedBox(height: 32),
+                _sectionTitle('Ngưỡng cảnh báo'),
+                _card(Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _buildAlertThresholdRow('80% (Cảnh báo sớm)', Icons.check_circle, AppColors.income),
+                    const Text(
+                      'Cảnh báo khi số tiền còn lại xuống dưới mức này. '
+                      'Bỏ trống thì mặc định cảnh báo khi đã tiêu 90% hạn mức.',
+                      style: TextStyle(
+                          fontSize: 13, color: AppColors.textSecondary),
+                    ),
                     const SizedBox(height: 12),
-                    _buildAlertThresholdRow('90% (Báo động)', Icons.error, AppColors.expense),
-                    const SizedBox(height: 12),
-                    _buildAlertThresholdRow('100% (Vượt ngưỡng)', Icons.gavel, AppColors.primary),
-                    
+                    _thresholdField(),
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 16),
                       child: Divider(color: AppColors.surfaceContainerHigh),
                     ),
-                    
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Expanded(
-                          child: Text(
-                            'Gửi thông báo đẩy khi chạm ngưỡng',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                        ),
-                        Switch(
-                          value: _sendNotifications,
-                          onChanged: (val) {
-                            setState(() {
-                              _sendNotifications = val;
-                            });
-                          },
-                          activeThumbColor: AppColors.income,
-                        ),
-                      ],
-                    ),
+                    _label('Khi tiêu vượt hạn mức'),
+                    const SizedBox(height: 8),
+                    _overSpendingPicker(),
                   ],
+                )),
+                const SizedBox(height: 32),
+                _sectionTitle('Ghi chú'),
+                _card(TextFormField(
+                  controller: _noteController,
+                  maxLines: 3,
+                  style: const TextStyle(
+                      fontSize: 15, color: AppColors.textPrimary),
+                  decoration: _inputDecoration('Không bắt buộc'),
+                )),
+                const SizedBox(height: 32),
+                ElevatedButton(
+                  onPressed: _save,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(double.infinity, 56),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    elevation: 4,
+                  ),
+                  child: Text(
+                    creating ? 'Tạo ngân sách' : 'Lưu thay đổi',
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 32),
-              
-              // Section 3: Quy tắc phân bổ
-              _buildSectionTitle('Quy tắc phân bổ thu nhập (50/30/20)'),
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    _buildAllocationRow(
-                      icon: Icons.home_repair_service,
-                      title: 'Nhu cầu Thiết yếu (Needs)',
-                      percent: '50%',
-                      amount: '~ 5.000.000đ',
-                      color: Colors.blue,
-                    ),
-                    const SizedBox(height: 24),
-                    _buildAllocationRow(
-                      icon: Icons.shopping_bag,
-                      title: 'Linh hoạt & Giải trí (Wants)',
-                      percent: '30%',
-                      amount: '~ 3.000.000đ',
-                      color: Colors.purple,
-                    ),
-                    const SizedBox(height: 24),
-                    _buildAllocationRow(
-                      icon: Icons.savings,
-                      title: 'Tích lũy & Đầu tư (Savings)',
-                      percent: '20%',
-                      amount: '~ 2.000.000đ',
-                      color: Colors.teal, // Emerald replacement
-                    ),
-                    const SizedBox(height: 24),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: AppColors.income.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.verified, color: AppColors.income, size: 20),
-                          SizedBox(width: 8),
-                          Text(
-                            '✓ Tổng tỷ lệ: 100% (Đạt yêu cầu)',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.income,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 32),
+                const SizedBox(height: 48),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
-              // Submit Button
-              ElevatedButton(
-                onPressed: () {},
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size(double.infinity, 56),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 4,
-                ),
-                child: const Text(
-                  'Lưu & Áp dụng Ngân sách',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 48),
+  // ── Các ô nhập ──────────────────────────────────────────────────────────────
+
+  Widget _categoryPicker() {
+    final categories = widget.state.categories;
+    // Danh mục của ngân sách đang sửa có thể đã bị xoá — khi đó nó không nằm
+    // trong danh sách và `DropdownButtonFormField` sẽ ném lỗi vì `value` không
+    // khớp item nào. Rơi về "ngân sách tổng" thay vì làm trắng trang.
+    final valid = _categoryId == null ||
+        categories.any((c) => c.id == _categoryId);
+
+    return DropdownButtonFormField<String?>(
+      initialValue: valid ? _categoryId : null,
+      isExpanded: true,
+      decoration: _inputDecoration(null),
+      items: [
+        const DropdownMenuItem<String?>(
+          value: null,
+          child: Row(
+            children: [
+              Icon(Icons.all_inclusive, size: 20, color: AppColors.primary),
+              SizedBox(width: 12),
+              Text('Ngân sách tổng (mọi khoản chi)'),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildAlertThresholdRow(String title, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(8),
-        border: Border(
-          left: BorderSide(color: color, width: 4),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 14,
-              color: AppColors.primary,
-            ),
-          ),
-          Icon(icon, color: color, size: 20),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAllocationRow({
-    required IconData icon,
-    required String title,
-    required String percent,
-    required String amount,
-    required Color color,
-  }) {
-    return Row(
-      children: [
-        Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(icon, color: color, size: 24),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.outline,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        ...categories.map((c) => DropdownMenuItem<String?>(
+              value: c.id,
+              child: Row(
                 children: [
-                  Text(
-                    percent,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  Text(
-                    amount,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textSecondary,
-                    ),
+                  Icon(budgetIconFor(c.icon),
+                      size: 20, color: budgetColorFrom(c.colour)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child:
+                        Text(c.name, overflow: TextOverflow.ellipsis),
                   ),
                 ],
               ),
-            ],
+            )),
+      ],
+      onChanged: (v) => setState(() => _categoryId = v),
+    );
+  }
+
+  Widget _amountField() {
+    return TextFormField(
+      controller: _amountController,
+      keyboardType: TextInputType.number,
+      style: const TextStyle(
+        fontSize: 16,
+        color: AppColors.primary,
+        fontWeight: FontWeight.bold,
+      ),
+      decoration: _inputDecoration('Ví dụ: 5000000'),
+      validator: (value) {
+        final parsed = CurrencyFormatter.parse(value ?? '');
+        if (parsed == null) return 'Nhập số tiền';
+        if (parsed <= 0) return 'Hạn mức phải lớn hơn 0';
+        return null;
+      },
+    );
+  }
+
+  Widget _thresholdField() {
+    return TextFormField(
+      controller: _thresholdController,
+      keyboardType: TextInputType.number,
+      style: const TextStyle(fontSize: 16, color: AppColors.primary),
+      decoration: _inputDecoration('Ví dụ: 500000'),
+      validator: (value) {
+        final text = (value ?? '').trim();
+        if (text.isEmpty) return null;
+        final parsed = CurrencyFormatter.parse(text);
+        if (parsed == null) return 'Nhập số tiền hoặc để trống';
+        if (parsed < 0) return 'Không được âm';
+        final amount = CurrencyFormatter.parse(_amountController.text);
+        if (amount != null && parsed > amount) {
+          return 'Ngưỡng lớn hơn hạn mức thì sẽ cảnh báo ngay từ đồng đầu tiên';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _recurrencePicker() {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: BudgetRecurrence.all.map((value) {
+        final selected = _timeRecurrence == value;
+        return GestureDetector(
+          onTap: () => setState(() => _timeRecurrence = value),
+          child: Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: selected ? AppColors.primary : Colors.transparent,
+              border: Border.all(
+                color:
+                    selected ? AppColors.primary : AppColors.outlineVariant,
+                width: 2,
+              ),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              BudgetRecurrence.label(value),
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: selected ? Colors.white : AppColors.textSecondary,
+              ),
+            ),
           ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _overSpendingPicker() {
+    // Cố ý không dùng `RadioListTile`: `groupValue`/`onChanged` của nó đã bị
+    // đánh dấu deprecated từ Flutter 3.32, dùng vào sẽ thêm cảnh báo mới vào
+    // mức nền của `flutter analyze`.
+    return Column(
+      children: [
+        _choiceRow(
+          value: BudgetOverSpending.over,
+          label: 'Chỉ cảnh báo, vẫn cho ghi thêm',
+        ),
+        const SizedBox(height: 8),
+        _choiceRow(
+          value: BudgetOverSpending.stop,
+          label: 'Chặn không cho tiêu thêm',
         ),
       ],
     );
   }
+
+  Widget _choiceRow({required String value, required String label}) {
+    final selected = _overSpending == value;
+    return InkWell(
+      onTap: () => setState(() => _overSpending = value),
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          children: [
+            Icon(
+              selected
+                  ? Icons.radio_button_checked
+                  : Icons.radio_button_unchecked,
+              size: 20,
+              color: selected ? AppColors.primary : AppColors.outline,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(label, style: const TextStyle(fontSize: 14)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _startDatePicker() {
+    return InkWell(
+      onTap: () async {
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: _startDate,
+          firstDate: DateTime(2020),
+          lastDate: DateTime(2100),
+        );
+        if (picked != null) setState(() => _startDate = picked);
+      },
+      child: InputDecorator(
+        decoration: _inputDecoration(null),
+        child: Row(
+          children: [
+            const Icon(Icons.calendar_today,
+                size: 18, color: AppColors.textSecondary),
+            const SizedBox(width: 12),
+            Text(
+              '${_startDate.day.toString().padLeft(2, '0')}/'
+              '${_startDate.month.toString().padLeft(2, '0')}/'
+              '${_startDate.year}',
+              style: const TextStyle(
+                  fontSize: 16, color: AppColors.textPrimary),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Mảnh dùng lại ───────────────────────────────────────────────────────────
+
+  Widget _sectionTitle(String title) => Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: Text(
+          title.toUpperCase(),
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textSecondary,
+            letterSpacing: 1.2,
+          ),
+        ),
+      );
+
+  Widget _label(String text) => Text(
+        text,
+        style: const TextStyle(
+          fontSize: 14,
+          color: AppColors.outline,
+          fontWeight: FontWeight.w500,
+        ),
+      );
+
+  Widget _card(Widget child) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: child,
+      );
+
+  InputDecoration _inputDecoration(String? hint) => InputDecoration(
+        hintText: hint,
+        filled: true,
+        fillColor: AppColors.surfaceContainerLow,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      );
 }
+

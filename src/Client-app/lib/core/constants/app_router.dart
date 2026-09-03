@@ -201,9 +201,12 @@ class AppRouter {
           ),
 
           // Budget rules
+          // `?id=<uuid>` = sửa ngân sách đã có; không có tham số = tạo mới.
           GoRoute(
               path: '/budget/rules',
-              builder: (_, __) => const BudgetRulesPage()),
+              builder: (_, state) => BudgetRulesPage(
+                    budgetId: state.uri.queryParameters['id'],
+                  )),
 
           // Category
           GoRoute(

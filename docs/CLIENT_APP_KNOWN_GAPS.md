@@ -193,7 +193,7 @@ Trạng thái hiện tại (đã chạy thật, không phải đếm tay): `flut
 ### Vùng chưa có test nào
 
 - ~~`lib/core/api/interceptors/auth_interceptor.dart`~~ — nay đã có `test/core/api/auth_interceptor_test.dart` (3 test, phiên 2026-09-03).
-- 5 feature không có test và cũng không được import từ test: **budget**, **analytics**, **home**, **profile**, **ai_chat**.
+- 4 feature không có test và cũng không được import từ test: **analytics**, **home**, **profile**, **ai_chat**. (**budget** đã có 34 test từ 2026-09-04.)
 
 ---
 
