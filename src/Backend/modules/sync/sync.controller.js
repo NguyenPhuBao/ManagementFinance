@@ -22,6 +22,11 @@ const syncController = {
 
       const { results, summary } = await syncService.processPush(idaccount, operations);
 
+      // If all operations failed because the account no longer exists, trigger 401 for client interceptor
+      if (results.length > 0 && results.every(r => r.code === 'ACCOUNT_NOT_FOUND')) {
+        return ResponseHandler.unauthorized(res, 'Account no longer exists');
+      }
+
       return ResponseHandler.success(res, {
         clientId,
         results,

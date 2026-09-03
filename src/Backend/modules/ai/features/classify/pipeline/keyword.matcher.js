@@ -51,10 +51,10 @@ function matchKeywords(cleanInfo, categories, context = {}) {
       }
     }
 
-    // 2. So khớp bộ từ khóa Category.Keyword (phân cách bởi dấu ;)
+    // 2. So khớp bộ từ khóa Category.Keyword (phân cách bởi dấu phẩy ,)
     if (cat.keyword && typeof cat.keyword === 'string') {
       const keywords = cat.keyword
-        .split(';')
+        .split(/[,;]/)
         .map((k) => cleanVietnameseText(k))
         .filter(Boolean);
 

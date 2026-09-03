@@ -84,11 +84,11 @@ Bảng danh mục thu chi — hỗ trợ phân cấp cha/con 2 cấp (nhóm và 
 | Idcategory | varchar(36) | PK - UUID v4 | Mã danh mục |
 | Create_by | int | FK - Account (Idaccount) | Tài khoản tạo danh mục |
 | NameCategory | nvarchar(200) | | Tên danh mục |
-| Classify | nvarchar(7) | Check in (Thu, Chi, Vay/nợ) | Phân loại danh mục: Thu (Thu nhập), Chi (Chi tiêu), Vay/nợ (Vay mượn/Nợ nần) |
+| Classify | nvarchar(7) | Check in (Thu, Chi, Vay/no) | Phân loại danh mục: Thu (Thu nhập), Chi (Chi tiêu), Vay/no (Vay mượn/Nợ nần) |
 | Is_default | Boolean | Default False | Danh mục mặc định hệ thống (TRUE) hay người dùng tự tạo (FALSE) |
 | Is_group | Boolean | Default False | Có phải danh mục cha / nhóm hay không |
 | Idgroup | varchar(36) | NULL, FK Category(Idcategory) | Thuộc nhóm danh mục nào (NULL nếu là nhóm hoặc danh mục độc lập) |
-| Keyword | Text | NULL | Các từ khóa nhận diện danh mục, phân cách bởi dấu `;` |
+| Keyword | Text | NULL | Các từ khóa nhận diện danh mục, phân cách bởi dấu `,` |
 | Icon | varchar(20) | NULL | Tên icon danh mục |
 | Create_at | Timestamp | Default Now() | Thời điểm tạo danh mục |
 | Update_at | Timestamp | Default Now() | Thời điểm cập nhật danh mục |
@@ -301,7 +301,7 @@ Bảng lưu trữ Refresh Token đã cấp cho các phiên đăng nhập.
 |---|---|
 | PK | `Idcategory` (varchar(36) UUID) |
 | FK | `Create_by` $\rightarrow$ `Account(Idaccount)` (`ON DELETE CASCADE`); `Idgroup` $\rightarrow$ `Category(Idcategory)` (`ON DELETE SET NULL`) |
-| Check | `Classify IN ('Thu', 'Chi', 'Vay/nợ')` |
+| Check | `Classify IN ('Thu', 'Chi', 'Vay/no')` |
 | Default | `Is_default = FALSE`, `Is_group = FALSE`, `Create_at = Now()`, `Update_at = Now()` |
 | Unique | `(Create_by, NameCategory, Classify)` — Không trùng tên danh mục trong cùng phân loại của 1 tài khoản |
 | Check Phân cấp | Nhóm (`Is_group = TRUE`): `Idgroup IS NULL`. Danh mục con (`Is_group = FALSE`): có thể có `Idgroup` hoặc `NULL` (không cho phép lồng quá 2 cấp). |

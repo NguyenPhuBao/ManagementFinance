@@ -3,7 +3,7 @@ import { TRANSACTION_TYPE_LABELS } from '../../utils/constants';
 import adminApi from '../../api/admin.api';
 import Pagination from '../../components/common/Pagination';
 
-const CLASSIFY_MAP = { Thu: 'income', Chi: 'expense', 'Vay/no': 'debt' };
+const CLASSIFY_MAP = { Thu: 'income', Chi: 'expense', 'Vay/no': 'debt', 'Vay/nợ': 'debt' };
 const TYPE_TO_CLASSIFY = { income: 'Thu', expense: 'Chi', debt: 'Vay/no' };
 
 const CategoryPage = () => {
