@@ -94,3 +94,6 @@ Khi người dùng gán một danh mục mặc định vào nhóm, tạo một b
 
 Toàn bộ khảo sát chỉ **đọc** mã nguồn backend. **Không có dòng mã backend nào bị thay đổi.**
 Mọi thay đổi mã nguồn của phiên 2026-09-03 đều nằm trong `src/Client-app/`.
+
+Xem thêm `CATEGORY_KEYWORD_SYNC.md` (cùng thư mục) — cùng một khuôn mẫu: một quan hệ thuộc
+về từng người dùng lại được gắn vào hàng danh mục dùng chung.
