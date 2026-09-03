@@ -554,7 +554,7 @@ src/Backend/
 
 ### ✅ Đã hoàn thành
 - Schema PostgreSQL aligned với New_Database.md (migration đã apply)
-- SQLite schema (Drift) aligned với backend schema — `schemaVersion = 10`
+- SQLite schema (Drift) aligned với backend schema — `schemaVersion = 11`
 - Sync engine: thứ tự batch đúng, nhóm danh mục đẩy trước danh mục con
 - FK violation fix: `_resolveCategoryId` + step 1b
 - Category dedup trong UI
@@ -575,7 +575,7 @@ src/Backend/
 - **`conflict` được giải quyết**: LWW đã phân xử, server thắng → đánh dấu đã đồng bộ thay vì đẩy lại vô hạn *(G9)*
 - **Migration `isLocalOnly`** (v7→v8): nhóm danh mục tạo trước 2026-09-02 quay lại được hàng đợi đẩy *(G11)*
 - **`AuthInterceptor` không còn xoá token trong im lặng**: phát `sessionExpiredStream`, AuthBloc nghe song song với SyncEngine *(G12)*
-- **Test: 180/180 pass** (~10 giây), 27 file / 6859 dòng — cả 27 file đều đã được git theo dõi
+- **Test: 228/228 pass** (~15 giây), 31 file — cả 31 file đều đã được git theo dõi
 
 ### 🔄 Việc còn dang dở
 
@@ -606,7 +606,10 @@ Ba điểm cần biết khi đụng vào vùng này:
 
 - **Số "đã chi" được tính lại ở client từ bảng `transactions`, không đọc cột `Spent`.** Cột đó tồn tại ở cả hai phía nhưng **không bên nào cập nhật**: backend không có tác vụ nền, còn giao dịch thì người dùng ghi được khi offline. `BudgetRepositoryImpl` ghi kết quả xuống cột bằng `cacheSpent()` để lần đẩy sau gửi đúng số — hàm đó cố ý **không** đụng `syncStatus` lẫn `updatedAt`, nếu không mỗi lần mở trang lại sinh một thao tác đẩy và LWW cho client thắng oan.
 - **Ba phần trong bản dựng hình bị bỏ vì không có chỗ lưu:** "Tên ngân sách" (backend không có cột tên), "Danh mục áp dụng" nhiều danh mục (`Idcategory` chỉ giữ được một), và "Quy tắc phân bổ 50/30/20" (không có bảng nào lưu, và nó nói về chia *thu nhập* chứ không phải hạn mức). Giữ lại chúng dưới dạng giao diện không lưu được gì sẽ tái lập đúng vấn đề cũ: người dùng bấm Lưu và tưởng đã lưu.
-- **Vẫn thiếu `threshold_warning_percent`.** Backend có cột này, client thì không — cảnh báo theo phần trăm hiện dùng hằng số 90% ở `BudgetEntity.defaultWarningRatio`. Thêm cột cần một migration Drift v10 → v11.
+- **Lược đồ `budgets` đã khớp backend (v11, 2026-09-04).** Thêm `threshold_warning_percent` (backend có từ DB v2, client thì chưa — ngưỡng cảnh báo theo phần trăm vì thế không bao giờ sang được máy khác) và bỏ ba cột backend không có: `remaining`, `percent_spent` (chỉ là `amount - spent` và `spent / amount`, nay tính ở `BudgetEntity`) và `period` (đã bị `time_recurrence` thay thế từ DB v2).
+  - Migration dùng `TableMigration` chứ không phải `ALTER TABLE ... DROP COLUMN`: cú pháp đó chỉ có từ SQLite 3.35, mà phiên bản đi kèm khác nhau giữa Android, iOS và web.
+  - Ngưỡng phần trăm lưu **0–100** để khớp `Decimal(15,2)` của backend; quy về tỉ lệ đúng một chỗ ở `BudgetEntity.warningRatio`. Thứ tự ưu tiên khi cảnh báo: ngưỡng theo số tiền → ngưỡng theo phần trăm → mốc mặc định 90%.
+  - Việc này làm lộ một lỗi **fixture** trong `category_dao_test.dart`: bảng `budgets` giả luôn ở hình dạng trước v5 kể cả khi test khai `user_version = 7`/`9` — một trạng thái không tồn tại trên máy thật, vì migration là cộng dồn. Nay `_createLegacyNonCategoryTables` nhận tham số `atVersion`.
 
 ### 🚀 Bắt đầu từ đâu ở phiên sau
 

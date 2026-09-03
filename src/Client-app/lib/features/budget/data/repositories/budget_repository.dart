@@ -17,6 +17,7 @@ abstract class BudgetRepository {
     required double amount,
     String? categoryId,
     double? thresholdWarningAmount,
+    double? thresholdWarningPercent,
     String overSpending,
     DateTime? startDate,
     DateTime? endDate,

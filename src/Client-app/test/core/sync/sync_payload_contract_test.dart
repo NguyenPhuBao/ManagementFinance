@@ -221,7 +221,13 @@ void main() {
         payloadOf('budget').keys.toSet(),
         {
           'id', 'idcategory', 'total_amount', 'spent',
-          'threshold_warning_amount', 'over_spending', 'over_amount',
+          'threshold_warning_amount',
+          // Thêm ở lược đồ v11. Backend đã có cột `Threshold_Warning_Percent`
+          // từ đợt DB v2 nhưng client thì chưa, nên ngưỡng cảnh báo theo phần
+          // trăm không bao giờ sang được máy khác — im lặng, vì trường thiếu
+          // chỉ đơn giản là không được ghi.
+          'threshold_warning_percent',
+          'over_spending', 'over_amount',
           'start', 'end', 'recurrence', 'time_recurrence',
           'nexttime_recurrence', 'note', 'is_deleted', 'update_at',
           'idaccount',

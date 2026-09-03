@@ -78,6 +78,7 @@ class BudgetLocalDataSourceImpl implements BudgetLocalDataSource {
         categoryId: Value(budget.categoryId),
         amount: Value(budget.amount),
         thresholdWarningAmount: Value(budget.thresholdWarningAmount),
+        thresholdWarningPercent: Value(budget.thresholdWarningPercent),
         overSpending: Value(budget.overSpending),
         startDate: Value(budget.startDate),
         endDate: Value(budget.endDate),

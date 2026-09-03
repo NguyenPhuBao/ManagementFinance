@@ -3430,20 +3430,6 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
       type: DriftSqlType.double,
       requiredDuringInsert: false,
       defaultValue: const Constant(0.0));
-  static const VerificationMeta _remainingMeta =
-      const VerificationMeta('remaining');
-  @override
-  late final GeneratedColumn<double> remaining = GeneratedColumn<double>(
-      'remaining', aliasedName, true,
-      type: DriftSqlType.double, requiredDuringInsert: false);
-  static const VerificationMeta _percentSpentMeta =
-      const VerificationMeta('percentSpent');
-  @override
-  late final GeneratedColumn<int> percentSpent = GeneratedColumn<int>(
-      'percent_spent', aliasedName, false,
-      type: DriftSqlType.int,
-      requiredDuringInsert: false,
-      defaultValue: const Constant(0));
   static const VerificationMeta _overSpendingMeta =
       const VerificationMeta('overSpending');
   @override
@@ -3463,6 +3449,12 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
   @override
   late final GeneratedColumn<double> thresholdWarningAmount =
       GeneratedColumn<double>('threshold_warning_amount', aliasedName, true,
+          type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _thresholdWarningPercentMeta =
+      const VerificationMeta('thresholdWarningPercent');
+  @override
+  late final GeneratedColumn<double> thresholdWarningPercent =
+      GeneratedColumn<double>('threshold_warning_percent', aliasedName, true,
           type: DriftSqlType.double, requiredDuringInsert: false);
   static const VerificationMeta _startDateMeta =
       const VerificationMeta('startDate');
@@ -3494,13 +3486,6 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
       type: DriftSqlType.string,
       requiredDuringInsert: false,
       defaultValue: const Constant('Month'));
-  static const VerificationMeta _periodMeta = const VerificationMeta('period');
-  @override
-  late final GeneratedColumn<String> period = GeneratedColumn<String>(
-      'period', aliasedName, false,
-      type: DriftSqlType.string,
-      requiredDuringInsert: false,
-      defaultValue: const Constant('monthly'));
   static const VerificationMeta _noteMeta = const VerificationMeta('note');
   @override
   late final GeneratedColumn<String> note = GeneratedColumn<String>(
@@ -3571,16 +3556,14 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
         categoryId,
         amount,
         spent,
-        remaining,
-        percentSpent,
         overSpending,
         overAmount,
         thresholdWarningAmount,
+        thresholdWarningPercent,
         startDate,
         endDate,
         recurrence,
         timeRecurrence,
-        period,
         note,
         nextTimeRecurrence,
         deletedAt,
@@ -3628,16 +3611,6 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
       context.handle(
           _spentMeta, spent.isAcceptableOrUnknown(data['spent']!, _spentMeta));
     }
-    if (data.containsKey('remaining')) {
-      context.handle(_remainingMeta,
-          remaining.isAcceptableOrUnknown(data['remaining']!, _remainingMeta));
-    }
-    if (data.containsKey('percent_spent')) {
-      context.handle(
-          _percentSpentMeta,
-          percentSpent.isAcceptableOrUnknown(
-              data['percent_spent']!, _percentSpentMeta));
-    }
     if (data.containsKey('over_spending')) {
       context.handle(
           _overSpendingMeta,
@@ -3655,6 +3628,13 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
           _thresholdWarningAmountMeta,
           thresholdWarningAmount.isAcceptableOrUnknown(
               data['threshold_warning_amount']!, _thresholdWarningAmountMeta));
+    }
+    if (data.containsKey('threshold_warning_percent')) {
+      context.handle(
+          _thresholdWarningPercentMeta,
+          thresholdWarningPercent.isAcceptableOrUnknown(
+              data['threshold_warning_percent']!,
+              _thresholdWarningPercentMeta));
     }
     if (data.containsKey('start_date')) {
       context.handle(_startDateMeta,
@@ -3677,10 +3657,6 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
           _timeRecurrenceMeta,
           timeRecurrence.isAcceptableOrUnknown(
               data['time_recurrence']!, _timeRecurrenceMeta));
-    }
-    if (data.containsKey('period')) {
-      context.handle(_periodMeta,
-          period.isAcceptableOrUnknown(data['period']!, _periodMeta));
     }
     if (data.containsKey('note')) {
       context.handle(
@@ -3747,10 +3723,6 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
           .read(DriftSqlType.double, data['${effectivePrefix}amount'])!,
       spent: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}spent'])!,
-      remaining: attachedDatabase.typeMapping
-          .read(DriftSqlType.double, data['${effectivePrefix}remaining']),
-      percentSpent: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}percent_spent'])!,
       overSpending: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}over_spending'])!,
       overAmount: attachedDatabase.typeMapping
@@ -3758,6 +3730,9 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
       thresholdWarningAmount: attachedDatabase.typeMapping.read(
           DriftSqlType.double,
           data['${effectivePrefix}threshold_warning_amount']),
+      thresholdWarningPercent: attachedDatabase.typeMapping.read(
+          DriftSqlType.double,
+          data['${effectivePrefix}threshold_warning_percent']),
       startDate: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}start_date'])!,
       endDate: attachedDatabase.typeMapping
@@ -3766,8 +3741,6 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
           .read(DriftSqlType.bool, data['${effectivePrefix}recurrence'])!,
       timeRecurrence: attachedDatabase.typeMapping.read(
           DriftSqlType.string, data['${effectivePrefix}time_recurrence'])!,
-      period: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}period'])!,
       note: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}note'])!,
       nextTimeRecurrence: attachedDatabase.typeMapping.read(
@@ -3802,18 +3775,22 @@ class Budget extends DataClass implements Insertable<Budget> {
   final String? categoryId;
   final double amount;
   final double spent;
-  final double? remaining;
-  final int percentSpent;
   final String overSpending;
   final double? overAmount;
   final double? thresholdWarningAmount;
+
+  /// Threshold_Warning_Percent: tỉ lệ đã tiêu chạm ngưỡng cảnh báo, đơn vị
+  /// **phần trăm 0–100** (không phải 0.0–1.0) để khớp `Decimal(15,2)` bên
+  /// backend. `BudgetEntity` quy về tỉ lệ khi so sánh.
+  ///
+  /// Thêm ở v11. Backend đã có cột này từ đợt DB v2 nhưng client thì chưa, nên
+  /// mọi ngưỡng cảnh báo theo phần trăm người dùng đặt trên một máy đều không
+  /// sang được máy khác.
+  final double? thresholdWarningPercent;
   final DateTime startDate;
   final DateTime? endDate;
   final bool recurrence;
   final String timeRecurrence;
-
-  /// period: giữ backward compat với schema cũ (weekly/monthly/yearly)
-  final String period;
   final String note;
 
   /// nextTimeRecurrence: thời điểm bắt đầu chu kỳ ngân sách tiếp theo
@@ -3833,16 +3810,14 @@ class Budget extends DataClass implements Insertable<Budget> {
       this.categoryId,
       required this.amount,
       required this.spent,
-      this.remaining,
-      required this.percentSpent,
       required this.overSpending,
       this.overAmount,
       this.thresholdWarningAmount,
+      this.thresholdWarningPercent,
       required this.startDate,
       this.endDate,
       required this.recurrence,
       required this.timeRecurrence,
-      required this.period,
       required this.note,
       this.nextTimeRecurrence,
       this.deletedAt,
@@ -3862,10 +3837,6 @@ class Budget extends DataClass implements Insertable<Budget> {
     }
     map['amount'] = Variable<double>(amount);
     map['spent'] = Variable<double>(spent);
-    if (!nullToAbsent || remaining != null) {
-      map['remaining'] = Variable<double>(remaining);
-    }
-    map['percent_spent'] = Variable<int>(percentSpent);
     map['over_spending'] = Variable<String>(overSpending);
     if (!nullToAbsent || overAmount != null) {
       map['over_amount'] = Variable<double>(overAmount);
@@ -3874,13 +3845,16 @@ class Budget extends DataClass implements Insertable<Budget> {
       map['threshold_warning_amount'] =
           Variable<double>(thresholdWarningAmount);
     }
+    if (!nullToAbsent || thresholdWarningPercent != null) {
+      map['threshold_warning_percent'] =
+          Variable<double>(thresholdWarningPercent);
+    }
     map['start_date'] = Variable<DateTime>(startDate);
     if (!nullToAbsent || endDate != null) {
       map['end_date'] = Variable<DateTime>(endDate);
     }
     map['recurrence'] = Variable<bool>(recurrence);
     map['time_recurrence'] = Variable<String>(timeRecurrence);
-    map['period'] = Variable<String>(period);
     map['note'] = Variable<String>(note);
     if (!nullToAbsent || nextTimeRecurrence != null) {
       map['next_time_recurrence'] = Variable<DateTime>(nextTimeRecurrence);
@@ -3910,10 +3884,6 @@ class Budget extends DataClass implements Insertable<Budget> {
           : Value(categoryId),
       amount: Value(amount),
       spent: Value(spent),
-      remaining: remaining == null && nullToAbsent
-          ? const Value.absent()
-          : Value(remaining),
-      percentSpent: Value(percentSpent),
       overSpending: Value(overSpending),
       overAmount: overAmount == null && nullToAbsent
           ? const Value.absent()
@@ -3921,13 +3891,15 @@ class Budget extends DataClass implements Insertable<Budget> {
       thresholdWarningAmount: thresholdWarningAmount == null && nullToAbsent
           ? const Value.absent()
           : Value(thresholdWarningAmount),
+      thresholdWarningPercent: thresholdWarningPercent == null && nullToAbsent
+          ? const Value.absent()
+          : Value(thresholdWarningPercent),
       startDate: Value(startDate),
       endDate: endDate == null && nullToAbsent
           ? const Value.absent()
           : Value(endDate),
       recurrence: Value(recurrence),
       timeRecurrence: Value(timeRecurrence),
-      period: Value(period),
       note: Value(note),
       nextTimeRecurrence: nextTimeRecurrence == null && nullToAbsent
           ? const Value.absent()
@@ -3957,17 +3929,16 @@ class Budget extends DataClass implements Insertable<Budget> {
       categoryId: serializer.fromJson<String?>(json['categoryId']),
       amount: serializer.fromJson<double>(json['amount']),
       spent: serializer.fromJson<double>(json['spent']),
-      remaining: serializer.fromJson<double?>(json['remaining']),
-      percentSpent: serializer.fromJson<int>(json['percentSpent']),
       overSpending: serializer.fromJson<String>(json['overSpending']),
       overAmount: serializer.fromJson<double?>(json['overAmount']),
       thresholdWarningAmount:
           serializer.fromJson<double?>(json['thresholdWarningAmount']),
+      thresholdWarningPercent:
+          serializer.fromJson<double?>(json['thresholdWarningPercent']),
       startDate: serializer.fromJson<DateTime>(json['startDate']),
       endDate: serializer.fromJson<DateTime?>(json['endDate']),
       recurrence: serializer.fromJson<bool>(json['recurrence']),
       timeRecurrence: serializer.fromJson<String>(json['timeRecurrence']),
-      period: serializer.fromJson<String>(json['period']),
       note: serializer.fromJson<String>(json['note']),
       nextTimeRecurrence:
           serializer.fromJson<DateTime?>(json['nextTimeRecurrence']),
@@ -3990,17 +3961,16 @@ class Budget extends DataClass implements Insertable<Budget> {
       'categoryId': serializer.toJson<String?>(categoryId),
       'amount': serializer.toJson<double>(amount),
       'spent': serializer.toJson<double>(spent),
-      'remaining': serializer.toJson<double?>(remaining),
-      'percentSpent': serializer.toJson<int>(percentSpent),
       'overSpending': serializer.toJson<String>(overSpending),
       'overAmount': serializer.toJson<double?>(overAmount),
       'thresholdWarningAmount':
           serializer.toJson<double?>(thresholdWarningAmount),
+      'thresholdWarningPercent':
+          serializer.toJson<double?>(thresholdWarningPercent),
       'startDate': serializer.toJson<DateTime>(startDate),
       'endDate': serializer.toJson<DateTime?>(endDate),
       'recurrence': serializer.toJson<bool>(recurrence),
       'timeRecurrence': serializer.toJson<String>(timeRecurrence),
-      'period': serializer.toJson<String>(period),
       'note': serializer.toJson<String>(note),
       'nextTimeRecurrence': serializer.toJson<DateTime?>(nextTimeRecurrence),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
@@ -4019,16 +3989,14 @@ class Budget extends DataClass implements Insertable<Budget> {
           Value<String?> categoryId = const Value.absent(),
           double? amount,
           double? spent,
-          Value<double?> remaining = const Value.absent(),
-          int? percentSpent,
           String? overSpending,
           Value<double?> overAmount = const Value.absent(),
           Value<double?> thresholdWarningAmount = const Value.absent(),
+          Value<double?> thresholdWarningPercent = const Value.absent(),
           DateTime? startDate,
           Value<DateTime?> endDate = const Value.absent(),
           bool? recurrence,
           String? timeRecurrence,
-          String? period,
           String? note,
           Value<DateTime?> nextTimeRecurrence = const Value.absent(),
           Value<DateTime?> deletedAt = const Value.absent(),
@@ -4044,18 +4012,18 @@ class Budget extends DataClass implements Insertable<Budget> {
         categoryId: categoryId.present ? categoryId.value : this.categoryId,
         amount: amount ?? this.amount,
         spent: spent ?? this.spent,
-        remaining: remaining.present ? remaining.value : this.remaining,
-        percentSpent: percentSpent ?? this.percentSpent,
         overSpending: overSpending ?? this.overSpending,
         overAmount: overAmount.present ? overAmount.value : this.overAmount,
         thresholdWarningAmount: thresholdWarningAmount.present
             ? thresholdWarningAmount.value
             : this.thresholdWarningAmount,
+        thresholdWarningPercent: thresholdWarningPercent.present
+            ? thresholdWarningPercent.value
+            : this.thresholdWarningPercent,
         startDate: startDate ?? this.startDate,
         endDate: endDate.present ? endDate.value : this.endDate,
         recurrence: recurrence ?? this.recurrence,
         timeRecurrence: timeRecurrence ?? this.timeRecurrence,
-        period: period ?? this.period,
         note: note ?? this.note,
         nextTimeRecurrence: nextTimeRecurrence.present
             ? nextTimeRecurrence.value
@@ -4078,10 +4046,6 @@ class Budget extends DataClass implements Insertable<Budget> {
           data.categoryId.present ? data.categoryId.value : this.categoryId,
       amount: data.amount.present ? data.amount.value : this.amount,
       spent: data.spent.present ? data.spent.value : this.spent,
-      remaining: data.remaining.present ? data.remaining.value : this.remaining,
-      percentSpent: data.percentSpent.present
-          ? data.percentSpent.value
-          : this.percentSpent,
       overSpending: data.overSpending.present
           ? data.overSpending.value
           : this.overSpending,
@@ -4090,6 +4054,9 @@ class Budget extends DataClass implements Insertable<Budget> {
       thresholdWarningAmount: data.thresholdWarningAmount.present
           ? data.thresholdWarningAmount.value
           : this.thresholdWarningAmount,
+      thresholdWarningPercent: data.thresholdWarningPercent.present
+          ? data.thresholdWarningPercent.value
+          : this.thresholdWarningPercent,
       startDate: data.startDate.present ? data.startDate.value : this.startDate,
       endDate: data.endDate.present ? data.endDate.value : this.endDate,
       recurrence:
@@ -4097,7 +4064,6 @@ class Budget extends DataClass implements Insertable<Budget> {
       timeRecurrence: data.timeRecurrence.present
           ? data.timeRecurrence.value
           : this.timeRecurrence,
-      period: data.period.present ? data.period.value : this.period,
       note: data.note.present ? data.note.value : this.note,
       nextTimeRecurrence: data.nextTimeRecurrence.present
           ? data.nextTimeRecurrence.value
@@ -4125,16 +4091,14 @@ class Budget extends DataClass implements Insertable<Budget> {
           ..write('categoryId: $categoryId, ')
           ..write('amount: $amount, ')
           ..write('spent: $spent, ')
-          ..write('remaining: $remaining, ')
-          ..write('percentSpent: $percentSpent, ')
           ..write('overSpending: $overSpending, ')
           ..write('overAmount: $overAmount, ')
           ..write('thresholdWarningAmount: $thresholdWarningAmount, ')
+          ..write('thresholdWarningPercent: $thresholdWarningPercent, ')
           ..write('startDate: $startDate, ')
           ..write('endDate: $endDate, ')
           ..write('recurrence: $recurrence, ')
           ..write('timeRecurrence: $timeRecurrence, ')
-          ..write('period: $period, ')
           ..write('note: $note, ')
           ..write('nextTimeRecurrence: $nextTimeRecurrence, ')
           ..write('deletedAt: $deletedAt, ')
@@ -4155,16 +4119,14 @@ class Budget extends DataClass implements Insertable<Budget> {
         categoryId,
         amount,
         spent,
-        remaining,
-        percentSpent,
         overSpending,
         overAmount,
         thresholdWarningAmount,
+        thresholdWarningPercent,
         startDate,
         endDate,
         recurrence,
         timeRecurrence,
-        period,
         note,
         nextTimeRecurrence,
         deletedAt,
@@ -4184,16 +4146,14 @@ class Budget extends DataClass implements Insertable<Budget> {
           other.categoryId == this.categoryId &&
           other.amount == this.amount &&
           other.spent == this.spent &&
-          other.remaining == this.remaining &&
-          other.percentSpent == this.percentSpent &&
           other.overSpending == this.overSpending &&
           other.overAmount == this.overAmount &&
           other.thresholdWarningAmount == this.thresholdWarningAmount &&
+          other.thresholdWarningPercent == this.thresholdWarningPercent &&
           other.startDate == this.startDate &&
           other.endDate == this.endDate &&
           other.recurrence == this.recurrence &&
           other.timeRecurrence == this.timeRecurrence &&
-          other.period == this.period &&
           other.note == this.note &&
           other.nextTimeRecurrence == this.nextTimeRecurrence &&
           other.deletedAt == this.deletedAt &&
@@ -4211,16 +4171,14 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
   final Value<String?> categoryId;
   final Value<double> amount;
   final Value<double> spent;
-  final Value<double?> remaining;
-  final Value<int> percentSpent;
   final Value<String> overSpending;
   final Value<double?> overAmount;
   final Value<double?> thresholdWarningAmount;
+  final Value<double?> thresholdWarningPercent;
   final Value<DateTime> startDate;
   final Value<DateTime?> endDate;
   final Value<bool> recurrence;
   final Value<String> timeRecurrence;
-  final Value<String> period;
   final Value<String> note;
   final Value<DateTime?> nextTimeRecurrence;
   final Value<DateTime?> deletedAt;
@@ -4237,16 +4195,14 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     this.categoryId = const Value.absent(),
     this.amount = const Value.absent(),
     this.spent = const Value.absent(),
-    this.remaining = const Value.absent(),
-    this.percentSpent = const Value.absent(),
     this.overSpending = const Value.absent(),
     this.overAmount = const Value.absent(),
     this.thresholdWarningAmount = const Value.absent(),
+    this.thresholdWarningPercent = const Value.absent(),
     this.startDate = const Value.absent(),
     this.endDate = const Value.absent(),
     this.recurrence = const Value.absent(),
     this.timeRecurrence = const Value.absent(),
-    this.period = const Value.absent(),
     this.note = const Value.absent(),
     this.nextTimeRecurrence = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -4264,16 +4220,14 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     this.categoryId = const Value.absent(),
     required double amount,
     this.spent = const Value.absent(),
-    this.remaining = const Value.absent(),
-    this.percentSpent = const Value.absent(),
     this.overSpending = const Value.absent(),
     this.overAmount = const Value.absent(),
     this.thresholdWarningAmount = const Value.absent(),
+    this.thresholdWarningPercent = const Value.absent(),
     required DateTime startDate,
     this.endDate = const Value.absent(),
     this.recurrence = const Value.absent(),
     this.timeRecurrence = const Value.absent(),
-    this.period = const Value.absent(),
     this.note = const Value.absent(),
     this.nextTimeRecurrence = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -4295,16 +4249,14 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     Expression<String>? categoryId,
     Expression<double>? amount,
     Expression<double>? spent,
-    Expression<double>? remaining,
-    Expression<int>? percentSpent,
     Expression<String>? overSpending,
     Expression<double>? overAmount,
     Expression<double>? thresholdWarningAmount,
+    Expression<double>? thresholdWarningPercent,
     Expression<DateTime>? startDate,
     Expression<DateTime>? endDate,
     Expression<bool>? recurrence,
     Expression<String>? timeRecurrence,
-    Expression<String>? period,
     Expression<String>? note,
     Expression<DateTime>? nextTimeRecurrence,
     Expression<DateTime>? deletedAt,
@@ -4322,17 +4274,16 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
       if (categoryId != null) 'category_id': categoryId,
       if (amount != null) 'amount': amount,
       if (spent != null) 'spent': spent,
-      if (remaining != null) 'remaining': remaining,
-      if (percentSpent != null) 'percent_spent': percentSpent,
       if (overSpending != null) 'over_spending': overSpending,
       if (overAmount != null) 'over_amount': overAmount,
       if (thresholdWarningAmount != null)
         'threshold_warning_amount': thresholdWarningAmount,
+      if (thresholdWarningPercent != null)
+        'threshold_warning_percent': thresholdWarningPercent,
       if (startDate != null) 'start_date': startDate,
       if (endDate != null) 'end_date': endDate,
       if (recurrence != null) 'recurrence': recurrence,
       if (timeRecurrence != null) 'time_recurrence': timeRecurrence,
-      if (period != null) 'period': period,
       if (note != null) 'note': note,
       if (nextTimeRecurrence != null)
         'next_time_recurrence': nextTimeRecurrence,
@@ -4353,16 +4304,14 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
       Value<String?>? categoryId,
       Value<double>? amount,
       Value<double>? spent,
-      Value<double?>? remaining,
-      Value<int>? percentSpent,
       Value<String>? overSpending,
       Value<double?>? overAmount,
       Value<double?>? thresholdWarningAmount,
+      Value<double?>? thresholdWarningPercent,
       Value<DateTime>? startDate,
       Value<DateTime?>? endDate,
       Value<bool>? recurrence,
       Value<String>? timeRecurrence,
-      Value<String>? period,
       Value<String>? note,
       Value<DateTime?>? nextTimeRecurrence,
       Value<DateTime?>? deletedAt,
@@ -4379,17 +4328,16 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
       categoryId: categoryId ?? this.categoryId,
       amount: amount ?? this.amount,
       spent: spent ?? this.spent,
-      remaining: remaining ?? this.remaining,
-      percentSpent: percentSpent ?? this.percentSpent,
       overSpending: overSpending ?? this.overSpending,
       overAmount: overAmount ?? this.overAmount,
       thresholdWarningAmount:
           thresholdWarningAmount ?? this.thresholdWarningAmount,
+      thresholdWarningPercent:
+          thresholdWarningPercent ?? this.thresholdWarningPercent,
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,
       recurrence: recurrence ?? this.recurrence,
       timeRecurrence: timeRecurrence ?? this.timeRecurrence,
-      period: period ?? this.period,
       note: note ?? this.note,
       nextTimeRecurrence: nextTimeRecurrence ?? this.nextTimeRecurrence,
       deletedAt: deletedAt ?? this.deletedAt,
@@ -4421,12 +4369,6 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     if (spent.present) {
       map['spent'] = Variable<double>(spent.value);
     }
-    if (remaining.present) {
-      map['remaining'] = Variable<double>(remaining.value);
-    }
-    if (percentSpent.present) {
-      map['percent_spent'] = Variable<int>(percentSpent.value);
-    }
     if (overSpending.present) {
       map['over_spending'] = Variable<String>(overSpending.value);
     }
@@ -4436,6 +4378,10 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     if (thresholdWarningAmount.present) {
       map['threshold_warning_amount'] =
           Variable<double>(thresholdWarningAmount.value);
+    }
+    if (thresholdWarningPercent.present) {
+      map['threshold_warning_percent'] =
+          Variable<double>(thresholdWarningPercent.value);
     }
     if (startDate.present) {
       map['start_date'] = Variable<DateTime>(startDate.value);
@@ -4448,9 +4394,6 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     }
     if (timeRecurrence.present) {
       map['time_recurrence'] = Variable<String>(timeRecurrence.value);
-    }
-    if (period.present) {
-      map['period'] = Variable<String>(period.value);
     }
     if (note.present) {
       map['note'] = Variable<String>(note.value);
@@ -4494,16 +4437,14 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
           ..write('categoryId: $categoryId, ')
           ..write('amount: $amount, ')
           ..write('spent: $spent, ')
-          ..write('remaining: $remaining, ')
-          ..write('percentSpent: $percentSpent, ')
           ..write('overSpending: $overSpending, ')
           ..write('overAmount: $overAmount, ')
           ..write('thresholdWarningAmount: $thresholdWarningAmount, ')
+          ..write('thresholdWarningPercent: $thresholdWarningPercent, ')
           ..write('startDate: $startDate, ')
           ..write('endDate: $endDate, ')
           ..write('recurrence: $recurrence, ')
           ..write('timeRecurrence: $timeRecurrence, ')
-          ..write('period: $period, ')
           ..write('note: $note, ')
           ..write('nextTimeRecurrence: $nextTimeRecurrence, ')
           ..write('deletedAt: $deletedAt, ')
@@ -8478,16 +8419,14 @@ typedef $$BudgetsTableCreateCompanionBuilder = BudgetsCompanion Function({
   Value<String?> categoryId,
   required double amount,
   Value<double> spent,
-  Value<double?> remaining,
-  Value<int> percentSpent,
   Value<String> overSpending,
   Value<double?> overAmount,
   Value<double?> thresholdWarningAmount,
+  Value<double?> thresholdWarningPercent,
   required DateTime startDate,
   Value<DateTime?> endDate,
   Value<bool> recurrence,
   Value<String> timeRecurrence,
-  Value<String> period,
   Value<String> note,
   Value<DateTime?> nextTimeRecurrence,
   Value<DateTime?> deletedAt,
@@ -8505,16 +8444,14 @@ typedef $$BudgetsTableUpdateCompanionBuilder = BudgetsCompanion Function({
   Value<String?> categoryId,
   Value<double> amount,
   Value<double> spent,
-  Value<double?> remaining,
-  Value<int> percentSpent,
   Value<String> overSpending,
   Value<double?> overAmount,
   Value<double?> thresholdWarningAmount,
+  Value<double?> thresholdWarningPercent,
   Value<DateTime> startDate,
   Value<DateTime?> endDate,
   Value<bool> recurrence,
   Value<String> timeRecurrence,
-  Value<String> period,
   Value<String> note,
   Value<DateTime?> nextTimeRecurrence,
   Value<DateTime?> deletedAt,
@@ -8551,12 +8488,6 @@ class $$BudgetsTableFilterComposer
   ColumnFilters<double> get spent => $composableBuilder(
       column: $table.spent, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<double> get remaining => $composableBuilder(
-      column: $table.remaining, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<int> get percentSpent => $composableBuilder(
-      column: $table.percentSpent, builder: (column) => ColumnFilters(column));
-
   ColumnFilters<String> get overSpending => $composableBuilder(
       column: $table.overSpending, builder: (column) => ColumnFilters(column));
 
@@ -8565,6 +8496,10 @@ class $$BudgetsTableFilterComposer
 
   ColumnFilters<double> get thresholdWarningAmount => $composableBuilder(
       column: $table.thresholdWarningAmount,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get thresholdWarningPercent => $composableBuilder(
+      column: $table.thresholdWarningPercent,
       builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get startDate => $composableBuilder(
@@ -8579,9 +8514,6 @@ class $$BudgetsTableFilterComposer
   ColumnFilters<String> get timeRecurrence => $composableBuilder(
       column: $table.timeRecurrence,
       builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get period => $composableBuilder(
-      column: $table.period, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get note => $composableBuilder(
       column: $table.note, builder: (column) => ColumnFilters(column));
@@ -8638,13 +8570,6 @@ class $$BudgetsTableOrderingComposer
   ColumnOrderings<double> get spent => $composableBuilder(
       column: $table.spent, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<double> get remaining => $composableBuilder(
-      column: $table.remaining, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<int> get percentSpent => $composableBuilder(
-      column: $table.percentSpent,
-      builder: (column) => ColumnOrderings(column));
-
   ColumnOrderings<String> get overSpending => $composableBuilder(
       column: $table.overSpending,
       builder: (column) => ColumnOrderings(column));
@@ -8654,6 +8579,10 @@ class $$BudgetsTableOrderingComposer
 
   ColumnOrderings<double> get thresholdWarningAmount => $composableBuilder(
       column: $table.thresholdWarningAmount,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get thresholdWarningPercent => $composableBuilder(
+      column: $table.thresholdWarningPercent,
       builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<DateTime> get startDate => $composableBuilder(
@@ -8668,9 +8597,6 @@ class $$BudgetsTableOrderingComposer
   ColumnOrderings<String> get timeRecurrence => $composableBuilder(
       column: $table.timeRecurrence,
       builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get period => $composableBuilder(
-      column: $table.period, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get note => $composableBuilder(
       column: $table.note, builder: (column) => ColumnOrderings(column));
@@ -8727,12 +8653,6 @@ class $$BudgetsTableAnnotationComposer
   GeneratedColumn<double> get spent =>
       $composableBuilder(column: $table.spent, builder: (column) => column);
 
-  GeneratedColumn<double> get remaining =>
-      $composableBuilder(column: $table.remaining, builder: (column) => column);
-
-  GeneratedColumn<int> get percentSpent => $composableBuilder(
-      column: $table.percentSpent, builder: (column) => column);
-
   GeneratedColumn<String> get overSpending => $composableBuilder(
       column: $table.overSpending, builder: (column) => column);
 
@@ -8741,6 +8661,9 @@ class $$BudgetsTableAnnotationComposer
 
   GeneratedColumn<double> get thresholdWarningAmount => $composableBuilder(
       column: $table.thresholdWarningAmount, builder: (column) => column);
+
+  GeneratedColumn<double> get thresholdWarningPercent => $composableBuilder(
+      column: $table.thresholdWarningPercent, builder: (column) => column);
 
   GeneratedColumn<DateTime> get startDate =>
       $composableBuilder(column: $table.startDate, builder: (column) => column);
@@ -8753,9 +8676,6 @@ class $$BudgetsTableAnnotationComposer
 
   GeneratedColumn<String> get timeRecurrence => $composableBuilder(
       column: $table.timeRecurrence, builder: (column) => column);
-
-  GeneratedColumn<String> get period =>
-      $composableBuilder(column: $table.period, builder: (column) => column);
 
   GeneratedColumn<String> get note =>
       $composableBuilder(column: $table.note, builder: (column) => column);
@@ -8813,16 +8733,14 @@ class $$BudgetsTableTableManager extends RootTableManager<
             Value<String?> categoryId = const Value.absent(),
             Value<double> amount = const Value.absent(),
             Value<double> spent = const Value.absent(),
-            Value<double?> remaining = const Value.absent(),
-            Value<int> percentSpent = const Value.absent(),
             Value<String> overSpending = const Value.absent(),
             Value<double?> overAmount = const Value.absent(),
             Value<double?> thresholdWarningAmount = const Value.absent(),
+            Value<double?> thresholdWarningPercent = const Value.absent(),
             Value<DateTime> startDate = const Value.absent(),
             Value<DateTime?> endDate = const Value.absent(),
             Value<bool> recurrence = const Value.absent(),
             Value<String> timeRecurrence = const Value.absent(),
-            Value<String> period = const Value.absent(),
             Value<String> note = const Value.absent(),
             Value<DateTime?> nextTimeRecurrence = const Value.absent(),
             Value<DateTime?> deletedAt = const Value.absent(),
@@ -8840,16 +8758,14 @@ class $$BudgetsTableTableManager extends RootTableManager<
             categoryId: categoryId,
             amount: amount,
             spent: spent,
-            remaining: remaining,
-            percentSpent: percentSpent,
             overSpending: overSpending,
             overAmount: overAmount,
             thresholdWarningAmount: thresholdWarningAmount,
+            thresholdWarningPercent: thresholdWarningPercent,
             startDate: startDate,
             endDate: endDate,
             recurrence: recurrence,
             timeRecurrence: timeRecurrence,
-            period: period,
             note: note,
             nextTimeRecurrence: nextTimeRecurrence,
             deletedAt: deletedAt,
@@ -8867,16 +8783,14 @@ class $$BudgetsTableTableManager extends RootTableManager<
             Value<String?> categoryId = const Value.absent(),
             required double amount,
             Value<double> spent = const Value.absent(),
-            Value<double?> remaining = const Value.absent(),
-            Value<int> percentSpent = const Value.absent(),
             Value<String> overSpending = const Value.absent(),
             Value<double?> overAmount = const Value.absent(),
             Value<double?> thresholdWarningAmount = const Value.absent(),
+            Value<double?> thresholdWarningPercent = const Value.absent(),
             required DateTime startDate,
             Value<DateTime?> endDate = const Value.absent(),
             Value<bool> recurrence = const Value.absent(),
             Value<String> timeRecurrence = const Value.absent(),
-            Value<String> period = const Value.absent(),
             Value<String> note = const Value.absent(),
             Value<DateTime?> nextTimeRecurrence = const Value.absent(),
             Value<DateTime?> deletedAt = const Value.absent(),
@@ -8894,16 +8808,14 @@ class $$BudgetsTableTableManager extends RootTableManager<
             categoryId: categoryId,
             amount: amount,
             spent: spent,
-            remaining: remaining,
-            percentSpent: percentSpent,
             overSpending: overSpending,
             overAmount: overAmount,
             thresholdWarningAmount: thresholdWarningAmount,
+            thresholdWarningPercent: thresholdWarningPercent,
             startDate: startDate,
             endDate: endDate,
             recurrence: recurrence,
             timeRecurrence: timeRecurrence,
-            period: period,
             note: note,
             nextTimeRecurrence: nextTimeRecurrence,
             deletedAt: deletedAt,

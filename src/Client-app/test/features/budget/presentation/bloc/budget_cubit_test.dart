@@ -45,6 +45,7 @@ class _FakeRepository implements BudgetRepository {
     required double amount,
     String? categoryId,
     double? thresholdWarningAmount,
+    double? thresholdWarningPercent,
     String overSpending = BudgetOverSpending.over,
     DateTime? startDate,
     DateTime? endDate,

@@ -15,9 +15,16 @@ import 'package:flowmoney/core/database/app_database.dart';
 /// bank_casso_id, status, provider, wallet_transfer, bank_tran_id, deleted_at,
 /// spent, over_spending, pay_status, start_date của bills, ...) để phần
 /// `addColumn` được thực thi đúng như trên máy người dùng thật.
+///
+/// [atVersion] là phiên bản lược đồ mà CSDL giả tự khai qua `PRAGMA
+/// user_version`, và **phải khớp** với giá trị test đặt. Migration là cộng dồn:
+/// một máy ở v7 nhất thiết đã chạy qua các bước `from < 6` và `from < 7`, nên
+/// fixture khai v7 mà lại thiếu những cột hai bước đó thêm vào là mô tả một
+/// trạng thái không tồn tại ngoài đời. Hiện chỉ bảng `budgets` dùng tham số
+/// này — thêm bảng khác khi có bước migration nào đọc tới chúng.
 // `database` là sqlite3.Database do NativeDatabase.memory(setup:) truyền vào.
 // Dùng dynamic để khỏi phải thêm `sqlite3` làm phụ thuộc trực tiếp.
-void _createLegacyNonCategoryTables(dynamic database) {
+void _createLegacyNonCategoryTables(dynamic database, {int atVersion = 2}) {
   database.execute('''
     CREATE TABLE wallets (
       id TEXT NOT NULL PRIMARY KEY,
@@ -50,21 +57,47 @@ void _createLegacyNonCategoryTables(dynamic database) {
       is_deleted INTEGER NOT NULL DEFAULT 0
     )
   ''');
-  database.execute('''
-    CREATE TABLE budgets (
-      id TEXT NOT NULL PRIMARY KEY,
-      idaccount INTEGER NOT NULL,
-      category_id TEXT,
-      amount REAL NOT NULL,
-      start_date INTEGER NOT NULL,
-      end_date INTEGER,
-      period TEXT NOT NULL DEFAULT 'monthly',
-      note TEXT NOT NULL DEFAULT '',
-      is_deleted INTEGER NOT NULL DEFAULT 0,
-      sync_status TEXT NOT NULL DEFAULT 'pending',
-      updated_at INTEGER NOT NULL
-    )
-  ''');
+  // `budgets` phải mang đúng những cột mà [atVersion] hẳn đã có trên máy thật.
+  //
+  // Trước đây bảng này luôn ở hình dạng trước v5 kể cả khi test khai
+  // `user_version = 7` hoặc `9` — một trạng thái KHÔNG tồn tại trên máy người
+  // dùng, vì migration là cộng dồn: ai ở v7 thì đã chạy qua bước `from < 6` và
+  // `from < 7` rồi. Chuyện đó không lộ ra cho tới khi v11 dựng lại bảng
+  // `budgets` bằng `TableMigration` và câu SELECT đi tìm những cột fixture
+  // không có.
+  final budgetColumns = <String>[
+    'id TEXT NOT NULL PRIMARY KEY',
+    'idaccount INTEGER NOT NULL',
+    'category_id TEXT',
+    'amount REAL NOT NULL',
+    'start_date INTEGER NOT NULL',
+    'end_date INTEGER',
+    "period TEXT NOT NULL DEFAULT 'monthly'",
+    "note TEXT NOT NULL DEFAULT ''",
+    'is_deleted INTEGER NOT NULL DEFAULT 0',
+    "sync_status TEXT NOT NULL DEFAULT 'pending'",
+    'updated_at INTEGER NOT NULL',
+    if (atVersion >= 6) ...[
+      'spent REAL NOT NULL DEFAULT 0',
+      'remaining REAL',
+      'percent_spent INTEGER NOT NULL DEFAULT 0',
+      "over_spending TEXT NOT NULL DEFAULT 'Over'",
+      'over_amount REAL',
+      'recurrence INTEGER NOT NULL DEFAULT 0',
+      "time_recurrence TEXT NOT NULL DEFAULT 'Month'",
+      'deleted_at INTEGER',
+    ],
+    if (atVersion >= 7) ...[
+      'threshold_warning_amount REAL',
+      'next_time_recurrence INTEGER',
+    ],
+    if (atVersion >= 9) ...[
+      'sync_retry_count INTEGER NOT NULL DEFAULT 0',
+      'sync_error TEXT',
+      'sync_blocked_until INTEGER',
+    ],
+  ];
+  database.execute('CREATE TABLE budgets (${budgetColumns.join(', ')})');
   database.execute('''
     CREATE TABLE bills (
       id TEXT NOT NULL PRIMARY KEY,
@@ -640,7 +673,7 @@ void main() {
         // v8→v9 thêm cột trạng thái thất bại cho CẢ SÁU bảng, nên fixture
         // phải có đủ chúng — nếu không, migration chết vì thiếu bảng chứ không
         // phải vì logic sai.
-        _createLegacyNonCategoryTables(database);
+        _createLegacyNonCategoryTables(database, atVersion: 7);
         database.execute('PRAGMA user_version = 7');
       },
     ));
@@ -777,7 +810,7 @@ void main() {
             sync_status, updated_at)
           VALUES ('rieng-cua-toi', 7, 'Nhà ở', 'chi', 0, 'synced', 1787270400000)
         """);
-        _createLegacyNonCategoryTables(database);
+        _createLegacyNonCategoryTables(database, atVersion: 9);
         database.execute('PRAGMA user_version = 9');
       },
     ));

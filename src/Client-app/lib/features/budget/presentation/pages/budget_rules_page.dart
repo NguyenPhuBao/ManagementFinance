@@ -120,6 +120,7 @@ class _BudgetFormState extends State<_BudgetForm> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _amountController;
   late final TextEditingController _thresholdController;
+  late final TextEditingController _thresholdPercentController;
   late final TextEditingController _noteController;
 
   String? _categoryId;
@@ -135,6 +136,8 @@ class _BudgetFormState extends State<_BudgetForm> {
         text: b == null ? '' : b.amount.round().toString());
     _thresholdController = TextEditingController(
         text: b?.thresholdWarningAmount?.round().toString() ?? '');
+    _thresholdPercentController = TextEditingController(
+        text: b?.thresholdWarningPercent?.round().toString() ?? '');
     _noteController = TextEditingController(text: b?.note ?? '');
     _categoryId = b?.categoryId;
     _timeRecurrence = b?.timeRecurrence ?? BudgetRecurrence.month;
@@ -147,6 +150,7 @@ class _BudgetFormState extends State<_BudgetForm> {
   void dispose() {
     _amountController.dispose();
     _thresholdController.dispose();
+    _thresholdPercentController.dispose();
     _noteController.dispose();
     super.dispose();
   }
@@ -159,6 +163,12 @@ class _BudgetFormState extends State<_BudgetForm> {
     final threshold = _thresholdController.text.trim().isEmpty
         ? null
         : CurrencyFormatter.parse(_thresholdController.text);
+    final percentText = _thresholdPercentController.text.trim();
+    // Lưu nguyên đơn vị phần trăm 0–100 để khớp cột backend; việc quy về tỉ lệ
+    // nằm ở `BudgetEntity.warningRatio`.
+    final thresholdPercent = percentText.isEmpty
+        ? null
+        : double.tryParse(percentText.replaceAll(',', '.'));
     final note = _noteController.text.trim();
 
     final editing = widget.state.editing;
@@ -168,6 +178,7 @@ class _BudgetFormState extends State<_BudgetForm> {
         amount: amount,
         categoryId: _categoryId,
         thresholdWarningAmount: threshold,
+        thresholdWarningPercent: thresholdPercent,
         overSpending: _overSpending,
         startDate: _startDate,
         // Ngân sách luôn lặp lại: hạn mức tiêu dùng một lần rồi thôi gần như
@@ -182,6 +193,7 @@ class _BudgetFormState extends State<_BudgetForm> {
         categoryId: () => _categoryId,
         amount: amount,
         thresholdWarningAmount: () => threshold,
+        thresholdWarningPercent: () => thresholdPercent,
         overSpending: _overSpending,
         startDate: _startDate,
         timeRecurrence: _timeRecurrence,
@@ -257,13 +269,20 @@ class _BudgetFormState extends State<_BudgetForm> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const Text(
-                      'Cảnh báo khi số tiền còn lại xuống dưới mức này. '
-                      'Bỏ trống thì mặc định cảnh báo khi đã tiêu 90% hạn mức.',
+                      'Đặt một trong hai, hoặc bỏ trống cả hai để dùng mặc '
+                      'định 90%. Nếu điền cả hai thì ngưỡng theo số tiền được '
+                      'ưu tiên, vì nó cụ thể hơn.',
                       style: TextStyle(
                           fontSize: 13, color: AppColors.textSecondary),
                     ),
                     const SizedBox(height: 12),
+                    _label('Còn lại dưới (đồng)'),
+                    const SizedBox(height: 8),
                     _thresholdField(),
+                    const SizedBox(height: 16),
+                    _label('Hoặc đã tiêu quá (%)'),
+                    const SizedBox(height: 8),
+                    _thresholdPercentField(),
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 16),
                       child: Divider(color: AppColors.surfaceContainerHigh),
@@ -387,6 +406,26 @@ class _BudgetFormState extends State<_BudgetForm> {
         if (amount != null && parsed > amount) {
           return 'Ngưỡng lớn hơn hạn mức thì sẽ cảnh báo ngay từ đồng đầu tiên';
         }
+        return null;
+      },
+    );
+  }
+
+  Widget _thresholdPercentField() {
+    return TextFormField(
+      controller: _thresholdPercentController,
+      keyboardType: TextInputType.number,
+      style: const TextStyle(fontSize: 16, color: AppColors.primary),
+      decoration: _inputDecoration('Ví dụ: 80'),
+      validator: (value) {
+        final text = (value ?? '').trim();
+        if (text.isEmpty) return null;
+        final parsed = double.tryParse(text.replaceAll(',', '.'));
+        if (parsed == null) return 'Nhập số phần trăm hoặc để trống';
+        // Chặn ở đây thay vì lặng lẽ bỏ qua như `BudgetEntity.warningRatio`:
+        // getter đó phòng dữ liệu hỏng từ đồng bộ, còn ở form thì người dùng
+        // cần biết mình gõ sai.
+        if (parsed <= 0 || parsed > 100) return 'Phải trong khoảng 1–100';
         return null;
       },
     );

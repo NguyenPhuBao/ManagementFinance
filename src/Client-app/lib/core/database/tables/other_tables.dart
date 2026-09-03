@@ -14,13 +14,17 @@ class Budgets extends Table {
   // TotalAmount: tổng ngân sách đặt ra
 
   RealColumn get spent        => real().withDefault(const Constant(0.0))();
-  // Spent: đã chi tiêu
-
-  RealColumn get remaining    => real().nullable()();
-  // Remaining: còn lại (nullable, tính = amount - spent)
-
-  IntColumn  get percentSpent => integer().withDefault(const Constant(0))();
-  // PercentSpent: 0-100
+  // Spent: đã chi tiêu.
+  //
+  // Backend KHÔNG tự cập nhật cột này (không có tác vụ nền tính lại), và giao
+  // dịch thì người dùng ghi được khi offline. `BudgetRepositoryImpl` vì thế
+  // cộng lại từ bảng `transactions` mỗi lần đọc rồi ghi xuống đây bằng
+  // `cacheSpent()` — chỉ để lần đẩy sau gửi đúng số, KHÔNG phải nguồn sự thật.
+  //
+  // Đã bỏ ở v11: `remaining` và `percent_spent`. Cả hai chỉ là amount - spent
+  // và spent / amount, lưu lại chỉ tạo thêm một bản sao có thể lệch; backend
+  // cũng không có cột nào tương ứng nên chúng không bao giờ được đồng bộ. Nay
+  // tính ở `BudgetEntity`.
 
   TextColumn get overSpending => text().withDefault(const Constant('Over'))();
   // OverSpending: 'Stop' | 'Over' — hành vi khi vượt ngân sách
@@ -31,6 +35,15 @@ class Budgets extends Table {
   // ── Threshold warning fields ─────────────────────────────────────────────
   RealColumn get thresholdWarningAmount  => real().nullable()();
   // Threshold_Warning_Amount: số tiền còn lại chạm ngưỡng cảnh báo
+
+  /// Threshold_Warning_Percent: tỉ lệ đã tiêu chạm ngưỡng cảnh báo, đơn vị
+  /// **phần trăm 0–100** (không phải 0.0–1.0) để khớp `Decimal(15,2)` bên
+  /// backend. `BudgetEntity` quy về tỉ lệ khi so sánh.
+  ///
+  /// Thêm ở v11. Backend đã có cột này từ đợt DB v2 nhưng client thì chưa, nên
+  /// mọi ngưỡng cảnh báo theo phần trăm người dùng đặt trên một máy đều không
+  /// sang được máy khác.
+  RealColumn get thresholdWarningPercent => real().nullable()();
 
   // ── Time fields ───────────────────────────────────────────────────────────
   DateTimeColumn get startDate  => dateTime()();
@@ -43,8 +56,11 @@ class Budgets extends Table {
   TextColumn get timeRecurrence => text().withDefault(const Constant('Month'))();
   // Time_recurrence: 'Week' | 'Month' | 'Quarter' | 'Year'
 
-  /// period: giữ backward compat với schema cũ (weekly/monthly/yearly)
-  TextColumn get period => text().withDefault(const Constant('monthly'))();
+  // Đã bỏ ở v11: `period` ('weekly'/'monthly'/'yearly'). Đây là cột của lược
+  // đồ trước DB v2, bị `time_recurrence` ('Week'/'Month'/'Quarter'/'Year') thay
+  // thế hoàn toàn. Không nơi nào trong `lib/` đọc nó, và nó không nằm trong
+  // payload đẩy — giữ lại chỉ khiến người viết mã sau phải đoán cột nào mới là
+  // thật.
 
   TextColumn get note      => text().withDefault(const Constant(''))();
 

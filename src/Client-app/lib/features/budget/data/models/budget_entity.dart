@@ -56,7 +56,12 @@ class BudgetEntity {
   /// server không thể biết trước, mà cam kết của ứng dụng là offline-first.
   final double spent;
 
+  /// Cảnh báo khi số tiền **còn lại** xuống dưới mức này.
   final double? thresholdWarningAmount;
+
+  /// Cảnh báo khi **tỉ lệ đã tiêu** vượt mức này, đơn vị **phần trăm 0–100**
+  /// (không phải 0.0–1.0) — khớp cột `Threshold_Warning_Percent` bên backend.
+  final double? thresholdWarningPercent;
 
   /// `Over` = cảnh báo rồi cho tiêu tiếp; `Stop` = chặn.
   final String overSpending;
@@ -85,6 +90,7 @@ class BudgetEntity {
     required this.amount,
     this.spent = 0.0,
     this.thresholdWarningAmount,
+    this.thresholdWarningPercent,
     this.overSpending = BudgetOverSpending.over,
     required this.startDate,
     this.endDate,
@@ -119,21 +125,35 @@ class BudgetEntity {
 
   bool get isOverBudget => spent > amount;
 
-  /// Đã chạm ngưỡng cảnh báo chưa.
-  ///
-  /// Ưu tiên ngưỡng theo **số tiền còn lại** nếu người dùng đặt
-  /// ([thresholdWarningAmount]); nếu không thì lấy mốc mặc định 90%.
-  ///
-  /// Backend còn có cột `Threshold_Warning_Percent` nhưng phía client **chưa
-  /// có cột tương ứng** — xem `docs/CLIENT_APP_KNOWN_GAPS.md`. Khi nào cột đó
-  /// được thêm thì thay hằng số 0.9 dưới đây bằng giá trị người dùng đặt.
+  /// Mốc dùng khi người dùng không đặt ngưỡng nào.
   static const double defaultWarningRatio = 0.9;
 
+  /// Ngưỡng phần trăm quy về tỉ lệ 0.0–1.0, hoặc null nếu chưa đặt.
+  ///
+  /// Cột lưu **0–100** để khớp `Decimal(15,2)` của backend, còn mọi phép so
+  /// sánh trong lớp này chạy trên tỉ lệ — đổi đơn vị đúng một chỗ ở đây thay vì
+  /// rải `/ 100` khắp nơi.
+  ///
+  /// Giá trị vô nghĩa (âm, hoặc quá 100) bị bỏ qua như thể chưa đặt: một hàng
+  /// hỏng do đồng bộ không được biến cảnh báo thành luôn-bật hoặc luôn-tắt.
+  double? get warningRatio {
+    final percent = thresholdWarningPercent;
+    if (percent == null || percent <= 0 || percent > 100) return null;
+    return percent / 100;
+  }
+
+  /// Đã chạm ngưỡng cảnh báo chưa.
+  ///
+  /// Thứ tự ưu tiên: ngưỡng theo **số tiền còn lại** → ngưỡng theo **phần
+  /// trăm** → mốc mặc định 90%.
+  ///
+  /// Số tiền đứng trước phần trăm vì nó cụ thể hơn: người đặt "báo khi còn
+  /// dưới 500k" muốn đúng con số đó, không phải một tỉ lệ suy ra từ hạn mức.
   bool get isNearLimit {
     if (isOverBudget) return false;
-    final threshold = thresholdWarningAmount;
-    if (threshold != null) return remaining <= threshold;
-    return rawPercentSpent >= defaultWarningRatio;
+    final byAmount = thresholdWarningAmount;
+    if (byAmount != null) return remaining <= byAmount;
+    return rawPercentSpent >= (warningRatio ?? defaultWarningRatio);
   }
 
   // ── Chu kỳ hiện tại ─────────────────────────────────────────────────────────
@@ -192,6 +212,7 @@ class BudgetEntity {
       amount: d.amount,
       spent: d.spent,
       thresholdWarningAmount: d.thresholdWarningAmount,
+      thresholdWarningPercent: d.thresholdWarningPercent,
       overSpending: d.overSpending,
       startDate: d.startDate,
       endDate: d.endDate,
@@ -213,6 +234,7 @@ class BudgetEntity {
       amount: amount,
       spent: Value(spent),
       thresholdWarningAmount: Value(thresholdWarningAmount),
+      thresholdWarningPercent: Value(thresholdWarningPercent),
       overSpending: Value(overSpending),
       startDate: startDate,
       endDate: Value(endDate),
@@ -233,6 +255,7 @@ class BudgetEntity {
     double? amount,
     double? spent,
     double? Function()? thresholdWarningAmount,
+    double? Function()? thresholdWarningPercent,
     String? overSpending,
     DateTime? startDate,
     DateTime? Function()? endDate,
@@ -253,6 +276,9 @@ class BudgetEntity {
       thresholdWarningAmount: thresholdWarningAmount != null
           ? thresholdWarningAmount()
           : this.thresholdWarningAmount,
+      thresholdWarningPercent: thresholdWarningPercent != null
+          ? thresholdWarningPercent()
+          : this.thresholdWarningPercent,
       overSpending: overSpending ?? this.overSpending,
       startDate: startDate ?? this.startDate,
       endDate: endDate != null ? endDate() : this.endDate,

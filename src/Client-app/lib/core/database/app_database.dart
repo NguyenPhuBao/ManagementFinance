@@ -52,7 +52,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration {
@@ -103,8 +103,10 @@ class AppDatabase extends _$AppDatabase {
 
           // ── Budgets (DB v2) ──────────────────────────────────────────────
           await m.addColumn(budgets, budgets.spent);
-          await m.addColumn(budgets, budgets.remaining);
-          await m.addColumn(budgets, budgets.percentSpent);
+          // `remaining` và `percent_spent` từng được thêm ở bước này. Bỏ đi vì
+          // v11 xoá hẳn hai cột đó — thêm rồi xoá ngay trong cùng một lượt nâng
+          // cấp là việc thừa, và giữ lại thì mã không biên dịch được nữa (lớp
+          // `Budgets` không còn getter tương ứng).
           await m.addColumn(budgets, budgets.overSpending);
           await m.addColumn(budgets, budgets.overAmount);
           await m.addColumn(budgets, budgets.recurrence);
@@ -230,6 +232,31 @@ class AppDatabase extends _$AppDatabase {
           // Thu nợ) được chuyển thành danh mục riêng của tài khoản — việc đó
           // cần biết idaccount nên phải làm lúc đăng nhập, xem
           // `PersonalDefaultCategories.ensureForAccount()`.
+        }
+        if (from < 11) {
+          // Bảng `budgets` lệch với backend theo cả hai chiều:
+          //
+          // THIẾU `threshold_warning_percent` — backend có cột này từ đợt DB v2
+          // nhưng client thì không, nên ngưỡng cảnh báo theo phần trăm không
+          // bao giờ sang được máy khác. Trước v11 phía client dùng cứng 90%.
+          //
+          // THỪA `remaining`, `percent_spent`, `period` — ba cột backend KHÔNG
+          // có. Hai cột đầu chỉ là amount - spent và spent / amount; lưu lại
+          // tạo thêm một bản sao có thể lệch mà chẳng ai đọc. `period`
+          // ('monthly'/'weekly'/...) đã bị `time_recurrence`
+          // ('Month'/'Week'/...) thay thế hoàn toàn từ DB v2.
+          //
+          // Dùng `alterTable` thay vì `ALTER TABLE ... DROP COLUMN`: cú pháp đó
+          // chỉ có từ SQLite 3.35, mà phiên bản đi kèm thì khác nhau giữa
+          // Android, iOS và web. Drift dựng lại bảng theo lược đồ hiện tại rồi
+          // chép dữ liệu sang, nên cột không còn trong lược đồ tự biến mất.
+          //
+          // `newColumns` là bắt buộc với cột MỚI: thiếu nó Drift sẽ đi tìm
+          // `threshold_warning_percent` trong bảng cũ và câu SELECT sẽ hỏng.
+          await m.alterTable(TableMigration(
+            budgets,
+            newColumns: [budgets.thresholdWarningPercent],
+          ));
         }
       },
       beforeOpen: (details) async {

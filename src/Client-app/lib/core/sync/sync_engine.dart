@@ -567,6 +567,14 @@ class SyncEngine {
                             .tryParse(b['threshold_warning_amount'].toString())
                             ?.toDouble()
                         : null),
+                // Backend lưu 0–100 (`Decimal(15,2)`), client giữ nguyên đơn vị
+                // đó — việc quy về tỉ lệ nằm ở `BudgetEntity.warningRatio`.
+                thresholdWarningPercent: Value(
+                    b['threshold_warning_percent'] != null
+                        ? num
+                            .tryParse(b['threshold_warning_percent'].toString())
+                            ?.toDouble()
+                        : null),
                 overSpending: Value(b['over_spending']?.toString() ?? 'Over'),
                 overAmount: Value(b['over_amount'] != null
                     ? num.tryParse(b['over_amount'].toString())?.toDouble()
@@ -918,6 +926,7 @@ class SyncEngine {
           'total_amount': b.amount,
           'spent': b.spent,
           'threshold_warning_amount': b.thresholdWarningAmount,
+          'threshold_warning_percent': b.thresholdWarningPercent,
           'over_spending': b.overSpending,
           'over_amount': b.overAmount,
           'start': b.startDate.toUtc().toIso8601String(),
