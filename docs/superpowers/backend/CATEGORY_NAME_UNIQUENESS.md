@@ -1,9 +1,29 @@
 # Quy tắc trùng tên danh mục: ràng buộc CSDL đang khác quy tắc nghiệp vụ
 
+> ## ⚠️ CẬP NHẬT 2026-09-04 — đã làm một phần, còn bốn khoảng hở
+>
+> `admin.service.js` nay **đã cài quy tắc**, ở cả `addCategory` và `updateCategory`
+> (có loại trừ chính bản ghi đang sửa). Ba điểm khớp hoàn toàn với client:
+> không tính `Classify`, dùng `mode: 'insensitive'` nên không phân biệt hoa/thường,
+> và lọc `delete_at: null` nên hàng đã xoá không giữ chỗ. Rất tốt.
+>
+> Bốn điểm còn lại, đo trực tiếp từ mã nguồn và CSDL:
+>
+> | # | Khoảng hở | Hệ quả |
+> |---|---|---|
+> | 1 | Admin chỉ `trim()`, **không gom khoảng trắng giữa** | `"Cà  phê"` với `"Cà phê"`: client chặn, admin cho qua |
+> | 2 | Admin **không chuẩn hoá Unicode NFC** | Hai chuỗi nhìn y hệt nhau nhưng khác byte thì admin coi là khác nhau |
+> | 3 | **Thiếu vế chéo "người dùng với mặc định"** | Khi tạo danh mục người dùng, admin chỉ kiểm trong phạm vi `create_by`; không kiểm với danh mục mặc định. Chiều ngược lại cũng vậy. Đây đúng là vế mà mục 3 nói không viết được thành unique index |
+> | 4 | **Đường `/sync/push` và CSDL vẫn trống** | `upsertCategory` chỉ khớp theo `idcategory`, không kiểm tên; `pg_indexes` vẫn là hai index cũ và **không có trigger nào** |
+>
+> Nghĩa là dữ liệu đi qua app vẫn **chỉ được client chặn**. Mục 4.1–4.3 dưới đây vẫn cần làm nguyên vẹn; mục 4.3 nay có thể tái dùng logic đã viết trong `admin.service.js` thay vì viết mới.
+>
+> Dữ liệu thật kiểm ngày 2026-09-04: **20 danh mục, 0 vi phạm** ở cả ba phép kiểm ở mục 4.2 và 4.3 — vẫn chưa cần chuyển đổi dữ liệu.
+
 **Người nhận:** đội Backend
-**Trạng thái:** phía Client-app **đã thi hành xong** quy tắc (2026-09-03). CSDL thì chưa — cần backend thay ràng buộc.
+**Trạng thái:** Client-app **đã thi hành xong**. Admin-web **đã thi hành một phần** (cập nhật 2026-09-04, xem khung ở đầu tài liệu). CSDL và đường `/sync/push` thì **chưa**.
 **Mức độ:** đang có đường ghi dữ liệu vi phạm quy tắc, và một đường **hỏng âm thầm** khi đồng bộ.
-**Ngày khảo sát:** 2026-09-03.
+**Ngày khảo sát:** 2026-09-03 · **Kiểm lại:** 2026-09-04 sau khi gộp `main` tới `0e8f0b2`.
 
 ---
 

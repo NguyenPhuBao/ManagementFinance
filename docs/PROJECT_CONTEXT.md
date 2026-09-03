@@ -585,7 +585,16 @@ Xem đầy đủ tại **`docs/CLIENT_APP_KNOWN_GAPS.md`**. Phiên 2026-09-03 đ
 
 > ⚠️ **`.gitignore` dòng 77 vẫn có `test/`.** Luật này đã cắn lần thứ hai: hai file test tạo ngày 2026-09-03 cũng bị chặn âm thầm và phải `git add -f`. Mọi file test tạo **mới** vẫn sẽ bị bỏ qua trong im lặng.
 
-Vấn đề thuộc backend (trong `docs/superpowers/backend/`): **`SESSION_VALIDITY_FINDINGS.md`** ✅ đã xong, **`CATEGORY_CLASSIFY_ALIGNMENT.md`** ✅ đã xong (còn một bước nhỏ thu hẹp `sync.validation.js`), **`CATEGORY_GROUP_MEMBERSHIP_SYNC.md`** ⛔ chưa làm — đây là thứ duy nhất còn chặn G10, **`CATEGORY_KEYWORD_SYNC.md`** ⛔ (từ khoá phân loại không đồng bộ + thiếu kiểm quyền sở hữu khi ghi từ khoá), **`CATEGORY_NAME_UNIQUENESS.md`** ⛔ (ràng buộc trùng tên ở CSDL khác quy tắc nghiệp vụ), và **`CATEGORY_STABLE_IDS.md`** ⛔ (ID danh mục mặc định sinh ngẫu nhiên → tên bị dùng làm khoá nối; nguyên nhân gốc của 11.3–11.6).
+Vấn đề thuộc backend (trong `docs/superpowers/backend/`), kiểm lại ngày **2026-09-04** sau khi gộp `main` tới `0e8f0b2`:
+
+| Tài liệu | Trạng thái |
+|---|---|
+| `SESSION_VALIDITY_FINDINGS.md` | ✅ Xong |
+| `CATEGORY_CLASSIFY_ALIGNMENT.md` | ⚠️ Gần xong — còn bước thu hẹp `validClassify` trong `sync.validation.js` |
+| `CATEGORY_NAME_UNIQUENESS.md` | ⚠️ **Một phần** — Admin-web đã thi hành quy tắc, nhưng còn 4 khoảng hở: không gom khoảng trắng, không chuẩn hoá NFC, thiếu vế chéo "người dùng với mặc định", và đường `/sync/push` cùng CSDL vẫn trống |
+| `CATEGORY_KEYWORD_SYNC.md` | ⛔ Chưa — **lỗ hổng phân quyền còn nguyên** (đợt sửa vừa rồi chỉ đổi ký tự tách từ khoá) |
+| `CATEGORY_STABLE_IDS.md` | ⛔ Chưa — `seed.js` vẫn `crypto.randomUUID()` |
+| `CATEGORY_GROUP_MEMBERSHIP_SYNC.md` | ⛔ Chưa — thứ duy nhất còn chặn G10 |
 
 ### ❌ Chưa làm / Tiếp theo
 - Analytics (báo cáo chi tiết)

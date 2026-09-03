@@ -1,9 +1,28 @@
 # Từ khoá phân loại danh mục: hai kho dữ liệu độc lập, không có đường nối
 
+> ## ⚠️ CẬP NHẬT 2026-09-04 — lỗ hổng phân quyền VẪN CÒN NGUYÊN
+>
+> `classify.repository.js` có được sửa trong đợt vừa rồi, nhưng **chỉ đổi ký tự
+> tách từ khoá** (`split(/[,;]/)` thành `split(',')`). Phần phân quyền ở mục 4
+> **chưa đụng tới**:
+>
+> - `recordFeedback()` vẫn chỉ chuyền `idcategory` xuống repository.
+> - `appendCategoryKeyword()` vẫn `select: { idcategory: true, keyword: true }`
+>   — **không đọc `create_by`, không đối chiếu chủ sở hữu**.
+>
+> Nghĩa là hai hệ quả ở mục 4 còn nguyên: bất kỳ tài khoản đã đăng nhập nào biết
+> `idcategory` của người khác vẫn ghi được từ khoá vào danh mục của họ, và phản
+> hồi trên một danh mục mặc định vẫn ghi vào hàng mà **mọi người cùng đọc**.
+>
+> Bản vá ở mục 4 chỉ vài dòng và **độc lập hoàn toàn** với phần đồng bộ ở mục 5 —
+> làm được ngay mà không cần quyết định gì về mô hình dữ liệu.
+>
+> Phần đồng bộ từ khoá (mục 5) cũng chưa bắt đầu: `UPSERT_MAP` vẫn đúng 6 entity.
+
 **Người nhận:** đội Backend
 **Trạng thái:** cần backend quyết định. Phía Client-app **không thể tự nối** (lý do ở mục 3).
 **Mức độ:** không gây lỗi hiện tại, nhưng làm tính năng AI tự học **không nhận được dữ liệu từ client**, và có một lỗ hổng phân quyền đi kèm (mục 4).
-**Ngày khảo sát:** 2026-09-03, sau khi gộp `main` (tới commit `1684653`).
+**Ngày khảo sát:** 2026-09-03 · **Kiểm lại:** 2026-09-04 sau khi gộp `main` tới `0e8f0b2`.
 
 ---
 
