@@ -125,36 +125,73 @@ Backend đã hoàn thành đồng bộ **13 bảng CSDL** theo đặc tả chu�
   * Cơ chế tự học `appendCategoryKeyword` chuẩn hóa phân tách và nối lại bằng dấu phẩy `,` không có khoảng trắng (`existingKeywords.join(',')`).
 * **Cơ Chế Tự Học Cá Nhân Hóa (Self-Learning Feedback Loop):**
   * Khi người dùng đổi danh mục $\rightarrow$ API `POST /api/ai/classify/feedback` tự động lưu từ khóa mới vào `Category.Keyword` trong DB.
+* **Kiến Trúc Phân Loại 2 Cấp Độ (Type & Category):**
+  * **Cấp 1 (Loại giao dịch):** Module `typeDetector` phân biệt chính xác giữa `Transaction` (Thu/Chi) và `Transfer` (Chuyển dời tiền nội bộ) dựa trên **3 cơ sở đối soát CSDL** (danh sách món `items`, đối soát tên/STK với profile & ví user, từ khóa nội dung chuyển khoản).
+  * **Cấp 2 (Danh mục):** Khi là `Transfer` $\rightarrow$ **HOÀN TOÀN BỎ QUA PHÂN LOẠI DANH MỤC**, trả về `category_id: null` (`Idcategory = NULL` trong CSDL), bảo vệ toàn vẹn dòng tiền không bị trừ ảo vào chi phí và tiết kiệm 100% tài nguyên RAG/LLM. Khi là `Transaction` $\rightarrow$ phân loại danh mục qua bộ 3 Tầng.
 * **Các API Endpoints Cung Cấp:**
-  * `POST /api/ai/classify/single`: Phân loại giao dịch đơn lẻ (SMS, Casso, Nhập tay).
+  * `POST /api/ai/classify/transaction`: Phân loại giao dịch 2 cấp độ (Type & Category).
+  * `POST /api/ai/classify/single`: Phân loại danh mục giao dịch đơn lẻ (SMS, Casso, Nhập tay).
   * `POST /api/ai/classify/batch`: Phân loại danh sách mặt hàng (Receipt OCR).
   * `POST /api/ai/classify/feedback`: Ghi nhận phản hồi tự học.
 
 ---
 
-## 8. Các Hạng Mục Backend Cần Làm Tiếp Theo Để Khớp Client-App
+## 8. Module AI — Chức Năng Receipt & Bank Transfer OCR (F013 — Hoàn Thành)
 
-Để hỗ trợ đầy đủ các màn hình và chức năng trên **Client-app**, Backend cần tiếp tục triển khai các tính năng AI và dịch vụ bổ trợ sau:
-
-| STT | Tính Năng Backend Cần Làm | Mô Tả Kỹ Thuật & Mục Đích Phục Vụ Client | Trạng Thái |
-|:---:|---|---|:---:|
-| 1 | **AI Receipt OCR (F013)** | Xử lý ảnh hóa đơn mua sắm (Multimodal Gemini 2.0 Flash REST API) $\rightarrow$ Trích xuất merchant, ngày, tổng tiền, danh sách món hàng $\rightarrow$ Kết hợp `classifyBatch`, gom nhóm hiển thị UI nhưng bảo tồn chi tiết từng món. | `Kế hoạch tiếp theo` |
-| 2 | **AI Financial Advice & Insights (F014)** | Phân tích dòng tiền chi tiêu theo tuần/tháng $\rightarrow$ Đưa ra lời khuyên tài chính cá nhân hóa và cảnh báo lạm chi bằng LLM. | `Chờ triển khai` |
-| 3 | **AI Budget Forecasting (F015)** | Dự báo chi tiêu cho các danh mục trong chu kỳ tới dựa trên dữ liệu lịch sử và thói quen người dùng. | `Chờ triển khai` |
-| 4 | **AI Chatbot Assistant (F016)** | Trợ lý tài chính tương tác hỏi đáp về số dư, báo cáo thu chi, tư vấn tiết kiệm thông qua Text & Voice. | `Chờ triển khai` |
+* **Tầng Thị Giác Máy Tính (Vision & Extraction Layer):**
+  * Sử dụng Google Gemini 2.0 Flash Multimodal REST API (`inlineData` Base64) với Structured JSON Output (tốc độ $1 - 2s$, không phụ thuộc C++ binary nặng nề).
+  * Hỗ trợ 3 loại chứng từ: Hóa đơn mua sắm (`RECEIPT`), Biên lai ngân hàng (`BANK_TRANSFER`), Tin nhắn SMS Banking (`SMS_BANKING`).
+* **Thuật Toán Tự Phục Hồi Dữ Liệu (Self-Healing Logic):**
+  * Tự cộng dồn tổng tiền $\text{total\_amount} = \sum(\text{items.total\_price})$ khi ảnh bị thiếu/khuyết dòng tổng tiền.
+  * Tự động fallback ngày giao dịch `new Date()` nếu thiếu.
+  * Bắt lỗi HTTP **`422 Unprocessable Entity`** (`OCR_PARSE_FAILED`) khi ảnh mờ, lóa hoặc không chứa thông tin tài chính hợp lệ.
+* **Gán Nhãn Provider & Mã Giao Dịch Chống Trùng (`Bank_tran_id`):**
+  * `RECEIPT` $\rightarrow$ `Provider = 'ORC'`, `bank_tran_id = invoice_no || null`.
+  * `BANK_TRANSFER` $\rightarrow$ `Provider = 'BankSync'`, `bank_tran_id = transaction_code`.
+  * `SMS_BANKING` $\rightarrow$ `Provider = 'SMS'`, `bank_tran_id = transaction_code`.
+* **Tích Hợp Module AI Classify 2 Cấp Độ:**
+  * OCR đẩy dữ liệu sang `classifyService.classifyExtractedReceipt`.
+  * Khi là `Transfer`: bỏ qua hoàn toàn danh mục (`category_id = null`).
+  * Khi là `Transaction`: phân loại danh mục qua bộ 3 Tầng, sinh `option_single` và `option_grouped` gom nhóm theo danh mục nhưng bảo tồn trọn vẹn chi tiết từng món.
+* **Tích Hợp Hệ Thống Thông Báo Realtime (Notification Module):**
+  * EventBus publish sự kiện `ocr.completed`.
+  * Notification Service nhận sự kiện và gọi Socket.io `emitOcrCompleted` gửi thông báo tới phòng riêng `account_<idaccount>` của user trên Client-app.
+* **Bộ Khử Trùng Lặp Dữ Liệu (AI Deduplication Engine):**
+  * Đối soát CSDL bảng `transaction` qua 3 cấp độ: Quy tắc 1 (Strict `bank_tran_id` 100%), Quy tắc 2 (Fuzzy Invoice: merchant + tiền + ngày), Quy tắc 3 (Transfer/SMS matching).
+  * Chặn đứng xử lý ngay lập tức khi phát hiện trùng, trả về HTTP **`409 Conflict`** (`TRANSACTION_ALREADY_EXISTS`), phát sự kiện `ocr.duplicate` và **tuyệt đối không gọi Classify AI**, tiết kiệm 100% token LLM.
+* **API Endpoints:**
+  * `POST /api/ai/ocr/parse`: Tiếp nhận ảnh Base64 và trả về DTO chuẩn hóa (hoặc HTTP 409 khi trùng, 422 khi ảnh mờ).
 
 ---
 
-## 9. Trạng Thái Kiểm Thử Backend (100% PASS)
+## 9. Các Hạng Mục Backend Cần Làm Tiếp Theo Để Khớp Client-App
+
+Để hỗ trợ đầy đủ các màn hình và chức năng trên **Client-app**, Backend tiếp tục triển khai các tính năng AI bổ trợ:
+
+| STT | Tính Năng Backend Cần Làm | Mô Tả Kỹ Thuật & Mục Đích Phục Vụ Client | Trạng Thái |
+|:---:|---|---|:---:|
+| 1 | **AI Financial Advice & Insights (F014)** | Phân tích dòng tiền chi tiêu theo tuần/tháng $\rightarrow$ Đưa ra lời khuyên tài chính cá nhân hóa và cảnh báo lạm chi bằng LLM. | `Kế hoạch tiếp theo` |
+| 2 | **AI Budget Forecasting (F015)** | Dự báo chi tiêu cho các danh mục trong chu kỳ tới dựa trên dữ liệu lịch sử và thói quen người dùng. | `Chờ triển khai` |
+| 3 | **AI Chatbot Assistant (F016)** | Trợ lý tài chính tương tác hỏi đáp về số dư, báo cáo thu chi, tư vấn tiết kiệm thông qua Text & Voice. | `Chờ triển khai` |
+
+---
+
+## 10. Trạng Thái Kiểm Thử Backend (100% PASS)
 
 * Tất cả các test suite tích hợp đã đạt **100% PASS**:
-  * `Test/test_category_unique_rules.js`: PASS 10/10 (100%) - Kiểm thử toàn diện 2 nhóm Unique Category
-  * `Test/test_ai_classify_3tier.js`: PASS 100% - Bao gồm test case 2.5 Casso counterpart_name viết HOA
-  * `Test/test_admin_auth_fixes.js`: PASS 100% - Auth & Session Admin-web
-  * `Test/test_session_and_classify_alignment.js`: PASS 100% - Đồng bộ và phân loại
-  * `Test/test_admin_new_schema.js`: PASS 100%
+  * `Test/test_ai_dedup_flow.js`: **PASS 9/9 (100%)** - Kiểm thử toàn diện Bộ Khử Trùng Lặp Dữ Liệu 3 cấp độ & Chặn đứng HTTP 409
+  * `Test/test_ai_ocr_full_flow.js`: **PASS 18/18 (100%)** - Kiểm thử toàn diện OCR 3 loại chứng từ, Self-Healing, HTTP 422, và Realtime Notification
+  * `Test/test_ai_classify_2level.js`: **PASS 23/23 (100%)** - Kiểm thử toàn diện kiến trúc 2 cấp độ và 3 cơ sở đối soát CSDL
+
+  * `Test/test_category_unique_rules.js`: **PASS 10/10 (100%)** - Kiểm thử toàn diện 2 nhóm Unique Category
+  * `Test/test_ai_classify_3tier.js`: **PASS 100%** - Bao gồm test case 2.5 Casso counterpart_name viết HOA
+  * `Test/test_admin_auth_fixes.js`: **PASS 100%** - Auth & Session Admin-web
+  * `Test/test_session_and_classify_alignment.js`: **PASS 100%** - Đồng bộ và phân loại
+  * `Test/test_admin_new_schema.js`: **PASS 100%**
   * `Test/test_bank_full_flow.js`: PASS 100%
   * `Test/test_bank_new_schema.js`: PASS 100%
   * `Test/test_sync_new_schema.js`: PASS 100%
   * `Test/test_auth_new_schema.js`: PASS 100%
   * `Test/test_req_statuses.js`: PASS 12/12 (100%)
+
+

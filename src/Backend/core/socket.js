@@ -88,9 +88,52 @@ function emitBankTransaction(idaccount, txData) {
   }
 }
 
+/**
+ * Phát thông báo kết quả OCR tới Client-app của user
+ * @param {number} idaccount 
+ * @param {Object} ocrData 
+ */
+function emitOcrCompleted(idaccount, ocrData) {
+  if (!io) {
+    logger.warn('[Socket] Attempted to emit ocr completed before Socket.io initialized');
+    return;
+  }
+  try {
+    const room = `account_${idaccount}`;
+    io.to(room).emit('ocr.completed', ocrData);
+    io.emit(`ocr_completed:${idaccount}`, ocrData);
+    logger.info(`[Socket] Emitted ocr.completed to room ${room}`);
+  } catch (error) {
+    logger.error('[Socket] Failed to emit ocr completed', { error: error.message });
+  }
+}
+
+/**
+ * Phát thông báo giao dịch OCR bị trùng lặp tới Client-app của user
+ * @param {number} idaccount 
+ * @param {Object} duplicateData 
+ */
+function emitOcrDuplicate(idaccount, duplicateData) {
+  if (!io) {
+    logger.warn('[Socket] Attempted to emit ocr duplicate before Socket.io initialized');
+    return;
+  }
+  try {
+    const room = `account_${idaccount}`;
+    io.to(room).emit('ocr.duplicate', duplicateData);
+    io.emit(`ocr_duplicate:${idaccount}`, duplicateData);
+    logger.info(`[Socket] Emitted ocr.duplicate to room ${room}`);
+  } catch (error) {
+    logger.error('[Socket] Failed to emit ocr duplicate', { error: error.message });
+  }
+}
+
 module.exports = {
   initSocket,
   getIO,
   emitAuditActivity,
   emitBankTransaction,
+  emitOcrCompleted,
+  emitOcrDuplicate,
 };
+

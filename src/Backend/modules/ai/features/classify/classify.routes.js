@@ -14,5 +14,6 @@ const classifyController = require('./classify.controller');
 router.post('/single', classifyController.handleClassifySingle);
 router.post('/batch', classifyController.handleClassifyBatch);
 router.post('/feedback', classifyController.handleFeedback);
+router.post('/transaction', classifyController.handleClassifyTransaction);
 
 module.exports = router;

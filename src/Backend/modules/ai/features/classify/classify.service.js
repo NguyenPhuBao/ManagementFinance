@@ -9,6 +9,7 @@ const { preprocess } = require('./classify.preprocess');
 const { matchKeywords } = require('./pipeline/keyword.matcher');
 const { matchNLP } = require('./pipeline/nlp.matcher');
 const llmClassifier = require('./pipeline/llm.classifier');
+const { typeDetector } = require('./pipeline/type.detector');
 const logger = require('../../../../core/logger');
 
 const classifyService = {
@@ -205,6 +206,279 @@ const classifyService = {
       category_id: updatedCategory.idcategory,
       keyword: keywordToLearn,
       all_keywords: updatedCategory.keyword,
+    };
+  },
+
+  /**
+   * Phân loại giao dịch 2 cấp độ (Cấp 1: Type & Cấp 2: Category)
+   * @param {string|number} idaccount 
+   * @param {object} params
+   * @returns {Promise<object>}
+   */
+  async classifyTransaction(idaccount, params = {}) {
+    let userProfile = params._mockUser;
+    let userWallets = params._mockWallets;
+    let bankAccounts = params._mockBankAccounts;
+
+    if (!userProfile || !userWallets) {
+      const profileData = await classifyRepository.getUserProfileAndWallets(idaccount);
+      userProfile = userProfile || profileData.user;
+      userWallets = userWallets || profileData.wallets;
+      bankAccounts = bankAccounts || profileData.bankAccounts;
+    }
+
+    // =========================================================================
+    // CẤP ĐỘ 1: PHÂN LOẠI LOẠI GIAO DỊCH (Transaction vs Transfer)
+    // =========================================================================
+    const typeResult = typeDetector.detectType({
+      items: params.items,
+      destination_name: params.destination_name || params.counterpart_name,
+      destination_account: params.destination_account,
+      source_account: params.source_account,
+      note: params.note || params.text,
+      text: params.text,
+      userProfile,
+      userWallets,
+      bankAccounts: bankAccounts || [],
+    });
+
+    // =========================================================================
+    // CẤP ĐỘ 2: QUY TẮC DANH MỤC
+    // - Nếu là Transfer -> HOÀN TOÀN BỎ QUA PHÂN LOẠI DANH MỤC (category_id = null)
+    // - Nếu là Transaction -> Phân loại danh mục qua bộ 3 Tầng
+    // =========================================================================
+    if (typeResult.type === 'Transfer') {
+      return {
+        type: 'Transfer',
+        confidence: typeResult.confidence,
+        reason: typeResult.reason,
+        category_id: null,
+        category_name: null,
+        category_icon: null,
+        classify: null,
+        tier_used: 'type_detector_transfer',
+        suggested_categories: [],
+        source_wallet_id: typeResult.source_wallet_id || null,
+        destination_wallet_id: typeResult.destination_wallet_id || null,
+        matched_user: typeResult.matched_user || false,
+        amount: Number(params.amount) || 0,
+        note: params.note || params.text || '',
+      };
+    }
+
+    // Khi là Transaction: Kích hoạt phân loại danh mục Cấp 2
+    const categoryResult = await this.classifySingle(idaccount, {
+      text: params.text || params.note || params.merchant || '',
+      amount: params.amount,
+      merchant: params.merchant,
+      source: params.source || 'Manual',
+      counterpart_name: params.counterpart_name || params.destination_name || '',
+    });
+
+    return {
+      type: 'Transaction',
+      type_confidence: typeResult.confidence,
+      type_reason: typeResult.reason,
+      ...categoryResult,
+      amount: Number(params.amount) || 0,
+      note: params.note || params.text || '',
+    };
+  },
+
+  /**
+   * Phân loại toàn diện dữ liệu trích xuất từ Module Receipt OCR
+   * @param {string|number} idaccount 
+   * @param {object} extraction 
+   * @param {object} options 
+   * @returns {Promise<object>} DTO phân loại cho OCR
+   */
+  async classifyExtractedReceipt(idaccount, extraction = {}, options = {}) {
+    const rawItems = extraction.items || [];
+    const totalAmount = Number(extraction.total_amount || extraction.amount) || 0;
+
+    // 1. Phân loại loại giao dịch 2 cấp độ
+    const txClassification = await this.classifyTransaction(idaccount, {
+      items: rawItems,
+      destination_name: extraction.destination_name,
+      destination_account: extraction.destination_account,
+      source_account: extraction.source_account,
+      note: extraction.note,
+      text: extraction.merchant_name ? `${extraction.merchant_name}. ${rawItems.map((i) => i.name).join(', ')}` : extraction.note,
+      amount: totalAmount,
+      merchant: extraction.merchant_name,
+      _mockUser: options._mockUser,
+      _mockWallets: options._mockWallets,
+    });
+
+    // 2. Kịch bản Transfer: Trả về DTO chuyển tiền nội bộ (không phân loại danh mục)
+    if (txClassification.type === 'Transfer') {
+      return {
+        document_type: extraction.document_type || 'BANK_TRANSFER',
+        detected_type: 'Transfer',
+        provider: extraction.document_type === 'SMS_BANKING' ? 'SMS' : 'BankSync',
+        bank_tran_id: extraction.transaction_code || null,
+        transfer_details: {
+          amount: totalAmount,
+          transaction_date: extraction.transaction_date || new Date(),
+          bank_tran_id: extraction.transaction_code || null,
+          source_bank: extraction.source_bank || null,
+          source_account: extraction.source_account || null,
+          source_wallet_id: txClassification.source_wallet_id || null,
+          destination_bank: extraction.destination_bank || null,
+          destination_account: extraction.destination_account || null,
+          destination_name: extraction.destination_name || null,
+          destination_wallet_id: txClassification.destination_wallet_id || null,
+          note: extraction.note || '',
+        },
+        options: [
+          {
+            type: 'Transfer',
+            title: 'Xác nhận Chuyển tiền nội bộ (Khuyên dùng)',
+            description: 'Dịch chuyển tiền giữa 2 tài khoản của bạn — KHÔNG tính vào chi phí',
+            provider: extraction.document_type === 'SMS_BANKING' ? 'SMS' : 'BankSync',
+            bank_tran_id: extraction.transaction_code || null,
+            from_wallet_id: txClassification.source_wallet_id || null,
+            to_wallet_id: txClassification.destination_wallet_id || null,
+            category_id: null,
+            amount: totalAmount,
+            note: extraction.note || '',
+          },
+          {
+            type: 'Transaction',
+            title: 'Chuyển thành Giao dịch Chi tiêu',
+            description: 'Nếu đây thực chất là chi phí thanh toán cho bên khác',
+            provider: extraction.document_type === 'SMS_BANKING' ? 'SMS' : 'BankSync',
+            bank_tran_id: extraction.transaction_code || null,
+            wallet_id: txClassification.source_wallet_id || null,
+            category_id: null,
+            category_name: 'Chi tiêu khác',
+            amount: totalAmount,
+            note: extraction.note || '',
+          },
+        ],
+      };
+    }
+
+    // 3. Kịch bản Transaction (Hóa đơn hoặc thanh toán bên thứ 3)
+    let optionGrouped = null;
+    if (rawItems.length > 0) {
+      // Phân loại từng món hàng
+      const batchItems = rawItems.map((item, idx) => ({
+        item_id: `item_${idx + 1}`,
+        text: item.name,
+        amount: item.total_price || item.unit_price || 0,
+      }));
+
+      const batchResults = await this.classifyBatch(idaccount, batchItems);
+
+      // Gom nhóm theo category_id
+      const groupMap = new Map();
+      rawItems.forEach((item, idx) => {
+        const classified = batchResults[idx] || {};
+        const catId = classified.category_id || txClassification.category_id || 'unclassified';
+        const catName = classified.category_name || txClassification.category_name || 'Khác';
+        const catIcon = classified.category_icon || txClassification.category_icon || 'category';
+
+        if (!groupMap.has(catId)) {
+          groupMap.set(catId, {
+            category_id: catId,
+            category_name: catName,
+            category_icon: catIcon,
+            group_total: 0,
+            note: `${extraction.merchant_name || 'Hóa đơn'}: ${item.name}`,
+            items: [],
+          });
+        }
+
+        const grp = groupMap.get(catId);
+        const itemTotal = Number(item.total_price || (item.unit_price * item.quantity)) || 0;
+        grp.group_total += itemTotal;
+        grp.items.push({
+          name: item.name,
+          quantity: item.quantity || 1,
+          unit_price: item.unit_price || itemTotal,
+          total_price: itemTotal,
+          category_id: catId,
+          category_name: catName,
+          category_icon: catIcon,
+          note: item.name,
+        });
+      });
+
+      const baseBankTranId = extraction.invoice_no || null;
+      const groups = Array.from(groupMap.values()).map((grp, idx) => ({
+        ...grp,
+        provider: 'ORC',
+        bank_tran_id: baseBankTranId ? `${baseBankTranId}_grp_${idx + 1}` : null,
+      }));
+
+      optionGrouped = {
+        title: 'Ghi nhận chi tiết theo từng danh mục',
+        total_amount: totalAmount,
+        groups,
+      };
+    }
+
+
+    // 3. Kịch bản Transaction
+    // 3a. Nếu là Biên lai ngân hàng hoặc SMS thanh toán cho bên thứ 3 (Shopee, Grab, điện nước...)
+    if (extraction.document_type === 'BANK_TRANSFER' || extraction.document_type === 'SMS_BANKING') {
+      return {
+        document_type: extraction.document_type,
+        detected_type: 'Transaction',
+        provider: extraction.document_type === 'SMS_BANKING' ? 'SMS' : 'BankSync',
+        bank_tran_id: extraction.transaction_code || null,
+        transaction_info: {
+          amount: totalAmount,
+          transaction_date: extraction.transaction_date || new Date(),
+          bank_tran_id: extraction.transaction_code || null,
+          source_bank: extraction.source_bank || null,
+          source_account: extraction.source_account || null,
+          source_wallet_id: txClassification.source_wallet_id || null,
+          counterpart_name: extraction.destination_name || extraction.counterpart_name || null,
+          counterpart_account: extraction.destination_account || null,
+          note: extraction.note || '',
+        },
+        option_single: {
+          title: 'Ghi nhận Chi tiêu',
+          provider: extraction.document_type === 'SMS_BANKING' ? 'SMS' : 'BankSync',
+          bank_tran_id: extraction.transaction_code || null,
+          amount: totalAmount,
+          wallet_id: txClassification.source_wallet_id || null,
+          suggested_category_id: txClassification.category_id,
+          suggested_category_name: txClassification.category_name,
+          suggested_category_icon: txClassification.category_icon,
+          note: extraction.note || (extraction.destination_name ? `Thanh toán ${extraction.destination_name}` : 'Chi tiêu'),
+        },
+      };
+    }
+
+    // 3b. Nếu là Hóa đơn mua sắm tiêu dùng (RECEIPT)
+    return {
+      document_type: extraction.document_type || 'RECEIPT',
+      detected_type: 'Transaction',
+      provider: 'ORC',
+      bank_tran_id: extraction.invoice_no || null,
+      invoice_info: {
+        merchant_name: extraction.merchant_name || null,
+        merchant_address: extraction.merchant_address || null,
+        invoice_no: extraction.invoice_no || null,
+        transaction_date: extraction.transaction_date || new Date(),
+        total_amount: totalAmount,
+        vat_amount: extraction.vat_amount || 0,
+        payment_method: extraction.payment_method || null,
+      },
+      option_single: {
+        title: 'Ghi nhận 1 giao dịch tổng',
+        amount: totalAmount,
+        suggested_category_id: txClassification.category_id,
+        suggested_category_name: txClassification.category_name,
+        suggested_category_icon: txClassification.category_icon,
+        note: extraction.merchant_name
+          ? `${extraction.merchant_name}: ${rawItems.map((i) => i.name).join(', ')}`
+          : (extraction.note || 'Chi tiêu'),
+      },
+      ...(optionGrouped ? { option_grouped: optionGrouped } : {}),
     };
   },
 };
