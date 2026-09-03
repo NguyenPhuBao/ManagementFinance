@@ -85,11 +85,12 @@ const adminController = {
     try {
       const { name, classify, is_default, keyword, icon } = req.body;
       if (!name || !classify) return ResponseHandler.badRequest(res, 'Thiếu tên hoặc loại danh mục');
-      const result = await adminService.addCategory({ name, classify, is_default, keyword, icon }, req.user.idaccount);
+      const result = await adminService.addCategory({ name, classify, is_default, keyword, icon }, req.user?.idaccount);
       return ResponseHandler.created(res, result, 'Thêm danh mục thành công');
     } catch (error) {
+      const statusCode = error.statusCode || 500;
       logger.error('addCategory failed', { error: error.message });
-      return ResponseHandler.error(res, error.message);
+      return ResponseHandler.error(res, error.message, statusCode);
     }
   },
 
@@ -101,11 +102,12 @@ const adminController = {
       }
       const { name, classify, is_default, keyword, icon } = req.body;
       if (!name || !classify) return ResponseHandler.badRequest(res, 'Thiếu tên hoặc loại danh mục');
-      const result = await adminService.updateCategory(id, { name, classify, is_default, keyword, icon });
+      const result = await adminService.updateCategory(id, { name, classify, is_default, keyword, icon }, req.user?.idaccount);
       return ResponseHandler.success(res, result, 'Cập nhật danh mục thành công');
     } catch (error) {
+      const statusCode = error.statusCode || 500;
       logger.error('updateCategory failed', { error: error.message });
-      return ResponseHandler.error(res, error.message);
+      return ResponseHandler.error(res, error.message, statusCode);
     }
   },
 

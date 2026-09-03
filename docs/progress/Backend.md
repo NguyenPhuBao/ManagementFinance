@@ -99,19 +99,30 @@ Backend đã hoàn thành đồng bộ **13 bảng CSDL** theo đặc tả chu�
 * **Quản Lý Người Dùng:**
   * `GET /api/admin/getuser` & `GET /api/admin/getuser/:id`: Lấy danh sách & chi tiết người dùng kèm `type` (`Basic`/`Premium`), `status`, `country_code`.
   * `PATCH /api/admin/updatestatus/:id`: Khóa / mở khóa tài khoản người dùng.
-* **Quản Lý Danh Mục Hệ Thống:**
-  * `GET /api/admin/getcategory`, `POST /api/admin/addcategory`, `PUT /api/admin/updatecategory/:id`, `DELETE /api/admin/deletecategory/:id`: Quản lý danh mục mặc định (`is_default = true`), hỗ trợ `keyword`, `classify` (`Thu`, `Chi`, `Vay/nợ`) và xóa mềm an toàn.
+* **Quản Lý Danh Mục Hệ Thống & Ràng Buộc Unique 2 Nhóm:**
+  * `GET /api/admin/getcategory`, `POST /api/admin/addcategory`, `PUT /api/admin/updatecategory/:id`, `DELETE /api/admin/deletecategory/:id`: Quản lý danh mục mặc định (`is_default = true`), hỗ trợ `keyword`, `classify` (`Thu`, `Chi`, `Vay/no`) và xóa mềm an toàn.
+  * **Ràng buộc Unique Nhóm 1 (`Idaccount & namecategory`)**: 1 tài khoản không được có $> 1$ danh mục trùng tên (áp dụng cho cả Thêm và Sửa).
+  * **Ràng buộc Unique Nhóm 2 (`Is_default & namecategory`)**: Không được phép có 2 danh mục hệ thống trùng tên (áp dụng cho cả Thêm và Sửa).
+  * **Chuẩn so khớp Case-Insensitive**: Tên danh mục được ép về chữ thường (`.trim().toLowerCase()`) để so khớp với dữ liệu CSDL.
+  * **Bảo toàn dữ liệu gốc**: Khi lưu vào CSDL vẫn giữ trọn vẹn đúng định dạng chữ hoa/thường ban đầu người dùng nhập vào (ví dụ: "Ăn Uống").
+  * **Cơ chế Sửa thông minh**: Tự động loại trừ chính danh mục đang sửa (`idcategory !== current_id`), cho phép giữ nguyên tên để đổi icon/keyword/classify.
+  * **Chuẩn hóa phản hồi lỗi**: Trả về đúng mã **HTTP 400** kèm thông báo lỗi cụ thể khi vi phạm ràng buộc Unique.
 
 ---
 
-## 7. Module AI — Chức Năng Phân Loại Giao Dịch (F012 — Hoàn Thành)
+## 7. Module AI — Chức Năng Phân Loại Giao Dịch (F012 — Hoàn Thành & Tối Ưu Hóa)
 
 * **Chuẩn RAG 4 Giai Đoạn ([docs/AI/Standard_RAG.md](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/AI/Standard_RAG.md)):**
   * Áp dụng Tiền xử lý Unicode NFC (`cleanVietnameseText`), loại bỏ mã hex/FT ngân hàng, hỗ trợ không dấu (`removeVietnameseTones`).
 * **Kiến Trúc Mô Hình Lai 3 Tầng (3-Tier Hybrid):**
   * **Tầng 1 (Keyword Matcher):** So khớp trực tiếp `Category.Keyword` của user ($0 - 5ms$, $\text{Confidence} \ge 0.95$). Chạy đồng bộ cả trên Client SQLite.
-  * **Tầng 2 (Local NLP / Similarity):** So khớp độ tương đồng từ vựng N-gram / Jaccard Similarity ($5 - 15ms$, $0$đ) và sinh Top-3 `suggested_categories`.
+    * Tích hợp `counterpart_name` (đối tác chuyển khoản từ Casso như Shopee, Grab, Highlands...) vào chuỗi tìm kiếm chữ thường.
+    * Tách từ khóa chuẩn hóa theo dấu phẩy `,` (`rawKw.split(',')`).
+  * **Tầng 2 (Local NLP / Similarity):** So khớp độ tương đồng từ vựng N-gram / Jaccard Similarity ($5 - 15ms$, $0$đ) và sinh Top-3 `suggested_categories`. Phân tách từ khóa dấu phẩy thành khoảng trắng để tokenizer chính xác.
   * **Tầng 3 (LLM Gemini Flash):** Kích hoạt khi $\text{Confidence} < 0.60$ với Strict Grounding và xếp hạng danh mục U-Shaped Context Ordering.
+* **Chuẩn Hóa Chữ Thường Tại Nguồn Repository ([classify.repository.js](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/modules/ai/features/classify/classify.repository.js)):**
+  * Tự động sinh `namecategory_lower` và `keyword_lower` ngay khi truy vấn CSDL lên.
+  * Cơ chế tự học `appendCategoryKeyword` chuẩn hóa phân tách và nối lại bằng dấu phẩy `,` không có khoảng trắng (`existingKeywords.join(',')`).
 * **Cơ Chế Tự Học Cá Nhân Hóa (Self-Learning Feedback Loop):**
   * Khi người dùng đổi danh mục $\rightarrow$ API `POST /api/ai/classify/feedback` tự động lưu từ khóa mới vào `Category.Keyword` trong DB.
 * **Các API Endpoints Cung Cấp:**
@@ -127,7 +138,7 @@ Backend đã hoàn thành đồng bộ **13 bảng CSDL** theo đặc tả chu�
 
 | STT | Tính Năng Backend Cần Làm | Mô Tả Kỹ Thuật & Mục Đích Phục Vụ Client | Trạng Thái |
 |:---:|---|---|:---:|
-| 1 | **AI Receipt OCR (F013)** | Xử lý ảnh hóa đơn mua sắm (Tesseract OCR / Google Vision) $\rightarrow$ Trích xuất merchant, ngày, tổng tiền, danh sách món hàng $\rightarrow$ Kết hợp `classifyBatch`. | `Kế hoạch tiếp theo` |
+| 1 | **AI Receipt OCR (F013)** | Xử lý ảnh hóa đơn mua sắm (Multimodal Gemini 2.0 Flash REST API) $\rightarrow$ Trích xuất merchant, ngày, tổng tiền, danh sách món hàng $\rightarrow$ Kết hợp `classifyBatch`, gom nhóm hiển thị UI nhưng bảo tồn chi tiết từng món. | `Kế hoạch tiếp theo` |
 | 2 | **AI Financial Advice & Insights (F014)** | Phân tích dòng tiền chi tiêu theo tuần/tháng $\rightarrow$ Đưa ra lời khuyên tài chính cá nhân hóa và cảnh báo lạm chi bằng LLM. | `Chờ triển khai` |
 | 3 | **AI Budget Forecasting (F015)** | Dự báo chi tiêu cho các danh mục trong chu kỳ tới dựa trên dữ liệu lịch sử và thói quen người dùng. | `Chờ triển khai` |
 | 4 | **AI Chatbot Assistant (F016)** | Trợ lý tài chính tương tác hỏi đáp về số dư, báo cáo thu chi, tư vấn tiết kiệm thông qua Text & Voice. | `Chờ triển khai` |
@@ -137,7 +148,10 @@ Backend đã hoàn thành đồng bộ **13 bảng CSDL** theo đặc tả chu�
 ## 9. Trạng Thái Kiểm Thử Backend (100% PASS)
 
 * Tất cả các test suite tích hợp đã đạt **100% PASS**:
-  * `Test/test_ai_classify_3tier.js`: PASS 100%
+  * `Test/test_category_unique_rules.js`: PASS 10/10 (100%) - Kiểm thử toàn diện 2 nhóm Unique Category
+  * `Test/test_ai_classify_3tier.js`: PASS 100% - Bao gồm test case 2.5 Casso counterpart_name viết HOA
+  * `Test/test_admin_auth_fixes.js`: PASS 100% - Auth & Session Admin-web
+  * `Test/test_session_and_classify_alignment.js`: PASS 100% - Đồng bộ và phân loại
   * `Test/test_admin_new_schema.js`: PASS 100%
   * `Test/test_bank_full_flow.js`: PASS 100%
   * `Test/test_bank_new_schema.js`: PASS 100%

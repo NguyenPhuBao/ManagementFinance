@@ -2307,4 +2307,27 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - `src/Backend/workers/bank.worker.js`: Tích hợp tự động phân loại khi nhận Webhook giao dịch mới từ Casso.
 - **Kiểm thử tự động toàn diện**:
   - `Test/test_ai_classify_3tier.js`: Kiểm thử trọn vẹn Preprocessing, Tier 1 Keyword Matcher, Tier 2 NLP Matcher, Batch Mode cho Receipt OCR, và Cơ chế Tự học (Self-Learning Feedback Loop) $\rightarrow$ **PASS 100%**.
-  - `Test/test_bank_full_flow.js`: Kiểm thử hồi quy BankSync $\rightarrow$ **PASS 100%**.
+  - `Test/test_bank_full_flow.js`: Kiểm thử hồi quy BankSync $\rightarrow$ **PASS 100%**.
+
+### 11.20. Tối Ưu Hóa & Chuẩn Hóa So Khớp Chữ Thường Module AI Phân Loại Giao Dịch (2026-09-03)
+- **Chuẩn Hóa So Khớp Không Phân Biệt Hoa/Thường (Case-Insensitive) & Dấu Phẩy Phân Tách**:
+  - `src/Backend/modules/ai/features/classify/classify.repository.js`: Tự động tạo sẵn `namecategory_lower` và `keyword_lower` ngay khi query từ CSDL lên; chuẩn hóa cơ chế tự học `appendCategoryKeyword` phân tách và nối lại bằng dấu phẩy `,` không có khoảng trắng (`existingKeywords.join(',')`).
+  - `src/Backend/modules/ai/features/classify/pipeline/keyword.matcher.js`: Bổ sung `counterpart_name` (đã lowercased) vào chuỗi tìm kiếm `fullSearchText` và `fullSearchNoTone` để nhận diện giao dịch chuyển khoản ngân hàng Casso (Shopee, Grab, Highlands...); phân tách từ khóa bằng dấu phẩy `,` (`rawKw.split(',')`).
+  - `src/Backend/modules/ai/features/classify/pipeline/nlp.matcher.js`: Bổ sung `counterpart_name` vào chuỗi tìm kiếm và thay thế dấu phẩy bằng khoảng trắng (`.replace(/,/g, ' ')`) tránh lỗi dính dấu phẩy khi tokenize từ vựng.
+- **Kiểm thử tự động**:
+  - `Test/test_ai_classify_3tier.js`: Bổ sung test case 2.5 cho Casso counterpart_name viết HOA lẫn lộn $\rightarrow$ **PASS 100%**.
+
+### 11.21. Triển Khai Logic Unique Category (2 Nhóm Ràng Buộc) Cho Admin-web & Backend (2026-09-03)
+- **Đặc tả nghiệp vụ chốt**:
+  - **Nhóm 1 (`Idaccount & namecategory`)**: 1 tài khoản không được sở hữu $> 1$ danh mục trùng tên (bất kể `classify`).
+  - **Nhóm 2 (`Is_default & namecategory`)**: Không được phép có 2 danh mục hệ thống (`is_default = true`) trùng tên (bất kể `classify`).
+  - **Chuẩn so sánh**: So sánh không phân biệt hoa/thường (`.toLowerCase()`), nhưng khi lưu vào CSDL **lưu đúng giá trị gốc ban đầu** người dùng nhập vào.
+  - Áp dụng cho cả **Thêm** (`addCategory`) và **Sửa** (`updateCategory` - loại trừ chính nó).
+- **Tập tin cập nhật**:
+  - `src/Backend/modules/admin/admin.service.js`: Triển khai kiểm tra 2 nhóm unique cho `addCategory` và `updateCategory`, loại bỏ phụ thuộc vào `classify`.
+  - `src/Backend/modules/admin/admin.controller.js`: Truyền `req.user.idaccount` vào `updateCategory` và trả đúng mã HTTP status code từ `error.statusCode` (400 thay vì 500).
+  - `src/Admin-web/src/pages/categories/CategoryPage.jsx`: Bổ sung pre-validation kiểm tra trùng lặp danh mục hệ thống ngay tại Client-side trước khi submit form; bắt lỗi Backend và hiển thị thông báo rõ ràng.
+- **Kiểm thử tự động & Frontend Build**:
+  - `Test/test_category_unique_rules.js`: Bộ test 10 kịch bản bao phủ toàn diện 2 nhóm unique, case-insensitive, bảo toàn chữ hoa/thường khi lưu, loại trừ chính nó khi update $\rightarrow$ **PASS 100%**.
+  - `Test/test_admin_auth_fixes.js`: Kiểm thử hồi quy Auth Admin-web $\rightarrow$ **PASS 100%**.
+  - `Admin-web Build`: `rtk npm run build` tại `src/Admin-web` $\rightarrow$ **Build thành công 100%** (0 lỗi).

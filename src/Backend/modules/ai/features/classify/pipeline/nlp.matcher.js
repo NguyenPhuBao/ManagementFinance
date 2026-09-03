@@ -54,8 +54,10 @@ function matchNLP(cleanInfo, categories, context = {}) {
 
   const { clean, cleanNoTone } = cleanInfo;
   const merchant = (context.merchant || '').toLowerCase();
-  const fullText = `${clean} ${merchant}`.trim();
-  const fullNoTone = `${cleanNoTone} ${removeVietnameseTones(merchant)}`.trim();
+  const counterpart = (context.counterpart_name || '').toLowerCase();
+
+  const fullText = `${clean} ${merchant} ${counterpart}`.trim();
+  const fullNoTone = `${cleanNoTone} ${removeVietnameseTones(merchant)} ${removeVietnameseTones(counterpart)}`.trim();
 
   const queryTokens = tokenizeToSet(fullText);
   const queryTokensNoTone = tokenizeToSet(fullNoTone);
@@ -65,8 +67,10 @@ function matchNLP(cleanInfo, categories, context = {}) {
   for (const cat of categories) {
     if (!cat) continue;
 
-    const catName = (cat.namecategory || '').toLowerCase();
-    const catKeywords = (cat.keyword || '').toLowerCase().replace(/[,]/g, ' ');
+    const catName = (cat.namecategory_lower || cat.namecategory || '').toLowerCase();
+    // Phân tách dấu phẩy ',' thành khoảng trắng để tokenize từ vựng
+    const rawKeywords = cat.keyword_lower || cat.keyword || '';
+    const catKeywords = rawKeywords.toLowerCase().replace(/,/g, ' ');
     const docText = `${catName} ${catKeywords}`.trim();
     const docNoTone = removeVietnameseTones(docText);
 
