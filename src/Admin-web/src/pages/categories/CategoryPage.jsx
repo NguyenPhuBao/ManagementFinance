@@ -23,7 +23,7 @@ const CategoryPage = () => {
   const [categoryToDelete, setCategoryToDelete] = useState(null);
   const [processing, setProcessing] = useState({ isProcessing: false, text: '' });
 
-  const [form, setForm] = useState({ name: '', isDefault: 'yes', type: 'expense' });
+  const [form, setForm] = useState({ name: '', isDefault: 'yes', type: 'expense', keyword: '' });
   const [filter, setFilter] = useState({ isDefault: 'all', type: 'all' });
 
   // Pagination states
@@ -54,6 +54,7 @@ const CategoryPage = () => {
         type: CLASSIFY_MAP[c.classify] || 'expense',
         classify: c.classify,
         isDefault: c.is_default,
+        keyword: c.keyword || '',
         created_by: c.created_by_name || c.created_by || (c.is_default ? 'Hệ thống' : 'Người dùng'),
         created_at: c.created_at,
       }));
@@ -83,6 +84,7 @@ const CategoryPage = () => {
         name: form.name.trim(),
         classify: TYPE_TO_CLASSIFY[form.type] || 'Chi',
         is_default: form.isDefault === 'yes',
+        keyword: form.keyword ? form.keyword.trim() : null,
       };
       if (editingCategory) {
         await adminApi.updateCategory(editingCategory.id, payload);
@@ -92,7 +94,7 @@ const CategoryPage = () => {
         await adminApi.createCategory(payload);
         toggleModal('add', false);
       }
-      setForm({ name: '', isDefault: 'yes', type: 'expense' });
+      setForm({ name: '', isDefault: 'yes', type: 'expense', keyword: '' });
       await fetchCategories();
     } catch (err) {
       console.error('Lỗi lưu danh mục:', err);
@@ -130,13 +132,14 @@ const CategoryPage = () => {
       name: cat.name,
       isDefault: cat.isDefault ? 'yes' : 'no',
       type: cat.type,
+      keyword: cat.keyword || '',
     });
     toggleModal('edit', true);
   };
 
   const startAdd = () => {
     setEditingCategory(null);
-    setForm({ name: '', isDefault: 'yes', type: 'expense' });
+    setForm({ name: '', isDefault: 'yes', type: 'expense', keyword: '' });
     toggleModal('add', true);
   };
 
@@ -284,6 +287,7 @@ const CategoryPage = () => {
                               <th className="px-6 py-4 font-label-md text-label-md text-on-surface uppercase">Loại</th>
                               <th className="px-6 py-4 font-label-md text-label-md text-on-surface uppercase">Phân loại</th>
                               <th className="px-6 py-4 font-label-md text-label-md text-on-surface uppercase">Người tạo</th>
+                              <th className="px-6 py-4 font-label-md text-label-md text-on-surface uppercase">Từ khóa (Keyword)</th>
                               <th className="px-6 py-4 font-label-md text-label-md text-on-surface uppercase text-right">Hành động</th>
                           </tr>
                       </thead>
@@ -315,6 +319,32 @@ const CategoryPage = () => {
                                         <td className="px-6 py-4 text-on-surface-variant text-sm">
                                           {item.created_by}
                                         </td>
+                                        <td className="px-6 py-4 w-72 max-w-[280px] md:max-w-[320px]">
+                                          {item.keyword ? (
+                                            <div 
+                                              className="overflow-x-auto overflow-y-hidden pb-1 max-w-full scrollbar-thin scrollbar-thumb-outline-variant hover:scrollbar-thumb-primary transition-colors"
+                                              title={item.keyword}
+                                            >
+                                              <div className="flex items-center gap-1.5 whitespace-nowrap">
+                                                {item.keyword.split(';').map((kw, i) => {
+                                                  const cleanKw = kw.trim();
+                                                  if (!cleanKw) return null;
+                                                  return (
+                                                    <span 
+                                                      key={i} 
+                                                      className="inline-block px-2 py-0.5 bg-surface-container text-on-surface rounded text-xs font-mono border border-outline-variant/60 max-w-[130px] truncate"
+                                                      title={cleanKw}
+                                                    >
+                                                      {cleanKw}
+                                                    </span>
+                                                  );
+                                                })}
+                                              </div>
+                                            </div>
+                                          ) : (
+                                            <span className="text-outline italic text-xs">Chưa có</span>
+                                          )}
+                                        </td>
                                         <td className="px-6 py-4 text-right">
                                             <button className="p-1 text-secondary hover:text-primary transition-colors border border-transparent hover:border-on-background rounded cursor-pointer" onClick={() => openEditModal(item)} title="Sửa">
                                                 <span className="material-symbols-outlined text-[20px]">edit</span>
@@ -328,7 +358,7 @@ const CategoryPage = () => {
                             })
                           ) : (
                             <tr>
-                              <td colSpan="5" className="px-6 py-8 text-center text-on-surface-variant">
+                              <td colSpan="6" className="px-6 py-8 text-center text-on-surface-variant">
                                 Không tìm thấy danh mục nào.
                               </td>
                             </tr>
@@ -386,6 +416,23 @@ const CategoryPage = () => {
                               placeholder="Nhập tên danh mục" 
                               type="text"
                             />
+                        </div>
+                        <div>
+                            <label className="block font-label-md text-on-surface mb-1">
+                              Từ khóa nhận diện (Keyword)
+                              <span className="text-xs text-on-surface-variant font-normal ml-1">(Tùy chọn)</span>
+                            </label>
+                            <textarea 
+                              disabled={processing.isProcessing}
+                              value={form.keyword} 
+                              onChange={e => setForm({...form, keyword: e.target.value})} 
+                              className="w-full px-3 py-2 border border-outline-variant rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md min-h-[72px] resize-none disabled:bg-surface-container-low disabled:cursor-not-allowed text-sm" 
+                              placeholder="Ví dụ: cafe; highlands; trà sữa; ăn sáng; phở" 
+                              rows={2}
+                            />
+                            <p className="text-[11px] text-on-surface-variant mt-0.5">
+                              Nhập các từ khóa phân cách bởi dấu chấm phẩy (;). Giúp bộ máy AI tự động nhận diện danh mục khi phân loại giao dịch.
+                            </p>
                         </div>
                         <div className="grid grid-cols-2 gap-4 items-start">
                             <div>
