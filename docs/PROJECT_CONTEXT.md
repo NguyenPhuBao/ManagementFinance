@@ -149,7 +149,9 @@ dart run build_runner watch --delete-conflicting-outputs
 Thêm hai điều:
 
 - **Danh mục mặc định dùng chung không gian tên với danh mục người dùng.** Người dùng nhìn thấy cả hai trong cùng một danh sách chọn nên hai mục trùng tên là không phân biệt được. Vì danh mục mặc định là hàng dùng chung, tên của nó chiếm chỗ với **mọi** tài khoản.
-- **Hàng đã xoá mềm không giữ chỗ**, và so tên **không phân biệt hoa/thường**, gom khoảng trắng thừa: `trim().toLowerCase()` rồi gộp mọi dãy khoảng trắng thành một dấu cách.
+- **Hàng đã xoá mềm không giữ chỗ.** Phép so tên đi qua **bốn bước, theo đúng thứ tự**: gộp Unicode về dạng NFC → chữ thường → cắt khoảng trắng hai đầu → gom khoảng trắng ở giữa. Định nghĩa **duy nhất** nằm ở `lib/core/category/category_name.dart` (`normalizeCategoryName`); mọi nơi so tên đều phải gọi hàm đó.
+  - Bước NFC không phải tuỳ chọn: "Cà phê" gõ từ hai bàn phím khác nhau có thể ra hai chuỗi khác byte (6 và 8 ký tự) mà mắt thường không phân biệt được.
+  - Vì sao chốt đủ bốn bước ngay: **nới lỏng về sau là miễn phí, siết chặt về sau thì phải dọn dữ liệu** — bỏ bớt một bước bây giờ nghĩa là mai kia thêm lại sẽ có sẵn dữ liệu vi phạm và `CREATE UNIQUE INDEX` phía PostgreSQL sẽ thất bại.
 
 **Nơi thi hành — chỉ có client:**
 

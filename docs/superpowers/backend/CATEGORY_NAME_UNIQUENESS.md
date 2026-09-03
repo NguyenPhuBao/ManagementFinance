@@ -55,16 +55,20 @@ DROP INDEX IF EXISTS "uq_category_default_name_classify";
 
 -- Danh mục của người dùng: duy nhất theo (chủ sở hữu, tên chuẩn hoá)
 CREATE UNIQUE INDEX "uq_category_owner_name"
-  ON "category" ("Create_by", lower(regexp_replace(btrim("NameCategory"), '\s+', ' ', 'g')))
+  ON "category" ("Create_by", lower(regexp_replace(btrim(normalize("NameCategory", NFC)), '\s+', ' ', 'g')))
   WHERE "Is_default" = FALSE AND "Delete_at" IS NULL;
 
 -- Danh mục mặc định: duy nhất theo tên chuẩn hoá
 CREATE UNIQUE INDEX "uq_category_default_name"
-  ON "category" (lower(regexp_replace(btrim("NameCategory"), '\s+', ' ', 'g')))
+  ON "category" (lower(regexp_replace(btrim(normalize("NameCategory", NFC)), '\s+', ' ', 'g')))
   WHERE "Is_default" = TRUE AND "Delete_at" IS NULL;
 ```
 
-`lower`, `btrim`, `regexp_replace` đều IMMUTABLE nên dùng được trong index biểu thức.
+`lower`, `btrim`, `regexp_replace` và `normalize` đều IMMUTABLE nên dùng được trong index biểu thức. `normalize(text, NFC)` cần **PostgreSQL 13 trở lên**.
+
+> **Bước `normalize(..., NFC)` là bắt buộc, không phải tuỳ chọn.** "Cà phê" gõ từ hai bàn phím khác nhau có thể ra hai chuỗi khác byte (6 ký tự với dạng dựng sẵn, 8 ký tự với dạng tách dấu) mà mắt thường không phân biệt được. Client đã gộp NFC từ 2026-09-03 (`src/Client-app/lib/core/category/category_name.dart`); nếu CSDL không gộp thì hai phía hiểu khác nhau về "trùng tên" và sẽ lệch **âm thầm**.
+>
+> Dữ liệu mặc định hiện có trên CSDL đã được kiểm: **13/13 đều ở dạng NFC**, nên thêm bước này bây giờ không làm hỏng dòng nào.
 
 > ⚠️ Prisma không mô hình hoá được index biểu thức có mệnh đề `WHERE`. Giữ chúng trong **migration SQL viết tay** và ghi chú lại trong `schema.prisma`, nếu không `prisma migrate` sẽ đề nghị xoá chúng đi ở lần chạy sau.
 
@@ -74,12 +78,12 @@ CREATE UNIQUE INDEX "uq_category_default_name"
 
 ```sql
 -- A. Trùng trong cùng một tài khoản
-SELECT "Create_by", lower(regexp_replace(btrim("NameCategory"), '\s+', ' ', 'g')) AS k, COUNT(*)
+SELECT "Create_by", lower(regexp_replace(btrim(normalize("NameCategory", NFC)), '\s+', ' ', 'g')) AS k, COUNT(*)
 FROM "category" WHERE "Is_default" = FALSE AND "Delete_at" IS NULL
 GROUP BY 1, 2 HAVING COUNT(*) > 1;
 
 -- B. Danh mục mặc định trùng tên
-SELECT lower(regexp_replace(btrim("NameCategory"), '\s+', ' ', 'g')) AS k, COUNT(*)
+SELECT lower(regexp_replace(btrim(normalize("NameCategory", NFC)), '\s+', ' ', 'g')) AS k, COUNT(*)
 FROM "category" WHERE "Is_default" = TRUE AND "Delete_at" IS NULL
 GROUP BY 1 HAVING COUNT(*) > 1;
 ```
@@ -95,8 +99,8 @@ SELECT u."Create_by", u."NameCategory"
 FROM "category" u
 JOIN "category" d
   ON d."Is_default" = TRUE AND d."Delete_at" IS NULL
- AND lower(regexp_replace(btrim(d."NameCategory"), '\s+', ' ', 'g'))
-   = lower(regexp_replace(btrim(u."NameCategory"), '\s+', ' ', 'g'))
+ AND lower(regexp_replace(btrim(normalize(d."NameCategory", NFC)), '\s+', ' ', 'g'))
+   = lower(regexp_replace(btrim(normalize(u."NameCategory", NFC)), '\s+', ' ', 'g'))
 WHERE u."Is_default" = FALSE AND u."Delete_at" IS NULL;
 ```
 

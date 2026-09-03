@@ -666,4 +666,73 @@ void main() {
           'sau mỗi lần nâng cấp.',
     );
   });
+
+  group('getByName — ánh xạ danh mục mặc định cục bộ sang UUID của backend', () {
+    // `_resolveCategoryId` dùng hàm này để tìm bản UUID cùng tên. Trước đây nó
+    // so bằng `t.name.equals(name)` nên phân biệt hoa/thường và không gộp dạng
+    // Unicode; lệch một chữ hoa là ánh xạ thất bại, giao dịch bị hoãn đẩy VĨNH
+    // VIỄN mà không có lỗi nào báo ra.
+
+    Future<void> seedServerCategory(String name) =>
+        db.categoryDao.insert(CategoriesCompanion.insert(
+          id: '11111111-1111-4111-8111-111111111111',
+          idaccount: 0,
+          name: name,
+          classify: 'chi',
+          isDefault: const Value(true),
+          updatedAt: DateTime(2026, 9, 3),
+        ));
+
+    test('Khớp dù lệch hoa/thường', () async {
+      await seedServerCategory('Ăn Uống');
+
+      final found = await db.categoryDao.getByName('ăn uống');
+
+      expect(found.map((c) => c.id),
+          contains('11111111-1111-4111-8111-111111111111'),
+          reason: 'Client seed "Ăn uống" còn backend trả "Ăn Uống" là đủ để '
+              'ánh xạ hỏng, và hỏng hoàn toàn im lặng.');
+    });
+
+    test('Khớp dù thừa khoảng trắng', () async {
+      await seedServerCategory('Thú cưng');
+
+      final found = await db.categoryDao.getByName('  Thú   cưng  ');
+
+      expect(found, hasLength(1));
+    });
+
+    test('Khớp dù khác dạng Unicode', () async {
+      // Dạng tách dấu, dựng bằng escape code point cho xác định.
+      const nfd = 'Cà phê';
+      await seedServerCategory('Cà phê'); // dạng dựng sẵn
+
+      final found = await db.categoryDao.getByName(nfd);
+
+      expect(found, hasLength(1),
+          reason: 'Hai chuỗi nhìn y hệt nhau nhưng khác byte — nếu không gộp '
+              'NFC thì ánh xạ trượt mà không ai nhìn ra được.');
+    });
+
+    test('KHÔNG khớp tên thật sự khác', () async {
+      await seedServerCategory('Ăn uống');
+
+      expect(await db.categoryDao.getByName('An uong'), isEmpty,
+          reason: 'Bỏ dấu sẽ gộp nhầm hai danh mục khác nhau.');
+    });
+
+    test('Bỏ qua hàng đã xoá', () async {
+      await db.categoryDao.insert(CategoriesCompanion.insert(
+        id: 'da-xoa',
+        idaccount: 0,
+        name: 'Thú cưng',
+        classify: 'chi',
+        isDefault: const Value(true),
+        deletedAt: Value(DateTime(2026, 9, 1)),
+        updatedAt: DateTime(2026, 9, 3),
+      ));
+
+      expect(await db.categoryDao.getByName('Thú cưng'), isEmpty);
+    });
+  });
 }

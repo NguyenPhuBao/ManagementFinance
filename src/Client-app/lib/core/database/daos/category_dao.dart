@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 import '../app_database.dart';
+import '../../category/category_name.dart';
 import '../tables/categories_table.dart';
 
 part 'category_dao.g.dart';
@@ -28,7 +29,7 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
 
     final Map<String, Category> uniqueMap = {};
     for (final cat in list) {
-      final key = '${cat.classify}_${cat.name.trim().toLowerCase()}';
+      final key = '${cat.classify}_${normalizeCategoryName(cat.name)}';
       uniqueMap.putIfAbsent(key, () => cat);
     }
     return uniqueMap.values.toList();
@@ -47,7 +48,7 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
         .map((list) {
       final Map<String, Category> uniqueMap = {};
       for (final cat in list) {
-        final key = '${cat.classify}_${cat.name.trim().toLowerCase()}';
+        final key = '${cat.classify}_${normalizeCategoryName(cat.name)}';
         uniqueMap.putIfAbsent(key, () => cat);
       }
       return uniqueMap.values.toList();
@@ -73,7 +74,7 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
       );
       final Map<String, Category> uniqueMap = {};
       for (final cat in list) {
-        final key = cat.name.trim().toLowerCase();
+        final key = normalizeCategoryName(cat.name);
         final existing = uniqueMap[key];
         if (existing == null) {
           uniqueMap[key] = cat;
@@ -106,7 +107,7 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
     );
     final Map<String, Category> uniqueMap = {};
     for (final cat in list) {
-      final key = cat.name.trim().toLowerCase();
+      final key = normalizeCategoryName(cat.name);
       final existing = uniqueMap[key];
       if (existing == null) {
         uniqueMap[key] = cat;
@@ -285,7 +286,7 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
 
     final Map<String, Category> uniqueMap = {};
     for (final cat in list) {
-      final key = cat.name.trim().toLowerCase();
+      final key = normalizeCategoryName(cat.name);
       uniqueMap.putIfAbsent(key, () => cat);
     }
     return uniqueMap.values.toList();
@@ -356,11 +357,24 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
     return (select(categories)..where((t) => t.id.equals(id))).getSingleOrNull();
   }
 
-  /// Tìm category cùng tên để ánh xạ category mặc định cục bộ sang UUID server.
-  Future<List<Category>> getByName(String name) {
-    return (select(categories)
-          ..where((t) => t.name.equals(name) & t.deletedAt.isNull()))
-        .get();
+  /// Tìm danh mục theo TÊN, so khớp qua [normalizeCategoryName].
+  ///
+  /// Dùng ở `_resolveCategoryId` để ánh xạ danh mục mặc định cục bộ (id dạng
+  /// `cat_food`) sang UUID tương ứng của backend. Trước đây so bằng
+  /// `t.name.equals(name)` — phân biệt hoa/thường và không gộp dạng Unicode —
+  /// nên chỉ cần lệch một chữ hoa hay một dạng dấu là ánh xạ thất bại,
+  /// `_resolveCategoryId` trả `null`, và giao dịch bị hoãn đẩy VĨNH VIỄN mà
+  /// không có lỗi nào báo ra. Đúng lớp lỗi 11.4 / 11.6 trong PROJECT_CONTEXT.
+  ///
+  /// Lọc trong Dart chứ không trong SQL vì phép chuẩn hoá có bước NFC mà
+  /// SQLite không có sẵn. Bảng danh mục chỉ cỡ vài chục dòng nên không đáng kể.
+  Future<List<Category>> getByName(String name) async {
+    final target = normalizeCategoryName(name);
+    final rows =
+        await (select(categories)..where((t) => t.deletedAt.isNull())).get();
+    return rows
+        .where((c) => normalizeCategoryName(c.name) == target)
+        .toList();
   }
 
   /// Xóa các category seed cục bộ (ID dạng 'cat_food') khi đã có bản UUID
@@ -380,7 +394,7 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
     // Nhóm theo key (name + classify)
     final Map<String, List<Category>> groups = {};
     for (final cat in all) {
-      final key = '${cat.classify}|${cat.name.trim().toLowerCase()}';
+      final key = '${cat.classify}|${normalizeCategoryName(cat.name)}';
       groups.putIfAbsent(key, () => []).add(cat);
     }
 
