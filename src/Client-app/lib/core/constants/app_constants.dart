@@ -2,13 +2,22 @@ import 'package:flutter/foundation.dart';
 
 class AppConstants {
   // API
-  // Web/Desktop: dùng localhost. Android emulator: 10.0.2.2 (alias đến localhost của máy host)
+  // Web/Desktop: 127.0.0.1 (xem lý do bên dưới). Android emulator: 10.0.2.2.
   static String get baseUrl {
     // ── LOCAL DEV ──────────────────────────────────────────────────────────
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
       return 'http://10.0.2.2:3000/api'; // Android emulator → host machine
     }
-    return 'http://localhost:3000/api'; // Web / Desktop
+    // Dùng 127.0.0.1 chứ KHÔNG dùng `localhost`: trên Windows, `localhost`
+    // thường phân giải thành ::1 (IPv6) trước, trong khi backend Express nghe
+    // ở 0.0.0.0:3000 — tức CHỈ IPv4. Trình duyệt nối tới ::1, bị từ chối ngay
+    // ở tầng TCP, và Dio báo lại bằng thông báo "XMLHttpRequest onError" kèm
+    // một đoạn giải thích về CORS gây hiểu nhầm — trong khi CORS hoàn toàn
+    // bình thường. 127.0.0.1 luôn tới đúng socket IPv4 nên chạy được ở mọi máy.
+    //
+    // Vẫn MỞ TRANG bằng http://localhost:9090 — CORS_ORIGIN phía backend đang
+    // là `http://localhost:9090`, mở bằng 127.0.0.1:9090 sẽ bị CORS chặn thật.
+    return 'http://127.0.0.1:3000/api'; // Web / Desktop
 
     // ── CLOUD (Render) — bỏ comment khi deploy ──────────────────────────
     // ignore: dead_code
