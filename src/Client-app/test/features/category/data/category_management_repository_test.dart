@@ -480,6 +480,74 @@ void main() {
 
       expect((await db.categoryDao.getById('rieng-du-lich'))!.name, 'Du lịch');
     });
+
+    // ── Dữ liệu cũ tạo ra khi quy tắc còn lỏng ──────────────────────────────
+    // Bản client trước 2026-09-03 loại danh mục mặc định khỏi phép kiểm tra,
+    // nên máy người dùng có thể đang có một danh mục riêng trùng tên với danh
+    // mục mặc định. Chặn tuyệt đối sẽ khiến họ KHÔNG sửa nổi danh mục đó nữa,
+    // kể cả chỉ đổi icon — vì vậy phép kiểm tra chỉ chạy khi tên thật sự đổi.
+
+    test('Sửa danh mục cũ đang trùng tên danh mục mặc định thì vẫn lưu được',
+        () async {
+      // Dựng thẳng vào CSDL để tái hiện dữ liệu do bản cũ tạo ra.
+      await insertCategory(id: 'cu-an-uong', name: 'Ăn uống');
+
+      await repository.saveChild(CategoryChildDraft(
+        id: 'cu-an-uong',
+        accountId: 1,
+        name: 'Ăn uống',
+        classify: 'chi',
+        parentId: null,
+        icon: 'restaurant',
+        colour: '#FF5722',
+        keywords: const [],
+      ));
+
+      final row = await db.categoryDao.getById('cu-an-uong');
+      expect(row!.icon, 'restaurant',
+          reason: 'Người dùng phải sửa được icon/màu của danh mục cũ mà không '
+              'bị bắt đổi tên trước.');
+      expect(row.name, 'Ăn uống');
+    });
+
+    test('Nhưng ĐỔI TÊN danh mục cũ sang một tên đã bị chiếm thì vẫn bị chặn',
+        () async {
+      await insertCategory(id: 'cu-an-uong', name: 'Ăn uống');
+
+      await expectLater(
+        makeChild('cu-an-uong', 'Di chuyển'),
+        throwsA(isA<CategoryValidationException>()),
+        reason: 'Nới lỏng chỉ áp cho trường hợp GIỮ NGUYÊN tên. Đổi sang tên '
+            'khác vẫn phải qua đủ phép kiểm tra.',
+      );
+    });
+
+    test('Nhóm cũ trùng tên danh mục mặc định cũng sửa được', () async {
+      await insertCategory(id: 'nhom-cu', name: 'Mua sắm', isGroup: true);
+
+      await repository.saveGroup(CategoryGroupDraft(
+        id: 'nhom-cu',
+        accountId: 1,
+        name: 'Mua sắm',
+        classify: 'chi',
+        icon: 'shopping_bag',
+        colour: '#9C27B0',
+        childIds: const [],
+      ));
+
+      expect((await db.categoryDao.getById('nhom-cu'))!.icon, 'shopping_bag');
+    });
+
+    test('Đổi hoa/thường của chính tên đó vẫn được coi là KHÔNG đổi tên',
+        () async {
+      await insertCategory(id: 'cu-an-uong', name: 'Ăn uống');
+
+      await makeChild('cu-an-uong', '  ăn   UỐNG ');
+
+      expect((await db.categoryDao.getById('cu-an-uong'))!.name, 'ăn   UỐNG',
+          reason: 'So tên bỏ qua hoa/thường và khoảng trắng, nên đây vẫn là '
+              'cùng một tên — không được coi là đổi tên rồi chặn.');
+    });
   });
 
   test('rejects a duplicate child name regardless of which group it goes into',

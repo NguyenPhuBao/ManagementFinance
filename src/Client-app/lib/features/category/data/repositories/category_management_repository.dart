@@ -141,6 +141,7 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
       accountId: draft.accountId,
       excludingId: draft.id,
       name: name,
+      currentName: existing?.name,
     )) {
       throw const CategoryValidationException(
         'Tên danh mục đã tồn tại. Mỗi tài khoản không được có hai danh mục trùng tên, kể cả khác loại hay khác nhóm.',
@@ -191,6 +192,7 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
         accountId: draft.accountId,
         excludingId: draft.id,
         name: name,
+        currentName: existing?.name,
       )) {
         throw const CategoryValidationException(
           'Tên danh mục đã tồn tại. Mỗi tài khoản không được có hai danh mục trùng tên, kể cả khác loại hay khác nhóm.',
@@ -465,8 +467,17 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
     required int accountId,
     required String? excludingId,
     required String name,
+    String? currentName,
   }) async {
     final target = _normalize(name);
+
+    // Đang SỬA mà không đổi tên thì không xét trùng nữa. Bản client trước
+    // 2026-09-03 loại danh mục mặc định khỏi phép kiểm tra, nên máy người dùng
+    // có thể đang giữ một danh mục riêng trùng tên với danh mục mặc định.
+    // Chặn tuyệt đối sẽ khiến họ không sửa nổi danh mục đó nữa — kể cả chỉ đổi
+    // icon — và không có cách nào thoát ngoài việc đổi tên.
+    if (currentName != null && _normalize(currentName) == target) return false;
+
     final inUse = await db.categoryDao.getNamesInUse(accountId);
     return inUse.any((category) =>
         category.id != excludingId && _normalize(category.name) == target);
