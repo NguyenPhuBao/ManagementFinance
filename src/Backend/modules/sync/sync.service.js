@@ -100,6 +100,14 @@ const syncService = {
           }
         }
 
+        // Canonical classify alignment for category: normalize all debt variants to 'Vay/no'
+        if (entity === 'category' && payload.classify) {
+          const c = String(payload.classify).trim();
+          if (['Vay/nợ', 'Vay', 'no', 'vay_no', 'vay_nợ', 'Vay/ng'].includes(c)) {
+            payload.classify = 'Vay/no';
+          }
+        }
+
         // Handle delete
         if (operation === 'delete') {
           const deleted = await syncRepository.softDelete(entity, payload.id);
@@ -138,9 +146,16 @@ const syncService = {
         }
       } catch (err) {
         logger.error('Sync push operation failed', { localId: op.localId, error: err.message });
+        
+        let errorCode = undefined;
+        if (err.message && (/fk_\w+_account/i.test(err.message) || /Foreign key.*account/i.test(err.message))) {
+          errorCode = 'ACCOUNT_NOT_FOUND';
+        }
+
         results[idx] = {
           localId: op.localId,
           status: 'error',
+          code: errorCode,
           message: err.message,
         };
         errors++;

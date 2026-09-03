@@ -67,7 +67,7 @@ const classifyRepository = {
       }
 
       const existingKeywords = (category.keyword || '')
-        .split(';')
+        .split(/[,;]/)
         .map((k) => k.trim())
         .filter(Boolean);
 
@@ -78,7 +78,7 @@ const classifyRepository = {
         existingKeywords.push(normalizedNewKw);
       }
 
-      const updatedKeywordStr = existingKeywords.join('; ');
+      const updatedKeywordStr = existingKeywords.join(', ');
 
       return await prisma.category.update({
         where: { idcategory },

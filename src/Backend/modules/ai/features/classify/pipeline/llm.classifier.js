@@ -91,7 +91,7 @@ Trả về JSON Schema:
 {
   "category_id": "string (UUID từ danh sách trên)",
   "category_name": "string",
-  "classify": "Chi | Thu | Vay/nợ",
+  "classify": "Chi | Thu | Vay/no",
   "confidence": 0.85,
   "reason": "Giải thích ngắn gọn"
 }`;

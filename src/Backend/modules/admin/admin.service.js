@@ -77,6 +77,9 @@ const adminService = {
     const newStatus = currentStatus === 'Active' ? 'Inactive' : 'Active';
 
     await adminRepository.updateAccountStatus(iduser, newStatus);
+    const { invalidateAccountCache } = require('../../middleware/auth');
+    invalidateAccountCache(u.account.idaccount);
+
     return {
       id: iduser,
       username: u.account.username,
@@ -109,8 +112,14 @@ const adminService = {
     const isDefault = data.is_default === true || data.is_default === 'true';
     const validClassifies = ['Thu', 'Chi', 'Vay/nợ', 'Vay/no', 'Vay', 'no'];
     if (!validClassifies.includes(data.classify)) {
-      throw Object.assign(new Error(`Loại danh mục '${data.classify}' không hợp lệ. Phải là Thu, Chi, hoặc Vay/nợ`), { statusCode: 400 });
+      throw Object.assign(new Error(`Loại danh mục '${data.classify}' không hợp lệ. Phải là Thu, Chi, hoặc Vay/no`), { statusCode: 400 });
     }
+    // Normalize debt variants to canonical 'Vay/no'
+    let canonicalClassify = data.classify;
+    if (['Vay/nợ', 'Vay', 'no'].includes(canonicalClassify)) {
+      canonicalClassify = 'Vay/no';
+    }
+
     const { prisma } = require('../../config/db');
 
     // Chỉ kiểm tra trùng lặp với danh mục mặc định hệ thống (is_default === true)
@@ -118,19 +127,19 @@ const adminService = {
       const existing = await prisma.category.findFirst({
         where: {
           name_category: { equals: trimmedName, mode: 'insensitive' },
-          classify: data.classify,
+          classify: canonicalClassify,
           is_default: true,
           delete_at: null,
         },
       });
       if (existing) {
-        throw Object.assign(new Error(`Danh mục mặc định "${trimmedName}" (${data.classify}) đã tồn tại trong hệ thống`), { statusCode: 400 });
+        throw Object.assign(new Error(`Danh mục mặc định "${trimmedName}" (${canonicalClassify}) đã tồn tại trong hệ thống`), { statusCode: 400 });
       }
     }
 
     const result = await adminRepository.createCategory({
       name: trimmedName,
-      classify: data.classify,
+      classify: canonicalClassify,
       is_default: isDefault,
       keyword: data.keyword ? data.keyword.trim() : null,
       icon: data.icon,
@@ -144,8 +153,14 @@ const adminService = {
     const isDefault = data.is_default === true || data.is_default === 'true';
     const validClassifies = ['Thu', 'Chi', 'Vay/nợ', 'Vay/no', 'Vay', 'no'];
     if (data.classify && !validClassifies.includes(data.classify)) {
-      throw Object.assign(new Error(`Loại danh mục '${data.classify}' không hợp lệ. Phải là Thu, Chi, hoặc Vay/nợ`), { statusCode: 400 });
+      throw Object.assign(new Error(`Loại danh mục '${data.classify}' không hợp lệ. Phải là Thu, Chi, hoặc Vay/no`), { statusCode: 400 });
     }
+    // Normalize debt variants to canonical 'Vay/no'
+    let canonicalClassify = data.classify;
+    if (canonicalClassify && ['Vay/nợ', 'Vay', 'no'].includes(canonicalClassify)) {
+      canonicalClassify = 'Vay/no';
+    }
+
     const { prisma } = require('../../config/db');
 
     // Chỉ kiểm tra trùng lặp với danh mục mặc định hệ thống (is_default === true)
@@ -154,19 +169,19 @@ const adminService = {
         where: {
           idcategory: { not: idcategory },
           name_category: { equals: trimmedName, mode: 'insensitive' },
-          classify: data.classify,
+          classify: canonicalClassify,
           is_default: true,
           delete_at: null,
         },
       });
       if (existing) {
-        throw Object.assign(new Error(`Danh mục mặc định "${trimmedName}" (${data.classify}) đã tồn tại trong hệ thống`), { statusCode: 400 });
+        throw Object.assign(new Error(`Danh mục mặc định "${trimmedName}" (${canonicalClassify}) đã tồn tại trong hệ thống`), { statusCode: 400 });
       }
     }
 
     const result = await adminRepository.updateCategory(idcategory, {
       name: trimmedName,
-      classify: data.classify,
+      classify: canonicalClassify,
       is_default: isDefault,
       keyword: data.keyword !== undefined ? (data.keyword ? data.keyword.trim() : null) : undefined,
       icon: data.icon,
