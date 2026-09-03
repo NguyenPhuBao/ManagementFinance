@@ -2290,4 +2290,21 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
 - **Tập tin Backend cập nhật**:
   - `src/Backend/modules/sync/sync.validation.js` & `src/Backend/modules/admin/admin.service.js`: Hỗ trợ đầy đủ phân loại danh mục `Vay/nợ` và `Vay/no`.
 - **Kiểm thử tự động**:
-  - Toàn bộ test suite `test_bank_full_flow.js`, `test_admin_new_schema.js`, `test_sync_new_schema.js` đạt **PASS 100%**.
+  - Toàn bộ test suite `test_bank_full_flow.js`, `test_admin_new_schema.js`, `test_sync_new_schema.js` đạt **PASS 100%**.
+
+### 11.19. Triển Khai Hoàn Tất Chức Năng AI Phân Loại Giao Dịch (3-Tier Hybrid & Chuẩn RAG) (2026-09-02)
+- **Chuẩn hóa Nguồn Sự Thật & Tài Liệu Module AI**:
+  - Tạo tài liệu nguồn sự thật [docs/AI/Standard_RAG.md](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/AI/Standard_RAG.md) định chuẩn 4 giai đoạn RAG (Indexing, Retrieval, Generation, Ragas Evaluation).
+  - Hoàn thiện tài liệu đặc tả [docs/AI/Classify.md](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/AI/Classify.md) và [docs/AI/Casso_Banking/TemplateData.md](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/AI/Casso_Banking/TemplateData.md) bao phủ toàn bộ 4 kênh đầu vào (Receipt OCR, SMS Banking, Casso BankSync, Nhập tay) và cấu trúc DTO đầu ra.
+- **Xây dựng Mã Nguồn Backend Module AI**:
+  - `classify.preprocess.js`: Chuẩn hóa văn bản tiếng Việt Unicode NFC (`cleanVietnameseText`), loại bỏ ký tự rác/mã hex giao dịch, hỗ trợ `removeVietnameseTones`.
+  - `pipeline/keyword.matcher.js`: Thuật toán so khớp Tầng 1 với `Category.Keyword` của user trong CSDL (Tốc độ $0 - 5ms$, Confidence $\ge 0.95$).
+  - `pipeline/nlp.matcher.js`: Thuật toán Tầng 2 tính độ tương đồng từ vựng N-gram / Jaccard Similarity (Tốc độ $5 - 15ms$, chi phí $0$đ) và tạo Top-3 `suggested_categories`.
+  - `pipeline/llm.classifier.js`: Tầng 3 Few-Shot LLM Reasoning (Gemini Flash) theo chuẩn Strict Grounding và Context Ordering hình chữ U khi độ tin cậy $< 0.60$.
+  - `classify.repository.js`: Truy vấn danh mục người dùng và phương thức `appendCategoryKeyword` phục vụ Self-Learning.
+  - `classify.service.js`: Điều phối phân loại đa tầng (`classifySingle`, `classifyBatch`, `recordFeedback`).
+  - `classify.controller.js` & `classify.routes.js`: Định tuyến 3 API endpoints `POST /api/ai/classify/single`, `POST /api/ai/classify/batch`, `POST /api/ai/classify/feedback`.
+  - `src/Backend/workers/bank.worker.js`: Tích hợp tự động phân loại khi nhận Webhook giao dịch mới từ Casso.
+- **Kiểm thử tự động toàn diện**:
+  - `Test/test_ai_classify_3tier.js`: Kiểm thử trọn vẹn Preprocessing, Tier 1 Keyword Matcher, Tier 2 NLP Matcher, Batch Mode cho Receipt OCR, và Cơ chế Tự học (Self-Learning Feedback Loop) $\rightarrow$ **PASS 100%**.
+  - `Test/test_bank_full_flow.js`: Kiểm thử hồi quy BankSync $\rightarrow$ **PASS 100%**.
