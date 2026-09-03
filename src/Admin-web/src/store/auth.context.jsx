@@ -1,4 +1,4 @@
-﻿import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { STORAGE_KEYS } from '../utils/constants';
 import authApi from '../api/auth.api';
 
@@ -9,29 +9,63 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Initialize auth state from localStorage
+  // Initialize auth state from localStorage and softly verify session with backend
   useEffect(() => {
-    const token = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
-    const savedUser = localStorage.getItem(STORAGE_KEYS.USER);
+    let isMounted = true;
 
-    if (token && savedUser) {
-      try {
-        setUser(JSON.parse(savedUser));
-        setIsAuthenticated(true);
-      } catch {
-        localStorage.removeItem(STORAGE_KEYS.USER);
+    const initAuth = async () => {
+      const token = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
+      const savedUser = localStorage.getItem(STORAGE_KEYS.USER);
+
+      if (token && savedUser) {
+        try {
+          const parsedUser = JSON.parse(savedUser);
+          if (isMounted) {
+            setUser(parsedUser);
+            setIsAuthenticated(true);
+          }
+
+          // Kiểm tra phiên làm việc ngầm với backend
+          const meRes = await authApi.getMe();
+          if (isMounted && meRes?.data) {
+            const freshUser = { ...parsedUser, ...meRes.data };
+            setUser(freshUser);
+            localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(freshUser));
+          }
+        } catch (error) {
+          // Nếu token không hợp lệ, hết hạn hoặc tài khoản đã bị khóa/xóa từ CSDL
+          if (error.response?.status === 401 || error.response?.status === 403) {
+            localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
+            localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+            localStorage.removeItem(STORAGE_KEYS.USER);
+            if (isMounted) {
+              setUser(null);
+              setIsAuthenticated(false);
+            }
+          }
+        }
       }
-    }
-    setLoading(false);
+
+      if (isMounted) {
+        setLoading(false);
+      }
+    };
+
+    initAuth();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const login = useCallback(async (credentials) => {
     const response = await authApi.login(credentials);
     const { accessToken, refreshToken, user: userData } = response.data;
 
-    // Chi cho phep admin (idrole === 1) dang nhap vao admin-web
-    if (userData.rolename !== 'admin') {
-      throw new Error('Tai khoan khong co quyen truy cap quan tri');
+    // Cho phép admin (idrole === 1 hoặc rolename: 'admin'/'Admin')
+    const isAdmin = userData?.idrole === 1 || String(userData?.rolename || '').toLowerCase() === 'admin';
+    if (!isAdmin) {
+      throw new Error('Tài khoản không có quyền truy cập trang quản trị');
     }
 
     localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, accessToken);
