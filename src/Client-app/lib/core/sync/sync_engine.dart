@@ -379,6 +379,7 @@ class SyncEngine {
                     (w['color'] ?? w['colour'])?.toString() ?? '#4CAF50'),
                 isDefault: Value(w['is_default'] == true),
                 isDeleted: Value(w['delete_at'] != null),
+                deletedAt: Value(_deletedAtFrom(w['delete_at'])),
                 syncStatus: const Value('synced'),
                 updatedAt: Value(
                     DateTime.tryParse(w['update_at']?.toString() ?? '') ??
@@ -417,6 +418,7 @@ class SyncEngine {
                         (t['date_transaction'] ?? t['date'])?.toString() ?? '') ??
                     DateTime.now()),
                 isDeleted: Value(t['deleted_at'] != null),
+                deletedAt: Value(_deletedAtFrom(t['deleted_at'])),
                 syncStatus: const Value('synced'),
                 updatedAt: Value(
                     DateTime.tryParse(t['update_at']?.toString() ?? '') ??
@@ -512,6 +514,7 @@ class SyncEngine {
                 // thành chưa-xoá sau mỗi lần pull — backend không lọc
                 // `delete_at` khi trả dữ liệu nên nó vẫn nằm trong response.
                 isDeleted: Value(c['delete_at'] != null),
+                deletedAt: Value(_deletedAtFrom(c['delete_at'])),
                 syncStatus: const Value('synced'),
                 updatedAt: Value(
                     DateTime.tryParse(c['update_at']?.toString() ?? '') ??
@@ -582,6 +585,7 @@ class SyncEngine {
                     : null),
                 note: Value(b['note']?.toString() ?? ''),
                 isDeleted: Value(b['delete_at'] != null),
+                deletedAt: Value(_deletedAtFrom(b['delete_at'])),
                 syncStatus: const Value('synced'),
                 updatedAt: Value(DateTime.tryParse(
                         (b['update_at'] ?? b['updated_at'])?.toString() ??
@@ -631,6 +635,7 @@ class SyncEngine {
                 colour: Value(bill['color']?.toString() ?? '#4CAF50'),
                 note: Value(bill['note']?.toString() ?? ''),
                 isDeleted: Value(bill['delete_at'] != null),
+                deletedAt: Value(_deletedAtFrom(bill['delete_at'])),
                 syncStatus: const Value('synced'),
                 updatedAt: Value(DateTime.tryParse(
                         (bill['update_at'] ?? bill['updated_at'])
@@ -683,6 +688,7 @@ class SyncEngine {
                 isCompleted:
                     Value(g['status_complete']?.toString() == 'True'),
                 isDeleted: Value(g['delete_at'] != null),
+                deletedAt: Value(_deletedAtFrom(g['delete_at'])),
                 syncStatus: const Value('synced'),
                 updatedAt: Value(DateTime.tryParse(
                         (g['update_at'] ?? g['updated_at'])?.toString() ??
@@ -1261,6 +1267,24 @@ class SyncEngine {
   }
 
   // ── Phân loại lỗi đẩy dữ liệu ─────────────────────────────────────────────
+
+  /// Đọc mốc thời điểm xoá mềm từ payload backend cho khối Pull.
+  ///
+  /// Cờ xoá phải ghi vào **cả hai** cột `isDeleted` và `deletedAt`. Mọi
+  /// `getAll`/`watchAll` trong dự án lọc theo `deletedAt.isNull()`, KHÔNG theo
+  /// `isDeleted` — nên nếu chỉ bật cờ boolean thì bản ghi đã xoá trên máy khác
+  /// vẫn hiện ra sau khi pull, không exception và không log.
+  ///
+  /// Chuỗi hỏng vẫn trả về một mốc (giờ hiện tại) thay vì `null`: đã biết chắc
+  /// bản ghi bị xoá thì thà lệch vài giây còn hơn để nó sống lại.
+  ///
+  /// Lưu ý tên cột không nhất quán ở backend: bảng `transaction` dùng
+  /// `deleted_at`, các bảng còn lại dùng `delete_at` — nơi gọi phải truyền đúng
+  /// khoá, hàm này không tự đoán.
+  static DateTime? _deletedAtFrom(dynamic raw) {
+    if (raw == null) return null;
+    return DateTime.tryParse(raw.toString()) ?? DateTime.now();
+  }
 
   /// Mã lỗi ổn định do backend gắn cho lỗi vỡ khoá ngoại tới bảng `account`
   /// (có từ 2026-09-03, xem `docs/superpowers/backend/SESSION_VALIDITY_FINDINGS.md`).
