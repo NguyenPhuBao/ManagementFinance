@@ -538,7 +538,7 @@ Xem đầy đủ tại **`docs/CLIENT_APP_KNOWN_GAPS.md`**. Phiên 2026-09-03 đ
 
 > ⚠️ **`.gitignore` dòng 77 vẫn có `test/`.** Luật này đã cắn lần thứ hai: hai file test tạo ngày 2026-09-03 cũng bị chặn âm thầm và phải `git add -f`. Mọi file test tạo **mới** vẫn sẽ bị bỏ qua trong im lặng.
 
-Vấn đề thuộc backend (trong `docs/superpowers/backend/`): **`SESSION_VALIDITY_FINDINGS.md`** ✅ đã xong, **`CATEGORY_CLASSIFY_ALIGNMENT.md`** ✅ đã xong (còn một bước nhỏ thu hẹp `sync.validation.js`), **`CATEGORY_GROUP_MEMBERSHIP_SYNC.md`** ⛔ chưa làm — đây là thứ duy nhất còn chặn G10, và **`CATEGORY_KEYWORD_SYNC.md`** ⛔ mới ghi ngày 2026-09-03 (từ khoá phân loại không đồng bộ + thiếu kiểm quyền sở hữu khi ghi từ khoá).
+Vấn đề thuộc backend (trong `docs/superpowers/backend/`): **`SESSION_VALIDITY_FINDINGS.md`** ✅ đã xong, **`CATEGORY_CLASSIFY_ALIGNMENT.md`** ✅ đã xong (còn một bước nhỏ thu hẹp `sync.validation.js`), **`CATEGORY_GROUP_MEMBERSHIP_SYNC.md`** ⛔ chưa làm — đây là thứ duy nhất còn chặn G10, **`CATEGORY_KEYWORD_SYNC.md`** ⛔ (từ khoá phân loại không đồng bộ + thiếu kiểm quyền sở hữu khi ghi từ khoá), và **`CATEGORY_NAME_UNIQUENESS.md`** ⛔ (ràng buộc trùng tên danh mục ở CSDL khác quy tắc nghiệp vụ — client đã thi hành đúng, CSDL chưa).
 
 ### ❌ Chưa làm / Tiếp theo
 - Analytics (báo cáo chi tiết)
