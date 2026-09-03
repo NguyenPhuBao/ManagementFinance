@@ -18,7 +18,7 @@
 | Việc | Đọc thêm |
 |---|---|
 | Làm tiếp phía client | `docs/CLIENT_APP_KNOWN_GAPS.md` — các mục dang dở kèm **lý do hoãn** và **bán kính ảnh hưởng** |
-| Việc thuộc backend | 4 tài liệu **còn việc** trong `docs/superpowers/backend/`: `CATEGORY_KEYWORD_SYNC.md` (có lỗ hổng phân quyền), `CATEGORY_NAME_UNIQUENESS.md`, `CATEGORY_STABLE_IDS.md`, `CATEGORY_GROUP_MEMBERSHIP_SYNC.md`. Bảng trạng thái đầy đủ ở mục 14 `docs/PROJECT_CONTEXT.md` |
+| Việc thuộc backend | `docs/superpowers/backend/README.md` — mục lục 16 tài liệu, chia ba nhóm kèm thứ tự đọc. Hiện **6 tài liệu còn việc**, mở đầu là `CATEGORY_KEYWORD_SYNC.md` (lỗ hổng phân quyền) và `2026-09-04-backend-idempotent-delete.md` (ba lỗ hổng của `/sync/push`, một trong đó chặn hẳn ngân sách "Ngày cụ thể"). Bảng trạng thái đầy đủ ở mục 14 `docs/PROJECT_CONTEXT.md` |
 | Đụng vào đồng bộ | `src/Client-app/test/core/sync/sync_payload_contract_test.dart` — đọc **như tài liệu**, đây là nơi duy nhất ghi hợp đồng tên trường giữa hai phía |
 | Đụng vào danh mục | `docs/CATEGORY_RATIONALE.md` — **lý do** của từng thay đổi, bằng chứng đo được, và các phương án đã loại bỏ. Đọc trước khi định "dọn dẹp" vùng này |
 
@@ -38,6 +38,7 @@
 4. **Tên trường sai thì im lặng, không báo lỗi.** Payload đi qua ba nơi định nghĩa độc lập (client dựng tay → `SyncPayloadNormalizer` → `mapEntityFields` phía backend). Thêm trường mới cho sync thì **phải** cập nhật `sync_payload_contract_test.dart` cùng lúc.
 
 5. **Không xoá vật lý dữ liệu người dùng** — dùng soft delete (`delete_at` / `isDeleted`).
+   - ⚠️ Điều này áp dụng cho **cả PostgreSQL**, kể cả với bản ghi thử của chính mình. Một hàng đã từng đồng bộ thì client vẫn giữ bản sao; xoá cứng ở server khiến client đẩy lên và nhận `Record not found` **ở mọi chu kỳ**, kẹt vòng lặp vô hạn và kéo chậm cả hàng đợi. Đã vấp ngày 2026-09-04. Muốn dọn thì đặt `delete_at`, hoặc xoá qua giao diện để cờ xoá đi đúng đường đồng bộ.
    - ⚠️ Backend **không nhất quán tên cột**, ít nhất ba kiểu: `category` dùng `Delete_at`, `transaction` dùng `Deleted_at`, và cột ngày của giao dịch là `DateTransaction` (không gạch dưới) chứ không phải `Date_transaction`. Đừng suy tên từ bảng này sang bảng kia — mở `schema.prisma` ra đọc. Truy vấn sai tên cột ở PostgreSQL thì báo lỗi ngay, nhưng viết sai trong payload đồng bộ thì **im lặng** (quy tắc 4).
 
 6. **`.gitignore` dòng 77 có `test/`** → mọi file test tạo mới đều bị git bỏ qua **âm thầm**. Nhớ `git add -f`, nếu không công sức viết test sẽ biến mất khỏi repo.
@@ -53,7 +54,7 @@
 ## Lệnh hay dùng
 
 ```bash
-# Test (chạy từ src/Client-app) — hiện 246/246 pass, ~15 giây
+# Test (chạy từ src/Client-app) — hiện 324/324 pass, ~15 giây
 flutter test
 flutter analyze          # mức nền: 29 issue, KHÔNG có error
 
