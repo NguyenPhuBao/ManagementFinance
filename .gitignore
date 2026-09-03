@@ -66,6 +66,7 @@ docs/superpowers/plans/
 docs/superpowers/specs/
 docs/superpowers/sync/
 src/Backend/prisma/seed_roles.js
+src/Backend/scripts/seed_roles.js
 .superpowers/
 .stitch/
 plugins/
