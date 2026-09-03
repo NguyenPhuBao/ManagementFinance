@@ -137,15 +137,13 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
       parentId: draft.parentId,
     );
     final classify = parent?.classify ?? draft.classify;
-    if (await _hasDuplicateChildName(
+    if (await _hasDuplicateName(
       accountId: draft.accountId,
-      classify: classify,
-      parentId: draft.parentId,
       excludingId: draft.id,
       name: name,
     )) {
       throw const CategoryValidationException(
-        'Tên danh mục đã tồn tại trong phạm vi này.',
+        'Tên danh mục đã tồn tại. Mỗi tài khoản không được có hai danh mục trùng tên, kể cả khác loại hay khác nhóm.',
       );
     }
 
@@ -189,14 +187,13 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
         throw const CategoryValidationException(
             'Danh mục con không thể là nhóm.');
       }
-      if (await _hasDuplicateGroupName(
+      if (await _hasDuplicateName(
         accountId: draft.accountId,
-        classify: draft.classify,
         excludingId: draft.id,
         name: name,
       )) {
         throw const CategoryValidationException(
-          'Tên danh mục đã tồn tại trong phạm vi này.',
+          'Tên danh mục đã tồn tại. Mỗi tài khoản không được có hai danh mục trùng tên, kể cả khác loại hay khác nhóm.',
         );
       }
 
@@ -233,7 +230,7 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
         ...defaultChildren,
       ])) {
         throw const CategoryValidationException(
-          'Tên danh mục đã tồn tại trong phạm vi này.',
+          'Tên danh mục đã tồn tại. Mỗi tài khoản không được có hai danh mục trùng tên, kể cả khác loại hay khác nhóm.',
         );
       }
 
@@ -450,38 +447,24 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
     return parent;
   }
 
-  Future<bool> _hasDuplicateGroupName({
+  /// Tên danh mục đã tồn tại trong phạm vi tài khoản chưa.
+  ///
+  /// Khoá duy nhất là **(idaccount, tên đã chuẩn hoá)** — không có `classify`,
+  /// không có nhóm cha, và nhóm dùng chung không gian tên với danh mục con.
+  /// Đây là quy tắc nghiệp vụ đã chốt, và cũng là thứ PostgreSQL vốn ràng buộc
+  /// chặt hơn client: trước đây client cho tạo rồi thao tác đẩy lên mới vỡ
+  /// constraint — mà `/sync/push` chỉ đánh dấu `failed`, không báo gì ra màn
+  /// hình.
+  Future<bool> _hasDuplicateName({
     required int accountId,
-    required String classify,
     required String? excludingId,
     required String name,
-  }) async =>
-      (await db.categoryDao.getCategoryRows(accountId, classify)).any(
-        (category) =>
-            category.idaccount == accountId &&
-            category.isGroup &&
-            !category.isDefault &&
-            category.id != excludingId &&
-            _normalize(category.name) == _normalize(name),
-      );
-
-  Future<bool> _hasDuplicateChildName({
-    required int accountId,
-    required String classify,
-    required String? parentId,
-    required String? excludingId,
-    required String name,
-  }) async =>
-      (await db.categoryDao.getCategoryRows(accountId, classify)).any(
-        (category) =>
-            category.idaccount == accountId &&
-            !category.isGroup &&
-            !category.isDefault &&
-            category.parentId == parentId &&
-            category.id != excludingId &&
-            _normalize(category.name) == _normalize(name),
-      );
-
+  }) async {
+    final target = _normalize(name);
+    final owned = await db.categoryDao.getOwnedForNameCheck(accountId);
+    return owned.any((category) =>
+        category.id != excludingId && _normalize(category.name) == target);
+  }
   bool _hasDuplicateAssignedChildName(Iterable<Category> children) {
     final names = <String>{};
     for (final child in children) {
