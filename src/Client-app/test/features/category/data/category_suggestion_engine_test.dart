@@ -24,6 +24,7 @@ void main() {
         isGroup: isGroup,
         isLocalOnly: true,
         syncStatus: 'pending',
+        syncRetryCount: 0,
         updatedAt: now,
       );
 

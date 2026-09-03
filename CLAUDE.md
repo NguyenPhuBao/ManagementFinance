@@ -44,9 +44,9 @@
 ## Lệnh hay dùng
 
 ```bash
-# Test (chạy từ src/Client-app) — hiện 116/116 pass, ~6 giây
+# Test (chạy từ src/Client-app) — hiện 139/139 pass, ~8 giây
 flutter test
-flutter analyze          # mức nền: 32 issue, KHÔNG có error
+flutter analyze          # mức nền: 29 issue, KHÔNG có error
 
 # Sau khi sửa Drift tables/DAOs
 dart run build_runner build --delete-conflicting-outputs
@@ -64,4 +64,4 @@ cd src/Client-app && flutter run -d chrome --web-port 9090
 
 Bộ test là lưới an toàn chính của dự án này — nhiều lỗi trong quá khứ hỏng **âm thầm** (không exception, không log). Khi sửa lỗi, viết test tái hiện **trước**, và ghi rõ trong `reason:` của assertion là nó canh chừng điều gì.
 
-Vùng chưa có test nào: `auth_interceptor.dart`, và các feature `budget`, `analytics`, `home`, `profile`, `ai_chat`.
+Vùng chưa có test nào: các feature `budget`, `analytics`, `home`, `profile`, `ai_chat`. (`auth_interceptor.dart` đã có test từ 2026-09-03.)

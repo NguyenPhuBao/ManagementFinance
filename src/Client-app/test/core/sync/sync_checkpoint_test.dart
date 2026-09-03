@@ -115,7 +115,7 @@ void main() {
       ));
 
   Future<void> runSync() async {
-    final done = engine.statusStream.where((s) => s == SyncStatus.idle).first;
+    final done = engine.statusStream.where((s) => s.isTerminal).first;
     engine.start(idaccount: accountId);
     await done.timeout(const Duration(seconds: 5));
   }

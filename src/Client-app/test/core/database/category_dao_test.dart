@@ -582,4 +582,88 @@ void main() {
     expect(rows.map((row) => row.id), isNot(contains('local-group')));
     expect(rows.map((row) => row.id), isNot(contains('local-child')));
   });
+
+  test(
+      'migration v7 lên v8 đưa nhóm danh mục cũ (is_local_only = 1) trở lại hàng đợi đẩy',
+      () async {
+    await db.close();
+    final upgraded = AppDatabase.forTesting(NativeDatabase.memory(
+      setup: (database) {
+        // Bảng categories ở đúng hình dạng v7. Bước v7→v8 chỉ chạy UPDATE chứ
+        // không ALTER TABLE, nên fixture không cần tới các bảng khác.
+        database.execute("""
+          CREATE TABLE categories (
+            id TEXT NOT NULL PRIMARY KEY,
+            idaccount INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            classify TEXT NOT NULL,
+            icon TEXT NOT NULL DEFAULT 'category',
+            colour TEXT NOT NULL DEFAULT '#4CAF50',
+            is_default INTEGER NOT NULL DEFAULT 0,
+            is_deleted INTEGER NOT NULL DEFAULT 0,
+            parent_id TEXT,
+            is_group INTEGER NOT NULL DEFAULT 0,
+            is_local_only INTEGER NOT NULL DEFAULT 0,
+            deleted_at INTEGER,
+            sync_status TEXT NOT NULL DEFAULT 'pending',
+            updated_at INTEGER NOT NULL
+          )
+        """);
+        // Nhóm + danh mục con tạo bằng bản app CŨ: bị đánh dấu local-only nên
+        // chưa bao giờ được đẩy lên backend.
+        database.execute("""
+          INSERT INTO categories (
+            id, idaccount, name, classify, is_group, is_local_only,
+            sync_status, updated_at
+          ) VALUES (
+            'legacy-group', 1, 'Nhom cu', 'chi', 1, 1, 'synced', 1787270400000
+          )
+        """);
+        database.execute("""
+          INSERT INTO categories (
+            id, idaccount, name, classify, parent_id, is_local_only,
+            sync_status, updated_at
+          ) VALUES (
+            'legacy-child', 1, 'Con cua nhom cu', 'chi', 'legacy-group', 1,
+            'synced', 1787270400000
+          )
+        """);
+        // Danh mục đã đồng bộ bình thường — migration KHÔNG được đụng tới.
+        database.execute("""
+          INSERT INTO categories (
+            id, idaccount, name, classify, is_local_only, sync_status,
+            updated_at
+          ) VALUES (
+            'already-synced', 1, 'Da dong bo', 'chi', 0, 'synced', 1787270400000
+          )
+        """);
+        // v8→v9 thêm cột trạng thái thất bại cho CẢ SÁU bảng, nên fixture
+        // phải có đủ chúng — nếu không, migration chết vì thiếu bảng chứ không
+        // phải vì logic sai.
+        _createLegacyNonCategoryTables(database);
+        database.execute('PRAGMA user_version = 7');
+      },
+    ));
+    addTearDown(upgraded.close);
+
+    final syncable = await upgraded.categoryDao.getSyncableCategories(1);
+
+    expect(
+      syncable.map((row) => row.id),
+      containsAll(['legacy-group', 'legacy-child']),
+      reason: 'Canh chừng G11: nhóm danh mục tạo trước 2026-09-02 mang '
+          'is_local_only = 1, và getSyncableCategories loại mọi hàng như vậy '
+          'khỏi batch đẩy. Không có migration lật cờ thì nhóm cũ KHÔNG BAO GIỜ '
+          'lên được backend, và hỏng hoàn toàn im lặng.',
+    );
+
+    final untouched = await upgraded.categoryDao.getById('already-synced');
+    expect(
+      untouched?.syncStatus,
+      'synced',
+      reason: 'Migration chỉ được đụng vào hàng is_local_only = 1. Đánh dấu '
+          'pending cho mọi danh mục sẽ đẩy lại toàn bộ dữ liệu lên backend '
+          'sau mỗi lần nâng cấp.',
+    );
+  });
 }

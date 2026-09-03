@@ -54,7 +54,31 @@ class BudgetDao extends DatabaseAccessor<AppDatabase> with _$BudgetDaoMixin {
 
   Future<void> markSynced(String id) async {
     await (update(budgets)..where((t) => t.id.equals(id))).write(
-      const BudgetsCompanion(syncStatus: Value('synced')),
+      const BudgetsCompanion(
+        syncStatus: Value('synced'),
+        // Đẩy thành công thì xoá sạch dấu vết thất bại cũ — nếu không, bản ghi
+        // vẫn mang syncBlockedUntil của lần hỏng trước và bị chặn oan.
+        syncRetryCount: Value(0),
+        syncError: Value(null),
+        syncBlockedUntil: Value(null),
+      ),
+    );
+  }
+
+  /// Chặn bản ghi khỏi hàng đợi đẩy cho tới [until] sau một lần đẩy thất bại.
+  ///
+  /// KHÔNG bỏ trạng thái 'pending': hết hạn chặn là bản ghi tự quay lại hàng
+  /// đợi. Xem chú thích ở định nghĩa bảng để biết vì sao không dùng
+  /// syncStatus = 'failed'.
+  Future<void> markSyncBlocked(String id, DateTime until, String error) async {
+    final current =
+        await (select(budgets)..where((t) => t.id.equals(id))).getSingleOrNull();
+    await (update(budgets)..where((t) => t.id.equals(id))).write(
+      BudgetsCompanion(
+        syncRetryCount: Value((current?.syncRetryCount ?? 0) + 1),
+        syncError: Value(error),
+        syncBlockedUntil: Value(until),
+      ),
     );
   }
 }
@@ -133,7 +157,31 @@ class BillDao extends DatabaseAccessor<AppDatabase> with _$BillDaoMixin {
 
   Future<void> markSynced(String id) async {
     await (update(bills)..where((t) => t.id.equals(id))).write(
-      const BillsCompanion(syncStatus: Value('synced')),
+      const BillsCompanion(
+        syncStatus: Value('synced'),
+        // Đẩy thành công thì xoá sạch dấu vết thất bại cũ — nếu không, bản ghi
+        // vẫn mang syncBlockedUntil của lần hỏng trước và bị chặn oan.
+        syncRetryCount: Value(0),
+        syncError: Value(null),
+        syncBlockedUntil: Value(null),
+      ),
+    );
+  }
+
+  /// Chặn bản ghi khỏi hàng đợi đẩy cho tới [until] sau một lần đẩy thất bại.
+  ///
+  /// KHÔNG bỏ trạng thái 'pending': hết hạn chặn là bản ghi tự quay lại hàng
+  /// đợi. Xem chú thích ở định nghĩa bảng để biết vì sao không dùng
+  /// syncStatus = 'failed'.
+  Future<void> markSyncBlocked(String id, DateTime until, String error) async {
+    final current =
+        await (select(bills)..where((t) => t.id.equals(id))).getSingleOrNull();
+    await (update(bills)..where((t) => t.id.equals(id))).write(
+      BillsCompanion(
+        syncRetryCount: Value((current?.syncRetryCount ?? 0) + 1),
+        syncError: Value(error),
+        syncBlockedUntil: Value(until),
+      ),
     );
   }
 }
@@ -216,7 +264,30 @@ class GoalDao extends DatabaseAccessor<AppDatabase> with _$GoalDaoMixin {
 
   Future<void> markSynced(String id) async {
     await (update(goals)..where((t) => t.id.equals(id))).write(
-      const GoalsCompanion(syncStatus: Value('synced')),
+      const GoalsCompanion(
+        syncStatus: Value('synced'),
+        // Đẩy thành công thì xoá sạch dấu vết thất bại cũ — nếu không, bản ghi
+        // vẫn mang syncBlockedUntil của lần hỏng trước và bị chặn oan.
+        syncRetryCount: Value(0),
+        syncError: Value(null),
+        syncBlockedUntil: Value(null),
+      ),
+    );
+  }
+  /// Chặn bản ghi khỏi hàng đợi đẩy cho tới [until] sau một lần đẩy thất bại.
+  ///
+  /// KHÔNG bỏ trạng thái 'pending': hết hạn chặn là bản ghi tự quay lại hàng
+  /// đợi. Xem chú thích ở định nghĩa bảng để biết vì sao không dùng
+  /// syncStatus = 'failed'.
+  Future<void> markSyncBlocked(String id, DateTime until, String error) async {
+    final current =
+        await (select(goals)..where((t) => t.id.equals(id))).getSingleOrNull();
+    await (update(goals)..where((t) => t.id.equals(id))).write(
+      GoalsCompanion(
+        syncRetryCount: Value((current?.syncRetryCount ?? 0) + 1),
+        syncError: Value(error),
+        syncBlockedUntil: Value(until),
+      ),
     );
   }
 }

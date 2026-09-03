@@ -52,7 +52,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration {
@@ -155,6 +155,54 @@ class AppDatabase extends _$AppDatabase {
             "UPDATE bills SET pay_status = CASE WHEN is_paid = 1 THEN 'Payed' ELSE 'Pending' END "
             "WHERE pay_status = 'Pending'",
           );
+        }
+        if (from < 8) {
+          // Bản app trước 2026-09-02 đánh dấu nhóm danh mục và các danh mục
+          // nằm trong nhóm là `is_local_only = 1`, vì hồi đó cấu trúc nhóm chỉ
+          // tồn tại ở client. Nay hai chiều đã đồng bộ được (isGroup/parentId),
+          // nhưng bộ lọc trong `getSyncableCategories` vẫn loại các hàng đó
+          // khỏi batch đẩy — nghĩa là nhóm tạo TRƯỚC ngày đó không bao giờ lên
+          // được backend, và hỏng hoàn toàn im lặng.
+          //
+          // An toàn vì không còn nơi nào trong `lib/` ghi is_local_only = 1:
+          // cột mặc định là 0 và CategoryManagementRepository ghi thẳng false.
+          // Chỉ đụng đúng những hàng mang cờ cũ, không đánh dấu pending tràn lan.
+          await customStatement(
+            "UPDATE categories SET is_local_only = 0, sync_status = 'pending' "
+            "WHERE is_local_only = 1",
+          );
+        }
+        if (from < 9) {
+          // Trạng thái thất bại theo từng bản ghi (G3). Trước đây lược đồ chỉ
+          // có `syncStatus` với đúng hai giá trị được ghi trong thực tế là
+          // 'pending' và 'synced', nên một bản ghi hỏng vĩnh viễn nằm ở
+          // 'pending' MÃI MÃI và được gửi lại ở mọi chu kỳ.
+          //
+          // Viết tường minh từng bảng thay vì lặp qua danh sách: các lớp bảng
+          // Drift không có siêu kiểu chung mang các getter cột này.
+          await m.addColumn(categories, categories.syncRetryCount);
+          await m.addColumn(categories, categories.syncError);
+          await m.addColumn(categories, categories.syncBlockedUntil);
+
+          await m.addColumn(wallets, wallets.syncRetryCount);
+          await m.addColumn(wallets, wallets.syncError);
+          await m.addColumn(wallets, wallets.syncBlockedUntil);
+
+          await m.addColumn(transactions, transactions.syncRetryCount);
+          await m.addColumn(transactions, transactions.syncError);
+          await m.addColumn(transactions, transactions.syncBlockedUntil);
+
+          await m.addColumn(budgets, budgets.syncRetryCount);
+          await m.addColumn(budgets, budgets.syncError);
+          await m.addColumn(budgets, budgets.syncBlockedUntil);
+
+          await m.addColumn(bills, bills.syncRetryCount);
+          await m.addColumn(bills, bills.syncError);
+          await m.addColumn(bills, bills.syncBlockedUntil);
+
+          await m.addColumn(goals, goals.syncRetryCount);
+          await m.addColumn(goals, goals.syncError);
+          await m.addColumn(goals, goals.syncBlockedUntil);
         }
       },
       beforeOpen: (details) async {

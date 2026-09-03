@@ -4,9 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
-import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../data/models/goal_entity.dart';
 import '../bloc/goal_cubit.dart';
+import '../../../../core/auth/current_account.dart';
 
 class GoalPage extends StatelessWidget {
   const GoalPage({super.key});
@@ -15,10 +15,7 @@ class GoalPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider<GoalCubit>(
       create: (_) {
-        final authState = context.read<AuthBloc>().state;
-        final idaccount = (authState is AuthSuccess && authState.user != null)
-            ? (int.tryParse(authState.user!.id) ?? 1)
-            : 1;
+        final idaccount = currentAccountIdOrNull(context) ?? 0;
         return sl<GoalCubit>()..watchGoals(idaccount);
       },
       child: const _GoalPageContent(),
@@ -72,10 +69,7 @@ class _GoalPageContent extends StatelessWidget {
                   const SizedBox(height: 12),
                   ElevatedButton(
                     onPressed: () {
-                      final authState = context.read<AuthBloc>().state;
-                      final idaccount = (authState is AuthSuccess && authState.user != null)
-                          ? (int.tryParse(authState.user!.id) ?? 1)
-                          : 1;
+                      final idaccount = currentAccountIdOrNull(context) ?? 0;
                       context.read<GoalCubit>().watchGoals(idaccount);
                     },
                     child: const Text('Thử lại'),
@@ -221,10 +215,7 @@ class _GoalPageContent extends StatelessWidget {
                         onTap: () async {
                           await context.push('/goals/${goal.id}');
                           if (context.mounted) {
-                            final authState = context.read<AuthBloc>().state;
-                            final idaccount = (authState is AuthSuccess && authState.user != null)
-                                ? (int.tryParse(authState.user!.id) ?? 1)
-                                : 1;
+                            final idaccount = currentAccountIdOrNull(context) ?? 0;
                             context.read<GoalCubit>().loadGoals(idaccount);
                           }
                         },
@@ -290,10 +281,7 @@ class _GoalPageContent extends StatelessWidget {
                   onPressed: () async {
                     await context.push('/goals/add');
                     if (context.mounted) {
-                      final authState = context.read<AuthBloc>().state;
-                      final idaccount = (authState is AuthSuccess && authState.user != null)
-                          ? (int.tryParse(authState.user!.id) ?? 1)
-                          : 1;
+                      final idaccount = currentAccountIdOrNull(context) ?? 0;
                       context.read<GoalCubit>().loadGoals(idaccount);
                     }
                   },

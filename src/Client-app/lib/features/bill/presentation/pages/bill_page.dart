@@ -3,10 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/database/app_database.dart';
+import '../../../../core/auth/current_account.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
-import '../../../auth/presentation/bloc/auth_bloc.dart';
-import '../../../auth/presentation/bloc/auth_state.dart';
 import '../bloc/bill_bloc.dart';
 import '../bloc/bill_event.dart';
 import '../bloc/bill_state.dart';
@@ -20,34 +19,30 @@ class BillPage extends StatefulWidget {
 }
 
 class _BillPageState extends State<BillPage> {
-  int _getAccountId(BuildContext context) {
-    final authState = context.read<AuthBloc>().state;
-    if (authState is AuthSuccess && authState.user != null) {
-      return int.tryParse(authState.user!.id) ?? 1;
-    }
-    return 1;
-  }
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final accountId = _getAccountId(context);
+      final accountId = currentAccountIdOrNull(context);
+      if (accountId == null) return; // chưa có phiên → không nạp gì
       context.read<BillBloc>().add(LoadBillsEvent(idaccount: accountId));
     });
   }
 
   void _showPayModal(BuildContext context, Bill bill) async {
     final db = sl<AppDatabase>();
-    final accountId = _getAccountId(context);
-    var wallets = await db.walletDao.getAll(accountId);
-    if (wallets.isEmpty) {
-      wallets = await db.walletDao.getAllNonDeleted();
-    }
+    // Không có phiên thì không có ví nào để thanh toán bằng. Trước đây chỗ này
+    // rơi về idaccount = 1 rồi, khi tài khoản đó chưa có ví, còn đọc tiếp
+    // `getAllNonDeleted()` — bày ra ví của tài khoản khác trên cùng máy.
+    final accountId = currentAccountIdOrNull(context);
+    final wallets = accountId == null
+        ? <Wallet>[]
+        : await db.walletDao.getAll(accountId);
 
     if (!context.mounted) return;
 
-    if (wallets.isEmpty) {
+    if (accountId == null || wallets.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Vui lòng tạo ít nhất 1 ví trước khi thanh toán.')),
       );

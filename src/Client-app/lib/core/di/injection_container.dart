@@ -1,6 +1,7 @@
 import 'package:get_it/get_it.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../../core/api/interceptors/auth_interceptor.dart';
 import '../../core/api/dio_client.dart';
 import '../../core/database/app_database.dart';
 import '../../core/sync/sync_checkpoint_store.dart';
@@ -43,7 +44,14 @@ Future<void> setupDependencies() async {
   sl.registerLazySingleton<AppDatabase>(() => AppDatabase());
 
   // ── 3. Core: DioClient ─────────────────────────────────────────────────────
-  sl.registerLazySingleton<DioClient>(() => DioClient(secureStorage: sl()));
+  // AuthInterceptor đăng ký riêng: AuthBloc cần nghe `sessionExpiredStream`
+  // của ĐÚNG instance đang nằm trên đường request.
+  sl.registerLazySingleton<AuthInterceptor>(
+    () => AuthInterceptor(secureStorage: sl()),
+  );
+  sl.registerLazySingleton<DioClient>(
+    () => DioClient(secureStorage: sl(), authInterceptor: sl()),
+  );
 
   // ── 4. Core: SyncEngine (offline-first sync) ────────────────────────────
   sl.registerLazySingleton<SyncEngine>(

@@ -3,9 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/database/app_database.dart';
+import '../../../../core/auth/current_account.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
-import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../wallet/presentation/bloc/wallet_cubit.dart';
 import '../../data/models/goal_entity.dart';
 import '../../data/repositories/goal_repository.dart';
@@ -23,13 +23,6 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
   GoalEntity? _goal;
   bool _isLoading = true;
 
-  int _getAccountId(BuildContext context) {
-    final authState = context.read<AuthBloc>().state;
-    if (authState is AuthSuccess && authState.user != null) {
-      return int.tryParse(authState.user!.id) ?? 1;
-    }
-    return 1;
-  }
 
   @override
   void initState() {
@@ -52,14 +45,13 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
   void _showDepositDialog() async {
     if (_goal == null) return;
     final db = sl<AppDatabase>();
-    final accountId = _getAccountId(context);
-    var wallets = await db.walletDao.getAll(accountId);
-    if (wallets.isEmpty) {
-      wallets = await db.walletDao.getAllNonDeleted();
-    }
+    final accountId = currentAccountIdOrNull(context);
+    final wallets = accountId == null
+        ? <Wallet>[]
+        : await db.walletDao.getAll(accountId);
 
     if (!mounted) return;
-    if (wallets.isEmpty) {
+    if (accountId == null || wallets.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Vui lòng tạo ít nhất 1 ví trước khi gửi tiết kiệm.')),
       );
@@ -549,7 +541,10 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
   }
 
   Widget _buildHistorySection(NumberFormat currencyFormatter) {
-    final accountId = _getAccountId(context);
+    final accountId = currentAccountIdOrNull(context);
+    // Không có phiên thì không có lịch sử nào thuộc về ai để hiển thị. Trước
+    // đây chỗ này rơi về 1 và lấy giao dịch của tài khoản admin.
+    if (accountId == null) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

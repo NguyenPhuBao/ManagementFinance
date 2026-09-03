@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/api/interceptors/auth_interceptor.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/sync/sync_engine.dart';
@@ -17,6 +18,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final DefaultAccountDataInitializer? defaultAccountDataInitializer;
 
   StreamSubscription<void>? _sessionInvalidSub;
+  StreamSubscription<void>? _tokenClearedSub;
 
   AuthBloc({
     required this.authRepository,
@@ -36,11 +38,22 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           .sessionInvalidStream
           .listen((_) => add(SessionInvalidated()));
     }
+
+    // AuthInterceptor xoá token khi không thể làm mới phiên. Trước đây việc đó
+    // diễn ra trong im lặng: bloc vẫn ở AuthSuccess với kho token rỗng, còn app
+    // quay vòng 401 → refresh hỏng → xoá token. Nối vào cùng một đường xử lý
+    // với tín hiệu của SyncEngine — vẫn hỏi lại server trước khi đăng xuất.
+    if (sl.isRegistered<AuthInterceptor>()) {
+      _tokenClearedSub = sl<AuthInterceptor>()
+          .sessionExpiredStream
+          .listen((_) => add(SessionInvalidated()));
+    }
   }
 
   @override
   Future<void> close() async {
     await _sessionInvalidSub?.cancel();
+    await _tokenClearedSub?.cancel();
     return super.close();
   }
 

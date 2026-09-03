@@ -5,10 +5,9 @@ import 'package:drift/drift.dart' as drift;
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/database/app_database.dart';
+import '../../../../core/auth/current_account.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
-import '../../../auth/presentation/bloc/auth_bloc.dart';
-import '../../../auth/presentation/bloc/auth_state.dart';
 import '../bloc/bill_bloc.dart';
 import '../bloc/bill_event.dart';
 
@@ -33,13 +32,6 @@ class _BillAddPageState extends State<BillAddPage> {
   List<Wallet> _wallets = [];
   Wallet? _selectedWallet;
 
-  int _getAccountId(BuildContext context) {
-    final authState = context.read<AuthBloc>().state;
-    if (authState is AuthSuccess && authState.user != null) {
-      return int.tryParse(authState.user!.id) ?? 1;
-    }
-    return 1;
-  }
 
   @override
   void initState() {
@@ -50,12 +42,15 @@ class _BillAddPageState extends State<BillAddPage> {
   }
 
   Future<void> _loadWallets() async {
-    final accountId = _getAccountId(context);
+    final accountId = currentAccountIdOrNull(context);
     final db = sl<AppDatabase>();
-    var wallets = await db.walletDao.getAll(accountId);
-    if (wallets.isEmpty) {
-      wallets = await db.walletDao.getAllNonDeleted();
-    }
+    // KHÔNG còn nhánh `getAllNonDeleted()` khi danh sách rỗng: nhánh đó bỏ bộ
+    // lọc tài khoản, nên một tài khoản chưa có ví lại nhìn thấy ví của tài
+    // khoản khác từng đăng nhập trên cùng máy — và hoá đơn tạo ra sẽ trỏ vào
+    // một ví không thuộc về mình.
+    final wallets = accountId == null
+        ? <Wallet>[]
+        : await db.walletDao.getAll(accountId);
     if (mounted) {
       setState(() {
         _wallets = wallets;
@@ -95,7 +90,18 @@ class _BillAddPageState extends State<BillAddPage> {
 
     final billId = const Uuid().v4();
     final now = DateTime.now();
-    final accountId = _getAccountId(context);
+    // Danh tính CHỈ đến từ phiên đăng nhập. Trước đây chỗ này rơi về 1 khi
+    // trạng thái đăng nhập chưa sẵn sàng — tức ghi hoá đơn vào tài khoản admin.
+    final accountId = currentAccountIdOrNull(context);
+    if (accountId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Chưa xác định được tài khoản đăng nhập. '
+              'Vui lòng đăng nhập lại trước khi tạo hoá đơn.'),
+        ),
+      );
+      return;
+    }
 
     final newBill = BillsCompanion.insert(
       id: billId,

@@ -67,6 +67,71 @@ class SyncEngine {
   /// bị khác vừa thay đổi gì cho tới khi chính nó ghi dữ liệu hoặc đổi mạng.
   static const _periodicSyncMinutes = 15;
 
+  /// Giãn cách sau mỗi chu kỳ đồng bộ hỏng liên tiếp.
+  ///
+  /// Chỉ giữ trong RAM: một bản bền vững qua các lần mở app cần thêm cột vào
+  /// lược đồ SQLite (xem G3 trong `docs/CLIENT_APP_KNOWN_GAPS.md`).
+  static const List<Duration> _backoffSteps = [
+    Duration(seconds: 30),
+    Duration(minutes: 1),
+    Duration(minutes: 5),
+    Duration(minutes: 15),
+    Duration(minutes: 60),
+  ];
+
+  int _consecutiveFailures = 0;
+  DateTime? _nextAllowedSyncAt;
+
+  /// Đồng hồ — tiêm được để test không phải chờ thật 30 giây.
+  final DateTime Function() _now;
+
+  @visibleForTesting
+  int get consecutiveFailures => _consecutiveFailures;
+
+  @visibleForTesting
+  DateTime? get nextAllowedSyncAt => _nextAllowedSyncAt;
+
+  void _registerFailedCycle() {
+    _consecutiveFailures++;
+    final step = _backoffSteps[
+        (_consecutiveFailures - 1).clamp(0, _backoffSteps.length - 1)];
+    _nextAllowedSyncAt = _now().add(step);
+  }
+
+
+  /// Bản ghi có đang bị chặn khỏi hàng đợi đẩy không (G3).
+  ///
+  /// Chặn theo THỜI GIAN chứ không loại hẳn: nhiều lỗi chỉ tự khỏi sau khi Pull
+  /// xong, nên một bản ghi bị gạt vĩnh viễn sẽ không bao giờ được sửa.
+  bool _isSyncBlocked(DateTime? blockedUntil) =>
+      blockedUntil != null && _now().isBefore(blockedUntil);
+
+  Future<void> _markBlockedById(
+    SyncEntityType entity,
+    String id,
+    DateTime until,
+    String error,
+  ) async {
+    switch (entity) {
+      case SyncEntityType.wallet:
+        await _db.walletDao.markSyncBlocked(id, until, error);
+      case SyncEntityType.transaction:
+        await _db.transactionDao.markSyncBlocked(id, until, error);
+      case SyncEntityType.category:
+        await _db.categoryDao.markSyncBlocked(id, until, error);
+      case SyncEntityType.budget:
+        await _db.budgetDao.markSyncBlocked(id, until, error);
+      case SyncEntityType.bill:
+        await _db.billDao.markSyncBlocked(id, until, error);
+      case SyncEntityType.goal:
+        await _db.goalDao.markSyncBlocked(id, until, error);
+    }
+  }
+  void _resetBackoff() {
+    _consecutiveFailures = 0;
+    _nextAllowedSyncAt = null;
+  }
+
   /// Nơi lưu mốc pull gần nhất. Null (thường là trong test) → chỉ giữ trong RAM
   /// như hành vi cũ.
   final SyncCheckpointStore? _checkpointStore;
@@ -76,15 +141,20 @@ class SyncEngine {
     required AppDatabase db,
     Connectivity? connectivity,
     SyncCheckpointStore? checkpointStore,
+    DateTime Function()? now,
   })  : _dioClient = dioClient,
         _db = db,
         _checkpointStore = checkpointStore,
+        _now = now ?? DateTime.now,
         _connectivity = connectivity ?? Connectivity();
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
   /// Khởi động SyncEngine sau khi user đăng nhập thành công.
   Future<void> start({required int idaccount}) async {
+    // Đăng nhập / mở app là hành động chủ động của người dùng — xoá giãn cách
+    // của phiên trước để họ không phải chờ hết một chu kỳ backoff cũ.
+    _resetBackoff();
     _currentIdaccount = idaccount;
     // Khôi phục mốc pull đã lưu để không phải kéo lại toàn bộ dữ liệu mỗi lần
     // mở app. Nếu SQLite cục bộ rỗng, _pullFromBackend vẫn tự ép full pull nên
@@ -119,6 +189,7 @@ class SyncEngine {
     _periodicTimer = null;
     _connectivitySub?.cancel();
     _currentIdaccount = null;
+    _resetBackoff();
     // Chỉ xoá mốc trong RAM. Mốc đã lưu được giữ lại theo từng idaccount để lần
     // đăng nhập sau vẫn pull tăng dần; nếu dữ liệu cục bộ đã bị xoá thì
     // _pullFromBackend tự ép full pull.
@@ -169,6 +240,19 @@ class SyncEngine {
     }
     if (_status == SyncStatus.syncing) return; // Tránh concurrent sync
 
+    // Giãn dần sau các chu kỳ hỏng liên tiếp. Trước đây thao tác `transient`
+    // được thử lại ở MỌI chu kỳ kế tiếp mà không giãn ra, trong khi nguồn kích
+    // hoạt thì dày đặc: debounce 2 giây sau mỗi lần ghi, đổi trạng thái mạng,
+    // timer 15 phút và mỗi lần start(). Server đang hỏng sẽ nhận đúng lượng
+    // request đó lặp lại mãi.
+    final blockedUntil = _nextAllowedSyncAt;
+    if (blockedUntil != null && _now().isBefore(blockedUntil)) {
+      debugPrint('[SyncEngine] Đang trong thời gian giãn cách sau '
+          '$_consecutiveFailures chu kỳ hỏng — hoãn tới $blockedUntil');
+      _setStatus(SyncStatus.pending);
+      return;
+    }
+
     // Kiểm tra kết nối
     final connectivity = await _connectivity.checkConnectivity();
     final hasConnection = connectivity.any((r) => r != ConnectivityResult.none);
@@ -199,7 +283,7 @@ class SyncEngine {
       if (pushResult != null && pushResult.hasSessionInvalid) {
         debugPrint('[SyncEngine] Phiên đăng nhập không còn hợp lệ — dừng đồng bộ');
         _emitSessionInvalid();
-        _setStatus(SyncStatus.idle);
+        _setStatus(SyncStatus.authExpired);
         return;
       }
 
@@ -210,18 +294,37 @@ class SyncEngine {
       // Pull xong mới có UUID từ backend nên đáng thử lại MỘT lần.
       // Chỉ thử lại khi thật sự có lỗi thuộc loại tạm thời — trước đây điều
       // kiện chỉ là `failed > 0` nên lỗi vĩnh viễn cũng bị gửi lại mỗi chu kỳ.
+      SyncResult? retryResult;
       if (pushResult != null && pushResult.hasRetryableFailure) {
         final retryOps = await _collectPendingOps(accountId);
         if (retryOps.isNotEmpty) {
-          final retryResult = await _sendBatch(retryOps);
+          retryResult = await _sendBatch(retryOps);
           debugPrint('[SyncEngine] Push retry complete: $retryResult');
           if (retryResult.hasSessionInvalid) {
             _emitSessionInvalid();
+            _setStatus(SyncStatus.authExpired);
+            return;
           }
         }
       }
 
-      _setStatus(SyncStatus.idle);
+      // Trạng thái kết thúc phải phản ánh kết quả thật. Trước đây chu kỳ nào
+      // cũng kết thúc bằng `idle`, kể cả khi mọi thao tác đẩy đều hỏng — nên
+      // `SyncStatus.error` gần như là mã chết: `_sendBatch` không ném lỗi ra
+      // ngoài nên khối `catch` bên dưới chỉ chạm tới được khi có exception
+      // thật sự, chứ không phải khi server từ chối dữ liệu.
+      //
+      // Lấy kết quả của lần đẩy SAU CÙNG: `_collectPendingOps` gom lại toàn bộ
+      // bản ghi còn `pending` nên lần thử lại đã bao gồm cả những thao tác hỏng
+      // vĩnh viễn của lần đầu.
+      final lastPush = retryResult ?? pushResult;
+      final stillFailing = lastPush != null && lastPush.failed > 0;
+      if (stillFailing) {
+        _registerFailedCycle();
+      } else {
+        _resetBackoff();
+      }
+      _setStatus(stillFailing ? SyncStatus.error : SyncStatus.idle);
     } catch (e) {
       debugPrint('[SyncEngine] Sync error: $e');
       _setStatus(SyncStatus.error);
@@ -231,7 +334,7 @@ class SyncEngine {
   // ── Pull data from backend to local SQLite ────────────────────────────────
 
   Future<void> _pullFromBackend(int accountId) async {
-    final allWallets = await _db.walletDao.getAllNonDeleted();
+    final allWallets = await _db.walletDao.getAll(accountId);
     final isLocalDbEmpty = allWallets.isEmpty;
 
     final since = (isLocalDbEmpty || _lastPullTime == null)
@@ -644,6 +747,7 @@ class SyncEngine {
       return a.isGroup ? -1 : 1;
     });
     for (final c in syncableCategories) {
+      if (_isSyncBlocked(c.syncBlockedUntil)) continue;
       final validId = _toValidUuid(c.id);
       String validClassify = c.classify;
       if (validClassify == 'vay_no' || validClassify == 'vay-no') {
@@ -668,7 +772,7 @@ class SyncEngine {
           'isGroup': c.isGroup,
           'parentId': c.parentId != null ? _toValidUuid(c.parentId!) : null,
           'updated_at': c.updatedAt.toUtc().toIso8601String(),
-          'idaccount': c.idaccount > 0 ? c.idaccount : (_currentIdaccount ?? 1),
+          'idaccount': c.idaccount > 0 ? c.idaccount : idaccount,
         },
         createdAt: now,
       ));
@@ -678,6 +782,7 @@ class SyncEngine {
     // Transaction.idwallet, Bill.idwallet, Goal.idwallet đều FK → wallet
     final pendingWallets = await _db.walletDao.getPending(idaccount);
     for (final w in pendingWallets) {
+      if (_isSyncBlocked(w.syncBlockedUntil)) continue;
       final validId = _toValidUuid(w.id);
       ops.add(SyncOperation(
         localId: w.id,
@@ -696,7 +801,7 @@ class SyncEngine {
           'is_deleted': w.isDeleted,
           'include_in_total': w.includeInTotal,
           'updated_at': w.updatedAt.toUtc().toIso8601String(),
-          'idaccount': w.idaccount > 0 ? w.idaccount : (_currentIdaccount ?? 1),
+          'idaccount': w.idaccount > 0 ? w.idaccount : idaccount,
         },
         createdAt: now,
       ));
@@ -715,6 +820,7 @@ class SyncEngine {
       if (alreadyInBatch.contains(resolvedId)) continue;
       final cat = await _db.categoryDao.getById(resolvedId);
       if (cat == null) continue;
+      if (_isSyncBlocked(cat.syncBlockedUntil)) continue;
       // Chỉ push category thuộc user hiện tại — bỏ qua global/default (idaccount=0)
       if (cat.idaccount != currentAccount) continue;
       // Thêm category này vào batch để đảm bảo nó tồn tại trên backend
@@ -749,6 +855,7 @@ class SyncEngine {
     // ── 3. Transactions (sau category + wallet vì FK → cả 2) ──────────────────
     final pendingTx = await _db.transactionDao.getPending(idaccount);
     for (final t in pendingTx) {
+      if (_isSyncBlocked(t.syncBlockedUntil)) continue;
       final validId = _toValidUuid(t.id);
       final validWalletId = _toValidUuid(t.walletId);
       final validCategoryId = await _resolveCategoryId(t.categoryId);
@@ -778,7 +885,7 @@ class SyncEngine {
           'date': t.date.toUtc().toIso8601String(),
           'is_deleted': t.isDeleted,
           'updated_at': t.updatedAt.toUtc().toIso8601String(),
-          'idaccount': t.idaccount > 0 ? t.idaccount : (_currentIdaccount ?? 1),
+          'idaccount': t.idaccount > 0 ? t.idaccount : idaccount,
         },
         createdAt: now,
       ));
@@ -790,6 +897,7 @@ class SyncEngine {
     // các key camelCase cụ thể (totalAmount, categoryId, ...) — gửi sẵn tên
     // snake_case cuối cùng để tránh lệ thuộc vào việc mapper có khớp hay không.
     for (final b in await _db.budgetDao.getPending(idaccount)) {
+      if (_isSyncBlocked(b.syncBlockedUntil)) continue;
       final validId = _toValidUuid(b.id);
       final validCatId =
           b.categoryId != null ? _toValidUuid(b.categoryId!) : null;
@@ -815,7 +923,7 @@ class SyncEngine {
           'note': b.note,
           'is_deleted': b.isDeleted,
           'updated_at': b.updatedAt.toUtc().toIso8601String(),
-          'idaccount': b.idaccount > 0 ? b.idaccount : (_currentIdaccount ?? 1),
+          'idaccount': b.idaccount > 0 ? b.idaccount : idaccount,
         },
         createdAt: now,
       ));
@@ -827,6 +935,7 @@ class SyncEngine {
     // ví/danh mục nên các giá trị này có thể vẫn null cho tới khi UI đó được
     // bổ sung — đây là việc ngoài phạm vi sync engine.
     for (final bill in await _db.billDao.getPending(idaccount)) {
+      if (_isSyncBlocked(bill.syncBlockedUntil)) continue;
       final validId = _toValidUuid(bill.id);
       final validWalletId =
           bill.walletId != null ? _toValidUuid(bill.walletId!) : null;
@@ -856,7 +965,7 @@ class SyncEngine {
           'is_deleted': bill.isDeleted,
           'updated_at': bill.updatedAt.toUtc().toIso8601String(),
           'idaccount':
-              bill.idaccount > 0 ? bill.idaccount : (_currentIdaccount ?? 1),
+              bill.idaccount > 0 ? bill.idaccount : idaccount,
         },
         createdAt: now,
       ));
@@ -864,6 +973,7 @@ class SyncEngine {
 
     // ── 6. Goals (sau wallet) ──────────────────────────────────────────────────
     for (final g in await _db.goalDao.getPending(idaccount)) {
+      if (_isSyncBlocked(g.syncBlockedUntil)) continue;
       final validId = _toValidUuid(g.id);
       ops.add(SyncOperation(
         localId: g.id,
@@ -889,7 +999,7 @@ class SyncEngine {
           'note': g.note,
           'is_deleted': g.isDeleted,
           'updated_at': g.updatedAt.toUtc().toIso8601String(),
-          'idaccount': g.idaccount > 0 ? g.idaccount : (_currentIdaccount ?? 1),
+          'idaccount': g.idaccount > 0 ? g.idaccount : idaccount,
         },
         createdAt: now,
       ));
@@ -1007,10 +1117,20 @@ class SyncEngine {
                 await _markSyncedById(op.entity, op.localId);
                 succeeded++;
               } else if (status == 'conflict') {
+                // Backend trả 'conflict' khi bản trên server có `update_at`
+                // mới hơn payload vừa đẩy — tức LWW đã phân xử xong và server
+                // thắng. Trước đây bản ghi chỉ được ghi vào `conflictIds` rồi
+                // bỏ đó: nó vẫn mang `pending`, nên mọi chu kỳ sau lại đẩy lên
+                // và lại thua đúng như vậy, mãi mãi.
+                //
+                // Đánh dấu đã đồng bộ để thoát vòng lặp. Bản thắng cuộc về máy
+                // ở bước Pull ngay sau đó trong cùng chu kỳ: `update_at` của nó
+                // lớn hơn payload nên cũng lớn hơn mốc đồng bộ đang lưu.
+                await _markSyncedById(op.entity, op.localId);
                 conflictIds.add(op.localId);
                 debugPrint(
-                  '[SyncEngine] Push conflict: entity=${op.entity.name}, '
-                  'localId=${op.localId}',
+                  '[SyncEngine] Push conflict (bản server mới hơn, lấy theo '
+                  'server): entity=${op.entity.name}, localId=${op.localId}',
                 );
               } else {
                 failed++;
@@ -1023,6 +1143,20 @@ class SyncEngine {
                   message: message,
                   kind: kind,
                 ));
+                if (kind == SyncFailureKind.permanent) {
+                  // Lỗi vĩnh viễn: dữ liệu hiện tại đẩy bao nhiêu lần cũng
+                  // hỏng như vậy. Trước đây bản ghi vẫn nằm ở 'pending' MÃI
+                  // MÃI và được gửi lại ở mọi chu kỳ. Chặn theo thời gian —
+                  // vẫn còn đường quay lại nếu người dùng sửa dữ liệu.
+                  final step = _backoffSteps[
+                      _consecutiveFailures.clamp(0, _backoffSteps.length - 1)];
+                  await _markBlockedById(
+                    op.entity,
+                    op.localId,
+                    _now().add(step),
+                    message,
+                  );
+                }
                 debugPrint(
                   '[SyncEngine] Push failed [${kind.name}]: '
                   'entity=${op.entity.name}, localId=${op.localId}, '

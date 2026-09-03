@@ -490,7 +490,7 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-02)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-03)
 
 ### 🔐 Xác thực phiên đăng nhập
 
@@ -500,35 +500,43 @@ src/Backend/
 - Trả về `SessionStatus { valid, invalid, unknown }`. Chỉ **401/404** mới là `invalid`; mọi mã khác kể cả 5xx và mất mạng đều là `unknown` → **không** đăng xuất, giữ cam kết offline-first.
 - Việc phân loại lỗi nằm ở **repository**, không phải bloc, vì dự án có **hai class `NetworkException` trùng tên** ở hai file khác nhau — bắt lỗi theo kiểu ở tầng trên rất dễ import nhầm.
 - Hai đường phát hiện phiên chết: **lúc mở app** (`_onAuthCheckRequested`) và **đang chạy** (tín hiệu `sessionInvalidStream` từ SyncEngine khi đẩy dữ liệu vỡ khoá ngoại `fk_*_account`).
-- Khi đăng nhập, `purgeDataForOtherAccounts(idAcc)` xoá dữ liệu cục bộ của tài khoản khác (giữ nguyên danh mục mặc định `idaccount = 0`).
-- Mọi fallback `?? 1` đã được gỡ khỏi AuthBloc — **`idaccount = 1` là tài khoản admin THẬT**, không phải giá trị "chưa biết".
+- `purgeDataForOtherAccounts(idAcc)` xoá dữ liệu cục bộ của tài khoản khác (giữ nguyên danh mục mặc định `idaccount = 0`). Chạy ở **cả hai** đường vào: đăng nhập (`auth_bloc.dart:106`) và khôi phục phiên lúc mở app (`auth_bloc.dart:134`).
+- **Không còn fallback `?? 1` ở bất kỳ đâu** — `idaccount = 1` là tài khoản admin THẬT, không phải giá trị "chưa biết". Đã gỡ khỏi AuthBloc, `sync_engine.dart` (6 chỗ, G8) và 4 trang UI của bill/goal (G4, nay dùng `core/auth/current_account.dart` trả `int?`).
 
 ### ✅ Đã hoàn thành
 - Schema PostgreSQL aligned với New_Database.md (migration đã apply)
-- SQLite schema (Drift) aligned với backend schema — `schemaVersion = 7`
+- SQLite schema (Drift) aligned với backend schema — `schemaVersion = 9`
 - Sync engine: thứ tự batch đúng, nhóm danh mục đẩy trước danh mục con
 - FK violation fix: `_resolveCategoryId` + step 1b
 - Category dedup trong UI
 - Ownership mismatch fix
 - `repairPendingTransactionsCategoryId` (cat_food → UUID) — **chạy TRƯỚC** dedup
-- **Đồng bộ nhóm danh mục hai chiều** (`isGroup` / `idgroup`) — backend vốn đã hỗ trợ sẵn, client trước đây không gửi
+- **Đồng bộ nhóm danh mục hai chiều** (`isGroup` / `idgroup`)
 - **Pull không còn ghi đè nguyên hàng**: cả 6 DAO dùng `insertAllOnConflictUpdate`
 - **Checkpoint đồng bộ bền vững** giữa các lần mở app, lấy theo `update_at` lớn nhất
 - **Đồng bộ định kỳ 15 phút**
 - **Phân loại lỗi đẩy dữ liệu** + phát hiện phiên chết
-- **Test: 114/114 pass** (~8 giây), 23 file / 5121 dòng
+- **Dọn dữ liệu tài khoản khác chạy cả khi khôi phục phiên** *(G6)*
+- **Pull đọc cờ xoá của danh mục**, không còn hồi sinh danh mục đã xoá *(G7)*
+- **Trạng thái kết thúc phản ánh kết quả thật**: thêm `SyncStatus.authExpired`; chu kỳ còn thao tác hỏng kết thúc ở `error` *(G1)*
+- **Giãn cách luỹ tiến** 30s → 1p → 5p → 15p → 60p sau các chu kỳ hỏng liên tiếp *(G2)*
+- **Trạng thái thất bại theo từng bản ghi**: `syncRetryCount` / `syncError` / `syncBlockedUntil` trên cả 6 bảng; lỗi vĩnh viễn bị chặn theo THỜI GIAN chứ không loại vĩnh viễn *(G3)*
+- **Không còn `?? 1` ở bất kỳ đâu**: `_collectPendingOps` dùng thẳng tham số `idaccount` *(G8)*, và 4 trang UI đổi sang `core/auth/current_account.dart` trả `int?` *(G4)*
+- **Bỏ mọi nhánh đọc không lọc tài khoản ở tầng UI** và `isLocalDbEmpty` tính theo tài khoản hiện tại *(G4/G5)*
+- **`conflict` được giải quyết**: LWW đã phân xử, server thắng → đánh dấu đã đồng bộ thay vì đẩy lại vô hạn *(G9)*
+- **Migration `isLocalOnly`** (v7→v8): nhóm danh mục tạo trước 2026-09-02 quay lại được hàng đợi đẩy *(G11)*
+- **`AuthInterceptor` không còn xoá token trong im lặng**: phát `sessionExpiredStream`, AuthBloc nghe song song với SyncEngine *(G12)*
+- **Test: 139/139 pass** (~8 giây), 25 file / 6040 dòng — cả 25 file đều đã được git theo dõi
 
 ### 🔄 Việc còn dang dở
 
-Xem đầy đủ tại **`docs/CLIENT_APP_KNOWN_GAPS.md`** — 12 mục kèm lý do hoãn và bán kính ảnh hưởng. Đáng chú ý nhất:
+Xem đầy đủ tại **`docs/CLIENT_APP_KNOWN_GAPS.md`**. Phiên 2026-09-03 đã đóng 9/10 mục còn mở; **chỉ còn G10**:
 
-- `purgeDataForOtherAccounts()` mới chỉ chạy khi **đăng nhập**, chưa chạy khi khôi phục phiên
-- Chiều pull ghi cứng `isDeleted = false` cho mọi danh mục
-- Chưa có exponential backoff; chưa có cột trạng thái lỗi trong schema
-- `getAllNonDeleted()` không lọc theo tài khoản — còn 5 nơi gọi
-- **45/114 test (39,5%) không được git theo dõi** do `.gitignore` có dòng `test/`
+- **G10 — `CategoryGroupMemberships` không bao giờ được đồng bộ.** ⛔ **Không sửa được ở client**: backend không có bảng membership và cũng không có `SyncEntityType` tương ứng (`UPSERT_MAP`/`ENTITY_PRIORITY` chỉ có 6 entity), nên thêm entity mới ở client sẽ chỉ nhận `Unknown entity` và kẹt vĩnh viễn. Việc gán danh mục **mặc định** vào nhóm vì thế chỉ tồn tại trên một máy. Đề xuất chi tiết: `docs/superpowers/backend/CATEGORY_GROUP_MEMBERSHIP_SYNC.md`.
 
-Vấn đề cần backend xử lý: **`docs/superpowers/backend/SESSION_VALIDITY_FINDINGS.md`** và **`CATEGORY_CLASSIFY_ALIGNMENT.md`**.
+> ⚠️ **`.gitignore` dòng 77 vẫn có `test/`.** Luật này đã cắn lần thứ hai: hai file test tạo ngày 2026-09-03 cũng bị chặn âm thầm và phải `git add -f`. Mọi file test tạo **mới** vẫn sẽ bị bỏ qua trong im lặng.
+
+Vấn đề cần backend xử lý: **`SESSION_VALIDITY_FINDINGS.md`**, **`CATEGORY_CLASSIFY_ALIGNMENT.md`** và **`CATEGORY_GROUP_MEMBERSHIP_SYNC.md`** (đều trong `docs/superpowers/backend/`).
 
 ### ❌ Chưa làm / Tiếp theo
 - Analytics (báo cáo chi tiết)

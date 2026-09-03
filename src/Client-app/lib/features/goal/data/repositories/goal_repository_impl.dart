@@ -108,10 +108,10 @@ class GoalRepositoryImpl implements GoalRepository {
 
       // Fallback: If effectiveTargetWalletId is null, find target wallet and link to goal
       if (effectiveTargetWalletId == null || effectiveTargetWalletId.isEmpty) {
-        var allWallets = await db!.walletDao.getAll(idaccount);
-        if (allWallets.isEmpty) {
-          allWallets = await db!.walletDao.getAllNonDeleted();
-        }
+        // Bỏ nhánh `getAllNonDeleted()`: nó không lọc tài khoản, nên khi tài
+        // khoản hiện tại chưa có ví, mục tiêu sẽ bị nối vào ví của tài khoản
+        // khác từng đăng nhập trên cùng máy.
+        final allWallets = await db!.walletDao.getAll(idaccount);
         final otherWallets = allWallets.where((w) => w.id != walletId).toList();
         if (otherWallets.isNotEmpty) {
           final foundWallet = otherWallets.firstWhere(

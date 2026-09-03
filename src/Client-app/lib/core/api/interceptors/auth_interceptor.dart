@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../constants/app_constants.dart';
@@ -8,6 +9,18 @@ import '../../constants/app_constants.dart';
 /// 3. Nếu refresh cũng thất bại → xóa token → ném lỗi để app redirect /login
 class AuthInterceptor extends Interceptor {
   final FlutterSecureStorage secureStorage;
+
+  /// Phát tín hiệu khi phiên đăng nhập không thể cứu được nữa (làm mới token
+  /// thất bại nên token đã bị xoá).
+  ///
+  /// Vì sao cần: trước đây interceptor xoá token trong im lặng và không có mã
+  /// nào trong `lib/` biết chuyện đó. App vẫn ở trạng thái `AuthSuccess` với
+  /// kho token rỗng, nên mọi request tiếp theo đi ra không có header → 401 →
+  /// lại refresh hỏng → lại xoá, quay vòng cho tới khi người dùng tự khởi
+  /// động lại app.
+  final _sessionExpiredController = StreamController<void>.broadcast();
+
+  Stream<void> get sessionExpiredStream => _sessionExpiredController.stream;
 
   // Tạo Dio riêng cho refresh call (không đi qua interceptor này — tránh vòng lặp)
   late final Dio _refreshDio;
@@ -128,7 +141,29 @@ class AuthInterceptor extends Interceptor {
 
   // ─── Xóa toàn bộ tokens khi không thể refresh ───────────────────────────
   Future<void> _clearTokens() async {
+    // Chỉ coi là "phiên vừa chết" khi thật sự có token để mất. Sau lần xoá đầu
+    // tiên, mọi request tiếp theo vẫn nhận 401 và vẫn chạy qua đây; phát tín
+    // hiệu mỗi lần sẽ dội sự kiện vào AuthBloc — mà chính lời gọi
+    // verifySession() của nó cũng đi qua Dio này, nên vòng lặp sẽ tự nuôi nhau.
+    final hadSession =
+        (await secureStorage.read(key: AppConstants.accessTokenKey))
+                ?.isNotEmpty ==
+            true ||
+        (await secureStorage.read(key: AppConstants.refreshTokenKey))
+                ?.isNotEmpty ==
+            true;
+
     await secureStorage.delete(key: AppConstants.accessTokenKey);
     await secureStorage.delete(key: AppConstants.refreshTokenKey);
+
+    if (hadSession && !_sessionExpiredController.isClosed) {
+      _sessionExpiredController.add(null);
+    }
+  }
+
+  /// Đóng kênh tín hiệu. Interceptor sống cùng vòng đời app nên thực tế hiếm
+  /// khi gọi tới, nhưng test thì cần để không rò StreamController.
+  void dispose() {
+    _sessionExpiredController.close();
   }
 }

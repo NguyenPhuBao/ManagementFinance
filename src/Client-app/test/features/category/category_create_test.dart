@@ -197,7 +197,7 @@ void main() {
       db: db,
       connectivity: _OnlineOnce(),
     );
-    final done = realSync.statusStream.where((s) => s == SyncStatus.idle).first;
+    final done = realSync.statusStream.where((s) => s.isTerminal).first;
     realSync.start(idaccount: accountId);
     await done.timeout(const Duration(seconds: 5));
 
@@ -249,7 +249,7 @@ void main() {
       db: db,
       connectivity: _OnlineOnce(),
     );
-    final done = realSync.statusStream.where((s) => s == SyncStatus.idle).first;
+    final done = realSync.statusStream.where((s) => s.isTerminal).first;
     realSync.start(idaccount: accountId);
     await done.timeout(const Duration(seconds: 5));
 
@@ -292,7 +292,7 @@ void main() {
       db: db,
       connectivity: _OnlineOnce(),
     );
-    final done = realSync.statusStream.where((s) => s == SyncStatus.idle).first;
+    final done = realSync.statusStream.where((s) => s.isTerminal).first;
     realSync.start(idaccount: accountId);
     await done.timeout(const Duration(seconds: 5));
 
@@ -343,7 +343,7 @@ void main() {
       db: db,
       connectivity: _OnlineOnce(),
     );
-    final done = realSync.statusStream.where((s) => s == SyncStatus.idle).first;
+    final done = realSync.statusStream.where((s) => s.isTerminal).first;
     realSync.start(idaccount: accountId);
     await done.timeout(const Duration(seconds: 5));
 
