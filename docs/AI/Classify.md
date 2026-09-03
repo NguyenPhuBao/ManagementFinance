@@ -32,6 +32,49 @@ Dự án áp dụng **Mô hình Lai (Hybrid Architecture)** để tối ưu hóa
   * **Tầng 1 (Keyword Matcher)** & **Tầng 2 (Local Machine Learning Model)**: Nhúng trực tiếp trong mã nguồn Node.js để giải quyết $80\%$ các giao dịch quen thuộc một cách tức thì ($5 - 15ms$) mà không tiêu tốn hạn ngạch API.
   * **Tầng 3 (Cloud LLM API Key - Google Gemini Flash)**: Chỉ kích hoạt khi Tầng 1 và Tầng 2 không đạt độ tin cậy ($\text{Confidence} < 0.60$) hoặc gặp các hóa đơn viết tắt, tiếng lóng phức tạp.
 
+### 1.4. Kiến Trúc Phân Loại 2 Cấp Độ: Loại Giao Dịch (`Type`) & Danh Mục (`Category`)
+Để đảm bảo không làm sai lệch dòng tiền và phân tách rõ ràng trách nhiệm với Module Receipt OCR, Module AI Classify đảm nhiệm **2 Cấp Độ Phân Loại Tuần Tự**:
+
+```
+[Dữ liệu từ OCR / BankSync / SMS / Nhập tay]
+                     │
+                     ▼
+┌────────────────────────────────────────────────────────┐
+│  CẤP ĐỘ 1: PHÂN LOẠI LOẠI GIAO DỊCH (TRANSACTION TYPE) │
+│  - Quyết định: 'Transfer' (Nội bộ) hay 'Transaction'   │
+│  - Dựa trên 3 CƠ SỞ ĐỐI SOÁT CSDL BẮT BUỘC             │
+└────────────────────────────┬───────────────────────────┘
+                             │
+            ┌────────────────┴────────────────┐
+            ▼                                 ▼
+    [Loại: TRANSFER]                 [Loại: TRANSACTION]
+  (Chuyển dời tiền nội bộ)          (Chi tiêu / Thu nhập thực)
+            │                                 │
+            ▼                                 ▼
+┌───────────────────────────┐     ┌───────────────────────────┐
+│ BỎ QUA PHÂN LOẠI DANH MỤC │     │ CẤP ĐỘ 2: PHÂN LOẠI       │
+│ - Category.Idcategory=NULL│     │ DANH MỤC (CATEGORY)       │
+│ - Không tốn tài nguyên RAG│     │ - Bộ 3 Tầng: Keyword, NLP,│
+│ - Giữ nguyên dòng tiền    │     │   Gemini Flash            │
+└───────────────────────────┘     └───────────────────────────┘
+```
+
+#### 3 CƠ SỞ PHÂN BIỆT RÕ RÀNG GIỮA TRANSACTION & TRANSFER (CẤP ĐỘ 1):
+1. **Cơ Sở 1: Sự Xuất Hiện Của Danh Sách Mặt Hàng (`items`)**:
+   - Nếu dữ liệu bóc tách từ OCR có mảng danh sách mặt hàng tiêu dùng (`items` có đơn giá, số lượng, tên món) $\rightarrow$ **100% khẳng định là `Transaction` (Chi tiêu hóa đơn)**.
+   - Nếu dữ liệu không có món hàng (chỉ có số tiền, người gửi, người nhận, ngân hàng) $\rightarrow$ Chuyển sang đối soát Cơ sở 2 & 3.
+2. **Cơ Sở 2: Đối Soát Tên & Số Tài Khoản Với Hồ Sơ Của Chính User Trong CSDL**:
+   - **Tên người nhận (`destination_name` vs `User.fullname`)**: Khi user chuyển tiền giữa các tài khoản của chính mình, tên người nhận luôn trùng với tên của chính họ (`NGUYEN PHU BAO`). So sánh không dấu `removeVietnameseTones`: nếu trùng $\rightarrow$ **100% là `Transfer` (Chuyển dời tiền nội bộ)**.
+   - **Số tài khoản nhận (`destination_account` vs `Wallet.account_number`)**: Nếu STK nhận nằm trong danh mục ví ngân hàng đã liên kết của user $\rightarrow$ **100% là `Transfer` nội bộ**.
+   - **Chuyển cho bên thứ 3 (Người lạ / Công ty)**: Nếu người nhận không trùng tên user và không có trong danh sách ví $\rightarrow$ Xác định là **`Transaction` (Chi tiêu mua bán bên thứ 3)**.
+3. **Cơ Sở 3: Phân Tích Ngữ Nghĩa Từ Khóa Nội Dung Chuyển Khoản (`note` / `content`)**:
+   - **Từ khóa Transfer nội bộ**: `"chuyen tien sang vi"`, `"nap vi"`, `"nap tien vao tai khoan"`, `"tiet kiem"`, `"chuyen khoan noi bo"`, `"rut tien"`.
+   - **Từ khóa Transaction**: Tên dịch vụ, quán ăn, mã đơn hàng, tên người lạ (`"thanh toan shopee"`, `"grab"`, `"tien com"`, `"tra tien cafe"`).
+
+#### QUY TẮC XỬ LÝ DANH MỤC TẠI CẤP ĐỘ 2:
+- Khi Cấp 1 là **`Transfer`**: **HOÀN TOÀN BỎ QUA BƯỚC PHÂN LOẠI DANH MỤC**. Trường `category_id` trả về `null` và CSDL lưu `Idcategory = NULL`.
+- Khi Cấp 1 là **`Transaction`**: Kích hoạt Bộ 3 Tầng Phân Loại Danh Mục (Tier 1 $\rightarrow$ Tier 2 $\rightarrow$ Tier 3) để xác định danh mục thu/chi tối ưu.
+
 ---
 
 ## 2. NGUỒN DỮ LIỆU ĐẦU VÀO CỦA AI PHÂN LOẠI GIAO DỊCH (INPUT DATA SOURCES)

@@ -2330,4 +2330,64 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
 - **Kiểm thử tự động & Frontend Build**:
   - `Test/test_category_unique_rules.js`: Bộ test 10 kịch bản bao phủ toàn diện 2 nhóm unique, case-insensitive, bảo toàn chữ hoa/thường khi lưu, loại trừ chính nó khi update $\rightarrow$ **PASS 100%**.
   - `Test/test_admin_auth_fixes.js`: Kiểm thử hồi quy Auth Admin-web $\rightarrow$ **PASS 100%**.
-  - `Admin-web Build`: `rtk npm run build` tại `src/Admin-web` $\rightarrow$ **Build thành công 100%** (0 lỗi).
+  - `Admin-web Build`: `rtk npm run build` tại `src/Admin-web` $\rightarrow$ **Build thành công 100%** (0 lỗi).
+
+### 11.22. Hoàn Thiện Kiến Trúc AI Phân Loại Giao Dịch 2 Cấp Độ (Type & Category) (2026-09-03)
+- **Kiến Trúc Phân Loại 2 Cấp Độ (2-Level Classification Pipeline)**:
+  - **Cấp 1: Phân Loại Loại Giao Dịch (`Type: 'Transaction'` vs `Type: 'Transfer'`)**:
+    - Áp dụng **3 Cơ sở đối soát CSDL thực tế**:
+      1. *Cơ sở 1 (Mặt hàng `items`)*: Có mảng danh sách mặt hàng tiêu dùng từ hóa đơn $\rightarrow$ 100% là `Transaction`.
+      2. *Cơ sở 2 (Đối soát CSDL User)*: Trùng tên user (`account.User.fullname`) HOẶC trùng STK ví của user (`wallet.bank_account.account_number`) $\rightarrow$ 100% là `Transfer` nội bộ. Người lạ / công ty $\rightarrow$ `Transaction`.
+      3. *Cơ sở 3 (Ngữ nghĩa nội dung `note`)*: Nhận diện từ khóa chuyển tiền nội bộ (`"chuyen sang vi"`, `"nap vi"`, `"tiet kiem"`...) $\rightarrow$ `Transfer`.
+  - **Cấp 2: Quy Tắc Xử Lý Danh Mục (`Category`)**:
+    - Khi là **`Transfer`**: **HOÀN TOÀN BỎ QUA PHÂN LOẠI DANH MỤC**, trả về `category_id: null` (`Idcategory = NULL` trong CSDL), bảo vệ toàn vẹn dòng tiền không bị trừ ảo vào chi phí và tiết kiệm 100% tài nguyên RAG/LLM.
+    - Khi là **`Transaction`**: Kích hoạt bộ 3 Tầng phân loại danh mục (Tier 1 Keyword $\rightarrow$ Tier 2 NLP $\rightarrow$ Tier 3 Gemini LLM).
+- **Tập Tin Triển Khai**:
+  - `src/Backend/modules/ai/features/classify/pipeline/type.detector.js`: Engine nhận diện loại giao dịch dựa trên 3 cơ sở đối soát CSDL.
+  - `src/Backend/modules/ai/features/classify/classify.repository.js`: Thêm `getUserProfileAndWallets(idaccount)` lấy profile và ví user.
+  - `src/Backend/modules/ai/features/classify/classify.service.js`: Triển khai `classifyTransaction(idaccount, params)` (hợp nhất 2 cấp độ) và `classifyExtractedReceipt(idaccount, extraction)` (tích hợp sẵn sàng cho Receipt OCR).
+  - `src/Backend/modules/ai/features/classify/classify.controller.js` & `classify.routes.js`: Định tuyến endpoint mới `POST /api/ai/classify/transaction`.
+- **Kiểm Thử Tự Động TDD**:
+  - `Test/test_ai_classify_2level.js`: **23/23 tests PASS 100%**.
+  - `Test/test_ai_classify_3tier.js`: Kiểm thử hồi quy 3-Tier Classify $\rightarrow$ **PASS 100%**.
+  - `Test/test_category_unique_rules.js`: Kiểm thử hồi quy Category Unique $\rightarrow$ **PASS 100%**.
+
+### 11.23. Hoàn Thành Xây Dựng Chức Năng Receipt & Bank Transfer OCR (F013) & Notification Module (2026-09-03)
+- **Kiến Trúc & SRP Chuẩn Hóa**:
+  - Module OCR đóng vai trò Tầng Thị Giác Máy Tính (Vision & Extraction Layer): Nhận diện hình ảnh chứng từ, bóc tách cấu trúc, tự phục hồi dữ liệu thị giác (Self-Healing), gán nhãn Provider (`'ORC'` | `'BankSync'` | `'SMS'`), trích xuất mã `bank_tran_id` chống trùng, chuyển giao cho Classify phân loại 2 cấp, đóng gói DTO và phát sự kiện Realtime Notification lên Client-app.
+  - Xây dựng tích hợp hệ thống Notification: EventBus publish sự kiện `ocr.completed`, Socket.io `emitOcrCompleted` gửi thông báo trực tiếp vào phòng riêng `account_<idaccount>`.
+- **Tập Tin Triển Khai**:
+  - `src/Backend/modules/ai/features/ocr/pipeline/vision.extractor.js`: Trích xuất đa phương thức bằng Gemini 2.0 Flash Multimodal REST API (`inlineData` Base64) với Structured JSON Output. Hỗ trợ 3 loại chứng từ (`RECEIPT`, `BANK_TRANSFER`, `SMS_BANKING`).
+  - `src/Backend/modules/ai/features/ocr/ocr.service.js`: Triển khai Self-Healing (cộng dồn `items` khi thiếu `total_amount`, fallback ngày giờ), bắt lỗi HTTP 422 `OCR_PARSE_FAILED` khi ảnh mờ, gán Provider, điều phối gọi `classifyExtractedReceipt`, đóng gói DTO theo 3 kịch bản chuẩn và phát sự kiện `ocr.completed`.
+  - `src/Backend/modules/ai/features/ocr/ocr.controller.js` & `ocr.routes.js`: Định tuyến API `POST /api/ai/ocr/parse`.
+  - `src/Backend/api/ai.routes.js`: Mount router `/ocr`.
+  - `src/Backend/core/socket.js`: Thêm helper `emitOcrCompleted(idaccount, ocrData)`.
+  - `src/Backend/core/event-bus.js`: Tách biệt subscriber client (duplicate) trong Redis pub/sub để chống lỗi subscriber mode, kết hợp EventEmitter nội bộ.
+  - `src/Backend/modules/notification/notification.service.js`: Đăng ký listener lắng nghe sự kiện `ocr.completed` và tự động phát thông báo Realtime Socket.io.
+- **Kiểm Thử Tự Động TDD**:
+  - `Test/test_ai_ocr_full_flow.js`: **18/18 tests PASS 100%** bao phủ đầy đủ 7 nhóm kiểm thử (Hóa đơn mua sắm Provider ORC, Chuyển tiền nội bộ Provider BankSync với category_id = null, Chuyển tiền bên thứ 3 với danh mục gợi ý, SMS Banking Provider SMS, Self-Healing, Bắt lỗi HTTP 422, và Realtime Notification Event).
+  - `Test/test_ai_classify_2level.js`: **23/23 tests PASS 100%**.
+
+### 11.24. Hoàn Thành Xây Dựng Bộ Khử Trùng Lặp Dữ Liệu Tại Module AI (AI Deduplication Engine) (2026-09-03)
+- **Kiến Trúc & Quy Trình Khử Trùng Lặp (Deduplication / Idempotency)**:
+  - Bổ sung tầng kiểm tra khử trùng lặp CSDL ngay tại Module AI, chạy ngay sau khi OCR bóc tách và **TRƯỚC KHI chuyển sang Classify AI**.
+  - **Bộ 3 Cấp Độ Quy Tắc Khử Trùng**:
+    1. *Quy tắc 1 (Strict Unique Code Matching)*: Khẳng định 100% khi trùng mã duy nhất `bank_tran_id` (`invoice_no` hoặc mã FT ngân hàng/SMS) kết hợp với `provider` và `idaccount`.
+    2. *Quy tắc 2 (Fuzzy Invoice Matching)*: Áp dụng khi hóa đơn bán lẻ không in mã số hóa đơn $\rightarrow$ đối soát đồng thời: cùng `Idaccount`, `Provider = 'ORC'`, trùng số tiền thực tế `Amount == total_amount`, cùng ngày phát sinh `DateTransaction` và tên `merchant_name` trong `Note`.
+    3. *Quy tắc 3 (Transfer / SMS Matching)*: Đối soát chuyển khoản / SMS khi khuyết mã FT qua số tiền, ngày giao dịch và thông tin đối ứng.
+  - **Cơ Chế Bảo Vệ Tài Nguyên Tuyệt Đối**: Khi phát hiện trùng lặp $\rightarrow$ chặn đứng xử lý ngay lập tức, ném mã lỗi HTTP **`409 Conflict`** (`TRANSACTION_ALREADY_EXISTS`) kèm chi tiết `existing_transaction`, phát sự kiện Socket/EventBus `ocr.duplicate`, và **TUYỆT ĐỐI KHÔNG gọi Classify AI** (tiết kiệm 100% token, tài nguyên server và thời gian response).
+- **Tập Tin Triển Khai**:
+  - `src/Backend/modules/ai/features/dedup/dedup.repository.js`: Truy vấn đối soát CSDL bảng `transaction` (tìm theo `bank_tran_id` hoặc fuzzy invoice/transfer).
+  - `src/Backend/modules/ai/features/dedup/dedup.service.js`: Engine thực thi 3 quy tắc khử trùng lặp.
+  - `src/Backend/modules/ai/features/ocr/ocr.service.js`: Tích hợp gọi `dedupService.checkDuplicate` trước khi gọi `classifyService`, chặn đứng pipeline và phát sự kiện `ocr.duplicate`.
+  - `src/Backend/modules/ai/features/ocr/ocr.controller.js`: Xử lý HTTP status code `409 Conflict` trả về DTO lỗi chuẩn hóa cho Client-app.
+  - `src/Backend/core/socket.js`: Thêm helper `emitOcrDuplicate(idaccount, duplicateData)`.
+  - `src/Backend/modules/notification/notification.service.js`: Lắng nghe sự kiện `ocr.duplicate` và đẩy socket thông báo tức thì tới Client.
+  - `docs/AI/ORC.md`: Cập nhật sơ đồ kiến trúc 1.1, mục 3.4 (Bộ quy tắc khử trùng), mục 4 và mục 5.3 (DTO HTTP 409 Conflict).
+- **Kiểm Thử Tự Động TDD**:
+  - `Test/test_ai_dedup_flow.js`: **9/9 tests PASS 100%** (Strict Code, Fuzzy Invoice, Transfer, Chặn đứng HTTP 409, Chứng minh Classify AI không bị gọi, Phát sự kiện Socket Notification).
+  - `Test/test_ai_ocr_full_flow.js`: **18/18 tests PASS 100%**.
+  - `Test/test_ai_classify_2level.js`: **23/23 tests PASS 100%**.
+
+
+

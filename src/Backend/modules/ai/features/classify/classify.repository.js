@@ -145,6 +145,45 @@ const classifyRepository = {
       throw error;
     }
   },
+
+  /**
+   * Lấy thông tin hồ sơ người dùng (fullname, email) và danh sách ví (kèm bank_account) để đối soát CSDL
+   * @param {string|number} idaccount 
+   * @returns {Promise<{ user: object|null, wallets: Array<object> }>}
+   */
+  async getUserProfileAndWallets(idaccount) {
+    try {
+      const parsedId = Number(idaccount) || 0;
+      if (parsedId <= 0) return { user: null, wallets: [], bankAccounts: [] };
+
+      const [user, wallets, bankAccounts] = await Promise.all([
+        prisma.user.findFirst({
+          where: { idaccount: parsedId, delete_at: null },
+          select: { iduser: true, idaccount: true, fullname: true, email: true },
+        }),
+        prisma.wallet.findMany({
+          where: { idaccount: parsedId, delete_at: null },
+          include: {
+            bank_account: true,
+          },
+        }),
+        prisma.bank_account.findMany({
+          where: { idaccount: parsedId, delete_at: null },
+          select: {
+            id_bank_account: true,
+            account_number: true,
+            bank_name: true,
+            account_name: true,
+          },
+        }),
+      ]);
+
+      return { user, wallets: wallets || [], bankAccounts: bankAccounts || [] };
+    } catch (error) {
+      logger.error('ClassifyRepository.getUserProfileAndWallets failed', { error: error.message, idaccount });
+      return { user: null, wallets: [], bankAccounts: [] };
+    }
+  },
 };
 
 module.exports = classifyRepository;
