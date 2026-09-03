@@ -735,4 +735,76 @@ void main() {
       expect(await db.categoryDao.getByName('Thú cưng'), isEmpty);
     });
   });
+
+  test(
+      'migration v9 lên v10 đổi tên 3 danh mục mặc định cho khớp backend',
+      () async {
+    await db.close();
+    final upgraded = AppDatabase.forTesting(NativeDatabase.memory(
+      setup: (database) {
+        database.execute("""
+          CREATE TABLE categories (
+            id TEXT NOT NULL PRIMARY KEY,
+            idaccount INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            classify TEXT NOT NULL,
+            icon TEXT NOT NULL DEFAULT 'category',
+            colour TEXT NOT NULL DEFAULT '#4CAF50',
+            is_default INTEGER NOT NULL DEFAULT 0,
+            is_deleted INTEGER NOT NULL DEFAULT 0,
+            parent_id TEXT,
+            is_group INTEGER NOT NULL DEFAULT 0,
+            is_local_only INTEGER NOT NULL DEFAULT 0,
+            deleted_at INTEGER,
+            sync_status TEXT NOT NULL DEFAULT 'pending',
+            sync_retry_count INTEGER NOT NULL DEFAULT 0,
+            sync_error TEXT,
+            sync_blocked_until INTEGER,
+            updated_at INTEGER NOT NULL
+          )
+        """);
+        void seed(String id, String name) => database.execute("""
+          INSERT INTO categories (id, idaccount, name, classify, is_default,
+            sync_status, updated_at)
+          VALUES ('$id', 0, '$name', 'chi', 1, 'synced', 1787270400000)
+        """);
+        seed('cat_health', 'Sức khoẻ');
+        seed('cat_housing', 'Nhà ở');
+        seed('cat_bill_chi', 'Hoá đơn & Dịch vụ');
+        // Danh mục của NGƯỜI DÙNG trùng id — migration không được đụng tới.
+        database.execute("""
+          INSERT INTO categories (id, idaccount, name, classify, is_default,
+            sync_status, updated_at)
+          VALUES ('rieng-cua-toi', 7, 'Nhà ở', 'chi', 0, 'synced', 1787270400000)
+        """);
+        _createLegacyNonCategoryTables(database);
+        database.execute('PRAGMA user_version = 9');
+      },
+    ));
+    addTearDown(upgraded.close);
+
+    expect((await upgraded.categoryDao.getById('cat_health'))!.name, 'Y tế');
+    expect((await upgraded.categoryDao.getById('cat_housing'))!.name, 'Nhà cửa');
+    expect(
+      (await upgraded.categoryDao.getById('cat_bill_chi'))!.name,
+      'Hóa đơn',
+      reason: 'Ba mục này chỉ khác NHÃN so với backend. Không đổi tên thì '
+          '_resolveCategoryId không tìm được bản UUID cùng tên, trả null, và '
+          'giao dịch dùng chúng bị hoãn đẩy vĩnh viễn — hỏng hoàn toàn im lặng.',
+    );
+
+    expect(
+      (await upgraded.categoryDao.getById('rieng-cua-toi'))!.name,
+      'Nhà ở',
+      reason: 'Migration chỉ đụng hàng is_default = 1. Danh mục người dùng tự '
+          'đặt tên là dữ liệu của họ, không được sửa.',
+    );
+
+    expect(
+      (await upgraded.categoryDao.getById('cat_health'))!.isDeleted,
+      isFalse,
+      reason: 'Đổi tên chứ KHÔNG xoá hàng — xoá hàng seed trước khi giao dịch '
+          'được repoint chính là lỗi 11.6.',
+    );
+  });
 }

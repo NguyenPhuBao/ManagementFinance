@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/api/interceptors/auth_interceptor.dart';
+import '../../../category/data/services/personal_default_categories.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/sync/sync_engine.dart';
@@ -117,6 +118,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         // người dùng mở lại app mà không đăng xuất/đăng nhập lại thì dữ liệu
         // rác của tài khoản cũ vẫn nằm nguyên trong máy.
         await sl<AppDatabase>().purgeDataForOtherAccounts(idAcc);
+        // Tạo/chuyển đổi các danh mục mà bộ mặc định của backend không có.
+        // Chạy TRƯỚC start(): chúng ở trạng thái chờ đẩy, và việc chuyển dữ
+        // liệu cũ phải xong trước khi chu kỳ đồng bộ đầu tiên chạm vào.
+        if (sl.isRegistered<PersonalDefaultCategories>()) {
+          await sl<PersonalDefaultCategories>().ensureForAccount(idAcc);
+        }
         sl<SyncEngine>().start(idaccount: idAcc);
       }
       emit(AuthSuccess(user: user));
@@ -145,6 +152,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         // dòng dữ liệu sót lại từ tài khoản cũ sẽ bị đẩy đi dưới id cũ và
         // luôn thất bại (Ownership mismatch hoặc vỡ khoá ngoại).
         await sl<AppDatabase>().purgeDataForOtherAccounts(idAcc);
+        // Tạo/chuyển đổi các danh mục mà bộ mặc định của backend không có.
+        // Chạy TRƯỚC start(): chúng ở trạng thái chờ đẩy, và việc chuyển dữ
+        // liệu cũ phải xong trước khi chu kỳ đồng bộ đầu tiên chạm vào.
+        if (sl.isRegistered<PersonalDefaultCategories>()) {
+          await sl<PersonalDefaultCategories>().ensureForAccount(idAcc);
+        }
         await sl<SyncEngine>().start(idaccount: idAcc);
         await defaultAccountDataInitializer?.ensureForAccount(idAcc);
       }

@@ -52,7 +52,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration {
@@ -204,6 +204,33 @@ class AppDatabase extends _$AppDatabase {
           await m.addColumn(goals, goals.syncError);
           await m.addColumn(goals, goals.syncBlockedUntil);
         }
+        if (from < 10) {
+          // Bộ danh mục mặc định hai phía từng lệch nhau: client seed 18 mục,
+          // backend chỉ có 13, và chỉ 10 mục KHỚP TÊN. Danh mục mặc định được
+          // ánh xạ sang UUID của backend bằng cách so tên, nên 8 mục lệch kia
+          // không tìm được bản nào — giao dịch dùng chúng bị hoãn đẩy VĨNH VIỄN
+          // mà không có lỗi nào báo ra.
+          //
+          // Ba mục dưới đây chỉ khác NHÃN, cùng một khái niệm → đổi tên theo
+          // backend là chúng tự gộp làm một khi pull về. KHÔNG xoá hàng: xoá
+          // hàng seed trước khi giao dịch được repoint chính là lỗi 11.6.
+          await customStatement(
+            "UPDATE categories SET name = 'Y tế' "
+            "WHERE id = 'cat_health' AND is_default = 1",
+          );
+          await customStatement(
+            "UPDATE categories SET name = 'Nhà cửa' "
+            "WHERE id = 'cat_housing' AND is_default = 1",
+          );
+          await customStatement(
+            "UPDATE categories SET name = 'Hóa đơn' "
+            "WHERE id = 'cat_bill_chi' AND is_default = 1",
+          );
+          // Năm mục backend KHÔNG có (Chi khác, Thu khác, Làm thêm, Trả nợ,
+          // Thu nợ) được chuyển thành danh mục riêng của tài khoản — việc đó
+          // cần biết idaccount nên phải làm lúc đăng nhập, xem
+          // `PersonalDefaultCategories.ensureForAccount()`.
+        }
       },
       beforeOpen: (details) async {
         // Bật foreign key constraints (SQLite tắt mặc định)
@@ -279,6 +306,52 @@ class AppDatabase extends _$AppDatabase {
     return removed;
   }
 
+  /// Chuyển mọi tham chiếu danh mục của [idaccount] từ [fromCategoryId] sang
+  /// [toCategoryId], ở cả ba bảng có cột `categoryId`.
+  ///
+  /// Trả về số dòng đã đổi.
+  ///
+  /// ⚠️ Nơi gọi PHẢI repoint XONG rồi mới xoá hàng danh mục cũ. Đảo thứ tự lại
+  /// chính là lỗi 11.6: hàng `cat_food` bị xoá trước khiến `getById()` trả null
+  /// và giao dịch kẹt vĩnh viễn.
+  Future<int> repointCategoryReferences({
+    required int idaccount,
+    required String fromCategoryId,
+    required String toCategoryId,
+  }) async {
+    var moved = 0;
+    await transaction(() async {
+      moved += await (update(transactions)
+            ..where((t) =>
+                t.idaccount.equals(idaccount) &
+                t.categoryId.equals(fromCategoryId)))
+          .write(TransactionsCompanion(
+        categoryId: Value(toCategoryId),
+        syncStatus: const Value('pending'),
+        updatedAt: Value(DateTime.now()),
+      ));
+      moved += await (update(budgets)
+            ..where((t) =>
+                t.idaccount.equals(idaccount) &
+                t.categoryId.equals(fromCategoryId)))
+          .write(BudgetsCompanion(
+        categoryId: Value(toCategoryId),
+        syncStatus: const Value('pending'),
+        updatedAt: Value(DateTime.now()),
+      ));
+      moved += await (update(bills)
+            ..where((t) =>
+                t.idaccount.equals(idaccount) &
+                t.categoryId.equals(fromCategoryId)))
+          .write(BillsCompanion(
+        categoryId: Value(toCategoryId),
+        syncStatus: const Value('pending'),
+        updatedAt: Value(DateTime.now()),
+      ));
+    });
+    return moved;
+  }
+
   // ── Seed default categories ───────────────────────────────────────────────
   Future<void> _seedDefaultCategories() async {
     final now = DateTime.now();
@@ -287,23 +360,18 @@ class AppDatabase extends _$AppDatabase {
       (id: 'cat_food',       name: 'Ăn uống',         classify: 'chi',     icon: 'restaurant',   colour: '#FF5722'),
       (id: 'cat_transport',  name: 'Di chuyển',        classify: 'chi',     icon: 'directions_car', colour: '#2196F3'),
       (id: 'cat_shopping',   name: 'Mua sắm',          classify: 'chi',     icon: 'shopping_bag',  colour: '#9C27B0'),
-      (id: 'cat_health',     name: 'Sức khoẻ',         classify: 'chi',     icon: 'local_hospital', colour: '#F44336'),
+      (id: 'cat_health',     name: 'Y tế',             classify: 'chi',     icon: 'local_hospital', colour: '#F44336'),
       (id: 'cat_education',  name: 'Giáo dục',         classify: 'chi',     icon: 'school',        colour: '#3F51B5'),
       (id: 'cat_entertain',  name: 'Giải trí',         classify: 'chi',     icon: 'sports_esports', colour: '#E91E63'),
-      (id: 'cat_housing',    name: 'Nhà ở',            classify: 'chi',     icon: 'home',          colour: '#607D8B'),
-      (id: 'cat_bill_chi',   name: 'Hoá đơn & Dịch vụ', classify: 'chi',  icon: 'receipt',       colour: '#795548'),
-      (id: 'cat_other_chi',  name: 'Chi khác',         classify: 'chi',     icon: 'more_horiz',    colour: '#9E9E9E'),
+      (id: 'cat_housing',    name: 'Nhà cửa',          classify: 'chi',     icon: 'home',          colour: '#607D8B'),
+      (id: 'cat_bill_chi',   name: 'Hóa đơn',          classify: 'chi',     icon: 'receipt',       colour: '#795548'),
       // ── Thu nhập ──────────────────────────────────────────────────────────
       (id: 'cat_salary',     name: 'Lương',            classify: 'thu',     icon: 'work',          colour: '#4CAF50'),
       (id: 'cat_bonus',      name: 'Thưởng',           classify: 'thu',     icon: 'card_giftcard', colour: '#8BC34A'),
-      (id: 'cat_freelance',  name: 'Làm thêm',         classify: 'thu',     icon: 'laptop',        colour: '#00BCD4'),
       (id: 'cat_invest',     name: 'Đầu tư',           classify: 'thu',     icon: 'trending_up',   colour: '#009688'),
-      (id: 'cat_other_thu',  name: 'Thu khác',         classify: 'thu',     icon: 'more_horiz',    colour: '#4CAF50'),
       // ── Vay / Nợ ──────────────────────────────────────────────────────────
       (id: 'cat_lend',       name: 'Cho vay',          classify: 'vay_no',  icon: 'person_add',    colour: '#FF9800'),
       (id: 'cat_borrow',     name: 'Đi vay',           classify: 'vay_no',  icon: 'person_remove', colour: '#FF5722'),
-      (id: 'cat_repay',      name: 'Trả nợ',           classify: 'vay_no',  icon: 'payment',       colour: '#795548'),
-      (id: 'cat_collect',    name: 'Thu nợ',           classify: 'vay_no',  icon: 'attach_money',  colour: '#4CAF50'),
     ];
 
     final companions = defaultCats.map((c) => CategoriesCompanion.insert(
