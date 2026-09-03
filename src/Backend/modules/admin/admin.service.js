@@ -132,11 +132,11 @@ const adminService = {
       name: trimmedName,
       classify: data.classify,
       is_default: isDefault,
-      keyword: data.keyword,
+      keyword: data.keyword ? data.keyword.trim() : null,
       icon: data.icon,
       created_by: idaccount,
     });
-    return { id: result.idcategory, name: result.name_category, classify: result.classify };
+    return { id: result.idcategory, name: result.name_category, classify: result.classify, keyword: result.keyword };
   },
 
   async updateCategory(idcategory, data) {
@@ -168,10 +168,10 @@ const adminService = {
       name: trimmedName,
       classify: data.classify,
       is_default: isDefault,
-      keyword: data.keyword,
+      keyword: data.keyword !== undefined ? (data.keyword ? data.keyword.trim() : null) : undefined,
       icon: data.icon,
     });
-    return { id: result.idcategory, name: result.name_category, classify: result.classify };
+    return { id: result.idcategory, name: result.name_category, classify: result.classify, keyword: result.keyword };
   },
 
   async deleteCategory(idcategory) {
