@@ -22,10 +22,12 @@ function matchKeywords(cleanInfo, categories, context = {}) {
   const { clean, cleanNoTone } = cleanInfo;
   const merchant = (context.merchant || '').toLowerCase();
   const merchantNoTone = removeVietnameseTones(merchant);
+  const counterpart = (context.counterpart_name || '').toLowerCase();
+  const counterpartNoTone = removeVietnameseTones(counterpart);
 
-  // Gom toàn bộ chuỗi tìm kiếm
-  const fullSearchText = `${clean} ${merchant}`.trim();
-  const fullSearchNoTone = `${cleanNoTone} ${merchantNoTone}`.trim();
+  // Gom toàn bộ chuỗi tìm kiếm (đã lowercase toàn bộ)
+  const fullSearchText = `${clean} ${merchant} ${counterpart}`.trim();
+  const fullSearchNoTone = `${cleanNoTone} ${merchantNoTone} ${counterpartNoTone}`.trim();
 
   let bestMatch = null;
   let maxKeywordLength = 0;
@@ -33,7 +35,7 @@ function matchKeywords(cleanInfo, categories, context = {}) {
   for (const cat of categories) {
     if (!cat) continue;
 
-    const catName = (cat.namecategory || '').toLowerCase();
+    const catName = (cat.namecategory_lower || cat.namecategory || '').toLowerCase();
     const catNameNoTone = removeVietnameseTones(catName);
 
     // 1. So khớp trực tiếp tên danh mục
@@ -52,10 +54,11 @@ function matchKeywords(cleanInfo, categories, context = {}) {
     }
 
     // 2. So khớp bộ từ khóa Category.Keyword (phân cách bởi dấu phẩy ,)
-    if (cat.keyword && typeof cat.keyword === 'string') {
-      const keywords = cat.keyword
-        .split(/[,;]/)
-        .map((k) => cleanVietnameseText(k))
+    const rawKw = cat.keyword_lower || cat.keyword;
+    if (rawKw && typeof rawKw === 'string') {
+      const keywords = rawKw
+        .split(',')
+        .map((k) => cleanVietnameseText(k.trim()))
         .filter(Boolean);
 
       for (const kw of keywords) {
