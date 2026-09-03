@@ -98,11 +98,11 @@ function validatePush(body) {
           errors.push(`${prefix}.payload.update_at must be a valid ISO 8601 datetime`);
         }
 
-        // For category: validate classify if provided (Thu, Chi, Vay/nợ)
+        // For category: validate classify if provided (Thu, Chi, Vay/no)
         if (op.entity === 'category' && op.payload.classify) {
           const validClassify = ['Thu', 'Chi', 'Vay/nợ', 'Vay/no', 'Vay/ng', 'Vay', 'no', 'thu', 'chi'];
           if (!validClassify.includes(op.payload.classify)) {
-            errors.push(`${prefix}.payload.classify must be Thu, Chi, or Vay/nợ`);
+            errors.push(`${prefix}.payload.classify must be Thu, Chi, or Vay/no`);
           }
         }
 
