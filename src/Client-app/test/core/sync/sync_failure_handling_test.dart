@@ -493,6 +493,31 @@ void main() {
       );
     });
 
+    test('Vi phạm ràng buộc CHECK của PostgreSQL là lỗi vĩnh viễn', () async {
+      await seedPendingCategory();
+
+      // Thông báo thật, thu ngày 2026-09-04: ngân sách có End trùng Start.
+      await runOnce(_FailingAdapter(
+        'Invalid `prisma.budget.update()` invocation. '
+        'Error occurred during query execution: '
+        'PostgresError { code: "23514", message: "new row for relation '
+        'budget violates check constraint chk_budget_end_after_start" }',
+      ));
+
+      final row = await db.categoryDao.getById(catId);
+      expect(
+        row?.syncBlockedUntil,
+        clock.add(const Duration(seconds: 30)),
+        reason: 'Dữ liệu vi phạm ràng buộc CSDL thì đẩy bao nhiêu lần cũng hỏng '
+            'y như vậy. Xếp vào transient nghĩa là gửi lại ở MỌI chu kỳ, và mỗi '
+            'chu kỳ đó kết thúc ở trạng thái error nên kích hoạt giãn cách luỹ '
+            'tiến, kéo chậm mọi thay đổi khác của người dùng.',
+      );
+      expect(row?.syncStatus, 'pending',
+          reason: 'Chặn theo THỜI GIAN, không loại vĩnh viễn: người dùng sửa '
+              'lại ngày là bản ghi quay về hàng đợi.');
+    });
+
     test('Bản ghi đang bị chặn KHÔNG được gom vào batch', () async {
       await seedPendingCategory();
       await db.categoryDao.markSyncBlocked(
@@ -653,6 +678,78 @@ void main() {
       expect(adapter.pushCallCount, 1,
           reason: 'Cả batch không tới nơi thì thử lại ngay trong cùng chu kỳ '
               'là vô ích; giãn cách luỹ tiến (G2) lo phần thử lại.');
+    });
+  });
+
+  group('Xoá một bản ghi server không có', () {
+    const budgetId = 'de4775ef-c9e1-44a5-bf9f-7aec370c4ecc';
+
+    /// Ngân sách đã xoá mềm ở máy này và đang chờ đẩy cờ xoá lên.
+    Future<void> seedDeletedPendingBudget() => db.budgetDao.insert(
+          BudgetsCompanion.insert(
+            id: budgetId,
+            idaccount: accountId,
+            amount: 2000000,
+            startDate: DateTime(2026, 9, 1),
+            isDeleted: const Value(true),
+            syncStatus: const Value('pending'),
+            updatedAt: DateTime(2026, 9, 4),
+          ),
+        );
+
+    test('coi là đã xong, không giữ bản ghi lại để đẩy mãi', () async {
+      await seedDeletedPendingBudget();
+
+      await runWith('Record not found');
+
+      final row = await db.budgetDao.getById(budgetId);
+      expect(
+        row?.syncStatus,
+        'synced',
+        reason: 'Mục tiêu của thao tác xoá là "bản ghi này không còn trên '
+            'server", và nó đã không còn — đó là thành công, không phải lỗi. '
+            'Giữ `pending` thì mọi chu kỳ lại đẩy lên và lại hỏng đúng như '
+            'vậy, kéo theo giãn cách luỹ tiến làm chậm mọi thay đổi khác.',
+      );
+    });
+
+    test('không thử lại trong cùng chu kỳ', () async {
+      await seedDeletedPendingBudget();
+
+      final r = await runWith('Record not found');
+
+      expect(r.adapter.pushCallCount, 1,
+          reason: 'Đã xong thì không có gì để gửi lại.');
+      expect(r.finalStatus, SyncStatus.idle,
+          reason: 'Chu kỳ không còn thao tác hỏng nào nên phải kết thúc ở '
+              'trạng thái thành công, nếu không giãn cách luỹ tiến vẫn bị kích '
+              'hoạt (G2) dù chẳng có gì sai.');
+    });
+
+    test('KHÔNG áp dụng cho thao tác cập nhật', () async {
+      // Cùng thông báo lỗi nhưng bản ghi chưa xoá: đây là cập nhật, và
+      // `upsertBudget` phía backend tự tạo mới nếu chưa có — nhận được "Record
+      // not found" ở đây nghĩa là có gì đó khác đang sai, không được nuốt đi.
+      await db.budgetDao.insert(
+        BudgetsCompanion.insert(
+          id: budgetId,
+          idaccount: accountId,
+          amount: 2000000,
+          startDate: DateTime(2026, 9, 1),
+          syncStatus: const Value('pending'),
+          updatedAt: DateTime(2026, 9, 4),
+        ),
+      );
+
+      await runWith('Record not found');
+
+      final row = await db.budgetDao.getById(budgetId);
+      expect(
+        row?.syncStatus,
+        isNot('synced'),
+        reason: 'Đánh dấu đã đồng bộ một bản ghi chưa hề lên tới server là mất '
+            'dữ liệu trong im lặng.',
+      );
     });
   });
 }

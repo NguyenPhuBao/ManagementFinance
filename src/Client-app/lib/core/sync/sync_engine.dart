@@ -1231,6 +1231,26 @@ class SyncEngine {
                   '[SyncEngine] Push conflict (bản server mới hơn, lấy theo '
                   'server): entity=${op.entity.name}, localId=${op.localId}',
                 );
+              } else if (op.operation == SyncOperationType.delete &&
+                  _recordNotFoundPattern
+                      .hasMatch(item['message']?.toString() ?? '')) {
+                // Xoá một bản ghi server không có = **mục tiêu đã đạt**. Đích
+                // của thao tác này là "hàng đó không còn trên server", và nó
+                // đã không còn.
+                //
+                // Coi là lỗi thì bản ghi giữ `pending` và được đẩy lại ở mọi
+                // chu kỳ, mãi mãi: `_classifyFailure` không có nhánh nào cho
+                // thông báo này nên nó rơi vào `transient`. Hai đường dẫn tới
+                // đây đều có thật — người dùng tạo một bản ghi khi offline rồi
+                // xoá trước khi nó kịp lên server, hoặc hàng đã bị xoá cứng ở
+                // phía server.
+                await _markSyncedById(op.entity, op.localId);
+                succeeded++;
+                debugPrint(
+                  '[SyncEngine] Push delete: bản ghi vốn đã không có trên '
+                  'server, coi như đã xong: entity=${op.entity.name}, '
+                  'localId=${op.localId}',
+                );
               } else {
                 failed++;
                 final message = item['message']?.toString() ?? 'Unknown error';
@@ -1389,6 +1409,17 @@ class SyncEngine {
   static final RegExp _accountFkPattern =
       RegExp(r'fk_\w+_account', caseSensitive: false);
 
+  /// Backend trả thông báo này khi được yêu cầu xoá một bản ghi nó không có
+  /// (`sync.service.js`, nhánh `operation === 'delete'`).
+  static final RegExp _recordNotFoundPattern =
+      RegExp(r'record not found', caseSensitive: false);
+
+  /// PostgreSQL từ chối vì dữ liệu vi phạm một ràng buộc `CHECK` (SQLSTATE
+  /// 23514). Khớp cả mã lẫn câu chữ vì Prisma bọc lỗi theo nhiều cách tuỳ
+  /// phiên bản, và mã 23514 là phần ổn định nhất.
+  static final RegExp _checkConstraintPattern =
+      RegExp(r'23514|violates check constraint', caseSensitive: false);
+
   static SyncFailureKind _classifyFailure(String message, {String? code}) {
     // Ưu tiên mã lỗi ổn định. Khớp chuỗi thông báo của Prisma là cách làm dễ
     // vỡ: đổi tên constraint hay nâng version Prisma là mất khả năng phát hiện
@@ -1411,6 +1442,17 @@ class SyncEngine {
     // Sai chủ sở hữu = dòng dữ liệu sót của tài khoản khác. KHÔNG phải phiên
     // chết — đăng xuất ở đây là sai; dữ liệu đó cần được dọn thay vì thử lại.
     if (message.contains('Ownership mismatch')) {
+      return SyncFailureKind.permanent;
+    }
+    // Dữ liệu vi phạm ràng buộc CHECK của PostgreSQL (mã 23514) thì đẩy bao
+    // nhiêu lần cũng hỏng y như vậy — ví dụ ngân sách có `End` không lớn hơn
+    // `Start`, vi phạm `chk_budget_end_after_start`. Xếp vào `transient` nghĩa
+    // là gửi lại ở MỌI chu kỳ, và mỗi chu kỳ đó kết thúc ở `error` nên kích
+    // hoạt giãn cách luỹ tiến (G2), kéo chậm mọi thay đổi khác.
+    //
+    // `permanent` chặn theo THỜI GIAN chứ không loại vĩnh viễn: người dùng sửa
+    // lại dữ liệu là bản ghi quay về hàng đợi.
+    if (_checkConstraintPattern.hasMatch(message)) {
       return SyncFailureKind.permanent;
     }
     return SyncFailureKind.transient;
