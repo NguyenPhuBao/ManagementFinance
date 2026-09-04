@@ -1,6 +1,6 @@
 # Backend — Mục lục, thứ tự đọc và thứ tự thi công
 
-> Thư mục này gom mọi tài liệu backend của FlowMoney. Có **17 tài liệu**, phần
+> Thư mục này gom mọi tài liệu backend của FlowMoney. Có **18 tài liệu**, phần
 > lớn đã làm xong — bảng "Còn phải làm" bên dưới là thứ cần đọc trước.
 >
 > Cập nhật 2026-09-04 (lần hai, sau khi gộp `origin/main` `dfda862` mang mô-đun
@@ -133,6 +133,7 @@ là **bước 8**, không phải bước đầu.
 
 | Tài liệu | Trạng thái |
 |---|---|
+| [2026-09-04-notification-backend.md](./2026-09-04-notification-backend.md) | ℹ️ **Không có việc cho backend.** Thông báo là tính năng **cục bộ trên máy** theo quyết định của người dùng — không FCM, không đồng bộ giữa thiết bị, nên PostgreSQL **cố ý không có** bảng `notification`. Tài liệu ghi lại ba khoảng trống phía backend (socket không xác thực · không có scheduler · queue `send-notification` rỗng) kèm mức khẩn thật của từng cái, và **đính chính** một nhận định sai đang lưu hành về `bill.time_notification` |
 | [SESSION_VALIDITY_FINDINGS.md](./SESSION_VALIDITY_FINDINGS.md) | ✅ Xong — token của tài khoản đã xoá vẫn dùng được, `/auth/me` không chạm CSDL |
 | [2026-08-22-backend-wallet-include-in-total.md](./2026-08-22-backend-wallet-include-in-total.md) | ✅ Xong — cột `IncludeInTotal` đã có trong `schema.prisma` |
 | [2026-08-23-backend-goal-wallet-id.md](./2026-08-23-backend-goal-wallet-id.md) | ✅ Xong — cột đã có, nhưng tên thật là **`Idwallet`** chứ không phải `wallet_id` như tiêu đề tài liệu |

@@ -1,19 +1,19 @@
 # Hệ thống thông báo — tài liệu bàn giao
 
 > **Cập nhật:** 2026-09-04 · **Nhánh:** `TranQuangDat`
-> **Trạng thái:** lát 1–4 xong. Lát 5–7 chưa làm.
-> **Mức nền hiện tại:** `flutter test` **498/498 pass**, `flutter analyze`
+> **Trạng thái:** lát 1–4 và lát 7 xong. Lát 5–6 chưa làm.
+> **Mức nền hiện tại:** `flutter test` **535/535 pass**, `flutter analyze`
 > **28 issue, KHÔNG error**, `flutter build web` xanh.
 
 Đọc file này trước khi làm tiếp bất cứ việc gì thuộc thông báo. Mục 6 là phần
 việc còn lại, mục 7 là những cái bẫy — **đọc mục 7 trước khi viết dòng đầu
 tiên của lát 5**.
 
-> ⚠️ **Lát 4 xong nhưng thông báo hệ điều hành CHƯA thật sự chạy trên máy.**
-> Không có nơi nào trong app gọi `OsNotifier.requestPermission()` — trang cài
-> đặt là lát 7. Trên Android 13+ thiếu quyền thì mọi thông báo bị nuốt **im
-> lặng**, nên thử trên máy ảo lúc này sẽ thấy "không có gì xảy ra" và rất dễ
-> kết luận nhầm là lát 4 hỏng. Đây là khoảng trống đã biết, không phải lỗi.
+> ⚠️ **Lát 7 được làm TRƯỚC lát 5, có chủ ý.** Lát 5 cần "giờ nhắc trong ngày"
+> mà nơi lưu tuỳ chọn ấy nằm ở lát 7 — thiếu nó thì `zonedSchedule` nổ lúc
+> 00:00 (bẫy 7.3). Và lát 4 không kiểm chứng được trên máy thật cho tới khi có
+> một chỗ xin quyền, mà chỗ ấy cũng là lát 7. Làm ngược lại thì phải quay lại
+> sửa cả hai điểm.
 
 ---
 
@@ -79,7 +79,8 @@ handshake không xác thực và mỗi sự kiện còn `io.emit` toàn cục.
 lib/core/notification/
 ├── notification_rules.dart      # Hàm THUẦN: trạng thái → danh sách ứng viên
 ├── notification_scanner.dart    # Nối luật với CSDL và vòng đời app
-└── os/                          # Cửa ra hệ điều hành (lát 4) — xem mục 6
+├── os/                          # Cửa ra hệ điều hành (lát 4) — xem mục 6
+└── prefs/                       # Tuỳ chọn của người dùng (lát 7)
 
 lib/core/database/
 ├── tables/notification_table.dart   # Bảng AppNotifications
@@ -267,24 +268,87 @@ nhân đôi.
 - Luật `walletNegative`.
 - Gọi `purgeOlderThan(90 ngày)` trong `NotificationScanner.start()`.
 
-### Lát 7 — Màn cài đặt + tài liệu backend
+### Lát 7 — Màn cài đặt ✅ XONG · tài liệu backend ⏳ CÒN
 
-Màn `/settings/notifications` nối vào `profile_page.dart` (mục menu hiện dẫn
-tạm về `/notifications`). Công tắc tổng + bốn công tắc nhóm + **giờ nhắc trong
-ngày** (thiếu nó thì `zonedSchedule` nổ lúc 00:00) + số ngày nhắc mặc định.
+```
+lib/core/notification/prefs/
+  notification_prefs.dart        # Model thuần + enum NotificationGroup
+  notification_prefs_store.dart  # Interface + bản SecureStorage + bản in-memory
 
-**Nơi lưu tuỳ chọn:** khoá JSON `notification_prefs_<idaccount>` trong
-`FlutterSecureStorage` — gói **đã có**, chạy cả trên web, tách theo tài khoản.
-Bọc sau một interface + bản in-memory cho test, theo mẫu `SyncCheckpointStore`.
+lib/features/notification/presentation/pages/
+  notification_settings_page.dart   # /settings/notifications
+```
 
-Tài liệu backend trong `docs/superpowers/backend/`: siết xác thực Socket.io
-trước tiên (đã là bước 1, và phải sửa `Admin-web/src/hooks/useSocket.js` cùng
-lúc vì consumer hiện kết nối không kèm token); `bill.time_notification` nay
-được client ghi nhưng **không nằm trong payload đẩy**; backend **không có
-scheduler dưới bất kỳ hình thức nào** và queue `send-notification` đã khai báo
-nhưng worker rỗng 0 byte.
+**Nơi lưu:** khoá JSON `notification_prefs_<idaccount>` trong
+`FlutterSecureStorage`, đúng mẫu `SecureStorageSyncCheckpointStore`.
 
----
+**Lưu nhóm bị TẮT chứ không phải nhóm được bật.** Nhờ vậy mặc định là "bật
+hết" mà không cần biết trước danh sách nhóm: thêm nhóm thứ năm ở bản sau thì
+mọi bản ghi cũ tự động bật nhóm ấy. Lưu danh sách bật thì mọi bản ghi cũ sẽ
+thiếu nhóm mới và nó chết ngay từ đầu.
+
+**Hai công tắc có ý nghĩa khác nhau, đừng gộp:**
+
+| Công tắc | Hiệu lực |
+|---|---|
+| Bốn công tắc **nhóm** | Không **sinh** thông báo nhóm ấy — cả trong app lẫn ra hệ điều hành. Lọc ngay sau bộ luật, trước khi ghi. |
+| Công tắc **tổng** cho OS | Vẫn ghi vào trung tâm trong app, chỉ **không bắn** ra ngoài. Đây là "đừng làm phiền tôi", không phải "đừng ghi lại gì". |
+
+**Bật công tắc tổng là chỗ DUY NHẤT trong app xin quyền thông báo** — mắt xích
+còn thiếu của lát 4. Xin đúng lúc người dùng vừa chủ động bật, không phải lúc
+mở app: trên iOS họ chỉ được hỏi **một lần** trong cả vòng đời cài đặt. Hệ điều
+hành từ chối thì công tắc **quay về tắt** kèm một SnackBar chỉ đường sang Cài
+đặt máy — để nó sáng là nói dối, người dùng sẽ không bao giờ đi tìm lý do vì
+sao chẳng nhận được gì.
+
+**Trang không có nút Lưu**, mỗi thay đổi ghi thẳng xuống kho. Trang cài đặt
+kiểu này không ai đi tìm nút lưu.
+
+⚠️ **Trang không tự hỏi `AuthBloc`** — route đọc `currentAccountIdOrNull(ctx)`
+rồi truyền `idaccount` vào, cùng mẫu `NotificationPanel`. Bản đầu làm ngược
+lại và test "chưa đăng nhập" treo ở `pumpAndSettle`: không có `AuthBloc` trong
+cây thì `context.read` ném **trong** `postFrameCallback`, cờ `_dangNap` kẹt
+`true`, và vòng quay tải chạy mãi. Trạng thái "chưa đăng nhập" phải test được
+thật sự chứ không phải suy ra từ một ngoại lệ thiếu provider.
+
+Mục "Thông báo" trong Profile nay dẫn tới **trang cài đặt**; lối vào trung tâm
+thông báo là chuông ở trang chủ.
+
+**Số ngày nhắc là danh sách rời (0/1/2/3/5/7), không phải ô nhập số.** Nhập tay
+mở đường cho những giá trị mà `NotificationPrefs` sẽ lặng lẽ quy về mặc định —
+người dùng gõ 400 rồi thấy số nhảy về 3 và không hiểu vì sao.
+
+Stitch **không có** màn này; bố cục bám đúng kiểu thẻ của `settings_page.dart`.
+
+#### Tài liệu backend ✅ XONG
+
+`docs/superpowers/backend/2026-09-04-notification-backend.md`, đã nối vào mục 3
+của README backend.
+
+**Kết luận: backend không cần làm gì để tính năng này chạy.** Thông báo là cục
+bộ trên từng máy, nên PostgreSQL **cố ý không có** bảng `notification`.
+
+⚠️ **Một trong bốn việc dự kiến hoá ra là nhận định SAI.** Bản bàn giao trước
+ghi `bill.time_notification` "không nằm trong payload đẩy". Kiểm lại mã thật:
+nó có ở **cả sáu chặng** — client dựng payload (`sync_engine.dart:1089`), hợp
+đồng tên trường (`sync_payload_contract_test.dart:251`), backend chuẩn hoá tên
+(`sync.repository.js:71`), ghi khi tạo (`:385`), ghi khi cập nhật (`:406`), và
+client đọc lại khi pull (`sync_engine.dart:741`). Không có việc gì phải làm.
+Đính chính được ghi lại trong tài liệu backend thay vì xoá lặng lẽ, vì nhận
+định sai ấy đã đi qua ít nhất hai bản tài liệu.
+
+Ba việc còn lại là thật nhưng **không chặn gì hôm nay**: socket không xác thực
+(đã là bước 1 vì lý do khác, và client **cố ý chưa nối socket**), backend không
+có scheduler, queue `send-notification` rỗng cả ba phía — không ai đẩy việc
+vào, worker 0 byte, và `index.js` cũng không nạp worker ấy.
+
+#### Khoảng trống đã biết của lát 7
+
+- `NotificationPrefsStore.clear()` đã có nhưng **chưa ai gọi**. Hiện tuỳ chọn
+  ở lại máy sau khi đăng xuất — đúng ý (đăng nhập lại thì còn nguyên), nhưng
+  nếu sau này có luồng "xoá sạch dữ liệu tài khoản" thì phải gọi nó.
+- Giờ nhắc và số ngày nhắc **được lưu nhưng chưa ai đọc** — lát 5 là nơi tiêu
+  thụ chúng.
 
 ## 7. Bẫy — đọc trước khi làm lát 4
 
@@ -341,6 +405,9 @@ xanh** nên không ai biết cho tới lúc phát hành. Từ lát 4 trở đi, 
 | `test/core/utils/relative_time_test.dart` | Biên 59 giây / 60 phút / qua nửa đêm |
 | `test/shared/widgets/notification_bell_test.dart` | Chấm đỏ khớp số chưa đọc, bám dòng dữ liệu |
 | `test/features/notification/notification_panel_test.dart` | Rỗng → biến mất hoàn toàn; >3 mục chỉ hiện 3 |
+| `test/core/notification/prefs/notification_prefs_test.dart` | Mặc định là **bật hết**; JSON hỏng/sai kiểu/ngoài dải quy về mặc định chứ không ném; ánh xạ tám `kind` sang bốn nhóm |
+| `test/core/notification/prefs/notification_prefs_store_test.dart` | **Tách khoá theo tài khoản**; JSON hỏng trên đĩa; `clear()` không đụng tài khoản khác |
+| `test/features/notification/notification_settings_page_test.dart` | Công tắc phản ánh đúng thứ đã lưu; ghi ngay không cần nút Lưu; **bật công tắc OS thì xin quyền, tắt thì không**; bị từ chối thì công tắc quay về tắt; chưa đăng nhập thì không ghi gì |
 
 ⚠️ `.gitignore` dòng 77 có `test/` → file test mới bị bỏ qua **âm thầm**. Phải
 `git add -f` **từng đường dẫn** (thêm cả thư mục thì git từ chối nguyên lệnh).
