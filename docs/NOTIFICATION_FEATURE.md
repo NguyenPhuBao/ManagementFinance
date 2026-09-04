@@ -1,13 +1,19 @@
 # Hệ thống thông báo — tài liệu bàn giao
 
 > **Cập nhật:** 2026-09-04 · **Nhánh:** `TranQuangDat`
-> **Trạng thái:** lát 1–3 xong và đã commit. Lát 4–7 chưa làm.
-> **Mức nền khi bàn giao:** `flutter test` **479/479 pass**, `flutter analyze`
+> **Trạng thái:** lát 1–4 xong. Lát 5–7 chưa làm.
+> **Mức nền hiện tại:** `flutter test` **498/498 pass**, `flutter analyze`
 > **28 issue, KHÔNG error**, `flutter build web` xanh.
 
 Đọc file này trước khi làm tiếp bất cứ việc gì thuộc thông báo. Mục 6 là phần
 việc còn lại, mục 7 là những cái bẫy — **đọc mục 7 trước khi viết dòng đầu
-tiên của lát 4**.
+tiên của lát 5**.
+
+> ⚠️ **Lát 4 xong nhưng thông báo hệ điều hành CHƯA thật sự chạy trên máy.**
+> Không có nơi nào trong app gọi `OsNotifier.requestPermission()` — trang cài
+> đặt là lát 7. Trên Android 13+ thiếu quyền thì mọi thông báo bị nuốt **im
+> lặng**, nên thử trên máy ảo lúc này sẽ thấy "không có gì xảy ra" và rất dễ
+> kết luận nhầm là lát 4 hỏng. Đây là khoảng trống đã biết, không phải lỗi.
 
 ---
 
@@ -72,7 +78,8 @@ handshake không xác thực và mỗi sự kiện còn `io.emit` toàn cục.
 ```
 lib/core/notification/
 ├── notification_rules.dart      # Hàm THUẦN: trạng thái → danh sách ứng viên
-└── notification_scanner.dart    # Nối luật với CSDL và vòng đời app
+├── notification_scanner.dart    # Nối luật với CSDL và vòng đời app
+└── os/                          # Cửa ra hệ điều hành (lát 4) — xem mục 6
 
 lib/core/database/
 ├── tables/notification_table.dart   # Bảng AppNotifications
@@ -161,7 +168,8 @@ Chỉ **một** mốc, **không có `Timer.periodic`**: `NotificationScanner` ng
 khi có ghi cục bộ hoặc pull về, mà cả hai đều kết thúc bằng sự kiện đó.
 
 `scan()` trả **số hàng thật sự được ghi** — tín hiệu duy nhất để quyết định có
-bắn ra hệ điều hành hay không (lát 4 sẽ dùng).
+bắn ra hệ điều hành hay không. Từ lát 4, chính danh sách hàng vừa ghi ấy (chứ
+không phải danh sách ứng viên) là thứ được đẩy sang `OsNotifier.show()`.
 
 `start()` **huỷ subscription cũ trước khi tạo mới**. Được gọi ở
 `auth_bloc.dart` cạnh `SyncEngine.start()`; `stop()` ở hai chỗ đăng xuất /
@@ -189,43 +197,50 @@ phiên chết. **Cố ý KHÔNG gắn ở `home_page.dart`** — chỗ đó gọ
 
 ## 6. Phần việc còn lại
 
-### Lát 4 — `OsNotifier` + thông báo hệ điều hành thật
+### Lát 4 — `OsNotifier` + thông báo hệ điều hành thật ✅ XONG
 
-Lát đầu tiên chạm `pubspec.yaml` và manifest, và là lát đầu tiên mà
-**`flutter test` xanh không còn đủ**.
-
-Gói cần thêm: `flutter_local_notifications`, `timezone`, `flutter_timezone`.
-**Không cần `permission_handler`** — gói chính đã có sẵn đường xin quyền.
-
-Trừu tượng theo **đúng mẫu đã có** ở `lib/core/database/connection/`:
+Gói đã thêm: `flutter_local_notifications ^22.3.0`, `timezone ^0.11.1`,
+`flutter_timezone ^5.1.0` (hai gói sau chưa dùng — chúng là của lát 5, thêm
+sẵn để chỉ chạm `pubspec.yaml` một lần).
 
 ```
 lib/core/notification/os/
-  os_notifier.dart        // abstract + conditional import
-  os_notifier_native.dart // io — nơi DUY NHẤT import flutter_local_notifications
-  os_notifier_web.dart    // no-op, isSupported => false
-  os_notifier_stub.dart
+  os_notifier.dart          // abstract OsNotifier + NoopOsNotifier
+  os_notifier_factory.dart  // conditional import — file DUY NHẤT dẫn tới native
+  os_notifier_native.dart   // io — nơi DUY NHẤT import flutter_local_notifications
+  os_notifier_web.dart      // no-op
+  os_notifier_stub.dart     // no-op
+  os_scheduled_id.dart      // md5(dedupeKey) -> int 31 bit
 ```
 
-**Android:** khai `POST_NOTIFICATIONS` + `RECEIVE_BOOT_COMPLETED` và hai
-`<receiver>` của plugin. **Chủ động KHÔNG khai `SCHEDULE_EXACT_ALARM` /
-`USE_EXACT_ALARM`** — Google Play chặn trừ nhóm báo thức/lịch, và Android 14
-bắt người dùng bật tay trong Cài đặt. Dùng
-`AndroidScheduleMode.inexactAllowWhileIdle`; nhắc hoá đơn lệch mươi phút không
-sao. **Phải ghi thành chú thích trong mã** vì "nhắc hoá đơn nên chính xác"
-nghe rất hợp lý và người sau sẽ muốn đổi. Kiểm `desugar_jdk_libs` trong
-`build.gradle.kts` — thiếu là lỗi build khó đọc, **chỉ hỏng lúc build release**.
+⚠️ **Lệch một điểm so với kế hoạch, có chủ ý.** Kế hoạch nói gộp trừu tượng và
+conditional import vào `os_notifier.dart` theo mẫu
+`lib/core/database/connection/`. Đã tách làm hai file. Lý do: gộp lại thì mọi
+file nhắc tới kiểu `OsNotifier` — kể cả `notification_scanner.dart` và các test
+của nó — đều kéo theo nhánh native, tức là kéo `flutter_local_notifications`.
+Tách ra thì chỉ đúng **một** file trong toàn dự án chạm gói ấy, và bẫy 7.7
+kiểm được bằng mắt trong một giây.
 
-**iOS:** không cần key mới trong `Info.plist`, **không** thêm
-`UIBackgroundModes`. Gán `UNUserNotificationCenter.delegate` trong
-`AppDelegate.swift`. Xin quyền **có ngữ cảnh** (từ trang cài đặt hoặc sau khi
-bật công tắc nhắc), không bao giờ lúc mở app lần đầu — từ chối là mất vĩnh viễn.
+**API của plugin bản 22 khác bản cũ** — `initialize(settings: ...)` và
+`cancel(id: ...)` đều là tham số **có tên**, không phải vị trí. Mọi ví dụ tìm
+được trên mạng đều viết theo bản cũ; đọc thẳng
+`lib/src/flutter_local_notifications_plugin.dart` trong pub cache.
 
-**`osScheduledId` = 4 byte đầu của `md5(dedupeKey) & 0x7fffffff`.** Gói
-`crypto` đã có trong pubspec. **Không dùng `dedupeKey.hashCode`** —
-`String.hashCode` của Dart không ổn định giữa các phiên chạy, nên sau khi cập
-nhật app sẽ không huỷ được lịch cũ và người dùng nhận nhắc cho hoá đơn đã xoá,
-không cách nào tắt.
+Đã làm: `POST_NOTIFICATIONS` + `RECEIVE_BOOT_COMPLETED` và hai `<receiver>`
+trong manifest; `isCoreLibraryDesugaringEnabled` + `desugar_jdk_libs:2.1.4`
+trong `build.gradle.kts`; gán `UNUserNotificationCenter.delegate` trong
+`AppDelegate.swift`; đăng ký `OsNotifier` trong `injection_container.dart` và
+truyền vào `NotificationScanner`. **Không** khai `SCHEDULE_EXACT_ALARM` /
+`USE_EXACT_ALARM` — lý do ghi thành chú thích ở cả manifest lẫn
+`os_notifier_native.dart`, vì "nhắc hoá đơn nên chính xác" nghe rất hợp lý và
+người sau sẽ muốn đổi.
+
+`NotificationScanner` giờ: bắn `show()` cho **danh sách vừa ghi** (không phải
+danh sách ứng viên — ứng viên chứa lại sự kiện cũ ở mọi lượt quét), nuốt lỗi
+từng cái một, và `stop()` gọi `cancelAll()`.
+
+**Còn thiếu để chạy thật:** không nơi nào gọi `requestPermission()` — trang
+cài đặt là lát 7. Xem cảnh báo ở đầu tài liệu.
 
 ### Lát 5 — `zonedSchedule` đặt lịch trước cho hoá đơn
 
@@ -317,7 +332,9 @@ xanh** nên không ai biết cho tới lúc phát hành. Từ lát 4 trở đi, 
 | Tệp | Canh gì |
 |---|---|
 | `test/core/notification/notification_rules_test.dart` | Ngưỡng ngân sách; `dedupeKey` không đổi khi `spent` tăng trong cùng bậc nhưng đổi khi sang kỳ; hoá đơn so theo NGÀY; `silenceBefore` |
-| `test/core/notification/notification_scanner_test.dart` | Quét lại không đẻ hàng; `stop()` cắt đứt hẳn; `start()` hai lần chỉ quét một lần |
+| `test/core/notification/notification_scanner_test.dart` | Quét lại không đẻ hàng; `stop()` cắt đứt hẳn **và gọi `cancelAll()`**; `start()` hai lần chỉ quét một lần; bắn ra hệ điều hành đúng một lần cho mỗi hàng mới, và lỗi nền tảng không làm hỏng lượt quét |
+| `test/core/notification/os/os_scheduled_id_test.dart` | Bốn giá trị **golden** của `md5(dedupeKey)` — khoá cứng để việc đổi thuật toán trở nên ồn ào; dải 31 bit; phân tán trên 1000 khoá |
+| `test/core/notification/os/os_notifier_native_test.dart` | Chặn ở tầng `MethodChannel`: `init()` luỹ đẳng, `show()` đẩy đúng id/tiêu đề/nội dung/payload, id kênh Android không đổi, `cancelAll()`, và **không** xin quyền báo thức chính xác |
 | `test/core/database/notification_dao_test.dart` | Khoá trùng ở tầng SQLite; hàng đã xoá vẫn chặn; lọc theo `idaccount`; purge |
 | `test/core/database/notification_schema_v13_test.dart` | Migration v12→v13 giữ nguyên dữ liệu cũ, không đẩy bản ghi nào vào hàng đợi |
 | `test/core/database/bill_upcoming_test.dart` | `getUpcoming` lọc cả hai cột trạng thái; `markOverdue` không ghi đè lần hai |
