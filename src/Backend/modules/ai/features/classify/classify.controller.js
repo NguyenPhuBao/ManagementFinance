@@ -93,6 +93,29 @@ const classifyController = {
       next(error);
     }
   },
+
+  /**
+   * POST /api/ai/classify/transaction
+   * Phân loại giao dịch 2 cấp độ (Cấp 1: Type & Cấp 2: Category)
+   */
+  async handleClassifyTransaction(req, res, next) {
+    try {
+      const idaccount = req.user?.idaccount || req.user?.userId;
+      if (!idaccount) {
+        return res.status(401).json({ success: false, message: 'Chua xac thuc nguoi dung' });
+      }
+
+      const result = await classifyService.classifyTransaction(idaccount, req.body);
+
+      return res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      logger.error('ClassifyController.handleClassifyTransaction error', { error: error.message });
+      next(error);
+    }
+  },
 };
 
 module.exports = classifyController;
