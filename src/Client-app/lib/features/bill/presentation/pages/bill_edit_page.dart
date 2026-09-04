@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:drift/drift.dart' as drift;
 import 'package:intl/intl.dart';
+import '../../../../core/bill/bill_recurrence.dart';
 import '../../../../core/database/app_database.dart';
+import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../core/auth/current_account.dart';
+import '../../domain/bill_draft.dart';
+import '../../domain/bill_schedule.dart';
 import '../bloc/bill_bloc.dart';
 import '../bloc/bill_event.dart';
 
@@ -27,19 +30,62 @@ class _BillEditPageState extends State<BillEditPage> {
   late TextEditingController _nameController;
   late TextEditingController _amountController;
   late TextEditingController _noteController;
-  late DateTime _selectedDueDate;
-  late String _selectedCycle;
+  /// Chu kỳ + ngày bắt đầu; ngày đến hạn suy ra. Xem `BillSchedule`.
+  late BillSchedule _lich;
+
+  List<Wallet> _wallets = [];
+  Wallet? _selectedWallet;
+  List<Category> _categories = [];
+  Category? _selectedCategory;
 
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.bill?.name ?? '');
+    final bill = widget.bill;
+    _nameController = TextEditingController(text: bill?.name ?? '');
     _amountController = TextEditingController(
-      text: widget.bill?.amount.toStringAsFixed(0) ?? '',
+      text: bill?.amount.toStringAsFixed(0) ?? '',
     );
-    _noteController = TextEditingController(text: widget.bill?.note ?? '');
-    _selectedDueDate = widget.bill?.dueDate ?? DateTime.now();
-    _selectedCycle = widget.bill?.recurrence ?? 'monthly';
+    _noteController = TextEditingController(text: bill?.note ?? '');
+    // `fromBill` phát hiện hoá đơn cũ có hạn trả không khớp chu kỳ và dựng
+    // sẵn lời cảnh báo — nay hạn luôn suy từ chu kỳ nên lưu lại là đổi hạn
+    // của người dùng, không được đổi ngầm.
+    _lich = bill != null
+        ? BillSchedule.fromBill(bill)
+        : BillSchedule(
+            startDate: DateTime.now(),
+            timeRecurrence: kBillCycleMonth,
+            repeat: true,
+          );
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadPickers());
+  }
+
+  Future<void> _loadPickers() async {
+    final accountId = currentAccountIdOrNull(context);
+    if (accountId == null) return;
+    final db = sl<AppDatabase>();
+    final wallets = await db.walletDao.getAll(accountId);
+    final categories = await db.categoryDao.getCategoryRows(accountId, 'chi');
+    if (!mounted) return;
+    setState(() {
+      _wallets = wallets;
+      _categories = categories;
+      // Giữ lựa chọn cũ của hoá đơn nếu nó còn tồn tại; nếu không (hoá đơn do
+      // bản client cũ tạo ra, walletId/categoryId = null) thì để người dùng
+      // chọn — đây là đường duy nhất trong app để vá những hàng đang kẹt.
+      _selectedWallet = _firstWhereOrNull(wallets, widget.bill?.walletId);
+      _selectedCategory =
+          _firstWhereOrNull(categories, widget.bill?.categoryId);
+    });
+  }
+
+  static T? _firstWhereOrNull<T>(List<T> items, String? id) {
+    if (id == null) return null;
+    for (final item in items) {
+      if ((item as dynamic).id == id) return item;
+    }
+    return null;
   }
 
   @override
@@ -82,21 +128,51 @@ class _BillEditPageState extends State<BillEditPage> {
       return;
     }
 
-    final now = DateTime.now();
+    // Ví và danh mục NOT NULL phía backend — không cho lưu về trạng thái
+    // thiếu, vì đó chính là thứ khiến hoá đơn kẹt vĩnh viễn trong hàng đợi đẩy.
+    final wallet = _selectedWallet;
+    if (wallet == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng chọn ví thanh toán.')),
+      );
+      return;
+    }
+    final category = _selectedCategory;
+    if (category == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng chọn danh mục cho hoá đơn.')),
+      );
+      return;
+    }
 
-    final updatedBill = BillsCompanion(
-      id: drift.Value(widget.id),
-      idaccount: drift.Value(accountId),
-      name: drift.Value(name),
-      amount: drift.Value(amount),
-      dueDate: drift.Value(_selectedDueDate),
-      recurrence: drift.Value(_selectedCycle),
-      note: drift.Value(_noteController.text.trim()),
-      syncStatus: const drift.Value('pending'),
-      updatedAt: drift.Value(now),
+    final loiNgay = _lich.dateError;
+    if (loiNgay != null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(loiNgay)));
+      return;
+    }
+
+    final draft = BillDraft(
+      name: name,
+      amount: amount,
+      startDate: _lich.startDate,
+      dueDate: _lich.dueDate,
+      walletId: wallet.id,
+      categoryId: category.id,
+      isRecurring: _lich.isRecurring,
+      timeRecurrence: _lich.storedTimeRecurrence,
+      note: _noteController.text.trim(),
     );
 
-    context.read<BillBloc>().add(EditBillEvent(bill: updatedBill));
+    context.read<BillBloc>().add(
+          EditBillEvent(
+            bill: draft.toUpdateCompanion(
+              id: widget.id,
+              idaccount: accountId,
+              now: DateTime.now(),
+            ),
+          ),
+        );
     context.pop();
   }
 
@@ -125,18 +201,28 @@ class _BillEditPageState extends State<BillEditPage> {
     );
   }
 
-  Future<void> _pickDueDate() async {
+  Future<void> _pickStartDate() async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: _selectedDueDate,
-      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      initialDate: _lich.startDate,
+      firstDate: DateTime.now().subtract(const Duration(days: 365 * 2)),
       lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
     );
-    if (picked != null) {
-      setState(() {
-        _selectedDueDate = picked;
-      });
-    }
+    if (picked == null) return;
+    setState(() => _lich = _lich.copyWith(startDate: picked));
+  }
+
+  Widget _canhBaoHanCuWidget() {
+    final loi = _lich.canhBaoHanCu;
+    if (loi == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        loi,
+        key: const ValueKey('bill-due-date-warning'),
+        style: const TextStyle(fontSize: 13, color: AppColors.error),
+      ),
+    );
   }
 
   @override
@@ -194,26 +280,80 @@ class _BillEditPageState extends State<BillEditPage> {
                   const SizedBox(height: 16),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('Ngày đến hạn thanh toán'),
-                    subtitle: Text(dateFormatter.format(_selectedDueDate)),
-                    trailing: const Icon(Icons.calendar_today, color: AppColors.primary),
-                    onTap: _pickDueDate,
+                    title: const Text('Ngày bắt đầu hóa đơn'),
+                    subtitle: Text(dateFormatter.format(_lich.startDate)),
+                    trailing: const Icon(Icons.calendar_today,
+                        color: AppColors.primary),
+                    onTap: _pickStartDate,
                   ),
-                  const SizedBox(height: 16),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    enabled: false,
+                    title: const Text('Ngày đến hạn thanh toán'),
+                    subtitle: Text(dateFormatter.format(_lich.dueDate)),
+                    trailing: const Icon(Icons.lock_outline,
+                        color: AppColors.primary),
+                  ),
+                  _canhBaoHanCuWidget(),
+                  const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
-                    value: _selectedCycle,
+                    initialValue: _lich.timeRecurrence,
                     decoration: const InputDecoration(
-                      labelText: 'Chu kỳ lặp lại',
+                      labelText: 'Chu kỳ',
                       border: OutlineInputBorder(),
                     ),
                     items: const [
-                      DropdownMenuItem(value: 'once', child: Text('Không lặp lại')),
-                      DropdownMenuItem(value: 'weekly', child: Text('Hàng tuần')),
-                      DropdownMenuItem(value: 'monthly', child: Text('Hàng tháng')),
-                      DropdownMenuItem(value: 'yearly', child: Text('Hàng năm')),
+                      DropdownMenuItem(
+                          value: kBillCycleWeek, child: Text('Hàng tuần')),
+                      DropdownMenuItem(
+                          value: kBillCycleMonth, child: Text('Hàng tháng')),
+                      DropdownMenuItem(
+                          value: kBillCycleQuarter, child: Text('Hàng quý')),
+                      DropdownMenuItem(
+                          value: kBillCycleYear, child: Text('Hàng năm')),
                     ],
                     onChanged: (val) {
-                      if (val != null) setState(() => _selectedCycle = val);
+                      if (val == null) return;
+                      setState(() => _lich = _lich.copyWith(timeRecurrence: val));
+                    },
+                  ),
+                  Row(
+                    children: [
+                      const Expanded(child: Text('Lặp lại theo chu kỳ')),
+                      Switch(
+                        key: const ValueKey('bill-recurrence-switch'),
+                        value: _lich.repeat,
+                        onChanged: (v) =>
+                            setState(() => _lich = _lich.copyWith(repeat: v)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<Wallet>(
+                    initialValue: _selectedWallet,
+                    decoration: const InputDecoration(
+                      labelText: 'Ví thanh toán',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: _wallets
+                        .map((w) => DropdownMenuItem(value: w, child: Text(w.name)))
+                        .toList(),
+                    onChanged: (val) {
+                      if (val != null) setState(() => _selectedWallet = val);
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<Category>(
+                    initialValue: _selectedCategory,
+                    decoration: const InputDecoration(
+                      labelText: 'Danh mục',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: _categories
+                        .map((c) => DropdownMenuItem(value: c, child: Text(c.name)))
+                        .toList(),
+                    onChanged: (val) {
+                      if (val != null) setState(() => _selectedCategory = val);
                     },
                   ),
                   const SizedBox(height: 16),

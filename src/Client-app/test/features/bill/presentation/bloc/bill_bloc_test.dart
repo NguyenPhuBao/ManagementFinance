@@ -53,4 +53,41 @@ void main() {
       ),
     );
   });
+
+  test('thanh toán hoá đơn đã trả báo đúng lý do, không phải lỗi chung chung',
+      () async {
+    await db.walletDao.insert(
+      WalletsCompanion.insert(
+        id: 'w1',
+        idaccount: 1,
+        name: 'Ví',
+        balance: const Value(1000000.0),
+        updatedAt: DateTime.now(),
+      ),
+    );
+    await db.billDao.insert(
+      BillsCompanion.insert(
+        id: 'paid-1',
+        idaccount: 1,
+        walletId: const Value('w1'),
+        name: 'Internet',
+        amount: 100000.0,
+        dueDate: DateTime.now(),
+        payStatus: const Value('Payed'),
+        isPaid: const Value(true),
+        updatedAt: DateTime.now(),
+      ),
+    );
+    final bill = (await db.billDao.getAll(1)).single;
+
+    bloc.add(PayBillEvent(bill: bill, walletId: 'w1', idaccount: 1));
+
+    final state = await bloc.stream.firstWhere((s) => s is BillError) as BillError;
+    expect(
+      state.message,
+      'Hóa đơn này đã được thanh toán rồi.',
+      reason: 'Ném nguyên exception ra màn hình cho người dùng đọc một chuỗi '
+          'kỹ thuật, trong khi đây là tình huống bình thường: bấm nút hai lần.',
+    );
+  });
 }

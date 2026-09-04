@@ -145,10 +145,35 @@ class BillDao extends DatabaseAccessor<AppDatabase> with _$BillDaoMixin {
     await into(bills).insert(entry, mode: InsertMode.insertOrReplace);
   }
 
+  Future<Bill?> getById(String id) {
+    return (select(bills)..where((t) => t.id.equals(id))).getSingleOrNull();
+  }
+
+  /// Cập nhật CHỈ những cột có mặt trong [entry].
+  ///
+  /// Đường sửa **không được** đi qua [insert]: `InsertMode.insertOrReplace`
+  /// thay nguyên hàng, nên mọi cột vắng mặt trong companion bị đưa về giá trị
+  /// mặc định. Form sửa hoá đơn chỉ gửi lên vài trường, nên nó từng biến hoá
+  /// đơn đã thanh toán thành chưa thanh toán, xoá sạch walletId/categoryId
+  /// (hai cột NOT NULL phía backend) và hạ cờ isRecurrence.
+  Future<void> updateFields(BillsCompanion entry) async {
+    if (!entry.id.present) {
+      throw ArgumentError('BillsCompanion phải có id để biết cập nhật hàng nào');
+    }
+    await (update(bills)..where((t) => t.id.equals(entry.id.value)))
+        .write(entry);
+  }
+
+  /// Đánh dấu đã thanh toán.
+  ///
+  /// Phải đặt CẢ HAI cột: nhánh đẩy gửi `pay_status` chứ không gửi `isPaid`,
+  /// nên nếu chỉ đặt `isPaid` thì backend vĩnh viễn thấy hoá đơn là 'Pending'
+  /// mà không có lỗi nào báo ra.
   Future<void> markPaid(String id) async {
     await (update(bills)..where((t) => t.id.equals(id))).write(
       BillsCompanion(
         isPaid: const Value(true),
+        payStatus: const Value('Payed'),
         syncStatus: const Value('pending'),
         updatedAt: Value(DateTime.now()),
       ),

@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart' hide Category;
 import 'package:drift/drift.dart';
 
 import '../api/dio_client.dart';
+import '../bill/bill_recurrence.dart';
 import '../database/app_database.dart';
 import 'sync_models.dart';
 import 'category_icon_registry.dart';
@@ -715,6 +716,9 @@ class SyncEngine {
               // start_date, due_date, pay_status, delete_at, update_at
               // (không phải id/is_paid/is_deleted/updated_at).
               final payStatus = bill['pay_status']?.toString() ?? 'Pending';
+              final isRecurrence = bill['recurrence'] == true;
+              final timeRecurrence =
+                  bill['time_recurrence']?.toString() ?? kBillCycleMonth;
               return BillsCompanion(
                 id: Value((bill['idbill'] ?? bill['id']).toString()),
                 idaccount: Value(
@@ -735,9 +739,15 @@ class SyncEngine {
                 payStatus: Value(payStatus),
                 isPaid: Value(payStatus == 'Payed'),
                 timeNotification: Value(bill['time_notification']?.toString()),
-                isRecurrence: Value(bill['recurrence'] == true),
-                timeRecurrence:
-                    Value(bill['time_recurrence']?.toString() ?? 'Month'),
+                isRecurrence: Value(isRecurrence),
+                timeRecurrence: Value(timeRecurrence),
+                // Cột chuỗi cũ phải ghi CÙNG LÚC. Bỏ trống nó là để nó rơi về
+                // mặc định 'monthly' của bảng, nên một hoá đơn không lặp kéo
+                // về từ backend vẫn trông như hoá đơn hàng tháng với bất kỳ
+                // chỗ nào còn đọc cột cũ — sai lệch im lặng (quy tắc 4).
+                recurrence: Value(
+                  isRecurrence ? legacyFromTimeRecurrence(timeRecurrence) : 'once',
+                ),
                 icon: Value(bill['icon']?.toString() ?? 'receipt'),
                 colour: Value(bill['color']?.toString() ?? '#4CAF50'),
                 note: Value(bill['note']?.toString() ?? ''),
