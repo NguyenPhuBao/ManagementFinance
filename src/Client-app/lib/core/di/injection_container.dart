@@ -34,6 +34,7 @@ import '../../features/bill/presentation/bloc/bill_bloc.dart';
 import '../../features/category/data/repositories/category_management_repository.dart';
 import '../../features/category/data/services/personal_default_categories.dart';
 import '../../features/category/data/services/category_suggestion_engine.dart';
+import '../notification/notification_scanner.dart';
 
 /// Service locator — dùng `sl<T>()` để resolve dependencies
 final GetIt sl = GetIt.instance;
@@ -188,6 +189,18 @@ Future<void> setupDependencies() async {
   // Factory: mỗi trang một cubit, tự huỷ khi trang đóng.
   sl.registerFactory<BudgetCubit>(
     () => BudgetCubit(repository: sl<BudgetRepository>()),
+  );
+
+  // ── 11. Thông báo ────────────────────────────────────────────────────────
+  // Đăng ký SAU BudgetRepository vì scanner đọc qua nó. Là singleton: mỗi
+  // listener thừa trên statusStream là thêm một lượt quét cho mỗi sự kiện.
+  sl.registerLazySingleton<NotificationScanner>(
+    () => NotificationScanner(
+      dao: sl<AppDatabase>().notificationDao,
+      loadBudgets: (idaccount, now) =>
+          sl<BudgetRepository>().getBudgets(idaccount, now: now),
+      syncStatus: sl<SyncEngine>().statusStream,
+    ),
   );
 
   await sl.allReady();

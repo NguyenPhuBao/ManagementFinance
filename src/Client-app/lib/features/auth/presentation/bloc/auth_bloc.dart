@@ -6,6 +6,7 @@ import '../../../category/data/services/personal_default_categories.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/sync/sync_engine.dart';
+import '../../../../core/notification/notification_scanner.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../../wallet/data/services/default_account_data_initializer.dart';
 import 'auth_event.dart';
@@ -73,6 +74,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     if (sl.isRegistered<SyncEngine>()) {
       sl<SyncEngine>().stop();
     }
+    // Dừng quét cùng lúc với đồng bộ. Còn sót subscription là sau khi đăng
+    // xuất vẫn quét, và quét bằng idaccount của người vừa rời đi.
+    if (sl.isRegistered<NotificationScanner>()) {
+      await sl<NotificationScanner>().stop();
+    }
     await authRepository.logout();
     emit(AuthUnauthenticated());
   }
@@ -127,6 +133,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         final engine = sl<SyncEngine>();
         // Không await ở đường mở app: chờ một vòng mạng ở đây làm màn hình đầu
         // tiên đứng hình. Nối phần tạo danh mục vào sau bằng `then`.
+        // Bám đúng vòng đời của SyncEngine. Cố ý KHÔNG gắn ở home_page.dart —
+        // chỗ đó gọi start() ngay trong build(), tức mỗi lần Home rebuild là
+        // một lời gọi nữa.
+        if (sl.isRegistered<NotificationScanner>()) {
+          await sl<NotificationScanner>().start(idAcc);
+        }
         unawaited(engine.start(idaccount: idAcc).then((_) async {
           // Pull hỏng (mất mạng, server lỗi) thì CSDL cục bộ chưa đáng tin —
           // tạo danh mục lúc này chính là lỗi G14. Bỏ qua, lần mở app sau thử
@@ -168,6 +180,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         // này phải xong trước khi chu kỳ đồng bộ đầu tiên chạm vào.
         await personal?.convertLegacyRows(idAcc);
         final engine = sl<SyncEngine>();
+        if (sl.isRegistered<NotificationScanner>()) {
+          await sl<NotificationScanner>().start(idAcc);
+        }
         await engine.start(idaccount: idAcc);
         // Tạo phần danh mục còn thiếu SAU khi đã pull. Chạy trước pull thì trên
         // một máy mới, CSDL cục bộ còn rỗng nên phép kiểm trùng không thấy gì và
@@ -190,6 +205,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(AuthLoading());
     if (sl.isRegistered<SyncEngine>()) {
       sl<SyncEngine>().stop();
+    }
+    // Dừng quét cùng lúc với đồng bộ. Còn sót subscription là sau khi đăng
+    // xuất vẫn quét, và quét bằng idaccount của người vừa rời đi.
+    if (sl.isRegistered<NotificationScanner>()) {
+      await sl<NotificationScanner>().stop();
     }
     await authRepository.logout();
     emit(AuthUnauthenticated());

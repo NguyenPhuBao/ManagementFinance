@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../../../core/database/app_database.dart';
+import '../../../../shared/widgets/notification_bell.dart';
 import '../../data/models/goal_entity.dart';
 import '../bloc/goal_cubit.dart';
 import '../../../../core/auth/current_account.dart';
@@ -48,9 +50,12 @@ class _GoalPageContent extends StatelessWidget {
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications, color: AppColors.primary),
-            onPressed: () {},
+          NotificationBell(
+            unreadCount: currentAccountIdOrNull(context) == null
+                ? null
+                : sl<AppDatabase>().notificationDao.watchUnreadCount(
+                    currentAccountIdOrNull(context)!),
+            onTap: () => context.push('/notifications'),
           ),
         ],
       ),

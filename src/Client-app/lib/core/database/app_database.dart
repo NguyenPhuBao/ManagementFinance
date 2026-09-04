@@ -5,10 +5,12 @@ import 'tables/wallets_table.dart';
 import 'tables/transactions_table.dart';
 import 'tables/categories_table.dart';
 import 'tables/other_tables.dart';
+import 'tables/notification_table.dart';
 import 'daos/wallet_dao.dart';
 import 'daos/transaction_dao.dart';
 import 'daos/category_dao.dart';
 import 'daos/other_daos.dart';
+import 'daos/notification_dao.dart';
 
 // ── Code generation ──────────────────────────────────────────────────────────
 // File này cần chạy build_runner để sinh ra:
@@ -37,6 +39,7 @@ part 'app_database.g.dart';
     Budgets,
     Bills,
     Goals,
+    AppNotifications,
   ],
   daos: [
     WalletDao,
@@ -45,6 +48,7 @@ part 'app_database.g.dart';
     BudgetDao,
     BillDao,
     GoalDao,
+    NotificationDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -52,7 +56,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration {
@@ -271,6 +275,15 @@ class AppDatabase extends _$AppDatabase {
           // liệu sang, nên giá trị cũ ('Week', 'Month'…) giữ nguyên.
           await m.alterTable(TableMigration(budgets));
         }
+        if (from < 13) {
+          // Bảng thông báo cục bộ. Không có dữ liệu cũ để chép sang: thông báo
+          // đều suy lại được từ ngân sách/hoá đơn/mục tiêu, nên tạo bảng rỗng
+          // là đủ — lần quét đầu tiên sẽ dựng lại toàn bộ.
+          await m.createTable(appNotifications);
+          await m.create(Index('idx_appnotif_feed',
+              'CREATE INDEX IF NOT EXISTS idx_appnotif_feed '
+              'ON app_notifications (idaccount, created_at)'));
+        }
       },
       beforeOpen: (details) async {
         // Bật foreign key constraints (SQLite tắt mặc định)
@@ -340,6 +353,12 @@ class AppDatabase extends _$AppDatabase {
                 t.idaccount.equals(0).not()))
           .go();
       removed += await (delete(wallets)
+            ..where((t) => t.idaccount.equals(keepIdaccount).not()))
+          .go();
+      // Thông báo cũng phải đi theo: bỏ sót là thông báo tài chính của người
+      // đăng nhập trước hiện trên máy người sau. Bảng này không có khoá ngoại
+      // nên vị trí trong chuỗi xoá không quan trọng.
+      removed += await (delete(appNotifications)
             ..where((t) => t.idaccount.equals(keepIdaccount).not()))
           .go();
     });

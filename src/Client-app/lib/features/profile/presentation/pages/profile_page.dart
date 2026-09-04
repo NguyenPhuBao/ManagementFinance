@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../../../core/auth/current_account.dart';
+import '../../../../core/database/app_database.dart';
+import '../../../../core/di/injection_container.dart';
+import '../../../../shared/widgets/notification_bell.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 
 class ProfilePage extends StatelessWidget {
@@ -24,9 +28,12 @@ class ProfilePage extends StatelessWidget {
           onPressed: () {},
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_none, color: AppColors.primary),
-            onPressed: () {},
+          NotificationBell(
+            unreadCount: currentAccountIdOrNull(context) == null
+                ? null
+                : sl<AppDatabase>().notificationDao.watchUnreadCount(
+                    currentAccountIdOrNull(context)!),
+            onTap: () => context.push('/notifications'),
           ),
         ],
       ),
@@ -68,7 +75,7 @@ class ProfilePage extends StatelessWidget {
                 _ProfileItem(
                   icon: Icons.notifications_none,
                   title: 'Thông báo',
-                  onTap: () {},
+                  onTap: () => context.push('/notifications'),
                 ),
                 _ProfileItem(
                   icon: Icons.dark_mode_outlined,

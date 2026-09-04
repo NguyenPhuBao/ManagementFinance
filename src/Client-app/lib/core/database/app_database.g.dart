@@ -6688,6 +6688,771 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
   }
 }
 
+class $AppNotificationsTable extends AppNotifications
+    with TableInfo<$AppNotificationsTable, AppNotification> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AppNotificationsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _idaccountMeta =
+      const VerificationMeta('idaccount');
+  @override
+  late final GeneratedColumn<int> idaccount = GeneratedColumn<int>(
+      'idaccount', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+      'kind', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _dedupeKeyMeta =
+      const VerificationMeta('dedupeKey');
+  @override
+  late final GeneratedColumn<String> dedupeKey = GeneratedColumn<String>(
+      'dedupe_key', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+      'title', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _bodyMeta = const VerificationMeta('body');
+  @override
+  late final GeneratedColumn<String> body = GeneratedColumn<String>(
+      'body', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _severityMeta =
+      const VerificationMeta('severity');
+  @override
+  late final GeneratedColumn<String> severity = GeneratedColumn<String>(
+      'severity', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _subjectTypeMeta =
+      const VerificationMeta('subjectType');
+  @override
+  late final GeneratedColumn<String> subjectType = GeneratedColumn<String>(
+      'subject_type', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _subjectIdMeta =
+      const VerificationMeta('subjectId');
+  @override
+  late final GeneratedColumn<String> subjectId = GeneratedColumn<String>(
+      'subject_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _deeplinkMeta =
+      const VerificationMeta('deeplink');
+  @override
+  late final GeneratedColumn<String> deeplink = GeneratedColumn<String>(
+      'deeplink', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _readAtMeta = const VerificationMeta('readAt');
+  @override
+  late final GeneratedColumn<DateTime> readAt = GeneratedColumn<DateTime>(
+      'read_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _dismissedAtMeta =
+      const VerificationMeta('dismissedAt');
+  @override
+  late final GeneratedColumn<DateTime> dismissedAt = GeneratedColumn<DateTime>(
+      'dismissed_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _osScheduledIdMeta =
+      const VerificationMeta('osScheduledId');
+  @override
+  late final GeneratedColumn<int> osScheduledId = GeneratedColumn<int>(
+      'os_scheduled_id', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _osDeliveredAtMeta =
+      const VerificationMeta('osDeliveredAt');
+  @override
+  late final GeneratedColumn<DateTime> osDeliveredAt =
+      GeneratedColumn<DateTime>('os_delivered_at', aliasedName, true,
+          type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        idaccount,
+        kind,
+        dedupeKey,
+        title,
+        body,
+        severity,
+        subjectType,
+        subjectId,
+        deeplink,
+        createdAt,
+        readAt,
+        dismissedAt,
+        osScheduledId,
+        osDeliveredAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'app_notifications';
+  @override
+  VerificationContext validateIntegrity(Insertable<AppNotification> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('idaccount')) {
+      context.handle(_idaccountMeta,
+          idaccount.isAcceptableOrUnknown(data['idaccount']!, _idaccountMeta));
+    } else if (isInserting) {
+      context.missing(_idaccountMeta);
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+          _kindMeta, kind.isAcceptableOrUnknown(data['kind']!, _kindMeta));
+    } else if (isInserting) {
+      context.missing(_kindMeta);
+    }
+    if (data.containsKey('dedupe_key')) {
+      context.handle(_dedupeKeyMeta,
+          dedupeKey.isAcceptableOrUnknown(data['dedupe_key']!, _dedupeKeyMeta));
+    } else if (isInserting) {
+      context.missing(_dedupeKeyMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+          _titleMeta, title.isAcceptableOrUnknown(data['title']!, _titleMeta));
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('body')) {
+      context.handle(
+          _bodyMeta, body.isAcceptableOrUnknown(data['body']!, _bodyMeta));
+    } else if (isInserting) {
+      context.missing(_bodyMeta);
+    }
+    if (data.containsKey('severity')) {
+      context.handle(_severityMeta,
+          severity.isAcceptableOrUnknown(data['severity']!, _severityMeta));
+    } else if (isInserting) {
+      context.missing(_severityMeta);
+    }
+    if (data.containsKey('subject_type')) {
+      context.handle(
+          _subjectTypeMeta,
+          subjectType.isAcceptableOrUnknown(
+              data['subject_type']!, _subjectTypeMeta));
+    }
+    if (data.containsKey('subject_id')) {
+      context.handle(_subjectIdMeta,
+          subjectId.isAcceptableOrUnknown(data['subject_id']!, _subjectIdMeta));
+    }
+    if (data.containsKey('deeplink')) {
+      context.handle(_deeplinkMeta,
+          deeplink.isAcceptableOrUnknown(data['deeplink']!, _deeplinkMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('read_at')) {
+      context.handle(_readAtMeta,
+          readAt.isAcceptableOrUnknown(data['read_at']!, _readAtMeta));
+    }
+    if (data.containsKey('dismissed_at')) {
+      context.handle(
+          _dismissedAtMeta,
+          dismissedAt.isAcceptableOrUnknown(
+              data['dismissed_at']!, _dismissedAtMeta));
+    }
+    if (data.containsKey('os_scheduled_id')) {
+      context.handle(
+          _osScheduledIdMeta,
+          osScheduledId.isAcceptableOrUnknown(
+              data['os_scheduled_id']!, _osScheduledIdMeta));
+    }
+    if (data.containsKey('os_delivered_at')) {
+      context.handle(
+          _osDeliveredAtMeta,
+          osDeliveredAt.isAcceptableOrUnknown(
+              data['os_delivered_at']!, _osDeliveredAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+        {idaccount, dedupeKey},
+      ];
+  @override
+  AppNotification map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AppNotification(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      idaccount: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}idaccount'])!,
+      kind: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}kind'])!,
+      dedupeKey: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}dedupe_key'])!,
+      title: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}title'])!,
+      body: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}body'])!,
+      severity: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}severity'])!,
+      subjectType: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}subject_type']),
+      subjectId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}subject_id']),
+      deeplink: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}deeplink']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      readAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}read_at']),
+      dismissedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}dismissed_at']),
+      osScheduledId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}os_scheduled_id']),
+      osDeliveredAt: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}os_delivered_at']),
+    );
+  }
+
+  @override
+  $AppNotificationsTable createAlias(String alias) {
+    return $AppNotificationsTable(attachedDatabase, alias);
+  }
+}
+
+class AppNotification extends DataClass implements Insertable<AppNotification> {
+  final String id;
+
+  /// Mọi truy vấn đọc **bắt buộc** lọc theo cột này. Bỏ sót là thông báo tài
+  /// chính của tài khoản khác hiện ra trên máy dùng chung.
+  final int idaccount;
+
+  /// `budgetNearLimit` | `budgetOverspent` | `billDueSoon` | `billOverdue`
+  /// | `goalCompleted` | `goalBehind` | `syncFailed` | `walletNegative`
+  final String kind;
+
+  /// Khoá chống trùng — **trái tim của bảng này**.
+  ///
+  /// Gồm *loại + chủ thể + đơn vị lặp lại hợp lệ*, và **tuyệt đối không chứa
+  /// giá trị biến thiên liên tục** (số đã chi, phần trăm thô). Nhét `spent` vào
+  /// đây là biến mỗi giao dịch thành một thông báo mới.
+  ///
+  /// Cùng với `uniqueKeys` bên dưới và `InsertMode.insertOrIgnore`, đây là toàn
+  /// bộ cơ chế chống trùng. Kiểm bằng Dart (`SELECT` rồi `INSERT`) không đủ:
+  /// quét được kích hoạt từ nhiều nguồn, hai nguồn nổ gần nhau sẽ cùng đi qua
+  /// nhánh "chưa có" trước khi bên nào kịp ghi.
+  final String dedupeKey;
+  final String title;
+  final String body;
+
+  /// `info` | `warning` | `critical` — quyết định màu dải và biểu tượng.
+  final String severity;
+
+  /// `budget` | `bill` | `goal` | `sync` | `wallet`
+  final String? subjectType;
+
+  /// Id bản ghi gốc, để huỷ lịch khi bản ghi đó bị xoá.
+  final String? subjectId;
+
+  /// Route go_router để điều hướng khi người dùng chạm vào.
+  final String? deeplink;
+
+  /// Mốc của **sự kiện**, không phải mốc quét.
+  final DateTime createdAt;
+  final DateTime? readAt;
+
+  /// Xoá mềm. **Giữ hàng lại** vì chính hàng này là bản ghi khoá trùng — xoá
+  /// hẳn thì lần quét sau sinh lại ngay, người dùng xoá mãi không hết.
+  final DateTime? dismissedAt;
+
+  /// Id đã cấp cho `flutter_local_notifications`, để huỷ lịch.
+  final int? osScheduledId;
+
+  /// Đã bắn ra hệ điều hành chưa. null = mới chỉ tồn tại trong app.
+  final DateTime? osDeliveredAt;
+  const AppNotification(
+      {required this.id,
+      required this.idaccount,
+      required this.kind,
+      required this.dedupeKey,
+      required this.title,
+      required this.body,
+      required this.severity,
+      this.subjectType,
+      this.subjectId,
+      this.deeplink,
+      required this.createdAt,
+      this.readAt,
+      this.dismissedAt,
+      this.osScheduledId,
+      this.osDeliveredAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['idaccount'] = Variable<int>(idaccount);
+    map['kind'] = Variable<String>(kind);
+    map['dedupe_key'] = Variable<String>(dedupeKey);
+    map['title'] = Variable<String>(title);
+    map['body'] = Variable<String>(body);
+    map['severity'] = Variable<String>(severity);
+    if (!nullToAbsent || subjectType != null) {
+      map['subject_type'] = Variable<String>(subjectType);
+    }
+    if (!nullToAbsent || subjectId != null) {
+      map['subject_id'] = Variable<String>(subjectId);
+    }
+    if (!nullToAbsent || deeplink != null) {
+      map['deeplink'] = Variable<String>(deeplink);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || readAt != null) {
+      map['read_at'] = Variable<DateTime>(readAt);
+    }
+    if (!nullToAbsent || dismissedAt != null) {
+      map['dismissed_at'] = Variable<DateTime>(dismissedAt);
+    }
+    if (!nullToAbsent || osScheduledId != null) {
+      map['os_scheduled_id'] = Variable<int>(osScheduledId);
+    }
+    if (!nullToAbsent || osDeliveredAt != null) {
+      map['os_delivered_at'] = Variable<DateTime>(osDeliveredAt);
+    }
+    return map;
+  }
+
+  AppNotificationsCompanion toCompanion(bool nullToAbsent) {
+    return AppNotificationsCompanion(
+      id: Value(id),
+      idaccount: Value(idaccount),
+      kind: Value(kind),
+      dedupeKey: Value(dedupeKey),
+      title: Value(title),
+      body: Value(body),
+      severity: Value(severity),
+      subjectType: subjectType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(subjectType),
+      subjectId: subjectId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(subjectId),
+      deeplink: deeplink == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deeplink),
+      createdAt: Value(createdAt),
+      readAt:
+          readAt == null && nullToAbsent ? const Value.absent() : Value(readAt),
+      dismissedAt: dismissedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(dismissedAt),
+      osScheduledId: osScheduledId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(osScheduledId),
+      osDeliveredAt: osDeliveredAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(osDeliveredAt),
+    );
+  }
+
+  factory AppNotification.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AppNotification(
+      id: serializer.fromJson<String>(json['id']),
+      idaccount: serializer.fromJson<int>(json['idaccount']),
+      kind: serializer.fromJson<String>(json['kind']),
+      dedupeKey: serializer.fromJson<String>(json['dedupeKey']),
+      title: serializer.fromJson<String>(json['title']),
+      body: serializer.fromJson<String>(json['body']),
+      severity: serializer.fromJson<String>(json['severity']),
+      subjectType: serializer.fromJson<String?>(json['subjectType']),
+      subjectId: serializer.fromJson<String?>(json['subjectId']),
+      deeplink: serializer.fromJson<String?>(json['deeplink']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      readAt: serializer.fromJson<DateTime?>(json['readAt']),
+      dismissedAt: serializer.fromJson<DateTime?>(json['dismissedAt']),
+      osScheduledId: serializer.fromJson<int?>(json['osScheduledId']),
+      osDeliveredAt: serializer.fromJson<DateTime?>(json['osDeliveredAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'idaccount': serializer.toJson<int>(idaccount),
+      'kind': serializer.toJson<String>(kind),
+      'dedupeKey': serializer.toJson<String>(dedupeKey),
+      'title': serializer.toJson<String>(title),
+      'body': serializer.toJson<String>(body),
+      'severity': serializer.toJson<String>(severity),
+      'subjectType': serializer.toJson<String?>(subjectType),
+      'subjectId': serializer.toJson<String?>(subjectId),
+      'deeplink': serializer.toJson<String?>(deeplink),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'readAt': serializer.toJson<DateTime?>(readAt),
+      'dismissedAt': serializer.toJson<DateTime?>(dismissedAt),
+      'osScheduledId': serializer.toJson<int?>(osScheduledId),
+      'osDeliveredAt': serializer.toJson<DateTime?>(osDeliveredAt),
+    };
+  }
+
+  AppNotification copyWith(
+          {String? id,
+          int? idaccount,
+          String? kind,
+          String? dedupeKey,
+          String? title,
+          String? body,
+          String? severity,
+          Value<String?> subjectType = const Value.absent(),
+          Value<String?> subjectId = const Value.absent(),
+          Value<String?> deeplink = const Value.absent(),
+          DateTime? createdAt,
+          Value<DateTime?> readAt = const Value.absent(),
+          Value<DateTime?> dismissedAt = const Value.absent(),
+          Value<int?> osScheduledId = const Value.absent(),
+          Value<DateTime?> osDeliveredAt = const Value.absent()}) =>
+      AppNotification(
+        id: id ?? this.id,
+        idaccount: idaccount ?? this.idaccount,
+        kind: kind ?? this.kind,
+        dedupeKey: dedupeKey ?? this.dedupeKey,
+        title: title ?? this.title,
+        body: body ?? this.body,
+        severity: severity ?? this.severity,
+        subjectType: subjectType.present ? subjectType.value : this.subjectType,
+        subjectId: subjectId.present ? subjectId.value : this.subjectId,
+        deeplink: deeplink.present ? deeplink.value : this.deeplink,
+        createdAt: createdAt ?? this.createdAt,
+        readAt: readAt.present ? readAt.value : this.readAt,
+        dismissedAt: dismissedAt.present ? dismissedAt.value : this.dismissedAt,
+        osScheduledId:
+            osScheduledId.present ? osScheduledId.value : this.osScheduledId,
+        osDeliveredAt:
+            osDeliveredAt.present ? osDeliveredAt.value : this.osDeliveredAt,
+      );
+  AppNotification copyWithCompanion(AppNotificationsCompanion data) {
+    return AppNotification(
+      id: data.id.present ? data.id.value : this.id,
+      idaccount: data.idaccount.present ? data.idaccount.value : this.idaccount,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      dedupeKey: data.dedupeKey.present ? data.dedupeKey.value : this.dedupeKey,
+      title: data.title.present ? data.title.value : this.title,
+      body: data.body.present ? data.body.value : this.body,
+      severity: data.severity.present ? data.severity.value : this.severity,
+      subjectType:
+          data.subjectType.present ? data.subjectType.value : this.subjectType,
+      subjectId: data.subjectId.present ? data.subjectId.value : this.subjectId,
+      deeplink: data.deeplink.present ? data.deeplink.value : this.deeplink,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      readAt: data.readAt.present ? data.readAt.value : this.readAt,
+      dismissedAt:
+          data.dismissedAt.present ? data.dismissedAt.value : this.dismissedAt,
+      osScheduledId: data.osScheduledId.present
+          ? data.osScheduledId.value
+          : this.osScheduledId,
+      osDeliveredAt: data.osDeliveredAt.present
+          ? data.osDeliveredAt.value
+          : this.osDeliveredAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AppNotification(')
+          ..write('id: $id, ')
+          ..write('idaccount: $idaccount, ')
+          ..write('kind: $kind, ')
+          ..write('dedupeKey: $dedupeKey, ')
+          ..write('title: $title, ')
+          ..write('body: $body, ')
+          ..write('severity: $severity, ')
+          ..write('subjectType: $subjectType, ')
+          ..write('subjectId: $subjectId, ')
+          ..write('deeplink: $deeplink, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('readAt: $readAt, ')
+          ..write('dismissedAt: $dismissedAt, ')
+          ..write('osScheduledId: $osScheduledId, ')
+          ..write('osDeliveredAt: $osDeliveredAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id,
+      idaccount,
+      kind,
+      dedupeKey,
+      title,
+      body,
+      severity,
+      subjectType,
+      subjectId,
+      deeplink,
+      createdAt,
+      readAt,
+      dismissedAt,
+      osScheduledId,
+      osDeliveredAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AppNotification &&
+          other.id == this.id &&
+          other.idaccount == this.idaccount &&
+          other.kind == this.kind &&
+          other.dedupeKey == this.dedupeKey &&
+          other.title == this.title &&
+          other.body == this.body &&
+          other.severity == this.severity &&
+          other.subjectType == this.subjectType &&
+          other.subjectId == this.subjectId &&
+          other.deeplink == this.deeplink &&
+          other.createdAt == this.createdAt &&
+          other.readAt == this.readAt &&
+          other.dismissedAt == this.dismissedAt &&
+          other.osScheduledId == this.osScheduledId &&
+          other.osDeliveredAt == this.osDeliveredAt);
+}
+
+class AppNotificationsCompanion extends UpdateCompanion<AppNotification> {
+  final Value<String> id;
+  final Value<int> idaccount;
+  final Value<String> kind;
+  final Value<String> dedupeKey;
+  final Value<String> title;
+  final Value<String> body;
+  final Value<String> severity;
+  final Value<String?> subjectType;
+  final Value<String?> subjectId;
+  final Value<String?> deeplink;
+  final Value<DateTime> createdAt;
+  final Value<DateTime?> readAt;
+  final Value<DateTime?> dismissedAt;
+  final Value<int?> osScheduledId;
+  final Value<DateTime?> osDeliveredAt;
+  final Value<int> rowid;
+  const AppNotificationsCompanion({
+    this.id = const Value.absent(),
+    this.idaccount = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.dedupeKey = const Value.absent(),
+    this.title = const Value.absent(),
+    this.body = const Value.absent(),
+    this.severity = const Value.absent(),
+    this.subjectType = const Value.absent(),
+    this.subjectId = const Value.absent(),
+    this.deeplink = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.readAt = const Value.absent(),
+    this.dismissedAt = const Value.absent(),
+    this.osScheduledId = const Value.absent(),
+    this.osDeliveredAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AppNotificationsCompanion.insert({
+    required String id,
+    required int idaccount,
+    required String kind,
+    required String dedupeKey,
+    required String title,
+    required String body,
+    required String severity,
+    this.subjectType = const Value.absent(),
+    this.subjectId = const Value.absent(),
+    this.deeplink = const Value.absent(),
+    required DateTime createdAt,
+    this.readAt = const Value.absent(),
+    this.dismissedAt = const Value.absent(),
+    this.osScheduledId = const Value.absent(),
+    this.osDeliveredAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        idaccount = Value(idaccount),
+        kind = Value(kind),
+        dedupeKey = Value(dedupeKey),
+        title = Value(title),
+        body = Value(body),
+        severity = Value(severity),
+        createdAt = Value(createdAt);
+  static Insertable<AppNotification> custom({
+    Expression<String>? id,
+    Expression<int>? idaccount,
+    Expression<String>? kind,
+    Expression<String>? dedupeKey,
+    Expression<String>? title,
+    Expression<String>? body,
+    Expression<String>? severity,
+    Expression<String>? subjectType,
+    Expression<String>? subjectId,
+    Expression<String>? deeplink,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? readAt,
+    Expression<DateTime>? dismissedAt,
+    Expression<int>? osScheduledId,
+    Expression<DateTime>? osDeliveredAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (idaccount != null) 'idaccount': idaccount,
+      if (kind != null) 'kind': kind,
+      if (dedupeKey != null) 'dedupe_key': dedupeKey,
+      if (title != null) 'title': title,
+      if (body != null) 'body': body,
+      if (severity != null) 'severity': severity,
+      if (subjectType != null) 'subject_type': subjectType,
+      if (subjectId != null) 'subject_id': subjectId,
+      if (deeplink != null) 'deeplink': deeplink,
+      if (createdAt != null) 'created_at': createdAt,
+      if (readAt != null) 'read_at': readAt,
+      if (dismissedAt != null) 'dismissed_at': dismissedAt,
+      if (osScheduledId != null) 'os_scheduled_id': osScheduledId,
+      if (osDeliveredAt != null) 'os_delivered_at': osDeliveredAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AppNotificationsCompanion copyWith(
+      {Value<String>? id,
+      Value<int>? idaccount,
+      Value<String>? kind,
+      Value<String>? dedupeKey,
+      Value<String>? title,
+      Value<String>? body,
+      Value<String>? severity,
+      Value<String?>? subjectType,
+      Value<String?>? subjectId,
+      Value<String?>? deeplink,
+      Value<DateTime>? createdAt,
+      Value<DateTime?>? readAt,
+      Value<DateTime?>? dismissedAt,
+      Value<int?>? osScheduledId,
+      Value<DateTime?>? osDeliveredAt,
+      Value<int>? rowid}) {
+    return AppNotificationsCompanion(
+      id: id ?? this.id,
+      idaccount: idaccount ?? this.idaccount,
+      kind: kind ?? this.kind,
+      dedupeKey: dedupeKey ?? this.dedupeKey,
+      title: title ?? this.title,
+      body: body ?? this.body,
+      severity: severity ?? this.severity,
+      subjectType: subjectType ?? this.subjectType,
+      subjectId: subjectId ?? this.subjectId,
+      deeplink: deeplink ?? this.deeplink,
+      createdAt: createdAt ?? this.createdAt,
+      readAt: readAt ?? this.readAt,
+      dismissedAt: dismissedAt ?? this.dismissedAt,
+      osScheduledId: osScheduledId ?? this.osScheduledId,
+      osDeliveredAt: osDeliveredAt ?? this.osDeliveredAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (idaccount.present) {
+      map['idaccount'] = Variable<int>(idaccount.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (dedupeKey.present) {
+      map['dedupe_key'] = Variable<String>(dedupeKey.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (body.present) {
+      map['body'] = Variable<String>(body.value);
+    }
+    if (severity.present) {
+      map['severity'] = Variable<String>(severity.value);
+    }
+    if (subjectType.present) {
+      map['subject_type'] = Variable<String>(subjectType.value);
+    }
+    if (subjectId.present) {
+      map['subject_id'] = Variable<String>(subjectId.value);
+    }
+    if (deeplink.present) {
+      map['deeplink'] = Variable<String>(deeplink.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (readAt.present) {
+      map['read_at'] = Variable<DateTime>(readAt.value);
+    }
+    if (dismissedAt.present) {
+      map['dismissed_at'] = Variable<DateTime>(dismissedAt.value);
+    }
+    if (osScheduledId.present) {
+      map['os_scheduled_id'] = Variable<int>(osScheduledId.value);
+    }
+    if (osDeliveredAt.present) {
+      map['os_delivered_at'] = Variable<DateTime>(osDeliveredAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AppNotificationsCompanion(')
+          ..write('id: $id, ')
+          ..write('idaccount: $idaccount, ')
+          ..write('kind: $kind, ')
+          ..write('dedupeKey: $dedupeKey, ')
+          ..write('title: $title, ')
+          ..write('body: $body, ')
+          ..write('severity: $severity, ')
+          ..write('subjectType: $subjectType, ')
+          ..write('subjectId: $subjectId, ')
+          ..write('deeplink: $deeplink, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('readAt: $readAt, ')
+          ..write('dismissedAt: $dismissedAt, ')
+          ..write('osScheduledId: $osScheduledId, ')
+          ..write('osDeliveredAt: $osDeliveredAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -6701,6 +7466,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $BudgetsTable budgets = $BudgetsTable(this);
   late final $BillsTable bills = $BillsTable(this);
   late final $GoalsTable goals = $GoalsTable(this);
+  late final $AppNotificationsTable appNotifications =
+      $AppNotificationsTable(this);
+  late final Index idxAppnotifFeed = Index('idx_appnotif_feed',
+      'CREATE INDEX idx_appnotif_feed ON app_notifications (idaccount, created_at)');
   late final WalletDao walletDao = WalletDao(this as AppDatabase);
   late final TransactionDao transactionDao =
       TransactionDao(this as AppDatabase);
@@ -6708,6 +7477,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final BudgetDao budgetDao = BudgetDao(this as AppDatabase);
   late final BillDao billDao = BillDao(this as AppDatabase);
   late final GoalDao goalDao = GoalDao(this as AppDatabase);
+  late final NotificationDao notificationDao =
+      NotificationDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -6720,7 +7491,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         categoryGroupMemberships,
         budgets,
         bills,
-        goals
+        goals,
+        appNotifications,
+        idxAppnotifFeed
       ];
 }
 
@@ -9782,6 +10555,332 @@ typedef $$GoalsTableProcessedTableManager = ProcessedTableManager<
     (Goal, BaseReferences<_$AppDatabase, $GoalsTable, Goal>),
     Goal,
     PrefetchHooks Function()>;
+typedef $$AppNotificationsTableCreateCompanionBuilder
+    = AppNotificationsCompanion Function({
+  required String id,
+  required int idaccount,
+  required String kind,
+  required String dedupeKey,
+  required String title,
+  required String body,
+  required String severity,
+  Value<String?> subjectType,
+  Value<String?> subjectId,
+  Value<String?> deeplink,
+  required DateTime createdAt,
+  Value<DateTime?> readAt,
+  Value<DateTime?> dismissedAt,
+  Value<int?> osScheduledId,
+  Value<DateTime?> osDeliveredAt,
+  Value<int> rowid,
+});
+typedef $$AppNotificationsTableUpdateCompanionBuilder
+    = AppNotificationsCompanion Function({
+  Value<String> id,
+  Value<int> idaccount,
+  Value<String> kind,
+  Value<String> dedupeKey,
+  Value<String> title,
+  Value<String> body,
+  Value<String> severity,
+  Value<String?> subjectType,
+  Value<String?> subjectId,
+  Value<String?> deeplink,
+  Value<DateTime> createdAt,
+  Value<DateTime?> readAt,
+  Value<DateTime?> dismissedAt,
+  Value<int?> osScheduledId,
+  Value<DateTime?> osDeliveredAt,
+  Value<int> rowid,
+});
+
+class $$AppNotificationsTableFilterComposer
+    extends Composer<_$AppDatabase, $AppNotificationsTable> {
+  $$AppNotificationsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get idaccount => $composableBuilder(
+      column: $table.idaccount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get kind => $composableBuilder(
+      column: $table.kind, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get dedupeKey => $composableBuilder(
+      column: $table.dedupeKey, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get title => $composableBuilder(
+      column: $table.title, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get body => $composableBuilder(
+      column: $table.body, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get severity => $composableBuilder(
+      column: $table.severity, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get subjectType => $composableBuilder(
+      column: $table.subjectType, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get subjectId => $composableBuilder(
+      column: $table.subjectId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get deeplink => $composableBuilder(
+      column: $table.deeplink, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get readAt => $composableBuilder(
+      column: $table.readAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get dismissedAt => $composableBuilder(
+      column: $table.dismissedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get osScheduledId => $composableBuilder(
+      column: $table.osScheduledId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get osDeliveredAt => $composableBuilder(
+      column: $table.osDeliveredAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$AppNotificationsTableOrderingComposer
+    extends Composer<_$AppDatabase, $AppNotificationsTable> {
+  $$AppNotificationsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get idaccount => $composableBuilder(
+      column: $table.idaccount, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+      column: $table.kind, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get dedupeKey => $composableBuilder(
+      column: $table.dedupeKey, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get title => $composableBuilder(
+      column: $table.title, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get body => $composableBuilder(
+      column: $table.body, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get severity => $composableBuilder(
+      column: $table.severity, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get subjectType => $composableBuilder(
+      column: $table.subjectType, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get subjectId => $composableBuilder(
+      column: $table.subjectId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get deeplink => $composableBuilder(
+      column: $table.deeplink, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get readAt => $composableBuilder(
+      column: $table.readAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get dismissedAt => $composableBuilder(
+      column: $table.dismissedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get osScheduledId => $composableBuilder(
+      column: $table.osScheduledId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get osDeliveredAt => $composableBuilder(
+      column: $table.osDeliveredAt,
+      builder: (column) => ColumnOrderings(column));
+}
+
+class $$AppNotificationsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AppNotificationsTable> {
+  $$AppNotificationsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get idaccount =>
+      $composableBuilder(column: $table.idaccount, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<String> get dedupeKey =>
+      $composableBuilder(column: $table.dedupeKey, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get body =>
+      $composableBuilder(column: $table.body, builder: (column) => column);
+
+  GeneratedColumn<String> get severity =>
+      $composableBuilder(column: $table.severity, builder: (column) => column);
+
+  GeneratedColumn<String> get subjectType => $composableBuilder(
+      column: $table.subjectType, builder: (column) => column);
+
+  GeneratedColumn<String> get subjectId =>
+      $composableBuilder(column: $table.subjectId, builder: (column) => column);
+
+  GeneratedColumn<String> get deeplink =>
+      $composableBuilder(column: $table.deeplink, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get readAt =>
+      $composableBuilder(column: $table.readAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get dismissedAt => $composableBuilder(
+      column: $table.dismissedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get osScheduledId => $composableBuilder(
+      column: $table.osScheduledId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get osDeliveredAt => $composableBuilder(
+      column: $table.osDeliveredAt, builder: (column) => column);
+}
+
+class $$AppNotificationsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $AppNotificationsTable,
+    AppNotification,
+    $$AppNotificationsTableFilterComposer,
+    $$AppNotificationsTableOrderingComposer,
+    $$AppNotificationsTableAnnotationComposer,
+    $$AppNotificationsTableCreateCompanionBuilder,
+    $$AppNotificationsTableUpdateCompanionBuilder,
+    (
+      AppNotification,
+      BaseReferences<_$AppDatabase, $AppNotificationsTable, AppNotification>
+    ),
+    AppNotification,
+    PrefetchHooks Function()> {
+  $$AppNotificationsTableTableManager(
+      _$AppDatabase db, $AppNotificationsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AppNotificationsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AppNotificationsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AppNotificationsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<int> idaccount = const Value.absent(),
+            Value<String> kind = const Value.absent(),
+            Value<String> dedupeKey = const Value.absent(),
+            Value<String> title = const Value.absent(),
+            Value<String> body = const Value.absent(),
+            Value<String> severity = const Value.absent(),
+            Value<String?> subjectType = const Value.absent(),
+            Value<String?> subjectId = const Value.absent(),
+            Value<String?> deeplink = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<DateTime?> readAt = const Value.absent(),
+            Value<DateTime?> dismissedAt = const Value.absent(),
+            Value<int?> osScheduledId = const Value.absent(),
+            Value<DateTime?> osDeliveredAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              AppNotificationsCompanion(
+            id: id,
+            idaccount: idaccount,
+            kind: kind,
+            dedupeKey: dedupeKey,
+            title: title,
+            body: body,
+            severity: severity,
+            subjectType: subjectType,
+            subjectId: subjectId,
+            deeplink: deeplink,
+            createdAt: createdAt,
+            readAt: readAt,
+            dismissedAt: dismissedAt,
+            osScheduledId: osScheduledId,
+            osDeliveredAt: osDeliveredAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required int idaccount,
+            required String kind,
+            required String dedupeKey,
+            required String title,
+            required String body,
+            required String severity,
+            Value<String?> subjectType = const Value.absent(),
+            Value<String?> subjectId = const Value.absent(),
+            Value<String?> deeplink = const Value.absent(),
+            required DateTime createdAt,
+            Value<DateTime?> readAt = const Value.absent(),
+            Value<DateTime?> dismissedAt = const Value.absent(),
+            Value<int?> osScheduledId = const Value.absent(),
+            Value<DateTime?> osDeliveredAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              AppNotificationsCompanion.insert(
+            id: id,
+            idaccount: idaccount,
+            kind: kind,
+            dedupeKey: dedupeKey,
+            title: title,
+            body: body,
+            severity: severity,
+            subjectType: subjectType,
+            subjectId: subjectId,
+            deeplink: deeplink,
+            createdAt: createdAt,
+            readAt: readAt,
+            dismissedAt: dismissedAt,
+            osScheduledId: osScheduledId,
+            osDeliveredAt: osDeliveredAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$AppNotificationsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $AppNotificationsTable,
+    AppNotification,
+    $$AppNotificationsTableFilterComposer,
+    $$AppNotificationsTableOrderingComposer,
+    $$AppNotificationsTableAnnotationComposer,
+    $$AppNotificationsTableCreateCompanionBuilder,
+    $$AppNotificationsTableUpdateCompanionBuilder,
+    (
+      AppNotification,
+      BaseReferences<_$AppDatabase, $AppNotificationsTable, AppNotification>
+    ),
+    AppNotification,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -9803,4 +10902,6 @@ class $AppDatabaseManager {
       $$BillsTableTableManager(_db, _db.bills);
   $$GoalsTableTableManager get goals =>
       $$GoalsTableTableManager(_db, _db.goals);
+  $$AppNotificationsTableTableManager get appNotifications =>
+      $$AppNotificationsTableTableManager(_db, _db.appNotifications);
 }

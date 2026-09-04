@@ -40,6 +40,7 @@ import '../../features/goal/presentation/pages/goal_page.dart';
 import '../../features/goal/presentation/pages/goal_add_page.dart';
 import '../../features/goal/presentation/pages/goal_detail_page.dart';
 import '../../features/ai_chat/presentation/pages/ai_chat_page.dart';
+import '../../features/notification/presentation/pages/notification_center_page.dart';
 
 // ─── GoRouterRefreshStream ───────────────────────────────────────────────────
 // Wrap AuthBloc stream thành ChangeNotifier để GoRouter tự refresh
@@ -269,6 +270,12 @@ class AppRouter {
                 bill: s.extra as Bill?,
               ),
             ),
+          ),
+
+          // Notification
+          GoRoute(
+            path: '/notifications',
+            builder: (_, __) => const NotificationCenterPage(),
           ),
 
           // Goal
