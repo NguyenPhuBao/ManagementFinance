@@ -18,7 +18,7 @@
 | Việc | Đọc thêm |
 |---|---|
 | Làm tiếp phía client | `docs/CLIENT_APP_KNOWN_GAPS.md` — các mục dang dở kèm **lý do hoãn** và **bán kính ảnh hưởng** |
-| Việc thuộc backend | `docs/superpowers/backend/README.md` — mục lục 16 tài liệu, chia ba nhóm kèm thứ tự đọc. Hiện **6 tài liệu còn việc**, mở đầu là `CATEGORY_KEYWORD_SYNC.md` (lỗ hổng phân quyền) và `2026-09-04-backend-idempotent-delete.md` (ba lỗ hổng của `/sync/push`, một trong đó chặn hẳn ngân sách "Ngày cụ thể"). Bảng trạng thái đầy đủ ở mục 14 `docs/PROJECT_CONTEXT.md` |
+| Việc thuộc backend | `docs/superpowers/backend/README.md` — **mục 0 là thứ tự thi công chín bước chia ba nhóm**, đọc trước; mục 2 là trạng thái từng tài liệu. Hiện **7 tài liệu còn việc**. Bước 1 là thứ đang gây hại ngay: **Socket.io không xác thực + `io.emit` toàn cục** (`2026-09-04-ocr-classify-review.md`). Sau đó là `2026-09-04-backend-idempotent-delete.md` (ba lỗ hổng của `/sync/push`, một trong đó chặn hẳn ngân sách "Ngày cụ thể") và `CATEGORY_KEYWORD_SYNC.md` (lỗ hổng phân quyền). Bảng trạng thái đầy đủ ở mục 14 `docs/PROJECT_CONTEXT.md` |
 | Đụng vào đồng bộ | `src/Client-app/test/core/sync/sync_payload_contract_test.dart` — đọc **như tài liệu**, đây là nơi duy nhất ghi hợp đồng tên trường giữa hai phía |
 | Đụng vào danh mục | `docs/CATEGORY_RATIONALE.md` — **lý do** của từng thay đổi, bằng chứng đo được, và các phương án đã loại bỏ. Đọc trước khi định "dọn dẹp" vùng này |
 
@@ -54,7 +54,7 @@
 ## Lệnh hay dùng
 
 ```bash
-# Test (chạy từ src/Client-app) — hiện 324/324 pass, ~15 giây
+# Test (chạy từ src/Client-app) — hiện 335/335 pass, ~15 giây
 flutter test
 flutter analyze          # mức nền: 29 issue, KHÔNG có error
 

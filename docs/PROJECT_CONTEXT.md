@@ -168,7 +168,9 @@ Phép kiểm tra **chỉ chạy khi tên thật sự đổi**. Bản client trư
 > UNIQUE (NameCategory, Classify) WHERE Is_default = TRUE           -- uq_category_default_name_classify
 > ```
 >
-> Hai ràng buộc này lệch quy tắc theo **cả hai chiều**: lỏng hơn ở `Classify`, ở việc tách khoá riêng cho danh mục mặc định và ở so tên phân biệt hoa/thường; nhưng **chặt hơn** ở chỗ hàng đã xoá mềm vẫn giữ chỗ — nên xoá một danh mục rồi tạo lại cùng tên sẽ được client cho qua mà CSDL từ chối, và `/sync/push` chỉ đánh dấu thao tác đó `failed` nên **hỏng âm thầm**.
+> Hai ràng buộc này lệch quy tắc theo **cả hai chiều**: lỏng hơn ở `Classify`, ở việc tách khoá riêng cho danh mục mặc định và ở so tên phân biệt hoa/thường; nhưng **chặt hơn** ở chỗ hàng đã xoá mềm vẫn giữ chỗ — nên xoá một danh mục rồi tạo lại cùng tên sẽ được client cho qua mà CSDL từ chối.
+>
+> Dòng "chặt hơn" đó có một đường kích hoạt **tự lặp**, xem **G16** trong `docs/CLIENT_APP_KNOWN_GAPS.md`. Từ 2026-09-04 client xếp vi phạm UNIQUE (`23505`) vào `permanent` nên bản ghi hỏng bị chặn theo thời gian và có ghi `syncError` — **không còn hoàn toàn âm thầm, không còn kéo chậm hàng đợi**. Nhưng bản ghi vẫn sinh ra ở mỗi lần mở app và vẫn không lên được server.
 >
 > Việc cần backend làm, kèm SQL và cách kiểm chứng: `docs/superpowers/backend/CATEGORY_NAME_UNIQUENESS.md`.
 
@@ -539,7 +541,7 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-03)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-04)
 
 ### 🔐 Xác thực phiên đăng nhập
 
@@ -554,7 +556,7 @@ src/Backend/
 
 ### ✅ Đã hoàn thành
 - Schema PostgreSQL aligned với New_Database.md (migration đã apply)
-- SQLite schema (Drift) aligned với backend schema — `schemaVersion = 11`
+- SQLite schema (Drift) aligned với backend schema — `schemaVersion = 12`
 - Sync engine: thứ tự batch đúng, nhóm danh mục đẩy trước danh mục con
 - FK violation fix: `_resolveCategoryId` + step 1b
 - Category dedup trong UI
@@ -577,7 +579,13 @@ src/Backend/
 - **`AuthInterceptor` không còn xoá token trong im lặng**: phát `sessionExpiredStream`, AuthBloc nghe song song với SyncEngine *(G12)*
 - **Hẹn lại chu kỳ đồng bộ bị giãn cách từ chối** *(G13)* — trước đây nhánh chặn chỉ `return`, thay đổi ghi trong lúc giãn cách phải chờ tới lần mở app sau
 - **Danh mục cá nhân không còn sinh trùng trên máy mới** *(G14)* — tạo sau lần pull đầu tiên thay vì trước, kèm bước khử trùng lặp dọn hậu quả trên máy đã lỡ tạo
-- **Test: 246/246 pass** (~15 giây), 31 file — cả 31 file đều đã được git theo dõi
+- **Ngân sách hai tab, thang bốn màu, chu kỳ chọn được và "Ngày cụ thể"** (2026-09-04) — migration v11→v12; chi tiết ở mục "💰 Ngân sách" bên dưới
+- **Thoát hai vòng lặp đẩy dữ liệu vô hạn** (2026-09-04, commit `71ffc08`)
+- **Từ khoá phân loại của backend nay xuống tới client** (2026-09-04) — pull đọc cột `keyword`, tách CSV, gieo vào `CategoryKeywords`; **chỉ gieo khi trống** để không hồi sinh từ khoá người dùng đã xoá
+- **Bộ gợi ý danh mục so khớp được tiếng Việt không dấu** (2026-09-04) — NFC + vòng dự phòng bỏ dấu, khớp còn dấu luôn thắng
+- **Vi phạm ràng buộc UNIQUE (23505) là lỗi vĩnh viễn** (2026-09-04) *(G16)* — trước đây rơi vào `transient` và đẩy lại ở mọi chu kỳ
+- **Ô ghi chú có debounce 300ms và đọc từ khoá bằng một truy vấn gộp** (2026-09-04) — trước đây mỗi ký tự gõ sinh 1+N truy vấn SQLite
+- **Test: 335/335 pass** (~15 giây), 39 file — cả 39 file đều đã được git theo dõi
 
 ### 🔄 Việc còn dang dở
 
@@ -586,19 +594,26 @@ Xem đầy đủ tại **`docs/CLIENT_APP_KNOWN_GAPS.md`**. Phiên 2026-09-03 đ
 - **G15 — Bản ghi vừa hết hạn vừa hỏng đồng bộ thì không sửa được.** ⏸️ **Hoãn có chủ ý** (2026-09-04): tab "Đã hết hạn" khoá sửa/xoá, nên một ngân sách vừa quá hạn vừa bị backend từ chối vĩnh viễn sẽ nằm lại mãi — hàng đợi đồng bộ vẫn thông vì `SyncEngine` chặn nó theo thời gian, nhưng người dùng không chữa được. Giữ nguyên vì tab đó là nền cho phần thống kê/báo cáo sẽ làm sau. Bán kính rủi ro hẹp: nguồn gây lỗi chính (form tạo ra `end ≤ start`) đã bịt cùng ngày.
 - **G10 — `CategoryGroupMemberships` không bao giờ được đồng bộ.** ⛔ **Không sửa được ở client**: backend không có bảng membership và cũng không có `SyncEntityType` tương ứng (`UPSERT_MAP`/`ENTITY_PRIORITY` chỉ có 6 entity), nên thêm entity mới ở client sẽ chỉ nhận `Unknown entity` và kẹt vĩnh viễn. Việc gán danh mục **mặc định** vào nhóm vì thế chỉ tồn tại trên một máy. Đề xuất chi tiết: `docs/superpowers/backend/CATEGORY_GROUP_MEMBERSHIP_SYNC.md`.
 
-> ⚠️ **`.gitignore` dòng 77 vẫn có `test/`.** Luật này đã cắn lần thứ hai: hai file test tạo ngày 2026-09-03 cũng bị chặn âm thầm và phải `git add -f`. Mọi file test tạo **mới** vẫn sẽ bị bỏ qua trong im lặng.
+> ⚠️ **`.gitignore` dòng 77 vẫn có `test/`.** Luật này đã cắn **lần thứ ba** (phiên 2026-09-04). Mọi file test tạo **mới** vẫn sẽ bị bỏ qua trong im lặng — nhớ `git add -f`.
+>
+> Hệ quả ít ai biết: **công cụ Grep tôn trọng `.gitignore` nên không nhìn thấy thư mục `test/`**. Muốn dò xem còn ai gọi một hàm sắp xoá thì phải dùng `grep` qua shell, nếu không sẽ thấy thiếu file và xoá nhầm.
 
-Vấn đề thuộc backend (trong `docs/superpowers/backend/`), kiểm lại ngày **2026-09-03** sau khi gộp `main` tới `0e8f0b2`:
+Vấn đề thuộc backend (trong `docs/superpowers/backend/`), kiểm lại ngày
+**2026-09-04** tại `fcf7659`, sau khi gộp `origin/main` `dfda862` (mang mô-đun
+OCR F013 và bộ phân loại hai cấp F012). **Thứ tự dưới đây là thứ tự thi công đề
+nghị**, không phải thứ tự chữ cái — lý do xếp thứ tự ở
+`docs/superpowers/backend/README.md` mục 2, và đó mới là bản đầy đủ:
 
-| Tài liệu | Trạng thái |
-|---|---|
-| `SESSION_VALIDITY_FINDINGS.md` | ✅ Xong |
-| `CATEGORY_CLASSIFY_ALIGNMENT.md` | ⚠️ Gần xong — còn bước thu hẹp `validClassify` trong `sync.validation.js` |
-| `CATEGORY_NAME_UNIQUENESS.md` | ⚠️ **Một phần** — Admin-web đã thi hành quy tắc, nhưng còn 4 khoảng hở: không gom khoảng trắng, không chuẩn hoá NFC, thiếu vế chéo "người dùng với mặc định", và đường `/sync/push` cùng CSDL vẫn trống |
-| `CATEGORY_KEYWORD_SYNC.md` | ⛔ Chưa — **lỗ hổng phân quyền còn nguyên** (đợt sửa vừa rồi chỉ đổi ký tự tách từ khoá) |
-| `CATEGORY_STABLE_IDS.md` | ⛔ Chưa — `seed.js` vẫn `crypto.randomUUID()` |
-| `CATEGORY_GROUP_MEMBERSHIP_SYNC.md` | ⛔ Chưa — thứ duy nhất còn chặn G10 |
-| `2026-09-04-backend-idempotent-delete.md` | ⛔ Chưa — hai việc. **(A)** `/sync/push` trả lỗi khi xoá bản ghi server không có, làm client kẹt vĩnh viễn. **(B)** `message` là nguyên văn stack trace Prisma (lộ đường dẫn máy chủ + nội dung hàng), client phải dò chuỗi để phân loại. **(C)** `upsertBudget` ép `time_recurrence = null` thành `'Month'`, **chặn hẳn** lựa chọn "Ngày cụ thể" và làm ngân sách tự hết hạn sớm sau khi pull. A và B client đã vá tạm bằng **khớp chuỗi** (`record not found`, `23514`) nên dễ vỡ im lặng; C thì client **không vá được** |
+| # | Tài liệu | Trạng thái |
+|---|---|---|
+| 1 | `CATEGORY_KEYWORD_SYNC.md` | ⛔ Chưa — **lỗ hổng phân quyền còn nguyên**: `appendCategoryKeyword()` không đọc `create_by`. **Nghiêm trọng hơn từ 2026-09-04** vì `keyword.matcher` nay là Tầng 1 trên đường quét hoá đơn. ✅ Chiều **xuống** client đã tự nối xong 2026-09-04; chiều **lên** vẫn cần backend quyết mô hình |
+| 2 | `2026-09-04-backend-idempotent-delete.md` | ⛔ Chưa — ba việc. **(A)** `/sync/push` trả lỗi khi xoá bản ghi server không có, làm client kẹt vĩnh viễn. **(B)** `message` là nguyên văn stack trace Prisma (lộ đường dẫn máy chủ + nội dung hàng), client phải dò chuỗi để phân loại. **(C)** `upsertBudget` ép `time_recurrence = null` thành `'Month'`, **chặn hẳn** lựa chọn "Ngày cụ thể" và làm ngân sách tự hết hạn sớm sau khi pull. A và B client đã vá tạm bằng **khớp chuỗi** (`record not found`, `23514`) nên dễ vỡ im lặng; C thì client **không vá được** |
+| 3 | `2026-09-04-ocr-classify-review.md` | ⛔ Chưa — **tám việc**, đã qua một vòng thẩm định phản biện và đo trực tiếp trên CSDL. **(1)** 🔴 **Socket.io không xác thực + bốn dòng `io.emit` toàn cục** — `emitAuditActivity` đang rò tên người dùng ra mọi socket ẩn danh **hôm nay**. **(2)** `classifyBatch` nhận sai kiểu tham số → phân loại từng mặt hàng **chưa bao giờ chạy**. **(3)** thiếu `GEMINI_API_KEY` trong `.env`. **(4)** dedup Quy tắc 3 bỏ quên `counterpart`/`note`/`provider` → chặn nhầm 409. **(5)** cửa hậu `_mock*`. **(6–8)** `uq_transaction_external` thiếu `Idaccount` (**chưa nổ được**), bốn chỗ lệch nhỏ, ba chỗ sai tài liệu |
+| 4 | `CATEGORY_NAME_UNIQUENESS.md` | ⚠️ **Một phần** — Admin-web đã thi hành quy tắc, nhưng còn 4 khoảng hở: không gom khoảng trắng, không chuẩn hoá NFC, thiếu vế chéo "người dùng với mặc định", và `/sync/push` chưa kiểm gì cả. CSDL **có** hai unique index nhưng chúng thi hành một quy tắc **khác** — lệch theo cả hai chiều, xem mục 2 của tài liệu |
+| 5 | `CATEGORY_STABLE_IDS.md` | ⛔ Chưa — `seed.js:150` vẫn `crypto.randomUUID()` |
+| 6 | `CATEGORY_GROUP_MEMBERSHIP_SYNC.md` | ⛔ Chưa — thứ duy nhất còn chặn G10 |
+| 7 | `CATEGORY_CLASSIFY_ALIGNMENT.md` | ⚠️ Gần xong — còn bước thu hẹp `validClassify` (`sync.validation.js:103`) |
+| — | `SESSION_VALIDITY_FINDINGS.md` | ✅ Xong |
 
 ### 💰 Ngân sách (2026-09-03)
 
@@ -651,27 +666,37 @@ Phần backend (mã lỗi ổn định, vai trò lớp phòng thủ thứ hai) �
 
 ### 🚀 Bắt đầu từ đâu ở phiên sau
 
-Ghi và cập nhật ngày 2026-09-03, sau khi đo trên app thật. Thứ tự đề
-nghị, việc rẻ nhất trước:
+Cập nhật ngày 2026-09-04, sau khi gộp `origin/main` và rà soát mô-đun
+OCR/Classify. Thứ tự đề nghị, việc rẻ nhất trước:
 
-1. **Nếu backend đã trả mã lỗi ổn định cho vi phạm trùng tên** → client cần đúng
-   **một dòng**: thêm `if (code == 'CATEGORY_NAME_DUPLICATE') return
-   SyncFailureKind.permanent;` vào `_classifyFailure`
-   (`lib/core/sync/sync_engine.dart`). Không có nó, vi phạm trùng tên rơi vào
-   nhánh `return SyncFailureKind.transient` ở cuối hàm và bị **đẩy lại mãi** —
-   đây chính là thứ đang kéo chậm đồng bộ, xem mục trên. Nhớ viết test tái hiện
-   trước.
-2. **Bốn tài liệu chờ backend** trong `docs/superpowers/backend/`, thứ tự:
-   `CATEGORY_KEYWORD_SYNC` (có **lỗ hổng phân quyền**, bản vá chỉ vài dòng và
-   độc lập với phần thiết kế bảng mới) → `CATEGORY_NAME_UNIQUENESS` →
-   `CATEGORY_STABLE_IDS` → `CATEGORY_GROUP_MEMBERSHIP_SYNC`. Trạng thái từng cái
-   ở bảng ngay trên.
-3. **G10** là mục dang dở duy nhất còn lại ở client, bị chặn ở mục 2 dòng cuối.
-4. **Kịch bản nâng cấp CSDL v7 → v11 chưa từng chạy thật** (chỉ có test). Người
+1. **Chưa chạy app thật để xem giao diện ngân sách sau ba vòng sửa cuối** (bỏ ô
+   chốt sổ → thêm "Ngày cụ thể" → ngày kết thúc chỉ đọc). Bản build trong
+   `build/web` là **bản cũ**, chụp trước khi thêm "Ngày cụ thể". Dùng skill
+   `chay-app`.
+2. **Một dòng ở `_classifyFailure`, nhưng phải chờ backend trả mã lỗi ổn định.**
+   `_classifyFailure` (`lib/core/sync/sync_engine.dart:1423`) hiện chỉ có nhánh
+   cho `accountNotFoundCode`, khoá ngoại, `Ownership mismatch` và ràng buộc
+   CHECK (`23514`). Mọi **vi phạm UNIQUE (`23505`)** rơi xuống
+   `return SyncFailureKind.transient` ở cuối hàm và bị **đẩy lại mãi**. Điều
+   này phủ cả hai nguồn: vi phạm trùng tên danh mục, và va chạm
+   `uq_transaction_external` mô tả ở mục 3 bảng trên. Khi backend trả mã ổn
+   định thì thêm nhánh `permanent` tương ứng — nhớ viết test tái hiện **trước**.
+3. **Bảy tài liệu chờ backend** trong `docs/superpowers/backend/` — thứ tự thi
+   công và lý do xếp thứ tự nằm ở `README.md` mục 2 của thư mục đó, trạng thái
+   từng cái ở bảng ngay trên. Ba mục đầu: `CATEGORY_KEYWORD_SYNC` (lỗ hổng phân
+   quyền, bản vá vài dòng, độc lập với phần thiết kế bảng mới) →
+   `2026-09-04-backend-idempotent-delete` → `2026-09-04-ocr-classify-review`.
+4. **G10** là mục client duy nhất còn bị chặn hoàn toàn ở backend (mục 6 của
+   bảng trên). **G15** là hoãn có chủ ý, đừng tự ý "sửa" lại.
+5. **Tính năng "Ngày cụ thể" chưa đồng bộ được** — bị chặn ở việc (C) của
+   `2026-09-04-backend-idempotent-delete.md`. Client không vá được: trên máy
+   đang dùng thì đúng, đổi máy là mất.
+6. **Kịch bản nâng cấp CSDL v7 → v12 chưa từng chạy thật** (chỉ có test). Người
    dùng đã quyết định không chạy. Ghi lại vì: nếu sau này có báo cáo **mất danh
    mục** hoặc **giao dịch không đồng bộ sau khi cập nhật app**, đây là chỗ nghi
    đầu tiên. Cách kiểm: dựng worktree ở `ea0941b`, chạy bản cũ để sinh CSDL v7,
-   rồi mở bản mới **cùng origin**.
+   rồi mở bản mới **cùng origin**. Nay có thêm bước v11→v12 nên rủi ro nhỉnh
+   hơn phiên trước.
 
 Muốn xác minh thay đổi ngoài bộ test thì dùng skill **`chay-app`** (Chrome
 headless + truy vấn PostgreSQL). ⚠️ Skill đó nằm trong `.claude/` nên **không

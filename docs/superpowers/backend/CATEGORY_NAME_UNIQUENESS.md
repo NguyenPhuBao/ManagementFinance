@@ -56,6 +56,18 @@
 > `permanent`; thao tác hỏng sẽ bị chặn theo thời gian như mọi lỗi vĩnh viễn khác
 > thay vì kéo cả chu kỳ xuống.
 >
+> **Cập nhật 2026-09-04 — client đã tự xử lý phần cấp bách, nhưng bằng cách dễ vỡ.**
+> Không chờ được mã ổn định, client thêm một phép **khớp chuỗi** bắt
+> `23505 | violates unique constraint | unique constraint failed` rồi xếp
+> `permanent`. Vế "kéo chậm mọi thực thể khác" vì thế đã hết.
+>
+> Nhưng đây là phép khớp chuỗi **thứ ba** trong `_classifyFailure`, và nó phải
+> đoán ba biến thể câu chữ cho cùng một lỗi vì không biết Prisma phiên bản nào
+> đang chạy. Đổi phiên bản Prisma là mất khả năng phân loại, **không có lỗi nào
+> báo ra**. Mã `CATEGORY_NAME_DUPLICATE` (hoặc `UNIQUE_VIOLATION` chung, xem
+> mục 8.2 của `2026-09-04-backend-idempotent-delete.md`) vẫn đáng làm — nay với
+> vai trò **thay thế một lớp phòng thủ dễ vỡ**, chứ không còn là việc cấp cứu.
+>
 > ### Nguyên nhân gốc thuộc về client — backend không phải chờ nó
 >
 > Bản đầu của khung này quy sai cho `CATEGORY_STABLE_IDS.md`. Kiểm lại mã nguồn
@@ -71,8 +83,8 @@
 > chừng nào `/sync/push` còn trả message rỗng.
 
 **Người nhận:** đội Backend
-**Trạng thái:** Client-app **đã thi hành xong**. Admin-web **đã thi hành một phần** (cập nhật 2026-09-03, xem khung ở đầu tài liệu). CSDL và đường `/sync/push` thì **chưa**.
-**Mức độ:** đang có đường ghi dữ liệu vi phạm quy tắc, một đường **hỏng âm thầm** khi đồng bộ, và — theo phép đo 2026-09-03 — làm **chậm đồng bộ của mọi thực thể khác**.
+**Trạng thái:** Client-app **đã thi hành xong**. Admin-web **đã thi hành một phần** (cập nhật 2026-09-03, xem khung ở đầu tài liệu). Đường `/sync/push` thì **chưa có phép kiểm nào**. CSDL **có hai unique index nhưng chúng thi hành một quy tắc khác** — lệch theo cả hai chiều, xem bảng ở mục 2; đừng đọc câu này thành "CSDL chưa có ràng buộc gì".
+**Mức độ:** đang có đường ghi dữ liệu vi phạm quy tắc, và một đường sinh bản ghi kẹt **tự lặp ở mỗi lần mở app** (mục 2, khung cập nhật 2026-09-04). Vế "làm chậm đồng bộ của mọi thực thể khác" đo ngày 2026-09-03 **không còn đúng** kể từ khi client xếp vi phạm UNIQUE vào `permanent`.
 **Ngày khảo sát:** 2026-09-03 · **Kiểm lại cùng ngày** sau khi gộp `main` tới `0e8f0b2`, và đo trên app thật.
 
 ---
@@ -108,6 +120,25 @@ Lệch quy tắc theo **cả hai chiều**, nên không thể chỉ "siết thê
 | Hoa/thường | phân biệt → **lỏng hơn** | không phân biệt |
 
 Hệ quả của dòng "chặt hơn": người dùng xoá một danh mục rồi tạo lại **cùng tên** thì client cho qua (nó lọc hàng đã xoá), nhưng CSDL từ chối. Thao tác đó trả `failed` trong `results[]` của `/sync/push` và **không có gì hiện ra màn hình** — đúng khuôn mẫu hỏng âm thầm đã lặp lại nhiều lần trong dự án này.
+
+> **Cập nhật 2026-09-04 — dòng "chặt hơn" này KHÔNG còn là rủi ro lý thuyết.**
+>
+> Nó có một đường kích hoạt **tự lặp**, không cần người dùng chủ động tạo lại gì:
+> xoá một trong 5 danh mục cá nhân mặc định → `PersonalDefaultCategories.ensureMissing()`
+> tạo lại nó với UUID mới ở **mỗi lần mở app** (hàm đó hỏi `getNamesInUse`, mà
+> `getNamesInUse` lọc hàng đã xoá nên không thấy) → mỗi bản mới đụng
+> `uq_category_owner_name_classify` và nhận `23505`. Chi tiết: G16 trong
+> `docs/CLIENT_APP_KNOWN_GAPS.md`.
+>
+> **Client đã cầm máu cùng ngày:** `_classifyFailure` nay xếp vi phạm UNIQUE vào
+> `permanent`, nên bản ghi bị chặn theo thời gian thay vì đẩy lại ở mọi chu kỳ,
+> và `syncError` có ghi lại nguyên nhân. Nghĩa là nó **không còn hoàn toàn âm
+> thầm** và **không còn kéo chậm hàng đợi** — nhưng bản ghi vẫn được sinh ra ở
+> mỗi lần mở app và vẫn không bao giờ lên được server.
+>
+> Chỉ mệnh đề `WHERE "Delete_at" IS NULL` ở mục 4.1 mới dứt điểm được: có nó thì
+> mọi bản ghi đang bị chặn **tự quay lại hàng đợi** và đồng bộ thành công, người
+> dùng không phải làm gì cả.
 
 ## 3. Điểm khó: vế thứ ba KHÔNG diễn đạt được bằng unique index
 

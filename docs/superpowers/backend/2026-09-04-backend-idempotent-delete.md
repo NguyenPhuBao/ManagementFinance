@@ -297,16 +297,28 @@ ghi chú trong `_classifyFailure`. Chỉ cần mở rộng cùng khuôn mẫu.
 
 ### 8.3. Vì sao đáng làm, dù client đã tự vá
 
-`SyncEngine._classifyFailure` hiện có **hai** phép khớp chuỗi dựng tạm:
+`SyncEngine._classifyFailure` hiện có **ba** phép khớp chuỗi dựng tạm:
 
 | Khớp | Dùng để | Vỡ khi |
 |---|---|---|
 | `record not found` | nhận ra xoá thứ đã không còn (mục 6) | đổi câu chữ trong `sync.service.js` |
-| `23514` hoặc `violates check constraint` | xếp lỗi ràng buộc thành **vĩnh viễn** thay vì thử lại mãi | Prisma đổi định dạng thông báo |
+| `23514` hoặc `violates check constraint` | xếp lỗi ràng buộc CHECK thành **vĩnh viễn** thay vì thử lại mãi | Prisma đổi định dạng thông báo |
+| `23505`, `violates unique constraint`, hoặc `unique constraint failed` | *(thêm 2026-09-04)* xếp vi phạm khoá duy nhất thành **vĩnh viễn** | Prisma đổi định dạng thông báo |
 
-Cả hai đều hỏng **âm thầm**: không exception, không log, chỉ là một bản ghi
-lặng lẽ quay lại vòng lặp đẩy vô hạn. Có `code` ổn định thì client bỏ được cả
-hai phép khớp này.
+Cả ba đều hỏng **âm thầm**: không exception, không log, chỉ là một bản ghi lặng
+lẽ quay lại vòng lặp đẩy vô hạn. Có `code` ổn định thì client bỏ được cả ba.
+
+> **Phép khớp thứ ba vừa phải thêm vào, và đó là bằng chứng cho luận điểm này.**
+> Ngày 2026-09-04 phát hiện một đường sinh vi phạm khoá duy nhất **tự lặp**:
+> người dùng xoá một danh mục cá nhân mặc định, `PersonalDefaultCategories
+> .ensureMissing()` tạo lại nó với UUID mới ở **mỗi lần mở app**, và mỗi bản
+> mới đụng `uq_category_owner_name_classify` → `23505`. Trước bản vá, mỗi lần
+> mở app thêm một bản ghi kẹt vĩnh viễn ở hàng đợi đẩy.
+>
+> Client đã phải đoán **ba biến thể câu chữ** cho cùng một lỗi, vì không biết
+> Prisma phiên bản nào đang chạy trên server. Đó chính xác là chi phí mà mục
+> này đề nghị xoá bỏ. Chi tiết đường kích hoạt ở G16 trong
+> `docs/CLIENT_APP_KNOWN_GAPS.md`.
 
 ### 8.4. Gợi ý còn lại (không bắt buộc)
 
