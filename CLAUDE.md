@@ -36,18 +36,24 @@
 3. **Pull dùng `insertAllOnConflictUpdate`, KHÔNG dùng `insertOrReplace`.** `insertOrReplace` thay **cả hàng**, mọi cột không gán bị đưa về mặc định — từng xoá sạch cấu trúc nhóm danh mục sau mỗi lần pull.
 
 4. **Tên trường sai thì im lặng, không báo lỗi.** Payload đi qua ba nơi định nghĩa độc lập (client dựng tay → `SyncPayloadNormalizer` → `mapEntityFields` phía backend). Thêm trường mới cho sync thì **phải** cập nhật `sync_payload_contract_test.dart` cùng lúc.
+   - ⚠️ **`provider`, `bank_tran_id`, `status`, `images` KHÔNG nằm trong hợp đồng đồng bộ theo chiều nào cả** — payload đẩy có đúng 11 trường và nhánh kéo về cũng không đọc chúng. Cột tồn tại ở cả hai đầu nên nhìn qua rất dễ tưởng là có.
+   - **Đừng thêm `provider`/`bank_tran_id` vào payload đẩy** cho tới khi backend đưa `Idaccount` vào `uq_transaction_external`. Ràng buộc đó là **toàn cục**, và hiện chỉ trơ vì client gửi lên toàn NULL. Lý do đầy đủ: mục 7 của `docs/superpowers/backend/2026-09-04-ocr-classify-review.md`. Lưu ý `docs/progress/Client-app.md` mục 6.4 **hướng dẫn làm đúng điều này** — làm theo mà backend chưa sửa là tự tạo vòng lặp đẩy vô hạn.
 
 5. **Không xoá vật lý dữ liệu người dùng** — dùng soft delete (`delete_at` / `isDeleted`).
    - ⚠️ Điều này áp dụng cho **cả PostgreSQL**, kể cả với bản ghi thử của chính mình. Một hàng đã từng đồng bộ thì client vẫn giữ bản sao; xoá cứng ở server khiến client đẩy lên và nhận `Record not found` **ở mọi chu kỳ**, kẹt vòng lặp vô hạn và kéo chậm cả hàng đợi. Đã vấp ngày 2026-09-04. Muốn dọn thì đặt `delete_at`, hoặc xoá qua giao diện để cờ xoá đi đúng đường đồng bộ.
    - ⚠️ Backend **không nhất quán tên cột**, ít nhất ba kiểu: `category` dùng `Delete_at`, `transaction` dùng `Deleted_at`, và cột ngày của giao dịch là `DateTransaction` (không gạch dưới) chứ không phải `Date_transaction`. Đừng suy tên từ bảng này sang bảng kia — mở `schema.prisma` ra đọc. Truy vấn sai tên cột ở PostgreSQL thì báo lỗi ngay, nhưng viết sai trong payload đồng bộ thì **im lặng** (quy tắc 4).
 
 6. **`.gitignore` dòng 77 có `test/`** → mọi file test tạo mới đều bị git bỏ qua **âm thầm**. Nhớ `git add -f`, nếu không công sức viết test sẽ biến mất khỏi repo.
+   - ⚠️ **`git add src/Client-app/test` (cả thư mục) thất bại kể cả khi mọi file bên trong đã được theo dõi.** Git từ chối nguyên lệnh và không stage gì cả. Phải liệt kê từng đường dẫn kèm `-f`.
+   - ⚠️ **Công cụ Grep tôn trọng `.gitignore` nên KHÔNG nhìn thấy thư mục `test/`.** Dò xem còn ai gọi một hàm sắp xoá thì phải dùng `grep` qua shell, nếu không sẽ thấy thiếu file và xoá nhầm.
 
 7. **Tên danh mục là duy nhất trong phạm vi một tài khoản** — **không** tính `classify`, **không** tính nhóm cha, và tính **cả danh mục mặc định** (chúng dùng chung không gian tên với danh mục người dùng). Hàng đã xoá mềm không giữ chỗ. Hai tài khoản khác nhau thì được trùng tên.
    - Phép so tên có **một định nghĩa duy nhất**: `normalizeCategoryName()` ở `lib/core/category/category_name.dart` — NFC → chữ thường → trim → gom khoảng trắng. **Đừng tự viết lại biến thể khác**; trước đây mỗi nơi một kiểu và chúng đã lệch nhau.
+   - ⚠️ **Cùng file đó còn `removeVietnameseTones()` — TUYỆT ĐỐI không dùng nó cho quy tắc trùng tên.** Bỏ dấu là phép so *mất thông tin*: "đá" với "da", "sắn" với "săn" thành một. Nó chỉ dành cho **gợi ý**, nơi đoán sai chỉ tốn một cú chạm để sửa. Siết quy tắc trùng tên bằng nó sẽ từ chối những cặp tên hợp lệ mà người dùng phân biệt được bằng mắt.
    - Thi hành ở `CategoryManagementRepositoryImpl._hasDuplicateName()`. **Đừng** thay nó bằng `getCategoryRows` — hàm đó lọc theo `classify` và khử trùng lặp theo tên, tức loại đi đúng những hàng cần đối chiếu.
    - Phép kiểm tra **chỉ chạy khi tên thật sự đổi**, để người dùng còn sửa được danh mục cũ do bản client trước tạo ra. Đây là chủ ý, không phải lỗ hổng.
-   - **Nơi thi hành:** client và Admin-web đã làm; **CSDL và đường `/sync/push` thì chưa** → vi phạm lọt qua hai đường đó sẽ hỏng **âm thầm** khi đẩy dữ liệu. Trạng thái chi tiết ở mục 14 `docs/PROJECT_CONTEXT.md`.
+   - **Nơi thi hành:** client và Admin-web đã làm; đường `/sync/push` **chưa kiểm gì cả**. CSDL thì **có hai unique index nhưng chúng thi hành một quy tắc KHÁC** — lệch theo cả hai chiều, đừng đọc thành "CSDL chưa có ràng buộc gì". Trạng thái chi tiết ở mục 14 `docs/PROJECT_CONTEXT.md`.
+   - ⚠️ Vế "**chặt hơn**" của CSDL (hàng đã xoá mềm vẫn giữ chỗ tên) có một đường kích hoạt **tự lặp ở mỗi lần mở app** — xem **G16** trong `docs/CLIENT_APP_KNOWN_GAPS.md` trước khi đụng vào `PersonalDefaultCategories` hay `getNamesInUse`.
 
 ---
 
