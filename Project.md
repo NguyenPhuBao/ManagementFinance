@@ -2385,9 +2385,28 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - `src/Backend/modules/notification/notification.service.js`: Lắng nghe sự kiện `ocr.duplicate` và đẩy socket thông báo tức thì tới Client.
   - `docs/AI/ORC.md`: Cập nhật sơ đồ kiến trúc 1.1, mục 3.4 (Bộ quy tắc khử trùng), mục 4 và mục 5.3 (DTO HTTP 409 Conflict).
 - **Kiểm Thử Tự Động TDD**:
-  - `Test/test_ai_dedup_flow.js`: **9/9 tests PASS 100%** (Strict Code, Fuzzy Invoice, Transfer, Chặn đứng HTTP 409, Chứng minh Classify AI không bị gọi, Phát sự kiện Socket Notification).
+  - `Test/test_ai_dedup_flow.js`: **10/10 tests PASS 100%** (Strict Code, Nhận diện mã nhóm `_grp_`, Fuzzy Invoice, Transfer, Chặn đứng HTTP 409, Chứng minh Classify AI không bị gọi, Phát sự kiện Socket Notification).
   - `Test/test_ai_ocr_full_flow.js`: **18/18 tests PASS 100%**.
   - `Test/test_ai_classify_2level.js`: **23/23 tests PASS 100%**.
+
+### 11.25. Hoàn Thiện Quy Trình Toàn Diện Online/Offline, Giải Pháp Unique Constraint & Vòng Đời Dữ Liệu OCR (2026-09-04)
+- **Giải Pháp Chống Xung Đột Ràng Buộc Unique CSDL (`_grp_${idx+1}`)**:
+  - Ràng buộc `@@unique([provider, bank_tran_id])` trên Supabase PostgreSQL ngăn chặn trùng lặp giao dịch bên thứ ba.
+  - Khi lưu theo nhóm danh mục (`option_grouped`), nếu nhiều giao dịch con cùng chung `bank_tran_id = invoice_no` sẽ gây lỗi vi phạm CSDL.
+  - Đã triển khai: Backend Classify tự động gán hậu tố phân nhóm `bank_tran_id = ${baseBankTranId}_grp_${idx + 1}` kèm `provider = 'ORC'`, bộ Deduplication đối soát cả mã gốc lẫn tiền tố `${code}_grp_`, bảo đảm tính toàn vẹn 100%.
+- **Chuẩn Hóa Quy Trình Đa Nền Tảng (Online vs. Offline)**:
+  - *Luồng Online:* Chụp ảnh $\rightarrow$ Backend Gemini LLM Vision $\rightarrow$ Deduplication $\rightarrow$ Classify 2 cấp độ $\rightarrow$ Trả DTO & Realtime Socket $\rightarrow$ Client Review $\rightarrow$ Lưu SQLite $\rightarrow$ Đồng bộ qua `POST /api/sync/batch`.
+  - *Luồng Offline:* Chụp ảnh $\rightarrow$ On-Device OCR (ML Kit / Tesseract) $\rightarrow$ Local Deduplication SQLite $\rightarrow$ Offline Keyword Matcher SQLite $\rightarrow$ Gom nhóm danh mục $\rightarrow$ Client Review $\rightarrow$ Lưu SQLite $\rightarrow$ Chờ đồng bộ khi có Internet.
+- **Xử Lý Chuyển Đổi Mạng Đột Ngột & Vòng Đời Dữ Liệu (Data Lifecycle in Stateless Architecture)**:
+  - *Đang Offline có mạng bất ngờ:* Giữ nguyên hoàn tất luồng Offline (State Consistency).
+  - *Đang Online mất mạng đột ngột:* Client bắt Timeout/SocketException báo lỗi dừng lại, tuyệt đối không ghi dở dang SQLite, số dư ví an toàn 100%.
+  - *Cơ chế In-Memory RAM tại Backend:* Dữ liệu OCR chỉ tồn tại trong RAM của tiến trình, tự động dọn dẹp bởi Garbage Collector khi ngắt kết nối; CSDL Cloud không sinh bản ghi rác.
+  - *Không chặn nhầm khi quét lại:* Do lần quét dở dang chưa từng được lưu vào DB, người dùng có mạng trở lại quét lại hóa đơn đó sẽ được bóc tách bình thường.
+- **Tài Liệu Cập Nhật Đồng Bộ**:
+  - `docs/AI/ORC.md` (Mục 7: Quy trình toàn diện Online/Offline & Vòng đời dữ liệu).
+  - `docs/progress/Backend.md` (Mục 8 & 10: Tiến độ Backend OCR, Deduplication, Unique Constraint).
+  - `docs/progress/Client-app.md` (Mục 6: Quy trình Client-app 2 luồng Online/Offline, xử lý mạng và an toàn số dư ví).
+
 
 
 

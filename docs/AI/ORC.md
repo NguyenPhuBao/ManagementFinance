@@ -438,3 +438,72 @@ Bảng `Transaction` trong CSDL PostgreSQL (Supabase) lưu trữ các trường 
 > **Cơ chế chống trùng lặp (Idempotency):**  
 > Bảng `Transaction` có ràng buộc duy nhất: `@@unique([provider, bank_tran_id])`.  
 > Khi `bank_tran_id` được trích xuất từ biên lai hoặc SMS, nếu người dùng vô tình tải lại cùng một hình ảnh, hệ thống sẽ phát hiện và chặn tạo giao dịch trùng lặp, bảo vệ số dư tài khoản an toàn tuyệt đối.
+
+---
+
+## 7. QUY TRÌNH TOÀN DIỆN: ONLINE VS. OFFLINE & VÒNG ĐỜI DỮ LIỆU
+
+### 7.1. Luồng 1: Có Kết Nối Internet (Online Pipeline — Backend Xử Lý)
+1. **Client-app:** Người dùng chụp ảnh hóa đơn/biên lai $\rightarrow$ Chuyển Base64 $\rightarrow$ Gửi lên Backend qua `POST /api/ai/ocr/parse`.
+2. **Backend Vision & Extraction:** Gemini 2.0 Flash Multimodal Vision đọc ảnh, bóc tách cấu trúc 2 tầng: Từng món hàng con (`items`) và Giao dịch tổng hóa đơn (`total_amount`). Kích hoạt thuật toán Self-healing nếu thiếu tiền/ngày.
+3. **Backend Deduplication (Khử trùng CSDL):** Kiểm tra đối soát trực tiếp trên CSDL qua 3 cấp độ (Strict mã đơn/tiền tố `_grp_`, Fuzzy Invoice, Transfer/SMS).
+   - *Nếu trùng:* Ném HTTP **`409 Conflict`**, phát sự kiện `ocr.duplicate` và **ngừng ngay lập tức, bỏ qua hoàn toàn Classify AI**.
+   - *Nếu chưa trùng:* Cho phép chuyển tiếp sang Classify AI.
+4. **Backend AI Classify (Phân loại 2 cấp độ):**
+   - *Cấp 1:* Phân loại `Transfer` (chuyển tiền ví) hay `Transaction` (thu/chi). Nếu `Transfer` $\rightarrow$ bỏ qua danh mục (`category_id = null`).
+   - *Cấp 2:* Nếu `Transaction` $\rightarrow$ phân loại danh mục cho từng món và giao dịch tổng; gom nhóm các món cùng danh mục thành `option_grouped` (gán sẵn `bank_tran_id = ${base}_grp_${idx+1}` để chống đụng ràng buộc Unique).
+5. **Đóng gói & Phản hồi:** Backend trả về DTO hoàn chỉnh (HTTP 200) và phát sự kiện realtime `ocr.completed`.
+6. **Client-app Review:** Hiển thị màn hình xác nhận: người dùng chọn ghi nhận theo 1 giao dịch tổng (`option_single`) hoặc nhiều giao dịch con gom nhóm (`option_grouped`).
+7. **Lưu SQLite & Đồng bộ:** Người dùng bấm xác nhận $\rightarrow$ Client-app sinh `UUID v4`, gán `status = 'Confirmed'`, tính toán và cập nhật lại số dư ví trong bảng `wallet` SQLite $\rightarrow$ Đưa vào `SyncQueue` đồng bộ về Backend qua `POST /api/sync/batch`.
+
+---
+
+### 7.2. Luồng 2: Không Có Kết Nối Internet (Offline Pipeline — Client Xử Lý Cục Bộ)
+1. **Client-app:** Người dùng chụp ảnh hóa đơn/biên lai khi thiết bị đang ở chế độ Ngoại tuyến (Offline).
+2. **On-Device OCR:** Client-app kích hoạt engine OCR cục bộ trên máy (Google ML Kit Text Recognition / Tesseract) để trích xuất văn bản từ hình ảnh.
+3. **Local Deduplication:** Client-app truy vấn SQLite kiểm tra nhanh xem hóa đơn/mã giao dịch này đã có trong máy hay chưa để cảnh báo người dùng nếu quét trùng.
+4. **Offline Keyword Matcher:** Sử dụng bộ so khớp từ khóa cục bộ (đọc cột `Category.Keyword` của các danh mục trong SQLite) để phân loại từng món hàng và giao dịch tổng.
+5. **Gom nhóm danh mục:** Gom các món hàng có cùng danh mục lại với nhau tương tự như logic Backend.
+6. **Client-app Review:** Hiển thị màn hình xác nhận giao dịch để người dùng kiểm tra, chỉnh sửa thông tin.
+7. **Lưu SQLite & Chờ Sync:** Người dùng xác nhận $\rightarrow$ Client sinh `UUID v4`, gán `status = 'Confirmed'`, cập nhật số dư ví trong SQLite $\rightarrow$ Đưa vào hàng đợi `SyncQueue` để tự động đẩy lên Backend khi có kết nối Internet trở lại.
+
+> [!TIP]
+> **Khác biệt cốt lõi giữa Online và Offline:**
+> - **Online (Backend):** Sử dụng Multimodal LLM (Gemini 2.0 Flash) có trí tuệ nhân tạo sâu, hiểu ngữ cảnh phức tạp, tự sửa lỗi hóa đơn (Self-healing), độ chính xác rất cao.
+> - **Offline (Client):** Sử dụng OCR ký tự trên máy + Keyword Matcher đơn giản, do đó kết quả bóc tách có thể thô hơn. Giao diện Client cần hỗ trợ người dùng chỉnh sửa tay linh hoạt trước khi lưu.
+
+---
+
+### 7.3. Xử Lý Các Kịch Bản Chuyển Đổi Trạng Thái Mạng Đột Ngột
+* **Trường hợp 1: Đang chạy luồng Offline mà có mạng bất ngờ:**
+  - *Quy tắc:* **Vẫn tiếp tục hoàn thành theo luồng Offline**.
+  - *Lý do:* Đảm bảo tính nhất quán trạng thái (State Consistency) của ứng dụng, không làm gián đoạn màn hình nhập liệu và trải nghiệm người dùng giữa chừng.
+* **Trường hợp 2: Đang chạy luồng Online mà bị mất mạng đột ngột:**
+  - *Tại Client-app:* Khi chưa nhận được dữ liệu phản hồi từ Backend (bị Timeout / SocketException), Client-app bắt lỗi mạng, hiển thị thông báo gián đoạn và dừng quy trình tạo giao dịch. Tuyệt đối không ghi nhận dữ liệu dở dang vào SQLite, số dư ví không bị biến động.
+  - *Tại Backend:* Request vẫn được xử lý xong trong tiến trình, nhưng khi gửi phản hồi thấy socket đã ngắt kết nối thì tự động kết thúc quy trình mà không hề ảnh hưởng đến hệ thống.
+
+---
+
+### 7.4. Vòng Đời Dữ Liệu & Giải Đáp Thắc Mắc Kỹ Thuật (Data Lifecycle in Stateless Architecture)
+
+> [!IMPORTANT]
+> **Thắc mắc của PO:** *"Vì Backend tuyệt đối không ghi nhận dữ liệu ORC trước khi có sự xác nhận của người dùng, vậy khi client-app mất internet, dữ liệu giao dịch ORC đó đi đâu?"*
+
+**1. Về phía Backend (Server):**
+* **Kiến trúc Stateless & In-Memory:** Toàn bộ dữ liệu của quá trình xử lý OCR (ảnh Base64, kết quả bóc tách, DTO phân loại) **chỉ tồn tại trong bộ nhớ RAM (`In-Memory`)** của tiến trình Node.js xử lý request đó.
+* Backend **KHÔNG ghi bất kỳ bản ghi nào vào CSDL Supabase PostgreSQL** tại bước này.
+* Khi Client rớt mạng:
+  * Phản hồi HTTP không gửi được do đường truyền đứt.
+  * Khi hàm controller kết thúc, **Bộ gom rác tự động của Node.js (Garbage Collector)** sẽ tự động dọn dẹp và thu hồi toàn bộ vùng nhớ RAM chứa các object/DTO này.
+  * Dữ liệu bóc tách đó **hoàn toàn biến mất khỏi hệ thống**. CSDL Cloud sạch sẽ 100%, không phát sinh "bản ghi rác" hay "giao dịch ma".
+
+**2. Về phía Client-App (Thiết bị):**
+* Client-app bắt ngoại lệ mất mạng, thông báo cho người dùng và dừng tiến trình.
+* Do **chưa từng nhận được DTO phản hồi**, Client-app không mở màn hình Review và **không có bất kỳ dòng dữ liệu nào được ghi vào SQLite**.
+* Số dư ví (`balance`) của người dùng an toàn nguyên vẹn 100%.
+
+**3. Lợi thế tối thượng khi người dùng quét lại:**
+* Do lần quét trước chưa từng được ghi vào CSDL (cả Cloud lẫn SQLite), nên khi người dùng có mạng trở lại và chụp quét lại bức ảnh đó:
+  * Bộ **AI Deduplication Engine** của Backend kiểm tra trong DB thấy chưa tồn tại $\rightarrow$ **không bị chặn nhầm**.
+  * Hóa đơn tiếp tục được bóc tách và phân loại thành công như một giao dịch mới bình thường!
+
