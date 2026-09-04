@@ -20,6 +20,7 @@
 | Làm tiếp phía client | `docs/CLIENT_APP_KNOWN_GAPS.md` — các mục dang dở kèm **lý do hoãn** và **bán kính ảnh hưởng** |
 | Việc thuộc backend | `docs/superpowers/backend/README.md` — **mục 0 là thứ tự thi công chín bước chia ba nhóm**, đọc trước; mục 2 là trạng thái từng tài liệu. Hiện **7 tài liệu còn việc**. Bước 1 là thứ đang gây hại ngay: **Socket.io không xác thực + `io.emit` toàn cục** (`2026-09-04-ocr-classify-review.md`). Sau đó là `2026-09-04-backend-idempotent-delete.md` (ba lỗ hổng của `/sync/push`, một trong đó chặn hẳn ngân sách "Ngày cụ thể") và `CATEGORY_KEYWORD_SYNC.md` (lỗ hổng phân quyền). Bảng trạng thái đầy đủ ở mục 14 `docs/PROJECT_CONTEXT.md` |
 | Đụng vào đồng bộ | `src/Client-app/test/core/sync/sync_payload_contract_test.dart` — đọc **như tài liệu**, đây là nơi duy nhất ghi hợp đồng tên trường giữa hai phía |
+| Đụng vào thông báo | `docs/NOTIFICATION_FEATURE.md` — **trạng thái bàn giao, phần việc còn lại, và bảy cái bẫy**. Mục 7 phải đọc trước khi đụng vào phần hệ điều hành. Bảng thông báo **cục bộ**, không nằm trong `SyncEntityType` |
 | Đụng vào danh mục | `docs/CATEGORY_RATIONALE.md` — **lý do** của từng thay đổi, bằng chứng đo được, và các phương án đã loại bỏ. Đọc trước khi định "dọn dẹp" vùng này |
 
 > ⚠️ **Tài liệu là ảnh chụp, không phải nguồn sự thật.** Luôn đối chiếu với mã nguồn thật trước khi kết luận. Phiên 2026-09-02 có nhiều kết luận sai vì tin vào tài liệu/trí nhớ thay vì mở file ra đọc.
@@ -55,14 +56,18 @@
    - **Nơi thi hành:** client và Admin-web đã làm; đường `/sync/push` **chưa kiểm gì cả**. CSDL thì **có hai unique index nhưng chúng thi hành một quy tắc KHÁC** — lệch theo cả hai chiều, đừng đọc thành "CSDL chưa có ràng buộc gì". Trạng thái chi tiết ở mục 14 `docs/PROJECT_CONTEXT.md`.
    - ⚠️ Vế "**chặt hơn**" của CSDL (hàng đã xoá mềm vẫn giữ chỗ tên) có một đường kích hoạt **tự lặp ở mỗi lần mở app** — xem **G16** trong `docs/CLIENT_APP_KNOWN_GAPS.md` trước khi đụng vào `PersonalDefaultCategories` hay `getNamesInUse`.
 
+8. **Bảng `AppNotifications` là CỤC BỘ — đừng kéo nó vào đường đồng bộ.** Nó cố ý không có `syncStatus`/`syncError`/`updatedAt`/`isDeleted`; việc vắng mặt những cột đó chính là tài liệu sống. Thêm vào `SyncEntityType` là phải chạm bảy bảng ánh xạ song song phía backend mà **không được gì** — thông báo suy lại được từ ngân sách/hoá đơn/mục tiêu trên từng máy.
+   - Tên bảng có tiền tố `App` vì Drift sinh data class **số ít** và `Notification` là lớp có thật trong `package:flutter/widgets.dart`. Cùng loại va chạm đã gặp với `Category` — xem dòng đầu `sync_engine.dart`.
+   - ⚠️ Khi làm phần thông báo cấp hệ điều hành: `NotificationScanner.stop()` **phải** gọi `cancelAll()`. Lịch nằm trong AlarmManager/UNUserNotificationCenter chứ không trong SQLite, nên `purgeDataForOtherAccounts` không cứu được — nhắc hoá đơn của người đăng nhập trước sẽ nổ trên màn hình khoá của người sau.
+
 ---
 
 ## Lệnh hay dùng
 
 ```bash
-# Test (chạy từ src/Client-app) — hiện 335/335 pass, ~15 giây
+# Test (chạy từ src/Client-app) — hiện 479/479 pass, ~18 giây
 flutter test
-flutter analyze          # mức nền: 29 issue, KHÔNG có error
+flutter analyze          # mức nền: 28 issue, KHÔNG có error
 
 # Sau khi sửa Drift tables/DAOs
 dart run build_runner build --delete-conflicting-outputs
@@ -110,4 +115,4 @@ bàn giao tạm giữa các phiên nên chết đi sống lại nhiều lần �
 
 Bộ test là lưới an toàn chính của dự án này — nhiều lỗi trong quá khứ hỏng **âm thầm** (không exception, không log). Khi sửa lỗi, viết test tái hiện **trước**, và ghi rõ trong `reason:` của assertion là nó canh chừng điều gì.
 
-Vùng chưa có test nào: các feature `analytics`, `home`, `profile`, `ai_chat`. (`auth_interceptor.dart` có test từ 2026-09-03; `budget` có test từ 2026-09-03.)
+Vùng chưa có test nào: các feature `analytics`, `home`, `profile`, `ai_chat`. (`notification` có test từ 2026-09-04.) (`auth_interceptor.dart` có test từ 2026-09-03; `budget` có test từ 2026-09-03.)

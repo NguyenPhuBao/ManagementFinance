@@ -702,11 +702,52 @@ Muốn xác minh thay đổi ngoài bộ test thì dùng skill **`chay-app`** (C
 headless + truy vấn PostgreSQL). ⚠️ Skill đó nằm trong `.claude/` nên **không
 được push** — chỉ có trên máy đã dựng nó.
 
+### 🔔 Hệ thống thông báo (2026-09-04) — lát 1–3 xong, lát 4–7 chưa
+
+**Đọc `docs/NOTIFICATION_FEATURE.md` trước khi làm tiếp.** Tóm tắt:
+
+- Bảng `AppNotifications` (schema **v13**) — **CỤC BỘ, không đồng bộ**: không
+  có trong `SyncEntityType`, không chạm `sync_payload_contract_test.dart`.
+  Tên có tiền tố `App` vì `Notification` đụng lớp trong `flutter/widgets` —
+  cùng loại va chạm với `Category`.
+- Chống trùng nằm ở **tầng SQLite**: `UNIQUE(idaccount, dedupeKey)` +
+  `insertOrIgnore`. Vuốt xoá là **xoá mềm** (`dismissedAt`) vì hàng chính là
+  bản ghi khoá trùng.
+- Bộ luật là hàm thuần, **GỌI** `BudgetEntity.isNearLimit` và
+  `budgetHealthOf()` chứ không cài lại mốc 70/90.
+- `NotificationScanner` nghe `SyncEngine.statusStream` (người tiêu thụ đầu
+  tiên của stream này), **không** dùng `Timer.periodic`, và **không** được gắn
+  ở `home_page.dart` vì chỗ đó gọi `start()` trong `build()`.
+- Đã chạy: thông báo ngân sách (chạm ngưỡng / vượt hạn mức) và hoá đơn (sắp
+  đến hạn / quá hạn). Chuông ở cả ba trang đã sống, panel Home theo thiết kế
+  Stitch, màn `/notifications`.
+- **Chưa làm:** thông báo cấp hệ điều hành (`flutter_local_notifications`),
+  `zonedSchedule`, mục tiêu, đồng bộ hỏng, ví âm, màn cài đặt.
+
+⚠️ Khi làm phần hệ điều hành: `NotificationScanner.stop()` **phải** gọi
+`cancelAll()`. Lịch nằm trong AlarmManager/UNUserNotificationCenter chứ không
+trong SQLite, nên `purgeDataForOtherAccounts` không cứu được — nhắc hoá đơn
+của người đăng nhập trước sẽ nổ trên màn hình khoá của người sau.
+
+### 🧾 Hoá đơn (2026-09-04) — đã vá bảy lỗi chặn
+
+Hoá đơn tạo từ app trước đây **không bao giờ lên tới backend** (`Idwallet` và
+`Idcategory` NOT NULL nhưng form không ghi). Xem `docs/bill/BILL_DOCUMENTATION.md`
+(thư mục bị `.gitignore` chặn, chỉ có trên máy). Điểm cần nhớ:
+
+- Đường **sửa** hoá đơn dùng `BillDao.updateFields`, **không** đi qua `insert`
+  (`insertOrReplace` thay cả hàng — từng biến hoá đơn đã trả thành chưa trả).
+- Nguồn sự thật của chu kỳ là `isRecurrence` + `timeRecurrence`; cột chuỗi cũ
+  `recurrence` chỉ được suy ra từ chúng.
+- `nextBillDueDate` áp **quy tắc ngày cuối tháng** — xem mục 5 tài liệu bill.
+- `BillDao.markOverdue` ghi có điều kiện `payStatus = 'Pending'`; bỏ điều kiện
+  đó là tạo vòng lặp đẩy vô tận.
+
 ### ❌ Chưa làm / Tiếp theo
 - Analytics (báo cáo chi tiết)
 - AI chat integration hoàn chỉnh
 - Casso bank integration
-- Push notifications
+- Thông báo cấp hệ điều hành + đẩy (lát 4–7, xem `docs/NOTIFICATION_FEATURE.md`)
 - Build production / deploy
 
 ---
