@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/auth/current_account.dart';
 import '../../../../core/database/app_database.dart';
+import '../../../../core/notification/notification_deeplink.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/utils/relative_time.dart';
 import '../../../../shared/theme/app_colors.dart';
@@ -80,7 +81,16 @@ class NotificationCenterPage extends StatelessWidget {
                     onTap: () {
                       dao.markRead(items[i].id);
                       final route = items[i].deeplink;
-                      if (route != null) context.push(route);
+                      if (route == null) return;
+                      // `go` chứ không `push` cho route thuộc thanh tab: push
+                      // dựng thêm một bản shell thứ hai chồng lên bản đang có,
+                      // hai bản trùng page key và Navigator ném assertion —
+                      // app chết màn đỏ. Xem `notification_deeplink.dart`.
+                      if (thuocThanhTab(route)) {
+                        context.go(route);
+                      } else {
+                        context.push(route);
+                      }
                     },
                     onDismiss: () => dao.dismiss(items[i].id),
                   ),
