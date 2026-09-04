@@ -145,20 +145,27 @@ Backend đã hoàn thành đồng bộ **13 bảng CSDL** theo đặc tả chu�
   * Tự cộng dồn tổng tiền $\text{total\_amount} = \sum(\text{items.total\_price})$ khi ảnh bị thiếu/khuyết dòng tổng tiền.
   * Tự động fallback ngày giao dịch `new Date()` nếu thiếu.
   * Bắt lỗi HTTP **`422 Unprocessable Entity`** (`OCR_PARSE_FAILED`) khi ảnh mờ, lóa hoặc không chứa thông tin tài chính hợp lệ.
-* **Gán Nhãn Provider & Mã Giao Dịch Chống Trùng (`Bank_tran_id`):**
-  * `RECEIPT` $\rightarrow$ `Provider = 'ORC'`, `bank_tran_id = invoice_no || null`.
-  * `BANK_TRANSFER` $\rightarrow$ `Provider = 'BankSync'`, `bank_tran_id = transaction_code`.
-  * `SMS_BANKING` $\rightarrow$ `Provider = 'SMS'`, `bank_tran_id = transaction_code`.
+* **Bộ Khử Trùng Lặp Dữ Liệu CSDL (AI Deduplication Engine):**
+  * Kiểm tra và đối soát trực tiếp trên bảng CSDL `transaction` của người dùng qua **3 cấp độ quy tắc nghiêm ngặt**:
+    * **Quy tắc 1 (Strict Code Match - 100%):** So khớp chính xác `bank_tran_id` hoặc tiền tố `${code}_grp_` (nhận diện các giao dịch con được chia nhóm từ cùng một hóa đơn).
+    * **Quy tắc 2 (Fuzzy Invoice Match):** Đối soát hóa đơn mua sắm theo bộ 3: Tên đơn vị bán (`merchant_name`), Tổng tiền (`amount`), và Khoảng thời gian trong ngày ($\pm 24h$).
+    * **Quy tắc 3 (Transfer / SMS Matching):** Đối soát giao dịch chuyển tiền/SMS theo số tiền và tài khoản/tên người nhận (`counterpart_name` / `counterpart_account`).
+  * **Cơ Chế Chặn Đứng Tức Thì (Early-Exit Interception):** Khi phát hiện trùng lặp, hệ thống lập tức ném lỗi HTTP **`409 Conflict`** (`TRANSACTION_ALREADY_EXISTS`), phát sự kiện realtime `ocr.duplicate` về Client-app và **tuyệt đối không gọi Classify AI**, giúp tiết kiệm 100% chi phí token và thời gian xử lý LLM.
+* **Giải Pháp Chống Xung Đột Ràng Buộc Unique CSDL (`_grp_${idx+1}`):**
+  * Bảng `transaction` trên Supabase PostgreSQL có ràng buộc `@@unique([provider, bank_tran_id])` để ngăn chặn trùng lặp giao dịch bên thứ ba.
+  * Khi người dùng chọn lưu theo nhóm danh mục (`option_grouped`), nếu nhiều giao dịch con cùng mang một mã `bank_tran_id = invoice_no` sẽ gây lỗi vi phạm ràng buộc Unique.
+  * **Giải pháp đã triển khai:** Module Classify tự động sinh mã phân nhóm riêng biệt cho từng giao dịch con: `bank_tran_id = ${baseBankTranId}_grp_${idx + 1}` kèm `provider = 'ORC'`, bảo đảm an toàn dữ liệu 100% khi ghi nhận vào CSDL.
 * **Tích Hợp Module AI Classify 2 Cấp Độ:**
   * OCR đẩy dữ liệu sang `classifyService.classifyExtractedReceipt`.
-  * Khi là `Transfer`: bỏ qua hoàn toàn danh mục (`category_id = null`).
-  * Khi là `Transaction`: phân loại danh mục qua bộ 3 Tầng, sinh `option_single` và `option_grouped` gom nhóm theo danh mục nhưng bảo tồn trọn vẹn chi tiết từng món.
+  * Khi là `Transfer`: bỏ qua hoàn toàn danh mục (`category_id = null`, `Idcategory = NULL`).
+  * Khi là `Transaction`: phân loại danh mục qua bộ 3 Tầng, sinh `option_single` và `option_grouped` gom nhóm theo danh mục nhưng bảo tồn trọn vẹn chi tiết từng món hàng.
+* **Phân Định Trách Nhiệm Kiến Trúc (Separation of Concerns & Offline-First):**
+  * Backend OCR giữ vai trò Stateless AI Service: Nhận ảnh $\rightarrow$ Self-healing $\rightarrow$ Khử trùng lặp $\rightarrow$ Phân loại 2 cấp $\rightarrow$ Đóng gói DTO $\rightarrow$ Bắn Realtime Notification và trả DTO về Client.
+  * Backend OCR **không ghi CSDL giao dịch**, **không can thiệp số dư ví** hay quản lý trạng thái giao dịch tại bước này.
+  * Việc xác nhận giao dịch, chọn phương thức lưu (đơn lẻ hay chia nhóm), sinh UUID v4, ghi nhận CSDL SQLite cục bộ (với `status = 'Confirmed'`), cập nhật biến động số dư ví là do **Client-app đảm nhiệm**. Sau đó dữ liệu được đồng bộ an toàn lên Backend qua Sync Engine (`POST /api/sync/batch`).
 * **Tích Hợp Hệ Thống Thông Báo Realtime (Notification Module):**
-  * EventBus publish sự kiện `ocr.completed`.
-  * Notification Service nhận sự kiện và gọi Socket.io `emitOcrCompleted` gửi thông báo tới phòng riêng `account_<idaccount>` của user trên Client-app.
-* **Bộ Khử Trùng Lặp Dữ Liệu (AI Deduplication Engine):**
-  * Đối soát CSDL bảng `transaction` qua 3 cấp độ: Quy tắc 1 (Strict `bank_tran_id` 100%), Quy tắc 2 (Fuzzy Invoice: merchant + tiền + ngày), Quy tắc 3 (Transfer/SMS matching).
-  * Chặn đứng xử lý ngay lập tức khi phát hiện trùng, trả về HTTP **`409 Conflict`** (`TRANSACTION_ALREADY_EXISTS`), phát sự kiện `ocr.duplicate` và **tuyệt đối không gọi Classify AI**, tiết kiệm 100% token LLM.
+  * EventBus publish sự kiện `ocr.completed` và `ocr.duplicate`.
+  * Notification Service nhận sự kiện và gọi Socket.io (`emitOcrCompleted`, `emitOcrDuplicate`) gửi thông báo tới phòng riêng `account_<idaccount>` của user trên Client-app.
 * **API Endpoints:**
   * `POST /api/ai/ocr/parse`: Tiếp nhận ảnh Base64 và trả về DTO chuẩn hóa (hoặc HTTP 409 khi trùng, 422 khi ảnh mờ).
 
@@ -179,7 +186,7 @@ Backend đã hoàn thành đồng bộ **13 bảng CSDL** theo đặc tả chu�
 ## 10. Trạng Thái Kiểm Thử Backend (100% PASS)
 
 * Tất cả các test suite tích hợp đã đạt **100% PASS**:
-  * `Test/test_ai_dedup_flow.js`: **PASS 9/9 (100%)** - Kiểm thử toàn diện Bộ Khử Trùng Lặp Dữ Liệu 3 cấp độ & Chặn đứng HTTP 409
+  * `Test/test_ai_dedup_flow.js`: **PASS 10/10 (100%)** - Kiểm thử toàn diện Bộ Khử Trùng Lặp Dữ Liệu 3 cấp độ, kiểm tra tiền tố `_grp_` và Chặn đứng HTTP 409
   * `Test/test_ai_ocr_full_flow.js`: **PASS 18/18 (100%)** - Kiểm thử toàn diện OCR 3 loại chứng từ, Self-Healing, HTTP 422, và Realtime Notification
   * `Test/test_ai_classify_2level.js`: **PASS 23/23 (100%)** - Kiểm thử toàn diện kiến trúc 2 cấp độ và 3 cơ sở đối soát CSDL
 
