@@ -17,6 +17,13 @@ import 'notification_rules.dart';
 typedef BudgetViewsLoader = Future<List<BudgetView>> Function(
     int idaccount, DateTime now);
 
+/// Nạp hoá đơn tới hạn trong cửa sổ nhắc. Cùng lý do như trên: closure thay vì
+/// cả một repository.
+typedef BillsLoader = Future<List<Bill>> Function(int idaccount, DateTime now);
+
+/// Đánh dấu hoá đơn đã quá hạn. Trả về số hàng đổi.
+typedef OverdueMarker = Future<int> Function(int idaccount, DateTime now);
+
 /// Chạy bộ luật rồi ghi kết quả xuống bảng thông báo.
 ///
 /// ## Khi nào quét
@@ -29,6 +36,10 @@ typedef BudgetViewsLoader = Future<List<BudgetView>> Function(
 class NotificationScanner {
   final NotificationDao dao;
   final BudgetViewsLoader loadBudgets;
+  final BillsLoader loadBills;
+
+  /// Tuỳ chọn: bỏ trống thì scanner chỉ đọc, không ghi gì ngoài bảng thông báo.
+  final OverdueMarker? markOverdue;
   final Stream<SyncStatus> syncStatus;
   final DateTime Function() clock;
   final String Function() idGenerator;
@@ -41,10 +52,20 @@ class NotificationScanner {
   /// đang chạy đọc trạng thái mới nhất, và `insertOrIgnore` lo phần còn lại.
   bool _dangQuet = false;
 
+  /// Sự kiện cũ hơn mốc này không được sinh thông báo.
+  ///
+  /// Chặn cơn lũ ở lần bật tính năng đầu tiên: không có nó thì lượt quét đầu
+  /// nhìn thấy mọi hoá đơn quá hạn của mấy tháng trước và bắn hàng chục thông
+  /// báo cùng lúc. Ba mươi ngày cũng là ngưỡng hợp lý cho việc "còn đáng nhắc
+  /// nữa không" — quá hạn hai tháng thì người dùng đã biết rồi.
+  static const Duration cuaSoSuKien = Duration(days: 30);
+
   NotificationScanner({
     required this.dao,
     required this.loadBudgets,
+    required this.loadBills,
     required this.syncStatus,
+    this.markOverdue,
     DateTime Function()? clock,
     String Function()? idGenerator,
   })  : clock = clock ?? DateTime.now,
@@ -82,10 +103,21 @@ class NotificationScanner {
     _dangQuet = true;
     try {
       final at = now ?? clock();
+
+      // Chạy TRƯỚC khi nạp: hoá đơn đọc lên phải mang trạng thái mới nhất, nếu
+      // không thì thông báo nói "quá hạn" trong khi bản ghi vẫn ghi 'Pending'.
+      await markOverdue?.call(idaccount, at);
+
       final budgets = await loadBudgets(idaccount, at);
+      final bills = await loadBills(idaccount, at);
 
       final ungVien = buildNotificationCandidates(
-        NotificationRuleInput(now: at, budgets: budgets),
+        NotificationRuleInput(
+          now: at,
+          budgets: budgets,
+          bills: bills,
+          silenceBefore: at.subtract(cuaSoSuKien),
+        ),
       );
       if (ungVien.isEmpty) return 0;
 

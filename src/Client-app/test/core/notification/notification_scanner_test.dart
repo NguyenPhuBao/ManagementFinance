@@ -63,16 +63,44 @@ void main() {
     );
   }
 
-  NotificationScanner dungScanner({List<BudgetView>? budgets}) {
+  NotificationScanner dungScanner({
+    List<BudgetView>? budgets,
+    List<Bill> bills = const [],
+  }) {
+    var soId = 0;
     return NotificationScanner(
       dao: db.notificationDao,
       loadBudgets: (id, at) async {
         soLanNap++;
         return budgets ?? [nganSach()];
       },
+      loadBills: (id, at) async => bills,
       syncStatus: syncStatus.stream,
       clock: () => now,
-      idGenerator: () => 'id-$soLanNap',
+      idGenerator: () => 'id-${soId++}',
+    );
+  }
+
+  Bill hoaDon({required DateTime denHan, String id = 'hd1'}) {
+    return Bill(
+      id: id,
+      idaccount: accountId,
+      name: 'Tiền điện',
+      amount: 300000,
+      dueDate: denHan,
+      payStatus: 'Pending',
+      isPaid: false,
+      timeNotification: '3',
+      isRecurrence: true,
+      timeRecurrence: 'Month',
+      recurrence: 'monthly',
+      icon: 'receipt',
+      colour: '#4CAF50',
+      note: '',
+      isDeleted: false,
+      syncStatus: 'synced',
+      syncRetryCount: 0,
+      updatedAt: DateTime(2026, 9, 1),
     );
   }
 
@@ -178,6 +206,43 @@ void main() {
           reason: 'Đổi người đăng nhập mà scanner còn giữ id cũ là ghi thông '
               'báo của người mới vào hồ sơ người cũ.');
       await scanner.stop();
+    });
+  });
+
+  group('hoá đơn', () {
+    test('quét sinh cả thông báo hoá đơn lẫn ngân sách', () async {
+      final moi = await dungScanner(
+        bills: [hoaDon(denHan: DateTime(2026, 9, 17))],
+      ).scan(accountId);
+
+      expect(moi, 2);
+      final loai = (await db.notificationDao.getAll(accountId))
+          .map((n) => n.kind)
+          .toSet();
+      expect(loai, {'budgetNearLimit', 'billDueSoon'});
+    });
+
+    test('bỏ qua sự kiện quá cũ để không dội lũ ở lần bật đầu tiên', () async {
+      final moi = await dungScanner(
+        budgets: const [],
+        bills: [hoaDon(denHan: DateTime(2026, 1, 5))],
+      ).scan(accountId);
+
+      expect(moi, 0,
+          reason: 'Một hoá đơn quá hạn từ tám tháng trước không đáng bắn thông '
+              'báo lúc người dùng vừa bật tính năng. Scanner phải tự đặt mốc '
+              'silenceBefore chứ không để bộ luật trả về tất cả.');
+    });
+
+    test('hoá đơn quá hạn gần đây vẫn được báo', () async {
+      final moi = await dungScanner(
+        budgets: const [],
+        bills: [hoaDon(denHan: DateTime(2026, 9, 10))],
+      ).scan(accountId);
+
+      expect(moi, 1);
+      expect((await db.notificationDao.getAll(accountId)).single.kind,
+          'billOverdue');
     });
   });
 }

@@ -1,3 +1,4 @@
+import '../database/app_database.dart';
 import '../../features/budget/data/models/budget_entity.dart';
 import '../../features/budget/presentation/widgets/budget_visuals.dart';
 
@@ -52,10 +53,20 @@ class NotificationCandidate {
 class NotificationRuleInput {
   final DateTime now;
   final List<BudgetView> budgets;
+  final List<Bill> bills;
+
+  /// Mọi sự kiện xảy ra TRƯỚC mốc này bị bỏ qua.
+  ///
+  /// Dùng cho lần bật tính năng đầu tiên: không có nó thì lượt quét đầu nhìn
+  /// thấy mọi hoá đơn quá hạn của mấy tháng trước và bắn hàng chục thông báo
+  /// cùng lúc — ấn tượng đầu tiên tệ nhất có thể. `null` = không lọc gì.
+  final DateTime? silenceBefore;
 
   const NotificationRuleInput({
     required this.now,
     this.budgets = const [],
+    this.bills = const [],
+    this.silenceBefore,
   });
 }
 
@@ -66,9 +77,14 @@ class NotificationRuleInput {
 List<NotificationCandidate> buildNotificationCandidates(
   NotificationRuleInput input,
 ) {
-  return [
+  final ra = [
     ..._budgetCandidates(input),
+    ..._billCandidates(input),
   ];
+
+  final chan = input.silenceBefore;
+  if (chan == null) return ra;
+  return ra.where((c) => !c.createdAt.isBefore(chan)).toList();
 }
 
 // ── Ngân sách ────────────────────────────────────────────────────────────────
@@ -131,6 +147,76 @@ List<NotificationCandidate> _budgetCandidates(NotificationRuleInput input) {
 
   return ra;
 }
+
+// ── Hoá đơn ──────────────────────────────────────────────────────────────────
+
+/// Số ngày nhắc trước hạn khi hoá đơn không đặt gì.
+///
+/// Khớp `@default("3")` của cột `Time_notification` phía backend, để một hoá
+/// đơn tạo ở client và một hoá đơn tạo ở nơi khác hành xử như nhau.
+const int _mocNhacMacDinh = 3;
+
+List<NotificationCandidate> _billCandidates(NotificationRuleInput input) {
+  final ra = <NotificationCandidate>[];
+  final homNay = _dauNgay(input.now);
+
+  for (final b in input.bills) {
+    if (b.isDeleted) continue;
+
+    // Lọc theo CẢ HAI cột trạng thái: hàng kéo về từ backend có thể mang
+    // `payStatus = 'Payed'` trong khi `isPaid` còn false, và ngược lại.
+    if (b.isPaid || b.payStatus == 'Payed') continue;
+
+    final hanTra = _dauNgay(b.dueDate);
+
+    // So theo NGÀY, không theo giờ: trừ DateTime thô thì cùng một hoá đơn nhắc
+    // hay không tuỳ vào giờ trong ngày người dùng mở app — hỏng ngẫu nhiên và
+    // rất khó lần ra.
+    final soNgayConLai = hanTra.difference(homNay).inDays;
+
+    if (soNgayConLai < 0) {
+      ra.add(NotificationCandidate(
+        kind: NotificationKind.billOverdue,
+        dedupeKey: 'billOverdue:${b.id}:${_ngayGon(hanTra)}',
+        title: 'Hoá đơn quá hạn',
+        body: '${b.name} đã quá hạn thanh toán '
+            '${-soNgayConLai} ngày (${_tien(b.amount)}).',
+        severity: NotificationSeverity.critical,
+        subjectType: 'bill',
+        subjectId: b.id,
+        deeplink: '/bills',
+        // Mốc sự kiện là NGÀY QUÁ HẠN, không phải lúc quét — nếu không thì
+        // `silenceBefore` không loại được hoá đơn quá hạn từ mấy tháng trước.
+        createdAt: hanTra,
+      ));
+      continue;
+    }
+
+    final nhacTruoc =
+        int.tryParse(b.timeNotification ?? '') ?? _mocNhacMacDinh;
+    if (soNgayConLai > nhacTruoc) continue;
+
+    final mocNhac = hanTra.subtract(Duration(days: nhacTruoc));
+    ra.add(NotificationCandidate(
+      kind: NotificationKind.billDueSoon,
+      dedupeKey: 'billDue:${b.id}:${_ngayGon(hanTra)}:$nhacTruoc',
+      title: 'Hoá đơn sắp đến hạn',
+      body: soNgayConLai == 0
+          ? '${b.name} đến hạn hôm nay (${_tien(b.amount)}).'
+          : '${b.name} còn $soNgayConLai ngày tới hạn (${_tien(b.amount)}).',
+      severity: NotificationSeverity.warning,
+      subjectType: 'bill',
+      subjectId: b.id,
+      deeplink: '/bills',
+      createdAt: mocNhac,
+    ));
+  }
+
+  return ra;
+}
+
+/// Cắt về 00:00 cùng ngày, để mọi phép so là so NGÀY chứ không so thời điểm.
+DateTime _dauNgay(DateTime d) => DateTime(d.year, d.month, d.day);
 
 // ── Định dạng ────────────────────────────────────────────────────────────────
 

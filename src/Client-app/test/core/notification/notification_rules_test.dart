@@ -14,6 +14,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/notification/notification_rules.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
+import 'package:flowmoney/core/database/app_database.dart';
 
 void main() {
   final now = DateTime(2026, 9, 15, 10);
@@ -177,6 +178,179 @@ void main() {
       expect(ra.body, contains('Ngân sách tổng'),
           reason: 'BudgetView.displayName đã lo sẵn nhánh này — luật chỉ việc '
               'dùng, không tự ghép chuỗi null.');
+    });
+  });
+
+  // ── Hoá đơn ────────────────────────────────────────────────────────────────
+
+  group('hoá đơn', () {
+    Bill hoaDon({
+      String id = 'hd1',
+      required DateTime denHan,
+      String? nhacTruoc = '3',
+      bool daTra = false,
+      String payStatus = 'Pending',
+      String ten = 'Tiền điện',
+    }) {
+      return Bill(
+        id: id,
+        idaccount: 7,
+        name: ten,
+        amount: 300000,
+        dueDate: denHan,
+        payStatus: payStatus,
+        isPaid: daTra,
+        timeNotification: nhacTruoc,
+        isRecurrence: true,
+        timeRecurrence: 'Month',
+        recurrence: 'monthly',
+        icon: 'receipt',
+        colour: '#4CAF50',
+        note: '',
+        isDeleted: false,
+        syncStatus: 'synced',
+        syncRetryCount: 0,
+        updatedAt: DateTime(2026, 9, 1),
+      );
+    }
+
+    List<NotificationCandidate> chayHD(
+      List<Bill> bills, {
+      DateTime? at,
+      DateTime? imLangTruoc,
+    }) {
+      return buildNotificationCandidates(NotificationRuleInput(
+        now: at ?? now,
+        bills: bills,
+        silenceBefore: imLangTruoc,
+      ));
+    }
+
+    group('sắp đến hạn', () {
+      test('đúng số ngày người dùng đặt thì mới nhắc', () {
+        // now = 15/09. Nhắc trước 3 ngày ⇒ mốc nhắc là 18/09.
+        expect(chayHD([hoaDon(denHan: DateTime(2026, 9, 18))]).length, 1);
+        expect(chayHD([hoaDon(denHan: DateTime(2026, 9, 19))]), isEmpty,
+            reason: 'Còn 4 ngày mà đã nhắc thì cấu hình "trước 3 ngày" của '
+                'người dùng thành vô nghĩa.');
+      });
+
+      test('không đặt số ngày thì mặc định 3', () {
+        expect(chayHD([hoaDon(denHan: DateTime(2026, 9, 18), nhacTruoc: null)])
+            .length, 1);
+        expect(chayHD([hoaDon(denHan: DateTime(2026, 9, 19), nhacTruoc: null)]),
+            isEmpty);
+      });
+
+      test("mốc '7' được tôn trọng", () {
+        expect(
+            chayHD([hoaDon(denHan: DateTime(2026, 9, 22), nhacTruoc: '7')])
+                .length,
+            1,
+            reason: "CSDL cho phép 1/3/5/7 ở cả hai đầu. Bỏ qua '7' là cắt mất "
+                'một lựa chọn hợp lệ.');
+      });
+
+      test('so theo NGÀY, không theo giờ', () {
+        // Tạo lúc 23:00 hay 01:00 cùng ngày thì phải nhắc như nhau.
+        final khuya = chayHD(
+          [hoaDon(denHan: DateTime(2026, 9, 18, 23, 0))],
+          at: DateTime(2026, 9, 15, 1, 0),
+        );
+        expect(khuya.length, 1,
+            reason: 'Trừ DateTime thô thì cùng một hoá đơn nhắc hay không tuỳ '
+                'vào giờ trong ngày — hỏng ngẫu nhiên, rất khó lần ra.');
+      });
+
+      test('đã thanh toán thì không nhắc, theo CẢ HAI cột', () {
+        expect(chayHD([hoaDon(denHan: DateTime(2026, 9, 18), daTra: true)]),
+            isEmpty);
+        expect(
+            chayHD([
+              hoaDon(denHan: DateTime(2026, 9, 18), payStatus: 'Payed')
+            ]),
+            isEmpty,
+            reason: 'Hàng kéo về từ backend có thể mang payStatus = Payed mà '
+                'isPaid còn false.');
+      });
+
+      test('nhắc nêu tên hoá đơn', () {
+        final ra = chayHD([
+          hoaDon(denHan: DateTime(2026, 9, 18), ten: 'Tiền điện')
+        ]).single;
+        expect(ra.kind, NotificationKind.billDueSoon);
+        expect(ra.body, contains('Tiền điện'));
+        expect(ra.deeplink, '/bills');
+        expect(ra.subjectId, 'hd1');
+      });
+    });
+
+    group('quá hạn', () {
+      test('quá hạn sinh cảnh báo nghiêm trọng, không sinh "sắp đến hạn"', () {
+        final ra = chayHD([hoaDon(denHan: DateTime(2026, 9, 10))]);
+        expect(ra.length, 1,
+            reason: 'Một hoá đơn không được vừa báo "sắp đến hạn" vừa báo '
+                '"quá hạn".');
+        expect(ra.single.kind, NotificationKind.billOverdue);
+        expect(ra.single.severity, NotificationSeverity.critical);
+      });
+
+      test('đến hạn ĐÚNG hôm nay chưa phải là quá hạn', () {
+        final ra = chayHD([hoaDon(denHan: DateTime(2026, 9, 15, 8))]);
+        expect(ra.single.kind, NotificationKind.billDueSoon,
+            reason: 'Người dùng vẫn còn cả ngày để trả. Báo quá hạn lúc 8 giờ '
+                'sáng ngày đến hạn là sai.');
+      });
+    });
+
+    group('dedupeKey', () {
+      test('mỗi hạn trả một khoá — kỳ sau nhắc lại được', () {
+        final kyNay =
+            chayHD([hoaDon(denHan: DateTime(2026, 9, 18))]).single.dedupeKey;
+        final kySau = chayHD(
+          [hoaDon(denHan: DateTime(2026, 10, 18))],
+          at: DateTime(2026, 10, 15),
+        ).single.dedupeKey;
+
+        expect(kyNay == kySau, false,
+            reason: 'Hoá đơn định kỳ sinh hàng MỚI mỗi kỳ với dueDate mới. '
+                'Khoá không đổi thì chỉ kỳ đầu tiên được nhắc.');
+      });
+
+      test('đổi số ngày nhắc thì là sự kiện khác', () {
+        final ba = chayHD([hoaDon(denHan: DateTime(2026, 9, 18))])
+            .single
+            .dedupeKey;
+        final bay = chayHD([
+          hoaDon(denHan: DateTime(2026, 9, 18), nhacTruoc: '7')
+        ]).single.dedupeKey;
+        expect(ba == bay, false);
+      });
+    });
+
+    group('silenceBefore — chặn lũ thông báo lần đầu bật', () {
+      test('hoá đơn quá hạn từ lâu bị loại', () {
+        final ra = chayHD(
+          [hoaDon(denHan: DateTime(2026, 7, 1))],
+          imLangTruoc: DateTime(2026, 9, 1),
+        );
+        expect(ra, isEmpty,
+            reason: 'Lần quét đầu tiên thấy mọi hoá đơn quá hạn của mấy tháng '
+                'trước và bắn hàng chục thông báo cùng lúc — ấn tượng đầu tiên '
+                'tệ nhất có thể.');
+      });
+
+      test('hoá đơn quá hạn gần đây vẫn được báo', () {
+        final ra = chayHD(
+          [hoaDon(denHan: DateTime(2026, 9, 10))],
+          imLangTruoc: DateTime(2026, 9, 1),
+        );
+        expect(ra.length, 1);
+      });
+
+      test('không đặt silenceBefore thì không loại gì', () {
+        expect(chayHD([hoaDon(denHan: DateTime(2026, 7, 1))]).length, 1);
+      });
     });
   });
 }

@@ -33,6 +33,9 @@ class _BillEditPageState extends State<BillEditPage> {
   /// Chu kỳ + ngày bắt đầu; ngày đến hạn suy ra. Xem `BillSchedule`.
   late BillSchedule _lich;
 
+  /// Số ngày nhắc trước hạn. `null` = tắt nhắc.
+  String? _nhacTruoc;
+
   List<Wallet> _wallets = [];
   Wallet? _selectedWallet;
   List<Category> _categories = [];
@@ -50,6 +53,7 @@ class _BillEditPageState extends State<BillEditPage> {
     // `fromBill` phát hiện hoá đơn cũ có hạn trả không khớp chu kỳ và dựng
     // sẵn lời cảnh báo — nay hạn luôn suy từ chu kỳ nên lưu lại là đổi hạn
     // của người dùng, không được đổi ngầm.
+    _nhacTruoc = bill?.timeNotification;
     _lich = bill != null
         ? BillSchedule.fromBill(bill)
         : BillSchedule(
@@ -161,6 +165,7 @@ class _BillEditPageState extends State<BillEditPage> {
       categoryId: category.id,
       isRecurring: _lich.isRecurring,
       timeRecurrence: _lich.storedTimeRecurrence,
+      timeNotification: _nhacTruoc,
       note: _noteController.text.trim(),
     );
 
@@ -327,6 +332,23 @@ class _BillEditPageState extends State<BillEditPage> {
                             setState(() => _lich = _lich.copyWith(repeat: v)),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String?>(
+                    key: const ValueKey('bill-reminder-dropdown'),
+                    initialValue: _nhacTruoc,
+                    decoration: const InputDecoration(
+                      labelText: 'Nhắc trước hạn',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: null, child: Text('Không nhắc')),
+                      DropdownMenuItem(value: '1', child: Text('1 ngày')),
+                      DropdownMenuItem(value: '3', child: Text('3 ngày')),
+                      DropdownMenuItem(value: '5', child: Text('5 ngày')),
+                      DropdownMenuItem(value: '7', child: Text('7 ngày')),
+                    ],
+                    onChanged: (v) => setState(() => _nhacTruoc = v),
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<Wallet>(

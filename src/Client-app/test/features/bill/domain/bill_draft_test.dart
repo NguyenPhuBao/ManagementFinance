@@ -13,10 +13,12 @@ void main() {
     String categoryId = 'cat-dien',
     DateTime? startDate,
     DateTime? due,
+    String? nhacTruoc = '3',
   }) {
     return BillDraft(
       name: 'Tiền điện',
       amount: 250000,
+      timeNotification: nhacTruoc,
       startDate: startDate ?? DateTime(2026, 9, 5),
       dueDate: due ?? dueDate,
       walletId: walletId,
@@ -141,6 +143,40 @@ void main() {
         due: DateTime(2026, 10, 5),
       );
       expect(d.dateError, isNull);
+    });
+  });
+
+  group('timeNotification — số ngày nhắc trước hạn', () {
+    test('đường TẠO ghi xuống đúng giá trị người dùng chọn', () {
+      final c = draft(nhacTruoc: '7')
+          .toInsertCompanion(id: 'b1', idaccount: 7, now: now);
+      expect(c.timeNotification.value, '7',
+          reason: 'Cột này tồn tại ở CẢ HAI đầu CSDL nhưng form trước đây thu '
+              'thập rồi vứt đi — công tắc và chip chọn ngày là trang trí thuần '
+              'tuý, payload đẩy luôn gửi null.');
+    });
+
+    test('đường SỬA cũng ghi được', () {
+      final c = draft(nhacTruoc: '1')
+          .toUpdateCompanion(id: 'b1', idaccount: 7, now: now);
+      expect(c.timeNotification.value, '1');
+    });
+
+    test('tắt nhắc nhở thì ghi null, không phải chuỗi rỗng', () {
+      final c = draft(nhacTruoc: null)
+          .toInsertCompanion(id: 'b1', idaccount: 7, now: now);
+      expect(c.timeNotification.value, isNull,
+          reason: 'Backend ràng buộc Time_notification IN (1,3,5,7) hoặc NULL. '
+              'Chuỗi rỗng vi phạm ràng buộc đó và bị từ chối ở /sync/push.');
+    });
+
+    test('đường SỬA phải GHI null chứ không bỏ trống companion', () {
+      final c = draft(nhacTruoc: null)
+          .toUpdateCompanion(id: 'b1', idaccount: 7, now: now);
+      expect(c.timeNotification.present, true,
+          reason: 'updateFields chỉ ghi những cột CÓ MẶT. Vắng mặt nghĩa là '
+              '"giữ nguyên", nên tắt nhắc nhở sẽ không có tác dụng gì.');
+      expect(c.timeNotification.value, isNull);
     });
   });
 }

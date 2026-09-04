@@ -199,6 +199,15 @@ Future<void> setupDependencies() async {
       dao: sl<AppDatabase>().notificationDao,
       loadBudgets: (idaccount, now) =>
           sl<BudgetRepository>().getBudgets(idaccount, now: now),
+      // Cửa sổ 30 ngày khớp `NotificationScanner.cuaSoSuKien`: nạp rộng hơn là
+      // đọc thừa, hẹp hơn là bỏ sót hoá đơn quá hạn còn đáng nhắc.
+      loadBills: (idaccount, now) => sl<AppDatabase>().billDao.getUpcoming(
+            idaccount,
+            days: NotificationScanner.cuaSoSuKien.inDays,
+            now: now,
+          ),
+      markOverdue: (idaccount, now) =>
+          sl<AppDatabase>().billDao.markOverdue(idaccount, now),
       syncStatus: sl<SyncEngine>().statusStream,
     ),
   );

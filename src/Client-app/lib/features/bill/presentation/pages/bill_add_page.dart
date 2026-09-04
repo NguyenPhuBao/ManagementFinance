@@ -31,9 +31,10 @@ class _BillAddPageState extends State<BillAddPage> {
     timeRecurrence: kBillCycleMonth,
     repeat: true,
   );
+  /// Bật/tắt nhắc trước hạn. Tắt thì ghi `timeNotification = null`.
   bool _pushNotificationsEnabled = true;
   bool _autoPayEnabled = true;
-  String _selectedReminderDay = '1';
+  String _selectedReminderDay = '3';
 
   List<Wallet> _wallets = [];
   Wallet? _selectedWallet;
@@ -152,6 +153,8 @@ class _BillAddPageState extends State<BillAddPage> {
       categoryId: category.id,
       isRecurring: _lich.isRecurring,
       timeRecurrence: _lich.storedTimeRecurrence,
+      timeNotification:
+          _pushNotificationsEnabled ? _selectedReminderDay : null,
       note: _noteController.text.trim(),
     );
 
@@ -377,11 +380,15 @@ class _BillAddPageState extends State<BillAddPage> {
             const SizedBox(height: 16),
             Row(
               children: [
-                _buildReminderDayChip('Trước 1 ngày', '1'),
+                _buildReminderDayChip('1 ngày', '1'),
                 const SizedBox(width: 8),
-                _buildReminderDayChip('Trước 3 ngày', '3'),
+                _buildReminderDayChip('3 ngày', '3'),
                 const SizedBox(width: 8),
-                _buildReminderDayChip('Trước 5 ngày', '5'),
+                _buildReminderDayChip('5 ngày', '5'),
+                const SizedBox(width: 8),
+                // Mốc '7' được CSDL cho phép ở cả hai đầu nhưng UI trước đây
+                // thiếu — người dùng không đặt được nhắc trước một tuần.
+                _buildReminderDayChip('7 ngày', '7'),
               ],
             ),
           ],

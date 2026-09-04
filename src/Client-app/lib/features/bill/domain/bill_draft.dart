@@ -28,6 +28,12 @@ class BillDraft {
   /// Một trong `kBillCycle*`. Chỉ có nghĩa khi [isRecurring].
   final String timeRecurrence;
 
+  /// Số ngày nhắc trước hạn: '1' | '3' | '5' | '7', hoặc `null` = tắt nhắc.
+  ///
+  /// Backend ràng buộc `Time_notification IN ('1','3','5','7')` **hoặc NULL**,
+  /// nên tắt nhắc phải ghi null chứ không phải chuỗi rỗng.
+  final String? timeNotification;
+
   final String note;
 
   const BillDraft({
@@ -40,6 +46,7 @@ class BillDraft {
     required this.isRecurring,
     required this.timeRecurrence,
     required this.note,
+    this.timeNotification,
   });
 
   /// Chuỗi chu kỳ cũ, suy ra từ [isRecurring] + [timeRecurrence].
@@ -77,6 +84,7 @@ class BillDraft {
       isRecurrence: Value(isRecurring),
       timeRecurrence: Value(timeRecurrence),
       recurrence: Value(_legacyRecurrence),
+      timeNotification: Value(timeNotification),
       note: Value(note),
       syncStatus: const Value('pending'),
       updatedAt: now,
@@ -110,6 +118,9 @@ class BillDraft {
       isRecurrence: Value(isRecurring),
       timeRecurrence: Value(timeRecurrence),
       recurrence: Value(_legacyRecurrence),
+      // Value(null) chứ không phải vắng mặt: `updateFields` chỉ ghi những cột
+      // CÓ MẶT, nên bỏ trống thì tắt nhắc nhở sẽ không có tác dụng gì.
+      timeNotification: Value(timeNotification),
       note: Value(note),
       syncStatus: const Value('pending'),
       updatedAt: Value(now),
