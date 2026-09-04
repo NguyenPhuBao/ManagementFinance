@@ -91,6 +91,15 @@ class _BudgetFormState extends State<BudgetForm> {
   /// vĩnh viễn, kéo chậm cả hàng đợi đồng bộ.
   String? _endDateError;
 
+  /// Ngày kết thúc do người dùng tự đặt ở chế độ "Ngày cụ thể", đang bị một
+  /// chu kỳ ghi đè.
+  ///
+  /// Khi đã chọn chu kỳ thì ô "Ngày kết thúc" là chỉ đọc và luôn hiển thị cuối
+  /// kỳ đầu, nên ngày người dùng đặt trước đó biến mất khỏi màn hình mà không
+  /// có dấu hiệu gì. Giữ lại ở đây để cảnh báo được, và để họ đổi ý quay về
+  /// "Ngày cụ thể" thì lấy lại nguyên vẹn.
+  DateTime? _ngayKetThucBiGhiDe;
+
   @override
   void initState() {
     super.initState();
@@ -250,10 +259,12 @@ class _BudgetFormState extends State<BudgetForm> {
                     _label('Ngày bắt đầu'),
                     const SizedBox(height: 8),
                     _startDatePicker(),
+                    _canhBaoGhiDeWidget('budget-start-date-warning'),
                     const SizedBox(height: 16),
                     _label('Ngày kết thúc'),
                     const SizedBox(height: 8),
                     _endDatePicker(),
+                    _canhBaoGhiDeWidget('budget-end-date-warning'),
                     const SizedBox(height: 8),
                     Text(
                       _endDateError ?? _expiryHint,
@@ -350,6 +361,33 @@ class _BudgetFormState extends State<BudgetForm> {
         : 'Chạy một kỳ $ten rồi hết hạn ngày ${_formatDay(ky)}.';
   }
 
+  /// Lời cảnh báo khi một chu kỳ vừa ghi đè ngày kết thúc người dùng tự đặt.
+  ///
+  /// `null` nghĩa là không có gì để cảnh báo. Đây là **nhắc nhở, không phải
+  /// lỗi**: bản ghi vẫn hợp lệ, chỉ là ngày người dùng chọn không còn được
+  /// dùng nữa và họ cần biết điều đó.
+  String? get _canhBaoGhiDe {
+    final cu = _ngayKetThucBiGhiDe;
+    if (!_theoChuKy || cu == null) return null;
+    return 'Chu kỳ ${BudgetRecurrence.label(_timeRecurrence).toLowerCase()} '
+        'quyết định độ dài kỳ, nên ngày kết thúc ${_formatDay(cu)} bạn tự chọn '
+        'đã được thay bằng ${_formatDay(_cuoiKyDau)}. Chọn "Ngày cụ thể" để '
+        'dùng lại ngày cũ.';
+  }
+
+  Widget _canhBaoGhiDeWidget(String key) {
+    final loi = _canhBaoGhiDe;
+    if (loi == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Text(
+        loi,
+        key: ValueKey(key),
+        style: const TextStyle(fontSize: 13, color: AppColors.expense),
+      ),
+    );
+  }
+
   /// Công tắc lặp lại — **chỉ có nghĩa khi ngân sách theo một chu kỳ**.
   ///
   /// "Ngày cụ thể" không có chu kỳ nào để lặp, nên ở chế độ đó công tắc biến
@@ -393,10 +431,15 @@ class _BudgetFormState extends State<BudgetForm> {
         final selected = _timeRecurrence == value;
         return GestureDetector(
           onTap: () => setState(() {
+            final truocDoLaNgayCuThe = !_theoChuKy;
             _timeRecurrence = value;
-            // Đổi sang "Ngày cụ thể" thì ngày kết thúc cũ (nếu có) được giữ để
-            // người dùng sửa; đổi ngược lại thì ô bám theo chu kỳ ngay, nên
-            // không cần dọn gì.
+            if (value == null) {
+              // Quay lại "Ngày cụ thể": ngày tự chọn được dùng lại nên không
+              // còn gì bị ghi đè.
+              _ngayKetThucBiGhiDe = null;
+            } else if (truocDoLaNgayCuThe && _endDate != null) {
+              _ngayKetThucBiGhiDe = _endDate;
+            }
             _kiemTraThuTuNgay();
           }),
           child: Container(

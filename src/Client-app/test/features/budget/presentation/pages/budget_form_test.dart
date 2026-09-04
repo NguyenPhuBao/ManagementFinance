@@ -58,7 +58,7 @@ void main() {
     DateTime? endDate,
     bool recurrence = true,
     DateTime? nextTimeRecurrence,
-    String timeRecurrence = BudgetRecurrence.month,
+    String? timeRecurrence = BudgetRecurrence.month,
   }) {
     return BudgetEntity(
       id: 'b1',
@@ -382,5 +382,70 @@ void main() {
       reason: 'Ngày bắt đầu đã đóng vai mốc chu kỳ. Giữ thêm một ô nữa làm '
           'cùng việc đó thì người dùng phải tự đoán hai ô khác nhau chỗ nào.',
     );
+  });
+
+  group('Cảnh báo khi chu kỳ ghi đè ngày kết thúc tự chọn', () {
+    // Ở chế độ "Ngày cụ thể" người dùng tự đặt ngày kết thúc. Chuyển sang một
+    // chu kỳ thì ô kết thúc thành chỉ đọc và hiển thị cuối kỳ đầu — ngày vừa
+    // chọn biến mất mà không có dấu hiệu nào. Quy tắc: phải cảnh báo ở CẢ ô
+    // bắt đầu lẫn ô kết thúc.
+    Future<void> dungForm(WidgetTester tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: BudgetForm(
+          categories: danhMuc,
+          editing: dangSua(
+            startDate: DateTime(2026, 9, 1),
+            endDate: DateTime(2027, 6, 30),
+            recurrence: false,
+            timeRecurrence: null,
+          ),
+          onSubmit: (_) {},
+        ),
+      ));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('chọn chu kỳ thì hiện cảnh báo ở cả hai ô ngày',
+        (tester) async {
+      await dungForm(tester);
+      expect(find.byKey(const ValueKey('budget-start-date-warning')), findsNothing,
+          reason: 'Chưa đụng gì thì không được doạ người dùng.');
+
+      await tester.tap(find.text('Hàng tháng'));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('budget-start-date-warning')), findsOneWidget,
+          reason: 'Quy tắc đòi cảnh báo tại trường bắt đầu.');
+      expect(find.byKey(const ValueKey('budget-end-date-warning')), findsOneWidget,
+          reason: 'Và tại cả trường kết thúc.');
+    });
+
+    testWidgets('cảnh báo nói rõ ngày cũ đã bị thay bằng ngày nào',
+        (tester) async {
+      await dungForm(tester);
+      await tester.tap(find.text('Hàng tháng'));
+      await tester.pumpAndSettle();
+
+      final canhBao = tester
+          .widget<Text>(find.byKey(const ValueKey('budget-end-date-warning')));
+      expect(canhBao.data, contains('30/06/2027'),
+          reason: 'Không nhắc lại ngày cũ thì người dùng không biết mình vừa '
+              'mất gì.');
+      expect(canhBao.data, contains('01/10/2026'),
+          reason: 'Và phải nói rõ nó bị thay bằng cuối kỳ đầu của chu kỳ vừa '
+              'chọn.');
+    });
+
+    testWidgets('quay lại "Ngày cụ thể" thì cảnh báo biến mất', (tester) async {
+      await dungForm(tester);
+      await tester.tap(find.text('Hàng tháng'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Ngày cụ thể'));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('budget-start-date-warning')), findsNothing);
+      expect(find.byKey(const ValueKey('budget-end-date-warning')), findsNothing,
+          reason: 'Ngày tự chọn được dùng lại nên không còn gì bị ghi đè.');
+    });
   });
 }
