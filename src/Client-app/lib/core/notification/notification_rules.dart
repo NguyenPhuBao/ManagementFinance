@@ -1,5 +1,6 @@
 import '../database/app_database.dart';
 import '../../features/budget/data/models/budget_entity.dart';
+import '../../features/goal/data/models/goal_entity.dart';
 import '../../features/budget/presentation/widgets/budget_visuals.dart';
 
 /// Loại thông báo. Giá trị `.name` được ghi thẳng vào cột `kind`.
@@ -54,6 +55,15 @@ class NotificationRuleInput {
   final DateTime now;
   final List<BudgetView> budgets;
   final List<Bill> bills;
+  final List<GoalEntity> goals;
+  final List<Wallet> wallets;
+
+  /// Lượt đồng bộ gần nhất kết thúc ở trạng thái lỗi.
+  ///
+  /// Là `bool` chứ không phải cả `SyncStatus`: bộ luật chỉ cần biết "hỏng hay
+  /// không", và thu hẹp đầu vào thì test không phải dựng một enum của tầng
+  /// khác chỉ để hỏi một câu.
+  final bool syncFailed;
 
   /// Mọi sự kiện xảy ra TRƯỚC mốc này bị bỏ qua.
   ///
@@ -62,11 +72,22 @@ class NotificationRuleInput {
   /// cùng lúc — ấn tượng đầu tiên tệ nhất có thể. `null` = không lọc gì.
   final DateTime? silenceBefore;
 
+  /// Số ngày nhắc trước hạn cho hoá đơn **không tự đặt**.
+  ///
+  /// Đến từ tuỳ chọn của người dùng (`NotificationPrefs.soNgayNhacHoaDon`).
+  /// Bỏ qua nó là công tắc "nhắc trước" trong trang cài đặt trông như có tác
+  /// dụng mà thật ra không.
+  final int defaultBillLeadDays;
+
   const NotificationRuleInput({
     required this.now,
     this.budgets = const [],
     this.bills = const [],
+    this.goals = const [],
+    this.wallets = const [],
+    this.syncFailed = false,
     this.silenceBefore,
+    this.defaultBillLeadDays = mocNhacMacDinh,
   });
 }
 
@@ -80,6 +101,9 @@ List<NotificationCandidate> buildNotificationCandidates(
   final ra = [
     ..._budgetCandidates(input),
     ..._billCandidates(input),
+    ..._goalCandidates(input),
+    ..._walletCandidates(input),
+    ..._syncCandidates(input),
   ];
 
   final chan = input.silenceBefore;
@@ -150,11 +174,32 @@ List<NotificationCandidate> _budgetCandidates(NotificationRuleInput input) {
 
 // ── Hoá đơn ──────────────────────────────────────────────────────────────────
 
-/// Số ngày nhắc trước hạn khi hoá đơn không đặt gì.
+/// Số ngày nhắc trước hạn khi cả hoá đơn lẫn tuỳ chọn đều không nói gì.
 ///
 /// Khớp `@default("3")` của cột `Time_notification` phía backend, để một hoá
 /// đơn tạo ở client và một hoá đơn tạo ở nơi khác hành xử như nhau.
-const int _mocNhacMacDinh = 3;
+const int mocNhacMacDinh = 3;
+
+/// Số ngày nhắc trước hạn thật sự dùng cho [bill].
+///
+/// Giá trị đặt riêng cho một hoá đơn **thắng** giá trị mặc định chung: nó là
+/// lựa chọn cụ thể hơn.
+int billLeadDays(Bill bill, {int fallback = mocNhacMacDinh}) =>
+    int.tryParse(bill.timeNotification ?? '') ?? fallback;
+
+/// Khoá chống trùng của thông báo "hoá đơn sắp đến hạn".
+///
+/// **Hàm này là điểm nối duy nhất giữa thông báo trong app và lịch đặt trước ở
+/// hệ điều hành.** Lịch nổ lúc app đóng mang `payload = dedupeKey`; người dùng
+/// bấm vào, app mở, vòng quét chạy và `insertOrIgnore` sinh **đúng** hàng ấy,
+/// một lần duy nhất. Hai nơi tự dựng khoá theo hai cách là mỗi sự kiện sinh
+/// hai thông báo — và không có lỗi nào báo ra.
+String billDueDedupeKey({
+  required String billId,
+  required DateTime dueDate,
+  required int leadDays,
+}) =>
+    'billDue:$billId:${_ngayGon(_dauNgay(dueDate))}:$leadDays';
 
 List<NotificationCandidate> _billCandidates(NotificationRuleInput input) {
   final ra = <NotificationCandidate>[];
@@ -192,14 +237,17 @@ List<NotificationCandidate> _billCandidates(NotificationRuleInput input) {
       continue;
     }
 
-    final nhacTruoc =
-        int.tryParse(b.timeNotification ?? '') ?? _mocNhacMacDinh;
+    final nhacTruoc = billLeadDays(b, fallback: input.defaultBillLeadDays);
     if (soNgayConLai > nhacTruoc) continue;
 
     final mocNhac = hanTra.subtract(Duration(days: nhacTruoc));
     ra.add(NotificationCandidate(
       kind: NotificationKind.billDueSoon,
-      dedupeKey: 'billDue:${b.id}:${_ngayGon(hanTra)}:$nhacTruoc',
+      dedupeKey: billDueDedupeKey(
+        billId: b.id,
+        dueDate: hanTra,
+        leadDays: nhacTruoc,
+      ),
       title: 'Hoá đơn sắp đến hạn',
       body: soNgayConLai == 0
           ? '${b.name} đến hạn hôm nay (${_tien(b.amount)}).'
@@ -215,8 +263,111 @@ List<NotificationCandidate> _billCandidates(NotificationRuleInput input) {
   return ra;
 }
 
+// ── Mục tiêu ─────────────────────────────────────────────────────────────────
+
+List<NotificationCandidate> _goalCandidates(NotificationRuleInput input) {
+  final ra = <NotificationCandidate>[];
+
+  for (final g in input.goals) {
+    if (g.isDeleted) continue;
+
+    if (g.isCompleted || g.progress >= 1.0) {
+      ra.add(NotificationCandidate(
+        kind: NotificationKind.goalCompleted,
+        // KHÔNG có mốc thời gian trong khoá: một mục tiêu chỉ hoàn thành một
+        // lần trong đời. Thêm tháng vào đây là mỗi tháng lại chúc mừng lại
+        // cùng một việc.
+        dedupeKey: 'goalDone:${g.id}',
+        title: 'Đã đạt mục tiêu',
+        body: 'Chúc mừng! Bạn đã hoàn thành mục tiêu ${g.name}.',
+        severity: NotificationSeverity.info,
+        subjectType: 'goal',
+        subjectId: g.id,
+        deeplink: '/goals',
+        createdAt: input.now,
+      ));
+      continue;
+    }
+
+    if (!g.isBehindSchedule(input.now)) continue;
+
+    final conThieu = g.targetAmount - g.currentAmount;
+
+    ra.add(NotificationCandidate(
+      kind: NotificationKind.goalBehind,
+      // Gộp theo THÁNG: trễ tiến độ kéo dài hàng tháng trời, còn quét thì chạy
+      // sau mọi lần đồng bộ. Không có đơn vị lặp lại là mỗi lượt quét đẻ một
+      // thông báo mới.
+      dedupeKey: 'goalBehind:${g.id}:${_thangGon(input.now)}',
+      title: 'Mục tiêu đang chậm tiến độ',
+      body: 'Tiết kiệm thêm ${_tien(conThieu)} để đạt mục tiêu ${g.name}.',
+      severity: NotificationSeverity.warning,
+      subjectType: 'goal',
+      subjectId: g.id,
+      deeplink: '/goals',
+      createdAt: input.now,
+    ));
+  }
+
+  return ra;
+}
+
+// ── Ví ───────────────────────────────────────────────────────────────────────
+
+List<NotificationCandidate> _walletCandidates(NotificationRuleInput input) {
+  final ra = <NotificationCandidate>[];
+
+  for (final v in input.wallets) {
+    if (v.isDeleted) continue;
+    // Số dư 0 là chuyện bình thường; âm mới là dấu hiệu ghi nhầm giao dịch.
+    if (v.balance >= 0) continue;
+
+    ra.add(NotificationCandidate(
+      kind: NotificationKind.walletNegative,
+      // Gộp theo NGÀY: ví ở trạng thái âm cho tới khi người dùng nạp tiền.
+      dedupeKey: 'walletNeg:${v.id}:${_ngayGon(_dauNgay(input.now))}',
+      title: 'Số dư ví đang âm',
+      body: '${v.name} đang âm ${_tien(-v.balance)}. '
+          'Có thể một giao dịch đã bị ghi nhầm.',
+      severity: NotificationSeverity.critical,
+      subjectType: 'wallet',
+      subjectId: v.id,
+      deeplink: '/wallets',
+      createdAt: input.now,
+    ));
+  }
+
+  return ra;
+}
+
+// ── Hệ thống ─────────────────────────────────────────────────────────────────
+
+List<NotificationCandidate> _syncCandidates(NotificationRuleInput input) {
+  if (!input.syncFailed) return const [];
+
+  return [
+    NotificationCandidate(
+      kind: NotificationKind.syncFailed,
+      // Gộp theo NGÀY: mất mạng là hỏng ở MỌI chu kỳ đồng bộ.
+      dedupeKey: 'syncFailed:${_ngayGon(_dauNgay(input.now))}',
+      title: 'Đồng bộ chưa thành công',
+      // Cảnh báo, không phải thảm hoạ: kiến trúc offline-first nghĩa là dữ
+      // liệu vẫn nằm an toàn trong máy và sẽ tự đẩy lên khi có mạng.
+      body: 'Dữ liệu vẫn được lưu trên máy và sẽ tự đồng bộ lại khi có mạng.',
+      severity: NotificationSeverity.warning,
+      subjectType: 'sync',
+      createdAt: input.now,
+    ),
+  ];
+}
+
 /// Cắt về 00:00 cùng ngày, để mọi phép so là so NGÀY chứ không so thời điểm.
 DateTime _dauNgay(DateTime d) => DateTime(d.year, d.month, d.day);
+
+/// `yyyy-MM` — đơn vị lặp lại cho những cảnh báo kéo dài hàng tháng.
+String _thangGon(DateTime d) =>
+    '${d.year.toString().padLeft(4, '0')}-'
+    '${d.month.toString().padLeft(2, '0')}';
 
 // ── Định dạng ────────────────────────────────────────────────────────────────
 

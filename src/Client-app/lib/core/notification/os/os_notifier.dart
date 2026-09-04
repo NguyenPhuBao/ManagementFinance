@@ -42,6 +42,26 @@ abstract class OsNotifier {
     String? payload,
   });
 
+  /// Đặt **trước** một thông báo, nổ vào [when] theo giờ địa phương.
+  ///
+  /// Đây là cách duy nhất để thông báo hiện ra khi app đã đóng hoàn toàn mà
+  /// không cần tác vụ nền. [when] trong quá khứ thì Android bắn ngay lập tức
+  /// còn iOS lặng lẽ bỏ qua — nơi gọi phải tự lọc.
+  Future<void> zonedSchedule({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime when,
+    String? payload,
+  });
+
+  /// Id của các lịch **đang chờ** nổ.
+  ///
+  /// Cần cho `BillReminderScheduler.resync()` để nó luỹ đẳng: biết cái nào đã
+  /// đặt rồi thì không đặt lại. Không có nó thì mỗi lần đồng bộ là một vòng
+  /// huỷ-rồi-đặt-lại toàn bộ, và mỗi vòng như vậy là một cơ hội để lịch rơi.
+  Future<Set<int>> pendingIds();
+
   /// Huỷ một thông báo/lịch theo id.
   Future<void> cancel(int id);
 
@@ -73,6 +93,18 @@ class NoopOsNotifier implements OsNotifier {
     required String body,
     String? payload,
   }) async {}
+
+  @override
+  Future<void> zonedSchedule({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime when,
+    String? payload,
+  }) async {}
+
+  @override
+  Future<Set<int>> pendingIds() async => const {};
 
   @override
   Future<void> cancel(int id) async {}

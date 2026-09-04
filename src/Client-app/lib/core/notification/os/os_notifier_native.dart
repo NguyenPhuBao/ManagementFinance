@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/timezone.dart' as tz;
 
 import 'os_notifier.dart';
 
@@ -125,6 +126,46 @@ class LocalOsNotifier implements OsNotifier {
         iOS: DarwinNotificationDetails(),
       ),
     );
+  }
+
+  @override
+  Future<void> zonedSchedule({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime when,
+    String? payload,
+  }) async {
+    await init();
+    await _plugin.zonedSchedule(
+      id: id,
+      title: title,
+      body: body,
+      payload: payload,
+      // `tz.local` được đặt trong `main.dart` bằng `flutter_timezone`. Quên
+      // bước ấy thì `TZDateTime` neo vào UTC và nhắc lệch 7 tiếng ở Việt Nam,
+      // **không có lỗi nào báo ra** (bẫy 7.3).
+      scheduledDate: tz.TZDateTime.from(when, tz.local),
+      // KHÔNG dùng chế độ chính xác — xem chú thích ở `requestPermission()`.
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          kenhNhacId,
+          _kenhNhacTen,
+          channelDescription: _kenhNhacMoTa,
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+    );
+  }
+
+  @override
+  Future<Set<int>> pendingIds() async {
+    await init();
+    final cho = await _plugin.pendingNotificationRequests();
+    return {for (final r in cho) r.id};
   }
 
   @override

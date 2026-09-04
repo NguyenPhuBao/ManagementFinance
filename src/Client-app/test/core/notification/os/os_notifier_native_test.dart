@@ -16,6 +16,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:timezone/data/latest.dart' as tzdata;
+import 'package:timezone/timezone.dart' as tz;
 
 import 'package:flowmoney/core/notification/os/os_notifier_native.dart';
 
@@ -126,6 +128,76 @@ void main() {
     expect(daGoi.map((c) => c.method), contains('cancelAll'),
         reason: 'Đây là bước chặn nhắc hoá đơn của người đăng nhập trước nổ '
             'trên màn hình khoá của người đăng nhập sau.');
+  });
+
+  group('đặt lịch trước', () {
+    setUp(() {
+      // `zonedSchedule` dựng TZDateTime nên cần bảng múi giờ đã nạp. Trên máy
+      // thật việc này làm trong main.dart trước setupDependencies().
+      tzdata.initializeTimeZones();
+      tz.setLocalLocation(tz.getLocation('Asia/Ho_Chi_Minh'));
+    });
+
+    test('zonedSchedule() đẩy xuống nền tảng đúng mốc theo giờ ĐỊA PHƯƠNG',
+        () async {
+      final os = LocalOsNotifier();
+      await os.init();
+      await os.zonedSchedule(
+        id: 42,
+        title: 'Hoá đơn sắp đến hạn',
+        body: 'Tiền điện còn 3 ngày tới hạn.',
+        when: DateTime(2026, 9, 17, 21, 30),
+        payload: 'billDue:hd1:2026-09-20:3',
+      );
+
+      final args =
+          (goiTen('zonedSchedule').arguments as Map).cast<String, Object?>();
+      expect(args['id'], 42);
+      expect(args['payload'], 'billDue:hd1:2026-09-20:3');
+      expect(args['scheduledDateTime'].toString(), startsWith('2026-09-17T21:30'),
+          reason: 'Quên setLocalLocation thì TZDateTime neo vào UTC và nhắc '
+              'lệch 7 tiếng ở Việt Nam — không có lỗi nào báo ra (bẫy 7.3).');
+    });
+
+    test('dùng chế độ KHÔNG chính xác cho lịch Android', () async {
+      final os = LocalOsNotifier();
+      await os.init();
+      await os.zonedSchedule(
+        id: 42,
+        title: 't',
+        body: 'b',
+        when: DateTime(2026, 9, 17, 21, 30),
+      );
+
+      final args =
+          (goiTen('zonedSchedule').arguments as Map).cast<String, Object?>();
+      final android = (args['platformSpecifics'] as Map).cast<String, Object?>();
+      expect(android['scheduleMode'], 'inexactAllowWhileIdle',
+          reason: 'Chế độ chính xác đòi SCHEDULE_EXACT_ALARM, thứ Google Play '
+              'chặn trừ nhóm báo thức/lịch. Nhắc hoá đơn lệch mươi phút không '
+              'sao — nhưng bị Play từ chối lúc phát hành thì có.');
+    });
+
+    test('pendingIds() trả về id của các lịch đang chờ', () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(kenh, (call) async {
+        daGoi.add(call);
+        if (call.method == 'pendingNotificationRequests') {
+          return [
+            {'id': 11, 'title': 'a', 'body': 'b', 'payload': 'k1'},
+            {'id': 22, 'title': 'c', 'body': 'd', 'payload': 'k2'},
+          ];
+        }
+        return true;
+      });
+
+      final os = LocalOsNotifier();
+      await os.init();
+
+      expect(await os.pendingIds(), {11, 22},
+          reason: 'Đây là thứ làm resync() luỹ đẳng. Trả rỗng thì mỗi lần đồng '
+              'bộ là một vòng huỷ-rồi-đặt-lại toàn bộ lịch.');
+    });
   });
 
   test('requestPermission() hỏi quyền thông báo của Android', () async {

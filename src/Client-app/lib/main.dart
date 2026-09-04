@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
+import 'package:timezone/data/latest.dart' as tzdata;
+import 'package:timezone/timezone.dart' as tz;
 import 'core/constants/app_constants.dart';
 import 'core/constants/app_router.dart';
 import 'core/di/injection_container.dart';
@@ -13,6 +16,7 @@ import 'features/auth/presentation/bloc/auth_bloc.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('vi_VN', null);
+  await _khoiTaoMuiGio();
   await setupDependencies();
 
   // Kiểm tra token trước khi khởi động UI
@@ -32,6 +36,25 @@ void main() async {
   }
 
   runApp(FlowMoneyApp(initialRoute: initialRoute, authBloc: authBloc));
+}
+
+/// Nạp bảng múi giờ và đặt múi giờ địa phương.
+///
+/// **Phải chạy TRƯỚC `setupDependencies()`** vì `BillReminderScheduler` dựng
+/// `TZDateTime` ngay khi đặt lịch. Thiếu bước này thì `zonedSchedule` neo vào
+/// UTC và nhắc hoá đơn lệch 7 tiếng ở Việt Nam — **không có lỗi nào báo ra**
+/// (bẫy 7.3 của `docs/NOTIFICATION_FEATURE.md`).
+///
+/// Nuốt lỗi và lùi về UTC: không đọc được múi giờ của máy thì nhắc sai giờ,
+/// còn ném ở đây thì app không khởi động được. Hỏng nhẹ hơn hẳn.
+Future<void> _khoiTaoMuiGio() async {
+  tzdata.initializeTimeZones();
+  try {
+    final info = await FlutterTimezone.getLocalTimezone();
+    tz.setLocalLocation(tz.getLocation(info.identifier));
+  } catch (_) {
+    // Giữ nguyên mặc định của gói (UTC).
+  }
 }
 
 class FlowMoneyApp extends StatelessWidget {

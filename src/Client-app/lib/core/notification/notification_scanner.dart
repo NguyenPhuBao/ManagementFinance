@@ -7,6 +7,7 @@ import '../database/app_database.dart';
 import '../database/daos/notification_dao.dart';
 import '../sync/sync_models.dart';
 import '../../features/budget/data/models/budget_entity.dart';
+import '../../features/goal/data/models/goal_entity.dart';
 import 'notification_rules.dart';
 import 'os/os_notifier.dart';
 import 'os/os_scheduled_id.dart';
@@ -25,6 +26,14 @@ typedef BudgetViewsLoader = Future<List<BudgetView>> Function(
 /// cả một repository.
 typedef BillsLoader = Future<List<Bill>> Function(int idaccount, DateTime now);
 
+/// Nạp mục tiêu của một tài khoản. Cùng lý do closure như trên.
+typedef GoalsLoader = Future<List<GoalEntity>> Function(
+    int idaccount, DateTime now);
+
+/// Nạp ví của một tài khoản. Cùng lý do closure như trên.
+typedef WalletsLoader = Future<List<Wallet>> Function(
+    int idaccount, DateTime now);
+
 /// Đánh dấu hoá đơn đã quá hạn. Trả về số hàng đổi.
 typedef OverdueMarker = Future<int> Function(int idaccount, DateTime now);
 
@@ -42,6 +51,11 @@ class NotificationScanner {
   final BudgetViewsLoader loadBudgets;
   final BillsLoader loadBills;
 
+  /// Bỏ trống thì không sinh thông báo mục tiêu / ví. Tuỳ chọn để những nơi chỉ
+  /// cần một phần của bộ luật không phải dựng cả chuỗi phụ thuộc.
+  final GoalsLoader? loadGoals;
+  final WalletsLoader? loadWallets;
+
   /// Tuỳ chọn: bỏ trống thì scanner chỉ đọc, không ghi gì ngoài bảng thông báo.
   final OverdueMarker? markOverdue;
 
@@ -51,6 +65,13 @@ class NotificationScanner {
   /// Tuỳ chọn: bỏ trống thì chạy như `NotificationPrefs.macDinh` — bật hết.
   /// Thiếu kho tuỳ chọn tuyệt đối không được làm tính năng im lặng.
   final NotificationPrefsStore? prefsStore;
+
+  /// Đồng bộ lại lịch nhắc đặt trước với hệ điều hành, chạy sau mỗi lượt quét.
+  ///
+  /// Là closure chứ không phải cả `BillReminderScheduler` vì cùng lý do như
+  /// `loadBudgets`: thu hẹp phụ thuộc thì test không phải giả lập một lớp
+  /// không liên quan tới thứ đang được canh.
+  final Future<void> Function(int idaccount)? resyncLich;
 
   final Stream<SyncStatus> syncStatus;
   final DateTime Function() clock;
@@ -64,6 +85,16 @@ class NotificationScanner {
   /// đang chạy đọc trạng thái mới nhất, và `insertOrIgnore` lo phần còn lại.
   bool _dangQuet = false;
 
+  /// Lượt đồng bộ gần nhất kết thúc ở trạng thái lỗi.
+  bool _dongBoHong = false;
+
+  /// Thông báo cũ hơn mốc này bị xoá hẳn khi `start()`.
+  ///
+  /// Bảng thông báo **chỉ lớn lên**: hàng đã xoá mềm phải giữ lại vì chính nó
+  /// là bản ghi chống trùng. Không dọn thì sau một năm màn danh sách tải hàng
+  /// nghìn hàng. An toàn vì mọi `dedupeKey` quá 90 ngày đều đã hết ý nghĩa.
+  static const Duration giuThongBao = Duration(days: 90);
+
   /// Sự kiện cũ hơn mốc này không được sinh thông báo.
   ///
   /// Chặn cơn lũ ở lần bật tính năng đầu tiên: không có nó thì lượt quét đầu
@@ -76,10 +107,13 @@ class NotificationScanner {
     required this.dao,
     required this.loadBudgets,
     required this.loadBills,
+    this.loadGoals,
+    this.loadWallets,
     required this.syncStatus,
     this.markOverdue,
     this.osNotifier,
     this.prefsStore,
+    this.resyncLich,
     DateTime Function()? clock,
     String Function()? idGenerator,
   })  : clock = clock ?? DateTime.now,
@@ -94,10 +128,23 @@ class NotificationScanner {
   Future<void> start(int idaccount) async {
     await _sub?.cancel();
     _idaccount = idaccount;
+
+    // Dọn trước khi nghe: một lần mỗi phiên là đủ, và làm ở đây thì không phải
+    // trả giá ở mỗi lượt quét. Nuốt lỗi — dọn dẹp thất bại chỉ tốn dung lượng.
+    try {
+      await dao.purgeOlderThan(clock().subtract(giuThongBao));
+    } catch (_) {
+      // Bỏ qua có chủ ý.
+    }
+
     _sub = syncStatus.listen((s) {
       if (!s.isTerminal) return;
       final id = _idaccount;
       if (id == null) return;
+      // Ghi nhớ để bộ luật biết có nên báo "đồng bộ hỏng" không. Phải đặt lại
+      // về false khi lượt sau thành công, nếu không mỗi lượt quét về sau đều
+      // báo lại một sự cố đã qua.
+      _dongBoHong = s == SyncStatus.error;
       // Bỏ qua lỗi ở đây: quét thất bại không được làm hỏng vòng đồng bộ.
       unawaited(scan(id).catchError((_) => 0));
     });
@@ -123,7 +170,7 @@ class NotificationScanner {
 
   /// Trả về **số hàng thật sự được ghi** — tín hiệu duy nhất để quyết định có
   /// bắn thông báo ra hệ điều hành hay không.
-  Future<int> scan(int idaccount, {DateTime? now}) async {
+  Future<int> scan(int idaccount, {DateTime? now, bool? syncFailed}) async {
     if (_dangQuet) return 0;
     _dangQuet = true;
     try {
@@ -135,6 +182,8 @@ class NotificationScanner {
 
       final budgets = await loadBudgets(idaccount, at);
       final bills = await loadBills(idaccount, at);
+      final goals = await loadGoals?.call(idaccount, at) ?? const [];
+      final wallets = await loadWallets?.call(idaccount, at) ?? const [];
 
       // Đọc tuỳ chọn theo ĐÚNG tài khoản đang quét. Đọc nhầm tài khoản khác là
       // người dùng thấy thông báo bật/tắt ngẫu nhiên trên máy dùng chung.
@@ -146,13 +195,23 @@ class NotificationScanner {
           now: at,
           budgets: budgets,
           bills: bills,
+          goals: goals,
+          wallets: wallets,
+          syncFailed: syncFailed ?? _dongBoHong,
           silenceBefore: at.subtract(cuaSoSuKien),
+          defaultBillLeadDays: prefs.soNgayNhacHoaDon,
         ),
         // Lọc ở đây chứ không ở bước bắn: tắt một nhóm nghĩa là không sinh
         // thông báo nhóm ấy CẢ trong app. Chỉ chặn lúc bắn thì trung tâm thông
         // báo vẫn đầy những mục người dùng đã nói là không muốn thấy.
       ).where((c) => prefs.chapNhan(c.kind)).toList();
-      if (ungVien.isEmpty) return 0;
+      if (ungVien.isEmpty) {
+        // Vẫn phải đồng bộ lịch: "không có gì mới để báo" và "lịch tương lai
+        // đã đúng chưa" là hai chuyện khác nhau. Một hoá đơn vừa bị xoá không
+        // sinh thông báo nào nhưng vẫn phải gỡ lịch của nó.
+        await _dongBoLich(idaccount);
+        return 0;
+      }
 
       final moi = await dao.insertAllIfAbsent([
         for (final c in ungVien) _toCompanion(c, idaccount),
@@ -165,10 +224,23 @@ class NotificationScanner {
       // Công tắc OS là "đừng làm phiền tôi", không phải "đừng ghi lại gì":
       // hàng đã nằm trong CSDL rồi, chỉ bỏ bước bắn ra ngoài.
       if (prefs.osBat) await _banRaHeDieuHanh(moi);
+      await _dongBoLich(idaccount);
 
       return moi.length;
     } finally {
       _dangQuet = false;
+    }
+  }
+
+  /// Đồng bộ lại lịch nhắc đặt trước.
+  ///
+  /// Nuốt lỗi: hàng đã ghi vào CSDL rồi, để một trục trặc của AlarmManager nổi
+  /// lên là mất cả trung tâm thông báo trong app.
+  Future<void> _dongBoLich(int idaccount) async {
+    try {
+      await resyncLich?.call(idaccount);
+    } catch (_) {
+      // Bỏ qua có chủ ý — xem chú thích trên.
     }
   }
 

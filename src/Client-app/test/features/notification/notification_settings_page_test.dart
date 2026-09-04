@@ -42,6 +42,18 @@ class _OsGia implements OsNotifier {
     String? payload,
   }) async {}
   @override
+  Future<void> zonedSchedule({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime when,
+    String? payload,
+  }) async {}
+
+  @override
+  Future<Set<int>> pendingIds() async => const {};
+
+  @override
   Future<void> cancel(int id) async {}
   @override
   Future<void> cancelAll() async {}

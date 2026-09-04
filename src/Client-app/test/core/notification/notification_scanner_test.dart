@@ -15,6 +15,7 @@ library;
 
 import 'dart:async';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -26,6 +27,7 @@ import 'package:flowmoney/core/notification/prefs/notification_prefs.dart';
 import 'package:flowmoney/core/notification/prefs/notification_prefs_store.dart';
 import 'package:flowmoney/core/sync/sync_models.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
+import 'package:flowmoney/features/goal/data/models/goal_entity.dart';
 
 /// Ghi lại mọi lời gọi xuống hệ điều hành. Không dùng thư viện mock: cái cần
 /// canh ở đây là **hành vi của scanner**, và một lớp tay viết thì đọc test là
@@ -59,6 +61,18 @@ class OsNotifierGia implements OsNotifier {
     if (nemKhiBan) throw Exception('quyền thông báo bị từ chối');
     daBan.add((id: id, title: title, body: body, payload: payload));
   }
+
+  @override
+  Future<void> zonedSchedule({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime when,
+    String? payload,
+  }) async {}
+
+  @override
+  Future<Set<int>> pendingIds() async => const {};
 
   @override
   Future<void> cancel(int id) async => daHuy.add(id);
@@ -110,8 +124,11 @@ void main() {
   NotificationScanner dungScanner({
     List<BudgetView>? budgets,
     List<Bill> bills = const [],
+    List<GoalEntity> goals = const [],
+    List<Wallet> wallets = const [],
     OsNotifier? osNotifier,
     NotificationPrefsStore? prefs,
+    Future<void> Function(int idaccount)? onResyncLich,
   }) {
     var soId = 0;
     return NotificationScanner(
@@ -121,9 +138,12 @@ void main() {
         return budgets ?? [nganSach()];
       },
       loadBills: (id, at) async => bills,
+      loadGoals: (id, at) async => goals,
+      loadWallets: (id, at) async => wallets,
       syncStatus: syncStatus.stream,
       osNotifier: osNotifier,
       prefsStore: prefs,
+      resyncLich: onResyncLich,
       clock: () => now,
       idGenerator: () => 'id-${soId++}',
     );
@@ -399,6 +419,29 @@ void main() {
               'định là bật hết.');
     });
 
+    test('số ngày nhắc trong tuỳ chọn được dùng thật', () async {
+      final prefs = InMemoryNotificationPrefsStore();
+      await prefs.write(
+          accountId, const NotificationPrefs(soNgayNhacHoaDon: 7));
+
+      // Hoá đơn KHÔNG tự đặt số ngày, còn 5 ngày nữa tới hạn.
+      final hd = hoaDon(denHan: DateTime(2026, 9, 20))
+          .copyWith(timeNotification: const Value.absent());
+
+      final moi = await dungScanner(
+        prefs: prefs,
+        budgets: const [],
+        bills: [hd.copyWith(timeNotification: const Value(null))],
+      ).scan(accountId);
+
+      expect(moi, 1,
+          reason: 'Tuỳ chọn "nhắc trước 7 ngày" phải tới được bộ luật. Lưu mà '
+              'không ai đọc thì công tắc trông như có tác dụng mà thật ra '
+              'không — kiểu hỏng không ai báo lỗi.');
+      expect((await db.notificationDao.getAll(accountId)).single.kind,
+          'billDueSoon');
+    });
+
     test('đọc tuỳ chọn theo ĐÚNG tài khoản đang quét', () async {
       final prefs = InMemoryNotificationPrefsStore();
       // Tài khoản 9 tắt hết; tài khoản 7 để mặc định.
@@ -412,6 +455,185 @@ void main() {
       expect(moi, 1,
           reason: 'Đọc nhầm tuỳ chọn của tài khoản khác là người dùng thấy '
               'thông báo bật/tắt ngẫu nhiên trên máy dùng chung.');
+    });
+  });
+
+  group('lát 6 — mục tiêu, ví, đồng bộ', () {
+    GoalEntity mucTieu({double current = 1000}) => GoalEntity(
+          id: 'mt1',
+          idaccount: accountId,
+          name: 'MacBook',
+          targetAmount: 1000,
+          currentAmount: current,
+          startDate: DateTime(2026, 1, 1),
+          targetDate: DateTime(2026, 12, 31),
+          updatedAt: DateTime(2026, 9, 1),
+        );
+
+    Wallet viAm() => Wallet(
+          id: 'vi1',
+          idaccount: accountId,
+          name: 'Tiền mặt',
+          type: 'cash',
+          balance: -50000,
+          currency: 'VND',
+          icon: 'wallet',
+          colour: '#4CAF50',
+          isDefault: false,
+          status: 'active',
+          isDeleted: false,
+          syncRetryCount: 0,
+          includeInTotal: true,
+          syncStatus: 'synced',
+          updatedAt: DateTime(2026, 9, 1),
+        );
+
+    test('quét sinh cả thông báo mục tiêu lẫn ví', () async {
+      final moi = await dungScanner(
+        budgets: const [],
+        goals: [mucTieu()],
+        wallets: [viAm()],
+      ).scan(accountId);
+
+      expect(moi, 2);
+      final loai = (await db.notificationDao.getAll(accountId))
+          .map((n) => n.kind)
+          .toSet();
+      expect(loai, {'goalCompleted', 'walletNegative'});
+    });
+
+    test('đồng bộ kết thúc ở trạng thái lỗi thì sinh thông báo', () async {
+      final scanner = dungScanner(budgets: const []);
+      await scanner.start(accountId);
+
+      syncStatus.add(SyncStatus.error);
+      await Future<void>.delayed(Duration.zero);
+
+      expect((await db.notificationDao.getAll(accountId)).single.kind,
+          'syncFailed',
+          reason: 'statusStream và cột syncError tồn tại từ lâu mà chưa có ai '
+              'tiêu thụ. Người dùng cần biết dữ liệu chưa lên được server.');
+      await scanner.stop();
+    });
+
+    test('đồng bộ xong bình thường thì KHÔNG báo hỏng', () async {
+      final scanner = dungScanner(budgets: const []);
+      await scanner.start(accountId);
+
+      syncStatus.add(SyncStatus.idle);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(await db.notificationDao.getAll(accountId), isEmpty);
+      await scanner.stop();
+    });
+
+    test('hết lỗi rồi thì lượt quét sau không báo lại', () async {
+      final scanner = dungScanner(budgets: const []);
+      await scanner.start(accountId);
+
+      syncStatus.add(SyncStatus.error);
+      await Future<void>.delayed(Duration.zero);
+      await db.notificationDao.purgeOlderThan(DateTime(2030));
+
+      syncStatus.add(SyncStatus.idle);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(await db.notificationDao.getAll(accountId), isEmpty,
+          reason: 'Cờ hỏng phải được xoá khi lượt đồng bộ kế tiếp thành công, '
+              'nếu không mỗi lần quét về sau đều báo lại một sự cố đã qua.');
+      await scanner.stop();
+    });
+  });
+
+  group('dọn thông báo cũ', () {
+    test('start() xoá những thông báo quá 90 ngày', () async {
+      await db.notificationDao.insertIfAbsent(AppNotificationsCompanion.insert(
+        id: 'cu',
+        idaccount: accountId,
+        kind: 'billOverdue',
+        dedupeKey: 'k-cu',
+        title: 'Cũ',
+        body: 'Cũ',
+        severity: 'warning',
+        createdAt: now.subtract(const Duration(days: 200)),
+      ));
+      await db.notificationDao.insertIfAbsent(AppNotificationsCompanion.insert(
+        id: 'moi',
+        idaccount: accountId,
+        kind: 'billOverdue',
+        dedupeKey: 'k-moi',
+        title: 'Mới',
+        body: 'Mới',
+        severity: 'warning',
+        createdAt: now.subtract(const Duration(days: 10)),
+      ));
+
+      final scanner = dungScanner();
+      await scanner.start(accountId);
+
+      final conLai =
+          (await db.notificationDao.getAll(accountId)).map((n) => n.id).toSet();
+      expect(conLai, contains('moi'));
+      expect(conLai, isNot(contains('cu')),
+          reason: 'Hàng đã xoá mềm phải giữ để chặn trùng, nên bảng này chỉ lớn '
+              'lên. Không dọn thì sau một năm màn danh sách tải hàng nghìn '
+              'hàng.');
+      await scanner.stop();
+    });
+  });
+
+  group('nối với lịch đặt trước', () {
+    test('mỗi lượt quét kéo theo một lần đồng bộ lại lịch', () async {
+      var soLanResync = 0;
+      final scanner = dungScanner(
+        onResyncLich: (id) async => soLanResync++,
+      );
+
+      await scanner.scan(accountId);
+
+      expect(soLanResync, 1,
+          reason: 'Lịch đặt trước phải theo kịp dữ liệu. Hoá đơn vừa thanh '
+              'toán mà lịch cũ còn nguyên là điện thoại vẫn kêu nhắc trả một '
+              'hoá đơn đã trả — lỗi khó chịu nhất của loại tính năng này.');
+    });
+
+    test('quét không sinh hàng nào vẫn phải đồng bộ lại lịch', () async {
+      var soLanResync = 0;
+      final scanner = dungScanner(
+        budgets: const [],
+        onResyncLich: (id) async => soLanResync++,
+      );
+
+      final moi = await scanner.scan(accountId);
+
+      expect(moi, 0);
+      expect(soLanResync, 1,
+          reason: 'Việc "không có gì mới để báo" và việc "lịch tương lai đã '
+              'đúng chưa" là hai chuyện khác nhau. Hoá đơn bị xoá không sinh '
+              'thông báo nào nhưng vẫn phải gỡ lịch của nó.');
+    });
+
+    test('đồng bộ lịch hỏng không làm hỏng lượt quét', () async {
+      final scanner = dungScanner(
+        onResyncLich: (id) async => throw Exception('AlarmManager trở chứng'),
+      );
+
+      expect(await scanner.scan(accountId), 1,
+          reason: 'Hàng đã ghi vào CSDL rồi; để lỗi đặt lịch nổi lên là mất cả '
+              'trung tâm thông báo trong app.');
+    });
+
+    test('đồng bộ lịch theo ĐÚNG tài khoản đang quét', () async {
+      int? idDaResync;
+      final scanner = dungScanner(
+        onResyncLich: (id) async => idDaResync = id,
+      );
+
+      await scanner.scan(9);
+
+      expect(idDaResync, 9,
+          reason: 'Đặt nhắc hoá đơn của tài khoản khác lên máy này là rò dữ '
+              'liệu tài chính ra màn hình khoá.');
     });
   });
 

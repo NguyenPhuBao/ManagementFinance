@@ -12,6 +12,7 @@ import '../../features/auth/data/repositories/auth_repository.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../features/goal/data/datasources/goal_local_data_source.dart';
+import '../../features/goal/data/models/goal_entity.dart';
 import '../../features/goal/data/repositories/goal_repository.dart';
 import '../../features/goal/data/repositories/goal_repository_impl.dart';
 import '../../features/goal/presentation/bloc/goal_cubit.dart';
@@ -34,6 +35,7 @@ import '../../features/bill/presentation/bloc/bill_bloc.dart';
 import '../../features/category/data/repositories/category_management_repository.dart';
 import '../../features/category/data/services/personal_default_categories.dart';
 import '../../features/category/data/services/category_suggestion_engine.dart';
+import '../notification/bill_reminder_scheduler.dart';
 import '../notification/notification_scanner.dart';
 import '../notification/os/os_notifier.dart';
 import '../notification/os/os_notifier_factory.dart';
@@ -206,6 +208,22 @@ Future<void> setupDependencies() async {
     () => const SecureStorageNotificationPrefsStore(FlutterSecureStorage()),
   );
 
+  // Lịch nhắc đặt trước với hệ điều hành — cách DUY NHẤT để thông báo nổ khi
+  // app đóng hoàn toàn mà không cần tác vụ nền.
+  sl.registerLazySingleton<BillReminderScheduler>(
+    () => BillReminderScheduler(
+      osNotifier: sl<OsNotifier>(),
+      // Cùng cửa sổ với scanner, để hai đường không nói hai chuyện khác nhau
+      // về việc "còn đáng nhắc hay chưa".
+      loadBills: (idaccount, now) => sl<AppDatabase>().billDao.getUpcoming(
+            idaccount,
+            days: BillReminderScheduler.cuaSo.inDays,
+            now: now,
+          ),
+      prefsStore: sl<NotificationPrefsStore>(),
+    ),
+  );
+
   // Đăng ký SAU BudgetRepository vì scanner đọc qua nó. Là singleton: mỗi
   // listener thừa trên statusStream là thêm một lượt quét cho mỗi sự kiện.
   sl.registerLazySingleton<NotificationScanner>(
@@ -220,11 +238,24 @@ Future<void> setupDependencies() async {
             days: NotificationScanner.cuaSoSuKien.inDays,
             now: now,
           ),
+      // Mục tiêu và ví đọc thẳng từ DAO chứ không qua repository: scanner chỉ
+      // cần đúng một phép đọc mỗi loại, và thu hẹp phụ thuộc thì vòng quét
+      // không kéo theo cả chuỗi cubit/repository không liên quan.
+      loadGoals: (idaccount, now) async => [
+        for (final g in await sl<AppDatabase>().goalDao.getAll(idaccount))
+          GoalEntity.fromDrift(g),
+      ],
+      loadWallets: (idaccount, now) =>
+          sl<AppDatabase>().walletDao.getAll(idaccount),
       markOverdue: (idaccount, now) =>
           sl<AppDatabase>().billDao.markOverdue(idaccount, now),
       syncStatus: sl<SyncEngine>().statusStream,
       osNotifier: sl<OsNotifier>(),
       prefsStore: sl<NotificationPrefsStore>(),
+      // Lịch phải theo kịp dữ liệu: hoá đơn vừa thanh toán mà lịch cũ còn
+      // nguyên là điện thoại vẫn kêu nhắc trả một hoá đơn đã trả.
+      resyncLich: (idaccount) =>
+          sl<BillReminderScheduler>().resync(idaccount),
     ),
   );
 

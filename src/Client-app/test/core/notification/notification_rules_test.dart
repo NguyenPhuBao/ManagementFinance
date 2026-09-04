@@ -218,11 +218,13 @@ void main() {
       List<Bill> bills, {
       DateTime? at,
       DateTime? imLangTruoc,
+      int? nhacTruocMacDinh,
     }) {
       return buildNotificationCandidates(NotificationRuleInput(
         now: at ?? now,
         bills: bills,
         silenceBefore: imLangTruoc,
+        defaultBillLeadDays: nhacTruocMacDinh ?? 3,
       ));
     }
 
@@ -317,6 +319,23 @@ void main() {
                 'Khoá không đổi thì chỉ kỳ đầu tiên được nhắc.');
       });
 
+      test('khoá dựng bằng ĐÚNG hàm mà bộ đặt lịch dùng', () {
+        final hd = hoaDon(denHan: DateTime(2026, 9, 18));
+        expect(
+          chayHD([hd]).single.dedupeKey,
+          billDueDedupeKey(
+            billId: 'hd1',
+            dueDate: DateTime(2026, 9, 18),
+            leadDays: 3,
+          ),
+          reason: 'Đây là điểm nối duy nhất giữa thông báo trong app và lịch '
+              'đặt trước ở hệ điều hành: lịch nổ lúc app đóng, người dùng bấm '
+              'vào, app mở, vòng quét sinh ĐÚNG hàng ấy nhờ trùng khoá. Hai '
+              'nơi tự dựng khoá theo hai cách là mỗi sự kiện sinh hai thông '
+              'báo, và không có lỗi nào báo ra.',
+        );
+      });
+
       test('đổi số ngày nhắc thì là sự kiện khác', () {
         final ba = chayHD([hoaDon(denHan: DateTime(2026, 9, 18))])
             .single
@@ -325,6 +344,27 @@ void main() {
           hoaDon(denHan: DateTime(2026, 9, 18), nhacTruoc: '7')
         ]).single.dedupeKey;
         expect(ba == bay, false);
+      });
+    });
+
+    group('số ngày nhắc mặc định đến từ tuỳ chọn người dùng', () {
+      test('hoá đơn không tự đặt thì theo tuỳ chọn, không theo hằng số 3', () {
+        final hd = hoaDon(denHan: DateTime(2026, 9, 20), nhacTruoc: null);
+
+        expect(chayHD([hd]), isEmpty,
+            reason: 'Còn 5 ngày, mặc định 3 ngày thì chưa nhắc.');
+        expect(chayHD([hd], nhacTruocMacDinh: 7).length, 1,
+            reason: 'Người dùng đặt "nhắc trước 7 ngày" trong trang cài đặt. '
+                'Bỏ qua tuỳ chọn ấy là công tắc trông như có tác dụng mà thật '
+                'ra không.');
+      });
+
+      test('hoá đơn tự đặt số ngày thì tuỳ chọn KHÔNG đè lên', () {
+        final hd = hoaDon(denHan: DateTime(2026, 9, 20), nhacTruoc: '1');
+
+        expect(chayHD([hd], nhacTruocMacDinh: 7), isEmpty,
+            reason: 'Số ngày đặt riêng cho một hoá đơn là lựa chọn cụ thể hơn '
+                'và phải thắng giá trị mặc định chung.');
       });
     });
 
