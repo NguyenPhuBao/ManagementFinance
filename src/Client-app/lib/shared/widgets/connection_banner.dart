@@ -11,16 +11,24 @@ import '../theme/app_colors.dart';
 /// Bọc quanh nội dung màn hình chứ không thay thế nó — đặt ở `MaterialApp.builder`
 /// nên phủ mọi trang mà không trang nào phải biết đến nó.
 ///
-/// ## Vì sao ba loại dải hành xử khác nhau
+/// ## Mọi dải đều tự ẩn sau vài giây
 ///
-/// **Mất kết nối** mô tả một **trạng thái đang kéo dài**, nên dải ở lại cho tới
-/// khi có mạng. Ẩn nó đi trong khi mạng vẫn mất là nói dối. Câu trấn an đi kèm
-/// ("thay đổi vẫn được lưu trên máy") quan trọng ngang thông tin chính: thiếu
-/// nó, người dùng ngừng nhập liệu vì sợ mất — đúng nỗi sợ mà kiến trúc
-/// offline-first sinh ra để xoá bỏ.
+/// Kể cả dải mất kết nối. Bản đầu giữ nó cho tới khi có mạng, với lập luận
+/// "trạng thái kéo dài thì phải hiển thị kéo dài". Người dùng thử trên máy thật
+/// và yêu cầu đổi: một dải đứng mãi trên đầu màn hình gây khó chịu hơn là hữu
+/// ích, và thông tin "đang mất mạng" thì thanh trạng thái của hệ điều hành đã
+/// nói rồi.
 ///
-/// **Đã kết nối lại** và **đã đồng bộ N thay đổi** mô tả một **sự kiện vừa xảy
-/// ra**, nên chúng tự ẩn. Để mãi thì chúng chiếm chỗ mà không còn nói gì.
+/// Câu trấn an trong dải mất kết nối ("thay đổi vẫn được lưu trên máy") vẫn
+/// quan trọng ngang thông tin chính: thiếu nó, người dùng ngừng nhập liệu vì sợ
+/// mất — đúng nỗi sợ mà kiến trúc offline-first sinh ra để xoá bỏ.
+///
+/// ## Thông báo đồng bộ không nêu số lượng
+///
+/// "Đã đồng bộ 5 thay đổi" nghe cụ thể hơn, nhưng con số ấy là chi tiết cài
+/// đặt chứ không phải điều người dùng quan tâm — biết "đã xong" là đủ. Vẫn
+/// phải phân biệt **xong** với **còn kẹt lại**: gộp hai trạng thái ấy vào một
+/// câu là để người dùng tưởng dữ liệu đã an toàn.
 class ConnectionBanner extends StatefulWidget {
   const ConnectionBanner({
     super.key,
@@ -34,8 +42,7 @@ class ConnectionBanner extends StatefulWidget {
   final Stream<ConnectionEvent> connectionEvents;
   final Stream<SyncResult> pushResults;
 
-  /// Bao lâu thì dải "sự kiện" tự biến mất. Dải mất kết nối không dùng giá trị
-  /// này — nó ở lại tới khi có mạng.
+  /// Bao lâu thì dải tự biến mất. Áp dụng cho **mọi** dải, kể cả mất kết nối.
   final Duration tuAnSau;
 
   @override
@@ -73,7 +80,7 @@ class _ConnectionBannerState extends State<ConnectionBanner> {
             mau: AppColors.expense,
             icon: Icons.cloud_off_outlined,
           ),
-          tuAn: false,
+          tuAn: true,
         );
       case ConnectionEvent.khoiPhuc:
         // KHÔNG ghi đè dải kết quả đồng bộ đang hiện.
@@ -102,8 +109,8 @@ class _ConnectionBannerState extends State<ConnectionBanner> {
 
     if (r.failed > 0) {
       _hien(
-        _NoiDungDai(
-          chu: 'Còn ${r.failed} thay đổi chưa lên được máy chủ',
+        const _NoiDungDai(
+          chu: 'Một số thay đổi chưa lên được máy chủ',
           mau: AppColors.expense,
           icon: Icons.sync_problem_outlined,
           laKetQuaDongBo: true,
@@ -114,8 +121,8 @@ class _ConnectionBannerState extends State<ConnectionBanner> {
     }
 
     _hien(
-      _NoiDungDai(
-        chu: 'Đã đồng bộ ${r.succeeded} thay đổi',
+      const _NoiDungDai(
+        chu: 'Đã đồng bộ xong',
         mau: AppColors.income,
         icon: Icons.cloud_done_outlined,
         laKetQuaDongBo: true,

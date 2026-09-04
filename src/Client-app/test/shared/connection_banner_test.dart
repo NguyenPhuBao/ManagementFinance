@@ -6,10 +6,14 @@
 ///    được lưu trên máy. Không có câu đó, người dùng sẽ ngừng nhập liệu vì sợ
 ///    mất, mà đó chính là thứ kiến trúc offline-first sinh ra để tránh.
 /// 2. **Đã kết nối lại.**
-/// 3. **Đã đồng bộ N thay đổi** — hoặc còn bao nhiêu chưa lên được.
+/// 3. **Đã đồng bộ xong** — hoặc còn thay đổi chưa lên được.
 ///
-/// Dải mất kết nối **không tự ẩn**: nó mô tả một trạng thái đang kéo dài, và ẩn
-/// đi là nói dối. Hai dải còn lại mô tả sự kiện vừa xảy ra nên tự ẩn.
+/// **Cả ba đều tự ẩn sau vài giây**, kể cả dải mất kết nối. Bản đầu giữ dải mất
+/// kết nối cho tới khi có mạng, với lập luận "trạng thái kéo dài thì phải hiển
+/// thị kéo dài". Người dùng thử trên máy thật và yêu cầu đổi: một dải đứng mãi
+/// trên đầu màn hình gây khó chịu hơn là hữu ích.
+///
+/// Cũng vì thế, thông báo đồng bộ **không nêu số lượng** — nói đủ ý là xong.
 library;
 
 import 'dart:async';
@@ -83,15 +87,18 @@ void main() {
             'liệu — đúng nỗi sợ mà offline-first sinh ra để xoá bỏ.');
   });
 
-  testWidgets('dải mất kết nối KHÔNG tự ẩn', (tester) async {
+  testWidgets('dải mất kết nối cũng tự ẩn sau vài giây', (tester) async {
     await dung(tester);
     ketNoi.add(ConnectionEvent.mat);
     await nhip(tester);
-    await tester.pump(tuAn * 3);
 
-    expect(find.textContaining('Không có kết nối'), findsOneWidget,
-        reason: 'Nó mô tả một trạng thái đang kéo dài. Ẩn đi trong khi mạng vẫn '
-            'mất là nói dối người dùng.');
+    expect(find.textContaining('Không có kết nối'), findsOneWidget);
+
+    await tester.pump(tuAn * 3);
+    expect(find.textContaining('Không có kết nối'), findsNothing,
+        reason: 'Người dùng yêu cầu mọi dải đều biến mất sau vài giây. Một dải '
+            'đứng mãi trên đầu màn hình gây khó chịu hơn là hữu ích — thông tin '
+            '"đang mất mạng" đã có sẵn ở thanh trạng thái của hệ điều hành.');
   });
 
   testWidgets('có mạng lại thì đổi sang dải khôi phục rồi tự ẩn',
@@ -112,27 +119,32 @@ void main() {
             'nó chiếm chỗ vô ích.');
   });
 
-  testWidgets('đẩy thành công thì báo số thay đổi đã lên', (tester) async {
+  testWidgets('đẩy thành công thì báo chung chung, KHÔNG nêu số', (tester) async {
     await dung(tester);
     dayLen.add(ketQua(thanhCong: 5));
     await nhip(tester);
 
-    expect(find.textContaining('5'), findsOneWidget);
     expect(find.textContaining('đồng bộ'), findsOneWidget);
+    expect(find.textContaining('5'), findsNothing,
+        reason: 'Người dùng không cần biết bao nhiêu bản ghi vừa lên server — '
+            'con số ấy là chi tiết cài đặt, không phải điều họ quan tâm. Biết '
+            '"đã xong" là đủ.');
 
     await tester.pump(tuAn * 2);
     expect(find.textContaining('đồng bộ'), findsNothing);
   });
 
-  testWidgets('còn thay đổi chưa lên được thì nói rõ số còn kẹt',
+  testWidgets('còn thay đổi chưa lên được thì vẫn phải phân biệt được',
       (tester) async {
     await dung(tester);
     dayLen.add(ketQua(thanhCong: 2, that: 3));
     await nhip(tester);
 
-    expect(find.textContaining('3'), findsOneWidget,
-        reason: 'Người dùng cần phân biệt "đã an toàn" với "còn kẹt lại". Báo '
-            'chung chung là để họ tưởng mọi thứ đã lên server.');
+    expect(find.textContaining('chưa lên được'), findsOneWidget,
+        reason: 'Không nêu số lượng, nhưng người dùng vẫn phải phân biệt được '
+            '"đã xong" với "còn kẹt lại" — gộp hai trạng thái ấy vào một câu là '
+            'để họ tưởng dữ liệu đã an toàn.');
+    expect(find.textContaining('3'), findsNothing);
   });
 
   testWidgets('không có thay đổi nào thì không hiện dải', (tester) async {
@@ -157,11 +169,10 @@ void main() {
       ketNoi.add(ConnectionEvent.khoiPhuc);
       await nhip(tester);
 
-      expect(find.textContaining('Đã đồng bộ 2'), findsOneWidget,
-          reason: '"Đã đồng bộ 2 thay đổi" nói được nhiều hơn hẳn "Đã kết nối '
-              'lại" — nó trả lời câu người dùng thật sự lo: dữ liệu ghi lúc '
-              'mất mạng đã an toàn chưa. Để dải nghèo thông tin hơn ghi đè là '
-              'nuốt mất đúng thứ đáng nói.');
+      expect(find.textContaining('Đã đồng bộ'), findsOneWidget,
+          reason: '"Đã đồng bộ xong" trả lời câu người dùng thật sự lo: dữ '
+              'liệu ghi lúc mất mạng đã an toàn chưa. "Đã kết nối lại" không '
+              'trả lời câu đó, nên để nó ghi đè là nuốt mất thứ đáng nói.');
       expect(find.textContaining('Đã kết nối lại'), findsNothing);
     });
 
@@ -173,8 +184,8 @@ void main() {
       dayLen.add(ketQua(thanhCong: 3));
       await nhip(tester);
 
-      expect(find.textContaining('Đã đồng bộ 3'), findsOneWidget,
-          reason: 'Chiều ngược lại thì tin mới giàu hơn, phải được hiện.');
+      expect(find.textContaining('Đã đồng bộ'), findsOneWidget,
+          reason: 'Chiều ngược lại thì tin mới cụ thể hơn, phải được hiện.');
     });
 
     testWidgets('mất mạng luôn thắng mọi dải khác', (tester) async {
