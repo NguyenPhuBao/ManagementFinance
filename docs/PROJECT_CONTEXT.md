@@ -702,7 +702,7 @@ Muốn xác minh thay đổi ngoài bộ test thì dùng skill **`chay-app`** (C
 headless + truy vấn PostgreSQL). ⚠️ Skill đó nằm trong `.claude/` nên **không
 được push** — chỉ có trên máy đã dựng nó.
 
-### 🔔 Hệ thống thông báo (2026-09-04) — lát 1–3 xong, lát 4–7 chưa
+### 🔔 Hệ thống thông báo (2026-09-04) — **cả bảy lát xong**
 
 **Đọc `docs/NOTIFICATION_FEATURE.md` trước khi làm tiếp.** Tóm tắt:
 
@@ -718,16 +718,37 @@ headless + truy vấn PostgreSQL). ⚠️ Skill đó nằm trong `.claude/` nên
 - `NotificationScanner` nghe `SyncEngine.statusStream` (người tiêu thụ đầu
   tiên của stream này), **không** dùng `Timer.periodic`, và **không** được gắn
   ở `home_page.dart` vì chỗ đó gọi `start()` trong `build()`.
-- Đã chạy: thông báo ngân sách (chạm ngưỡng / vượt hạn mức) và hoá đơn (sắp
-  đến hạn / quá hạn). Chuông ở cả ba trang đã sống, panel Home theo thiết kế
-  Stitch, màn `/notifications`.
-- **Chưa làm:** thông báo cấp hệ điều hành (`flutter_local_notifications`),
-  `zonedSchedule`, mục tiêu, đồng bộ hỏng, ví âm, màn cài đặt.
+- **Đủ tám loại thông báo**: ngân sách (chạm ngưỡng / vượt hạn mức), hoá đơn
+  (sắp đến hạn / quá hạn), mục tiêu (hoàn thành / trễ tiến độ), hệ thống
+  (đồng bộ hỏng / ví âm).
+- **Thông báo cấp hệ điều hành** chạy thật trên Android: kênh `flowmoney_alerts`,
+  quyền xin **có ngữ cảnh** ở `/settings/notifications`, lịch nhắc hoá đơn đặt
+  trước bằng `zonedSchedule`.
+- **Trang cài đặt** `/settings/notifications`: công tắc tổng + bốn công tắc
+  nhóm + giờ nhắc + số ngày nhắc, lưu trong `FlutterSecureStorage` theo từng
+  `idaccount`.
+- **Dải báo kết nối** (`ConnectionBanner`) bọc ngoài router qua
+  `MaterialApp.builder`: mất mạng, có mạng lại, và kết quả đồng bộ.
 
-⚠️ Khi làm phần hệ điều hành: `NotificationScanner.stop()` **phải** gọi
-`cancelAll()`. Lịch nằm trong AlarmManager/UNUserNotificationCenter chứ không
-trong SQLite, nên `purgeDataForOtherAccounts` không cứu được — nhắc hoá đơn
-của người đăng nhập trước sẽ nổ trên màn hình khoá của người sau.
+⚠️ `NotificationScanner.stop()` gọi `cancelAll()`. Lịch nằm trong
+AlarmManager/UNUserNotificationCenter chứ không trong SQLite, nên
+`purgeDataForOtherAccounts` không cứu được — nhắc hoá đơn của người đăng nhập
+trước sẽ nổ trên màn hình khoá của người sau.
+
+⚠️ **`flutter test` xanh KHÔNG đủ cho vùng này.** Bốn lỗi dưới đây chỉ lộ ra
+khi chạy trên máy ảo Android, và cả bốn đều để bộ test xanh:
+
+| Lỗi | Vì sao test không thấy |
+|---|---|
+| Bấm thông báo ngân sách → **app chết màn đỏ** | `/budget` nằm trong `StatefulShellRoute` còn `/notifications` ở ngoài; `push` dựng shell thứ hai → trùng page key. Cần cây route thật mới nổ |
+| Ba chỗ **tràn bố cục** (21px, 3,9px, 0,315px) | Bộ test chạy Chrome ở 1280px, rộng gấp ba lần chỗ bắt đầu tràn |
+| Dải báo kết nối **đè lên tiêu đề và chuông** | Chỉ thấy khi có `Scaffold` thật bên dưới |
+| Dải "đã đồng bộ" **bị ghi đè** | Cả hai stream đều đúng; chỉ **thứ tự thực tế** mới lộ (đồng bộ xong sau 0,4 giây, dải kết nối báo ở giây thứ 3) |
+
+Chạy máy ảo: `flutter build apk --debug` → `adb install -r` →
+`adb shell am start -n com.flowmoney.flowmoney/.MainActivity`. `adb` không nằm
+trong PATH, đường dẫn đầy đủ ở
+`%LOCALAPPDATA%/Android/Sdk/platform-tools/adb.exe`.
 
 ### 🧾 Hoá đơn (2026-09-04) — đã vá bảy lỗi chặn
 
@@ -747,7 +768,8 @@ Hoá đơn tạo từ app trước đây **không bao giờ lên tới backend**
 - Analytics (báo cáo chi tiết)
 - AI chat integration hoàn chỉnh
 - Casso bank integration
-- Thông báo cấp hệ điều hành + đẩy (lát 4–7, xem `docs/NOTIFICATION_FEATURE.md`)
+- Kiểm thông báo nổ khi app **đóng hoàn toàn** — phải chờ tới mốc lịch thật
+  hoặc chỉnh đồng hồ máy ảo (xem `docs/NOTIFICATION_FEATURE.md` mục 8)
 - Build production / deploy
 
 ---

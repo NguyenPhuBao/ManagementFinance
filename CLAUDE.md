@@ -116,3 +116,17 @@ bàn giao tạm giữa các phiên nên chết đi sống lại nhiều lần �
 Bộ test là lưới an toàn chính của dự án này — nhiều lỗi trong quá khứ hỏng **âm thầm** (không exception, không log). Khi sửa lỗi, viết test tái hiện **trước**, và ghi rõ trong `reason:` của assertion là nó canh chừng điều gì.
 
 Vùng chưa có test nào: các feature `analytics`, `home`, `profile`, `ai_chat`. (`notification` có test từ 2026-09-04.) (`auth_interceptor.dart` có test từ 2026-09-03; `budget` có test từ 2026-09-03.)
+
+### ⚠️ Ba loại lỗi mà `flutter test` KHÔNG bắt được
+
+Phát hiện ngày 2026-09-04 khi chạy app trên máy ảo Android. Cả ba đều để bộ test xanh, nên **đụng vào giao diện hoặc điều hướng thì phải chạy trên máy ảo trước khi báo xong** — `flutter test` và `flutter build web` không thay thế được.
+
+1. **Tràn bố cục.** Bộ test và skill `chay-app` chạy Chrome ở **1280px**, còn điện thoại thật là **411dp** — rộng gấp ba. Tìm được ba chỗ tràn (21px, 3,9px, 0,315px) đã nằm sẵn trong mã từ lâu. Muốn test được thì phải **trích widget ra** rồi dựng trong `SizedBox` hẹp có chủ ý, và bắt bằng `tester.takeException()`: Flutter báo lỗi tràn qua `FlutterError.reportError` chứ **không ném ra chỗ gọi**, nên test chỉ `pumpWidget` + `expect(find...)` sẽ xanh ngay cả khi màn hình đầy sọc cảnh báo.
+
+2. **Điều hướng qua `StatefulShellRoute`.** `push` một route nằm trong shell từ một trang ngoài shell làm app **chết màn đỏ** (`!keyReservation.contains(key)`). Chỉ nổ khi có cây route thật. Xem bẫy 7.8 `docs/NOTIFICATION_FEATURE.md`.
+
+3. **Thứ tự thực tế giữa hai luồng bất đồng bộ.** Hai stream có thể đều đúng khi test riêng, nhưng trên máy thật cái này ghi đè cái kia. Ví dụ đã gặp: `SyncEngine` đẩy xong sau 0,4 giây còn bộ theo dõi kết nối báo ở giây thứ 3, nên dải "đã đồng bộ" bị dải "đã kết nối lại" nuốt mất.
+
+**Chạy máy ảo:** `flutter build apk --debug`, rồi `adb install -r build/app/outputs/flutter-apk/app-debug.apk` và `adb shell am start -n com.flowmoney.flowmoney/.MainActivity`. ⚠️ `adb` **không có trong PATH** — dùng `%LOCALAPPDATA%/Android/Sdk/platform-tools/adb.exe`.
+
+**Mẹo dò tràn hàng loạt:** sọc cảnh báo của Flutter là **vàng thuần** và không màn nào của app dùng màu ấy, nên đếm pixel vàng trong ảnh `adb exec-out screencap` rẻ hơn hẳn việc mở từng ảnh ra nhìn. Cẩn thận dương tính giả với màn hình launcher của Android.

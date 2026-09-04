@@ -1,8 +1,9 @@
 # Hệ thống thông báo — tài liệu bàn giao
 
 > **Cập nhật:** 2026-09-04 · **Nhánh:** `TranQuangDat`
-> **Trạng thái:** cả bảy lát đã xong. Còn lại là kiểm trên máy thật.
-> **Mức nền hiện tại:** `flutter test` **608/608 pass**, `flutter analyze`
+> **Trạng thái:** cả bảy lát đã xong, **đã kiểm trên máy ảo Android**, và có
+> thêm **dải báo kết nối** (mục 9).
+> **Mức nền hiện tại:** `flutter test` **651/651 pass**, `flutter analyze`
 > **28 issue, KHÔNG error**, `flutter build web` xanh.
 
 Đọc file này trước khi làm tiếp bất cứ việc gì thuộc thông báo. Mục 6 ghi lại
@@ -77,11 +78,14 @@ handshake không xác thực và mỗi sự kiện còn `io.emit` toàn cục.
 
 ```
 lib/core/notification/
-├── notification_rules.dart      # Hàm THUẦN: trạng thái → danh sách ứng viên
-├── notification_scanner.dart    # Nối luật với CSDL và vòng đời app
-├── bill_reminder_scheduler.dart # Đặt lịch trước với hệ điều hành (lát 5)
-├── os/                          # Cửa ra hệ điều hành (lát 4) — xem mục 6
-└── prefs/                       # Tuỳ chọn của người dùng (lát 7)
+├── notification_rules.dart       # Hàm THUẦN: trạng thái → danh sách ứng viên
+├── notification_scanner.dart     # Nối luật với CSDL và vòng đời app
+├── bill_reminder_scheduler.dart  # Đặt lịch trước với hệ điều hành (lát 5)
+├── notification_deeplink.dart    # go hay push — xem mục 7.8
+├── os/                           # Cửa ra hệ điều hành (lát 4) — xem mục 6
+└── prefs/                        # Tuỳ chọn của người dùng (lát 7)
+
+lib/core/network/connection_monitor.dart  # Ngưỡng ổn định — xem mục 9
 
 lib/core/database/
 ├── tables/notification_table.dart   # Bảng AppNotifications
@@ -89,11 +93,13 @@ lib/core/database/
 
 lib/core/utils/relative_time.dart    # "10 phút trước" / "Hôm qua"
 
-lib/shared/widgets/notification_bell.dart          # Chuông dùng chung
+lib/shared/widgets/notification_bell.dart      # Chuông dùng chung
+lib/shared/widgets/connection_banner.dart      # Dải báo kết nối — mục 9
 
 lib/features/notification/presentation/
-├── pages/notification_center_page.dart   # /notifications
-└── widgets/notification_panel.dart       # Panel trên Home
+├── pages/notification_center_page.dart      # /notifications
+├── pages/notification_settings_page.dart    # /settings/notifications
+└── widgets/notification_panel.dart          # Panel trên Home
 ```
 
 ### 4.1 Bảng `AppNotifications` — cục bộ, không đồng bộ
@@ -394,7 +400,7 @@ vào, worker 0 byte, và `index.js` cũng không nạp worker ấy.
 - Giờ nhắc và số ngày nhắc **được lưu nhưng chưa ai đọc** — lát 5 là nơi tiêu
   thụ chúng.
 
-## 7. Bẫy — đọc trước khi làm lát 4
+## 7. Bẫy — đọc trước khi sửa bất cứ thứ gì trong vùng này
 
 **7.1 Trùng lặp.** Ba cách hỏng: khoá trùng chỉ ở tầng Dart; `dedupeKey` chứa
 số biến thiên (`spent`, phần trăm thô); vuốt xoá bằng DELETE thay vì
@@ -433,6 +439,20 @@ tình phá.
 xanh** nên không ai biết cho tới lúc phát hành. Từ lát 4 trở đi, chạy
 `flutter build web` sau mỗi lát.
 
+**7.8 `push` một route nằm TRONG `StatefulShellRoute` từ một trang ngoài shell
+→ app chết màn đỏ.** go_router phải dựng thêm một bản shell thứ hai chồng lên
+bản đang có, hai bản trùng page key, và `Navigator` ném
+`!keyReservation.contains(key)`. Đây là chuyện đã xảy ra: bấm vào thông báo
+ngân sách từ `/notifications` (ngoài shell) sang `/budget` (trong shell).
+
+Dùng `thuocThanhTab()` trong `notification_deeplink.dart` để chọn `go` hay
+`push`. Bốn nhánh tab là `/home`, `/analytics`, `/budget`, `/profile` — danh
+sách ấy giữ đồng bộ **tay** với `app_router.dart`.
+
+⚠️ Ba deeplink còn lại (`/bills`, `/goals`, `/wallets`) đều **ngoài** shell nên
+`push` chạy tốt. Ba phần tư đường đi đúng chính là lý do lỗi này lọt qua mọi
+vòng kiểm trước đó.
+
 ---
 
 ## 8. Kiểm thử
@@ -455,24 +475,164 @@ xanh** nên không ai biết cho tới lúc phát hành. Từ lát 4 trở đi, 
 | `test/core/notification/bill_reminder_scheduler_test.dart` | **Luỹ đẳng** (chạy lại không đặt lại lịch nào); trần 50 và cắt bỏ mốc **xa** nhất; giờ nhắc từ tuỳ chọn; mốc quá khứ và ngoài cửa sổ 30 ngày bị bỏ; hoá đơn trả/xoá thì huỷ lịch cũ; tắt công tắc thì dọn sạch |
 | `test/core/notification/notification_rules_goal_wallet_test.dart` | Bốn luật của lát 6, trọng tâm là **đơn vị lặp lại trong `dedupeKey`**: chúc mừng một lần trong đời, trễ tiến độ mỗi tháng, ví âm và đồng bộ hỏng mỗi ngày |
 | `test/features/goal/goal_entity_progress_test.dart` | `progress` kẹp [0,1] và không ra `Infinity` khi `targetAmount = 0`; `daysLeft` so theo NGÀY; `isBehindSchedule` có biên dung sai, im lặng khi thiếu `startDate`, không NaN khi kỳ dài 0 ngày |
+| `test/core/notification/notification_deeplink_test.dart` | Route nào kéo theo thanh tab; **không được so khớp bằng `startsWith` trần** (`/budgets` ≠ `/budget`) |
+| `test/core/network/connection_monitor_test.dart` | **Ngưỡng ổn định**: mất mạng chớp nhoáng và chuỗi nhấp nháy đều không sinh sự kiện; đang online lúc khởi động thì không báo "khôi phục" |
+| `test/core/sync/sync_push_result_test.dart` | `pushResultStream` phát số thao tác đã lên; **không phát khi không có gì để đẩy**; server từ chối thì vẫn phát kèm số thất bại |
+| `test/shared/connection_banner_test.dart` | Ba dải và thứ tự ưu tiên giữa chúng; dải không được **đè lên** nội dung màn hình |
+| `test/features/layout/no_overflow_test.dart` | Ba hàng từng tràn, dựng ở **320/360/411dp** — bắt bằng `tester.takeException()` |
 
 ⚠️ `.gitignore` dòng 77 có `test/` → file test mới bị bỏ qua **âm thầm**. Phải
 `git add -f` **từng đường dẫn** (thêm cả thư mục thì git từ chối nguyên lệnh).
 
-**Chỉ kiểm được bằng máy thật/giả lập** (skill `chay-app` chạy Chrome headless
-nên chỉ xác minh được phần trong-app): hộp thoại quyền Android 13+/iOS và hành
-vi sau khi từ chối; thông báo nổ khi app **đóng hoàn toàn**; lịch sống sót sau
-khởi động lại máy; nhấn thông báo mở đúng màn (cold vs warm start).
+### ⚠️ `flutter test` xanh KHÔNG đủ cho vùng này
+
+Bốn lỗi dưới đây chỉ lộ ra khi chạy trên **máy ảo Android**, và cả bốn đều để
+bộ test xanh. Ghi lại vì chúng cùng một bài học: có những thứ chỉ tồn tại khi
+có cây widget thật, cây route thật, và một màn hình 411dp thật.
+
+| Lỗi | Vì sao bộ test không thấy |
+|---|---|
+| Bấm thông báo ngân sách → **app chết màn đỏ** (`!keyReservation.contains(key)`) | `/budget` nằm trong `StatefulShellRoute` còn `/notifications` ở ngoài. `push` bắt go_router dựng **shell thứ hai** trùng page key. Ba deeplink còn lại đều ngoài shell nên chạy tốt — ba phần tư đường đi đúng |
+| Ba chỗ **tràn bố cục** (21px · 3,9px · 0,315px) | Bộ test chạy Chrome ở **1280px**, rộng gấp ba lần chỗ bắt đầu tràn |
+| Dải báo kết nối **đè lên tiêu đề và nút chuông** | Chỉ thấy khi có `Scaffold` thật bên dưới |
+| Dải "đã đồng bộ" **bị ghi đè** mất | Cả hai stream đều đúng; chỉ **thứ tự thực tế** mới lộ — đo được: `Network restored` 22:30:11.268, `Push complete` 22:30:11.643, còn dải kết nối báo ở giây thứ 3 |
+
+### Đã kiểm được trên máy ảo
+
+- Quyền `POST_NOTIFICATIONS` xin **có ngữ cảnh**; **từ chối** → công tắc quay
+  về tắt kèm SnackBar; **cho phép** → `granted=true`.
+- Kênh Android `flowmoney_alerts`, `importance=4`.
+- Lịch vào AlarmManager đúng **08:00 giờ địa phương** (không neo UTC → bẫy 7.3
+  không xảy ra); đổi số ngày nhắc thì lịch cũ bị huỷ, lịch mới đặt, vẫn **một**
+  mốc duy nhất.
+- Thông báo hệ điều hành **nổ thật**, đúng kênh, id trong dải 31 bit.
+- **Lịch sống sót sau khi khởi động lại máy**: `adb reboot` rồi đọc lại
+  `dumpsys alarm` — mốc y nguyên, và logcat cho thấy tiến trình được khởi động
+  **cho broadcast của `ScheduledNotificationBootReceiver`**, với **0 dòng
+  `I/flutter`** → Dart không chạy, đúng cơ chế mong muốn.
+- Toàn bộ đường đi của phần thông báo: chuông (kể cả bấm hai lần thật nhanh),
+  "Xem tất cả", "Đọc tất cả", bấm từng loại thông báo, vuốt xoá
+  (`endToStart` — vuốt phải sang trái), trang cài đặt.
+
+### Chưa kiểm được
+
+Thông báo nổ khi app **đóng hoàn toàn** — phải chờ tới mốc lịch thật, hoặc
+chỉnh đồng hồ máy ảo (việc này đụng đồng hồ hệ thống nên cần người dùng đồng ý).
+
+### Cách chạy trên máy ảo
+
+```bash
+flutter build apk --debug
+ADB="$LOCALAPPDATA/Android/Sdk/platform-tools/adb.exe"   # adb KHÔNG có trong PATH
+"$ADB" -s emulator-5554 install -r build/app/outputs/flutter-apk/app-debug.apk
+"$ADB" shell am start -n com.flowmoney.flowmoney/.MainActivity
+```
+
+Mẹo đã dùng: sọc cảnh báo tràn của Flutter là **vàng thuần** và không màn nào
+của app dùng màu ấy, nên đếm pixel vàng trong ảnh `screencap` là phép dò tràn
+rẻ hơn hẳn việc mở từng ảnh ra nhìn. Cẩn thận dương tính giả với **màn hình
+launcher** của Android (biểu tượng Google có vàng).
 
 ---
 
-## 9. Commit đã tạo trong phiên 2026-09-04
+## 9. Dải báo kết nối — kênh thứ hai, KHÔNG đi qua bảng thông báo
+
+Yêu cầu của người dùng: đang dùng app mà mất mạng thì phải biết, có mạng lại
+thì phải biết, và việc đồng bộ sau đó cũng phải biết.
+
+```
+lib/core/network/connection_monitor.dart     # Ngưỡng ổn định, tách khỏi SyncEngine
+lib/shared/widgets/connection_banner.dart    # Dải, bọc ngoài router
+```
+
+### Vì sao KHÔNG dùng bảng `AppNotifications`
+
+Bảng ấy dành cho **sự kiện tài chính đáng lưu lại**, với khoá chống trùng theo
+kỳ. Trạng thái mạng thì ngược lại: tức thời, lặp nhiều, hết ý nghĩa sau vài
+giây. Đi tàu hoả có thể mất/có mạng chục lần trong một giờ; mỗi lần một hàng
+thì trung tâm thông báo ngập rác và người dùng sẽ tắt cả nhóm "Hệ thống" —
+mất luôn cảnh báo đồng bộ hỏng vốn đáng giá.
+
+### Ngưỡng ổn định — lý do `ConnectionMonitor` tồn tại
+
+`onConnectivityChanged` bắn rất nhiều: thang máy, hầm, chuyển Wi-Fi sang 4G.
+Báo thẳng ra giao diện thì dải nhấp nháy liên tục và người dùng học được cách
+phớt lờ nó, kể cả lúc mất mạng thật. Nên chỉ báo khi trạng thái **giữ nguyên**
+đủ lâu (3 giây).
+
+⚠️ **Tách khỏi `SyncEngine` có chủ ý.** `SyncEngine` cũng nghe cùng luồng ấy,
+nhưng để trả lời câu **"lúc nào nên đồng bộ"** — ở đó, phản ứng ngay với cú
+nhấp nháy đầu tiên là **đúng**. Dải báo trả lời câu **"có đáng nói với người
+dùng không"** — ở đó, phản ứng ngay là **sai**. Trộn hai mục đích vào một chỗ
+thì một trong hai phải chịu thiệt.
+
+### Ba dải, và thứ tự ưu tiên giữa chúng
+
+| Dải | Khi nào | Nội dung |
+|---|---|---|
+| Mất kết nối | Sau ngưỡng ổn định | "Không có kết nối — thay đổi vẫn được lưu trên máy" |
+| Đã kết nối lại | Sau ngưỡng ổn định | "Đã kết nối lại" |
+| Kết quả đồng bộ | `SyncEngine.pushResultStream` | "Đã đồng bộ xong" / "Một số thay đổi chưa lên được máy chủ" |
+
+**Cả ba đều tự ẩn sau vài giây.** Bản đầu giữ dải mất kết nối cho tới khi có
+mạng, với lập luận "trạng thái kéo dài thì phải hiển thị kéo dài". Người dùng
+thử trên máy thật và yêu cầu đổi: một dải đứng mãi trên đầu màn hình gây khó
+chịu hơn là hữu ích.
+
+**Không nêu số lượng** trong thông báo đồng bộ — con số là chi tiết cài đặt.
+Nhưng **vẫn phân biệt** "xong" với "còn kẹt lại": gộp hai trạng thái ấy vào
+một câu là để người dùng tưởng dữ liệu đã an toàn.
+
+⚠️ **"Đã kết nối lại" KHÔNG được ghi đè dải kết quả đồng bộ.** Đo trên máy
+thật: `SyncEngine` đẩy xong sau **0,4 giây**, còn `ConnectionMonitor` phải chờ
+hết ngưỡng **3 giây**. Không có quy tắc ưu tiên thì dải giàu thông tin ra
+trước rồi bị dải nghèo hơn nuốt mất — đúng thứ người dùng yêu cầu lại là thứ
+biến mất.
+
+### `SyncEngine.pushResultStream`
+
+Kênh **riêng**, không nhét vào `statusStream` (cùng lý do như
+`sessionInvalidStream`). **Không phát khi không có gì để đẩy** — phần lớn chu
+kỳ là như vậy, và phát mọi lần là ép nơi nhận tự lọc, sớm muộn sẽ có chỗ quên
+lọc rồi hiện "đã đồng bộ 0 thay đổi".
+
+### Quan hệ với thông báo `syncFailed`
+
+Hai thứ **bổ sung** nhau, không trùng: dải là tức thời, còn hàng `syncFailed`
+trong trung tâm thông báo là lịch sử và gộp theo ngày.
+
+---
+
+## 10. Commit đã tạo trong phiên 2026-09-04
+
+Lát 1–3 và phần hoá đơn:
 
 ```
 8f4c72b  fix(bill): vá đường đẩy, trạng thái thanh toán và chu kỳ lặp
 9c09fc6  feat(budget): cảnh báo khi chu kỳ ghi đè ngày kết thúc tự chọn
 ee8c9e8  feat(notification): trung tâm thông báo trong app
 9691b20  feat(notification): thông báo hoá đơn sắp đến hạn và quá hạn
+54eb1a2  docs: bàn giao hệ thống thông báo và cập nhật trạng thái
+```
+
+Lát 4–7:
+
+```
+4876fd1  feat(notification): thông báo hệ điều hành Android/iOS
+862d090  docs(notification): cập nhật trạng thái lát 4
+e08ce68  feat(notification): trang cài đặt và tuỳ chọn theo từng tài khoản
+9dcc586  docs(notification): tài liệu backend và đính chính time_notification
+4be4f15  feat(notification): lịch nhắc đặt trước và bốn loại thông báo còn lại
+a26d78d  docs(notification): cả bảy lát đã xong
+```
+
+Sau khi chạy trên máy ảo Android:
+
+```
+f08ee0d  fix(ui): vá ba chỗ tràn bố cục chỉ lộ ra trên màn điện thoại
+db4966b  fix(notification): bấm thông báo ngân sách làm app chết màn đỏ
+03418a4  feat(network): báo mất mạng, có mạng lại và kết quả đồng bộ
+06f2499  refactor(network): dải báo kết nối tối giản hơn theo yêu cầu người dùng
 ```
 
 Chưa push.
