@@ -36,6 +36,11 @@ abstract class CategoryManagementRepository {
     required int accountId,
     required String categoryId,
   });
+
+  /// Từ khoá của MỌI danh mục thuộc tài khoản, gom theo `categoryId`.
+  /// Dùng cho bộ gợi ý — nó cần cả tập cùng lúc, gọi `loadKeywords` trong vòng
+  /// lặp sẽ sinh một truy vấn cho mỗi danh mục.
+  Future<Map<String, List<String>>> loadAllKeywords({required int accountId});
   Future<void> saveKeywords({
     required int accountId,
     required String categoryId,
@@ -353,6 +358,12 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
     required String categoryId,
   }) =>
       db.categoryDao.getKeywords(accountId, categoryId);
+
+  @override
+  Future<Map<String, List<String>>> loadAllKeywords({
+    required int accountId,
+  }) =>
+      db.categoryDao.getAllKeywords(accountId);
 
   @override
   Future<void> saveKeywords({

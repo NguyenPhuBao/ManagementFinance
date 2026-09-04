@@ -150,6 +150,23 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
     return rows.map((row) => row.keyword).toList();
   }
 
+  /// Toàn bộ từ khoá của một tài khoản, gom theo `categoryId`, bằng **một** truy vấn.
+  ///
+  /// Bộ gợi ý cần từ khoá của *mọi* danh mục cùng lúc. Gọi `getKeywords` trong
+  /// vòng lặp sinh một truy vấn cho mỗi danh mục, mà bộ gợi ý lại chạy sau mỗi
+  /// lần ghi chú thay đổi — số truy vấn nhân lên rất nhanh.
+  Future<Map<String, List<String>>> getAllKeywords(int accountId) async {
+    final rows = await (select(categoryKeywords)
+          ..where((t) => t.idaccount.equals(accountId))
+          ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
+        .get();
+    final grouped = <String, List<String>>{};
+    for (final row in rows) {
+      (grouped[row.categoryId] ??= []).add(row.keyword);
+    }
+    return grouped;
+  }
+
   Future<void> replaceKeywords({
     required int accountId,
     required String categoryId,

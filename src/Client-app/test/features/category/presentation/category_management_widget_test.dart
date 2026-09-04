@@ -413,6 +413,9 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField), 'Thanh toán GrabFood');
+    // Ô ghi chú có debounce 300ms (xem `_doTreGoiY`): phải chờ qua mốc đó thì
+    // việc tra cứu gợi ý mới bắt đầu.
+    await tester.pump(const Duration(milliseconds: 350));
     await tester.pumpAndSettle();
 
     expect(find.text('Gợi ý danh mục'), findsOneWidget);
@@ -452,7 +455,9 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField), 'Thanh toán GrabFood');
-    await tester.pump();
+    // Chờ qua debounce để việc tra cứu THẬT SỰ bắt đầu — đó mới là tình huống
+    // test này canh: một kết quả về muộn sau khi người dùng đã đổi loại giao dịch.
+    await tester.pump(const Duration(milliseconds: 350));
     tester
         .widget<GestureDetector>(find.byKey(const Key('transaction-type-1')))
         .onTap!();
@@ -462,6 +467,63 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Gợi ý danh mục'), findsNothing);
+  });
+
+  testWidgets('gõ liên tiếp chỉ tra cứu MỘT lần sau khi ngừng gõ',
+      (tester) async {
+    final food = category(id: 'food', name: 'Ăn uống');
+    final repository = _FakeCategoryRepository(
+      selectable: [food],
+      keywords: {
+        food.id: ['grabfood']
+      },
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AddTransactionPage(
+          transactionBloc: TransactionBloc(
+            transactionRepository: _FakeTransactionRepository(),
+          ),
+          categoryRepository: repository,
+          wallets: [_wallet()],
+          idaccount: 1,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    repository.soLanDocDanhMuc = 0;
+    repository.soLanDocTuKhoa = 0;
+
+    // Mô phỏng người dùng gõ từng ký tự. `TextEditingController` phát tín hiệu
+    // ở MỖI ký tự, nên trước bản vá này mỗi ký tự là một lượt đọc CSDL đầy đủ.
+    for (final chu in ['T', 'Th', 'Tha', 'Than', 'Thanh']) {
+      await tester.enterText(find.byType(TextField), chu);
+      await tester.pump(const Duration(milliseconds: 40));
+    }
+    expect(
+      repository.soLanDocDanhMuc,
+      0,
+      reason: 'Trong lúc người dùng còn đang gõ thì chưa được tra cứu gì. '
+          'Không có debounce thì gõ một ghi chú 30 ký tự sinh 30 lượt đọc, mỗi '
+          'lượt lại đọc thêm từ khoá — trên máy yếu là giật thấy rõ.',
+    );
+
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+    expect(
+      repository.soLanDocDanhMuc,
+      1,
+      reason: 'Ngừng gõ thì tra cứu đúng MỘT lần.',
+    );
+    expect(
+      repository.soLanDocTuKhoa,
+      1,
+      reason: 'Và từ khoá phải đọc bằng MỘT truy vấn gộp cho cả tài khoản, '
+          'không phải một truy vấn cho mỗi danh mục. Trước bản vá này chỗ gọi '
+          'là `categories.map((c) => loadKeywords(categoryId: c.id))` — tài '
+          'khoản có 20 danh mục là 20 truy vấn, nhân với mỗi ký tự gõ vào.',
+    );
   });
 }
 
@@ -513,6 +575,12 @@ class _FakeCategoryRepository implements CategoryManagementRepository {
   CategoryChildDraft? savedChild;
   CategoryGroupDraft? savedGroup;
 
+  /// Đếm số lần trang gọi xuống tầng dữ liệu để dựng gợi ý. Dùng để canh chừng
+  /// hai thứ: debounce ô ghi chú, và việc đọc từ khoá bằng MỘT truy vấn thay vì
+  /// một truy vấn cho mỗi danh mục.
+  int soLanDocDanhMuc = 0;
+  int soLanDocTuKhoa = 0;
+
   @override
   Stream<CategoryTree> watchTree({
     required int accountId,
@@ -540,8 +608,18 @@ class _FakeCategoryRepository implements CategoryManagementRepository {
   Future<List<String>> loadKeywords({
     required int accountId,
     required String categoryId,
-  }) async =>
-      _keywords[categoryId] ?? const [];
+  }) async {
+    soLanDocTuKhoa++;
+    return _keywords[categoryId] ?? const [];
+  }
+
+  @override
+  Future<Map<String, List<String>>> loadAllKeywords({
+    required int accountId,
+  }) async {
+    soLanDocTuKhoa++;
+    return _keywords;
+  }
 
   @override
   Future<void> saveChild(CategoryChildDraft draft) async {
@@ -569,11 +647,15 @@ class _FakeCategoryRepository implements CategoryManagementRepository {
   Future<List<Category>> selectableChildren({
     required int accountId,
     required String classify,
-  }) =>
-      _selectableLoader?.call(accountId, classify) ??
-      Future.value(
-        _selectable.where((category) => category.classify == classify).toList(),
-      );
+  }) {
+    soLanDocDanhMuc++;
+    return _selectableLoader?.call(accountId, classify) ??
+        Future.value(
+          _selectable
+              .where((category) => category.classify == classify)
+              .toList(),
+        );
+  }
 }
 
 class _FakeTransactionRepository implements TransactionRepository {

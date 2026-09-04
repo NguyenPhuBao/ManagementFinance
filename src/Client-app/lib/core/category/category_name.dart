@@ -33,3 +33,23 @@ String normalizeCategoryName(String value) => unorm
     .toLowerCase()
     .trim()
     .replaceAll(RegExp(r'\s+'), ' ');
+
+/// Bỏ dấu tiếng Việt để so khớp **lỏng hơn**: "cà phê" và "ca phe" thành một.
+///
+/// Đây là **định nghĩa duy nhất** của phép bỏ dấu trong dự án. Tương đương
+/// `removeVietnameseTones()` của backend (`classify.preprocess.js`): tách dấu
+/// bằng NFD, bỏ toàn bộ ký tự dấu thanh, rồi hạ `đ`/`Đ` về `d` — chữ đó không
+/// phải là `d` + dấu nên NFD không tách được.
+///
+/// ⚠️ **Không dùng hàm này để kiểm tra trùng tên danh mục.** Bỏ dấu là phép so
+/// *mất thông tin*: "đá" và "da" thành một, "sắn" và "săn" thành một. Quy tắc
+/// trùng tên phải dùng `normalizeCategoryName` — siết bằng hàm này sẽ từ chối
+/// những cặp tên hợp lệ mà người dùng phân biệt được bằng mắt.
+///
+/// Chỗ dùng đúng của nó là **gợi ý**: nơi đoán sai chỉ tốn một cú chạm để sửa,
+/// và nơi người dùng thường gõ không dấu cho nhanh.
+String removeVietnameseTones(String value) => unorm
+    .nfd(value)
+    .replaceAll(RegExp(r'[̀-ͯ]'), '')
+    .replaceAll('đ', 'd')
+    .replaceAll('Đ', 'D');

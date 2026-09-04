@@ -518,6 +518,57 @@ void main() {
               'lại ngày là bản ghi quay về hàng đợi.');
     });
 
+    test('Vi phạm ràng buộc UNIQUE của PostgreSQL là lỗi vĩnh viễn (G16)',
+        () async {
+      await seedPendingCategory();
+
+      // Dạng Prisma bọc: đây là thứ client thật sự nhận khi danh mục trùng tên
+      // với một hàng ĐÃ XOÁ MỀM trên server — `uq_category_owner_name_classify`
+      // không có mệnh đề WHERE nên hàng đã xoá vẫn giữ chỗ tên.
+      await runOnce(_FailingAdapter(
+        'Invalid `prisma.category.create()` invocation. '
+        'Unique constraint failed on the fields: '
+        '(`Create_by`,`NameCategory`,`Classify`)',
+      ));
+
+      final row = await db.categoryDao.getById(catId);
+      expect(
+        row?.syncBlockedUntil,
+        clock.add(const Duration(seconds: 30)),
+        reason: 'Canh chừng G16. Trước bản vá này, 23505 rơi xuống nhánh '
+            'transient ở cuối _classifyFailure nên bản ghi được đẩy lại ở MỌI '
+            'chu kỳ, vĩnh viễn. Đường kích hoạt có thật và tự lặp: người dùng '
+            'xoá một danh mục cá nhân mặc định, rồi ensureMissing() tạo lại nó '
+            'với UUID mới ở MỖI lần mở app — mỗi lần thêm một bản ghi kẹt.',
+      );
+      expect(row?.syncStatus, 'pending',
+          reason: 'Chặn theo THỜI GIAN như mọi lỗi vĩnh viễn khác: khi backend '
+              'thêm WHERE "Delete_at" IS NULL vào index, bản ghi phải tự quay '
+              'lại hàng đợi mà không cần người dùng làm gì.');
+    });
+
+    test('Vi phạm UNIQUE dạng mã SQLSTATE trần cũng là lỗi vĩnh viễn (G16)',
+        () async {
+      await seedPendingCategory();
+
+      // Prisma bọc lỗi theo nhiều cách tuỳ phiên bản; mã 23505 là phần ổn định
+      // nhất, giống hệt lý do _checkConstraintPattern khớp cả 23514 lẫn câu chữ.
+      await runOnce(_FailingAdapter(
+        'Error occurred during query execution: '
+        'PostgresError { code: "23505", message: "duplicate key value violates '
+        'unique constraint \\"uq_transaction_external\\"" }',
+      ));
+
+      final row = await db.categoryDao.getById(catId);
+      expect(
+        row?.syncBlockedUntil,
+        clock.add(const Duration(seconds: 30)),
+        reason: 'Khớp theo mã SQLSTATE chứ không chỉ theo câu chữ tiếng Anh của '
+            'Prisma: đổi phiên bản Prisma là câu chữ đổi, mà KHÔNG có lỗi nào '
+            'báo ra — đúng khuôn mẫu hỏng âm thầm của dự án này.',
+      );
+    });
+
     test('Bản ghi đang bị chặn KHÔNG được gom vào batch', () async {
       await seedPendingCategory();
       await db.categoryDao.markSyncBlocked(

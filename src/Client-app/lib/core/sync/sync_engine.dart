@@ -505,6 +505,9 @@ class SyncEngine {
               [];
           if (categories.isNotEmpty) {
             final List<CategoriesCompanion> companions = [];
+            // Từ khoá phân loại backend gửi kèm mỗi danh mục, gom lại để gieo
+            // SAU khi hàng danh mục đã tồn tại ở local.
+            final Map<String, List<String>> tuKhoaTheoDanhMuc = {};
             for (final c in categories) {
               final catUuid = (c['idcategory'] ?? c['uuid'] ?? c['id'])
                   .toString();
@@ -589,8 +592,24 @@ class SyncEngine {
                     DateTime.tryParse(c['update_at']?.toString() ?? '') ??
                         DateTime.now()),
               ));
+
+              // Backend lưu từ khoá thành MỘT chuỗi nối bằng dấu phẩy trên hàng
+              // category (`classify.repository.js` ghi bằng `join(',')`), client
+              // lưu mỗi từ khoá một dòng có `idaccount`. Không tách ra thì cả
+              // chuỗi thành một "từ khoá" dài và không bao giờ khớp gì.
+              final tuKhoa = (c['keyword'] ?? c['Keyword'])
+                      ?.toString()
+                      .split(',')
+                      .map((k) => k.trim())
+                      .where((k) => k.isNotEmpty)
+                      .toList() ??
+                  const <String>[];
+              if (tuKhoa.isNotEmpty && c['delete_at'] == null) {
+                tuKhoaTheoDanhMuc[catUuid] = tuKhoa;
+              }
             }
             await _db.categoryDao.upsertAll(companions);
+            await _gieoTuKhoaKhiTrong(accountId, tuKhoaTheoDanhMuc);
             // Repair TRƯỚC: cập nhật categoryId từ 'cat_food' → UUID trong các
             // pending transactions. PHẢI chạy trước removeDuplicateLocalSeedCategories()
             // vì _resolveCategoryId cần getById('cat_food') để đọc tên category rồi
@@ -1420,6 +1439,19 @@ class SyncEngine {
   static final RegExp _checkConstraintPattern =
       RegExp(r'23514|violates check constraint', caseSensitive: false);
 
+  /// PostgreSQL từ chối vì dữ liệu trùng một ràng buộc `UNIQUE` (SQLSTATE
+  /// 23505). Khớp cả mã, câu chữ của PostgreSQL, và câu chữ Prisma bọc lại —
+  /// Prisma đổi cách diễn đạt theo phiên bản, mà mã 23505 là phần ổn định nhất.
+  ///
+  /// Đường kích hoạt đã gặp thật (G16): người dùng xoá một danh mục cá nhân
+  /// mặc định, `PersonalDefaultCategories.ensureMissing()` tạo lại nó với UUID
+  /// mới ở **mỗi lần mở app**, rồi đẩy lên đụng `uq_category_owner_name_classify`
+  /// — index đó không có mệnh đề `WHERE` nên hàng đã xoá mềm vẫn giữ chỗ tên.
+  static final RegExp _uniqueConstraintPattern = RegExp(
+    r'23505|violates unique constraint|unique constraint failed',
+    caseSensitive: false,
+  );
+
   static SyncFailureKind _classifyFailure(String message, {String? code}) {
     // Ưu tiên mã lỗi ổn định. Khớp chuỗi thông báo của Prisma là cách làm dễ
     // vỡ: đổi tên constraint hay nâng version Prisma là mất khả năng phát hiện
@@ -1455,7 +1487,64 @@ class SyncEngine {
     if (_checkConstraintPattern.hasMatch(message)) {
       return SyncFailureKind.permanent;
     }
+    // Trùng một ràng buộc UNIQUE thì đẩy lại bao nhiêu lần cũng hỏng y như vậy,
+    // cho tới khi dữ liệu đổi hoặc backend nới ràng buộc. Xếp `transient` như
+    // trước đây nghĩa là gửi lại ở MỌI chu kỳ, và vì `ensureMissing()` sinh
+    // thêm một bản trùng ở mỗi lần mở app nên số bản ghi kẹt chỉ tăng (G16).
+    //
+    // `permanent` chặn theo THỜI GIAN chứ không loại vĩnh viễn: khi backend
+    // thêm `WHERE "Delete_at" IS NULL` vào index, bản ghi tự quay lại hàng đợi.
+    if (_uniqueConstraintPattern.hasMatch(message)) {
+      return SyncFailureKind.permanent;
+    }
     return SyncFailureKind.transient;
+  }
+
+  /// Gieo từ khoá phân loại backend gửi kèm danh mục — **chỉ khi danh mục đó
+  /// chưa có từ khoá nào** ở máy này.
+  ///
+  /// Vì sao không ghi đè: cột `Keyword` phía backend là **một chuỗi dùng chung
+  /// cho mọi tài khoản** (xem `docs/superpowers/backend/CATEGORY_KEYWORD_SYNC.md`),
+  /// còn `CategoryKeywords` phía client là dữ liệu **riêng từng người dùng**,
+  /// sửa được trong màn quản lý danh mục. Ghi đè ở mỗi chu kỳ pull sẽ khiến
+  /// thao tác xoá từ khoá của người dùng không bao giờ dính — nó bị hồi sinh ở
+  /// lần pull sau, đúng cách danh mục đã xoá từng bị hồi sinh ở G7.
+  ///
+  /// Đánh đổi có chủ ý: xoá **hết** từ khoá của một danh mục thì lần pull sau
+  /// gieo lại, vì "rỗng" không phân biệt được với "chưa từng gieo" nếu không
+  /// thêm cột mới.
+  ///
+  /// `idaccount` dùng để ghi là **tài khoản đang đăng nhập**, không phải
+  /// `idaccount` của hàng danh mục — danh mục mặc định lưu với `idaccount = 0`
+  /// nhưng `loadKeywords` tra theo tài khoản người dùng.
+  Future<void> _gieoTuKhoaKhiTrong(
+    int accountId,
+    Map<String, List<String>> tuKhoaTheoDanhMuc,
+  ) async {
+    if (accountId <= 0 || tuKhoaTheoDanhMuc.isEmpty) return;
+    final now = DateTime.now();
+    var soDanhMucDaGieo = 0;
+    for (final entry in tuKhoaTheoDanhMuc.entries) {
+      try {
+        final daCo = await _db.categoryDao.getKeywords(accountId, entry.key);
+        if (daCo.isNotEmpty) continue;
+        await _db.categoryDao.replaceKeywords(
+          accountId: accountId,
+          categoryId: entry.key,
+          keywords: entry.value,
+          now: now,
+        );
+        soDanhMucDaGieo++;
+      } catch (e) {
+        // Một danh mục hỏng không được làm đổ cả chu kỳ pull: từ khoá là dữ
+        // liệu phụ trợ cho bộ gợi ý, không phải dữ liệu tài chính.
+        debugPrint('[SyncEngine] Bỏ qua từ khoá của ${entry.key}: $e');
+      }
+    }
+    if (soDanhMucDaGieo > 0) {
+      debugPrint(
+          '[SyncEngine] Đã gieo từ khoá phân loại cho $soDanhMucDaGieo danh mục.');
+    }
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
