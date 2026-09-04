@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
+import '../auth/current_account.dart';
 import '../../shared/widgets/main_shell.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
@@ -41,6 +43,7 @@ import '../../features/goal/presentation/pages/goal_add_page.dart';
 import '../../features/goal/presentation/pages/goal_detail_page.dart';
 import '../../features/ai_chat/presentation/pages/ai_chat_page.dart';
 import '../../features/notification/presentation/pages/notification_center_page.dart';
+import '../../features/notification/presentation/pages/notification_settings_page.dart';
 
 // ─── GoRouterRefreshStream ───────────────────────────────────────────────────
 // Wrap AuthBloc stream thành ChangeNotifier để GoRouter tự refresh
@@ -276,6 +279,14 @@ class AppRouter {
           GoRoute(
             path: '/notifications',
             builder: (_, __) => const NotificationCenterPage(),
+          ),
+          // Trang cài đặt tự đọc `idaccount` được truyền vào chứ không hỏi
+          // AuthBloc — xem chú thích trong NotificationSettingsPage.
+          GoRoute(
+            path: '/settings/notifications',
+            builder: (ctx, __) => NotificationSettingsPage(
+              idaccount: currentAccountIdOrNull(ctx),
+            ),
           ),
 
           // Goal

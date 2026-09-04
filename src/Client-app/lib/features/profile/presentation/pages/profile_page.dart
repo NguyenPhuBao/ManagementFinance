@@ -75,7 +75,9 @@ class ProfilePage extends StatelessWidget {
                 _ProfileItem(
                   icon: Icons.notifications_none,
                   title: 'Thông báo',
-                  onTap: () => context.push('/notifications'),
+                  // Mục này dẫn tới trang CÀI ĐẶT thông báo, không phải trung
+                  // tâm thông báo — lối vào trung tâm là chuông ở trang chủ.
+                  onTap: () => context.push('/settings/notifications'),
                 ),
                 _ProfileItem(
                   icon: Icons.dark_mode_outlined,

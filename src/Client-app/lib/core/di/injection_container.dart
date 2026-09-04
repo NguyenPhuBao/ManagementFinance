@@ -37,6 +37,7 @@ import '../../features/category/data/services/category_suggestion_engine.dart';
 import '../notification/notification_scanner.dart';
 import '../notification/os/os_notifier.dart';
 import '../notification/os/os_notifier_factory.dart';
+import '../notification/prefs/notification_prefs_store.dart';
 
 /// Service locator — dùng `sl<T>()` để resolve dependencies
 final GetIt sl = GetIt.instance;
@@ -199,6 +200,12 @@ Future<void> setupDependencies() async {
   // gọi DUY NHẤT của factory ấy — xem chú thích trong file đó.
   sl.registerLazySingleton<OsNotifier>(createOsNotifier);
 
+  // Tuỳ chọn thông báo. Dùng chung `FlutterSecureStorage` với token và
+  // checkpoint đồng bộ — cùng mẫu `SecureStorageSyncCheckpointStore`.
+  sl.registerLazySingleton<NotificationPrefsStore>(
+    () => const SecureStorageNotificationPrefsStore(FlutterSecureStorage()),
+  );
+
   // Đăng ký SAU BudgetRepository vì scanner đọc qua nó. Là singleton: mỗi
   // listener thừa trên statusStream là thêm một lượt quét cho mỗi sự kiện.
   sl.registerLazySingleton<NotificationScanner>(
@@ -217,6 +224,7 @@ Future<void> setupDependencies() async {
           sl<AppDatabase>().billDao.markOverdue(idaccount, now),
       syncStatus: sl<SyncEngine>().statusStream,
       osNotifier: sl<OsNotifier>(),
+      prefsStore: sl<NotificationPrefsStore>(),
     ),
   );
 

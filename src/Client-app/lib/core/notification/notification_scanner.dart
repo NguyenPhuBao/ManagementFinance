@@ -10,6 +10,8 @@ import '../../features/budget/data/models/budget_entity.dart';
 import 'notification_rules.dart';
 import 'os/os_notifier.dart';
 import 'os/os_scheduled_id.dart';
+import 'prefs/notification_prefs.dart';
+import 'prefs/notification_prefs_store.dart';
 
 /// Nạp ngân sách kèm số đã chi cho một tài khoản tại một mốc thời gian.
 ///
@@ -46,6 +48,10 @@ class NotificationScanner {
   /// Tuỳ chọn: bỏ trống thì chỉ có trung tâm thông báo trong app (web).
   final OsNotifier? osNotifier;
 
+  /// Tuỳ chọn: bỏ trống thì chạy như `NotificationPrefs.macDinh` — bật hết.
+  /// Thiếu kho tuỳ chọn tuyệt đối không được làm tính năng im lặng.
+  final NotificationPrefsStore? prefsStore;
+
   final Stream<SyncStatus> syncStatus;
   final DateTime Function() clock;
   final String Function() idGenerator;
@@ -73,6 +79,7 @@ class NotificationScanner {
     required this.syncStatus,
     this.markOverdue,
     this.osNotifier,
+    this.prefsStore,
     DateTime Function()? clock,
     String Function()? idGenerator,
   })  : clock = clock ?? DateTime.now,
@@ -129,6 +136,11 @@ class NotificationScanner {
       final budgets = await loadBudgets(idaccount, at);
       final bills = await loadBills(idaccount, at);
 
+      // Đọc tuỳ chọn theo ĐÚNG tài khoản đang quét. Đọc nhầm tài khoản khác là
+      // người dùng thấy thông báo bật/tắt ngẫu nhiên trên máy dùng chung.
+      final prefs =
+          await prefsStore?.read(idaccount) ?? NotificationPrefs.macDinh;
+
       final ungVien = buildNotificationCandidates(
         NotificationRuleInput(
           now: at,
@@ -136,7 +148,10 @@ class NotificationScanner {
           bills: bills,
           silenceBefore: at.subtract(cuaSoSuKien),
         ),
-      );
+        // Lọc ở đây chứ không ở bước bắn: tắt một nhóm nghĩa là không sinh
+        // thông báo nhóm ấy CẢ trong app. Chỉ chặn lúc bắn thì trung tâm thông
+        // báo vẫn đầy những mục người dùng đã nói là không muốn thấy.
+      ).where((c) => prefs.chapNhan(c.kind)).toList();
       if (ungVien.isEmpty) return 0;
 
       final moi = await dao.insertAllIfAbsent([
@@ -147,7 +162,9 @@ class NotificationScanner {
       // chứa lại đúng những sự kiện cũ ở mọi lượt quét, và quét chạy sau mỗi
       // lần đồng bộ. Bắn theo ứng viên là người dùng nhận lại cùng một thông
       // báo mỗi lần mở app.
-      await _banRaHeDieuHanh(moi);
+      // Công tắc OS là "đừng làm phiền tôi", không phải "đừng ghi lại gì":
+      // hàng đã nằm trong CSDL rồi, chỉ bỏ bước bắn ra ngoài.
+      if (prefs.osBat) await _banRaHeDieuHanh(moi);
 
       return moi.length;
     } finally {

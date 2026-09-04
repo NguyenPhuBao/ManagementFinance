@@ -22,6 +22,8 @@ import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/notification/notification_scanner.dart';
 import 'package:flowmoney/core/notification/os/os_notifier.dart';
 import 'package:flowmoney/core/notification/os/os_scheduled_id.dart';
+import 'package:flowmoney/core/notification/prefs/notification_prefs.dart';
+import 'package:flowmoney/core/notification/prefs/notification_prefs_store.dart';
 import 'package:flowmoney/core/sync/sync_models.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
 
@@ -109,6 +111,7 @@ void main() {
     List<BudgetView>? budgets,
     List<Bill> bills = const [],
     OsNotifier? osNotifier,
+    NotificationPrefsStore? prefs,
   }) {
     var soId = 0;
     return NotificationScanner(
@@ -120,6 +123,7 @@ void main() {
       loadBills: (id, at) async => bills,
       syncStatus: syncStatus.stream,
       osNotifier: osNotifier,
+      prefsStore: prefs,
       clock: () => now,
       idGenerator: () => 'id-${soId++}',
     );
@@ -324,6 +328,90 @@ void main() {
               'SQLite, nên purgeDataForOtherAccounts không chạm tới được. '
               'Thiếu cancelAll() là nhắc hoá đơn của người đăng nhập trước nổ '
               'trên màn hình khoá của người đăng nhập sau.');
+    });
+  });
+
+  group('tuỳ chọn của người dùng', () {
+    test('tắt một nhóm thì không sinh thông báo của nhóm đó', () async {
+      final prefs = InMemoryNotificationPrefsStore();
+      await prefs.write(
+        accountId,
+        const NotificationPrefs(nhomTat: {NotificationGroup.budget}),
+      );
+
+      final moi = await dungScanner(
+        prefs: prefs,
+        bills: [hoaDon(denHan: DateTime(2026, 9, 17))],
+      ).scan(accountId);
+
+      expect(moi, 1);
+      expect(
+          (await db.notificationDao.getAll(accountId)).single.kind,
+          'billDueSoon',
+          reason: 'Tắt nhóm là không sinh thông báo nhóm ấy — cả trong app lẫn '
+              'ra hệ điều hành. Chỉ chặn ở bước bắn thì trung tâm thông báo '
+              'vẫn đầy những mục người dùng đã nói là không muốn thấy.');
+    });
+
+    test('tắt một nhóm không làm im các nhóm còn lại', () async {
+      final prefs = InMemoryNotificationPrefsStore();
+      await prefs.write(
+        accountId,
+        const NotificationPrefs(nhomTat: {NotificationGroup.bill}),
+      );
+
+      final moi = await dungScanner(
+        prefs: prefs,
+        bills: [hoaDon(denHan: DateTime(2026, 9, 17))],
+      ).scan(accountId);
+
+      expect(moi, 1);
+      expect((await db.notificationDao.getAll(accountId)).single.kind,
+          'budgetNearLimit',
+          reason: 'Đây là lý do người dùng có bốn công tắc chứ không phải một.');
+    });
+
+    test('tắt công tắc OS thì VẪN ghi vào app, chỉ không bắn ra ngoài',
+        () async {
+      final os = OsNotifierGia();
+      final prefs = InMemoryNotificationPrefsStore();
+      await prefs.write(accountId, const NotificationPrefs(osBat: false));
+
+      final moi =
+          await dungScanner(prefs: prefs, osNotifier: os).scan(accountId);
+
+      expect(moi, 1);
+      expect((await db.notificationDao.getAll(accountId)).length, 1,
+          reason: 'Công tắc OS là "đừng làm phiền tôi", không phải "đừng ghi '
+              'lại gì". Người tắt nó vẫn muốn mở app xem lại được.');
+      expect(os.daBan, isEmpty,
+          reason: 'Bật lại đúng thứ người dùng vừa tắt là cách nhanh nhất để '
+              'họ tắt hẳn tính năng.');
+    });
+
+    test('không cấu hình kho tuỳ chọn thì chạy như mặc định', () async {
+      final os = OsNotifierGia();
+      final moi = await dungScanner(osNotifier: os).scan(accountId);
+
+      expect(moi, 1);
+      expect(os.daBan.length, 1,
+          reason: 'Thiếu kho tuỳ chọn không được làm tính năng im lặng — mặc '
+              'định là bật hết.');
+    });
+
+    test('đọc tuỳ chọn theo ĐÚNG tài khoản đang quét', () async {
+      final prefs = InMemoryNotificationPrefsStore();
+      // Tài khoản 9 tắt hết; tài khoản 7 để mặc định.
+      await prefs.write(
+        9,
+        const NotificationPrefs(nhomTat: {NotificationGroup.budget}),
+      );
+
+      final moi = await dungScanner(prefs: prefs).scan(accountId);
+
+      expect(moi, 1,
+          reason: 'Đọc nhầm tuỳ chọn của tài khoản khác là người dùng thấy '
+              'thông báo bật/tắt ngẫu nhiên trên máy dùng chung.');
     });
   });
 
