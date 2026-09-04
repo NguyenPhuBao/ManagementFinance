@@ -90,28 +90,42 @@ một tài liệu có thể trải ra nhiều bước ở đó, và ngược l�
 | # | Tài liệu | Trạng thái |
 |---|---|---|
 | 1 | [CATEGORY_KEYWORD_SYNC.md](./CATEGORY_KEYWORD_SYNC.md) | ⛔ **Lỗ hổng phân quyền còn nguyên** ở `POST /api/ai/classify/feedback` — `appendCategoryKeyword()` không đọc `create_by`. **Nghiêm trọng hơn từ 2026-09-04:** `keyword.matcher` nay là Tầng 1 trên đường quét hoá đơn, nên từ khoá ghi bậy vào danh mục mặc định làm sai kết quả phân loại của **mọi** người dùng. ✅ Chiều **xuống** đã nối xong (client tự làm 2026-09-04, backend vốn đã gửi `keyword` trong `/sync/pull`); chiều **lên** vẫn cần backend quyết mô hình dữ liệu |
-| 2 | [2026-09-04-backend-idempotent-delete.md](./2026-09-04-backend-idempotent-delete.md) | ⛔ **Ba việc độc lập** trong `/sync/push`. **(A)** xoá bản ghi không tồn tại đang bị trả về là lỗi → client đẩy lại vĩnh viễn. **(B)** `message` là nguyên văn stack trace Prisma, để lộ đường dẫn máy chủ và nội dung hàng dữ liệu. **(C)** `upsertBudget` ép `time_recurrence = null` thành `'Month'` → **chặn hẳn** ngân sách "Ngày cụ thể", và làm ngân sách tự hết hạn sớm sau khi pull. Cả ba chỉ sửa logic, **không cần migration** |
+| 2 | [2026-09-04-backend-idempotent-delete.md](./2026-09-04-backend-idempotent-delete.md) | ⛔ **Ba việc độc lập** trong `/sync/push`. **(A)** xoá bản ghi không tồn tại đang bị trả về là lỗi → client đẩy lại vĩnh viễn. **(B)** `message` là nguyên văn stack trace Prisma, để lộ đường dẫn máy chủ và nội dung hàng dữ liệu — và client nay đã có tới **ba** phép khớp chuỗi dựng tạm vì thiếu mã lỗi ổn định. **(C)** `upsertBudget` ép `time_recurrence = null` thành `'Month'` → **chặn hẳn** ngân sách "Ngày cụ thể", và làm ngân sách tự hết hạn sớm sau khi pull. Cả ba chỉ sửa logic, **không cần migration** |
 | 3 | [2026-09-04-ocr-classify-review.md](./2026-09-04-ocr-classify-review.md) | ⛔ **Tám việc** từ đợt đẩy OCR/Classify, đã qua một vòng thẩm định phản biện và đo trực tiếp trên CSDL. Nặng nhất: **Socket.io không xác thực + bốn dòng `io.emit` toàn cục**, đang rò tên người dùng ra mọi socket ẩn danh **hôm nay**. Rồi: `classifyBatch` sai kiểu tham số → phân loại từng mặt hàng chưa bao giờ chạy · thiếu `GEMINI_API_KEY` · dedup Quy tắc 3 chặn nhầm · cửa hậu `_mock*`. ⚠️ Bản đầu của tài liệu này xếp `uq_transaction_external` ưu tiên cao nhất — **đã rút lại**, việc đó chưa nổ được, xem khung đầu tài liệu |
-| 4 | [CATEGORY_NAME_UNIQUENESS.md](./CATEGORY_NAME_UNIQUENESS.md) | ⚠️ Một phần — Admin-web đã thi hành quy tắc, nhưng còn 4 khoảng hở (không gom khoảng trắng, không chuẩn hoá NFC, thiếu vế chéo "người dùng ↔ mặc định"), và `/sync/push` chưa kiểm gì cả. CSDL **có** hai unique index nhưng chúng thi hành một quy tắc **khác** — lệch theo cả hai chiều, chi tiết ở mục 2 của tài liệu |
+| 4 | [CATEGORY_NAME_UNIQUENESS.md](./CATEGORY_NAME_UNIQUENESS.md) | ⚠️ Một phần — Admin-web đã thi hành quy tắc, nhưng còn 4 khoảng hở (không gom khoảng trắng, không chuẩn hoá NFC, thiếu vế chéo "người dùng ↔ mặc định"), và `/sync/push` chưa kiểm gì cả. CSDL **có** hai unique index nhưng chúng thi hành một quy tắc **khác** — lệch theo cả hai chiều, chi tiết ở mục 2 của tài liệu. ⚠️ Vế "chặt hơn" (hàng đã xoá mềm vẫn giữ chỗ tên) có **đường kích hoạt tự lặp ở mỗi lần mở app** — client đã cầm máu 2026-09-04 nhưng bản ghi vẫn không lên được server; chỉ mệnh đề `WHERE "Delete_at" IS NULL` mới dứt điểm |
 | 5 | [CATEGORY_STABLE_IDS.md](./CATEGORY_STABLE_IDS.md) | ⛔ `seed.js:150` vẫn `crypto.randomUUID()`, nên tên danh mục bị dùng làm khoá nối giữa hai phía — đây là nguyên nhân gốc của các lỗi 11.3–11.6 trong `PROJECT_CONTEXT.md` |
 | 6 | [CATEGORY_GROUP_MEMBERSHIP_SYNC.md](./CATEGORY_GROUP_MEMBERSHIP_SYNC.md) | ⛔ Thứ **duy nhất** còn chặn G10: backend chưa có bảng/entity cho việc gán danh mục **mặc định** vào nhóm |
 | 7 | [CATEGORY_CLASSIFY_ALIGNMENT.md](./CATEGORY_CLASSIFY_ALIGNMENT.md) | ⚠️ Gần xong — còn đúng một bước thu hẹp `validClassify` (`sync.validation.js:103`) |
 
 ### Vì sao mức ưu tiên xếp như vậy
 
-Mục 1 đứng đầu vì là vấn đề **bảo mật**, và mức nghiêm trọng của nó vừa tăng khi
-bộ phân loại được đưa lên đường chạy thật.
+> Bảng này xếp theo **mức ưu tiên của từng tài liệu**; mục 0 xếp theo **thứ tự
+> thi công**. Hai cách xếp không trùng nhau, nên mỗi đoạn dưới đây ghi kèm số
+> bước tương ứng ở mục 0.
 
-Mục 2 và 3 nên đọc **cùng nhau**. Việc (1) của mục 3 tạo ra lỗi ghi mà (A) và
-(B) của mục 2 biến thành vòng lặp vô hạn — đó là lý do bước 1 ở mục 0 đứng
-trước cả hai: nó cắt vòng lặp bất kể nguyên nhân gốc là gì.
+**Mục 3 có việc gấp nhất trong cả thư mục** — Socket.io không xác thực, đang rò
+tên người dùng ra mọi socket ẩn danh. Đó là **bước 1** ở mục 0, đứng trước tất
+cả vì nó là thứ duy nhất đang chảy máu dữ liệu thật.
 
-Mục 4 → 5 → 6 phụ thuộc lẫn nhau và phải làm liền một mạch (bước 7 ở mục 0):
-cả ba đều xoay quanh danh mục, và mục 5 là nguyên nhân gốc mà hai mục kia phải
-chịu hậu quả.
+**Mục 1 đứng đầu bảng** vì là lỗ hổng **phân quyền**, và mức nghiêm trọng vừa
+tăng khi bộ phân loại được đưa lên đường chạy thật. Nó là **bước 7** ở mục 0 —
+xếp sau nhóm "đang gây hại" vì khai thác được nó cần biết `idcategory` của
+người khác, còn Socket.io thì không cần gì cả.
 
-Mục 7 rẻ nhất trong cả bảng — một dòng — nhưng hậu quả cũng nhẹ nhất, nên nó
-nằm ở bước 6 chứ không phải bước đầu.
+**Mục 2 và 3 nên đọc cùng nhau.** Nhiều lỗi ghi mà mục 3 mô tả chỉ trở thành
+*hỏng vĩnh viễn* nhờ (A) và (B) của mục 2 — đó là lý do (A) là **bước 2**: nó
+cắt vòng lặp bất kể nguyên nhân gốc là gì, kể cả nguyên nhân chưa ai tìm ra.
+(B) càng đáng làm sau 2026-09-04: client vừa phải thêm phép **khớp chuỗi thứ
+ba** vào `_classifyFailure`, và phải đoán ba biến thể câu chữ cho cùng một lỗi
+vì không biết Prisma phiên bản nào đang chạy.
+
+**Mục 5 → 4 → 6 phụ thuộc lẫn nhau và phải làm liền một mạch** — đó là **bước
+9** ở mục 0. Thứ tự này quan trọng: **mục 5 là nguyên nhân gốc**, ID ổn định cho
+seed là điều kiện để hai mục kia không phải dùng *tên danh mục* làm khoá nối.
+Làm mục 4 trước mục 5 là phải làm lại.
+
+**Mục 7 rẻ nhất trong cả bảng** — một dòng — nhưng hậu quả cũng nhẹ nhất, nên nó
+là **bước 8**, không phải bước đầu.
 
 ---
 
