@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+
+import '../widgets/bank_header_row.dart';
 import 'package:go_router/go_router.dart';
 
 class BankLinkPage extends StatefulWidget {
@@ -104,80 +106,14 @@ class _BankLinkPageState extends State<BankLinkPage> {
           children: [
             // Selected Bank Card
             _buildCardContainer(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE8E8E4),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: const Color(0xFFE8E8E4)),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.network(
-                            'https://lh3.googleusercontent.com/aida-public/AB6AXuCbBMyxzF8X2Mvv9v8aDAWt8nTEj1xxX5P3qmWPGx7XRMPrweLKXtax2dg0i7Eo15XPulnC0oHJqF8Zgvx-90MBy34ng1hmN3NFASKVTdNUpguZMI11pzNu_8URZdqPe2pxmLeZm-Og1buJBpfE-jrYq2qe8Kkc-dRLviNlrPdwmmLx4dVkg3xTPF-DObefpihkp7JTC47dIx-jAzJlkIOpdWR_tgJk3_kvHz4PN_83ZuzJ5-cFB6zjF9suRWQZFxscXN8oNvu43EU',
-                            fit: BoxFit.contain,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Ngân hàng Techcombank',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF00020D),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              Container(
-                                width: 8,
-                                height: 8,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFF006E1C),
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              const Text(
-                                'Đang kết nối API',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF46464C),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF96F592),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: const Text(
-                      'Cổng API an toàn',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF0A7320),
-                      ),
-                    ),
-                  ),
-                ],
+              child: BankHeaderRow(
+                bankName: 'Ngân hàng Techcombank',
+                statusText: 'Đang kết nối API',
+                chipText: 'Cổng API an toàn',
+                logo: Image.network(
+                  'https://lh3.googleusercontent.com/aida-public/AB6AXuCbBMyxzF8X2Mvv9v8aDAWt8nTEj1xxX5P3qmWPGx7XRMPrweLKXtax2dg0i7Eo15XPulnC0oHJqF8Zgvx-90MBy34ng1hmN3NFASKVTdNUpguZMI11pzNu_8URZdqPe2pxmLeZm-Og1buJBpfE-jrYq2qe8Kkc-dRLviNlrPdwmmLx4dVkg3xTPF-DObefpihkp7JTC47dIx-jAzJlkIOpdWR_tgJk3_kvHz4PN_83ZuzJ5-cFB6zjF9suRWQZFxscXN8oNvu43EU',
+                  fit: BoxFit.contain,
+                ),
               ),
             ),
             const SizedBox(height: 20),

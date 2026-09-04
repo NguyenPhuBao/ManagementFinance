@@ -6,6 +6,7 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/sync/sync_engine.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../widgets/home_action_buttons.dart';
 import '../../../../shared/widgets/notification_bell.dart';
 import '../../../notification/presentation/widgets/notification_panel.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
@@ -311,60 +312,9 @@ class HomePage extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 24),
-        Row(
-          children: [
-            Expanded(
-              child: ElevatedButton(
-                onPressed: () => context.push('/add'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.onPrimary,
-                  fixedSize: const Size.fromHeight(76),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  elevation: 0,
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.add, size: 20),
-                    SizedBox(width: 8),
-                    Text(
-                      'Thêm giao dịch',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: OutlinedButton(
-                onPressed: () => context.go('/analytics'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.primary,
-                  side: const BorderSide(color: AppColors.outlineVariant, width: 1.5),
-                  fixedSize: const Size.fromHeight(76),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  elevation: 0,
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.insights, size: 22),
-                    SizedBox(width: 8),
-                    Text(
-                      'Xem báo cáo',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+        HomeActionButtons(
+          onAdd: () => context.push('/add'),
+          onReport: () => context.go('/analytics'),
         ),
       ],
     );
