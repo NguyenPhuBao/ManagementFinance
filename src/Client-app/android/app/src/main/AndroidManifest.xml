@@ -1,4 +1,20 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Thông báo nhắc hoá đơn / cảnh báo ngân sách.
+         Từ Android 13 (API 33), thiếu POST_NOTIFICATIONS thì thông báo bị nuốt
+         hoàn toàn — không lỗi, không log. Quyền được xin có ngữ cảnh trong app
+         (LocalOsNotifier.requestPermission), không phải lúc khởi động.
+         RECEIVE_BOOT_COMPLETED để plugin đặt lại lịch sau khi máy khởi động
+         lại — nếu không, mọi nhắc hoá đơn biến mất sau một lần tắt máy.
+
+         CỐ Ý KHÔNG khai SCHEDULE_EXACT_ALARM / USE_EXACT_ALARM: Google Play
+         chỉ chấp nhận chúng cho nhóm báo thức/lịch, và trên Android 14 người
+         dùng còn phải tự bật trong Cài đặt. Nhắc hoá đơn lệch mươi phút không
+         ảnh hưởng gì, nên lịch dùng AndroidScheduleMode.inexactAllowWhileIdle.
+         "Nhắc hoá đơn thì nên chính xác" nghe rất hợp lý — đừng đổi, sẽ bị Play
+         từ chối lúc phát hành. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+
     <application
         android:label="flowmoney"
         android:name="${applicationName}"
@@ -25,6 +41,23 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- Hai receiver của flutter_local_notifications. Thiếu chúng thì lịch
+             đặt trước vẫn "đặt thành công" nhưng KHÔNG BAO GIỜ nổ, và không có
+             lỗi nào báo ra — kiểu hỏng im lặng khó lần ra nhất. -->
+        <receiver
+            android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
+        <receiver
+            android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
+            </intent-filter>
+        </receiver>
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

@@ -35,6 +35,8 @@ import '../../features/category/data/repositories/category_management_repository
 import '../../features/category/data/services/personal_default_categories.dart';
 import '../../features/category/data/services/category_suggestion_engine.dart';
 import '../notification/notification_scanner.dart';
+import '../notification/os/os_notifier.dart';
+import '../notification/os/os_notifier_factory.dart';
 
 /// Service locator — dùng `sl<T>()` để resolve dependencies
 final GetIt sl = GetIt.instance;
@@ -192,6 +194,11 @@ Future<void> setupDependencies() async {
   );
 
   // ── 11. Thông báo ────────────────────────────────────────────────────────
+  // Cửa ra hệ điều hành. `createOsNotifier()` trả bản không làm gì trên web,
+  // nên phần còn lại của app không cần biết mình đang chạy ở đâu. Đây là nơi
+  // gọi DUY NHẤT của factory ấy — xem chú thích trong file đó.
+  sl.registerLazySingleton<OsNotifier>(createOsNotifier);
+
   // Đăng ký SAU BudgetRepository vì scanner đọc qua nó. Là singleton: mỗi
   // listener thừa trên statusStream là thêm một lượt quét cho mỗi sự kiện.
   sl.registerLazySingleton<NotificationScanner>(
@@ -209,6 +216,7 @@ Future<void> setupDependencies() async {
       markOverdue: (idaccount, now) =>
           sl<AppDatabase>().billDao.markOverdue(idaccount, now),
       syncStatus: sl<SyncEngine>().statusStream,
+      osNotifier: sl<OsNotifier>(),
     ),
   );
 

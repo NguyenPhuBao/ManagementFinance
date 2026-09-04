@@ -20,8 +20,50 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/notification/notification_scanner.dart';
+import 'package:flowmoney/core/notification/os/os_notifier.dart';
+import 'package:flowmoney/core/notification/os/os_scheduled_id.dart';
 import 'package:flowmoney/core/sync/sync_models.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
+
+/// Ghi lại mọi lời gọi xuống hệ điều hành. Không dùng thư viện mock: cái cần
+/// canh ở đây là **hành vi của scanner**, và một lớp tay viết thì đọc test là
+/// thấy ngay scanner phải làm gì.
+class OsNotifierGia implements OsNotifier {
+  final List<({int id, String title, String body, String? payload})> daBan = [];
+  final List<int> daHuy = [];
+  int soLanHuyHet = 0;
+  int soLanKhoiTao = 0;
+
+  /// Bật lên để mô phỏng nền tảng ném lỗi — trường hợp thật hay gặp nhất là
+  /// người dùng đã từ chối quyền thông báo.
+  bool nemKhiBan = false;
+
+  @override
+  bool get isSupported => true;
+
+  @override
+  Future<void> init() async => soLanKhoiTao++;
+
+  @override
+  Future<bool> requestPermission() async => true;
+
+  @override
+  Future<void> show({
+    required int id,
+    required String title,
+    required String body,
+    String? payload,
+  }) async {
+    if (nemKhiBan) throw Exception('quyền thông báo bị từ chối');
+    daBan.add((id: id, title: title, body: body, payload: payload));
+  }
+
+  @override
+  Future<void> cancel(int id) async => daHuy.add(id);
+
+  @override
+  Future<void> cancelAll() async => soLanHuyHet++;
+}
 
 void main() {
   const accountId = 7;
@@ -66,6 +108,7 @@ void main() {
   NotificationScanner dungScanner({
     List<BudgetView>? budgets,
     List<Bill> bills = const [],
+    OsNotifier? osNotifier,
   }) {
     var soId = 0;
     return NotificationScanner(
@@ -76,6 +119,7 @@ void main() {
       },
       loadBills: (id, at) async => bills,
       syncStatus: syncStatus.stream,
+      osNotifier: osNotifier,
       clock: () => now,
       idGenerator: () => 'id-${soId++}',
     );
@@ -206,6 +250,80 @@ void main() {
           reason: 'Đổi người đăng nhập mà scanner còn giữ id cũ là ghi thông '
               'báo của người mới vào hồ sơ người cũ.');
       await scanner.stop();
+    });
+  });
+
+  group('bắn ra hệ điều hành', () {
+    test('mỗi hàng MỚI được bắn một thông báo hệ điều hành', () async {
+      final os = OsNotifierGia();
+      final moi = await dungScanner(osNotifier: os).scan(accountId);
+
+      expect(moi, 1);
+      expect(os.daBan.length, 1,
+          reason: 'Thông báo chỉ nằm trong app thì người dùng phải mở app mới '
+              'thấy — đúng thứ tính năng này sinh ra để tránh.');
+      expect(os.daBan.single.title, 'Sắp vượt ngân sách');
+      expect(os.daBan.single.body, contains('Ăn uống'));
+    });
+
+    test('id bắn ra đúng bằng osScheduledId(dedupeKey)', () async {
+      final os = OsNotifierGia();
+      await dungScanner(osNotifier: os).scan(accountId);
+
+      final hang = (await db.notificationDao.getAll(accountId)).single;
+      expect(os.daBan.single.id, osScheduledId(hang.dedupeKey),
+          reason: 'Id phải suy được từ dedupeKey mà không cần đọc CSDL, nếu '
+              'không thì lát sau không huỷ được lịch của một hoá đơn vừa bị '
+              'xoá. Đây cũng là chỗ dễ lỡ tay dùng String.hashCode.');
+      expect(os.daBan.single.payload, hang.dedupeKey,
+          reason: 'Payload là đường duy nhất để lúc người dùng bấm vào thông '
+              'báo, app biết mở đúng bản ghi nào.');
+    });
+
+    test('quét lần hai không bắn lại thông báo cũ', () async {
+      final os = OsNotifierGia();
+      final scanner = dungScanner(osNotifier: os);
+      await scanner.scan(accountId);
+      await scanner.scan(accountId);
+
+      expect(os.daBan.length, 1,
+          reason: 'Quét chạy sau MỌI lần đồng bộ. Bắn theo danh sách đọc lên '
+              'thay vì theo danh sách vừa ghi là người dùng nhận lại đúng '
+              'thông báo ấy mỗi lần mở app, và họ sẽ tắt hẳn tính năng.');
+    });
+
+    test('nền tảng ném lỗi thì lượt quét vẫn hoàn tất', () async {
+      final os = OsNotifierGia()..nemKhiBan = true;
+      final moi = await dungScanner(osNotifier: os).scan(accountId);
+
+      expect(moi, 1,
+          reason: 'Người dùng từ chối quyền thông báo là chuyện thường. Để lỗi '
+              'đó nổ lên trên là mất luôn trung tâm thông báo trong app, tức '
+              'là mất phần vẫn còn dùng được.');
+      expect((await db.notificationDao.getAll(accountId)).length, 1,
+          reason: 'Hàng đã ghi rồi thì phải ở lại — bắn ra hệ điều hành là '
+              'bước phụ, không phải điều kiện để lưu.');
+    });
+
+    test('không cấu hình osNotifier thì quét vẫn chạy bình thường', () async {
+      final moi = await dungScanner().scan(accountId);
+      expect(moi, 1,
+          reason: 'Trên web không có thông báo hệ điều hành. Scanner phải chạy '
+              'được khi không có notifier nào cả.');
+    });
+
+    test('stop() huỷ toàn bộ lịch đã đặt trên hệ điều hành', () async {
+      final os = OsNotifierGia();
+      final scanner = dungScanner(osNotifier: os);
+      await scanner.start(accountId);
+      await scanner.stop();
+
+      expect(os.soLanHuyHet, 1,
+          reason: 'Đây là lỗ rò dữ liệu nghiêm trọng nhất của tính năng: lịch '
+              'nằm trong AlarmManager/UNUserNotificationCenter chứ không trong '
+              'SQLite, nên purgeDataForOtherAccounts không chạm tới được. '
+              'Thiếu cancelAll() là nhắc hoá đơn của người đăng nhập trước nổ '
+              'trên màn hình khoá của người đăng nhập sau.');
     });
   });
 

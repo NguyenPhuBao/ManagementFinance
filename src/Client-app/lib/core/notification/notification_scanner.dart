@@ -8,6 +8,8 @@ import '../database/daos/notification_dao.dart';
 import '../sync/sync_models.dart';
 import '../../features/budget/data/models/budget_entity.dart';
 import 'notification_rules.dart';
+import 'os/os_notifier.dart';
+import 'os/os_scheduled_id.dart';
 
 /// Nạp ngân sách kèm số đã chi cho một tài khoản tại một mốc thời gian.
 ///
@@ -40,6 +42,10 @@ class NotificationScanner {
 
   /// Tuỳ chọn: bỏ trống thì scanner chỉ đọc, không ghi gì ngoài bảng thông báo.
   final OverdueMarker? markOverdue;
+
+  /// Tuỳ chọn: bỏ trống thì chỉ có trung tâm thông báo trong app (web).
+  final OsNotifier? osNotifier;
+
   final Stream<SyncStatus> syncStatus;
   final DateTime Function() clock;
   final String Function() idGenerator;
@@ -66,6 +72,7 @@ class NotificationScanner {
     required this.loadBills,
     required this.syncStatus,
     this.markOverdue,
+    this.osNotifier,
     DateTime Function()? clock,
     String Function()? idGenerator,
   })  : clock = clock ?? DateTime.now,
@@ -90,10 +97,21 @@ class NotificationScanner {
   }
 
   /// Dừng hẳn. Gọi khi đăng xuất hoặc khi phiên chết.
+  ///
+  /// **Phải huỷ cả lịch phía hệ điều hành**, không chỉ cắt subscription. Lịch
+  /// nằm trong AlarmManager (Android) / UNUserNotificationCenter (iOS) chứ
+  /// không trong SQLite, nên `purgeDataForOtherAccounts` không chạm tới được:
+  /// thiếu bước này thì nhắc hoá đơn của người đăng nhập trước vẫn nổ **trên
+  /// màn hình khoá** sau khi người khác đăng nhập — dữ liệu tài chính ra khỏi
+  /// app hoàn toàn.
   Future<void> stop() async {
     await _sub?.cancel();
     _sub = null;
     _idaccount = null;
+    // Nuốt lỗi: đăng xuất không được phép thất bại vì hệ điều hành trở chứng.
+    try {
+      await osNotifier?.cancelAll();
+    } catch (_) {}
   }
 
   /// Trả về **số hàng thật sự được ghi** — tín hiệu duy nhất để quyết định có
@@ -124,9 +142,40 @@ class NotificationScanner {
       final moi = await dao.insertAllIfAbsent([
         for (final c in ungVien) _toCompanion(c, idaccount),
       ]);
+
+      // Bắn theo danh sách VỪA GHI, không phải danh sách ứng viên: `ungVien`
+      // chứa lại đúng những sự kiện cũ ở mọi lượt quét, và quét chạy sau mỗi
+      // lần đồng bộ. Bắn theo ứng viên là người dùng nhận lại cùng một thông
+      // báo mỗi lần mở app.
+      await _banRaHeDieuHanh(moi);
+
       return moi.length;
     } finally {
       _dangQuet = false;
+    }
+  }
+
+  /// Đẩy các hàng vừa ghi ra hệ điều hành.
+  ///
+  /// Mọi lỗi bị nuốt **từng cái một**: người dùng từ chối quyền thông báo là
+  /// chuyện thường, và để lỗi đó nổi lên là mất luôn trung tâm thông báo trong
+  /// app — tức là mất phần vẫn còn dùng được. Nuốt riêng từng cái để một thông
+  /// báo hỏng không chặn những cái sau.
+  Future<void> _banRaHeDieuHanh(List<AppNotificationsCompanion> moi) async {
+    final os = osNotifier;
+    if (os == null || moi.isEmpty) return;
+
+    for (final e in moi) {
+      try {
+        await os.show(
+          id: osScheduledId(e.dedupeKey.value),
+          title: e.title.value,
+          body: e.body.value,
+          payload: e.dedupeKey.value,
+        );
+      } catch (_) {
+        // Bỏ qua có chủ ý — xem chú thích trên.
+      }
     }
   }
 
