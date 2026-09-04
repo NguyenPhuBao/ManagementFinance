@@ -76,6 +76,36 @@ cd src/Client-app && flutter run -d chrome --web-port 9090
 
 ---
 
+## Ghi chú vận hành
+
+Bốn thứ dưới đây **đã từng gây thiệt hại thật**. Chúng vốn chỉ nằm trong file
+bàn giao tạm giữa các phiên nên chết đi sống lại nhiều lần — nay ghi ở đây.
+
+- **Bash tool ở đây là Git Bash, không phải PowerShell.** Commit message nhiều
+  dòng thì dùng `git commit -F -` với heredoc `<<'EOF'`. Here-string
+  `@'...'@` của PowerShell **làm lọt ký tự `@` vào message mà không báo lỗi** —
+  đã phải `reset --soft HEAD~3` và commit lại cả ba lần.
+
+- **Ghi file dài thì dùng công cụ Write, đừng qua `cat > file <<'EOF'`.** Nội
+  dung nhiều backtick hoặc dấu nháy làm shell hiểu sai và chết với
+  `unexpected EOF`, dù heredoc đã được trích dẫn.
+
+- **Truy vấn PostgreSQL: máy này không có `psql`,** nhưng chạy được qua Prisma.
+  Phải chạy **từ `src/Backend`** thì Node mới phân giải được `@prisma/client` —
+  đặt script ở `/tmp` sẽ báo `MODULE_NOT_FOUND`:
+  ```bash
+  cd src/Backend && node -e "const {PrismaClient}=require('@prisma/client');
+  const p=new PrismaClient();(async()=>{console.log(await p.\$queryRawUnsafe('SELECT 1'));
+  await p.\$disconnect();})();"
+  ```
+  ⚠️ Chỉ dùng truy vấn **đọc**. Xoá cứng ở PostgreSQL vi phạm quy tắc 5.
+
+- **Repo đặt `core.autocrlf=true` và không có `.gitattributes`.** Sửa file bằng
+  script Python (ghi ra LF) sẽ khiến git cảnh báo `LF will be replaced by CRLF`.
+  Vô hại, nhưng nhớ kiểm `git diff --stat` để chắc không bị nhiễu toàn file.
+
+---
+
 ## Ghi chú về kiểm thử
 
 Bộ test là lưới an toàn chính của dự án này — nhiều lỗi trong quá khứ hỏng **âm thầm** (không exception, không log). Khi sửa lỗi, viết test tái hiện **trước**, và ghi rõ trong `reason:` của assertion là nó canh chừng điều gì.
