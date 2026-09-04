@@ -43,6 +43,23 @@ class SyncEngine {
   final _statusController = StreamController<SyncStatus>.broadcast();
   Stream<SyncStatus> get statusStream => _statusController.stream;
 
+  final _pushResultController = StreamController<SyncResult>.broadcast();
+
+  /// Kết quả của **mỗi lượt đẩy thật sự có việc để làm**.
+  ///
+  /// `statusStream` chỉ nói chu kỳ kết thúc ở `idle` hay `error` — không nói
+  /// được "đã đưa 5 thay đổi lên server", mà đó chính là câu người dùng cần
+  /// nghe sau một quãng mất mạng: họ ghi chép offline và muốn biết công sức ấy
+  /// đã an toàn.
+  ///
+  /// **Không phát khi không có gì để đẩy.** Phần lớn chu kỳ là như vậy, và phát
+  /// mọi lần là ép nơi nhận tự lọc — sớm muộn sẽ có chỗ quên lọc rồi hiện "đã
+  /// đồng bộ 0 thay đổi".
+  ///
+  /// Kênh RIÊNG chứ không nhét vào [statusStream], cùng lý do như
+  /// [sessionInvalidStream].
+  Stream<SyncResult> get pushResultStream => _pushResultController.stream;
+
   final _sessionInvalidController = StreamController<void>.broadcast();
 
   /// Phát tín hiệu khi server cho thấy phiên đăng nhập trỏ tới một tài khoản
@@ -51,6 +68,11 @@ class SyncEngine {
   /// Dùng kênh RIÊNG chứ không nhét vào [statusStream], vì `stop()` kết thúc
   /// bằng `_setStatus(idle)` nên sẽ ghi đè mất trạng thái lỗi vừa phát.
   Stream<void> get sessionInvalidStream => _sessionInvalidController.stream;
+
+  void _emitPushResult(SyncResult result) {
+    if (_disposed || _pushResultController.isClosed) return;
+    _pushResultController.add(result);
+  }
 
   void _emitSessionInvalid() {
     if (_disposed || _sessionInvalidController.isClosed) return;
@@ -394,6 +416,7 @@ class SyncEngine {
       } else {
         _resetBackoff();
       }
+      if (lastPush != null) _emitPushResult(lastPush);
       _setStatus(stillFailing ? SyncStatus.error : SyncStatus.idle);
     } catch (e) {
       debugPrint('[SyncEngine] Sync error: $e');
@@ -1575,6 +1598,7 @@ class SyncEngine {
     stop();
     _statusController.close();
     _sessionInvalidController.close();
+    _pushResultController.close();
   }
 
   static String _defaultIconForCategoryName(String name) {

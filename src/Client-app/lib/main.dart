@@ -8,6 +8,9 @@ import 'package:timezone/timezone.dart' as tz;
 import 'core/constants/app_constants.dart';
 import 'core/constants/app_router.dart';
 import 'core/di/injection_container.dart';
+import 'core/network/connection_monitor.dart';
+import 'core/sync/sync_engine.dart';
+import 'shared/widgets/connection_banner.dart';
 import 'shared/theme/app_theme.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 
@@ -18,6 +21,9 @@ void main() async {
   await initializeDateFormatting('vi_VN', null);
   await _khoiTaoMuiGio();
   await setupDependencies();
+  // Bắt đầu theo dõi kết nối ngay: nó đọc trạng thái hiện tại trước để không
+  // báo "đã kết nối lại" cho một sự cố chưa từng xảy ra.
+  await sl<ConnectionMonitor>().start();
 
   // Kiểm tra token trước khi khởi động UI
   // → Có token  = đã đăng nhập → vào /home trực tiếp (offline OK)
@@ -80,6 +86,13 @@ class FlowMoneyApp extends StatelessWidget {
         // Truyền cả initialRoute lẫn authBloc vào router
         routerConfig: AppRouter.createRouter(initialRoute, authBloc),
         debugShowCheckedModeBanner: false,
+        // Dải báo kết nối bọc NGOÀI router nên phủ mọi trang mà không trang
+        // nào phải biết đến nó.
+        builder: (context, child) => ConnectionBanner(
+          connectionEvents: sl<ConnectionMonitor>().events,
+          pushResults: sl<SyncEngine>().pushResultStream,
+          child: child ?? const SizedBox.shrink(),
+        ),
       ),
     );
   }

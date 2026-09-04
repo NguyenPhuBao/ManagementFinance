@@ -35,6 +35,7 @@ import '../../features/bill/presentation/bloc/bill_bloc.dart';
 import '../../features/category/data/repositories/category_management_repository.dart';
 import '../../features/category/data/services/personal_default_categories.dart';
 import '../../features/category/data/services/category_suggestion_engine.dart';
+import '../network/connection_monitor.dart';
 import '../notification/bill_reminder_scheduler.dart';
 import '../notification/notification_scanner.dart';
 import '../notification/os/os_notifier.dart';
@@ -200,6 +201,12 @@ Future<void> setupDependencies() async {
   // Cửa ra hệ điều hành. `createOsNotifier()` trả bản không làm gì trên web,
   // nên phần còn lại của app không cần biết mình đang chạy ở đâu. Đây là nơi
   // gọi DUY NHẤT của factory ấy — xem chú thích trong file đó.
+  // Theo dõi kết nối cho dải báo trên giao diện. Tách khỏi SyncEngine vì hai
+  // bên hỏi hai câu khác nhau: SyncEngine hỏi "đã đồng bộ được chưa" và phải
+  // phản ứng ngay với cú nhấp nháy đầu tiên; dải báo hỏi "có đáng nói với
+  // người dùng không" và phải chờ trạng thái ổn định.
+  sl.registerLazySingleton<ConnectionMonitor>(() => ConnectionMonitor());
+
   sl.registerLazySingleton<OsNotifier>(createOsNotifier);
 
   // Tuỳ chọn thông báo. Dùng chung `FlutterSecureStorage` với token và
