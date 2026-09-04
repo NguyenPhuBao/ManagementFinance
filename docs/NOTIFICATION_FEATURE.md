@@ -1,13 +1,13 @@
 # Hệ thống thông báo — tài liệu bàn giao
 
 > **Cập nhật:** 2026-09-04 · **Nhánh:** `TranQuangDat`
-> **Trạng thái:** lát 1–4 và lát 7 xong. Lát 5–6 chưa làm.
-> **Mức nền hiện tại:** `flutter test` **535/535 pass**, `flutter analyze`
+> **Trạng thái:** cả bảy lát đã xong. Còn lại là kiểm trên máy thật.
+> **Mức nền hiện tại:** `flutter test` **608/608 pass**, `flutter analyze`
 > **28 issue, KHÔNG error**, `flutter build web` xanh.
 
-Đọc file này trước khi làm tiếp bất cứ việc gì thuộc thông báo. Mục 6 là phần
-việc còn lại, mục 7 là những cái bẫy — **đọc mục 7 trước khi viết dòng đầu
-tiên của lát 5**.
+Đọc file này trước khi làm tiếp bất cứ việc gì thuộc thông báo. Mục 6 ghi lại
+từng lát đã làm gì và vì sao; mục 7 là những cái bẫy — **đọc mục 7 trước khi
+sửa bất cứ thứ gì trong vùng này**.
 
 > ⚠️ **Lát 7 được làm TRƯỚC lát 5, có chủ ý.** Lát 5 cần "giờ nhắc trong ngày"
 > mà nơi lưu tuỳ chọn ấy nằm ở lát 7 — thiếu nó thì `zonedSchedule` nổ lúc
@@ -58,10 +58,10 @@ uống"*, *"Nhắc nhở: Hóa đơn tiền điện sắp đến hạn"*, *"Ti�
 | | Vượt hạn mức | `budgetOverspent` | ✅ Xong |
 | Hoá đơn | Sắp đến hạn | `billDueSoon` | ✅ Xong |
 | | Quá hạn | `billOverdue` | ✅ Xong |
-| Mục tiêu | Hoàn thành | `goalCompleted` | ⏳ Lát 6 |
-| | Trễ tiến độ | `goalBehind` | ⏳ Lát 6 |
-| Hệ thống | Đồng bộ hỏng | `syncFailed` | ⏳ Lát 6 |
-| | Số dư ví âm | `walletNegative` | ⏳ Lát 6 |
+| Mục tiêu | Hoàn thành | `goalCompleted` | ✅ Xong |
+| | Trễ tiến độ | `goalBehind` | ✅ Xong |
+| Hệ thống | Đồng bộ hỏng | `syncFailed` | ✅ Xong |
+| | Số dư ví âm | `walletNegative` | ✅ Xong |
 
 Enum `NotificationKind` **đã khai đủ tám giá trị** — lát 6 chỉ việc thêm luật,
 không phải sửa enum hay migration.
@@ -79,6 +79,7 @@ handshake không xác thực và mỗi sự kiện còn `io.emit` toàn cục.
 lib/core/notification/
 ├── notification_rules.dart      # Hàm THUẦN: trạng thái → danh sách ứng viên
 ├── notification_scanner.dart    # Nối luật với CSDL và vòng đời app
+├── bill_reminder_scheduler.dart # Đặt lịch trước với hệ điều hành (lát 5)
 ├── os/                          # Cửa ra hệ điều hành (lát 4) — xem mục 6
 └── prefs/                       # Tuỳ chọn của người dùng (lát 7)
 
@@ -196,7 +197,7 @@ phiên chết. **Cố ý KHÔNG gắn ở `home_page.dart`** — chỗ đó gọ
 
 ---
 
-## 6. Phần việc còn lại
+## 6. Từng lát đã làm gì
 
 ### Lát 4 — `OsNotifier` + thông báo hệ điều hành thật ✅ XONG
 
@@ -243,30 +244,73 @@ từng cái một, và `stop()` gọi `cancelAll()`.
 **Còn thiếu để chạy thật:** không nơi nào gọi `requestPermission()` — trang
 cài đặt là lát 7. Xem cảnh báo ở đầu tài liệu.
 
-### Lát 5 — `zonedSchedule` đặt lịch trước cho hoá đơn
+### Lát 5 — `zonedSchedule` đặt lịch trước cho hoá đơn ✅ XONG
 
-Cách **duy nhất** để thông báo nổ khi app đóng mà không cần tác vụ nền.
+`lib/core/notification/bill_reminder_scheduler.dart`. Cách **duy nhất** để
+thông báo nổ khi app đóng mà không cần tác vụ nền: scanner chỉ chạy khi app mở,
+nên người dùng đóng app ba ngày là không có lượt quét nào.
 
-`tz.initializeTimeZones()` + `flutter_timezone` trong `main.dart` **trước**
-`setupDependencies()`. `BillReminderScheduler.resync(idaccount)` luỹ đẳng, gọi
-sau mỗi lần ghi hoá đơn và sau mỗi lần pull. Cửa sổ 30 ngày, **trần 50 lịch**
-(xem bẫy 7.5).
+`main.dart` gọi `_khoiTaoMuiGio()` (`tzdata.initializeTimeZones()` +
+`flutter_timezone`) **trước** `setupDependencies()`. Nuốt lỗi và lùi về UTC:
+không đọc được múi giờ thì nhắc sai giờ, còn ném thì app không khởi động được.
 
-Điểm nối với phần trong app: **cùng `dedupeKey`**. Lịch OS mang
-`payload = dedupeKey`. Thông báo nổ lúc app đóng → người dùng bấm → app mở →
-quét chạy → `insertOrIgnore` sinh đúng hàng đó, **một lần**. Không đường nào
-nhân đôi.
+**`resync()` luỹ đẳng theo tập id, không phải huỷ-rồi-đặt-lại.** Nó đọc
+`osNotifier.pendingIds()`, huỷ những id không còn cần và chỉ đặt những id chưa
+có. `resync` chạy sau **mỗi** lượt quét, tức sau mỗi lần đồng bộ; huỷ-rồi-đặt-
+lại toàn bộ ở mỗi lượt là mỗi lượt thêm một cơ hội để lịch rơi mất. Đó là lý do
+`OsNotifier` có thêm `pendingIds()`.
 
-### Lát 6 — Mục tiêu, đồng bộ, ví âm
+Trần **50 lịch**, cắt bỏ những mốc **xa** nhất (bẫy 7.5). Cửa sổ 30 ngày, khớp
+`NotificationScanner.cuaSoSuKien`.
 
-- Thêm `progress` / `daysLeft(now)` / `isBehindSchedule(now)` vào **chính
-  `GoalEntity`** (lớp này hiện **không có** thuộc tính suy ra nào), không đặt
-  trong luật thông báo — trang mục tiêu cũng sẽ cần.
-- Luật `goalCompleted` / `goalBehind` cho ra đúng mục Stitch thứ ba.
-- Luật `syncFailed` đọc `SyncStatus.error` — đây sẽ là **người tiêu thụ đầu
-  tiên** của `statusStream` cho mục đích hiển thị.
-- Luật `walletNegative`.
-- Gọi `purgeOlderThan(90 ngày)` trong `NotificationScanner.start()`.
+**Điểm nối với thông báo trong app: `billDueDedupeKey()`** — hàm công khai
+trong `notification_rules.dart`, dùng bởi **cả** bộ luật lẫn bộ đặt lịch. Lịch
+mang `payload = dedupeKey`; lịch nổ lúc app đóng → người dùng bấm → app mở →
+quét chạy → `insertOrIgnore` sinh đúng hàng ấy, một lần. Trước lát này khoá
+được dựng bằng chuỗi nội tuyến trong bộ luật; trích ra thành hàm là để hai nơi
+không thể lệch nhau.
+
+Tuỳ chọn **"nhắc trước N ngày"** của lát 7 nay được tiêu thụ thật:
+`NotificationRuleInput.defaultBillLeadDays` và `billLeadDays()`. Số ngày đặt
+riêng cho một hoá đơn vẫn thắng giá trị mặc định chung.
+
+`AndroidScheduleMode.inexactAllowWhileIdle`, có test canh riêng — xem lát 4.
+
+### Lát 6 — Mục tiêu, đồng bộ, ví âm ✅ XONG
+
+**`GoalEntity` nay có `progress` / `daysLeft(now)` / `isBehindSchedule(now)`**,
+đặt trong chính entity chứ không trong bộ luật: trang mục tiêu cũng cần đúng
+những con số này, và hai nơi tự tính là thẻ nói "đúng tiến độ" còn thông báo
+nói "đang trễ".
+
+⚠️ **`GoalEntity` phải thêm trường `startDate`** — cột đã có trong Drift nhưng
+entity không mang, và `toCompanion()` cũng không ghi nó, nên mỗi lần ghi lại
+mục tiêu là mốc bắt đầu bị xoá. Không có mốc ấy thì `isBehindSchedule` không có
+nhịp để so. Trường là **nullable**: mục tiêu tạo bởi bản app cũ không có nó, và
+khi thiếu thì hàm trả `false` chứ không đoán bừa.
+
+**Biên dung sai 5%** (`GoalEntity.bienDungSai`). Nhịp kỳ vọng là tuyến tính
+theo ngày còn người dùng nhận lương theo tháng, nên tiến độ thật luôn dao động
+quanh đường ấy. Bản đầu không có biên và một mục tiêu lệch **0,6%** đã bị báo
+"chậm tiến độ" — test bắt được, và đó là loại nhiễu dạy người dùng rằng thông
+báo của app không đáng tin.
+
+**Đơn vị lặp lại trong `dedupeKey` — điểm khó nhất của lát này.** Bốn loại mới
+không có "kỳ" tự nhiên như ngân sách (chu kỳ) hay hoá đơn (hạn trả):
+
+| Loại | dedupeKey | Lặp lại | Vì sao |
+|---|---|---|---|
+| `goalCompleted` | `goalDone:<id>` | **một lần trong đời** | Thêm mốc thời gian là mỗi kỳ lại chúc mừng lại cùng một việc |
+| `goalBehind` | `goalBehind:<id>:<yyyy-MM>` | mỗi tháng | Trễ tiến độ kéo dài hàng tháng trời |
+| `walletNegative` | `walletNeg:<id>:<yyyy-MM-dd>` | mỗi ngày | Ví âm cho tới khi người dùng nạp tiền |
+| `syncFailed` | `syncFailed:<yyyy-MM-dd>` | mỗi ngày | Mất mạng là hỏng ở **mọi** chu kỳ đồng bộ |
+
+`syncFailed` là **người tiêu thụ đầu tiên** của `SyncEngine.statusStream` cho
+mục đích hiển thị. Cờ được **đặt lại về false** khi lượt đồng bộ kế tiếp thành
+công; không xoá là mỗi lượt quét về sau đều báo lại một sự cố đã qua.
+
+`NotificationScanner.start()` nay gọi `purgeOlderThan(90 ngày)` — một lần mỗi
+phiên, nuốt lỗi. Bảng chỉ lớn lên vì hàng đã xoá mềm phải giữ để chặn trùng.
 
 ### Lát 7 — Màn cài đặt ✅ XONG · tài liệu backend ⏳ CÒN
 
@@ -408,6 +452,9 @@ xanh** nên không ai biết cho tới lúc phát hành. Từ lát 4 trở đi, 
 | `test/core/notification/prefs/notification_prefs_test.dart` | Mặc định là **bật hết**; JSON hỏng/sai kiểu/ngoài dải quy về mặc định chứ không ném; ánh xạ tám `kind` sang bốn nhóm |
 | `test/core/notification/prefs/notification_prefs_store_test.dart` | **Tách khoá theo tài khoản**; JSON hỏng trên đĩa; `clear()` không đụng tài khoản khác |
 | `test/features/notification/notification_settings_page_test.dart` | Công tắc phản ánh đúng thứ đã lưu; ghi ngay không cần nút Lưu; **bật công tắc OS thì xin quyền, tắt thì không**; bị từ chối thì công tắc quay về tắt; chưa đăng nhập thì không ghi gì |
+| `test/core/notification/bill_reminder_scheduler_test.dart` | **Luỹ đẳng** (chạy lại không đặt lại lịch nào); trần 50 và cắt bỏ mốc **xa** nhất; giờ nhắc từ tuỳ chọn; mốc quá khứ và ngoài cửa sổ 30 ngày bị bỏ; hoá đơn trả/xoá thì huỷ lịch cũ; tắt công tắc thì dọn sạch |
+| `test/core/notification/notification_rules_goal_wallet_test.dart` | Bốn luật của lát 6, trọng tâm là **đơn vị lặp lại trong `dedupeKey`**: chúc mừng một lần trong đời, trễ tiến độ mỗi tháng, ví âm và đồng bộ hỏng mỗi ngày |
+| `test/features/goal/goal_entity_progress_test.dart` | `progress` kẹp [0,1] và không ra `Infinity` khi `targetAmount = 0`; `daysLeft` so theo NGÀY; `isBehindSchedule` có biên dung sai, im lặng khi thiếu `startDate`, không NaN khi kỳ dài 0 ngày |
 
 ⚠️ `.gitignore` dòng 77 có `test/` → file test mới bị bỏ qua **âm thầm**. Phải
 `git add -f` **từng đường dẫn** (thêm cả thư mục thì git từ chối nguyên lệnh).
