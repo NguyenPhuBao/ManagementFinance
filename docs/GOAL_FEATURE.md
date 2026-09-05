@@ -440,6 +440,101 @@ trang, và người dùng mất hết những gì vừa gõ.
 
 ---
 
+### 3.17 Lặp lại mục tiêu: app **nhắc**, người dùng bấm
+
+Hai cột `recurrence` và `time_recurrence` tồn tại ở Drift lẫn Prisma, nằm trong
+payload đẩy và nhánh kéo về đã đọc cả hai từ lâu. Chúng chết vì một lý do đơn
+giản hơn nhiều: **`GoalEntity` không hề mang chúng**, nên không tầng nào phía
+trên nhìn thấy được.
+
+**Phương án đã loại — tự động đặt lại khi hoàn thành.** Nó hỏng theo hai đường
+khác nhau tuỳ cách hiểu "lặp lại":
+
+| Cách hiểu | Vỡ ở đâu |
+|---|---|
+| Tạo mục tiêu **mới** | Va thẳng vào quy tắc trùng tên ở mục 3.15 |
+| Đặt lại **chính nó** | Tiến độ về 0 trong khi sổ giao dịch vẫn ghi đủ các khoản nạp — sổ và số dư nói hai chuyện |
+
+Nên: khi mục tiêu có bật lặp lại đạt đủ tiền, app **chỉ nhắc**. Đặt lại là xoá
+tiến độ và không hoàn tác được, nên nó phải là một cú bấm có ý thức, kèm hộp
+thoại xác nhận.
+
+⚠️ **Lời nhắc là một loại thông báo RIÊNG (`goalCycleReady`), không gộp vào câu
+chúc mừng.** Câu chúc mừng dùng khoá `goalDone:<id>` **cố ý không có mốc thời
+gian** — chú thích ngay tại chỗ ghi "một mục tiêu chỉ hoàn thành một lần trong
+đời". Mục tiêu lặp lại phá đúng giả định ấy: nhét lời nhắc vào chung thì từ vòng
+thứ hai trở đi nó rơi vào khoá cũ và không bao giờ hiện nữa. Khoá mới gắn
+`startDate`, và `batDauVongMoi` đặt lại cột ấy — nên mỗi vòng nhắc đúng một lần.
+
+**`batDauVongMoi` KHÔNG đụng một đồng nào.** Tiền của vòng cũ nằm nguyên trong
+ví tích luỹ. Người dùng mới chỉ bấm "bắt đầu vòng mới"; suy ra rằng họ cũng muốn
+chuyển tiền đi là đúng kiểu tự tiện mà cả tính năng này tránh từ đầu. Hộp thoại
+nói thẳng điều đó và trỏ sang "Rút khỏi mục tiêu".
+
+Mốc bắt đầu **phải** đặt lại bằng "bây giờ": `tocDoThucTe` đo từ nó, nên giữ mốc
+cũ thì vòng mới hiện tốc độ tiết kiệm của vòng trước.
+
+`hanVongMoi()` luôn bước **ít nhất một kỳ**, vì cả hai đầu đều sai nếu giữ hạn
+cũ: đạt sớm thì vòng mới thừa hưởng phần thời gian còn lại của vòng trước; đạt
+muộn thì mục tiêu quá hạn ngay giây đầu tiên. Nó gọi lại `mocKeTiep` thay vì tự
+cộng tháng — hàng rào cho `DateTime(2028, 2, 31)` (Dart tự chuẩn hoá thành
+02/03, **không ném**) đã dựng sẵn ở đó kèm test năm nhuận.
+
+Bảng chọn chu kỳ lặp cố ý **hẹp hơn** `mocKeTiep`: chỉ Tuần/Tháng/Năm, bỏ `Day`
+và `Quarter`. Lặp lại một mục tiêu tiết kiệm mỗi ngày không có nghĩa gì. Giá trị
+lạ từ Admin-web vẫn hiển thị được, rơi về hàng tháng.
+
+✅ **Đã kiểm trọn luồng trên máy ảo 2026-09-05**: bật lặp lại → nạp cho đủ →
+thông báo `goalCycleReady` sinh ra → nút hiện → hộp thoại → tiến độ về 0, hạn dời
+27/04/2028 → 27/05/2028, `startDate` về "bây giờ", **số dư hai ví không đổi và
+không sinh giao dịch nào**.
+
+---
+
+### 3.18 Hai tab, và **một** định nghĩa "đã xong"
+
+Danh sách trước đây phẳng: mục tiêu đã đạt nằm lẫn với mục tiêu đang chạy và chỉ
+dài thêm mãi. Nay chia hai tab theo đúng lối của Ngân sách, nhãn mang số đếm.
+
+`GoalEntity.daHoanThanh` = `isCompleted || progress >= 1.0` là **định nghĩa duy
+nhất**; luật thông báo `_goalCandidates` và bộ chia tab `chiaMucTieu` đều gọi nó.
+Trước đây mỗi nơi tự viết lại cùng biểu thức — hai bản sao chờ ngày lệch.
+
+Cần cả hai vế: cờ được ghi lúc nạp/rút, còn `progress >= 1.0` bắt ca cờ chưa kịp
+ghi **và** bắt mục tiêu 0 đồng (nơi `progress` trả thẳng `1.0`).
+
+⚠️ **`goalDao.watchAll` không có `orderBy` nào** — thứ tự trả về tuỳ SQLite, danh
+sách xáo lại được giữa hai lần mở app. `chiaMucTieu` sắp lại: đang-theo-đuổi theo
+hạn **gần nhất trước**, đã-hoàn-thành **ngược lại** (đã xong thì "gấp" không còn
+nghĩa; thứ đáng lên đầu là cái vừa đạt được).
+
+Phần chia tách là **hàm thuần** — phần khó không phải phần vẽ mà là hai quyết
+định trên, và cả hai kiểm được bằng dữ liệu, không cần dựng widget.
+
+---
+
+### 3.19 Ghi chú: `null` là giữ nguyên, **chuỗi rỗng** mới là xoá
+
+Quy ước này khác hai hàng xóm của nó trong `updateGoal`, và khác có chủ ý:
+
+| Trường | `null` nghĩa là |
+|---|---|
+| `cycleTakeMoney` | **XOÁ** |
+| `icon` / `colour` | **GIỮ NGUYÊN** (không có trạng thái "không có") |
+| `note` | **GIỮ NGUYÊN**, nhưng **chuỗi rỗng = XOÁ** |
+
+Vế cuối là thứ dễ làm sai nhất. Gộp chuỗi rỗng chung với `null` thì người dùng
+không còn cách nào bỏ ghi chú đi; còn coi `null` là xoá thì một trang sửa chỉ đổi
+tên sẽ lặng lẽ xoá sạch chữ họ đã viết.
+
+Ô nhập đặt **cuối** thẻ mô tả, cùng lối với biểu mẫu thêm giao dịch: nó là trường
+tuỳ chọn, đặt lên đầu sẽ đẩy số tiền và hạn định — hai thứ bắt buộc — xuống dưới
+nếp gấp màn hình. Trang chi tiết hiện nó ngay dưới con số, **trước** hộp dự báo:
+khi mở mục tiêu ra để cân nhắc có nên tiêu vào tiền tích luỹ không, câu tự mình
+viết ra đáng đọc trước cả tốc độ tiết kiệm.
+
+---
+
 ## 4. Bảy cái bẫy
 
 ### 4.1 `walletTransfer` **không có khoá ngoại**
@@ -553,6 +648,8 @@ giá trị từ Admin-web nếu có — nhưng đừng tưởng có tính năng 
 | Cấu hình trích tự động **không sang máy khác** | Ba cột `auto_deposit_*` là cục bộ. Chu kỳ và mốc neo thì có đồng bộ, nên máy mới hiện đúng nhịp kế hoạch mà không tự trích — càng dễ hiểu nhầm. **G21**, chặn ở backend |
 | Không có bộ **lập lịch nền** | Giờ trong mốc trích chỉ giữ được chiều "không sớm hơn". Có lời nhắc AlarmManager nổ đúng giờ kể cả khi app đóng, nhưng nó chỉ báo tin. **G22** — cố ý, đừng "sửa" |
 | Quy tắc trùng tên chỉ có ở **client** | `/sync/push` và PostgreSQL chưa kiểm gì — cùng tình trạng với danh mục. Xem mục 3.15 |
+| **Ưu tiên mục tiêu** chưa có | Bảng `goal` phía backend không có cột nào cho việc này. Làm cột cục bộ thì mắc đúng bệnh G21 — thứ tự đặt trên máy này không sang máy khác |
+| Ví nguồn trích tự động **mặc định trùng ví tích luỹ** | Biểu mẫu chọn sẵn ví tích luỹ làm ví nguồn, nên lần lưu đầu luôn bị `goal_deposit_wallets` từ chối. Không sai dữ liệu, chỉ là một bước thừa bắt người dùng tự sửa |
 
 **Đã đóng ngày 2026-09-05** (giữ lại đây để không ai mở lại nhầm):
 
@@ -580,7 +677,7 @@ nullable `transaction.Idgoal`. **Không chặn gì hôm nay**, nhưng chặn hư
 
 ## 9. Kiểm thử
 
-Khoảng **216 test** riêng cho mục tiêu, trên tổng 850 của dự án.
+Khoảng **222 test** riêng cho mục tiêu, trên tổng 893 của dự án.
 
 | Tệp | Canh gì |
 |---|---|

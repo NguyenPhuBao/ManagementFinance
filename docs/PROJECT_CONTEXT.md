@@ -770,6 +770,26 @@ Tóm tắt:
   nguồn`, đối xứng với `withdrawFromGoal`. Trước đó cả hai chỉ có ở ô nhập, tức
   nằm NGOÀI khối nguyên tử. Kèm theo `GoalCubit.addGoal` nay trả `String?` —
   trang tạo trước đây nuốt lỗi rồi vẫn báo "thành công" và đóng trang — mục 3.16.
+- **Lặp lại mục tiêu sau khi hoàn thành**: app **chỉ nhắc**
+  (`NotificationKind.goalCycleReady`), người dùng bấm "Bắt đầu vòng mới".
+  `batDauVongMoi` đặt tiến độ về 0, gỡ cờ, dời hạn bằng `hanVongMoi` và đặt lại
+  `startDate` — **không đụng một đồng nào**. Lời nhắc là loại thông báo RIÊNG vì
+  khoá `goalDone:<id>` cố ý không có mốc thời gian; gộp chung thì từ vòng thứ
+  hai trở đi không bao giờ hiện. Hai cột `recurrence`/`time_recurrence` vốn đã
+  đồng bộ hai chiều, chết chỉ vì `GoalEntity` không mang chúng — mục 3.17.
+- **Hai tab "Đang theo đuổi" / "Đã hoàn thành"** ở danh sách, cùng lối với Ngân
+  sách. Thêm `GoalEntity.daHoanThanh` làm **định nghĩa duy nhất** của "đã xong",
+  luật thông báo đổi sang gọi nó. `chiaMucTieu` cũng vá luôn chỗ
+  `goalDao.watchAll` **không có `orderBy` nào** — mục 3.18.
+- **Ô ghi chú** cho mục tiêu. `null` là giữ nguyên, **chuỗi rỗng mới là xoá** —
+  khác `cycleTakeMoney` (null = xoá) và giống `icon`/`colour` ở nửa đầu. Cột
+  `note` đã đồng bộ sẵn, chỉ thiếu chỗ nhập — mục 3.19.
+- **`doiSangBool()` ở nhánh kéo về**: `Status_complete` là chuỗi còn `Recurrence`
+  là boolean thật, trong CÙNG một bảng. So khớp cứng từng kiểu thì chỉ cần một
+  bên đổi cách tuần tự hoá là cờ lặng lẽ về `false`. Chỉ nới ở chỗ **đọc**;
+  payload đẩy vẫn gửi đúng một dạng. Còn bốn chỗ cùng lớp chưa đụng:
+  `wallets.is_default`, `categories.is_default`, `categories.is_group`,
+  `bills.recurrence`.
 
 ⚠️ Ba lỗi ở vùng này **chỉ máy ảo Android mới lộ ra**: `ProviderNotFoundError`
 trên route không có `WalletCubit`, màn đỏ do `DropdownButton` có `value` ngoài
