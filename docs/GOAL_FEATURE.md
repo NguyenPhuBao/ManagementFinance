@@ -116,6 +116,13 @@ nhau thì báo cho người dùng quyết. `canhBaoViKhongDu()` so số dư ví 
 của mọi mục tiêu** trỏ vào ví đó — cộng dồn chứ không so lẻ, vì ba mục tiêu dùng
 chung một ví thì từng cái đều thấy "đủ tiền" trong khi cộng lại thì thiếu.
 
+✅ **Đã xem trên máy ảo Android 2026-09-05.** Hàm có 6 test từ lâu nhưng phần vẽ
+chưa bao giờ gặp ca dữ liệu để hiện. Dựng đúng ca thật — một khoản **chi tiêu
+thường** 1,5 triệu từ chính ví tích luỹ, đưa ví xuống 700.000 trong khi mục tiêu
+ghi nhận 1.200.000 — thì dải hiện đủ ba dòng ở khổ 411dp, không tràn, hai con số
+khớp CSDL. Đây là ca duy nhất sinh ra được nó: nạp và rút đều đi qua mục tiêu nên
+chúng luôn khớp.
+
 ### 3.5 Rút tiền kiểm **hai** trần, và **gỡ** cờ hoàn thành
 
 | Trần | Vi phạm thì sao |
@@ -340,6 +347,99 @@ chuyển tiền dựa trên một lựa chọn người dùng chưa từng đưa
 
 ---
 
+### 3.14 Khoản trích **bù** mang mốc của kỳ, không phải lúc bù
+
+Bỏ app ba kỳ thì ba kỳ được trích bù trong cùng một lượt quét. Bản trước ghi cả
+ba hàng với `DateTime.now()`, nên thống kê **theo ngày** thấy một cột dựng đứng
+ở ngày mở app — trong khi trung tâm thông báo, vốn lấy mốc kỳ làm `createdAt`,
+hiện đúng ba ngày. Hai nơi nói hai chuyện khác nhau về cùng một sự việc.
+
+`depositToGoal` nhận thêm `occurredAt`. Vì đây là **tầng ghi tiền**, một tham số
+ngày để trống chính là cửa sau, nên nó bị chặn **hai đầu**:
+
+| Chặn | Vì sao |
+|---|---|
+| Không ở **tương lai** | Một khoản nạp không thể mang dấu thời gian chưa tới |
+| Không trước `startDate` của mục tiêu | Bịa về quá khứ cũng là bịa; khoản nạp sẽ rơi xuống đáy lịch sử ở chỗ mục tiêu còn chưa ra đời |
+
+Bộ trích tự động không bao giờ chạm hai đầu ấy: `cacKyDenHan` sinh mốc nằm **sau**
+`auto_deposit_last_run` (đặt lúc bật công tắc, tức sau `startDate`) và **không
+sau** `now`. Đường nạp tay không truyền tham số, và `GoalCubit` **cố ý không phơi
+nó ra** — nơi gọi duy nhất là `GoalAutoDepositRunner`.
+
+⚠️ Chỉ cột `date` lùi lại. **`updatedAt` vẫn là "bây giờ"** vì nó là sổ sách đồng
+bộ, không phải ngày của sự việc; lùi nó theo sẽ làm phép phân xử LWW coi bản ghi
+cũ hơn thực tế và ghi đè mất chính khoản vừa trích.
+
+**Hệ quả thấy được:** lịch sử tích luỹ (`orderBy: date desc`) **sắp xếp lại** —
+khoản bù xen vào đúng ngày của nó thay vì dồn lên đầu. Đã kiểm trên máy ảo
+2026-09-05: ba kỳ bù ghi lúc 17:30 mang `date` 06/07/08-09 lúc 08:00 và cùng một
+`updated_at` 17:30, và danh sách hiện đúng thứ tự xen kẽ với các khoản nạp tay.
+
+> ⚠️ **Bẫy khi viết test cho vùng này.** Runner nhận `now` tiêm vào, còn
+> `depositToGoal` đọc `DateTime.now()` — ở production hai thứ ấy là **một** đồng
+> hồ. Bộ test cũ giả lập kịch bản ở **tương lai** (`now: 2026-12-06`), một tiền
+> đề không xảy ra được ngoài đời, và nó vỡ ngay khi phép chặn đầu trên ra đời.
+> Nay cả `goal_auto_deposit_runner_test.dart` nằm trong **quá khứ**; ngày quá khứ
+> thì mãi mãi vẫn là quá khứ nên cách này không hết hạn.
+
+---
+
+### 3.15 Tên mục tiêu là **duy nhất** trong phạm vi một tài khoản
+
+Không phải để danh sách cho gọn. `TransactionDao.watchByGoal` nối lịch sử bằng
+`goal_id` cho hàng mới, nhưng vẫn giữ **nhánh dự phòng** tra bằng `LIKE` trên ghi
+chú `"Tích lũy mục tiêu: <tên>"` — nhánh duy nhất tìm lại được hàng do bản app cũ
+tạo và **mọi hàng kéo về từ server** (`goal_id` là cột cục bộ, xem bẫy 4.4). Hai
+mục tiêu trùng tên thì cả hai cùng nhận vơ đúng những hàng ấy.
+
+Ba lựa chọn **giống hệt danh mục**, và giống vì cùng một lý do:
+
+- **So tên bằng `normalizeCategoryName()`** ở `lib/core/category/category_name.dart`
+  — định nghĩa so tên duy nhất của dự án. Đừng viết biến thể khác, và tuyệt đối
+  đừng dùng `removeVietnameseTones()`: bỏ dấu là phép so *mất thông tin*.
+- **Hàng đã xoá mềm KHÔNG giữ chỗ** (`goalDao.getAll` đã lọc `deleted_at`). Giữ
+  chỗ thì người dùng xoá rồi không tạo lại được bằng chính cái tên ấy mà cũng
+  không thấy gì đang chiếm chỗ.
+- **Chỉ xét khi tên thật sự đổi.** Máy người dùng có thể đang giữ sẵn hai mục
+  tiêu trùng tên do bản client trước tạo; chặn tuyệt đối là chúng kẹt vĩnh viễn,
+  không sửa nổi cả số tiền lẫn biểu tượng.
+
+Thi hành ở `GoalRepositoryImpl._trungTen()`, nối vào **cả `addGoal` lẫn
+`updateGoal`** — chặn mỗi đường tạo thì tạo hai tên khác nhau rồi đổi một cái
+thành cái kia là đi vòng qua trọn vẹn quy tắc.
+
+**Phạm vi:** client. Đường `/sync/push` và CSDL PostgreSQL **chưa kiểm gì cả** —
+cùng tình trạng với danh mục.
+
+Câu lỗi đi qua `GoalValidationException` (mẫu của `CategoryValidationException`)
+chứ không phải `ArgumentError`, vì nó ra thẳng snackbar qua `e.toString()`:
+`ArgumentError` hiện thành `Invalid argument (name): <câu tiếng Việt>: "<giá trị>"`.
+
+---
+
+### 3.16 `depositToGoal` kiểm số tiền ở **tầng repository**, không chỉ ở form
+
+Ô nhập của trang chi tiết đã chặn từ lâu, nhưng phép kiểm nằm một mình trên giao
+diện thì mọi đường gọi khác đi vòng qua được — **và nó nằm NGOÀI khối nguyên tử**,
+tức không phải chỗ giữ bất biến. Hai trần nay nằm trong `db.transaction`:
+
+| Trần | Không có nó thì |
+|---|---|
+| `depositAmount > 0` | Nạp 0 đồng đẻ ra một hàng giao dịch rỗng; nạp **số âm** chạy trót lọt tới cuối — ví nguồn được **CỘNG** tiền trong khi tiến độ mục tiêu tụt xuống |
+| `depositAmount ≤ số dư ví nguồn` | Repository trừ thẳng và ví nguồn xuống **âm**: mục tiêu tích được một số tiền chưa từng tồn tại |
+
+Trần thứ hai là bản đối xứng của trần "tiền THẬT trong ví" mà `withdrawFromGoal`
+đã có (mục 3.5). Trần là **vượt quá**, không phải **bằng** — dồn sạch một ví vào
+mục tiêu là thao tác hợp lệ.
+
+Kèm theo, `GoalCubit.addGoal` nay trả `String?` như `updateGoal`. Trang tạo gọi
+`.then(...)` rồi đóng ngay, nó **không đọc trạng thái cubit**; bản trước chỉ phát
+`GoalError` nên một mục tiêu bị từ chối vẫn hiện thông báo "thành công" rồi đóng
+trang, và người dùng mất hết những gì vừa gõ.
+
+---
+
 ## 4. Bảy cái bẫy
 
 ### 4.1 `walletTransfer` **không có khoá ngoại**
@@ -450,12 +550,18 @@ giá trị từ Admin-web nếu có — nhưng đừng tưởng có tính năng 
 
 | Việc | Ghi chú |
 |---|---|
-| Không kiểm trùng tên mục tiêu | Khác hẳn danh mục (có quy tắc rất chặt). Chưa rõ chủ ý hay bỏ sót |
-| Phép kiểm **số tiền** khi nạp chỉ ở giao diện | Repository nhận bất kỳ giá trị nào. Các phép kiểm về **ví** thì đã có ở cả hai tầng |
-| Dải cảnh báo lệch chưa xem trên máy thật | Hàm có 6 test; phần vẽ chưa gặp ca dữ liệu để hiện |
-| Giao dịch trích **bù** mang dấu thời gian lúc bù | Ba kỳ bù cùng lúc thì ba hàng cùng một dấu thời gian, trong khi thông báo mang mốc từng kỳ. Không sai đồng nào, chỉ lệch ở thống kê **theo ngày** — **G20** trong `CLIENT_APP_KNOWN_GAPS.md` |
 | Cấu hình trích tự động **không sang máy khác** | Ba cột `auto_deposit_*` là cục bộ. Chu kỳ và mốc neo thì có đồng bộ, nên máy mới hiện đúng nhịp kế hoạch mà không tự trích — càng dễ hiểu nhầm. **G21**, chặn ở backend |
 | Không có bộ **lập lịch nền** | Giờ trong mốc trích chỉ giữ được chiều "không sớm hơn". Có lời nhắc AlarmManager nổ đúng giờ kể cả khi app đóng, nhưng nó chỉ báo tin. **G22** — cố ý, đừng "sửa" |
+| Quy tắc trùng tên chỉ có ở **client** | `/sync/push` và PostgreSQL chưa kiểm gì — cùng tình trạng với danh mục. Xem mục 3.15 |
+
+**Đã đóng ngày 2026-09-05** (giữ lại đây để không ai mở lại nhầm):
+
+| Việc | Đóng bằng gì |
+|---|---|
+| ~~Không kiểm trùng tên mục tiêu~~ | Mục **3.15** — `_trungTen()` ở cả `addGoal` lẫn `updateGoal`, dùng chung `normalizeCategoryName()` |
+| ~~Phép kiểm **số tiền** khi nạp chỉ ở giao diện~~ | Mục **3.16** — hai trần (`> 0` và `≤ số dư ví nguồn`) nằm trong khối nguyên tử |
+| ~~Dải cảnh báo lệch chưa xem trên máy thật~~ | Mục **3.4** — đã dựng đúng ca và xem trên máy ảo Android |
+| ~~Giao dịch trích **bù** mang dấu thời gian lúc bù~~ | Mục **3.14** — tham số `occurredAt` chặn hai đầu; **G20** đã đóng |
 
 ---
 
@@ -474,7 +580,7 @@ nullable `transaction.Idgoal`. **Không chặn gì hôm nay**, nhưng chặn hư
 
 ## 9. Kiểm thử
 
-Khoảng **199 test** riêng cho mục tiêu, trên tổng 833 của dự án.
+Khoảng **216 test** riêng cho mục tiêu, trên tổng 850 của dự án.
 
 | Tệp | Canh gì |
 |---|---|

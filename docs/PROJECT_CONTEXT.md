@@ -755,6 +755,21 @@ Tóm tắt:
   đúng lúc* ở mục 3.12 `GOAL_FEATURE.md` — đọc trước khi đụng vào.
 - **Nội dung giả trên trang danh sách đã dọn**: huy hiệu PREMIUM, câu "tăng
   12%", nút "Xem báo cáo", "Xem tất cả", dấu ba chấm trên thẻ — mục 3.11.
+- **Khoản trích BÙ mang mốc của kỳ** (G20 đã đóng). `depositToGoal` nhận
+  `occurredAt`, chặn **hai đầu** — không ở tương lai, không trước `startDate`.
+  Nơi gọi duy nhất là `GoalAutoDepositRunner`; `GoalCubit` cố ý không phơi tham
+  số ra. Chỉ cột `date` lùi lại, `updatedAt` vẫn là "bây giờ" vì nó là sổ sách
+  đồng bộ — mục 3.14 `GOAL_FEATURE.md`.
+- **Tên mục tiêu là DUY NHẤT trong phạm vi một tài khoản**, cùng ba lựa chọn với
+  danh mục: so bằng `normalizeCategoryName()`, hàng xoá mềm **không** giữ chỗ,
+  và chỉ kiểm khi tên thật sự đổi. Lý do không phải thẩm mỹ: `watchByGoal` còn
+  nhánh dự phòng tra lịch sử bằng `LIKE` trên tên, nên hai mục tiêu trùng tên
+  cùng nhận vơ những hàng cũ không mang `goalId`. Thi hành ở **client**;
+  `/sync/push` và PostgreSQL chưa kiểm gì — mục 3.15.
+- **`depositToGoal` kiểm số tiền ở tầng repository**: `> 0` và `≤ số dư ví
+  nguồn`, đối xứng với `withdrawFromGoal`. Trước đó cả hai chỉ có ở ô nhập, tức
+  nằm NGOÀI khối nguyên tử. Kèm theo `GoalCubit.addGoal` nay trả `String?` —
+  trang tạo trước đây nuốt lỗi rồi vẫn báo "thành công" và đóng trang — mục 3.16.
 
 ⚠️ Ba lỗi ở vùng này **chỉ máy ảo Android mới lộ ra**: `ProviderNotFoundError`
 trên route không có `WalletCubit`, màn đỏ do `DropdownButton` có `value` ngoài

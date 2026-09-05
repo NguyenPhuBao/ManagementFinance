@@ -20,9 +20,11 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > | **G17** | Danh sách rỗng ở lần vào đầu sau khởi động nguội — cần sửa ở **mọi** trang đọc theo tài khoản, không riêng mục tiêu |
 > | **G18** | Nhánh dự phòng của lịch sử tích luỹ còn so bằng tên — chặn ở backend |
 > | **G19** | **Không phải lỗi** — ghi lại để người sau không "sửa" nhầm |
-> | **G20** | Giao dịch trích bù mang dấu thời gian **lúc bù**, không phải mốc kỳ — cần đổi chữ ký `depositToGoal` |
 > | **G21** | Cấu hình trích tự động **không theo người dùng sang máy khác** — chặn ở backend |
 > | **G22** | **Không phải lỗi** — giờ trong mốc neo chỉ giữ được một chiều |
+>
+> **G20 đã đóng ngày 2026-09-05** — `depositToGoal` nhận `occurredAt` chặn hai
+> đầu; đã kiểm cả bằng test lẫn trên máy ảo Android.
 
 | Mục | Đã làm gì | Test canh chừng |
 |---|---|---|
@@ -358,7 +360,7 @@ tiêu nào.
 
 ---
 
-### G20 — Giao dịch trích bù mang dấu thời gian **lúc bù**, không phải mốc của kỳ · ⏸️ HOÃN CÓ CHỦ Ý (2026-09-05)
+### ~~G20 — Giao dịch trích bù mang dấu thời gian **lúc bù**, không phải mốc của kỳ~~ · ✅ ĐÃ SỬA (2026-09-05)
 
 **Hiện trạng:** bộ trích tự động chạy trong vòng quét, tức khi app mở. Bỏ app ba
 ngày với chu kỳ hàng ngày thì ba kỳ được trích bù cùng lúc — và cả ba hàng giao
@@ -372,15 +374,27 @@ việc.
 **Bán kính ảnh hưởng:** không sai một đồng nào — số tiền, số dư ví và tiến độ
 đều đúng. Chỉ phần thống kê **theo ngày** thấy ba khoản dồn vào một ngày.
 
-**Vì sao hoãn:** `depositToGoal` cố tình không nhận tham số ngày; nó luôn ghi
-"bây giờ", đúng như một khoản nạp tay. Thêm một tham số `date` tuỳ chọn là mở
-đường cho nơi gọi khác truyền vào một ngày bịa — và đó là tầng ghi tiền, chỗ ít
-đáng nới lỏng nhất. Muốn sửa thì phải làm cùng lúc: thêm tham số, chặn nó ở mọi
-đường gọi khác, và viết test canh chừng.
+**Vì sao hoãn (bối cảnh gốc):** `depositToGoal` cố tình không nhận tham số ngày;
+nó luôn ghi "bây giờ", đúng như một khoản nạp tay. Thêm một tham số `date` tuỳ
+chọn là mở đường cho nơi gọi khác truyền vào một ngày bịa — và đó là tầng ghi
+tiền, chỗ ít đáng nới lỏng nhất. Muốn sửa thì phải làm cùng lúc: thêm tham số,
+chặn nó ở mọi đường gọi khác, và viết test canh chừng.
 
-**Chú ý khi sửa:** đổi `date` sẽ đổi cả thứ tự trong `watchByGoal`
-(`orderBy: date desc`), nên lịch sử tích luỹ sắp xếp lại — cần kiểm bằng mắt chứ
-không chỉ bằng test.
+**Đã sửa thế nào:** `depositToGoal` nhận `occurredAt`, chặn **hai đầu** (không ở
+tương lai, không trước `startDate` của mục tiêu). Nơi gọi duy nhất là
+`GoalAutoDepositRunner`; đường nạp tay không truyền, và `GoalCubit` cố ý không
+phơi tham số ra. Chỉ cột `date` lùi lại — `updatedAt` vẫn là "bây giờ" vì nó là
+sổ sách đồng bộ. Chi tiết và các phương án đã loại: mục **3.14** `GOAL_FEATURE.md`.
+
+**Kiểm trên máy ảo 2026-09-05:** ba kỳ bù ghi lúc 17:30 mang `date` 06/07/08-09
+lúc 08:00 với cùng một `updated_at` 17:30, và lịch sử tích luỹ (`orderBy: date
+desc`) **xen kẽ đúng ngày** thay vì dồn lên đầu — đúng chỗ mà ghi chú cũ dặn phải
+kiểm bằng mắt.
+
+⚠️ **Bẫy để lại cho người sau:** runner nhận `now` tiêm vào, còn `depositToGoal`
+đọc `DateTime.now()` — ở production hai thứ ấy là **một** đồng hồ. Bộ test cũ giả
+lập kịch bản ở **tương lai** nên vỡ ngay khi phép chặn đầu trên ra đời; nay cả
+`goal_auto_deposit_runner_test.dart` nằm trong quá khứ. Đừng "sửa" nó ngược lại.
 
 ---
 
