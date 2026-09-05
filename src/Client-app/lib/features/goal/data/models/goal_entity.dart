@@ -14,6 +14,15 @@ class GoalEntity {
 
   final DateTime targetDate;
   final String? walletId;
+
+  /// Chu kỳ trích tiền người dùng chọn lúc tạo — `'Day'`/`'Week'`/`'Month'`/
+  /// `'Quarter'`/`'Year'`, hoặc null.
+  ///
+  /// **Không có bộ lập lịch nào đọc nó.** Nó là *nhịp người dùng dự định*, dùng
+  /// để hiển thị kế hoạch và thực tế theo cùng một đơn vị ("cần 3 triệu mỗi
+  /// tháng · đang tích 1,2 triệu mỗi tháng"). Trước đây lựa chọn này chỉ dùng
+  /// để tính ngược ra ngày hạn rồi bị vứt bỏ.
+  final String? cycleTakeMoney;
   final String icon;
   final String colour;
   final String note;
@@ -31,6 +40,7 @@ class GoalEntity {
     this.startDate,
     required this.targetDate,
     this.walletId,
+    this.cycleTakeMoney,
     this.icon = 'flag',
     this.colour = '#4CAF50',
     this.note = '',
@@ -50,6 +60,7 @@ class GoalEntity {
       startDate: d.startDate,
       targetDate: d.targetDate,
       walletId: d.walletId,
+      cycleTakeMoney: d.cycleTakeMoney,
       icon: d.icon,
       colour: d.colour,
       note: d.note,
@@ -70,6 +81,7 @@ class GoalEntity {
       startDate: Value(startDate),
       targetDate: targetDate,
       walletId: Value(walletId),
+      cycleTakeMoney: Value(cycleTakeMoney),
       icon: Value(icon),
       colour: Value(colour),
       note: Value(note),
@@ -89,6 +101,7 @@ class GoalEntity {
     DateTime? startDate,
     DateTime? targetDate,
     String? walletId,
+    String? cycleTakeMoney,
     String? icon,
     String? colour,
     String? note,
@@ -106,6 +119,7 @@ class GoalEntity {
       startDate: startDate ?? this.startDate,
       targetDate: targetDate ?? this.targetDate,
       walletId: walletId ?? this.walletId,
+      cycleTakeMoney: cycleTakeMoney ?? this.cycleTakeMoney,
       icon: icon ?? this.icon,
       colour: colour ?? this.colour,
       note: note ?? this.note,
@@ -132,6 +146,16 @@ class GoalEntity {
     final tyLe = currentAmount / targetAmount;
     if (tyLe.isNaN) return 0.0;
     return tyLe.clamp(0.0, 1.0);
+  }
+
+  /// Số tiền còn thiếu để đạt mục tiêu. **Không bao giờ âm.**
+  ///
+  /// Kẹp ở 0 vì giá trị này đi thẳng vào câu chữ trên màn hình ("Còn lại … để
+  /// đạt mục tiêu") và vào phép kiểm nạp vượt. Một mục tiêu đã tích quá tay mà
+  /// trả số âm thì hiện thành "Còn lại -500.000đ".
+  double get remainingAmount {
+    final conThieu = targetAmount - currentAmount;
+    return conThieu > 0 ? conThieu : 0.0;
   }
 
   /// Số ngày còn lại tới hạn. Âm nghĩa là đã quá hạn.
