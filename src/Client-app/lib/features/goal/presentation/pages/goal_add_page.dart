@@ -436,16 +436,24 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
           autoDepositAmount: _autoDeposit ? soTienTrich : null,
           autoDepositWalletId: _autoDeposit ? _selectedSourceWallet?.id : null,
           autoDepositAnchor: _autoDeposit ? _mocNeo : null,
-        ).then((_) {
-      if (mounted) {
+        ).then((loi) {
+      if (!mounted) return;
+      // Đối xứng với đường sửa ở trên: có lỗi thì GIỮ trang mở để người dùng
+      // sửa lại chỗ sai. Bản trước đóng trang và báo "thành công" bất kể kết
+      // quả, nên một mục tiêu bị từ chối biến mất cùng mọi thứ vừa gõ.
+      if (loi != null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Tạo mục tiêu tiết kiệm thành công!'),
-            backgroundColor: AppColors.income,
-          ),
+          SnackBar(content: Text(loi), backgroundColor: Colors.red),
         );
-        context.pop();
+        return;
       }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tạo mục tiêu tiết kiệm thành công!'),
+          backgroundColor: AppColors.income,
+        ),
+      );
+      context.pop();
     });
   }
 

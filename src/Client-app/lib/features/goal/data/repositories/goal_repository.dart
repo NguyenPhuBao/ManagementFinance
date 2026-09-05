@@ -1,5 +1,21 @@
 import '../models/goal_entity.dart';
 
+/// Lỗi do **người dùng nhập sai**, không phải lỗi lập trình.
+///
+/// Cùng mẫu với `CategoryValidationException`, và vì cùng một lý do: câu lỗi
+/// này đi thẳng ra snackbar qua `e.toString()`, nên nó phải đọc được. Một
+/// `ArgumentError` ở đây hiện ra thành
+/// `Invalid argument (name): <câu tiếng Việt>: "<giá trị>"` — người dùng không
+/// hiểu được nửa đầu lẫn nửa cuối.
+class GoalValidationException implements Exception {
+  const GoalValidationException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 abstract class GoalRepository {
   Future<List<GoalEntity>> getGoals(int idaccount);
   Stream<List<GoalEntity>> watchGoals(int idaccount);
@@ -83,13 +99,36 @@ abstract class GoalRepository {
   /// một lần lúc tạo mục tiêu và chỉ đổi qua [changeWallet].
   ///
   /// Ném [StateError] nếu mục tiêu chưa có ví nhận (chỉ xảy ra với mục tiêu do
-  /// bản app cũ tạo), và [ArgumentError] nếu ví nguồn trùng ví nhận.
+  /// bản app cũ tạo) hoặc ví nguồn **không đủ tiền thật**, và [ArgumentError]
+  /// nếu ví nguồn trùng ví nhận, số tiền ≤ 0, hoặc [occurredAt] nằm ngoài
+  /// khoảng cho phép.
+  ///
+  /// Hai phép kiểm cuối trùng với phép kiểm đã có ở ô nhập — cố ý. Phép kiểm
+  /// nằm một mình trên giao diện thì mọi đường gọi khác đi vòng qua được, và
+  /// nó cũng nằm NGOÀI khối nguyên tử nên không phải là chỗ giữ bất biến.
   Future<void> depositToGoal({
     required String goalId,
     required String goalName,
     required double depositAmount,
     required String walletId,
     required int idaccount,
+
+    /// Thời điểm của **sự việc**, mặc định là "bây giờ".
+    ///
+    /// Chỉ tồn tại cho bộ trích tự động: khi app đóng nhiều kỳ, các kỳ bỏ lỡ
+    /// được trích **bù** cùng một lượt, và mỗi hàng giao dịch phải mang mốc
+    /// của kỳ nó thuộc về chứ không phải thời điểm bù. Không có nó thì ba kỳ
+    /// dồn thành một cột trong thống kê theo ngày, trong khi trung tâm thông
+    /// báo — vốn lấy mốc kỳ — hiện đúng ba ngày.
+    ///
+    /// **Đường nạp tay không truyền tham số này** và không nên bắt đầu truyền:
+    /// đây là tầng ghi tiền, và một ngày do nơi gọi tự đặt là một ngày bịa.
+    /// Hai đầu chặn (không ở tương lai, không trước `startDate` của mục tiêu)
+    /// là thứ giữ cho tham số không trở thành cửa sau.
+    ///
+    /// Chỉ đổi cột `date`. `updatedAt` vẫn là "bây giờ" vì nó là sổ sách đồng
+    /// bộ, không phải ngày của sự việc.
+    DateTime? occurredAt,
   });
   /// Lịch sử tích luỹ của một mục tiêu.
   ///

@@ -59,7 +59,14 @@ class GoalCubit extends Cubit<GoalState> {
     }
   }
 
-  Future<void> addGoal({
+  /// Trả `null` khi thành công, hoặc câu lỗi để nơi gọi hiển thị — giống
+  /// [updateGoal], và vì đúng cùng một lý do.
+  ///
+  /// Trang tạo gọi `.then(...)` rồi đóng trang ngay, nó KHÔNG đọc trạng thái
+  /// cubit. Bản trước chỉ phát `GoalError`, nên một mục tiêu bị từ chối (trùng
+  /// tên chẳng hạn) vẫn hiện thông báo "thành công" rồi đóng trang — người
+  /// dùng mất hết những gì vừa gõ và không biết vì sao mục tiêu không có ở đó.
+  Future<String?> addGoal({
     required int idaccount,
     required String name,
     required double targetAmount,
@@ -88,8 +95,9 @@ class GoalCubit extends Cubit<GoalState> {
         autoDepositWalletId: autoDepositWalletId,
         autoDepositAnchor: autoDepositAnchor,
       );
+      return null;
     } catch (e) {
-      emit(GoalError(e.toString()));
+      return e.toString();
     }
   }
 

@@ -5,6 +5,8 @@ import 'package:drift/native.dart';
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/goal/data/datasources/goal_local_data_source.dart';
+import 'package:flowmoney/features/goal/data/models/goal_entity.dart';
+import 'package:flowmoney/features/goal/data/repositories/goal_repository.dart';
 import 'package:flowmoney/features/goal/data/repositories/goal_repository_impl.dart';
 
 void main() {
@@ -104,6 +106,11 @@ void main() {
     });
 
     test('nạp đủ số thì đánh dấu hoàn thành', () async {
+      // Nạp trọn 18 triệu còn thiếu thì ví nguồn phải có đủ 18 triệu. Bản cũ
+      // của test này nạp 18 triệu từ một ví chỉ có 5 triệu — một ca giao diện
+      // không bao giờ cho phép, và nay bị trần "tiền THẬT trong ví" chặn lại.
+      await db.walletDao.updateBalance('w1', 18000000.0);
+
       await repository.depositToGoal(
         goalId: 'g1',
         goalName: 'Mua Laptop',
@@ -153,6 +160,269 @@ void main() {
             'đẻ ra một hàng vô nghĩa, nhưng tiến độ mục tiêu vẫn tăng — tức là '
             'tích luỹ được tiền từ hư không.',
       );
+    });
+  });
+
+  group('phép kiểm số tiền nạp nằm ở tầng repository, không chỉ ở form', () {
+    test('số tiền 0 thì TỪ CHỐI, không ghi gì', () async {
+      await expectLater(
+        repository.depositToGoal(
+          goalId: 'g1',
+          goalName: 'Mua Laptop',
+          depositAmount: 0.0,
+          walletId: 'w1',
+          idaccount: 1,
+        ),
+        throwsA(isA<ArgumentError>()),
+        reason: 'Phép kiểm này trước chỉ có ở ô nhập của trang chi tiết, nên '
+            'mọi đường gọi khác đi vòng qua được. Nạp 0 đồng đẻ ra một hàng '
+            'giao dịch rỗng trong lịch sử tích luỹ mà không có gì đổi.',
+      );
+
+      expect((await db.walletDao.getById('w1'))?.balance, 5000000.0);
+      expect((await repository.getGoalById('g1'))?.currentAmount, 2000000.0);
+      expect(await db.transactionDao.getAll(1), isEmpty);
+    });
+
+    test('số tiền ÂM thì TỪ CHỐI', () async {
+      await expectLater(
+        repository.depositToGoal(
+          goalId: 'g1',
+          goalName: 'Mua Laptop',
+          depositAmount: -1000000.0,
+          walletId: 'w1',
+          idaccount: 1,
+        ),
+        throwsA(isA<ArgumentError>()),
+        reason: 'Số âm nguy hơn số 0 vì nó chạy trót lọt tới cuối: ví nguồn '
+            'được CỘNG tiền trong khi tiến độ mục tiêu tụt xuống, và hàng giao '
+            'dịch ghi một khoản chuyển khoản âm.',
+      );
+
+      expect((await db.walletDao.getById('w1'))?.balance, 5000000.0);
+      expect((await repository.getGoalById('g1'))?.currentAmount, 2000000.0);
+      expect(await db.transactionDao.getAll(1), isEmpty);
+    });
+
+    test('nạp quá số dư ví nguồn thì TỪ CHỐI, không đưa ví xuống âm', () async {
+      await expectLater(
+        repository.depositToGoal(
+          goalId: 'g1',
+          goalName: 'Mua Laptop',
+          depositAmount: 5000001.0,
+          walletId: 'w1',
+          idaccount: 1,
+        ),
+        throwsA(isA<StateError>()),
+        reason: 'Đối xứng với `withdrawFromGoal`, nơi đã có trần "tiền THẬT '
+            'trong ví". Thiếu trần này thì repository trừ thẳng và ví nguồn '
+            'xuống âm — tạo tiền từ hư không, đúng ca đã chặn ở chiều rút.',
+      );
+
+      expect((await db.walletDao.getById('w1'))?.balance, 5000000.0);
+      expect((await db.walletDao.getById('w_nhan'))?.balance, 0.0);
+      expect(await db.transactionDao.getAll(1), isEmpty);
+    });
+
+    test('nạp ĐÚNG BẰNG số dư ví nguồn thì cho qua', () async {
+      await repository.depositToGoal(
+        goalId: 'g1',
+        goalName: 'Mua Laptop',
+        depositAmount: 5000000.0,
+        walletId: 'w1',
+        idaccount: 1,
+      );
+
+      expect((await db.walletDao.getById('w1'))?.balance, 0.0,
+          reason: 'Trần là "vượt quá", không phải "bằng". Dồn sạch một ví vào '
+              'mục tiêu là thao tác hợp lệ — chặn cả ca này là biến một việc '
+              'người dùng cố ý làm thành lỗi.');
+    });
+  });
+
+  group('dấu thời gian của khoản nạp', () {
+    test('không truyền thời điểm thì ghi "bây giờ"', () async {
+      // Drift lưu `DateTime` thành mốc unix GIÂY, mili-giây bị cắt — nên nới
+      // hai đầu ra một giây thay vì so khít.
+      final truoc = DateTime.now().subtract(const Duration(seconds: 1));
+      await repository.depositToGoal(
+        goalId: 'g1',
+        goalName: 'Mua Laptop',
+        depositAmount: 1000000.0,
+        walletId: 'w1',
+        idaccount: 1,
+      );
+      final sau = DateTime.now().add(const Duration(seconds: 1));
+
+      final tx = (await db.transactionDao.getAll(1)).single;
+      expect(tx.date.isAfter(truoc) && tx.date.isBefore(sau), isTrue,
+          reason: 'Khoản nạp TAY vẫn mang thời điểm bấm nút. Tham số '
+              '`occurredAt` chỉ dành cho bộ trích bù; để nó rò sang đường nạp '
+              'tay là mở cửa cho mọi nơi gọi tự đặt ngày cho tiền của mình.');
+    });
+
+    test('thời điểm ở TƯƠNG LAI thì TỪ CHỐI, không ghi gì', () async {
+      await expectLater(
+        repository.depositToGoal(
+          goalId: 'g1',
+          goalName: 'Mua Laptop',
+          depositAmount: 1000000.0,
+          walletId: 'w1',
+          idaccount: 1,
+          occurredAt: DateTime.now().add(const Duration(days: 1)),
+        ),
+        throwsA(isA<ArgumentError>()),
+        reason: 'Tham số này tồn tại để một khoản trích BÙ lùi về đúng mốc kỳ '
+            'đã qua. Cho phép nó trỏ tới tương lai là biến tầng ghi tiền — chỗ '
+            'ít đáng nới lỏng nhất — thành nơi bịa được ngày.',
+      );
+
+      expect(await db.transactionDao.getAll(1), isEmpty);
+      expect((await db.walletDao.getById('w1'))?.balance, 5000000.0);
+      expect((await repository.getGoalById('g1'))?.currentAmount, 2000000.0);
+    });
+
+    test('thời điểm TRƯỚC KHI mục tiêu tồn tại thì TỪ CHỐI', () async {
+      await (db.update(db.goals)..where((t) => t.id.equals('g1')))
+          .write(GoalsCompanion(startDate: Value(DateTime(2026, 9, 1))));
+
+      await expectLater(
+        repository.depositToGoal(
+          goalId: 'g1',
+          goalName: 'Mua Laptop',
+          depositAmount: 1000000.0,
+          walletId: 'w1',
+          idaccount: 1,
+          occurredAt: DateTime(2026, 8, 31),
+        ),
+        throwsA(isA<ArgumentError>()),
+        reason: 'Chặn đầu dưới cùng lúc với đầu trên. Không có nó thì một ngày '
+            'bịa vẫn lọt được, chỉ cần bịa về quá khứ — và khoản nạp rơi xuống '
+            'đáy lịch sử tích luỹ ở một chỗ mục tiêu còn chưa ra đời.',
+      );
+
+      expect(await db.transactionDao.getAll(1), isEmpty);
+    });
+
+    test('thời điểm hợp lệ trong quá khứ được ghi thẳng vào cột ngày', () async {
+      await (db.update(db.goals)..where((t) => t.id.equals('g1')))
+          .write(GoalsCompanion(startDate: Value(DateTime(2026, 1, 1))));
+
+      final ky = DateTime(2026, 8, 5, 9);
+      await repository.depositToGoal(
+        goalId: 'g1',
+        goalName: 'Mua Laptop',
+        depositAmount: 1000000.0,
+        walletId: 'w1',
+        idaccount: 1,
+        occurredAt: ky,
+      );
+
+      final tx = (await db.transactionDao.getAll(1)).single;
+      expect(tx.date, ky);
+      expect(tx.updatedAt.isAfter(DateTime(2026, 9, 1)), isTrue,
+          reason: '`updatedAt` là sổ sách ĐỒNG BỘ, không phải ngày của sự '
+              'việc. Lùi nó về mốc kỳ làm phép phân xử LWW coi bản ghi này cũ '
+              'hơn thực tế và ghi đè mất chính khoản vừa trích.');
+    });
+  });
+
+  group('tên mục tiêu là duy nhất trong phạm vi một tài khoản', () {
+    Future<GoalEntity> taoMucTieu(String ten, {int idaccount = 1}) {
+      return repository.addGoal(
+        idaccount: idaccount,
+        name: ten,
+        targetAmount: 5000000.0,
+        targetDate: DateTime.now().add(const Duration(days: 60)),
+        walletId: 'w_nhan',
+      );
+    }
+
+    test('tạo mục tiêu trùng tên thì TỪ CHỐI, không thêm hàng nào', () async {
+      await expectLater(
+        taoMucTieu('Mua Laptop'),
+        throwsA(isA<GoalValidationException>()),
+        reason: 'Hai mục tiêu trùng tên cùng nhận vơ những hàng giao dịch cũ '
+            'không mang `goalId`: nhánh dự phòng của `watchByGoal` tra bằng '
+            'LIKE trên ghi chú "Tích lũy mục tiêu: <tên>", nên lịch sử của cái '
+            'này hiện trong cái kia.',
+      );
+
+      expect((await db.goalDao.getAll(1)).length, 1);
+    });
+
+    test('khác hoa/thường và thừa khoảng trắng vẫn là TRÙNG', () async {
+      await expectLater(
+        taoMucTieu('  mua   laptop  '),
+        throwsA(isA<GoalValidationException>()),
+        reason: 'Dùng chung `normalizeCategoryName()` với danh mục: NFC → chữ '
+            'thường → cắt hai đầu → gom khoảng trắng giữa. Tự viết một biến '
+            'thể khác là quay lại đúng cái lỗi "mỗi nơi một kiểu" đã dọn ở '
+            'vùng danh mục.',
+      );
+    });
+
+    test('trùng tên với mục tiêu ĐÃ XOÁ MỀM thì cho qua', () async {
+      await db.goalDao.softDelete('g1');
+
+      final moi = await taoMucTieu('Mua Laptop');
+      expect(moi.name, 'Mua Laptop',
+          reason: 'Hàng đã xoá mềm không giữ chỗ tên — cùng luật với danh mục. '
+              'Giữ chỗ thì người dùng xoá một mục tiêu rồi không tạo lại được '
+              'nó với chính cái tên ấy, mà cũng không thấy gì đang chiếm chỗ.');
+    });
+
+    test('tài khoản khác được trùng tên', () async {
+      final moi = await taoMucTieu('Mua Laptop', idaccount: 2);
+      expect(moi.idaccount, 2,
+          reason: 'Phạm vi duy nhất là MỘT tài khoản. Hai người dùng cùng đặt '
+              'tên "Mua Laptop" là chuyện bình thường.');
+    });
+
+    test('sửa sang tên đã có thì TỪ CHỐI', () async {
+      await taoMucTieu('Mua Điện Thoại');
+
+      await expectLater(
+        repository.updateGoal(
+          id: 'g1',
+          name: 'Mua Điện Thoại',
+          targetAmount: 20000000.0,
+          targetDate: DateTime.now().add(const Duration(days: 90)),
+        ),
+        throwsA(isA<GoalValidationException>()),
+        reason: 'Đường sửa cũng phải chặn, không chỉ đường tạo — nếu không thì '
+            'tạo hai tên khác nhau rồi đổi một cái thành cái kia là đi vòng '
+            'qua được toàn bộ quy tắc.',
+      );
+
+      expect((await repository.getGoalById('g1'))?.name, 'Mua Laptop');
+    });
+
+    test('GIỮ NGUYÊN tên thì không xét trùng, kể cả khi đang có bản trùng',
+        () async {
+      // Hai mục tiêu trùng tên do bản client trước tạo ra, chèn thẳng qua DAO
+      // để dựng lại đúng trạng thái ấy.
+      await db.goalDao.insert(GoalsCompanion.insert(
+        id: 'g_cu',
+        idaccount: 1,
+        name: 'Mua Laptop',
+        targetAmount: 9000000.0,
+        targetDate: DateTime.now().add(const Duration(days: 30)),
+        updatedAt: DateTime.now(),
+      ));
+
+      await repository.updateGoal(
+        id: 'g1',
+        name: 'Mua Laptop',
+        targetAmount: 21000000.0,
+        targetDate: DateTime.now().add(const Duration(days: 90)),
+      );
+
+      expect((await repository.getGoalById('g1'))?.targetAmount, 21000000.0,
+          reason: 'Phép kiểm chỉ chạy khi tên THẬT SỰ đổi. Chặn tuyệt đối thì '
+              'những mục tiêu trùng tên có sẵn trên máy người dùng kẹt vĩnh '
+              'viễn — không sửa nổi cả số tiền lẫn biểu tượng, và không có '
+              'đường thoát nào ngoài đổi tên.');
     });
   });
 

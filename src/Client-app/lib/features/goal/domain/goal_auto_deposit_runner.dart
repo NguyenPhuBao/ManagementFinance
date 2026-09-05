@@ -157,6 +157,11 @@ class GoalAutoDepositRunner {
           depositAmount: quyetDinh.soTien,
           walletId: viNguonId,
           idaccount: idaccount,
+          // Mốc của KỲ, không phải lúc chạy. Bỏ app ba ngày với chu kỳ hàng
+          // ngày thì ba kỳ được bù cùng một lượt; để chúng mang thời điểm bù
+          // là ba sự việc của ba ngày dồn thành một cột trong thống kê theo
+          // ngày — trong khi thông báo, vốn lấy mốc kỳ, hiện đúng ba ngày.
+          occurredAt: ky,
         );
       } catch (e) {
         // `depositToGoal` là một khối nguyên tử — hỏng thì không để lại gì. Nuốt

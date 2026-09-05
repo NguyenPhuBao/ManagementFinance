@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
+import '../../../../core/category/category_name.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/sync/sync_engine.dart';
 import '../datasources/goal_local_data_source.dart';
@@ -33,6 +34,44 @@ class GoalRepositoryImpl implements GoalRepository {
     return localDataSource.getGoalById(id);
   }
 
+  /// Tên mục tiêu đã có người dùng trong cùng tài khoản chưa?
+  ///
+  /// ## Vì sao mục tiêu cũng cần quy tắc này
+  ///
+  /// Không phải để cho gọn danh sách. `TransactionDao.watchByGoal` nối lịch sử
+  /// tích luỹ bằng `goalId` cho hàng mới, nhưng vẫn giữ **nhánh dự phòng** tra
+  /// bằng `LIKE` trên ghi chú `"Tích lũy mục tiêu: <tên>"` — nhánh ấy là thứ
+  /// duy nhất tìm lại được hàng do bản app cũ tạo và hàng kéo về từ server
+  /// (cột `goalId` là cục bộ nên server không bao giờ trả nó về). Hai mục tiêu
+  /// trùng tên thì cả hai cùng nhận vơ đúng những hàng ấy.
+  ///
+  /// ## Ba lựa chọn đã chốt, giống hệt danh mục
+  ///
+  /// - So tên bằng [normalizeCategoryName] — **định nghĩa duy nhất** của phép
+  ///   so tên trong dự án. Đừng viết biến thể khác, và tuyệt đối đừng dùng
+  ///   `removeVietnameseTones()`: bỏ dấu là phép so *mất thông tin*.
+  /// - Hàng đã **xoá mềm không giữ chỗ** — `goalDao.getAll` đã lọc `deletedAt`.
+  ///   Giữ chỗ thì người dùng xoá rồi không tạo lại được bằng chính tên ấy mà
+  ///   cũng không thấy gì đang chiếm chỗ.
+  /// - Chỉ xét khi tên **thật sự đổi** ([tenHienTai]). Máy người dùng có thể
+  ///   đang giữ sẵn hai mục tiêu trùng tên do bản client trước tạo; chặn tuyệt
+  ///   đối là chúng kẹt vĩnh viễn, không sửa nổi cả số tiền lẫn biểu tượng.
+  Future<bool> _trungTen({
+    required int idaccount,
+    required String ten,
+    String? boQuaId,
+    String? tenHienTai,
+  }) async {
+    final dich = normalizeCategoryName(ten);
+    if (tenHienTai != null && normalizeCategoryName(tenHienTai) == dich) {
+      return false;
+    }
+    final dangCo = await localDataSource.getGoals(idaccount);
+    return dangCo.any(
+      (g) => g.id != boQuaId && normalizeCategoryName(g.name) == dich,
+    );
+  }
+
   @override
   Future<GoalEntity> addGoal({
     required int idaccount,
@@ -48,6 +87,14 @@ class GoalRepositoryImpl implements GoalRepository {
     String? autoDepositWalletId,
     DateTime? autoDepositAnchor,
   }) async {
+    final tenGon = name.trim();
+    if (await _trungTen(idaccount: idaccount, ten: tenGon)) {
+      throw GoalValidationException(
+        'Đã có mục tiêu tên "$tenGon". Mỗi tài khoản không được có hai mục '
+        'tiêu trùng tên.',
+      );
+    }
+
     final now = DateTime.now();
     // Cùng luật với `updateGoal`: đủ CẢ HAI mảnh mới là bật.
     final batTrich = autoDepositAmount != null &&
@@ -57,7 +104,7 @@ class GoalRepositoryImpl implements GoalRepository {
     final goal = GoalEntity(
       id: const Uuid().v4(),
       idaccount: idaccount,
-      name: name,
+      name: tenGon,
       targetAmount: targetAmount,
       currentAmount: 0.0,
       // Mốc bắt đầu tính nhịp tiến độ là lúc tạo. Bỏ trống thì
@@ -133,6 +180,20 @@ class GoalRepositoryImpl implements GoalRepository {
       throw StateError('Không tìm thấy mục tiêu $id.');
     }
 
+    // Đường SỬA cũng phải chặn, không chỉ đường tạo: tạo hai tên khác nhau rồi
+    // đổi một cái thành cái kia là đi vòng qua trọn vẹn quy tắc.
+    if (await _trungTen(
+      idaccount: goal.idaccount,
+      ten: tenGon,
+      boQuaId: id,
+      tenHienTai: goal.name,
+    )) {
+      throw GoalValidationException(
+        'Đã có mục tiêu tên "$tenGon". Mỗi tài khoản không được có hai mục '
+        'tiêu trùng tên.',
+      );
+    }
+
     if (db == null) return;
 
     // Trích tự động cần ĐỦ cả hai mảnh; thiếu một là tắt. Đoán bù mảnh thiếu
@@ -200,16 +261,60 @@ class GoalRepositoryImpl implements GoalRepository {
     required double depositAmount,
     required int idaccount,
     required String walletId,
+    DateTime? occurredAt,
   }) async {
     // Một lần nạp là bốn thao tác ghi: tăng tiến độ mục tiêu, có thể đánh dấu
     // hoàn thành, đổi số dư hai ví, và chèn MỘT giao dịch chuyển khoản. Chạy
     // rời rạc thì một sự cố ở giữa để lại tiền đã trừ khỏi ví mà mục tiêu chưa
     // tăng — người dùng mất tiền, không có gì ghi nhận, và không có exception
     // nào tới được màn hình. Cả khối phải cùng sống hoặc cùng chết.
+    final now = DateTime.now();
+
     Future<void> ghiCaKhoi() async {
+      // Phép kiểm số tiền ở TẦNG NÀY, không chỉ ở ô nhập. Trang chi tiết đã
+      // chặn, nhưng phép kiểm nằm một mình trên giao diện thì mọi đường gọi
+      // khác đi vòng qua được — và số âm chạy trót lọt tới cuối: ví nguồn được
+      // CỘNG tiền trong khi tiến độ mục tiêu tụt xuống.
+      if (depositAmount <= 0) {
+        throw ArgumentError.value(
+          depositAmount,
+          'depositAmount',
+          'Số tiền nạp phải lớn hơn 0.',
+        );
+      }
+
       final goal = await localDataSource.getGoalById(goalId);
       if (goal == null) {
         throw StateError('Không tìm thấy mục tiêu $goalId.');
+      }
+
+      // Hai đầu chặn của [occurredAt], và chúng phải đi cùng nhau.
+      //
+      // Tham số này tồn tại cho đúng MỘT việc: đưa một khoản trích **bù** về
+      // mốc kỳ đáng lẽ nó xảy ra. Đây là tầng ghi tiền, chỗ ít đáng nới lỏng
+      // nhất, nên chỉ chặn đầu trên là chưa đủ — bịa về quá khứ cũng là bịa,
+      // và khoản nạp sẽ rơi xuống đáy lịch sử tích luỹ ở một chỗ mục tiêu còn
+      // chưa ra đời.
+      //
+      // Bộ trích tự động không bao giờ chạm hai đầu này: `cacKyDenHan` sinh ra
+      // các mốc nằm SAU `autoDepositLastRun` (đặt lúc bật công tắc, tức sau
+      // `startDate`) và KHÔNG sau `now`.
+      if (occurredAt != null) {
+        if (occurredAt.isAfter(now)) {
+          throw ArgumentError.value(
+            occurredAt,
+            'occurredAt',
+            'Không ghi được một khoản nạp mang dấu thời gian ở tương lai.',
+          );
+        }
+        final batDau = goal.startDate;
+        if (batDau != null && occurredAt.isBefore(batDau)) {
+          throw ArgumentError.value(
+            occurredAt,
+            'occurredAt',
+            'Mục tiêu "${goal.name}" mới bắt đầu từ $batDau.',
+          );
+        }
       }
 
       // Ví nhận đọc từ chính mục tiêu. Nơi gọi KHÔNG truyền vào: ví ấy được
@@ -233,6 +338,22 @@ class GoalRepositoryImpl implements GoalRepository {
         );
       }
 
+      // Trần "tiền THẬT trong ví", đối xứng với `withdrawFromGoal`. Thiếu nó
+      // thì đoạn dưới trừ thẳng và ví nguồn xuống ÂM — mục tiêu tích được một
+      // số tiền chưa từng tồn tại. Giao diện và bộ trích tự động đều đã chặn ca
+      // này, nhưng cả hai đều nằm NGOÀI khối nguyên tử, tức không phải là chỗ
+      // giữ bất biến.
+      //
+      // Đọc ví nguồn trước khi ghi bất cứ thứ gì: `db == null` (đường không có
+      // CSDL) thì không có số dư để so, và ca ấy vốn cũng không chuyển tiền.
+      final viNguon = db == null ? null : await db!.walletDao.getById(walletId);
+      if (viNguon != null && depositAmount > viNguon.balance) {
+        throw StateError(
+          'Ví "${viNguon.name}" chỉ còn ${viNguon.balance} — không đủ để nạp '
+          '$depositAmount vào mục tiêu "${goal.name}".',
+        );
+      }
+
       final newGoalAmount = goal.currentAmount + depositAmount;
       await localDataSource.updateGoalAmount(goalId, newGoalAmount);
 
@@ -246,9 +367,7 @@ class GoalRepositoryImpl implements GoalRepository {
       }
 
       if (db == null) return;
-      final now = DateTime.now();
 
-      final viNguon = await db!.walletDao.getById(walletId);
       if (viNguon != null) {
         await db!.walletDao
             .updateBalance(walletId, viNguon.balance - depositAmount);
@@ -279,7 +398,11 @@ class GoalRepositoryImpl implements GoalRepository {
           type: 'transfer',
           note: Value('$kGhiChuNapMucTieu$goalName'),
           goalId: Value(goalId),
-          date: now,
+          // `date` là ngày của SỰ VIỆC, `updatedAt` là sổ sách ĐỒNG BỘ — hai
+          // thứ khác nhau và chỉ cái đầu lùi về mốc kỳ. Lùi `updatedAt` theo
+          // sẽ làm phép phân xử LWW coi bản ghi này cũ hơn thực tế và ghi đè
+          // mất chính khoản vừa trích.
+          date: occurredAt ?? now,
           syncStatus: const Value('pending'),
           updatedAt: now,
         ),

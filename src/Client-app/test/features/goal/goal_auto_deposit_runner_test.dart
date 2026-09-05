@@ -21,8 +21,15 @@ void main() {
   late AppDatabase db;
   late GoalAutoDepositRunner runner;
 
-  /// 05/09/2026 — mốc bật công tắc trong mọi kịch bản dưới đây.
-  final batTu = DateTime(2026, 9, 5, 9);
+  /// 05/09/2025 — mốc bật công tắc trong mọi kịch bản dưới đây.
+  ///
+  /// Cả bộ test cố ý nằm trong **quá khứ** so với đồng hồ thật. Runner nhận
+  /// `now` tiêm vào, nhưng `depositToGoal` ghi theo `DateTime.now()` — ở
+  /// production hai thứ ấy là MỘT đồng hồ. Bản trước đặt kịch bản ở tương lai
+  /// (`now: 2026-12-06`) nên hai đồng hồ nói ngược nhau, một tiền đề không xảy
+  /// ra được ngoài đời. Ngày quá khứ thì mãi mãi vẫn là quá khứ, nên cách này
+  /// vừa trung thực vừa không hết hạn.
+  final batTu = DateTime(2025, 9, 5, 9);
 
   setUp(() async {
     db = AppDatabase.forTesting(NativeDatabase.memory());
@@ -68,8 +75,8 @@ void main() {
       targetAmount: target,
       currentAmount: Value(current),
       walletId: Value(viNhan),
-      startDate: Value(DateTime(2026, 1, 1)),
-      targetDate: DateTime(2027, 12, 31),
+      startDate: Value(DateTime(2025, 1, 1)),
+      targetDate: DateTime(2026, 12, 31),
       cycleTakeMoney: Value(chuKy),
       autoDepositAmount: Value(soTien),
       autoDepositWalletId: Value(viNguon),
@@ -82,7 +89,7 @@ void main() {
     test('chuyển tiền, tăng tiến độ, ghi MỘT giao dịch, đẩy mốc chạy', () async {
       await themMucTieu();
 
-      final events = await runner.chay(1, now: DateTime(2026, 10, 6));
+      final events = await runner.chay(1, now: DateTime(2025, 10, 6));
 
       expect(events.length, 1);
       expect(events.single.loai, LoaiTrich.trichDu);
@@ -90,7 +97,7 @@ void main() {
 
       final goal = (await db.goalDao.getAll(1)).single;
       expect(goal.currentAmount, 500000);
-      expect(goal.autoDepositLastRun, DateTime(2026, 10, 5, 9),
+      expect(goal.autoDepositLastRun, DateTime(2025, 10, 5, 9),
           reason: 'Mốc chạy phải nhảy tới đúng kỳ vừa xử lý. Để nguyên là lượt '
               'sau trích lại chính kỳ ấy — mỗi lần mở app một lần, bằng tiền '
               'thật.');
@@ -111,7 +118,7 @@ void main() {
     test('chưa tới kỳ thì không làm gì cả', () async {
       await themMucTieu();
 
-      final events = await runner.chay(1, now: DateTime(2026, 9, 20));
+      final events = await runner.chay(1, now: DateTime(2025, 9, 20));
 
       expect(events, isEmpty);
       expect((await db.goalDao.getAll(1)).single.currentAmount, 0);
@@ -123,15 +130,43 @@ void main() {
     test('trích bù đủ số kỳ, mỗi kỳ một giao dịch', () async {
       await themMucTieu();
 
-      final events = await runner.chay(1, now: DateTime(2026, 12, 6));
+      final events = await runner.chay(1, now: DateTime(2025, 12, 6));
 
       expect(events.length, 3, reason: 'Tháng 10, 11 và 12.');
       final goal = (await db.goalDao.getAll(1)).single;
       expect(goal.currentAmount, 1500000);
-      expect(goal.autoDepositLastRun, DateTime(2026, 12, 5, 9));
+      expect(goal.autoDepositLastRun, DateTime(2025, 12, 5, 9));
       expect((await db.transactionDao.getAll(1)).length, 3,
           reason: 'Gộp ba kỳ thành một giao dịch làm lịch sử nói dối về nhịp '
               'tích luỹ, và bộ dự báo đọc chính lịch sử ấy.');
+    });
+
+    test('mỗi hàng giao dịch mang dấu thời gian của KỲ, không phải lúc bù',
+        () async {
+      await themMucTieu();
+
+      // Mở app lúc 14:28 ngày 06/12 sau khi bỏ ba kỳ.
+      await runner.chay(1, now: DateTime(2025, 12, 6, 14, 28));
+
+      final moc = (await db.transactionDao.getAll(1))
+          .map((t) => t.date)
+          .toList()
+        ..sort();
+
+      expect(
+        moc,
+        [
+          DateTime(2025, 10, 5, 9),
+          DateTime(2025, 11, 5, 9),
+          DateTime(2025, 12, 5, 9),
+        ],
+        reason: 'Ba kỳ bù dồn vào một lượt chạy, nhưng chúng là ba sự việc của '
+            'ba thời điểm khác nhau. Trước đây cả ba hàng đều mang '
+            '`DateTime.now()` nên phần thống kê THEO NGÀY thấy một cột dựng '
+            'đứng ở ngày mở app — trong khi trung tâm thông báo, vốn lấy mốc '
+            'kỳ làm `createdAt`, hiện đúng ba ngày. Hai nơi nói hai chuyện '
+            'khác nhau về cùng một sự việc.',
+      );
     });
 
     test('ví cạn giữa chừng thì DỪNG, giữ mốc ở kỳ cuối cùng thành công',
@@ -139,14 +174,14 @@ void main() {
       await db.walletDao.updateBalance('w_nguon', 1200000);
       await themMucTieu();
 
-      final events = await runner.chay(1, now: DateTime(2027, 3, 6));
+      final events = await runner.chay(1, now: DateTime(2026, 3, 6));
 
       expect(events.where((e) => e.loai == LoaiTrich.trichDu).length, 2);
       expect(events.last.loai, LoaiTrich.viKhongDu);
 
       final goal = (await db.goalDao.getAll(1)).single;
       expect(goal.currentAmount, 1000000);
-      expect(goal.autoDepositLastRun, DateTime(2026, 11, 5, 9),
+      expect(goal.autoDepositLastRun, DateTime(2025, 11, 5, 9),
           reason: 'Mốc dừng ở kỳ CUỐI CÙNG thành công, không nhảy tới hiện '
               'tại. Nhảy qua là những kỳ chưa trích được biến mất vĩnh viễn; '
               'giữ lại thì chúng tự thử lại khi ví có tiền.');
@@ -158,13 +193,13 @@ void main() {
   group('những ca phải im lặng bỏ qua', () {
     test('mục tiêu chưa bật trích tự động', () async {
       await themMucTieu(soTien: null, viNguon: null, mocChay: null);
-      expect(await runner.chay(1, now: DateTime(2027, 1, 1)), isEmpty);
+      expect(await runner.chay(1, now: DateTime(2026, 1, 1)), isEmpty);
       expect(await db.transactionDao.getAll(1), isEmpty);
     });
 
     test('mục tiêu đã hoàn thành', () async {
       await themMucTieu(target: 1000000, current: 1000000);
-      final events = await runner.chay(1, now: DateTime(2026, 12, 6));
+      final events = await runner.chay(1, now: DateTime(2025, 12, 6));
       expect(events, isEmpty,
           reason: 'Mục tiêu xong rồi thì không còn gì để trích, và một thông '
               'báo "đã trích 0 đồng" mỗi tháng là rác.');
@@ -174,12 +209,12 @@ void main() {
     test('mục tiêu đã xoá mềm', () async {
       await themMucTieu();
       await db.goalDao.softDelete('g1');
-      expect(await runner.chay(1, now: DateTime(2026, 12, 6)), isEmpty);
+      expect(await runner.chay(1, now: DateTime(2025, 12, 6)), isEmpty);
     });
 
     test('KHÔNG đụng tới mục tiêu của tài khoản khác', () async {
       await themMucTieu();
-      expect(await runner.chay(999, now: DateTime(2026, 12, 6)), isEmpty,
+      expect(await runner.chay(999, now: DateTime(2025, 12, 6)), isEmpty,
           reason: 'Máy dùng chung: trích tiền của tài khoản khác là hỏng nặng '
               'nhất trong mọi cách hỏng ở đây.');
       expect(await db.transactionDao.getAll(1), isEmpty);
@@ -190,7 +225,7 @@ void main() {
     test('ví nguồn đã bị xoá thì báo, không ném', () async {
       await themMucTieu(viNguon: 'w_khong_ton_tai');
 
-      final events = await runner.chay(1, now: DateTime(2026, 10, 6));
+      final events = await runner.chay(1, now: DateTime(2025, 10, 6));
 
       expect(events.single.loai, LoaiTrich.khongChayDuoc,
           reason: 'Ví nguồn KHÔNG được bảo vệ khỏi việc xoá như ví tích luỹ, '
@@ -202,7 +237,7 @@ void main() {
     test('ví nguồn trùng ví tích luỹ thì báo, không chuyển tiền', () async {
       await themMucTieu(viNguon: 'w_nhan');
 
-      final events = await runner.chay(1, now: DateTime(2026, 10, 6));
+      final events = await runner.chay(1, now: DateTime(2025, 10, 6));
 
       expect(events.single.loai, LoaiTrich.khongChayDuoc,
           reason: 'Chuyển tiền sang chính nó không đổi số dư nào mà tiến độ '
@@ -214,7 +249,7 @@ void main() {
       await themMucTieu(id: 'g_hong', ten: 'Hỏng', viNguon: 'w_ma');
       await themMucTieu(id: 'g_tot', ten: 'Tốt');
 
-      final events = await runner.chay(1, now: DateTime(2026, 10, 6));
+      final events = await runner.chay(1, now: DateTime(2025, 10, 6));
 
       expect(events.length, 2);
       expect(
@@ -229,7 +264,7 @@ void main() {
     test('kỳ cuối chỉ trích đúng phần còn lại, không nạp vượt', () async {
       await themMucTieu(target: 1200000, current: 1000000);
 
-      final events = await runner.chay(1, now: DateTime(2026, 10, 6));
+      final events = await runner.chay(1, now: DateTime(2025, 10, 6));
 
       expect(events.single.loai, LoaiTrich.trichPhanConLai);
       expect(events.single.soTien, 200000);

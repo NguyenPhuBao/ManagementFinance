@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/native.dart';
-import 'package:drift/drift.dart';
+// `isNull`/`isNotNull` của drift trùng tên với matcher của flutter_test. Ẩn hai
+// cái của drift đi — trong file test thì matcher mới là thứ hay dùng.
+import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/goal/data/datasources/goal_local_data_source.dart';
 import 'package:flowmoney/features/goal/data/repositories/goal_repository_impl.dart';
@@ -99,5 +101,47 @@ void main() {
             'cũng không thấy báo lỗi.');
     expect((await repository.getGoalById(goal.id))?.currentAmount, 0.0);
     expect((await db.walletDao.getById('w1'))?.balance, 3000000.0);
+  });
+
+  group('tạo mục tiêu hỏng thì nơi gọi PHẢI biết', () {
+    test('addGoal trả câu lỗi thay vì nuốt', () async {
+      await repository.addGoal(
+        idaccount: 1,
+        name: 'Đi du lịch',
+        targetAmount: 5000000.0,
+        targetDate: DateTime.now().add(const Duration(days: 30)),
+        walletId: 'w_nhan',
+      );
+
+      final loi = await cubit.addGoal(
+        idaccount: 1,
+        name: 'Đi du lịch',
+        targetAmount: 9000000.0,
+        targetDate: DateTime.now().add(const Duration(days: 60)),
+        walletId: 'w_nhan',
+      );
+
+      expect(loi, isNotNull,
+          reason: 'Trang tạo gọi `.then((_) { hiện "thành công"; pop(); })` — '
+              'nó KHÔNG đọc trạng thái cubit. Bản cũ chỉ phát `GoalError` nên '
+              'mục tiêu bị từ chối vẫn hiện thông báo thành công rồi đóng '
+              'trang, và người dùng mất luôn những gì vừa gõ. Cùng lý do khiến '
+              '`updateGoal` trả `String?` chứ không phát trạng thái.');
+      expect((await repository.getGoals(1)).length, 1,
+          reason: 'Không có mục tiêu thứ hai nào được tạo.');
+    });
+
+    test('tạo thành công thì trả null', () async {
+      final loi = await cubit.addGoal(
+        idaccount: 1,
+        name: 'Đi du lịch',
+        targetAmount: 5000000.0,
+        targetDate: DateTime.now().add(const Duration(days: 30)),
+        walletId: 'w_nhan',
+      );
+
+      expect(loi, isNull);
+      expect((await repository.getGoals(1)).length, 1);
+    });
   });
 }
