@@ -449,6 +449,43 @@ void main() {
       expect(goals.single.isCompleted, true,
           reason: 'backend dùng "status_complete" dạng chuỗi "True"');
     });
+
+    test('cờ đúng/sai của mục tiêu đọc được ở MỌI dạng backend có thể gửi',
+        () async {
+      client.adapter.pullData = {
+        'goals': [
+          {
+            'idgoal': '77777777-7777-4777-8777-777777777777',
+            'idaccount': accountId,
+            'name': 'Quỹ Tết',
+            'target_amount': 5000000,
+            'current_amount': 5000000,
+            'target_date': '2027-01-01T00:00:00.000Z',
+            // Viết THƯỜNG, khác hẳn "True" ở test trên. Cột là VarChar(20)
+            // không ràng buộc gì, nên một lần ghi từ Admin-web hay một
+            // migration là đủ để giá trị thành dạng này.
+            'status_complete': 'true',
+            // Số 1 thay cho boolean thật: vài trình điều khiển tuần tự hoá
+            // boolean kiểu đó.
+            'recurrence': 1,
+            'time_recurrence': 'Month',
+            'update_at': '2026-09-01T10:00:00.000Z',
+          },
+        ],
+      };
+
+      await runSync();
+
+      final goal = (await db.goalDao.getAll(accountId)).single;
+      expect(goal.isCompleted, true,
+          reason: 'Phép so cứng `== "True"` biến "true" viết thường thành CHƯA '
+              'hoàn thành — im lặng, không exception, không log. Mục tiêu biến '
+              'khỏi tab "Đã hoàn thành" mà không ai biết vì sao.');
+      expect(goal.recurrence, true,
+          reason: 'Phép so cứng `== true` biến số 1 thành `false`, và mục tiêu '
+              'mất cờ lặp lại cùng lời nhắc vòng mới của nó.');
+      expect(goal.timeRecurrence, 'Month');
+    });
   });
 
   group('PUSH RESULT — hợp đồng chiều ngược lại (backend → client)', () {

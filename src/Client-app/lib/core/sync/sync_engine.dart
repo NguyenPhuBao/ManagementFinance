@@ -7,6 +7,7 @@ import 'package:drift/drift.dart';
 import '../api/dio_client.dart';
 import '../bill/bill_recurrence.dart';
 import '../database/app_database.dart';
+import 'backend_bool.dart';
 import 'sync_models.dart';
 import 'category_icon_registry.dart';
 import 'sync_checkpoint_store.dart';
@@ -820,13 +821,16 @@ class SyncEngine {
                 timeCycleTakeMoney: Value(g['time_cycle_take_money'] != null
                     ? DateTime.tryParse(g['time_cycle_take_money'].toString())
                     : null),
-                recurrence: Value(g['recurrence'] == true),
+                // `doiSangBool` chứ không so cứng: `Recurrence` là boolean
+                // thật còn `Status_complete` là chuỗi — hai kiểu khác nhau
+                // trong CÙNG một bảng. So khớp cứng từng kiểu thì chỉ cần một
+                // bên đổi cách tuần tự hoá là cờ lặng lẽ về `false`.
+                recurrence: Value(doiSangBool(g['recurrence'])),
                 timeRecurrence: Value(g['time_recurrence']?.toString()),
                 icon: Value(g['icon']?.toString() ?? 'flag'),
                 colour: Value(g['color']?.toString() ?? '#4CAF50'),
                 note: Value(g['note']?.toString() ?? ''),
-                isCompleted:
-                    Value(g['status_complete']?.toString() == 'True'),
+                isCompleted: Value(doiSangBool(g['status_complete'])),
                 isDeleted: Value(g['delete_at'] != null),
                 deletedAt: Value(_deletedAtFrom(g['delete_at'])),
                 syncStatus: const Value('synced'),
