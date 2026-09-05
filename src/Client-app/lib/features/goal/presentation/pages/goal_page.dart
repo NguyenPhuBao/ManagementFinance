@@ -7,6 +7,7 @@ import '../../../../shared/theme/app_colors.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../shared/widgets/notification_bell.dart';
 import '../../data/models/goal_entity.dart';
+import '../widgets/goal_progress.dart';
 import '../bloc/goal_cubit.dart';
 import '../../../../core/auth/current_account.dart';
 
@@ -178,14 +179,10 @@ class _GoalPageContent extends StatelessWidget {
                   )
                 else
                   ...goals.map((goal) {
-                    final percentValue = goal.targetAmount > 0
-                        ? (goal.currentAmount / goal.targetAmount).clamp(0.0, 1.0)
-                        : 0.0;
-                    final percentText = '${(percentValue * 100).toStringAsFixed(1)}%';
-
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 16),
                       child: _buildGoalCard(
+                        goal: goal,
                         title: goal.name,
                         subtitle: 'MỤC TIÊU TIẾT KIỆM',
                         icon: Icons.flag,
@@ -193,8 +190,6 @@ class _GoalPageContent extends StatelessWidget {
                         iconBgColor: AppColors.income.withValues(alpha: 0.1),
                         currentAmount: currencyFormatter.format(goal.currentAmount),
                         targetAmount: '/ ${currencyFormatter.format(goal.targetAmount)}',
-                        percent: percentText,
-                        percentValue: percentValue,
                         extraWidget: Row(
                           children: [
                             const Icon(Icons.event, color: AppColors.textSecondary, size: 18),
@@ -317,6 +312,7 @@ class _GoalPageContent extends StatelessWidget {
   }
 
   Widget _buildGoalCard({
+    required GoalEntity goal,
     required String title,
     required String subtitle,
     required IconData icon,
@@ -324,8 +320,6 @@ class _GoalPageContent extends StatelessWidget {
     required Color iconBgColor,
     required String currentAmount,
     required String targetAmount,
-    required String percent,
-    required double percentValue,
     required Widget extraWidget,
     VoidCallback? onTap,
   }) {
@@ -422,7 +416,7 @@ class _GoalPageContent extends StatelessWidget {
                   ],
                 ),
                 Text(
-                  percent,
+                  goalPercentLabel(goal),
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -432,13 +426,7 @@ class _GoalPageContent extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            LinearProgressIndicator(
-              value: percentValue,
-              backgroundColor: AppColors.surfaceContainerHigh,
-              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.income),
-              minHeight: 12,
-              borderRadius: BorderRadius.circular(6),
-            ),
+            GoalProgressBar(goal: goal),
             const SizedBox(height: 12),
             extraWidget,
           ],

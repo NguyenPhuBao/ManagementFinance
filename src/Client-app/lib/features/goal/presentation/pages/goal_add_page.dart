@@ -180,6 +180,18 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
       return;
     }
 
+    // Ví nhận là BẮT BUỘC: mỗi lần nạp tiền sau này sẽ chuyển thẳng vào ví
+    // này, nên mục tiêu không có ví thì phiếu nạp không biết đưa tiền đi đâu.
+    if (_selectedSavingsWallet == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Vui lòng chọn ví tích lũy — tiền gửi vào mục tiêu '
+              'sẽ được chuyển vào ví này.'),
+        ),
+      );
+      return;
+    }
+
     // Đây là đường GHI: `?? 0` không dùng được ở đây (mục tiêu sẽ thuộc về
     // "không ai"), và `?? 1` thì còn tệ hơn — ghi vào tài khoản admin thật.
     final idaccount = currentAccountIdOrNull(context);
@@ -198,7 +210,15 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
           name: name,
           targetAmount: targetAmount,
           targetDate: _targetDate,
-          walletId: _selectedSavingsWallet?.id,
+          walletId: _selectedSavingsWallet!.id,
+          // Lưu nhịp người dùng vừa chọn. Trước đây lựa chọn này chỉ dùng để
+          // tính ngược ra ngày hạn rồi bị vứt bỏ; giữ lại thì trang chi tiết
+          // hiển thị được kế hoạch cạnh thực tế theo cùng một đơn vị.
+          cycleTakeMoney: switch (_frequency) {
+            DepositFrequency.daily => 'Day',
+            DepositFrequency.weekly => 'Week',
+            DepositFrequency.monthly => 'Month',
+          },
         ).then((_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -432,10 +452,11 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
           final wallets = (walletState is WalletLoaded) ? walletState.wallets : <WalletEntity>[];
 
           if (wallets.isNotEmpty) {
-            _selectedSavingsWallet ??= wallets.firstWhere(
-              (w) => w.type == 'investment' || w.type == 'bank',
-              orElse: () => wallets.first,
-            );
+            // KHÔNG chọn sẵn ví tích luỹ. Trước đây chỗ này tự lấy "ví
+            // investment/bank đầu tiên, không có thì ví bất kỳ", nên mọi mục
+            // tiêu đều ra đời đã gắn một ví người dùng chưa hề nhìn tới — và
+            // ví ấy lập tức không xoá được nữa. Nay ô này bắt buộc và để trống
+            // cho tới khi người dùng thật sự chọn.
             _selectedSourceWallet ??= wallets.firstWhere(
               (w) => w.isDefault,
               orElse: () => wallets.length > 1 ? wallets[1] : wallets.first,
