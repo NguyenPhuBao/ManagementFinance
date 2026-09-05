@@ -91,6 +91,9 @@ class GoalAutoDepositRunner {
     DateTime at,
   ) async {
     final cacKy = cacKyDenHan(
+      // Nhịp bám mốc neo người dùng chọn; mốc chạy chỉ là SÀN. Xem
+      // `cacKyDenHan`.
+      mocNeo: goal.timeCycleTakeMoney,
       lanChayGanNhat: goal.autoDepositLastRun,
       chuKy: goal.cycleTakeMoney,
       now: at,

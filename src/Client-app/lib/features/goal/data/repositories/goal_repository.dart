@@ -21,6 +21,10 @@ abstract class GoalRepository {
     /// vào một chu kỳ sau đó.
     double? autoDepositAmount,
     String? autoDepositWalletId,
+    /// **Mốc neo** của nhịp trích ("ngày 15 hàng tháng lúc 08:00"), lưu vào cột
+    /// đồng bộ được `timeCycleTakeMoney`. Cùng số phận với [cycleTakeMoney]:
+    /// tắt trích tự động là xoá nó.
+    DateTime? autoDepositAnchor,
   });
   Future<void> updateAmount({
     required String id,
@@ -67,6 +71,10 @@ abstract class GoalRepository {
     String? colour,
     double? autoDepositAmount,
     String? autoDepositWalletId,
+    /// **Mốc neo** của nhịp trích ("ngày 15 hàng tháng lúc 08:00"), lưu vào cột
+    /// đồng bộ được `timeCycleTakeMoney`. Cùng số phận với [cycleTakeMoney]:
+    /// tắt trích tự động là xoá nó.
+    DateTime? autoDepositAnchor,
   });
   /// Chuyển [depositAmount] từ ví [walletId] sang **ví nhận của mục tiêu** và
   /// tăng tiến độ tương ứng.

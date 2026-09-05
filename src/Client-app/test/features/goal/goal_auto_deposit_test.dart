@@ -51,6 +51,7 @@ void main() {
   group('cacKyDenHan — những kỳ đã tới hạn', () {
     test('chưa tới kỳ nào thì rỗng', () {
       final ra = cacKyDenHan(
+        mocNeo: null,
         lanChayGanNhat: DateTime(2026, 9, 5),
         chuKy: 'Month',
         now: DateTime(2026, 9, 20),
@@ -62,6 +63,7 @@ void main() {
 
     test('đúng một kỳ đã qua', () {
       final ra = cacKyDenHan(
+        mocNeo: null,
         lanChayGanNhat: DateTime(2026, 8, 5),
         chuKy: 'Month',
         now: DateTime(2026, 9, 20),
@@ -71,6 +73,7 @@ void main() {
 
     test('bỏ app nhiều tháng thì trả về ĐỦ các kỳ, theo thứ tự', () {
       final ra = cacKyDenHan(
+        mocNeo: null,
         lanChayGanNhat: DateTime(2026, 6, 15),
         chuKy: 'Month',
         now: DateTime(2026, 9, 20),
@@ -84,6 +87,7 @@ void main() {
 
     test('mốc rơi ĐÚNG hiện tại thì tính là đã tới hạn', () {
       final ra = cacKyDenHan(
+        mocNeo: null,
         lanChayGanNhat: DateTime(2026, 8, 5),
         chuKy: 'Month',
         now: DateTime(2026, 9, 5),
@@ -95,6 +99,7 @@ void main() {
 
     test('có TRẦN số kỳ mỗi lượt chạy', () {
       final ra = cacKyDenHan(
+        mocNeo: null,
         lanChayGanNhat: DateTime(2020, 1, 1),
         chuKy: 'Day',
         now: DateTime(2026, 9, 20),
@@ -112,6 +117,7 @@ void main() {
     test('chưa từng chạy lần nào thì không đoán bừa', () {
       expect(
         cacKyDenHan(
+          mocNeo: null,
           lanChayGanNhat: null,
           chuKy: 'Month',
           now: DateTime(2026, 9, 20),
@@ -121,6 +127,162 @@ void main() {
             'tiêu làm mốc là bật công tắc hôm nay rồi bị trích ngược lại sáu '
             'tháng cùng một lúc.',
       );
+    });
+  });
+
+  group('mốc neo do người dùng chọn', () {
+    test('nhịp bám theo mốc neo, không bám lúc bật công tắc', () {
+      final ra = cacKyDenHan(
+        // Người dùng chọn "ngày 15 hàng tháng, 08:00"...
+        mocNeo: DateTime(2026, 9, 15, 8),
+        // ...trong khi bật công tắc lúc 14 giờ ngày 5.
+        lanChayGanNhat: DateTime(2026, 9, 5, 14),
+        chuKy: 'Month',
+        now: DateTime(2026, 10, 20),
+      );
+
+      expect(ra, [DateTime(2026, 9, 15, 8), DateTime(2026, 10, 15, 8)],
+          reason: 'Không có mốc neo thì nhịp rơi vào ngày 5 — tức lúc bấm công '
+              'tắc — và lựa chọn "ngày 15" của người dùng không có tác dụng '
+              'nào, im lặng.');
+    });
+
+    test('mốc neo nằm TRƯỚC lúc bật thì kỳ đầu nhảy sang chu kỳ sau', () {
+      final ra = cacKyDenHan(
+        // Chọn "ngày 1 hàng tháng" trong khi hôm nay đã là ngày 5.
+        mocNeo: DateTime(2026, 9, 1, 8),
+        lanChayGanNhat: DateTime(2026, 9, 5, 14),
+        chuKy: 'Month',
+        now: DateTime(2026, 10, 20),
+      );
+
+      expect(ra, [DateTime(2026, 10, 1, 8)],
+          reason: 'Ngày 1 tháng này đã trôi qua TRƯỚC khi người dùng bật công '
+              'tắc. Trích bù cho nó là lấy tiền cho một quãng thời gian họ '
+              'chưa hề đồng ý — đúng cái mà mốc "lúc bật" sinh ra để chặn.');
+    });
+
+    test('GIỜ trong ngày được tôn trọng: không trích sớm hơn', () {
+      final chuaToiGio = cacKyDenHan(
+        mocNeo: DateTime(2026, 9, 15, 8),
+        lanChayGanNhat: DateTime(2026, 9, 5),
+        chuKy: 'Month',
+        now: DateTime(2026, 9, 15, 7, 59),
+      );
+      expect(chuaToiGio, isEmpty,
+          reason: 'Bộ trích chạy khi app mở, nên giờ đã chọn chỉ giữ được MỘT '
+              'chiều: không bao giờ sớm hơn. Bỏ vế này thì con số giờ trên màn '
+              'hình hoàn toàn vô nghĩa.');
+
+      final daToiGio = cacKyDenHan(
+        mocNeo: DateTime(2026, 9, 15, 8),
+        lanChayGanNhat: DateTime(2026, 9, 5),
+        chuKy: 'Month',
+        now: DateTime(2026, 9, 15, 8),
+      );
+      expect(daToiGio, [DateTime(2026, 9, 15, 8)]);
+    });
+
+    test('mốc neo hàng tuần giữ đúng thứ trong tuần', () {
+      // 08/09/2026 là thứ Ba.
+      final ra = cacKyDenHan(
+        mocNeo: DateTime(2026, 9, 8, 20),
+        lanChayGanNhat: DateTime(2026, 9, 5),
+        chuKy: 'Week',
+        now: DateTime(2026, 9, 30),
+      );
+      expect(ra.map((d) => d.weekday).toSet(), {DateTime.tuesday});
+      expect(ra.length, 4);
+    });
+
+    test('mốc neo ngày 31 vẫn kẹp về cuối tháng ngắn', () {
+      final ra = cacKyDenHan(
+        mocNeo: DateTime(2026, 1, 31, 9),
+        lanChayGanNhat: DateTime(2026, 1, 1),
+        chuKy: 'Month',
+        now: DateTime(2026, 4, 15),
+      );
+      expect(ra, [
+        DateTime(2026, 1, 31, 9),
+        DateTime(2026, 2, 28, 9),
+        DateTime(2026, 3, 28, 9),
+      ], reason: 'Kẹp về 28/02 rồi bước tiếp từ ĐÓ — nhịp trôi dần chứ không '
+          'quay lại ngày 31. Đây là hệ quả của việc bước từng kỳ một, và nó '
+          'phải được ghi lại rõ chứ không để ai đó phát hiện bằng bất ngờ.');
+    });
+
+    test('mốc neo quá xa trong quá khứ thì im lặng bỏ qua', () {
+      final ra = cacKyDenHan(
+        mocNeo: DateTime(1990, 1, 1),
+        lanChayGanNhat: DateTime(2026, 9, 5),
+        chuKy: 'Day',
+        now: DateTime(2026, 9, 20),
+      );
+      expect(ra, isEmpty,
+          reason: 'Mốc neo đi qua đường đồng bộ nên có thể mang giá trị rác từ '
+              'Admin-web hay bản app khác. Bước từng ngày từ 1990 là hàng chục '
+              'nghìn vòng lặp ngay trong vòng quét thông báo — treo app. Bỏ '
+              'qua và im lặng, cùng nguyên tắc với isBehindSchedule.');
+    });
+  });
+
+  group('mocNeoTu — dựng mốc neo từ lựa chọn trên màn hình', () {
+    final now = DateTime(2026, 9, 5, 14, 30); // thứ Bảy
+
+    test('hàng ngày chỉ lấy giờ, ngày là hôm nay', () {
+      expect(mocNeoTu(chuKy: 'Day', ngay: null, gio: 8, phut: 0, now: now),
+          DateTime(2026, 9, 5, 8, 0));
+    });
+
+    test('hàng tuần rơi đúng thứ đã chọn trong tuần này', () {
+      // 2 = thứ Ba. Tuần chứa 05/09/2026 (thứ Bảy) có thứ Ba là 01/09.
+      final moc =
+          mocNeoTu(chuKy: 'Week', ngay: 2, gio: 20, phut: 15, now: now);
+      expect(moc.weekday, DateTime.tuesday);
+      expect(moc, DateTime(2026, 9, 1, 20, 15));
+    });
+
+    test('hàng tháng rơi đúng ngày đã chọn trong tháng này', () {
+      expect(mocNeoTu(chuKy: 'Month', ngay: 15, gio: 8, phut: 0, now: now),
+          DateTime(2026, 9, 15, 8, 0));
+    });
+
+    test('chọn ngày 31 ở tháng chỉ có 30 ngày thì kẹp về ngày cuối', () {
+      expect(mocNeoTu(chuKy: 'Month', ngay: 31, gio: 8, phut: 0, now: now),
+          DateTime(2026, 9, 30, 8, 0),
+          reason: 'Tháng 9 có 30 ngày. DateTime(2026, 9, 31) tự thành 01/10 '
+              'chứ không ném — mốc neo sẽ lệch sang tháng sau ngay từ lúc '
+              'dựng, trước cả khi bước kỳ nào.');
+    });
+
+    test('mốc neo dựng ra có thể nằm ở QUÁ KHỨ, và như vậy là đúng', () {
+      final moc = mocNeoTu(chuKy: 'Month', ngay: 1, gio: 8, phut: 0, now: now);
+      expect(moc.isBefore(now), isTrue,
+          reason: 'Chọn "ngày 1" vào ngày 5 thì mốc neo là 01/09 — đã qua. '
+              'Không phải lỗi: nó chỉ định NHỊP, còn việc không trích bù cho '
+              'kỳ đã qua là do sàn `autoDepositLastRun` lo.');
+    });
+  });
+
+  group('nhanMocNeo — câu chữ trên màn hình', () {
+    test('nói rõ cả ngày lẫn giờ', () {
+      expect(nhanMocNeo('Month', DateTime(2026, 9, 15, 8, 0)),
+          'Ngày 15 hàng tháng, 08:00');
+      expect(nhanMocNeo('Week', DateTime(2026, 9, 1, 20, 15)),
+          'Thứ Ba hàng tuần, 20:15');
+      expect(nhanMocNeo('Day', DateTime(2026, 9, 5, 8, 5)), 'Mỗi ngày, 08:05');
+    });
+
+    test('chủ nhật gọi đúng tên, không phải "Thứ 8"', () {
+      // 06/09/2026 là chủ nhật.
+      expect(nhanMocNeo('Week', DateTime(2026, 9, 6, 9, 0)),
+          'Chủ nhật hàng tuần, 09:00');
+    });
+
+    test('chưa chọn thì nói là chưa chọn, không bịa mặc định', () {
+      expect(nhanMocNeo('Month', null), 'Chưa chọn — trích theo lúc bật',
+          reason: 'Mục tiêu bật trích từ bản trước không có mốc neo. Hiện một '
+              'ngày mặc định nào đó là nói dối về nhịp mà nó đang chạy.');
     });
   });
 
@@ -180,13 +342,26 @@ void main() {
   });
 
   group('khoaKyTrich — khoá chống trùng của một kỳ', () {
-    test('cùng mục tiêu, cùng kỳ thì cùng khoá', () {
+    test('cùng kỳ thì cùng khoá, dù quét bao nhiêu lần', () {
+      // Mốc của một kỳ là giá trị TÍNH RA, không phải "bây giờ" — nên hai lượt
+      // quét cách nhau vẫn cho cùng một mốc, và vì thế cùng một khoá.
       expect(
         khoaKyTrich('g1', DateTime(2026, 9, 5, 8, 30)),
-        khoaKyTrich('g1', DateTime(2026, 9, 5, 21, 0)),
-        reason: 'Khoá gộp theo NGÀY. Hai lượt chạy trong cùng một ngày cho '
-            'cùng một kỳ phải ra cùng một khoá, nếu không mỗi lần mở app lại '
-            'đẻ thêm một thông báo cho việc đã làm rồi.',
+        khoaKyTrich('g1', DateTime(2026, 9, 5, 8, 30)),
+        reason: 'Vòng quét chạy sau mọi lần đồng bộ. Khoá đổi giữa hai lượt là '
+            'mỗi lần mở app lại đẻ thêm một thông báo cho việc đã làm rồi.',
+      );
+    });
+
+    test('hai kỳ CÙNG NGÀY nhưng khác giờ thì khác khoá', () {
+      expect(
+        khoaKyTrich('g1', DateTime(2026, 9, 5, 8, 30)),
+        isNot(khoaKyTrich('g1', DateTime(2026, 9, 5, 21, 0))),
+        reason: 'Gộp tới mức NGÀY từng làm một khoản trích thật đi qua mà '
+            'KHÔNG có thông báo nào: nó đụng khoá của một kỳ khác cùng ngày, '
+            'sinh ra sau khi người dùng đổi chu kỳ. Tiền rời ví trong im lặng '
+            'là kiểu hỏng tệ nhất ở vùng này. Mốc kỳ đã là giá trị tính ra và '
+            'ổn định, nên đưa cả giờ phút vào khoá không mất tính khử trùng.',
       );
     });
 

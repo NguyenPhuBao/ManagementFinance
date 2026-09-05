@@ -46,6 +46,7 @@ class GoalRepositoryImpl implements GoalRepository {
     String? note,
     double? autoDepositAmount,
     String? autoDepositWalletId,
+    DateTime? autoDepositAnchor,
   }) async {
     final now = DateTime.now();
     // Cùng luật với `updateGoal`: đủ CẢ HAI mảnh mới là bật.
@@ -68,6 +69,7 @@ class GoalRepositoryImpl implements GoalRepository {
       targetDate: targetDate,
       walletId: walletId,
       cycleTakeMoney: cycleTakeMoney,
+      timeCycleTakeMoney: batTrich ? autoDepositAnchor : null,
       autoDepositAmount: batTrich ? autoDepositAmount : null,
       autoDepositWalletId: batTrich ? autoDepositWalletId : null,
       // Mốc chạy là LÚC TẠO, nên kỳ đầu tiên rơi vào một chu kỳ sau đó. Không
@@ -108,6 +110,7 @@ class GoalRepositoryImpl implements GoalRepository {
     String? colour,
     double? autoDepositAmount,
     String? autoDepositWalletId,
+    DateTime? autoDepositAnchor,
   }) async {
     // Kiểm ở tầng này chứ không chỉ ở form. Trang sửa đã chặn cả hai ca, nhưng
     // phép kiểm nằm một mình trên giao diện thì đường gọi nào khác cũng đi vòng
@@ -166,6 +169,11 @@ class GoalRepositoryImpl implements GoalRepository {
         // `Value(null)` chứ không `Value.absent()`: null ở đây nghĩa là XOÁ chu
         // kỳ, không phải "giữ nguyên".
         cycleTakeMoney: Value(cycleTakeMoney),
+        // Mốc neo là nửa còn lại của kế hoạch, cùng số phận với chu kỳ: tắt
+        // trích tự động là xoá. Để sót lại thì bật lần sau dùng một nhịp cũ mà
+        // người dùng không còn nhìn thấy ở đâu.
+        timeCycleTakeMoney:
+            batTrich ? Value(autoDepositAnchor) : const Value(null),
         // Ngược lại với chu kỳ: `Value.absent()` chứ không `Value(null)`. Biểu
         // tượng và màu không có trạng thái "không có", nên null ở đây nghĩa là
         // nơi gọi không đụng tới chúng — gán đại sẽ đưa cột về mặc định và mọi

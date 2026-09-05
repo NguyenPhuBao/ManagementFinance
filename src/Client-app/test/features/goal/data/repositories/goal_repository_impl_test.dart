@@ -941,6 +941,60 @@ void main() {
       expect(goal.autoDepositLastRun, isNull);
     });
 
+    test('lưu mốc neo người dùng chọn vào cột đồng bộ được', () async {
+      final moc = DateTime(2026, 10, 15, 8, 30);
+
+      await repository.updateGoal(
+        id: 'g1',
+        name: 'Mua Laptop',
+        targetAmount: 20000000.0,
+        targetDate: DateTime.now().add(const Duration(days: 90)),
+        cycleTakeMoney: 'Month',
+        autoDepositAmount: 500000.0,
+        autoDepositWalletId: 'w1',
+        autoDepositAnchor: moc,
+      );
+
+      final goal = await repository.getGoalById('g1');
+      expect(goal!.timeCycleTakeMoney, moc,
+          reason: 'Mốc neo đi vào `time_cycle_take_money` — cột đã có sẵn '
+              'trong payload đồng bộ và tên nó vốn nghĩa là "thời điểm cụ thể '
+              'trích tiền trong chu kỳ". Kế hoạch thì theo người dùng sang máy '
+              'khác; chỉ trạng thái thi hành mới ở lại máy này.');
+      expect(goal.syncStatus, 'pending',
+          reason: 'Khác ba cột cục bộ: cột này CÓ đi qua đồng bộ nên phải được '
+              'đánh dấu cần đẩy.');
+    });
+
+    test('tắt trích tự động thì XOÁ luôn mốc neo', () async {
+      await repository.updateGoal(
+        id: 'g1',
+        name: 'Mua Laptop',
+        targetAmount: 20000000.0,
+        targetDate: DateTime.now().add(const Duration(days: 90)),
+        cycleTakeMoney: 'Month',
+        autoDepositAmount: 500000.0,
+        autoDepositWalletId: 'w1',
+        autoDepositAnchor: DateTime(2026, 10, 15, 8),
+      );
+
+      await repository.updateGoal(
+        id: 'g1',
+        name: 'Mua Laptop',
+        targetAmount: 20000000.0,
+        targetDate: DateTime.now().add(const Duration(days: 90)),
+        cycleTakeMoney: null,
+        autoDepositAmount: null,
+        autoDepositWalletId: null,
+        autoDepositAnchor: null,
+      );
+
+      expect((await repository.getGoalById('g1'))!.timeCycleTakeMoney, isNull,
+          reason: 'Mốc neo là một nửa của kế hoạch, cùng số phận với chu kỳ. '
+              'Để sót lại thì bật công tắc lần sau sẽ dùng một nhịp cũ mà '
+              'người dùng không còn nhìn thấy ở đâu trên màn hình.');
+    });
+
     test('bỏ trống chu kỳ thì XOÁ chu kỳ đã lưu', () async {
       await repository.updateGoal(
         id: 'g1',

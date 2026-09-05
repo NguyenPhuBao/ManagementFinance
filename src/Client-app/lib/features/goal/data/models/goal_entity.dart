@@ -24,6 +24,16 @@ class GoalEntity {
   /// để tính ngược ra ngày hạn rồi bị vứt bỏ.
   final String? cycleTakeMoney;
 
+  /// **Mốc neo** của nhịp trích: "ngày 15 hàng tháng lúc 08:00".
+  ///
+  /// Khác ba cột `autoDeposit*` ở chỗ nó **đồng bộ hai chiều** — cột
+  /// `time_cycle_take_money` đã nằm sẵn trong 18 khoá của payload mục tiêu và
+  /// tên nó vốn có nghĩa là "thời điểm cụ thể trích tiền trong chu kỳ". Chia
+  /// vậy là nhất quán: *kế hoạch* (chu kỳ, mốc neo) theo người dùng sang máy
+  /// khác, còn *trạng thái thi hành* (số tiền, ví nguồn, đã trích tới đâu) ở
+  /// lại máy này.
+  final DateTime? timeCycleTakeMoney;
+
   /// Số tiền trích mỗi kỳ. `null` = **không bật** trích tự động.
   ///
   /// Cùng với [autoDepositWalletId] và [autoDepositLastRun], đây là cột **cục
@@ -54,6 +64,7 @@ class GoalEntity {
     required this.targetDate,
     this.walletId,
     this.cycleTakeMoney,
+    this.timeCycleTakeMoney,
     this.autoDepositAmount,
     this.autoDepositWalletId,
     this.autoDepositLastRun,
@@ -77,6 +88,7 @@ class GoalEntity {
       targetDate: d.targetDate,
       walletId: d.walletId,
       cycleTakeMoney: d.cycleTakeMoney,
+      timeCycleTakeMoney: d.timeCycleTakeMoney,
       autoDepositAmount: d.autoDepositAmount,
       autoDepositWalletId: d.autoDepositWalletId,
       autoDepositLastRun: d.autoDepositLastRun,
@@ -101,6 +113,7 @@ class GoalEntity {
       targetDate: targetDate,
       walletId: Value(walletId),
       cycleTakeMoney: Value(cycleTakeMoney),
+      timeCycleTakeMoney: Value(timeCycleTakeMoney),
       autoDepositAmount: Value(autoDepositAmount),
       autoDepositWalletId: Value(autoDepositWalletId),
       autoDepositLastRun: Value(autoDepositLastRun),
@@ -124,6 +137,7 @@ class GoalEntity {
     DateTime? targetDate,
     String? walletId,
     String? cycleTakeMoney,
+    DateTime? timeCycleTakeMoney,
     double? autoDepositAmount,
     String? autoDepositWalletId,
     DateTime? autoDepositLastRun,
@@ -145,6 +159,7 @@ class GoalEntity {
       targetDate: targetDate ?? this.targetDate,
       walletId: walletId ?? this.walletId,
       cycleTakeMoney: cycleTakeMoney ?? this.cycleTakeMoney,
+      timeCycleTakeMoney: timeCycleTakeMoney ?? this.timeCycleTakeMoney,
       autoDepositAmount: autoDepositAmount ?? this.autoDepositAmount,
       autoDepositWalletId: autoDepositWalletId ?? this.autoDepositWalletId,
       autoDepositLastRun: autoDepositLastRun ?? this.autoDepositLastRun,

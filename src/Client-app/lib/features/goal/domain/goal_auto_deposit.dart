@@ -51,18 +51,42 @@ DateTime _congThang(DateTime moc, int soThang) {
   return DateTime(nam, thang, ngay, moc.hour, moc.minute, moc.second);
 }
 
-/// Những kỳ đã tới hạn kể từ [lanChayGanNhat] cho tới [now], theo thứ tự thời
-/// gian.
+/// Trần số vòng lặp khi dò từ mốc neo tới kỳ đầu tiên còn hiệu lực.
 ///
-/// [lanChayGanNhat] `null` nghĩa là **chưa bật trích tự động** — trả rỗng.
-/// Không lấy ngày tạo mục tiêu làm mốc thay thế: bật công tắc hôm nay cho một
-/// mục tiêu tạo sáu tháng trước sẽ bị trích ngược lại sáu kỳ cùng một lúc.
+/// Mốc neo đi qua đường đồng bộ nên có thể mang giá trị rác từ Admin-web hoặc
+/// một bản app khác. Bước từng ngày từ năm 1990 là hàng chục nghìn vòng lặp
+/// **ngay trong vòng quét thông báo** — app treo. Vượt trần thì bỏ qua và im
+/// lặng, cùng nguyên tắc với `isBehindSchedule`.
+const int _tranDoMoc = 1000;
+
+/// Những kỳ đã tới hạn cho tới [now], theo thứ tự thời gian.
+///
+/// ## Hai mốc, hai vai trò khác hẳn nhau
+///
+/// - [mocNeo] quyết định **nhịp**: "ngày 15 hàng tháng lúc 08:00". Đây là lựa
+///   chọn của người dùng, lưu ở cột `timeCycleTakeMoney`. `null` thì nhịp rơi
+///   vào chính [lanChayGanNhat] — hành vi của bản trước, giữ lại cho mục tiêu
+///   bật trước khi có ô chọn này.
+/// - [lanChayGanNhat] là **sàn**: đã trích tới đâu. `null` nghĩa là **chưa bật
+///   trích tự động** — trả rỗng. Không lấy ngày tạo mục tiêu làm mốc thay thế:
+///   bật công tắc hôm nay cho một mục tiêu tạo sáu tháng trước sẽ bị trích
+///   ngược lại sáu kỳ cùng một lúc.
+///
+/// Cần **cả hai**. Chỉ có nhịp thì chọn "ngày 1" vào ngày 15 sẽ trích bù ngay
+/// cho ngày 1 vừa trôi qua — quãng thời gian người dùng chưa hề đồng ý. Chỉ có
+/// sàn thì lựa chọn của họ không có tác dụng nào, im lặng.
+///
+/// ⚠️ Nhịp bước **từng kỳ một** từ mốc neo, nên một mốc rơi vào ngày 31 sẽ bị
+/// kẹp về 28/02 rồi bước tiếp **từ đó** — tức nhịp trôi dần chứ không quay lại
+/// ngày 31. Đây là hệ quả có chủ ý của việc dùng chung `mocKeTiep` với phần dự
+/// báo; ghi ra đây để không ai phát hiện nó bằng bất ngờ.
 ///
 /// [toiDa] là **trần số kỳ mỗi lượt chạy**. Máy để lâu không mở với chu kỳ ngày
 /// là hàng nghìn kỳ; trích hết trong một lượt sẽ rút cạn ví nguồn ngay khi
 /// người dùng vừa mở app. Phần dư **không mất** — nó ở lại cho lượt sau, vì nơi
 /// gọi chỉ đẩy mốc chạy tới kỳ cuối cùng thật sự xử lý được.
 List<DateTime> cacKyDenHan({
+  required DateTime? mocNeo,
   required DateTime? lanChayGanNhat,
   required String? chuKy,
   required DateTime now,
@@ -70,9 +94,19 @@ List<DateTime> cacKyDenHan({
 }) {
   if (lanChayGanNhat == null) return const [];
 
-  final ra = <DateTime>[];
-  var moc = mocKeTiep(lanChayGanNhat, chuKy);
+  // Không có mốc neo thì nhịp bám vào chính mốc chạy, y như bản trước.
+  var moc = mocNeo ?? mocKeTiep(lanChayGanNhat, chuKy);
 
+  // Dò tới kỳ đầu tiên nằm SAU sàn. Mốc neo có thể ở trước sàn (chọn "ngày 1"
+  // trong khi hôm nay là ngày 5) hoặc sau sàn (chọn "ngày 15") — cả hai đều
+  // hợp lệ, vòng dò này xử lý chung.
+  var soVong = 0;
+  while (!moc.isAfter(lanChayGanNhat)) {
+    if (++soVong > _tranDoMoc) return const [];
+    moc = mocKeTiep(moc, chuKy);
+  }
+
+  final ra = <DateTime>[];
   // `isAfter` chứ không `!isBefore`: mốc rơi ĐÚNG hiện tại phải tính là đã tới
   // hạn, nếu không kỳ ấy trượt sang lượt chạy sau mà không có lý do nào giải
   // thích được.
@@ -82,6 +116,76 @@ List<DateTime> cacKyDenHan({
   }
 
   return ra;
+}
+
+/// Dựng mốc neo từ những gì người dùng chọn trên màn hình.
+///
+/// [ngay] mang nghĩa khác nhau theo chu kỳ: 1–7 (thứ Hai → chủ nhật) với
+/// `'Week'`, 1–31 với `'Month'`, và bị bỏ qua với `'Day'`.
+///
+/// Mốc dựng ra **được phép nằm ở quá khứ** — chọn "ngày 1" vào ngày 5 thì nó là
+/// mùng 1 vừa qua. Đó không phải lỗi: mốc neo chỉ định *nhịp*, còn việc không
+/// trích bù cho kỳ đã trôi qua trước lúc bật là do sàn `autoDepositLastRun` lo.
+///
+/// ⚠️ Ngày bị kẹp về ngày cuối tháng: `DateTime(2026, 9, 31)` tự thành 01/10
+/// chứ không ném, nên chọn ngày 31 ở tháng 30 ngày sẽ lệch sang tháng sau ngay
+/// từ lúc dựng, trước cả khi bước kỳ nào.
+DateTime mocNeoTu({
+  required String? chuKy,
+  required int? ngay,
+  required int gio,
+  required int phut,
+  required DateTime now,
+}) {
+  switch (chuKy) {
+    case 'Day':
+      return DateTime(now.year, now.month, now.day, gio, phut);
+    case 'Week':
+      final thu = (ngay == null || ngay < 1 || ngay > 7) ? now.weekday : ngay;
+      final trongTuan = now.subtract(Duration(days: now.weekday - thu));
+      return DateTime(
+          trongTuan.year, trongTuan.month, trongTuan.day, gio, phut);
+    default:
+      final ngayCuoi = DateTime(now.year, now.month + 1, 0).day;
+      final chon = ngay == null || ngay < 1 ? now.day : ngay;
+      return DateTime(
+          now.year, now.month, chon <= ngayCuoi ? chon : ngayCuoi, gio, phut);
+  }
+}
+
+const List<String> _tenThu = [
+  'Thứ Hai',
+  'Thứ Ba',
+  'Thứ Tư',
+  'Thứ Năm',
+  'Thứ Sáu',
+  'Thứ Bảy',
+  'Chủ nhật',
+];
+
+/// Tên thứ trong tuần, 1 = thứ Hai. Dùng chung cho nhãn và cho bảng chọn.
+String tenThuTrongTuan(int thu) =>
+    _tenThu[thu.clamp(1, 7) - 1];
+
+/// Câu chữ mô tả mốc neo, hiển thị trên biểu mẫu.
+///
+/// `null` trả về câu nói **đúng sự thật** rằng chưa chọn gì: mục tiêu bật trích
+/// từ bản trước không có mốc neo và đang chạy theo lúc bật công tắc. Hiện một
+/// ngày mặc định nào đó là nói dối về nhịp mà nó thật sự đang chạy.
+String nhanMocNeo(String? chuKy, DateTime? moc) {
+  if (moc == null) return 'Chưa chọn — trích theo lúc bật';
+
+  final gio = '${moc.hour.toString().padLeft(2, '0')}:'
+      '${moc.minute.toString().padLeft(2, '0')}';
+
+  switch (chuKy) {
+    case 'Day':
+      return 'Mỗi ngày, $gio';
+    case 'Week':
+      return '${tenThuTrongTuan(moc.weekday)} hàng tuần, $gio';
+    default:
+      return 'Ngày ${moc.day} hàng tháng, $gio';
+  }
 }
 
 /// Chuyện gì xảy ra với một kỳ trích.
@@ -154,11 +258,18 @@ QuyetDinhTrich quyetDinhTrich({
 
 /// Khoá định danh một kỳ trích của một mục tiêu.
 ///
-/// Gộp theo **ngày**: hai lượt chạy trong cùng một ngày cho cùng một kỳ phải ra
-/// cùng một khoá, nếu không mỗi lần mở app lại đẻ thêm một thông báo cho việc
-/// đã làm rồi. Cùng nguyên tắc với `dedupeKey` của bộ luật thông báo, và đây
-/// chính là thứ đi vào `dedupeKey` ấy.
+/// Định danh **đúng cái mốc kỳ**, tới từng phút. Mốc ấy là giá trị *tính ra* từ
+/// mốc neo chứ không phải "bây giờ", nên nó ổn định qua mọi lượt quét — chính
+/// là thứ khiến khoá này khử trùng được. Đây là thứ đi thẳng vào `dedupeKey`
+/// của bộ luật thông báo.
+///
+/// ⚠️ Bản đầu gộp tới mức **ngày**, và trên máy ảo nó đã làm một khoản trích
+/// thật đi qua mà **không có thông báo nào**: mốc kỳ mới đụng khoá của một kỳ
+/// khác cùng ngày, sinh ra trước đó khi mục tiêu còn dùng chu kỳ khác. Tiền rời
+/// ví trong im lặng là kiểu hỏng tệ nhất ở vùng này.
 String khoaKyTrich(String goalId, DateTime ky) =>
     '$goalId:${ky.year.toString().padLeft(4, '0')}-'
     '${ky.month.toString().padLeft(2, '0')}-'
-    '${ky.day.toString().padLeft(2, '0')}';
+    '${ky.day.toString().padLeft(2, '0')}'
+    'T${ky.hour.toString().padLeft(2, '0')}'
+    ':${ky.minute.toString().padLeft(2, '0')}';

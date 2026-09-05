@@ -272,8 +272,46 @@ tốt: khoản trích tự động dùng **đúng tiền tố ghi chú** của k
 | Ví nguồn không đủ | **Bỏ kỳ**, giữ mốc, báo cảnh báo | Trích một phần làm một kỳ ra hai con số; giữ mốc thì kỳ ấy tự thử lại khi có tiền |
 | Bỏ app rất lâu | Trần **12 kỳ** mỗi lượt | Chu kỳ ngày, máy để lâu, là hàng nghìn kỳ — trích hết một lượt sẽ rút cạn ví ngay khi mở app. Phần dư không mất, nó ở lại lượt sau |
 
-**Ba cột là cục bộ**, nên cấu hình trích tự động **không theo người dùng sang máy
-khác**. Chu kỳ thì có (nó vốn đã đồng bộ), nên trên máy mới mục tiêu vẫn hiện
+### 3.13 Mốc neo: người dùng chọn thời điểm cụ thể trong chu kỳ
+
+Bản đầu neo nhịp vào **lúc bấm công tắc** — bật lúc 14 giờ ngày 5 thì mọi kỳ
+sau rơi vào ngày 5 lúc 14 giờ. Nay người dùng chọn được "ngày 15 hàng tháng lúc
+08:00", và lựa chọn ấy lưu ở **`timeCycleTakeMoney`**.
+
+**Vì sao là cột đó chứ không phải một cột cục bộ thứ tư:** tên nó vốn có nghĩa
+là *"thời điểm cụ thể trích tiền trong chu kỳ"*, nó đã nằm sẵn trong 18 khoá của
+payload mục tiêu, và client chưa bao giờ ghi. Đây là dùng đúng nghĩa gốc, khác
+hẳn việc mượn nó làm mốc-đã-chạy (thứ đã bị loại ở mục 3.12). Phía backend chỉ
+lưu và trả lại qua `sync.repository.js`, **không có cron nào đọc** — nên không
+sinh nguy cơ trích hai lần.
+
+Cách chia này cũng nhất quán: **kế hoạch** (chu kỳ + mốc neo) đồng bộ theo người
+dùng sang máy khác, **trạng thái thi hành** (số tiền, ví nguồn, đã trích tới
+đâu) ở lại máy này.
+
+**Hai mốc, hai vai trò, và cần cả hai:**
+
+| | Vai trò | Thiếu nó thì sao |
+|---|---|---|
+| `timeCycleTakeMoney` | **nhịp** — kỳ rơi vào lúc nào | Lựa chọn của người dùng không có tác dụng nào, im lặng |
+| `autoDepositLastRun` | **sàn** — đã trích tới đâu | Chọn "ngày 1" vào ngày 5 sẽ trích bù ngay cho mùng 1 vừa qua |
+
+⚠️ **Giờ chỉ giữ được MỘT chiều.** Bộ trích chạy khi app mở (mục 3.12), nên đặt
+08:00 nghĩa là *không bao giờ sớm hơn 08:00* — nhưng nếu 21 giờ mới mở app thì
+nó trích lúc 21 giờ. Biểu mẫu nói thẳng điều này ngay dưới ô chọn giờ thay vì để
+người dùng tự phát hiện.
+
+⚠️ **Nhịp bước từng kỳ một từ mốc neo**, nên mốc rơi vào ngày 31 sẽ bị kẹp về
+28/02 rồi bước tiếp **từ đó** — tức nhịp trôi dần chứ không quay lại ngày 31.
+Bảng chọn ngày báo trước điều này.
+
+⚠️ **Mốc neo đi qua đường đồng bộ** nên có thể mang giá trị rác từ Admin-web.
+`cacKyDenHan` có trần 1000 vòng khi dò từ mốc neo tới kỳ đầu còn hiệu lực: bước
+từng ngày từ năm 1990 là hàng chục nghìn vòng lặp ngay trong vòng quét thông
+báo — app treo. Vượt trần thì bỏ qua và im lặng.
+
+**Ba cột kia vẫn là cục bộ**, nên cấu hình trích tự động **không theo người dùng
+sang máy khác**. Chu kỳ thì có (nó vốn đã đồng bộ), nên trên máy mới mục tiêu vẫn hiện
 đúng nhịp kế hoạch, chỉ là không tự trích. Thà vậy còn hơn hai máy cùng trích
 một kỳ — đó cũng là lý do KHÔNG mượn cột `time_cycle_take_money` đang có sẵn:
 nó dùng chung với backend/Admin-web, và đổi ý nghĩa một cột dùng chung mà phía
@@ -373,6 +411,7 @@ cả hàng**, đưa mọi cột không gán về mặc định. Nhánh pull đú
 | Số tiền trích mỗi kỳ | `autoDepositAmount` | — **không đẩy** — | — chưa có — |
 | Ví nguồn trích | `autoDepositWalletId` | — **không đẩy** — | — chưa có — |
 | Mốc kỳ đã trích | `autoDepositLastRun` | — **không đẩy** — | — chưa có — |
+| **Mốc neo** của nhịp trích | `timeCycleTakeMoney` | `time_cycle_take_money` | `Time_cycle_take_money` |
 
 Payload mục tiêu có **18 trường**. Hợp đồng đầy đủ ở
 `test/core/sync/sync_payload_contract_test.dart` — **nơi duy nhất** ghi tên
@@ -416,7 +455,7 @@ nullable `transaction.Idgoal`. **Không chặn gì hôm nay**, nhưng chặn hư
 
 ## 9. Kiểm thử
 
-Khoảng **170 test** riêng cho mục tiêu, trên tổng 804 của dự án.
+Khoảng **187 test** riêng cho mục tiêu, trên tổng 821 của dự án.
 
 | Tệp | Canh gì |
 |---|---|
@@ -430,7 +469,7 @@ Khoảng **170 test** riêng cho mục tiêu, trên tổng 804 của dự án.
 | `presentation/widgets/goal_progress_test.dart` | Một định nghĩa duy nhất của tỉ lệ |
 | `presentation/widgets/goal_appearance_test.dart` | Bảng tra biểu tượng/màu, dữ liệu rác, và **giá trị ngoài bảng chọn** |
 | `goal_edit_form_test.dart` | `showDatePicker` với mục tiêu **quá hạn** — xem mục 3.9 |
-| `goal_auto_deposit_test.dart` | Bước kỳ (tháng ngắn, **năm nhuận**), trần số kỳ, quyết định trích |
+| `goal_auto_deposit_test.dart` | Bước kỳ (tháng ngắn, **năm nhuận**), **mốc neo**, trần số kỳ, quyết định trích |
 | `goal_auto_deposit_runner_test.dart` | Trích bù nhiều kỳ, ví cạn giữa chừng, cấu hình hỏng, cách ly tài khoản |
 | `core/notification/notification_rules_goal_wallet_test.dart` | Hai luật thông báo |
 

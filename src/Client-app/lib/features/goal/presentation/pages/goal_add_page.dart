@@ -9,6 +9,7 @@ import '../../../wallet/presentation/bloc/wallet_cubit.dart';
 import '../bloc/goal_cubit.dart';
 import '../../data/models/goal_entity.dart';
 import '../../data/repositories/goal_repository.dart';
+import '../../domain/goal_auto_deposit.dart';
 import '../../domain/goal_edit_form.dart';
 import '../widgets/goal_appearance.dart';
 import '../../../../core/auth/current_account.dart';
@@ -78,7 +79,29 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
   String _icon = 'savings';
   String _colour = kMauMucTieu.first;
 
+  /// Ngày trong chu kỳ: 1–7 (thứ Hai → chủ nhật) khi hàng tuần, 1–31 khi hàng
+  /// tháng, bỏ qua khi hàng ngày. `null` = chưa chọn, `mocNeoTu` lấy ngày hôm
+  /// nay làm mặc định.
+  int? _ngayTrich;
+  TimeOfDay _gioTrich = const TimeOfDay(hour: 8, minute: 0);
+
   bool get _isEdit => widget.goalId != null;
+
+  String get _chuKyHienTai => switch (_frequency) {
+        DepositFrequency.daily => 'Day',
+        DepositFrequency.weekly => 'Week',
+        DepositFrequency.monthly => 'Month',
+      };
+
+  /// Mốc neo dựng từ lựa chọn đang hiển thị. Dùng cho **cả nhãn lẫn lúc lưu**,
+  /// để thứ người dùng đọc được đúng là thứ được ghi xuống.
+  DateTime get _mocNeo => mocNeoTu(
+        chuKy: _chuKyHienTai,
+        ngay: _ngayTrich,
+        gio: _gioTrich.hour,
+        phut: _gioTrich.minute,
+        now: DateTime.now(),
+      );
 
   /// Mục tiêu đang sửa. `null` cho tới khi nạp xong, và ở chế độ tạo thì luôn
   /// `null`.
@@ -127,6 +150,11 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
       _autoDeposit = goal.cycleTakeMoney != null;
       _icon = goal.icon;
       _colour = goal.colour;
+      final mocCu = goal.timeCycleTakeMoney;
+      if (mocCu != null) {
+        _gioTrich = TimeOfDay(hour: mocCu.hour, minute: mocCu.minute);
+        _ngayTrich = goal.cycleTakeMoney == 'Week' ? mocCu.weekday : mocCu.day;
+      }
       _nameController.text = goal.name;
 
       final formatter =
@@ -347,6 +375,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
             autoDepositAmount: _autoDeposit ? soTienTrich : null,
             autoDepositWalletId:
                 _autoDeposit ? _selectedSourceWallet?.id : null,
+            autoDepositAnchor: _autoDeposit ? _mocNeo : null,
           )
           .then((loi) {
         if (!mounted) return;
@@ -406,6 +435,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
           colour: _colour,
           autoDepositAmount: _autoDeposit ? soTienTrich : null,
           autoDepositWalletId: _autoDeposit ? _selectedSourceWallet?.id : null,
+          autoDepositAnchor: _autoDeposit ? _mocNeo : null,
         ).then((_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -999,6 +1029,36 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                               ),
                             ),
                             const SizedBox(height: 16),
+                            _buildLabel('MỐC TRÍCH'),
+                            const SizedBox(height: 4),
+                            // Hàng ngày thì không có "ngày trong chu kỳ" để
+                            // chọn — chỉ còn giờ.
+                            if (_frequency != DepositFrequency.daily) ...[
+                              _buildDropdownButton(
+                                icon: Icons.event_repeat,
+                                title: nhanMocNeo(_chuKyHienTai, _mocNeo)
+                                    .split(',')
+                                    .first,
+                                subtitle: 'Bấm để đổi ngày trong chu kỳ',
+                                iconColor: AppColors.primary,
+                                onTap: _chonNgayTrich,
+                              ),
+                              const SizedBox(height: 8),
+                            ],
+                            _buildDropdownButton(
+                              icon: Icons.schedule,
+                              title:
+                                  '${_gioTrich.hour.toString().padLeft(2, '0')}'
+                                  ':${_gioTrich.minute.toString().padLeft(2, '0')}',
+                              // Nói thẳng giới hạn thay vì để người dùng tự
+                              // phát hiện: bộ trích chạy khi app mở, nên giờ
+                              // chỉ giữ được MỘT chiều.
+                              subtitle: 'Không trích trước giờ này. App chưa mở '
+                                  'thì trích ở lần mở kế tiếp',
+                              iconColor: AppColors.primary,
+                              onTap: _chonGioTrich,
+                            ),
+                            const SizedBox(height: 16),
                             _buildLabel('VÍ NGUỒN TRÍCH TIỀN'),
                             const SizedBox(height: 4),
                             _buildDropdownButton(
@@ -1097,6 +1157,77 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Future<void> _chonGioTrich() async {
+    final chon = await showTimePicker(context: context, initialTime: _gioTrich);
+    if (chon != null && mounted) setState(() => _gioTrich = chon);
+  }
+
+  /// Bảng chọn ngày trong chu kỳ — bảy thứ khi hàng tuần, 1–31 khi hàng tháng.
+  void _chonNgayTrich() {
+    final laTuan = _frequency == DepositFrequency.weekly;
+    final soLuaChon = laTuan ? 7 : 31;
+    final dangChon =
+        _ngayTrich ?? (laTuan ? DateTime.now().weekday : DateTime.now().day);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 16),
+            Text(
+              laTuan ? 'Trích vào thứ mấy?' : 'Trích vào ngày nào trong tháng?',
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.primary,
+              ),
+            ),
+            if (!laTuan)
+              const Padding(
+                padding: EdgeInsets.fromLTRB(24, 8, 24, 0),
+                child: Text(
+                  // Nói trước để không ai bất ngờ. Phép kẹp nằm ở `mocNeoTu`
+                  // và `mocKeTiep`.
+                  'Chọn ngày 29–31 thì tháng ngắn hơn sẽ trích vào ngày cuối '
+                  'tháng.',
+                  textAlign: TextAlign.center,
+                  style:
+                      TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                ),
+              ),
+            const SizedBox(height: 8),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: soLuaChon,
+                itemBuilder: (_, i) {
+                  final gt = i + 1;
+                  return ListTile(
+                    title: Text(laTuan ? tenThuTrongTuan(gt) : 'Ngày $gt'),
+                    trailing: gt == dangChon
+                        ? const Icon(Icons.check_circle,
+                            color: AppColors.income)
+                        : null,
+                    onTap: () {
+                      setState(() => _ngayTrich = gt);
+                      Navigator.pop(ctx);
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
