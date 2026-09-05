@@ -53,11 +53,17 @@ class BudgetForm extends StatefulWidget {
 
   final void Function(BudgetDraft) onSubmit;
 
+  /// Gợi ý hạn mức cho một danh mục (trung bình chi ba tháng trước). `null`
+  /// = không gợi ý. Là callback chứ không phải repository: form vẫn không đọc
+  /// cubit, và test tiêm thẳng một hàm.
+  final Future<double?> Function(String categoryId)? suggestFor;
+
   const BudgetForm({
     super.key,
     required this.categories,
     required this.editing,
     required this.onSubmit,
+    this.suggestFor,
   });
 
   @override
@@ -100,6 +106,13 @@ class _BudgetFormState extends State<BudgetForm> {
   /// "Ngày cụ thể" thì lấy lại nguyên vẹn.
   DateTime? _ngayKetThucBiGhiDe;
 
+  /// Gợi ý hạn mức của danh mục đang chọn; null = không có gì để gợi ý.
+  double? _suggestion;
+
+  /// Chống hai lần tra chồng nhau (đổi danh mục nhanh): kết quả của lần cũ về
+  /// sau không được đè lên lần mới.
+  int _suggestionGeneration = 0;
+
   @override
   void initState() {
     super.initState();
@@ -120,6 +133,25 @@ class _BudgetFormState extends State<BudgetForm> {
     final now = DateTime.now();
     _startDate = b?.startDate ?? DateTime(now.year, now.month, 1);
     _endDate = b?.endDate;
+    _loadSuggestion(_categoryId);
+  }
+
+  Future<void> _loadSuggestion(String? categoryId) async {
+    final ask = widget.suggestFor;
+    if (ask == null || categoryId == null) {
+      if (_suggestion != null) setState(() => _suggestion = null);
+      return;
+    }
+    final generation = ++_suggestionGeneration;
+    double? value;
+    try {
+      value = await ask(categoryId);
+    } catch (_) {
+      // Gợi ý hỏng thì thôi không gợi ý — không được chặn form.
+      value = null;
+    }
+    if (!mounted || generation != _suggestionGeneration) return;
+    setState(() => _suggestion = value);
   }
 
   /// Ngày kết thúc của kỳ đầu tiên, suy từ ngày bắt đầu và chu kỳ.
@@ -240,6 +272,7 @@ class _BudgetFormState extends State<BudgetForm> {
                     _label('Hạn mức chi tiêu'),
                     const SizedBox(height: 8),
                     _amountField(),
+                    _suggestionHint(),
                   ],
                 )),
                 const SizedBox(height: 32),
@@ -502,7 +535,38 @@ class _BudgetFormState extends State<BudgetForm> {
       // 2026-09-04. Repository cũng chặn, nhưng để nó chặn thì người dùng chỉ
       // nhận một snackbar đỏ chứ không thấy ô nào còn thiếu.
       validator: (v) => v == null ? 'Hãy chọn danh mục cho ngân sách này' : null,
-      onChanged: (v) => setState(() => _categoryId = v),
+      onChanged: (v) {
+        setState(() => _categoryId = v);
+        _loadSuggestion(v);
+      },
+    );
+  }
+
+  /// "3 tháng gần nhất bạn chi trung bình X" kèm nút điền thẳng vào ô hạn mức.
+  /// Không hiện gì khi không có dữ liệu: một dòng "trung bình 0 ₫" là gợi ý
+  /// sai, tệ hơn không gợi ý.
+  Widget _suggestionHint() {
+    final s = _suggestion;
+    if (s == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              '3 tháng gần nhất bạn chi trung bình '
+              '${CurrencyFormatter.format(s)}',
+              style: const TextStyle(
+                  fontSize: 12, color: AppColors.textSecondary),
+            ),
+          ),
+          TextButton(
+            onPressed: () =>
+                setState(() => _amountController.text = s.round().toString()),
+            child: const Text('Dùng số này'),
+          ),
+        ],
+      ),
     );
   }
 
