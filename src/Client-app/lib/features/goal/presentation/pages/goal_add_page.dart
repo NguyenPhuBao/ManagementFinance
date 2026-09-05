@@ -62,6 +62,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
   final _nameController = TextEditingController();
   final _targetAmountController = TextEditingController();
   final _depositAmountController = TextEditingController();
+  final _noteController = TextEditingController();
   DateTime _targetDate = DateTime.now().add(const Duration(days: 365));
   bool _autoDeposit = true;
   DepositFrequency _frequency = DepositFrequency.monthly;
@@ -156,6 +157,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
         _ngayTrich = goal.cycleTakeMoney == 'Week' ? mocCu.weekday : mocCu.day;
       }
       _nameController.text = goal.name;
+      _noteController.text = goal.note;
 
       final formatter =
           NumberFormat.currency(locale: 'vi_VN', symbol: '', decimalDigits: 0);
@@ -192,6 +194,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
     _nameController.dispose();
     _targetAmountController.dispose();
     _depositAmountController.dispose();
+    _noteController.dispose();
     super.dispose();
   }
 
@@ -372,6 +375,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
             cycleTakeMoney: chuKy,
             icon: _icon,
             colour: _colour,
+            note: _noteController.text.trim(),
             autoDepositAmount: _autoDeposit ? soTienTrich : null,
             autoDepositWalletId:
                 _autoDeposit ? _selectedSourceWallet?.id : null,
@@ -433,6 +437,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
           cycleTakeMoney: chuKy,
           icon: _icon,
           colour: _colour,
+          note: _noteController.text.trim(),
           autoDepositAmount: _autoDeposit ? soTienTrich : null,
           autoDepositWalletId: _autoDeposit ? _selectedSourceWallet?.id : null,
           autoDepositAnchor: _autoDeposit ? _mocNeo : null,
@@ -911,6 +916,18 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                               );
                             },
                           ),
+                          const SizedBox(height: 16),
+                          // Ghi chú nằm CUỐI thẻ, cùng lối với biểu mẫu thêm
+                          // giao dịch: nó là trường tuỳ chọn, đặt trên đầu sẽ
+                          // đẩy số tiền và hạn định — hai thứ bắt buộc — xuống
+                          // dưới nếp gấp màn hình.
+                          _buildLabel('GHI CHÚ (TUỲ CHỌN)'),
+                          const SizedBox(height: 4),
+                          _buildTextField(
+                            controller: _noteController,
+                            hint: 'Vì sao bạn muốn đạt mục tiêu này?',
+                            maxLines: 3,
+                          ),
                         ],
                       ),
                     ),
@@ -1333,10 +1350,12 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
     bool isBold = false,
     TextInputType keyboardType = TextInputType.text,
     IconData? suffixIcon,
+    int maxLines = 1,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
+      maxLines: maxLines,
       style: TextStyle(
         fontSize: 16,
         color: textColor,

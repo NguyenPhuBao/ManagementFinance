@@ -1104,6 +1104,52 @@ void main() {
       expect(goal.colour, '#9C27B0');
     });
 
+    test('sửa được ghi chú', () async {
+      await repository.updateGoal(
+        id: 'g1',
+        name: 'Mua Laptop',
+        targetAmount: 20000000.0,
+        targetDate: DateTime.now().add(const Duration(days: 90)),
+        note: 'Để thay con máy cũ đã ì ạch.',
+      );
+
+      expect((await repository.getGoalById('g1'))?.note,
+          'Để thay con máy cũ đã ì ạch.');
+    });
+
+    test('không truyền ghi chú thì GIỮ NGUYÊN, chuỗi rỗng mới là XOÁ', () async {
+      await repository.updateGoal(
+        id: 'g1',
+        name: 'Mua Laptop',
+        targetAmount: 20000000.0,
+        targetDate: DateTime.now().add(const Duration(days: 90)),
+        note: 'Lý do ban đầu.',
+      );
+
+      await repository.updateGoal(
+        id: 'g1',
+        name: 'Tên mới thôi',
+        targetAmount: 20000000.0,
+        targetDate: DateTime.now().add(const Duration(days: 90)),
+      );
+      expect((await repository.getGoalById('g1'))?.note, 'Lý do ban đầu.',
+          reason: 'Cùng luật với icon/colour: `null` là "nơi gọi không đụng '
+              'tới", không phải "xoá". Trang sửa nào chỉ đổi tên mà vô tình '
+              'xoá sạch ghi chú của người dùng là mất dữ liệu trong im lặng.');
+
+      await repository.updateGoal(
+        id: 'g1',
+        name: 'Tên mới thôi',
+        targetAmount: 20000000.0,
+        targetDate: DateTime.now().add(const Duration(days: 90)),
+        note: '',
+      );
+      expect((await repository.getGoalById('g1'))?.note, '',
+          reason: 'Chuỗi rỗng là ý định XOÁ rõ ràng của người dùng — họ đã xoá '
+              'sạch ô nhập. Gộp nó chung với `null` thì không còn cách nào bỏ '
+              'ghi chú đi.');
+    });
+
     test('bật trích tự động thì ĐẶT mốc chạy bằng bây giờ', () async {
       final truoc = DateTime.now();
 

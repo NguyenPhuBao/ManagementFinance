@@ -67,10 +67,13 @@ abstract class GoalRepository {
   /// Ném [ArgumentError] nếu tên rỗng hoặc số tiền ≤ 0, và [StateError] nếu
   /// không tìm thấy mục tiêu.
   ///
-  /// [icon] và [colour] bằng `null` nghĩa là **giữ nguyên**, ngược với
-  /// [cycleTakeMoney]. Hai cột này không có trạng thái "không có" — đưa chúng
+  /// [icon], [colour] và [note] bằng `null` nghĩa là **giữ nguyên**, ngược với
+  /// [cycleTakeMoney]. Hai cột đầu không có trạng thái "không có" — đưa chúng
   /// về mặc định khi nơi gọi chỉ muốn sửa tên sẽ làm mọi mục tiêu lặng lẽ trở
-  /// lại lá cờ xanh.
+  /// lại lá cờ xanh. Với [note] thì **chuỗi rỗng mới là xoá**: đó là ý định rõ
+  /// ràng của người dùng khi họ xoá sạch ô nhập, còn `null` chỉ có nghĩa nơi
+  /// gọi không đụng tới. Gộp hai ca ấy làm một thì không còn cách nào bỏ ghi
+  /// chú đi.
   ///
   /// [autoDepositAmount] và [autoDepositWalletId] đi **thành cặp**: đủ cả hai
   /// là bật trích tự động, thiếu một là tắt. `autoDepositLastRun` do đây đặt,
@@ -85,6 +88,7 @@ abstract class GoalRepository {
     String? cycleTakeMoney,
     String? icon,
     String? colour,
+    String? note,
     double? autoDepositAmount,
     String? autoDepositWalletId,
     /// **Mốc neo** của nhịp trích ("ngày 15 hàng tháng lúc 08:00"), lưu vào cột

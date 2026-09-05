@@ -790,6 +790,10 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                     GoalProgressRing(goal: _goal!),
                     const SizedBox(height: 32),
                     _buildAmountInfo(currencyFormatter, remaining),
+                    if (_goal!.note.trim().isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      _buildGhiChu(_goal!.note.trim()),
+                    ],
                     const SizedBox(height: 24),
                     _buildInsightBox(),
                     if (_canhBaoVi != null) ...[
@@ -854,6 +858,36 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
               ),
               const TextSpan(text: ' để đạt mục tiêu'),
             ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Ghi chú của người dùng — cái **lý do** đằng sau mục tiêu.
+  ///
+  /// Đặt ngay dưới con số, trước hộp dự báo: khi mở mục tiêu ra để cân nhắc có
+  /// nên tiêu vào tiền tích luỹ hay không, câu tự mình viết ra là thứ đáng đọc
+  /// trước cả tốc độ tiết kiệm.
+  ///
+  /// Không có khung viền, không có nhãn "GHI CHÚ": nó là chữ của người dùng
+  /// chứ không phải một trường dữ liệu cần gắn mác.
+  Widget _buildGhiChu(String noiDung) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(Icons.format_quote_rounded,
+            size: 18, color: AppColors.textSecondary.withValues(alpha: 0.6)),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            noiDung,
+            style: const TextStyle(
+              fontSize: 13,
+              height: 1.5,
+              color: AppColors.textSecondary,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ),
       ],

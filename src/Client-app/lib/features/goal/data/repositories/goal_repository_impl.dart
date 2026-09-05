@@ -155,6 +155,7 @@ class GoalRepositoryImpl implements GoalRepository {
     String? cycleTakeMoney,
     String? icon,
     String? colour,
+    String? note,
     double? autoDepositAmount,
     String? autoDepositWalletId,
     DateTime? autoDepositAnchor,
@@ -241,6 +242,10 @@ class GoalRepositoryImpl implements GoalRepository {
         // mục tiêu lặng lẽ trở lại lá cờ xanh sau một lần sửa tên.
         icon: icon == null ? const Value.absent() : Value(icon),
         colour: colour == null ? const Value.absent() : Value(colour),
+        // Cùng luật với hai cột trên, nhưng lưu ý chỗ khác: **chuỗi rỗng** ở
+        // đây là ý định XOÁ rõ ràng (người dùng đã xoá sạch ô nhập), nên nó
+        // vẫn được ghi xuống. Chỉ `null` mới là "không đụng tới".
+        note: note == null ? const Value.absent() : Value(note),
         autoDepositAmount:
             batTrich ? Value(autoDepositAmount) : const Value(null),
         autoDepositWalletId:
