@@ -203,6 +203,10 @@ class BudgetEntity {
     return nextTimeRecurrence ?? advancePeriod(startDate, cycle);
   }
 
+  /// Mốc neo chu kỳ, công khai cho `recentPeriods` đi lại đúng phép cắt kỳ
+  /// của [currentPeriod]. Đọc tài liệu ở [_anchor].
+  DateTime get periodAnchor => _anchor;
+
   /// Thời khắc ngân sách ngừng theo dõi, hoặc null nếu chạy mãi.
   ///
   /// Là **biên mở**: kỳ chạy tới trước thời khắc này. Thứ tự: ngày kết thúc

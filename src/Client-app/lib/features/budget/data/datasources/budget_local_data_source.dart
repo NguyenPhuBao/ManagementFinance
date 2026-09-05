@@ -25,6 +25,17 @@ abstract class BudgetLocalDataSource {
     required DateTime to,
   });
 
+  /// Các khoản chi trong khoảng `[from, to)`, mới nhất trước.
+  ///
+  /// Biên [to] là biên **mở**: bộ chọn ngày trả về 00:00, nên khoản ghi ngày
+  /// đầu kỳ sau nằm đúng mốc `to` của kỳ trước — đóng biên là đếm nó hai lần.
+  Future<List<Transaction>> getExpenses({
+    required int idaccount,
+    required String? categoryId,
+    required DateTime from,
+    required DateTime to,
+  });
+
   /// Phát tín hiệu mỗi khi bảng giao dịch đổi, để lớp trên tính lại số đã chi.
   Stream<void> watchTransactionChanges(int idaccount);
 
@@ -37,6 +48,9 @@ abstract class BudgetLocalDataSource {
   /// theo `classify` — tra cứu thì cần đủ hàng, kể cả danh mục thu đã từng gắn
   /// vào một ngân sách cũ.
   Future<List<Category>> getAllCategories(int idaccount);
+
+  /// Ví của tài khoản, để tra tên ví cho dòng giao dịch.
+  Future<List<Wallet>> getWallets(int idaccount);
 }
 
 class BudgetLocalDataSourceImpl implements BudgetLocalDataSource {
@@ -108,13 +122,31 @@ class BudgetLocalDataSourceImpl implements BudgetLocalDataSource {
     required DateTime from,
     required DateTime to,
   }) async {
+    final rows = await getExpenses(
+      idaccount: idaccount,
+      categoryId: categoryId,
+      from: from,
+      to: to,
+    );
+    // `amount` được lưu dạng dương ở client (khối Pull gọi `.abs()`), nên
+    // cộng thẳng. Đừng đổi dấu ở đây.
+    return rows.fold<double>(0.0, (sum, t) => sum + t.amount);
+  }
+
+  @override
+  Future<List<Transaction>> getExpenses({
+    required int idaccount,
+    required String? categoryId,
+    required DateTime from,
+    required DateTime to,
+  }) async {
+    // DAO lấy `<= to`; cắt lại thành biên mở ở đây — xem tài liệu interface.
     final rows = await db.transactionDao.getByDateRange(idaccount, from, to);
     return rows
         .where((t) => t.type == 'chi')
+        .where((t) => t.date.isBefore(to))
         .where((t) => categoryId == null || t.categoryId == categoryId)
-        // `amount` được lưu dạng dương ở client (khối Pull gọi `.abs()`), nên
-        // cộng thẳng. Đừng đổi dấu ở đây.
-        .fold<double>(0.0, (sum, t) => sum + t.amount);
+        .toList();
   }
 
   @override
@@ -132,5 +164,10 @@ class BudgetLocalDataSourceImpl implements BudgetLocalDataSource {
   @override
   Future<List<Category>> getAllCategories(int idaccount) {
     return db.categoryDao.getAll(idaccount);
+  }
+
+  @override
+  Future<List<Wallet>> getWallets(int idaccount) {
+    return db.walletDao.getAll(idaccount);
   }
 }

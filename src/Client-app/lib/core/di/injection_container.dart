@@ -21,6 +21,7 @@ import '../../features/budget/data/datasources/budget_local_data_source.dart';
 import '../../features/budget/data/repositories/budget_repository.dart';
 import '../../features/budget/data/repositories/budget_repository_impl.dart';
 import '../../features/budget/presentation/bloc/budget_cubit.dart';
+import '../../features/budget/presentation/bloc/budget_detail_cubit.dart';
 import '../../features/wallet/data/datasources/wallet_local_data_source.dart';
 import '../../features/wallet/data/repositories/wallet_repository.dart';
 import '../../features/wallet/data/repositories/wallet_repository_impl.dart';
@@ -196,6 +197,9 @@ Future<void> setupDependencies() async {
   // Factory: mỗi trang một cubit, tự huỷ khi trang đóng.
   sl.registerFactory<BudgetCubit>(
     () => BudgetCubit(repository: sl<BudgetRepository>()),
+  );
+  sl.registerFactory<BudgetDetailCubit>(
+    () => BudgetDetailCubit(repository: sl<BudgetRepository>()),
   );
 
   // ── 11. Thông báo ────────────────────────────────────────────────────────

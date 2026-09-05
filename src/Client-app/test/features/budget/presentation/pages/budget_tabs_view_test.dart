@@ -38,9 +38,11 @@ void main() {
     List<BudgetView> active = const [],
     List<BudgetView> expired = const [],
     void Function(BudgetView)? onEdit,
+    DateTime? now,
   }) {
     return tester.pumpWidget(MaterialApp(
       home: BudgetTabsView(
+        now: now,
         state: BudgetLoaded(
           active: active,
           expired: expired,
@@ -63,6 +65,37 @@ void main() {
         reason: 'Ngân sách đang chạy phải vuốt để xoá được như trước.');
     expect(find.byKey(const ValueKey('budget-edit-b1')), findsOneWidget,
         reason: 'Nút chỉnh (biểu tượng tune) có trong bản dựng hình Stitch.');
+  });
+
+  testWidgets('thẻ đang hoạt động ghi nên chi mỗi ngày và số ngày còn lại',
+      (tester) async {
+    await dung(
+      tester,
+      active: [view(id: 'b1', amount: 3000000, spent: 1000000)],
+      now: DateTime(2026, 9, 15, 12),
+    );
+
+    expect(
+      find.textContaining('125.000'),
+      findsOneWidget,
+      reason: 'Còn 2.000.000 cho 16 ngày (15/9 trưa → 1/10) = 125.000/ngày. '
+          'Đây là con số mọi app cùng loại đều hiện; thiếu nó thì "Còn X" '
+          'không nói được phải kéo dài bao lâu.',
+    );
+    expect(find.textContaining('còn 16 ngày'), findsOneWidget);
+  });
+
+  testWidgets('thẻ đã hết hạn không có dòng nên chi', (tester) async {
+    await dung(
+      tester,
+      expired: [view(id: 'b1', amount: 3000000, spent: 1000000)],
+      now: DateTime(2026, 11, 15),
+    );
+    await tester.tap(find.textContaining('Đã hết hạn'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Nên chi'), findsNothing,
+        reason: 'Ngân sách đã chốt sổ không còn ngày nào để chia.');
   });
 
   testWidgets('tab đã hết hạn: không vuốt xoá được', (tester) async {

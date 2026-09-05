@@ -17,6 +17,7 @@ import '../../features/analytics/presentation/pages/export_report_page.dart';
 import '../../features/transaction/presentation/pages/add_transaction_page.dart';
 import '../../features/transaction/presentation/pages/choose_category_page.dart';
 import '../../features/transaction/presentation/pages/transaction_page.dart';
+import '../../features/budget/presentation/pages/budget_detail_page.dart';
 import '../../features/budget/presentation/pages/budget_page.dart';
 import '../../features/budget/presentation/pages/budget_rules_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
@@ -216,6 +217,15 @@ class AppRouter {
               builder: (_, state) => BudgetRulesPage(
                     budgetId: state.uri.queryParameters['id'],
                   )),
+          // Chi tiết một ngân sách. Đặt dưới `/budget/detail/` chứ không phải
+          // `/budget/:id` vì `/budget/rules` đã tồn tại và sẽ bị tham số nuốt.
+          // Ngoài shell như trang cấu hình, để `push` từ tab Ngân sách không
+          // dính bẫy `StatefulShellRoute` (7.8 NOTIFICATION_FEATURE.md).
+          GoRoute(
+            path: '/budget/detail/:id',
+            builder: (_, state) =>
+                BudgetDetailPage(budgetId: state.pathParameters['id']!),
+          ),
 
           // Category
           GoRoute(
