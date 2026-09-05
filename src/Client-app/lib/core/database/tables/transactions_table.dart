@@ -20,7 +20,10 @@ class Transactions extends Table {
   // ± dương = tiền vào, âm = tiền ra
 
   TextColumn   get type    => text()();
-  // 'Transaction' | 'Transfer' (theo backend v2)
+  // 'chi' | 'thu' | 'transfer' — bộ giá trị NỘI BỘ của client, KHÔNG phải
+  // 'Transaction' | 'Transfer' của backend. `SyncPayloadNormalizer` quy đổi:
+  // chi/thu → Transaction với dấu amount, transfer → Transfer. Chiều tiền của
+  // giao dịch gắn danh mục vay/nợ cũng nằm ở đây (người dùng chọn trên form).
 
   /// status: trạng thái giao dịch — 'Pending' | 'Confirmed' | 'Rejected' | 'Fail'
   /// Mặc định 'Confirmed' (khớp backend default)

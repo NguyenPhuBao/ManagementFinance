@@ -8,6 +8,7 @@ abstract class TransactionLocalDataSource {
     int month,
   );
   Future<void> addTransaction(TransactionEntity entity);
+  Future<void> updateTransaction(TransactionEntity entity);
   Future<void> deleteTransaction(String id);
 }
 
@@ -32,6 +33,13 @@ class TransactionLocalDataSourceImpl implements TransactionLocalDataSource {
   @override
   Future<void> addTransaction(TransactionEntity entity) async {
     await db.transactionDao.insert(entity.toCompanion());
+  }
+
+  @override
+  Future<void> updateTransaction(TransactionEntity entity) async {
+    // `toCompanion()` mang đủ mọi cột kể cả syncStatus/updatedAt — repository
+    // đã đặt chúng trước khi gọi tới đây.
+    await db.transactionDao.updateRow(entity.id, entity.toCompanion());
   }
 
   @override

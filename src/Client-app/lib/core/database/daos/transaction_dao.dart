@@ -156,6 +156,13 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     await into(transactions).insert(entry, mode: InsertMode.insertOrReplace);
   }
 
+  /// Ghi đè các cột có trong [values] cho hàng [id]. Nơi gọi tự đặt
+  /// `syncStatus`/`updatedAt` — DAO không đoán ý (repair có lúc không muốn
+  /// đổi mốc).
+  Future<void> updateRow(String id, TransactionsCompanion values) async {
+    await (update(transactions)..where((t) => t.id.equals(id))).write(values);
+  }
+
   Future<void> softDelete(String id) async {
     final now = DateTime.now();
     await (update(transactions)..where((t) => t.id.equals(id))).write(

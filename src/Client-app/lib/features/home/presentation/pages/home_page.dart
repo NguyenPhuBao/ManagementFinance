@@ -10,6 +10,9 @@ import '../widgets/home_action_buttons.dart';
 import '../../../../shared/widgets/notification_bell.dart';
 import '../../../notification/presentation/widgets/notification_panel.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../transaction/data/models/transaction_entity.dart';
+import '../../../transaction/domain/transaction_lookup.dart';
+import '../../../transaction/presentation/widgets/transaction_row_content.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -92,6 +95,14 @@ class HomePage extends StatelessWidget {
                   final txStream = (currentUserId != null)
                       ? db.transactionDao.watchAll(currentUserId)
                       : Stream<List<Transaction>>.value([]);
+                  // Tên ví/danh mục cho "Giao dịch gần đây" — cùng nội dung
+                  // dòng với sổ giao dịch (`buildTransactionRowContent`).
+                  final walletStream = (currentUserId != null)
+                      ? db.walletDao.watchAll(currentUserId)
+                      : Stream<List<Wallet>>.value(const []);
+                  final categoryStream = (currentUserId != null)
+                      ? db.categoryDao.watchAll(currentUserId)
+                      : Stream<List<Category>>.value(const []);
 
                   return StreamBuilder<List<Transaction>>(
                     stream: txStream,
@@ -121,7 +132,22 @@ class HomePage extends StatelessWidget {
                         children: [
                           _buildStatsGrid(monthlyIncome, monthlyExpense, formatter),
                           const SizedBox(height: 32),
-                          _buildRecentTransactions(context, transactions.take(5).toList(), formatter),
+                          StreamBuilder<List<Wallet>>(
+                            stream: walletStream,
+                            builder: (_, wallets) =>
+                                StreamBuilder<List<Category>>(
+                              stream: categoryStream,
+                              builder: (_, categories) =>
+                                  _buildRecentTransactions(
+                                context,
+                                transactions.take(5).toList(),
+                                TransactionLookup(
+                                  wallets: wallets.data ?? const [],
+                                  categories: categories.data ?? const [],
+                                ),
+                              ),
+                            ),
+                          ),
                         ],
                       );
                     },
@@ -526,7 +552,7 @@ class HomePage extends StatelessWidget {
   Widget _buildRecentTransactions(
     BuildContext context,
     List<Transaction> transactions,
-    NumberFormat formatter,
+    TransactionLookup lookup,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -579,34 +605,21 @@ class HomePage extends StatelessWidget {
           )
         else
           ...transactions.map((tx) {
-            final isExpense = tx.type == 'chi';
-            final isIncome = tx.type == 'thu';
-            final amountPrefix = isExpense ? '-' : (isIncome ? '+' : '');
-            final amountColor = isExpense
-                ? AppColors.error
-                : (isIncome ? AppColors.income : AppColors.primary);
-            final emoji = isExpense ? '💸' : (isIncome ? '💰' : '🔄');
-            final title = tx.note.isNotEmpty
-                ? tx.note
-                : (isExpense
-                    ? 'Khoản chi'
-                    : (isIncome ? 'Khoản thu' : 'Chuyển khoản'));
-            final subtitle = DateFormat('dd/MM • HH:mm').format(tx.date);
-
+            // Cùng nội dung dòng với sổ giao dịch: danh mục, ví, icon/màu.
+            final content = buildTransactionRowContent(
+              TransactionEntity.fromDrift(tx),
+              lookup,
+            );
             return _buildTransactionItem(
-              title,
-              subtitle,
-              '$amountPrefix ${formatter.format(tx.amount)}đ',
-              emoji,
-              amountColor,
+              content,
+              '${content.subtitle} • ${DateFormat('dd/MM').format(tx.date)}',
             );
           }),
       ],
     );
   }
 
-  Widget _buildTransactionItem(
-      String title, String subtitle, String amount, String emoji, Color amountColor) {
+  Widget _buildTransactionItem(TransactionRowContent content, String subtitle) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -627,31 +640,36 @@ class HomePage extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: const Color(0xFFF4F4F0),
+              color: content.colour.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(24),
             ),
-            child: Center(
-              child: Text(emoji, style: const TextStyle(fontSize: 24)),
-            ),
+            child: Icon(content.icon, color: content.colour, size: 22),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
+                Text(content.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                         fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primary)),
                 const SizedBox(height: 2),
                 Text(subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style:
                         const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
               ],
             ),
           ),
-          Text(amount,
+          const SizedBox(width: 8),
+          Text(content.amountText,
               style: TextStyle(
-                  fontSize: 14, fontWeight: FontWeight.bold, color: amountColor)),
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: content.amountColor)),
         ],
       ),
     );

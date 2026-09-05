@@ -173,7 +173,12 @@ class AppRouter {
           ),
           GoRoute(
             path: '/add',
-            builder: (_, __) => const AddTransactionPage(),
+            // `extra` là EditTransactionArgs → trang mở ở chế độ sửa.
+            builder: (_, state) => AddTransactionPage(
+              initial: state.extra is EditTransactionArgs
+                  ? state.extra as EditTransactionArgs
+                  : null,
+            ),
             routes: [
               GoRoute(
                 path: 'category',

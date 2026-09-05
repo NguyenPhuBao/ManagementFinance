@@ -1048,8 +1048,15 @@ class SyncEngine {
       if (_isSyncBlocked(t.syncBlockedUntil)) continue;
       final validId = _toValidUuid(t.id);
       final validWalletId = _toValidUuid(t.walletId);
-      final validCategoryId = await _resolveCategoryId(t.categoryId);
-      if (t.categoryId != null && validCategoryId == null) {
+      // Khoản chuyển ví không có danh mục — payload bỏ `categoryId` cho loại
+      // này (xem `transactionForPush`) — nên KHÔNG hoãn nó vì danh mục. Bản
+      // app trước 2026-09-05 từng gán `'cat_transfer'` (id không có thật) cho
+      // mọi khoản chuyển; giữ nhánh hoãn ở đây là những hàng ấy nằm lại máy
+      // vĩnh viễn trong khi số dư hai ví vẫn lên server.
+      final isTransfer = t.type == 'transfer';
+      final validCategoryId =
+          isTransfer ? null : await _resolveCategoryId(t.categoryId);
+      if (!isTransfer && t.categoryId != null && validCategoryId == null) {
         debugPrint(
           '[SyncEngine] Deferring transaction ${t.id}: '
           'category ${t.categoryId} is not available on backend yet.',

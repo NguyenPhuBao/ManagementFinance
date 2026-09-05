@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/sync/sync_engine.dart';
 import '../../../../core/bill/bill_recurrence.dart';
+import '../../domain/bill_note.dart';
 import '../datasources/bill_local_datasource.dart';
 import 'bill_repository.dart';
 
@@ -82,7 +83,7 @@ class BillRepositoryImpl implements BillRepository {
           categoryId: Value(current.categoryId),
           amount: current.amount,
           type: 'chi',
-          note: Value('Thanh toán hóa đơn: ${current.name}'),
+          note: Value('$kGhiChuTraHoaDon${current.name}'),
           date: now,
           syncStatus: const Value('pending'),
           updatedAt: now,

@@ -375,7 +375,9 @@ Chuẩn hóa field names trước khi gửi:
 |-----------------|---|-------------------|----------------|-----------|
 | `t.id` | → | `id` | `idtran` | `Idtran` |
 | `t.walletId` | → | `walletId` | `idwallet` | `Idwallet` |
-| `t.categoryId` (resolved) | → | `categoryId` | `idcategory` | `Idcategory` |
+| `t.categoryId` (resolved; `null` với khoản chuyển) | → | `categoryId` | `idcategory` | `Idcategory` |
+| `t.type` (`chi`/`thu`/`transfer`) | → | `type` (`Transaction`/`Transfer`) + **dấu** của `amount` | `type` | `Type` |
+| `t.walletTransfer` (ví đích, chỉ khoản chuyển) | → | `idwallet_transfer` | `idwallet_transfer` | `Idwallet_transfer` |
 | `t.updatedAt` | → | `update_at` | `update_at` | `Update_at` |
 | `cat.id` | → | `id` | `idcategory` | `Idcategory` |
 | `cat.idaccount` | → | `idaccount` | `create_by` | `Create_by` |
@@ -510,6 +512,11 @@ src/Backend/
 
 **Giải pháp**: chỉ áp dụng guard khi đang SỬA (`draft.id != null`).
 
+### 11.11 Tab Chuyển khoản của màn thêm giao dịch chưa bao giờ đồng bộ được
+**Nguyên nhân** (phát hiện 2026-09-05, khi chuyển sang mô hình hai loại giao dịch): `AddTransactionPage` gán `categoryId = 'cat_transfer'` — một id **chưa từng được seed** — cho mọi khoản chuyển. `_resolveCategoryId` trả `null`, `_collectPendingOps` hoãn "chờ danh mục về" **vĩnh viễn**, không báo lỗi, trong khi số dư hai ví vẫn lên server. Cùng lúc `TransactionEntity` không có trường `walletTransfer` nên ví đích không xuống SQLite, và đường xoá không hoàn tiền ví đích. Dữ liệu thật xác nhận: 13 hàng `Transfer` trên server đều đến từ Goal, tab này chưa từng tạo được hàng nào.
+
+**Giải pháp**: khoản chuyển có `categoryId = null` + `walletTransfer` = ví đích (cùng quy ước với Goal); `_collectPendingOps` **không** hoãn khoản chuyển vì danh mục (giải kẹt cả hàng cũ mang `'cat_transfer'`); `TransactionRepositoryImpl` đọc ví đích từ entity ở cả thêm lẫn xoá. Test canh: `test/features/transaction/presentation/add_transaction_page_test.dart`, `test/transaction_repository_test.dart`, và ca "transfer mang categoryId không phân giải được vẫn được đẩy" trong `sync_payload_contract_test.dart`.
+
 ---
 
 ## 12. Quy tắc phát triển (bắt buộc tuân theo)
@@ -585,6 +592,10 @@ src/Backend/
 - **Bộ gợi ý danh mục so khớp được tiếng Việt không dấu** (2026-09-04) — NFC + vòng dự phòng bỏ dấu, khớp còn dấu luôn thắng
 - **Vi phạm ràng buộc UNIQUE (23505) là lỗi vĩnh viễn** (2026-09-04) *(G16)* — trước đây rơi vào `transient` và đẩy lại ở mọi chu kỳ
 - **Ô ghi chú có debounce 300ms và đọc từ khoá bằng một truy vấn gộp** (2026-09-04) — trước đây mỗi ký tự gõ sinh 1+N truy vấn SQLite
+- **Hai loại giao dịch (Giao dịch / Chuyển khoản) + tab Vay/nợ ở bảng chọn danh mục** (2026-09-05) — chiều tiền suy từ `classify` của danh mục thay vì từ segment; danh mục vay/nợ có hàng "Chiều tiền" trên form, gợi sẵn theo tên (`suggestDebtDirection`). SQLite **vẫn** lưu `type = chi/thu/transfer` nên hợp đồng đồng bộ, DAO và thống kê không đổi; vay/nợ tính vào tổng thu/chi như thu/chi thường (quyết định có chủ ý, tách ra để dành cho Analytics). Danh sách classify gom về `core/category/category_classify.dart` thay cho 5 bản chép tay. Kèm sửa 11.11
+- **Sổ giao dịch chặn vuốt xoá khoản của mục tiêu và hoá đơn** (2026-09-06) — nguyên tắc: chỉ xoá được ở sổ khi giao dịch là nguồn sự thật duy nhất của hệ quả nó gây ra; khoản nạp/rút mục tiêu còn `current_amount`, khoản trả hoá đơn còn cờ Payed + kỳ kế tiếp, xoá rời chỉ hoàn ví (đã thấy tiến độ MuaXe đứng nguyên sau khi xoá hai khoản nạp). Nhận diện ở `features/transaction/domain/transaction_owner.dart` (`goalId` cục bộ, hoặc tiền tố ghi chú vì hàng kéo từ server không có `goalId`; kể cả dạng cũ "Tích lũy nhận từ …"); hàng tách thành `TransactionListRow` với `confirmDismiss` + SnackBar chỉ đường. Hoá đơn chưa có luồng hoàn tác thanh toán — muốn cho xoá thì phải làm luồng ấy trước
+- **Sổ giao dịch hiện danh mục + tên ví** (2026-09-06) — theo bố cục Stitch màn Home: tiêu đề = ghi chú (không có thì tên danh mục), dòng phụ "Danh mục • Ví" hoặc "Ví nguồn → Ví đích" với khoản chuyển, icon/màu của danh mục. Trước đó dòng phụ in thẳng UUID ví và không có danh mục ở đâu. Nội dung dòng tính ở hàm thuần `buildTransactionRowContent()` (`transaction_row_content.dart`), tên tra qua `TransactionLookup` dựng từ `walletDao.watchAll` + `categoryDao.watchAll`. **Phát hiện kèm:** seed backend lưu tên icon ngữ nghĩa (`food`, `bill`, `lend`…) còn ba mapper client chỉ hiểu tên Material → danh mục mặc định kéo về toàn rơi về icon mặc định; nay gom về **một** mapper `core/category/category_visuals.dart` hiểu cả hai bộ tên, `budget_visuals` và `category_page` uỷ quyền về đó (`category_add_page` còn bản riêng cho bộ chọn icon, chưa gộp)
+- **Sổ giao dịch: chi tiết + sửa + lọc/tìm** (2026-09-06). Bấm dòng → `TransactionDetailSheet` (đọc đủ; Sửa/Xoá chỉ với giao dịch thường, khoản mục tiêu/hoá đơn chỉ đọc theo cùng quy tắc `transactionOwnerOf`). Sửa dùng lại `AddTransactionPage` với `initial: EditTransactionArgs` qua `extra` của route `/add` (cùng `id`, `UpdateTransactionEvent`); `TransactionRepositoryImpl.updateTransaction` = hoàn trọn hệ quả cũ rồi áp trọn hệ quả mới lên ví (một đường `_applyBalances(sign)` dùng chung cho thêm/xoá/sửa), ghi đè hàng và đặt lại `pending` + `updatedAt` (LWW server). Lọc: `TransactionFilter` + `applyTransactionFilter` thuần Dart trên danh sách tháng của bloc (loại, ví — khoản chuyển khớp cả nguồn lẫn đích —, danh mục, tìm ghi chú bỏ dấu); `TransactionFilterBar` chỉ phát filter, trang giữ trạng thái; thẻ tổng tính trên tập đã lọc. Trang chủ "Giao dịch gần đây" dùng chung `buildTransactionRowContent`
 - **Test: 335/335 pass** (~15 giây), 39 file — cả 39 file đều đã được git theo dõi
 
 ### 🔄 Việc còn dang dở
