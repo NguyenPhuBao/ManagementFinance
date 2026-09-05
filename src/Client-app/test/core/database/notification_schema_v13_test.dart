@@ -1,4 +1,11 @@
-/// Migration v12 → v13: thêm bảng thông báo cục bộ `app_notifications`.
+/// Migration từ v12 lên schema hiện tại.
+///
+/// - **v12 → v13**: thêm bảng thông báo cục bộ `app_notifications`.
+/// - **v13 → v14**: thêm cột cục bộ `transactions.goal_id`.
+///
+/// Fixture dựng một CSDL v12 có dữ liệu thật rồi để `onUpgrade` chạy hết chuỗi,
+/// nên mỗi migration mới đụng bảng nào thì bảng ấy **phải** có mặt trong
+/// `_createV12Schema` — thiếu là nổ "no such table" ngay ở setUp.
 ///
 /// Vì sao cần canh: bảng mới được tạo bằng `createTable` chứ không phải
 /// `TableMigration`, nên bản thân nó không có dữ liệu để mất. Thứ dễ hỏng là
@@ -49,6 +56,35 @@ void _createV12Schema(dynamic database) {
       sync_blocked_until INTEGER, updated_at INTEGER NOT NULL
     )
   ''');
+  // Ví và giao dịch: migration v13 → v14 thêm cột `goal_id` vào `transactions`,
+  // nên fixture phải có bảng ấy. Thiếu nó thì migration nổ với "no such table"
+  // — lỗi của fixture chứ không phải của mã.
+  database.execute('''
+    CREATE TABLE wallets (
+      id TEXT NOT NULL PRIMARY KEY, idaccount INTEGER NOT NULL,
+      name TEXT NOT NULL, balance REAL NOT NULL DEFAULT 0,
+      type TEXT NOT NULL DEFAULT 'cash', deleted_at INTEGER,
+      is_deleted INTEGER NOT NULL DEFAULT 0,
+      sync_status TEXT NOT NULL DEFAULT 'pending',
+      sync_retry_count INTEGER NOT NULL DEFAULT 0, sync_error TEXT,
+      sync_blocked_until INTEGER, updated_at INTEGER NOT NULL
+    )
+  ''');
+  database.execute('''
+    CREATE TABLE transactions (
+      id TEXT NOT NULL PRIMARY KEY, wallet_id TEXT NOT NULL,
+      idaccount INTEGER NOT NULL, category_id TEXT, amount REAL NOT NULL,
+      type TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'Confirmed',
+      provider TEXT NOT NULL DEFAULT 'Manual',
+      note TEXT NOT NULL DEFAULT '', date INTEGER NOT NULL,
+      images TEXT NOT NULL DEFAULT '[]', wallet_transfer TEXT,
+      bank_tran_id TEXT, deleted_at INTEGER,
+      is_deleted INTEGER NOT NULL DEFAULT 0,
+      sync_status TEXT NOT NULL DEFAULT 'pending',
+      sync_retry_count INTEGER NOT NULL DEFAULT 0, sync_error TEXT,
+      sync_blocked_until INTEGER, updated_at INTEGER NOT NULL
+    )
+  ''');
 }
 
 void main() {
@@ -81,6 +117,19 @@ void main() {
             ) VALUES (
               'hd-cu', 7, 'vi-1', 'cat-hoa-don', 'Tien dien', 300000,
               $startSec, $dueSec, '3', 1, 'Month', 'synced', $updatedSec
+            )
+          ''');
+          database.execute('''
+            INSERT INTO wallets (id, idaccount, name, balance, updated_at)
+            VALUES ('vi-1', 7, 'Vi tien mat', 2000000, $updatedSec)
+          ''');
+          database.execute('''
+            INSERT INTO transactions (
+              id, wallet_id, idaccount, category_id, amount, type,
+              note, date, sync_status, updated_at
+            ) VALUES (
+              'gd-cu', 'vi-1', 7, 'cat-an-uong', 150000, 'chi',
+              'Tích lũy mục tiêu: Mua xe', $startSec, 'synced', $updatedSec
             )
           ''');
           database.execute('PRAGMA user_version = 12');
@@ -149,6 +198,29 @@ void main() {
           reason: 'Migration này không sửa dữ liệu. Đánh dấu lại là cần đẩy sẽ '
               'dựng cả CSDL vào hàng đợi và gửi lên backend một lượt.');
       expect((await db.billDao.getPending(7)).length, 0);
+      expect((await db.transactionDao.getPending(7)).length, 0);
+    });
+
+    group('v13 lên v14 — cột goal_id cục bộ', () {
+      test('giao dịch cũ sống sót và nhận goal_id rỗng', () async {
+        final gd = (await db.transactionDao.getAll(7)).single;
+        expect(gd.id, 'gd-cu');
+        expect(gd.amount, 150000);
+        expect(gd.note, 'Tích lũy mục tiêu: Mua xe');
+        expect(gd.goalId, isNull,
+            reason: 'Migration cố ý KHÔNG suy ngược ID mục tiêu từ ghi chú. '
+                'Suy ngược chính là phép so bằng tên mà cột này sinh ra để '
+                'thay thế, nên nó sẽ đóng băng luôn lỗi tiền tố vào dữ liệu.');
+      });
+
+      test('lịch sử tích luỹ cũ vẫn tra được qua nhánh ghi chú', () async {
+        final ls = await db.transactionDao
+            .watchByGoal(7, 'id-nao-do-khong-khop', 'Mua xe')
+            .first;
+        expect(ls.length, 1,
+            reason: 'Hàng cũ không mang goalId. Bỏ nhánh ghi chú là lịch sử '
+                'tích luỹ của người dùng biến mất sau khi cập nhật app.');
+      });
     });
   });
 }

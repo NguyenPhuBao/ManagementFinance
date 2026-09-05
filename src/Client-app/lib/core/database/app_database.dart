@@ -56,7 +56,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration {
@@ -283,6 +283,21 @@ class AppDatabase extends _$AppDatabase {
           await m.create(Index('idx_appnotif_feed',
               'CREATE INDEX IF NOT EXISTS idx_appnotif_feed '
               'ON app_notifications (idaccount, created_at)'));
+        }
+
+        if (from < 14) {
+          // Nối giao dịch tích luỹ với mục tiêu bằng ID thay vì bằng tên. Cột
+          // CỤC BỘ, không đi qua đồng bộ — xem chú thích ở `Transactions`.
+          //
+          // Không có bước chép dữ liệu cũ sang: hàng cũ vẫn tra được bằng ghi
+          // chú, và suy ngược từ ghi chú ra ID chính là phép so bằng tên mà cột
+          // này sinh ra để thay thế — làm vậy sẽ chép luôn cả lỗi tiền tố
+          // ("Mua" nuốt lịch sử của "Mua xe") vào dữ liệu, chỗ không sửa được
+          // nữa.
+          await m.addColumn(transactions, transactions.goalId);
+          await m.create(Index('idx_transaction_goal',
+              'CREATE INDEX IF NOT EXISTS idx_transaction_goal '
+              'ON transactions (idaccount, goal_id)'));
         }
       },
       beforeOpen: (details) async {

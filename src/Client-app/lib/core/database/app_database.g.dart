@@ -962,6 +962,11 @@ class $TransactionsTable extends Transactions
       type: DriftSqlType.string,
       requiredDuringInsert: false,
       defaultValue: const Constant('[]'));
+  static const VerificationMeta _goalIdMeta = const VerificationMeta('goalId');
+  @override
+  late final GeneratedColumn<String> goalId = GeneratedColumn<String>(
+      'goal_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _walletTransferMeta =
       const VerificationMeta('walletTransfer');
   @override
@@ -1037,6 +1042,7 @@ class $TransactionsTable extends Transactions
         note,
         date,
         images,
+        goalId,
         walletTransfer,
         bankTranId,
         deletedAt,
@@ -1113,6 +1119,10 @@ class $TransactionsTable extends Transactions
     if (data.containsKey('images')) {
       context.handle(_imagesMeta,
           images.isAcceptableOrUnknown(data['images']!, _imagesMeta));
+    }
+    if (data.containsKey('goal_id')) {
+      context.handle(_goalIdMeta,
+          goalId.isAcceptableOrUnknown(data['goal_id']!, _goalIdMeta));
     }
     if (data.containsKey('wallet_transfer')) {
       context.handle(
@@ -1193,6 +1203,8 @@ class $TransactionsTable extends Transactions
           .read(DriftSqlType.dateTime, data['${effectivePrefix}date'])!,
       images: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}images'])!,
+      goalId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}goal_id']),
       walletTransfer: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}wallet_transfer']),
       bankTranId: attachedDatabase.typeMapping
@@ -1254,6 +1266,26 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   final DateTime date;
   final String images;
 
+  /// goalId: mục tiêu tiết kiệm mà giao dịch này thuộc về. NULL với mọi giao
+  /// dịch thường.
+  ///
+  /// ⚠️ **Cột CỤC BỘ — cố ý KHÔNG nằm trong hợp đồng đồng bộ.** Bảng `goal`
+  /// phía backend không có chiều ngược lại, và thêm trường vào payload đẩy đòi
+  /// backend sửa trước (quy tắc 4 trong `CLAUDE.md`).
+  /// `sync_payload_contract_test.dart` khoá đúng bộ khoá của payload giao dịch
+  /// nên nó bắt được ngay nếu cột này lọt vào.
+  ///
+  /// Vì là cục bộ, hàng **kéo về từ server luôn để trống** cột này — cũng như
+  /// mọi hàng do bản app cũ tạo. Nơi đọc (`TransactionDao.watchByGoal`) phải
+  /// giữ nhánh tra theo ghi chú cho những hàng đó, nếu không lịch sử tích luỹ
+  /// đã có sẽ biến mất sau lần đồng bộ đầu tiên.
+  ///
+  /// Vì sao cần: trước đây lịch sử tích luỹ tra bằng
+  /// `note LIKE '%Tích lũy mục tiêu: <tên>%'`. Tên mục tiêu không duy nhất, và
+  /// tệ hơn, một tên là **tiền tố** của tên khác ("Mua" với "Mua xe") thì nuốt
+  /// luôn lịch sử của mục tiêu kia.
+  final String? goalId;
+
   /// walletTransfer: Wallet_Transfer — ví đích khi chuyển khoản nội bộ
   final String? walletTransfer;
 
@@ -1288,6 +1320,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       required this.note,
       required this.date,
       required this.images,
+      this.goalId,
       this.walletTransfer,
       this.bankTranId,
       this.deletedAt,
@@ -1313,6 +1346,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     map['note'] = Variable<String>(note);
     map['date'] = Variable<DateTime>(date);
     map['images'] = Variable<String>(images);
+    if (!nullToAbsent || goalId != null) {
+      map['goal_id'] = Variable<String>(goalId);
+    }
     if (!nullToAbsent || walletTransfer != null) {
       map['wallet_transfer'] = Variable<String>(walletTransfer);
     }
@@ -1350,6 +1386,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       note: Value(note),
       date: Value(date),
       images: Value(images),
+      goalId:
+          goalId == null && nullToAbsent ? const Value.absent() : Value(goalId),
       walletTransfer: walletTransfer == null && nullToAbsent
           ? const Value.absent()
           : Value(walletTransfer),
@@ -1387,6 +1425,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       note: serializer.fromJson<String>(json['note']),
       date: serializer.fromJson<DateTime>(json['date']),
       images: serializer.fromJson<String>(json['images']),
+      goalId: serializer.fromJson<String?>(json['goalId']),
       walletTransfer: serializer.fromJson<String?>(json['walletTransfer']),
       bankTranId: serializer.fromJson<String?>(json['bankTranId']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
@@ -1414,6 +1453,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       'note': serializer.toJson<String>(note),
       'date': serializer.toJson<DateTime>(date),
       'images': serializer.toJson<String>(images),
+      'goalId': serializer.toJson<String?>(goalId),
       'walletTransfer': serializer.toJson<String?>(walletTransfer),
       'bankTranId': serializer.toJson<String?>(bankTranId),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
@@ -1438,6 +1478,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           String? note,
           DateTime? date,
           String? images,
+          Value<String?> goalId = const Value.absent(),
           Value<String?> walletTransfer = const Value.absent(),
           Value<String?> bankTranId = const Value.absent(),
           Value<DateTime?> deletedAt = const Value.absent(),
@@ -1459,6 +1500,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
         note: note ?? this.note,
         date: date ?? this.date,
         images: images ?? this.images,
+        goalId: goalId.present ? goalId.value : this.goalId,
         walletTransfer:
             walletTransfer.present ? walletTransfer.value : this.walletTransfer,
         bankTranId: bankTranId.present ? bankTranId.value : this.bankTranId,
@@ -1486,6 +1528,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       note: data.note.present ? data.note.value : this.note,
       date: data.date.present ? data.date.value : this.date,
       images: data.images.present ? data.images.value : this.images,
+      goalId: data.goalId.present ? data.goalId.value : this.goalId,
       walletTransfer: data.walletTransfer.present
           ? data.walletTransfer.value
           : this.walletTransfer,
@@ -1520,6 +1563,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           ..write('note: $note, ')
           ..write('date: $date, ')
           ..write('images: $images, ')
+          ..write('goalId: $goalId, ')
           ..write('walletTransfer: $walletTransfer, ')
           ..write('bankTranId: $bankTranId, ')
           ..write('deletedAt: $deletedAt, ')
@@ -1534,27 +1578,29 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   }
 
   @override
-  int get hashCode => Object.hash(
-      id,
-      walletId,
-      idaccount,
-      categoryId,
-      amount,
-      type,
-      status,
-      provider,
-      note,
-      date,
-      images,
-      walletTransfer,
-      bankTranId,
-      deletedAt,
-      syncStatus,
-      syncRetryCount,
-      syncError,
-      syncBlockedUntil,
-      updatedAt,
-      isDeleted);
+  int get hashCode => Object.hashAll([
+        id,
+        walletId,
+        idaccount,
+        categoryId,
+        amount,
+        type,
+        status,
+        provider,
+        note,
+        date,
+        images,
+        goalId,
+        walletTransfer,
+        bankTranId,
+        deletedAt,
+        syncStatus,
+        syncRetryCount,
+        syncError,
+        syncBlockedUntil,
+        updatedAt,
+        isDeleted
+      ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1570,6 +1616,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           other.note == this.note &&
           other.date == this.date &&
           other.images == this.images &&
+          other.goalId == this.goalId &&
           other.walletTransfer == this.walletTransfer &&
           other.bankTranId == this.bankTranId &&
           other.deletedAt == this.deletedAt &&
@@ -1593,6 +1640,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
   final Value<String> note;
   final Value<DateTime> date;
   final Value<String> images;
+  final Value<String?> goalId;
   final Value<String?> walletTransfer;
   final Value<String?> bankTranId;
   final Value<DateTime?> deletedAt;
@@ -1615,6 +1663,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.note = const Value.absent(),
     this.date = const Value.absent(),
     this.images = const Value.absent(),
+    this.goalId = const Value.absent(),
     this.walletTransfer = const Value.absent(),
     this.bankTranId = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -1638,6 +1687,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.note = const Value.absent(),
     required DateTime date,
     this.images = const Value.absent(),
+    this.goalId = const Value.absent(),
     this.walletTransfer = const Value.absent(),
     this.bankTranId = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -1667,6 +1717,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Expression<String>? note,
     Expression<DateTime>? date,
     Expression<String>? images,
+    Expression<String>? goalId,
     Expression<String>? walletTransfer,
     Expression<String>? bankTranId,
     Expression<DateTime>? deletedAt,
@@ -1690,6 +1741,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       if (note != null) 'note': note,
       if (date != null) 'date': date,
       if (images != null) 'images': images,
+      if (goalId != null) 'goal_id': goalId,
       if (walletTransfer != null) 'wallet_transfer': walletTransfer,
       if (bankTranId != null) 'bank_tran_id': bankTranId,
       if (deletedAt != null) 'deleted_at': deletedAt,
@@ -1715,6 +1767,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       Value<String>? note,
       Value<DateTime>? date,
       Value<String>? images,
+      Value<String?>? goalId,
       Value<String?>? walletTransfer,
       Value<String?>? bankTranId,
       Value<DateTime?>? deletedAt,
@@ -1737,6 +1790,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       note: note ?? this.note,
       date: date ?? this.date,
       images: images ?? this.images,
+      goalId: goalId ?? this.goalId,
       walletTransfer: walletTransfer ?? this.walletTransfer,
       bankTranId: bankTranId ?? this.bankTranId,
       deletedAt: deletedAt ?? this.deletedAt,
@@ -1786,6 +1840,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     if (images.present) {
       map['images'] = Variable<String>(images.value);
     }
+    if (goalId.present) {
+      map['goal_id'] = Variable<String>(goalId.value);
+    }
     if (walletTransfer.present) {
       map['wallet_transfer'] = Variable<String>(walletTransfer.value);
     }
@@ -1833,6 +1890,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
           ..write('note: $note, ')
           ..write('date: $date, ')
           ..write('images: $images, ')
+          ..write('goalId: $goalId, ')
           ..write('walletTransfer: $walletTransfer, ')
           ..write('bankTranId: $bankTranId, ')
           ..write('deletedAt: $deletedAt, ')
@@ -7976,6 +8034,7 @@ typedef $$TransactionsTableCreateCompanionBuilder = TransactionsCompanion
   Value<String> note,
   required DateTime date,
   Value<String> images,
+  Value<String?> goalId,
   Value<String?> walletTransfer,
   Value<String?> bankTranId,
   Value<DateTime?> deletedAt,
@@ -8000,6 +8059,7 @@ typedef $$TransactionsTableUpdateCompanionBuilder = TransactionsCompanion
   Value<String> note,
   Value<DateTime> date,
   Value<String> images,
+  Value<String?> goalId,
   Value<String?> walletTransfer,
   Value<String?> bankTranId,
   Value<DateTime?> deletedAt,
@@ -8069,6 +8129,9 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<String> get images => $composableBuilder(
       column: $table.images, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get goalId => $composableBuilder(
+      column: $table.goalId, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get walletTransfer => $composableBuilder(
       column: $table.walletTransfer,
@@ -8160,6 +8223,9 @@ class $$TransactionsTableOrderingComposer
   ColumnOrderings<String> get images => $composableBuilder(
       column: $table.images, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get goalId => $composableBuilder(
+      column: $table.goalId, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get walletTransfer => $composableBuilder(
       column: $table.walletTransfer,
       builder: (column) => ColumnOrderings(column));
@@ -8250,6 +8316,9 @@ class $$TransactionsTableAnnotationComposer
   GeneratedColumn<String> get images =>
       $composableBuilder(column: $table.images, builder: (column) => column);
 
+  GeneratedColumn<String> get goalId =>
+      $composableBuilder(column: $table.goalId, builder: (column) => column);
+
   GeneratedColumn<String> get walletTransfer => $composableBuilder(
       column: $table.walletTransfer, builder: (column) => column);
 
@@ -8332,6 +8401,7 @@ class $$TransactionsTableTableManager extends RootTableManager<
             Value<String> note = const Value.absent(),
             Value<DateTime> date = const Value.absent(),
             Value<String> images = const Value.absent(),
+            Value<String?> goalId = const Value.absent(),
             Value<String?> walletTransfer = const Value.absent(),
             Value<String?> bankTranId = const Value.absent(),
             Value<DateTime?> deletedAt = const Value.absent(),
@@ -8355,6 +8425,7 @@ class $$TransactionsTableTableManager extends RootTableManager<
             note: note,
             date: date,
             images: images,
+            goalId: goalId,
             walletTransfer: walletTransfer,
             bankTranId: bankTranId,
             deletedAt: deletedAt,
@@ -8378,6 +8449,7 @@ class $$TransactionsTableTableManager extends RootTableManager<
             Value<String> note = const Value.absent(),
             required DateTime date,
             Value<String> images = const Value.absent(),
+            Value<String?> goalId = const Value.absent(),
             Value<String?> walletTransfer = const Value.absent(),
             Value<String?> bankTranId = const Value.absent(),
             Value<DateTime?> deletedAt = const Value.absent(),
@@ -8401,6 +8473,7 @@ class $$TransactionsTableTableManager extends RootTableManager<
             note: note,
             date: date,
             images: images,
+            goalId: goalId,
             walletTransfer: walletTransfer,
             bankTranId: bankTranId,
             deletedAt: deletedAt,

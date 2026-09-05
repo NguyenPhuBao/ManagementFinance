@@ -50,6 +50,26 @@ class Transactions extends Table {
   TextColumn   get images  => text().withDefault(const Constant('[]'))();
   // JSON array string của đường dẫn ảnh đính kèm
 
+  /// goalId: mục tiêu tiết kiệm mà giao dịch này thuộc về. NULL với mọi giao
+  /// dịch thường.
+  ///
+  /// ⚠️ **Cột CỤC BỘ — cố ý KHÔNG nằm trong hợp đồng đồng bộ.** Bảng `goal`
+  /// phía backend không có chiều ngược lại, và thêm trường vào payload đẩy đòi
+  /// backend sửa trước (quy tắc 4 trong `CLAUDE.md`).
+  /// `sync_payload_contract_test.dart` khoá đúng bộ khoá của payload giao dịch
+  /// nên nó bắt được ngay nếu cột này lọt vào.
+  ///
+  /// Vì là cục bộ, hàng **kéo về từ server luôn để trống** cột này — cũng như
+  /// mọi hàng do bản app cũ tạo. Nơi đọc (`TransactionDao.watchByGoal`) phải
+  /// giữ nhánh tra theo ghi chú cho những hàng đó, nếu không lịch sử tích luỹ
+  /// đã có sẽ biến mất sau lần đồng bộ đầu tiên.
+  ///
+  /// Vì sao cần: trước đây lịch sử tích luỹ tra bằng
+  /// `note LIKE '%Tích lũy mục tiêu: <tên>%'`. Tên mục tiêu không duy nhất, và
+  /// tệ hơn, một tên là **tiền tố** của tên khác ("Mua" với "Mua xe") thì nuốt
+  /// luôn lịch sử của mục tiêu kia.
+  TextColumn get goalId => text().nullable()();
+
   // ── Transfer fields (DB v2) ───────────────────────────────────────────────
   /// walletTransfer: Wallet_Transfer — ví đích khi chuyển khoản nội bộ
   TextColumn get walletTransfer => text().nullable()();
