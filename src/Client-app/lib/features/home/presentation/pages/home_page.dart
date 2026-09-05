@@ -7,6 +7,9 @@ import '../../../../core/di/injection_container.dart';
 import '../../../../core/sync/sync_engine.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../widgets/home_action_buttons.dart';
+import '../widgets/home_budget_card.dart';
+import '../../../budget/data/models/budget_entity.dart';
+import '../../../budget/data/repositories/budget_repository.dart';
 import '../../../../shared/widgets/notification_bell.dart';
 import '../../../notification/presentation/widgets/notification_panel.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
@@ -156,7 +159,7 @@ class HomePage extends StatelessWidget {
               ),
 
               const SizedBox(height: 32),
-              _buildBudgetProgress(),
+              _buildBudgetSection(context, currentUserId),
               const SizedBox(height: 32),
               _buildInsightCard(),
               const SizedBox(height: 100), // padding for bottom nav
@@ -675,73 +678,19 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildBudgetProgress() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Ngân sách',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: AppColors.primary,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFEF3C7),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child:
-                            const Icon(Icons.restaurant, color: Color(0xFFD97706), size: 20),
-                      ),
-                      const SizedBox(width: 12),
-                      const Text('Ăn uống',
-                          style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.primary)),
-                    ],
-                  ),
-                  const Text('Chưa thiết lập',
-                      style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.textSecondary)),
-                ],
-              ),
-              const SizedBox(height: 16),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(6),
-                child: const LinearProgressIndicator(
-                  value: 0.0,
-                  backgroundColor: AppColors.background,
-                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-                  minHeight: 12,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text('Vào trang Ngân sách để lập kế hoạch chi tiêu',
-                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-            ],
-          ),
-        ),
-      ],
+  /// Thẻ ngân sách — dữ liệu thật qua `watchBudgets` (phát lại cả khi có giao
+  /// dịch mới), thay placeholder cứng tồn tại tới 2026-09-06. Bấm thẻ nhảy
+  /// sang tab Ngân sách bằng `go`: trang chủ và tab ấy cùng nằm trong shell.
+  Widget _buildBudgetSection(BuildContext context, int? idaccount) {
+    final stream = idaccount != null
+        ? sl<BudgetRepository>().watchBudgets(idaccount)
+        : Stream<List<BudgetView>>.value(const []);
+    return StreamBuilder<List<BudgetView>>(
+      stream: stream,
+      builder: (_, snapshot) => HomeBudgetCard(
+        budgets: snapshot.data ?? const [],
+        onTap: () => context.go('/budget'),
+      ),
     );
   }
 
