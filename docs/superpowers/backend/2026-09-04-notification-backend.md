@@ -68,7 +68,7 @@ Ba hàm phát thông báo trong `modules/notification/notification.service.js`
 
 **Đây đã là bước 1 trong chín bước** vì `emitAuditActivity` đang rò tên người
 dùng và hành động ra **mọi** socket ẩn danh ngay lúc này. Chi tiết đầy đủ:
-mục 7 của [2026-09-04-ocr-classify-review.md](./2026-09-04-ocr-classify-review.md).
+mục 7 của [2026-09-04-ocr-classify-review.md](./CAN-LAM/2026-09-04-ocr-classify-review.md).
 
 Liên quan gì tới thông báo: **client chưa nối socket, và cố ý chưa nối.**
 Không có `socket_io_client` trong `pubspec.yaml`. Ba loại thông báo mà backend

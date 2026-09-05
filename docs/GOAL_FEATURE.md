@@ -386,7 +386,7 @@ vẫn nuốt lịch sử của `"Mua xe"`.
 Điều kiện `goal_id IS NULL` ở nhánh dự phòng là thứ chặn không cho một hàng đã có
 chủ bị mục tiêu khác nhận vơ. **Đừng bỏ nó.**
 
-Yêu cầu backend: `docs/superpowers/backend/2026-09-05-backend-transaction-goal-id.md`.
+Yêu cầu backend: `docs/superpowers/backend/CAN-LAM/2026-09-05-backend-transaction-goal-id.md`.
 
 ### 4.5 `GoalDetailPage` **bỏ qua** cubit và không nghe dòng dữ liệu
 
@@ -462,7 +462,7 @@ giá trị từ Admin-web nếu có — nhưng đừng tưởng có tính năng 
 ## 8. Việc phía backend
 
 Đúng một tài liệu:
-`docs/superpowers/backend/2026-09-05-backend-transaction-goal-id.md` — xin cột
+`docs/superpowers/backend/CAN-LAM/2026-09-05-backend-transaction-goal-id.md` — xin cột
 nullable `transaction.Idgoal`. **Không chặn gì hôm nay**, nhưng chặn hướng bỏ bộ
 đếm `current_amount` để suy tiến độ từ chính giao dịch.
 

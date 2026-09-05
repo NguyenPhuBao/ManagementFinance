@@ -157,7 +157,7 @@ Giữ id dạng slug thì giao dịch kẹt y như cũ, chỉ đổi nguyên nh�
 
 Sau thay đổi 3 thì ánh xạ **đang chạy đúng** (13/13 khớp tên), nên việc này không còn gấp. Nhưng nó vẫn là thứ duy nhất khiến không phải làm lại lần nữa: chỉ cần ai đó sửa một nhãn cho đẹp hơn là ánh xạ đứt, **không test hay lỗi nào bắt được**; và reset CSDL vẫn phá mọi thứ.
 
-Đề xuất chi tiết: `docs/superpowers/backend/CATEGORY_STABLE_IDS.md`.
+Đề xuất chi tiết: `docs/superpowers/backend/CAN-LAM/CATEGORY_STABLE_IDS.md`.
 
 ---
 

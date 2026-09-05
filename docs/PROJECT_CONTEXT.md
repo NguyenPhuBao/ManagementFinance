@@ -172,7 +172,7 @@ Phép kiểm tra **chỉ chạy khi tên thật sự đổi**. Bản client trư
 >
 > Dòng "chặt hơn" đó có một đường kích hoạt **tự lặp**, xem **G16** trong `docs/CLIENT_APP_KNOWN_GAPS.md`. Từ 2026-09-04 client xếp vi phạm UNIQUE (`23505`) vào `permanent` nên bản ghi hỏng bị chặn theo thời gian và có ghi `syncError` — **không còn hoàn toàn âm thầm, không còn kéo chậm hàng đợi**. Nhưng bản ghi vẫn sinh ra ở mỗi lần mở app và vẫn không lên được server.
 >
-> Việc cần backend làm, kèm SQL và cách kiểm chứng: `docs/superpowers/backend/CATEGORY_NAME_UNIQUENESS.md`.
+> Việc cần backend làm, kèm SQL và cách kiểm chứng: `docs/superpowers/backend/CAN-LAM/CATEGORY_NAME_UNIQUENESS.md`.
 
 ---
 
@@ -592,17 +592,21 @@ src/Backend/
 Xem đầy đủ tại **`docs/CLIENT_APP_KNOWN_GAPS.md`**. Phiên 2026-09-03 đã đóng 9/10 mục còn mở; nay còn **G10** và **G15**:
 
 - **G15 — Bản ghi vừa hết hạn vừa hỏng đồng bộ thì không sửa được.** ⏸️ **Hoãn có chủ ý** (2026-09-04): tab "Đã hết hạn" khoá sửa/xoá, nên một ngân sách vừa quá hạn vừa bị backend từ chối vĩnh viễn sẽ nằm lại mãi — hàng đợi đồng bộ vẫn thông vì `SyncEngine` chặn nó theo thời gian, nhưng người dùng không chữa được. Giữ nguyên vì tab đó là nền cho phần thống kê/báo cáo sẽ làm sau. Bán kính rủi ro hẹp: nguồn gây lỗi chính (form tạo ra `end ≤ start`) đã bịt cùng ngày.
-- **G10 — `CategoryGroupMemberships` không bao giờ được đồng bộ.** ⛔ **Không sửa được ở client**: backend không có bảng membership và cũng không có `SyncEntityType` tương ứng (`UPSERT_MAP`/`ENTITY_PRIORITY` chỉ có 6 entity), nên thêm entity mới ở client sẽ chỉ nhận `Unknown entity` và kẹt vĩnh viễn. Việc gán danh mục **mặc định** vào nhóm vì thế chỉ tồn tại trên một máy. Đề xuất chi tiết: `docs/superpowers/backend/CATEGORY_GROUP_MEMBERSHIP_SYNC.md`.
+- **G10 — `CategoryGroupMemberships` không bao giờ được đồng bộ.** ⛔ **Không sửa được ở client**: backend không có bảng membership và cũng không có `SyncEntityType` tương ứng (`UPSERT_MAP`/`ENTITY_PRIORITY` chỉ có 6 entity), nên thêm entity mới ở client sẽ chỉ nhận `Unknown entity` và kẹt vĩnh viễn. Việc gán danh mục **mặc định** vào nhóm vì thế chỉ tồn tại trên một máy. Đề xuất chi tiết: `docs/superpowers/backend/CAN-LAM/CATEGORY_GROUP_MEMBERSHIP_SYNC.md`.
 
 > ⚠️ **`.gitignore` dòng 77 vẫn có `test/`.** Luật này đã cắn **lần thứ ba** (phiên 2026-09-04). Mọi file test tạo **mới** vẫn sẽ bị bỏ qua trong im lặng — nhớ `git add -f`.
 >
 > Hệ quả ít ai biết: **công cụ Grep tôn trọng `.gitignore` nên không nhìn thấy thư mục `test/`**. Muốn dò xem còn ai gọi một hàm sắp xoá thì phải dùng `grep` qua shell, nếu không sẽ thấy thiếu file và xoá nhầm.
 
-Vấn đề thuộc backend (trong `docs/superpowers/backend/`), kiểm lại ngày
-**2026-09-04** tại `fcf7659`, sau khi gộp `origin/main` `dfda862` (mang mô-đun
-OCR F013 và bộ phân loại hai cấp F012). **Thứ tự dưới đây là thứ tự thi công đề
-nghị**, không phải thứ tự chữ cái — lý do xếp thứ tự ở
-`docs/superpowers/backend/README.md` mục 2, và đó mới là bản đầy đủ:
+Vấn đề thuộc backend. **Chín tài liệu còn việc nay nằm ở
+`docs/superpowers/backend/CAN-LAM/`**, tách khỏi phần đã xong để đội backend
+không phải lọc giữa 20 tệp. README trong thư mục ấy là **cửa vào duy nhất**: nó
+chia việc theo *client đã có tính năng này chưa*, vì đó mới là thứ quyết định
+mức khẩn — và ranh giới ấy không suy ra được từ bảng dưới đây.
+
+Bảng dưới kiểm lại ngày **2026-09-04** tại `fcf7659`, sau khi gộp `origin/main`
+`dfda862` (mang mô-đun OCR F013 và bộ phân loại hai cấp F012). **Thứ tự là thứ
+tự thi công đề nghị**, không phải thứ tự chữ cái:
 
 | # | Tài liệu | Trạng thái |
 |---|---|---|

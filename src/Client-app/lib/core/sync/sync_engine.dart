@@ -1537,7 +1537,7 @@ class SyncEngine {
   /// chưa có từ khoá nào** ở máy này.
   ///
   /// Vì sao không ghi đè: cột `Keyword` phía backend là **một chuỗi dùng chung
-  /// cho mọi tài khoản** (xem `docs/superpowers/backend/CATEGORY_KEYWORD_SYNC.md`),
+  /// cho mọi tài khoản** (xem `docs/superpowers/backend/CAN-LAM/CATEGORY_KEYWORD_SYNC.md`),
   /// còn `CategoryKeywords` phía client là dữ liệu **riêng từng người dùng**,
   /// sửa được trong màn quản lý danh mục. Ghi đè ở mỗi chu kỳ pull sẽ khiến
   /// thao tác xoá từ khoá của người dùng không bao giờ dính — nó bị hồi sinh ở

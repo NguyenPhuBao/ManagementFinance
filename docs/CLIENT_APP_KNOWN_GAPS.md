@@ -35,7 +35,7 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 | **G9** | `conflict` = LWW đã phân xử, server thắng → `markSynced` để thoát vòng đẩy lại vô hạn. | `sync_failure_handling_test.dart` |
 | **G11** | `schemaVersion` 7 → 8 + migration `UPDATE categories SET is_local_only = 0, sync_status = 'pending' WHERE is_local_only = 1`. | `category_dao_test.dart` |
 | **G12** | `AuthInterceptor` phát `sessionExpiredStream` khi xoá token (chỉ khi thật sự có token để mất, tránh dội sự kiện); AuthBloc nghe kênh này song song với `SyncEngine`. | `test/core/api/auth_interceptor_test.dart`, `session_validation_test.dart` |
-| **G10** | ⛔ Không sửa được ở client — xem `docs/superpowers/backend/CATEGORY_GROUP_MEMBERSHIP_SYNC.md`. | — |
+| **G10** | ⛔ Không sửa được ở client — xem `docs/superpowers/backend/CAN-LAM/CATEGORY_GROUP_MEMBERSHIP_SYNC.md`. | — |
 
 
 ## 1. Việc đã cố ý hoãn
@@ -332,7 +332,7 @@ loại hàng không bao giờ mang `goal_id`: hàng do bản app trước schema
 **Vì sao chưa dứt điểm được:** loại thứ nhất tắt dần theo thời gian, loại thứ hai
 thì **không** — cứ đăng nhập máy mới là lại đầy hàng thiếu ID. Chỉ khi backend
 có cột `Idgoal` thì nhánh này mới bỏ được. Xem
-`docs/superpowers/backend/2026-09-05-backend-transaction-goal-id.md`.
+`docs/superpowers/backend/CAN-LAM/2026-09-05-backend-transaction-goal-id.md`.
 
 ⚠️ Điều kiện `goal_id IS NULL` ở nhánh dự phòng là thứ chặn không cho một hàng
 đã có chủ bị mục tiêu khác nhận vơ. **Đừng bỏ nó khi dọn dẹp.**
@@ -399,7 +399,7 @@ báo — càng dễ hiểu nhầm là nó đang chạy.
 ⚠️ **Đừng đẩy một phần.** Nếu chỉ `amount` và `wallet_id` đồng bộ mà bỏ
 `last_run`, mỗi máy giữ một mốc riêng và **cả hai cùng chuyển tiền** khi tới kỳ.
 Hiện trạng (máy thứ hai không trích gì) vẫn tốt hơn hẳn. Chi tiết và các bước
-phải làm ở `docs/superpowers/backend/2026-09-05-backend-goal-auto-deposit.md`.
+phải làm ở `docs/superpowers/backend/CAN-LAM/2026-09-05-backend-goal-auto-deposit.md`.
 
 ---
 

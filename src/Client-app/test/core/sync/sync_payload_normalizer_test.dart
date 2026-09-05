@@ -50,7 +50,7 @@ void main() {
     // constraint `ck_category_classify` đang chạy trên PostgreSQL, hiện là
     // 'Vay/no'. Bám vào hằng số nên test vẫn đúng sau khi backend migrate sang
     // 'Vay/nợ' và hằng số được đổi theo.
-    // Xem docs/superpowers/backend/CATEGORY_CLASSIFY_ALIGNMENT.md
+    // Xem docs/superpowers/backend/CAN-LAM/CATEGORY_CLASSIFY_ALIGNMENT.md
     for (final localValue in ['vay_no', 'vay_nợ', 'Vay/no', 'Vay/nợ']) {
       final payload =
           SyncPayloadNormalizer.categoryForPush({'classify': localValue});
