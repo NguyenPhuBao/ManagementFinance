@@ -9,6 +9,9 @@ import 'package:uuid/uuid.dart';
 import '../../../../core/category/category_classify.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
+import '../../../budget/data/models/budget_entity.dart';
+import '../../../budget/data/repositories/budget_repository.dart';
+import '../../../budget/domain/budget_impact.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../../../features/category/data/models/category_suggestion.dart';
 import '../../../../features/category/data/repositories/category_management_repository.dart';
@@ -22,6 +25,12 @@ import '../bloc/transaction_state.dart';
 /// Dữ liệu mở trang ở chế độ SỬA: giao dịch gốc và danh mục của nó (đã tra
 /// sẵn ở nơi gọi, vì entity chỉ giữ `categoryId`). Đi qua `extra` của route
 /// `/add`.
+/// Xem [AddTransactionPage.budgetLookup].
+typedef BudgetLookup = Future<BudgetView?> Function(
+  int idaccount,
+  String categoryId,
+);
+
 class EditTransactionArgs {
   const EditTransactionArgs({required this.transaction, this.category});
 
@@ -40,6 +49,11 @@ class AddTransactionPage extends StatefulWidget {
   /// `UpdateTransactionEvent` (cùng `id`), không tạo hàng mới.
   final EditTransactionArgs? initial;
 
+  /// Tra ngân sách đang chạy của một danh mục, để hỏi/báo trước khi ghi khoản
+  /// chi. `null` = lấy từ `sl<BudgetRepository>()`; test tiêm thẳng để không
+  /// phải dựng DI.
+  final BudgetLookup? budgetLookup;
+
   const AddTransactionPage({
     super.key,
     this.idaccount = 1,
@@ -48,6 +62,7 @@ class AddTransactionPage extends StatefulWidget {
     this.suggestionEngine = const CategorySuggestionEngine(),
     this.transactionBloc,
     this.initial,
+    this.budgetLookup,
   });
 
   @override
@@ -75,6 +90,10 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   DateTime _selectedDate = DateTime.now();
   final TextEditingController _noteController = TextEditingController();
   bool _isLoadingWallets = true;
+
+  /// Tác động lên ngân sách của khoản vừa gửi đi, để listener chọn lời nhắn
+  /// sau khi lưu xong. Đặt ngay trước khi gửi event, xoá ngay khi đã dùng.
+  BudgetImpact? _pendingImpact;
 
   CategoryManagementRepository get _categoryRepository =>
       widget.categoryRepository ?? sl<CategoryManagementRepository>();
@@ -459,7 +478,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     }
   }
 
-  void _saveTransaction(BuildContext context) {
+  Future<void> _saveTransaction(BuildContext context) async {
     final amount = double.tryParse(_amountString.replaceAll('.', '')) ?? 0;
     if (amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -517,6 +536,17 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     );
 
     final bloc = context.read<TransactionBloc>();
+
+    // Ngân sách của danh mục: "Chặn" thì hỏi trước khi ghi khoản làm vượt,
+    // "Cảnh báo" thì ghi luôn rồi báo. Đây là nơi DUY NHẤT đọc `OverSpending`.
+    final impact = await _budgetImpactFor(tx, editing);
+    if (!context.mounted) return;
+    if (impact != null && impact.requiresConfirmation) {
+      final ok = await _confirmOverBudget(context, impact);
+      if (ok != true || !context.mounted) return;
+    }
+    _pendingImpact = impact;
+
     if (editing != null) {
       bloc.add(UpdateTransactionEvent(before: editing, after: tx));
       return;
@@ -527,17 +557,84 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     ));
   }
 
+  Future<BudgetImpact?> _budgetImpactFor(
+    TransactionEntity tx,
+    TransactionEntity? editing,
+  ) async {
+    final categoryId = tx.categoryId;
+    if (tx.type != 'chi' || categoryId == null) return null;
+
+    BudgetView? view;
+    try {
+      view = await _lookupBudget(tx.idaccount, categoryId);
+    } catch (_) {
+      // Tra ngân sách hỏng không được chặn việc ghi giao dịch.
+      return null;
+    }
+    if (view == null) return null;
+
+    final now = DateTime.now();
+    // Sửa: số cũ đã nằm trong "đã chi" nếu nó cùng danh mục và cùng kỳ —
+    // phải trừ ra, không thì báo vượt oan.
+    var previous = 0.0;
+    if (editing != null &&
+        editing.type == 'chi' &&
+        editing.categoryId == categoryId &&
+        budgetPeriodContains(view.budget, editing.date, now)) {
+      previous = editing.amount;
+    }
+    return budgetImpactOf(
+      view: view,
+      amount: tx.amount,
+      previousAmount: previous,
+      date: tx.date,
+      now: now,
+    );
+  }
+
+  Future<BudgetView?> _lookupBudget(int idaccount, String categoryId) {
+    final custom = widget.budgetLookup;
+    if (custom != null) return custom(idaccount, categoryId);
+    if (!sl.isRegistered<BudgetRepository>()) return Future.value(null);
+    return sl<BudgetRepository>().activeBudgetForCategory(idaccount, categoryId);
+  }
+
+  Future<bool?> _confirmOverBudget(BuildContext context, BudgetImpact impact) {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Vượt ngân sách'),
+        content: Text(budgetImpactDialogText(impact)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Huỷ'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Vẫn ghi'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final content = BlocConsumer<TransactionBloc, TransactionState>(
       listener: (context, state) {
         if (state is TransactionLoadedState) {
           if (state.actionSuccess == true) {
+            // Lời nhắn về ngân sách thay lời nhắn mặc định — chung chung,
+            // không con số (banner tạm thời tối giản theo ý người dùng).
+            final impactText = budgetImpactSnackText(_pendingImpact);
+            _pendingImpact = null;
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(_isEditing
-                    ? 'Đã lưu thay đổi'
-                    : 'Thêm giao dịch thành công!'),
+                content: Text(impactText ??
+                    (_isEditing
+                        ? 'Đã lưu thay đổi'
+                        : 'Thêm giao dịch thành công!')),
               ),
             );
             context.pop(true);
