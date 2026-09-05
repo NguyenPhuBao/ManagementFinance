@@ -14,6 +14,7 @@ import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../features/goal/data/datasources/goal_local_data_source.dart';
 import '../../features/goal/data/models/goal_entity.dart';
 import '../../features/goal/data/repositories/goal_repository.dart';
+import '../../features/goal/domain/goal_auto_deposit_runner.dart';
 import '../../features/goal/data/repositories/goal_repository_impl.dart';
 import '../../features/goal/presentation/bloc/goal_cubit.dart';
 import '../../features/budget/data/datasources/budget_local_data_source.dart';
@@ -245,6 +246,12 @@ Future<void> setupDependencies() async {
             days: NotificationScanner.cuaSoSuKien.inDays,
             now: now,
           ),
+      // Trích tiền tự động chạy trong chính vòng quét, không phải một bộ lập
+      // lịch nền riêng. Xem chú thích ở `GoalAutoDepositRunner`.
+      runAutoDeposits: (idaccount, now) => GoalAutoDepositRunner(
+        db: sl<AppDatabase>(),
+        repository: sl<GoalRepository>(),
+      ).chay(idaccount, now: now),
       // Mục tiêu và ví đọc thẳng từ DAO chứ không qua repository: scanner chỉ
       // cần đúng một phép đọc mỗi loại, và thu hẹp phụ thuộc thì vòng quét
       // không kéo theo cả chuỗi cubit/repository không liên quan.

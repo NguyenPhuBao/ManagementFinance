@@ -134,6 +134,18 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
       _targetAmountController.text =
           formatter.format(goal.targetAmount).trim();
 
+      // Gán SAU số tiền mục tiêu, và phải chặn cặp listener tính chéo lại.
+      // Dòng trên vừa kích hoạt `_onTargetAmountOrDateChanged`, thứ đã ghi một
+      // con số GỢI Ý vào ô này; đè lại bằng số thật mà không chặn thì
+      // `_onDepositAmountChanged` sẽ tính ngược ra một hạn định mới và xoá mất
+      // hạn thật của mục tiêu.
+      if (goal.autoDepositAmount != null) {
+        _isRecalculatingFromDate = true;
+        _depositAmountController.text =
+            formatter.format(goal.autoDepositAmount!).trim();
+        _isRecalculatingFromDate = false;
+      }
+
       setState(() {
         _goalDangSua = goal;
         _dangNapGoal = false;
@@ -270,6 +282,47 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
       return;
     }
 
+    // Hai ô này trước đây chỉ dùng để tính ngược ra hạn định rồi bị vứt —
+    // khối "Tự động trích tiền định kỳ" thu ba thông tin và lưu đúng một.
+    final rawTrich =
+        _depositAmountController.text.replaceAll(RegExp(r'[^\d]'), '');
+    final soTienTrich = double.tryParse(rawTrich) ?? 0.0;
+
+    if (_autoDeposit) {
+      if (soTienTrich <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Nhập số tiền trích mỗi kỳ, hoặc tắt công tắc '
+                '"Tự động trích tiền định kỳ".'),
+          ),
+        );
+        return;
+      }
+      if (_selectedSourceWallet == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Chọn ví nguồn để app biết trích tiền từ đâu.'),
+          ),
+        );
+        return;
+      }
+      // Ví nguồn trùng ví tích luỹ thì tiền không đi đâu cả trong khi tiến độ
+      // vẫn tăng. `depositToGoal` cũng chặn, nhưng ở đó nó ném ra giữa một kỳ
+      // trích chạy nền — chặn ngay tại form thì người dùng còn sửa được.
+      final viNhanId = _isEdit
+          ? _goalDangSua?.walletId
+          : _selectedSavingsWallet?.id;
+      if (viNhanId != null && _selectedSourceWallet!.id == viNhanId) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Ví nguồn phải khác ví tích lũy — chuyển tiền sang '
+                'chính nó không làm số dư đổi mà tiến độ vẫn tăng.'),
+          ),
+        );
+        return;
+      }
+    }
+
     final chuKy = _autoDeposit
         ? switch (_frequency) {
             DepositFrequency.daily => 'Day',
@@ -291,6 +344,9 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
             cycleTakeMoney: chuKy,
             icon: _icon,
             colour: _colour,
+            autoDepositAmount: _autoDeposit ? soTienTrich : null,
+            autoDepositWalletId:
+                _autoDeposit ? _selectedSourceWallet?.id : null,
           )
           .then((loi) {
         if (!mounted) return;
@@ -348,6 +404,8 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
           cycleTakeMoney: chuKy,
           icon: _icon,
           colour: _colour,
+          autoDepositAmount: _autoDeposit ? soTienTrich : null,
+          autoDepositWalletId: _autoDeposit ? _selectedSourceWallet?.id : null,
         ).then((_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -587,7 +645,16 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
             _selectedSavingsWallet = viId == null
                 ? null
                 : wallets.where((w) => w.id == viId).firstOrNull;
-          } else if (wallets.isNotEmpty) {
+          }
+          if (_isEdit && _goalDangSua?.autoDepositWalletId != null) {
+            // Ví nguồn đã lưu thắng ví mặc định. Không có nhánh này thì mở
+            // trang sửa rồi bấm Lưu là âm thầm đổi ví trích sang ví mặc định —
+            // tiền kỳ sau ra khỏi một ví khác hẳn.
+            _selectedSourceWallet ??= wallets
+                .where((w) => w.id == _goalDangSua!.autoDepositWalletId)
+                .firstOrNull;
+          }
+          if (wallets.isNotEmpty) {
             // KHÔNG chọn sẵn ví tích luỹ. Trước đây chỗ này tự lấy "ví
             // investment/bank đầu tiên, không có thì ví bất kỳ", nên mọi mục
             // tiêu đều ra đời đã gắn một ví người dùng chưa hề nhìn tới — và
@@ -844,7 +911,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                                   ),
                                   SizedBox(height: 4),
                                   Text(
-                                    'Tiết kiệm kỷ luật mỗi kỳ',
+                                    'App tự chuyển tiền vào mục tiêu mỗi kỳ',
                                     style: TextStyle(
                                       fontSize: 11,
                                       color: AppColors.textSecondary,
@@ -1014,7 +1081,9 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                       child: Text(
                         _isEdit
                             ? 'Lưu thay đổi'
-                            : 'Tạo Mục Tiêu & Bật Lập Lịch Tự Động',
+                            : _autoDeposit
+                                ? 'Tạo Mục Tiêu & Bật Trích Tự Động'
+                                : 'Tạo Mục Tiêu',
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,

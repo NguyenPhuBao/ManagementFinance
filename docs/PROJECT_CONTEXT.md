@@ -735,6 +735,14 @@ Tóm tắt:
 - **Biểu tượng và màu riêng từng mục tiêu** đã nối dữ liệu. Bảng tra cố ý không
   chứa `'flag'` (giá trị dự phòng), nên mục tiêu cũ mang `'flag'` được **chèn
   vào đầu** bảng chọn thay vì bị bỏ qua — mục 3.10.
+- **Trích tiền tự động ĐÃ CHẠY THẬT** (schema **v15**, ba cột cục bộ
+  `auto_deposit_*`). Trước đây khối "Tự động trích tiền định kỳ" thu ba thông
+  tin và lưu đúng một, còn nút bấm thì hứa "Bật Lập Lịch Tự Động" — một lời hứa
+  về chức năng không tồn tại. Bộ chạy nằm trong `NotificationScanner.scan()`,
+  **không phải WorkManager**: kỳ bỏ lỡ được trích bù khi app mở lại, đổi lại
+  việc chuyển tiền luôn ở tiến trình chính. Hai loại thông báo mới
+  (`goalAutoDeposited`, `goalAutoDepositFailed`). Sáu quyết định về việc *dừng
+  đúng lúc* ở mục 3.12 `GOAL_FEATURE.md` — đọc trước khi đụng vào.
 - **Nội dung giả trên trang danh sách đã dọn**: huy hiệu PREMIUM, câu "tăng
   12%", nút "Xem báo cáo", "Xem tất cả", dấu ba chấm trên thẻ — mục 3.11.
 

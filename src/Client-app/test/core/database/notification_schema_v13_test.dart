@@ -16,6 +16,7 @@
 /// bị đẩy vào hàng đợi đồng bộ.
 library;
 
+import 'package:flowmoney/features/goal/data/models/goal_entity.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -79,6 +80,25 @@ void _createV12Schema(dynamic database) {
       note TEXT NOT NULL DEFAULT '', date INTEGER NOT NULL,
       images TEXT NOT NULL DEFAULT '[]', wallet_transfer TEXT,
       bank_tran_id TEXT, deleted_at INTEGER,
+      is_deleted INTEGER NOT NULL DEFAULT 0,
+      sync_status TEXT NOT NULL DEFAULT 'pending',
+      sync_retry_count INTEGER NOT NULL DEFAULT 0, sync_error TEXT,
+      sync_blocked_until INTEGER, updated_at INTEGER NOT NULL
+    )
+  ''');
+  // v15 thêm ba cột trích tự động vào `goals`, nên fixture phải có bảng ấy —
+  // cùng lý do với `wallets` và `transactions` ở trên.
+  database.execute('''
+    CREATE TABLE goals (
+      id TEXT NOT NULL PRIMARY KEY, idaccount INTEGER NOT NULL,
+      name TEXT NOT NULL, target_amount REAL NOT NULL,
+      current_amount REAL NOT NULL DEFAULT 0, start_date INTEGER,
+      target_date INTEGER NOT NULL, wallet_id TEXT,
+      cycle_take_money TEXT, time_cycle_take_money INTEGER,
+      recurrence INTEGER NOT NULL DEFAULT 0, time_recurrence TEXT,
+      icon TEXT NOT NULL DEFAULT 'flag', colour TEXT NOT NULL DEFAULT '#4CAF50',
+      note TEXT NOT NULL DEFAULT '',
+      is_completed INTEGER NOT NULL DEFAULT 0, deleted_at INTEGER,
       is_deleted INTEGER NOT NULL DEFAULT 0,
       sync_status TEXT NOT NULL DEFAULT 'pending',
       sync_retry_count INTEGER NOT NULL DEFAULT 0, sync_error TEXT,
@@ -220,6 +240,51 @@ void main() {
         expect(ls.length, 1,
             reason: 'Hàng cũ không mang goalId. Bỏ nhánh ghi chú là lịch sử '
                 'tích luỹ của người dùng biến mất sau khi cập nhật app.');
+      });
+    });
+
+    group('v14 lên v15 — ba cột trích tự động', () {
+      setUp(() async {
+        await db.customStatement(
+          // `sync_status` phải là 'synced' như các hàng fixture khác: mặc định
+          // của cột là 'pending', và để nguyên thì test "không bản ghi nào bị
+          // đẩy vào hàng đợi" đỏ vì chính dữ liệu dựng sẵn chứ không phải vì
+          // migration.
+          "INSERT INTO goals (id, idaccount, name, target_amount, "
+          "current_amount, target_date, cycle_take_money, sync_status, "
+          "updated_at) "
+          "VALUES ('mt-cu', 7, 'Mua xe', 20000000, 5000000, $dueSec, "
+          "'Month', 'synced', $updatedSec)",
+        );
+      });
+
+      test('mục tiêu cũ sống sót, ba cột mới để trống', () async {
+        final mt = (await db.goalDao.getAll(7)).single;
+        expect(mt.id, 'mt-cu');
+        expect(mt.currentAmount, 5000000);
+        expect(mt.autoDepositAmount, isNull);
+        expect(mt.autoDepositWalletId, isNull);
+        expect(mt.autoDepositLastRun, isNull);
+      });
+
+      test('mục tiêu cũ CÓ chu kỳ vẫn KHÔNG bị bật trích tự động', () async {
+        final mt = GoalEntity.fromDrift((await db.goalDao.getAll(7)).single);
+
+        expect(mt.cycleTakeMoney, 'Month',
+            reason: 'Chu kỳ cũ phải còn nguyên — hộp dự báo đọc nó.');
+        expect(mt.autoDepositEnabled, isFalse,
+            reason: 'Trang tạo của mọi bản trước đều BẬT SẴN công tắc và luôn '
+                'lưu chu kỳ, nên gần như mọi mục tiêu cũ đều mang một chu kỳ. '
+                'Suy ra "đã đồng ý cho trích tự động" từ đó là bắt đầu chuyển '
+                'tiền của người dùng dựa trên một lựa chọn họ chưa từng đưa '
+                'ra — và họ chỉ biết khi thấy số dư ví hụt đi.');
+      });
+
+      test('không mục tiêu nào bị đẩy vào hàng đợi đồng bộ', () async {
+        expect((await db.goalDao.getPending(7)).length, 0,
+            reason: 'Ba cột này là CỤC BỘ. Đánh dấu cần đẩy cho một thay đổi '
+                'không có mặt trong payload là đẩy rỗng, và nó xảy ra với mọi '
+                'mục tiêu của mọi người dùng ngay sau khi cập nhật app.');
       });
     });
   });

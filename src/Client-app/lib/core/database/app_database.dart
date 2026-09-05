@@ -56,7 +56,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration {
@@ -298,6 +298,20 @@ class AppDatabase extends _$AppDatabase {
           await m.create(Index('idx_transaction_goal',
               'CREATE INDEX IF NOT EXISTS idx_transaction_goal '
               'ON transactions (idaccount, goal_id)'));
+        }
+
+        if (from < 15) {
+          // Cấu hình trích tiền tự động. Ba cột CỤC BỘ, không đi qua đồng bộ —
+          // xem chú thích ở `Goals`.
+          //
+          // Không suy `autoDepositLastRun` từ `cycleTakeMoney` đã có sẵn: mọi
+          // mục tiêu tạo trước bản này đều mang một chu kỳ (trang tạo bật sẵn
+          // công tắc và luôn lưu chu kỳ), nhưng chưa ai trong số đó ĐỒNG Ý cho
+          // app tự chuyển tiền. Đặt mốc chạy cho chúng là trích tiền của người
+          // dùng dựa trên một lựa chọn họ chưa từng đưa ra.
+          await m.addColumn(goals, goals.autoDepositAmount);
+          await m.addColumn(goals, goals.autoDepositWalletId);
+          await m.addColumn(goals, goals.autoDepositLastRun);
         }
       },
       beforeOpen: (details) async {

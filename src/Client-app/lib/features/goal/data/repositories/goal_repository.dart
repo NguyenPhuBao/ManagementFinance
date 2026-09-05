@@ -16,6 +16,11 @@ abstract class GoalRepository {
     String? icon,
     String? colour,
     String? note,
+    /// Đi thành cặp với [autoDepositWalletId]; đủ cả hai là bật trích tự động
+    /// ngay từ lúc tạo, và mốc chạy được đặt bằng "bây giờ" nên kỳ đầu tiên rơi
+    /// vào một chu kỳ sau đó.
+    double? autoDepositAmount,
+    String? autoDepositWalletId,
   });
   Future<void> updateAmount({
     required String id,
@@ -46,6 +51,12 @@ abstract class GoalRepository {
   /// [cycleTakeMoney]. Hai cột này không có trạng thái "không có" — đưa chúng
   /// về mặc định khi nơi gọi chỉ muốn sửa tên sẽ làm mọi mục tiêu lặng lẽ trở
   /// lại lá cờ xanh.
+  ///
+  /// [autoDepositAmount] và [autoDepositWalletId] đi **thành cặp**: đủ cả hai
+  /// là bật trích tự động, thiếu một là tắt. `autoDepositLastRun` do đây đặt,
+  /// nơi gọi không truyền vào — nó là mốc "lúc bật", và chỉ được đặt khi công
+  /// tắc chuyển từ tắt sang bật. Sửa tên hay đổi số tiền **không** đặt lại mốc:
+  /// làm vậy thì người dùng sửa mục tiêu hàng tháng sẽ không bao giờ tới kỳ.
   Future<void> updateGoal({
     required String id,
     required String name,
@@ -54,6 +65,8 @@ abstract class GoalRepository {
     String? cycleTakeMoney,
     String? icon,
     String? colour,
+    double? autoDepositAmount,
+    String? autoDepositWalletId,
   });
   /// Chuyển [depositAmount] từ ví [walletId] sang **ví nhận của mục tiêu** và
   /// tăng tiến độ tương ứng.

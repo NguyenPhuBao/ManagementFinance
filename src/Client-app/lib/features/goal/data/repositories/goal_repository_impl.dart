@@ -44,8 +44,15 @@ class GoalRepositoryImpl implements GoalRepository {
     String? icon,
     String? colour,
     String? note,
+    double? autoDepositAmount,
+    String? autoDepositWalletId,
   }) async {
     final now = DateTime.now();
+    // Cùng luật với `updateGoal`: đủ CẢ HAI mảnh mới là bật.
+    final batTrich = autoDepositAmount != null &&
+        autoDepositAmount > 0 &&
+        autoDepositWalletId != null &&
+        autoDepositWalletId.isNotEmpty;
     final goal = GoalEntity(
       id: const Uuid().v4(),
       idaccount: idaccount,
@@ -61,6 +68,12 @@ class GoalRepositoryImpl implements GoalRepository {
       targetDate: targetDate,
       walletId: walletId,
       cycleTakeMoney: cycleTakeMoney,
+      autoDepositAmount: batTrich ? autoDepositAmount : null,
+      autoDepositWalletId: batTrich ? autoDepositWalletId : null,
+      // Mốc chạy là LÚC TẠO, nên kỳ đầu tiên rơi vào một chu kỳ sau đó. Không
+      // trích ngay lúc bấm "Tạo": người dùng vừa mô tả một kế hoạch, chưa đồng
+      // ý cho tiền rời ví ngay giây này.
+      autoDepositLastRun: batTrich ? now : null,
       icon: icon ?? 'flag',
       colour: colour ?? '#4CAF50',
       note: note ?? '',
@@ -93,6 +106,8 @@ class GoalRepositoryImpl implements GoalRepository {
     String? cycleTakeMoney,
     String? icon,
     String? colour,
+    double? autoDepositAmount,
+    String? autoDepositWalletId,
   }) async {
     // Kiểm ở tầng này chứ không chỉ ở form. Trang sửa đã chặn cả hai ca, nhưng
     // phép kiểm nằm một mình trên giao diện thì đường gọi nào khác cũng đi vòng
@@ -117,6 +132,27 @@ class GoalRepositoryImpl implements GoalRepository {
 
     if (db == null) return;
 
+    // Trích tự động cần ĐỦ cả hai mảnh; thiếu một là tắt. Đoán bù mảnh thiếu
+    // (một ví nguồn mặc định, một số tiền suy từ chu kỳ) chính là kiểu tự tiện
+    // đã bị loại ở mục 3.1 — và ở đây nó tự tiện bằng tiền thật.
+    final batTrich = autoDepositAmount != null &&
+        autoDepositAmount > 0 &&
+        autoDepositWalletId != null &&
+        autoDepositWalletId.isNotEmpty;
+
+    // Mốc chạy chỉ đặt khi công tắc chuyển TỪ tắt SANG bật. Đặt lại ở mỗi lần
+    // lưu làm kỳ trích lùi ra xa mãi; giữ lại khi tắt thì bật lần sau sẽ tính
+    // bù cả quãng công tắc đang tắt, tức trích tiền cho thời gian người dùng đã
+    // cố ý dừng.
+    final Value<DateTime?> mocChay;
+    if (!batTrich) {
+      mocChay = const Value(null);
+    } else if (goal.autoDepositLastRun == null) {
+      mocChay = Value(DateTime.now());
+    } else {
+      mocChay = const Value.absent();
+    }
+
     // Chỉ gán bốn cột mô tả. `currentAmount`, `walletId` và `startDate` vắng
     // mặt ở đây là CÓ CHỦ Ý — xem chú thích ở `GoalRepository.updateGoal`.
     //
@@ -136,6 +172,11 @@ class GoalRepositoryImpl implements GoalRepository {
         // mục tiêu lặng lẽ trở lại lá cờ xanh sau một lần sửa tên.
         icon: icon == null ? const Value.absent() : Value(icon),
         colour: colour == null ? const Value.absent() : Value(colour),
+        autoDepositAmount:
+            batTrich ? Value(autoDepositAmount) : const Value(null),
+        autoDepositWalletId:
+            batTrich ? Value(autoDepositWalletId) : const Value(null),
+        autoDepositLastRun: mocChay,
         isCompleted: Value(goal.currentAmount >= targetAmount),
         syncStatus: const Value('pending'),
         updatedAt: Value(DateTime.now()),

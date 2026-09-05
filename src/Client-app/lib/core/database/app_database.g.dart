@@ -5726,6 +5726,24 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
   late final GeneratedColumn<DateTime> timeCycleTakeMoney =
       GeneratedColumn<DateTime>('time_cycle_take_money', aliasedName, true,
           type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _autoDepositAmountMeta =
+      const VerificationMeta('autoDepositAmount');
+  @override
+  late final GeneratedColumn<double> autoDepositAmount =
+      GeneratedColumn<double>('auto_deposit_amount', aliasedName, true,
+          type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _autoDepositWalletIdMeta =
+      const VerificationMeta('autoDepositWalletId');
+  @override
+  late final GeneratedColumn<String> autoDepositWalletId =
+      GeneratedColumn<String>('auto_deposit_wallet_id', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _autoDepositLastRunMeta =
+      const VerificationMeta('autoDepositLastRun');
+  @override
+  late final GeneratedColumn<DateTime> autoDepositLastRun =
+      GeneratedColumn<DateTime>('auto_deposit_last_run', aliasedName, true,
+          type: DriftSqlType.dateTime, requiredDuringInsert: false);
   static const VerificationMeta _recurrenceMeta =
       const VerificationMeta('recurrence');
   @override
@@ -5835,6 +5853,9 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
         walletId,
         cycleTakeMoney,
         timeCycleTakeMoney,
+        autoDepositAmount,
+        autoDepositWalletId,
+        autoDepositLastRun,
         recurrence,
         timeRecurrence,
         icon,
@@ -5917,6 +5938,24 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
           _timeCycleTakeMoneyMeta,
           timeCycleTakeMoney.isAcceptableOrUnknown(
               data['time_cycle_take_money']!, _timeCycleTakeMoneyMeta));
+    }
+    if (data.containsKey('auto_deposit_amount')) {
+      context.handle(
+          _autoDepositAmountMeta,
+          autoDepositAmount.isAcceptableOrUnknown(
+              data['auto_deposit_amount']!, _autoDepositAmountMeta));
+    }
+    if (data.containsKey('auto_deposit_wallet_id')) {
+      context.handle(
+          _autoDepositWalletIdMeta,
+          autoDepositWalletId.isAcceptableOrUnknown(
+              data['auto_deposit_wallet_id']!, _autoDepositWalletIdMeta));
+    }
+    if (data.containsKey('auto_deposit_last_run')) {
+      context.handle(
+          _autoDepositLastRunMeta,
+          autoDepositLastRun.isAcceptableOrUnknown(
+              data['auto_deposit_last_run']!, _autoDepositLastRunMeta));
     }
     if (data.containsKey('recurrence')) {
       context.handle(
@@ -6014,6 +6053,14 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
       timeCycleTakeMoney: attachedDatabase.typeMapping.read(
           DriftSqlType.dateTime,
           data['${effectivePrefix}time_cycle_take_money']),
+      autoDepositAmount: attachedDatabase.typeMapping.read(
+          DriftSqlType.double, data['${effectivePrefix}auto_deposit_amount']),
+      autoDepositWalletId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}auto_deposit_wallet_id']),
+      autoDepositLastRun: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime,
+          data['${effectivePrefix}auto_deposit_last_run']),
       recurrence: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}recurrence'])!,
       timeRecurrence: attachedDatabase.typeMapping
@@ -6065,7 +6112,30 @@ class Goal extends DataClass implements Insertable<Goal> {
   final String? cycleTakeMoney;
 
   /// timeCycleTakeMoney: thời điểm cụ thể trích tiền trong chu kỳ
+  ///
+  /// ⚠️ Cột này đồng bộ hai chiều nhưng **client chưa bao giờ ghi**. Bộ trích
+  /// tự động cố ý KHÔNG dùng nó làm mốc chạy: nó là cột dùng chung với
+  /// backend/Admin-web, và đổi ý nghĩa một cột dùng chung mà phía kia chưa
+  /// đồng ý là cách hỏng im lặng nhất. Mốc chạy nằm ở [autoDepositLastRun].
   final DateTime? timeCycleTakeMoney;
+
+  /// autoDepositAmount: số tiền trích mỗi kỳ. NULL = không bật trích tự động.
+  final double? autoDepositAmount;
+
+  /// autoDepositWalletId: ví NGUỒN của khoản trích. Ví nhận luôn là
+  /// [walletId] của chính mục tiêu.
+  ///
+  /// Không khai khoá ngoại — cùng lý do với `walletTransfer` (bẫy 4.1) — nên
+  /// nơi chạy phải tự kiểm ví còn tồn tại.
+  final String? autoDepositWalletId;
+
+  /// autoDepositLastRun: mốc của kỳ **gần nhất đã trích xong**.
+  ///
+  /// NULL nghĩa là chưa bật. Được đặt bằng "bây giờ" tại đúng lúc người dùng
+  /// bật công tắc, nên kỳ đầu tiên rơi vào một chu kỳ sau đó. Lấy ngày tạo mục
+  /// tiêu làm mốc thay thế là bật công tắc hôm nay rồi bị trích ngược lại sáu
+  /// kỳ cùng một lúc.
+  final DateTime? autoDepositLastRun;
 
   /// recurrence: tự động lặp lại mục tiêu sau khi hoàn thành
   final bool recurrence;
@@ -6096,6 +6166,9 @@ class Goal extends DataClass implements Insertable<Goal> {
       this.walletId,
       this.cycleTakeMoney,
       this.timeCycleTakeMoney,
+      this.autoDepositAmount,
+      this.autoDepositWalletId,
+      this.autoDepositLastRun,
       required this.recurrence,
       this.timeRecurrence,
       required this.icon,
@@ -6129,6 +6202,15 @@ class Goal extends DataClass implements Insertable<Goal> {
     }
     if (!nullToAbsent || timeCycleTakeMoney != null) {
       map['time_cycle_take_money'] = Variable<DateTime>(timeCycleTakeMoney);
+    }
+    if (!nullToAbsent || autoDepositAmount != null) {
+      map['auto_deposit_amount'] = Variable<double>(autoDepositAmount);
+    }
+    if (!nullToAbsent || autoDepositWalletId != null) {
+      map['auto_deposit_wallet_id'] = Variable<String>(autoDepositWalletId);
+    }
+    if (!nullToAbsent || autoDepositLastRun != null) {
+      map['auto_deposit_last_run'] = Variable<DateTime>(autoDepositLastRun);
     }
     map['recurrence'] = Variable<bool>(recurrence);
     if (!nullToAbsent || timeRecurrence != null) {
@@ -6174,6 +6256,15 @@ class Goal extends DataClass implements Insertable<Goal> {
       timeCycleTakeMoney: timeCycleTakeMoney == null && nullToAbsent
           ? const Value.absent()
           : Value(timeCycleTakeMoney),
+      autoDepositAmount: autoDepositAmount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(autoDepositAmount),
+      autoDepositWalletId: autoDepositWalletId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(autoDepositWalletId),
+      autoDepositLastRun: autoDepositLastRun == null && nullToAbsent
+          ? const Value.absent()
+          : Value(autoDepositLastRun),
       recurrence: Value(recurrence),
       timeRecurrence: timeRecurrence == null && nullToAbsent
           ? const Value.absent()
@@ -6213,6 +6304,12 @@ class Goal extends DataClass implements Insertable<Goal> {
       cycleTakeMoney: serializer.fromJson<String?>(json['cycleTakeMoney']),
       timeCycleTakeMoney:
           serializer.fromJson<DateTime?>(json['timeCycleTakeMoney']),
+      autoDepositAmount:
+          serializer.fromJson<double?>(json['autoDepositAmount']),
+      autoDepositWalletId:
+          serializer.fromJson<String?>(json['autoDepositWalletId']),
+      autoDepositLastRun:
+          serializer.fromJson<DateTime?>(json['autoDepositLastRun']),
       recurrence: serializer.fromJson<bool>(json['recurrence']),
       timeRecurrence: serializer.fromJson<String?>(json['timeRecurrence']),
       icon: serializer.fromJson<String>(json['icon']),
@@ -6243,6 +6340,9 @@ class Goal extends DataClass implements Insertable<Goal> {
       'walletId': serializer.toJson<String?>(walletId),
       'cycleTakeMoney': serializer.toJson<String?>(cycleTakeMoney),
       'timeCycleTakeMoney': serializer.toJson<DateTime?>(timeCycleTakeMoney),
+      'autoDepositAmount': serializer.toJson<double?>(autoDepositAmount),
+      'autoDepositWalletId': serializer.toJson<String?>(autoDepositWalletId),
+      'autoDepositLastRun': serializer.toJson<DateTime?>(autoDepositLastRun),
       'recurrence': serializer.toJson<bool>(recurrence),
       'timeRecurrence': serializer.toJson<String?>(timeRecurrence),
       'icon': serializer.toJson<String>(icon),
@@ -6270,6 +6370,9 @@ class Goal extends DataClass implements Insertable<Goal> {
           Value<String?> walletId = const Value.absent(),
           Value<String?> cycleTakeMoney = const Value.absent(),
           Value<DateTime?> timeCycleTakeMoney = const Value.absent(),
+          Value<double?> autoDepositAmount = const Value.absent(),
+          Value<String?> autoDepositWalletId = const Value.absent(),
+          Value<DateTime?> autoDepositLastRun = const Value.absent(),
           bool? recurrence,
           Value<String?> timeRecurrence = const Value.absent(),
           String? icon,
@@ -6297,6 +6400,15 @@ class Goal extends DataClass implements Insertable<Goal> {
         timeCycleTakeMoney: timeCycleTakeMoney.present
             ? timeCycleTakeMoney.value
             : this.timeCycleTakeMoney,
+        autoDepositAmount: autoDepositAmount.present
+            ? autoDepositAmount.value
+            : this.autoDepositAmount,
+        autoDepositWalletId: autoDepositWalletId.present
+            ? autoDepositWalletId.value
+            : this.autoDepositWalletId,
+        autoDepositLastRun: autoDepositLastRun.present
+            ? autoDepositLastRun.value
+            : this.autoDepositLastRun,
         recurrence: recurrence ?? this.recurrence,
         timeRecurrence:
             timeRecurrence.present ? timeRecurrence.value : this.timeRecurrence,
@@ -6335,6 +6447,15 @@ class Goal extends DataClass implements Insertable<Goal> {
       timeCycleTakeMoney: data.timeCycleTakeMoney.present
           ? data.timeCycleTakeMoney.value
           : this.timeCycleTakeMoney,
+      autoDepositAmount: data.autoDepositAmount.present
+          ? data.autoDepositAmount.value
+          : this.autoDepositAmount,
+      autoDepositWalletId: data.autoDepositWalletId.present
+          ? data.autoDepositWalletId.value
+          : this.autoDepositWalletId,
+      autoDepositLastRun: data.autoDepositLastRun.present
+          ? data.autoDepositLastRun.value
+          : this.autoDepositLastRun,
       recurrence:
           data.recurrence.present ? data.recurrence.value : this.recurrence,
       timeRecurrence: data.timeRecurrence.present
@@ -6373,6 +6494,9 @@ class Goal extends DataClass implements Insertable<Goal> {
           ..write('walletId: $walletId, ')
           ..write('cycleTakeMoney: $cycleTakeMoney, ')
           ..write('timeCycleTakeMoney: $timeCycleTakeMoney, ')
+          ..write('autoDepositAmount: $autoDepositAmount, ')
+          ..write('autoDepositWalletId: $autoDepositWalletId, ')
+          ..write('autoDepositLastRun: $autoDepositLastRun, ')
           ..write('recurrence: $recurrence, ')
           ..write('timeRecurrence: $timeRecurrence, ')
           ..write('icon: $icon, ')
@@ -6402,6 +6526,9 @@ class Goal extends DataClass implements Insertable<Goal> {
         walletId,
         cycleTakeMoney,
         timeCycleTakeMoney,
+        autoDepositAmount,
+        autoDepositWalletId,
+        autoDepositLastRun,
         recurrence,
         timeRecurrence,
         icon,
@@ -6430,6 +6557,9 @@ class Goal extends DataClass implements Insertable<Goal> {
           other.walletId == this.walletId &&
           other.cycleTakeMoney == this.cycleTakeMoney &&
           other.timeCycleTakeMoney == this.timeCycleTakeMoney &&
+          other.autoDepositAmount == this.autoDepositAmount &&
+          other.autoDepositWalletId == this.autoDepositWalletId &&
+          other.autoDepositLastRun == this.autoDepositLastRun &&
           other.recurrence == this.recurrence &&
           other.timeRecurrence == this.timeRecurrence &&
           other.icon == this.icon &&
@@ -6456,6 +6586,9 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
   final Value<String?> walletId;
   final Value<String?> cycleTakeMoney;
   final Value<DateTime?> timeCycleTakeMoney;
+  final Value<double?> autoDepositAmount;
+  final Value<String?> autoDepositWalletId;
+  final Value<DateTime?> autoDepositLastRun;
   final Value<bool> recurrence;
   final Value<String?> timeRecurrence;
   final Value<String> icon;
@@ -6481,6 +6614,9 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     this.walletId = const Value.absent(),
     this.cycleTakeMoney = const Value.absent(),
     this.timeCycleTakeMoney = const Value.absent(),
+    this.autoDepositAmount = const Value.absent(),
+    this.autoDepositWalletId = const Value.absent(),
+    this.autoDepositLastRun = const Value.absent(),
     this.recurrence = const Value.absent(),
     this.timeRecurrence = const Value.absent(),
     this.icon = const Value.absent(),
@@ -6507,6 +6643,9 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     this.walletId = const Value.absent(),
     this.cycleTakeMoney = const Value.absent(),
     this.timeCycleTakeMoney = const Value.absent(),
+    this.autoDepositAmount = const Value.absent(),
+    this.autoDepositWalletId = const Value.absent(),
+    this.autoDepositLastRun = const Value.absent(),
     this.recurrence = const Value.absent(),
     this.timeRecurrence = const Value.absent(),
     this.icon = const Value.absent(),
@@ -6538,6 +6677,9 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     Expression<String>? walletId,
     Expression<String>? cycleTakeMoney,
     Expression<DateTime>? timeCycleTakeMoney,
+    Expression<double>? autoDepositAmount,
+    Expression<String>? autoDepositWalletId,
+    Expression<DateTime>? autoDepositLastRun,
     Expression<bool>? recurrence,
     Expression<String>? timeRecurrence,
     Expression<String>? icon,
@@ -6565,6 +6707,11 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
       if (cycleTakeMoney != null) 'cycle_take_money': cycleTakeMoney,
       if (timeCycleTakeMoney != null)
         'time_cycle_take_money': timeCycleTakeMoney,
+      if (autoDepositAmount != null) 'auto_deposit_amount': autoDepositAmount,
+      if (autoDepositWalletId != null)
+        'auto_deposit_wallet_id': autoDepositWalletId,
+      if (autoDepositLastRun != null)
+        'auto_deposit_last_run': autoDepositLastRun,
       if (recurrence != null) 'recurrence': recurrence,
       if (timeRecurrence != null) 'time_recurrence': timeRecurrence,
       if (icon != null) 'icon': icon,
@@ -6593,6 +6740,9 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
       Value<String?>? walletId,
       Value<String?>? cycleTakeMoney,
       Value<DateTime?>? timeCycleTakeMoney,
+      Value<double?>? autoDepositAmount,
+      Value<String?>? autoDepositWalletId,
+      Value<DateTime?>? autoDepositLastRun,
       Value<bool>? recurrence,
       Value<String?>? timeRecurrence,
       Value<String>? icon,
@@ -6618,6 +6768,9 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
       walletId: walletId ?? this.walletId,
       cycleTakeMoney: cycleTakeMoney ?? this.cycleTakeMoney,
       timeCycleTakeMoney: timeCycleTakeMoney ?? this.timeCycleTakeMoney,
+      autoDepositAmount: autoDepositAmount ?? this.autoDepositAmount,
+      autoDepositWalletId: autoDepositWalletId ?? this.autoDepositWalletId,
+      autoDepositLastRun: autoDepositLastRun ?? this.autoDepositLastRun,
       recurrence: recurrence ?? this.recurrence,
       timeRecurrence: timeRecurrence ?? this.timeRecurrence,
       icon: icon ?? this.icon,
@@ -6668,6 +6821,17 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     if (timeCycleTakeMoney.present) {
       map['time_cycle_take_money'] =
           Variable<DateTime>(timeCycleTakeMoney.value);
+    }
+    if (autoDepositAmount.present) {
+      map['auto_deposit_amount'] = Variable<double>(autoDepositAmount.value);
+    }
+    if (autoDepositWalletId.present) {
+      map['auto_deposit_wallet_id'] =
+          Variable<String>(autoDepositWalletId.value);
+    }
+    if (autoDepositLastRun.present) {
+      map['auto_deposit_last_run'] =
+          Variable<DateTime>(autoDepositLastRun.value);
     }
     if (recurrence.present) {
       map['recurrence'] = Variable<bool>(recurrence.value);
@@ -6727,6 +6891,9 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
           ..write('walletId: $walletId, ')
           ..write('cycleTakeMoney: $cycleTakeMoney, ')
           ..write('timeCycleTakeMoney: $timeCycleTakeMoney, ')
+          ..write('autoDepositAmount: $autoDepositAmount, ')
+          ..write('autoDepositWalletId: $autoDepositWalletId, ')
+          ..write('autoDepositLastRun: $autoDepositLastRun, ')
           ..write('recurrence: $recurrence, ')
           ..write('timeRecurrence: $timeRecurrence, ')
           ..write('icon: $icon, ')
@@ -10193,6 +10360,9 @@ typedef $$GoalsTableCreateCompanionBuilder = GoalsCompanion Function({
   Value<String?> walletId,
   Value<String?> cycleTakeMoney,
   Value<DateTime?> timeCycleTakeMoney,
+  Value<double?> autoDepositAmount,
+  Value<String?> autoDepositWalletId,
+  Value<DateTime?> autoDepositLastRun,
   Value<bool> recurrence,
   Value<String?> timeRecurrence,
   Value<String> icon,
@@ -10219,6 +10389,9 @@ typedef $$GoalsTableUpdateCompanionBuilder = GoalsCompanion Function({
   Value<String?> walletId,
   Value<String?> cycleTakeMoney,
   Value<DateTime?> timeCycleTakeMoney,
+  Value<double?> autoDepositAmount,
+  Value<String?> autoDepositWalletId,
+  Value<DateTime?> autoDepositLastRun,
   Value<bool> recurrence,
   Value<String?> timeRecurrence,
   Value<String> icon,
@@ -10273,6 +10446,18 @@ class $$GoalsTableFilterComposer extends Composer<_$AppDatabase, $GoalsTable> {
 
   ColumnFilters<DateTime> get timeCycleTakeMoney => $composableBuilder(
       column: $table.timeCycleTakeMoney,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get autoDepositAmount => $composableBuilder(
+      column: $table.autoDepositAmount,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get autoDepositWalletId => $composableBuilder(
+      column: $table.autoDepositWalletId,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get autoDepositLastRun => $composableBuilder(
+      column: $table.autoDepositLastRun,
       builder: (column) => ColumnFilters(column));
 
   ColumnFilters<bool> get recurrence => $composableBuilder(
@@ -10361,6 +10546,18 @@ class $$GoalsTableOrderingComposer
       column: $table.timeCycleTakeMoney,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<double> get autoDepositAmount => $composableBuilder(
+      column: $table.autoDepositAmount,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get autoDepositWalletId => $composableBuilder(
+      column: $table.autoDepositWalletId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get autoDepositLastRun => $composableBuilder(
+      column: $table.autoDepositLastRun,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<bool> get recurrence => $composableBuilder(
       column: $table.recurrence, builder: (column) => ColumnOrderings(column));
 
@@ -10443,6 +10640,15 @@ class $$GoalsTableAnnotationComposer
   GeneratedColumn<DateTime> get timeCycleTakeMoney => $composableBuilder(
       column: $table.timeCycleTakeMoney, builder: (column) => column);
 
+  GeneratedColumn<double> get autoDepositAmount => $composableBuilder(
+      column: $table.autoDepositAmount, builder: (column) => column);
+
+  GeneratedColumn<String> get autoDepositWalletId => $composableBuilder(
+      column: $table.autoDepositWalletId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get autoDepositLastRun => $composableBuilder(
+      column: $table.autoDepositLastRun, builder: (column) => column);
+
   GeneratedColumn<bool> get recurrence => $composableBuilder(
       column: $table.recurrence, builder: (column) => column);
 
@@ -10516,6 +10722,9 @@ class $$GoalsTableTableManager extends RootTableManager<
             Value<String?> walletId = const Value.absent(),
             Value<String?> cycleTakeMoney = const Value.absent(),
             Value<DateTime?> timeCycleTakeMoney = const Value.absent(),
+            Value<double?> autoDepositAmount = const Value.absent(),
+            Value<String?> autoDepositWalletId = const Value.absent(),
+            Value<DateTime?> autoDepositLastRun = const Value.absent(),
             Value<bool> recurrence = const Value.absent(),
             Value<String?> timeRecurrence = const Value.absent(),
             Value<String> icon = const Value.absent(),
@@ -10542,6 +10751,9 @@ class $$GoalsTableTableManager extends RootTableManager<
             walletId: walletId,
             cycleTakeMoney: cycleTakeMoney,
             timeCycleTakeMoney: timeCycleTakeMoney,
+            autoDepositAmount: autoDepositAmount,
+            autoDepositWalletId: autoDepositWalletId,
+            autoDepositLastRun: autoDepositLastRun,
             recurrence: recurrence,
             timeRecurrence: timeRecurrence,
             icon: icon,
@@ -10568,6 +10780,9 @@ class $$GoalsTableTableManager extends RootTableManager<
             Value<String?> walletId = const Value.absent(),
             Value<String?> cycleTakeMoney = const Value.absent(),
             Value<DateTime?> timeCycleTakeMoney = const Value.absent(),
+            Value<double?> autoDepositAmount = const Value.absent(),
+            Value<String?> autoDepositWalletId = const Value.absent(),
+            Value<DateTime?> autoDepositLastRun = const Value.absent(),
             Value<bool> recurrence = const Value.absent(),
             Value<String?> timeRecurrence = const Value.absent(),
             Value<String> icon = const Value.absent(),
@@ -10594,6 +10809,9 @@ class $$GoalsTableTableManager extends RootTableManager<
             walletId: walletId,
             cycleTakeMoney: cycleTakeMoney,
             timeCycleTakeMoney: timeCycleTakeMoney,
+            autoDepositAmount: autoDepositAmount,
+            autoDepositWalletId: autoDepositWalletId,
+            autoDepositLastRun: autoDepositLastRun,
             recurrence: recurrence,
             timeRecurrence: timeRecurrence,
             icon: icon,

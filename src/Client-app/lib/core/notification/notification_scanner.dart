@@ -8,6 +8,7 @@ import '../database/daos/notification_dao.dart';
 import '../sync/sync_models.dart';
 import '../../features/budget/data/models/budget_entity.dart';
 import '../../features/goal/data/models/goal_entity.dart';
+import '../../features/goal/domain/goal_auto_deposit_runner.dart';
 import 'notification_rules.dart';
 import 'os/os_notifier.dart';
 import 'os/os_scheduled_id.dart';
@@ -59,6 +60,15 @@ class NotificationScanner {
   /// Tuỳ chọn: bỏ trống thì scanner chỉ đọc, không ghi gì ngoài bảng thông báo.
   final OverdueMarker? markOverdue;
 
+  /// Chạy các kỳ trích tiền tự động đã tới hạn, trả về những gì vừa xảy ra.
+  ///
+  /// Là closure chứ không phải cả `GoalAutoDepositRunner`, cùng lý do với
+  /// `loadBudgets`. Bỏ trống thì tính năng trích tự động **tắt hẳn** — dùng cho
+  /// test của bảy luật còn lại, để chúng không phải dựng CSDL chỉ vì bộ chạy
+  /// cần một.
+  final Future<List<GoalAutoDepositEvent>> Function(int idaccount, DateTime now)?
+      runAutoDeposits;
+
   /// Tuỳ chọn: bỏ trống thì chỉ có trung tâm thông báo trong app (web).
   final OsNotifier? osNotifier;
 
@@ -107,6 +117,7 @@ class NotificationScanner {
     required this.dao,
     required this.loadBudgets,
     required this.loadBills,
+    this.runAutoDeposits,
     this.loadGoals,
     this.loadWallets,
     required this.syncStatus,
@@ -180,6 +191,21 @@ class NotificationScanner {
       // không thì thông báo nói "quá hạn" trong khi bản ghi vẫn ghi 'Pending'.
       await markOverdue?.call(idaccount, at);
 
+      // Chạy TRƯỚC khi nạp mục tiêu, cùng lý do với `markOverdue`: một kỳ vừa
+      // trích xong đổi `currentAmount` và có thể bật cờ hoàn thành, nên đọc
+      // trước là bộ luật nhìn thấy trạng thái đã cũ — thông báo "chậm tiến độ"
+      // cho đúng mục tiêu vừa được nạp đầy.
+      //
+      // Nuốt lỗi: đây là chỗ DUY NHẤT trong app tự chuyển tiền, nhưng một sự cố
+      // ở đó không được phép giết cả trung tâm thông báo. `depositToGoal` là
+      // khối nguyên tử nên hỏng thì không để lại gì dở dang.
+      List<GoalAutoDepositEvent> autoDeposits = const [];
+      try {
+        autoDeposits = await runAutoDeposits?.call(idaccount, at) ?? const [];
+      } catch (_) {
+        // Bỏ qua có chủ ý — xem chú thích trên.
+      }
+
       final budgets = await loadBudgets(idaccount, at);
       final bills = await loadBills(idaccount, at);
       final goals = await loadGoals?.call(idaccount, at) ?? const [];
@@ -197,6 +223,7 @@ class NotificationScanner {
           bills: bills,
           goals: goals,
           wallets: wallets,
+          autoDeposits: autoDeposits,
           syncFailed: syncFailed ?? _dongBoHong,
           silenceBefore: at.subtract(cuaSoSuKien),
           defaultBillLeadDays: prefs.soNgayNhacHoaDon,

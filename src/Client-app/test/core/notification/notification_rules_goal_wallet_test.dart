@@ -14,6 +14,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/notification/notification_rules.dart';
 import 'package:flowmoney/features/goal/data/models/goal_entity.dart';
+import 'package:flowmoney/features/goal/domain/goal_auto_deposit.dart';
+import 'package:flowmoney/features/goal/domain/goal_auto_deposit_runner.dart';
 
 void main() {
   final now = DateTime(2026, 9, 15, 10);
@@ -70,14 +72,18 @@ void main() {
   List<NotificationCandidate> chay({
     List<GoalEntity> goals = const [],
     List<Wallet> wallets = const [],
+    List<GoalAutoDepositEvent> autoDeposits = const [],
     bool dongBoHong = false,
     DateTime? at,
+    DateTime? silenceBefore,
   }) {
     return buildNotificationCandidates(NotificationRuleInput(
       now: at ?? now,
       goals: goals,
       wallets: wallets,
+      autoDeposits: autoDeposits,
       syncFailed: dongBoHong,
+      silenceBefore: silenceBefore,
     ));
   }
 
@@ -206,6 +212,99 @@ void main() {
         daXoa: true,
       );
       expect(chay(goals: [mt]), isEmpty);
+    });
+  });
+
+  group('trích tiền tự động', () {
+    GoalAutoDepositEvent sk({
+      String goalId = 'mt1',
+      String ten = 'MacBook',
+      LoaiTrich loai = LoaiTrich.trichDu,
+      double soTien = 500000,
+      String? viNguon = 'Tiền mặt',
+      DateTime? ky,
+    }) =>
+        GoalAutoDepositEvent(
+          goalId: goalId,
+          goalName: ten,
+          ky: ky ?? DateTime(2026, 9, 15),
+          loai: loai,
+          soTien: soTien,
+          tenViNguon: viNguon,
+        );
+
+    test('trích xong thì báo, kèm số tiền và ví nguồn', () {
+      final ra = chay(autoDeposits: [sk()]).single;
+
+      expect(ra.kind, NotificationKind.goalAutoDeposited);
+      expect(ra.severity, NotificationSeverity.info);
+      expect(ra.body, contains('MacBook'));
+      expect(ra.body, contains('500'));
+      expect(ra.body, contains('Tiền mặt'),
+          reason: 'App vừa tự chuyển tiền của người dùng khi họ không có mặt. '
+              'Câu báo tối thiểu phải nói RÕ bao nhiêu và từ ví nào, nếu không '
+              'họ chỉ thấy số dư hụt đi mà không biết vì sao.');
+      expect(ra.deeplink, '/goals/mt1');
+    });
+
+    test('trích phần còn lại cũng báo như trích đủ', () {
+      final ra =
+          chay(autoDeposits: [sk(loai: LoaiTrich.trichPhanConLai, soTien: 120000)])
+              .single;
+      expect(ra.kind, NotificationKind.goalAutoDeposited);
+      expect(ra.body, contains('120'));
+    });
+
+    test('ví không đủ thì báo CẢNH BÁO, không phải tin vui', () {
+      final ra =
+          chay(autoDeposits: [sk(loai: LoaiTrich.viKhongDu, soTien: 0)]).single;
+
+      expect(ra.kind, NotificationKind.goalAutoDepositFailed);
+      expect(ra.severity, NotificationSeverity.warning,
+          reason: 'Im lặng ở đây là tệ nhất: người dùng tin rằng tháng này đã '
+              'tích được, trong khi không có đồng nào rời ví.');
+      expect(ra.body, contains('MacBook'));
+    });
+
+    test('cấu hình hỏng cũng báo cảnh báo', () {
+      final ra = chay(autoDeposits: [sk(loai: LoaiTrich.khongChayDuoc)]).single;
+      expect(ra.kind, NotificationKind.goalAutoDepositFailed);
+    });
+
+    test('mỗi mục tiêu mỗi kỳ chỉ báo MỘT lần', () {
+      final e = sk();
+      final lan1 = chay(autoDeposits: [e]).single.dedupeKey;
+      final lan2 = chay(autoDeposits: [e], at: DateTime(2026, 9, 28))
+          .single
+          .dedupeKey;
+
+      expect(lan1, lan2,
+          reason: 'Vòng quét chạy sau MỌI lần đồng bộ. Không gộp theo kỳ thì '
+              'mỗi lần mở app lại thêm một "Đã trích 500 nghìn" cho việc chỉ '
+              'xảy ra một lần.');
+    });
+
+    test('hai kỳ khác nhau thì báo riêng', () {
+      final ra = chay(autoDeposits: [
+        sk(ky: DateTime(2026, 8, 15)),
+        sk(ky: DateTime(2026, 9, 15)),
+      ]);
+      expect(ra.map((c) => c.dedupeKey).toSet().length, 2,
+          reason: 'Trích bù hai tháng là hai lần tiền rời ví. Gộp thành một '
+              'thông báo giấu mất một khoản.');
+    });
+
+    test('mốc sự kiện là KỲ TRÍCH, không phải lúc quét', () {
+      final ra = chay(
+        autoDeposits: [sk(ky: DateTime(2026, 3, 15))],
+        at: DateTime(2026, 9, 15),
+        silenceBefore: DateTime(2026, 8, 16),
+      );
+
+      expect(ra, isEmpty,
+          reason: 'Cửa sổ 30 ngày phải loại được kỳ trích bù từ nửa năm trước. '
+              'Lấy lúc quét làm mốc thì mọi kỳ cũ đều lọt qua bộ lọc và người '
+              'dùng nhận cả chục thông báo cùng lúc ở lần mở app đầu tiên.');
     });
   });
 

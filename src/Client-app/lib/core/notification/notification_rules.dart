@@ -1,6 +1,8 @@
 import '../database/app_database.dart';
 import '../../features/budget/data/models/budget_entity.dart';
 import '../../features/goal/data/models/goal_entity.dart';
+import '../../features/goal/domain/goal_auto_deposit.dart';
+import '../../features/goal/domain/goal_auto_deposit_runner.dart';
 import '../../features/budget/presentation/widgets/budget_visuals.dart';
 
 /// Loại thông báo. Giá trị `.name` được ghi thẳng vào cột `kind`.
@@ -11,6 +13,8 @@ enum NotificationKind {
   billOverdue,
   goalCompleted,
   goalBehind,
+  goalAutoDeposited,
+  goalAutoDepositFailed,
   syncFailed,
   walletNegative,
 }
@@ -58,6 +62,15 @@ class NotificationRuleInput {
   final List<GoalEntity> goals;
   final List<Wallet> wallets;
 
+  /// Các kỳ trích tự động **vừa chạy xong** trong chính lượt quét này.
+  ///
+  /// Khác hẳn bốn danh sách trên: chúng là *trạng thái*, còn đây là *sự kiện*.
+  /// Bộ luật vẫn là nơi đặt câu chữ cho cả hai, vì hai nơi cùng viết câu thông
+  /// báo là hai giọng khác nhau trong cùng một trung tâm thông báo — và chỉ có
+  /// đường qua bộ luật mới được lọc theo tuỳ chọn người dùng, khử trùng, rồi
+  /// bắn ra hệ điều hành.
+  final List<GoalAutoDepositEvent> autoDeposits;
+
   /// Lượt đồng bộ gần nhất kết thúc ở trạng thái lỗi.
   ///
   /// Là `bool` chứ không phải cả `SyncStatus`: bộ luật chỉ cần biết "hỏng hay
@@ -85,6 +98,7 @@ class NotificationRuleInput {
     this.bills = const [],
     this.goals = const [],
     this.wallets = const [],
+    this.autoDeposits = const [],
     this.syncFailed = false,
     this.silenceBefore,
     this.defaultBillLeadDays = mocNhacMacDinh,
@@ -102,6 +116,7 @@ List<NotificationCandidate> buildNotificationCandidates(
     ..._budgetCandidates(input),
     ..._billCandidates(input),
     ..._goalCandidates(input),
+    ..._autoDepositCandidates(input),
     ..._walletCandidates(input),
     ..._syncCandidates(input),
   ];
@@ -320,6 +335,68 @@ List<NotificationCandidate> _goalCandidates(NotificationRuleInput input) {
       subjectId: g.id,
       deeplink: goalDeeplink(g.id),
       createdAt: input.now,
+    ));
+  }
+
+  return ra;
+}
+
+/// Báo kết quả của các kỳ trích tự động.
+///
+/// ## Vì sao thành công cũng phải báo
+///
+/// Đây là chỗ duy nhất trong app tự chuyển tiền của người dùng khi họ không có
+/// mặt. Im lặng nghĩa là họ chỉ thấy số dư ví hụt đi mà không biết vì sao — và
+/// khoản ấy nằm lẫn giữa các giao dịch khác trong sổ. Câu báo phải nói rõ **bao
+/// nhiêu** và **từ ví nào**.
+///
+/// ## Vì sao thất bại càng phải báo
+///
+/// Bỏ qua một kỳ vì ví cạn mà không nói gì là để người dùng tin rằng tháng này
+/// đã tích được, trong khi không có đồng nào rời ví. Tiến độ mục tiêu vẫn đứng
+/// yên và họ chỉ phát hiện khi tới hạn.
+List<NotificationCandidate> _autoDepositCandidates(NotificationRuleInput input) {
+  final ra = <NotificationCandidate>[];
+
+  for (final e in input.autoDeposits) {
+    final thanhCong = e.loai == LoaiTrich.trichDu ||
+        e.loai == LoaiTrich.trichPhanConLai;
+
+    // Không có gì để nói về một kỳ mà mục tiêu đã đủ tiền — bộ chạy cũng đã bỏ
+    // qua nó rồi, đây chỉ là lớp chặn thứ hai.
+    if (!thanhCong && e.loai == LoaiTrich.mucTieuDaXong) continue;
+
+    final tuVi = e.tenViNguon == null ? '' : ' từ ${e.tenViNguon}';
+
+    ra.add(NotificationCandidate(
+      kind: thanhCong
+          ? NotificationKind.goalAutoDeposited
+          : NotificationKind.goalAutoDepositFailed,
+      // Gộp theo KỲ, không theo lượt quét: quét chạy sau mọi lần đồng bộ, nên
+      // thiếu đơn vị lặp lại là mỗi lần mở app lại thêm một "Đã trích 500
+      // nghìn" cho việc chỉ xảy ra một lần. Hai kỳ khác nhau vẫn phải ra hai
+      // thông báo — trích bù hai tháng là hai lần tiền rời ví.
+      dedupeKey: thanhCong
+          ? 'goalAuto:${khoaKyTrich(e.goalId, e.ky)}'
+          : 'goalAutoFail:${khoaKyTrich(e.goalId, e.ky)}',
+      title: thanhCong ? 'Đã trích tiền tự động' : 'Chưa trích được tự động',
+      body: thanhCong
+          ? 'Đã chuyển ${_tien(e.soTien)}$tuVi vào mục tiêu ${e.goalName}.'
+          : e.loai == LoaiTrich.viKhongDu
+              ? 'Ví nguồn không đủ tiền cho kỳ trích của mục tiêu '
+                  '${e.goalName}. Kỳ này sẽ tự thử lại.'
+              : 'Không trích được cho mục tiêu ${e.goalName}: ví nguồn không '
+                  'còn dùng được. Mở mục tiêu để chọn lại ví.',
+      severity: thanhCong
+          ? NotificationSeverity.info
+          : NotificationSeverity.warning,
+      subjectType: 'goal',
+      subjectId: e.goalId,
+      deeplink: goalDeeplink(e.goalId),
+      // Mốc sự kiện là KỲ TRÍCH, không phải lúc quét — nếu không thì
+      // `silenceBefore` không loại được những kỳ trích bù từ nửa năm trước, và
+      // lần mở app đầu tiên sẽ đổ ra cả chục thông báo cùng lúc.
+      createdAt: e.ky,
     ));
   }
 

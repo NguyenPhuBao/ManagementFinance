@@ -61,6 +61,8 @@ uống"*, *"Nhắc nhở: Hóa đơn tiền điện sắp đến hạn"*, *"Ti�
 | | Quá hạn | `billOverdue` | ✅ Xong |
 | Mục tiêu | Hoàn thành | `goalCompleted` | ✅ Xong |
 | | Trễ tiến độ | `goalBehind` | ✅ Xong |
+| | Đã trích tự động | `goalAutoDeposited` | ✅ Xong |
+| | Chưa trích được | `goalAutoDepositFailed` | ✅ Xong |
 | Hệ thống | Đồng bộ hỏng | `syncFailed` | ✅ Xong |
 | | Số dư ví âm | `walletNegative` | ✅ Xong |
 
@@ -308,6 +310,8 @@ không có "kỳ" tự nhiên như ngân sách (chu kỳ) hay hoá đơn (hạn 
 |---|---|---|---|
 | `goalCompleted` | `goalDone:<id>` | **một lần trong đời** | Thêm mốc thời gian là mỗi kỳ lại chúc mừng lại cùng một việc |
 | `goalBehind` | `goalBehind:<id>:<yyyy-MM>` | mỗi tháng | Trễ tiến độ kéo dài hàng tháng trời |
+| `goalAutoDeposited` | `goalAuto:<id>:<yyyy-MM-dd của KỲ>` | mỗi kỳ trích | Quét chạy sau mọi lần đồng bộ; thiếu đơn vị lặp là mỗi lần mở app thêm một "Đã trích" cho việc chỉ xảy ra một lần. Hai kỳ khác nhau vẫn phải ra hai thông báo — trích bù hai tháng là hai lần tiền rời ví |
+| `goalAutoDepositFailed` | `goalAutoFail:<id>:<yyyy-MM-dd của KỲ>` | mỗi kỳ trích | Như trên |
 | `walletNegative` | `walletNeg:<id>:<yyyy-MM-dd>` | mỗi ngày | Ví âm cho tới khi người dùng nạp tiền |
 | `syncFailed` | `syncFailed:<yyyy-MM-dd>` | mỗi ngày | Mất mạng là hỏng ở **mọi** chu kỳ đồng bộ |
 
@@ -452,6 +456,13 @@ sách ấy giữ đồng bộ **tay** với `app_router.dart`.
 ⚠️ Ba deeplink còn lại (`/bills`, `/goals/<id>`, `/wallets`) đều **ngoài** shell
 nên `push` chạy tốt. Ba phần tư đường đi đúng chính là lý do lỗi này lọt qua mọi
 vòng kiểm trước đó.
+
+⚠️ Hai loại `goalAuto*` lấy **mốc của KỲ TRÍCH** làm `createdAt`, không phải lúc
+quét. Lấy lúc quét thì `silenceBefore` (cửa sổ 30 ngày) không loại được những kỳ
+trích bù từ nửa năm trước, và lần mở app đầu tiên sẽ đổ ra cả chục thông báo
+cùng lúc. Chúng cũng là **sự kiện**, không phải trạng thái như bảy loại còn lại
+— `NotificationRuleInput.autoDeposits` là danh sách việc *vừa xảy ra*, do
+`GoalAutoDepositRunner` chạy ngay trong `scan()` trước khi nạp mục tiêu.
 
 ⚠️ Thông báo mục tiêu dẫn tới **`/goals/<id>`**, không phải `/goals` — nó đã
 biết chính xác mục tiêu nào (`subjectId`), nên đổ người dùng xuống danh sách là

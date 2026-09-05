@@ -23,6 +23,19 @@ class GoalEntity {
   /// tháng · đang tích 1,2 triệu mỗi tháng"). Trước đây lựa chọn này chỉ dùng
   /// để tính ngược ra ngày hạn rồi bị vứt bỏ.
   final String? cycleTakeMoney;
+
+  /// Số tiền trích mỗi kỳ. `null` = **không bật** trích tự động.
+  ///
+  /// Cùng với [autoDepositWalletId] và [autoDepositLastRun], đây là cột **cục
+  /// bộ** — không đồng bộ. Xem chú thích ở bảng `Goals`.
+  final double? autoDepositAmount;
+
+  /// Ví NGUỒN của khoản trích tự động. Ví nhận luôn là [walletId].
+  final String? autoDepositWalletId;
+
+  /// Mốc của kỳ gần nhất đã trích xong. `null` = chưa bật.
+  final DateTime? autoDepositLastRun;
+
   final String icon;
   final String colour;
   final String note;
@@ -41,6 +54,9 @@ class GoalEntity {
     required this.targetDate,
     this.walletId,
     this.cycleTakeMoney,
+    this.autoDepositAmount,
+    this.autoDepositWalletId,
+    this.autoDepositLastRun,
     this.icon = 'flag',
     this.colour = '#4CAF50',
     this.note = '',
@@ -61,6 +77,9 @@ class GoalEntity {
       targetDate: d.targetDate,
       walletId: d.walletId,
       cycleTakeMoney: d.cycleTakeMoney,
+      autoDepositAmount: d.autoDepositAmount,
+      autoDepositWalletId: d.autoDepositWalletId,
+      autoDepositLastRun: d.autoDepositLastRun,
       icon: d.icon,
       colour: d.colour,
       note: d.note,
@@ -82,6 +101,9 @@ class GoalEntity {
       targetDate: targetDate,
       walletId: Value(walletId),
       cycleTakeMoney: Value(cycleTakeMoney),
+      autoDepositAmount: Value(autoDepositAmount),
+      autoDepositWalletId: Value(autoDepositWalletId),
+      autoDepositLastRun: Value(autoDepositLastRun),
       icon: Value(icon),
       colour: Value(colour),
       note: Value(note),
@@ -102,6 +124,9 @@ class GoalEntity {
     DateTime? targetDate,
     String? walletId,
     String? cycleTakeMoney,
+    double? autoDepositAmount,
+    String? autoDepositWalletId,
+    DateTime? autoDepositLastRun,
     String? icon,
     String? colour,
     String? note,
@@ -120,6 +145,9 @@ class GoalEntity {
       targetDate: targetDate ?? this.targetDate,
       walletId: walletId ?? this.walletId,
       cycleTakeMoney: cycleTakeMoney ?? this.cycleTakeMoney,
+      autoDepositAmount: autoDepositAmount ?? this.autoDepositAmount,
+      autoDepositWalletId: autoDepositWalletId ?? this.autoDepositWalletId,
+      autoDepositLastRun: autoDepositLastRun ?? this.autoDepositLastRun,
       icon: icon ?? this.icon,
       colour: colour ?? this.colour,
       note: note ?? this.note,
@@ -157,6 +185,18 @@ class GoalEntity {
     final conThieu = targetAmount - currentAmount;
     return conThieu > 0 ? conThieu : 0.0;
   }
+
+  /// Mục tiêu này có đang bật trích tiền tự động không.
+  ///
+  /// Đòi **cả ba** mảnh cấu hình. Thiếu một mảnh là không đủ để chuyển tiền, và
+  /// đoán bù mảnh thiếu (ví nguồn mặc định, số tiền suy từ chu kỳ) chính là
+  /// kiểu tự tiện đã bị loại ở mục 3.1 của `GOAL_FEATURE.md`.
+  bool get autoDepositEnabled =>
+      autoDepositAmount != null &&
+      autoDepositAmount! > 0 &&
+      autoDepositWalletId != null &&
+      autoDepositWalletId!.isNotEmpty &&
+      autoDepositLastRun != null;
 
   /// Số ngày còn lại tới hạn. Âm nghĩa là đã quá hạn.
   ///

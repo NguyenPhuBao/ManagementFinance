@@ -366,6 +366,13 @@ void main() {
           'isLocalOnly',
           'is_local_only',
           'keywords',
+          // Ba cột trích tự động là CỤC BỘ (schema v15): bảng `goal` phía
+          // backend không có chúng, và thêm trường vào payload đẩy đòi backend
+          // sửa trước.
+          'auto_deposit_amount',
+          'auto_deposit_wallet_id',
+          'auto_deposit_last_run',
+          'goal_id', // cột cục bộ của transactions (schema v14)
           'updatedAt', // phải đã được đổi thành update_at
         ]) {
           expect(payload.containsKey(forbidden), false,

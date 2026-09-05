@@ -69,6 +69,8 @@ class GoalCubit extends Cubit<GoalState> {
     String? icon,
     String? colour,
     String? note,
+    double? autoDepositAmount,
+    String? autoDepositWalletId,
   }) async {
     try {
       await repository.addGoal(
@@ -81,6 +83,8 @@ class GoalCubit extends Cubit<GoalState> {
         icon: icon,
         colour: colour,
         note: note,
+        autoDepositAmount: autoDepositAmount,
+        autoDepositWalletId: autoDepositWalletId,
       );
     } catch (e) {
       emit(GoalError(e.toString()));
@@ -102,6 +106,8 @@ class GoalCubit extends Cubit<GoalState> {
     String? cycleTakeMoney,
     String? icon,
     String? colour,
+    double? autoDepositAmount,
+    String? autoDepositWalletId,
   }) async {
     try {
       await repository.updateGoal(
@@ -112,6 +118,8 @@ class GoalCubit extends Cubit<GoalState> {
         cycleTakeMoney: cycleTakeMoney,
         icon: icon,
         colour: colour,
+        autoDepositAmount: autoDepositAmount,
+        autoDepositWalletId: autoDepositWalletId,
       );
       return null;
     } catch (e) {

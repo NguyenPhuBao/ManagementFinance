@@ -188,7 +188,43 @@ class Goals extends Table {
   TextColumn get cycleTakeMoney => text().nullable()();
 
   /// timeCycleTakeMoney: thời điểm cụ thể trích tiền trong chu kỳ
+  ///
+  /// ⚠️ Cột này đồng bộ hai chiều nhưng **client chưa bao giờ ghi**. Bộ trích
+  /// tự động cố ý KHÔNG dùng nó làm mốc chạy: nó là cột dùng chung với
+  /// backend/Admin-web, và đổi ý nghĩa một cột dùng chung mà phía kia chưa
+  /// đồng ý là cách hỏng im lặng nhất. Mốc chạy nằm ở [autoDepositLastRun].
   DateTimeColumn get timeCycleTakeMoney => dateTime().nullable()();
+
+  // ── Trích tiền tự động (DB v15) ───────────────────────────────────────────
+  //
+  // ⚠️ BA CỘT DƯỚI ĐÂY LÀ **CỤC BỘ**, cố ý không nằm trong hợp đồng đồng bộ.
+  // Bảng `goal` phía backend không có chúng, và thêm trường vào payload đẩy đòi
+  // backend sửa trước (quy tắc 4 trong `CLAUDE.md`).
+  // `sync_payload_contract_test.dart` khoá đúng bộ khoá của payload mục tiêu
+  // nên nó bắt được ngay nếu một trong ba cột này lọt vào.
+  //
+  // Hệ quả phải chấp nhận: cấu hình trích tự động **không theo người dùng sang
+  // máy khác**. Chu kỳ (`cycleTakeMoney`) thì có — nó vốn đã đồng bộ — nên trên
+  // máy mới mục tiêu vẫn hiện đúng nhịp kế hoạch, chỉ là không tự trích. Thà
+  // vậy còn hơn hai máy cùng trích một kỳ.
+
+  /// autoDepositAmount: số tiền trích mỗi kỳ. NULL = không bật trích tự động.
+  RealColumn get autoDepositAmount => real().nullable()();
+
+  /// autoDepositWalletId: ví NGUỒN của khoản trích. Ví nhận luôn là
+  /// [walletId] của chính mục tiêu.
+  ///
+  /// Không khai khoá ngoại — cùng lý do với `walletTransfer` (bẫy 4.1) — nên
+  /// nơi chạy phải tự kiểm ví còn tồn tại.
+  TextColumn get autoDepositWalletId => text().nullable()();
+
+  /// autoDepositLastRun: mốc của kỳ **gần nhất đã trích xong**.
+  ///
+  /// NULL nghĩa là chưa bật. Được đặt bằng "bây giờ" tại đúng lúc người dùng
+  /// bật công tắc, nên kỳ đầu tiên rơi vào một chu kỳ sau đó. Lấy ngày tạo mục
+  /// tiêu làm mốc thay thế là bật công tắc hôm nay rồi bị trích ngược lại sáu
+  /// kỳ cùng một lúc.
+  DateTimeColumn get autoDepositLastRun => dateTime().nullable()();
 
   /// recurrence: tự động lặp lại mục tiêu sau khi hoàn thành
   BoolColumn get recurrence => boolean().withDefault(const Constant(false))();

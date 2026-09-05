@@ -834,6 +834,113 @@ void main() {
       expect(goal.colour, '#9C27B0');
     });
 
+    test('bật trích tự động thì ĐẶT mốc chạy bằng bây giờ', () async {
+      final truoc = DateTime.now();
+
+      await repository.updateGoal(
+        id: 'g1',
+        name: 'Mua Laptop',
+        targetAmount: 20000000.0,
+        targetDate: DateTime.now().add(const Duration(days: 90)),
+        cycleTakeMoney: 'Month',
+        autoDepositAmount: 500000.0,
+        autoDepositWalletId: 'w1',
+      );
+
+      final goal = await repository.getGoalById('g1');
+      expect(goal!.autoDepositAmount, 500000.0);
+      expect(goal.autoDepositWalletId, 'w1');
+      expect(goal.autoDepositLastRun, isNotNull);
+      // So theo GIÂY: Drift lưu DateTime thành mốc unix giây, nên mili-giây bị
+      // cắt và một phép so `isBefore` thô sẽ đỏ ngẫu nhiên.
+      expect(goal.autoDepositLastRun!.difference(truoc).inSeconds.abs() <= 5,
+          isTrue,
+          reason: 'Mốc chạy phải là LÚC BẬT, không phải ngày tạo mục tiêu. '
+              'Lấy ngày tạo là bật công tắc hôm nay rồi bị trích ngược lại '
+              'từng ấy kỳ cùng một lúc, bằng tiền thật.');
+      expect(goal.autoDepositEnabled, isTrue);
+    });
+
+    test('sửa mục tiêu khi đang bật KHÔNG đặt lại mốc chạy', () async {
+      await repository.updateGoal(
+        id: 'g1',
+        name: 'Mua Laptop',
+        targetAmount: 20000000.0,
+        targetDate: DateTime.now().add(const Duration(days: 90)),
+        cycleTakeMoney: 'Month',
+        autoDepositAmount: 500000.0,
+        autoDepositWalletId: 'w1',
+      );
+      final mocDau = (await repository.getGoalById('g1'))!.autoDepositLastRun;
+
+      await repository.updateGoal(
+        id: 'g1',
+        name: 'Tên khác hẳn',
+        targetAmount: 25000000.0,
+        targetDate: DateTime.now().add(const Duration(days: 120)),
+        cycleTakeMoney: 'Month',
+        autoDepositAmount: 700000.0,
+        autoDepositWalletId: 'w1',
+      );
+
+      final sau = await repository.getGoalById('g1');
+      expect(sau!.autoDepositLastRun, mocDau,
+          reason: 'Đổi tên hay đổi số tiền trích không phải là bật lại. Đặt '
+              'lại mốc ở mỗi lần lưu làm kỳ trích lùi ra xa mãi — người dùng '
+              'sửa mục tiêu hàng tháng thì không bao giờ tới kỳ nào.');
+      expect(sau.autoDepositAmount, 700000.0,
+          reason: 'Số tiền mới vẫn phải có hiệu lực từ kỳ kế tiếp.');
+    });
+
+    test('tắt trích tự động thì XOÁ cả ba mảnh cấu hình', () async {
+      await repository.updateGoal(
+        id: 'g1',
+        name: 'Mua Laptop',
+        targetAmount: 20000000.0,
+        targetDate: DateTime.now().add(const Duration(days: 90)),
+        cycleTakeMoney: 'Month',
+        autoDepositAmount: 500000.0,
+        autoDepositWalletId: 'w1',
+      );
+
+      await repository.updateGoal(
+        id: 'g1',
+        name: 'Mua Laptop',
+        targetAmount: 20000000.0,
+        targetDate: DateTime.now().add(const Duration(days: 90)),
+        cycleTakeMoney: null,
+        autoDepositAmount: null,
+        autoDepositWalletId: null,
+      );
+
+      final goal = await repository.getGoalById('g1');
+      expect(goal!.autoDepositAmount, isNull);
+      expect(goal.autoDepositWalletId, isNull);
+      expect(goal.autoDepositLastRun, isNull,
+          reason: 'Bỏ sót mốc chạy thì bật lại lần sau sẽ tính bù mọi kỳ trôi '
+              'qua trong lúc công tắc đang TẮT — tiền bị trích cho quãng thời '
+              'gian người dùng đã cố ý dừng.');
+      expect(goal.autoDepositEnabled, isFalse);
+    });
+
+    test('thiếu ví nguồn thì coi như KHÔNG bật', () async {
+      await repository.updateGoal(
+        id: 'g1',
+        name: 'Mua Laptop',
+        targetAmount: 20000000.0,
+        targetDate: DateTime.now().add(const Duration(days: 90)),
+        cycleTakeMoney: 'Month',
+        autoDepositAmount: 500000.0,
+        autoDepositWalletId: null,
+      );
+
+      final goal = await repository.getGoalById('g1');
+      expect(goal!.autoDepositEnabled, isFalse,
+          reason: 'Thiếu một mảnh là không đủ để chuyển tiền. Đoán bù một ví '
+              'nguồn mặc định chính là kiểu tự tiện đã bị loại ở mục 3.1.');
+      expect(goal.autoDepositLastRun, isNull);
+    });
+
     test('bỏ trống chu kỳ thì XOÁ chu kỳ đã lưu', () async {
       await repository.updateGoal(
         id: 'g1',

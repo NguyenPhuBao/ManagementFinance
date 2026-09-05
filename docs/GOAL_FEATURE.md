@@ -28,6 +28,7 @@
 |---|---|---|
 | Tạo mục tiêu | hàng `goals`, `startDate = now`, `walletId` bắt buộc, `cycleTakeMoney` | — |
 | Nạp tiền | `current_amount +=`, hai ví đổi số dư | **một** hàng `type='transfer'`, ví nguồn → ví tích luỹ |
+| **Trích tự động** (mỗi kỳ tới hạn) | y hệt nạp tiền, cộng `auto_deposit_last_run` | **một** hàng cho **mỗi kỳ**, không gộp |
 | Rút tiền | `current_amount -=`, `is_completed` tính lại, hai ví đổi số dư | **một** hàng `type='transfer'`, ví tích luỹ → ví đích |
 | Sửa mục tiêu | `name`, `target_amount`, `target_date`, `cycle_take_money`, `icon`, `colour`; `is_completed` **tính lại** | — |
 | Đổi ví nhận | `wallet_id` — **chỉ khi `current_amount == 0`** | — |
@@ -236,6 +237,53 @@ sau khi trang sửa đóng. Việc đó dựng lại dòng lịch sử tích lu�
 làm lịch sử **nháy thành "Chưa có khoản tích lũy nào"** rồi hiện lại, trông y
 như vừa mất dữ liệu. Đã phân biệt bằng `connectionState`.
 
+### 3.12 Trích tiền tự động: chạy trong vòng quét, không phải bộ lập lịch nền
+
+Trước bản này, khối "Tự động trích tiền định kỳ" thu **ba** thông tin và lưu
+đúng **một**: chu kỳ vào `cycle_take_money`, còn số tiền mỗi kỳ chỉ dùng để tính
+ngược ra hạn định rồi bị vứt, và ví nguồn thì không hề đi vào `addGoal`. Nút bấm
+lại ghi "Tạo Mục Tiêu & **Bật Lập Lịch Tự Động**" — một lời hứa về chức năng
+không tồn tại.
+
+Nay ba mảnh ấy đều được lưu (ba cột **cục bộ**, mục 5), và
+`GoalAutoDepositRunner` chạy các kỳ đã tới hạn.
+
+**Nơi chạy là `NotificationScanner.scan()`**, tức mỗi khi một chu kỳ đồng bộ kết
+thúc — không phải WorkManager. Các kỳ bỏ lỡ được **trích bù** theo đúng thứ tự
+khi app mở lại, nên không kỳ nào mất; chúng chỉ xảy ra muộn hơn mốc lý thuyết.
+Đổi lại, việc chuyển tiền luôn nằm trong tiến trình chính và dùng chung một kết
+nối CSDL. Một isolate nền mở kết nối thứ hai vào cùng tệp SQLite **để chuyển
+tiền** là loại rủi ro không đáng đánh đổi lấy vài giờ sớm hơn.
+
+**Đi qua `depositToGoal`, không tự ghi.** Một lần trích phải làm đúng bốn việc
+của một lần nạp trong một `db.transaction`. Viết lại chuỗi ấy là tạo bản sao thứ
+hai của định nghĩa "nạp tiền là gì", và bản sao sẽ lệch đi ở lần sửa sau. Hệ quả
+tốt: khoản trích tự động dùng **đúng tiền tố ghi chú** của khoản nạp tay, nên
+`laKhoanRutKhoiMucTieu` vẫn đọc đúng chiều (bẫy 4.2).
+
+**Sáu quyết định về việc dừng lại đúng lúc:**
+
+| Tình huống | Xử lý | Vì sao |
+|---|---|---|
+| Vừa bật công tắc | Mốc chạy = **lúc bật** | Lấy ngày tạo mục tiêu là bật hôm nay rồi bị trích ngược lại từng ấy kỳ cùng lúc |
+| Sửa tên / đổi số tiền | **Không** đặt lại mốc | Đặt lại ở mỗi lần lưu thì người sửa mục tiêu hàng tháng không bao giờ tới kỳ |
+| Tắt công tắc | Xoá **cả ba** cột | Giữ mốc lại thì bật lần sau tính bù cả quãng đang tắt |
+| Còn thiếu < số cài | Trích **đúng phần còn thiếu** | Nạp vượt bằng tay chỉ *cảnh báo* vì người dùng đang nhìn; ở đây họ vắng mặt |
+| Ví nguồn không đủ | **Bỏ kỳ**, giữ mốc, báo cảnh báo | Trích một phần làm một kỳ ra hai con số; giữ mốc thì kỳ ấy tự thử lại khi có tiền |
+| Bỏ app rất lâu | Trần **12 kỳ** mỗi lượt | Chu kỳ ngày, máy để lâu, là hàng nghìn kỳ — trích hết một lượt sẽ rút cạn ví ngay khi mở app. Phần dư không mất, nó ở lại lượt sau |
+
+**Ba cột là cục bộ**, nên cấu hình trích tự động **không theo người dùng sang máy
+khác**. Chu kỳ thì có (nó vốn đã đồng bộ), nên trên máy mới mục tiêu vẫn hiện
+đúng nhịp kế hoạch, chỉ là không tự trích. Thà vậy còn hơn hai máy cùng trích
+một kỳ — đó cũng là lý do KHÔNG mượn cột `time_cycle_take_money` đang có sẵn:
+nó dùng chung với backend/Admin-web, và đổi ý nghĩa một cột dùng chung mà phía
+kia chưa đồng ý là cách hỏng im lặng nhất.
+
+⚠️ **Migration v15 cố ý không bật cho mục tiêu cũ.** Trang tạo của mọi bản trước
+đều BẬT SẴN công tắc và luôn lưu chu kỳ, nên gần như mọi mục tiêu cũ đều mang
+một `cycle_take_money`. Suy ra "đã đồng ý cho trích tự động" từ đó là bắt đầu
+chuyển tiền dựa trên một lựa chọn người dùng chưa từng đưa ra.
+
 ---
 
 ## 4. Bảy cái bẫy
@@ -322,6 +370,9 @@ cả hàng**, đưa mọi cột không gán về mặc định. Nhánh pull đú
 | Sửa lần cuối | `updatedAt` | `update_at` | `Update_at` |
 | Chu kỳ trích | `cycleTakeMoney` | `cycle_take_money` | `Cycle_take_money` |
 | Mục tiêu của giao dịch | `goalId` | — **không đẩy** — | — chưa có — |
+| Số tiền trích mỗi kỳ | `autoDepositAmount` | — **không đẩy** — | — chưa có — |
+| Ví nguồn trích | `autoDepositWalletId` | — **không đẩy** — | — chưa có — |
+| Mốc kỳ đã trích | `autoDepositLastRun` | — **không đẩy** — | — chưa có — |
 
 Payload mục tiêu có **18 trường**. Hợp đồng đầy đủ ở
 `test/core/sync/sync_payload_contract_test.dart` — **nơi duy nhất** ghi tên
@@ -344,7 +395,6 @@ giá trị từ Admin-web nếu có — nhưng đừng tưởng có tính năng 
 
 | Việc | Ghi chú |
 |---|---|
-| Không có bộ **lập lịch** trích tiền | Khối "Tự động trích tiền định kỳ" nay lưu lại làm *kế hoạch*, nhưng công tắc vẫn không kích hoạt gì |
 | Không kiểm trùng tên mục tiêu | Khác hẳn danh mục (có quy tắc rất chặt). Chưa rõ chủ ý hay bỏ sót |
 | Phép kiểm **số tiền** khi nạp chỉ ở giao diện | Repository nhận bất kỳ giá trị nào. Các phép kiểm về **ví** thì đã có ở cả hai tầng |
 | Dải cảnh báo lệch chưa xem trên máy thật | Hàm có 6 test; phần vẽ chưa gặp ca dữ liệu để hiện |
@@ -366,7 +416,7 @@ nullable `transaction.Idgoal`. **Không chặn gì hôm nay**, nhưng chặn hư
 
 ## 9. Kiểm thử
 
-Khoảng **123 test** riêng cho mục tiêu, trên tổng 757 của dự án.
+Khoảng **170 test** riêng cho mục tiêu, trên tổng 804 của dự án.
 
 | Tệp | Canh gì |
 |---|---|
@@ -380,6 +430,8 @@ Khoảng **123 test** riêng cho mục tiêu, trên tổng 757 của dự án.
 | `presentation/widgets/goal_progress_test.dart` | Một định nghĩa duy nhất của tỉ lệ |
 | `presentation/widgets/goal_appearance_test.dart` | Bảng tra biểu tượng/màu, dữ liệu rác, và **giá trị ngoài bảng chọn** |
 | `goal_edit_form_test.dart` | `showDatePicker` với mục tiêu **quá hạn** — xem mục 3.9 |
+| `goal_auto_deposit_test.dart` | Bước kỳ (tháng ngắn, **năm nhuận**), trần số kỳ, quyết định trích |
+| `goal_auto_deposit_runner_test.dart` | Trích bù nhiều kỳ, ví cạn giữa chừng, cấu hình hỏng, cách ly tài khoản |
 | `core/notification/notification_rules_goal_wallet_test.dart` | Hai luật thông báo |
 
 ### ⚠️ Ba thứ bộ test **không** bắt được ở vùng này
