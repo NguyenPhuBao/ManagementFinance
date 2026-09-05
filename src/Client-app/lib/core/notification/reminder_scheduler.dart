@@ -1,5 +1,6 @@
+import '../../features/goal/domain/goal_auto_deposit.dart';
 import 'notification_rules.dart';
-import 'notification_scanner.dart' show BillsLoader;
+import 'notification_scanner.dart' show BillsLoader, GoalsLoader;
 import 'os/os_notifier.dart';
 import 'os/os_scheduled_id.dart';
 import 'prefs/notification_prefs.dart';
@@ -21,16 +22,21 @@ import 'prefs/notification_prefs_store.dart';
 /// bộ luật dùng. Nên khi lịch nổ lúc app đóng, người dùng bấm vào, app mở, vòng
 /// quét chạy và `insertOrIgnore` sinh **đúng** hàng ấy — một lần duy nhất.
 /// Không có đường nào nhân đôi.
-class BillReminderScheduler {
-  BillReminderScheduler({
+class ReminderScheduler {
+  ReminderScheduler({
     required this.osNotifier,
     required this.loadBills,
+    this.loadGoals,
     this.prefsStore,
     DateTime Function()? clock,
   }) : clock = clock ?? DateTime.now;
 
   final OsNotifier osNotifier;
   final BillsLoader loadBills;
+
+  /// Bỏ trống thì không đặt lịch nhắc kỳ trích nào — dùng cho test của phần
+  /// hoá đơn, để chúng không phải dựng dữ liệu mục tiêu.
+  final GoalsLoader? loadGoals;
 
   /// Bỏ trống thì chạy như `NotificationPrefs.macDinh` — bật hết.
   final NotificationPrefsStore? prefsStore;
@@ -62,6 +68,9 @@ class BillReminderScheduler {
         await prefsStore?.read(idaccount) ?? NotificationPrefs.macDinh;
 
     final mongMuon = <int, _Lich>{};
+
+    /// Ứng viên của **cả hai** loại, gộp lại trước khi cắt theo trần.
+    final tatCa = <_Lich>[];
 
     // Tắt công tắc tổng, hoặc tắt riêng nhóm hoá đơn → không có lịch nào được
     // phép tồn tại. Vẫn chạy tiếp xuống phần dọn dẹp bên dưới: lịch đã đặt
@@ -112,12 +121,53 @@ class BillReminderScheduler {
         ));
       }
 
-      // Cắt phải bỏ những mốc XA nhất: bỏ mốc gần nhất là người dùng mất đúng
-      // cái nhắc họ cần trước tiên.
-      ungVien.sort((a, b) => a.when.compareTo(b.when));
-      for (final l in ungVien.take(tranSoLich)) {
-        mongMuon[l.id] = l;
+      tatCa.addAll(ungVien);
+    }
+
+    // Nhóm mục tiêu tắt bật ĐỘC LẬP với nhóm hoá đơn, dù hai loại lịch dùng
+    // chung một bộ đặt.
+    final tai = loadGoals;
+    if (tai != null && prefs.osBat && prefs.batNhom(NotificationGroup.goal)) {
+      for (final g in await tai(idaccount, at)) {
+        if (g.isDeleted || !g.autoDepositEnabled) continue;
+        if (g.isCompleted || g.remainingAmount <= 0) continue;
+
+        final ky = kyKeTiep(
+          mocNeo: g.timeCycleTakeMoney,
+          lanChayGanNhat: g.autoDepositLastRun,
+          chuKy: g.cycleTakeMoney,
+          now: at,
+        );
+        if (ky == null) continue;
+        if (ky.isAfter(at.add(cuaSo))) continue;
+
+        // ĐÚNG khoá của thông báo "đã trích" cho chính kỳ ấy — nên cùng
+        // `osScheduledId`, và khi khoản trích chạy xong thông báo kia THAY CHỖ
+        // lời nhắc thay vì nằm cạnh nó. Hai thông báo cho một sự việc là thứ
+        // người dùng đọc thành "app trích hai lần".
+        final khoa = 'goalAuto:${khoaKyTrich(g.id, ky)}';
+
+        tatCa.add(_Lich(
+          id: osScheduledId(khoa),
+          khoa: khoa,
+          // Mốc của chính kỳ, KHÔNG phải `prefs.gioNhac`: giờ nhắc chung là
+          // của hoá đơn, còn kỳ trích có giờ riêng người dùng đã chọn và đang
+          // nhìn thấy trên màn hình.
+          when: ky,
+          title: 'Đến kỳ trích tự động',
+          body: '${_tienGon(g.autoDepositAmount!)} cho mục tiêu ${g.name}. '
+              'Mở app để tiền được chuyển.',
+        ));
       }
+    }
+
+    // Cắt phải bỏ những mốc XA nhất: bỏ mốc gần nhất là người dùng mất đúng
+    // cái nhắc họ cần trước tiên. Trần tính trên TỔNG hai loại — iOS đếm chung
+    // một hàng đợi 64 lịch, nên cắt riêng từng loại là cả hai đều tưởng mình
+    // còn dư chỗ.
+    tatCa.sort((a, b) => a.when.compareTo(b.when));
+    for (final l in tatCa.take(tranSoLich)) {
+      mongMuon[l.id] = l;
     }
 
     final dangCho = await osNotifier.pendingIds();
@@ -143,6 +193,19 @@ class BillReminderScheduler {
 }
 
 DateTime _dauNgay(DateTime d) => DateTime(d.year, d.month, d.day);
+
+/// Rút gọn số tiền cho câu nhắc. Bản riêng ở đây thay vì dùng chung với bộ luật
+/// vì hàm bên ấy là private — và một lời nhắc chỉ cần đủ để người dùng quyết
+/// định có mở app hay không, không cần con số đầy đủ.
+String _tienGon(double v) {
+  if (v >= 1000000) {
+    final trieu = v / 1000000;
+    final s = trieu.toStringAsFixed(trieu >= 10 ? 0 : 1).replaceAll('.', ',');
+    return '${s.endsWith(',0') ? s.substring(0, s.length - 2) : s} triệu';
+  }
+  if (v >= 1000) return '${(v / 1000).round()} nghìn';
+  return '${v.round()} đồng';
+}
 
 class _Lich {
   const _Lich({

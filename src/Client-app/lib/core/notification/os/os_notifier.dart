@@ -57,7 +57,7 @@ abstract class OsNotifier {
 
   /// Id của các lịch **đang chờ** nổ.
   ///
-  /// Cần cho `BillReminderScheduler.resync()` để nó luỹ đẳng: biết cái nào đã
+  /// Cần cho `ReminderScheduler.resync()` để nó luỹ đẳng: biết cái nào đã
   /// đặt rồi thì không đặt lại. Không có nó thì mỗi lần đồng bộ là một vòng
   /// huỷ-rồi-đặt-lại toàn bộ, và mỗi vòng như vậy là một cơ hội để lịch rơi.
   Future<Set<int>> pendingIds();

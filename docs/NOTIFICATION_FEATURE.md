@@ -82,7 +82,7 @@ handshake không xác thực và mỗi sự kiện còn `io.emit` toàn cục.
 lib/core/notification/
 ├── notification_rules.dart       # Hàm THUẦN: trạng thái → danh sách ứng viên
 ├── notification_scanner.dart     # Nối luật với CSDL và vòng đời app
-├── bill_reminder_scheduler.dart  # Đặt lịch trước với hệ điều hành (lát 5)
+├── reminder_scheduler.dart      # Đặt lịch trước với hệ điều hành (lát 5)
 ├── notification_deeplink.dart    # go hay push — xem mục 7.8
 ├── os/                           # Cửa ra hệ điều hành (lát 4) — xem mục 6
 └── prefs/                        # Tuỳ chọn của người dùng (lát 7)
@@ -254,7 +254,7 @@ cài đặt là lát 7. Xem cảnh báo ở đầu tài liệu.
 
 ### Lát 5 — `zonedSchedule` đặt lịch trước cho hoá đơn ✅ XONG
 
-`lib/core/notification/bill_reminder_scheduler.dart`. Cách **duy nhất** để
+`lib/core/notification/reminder_scheduler.dart`. Cách **duy nhất** để
 thông báo nổ khi app đóng mà không cần tác vụ nền: scanner chỉ chạy khi app mở,
 nên người dùng đóng app ba ngày là không có lượt quét nào.
 
@@ -457,6 +457,20 @@ sách ấy giữ đồng bộ **tay** với `app_router.dart`.
 nên `push` chạy tốt. Ba phần tư đường đi đúng chính là lý do lỗi này lọt qua mọi
 vòng kiểm trước đó.
 
+⚠️ **`ReminderScheduler` đặt lịch cho CẢ HAI loại**, và đó không phải lựa chọn
+thẩm mĩ. `resync()` huỷ **mọi** lịch chờ không nằm trong tập nó muốn — tách
+thành hai bộ đặt lịch riêng là mỗi bên xoá sạch lịch của bên kia ở mỗi lượt
+chạy, im lặng, và chỉ lộ ra khi người dùng phàn nàn rằng nhắc hoá đơn đã ngừng
+hoạt động. Trần 50 cũng vì thế phải tính trên **tổng** hai loại: iOS đếm chung
+một hàng đợi 64 lịch.
+
+Lịch nhắc kỳ trích nổ vào **mốc của chính kỳ** (giờ người dùng chọn), không phải
+`prefs.gioNhac` — giờ nhắc chung là của hoá đơn. Nó mang **đúng khoá**
+`goalAuto:<...>` của thông báo "đã trích" cho kỳ ấy, nên cùng `osScheduledId`:
+khi khoản trích chạy xong, thông báo kia **thay chỗ** lời nhắc thay vì nằm cạnh
+nó. Hai thông báo cho một sự việc là thứ người dùng đọc thành "app trích hai
+lần".
+
 ⚠️ Hai loại `goalAuto*` lấy **mốc của KỲ TRÍCH** làm `createdAt`, không phải lúc
 quét. Lấy lúc quét thì `silenceBefore` (cửa sổ 30 ngày) không loại được những kỳ
 trích bù từ nửa năm trước, và lần mở app đầu tiên sẽ đổ ra cả chục thông báo
@@ -489,7 +503,7 @@ thông báo sẽ làm app chết màn đỏ. `notification_deeplink_test.dart` c
 | `test/core/notification/prefs/notification_prefs_test.dart` | Mặc định là **bật hết**; JSON hỏng/sai kiểu/ngoài dải quy về mặc định chứ không ném; ánh xạ tám `kind` sang bốn nhóm |
 | `test/core/notification/prefs/notification_prefs_store_test.dart` | **Tách khoá theo tài khoản**; JSON hỏng trên đĩa; `clear()` không đụng tài khoản khác |
 | `test/features/notification/notification_settings_page_test.dart` | Công tắc phản ánh đúng thứ đã lưu; ghi ngay không cần nút Lưu; **bật công tắc OS thì xin quyền, tắt thì không**; bị từ chối thì công tắc quay về tắt; chưa đăng nhập thì không ghi gì |
-| `test/core/notification/bill_reminder_scheduler_test.dart` | **Luỹ đẳng** (chạy lại không đặt lại lịch nào); trần 50 và cắt bỏ mốc **xa** nhất; giờ nhắc từ tuỳ chọn; mốc quá khứ và ngoài cửa sổ 30 ngày bị bỏ; hoá đơn trả/xoá thì huỷ lịch cũ; tắt công tắc thì dọn sạch |
+| `test/core/notification/reminder_scheduler_test.dart` | **Luỹ đẳng** (chạy lại không đặt lại lịch nào); trần 50 và cắt bỏ mốc **xa** nhất; giờ nhắc từ tuỳ chọn; mốc quá khứ và ngoài cửa sổ 30 ngày bị bỏ; hoá đơn trả/xoá thì huỷ lịch cũ; tắt công tắc thì dọn sạch |
 | `test/core/notification/notification_rules_goal_wallet_test.dart` | Bốn luật của lát 6, trọng tâm là **đơn vị lặp lại trong `dedupeKey`**: chúc mừng một lần trong đời, trễ tiến độ mỗi tháng, ví âm và đồng bộ hỏng mỗi ngày |
 | `test/features/goal/goal_entity_progress_test.dart` | `progress` kẹp [0,1] và không ra `Infinity` khi `targetAmount = 0`; `daysLeft` so theo NGÀY; `isBehindSchedule` có biên dung sai, im lặng khi thiếu `startDate`, không NaN khi kỳ dài 0 ngày |
 | `test/core/notification/notification_deeplink_test.dart` | Route nào kéo theo thanh tab; **không được so khớp bằng `startsWith` trần** (`/budgets` ≠ `/budget`) |

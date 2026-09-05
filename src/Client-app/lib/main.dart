@@ -46,7 +46,7 @@ void main() async {
 
 /// Nạp bảng múi giờ và đặt múi giờ địa phương.
 ///
-/// **Phải chạy TRƯỚC `setupDependencies()`** vì `BillReminderScheduler` dựng
+/// **Phải chạy TRƯỚC `setupDependencies()`** vì `ReminderScheduler` dựng
 /// `TZDateTime` ngay khi đặt lịch. Thiếu bước này thì `zonedSchedule` neo vào
 /// UTC và nhắc hoá đơn lệch 7 tiếng ở Việt Nam — **không có lỗi nào báo ra**
 /// (bẫy 7.3 của `docs/NOTIFICATION_FEATURE.md`).

@@ -78,7 +78,7 @@ class NotificationScanner {
 
   /// Đồng bộ lại lịch nhắc đặt trước với hệ điều hành, chạy sau mỗi lượt quét.
   ///
-  /// Là closure chứ không phải cả `BillReminderScheduler` vì cùng lý do như
+  /// Là closure chứ không phải cả `ReminderScheduler` vì cùng lý do như
   /// `loadBudgets`: thu hẹp phụ thuộc thì test không phải giả lập một lớp
   /// không liên quan tới thứ đang được canh.
   final Future<void> Function(int idaccount)? resyncLich;

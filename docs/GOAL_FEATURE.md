@@ -305,6 +305,22 @@ người dùng tự phát hiện.
 28/02 rồi bước tiếp **từ đó** — tức nhịp trôi dần chứ không quay lại ngày 31.
 Bảng chọn ngày báo trước điều này.
 
+### Lời nhắc khi app đóng
+
+Bộ trích chỉ chạy khi app mở, nên tới đúng mốc kỳ mà app đang đóng thì **không
+có đồng nào rời ví lúc đó** — kỳ ấy được trích bù ở lần mở kế tiếp.
+
+`ReminderScheduler` thu hẹp khoảng cách ấy: nó đặt **trước** một thông báo vào
+đúng mốc kỳ qua AlarmManager (Android) / UNUserNotificationCenter (iOS), thứ nổ
+được cả khi tiến trình app đã chết. Người dùng chạm vào là app mở và khoản trích
+chạy ngay tại đó. Không phải tự động hoàn toàn, nhưng **thời điểm thì đúng** và
+không ai phải nhớ.
+
+Nó dùng chung bộ đặt lịch với nhắc hoá đơn — bắt buộc, xem
+`NOTIFICATION_FEATURE.md`. Chỉ đặt cho **kỳ sắp tới** (`kyKeTiep`), cố ý bỏ qua
+những kỳ đã tới hạn mà chưa trích: đặt lịch vào quá khứ thì Android bắn ngay còn
+iOS lặng lẽ bỏ, và những kỳ ấy dù sao cũng được trích bù ở lượt quét kế tiếp.
+
 ⚠️ **Mốc neo đi qua đường đồng bộ** nên có thể mang giá trị rác từ Admin-web.
 `cacKyDenHan` có trần 1000 vòng khi dò từ mốc neo tới kỳ đầu còn hiệu lực: bước
 từng ngày từ năm 1990 là hàng chục nghìn vòng lặp ngay trong vòng quét thông
@@ -455,7 +471,7 @@ nullable `transaction.Idgoal`. **Không chặn gì hôm nay**, nhưng chặn hư
 
 ## 9. Kiểm thử
 
-Khoảng **187 test** riêng cho mục tiêu, trên tổng 821 của dự án.
+Khoảng **199 test** riêng cho mục tiêu, trên tổng 833 của dự án.
 
 | Tệp | Canh gì |
 |---|---|
@@ -471,6 +487,7 @@ Khoảng **187 test** riêng cho mục tiêu, trên tổng 821 của dự án.
 | `goal_edit_form_test.dart` | `showDatePicker` với mục tiêu **quá hạn** — xem mục 3.9 |
 | `goal_auto_deposit_test.dart` | Bước kỳ (tháng ngắn, **năm nhuận**), **mốc neo**, trần số kỳ, quyết định trích |
 | `goal_auto_deposit_runner_test.dart` | Trích bù nhiều kỳ, ví cạn giữa chừng, cấu hình hỏng, cách ly tài khoản |
+| `core/notification/reminder_scheduler_test.dart` | Lịch nhắc kỳ trích: đúng mốc kỳ, trùng khoá thông báo, và **không huỷ lịch hoá đơn** |
 | `core/notification/notification_rules_goal_wallet_test.dart` | Hai luật thông báo |
 
 ### ⚠️ Ba thứ bộ test **không** bắt được ở vùng này

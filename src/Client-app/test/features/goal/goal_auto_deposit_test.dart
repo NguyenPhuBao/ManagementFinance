@@ -226,6 +226,63 @@ void main() {
     });
   });
 
+  group('kyKeTiep — kỳ SẮP tới, để đặt lịch nhắc trước', () {
+    test('trả về kỳ đầu tiên nằm sau hiện tại', () {
+      expect(
+        kyKeTiep(
+          mocNeo: DateTime(2026, 9, 15, 8),
+          lanChayGanNhat: DateTime(2026, 9, 5),
+          chuKy: 'Month',
+          now: DateTime(2026, 9, 10),
+        ),
+        DateTime(2026, 9, 15, 8),
+      );
+    });
+
+    test('kỳ đã tới hạn nhưng CHƯA trích thì vẫn là kỳ kế tiếp', () {
+      expect(
+        kyKeTiep(
+          mocNeo: DateTime(2026, 9, 15, 8),
+          lanChayGanNhat: DateTime(2026, 9, 5),
+          chuKy: 'Month',
+          now: DateTime(2026, 9, 20),
+        ),
+        DateTime(2026, 10, 15, 8),
+        reason: 'Kỳ 15/09 đã quá hạn mà sàn vẫn ở 05/09 — nghĩa là app chưa mở '
+            'lần nào từ đó. Đặt lịch cho một mốc trong QUÁ KHỨ thì Android bắn '
+            'ngay lập tức còn iOS lặng lẽ bỏ; cả hai đều sai. Kỳ ấy sẽ được '
+            'trích bù ngay ở lượt quét kế tiếp, nên lịch nhắc phải trỏ tới kỳ '
+            'sau.',
+      );
+    });
+
+    test('chưa bật trích tự động thì không có kỳ nào', () {
+      expect(
+        kyKeTiep(
+          mocNeo: DateTime(2026, 9, 15, 8),
+          lanChayGanNhat: null,
+          chuKy: 'Month',
+          now: DateTime(2026, 9, 10),
+        ),
+        isNull,
+      );
+    });
+
+    test('mốc neo rác thì trả null thay vì treo', () {
+      expect(
+        kyKeTiep(
+          mocNeo: DateTime(1990, 1, 1),
+          lanChayGanNhat: DateTime(2026, 9, 5),
+          chuKy: 'Day',
+          now: DateTime(2026, 9, 10),
+        ),
+        isNull,
+        reason: 'Cùng trần dò như `cacKyDenHan`. Ở đây nó chạy trong lúc đồng '
+            'bộ lại lịch nhắc — treo chỗ đó là treo cả vòng quét.',
+      );
+    });
+  });
+
   group('mocNeoTu — dựng mốc neo từ lựa chọn trên màn hình', () {
     final now = DateTime(2026, 9, 5, 14, 30); // thứ Bảy
 

@@ -37,7 +37,7 @@ import '../../features/category/data/repositories/category_management_repository
 import '../../features/category/data/services/personal_default_categories.dart';
 import '../../features/category/data/services/category_suggestion_engine.dart';
 import '../network/connection_monitor.dart';
-import '../notification/bill_reminder_scheduler.dart';
+import '../notification/reminder_scheduler.dart';
 import '../notification/notification_scanner.dart';
 import '../notification/os/os_notifier.dart';
 import '../notification/os/os_notifier_factory.dart';
@@ -218,14 +218,22 @@ Future<void> setupDependencies() async {
 
   // Lịch nhắc đặt trước với hệ điều hành — cách DUY NHẤT để thông báo nổ khi
   // app đóng hoàn toàn mà không cần tác vụ nền.
-  sl.registerLazySingleton<BillReminderScheduler>(
-    () => BillReminderScheduler(
+  sl.registerLazySingleton<ReminderScheduler>(
+    () => ReminderScheduler(
       osNotifier: sl<OsNotifier>(),
+      // Lịch nhắc kỳ trích tự động đi CHUNG bộ đặt lịch với hoá đơn. Tách
+      // riêng là hai bên cùng gọi `pendingIds()` rồi huỷ sạch lịch của nhau ở
+      // mỗi lượt — im lặng, và chỉ lộ ra khi người dùng phàn nàn rằng nhắc
+      // hoá đơn đã ngừng hoạt động.
+      loadGoals: (idaccount, now) async => [
+        for (final g in await sl<AppDatabase>().goalDao.getAll(idaccount))
+          GoalEntity.fromDrift(g),
+      ],
       // Cùng cửa sổ với scanner, để hai đường không nói hai chuyện khác nhau
       // về việc "còn đáng nhắc hay chưa".
       loadBills: (idaccount, now) => sl<AppDatabase>().billDao.getUpcoming(
             idaccount,
-            days: BillReminderScheduler.cuaSo.inDays,
+            days: ReminderScheduler.cuaSo.inDays,
             now: now,
           ),
       prefsStore: sl<NotificationPrefsStore>(),
@@ -269,7 +277,7 @@ Future<void> setupDependencies() async {
       // Lịch phải theo kịp dữ liệu: hoá đơn vừa thanh toán mà lịch cũ còn
       // nguyên là điện thoại vẫn kêu nhắc trả một hoá đơn đã trả.
       resyncLich: (idaccount) =>
-          sl<BillReminderScheduler>().resync(idaccount),
+          sl<ReminderScheduler>().resync(idaccount),
     ),
   );
 

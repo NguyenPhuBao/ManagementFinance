@@ -118,6 +118,38 @@ List<DateTime> cacKyDenHan({
   return ra;
 }
 
+/// Kỳ **sắp tới** — mốc đầu tiên nằm sau [now] mà chưa được trích.
+///
+/// Dùng để đặt trước lịch nhắc với hệ điều hành (`ReminderScheduler`), thứ nổ
+/// được cả khi app đóng. Cùng vòng dò với [cacKyDenHan] nên hai bên không bao
+/// giờ nói hai chuyện khác nhau về "kỳ nào là kỳ nào".
+///
+/// Trả `null` khi chưa bật trích tự động, hoặc khi mốc neo là giá trị rác vượt
+/// trần dò.
+///
+/// ⚠️ Cố ý **bỏ qua những kỳ đã tới hạn mà chưa trích**: đặt lịch cho một mốc
+/// trong quá khứ thì Android bắn ngay lập tức còn iOS lặng lẽ bỏ — hai nền tảng
+/// hỏng theo hai kiểu, cả hai đều sai. Những kỳ ấy được trích bù ở lượt quét kế
+/// tiếp, nên chúng không cần lịch nhắc.
+DateTime? kyKeTiep({
+  required DateTime? mocNeo,
+  required DateTime? lanChayGanNhat,
+  required String? chuKy,
+  required DateTime now,
+}) {
+  if (lanChayGanNhat == null) return null;
+
+  var moc = mocNeo ?? mocKeTiep(lanChayGanNhat, chuKy);
+  final sau = lanChayGanNhat.isAfter(now) ? lanChayGanNhat : now;
+
+  var soVong = 0;
+  while (!moc.isAfter(sau)) {
+    if (++soVong > _tranDoMoc) return null;
+    moc = mocKeTiep(moc, chuKy);
+  }
+  return moc;
+}
+
 /// Dựng mốc neo từ những gì người dùng chọn trên màn hình.
 ///
 /// [ngay] mang nghĩa khác nhau theo chu kỳ: 1–7 (thứ Hai → chủ nhật) với

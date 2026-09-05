@@ -1,4 +1,4 @@
-/// `BillReminderScheduler` — đặt trước lịch nhắc hoá đơn với hệ điều hành.
+/// `ReminderScheduler` — đặt trước lịch nhắc hoá đơn với hệ điều hành.
 ///
 /// Đây là cách **duy nhất** để thông báo nổ khi app đóng hoàn toàn mà không
 /// cần tác vụ nền. Vì thế mọi cách nó hỏng đều hỏng **im lặng**: người dùng
@@ -22,12 +22,13 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/database/app_database.dart';
-import 'package:flowmoney/core/notification/bill_reminder_scheduler.dart';
+import 'package:flowmoney/core/notification/reminder_scheduler.dart';
 import 'package:flowmoney/core/notification/notification_rules.dart';
 import 'package:flowmoney/core/notification/os/os_notifier.dart';
 import 'package:flowmoney/core/notification/os/os_scheduled_id.dart';
 import 'package:flowmoney/core/notification/prefs/notification_prefs.dart';
 import 'package:flowmoney/core/notification/prefs/notification_prefs_store.dart';
+import 'package:flowmoney/features/goal/data/models/goal_entity.dart';
 
 /// Giả lập kho lịch của hệ điều hành: đặt thì thêm, huỷ thì bớt.
 class OsGia implements OsNotifier {
@@ -124,8 +125,8 @@ void main() {
     );
   }
 
-  BillReminderScheduler dung(List<Bill> bills) {
-    return BillReminderScheduler(
+  ReminderScheduler dung(List<Bill> bills) {
+    return ReminderScheduler(
       osNotifier: os,
       loadBills: (id, at) async => bills,
       prefsStore: prefs,
@@ -329,8 +330,8 @@ void main() {
 
       final soLich = await dung(bills).resync(accountId);
 
-      expect(soLich, BillReminderScheduler.tranSoLich);
-      expect(os.lich.length, BillReminderScheduler.tranSoLich,
+      expect(soLich, ReminderScheduler.tranSoLich);
+      expect(os.lich.length, ReminderScheduler.tranSoLich,
           reason: 'iOS giữ tối đa 64 lịch chờ và ÂM THẦM bỏ phần còn lại. Trần '
               '50 chừa chỗ cho lịch của các tính năng sau.');
     });
@@ -363,7 +364,7 @@ void main() {
   });
 
   test('không có kho tuỳ chọn thì chạy như mặc định', () async {
-    final s = BillReminderScheduler(
+    final s = ReminderScheduler(
       osNotifier: os,
       loadBills: (id, at) async => [hoaDon(denHan: DateTime(2026, 9, 20))],
       clock: () => now,
@@ -374,7 +375,7 @@ void main() {
 
   test('nạp hoá đơn theo ĐÚNG tài khoản được yêu cầu', () async {
     int? idDaNap;
-    final s = BillReminderScheduler(
+    final s = ReminderScheduler(
       osNotifier: os,
       loadBills: (id, at) async {
         idDaNap = id;
@@ -405,7 +406,7 @@ void main() {
       updatedAt: DateTime(2026, 9, 1),
     ));
 
-    final s = BillReminderScheduler(
+    final s = ReminderScheduler(
       osNotifier: os,
       loadBills: (id, at) => db.billDao.getUpcoming(id, days: 30, now: at),
       clock: () => now,
@@ -413,5 +414,142 @@ void main() {
 
     expect(await s.resync(accountId), 1);
     expect(os.lich.values.single.body, contains('Tiền mạng'));
+  });
+
+  group('lịch nhắc kỳ trích tự động', () {
+    GoalEntity mucTieu({
+      String id = 'mt1',
+      String ten = 'MuaXe',
+      double target = 2000000,
+      double current = 500000,
+      String? chuKy = 'Month',
+      double? soTien = 100000,
+      String? viNguon = 'vi_nguon',
+      DateTime? mocNeo,
+      DateTime? sanChay,
+      bool xong = false,
+      bool daXoa = false,
+    }) =>
+        GoalEntity(
+          id: id,
+          idaccount: accountId,
+          name: ten,
+          targetAmount: target,
+          currentAmount: current,
+          startDate: DateTime(2026, 1, 1),
+          targetDate: DateTime(2027, 12, 31),
+          cycleTakeMoney: chuKy,
+          timeCycleTakeMoney: mocNeo ?? DateTime(2026, 9, 20, 8),
+          autoDepositAmount: soTien,
+          autoDepositWalletId: viNguon,
+          autoDepositLastRun: sanChay ?? DateTime(2026, 9, 1),
+          isCompleted: xong,
+          isDeleted: daXoa,
+          updatedAt: DateTime(2026, 9, 1),
+        );
+
+    ReminderScheduler dungGoal(List<GoalEntity> goals,
+            {List<Bill> bills = const []}) =>
+        ReminderScheduler(
+          osNotifier: os,
+          loadBills: (id, at) async => bills,
+          loadGoals: (id, at) async => goals,
+          prefsStore: prefs,
+          clock: () => now,
+        );
+
+    test('đặt lịch đúng vào MỐC KỲ, không phải giờ nhắc chung', () async {
+      await dungGoal([mucTieu()]).resync(accountId);
+
+      final l = os.lich.values.single;
+      expect(l.when, DateTime(2026, 9, 20, 8),
+          reason: 'Giờ nhắc chung (`prefs.gioNhac`) là của hoá đơn. Kỳ trích có '
+              'giờ riêng do người dùng chọn — dùng giờ chung ở đây là nhắc '
+              'lệch so với đúng cái mốc mà màn hình đang hiện.');
+      expect(l.body, contains('MuaXe'));
+      expect(l.body, contains('100'));
+    });
+
+    test('payload trùng khoá thông báo "đã trích" của chính kỳ đó', () async {
+      await dungGoal([mucTieu()]).resync(accountId);
+
+      final l = os.lich.values.single;
+      expect(l.payload, 'goalAuto:mt1:2026-09-20T08:00',
+          reason: 'Cùng khoá nghĩa là cùng `osScheduledId`, nên khi khoản trích '
+              'chạy xong, thông báo "đã trích" THAY CHỖ lời nhắc thay vì nằm '
+              'cạnh nó. Hai thông báo cho một sự việc là thứ người dùng đọc '
+              'thành "app trích hai lần".');
+    });
+
+    test('mục tiêu chưa bật trích tự động thì không đặt lịch', () async {
+      final s = dungGoal([mucTieu(soTien: null, viNguon: null, sanChay: null)]);
+      expect(await s.resync(accountId), 0);
+      expect(os.lich, isEmpty);
+    });
+
+    test('mục tiêu đã hoàn thành hoặc đã xoá thì không đặt lịch', () async {
+      expect(await dungGoal([mucTieu(xong: true)]).resync(accountId), 0);
+      expect(await dungGoal([mucTieu(daXoa: true)]).resync(accountId), 0);
+      expect(
+          await dungGoal([mucTieu(target: 500000, current: 500000)])
+              .resync(accountId),
+          0,
+          reason: 'Đủ tiền rồi thì không còn kỳ nào để nhắc.');
+    });
+
+    test('tắt nhóm mục tiêu thì gỡ lịch, KHÔNG đụng lịch hoá đơn', () async {
+      await prefs.write(
+        accountId,
+        const NotificationPrefs(nhomTat: {NotificationGroup.goal}),
+      );
+
+      final s = dungGoal(
+        [mucTieu()],
+        bills: [hoaDon(denHan: DateTime(2026, 9, 20))],
+      );
+
+      expect(await s.resync(accountId), 1,
+          reason: 'Chỉ còn lịch hoá đơn. Hai nhóm phải tắt bật độc lập — dùng '
+              'chung một bộ đặt lịch không được biến chúng thành một công tắc.');
+      expect(os.lich.values.single.body, contains('Tiền điện'));
+    });
+
+    test('hoá đơn và mục tiêu CÙNG TỒN TẠI, không bên nào huỷ bên kia',
+        () async {
+      final s = dungGoal(
+        [mucTieu()],
+        bills: [hoaDon(denHan: DateTime(2026, 9, 20))],
+      );
+
+      expect(await s.resync(accountId), 2,
+          reason: '`resync` huỷ MỌI lịch chờ không nằm trong tập nó muốn. Tách '
+              'thành hai bộ đặt lịch riêng là mỗi bên xoá sạch lịch của bên '
+              'kia ở mỗi lượt chạy — im lặng, và chỉ lộ ra khi người dùng phàn '
+              'nàn rằng nhắc hoá đơn đã ngừng hoạt động.');
+    });
+
+    test('luỹ đẳng: chạy lại không đặt lại lịch đã có', () async {
+      final s = dungGoal([mucTieu()]);
+      await s.resync(accountId);
+      final lanDau = os.soLanDat;
+
+      await s.resync(accountId);
+      expect(os.soLanDat, lanDau,
+          reason: 'Huỷ rồi đặt lại ở mỗi lượt là mỗi lượt thêm một cơ hội để '
+              'lịch rơi mất.');
+    });
+
+    test('trần số lịch tính CHUNG cho cả hoá đơn lẫn mục tiêu', () async {
+      final nhieuMucTieu = [
+        for (var i = 0; i < 60; i++)
+          mucTieu(id: 'mt$i', ten: 'Mục tiêu $i'),
+      ];
+
+      final soLich = await dungGoal(nhieuMucTieu).resync(accountId);
+      expect(soLich, ReminderScheduler.tranSoLich,
+          reason: 'iOS giữ tối đa 64 lịch chờ rồi ÂM THẦM bỏ phần còn lại. '
+              'Trần phải tính trên tổng hai loại, nếu không hai bên cộng lại '
+              'vượt 64 mà mỗi bên đều tưởng mình còn dư chỗ.');
+    });
   });
 }
