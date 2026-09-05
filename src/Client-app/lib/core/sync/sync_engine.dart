@@ -245,7 +245,15 @@ class SyncEngine {
     // Khôi phục mốc pull đã lưu để không phải kéo lại toàn bộ dữ liệu mỗi lần
     // mở app. Nếu SQLite cục bộ rỗng, _pullFromBackend vẫn tự ép full pull nên
     // không sợ thiếu dữ liệu khi cài lại app.
-    _lastPullTime = await _checkpointStore?.read(idaccount);
+    //
+    // Mốc ở TƯƠNG LAI thì coi như không có, và lần pull kế tiếp quay về kéo
+    // toàn bộ. Máy đã dính mốc hỏng phải tự thoát ra được: chặn ở đầu ghi thôi
+    // thì chúng vẫn kẹt cho tới khi thời gian thật đuổi kịp — trên máy ảo
+    // 2026-09-05 là hai tháng không nhận được gì.
+    _lastPullTime = mocPullConDungKhong(
+      await _checkpointStore?.read(idaccount),
+      DateTime.now().toUtc(),
+    );
 
     // Lắng nghe thay đổi kết nối
     _connectivitySub?.cancel();
@@ -850,7 +858,12 @@ class SyncEngine {
           // đồng hồ của nó, nên lấy giờ client sẽ bỏ sót bản ghi khi hai đồng
           // hồ lệch nhau. Không nhận được bản ghi nào thì giữ nguyên mốc cũ
           // (cùng lắm là pull lại một ít, không bao giờ mất dữ liệu).
-          final newest = _newestUpdateAt(payloadData);
+          // Kẹp về hiện tại: chỉ cần MỘT hàng mang `update_at` tương lai là
+          // mốc bị đẩy vọt lên, và vì mốc chỉ tiến chứ không lùi nên tài khoản
+          // ấy không nhận được gì nữa cho tới khi thời gian thật đuổi kịp — hỏng
+          // hoàn toàn im lặng. Kẹp chứ không vứt bỏ: dữ liệu vừa nhận đã là tất
+          // cả những gì server có tính tới lúc này.
+          final newest = _kepVeHienTai(_newestUpdateAt(payloadData));
           if (newest != null) {
             _lastPullTime = newest;
             await _checkpointStore?.write(accountId, newest);
@@ -864,6 +877,29 @@ class SyncEngine {
     } catch (e) {
       debugPrint('[SyncEngine] HTTP Sync Pull Error: $e');
     }
+  }
+
+  /// Mốc đã lưu, hoặc `null` nếu nó nằm ở **tương lai**.
+  ///
+  /// `null` ở đây kéo theo một lần full pull (`since = 1970`), đúng thứ cần cho
+  /// một máy đang kẹt: mốc hỏng che mất đúng khoảng dữ liệu bị bỏ lỡ, nên kẹp
+  /// nó về "bây giờ" vẫn không lấy lại được phần ấy.
+  ///
+  /// Công khai để test gọi thẳng; đường chạy thật chỉ dùng nó ở [start].
+  static DateTime? mocPullConDungKhong(DateTime? daLuu, DateTime bayGio) {
+    if (daLuu == null) return null;
+    return daLuu.isAfter(bayGio) ? null : daLuu;
+  }
+
+  /// Kẹp một mốc **sắp ghi** về không quá hiện tại.
+  ///
+  /// Khác [mocPullConDungKhong] ở chỗ nó *kẹp* thay vì *vứt*: ở đường ghi ta
+  /// vừa nhận xong dữ liệu, nên "bây giờ" là mốc đúng — không có khoảng nào bị
+  /// bỏ lỡ để mà phải kéo lại.
+  static DateTime? _kepVeHienTai(DateTime? moc) {
+    if (moc == null) return null;
+    final bayGio = DateTime.now().toUtc();
+    return moc.isAfter(bayGio) ? bayGio : moc;
   }
 
   /// Tìm `update_at` mới nhất trong toàn bộ payload pull (mọi loại thực thể).
@@ -1484,6 +1520,12 @@ class SyncEngine {
   /// mặc định, `PersonalDefaultCategories.ensureMissing()` tạo lại nó với UUID
   /// mới ở **mỗi lần mở app**, rồi đẩy lên đụng `uq_category_owner_name_classify`
   /// — index đó không có mệnh đề `WHERE` nên hàng đã xoá mềm vẫn giữ chỗ tên.
+  ///
+  /// ⚠️ Đường **tự lặp** ấy đã đóng ngày 2026-09-05: `ensureMissing()` không
+  /// còn, năm danh mục kia nay thuộc bộ mặc định của backend. Nhưng phép phân
+  /// loại này vẫn cần — người dùng xoá rồi tạo lại một danh mục **của chính họ**
+  /// cùng tên vẫn đụng đúng index đó. Khác biệt là nay nó chỉ xảy ra khi người
+  /// dùng thật sự làm điều ấy, chứ không tự sinh ở mỗi lần mở app.
   static final RegExp _uniqueConstraintPattern = RegExp(
     r'23505|violates unique constraint|unique constraint failed',
     caseSensitive: false,
@@ -1528,6 +1570,7 @@ class SyncEngine {
     // cho tới khi dữ liệu đổi hoặc backend nới ràng buộc. Xếp `transient` như
     // trước đây nghĩa là gửi lại ở MỌI chu kỳ, và vì `ensureMissing()` sinh
     // thêm một bản trùng ở mỗi lần mở app nên số bản ghi kẹt chỉ tăng (G16).
+    // Nguồn tự sinh ấy đã đóng 2026-09-05; ràng buộc thì vẫn còn.
     //
     // `permanent` chặn theo THỜI GIAN chứ không loại vĩnh viễn: khi backend
     // thêm `WHERE "Delete_at" IS NULL` vào index, bản ghi tự quay lại hàng đợi.

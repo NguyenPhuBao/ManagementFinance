@@ -120,6 +120,82 @@ void main() {
     await done.timeout(const Duration(seconds: 5));
   }
 
+  // ── Mốc pull ở TƯƠNG LAI (2026-09-05) ────────────────────────────────────
+  //
+  // Đo được trên máy ảo Android. Log của app: `Pulling ... since
+  // 2026-11-10T08:12:38Z` trong khi hôm ấy mới là 05/09. Mốc lấy theo `update_at`
+  // LỚN NHẤT trong payload, nên chỉ cần MỘT hàng mang dấu thời gian tương lai là
+  // mốc bị đẩy vọt lên — và vì mốc chỉ tiến chứ không lùi, tài khoản ấy **không
+  // nhận được bất cứ dữ liệu mới nào** cho tới khi thời gian thật đuổi kịp.
+  //
+  // Trên máy ảo là 15 hàng của một tài khoản, xa nhất 10/11/2026: đồng bộ chiều
+  // kéo về chết hai tháng mà không có lỗi nào báo ra.
+  //
+  // Chữa ở hai đầu: KHÔNG ghi mốc vượt quá hiện tại, và mốc ĐÃ LƯU mà ở tương
+  // lai thì coi như không có — máy đang kẹt tự thoát ra ở lần mở app kế tiếp.
+
+  group('Mốc pull không bao giờ được vượt quá hiện tại', () {
+    test('payload có một hàng mốc tương lai thì mốc lưu bị kẹp về hiện tại',
+        () async {
+      await seedWallet();
+      final truoc = DateTime.now().toUtc();
+      client.adapter.pullData = {
+        'wallets': [
+          {
+            'idwallet': '99999999-9999-4999-8999-999999999999',
+            'idaccount': accountId,
+            'name': 'Ví thật',
+            'balance': 0,
+            'update_at': '2026-09-01T10:00:00.000Z',
+          },
+          {
+            'idwallet': '88888888-8888-4888-8888-888888888888',
+            'idaccount': accountId,
+            'name': 'Ví có dấu thời gian hỏng',
+            'balance': 0,
+            'update_at': '2027-11-10T08:12:38.000Z',
+          },
+        ],
+      };
+
+      await runSync();
+
+      final moc = store.values[accountId]!;
+      expect(moc.isAfter(DateTime.now().toUtc().add(const Duration(minutes: 1))),
+          isFalse,
+          reason: 'Ghi thẳng mốc 2027 vào là tự khoá chiều kéo về suốt hơn một '
+              'năm, và không có lỗi nào báo ra.');
+      expect(moc.isBefore(truoc.subtract(const Duration(minutes: 1))), isFalse,
+          reason: 'Kẹp về HIỆN TẠI chứ không phải vứt bỏ: dữ liệu vừa nhận đã '
+              'là tất cả những gì server có, nên hỏi lại từ mốc cũ chỉ tốn công.');
+    });
+
+    test('mốc đã lưu ở tương lai thì bị bỏ, pull quay về kéo toàn bộ', () async {
+      await seedWallet(); // CSDL cục bộ KHÔNG rỗng — không có đường ép full pull nào khác
+      store.values[accountId] = DateTime.utc(2027, 11, 10, 8, 12, 38);
+      client.adapter.pullData = const {};
+
+      await runSync();
+
+      expect(client.adapter.lastPullSince, '1970-01-01T00:00:00.000Z',
+          reason: 'Máy đã dính mốc hỏng phải tự thoát ra được. Chỉ chặn ở đầu '
+              'GHI thì những máy đang kẹt vẫn kẹt cho tới khi thời gian thật '
+              'đuổi kịp — trên máy ảo là hai tháng.');
+    });
+
+    test('mốc đã lưu hợp lệ thì vẫn dùng như cũ', () async {
+      await seedWallet();
+      store.values[accountId] = DateTime.utc(2026, 9, 1, 10);
+      client.adapter.pullData = const {};
+
+      await runSync();
+
+      expect(client.adapter.lastPullSince, '2026-09-01T10:00:00.000Z',
+          reason: 'Phép kiểm chỉ được đụng tới mốc ở TƯƠNG LAI. Ép full pull '
+              'nhầm là kéo lại toàn bộ dữ liệu ở mỗi lần mở app.');
+    });
+  });
+
   test('Mốc đồng bộ được lưu lại bền vững sau khi pull', () async {
     await seedWallet();
     client.adapter.pullData = {
