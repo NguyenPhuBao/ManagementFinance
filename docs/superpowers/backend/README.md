@@ -164,6 +164,8 @@ là **bước 8**, không phải bước đầu.
   `DateTransaction` (không gạch dưới). Đừng suy tên từ bảng này sang bảng kia —
   mở `schema.prisma` ra đọc. Sai tên cột ở PostgreSQL thì báo lỗi ngay, nhưng
   sai trong payload đồng bộ thì **im lặng**.
-- File gốc của một số tài liệu vẫn nằm ở `docs/superpowers/plans/`,
-  `docs/superpowers/specs/`, `docs/category/`. Thư mục này là bản gom lại cho
-  đội backend tiện tra.
+- ⚠️ **Không có bản sao nào của các tài liệu này ở nơi khác trong repo.** Câu
+  ghi chú cũ ở đây nói "file gốc vẫn nằm ở `docs/superpowers/plans/`,
+  `docs/superpowers/specs/`, `docs/category/`" — điều đó **đúng trên máy người
+  viết nhưng sai với repo**: cả ba thư mục ấy đều bị `.gitignore` chặn, nên
+  người clone về không hề có chúng. Đừng đi tìm.
