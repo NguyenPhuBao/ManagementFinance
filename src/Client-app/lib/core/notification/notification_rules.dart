@@ -265,6 +265,20 @@ List<NotificationCandidate> _billCandidates(NotificationRuleInput input) {
 
 // ── Mục tiêu ─────────────────────────────────────────────────────────────────
 
+/// Đường dẫn tới **một** mục tiêu, dùng chung cho cả hai luật thông báo.
+///
+/// Trước đây cả hai trỏ về `/goals` — danh sách. Thông báo đã biết chính xác
+/// mục tiêu nào (nó nằm sẵn ở `subjectId`), nên đổ người dùng xuống danh sách
+/// là vứt đi thông tin mình đang cầm: câu nhắc "tiết kiệm thêm 900 nghìn cho
+/// MacBook" mà việc cần làm vẫn còn cách vài cú chạm.
+///
+/// ⚠️ Route này phải nằm **ngoài** `StatefulShellRoute`, y như `/goals`. Trung
+/// tâm thông báo chọn `push` hay `go` bằng `thuocThanhTab()`, và `push` một
+/// route trong shell từ ngoài shell làm app **chết màn đỏ**. Kéo `/goals/:id`
+/// vào một nhánh tab thì phải cập nhật `nhanhThanhTab` cùng lúc —
+/// `notification_deeplink_test.dart` canh chỗ đó.
+String goalDeeplink(String goalId) => '/goals/$goalId';
+
 List<NotificationCandidate> _goalCandidates(NotificationRuleInput input) {
   final ra = <NotificationCandidate>[];
 
@@ -283,7 +297,7 @@ List<NotificationCandidate> _goalCandidates(NotificationRuleInput input) {
         severity: NotificationSeverity.info,
         subjectType: 'goal',
         subjectId: g.id,
-        deeplink: '/goals',
+        deeplink: goalDeeplink(g.id),
         createdAt: input.now,
       ));
       continue;
@@ -304,7 +318,7 @@ List<NotificationCandidate> _goalCandidates(NotificationRuleInput input) {
       severity: NotificationSeverity.warning,
       subjectType: 'goal',
       subjectId: g.id,
-      deeplink: '/goals',
+      deeplink: goalDeeplink(g.id),
       createdAt: input.now,
     ));
   }

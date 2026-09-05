@@ -46,6 +46,16 @@ void main() {
       expect(thuocThanhTab('/wallets'), isFalse);
       expect(thuocThanhTab('/notifications'), isFalse);
     });
+
+    test('đường dẫn tới MỘT mục tiêu cũng push được', () {
+      expect(thuocThanhTab('/goals/dc2656fa-1397-4435-99d4-09e619226a14'),
+          isFalse,
+          reason: 'Thông báo mục tiêu dẫn thẳng tới `/goals/<id>`. Route ấy '
+              'nằm ngoài StatefulShellRoute y như `/goals`, nên push là đúng — '
+              'nếu một bản sau kéo nó vào một nhánh tab mà quên cập nhật '
+              '`nhanhThanhTab`, bấm thông báo sẽ làm app chết màn đỏ và test '
+              'này là thứ duy nhất bắt được trước khi ra máy thật.');
+    });
   });
 
   group('không được nhầm theo tiền tố chuỗi', () {

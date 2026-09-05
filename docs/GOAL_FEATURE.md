@@ -347,7 +347,6 @@ giá trị từ Admin-web nếu có — nhưng đừng tưởng có tính năng 
 | Không có bộ **lập lịch** trích tiền | Khối "Tự động trích tiền định kỳ" nay lưu lại làm *kế hoạch*, nhưng công tắc vẫn không kích hoạt gì |
 | Không kiểm trùng tên mục tiêu | Khác hẳn danh mục (có quy tắc rất chặt). Chưa rõ chủ ý hay bỏ sót |
 | Phép kiểm **số tiền** khi nạp chỉ ở giao diện | Repository nhận bất kỳ giá trị nào. Các phép kiểm về **ví** thì đã có ở cả hai tầng |
-| Thông báo dẫn về `/goals` | Không phải `/goals/<id>`, nên phải tự tìm lại mục tiêu |
 | Dải cảnh báo lệch chưa xem trên máy thật | Hàm có 6 test; phần vẽ chưa gặp ca dữ liệu để hiện |
 
 ---
@@ -367,7 +366,7 @@ nullable `transaction.Idgoal`. **Không chặn gì hôm nay**, nhưng chặn hư
 
 ## 9. Kiểm thử
 
-Khoảng **121 test** riêng cho mục tiêu, trên tổng 755 của dự án.
+Khoảng **123 test** riêng cho mục tiêu, trên tổng 757 của dự án.
 
 | Tệp | Canh gì |
 |---|---|

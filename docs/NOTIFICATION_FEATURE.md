@@ -449,9 +449,15 @@ Dùng `thuocThanhTab()` trong `notification_deeplink.dart` để chọn `go` hay
 `push`. Bốn nhánh tab là `/home`, `/analytics`, `/budget`, `/profile` — danh
 sách ấy giữ đồng bộ **tay** với `app_router.dart`.
 
-⚠️ Ba deeplink còn lại (`/bills`, `/goals`, `/wallets`) đều **ngoài** shell nên
-`push` chạy tốt. Ba phần tư đường đi đúng chính là lý do lỗi này lọt qua mọi
+⚠️ Ba deeplink còn lại (`/bills`, `/goals/<id>`, `/wallets`) đều **ngoài** shell
+nên `push` chạy tốt. Ba phần tư đường đi đúng chính là lý do lỗi này lọt qua mọi
 vòng kiểm trước đó.
+
+⚠️ Thông báo mục tiêu dẫn tới **`/goals/<id>`**, không phải `/goals` — nó đã
+biết chính xác mục tiêu nào (`subjectId`), nên đổ người dùng xuống danh sách là
+vứt đi thông tin mình đang cầm. Route ấy nằm ngoài shell y như `/goals`; kéo nó
+vào một nhánh tab thì **phải** cập nhật `nhanhThanhTab` cùng lúc, nếu không bấm
+thông báo sẽ làm app chết màn đỏ. `notification_deeplink_test.dart` canh chỗ đó.
 
 ---
 

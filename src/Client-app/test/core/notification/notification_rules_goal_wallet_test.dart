@@ -89,7 +89,10 @@ void main() {
       expect(ra.severity, NotificationSeverity.info,
           reason: 'Tin vui không được dùng màu cảnh báo.');
       expect(ra.body, contains('MacBook'));
-      expect(ra.deeplink, '/goals');
+      expect(ra.deeplink, '/goals/mt1',
+          reason: 'Dẫn thẳng tới mục tiêu, không phải về danh sách. Thông báo '
+              'đã biết chính xác mục tiêu nào — bắt người dùng tự dò lại trong '
+              'danh sách là vứt đi thông tin mình đang cầm.');
     });
 
     test('cờ isCompleted cũng tính là hoàn thành', () {
@@ -139,6 +142,25 @@ void main() {
           reason: 'Câu nhắc phải nói số tiền cụ thể, đúng như mục thứ ba trong '
               'thiết kế Stitch. "Bạn đang trễ tiến độ" không giúp người dùng '
               'quyết định làm gì tiếp.');
+      expect(ra.deeplink, '/goals/mt1',
+          reason: 'Cùng lý do với thông báo hoàn thành: nhắc "tiết kiệm thêm '
+              '900 nghìn" mà đổ người dùng xuống danh sách thì việc cần làm '
+              'vẫn còn cách vài cú chạm.');
+    });
+
+    test('hai mục tiêu khác nhau dẫn tới hai đường khác nhau', () {
+      final ra = chay(goals: [
+        mucTieu(id: 'mt1', ten: 'MacBook', target: 1000, current: 1000),
+        mucTieu(id: 'mt2', ten: 'Xe máy', target: 2000, current: 2000),
+      ]);
+
+      expect(
+        ra.map((c) => c.deeplink).toSet(),
+        {'/goals/mt1', '/goals/mt2'},
+        reason: 'Đường dẫn phải mang id của CHÍNH mục tiêu sinh ra nó. Dựng '
+            'chuỗi từ một biến sai chỗ trong vòng lặp là mọi thông báo cùng '
+            'trỏ về một mục tiêu — và không có gì báo lỗi.',
+      );
     });
 
     test('nhắc tối đa MỘT lần mỗi tháng', () {
