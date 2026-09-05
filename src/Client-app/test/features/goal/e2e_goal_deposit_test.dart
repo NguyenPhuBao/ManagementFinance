@@ -32,13 +32,23 @@ void main() {
         updatedAt: DateTime.now(),
       ),
     );
+    await db.walletDao.insert(
+      WalletsCompanion.insert(
+        id: 'w10_nhan',
+        idaccount: 1,
+        name: 'Ví Tích Lũy',
+        balance: const Value(0.0),
+        updatedAt: DateTime.now(),
+      ),
+    );
 
-    // 2. Add Goal
+    // 2. Add Goal — ví nhận là bắt buộc kể từ khi phiếu nạp thôi hỏi lại.
     final goal = await repository.addGoal(
       idaccount: 1,
       name: 'Mua Quà Tết',
       targetAmount: 5000000.0,
       targetDate: DateTime.now().add(const Duration(days: 60)),
+      walletId: 'w10_nhan',
     );
 
     // 3. Deposit money into goal
@@ -118,7 +128,7 @@ void main() {
     expect(updatedGoal?.currentAmount, 1500000.0);
   });
 
-  test('Goal deposit with explicit targetWalletId credits Wallet A and deducts Wallet B', () async {
+  test('Nạp từ ví B vào mục tiêu gắn ví A: một giao dịch chuyển khoản duy nhất', () async {
     // 1. Setup Wallet A (Savings) and Wallet B (Source)
     await db.walletDao.insert(
       WalletsCompanion.insert(
@@ -148,13 +158,12 @@ void main() {
       walletId: 'w_A',
     );
 
-    // 3. User deposits from Wallet B into Goal (linked to Wallet A)
+    // 3. Nạp từ ví B. Ví nhận KHÔNG truyền vào — repository đọc từ mục tiêu.
     await repository.depositToGoal(
       goalId: goal.id,
       goalName: goal.name,
       depositAmount: 3000000.0,
       walletId: 'w_B',
-      targetWalletId: 'w_A',
       idaccount: 1,
     );
 
@@ -166,13 +175,18 @@ void main() {
     final walletA = await db.walletDao.getById('w_A');
     expect(walletA?.balance, 5000000.0);
 
-    // 6. Verify Income & Expense transactions
-    final txsB = await db.transactionDao.getByWallet('w_B');
-    expect(txsB.first.type, 'chi');
-    expect(txsB.first.amount, 3000000.0);
+    // 6. ĐÚNG MỘT hàng, kiểu chuyển khoản, mang cả hai đầu ví.
+    final tatCa = await db.transactionDao.getAll(1);
+    expect(tatCa.length, 1,
+        reason: 'Một lần chuyển tiền giữa hai ví của cùng người dùng là MỘT '
+            'giao dịch, không phải một cặp chi/thu rời.');
+    expect(tatCa.single.type, 'transfer');
+    expect(tatCa.single.walletId, 'w_B');
+    expect(tatCa.single.walletTransfer, 'w_A');
+    expect(tatCa.single.amount, 3000000.0);
 
-    final txsA = await db.transactionDao.getByWallet('w_A');
-    expect(txsA.first.type, 'thu');
-    expect(txsA.first.amount, 3000000.0);
+    // Hàng nằm ở ví nguồn; ví đích tra được qua walletTransfer.
+    expect((await db.transactionDao.getByWallet('w_B')).length, 1);
+    expect((await db.transactionDao.getByWallet('w_A')), isEmpty);
   });
 }

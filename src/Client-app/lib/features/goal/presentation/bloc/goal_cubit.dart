@@ -65,6 +65,7 @@ class GoalCubit extends Cubit<GoalState> {
     required double targetAmount,
     required DateTime targetDate,
     String? walletId,
+    String? cycleTakeMoney,
     String? icon,
     String? colour,
     String? note,
@@ -76,6 +77,7 @@ class GoalCubit extends Cubit<GoalState> {
         targetAmount: targetAmount,
         targetDate: targetDate,
         walletId: walletId,
+        cycleTakeMoney: cycleTakeMoney,
         icon: icon,
         colour: colour,
         note: note,
@@ -96,12 +98,13 @@ class GoalCubit extends Cubit<GoalState> {
     }
   }
 
+  /// [walletId] là ví NGUỒN. Ví nhận không truyền vào — repository đọc từ chính
+  /// mục tiêu, vì nó được chọn một lần lúc tạo và chỉ đổi qua "Đổi ví nhận".
   Future<void> depositToGoal({
     required String goalId,
     required String goalName,
     required double depositAmount,
     required String walletId,
-    String? targetWalletId,
     required int idaccount,
   }) async {
     try {
@@ -110,10 +113,30 @@ class GoalCubit extends Cubit<GoalState> {
         goalName: goalName,
         depositAmount: depositAmount,
         walletId: walletId,
-        targetWalletId: targetWalletId,
         idaccount: idaccount,
       );
       // watchGoals stream sẽ tự động cập nhật UI — không cần gọi loadGoals
+    } catch (e) {
+      emit(GoalError(e.toString()));
+    }
+  }
+
+  /// [walletId] là ví NHẬN tiền rút ra. Ví tích lũy đọc từ chính mục tiêu.
+  Future<void> withdrawFromGoal({
+    required String goalId,
+    required String goalName,
+    required double amount,
+    required String walletId,
+    required int idaccount,
+  }) async {
+    try {
+      await repository.withdrawFromGoal(
+        goalId: goalId,
+        goalName: goalName,
+        amount: amount,
+        walletId: walletId,
+        idaccount: idaccount,
+      );
     } catch (e) {
       emit(GoalError(e.toString()));
     }
