@@ -300,7 +300,10 @@ List<NotificationCandidate> _goalCandidates(NotificationRuleInput input) {
   for (final g in input.goals) {
     if (g.isDeleted) continue;
 
-    if (g.isCompleted || g.progress >= 1.0) {
+    // `GoalEntity.daHoanThanh` là định nghĩa duy nhất của "mục tiêu đã xong",
+    // dùng chung với bộ chia tab `chiaMucTieu`. Trước đây chỗ này tự viết
+    // `isCompleted || progress >= 1.0` — một bản sao chờ ngày lệch.
+    if (g.daHoanThanh) {
       ra.add(NotificationCandidate(
         kind: NotificationKind.goalCompleted,
         // KHÔNG có mốc thời gian trong khoá: một mục tiêu chỉ hoàn thành một

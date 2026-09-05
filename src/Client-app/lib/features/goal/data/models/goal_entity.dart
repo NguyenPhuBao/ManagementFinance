@@ -184,6 +184,19 @@ class GoalEntity {
   /// Kẹp hai đầu vì thanh tiến độ vẽ thẳng theo giá trị này. `targetAmount = 0`
   /// tạo được từ giao diện, và Dart chia cho 0 ra `Infinity` chứ **không ném** —
   /// giá trị hỏng sẽ trôi thẳng tới màn hình.
+  /// Mục tiêu này đã xong chưa — **định nghĩa duy nhất** trong dự án.
+  ///
+  /// Hai vế, và cần cả hai. `isCompleted` là cờ được ghi xuống lúc nạp/rút;
+  /// `progress >= 1.0` bắt những ca cờ chưa kịp ghi, và bắt cả mục tiêu 0 đồng
+  /// (nơi `progress` trả thẳng `1.0`). Chỉ nhìn cờ thì một mục tiêu vừa đủ tiền
+  /// sẽ nằm ở tab "đang theo đuổi" với thanh tiến độ đầy 100% — hai chỗ trên
+  /// cùng một màn hình nói ngược nhau.
+  ///
+  /// Luật thông báo `_goalCandidates` và bộ chia tab `chiaMucTieu` đều gọi
+  /// getter này. Trước đây mỗi nơi tự viết `isCompleted || progress >= 1.0`, và
+  /// hai bản sao ấy là thứ sẽ lệch nhau ở lần sửa sau.
+  bool get daHoanThanh => isCompleted || progress >= 1.0;
+
   double get progress {
     if (targetAmount <= 0) return 1.0;
     final tyLe = currentAmount / targetAmount;
