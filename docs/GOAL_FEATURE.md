@@ -29,6 +29,7 @@
 | Tạo mục tiêu | hàng `goals`, `startDate = now`, `walletId` bắt buộc, `cycleTakeMoney` | — |
 | Nạp tiền | `current_amount +=`, hai ví đổi số dư | **một** hàng `type='transfer'`, ví nguồn → ví tích luỹ |
 | Rút tiền | `current_amount -=`, `is_completed` tính lại, hai ví đổi số dư | **một** hàng `type='transfer'`, ví tích luỹ → ví đích |
+| Sửa mục tiêu | `name`, `target_amount`, `target_date`, `cycle_take_money`, `icon`, `colour`; `is_completed` **tính lại** | — |
 | Đổi ví nhận | `wallet_id` — **chỉ khi `current_amount == 0`** | — |
 | Xoá mục tiêu | xoá mềm `is_deleted` + `deleted_at` | — |
 
@@ -172,6 +173,71 @@ số người dùng gõ.
 
 ---
 
+### 3.9 Trang sửa dùng CHUNG biểu mẫu với trang tạo
+
+`GoalAddPage` nhận thêm `goalId` tuỳ chọn; có nó là chế độ sửa. Cùng lối mà
+thiết kế Stitch đặt cho danh mục ("Thêm / Chỉnh sửa danh mục con"). Tách thành
+hai trang thì hai bản sao của cùng một biểu mẫu sẽ trôi xa nhau — sửa nhãn ở
+một bên, quên bên kia.
+
+Chế độ sửa **không** động tới ví tích luỹ: ô ấy chỉ đọc và trỏ về nút đổi ví ở
+trang chi tiết, nơi đặt phép khoá của mục 3.1. Nhân đôi luật khoá sang biểu mẫu
+là tự chuốc hai luật lệch nhau. `updateGoal` ở tầng dữ liệu cũng **không nhận**
+`currentAmount` lẫn `walletId`, nên không có đường nào đi vòng qua.
+
+Cờ hoàn thành **tính lại** theo mục tiêu mới, cùng luật với mục 3.5: hạ mục tiêu
+xuống dưới số đã tích thì bật, nâng lên trên thì gỡ.
+
+Ba chi tiết dễ hỏng lặng lẽ, mỗi cái có test canh:
+
+- **Thứ tự điền sẵn.** `_targetDate` và `_frequency` phải đặt **trước** khi gán
+  số tiền. Hai ô số tiền và hạn định nối nhau bằng cặp listener tính chéo — gán
+  tiền trước thì listener tính ra một hạn mới từ hạn mặc định "một năm nữa" và
+  ghi đè lên hạn thật, ngay trước mắt người dùng.
+- **`showDatePicker` với mục tiêu quá hạn.** `initialDate` trước `firstDate` là
+  **assertion**, tức màn đỏ ngay khi bấm vào ô hạn định — và nó rơi trúng đúng
+  những mục tiêu cần sửa nhất. `ngayNhoNhatChoLich` lùi `firstDate` về ngày hạn
+  cũ khi cần.
+- **`null` mang hai nghĩa khác nhau.** `cycleTakeMoney: null` là **xoá** (tắt
+  công tắc trích tiền định kỳ phải bỏ được kế hoạch cũ), còn `icon`/`colour`
+  `null` là **giữ nguyên** — hai cột ấy không có trạng thái "không có", gán đại
+  sẽ đưa mọi mục tiêu về lá cờ xanh sau một lần sửa tên.
+
+### 3.10 Biểu tượng và màu: bảng tra không chứa giá trị dự phòng
+
+`kBieuTuongMucTieu` **cố ý không có `'flag'`**, dù đó là mặc định của CSDL. Lá
+cờ là giá trị dự phòng của `bieuTuongMucTieu`, nên nếu nó nằm trong bảng chọn
+thì phép kiểm "mọi lựa chọn đều tra được" mất hết ý nghĩa: một tên gõ sai vẫn ra
+lá cờ và trông như đúng.
+
+Hệ quả: mục tiêu cũ mang `'flag'` có một giá trị ngoài bảng.
+`danhSachBieuTuong()` **chèn nó vào đầu** thay vì bỏ qua (trang sửa mở ra không
+ô nào được tô, người dùng tưởng chưa từng chọn) hay tự nhảy sang ô đầu (đổi biểu
+tượng sau lưng người dùng chỉ vì họ vào sửa cái tên).
+
+`mauMucTieu()` **không bao giờ ném** — nó chạy trong `build()`, nên một ngoại lệ
+ở đó là màn đỏ kéo sập cả trang danh sách chứ không riêng thẻ có dữ liệu hỏng.
+
+### 3.11 Trang danh sách chỉ nói những gì app biết chắc
+
+Thẻ "Tốc độ tiết kiệm của bạn đã tăng 12% so với tháng trước" là một con số cố
+định chép từ mockup, kèm nút "Xem báo cáo" có `onPressed: () {}`. Nay chỗ ấy là
+tổng số mục tiêu, tổng đã tích và tổng đích — **lấy thẳng từ `GoalLoaded`**,
+không tính lại, cùng nguyên tắc một-định-nghĩa với mục 3.6.
+
+Cùng đợt: bỏ huy hiệu **PREMIUM** (app không có gói trả phí nào), dấu **ba
+chấm** trên thẻ (không mở menu nào — mọi thao tác nằm ở trang chi tiết), và nút
+**"Xem tất cả"** ở lịch sử tích luỹ (danh sách vốn đã hiện toàn bộ, nên nó vừa
+không làm gì vừa ngụ ý sai rằng có phần bị giấu).
+
+Trang chi tiết **không nghe dòng dữ liệu** (bẫy 4.5) nên phải tự `_loadGoal()`
+sau khi trang sửa đóng. Việc đó dựng lại dòng lịch sử tích luỹ, và
+`StreamBuilder` quay về trạng thái chưa có dữ liệu — trộn ca ấy với "rỗng thật"
+làm lịch sử **nháy thành "Chưa có khoản tích lũy nào"** rồi hiện lại, trông y
+như vừa mất dữ liệu. Đã phân biệt bằng `connectionState`.
+
+---
+
 ## 4. Bảy cái bẫy
 
 ### 4.1 `walletTransfer` **không có khoá ngoại**
@@ -278,10 +344,7 @@ giá trị từ Admin-web nếu có — nhưng đừng tưởng có tính năng 
 
 | Việc | Ghi chú |
 |---|---|
-| Không có trang **sửa** mục tiêu | Repository cũng không có hàm đổi tên/số tiền/hạn định. Sai một chữ là phải xoá và làm lại — mất luôn lịch sử vì nó nối theo `goal_id`. Thiết kế Stitch **có** nút này |
 | Không có bộ **lập lịch** trích tiền | Khối "Tự động trích tiền định kỳ" nay lưu lại làm *kế hoạch*, nhưng công tắc vẫn không kích hoạt gì |
-| Nội dung giả trên trang danh sách | Chuỗi "tăng 12% so với tháng trước", nút "Xem báo cáo", "Xem tất cả", huy hiệu PREMIUM, dấu ba chấm trên thẻ — tất cả chép từ mockup Stitch, không nối dữ liệu |
-| Icon/màu riêng từng mục tiêu | `icon`/`colour` có trong CSDL và đồng bộ đủ, nhưng thẻ hardcode `Icons.flag` |
 | Không kiểm trùng tên mục tiêu | Khác hẳn danh mục (có quy tắc rất chặt). Chưa rõ chủ ý hay bỏ sót |
 | Phép kiểm **số tiền** khi nạp chỉ ở giao diện | Repository nhận bất kỳ giá trị nào. Các phép kiểm về **ví** thì đã có ở cả hai tầng |
 | Thông báo dẫn về `/goals` | Không phải `/goals/<id>`, nên phải tự tìm lại mục tiêu |
@@ -304,7 +367,7 @@ nullable `transaction.Idgoal`. **Không chặn gì hôm nay**, nhưng chặn hư
 
 ## 9. Kiểm thử
 
-Khoảng **97 test** riêng cho mục tiêu, trên tổng 731 của dự án.
+Khoảng **121 test** riêng cho mục tiêu, trên tổng 755 của dự án.
 
 | Tệp | Canh gì |
 |---|---|
@@ -316,6 +379,8 @@ Khoảng **97 test** riêng cho mục tiêu, trên tổng 731 của dự án.
 | `goal_wallet_shortfall_test.dart` | Cảnh báo lệch, cộng dồn nhiều mục tiêu |
 | `data/repositories/goal_repository_impl_test.dart` | Nạp, rút, đổi ví, nguyên tử, lịch sử |
 | `presentation/widgets/goal_progress_test.dart` | Một định nghĩa duy nhất của tỉ lệ |
+| `presentation/widgets/goal_appearance_test.dart` | Bảng tra biểu tượng/màu, dữ liệu rác, và **giá trị ngoài bảng chọn** |
+| `goal_edit_form_test.dart` | `showDatePicker` với mục tiêu **quá hạn** — xem mục 3.9 |
 | `core/notification/notification_rules_goal_wallet_test.dart` | Hai luật thông báo |
 
 ### ⚠️ Ba thứ bộ test **không** bắt được ở vùng này

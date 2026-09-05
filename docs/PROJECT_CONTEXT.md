@@ -727,6 +727,16 @@ Tóm tắt:
   tiêu bằng ID thay vì bằng tên. Không đi qua đồng bộ — xem mục 8 bảng trên.
 - Tỉ lệ tiến độ có **đúng một** định nghĩa (`GoalEntity.progress`); widget nhận
   thẳng `GoalEntity` nên nơi gọi không tính lại được.
+- **Trang sửa mục tiêu** (`/goals/:id/edit`) dùng CHUNG biểu mẫu với trang tạo —
+  `GoalAddPage` nhận thêm `goalId` tuỳ chọn. Nó **không** đụng ví tích luỹ (ô
+  chỉ đọc, trỏ về nút đổi ví ở trang chi tiết) lẫn tiến độ, và **tính lại** cờ
+  hoàn thành. `null` mang hai nghĩa khác nhau ở `updateGoal`: `cycleTakeMoney`
+  là **xoá**, còn `icon`/`colour` là **giữ nguyên** — mục 3.9 `GOAL_FEATURE.md`.
+- **Biểu tượng và màu riêng từng mục tiêu** đã nối dữ liệu. Bảng tra cố ý không
+  chứa `'flag'` (giá trị dự phòng), nên mục tiêu cũ mang `'flag'` được **chèn
+  vào đầu** bảng chọn thay vì bị bỏ qua — mục 3.10.
+- **Nội dung giả trên trang danh sách đã dọn**: huy hiệu PREMIUM, câu "tăng
+  12%", nút "Xem báo cáo", "Xem tất cả", dấu ba chấm trên thẻ — mục 3.11.
 
 ⚠️ Ba lỗi ở vùng này **chỉ máy ảo Android mới lộ ra**: `ProviderNotFoundError`
 trên route không có `WalletCubit`, màn đỏ do `DropdownButton` có `value` ngoài
