@@ -1,6 +1,6 @@
 # Backend — Mục lục, thứ tự đọc và thứ tự thi công
 
-> Thư mục này gom mọi tài liệu backend của FlowMoney. Có **18 tài liệu**, phần
+> Thư mục này gom mọi tài liệu backend của FlowMoney. Có **19 tài liệu**, phần
 > lớn đã làm xong — bảng "Còn phải làm" bên dưới là thứ cần đọc trước.
 >
 > Cập nhật 2026-09-04 (lần hai, sau khi gộp `origin/main` `dfda862` mang mô-đun
@@ -97,6 +97,7 @@ một tài liệu có thể trải ra nhiều bước ở đó, và ngược l�
 | 6 | [CATEGORY_GROUP_MEMBERSHIP_SYNC.md](./CATEGORY_GROUP_MEMBERSHIP_SYNC.md) | ⛔ Thứ **duy nhất** còn chặn G10: backend chưa có bảng/entity cho việc gán danh mục **mặc định** vào nhóm |
 | 7 | [CATEGORY_CLASSIFY_ALIGNMENT.md](./CATEGORY_CLASSIFY_ALIGNMENT.md) | ⚠️ Gần xong — còn đúng một bước thu hẹp `validClassify` (`sync.validation.js:103`) |
 | 8 | [2026-09-05-backend-transaction-goal-id.md](./2026-09-05-backend-transaction-goal-id.md) | 🔓 **Mở khoá, không phải sửa lỗi** — xin một cột nullable `transaction.Idgoal` để giao dịch tích luỹ nối với mục tiêu bằng ID thay vì bằng tên. **Không có gì đang hỏng**: trên máy tạo ra dữ liệu client đã nối đúng, máy khác thì rơi xuống nhánh so tên (hiện thừa khi hai mục tiêu trùng tên hoặc tên này là tiền tố tên kia). Nhưng nó **chặn hẳn** hướng bỏ bộ đếm `current_amount` để suy tiến độ từ chính giao dịch. Rẻ nhất là gộp vào đợt migration của **bước 9** |
+| 9 | [2026-09-05-backend-goal-auto-deposit.md](./2026-09-05-backend-goal-auto-deposit.md) | 🔓 **Mở khoá, không phải sửa lỗi** — xin ba cột nullable cho cấu hình **trích tiền tự động** của mục tiêu (`auto_deposit_amount`, `auto_deposit_wallet_id`, `auto_deposit_last_run`). Client đã làm xong tính năng (schema v15) nhưng ba cột ở lại máy, nên bật trích ở điện thoại rồi đăng nhập máy khác thì máy kia **không trích gì cả**. ⚠️ **Ba cột phải lên CÙNG LÚC**: đưa hai cột đầu mà bỏ `auto_deposit_last_run` là mỗi máy giữ một mốc riêng và **cả hai cùng chuyển tiền** — hỏng nặng hơn hiện trạng. Rẻ nhất là gộp vào đợt migration của **bước 9** cùng `transaction.Idgoal` |
 
 ### Vì sao mức ưu tiên xếp như vậy
 

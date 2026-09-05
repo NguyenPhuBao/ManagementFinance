@@ -20,6 +20,9 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > | **G17** | Danh sách rỗng ở lần vào đầu sau khởi động nguội — cần sửa ở **mọi** trang đọc theo tài khoản, không riêng mục tiêu |
 > | **G18** | Nhánh dự phòng của lịch sử tích luỹ còn so bằng tên — chặn ở backend |
 > | **G19** | **Không phải lỗi** — ghi lại để người sau không "sửa" nhầm |
+> | **G20** | Giao dịch trích bù mang dấu thời gian **lúc bù**, không phải mốc kỳ — cần đổi chữ ký `depositToGoal` |
+> | **G21** | Cấu hình trích tự động **không theo người dùng sang máy khác** — chặn ở backend |
+> | **G22** | **Không phải lỗi** — giờ trong mốc neo chỉ giữ được một chiều |
 
 | Mục | Đã làm gì | Test canh chừng |
 |---|---|---|
@@ -355,6 +358,74 @@ tiêu nào.
 
 ---
 
+### G20 — Giao dịch trích bù mang dấu thời gian **lúc bù**, không phải mốc của kỳ · ⏸️ HOÃN CÓ CHỦ Ý (2026-09-05)
+
+**Hiện trạng:** bộ trích tự động chạy trong vòng quét, tức khi app mở. Bỏ app ba
+ngày với chu kỳ hàng ngày thì ba kỳ được trích bù cùng lúc — và cả ba hàng giao
+dịch đều mang `date = DateTime.now()`, tức thời điểm bù. Đã đo trên máy ảo: ba
+khoản của kỳ 06, 07, 08/09 đều ghi `2026-09-08 14:28`.
+
+Thông báo thì **ngược lại** — nó lấy mốc kỳ làm `createdAt`, nên trung tâm thông
+báo hiện đúng ngày từng kỳ. Hai nơi nói hai chuyện khác nhau về cùng một sự
+việc.
+
+**Bán kính ảnh hưởng:** không sai một đồng nào — số tiền, số dư ví và tiến độ
+đều đúng. Chỉ phần thống kê **theo ngày** thấy ba khoản dồn vào một ngày.
+
+**Vì sao hoãn:** `depositToGoal` cố tình không nhận tham số ngày; nó luôn ghi
+"bây giờ", đúng như một khoản nạp tay. Thêm một tham số `date` tuỳ chọn là mở
+đường cho nơi gọi khác truyền vào một ngày bịa — và đó là tầng ghi tiền, chỗ ít
+đáng nới lỏng nhất. Muốn sửa thì phải làm cùng lúc: thêm tham số, chặn nó ở mọi
+đường gọi khác, và viết test canh chừng.
+
+**Chú ý khi sửa:** đổi `date` sẽ đổi cả thứ tự trong `watchByGoal`
+(`orderBy: date desc`), nên lịch sử tích luỹ sắp xếp lại — cần kiểm bằng mắt chứ
+không chỉ bằng test.
+
+---
+
+### G21 — Cấu hình trích tự động không theo người dùng sang máy khác · ⏸️ CHẶN Ở BACKEND (2026-09-05)
+
+**Hiện trạng:** ba cột `auto_deposit_amount`, `auto_deposit_wallet_id`,
+`auto_deposit_last_run` là **cục bộ** (schema v15). Bật trích trên điện thoại
+rồi đăng nhập ở máy khác thì máy kia không trích gì cả, và không có gì trên màn
+hình nói vì sao. Chu kỳ và **mốc neo** thì có đồng bộ (`cycle_take_money`,
+`time_cycle_take_money`), nên máy mới vẫn hiện đúng nhịp kế hoạch trong hộp dự
+báo — càng dễ hiểu nhầm là nó đang chạy.
+
+**Vì sao chưa đẩy lên:** bảng `goal` phía backend chưa có ba cột ấy, và quy tắc
+4 trong `CLAUDE.md` cấm thêm trường vào payload trước khi backend sẵn sàng.
+
+⚠️ **Đừng đẩy một phần.** Nếu chỉ `amount` và `wallet_id` đồng bộ mà bỏ
+`last_run`, mỗi máy giữ một mốc riêng và **cả hai cùng chuyển tiền** khi tới kỳ.
+Hiện trạng (máy thứ hai không trích gì) vẫn tốt hơn hẳn. Chi tiết và các bước
+phải làm ở `docs/superpowers/backend/2026-09-05-backend-goal-auto-deposit.md`.
+
+---
+
+### G22 — Giờ trong mốc trích chỉ giữ được MỘT chiều · ✅ CỐ Ý (2026-09-05)
+
+Ghi ở đây để người sau **không "sửa"** nó, và không hứa với người dùng nhiều hơn
+những gì app làm được.
+
+Người dùng chọn được "ngày 15 hàng tháng lúc 08:00". Giờ ấy được tôn trọng theo
+chiều **không bao giờ sớm hơn** — nhưng bộ trích chạy khi app mở, nên nếu 21 giờ
+mới mở app thì nó trích lúc 21 giờ.
+
+Có một lời nhắc đặt trước qua AlarmManager nổ đúng 08:00 kể cả khi app đóng
+(`ReminderScheduler`), nhưng nó chỉ **báo tin**; tiền vẫn chỉ chuyển khi mở app.
+
+**Vì sao không làm WorkManager:** tác vụ nền phải mở một kết nối SQLite **thứ
+hai** vào cùng tệp để chuyển tiền. Đây là chỗ duy nhất trong app tự chuyển tiền
+khi người dùng vắng mặt; đổi vài giờ sớm hơn lấy rủi ro ấy là không đáng. Quyết
+định này do người dùng chọn sau khi được nêu cả ba phương án.
+
+**Nếu vẫn muốn làm:** `GoalAutoDepositRunner` viết độc lập với *khi nào* nó được
+gọi, nên thêm một trigger nền chỉ là gọi `chay()` thêm một chỗ nữa. Phần khó nằm
+ở kết nối CSDL trong isolate nền, không nằm ở logic trích.
+
+---
+
 ## 2. Vấn đề đã biết nhưng thuộc về Backend
 
 Xem hai tài liệu riêng trong `docs/superpowers/backend/`:
@@ -362,6 +433,7 @@ Xem hai tài liệu riêng trong `docs/superpowers/backend/`:
 - **`SESSION_VALIDITY_FINDINGS.md`** — token của tài khoản đã xoá vẫn dùng được; `/auth/me` không chạm CSDL; `/sync/push` luôn trả HTTP 200.
 - **`CATEGORY_CLASSIFY_ALIGNMENT.md`** — giá trị `Vay/nợ` (tài liệu) lệch với `Vay/no` (CSDL, seed, client).
 - **`CATEGORY_GROUP_MEMBERSHIP_SYNC.md`** — G10: backend chưa có bảng/entity cho việc gán danh mục **mặc định** vào nhóm, nên quan hệ đó chỉ tồn tại trên một máy.
+- **`2026-09-05-backend-goal-auto-deposit.md`** — G21: ba cột cấu hình trích tiền tự động chưa có chỗ chứa ở backend. **Ba cột phải lên cùng lúc**, đẩy một phần là hai máy cùng trích một kỳ.
 - **`CATEGORY_KEYWORD_SYNC.md`** — từ khoá phân loại tồn tại ở hai kho độc lập, không có đường nối; kèm một lỗ hổng phân quyền trong `POST /api/ai/classify/feedback`.
 - **`CATEGORY_NAME_UNIQUENESS.md`** — hai unique index của `category` đang khác quy tắc nghiệp vụ theo cả hai chiều; client đã thi hành đúng quy tắc, CSDL thì chưa.
 - **`CATEGORY_STABLE_IDS.md`** — ID danh mục mặc định sinh ngẫu nhiên mỗi lần seed, nên tên bị dùng làm khoá nối giữa hai phía; đây là nguyên nhân gốc của các lỗi 11.3–11.6.

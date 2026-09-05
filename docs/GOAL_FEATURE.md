@@ -453,6 +453,9 @@ giá trị từ Admin-web nếu có — nhưng đừng tưởng có tính năng 
 | Không kiểm trùng tên mục tiêu | Khác hẳn danh mục (có quy tắc rất chặt). Chưa rõ chủ ý hay bỏ sót |
 | Phép kiểm **số tiền** khi nạp chỉ ở giao diện | Repository nhận bất kỳ giá trị nào. Các phép kiểm về **ví** thì đã có ở cả hai tầng |
 | Dải cảnh báo lệch chưa xem trên máy thật | Hàm có 6 test; phần vẽ chưa gặp ca dữ liệu để hiện |
+| Giao dịch trích **bù** mang dấu thời gian lúc bù | Ba kỳ bù cùng lúc thì ba hàng cùng một dấu thời gian, trong khi thông báo mang mốc từng kỳ. Không sai đồng nào, chỉ lệch ở thống kê **theo ngày** — **G20** trong `CLIENT_APP_KNOWN_GAPS.md` |
+| Cấu hình trích tự động **không sang máy khác** | Ba cột `auto_deposit_*` là cục bộ. Chu kỳ và mốc neo thì có đồng bộ, nên máy mới hiện đúng nhịp kế hoạch mà không tự trích — càng dễ hiểu nhầm. **G21**, chặn ở backend |
+| Không có bộ **lập lịch nền** | Giờ trong mốc trích chỉ giữ được chiều "không sớm hơn". Có lời nhắc AlarmManager nổ đúng giờ kể cả khi app đóng, nhưng nó chỉ báo tin. **G22** — cố ý, đừng "sửa" |
 
 ---
 

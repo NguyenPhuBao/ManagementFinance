@@ -614,6 +614,7 @@ nghị**, không phải thứ tự chữ cái — lý do xếp thứ tự ở
 | 6 | `CATEGORY_GROUP_MEMBERSHIP_SYNC.md` | ⛔ Chưa — thứ duy nhất còn chặn G10 |
 | 7 | `CATEGORY_CLASSIFY_ALIGNMENT.md` | ⚠️ Gần xong — còn bước thu hẹp `validClassify` (`sync.validation.js:103`) |
 | 8 | `2026-09-05-backend-transaction-goal-id.md` | 🔓 **Mở khoá, không phải sửa lỗi** — xin cột nullable `transaction.Idgoal`. Client đã có cột **cục bộ** `transactions.goal_id` (schema v14) để nối giao dịch tích luỹ với mục tiêu bằng ID thay vì bằng tên. Không có gì hỏng hôm nay: máy tạo ra dữ liệu nối đúng, máy khác rơi xuống nhánh so tên. Nhưng nó **chặn hẳn** hướng bỏ bộ đếm `current_amount` để suy tiến độ từ chính giao dịch. Rẻ nhất là gộp vào đợt migration của bước 9 |
+| 9 | `2026-09-05-backend-goal-auto-deposit.md` | 🔓 **Mở khoá, không phải sửa lỗi** — xin ba cột nullable cho cấu hình trích tiền tự động (`auto_deposit_*`). Client đã làm xong (schema v15) nhưng ba cột là **cục bộ**, nên máy thứ hai không trích gì cả. ⚠️ **Ba cột phải lên cùng lúc** — bỏ sót `auto_deposit_last_run` là hai máy cùng trích một kỳ, tệ hơn hiện trạng. Gộp vào đợt migration của bước 9 |
 | — | `SESSION_VALIDITY_FINDINGS.md` | ✅ Xong |
 
 ### 💰 Ngân sách (2026-09-03)
