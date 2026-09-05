@@ -22,6 +22,7 @@
 | Đụng vào đồng bộ | `src/Client-app/test/core/sync/sync_payload_contract_test.dart` — đọc **như tài liệu**, đây là nơi duy nhất ghi hợp đồng tên trường giữa hai phía |
 | Đụng vào thông báo | `docs/NOTIFICATION_FEATURE.md` — **trạng thái bàn giao, phần việc còn lại, và bảy cái bẫy**. Mục 7 phải đọc trước khi đụng vào phần hệ điều hành. Bảng thông báo **cục bộ**, không nằm trong `SyncEntityType` |
 | Đụng vào danh mục | `docs/CATEGORY_RATIONALE.md` — **lý do** của từng thay đổi, bằng chứng đo được, và các phương án đã loại bỏ. Đọc trước khi định "dọn dẹp" vùng này |
+| Đụng vào mục tiêu tiết kiệm | `docs/GOAL_FEATURE.md` — **quyết định kèm lý do, và bảy cái bẫy**. Mục 4 phải đọc trước khi sửa gì. Ba cái đáng nhớ nhất: `walletTransfer` **không có khoá ngoại**; suy chiều nạp/rút từ vị trí ví là **diễn giải lại lịch sử**; và `_collectPendingOps` dựng payload **thô** — phép quy đổi `chi → Transaction` chạy ở bước POST, đọc dừng ở đó là kết luận nhầm |
 
 > ⚠️ **Tài liệu là ảnh chụp, không phải nguồn sự thật.** Luôn đối chiếu với mã nguồn thật trước khi kết luận. Phiên 2026-09-02 có nhiều kết luận sai vì tin vào tài liệu/trí nhớ thay vì mở file ra đọc.
 
@@ -65,7 +66,7 @@
 ## Lệnh hay dùng
 
 ```bash
-# Test (chạy từ src/Client-app) — hiện 651/651 pass, ~46 giây
+# Test (chạy từ src/Client-app) — hiện 731/731 pass, ~25 giây
 flutter test
 flutter analyze          # mức nền: 28 issue, KHÔNG có error
 

@@ -613,6 +613,7 @@ nghị**, không phải thứ tự chữ cái — lý do xếp thứ tự ở
 | 5 | `CATEGORY_STABLE_IDS.md` | ⛔ Chưa — `seed.js:150` vẫn `crypto.randomUUID()` |
 | 6 | `CATEGORY_GROUP_MEMBERSHIP_SYNC.md` | ⛔ Chưa — thứ duy nhất còn chặn G10 |
 | 7 | `CATEGORY_CLASSIFY_ALIGNMENT.md` | ⚠️ Gần xong — còn bước thu hẹp `validClassify` (`sync.validation.js:103`) |
+| 8 | `2026-09-05-backend-transaction-goal-id.md` | 🔓 **Mở khoá, không phải sửa lỗi** — xin cột nullable `transaction.Idgoal`. Client đã có cột **cục bộ** `transactions.goal_id` (schema v14) để nối giao dịch tích luỹ với mục tiêu bằng ID thay vì bằng tên. Không có gì hỏng hôm nay: máy tạo ra dữ liệu nối đúng, máy khác rơi xuống nhánh so tên. Nhưng nó **chặn hẳn** hướng bỏ bộ đếm `current_amount` để suy tiến độ từ chính giao dịch. Rẻ nhất là gộp vào đợt migration của bước 9 |
 | — | `SESSION_VALIDITY_FINDINGS.md` | ✅ Xong |
 
 ### 💰 Ngân sách (2026-09-03)
@@ -701,6 +702,35 @@ OCR/Classify. Thứ tự đề nghị, việc rẻ nhất trước:
 Muốn xác minh thay đổi ngoài bộ test thì dùng skill **`chay-app`** (Chrome
 headless + truy vấn PostgreSQL). ⚠️ Skill đó nằm trong `.claude/` nên **không
 được push** — chỉ có trên máy đã dựng nó.
+
+### 🎯 Mục tiêu tiết kiệm (2026-09-05) — **hoạt động đầy đủ trên client**
+
+**Đọc `docs/GOAL_FEATURE.md` trước khi làm tiếp** — nhất là mục 4, bảy cái bẫy.
+Tóm tắt:
+
+- **Ví nhận bắt buộc lúc tạo, và KHOÁ sau khoản nạp đầu tiên.** Tiền đã tích
+  nằm thật trong ví ấy; đổi ví mà không chuyển tiền theo là phân mảnh không lần
+  lại được. Hệ quả chấp nhận được: ví đang giữ tiền mục tiêu thì không xoá được.
+- **Một lần nạp = MỘT giao dịch `type='transfer'`** mang cả `walletId` (nguồn)
+  lẫn `walletTransfer` (đích), thay cho cặp `chi`/`thu` rời trước đây vốn làm
+  thống kê đếm khoản chuyển ví thành chi tiêu thật.
+- **Có luồng rút tiền**, kiểm **hai trần**: không quá tiến độ, và không quá số
+  dư THẬT của ví. Rút xuống dưới mục tiêu thì **gỡ** `is_completed`.
+- **Tiến độ KHÔNG tự hoà giải với số dư ví.** Tiêu tiền từ ví tích luỹ bằng giao
+  dịch thường không hạ tiến độ — app chỉ **cảnh báo** lệch, vì một ví có thể
+  phục vụ nhiều mục tiêu và cũng chứa tiền không thuộc mục tiêu nào.
+- **Chiều nạp/rút đọc từ tiền tố ghi chú**, không từ vị trí ví. So ví là diễn
+  giải hàng cũ bằng cấu hình hiện tại — đổi ví một lần là lịch sử đọc sai hết.
+- **Dự báo hoàn thành tính từ nhịp thật**, không từ chu kỳ đã cài lúc tạo.
+  `cycleTakeMoney` nay được lưu, nhưng **không có bộ lập lịch nào** đọc nó.
+- Cột **cục bộ** `transactions.goalId` (schema **v14**) nối giao dịch với mục
+  tiêu bằng ID thay vì bằng tên. Không đi qua đồng bộ — xem mục 8 bảng trên.
+- Tỉ lệ tiến độ có **đúng một** định nghĩa (`GoalEntity.progress`); widget nhận
+  thẳng `GoalEntity` nên nơi gọi không tính lại được.
+
+⚠️ Ba lỗi ở vùng này **chỉ máy ảo Android mới lộ ra**: `ProviderNotFoundError`
+trên route không có `WalletCubit`, màn đỏ do `DropdownButton` có `value` ngoài
+`items`, và dấu hiển thị sai của khoản rút. Bộ test xanh cả ba lần.
 
 ### 🔔 Hệ thống thông báo (2026-09-04) — **cả bảy lát xong**
 

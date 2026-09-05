@@ -1,14 +1,25 @@
 # Client-app — Việc còn dang dở & rủi ro đã biết
 
-**Cập nhật:** 2026-09-03
+**Cập nhật:** 2026-09-05
 **Mục đích:** ghi lại những hạng mục đã được **cân nhắc và cố ý hoãn**, kèm lý do và bán kính ảnh hưởng. Không có tài liệu này thì người tiếp theo sẽ hoặc bỏ sót, hoặc làm lại từ đầu việc phân tích rủi ro.
 
 Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nhất.
 
 ---
-> **Phiên 2026-09-03 đã đóng 9/10 mục còn mở.** Mô tả gốc bên dưới được giữ nguyên
-> (kể cả phần *vì sao hoãn*) vì nó ghi lại bối cảnh và bán kính ảnh hưởng — thứ vẫn
-> cần khi ai đó đọc lại đoạn mã tương ứng. Chỉ có **G10** còn mở, và nó **chặn ở backend**.
+> **Phiên 2026-09-03 đã đóng 9/10 mục có lúc đó.** Mô tả gốc bên dưới được giữ
+> nguyên (kể cả phần *vì sao hoãn*) vì nó ghi lại bối cảnh và bán kính ảnh
+> hưởng — thứ vẫn cần khi ai đó đọc lại đoạn mã tương ứng.
+>
+> **Đang mở tính tới 2026-09-05:**
+>
+> | Mục | Vì sao còn mở |
+> |---|---|
+> | **G10** | Chặn ở backend — chưa có bảng cho việc gán danh mục mặc định vào nhóm |
+> | **G15** | Hoãn có chủ ý — bản ghi vừa hết hạn vừa hỏng đồng bộ |
+> | **G16** | Cầm máu ở client rồi; bản vá gốc chặn ở backend |
+> | **G17** | Danh sách rỗng ở lần vào đầu sau khởi động nguội — cần sửa ở **mọi** trang đọc theo tài khoản, không riêng mục tiêu |
+> | **G18** | Nhánh dự phòng của lịch sử tích luỹ còn so bằng tên — chặn ở backend |
+> | **G19** | **Không phải lỗi** — ghi lại để người sau không "sửa" nhầm |
 
 | Mục | Đã làm gì | Test canh chừng |
 |---|---|---|
@@ -278,6 +289,69 @@ Và bản ghi đó không thoát ra được: `_classifyFailure` (`lib/core/sync
 **Còn chờ backend:** thêm `WHERE "Delete_at" IS NULL` vào unique index — xem `CATEGORY_NAME_UNIQUENESS.md` mục 4.1 và mục 10 của `2026-09-04-ocr-classify-review.md`. Khi có, bản ghi bị chặn tự quay lại hàng đợi mà người dùng không phải làm gì.
 
 **Còn lại chưa sửa:** `ensureMissing` vẫn chưa phân biệt "chưa từng có" với "người dùng đã cố tình xoá". Sửa đúng cần một cách ghi nhớ ý định của người dùng — cột riêng, hoặc đọc cả hàng đã xoá mềm khi quyết định có tạo lại hay không. Chưa làm vì nó động vào quy tắc 7, cần cân nhắc riêng.
+
+---
+
+### G17 — Danh sách mục tiêu rỗng ở lần vào đầu tiên sau khi khởi động nguội · ⏸️ HOÃN CÓ CHỦ Ý (2026-09-05)
+
+Tái hiện nhiều lần trên máy ảo. Vào Mục tiêu **ngay sau khi mở app nguội** thì
+danh sách rỗng dù CSDL có dữ liệu; thoát ra vào lại là thấy.
+
+Trang dựng trước khi `AuthBloc` khôi phục xong phiên, `currentAccountIdOrNull`
+trả `null`, rồi `?? 0` biến nó thành tài khoản 0 — và `watchGoals(0)` đương
+nhiên rỗng.
+
+**Vì sao `?? 0` vẫn đúng:** đây là bài học G4. Đường ĐỌC không được mặc định về
+`1` (tài khoản admin thật), và `0` là "rỗng, không phải dữ liệu của ai". Sửa
+bằng cách đổi hằng số là đi ngược lại chính bài học ấy.
+
+**Vì sao hoãn:** cách sửa đúng là thêm một trạng thái *"đang chờ phiên"* — khác
+hẳn *"không có dữ liệu"* — và nó phải làm ở **mọi trang đọc theo tài khoản**,
+không riêng mục tiêu (`bill_page`, `budget`, `wallet_list_page` đều cùng dạng).
+Sửa lẻ một trang là để lại một kiểu xử lý thứ hai cho cùng một tình huống.
+
+**Cách làm:** dựng test tái hiện trước — bơm `AuthBloc` phát `AuthSuccess` trễ
+vài nhịp và khẳng định trang không hiện trạng thái rỗng trong lúc chờ.
+
+---
+
+### G18 — Nhánh dự phòng của lịch sử tích luỹ vẫn so bằng TÊN mục tiêu · ⏸️ HOÃN CÓ CHỦ Ý (2026-09-05)
+
+`TransactionDao.watchByGoal` có hai nhánh: nối bằng `goal_id` cho hàng mới, và
+`note LIKE '%Tích lũy mục tiêu: <tên>%'` cho hàng cũ. Nhánh thứ hai mang đúng
+khuyết điểm mà `goal_id` sinh ra để chữa — mục tiêu tên `"Mua"` vẫn nuốt lịch sử
+của `"Mua xe"`.
+
+**Vì sao giữ:** bỏ đi thì lịch sử tích luỹ **đã có** biến mất khỏi màn hình. Hai
+loại hàng không bao giờ mang `goal_id`: hàng do bản app trước schema v14 tạo, và
+**mọi hàng kéo về từ server** — vì cột ấy là cục bộ.
+
+**Vì sao chưa dứt điểm được:** loại thứ nhất tắt dần theo thời gian, loại thứ hai
+thì **không** — cứ đăng nhập máy mới là lại đầy hàng thiếu ID. Chỉ khi backend
+có cột `Idgoal` thì nhánh này mới bỏ được. Xem
+`docs/superpowers/backend/2026-09-05-backend-transaction-goal-id.md`.
+
+⚠️ Điều kiện `goal_id IS NULL` ở nhánh dự phòng là thứ chặn không cho một hàng
+đã có chủ bị mục tiêu khác nhận vơ. **Đừng bỏ nó khi dọn dẹp.**
+
+---
+
+### G19 — Tiến độ mục tiêu và số dư ví lệch nhau được, và app chỉ cảnh báo · ✅ CỐ Ý (2026-09-05)
+
+Ghi ở đây để người sau **không "sửa"** nó.
+
+Tiêu tiền từ ví tích luỹ bằng một giao dịch thường không hạ `current_amount` —
+giao dịch ấy không mang `goal_id`. Mục tiêu có thể ghi "đã tích 2 triệu" trong
+khi ví chỉ còn 300 nghìn.
+
+**App không tự hoà giải, và đó là chủ ý.** Không đủ căn cứ để hoà giải đúng: một
+ví phục vụ được nhiều mục tiêu, ví tích luỹ cũng chứa tiền không thuộc mục tiêu
+nào, và tự hạ tiến độ là bất ngờ với người dùng. `canhBaoViKhongDu()` phơi ra sự
+lệch để họ tự quyết. Lý do đầy đủ ở `docs/GOAL_FEATURE.md` mục 3.4.
+
+Muốn tiến độ phản ánh thực tế thì phải **đánh dấu** khoản rút — luồng "Rút khỏi
+mục tiêu" đã có, nhưng khoản chi tiêu thường thì theo định nghĩa không thuộc mục
+tiêu nào.
 
 ---
 

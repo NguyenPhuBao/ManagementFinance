@@ -83,7 +83,7 @@ Ba tài liệu này **không phải việc cần làm** — chúng là nền đ�
 
 ## 2. Còn phải làm — trạng thái từng tài liệu
 
-Bảy tài liệu, xếp theo mức ưu tiên. Bảng này trả lời **"tài liệu nào còn việc và
+Tám tài liệu, xếp theo mức ưu tiên. Bảng này trả lời **"tài liệu nào còn việc và
 việc đó là gì"**; muốn biết **làm theo trình tự nào** thì xem mục 0 ở trên —
 một tài liệu có thể trải ra nhiều bước ở đó, và ngược lại.
 
@@ -96,6 +96,7 @@ một tài liệu có thể trải ra nhiều bước ở đó, và ngược l�
 | 5 | [CATEGORY_STABLE_IDS.md](./CATEGORY_STABLE_IDS.md) | ⛔ `seed.js:150` vẫn `crypto.randomUUID()`, nên tên danh mục bị dùng làm khoá nối giữa hai phía — đây là nguyên nhân gốc của các lỗi 11.3–11.6 trong `PROJECT_CONTEXT.md` |
 | 6 | [CATEGORY_GROUP_MEMBERSHIP_SYNC.md](./CATEGORY_GROUP_MEMBERSHIP_SYNC.md) | ⛔ Thứ **duy nhất** còn chặn G10: backend chưa có bảng/entity cho việc gán danh mục **mặc định** vào nhóm |
 | 7 | [CATEGORY_CLASSIFY_ALIGNMENT.md](./CATEGORY_CLASSIFY_ALIGNMENT.md) | ⚠️ Gần xong — còn đúng một bước thu hẹp `validClassify` (`sync.validation.js:103`) |
+| 8 | [2026-09-05-backend-transaction-goal-id.md](./2026-09-05-backend-transaction-goal-id.md) | 🔓 **Mở khoá, không phải sửa lỗi** — xin một cột nullable `transaction.Idgoal` để giao dịch tích luỹ nối với mục tiêu bằng ID thay vì bằng tên. **Không có gì đang hỏng**: trên máy tạo ra dữ liệu client đã nối đúng, máy khác thì rơi xuống nhánh so tên (hiện thừa khi hai mục tiêu trùng tên hoặc tên này là tiền tố tên kia). Nhưng nó **chặn hẳn** hướng bỏ bộ đếm `current_amount` để suy tiến độ từ chính giao dịch. Rẻ nhất là gộp vào đợt migration của **bước 9** |
 
 ### Vì sao mức ưu tiên xếp như vậy
 
