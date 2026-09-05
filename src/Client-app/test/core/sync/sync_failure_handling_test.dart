@@ -539,7 +539,10 @@ void main() {
             'transient ở cuối _classifyFailure nên bản ghi được đẩy lại ở MỌI '
             'chu kỳ, vĩnh viễn. Đường kích hoạt có thật và tự lặp: người dùng '
             'xoá một danh mục cá nhân mặc định, rồi ensureMissing() tạo lại nó '
-            'với UUID mới ở MỖI lần mở app — mỗi lần thêm một bản ghi kẹt.',
+            'với UUID mới ở MỖI lần mở app — mỗi lần thêm một bản ghi kẹt. '
+            'Nguồn TỰ SINH ấy đóng ngày 2026-09-05, nhưng phép phân loại vẫn '
+            'cần: xoá rồi tạo lại một danh mục của chính mình cùng tên vẫn '
+            'đụng đúng index ấy.',
       );
       expect(row?.syncStatus, 'pending',
           reason: 'Chặn theo THỜI GIAN như mọi lỗi vĩnh viễn khác: khi backend '

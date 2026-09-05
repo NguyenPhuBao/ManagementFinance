@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../../core/category/category_name.dart';
 import '../../../../core/database/app_database.dart';
+import '../../../../core/sync/sync_payload_normalizer.dart';
 
 /// Một danh mục mà **backend không có** trong bộ mặc định, nên ở client nó
 /// thuộc về từng tài khoản thay vì là danh mục hệ thống.
@@ -15,7 +16,7 @@ class PersonalCategorySpec {
   final String colour;
 }
 
-/// Tạo cho mỗi tài khoản những danh mục mà bộ mặc định của backend không có.
+/// Đưa năm danh mục mà bộ mặc định của backend từng thiếu về đúng chỗ của chúng.
 ///
 /// ## Vì sao tồn tại
 ///
@@ -33,6 +34,21 @@ class PersonalCategorySpec {
 ///
 /// Hai mục "Khác" là đường người dùng hay đi nhất khi không có mục nào hợp, và
 /// `Trả nợ` / `Thu nợ` là một nửa nghiệp vụ vay nợ; xoá hẳn sẽ mất dữ liệu thật.
+///
+/// ## Chặng hai (2026-09-05): backend đã có chúng
+///
+/// Năm hàng ấy nay nằm trong bộ mặc định của backend (`Create_by = 1`,
+/// `Is_default = true`), nên mỗi tài khoản không cần giữ bản riêng nữa.
+/// [foldIntoBackendDefaults] gộp bản riêng vào bản mặc định rồi xoá mềm bản
+/// riêng, và **không tạo mới bản nào** — thay hẳn cho `ensureMissing()` cũ.
+///
+/// Việc này cũng rút chân **G16**: danh mục mặc định là toàn cục, không thuộc
+/// tài khoản nào, nên không còn gì để "mọc lại" ở mỗi lần mở app. Vòng lặp
+/// tạo-đẩy-hỏng mà G16 mô tả không còn nguồn kích hoạt cho năm mục này.
+///
+/// Tên lớp giữ nguyên dù nghĩa đã lệch: [convertLegacyRows] vẫn tạo danh mục
+/// riêng cho dữ liệu `cat_*` của bản client cũ, và đổi tên chỉ làm diff phình
+/// ra mà không đổi hành vi nào.
 class PersonalDefaultCategories {
   PersonalDefaultCategories({required this.db, Uuid? uuid})
       : _uuid = uuid ?? const Uuid();
@@ -87,17 +103,59 @@ class PersonalDefaultCategories {
 
   /// Giai đoạn 2 — chạy **SAU** khi pull xong.
   ///
-  /// Tạo những danh mục mà tài khoản còn thiếu. Chờ tới sau pull vì lúc đó mới
-  /// biết tài khoản thật sự đang có gì: 5 danh mục này có thể đã được một máy
-  /// khác tạo và đẩy lên từ trước.
-  Future<void> ensureMissing(int idaccount) async {
-    if (idaccount <= 0) return;
-    final owned = await db.categoryDao.getNamesInUse(idaccount);
+  /// Gộp bản riêng của tài khoản vào bản mặc định tương ứng của backend: dời
+  /// mọi tham chiếu sang bản mặc định, rồi **xoá mềm** bản riêng. Không tạo mới
+  /// gì cả.
+  ///
+  /// Phải chờ tới sau pull vì bản mặc định chỉ có mặt ở máy này sau khi pull
+  /// mang nó về.
+  ///
+  /// **Không thấy bản mặc định thì không đụng gì.** Backend chưa có hàng, hoặc
+  /// pull hỏng — cả hai đều không phải lý do để xoá một danh mục người dùng
+  /// đang dùng. Tạo bản riêng ở nhánh này cũng không: đó chính là thứ đang được
+  /// gỡ bỏ.
+  ///
+  /// Gộp là thao tác **phá huỷ**, nên nó đòi khớp **cả tên lẫn classify**. Quy
+  /// tắc trùng tên của dự án không tính classify (quy tắc 7), nên một danh mục
+  /// do người dùng tự tạo hoàn toàn có thể trùng tên mà khác loại — gộp nó vào
+  /// bản mặc định là âm thầm đổi loại của mọi giao dịch bên trong.
+  Future<void> foldIntoBackendDefaults(int idaccount) async {
+    if (idaccount <= 0) return; // danh tính chỉ đến từ phiên đăng nhập
+    final rows = await db.categoryDao.getNamesInUse(idaccount);
 
     for (final spec in specs) {
-      if (_findOwned(owned, spec) != null) continue;
-      await _create(spec, idaccount);
+      final macDinh = _findDefault(rows, spec);
+      if (macDinh == null) continue;
+
+      final rieng = _findOwned(rows, spec, idaccount: idaccount, matchClassify: true);
+      if (rieng == null || rieng.id == macDinh.id) continue;
+
+      // Dời TRƯỚC, xoá SAU. Đảo lại là lỗi 11.6: hàng bị xoá trước khiến
+      // `getById()` trả null và giao dịch kẹt vĩnh viễn.
+      await db.repointCategoryReferences(
+        idaccount: idaccount,
+        fromCategoryId: rieng.id,
+        toCategoryId: macDinh.id,
+      );
+      await db.categoryDao.softDelete(rieng.id);
     }
+  }
+
+  /// Bản **mặc định** của [spec] đã có ở máy này, hoặc null.
+  ///
+  /// Chỉ có mặt sau khi pull mang nó về; `sync_engine` quy `is_default = true`
+  /// thành `idaccount = 0` nên không lọc theo tài khoản ở đây.
+  Category? _findDefault(List<Category> rows, PersonalCategorySpec spec) {
+    final target = normalizeCategoryName(spec.name);
+    for (final c in rows) {
+      if (!c.isDefault) continue;
+      if (normalizeCategoryName(c.name) != target) continue;
+      if (!SyncPayloadNormalizer.sameCategoryClassify(c.classify, spec.classify)) {
+        continue;
+      }
+      return c;
+    }
+    return null;
   }
 
   /// Danh mục **riêng của tài khoản** trùng tên với [spec], hoặc null.
@@ -105,15 +163,30 @@ class PersonalDefaultCategories {
   /// Cố ý loại danh mục mặc định: chúng không đẩy lên được, nên một danh mục
   /// mặc định cùng tên mà tính là "đã có" sẽ khiến tài khoản mãi mãi không có
   /// bản riêng — mà bản riêng mới là bản đồng bộ được.
+  ///
+  /// [idaccount] phải được truyền ở đường **gộp**: `getNamesInUse` trả cả hàng
+  /// mặc định của mọi tài khoản, nên không lọc ở đây là gộp nhầm hàng của người
+  /// khác. Đường chuyển đổi dữ liệu cũ không cần vì nó chỉ đọc chính máy này.
+  ///
+  /// [matchClassify] cũng chỉ bật ở đường gộp — xem [foldIntoBackendDefaults].
   Category? _findOwned(
     List<Category> owned,
     PersonalCategorySpec spec, {
     String? exceptId,
+    int? idaccount,
+    bool matchClassify = false,
   }) {
     final target = normalizeCategoryName(spec.name);
     for (final c in owned) {
       if (c.id == exceptId) continue;
-      if (!c.isDefault && normalizeCategoryName(c.name) == target) return c;
+      if (c.isDefault) continue;
+      if (idaccount != null && c.idaccount != idaccount) continue;
+      if (normalizeCategoryName(c.name) != target) continue;
+      if (matchClassify &&
+          !SyncPayloadNormalizer.sameCategoryClassify(c.classify, spec.classify)) {
+        continue;
+      }
+      return c;
     }
     return null;
   }

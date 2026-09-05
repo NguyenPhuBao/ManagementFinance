@@ -16,7 +16,7 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > |---|---|
 > | **G10** | Chặn ở backend — chưa có bảng cho việc gán danh mục mặc định vào nhóm |
 > | **G15** | Hoãn có chủ ý — bản ghi vừa hết hạn vừa hỏng đồng bộ |
-> | **G16** | Cầm máu ở client rồi; bản vá gốc chặn ở backend |
+> | **G16** | ✅ Nguồn tự sinh đã đóng 2026-09-05 (backend nhận 5 danh mục vào bộ mặc định). Lệch ràng buộc với CSDL thì vẫn còn |
 > | **G17** | Danh sách rỗng ở lần vào đầu sau khởi động nguội — cần sửa ở **mọi** trang đọc theo tài khoản, không riêng mục tiêu |
 > | **G18** | Nhánh dự phòng của lịch sử tích luỹ còn so bằng tên — chặn ở backend |
 > | **G19** | **Không phải lỗi** — ghi lại để người sau không "sửa" nhầm |
@@ -271,7 +271,7 @@ Một ngân sách rơi vào **cả hai** trạng thái sẽ kẹt không lối t
 
 ---
 
-### G16 — Xoá một danh mục cá nhân mặc định thì nó mọc lại ở mỗi lần mở app · 🔧 ĐANG SỬA (2026-09-04)
+### ~~G16 — Xoá một danh mục cá nhân mặc định thì nó mọc lại ở mỗi lần mở app~~ · ✅ ĐÃ ĐÓNG (2026-09-05)
 
 Chuỗi năm bước, mỗi bước đều đúng theo ý đồ riêng của nó, nhưng ghép lại thì hỏng:
 
@@ -293,7 +293,21 @@ Và bản ghi đó không thoát ra được: `_classifyFailure` (`lib/core/sync
 
 **Còn chờ backend:** thêm `WHERE "Delete_at" IS NULL` vào unique index — xem `CATEGORY_NAME_UNIQUENESS.md` mục 4.1 và mục 10 của `2026-09-04-ocr-classify-review.md`. Khi có, bản ghi bị chặn tự quay lại hàng đợi mà người dùng không phải làm gì.
 
-**Còn lại chưa sửa:** `ensureMissing` vẫn chưa phân biệt "chưa từng có" với "người dùng đã cố tình xoá". Sửa đúng cần một cách ghi nhớ ý định của người dùng — cột riêng, hoặc đọc cả hàng đã xoá mềm khi quyết định có tạo lại hay không. Chưa làm vì nó động vào quy tắc 7, cần cân nhắc riêng.
+**Đóng ngày 2026-09-05 — bằng cách bỏ hẳn nguồn kích hoạt.** Câu hỏi mà `ensureMissing` không trả lời được ("chưa từng có" hay "người dùng đã cố tình xoá") nay **không cần trả lời nữa**: backend đã nhận đúng 5 danh mục ấy vào bộ mặc định của nó (`Create_by = 1`, `Is_default = true`), nên không tài khoản nào phải giữ bản riêng.
+
+`ensureMissing()` được thay bằng `foldIntoBackendDefaults()`: gộp bản riêng vào bản mặc định (dời tham chiếu ở cả `transactions`, `budgets`, `bills`) rồi **xoá mềm** bản riêng — và **không tạo mới gì cả**. Danh mục mặc định là toàn cục, không thuộc tài khoản nào, nên không còn gì để "mọc lại" ở mỗi lần mở app.
+
+Ba điều kiện dừng, vì gộp là thao tác phá huỷ:
+
+| Tình huống | Xử lý |
+|---|---|
+| Không thấy bản mặc định (backend cũ, hoặc pull hỏng) | Không đụng gì — không tạo, không xoá |
+| Trùng tên nhưng **khác classify** | Không gộp. Quy tắc 7 không tính classify, nên một danh mục người dùng tự tạo có thể trùng tên mà khác loại; gộp nó là âm thầm đổi loại của mọi giao dịch bên trong |
+| Hàng của tài khoản khác | Không đụng. `getNamesInUse` trả cả hàng mặc định của mọi tài khoản nên phép lọc phải nằm ở chính chỗ tìm bản riêng |
+
+Test canh chừng: `test/features/category/data/personal_default_categories_test.dart`, nhóm `foldIntoBackendDefaults` — chín ca, phần lớn canh đúng câu hỏi *khi nào thì KHÔNG được gộp*.
+
+⚠️ **Phần lệch ràng buộc với CSDL thì KHÔNG đóng.** `uq_category_owner_name_classify` vẫn không có `WHERE "Delete_at" IS NULL`, nên hàng đã xoá mềm vẫn giữ chỗ tên ở PostgreSQL trong khi client cho tạo lại (quy tắc 7). Người dùng xoá rồi tạo lại một danh mục **của chính họ** cùng tên vẫn nhận 23505. Khác biệt là nay nó chỉ xảy ra khi họ thật sự làm điều đó, chứ không tự sinh ở mỗi lần mở app. Lớp cầm máu `_uniqueConstraintPattern` vì thế **giữ nguyên**, đừng gỡ.
 
 ---
 

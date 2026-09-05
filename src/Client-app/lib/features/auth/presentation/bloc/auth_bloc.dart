@@ -140,11 +140,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           await sl<NotificationScanner>().start(idAcc);
         }
         unawaited(engine.start(idaccount: idAcc).then((_) async {
-          // Pull hỏng (mất mạng, server lỗi) thì CSDL cục bộ chưa đáng tin —
-          // tạo danh mục lúc này chính là lỗi G14. Bỏ qua, lần mở app sau thử
-          // lại.
+          // Pull hỏng (mất mạng, server lỗi) thì CSDL cục bộ chưa đáng tin.
+          // Bản mặc định của backend chưa chắc đã về, mà thiếu nó thì phép gộp
+          // không có đích — bỏ qua, lần mở app sau thử lại.
           if (!engine.hasCompletedPull) return;
-          await personal?.ensureMissing(idAcc);
+          await personal?.foldIntoBackendDefaults(idAcc);
         }));
       }
       emit(AuthSuccess(user: user));
@@ -184,11 +184,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           await sl<NotificationScanner>().start(idAcc);
         }
         await engine.start(idaccount: idAcc);
-        // Tạo phần danh mục còn thiếu SAU khi đã pull. Chạy trước pull thì trên
-        // một máy mới, CSDL cục bộ còn rỗng nên phép kiểm trùng không thấy gì và
-        // sẽ đẻ ra 5 bản trùng tên với bản đã có trên backend — xem G14.
+        // Gộp bản riêng của 5 danh mục vào bản mặc định của backend, SAU khi đã
+        // pull — bản mặc định chỉ có mặt ở máy này sau khi pull mang nó về.
+        // Không có nó thì hàm không đụng gì, đúng như G14 dạy: đừng quyết định
+        // về danh mục khi CSDL cục bộ chưa đáng tin.
         if (engine.hasCompletedPull) {
-          await personal?.ensureMissing(idAcc);
+          await personal?.foldIntoBackendDefaults(idAcc);
         }
         await defaultAccountDataInitializer?.ensureForAccount(idAcc);
       }
