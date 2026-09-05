@@ -471,7 +471,7 @@ class SyncEngine {
                 icon: Value(w['icon']?.toString() ?? 'wallet'),
                 colour: Value(
                     (w['color'] ?? w['colour'])?.toString() ?? '#4CAF50'),
-                isDefault: Value(w['is_default'] == true),
+                isDefault: Value(doiSangBool(w['is_default'])),
                 isDeleted: Value(w['delete_at'] != null),
                 deletedAt: Value(_deletedAtFrom(w['delete_at'])),
                 syncStatus: const Value('synced'),
@@ -599,12 +599,12 @@ class SyncEngine {
                     c['classify']?.toString() ?? 'Chi')),
                 icon: Value(finalIcon),
                 colour: Value(finalColor),
-                isDefault: Value(c['is_default'] == true),
+                isDefault: Value(doiSangBool(c['is_default'])),
                 // Cấu trúc nhóm do backend lưu (Is_group / Idgroup). BẮT BUỘC
                 // phải đọc lại: upsertAll dùng InsertMode.insertOrReplace nên
                 // cột nào không gán sẽ bị đưa về mặc định — trước đây điều này
                 // xoá sạch nhóm và quan hệ cha–con ở local sau mỗi lần pull.
-                isGroup: Value(c['is_group'] == true),
+                isGroup: Value(doiSangBool(c['is_group'])),
                 parentId: Value((c['idgroup'] ?? c['parent_id'])?.toString()),
                 // Đọc cờ xoá từ payload như các thực thể khác. Trước đây ghi
                 // cứng `false`, nên danh mục đã xoá mềm trên server bị HỒI SINH
@@ -709,7 +709,7 @@ class SyncEngine {
                 endDate: Value((b['end'] ?? b['end_date']) != null
                     ? DateTime.tryParse((b['end'] ?? b['end_date']).toString())
                     : null),
-                recurrence: Value(b['recurrence'] == true),
+                recurrence: Value(doiSangBool(b['recurrence'])),
                 timeRecurrence:
                     Value(b['time_recurrence']?.toString() ?? 'Month'),
                 nextTimeRecurrence: Value(b['nexttime_recurrence'] != null
@@ -740,7 +740,7 @@ class SyncEngine {
               // start_date, due_date, pay_status, delete_at, update_at
               // (không phải id/is_paid/is_deleted/updated_at).
               final payStatus = bill['pay_status']?.toString() ?? 'Pending';
-              final isRecurrence = bill['recurrence'] == true;
+              final isRecurrence = doiSangBool(bill['recurrence']);
               final timeRecurrence =
                   bill['time_recurrence']?.toString() ?? kBillCycleMonth;
               return BillsCompanion(

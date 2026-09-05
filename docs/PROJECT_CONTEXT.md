@@ -784,12 +784,19 @@ Tóm tắt:
 - **Ô ghi chú** cho mục tiêu. `null` là giữ nguyên, **chuỗi rỗng mới là xoá** —
   khác `cycleTakeMoney` (null = xoá) và giống `icon`/`colour` ở nửa đầu. Cột
   `note` đã đồng bộ sẵn, chỉ thiếu chỗ nhập — mục 3.19.
-- **`doiSangBool()` ở nhánh kéo về**: `Status_complete` là chuỗi còn `Recurrence`
-  là boolean thật, trong CÙNG một bảng. So khớp cứng từng kiểu thì chỉ cần một
-  bên đổi cách tuần tự hoá là cờ lặng lẽ về `false`. Chỉ nới ở chỗ **đọc**;
-  payload đẩy vẫn gửi đúng một dạng. Còn bốn chỗ cùng lớp chưa đụng:
+- **`doiSangBool()` ở nhánh kéo về** — dùng ở **cả bảy** chỗ đọc cờ đúng/sai:
+  `goals.status_complete` (chuỗi `"True"`), `goals.recurrence`,
   `wallets.is_default`, `categories.is_default`, `categories.is_group`,
-  `bills.recurrence`.
+  `budgets.recurrence`, `bills.recurrence`.
+
+  Backend không nhất quán ngay trong CÙNG một bảng: `Status_complete` là
+  `VarChar(20)` còn `Recurrence` là `Boolean` thật. So khớp cứng từng kiểu thì
+  chỉ cần một bên đổi cách tuần tự hoá là cờ lặng lẽ về `false` — không
+  exception, không log. Hoá đơn nặng nhất: cột chuỗi cũ `recurrence` được **suy
+  ra** từ cờ ấy, nên đọc sai một chỗ hỏng luôn cột thứ hai.
+
+  ⚠️ Chỉ nới ở chỗ **ĐỌC**. Payload đẩy vẫn gửi đúng một dạng — nới cả hai đầu
+  là mất luôn khả năng phát hiện khi hai phía lệch nhau.
 
 ⚠️ Ba lỗi ở vùng này **chỉ máy ảo Android mới lộ ra**: `ProviderNotFoundError`
 trên route không có `WalletCubit`, màn đỏ do `DropdownButton` có `value` ngoài

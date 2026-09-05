@@ -486,6 +486,83 @@ void main() {
               'mất cờ lặp lại cùng lời nhắc vòng mới của nó.');
       expect(goal.timeRecurrence, 'Month');
     });
+
+    test('BỐN cờ còn lại cũng đọc được ở mọi dạng, không riêng mục tiêu',
+        () async {
+      client.adapter.pullData = {
+        'wallets': [
+          {
+            'idwallet': walletId,
+            'idaccount': accountId,
+            'name': 'Ví mặc định',
+            'balance': 1000,
+            // chuỗi viết thường thay cho boolean thật
+            'is_default': 'true',
+            'update_at': '2026-09-01T10:00:00.000Z',
+          },
+        ],
+        'categories': [
+          {
+            'idcategory': categoryId,
+            'name_category': 'Nhóm chi',
+            'classify': 'Chi',
+            // số 1 thay cho boolean thật, ở CẢ HAI cờ
+            'is_group': 1,
+            'is_default': 1,
+            'create_by': accountId,
+            'update_at': '2026-09-01T10:00:00.000Z',
+          },
+        ],
+        'budgets': [
+          {
+            'idbudget': '44444444-4444-4444-8444-444444444444',
+            'idaccount': accountId,
+            'idcategory': categoryId,
+            'total_amount': 750000,
+            'over_spending': 'Stop',
+            'start': '2026-09-01T00:00:00.000Z',
+            'recurrence': 1,
+            'time_recurrence': 'Month',
+            'update_at': '2026-09-01T10:00:00.000Z',
+          },
+        ],
+        'bills': [
+          {
+            'idbill': '88888888-8888-4888-8888-888888888888',
+            'idaccount': accountId,
+            'idwallet': walletId,
+            'idcategory': categoryId,
+            'name': 'Tiền mạng',
+            'amount': 250000,
+            'due_date': '2026-10-01T00:00:00.000Z',
+            // chuỗi viết hoa chữ đầu, dạng `Status_complete` của mục tiêu
+            'recurrence': 'True',
+            'time_recurrence': 'Month',
+            'update_at': '2026-09-01T10:00:00.000Z',
+          },
+        ],
+      };
+
+      await runSync();
+
+      expect((await db.walletDao.getById(walletId))?.isDefault, true,
+          reason: 'Cả bốn cờ này từng so cứng `== true`. Một cái rơi về `false` '
+              'trong im lặng thì ví mặc định mất nhãn, nhóm danh mục sập thành '
+              'danh mục con, ngân sách và hoá đơn mất tính lặp — không '
+              'exception, không log.');
+
+      final category = await db.categoryDao.getById(categoryId);
+      expect(category?.isGroup, true);
+      expect(category?.isDefault, true);
+
+      final budget = (await db.budgetDao.getAll(accountId)).single;
+      expect(budget.recurrence, true);
+
+      final bill = (await db.billDao.getAll(accountId)).single;
+      expect(bill.isRecurrence, true,
+          reason: 'Hoá đơn còn nặng hơn: `recurrence` (cột chuỗi cũ) được SUY '
+              'RA từ cờ này, nên đọc sai một chỗ làm hỏng luôn cột thứ hai.');
+    });
   });
 
   group('PUSH RESULT — hợp đồng chiều ngược lại (backend → client)', () {
