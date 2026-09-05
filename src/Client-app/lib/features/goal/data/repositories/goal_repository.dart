@@ -32,6 +32,10 @@ abstract class GoalRepository {
     String? icon,
     String? colour,
     String? note,
+
+    /// Bật lặp lại mục tiêu sau khi hoàn thành, kèm chu kỳ [timeRecurrence].
+    bool? recurrence,
+    String? timeRecurrence,
     /// Đi thành cặp với [autoDepositWalletId]; đủ cả hai là bật trích tự động
     /// ngay từ lúc tạo, và mốc chạy được đặt bằng "bây giờ" nên kỳ đầu tiên rơi
     /// vào một chu kỳ sau đó.
@@ -89,6 +93,17 @@ abstract class GoalRepository {
     String? icon,
     String? colour,
     String? note,
+
+    /// Bật lặp lại mục tiêu sau khi hoàn thành. `false` **xoá luôn**
+    /// [timeRecurrence] — cùng số phận với mốc neo khi tắt trích tự động: để
+    /// sót lại thì bật lần sau dùng một nhịp cũ mà người dùng không còn nhìn
+    /// thấy ở đâu.
+    bool? recurrence,
+
+    /// Chu kỳ giữa hai VÒNG, khác [cycleTakeMoney] (nhịp trích tiền TRONG một
+    /// vòng). Hai tên gần nhau đến khó chịu, nhưng đó là tên backend đã đặt và
+    /// đổi tên một cột dùng chung thì phía kia phải đồng ý trước.
+    String? timeRecurrence,
     double? autoDepositAmount,
     String? autoDepositWalletId,
     /// **Mốc neo** của nhịp trích ("ngày 15 hàng tháng lúc 08:00"), lưu vào cột
@@ -96,6 +111,25 @@ abstract class GoalRepository {
     /// tắt trích tự động là xoá nó.
     DateTime? autoDepositAnchor,
   });
+
+  /// Bắt đầu một **vòng mới** cho mục tiêu đã hoàn thành và có bật lặp lại.
+  ///
+  /// Đặt tiến độ về 0, gỡ cờ hoàn thành, dời hạn tới kỳ kế tiếp và đặt lại mốc
+  /// bắt đầu bằng "bây giờ".
+  ///
+  /// ⚠️ **KHÔNG đụng một đồng nào.** Tiền của vòng cũ vẫn nằm trong ví tích
+  /// luỹ; người dùng tự rút khi muốn tiêu. Họ mới chỉ bấm "bắt đầu vòng mới" —
+  /// suy ra rằng họ cũng muốn chuyển tiền đi là đúng kiểu tự tiện mà cả tính
+  /// năng mục tiêu tránh từ đầu.
+  ///
+  /// Mốc bắt đầu phải đặt lại: `tocDoThucTe` đo từ nó, nên giữ mốc cũ thì vòng
+  /// mới hiện tốc độ tiết kiệm của vòng trước.
+  ///
+  /// Ném [GoalValidationException] nếu mục tiêu chưa xong hoặc chưa bật lặp
+  /// lại. Phép chặn nằm ở tầng này chứ không phải ở chỗ ẩn nút đi: đặt lại một
+  /// mục tiêu đang dở là xoá tiến độ đã tích được, và không có gì hoàn tác.
+  Future<void> batDauVongMoi(String goalId);
+
   /// Chuyển [depositAmount] từ ví [walletId] sang **ví nhận của mục tiêu** và
   /// tăng tiến độ tương ứng.
   ///

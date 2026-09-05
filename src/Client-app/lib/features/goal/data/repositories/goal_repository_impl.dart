@@ -5,6 +5,7 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/sync/sync_engine.dart';
 import '../datasources/goal_local_data_source.dart';
 import '../../domain/goal_history_direction.dart';
+import '../../domain/goal_recurrence.dart';
 import '../models/goal_entity.dart';
 import 'goal_repository.dart';
 
@@ -83,6 +84,8 @@ class GoalRepositoryImpl implements GoalRepository {
     String? icon,
     String? colour,
     String? note,
+    bool? recurrence,
+    String? timeRecurrence,
     double? autoDepositAmount,
     String? autoDepositWalletId,
     DateTime? autoDepositAnchor,
@@ -123,6 +126,10 @@ class GoalRepositoryImpl implements GoalRepository {
       // trích ngay lúc bấm "Tạo": người dùng vừa mô tả một kế hoạch, chưa đồng
       // ý cho tiền rời ví ngay giây này.
       autoDepositLastRun: batTrich ? now : null,
+      // Lặp lại cần ĐỦ cả hai mảnh, cùng luật với trích tự động: bật mà
+      // không có chu kỳ thì `batDauVongMoi` không biết dời hạn đi đâu.
+      recurrence: recurrence == true && timeRecurrence != null,
+      timeRecurrence: recurrence == true ? timeRecurrence : null,
       icon: icon ?? 'flag',
       colour: colour ?? '#4CAF50',
       note: note ?? '',
@@ -156,6 +163,8 @@ class GoalRepositoryImpl implements GoalRepository {
     String? icon,
     String? colour,
     String? note,
+    bool? recurrence,
+    String? timeRecurrence,
     double? autoDepositAmount,
     String? autoDepositWalletId,
     DateTime? autoDepositAnchor,
@@ -246,6 +255,17 @@ class GoalRepositoryImpl implements GoalRepository {
         // đây là ý định XOÁ rõ ràng (người dùng đã xoá sạch ô nhập), nên nó
         // vẫn được ghi xuống. Chỉ `null` mới là "không đụng tới".
         note: note == null ? const Value.absent() : Value(note),
+        // Cùng luật với trích tự động: tắt là XOÁ luôn chu kỳ. Để sót lại thì
+        // bật lần sau dùng một nhịp cũ mà người dùng không còn thấy ở đâu.
+        //
+        // `null` ở đây là "nơi gọi không đụng tới" — trang sửa luôn truyền cả
+        // hai, nhưng đường gọi khác thì không nhất thiết.
+        recurrence: recurrence == null
+            ? const Value.absent()
+            : Value(recurrence && timeRecurrence != null),
+        timeRecurrence: recurrence == null
+            ? const Value.absent()
+            : Value(recurrence ? timeRecurrence : null),
         autoDepositAmount:
             batTrich ? Value(autoDepositAmount) : const Value(null),
         autoDepositWalletId:
@@ -254,6 +274,62 @@ class GoalRepositoryImpl implements GoalRepository {
         isCompleted: Value(goal.currentAmount >= targetAmount),
         syncStatus: const Value('pending'),
         updatedAt: Value(DateTime.now()),
+      ),
+    );
+    syncEngine?.scheduleSync();
+  }
+
+  @override
+  Future<void> batDauVongMoi(String goalId) async {
+    final goal = await localDataSource.getGoalById(goalId);
+    if (goal == null) {
+      throw StateError('Không tìm thấy mục tiêu $goalId.');
+    }
+
+    // Hai phép chặn, và chúng nằm ở TẦNG NÀY chứ không phải ở chỗ ẩn nút đi.
+    // Đặt lại một mục tiêu đang dở là xoá tiến độ người dùng đã tích được, và
+    // không có gì hoàn tác lại được.
+    if (!goal.daHoanThanh) {
+      throw GoalValidationException(
+        'Mục tiêu "${goal.name}" chưa hoàn thành nên chưa có vòng nào để lặp '
+        'lại.',
+      );
+    }
+    if (!goal.recurrence) {
+      throw GoalValidationException(
+        'Mục tiêu "${goal.name}" chưa bật lặp lại. Mở phần chỉnh sửa để bật.',
+      );
+    }
+
+    if (db == null) return;
+    final now = DateTime.now();
+
+    final hanMoi = hanVongMoi(
+      hanCu: goal.targetDate,
+      chuKy: goal.timeRecurrence,
+      now: now,
+    );
+    if (hanMoi == null) {
+      throw GoalValidationException(
+        'Hạn định của mục tiêu "${goal.name}" nằm quá xa để tính được vòng '
+        'tiếp theo. Hãy sửa lại hạn định trước.',
+      );
+    }
+
+    // KHÔNG đụng `walletId` lẫn số dư ví nào: tiền của vòng cũ vẫn nằm nguyên
+    // trong ví tích luỹ. Người dùng mới chỉ bấm "bắt đầu vòng mới" — suy ra
+    // rằng họ cũng muốn chuyển tiền đi là đúng kiểu tự tiện mà cả tính năng
+    // mục tiêu tránh từ đầu.
+    await (db!.update(db!.goals)..where((t) => t.id.equals(goalId))).write(
+      GoalsCompanion(
+        currentAmount: const Value(0.0),
+        isCompleted: const Value(false),
+        // Mốc bắt đầu là BÂY GIỜ. `tocDoThucTe` đo từ nó, nên giữ mốc cũ thì
+        // vòng mới hiện tốc độ tiết kiệm của vòng trước.
+        startDate: Value(now),
+        targetDate: Value(hanMoi),
+        syncStatus: const Value('pending'),
+        updatedAt: Value(now),
       ),
     );
     syncEngine?.scheduleSync();

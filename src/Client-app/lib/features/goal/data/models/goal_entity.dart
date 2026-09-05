@@ -46,6 +46,22 @@ class GoalEntity {
   /// Mốc của kỳ gần nhất đã trích xong. `null` = chưa bật.
   final DateTime? autoDepositLastRun;
 
+  /// Bật lặp lại mục tiêu sau khi hoàn thành.
+  ///
+  /// Đồng bộ hai chiều (`recurrence` nằm sẵn trong 18 khoá của payload mục
+  /// tiêu), nhưng **không có gì tự động xảy ra**: cờ này chỉ khiến trung tâm
+  /// thông báo nhắc "bắt đầu vòng mới?" khi mục tiêu đạt đủ. Việc đặt lại là
+  /// một cú bấm của người dùng — xem `GoalRepository.batDauVongMoi`.
+  final bool recurrence;
+
+  /// Chu kỳ lặp lại — `'Day'`/`'Week'`/`'Month'`/`'Quarter'`/`'Year'`.
+  ///
+  /// KHÁC [cycleTakeMoney]: cột kia là nhịp *trích tiền trong một vòng*, cột
+  /// này là khoảng cách *giữa hai vòng*. Hai tên gần nhau đến khó chịu, nhưng
+  /// đó là tên backend đã đặt, và đổi tên một cột dùng chung thì phía kia phải
+  /// đồng ý trước.
+  final String? timeRecurrence;
+
   final String icon;
   final String colour;
   final String note;
@@ -68,6 +84,8 @@ class GoalEntity {
     this.autoDepositAmount,
     this.autoDepositWalletId,
     this.autoDepositLastRun,
+    this.recurrence = false,
+    this.timeRecurrence,
     this.icon = 'flag',
     this.colour = '#4CAF50',
     this.note = '',
@@ -92,6 +110,8 @@ class GoalEntity {
       autoDepositAmount: d.autoDepositAmount,
       autoDepositWalletId: d.autoDepositWalletId,
       autoDepositLastRun: d.autoDepositLastRun,
+      recurrence: d.recurrence,
+      timeRecurrence: d.timeRecurrence,
       icon: d.icon,
       colour: d.colour,
       note: d.note,
@@ -117,6 +137,8 @@ class GoalEntity {
       autoDepositAmount: Value(autoDepositAmount),
       autoDepositWalletId: Value(autoDepositWalletId),
       autoDepositLastRun: Value(autoDepositLastRun),
+      recurrence: Value(recurrence),
+      timeRecurrence: Value(timeRecurrence),
       icon: Value(icon),
       colour: Value(colour),
       note: Value(note),
@@ -141,6 +163,8 @@ class GoalEntity {
     double? autoDepositAmount,
     String? autoDepositWalletId,
     DateTime? autoDepositLastRun,
+    bool? recurrence,
+    String? timeRecurrence,
     String? icon,
     String? colour,
     String? note,
@@ -163,6 +187,8 @@ class GoalEntity {
       autoDepositAmount: autoDepositAmount ?? this.autoDepositAmount,
       autoDepositWalletId: autoDepositWalletId ?? this.autoDepositWalletId,
       autoDepositLastRun: autoDepositLastRun ?? this.autoDepositLastRun,
+      recurrence: recurrence ?? this.recurrence,
+      timeRecurrence: timeRecurrence ?? this.timeRecurrence,
       icon: icon ?? this.icon,
       colour: colour ?? this.colour,
       note: note ?? this.note,
@@ -184,6 +210,13 @@ class GoalEntity {
   /// Kẹp hai đầu vì thanh tiến độ vẽ thẳng theo giá trị này. `targetAmount = 0`
   /// tạo được từ giao diện, và Dart chia cho 0 ra `Infinity` chứ **không ném** —
   /// giá trị hỏng sẽ trôi thẳng tới màn hình.
+  double get progress {
+    if (targetAmount <= 0) return 1.0;
+    final tyLe = currentAmount / targetAmount;
+    if (tyLe.isNaN) return 0.0;
+    return tyLe.clamp(0.0, 1.0);
+  }
+
   /// Mục tiêu này đã xong chưa — **định nghĩa duy nhất** trong dự án.
   ///
   /// Hai vế, và cần cả hai. `isCompleted` là cờ được ghi xuống lúc nạp/rút;
@@ -196,13 +229,6 @@ class GoalEntity {
   /// getter này. Trước đây mỗi nơi tự viết `isCompleted || progress >= 1.0`, và
   /// hai bản sao ấy là thứ sẽ lệch nhau ở lần sửa sau.
   bool get daHoanThanh => isCompleted || progress >= 1.0;
-
-  double get progress {
-    if (targetAmount <= 0) return 1.0;
-    final tyLe = currentAmount / targetAmount;
-    if (tyLe.isNaN) return 0.0;
-    return tyLe.clamp(0.0, 1.0);
-  }
 
   /// Số tiền còn thiếu để đạt mục tiêu. **Không bao giờ âm.**
   ///

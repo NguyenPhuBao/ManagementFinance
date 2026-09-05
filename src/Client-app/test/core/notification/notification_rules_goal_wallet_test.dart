@@ -29,6 +29,8 @@ void main() {
     DateTime? ketThuc,
     bool xong = false,
     bool daXoa = false,
+    bool lapLai = false,
+    String? chuKyLap,
   }) {
     return GoalEntity(
       id: id,
@@ -40,6 +42,8 @@ void main() {
       targetDate: ketThuc ?? DateTime(2026, 12, 31),
       isCompleted: xong,
       isDeleted: daXoa,
+      recurrence: lapLai,
+      timeRecurrence: chuKyLap,
       updatedAt: DateTime(2026, 9, 1),
     );
   }
@@ -86,6 +90,76 @@ void main() {
       silenceBefore: silenceBefore,
     ));
   }
+
+  group('nhắc bắt đầu vòng mới', () {
+    test('mục tiêu lặp lại đã xong thì có THÊM lời nhắc vòng mới', () {
+      final ra = chay(goals: [
+        mucTieu(target: 1000, current: 1000, lapLai: true, chuKyLap: 'Month'),
+      ]);
+
+      final loai = ra.map((c) => c.kind).toSet();
+      expect(loai, contains(NotificationKind.goalCompleted));
+      expect(loai, contains(NotificationKind.goalCycleReady),
+          reason: 'Hai tin khác nhau: một cái chúc mừng, một cái hỏi có bắt '
+              'đầu vòng mới không. Nhét lời nhắc vào câu chúc mừng thì nó rơi '
+              'vào khoá chống trùng `goalDone:<id>` — khoá CỐ Ý không có mốc '
+              'thời gian vì "một mục tiêu chỉ hoàn thành một lần trong đời" — '
+              'và vòng thứ hai trở đi sẽ không bao giờ được nhắc.');
+    });
+
+    test('KHÔNG bật lặp lại thì chỉ có lời chúc mừng', () {
+      final ra = chay(goals: [mucTieu(target: 1000, current: 1000)]);
+
+      expect(ra.map((c) => c.kind),
+          isNot(contains(NotificationKind.goalCycleReady)));
+    });
+
+    test('chưa xong thì chưa nhắc, dù đã bật lặp lại', () {
+      final ra = chay(goals: [
+        mucTieu(target: 1000, current: 100, lapLai: true, chuKyLap: 'Month'),
+      ]);
+
+      expect(ra.map((c) => c.kind),
+          isNot(contains(NotificationKind.goalCycleReady)));
+    });
+
+    test('khoá chống trùng gắn MỐC BẮT ĐẦU nên mỗi vòng nhắc một lần', () {
+      final vongMot = chay(goals: [
+        mucTieu(
+          target: 1000,
+          current: 1000,
+          lapLai: true,
+          chuKyLap: 'Month',
+          batDau: DateTime(2026, 1, 1),
+        ),
+      ]).firstWhere((c) => c.kind == NotificationKind.goalCycleReady);
+
+      final vongHai = chay(goals: [
+        mucTieu(
+          target: 1000,
+          current: 1000,
+          lapLai: true,
+          chuKyLap: 'Month',
+          batDau: DateTime(2026, 6, 1),
+        ),
+      ]).firstWhere((c) => c.kind == NotificationKind.goalCycleReady);
+
+      expect(vongMot.dedupeKey, isNot(vongHai.dedupeKey),
+          reason: '`batDauVongMoi` đặt lại `startDate` bằng "bây giờ", nên mốc '
+              'ấy chính là thứ phân biệt hai vòng. Dùng khoá không đổi thì '
+              'người dùng chỉ được nhắc đúng một lần trong đời mục tiêu.');
+    });
+
+    test('dẫn thẳng tới mục tiêu, không về danh sách', () {
+      final ra = chay(goals: [
+        mucTieu(target: 1000, current: 1000, lapLai: true, chuKyLap: 'Month'),
+      ]).firstWhere((c) => c.kind == NotificationKind.goalCycleReady);
+
+      expect(ra.deeplink, '/goals/mt1');
+      expect(ra.severity, NotificationSeverity.info);
+      expect(ra.body, contains('MacBook'));
+    });
+  });
 
   group('mục tiêu hoàn thành', () {
     test('đủ tiền thì chúc mừng', () {

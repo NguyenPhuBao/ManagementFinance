@@ -49,6 +49,18 @@ class GoalAddPage extends StatelessWidget {
 
 enum DepositFrequency { daily, weekly, monthly }
 
+/// Ba chu kỳ lặp lại mục tiêu, khoá là giá trị ghi xuống `time_recurrence`.
+///
+/// Cố ý HẸP hơn `mocKeTiep` (vốn nhận thêm `'Day'` và `'Quarter'`): lặp lại một
+/// mục tiêu tiết kiệm mỗi ngày không có nghĩa gì, và mỗi lựa chọn thừa là một
+/// hàng người dùng phải đọc qua. `mocKeTiep` vẫn xử lý được giá trị lạ đến từ
+/// Admin-web hay bản app cũ, nên thu hẹp ở đây không làm hỏng dữ liệu sẵn có.
+const Map<String, String> kChuKyLapLai = {
+  'Week': 'Hàng tuần',
+  'Month': 'Hàng tháng',
+  'Year': 'Hàng năm',
+};
+
 class _GoalAddPageContent extends StatefulWidget {
   const _GoalAddPageContent({this.goalId});
 
@@ -65,6 +77,13 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
   final _noteController = TextEditingController();
   DateTime _targetDate = DateTime.now().add(const Duration(days: 365));
   bool _autoDeposit = true;
+
+  /// Lặp lại mặc định TẮT, ngược với trích tự động.
+  ///
+  /// Phần lớn mục tiêu tiết kiệm là việc làm một lần ("mua laptop"), nên bật
+  /// sẵn là đoán sai ý người dùng ở đa số ca.
+  bool _lapLai = false;
+  String _chuKyLap = 'Month';
   DepositFrequency _frequency = DepositFrequency.monthly;
 
   bool _isRecalculatingFromDeposit = false;
@@ -156,6 +175,13 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
         _gioTrich = TimeOfDay(hour: mocCu.hour, minute: mocCu.minute);
         _ngayTrich = goal.cycleTakeMoney == 'Week' ? mocCu.weekday : mocCu.day;
       }
+      _lapLai = goal.recurrence;
+      _chuKyLap = kChuKyLapLai.containsKey(goal.timeRecurrence)
+          ? goal.timeRecurrence!
+          // Giá trị lạ (`'Day'`, `'Quarter'` từ Admin-web) không có ô nào để
+          // hiện. Rơi về hàng tháng để bảng chọn luôn có đúng một ô sáng —
+          // ba ô cùng tối trông như biểu mẫu hỏng.
+          : 'Month';
       _nameController.text = goal.name;
       _noteController.text = goal.note;
 
@@ -376,6 +402,8 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
             icon: _icon,
             colour: _colour,
             note: _noteController.text.trim(),
+            recurrence: _lapLai,
+            timeRecurrence: _lapLai ? _chuKyLap : null,
             autoDepositAmount: _autoDeposit ? soTienTrich : null,
             autoDepositWalletId:
                 _autoDeposit ? _selectedSourceWallet?.id : null,
@@ -438,6 +466,8 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
           icon: _icon,
           colour: _colour,
           note: _noteController.text.trim(),
+          recurrence: _lapLai,
+          timeRecurrence: _lapLai ? _chuKyLap : null,
           autoDepositAmount: _autoDeposit ? soTienTrich : null,
           autoDepositWalletId: _autoDeposit ? _selectedSourceWallet?.id : null,
           autoDepositAnchor: _autoDeposit ? _mocNeo : null,
@@ -1104,6 +1134,129 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                                   },
                                 );
                               },
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Thẻ LẶP LẠI — thẻ riêng, không nhét chung với trích tự
+                    // động. Hai thứ khác hẳn nhau: trích tự động là nhịp bỏ
+                    // tiền vào TRONG một vòng, lặp lại là chuyện xảy ra SAU khi
+                    // vòng ấy kết thúc. Gộp một thẻ thì người dùng đọc "chu kỳ"
+                    // hai lần trong cùng một khối và không phân biệt được.
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.04),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Lặp lại sau khi hoàn thành',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                    SizedBox(height: 4),
+                                    // Nói thẳng rằng app KHÔNG tự làm gì. Câu
+                                    // này là hợp đồng với người dùng: đặt lại
+                                    // mục tiêu là xoá tiến độ, nên nó phải là
+                                    // một cú bấm có ý thức.
+                                    Text(
+                                      'Khi đạt mục tiêu, app sẽ nhắc bạn bắt '
+                                      'đầu vòng mới. Tiền đã tích vẫn ở nguyên '
+                                      'trong ví.',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Switch(
+                                value: _lapLai,
+                                onChanged: (val) =>
+                                    setState(() => _lapLai = val),
+                                activeThumbColor: AppColors.income,
+                              ),
+                            ],
+                          ),
+                          if (_lapLai) ...[
+                            const SizedBox(height: 16),
+                            _buildLabel('LẶP LẠI MỖI'),
+                            const SizedBox(height: 4),
+                            Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: AppColors.surfaceContainerLow,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                children: kChuKyLapLai.entries.map((e) {
+                                  final chon = _chuKyLap == e.key;
+                                  return Expanded(
+                                    child: GestureDetector(
+                                      onTap: () =>
+                                          setState(() => _chuKyLap = e.key),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 8),
+                                        decoration: BoxDecoration(
+                                          color: chon
+                                              ? Colors.white
+                                              : Colors.transparent,
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                          boxShadow: chon
+                                              ? [
+                                                  BoxShadow(
+                                                    color: Colors.black
+                                                        .withValues(
+                                                            alpha: 0.05),
+                                                    blurRadius: 2,
+                                                  )
+                                                ]
+                                              : null,
+                                        ),
+                                        alignment: Alignment.center,
+                                        child: Text(
+                                          e.value,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: chon
+                                                ? FontWeight.bold
+                                                : FontWeight.normal,
+                                            color: chon
+                                                ? AppColors.income
+                                                : AppColors.textSecondary,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
                             ),
                           ],
                         ],

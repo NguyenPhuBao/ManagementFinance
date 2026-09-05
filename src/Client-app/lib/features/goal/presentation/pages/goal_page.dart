@@ -303,7 +303,38 @@ class _GoalPageContent extends StatelessWidget {
         children: goals
             .map((goal) => Padding(
                   padding: const EdgeInsets.only(bottom: 16),
-                  child: _theMucTieu(context, goal, currencyFormatter),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _theMucTieu(context, goal, currencyFormatter),
+                      // Lối tắt cho mục tiêu lặp lại. Chỉ là lối tắt: nó mở
+                      // trang chi tiết chứ KHÔNG tự đặt lại. Một nút xoá tiến
+                      // độ ngay trong danh sách là chỗ dễ bấm nhầm nhất, và
+                      // thao tác này không hoàn tác được.
+                      if (goal.recurrence)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: TextButton.icon(
+                            onPressed: () async {
+                              await context.push('/goals/${goal.id}');
+                              if (context.mounted) {
+                                final idaccount =
+                                    currentAccountIdOrNull(context) ?? 0;
+                                context.read<GoalCubit>().loadGoals(idaccount);
+                              }
+                            },
+                            icon: const Icon(Icons.restart_alt_rounded,
+                                size: 18),
+                            label: const Text('Bắt đầu vòng mới'),
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppColors.income,
+                              textStyle: const TextStyle(
+                                  fontSize: 13, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ))
             .toList(),
       ),

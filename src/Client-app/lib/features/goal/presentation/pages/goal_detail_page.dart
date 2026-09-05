@@ -1166,6 +1166,62 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     );
   }
 
+  /// Hỏi lại trước khi đặt lại mục tiêu.
+  ///
+  /// Đây là thao tác **xoá tiến độ** và không hoàn tác được, nên nó phải có
+  /// một bước xác nhận — cùng lối với nút xoá mục tiêu. Hộp thoại nói rõ hai
+  /// điều người dùng cần biết trước khi bấm: tiến độ về 0, và **tiền không đi
+  /// đâu cả**.
+  Future<void> _xacNhanVongMoi() async {
+    final goal = _goal!;
+    final tien = NumberFormat.currency(
+        locale: 'vi_VN', symbol: 'đ', decimalDigits: 0);
+
+    final dongY = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Bắt đầu vòng mới?'),
+        content: Text(
+          'Tiến độ của "${goal.name}" sẽ về 0 và hạn định dời sang kỳ tiếp '
+          'theo.\n\n'
+          '${tien.format(goal.currentAmount)} đã tích được vẫn nằm nguyên '
+          'trong ví — không đồng nào bị chuyển đi. Muốn tiêu số ấy thì dùng '
+          '"Rút khỏi mục tiêu".',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Huỷ'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Bắt đầu'),
+          ),
+        ],
+      ),
+    );
+
+    if (dongY != true || !mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await _goalRepository.batDauVongMoi(goal.id);
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Đã bắt đầu vòng tích luỹ mới.'),
+          backgroundColor: AppColors.income,
+        ),
+      );
+      _loadGoal();
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+      );
+    }
+  }
+
   Widget _buildBottomButtons() {
     return Container(
       padding: const EdgeInsets.all(24.0),
@@ -1181,6 +1237,33 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Nút vòng mới chỉ hiện khi mục tiêu ĐÃ XONG và CÓ bật lặp lại — và
+          // nó đứng đầu, trên cả "Gửi thêm tiết kiệm": với một mục tiêu đã
+          // hoàn thành thì nạp thêm không còn là việc muốn làm nhất.
+          //
+          // Ẩn nút không phải là phép chặn. `batDauVongMoi` kiểm lại cả hai
+          // điều kiện ở tầng repository, vì đặt lại một mục tiêu đang dở là
+          // xoá tiến độ và không có gì hoàn tác.
+          if (_goal!.daHoanThanh && _goal!.recurrence) ...[
+            ElevatedButton.icon(
+              onPressed: _xacNhanVongMoi,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.income,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(double.infinity, 56),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              icon: const Icon(Icons.restart_alt_rounded),
+              label: const Text(
+                'Bắt đầu vòng mới',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           ElevatedButton(
             onPressed: _showDepositDialog,
             style: ElevatedButton.styleFrom(

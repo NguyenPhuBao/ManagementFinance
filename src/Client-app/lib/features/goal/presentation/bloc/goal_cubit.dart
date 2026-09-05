@@ -76,6 +76,8 @@ class GoalCubit extends Cubit<GoalState> {
     String? icon,
     String? colour,
     String? note,
+    bool? recurrence,
+    String? timeRecurrence,
     double? autoDepositAmount,
     String? autoDepositWalletId,
     DateTime? autoDepositAnchor,
@@ -91,6 +93,8 @@ class GoalCubit extends Cubit<GoalState> {
         icon: icon,
         colour: colour,
         note: note,
+        recurrence: recurrence,
+        timeRecurrence: timeRecurrence,
         autoDepositAmount: autoDepositAmount,
         autoDepositWalletId: autoDepositWalletId,
         autoDepositAnchor: autoDepositAnchor,
@@ -117,6 +121,8 @@ class GoalCubit extends Cubit<GoalState> {
     String? icon,
     String? colour,
     String? note,
+    bool? recurrence,
+    String? timeRecurrence,
     double? autoDepositAmount,
     String? autoDepositWalletId,
     DateTime? autoDepositAnchor,
@@ -131,10 +137,26 @@ class GoalCubit extends Cubit<GoalState> {
         icon: icon,
         colour: colour,
         note: note,
+        recurrence: recurrence,
+        timeRecurrence: timeRecurrence,
         autoDepositAmount: autoDepositAmount,
         autoDepositWalletId: autoDepositWalletId,
         autoDepositAnchor: autoDepositAnchor,
       );
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  /// Bắt đầu vòng mới cho một mục tiêu lặp lại đã hoàn thành.
+  ///
+  /// Trả `null` khi xong, hoặc câu lỗi để nơi gọi hiện snackbar — cùng lối với
+  /// [updateGoal]: nút nằm trên trang chi tiết và trang ấy không đóng lại sau
+  /// thao tác, nên người dùng phải thấy lý do ngay tại chỗ.
+  Future<String?> batDauVongMoi(String goalId) async {
+    try {
+      await repository.batDauVongMoi(goalId);
       return null;
     } catch (e) {
       return e.toString();

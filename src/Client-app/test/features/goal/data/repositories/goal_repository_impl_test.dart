@@ -426,6 +426,156 @@ void main() {
     });
   });
 
+  group('lặp lại mục tiêu', () {
+    /// Đưa `g1` về đúng trạng thái "đã xong và có bật lặp lại".
+    Future<void> chuanBiDaXong({
+      String? chuKyLap = 'Month',
+      bool batLapLai = true,
+      DateTime? han,
+    }) async {
+      await (db.update(db.goals)..where((t) => t.id.equals('g1'))).write(
+        GoalsCompanion(
+          currentAmount: const Value(20000000.0),
+          isCompleted: const Value(true),
+          recurrence: Value(batLapLai),
+          timeRecurrence: Value(chuKyLap),
+          targetDate: Value(han ?? DateTime(2026, 3, 10)),
+          syncStatus: const Value('synced'),
+        ),
+      );
+    }
+
+    test('đặt lại tiến độ, gỡ cờ, dời hạn và đặt lại mốc bắt đầu', () async {
+      await chuanBiDaXong();
+      final truoc = DateTime.now();
+
+      await repository.batDauVongMoi('g1');
+
+      final goal = (await repository.getGoalById('g1'))!;
+      expect(goal.currentAmount, 0.0);
+      expect(goal.isCompleted, isFalse);
+      expect(goal.targetDate.isAfter(DateTime.now()), isTrue,
+          reason: 'Hạn của vòng mới phải nằm ở tương lai. Giữ hạn cũ đã qua là '
+              'mục tiêu quá hạn ngay giây đầu tiên và bộ dự báo kêu "chậm tiến '
+              'độ" trước khi người dùng kịp nạp đồng nào.');
+      expect(
+          goal.startDate!.isBefore(truoc.subtract(const Duration(seconds: 2))),
+          isFalse,
+          reason: 'Mốc bắt đầu phải là BÂY GIỜ. `tocDoThucTe` đo từ nó, nên '
+              'giữ mốc cũ thì vòng mới hiện tốc độ tiết kiệm của vòng trước.');
+    });
+
+    test('KHÔNG đụng một đồng nào trong ví', () async {
+      await chuanBiDaXong();
+      final viNguon = (await db.walletDao.getById('w1'))!.balance;
+      final viNhan = (await db.walletDao.getById('w_nhan'))!.balance;
+
+      await repository.batDauVongMoi('g1');
+
+      expect((await db.walletDao.getById('w1'))?.balance, viNguon);
+      expect((await db.walletDao.getById('w_nhan'))?.balance, viNhan,
+          reason: 'Tiền của vòng cũ vẫn nằm trong ví tích luỹ — người dùng tự '
+              'rút khi muốn tiêu. Đây là chỗ app tuyệt đối không được tự '
+              'chuyển tiền: họ mới chỉ bấm "bắt đầu vòng mới".');
+      expect(await db.transactionDao.getAll(1), isEmpty,
+          reason: 'Không sinh giao dịch nào — không có đồng nào đi đâu cả.');
+    });
+
+    test('đánh dấu cần đồng bộ', () async {
+      await chuanBiDaXong();
+      await repository.batDauVongMoi('g1');
+
+      final row = await db.goalDao.getById('g1');
+      expect(row!.syncStatus, 'pending');
+    });
+
+    test('mục tiêu CHƯA hoàn thành thì từ chối', () async {
+      await (db.update(db.goals)..where((t) => t.id.equals('g1')))
+          .write(const GoalsCompanion(recurrence: Value(true)));
+
+      await expectLater(
+        repository.batDauVongMoi('g1'),
+        throwsA(isA<GoalValidationException>()),
+        reason: 'Đặt lại một mục tiêu đang dở là XOÁ tiến độ người dùng đã '
+            'tích được, và không có gì hoàn tác lại. Nút chỉ hiện ở mục tiêu '
+            'đã xong, nhưng phép chặn phải nằm ở tầng này chứ không phải ở chỗ '
+            'ẩn nút đi.',
+      );
+
+      expect((await repository.getGoalById('g1'))?.currentAmount, 2000000.0);
+    });
+
+    test('mục tiêu KHÔNG bật lặp lại thì từ chối', () async {
+      await chuanBiDaXong(batLapLai: false);
+
+      await expectLater(
+        repository.batDauVongMoi('g1'),
+        throwsA(isA<GoalValidationException>()),
+      );
+      expect((await repository.getGoalById('g1'))?.currentAmount, 20000000.0);
+    });
+
+    test('chu kỳ lặp trống thì quy về hàng tháng, không kẹt', () async {
+      await chuanBiDaXong(chuKyLap: null, han: DateTime(2026, 9, 1));
+
+      await repository.batDauVongMoi('g1');
+
+      final goal = (await repository.getGoalById('g1'))!;
+      expect(goal.targetDate.day, 1,
+          reason: 'Cùng lựa chọn với `mocKeTiep`: chu kỳ trống quy về hàng '
+              'tháng. Ném lỗi ở đây thì mục tiêu do Admin-web hay bản app cũ '
+              'tạo ra sẽ không bao giờ lặp lại được.');
+      expect(goal.currentAmount, 0.0);
+    });
+  });
+
+  group('cấu hình lặp lại đi qua được cả hai đường ghi', () {
+    test('addGoal lưu cờ lặp và chu kỳ lặp', () async {
+      final moi = await repository.addGoal(
+        idaccount: 1,
+        name: 'Quỹ Tết',
+        targetAmount: 5000000.0,
+        targetDate: DateTime.now().add(const Duration(days: 120)),
+        walletId: 'w_nhan',
+        recurrence: true,
+        timeRecurrence: 'Year',
+      );
+
+      final goal = (await repository.getGoalById(moi.id))!;
+      expect(goal.recurrence, isTrue);
+      expect(goal.timeRecurrence, 'Year',
+          reason: 'Hai cột này tồn tại ở cả Drift lẫn Prisma và nằm sẵn trong '
+              'payload đẩy từ lâu — nhưng client chưa bao giờ ghi vào chúng.');
+    });
+
+    test('updateGoal bật rồi tắt được', () async {
+      await repository.updateGoal(
+        id: 'g1',
+        name: 'Mua Laptop',
+        targetAmount: 20000000.0,
+        targetDate: DateTime.now().add(const Duration(days: 90)),
+        recurrence: true,
+        timeRecurrence: 'Month',
+      );
+      expect((await repository.getGoalById('g1'))?.recurrence, isTrue);
+
+      await repository.updateGoal(
+        id: 'g1',
+        name: 'Mua Laptop',
+        targetAmount: 20000000.0,
+        targetDate: DateTime.now().add(const Duration(days: 90)),
+        recurrence: false,
+      );
+
+      final goal = (await repository.getGoalById('g1'))!;
+      expect(goal.recurrence, isFalse);
+      expect(goal.timeRecurrence, isNull,
+          reason: 'Tắt lặp lại là XOÁ luôn chu kỳ, cùng số phận với mốc neo '
+              'khi tắt trích tự động. Để sót lại thì bật lần sau dùng một nhịp '
+              'cũ mà người dùng không còn nhìn thấy ở đâu.');
+    });
+  });
+
   group('rút khỏi mục tiêu', () {
     setUp(() async {
       // Ví tích luỹ đang giữ đúng số mục tiêu đã tích được.

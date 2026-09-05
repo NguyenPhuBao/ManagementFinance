@@ -21,6 +21,7 @@ NotificationGroup nhomCua(NotificationKind kind) {
     case NotificationKind.budgetOverspent:
       return NotificationGroup.budget;
     case NotificationKind.goalCompleted:
+    case NotificationKind.goalCycleReady:
     case NotificationKind.goalBehind:
     case NotificationKind.goalAutoDeposited:
     case NotificationKind.goalAutoDepositFailed:

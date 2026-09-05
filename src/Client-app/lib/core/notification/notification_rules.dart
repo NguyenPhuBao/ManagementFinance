@@ -12,6 +12,7 @@ enum NotificationKind {
   billDueSoon,
   billOverdue,
   goalCompleted,
+  goalCycleReady,
   goalBehind,
   goalAutoDeposited,
   goalAutoDepositFailed,
@@ -304,6 +305,31 @@ List<NotificationCandidate> _goalCandidates(NotificationRuleInput input) {
     // dùng chung với bộ chia tab `chiaMucTieu`. Trước đây chỗ này tự viết
     // `isCompleted || progress >= 1.0` — một bản sao chờ ngày lệch.
     if (g.daHoanThanh) {
+      // Lời nhắc vòng mới là một tin RIÊNG, không gộp vào câu chúc mừng.
+      //
+      // Câu chúc mừng dùng khoá `goalDone:<id>` **cố ý không có mốc thời
+      // gian** — "một mục tiêu chỉ hoàn thành một lần trong đời". Mục tiêu lặp
+      // lại phá đúng giả định ấy: nhét lời nhắc vào chung thì từ vòng thứ hai
+      // trở đi nó rơi vào khoá cũ và không bao giờ hiện nữa.
+      //
+      // Khoá ở đây gắn `startDate`, và `batDauVongMoi` đặt lại cột ấy bằng
+      // "bây giờ" — nên mỗi vòng được nhắc đúng một lần.
+      if (g.recurrence) {
+        ra.add(NotificationCandidate(
+          kind: NotificationKind.goalCycleReady,
+          dedupeKey: 'goalCycle:${g.id}:'
+              '${g.startDate?.millisecondsSinceEpoch ?? 0}',
+          title: 'Bắt đầu vòng mới?',
+          body: 'Mục tiêu ${g.name} đã hoàn thành. Mở mục tiêu để bắt đầu một '
+              'vòng tích luỹ mới.',
+          severity: NotificationSeverity.info,
+          subjectType: 'goal',
+          subjectId: g.id,
+          deeplink: goalDeeplink(g.id),
+          createdAt: input.now,
+        ));
+      }
+
       ra.add(NotificationCandidate(
         kind: NotificationKind.goalCompleted,
         // KHÔNG có mốc thời gian trong khoá: một mục tiêu chỉ hoàn thành một
