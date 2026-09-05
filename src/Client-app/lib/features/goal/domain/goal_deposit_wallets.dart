@@ -23,3 +23,27 @@ String? viNguonMacDinh({
   }
   return null;
 }
+/// Ví nguồn mặc định cho ô **trích tiền tự động** ở biểu mẫu mục tiêu, có tính
+/// tới một ví ưu tiên (thường là ví mặc định của tài khoản).
+///
+/// Khác với phiếu nạp tay — nơi mọi ví hợp lệ đều ngang nhau — biểu mẫu mục
+/// tiêu muốn đoán trúng ví người dùng hay dùng nhất. Nhưng phỏng đoán ấy phải
+/// **đi qua** cùng một quy tắc "nguồn ≠ ví tích luỹ", nếu không biểu mẫu mở ra
+/// đã ở trạng thái không lưu được và người dùng chỉ biết sau khi bấm Lưu.
+///
+/// [viUuTien] bị bỏ qua khi nó trùng [viNhan] hoặc **không còn** trong
+/// [viCoSan] — ví mặc định có thể đã bị xoá mềm trong lúc biểu mẫu đang mở, và
+/// trả về một id không có thật thì ô chọn hiện rỗng trong khi biến trạng thái
+/// vẫn khác `null`, đủ để lọt qua phép kiểm lúc lưu.
+///
+/// Trả `null` theo đúng nghĩa của [viNguonMacDinh]: không có ví nào trích được.
+String? viNguonTrichMacDinh({
+  required List<String> viCoSan,
+  required String? viNhan,
+  String? viUuTien,
+}) {
+  if (viUuTien != null && viUuTien != viNhan && viCoSan.contains(viUuTien)) {
+    return viUuTien;
+  }
+  return viNguonMacDinh(viCoSan: viCoSan, viNhan: viNhan);
+}

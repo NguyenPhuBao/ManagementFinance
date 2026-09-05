@@ -533,6 +533,45 @@ nếp gấp màn hình. Trang chi tiết hiện nó ngay dưới con số, **tr�
 khi mở mục tiêu ra để cân nhắc có nên tiêu vào tiền tích luỹ không, câu tự mình
 viết ra đáng đọc trước cả tốc độ tiết kiệm.
 
+### 3.20 Ví nguồn trích: phép chọn sẵn phải **biết** ví tích luỹ là ví nào
+
+Ô "ví nguồn trích tiền" vốn được chọn sẵn bằng ví **mặc định** của tài khoản, và
+phép chọn ấy không đối chiếu với ví tích luỹ. Trên máy thật, ví mặc định là
+`Tiết kiệm` — cũng chính là ví người dùng sẽ chọn làm ví tích luỹ cho một mục
+tiêu tiết kiệm. Nên biểu mẫu mở ra đã ở trạng thái **không lưu được**, và người
+dùng chỉ biết sau khi bấm Lưu và đọc lời từ chối. Không sai dữ liệu — phép kiểm
+vẫn chặn đúng — nhưng nó bắt người dùng sửa một lỗi mà app tự tạo ra.
+
+Đoạn chú thích ngay trên khối ấy còn nói ngược lại mã: nó viết "để trống cho tới
+khi người dùng thật sự chọn". Chú thích ấy vốn thuộc về khối tự chọn **ví tích
+luỹ** bị gỡ ở `0dd5333`; gỡ mã mà để chú thích ở lại thì nó lặng lẽ mô tả sai
+dòng bên dưới. Nay đã dời về đúng chỗ.
+
+**Ba thay đổi, cùng một nguyên tắc: lựa chọn sai thì đừng để người dùng nhìn thấy.**
+
+| | Làm gì | Vì sao |
+|---|---|---|
+| Chọn sẵn | Qua `viNguonTrichMacDinh` — ví mặc định vẫn là phỏng đoán đầu tiên, chỉ bị bỏ khi trùng ví tích luỹ | Giữ được sự tiện lợi mà không tạo ra trạng thái hỏng |
+| Bảng chọn | Ẩn hẳn ví tích luỹ khỏi danh sách ví nguồn | Cùng tinh thần đã ghi ở `goal_deposit_wallets.dart` cho phiếu nạp tay |
+| Đổi ví tích luỹ | Ví vừa chọn mà đang là ví nguồn thì **nhả ô nguồn ra**, để nó tự điền lại | Đây là chỗ duy nhất app đổi lựa chọn người dùng đã đưa ra — và chỉ khi lựa chọn ấy vừa trở thành không hợp lệ |
+
+`viNguonTrichMacDinh` là **lớp ưu tiên đặt lên trên** `viNguonMacDinh`, không phải
+bản sao của nó: quy tắc "nguồn ≠ ví tích luỹ" vẫn nằm đúng một chỗ. Ví ưu tiên bị
+bỏ qua khi nó **không còn** trong danh sách — ví mặc định có thể đã bị xoá mềm
+trong lúc biểu mẫu đang mở, và trả về một id không có thật thì ô chọn hiện rỗng
+trong khi biến trạng thái vẫn khác `null`, đủ để lọt qua phép kiểm lúc lưu rồi
+ghi một khoá ngoại trỏ vào hư không.
+
+⚠️ **Phép kiểm lúc lưu vẫn giữ nguyên.** Nó không còn là nơi người dùng gặp lỗi
+trong luồng thường, nhưng nó là lưới chắn cho những đường vào khác — và cho
+chính `depositToGoal`, nơi cặp sai vẫn ném `ArgumentError`.
+
+⚠️ Tài khoản chỉ có **đúng một ví** và ví ấy là ví tích luỹ thì danh sách ví nguồn
+cạn sạch. Bảng chọn nói ra lý do ("cần thêm một ví khác ví tích luỹ…") thay vì
+câu "chưa có ví nào" — câu ấy sẽ là một lời nói dối khi tài khoản rõ ràng đang có
+ví. Trạng thái này **chưa xem trên máy thật**: dựng nó đòi xoá bớt ví của dữ liệu
+đang có.
+
 ---
 
 ## 4. Bảy cái bẫy
@@ -649,7 +688,6 @@ giá trị từ Admin-web nếu có — nhưng đừng tưởng có tính năng 
 | Không có bộ **lập lịch nền** | Giờ trong mốc trích chỉ giữ được chiều "không sớm hơn". Có lời nhắc AlarmManager nổ đúng giờ kể cả khi app đóng, nhưng nó chỉ báo tin. **G22** — cố ý, đừng "sửa" |
 | Quy tắc trùng tên chỉ có ở **client** | `/sync/push` và PostgreSQL chưa kiểm gì — cùng tình trạng với danh mục. Xem mục 3.15 |
 | **Ưu tiên mục tiêu** chưa có | Bảng `goal` phía backend không có cột nào cho việc này. Làm cột cục bộ thì mắc đúng bệnh G21 — thứ tự đặt trên máy này không sang máy khác |
-| Ví nguồn trích tự động **mặc định trùng ví tích luỹ** | Biểu mẫu chọn sẵn ví tích luỹ làm ví nguồn, nên lần lưu đầu luôn bị `goal_deposit_wallets` từ chối. Không sai dữ liệu, chỉ là một bước thừa bắt người dùng tự sửa |
 
 **Đã đóng ngày 2026-09-05** (giữ lại đây để không ai mở lại nhầm):
 
@@ -659,6 +697,7 @@ giá trị từ Admin-web nếu có — nhưng đừng tưởng có tính năng 
 | ~~Phép kiểm **số tiền** khi nạp chỉ ở giao diện~~ | Mục **3.16** — hai trần (`> 0` và `≤ số dư ví nguồn`) nằm trong khối nguyên tử |
 | ~~Dải cảnh báo lệch chưa xem trên máy thật~~ | Mục **3.4** — đã dựng đúng ca và xem trên máy ảo Android |
 | ~~Giao dịch trích **bù** mang dấu thời gian lúc bù~~ | Mục **3.14** — tham số `occurredAt` chặn hai đầu; **G20** đã đóng |
+| ~~Ví nguồn trích mặc định trùng ví tích luỹ~~ | Mục **3.20** — `viNguonTrichMacDinh`, bảng chọn ẩn ví tích luỹ, và ô nguồn tự nhả khi ví tích luỹ đổi |
 
 ---
 

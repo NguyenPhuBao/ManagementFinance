@@ -10,6 +10,7 @@ import '../bloc/goal_cubit.dart';
 import '../../data/models/goal_entity.dart';
 import '../../data/repositories/goal_repository.dart';
 import '../../domain/goal_auto_deposit.dart';
+import '../../domain/goal_deposit_wallets.dart';
 import '../../domain/goal_edit_form.dart';
 import '../widgets/goal_appearance.dart';
 import '../../../../core/auth/current_account.dart';
@@ -366,9 +367,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
       // Ví nguồn trùng ví tích luỹ thì tiền không đi đâu cả trong khi tiến độ
       // vẫn tăng. `depositToGoal` cũng chặn, nhưng ở đó nó ném ra giữa một kỳ
       // trích chạy nền — chặn ngay tại form thì người dùng còn sửa được.
-      final viNhanId = _isEdit
-          ? _goalDangSua?.walletId
-          : _selectedSavingsWallet?.id;
+      final viNhanId = _idViTichLuy;
       if (viNhanId != null && _selectedSourceWallet!.id == viNhanId) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -496,14 +495,34 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
     return _targetDate;
   }
 
+  /// Ví tích luỹ hiện hành, tức ví mà mọi khoản nạp sẽ chảy VÀO.
+  ///
+  /// Ở chế độ sửa nó là thuộc tính cố định của mục tiêu — ô ấy chỉ đọc, nên
+  /// đọc từ `_selectedSavingsWallet` sẽ ra `null` ở những khung dựng đầu tiên.
+  /// Ở chế độ tạo nó là ví người dùng vừa chọn, và **có quyền còn null**.
+  String? get _idViTichLuy =>
+      _isEdit ? _goalDangSua?.walletId : _selectedSavingsWallet?.id;
+
+  /// [loaiTruViId] bỏ hẳn một ví khỏi danh sách thay vì chỉ báo lỗi khi lưu:
+  /// ví nguồn trích không được trùng ví tích luỹ, và lựa chọn sai thì tốt nhất
+  /// là người dùng không nhìn thấy nó. Phép kiểm lúc lưu vẫn giữ làm lưới chắn
+  /// cuối cho những đường vào khác.
+  ///
+  /// [thongDiepRong] nói ra lý do khi việc loại trừ ấy làm danh sách cạn sạch
+  /// — tài khoản vẫn có ví, nên câu "chưa có ví nào" sẽ là một lời nói dối.
   void _showWalletPickerBottomSheet({
     required BuildContext mainContext,
     required String title,
     required List<WalletEntity> wallets,
     required WalletEntity? selectedWallet,
     required ValueChanged<WalletEntity> onWalletSelected,
+    String? loaiTruViId,
+    String? thongDiepRong,
   }) {
     final currencyFormatter = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ', decimalDigits: 0);
+    final danhSach = loaiTruViId == null
+        ? wallets
+        : wallets.where((w) => w.id != loaiTruViId).toList();
 
     showModalBottomSheet(
       context: mainContext,
@@ -565,15 +584,19 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                 ],
               ),
               const SizedBox(height: 12),
-              if (wallets.isEmpty)
+              if (danhSach.isEmpty)
                 Padding(
                   padding: const EdgeInsets.all(24),
                   child: Center(
                     child: Column(
                       children: [
-                        const Text(
-                          'Chưa có ví nào trong hệ thống.',
-                          style: TextStyle(color: AppColors.textSecondary),
+                        Text(
+                          wallets.isEmpty
+                              ? 'Chưa có ví nào trong hệ thống.'
+                              : (thongDiepRong ??
+                                  'Không còn ví nào dùng được ở đây.'),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: AppColors.textSecondary),
                         ),
                         const SizedBox(height: 12),
                         ElevatedButton.icon(
@@ -600,10 +623,10 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                 Flexible(
                   child: ListView.separated(
                     shrinkWrap: true,
-                    itemCount: wallets.length + 1,
+                    itemCount: danhSach.length + 1,
                     separatorBuilder: (_, __) => const Divider(height: 1),
                     itemBuilder: (ctx, index) {
-                      if (index == wallets.length) {
+                      if (index == danhSach.length) {
                         return ListTile(
                           leading: Container(
                             width: 40,
@@ -636,7 +659,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                         );
                       }
 
-                      final wallet = wallets[index];
+                      final wallet = danhSach[index];
                       final isSelected = selectedWallet?.id == wallet.id;
                       Color itemColor;
                       try {
@@ -727,16 +750,27 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                 .where((w) => w.id == _goalDangSua!.autoDepositWalletId)
                 .firstOrNull;
           }
-          if (wallets.isNotEmpty) {
-            // KHÔNG chọn sẵn ví tích luỹ. Trước đây chỗ này tự lấy "ví
-            // investment/bank đầu tiên, không có thì ví bất kỳ", nên mọi mục
-            // tiêu đều ra đời đã gắn một ví người dùng chưa hề nhìn tới — và
-            // ví ấy lập tức không xoá được nữa. Nay ô này bắt buộc và để trống
-            // cho tới khi người dùng thật sự chọn.
-            _selectedSourceWallet ??= wallets.firstWhere(
-              (w) => w.isDefault,
-              orElse: () => wallets.length > 1 ? wallets[1] : wallets.first,
+          if (wallets.isNotEmpty && _selectedSourceWallet == null) {
+            // Phép chọn sẵn PHẢI biết ví tích luỹ là ví nào. Trước đây nó lấy
+            // thẳng ví mặc định của tài khoản mà không đối chiếu, nên người
+            // dùng chọn đúng ví ấy làm ví tích luỹ — việc rất dễ xảy ra vì đó
+            // là ví họ dùng nhiều nhất — thì biểu mẫu mở ra đã ở trạng thái
+            // không lưu được, và họ chỉ biết sau khi bấm Lưu.
+            //
+            // Ví mặc định vẫn là phỏng đoán đầu tiên; nó chỉ bị bỏ qua khi
+            // trùng ví tích luỹ. `viNguonTrichMacDinh` giữ MỘT định nghĩa duy
+            // nhất của "ví nguồn hợp lệ", dùng chung với phiếu nạp tay ở trang
+            // chi tiết.
+            final idNguon = viNguonTrichMacDinh(
+              viCoSan: wallets.map((w) => w.id).toList(),
+              viNhan: _idViTichLuy,
+              viUuTien: wallets.where((w) => w.isDefault).firstOrNull?.id,
             );
+            // `null` ở đây là thật: tài khoản chỉ có đúng ví tích luỹ. Để ô
+            // trống và để bảng chọn nói ra lý do, thay vì gán bừa một ví.
+            _selectedSourceWallet = idNguon == null
+                ? null
+                : wallets.where((w) => w.id == idNguon).firstOrNull;
           }
 
           return Scaffold(
@@ -941,7 +975,18 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                                 wallets: wallets,
                                 selectedWallet: _selectedSavingsWallet,
                                 onWalletSelected: (w) {
-                                  setState(() => _selectedSavingsWallet = w);
+                                  setState(() {
+                                    _selectedSavingsWallet = w;
+                                    // Ví vừa chọn làm ví tích luỹ mà đang là
+                                    // ví nguồn trích thì cặp ấy không còn lưu
+                                    // được. Nhả ô nguồn ra để nó được điền
+                                    // lại bằng một ví hợp lệ ở khung dựng kế
+                                    // tiếp, thay vì giữ một lựa chọn đã hỏng
+                                    // cho tới lúc bấm Lưu.
+                                    if (_selectedSourceWallet?.id == w.id) {
+                                      _selectedSourceWallet = null;
+                                    }
+                                  });
                                 },
                               );
                             },
@@ -1128,6 +1173,9 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                                   mainContext: context,
                                   title: 'Chọn Ví Nguồn Trích Tiền',
                                   wallets: wallets,
+                                  loaiTruViId: _idViTichLuy,
+                                  thongDiepRong: 'Cần thêm một ví khác ví tích '
+                                      'luỹ để làm ví nguồn trích tiền.',
                                   selectedWallet: _selectedSourceWallet,
                                   onWalletSelected: (w) {
                                     setState(() => _selectedSourceWallet = w);
