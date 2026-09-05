@@ -7,6 +7,7 @@ import '../../../../shared/theme/app_colors.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../shared/widgets/notification_bell.dart';
 import '../../data/models/goal_entity.dart';
+import '../widgets/goal_appearance.dart';
 import '../widgets/goal_progress.dart';
 import '../bloc/goal_cubit.dart';
 import '../../../../core/auth/current_account.dart';
@@ -86,6 +87,10 @@ class _GoalPageContent extends StatelessWidget {
           }
 
           final goals = (state is GoalLoaded) ? state.goals : <GoalEntity>[];
+          final tongDaTich =
+              (state is GoalLoaded) ? state.totalCurrentAmount : 0.0;
+          final tongMucTieu =
+              (state is GoalLoaded) ? state.totalTargetAmount : 0.0;
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
@@ -93,53 +98,27 @@ class _GoalPageContent extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // Title Section
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                //
+                // Huy hiệu "PREMIUM" từng đứng bên phải hàng này, chép nguyên
+                // từ mockup Stitch. FlowMoney không có gói trả phí nào, nên nó
+                // hứa một thứ không tồn tại.
+                const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Mục tiêu tiết kiệm',
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            'Quản lý các kế hoạch tài chính dài hạn',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
+                    Text(
+                      'Mục tiêu tiết kiệm',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.income.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.stars, color: AppColors.income, size: 16),
-                          SizedBox(width: 4),
-                          Text(
-                            'PREMIUM',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.income,
-                            ),
-                          ),
-                        ],
+                    SizedBox(height: 4),
+                    Text(
+                      'Quản lý các kế hoạch tài chính dài hạn',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textSecondary,
                       ),
                     ),
                   ],
@@ -185,9 +164,13 @@ class _GoalPageContent extends StatelessWidget {
                         goal: goal,
                         title: goal.name,
                         subtitle: 'MỤC TIÊU TIẾT KIỆM',
-                        icon: Icons.flag,
-                        iconColor: AppColors.income,
-                        iconBgColor: AppColors.income.withValues(alpha: 0.1),
+                        // Trước đây ba dòng này là hằng số: mọi mục tiêu đều
+                        // là lá cờ xanh, dù `icon`/`colour` đã có trong CSDL
+                        // và đồng bộ đủ hai chiều từ lâu.
+                        icon: bieuTuongMucTieu(goal.icon),
+                        iconColor: mauMucTieu(goal.colour),
+                        iconBgColor: mauMucTieu(goal.colour)
+                            .withValues(alpha: 0.1),
                         currentAmount: currencyFormatter.format(goal.currentAmount),
                         targetAmount: '/ ${currencyFormatter.format(goal.targetAmount)}',
                         extraWidget: Row(
@@ -225,56 +208,54 @@ class _GoalPageContent extends StatelessWidget {
 
                 const SizedBox(height: 16),
 
-                // Tip Card
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.12),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Bạn đang làm rất tốt!',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                // Thẻ tổng kết.
+                //
+                // Chỗ này trước đây là một thẻ mẹo chép từ mockup Stitch: câu
+                // "Tốc độ tiết kiệm của bạn đã tăng 12% so với tháng trước" —
+                // một con số cố định, không nối với dữ liệu nào — kèm nút "Xem
+                // báo cáo" có `onPressed: () {}`, tức bấm vào không xảy ra gì.
+                //
+                // Nay nó nói đúng những gì app biết chắc, và hai con số này
+                // lấy thẳng từ `GoalLoaded` chứ không tính lại — cùng nguyên
+                // tắc một-định-nghĩa với `GoalEntity.progress`.
+                if (goals.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.12),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Tốc độ tiết kiệm của bạn đã tăng 12% so với tháng trước. Hãy duy trì đà này để sớm đạt được các mục tiêu.',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.white.withValues(alpha: 0.8),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: () {},
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: AppColors.primary,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Đang theo đuổi ${goals.length} mục tiêu',
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
                           ),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         ),
-                        child: const Text('Xem báo cáo'),
-                      ),
-                    ],
+                        const SizedBox(height: 8),
+                        Text(
+                          'Đã tích được ${currencyFormatter.format(tongDaTich)} '
+                          'trên tổng ${currencyFormatter.format(tongMucTieu)}.',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.white.withValues(alpha: 0.8),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 24),
+                if (goals.isNotEmpty) const SizedBox(height: 24),
 
                 // CTA Button
                 ElevatedButton.icon(
@@ -384,7 +365,10 @@ class _GoalPageContent extends StatelessWidget {
                     ),
                   ],
                 ),
-                const Icon(Icons.more_vert, color: AppColors.textSecondary),
+                // Dấu ba chấm từng ở đây không mở menu nào — nó là hình vẽ
+                // trong mockup Stitch. Mọi thao tác trên một mục tiêu (nạp,
+                // rút, đổi ví, sửa, xoá) đều nằm ở trang chi tiết, và bấm vào
+                // thẻ là tới đó.
               ],
             ),
             const SizedBox(height: 16),
