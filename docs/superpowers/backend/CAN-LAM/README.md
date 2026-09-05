@@ -3,7 +3,7 @@
 **Cập nhật:** 2026-09-05
 
 > Thư mục cha có 20 tài liệu, phần lớn đã xong hoặc chỉ để tham khảo lịch sử.
-> **Chín tài liệu trong thư mục này là toàn bộ phần còn việc.** Không cần mở gì
+> **Mười tài liệu trong thư mục này là toàn bộ phần còn việc.** Không cần mở gì
 > ở thư mục cha ngoài ba tệp bối cảnh liệt kê ở mục 4.
 
 ---
@@ -49,6 +49,7 @@ Không ai mất dữ liệu và không có gì sai số nếu chưa làm. Nhưng
 
 | Tài liệu | Vì sao chưa gấp |
 |---|---|
+| [2026-09-05-backend-goal-priority.md](./2026-09-05-backend-goal-priority.md) | Client **chưa làm** ưu tiên mục tiêu, và cố ý chưa làm cho tới khi có cột. Đây là tài liệu *mở đường*: xin **một** cột nullable `goal.Priority` **trước** khi viết mã, thay vì làm cột cục bộ rồi xin sau như hai lần trước. Danh sách hiện sắp theo hạn gần nhất trước, đã gần đúng thứ tự ưu tiên khi chỉ có vài mục tiêu |
 | [2026-09-04-ocr-classify-review.md](./2026-09-04-ocr-classify-review.md) — **phần OCR/Classify** (mục 2–8 của tài liệu) | Client-app **chưa có tính năng quét hoá đơn**: không có màn hình, không có repository, không có endpoint nào được gọi. `classifyBatch` sai kiểu tham số, `GEMINI_API_KEY` thiếu, dedup Quy tắc 3 chặn nhầm, cửa hậu `_mock*` — tất cả đều thật, nhưng **không ai chạm tới được từ app**. ⚠️ Riêng `uq_transaction_external` thiếu `Idaccount` thì **phải xong TRƯỚC** khi client nối luồng OCR, vì ràng buộc ấy là **toàn cục** |
 
 ---
@@ -61,14 +62,16 @@ Không ai mất dữ liệu và không có gì sai số nếu chưa làm. Nhưng
 3. **`validClassify`** (nhóm 1 mục 7) — một dòng.
 4. **Lỗ hổng phân quyền từ khoá** (nhóm 1 mục 3).
 5. **Một đợt migration duy nhất**: mục 4 → 5 → 6 của nhóm 1, **liền một mạch**,
-   cộng thêm hai mục của nhóm 2 và `Idaccount` cho `uq_transaction_external`.
+   cộng thêm hai mục của nhóm 2, cột `goal.Priority` của nhóm 3, và `Idaccount`
+   cho `uq_transaction_external`.
 
 > ⚠️ **Bước 5 không tách lẻ được.** `CATEGORY_STABLE_IDS` là nguyên nhân gốc:
 > ID ổn định cho seed là điều kiện để hai tài liệu kia không phải dùng *tên danh
 > mục* làm khoá nối. Làm `CATEGORY_NAME_UNIQUENESS` trước là phải làm lại.
 >
-> Gộp cả hai mục của nhóm 2 vào đúng đợt migration này là rẻ nhất — chúng chỉ
-> thêm cột nullable, không đụng dữ liệu cũ.
+> Gộp hai mục của nhóm 2 **và** cột `goal.Priority` vào đúng đợt migration này
+> là rẻ nhất — cả ba chỉ thêm cột nullable, không đụng dữ liệu cũ. `Priority`
+> chưa có gì chờ nó, nhưng thêm sau lại tốn một migration nữa.
 
 ---
 

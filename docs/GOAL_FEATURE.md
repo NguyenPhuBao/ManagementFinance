@@ -664,10 +664,22 @@ giá trị từ Admin-web nếu có — nhưng đừng tưởng có tính năng 
 
 ## 8. Việc phía backend
 
-Đúng một tài liệu:
-`docs/superpowers/backend/CAN-LAM/2026-09-05-backend-transaction-goal-id.md` — xin cột
-nullable `transaction.Idgoal`. **Không chặn gì hôm nay**, nhưng chặn hướng bỏ bộ
-đếm `current_amount` để suy tiến độ từ chính giao dịch.
+Ba tài liệu, tất cả ở `docs/superpowers/backend/CAN-LAM/`. Cả ba chỉ xin **cột
+nullable** nên gộp chung một đợt migration là rẻ nhất:
+
+| Tài liệu | Xin gì | Trạng thái ở client |
+|---|---|---|
+| `2026-09-05-backend-transaction-goal-id.md` | `transaction.Idgoal` | Đã làm, cột **cục bộ** (v14). Máy khác rơi xuống nhánh so tên |
+| `2026-09-05-backend-goal-auto-deposit.md` | Ba cột `auto_deposit_*` | Đã làm, cột **cục bộ** (v15). Máy khác không trích gì cả — **G21** |
+| `2026-09-05-backend-goal-priority.md` | `goal.Priority` | **Chưa làm, và cố ý chưa làm** cho tới khi có cột |
+
+Hai tài liệu đầu **không chặn gì hôm nay**; cái đầu chặn hướng bỏ bộ đếm
+`current_amount` để suy tiến độ từ chính giao dịch.
+
+Tài liệu thứ ba đi ngược lối của hai cái trên **có chủ ý**: xin cột **trước** khi
+viết mã. Thứ tự ưu tiên là công sức người dùng bỏ ra bằng thao tác kéo thả, không
+suy lại được, không có mặc định đúng, và nếu về sau nối phân bổ tự động thì nó
+quyết định **tiền đi đâu** — ba lý do khiến nó không nên là cột cục bộ.
 
 > ⚠️ Tài liệu cũ `2026-08-23-backend-goal-wallet-id.md` xin cột `wallet_id` cho
 > bảng `goal`. **Việc đó đã xong** — backend có `Idwallet` (tên khác với tên tài

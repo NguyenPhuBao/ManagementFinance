@@ -2,8 +2,8 @@
 
 > # 👉 Việc cần làm nằm ở [`CAN-LAM/`](./CAN-LAM/README.md)
 >
-> Thư mục này gom mọi tài liệu backend của FlowMoney — **19 tài liệu**, phần lớn
-> đã xong hoặc chỉ để tham khảo lịch sử. Chín tài liệu **còn việc** đã được tách
+> Thư mục này gom mọi tài liệu backend của FlowMoney — **21 tài liệu**, phần lớn
+> đã xong hoặc chỉ để tham khảo lịch sử. Mười tài liệu **còn việc** đã được tách
 > hẳn sang thư mục con [`CAN-LAM/`](./CAN-LAM/README.md), và README trong đó là
 > **cửa vào duy nhất** cần đọc: nó chia việc theo "client đã có tính năng này
 > chưa", vì đó mới là thứ quyết định mức khẩn.
