@@ -85,6 +85,66 @@ class GoalRepositoryImpl implements GoalRepository {
   }
 
   @override
+  Future<void> updateGoal({
+    required String id,
+    required String name,
+    required double targetAmount,
+    required DateTime targetDate,
+    String? cycleTakeMoney,
+    String? icon,
+    String? colour,
+  }) async {
+    // Kiểm ở tầng này chứ không chỉ ở form. Trang sửa đã chặn cả hai ca, nhưng
+    // phép kiểm nằm một mình trên giao diện thì đường gọi nào khác cũng đi vòng
+    // qua được — và mục tiêu 0 đồng làm `GoalEntity.progress` trả thẳng `1.0`,
+    // tức một mục tiêu tự nhận đã hoàn thành mà không có đồng nào.
+    final tenGon = name.trim();
+    if (tenGon.isEmpty) {
+      throw ArgumentError.value(name, 'name', 'Tên mục tiêu không được rỗng.');
+    }
+    if (targetAmount <= 0) {
+      throw ArgumentError.value(
+        targetAmount,
+        'targetAmount',
+        'Số tiền mục tiêu phải lớn hơn 0.',
+      );
+    }
+
+    final goal = await localDataSource.getGoalById(id);
+    if (goal == null) {
+      throw StateError('Không tìm thấy mục tiêu $id.');
+    }
+
+    if (db == null) return;
+
+    // Chỉ gán bốn cột mô tả. `currentAmount`, `walletId` và `startDate` vắng
+    // mặt ở đây là CÓ CHỦ Ý — xem chú thích ở `GoalRepository.updateGoal`.
+    //
+    // Cờ hoàn thành tính lại theo mục tiêu MỚI, cùng luật với `withdrawFromGoal`:
+    // hạ mục tiêu xuống dưới số đã tích thì bật, nâng lên trên thì gỡ.
+    await (db!.update(db!.goals)..where((t) => t.id.equals(id))).write(
+      GoalsCompanion(
+        name: Value(tenGon),
+        targetAmount: Value(targetAmount),
+        targetDate: Value(targetDate),
+        // `Value(null)` chứ không `Value.absent()`: null ở đây nghĩa là XOÁ chu
+        // kỳ, không phải "giữ nguyên".
+        cycleTakeMoney: Value(cycleTakeMoney),
+        // Ngược lại với chu kỳ: `Value.absent()` chứ không `Value(null)`. Biểu
+        // tượng và màu không có trạng thái "không có", nên null ở đây nghĩa là
+        // nơi gọi không đụng tới chúng — gán đại sẽ đưa cột về mặc định và mọi
+        // mục tiêu lặng lẽ trở lại lá cờ xanh sau một lần sửa tên.
+        icon: icon == null ? const Value.absent() : Value(icon),
+        colour: colour == null ? const Value.absent() : Value(colour),
+        isCompleted: Value(goal.currentAmount >= targetAmount),
+        syncStatus: const Value('pending'),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+    syncEngine?.scheduleSync();
+  }
+
+  @override
   Future<void> depositToGoal({
     required String goalId,
     required String goalName,

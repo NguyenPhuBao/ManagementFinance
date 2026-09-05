@@ -653,4 +653,209 @@ void main() {
               'server rồi kéo về.');
     });
   });
+
+  group('sửa mục tiêu', () {
+    test('đổi tên, số tiền, hạn định và chu kỳ; xếp hàng đồng bộ', () async {
+      final hanMoi = DateTime.now().add(const Duration(days: 200));
+
+      await repository.updateGoal(
+        id: 'g1',
+        name: 'Mua Laptop Pro',
+        targetAmount: 30000000.0,
+        targetDate: hanMoi,
+        cycleTakeMoney: 'Week',
+      );
+
+      final goal = await repository.getGoalById('g1');
+      expect(goal!.name, 'Mua Laptop Pro');
+      expect(goal.targetAmount, 30000000.0);
+      expect(goal.targetDate.day, hanMoi.day);
+      expect(goal.cycleTakeMoney, 'Week');
+      expect(goal.syncStatus, 'pending',
+          reason: 'Sửa mà không đánh dấu pending thì thay đổi nằm lại trên '
+              'máy vĩnh viễn — hỏng lặng lẽ, đúng loại lỗi khó thấy nhất ở '
+              'đường đồng bộ.');
+    });
+
+    test('KHÔNG đụng vào tiến độ, ví tích luỹ hay mốc bắt đầu', () async {
+      final truoc = await repository.getGoalById('g1');
+
+      await repository.updateGoal(
+        id: 'g1',
+        name: 'Tên khác',
+        targetAmount: 25000000.0,
+        targetDate: DateTime.now().add(const Duration(days: 30)),
+      );
+
+      final sau = await repository.getGoalById('g1');
+      expect(sau!.currentAmount, truoc!.currentAmount,
+          reason: 'Số đã tích được là tiền THẬT đang nằm trong ví. Form sửa '
+              'không có ô nào cho nó, nên nếu companion vô tình gán lại thì '
+              'tiền và tiến độ lệch nhau mà không ai báo.');
+      expect(sau.walletId, truoc.walletId,
+          reason: 'Ví tích luỹ chỉ đổi qua changeWallet, nơi có phép khoá sau '
+              'khoản nạp đầu tiên. Cho form sửa ghi thẳng là đi vòng qua khoá '
+              'ấy.');
+      expect(sau.startDate, truoc.startDate,
+          reason: 'startDate là mốc tính nhịp thật của dự báo. Đặt lại nó khi '
+              'sửa tên sẽ làm tốc độ tích luỹ nhảy vọt một cách vô nghĩa.');
+    });
+
+    test('hạ mục tiêu xuống dưới số đã tích thì ĐÁNH DẤU hoàn thành', () async {
+      // g1 đang có 2.000.000 trên mục tiêu 20.000.000.
+      await repository.updateGoal(
+        id: 'g1',
+        name: 'Mua Laptop',
+        targetAmount: 1500000.0,
+        targetDate: DateTime.now().add(const Duration(days: 90)),
+      );
+
+      final goal = await repository.getGoalById('g1');
+      expect(goal!.isCompleted, isTrue,
+          reason: 'Cờ hoàn thành là giá trị SUY RA từ tiến độ so với mục '
+              'tiêu, cùng luật với withdrawFromGoal. Bỏ qua ở đường sửa thì '
+              'màn hình hiện 133% trong khi cờ vẫn nói chưa xong.');
+    });
+
+    test('nâng mục tiêu lên trên số đã tích thì GỠ cờ hoàn thành', () async {
+      await db.goalDao.insert(
+        GoalsCompanion.insert(
+          id: 'g_xong',
+          idaccount: 1,
+          name: 'Đã xong',
+          targetAmount: 1000000.0,
+          currentAmount: const Value(1000000.0),
+          isCompleted: const Value(true),
+          walletId: const Value('w_nhan'),
+          targetDate: DateTime.now().add(const Duration(days: 10)),
+          updatedAt: DateTime.now(),
+        ),
+      );
+
+      await repository.updateGoal(
+        id: 'g_xong',
+        name: 'Đã xong',
+        targetAmount: 5000000.0,
+        targetDate: DateTime.now().add(const Duration(days: 10)),
+      );
+
+      final goal = await repository.getGoalById('g_xong');
+      expect(goal!.isCompleted, isFalse,
+          reason: 'Giữ cờ thì _goalCandidates bỏ qua mục tiêu này vĩnh viễn — '
+              'nâng mục tiêu lên gấp năm mà nó không bao giờ nhắc "chậm tiến '
+              'độ" nữa. Cùng lý do với việc rút tiền gỡ cờ.');
+    });
+
+    test('tên rỗng thì từ chối, KHÔNG ghi gì', () async {
+      await expectLater(
+        repository.updateGoal(
+          id: 'g1',
+          name: '   ',
+          targetAmount: 30000000.0,
+          targetDate: DateTime.now().add(const Duration(days: 90)),
+        ),
+        throwsA(isA<ArgumentError>()),
+      );
+
+      final goal = await repository.getGoalById('g1');
+      expect(goal!.name, 'Mua Laptop',
+          reason: 'Phép kiểm ở giao diện có thể bị đường khác đi vòng qua; '
+              'tầng dữ liệu phải tự chặn chứ không tin nơi gọi.');
+      expect(goal.targetAmount, 20000000.0);
+    });
+
+    test('số tiền mục tiêu ≤ 0 thì từ chối', () async {
+      await expectLater(
+        repository.updateGoal(
+          id: 'g1',
+          name: 'Mua Laptop',
+          targetAmount: 0.0,
+          targetDate: DateTime.now().add(const Duration(days: 90)),
+        ),
+        throwsA(isA<ArgumentError>()),
+      );
+
+      final goal = await repository.getGoalById('g1');
+      expect(goal!.targetAmount, 20000000.0,
+          reason: 'Mục tiêu 0 đồng làm GoalEntity.progress trả thẳng 1.0 — '
+              'một mục tiêu tự nhận đã hoàn thành mà không có đồng nào.');
+    });
+
+    test('mục tiêu không tồn tại thì báo lỗi', () async {
+      await expectLater(
+        repository.updateGoal(
+          id: 'khong-co',
+          name: 'Gì đó',
+          targetAmount: 1000000.0,
+          targetDate: DateTime.now().add(const Duration(days: 90)),
+        ),
+        throwsA(isA<StateError>()),
+      );
+    });
+
+    test('đổi biểu tượng và màu', () async {
+      await repository.updateGoal(
+        id: 'g1',
+        name: 'Mua Laptop',
+        targetAmount: 20000000.0,
+        targetDate: DateTime.now().add(const Duration(days: 90)),
+        icon: 'laptop_mac',
+        colour: '#2196F3',
+      );
+
+      final goal = await repository.getGoalById('g1');
+      expect(goal!.icon, 'laptop_mac');
+      expect(goal.colour, '#2196F3');
+    });
+
+    test('không truyền biểu tượng/màu thì GIỮ NGUYÊN cái cũ', () async {
+      await repository.updateGoal(
+        id: 'g1',
+        name: 'Mua Laptop',
+        targetAmount: 20000000.0,
+        targetDate: DateTime.now().add(const Duration(days: 90)),
+        icon: 'school',
+        colour: '#9C27B0',
+      );
+
+      await repository.updateGoal(
+        id: 'g1',
+        name: 'Tên mới thôi',
+        targetAmount: 20000000.0,
+        targetDate: DateTime.now().add(const Duration(days: 90)),
+      );
+
+      final goal = await repository.getGoalById('g1');
+      expect(goal!.icon, 'school',
+          reason: 'Khác với cycleTakeMoney, null ở đây nghĩa là "không đổi" '
+              'chứ không phải "xoá": biểu tượng và màu không có trạng thái '
+              '"không có". Gán Value(null) sẽ đưa cột về mặc định và mọi mục '
+              'tiêu lặng lẽ trở lại lá cờ xanh sau một lần sửa tên.');
+      expect(goal.colour, '#9C27B0');
+    });
+
+    test('bỏ trống chu kỳ thì XOÁ chu kỳ đã lưu', () async {
+      await repository.updateGoal(
+        id: 'g1',
+        name: 'Mua Laptop',
+        targetAmount: 20000000.0,
+        targetDate: DateTime.now().add(const Duration(days: 90)),
+        cycleTakeMoney: 'Month',
+      );
+      expect((await repository.getGoalById('g1'))!.cycleTakeMoney, 'Month');
+
+      await repository.updateGoal(
+        id: 'g1',
+        name: 'Mua Laptop',
+        targetAmount: 20000000.0,
+        targetDate: DateTime.now().add(const Duration(days: 90)),
+        cycleTakeMoney: null,
+      );
+
+      expect((await repository.getGoalById('g1'))!.cycleTakeMoney, isNull,
+          reason: 'Tắt công tắc "tự động trích tiền định kỳ" phải xoá được kế '
+              'hoạch cũ. Dùng Value.absent() cho tham số null thì chu kỳ cũ '
+              'dính lại mãi và hộp dự báo cứ so với một nhịp người dùng đã bỏ.');
+    });
+  });
 }

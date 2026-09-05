@@ -292,6 +292,12 @@ class AppRouter {
           // Goal
           GoRoute(path: '/goals', builder: (_, __) => const GoalPage()),
           GoRoute(path: '/goals/add', builder: (_, __) => const GoalAddPage()),
+          // Đặt TRƯỚC '/goals/:id' cho khớp với thứ tự của '/goals/add': đường
+          // cụ thể đứng trước đường có tham số.
+          GoRoute(
+            path: '/goals/:id/edit',
+            builder: (_, s) => GoalAddPage(goalId: s.pathParameters['id']!),
+          ),
           GoRoute(
             path: '/goals/:id',
             builder: (_, s) => GoalDetailPage(id: s.pathParameters['id']!),

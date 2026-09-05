@@ -21,6 +21,40 @@ abstract class GoalRepository {
     required String id,
     required double newAmount,
   });
+
+  /// Sửa phần **mô tả** của một mục tiêu: tên, số tiền đích, hạn định, chu kỳ.
+  ///
+  /// Cố ý KHÔNG nhận `currentAmount` lẫn `walletId`. Số đã tích được là tiền
+  /// thật đang nằm trong ví — nó chỉ đổi qua [depositToGoal]/[withdrawFromGoal],
+  /// nơi số dư ví đổi theo cùng lúc. Ví tích luỹ chỉ đổi qua [changeWallet],
+  /// nơi có phép khoá sau khoản nạp đầu tiên; cho form sửa ghi thẳng cột ấy là
+  /// đi vòng qua khoá.
+  ///
+  /// Cờ hoàn thành được **tính lại**, cùng luật với [withdrawFromGoal]: nó là
+  /// giá trị suy ra từ tiến độ so với mục tiêu, không phải một ô người dùng
+  /// bật tắt. Nâng mục tiêu lên mà giữ cờ thì `_goalCandidates` bỏ qua mục tiêu
+  /// này vĩnh viễn và nó không bao giờ nhắc "chậm tiến độ" nữa.
+  ///
+  /// [cycleTakeMoney] bằng `null` nghĩa là **xoá** chu kỳ đã lưu, không phải
+  /// "giữ nguyên" — người dùng tắt công tắc trích tiền định kỳ thì kế hoạch cũ
+  /// phải biến mất, nếu không hộp dự báo cứ so với một nhịp đã bị bỏ.
+  ///
+  /// Ném [ArgumentError] nếu tên rỗng hoặc số tiền ≤ 0, và [StateError] nếu
+  /// không tìm thấy mục tiêu.
+  ///
+  /// [icon] và [colour] bằng `null` nghĩa là **giữ nguyên**, ngược với
+  /// [cycleTakeMoney]. Hai cột này không có trạng thái "không có" — đưa chúng
+  /// về mặc định khi nơi gọi chỉ muốn sửa tên sẽ làm mọi mục tiêu lặng lẽ trở
+  /// lại lá cờ xanh.
+  Future<void> updateGoal({
+    required String id,
+    required String name,
+    required double targetAmount,
+    required DateTime targetDate,
+    String? cycleTakeMoney,
+    String? icon,
+    String? colour,
+  });
   /// Chuyển [depositAmount] từ ví [walletId] sang **ví nhận của mục tiêu** và
   /// tăng tiến độ tương ứng.
   ///

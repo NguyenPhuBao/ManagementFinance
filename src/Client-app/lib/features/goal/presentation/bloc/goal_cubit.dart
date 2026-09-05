@@ -87,6 +87,38 @@ class GoalCubit extends Cubit<GoalState> {
     }
   }
 
+  /// Sửa phần mô tả của mục tiêu. Tiến độ và ví tích luỹ KHÔNG đi qua đây —
+  /// xem `GoalRepository.updateGoal`.
+  ///
+  /// Trả `null` khi thành công, hoặc câu lỗi để nơi gọi hiển thị. Trang sửa cần
+  /// biết kết quả ngay tại chỗ để quyết định có đóng trang không; phát
+  /// `GoalError` như các lệnh khác thì trang vẫn đóng rồi mới hiện lỗi, và
+  /// người dùng mất luôn những gì vừa gõ.
+  Future<String?> updateGoal({
+    required String id,
+    required String name,
+    required double targetAmount,
+    required DateTime targetDate,
+    String? cycleTakeMoney,
+    String? icon,
+    String? colour,
+  }) async {
+    try {
+      await repository.updateGoal(
+        id: id,
+        name: name,
+        targetAmount: targetAmount,
+        targetDate: targetDate,
+        cycleTakeMoney: cycleTakeMoney,
+        icon: icon,
+        colour: colour,
+      );
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
   Future<void> updateAmount({
     required String id,
     required double newAmount,

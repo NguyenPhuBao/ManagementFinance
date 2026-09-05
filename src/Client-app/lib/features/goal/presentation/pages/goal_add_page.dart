@@ -7,10 +7,26 @@ import '../../../../shared/theme/app_colors.dart';
 import '../../../wallet/data/models/wallet_entity.dart';
 import '../../../wallet/presentation/bloc/wallet_cubit.dart';
 import '../bloc/goal_cubit.dart';
+import '../../data/models/goal_entity.dart';
+import '../../data/repositories/goal_repository.dart';
+import '../../domain/goal_edit_form.dart';
+import '../widgets/goal_appearance.dart';
 import '../../../../core/auth/current_account.dart';
 
+/// Trang tạo mục tiêu, và — khi có [goalId] — cũng là trang **sửa**.
+///
+/// Một biểu mẫu cho cả hai chế độ, theo đúng lối mà thiết kế Stitch đặt ra cho
+/// danh mục ("Thêm / Chỉnh sửa danh mục con"). Tách thành hai trang thì hai bản
+/// sao của cùng một biểu mẫu sẽ trôi xa nhau: sửa nhãn ở một bên, quên bên kia.
+///
+/// Chế độ sửa **không** động tới ví tích luỹ. Ô ấy hiện ở dạng chỉ đọc và trỏ
+/// người dùng về nút đổi ví ở trang chi tiết, nơi đặt phép khoá sau khoản nạp
+/// đầu tiên. Nhân đôi luật khoá sang đây là tự chuốc hai luật lệch nhau.
 class GoalAddPage extends StatelessWidget {
-  const GoalAddPage({super.key});
+  const GoalAddPage({super.key, this.goalId});
+
+  /// `null` là tạo mới; khác `null` là sửa mục tiêu đó.
+  final String? goalId;
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +41,7 @@ class GoalAddPage extends StatelessWidget {
           create: (_) => sl<WalletCubit>()..loadWallets(idaccount),
         ),
       ],
-      child: const _GoalAddPageContent(),
+      child: _GoalAddPageContent(goalId: goalId),
     );
   }
 }
@@ -33,7 +49,9 @@ class GoalAddPage extends StatelessWidget {
 enum DepositFrequency { daily, weekly, monthly }
 
 class _GoalAddPageContent extends StatefulWidget {
-  const _GoalAddPageContent();
+  const _GoalAddPageContent({this.goalId});
+
+  final String? goalId;
 
   @override
   State<_GoalAddPageContent> createState() => _GoalAddPageContentState();
@@ -53,11 +71,80 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
   WalletEntity? _selectedSavingsWallet;
   WalletEntity? _selectedSourceWallet;
 
+  /// Mặc định của CSDL là `'flag'`, nhưng bảng chọn cố ý không có lá cờ (nó là
+  /// giá trị dự phòng của `bieuTuongMucTieu`). Mục tiêu mới vì thế mở ra với
+  /// con heo đất — một lựa chọn hợp lệ, nằm trong bảng, và người dùng thấy
+  /// ngay là đổi được.
+  String _icon = 'savings';
+  String _colour = kMauMucTieu.first;
+
+  bool get _isEdit => widget.goalId != null;
+
+  /// Mục tiêu đang sửa. `null` cho tới khi nạp xong, và ở chế độ tạo thì luôn
+  /// `null`.
+  GoalEntity? _goalDangSua;
+  bool _dangNapGoal = false;
+  String? _loiNapGoal;
+
   @override
   void initState() {
     super.initState();
     _targetAmountController.addListener(_onTargetAmountOrDateChanged);
     _depositAmountController.addListener(_onDepositAmountChanged);
+    if (_isEdit) {
+      _dangNapGoal = true;
+      _napGoalDeSua();
+    }
+  }
+
+  /// Đọc mục tiêu và điền sẵn biểu mẫu.
+  ///
+  /// Thứ tự ở đây quan trọng: `_targetDate` và `_frequency` phải được đặt
+  /// **trước** khi gán `_targetAmountController.text`. Hai ô số tiền và hạn
+  /// định nối với nhau bằng một cặp listener tính chéo — gán tiền trước thì
+  /// listener sẽ tính ra một hạn định mới từ hạn mặc định "một năm nữa" và ghi
+  /// đè lên hạn thật của mục tiêu, ngay trước mắt người dùng.
+  Future<void> _napGoalDeSua() async {
+    try {
+      final goal = await sl<GoalRepository>().getGoalById(widget.goalId!);
+      if (!mounted) return;
+      if (goal == null) {
+        setState(() {
+          _dangNapGoal = false;
+          _loiNapGoal = 'Không tìm thấy mục tiêu này. Có thể nó vừa bị xoá.';
+        });
+        return;
+      }
+
+      _targetDate = goal.targetDate;
+      _frequency = switch (goal.cycleTakeMoney) {
+        'Day' => DepositFrequency.daily,
+        'Week' => DepositFrequency.weekly,
+        _ => DepositFrequency.monthly,
+      };
+      // Chu kỳ trống nghĩa là mục tiêu này chưa từng đặt kế hoạch trích tiền —
+      // để công tắc tắt thay vì bịa ra "hàng tháng".
+      _autoDeposit = goal.cycleTakeMoney != null;
+      _icon = goal.icon;
+      _colour = goal.colour;
+      _nameController.text = goal.name;
+
+      final formatter =
+          NumberFormat.currency(locale: 'vi_VN', symbol: '', decimalDigits: 0);
+      _targetAmountController.text =
+          formatter.format(goal.targetAmount).trim();
+
+      setState(() {
+        _goalDangSua = goal;
+        _dangNapGoal = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _dangNapGoal = false;
+        _loiNapGoal = e.toString();
+      });
+    }
   }
 
   @override
@@ -151,7 +238,10 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
     final picked = await showDatePicker(
       context: context,
       initialDate: _targetDate,
-      firstDate: DateTime.now(),
+      // Mục tiêu đang sửa có thể đã quá hạn, và `showDatePicker` ném assertion
+      // — MÀN ĐỎ, không phải thông báo lỗi — khi `initialDate` nằm trước
+      // `firstDate`. Xem `ngayNhoNhatChoLich`.
+      firstDate: ngayNhoNhatChoLich(_targetDate, DateTime.now()),
       lastDate: DateTime.now().add(const Duration(days: 3650)),
     );
     if (picked != null) {
@@ -177,6 +267,47 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Vui lòng nhập số tiền mục tiêu hợp lệ')),
       );
+      return;
+    }
+
+    final chuKy = _autoDeposit
+        ? switch (_frequency) {
+            DepositFrequency.daily => 'Day',
+            DepositFrequency.weekly => 'Week',
+            DepositFrequency.monthly => 'Month',
+          }
+        : null;
+
+    if (_isEdit) {
+      // Đường sửa dừng ở đây: không đụng ví tích luỹ (ô ấy chỉ đọc), không
+      // đụng tiến độ. Cũng không cần `idaccount` — mục tiêu đã có chủ rồi.
+      context
+          .read<GoalCubit>()
+          .updateGoal(
+            id: widget.goalId!,
+            name: name,
+            targetAmount: targetAmount,
+            targetDate: _targetDate,
+            cycleTakeMoney: chuKy,
+            icon: _icon,
+            colour: _colour,
+          )
+          .then((loi) {
+        if (!mounted) return;
+        if (loi != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(loi), backgroundColor: Colors.red),
+          );
+          return;
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Đã cập nhật mục tiêu.'),
+            backgroundColor: AppColors.income,
+          ),
+        );
+        context.pop();
+      });
       return;
     }
 
@@ -214,11 +345,9 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
           // Lưu nhịp người dùng vừa chọn. Trước đây lựa chọn này chỉ dùng để
           // tính ngược ra ngày hạn rồi bị vứt bỏ; giữ lại thì trang chi tiết
           // hiển thị được kế hoạch cạnh thực tế theo cùng một đơn vị.
-          cycleTakeMoney: switch (_frequency) {
-            DepositFrequency.daily => 'Day',
-            DepositFrequency.weekly => 'Week',
-            DepositFrequency.monthly => 'Month',
-          },
+          cycleTakeMoney: chuKy,
+          icon: _icon,
+          colour: _colour,
         ).then((_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -451,7 +580,14 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
         builder: (context, walletState) {
           final wallets = (walletState is WalletLoaded) ? walletState.wallets : <WalletEntity>[];
 
-          if (wallets.isNotEmpty) {
+          if (_isEdit) {
+            // Chế độ sửa chỉ HIỂN THỊ ví tích luỹ, không cho đổi ở đây — nên
+            // nó được tra ra từ chính mục tiêu chứ không phải từ lựa chọn nào.
+            final viId = _goalDangSua?.walletId;
+            _selectedSavingsWallet = viId == null
+                ? null
+                : wallets.where((w) => w.id == viId).firstOrNull;
+          } else if (wallets.isNotEmpty) {
             // KHÔNG chọn sẵn ví tích luỹ. Trước đây chỗ này tự lấy "ví
             // investment/bank đầu tiên, không có thì ví bất kỳ", nên mọi mục
             // tiêu đều ra đời đã gắn một ví người dùng chưa hề nhìn tới — và
@@ -472,9 +608,9 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                 icon: const Icon(Icons.arrow_back, color: AppColors.primary),
                 onPressed: () => context.pop(),
               ),
-              title: const Text(
-                'Thêm Mục Tiêu Tiết Kiệm',
-                style: TextStyle(
+              title: Text(
+                _isEdit ? 'Chỉnh sửa mục tiêu' : 'Thêm Mục Tiêu Tiết Kiệm',
+                style: const TextStyle(
                   color: AppColors.primary,
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
@@ -482,7 +618,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
               ),
               actions: [
                 TextButton(
-                  onPressed: _submitForm,
+                  onPressed: _dangNapGoal ? null : _submitForm,
                   child: const Text(
                     'Lưu',
                     style: TextStyle(
@@ -493,7 +629,22 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                 ),
               ],
             ),
-            body: SafeArea(
+            body: _dangNapGoal
+                ? const Center(child: CircularProgressIndicator())
+                : _loiNapGoal != null
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Text(
+                            _loiNapGoal!,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                      )
+                    : SafeArea(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(20),
                 child: Column(
@@ -615,16 +766,35 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                             ],
                           ),
                           const SizedBox(height: 16),
+                          _buildLabel('BIỂU TƯỢNG & MÀU'),
+                          const SizedBox(height: 8),
+                          _buildIconPicker(),
+                          const SizedBox(height: 12),
+                          _buildColourPicker(),
+                          const SizedBox(height: 16),
                           _buildLabel('VÍ TÍCH LŨY LIÊN KẾT'),
                           const SizedBox(height: 4),
                           _buildDropdownButton(
                             icon: Icons.account_balance_wallet,
-                            title: _selectedSavingsWallet?.name ?? 'Chọn ví tích lũy',
-                            subtitle: _selectedSavingsWallet != null
-                                ? '${_selectedSavingsWallet!.typeLabel} • ${currencyFormatter.format(_selectedSavingsWallet!.balance)}'
-                                : 'Bấm để chọn ví tích lũy',
+                            title: _selectedSavingsWallet?.name ??
+                                (_isEdit
+                                    ? 'Chưa gắn ví tích lũy'
+                                    : 'Chọn ví tích lũy'),
+                            subtitle: _isEdit
+                                // Luật khoá ví sau khoản nạp đầu tiên nằm ở
+                                // `changeWallet`, và nút gọi nó ở trang chi
+                                // tiết. Chép luật ấy sang đây là tạo bản thứ
+                                // hai để chúng lệch nhau về sau; câu này chỉ
+                                // trỏ đúng chỗ, giống câu báo lỗi khi xoá ví.
+                                ? 'Đổi ở trang chi tiết mục tiêu'
+                                : _selectedSavingsWallet != null
+                                    ? '${_selectedSavingsWallet!.typeLabel} • ${currencyFormatter.format(_selectedSavingsWallet!.balance)}'
+                                    : 'Bấm để chọn ví tích lũy',
                             iconColor: AppColors.income,
-                            onTap: () {
+                            showChevron: !_isEdit,
+                            onTap: _isEdit
+                                ? null
+                                : () {
                               _showWalletPickerBottomSheet(
                                 mainContext: context,
                                 title: 'Chọn Ví Tích Lũy Liên Kết',
@@ -841,9 +1011,11 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                         ),
                         elevation: 4,
                       ),
-                      child: const Text(
-                        'Tạo Mục Tiêu & Bật Lập Lịch Tự Động',
-                        style: TextStyle(
+                      child: Text(
+                        _isEdit
+                            ? 'Lưu thay đổi'
+                            : 'Tạo Mục Tiêu & Bật Lập Lịch Tự Động',
+                        style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
                         ),
@@ -853,6 +1025,80 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                   ],
                 ),
               ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Bảng chọn biểu tượng.
+  ///
+  /// Cuộn ngang có chủ ý: điện thoại thật rộng 411dp chứ không phải 1280px như
+  /// Chrome trong bộ test, và một `Wrap` mười ô ở đây từng là kiểu bố cục đã
+  /// gây tràn ở những màn khác. Cuộn thì không bao giờ tràn dù thêm bao nhiêu
+  /// lựa chọn.
+  Widget _buildIconPicker() {
+    final mau = mauMucTieu(_colour);
+    // Danh sách phải chứa biểu tượng ĐANG lưu, kể cả khi nó ngoài bảng chọn —
+    // xem `danhSachBieuTuong`.
+    final danhSach = danhSachBieuTuong(_icon);
+    return SizedBox(
+      height: 52,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: danhSach.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, i) {
+          final ten = danhSach[i];
+          final chon = ten == _icon;
+          return GestureDetector(
+            onTap: () => setState(() => _icon = ten),
+            child: Container(
+              width: 52,
+              decoration: BoxDecoration(
+                color: chon
+                    ? mau.withValues(alpha: 0.15)
+                    : AppColors.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(8),
+                border: chon ? Border.all(color: mau, width: 2) : null,
+              ),
+              child: Icon(
+                bieuTuongMucTieu(ten),
+                color: chon ? mau : AppColors.textSecondary,
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildColourPicker() {
+    return SizedBox(
+      height: 36,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: kMauMucTieu.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (context, i) {
+          final hex = kMauMucTieu[i];
+          final mau = mauMucTieu(hex);
+          final chon = hex == _colour;
+          return GestureDetector(
+            onTap: () => setState(() => _colour = hex),
+            child: Container(
+              width: 36,
+              decoration: BoxDecoration(
+                color: mau,
+                shape: BoxShape.circle,
+                border: chon
+                    ? Border.all(color: AppColors.primary, width: 2)
+                    : null,
+              ),
+              child: chon
+                  ? const Icon(Icons.check, color: Colors.white, size: 18)
+                  : null,
             ),
           );
         },
@@ -913,6 +1159,9 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
     String? subtitle,
     required Color iconColor,
     VoidCallback? onTap,
+    /// Mũi tên xổ xuống là lời hứa "bấm được". Ô chỉ đọc phải bỏ nó đi, nếu
+    /// không người dùng cứ bấm mãi vào một chỗ không phản hồi.
+    bool showChevron = true,
   }) {
     return InkWell(
       onTap: onTap,
@@ -952,7 +1201,8 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                 ],
               ),
             ),
-            const Icon(Icons.expand_more, color: AppColors.outlineVariant),
+            if (showChevron)
+              const Icon(Icons.expand_more, color: AppColors.outlineVariant),
           ],
         ),
       ),

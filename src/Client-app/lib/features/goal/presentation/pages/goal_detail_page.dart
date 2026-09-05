@@ -1000,41 +1000,43 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'LỊCH SỬ TÍCH LŨY',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: AppColors.onSurfaceVariant,
-                letterSpacing: 0.5,
-              ),
-            ),
-            TextButton(
-              onPressed: () {},
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFF2E6B27),
-                padding: EdgeInsets.zero,
-                minimumSize: const Size(50, 30),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              child: const Text(
-                'Xem tất cả',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
+        // Nút "Xem tất cả" từng đứng bên phải nhãn này với `onPressed: () {}`.
+        // Danh sách bên dưới vốn đã hiện TOÀN BỘ lịch sử (`itemCount:
+        // txs.length`, không cắt bớt), nên ngoài việc không làm gì, nó còn ngụ
+        // ý sai rằng đang có phần bị giấu đi.
+        const Text(
+          'LỊCH SỬ TÍCH LŨY',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: AppColors.onSurfaceVariant,
+            letterSpacing: 0.5,
+          ),
         ),
         const SizedBox(height: 16),
         StreamBuilder<dynamic>(
           stream: _goalRepository.watchGoalTransactions(
               accountId, widget.id, _goal?.name ?? ''),
           builder: (context, snapshot) {
+            // Dòng dữ liệu được dựng LẠI mỗi khi `_goal` đổi, vì tên mục tiêu
+            // là tham số của nó. Sau khi trang sửa đóng, `_loadGoal()` đổi
+            // `_goal` và StreamBuilder quay về trạng thái chưa có dữ liệu —
+            // trộn ca ấy với "rỗng thật" làm lịch sử nháy thành "Chưa có khoản
+            // tích lũy nào" rồi hiện lại. Trông y như vừa mất dữ liệu.
+            if (!snapshot.hasData &&
+                snapshot.connectionState == ConnectionState.waiting) {
+              return const Padding(
+                padding: EdgeInsets.all(16),
+                child: Center(
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+              );
+            }
+
             final txs = (snapshot.data as List<dynamic>?) ?? [];
             if (txs.isEmpty) {
               return const Padding(
@@ -1185,6 +1187,29 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
               ),
             ),
           ],
+          const SizedBox(height: 12),
+          OutlinedButton(
+            // Trang này không nghe dòng dữ liệu (bẫy 4.5) nên phải tự nạp lại
+            // sau khi trang sửa đóng, nếu không tên và số tiền vừa đổi vẫn là
+            // số cũ trên màn hình.
+            onPressed: () async {
+              await context.push('/goals/${widget.id}/edit');
+              if (mounted) _loadGoal();
+            },
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.primary,
+              minimumSize: const Size(double.infinity, 48),
+              side: BorderSide(
+                  color: AppColors.outlineVariant.withValues(alpha: .8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text(
+              'Chỉnh sửa mục tiêu',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            ),
+          ),
         ],
       ),
     );
