@@ -65,16 +65,20 @@ Không ai mất dữ liệu và không có gì sai số nếu chưa làm. Nhưng
 3. **`validClassify`** (nhóm 1 mục 7) — một dòng.
 4. **Lỗ hổng phân quyền từ khoá** (nhóm 1 mục 3).
 5. **Một đợt migration duy nhất**: mục 4 → 5 → 6 của nhóm 1, **liền một mạch**,
-   cộng thêm **ba** mục của nhóm 2 (8, 9, 10), cột `goal.Priority` của nhóm 3,
-   và `Idaccount` cho `uq_transaction_external`.
+   cộng thêm **bốn** mục của nhóm 2 (8, 9, 10, 10b), cột `goal.Priority` của
+   nhóm 3, và `Idaccount` cho `uq_transaction_external`.
+6. **Chốt chặn trả hai lần** ở `/sync/push` (nhóm 2 mục 10b, phần kiểm) — làm
+   **sau** bước 5 vì nó đọc cột `transaction.Idbill` của mục 10. Là mã kiểm ở
+   tầng ứng dụng, không phải unique index (hoàn tác rồi trả lại là hợp lệ).
 
 > ⚠️ **Bước 5 không tách lẻ được.** `CATEGORY_STABLE_IDS` là nguyên nhân gốc:
 > ID ổn định cho seed là điều kiện để hai tài liệu kia không phải dùng *tên danh
 > mục* làm khoá nối. Làm `CATEGORY_NAME_UNIQUENESS` trước là phải làm lại.
 >
-> Gộp ba mục của nhóm 2 **và** cột `goal.Priority` vào đúng đợt migration này
-> là rẻ nhất — tất cả chỉ thêm cột nullable, không đụng dữ liệu cũ. `Priority`
-> chưa có gì chờ nó, nhưng thêm sau lại tốn một migration nữa.
+> Gộp bốn mục của nhóm 2 **và** cột `goal.Priority` vào đúng đợt migration này
+> là rẻ nhất — tất cả chỉ thêm cột nullable hoặc bool mặc định false, không
+> đụng dữ liệu cũ. `Priority` chưa có gì chờ nó, nhưng thêm sau lại tốn một
+> migration nữa.
 
 ---
 

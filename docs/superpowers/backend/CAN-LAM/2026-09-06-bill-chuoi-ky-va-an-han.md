@@ -1,4 +1,4 @@
-# Yêu cầu Backend: hoá đơn — chuỗi kỳ, sợi dây tới khoản chi, và ân hạn
+# Yêu cầu Backend: hoá đơn — chuỗi kỳ, sợi dây tới khoản chi, ân hạn, và tự động thanh toán
 
 **Ngày:** 2026-09-06
 **Phạm vi:** Backend (`prisma/schema.prisma`, `modules/sync/*`)
@@ -14,6 +14,9 @@
 **A và B nên đi cùng nhau.** Chúng phục vụ đúng một tính năng (hoàn tác thanh
 toán) và cùng là cột nullable, không đụng dữ liệu cũ. Gộp vào đợt migration
 chung đã mô tả ở mục 2 của `README.md`.
+
+**D có hai nửa:** cột `Auto_pay` đi cùng đợt migration với A và B; **chốt
+chặn** ở `/sync/push` làm sau, vì nó đọc cột `transaction.Idbill` của việc A.
 
 **C độc lập** và tốn hơn hẳn — đọc mục 4 trước khi ước lượng.
 
