@@ -719,8 +719,14 @@ OCR/Classify. Thứ tự đề nghị, việc rẻ nhất trước:
    *tạo* để trống là server ghi 0, pull về thành 0 (đường *sửa* gửi `null`
    thì server giữ `null`, nên chỉ ngân sách tạo mới rồi chưa sửa lần nào mới
    dính). `BudgetEntity.warningRatio` đã coi `≤ 0` là "không đặt" nên logic
-   cảnh báo không sai, chỉ form kẹt. Sửa rẻ ở client: khi đổ dữ liệu vào form
-   coi `0` như trống (`budget_form.dart` ~dòng 125). Chưa sửa, chưa có test.
+   cảnh báo không sai, chỉ form kẹt. **Đã vá ở client cùng ngày**: form coi
+   `≤ 0` như ô trống khi đổ dữ liệu (`budget_form.dart`, test
+   `budget_form_threshold_zero_test.dart`). Số 0 vẫn nằm trên server cho tới
+   khi backend làm việc **D** trong `2026-09-04-backend-idempotent-delete.md`.
+   Cùng đợt: nhãn "Chặn" đổi thành "Hỏi trước khi ghi khoản làm vượt" cho
+   đúng nghĩa; cột lịch sử có trần 64dp (một kỳ không còn phình cả thẻ); thẻ
+   tổng quan đầu trang dùng `Wrap` để số tiền dài xuống dòng thay vì bị cắt,
+   tiêu đề đổi "THÁNG NÀY" → "KỲ NÀY".
 2. **Một dòng ở `_classifyFailure`, nhưng phải chờ backend trả mã lỗi ổn định.**
    `_classifyFailure` (`lib/core/sync/sync_engine.dart:1423`) hiện chỉ có nhánh
    cho `accountNotFoundCode`, khoá ngoại, `Ownership mismatch` và ràng buộc

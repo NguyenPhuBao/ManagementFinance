@@ -1,4 +1,4 @@
-# Yêu cầu Backend: `/sync/push` — ba lỗ hổng của đường đẩy dữ liệu
+# Yêu cầu Backend: `/sync/push` — bốn lỗ hổng của đường đẩy dữ liệu
 
 **Ngày:** 2026-09-04
 **Phạm vi:** Backend (`modules/sync/sync.service.js`, `modules/sync/sync.repository.js`)
@@ -9,8 +9,9 @@
 | **A** (mục 2–7) | Xoá một bản ghi không tồn tại phải là **thành công** | 🔴 Cao — đang làm **kẹt vĩnh viễn** hàng đợi đồng bộ | ⛔ Chưa |
 | **B** (mục 8) | `message` trả về phải là **mã lỗi ổn định**, không phải stack trace Prisma | 🟡 Trung bình — kèm rò rỉ đường dẫn máy chủ và nội dung hàng dữ liệu | ⛔ Chưa |
 | **C** (mục 9) | `budget.time_recurrence = null` phải được **giữ nguyên**, không ép về `'Month'` | 🔴 Cao — đang **chặn hẳn** tính năng ngân sách "Ngày cụ thể" | ⛔ Chưa |
+| **D** (mục 10) | `budget.threshold_warning_percent = null` phải được **giữ nguyên**, không ép về `0` — bỏ cả `?? 0` lẫn `@default(0)` | 🟡 Trung bình — client đã vá form 2026-09-06, nhưng server vẫn đang ghi dữ liệu sai; cùng khuôn với C, sửa chung một lần | ⛔ Chưa |
 
-Ba việc **độc lập**, làm riêng được.
+Bốn việc **độc lập**, làm riêng được (C và D cùng hàm, tiện sửa chung).
 
 - **A** và **B**: client đã tự vá tạm bằng cách khớp chuỗi (mục 6 và 8.3) — lớp
   phòng thủ dễ vỡ trong im lặng, nhưng ít ra người dùng không kẹt.
@@ -423,3 +424,93 @@ Rồi đọc lại hàng vừa tạo.
 
 **Mong đợi sau khi sửa:** `Time_recurrence` là `NULL`.
 **Hiện tại:** `'Month'`.
+
+---
+
+## 10. Việc thứ tư: `budget.threshold_warning_percent = null` bị ép về `0`
+
+**Ưu tiên:** Trung bình. Cùng khuôn lỗi với việc C (mục 9) — nên sửa chung một
+lần, vì hai dòng nằm cách nhau sáu dòng trong cùng hàm.
+
+### 10.1. Bối cảnh
+
+Form ngân sách có ô "Hoặc đã tiêu quá (%)". Để trống nghĩa là **không đặt
+ngưỡng phần trăm**, client gửi `threshold_warning_percent: null`. Trên client,
+`BudgetEntity.warningRatio` coi `null` và `≤ 0` như nhau ("không đặt"), và
+validator của form chỉ nhận **1–100** khi người dùng gõ.
+
+### 10.2. Hiện trạng: nhánh tạo mới ép `null` thành `0`
+
+`modules/sync/sync.repository.js`, hàm `upsertBudget`:
+
+```js
+// Nhánh TẠO MỚI — dòng ~319
+threshold_warning_percent: mapped.threshold_warning_percent ?? 0,
+//                                                          ^^^^ null → 0
+
+// Nhánh CẬP NHẬT — dòng ~340 (đúng rồi, giữ nguyên)
+threshold_warning_percent: mapped.threshold_warning_percent !== undefined
+  ? mapped.threshold_warning_percent
+  : existing.threshold_warning_percent,
+```
+
+Cộng thêm `prisma/schema.prisma` dòng ~194:
+
+```prisma
+threshold_warning_percent  Decimal?  @default(0) @db.Decimal(15, 2) @map("Threshold_Warning_Percent")
+```
+
+Cột **nullable** nhưng lại có `@default(0)` — hai ý mâu thuẫn trong cùng một
+dòng: cột cho phép "không có", nhưng cứ không nói gì là thành "có, bằng 0".
+
+### 10.3. Hệ quả đã thấy trên máy thật (2026-09-06, tài khoản 10)
+
+1. Người dùng tạo ngân sách "Giáo dục", để trống ô phần trăm → client gửi
+   `null` → server ghi `0`.
+2. Lần pull kế tiếp mang `0` về máy.
+3. Mở form sửa: ô phần trăm điền sẵn "0", validator 1–100 từ chối →
+   **không lưu được gì ở ngân sách ấy nữa**, kể cả đổi hạn mức. Người dùng
+   không có cách nào thoát ngoài xoá ô bằng tay (mà họ không biết vì sao).
+
+Ngân sách đã **sửa** một lần thì không dính (nhánh cập nhật giữ `null` đúng),
+nên lỗi chỉ hiện ở ngân sách **tạo mới rồi chưa sửa** — đúng nhóm người dùng
+mới, khó nhận ra nhất.
+
+Truy vấn xác nhận: ba ngân sách của tài khoản 10 có `Threshold_Warning_Percent`
+lần lượt `100`, `null` (đã sửa một lần), `0` (vừa tạo, chưa sửa).
+
+### 10.4. Client đã làm gì
+
+Form coi `≤ 0` như ô trống khi đổ dữ liệu vào (`budget_form.dart`, kèm test
+`budget_form_threshold_zero_test.dart`), và khi lưu lại gửi `null`. Người dùng
+không còn kẹt. Nhưng đó là vá **triệu chứng**: số `0` vẫn nằm trên server cho
+tới khi người dùng sửa ngân sách ấy một lần, và bất kỳ client nào khác (Admin-web,
+báo cáo) đọc cột này vẫn phải tự biết "0 nghĩa là không có".
+
+### 10.5. Đề xuất sửa
+
+```js
+// TẠO MỚI: cùng phép phân biệt với việc C.
+threshold_warning_percent: mapped.threshold_warning_percent === undefined
+  ? null                                  // client cũ không gửi → không có ngưỡng
+  : mapped.threshold_warning_percent,     // gửi null → LƯU null
+```
+
+Và trong `schema.prisma`, bỏ `@default(0)` (giữ `Decimal?`) — kèm một migration
+dọn dữ liệu cũ:
+
+```sql
+UPDATE "budget" SET "Threshold_Warning_Percent" = NULL
+WHERE "Threshold_Warning_Percent" = 0;
+```
+
+Lệnh dọn này an toàn: `0` chưa bao giờ là ngưỡng hợp lệ (form không cho gõ 0,
+`warningRatio` cũng bỏ qua 0), nên không có hàng nào mang nghĩa "0% thật".
+
+### 10.6. Cách kiểm chứng
+
+Đẩy một ngân sách mới với `"threshold_warning_percent": null` (payload như
+mục 9.5, thêm trường này), rồi đọc lại hàng.
+
+**Mong đợi sau khi sửa:** `Threshold_Warning_Percent` là `NULL`.
+**Hiện tại:** `0`.
