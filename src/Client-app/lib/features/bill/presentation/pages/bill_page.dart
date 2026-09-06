@@ -321,8 +321,13 @@ class _BillPageState extends State<BillPage> {
             bill: bill,
             title: bill.name,
             subtitle: 'Hạn ${dateFormatter.format(bill.dueDate)}',
+            // Ba trạng thái khác nhau, đừng gộp: chưa gán danh mục bao giờ /
+            // đã gán nhưng hàng ấy bị xoá mềm (đợt gộp danh mục 05/09 để lại
+            // đúng tình trạng này) / có danh mục thật.
             meta: [
-              danhMuc?.name ?? 'Chưa có danh mục',
+              bill.categoryId == null
+                  ? 'Chưa có danh mục'
+                  : (danhMuc?.name ?? 'Danh mục đã xoá'),
               _lookup.walletName(bill.walletId),
             ].join(' • '),
             icon: categoryIconFor(danhMuc?.icon),

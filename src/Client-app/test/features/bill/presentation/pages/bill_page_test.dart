@@ -305,6 +305,25 @@ void main() {
     );
   });
 
+  testWidgets('danh mục đã xoá thì nói "đã xoá", không nói "chưa có"',
+      (tester) async {
+    // Đợt gộp danh mục 2026-09-05 xoá mềm năm danh mục riêng; hai hoá đơn của
+    // tài khoản 10 vẫn trỏ vào hàng cũ. Bảng tra không thấy chúng nữa.
+    await dungTrang(
+      tester,
+      [_bill(id: 'a', dueDate: DateTime(2026, 9, 11))],
+      seed: false,
+    );
+
+    expect(
+      find.textContaining('Danh mục đã xoá'),
+      findsOneWidget,
+      reason: 'Hoá đơn CÓ `categoryId` nhưng hàng danh mục đã bị xoá mềm — '
+          'khác hẳn với hoá đơn chưa từng gán danh mục, và là thứ người dùng '
+          'cần sửa vì khoản chi sinh ra sẽ rơi vào một danh mục không còn.',
+    );
+  });
+
   testWidgets('bảng chọn ví đưa ví của hoá đơn lên đầu và đánh dấu',
       (tester) async {
     await dungTrang(
