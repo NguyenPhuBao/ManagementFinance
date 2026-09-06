@@ -116,6 +116,79 @@ void main() {
     });
   });
 
+  group('splitBills', () {
+    test('tách hai nhóm: còn phải trả và đã trả', () {
+      final s = splitBills([
+        _bill(id: 'chua', dueDate: DateTime(2026, 9, 20)),
+        _bill(
+            id: 'roi',
+            dueDate: DateTime(2026, 9, 4),
+            isPaid: true,
+            payStatus: 'Payed'),
+      ]);
+
+      expect(s.unpaid.map((b) => b.id), ['chua']);
+      expect(
+        s.paid.map((b) => b.id),
+        ['roi'],
+        reason: 'Mỗi kỳ của hoá đơn lặp là MỘT hàng mới, nên danh sách phẳng '
+            'lẫn cả lịch sử đã trả vào giữa những hoá đơn đang chờ. Hoá đơn '
+            'tuần sinh 52 hàng mỗi năm.',
+      );
+    });
+
+    test('nhóm còn phải trả xếp hạn gần nhất lên đầu', () {
+      final s = splitBills([
+        _bill(id: 'xa', dueDate: DateTime(2026, 9, 25)),
+        _bill(id: 'quahan', dueDate: DateTime(2026, 8, 30)),
+        _bill(id: 'gan', dueDate: DateTime(2026, 9, 8)),
+      ]);
+
+      expect(s.unpaid.map((b) => b.id), ['quahan', 'gan', 'xa'],
+          reason: 'Quá hạn là thứ gấp nhất, phải nằm trên cùng.');
+    });
+
+    test('nhóm đã trả xếp kỳ mới nhất lên đầu', () {
+      final s = splitBills([
+        _bill(
+            id: 'cu',
+            dueDate: DateTime(2026, 7, 4),
+            isPaid: true,
+            payStatus: 'Payed'),
+        _bill(
+            id: 'moi',
+            dueDate: DateTime(2026, 9, 4),
+            isPaid: true,
+            payStatus: 'Payed'),
+      ]);
+
+      expect(s.paid.map((b) => b.id), ['moi', 'cu'],
+          reason: 'Lịch sử đọc ngược: kỳ vừa trả xong là thứ người dùng tìm.');
+    });
+
+    test('đọc cả hai cột trạng thái khi chia nhóm', () {
+      final s = splitBills([
+        _bill(id: 'a', dueDate: DateTime(2026, 9, 20), payStatus: 'Payed'),
+      ]);
+
+      expect(s.paid.map((b) => b.id), ['a']);
+      expect(s.unpaid, isEmpty);
+    });
+
+    test('không đụng danh sách gốc', () {
+      final goc = [
+        _bill(id: 'b', dueDate: DateTime(2026, 9, 25)),
+        _bill(id: 'a', dueDate: DateTime(2026, 9, 8)),
+      ];
+
+      splitBills(goc);
+
+      expect(goc.map((b) => b.id), ['b', 'a'],
+          reason: 'Sắp xếp tại chỗ danh sách của bloc là đổi thứ tự dưới chân '
+              'mọi nơi khác đang đọc nó.');
+    });
+  });
+
   group('summarizeBills', () {
     test('chỉ tính tới hết tháng này, không gộp kỳ của tháng sau', () {
       final s = summarizeBills([

@@ -52,6 +52,37 @@ BillDisplayStatus billDisplayStatusOf(Bill bill, DateTime now) {
       : BillDisplayStatus.dueSoon;
 }
 
+/// Hai nhóm của danh sách hoá đơn, tương ứng hai tab.
+class BillSections {
+  /// Còn phải trả — hạn gần nhất lên đầu, nên hoá đơn quá hạn nằm trên cùng.
+  final List<Bill> unpaid;
+
+  /// Lịch sử đã trả — kỳ mới nhất lên đầu.
+  final List<Bill> paid;
+
+  const BillSections({this.unpaid = const [], this.paid = const []});
+}
+
+/// Chia [bills] thành hai nhóm cho hai tab.
+///
+/// Vì sao cần: mỗi kỳ của một hoá đơn lặp là **một hàng mới** với UUID riêng,
+/// và danh sách phẳng xếp theo hạn nên lịch sử đã trả nằm lẫn vào giữa những
+/// hoá đơn đang chờ. Trên máy thật đã thấy: kỳ đã trả của "di h0c" nằm giữa
+/// hai hoá đơn chưa trả. Hoá đơn tuần sinh 52 hàng mỗi năm.
+///
+/// **Không sắp xếp tại chỗ**: danh sách đến từ stream của bloc và nhiều nơi
+/// khác đang đọc chung nó.
+BillSections splitBills(List<Bill> bills) {
+  final unpaid = <Bill>[];
+  final paid = <Bill>[];
+  for (final b in bills) {
+    (_daTra(b) ? paid : unpaid).add(b);
+  }
+  unpaid.sort((a, b) => a.dueDate.compareTo(b.dueDate));
+  paid.sort((a, b) => b.dueDate.compareTo(a.dueDate));
+  return BillSections(unpaid: unpaid, paid: paid);
+}
+
 /// Số liệu thẻ tổng đầu trang hoá đơn, tính cho **kỳ này**.
 class BillSummary {
   /// Tiền còn phải trả trong kỳ.

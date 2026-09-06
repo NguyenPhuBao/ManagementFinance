@@ -6,14 +6,30 @@ class WalletSelectionBottomSheet extends StatelessWidget {
   final List<Wallet> wallets;
   final Function(Wallet) onSelected;
 
+  /// Ví đã lưu sẵn trên hoá đơn. Được đưa lên đầu và đánh dấu.
+  ///
+  /// Vì sao: hoá đơn **bắt buộc** có ví (`bill.Idwallet` NOT NULL phía
+  /// backend) nhưng luồng trả trước đây bày ra một danh sách không gợi ý gì,
+  /// nên mỗi lần trả người dùng phải nhớ lại mình đã chọn ví nào lúc tạo.
+  final String? preferredWalletId;
+
   const WalletSelectionBottomSheet({
     super.key,
     required this.wallets,
     required this.onSelected,
+    this.preferredWalletId,
   });
+
+  /// Ví của hoá đơn lên đầu, thứ tự còn lại giữ nguyên.
+  List<Wallet> get _xepLai {
+    final uu = wallets.where((w) => w.id == preferredWalletId);
+    if (uu.isEmpty) return wallets;
+    return [...uu, ...wallets.where((w) => w.id != preferredWalletId)];
+  }
 
   @override
   Widget build(BuildContext context) {
+    final danhSach = _xepLai;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: const BoxDecoration(
@@ -41,10 +57,11 @@ class WalletSelectionBottomSheet extends StatelessWidget {
           else
             ListView.separated(
               shrinkWrap: true,
-              itemCount: wallets.length,
+              itemCount: danhSach.length,
               separatorBuilder: (_, __) => const Divider(),
               itemBuilder: (context, index) {
-                final wallet = wallets[index];
+                final wallet = danhSach[index];
+                final laViCuaHoaDon = wallet.id == preferredWalletId;
                 return ListTile(
                   leading: CircleAvatar(
                     backgroundColor: AppColors.primary.withValues(alpha: 0.1),
@@ -58,6 +75,24 @@ class WalletSelectionBottomSheet extends StatelessWidget {
                     'Số dư: ${wallet.balance.toStringAsFixed(0)}đ',
                     style: const TextStyle(color: AppColors.textSecondary),
                   ),
+                  trailing: laViCuaHoaDon
+                      ? Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Text(
+                            'Ví của hoá đơn',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        )
+                      : null,
                   onTap: () {
                     Navigator.pop(context);
                     onSelected(wallet);

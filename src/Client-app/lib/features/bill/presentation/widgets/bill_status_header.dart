@@ -16,6 +16,9 @@ class BillStatusHeader extends StatelessWidget {
     required this.statusBg,
     required this.titleColor,
     this.isPaid = false,
+    this.icon,
+    this.iconColor,
+    this.meta,
   });
 
   final String title;
@@ -26,12 +29,37 @@ class BillStatusHeader extends StatelessWidget {
   final Color titleColor;
   final bool isPaid;
 
+  /// Biểu tượng của **danh mục** hoá đơn, cùng quy ước với dòng sổ giao dịch.
+  ///
+  /// Cố ý không dùng hai cột `bills.icon`/`bills.colour`: chúng có mặc định,
+  /// được kế thừa sang kỳ sau, nhưng **không UI nào đặt** — nên mọi hoá đơn
+  /// đều mang đúng một giá trị và biểu tượng sẽ không phân biệt được gì.
+  final IconData? icon;
+  final Color? iconColor;
+
+  /// Dòng thứ ba: "Danh mục • Ví". Tách khỏi [subtitle] chứ không nối vào,
+  /// vì gộp một dòng thì ở 411dp phần ví bị `ellipsis` nuốt mất — đúng thứ
+  /// người dùng cần biết trước khi bấm Thanh toán.
+  final String? meta;
+
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (icon != null) ...[
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: (iconColor ?? titleColor).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 18, color: iconColor ?? titleColor),
+          ),
+          const SizedBox(width: 12),
+        ],
         // `Expanded` là thứ chặn tràn: phần chữ nhận đúng chỗ còn lại sau khi
         // chip lấy phần của nó, và `ellipsis` cắt gọn thay vì đẩy chip ra rìa.
         Expanded(
@@ -58,6 +86,18 @@ class BillStatusHeader extends StatelessWidget {
                   color: Color(0xFF46464C),
                 ),
               ),
+              if (meta != null && meta!.isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text(
+                  meta!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF6B6B72),
+                  ),
+                ),
+              ],
             ],
           ),
         ),

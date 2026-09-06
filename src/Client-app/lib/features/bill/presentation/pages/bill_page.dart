@@ -11,6 +11,8 @@ import '../bloc/bill_bloc.dart';
 import '../bloc/bill_event.dart';
 import '../bloc/bill_state.dart';
 import '../../domain/bill_status.dart';
+import '../../../transaction/domain/transaction_lookup.dart';
+import '../../../../core/category/category_visuals.dart';
 import '../widgets/wallet_selection_bottom_sheet.dart';
 
 /// Nhãn của từng trạng thái. Bản dựng hình Stitch chỉ có ba; nhãn "QUÁ HẠN" là
@@ -59,6 +61,10 @@ class BillPage extends StatefulWidget {
 }
 
 class _BillPageState extends State<BillPage> {
+  /// Tra tên ví và danh mục cho từng dòng — dùng lại đúng lớp của sổ giao
+  /// dịch. Hoá đơn chỉ lưu id; trước 2026-09-06 danh sách không hiện cái nào
+  /// trong hai thứ đó.
+  TransactionLookup _lookup = TransactionLookup.empty;
 
   @override
   void initState() {
@@ -67,7 +73,23 @@ class _BillPageState extends State<BillPage> {
       final accountId = currentAccountIdOrNull(context);
       if (accountId == null) return; // chưa có phiên → không nạp gì
       context.read<BillBloc>().add(LoadBillsEvent(idaccount: accountId));
+      _napTenGoi(accountId);
     });
+  }
+
+  /// Nạp tên ví và danh mục **một lần** khi mở trang.
+  ///
+  /// Cố ý không giữ hai `Stream` như `TransactionPage._ensureLookupStreams`:
+  /// ở đó danh sách giao dịch đổi liên tục nên bảng tra phải sống theo, còn ở
+  /// đây chỉ có tên ví và tên danh mục — hai thứ người dùng đổi ở màn khác,
+  /// và quay lại trang này là nạp lại. Đổi lấy: không đăng ký nào phải huỷ,
+  /// nên không có `dispose` nào để quên.
+  Future<void> _napTenGoi(int accountId) async {
+    final db = sl<AppDatabase>();
+    final vi = await db.walletDao.getAll(accountId);
+    final dm = await db.categoryDao.getAll(accountId);
+    if (!mounted) return;
+    setState(() => _lookup = TransactionLookup(wallets: vi, categories: dm));
   }
 
   void _showPayModal(BuildContext context, Bill bill) async {
@@ -94,6 +116,9 @@ class _BillPageState extends State<BillPage> {
       backgroundColor: Colors.transparent,
       builder: (_) => WalletSelectionBottomSheet(
         wallets: wallets,
+        // Hoá đơn đã lưu sẵn ví thanh toán; luồng trả trước đây bày ra danh
+        // sách không gợi ý gì nên người dùng phải tự nhớ.
+        preferredWalletId: bill.walletId,
         onSelected: (wallet) {
           context.read<BillBloc>().add(
                 PayBillEvent(
@@ -180,72 +205,138 @@ class _BillPageState extends State<BillPage> {
           }
 
           if (state is BillLoaded) {
-            final bills = state.bills;
+            // Hai nhóm thay cho một danh sách phẳng: mỗi kỳ của hoá đơn lặp là
+            // một hàng mới, nên lịch sử đã trả trôi lẫn vào giữa những hoá đơn
+            // đang chờ — hoá đơn tuần sinh 52 hàng mỗi năm.
+            final sections = splitBills(state.bills);
 
-            return Stack(
-              children: [
-                ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 24, 16, 100),
-                  children: [
-                    _buildSummaryCard(
-                      totalAmountStr:
-                          currencyFormatter.format(state.summary.unpaidAmount),
-                      unpaidCount: state.summary.unpaidCount,
-                      progress: state.summary.progress,
-                    ),
-                    const SizedBox(height: 16),
-                    if (bills.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 40),
-                        child: Center(
-                          child: Text(
-                            'Chưa có hóa đơn nào được tạo.',
-                            style: TextStyle(color: AppColors.textSecondary),
-                          ),
+            return DefaultTabController(
+              length: 2,
+              child: Stack(
+                children: [
+                  Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
+                        child: _buildSummaryCard(
+                          totalAmountStr: currencyFormatter
+                              .format(state.summary.unpaidAmount),
+                          unpaidCount: state.summary.unpaidCount,
+                          progress: state.summary.progress,
                         ),
-                      )
-                    else
-                      ...bills.map((bill) {
-                        // Bốn trạng thái, một định nghĩa duy nhất ở
-                        // `domain/bill_status.dart`. Trước đây trang này tự
-                        // suy ra hai trạng thái ngay trong `build` và gán nhãn
-                        // "SẮP ĐẾN HẠN" cho đúng nhánh ĐÃ QUÁ HẠN.
-                        final status = billDisplayStatusOf(bill, now);
-                        final isPaid = status == BillDisplayStatus.paid;
-
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: _buildBillItem(
-                            context: context,
-                            bill: bill,
-                            title: bill.name,
-                            subtitle: 'Hạn ${dateFormatter.format(bill.dueDate)}',
-                            amount: currencyFormatter.format(bill.amount),
-                            status: _nhanTrangThai(status),
-                            statusColor: _mauChu(status),
-                            statusBg: _mauNen(status),
-                            accentColor: _mauVach(status),
-                            isPaid: isPaid,
-                          ),
-                        );
-                      }),
-                    const SizedBox(height: 32),
-                    _buildDecorativeIllustration(),
-                  ],
-                ),
-                Positioned(
-                  bottom: 24,
-                  left: 16,
-                  right: 16,
-                  child: _buildAddButton(context),
-                ),
-              ],
+                      ),
+                      TabBar(
+                        labelColor: AppColors.primary,
+                        unselectedLabelColor: AppColors.textSecondary,
+                        indicatorColor: AppColors.primary,
+                        tabs: [
+                          Tab(
+                              text:
+                                  'Cần thanh toán (${sections.unpaid.length})'),
+                          Tab(text: 'Đã thanh toán (${sections.paid.length})'),
+                        ],
+                      ),
+                      Expanded(
+                        child: TabBarView(
+                          children: [
+                            _danhSach(
+                              context,
+                              sections.unpaid,
+                              now: now,
+                              currencyFormatter: currencyFormatter,
+                              dateFormatter: dateFormatter,
+                              khiTrong: 'Không còn hoá đơn nào phải trả.',
+                            ),
+                            _danhSach(
+                              context,
+                              sections.paid,
+                              now: now,
+                              currencyFormatter: currencyFormatter,
+                              dateFormatter: dateFormatter,
+                              khiTrong: 'Chưa có hoá đơn nào được thanh toán.',
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  Positioned(
+                    bottom: 24,
+                    left: 16,
+                    right: 16,
+                    child: _buildAddButton(context),
+                  ),
+                ],
+              ),
             );
           }
 
           return const SizedBox.shrink();
         },
       ),
+    );
+  }
+
+  /// Một tab của danh sách.
+  Widget _danhSach(
+    BuildContext context,
+    List<Bill> bills, {
+    required DateTime now,
+    required NumberFormat currencyFormatter,
+    required DateFormat dateFormatter,
+    required String khiTrong,
+  }) {
+    if (bills.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 16),
+        child: Column(
+          children: [
+            Text(
+              khiTrong,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 24),
+            _buildDecorativeIllustration(),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+      itemCount: bills.length,
+      itemBuilder: (_, i) {
+        final bill = bills[i];
+        // Bốn trạng thái, một định nghĩa duy nhất ở `domain/bill_status.dart`.
+        // Trước đây trang này tự suy ra hai trạng thái ngay trong `build` và
+        // gán nhãn "SẮP ĐẾN HẠN" cho đúng nhánh ĐÃ QUÁ HẠN.
+        final status = billDisplayStatusOf(bill, now);
+        final danhMuc = _lookup.category(bill.categoryId);
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: _buildBillItem(
+            context: context,
+            bill: bill,
+            title: bill.name,
+            subtitle: 'Hạn ${dateFormatter.format(bill.dueDate)}',
+            meta: [
+              danhMuc?.name ?? 'Chưa có danh mục',
+              _lookup.walletName(bill.walletId),
+            ].join(' • '),
+            icon: categoryIconFor(danhMuc?.icon),
+            iconColor: categoryColorFrom(danhMuc?.colour,
+                fallback: AppColors.primary),
+            amount: currencyFormatter.format(bill.amount),
+            status: _nhanTrangThai(status),
+            statusColor: _mauChu(status),
+            statusBg: _mauNen(status),
+            accentColor: _mauVach(status),
+            isPaid: status == BillDisplayStatus.paid,
+          ),
+        );
+      },
     );
   }
 
@@ -340,6 +431,9 @@ class _BillPageState extends State<BillPage> {
     required Color statusBg,
     required Color accentColor,
     bool isPaid = false,
+    String? meta,
+    IconData? icon,
+    Color? iconColor,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -369,6 +463,9 @@ class _BillPageState extends State<BillPage> {
                     BillStatusHeader(
                       title: title,
                       subtitle: subtitle,
+                      meta: meta,
+                      icon: icon,
+                      iconColor: iconColor,
                       status: status,
                       statusColor: statusColor,
                       statusBg: statusBg,

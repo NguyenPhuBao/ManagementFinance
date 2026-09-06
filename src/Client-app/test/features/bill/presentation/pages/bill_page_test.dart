@@ -7,6 +7,7 @@
 /// gộp cả kỳ của tháng sau.
 library;
 
+import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -98,7 +99,40 @@ void main() {
     await db.close();
   });
 
-  Future<void> dungTrang(WidgetTester tester, List<Bill> bills) async {
+  /// Gieo một ví và một danh mục để trang tra được tên.
+  Future<void> gieoViVaDanhMuc() async {
+    await db.walletDao.insert(WalletsCompanion.insert(
+      id: 'w1',
+      idaccount: 10,
+      name: 'Tiền mặt',
+      balance: const drift.Value(5000000),
+      updatedAt: DateTime(2026, 9, 1),
+    ));
+    await db.walletDao.insert(WalletsCompanion.insert(
+      id: 'w2',
+      idaccount: 10,
+      name: 'Tiết kiệm',
+      balance: const drift.Value(2000000),
+      updatedAt: DateTime(2026, 9, 1),
+    ));
+    await db.categoryDao.insert(CategoriesCompanion.insert(
+      id: 'c1',
+      idaccount: 10,
+      name: 'Điện nước',
+      classify: 'chi',
+      icon: const drift.Value('receipt'),
+      colour: const drift.Value('#4CAF50'),
+      updatedAt: DateTime(2026, 9, 1),
+    ));
+  }
+
+  Future<void> dungTrang(
+    WidgetTester tester,
+    List<Bill> bills, {
+    bool seed = false,
+  }) async {
+    if (seed) await gieoViVaDanhMuc();
+
     tester.view.physicalSize = const Size(411, 2000);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -176,11 +210,16 @@ void main() {
       _bill(id: 'a', dueDate: DateTime(2026, 9, 25), payStatus: 'Payed'),
     ]);
 
-    expect(find.text('ĐÃ THANH TOÁN'), findsOneWidget,
-        reason: 'Hàng do bản client cũ ghi mang `payStatus = Payed` mà `isPaid` '
-            'còn false. Chỉ đọc `isPaid` là bày nút "Thanh toán" cho hoá đơn '
-            'đã trả.');
+    // Hàng do bản client cũ ghi mang `payStatus = Payed` mà `isPaid` còn
+    // false. Chỉ đọc `isPaid` là xếp nó vào nhóm cần trả, bày nút "Thanh
+    // toán", và cộng luôn vào tổng nợ.
+    expect(find.text('Cần thanh toán (0)'), findsOneWidget);
     expect(find.text('Thanh toán'), findsNothing);
+
+    await tester.tap(find.text('Đã thanh toán (1)'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('ĐÃ THANH TOÁN'), findsOneWidget);
   });
 
   testWidgets('thẻ tổng chỉ tính tới hết tháng này', (tester) async {
@@ -212,6 +251,80 @@ void main() {
         find.byKey(const ValueKey('bill-progress')));
     expect(bar.widthFactor, closeTo(0.3, 0.0001),
         reason: 'Thanh cứng 0,66 chỉ có hai trạng thái và không đo gì cả.');
+  });
+
+  testWidgets('hai tab: hoá đơn đã trả không nằm lẫn trong nhóm cần trả',
+      (tester) async {
+    await dungTrang(tester, [
+      _bill(id: 'a', dueDate: DateTime(2026, 9, 11), name: 'Kiem'),
+      _bill(
+          id: 'b',
+          dueDate: DateTime(2026, 9, 16),
+          name: 'Da tra roi',
+          isPaid: true,
+          payStatus: 'Payed'),
+      _bill(id: 'c', dueDate: DateTime(2026, 9, 23), name: 'Con phai tra'),
+    ]);
+
+    expect(find.text('Kiem'), findsOneWidget);
+    expect(find.text('Con phai tra'), findsOneWidget);
+    expect(
+      find.text('Da tra roi'),
+      findsNothing,
+      reason: 'Mỗi kỳ là một hàng mới, nên lịch sử đã trả trôi lẫn vào giữa '
+          'những hoá đơn đang chờ — trên máy thật kỳ đã trả của "di h0c" nằm '
+          'đúng giữa hai hoá đơn chưa trả.',
+    );
+
+    await tester.tap(find.textContaining('Đã thanh toán'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Da tra roi'), findsOneWidget);
+    expect(find.text('Kiem'), findsNothing);
+  });
+
+  testWidgets('dòng hoá đơn cho biết danh mục và ví thanh toán',
+      (tester) async {
+    await dungTrang(
+      tester,
+      [_bill(id: 'a', dueDate: DateTime(2026, 9, 11))],
+      seed: true,
+    );
+
+    expect(
+      find.textContaining('Điện nước'),
+      findsOneWidget,
+      reason: 'Sổ giao dịch hiện "Danh mục • Ví" từ 06/09; hoá đơn chỉ có tên '
+          'và hạn, nên không biết khoản chi này rơi vào danh mục nào.',
+    );
+    expect(
+      find.textContaining('Tiền mặt'),
+      findsOneWidget,
+      reason: 'Ví thanh toán đã lưu sẵn trên hoá đơn nhưng không hiện ở đâu — '
+          'phải bấm "Thanh toán" mới biết tiền trừ vào đâu.',
+    );
+  });
+
+  testWidgets('bảng chọn ví đưa ví của hoá đơn lên đầu và đánh dấu',
+      (tester) async {
+    await dungTrang(
+      tester,
+      [_bill(id: 'a', dueDate: DateTime(2026, 9, 11))],
+      seed: true,
+    );
+
+    await tester.tap(find.text('Thanh toán'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Ví của hoá đơn'),
+      findsOneWidget,
+      reason: 'Hoá đơn đã lưu ví thanh toán, nhưng luồng trả bắt chọn lại từ '
+          'một danh sách không gợi ý gì.',
+    );
+    final tiles = tester.widgetList<ListTile>(find.byType(ListTile)).toList();
+    expect((tiles.first.title as Text).data, 'Tiền mặt',
+        reason: 'Ví của hoá đơn phải nằm đầu danh sách.');
   });
 
   testWidgets('không tràn bố cục ở 411dp', (tester) async {
