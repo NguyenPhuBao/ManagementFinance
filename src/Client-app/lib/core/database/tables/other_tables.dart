@@ -157,6 +157,22 @@ class Bills extends Table {
   /// đúng lối so bằng tên mà cột `goalId` sinh ra để thay thế.
   TextColumn get generatedFromBillId => text().nullable()();
 
+  /// autoPayEnabled: app tự thanh toán hoá đơn này khi tới ngày đến hạn, trừ
+  /// từ chính [walletId] của nó (DB v17, 2026-09-06).
+  ///
+  /// ⚠️ **Cột CỤC BỘ — không nằm trong hợp đồng đồng bộ**, cùng khuôn với
+  /// `generatedFromBillId` và ba cột trích tự động của `Goals`. Hệ quả chấp
+  /// nhận có chủ ý: cấu hình không theo người dùng sang máy khác — và đó cũng
+  /// là lý do KHÔNG mượn một cột đang có: hai máy cùng bật, cùng offline, cùng
+  /// trả một kỳ là hai khoản chi trừ hai ví, cờ đã trả đồng bộ theo LWW không
+  /// chặn được. Xin cột phía backend ở việc D của
+  /// `2026-09-06-bill-chuoi-ky-va-an-han.md`.
+  ///
+  /// Không có cột "lần chạy cuối" như mục tiêu: mỗi kỳ hoá đơn là **một hàng
+  /// riêng**, nên cờ đã trả (`isPaid`/`payStatus`) chính là chốt chống trả hai
+  /// lần. Kỳ kế tiếp kế thừa cờ này khi được sinh ra lúc trả kỳ trước.
+  BoolColumn get autoPayEnabled => boolean().withDefault(const Constant(false))();
+
   // ── Soft delete (DB v2) ───────────────────────────────────────────────────
   /// deletedAt: NULL = đang dùng, có giá trị = đã xóa mềm
   DateTimeColumn get deletedAt => dateTime().nullable()();

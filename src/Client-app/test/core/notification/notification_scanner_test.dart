@@ -158,6 +158,7 @@ void main() {
       dueDate: denHan,
       payStatus: 'Pending',
       isPaid: false,
+      autoPayEnabled: false,
       timeNotification: '3',
       isRecurrence: true,
       timeRecurrence: 'Month',

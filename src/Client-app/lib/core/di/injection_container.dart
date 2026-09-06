@@ -15,6 +15,7 @@ import '../../features/goal/data/datasources/goal_local_data_source.dart';
 import '../../features/goal/data/models/goal_entity.dart';
 import '../../features/goal/data/repositories/goal_repository.dart';
 import '../../features/goal/domain/goal_auto_deposit_runner.dart';
+import '../../features/bill/domain/bill_auto_pay_runner.dart';
 import '../../features/goal/data/repositories/goal_repository_impl.dart';
 import '../../features/goal/presentation/bloc/goal_cubit.dart';
 import '../../features/budget/data/datasources/budget_local_data_source.dart';
@@ -263,6 +264,12 @@ Future<void> setupDependencies() async {
       runAutoDeposits: (idaccount, now) => GoalAutoDepositRunner(
         db: sl<AppDatabase>(),
         repository: sl<GoalRepository>(),
+      ).chay(idaccount, now: now),
+      // Tự động thanh toán hoá đơn, cùng khuôn: chạy trong vòng quét, đi qua
+      // `payBill` hiện có. Xem chú thích ở `BillAutoPayRunner`.
+      runAutoPays: (idaccount, now) => BillAutoPayRunner(
+        db: sl<AppDatabase>(),
+        repository: sl<BillRepository>(),
       ).chay(idaccount, now: now),
       // Mục tiêu và ví đọc thẳng từ DAO chứ không qua repository: scanner chỉ
       // cần đúng một phép đọc mỗi loại, và thu hẹp phụ thuộc thì vòng quét

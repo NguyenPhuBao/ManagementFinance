@@ -56,7 +56,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 16;
+  int get schemaVersion => 17;
 
   @override
   MigrationStrategy get migration {
@@ -330,6 +330,18 @@ class AppDatabase extends _$AppDatabase {
           await m.create(Index('idx_transaction_bill',
               'CREATE INDEX IF NOT EXISTS idx_transaction_bill '
               'ON transactions (idaccount, bill_id)'));
+        }
+
+        if (from < 17) {
+          // Tự động thanh toán hoá đơn. Một cột CỤC BỘ, không đi qua đồng bộ
+          // — xem chú thích ở `Bills`.
+          //
+          // Mặc định FALSE cho mọi hoá đơn cũ, kể cả những hoá đơn tạo bằng
+          // bản có công tắc "Tự động tạo giao dịch" bật sẵn (gỡ ngày 06/09):
+          // công tắc ấy không lưu ở đâu, nên không có gì để suy ra, và suy ra
+          // "đã đồng ý" từ một công tắc bật sẵn là chuyển tiền dựa trên một
+          // lựa chọn người dùng chưa từng đưa ra — cùng lập luận với v15.
+          await m.addColumn(bills, bills.autoPayEnabled);
         }
       },
       beforeOpen: (details) async {

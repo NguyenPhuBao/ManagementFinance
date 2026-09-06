@@ -371,6 +371,9 @@ class _BillPageState extends State<BillPage> {
                   ? 'Chưa có danh mục'
                   : (danhMuc?.name ?? 'Danh mục đã xoá'),
               _lookup.walletName(bill.walletId),
+              // Dấu hiệu duy nhất trên danh sách cho biết hoá đơn nào app sẽ
+              // tự trừ tiền — không có nó thì phải mở từng hoá đơn.
+              if (bill.autoPayEnabled) 'Tự trả',
             ].join(' • '),
             icon: categoryIconFor(danhMuc?.icon),
             iconColor: categoryColorFrom(danhMuc?.colour,

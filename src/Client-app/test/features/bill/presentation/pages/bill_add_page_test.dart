@@ -91,22 +91,9 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('không còn công tắc hứa tự động thanh toán', (tester) async {
-    await dungTrangThem(tester);
-
-    expect(
-      find.textContaining('Tự động tạo giao dịch', skipOffstage: false),
-      findsNothing,
-      reason: 'Không có cột nào lưu lựa chọn này và không có bộ chạy nền nào '
-          'đọc nó. Bày ra công tắc là hứa app sẽ tự trả hoá đơn — người dùng '
-          'tin rồi để hoá đơn quá hạn.',
-    );
-    expect(
-      find.textContaining('Thanh toán khi đến hạn', skipOffstage: false),
-      findsNothing,
-      reason: 'Dòng phụ của công tắc, cùng lời hứa.',
-    );
-  });
+  // Công tắc "Tự động tạo giao dịch" bật sẵn không lưu ở đâu đã bị gỡ ngày
+  // 06/09. Cùng ngày, tự động thanh toán được làm THẬT (cột v17 + bộ chạy) và
+  // công tắc quay lại, TẮT sẵn — canh ở `bill_auto_pay_ui_test.dart`.
 
   testWidgets('không tràn bố cục ở 411dp', (tester) async {
     await dungTrangThem(tester);

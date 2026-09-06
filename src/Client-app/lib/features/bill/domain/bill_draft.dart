@@ -36,6 +36,12 @@ class BillDraft {
 
   final String note;
 
+  /// App tự trả hoá đơn này vào ngày đến hạn, trừ từ [walletId].
+  ///
+  /// Mặc định **tắt**: tự chuyển tiền là quyết định người dùng phải bật, không
+  /// phải thứ app mặc định làm hộ. Cột cục bộ v17, xem `Bills.autoPayEnabled`.
+  final bool autoPayEnabled;
+
   const BillDraft({
     required this.name,
     required this.amount,
@@ -47,6 +53,7 @@ class BillDraft {
     required this.timeRecurrence,
     required this.note,
     this.timeNotification,
+    this.autoPayEnabled = false,
   });
 
   /// Chuỗi chu kỳ cũ, suy ra từ [isRecurring] + [timeRecurrence].
@@ -86,6 +93,7 @@ class BillDraft {
       recurrence: Value(_legacyRecurrence),
       timeNotification: Value(timeNotification),
       note: Value(note),
+      autoPayEnabled: Value(autoPayEnabled),
       syncStatus: const Value('pending'),
       updatedAt: now,
     );
@@ -122,6 +130,9 @@ class BillDraft {
       // CÓ MẶT, nên bỏ trống thì tắt nhắc nhở sẽ không có tác dụng gì.
       timeNotification: Value(timeNotification),
       note: Value(note),
+      // Có mặt cả khi tắt: vắng mặt là "giữ nguyên", và tắt công tắc mà app
+      // vẫn tiếp tục trừ tiền là lỗi tệ nhất ở vùng này.
+      autoPayEnabled: Value(autoPayEnabled),
       syncStatus: const Value('pending'),
       updatedAt: Value(now),
     );

@@ -55,6 +55,7 @@ Bill _hoaDon({DateTime? dueDate}) => Bill(
       dueDate: dueDate ?? DateTime(2026, 10, 4),
       payStatus: 'Pending',
       isPaid: false,
+      autoPayEnabled: false,
       timeNotification: '3',
       isRecurrence: true,
       timeRecurrence: kBillCycleMonth,

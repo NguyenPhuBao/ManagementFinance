@@ -111,6 +111,7 @@ void main() {
       dueDate: denHan,
       payStatus: daTra ? 'Payed' : 'Pending',
       isPaid: daTra,
+      autoPayEnabled: false,
       timeNotification: nhacTruoc,
       isRecurrence: true,
       timeRecurrence: 'Month',

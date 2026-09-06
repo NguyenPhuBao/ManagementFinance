@@ -8,6 +8,7 @@ import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/widgets/segmented_choice.dart';
 import '../../../../core/auth/current_account.dart';
+import '../../domain/bill_auto_pay.dart' show kBillAutoPayHint;
 import '../../domain/bill_draft.dart';
 import '../../domain/bill_schedule.dart';
 import '../bloc/bill_bloc.dart';
@@ -37,6 +38,9 @@ class _BillEditPageState extends State<BillEditPage> {
   /// Số ngày nhắc trước hạn. `null` = tắt nhắc.
   String? _nhacTruoc;
 
+  /// Form Sửa là đường DUY NHẤT để tắt tự động thanh toán.
+  bool _tuTra = false;
+
   List<Wallet> _wallets = [];
   Wallet? _selectedWallet;
   List<Category> _categories = [];
@@ -55,6 +59,7 @@ class _BillEditPageState extends State<BillEditPage> {
     // sẵn lời cảnh báo — nay hạn luôn suy từ chu kỳ nên lưu lại là đổi hạn
     // của người dùng, không được đổi ngầm.
     _nhacTruoc = bill?.timeNotification;
+    _tuTra = bill?.autoPayEnabled ?? false;
     _lich = bill != null
         ? BillSchedule.fromBill(bill)
         : BillSchedule(
@@ -168,6 +173,7 @@ class _BillEditPageState extends State<BillEditPage> {
       timeRecurrence: _lich.storedTimeRecurrence,
       timeNotification: _nhacTruoc,
       note: _noteController.text.trim(),
+      autoPayEnabled: _tuTra,
     );
 
     context.read<BillBloc>().add(
@@ -350,7 +356,42 @@ class _BillEditPageState extends State<BillEditPage> {
                     ],
                     onChanged: (v) => setState(() => _nhacTruoc = v),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(Icons.smart_toy, color: AppColors.primary),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Tự động thanh toán'),
+                            Text(
+                              'Trừ từ ví thanh toán khi đến hạn',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Switch(
+                        key: const ValueKey('bill-autopay-switch'),
+                        value: _tuTra,
+                        onChanged: (v) => setState(() => _tuTra = v),
+                      ),
+                    ],
+                  ),
+                  if (_tuTra) ...[
+                    const SizedBox(height: 4),
+                    const Text(
+                      kBillAutoPayHint,
+                      style: TextStyle(
+                          fontSize: 12, color: AppColors.textSecondary),
+                    ),
+                  ],
+                  const SizedBox(height: 8),
                   DropdownButtonFormField<Wallet>(
                     initialValue: _selectedWallet,
                     decoration: const InputDecoration(

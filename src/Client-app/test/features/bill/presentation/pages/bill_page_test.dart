@@ -74,6 +74,7 @@ Bill _bill({
       dueDate: dueDate,
       payStatus: payStatus,
       isPaid: isPaid,
+      autoPayEnabled: false,
       timeNotification: timeNotification,
       isRecurrence: true,
       timeRecurrence: kBillCycleMonth,

@@ -9,6 +9,7 @@ import '../../../../core/auth/current_account.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/widgets/segmented_choice.dart';
+import '../../domain/bill_auto_pay.dart' show kBillAutoPayHint;
 import '../../domain/bill_draft.dart';
 import '../../domain/bill_schedule.dart';
 import '../bloc/bill_bloc.dart';
@@ -35,6 +36,11 @@ class _BillAddPageState extends State<BillAddPage> {
   /// Bật/tắt nhắc trước hạn. Tắt thì ghi `timeNotification = null`.
   bool _pushNotificationsEnabled = true;
   String _selectedReminderDay = '3';
+
+  /// TẮT sẵn. Bản trước có công tắc cùng tên bật sẵn mà không lưu ở đâu (gỡ
+  /// 06/09); nay có cột và bộ chạy thật, nhưng bật sẵn vẫn là chuyển tiền
+  /// dựa trên một lựa chọn người dùng chưa từng đưa ra.
+  bool _autoPayEnabled = false;
 
   List<Wallet> _wallets = [];
   Wallet? _selectedWallet;
@@ -156,6 +162,7 @@ class _BillAddPageState extends State<BillAddPage> {
       timeNotification:
           _pushNotificationsEnabled ? _selectedReminderDay : null,
       note: _noteController.text.trim(),
+      autoPayEnabled: _autoPayEnabled,
     );
 
     context.read<BillBloc>().add(
@@ -402,8 +409,73 @@ class _BillAddPageState extends State<BillAddPage> {
               ],
             ),
           ],
+          const SizedBox(height: 16),
+          const Divider(height: 1),
+          const SizedBox(height: 16),
+          _buildAutoPaySwitch(),
         ],
       ),
+    );
+  }
+
+  /// Khối theo Stitch "Thêm Hóa Đơn Định Kỳ" (biểu tượng `smart_toy`, dưới
+  /// các chip nhắc, sau vạch mỏng) — nhưng công tắc TẮT sẵn, và có dòng phụ
+  /// nói rõ ba điều người dùng cần biết trước khi uỷ quyền: trừ ví nào, lúc
+  /// nào, và vì sao chỉ nên bật trên một thiết bị (cột cục bộ, hai máy cùng
+  /// bật là hai khoản chi).
+  Widget _buildAutoPaySwitch() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Expanded(
+              child: Row(
+                children: [
+                  Icon(Icons.smart_toy, color: AppColors.primary),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Tự động thanh toán',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        Text(
+                          'Trừ từ ví thanh toán khi đến hạn',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Switch(
+              key: const ValueKey('bill-autopay-switch'),
+              value: _autoPayEnabled,
+              onChanged: (val) => setState(() => _autoPayEnabled = val),
+              activeThumbColor: Colors.white,
+              activeTrackColor: AppColors.primary,
+            ),
+          ],
+        ),
+        if (_autoPayEnabled) ...[
+          const SizedBox(height: 8),
+          const Text(
+            kBillAutoPayHint,
+            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          ),
+        ],
+      ],
     );
   }
 

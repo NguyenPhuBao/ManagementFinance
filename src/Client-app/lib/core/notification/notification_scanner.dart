@@ -9,6 +9,7 @@ import '../sync/sync_models.dart';
 import '../../features/budget/data/models/budget_entity.dart';
 import '../../features/goal/data/models/goal_entity.dart';
 import '../../features/goal/domain/goal_auto_deposit_runner.dart';
+import '../../features/bill/domain/bill_auto_pay_runner.dart';
 import 'notification_rules.dart';
 import 'os/os_notifier.dart';
 import 'os/os_scheduled_id.dart';
@@ -69,6 +70,11 @@ class NotificationScanner {
   final Future<List<GoalAutoDepositEvent>> Function(int idaccount, DateTime now)?
       runAutoDeposits;
 
+  /// Chạy các hoá đơn bật tự động thanh toán đã tới hạn, trả về những gì vừa
+  /// xảy ra. Cùng hình dạng và cùng lý do tồn tại với [runAutoDeposits].
+  final Future<List<BillAutoPayEvent>> Function(int idaccount, DateTime now)?
+      runAutoPays;
+
   /// Tuỳ chọn: bỏ trống thì chỉ có trung tâm thông báo trong app (web).
   final OsNotifier? osNotifier;
 
@@ -118,6 +124,7 @@ class NotificationScanner {
     required this.loadBudgets,
     required this.loadBills,
     this.runAutoDeposits,
+    this.runAutoPays,
     this.loadGoals,
     this.loadWallets,
     required this.syncStatus,
@@ -191,6 +198,18 @@ class NotificationScanner {
       // không thì thông báo nói "quá hạn" trong khi bản ghi vẫn ghi 'Pending'.
       await markOverdue?.call(idaccount, at);
 
+      // Tự trả hoá đơn: SAU `markOverdue` (trạng thái hoá đơn phải mới nhất)
+      // và TRƯỚC khi nạp hoá đơn cho bộ luật — nếu không thông báo "quá hạn"
+      // nổ cho đúng hoá đơn vừa được tự trả xong. Chạy trước trích mục tiêu
+      // để số dư ví mà bộ trích nhìn thấy là số dư SAU khi trả hoá đơn.
+      // Nuốt lỗi, cùng lý do với `runAutoDeposits` bên dưới.
+      List<BillAutoPayEvent> autoPays = const [];
+      try {
+        autoPays = await runAutoPays?.call(idaccount, at) ?? const [];
+      } catch (_) {
+        // Bỏ qua có chủ ý — xem chú thích trên.
+      }
+
       // Chạy TRƯỚC khi nạp mục tiêu, cùng lý do với `markOverdue`: một kỳ vừa
       // trích xong đổi `currentAmount` và có thể bật cờ hoàn thành, nên đọc
       // trước là bộ luật nhìn thấy trạng thái đã cũ — thông báo "chậm tiến độ"
@@ -224,6 +243,7 @@ class NotificationScanner {
           goals: goals,
           wallets: wallets,
           autoDeposits: autoDeposits,
+          autoPays: autoPays,
           syncFailed: syncFailed ?? _dongBoHong,
           silenceBefore: at.subtract(cuaSoSuKien),
           defaultBillLeadDays: prefs.soNgayNhacHoaDon,

@@ -16,6 +16,8 @@ NotificationGroup nhomCua(NotificationKind kind) {
   switch (kind) {
     case NotificationKind.billDueSoon:
     case NotificationKind.billOverdue:
+    case NotificationKind.billAutoPaid:
+    case NotificationKind.billAutoPayFailed:
       return NotificationGroup.bill;
     case NotificationKind.budgetNearLimit:
     case NotificationKind.budgetOverspent:

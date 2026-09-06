@@ -200,6 +200,7 @@ void main() {
         dueDate: denHan,
         payStatus: payStatus,
         isPaid: daTra,
+        autoPayEnabled: false,
         timeNotification: nhacTruoc,
         isRecurrence: true,
         timeRecurrence: 'Month',

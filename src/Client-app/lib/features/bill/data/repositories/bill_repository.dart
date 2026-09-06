@@ -64,11 +64,18 @@ abstract class BillRepository {
   /// [amount] là số tiền **thật của kỳ này**; bỏ trống thì dùng số đã lưu trên
   /// hoá đơn. Hoá đơn kiểu điện nước mỗi kỳ một số khác nhau, và đổi qua form
   /// Sửa là đổi cho MỌI kỳ sau chứ không riêng kỳ này.
+  ///
+  /// [occurredAt] là ngày của **giao dịch** sinh ra; bỏ trống là lúc trả.
+  /// Chỉ bộ tự động thanh toán truyền nó — khoản trả **bù** phải mang ngày đến
+  /// hạn của kỳ, nếu không ba kỳ bù dồn thành một cột ở ngày mở app trong
+  /// thống kê theo ngày (cùng lý do với mục 3.14 `GOAL_FEATURE.md`). Không
+  /// được ở tương lai. `updatedAt` của giao dịch vẫn là "bây giờ".
   Future<void> payBill({
     required Bill bill,
     required String walletId,
     required int idaccount,
     double? amount,
+    DateTime? occurredAt,
   });
 
   /// Hoàn tác lần thanh toán của hoá đơn [billId].

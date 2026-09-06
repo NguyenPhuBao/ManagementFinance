@@ -110,14 +110,24 @@ class ReminderScheduler {
         );
         final soNgay = hanTra.difference(_dauNgay(at)).inDays;
 
+        // Hoá đơn bật tự trả: người dùng đã uỷ quyền cho app trả, nhưng bộ
+        // tự trả chỉ chạy khi app mở. Lời nhắc vì thế phải bảo họ MỞ APP chứ
+        // không bảo đi trả tay. Cùng khoá lịch — đổi công tắc không phải một
+        // sự kiện mới.
+        final tuTra = b.autoPayEnabled;
         ungVien.add(_Lich(
           id: osScheduledId(khoa),
           khoa: khoa,
           when: mocNhac,
-          title: 'Hoá đơn sắp đến hạn',
-          body: soNgay <= 0
-              ? '${b.name} đến hạn hôm nay.'
-              : '${b.name} còn $soNgay ngày tới hạn.',
+          title: tuTra ? 'Hoá đơn sắp được tự trả' : 'Hoá đơn sắp đến hạn',
+          body: tuTra
+              ? (soNgay <= 0
+                  ? '${b.name} đến hạn hôm nay. Mở app để hoá đơn được tự trả.'
+                  : '${b.name} còn $soNgay ngày tới hạn. Mở app vào ngày đó để '
+                      'hoá đơn được tự trả.')
+              : (soNgay <= 0
+                  ? '${b.name} đến hạn hôm nay.'
+                  : '${b.name} còn $soNgay ngày tới hạn.'),
         ));
       }
 

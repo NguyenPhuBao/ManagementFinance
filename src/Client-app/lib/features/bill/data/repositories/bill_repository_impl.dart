@@ -54,6 +54,7 @@ class BillRepositoryImpl implements BillRepository {
     required String walletId,
     required int idaccount,
     double? amount,
+    DateTime? occurredAt,
   }) async {
     // UI truyền vào ảnh chụp `Bill` mà nó đang giữ; bấm nút hai lần thì lần
     // thứ hai vẫn mang isPaid = false. Trạng thái thật phải đọc lại từ CSDL.
@@ -71,6 +72,14 @@ class BillRepositoryImpl implements BillRepository {
     if (soTien <= 0) throw BillInvalidAmountException(soTien);
 
     final now = DateTime.now();
+
+    // Đây là tầng ghi tiền; một tham số ngày để ngỏ là cửa sau. Khoản chi
+    // không thể mang dấu thời gian chưa tới — chặn giống `depositToGoal`.
+    final ngayGiaoDich = occurredAt ?? now;
+    if (ngayGiaoDich.isAfter(now)) {
+      throw ArgumentError.value(
+          occurredAt, 'occurredAt', 'Ngày giao dịch không được ở tương lai');
+    }
 
     // Cả bốn bước nằm trong một transaction: hỏng giữa chừng mà vẫn giữ lại
     // phần đã ghi thì ví bị trừ nhưng hoá đơn chưa đánh dấu (hoặc ngược lại).
@@ -102,7 +111,9 @@ class BillRepositoryImpl implements BillRepository {
           // tiền tố ghi chú ở trên KHÔNG đủ: người dùng gõ trùng tiền tố là
           // hoàn nhầm tiền vào ví bằng một khoản chi khác của họ.
           billId: Value(current.id),
-          date: now,
+          // Ngày của SỰ VIỆC. `updatedAt` bên dưới vẫn là "bây giờ": nó là sổ
+          // sách đồng bộ, lùi theo là LWW coi bản ghi cũ hơn thực tế.
+          date: ngayGiaoDich,
           syncStatus: const Value('pending'),
           updatedAt: now,
         ),
@@ -212,6 +223,8 @@ class BillRepositoryImpl implements BillRepository {
       payStatus: const Value('Pending'),
       isPaid: const Value(false),
       timeNotification: Value(current.timeNotification),
+      // Quên chép là chuỗi tự trả dừng sau đúng một kỳ, im lặng.
+      autoPayEnabled: Value(current.autoPayEnabled),
       isRecurrence: const Value(true),
       timeRecurrence: Value(current.timeRecurrence),
       recurrence: Value(legacyFromTimeRecurrence(current.timeRecurrence)),
