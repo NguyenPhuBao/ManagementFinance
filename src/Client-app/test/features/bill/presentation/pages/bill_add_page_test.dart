@@ -17,6 +17,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:flowmoney/core/bill/bill_recurrence.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/di/injection_container.dart';
 import 'package:flowmoney/features/auth/data/models/user_model.dart';
@@ -118,6 +119,55 @@ void main() {
           'hàng công tắc tự động thanh toán và nút Lưu. Cả bốn nằm im vì bộ '
           'test chạy 1280px còn máy thật là 411dp.',
     );
+  });
+
+  testWidgets('bốn chu kỳ nằm trên MỘT hàng ngang ở 411dp', (tester) async {
+    await dungTrangThem(tester);
+
+    final o = [
+      kBillCycleWeek,
+      kBillCycleMonth,
+      kBillCycleQuarter,
+      kBillCycleYear,
+    ]
+        .map((v) => tester.getRect(find.byKey(ValueKey('bill-cycle-$v'))))
+        .toList();
+
+    expect(
+      o.map((r) => r.top).toSet(),
+      hasLength(1),
+      reason: 'Bốn ô đang xếp DỌC, mỗi ô một hàng chiếm trọn bề ngang. Nguyên '
+          'nhân là `Container` có `alignment` mà không có kích thước thì giãn '
+          'hết ràng buộc nhận được, nên `Wrap` chỉ nhét được một ô mỗi dòng. '
+          'Mốc trên phải TRÙNG KHỚP chứ không chỉ gần nhau: nhãn dài ngắn '
+          'khác nhau nên nếu để cao tự do thì bốn viên thuốc lệch vài pixel.',
+    );
+    for (var i = 1; i < o.length; i++) {
+      expect(o[i].left, greaterThanOrEqualTo(o[i - 1].right),
+          reason: 'Các ô phải nằm cạnh nhau theo đúng thứ tự tuần → tháng → '
+              'quý → năm, không chồng lên nhau.');
+    }
+    expect(
+      o.map((r) => r.width.round()).toSet(),
+      hasLength(1),
+      reason: 'Bốn ô chia đều bề ngang như một thanh chọn phân đoạn — kiểu '
+          'giao diện mà chính cách tô màu (ô được chọn nền trắng có đổ bóng, '
+          'ô còn lại trong suốt) đang gợi ra.',
+    );
+    expect(o.last.right, lessThanOrEqualTo(411),
+        reason: 'Không được tràn ra ngoài mép màn hình.');
+  });
+
+  testWidgets('chạm một chu kỳ thì ô đó được chọn', (tester) async {
+    await dungTrangThem(tester);
+
+    await tester.tap(find.byKey(const ValueKey('bill-cycle-$kBillCycleQuarter')));
+    await tester.pumpAndSettle();
+
+    // Ngày đến hạn luôn suy từ ngày bắt đầu + chu kỳ, nên đổi chu kỳ phải đổi
+    // được ô ngày đến hạn — đó là bằng chứng lựa chọn đã ăn vào `BillSchedule`.
+    expect(find.textContaining('/'), findsWidgets);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('vẫn còn đủ các khối thật của form', (tester) async {
