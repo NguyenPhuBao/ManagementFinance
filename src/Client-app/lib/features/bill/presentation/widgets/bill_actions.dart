@@ -20,6 +20,10 @@ Future<void> moBangThanhToanHoaDon(BuildContext context, Bill bill) async {
   final accountId = currentAccountIdOrNull(context);
   final wallets =
       accountId == null ? <Wallet>[] : await db.walletDao.getAll(accountId);
+  // Tên danh mục cho khối thông tin trên bảng; không có/đã xoá thì bỏ trống.
+  final danhMuc = bill.categoryId == null
+      ? null
+      : await db.categoryDao.getById(bill.categoryId!);
 
   if (!context.mounted) return;
 
@@ -37,11 +41,9 @@ Future<void> moBangThanhToanHoaDon(BuildContext context, Bill bill) async {
     // Bàn phím số phải đẩy được bảng lên, không che ô nhập.
     isScrollControlled: true,
     builder: (_) => BillPaymentSheet(
+      bill: bill,
       wallets: wallets,
-      initialAmount: bill.amount,
-      // Hoá đơn đã lưu sẵn ví thanh toán; luồng trả trước đây bày ra danh
-      // sách không gợi ý gì nên người dùng phải tự nhớ.
-      preferredWalletId: bill.walletId,
+      categoryName: danhMuc?.name,
       onConfirmed: (wallet, soTien, ngay, ghiChu) {
         context.read<BillBloc>().add(
               PayBillEvent(

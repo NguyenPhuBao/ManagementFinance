@@ -1,33 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/bill/bill_recurrence.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
 
-/// Bảng thanh toán hoá đơn: số tiền **thật của kỳ này** + ngày trả + ví trả.
+/// Bảng thanh toán hoá đơn: **thông tin hoá đơn** ở trên, ba ô nhập (số tiền
+/// thật của kỳ, ngày trả, ghi chú lần trả), ví trả, và dưới cùng một nút
+/// **"Thanh toán bằng <ví>"**.
 ///
-/// Thay cho `WalletSelectionBottomSheet` cũ, vốn chỉ hỏi ví. Hoá đơn điện
-/// nước mỗi kỳ một số khác nhau, mà đổi qua form Sửa là đổi cho MỌI kỳ sau
-/// chứ không riêng kỳ này — nên số tiền phải hỏi được ngay tại đây.
+/// Ví mặc định là ví đã gắn với hoá đơn (`bill.Idwallet` bắt buộc phía
+/// backend); không còn thì rơi về ví có cờ mặc định, rồi ví đầu danh sách.
+/// "Chọn ví khác" mở danh sách để đổi — người dùng yêu cầu 2026-09-06: bấm
+/// Thanh toán là thấy ngay hoá đơn nào, bao nhiêu, và một nút để trả bằng ví
+/// quen thuộc, thay vì một danh sách ví phải chọn.
 ///
-/// Ngày trả: người dùng hay ghi lại sau (trả hôm qua bằng tiền mặt, hôm nay
-/// mới mở app). Không hỏi thì khoản chi luôn mang ngày mở app và thống kê
-/// theo ngày lệch. Không cho chọn ngày tương lai — repository cũng chặn.
+/// Số tiền hỏi ngay tại đây vì hoá đơn điện nước mỗi kỳ một số khác nhau, mà
+/// đổi qua form Sửa là đổi cho MỌI kỳ sau. Ngày trả hỏi vì người dùng hay ghi
+/// lại sau (trả hôm qua, hôm nay mới mở app); không cho chọn tương lai —
+/// repository cũng chặn.
 class BillPaymentSheet extends StatefulWidget {
+  final Bill bill;
   final List<Wallet> wallets;
 
-  /// Số tiền ghi trên hoá đơn, điền sẵn vào ô.
-  final double initialAmount;
+  /// Tên danh mục của hoá đơn để hiện trong khối thông tin; `null` = không có.
+  final String? categoryName;
 
-  /// Ví đã lưu sẵn trên hoá đơn. Được đưa lên đầu và đánh dấu.
-  ///
-  /// Vì sao: hoá đơn **bắt buộc** có ví (`bill.Idwallet` NOT NULL phía
-  /// backend) nhưng luồng trả trước đây bày ra một danh sách không gợi ý gì,
-  /// nên mỗi lần trả người dùng phải nhớ lại mình đã chọn ví nào lúc tạo.
-  final String? preferredWalletId;
-
-  /// Gọi khi người dùng chọn ví: ví đã chọn, số tiền đã nhập, ngày trả (chỉ
-  /// phần ngày, không giờ) và ghi chú riêng của lần trả (`null` nếu để trống).
+  /// Gọi khi bấm nút thanh toán: ví đã chọn, số tiền đã nhập, ngày trả (chỉ
+  /// phần ngày) và ghi chú riêng của lần trả (`null` nếu để trống).
   final void Function(Wallet wallet, double amount, DateTime date, String? note)
       onConfirmed;
 
@@ -36,10 +36,10 @@ class BillPaymentSheet extends StatefulWidget {
 
   const BillPaymentSheet({
     super.key,
+    required this.bill,
     required this.wallets,
-    required this.initialAmount,
     required this.onConfirmed,
-    this.preferredWalletId,
+    this.categoryName,
     this.today,
   });
 
@@ -52,9 +52,12 @@ class _BillPaymentSheetState extends State<BillPaymentSheet> {
   final _ghiChu = TextEditingController();
   late DateTime _homNay;
   late DateTime _ngay;
+  Wallet? _vi;
+  bool _dangChonVi = false;
   String? _loi;
 
   static final _dinhDangNgay = DateFormat('dd/MM/yyyy');
+  static final _tien = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
 
   @override
   void initState() {
@@ -62,10 +65,31 @@ class _BillPaymentSheetState extends State<BillPaymentSheet> {
     // Số thô, không dấu chấm — để `CurrencyFormatter.parse` đọc như khi người
     // dùng tự gõ. Cùng quy ước với nút "Dùng số này" của form ngân sách.
     _soTien =
-        TextEditingController(text: widget.initialAmount.round().toString());
+        TextEditingController(text: widget.bill.amount.round().toString());
     final t = widget.today ?? DateTime.now();
     _homNay = DateTime(t.year, t.month, t.day);
     _ngay = _homNay;
+    _vi = _viMacDinh();
+  }
+
+  @override
+  void dispose() {
+    _soTien.dispose();
+    _ghiChu.dispose();
+    super.dispose();
+  }
+
+  /// Ví của hoá đơn → ví có cờ mặc định → ví đầu danh sách → không có.
+  Wallet? _viMacDinh() {
+    final ws = widget.wallets;
+    if (ws.isEmpty) return null;
+    for (final w in ws) {
+      if (w.id == widget.bill.walletId) return w;
+    }
+    for (final w in ws) {
+      if (w.isDefault) return w;
+    }
+    return ws.first;
   }
 
   Future<void> _chonNgay() async {
@@ -80,24 +104,9 @@ class _BillPaymentSheetState extends State<BillPaymentSheet> {
     setState(() => _ngay = DateTime(picked.year, picked.month, picked.day));
   }
 
-  @override
-  void dispose() {
-    _soTien.dispose();
-    _ghiChu.dispose();
-    super.dispose();
-  }
-
-  /// Ví của hoá đơn lên đầu, thứ tự còn lại giữ nguyên.
-  List<Wallet> get _xepLai {
-    final uu = widget.wallets.where((w) => w.id == widget.preferredWalletId);
-    if (uu.isEmpty) return widget.wallets;
-    return [
-      ...uu,
-      ...widget.wallets.where((w) => w.id != widget.preferredWalletId),
-    ];
-  }
-
-  void _chon(Wallet wallet) {
+  void _xacNhan() {
+    final vi = _vi;
+    if (vi == null) return;
     final soTien = CurrencyFormatter.parse(_soTien.text);
     if (soTien == null || soTien <= 0) {
       // Không đóng bảng: đóng rồi báo lỗi thì người dùng mất luôn số vừa gõ.
@@ -106,18 +115,19 @@ class _BillPaymentSheetState extends State<BillPaymentSheet> {
     }
     Navigator.pop(context);
     final ghiChu = _ghiChu.text.trim();
-    widget.onConfirmed(wallet, soTien, _ngay, ghiChu.isEmpty ? null : ghiChu);
+    widget.onConfirmed(vi, soTien, _ngay, ghiChu.isEmpty ? null : ghiChu);
   }
 
   @override
   Widget build(BuildContext context) {
-    final danhSach = _xepLai;
+    final b = widget.bill;
+    final vi = _vi;
 
     return Container(
       padding: EdgeInsets.only(
         left: 20,
         right: 20,
-        top: 20,
+        top: 16,
         // Bàn phím số đẩy ô nhập lên, không che nó.
         bottom: 20 + MediaQuery.of(context).viewInsets.bottom,
       ),
@@ -125,152 +135,245 @@ class _BillPaymentSheetState extends State<BillPaymentSheet> {
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Thanh toán hoá đơn',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppColors.primary,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Thanh toán hoá đơn',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.primary,
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Số tiền kỳ này',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textSecondary,
+            const SizedBox(height: 12),
+            _khoiThongTin(b),
+            const SizedBox(height: 16),
+            _nhan('Số tiền kỳ này'),
+            TextField(
+              key: const ValueKey('bill-pay-amount'),
+              controller: _soTien,
+              keyboardType: TextInputType.number,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              decoration: InputDecoration(
+                isDense: true,
+                suffixText: 'đ',
+                errorText: _loi,
+                border: const OutlineInputBorder(),
+              ),
+              onChanged: (_) {
+                if (_loi != null) setState(() => _loi = null);
+              },
             ),
-          ),
-          const SizedBox(height: 6),
-          TextField(
-            key: const ValueKey('bill-pay-amount'),
-            controller: _soTien,
-            keyboardType: TextInputType.number,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-            decoration: InputDecoration(
-              isDense: true,
-              suffixText: 'đ',
-              errorText: _loi,
-              border: const OutlineInputBorder(),
+            const SizedBox(height: 16),
+            _nhan('Ngày trả'),
+            InkWell(
+              key: const ValueKey('bill-pay-date'),
+              onTap: _chonNgay,
+              borderRadius: BorderRadius.circular(4),
+              child: InputDecorator(
+                decoration: const InputDecoration(
+                  isDense: true,
+                  border: OutlineInputBorder(),
+                  suffixIcon: Icon(Icons.calendar_today_outlined, size: 18),
+                ),
+                child: Text(
+                  _dinhDangNgay.format(_ngay),
+                  style: const TextStyle(fontSize: 15),
+                ),
+              ),
             ),
-            onChanged: (_) {
-              if (_loi != null) setState(() => _loi = null);
-            },
-          ),
-          const SizedBox(height: 20),
-          const Text(
-            'Ngày trả',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 6),
-          InkWell(
-            key: const ValueKey('bill-pay-date'),
-            onTap: _chonNgay,
-            borderRadius: BorderRadius.circular(4),
-            child: InputDecorator(
+            const SizedBox(height: 16),
+            _nhan('Ghi chú lần trả này (không bắt buộc)'),
+            TextField(
+              key: const ValueKey('bill-pay-note'),
+              controller: _ghiChu,
+              textInputAction: TextInputAction.done,
+              style: const TextStyle(fontSize: 15),
               decoration: const InputDecoration(
                 isDense: true,
+                hintText: 'Số công tơ, mã giao dịch…',
                 border: OutlineInputBorder(),
-                suffixIcon: Icon(Icons.calendar_today_outlined, size: 18),
-              ),
-              child: Text(
-                _dinhDangNgay.format(_ngay),
-                style: const TextStyle(fontSize: 15),
               ),
             ),
-          ),
-          const SizedBox(height: 20),
-          const Text(
-            'Ghi chú lần trả này (không bắt buộc)',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 6),
-          TextField(
-            key: const ValueKey('bill-pay-note'),
-            controller: _ghiChu,
-            textInputAction: TextInputAction.done,
-            style: const TextStyle(fontSize: 15),
-            decoration: const InputDecoration(
-              isDense: true,
-              hintText: 'Số công tơ, mã giao dịch…',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 20),
-          const Text(
-            'Chọn ví để trừ tiền',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 4),
-          if (danhSach.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 20),
-              child: Text('Không tìm thấy ví nào khả dụng.'),
-            )
-          else
-            Flexible(
-              child: ListView.separated(
-                shrinkWrap: true,
-                itemCount: danhSach.length,
-                separatorBuilder: (_, __) => const Divider(height: 1),
-                itemBuilder: (context, index) {
-                  final wallet = danhSach[index];
-                  final laViCuaHoaDon = wallet.id == widget.preferredWalletId;
-                  return ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: CircleAvatar(
-                      backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                      child: const Icon(Icons.account_balance_wallet,
-                          color: AppColors.primary),
-                    ),
-                    title: Text(
-                      wallet.name,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    subtitle: Text(
-                      'Số dư: ${CurrencyFormatter.format(wallet.balance)}',
-                      style: const TextStyle(color: AppColors.textSecondary),
-                    ),
-                    trailing: laViCuaHoaDon
-                        ? Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Text(
-                              'Ví của hoá đơn',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          )
-                        : null,
-                    onTap: () => _chon(wallet),
-                  );
-                },
+            const SizedBox(height: 16),
+            _nhan('Trả bằng ví'),
+            if (vi == null)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Text('Không tìm thấy ví nào khả dụng.'),
+              )
+            else ...[
+              _dongVi(vi),
+              if (_dangChonVi) _danhSachVi(),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                key: const ValueKey('bill-pay-confirm'),
+                onPressed: _xacNhan,
+                icon: const Icon(Icons.payments_outlined, size: 18),
+                label: Text(
+                  'Thanh toán bằng ${vi.name}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(48),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                ),
               ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _nhan(String t) => Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Text(
+          t,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textSecondary,
+          ),
+        ),
+      );
+
+  /// Hoá đơn nào, hạn nào, chu kỳ gì, danh mục gì — để người dùng thấy ngay
+  /// mình đang trả cái gì mà không phải nhớ từ danh sách.
+  Widget _khoiThongTin(Bill b) {
+    final phu = [
+      'Hạn ${_dinhDangNgay.format(b.dueDate)}',
+      if (b.isRecurrence) tenChuKyHoaDon(b.timeRecurrence),
+      if (widget.categoryName != null) widget.categoryName!,
+    ].join(' • ');
+    return Container(
+      key: const ValueKey('bill-pay-info'),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: AppColors.primary.withValues(alpha: 0.08),
+            child: const Icon(Icons.receipt_long_outlined,
+                color: AppColors.primary, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  b.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  phu,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontSize: 12, color: AppColors.textSecondary),
+                ),
+              ],
             ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            _tien.format(b.amount),
+            style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primary),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _dongVi(Wallet vi) {
+    final laViCuaHoaDon = vi.id == widget.bill.walletId;
+    return Row(
+      children: [
+        CircleAvatar(
+          radius: 18,
+          backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+          child: const Icon(Icons.account_balance_wallet,
+              color: AppColors.primary, size: 18),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                laViCuaHoaDon ? '${vi.name} (ví của hoá đơn)' : vi.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              Text(
+                'Số dư: ${_tien.format(vi.balance)}',
+                style: const TextStyle(
+                    fontSize: 12, color: AppColors.textSecondary),
+              ),
+            ],
+          ),
+        ),
+        TextButton(
+          key: const ValueKey('bill-pay-other-wallet'),
+          onPressed: () => setState(() => _dangChonVi = !_dangChonVi),
+          child: Text(_dangChonVi ? 'Đóng' : 'Chọn ví khác'),
+        ),
+      ],
+    );
+  }
+
+  Widget _danhSachVi() {
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      decoration: BoxDecoration(
+        border: Border.all(color: AppColors.outlineVariant),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          for (var i = 0; i < widget.wallets.length; i++) ...[
+            if (i > 0) const Divider(height: 1),
+            ListTile(
+              key: ValueKey('bill-pay-wallet-${widget.wallets[i].id}'),
+              dense: true,
+              leading: Icon(
+                widget.wallets[i].id == _vi?.id
+                    ? Icons.radio_button_checked
+                    : Icons.radio_button_unchecked,
+                color: AppColors.primary,
+                size: 20,
+              ),
+              title: Text(widget.wallets[i].name),
+              subtitle:
+                  Text('Số dư: ${_tien.format(widget.wallets[i].balance)}'),
+              onTap: () => setState(() {
+                _vi = widget.wallets[i];
+                _dangChonVi = false;
+              }),
+            ),
+          ],
         ],
       ),
     );

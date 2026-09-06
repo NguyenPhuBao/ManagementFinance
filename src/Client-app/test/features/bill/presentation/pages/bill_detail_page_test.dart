@@ -205,7 +205,7 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('bill-detail-pay')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Tiền mặt').last);
+    await tester.tap(find.byKey(const ValueKey('bill-pay-confirm')));
     await tester.pumpAndSettle();
 
     expect(find.text('ĐÃ THANH TOÁN'), findsOneWidget,

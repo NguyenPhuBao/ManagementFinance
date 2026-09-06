@@ -157,7 +157,8 @@ void main() {
       ),
     ));
     addTearDown(auth.close);
-    final bloc = BillBloc(repository: _FixedBillRepository(bills), now: () => now);
+    final bloc =
+        BillBloc(repository: _FixedBillRepository(bills), now: () => now);
     addTearDown(bloc.close);
 
     await tester.pumpWidget(MultiBlocProvider(
@@ -335,7 +336,8 @@ void main() {
     );
   });
 
-  testWidgets('bảng chọn ví đưa ví của hoá đơn lên đầu và đánh dấu',
+  testWidgets(
+      'bảng thanh toán hiện thông tin hoá đơn và nút trả bằng ví của nó',
       (tester) async {
     await dungTrang(
       tester,
@@ -346,15 +348,16 @@ void main() {
     await tester.tap(find.text('Thanh toán'));
     await tester.pumpAndSettle();
 
+    expect(find.byKey(const ValueKey('bill-pay-info')), findsOneWidget,
+        reason: 'Bấm Thanh toán là thấy ngay đang trả hoá đơn nào.');
     expect(
-      find.text('Ví của hoá đơn'),
+      find.text('Thanh toán bằng Tiền mặt'),
       findsOneWidget,
-      reason: 'Hoá đơn đã lưu ví thanh toán, nhưng luồng trả bắt chọn lại từ '
-          'một danh sách không gợi ý gì.',
+      reason: 'Hoá đơn đã lưu ví thanh toán; nút chính trả bằng ví ấy thay '
+          'vì bày một danh sách phải chọn lại.',
     );
-    final tiles = tester.widgetList<ListTile>(find.byType(ListTile)).toList();
-    expect((tiles.first.title as Text).data, 'Tiền mặt',
-        reason: 'Ví của hoá đơn phải nằm đầu danh sách.');
+    expect(find.byKey(const ValueKey('bill-pay-wallet-w1')), findsNothing,
+        reason: 'Danh sách ví chỉ mở khi bấm "Chọn ví khác".');
   });
 
   testWidgets('bảng thanh toán điền sẵn số tiền của hoá đơn, sửa được',
@@ -368,8 +371,8 @@ void main() {
     await tester.tap(find.text('Thanh toán'));
     await tester.pumpAndSettle();
 
-    final o = tester.widget<TextField>(
-        find.byKey(const ValueKey('bill-pay-amount')));
+    final o =
+        tester.widget<TextField>(find.byKey(const ValueKey('bill-pay-amount')));
     expect(
       o.controller!.text,
       '200000',
