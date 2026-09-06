@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../../../shared/widgets/segmented_choice.dart';
 import '../../data/models/budget_entity.dart';
 import '../../data/models/budget_period.dart';
 import '../widgets/budget_visuals.dart';
@@ -458,52 +459,37 @@ class _BudgetFormState extends State<BudgetForm> {
     );
   }
 
+  /// Thanh chọn phân đoạn dùng chung với hoá đơn và mục tiêu (2026-09-06).
+  /// Trước đó là `Wrap` hai ô mỗi hàng — cùng khái niệm mà khác hình dạng
+  /// với hai form kia. Stitch "Cấu hình Ngân sách" cũng vẽ chu kỳ trên một
+  /// hàng chia đều.
   Widget _recurrencePicker() {
     // `null` ở cuối dãy là "Ngày cụ thể": không theo chu kỳ nào, người dùng tự
     // chọn ngày kết thúc.
     final luaChon = <String?>[...BudgetRecurrence.all, null];
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: luaChon.map((value) {
-        final selected = _timeRecurrence == value;
-        return GestureDetector(
-          onTap: () => setState(() {
-            final truocDoLaNgayCuThe = !_theoChuKy;
-            _timeRecurrence = value;
-            if (value == null) {
-              // Quay lại "Ngày cụ thể": ngày tự chọn được dùng lại nên không
-              // còn gì bị ghi đè.
-              _ngayKetThucBiGhiDe = null;
-            } else if (truocDoLaNgayCuThe && _endDate != null) {
-              _ngayKetThucBiGhiDe = _endDate;
-            }
-            _kiemTraThuTuNgay();
-          }),
-          child: Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: selected ? AppColors.primary : Colors.transparent,
-              border: Border.all(
-                color:
-                    selected ? AppColors.primary : AppColors.outlineVariant,
-                width: 2,
-              ),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              BudgetRecurrence.label(value),
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: selected ? Colors.white : AppColors.textSecondary,
-              ),
-            ),
-          ),
-        );
-      }).toList(),
+    return SegmentedChoice<String?>(
+      keyPrefix: 'budget-cycle',
+      options: [
+        for (final v in luaChon) SegmentedOption(v, BudgetRecurrence.label(v)),
+      ],
+      selected: _timeRecurrence,
+      onChanged: _chonChuKy,
     );
+  }
+
+  void _chonChuKy(String? value) {
+    setState(() {
+      final truocDoLaNgayCuThe = !_theoChuKy;
+      _timeRecurrence = value;
+      if (value == null) {
+        // Quay lại "Ngày cụ thể": ngày tự chọn được dùng lại nên không còn gì
+        // bị ghi đè.
+        _ngayKetThucBiGhiDe = null;
+      } else if (truocDoLaNgayCuThe && _endDate != null) {
+        _ngayKetThucBiGhiDe = _endDate;
+      }
+      _kiemTraThuTuNgay();
+    });
   }
 
   // ── Các ô nhập ──────────────────────────────────────────────────────────────

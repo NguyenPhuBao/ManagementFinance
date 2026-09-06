@@ -8,6 +8,7 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/auth/current_account.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../../../shared/widgets/segmented_choice.dart';
 import '../../domain/bill_draft.dart';
 import '../../domain/bill_schedule.dart';
 import '../bloc/bill_bloc.dart';
@@ -598,15 +599,8 @@ class _BillAddPageState extends State<BillAddPage> {
 
   /// Bốn chu kỳ trên **một hàng ngang**, chia đều bề rộng.
   ///
-  /// Trước đây là `Wrap`, nhưng mỗi ô lại là `Container` có `alignment` mà
-  /// không có kích thước — thứ đó **giãn hết ràng buộc nhận được** — nên `Wrap`
-  /// chỉ nhét được một ô mỗi dòng và bốn lựa chọn xếp thành bốn hàng dọc.
-  ///
-  /// `Row` + `Expanded` chứ không phải `Wrap` với ô co theo nội dung: bốn nhãn
-  /// tiếng Việt cộng khoảng đệm vừa đúng mấp mé bề rộng 411dp, nên co theo nội
-  /// dung là thỉnh thoảng lại rớt xuống hàng hai. Chia đều thì luôn một hàng,
-  /// và đó cũng là hình dạng mà cách tô màu sẵn có đang gợi ra: một **thanh
-  /// chọn phân đoạn**, ô được chọn nền trắng nổi trên nền rãnh xám.
+  /// Từng là `Wrap` và xếp thành bốn hàng dọc — lý do và cách tránh nằm ở
+  /// [SegmentedChoice], nay dùng chung với ngân sách và mục tiêu.
   Widget _buildCycleSelector() {
     const nhan = <String, String>{
       kBillCycleWeek: 'Hàng tuần',
@@ -614,64 +608,13 @@ class _BillAddPageState extends State<BillAddPage> {
       kBillCycleQuarter: 'Hàng quý',
       kBillCycleYear: 'Hàng năm',
     };
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: IntrinsicHeight(
-        child: Row(
-          // `stretch` để bốn ô cao bằng nhau: nhãn dài ngắn khác nhau nên
-          // `FittedBox` co mỗi chữ một tỉ lệ, và nếu để tự do thì bốn viên
-          // thuốc lệch nhau vài pixel.
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (final e in nhan.entries)
-              Expanded(child: _buildCycleOption(e.value, e.key)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCycleOption(String label, String value) {
-    final isSelected = _lich.timeRecurrence == value;
-    return GestureDetector(
-      key: ValueKey('bill-cycle-$value'),
-      onTap: () => _chonChuKy(value),
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(6),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 2,
-                    offset: const Offset(0, 1),
-                  )
-                ]
-              : null,
-        ),
-        alignment: Alignment.center,
-        // Bốn nhãn không dài bằng nhau; co chữ thay vì cắt bằng ellipsis để
-        // không ô nào mất chữ khi cỡ chữ hệ thống lớn.
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-            label,
-            maxLines: 1,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: isSelected ? AppColors.primary : AppColors.onSurfaceVariant,
-            ),
-          ),
-        ),
-      ),
+    return SegmentedChoice<String>(
+      keyPrefix: 'bill-cycle',
+      options: [
+        for (final e in nhan.entries) SegmentedOption(e.key, e.value),
+      ],
+      selected: _lich.timeRecurrence,
+      onChanged: _chonChuKy,
     );
   }
 

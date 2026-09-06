@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../../../shared/widgets/segmented_choice.dart';
 import '../../../wallet/data/models/wallet_entity.dart';
 import '../../../wallet/presentation/bloc/wallet_cubit.dart';
 import '../bloc/goal_cubit.dart';
@@ -1072,61 +1073,25 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                             const SizedBox(height: 16),
                             _buildLabel('CHU KỲ TRÍCH'),
                             const SizedBox(height: 4),
-                            Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                color: AppColors.surfaceContainerLow,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Row(
-                                children: DepositFrequency.values.map((freq) {
-                                  final isSelected = _frequency == freq;
-                                  String label;
-                                  switch (freq) {
-                                    case DepositFrequency.daily:
-                                      label = 'Hàng ngày';
-                                      break;
-                                    case DepositFrequency.weekly:
-                                      label = 'Hàng tuần';
-                                      break;
-                                    case DepositFrequency.monthly:
-                                      label = 'Hàng tháng';
-                                      break;
-                                  }
-                                  return Expanded(
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        setState(() => _frequency = freq);
-                                        _onTargetAmountOrDateChanged();
-                                      },
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(vertical: 8),
-                                        decoration: BoxDecoration(
-                                          color: isSelected ? Colors.white : Colors.transparent,
-                                          borderRadius: BorderRadius.circular(8),
-                                          boxShadow: isSelected
-                                              ? [
-                                                  BoxShadow(
-                                                    color: Colors.black.withValues(alpha: 0.05),
-                                                    blurRadius: 2,
-                                                  )
-                                                ]
-                                              : null,
-                                        ),
-                                        alignment: Alignment.center,
-                                        child: Text(
-                                          label,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                            color: isSelected ? AppColors.income : AppColors.textSecondary,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
+                            // Thanh chọn dùng chung với hoá đơn và ngân sách
+                            // (2026-09-06). Màu thu cho ô chọn theo Stitch
+                            // (`text-secondary`).
+                            SegmentedChoice<DepositFrequency>(
+                              keyPrefix: 'goal-deposit-cycle',
+                              options: const [
+                                SegmentedOption(
+                                    DepositFrequency.daily, 'Hàng ngày'),
+                                SegmentedOption(
+                                    DepositFrequency.weekly, 'Hàng tuần'),
+                                SegmentedOption(
+                                    DepositFrequency.monthly, 'Hàng tháng'),
+                              ],
+                              selected: _frequency,
+                              accent: AppColors.income,
+                              onChanged: (freq) {
+                                setState(() => _frequency = freq);
+                                _onTargetAmountOrDateChanged();
+                              },
                             ),
                             const SizedBox(height: 16),
                             _buildLabel('MỐC TRÍCH'),
@@ -1254,57 +1219,16 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                             const SizedBox(height: 16),
                             _buildLabel('LẶP LẠI MỖI'),
                             const SizedBox(height: 4),
-                            Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                color: AppColors.surfaceContainerLow,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Row(
-                                children: kChuKyLapLai.entries.map((e) {
-                                  final chon = _chuKyLap == e.key;
-                                  return Expanded(
-                                    child: GestureDetector(
-                                      onTap: () =>
-                                          setState(() => _chuKyLap = e.key),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 8),
-                                        decoration: BoxDecoration(
-                                          color: chon
-                                              ? Colors.white
-                                              : Colors.transparent,
-                                          borderRadius:
-                                              BorderRadius.circular(8),
-                                          boxShadow: chon
-                                              ? [
-                                                  BoxShadow(
-                                                    color: Colors.black
-                                                        .withValues(
-                                                            alpha: 0.05),
-                                                    blurRadius: 2,
-                                                  )
-                                                ]
-                                              : null,
-                                        ),
-                                        alignment: Alignment.center,
-                                        child: Text(
-                                          e.value,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: chon
-                                                ? FontWeight.bold
-                                                : FontWeight.normal,
-                                            color: chon
-                                                ? AppColors.income
-                                                : AppColors.textSecondary,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
+                            SegmentedChoice<String>(
+                              keyPrefix: 'goal-repeat-cycle',
+                              options: [
+                                for (final e in kChuKyLapLai.entries)
+                                  SegmentedOption(e.key, e.value),
+                              ],
+                              selected: _chuKyLap,
+                              accent: AppColors.income,
+                              onChanged: (v) =>
+                                  setState(() => _chuKyLap = v),
                             ),
                           ],
                         ],
