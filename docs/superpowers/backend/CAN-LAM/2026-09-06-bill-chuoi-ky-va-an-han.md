@@ -9,6 +9,7 @@
 | **A** (mục 2) | Cột nullable `transaction.Idbill` | 🟡 Mở khoá — client đã làm xong (schema v16), cột đang là **cục bộ** | ⛔ Chưa |
 | **B** (mục 3) | Cột nullable `bill.Previous_bill_id` | 🟡 Mở khoá — cùng đợt với A, hai cột là hai đầu của một sợi dây | ⛔ Chưa |
 | **C** (mục 4) | Tách **kỳ tính tiền** khỏi **hạn trả** (ân hạn) | ⚪ Mở đường — client **chưa làm**, cố ý chờ cột | ⛔ Chưa |
+| **D** (mục 6) | Cột `bill.Auto_pay` + chốt chặn trả hai lần ở `/sync/push` | 🟡 Mở khoá — client đã làm xong (schema v17), cột đang là **cục bộ**; chốt chặn phụ thuộc việc A | ⛔ Chưa |
 
 **A và B nên đi cùng nhau.** Chúng phục vụ đúng một tính năng (hoàn tác thanh
 toán) và cùng là cột nullable, không đụng dữ liệu cũ. Gộp vào đợt migration
@@ -231,7 +232,66 @@ việc phải đi cùng nhau, và cả hai đều nằm ở client; backend ch�
 | A | 1 cột nullable + quan hệ + `mapEntityFields` | Không — mọi hàng cũ để trống |
 | B | 1 cột nullable + quan hệ tự trỏ + `mapEntityFields` | Không — chuỗi bắt đầu từ kỳ mới |
 | C | 1 cột nullable | Không — `NULL` mang đúng nghĩa hành vi hiện tại |
+| D | 1 cột bool mặc định false + một phép kiểm ở `/sync/push` | Không — hàng cũ `false` |
 
-Cả ba đều **không** cần chuyển dữ liệu và **không** đổi hành vi của client
+Cả bốn đều **không** cần chuyển dữ liệu và **không** đổi hành vi của client
 đang chạy. Client chỉ bắt đầu gửi các trường mới sau khi backend xong, và cập
 nhật `sync_payload_contract_test.dart` cùng lúc.
+
+---
+
+## 6. Việc D: cột `bill.Auto_pay` và chốt chặn trả hai lần
+
+### 6.1. Client đã làm gì (2026-09-06, schema v17)
+
+Người dùng bật "Tự động thanh toán" trên một hoá đơn thì khi mở app vào ngày
+đến hạn, app trả hoá đơn ấy từ chính ví thanh toán của nó — đi qua đúng đường
+`payBill` của thao tác trả tay, nên sinh một `transaction` loại chi và một kỳ
+kế tiếp như thường. Cấu hình lưu ở cột **cục bộ** `bills.auto_pay_enabled`
+(bool, mặc định false); kỳ kế tiếp kế thừa cờ.
+
+Thiết kế đầy đủ: `docs/superpowers/specs/2026-09-06-bill-auto-pay-design.md`.
+
+### 6.2. Vì sao cần backend
+
+Hai chuyện, một nhỏ một lớn:
+
+1. **Cấu hình không theo người dùng sang máy khác.** Cài lại app là mất cờ.
+   Nhỏ, và giống ba cột trích tự động của mục tiêu.
+2. ⚠️ **Hai máy cùng bật, cùng offline, cùng mở app vào ngày đến hạn thì mỗi
+   máy trả một lần**: hai `transaction`, hai lần trừ ví, hai kỳ kế tiếp. Cờ
+   đã trả (`Pay_status`) đồng bộ theo LWW nên không chặn được — máy nào đẩy
+   sau thắng, nhưng khoản chi của cả hai đều đã được đẩy lên. Client chỉ có
+   thể nhắc "chỉ nên bật trên một thiết bị" (đã ghi ngay dưới công tắc).
+
+Điểm 2 chỉ đóng được ở server, vì server là nơi duy nhất nhìn thấy cả hai máy.
+
+### 6.3. Đề xuất
+
+```prisma
+model bill {
+  // ...
+  auto_pay  Boolean  @default(false) @map("Auto_pay")
+}
+```
+
+- Thêm `auto_pay` vào `mapEntityFields` của `bill` ở cả hai chiều và vào bộ
+  trường `/sync/push` chấp nhận. Khi có, client gửi nó lên và cấu hình theo
+  người dùng sang máy khác — nhưng **client sẽ vẫn chỉ tự trả khi người dùng
+  bật lại trên máy ấy** (cột kéo về được đọc để hiển thị, không để chạy), trừ
+  khi có chốt chặn dưới đây.
+- **Chốt chặn** (phụ thuộc việc A, cột `transaction.Idbill`): ở `/sync/push`,
+  một `transaction` mang `Idbill` trỏ tới hoá đơn **đã có** một `transaction`
+  khác cùng `Idbill` chưa xoá mềm thì **từ chối** với mã lỗi riêng (đề xuất
+  `BILL_ALREADY_PAID`). Client nhận mã ấy sẽ hoàn tác khoản trả cục bộ
+  (`undoPayment` đã có) thay vì thử lại vô hạn.
+
+  Không dùng unique index cho việc này: hoàn tác rồi trả lại là hợp lệ và
+  sinh hai hàng cùng `Idbill`, một đã xoá mềm. Kiểm ở tầng ứng dụng với điều
+  kiện `Deleted_at IS NULL` mới đúng nghĩa.
+
+### 6.4. Cách kiểm chứng
+
+Hai client cùng tài khoản, cùng hoá đơn bật tự trả, cùng offline qua ngày đến
+hạn, rồi lần lượt online. **Mong đợi:** một khoản chi trên server, máy đẩy sau
+nhận `BILL_ALREADY_PAID` và tự hoàn tác. **Hiện tại:** hai khoản chi.

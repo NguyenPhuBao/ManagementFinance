@@ -24,7 +24,7 @@
 | Đụng vào thông báo | `docs/NOTIFICATION_FEATURE.md` — **trạng thái bàn giao, phần việc còn lại, và bảy cái bẫy**. Mục 7 phải đọc trước khi đụng vào phần hệ điều hành. Bảng thông báo **cục bộ**, không nằm trong `SyncEntityType` |
 | Đụng vào danh mục | `docs/CATEGORY_RATIONALE.md` — **lý do** của từng thay đổi, bằng chứng đo được, và các phương án đã loại bỏ. Đọc trước khi định "dọn dẹp" vùng này |
 | Đụng vào mục tiêu tiết kiệm | `docs/GOAL_FEATURE.md` — **quyết định kèm lý do, và bảy cái bẫy**. Mục 4 phải đọc trước khi sửa gì. Ba cái đáng nhớ nhất: `walletTransfer` **không có khoá ngoại**; suy chiều nạp/rút từ vị trí ví là **diễn giải lại lịch sử**; và `_collectPendingOps` dựng payload **thô** — phép quy đổi `chi → Transaction` chạy ở bước POST, đọc dừng ở đó là kết luận nhầm |
-| Đụng vào **trích tiền tự động** | Mục **3.12 và 3.13** `docs/GOAL_FEATURE.md` trước đã. Đây là chỗ **duy nhất** trong app tự chuyển tiền khi người dùng vắng mặt, nên phần lớn thiết kế là về việc *dừng đúng lúc*. Ba thứ dễ hỏng nhất: mốc chạy chỉ đặt **khi bật công tắc** (không phải ngày tạo mục tiêu); ví thiếu tiền thì **giữ nguyên mốc** để kỳ ấy tự thử lại; và `null` mang **hai nghĩa khác nhau** trong `updateGoal` — `cycleTakeMoney` là *xoá*, `icon`/`colour` là *giữ nguyên*. Lịch nhắc đi chung bộ đặt lịch với hoá đơn, **bắt buộc** — xem `NOTIFICATION_FEATURE.md` |
+| Đụng vào **trích tiền tự động** hoặc **tự động thanh toán hoá đơn** | Mục **3.12 và 3.13** `docs/GOAL_FEATURE.md` trước đã; hoá đơn thì mục **6.5** `docs/bill/BILL_DOCUMENTATION.md` và spec `docs/superpowers/specs/2026-09-06-bill-auto-pay-design.md`. Đây là **hai** chỗ trong app tự chuyển tiền khi người dùng vắng mặt, nên phần lớn thiết kế là về việc *dừng đúng lúc*. Hoá đơn khác mục tiêu ở chỗ **không có "lần chạy cuối"**: mỗi kỳ là một hàng, cờ đã trả là chốt chống trả hai lần; bộ chạy đi qua `payBill` với `occurredAt = dueDate`, trả bù trần 3 kỳ, và cột `autoPayEnabled` là **cục bộ** (hai máy cùng bật là hai khoản chi — chờ việc D backend). Ba thứ dễ hỏng nhất: mốc chạy chỉ đặt **khi bật công tắc** (không phải ngày tạo mục tiêu); ví thiếu tiền thì **giữ nguyên mốc** để kỳ ấy tự thử lại; và `null` mang **hai nghĩa khác nhau** trong `updateGoal` — `cycleTakeMoney` là *xoá*, `icon`/`colour` là *giữ nguyên*. Lịch nhắc đi chung bộ đặt lịch với hoá đơn, **bắt buộc** — xem `NOTIFICATION_FEATURE.md` |
 
 > ⚠️ **Tài liệu là ảnh chụp, không phải nguồn sự thật.** Luôn đối chiếu với mã nguồn thật trước khi kết luận. Phiên 2026-09-02 có nhiều kết luận sai vì tin vào tài liệu/trí nhớ thay vì mở file ra đọc.
 
@@ -68,7 +68,7 @@
 ## Lệnh hay dùng
 
 ```bash
-# Test (chạy từ src/Client-app) — hiện 1126/1126 pass, ~70 giây
+# Test (chạy từ src/Client-app) — hiện 1186/1186 pass, ~60 giây
 flutter test
 flutter analyze          # mức nền: 25 issue, KHÔNG có error
 
