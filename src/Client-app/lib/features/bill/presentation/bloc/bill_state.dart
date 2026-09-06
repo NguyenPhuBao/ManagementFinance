@@ -1,4 +1,5 @@
 import '../../../../core/database/app_database.dart';
+import '../../domain/bill_status.dart';
 
 abstract class BillState {}
 
@@ -8,14 +9,18 @@ class BillLoading extends BillState {}
 
 class BillLoaded extends BillState {
   final List<Bill> bills;
-  final double totalUnpaidAmount;
-  final int unpaidCount;
+
+  /// Số liệu của **kỳ này** cho thẻ tổng đầu trang — xem [summarizeBills].
+  final BillSummary summary;
 
   BillLoaded({
     required this.bills,
-    required this.totalUnpaidAmount,
-    required this.unpaidCount,
+    required this.summary,
   });
+
+  /// Giữ tên cũ để nơi gọi không phải đổi: nay chỉ là lối tắt vào [summary].
+  double get totalUnpaidAmount => summary.unpaidAmount;
+  int get unpaidCount => summary.unpaidCount;
 }
 
 class BillOperationSuccess extends BillState {

@@ -1,15 +1,20 @@
-import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/database/app_database.dart';
 import '../../data/repositories/bill_repository.dart';
+import '../../domain/bill_status.dart';
 import 'bill_event.dart';
 import 'bill_state.dart';
 
 class BillBloc extends Bloc<BillEvent, BillState> {
   final BillRepository repository;
-  StreamSubscription? _subscription;
 
-  BillBloc({required this.repository}) : super(BillInitial()) {
+  /// Đồng hồ cho phép tiêm — thẻ tổng chỉ tính hoá đơn tới hết tháng này, nên
+  /// test không được phụ thuộc ngày chạy.
+  final DateTime Function() now;
+
+  BillBloc({required this.repository, DateTime Function()? now})
+      : now = now ?? DateTime.now,
+        super(BillInitial()) {
     on<LoadBillsEvent>(_onLoadBills);
     on<AddBillEvent>(_onAddBill);
     on<EditBillEvent>(_onEditBill);
@@ -24,18 +29,13 @@ class BillBloc extends Bloc<BillEvent, BillState> {
     emit(BillLoading());
     await emit.forEach<List<Bill>>(
       repository.watchBills(event.idaccount),
-      onData: (bills) {
-        final unpaidBills = bills.where((b) => b.isPaid != true);
-        final totalUnpaid = unpaidBills.fold(
-          0.0,
-          (sum, b) => sum + b.amount,
-        );
-        return BillLoaded(
-          bills: bills,
-          totalUnpaidAmount: totalUnpaid,
-          unpaidCount: unpaidBills.length,
-        );
-      },
+      onData: (bills) => BillLoaded(
+        bills: bills,
+        // Trước đây cộng dồn `isPaid != true` trên TOÀN BỘ danh sách: bỏ sót
+        // cột `payStatus` (hàng cũ mang 'Payed' với `isPaid` false vẫn bị tính
+        // là nợ) và gộp cả kỳ của những tháng sau vào "tiền cần thanh toán".
+        summary: summarizeBills(bills, now()),
+      ),
       onError: (error, stackTrace) => BillError('Không thể tải hóa đơn: $error'),
     );
   }
@@ -96,9 +96,4 @@ class BillBloc extends Bloc<BillEvent, BillState> {
     }
   }
 
-  @override
-  Future<void> close() {
-    _subscription?.cancel();
-    return super.close();
-  }
 }

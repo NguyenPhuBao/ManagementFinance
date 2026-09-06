@@ -10,10 +10,49 @@ import '../widgets/bill_status_header.dart';
 import '../bloc/bill_bloc.dart';
 import '../bloc/bill_event.dart';
 import '../bloc/bill_state.dart';
+import '../../domain/bill_status.dart';
 import '../widgets/wallet_selection_bottom_sheet.dart';
 
+/// Nhãn của từng trạng thái. Bản dựng hình Stitch chỉ có ba; nhãn "QUÁ HẠN" là
+/// thứ tư, để nói đúng `payStatus = 'Overdue'` mà trước đây không nơi nào đọc.
+String _nhanTrangThai(BillDisplayStatus s) => switch (s) {
+      BillDisplayStatus.paid => 'ĐÃ THANH TOÁN',
+      BillDisplayStatus.overdue => 'QUÁ HẠN',
+      BillDisplayStatus.dueSoon => 'SẮP ĐẾN HẠN',
+      BillDisplayStatus.pending => 'CHƯA THANH TOÁN',
+    };
+
+Color _mauChu(BillDisplayStatus s) => switch (s) {
+      BillDisplayStatus.paid => const Color(0xFF217128),
+      BillDisplayStatus.overdue => const Color(0xFF93000A),
+      BillDisplayStatus.dueSoon => const Color(0xFF8A5000),
+      BillDisplayStatus.pending => AppColors.textSecondary,
+    };
+
+Color _mauNen(BillDisplayStatus s) => switch (s) {
+      BillDisplayStatus.paid => const Color(0xFFA0F399),
+      BillDisplayStatus.overdue => const Color(0xFFFFDAD6),
+      BillDisplayStatus.dueSoon => const Color(0xFFFFE0B2),
+      BillDisplayStatus.pending => AppColors.surfaceContainerHigh,
+    };
+
+/// Vạch màu bên trái thẻ.
+///
+/// Nhánh quá hạn từng dùng `AppColors.income` — đúng màu xanh lá của khoản
+/// THU — cho một hoá đơn đã trễ hạn.
+Color _mauVach(BillDisplayStatus s) => switch (s) {
+      BillDisplayStatus.paid => AppColors.outlineVariant,
+      BillDisplayStatus.overdue => AppColors.error,
+      BillDisplayStatus.dueSoon => const Color(0xFFE8A33D),
+      BillDisplayStatus.pending => AppColors.primary,
+    };
+
 class BillPage extends StatefulWidget {
-  const BillPage({super.key});
+  /// Thời điểm dùng để xếp trạng thái từng hoá đơn. Tiêm được để test không
+  /// phụ thuộc ngày chạy — cùng lối với `BudgetTabsView`.
+  final DateTime? now;
+
+  const BillPage({super.key, this.now});
 
   @override
   State<BillPage> createState() => _BillPageState();
@@ -96,6 +135,7 @@ class _BillPageState extends State<BillPage> {
   Widget build(BuildContext context) {
     final currencyFormatter = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
     final dateFormatter = DateFormat('dd/MM/yyyy');
+    final now = widget.now ?? DateTime.now();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -148,8 +188,10 @@ class _BillPageState extends State<BillPage> {
                   padding: const EdgeInsets.fromLTRB(16, 24, 16, 100),
                   children: [
                     _buildSummaryCard(
-                      totalAmountStr: currencyFormatter.format(state.totalUnpaidAmount),
-                      unpaidCount: state.unpaidCount,
+                      totalAmountStr:
+                          currencyFormatter.format(state.summary.unpaidAmount),
+                      unpaidCount: state.summary.unpaidCount,
+                      progress: state.summary.progress,
                     ),
                     const SizedBox(height: 16),
                     if (bills.isEmpty)
@@ -164,21 +206,12 @@ class _BillPageState extends State<BillPage> {
                       )
                     else
                       ...bills.map((bill) {
-                        final isPaid = bill.isPaid == true;
-                        final isOverdue = !isPaid && bill.dueDate.isBefore(DateTime.now());
-
-                        String statusText = isPaid
-                            ? 'ĐÃ THANH TOÁN'
-                            : (isOverdue ? 'SẮP ĐẾN HẠN' : 'CHƯA THANH TOÁN');
-                        Color statusColor = isPaid
-                            ? const Color(0xFF217128)
-                            : (isOverdue ? const Color(0xFF93000A) : AppColors.textSecondary);
-                        Color statusBg = isPaid
-                            ? const Color(0xFFA0F399)
-                            : (isOverdue ? const Color(0xFFFFDAD6) : AppColors.surfaceContainerHigh);
-                        Color accentColor = isPaid
-                            ? AppColors.outlineVariant
-                            : (isOverdue ? AppColors.income : AppColors.primary);
+                        // Bốn trạng thái, một định nghĩa duy nhất ở
+                        // `domain/bill_status.dart`. Trước đây trang này tự
+                        // suy ra hai trạng thái ngay trong `build` và gán nhãn
+                        // "SẮP ĐẾN HẠN" cho đúng nhánh ĐÃ QUÁ HẠN.
+                        final status = billDisplayStatusOf(bill, now);
+                        final isPaid = status == BillDisplayStatus.paid;
 
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 16),
@@ -188,10 +221,10 @@ class _BillPageState extends State<BillPage> {
                             title: bill.name,
                             subtitle: 'Hạn ${dateFormatter.format(bill.dueDate)}',
                             amount: currencyFormatter.format(bill.amount),
-                            status: statusText,
-                            statusColor: statusColor,
-                            statusBg: statusBg,
-                            accentColor: accentColor,
+                            status: _nhanTrangThai(status),
+                            statusColor: _mauChu(status),
+                            statusBg: _mauNen(status),
+                            accentColor: _mauVach(status),
                             isPaid: isPaid,
                           ),
                         );
@@ -219,6 +252,7 @@ class _BillPageState extends State<BillPage> {
   Widget _buildSummaryCard({
     required String totalAmountStr,
     required int unpaidCount,
+    required double progress,
   }) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -266,8 +300,11 @@ class _BillPageState extends State<BillPage> {
                   borderRadius: BorderRadius.circular(2),
                 ),
                 child: FractionallySizedBox(
+                  key: const ValueKey('bill-progress'),
                   alignment: Alignment.centerLeft,
-                  widthFactor: unpaidCount > 0 ? 0.66 : 0.0,
+                  // Trước đây là hằng số `0.66`, tức chỉ có hai trạng thái
+                  // 66% hoặc 0%. Nay là tỉ lệ tiền đã trả trong kỳ.
+                  widthFactor: progress,
                   child: Container(
                     decoration: BoxDecoration(
                       color: AppColors.primary,
@@ -317,6 +354,7 @@ class _BillPageState extends State<BillPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Container(
+              key: ValueKey('bill-accent-${bill.id}'),
               width: 4,
               decoration: BoxDecoration(
                 color: accentColor,
@@ -342,12 +380,22 @@ class _BillPageState extends State<BillPage> {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Text(
-                          amount,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: isPaid ? AppColors.textSecondary : AppColors.primary,
+                        // `Flexible` + ellipsis: số tiền lớn (hoặc cỡ chữ hệ
+                        // thống to) đẩy nút "Thanh toán" ra ngoài mép thẻ.
+                        // `BillStatusHeader` đã được vá cùng lỗi này từ trước,
+                        // hàng dưới thì chưa ai để ý.
+                        Flexible(
+                          child: Text(
+                            amount,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: isPaid
+                                  ? AppColors.textSecondary
+                                  : AppColors.primary,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -386,9 +434,12 @@ class _BillPageState extends State<BillPage> {
                                 borderRadius: BorderRadius.circular(8),
                               ),
                             ),
-                            child: const Text(
-                              'Thanh toán',
-                              style: TextStyle(fontWeight: FontWeight.w600),
+                            child: const FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                'Thanh toán',
+                                style: TextStyle(fontWeight: FontWeight.w600),
+                              ),
                             ),
                           ),
                       ],

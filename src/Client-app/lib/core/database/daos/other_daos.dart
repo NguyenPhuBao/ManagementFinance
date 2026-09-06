@@ -190,18 +190,30 @@ class BillDao extends DatabaseAccessor<AppDatabase> with _$BillDaoMixin {
     );
   }
 
-  /// Chuyển hoá đơn đã quá hạn sang `payStatus = 'Overdue'`.
+  /// Đồng bộ cờ quá hạn với mốc thời gian — **cả hai chiều**.
   ///
-  /// Trả về số hàng thật sự đổi. **Có điều kiện `payStatus = 'Pending'`**: quét
-  /// chạy sau MỌI lần đồng bộ, nên ghi lại vô điều kiện là bản ghi luôn ở
+  /// Trả về số hàng thật sự đổi. **Mỗi chiều đều có điều kiện trạng thái**:
+  /// quét chạy sau MỌI lần đồng bộ, nên ghi lại vô điều kiện là bản ghi luôn ở
   /// trạng thái `pending` — đẩy lên rồi lại `pending` — một vòng lặp đẩy vô
   /// tận mà không có lỗi nào báo ra.
   ///
   /// So theo NGÀY: hoá đơn đến hạn đúng hôm nay chưa phải quá hạn, người dùng
   /// vẫn còn cả ngày để trả.
+  ///
+  /// **Chiều ngược lại (`Overdue → Pending`) thêm ngày 2026-09-06.** Trước đó
+  /// cờ chỉ đi một chiều, trong khi form Sửa đổi được ngày bắt đầu và hạn trả
+  /// tính lại theo chu kỳ — đẩy hạn ra tương lai thì cờ ở lại vĩnh viễn.
+  /// `BillDraft.toUpdateCompanion` cố ý không đụng `payStatus` (form không hỏi
+  /// gì về nó) nên đường sửa không tự chữa được. Client không lộ ra vì danh
+  /// sách tính lại từ `dueDate`, nhưng cột này **có đi đồng bộ** — dữ liệu
+  /// thật 06/09 có hai hoá đơn mang `'Overdue'` với hạn ở tương lai.
+  ///
+  /// Hai lệnh không giẫm lên nhau: hàng vừa nhận `'Overdue'` ở lệnh đầu có
+  /// `dueDate < dauNgay` nên không lọt vào bộ lọc của lệnh sau.
   Future<int> markOverdue(int idaccount, DateTime now) async {
     final dauNgay = DateTime(now.year, now.month, now.day);
-    return (update(bills)
+
+    final daQuaHan = await (update(bills)
           ..where((t) =>
               t.idaccount.equals(idaccount) &
               t.deletedAt.isNull() &
@@ -213,6 +225,21 @@ class BillDao extends DatabaseAccessor<AppDatabase> with _$BillDaoMixin {
       syncStatus: const Value('pending'),
       updatedAt: Value(now),
     ));
+
+    final hetQuaHan = await (update(bills)
+          ..where((t) =>
+              t.idaccount.equals(idaccount) &
+              t.deletedAt.isNull() &
+              t.isPaid.equals(false) &
+              t.payStatus.equals('Overdue') &
+              t.dueDate.isBiggerOrEqualValue(dauNgay)))
+        .write(BillsCompanion(
+      payStatus: const Value('Pending'),
+      syncStatus: const Value('pending'),
+      updatedAt: Value(now),
+    ));
+
+    return daQuaHan + hetQuaHan;
   }
 
   Future<void> softDelete(String id) async {
