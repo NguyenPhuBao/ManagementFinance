@@ -45,6 +45,11 @@ class _FixedBillRepository implements BillRepository {
   @override
   Stream<List<Bill>> watchBills(int idaccount) => Stream.value(bills);
 
+  /// Luôn hỏng — để dựng được trạng thái `BillError` mà không cần CSDL.
+  @override
+  Future<void> undoPayment({required String billId}) async =>
+      throw const BillUndoUnavailableException('b');
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -412,6 +417,36 @@ void main() {
     expect(find.textContaining('gỡ kỳ kế tiếp'), findsOneWidget,
         reason: 'Hoàn tác đụng tới ba thứ (ví, khoản chi, kỳ sau) nên phải '
             'nói trước, không im lặng làm.');
+  });
+
+  testWidgets('báo lỗi KHÔNG được làm trắng cả trang', (tester) async {
+    await dungTrang(tester, [
+      _bill(
+          id: 'b',
+          dueDate: DateTime(2026, 9, 4),
+          name: 'Da tra',
+          isPaid: true,
+          payStatus: 'Payed'),
+    ]);
+    await tester.tap(find.text('Đã thanh toán (1)'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('bill-undo-b')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Hoàn tác'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SnackBar), findsOneWidget,
+        reason: 'Lý do phải hiện ra.');
+    expect(
+      find.text('Da tra'),
+      findsOneWidget,
+      reason: '`BillError` và `BillOperationSuccess` là trạng thái THOÁNG QUA. '
+          'Builder chỉ dựng cho `BillLoaded` rồi rơi xuống `SizedBox.shrink()` '
+          'nên mọi thông báo đều xoá trắng danh sách — và không có gì dựng lại '
+          'cho tới khi stream phát trạng thái mới, thứ không xảy ra khi thao '
+          'tác thất bại. Thấy trên máy ảo 2026-09-06.',
+    );
   });
 
   testWidgets('không tràn bố cục ở 411dp', (tester) async {

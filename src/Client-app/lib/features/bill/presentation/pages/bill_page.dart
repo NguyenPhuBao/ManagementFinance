@@ -222,6 +222,14 @@ class _BillPageState extends State<BillPage> {
         ),
       ),
       body: BlocConsumer<BillBloc, BillState>(
+        // `BillOperationSuccess` và `BillError` là trạng thái THOÁNG QUA: chúng
+        // chỉ để bắn snackbar. Dựng lại theo chúng thì builder rơi xuống
+        // `SizedBox.shrink()` ở cuối và **xoá trắng cả trang** — rồi không có
+        // gì dựng lại cho tới khi stream phát trạng thái mới, thứ không xảy ra
+        // khi thao tác thất bại. Thấy trên máy ảo 2026-09-06 khi hoàn tác một
+        // khoản trả cũ bị từ chối.
+        buildWhen: (_, state) =>
+            state is! BillOperationSuccess && state is! BillError,
         listener: (context, state) {
           if (state is BillOperationSuccess) {
             ScaffoldMessenger.of(context).showSnackBar(
