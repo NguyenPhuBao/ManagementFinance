@@ -141,4 +141,41 @@ void main() {
           'im lặng mà dự án đã dính nhiều lần.',
     );
   });
+
+  testWidgets('chu kỳ là thanh chọn ngang như form Thêm, không phải dropdown',
+      (tester) async {
+    await dungTrangSua(tester);
+
+    final o = [
+      kBillCycleWeek,
+      kBillCycleMonth,
+      kBillCycleQuarter,
+      kBillCycleYear,
+    ]
+        .map((v) => tester.getRect(find.byKey(ValueKey('bill-cycle-$v'))))
+        .toList();
+
+    expect(o.map((r) => r.top).toSet(), hasLength(1),
+        reason: 'Form Thêm đã đổi sang thanh chọn phân đoạn ngang (06/09) '
+            'còn form Sửa vẫn là `DropdownButtonFormField` — cùng một ô '
+            'chu kỳ mà hai form hai kiểu.');
+    expect(o.last.right, lessThanOrEqualTo(411),
+        reason: 'Không tràn mép ở bề rộng điện thoại thật.');
+    expect(find.byType(DropdownButtonFormField<String>), findsNothing,
+        reason: 'Dropdown chu kỳ cũ phải đi hẳn, không được để hai bộ chọn '
+            'cùng điều khiển một giá trị.');
+  });
+
+  testWidgets('chạm chu kỳ trên form Sửa thì ngày đến hạn tính lại',
+      (tester) async {
+    // Bắt đầu 04/09, chu kỳ tháng ⇒ hạn 04/10. Chọn quý ⇒ 04/12.
+    await dungTrangSua(tester);
+
+    await tester.tap(find.byKey(const ValueKey('bill-cycle-$kBillCycleQuarter')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('04/12/2026'), findsOneWidget,
+        reason: 'Ngày đến hạn luôn suy từ ngày bắt đầu + chu kỳ; đổi chu kỳ '
+            'mà hạn không đổi là lựa chọn chưa ăn vào `BillSchedule`.');
+  });
 }
