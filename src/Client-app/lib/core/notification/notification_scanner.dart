@@ -322,8 +322,10 @@ class NotificationScanner {
       // lần đồng bộ. Bắn theo ứng viên là người dùng nhận lại cùng một thông
       // báo mỗi lần mở app.
       // Công tắc OS là "đừng làm phiền tôi", không phải "đừng ghi lại gì":
-      // hàng đã nằm trong CSDL rồi, chỉ bỏ bước bắn ra ngoài.
-      if (prefs.osBat) await _banRaHeDieuHanh(moi);
+      // hàng đã nằm trong CSDL rồi, chỉ bỏ bước bắn ra ngoài. Giờ im lặng
+      // cũng chặn đúng ở đây, cùng một ngữ nghĩa — người dùng ngủ dậy mở app
+      // vẫn phải thấy đủ những gì đã xảy ra đêm qua.
+      if (prefs.osBat && !prefs.dangImLang(at)) await _banRaHeDieuHanh(moi);
       await _dongBoLich(idaccount);
 
       _ghiNhat(idaccount, moi.length);

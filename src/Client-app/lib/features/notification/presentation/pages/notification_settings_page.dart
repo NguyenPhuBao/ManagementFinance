@@ -37,6 +37,8 @@ class NotificationSettingsPage extends StatefulWidget {
 
   static const Key khoaCongTacOs = Key('notification_settings_os');
 
+  static const Key khoaCongTacImLang = Key('notification_settings_im_lang');
+
   static Key khoaCongTacNhom(NotificationGroup nhom) =>
       Key('notification_settings_${nhom.name}');
 
@@ -177,6 +179,40 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                             giaTri: _prefs.osBat,
                             onChanged: _doiCongTacOs,
                           ),
+                          const Divider(
+                              height: 1, color: AppColors.outlineVariant),
+                          _hangCongTac(
+                            khoa: NotificationSettingsPage.khoaCongTacImLang,
+                            icon: Icons.bedtime_outlined,
+                            nhan: 'Giờ im lặng',
+                            phu: 'Trong khoảng này thông báo vẫn được lưu, '
+                                'chỉ không hiện ra ngoài.',
+                            giaTri: _prefs.imLangBat,
+                            onChanged: (v) =>
+                                _ghi(_prefs.copyWith(imLangBat: v)),
+                          ),
+                          // Hai mốc giờ chỉ hiện khi công tắc bật: chúng không
+                          // có ý nghĩa gì khi tính năng còn tắt, và mời người
+                          // dùng chỉnh một thứ không tác dụng là cách nhanh
+                          // nhất để họ mất tin vào trang cài đặt.
+                          if (_prefs.imLangBat) ...[
+                            const Divider(
+                                height: 1, color: AppColors.outlineVariant),
+                            _hangGioImLang(
+                              nhan: 'Từ',
+                              phut: _prefs.imLangTuPhut,
+                              onChon: (p) =>
+                                  _ghi(_prefs.copyWith(imLangTuPhut: p)),
+                            ),
+                            const Divider(
+                                height: 1, color: AppColors.outlineVariant),
+                            _hangGioImLang(
+                              nhan: 'Đến',
+                              phut: _prefs.imLangDenPhut,
+                              onChon: (p) =>
+                                  _ghi(_prefs.copyWith(imLangDenPhut: p)),
+                            ),
+                          ],
                         ],
                       ),
                       const SizedBox(height: 24),
@@ -307,6 +343,36 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     return InkWell(
       onTap: onTap,
       child: _khung(icon: icon, nhan: nhan, phu: phu, trailing: trailing),
+    );
+  }
+
+  /// Một mốc của khoảng im lặng. Lưu bằng **số phút từ nửa đêm**, nên phải quy
+  /// đổi cả hai chiều ngay tại đây — chỗ duy nhất biết cả hai đơn vị.
+  Widget _hangGioImLang({
+    required String nhan,
+    required int phut,
+    required ValueChanged<int> onChon,
+  }) {
+    final gio = TimeOfDay(hour: phut ~/ 60, minute: phut % 60);
+
+    return _hangBam(
+      icon: Icons.nightlight_outlined,
+      nhan: nhan,
+      phu: nhan == 'Từ' ? 'Bắt đầu im lặng.' : 'Kết thúc im lặng.',
+      trailing: Text(
+        '${gio.hour.toString().padLeft(2, '0')}:'
+        '${gio.minute.toString().padLeft(2, '0')}',
+        style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          color: AppColors.primary,
+        ),
+      ),
+      onTap: () async {
+        final chon = await showTimePicker(context: context, initialTime: gio);
+        if (chon == null) return;
+        onChon(chon.hour * 60 + chon.minute);
+      },
     );
   }
 

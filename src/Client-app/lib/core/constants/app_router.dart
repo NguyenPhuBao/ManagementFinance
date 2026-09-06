@@ -308,7 +308,11 @@ class AppRouter {
           // Notification
           GoRoute(
             path: '/notifications',
-            builder: (_, __) => const NotificationCenterPage(),
+            // Route đọc idaccount rồi truyền xuống; trang không hỏi AuthBloc —
+            // cùng mẫu với NotificationSettingsPage ngay bên dưới.
+            builder: (ctx, __) => NotificationCenterPage(
+              idaccount: currentAccountIdOrNull(ctx),
+            ),
           ),
           // Trang cài đặt tự đọc `idaccount` được truyền vào chứ không hỏi
           // AuthBloc — xem chú thích trong NotificationSettingsPage.

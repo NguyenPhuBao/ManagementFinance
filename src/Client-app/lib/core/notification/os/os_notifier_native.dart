@@ -28,6 +28,18 @@ class LocalOsNotifier implements OsNotifier {
   /// và không hiểu vì sao vẫn kêu.
   static const String kenhNhacId = 'flowmoney_alerts';
 
+  /// Khoá gộp. Mọi thông báo của app vào **cùng một nhóm**: người dùng quan
+  /// tâm tới "FlowMoney có gì mới", không tới việc chuyện đó thuộc hoá đơn hay
+  /// ngân sách. Năm dòng riêng trên màn hình khoá là thứ khiến họ tắt hết.
+  static const String khoaNhom = 'flowmoney_alerts_group';
+
+  /// Id của bản tóm tắt. **Số âm có chủ ý.**
+  ///
+  /// `osScheduledId()` xoá bit dấu nên luôn trả về 0..2^31-1. Chọn một số âm
+  /// là cách DUY NHẤT bảo đảm bản tóm tắt không bao giờ ghi đè một thông báo
+  /// thật — và nếu nó đụng thì hỏng hoàn toàn im lặng.
+  static const int idTomTat = -1;
+
   static const String _kenhNhacTen = 'Nhắc tài chính';
   static const String _kenhNhacMoTa =
       'Nhắc hoá đơn đến hạn, cảnh báo ngân sách và tiến độ mục tiêu.';
@@ -161,8 +173,47 @@ class LocalOsNotifier implements OsNotifier {
           // đáng cắt ngang.
           importance: Importance.high,
           priority: Priority.high,
+          groupKey: khoaNhom,
         ),
-        iOS: DarwinNotificationDetails(),
+        iOS: DarwinNotificationDetails(threadIdentifier: khoaNhom),
+      ),
+    );
+
+    // SAU thông báo thật, không phải trước: mọi phép kiểm và mọi người đọc log
+    // đều mong lời gọi đầu tiên là thông báo mà nơi gọi vừa yêu cầu.
+    await _dangBanTomTat();
+  }
+
+  /// Đăng (hoặc cập nhật) bản tóm tắt của nhóm.
+  ///
+  /// Từ Android 7, đặt `groupKey` mà **không** có bản tóm tắt thì các thông báo
+  /// vẫn nằm rời nhau — công sức gộp coi như không có. Bản tóm tắt dùng id cố
+  /// định nên mỗi lần đăng lại chỉ ghi đè chính nó.
+  ///
+  /// `GroupAlertBehavior.children` để bản tóm tắt **im lặng**: tiếng và rung là
+  /// việc của thông báo thật, còn tóm tắt kêu nữa là mỗi sự kiện kêu hai lần.
+  Future<void> _dangBanTomTat() async {
+    // **Chỉ Android.** iOS gộp theo `threadIdentifier` và không có khái niệm
+    // bản tóm tắt; đăng thêm một cái ở đó là một thông báo TRỐNG nằm trên màn
+    // hình khoá — và nó không bao giờ lộ ra trong một lần kiểm chạy trên
+    // Android.
+    if (defaultTargetPlatform != TargetPlatform.android) return;
+
+    await _plugin.show(
+      id: idTomTat,
+      title: _kenhNhacTen,
+      body: null,
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          kenhNhacId,
+          _kenhNhacTen,
+          channelDescription: _kenhNhacMoTa,
+          importance: Importance.high,
+          priority: Priority.high,
+          groupKey: khoaNhom,
+          setAsGroupSummary: true,
+          groupAlertBehavior: GroupAlertBehavior.children,
+        ),
       ),
     );
   }
@@ -194,8 +245,11 @@ class LocalOsNotifier implements OsNotifier {
           channelDescription: _kenhNhacMoTa,
           importance: Importance.high,
           priority: Priority.high,
+          // Nhắc hoá đơn đặt trước là loại hay dồn lại nhất — bỏ nó ra ngoài
+          // nhóm là bỏ đúng chỗ cần gộp.
+          groupKey: khoaNhom,
         ),
-        iOS: DarwinNotificationDetails(),
+        iOS: DarwinNotificationDetails(threadIdentifier: khoaNhom),
       ),
     );
   }

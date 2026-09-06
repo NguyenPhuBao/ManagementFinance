@@ -255,6 +255,86 @@ void main() {
             'chỗ họ gặp lời giải thích.');
   });
 
+  group('gộp thông báo trên Android', () {
+    Map<String, Object?> androidCua(MethodCall call) =>
+        ((call.arguments as Map)['platformSpecifics'] as Map)
+            .cast<String, Object?>();
+
+    test('mỗi thông báo mang cùng một khoá nhóm', () async {
+      final os = LocalOsNotifier();
+      await os.init();
+      await os.show(id: 1, title: 't', body: 'b');
+
+      final con = androidCua(goiTen('show'));
+      expect(con['groupKey'], LocalOsNotifier.khoaNhom);
+      expect(con['setAsGroupSummary'], isFalse,
+          reason: 'Thông báo thật không được tự nhận là bản tóm tắt, nếu không '
+              'Android coi cả nhóm là tóm tắt và không hiện gì cả.');
+    });
+
+    test('kèm một bản tóm tắt, nếu không Android vẫn hiện từng dòng', () async {
+      final os = LocalOsNotifier();
+      await os.init();
+      await os.show(id: 1, title: 't', body: 'b');
+
+      final show = daGoi.where((c) => c.method == 'show').toList();
+      expect(show, hasLength(2),
+          reason: 'Từ Android 7, đặt groupKey mà KHÔNG có bản tóm tắt thì các '
+              'thông báo vẫn nằm rời — công sức gộp coi như không có. Bản tóm '
+              'tắt phải đi sau thông báo thật để mọi phép kiểm cũ vẫn đọc '
+              'được lời gọi đầu tiên.');
+
+      final tomTat = (show.last.arguments as Map).cast<String, Object?>();
+      expect(tomTat['id'], LocalOsNotifier.idTomTat);
+
+      final a = androidCua(show.last);
+      expect(a['setAsGroupSummary'], isTrue);
+      expect(a['groupKey'], LocalOsNotifier.khoaNhom);
+    });
+
+    test('trên iOS KHÔNG đăng bản tóm tắt', () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      FlutterLocalNotificationsPlatform.instance =
+          IOSFlutterLocalNotificationsPlugin();
+
+      final os = LocalOsNotifier();
+      await os.init();
+      await os.show(id: 1, title: 't', body: 'b');
+
+      expect(daGoi.where((c) => c.method == 'show'), hasLength(1),
+          reason: 'iOS gộp theo `threadIdentifier`, nó không có khái niệm bản '
+              'tóm tắt. Đăng thêm một cái ở đây là một thông báo TRỐNG nằm '
+              'trên màn hình khoá của người dùng iOS, và nó sẽ không bao giờ '
+              'lộ ra trong bất cứ lần kiểm nào chạy trên Android.');
+    });
+
+    test('id của bản tóm tắt là số ÂM nên không thể đụng id thật', () {
+      expect(LocalOsNotifier.idTomTat, lessThan(0),
+          reason: 'osScheduledId luôn trả về 0..2^31-1 (nó xoá bit dấu). Chọn '
+              'một số âm là cách DUY NHẤT bảo đảm bản tóm tắt không bao giờ '
+              'ghi đè một thông báo thật — mà nếu đụng thì hỏng im lặng.');
+    });
+
+    test('lịch đặt trước cũng vào cùng nhóm', () async {
+      tzdata.initializeTimeZones();
+      tz.setLocalLocation(tz.getLocation('Asia/Ho_Chi_Minh'));
+
+      final os = LocalOsNotifier();
+      await os.init();
+      await os.zonedSchedule(
+        id: 2,
+        title: 't',
+        body: 'b',
+        when: DateTime(2026, 9, 20, 8),
+      );
+
+      expect(androidCua(goiTen('zonedSchedule'))['groupKey'],
+          LocalOsNotifier.khoaNhom,
+          reason: 'Nhắc hoá đơn đặt trước là loại thông báo hay dồn lại nhất — '
+              'bỏ nó ra ngoài nhóm là bỏ đúng chỗ cần gộp.');
+    });
+  });
+
   group('cú chạm vào thông báo', () {
     test('phát payload ra stream khi app đang sống', () async {
       final os = LocalOsNotifier();

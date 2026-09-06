@@ -102,6 +102,34 @@ void main() {
       }
     });
 
+    testWidgets('giờ im lặng tắt sẵn và chưa hiện hai mốc giờ', (tester) async {
+      await moTrang(tester);
+
+      final congTac = tester.widget<Switch>(
+          find.byKey(NotificationSettingsPage.khoaCongTacImLang));
+      expect(congTac.value, isFalse,
+          reason: 'Bật sẵn là lặng lẽ đổi hành vi của mọi bản đã cài — cảnh '
+              'báo lúc 23h thôi hiện ra ngoài mà không ai báo.');
+      expect(find.text('Từ'), findsNothing,
+          reason: 'Hai mốc giờ không có ý nghĩa gì khi công tắc còn tắt; hiện '
+              'chúng ra là mời người dùng chỉnh một thứ không có tác dụng.');
+    });
+
+    testWidgets('bật giờ im lặng thì hiện hai mốc và ghi ngay', (tester) async {
+      await moTrang(tester);
+
+      await tester
+          .ensureVisible(find.byKey(NotificationSettingsPage.khoaCongTacImLang));
+      await tester.tap(find.byKey(NotificationSettingsPage.khoaCongTacImLang));
+      await tester.pumpAndSettle();
+
+      expect((await store.read(accountId)).imLangBat, isTrue,
+          reason: 'Trang này không có nút Lưu; mỗi thay đổi phải xuống kho '
+              'ngay.');
+      expect(find.text('Từ'), findsOneWidget);
+      expect(find.text('Đến'), findsOneWidget);
+    });
+
     testWidgets('nói rõ báo tự chuyển tiền không tắt được', (tester) async {
       await moTrang(tester);
 

@@ -484,6 +484,48 @@ void main() {
               'vẫn đầy những mục người dùng đã nói là không muốn thấy.');
     });
 
+    test('trong giờ im lặng VẪN ghi vào app, chỉ không bắn ra ngoài', () async {
+      final prefs = InMemoryNotificationPrefsStore();
+      // Đồng hồ của test là 10:00; khoảng 09:00–11:00 phủ đúng mốc ấy.
+      await prefs.write(
+        accountId,
+        const NotificationPrefs(
+          imLangBat: true,
+          imLangTuPhut: 9 * 60,
+          imLangDenPhut: 11 * 60,
+        ),
+      );
+      final os = OsNotifierGia();
+
+      final moi =
+          await dungScanner(osNotifier: os, prefs: prefs).scan(accountId);
+
+      expect(moi, 1);
+      expect(os.daBan, isEmpty,
+          reason: 'Giờ im lặng là "đừng đánh thức tôi", không phải "đừng ghi '
+              'lại gì" — cùng ngữ nghĩa với công tắc tổng. Chặn ở bước SINH là '
+              'người dùng ngủ dậy mở app và không thấy gì đã xảy ra đêm qua.');
+    });
+
+    test('ngoài giờ im lặng thì bắn bình thường', () async {
+      final prefs = InMemoryNotificationPrefsStore();
+      await prefs.write(
+        accountId,
+        const NotificationPrefs(
+          imLangBat: true,
+          imLangTuPhut: 22 * 60,
+          imLangDenPhut: 7 * 60,
+        ),
+      );
+      final os = OsNotifierGia();
+
+      await dungScanner(osNotifier: os, prefs: prefs).scan(accountId);
+
+      expect(os.daBan, hasLength(1),
+          reason: '10:00 nằm ngoài khoảng 22:00–07:00. Phép so vắt qua nửa đêm '
+              'viết sai sẽ làm im lặng cả ngày.');
+    });
+
     test('tắt một nhóm không làm im các nhóm còn lại', () async {
       final prefs = InMemoryNotificationPrefsStore();
       await prefs.write(

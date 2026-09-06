@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/auth/current_account.dart';
 import '../../../../core/database/app_database.dart';
+import '../../../../core/database/daos/notification_dao.dart';
 import '../../../../core/notification/notification_deeplink.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/utils/relative_time.dart';
@@ -13,12 +13,29 @@ import '../../../../shared/theme/app_colors.dart';
 /// Thiết kế Stitch chưa vẽ màn này (chỉ có panel rút gọn trên Home), nên bố cục
 /// bám hệ màu và kiểu thẻ đang dùng thật trong `AppColors`.
 class NotificationCenterPage extends StatelessWidget {
-  const NotificationCenterPage({super.key});
+  const NotificationCenterPage({super.key, this.idaccount, this.dao});
+
+  /// Tài khoản đang đăng nhập, `null` khi chưa có phiên dùng được.
+  ///
+  /// ⚠️ Trang **không tự đi hỏi `AuthBloc`**: nơi gọi (route) đọc
+  /// `currentAccountIdOrNull` rồi truyền vào, đúng mẫu `NotificationSettingsPage`
+  /// và `NotificationPanel`.
+  ///
+  /// Bản đầu viết `idaccount ?? currentAccountIdOrNull(context)` và đó là một
+  /// lỗi thật: `null` khi ấy mang **hai nghĩa** — "chưa đăng nhập" và "chưa
+  /// truyền, đi hỏi AuthBloc" — nên trạng thái chưa đăng nhập không biểu diễn
+  /// được nếu trong cây không có provider, và nó ném `ProviderNotFoundException`
+  /// ngay giữa `build`.
+  final int? idaccount;
+
+  /// Bỏ trống thì lấy từ chỗ dựng phụ thuộc. Ở đây `??` là an toàn: một DAO
+  /// không bao giờ mang nghĩa "cố ý để trống".
+  final NotificationDao? dao;
 
   @override
   Widget build(BuildContext context) {
-    final idaccount = currentAccountIdOrNull(context);
-    final dao = sl<AppDatabase>().notificationDao;
+    final idaccount = this.idaccount;
+    final dao = this.dao ?? sl<AppDatabase>().notificationDao;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -92,13 +109,42 @@ class NotificationCenterPage extends StatelessWidget {
                         context.push(route);
                       }
                     },
-                    onDismiss: () => dao.dismiss(items[i].id),
+                    onDismiss: () => _xoaCoHoanTac(context, dao, items[i]),
                   ),
                 );
               },
             ),
     );
   }
+}
+
+/// Xoá mềm kèm một lối quay lại.
+///
+/// Vuốt xoá là thao tác dễ lỡ tay nhất trên danh sách, và ở đây nó đắt hơn
+/// bình thường: hàng đã xoá **vẫn nằm trong bảng** để chặn trùng, nên lượt quét
+/// sau nhìn thấy `dedupeKey` ấy rồi bỏ qua. Không có nút hoàn tác thì một cú
+/// vuốt nhầm làm thông báo biến mất khỏi giao diện vĩnh viễn.
+Future<void> _xoaCoHoanTac(
+  BuildContext context,
+  NotificationDao dao,
+  AppNotification item,
+) async {
+  final thanh = ScaffoldMessenger.of(context);
+  await dao.dismiss(item.id);
+
+  // Nội dung chung chung và tự ẩn sau vài giây: dải tạm thời là để báo việc
+  // vừa xảy ra, không phải để đọc lại chi tiết.
+  thanh.hideCurrentSnackBar();
+  thanh.showSnackBar(
+    SnackBar(
+      content: const Text('Đã xoá thông báo'),
+      duration: const Duration(seconds: 4),
+      action: SnackBarAction(
+        label: 'Hoàn tác',
+        onPressed: () => dao.khoiPhuc(item.id),
+      ),
+    ),
+  );
 }
 
 class _ThongBaoTile extends StatelessWidget {

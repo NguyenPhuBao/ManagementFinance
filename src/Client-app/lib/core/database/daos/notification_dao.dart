@@ -82,6 +82,16 @@ class NotificationDao extends DatabaseAccessor<AppDatabase>
         .write(AppNotificationsCompanion(dismissedAt: Value(DateTime.now())));
   }
 
+  /// Gỡ cờ xoá mềm — đường quay lại cho một cú vuốt lỡ tay.
+  ///
+  /// Cần thiết vì hàng đã xoá **vẫn nằm trong bảng** để chặn trùng: lượt quét
+  /// sau nhìn thấy `dedupeKey` ấy và bỏ qua, nên nếu không có hàm này thì một
+  /// cú vuốt nhầm làm thông báo biến mất khỏi giao diện **vĩnh viễn**.
+  Future<void> khoiPhuc(String id) async {
+    await (update(appNotifications)..where((t) => t.id.equals(id)))
+        .write(const AppNotificationsCompanion(dismissedAt: Value(null)));
+  }
+
   /// Dọn hàng cũ. Bảng này chỉ lớn lên — hàng đã xoá mềm phải giữ để chặn
   /// trùng — nên không dọn thì sau một năm màn danh sách tải hàng nghìn hàng.
   /// An toàn vì mọi `dedupeKey` đều đã hết hạn từ lâu trước mốc cắt.

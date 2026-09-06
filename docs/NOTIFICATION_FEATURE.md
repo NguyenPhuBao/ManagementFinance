@@ -4,9 +4,10 @@
 > **Trạng thái:** cả bảy lát đã xong, **đã kiểm trên máy ảo Android**, có thêm
 > **dải báo kết nối** (mục 9), **mốc kích hoạt quét đã được sửa lại cho
 > offline-first** (mục 4.5), **cú chạm vào thông báo hệ điều hành nay điều
-> hướng thật** (mục 5b), và **bốn loại báo tiền vừa rời ví nay bỏ qua công tắc
-> nhóm** (mục 3). Đọc ba mục ấy trước nếu định đụng vào vùng này.
-> **Mức nền hiện tại:** `flutter test` **1250/1250 pass**, `flutter analyze`
+> hướng thật** (mục 5b), **bốn loại báo tiền vừa rời ví nay bỏ qua công tắc
+> nhóm** (mục 3), và **giờ im lặng · gộp thông báo · hoàn tác vuốt xoá**
+> (mục 5c). Đọc bốn mục ấy trước nếu định đụng vào vùng này.
+> **Mức nền hiện tại:** `flutter test` **1272/1272 pass**, `flutter analyze`
 > **25 issue, KHÔNG error**, `flutter build web` xanh.
 
 Đọc file này trước khi làm tiếp bất cứ việc gì thuộc thông báo. Mục 6 ghi lại
@@ -307,6 +308,52 @@ từ ngoài cây widget: cú chạm đến từ nền tảng, không kèm `Build
 
 ---
 
+## 5c. Giờ im lặng, gộp thông báo, hoàn tác vuốt xoá (2026-09-06)
+
+**Giờ im lặng** — `NotificationPrefs.dangImLang(luc)`, chặn ngay trước
+`_banRaHeDieuHanh`. Chỉ chặn **bước bắn ra hệ điều hành**; hàng vẫn ghi vào
+trung tâm trong app, đúng ngữ nghĩa công tắc tổng: "đừng đánh thức tôi", không
+phải "đừng ghi lại gì". Người dùng ngủ dậy mở app vẫn thấy đủ những gì đã xảy
+ra đêm qua.
+
+- **Mặc định TẮT.** Bật sẵn là lặng lẽ đổi hành vi của mọi bản đã cài — cùng lý
+  lẽ với việc lưu *nhóm bị tắt* thay vì *nhóm được bật*.
+- Hai mốc lưu bằng **số phút từ nửa đêm**, một trục duy nhất. Khoảng giờ im
+  lặng gần như luôn **vắt qua nửa đêm**, và đó là nơi phép so trần
+  (`tu <= x < den`) trả sai đúng nửa khoảng — có test canh riêng.
+- Hai mốc **trùng nhau** nghĩa là khoảng rỗng, **không phải cả ngày**: người
+  dùng lỡ tay đặt bằng nhau không được mất sạch thông báo.
+- **Lịch đặt trước không đi qua đây.** Giờ nhắc là do người dùng tự chọn và
+  đang nhìn thấy trên màn hình; app không đoán lại hộ họ.
+
+**Gộp thông báo Android** — mọi thông báo mang chung `khoaNhom`, kèm một **bản
+tóm tắt**. Từ Android 7, đặt `groupKey` mà không có bản tóm tắt thì chúng vẫn
+nằm rời và công sức gộp coi như không có.
+
+- Id bản tóm tắt là **số âm** (`-1`). `osScheduledId()` xoá bit dấu nên luôn
+  trả 0..2^31-1; chọn số âm là cách **duy nhất** bảo đảm nó không bao giờ ghi
+  đè một thông báo thật — mà nếu đụng thì hỏng hoàn toàn im lặng.
+- Bản tóm tắt đăng **sau** thông báo thật, để mọi phép kiểm và mọi người đọc
+  log đều thấy lời gọi đầu tiên là thứ nơi gọi vừa yêu cầu.
+- ⚠️ **Chỉ Android.** iOS gộp theo `threadIdentifier` và không có khái niệm bản
+  tóm tắt; đăng thêm ở đó là một thông báo **trống** trên màn hình khoá, và nó
+  không bao giờ lộ ra trong một lần kiểm chạy trên Android. Có test canh.
+
+**Hoàn tác vuốt xoá** — `NotificationDao.khoiPhuc(id)` gỡ `dismissedAt`, kèm
+SnackBar "Đã xoá thông báo · Hoàn tác". Cần thiết vì hàng đã xoá **vẫn nằm
+trong bảng** để chặn trùng: lượt quét sau nhìn thấy `dedupeKey` ấy rồi bỏ qua,
+nên không có hàm này thì một cú vuốt nhầm làm thông báo mất khỏi giao diện
+**vĩnh viễn**.
+
+⚠️ `NotificationCenterPage` nay nhận `idaccount` từ **route**, không tự hỏi
+`AuthBloc` — cùng mẫu `NotificationSettingsPage`. Bản đầu viết
+`idaccount ?? currentAccountIdOrNull(context)` và đó là lỗi thật: `null` khi ấy
+mang **hai nghĩa** ("chưa đăng nhập" và "chưa truyền, đi hỏi AuthBloc"), nên
+trạng thái chưa đăng nhập không biểu diễn được nếu cây không có provider — nó
+ném `ProviderNotFoundException` ngay giữa `build`.
+
+---
+
 ## 6. Từng lát đã làm gì
 
 ### Lát 4 — `OsNotifier` + thông báo hệ điều hành thật ✅ XONG
@@ -602,6 +649,29 @@ Quy tắc rút ra: mọi mốc kích hoạt mới phải trả lời được c�
 máy ở chế độ máy bay không?". Ba mốc hiện tại ở mục 4.5; hai trong ba mốc ấy
 độc lập hoàn toàn với mạng.
 
+**7.10 Widget test của trung tâm thông báo — ba cái bẫy nằm chồng nhau.** Ghi
+lại vì cả ba đều làm test *treo* hoặc đỏ ở một chỗ hoàn toàn khác chỗ hỏng, và
+một buổi đã mất vì chúng.
+
+1. **`tester.pump()` không tham số KHÔNG đẩy đồng hồ** — nó chỉ dựng lại khung
+   hình. Drift đặt `Timer.run` khi `StreamBuilder` huỷ đăng ký
+   (`StreamQueryStore.markAsClosed`), mà Timer chỉ nổ khi có thời gian trôi
+   qua. Thiếu `Duration` là test đỏ với **"Pending timers"**, và từ đó **cả
+   file kẹt**: các test sau chỉ báo "did not complete". Dùng
+   `pump(Duration(milliseconds: 1))` sau khi gỡ cây.
+2. **`pumpAndSettle` không dùng được ở trang này.** Trang hiện
+   `CircularProgressIndicator` khi stream chưa phát, và vòng quay là animation
+   **vô hạn** — `pumpAndSettle` pump tới khi hết hạn 10 phút của chính nó, và
+   `--timeout` của `flutter test` không cắt được.
+3. **SnackBar trượt lên từ dưới đáy.** Màn hình test cao 600px; chạm vào nó
+   giữa chừng hoạt ảnh sẽ rơi **ra ngoài** cây dựng hình, và `tap()` chỉ in một
+   dòng cảnh báo rồi đi tiếp — test đỏ ở phép kiểm phía sau, không ở dòng
+   `tap()`. Cho hoạt ảnh chạy xong trước khi chạm.
+
+⚠️ Và một bài học về cách chạy: **đừng nối `flutter test` qua `| tail`.** Pipe
+gom hết output tới khi tiến trình kết thúc, nên một lượt treo trông y hệt một
+lượt đang chạy. Ghi thẳng ra file rồi đọc file.
+
 ---
 
 ## 8. Kiểm thử
@@ -626,6 +696,7 @@ máy ở chế độ máy bay không?". Ba mốc hiện tại ở mục 4.5; hai
 | `test/core/notification/notification_rules_goal_wallet_test.dart` | Bốn luật của lát 6, trọng tâm là **đơn vị lặp lại trong `dedupeKey`**: chúc mừng một lần trong đời, trễ tiến độ mỗi tháng, ví âm và đồng bộ hỏng mỗi ngày |
 | `test/features/goal/goal_entity_progress_test.dart` | `progress` kẹp [0,1] và không ra `Infinity` khi `targetAmount = 0`; `daysLeft` so theo NGÀY; `isBehindSchedule` có biên dung sai, im lặng khi thiếu `startDate`, không NaN khi kỳ dài 0 ngày |
 | `test/core/notification/notification_deeplink_test.dart` | Route nào kéo theo thanh tab; **không được so khớp bằng `startsWith` trần** (`/budgets` ≠ `/budget`); và phép canh **cả 13 loại**: `deeplinkTuDedupeKey()` phải trả đúng cột `deeplink` mà bộ luật đặt — bản sao duy nhất trong vùng này, tồn tại vì cold start không tra CSDL được |
+| `test/features/notification/notification_center_page_test.dart` | Vuốt xoá là xoá **mềm**; SnackBar có nút Hoàn tác; bấm vào thì hàng quay lại **và danh sách tự vẽ lại** qua `watchFeed`; chưa đăng nhập thì không đọc gì. Đọc bẫy **7.10** trước khi sửa file này |
 | `test/core/notification/notification_tap_router_test.dart` | Cold start điều hướng được; **cùng payload đến bằng cả hai đường chỉ điều hướng một lần**, nhưng lần chạm sau vẫn chạy; chưa đăng nhập thì giữ lại và xả sau `AuthSuccess`, chỉ giữ **cái mới nhất**; `stop()` cắt hẳn |
 | `test/core/network/connection_monitor_test.dart` | **Ngưỡng ổn định**: mất mạng chớp nhoáng và chuỗi nhấp nháy đều không sinh sự kiện; đang online lúc khởi động thì không báo "khôi phục" |
 | `test/core/sync/sync_push_result_test.dart` | `pushResultStream` phát số thao tác đã lên; **không phát khi không có gì để đẩy**; server từ chối thì vẫn phát kèm số thất bại |
