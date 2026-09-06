@@ -297,6 +297,7 @@ class _HistoryCard extends StatelessWidget {
   const _HistoryCard({required this.history, required this.timeRecurrence});
 
   static const double _chartHeight = 120;
+  static const double _maxBarWidth = 64;
 
   @override
   Widget build(BuildContext context) {
@@ -342,12 +343,22 @@ class _HistoryCard extends StatelessWidget {
                     children: [
                       for (var i = 0; i < history.length; i++)
                         Expanded(
-                          child: _HistoryBar(
-                            index: i,
-                            summary: history[i],
-                            heightFactor: history[i].spent / max,
-                            isCurrent: i == history.length - 1,
-                            label: _periodLabel(history[i].from),
+                          // Trần bề rộng: ngân sách mới chỉ có một kỳ, để
+                          // `Expanded` tự do thì cột phình ra cả thẻ và nhìn
+                          // như lỗi vẽ. 64dp ≈ cỡ cột khi đủ sáu kỳ ở 411dp.
+                          child: Align(
+                            alignment: Alignment.bottomCenter,
+                            child: ConstrainedBox(
+                              constraints:
+                                  const BoxConstraints(maxWidth: _maxBarWidth),
+                              child: _HistoryBar(
+                                index: i,
+                                summary: history[i],
+                                heightFactor: history[i].spent / max,
+                                isCurrent: i == history.length - 1,
+                                label: _periodLabel(history[i].from),
+                              ),
+                            ),
                           ),
                         ),
                     ],
