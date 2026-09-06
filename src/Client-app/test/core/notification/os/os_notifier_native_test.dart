@@ -255,6 +255,33 @@ void main() {
             'chỗ họ gặp lời giải thích.');
   });
 
+  group('hỏi quyền mà KHÔNG xin quyền', () {
+    test('daCoQuyen() đọc trạng thái thật của Android', () async {
+      final os = LocalOsNotifier();
+      await os.init();
+
+      expect(await os.daCoQuyen(), isTrue);
+      expect(daGoi.map((c) => c.method), contains('areNotificationsEnabled'),
+          reason: 'Đây là câu hỏi "hệ điều hành có đang cho phép không", khác '
+              'hẳn câu "xin cấp quyền". Trang cài đặt cần hỏi mỗi lần mở để '
+              'công tắc không sáng trong khi thông báo đang bị chặn.');
+      expect(daGoi.map((c) => c.method),
+          isNot(contains('requestNotificationsPermission')),
+          reason: 'Hỏi mà hoá ra lại xin là bật hộp thoại quyền mỗi lần người '
+              'dùng mở trang cài đặt — và trên iOS họ chỉ được hỏi MỘT lần '
+              'trong cả vòng đời cài đặt, tiêu phí nó ở đây là mất vĩnh viễn.');
+    });
+
+    test('nền tảng ném thì trả false chứ không làm chết trang', () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(kenh, (call) async {
+        throw PlatformException(code: 'loi');
+      });
+
+      expect(await LocalOsNotifier().daCoQuyen(), isFalse);
+    });
+  });
+
   group('gộp thông báo trên Android', () {
     Map<String, Object?> androidCua(MethodCall call) =>
         ((call.arguments as Map)['platformSpecifics'] as Map)

@@ -151,6 +151,33 @@ class LocalOsNotifier implements OsNotifier {
   }
 
   @override
+  Future<bool> daCoQuyen() async {
+    try {
+      await init();
+
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        final android = _plugin.resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+        return await android?.areNotificationsEnabled() ?? false;
+      }
+
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        final ios = _plugin.resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin>();
+        // `checkPermissions` KHÔNG bật hộp thoại — khác `requestPermissions`.
+        final tt = await ios?.checkPermissions();
+        return tt?.isEnabled ?? false;
+      }
+
+      return false;
+    } catch (_) {
+      // Trang cài đặt gọi hàm này ngay lúc dựng; một trục trặc của nền tảng
+      // không được phép làm trắng màn hình.
+      return false;
+    }
+  }
+
+  @override
   Future<void> show({
     required int id,
     required String title,

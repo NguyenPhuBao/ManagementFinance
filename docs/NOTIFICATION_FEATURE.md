@@ -7,7 +7,7 @@
 > hướng thật** (mục 5b), **bốn loại báo tiền vừa rời ví nay bỏ qua công tắc
 > nhóm** (mục 3), và **giờ im lặng · gộp thông báo · hoàn tác vuốt xoá**
 > (mục 5c). Đọc bốn mục ấy trước nếu định đụng vào vùng này.
-> **Mức nền hiện tại:** `flutter test` **1272/1272 pass**, `flutter analyze`
+> **Mức nền hiện tại:** `flutter test` **1277/1277 pass**, `flutter analyze`
 > **25 issue, KHÔNG error**, `flutter build web` xanh.
 
 Đọc file này trước khi làm tiếp bất cứ việc gì thuộc thông báo. Mục 6 ghi lại
@@ -496,6 +496,18 @@ thiếu nhóm mới và nó chết ngay từ đầu.
 |---|---|
 | Bốn công tắc **nhóm** | Không **sinh** thông báo nhóm ấy — cả trong app lẫn ra hệ điều hành. Lọc ngay sau bộ luật, trước khi ghi. **Trừ bốn loại `luonBao()`** — xem mục 3. |
 | Công tắc **tổng** cho OS | Vẫn ghi vào trung tâm trong app, chỉ **không bắn** ra ngoài. Đây là "đừng làm phiền tôi", không phải "đừng ghi lại gì". Đây cũng là **lối thoát duy nhất** cho bốn loại `luonBao()`. |
+
+⚠️ **Công tắc tổng hiển thị SỰ THẬT, không phải chỉ ý muốn.** `OsNotifier`
+có `daCoQuyen()` — câu **hỏi**, khác hẳn `requestPermission()` là câu **xin** —
+và trang cài đặt gọi nó mỗi lần mở. Người dùng có thể thu hồi quyền trong Cài
+đặt của máy sau khi đã bật công tắc; để nó sáng khi ấy là nói dối, và họ sẽ
+không bao giờ đi tìm lý do vì sao chẳng nhận được gì. Đã gặp thật trên
+emulator-5554 ngày 2026-09-06: `importance=NONE` mà công tắc vẫn bật.
+
+Giá trị hiển thị là `_prefs.osBat && _coQuyenOs`, nhưng **`osBat` trong kho giữ
+nguyên**: cấp lại quyền trong Cài đặt máy là thông báo chạy lại ngay, không bắt
+người dùng vào gạt lại lần nữa. Tuyệt đối **không xin quyền** lúc mở trang — iOS
+chỉ hỏi một lần trong cả vòng đời cài đặt.
 
 **Bật công tắc tổng là chỗ DUY NHẤT trong app xin quyền thông báo** — mắt xích
 còn thiếu của lát 4. Xin đúng lúc người dùng vừa chủ động bật, không phải lúc

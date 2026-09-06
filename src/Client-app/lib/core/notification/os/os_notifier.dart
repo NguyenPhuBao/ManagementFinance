@@ -31,6 +31,19 @@ abstract class OsNotifier {
   /// mất vĩnh viễn và chỉ bật lại được trong Cài đặt hệ thống.
   Future<bool> requestPermission();
 
+  /// Hệ điều hành có **đang cho phép** hiện thông báo không.
+  ///
+  /// Khác hẳn [requestPermission]: đây là câu **hỏi**, không phải câu **xin**.
+  /// Trang cài đặt cần nó vì quyền có thể bị thu hồi trong Cài đặt của máy sau
+  /// khi người dùng đã bật công tắc — và khi ấy công tắc sáng trong khi thông
+  /// báo bị chặn hoàn toàn, tức là nó nói dối.
+  ///
+  /// Không được xin quyền ở đây: trên iOS người dùng chỉ được hỏi **một lần**
+  /// trong cả vòng đời cài đặt, tiêu phí nó lúc mở trang là mất vĩnh viễn.
+  ///
+  /// **Không bao giờ ném** — trang cài đặt gọi nó ngay lúc dựng.
+  Future<bool> daCoQuyen();
+
   /// Bắn một thông báo **ngay lập tức**.
   ///
   /// [id] phải đến từ `osScheduledId(dedupeKey)` — xem file đó để biết vì sao
@@ -104,6 +117,9 @@ class NoopOsNotifier implements OsNotifier {
 
   @override
   Future<bool> requestPermission() async => false;
+
+  @override
+  Future<bool> daCoQuyen() async => false;
 
   @override
   Future<void> show({

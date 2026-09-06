@@ -24,6 +24,9 @@ class _OsGia implements OsNotifier {
   Future<void> init() async {}
   @override
   Future<bool> requestPermission() async => true;
+
+  @override
+  Future<bool> daCoQuyen() async => true;
   @override
   Future<void> show({
     required int id,

@@ -24,6 +24,11 @@ class _OsGia implements OsNotifier {
   int soLanXinQuyen = 0;
   bool traVe = true;
 
+  /// Hệ điều hành có đang cho phép hay không — tách khỏi [traVe] vì "đang cho
+  /// phép" và "chịu cấp khi được xin" là hai chuyện khác nhau.
+  bool coQuyen = true;
+  int soLanHoiQuyen = 0;
+
   @override
   bool get isSupported => true;
   @override
@@ -32,6 +37,12 @@ class _OsGia implements OsNotifier {
   Future<bool> requestPermission() async {
     soLanXinQuyen++;
     return traVe;
+  }
+
+  @override
+  Future<bool> daCoQuyen() async {
+    soLanHoiQuyen++;
+    return coQuyen;
   }
 
   @override
@@ -100,6 +111,48 @@ void main() {
                 'tắt riêng được nhóm ấy, và lựa chọn duy nhất còn lại là tắt '
                 'hết.');
       }
+    });
+
+    testWidgets('quyền bị thu hồi thì công tắc KHÔNG được sáng', (tester) async {
+      await store.write(accountId, const NotificationPrefs(osBat: true));
+      os.coQuyen = false;
+
+      await moTrang(tester);
+
+      final sw = tester.widget<Switch>(
+          find.byKey(NotificationSettingsPage.khoaCongTacOs));
+      expect(sw.value, isFalse,
+          reason: 'Người dùng có thể thu hồi quyền trong Cài đặt của máy sau '
+              'khi đã bật công tắc. Để nó sáng là nói dối: họ tin mình đang '
+              'nhận thông báo và sẽ không bao giờ đi tìm lý do vì sao chẳng '
+              'thấy gì.');
+      expect(os.soLanXinQuyen, 0,
+          reason: 'Chỉ HỎI, tuyệt đối không XIN lúc mở trang — trên iOS người '
+              'dùng chỉ được hỏi một lần trong cả vòng đời cài đặt.');
+    });
+
+    testWidgets('quyền bị thu hồi KHÔNG ghi đè tuỳ chọn đã lưu',
+        (tester) async {
+      await store.write(accountId, const NotificationPrefs(osBat: true));
+      os.coQuyen = false;
+
+      await moTrang(tester);
+
+      expect((await store.read(accountId)).osBat, isTrue,
+          reason: 'Công tắc hiển thị sự thật, nhưng ý muốn của người dùng thì '
+              'giữ nguyên: cấp lại quyền trong Cài đặt máy là thông báo chạy '
+              'lại ngay, không bắt họ vào đây gạt lại lần nữa.');
+    });
+
+    testWidgets('còn quyền thì công tắc phản ánh đúng tuỳ chọn', (tester) async {
+      await store.write(accountId, const NotificationPrefs(osBat: true));
+      os.coQuyen = true;
+
+      await moTrang(tester);
+
+      final sw = tester.widget<Switch>(
+          find.byKey(NotificationSettingsPage.khoaCongTacOs));
+      expect(sw.value, isTrue);
     });
 
     testWidgets('giờ im lặng tắt sẵn và chưa hiện hai mốc giờ', (tester) async {

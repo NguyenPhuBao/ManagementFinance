@@ -52,6 +52,15 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
   bool _dangNap = true;
   int? _idaccount;
 
+  /// Hệ điều hành có **đang** cho phép hiện thông báo không.
+  ///
+  /// Tách khỏi `_prefs.osBat` vì hai thứ này trả lời hai câu khác nhau:
+  /// `osBat` là *ý muốn của người dùng*, còn cờ này là *sự thật của máy*.
+  /// Người dùng có thể thu hồi quyền trong Cài đặt của máy sau khi đã bật công
+  /// tắc, và khi ấy công tắc sáng trong lúc thông báo bị chặn hoàn toàn — nó
+  /// nói dối, và họ sẽ không bao giờ đi tìm lý do vì sao chẳng nhận được gì.
+  bool _coQuyenOs = true;
+
   NotificationPrefsStore get _store =>
       widget.store ?? sl<NotificationPrefsStore>();
 
@@ -71,10 +80,17 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     }
 
     final p = await _store.read(id);
+
+    // Chỉ HỎI, tuyệt đối không XIN: trên iOS người dùng chỉ được hỏi một lần
+    // trong cả vòng đời cài đặt, tiêu phí nó lúc mở trang là mất vĩnh viễn.
+    // Chỉ hỏi khi người dùng đã bật — tắt rồi thì câu trả lời không đổi gì.
+    final coQuyen = p.osBat ? await _os.daCoQuyen() : true;
+
     if (!mounted) return;
     setState(() {
       _idaccount = id;
       _prefs = p;
+      _coQuyenOs = coQuyen;
       _dangNap = false;
     });
   }
@@ -101,6 +117,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     }
 
     final duoc = await _os.requestPermission();
+    if (mounted) setState(() => _coQuyenOs = duoc);
     // Hệ điều hành từ chối thì công tắc phải quay về tắt. Để nó sáng là nói
     // dối: người dùng tưởng đã bật và sẽ không bao giờ đi tìm lý do vì sao
     // chẳng nhận được gì.
@@ -176,7 +193,12 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                             nhan: 'Hiện trên màn hình khoá',
                             phu: 'Tắt thì thông báo vẫn được lưu trong app, '
                                 'chỉ không hiện ra ngoài.',
-                            giaTri: _prefs.osBat,
+                            // Hiển thị SỰ THẬT, không phải chỉ ý muốn: quyền
+                            // bị thu hồi thì công tắc phải tắt. Nhưng
+                            // `_prefs.osBat` được GIỮ NGUYÊN trong kho — cấp
+                            // lại quyền trong Cài đặt máy là thông báo chạy
+                            // lại ngay, không bắt người dùng vào đây gạt lại.
+                            giaTri: _prefs.osBat && _coQuyenOs,
                             onChanged: _doiCongTacOs,
                           ),
                           const Divider(
