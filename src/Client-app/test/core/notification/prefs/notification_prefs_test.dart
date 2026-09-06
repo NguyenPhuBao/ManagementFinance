@@ -159,6 +159,38 @@ void main() {
           reason: 'Tắt nhóm ngân sách không được làm im nhóm hoá đơn — đó là '
               'lý do người dùng có bốn công tắc chứ không phải một.');
     });
+
+    test('bốn loại báo TIỀN VỪA RỜI VÍ không chịu công tắc nhóm', () {
+      const p = NotificationPrefs(nhomTat: {
+        NotificationGroup.bill,
+        NotificationGroup.goal,
+      });
+
+      expect(p.chapNhan(NotificationKind.billAutoPaid), isTrue);
+      expect(p.chapNhan(NotificationKind.billAutoPayFailed), isTrue);
+      expect(p.chapNhan(NotificationKind.goalAutoDeposited), isTrue);
+      expect(p.chapNhan(NotificationKind.goalAutoDepositFailed), isTrue,
+          reason: 'Đây là bốn loại DUY NHẤT báo việc tiền thật rời ví trong '
+              'lúc người dùng vắng mặt. "Đừng nhắc tôi hoá đơn sắp tới hạn" và '
+              '"đừng cho tôi biết app vừa rút tiền của tôi" là hai câu hoàn '
+              'toàn khác nhau, và người dùng chỉ gạt được một công tắc. Muốn '
+              'im hẳn thì đã có công tắc tổng cho thông báo hệ điều hành.');
+    });
+
+    test('tắt nhóm vẫn chặn các loại KHÁC của chính nhóm ấy', () {
+      const p = NotificationPrefs(nhomTat: {
+        NotificationGroup.bill,
+        NotificationGroup.goal,
+      });
+
+      expect(p.chapNhan(NotificationKind.billDueSoon), isFalse);
+      expect(p.chapNhan(NotificationKind.billOverdue), isFalse);
+      expect(p.chapNhan(NotificationKind.goalBehind), isFalse);
+      expect(p.chapNhan(NotificationKind.goalCompleted), isFalse,
+          reason: 'Ngoại lệ chỉ dành cho bốn loại tự chuyển tiền. Nới rộng ra '
+              'cả nhóm là công tắc mất tác dụng và người dùng sẽ tắt luôn công '
+              'tắc tổng — mất hết.');
+    });
   });
 
   test('copyWith chỉ đổi thứ được nêu', () {

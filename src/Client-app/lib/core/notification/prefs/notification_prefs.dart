@@ -34,6 +34,42 @@ NotificationGroup nhomCua(NotificationKind kind) {
   }
 }
 
+/// Loại thông báo **không chịu công tắc nhóm**.
+///
+/// Bốn loại này là những loại DUY NHẤT báo việc **tiền thật rời ví** trong lúc
+/// người dùng vắng mặt — hai chỗ trong app tự chuyển tiền hộ họ.
+///
+/// "Đừng nhắc tôi hoá đơn sắp tới hạn" và "đừng cho tôi biết app vừa rút tiền
+/// của tôi" là hai câu hoàn toàn khác nhau, nhưng trước đây người dùng chỉ gạt
+/// được **một** công tắc cho cả hai: tắt nhóm Hoá đơn vì thấy nhắc hạn phiền
+/// là mất luôn cảnh báo app vừa trừ tiền, và vì bộ lọc chạy trước khi ghi nên
+/// trung tâm thông báo cũng không còn dấu vết nào.
+///
+/// Muốn im hẳn thì vẫn còn **công tắc tổng** cho thông báo hệ điều hành —
+/// công tắc ấy chỉ chặn bước bắn ra ngoài, hàng vẫn được ghi lại trong app.
+///
+/// ⚠️ Đừng nới danh sách này ra cả nhóm: công tắc mất tác dụng thì người dùng
+/// sẽ tắt luôn công tắc tổng, và khi ấy họ mất mọi thứ.
+bool luonBao(NotificationKind kind) {
+  switch (kind) {
+    case NotificationKind.billAutoPaid:
+    case NotificationKind.billAutoPayFailed:
+    case NotificationKind.goalAutoDeposited:
+    case NotificationKind.goalAutoDepositFailed:
+      return true;
+    case NotificationKind.billDueSoon:
+    case NotificationKind.billOverdue:
+    case NotificationKind.budgetNearLimit:
+    case NotificationKind.budgetOverspent:
+    case NotificationKind.goalCompleted:
+    case NotificationKind.goalCycleReady:
+    case NotificationKind.goalBehind:
+    case NotificationKind.syncFailed:
+    case NotificationKind.walletNegative:
+      return false;
+  }
+}
+
 /// Tuỳ chọn thông báo của **một tài khoản**.
 ///
 /// ## Vì sao lưu nhóm bị TẮT chứ không phải nhóm được bật
@@ -86,7 +122,8 @@ class NotificationPrefs {
   bool batNhom(NotificationGroup nhom) => !nhomTat.contains(nhom);
 
   /// Loại thông báo này có được sinh không.
-  bool chapNhan(NotificationKind kind) => batNhom(nhomCua(kind));
+  bool chapNhan(NotificationKind kind) =>
+      luonBao(kind) || batNhom(nhomCua(kind));
 
   NotificationPrefs copyWith({
     bool? osBat,

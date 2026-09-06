@@ -197,6 +197,13 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                               onChanged: (v) => _doiNhom(nhom, v),
                             ),
                           ],
+                          // Bốn loại báo "tiền vừa rời ví" cố ý bỏ qua công
+                          // tắc nhóm — xem `luonBao()`. Im lặng về ngoại lệ ấy
+                          // là để người dùng gạt tắt rồi tin rằng mình đã tắt.
+                          const _GhiChu(
+                            'Báo khi app tự thanh toán hoá đơn hoặc tự trích '
+                            'tiền mục tiêu luôn được bật.',
+                          ),
                         ],
                       ),
                       const SizedBox(height: 24),
@@ -408,6 +415,25 @@ IconData _iconNhom(NotificationGroup nhom) {
       return Icons.flag_outlined;
     case NotificationGroup.system:
       return Icons.sync_problem_outlined;
+  }
+}
+
+/// Dòng chú thích cuối thẻ. Chữ nhỏ, màu phụ — nó giải thích một ngoại lệ chứ
+/// không phải một hàng điều khiển.
+class _GhiChu extends StatelessWidget {
+  const _GhiChu(this.noiDung);
+
+  final String noiDung;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+      child: Text(
+        noiDung,
+        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+      ),
+    );
   }
 }
 

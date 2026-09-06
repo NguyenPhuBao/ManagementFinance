@@ -3,9 +3,10 @@
 > **Cập nhật:** 2026-09-06 · **Nhánh:** `TranQuangDat`
 > **Trạng thái:** cả bảy lát đã xong, **đã kiểm trên máy ảo Android**, có thêm
 > **dải báo kết nối** (mục 9), **mốc kích hoạt quét đã được sửa lại cho
-> offline-first** (mục 4.5), và **cú chạm vào thông báo hệ điều hành nay điều
-> hướng thật** (mục 5b). Đọc hai mục ấy trước nếu định đụng vào vùng này.
-> **Mức nền hiện tại:** `flutter test` **1246/1246 pass**, `flutter analyze`
+> offline-first** (mục 4.5), **cú chạm vào thông báo hệ điều hành nay điều
+> hướng thật** (mục 5b), và **bốn loại báo tiền vừa rời ví nay bỏ qua công tắc
+> nhóm** (mục 3). Đọc ba mục ấy trước nếu định đụng vào vùng này.
+> **Mức nền hiện tại:** `flutter test` **1250/1250 pass**, `flutter analyze`
 > **25 issue, KHÔNG error**, `flutter build web` xanh.
 
 Đọc file này trước khi làm tiếp bất cứ việc gì thuộc thông báo. Mục 6 ghi lại
@@ -55,21 +56,40 @@ uống"*, *"Nhắc nhở: Hóa đơn tiền điện sắp đến hạn"*, *"Ti�
 
 ## 3. Danh mục thông báo
 
-| Nhóm | Loại | `kind` | Trạng thái |
-|---|---|---|---|
-| Ngân sách | Chạm ngưỡng | `budgetNearLimit` | ✅ Xong |
-| | Vượt hạn mức | `budgetOverspent` | ✅ Xong |
-| Hoá đơn | Sắp đến hạn | `billDueSoon` | ✅ Xong |
-| | Quá hạn | `billOverdue` | ✅ Xong |
-| Mục tiêu | Hoàn thành | `goalCompleted` | ✅ Xong |
-| | Trễ tiến độ | `goalBehind` | ✅ Xong |
-| | Đã trích tự động | `goalAutoDeposited` | ✅ Xong |
-| | Chưa trích được | `goalAutoDepositFailed` | ✅ Xong |
-| Hệ thống | Đồng bộ hỏng | `syncFailed` | ✅ Xong |
-| | Số dư ví âm | `walletNegative` | ✅ Xong |
+**Mười ba loại**, xếp vào **bốn nhóm** công tắc. Cột cuối đánh dấu những loại
+**không chịu công tắc nhóm** — xem `luonBao()` trong `notification_prefs.dart`.
 
-Enum `NotificationKind` **đã khai đủ tám giá trị** — lát 6 chỉ việc thêm luật,
-không phải sửa enum hay migration.
+| Nhóm | Loại | `kind` | Luôn báo |
+|---|---|---|---|
+| Ngân sách | Chạm ngưỡng | `budgetNearLimit` | |
+| | Vượt hạn mức | `budgetOverspent` | |
+| Hoá đơn | Sắp đến hạn | `billDueSoon` | |
+| | Quá hạn | `billOverdue` | |
+| | **Đã tự thanh toán** | `billAutoPaid` | ⚠️ có |
+| | **Chưa tự trả được** | `billAutoPayFailed` | ⚠️ có |
+| Mục tiêu | Hoàn thành | `goalCompleted` | |
+| | Bắt đầu vòng mới | `goalCycleReady` | |
+| | Trễ tiến độ | `goalBehind` | |
+| | **Đã trích tự động** | `goalAutoDeposited` | ⚠️ có |
+| | **Chưa trích được** | `goalAutoDepositFailed` | ⚠️ có |
+| Hệ thống | Đồng bộ hỏng | `syncFailed` | |
+| | Số dư ví âm | `walletNegative` | |
+
+⚠️ **Bốn loại "luôn báo" là những loại DUY NHẤT báo việc tiền thật rời ví** khi
+người dùng vắng mặt. Trước 2026-09-06 chúng chịu chung công tắc với phần còn
+lại của nhóm, nghĩa là ai tắt nhóm Hoá đơn vì thấy nhắc hạn phiền thì **mất
+luôn cảnh báo app vừa trừ tiền** — và vì bộ lọc chạy *trước khi ghi*, trung tâm
+thông báo cũng không còn dấu vết nào; họ chỉ thấy số dư ví hụt đi. "Đừng nhắc
+tôi hoá đơn sắp tới hạn" và "đừng cho tôi biết app vừa rút tiền của tôi" là hai
+câu khác nhau.
+
+Muốn im hẳn thì vẫn còn **công tắc tổng** cho thông báo hệ điều hành — nó chỉ
+chặn bước bắn ra ngoài, hàng vẫn được ghi lại trong app. Trang cài đặt nói rõ
+ngoại lệ này bằng một dòng chú thích; im lặng về nó là để người dùng gạt tắt
+rồi tin rằng mình đã tắt.
+
+⚠️ **Đừng nới `luonBao()` ra cả nhóm.** Công tắc mất tác dụng thì người dùng sẽ
+tắt luôn công tắc tổng, và khi ấy họ mất mọi thứ.
 
 Giao dịch ngân hàng Casso và OCR **không** làm được ở client: backend có phát
 ba sự kiện đó qua Socket.io nhưng client chưa có `socket_io_client`, và quan
@@ -427,8 +447,8 @@ thiếu nhóm mới và nó chết ngay từ đầu.
 
 | Công tắc | Hiệu lực |
 |---|---|
-| Bốn công tắc **nhóm** | Không **sinh** thông báo nhóm ấy — cả trong app lẫn ra hệ điều hành. Lọc ngay sau bộ luật, trước khi ghi. |
-| Công tắc **tổng** cho OS | Vẫn ghi vào trung tâm trong app, chỉ **không bắn** ra ngoài. Đây là "đừng làm phiền tôi", không phải "đừng ghi lại gì". |
+| Bốn công tắc **nhóm** | Không **sinh** thông báo nhóm ấy — cả trong app lẫn ra hệ điều hành. Lọc ngay sau bộ luật, trước khi ghi. **Trừ bốn loại `luonBao()`** — xem mục 3. |
+| Công tắc **tổng** cho OS | Vẫn ghi vào trung tâm trong app, chỉ **không bắn** ra ngoài. Đây là "đừng làm phiền tôi", không phải "đừng ghi lại gì". Đây cũng là **lối thoát duy nhất** cho bốn loại `luonBao()`. |
 
 **Bật công tắc tổng là chỗ DUY NHẤT trong app xin quyền thông báo** — mắt xích
 còn thiếu của lát 4. Xin đúng lúc người dùng vừa chủ động bật, không phải lúc

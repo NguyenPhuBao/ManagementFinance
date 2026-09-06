@@ -117,13 +117,21 @@ void main() {
         reason: 'Trả bù hai tháng là hai lần tiền rời ví.');
   });
 
-  test('hai loại mới thuộc nhóm hoá đơn', () {
+  test('hai loại mới thuộc nhóm hoá đơn nhưng KHÔNG chịu công tắc của nhóm',
+      () {
     expect(nhomCua(NotificationKind.billAutoPaid), NotificationGroup.bill);
     expect(
         nhomCua(NotificationKind.billAutoPayFailed), NotificationGroup.bill);
+
     const p = NotificationPrefs(nhomTat: {NotificationGroup.bill});
-    expect(p.chapNhan(NotificationKind.billAutoPaid), isFalse,
-        reason: 'Tắt nhóm hoá đơn là tắt luôn, người dùng không có công tắc '
-            'thứ năm để tìm.');
+    expect(p.chapNhan(NotificationKind.billAutoPaid), isTrue,
+        reason: 'Người dùng tắt nhóm Hoá đơn vì thấy nhắc hạn phiền, không '
+            'phải để app im lặng rút tiền của họ. Bộ lọc chạy TRƯỚC khi ghi, '
+            'nên tắt là trung tâm thông báo cũng không còn dấu vết nào — họ '
+            'chỉ thấy số dư ví hụt đi. Muốn im hẳn thì đã có công tắc tổng cho '
+            'thông báo hệ điều hành.');
+    expect(p.chapNhan(NotificationKind.billDueSoon), isFalse,
+        reason: 'Ngoại lệ chỉ dành cho loại báo tiền đã rời ví; nhắc hạn vẫn '
+            'tắt được như cũ, nếu không thì công tắc mất hết ý nghĩa.');
   });
 }

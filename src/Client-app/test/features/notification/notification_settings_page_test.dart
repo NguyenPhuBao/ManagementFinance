@@ -102,6 +102,24 @@ void main() {
       }
     });
 
+    testWidgets('nói rõ báo tự chuyển tiền không tắt được', (tester) async {
+      await moTrang(tester);
+
+      expect(find.textContaining('luôn được bật'), findsOneWidget,
+          reason: 'Bốn loại báo tiền vừa rời ví cố ý bỏ qua công tắc nhóm. Im '
+              'lặng về ngoại lệ ấy là để người dùng gạt tắt rồi tin rằng mình '
+              'đã tắt — một công tắc nói dối theo chiều ngược lại.');
+    });
+
+    testWidgets('mô tả nhóm không hứa những gì công tắc không làm được',
+        (tester) async {
+      await moTrang(tester);
+
+      expect(find.textContaining('Sắp đến hạn và quá hạn.'), findsOneWidget,
+          reason: 'Mô tả cũ liệt kê đúng hai loại này, nhưng công tắc khi ấy '
+              'còn tắt cả báo tự thanh toán. Nay hành vi khớp với câu chữ.');
+    });
+
     testWidgets('công tắc phản ánh đúng thứ đã lưu', (tester) async {
       await store.write(
         accountId,
