@@ -121,8 +121,13 @@ class _BudgetFormState extends State<BudgetForm> {
         text: b == null ? '' : b.amount.round().toString());
     _thresholdController = TextEditingController(
         text: b?.thresholdWarningAmount?.round().toString() ?? '');
+    // 0 không phải ngưỡng người dùng đặt: backend điền `0` cho ô để trống
+    // (`@default(0)` + `?? 0` ở nhánh tạo của `upsertBudget`) và pull mang
+    // nó về. Điền "0" vào ô thì validator 1–100 khoá luôn form — không sửa
+    // được gì ở ngân sách ấy nữa. Cùng cách hiểu với `BudgetEntity.warningRatio`.
+    final percent = b?.thresholdWarningPercent;
     _thresholdPercentController = TextEditingController(
-        text: b?.thresholdWarningPercent?.round().toString() ?? '');
+        text: percent == null || percent <= 0 ? '' : percent.round().toString());
     _noteController = TextEditingController(text: b?.note ?? '');
     _categoryId = b?.categoryId;
     // Ngân sách đang sửa giữ nguyên chu kỳ đã lưu, kể cả khi nó là null
@@ -644,7 +649,10 @@ class _BudgetFormState extends State<BudgetForm> {
         const SizedBox(height: 8),
         _choiceRow(
           value: BudgetOverSpending.stop,
-          label: 'Chặn không cho tiêu thêm',
+          // "Chặn" = hỏi xác nhận rồi vẫn ghi (tiền đã tiêu thật ngoài đời,
+          // không ghi thì ví lệch) — xem `budget_impact.dart`. Nhãn phải nói
+          // đúng điều app làm.
+          label: 'Hỏi trước khi ghi khoản làm vượt',
         ),
       ],
     );

@@ -31,7 +31,9 @@ class BudgetOverSpending {
   /// Vẫn cho tiêu tiếp, chỉ cảnh báo.
   static const over = 'Over';
 
-  /// Chặn không cho tiêu thêm.
+  /// Hỏi xác nhận trước khi ghi khoản làm vượt — vẫn ghi nếu người dùng
+  /// đồng ý, không bao giờ từ chối (tiền đã tiêu thật). Thi hành duy nhất ở
+  /// `domain/budget_impact.dart`.
   static const stop = 'Stop';
 }
 
