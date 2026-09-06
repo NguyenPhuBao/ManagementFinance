@@ -236,8 +236,9 @@ việc phải đi cùng nhau, và cả hai đều nằm ở client; backend ch�
 | B | 1 cột nullable + quan hệ tự trỏ + `mapEntityFields` | Không — chuỗi bắt đầu từ kỳ mới |
 | C | 1 cột nullable | Không — `NULL` mang đúng nghĩa hành vi hiện tại |
 | D | 1 cột bool mặc định false + một phép kiểm ở `/sync/push` | Không — hàng cũ `false` |
+| E | **Không thêm cột** — chấp nhận thêm giá trị `'Skipped'` cho `bill.Pay_status` (VarChar(7), vừa khít) ở mọi chỗ kiểm/đọc | Không — hàng cũ không mang giá trị này |
 
-Cả bốn đều **không** cần chuyển dữ liệu và **không** đổi hành vi của client
+Cả năm đều **không** cần chuyển dữ liệu và **không** đổi hành vi của client
 đang chạy. Client chỉ bắt đầu gửi các trường mới sau khi backend xong, và cập
 nhật `sync_payload_contract_test.dart` cùng lúc.
 
@@ -298,3 +299,61 @@ model bill {
 Hai client cùng tài khoản, cùng hoá đơn bật tự trả, cùng offline qua ngày đến
 hạn, rồi lần lượt online. **Mong đợi:** một khoản chi trên server, máy đẩy sau
 nhận `BILL_ALREADY_PAID` và tự hoàn tác. **Hiện tại:** hai khoản chi.
+
+---
+
+## 7. Việc E: giá trị `Pay_status = 'Skipped'` — bỏ qua một kỳ
+
+### 7.1. Vì sao cần
+
+Hoá đơn lặp có những kỳ **không phải trả**: đi vắng cả tháng nên không có
+tiền điện, chủ nhà miễn một tháng, gói dịch vụ tặng kỳ. Client hiện chỉ có ba
+giá trị `Pending` / `Payed` / `Overdue`, nên người dùng đứng trước hai lựa
+chọn đều sai:
+
+- **Trả giả** (bấm Thanh toán với số tiền 0 hoặc số nhỏ) → sổ giao dịch có một
+  khoản chi không có thật, thống kê theo danh mục lệch, và `payBill` từ chối
+  số tiền ≤ 0 nên thực ra cũng không làm được.
+- **Xoá kỳ** → mất mắt xích của chuỗi (`generatedFromBillId`), kỳ kế tiếp
+  **không được sinh ra** vì chỉ `payBill` mới sinh kỳ sau; người dùng phải tạo
+  lại hoá đơn từ đầu.
+
+Money Lover và Wallet đều có "Skip this one" cho đúng tình huống này.
+
+### 7.2. Client sẽ làm gì (sau khi backend nhận giá trị)
+
+Trên trang chi tiết hoá đơn (`/bills/:id`, có từ 2026-09-06) thêm nút **"Bỏ
+qua kỳ này"** cho kỳ chưa trả:
+
+1. Đặt `payStatus = 'Skipped'`, `isPaid = false`. **Không** sinh khoản chi,
+   **không** trừ ví.
+2. Sinh kỳ kế tiếp y như `payBill` (cùng `_nextPeriodOf`), để chuỗi không đứt.
+3. Hoàn tác được: đưa về `Pending`, xoá mềm kỳ kế tiếp đã sinh — cùng đường
+   với `undoPayment` nhưng không có bước hoàn tiền.
+4. Tab "Đã thanh toán" hiện kỳ bị bỏ qua với nhãn riêng ("BỎ QUA"), thẻ tổng
+   **không** tính nó là nợ, bộ quét thông báo **không** nhắc và **không** tự
+   trả nó (`_autoPayCandidates` và `markOverdue` chỉ nhìn `Pending`).
+
+Client **cố ý chưa làm** cho tới khi backend xác nhận: hàng `Skipped` đẩy lên
+`/sync/push` mà backend từ chối (hoặc âm thầm ép về `Pending`) thì hoá đơn
+kẹt vĩnh viễn trong hàng đợi đẩy — đúng vòng lặp đã gặp ngày 2026-09-04.
+
+### 7.3. Đề xuất
+
+- `Pay_status` là `VarChar(7)`, `'Skipped'` đúng 7 ký tự — **không cần
+  migration**. Chỉ cần rà mọi chỗ đọc/kiểm giá trị này:
+  - Bất kỳ whitelist/validator nào của `pay_status` ở `/sync/push` và ở
+    `mapEntityFields`: thêm `'Skipped'`.
+  - Chỗ nào tính "hoá đơn quá hạn" / "sắp đến hạn" / tổng nợ phía server hoặc
+    Admin-web: `Skipped` xử lý **như `Payed`** (không phải nợ), nhưng **không**
+    có khoản chi đi kèm — đừng tìm `transaction.Idbill` cho nó.
+  - Việc D (chốt chặn trả hai lần): không liên quan — kỳ `Skipped` không có
+    giao dịch nên không có gì để chặn.
+- Trả lời cho client biết **có** validator hay không. Nếu không có gì kiểm và
+  server lưu nguyên chuỗi, chỉ cần một dòng xác nhận là client bắt đầu làm.
+
+### 7.4. Cách kiểm chứng
+
+Đẩy một hàng `bill` với `pay_status: 'Skipped'` qua `/sync/push`, rồi kéo về
+bằng `/sync/pull`. **Mong đợi:** hàng lưu và trả về nguyên `'Skipped'`.
+**Sai:** bị từ chối, hoặc về `'Pending'`.

@@ -68,7 +68,7 @@
 ## Lệnh hay dùng
 
 ```bash
-# Test (chạy từ src/Client-app) — hiện 1186/1186 pass, ~60 giây
+# Test (chạy từ src/Client-app) — hiện 1212/1212 pass, ~65 giây
 flutter test
 flutter analyze          # mức nền: 25 issue, KHÔNG có error
 
@@ -88,6 +88,15 @@ cd src/Client-app && flutter run -d chrome --web-port 9090
 
 Bốn thứ dưới đây **đã từng gây thiệt hại thật**. Chúng vốn chỉ nằm trong file
 bàn giao tạm giữa các phiên nên chết đi sống lại nhiều lần — nay ghi ở đây.
+
+- **Đừng ngắt `flutter test` giữa chừng, và đừng chạy hai lần cùng lúc.**
+  `flutter_tester.exe` mồ côi giữ `build/native_assets/windows/sqlite3.dll`,
+  mọi lần chạy sau nổ `PathExistsException` cho tới khi tắt hết tester và xoá
+  thư mục ấy. Muốn chặn treo thì chạy nền ghi log + `--timeout 60s`. Widget
+  test treo đủ 10 phút/test mà `--timeout` không cắt được là dấu hiệu
+  `bloc.close()` chờ một stream không bao giờ `done` — thăm dò bằng một
+  `test()` thường bọc `FakeAsync().run(...)`, chạy đồng bộ nên không thể treo
+  (đã vấp 2026-09-06 với `asyncMap` trên `Stream.value`).
 
 - **Bash tool ở đây là Git Bash, không phải PowerShell.** Commit message nhiều
   dòng thì dùng `git commit -F -` với heredoc `<<'EOF'`. Here-string
