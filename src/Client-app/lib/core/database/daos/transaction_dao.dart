@@ -165,6 +165,21 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
         .getSingleOrNull();
   }
 
+  /// Mọi khoản trả hoá đơn còn sống của [idaccount], theo `billId`.
+  ///
+  /// Một truy vấn cho cả trang hoá đơn thay vì gọi [getByBill] cho từng dòng.
+  /// Hoá đơn kéo về từ server không có mục ở đây (cột `billId` cục bộ) — nơi
+  /// gọi phải coi đó là "không biết ngày trả", không được đoán.
+  Future<Map<String, Transaction>> getBillPayments(int idaccount) async {
+    final rows = await (select(transactions)
+          ..where((t) =>
+              t.idaccount.equals(idaccount) &
+              t.billId.isNotNull() &
+              t.deletedAt.isNull()))
+        .get();
+    return {for (final t in rows) t.billId!: t};
+  }
+
   Future<void> insert(TransactionsCompanion entry) async {
     await into(transactions).insert(entry, mode: InsertMode.insertOrReplace);
   }

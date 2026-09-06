@@ -47,6 +47,11 @@ class _GhiLaiRepository implements BillRepository {
   @override
   Stream<List<Bill>> watchBills(int idaccount) => Stream.value(bills);
 
+  // Bloc đọc bản đồ khoản chi cùng lúc với danh sách; để rơi vào
+  // `noSuchMethod` là trang không bao giờ tới `BillLoaded`.
+  @override
+  Future<Map<String, Transaction>> paymentsOf(int idaccount) async => const {};
+
   @override
   Future<void> editBill(BillsCompanion bill) async => daSua = bill;
 

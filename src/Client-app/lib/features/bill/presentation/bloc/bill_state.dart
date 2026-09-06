@@ -13,9 +13,15 @@ class BillLoaded extends BillState {
   /// Số liệu của **kỳ này** cho thẻ tổng đầu trang — xem [summarizeBills].
   final BillSummary summary;
 
+  /// Khoản chi của từng hoá đơn đã trả, theo `billId`. Hoá đơn không có mục
+  /// ở đây là "không biết ngày trả" (hàng kéo về từ server, hoặc trả bằng bản
+  /// app trước v16) — trang không được đoán.
+  final Map<String, Transaction> payments;
+
   BillLoaded({
     required this.bills,
     required this.summary,
+    this.payments = const {},
   });
 
   /// Giữ tên cũ để nơi gọi không phải đổi: nay chỉ là lối tắt vào [summary].

@@ -28,17 +28,51 @@ class BillBloc extends Bloc<BillEvent, BillState> {
     Emitter<BillState> emit,
   ) async {
     emit(BillLoading());
-    await emit.forEach<List<Bill>>(
+
+    // Mỗi lần danh sách đổi thì đọc lại bản đồ khoản chi CÙNG LÚC: trả xong
+    // trên chính trang này thì ngày trả phải hiện ngay. Đọc một lần chứ
+    // không giữ thêm một stream Drift — thứ để lại `Timer` khi huỷ và làm mọi
+    // widget test của trang treo.
+    //
+    // KHÔNG viết thành `watchBills().asyncMap(...)`: `asyncMap` tạm dừng
+    // nguồn trong lúc chờ, và với stream một lần (`Stream.value` của stub
+    // trong widget test) chạy dưới FakeAsync thì sự kiện `done` bị nuốt —
+    // `emit.forEach` không bao giờ kết thúc, `bloc.close()` treo vĩnh viễn và
+    // cả ba file widget test của trang đứng đủ 10 phút mỗi test. Đo được
+    // 2026-09-06 bằng thăm dò FakeAsync: `await for` và `listen` thường thì
+    // nhận `done`, `asyncMap` (kể cả map đồng bộ) thì không.
+    var luot = 0;
+    var dangDoc = Future<void>.value();
+    await emit.onEach<List<Bill>>(
       repository.watchBills(event.idaccount),
-      onData: (bills) => BillLoaded(
-        bills: bills,
-        // Trước đây cộng dồn `isPaid != true` trên TOÀN BỘ danh sách: bỏ sót
-        // cột `payStatus` (hàng cũ mang 'Payed' với `isPaid` false vẫn bị tính
-        // là nợ) và gộp cả kỳ của những tháng sau vào "tiền cần thanh toán".
-        summary: summarizeBills(bills, now()),
-      ),
-      onError: (error, stackTrace) => BillError('Không thể tải hóa đơn: $error'),
+      onData: (bills) {
+        final luotNay = ++luot;
+        dangDoc = repository.paymentsOf(event.idaccount).then(
+          (payments) {
+            // Danh sách đã đổi tiếp trong lúc chờ, hoặc bloc đã đóng: bỏ,
+            // kẻo bản đồ cũ đè lên trạng thái mới.
+            if (luotNay != luot || emit.isDone) return;
+            emit(BillLoaded(
+              bills: bills,
+              // Trước đây cộng dồn `isPaid != true` trên TOÀN BỘ danh sách:
+              // bỏ sót cột `payStatus` (hàng cũ mang 'Payed' với `isPaid`
+              // false vẫn bị tính là nợ) và gộp cả kỳ của những tháng sau
+              // vào "tiền cần thanh toán".
+              summary: summarizeBills(bills, now()),
+              payments: payments,
+            ));
+          },
+          onError: (Object error) {
+            if (!emit.isDone) emit(BillError('Không thể tải hóa đơn: $error'));
+          },
+        );
+      },
+      onError: (error, stackTrace) =>
+          emit(BillError('Không thể tải hóa đơn: $error')),
     );
+    // Nguồn đóng (stub trong test) trước khi lần đọc cuối xong thì chờ nốt:
+    // `emit` sau khi handler đã trả về là lỗi.
+    await dangDoc;
   }
 
   Future<void> _onAddBill(
@@ -119,5 +153,4 @@ class BillBloc extends Bloc<BillEvent, BillState> {
       emit(BillError('Hoàn tác thất bại: $e'));
     }
   }
-
 }

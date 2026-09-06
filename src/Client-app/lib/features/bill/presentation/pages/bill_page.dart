@@ -12,6 +12,10 @@ import '../bloc/bill_event.dart';
 import '../bloc/bill_state.dart';
 import '../../domain/bill_status.dart';
 import '../../../transaction/domain/transaction_lookup.dart';
+import '../../../transaction/data/models/transaction_entity.dart';
+import '../../../transaction/presentation/pages/add_transaction_page.dart'
+    show EditTransactionArgs;
+import '../../../transaction/presentation/widgets/transaction_detail_sheet.dart';
 import '../../../../core/category/category_visuals.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../widgets/bill_payment_sheet.dart';
@@ -99,15 +103,15 @@ class _BillPageState extends State<BillPage> {
     // rơi về idaccount = 1 rồi, khi tài khoản đó chưa có ví, còn đọc tiếp
     // `getAllNonDeleted()` — bày ra ví của tài khoản khác trên cùng máy.
     final accountId = currentAccountIdOrNull(context);
-    final wallets = accountId == null
-        ? <Wallet>[]
-        : await db.walletDao.getAll(accountId);
+    final wallets =
+        accountId == null ? <Wallet>[] : await db.walletDao.getAll(accountId);
 
     if (!context.mounted) return;
 
     if (accountId == null || wallets.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng tạo ít nhất 1 ví trước khi thanh toán.')),
+        const SnackBar(
+            content: Text('Vui lòng tạo ít nhất 1 ví trước khi thanh toán.')),
       );
       return;
     }
@@ -192,7 +196,8 @@ class _BillPageState extends State<BillPage> {
 
   @override
   Widget build(BuildContext context) {
-    final currencyFormatter = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
+    final currencyFormatter =
+        NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
     final dateFormatter = DateFormat('dd/MM/yyyy');
     final now = widget.now ?? DateTime.now();
 
@@ -237,7 +242,8 @@ class _BillPageState extends State<BillPage> {
             );
           } else if (state is BillError) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+              SnackBar(
+                  content: Text(state.message), backgroundColor: Colors.red),
             );
           }
         },
@@ -288,6 +294,7 @@ class _BillPageState extends State<BillPage> {
                               currencyFormatter: currencyFormatter,
                               dateFormatter: dateFormatter,
                               khiTrong: 'Không còn hoá đơn nào phải trả.',
+                              payments: state.payments,
                             ),
                             _danhSach(
                               context,
@@ -296,6 +303,7 @@ class _BillPageState extends State<BillPage> {
                               currencyFormatter: currencyFormatter,
                               dateFormatter: dateFormatter,
                               khiTrong: 'Chưa có hoá đơn nào được thanh toán.',
+                              payments: state.payments,
                             ),
                           ],
                         ),
@@ -327,6 +335,7 @@ class _BillPageState extends State<BillPage> {
     required NumberFormat currencyFormatter,
     required DateFormat dateFormatter,
     required String khiTrong,
+    required Map<String, Transaction> payments,
   }) {
     if (bills.isEmpty) {
       return Padding(
@@ -355,6 +364,9 @@ class _BillPageState extends State<BillPage> {
         // gán nhãn "SẮP ĐẾN HẠN" cho đúng nhánh ĐÃ QUÁ HẠN.
         final status = billDisplayStatusOf(bill, now);
         final danhMuc = _lookup.category(bill.categoryId);
+        // Khoản chi của lần trả — chỉ có với khoản ghi từ v16 trên máy này.
+        // Không có thì KHÔNG đoán ngày trả; chỉ ghi hạn như cũ.
+        final khoanChi = payments[bill.id];
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 16),
@@ -362,7 +374,12 @@ class _BillPageState extends State<BillPage> {
             context: context,
             bill: bill,
             title: bill.name,
-            subtitle: 'Hạn ${dateFormatter.format(bill.dueDate)}',
+            subtitle: khoanChi == null
+                ? 'Hạn ${dateFormatter.format(bill.dueDate)}'
+                : 'Hạn ${dateFormatter.format(bill.dueDate)} • '
+                    'Trả ${dateFormatter.format(khoanChi.date)}',
+            onTap:
+                khoanChi == null ? null : () => _moKhoanChi(context, khoanChi),
             // Ba trạng thái khác nhau, đừng gộp: chưa gán danh mục bao giờ /
             // đã gán nhưng hàng ấy bị xoá mềm (đợt gộp danh mục 05/09 để lại
             // đúng tình trạng này) / có danh mục thật.
@@ -376,8 +393,8 @@ class _BillPageState extends State<BillPage> {
               if (bill.autoPayEnabled) 'Tự trả',
             ].join(' • '),
             icon: categoryIconFor(danhMuc?.icon),
-            iconColor: categoryColorFrom(danhMuc?.colour,
-                fallback: AppColors.primary),
+            iconColor:
+                categoryColorFrom(danhMuc?.colour, fallback: AppColors.primary),
             amount: currencyFormatter.format(bill.amount),
             status: _nhanTrangThai(status),
             statusColor: _mauChu(status),
@@ -409,7 +426,8 @@ class _BillPageState extends State<BillPage> {
             right: 0,
             child: Opacity(
               opacity: 0.1,
-              child: Icon(Icons.account_balance_wallet, size: 64, color: AppColors.primary),
+              child: Icon(Icons.account_balance_wallet,
+                  size: 64, color: AppColors.primary),
             ),
           ),
           Column(
@@ -484,135 +502,189 @@ class _BillPageState extends State<BillPage> {
     String? meta,
     IconData? icon,
     Color? iconColor,
+    VoidCallback? onTap,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: isPaid ? AppColors.surfaceContainerHigh.withValues(alpha: 0.5) : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: isPaid
-            ? Border.all(color: AppColors.outlineVariant, style: BorderStyle.solid)
-            : Border.all(color: const Color(0xFFE0E0DB)),
-      ),
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(
-              key: ValueKey('bill-accent-${bill.id}'),
-              width: 4,
-              decoration: BoxDecoration(
-                color: accentColor,
-                borderRadius: const BorderRadius.horizontal(left: Radius.circular(12)),
-              ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    BillStatusHeader(
-                      title: title,
-                      subtitle: subtitle,
-                      meta: meta,
-                      icon: icon,
-                      iconColor: iconColor,
-                      status: status,
-                      statusColor: statusColor,
-                      statusBg: statusBg,
-                      titleColor:
-                          isPaid ? AppColors.textSecondary : AppColors.primary,
-                      isPaid: isPaid,
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        // `Flexible` + ellipsis: số tiền lớn (hoặc cỡ chữ hệ
-                        // thống to) đẩy nút "Thanh toán" ra ngoài mép thẻ.
-                        // `BillStatusHeader` đã được vá cùng lỗi này từ trước,
-                        // hàng dưới thì chưa ai để ý.
-                        Flexible(
-                          child: Text(
-                            amount,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: isPaid
-                                  ? AppColors.textSecondary
-                                  : AppColors.primary,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        InkWell(
-                          onTap: () => context.push('/bills/${bill.id}/edit', extra: bill),
-                          child: Icon(
-                            Icons.edit,
-                            size: 16,
-                            color: isPaid
-                                ? AppColors.textSecondary.withValues(alpha: 0.5)
-                                : AppColors.textSecondary,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        InkWell(
-                          onTap: () => _showDeleteConfirm(context, bill.id),
-                          child: Icon(
-                            Icons.delete_outline,
-                            size: 16,
-                            color: isPaid
-                                ? const Color(0xFFF1453B).withValues(alpha: 0.5)
-                                : const Color(0xFFF1453B),
-                          ),
-                        ),
-                        const Spacer(),
-                        if (isPaid)
-                          TextButton.icon(
-                            key: ValueKey('bill-undo-${bill.id}'),
-                            onPressed: () => _hoiHoanTac(context, bill),
-                            icon: const Icon(Icons.undo, size: 16),
-                            label: const FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Text('Hoàn tác'),
-                            ),
-                            style: TextButton.styleFrom(
-                              foregroundColor: AppColors.primary,
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 12),
-                              minimumSize: const Size(0, 36),
-                            ),
-                          ),
-                        if (!isPaid)
-                          ElevatedButton(
-                            onPressed: () => _showPayModal(context, bill),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
-                              elevation: 0,
-                              minimumSize: const Size(0, 36),
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: const FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Text(
-                                'Thanh toán',
-                                style: TextStyle(fontWeight: FontWeight.w600),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
+    return GestureDetector(
+      key: ValueKey('bill-row-${bill.id}'),
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        decoration: BoxDecoration(
+          color: isPaid
+              ? AppColors.surfaceContainerHigh.withValues(alpha: 0.5)
+              : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: isPaid
+              ? Border.all(
+                  color: AppColors.outlineVariant, style: BorderStyle.solid)
+              : Border.all(color: const Color(0xFFE0E0DB)),
+        ),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                key: ValueKey('bill-accent-${bill.id}'),
+                width: 4,
+                decoration: BoxDecoration(
+                  color: accentColor,
+                  borderRadius:
+                      const BorderRadius.horizontal(left: Radius.circular(12)),
                 ),
               ),
-            ),
-          ],
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      BillStatusHeader(
+                        title: title,
+                        subtitle: subtitle,
+                        meta: meta,
+                        icon: icon,
+                        iconColor: iconColor,
+                        status: status,
+                        statusColor: statusColor,
+                        statusBg: statusBg,
+                        titleColor: isPaid
+                            ? AppColors.textSecondary
+                            : AppColors.primary,
+                        isPaid: isPaid,
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          // `Flexible` + ellipsis: số tiền lớn (hoặc cỡ chữ hệ
+                          // thống to) đẩy nút "Thanh toán" ra ngoài mép thẻ.
+                          // `BillStatusHeader` đã được vá cùng lỗi này từ trước,
+                          // hàng dưới thì chưa ai để ý.
+                          Flexible(
+                            child: Text(
+                              amount,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: isPaid
+                                    ? AppColors.textSecondary
+                                    : AppColors.primary,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          InkWell(
+                            onTap: () => context.push('/bills/${bill.id}/edit',
+                                extra: bill),
+                            child: Icon(
+                              Icons.edit,
+                              size: 16,
+                              color: isPaid
+                                  ? AppColors.textSecondary
+                                      .withValues(alpha: 0.5)
+                                  : AppColors.textSecondary,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          InkWell(
+                            onTap: () => _showDeleteConfirm(context, bill.id),
+                            child: Icon(
+                              Icons.delete_outline,
+                              size: 16,
+                              color: isPaid
+                                  ? const Color(0xFFF1453B)
+                                      .withValues(alpha: 0.5)
+                                  : const Color(0xFFF1453B),
+                            ),
+                          ),
+                          const Spacer(),
+                          if (isPaid)
+                            TextButton.icon(
+                              key: ValueKey('bill-undo-${bill.id}'),
+                              onPressed: () => _hoiHoanTac(context, bill),
+                              icon: const Icon(Icons.undo, size: 16),
+                              label: const FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text('Hoàn tác'),
+                              ),
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppColors.primary,
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 12),
+                                minimumSize: const Size(0, 36),
+                              ),
+                            ),
+                          if (!isPaid)
+                            ElevatedButton(
+                              onPressed: () => _showPayModal(context, bill),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                minimumSize: const Size(0, 36),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 24, vertical: 8),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              child: const FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  'Thanh toán',
+                                  style: TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  /// Mở khoản chi mà lần trả đã sinh ra, ngay tại trang hoá đơn.
+  ///
+  /// Trước đây phải sang sổ giao dịch tự tìm, dù hoá đơn đã cầm sẵn id của
+  /// khoản chi. Dùng đúng bảng chi tiết của sổ để hai nơi không kể hai
+  /// chuyện khác nhau về cùng một giao dịch. Xoá ở đây bị từ chối như ở sổ
+  /// (khoản của hoá đơn) — đường đúng là nút Hoàn tác trên dòng.
+  void _moKhoanChi(BuildContext context, Transaction tx) {
+    final entity = TransactionEntity.fromDrift(tx);
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) => TransactionDetailSheet(
+        transaction: entity,
+        lookup: _lookup,
+        onEdit: () {
+          Navigator.of(sheetContext).pop();
+          context.push(
+            '/add',
+            extra: EditTransactionArgs(
+              transaction: entity,
+              category: _lookup.category(entity.categoryId),
+            ),
+          );
+        },
+        onDelete: () {
+          Navigator.of(sheetContext).pop();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                  'Khoản chi của hoá đơn không xoá tay được. Dùng nút Hoàn tác '
+                  'trên hoá đơn.'),
+            ),
+          );
+        },
       ),
     );
   }

@@ -45,6 +45,11 @@ class _FixedBillRepository implements BillRepository {
   @override
   Stream<List<Bill>> watchBills(int idaccount) => Stream.value(bills);
 
+  // Bloc đọc bản đồ khoản chi cùng lúc với danh sách; để rơi vào
+  // `noSuchMethod` là trang không bao giờ tới `BillLoaded`.
+  @override
+  Future<Map<String, Transaction>> paymentsOf(int idaccount) async => const {};
+
   /// Luôn hỏng — để dựng được trạng thái `BillError` mà không cần CSDL.
   @override
   Future<void> undoPayment({required String billId}) async =>

@@ -29,6 +29,11 @@ class BillRepositoryImpl implements BillRepository {
   }
 
   @override
+  Future<Map<String, Transaction>> paymentsOf(int idaccount) {
+    return db.transactionDao.getBillPayments(idaccount);
+  }
+
+  @override
   Future<void> addBill(BillsCompanion bill) async {
     await dataSource.insertBill(bill);
     syncEngine?.scheduleSync();

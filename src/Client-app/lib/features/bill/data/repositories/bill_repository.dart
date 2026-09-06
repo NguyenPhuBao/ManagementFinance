@@ -55,6 +55,12 @@ class BillUndoUnavailableException implements Exception {
 abstract class BillRepository {
   Stream<List<Bill>> watchBills(int idaccount);
   Future<List<Bill>> getBills(int idaccount);
+
+  /// Khoản chi của từng hoá đơn đã trả, theo `billId`.
+  ///
+  /// Chỉ có với khoản trả ghi từ v16 trên chính máy này; hàng kéo về từ
+  /// server vắng mặt và nơi gọi phải hiện "không biết" chứ không đoán.
+  Future<Map<String, Transaction>> paymentsOf(int idaccount);
   Future<void> addBill(BillsCompanion bill);
   Future<void> editBill(BillsCompanion bill);
   Future<void> deleteBill(String id);
