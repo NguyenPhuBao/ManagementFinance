@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
 
-/// Bảng thanh toán hoá đơn: số tiền **thật của kỳ này** + ví trả.
+/// Bảng thanh toán hoá đơn: số tiền **thật của kỳ này** + ngày trả + ví trả.
 ///
 /// Thay cho `WalletSelectionBottomSheet` cũ, vốn chỉ hỏi ví. Hoá đơn điện
 /// nước mỗi kỳ một số khác nhau, mà đổi qua form Sửa là đổi cho MỌI kỳ sau
 /// chứ không riêng kỳ này — nên số tiền phải hỏi được ngay tại đây.
+///
+/// Ngày trả: người dùng hay ghi lại sau (trả hôm qua bằng tiền mặt, hôm nay
+/// mới mở app). Không hỏi thì khoản chi luôn mang ngày mở app và thống kê
+/// theo ngày lệch. Không cho chọn ngày tương lai — repository cũng chặn.
 class BillPaymentSheet extends StatefulWidget {
   final List<Wallet> wallets;
 
@@ -21,8 +26,12 @@ class BillPaymentSheet extends StatefulWidget {
   /// nên mỗi lần trả người dùng phải nhớ lại mình đã chọn ví nào lúc tạo.
   final String? preferredWalletId;
 
-  /// Gọi khi người dùng chọn ví: ví đã chọn và số tiền đã nhập.
-  final void Function(Wallet wallet, double amount) onConfirmed;
+  /// Gọi khi người dùng chọn ví: ví đã chọn, số tiền đã nhập và ngày trả
+  /// (chỉ phần ngày, không giờ).
+  final void Function(Wallet wallet, double amount, DateTime date) onConfirmed;
+
+  /// "Hôm nay" cho phép tiêm — mặc định của ô ngày và trần của bộ chọn.
+  final DateTime? today;
 
   const BillPaymentSheet({
     super.key,
@@ -30,6 +39,7 @@ class BillPaymentSheet extends StatefulWidget {
     required this.initialAmount,
     required this.onConfirmed,
     this.preferredWalletId,
+    this.today,
   });
 
   @override
@@ -38,7 +48,11 @@ class BillPaymentSheet extends StatefulWidget {
 
 class _BillPaymentSheetState extends State<BillPaymentSheet> {
   late final TextEditingController _soTien;
+  late DateTime _homNay;
+  late DateTime _ngay;
   String? _loi;
+
+  static final _dinhDangNgay = DateFormat('dd/MM/yyyy');
 
   @override
   void initState() {
@@ -47,6 +61,21 @@ class _BillPaymentSheetState extends State<BillPaymentSheet> {
     // dùng tự gõ. Cùng quy ước với nút "Dùng số này" của form ngân sách.
     _soTien =
         TextEditingController(text: widget.initialAmount.round().toString());
+    final t = widget.today ?? DateTime.now();
+    _homNay = DateTime(t.year, t.month, t.day);
+    _ngay = _homNay;
+  }
+
+  Future<void> _chonNgay() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _ngay,
+      firstDate: DateTime(2020),
+      // Khoản chi không được mang ngày chưa tới.
+      lastDate: _homNay,
+    );
+    if (picked == null || !mounted) return;
+    setState(() => _ngay = DateTime(picked.year, picked.month, picked.day));
   }
 
   @override
@@ -73,7 +102,7 @@ class _BillPaymentSheetState extends State<BillPaymentSheet> {
       return;
     }
     Navigator.pop(context);
-    widget.onConfirmed(wallet, soTien);
+    widget.onConfirmed(wallet, soTien, _ngay);
   }
 
   @override
@@ -128,6 +157,32 @@ class _BillPaymentSheetState extends State<BillPaymentSheet> {
             onChanged: (_) {
               if (_loi != null) setState(() => _loi = null);
             },
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'Ngày trả',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          InkWell(
+            key: const ValueKey('bill-pay-date'),
+            onTap: _chonNgay,
+            borderRadius: BorderRadius.circular(4),
+            child: InputDecorator(
+              decoration: const InputDecoration(
+                isDense: true,
+                border: OutlineInputBorder(),
+                suffixIcon: Icon(Icons.calendar_today_outlined, size: 18),
+              ),
+              child: Text(
+                _dinhDangNgay.format(_ngay),
+                style: const TextStyle(fontSize: 15),
+              ),
+            ),
           ),
           const SizedBox(height: 20),
           const Text(

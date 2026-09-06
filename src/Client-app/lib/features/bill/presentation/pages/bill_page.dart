@@ -127,13 +127,14 @@ class _BillPageState extends State<BillPage> {
         // Hoá đơn đã lưu sẵn ví thanh toán; luồng trả trước đây bày ra danh
         // sách không gợi ý gì nên người dùng phải tự nhớ.
         preferredWalletId: bill.walletId,
-        onConfirmed: (wallet, soTien) {
+        onConfirmed: (wallet, soTien, ngay) {
           context.read<BillBloc>().add(
                 PayBillEvent(
                   bill: bill,
                   walletId: wallet.id,
                   idaccount: accountId,
                   amount: soTien,
+                  occurredAt: ngay,
                 ),
               );
         },
