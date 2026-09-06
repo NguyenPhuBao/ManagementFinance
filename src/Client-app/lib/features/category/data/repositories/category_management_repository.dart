@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../../core/category/category_name.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/sync/sync_engine.dart';
 import '../models/category_tree.dart';
@@ -35,6 +36,11 @@ abstract class CategoryManagementRepository {
     required int accountId,
     required String categoryId,
   });
+
+  /// Từ khoá của MỌI danh mục thuộc tài khoản, gom theo `categoryId`.
+  /// Dùng cho bộ gợi ý — nó cần cả tập cùng lúc, gọi `loadKeywords` trong vòng
+  /// lặp sẽ sinh một truy vấn cho mỗi danh mục.
+  Future<Map<String, List<String>>> loadAllKeywords({required int accountId});
   Future<void> saveKeywords({
     required int accountId,
     required String categoryId,
@@ -354,6 +360,12 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
       db.categoryDao.getKeywords(accountId, categoryId);
 
   @override
+  Future<Map<String, List<String>>> loadAllKeywords({
+    required int accountId,
+  }) =>
+      db.categoryDao.getAllKeywords(accountId);
+
+  @override
   Future<void> saveKeywords({
     required int accountId,
     required String categoryId,
@@ -514,6 +526,7 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
     }
   }
 
-  String _normalize(String value) =>
-      value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+  /// Uỷ quyền cho định nghĩa DUY NHẤT ở `core/category/category_name.dart`.
+  /// Trước đây mỗi nơi so tên tự viết một biến thể riêng, và chúng đã lệch nhau.
+  String _normalize(String value) => normalizeCategoryName(value);
 }

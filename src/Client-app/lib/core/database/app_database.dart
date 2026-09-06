@@ -5,10 +5,12 @@ import 'tables/wallets_table.dart';
 import 'tables/transactions_table.dart';
 import 'tables/categories_table.dart';
 import 'tables/other_tables.dart';
+import 'tables/notification_table.dart';
 import 'daos/wallet_dao.dart';
 import 'daos/transaction_dao.dart';
 import 'daos/category_dao.dart';
 import 'daos/other_daos.dart';
+import 'daos/notification_dao.dart';
 
 // ── Code generation ──────────────────────────────────────────────────────────
 // File này cần chạy build_runner để sinh ra:
@@ -37,6 +39,7 @@ part 'app_database.g.dart';
     Budgets,
     Bills,
     Goals,
+    AppNotifications,
   ],
   daos: [
     WalletDao,
@@ -45,6 +48,7 @@ part 'app_database.g.dart';
     BudgetDao,
     BillDao,
     GoalDao,
+    NotificationDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -52,7 +56,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration {
@@ -103,8 +107,10 @@ class AppDatabase extends _$AppDatabase {
 
           // ── Budgets (DB v2) ──────────────────────────────────────────────
           await m.addColumn(budgets, budgets.spent);
-          await m.addColumn(budgets, budgets.remaining);
-          await m.addColumn(budgets, budgets.percentSpent);
+          // `remaining` và `percent_spent` từng được thêm ở bước này. Bỏ đi vì
+          // v11 xoá hẳn hai cột đó — thêm rồi xoá ngay trong cùng một lượt nâng
+          // cấp là việc thừa, và giữ lại thì mã không biên dịch được nữa (lớp
+          // `Budgets` không còn getter tương ứng).
           await m.addColumn(budgets, budgets.overSpending);
           await m.addColumn(budgets, budgets.overAmount);
           await m.addColumn(budgets, budgets.recurrence);
@@ -204,6 +210,109 @@ class AppDatabase extends _$AppDatabase {
           await m.addColumn(goals, goals.syncError);
           await m.addColumn(goals, goals.syncBlockedUntil);
         }
+        if (from < 10) {
+          // Bộ danh mục mặc định hai phía từng lệch nhau: client seed 18 mục,
+          // backend chỉ có 13, và chỉ 10 mục KHỚP TÊN. Danh mục mặc định được
+          // ánh xạ sang UUID của backend bằng cách so tên, nên 8 mục lệch kia
+          // không tìm được bản nào — giao dịch dùng chúng bị hoãn đẩy VĨNH VIỄN
+          // mà không có lỗi nào báo ra.
+          //
+          // Ba mục dưới đây chỉ khác NHÃN, cùng một khái niệm → đổi tên theo
+          // backend là chúng tự gộp làm một khi pull về. KHÔNG xoá hàng: xoá
+          // hàng seed trước khi giao dịch được repoint chính là lỗi 11.6.
+          await customStatement(
+            "UPDATE categories SET name = 'Y tế' "
+            "WHERE id = 'cat_health' AND is_default = 1",
+          );
+          await customStatement(
+            "UPDATE categories SET name = 'Nhà cửa' "
+            "WHERE id = 'cat_housing' AND is_default = 1",
+          );
+          await customStatement(
+            "UPDATE categories SET name = 'Hóa đơn' "
+            "WHERE id = 'cat_bill_chi' AND is_default = 1",
+          );
+          // Năm mục backend KHÔNG có (Chi khác, Thu khác, Làm thêm, Trả nợ,
+          // Thu nợ) được chuyển thành danh mục riêng của tài khoản — việc đó
+          // cần biết idaccount nên phải làm lúc đăng nhập, xem
+          // `PersonalDefaultCategories.ensureForAccount()`.
+        }
+        if (from < 11) {
+          // Bảng `budgets` lệch với backend theo cả hai chiều:
+          //
+          // THIẾU `threshold_warning_percent` — backend có cột này từ đợt DB v2
+          // nhưng client thì không, nên ngưỡng cảnh báo theo phần trăm không
+          // bao giờ sang được máy khác. Trước v11 phía client dùng cứng 90%.
+          //
+          // THỪA `remaining`, `percent_spent`, `period` — ba cột backend KHÔNG
+          // có. Hai cột đầu chỉ là amount - spent và spent / amount; lưu lại
+          // tạo thêm một bản sao có thể lệch mà chẳng ai đọc. `period`
+          // ('monthly'/'weekly'/...) đã bị `time_recurrence`
+          // ('Month'/'Week'/...) thay thế hoàn toàn từ DB v2.
+          //
+          // Dùng `alterTable` thay vì `ALTER TABLE ... DROP COLUMN`: cú pháp đó
+          // chỉ có từ SQLite 3.35, mà phiên bản đi kèm thì khác nhau giữa
+          // Android, iOS và web. Drift dựng lại bảng theo lược đồ hiện tại rồi
+          // chép dữ liệu sang, nên cột không còn trong lược đồ tự biến mất.
+          //
+          // `newColumns` là bắt buộc với cột MỚI: thiếu nó Drift sẽ đi tìm
+          // `threshold_warning_percent` trong bảng cũ và câu SELECT sẽ hỏng.
+          await m.alterTable(TableMigration(
+            budgets,
+            newColumns: [budgets.thresholdWarningPercent],
+          ));
+        }
+        if (from < 12) {
+          // `time_recurrence` từ `NOT NULL DEFAULT 'Month'` thành nullable.
+          //
+          // null = ngân sách KHÔNG theo chu kỳ nào ("Ngày cụ thể"): người dùng
+          // tự đặt ngày kết thúc. Backend vốn đã chấp nhận trạng thái đó —
+          // ràng buộc `chk_budget_time_recurrence` là `IS NULL OR IN (...)` —
+          // chỉ client là không lưu nổi.
+          //
+          // `TableMigration` không có `newColumns`: cột đã tồn tại, chỉ đổi
+          // ràng buộc NOT NULL. Drift dựng bảng theo lược đồ mới rồi chép dữ
+          // liệu sang, nên giá trị cũ ('Week', 'Month'…) giữ nguyên.
+          await m.alterTable(TableMigration(budgets));
+        }
+        if (from < 13) {
+          // Bảng thông báo cục bộ. Không có dữ liệu cũ để chép sang: thông báo
+          // đều suy lại được từ ngân sách/hoá đơn/mục tiêu, nên tạo bảng rỗng
+          // là đủ — lần quét đầu tiên sẽ dựng lại toàn bộ.
+          await m.createTable(appNotifications);
+          await m.create(Index('idx_appnotif_feed',
+              'CREATE INDEX IF NOT EXISTS idx_appnotif_feed '
+              'ON app_notifications (idaccount, created_at)'));
+        }
+
+        if (from < 14) {
+          // Nối giao dịch tích luỹ với mục tiêu bằng ID thay vì bằng tên. Cột
+          // CỤC BỘ, không đi qua đồng bộ — xem chú thích ở `Transactions`.
+          //
+          // Không có bước chép dữ liệu cũ sang: hàng cũ vẫn tra được bằng ghi
+          // chú, và suy ngược từ ghi chú ra ID chính là phép so bằng tên mà cột
+          // này sinh ra để thay thế — làm vậy sẽ chép luôn cả lỗi tiền tố
+          // ("Mua" nuốt lịch sử của "Mua xe") vào dữ liệu, chỗ không sửa được
+          // nữa.
+          await m.addColumn(transactions, transactions.goalId);
+          await m.create(Index('idx_transaction_goal',
+              'CREATE INDEX IF NOT EXISTS idx_transaction_goal '
+              'ON transactions (idaccount, goal_id)'));
+        }
+
+        if (from < 15) {
+          // Cấu hình trích tiền tự động. Ba cột CỤC BỘ, không đi qua đồng bộ —
+          // xem chú thích ở `Goals`.
+          //
+          // Không suy `autoDepositLastRun` từ `cycleTakeMoney` đã có sẵn: mọi
+          // mục tiêu tạo trước bản này đều mang một chu kỳ (trang tạo bật sẵn
+          // công tắc và luôn lưu chu kỳ), nhưng chưa ai trong số đó ĐỒNG Ý cho
+          // app tự chuyển tiền. Đặt mốc chạy cho chúng là trích tiền của người
+          // dùng dựa trên một lựa chọn họ chưa từng đưa ra.
+          await m.addColumn(goals, goals.autoDepositAmount);
+          await m.addColumn(goals, goals.autoDepositWalletId);
+          await m.addColumn(goals, goals.autoDepositLastRun);
+        }
       },
       beforeOpen: (details) async {
         // Bật foreign key constraints (SQLite tắt mặc định)
@@ -275,8 +384,60 @@ class AppDatabase extends _$AppDatabase {
       removed += await (delete(wallets)
             ..where((t) => t.idaccount.equals(keepIdaccount).not()))
           .go();
+      // Thông báo cũng phải đi theo: bỏ sót là thông báo tài chính của người
+      // đăng nhập trước hiện trên máy người sau. Bảng này không có khoá ngoại
+      // nên vị trí trong chuỗi xoá không quan trọng.
+      removed += await (delete(appNotifications)
+            ..where((t) => t.idaccount.equals(keepIdaccount).not()))
+          .go();
     });
     return removed;
+  }
+
+  /// Chuyển mọi tham chiếu danh mục của [idaccount] từ [fromCategoryId] sang
+  /// [toCategoryId], ở cả ba bảng có cột `categoryId`.
+  ///
+  /// Trả về số dòng đã đổi.
+  ///
+  /// ⚠️ Nơi gọi PHẢI repoint XONG rồi mới xoá hàng danh mục cũ. Đảo thứ tự lại
+  /// chính là lỗi 11.6: hàng `cat_food` bị xoá trước khiến `getById()` trả null
+  /// và giao dịch kẹt vĩnh viễn.
+  Future<int> repointCategoryReferences({
+    required int idaccount,
+    required String fromCategoryId,
+    required String toCategoryId,
+  }) async {
+    var moved = 0;
+    await transaction(() async {
+      moved += await (update(transactions)
+            ..where((t) =>
+                t.idaccount.equals(idaccount) &
+                t.categoryId.equals(fromCategoryId)))
+          .write(TransactionsCompanion(
+        categoryId: Value(toCategoryId),
+        syncStatus: const Value('pending'),
+        updatedAt: Value(DateTime.now()),
+      ));
+      moved += await (update(budgets)
+            ..where((t) =>
+                t.idaccount.equals(idaccount) &
+                t.categoryId.equals(fromCategoryId)))
+          .write(BudgetsCompanion(
+        categoryId: Value(toCategoryId),
+        syncStatus: const Value('pending'),
+        updatedAt: Value(DateTime.now()),
+      ));
+      moved += await (update(bills)
+            ..where((t) =>
+                t.idaccount.equals(idaccount) &
+                t.categoryId.equals(fromCategoryId)))
+          .write(BillsCompanion(
+        categoryId: Value(toCategoryId),
+        syncStatus: const Value('pending'),
+        updatedAt: Value(DateTime.now()),
+      ));
+    });
+    return moved;
   }
 
   // ── Seed default categories ───────────────────────────────────────────────
@@ -287,23 +448,18 @@ class AppDatabase extends _$AppDatabase {
       (id: 'cat_food',       name: 'Ăn uống',         classify: 'chi',     icon: 'restaurant',   colour: '#FF5722'),
       (id: 'cat_transport',  name: 'Di chuyển',        classify: 'chi',     icon: 'directions_car', colour: '#2196F3'),
       (id: 'cat_shopping',   name: 'Mua sắm',          classify: 'chi',     icon: 'shopping_bag',  colour: '#9C27B0'),
-      (id: 'cat_health',     name: 'Sức khoẻ',         classify: 'chi',     icon: 'local_hospital', colour: '#F44336'),
+      (id: 'cat_health',     name: 'Y tế',             classify: 'chi',     icon: 'local_hospital', colour: '#F44336'),
       (id: 'cat_education',  name: 'Giáo dục',         classify: 'chi',     icon: 'school',        colour: '#3F51B5'),
       (id: 'cat_entertain',  name: 'Giải trí',         classify: 'chi',     icon: 'sports_esports', colour: '#E91E63'),
-      (id: 'cat_housing',    name: 'Nhà ở',            classify: 'chi',     icon: 'home',          colour: '#607D8B'),
-      (id: 'cat_bill_chi',   name: 'Hoá đơn & Dịch vụ', classify: 'chi',  icon: 'receipt',       colour: '#795548'),
-      (id: 'cat_other_chi',  name: 'Chi khác',         classify: 'chi',     icon: 'more_horiz',    colour: '#9E9E9E'),
+      (id: 'cat_housing',    name: 'Nhà cửa',          classify: 'chi',     icon: 'home',          colour: '#607D8B'),
+      (id: 'cat_bill_chi',   name: 'Hóa đơn',          classify: 'chi',     icon: 'receipt',       colour: '#795548'),
       // ── Thu nhập ──────────────────────────────────────────────────────────
       (id: 'cat_salary',     name: 'Lương',            classify: 'thu',     icon: 'work',          colour: '#4CAF50'),
       (id: 'cat_bonus',      name: 'Thưởng',           classify: 'thu',     icon: 'card_giftcard', colour: '#8BC34A'),
-      (id: 'cat_freelance',  name: 'Làm thêm',         classify: 'thu',     icon: 'laptop',        colour: '#00BCD4'),
       (id: 'cat_invest',     name: 'Đầu tư',           classify: 'thu',     icon: 'trending_up',   colour: '#009688'),
-      (id: 'cat_other_thu',  name: 'Thu khác',         classify: 'thu',     icon: 'more_horiz',    colour: '#4CAF50'),
       // ── Vay / Nợ ──────────────────────────────────────────────────────────
       (id: 'cat_lend',       name: 'Cho vay',          classify: 'vay_no',  icon: 'person_add',    colour: '#FF9800'),
       (id: 'cat_borrow',     name: 'Đi vay',           classify: 'vay_no',  icon: 'person_remove', colour: '#FF5722'),
-      (id: 'cat_repay',      name: 'Trả nợ',           classify: 'vay_no',  icon: 'payment',       colour: '#795548'),
-      (id: 'cat_collect',    name: 'Thu nợ',           classify: 'vay_no',  icon: 'attach_money',  colour: '#4CAF50'),
     ];
 
     final companions = defaultCats.map((c) => CategoriesCompanion.insert(

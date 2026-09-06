@@ -6,6 +6,7 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/auth/current_account.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../widgets/bill_status_header.dart';
 import '../bloc/bill_bloc.dart';
 import '../bloc/bill_event.dart';
 import '../bloc/bill_state.dart';
@@ -327,56 +328,15 @@ class _BillPageState extends State<BillPage> {
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              title,
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: isPaid ? AppColors.textSecondary : AppColors.primary,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              subtitle,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: statusBg,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Row(
-                            children: [
-                              if (isPaid) ...[
-                                Icon(Icons.check_circle, color: statusColor, size: 14),
-                                const SizedBox(width: 4),
-                              ],
-                              Text(
-                                status,
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 1.2,
-                                  color: statusColor,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                    BillStatusHeader(
+                      title: title,
+                      subtitle: subtitle,
+                      status: status,
+                      statusColor: statusColor,
+                      statusBg: statusBg,
+                      titleColor:
+                          isPaid ? AppColors.textSecondary : AppColors.primary,
+                      isPaid: isPaid,
                     ),
                     const SizedBox(height: 16),
                     Row(

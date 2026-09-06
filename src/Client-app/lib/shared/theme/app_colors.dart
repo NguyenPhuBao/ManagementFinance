@@ -13,6 +13,15 @@ class AppColors {
   static const Color income = Color(0xFF4CAF50); // Thu nhập / Tích cực
   static const Color expense = Color(0xFFF25F5C); // Chi tiêu / Tiêu cực
 
+  /// Mức cảnh báo giữa "ổn" và "sắp hỏng" — bậc VÀNG của thang bốn màu ngân
+  /// sách (xanh lá → vàng → đỏ tươi → đỏ sẫm).
+  ///
+  /// Thêm ngày 2026-09-04: bảng màu vốn chỉ có xanh và hai sắc đỏ ([expense] đỏ
+  /// tươi, [error] đỏ sẫm), nên trước đó "sắp chạm hạn mức" và "đã vượt" phải
+  /// dùng chung một màu. Chọn tông hổ phách đậm thay vì vàng chanh để chữ 12px
+  /// còn đọc được trên nền trắng.
+  static const Color warning = Color(0xFFE08700);
+
   // Text
   static const Color textPrimary = Color(0xFF1A1C1A);
   static const Color textSecondary = Color(0xFF767872);

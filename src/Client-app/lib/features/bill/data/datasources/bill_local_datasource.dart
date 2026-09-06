@@ -13,17 +13,21 @@ class BillLocalDataSource {
     return db.billDao.getAll(idaccount);
   }
 
-  Future<Bill?> getBillById(String id) async {
-    final list = await db.billDao.getPending();
-    try {
-      return list.firstWhere((b) => b.id == id);
-    } catch (_) {
-      return null;
-    }
+  /// Đọc thẳng theo khoá chính.
+  ///
+  /// Trước đây hàm này lọc trong `getPending()`, tức chỉ nhìn thấy những hàng
+  /// đang chờ đồng bộ — hoá đơn đã `synced` thì báo là không tồn tại.
+  Future<Bill?> getBillById(String id) {
+    return db.billDao.getById(id);
   }
 
   Future<void> insertBill(BillsCompanion bill) {
     return db.billDao.insert(bill);
+  }
+
+  /// Chỉ ghi đè những cột có trong [bill] — xem `BillDao.updateFields`.
+  Future<void> updateBill(BillsCompanion bill) {
+    return db.billDao.updateFields(bill);
   }
 
   Future<void> markPaid(String id) {

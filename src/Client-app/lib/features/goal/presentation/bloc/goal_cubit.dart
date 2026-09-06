@@ -59,15 +59,28 @@ class GoalCubit extends Cubit<GoalState> {
     }
   }
 
-  Future<void> addGoal({
+  /// Trả `null` khi thành công, hoặc câu lỗi để nơi gọi hiển thị — giống
+  /// [updateGoal], và vì đúng cùng một lý do.
+  ///
+  /// Trang tạo gọi `.then(...)` rồi đóng trang ngay, nó KHÔNG đọc trạng thái
+  /// cubit. Bản trước chỉ phát `GoalError`, nên một mục tiêu bị từ chối (trùng
+  /// tên chẳng hạn) vẫn hiện thông báo "thành công" rồi đóng trang — người
+  /// dùng mất hết những gì vừa gõ và không biết vì sao mục tiêu không có ở đó.
+  Future<String?> addGoal({
     required int idaccount,
     required String name,
     required double targetAmount,
     required DateTime targetDate,
     String? walletId,
+    String? cycleTakeMoney,
     String? icon,
     String? colour,
     String? note,
+    bool? recurrence,
+    String? timeRecurrence,
+    double? autoDepositAmount,
+    String? autoDepositWalletId,
+    DateTime? autoDepositAnchor,
   }) async {
     try {
       await repository.addGoal(
@@ -76,12 +89,77 @@ class GoalCubit extends Cubit<GoalState> {
         targetAmount: targetAmount,
         targetDate: targetDate,
         walletId: walletId,
+        cycleTakeMoney: cycleTakeMoney,
         icon: icon,
         colour: colour,
         note: note,
+        recurrence: recurrence,
+        timeRecurrence: timeRecurrence,
+        autoDepositAmount: autoDepositAmount,
+        autoDepositWalletId: autoDepositWalletId,
+        autoDepositAnchor: autoDepositAnchor,
       );
+      return null;
     } catch (e) {
-      emit(GoalError(e.toString()));
+      return e.toString();
+    }
+  }
+
+  /// Sửa phần mô tả của mục tiêu. Tiến độ và ví tích luỹ KHÔNG đi qua đây —
+  /// xem `GoalRepository.updateGoal`.
+  ///
+  /// Trả `null` khi thành công, hoặc câu lỗi để nơi gọi hiển thị. Trang sửa cần
+  /// biết kết quả ngay tại chỗ để quyết định có đóng trang không; phát
+  /// `GoalError` như các lệnh khác thì trang vẫn đóng rồi mới hiện lỗi, và
+  /// người dùng mất luôn những gì vừa gõ.
+  Future<String?> updateGoal({
+    required String id,
+    required String name,
+    required double targetAmount,
+    required DateTime targetDate,
+    String? cycleTakeMoney,
+    String? icon,
+    String? colour,
+    String? note,
+    bool? recurrence,
+    String? timeRecurrence,
+    double? autoDepositAmount,
+    String? autoDepositWalletId,
+    DateTime? autoDepositAnchor,
+  }) async {
+    try {
+      await repository.updateGoal(
+        id: id,
+        name: name,
+        targetAmount: targetAmount,
+        targetDate: targetDate,
+        cycleTakeMoney: cycleTakeMoney,
+        icon: icon,
+        colour: colour,
+        note: note,
+        recurrence: recurrence,
+        timeRecurrence: timeRecurrence,
+        autoDepositAmount: autoDepositAmount,
+        autoDepositWalletId: autoDepositWalletId,
+        autoDepositAnchor: autoDepositAnchor,
+      );
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  /// Bắt đầu vòng mới cho một mục tiêu lặp lại đã hoàn thành.
+  ///
+  /// Trả `null` khi xong, hoặc câu lỗi để nơi gọi hiện snackbar — cùng lối với
+  /// [updateGoal]: nút nằm trên trang chi tiết và trang ấy không đóng lại sau
+  /// thao tác, nên người dùng phải thấy lý do ngay tại chỗ.
+  Future<String?> batDauVongMoi(String goalId) async {
+    try {
+      await repository.batDauVongMoi(goalId);
+      return null;
+    } catch (e) {
+      return e.toString();
     }
   }
 
@@ -96,12 +174,13 @@ class GoalCubit extends Cubit<GoalState> {
     }
   }
 
+  /// [walletId] là ví NGUỒN. Ví nhận không truyền vào — repository đọc từ chính
+  /// mục tiêu, vì nó được chọn một lần lúc tạo và chỉ đổi qua "Đổi ví nhận".
   Future<void> depositToGoal({
     required String goalId,
     required String goalName,
     required double depositAmount,
     required String walletId,
-    String? targetWalletId,
     required int idaccount,
   }) async {
     try {
@@ -110,10 +189,30 @@ class GoalCubit extends Cubit<GoalState> {
         goalName: goalName,
         depositAmount: depositAmount,
         walletId: walletId,
-        targetWalletId: targetWalletId,
         idaccount: idaccount,
       );
       // watchGoals stream sẽ tự động cập nhật UI — không cần gọi loadGoals
+    } catch (e) {
+      emit(GoalError(e.toString()));
+    }
+  }
+
+  /// [walletId] là ví NHẬN tiền rút ra. Ví tích lũy đọc từ chính mục tiêu.
+  Future<void> withdrawFromGoal({
+    required String goalId,
+    required String goalName,
+    required double amount,
+    required String walletId,
+    required int idaccount,
+  }) async {
+    try {
+      await repository.withdrawFromGoal(
+        goalId: goalId,
+        goalName: goalName,
+        amount: amount,
+        walletId: walletId,
+        idaccount: idaccount,
+      );
     } catch (e) {
       emit(GoalError(e.toString()));
     }

@@ -136,6 +136,8 @@ dart run build_runner watch --delete-conflicting-outputs
 
 ### Quy tắc trùng tên danh mục
 
+> **Lý do** buộc phải thay đổi, bằng chứng đo được và các phương án đã cân nhắc rồi loại bỏ: `docs/CATEGORY_RATIONALE.md`. Đọc file đó trước khi định "dọn dẹp" vùng này.
+
 **Quy tắc nghiệp vụ (chốt 2026-09-03).** Trong phạm vi **một tài khoản**, tên danh mục là **duy nhất**:
 
 | Yếu tố | Có nằm trong khoá không |
@@ -149,7 +151,9 @@ dart run build_runner watch --delete-conflicting-outputs
 Thêm hai điều:
 
 - **Danh mục mặc định dùng chung không gian tên với danh mục người dùng.** Người dùng nhìn thấy cả hai trong cùng một danh sách chọn nên hai mục trùng tên là không phân biệt được. Vì danh mục mặc định là hàng dùng chung, tên của nó chiếm chỗ với **mọi** tài khoản.
-- **Hàng đã xoá mềm không giữ chỗ**, và so tên **không phân biệt hoa/thường**, gom khoảng trắng thừa: `trim().toLowerCase()` rồi gộp mọi dãy khoảng trắng thành một dấu cách.
+- **Hàng đã xoá mềm không giữ chỗ.** Phép so tên đi qua **bốn bước, theo đúng thứ tự**: gộp Unicode về dạng NFC → chữ thường → cắt khoảng trắng hai đầu → gom khoảng trắng ở giữa. Định nghĩa **duy nhất** nằm ở `lib/core/category/category_name.dart` (`normalizeCategoryName`); mọi nơi so tên đều phải gọi hàm đó.
+  - Bước NFC không phải tuỳ chọn: "Cà phê" gõ từ hai bàn phím khác nhau có thể ra hai chuỗi khác byte (6 và 8 ký tự) mà mắt thường không phân biệt được.
+  - Vì sao chốt đủ bốn bước ngay: **nới lỏng về sau là miễn phí, siết chặt về sau thì phải dọn dữ liệu** — bỏ bớt một bước bây giờ nghĩa là mai kia thêm lại sẽ có sẵn dữ liệu vi phạm và `CREATE UNIQUE INDEX` phía PostgreSQL sẽ thất bại.
 
 **Nơi thi hành — chỉ có client:**
 
@@ -164,9 +168,11 @@ Phép kiểm tra **chỉ chạy khi tên thật sự đổi**. Bản client trư
 > UNIQUE (NameCategory, Classify) WHERE Is_default = TRUE           -- uq_category_default_name_classify
 > ```
 >
-> Hai ràng buộc này lệch quy tắc theo **cả hai chiều**: lỏng hơn ở `Classify`, ở việc tách khoá riêng cho danh mục mặc định và ở so tên phân biệt hoa/thường; nhưng **chặt hơn** ở chỗ hàng đã xoá mềm vẫn giữ chỗ — nên xoá một danh mục rồi tạo lại cùng tên sẽ được client cho qua mà CSDL từ chối, và `/sync/push` chỉ đánh dấu thao tác đó `failed` nên **hỏng âm thầm**.
+> Hai ràng buộc này lệch quy tắc theo **cả hai chiều**: lỏng hơn ở `Classify`, ở việc tách khoá riêng cho danh mục mặc định và ở so tên phân biệt hoa/thường; nhưng **chặt hơn** ở chỗ hàng đã xoá mềm vẫn giữ chỗ — nên xoá một danh mục rồi tạo lại cùng tên sẽ được client cho qua mà CSDL từ chối.
 >
-> Việc cần backend làm, kèm SQL và cách kiểm chứng: `docs/superpowers/backend/CATEGORY_NAME_UNIQUENESS.md`.
+> Dòng "chặt hơn" đó có một đường kích hoạt **tự lặp**, xem **G16** trong `docs/CLIENT_APP_KNOWN_GAPS.md`. Từ 2026-09-04 client xếp vi phạm UNIQUE (`23505`) vào `permanent` nên bản ghi hỏng bị chặn theo thời gian và có ghi `syncError` — **không còn hoàn toàn âm thầm, không còn kéo chậm hàng đợi**. Nhưng bản ghi vẫn sinh ra ở mỗi lần mở app và vẫn không lên được server.
+>
+> Việc cần backend làm, kèm SQL và cách kiểm chứng: `docs/superpowers/backend/CAN-LAM/CATEGORY_NAME_UNIQUENESS.md`.
 
 ---
 
@@ -340,6 +346,19 @@ syncStatus = 'synced' (không cần push)
 > ⚠️ **Quan trọng**: `idaccount = 0` chỉ tồn tại trong SQLite client. Trên backend PostgreSQL, admin categories có `create_by = 1`. Khi pull categories từ backend, client lưu chúng với `idaccount = 0` (vì `create_by = 1` ≠ idaccount của user hiện tại). Đây là mapping có chủ đích.
 
 Sau khi pull từ backend → UUID categories thay thế → `removeDuplicateLocalSeedCategories()` xóa các local seed đã có UUID tương ứng.
+
+**Bộ seed khớp đúng 13 danh mục mặc định của backend** (từ 2026-09-03). Trước đó client seed 18 mục còn backend có 13, và **chỉ 10 mục khớp tên** — mà danh mục mặc định lại được ánh xạ sang UUID backend **bằng cách so tên**, nên 8 mục lệch kia không tìm được bản nào, `_resolveCategoryId` trả `null`, và mọi giao dịch dùng chúng bị hoãn đẩy **vĩnh viễn** mà không có lỗi nào báo ra.
+
+Tám mục lệch được xử lý làm hai nhóm khác nhau:
+
+| Nhóm | Mục | Cách xử lý |
+|---|---|---|
+| Chỉ khác **nhãn** | `Sức khoẻ`→`Y tế`, `Nhà ở`→`Nhà cửa`, `Hoá đơn & Dịch vụ`→`Hóa đơn` | Đổi tên seed cho khớp backend. Migration v9→v10 đổi tên cho máy đã cài. **Không xoá hàng** — xoá hàng seed trước khi giao dịch được repoint chính là lỗi 11.6. |
+| Backend **không có** | `Chi khác`, `Thu khác`, `Làm thêm`, `Trả nợ`, `Thu nợ` | Chuyển thành **danh mục riêng của tài khoản** (`PersonalDefaultCategories.ensureForAccount()`, chạy lúc đăng nhập **và** khi khôi phục phiên). Danh mục người dùng thì đồng bộ được, nên chúng đẩy lên bình thường — backend không phải thêm gì. |
+
+> ⚠️ Năm mục cá nhân đó phải mang **id UUID**, không phải id dạng `cat_*`: `_resolveCategoryId` chỉ chấp nhận danh mục người dùng có UUID hợp lệ, id dạng slug sẽ bị trả `null` và giao dịch lại kẹt y như cũ.
+>
+> Dữ liệu cũ trỏ vào hàng `cat_*` được **repoint trước, xoá mềm sau** — ở cả ba bảng có `categoryId` (transactions, budgets, bills).
 
 ### Category dedup logic (trong watchCategoryRows / getCategoryRows)
 - Nếu có 2 category cùng tên: ưu tiên UUID version (từ backend) thay vì `cat_food` version
@@ -522,7 +541,7 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-03)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-04)
 
 ### 🔐 Xác thực phiên đăng nhập
 
@@ -537,7 +556,7 @@ src/Backend/
 
 ### ✅ Đã hoàn thành
 - Schema PostgreSQL aligned với New_Database.md (migration đã apply)
-- SQLite schema (Drift) aligned với backend schema — `schemaVersion = 9`
+- SQLite schema (Drift) aligned với backend schema — `schemaVersion = 12`
 - Sync engine: thứ tự batch đúng, nhóm danh mục đẩy trước danh mục con
 - FK violation fix: `_resolveCategoryId` + step 1b
 - Category dedup trong UI
@@ -558,23 +577,300 @@ src/Backend/
 - **`conflict` được giải quyết**: LWW đã phân xử, server thắng → đánh dấu đã đồng bộ thay vì đẩy lại vô hạn *(G9)*
 - **Migration `isLocalOnly`** (v7→v8): nhóm danh mục tạo trước 2026-09-02 quay lại được hàng đợi đẩy *(G11)*
 - **`AuthInterceptor` không còn xoá token trong im lặng**: phát `sessionExpiredStream`, AuthBloc nghe song song với SyncEngine *(G12)*
-- **Test: 144/144 pass** (~8 giây), 25 file / 6236 dòng — cả 25 file đều đã được git theo dõi
+- **Hẹn lại chu kỳ đồng bộ bị giãn cách từ chối** *(G13)* — trước đây nhánh chặn chỉ `return`, thay đổi ghi trong lúc giãn cách phải chờ tới lần mở app sau
+- **Danh mục cá nhân không còn sinh trùng trên máy mới** *(G14)* — tạo sau lần pull đầu tiên thay vì trước, kèm bước khử trùng lặp dọn hậu quả trên máy đã lỡ tạo
+- **Ngân sách hai tab, thang bốn màu, chu kỳ chọn được và "Ngày cụ thể"** (2026-09-04) — migration v11→v12; chi tiết ở mục "💰 Ngân sách" bên dưới
+- **Thoát hai vòng lặp đẩy dữ liệu vô hạn** (2026-09-04, commit `71ffc08`)
+- **Từ khoá phân loại của backend nay xuống tới client** (2026-09-04) — pull đọc cột `keyword`, tách CSV, gieo vào `CategoryKeywords`; **chỉ gieo khi trống** để không hồi sinh từ khoá người dùng đã xoá
+- **Bộ gợi ý danh mục so khớp được tiếng Việt không dấu** (2026-09-04) — NFC + vòng dự phòng bỏ dấu, khớp còn dấu luôn thắng
+- **Vi phạm ràng buộc UNIQUE (23505) là lỗi vĩnh viễn** (2026-09-04) *(G16)* — trước đây rơi vào `transient` và đẩy lại ở mọi chu kỳ
+- **Ô ghi chú có debounce 300ms và đọc từ khoá bằng một truy vấn gộp** (2026-09-04) — trước đây mỗi ký tự gõ sinh 1+N truy vấn SQLite
+- **Test: 335/335 pass** (~15 giây), 39 file — cả 39 file đều đã được git theo dõi
 
 ### 🔄 Việc còn dang dở
 
-Xem đầy đủ tại **`docs/CLIENT_APP_KNOWN_GAPS.md`**. Phiên 2026-09-03 đã đóng 9/10 mục còn mở; **chỉ còn G10**:
+Xem đầy đủ tại **`docs/CLIENT_APP_KNOWN_GAPS.md`**. Phiên 2026-09-03 đã đóng 9/10 mục còn mở; nay còn **G10** và **G15**:
 
-- **G10 — `CategoryGroupMemberships` không bao giờ được đồng bộ.** ⛔ **Không sửa được ở client**: backend không có bảng membership và cũng không có `SyncEntityType` tương ứng (`UPSERT_MAP`/`ENTITY_PRIORITY` chỉ có 6 entity), nên thêm entity mới ở client sẽ chỉ nhận `Unknown entity` và kẹt vĩnh viễn. Việc gán danh mục **mặc định** vào nhóm vì thế chỉ tồn tại trên một máy. Đề xuất chi tiết: `docs/superpowers/backend/CATEGORY_GROUP_MEMBERSHIP_SYNC.md`.
+- **G15 — Bản ghi vừa hết hạn vừa hỏng đồng bộ thì không sửa được.** ⏸️ **Hoãn có chủ ý** (2026-09-04): tab "Đã hết hạn" khoá sửa/xoá, nên một ngân sách vừa quá hạn vừa bị backend từ chối vĩnh viễn sẽ nằm lại mãi — hàng đợi đồng bộ vẫn thông vì `SyncEngine` chặn nó theo thời gian, nhưng người dùng không chữa được. Giữ nguyên vì tab đó là nền cho phần thống kê/báo cáo sẽ làm sau. Bán kính rủi ro hẹp: nguồn gây lỗi chính (form tạo ra `end ≤ start`) đã bịt cùng ngày.
+- **G10 — `CategoryGroupMemberships` không bao giờ được đồng bộ.** ⛔ **Không sửa được ở client**: backend không có bảng membership và cũng không có `SyncEntityType` tương ứng (`UPSERT_MAP`/`ENTITY_PRIORITY` chỉ có 6 entity), nên thêm entity mới ở client sẽ chỉ nhận `Unknown entity` và kẹt vĩnh viễn. Việc gán danh mục **mặc định** vào nhóm vì thế chỉ tồn tại trên một máy. Đề xuất chi tiết: `docs/superpowers/backend/CAN-LAM/CATEGORY_GROUP_MEMBERSHIP_SYNC.md`.
 
-> ⚠️ **`.gitignore` dòng 77 vẫn có `test/`.** Luật này đã cắn lần thứ hai: hai file test tạo ngày 2026-09-03 cũng bị chặn âm thầm và phải `git add -f`. Mọi file test tạo **mới** vẫn sẽ bị bỏ qua trong im lặng.
+> ⚠️ **`.gitignore` dòng 77 vẫn có `test/`.** Luật này đã cắn **lần thứ ba** (phiên 2026-09-04). Mọi file test tạo **mới** vẫn sẽ bị bỏ qua trong im lặng — nhớ `git add -f`.
+>
+> Hệ quả ít ai biết: **công cụ Grep tôn trọng `.gitignore` nên không nhìn thấy thư mục `test/`**. Muốn dò xem còn ai gọi một hàm sắp xoá thì phải dùng `grep` qua shell, nếu không sẽ thấy thiếu file và xoá nhầm.
 
-Vấn đề thuộc backend (trong `docs/superpowers/backend/`): **`SESSION_VALIDITY_FINDINGS.md`** ✅ đã xong, **`CATEGORY_CLASSIFY_ALIGNMENT.md`** ✅ đã xong (còn một bước nhỏ thu hẹp `sync.validation.js`), **`CATEGORY_GROUP_MEMBERSHIP_SYNC.md`** ⛔ chưa làm — đây là thứ duy nhất còn chặn G10, **`CATEGORY_KEYWORD_SYNC.md`** ⛔ (từ khoá phân loại không đồng bộ + thiếu kiểm quyền sở hữu khi ghi từ khoá), và **`CATEGORY_NAME_UNIQUENESS.md`** ⛔ (ràng buộc trùng tên danh mục ở CSDL khác quy tắc nghiệp vụ — client đã thi hành đúng, CSDL chưa).
+Vấn đề thuộc backend. **Mười tài liệu còn việc nay nằm ở
+`docs/superpowers/backend/CAN-LAM/`**, tách khỏi phần đã xong để đội backend
+không phải lọc giữa 20 tệp. README trong thư mục ấy là **cửa vào duy nhất**: nó
+chia việc theo *client đã có tính năng này chưa*, vì đó mới là thứ quyết định
+mức khẩn — và ranh giới ấy không suy ra được từ bảng dưới đây.
+
+Bảng dưới kiểm lại ngày **2026-09-04** tại `fcf7659`, sau khi gộp `origin/main`
+`dfda862` (mang mô-đun OCR F013 và bộ phân loại hai cấp F012). **Thứ tự là thứ
+tự thi công đề nghị**, không phải thứ tự chữ cái:
+
+| # | Tài liệu | Trạng thái |
+|---|---|---|
+| 1 | `CATEGORY_KEYWORD_SYNC.md` | ⛔ Chưa — **lỗ hổng phân quyền còn nguyên**: `appendCategoryKeyword()` không đọc `create_by`. **Nghiêm trọng hơn từ 2026-09-04** vì `keyword.matcher` nay là Tầng 1 trên đường quét hoá đơn. ✅ Chiều **xuống** client đã tự nối xong 2026-09-04; chiều **lên** vẫn cần backend quyết mô hình |
+| 2 | `2026-09-04-backend-idempotent-delete.md` | ⛔ Chưa — ba việc. **(A)** `/sync/push` trả lỗi khi xoá bản ghi server không có, làm client kẹt vĩnh viễn. **(B)** `message` là nguyên văn stack trace Prisma (lộ đường dẫn máy chủ + nội dung hàng), client phải dò chuỗi để phân loại. **(C)** `upsertBudget` ép `time_recurrence = null` thành `'Month'`, **chặn hẳn** lựa chọn "Ngày cụ thể" và làm ngân sách tự hết hạn sớm sau khi pull. A và B client đã vá tạm bằng **khớp chuỗi** (`record not found`, `23514`) nên dễ vỡ im lặng; C thì client **không vá được** |
+| 3 | `2026-09-04-ocr-classify-review.md` | ⛔ Chưa — **tám việc**, đã qua một vòng thẩm định phản biện và đo trực tiếp trên CSDL. **(1)** 🔴 **Socket.io không xác thực + bốn dòng `io.emit` toàn cục** — `emitAuditActivity` đang rò tên người dùng ra mọi socket ẩn danh **hôm nay**. **(2)** `classifyBatch` nhận sai kiểu tham số → phân loại từng mặt hàng **chưa bao giờ chạy**. **(3)** thiếu `GEMINI_API_KEY` trong `.env`. **(4)** dedup Quy tắc 3 bỏ quên `counterpart`/`note`/`provider` → chặn nhầm 409. **(5)** cửa hậu `_mock*`. **(6–8)** `uq_transaction_external` thiếu `Idaccount` (**chưa nổ được**), bốn chỗ lệch nhỏ, ba chỗ sai tài liệu |
+| 4 | `CATEGORY_NAME_UNIQUENESS.md` | ⚠️ **Một phần** — Admin-web đã thi hành quy tắc, nhưng còn 4 khoảng hở: không gom khoảng trắng, không chuẩn hoá NFC, thiếu vế chéo "người dùng với mặc định", và `/sync/push` chưa kiểm gì cả. CSDL **có** hai unique index nhưng chúng thi hành một quy tắc **khác** — lệch theo cả hai chiều, xem mục 2 của tài liệu |
+| 5 | `CATEGORY_STABLE_IDS.md` | ⛔ Chưa — `seed.js:150` vẫn `crypto.randomUUID()` |
+| 6 | `CATEGORY_GROUP_MEMBERSHIP_SYNC.md` | ⛔ Chưa — thứ duy nhất còn chặn G10 |
+| 7 | `CATEGORY_CLASSIFY_ALIGNMENT.md` | ⚠️ Gần xong — còn bước thu hẹp `validClassify` (`sync.validation.js:103`) |
+| 8 | `2026-09-05-backend-transaction-goal-id.md` | 🔓 **Mở khoá, không phải sửa lỗi** — xin cột nullable `transaction.Idgoal`. Client đã có cột **cục bộ** `transactions.goal_id` (schema v14) để nối giao dịch tích luỹ với mục tiêu bằng ID thay vì bằng tên. Không có gì hỏng hôm nay: máy tạo ra dữ liệu nối đúng, máy khác rơi xuống nhánh so tên. Nhưng nó **chặn hẳn** hướng bỏ bộ đếm `current_amount` để suy tiến độ từ chính giao dịch. Rẻ nhất là gộp vào đợt migration của bước 9 |
+| 10 | `2026-09-05-backend-goal-priority.md` | 🔓 **Mở đường, không phải sửa lỗi** — xin **một** cột nullable `goal.Priority`. Client **chưa làm** ưu tiên mục tiêu và cố ý chưa làm cho tới khi có cột: thứ tự do người dùng kéo thả là công sức không suy lại được, không có mặc định đúng, và sẽ quyết định **tiền đi đâu** nếu nối phân bổ tự động. Đi ngược lối "làm trước xin sau" của hai mục dưới, có chủ ý. Gộp vào cùng đợt migration |
+| 9 | `2026-09-05-backend-goal-auto-deposit.md` | 🔓 **Mở khoá, không phải sửa lỗi** — xin ba cột nullable cho cấu hình trích tiền tự động (`auto_deposit_*`). Client đã làm xong (schema v15) nhưng ba cột là **cục bộ**, nên máy thứ hai không trích gì cả. ⚠️ **Ba cột phải lên cùng lúc** — bỏ sót `auto_deposit_last_run` là hai máy cùng trích một kỳ, tệ hơn hiện trạng. Gộp vào đợt migration của bước 9 |
+| — | `SESSION_VALIDITY_FINDINGS.md` | ✅ Xong |
+
+### 💰 Ngân sách (2026-09-03)
+
+Trước phiên này, `budget` là feature **duy nhất bị đứt đoạn ở giữa**: bảng Drift, DAO và cả hai chiều đồng bộ đã hoàn chỉnh, nhưng UI là dữ liệu giả cứng — `budgetDao` không có một lời gọi nào từ mã sản xuất ngoài `SyncEngine`, và nút "Lưu" ở trang cấu hình là `onPressed: () {}`.
+
+Nay đã có đủ tầng như `goal`/`bill`: `data/models` → `datasources` → `repositories` → `presentation/bloc` → hai trang.
+
+Ba điểm cần biết khi đụng vào vùng này:
+
+- **Số "đã chi" được tính lại ở client từ bảng `transactions`, không đọc cột `Spent`.** Cột đó tồn tại ở cả hai phía nhưng **không bên nào cập nhật**: backend không có tác vụ nền, còn giao dịch thì người dùng ghi được khi offline. `BudgetRepositoryImpl` ghi kết quả xuống cột bằng `cacheSpent()` để lần đẩy sau gửi đúng số — hàm đó cố ý **không** đụng `syncStatus` lẫn `updatedAt`, nếu không mỗi lần mở trang lại sinh một thao tác đẩy và LWW cho client thắng oan.
+- **Ba phần trong bản dựng hình bị bỏ vì không có chỗ lưu:** "Tên ngân sách" (backend không có cột tên), "Danh mục áp dụng" nhiều danh mục (`Idcategory` chỉ giữ được một), và "Quy tắc phân bổ 50/30/20" (không có bảng nào lưu, và nó nói về chia *thu nhập* chứ không phải hạn mức). Giữ lại chúng dưới dạng giao diện không lưu được gì sẽ tái lập đúng vấn đề cũ: người dùng bấm Lưu và tưởng đã lưu.
+- **Lược đồ `budgets` đã khớp backend (v11, 2026-09-03).** Thêm `threshold_warning_percent` (backend có từ DB v2, client thì chưa — ngưỡng cảnh báo theo phần trăm vì thế không bao giờ sang được máy khác) và bỏ ba cột backend không có: `remaining`, `percent_spent` (chỉ là `amount - spent` và `spent / amount`, nay tính ở `BudgetEntity`) và `period` (đã bị `time_recurrence` thay thế từ DB v2).
+  - Migration dùng `TableMigration` chứ không phải `ALTER TABLE ... DROP COLUMN`: cú pháp đó chỉ có từ SQLite 3.35, mà phiên bản đi kèm khác nhau giữa Android, iOS và web.
+  - Ngưỡng phần trăm lưu **0–100** để khớp `Decimal(15,2)` của backend; quy về tỉ lệ đúng một chỗ ở `BudgetEntity.warningRatio`. Thứ tự ưu tiên khi cảnh báo: ngưỡng theo số tiền → ngưỡng theo phần trăm → mốc mặc định 90%.
+  - Việc này làm lộ một lỗi **fixture** trong `category_dao_test.dart`: bảng `budgets` giả luôn ở hình dạng trước v5 kể cả khi test khai `user_version = 7`/`9` — một trạng thái không tồn tại trên máy thật, vì migration là cộng dồn. Nay `_createLegacyNonCategoryTables` nhận tham số `atVersion`.
+
+### 🔴 Đồng bộ đang bị kéo chậm bởi 5 danh mục hỏng (đo trên app thật 2026-09-03)
+
+Chạy app thật với một tài khoản đã có dữ liệu, trên một máy **chưa từng chạy
+app**, cho thấy một hậu quả mà không tài liệu nào ghi trước đó:
+
+1. Backend đã có 5 danh mục cá nhân của tài khoản; máy mới sinh lại đúng 5 danh
+   mục đó với **UUID khác**.
+2. Đẩy lên vi phạm quy tắc trùng tên → `/sync/push` trả `failed` **kèm message
+   rỗng**.
+3. `reason` rỗng nên `_classifyFailure` xếp vào `transient` → thử lại vĩnh viễn.
+4. Mọi chu kỳ đồng bộ kết thúc ở trạng thái hỏng → giãn cách luỹ tiến
+   30s → 1p → 5p → 15p → 60p.
+5. **Mọi thay đổi khác** (ví, giao dịch, ngân sách) bị đẩy chậm theo. Đã đo: một
+   thao tác xoá ngân sách hợp lệ không lên tới backend cho tới lần mở app sau.
+
+**Nguyên nhân bước 1 nằm ở client — ✅ đã sửa 2026-09-03.**
+`PersonalDefaultCategories` **có** kiểm trùng theo tên chuẩn hoá, nhưng chạy
+**trước** `SyncEngine.start()`, nên trên máy mới thì CSDL cục bộ còn rỗng và
+phép kiểm không thấy gì. Đây **không** phải hệ quả của `CATEGORY_STABLE_IDS.md`
+như bản ghi đầu tiên (`25915ec`) quy nhầm.
+
+Nay tách làm hai giai đoạn: `convertLegacyRows()` chạy trước đồng bộ và chỉ đụng
+máy còn hàng seed `cat_*`; `ensureMissing()` chạy **sau** khi pull xong, và chỉ
+khi `SyncEngine.hasCompletedPull` — pull hỏng thì hoãn tới lần mở app sau chứ
+không tạo mù. Chi tiết ở **G14** trong `docs/CLIENT_APP_KNOWN_GAPS.md`.
+
+Máy đã lỡ tạo bản trùng thì `CategoryDao.mergeDuplicatePersonalCategories()`
+dọn nốt sau mỗi lần pull: gom theo tên chuẩn hoá, giữ bản `synced`, repoint mọi
+tham chiếu rồi **xoá vật lý** bản `pending` — ngoại lệ có chủ ý của quy tắc 5, vì
+hàng đó chưa từng tồn tại trên server. Chi tiết ở cuối G14.
+
+Phần backend (mã lỗi ổn định, vai trò lớp phòng thủ thứ hai) ở khung đỏ đầu
+`CATEGORY_NAME_UNIQUENESS.md`. Phần độ trễ giảm bớt ở **G13**.
+
+### 🚀 Bắt đầu từ đâu ở phiên sau
+
+Cập nhật ngày 2026-09-04, sau khi gộp `origin/main` và rà soát mô-đun
+OCR/Classify. Thứ tự đề nghị, việc rẻ nhất trước:
+
+1. **Chưa chạy app thật để xem giao diện ngân sách sau ba vòng sửa cuối** (bỏ ô
+   chốt sổ → thêm "Ngày cụ thể" → ngày kết thúc chỉ đọc). Bản build trong
+   `build/web` là **bản cũ**, chụp trước khi thêm "Ngày cụ thể". Dùng skill
+   `chay-app`.
+2. **Một dòng ở `_classifyFailure`, nhưng phải chờ backend trả mã lỗi ổn định.**
+   `_classifyFailure` (`lib/core/sync/sync_engine.dart:1423`) hiện chỉ có nhánh
+   cho `accountNotFoundCode`, khoá ngoại, `Ownership mismatch` và ràng buộc
+   CHECK (`23514`). Mọi **vi phạm UNIQUE (`23505`)** rơi xuống
+   `return SyncFailureKind.transient` ở cuối hàm và bị **đẩy lại mãi**. Điều
+   này phủ cả hai nguồn: vi phạm trùng tên danh mục, và va chạm
+   `uq_transaction_external` mô tả ở mục 3 bảng trên. Khi backend trả mã ổn
+   định thì thêm nhánh `permanent` tương ứng — nhớ viết test tái hiện **trước**.
+3. **Bảy tài liệu chờ backend** trong `docs/superpowers/backend/` — thứ tự thi
+   công và lý do xếp thứ tự nằm ở `README.md` mục 2 của thư mục đó, trạng thái
+   từng cái ở bảng ngay trên. Ba mục đầu: `CATEGORY_KEYWORD_SYNC` (lỗ hổng phân
+   quyền, bản vá vài dòng, độc lập với phần thiết kế bảng mới) →
+   `2026-09-04-backend-idempotent-delete` → `2026-09-04-ocr-classify-review`.
+4. **G10** là mục client duy nhất còn bị chặn hoàn toàn ở backend (mục 6 của
+   bảng trên). **G15** là hoãn có chủ ý, đừng tự ý "sửa" lại.
+5. **Tính năng "Ngày cụ thể" chưa đồng bộ được** — bị chặn ở việc (C) của
+   `2026-09-04-backend-idempotent-delete.md`. Client không vá được: trên máy
+   đang dùng thì đúng, đổi máy là mất.
+6. **Kịch bản nâng cấp CSDL v7 → v12 chưa từng chạy thật** (chỉ có test). Người
+   dùng đã quyết định không chạy. Ghi lại vì: nếu sau này có báo cáo **mất danh
+   mục** hoặc **giao dịch không đồng bộ sau khi cập nhật app**, đây là chỗ nghi
+   đầu tiên. Cách kiểm: dựng worktree ở `ea0941b`, chạy bản cũ để sinh CSDL v7,
+   rồi mở bản mới **cùng origin**. Nay có thêm bước v11→v12 nên rủi ro nhỉnh
+   hơn phiên trước.
+
+Muốn xác minh thay đổi ngoài bộ test thì dùng skill **`chay-app`** (Chrome
+headless + truy vấn PostgreSQL). ⚠️ Skill đó nằm trong `.claude/` nên **không
+được push** — chỉ có trên máy đã dựng nó.
+
+### 🎯 Mục tiêu tiết kiệm (2026-09-05) — **hoạt động đầy đủ trên client**
+
+**Đọc `docs/GOAL_FEATURE.md` trước khi làm tiếp** — nhất là mục 4, bảy cái bẫy.
+Tóm tắt:
+
+- **Ví nhận bắt buộc lúc tạo, và KHOÁ sau khoản nạp đầu tiên.** Tiền đã tích
+  nằm thật trong ví ấy; đổi ví mà không chuyển tiền theo là phân mảnh không lần
+  lại được. Hệ quả chấp nhận được: ví đang giữ tiền mục tiêu thì không xoá được.
+- **Một lần nạp = MỘT giao dịch `type='transfer'`** mang cả `walletId` (nguồn)
+  lẫn `walletTransfer` (đích), thay cho cặp `chi`/`thu` rời trước đây vốn làm
+  thống kê đếm khoản chuyển ví thành chi tiêu thật.
+- **Có luồng rút tiền**, kiểm **hai trần**: không quá tiến độ, và không quá số
+  dư THẬT của ví. Rút xuống dưới mục tiêu thì **gỡ** `is_completed`.
+- **Tiến độ KHÔNG tự hoà giải với số dư ví.** Tiêu tiền từ ví tích luỹ bằng giao
+  dịch thường không hạ tiến độ — app chỉ **cảnh báo** lệch, vì một ví có thể
+  phục vụ nhiều mục tiêu và cũng chứa tiền không thuộc mục tiêu nào.
+- **Chiều nạp/rút đọc từ tiền tố ghi chú**, không từ vị trí ví. So ví là diễn
+  giải hàng cũ bằng cấu hình hiện tại — đổi ví một lần là lịch sử đọc sai hết.
+- **Dự báo hoàn thành tính từ nhịp thật**, không từ chu kỳ đã cài lúc tạo.
+  `cycleTakeMoney` nay được lưu, nhưng **không có bộ lập lịch nào** đọc nó.
+- Cột **cục bộ** `transactions.goalId` (schema **v14**) nối giao dịch với mục
+  tiêu bằng ID thay vì bằng tên. Không đi qua đồng bộ — xem mục 8 bảng trên.
+- Tỉ lệ tiến độ có **đúng một** định nghĩa (`GoalEntity.progress`); widget nhận
+  thẳng `GoalEntity` nên nơi gọi không tính lại được.
+- **Trang sửa mục tiêu** (`/goals/:id/edit`) dùng CHUNG biểu mẫu với trang tạo —
+  `GoalAddPage` nhận thêm `goalId` tuỳ chọn. Nó **không** đụng ví tích luỹ (ô
+  chỉ đọc, trỏ về nút đổi ví ở trang chi tiết) lẫn tiến độ, và **tính lại** cờ
+  hoàn thành. `null` mang hai nghĩa khác nhau ở `updateGoal`: `cycleTakeMoney`
+  là **xoá**, còn `icon`/`colour` là **giữ nguyên** — mục 3.9 `GOAL_FEATURE.md`.
+- **Lời nhắc kỳ trích nổ cả khi app đóng.** `BillReminderScheduler` đổi tên
+  thành **`ReminderScheduler`** và nay đặt lịch cho cả hoá đơn lẫn kỳ trích.
+  Gộp chung là **bắt buộc**: `resync()` huỷ mọi lịch chờ không nằm trong tập nó
+  muốn, nên hai bộ đặt lịch riêng sẽ xoá sạch lịch của nhau ở mỗi lượt — im
+  lặng. Lời nhắc chỉ báo tin; tiền vẫn chỉ chuyển khi mở app.
+- **Biểu tượng và màu riêng từng mục tiêu** đã nối dữ liệu. Bảng tra cố ý không
+  chứa `'flag'` (giá trị dự phòng), nên mục tiêu cũ mang `'flag'` được **chèn
+  vào đầu** bảng chọn thay vì bị bỏ qua — mục 3.10.
+- **Trích tiền tự động ĐÃ CHẠY THẬT** (schema **v15**, ba cột cục bộ
+  `auto_deposit_*`). Trước đây khối "Tự động trích tiền định kỳ" thu ba thông
+  tin và lưu đúng một, còn nút bấm thì hứa "Bật Lập Lịch Tự Động" — một lời hứa
+  về chức năng không tồn tại. Bộ chạy nằm trong `NotificationScanner.scan()`,
+  **không phải WorkManager**: kỳ bỏ lỡ được trích bù khi app mở lại, đổi lại
+  việc chuyển tiền luôn ở tiến trình chính. Hai loại thông báo mới
+  (`goalAutoDeposited`, `goalAutoDepositFailed`). Sáu quyết định về việc *dừng
+  đúng lúc* ở mục 3.12 `GOAL_FEATURE.md` — đọc trước khi đụng vào.
+- **Nội dung giả trên trang danh sách đã dọn**: huy hiệu PREMIUM, câu "tăng
+  12%", nút "Xem báo cáo", "Xem tất cả", dấu ba chấm trên thẻ — mục 3.11.
+- **Khoản trích BÙ mang mốc của kỳ** (G20 đã đóng). `depositToGoal` nhận
+  `occurredAt`, chặn **hai đầu** — không ở tương lai, không trước `startDate`.
+  Nơi gọi duy nhất là `GoalAutoDepositRunner`; `GoalCubit` cố ý không phơi tham
+  số ra. Chỉ cột `date` lùi lại, `updatedAt` vẫn là "bây giờ" vì nó là sổ sách
+  đồng bộ — mục 3.14 `GOAL_FEATURE.md`.
+- **Tên mục tiêu là DUY NHẤT trong phạm vi một tài khoản**, cùng ba lựa chọn với
+  danh mục: so bằng `normalizeCategoryName()`, hàng xoá mềm **không** giữ chỗ,
+  và chỉ kiểm khi tên thật sự đổi. Lý do không phải thẩm mỹ: `watchByGoal` còn
+  nhánh dự phòng tra lịch sử bằng `LIKE` trên tên, nên hai mục tiêu trùng tên
+  cùng nhận vơ những hàng cũ không mang `goalId`. Thi hành ở **client**;
+  `/sync/push` và PostgreSQL chưa kiểm gì — mục 3.15.
+- **`depositToGoal` kiểm số tiền ở tầng repository**: `> 0` và `≤ số dư ví
+  nguồn`, đối xứng với `withdrawFromGoal`. Trước đó cả hai chỉ có ở ô nhập, tức
+  nằm NGOÀI khối nguyên tử. Kèm theo `GoalCubit.addGoal` nay trả `String?` —
+  trang tạo trước đây nuốt lỗi rồi vẫn báo "thành công" và đóng trang — mục 3.16.
+- **Lặp lại mục tiêu sau khi hoàn thành**: app **chỉ nhắc**
+  (`NotificationKind.goalCycleReady`), người dùng bấm "Bắt đầu vòng mới".
+  `batDauVongMoi` đặt tiến độ về 0, gỡ cờ, dời hạn bằng `hanVongMoi` và đặt lại
+  `startDate` — **không đụng một đồng nào**. Lời nhắc là loại thông báo RIÊNG vì
+  khoá `goalDone:<id>` cố ý không có mốc thời gian; gộp chung thì từ vòng thứ
+  hai trở đi không bao giờ hiện. Hai cột `recurrence`/`time_recurrence` vốn đã
+  đồng bộ hai chiều, chết chỉ vì `GoalEntity` không mang chúng — mục 3.17.
+- **Hai tab "Đang theo đuổi" / "Đã hoàn thành"** ở danh sách, cùng lối với Ngân
+  sách. Thêm `GoalEntity.daHoanThanh` làm **định nghĩa duy nhất** của "đã xong",
+  luật thông báo đổi sang gọi nó. `chiaMucTieu` cũng vá luôn chỗ
+  `goalDao.watchAll` **không có `orderBy` nào** — mục 3.18.
+- **Ô ghi chú** cho mục tiêu. `null` là giữ nguyên, **chuỗi rỗng mới là xoá** —
+  khác `cycleTakeMoney` (null = xoá) và giống `icon`/`colour` ở nửa đầu. Cột
+  `note` đã đồng bộ sẵn, chỉ thiếu chỗ nhập — mục 3.19.
+- **`doiSangBool()` ở nhánh kéo về** — dùng ở **cả bảy** chỗ đọc cờ đúng/sai:
+  `goals.status_complete` (chuỗi `"True"`), `goals.recurrence`,
+  `wallets.is_default`, `categories.is_default`, `categories.is_group`,
+  `budgets.recurrence`, `bills.recurrence`.
+
+  Backend không nhất quán ngay trong CÙNG một bảng: `Status_complete` là
+  `VarChar(20)` còn `Recurrence` là `Boolean` thật. So khớp cứng từng kiểu thì
+  chỉ cần một bên đổi cách tuần tự hoá là cờ lặng lẽ về `false` — không
+  exception, không log. Hoá đơn nặng nhất: cột chuỗi cũ `recurrence` được **suy
+  ra** từ cờ ấy, nên đọc sai một chỗ hỏng luôn cột thứ hai.
+
+  ⚠️ Chỉ nới ở chỗ **ĐỌC**. Payload đẩy vẫn gửi đúng một dạng — nới cả hai đầu
+  là mất luôn khả năng phát hiện khi hai phía lệch nhau.
+
+⚠️ Ba lỗi ở vùng này **chỉ máy ảo Android mới lộ ra**: `ProviderNotFoundError`
+trên route không có `WalletCubit`, màn đỏ do `DropdownButton` có `value` ngoài
+`items`, và dấu hiển thị sai của khoản rút. Bộ test xanh cả ba lần.
+
+### 🔔 Hệ thống thông báo (2026-09-04) — **cả bảy lát xong**
+
+**Đọc `docs/NOTIFICATION_FEATURE.md` trước khi làm tiếp.** Tóm tắt:
+
+- Bảng `AppNotifications` (schema **v13**) — **CỤC BỘ, không đồng bộ**: không
+  có trong `SyncEntityType`, không chạm `sync_payload_contract_test.dart`.
+  Tên có tiền tố `App` vì `Notification` đụng lớp trong `flutter/widgets` —
+  cùng loại va chạm với `Category`.
+- Chống trùng nằm ở **tầng SQLite**: `UNIQUE(idaccount, dedupeKey)` +
+  `insertOrIgnore`. Vuốt xoá là **xoá mềm** (`dismissedAt`) vì hàng chính là
+  bản ghi khoá trùng.
+- Bộ luật là hàm thuần, **GỌI** `BudgetEntity.isNearLimit` và
+  `budgetHealthOf()` chứ không cài lại mốc 70/90.
+- `NotificationScanner` nghe `SyncEngine.statusStream` (người tiêu thụ đầu
+  tiên của stream này), **không** dùng `Timer.periodic`, và **không** được gắn
+  ở `home_page.dart` vì chỗ đó gọi `start()` trong `build()`.
+- **Đủ tám loại thông báo**: ngân sách (chạm ngưỡng / vượt hạn mức), hoá đơn
+  (sắp đến hạn / quá hạn), mục tiêu (hoàn thành / trễ tiến độ), hệ thống
+  (đồng bộ hỏng / ví âm).
+- **Thông báo cấp hệ điều hành** chạy thật trên Android: kênh `flowmoney_alerts`,
+  quyền xin **có ngữ cảnh** ở `/settings/notifications`, lịch nhắc hoá đơn đặt
+  trước bằng `zonedSchedule`.
+- **Trang cài đặt** `/settings/notifications`: công tắc tổng + bốn công tắc
+  nhóm + giờ nhắc + số ngày nhắc, lưu trong `FlutterSecureStorage` theo từng
+  `idaccount`.
+- **Dải báo kết nối** (`ConnectionBanner`) bọc ngoài router qua
+  `MaterialApp.builder`: mất mạng, có mạng lại, và kết quả đồng bộ.
+
+⚠️ `NotificationScanner.stop()` gọi `cancelAll()`. Lịch nằm trong
+AlarmManager/UNUserNotificationCenter chứ không trong SQLite, nên
+`purgeDataForOtherAccounts` không cứu được — nhắc hoá đơn của người đăng nhập
+trước sẽ nổ trên màn hình khoá của người sau.
+
+⚠️ **`flutter test` xanh KHÔNG đủ cho vùng này.** Bốn lỗi dưới đây chỉ lộ ra
+khi chạy trên máy ảo Android, và cả bốn đều để bộ test xanh:
+
+| Lỗi | Vì sao test không thấy |
+|---|---|
+| Bấm thông báo ngân sách → **app chết màn đỏ** | `/budget` nằm trong `StatefulShellRoute` còn `/notifications` ở ngoài; `push` dựng shell thứ hai → trùng page key. Cần cây route thật mới nổ |
+| Ba chỗ **tràn bố cục** (21px, 3,9px, 0,315px) | Bộ test chạy Chrome ở 1280px, rộng gấp ba lần chỗ bắt đầu tràn |
+| Dải báo kết nối **đè lên tiêu đề và chuông** | Chỉ thấy khi có `Scaffold` thật bên dưới |
+| Dải "đã đồng bộ" **bị ghi đè** | Cả hai stream đều đúng; chỉ **thứ tự thực tế** mới lộ (đồng bộ xong sau 0,4 giây, dải kết nối báo ở giây thứ 3) |
+
+Chạy máy ảo: `flutter build apk --debug` → `adb install -r` →
+`adb shell am start -n com.flowmoney.flowmoney/.MainActivity`. `adb` không nằm
+trong PATH, đường dẫn đầy đủ ở
+`%LOCALAPPDATA%/Android/Sdk/platform-tools/adb.exe`.
+
+### 🧾 Hoá đơn (2026-09-04) — đã vá bảy lỗi chặn
+
+Hoá đơn tạo từ app trước đây **không bao giờ lên tới backend** (`Idwallet` và
+`Idcategory` NOT NULL nhưng form không ghi). Xem `docs/bill/BILL_DOCUMENTATION.md`
+(thư mục bị `.gitignore` chặn, chỉ có trên máy). Điểm cần nhớ:
+
+- Đường **sửa** hoá đơn dùng `BillDao.updateFields`, **không** đi qua `insert`
+  (`insertOrReplace` thay cả hàng — từng biến hoá đơn đã trả thành chưa trả).
+- Nguồn sự thật của chu kỳ là `isRecurrence` + `timeRecurrence`; cột chuỗi cũ
+  `recurrence` chỉ được suy ra từ chúng.
+- `nextBillDueDate` áp **quy tắc ngày cuối tháng** — xem mục 5 tài liệu bill.
+- `BillDao.markOverdue` ghi có điều kiện `payStatus = 'Pending'`; bỏ điều kiện
+  đó là tạo vòng lặp đẩy vô tận.
 
 ### ❌ Chưa làm / Tiếp theo
 - Analytics (báo cáo chi tiết)
 - AI chat integration hoàn chỉnh
 - Casso bank integration
-- Push notifications
+- Kiểm thông báo nổ khi app **đóng hoàn toàn** — phải chờ tới mốc lịch thật
+  hoặc chỉnh đồng hồ máy ảo (xem `docs/NOTIFICATION_FEATURE.md` mục 8)
 - Build production / deploy
 
 ---

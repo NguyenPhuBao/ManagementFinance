@@ -6,6 +6,9 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/sync/sync_engine.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../widgets/home_action_buttons.dart';
+import '../../../../shared/widgets/notification_bell.dart';
+import '../../../notification/presentation/widgets/notification_panel.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 
 class HomePage extends StatelessWidget {
@@ -34,10 +37,14 @@ class HomePage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildHeader(context),
+              _buildHeader(context, currentUserId),
               const SizedBox(height: 32),
               _buildHeroSection(context),
               const SizedBox(height: 32),
+
+              // Panel thông báo — ẩn hoàn toàn khi chưa có mục nào, nên không
+              // cần bọc thêm điều kiện ở đây.
+              NotificationPanel(idaccount: currentUserId),
 
               // Reactive Total Asset Balance from SQLite Wallets
               Builder(
@@ -134,7 +141,7 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, int? idaccount) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -159,31 +166,18 @@ class HomePage extends StatelessWidget {
             ),
           ],
         ),
+        // Chấm đỏ trước đây vẽ CỨNG ở đây — luôn sáng dù chẳng có thông báo
+        // nào. Nay đếm thật từ bảng thông báo cục bộ.
         Container(
-          width: 48,
-          height: 48,
           decoration: const BoxDecoration(
             color: Colors.white,
             shape: BoxShape.circle,
           ),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              const Icon(Icons.notifications, color: AppColors.primary),
-              Positioned(
-                top: 14,
-                right: 14,
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: AppColors.error,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
-                  ),
-                ),
-              ),
-            ],
+          child: NotificationBell(
+            unreadCount: idaccount == null
+                ? null
+                : sl<AppDatabase>().notificationDao.watchUnreadCount(idaccount),
+            onTap: () => context.push('/notifications'),
           ),
         ),
       ],
@@ -318,60 +312,9 @@ class HomePage extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 24),
-        Row(
-          children: [
-            Expanded(
-              child: ElevatedButton(
-                onPressed: () => context.push('/add'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.onPrimary,
-                  fixedSize: const Size.fromHeight(76),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  elevation: 0,
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.add, size: 20),
-                    SizedBox(width: 8),
-                    Text(
-                      'Thêm giao dịch',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: OutlinedButton(
-                onPressed: () => context.go('/analytics'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.primary,
-                  side: const BorderSide(color: AppColors.outlineVariant, width: 1.5),
-                  fixedSize: const Size.fromHeight(76),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  elevation: 0,
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.insights, size: 22),
-                    SizedBox(width: 8),
-                    Text(
-                      'Xem báo cáo',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+        HomeActionButtons(
+          onAdd: () => context.push('/add'),
+          onReport: () => context.go('/analytics'),
         ),
       ],
     );

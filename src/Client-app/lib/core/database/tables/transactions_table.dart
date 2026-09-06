@@ -29,7 +29,20 @@ class Transactions extends Table {
   /// provider: nguồn tạo giao dịch
   /// Backend values: 'Manual' | 'BankSync' | 'SMS' | 'ORC' | 'Bill'
   /// Client legacy:  'Manual' | 'Casso'   | 'SMS' | 'OCR'
-  /// Sync mapper sẽ chuẩn hoá: Casso→BankSync, OCR→ORC
+  ///
+  /// ⚠️ **Cột này KHÔNG đi qua đồng bộ theo chiều nào cả**, và **không có mapper
+  /// chuẩn hoá nào**. Payload đẩy (`sync_engine.dart`, `_collectPendingOps`)
+  /// gồm 11 trường và không có `provider`; nhánh kéo về cũng không đọc nó. Nên
+  /// mọi hàng client đẩy lên đều nằm trên server với `Provider = 'Manual'`, kể
+  /// cả giao dịch do ngân hàng tạo rồi kéo về máy này.
+  ///
+  /// Chú thích cũ ở đây từng hứa "sync mapper sẽ chuẩn hoá Casso→BankSync,
+  /// OCR→ORC". **Hành vi đó chưa bao giờ tồn tại** — đã kiểm ngày 2026-09-04.
+  ///
+  /// Trước khi thêm cột này vào payload đẩy, đọc `docs/superpowers/backend/
+  /// 2026-09-04-ocr-classify-review.md` mục 7: backend đang có
+  /// `@@unique([provider, bank_tran_id])` **không tách theo tài khoản**, và
+  /// ràng buộc đó hiện chỉ trơ vì client gửi lên toàn NULL.
   TextColumn get provider => text().withDefault(const Constant('Manual'))();
 
   TextColumn   get note    => text().withDefault(const Constant(''))();
@@ -37,12 +50,39 @@ class Transactions extends Table {
   TextColumn   get images  => text().withDefault(const Constant('[]'))();
   // JSON array string của đường dẫn ảnh đính kèm
 
+  /// goalId: mục tiêu tiết kiệm mà giao dịch này thuộc về. NULL với mọi giao
+  /// dịch thường.
+  ///
+  /// ⚠️ **Cột CỤC BỘ — cố ý KHÔNG nằm trong hợp đồng đồng bộ.** Bảng `goal`
+  /// phía backend không có chiều ngược lại, và thêm trường vào payload đẩy đòi
+  /// backend sửa trước (quy tắc 4 trong `CLAUDE.md`).
+  /// `sync_payload_contract_test.dart` khoá đúng bộ khoá của payload giao dịch
+  /// nên nó bắt được ngay nếu cột này lọt vào.
+  ///
+  /// Vì là cục bộ, hàng **kéo về từ server luôn để trống** cột này — cũng như
+  /// mọi hàng do bản app cũ tạo. Nơi đọc (`TransactionDao.watchByGoal`) phải
+  /// giữ nhánh tra theo ghi chú cho những hàng đó, nếu không lịch sử tích luỹ
+  /// đã có sẽ biến mất sau lần đồng bộ đầu tiên.
+  ///
+  /// Vì sao cần: trước đây lịch sử tích luỹ tra bằng
+  /// `note LIKE '%Tích lũy mục tiêu: <tên>%'`. Tên mục tiêu không duy nhất, và
+  /// tệ hơn, một tên là **tiền tố** của tên khác ("Mua" với "Mua xe") thì nuốt
+  /// luôn lịch sử của mục tiêu kia.
+  TextColumn get goalId => text().nullable()();
+
   // ── Transfer fields (DB v2) ───────────────────────────────────────────────
   /// walletTransfer: Wallet_Transfer — ví đích khi chuyển khoản nội bộ
   TextColumn get walletTransfer => text().nullable()();
 
   /// bankTranId: Bank_tran_id — ID giao dịch từ ngân hàng (Casso/SMS)
-  /// Dùng để chống trùng (provider, bankTranId) phải unique
+  ///
+  /// ⚠️ **Bảng này KHÔNG khai `uniqueKeys`**, nên `(provider, bankTranId)`
+  /// **không** duy nhất ở SQLite — chú thích cũ hứa như vậy là sai. Phía
+  /// PostgreSQL thì có `uq_transaction_external`, nhưng nó ràng buộc trên
+  /// **toàn bảng** chứ không theo từng tài khoản.
+  ///
+  /// ⚠️ Cột này cũng **không đi qua đồng bộ theo chiều nào**, giống `provider`.
+  /// Hiện chưa nơi nào trong app gán giá trị cho nó, nên nó luôn NULL.
   TextColumn get bankTranId => text().nullable()();
 
   // ── Soft delete (DB v2) ───────────────────────────────────────────────────

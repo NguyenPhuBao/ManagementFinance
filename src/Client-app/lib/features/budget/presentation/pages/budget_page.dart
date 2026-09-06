@@ -1,362 +1,213 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../../../core/auth/current_account.dart';
+import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../data/models/budget_entity.dart';
+import '../bloc/budget_cubit.dart';
+import 'budget_detail_sheet.dart';
+import 'budget_tabs_view.dart';
 
 class BudgetPage extends StatelessWidget {
   const BudgetPage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // `null` khi chưa có phiên đăng nhập dùng được. Cubit sẽ báo lỗi thay vì
+    // đoán một mã tài khoản — xem `core/auth/current_account.dart`.
+    final idaccount = currentAccountIdOrNull(context);
+
+    return BlocProvider<BudgetCubit>(
+      create: (_) => sl<BudgetCubit>()..watchBudgets(idaccount),
+      child: const _BudgetPageContent(),
+    );
+  }
+}
+
+class _BudgetPageContent extends StatelessWidget {
+  const _BudgetPageContent();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocConsumer<BudgetCubit, BudgetState>(
+      // Sau khi tạo/sửa/xoá, cubit phát `BudgetSaved` rồi stream tự đẩy danh
+      // sách mới về — chỉ cần hiện lời nhắn, không cần nạp lại tay.
+      listenWhen: (_, s) => s is BudgetSaved || s is BudgetError,
+      listener: (context, state) {
+        final message = switch (state) {
+          BudgetSaved(:final message) => message,
+          BudgetError(:final message) => message,
+          _ => null,
+        };
+        if (message == null) return;
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(
+            content: Text(message),
+            backgroundColor:
+                state is BudgetError ? AppColors.error : AppColors.primary,
+          ));
+      },
+      buildWhen: (_, s) =>
+          s is BudgetLoaded || s is BudgetLoading || s is BudgetError,
+      builder: (context, state) => switch (state) {
+        BudgetLoaded(isEmpty: true) => const _EmptyScaffold(),
+        BudgetLoaded() => BudgetTabsView(
+            state: state,
+            onCreate: () => _openEditor(context),
+            onEdit: (v) => _openEditor(context, id: v.budget.id),
+            onDelete: (v) => _confirmDelete(context, v),
+            onShowDetail: (v) => _showDetail(context, v),
+            onOpenAnalytics: () => context.go('/analytics'),
+          ),
+        BudgetError(:final message) => _ErrorScaffold(message: message),
+        _ => const Scaffold(
+            backgroundColor: AppColors.background,
+            body: Center(child: CircularProgressIndicator()),
+          ),
+      },
+    );
+  }
+}
+
+// ─── Các trạng thái ──────────────────────────────────────────────────────────
+
+class _ErrorScaffold extends StatelessWidget {
+  final String message;
+  const _ErrorScaffold({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, size: 48, color: AppColors.error),
+              const SizedBox(height: 16),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    fontSize: 14, color: AppColors.textSecondary),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyScaffold extends StatelessWidget {
+  const _EmptyScaffold();
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildOverviewCard(),
-              const SizedBox(height: 24),
-              _buildCategoryHeader(context),
-              const SizedBox(height: 16),
-              _buildCategoryList(),
-              const SizedBox(height: 24),
-              _buildCreateButton(context),
-              const SizedBox(height: 48),
-              _buildDecorativeImage(),
-              const SizedBox(height: 80),
-            ],
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.savings_outlined,
+                    size: 64, color: AppColors.outline),
+                const SizedBox(height: 16),
+                const Text(
+                  'Chưa có ngân sách nào',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Đặt hạn mức cho một danh mục để biết mình còn tiêu được bao '
+                  'nhiêu trong tháng.',
+                  textAlign: TextAlign.center,
+                  style:
+                      TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () => _openEditor(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: AppColors.onPrimary,
+                    minimumSize: const Size(double.infinity, 56),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
+                  ),
+                  child: const Text(
+                    'Tạo ngân sách mới',
+                    style:
+                        TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
+}
 
-  Widget _buildOverviewCard() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'CÒN LẠI THÁNG NÀY',
-                    style: TextStyle(
-                      fontSize: 12,
-                      letterSpacing: 1.2,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    '12.000.000đ',
-                    style: TextStyle(
-                      fontSize: 32,
-                      letterSpacing: -0.8,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ],
-              ),
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppColors.income.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.account_balance_wallet,
-                  color: AppColors.income,
-                  size: 24,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '60% ngân sách còn lại',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              Text(
-                '8.000.000đ / 20.000.000đ đã dùng',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.primary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Container(
-            height: 8,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: FractionallySizedBox(
-              alignment: Alignment.centerLeft,
-              widthFactor: 0.4,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: AppColors.income,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+// ─── Điều hướng và hộp thoại ─────────────────────────────────────────────────
 
-  Widget _buildCategoryHeader(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        const Text(
-          'Danh mục chi tiêu',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: AppColors.primary,
-          ),
+void _openEditor(BuildContext context, {String? id}) {
+  context.push(id == null ? '/budget/rules' : '/budget/rules?id=$id');
+}
+
+Future<bool> _confirmDelete(BuildContext context, BudgetView view) async {
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Xoá ngân sách?'),
+      content: Text(
+        'Hạn mức cho "${view.displayName}" sẽ không còn được theo dõi. '
+        'Các giao dịch đã ghi không bị ảnh hưởng.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(false),
+          child: const Text('Huỷ'),
         ),
         TextButton(
-          onPressed: () => context.push('/budget/rules'),
-          child: const Text(
-            'CHI TIẾT',
-            style: TextStyle(
-              fontSize: 12,
-              letterSpacing: 1.2,
-              fontWeight: FontWeight.w600,
-              color: AppColors.income,
-            ),
-          ),
+          onPressed: () => Navigator.of(ctx).pop(true),
+          child: const Text('Xoá', style: TextStyle(color: AppColors.error)),
         ),
       ],
-    );
-  }
+    ),
+  );
+  if (ok != true || !context.mounted) return false;
+  await context.read<BudgetCubit>().deleteBudget(view.budget.id);
+  return true;
+}
 
-  Widget _buildCategoryList() {
-    return Column(
-      children: [
-        _buildCategoryItem(
-          icon: Icons.restaurant,
-          title: 'Ăn uống',
-          subtitle: 'Còn 2.900.000đ',
-          amount: '2.100.000đ',
-          totalAmount: '/ 5.000.000đ',
-          percent: 0.42,
-          isWarning: false,
-        ),
-        _buildCategoryItem(
-          icon: Icons.shopping_bag,
-          title: 'Mua sắm',
-          subtitle: 'Còn 500.000đ',
-          amount: '1.500.000đ',
-          totalAmount: '/ 2.000.000đ',
-          percent: 0.75,
-          isWarning: false,
-        ),
-        _buildCategoryItem(
-          icon: Icons.directions_car,
-          title: 'Di chuyển',
-          subtitle: 'Vượt ngưỡng 90%',
-          amount: '900.000đ',
-          totalAmount: '/ 1.000.000đ',
-          percent: 0.90,
-          isWarning: true,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCategoryItem({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required String amount,
-    required String totalAmount,
-    required double percent,
-    required bool isWarning,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: const BoxDecoration(
-                      color: AppColors.background,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(icon, color: AppColors.primary, size: 20),
-                  ),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: isWarning ? AppColors.error : AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    amount,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: isWarning ? AppColors.error : AppColors.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    totalAmount,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Container(
-            height: 8,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: FractionallySizedBox(
-              alignment: Alignment.centerLeft,
-              widthFactor: percent,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: isWarning ? AppColors.error : AppColors.primary,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCreateButton(BuildContext context) {
-    return ElevatedButton(
-      onPressed: () => context.push('/budget/rules'),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.onPrimary,
-        minimumSize: const Size(double.infinity, 56),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        elevation: 10,
-        shadowColor: AppColors.primary.withValues(alpha: 0.3),
-      ),
-      child: const Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.add, size: 24),
-          SizedBox(width: 8),
-          Text(
-            'Tạo ngân sách mới',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDecorativeImage() {
-    return Opacity(
-      opacity: 0.3,
-      child: ColorFiltered(
-        colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.saturation),
-        child: Container(
-          height: 160,
-          width: double.infinity,
-          decoration: const BoxDecoration(
-            image: DecorationImage(
-              image: NetworkImage(
-                'https://lh3.googleusercontent.com/aida-public/AB6AXuBJYniBjGS0dwwyxbFnMi2bmX_WxVidYLsVszQitTh15-98h_vpEkulLHbqBPYE-ZaSv_EkWxfqmttlCDz1bG9v05QSDDYn1endcQDCXw9LMoWXxGB3nwUbrs_BVKQyOrw3IhBG8oMob4GthzMhbbeM03tMAMQ4aKcxVOFomEMfQQHi2L8YfuIfO-OTf0we2yvvwhIku5B7PYqIKi8MVXo_Qy3b8H9Y52BK3TSMdA1pGtzOSCSc-47UEKN79_xv4khZAs5DuYxHkCQ'
-              ),
-              fit: BoxFit.contain,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+/// Mở bảng chi tiết chỉ đọc.
+///
+/// Dùng bottom sheet chứ không mở thêm một trang: ngân sách hết hạn chỉ cần xem
+/// lại con số đã chốt, không có thao tác nào để làm ở đó.
+void _showDetail(BuildContext context, BudgetView view) {
+  showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: Colors.white,
+    // Nội dung cao hơn nửa màn hình thì sheet tự cho kéo lên; bản thân bảng
+    // cũng cuộn được nên không bao giờ cắt mất phần cuối.
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    ),
+    builder: (_) => BudgetDetailSheet(view: view),
+  );
 }

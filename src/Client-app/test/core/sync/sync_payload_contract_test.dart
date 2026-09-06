@@ -143,12 +143,42 @@ void main() {
         syncStatus: const Value('pending'),
         updatedAt: Value(now),
       ));
+      // Ba kiểu giao dịch của client, để canh phép quy đổi sang bộ giá trị mà
+      // PostgreSQL chấp nhận. Xem group "PUSH — giá trị `type` và dấu của
+      // `amount`" bên dưới.
+      await db.transactionDao.insert(TransactionsCompanion(
+        id: const Value('66666666-6666-4666-8666-666666666667'),
+        idaccount: const Value(accountId),
+        walletId: const Value(walletId),
+        categoryId: const Value(categoryId),
+        amount: const Value(120000),
+        type: const Value('thu'),
+        date: Value(now),
+        syncStatus: const Value('pending'),
+        updatedAt: Value(now),
+      ));
+      await db.transactionDao.insert(TransactionsCompanion(
+        id: const Value('55555555-5555-4555-8555-555555555555'),
+        idaccount: const Value(accountId),
+        walletId: const Value(walletId),
+        categoryId: const Value(categoryId),
+        walletTransfer: const Value(walletId),
+        amount: const Value(700000),
+        type: const Value('transfer'),
+        date: Value(now),
+        syncStatus: const Value('pending'),
+        updatedAt: Value(now),
+      ));
       await db.budgetDao.insert(BudgetsCompanion(
         id: const Value('44444444-4444-4444-8444-444444444444'),
         idaccount: const Value(accountId),
         categoryId: const Value(categoryId),
         amount: const Value(500000),
         startDate: Value(now),
+        // Client không tự sinh giá trị cho cột này (chu kỳ neo vào ngày bắt
+        // đầu), nhưng hàng kéo về từ backend hoặc Admin-web có thể mang sẵn —
+        // và khi đó phải được đẩy lại nguyên vẹn.
+        nextTimeRecurrence: Value(DateTime.utc(2026, 10, 5)),
         syncStatus: const Value('pending'),
         updatedAt: Value(now),
       ));
@@ -216,16 +246,89 @@ void main() {
       );
     });
 
+    group('giá trị `type` và dấu của `amount`', () {
+      /// Canh chừng điều gì: PostgreSQL có
+      /// `chk_transaction_type CHECK ("Type" IN ('Transaction','Transfer'))`,
+      /// nên bộ giá trị nội bộ của client (`chi`/`thu`/`transfer`) KHÔNG được
+      /// đi thẳng lên. Chiều tiền phía server nằm ở **dấu của `Amount`** chứ
+      /// không ở `Type`: âm là chi, dương là thu.
+      ///
+      /// `SyncPayloadNormalizer.transactionForPush` làm phép quy đổi này, và
+      /// hợp đồng cũ chỉ khoá TÊN khoá nên không có gì canh giá trị. Mất phép
+      /// quy đổi thì mọi giao dịch bị ràng buộc CHECK từ chối — hàng nằm lại
+      /// trên máy, số dư ví vẫn đồng bộ nên hai bên lệch nhau mà không ai thấy.
+      Map<String, dynamic> payloadCuaGiaoDich(String id) {
+        final op = client.adapter.pushed.firstWhere(
+          (op) =>
+              op['entity'] == 'transaction' &&
+              (op['payload'] as Map)['id'] == id,
+          orElse: () => throw StateError('Không có op cho giao dịch $id'),
+        );
+        return op['payload'] as Map<String, dynamic>;
+      }
+
+      test('chi → Transaction, số tiền ÂM', () {
+        final p = payloadCuaGiaoDich('33333333-3333-4333-8333-333333333333');
+        expect(p['type'], 'Transaction',
+            reason: "'chi' không nằm trong bộ giá trị PostgreSQL cho phép.");
+        expect((p['amount'] as num) < 0, isTrue,
+            reason: 'Dấu âm là thứ DUY NHẤT phân biệt chi với thu ở phía '
+                'server — cả hai đều mang Type "Transaction".');
+      });
+
+      test('thu → Transaction, số tiền DƯƠNG', () {
+        final p = payloadCuaGiaoDich('66666666-6666-4666-8666-666666666667');
+        expect(p['type'], 'Transaction');
+        expect((p['amount'] as num) > 0, isTrue);
+      });
+
+      test('transfer → Transfer, giữ ví đích, bỏ danh mục', () {
+        final p = payloadCuaGiaoDich('55555555-5555-4555-8555-555555555555');
+        expect(p['type'], 'Transfer',
+            reason: 'Chuyển tiền giữa hai ví của cùng người dùng là loại '
+                'riêng, không phải một khoản chi.');
+        expect(p['idwallet_transfer'], isNotNull,
+            reason: 'Ví đích là chỗ duy nhất ghi lại tiền đã đi đâu.');
+        expect(p['categoryId'], isNull,
+            reason: 'Khoản chuyển ví không thuộc danh mục chi tiêu nào; để '
+                'nguyên là phần thống kê đếm nó thành chi tiêu thật.');
+      });
+
+      test('KHÔNG giá trị nội bộ nào lọt lên backend', () {
+        for (final op in client.adapter.pushed) {
+          if (op['entity'] != 'transaction') continue;
+          final type = (op['payload'] as Map)['type'];
+          expect(const ['Transaction', 'Transfer'].contains(type), isTrue,
+              reason: 'Gửi "$type" lên sẽ bị chk_transaction_type từ chối.');
+        }
+      });
+    });
+
     test('budget — gửi thẳng tên field Prisma', () {
       expect(
         payloadOf('budget').keys.toSet(),
         {
           'id', 'idcategory', 'total_amount', 'spent',
-          'threshold_warning_amount', 'over_spending', 'over_amount',
+          'threshold_warning_amount',
+          // Thêm ở lược đồ v11. Backend đã có cột `Threshold_Warning_Percent`
+          // từ đợt DB v2 nhưng client thì chưa, nên ngưỡng cảnh báo theo phần
+          // trăm không bao giờ sang được máy khác — im lặng, vì trường thiếu
+          // chỉ đơn giản là không được ghi.
+          'threshold_warning_percent',
+          'over_spending', 'over_amount',
           'start', 'end', 'recurrence', 'time_recurrence',
           'nexttime_recurrence', 'note', 'is_deleted', 'update_at',
           'idaccount',
         },
+      );
+    });
+
+    test('budget — mốc chu kỳ có sẵn phải được đẩy lại nguyên vẹn', () {
+      expect(
+        payloadOf('budget')['nexttime_recurrence'],
+        '2026-10-05T00:00:00.000Z',
+        reason: 'Bỏ rơi cột này khi đẩy sẽ xoá mốc mà máy khác đã đặt: backend '
+            'lưu null, và chu kỳ lặng lẽ nhảy về neo theo ngày bắt đầu.',
       );
     });
 
@@ -263,6 +366,13 @@ void main() {
           'isLocalOnly',
           'is_local_only',
           'keywords',
+          // Ba cột trích tự động là CỤC BỘ (schema v15): bảng `goal` phía
+          // backend không có chúng, và thêm trường vào payload đẩy đòi backend
+          // sửa trước.
+          'auto_deposit_amount',
+          'auto_deposit_wallet_id',
+          'auto_deposit_last_run',
+          'goal_id', // cột cục bộ của transactions (schema v14)
           'updatedAt', // phải đã được đổi thành update_at
         ]) {
           expect(payload.containsKey(forbidden), false,
@@ -338,6 +448,120 @@ void main() {
       final goals = await db.goalDao.getAll(accountId);
       expect(goals.single.isCompleted, true,
           reason: 'backend dùng "status_complete" dạng chuỗi "True"');
+    });
+
+    test('cờ đúng/sai của mục tiêu đọc được ở MỌI dạng backend có thể gửi',
+        () async {
+      client.adapter.pullData = {
+        'goals': [
+          {
+            'idgoal': '77777777-7777-4777-8777-777777777777',
+            'idaccount': accountId,
+            'name': 'Quỹ Tết',
+            'target_amount': 5000000,
+            'current_amount': 5000000,
+            'target_date': '2027-01-01T00:00:00.000Z',
+            // Viết THƯỜNG, khác hẳn "True" ở test trên. Cột là VarChar(20)
+            // không ràng buộc gì, nên một lần ghi từ Admin-web hay một
+            // migration là đủ để giá trị thành dạng này.
+            'status_complete': 'true',
+            // Số 1 thay cho boolean thật: vài trình điều khiển tuần tự hoá
+            // boolean kiểu đó.
+            'recurrence': 1,
+            'time_recurrence': 'Month',
+            'update_at': '2026-09-01T10:00:00.000Z',
+          },
+        ],
+      };
+
+      await runSync();
+
+      final goal = (await db.goalDao.getAll(accountId)).single;
+      expect(goal.isCompleted, true,
+          reason: 'Phép so cứng `== "True"` biến "true" viết thường thành CHƯA '
+              'hoàn thành — im lặng, không exception, không log. Mục tiêu biến '
+              'khỏi tab "Đã hoàn thành" mà không ai biết vì sao.');
+      expect(goal.recurrence, true,
+          reason: 'Phép so cứng `== true` biến số 1 thành `false`, và mục tiêu '
+              'mất cờ lặp lại cùng lời nhắc vòng mới của nó.');
+      expect(goal.timeRecurrence, 'Month');
+    });
+
+    test('BỐN cờ còn lại cũng đọc được ở mọi dạng, không riêng mục tiêu',
+        () async {
+      client.adapter.pullData = {
+        'wallets': [
+          {
+            'idwallet': walletId,
+            'idaccount': accountId,
+            'name': 'Ví mặc định',
+            'balance': 1000,
+            // chuỗi viết thường thay cho boolean thật
+            'is_default': 'true',
+            'update_at': '2026-09-01T10:00:00.000Z',
+          },
+        ],
+        'categories': [
+          {
+            'idcategory': categoryId,
+            'name_category': 'Nhóm chi',
+            'classify': 'Chi',
+            // số 1 thay cho boolean thật, ở CẢ HAI cờ
+            'is_group': 1,
+            'is_default': 1,
+            'create_by': accountId,
+            'update_at': '2026-09-01T10:00:00.000Z',
+          },
+        ],
+        'budgets': [
+          {
+            'idbudget': '44444444-4444-4444-8444-444444444444',
+            'idaccount': accountId,
+            'idcategory': categoryId,
+            'total_amount': 750000,
+            'over_spending': 'Stop',
+            'start': '2026-09-01T00:00:00.000Z',
+            'recurrence': 1,
+            'time_recurrence': 'Month',
+            'update_at': '2026-09-01T10:00:00.000Z',
+          },
+        ],
+        'bills': [
+          {
+            'idbill': '88888888-8888-4888-8888-888888888888',
+            'idaccount': accountId,
+            'idwallet': walletId,
+            'idcategory': categoryId,
+            'name': 'Tiền mạng',
+            'amount': 250000,
+            'due_date': '2026-10-01T00:00:00.000Z',
+            // chuỗi viết hoa chữ đầu, dạng `Status_complete` của mục tiêu
+            'recurrence': 'True',
+            'time_recurrence': 'Month',
+            'update_at': '2026-09-01T10:00:00.000Z',
+          },
+        ],
+      };
+
+      await runSync();
+
+      expect((await db.walletDao.getById(walletId))?.isDefault, true,
+          reason: 'Cả bốn cờ này từng so cứng `== true`. Một cái rơi về `false` '
+              'trong im lặng thì ví mặc định mất nhãn, nhóm danh mục sập thành '
+              'danh mục con, ngân sách và hoá đơn mất tính lặp — không '
+              'exception, không log.');
+
+      final category = await db.categoryDao.getById(categoryId);
+      expect(category?.isGroup, true);
+      expect(category?.isDefault, true);
+
+      final budget = (await db.budgetDao.getAll(accountId)).single;
+      expect(budget.recurrence, true);
+
+      final bill = (await db.billDao.getAll(accountId)).single;
+      expect(bill.isRecurrence, true,
+          reason: 'Hoá đơn còn nặng hơn: `recurrence` (cột chuỗi cũ) được SUY '
+              'RA từ cờ này, nên đọc sai một chỗ làm hỏng luôn cột thứ hai.');
     });
   });
 

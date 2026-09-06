@@ -38,6 +38,33 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// Stream giao dịch theo pattern ghi chú (dùng cho Mục tiêu tiết kiệm)
+  /// Lịch sử tích luỹ của MỘT mục tiêu.
+  ///
+  /// Nối bằng [goalId] cho hàng mới, và giữ nhánh tra theo ghi chú cho hàng cũ
+  /// — hàng do bản app trước tạo, và mọi hàng kéo về từ server (cột `goalId` là
+  /// cục bộ nên server không bao giờ trả nó về).
+  ///
+  /// Nhánh ghi chú vẫn mang khuyết điểm cũ: nó là `LIKE` trên tên nên mục tiêu
+  /// tên "Mua" còn khớp ghi chú của "Mua xe". Giữ lại vì mất lịch sử đã có còn
+  /// tệ hơn; khuyết điểm ấy **tắt dần** theo thời gian vì mọi khoản nạp mới đều
+  /// mang `goalId`. Điều kiện `goalId IS NULL` ở nhánh này là thứ chặn không
+  /// cho một hàng đã có chủ bị mục tiêu khác nhận vơ.
+  Stream<List<Transaction>> watchByGoal(
+    int idaccount,
+    String goalId,
+    String goalName,
+  ) {
+    final pattern = 'Tích lũy mục tiêu: $goalName';
+    return (select(transactions)
+          ..where((t) =>
+              t.deletedAt.isNull() &
+              t.idaccount.equals(idaccount) &
+              (t.goalId.equals(goalId) |
+                  (t.goalId.isNull() & t.note.like('%$pattern%'))))
+          ..orderBy([(t) => OrderingTerm.desc(t.date)]))
+        .watch();
+  }
+
   Stream<List<Transaction>> watchByNotePattern(int idaccount, String pattern) {
     return (select(transactions)
           ..where((t) =>

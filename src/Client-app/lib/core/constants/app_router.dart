@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
+import '../auth/current_account.dart';
 import '../../shared/widgets/main_shell.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
@@ -40,6 +42,8 @@ import '../../features/goal/presentation/pages/goal_page.dart';
 import '../../features/goal/presentation/pages/goal_add_page.dart';
 import '../../features/goal/presentation/pages/goal_detail_page.dart';
 import '../../features/ai_chat/presentation/pages/ai_chat_page.dart';
+import '../../features/notification/presentation/pages/notification_center_page.dart';
+import '../../features/notification/presentation/pages/notification_settings_page.dart';
 
 // ─── GoRouterRefreshStream ───────────────────────────────────────────────────
 // Wrap AuthBloc stream thành ChangeNotifier để GoRouter tự refresh
@@ -201,9 +205,12 @@ class AppRouter {
           ),
 
           // Budget rules
+          // `?id=<uuid>` = sửa ngân sách đã có; không có tham số = tạo mới.
           GoRoute(
               path: '/budget/rules',
-              builder: (_, __) => const BudgetRulesPage()),
+              builder: (_, state) => BudgetRulesPage(
+                    budgetId: state.uri.queryParameters['id'],
+                  )),
 
           // Category
           GoRoute(
@@ -268,9 +275,29 @@ class AppRouter {
             ),
           ),
 
+          // Notification
+          GoRoute(
+            path: '/notifications',
+            builder: (_, __) => const NotificationCenterPage(),
+          ),
+          // Trang cài đặt tự đọc `idaccount` được truyền vào chứ không hỏi
+          // AuthBloc — xem chú thích trong NotificationSettingsPage.
+          GoRoute(
+            path: '/settings/notifications',
+            builder: (ctx, __) => NotificationSettingsPage(
+              idaccount: currentAccountIdOrNull(ctx),
+            ),
+          ),
+
           // Goal
           GoRoute(path: '/goals', builder: (_, __) => const GoalPage()),
           GoRoute(path: '/goals/add', builder: (_, __) => const GoalAddPage()),
+          // Đặt TRƯỚC '/goals/:id' cho khớp với thứ tự của '/goals/add': đường
+          // cụ thể đứng trước đường có tham số.
+          GoRoute(
+            path: '/goals/:id/edit',
+            builder: (_, s) => GoalAddPage(goalId: s.pathParameters['id']!),
+          ),
           GoRoute(
             path: '/goals/:id',
             builder: (_, s) => GoalDetailPage(id: s.pathParameters['id']!),

@@ -100,7 +100,12 @@ void main() {
       throwsA(isA<CacheException>().having(
         (e) => e.message,
         'message',
-        contains('đang liên kết với mục tiêu "Mua Xe Máy"'),
+        allOf(
+          contains('Mua Xe Máy'),
+          // Lời nhắc phải chỉ ra lối thoát CÓ THẬT. Bản trước bảo "vui lòng gỡ
+          // liên kết" trong khi app không có chỗ nào làm việc đó.
+          contains('đổi ví'),
+        ),
       )),
     );
   });

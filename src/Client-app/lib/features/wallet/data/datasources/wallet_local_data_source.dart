@@ -128,7 +128,14 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
         final goals = await _db.goalDao.getAll(wallet.idaccount);
         final linkedGoals = goals.where((g) => g.walletId == id).toList();
         if (linkedGoals.isNotEmpty) {
-          throw CacheException('Ví "${wallet.name}" đang liên kết với mục tiêu "${linkedGoals.first.name}". Vui lòng gỡ liên kết trước khi xóa!');
+          // Nói rõ lối thoát Ở ĐÂU. Trước đây câu này bảo "vui lòng gỡ liên
+          // kết" trong khi app không hề có chỗ nào làm việc đó — người dùng
+          // đọc xong vẫn kẹt. Mục tiêu luôn phải có ví nhận nên lối thoát là
+          // ĐỔI sang ví khác, không phải bỏ trống.
+          throw CacheException(
+              'Ví "${wallet.name}" đang là ví tích lũy của mục tiêu '
+              '"${linkedGoals.first.name}". Mở mục tiêu đó, bấm biểu tượng '
+              'đổi ví ở góc trên để chọn ví khác, rồi xóa ví này.');
         }
       }
 

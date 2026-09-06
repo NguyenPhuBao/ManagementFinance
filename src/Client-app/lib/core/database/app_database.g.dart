@@ -962,6 +962,11 @@ class $TransactionsTable extends Transactions
       type: DriftSqlType.string,
       requiredDuringInsert: false,
       defaultValue: const Constant('[]'));
+  static const VerificationMeta _goalIdMeta = const VerificationMeta('goalId');
+  @override
+  late final GeneratedColumn<String> goalId = GeneratedColumn<String>(
+      'goal_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _walletTransferMeta =
       const VerificationMeta('walletTransfer');
   @override
@@ -1037,6 +1042,7 @@ class $TransactionsTable extends Transactions
         note,
         date,
         images,
+        goalId,
         walletTransfer,
         bankTranId,
         deletedAt,
@@ -1113,6 +1119,10 @@ class $TransactionsTable extends Transactions
     if (data.containsKey('images')) {
       context.handle(_imagesMeta,
           images.isAcceptableOrUnknown(data['images']!, _imagesMeta));
+    }
+    if (data.containsKey('goal_id')) {
+      context.handle(_goalIdMeta,
+          goalId.isAcceptableOrUnknown(data['goal_id']!, _goalIdMeta));
     }
     if (data.containsKey('wallet_transfer')) {
       context.handle(
@@ -1193,6 +1203,8 @@ class $TransactionsTable extends Transactions
           .read(DriftSqlType.dateTime, data['${effectivePrefix}date'])!,
       images: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}images'])!,
+      goalId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}goal_id']),
       walletTransfer: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}wallet_transfer']),
       bankTranId: attachedDatabase.typeMapping
@@ -1235,17 +1247,57 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   /// provider: nguồn tạo giao dịch
   /// Backend values: 'Manual' | 'BankSync' | 'SMS' | 'ORC' | 'Bill'
   /// Client legacy:  'Manual' | 'Casso'   | 'SMS' | 'OCR'
-  /// Sync mapper sẽ chuẩn hoá: Casso→BankSync, OCR→ORC
+  ///
+  /// ⚠️ **Cột này KHÔNG đi qua đồng bộ theo chiều nào cả**, và **không có mapper
+  /// chuẩn hoá nào**. Payload đẩy (`sync_engine.dart`, `_collectPendingOps`)
+  /// gồm 11 trường và không có `provider`; nhánh kéo về cũng không đọc nó. Nên
+  /// mọi hàng client đẩy lên đều nằm trên server với `Provider = 'Manual'`, kể
+  /// cả giao dịch do ngân hàng tạo rồi kéo về máy này.
+  ///
+  /// Chú thích cũ ở đây từng hứa "sync mapper sẽ chuẩn hoá Casso→BankSync,
+  /// OCR→ORC". **Hành vi đó chưa bao giờ tồn tại** — đã kiểm ngày 2026-09-04.
+  ///
+  /// Trước khi thêm cột này vào payload đẩy, đọc `docs/superpowers/backend/
+  /// 2026-09-04-ocr-classify-review.md` mục 7: backend đang có
+  /// `@@unique([provider, bank_tran_id])` **không tách theo tài khoản**, và
+  /// ràng buộc đó hiện chỉ trơ vì client gửi lên toàn NULL.
   final String provider;
   final String note;
   final DateTime date;
   final String images;
 
+  /// goalId: mục tiêu tiết kiệm mà giao dịch này thuộc về. NULL với mọi giao
+  /// dịch thường.
+  ///
+  /// ⚠️ **Cột CỤC BỘ — cố ý KHÔNG nằm trong hợp đồng đồng bộ.** Bảng `goal`
+  /// phía backend không có chiều ngược lại, và thêm trường vào payload đẩy đòi
+  /// backend sửa trước (quy tắc 4 trong `CLAUDE.md`).
+  /// `sync_payload_contract_test.dart` khoá đúng bộ khoá của payload giao dịch
+  /// nên nó bắt được ngay nếu cột này lọt vào.
+  ///
+  /// Vì là cục bộ, hàng **kéo về từ server luôn để trống** cột này — cũng như
+  /// mọi hàng do bản app cũ tạo. Nơi đọc (`TransactionDao.watchByGoal`) phải
+  /// giữ nhánh tra theo ghi chú cho những hàng đó, nếu không lịch sử tích luỹ
+  /// đã có sẽ biến mất sau lần đồng bộ đầu tiên.
+  ///
+  /// Vì sao cần: trước đây lịch sử tích luỹ tra bằng
+  /// `note LIKE '%Tích lũy mục tiêu: <tên>%'`. Tên mục tiêu không duy nhất, và
+  /// tệ hơn, một tên là **tiền tố** của tên khác ("Mua" với "Mua xe") thì nuốt
+  /// luôn lịch sử của mục tiêu kia.
+  final String? goalId;
+
   /// walletTransfer: Wallet_Transfer — ví đích khi chuyển khoản nội bộ
   final String? walletTransfer;
 
   /// bankTranId: Bank_tran_id — ID giao dịch từ ngân hàng (Casso/SMS)
-  /// Dùng để chống trùng (provider, bankTranId) phải unique
+  ///
+  /// ⚠️ **Bảng này KHÔNG khai `uniqueKeys`**, nên `(provider, bankTranId)`
+  /// **không** duy nhất ở SQLite — chú thích cũ hứa như vậy là sai. Phía
+  /// PostgreSQL thì có `uq_transaction_external`, nhưng nó ràng buộc trên
+  /// **toàn bảng** chứ không theo từng tài khoản.
+  ///
+  /// ⚠️ Cột này cũng **không đi qua đồng bộ theo chiều nào**, giống `provider`.
+  /// Hiện chưa nơi nào trong app gán giá trị cho nó, nên nó luôn NULL.
   final String? bankTranId;
 
   /// deletedAt: NULL = đang dùng, có giá trị = đã xóa mềm
@@ -1268,6 +1320,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       required this.note,
       required this.date,
       required this.images,
+      this.goalId,
       this.walletTransfer,
       this.bankTranId,
       this.deletedAt,
@@ -1293,6 +1346,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     map['note'] = Variable<String>(note);
     map['date'] = Variable<DateTime>(date);
     map['images'] = Variable<String>(images);
+    if (!nullToAbsent || goalId != null) {
+      map['goal_id'] = Variable<String>(goalId);
+    }
     if (!nullToAbsent || walletTransfer != null) {
       map['wallet_transfer'] = Variable<String>(walletTransfer);
     }
@@ -1330,6 +1386,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       note: Value(note),
       date: Value(date),
       images: Value(images),
+      goalId:
+          goalId == null && nullToAbsent ? const Value.absent() : Value(goalId),
       walletTransfer: walletTransfer == null && nullToAbsent
           ? const Value.absent()
           : Value(walletTransfer),
@@ -1367,6 +1425,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       note: serializer.fromJson<String>(json['note']),
       date: serializer.fromJson<DateTime>(json['date']),
       images: serializer.fromJson<String>(json['images']),
+      goalId: serializer.fromJson<String?>(json['goalId']),
       walletTransfer: serializer.fromJson<String?>(json['walletTransfer']),
       bankTranId: serializer.fromJson<String?>(json['bankTranId']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
@@ -1394,6 +1453,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       'note': serializer.toJson<String>(note),
       'date': serializer.toJson<DateTime>(date),
       'images': serializer.toJson<String>(images),
+      'goalId': serializer.toJson<String?>(goalId),
       'walletTransfer': serializer.toJson<String?>(walletTransfer),
       'bankTranId': serializer.toJson<String?>(bankTranId),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
@@ -1418,6 +1478,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           String? note,
           DateTime? date,
           String? images,
+          Value<String?> goalId = const Value.absent(),
           Value<String?> walletTransfer = const Value.absent(),
           Value<String?> bankTranId = const Value.absent(),
           Value<DateTime?> deletedAt = const Value.absent(),
@@ -1439,6 +1500,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
         note: note ?? this.note,
         date: date ?? this.date,
         images: images ?? this.images,
+        goalId: goalId.present ? goalId.value : this.goalId,
         walletTransfer:
             walletTransfer.present ? walletTransfer.value : this.walletTransfer,
         bankTranId: bankTranId.present ? bankTranId.value : this.bankTranId,
@@ -1466,6 +1528,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       note: data.note.present ? data.note.value : this.note,
       date: data.date.present ? data.date.value : this.date,
       images: data.images.present ? data.images.value : this.images,
+      goalId: data.goalId.present ? data.goalId.value : this.goalId,
       walletTransfer: data.walletTransfer.present
           ? data.walletTransfer.value
           : this.walletTransfer,
@@ -1500,6 +1563,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           ..write('note: $note, ')
           ..write('date: $date, ')
           ..write('images: $images, ')
+          ..write('goalId: $goalId, ')
           ..write('walletTransfer: $walletTransfer, ')
           ..write('bankTranId: $bankTranId, ')
           ..write('deletedAt: $deletedAt, ')
@@ -1514,27 +1578,29 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   }
 
   @override
-  int get hashCode => Object.hash(
-      id,
-      walletId,
-      idaccount,
-      categoryId,
-      amount,
-      type,
-      status,
-      provider,
-      note,
-      date,
-      images,
-      walletTransfer,
-      bankTranId,
-      deletedAt,
-      syncStatus,
-      syncRetryCount,
-      syncError,
-      syncBlockedUntil,
-      updatedAt,
-      isDeleted);
+  int get hashCode => Object.hashAll([
+        id,
+        walletId,
+        idaccount,
+        categoryId,
+        amount,
+        type,
+        status,
+        provider,
+        note,
+        date,
+        images,
+        goalId,
+        walletTransfer,
+        bankTranId,
+        deletedAt,
+        syncStatus,
+        syncRetryCount,
+        syncError,
+        syncBlockedUntil,
+        updatedAt,
+        isDeleted
+      ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1550,6 +1616,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           other.note == this.note &&
           other.date == this.date &&
           other.images == this.images &&
+          other.goalId == this.goalId &&
           other.walletTransfer == this.walletTransfer &&
           other.bankTranId == this.bankTranId &&
           other.deletedAt == this.deletedAt &&
@@ -1573,6 +1640,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
   final Value<String> note;
   final Value<DateTime> date;
   final Value<String> images;
+  final Value<String?> goalId;
   final Value<String?> walletTransfer;
   final Value<String?> bankTranId;
   final Value<DateTime?> deletedAt;
@@ -1595,6 +1663,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.note = const Value.absent(),
     this.date = const Value.absent(),
     this.images = const Value.absent(),
+    this.goalId = const Value.absent(),
     this.walletTransfer = const Value.absent(),
     this.bankTranId = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -1618,6 +1687,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.note = const Value.absent(),
     required DateTime date,
     this.images = const Value.absent(),
+    this.goalId = const Value.absent(),
     this.walletTransfer = const Value.absent(),
     this.bankTranId = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -1647,6 +1717,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Expression<String>? note,
     Expression<DateTime>? date,
     Expression<String>? images,
+    Expression<String>? goalId,
     Expression<String>? walletTransfer,
     Expression<String>? bankTranId,
     Expression<DateTime>? deletedAt,
@@ -1670,6 +1741,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       if (note != null) 'note': note,
       if (date != null) 'date': date,
       if (images != null) 'images': images,
+      if (goalId != null) 'goal_id': goalId,
       if (walletTransfer != null) 'wallet_transfer': walletTransfer,
       if (bankTranId != null) 'bank_tran_id': bankTranId,
       if (deletedAt != null) 'deleted_at': deletedAt,
@@ -1695,6 +1767,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       Value<String>? note,
       Value<DateTime>? date,
       Value<String>? images,
+      Value<String?>? goalId,
       Value<String?>? walletTransfer,
       Value<String?>? bankTranId,
       Value<DateTime?>? deletedAt,
@@ -1717,6 +1790,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       note: note ?? this.note,
       date: date ?? this.date,
       images: images ?? this.images,
+      goalId: goalId ?? this.goalId,
       walletTransfer: walletTransfer ?? this.walletTransfer,
       bankTranId: bankTranId ?? this.bankTranId,
       deletedAt: deletedAt ?? this.deletedAt,
@@ -1766,6 +1840,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     if (images.present) {
       map['images'] = Variable<String>(images.value);
     }
+    if (goalId.present) {
+      map['goal_id'] = Variable<String>(goalId.value);
+    }
     if (walletTransfer.present) {
       map['wallet_transfer'] = Variable<String>(walletTransfer.value);
     }
@@ -1813,6 +1890,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
           ..write('note: $note, ')
           ..write('date: $date, ')
           ..write('images: $images, ')
+          ..write('goalId: $goalId, ')
           ..write('walletTransfer: $walletTransfer, ')
           ..write('bankTranId: $bankTranId, ')
           ..write('deletedAt: $deletedAt, ')
@@ -3430,20 +3508,6 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
       type: DriftSqlType.double,
       requiredDuringInsert: false,
       defaultValue: const Constant(0.0));
-  static const VerificationMeta _remainingMeta =
-      const VerificationMeta('remaining');
-  @override
-  late final GeneratedColumn<double> remaining = GeneratedColumn<double>(
-      'remaining', aliasedName, true,
-      type: DriftSqlType.double, requiredDuringInsert: false);
-  static const VerificationMeta _percentSpentMeta =
-      const VerificationMeta('percentSpent');
-  @override
-  late final GeneratedColumn<int> percentSpent = GeneratedColumn<int>(
-      'percent_spent', aliasedName, false,
-      type: DriftSqlType.int,
-      requiredDuringInsert: false,
-      defaultValue: const Constant(0));
   static const VerificationMeta _overSpendingMeta =
       const VerificationMeta('overSpending');
   @override
@@ -3463,6 +3527,12 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
   @override
   late final GeneratedColumn<double> thresholdWarningAmount =
       GeneratedColumn<double>('threshold_warning_amount', aliasedName, true,
+          type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _thresholdWarningPercentMeta =
+      const VerificationMeta('thresholdWarningPercent');
+  @override
+  late final GeneratedColumn<double> thresholdWarningPercent =
+      GeneratedColumn<double>('threshold_warning_percent', aliasedName, true,
           type: DriftSqlType.double, requiredDuringInsert: false);
   static const VerificationMeta _startDateMeta =
       const VerificationMeta('startDate');
@@ -3490,17 +3560,8 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
       const VerificationMeta('timeRecurrence');
   @override
   late final GeneratedColumn<String> timeRecurrence = GeneratedColumn<String>(
-      'time_recurrence', aliasedName, false,
-      type: DriftSqlType.string,
-      requiredDuringInsert: false,
-      defaultValue: const Constant('Month'));
-  static const VerificationMeta _periodMeta = const VerificationMeta('period');
-  @override
-  late final GeneratedColumn<String> period = GeneratedColumn<String>(
-      'period', aliasedName, false,
-      type: DriftSqlType.string,
-      requiredDuringInsert: false,
-      defaultValue: const Constant('monthly'));
+      'time_recurrence', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _noteMeta = const VerificationMeta('note');
   @override
   late final GeneratedColumn<String> note = GeneratedColumn<String>(
@@ -3571,16 +3632,14 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
         categoryId,
         amount,
         spent,
-        remaining,
-        percentSpent,
         overSpending,
         overAmount,
         thresholdWarningAmount,
+        thresholdWarningPercent,
         startDate,
         endDate,
         recurrence,
         timeRecurrence,
-        period,
         note,
         nextTimeRecurrence,
         deletedAt,
@@ -3628,16 +3687,6 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
       context.handle(
           _spentMeta, spent.isAcceptableOrUnknown(data['spent']!, _spentMeta));
     }
-    if (data.containsKey('remaining')) {
-      context.handle(_remainingMeta,
-          remaining.isAcceptableOrUnknown(data['remaining']!, _remainingMeta));
-    }
-    if (data.containsKey('percent_spent')) {
-      context.handle(
-          _percentSpentMeta,
-          percentSpent.isAcceptableOrUnknown(
-              data['percent_spent']!, _percentSpentMeta));
-    }
     if (data.containsKey('over_spending')) {
       context.handle(
           _overSpendingMeta,
@@ -3655,6 +3704,13 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
           _thresholdWarningAmountMeta,
           thresholdWarningAmount.isAcceptableOrUnknown(
               data['threshold_warning_amount']!, _thresholdWarningAmountMeta));
+    }
+    if (data.containsKey('threshold_warning_percent')) {
+      context.handle(
+          _thresholdWarningPercentMeta,
+          thresholdWarningPercent.isAcceptableOrUnknown(
+              data['threshold_warning_percent']!,
+              _thresholdWarningPercentMeta));
     }
     if (data.containsKey('start_date')) {
       context.handle(_startDateMeta,
@@ -3677,10 +3733,6 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
           _timeRecurrenceMeta,
           timeRecurrence.isAcceptableOrUnknown(
               data['time_recurrence']!, _timeRecurrenceMeta));
-    }
-    if (data.containsKey('period')) {
-      context.handle(_periodMeta,
-          period.isAcceptableOrUnknown(data['period']!, _periodMeta));
     }
     if (data.containsKey('note')) {
       context.handle(
@@ -3747,10 +3799,6 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
           .read(DriftSqlType.double, data['${effectivePrefix}amount'])!,
       spent: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}spent'])!,
-      remaining: attachedDatabase.typeMapping
-          .read(DriftSqlType.double, data['${effectivePrefix}remaining']),
-      percentSpent: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}percent_spent'])!,
       overSpending: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}over_spending'])!,
       overAmount: attachedDatabase.typeMapping
@@ -3758,16 +3806,17 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
       thresholdWarningAmount: attachedDatabase.typeMapping.read(
           DriftSqlType.double,
           data['${effectivePrefix}threshold_warning_amount']),
+      thresholdWarningPercent: attachedDatabase.typeMapping.read(
+          DriftSqlType.double,
+          data['${effectivePrefix}threshold_warning_percent']),
       startDate: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}start_date'])!,
       endDate: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}end_date']),
       recurrence: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}recurrence'])!,
-      timeRecurrence: attachedDatabase.typeMapping.read(
-          DriftSqlType.string, data['${effectivePrefix}time_recurrence'])!,
-      period: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}period'])!,
+      timeRecurrence: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}time_recurrence']),
       note: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}note'])!,
       nextTimeRecurrence: attachedDatabase.typeMapping.read(
@@ -3802,18 +3851,31 @@ class Budget extends DataClass implements Insertable<Budget> {
   final String? categoryId;
   final double amount;
   final double spent;
-  final double? remaining;
-  final int percentSpent;
   final String overSpending;
   final double? overAmount;
   final double? thresholdWarningAmount;
+
+  /// Threshold_Warning_Percent: tỉ lệ đã tiêu chạm ngưỡng cảnh báo, đơn vị
+  /// **phần trăm 0–100** (không phải 0.0–1.0) để khớp `Decimal(15,2)` bên
+  /// backend. `BudgetEntity` quy về tỉ lệ khi so sánh.
+  ///
+  /// Thêm ở v11. Backend đã có cột này từ đợt DB v2 nhưng client thì chưa, nên
+  /// mọi ngưỡng cảnh báo theo phần trăm người dùng đặt trên một máy đều không
+  /// sang được máy khác.
+  final double? thresholdWarningPercent;
   final DateTime startDate;
   final DateTime? endDate;
   final bool recurrence;
-  final String timeRecurrence;
 
-  /// period: giữ backward compat với schema cũ (weekly/monthly/yearly)
-  final String period;
+  /// Time_recurrence: 'Week' | 'Month' | 'Quarter' | 'Year', hoặc **null**.
+  ///
+  /// null = ngân sách **không theo chu kỳ** nào: người dùng chọn "Ngày cụ thể"
+  /// và tự đặt ngày kết thúc. Backend biểu diễn đúng như vậy — ràng buộc
+  /// `chk_budget_time_recurrence` là `IS NULL OR IN (...)`.
+  ///
+  /// Thành nullable ở v12. Trước đó cột là `NOT NULL DEFAULT 'Month'` nên
+  /// trạng thái "không chu kỳ" không lưu nổi ở client dù backend vẫn nhận.
+  final String? timeRecurrence;
   final String note;
 
   /// nextTimeRecurrence: thời điểm bắt đầu chu kỳ ngân sách tiếp theo
@@ -3833,16 +3895,14 @@ class Budget extends DataClass implements Insertable<Budget> {
       this.categoryId,
       required this.amount,
       required this.spent,
-      this.remaining,
-      required this.percentSpent,
       required this.overSpending,
       this.overAmount,
       this.thresholdWarningAmount,
+      this.thresholdWarningPercent,
       required this.startDate,
       this.endDate,
       required this.recurrence,
-      required this.timeRecurrence,
-      required this.period,
+      this.timeRecurrence,
       required this.note,
       this.nextTimeRecurrence,
       this.deletedAt,
@@ -3862,10 +3922,6 @@ class Budget extends DataClass implements Insertable<Budget> {
     }
     map['amount'] = Variable<double>(amount);
     map['spent'] = Variable<double>(spent);
-    if (!nullToAbsent || remaining != null) {
-      map['remaining'] = Variable<double>(remaining);
-    }
-    map['percent_spent'] = Variable<int>(percentSpent);
     map['over_spending'] = Variable<String>(overSpending);
     if (!nullToAbsent || overAmount != null) {
       map['over_amount'] = Variable<double>(overAmount);
@@ -3874,13 +3930,18 @@ class Budget extends DataClass implements Insertable<Budget> {
       map['threshold_warning_amount'] =
           Variable<double>(thresholdWarningAmount);
     }
+    if (!nullToAbsent || thresholdWarningPercent != null) {
+      map['threshold_warning_percent'] =
+          Variable<double>(thresholdWarningPercent);
+    }
     map['start_date'] = Variable<DateTime>(startDate);
     if (!nullToAbsent || endDate != null) {
       map['end_date'] = Variable<DateTime>(endDate);
     }
     map['recurrence'] = Variable<bool>(recurrence);
-    map['time_recurrence'] = Variable<String>(timeRecurrence);
-    map['period'] = Variable<String>(period);
+    if (!nullToAbsent || timeRecurrence != null) {
+      map['time_recurrence'] = Variable<String>(timeRecurrence);
+    }
     map['note'] = Variable<String>(note);
     if (!nullToAbsent || nextTimeRecurrence != null) {
       map['next_time_recurrence'] = Variable<DateTime>(nextTimeRecurrence);
@@ -3910,10 +3971,6 @@ class Budget extends DataClass implements Insertable<Budget> {
           : Value(categoryId),
       amount: Value(amount),
       spent: Value(spent),
-      remaining: remaining == null && nullToAbsent
-          ? const Value.absent()
-          : Value(remaining),
-      percentSpent: Value(percentSpent),
       overSpending: Value(overSpending),
       overAmount: overAmount == null && nullToAbsent
           ? const Value.absent()
@@ -3921,13 +3978,17 @@ class Budget extends DataClass implements Insertable<Budget> {
       thresholdWarningAmount: thresholdWarningAmount == null && nullToAbsent
           ? const Value.absent()
           : Value(thresholdWarningAmount),
+      thresholdWarningPercent: thresholdWarningPercent == null && nullToAbsent
+          ? const Value.absent()
+          : Value(thresholdWarningPercent),
       startDate: Value(startDate),
       endDate: endDate == null && nullToAbsent
           ? const Value.absent()
           : Value(endDate),
       recurrence: Value(recurrence),
-      timeRecurrence: Value(timeRecurrence),
-      period: Value(period),
+      timeRecurrence: timeRecurrence == null && nullToAbsent
+          ? const Value.absent()
+          : Value(timeRecurrence),
       note: Value(note),
       nextTimeRecurrence: nextTimeRecurrence == null && nullToAbsent
           ? const Value.absent()
@@ -3957,17 +4018,16 @@ class Budget extends DataClass implements Insertable<Budget> {
       categoryId: serializer.fromJson<String?>(json['categoryId']),
       amount: serializer.fromJson<double>(json['amount']),
       spent: serializer.fromJson<double>(json['spent']),
-      remaining: serializer.fromJson<double?>(json['remaining']),
-      percentSpent: serializer.fromJson<int>(json['percentSpent']),
       overSpending: serializer.fromJson<String>(json['overSpending']),
       overAmount: serializer.fromJson<double?>(json['overAmount']),
       thresholdWarningAmount:
           serializer.fromJson<double?>(json['thresholdWarningAmount']),
+      thresholdWarningPercent:
+          serializer.fromJson<double?>(json['thresholdWarningPercent']),
       startDate: serializer.fromJson<DateTime>(json['startDate']),
       endDate: serializer.fromJson<DateTime?>(json['endDate']),
       recurrence: serializer.fromJson<bool>(json['recurrence']),
-      timeRecurrence: serializer.fromJson<String>(json['timeRecurrence']),
-      period: serializer.fromJson<String>(json['period']),
+      timeRecurrence: serializer.fromJson<String?>(json['timeRecurrence']),
       note: serializer.fromJson<String>(json['note']),
       nextTimeRecurrence:
           serializer.fromJson<DateTime?>(json['nextTimeRecurrence']),
@@ -3990,17 +4050,16 @@ class Budget extends DataClass implements Insertable<Budget> {
       'categoryId': serializer.toJson<String?>(categoryId),
       'amount': serializer.toJson<double>(amount),
       'spent': serializer.toJson<double>(spent),
-      'remaining': serializer.toJson<double?>(remaining),
-      'percentSpent': serializer.toJson<int>(percentSpent),
       'overSpending': serializer.toJson<String>(overSpending),
       'overAmount': serializer.toJson<double?>(overAmount),
       'thresholdWarningAmount':
           serializer.toJson<double?>(thresholdWarningAmount),
+      'thresholdWarningPercent':
+          serializer.toJson<double?>(thresholdWarningPercent),
       'startDate': serializer.toJson<DateTime>(startDate),
       'endDate': serializer.toJson<DateTime?>(endDate),
       'recurrence': serializer.toJson<bool>(recurrence),
-      'timeRecurrence': serializer.toJson<String>(timeRecurrence),
-      'period': serializer.toJson<String>(period),
+      'timeRecurrence': serializer.toJson<String?>(timeRecurrence),
       'note': serializer.toJson<String>(note),
       'nextTimeRecurrence': serializer.toJson<DateTime?>(nextTimeRecurrence),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
@@ -4019,16 +4078,14 @@ class Budget extends DataClass implements Insertable<Budget> {
           Value<String?> categoryId = const Value.absent(),
           double? amount,
           double? spent,
-          Value<double?> remaining = const Value.absent(),
-          int? percentSpent,
           String? overSpending,
           Value<double?> overAmount = const Value.absent(),
           Value<double?> thresholdWarningAmount = const Value.absent(),
+          Value<double?> thresholdWarningPercent = const Value.absent(),
           DateTime? startDate,
           Value<DateTime?> endDate = const Value.absent(),
           bool? recurrence,
-          String? timeRecurrence,
-          String? period,
+          Value<String?> timeRecurrence = const Value.absent(),
           String? note,
           Value<DateTime?> nextTimeRecurrence = const Value.absent(),
           Value<DateTime?> deletedAt = const Value.absent(),
@@ -4044,18 +4101,19 @@ class Budget extends DataClass implements Insertable<Budget> {
         categoryId: categoryId.present ? categoryId.value : this.categoryId,
         amount: amount ?? this.amount,
         spent: spent ?? this.spent,
-        remaining: remaining.present ? remaining.value : this.remaining,
-        percentSpent: percentSpent ?? this.percentSpent,
         overSpending: overSpending ?? this.overSpending,
         overAmount: overAmount.present ? overAmount.value : this.overAmount,
         thresholdWarningAmount: thresholdWarningAmount.present
             ? thresholdWarningAmount.value
             : this.thresholdWarningAmount,
+        thresholdWarningPercent: thresholdWarningPercent.present
+            ? thresholdWarningPercent.value
+            : this.thresholdWarningPercent,
         startDate: startDate ?? this.startDate,
         endDate: endDate.present ? endDate.value : this.endDate,
         recurrence: recurrence ?? this.recurrence,
-        timeRecurrence: timeRecurrence ?? this.timeRecurrence,
-        period: period ?? this.period,
+        timeRecurrence:
+            timeRecurrence.present ? timeRecurrence.value : this.timeRecurrence,
         note: note ?? this.note,
         nextTimeRecurrence: nextTimeRecurrence.present
             ? nextTimeRecurrence.value
@@ -4078,10 +4136,6 @@ class Budget extends DataClass implements Insertable<Budget> {
           data.categoryId.present ? data.categoryId.value : this.categoryId,
       amount: data.amount.present ? data.amount.value : this.amount,
       spent: data.spent.present ? data.spent.value : this.spent,
-      remaining: data.remaining.present ? data.remaining.value : this.remaining,
-      percentSpent: data.percentSpent.present
-          ? data.percentSpent.value
-          : this.percentSpent,
       overSpending: data.overSpending.present
           ? data.overSpending.value
           : this.overSpending,
@@ -4090,6 +4144,9 @@ class Budget extends DataClass implements Insertable<Budget> {
       thresholdWarningAmount: data.thresholdWarningAmount.present
           ? data.thresholdWarningAmount.value
           : this.thresholdWarningAmount,
+      thresholdWarningPercent: data.thresholdWarningPercent.present
+          ? data.thresholdWarningPercent.value
+          : this.thresholdWarningPercent,
       startDate: data.startDate.present ? data.startDate.value : this.startDate,
       endDate: data.endDate.present ? data.endDate.value : this.endDate,
       recurrence:
@@ -4097,7 +4154,6 @@ class Budget extends DataClass implements Insertable<Budget> {
       timeRecurrence: data.timeRecurrence.present
           ? data.timeRecurrence.value
           : this.timeRecurrence,
-      period: data.period.present ? data.period.value : this.period,
       note: data.note.present ? data.note.value : this.note,
       nextTimeRecurrence: data.nextTimeRecurrence.present
           ? data.nextTimeRecurrence.value
@@ -4125,16 +4181,14 @@ class Budget extends DataClass implements Insertable<Budget> {
           ..write('categoryId: $categoryId, ')
           ..write('amount: $amount, ')
           ..write('spent: $spent, ')
-          ..write('remaining: $remaining, ')
-          ..write('percentSpent: $percentSpent, ')
           ..write('overSpending: $overSpending, ')
           ..write('overAmount: $overAmount, ')
           ..write('thresholdWarningAmount: $thresholdWarningAmount, ')
+          ..write('thresholdWarningPercent: $thresholdWarningPercent, ')
           ..write('startDate: $startDate, ')
           ..write('endDate: $endDate, ')
           ..write('recurrence: $recurrence, ')
           ..write('timeRecurrence: $timeRecurrence, ')
-          ..write('period: $period, ')
           ..write('note: $note, ')
           ..write('nextTimeRecurrence: $nextTimeRecurrence, ')
           ..write('deletedAt: $deletedAt, ')
@@ -4155,16 +4209,14 @@ class Budget extends DataClass implements Insertable<Budget> {
         categoryId,
         amount,
         spent,
-        remaining,
-        percentSpent,
         overSpending,
         overAmount,
         thresholdWarningAmount,
+        thresholdWarningPercent,
         startDate,
         endDate,
         recurrence,
         timeRecurrence,
-        period,
         note,
         nextTimeRecurrence,
         deletedAt,
@@ -4184,16 +4236,14 @@ class Budget extends DataClass implements Insertable<Budget> {
           other.categoryId == this.categoryId &&
           other.amount == this.amount &&
           other.spent == this.spent &&
-          other.remaining == this.remaining &&
-          other.percentSpent == this.percentSpent &&
           other.overSpending == this.overSpending &&
           other.overAmount == this.overAmount &&
           other.thresholdWarningAmount == this.thresholdWarningAmount &&
+          other.thresholdWarningPercent == this.thresholdWarningPercent &&
           other.startDate == this.startDate &&
           other.endDate == this.endDate &&
           other.recurrence == this.recurrence &&
           other.timeRecurrence == this.timeRecurrence &&
-          other.period == this.period &&
           other.note == this.note &&
           other.nextTimeRecurrence == this.nextTimeRecurrence &&
           other.deletedAt == this.deletedAt &&
@@ -4211,16 +4261,14 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
   final Value<String?> categoryId;
   final Value<double> amount;
   final Value<double> spent;
-  final Value<double?> remaining;
-  final Value<int> percentSpent;
   final Value<String> overSpending;
   final Value<double?> overAmount;
   final Value<double?> thresholdWarningAmount;
+  final Value<double?> thresholdWarningPercent;
   final Value<DateTime> startDate;
   final Value<DateTime?> endDate;
   final Value<bool> recurrence;
-  final Value<String> timeRecurrence;
-  final Value<String> period;
+  final Value<String?> timeRecurrence;
   final Value<String> note;
   final Value<DateTime?> nextTimeRecurrence;
   final Value<DateTime?> deletedAt;
@@ -4237,16 +4285,14 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     this.categoryId = const Value.absent(),
     this.amount = const Value.absent(),
     this.spent = const Value.absent(),
-    this.remaining = const Value.absent(),
-    this.percentSpent = const Value.absent(),
     this.overSpending = const Value.absent(),
     this.overAmount = const Value.absent(),
     this.thresholdWarningAmount = const Value.absent(),
+    this.thresholdWarningPercent = const Value.absent(),
     this.startDate = const Value.absent(),
     this.endDate = const Value.absent(),
     this.recurrence = const Value.absent(),
     this.timeRecurrence = const Value.absent(),
-    this.period = const Value.absent(),
     this.note = const Value.absent(),
     this.nextTimeRecurrence = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -4264,16 +4310,14 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     this.categoryId = const Value.absent(),
     required double amount,
     this.spent = const Value.absent(),
-    this.remaining = const Value.absent(),
-    this.percentSpent = const Value.absent(),
     this.overSpending = const Value.absent(),
     this.overAmount = const Value.absent(),
     this.thresholdWarningAmount = const Value.absent(),
+    this.thresholdWarningPercent = const Value.absent(),
     required DateTime startDate,
     this.endDate = const Value.absent(),
     this.recurrence = const Value.absent(),
     this.timeRecurrence = const Value.absent(),
-    this.period = const Value.absent(),
     this.note = const Value.absent(),
     this.nextTimeRecurrence = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -4295,16 +4339,14 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     Expression<String>? categoryId,
     Expression<double>? amount,
     Expression<double>? spent,
-    Expression<double>? remaining,
-    Expression<int>? percentSpent,
     Expression<String>? overSpending,
     Expression<double>? overAmount,
     Expression<double>? thresholdWarningAmount,
+    Expression<double>? thresholdWarningPercent,
     Expression<DateTime>? startDate,
     Expression<DateTime>? endDate,
     Expression<bool>? recurrence,
     Expression<String>? timeRecurrence,
-    Expression<String>? period,
     Expression<String>? note,
     Expression<DateTime>? nextTimeRecurrence,
     Expression<DateTime>? deletedAt,
@@ -4322,17 +4364,16 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
       if (categoryId != null) 'category_id': categoryId,
       if (amount != null) 'amount': amount,
       if (spent != null) 'spent': spent,
-      if (remaining != null) 'remaining': remaining,
-      if (percentSpent != null) 'percent_spent': percentSpent,
       if (overSpending != null) 'over_spending': overSpending,
       if (overAmount != null) 'over_amount': overAmount,
       if (thresholdWarningAmount != null)
         'threshold_warning_amount': thresholdWarningAmount,
+      if (thresholdWarningPercent != null)
+        'threshold_warning_percent': thresholdWarningPercent,
       if (startDate != null) 'start_date': startDate,
       if (endDate != null) 'end_date': endDate,
       if (recurrence != null) 'recurrence': recurrence,
       if (timeRecurrence != null) 'time_recurrence': timeRecurrence,
-      if (period != null) 'period': period,
       if (note != null) 'note': note,
       if (nextTimeRecurrence != null)
         'next_time_recurrence': nextTimeRecurrence,
@@ -4353,16 +4394,14 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
       Value<String?>? categoryId,
       Value<double>? amount,
       Value<double>? spent,
-      Value<double?>? remaining,
-      Value<int>? percentSpent,
       Value<String>? overSpending,
       Value<double?>? overAmount,
       Value<double?>? thresholdWarningAmount,
+      Value<double?>? thresholdWarningPercent,
       Value<DateTime>? startDate,
       Value<DateTime?>? endDate,
       Value<bool>? recurrence,
-      Value<String>? timeRecurrence,
-      Value<String>? period,
+      Value<String?>? timeRecurrence,
       Value<String>? note,
       Value<DateTime?>? nextTimeRecurrence,
       Value<DateTime?>? deletedAt,
@@ -4379,17 +4418,16 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
       categoryId: categoryId ?? this.categoryId,
       amount: amount ?? this.amount,
       spent: spent ?? this.spent,
-      remaining: remaining ?? this.remaining,
-      percentSpent: percentSpent ?? this.percentSpent,
       overSpending: overSpending ?? this.overSpending,
       overAmount: overAmount ?? this.overAmount,
       thresholdWarningAmount:
           thresholdWarningAmount ?? this.thresholdWarningAmount,
+      thresholdWarningPercent:
+          thresholdWarningPercent ?? this.thresholdWarningPercent,
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,
       recurrence: recurrence ?? this.recurrence,
       timeRecurrence: timeRecurrence ?? this.timeRecurrence,
-      period: period ?? this.period,
       note: note ?? this.note,
       nextTimeRecurrence: nextTimeRecurrence ?? this.nextTimeRecurrence,
       deletedAt: deletedAt ?? this.deletedAt,
@@ -4421,12 +4459,6 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     if (spent.present) {
       map['spent'] = Variable<double>(spent.value);
     }
-    if (remaining.present) {
-      map['remaining'] = Variable<double>(remaining.value);
-    }
-    if (percentSpent.present) {
-      map['percent_spent'] = Variable<int>(percentSpent.value);
-    }
     if (overSpending.present) {
       map['over_spending'] = Variable<String>(overSpending.value);
     }
@@ -4436,6 +4468,10 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     if (thresholdWarningAmount.present) {
       map['threshold_warning_amount'] =
           Variable<double>(thresholdWarningAmount.value);
+    }
+    if (thresholdWarningPercent.present) {
+      map['threshold_warning_percent'] =
+          Variable<double>(thresholdWarningPercent.value);
     }
     if (startDate.present) {
       map['start_date'] = Variable<DateTime>(startDate.value);
@@ -4448,9 +4484,6 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     }
     if (timeRecurrence.present) {
       map['time_recurrence'] = Variable<String>(timeRecurrence.value);
-    }
-    if (period.present) {
-      map['period'] = Variable<String>(period.value);
     }
     if (note.present) {
       map['note'] = Variable<String>(note.value);
@@ -4494,16 +4527,14 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
           ..write('categoryId: $categoryId, ')
           ..write('amount: $amount, ')
           ..write('spent: $spent, ')
-          ..write('remaining: $remaining, ')
-          ..write('percentSpent: $percentSpent, ')
           ..write('overSpending: $overSpending, ')
           ..write('overAmount: $overAmount, ')
           ..write('thresholdWarningAmount: $thresholdWarningAmount, ')
+          ..write('thresholdWarningPercent: $thresholdWarningPercent, ')
           ..write('startDate: $startDate, ')
           ..write('endDate: $endDate, ')
           ..write('recurrence: $recurrence, ')
           ..write('timeRecurrence: $timeRecurrence, ')
-          ..write('period: $period, ')
           ..write('note: $note, ')
           ..write('nextTimeRecurrence: $nextTimeRecurrence, ')
           ..write('deletedAt: $deletedAt, ')
@@ -5695,6 +5726,24 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
   late final GeneratedColumn<DateTime> timeCycleTakeMoney =
       GeneratedColumn<DateTime>('time_cycle_take_money', aliasedName, true,
           type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _autoDepositAmountMeta =
+      const VerificationMeta('autoDepositAmount');
+  @override
+  late final GeneratedColumn<double> autoDepositAmount =
+      GeneratedColumn<double>('auto_deposit_amount', aliasedName, true,
+          type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _autoDepositWalletIdMeta =
+      const VerificationMeta('autoDepositWalletId');
+  @override
+  late final GeneratedColumn<String> autoDepositWalletId =
+      GeneratedColumn<String>('auto_deposit_wallet_id', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _autoDepositLastRunMeta =
+      const VerificationMeta('autoDepositLastRun');
+  @override
+  late final GeneratedColumn<DateTime> autoDepositLastRun =
+      GeneratedColumn<DateTime>('auto_deposit_last_run', aliasedName, true,
+          type: DriftSqlType.dateTime, requiredDuringInsert: false);
   static const VerificationMeta _recurrenceMeta =
       const VerificationMeta('recurrence');
   @override
@@ -5804,6 +5853,9 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
         walletId,
         cycleTakeMoney,
         timeCycleTakeMoney,
+        autoDepositAmount,
+        autoDepositWalletId,
+        autoDepositLastRun,
         recurrence,
         timeRecurrence,
         icon,
@@ -5886,6 +5938,24 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
           _timeCycleTakeMoneyMeta,
           timeCycleTakeMoney.isAcceptableOrUnknown(
               data['time_cycle_take_money']!, _timeCycleTakeMoneyMeta));
+    }
+    if (data.containsKey('auto_deposit_amount')) {
+      context.handle(
+          _autoDepositAmountMeta,
+          autoDepositAmount.isAcceptableOrUnknown(
+              data['auto_deposit_amount']!, _autoDepositAmountMeta));
+    }
+    if (data.containsKey('auto_deposit_wallet_id')) {
+      context.handle(
+          _autoDepositWalletIdMeta,
+          autoDepositWalletId.isAcceptableOrUnknown(
+              data['auto_deposit_wallet_id']!, _autoDepositWalletIdMeta));
+    }
+    if (data.containsKey('auto_deposit_last_run')) {
+      context.handle(
+          _autoDepositLastRunMeta,
+          autoDepositLastRun.isAcceptableOrUnknown(
+              data['auto_deposit_last_run']!, _autoDepositLastRunMeta));
     }
     if (data.containsKey('recurrence')) {
       context.handle(
@@ -5983,6 +6053,14 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
       timeCycleTakeMoney: attachedDatabase.typeMapping.read(
           DriftSqlType.dateTime,
           data['${effectivePrefix}time_cycle_take_money']),
+      autoDepositAmount: attachedDatabase.typeMapping.read(
+          DriftSqlType.double, data['${effectivePrefix}auto_deposit_amount']),
+      autoDepositWalletId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}auto_deposit_wallet_id']),
+      autoDepositLastRun: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime,
+          data['${effectivePrefix}auto_deposit_last_run']),
       recurrence: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}recurrence'])!,
       timeRecurrence: attachedDatabase.typeMapping
@@ -6034,7 +6112,30 @@ class Goal extends DataClass implements Insertable<Goal> {
   final String? cycleTakeMoney;
 
   /// timeCycleTakeMoney: thời điểm cụ thể trích tiền trong chu kỳ
+  ///
+  /// ⚠️ Cột này đồng bộ hai chiều nhưng **client chưa bao giờ ghi**. Bộ trích
+  /// tự động cố ý KHÔNG dùng nó làm mốc chạy: nó là cột dùng chung với
+  /// backend/Admin-web, và đổi ý nghĩa một cột dùng chung mà phía kia chưa
+  /// đồng ý là cách hỏng im lặng nhất. Mốc chạy nằm ở [autoDepositLastRun].
   final DateTime? timeCycleTakeMoney;
+
+  /// autoDepositAmount: số tiền trích mỗi kỳ. NULL = không bật trích tự động.
+  final double? autoDepositAmount;
+
+  /// autoDepositWalletId: ví NGUỒN của khoản trích. Ví nhận luôn là
+  /// [walletId] của chính mục tiêu.
+  ///
+  /// Không khai khoá ngoại — cùng lý do với `walletTransfer` (bẫy 4.1) — nên
+  /// nơi chạy phải tự kiểm ví còn tồn tại.
+  final String? autoDepositWalletId;
+
+  /// autoDepositLastRun: mốc của kỳ **gần nhất đã trích xong**.
+  ///
+  /// NULL nghĩa là chưa bật. Được đặt bằng "bây giờ" tại đúng lúc người dùng
+  /// bật công tắc, nên kỳ đầu tiên rơi vào một chu kỳ sau đó. Lấy ngày tạo mục
+  /// tiêu làm mốc thay thế là bật công tắc hôm nay rồi bị trích ngược lại sáu
+  /// kỳ cùng một lúc.
+  final DateTime? autoDepositLastRun;
 
   /// recurrence: tự động lặp lại mục tiêu sau khi hoàn thành
   final bool recurrence;
@@ -6065,6 +6166,9 @@ class Goal extends DataClass implements Insertable<Goal> {
       this.walletId,
       this.cycleTakeMoney,
       this.timeCycleTakeMoney,
+      this.autoDepositAmount,
+      this.autoDepositWalletId,
+      this.autoDepositLastRun,
       required this.recurrence,
       this.timeRecurrence,
       required this.icon,
@@ -6098,6 +6202,15 @@ class Goal extends DataClass implements Insertable<Goal> {
     }
     if (!nullToAbsent || timeCycleTakeMoney != null) {
       map['time_cycle_take_money'] = Variable<DateTime>(timeCycleTakeMoney);
+    }
+    if (!nullToAbsent || autoDepositAmount != null) {
+      map['auto_deposit_amount'] = Variable<double>(autoDepositAmount);
+    }
+    if (!nullToAbsent || autoDepositWalletId != null) {
+      map['auto_deposit_wallet_id'] = Variable<String>(autoDepositWalletId);
+    }
+    if (!nullToAbsent || autoDepositLastRun != null) {
+      map['auto_deposit_last_run'] = Variable<DateTime>(autoDepositLastRun);
     }
     map['recurrence'] = Variable<bool>(recurrence);
     if (!nullToAbsent || timeRecurrence != null) {
@@ -6143,6 +6256,15 @@ class Goal extends DataClass implements Insertable<Goal> {
       timeCycleTakeMoney: timeCycleTakeMoney == null && nullToAbsent
           ? const Value.absent()
           : Value(timeCycleTakeMoney),
+      autoDepositAmount: autoDepositAmount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(autoDepositAmount),
+      autoDepositWalletId: autoDepositWalletId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(autoDepositWalletId),
+      autoDepositLastRun: autoDepositLastRun == null && nullToAbsent
+          ? const Value.absent()
+          : Value(autoDepositLastRun),
       recurrence: Value(recurrence),
       timeRecurrence: timeRecurrence == null && nullToAbsent
           ? const Value.absent()
@@ -6182,6 +6304,12 @@ class Goal extends DataClass implements Insertable<Goal> {
       cycleTakeMoney: serializer.fromJson<String?>(json['cycleTakeMoney']),
       timeCycleTakeMoney:
           serializer.fromJson<DateTime?>(json['timeCycleTakeMoney']),
+      autoDepositAmount:
+          serializer.fromJson<double?>(json['autoDepositAmount']),
+      autoDepositWalletId:
+          serializer.fromJson<String?>(json['autoDepositWalletId']),
+      autoDepositLastRun:
+          serializer.fromJson<DateTime?>(json['autoDepositLastRun']),
       recurrence: serializer.fromJson<bool>(json['recurrence']),
       timeRecurrence: serializer.fromJson<String?>(json['timeRecurrence']),
       icon: serializer.fromJson<String>(json['icon']),
@@ -6212,6 +6340,9 @@ class Goal extends DataClass implements Insertable<Goal> {
       'walletId': serializer.toJson<String?>(walletId),
       'cycleTakeMoney': serializer.toJson<String?>(cycleTakeMoney),
       'timeCycleTakeMoney': serializer.toJson<DateTime?>(timeCycleTakeMoney),
+      'autoDepositAmount': serializer.toJson<double?>(autoDepositAmount),
+      'autoDepositWalletId': serializer.toJson<String?>(autoDepositWalletId),
+      'autoDepositLastRun': serializer.toJson<DateTime?>(autoDepositLastRun),
       'recurrence': serializer.toJson<bool>(recurrence),
       'timeRecurrence': serializer.toJson<String?>(timeRecurrence),
       'icon': serializer.toJson<String>(icon),
@@ -6239,6 +6370,9 @@ class Goal extends DataClass implements Insertable<Goal> {
           Value<String?> walletId = const Value.absent(),
           Value<String?> cycleTakeMoney = const Value.absent(),
           Value<DateTime?> timeCycleTakeMoney = const Value.absent(),
+          Value<double?> autoDepositAmount = const Value.absent(),
+          Value<String?> autoDepositWalletId = const Value.absent(),
+          Value<DateTime?> autoDepositLastRun = const Value.absent(),
           bool? recurrence,
           Value<String?> timeRecurrence = const Value.absent(),
           String? icon,
@@ -6266,6 +6400,15 @@ class Goal extends DataClass implements Insertable<Goal> {
         timeCycleTakeMoney: timeCycleTakeMoney.present
             ? timeCycleTakeMoney.value
             : this.timeCycleTakeMoney,
+        autoDepositAmount: autoDepositAmount.present
+            ? autoDepositAmount.value
+            : this.autoDepositAmount,
+        autoDepositWalletId: autoDepositWalletId.present
+            ? autoDepositWalletId.value
+            : this.autoDepositWalletId,
+        autoDepositLastRun: autoDepositLastRun.present
+            ? autoDepositLastRun.value
+            : this.autoDepositLastRun,
         recurrence: recurrence ?? this.recurrence,
         timeRecurrence:
             timeRecurrence.present ? timeRecurrence.value : this.timeRecurrence,
@@ -6304,6 +6447,15 @@ class Goal extends DataClass implements Insertable<Goal> {
       timeCycleTakeMoney: data.timeCycleTakeMoney.present
           ? data.timeCycleTakeMoney.value
           : this.timeCycleTakeMoney,
+      autoDepositAmount: data.autoDepositAmount.present
+          ? data.autoDepositAmount.value
+          : this.autoDepositAmount,
+      autoDepositWalletId: data.autoDepositWalletId.present
+          ? data.autoDepositWalletId.value
+          : this.autoDepositWalletId,
+      autoDepositLastRun: data.autoDepositLastRun.present
+          ? data.autoDepositLastRun.value
+          : this.autoDepositLastRun,
       recurrence:
           data.recurrence.present ? data.recurrence.value : this.recurrence,
       timeRecurrence: data.timeRecurrence.present
@@ -6342,6 +6494,9 @@ class Goal extends DataClass implements Insertable<Goal> {
           ..write('walletId: $walletId, ')
           ..write('cycleTakeMoney: $cycleTakeMoney, ')
           ..write('timeCycleTakeMoney: $timeCycleTakeMoney, ')
+          ..write('autoDepositAmount: $autoDepositAmount, ')
+          ..write('autoDepositWalletId: $autoDepositWalletId, ')
+          ..write('autoDepositLastRun: $autoDepositLastRun, ')
           ..write('recurrence: $recurrence, ')
           ..write('timeRecurrence: $timeRecurrence, ')
           ..write('icon: $icon, ')
@@ -6371,6 +6526,9 @@ class Goal extends DataClass implements Insertable<Goal> {
         walletId,
         cycleTakeMoney,
         timeCycleTakeMoney,
+        autoDepositAmount,
+        autoDepositWalletId,
+        autoDepositLastRun,
         recurrence,
         timeRecurrence,
         icon,
@@ -6399,6 +6557,9 @@ class Goal extends DataClass implements Insertable<Goal> {
           other.walletId == this.walletId &&
           other.cycleTakeMoney == this.cycleTakeMoney &&
           other.timeCycleTakeMoney == this.timeCycleTakeMoney &&
+          other.autoDepositAmount == this.autoDepositAmount &&
+          other.autoDepositWalletId == this.autoDepositWalletId &&
+          other.autoDepositLastRun == this.autoDepositLastRun &&
           other.recurrence == this.recurrence &&
           other.timeRecurrence == this.timeRecurrence &&
           other.icon == this.icon &&
@@ -6425,6 +6586,9 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
   final Value<String?> walletId;
   final Value<String?> cycleTakeMoney;
   final Value<DateTime?> timeCycleTakeMoney;
+  final Value<double?> autoDepositAmount;
+  final Value<String?> autoDepositWalletId;
+  final Value<DateTime?> autoDepositLastRun;
   final Value<bool> recurrence;
   final Value<String?> timeRecurrence;
   final Value<String> icon;
@@ -6450,6 +6614,9 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     this.walletId = const Value.absent(),
     this.cycleTakeMoney = const Value.absent(),
     this.timeCycleTakeMoney = const Value.absent(),
+    this.autoDepositAmount = const Value.absent(),
+    this.autoDepositWalletId = const Value.absent(),
+    this.autoDepositLastRun = const Value.absent(),
     this.recurrence = const Value.absent(),
     this.timeRecurrence = const Value.absent(),
     this.icon = const Value.absent(),
@@ -6476,6 +6643,9 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     this.walletId = const Value.absent(),
     this.cycleTakeMoney = const Value.absent(),
     this.timeCycleTakeMoney = const Value.absent(),
+    this.autoDepositAmount = const Value.absent(),
+    this.autoDepositWalletId = const Value.absent(),
+    this.autoDepositLastRun = const Value.absent(),
     this.recurrence = const Value.absent(),
     this.timeRecurrence = const Value.absent(),
     this.icon = const Value.absent(),
@@ -6507,6 +6677,9 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     Expression<String>? walletId,
     Expression<String>? cycleTakeMoney,
     Expression<DateTime>? timeCycleTakeMoney,
+    Expression<double>? autoDepositAmount,
+    Expression<String>? autoDepositWalletId,
+    Expression<DateTime>? autoDepositLastRun,
     Expression<bool>? recurrence,
     Expression<String>? timeRecurrence,
     Expression<String>? icon,
@@ -6534,6 +6707,11 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
       if (cycleTakeMoney != null) 'cycle_take_money': cycleTakeMoney,
       if (timeCycleTakeMoney != null)
         'time_cycle_take_money': timeCycleTakeMoney,
+      if (autoDepositAmount != null) 'auto_deposit_amount': autoDepositAmount,
+      if (autoDepositWalletId != null)
+        'auto_deposit_wallet_id': autoDepositWalletId,
+      if (autoDepositLastRun != null)
+        'auto_deposit_last_run': autoDepositLastRun,
       if (recurrence != null) 'recurrence': recurrence,
       if (timeRecurrence != null) 'time_recurrence': timeRecurrence,
       if (icon != null) 'icon': icon,
@@ -6562,6 +6740,9 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
       Value<String?>? walletId,
       Value<String?>? cycleTakeMoney,
       Value<DateTime?>? timeCycleTakeMoney,
+      Value<double?>? autoDepositAmount,
+      Value<String?>? autoDepositWalletId,
+      Value<DateTime?>? autoDepositLastRun,
       Value<bool>? recurrence,
       Value<String?>? timeRecurrence,
       Value<String>? icon,
@@ -6587,6 +6768,9 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
       walletId: walletId ?? this.walletId,
       cycleTakeMoney: cycleTakeMoney ?? this.cycleTakeMoney,
       timeCycleTakeMoney: timeCycleTakeMoney ?? this.timeCycleTakeMoney,
+      autoDepositAmount: autoDepositAmount ?? this.autoDepositAmount,
+      autoDepositWalletId: autoDepositWalletId ?? this.autoDepositWalletId,
+      autoDepositLastRun: autoDepositLastRun ?? this.autoDepositLastRun,
       recurrence: recurrence ?? this.recurrence,
       timeRecurrence: timeRecurrence ?? this.timeRecurrence,
       icon: icon ?? this.icon,
@@ -6637,6 +6821,17 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     if (timeCycleTakeMoney.present) {
       map['time_cycle_take_money'] =
           Variable<DateTime>(timeCycleTakeMoney.value);
+    }
+    if (autoDepositAmount.present) {
+      map['auto_deposit_amount'] = Variable<double>(autoDepositAmount.value);
+    }
+    if (autoDepositWalletId.present) {
+      map['auto_deposit_wallet_id'] =
+          Variable<String>(autoDepositWalletId.value);
+    }
+    if (autoDepositLastRun.present) {
+      map['auto_deposit_last_run'] =
+          Variable<DateTime>(autoDepositLastRun.value);
     }
     if (recurrence.present) {
       map['recurrence'] = Variable<bool>(recurrence.value);
@@ -6696,6 +6891,9 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
           ..write('walletId: $walletId, ')
           ..write('cycleTakeMoney: $cycleTakeMoney, ')
           ..write('timeCycleTakeMoney: $timeCycleTakeMoney, ')
+          ..write('autoDepositAmount: $autoDepositAmount, ')
+          ..write('autoDepositWalletId: $autoDepositWalletId, ')
+          ..write('autoDepositLastRun: $autoDepositLastRun, ')
           ..write('recurrence: $recurrence, ')
           ..write('timeRecurrence: $timeRecurrence, ')
           ..write('icon: $icon, ')
@@ -6715,6 +6913,771 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
   }
 }
 
+class $AppNotificationsTable extends AppNotifications
+    with TableInfo<$AppNotificationsTable, AppNotification> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AppNotificationsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _idaccountMeta =
+      const VerificationMeta('idaccount');
+  @override
+  late final GeneratedColumn<int> idaccount = GeneratedColumn<int>(
+      'idaccount', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+      'kind', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _dedupeKeyMeta =
+      const VerificationMeta('dedupeKey');
+  @override
+  late final GeneratedColumn<String> dedupeKey = GeneratedColumn<String>(
+      'dedupe_key', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+      'title', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _bodyMeta = const VerificationMeta('body');
+  @override
+  late final GeneratedColumn<String> body = GeneratedColumn<String>(
+      'body', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _severityMeta =
+      const VerificationMeta('severity');
+  @override
+  late final GeneratedColumn<String> severity = GeneratedColumn<String>(
+      'severity', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _subjectTypeMeta =
+      const VerificationMeta('subjectType');
+  @override
+  late final GeneratedColumn<String> subjectType = GeneratedColumn<String>(
+      'subject_type', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _subjectIdMeta =
+      const VerificationMeta('subjectId');
+  @override
+  late final GeneratedColumn<String> subjectId = GeneratedColumn<String>(
+      'subject_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _deeplinkMeta =
+      const VerificationMeta('deeplink');
+  @override
+  late final GeneratedColumn<String> deeplink = GeneratedColumn<String>(
+      'deeplink', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _readAtMeta = const VerificationMeta('readAt');
+  @override
+  late final GeneratedColumn<DateTime> readAt = GeneratedColumn<DateTime>(
+      'read_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _dismissedAtMeta =
+      const VerificationMeta('dismissedAt');
+  @override
+  late final GeneratedColumn<DateTime> dismissedAt = GeneratedColumn<DateTime>(
+      'dismissed_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _osScheduledIdMeta =
+      const VerificationMeta('osScheduledId');
+  @override
+  late final GeneratedColumn<int> osScheduledId = GeneratedColumn<int>(
+      'os_scheduled_id', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _osDeliveredAtMeta =
+      const VerificationMeta('osDeliveredAt');
+  @override
+  late final GeneratedColumn<DateTime> osDeliveredAt =
+      GeneratedColumn<DateTime>('os_delivered_at', aliasedName, true,
+          type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        idaccount,
+        kind,
+        dedupeKey,
+        title,
+        body,
+        severity,
+        subjectType,
+        subjectId,
+        deeplink,
+        createdAt,
+        readAt,
+        dismissedAt,
+        osScheduledId,
+        osDeliveredAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'app_notifications';
+  @override
+  VerificationContext validateIntegrity(Insertable<AppNotification> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('idaccount')) {
+      context.handle(_idaccountMeta,
+          idaccount.isAcceptableOrUnknown(data['idaccount']!, _idaccountMeta));
+    } else if (isInserting) {
+      context.missing(_idaccountMeta);
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+          _kindMeta, kind.isAcceptableOrUnknown(data['kind']!, _kindMeta));
+    } else if (isInserting) {
+      context.missing(_kindMeta);
+    }
+    if (data.containsKey('dedupe_key')) {
+      context.handle(_dedupeKeyMeta,
+          dedupeKey.isAcceptableOrUnknown(data['dedupe_key']!, _dedupeKeyMeta));
+    } else if (isInserting) {
+      context.missing(_dedupeKeyMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+          _titleMeta, title.isAcceptableOrUnknown(data['title']!, _titleMeta));
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('body')) {
+      context.handle(
+          _bodyMeta, body.isAcceptableOrUnknown(data['body']!, _bodyMeta));
+    } else if (isInserting) {
+      context.missing(_bodyMeta);
+    }
+    if (data.containsKey('severity')) {
+      context.handle(_severityMeta,
+          severity.isAcceptableOrUnknown(data['severity']!, _severityMeta));
+    } else if (isInserting) {
+      context.missing(_severityMeta);
+    }
+    if (data.containsKey('subject_type')) {
+      context.handle(
+          _subjectTypeMeta,
+          subjectType.isAcceptableOrUnknown(
+              data['subject_type']!, _subjectTypeMeta));
+    }
+    if (data.containsKey('subject_id')) {
+      context.handle(_subjectIdMeta,
+          subjectId.isAcceptableOrUnknown(data['subject_id']!, _subjectIdMeta));
+    }
+    if (data.containsKey('deeplink')) {
+      context.handle(_deeplinkMeta,
+          deeplink.isAcceptableOrUnknown(data['deeplink']!, _deeplinkMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('read_at')) {
+      context.handle(_readAtMeta,
+          readAt.isAcceptableOrUnknown(data['read_at']!, _readAtMeta));
+    }
+    if (data.containsKey('dismissed_at')) {
+      context.handle(
+          _dismissedAtMeta,
+          dismissedAt.isAcceptableOrUnknown(
+              data['dismissed_at']!, _dismissedAtMeta));
+    }
+    if (data.containsKey('os_scheduled_id')) {
+      context.handle(
+          _osScheduledIdMeta,
+          osScheduledId.isAcceptableOrUnknown(
+              data['os_scheduled_id']!, _osScheduledIdMeta));
+    }
+    if (data.containsKey('os_delivered_at')) {
+      context.handle(
+          _osDeliveredAtMeta,
+          osDeliveredAt.isAcceptableOrUnknown(
+              data['os_delivered_at']!, _osDeliveredAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+        {idaccount, dedupeKey},
+      ];
+  @override
+  AppNotification map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AppNotification(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      idaccount: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}idaccount'])!,
+      kind: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}kind'])!,
+      dedupeKey: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}dedupe_key'])!,
+      title: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}title'])!,
+      body: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}body'])!,
+      severity: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}severity'])!,
+      subjectType: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}subject_type']),
+      subjectId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}subject_id']),
+      deeplink: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}deeplink']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      readAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}read_at']),
+      dismissedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}dismissed_at']),
+      osScheduledId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}os_scheduled_id']),
+      osDeliveredAt: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}os_delivered_at']),
+    );
+  }
+
+  @override
+  $AppNotificationsTable createAlias(String alias) {
+    return $AppNotificationsTable(attachedDatabase, alias);
+  }
+}
+
+class AppNotification extends DataClass implements Insertable<AppNotification> {
+  final String id;
+
+  /// Mọi truy vấn đọc **bắt buộc** lọc theo cột này. Bỏ sót là thông báo tài
+  /// chính của tài khoản khác hiện ra trên máy dùng chung.
+  final int idaccount;
+
+  /// `budgetNearLimit` | `budgetOverspent` | `billDueSoon` | `billOverdue`
+  /// | `goalCompleted` | `goalBehind` | `syncFailed` | `walletNegative`
+  final String kind;
+
+  /// Khoá chống trùng — **trái tim của bảng này**.
+  ///
+  /// Gồm *loại + chủ thể + đơn vị lặp lại hợp lệ*, và **tuyệt đối không chứa
+  /// giá trị biến thiên liên tục** (số đã chi, phần trăm thô). Nhét `spent` vào
+  /// đây là biến mỗi giao dịch thành một thông báo mới.
+  ///
+  /// Cùng với `uniqueKeys` bên dưới và `InsertMode.insertOrIgnore`, đây là toàn
+  /// bộ cơ chế chống trùng. Kiểm bằng Dart (`SELECT` rồi `INSERT`) không đủ:
+  /// quét được kích hoạt từ nhiều nguồn, hai nguồn nổ gần nhau sẽ cùng đi qua
+  /// nhánh "chưa có" trước khi bên nào kịp ghi.
+  final String dedupeKey;
+  final String title;
+  final String body;
+
+  /// `info` | `warning` | `critical` — quyết định màu dải và biểu tượng.
+  final String severity;
+
+  /// `budget` | `bill` | `goal` | `sync` | `wallet`
+  final String? subjectType;
+
+  /// Id bản ghi gốc, để huỷ lịch khi bản ghi đó bị xoá.
+  final String? subjectId;
+
+  /// Route go_router để điều hướng khi người dùng chạm vào.
+  final String? deeplink;
+
+  /// Mốc của **sự kiện**, không phải mốc quét.
+  final DateTime createdAt;
+  final DateTime? readAt;
+
+  /// Xoá mềm. **Giữ hàng lại** vì chính hàng này là bản ghi khoá trùng — xoá
+  /// hẳn thì lần quét sau sinh lại ngay, người dùng xoá mãi không hết.
+  final DateTime? dismissedAt;
+
+  /// Id đã cấp cho `flutter_local_notifications`, để huỷ lịch.
+  final int? osScheduledId;
+
+  /// Đã bắn ra hệ điều hành chưa. null = mới chỉ tồn tại trong app.
+  final DateTime? osDeliveredAt;
+  const AppNotification(
+      {required this.id,
+      required this.idaccount,
+      required this.kind,
+      required this.dedupeKey,
+      required this.title,
+      required this.body,
+      required this.severity,
+      this.subjectType,
+      this.subjectId,
+      this.deeplink,
+      required this.createdAt,
+      this.readAt,
+      this.dismissedAt,
+      this.osScheduledId,
+      this.osDeliveredAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['idaccount'] = Variable<int>(idaccount);
+    map['kind'] = Variable<String>(kind);
+    map['dedupe_key'] = Variable<String>(dedupeKey);
+    map['title'] = Variable<String>(title);
+    map['body'] = Variable<String>(body);
+    map['severity'] = Variable<String>(severity);
+    if (!nullToAbsent || subjectType != null) {
+      map['subject_type'] = Variable<String>(subjectType);
+    }
+    if (!nullToAbsent || subjectId != null) {
+      map['subject_id'] = Variable<String>(subjectId);
+    }
+    if (!nullToAbsent || deeplink != null) {
+      map['deeplink'] = Variable<String>(deeplink);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || readAt != null) {
+      map['read_at'] = Variable<DateTime>(readAt);
+    }
+    if (!nullToAbsent || dismissedAt != null) {
+      map['dismissed_at'] = Variable<DateTime>(dismissedAt);
+    }
+    if (!nullToAbsent || osScheduledId != null) {
+      map['os_scheduled_id'] = Variable<int>(osScheduledId);
+    }
+    if (!nullToAbsent || osDeliveredAt != null) {
+      map['os_delivered_at'] = Variable<DateTime>(osDeliveredAt);
+    }
+    return map;
+  }
+
+  AppNotificationsCompanion toCompanion(bool nullToAbsent) {
+    return AppNotificationsCompanion(
+      id: Value(id),
+      idaccount: Value(idaccount),
+      kind: Value(kind),
+      dedupeKey: Value(dedupeKey),
+      title: Value(title),
+      body: Value(body),
+      severity: Value(severity),
+      subjectType: subjectType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(subjectType),
+      subjectId: subjectId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(subjectId),
+      deeplink: deeplink == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deeplink),
+      createdAt: Value(createdAt),
+      readAt:
+          readAt == null && nullToAbsent ? const Value.absent() : Value(readAt),
+      dismissedAt: dismissedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(dismissedAt),
+      osScheduledId: osScheduledId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(osScheduledId),
+      osDeliveredAt: osDeliveredAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(osDeliveredAt),
+    );
+  }
+
+  factory AppNotification.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AppNotification(
+      id: serializer.fromJson<String>(json['id']),
+      idaccount: serializer.fromJson<int>(json['idaccount']),
+      kind: serializer.fromJson<String>(json['kind']),
+      dedupeKey: serializer.fromJson<String>(json['dedupeKey']),
+      title: serializer.fromJson<String>(json['title']),
+      body: serializer.fromJson<String>(json['body']),
+      severity: serializer.fromJson<String>(json['severity']),
+      subjectType: serializer.fromJson<String?>(json['subjectType']),
+      subjectId: serializer.fromJson<String?>(json['subjectId']),
+      deeplink: serializer.fromJson<String?>(json['deeplink']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      readAt: serializer.fromJson<DateTime?>(json['readAt']),
+      dismissedAt: serializer.fromJson<DateTime?>(json['dismissedAt']),
+      osScheduledId: serializer.fromJson<int?>(json['osScheduledId']),
+      osDeliveredAt: serializer.fromJson<DateTime?>(json['osDeliveredAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'idaccount': serializer.toJson<int>(idaccount),
+      'kind': serializer.toJson<String>(kind),
+      'dedupeKey': serializer.toJson<String>(dedupeKey),
+      'title': serializer.toJson<String>(title),
+      'body': serializer.toJson<String>(body),
+      'severity': serializer.toJson<String>(severity),
+      'subjectType': serializer.toJson<String?>(subjectType),
+      'subjectId': serializer.toJson<String?>(subjectId),
+      'deeplink': serializer.toJson<String?>(deeplink),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'readAt': serializer.toJson<DateTime?>(readAt),
+      'dismissedAt': serializer.toJson<DateTime?>(dismissedAt),
+      'osScheduledId': serializer.toJson<int?>(osScheduledId),
+      'osDeliveredAt': serializer.toJson<DateTime?>(osDeliveredAt),
+    };
+  }
+
+  AppNotification copyWith(
+          {String? id,
+          int? idaccount,
+          String? kind,
+          String? dedupeKey,
+          String? title,
+          String? body,
+          String? severity,
+          Value<String?> subjectType = const Value.absent(),
+          Value<String?> subjectId = const Value.absent(),
+          Value<String?> deeplink = const Value.absent(),
+          DateTime? createdAt,
+          Value<DateTime?> readAt = const Value.absent(),
+          Value<DateTime?> dismissedAt = const Value.absent(),
+          Value<int?> osScheduledId = const Value.absent(),
+          Value<DateTime?> osDeliveredAt = const Value.absent()}) =>
+      AppNotification(
+        id: id ?? this.id,
+        idaccount: idaccount ?? this.idaccount,
+        kind: kind ?? this.kind,
+        dedupeKey: dedupeKey ?? this.dedupeKey,
+        title: title ?? this.title,
+        body: body ?? this.body,
+        severity: severity ?? this.severity,
+        subjectType: subjectType.present ? subjectType.value : this.subjectType,
+        subjectId: subjectId.present ? subjectId.value : this.subjectId,
+        deeplink: deeplink.present ? deeplink.value : this.deeplink,
+        createdAt: createdAt ?? this.createdAt,
+        readAt: readAt.present ? readAt.value : this.readAt,
+        dismissedAt: dismissedAt.present ? dismissedAt.value : this.dismissedAt,
+        osScheduledId:
+            osScheduledId.present ? osScheduledId.value : this.osScheduledId,
+        osDeliveredAt:
+            osDeliveredAt.present ? osDeliveredAt.value : this.osDeliveredAt,
+      );
+  AppNotification copyWithCompanion(AppNotificationsCompanion data) {
+    return AppNotification(
+      id: data.id.present ? data.id.value : this.id,
+      idaccount: data.idaccount.present ? data.idaccount.value : this.idaccount,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      dedupeKey: data.dedupeKey.present ? data.dedupeKey.value : this.dedupeKey,
+      title: data.title.present ? data.title.value : this.title,
+      body: data.body.present ? data.body.value : this.body,
+      severity: data.severity.present ? data.severity.value : this.severity,
+      subjectType:
+          data.subjectType.present ? data.subjectType.value : this.subjectType,
+      subjectId: data.subjectId.present ? data.subjectId.value : this.subjectId,
+      deeplink: data.deeplink.present ? data.deeplink.value : this.deeplink,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      readAt: data.readAt.present ? data.readAt.value : this.readAt,
+      dismissedAt:
+          data.dismissedAt.present ? data.dismissedAt.value : this.dismissedAt,
+      osScheduledId: data.osScheduledId.present
+          ? data.osScheduledId.value
+          : this.osScheduledId,
+      osDeliveredAt: data.osDeliveredAt.present
+          ? data.osDeliveredAt.value
+          : this.osDeliveredAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AppNotification(')
+          ..write('id: $id, ')
+          ..write('idaccount: $idaccount, ')
+          ..write('kind: $kind, ')
+          ..write('dedupeKey: $dedupeKey, ')
+          ..write('title: $title, ')
+          ..write('body: $body, ')
+          ..write('severity: $severity, ')
+          ..write('subjectType: $subjectType, ')
+          ..write('subjectId: $subjectId, ')
+          ..write('deeplink: $deeplink, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('readAt: $readAt, ')
+          ..write('dismissedAt: $dismissedAt, ')
+          ..write('osScheduledId: $osScheduledId, ')
+          ..write('osDeliveredAt: $osDeliveredAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id,
+      idaccount,
+      kind,
+      dedupeKey,
+      title,
+      body,
+      severity,
+      subjectType,
+      subjectId,
+      deeplink,
+      createdAt,
+      readAt,
+      dismissedAt,
+      osScheduledId,
+      osDeliveredAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AppNotification &&
+          other.id == this.id &&
+          other.idaccount == this.idaccount &&
+          other.kind == this.kind &&
+          other.dedupeKey == this.dedupeKey &&
+          other.title == this.title &&
+          other.body == this.body &&
+          other.severity == this.severity &&
+          other.subjectType == this.subjectType &&
+          other.subjectId == this.subjectId &&
+          other.deeplink == this.deeplink &&
+          other.createdAt == this.createdAt &&
+          other.readAt == this.readAt &&
+          other.dismissedAt == this.dismissedAt &&
+          other.osScheduledId == this.osScheduledId &&
+          other.osDeliveredAt == this.osDeliveredAt);
+}
+
+class AppNotificationsCompanion extends UpdateCompanion<AppNotification> {
+  final Value<String> id;
+  final Value<int> idaccount;
+  final Value<String> kind;
+  final Value<String> dedupeKey;
+  final Value<String> title;
+  final Value<String> body;
+  final Value<String> severity;
+  final Value<String?> subjectType;
+  final Value<String?> subjectId;
+  final Value<String?> deeplink;
+  final Value<DateTime> createdAt;
+  final Value<DateTime?> readAt;
+  final Value<DateTime?> dismissedAt;
+  final Value<int?> osScheduledId;
+  final Value<DateTime?> osDeliveredAt;
+  final Value<int> rowid;
+  const AppNotificationsCompanion({
+    this.id = const Value.absent(),
+    this.idaccount = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.dedupeKey = const Value.absent(),
+    this.title = const Value.absent(),
+    this.body = const Value.absent(),
+    this.severity = const Value.absent(),
+    this.subjectType = const Value.absent(),
+    this.subjectId = const Value.absent(),
+    this.deeplink = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.readAt = const Value.absent(),
+    this.dismissedAt = const Value.absent(),
+    this.osScheduledId = const Value.absent(),
+    this.osDeliveredAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AppNotificationsCompanion.insert({
+    required String id,
+    required int idaccount,
+    required String kind,
+    required String dedupeKey,
+    required String title,
+    required String body,
+    required String severity,
+    this.subjectType = const Value.absent(),
+    this.subjectId = const Value.absent(),
+    this.deeplink = const Value.absent(),
+    required DateTime createdAt,
+    this.readAt = const Value.absent(),
+    this.dismissedAt = const Value.absent(),
+    this.osScheduledId = const Value.absent(),
+    this.osDeliveredAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        idaccount = Value(idaccount),
+        kind = Value(kind),
+        dedupeKey = Value(dedupeKey),
+        title = Value(title),
+        body = Value(body),
+        severity = Value(severity),
+        createdAt = Value(createdAt);
+  static Insertable<AppNotification> custom({
+    Expression<String>? id,
+    Expression<int>? idaccount,
+    Expression<String>? kind,
+    Expression<String>? dedupeKey,
+    Expression<String>? title,
+    Expression<String>? body,
+    Expression<String>? severity,
+    Expression<String>? subjectType,
+    Expression<String>? subjectId,
+    Expression<String>? deeplink,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? readAt,
+    Expression<DateTime>? dismissedAt,
+    Expression<int>? osScheduledId,
+    Expression<DateTime>? osDeliveredAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (idaccount != null) 'idaccount': idaccount,
+      if (kind != null) 'kind': kind,
+      if (dedupeKey != null) 'dedupe_key': dedupeKey,
+      if (title != null) 'title': title,
+      if (body != null) 'body': body,
+      if (severity != null) 'severity': severity,
+      if (subjectType != null) 'subject_type': subjectType,
+      if (subjectId != null) 'subject_id': subjectId,
+      if (deeplink != null) 'deeplink': deeplink,
+      if (createdAt != null) 'created_at': createdAt,
+      if (readAt != null) 'read_at': readAt,
+      if (dismissedAt != null) 'dismissed_at': dismissedAt,
+      if (osScheduledId != null) 'os_scheduled_id': osScheduledId,
+      if (osDeliveredAt != null) 'os_delivered_at': osDeliveredAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AppNotificationsCompanion copyWith(
+      {Value<String>? id,
+      Value<int>? idaccount,
+      Value<String>? kind,
+      Value<String>? dedupeKey,
+      Value<String>? title,
+      Value<String>? body,
+      Value<String>? severity,
+      Value<String?>? subjectType,
+      Value<String?>? subjectId,
+      Value<String?>? deeplink,
+      Value<DateTime>? createdAt,
+      Value<DateTime?>? readAt,
+      Value<DateTime?>? dismissedAt,
+      Value<int?>? osScheduledId,
+      Value<DateTime?>? osDeliveredAt,
+      Value<int>? rowid}) {
+    return AppNotificationsCompanion(
+      id: id ?? this.id,
+      idaccount: idaccount ?? this.idaccount,
+      kind: kind ?? this.kind,
+      dedupeKey: dedupeKey ?? this.dedupeKey,
+      title: title ?? this.title,
+      body: body ?? this.body,
+      severity: severity ?? this.severity,
+      subjectType: subjectType ?? this.subjectType,
+      subjectId: subjectId ?? this.subjectId,
+      deeplink: deeplink ?? this.deeplink,
+      createdAt: createdAt ?? this.createdAt,
+      readAt: readAt ?? this.readAt,
+      dismissedAt: dismissedAt ?? this.dismissedAt,
+      osScheduledId: osScheduledId ?? this.osScheduledId,
+      osDeliveredAt: osDeliveredAt ?? this.osDeliveredAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (idaccount.present) {
+      map['idaccount'] = Variable<int>(idaccount.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (dedupeKey.present) {
+      map['dedupe_key'] = Variable<String>(dedupeKey.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (body.present) {
+      map['body'] = Variable<String>(body.value);
+    }
+    if (severity.present) {
+      map['severity'] = Variable<String>(severity.value);
+    }
+    if (subjectType.present) {
+      map['subject_type'] = Variable<String>(subjectType.value);
+    }
+    if (subjectId.present) {
+      map['subject_id'] = Variable<String>(subjectId.value);
+    }
+    if (deeplink.present) {
+      map['deeplink'] = Variable<String>(deeplink.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (readAt.present) {
+      map['read_at'] = Variable<DateTime>(readAt.value);
+    }
+    if (dismissedAt.present) {
+      map['dismissed_at'] = Variable<DateTime>(dismissedAt.value);
+    }
+    if (osScheduledId.present) {
+      map['os_scheduled_id'] = Variable<int>(osScheduledId.value);
+    }
+    if (osDeliveredAt.present) {
+      map['os_delivered_at'] = Variable<DateTime>(osDeliveredAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AppNotificationsCompanion(')
+          ..write('id: $id, ')
+          ..write('idaccount: $idaccount, ')
+          ..write('kind: $kind, ')
+          ..write('dedupeKey: $dedupeKey, ')
+          ..write('title: $title, ')
+          ..write('body: $body, ')
+          ..write('severity: $severity, ')
+          ..write('subjectType: $subjectType, ')
+          ..write('subjectId: $subjectId, ')
+          ..write('deeplink: $deeplink, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('readAt: $readAt, ')
+          ..write('dismissedAt: $dismissedAt, ')
+          ..write('osScheduledId: $osScheduledId, ')
+          ..write('osDeliveredAt: $osDeliveredAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -6728,6 +7691,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $BudgetsTable budgets = $BudgetsTable(this);
   late final $BillsTable bills = $BillsTable(this);
   late final $GoalsTable goals = $GoalsTable(this);
+  late final $AppNotificationsTable appNotifications =
+      $AppNotificationsTable(this);
+  late final Index idxAppnotifFeed = Index('idx_appnotif_feed',
+      'CREATE INDEX idx_appnotif_feed ON app_notifications (idaccount, created_at)');
   late final WalletDao walletDao = WalletDao(this as AppDatabase);
   late final TransactionDao transactionDao =
       TransactionDao(this as AppDatabase);
@@ -6735,6 +7702,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final BudgetDao budgetDao = BudgetDao(this as AppDatabase);
   late final BillDao billDao = BillDao(this as AppDatabase);
   late final GoalDao goalDao = GoalDao(this as AppDatabase);
+  late final NotificationDao notificationDao =
+      NotificationDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -6747,7 +7716,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         categoryGroupMemberships,
         budgets,
         bills,
-        goals
+        goals,
+        appNotifications,
+        idxAppnotifFeed
       ];
 }
 
@@ -7230,6 +8201,7 @@ typedef $$TransactionsTableCreateCompanionBuilder = TransactionsCompanion
   Value<String> note,
   required DateTime date,
   Value<String> images,
+  Value<String?> goalId,
   Value<String?> walletTransfer,
   Value<String?> bankTranId,
   Value<DateTime?> deletedAt,
@@ -7254,6 +8226,7 @@ typedef $$TransactionsTableUpdateCompanionBuilder = TransactionsCompanion
   Value<String> note,
   Value<DateTime> date,
   Value<String> images,
+  Value<String?> goalId,
   Value<String?> walletTransfer,
   Value<String?> bankTranId,
   Value<DateTime?> deletedAt,
@@ -7323,6 +8296,9 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<String> get images => $composableBuilder(
       column: $table.images, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get goalId => $composableBuilder(
+      column: $table.goalId, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get walletTransfer => $composableBuilder(
       column: $table.walletTransfer,
@@ -7414,6 +8390,9 @@ class $$TransactionsTableOrderingComposer
   ColumnOrderings<String> get images => $composableBuilder(
       column: $table.images, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get goalId => $composableBuilder(
+      column: $table.goalId, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get walletTransfer => $composableBuilder(
       column: $table.walletTransfer,
       builder: (column) => ColumnOrderings(column));
@@ -7504,6 +8483,9 @@ class $$TransactionsTableAnnotationComposer
   GeneratedColumn<String> get images =>
       $composableBuilder(column: $table.images, builder: (column) => column);
 
+  GeneratedColumn<String> get goalId =>
+      $composableBuilder(column: $table.goalId, builder: (column) => column);
+
   GeneratedColumn<String> get walletTransfer => $composableBuilder(
       column: $table.walletTransfer, builder: (column) => column);
 
@@ -7586,6 +8568,7 @@ class $$TransactionsTableTableManager extends RootTableManager<
             Value<String> note = const Value.absent(),
             Value<DateTime> date = const Value.absent(),
             Value<String> images = const Value.absent(),
+            Value<String?> goalId = const Value.absent(),
             Value<String?> walletTransfer = const Value.absent(),
             Value<String?> bankTranId = const Value.absent(),
             Value<DateTime?> deletedAt = const Value.absent(),
@@ -7609,6 +8592,7 @@ class $$TransactionsTableTableManager extends RootTableManager<
             note: note,
             date: date,
             images: images,
+            goalId: goalId,
             walletTransfer: walletTransfer,
             bankTranId: bankTranId,
             deletedAt: deletedAt,
@@ -7632,6 +8616,7 @@ class $$TransactionsTableTableManager extends RootTableManager<
             Value<String> note = const Value.absent(),
             required DateTime date,
             Value<String> images = const Value.absent(),
+            Value<String?> goalId = const Value.absent(),
             Value<String?> walletTransfer = const Value.absent(),
             Value<String?> bankTranId = const Value.absent(),
             Value<DateTime?> deletedAt = const Value.absent(),
@@ -7655,6 +8640,7 @@ class $$TransactionsTableTableManager extends RootTableManager<
             note: note,
             date: date,
             images: images,
+            goalId: goalId,
             walletTransfer: walletTransfer,
             bankTranId: bankTranId,
             deletedAt: deletedAt,
@@ -8478,16 +9464,14 @@ typedef $$BudgetsTableCreateCompanionBuilder = BudgetsCompanion Function({
   Value<String?> categoryId,
   required double amount,
   Value<double> spent,
-  Value<double?> remaining,
-  Value<int> percentSpent,
   Value<String> overSpending,
   Value<double?> overAmount,
   Value<double?> thresholdWarningAmount,
+  Value<double?> thresholdWarningPercent,
   required DateTime startDate,
   Value<DateTime?> endDate,
   Value<bool> recurrence,
-  Value<String> timeRecurrence,
-  Value<String> period,
+  Value<String?> timeRecurrence,
   Value<String> note,
   Value<DateTime?> nextTimeRecurrence,
   Value<DateTime?> deletedAt,
@@ -8505,16 +9489,14 @@ typedef $$BudgetsTableUpdateCompanionBuilder = BudgetsCompanion Function({
   Value<String?> categoryId,
   Value<double> amount,
   Value<double> spent,
-  Value<double?> remaining,
-  Value<int> percentSpent,
   Value<String> overSpending,
   Value<double?> overAmount,
   Value<double?> thresholdWarningAmount,
+  Value<double?> thresholdWarningPercent,
   Value<DateTime> startDate,
   Value<DateTime?> endDate,
   Value<bool> recurrence,
-  Value<String> timeRecurrence,
-  Value<String> period,
+  Value<String?> timeRecurrence,
   Value<String> note,
   Value<DateTime?> nextTimeRecurrence,
   Value<DateTime?> deletedAt,
@@ -8551,12 +9533,6 @@ class $$BudgetsTableFilterComposer
   ColumnFilters<double> get spent => $composableBuilder(
       column: $table.spent, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<double> get remaining => $composableBuilder(
-      column: $table.remaining, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<int> get percentSpent => $composableBuilder(
-      column: $table.percentSpent, builder: (column) => ColumnFilters(column));
-
   ColumnFilters<String> get overSpending => $composableBuilder(
       column: $table.overSpending, builder: (column) => ColumnFilters(column));
 
@@ -8565,6 +9541,10 @@ class $$BudgetsTableFilterComposer
 
   ColumnFilters<double> get thresholdWarningAmount => $composableBuilder(
       column: $table.thresholdWarningAmount,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get thresholdWarningPercent => $composableBuilder(
+      column: $table.thresholdWarningPercent,
       builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get startDate => $composableBuilder(
@@ -8579,9 +9559,6 @@ class $$BudgetsTableFilterComposer
   ColumnFilters<String> get timeRecurrence => $composableBuilder(
       column: $table.timeRecurrence,
       builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get period => $composableBuilder(
-      column: $table.period, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get note => $composableBuilder(
       column: $table.note, builder: (column) => ColumnFilters(column));
@@ -8638,13 +9615,6 @@ class $$BudgetsTableOrderingComposer
   ColumnOrderings<double> get spent => $composableBuilder(
       column: $table.spent, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<double> get remaining => $composableBuilder(
-      column: $table.remaining, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<int> get percentSpent => $composableBuilder(
-      column: $table.percentSpent,
-      builder: (column) => ColumnOrderings(column));
-
   ColumnOrderings<String> get overSpending => $composableBuilder(
       column: $table.overSpending,
       builder: (column) => ColumnOrderings(column));
@@ -8654,6 +9624,10 @@ class $$BudgetsTableOrderingComposer
 
   ColumnOrderings<double> get thresholdWarningAmount => $composableBuilder(
       column: $table.thresholdWarningAmount,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get thresholdWarningPercent => $composableBuilder(
+      column: $table.thresholdWarningPercent,
       builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<DateTime> get startDate => $composableBuilder(
@@ -8668,9 +9642,6 @@ class $$BudgetsTableOrderingComposer
   ColumnOrderings<String> get timeRecurrence => $composableBuilder(
       column: $table.timeRecurrence,
       builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get period => $composableBuilder(
-      column: $table.period, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get note => $composableBuilder(
       column: $table.note, builder: (column) => ColumnOrderings(column));
@@ -8727,12 +9698,6 @@ class $$BudgetsTableAnnotationComposer
   GeneratedColumn<double> get spent =>
       $composableBuilder(column: $table.spent, builder: (column) => column);
 
-  GeneratedColumn<double> get remaining =>
-      $composableBuilder(column: $table.remaining, builder: (column) => column);
-
-  GeneratedColumn<int> get percentSpent => $composableBuilder(
-      column: $table.percentSpent, builder: (column) => column);
-
   GeneratedColumn<String> get overSpending => $composableBuilder(
       column: $table.overSpending, builder: (column) => column);
 
@@ -8741,6 +9706,9 @@ class $$BudgetsTableAnnotationComposer
 
   GeneratedColumn<double> get thresholdWarningAmount => $composableBuilder(
       column: $table.thresholdWarningAmount, builder: (column) => column);
+
+  GeneratedColumn<double> get thresholdWarningPercent => $composableBuilder(
+      column: $table.thresholdWarningPercent, builder: (column) => column);
 
   GeneratedColumn<DateTime> get startDate =>
       $composableBuilder(column: $table.startDate, builder: (column) => column);
@@ -8753,9 +9721,6 @@ class $$BudgetsTableAnnotationComposer
 
   GeneratedColumn<String> get timeRecurrence => $composableBuilder(
       column: $table.timeRecurrence, builder: (column) => column);
-
-  GeneratedColumn<String> get period =>
-      $composableBuilder(column: $table.period, builder: (column) => column);
 
   GeneratedColumn<String> get note =>
       $composableBuilder(column: $table.note, builder: (column) => column);
@@ -8813,16 +9778,14 @@ class $$BudgetsTableTableManager extends RootTableManager<
             Value<String?> categoryId = const Value.absent(),
             Value<double> amount = const Value.absent(),
             Value<double> spent = const Value.absent(),
-            Value<double?> remaining = const Value.absent(),
-            Value<int> percentSpent = const Value.absent(),
             Value<String> overSpending = const Value.absent(),
             Value<double?> overAmount = const Value.absent(),
             Value<double?> thresholdWarningAmount = const Value.absent(),
+            Value<double?> thresholdWarningPercent = const Value.absent(),
             Value<DateTime> startDate = const Value.absent(),
             Value<DateTime?> endDate = const Value.absent(),
             Value<bool> recurrence = const Value.absent(),
-            Value<String> timeRecurrence = const Value.absent(),
-            Value<String> period = const Value.absent(),
+            Value<String?> timeRecurrence = const Value.absent(),
             Value<String> note = const Value.absent(),
             Value<DateTime?> nextTimeRecurrence = const Value.absent(),
             Value<DateTime?> deletedAt = const Value.absent(),
@@ -8840,16 +9803,14 @@ class $$BudgetsTableTableManager extends RootTableManager<
             categoryId: categoryId,
             amount: amount,
             spent: spent,
-            remaining: remaining,
-            percentSpent: percentSpent,
             overSpending: overSpending,
             overAmount: overAmount,
             thresholdWarningAmount: thresholdWarningAmount,
+            thresholdWarningPercent: thresholdWarningPercent,
             startDate: startDate,
             endDate: endDate,
             recurrence: recurrence,
             timeRecurrence: timeRecurrence,
-            period: period,
             note: note,
             nextTimeRecurrence: nextTimeRecurrence,
             deletedAt: deletedAt,
@@ -8867,16 +9828,14 @@ class $$BudgetsTableTableManager extends RootTableManager<
             Value<String?> categoryId = const Value.absent(),
             required double amount,
             Value<double> spent = const Value.absent(),
-            Value<double?> remaining = const Value.absent(),
-            Value<int> percentSpent = const Value.absent(),
             Value<String> overSpending = const Value.absent(),
             Value<double?> overAmount = const Value.absent(),
             Value<double?> thresholdWarningAmount = const Value.absent(),
+            Value<double?> thresholdWarningPercent = const Value.absent(),
             required DateTime startDate,
             Value<DateTime?> endDate = const Value.absent(),
             Value<bool> recurrence = const Value.absent(),
-            Value<String> timeRecurrence = const Value.absent(),
-            Value<String> period = const Value.absent(),
+            Value<String?> timeRecurrence = const Value.absent(),
             Value<String> note = const Value.absent(),
             Value<DateTime?> nextTimeRecurrence = const Value.absent(),
             Value<DateTime?> deletedAt = const Value.absent(),
@@ -8894,16 +9853,14 @@ class $$BudgetsTableTableManager extends RootTableManager<
             categoryId: categoryId,
             amount: amount,
             spent: spent,
-            remaining: remaining,
-            percentSpent: percentSpent,
             overSpending: overSpending,
             overAmount: overAmount,
             thresholdWarningAmount: thresholdWarningAmount,
+            thresholdWarningPercent: thresholdWarningPercent,
             startDate: startDate,
             endDate: endDate,
             recurrence: recurrence,
             timeRecurrence: timeRecurrence,
-            period: period,
             note: note,
             nextTimeRecurrence: nextTimeRecurrence,
             deletedAt: deletedAt,
@@ -9403,6 +10360,9 @@ typedef $$GoalsTableCreateCompanionBuilder = GoalsCompanion Function({
   Value<String?> walletId,
   Value<String?> cycleTakeMoney,
   Value<DateTime?> timeCycleTakeMoney,
+  Value<double?> autoDepositAmount,
+  Value<String?> autoDepositWalletId,
+  Value<DateTime?> autoDepositLastRun,
   Value<bool> recurrence,
   Value<String?> timeRecurrence,
   Value<String> icon,
@@ -9429,6 +10389,9 @@ typedef $$GoalsTableUpdateCompanionBuilder = GoalsCompanion Function({
   Value<String?> walletId,
   Value<String?> cycleTakeMoney,
   Value<DateTime?> timeCycleTakeMoney,
+  Value<double?> autoDepositAmount,
+  Value<String?> autoDepositWalletId,
+  Value<DateTime?> autoDepositLastRun,
   Value<bool> recurrence,
   Value<String?> timeRecurrence,
   Value<String> icon,
@@ -9483,6 +10446,18 @@ class $$GoalsTableFilterComposer extends Composer<_$AppDatabase, $GoalsTable> {
 
   ColumnFilters<DateTime> get timeCycleTakeMoney => $composableBuilder(
       column: $table.timeCycleTakeMoney,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get autoDepositAmount => $composableBuilder(
+      column: $table.autoDepositAmount,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get autoDepositWalletId => $composableBuilder(
+      column: $table.autoDepositWalletId,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get autoDepositLastRun => $composableBuilder(
+      column: $table.autoDepositLastRun,
       builder: (column) => ColumnFilters(column));
 
   ColumnFilters<bool> get recurrence => $composableBuilder(
@@ -9571,6 +10546,18 @@ class $$GoalsTableOrderingComposer
       column: $table.timeCycleTakeMoney,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<double> get autoDepositAmount => $composableBuilder(
+      column: $table.autoDepositAmount,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get autoDepositWalletId => $composableBuilder(
+      column: $table.autoDepositWalletId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get autoDepositLastRun => $composableBuilder(
+      column: $table.autoDepositLastRun,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<bool> get recurrence => $composableBuilder(
       column: $table.recurrence, builder: (column) => ColumnOrderings(column));
 
@@ -9653,6 +10640,15 @@ class $$GoalsTableAnnotationComposer
   GeneratedColumn<DateTime> get timeCycleTakeMoney => $composableBuilder(
       column: $table.timeCycleTakeMoney, builder: (column) => column);
 
+  GeneratedColumn<double> get autoDepositAmount => $composableBuilder(
+      column: $table.autoDepositAmount, builder: (column) => column);
+
+  GeneratedColumn<String> get autoDepositWalletId => $composableBuilder(
+      column: $table.autoDepositWalletId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get autoDepositLastRun => $composableBuilder(
+      column: $table.autoDepositLastRun, builder: (column) => column);
+
   GeneratedColumn<bool> get recurrence => $composableBuilder(
       column: $table.recurrence, builder: (column) => column);
 
@@ -9726,6 +10722,9 @@ class $$GoalsTableTableManager extends RootTableManager<
             Value<String?> walletId = const Value.absent(),
             Value<String?> cycleTakeMoney = const Value.absent(),
             Value<DateTime?> timeCycleTakeMoney = const Value.absent(),
+            Value<double?> autoDepositAmount = const Value.absent(),
+            Value<String?> autoDepositWalletId = const Value.absent(),
+            Value<DateTime?> autoDepositLastRun = const Value.absent(),
             Value<bool> recurrence = const Value.absent(),
             Value<String?> timeRecurrence = const Value.absent(),
             Value<String> icon = const Value.absent(),
@@ -9752,6 +10751,9 @@ class $$GoalsTableTableManager extends RootTableManager<
             walletId: walletId,
             cycleTakeMoney: cycleTakeMoney,
             timeCycleTakeMoney: timeCycleTakeMoney,
+            autoDepositAmount: autoDepositAmount,
+            autoDepositWalletId: autoDepositWalletId,
+            autoDepositLastRun: autoDepositLastRun,
             recurrence: recurrence,
             timeRecurrence: timeRecurrence,
             icon: icon,
@@ -9778,6 +10780,9 @@ class $$GoalsTableTableManager extends RootTableManager<
             Value<String?> walletId = const Value.absent(),
             Value<String?> cycleTakeMoney = const Value.absent(),
             Value<DateTime?> timeCycleTakeMoney = const Value.absent(),
+            Value<double?> autoDepositAmount = const Value.absent(),
+            Value<String?> autoDepositWalletId = const Value.absent(),
+            Value<DateTime?> autoDepositLastRun = const Value.absent(),
             Value<bool> recurrence = const Value.absent(),
             Value<String?> timeRecurrence = const Value.absent(),
             Value<String> icon = const Value.absent(),
@@ -9804,6 +10809,9 @@ class $$GoalsTableTableManager extends RootTableManager<
             walletId: walletId,
             cycleTakeMoney: cycleTakeMoney,
             timeCycleTakeMoney: timeCycleTakeMoney,
+            autoDepositAmount: autoDepositAmount,
+            autoDepositWalletId: autoDepositWalletId,
+            autoDepositLastRun: autoDepositLastRun,
             recurrence: recurrence,
             timeRecurrence: timeRecurrence,
             icon: icon,
@@ -9838,6 +10846,332 @@ typedef $$GoalsTableProcessedTableManager = ProcessedTableManager<
     (Goal, BaseReferences<_$AppDatabase, $GoalsTable, Goal>),
     Goal,
     PrefetchHooks Function()>;
+typedef $$AppNotificationsTableCreateCompanionBuilder
+    = AppNotificationsCompanion Function({
+  required String id,
+  required int idaccount,
+  required String kind,
+  required String dedupeKey,
+  required String title,
+  required String body,
+  required String severity,
+  Value<String?> subjectType,
+  Value<String?> subjectId,
+  Value<String?> deeplink,
+  required DateTime createdAt,
+  Value<DateTime?> readAt,
+  Value<DateTime?> dismissedAt,
+  Value<int?> osScheduledId,
+  Value<DateTime?> osDeliveredAt,
+  Value<int> rowid,
+});
+typedef $$AppNotificationsTableUpdateCompanionBuilder
+    = AppNotificationsCompanion Function({
+  Value<String> id,
+  Value<int> idaccount,
+  Value<String> kind,
+  Value<String> dedupeKey,
+  Value<String> title,
+  Value<String> body,
+  Value<String> severity,
+  Value<String?> subjectType,
+  Value<String?> subjectId,
+  Value<String?> deeplink,
+  Value<DateTime> createdAt,
+  Value<DateTime?> readAt,
+  Value<DateTime?> dismissedAt,
+  Value<int?> osScheduledId,
+  Value<DateTime?> osDeliveredAt,
+  Value<int> rowid,
+});
+
+class $$AppNotificationsTableFilterComposer
+    extends Composer<_$AppDatabase, $AppNotificationsTable> {
+  $$AppNotificationsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get idaccount => $composableBuilder(
+      column: $table.idaccount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get kind => $composableBuilder(
+      column: $table.kind, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get dedupeKey => $composableBuilder(
+      column: $table.dedupeKey, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get title => $composableBuilder(
+      column: $table.title, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get body => $composableBuilder(
+      column: $table.body, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get severity => $composableBuilder(
+      column: $table.severity, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get subjectType => $composableBuilder(
+      column: $table.subjectType, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get subjectId => $composableBuilder(
+      column: $table.subjectId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get deeplink => $composableBuilder(
+      column: $table.deeplink, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get readAt => $composableBuilder(
+      column: $table.readAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get dismissedAt => $composableBuilder(
+      column: $table.dismissedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get osScheduledId => $composableBuilder(
+      column: $table.osScheduledId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get osDeliveredAt => $composableBuilder(
+      column: $table.osDeliveredAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$AppNotificationsTableOrderingComposer
+    extends Composer<_$AppDatabase, $AppNotificationsTable> {
+  $$AppNotificationsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get idaccount => $composableBuilder(
+      column: $table.idaccount, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+      column: $table.kind, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get dedupeKey => $composableBuilder(
+      column: $table.dedupeKey, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get title => $composableBuilder(
+      column: $table.title, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get body => $composableBuilder(
+      column: $table.body, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get severity => $composableBuilder(
+      column: $table.severity, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get subjectType => $composableBuilder(
+      column: $table.subjectType, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get subjectId => $composableBuilder(
+      column: $table.subjectId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get deeplink => $composableBuilder(
+      column: $table.deeplink, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get readAt => $composableBuilder(
+      column: $table.readAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get dismissedAt => $composableBuilder(
+      column: $table.dismissedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get osScheduledId => $composableBuilder(
+      column: $table.osScheduledId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get osDeliveredAt => $composableBuilder(
+      column: $table.osDeliveredAt,
+      builder: (column) => ColumnOrderings(column));
+}
+
+class $$AppNotificationsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AppNotificationsTable> {
+  $$AppNotificationsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get idaccount =>
+      $composableBuilder(column: $table.idaccount, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<String> get dedupeKey =>
+      $composableBuilder(column: $table.dedupeKey, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get body =>
+      $composableBuilder(column: $table.body, builder: (column) => column);
+
+  GeneratedColumn<String> get severity =>
+      $composableBuilder(column: $table.severity, builder: (column) => column);
+
+  GeneratedColumn<String> get subjectType => $composableBuilder(
+      column: $table.subjectType, builder: (column) => column);
+
+  GeneratedColumn<String> get subjectId =>
+      $composableBuilder(column: $table.subjectId, builder: (column) => column);
+
+  GeneratedColumn<String> get deeplink =>
+      $composableBuilder(column: $table.deeplink, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get readAt =>
+      $composableBuilder(column: $table.readAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get dismissedAt => $composableBuilder(
+      column: $table.dismissedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get osScheduledId => $composableBuilder(
+      column: $table.osScheduledId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get osDeliveredAt => $composableBuilder(
+      column: $table.osDeliveredAt, builder: (column) => column);
+}
+
+class $$AppNotificationsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $AppNotificationsTable,
+    AppNotification,
+    $$AppNotificationsTableFilterComposer,
+    $$AppNotificationsTableOrderingComposer,
+    $$AppNotificationsTableAnnotationComposer,
+    $$AppNotificationsTableCreateCompanionBuilder,
+    $$AppNotificationsTableUpdateCompanionBuilder,
+    (
+      AppNotification,
+      BaseReferences<_$AppDatabase, $AppNotificationsTable, AppNotification>
+    ),
+    AppNotification,
+    PrefetchHooks Function()> {
+  $$AppNotificationsTableTableManager(
+      _$AppDatabase db, $AppNotificationsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AppNotificationsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AppNotificationsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AppNotificationsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<int> idaccount = const Value.absent(),
+            Value<String> kind = const Value.absent(),
+            Value<String> dedupeKey = const Value.absent(),
+            Value<String> title = const Value.absent(),
+            Value<String> body = const Value.absent(),
+            Value<String> severity = const Value.absent(),
+            Value<String?> subjectType = const Value.absent(),
+            Value<String?> subjectId = const Value.absent(),
+            Value<String?> deeplink = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<DateTime?> readAt = const Value.absent(),
+            Value<DateTime?> dismissedAt = const Value.absent(),
+            Value<int?> osScheduledId = const Value.absent(),
+            Value<DateTime?> osDeliveredAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              AppNotificationsCompanion(
+            id: id,
+            idaccount: idaccount,
+            kind: kind,
+            dedupeKey: dedupeKey,
+            title: title,
+            body: body,
+            severity: severity,
+            subjectType: subjectType,
+            subjectId: subjectId,
+            deeplink: deeplink,
+            createdAt: createdAt,
+            readAt: readAt,
+            dismissedAt: dismissedAt,
+            osScheduledId: osScheduledId,
+            osDeliveredAt: osDeliveredAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required int idaccount,
+            required String kind,
+            required String dedupeKey,
+            required String title,
+            required String body,
+            required String severity,
+            Value<String?> subjectType = const Value.absent(),
+            Value<String?> subjectId = const Value.absent(),
+            Value<String?> deeplink = const Value.absent(),
+            required DateTime createdAt,
+            Value<DateTime?> readAt = const Value.absent(),
+            Value<DateTime?> dismissedAt = const Value.absent(),
+            Value<int?> osScheduledId = const Value.absent(),
+            Value<DateTime?> osDeliveredAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              AppNotificationsCompanion.insert(
+            id: id,
+            idaccount: idaccount,
+            kind: kind,
+            dedupeKey: dedupeKey,
+            title: title,
+            body: body,
+            severity: severity,
+            subjectType: subjectType,
+            subjectId: subjectId,
+            deeplink: deeplink,
+            createdAt: createdAt,
+            readAt: readAt,
+            dismissedAt: dismissedAt,
+            osScheduledId: osScheduledId,
+            osDeliveredAt: osDeliveredAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$AppNotificationsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $AppNotificationsTable,
+    AppNotification,
+    $$AppNotificationsTableFilterComposer,
+    $$AppNotificationsTableOrderingComposer,
+    $$AppNotificationsTableAnnotationComposer,
+    $$AppNotificationsTableCreateCompanionBuilder,
+    $$AppNotificationsTableUpdateCompanionBuilder,
+    (
+      AppNotification,
+      BaseReferences<_$AppDatabase, $AppNotificationsTable, AppNotification>
+    ),
+    AppNotification,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -9859,4 +11193,6 @@ class $AppDatabaseManager {
       $$BillsTableTableManager(_db, _db.bills);
   $$GoalsTableTableManager get goals =>
       $$GoalsTableTableManager(_db, _db.goals);
+  $$AppNotificationsTableTableManager get appNotifications =>
+      $$AppNotificationsTableTableManager(_db, _db.appNotifications);
 }

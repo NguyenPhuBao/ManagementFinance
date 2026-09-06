@@ -358,6 +358,96 @@ void main() {
             'động — bắt họ ngồi chờ hết một chu kỳ backoff cũ là sai.',
       );
     });
+
+    // ── Kích hoạt bị chặn phải được hẹn lại ─────────────────────────────────
+    //
+    // Đo được trên app thật ngày 2026-09-03: xoá một ngân sách trong lúc engine
+    // đang giãn cách thì thao tác đó KHÔNG lên tới backend, kể cả sau khi hết
+    // giãn cách — phải chờ tới lần mở app sau. Người dùng thấy mục biến mất
+    // ngay nên tin là đã xong, còn máy khác thì vẫn thấy nó nguyên vẹn.
+    //
+    // Nguyên nhân: nhánh chặn chỉ `return`, không hẹn lại. Các nguồn kích hoạt
+    // còn lại đều thưa hoặc ngẫu nhiên (timer 15 phút, đổi mạng, mở app), nên
+    // khoảng chờ thật dài hơn bậc giãn cách rất nhiều.
+
+    test('Kích hoạt bị chặn vì giãn cách phải được hẹn lại, không bị bỏ rơi',
+        () async {
+      await seedPendingCategory();
+      final adapter = _FailingAdapter(
+          'Ownership mismatch: payload.idaccount does not match token');
+      final engine = await failingEngine(adapter);
+
+      expect(engine.backoffRetryAt, isNull,
+          reason: 'Chưa có kích hoạt nào bị chặn thì chưa nợ ai lần chạy nào.');
+
+      await engine.syncNow(); // bị chặn vì đang trong giãn cách
+
+      expect(
+        engine.backoffRetryAt,
+        engine.nextAllowedSyncAt,
+        reason: 'Engine vừa từ chối một yêu cầu đồng bộ, nên nó NỢ người gọi '
+            'một lần chạy. Không hẹn lại thì thay đổi vừa ghi nằm chờ một '
+            'nguồn kích hoạt khác — có thể tới 15 phút, hoặc tới lần mở app '
+            'sau.',
+      );
+    });
+
+    test('Hết giãn cách thì hẹn giờ tự nổ và đẩy lại, không cần ai kích hoạt',
+        () async {
+      await seedPendingCategory();
+      final adapter = _FailingAdapter(
+          'Ownership mismatch: payload.idaccount does not match token');
+      final engine = await failingEngine(adapter);
+      final pushesTruoc = adapter.pushCallCount;
+
+      // Đẩy đồng hồ tới sát mốc hết giãn cách để hẹn giờ chỉ còn ~150ms thật —
+      // test không phải chờ đủ 30 giây.
+      clock = clock
+          .add(const Duration(seconds: 30) - const Duration(milliseconds: 150));
+      await engine.syncNow();
+      expect(engine.backoffRetryAt, isNotNull);
+      expect(adapter.pushCallCount, pushesTruoc,
+          reason: 'Vẫn còn trong giãn cách nên chưa được gửi gì.');
+
+      // Tới lúc hẹn giờ nổ thì đồng hồ đã qua mốc.
+      clock = clock.add(const Duration(seconds: 1));
+      await Future<void>.delayed(const Duration(milliseconds: 700));
+
+      expect(adapter.pushCallCount, greaterThan(pushesTruoc),
+          reason: 'Hẹn giờ phải tự chạy lại chu kỳ. Chỉ ghi nhớ mốc mà không '
+              'có gì đánh thức thì cũng như không hẹn.');
+    });
+
+    test('Nhiều kích hoạt bị chặn liên tiếp dùng chung một hẹn giờ', () async {
+      await seedPendingCategory();
+      final adapter = _FailingAdapter(
+          'Ownership mismatch: payload.idaccount does not match token');
+      final engine = await failingEngine(adapter);
+
+      await engine.syncNow();
+      final hen1 = engine.backoffRetryAt;
+      await engine.syncNow();
+      await engine.syncNow();
+
+      expect(engine.backoffRetryAt, hen1,
+          reason: 'Mỗi lần ghi dữ liệu đều gọi scheduleSync. Dựng hẹn giờ mới '
+              'cho từng lần sẽ đẩy mốc chạy lại lùi mãi về sau.');
+    });
+
+    test('stop() huỷ luôn hẹn giờ đang chờ', () async {
+      await seedPendingCategory();
+      final adapter = _FailingAdapter(
+          'Ownership mismatch: payload.idaccount does not match token');
+      final engine = await failingEngine(adapter);
+      await engine.syncNow();
+      expect(engine.backoffRetryAt, isNotNull);
+
+      engine.stop();
+
+      expect(engine.backoffRetryAt, isNull,
+          reason: 'Sau đăng xuất, một hẹn giờ còn sống sẽ chạy đồng bộ cho tài '
+              'khoản vừa thoát.');
+    });
   });
 
   group('Trạng thái thất bại theo từng bản ghi (G3)', () {
@@ -400,6 +490,85 @@ void main() {
         reason: 'Canh chừng G3: trước đây lược đồ không có chỗ nào ghi trạng '
             'thái thất bại, nên một bản ghi hỏng vĩnh viễn nằm ở pending MÃI '
             'MÃI và được gửi lại ở mọi chu kỳ.',
+      );
+    });
+
+    test('Vi phạm ràng buộc CHECK của PostgreSQL là lỗi vĩnh viễn', () async {
+      await seedPendingCategory();
+
+      // Thông báo thật, thu ngày 2026-09-04: ngân sách có End trùng Start.
+      await runOnce(_FailingAdapter(
+        'Invalid `prisma.budget.update()` invocation. '
+        'Error occurred during query execution: '
+        'PostgresError { code: "23514", message: "new row for relation '
+        'budget violates check constraint chk_budget_end_after_start" }',
+      ));
+
+      final row = await db.categoryDao.getById(catId);
+      expect(
+        row?.syncBlockedUntil,
+        clock.add(const Duration(seconds: 30)),
+        reason: 'Dữ liệu vi phạm ràng buộc CSDL thì đẩy bao nhiêu lần cũng hỏng '
+            'y như vậy. Xếp vào transient nghĩa là gửi lại ở MỌI chu kỳ, và mỗi '
+            'chu kỳ đó kết thúc ở trạng thái error nên kích hoạt giãn cách luỹ '
+            'tiến, kéo chậm mọi thay đổi khác của người dùng.',
+      );
+      expect(row?.syncStatus, 'pending',
+          reason: 'Chặn theo THỜI GIAN, không loại vĩnh viễn: người dùng sửa '
+              'lại ngày là bản ghi quay về hàng đợi.');
+    });
+
+    test('Vi phạm ràng buộc UNIQUE của PostgreSQL là lỗi vĩnh viễn (G16)',
+        () async {
+      await seedPendingCategory();
+
+      // Dạng Prisma bọc: đây là thứ client thật sự nhận khi danh mục trùng tên
+      // với một hàng ĐÃ XOÁ MỀM trên server — `uq_category_owner_name_classify`
+      // không có mệnh đề WHERE nên hàng đã xoá vẫn giữ chỗ tên.
+      await runOnce(_FailingAdapter(
+        'Invalid `prisma.category.create()` invocation. '
+        'Unique constraint failed on the fields: '
+        '(`Create_by`,`NameCategory`,`Classify`)',
+      ));
+
+      final row = await db.categoryDao.getById(catId);
+      expect(
+        row?.syncBlockedUntil,
+        clock.add(const Duration(seconds: 30)),
+        reason: 'Canh chừng G16. Trước bản vá này, 23505 rơi xuống nhánh '
+            'transient ở cuối _classifyFailure nên bản ghi được đẩy lại ở MỌI '
+            'chu kỳ, vĩnh viễn. Đường kích hoạt có thật và tự lặp: người dùng '
+            'xoá một danh mục cá nhân mặc định, rồi ensureMissing() tạo lại nó '
+            'với UUID mới ở MỖI lần mở app — mỗi lần thêm một bản ghi kẹt. '
+            'Nguồn TỰ SINH ấy đóng ngày 2026-09-05, nhưng phép phân loại vẫn '
+            'cần: xoá rồi tạo lại một danh mục của chính mình cùng tên vẫn '
+            'đụng đúng index ấy.',
+      );
+      expect(row?.syncStatus, 'pending',
+          reason: 'Chặn theo THỜI GIAN như mọi lỗi vĩnh viễn khác: khi backend '
+              'thêm WHERE "Delete_at" IS NULL vào index, bản ghi phải tự quay '
+              'lại hàng đợi mà không cần người dùng làm gì.');
+    });
+
+    test('Vi phạm UNIQUE dạng mã SQLSTATE trần cũng là lỗi vĩnh viễn (G16)',
+        () async {
+      await seedPendingCategory();
+
+      // Prisma bọc lỗi theo nhiều cách tuỳ phiên bản; mã 23505 là phần ổn định
+      // nhất, giống hệt lý do _checkConstraintPattern khớp cả 23514 lẫn câu chữ.
+      await runOnce(_FailingAdapter(
+        'Error occurred during query execution: '
+        'PostgresError { code: "23505", message: "duplicate key value violates '
+        'unique constraint \\"uq_transaction_external\\"" }',
+      ));
+
+      final row = await db.categoryDao.getById(catId);
+      expect(
+        row?.syncBlockedUntil,
+        clock.add(const Duration(seconds: 30)),
+        reason: 'Khớp theo mã SQLSTATE chứ không chỉ theo câu chữ tiếng Anh của '
+            'Prisma: đổi phiên bản Prisma là câu chữ đổi, mà KHÔNG có lỗi nào '
+            'báo ra — đúng khuôn mẫu hỏng âm thầm của dự án này.',
       );
     });
 
@@ -563,6 +732,78 @@ void main() {
       expect(adapter.pushCallCount, 1,
           reason: 'Cả batch không tới nơi thì thử lại ngay trong cùng chu kỳ '
               'là vô ích; giãn cách luỹ tiến (G2) lo phần thử lại.');
+    });
+  });
+
+  group('Xoá một bản ghi server không có', () {
+    const budgetId = 'de4775ef-c9e1-44a5-bf9f-7aec370c4ecc';
+
+    /// Ngân sách đã xoá mềm ở máy này và đang chờ đẩy cờ xoá lên.
+    Future<void> seedDeletedPendingBudget() => db.budgetDao.insert(
+          BudgetsCompanion.insert(
+            id: budgetId,
+            idaccount: accountId,
+            amount: 2000000,
+            startDate: DateTime(2026, 9, 1),
+            isDeleted: const Value(true),
+            syncStatus: const Value('pending'),
+            updatedAt: DateTime(2026, 9, 4),
+          ),
+        );
+
+    test('coi là đã xong, không giữ bản ghi lại để đẩy mãi', () async {
+      await seedDeletedPendingBudget();
+
+      await runWith('Record not found');
+
+      final row = await db.budgetDao.getById(budgetId);
+      expect(
+        row?.syncStatus,
+        'synced',
+        reason: 'Mục tiêu của thao tác xoá là "bản ghi này không còn trên '
+            'server", và nó đã không còn — đó là thành công, không phải lỗi. '
+            'Giữ `pending` thì mọi chu kỳ lại đẩy lên và lại hỏng đúng như '
+            'vậy, kéo theo giãn cách luỹ tiến làm chậm mọi thay đổi khác.',
+      );
+    });
+
+    test('không thử lại trong cùng chu kỳ', () async {
+      await seedDeletedPendingBudget();
+
+      final r = await runWith('Record not found');
+
+      expect(r.adapter.pushCallCount, 1,
+          reason: 'Đã xong thì không có gì để gửi lại.');
+      expect(r.finalStatus, SyncStatus.idle,
+          reason: 'Chu kỳ không còn thao tác hỏng nào nên phải kết thúc ở '
+              'trạng thái thành công, nếu không giãn cách luỹ tiến vẫn bị kích '
+              'hoạt (G2) dù chẳng có gì sai.');
+    });
+
+    test('KHÔNG áp dụng cho thao tác cập nhật', () async {
+      // Cùng thông báo lỗi nhưng bản ghi chưa xoá: đây là cập nhật, và
+      // `upsertBudget` phía backend tự tạo mới nếu chưa có — nhận được "Record
+      // not found" ở đây nghĩa là có gì đó khác đang sai, không được nuốt đi.
+      await db.budgetDao.insert(
+        BudgetsCompanion.insert(
+          id: budgetId,
+          idaccount: accountId,
+          amount: 2000000,
+          startDate: DateTime(2026, 9, 1),
+          syncStatus: const Value('pending'),
+          updatedAt: DateTime(2026, 9, 4),
+        ),
+      );
+
+      await runWith('Record not found');
+
+      final row = await db.budgetDao.getById(budgetId);
+      expect(
+        row?.syncStatus,
+        isNot('synced'),
+        reason: 'Đánh dấu đã đồng bộ một bản ghi chưa hề lên tới server là mất '
+            'dữ liệu trong im lặng.',
+      );
     });
   });
 }

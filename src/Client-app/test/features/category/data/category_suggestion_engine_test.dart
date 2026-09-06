@@ -94,4 +94,83 @@ void main() {
       isNull,
     );
   });
+
+  group('Chuẩn hoá tiếng Việt', () {
+    test('Gộp NFC: hai cách gõ cùng một chữ phải khớp nhau', () {
+      final coffee = category(id: 'coffee');
+
+      // 'cà phê' dạng tách dấu (NFD): chữ cái trần + dấu thanh rời. Nhìn bằng
+      // mắt giống hệt dạng dựng sẵn, nhưng khác byte và khác cả độ dài chuỗi.
+      const nfd = 'cà phê';
+
+      expect(
+        engine.suggest(
+          rawText: 'Sáng $nfd ở quán',
+          candidates: [
+            CategoryKeywordCandidate(category: coffee, keyword: 'cà phê'),
+          ],
+        )?.categoryId,
+        'coffee',
+        reason: 'Bàn phím iOS và một số bộ gõ Android sinh ra dạng tách dấu. '
+            'Không gộp NFC thì từ khoá người dùng lưu từ máy này không khớp ghi '
+            'chú gõ trên máy kia — hỏng âm thầm, đúng lý do '
+            '`normalizeCategoryName` bắt buộc bước NFC.',
+      );
+    });
+
+    test('Bỏ dấu là đường DỰ PHÒNG khi không có gì khớp còn dấu', () {
+      final coffee = category(id: 'coffee');
+
+      expect(
+        engine.suggest(
+          rawText: 'sang ca phe voi ban',
+          candidates: [
+            CategoryKeywordCandidate(category: coffee, keyword: 'cà phê'),
+          ],
+        )?.categoryId,
+        'coffee',
+        reason: 'Người dùng gõ nhanh thường bỏ dấu. Backend cũng so cả hai '
+            'dạng (`keyword.matcher.js` giữ nhánh `cleanNoTone`), nên client '
+            'không làm thì hai phía cho kết quả khác nhau trên cùng một ghi chú.',
+      );
+    });
+
+    test('Khớp CÒN DẤU luôn thắng khớp bỏ dấu', () {
+      final da = category(id: 'do_uong'); // "đá"
+      final leather = category(id: 'thoi_trang'); // "da"
+
+      final result = engine.suggest(
+        rawText: 'mua áo da',
+        candidates: [
+          CategoryKeywordCandidate(category: da, keyword: 'đá'),
+          CategoryKeywordCandidate(category: leather, keyword: 'da'),
+        ],
+      );
+
+      expect(
+        result?.categoryId,
+        'thoi_trang',
+        reason: 'Bỏ dấu làm "đá" và "da" thành một. Nếu chạy hai phép so cùng '
+            'lúc thì hai danh mục hoà nhau và engine trả null — người dùng mất '
+            'gợi ý đúng vì một từ khoá không liên quan. Vì vậy vòng bỏ dấu chỉ '
+            'chạy KHI vòng còn dấu không tìm được gì.',
+      );
+    });
+
+    test('Bỏ dấu vẫn giữ nguyên luật hoà thì không đoán', () {
+      expect(
+        engine.suggest(
+          rawText: 'an com',
+          candidates: [
+            CategoryKeywordCandidate(category: category(id: 'a'), keyword: 'ăn cơm'),
+            CategoryKeywordCandidate(category: category(id: 'b'), keyword: 'ăn cơm'),
+          ],
+        ),
+        isNull,
+        reason: 'Luật "hoà thì không đoán" phải áp dụng cho cả vòng dự phòng. '
+            'Đoán bừa ở đây tệ hơn không gợi ý: người dùng tin thẻ gợi ý và '
+            'lưu nhầm danh mục mà không kiểm lại.',
+      );
+    });
+  });
 }

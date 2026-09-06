@@ -14,13 +14,17 @@ class Budgets extends Table {
   // TotalAmount: tổng ngân sách đặt ra
 
   RealColumn get spent        => real().withDefault(const Constant(0.0))();
-  // Spent: đã chi tiêu
-
-  RealColumn get remaining    => real().nullable()();
-  // Remaining: còn lại (nullable, tính = amount - spent)
-
-  IntColumn  get percentSpent => integer().withDefault(const Constant(0))();
-  // PercentSpent: 0-100
+  // Spent: đã chi tiêu.
+  //
+  // Backend KHÔNG tự cập nhật cột này (không có tác vụ nền tính lại), và giao
+  // dịch thì người dùng ghi được khi offline. `BudgetRepositoryImpl` vì thế
+  // cộng lại từ bảng `transactions` mỗi lần đọc rồi ghi xuống đây bằng
+  // `cacheSpent()` — chỉ để lần đẩy sau gửi đúng số, KHÔNG phải nguồn sự thật.
+  //
+  // Đã bỏ ở v11: `remaining` và `percent_spent`. Cả hai chỉ là amount - spent
+  // và spent / amount, lưu lại chỉ tạo thêm một bản sao có thể lệch; backend
+  // cũng không có cột nào tương ứng nên chúng không bao giờ được đồng bộ. Nay
+  // tính ở `BudgetEntity`.
 
   TextColumn get overSpending => text().withDefault(const Constant('Over'))();
   // OverSpending: 'Stop' | 'Over' — hành vi khi vượt ngân sách
@@ -32,6 +36,15 @@ class Budgets extends Table {
   RealColumn get thresholdWarningAmount  => real().nullable()();
   // Threshold_Warning_Amount: số tiền còn lại chạm ngưỡng cảnh báo
 
+  /// Threshold_Warning_Percent: tỉ lệ đã tiêu chạm ngưỡng cảnh báo, đơn vị
+  /// **phần trăm 0–100** (không phải 0.0–1.0) để khớp `Decimal(15,2)` bên
+  /// backend. `BudgetEntity` quy về tỉ lệ khi so sánh.
+  ///
+  /// Thêm ở v11. Backend đã có cột này từ đợt DB v2 nhưng client thì chưa, nên
+  /// mọi ngưỡng cảnh báo theo phần trăm người dùng đặt trên một máy đều không
+  /// sang được máy khác.
+  RealColumn get thresholdWarningPercent => real().nullable()();
+
   // ── Time fields ───────────────────────────────────────────────────────────
   DateTimeColumn get startDate  => dateTime()();
   DateTimeColumn get endDate    => dateTime().nullable()();
@@ -40,11 +53,21 @@ class Budgets extends Table {
   BoolColumn get recurrence     => boolean().withDefault(const Constant(false))();
   // Recurrence: có lặp lại định kỳ không
 
-  TextColumn get timeRecurrence => text().withDefault(const Constant('Month'))();
-  // Time_recurrence: 'Week' | 'Month' | 'Quarter' | 'Year'
+  /// Time_recurrence: 'Week' | 'Month' | 'Quarter' | 'Year', hoặc **null**.
+  ///
+  /// null = ngân sách **không theo chu kỳ** nào: người dùng chọn "Ngày cụ thể"
+  /// và tự đặt ngày kết thúc. Backend biểu diễn đúng như vậy — ràng buộc
+  /// `chk_budget_time_recurrence` là `IS NULL OR IN (...)`.
+  ///
+  /// Thành nullable ở v12. Trước đó cột là `NOT NULL DEFAULT 'Month'` nên
+  /// trạng thái "không chu kỳ" không lưu nổi ở client dù backend vẫn nhận.
+  TextColumn get timeRecurrence => text().nullable()();
 
-  /// period: giữ backward compat với schema cũ (weekly/monthly/yearly)
-  TextColumn get period => text().withDefault(const Constant('monthly'))();
+  // Đã bỏ ở v11: `period` ('weekly'/'monthly'/'yearly'). Đây là cột của lược
+  // đồ trước DB v2, bị `time_recurrence` ('Week'/'Month'/'Quarter'/'Year') thay
+  // thế hoàn toàn. Không nơi nào trong `lib/` đọc nó, và nó không nằm trong
+  // payload đẩy — giữ lại chỉ khiến người viết mã sau phải đoán cột nào mới là
+  // thật.
 
   TextColumn get note      => text().withDefault(const Constant(''))();
 
@@ -165,7 +188,43 @@ class Goals extends Table {
   TextColumn get cycleTakeMoney => text().nullable()();
 
   /// timeCycleTakeMoney: thời điểm cụ thể trích tiền trong chu kỳ
+  ///
+  /// ⚠️ Cột này đồng bộ hai chiều nhưng **client chưa bao giờ ghi**. Bộ trích
+  /// tự động cố ý KHÔNG dùng nó làm mốc chạy: nó là cột dùng chung với
+  /// backend/Admin-web, và đổi ý nghĩa một cột dùng chung mà phía kia chưa
+  /// đồng ý là cách hỏng im lặng nhất. Mốc chạy nằm ở [autoDepositLastRun].
   DateTimeColumn get timeCycleTakeMoney => dateTime().nullable()();
+
+  // ── Trích tiền tự động (DB v15) ───────────────────────────────────────────
+  //
+  // ⚠️ BA CỘT DƯỚI ĐÂY LÀ **CỤC BỘ**, cố ý không nằm trong hợp đồng đồng bộ.
+  // Bảng `goal` phía backend không có chúng, và thêm trường vào payload đẩy đòi
+  // backend sửa trước (quy tắc 4 trong `CLAUDE.md`).
+  // `sync_payload_contract_test.dart` khoá đúng bộ khoá của payload mục tiêu
+  // nên nó bắt được ngay nếu một trong ba cột này lọt vào.
+  //
+  // Hệ quả phải chấp nhận: cấu hình trích tự động **không theo người dùng sang
+  // máy khác**. Chu kỳ (`cycleTakeMoney`) thì có — nó vốn đã đồng bộ — nên trên
+  // máy mới mục tiêu vẫn hiện đúng nhịp kế hoạch, chỉ là không tự trích. Thà
+  // vậy còn hơn hai máy cùng trích một kỳ.
+
+  /// autoDepositAmount: số tiền trích mỗi kỳ. NULL = không bật trích tự động.
+  RealColumn get autoDepositAmount => real().nullable()();
+
+  /// autoDepositWalletId: ví NGUỒN của khoản trích. Ví nhận luôn là
+  /// [walletId] của chính mục tiêu.
+  ///
+  /// Không khai khoá ngoại — cùng lý do với `walletTransfer` (bẫy 4.1) — nên
+  /// nơi chạy phải tự kiểm ví còn tồn tại.
+  TextColumn get autoDepositWalletId => text().nullable()();
+
+  /// autoDepositLastRun: mốc của kỳ **gần nhất đã trích xong**.
+  ///
+  /// NULL nghĩa là chưa bật. Được đặt bằng "bây giờ" tại đúng lúc người dùng
+  /// bật công tắc, nên kỳ đầu tiên rơi vào một chu kỳ sau đó. Lấy ngày tạo mục
+  /// tiêu làm mốc thay thế là bật công tắc hôm nay rồi bị trích ngược lại sáu
+  /// kỳ cùng một lúc.
+  DateTimeColumn get autoDepositLastRun => dateTime().nullable()();
 
   /// recurrence: tự động lặp lại mục tiêu sau khi hoàn thành
   BoolColumn get recurrence => boolean().withDefault(const Constant(false))();

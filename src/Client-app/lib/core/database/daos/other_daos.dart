@@ -23,8 +23,33 @@ class BudgetDao extends DatabaseAccessor<AppDatabase> with _$BudgetDaoMixin {
         .watch();
   }
 
+  Future<Budget?> getById(String id) {
+    return (select(budgets)..where((t) => t.id.equals(id))).getSingleOrNull();
+  }
+
   Future<void> insert(BudgetsCompanion entry) async {
     await into(budgets).insert(entry, mode: InsertMode.insertOrReplace);
+  }
+
+  /// Cập nhật một phần: chỉ ghi những cột có mặt trong [entry].
+  ///
+  /// Cố ý KHÔNG dùng `insert(..., insertOrReplace)` như [insert]: chế độ đó
+  /// thay cả hàng nên mọi cột không gán bị đưa về mặc định — chính là cách
+  /// cấu trúc nhóm danh mục từng bị xoá sạch sau mỗi lần pull.
+  Future<void> updateBudget(String id, BudgetsCompanion entry) async {
+    await (update(budgets)..where((t) => t.id.equals(id))).write(entry);
+  }
+
+  /// Ghi lại số đã chi tính từ bảng giao dịch.
+  ///
+  /// Cố ý KHÔNG đụng `syncStatus` lẫn `updatedAt`: giá trị này được suy ra từ
+  /// dữ liệu đã có sẵn ở local chứ không phải người dùng sửa. Nếu đánh dấu
+  /// `pending` ở đây thì mỗi lần mở trang ngân sách lại sinh một thao tác đẩy
+  /// mới, và `updatedAt` nhảy lên sẽ khiến LWW cho client thắng oan trước một
+  /// thay đổi thật từ máy khác.
+  Future<void> updateSpent(String id, double spent) async {
+    await (update(budgets)..where((t) => t.id.equals(id)))
+        .write(BudgetsCompanion(spent: Value(spent)));
   }
 
   Future<void> softDelete(String id) async {
@@ -103,15 +128,25 @@ class BillDao extends DatabaseAccessor<AppDatabase> with _$BillDaoMixin {
         .watch();
   }
 
-  /// Lấy hoá đơn sắp đến hạn (trong N ngày)
-  Future<List<Bill>> getUpcoming(int idaccount, {int days = 7}) {
-    final now = DateTime.now();
-    final limit = now.add(Duration(days: days));
+  /// Hoá đơn chưa thanh toán tới hạn trong [days] ngày tới — **gồm cả hoá đơn
+  /// đã quá hạn**, vì đó chính là thứ đáng nhắc nhất.
+  ///
+  /// Lọc theo **CẢ HAI** cột trạng thái. `markPaid()` cẩn thận đặt cả hai,
+  /// nhưng hàng kéo về từ backend hoặc do bản client cũ ghi có thể lệch: mang
+  /// `payStatus = 'Payed'` trong khi `isPaid` còn false. Chỉ lọc một cột là
+  /// người dùng bị giục trả một hoá đơn đã thanh toán rồi — không exception,
+  /// không log.
+  ///
+  /// [now] tiêm được để test không phụ thuộc đồng hồ máy.
+  Future<List<Bill>> getUpcoming(int idaccount,
+      {int days = 7, DateTime? now}) {
+    final limit = (now ?? DateTime.now()).add(Duration(days: days));
     return (select(bills)
           ..where((t) =>
               t.idaccount.equals(idaccount) &
               t.deletedAt.isNull() &
               t.isPaid.equals(false) &
+              t.payStatus.equals('Payed').not() &
               t.dueDate.isSmallerOrEqualValue(limit)))
         .get();
   }
@@ -120,14 +155,64 @@ class BillDao extends DatabaseAccessor<AppDatabase> with _$BillDaoMixin {
     await into(bills).insert(entry, mode: InsertMode.insertOrReplace);
   }
 
+  Future<Bill?> getById(String id) {
+    return (select(bills)..where((t) => t.id.equals(id))).getSingleOrNull();
+  }
+
+  /// Cập nhật CHỈ những cột có mặt trong [entry].
+  ///
+  /// Đường sửa **không được** đi qua [insert]: `InsertMode.insertOrReplace`
+  /// thay nguyên hàng, nên mọi cột vắng mặt trong companion bị đưa về giá trị
+  /// mặc định. Form sửa hoá đơn chỉ gửi lên vài trường, nên nó từng biến hoá
+  /// đơn đã thanh toán thành chưa thanh toán, xoá sạch walletId/categoryId
+  /// (hai cột NOT NULL phía backend) và hạ cờ isRecurrence.
+  Future<void> updateFields(BillsCompanion entry) async {
+    if (!entry.id.present) {
+      throw ArgumentError('BillsCompanion phải có id để biết cập nhật hàng nào');
+    }
+    await (update(bills)..where((t) => t.id.equals(entry.id.value)))
+        .write(entry);
+  }
+
+  /// Đánh dấu đã thanh toán.
+  ///
+  /// Phải đặt CẢ HAI cột: nhánh đẩy gửi `pay_status` chứ không gửi `isPaid`,
+  /// nên nếu chỉ đặt `isPaid` thì backend vĩnh viễn thấy hoá đơn là 'Pending'
+  /// mà không có lỗi nào báo ra.
   Future<void> markPaid(String id) async {
     await (update(bills)..where((t) => t.id.equals(id))).write(
       BillsCompanion(
         isPaid: const Value(true),
+        payStatus: const Value('Payed'),
         syncStatus: const Value('pending'),
         updatedAt: Value(DateTime.now()),
       ),
     );
+  }
+
+  /// Chuyển hoá đơn đã quá hạn sang `payStatus = 'Overdue'`.
+  ///
+  /// Trả về số hàng thật sự đổi. **Có điều kiện `payStatus = 'Pending'`**: quét
+  /// chạy sau MỌI lần đồng bộ, nên ghi lại vô điều kiện là bản ghi luôn ở
+  /// trạng thái `pending` — đẩy lên rồi lại `pending` — một vòng lặp đẩy vô
+  /// tận mà không có lỗi nào báo ra.
+  ///
+  /// So theo NGÀY: hoá đơn đến hạn đúng hôm nay chưa phải quá hạn, người dùng
+  /// vẫn còn cả ngày để trả.
+  Future<int> markOverdue(int idaccount, DateTime now) async {
+    final dauNgay = DateTime(now.year, now.month, now.day);
+    return (update(bills)
+          ..where((t) =>
+              t.idaccount.equals(idaccount) &
+              t.deletedAt.isNull() &
+              t.isPaid.equals(false) &
+              t.payStatus.equals('Pending') &
+              t.dueDate.isSmallerThanValue(dauNgay)))
+        .write(BillsCompanion(
+      payStatus: const Value('Overdue'),
+      syncStatus: const Value('pending'),
+      updatedAt: Value(now),
+    ));
   }
 
   Future<void> softDelete(String id) async {

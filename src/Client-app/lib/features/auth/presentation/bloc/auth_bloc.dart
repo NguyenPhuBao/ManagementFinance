@@ -2,9 +2,11 @@ import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/api/interceptors/auth_interceptor.dart';
+import '../../../category/data/services/personal_default_categories.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/sync/sync_engine.dart';
+import '../../../../core/notification/notification_scanner.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../../wallet/data/services/default_account_data_initializer.dart';
 import 'auth_event.dart';
@@ -72,6 +74,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     if (sl.isRegistered<SyncEngine>()) {
       sl<SyncEngine>().stop();
     }
+    // Dừng quét cùng lúc với đồng bộ. Còn sót subscription là sau khi đăng
+    // xuất vẫn quét, và quét bằng idaccount của người vừa rời đi.
+    if (sl.isRegistered<NotificationScanner>()) {
+      await sl<NotificationScanner>().stop();
+    }
     await authRepository.logout();
     emit(AuthUnauthenticated());
   }
@@ -117,7 +124,28 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         // người dùng mở lại app mà không đăng xuất/đăng nhập lại thì dữ liệu
         // rác của tài khoản cũ vẫn nằm nguyên trong máy.
         await sl<AppDatabase>().purgeDataForOtherAccounts(idAcc);
-        sl<SyncEngine>().start(idaccount: idAcc);
+        final personal = sl.isRegistered<PersonalDefaultCategories>()
+            ? sl<PersonalDefaultCategories>()
+            : null;
+        // Chuyển dữ liệu trỏ vào hàng seed `cat_*` cũ. Chạy TRƯỚC start(): việc
+        // này phải xong trước khi chu kỳ đồng bộ đầu tiên chạm vào.
+        await personal?.convertLegacyRows(idAcc);
+        final engine = sl<SyncEngine>();
+        // Không await ở đường mở app: chờ một vòng mạng ở đây làm màn hình đầu
+        // tiên đứng hình. Nối phần tạo danh mục vào sau bằng `then`.
+        // Bám đúng vòng đời của SyncEngine. Cố ý KHÔNG gắn ở home_page.dart —
+        // chỗ đó gọi start() ngay trong build(), tức mỗi lần Home rebuild là
+        // một lời gọi nữa.
+        if (sl.isRegistered<NotificationScanner>()) {
+          await sl<NotificationScanner>().start(idAcc);
+        }
+        unawaited(engine.start(idaccount: idAcc).then((_) async {
+          // Pull hỏng (mất mạng, server lỗi) thì CSDL cục bộ chưa đáng tin.
+          // Bản mặc định của backend chưa chắc đã về, mà thiếu nó thì phép gộp
+          // không có đích — bỏ qua, lần mở app sau thử lại.
+          if (!engine.hasCompletedPull) return;
+          await personal?.foldIntoBackendDefaults(idAcc);
+        }));
       }
       emit(AuthSuccess(user: user));
     } catch (e) {
@@ -145,7 +173,24 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         // dòng dữ liệu sót lại từ tài khoản cũ sẽ bị đẩy đi dưới id cũ và
         // luôn thất bại (Ownership mismatch hoặc vỡ khoá ngoại).
         await sl<AppDatabase>().purgeDataForOtherAccounts(idAcc);
-        await sl<SyncEngine>().start(idaccount: idAcc);
+        final personal = sl.isRegistered<PersonalDefaultCategories>()
+            ? sl<PersonalDefaultCategories>()
+            : null;
+        // Chuyển dữ liệu trỏ vào hàng seed `cat_*` cũ. Chạy TRƯỚC start(): việc
+        // này phải xong trước khi chu kỳ đồng bộ đầu tiên chạm vào.
+        await personal?.convertLegacyRows(idAcc);
+        final engine = sl<SyncEngine>();
+        if (sl.isRegistered<NotificationScanner>()) {
+          await sl<NotificationScanner>().start(idAcc);
+        }
+        await engine.start(idaccount: idAcc);
+        // Gộp bản riêng của 5 danh mục vào bản mặc định của backend, SAU khi đã
+        // pull — bản mặc định chỉ có mặt ở máy này sau khi pull mang nó về.
+        // Không có nó thì hàm không đụng gì, đúng như G14 dạy: đừng quyết định
+        // về danh mục khi CSDL cục bộ chưa đáng tin.
+        if (engine.hasCompletedPull) {
+          await personal?.foldIntoBackendDefaults(idAcc);
+        }
         await defaultAccountDataInitializer?.ensureForAccount(idAcc);
       }
       emit(AuthSuccess(user: user));
@@ -161,6 +206,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(AuthLoading());
     if (sl.isRegistered<SyncEngine>()) {
       sl<SyncEngine>().stop();
+    }
+    // Dừng quét cùng lúc với đồng bộ. Còn sót subscription là sau khi đăng
+    // xuất vẫn quét, và quét bằng idaccount của người vừa rời đi.
+    if (sl.isRegistered<NotificationScanner>()) {
+      await sl<NotificationScanner>().stop();
     }
     await authRepository.logout();
     emit(AuthUnauthenticated());

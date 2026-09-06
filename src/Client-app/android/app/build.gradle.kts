@@ -13,6 +13,11 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        // Bắt buộc cho flutter_local_notifications (từ bản 10 trở đi), kể cả
+        // khi chưa dùng lịch đặt trước. Thiếu nó thì build DEBUG vẫn chạy còn
+        // build RELEASE gãy với thông báo lỗi nói về java.time — rất khó lần
+        // ngược về nguyên nhân.
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -37,6 +42,12 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+}
+
+dependencies {
+    // Đi kèm `isCoreLibraryDesugaringEnabled` ở trên — hai thứ này phải có
+    // cùng nhau, thiếu một là lỗi build.
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
 
 flutter {

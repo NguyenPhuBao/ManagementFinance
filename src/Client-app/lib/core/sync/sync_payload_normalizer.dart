@@ -10,7 +10,7 @@ class SyncPayloadNormalizer {
   ///
   /// Tài liệu `New_Database.md` và kế hoạch align schema lại ghi `'Vay/nợ'`
   /// (CÓ dấu) — hai bên đang lệch nhau. Xem
-  /// `docs/superpowers/backend/CATEGORY_CLASSIFY_ALIGNMENT.md` để biết cách xử lý.
+  /// `docs/superpowers/backend/CAN-LAM/CATEGORY_CLASSIFY_ALIGNMENT.md` để biết cách xử lý.
   ///
   /// Khi backend đã đổi CHECK constraint + seed + dữ liệu sang `'Vay/nợ'`,
   /// chỉ cần đổi hằng số này — phần ĐỌC của client đã chấp nhận cả hai dạng từ

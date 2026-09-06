@@ -87,6 +87,10 @@ class BillBloc extends Bloc<BillEvent, BillState> {
         idaccount: event.idaccount,
       );
       emit(BillOperationSuccess('Thanh toán hóa đơn thành công'));
+    } on BillAlreadyPaidException {
+      // Không phải sự cố kỹ thuật — chỉ là người dùng bấm nút hai lần, hoặc
+      // hoá đơn đã được trả trên máy khác rồi đồng bộ về.
+      emit(BillError('Hóa đơn này đã được thanh toán rồi.'));
     } catch (e) {
       emit(BillError('Thanh toán thất bại: $e'));
     }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -62,6 +64,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
 
   @override
   void dispose() {
+    _hoanGoiY?.cancel();
     _noteController.removeListener(_onNoteChanged);
     _noteController.dispose();
     super.dispose();
@@ -119,7 +122,16 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
 
   String get _classify => _selectedSegment == 0 ? 'chi' : 'thu';
 
+  /// Hoãn việc tra cứu gợi ý cho tới khi người dùng ngừng gõ.
+  ///
+  /// `TextEditingController` phát tín hiệu ở MỖI ký tự. Không hoãn thì một ghi
+  /// chú 30 ký tự sinh 30 lượt đọc CSDL, mỗi lượt lại đọc thêm từ khoá — và
+  /// mọi kết quả trừ cái cuối đều bị vứt đi.
+  Timer? _hoanGoiY;
+  static const Duration _doTreGoiY = Duration(milliseconds: 300);
+
   void _onNoteChanged() {
+    _hoanGoiY?.cancel();
     final note = _noteController.text.trim();
     if (note.isEmpty || _selectedSegment == 2 || _selectedCategory != null) {
       if (_suggestion != null && mounted) {
@@ -127,7 +139,14 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       }
       return;
     }
-    _loadSuggestion(note);
+    _hoanGoiY = Timer(_doTreGoiY, () {
+      if (!mounted) return;
+      // Đọc lại từ controller thay vì dùng `note` đã bắt ở trên: trong lúc chờ
+      // người dùng có thể đã gõ tiếp, và thứ đáng gợi ý là văn bản HIỆN TẠI.
+      final hienTai = _noteController.text.trim();
+      if (hienTai.isEmpty) return;
+      _loadSuggestion(hienTai);
+    });
   }
 
   Future<void> _loadSuggestion(String note) async {
@@ -137,20 +156,17 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       accountId: _accountId(),
       classify: requestedClassify,
     );
-    final keywordLists = await Future.wait(
-      categories.map(
-        (category) => _categoryRepository.loadKeywords(
-          accountId: _accountId(),
-          categoryId: category.id,
-        ),
-      ),
+    // MỘT truy vấn cho cả tài khoản. Trước đây chỗ này gọi `loadKeywords` một
+    // lần cho mỗi danh mục, nên tài khoản có 20 danh mục là 20 truy vấn — nhân
+    // với mỗi lần ghi chú thay đổi.
+    final keywordsByCategory = await _categoryRepository.loadAllKeywords(
+      accountId: _accountId(),
     );
     final candidates = <CategoryKeywordCandidate>[];
-    for (var index = 0; index < categories.length; index++) {
-      for (final keyword in keywordLists[index]) {
+    for (final category in categories) {
+      for (final keyword in keywordsByCategory[category.id] ?? const <String>[]) {
         candidates.add(
-          CategoryKeywordCandidate(
-              category: categories[index], keyword: keyword),
+          CategoryKeywordCandidate(category: category, keyword: keyword),
         );
       }
     }
