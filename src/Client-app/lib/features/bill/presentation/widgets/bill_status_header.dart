@@ -79,7 +79,8 @@ class BillStatusHeader extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 subtitle,
-                maxLines: 1,
+                // Dòng đã trả mang hai dòng "Hạn…" / "Trả…" (xem bill_page).
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontSize: 14,

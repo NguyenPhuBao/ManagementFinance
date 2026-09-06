@@ -243,9 +243,12 @@ class _BillPageState extends State<BillPage> {
             context: context,
             bill: bill,
             title: bill.name,
+            // Hai dòng chứ không nối bằng " • ": cạnh nhãn "ĐÃ THANH TOÁN" ở
+            // 411dp chỉ còn chỗ cho ~18 ký tự, một dòng bị cắt thành "Hạn
+            // 06/09/2026 • T…" (thấy trên máy ảo 06/09).
             subtitle: khoanChi == null
                 ? 'Hạn ${dateFormatter.format(bill.dueDate)}'
-                : 'Hạn ${dateFormatter.format(bill.dueDate)} • '
+                : 'Hạn ${dateFormatter.format(bill.dueDate)}\n'
                     'Trả ${dateFormatter.format(khoanChi.date)}',
             // Dòng đã trả mở khoản chi; dòng chưa trả mở trang chi tiết (mang
             // theo hàng đang giữ để trang vẽ ngay, rồi tự đọc lại CSDL).

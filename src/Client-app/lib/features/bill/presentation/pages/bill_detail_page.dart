@@ -7,7 +7,6 @@ import '../../../../core/bill/bill_recurrence.dart';
 import '../../../../core/category/category_visuals.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
-import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../transaction/domain/transaction_lookup.dart';
 import '../../domain/bill_chain.dart';
@@ -49,6 +48,8 @@ class _BillDetailPageState extends State<BillDetailPage> {
   bool _dangTai = true;
 
   static final _ngay = DateFormat('dd/MM/yyyy');
+  // Cùng ký hiệu "đ" với trang danh sách (CurrencyFormatter in "₫").
+  static final _tien = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
 
   @override
   void initState() {
@@ -242,7 +243,7 @@ class _BillDetailPageState extends State<BillDetailPage> {
             children: [
               Expanded(
                 child: Text(
-                  CurrencyFormatter.format(b.amount),
+                  _tien.format(b.amount),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -414,7 +415,7 @@ class _BillDetailPageState extends State<BillDetailPage> {
           ),
           const SizedBox(width: 8),
           Text(
-            CurrencyFormatter.format(b.amount),
+            _tien.format(b.amount),
             style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
