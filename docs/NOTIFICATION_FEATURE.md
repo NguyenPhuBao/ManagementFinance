@@ -339,6 +339,26 @@ nằm rời và công sức gộp coi như không có.
   tóm tắt; đăng thêm ở đó là một thông báo **trống** trên màn hình khoá, và nó
   không bao giờ lộ ra trong một lần kiểm chạy trên Android. Có test canh.
 
+⚠️ **Đổi chi tiết thông báo KHÔNG áp dụng ngược cho lịch đã đặt.** Đo được trên
+emulator-5554 ngày 2026-09-06: hai lịch nhắc nổ ra **không mang `khoaNhom`**,
+và `run-as … cat shared_prefs/scheduled_notifications.xml` cho thấy bản ghi
+lưu sẵn không có trường ấy.
+
+Lý do nằm ở chính tính **luỹ đẳng** của `resync()`: nó chỉ đặt những id **chưa**
+có trong `pendingIds()`. Lịch đã nằm trong hàng đợi giữ nguyên bộ chi tiết mà
+`flutter_local_notifications` đã *tuần tự hoá lúc đặt* — tức là của bản app cũ.
+Chúng chỉ nhận cấu hình mới khi `dedupeKey` đổi (hạn trả mới, số ngày nhắc mới)
+hoặc sau một lần `cancelAll()` (đăng xuất).
+
+Hệ quả thực tế: mọi thay đổi về hình thức thông báo **đến dần** với người dùng
+cũ, không đến ngay. Ai sửa phần này rồi kiểm trên một máy đã cài bản trước sẽ
+thấy "không có tác dụng" và đi tìm lỗi ở sai chỗ.
+
+Riêng phần hiển thị thì Android 16 **tự gộp** thông báo cùng app
+(`AUTOGROUP_SUMMARY`), nên người dùng vẫn thấy một cụm ngay cả khi khoá nhóm
+của app chưa tới. Đừng vì thế mà kết luận `khoaNhom` đang chạy — kiểm bằng
+`dumpsys notification` chứ không bằng mắt.
+
 **Hoàn tác vuốt xoá** — `NotificationDao.khoiPhuc(id)` gỡ `dismissedAt`, kèm
 SnackBar "Đã xoá thông báo · Hoàn tác". Cần thiết vì hàng đã xoá **vẫn nằm
 trong bảng** để chặn trùng: lượt quét sau nhìn thấy `dedupeKey` ấy rồi bỏ qua,
