@@ -1,9 +1,9 @@
 # Backend — CHỈ ĐỌC THƯ MỤC NÀY
 
-**Cập nhật:** 2026-09-05
+**Cập nhật:** 2026-09-06
 
 > Thư mục cha có 20 tài liệu, phần lớn đã xong hoặc chỉ để tham khảo lịch sử.
-> **Mười tài liệu trong thư mục này là toàn bộ phần còn việc.** Không cần mở gì
+> **Mười một tài liệu trong thư mục này là toàn bộ phần còn việc.** Không cần mở gì
 > ở thư mục cha ngoài ba tệp bối cảnh liệt kê ở mục 4.
 
 ---
@@ -40,6 +40,7 @@ Không ai mất dữ liệu và không có gì sai số nếu chưa làm. Nhưng
 |---|---|---|---|---|
 | 8 | [2026-09-05-backend-transaction-goal-id.md](./2026-09-05-backend-transaction-goal-id.md) | Lịch sử tích luỹ nối với mục tiêu bằng **ID** (schema v14) | Cột nullable `transaction.Idgoal`. Thiếu nó, hàng kéo về từ server rơi xuống nhánh so **tên** — nhánh vẫn còn đúng khuyết điểm mà cột này sinh ra để chữa | một cột |
 | 9 | [2026-09-05-backend-goal-auto-deposit.md](./2026-09-05-backend-goal-auto-deposit.md) | **Trích tiền tự động định kỳ** cho mục tiêu (schema v15) | Ba cột `auto_deposit_*`. Thiếu chúng, bật trích ở điện thoại rồi đăng nhập máy khác thì máy kia không trích gì cả | ba cột |
+| 10 | [2026-09-06-bill-chuoi-ky-va-an-han.md](./2026-09-06-bill-chuoi-ky-va-an-han.md) — **việc A và B** | **Hoàn tác thanh toán hoá đơn** (schema v16) | Hai cột nullable `transaction.Idbill` và `bill.Previous_bill_id` — hai đầu của sợi dây từ hoá đơn về khoản chi và về kỳ kế tiếp. Thiếu chúng, hoàn tác chỉ chạy trên đúng cái máy đã trả; máy khác từ chối có thông báo. Cột B còn mở luôn **lịch sử theo hoá đơn** ("sáu tháng qua tiền điện hết bao nhiêu") | hai cột |
 
 > ⚠️ Mục 9 có một cái bẫy: **ba cột phải lên cùng một lúc.** Đưa hai cột đầu mà
 > bỏ `auto_deposit_last_run` là mỗi máy giữ một mốc riêng và **cả hai cùng
@@ -49,6 +50,7 @@ Không ai mất dữ liệu và không có gì sai số nếu chưa làm. Nhưng
 
 | Tài liệu | Vì sao chưa gấp |
 |---|---|
+| [2026-09-06-bill-chuoi-ky-va-an-han.md](./2026-09-06-bill-chuoi-ky-va-an-han.md) — **việc C** | Client **chưa làm** ân hạn hoá đơn, và cố ý chưa làm cho tới khi có cột — cùng lối với `goal.Priority`. Bảng `bill` chỉ có `Start_date` và `Due_date`, hai đầu của CÙNG một kỳ, nên hoá đơn điện "kỳ 01–30/09 nhưng hạn trả 15/10" không diễn đạt được. Người dùng hôm nay vẫn dùng được bằng cách đặt hạn trả là mốc kết thúc kỳ |
 | [2026-09-05-backend-goal-priority.md](./2026-09-05-backend-goal-priority.md) | Client **chưa làm** ưu tiên mục tiêu, và cố ý chưa làm cho tới khi có cột. Đây là tài liệu *mở đường*: xin **một** cột nullable `goal.Priority` **trước** khi viết mã, thay vì làm cột cục bộ rồi xin sau như hai lần trước. Danh sách hiện sắp theo hạn gần nhất trước, đã gần đúng thứ tự ưu tiên khi chỉ có vài mục tiêu |
 | [2026-09-04-ocr-classify-review.md](./2026-09-04-ocr-classify-review.md) — **phần OCR/Classify** (mục 2–8 của tài liệu) | Client-app **chưa có tính năng quét hoá đơn**: không có màn hình, không có repository, không có endpoint nào được gọi. `classifyBatch` sai kiểu tham số, `GEMINI_API_KEY` thiếu, dedup Quy tắc 3 chặn nhầm, cửa hậu `_mock*` — tất cả đều thật, nhưng **không ai chạm tới được từ app**. ⚠️ Riêng `uq_transaction_external` thiếu `Idaccount` thì **phải xong TRƯỚC** khi client nối luồng OCR, vì ràng buộc ấy là **toàn cục** |
 
@@ -62,15 +64,15 @@ Không ai mất dữ liệu và không có gì sai số nếu chưa làm. Nhưng
 3. **`validClassify`** (nhóm 1 mục 7) — một dòng.
 4. **Lỗ hổng phân quyền từ khoá** (nhóm 1 mục 3).
 5. **Một đợt migration duy nhất**: mục 4 → 5 → 6 của nhóm 1, **liền một mạch**,
-   cộng thêm hai mục của nhóm 2, cột `goal.Priority` của nhóm 3, và `Idaccount`
-   cho `uq_transaction_external`.
+   cộng thêm **ba** mục của nhóm 2 (8, 9, 10), cột `goal.Priority` của nhóm 3,
+   và `Idaccount` cho `uq_transaction_external`.
 
 > ⚠️ **Bước 5 không tách lẻ được.** `CATEGORY_STABLE_IDS` là nguyên nhân gốc:
 > ID ổn định cho seed là điều kiện để hai tài liệu kia không phải dùng *tên danh
 > mục* làm khoá nối. Làm `CATEGORY_NAME_UNIQUENESS` trước là phải làm lại.
 >
-> Gộp hai mục của nhóm 2 **và** cột `goal.Priority` vào đúng đợt migration này
-> là rẻ nhất — cả ba chỉ thêm cột nullable, không đụng dữ liệu cũ. `Priority`
+> Gộp ba mục của nhóm 2 **và** cột `goal.Priority` vào đúng đợt migration này
+> là rẻ nhất — tất cả chỉ thêm cột nullable, không đụng dữ liệu cũ. `Priority`
 > chưa có gì chờ nó, nhưng thêm sau lại tốn một migration nữa.
 
 ---

@@ -18,8 +18,9 @@
 | Việc | Đọc thêm |
 |---|---|
 | Làm tiếp phía client | `docs/CLIENT_APP_KNOWN_GAPS.md` — các mục dang dở kèm **lý do hoãn** và **bán kính ảnh hưởng** |
-| Việc thuộc backend | **`docs/superpowers/backend/CAN-LAM/README.md`** — **cửa vào duy nhất**, giữ đủ **10 tài liệu còn việc**; thư mục cha chỉ còn tài liệu đã xong và bối cảnh. README chia việc theo *client đã có tính năng ấy chưa* (mục 1, ba nhóm) rồi mới tới **thứ tự thi công năm bước** (mục 2) — đọc theo đúng thứ tự ấy. Việc đang gây hại **ngay lúc này** là **Socket.io không xác thực + `io.emit` toàn cục** (`2026-09-04-ocr-classify-review.md`); sau đó `2026-09-04-backend-idempotent-delete.md` (ba lỗ hổng `/sync/push`, một trong đó chặn hẳn ngân sách "Ngày cụ thể") và `CATEGORY_KEYWORD_SYNC.md` (lỗ hổng phân quyền). Bảng trạng thái đầy đủ ở mục 14 `docs/PROJECT_CONTEXT.md` |
+| Việc thuộc backend | **`docs/superpowers/backend/CAN-LAM/README.md`** — **cửa vào duy nhất**, giữ đủ **11 tài liệu còn việc**; thư mục cha chỉ còn tài liệu đã xong và bối cảnh. README chia việc theo *client đã có tính năng ấy chưa* (mục 1, ba nhóm) rồi mới tới **thứ tự thi công năm bước** (mục 2) — đọc theo đúng thứ tự ấy. Việc đang gây hại **ngay lúc này** là **Socket.io không xác thực + `io.emit` toàn cục** (`2026-09-04-ocr-classify-review.md`); sau đó `2026-09-04-backend-idempotent-delete.md` (ba lỗ hổng `/sync/push`, một trong đó chặn hẳn ngân sách "Ngày cụ thể") và `CATEGORY_KEYWORD_SYNC.md` (lỗ hổng phân quyền). Bảng trạng thái đầy đủ ở mục 14 `docs/PROJECT_CONTEXT.md` |
 | Đụng vào đồng bộ | `src/Client-app/test/core/sync/sync_payload_contract_test.dart` — đọc **như tài liệu**, đây là nơi duy nhất ghi hợp đồng tên trường giữa hai phía |
+| Đụng vào hoá đơn | `docs/bill/BILL_DOCUMENTATION.md` (⚠️ thư mục bị `.gitignore` chặn, chỉ có trên máy đã dựng) và **bộ test như tài liệu**: `test/features/bill/domain/bill_status_test.dart` (bốn trạng thái hiển thị + số liệu thẻ tổng), `bill_payment_test.dart` (trả theo số tiền kỳ này, hoàn tác), `test/core/database/bill_overdue_test.dart` (cờ quá hạn đi **hai chiều**). Ba thứ dễ vấp nhất: bảng `Bills` mang **hai cặp cột trùng nghĩa** (`payStatus`/`isPaid` và `isRecurrence`+`timeRecurrence`/`recurrence`) — đọc và ghi theo cột **chính thức**, cột chuỗi cũ chỉ được suy ra; mỗi kỳ của hoá đơn lặp là **một hàng mới**, không phải một hàng sống lâu; và hai cột nối `transactions.billId` / `bills.generatedFromBillId` là **cục bộ** (v16) nên hàng kéo về từ server luôn để trống — hoàn tác phải từ chối chứ không được đoán |
 | Đụng vào thông báo | `docs/NOTIFICATION_FEATURE.md` — **trạng thái bàn giao, phần việc còn lại, và bảy cái bẫy**. Mục 7 phải đọc trước khi đụng vào phần hệ điều hành. Bảng thông báo **cục bộ**, không nằm trong `SyncEntityType` |
 | Đụng vào danh mục | `docs/CATEGORY_RATIONALE.md` — **lý do** của từng thay đổi, bằng chứng đo được, và các phương án đã loại bỏ. Đọc trước khi định "dọn dẹp" vùng này |
 | Đụng vào mục tiêu tiết kiệm | `docs/GOAL_FEATURE.md` — **quyết định kèm lý do, và bảy cái bẫy**. Mục 4 phải đọc trước khi sửa gì. Ba cái đáng nhớ nhất: `walletTransfer` **không có khoá ngoại**; suy chiều nạp/rút từ vị trí ví là **diễn giải lại lịch sử**; và `_collectPendingOps` dựng payload **thô** — phép quy đổi `chi → Transaction` chạy ở bước POST, đọc dừng ở đó là kết luận nhầm |
@@ -67,7 +68,7 @@
 ## Lệnh hay dùng
 
 ```bash
-# Test (chạy từ src/Client-app) — hiện 1049/1049 pass, ~30 giây
+# Test (chạy từ src/Client-app) — hiện 1115/1115 pass, ~70 giây
 flutter test
 flutter analyze          # mức nền: 25 issue, KHÔNG có error
 
