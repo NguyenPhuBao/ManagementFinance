@@ -5,6 +5,10 @@ import 'dart:async';
 import 'dart:ui' show AppLifecycleState;
 
 import 'package:drift/drift.dart' show Value;
+// `show debugPrint` chứ không import trần: foundation phơi ra `Category`, trùng
+// tên với data class Drift mà `app_database.dart` mang theo — đúng vết
+// `sync_engine.dart` đã phải `hide`.
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:uuid/uuid.dart';
 
 import '../database/app_database.dart';
@@ -305,6 +309,7 @@ class NotificationScanner {
         // đã đúng chưa" là hai chuyện khác nhau. Một hoá đơn vừa bị xoá không
         // sinh thông báo nào nhưng vẫn phải gỡ lịch của nó.
         await _dongBoLich(idaccount);
+        _ghiNhat(idaccount, 0);
         return 0;
       }
 
@@ -321,10 +326,22 @@ class NotificationScanner {
       if (prefs.osBat) await _banRaHeDieuHanh(moi);
       await _dongBoLich(idaccount);
 
+      _ghiNhat(idaccount, moi.length);
       return moi.length;
     } finally {
       _dangQuet = false;
     }
+  }
+
+  /// Một dòng nhật ký cho mỗi lượt quét, cùng kiểu `SyncEngine` vẫn ghi.
+  ///
+  /// Trước khi có nó, vòng quét hoàn toàn **im lặng**: chạy trên máy thật thì
+  /// không có cách nào phân biệt "đã quét, không có gì mới" với "không quét lần
+  /// nào". Đúng câu hỏi cần trả lời khi kiểm mốc kích hoạt lúc mất mạng — và
+  /// `flutter test` không trả lời hộ được, vì nó không có vòng đời app thật.
+  void _ghiNhat(int idaccount, int soHangMoi) {
+    debugPrint('[NotificationScanner] Quét xong cho tài khoản $idaccount — '
+        '$soHangMoi hàng mới');
   }
 
   /// Đồng bộ lại lịch nhắc đặt trước.
