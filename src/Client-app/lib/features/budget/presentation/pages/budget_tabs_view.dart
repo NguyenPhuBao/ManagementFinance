@@ -280,7 +280,9 @@ class _OverviewCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      vuot ? 'ĐÃ TIÊU VƯỢT THÁNG NÀY' : 'CÒN LẠI THÁNG NÀY',
+                      // Stitch ghi "tháng này", nhưng ngân sách có thể theo
+                      // tuần/quý/năm hoặc "Ngày cụ thể" — "kỳ" mới đúng.
+                      vuot ? 'ĐÃ TIÊU VƯỢT KỲ NÀY' : 'CÒN LẠI KỲ NÀY',
                       style: const TextStyle(
                         fontSize: 12,
                         letterSpacing: 1.2,
@@ -317,8 +319,15 @@ class _OverviewCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          // `Wrap` chứ không phải `Row`: hai dòng chữ vẫn nằm hai đầu một
+          // hàng như Stitch khi vừa, còn số tiền dài ở 411dp thì xuống dòng
+          // thay vì bị cắt thành "đã ..." — con số chính của thẻ không được
+          // là thứ bị cắt.
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 4,
             children: [
               Text(
                 '$conLai% ngân sách còn lại',
@@ -328,17 +337,13 @@ class _OverviewCard extends StatelessWidget {
                   color: AppColors.textSecondary,
                 ),
               ),
-              Flexible(
-                child: Text(
-                  '${CurrencyFormatter.format(state.totalSpent)} / '
-                  '${CurrencyFormatter.format(state.totalAmount)} đã dùng',
-                  textAlign: TextAlign.end,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.primary,
-                  ),
+              Text(
+                '${CurrencyFormatter.format(state.totalSpent)} / '
+                '${CurrencyFormatter.format(state.totalAmount)} đã dùng',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.primary,
                 ),
               ),
             ],
@@ -611,9 +616,16 @@ class _CreateButton extends StatelessWidget {
         children: [
           Icon(Icons.add, size: 24),
           SizedBox(width: 8),
-          Text(
-            'Tạo ngân sách mới',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          // Co chữ thay vì tràn khi bề rộng hẹp hoặc cỡ chữ hệ thống lớn —
+          // lộ ra lần đầu khi dựng trang ở 411dp trong test.
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                'Tạo ngân sách mới',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              ),
+            ),
           ),
         ],
       ),
