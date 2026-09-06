@@ -39,6 +39,7 @@ import '../../features/bill/presentation/bloc/bill_bloc.dart';
 import '../../features/bill/presentation/pages/bill_page.dart';
 import '../../features/bill/presentation/pages/bill_add_page.dart';
 import '../../features/bill/presentation/pages/bill_edit_page.dart';
+import '../../features/bill/presentation/pages/bill_detail_page.dart';
 import '../../features/goal/presentation/pages/goal_page.dart';
 import '../../features/goal/presentation/pages/goal_add_page.dart';
 import '../../features/goal/presentation/pages/goal_detail_page.dart';
@@ -284,6 +285,20 @@ class AppRouter {
             builder: (_, s) => BlocProvider<BillBloc>(
               create: (_) => sl<BillBloc>(),
               child: BillEditPage(
+                id: s.pathParameters['id']!,
+                bill: s.extra as Bill?,
+              ),
+            ),
+          ),
+          // Chi tiết một hoá đơn. Ngoài shell như các route hoá đơn khác, nên
+          // `push` từ danh sách không dính bẫy `StatefulShellRoute`. Đặt SAU
+          // '/bills/add' và '/bills/:id/edit' — đường cụ thể trước đường có
+          // tham số, cùng lý do với '/goals/:id'.
+          GoRoute(
+            path: '/bills/:id',
+            builder: (_, s) => BlocProvider<BillBloc>(
+              create: (_) => sl<BillBloc>(),
+              child: BillDetailPage(
                 id: s.pathParameters['id']!,
                 bill: s.extra as Bill?,
               ),

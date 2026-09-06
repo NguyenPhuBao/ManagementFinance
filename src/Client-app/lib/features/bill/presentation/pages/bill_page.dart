@@ -17,42 +17,8 @@ import '../../../transaction/presentation/pages/add_transaction_page.dart'
     show EditTransactionArgs;
 import '../../../transaction/presentation/widgets/transaction_detail_sheet.dart';
 import '../../../../core/category/category_visuals.dart';
-import '../../../../core/utils/currency_formatter.dart';
-import '../widgets/bill_payment_sheet.dart';
-
-/// Nhãn của từng trạng thái. Bản dựng hình Stitch chỉ có ba; nhãn "QUÁ HẠN" là
-/// thứ tư, để nói đúng `payStatus = 'Overdue'` mà trước đây không nơi nào đọc.
-String _nhanTrangThai(BillDisplayStatus s) => switch (s) {
-      BillDisplayStatus.paid => 'ĐÃ THANH TOÁN',
-      BillDisplayStatus.overdue => 'QUÁ HẠN',
-      BillDisplayStatus.dueSoon => 'SẮP ĐẾN HẠN',
-      BillDisplayStatus.pending => 'CHƯA THANH TOÁN',
-    };
-
-Color _mauChu(BillDisplayStatus s) => switch (s) {
-      BillDisplayStatus.paid => const Color(0xFF217128),
-      BillDisplayStatus.overdue => const Color(0xFF93000A),
-      BillDisplayStatus.dueSoon => const Color(0xFF8A5000),
-      BillDisplayStatus.pending => AppColors.textSecondary,
-    };
-
-Color _mauNen(BillDisplayStatus s) => switch (s) {
-      BillDisplayStatus.paid => const Color(0xFFA0F399),
-      BillDisplayStatus.overdue => const Color(0xFFFFDAD6),
-      BillDisplayStatus.dueSoon => const Color(0xFFFFE0B2),
-      BillDisplayStatus.pending => AppColors.surfaceContainerHigh,
-    };
-
-/// Vạch màu bên trái thẻ.
-///
-/// Nhánh quá hạn từng dùng `AppColors.income` — đúng màu xanh lá của khoản
-/// THU — cho một hoá đơn đã trễ hạn.
-Color _mauVach(BillDisplayStatus s) => switch (s) {
-      BillDisplayStatus.paid => AppColors.outlineVariant,
-      BillDisplayStatus.overdue => AppColors.error,
-      BillDisplayStatus.dueSoon => const Color(0xFFE8A33D),
-      BillDisplayStatus.pending => AppColors.primary,
-    };
+import '../widgets/bill_actions.dart';
+import '../widgets/bill_status_visuals.dart';
 
 class BillPage extends StatefulWidget {
   /// Thời điểm dùng để xếp trạng thái từng hoá đơn. Tiêm được để test không
@@ -95,104 +61,6 @@ class _BillPageState extends State<BillPage> {
     final dm = await db.categoryDao.getAll(accountId);
     if (!mounted) return;
     setState(() => _lookup = TransactionLookup(wallets: vi, categories: dm));
-  }
-
-  void _showPayModal(BuildContext context, Bill bill) async {
-    final db = sl<AppDatabase>();
-    // Không có phiên thì không có ví nào để thanh toán bằng. Trước đây chỗ này
-    // rơi về idaccount = 1 rồi, khi tài khoản đó chưa có ví, còn đọc tiếp
-    // `getAllNonDeleted()` — bày ra ví của tài khoản khác trên cùng máy.
-    final accountId = currentAccountIdOrNull(context);
-    final wallets =
-        accountId == null ? <Wallet>[] : await db.walletDao.getAll(accountId);
-
-    if (!context.mounted) return;
-
-    if (accountId == null || wallets.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Vui lòng tạo ít nhất 1 ví trước khi thanh toán.')),
-      );
-      return;
-    }
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      // Bàn phím số phải đẩy được bảng lên, không che ô nhập.
-      isScrollControlled: true,
-      builder: (_) => BillPaymentSheet(
-        wallets: wallets,
-        initialAmount: bill.amount,
-        // Hoá đơn đã lưu sẵn ví thanh toán; luồng trả trước đây bày ra danh
-        // sách không gợi ý gì nên người dùng phải tự nhớ.
-        preferredWalletId: bill.walletId,
-        onConfirmed: (wallet, soTien, ngay) {
-          context.read<BillBloc>().add(
-                PayBillEvent(
-                  bill: bill,
-                  walletId: wallet.id,
-                  idaccount: accountId,
-                  amount: soTien,
-                  occurredAt: ngay,
-                ),
-              );
-        },
-      ),
-    );
-  }
-
-  /// Hỏi trước khi hoàn tác: thao tác này trả tiền lại ví, xoá khoản chi và
-  /// gỡ kỳ kế tiếp — ba hệ quả, nên phải nói rõ trước.
-  void _hoiHoanTac(BuildContext context, Bill bill) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Hoàn tác thanh toán'),
-        content: Text(
-          'Hoàn ${CurrencyFormatter.format(bill.amount)} về ví, xoá khoản chi '
-          'đã ghi${bill.isRecurrence ? ' và gỡ kỳ kế tiếp' : ''}. '
-          'Hoá đơn "${bill.name}" quay lại trạng thái chưa thanh toán.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Huỷ'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              context.read<BillBloc>().add(UndoPaymentEvent(billId: bill.id));
-            },
-            child: const Text('Hoàn tác'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showDeleteConfirm(BuildContext context, String billId) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Xóa hóa đơn'),
-        content: const Text('Bạn có chắc chắn muốn xóa hóa đơn này?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Hủy'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () {
-              Navigator.pop(ctx);
-              context.read<BillBloc>().add(DeleteBillEvent(id: billId));
-            },
-            child: const Text('Xóa', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -379,8 +247,11 @@ class _BillPageState extends State<BillPage> {
                 ? 'Hạn ${dateFormatter.format(bill.dueDate)}'
                 : 'Hạn ${dateFormatter.format(bill.dueDate)} • '
                     'Trả ${dateFormatter.format(khoanChi.date)}',
-            onTap:
-                khoanChi == null ? null : () => _moKhoanChi(context, khoanChi),
+            // Dòng đã trả mở khoản chi; dòng chưa trả mở trang chi tiết (mang
+            // theo hàng đang giữ để trang vẽ ngay, rồi tự đọc lại CSDL).
+            onTap: khoanChi != null
+                ? () => _moKhoanChi(context, khoanChi)
+                : () => context.push('/bills/${bill.id}', extra: bill),
             // Ba trạng thái khác nhau, đừng gộp: chưa gán danh mục bao giờ /
             // đã gán nhưng hàng ấy bị xoá mềm (đợt gộp danh mục 05/09 để lại
             // đúng tình trạng này) / có danh mục thật.
@@ -397,10 +268,10 @@ class _BillPageState extends State<BillPage> {
             iconColor:
                 categoryColorFrom(danhMuc?.colour, fallback: AppColors.primary),
             amount: currencyFormatter.format(bill.amount),
-            status: _nhanTrangThai(status),
-            statusColor: _mauChu(status),
-            statusBg: _mauNen(status),
-            accentColor: _mauVach(status),
+            status: nhanTrangThaiHoaDon(status),
+            statusColor: mauChuTrangThaiHoaDon(status),
+            statusBg: mauNenTrangThaiHoaDon(status),
+            accentColor: mauVachTrangThaiHoaDon(status),
             isPaid: status == BillDisplayStatus.paid,
           ),
         );
@@ -589,7 +460,7 @@ class _BillPageState extends State<BillPage> {
                           ),
                           const SizedBox(width: 12),
                           InkWell(
-                            onTap: () => _showDeleteConfirm(context, bill.id),
+                            onTap: () => hoiXoaHoaDon(context, bill.id),
                             child: Icon(
                               Icons.delete_outline,
                               size: 16,
@@ -603,7 +474,7 @@ class _BillPageState extends State<BillPage> {
                           if (isPaid)
                             TextButton.icon(
                               key: ValueKey('bill-undo-${bill.id}'),
-                              onPressed: () => _hoiHoanTac(context, bill),
+                              onPressed: () => hoiHoanTacHoaDon(context, bill),
                               icon: const Icon(Icons.undo, size: 16),
                               label: const FittedBox(
                                 fit: BoxFit.scaleDown,
@@ -618,7 +489,8 @@ class _BillPageState extends State<BillPage> {
                             ),
                           if (!isPaid)
                             ElevatedButton(
-                              onPressed: () => _showPayModal(context, bill),
+                              onPressed: () =>
+                                  moBangThanhToanHoaDon(context, bill),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.primary,
                                 foregroundColor: Colors.white,

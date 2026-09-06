@@ -11,6 +11,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:flowmoney/core/bill/bill_recurrence.dart';
 import 'package:flowmoney/core/database/app_database.dart';
@@ -195,14 +196,54 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('dòng chưa trả chạm vào không mở khoản chi nào', (tester) async {
-    await dungTrang(tester, [_bill(id: 'a', paid: false)], const {});
-    await tester.tap(find.textContaining('Cần thanh toán ('));
+  testWidgets('dòng chưa trả chạm vào thì mở trang chi tiết /bills/:id',
+      (tester) async {
+    tester.view.physicalSize = const Size(411, 2000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final auth = _FixedAuthBloc(AuthSuccess(
+      user: UserModel(
+        id: '10',
+        username: 'dat',
+        name: 'Đạt',
+        email: 'dat@example.com',
+      ),
+    ));
+    addTearDown(auth.close);
+    final bloc = BillBloc(
+      repository: _FixedBillRepository([_bill(id: 'a', paid: false)], const {}),
+      now: () => now,
+    );
+    addTearDown(bloc.close);
+
+    final router = GoRouter(routes: [
+      GoRoute(path: '/', builder: (_, __) => BillPage(now: now)),
+      GoRoute(
+        path: '/bills/:id',
+        builder: (_, s) => Scaffold(
+          body: Text('chi tiết ${s.pathParameters['id']} '
+              '${(s.extra as Bill?)?.name}'),
+        ),
+      ),
+    ]);
+
+    await tester.pumpWidget(MultiBlocProvider(
+      providers: [
+        BlocProvider<AuthBloc>.value(value: auth),
+        BlocProvider<BillBloc>.value(value: bloc),
+      ],
+      child: MaterialApp.router(routerConfig: router),
+    ));
+    bloc.add(LoadBillsEvent(idaccount: 10));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Tiền điện'));
     await tester.pumpAndSettle();
 
+    expect(find.text('chi tiết a Tiền điện'), findsOneWidget,
+        reason: 'Dòng chưa trả không có khoản chi để mở; chạm vào là xem chi '
+            'tiết hoá đơn, mang theo hàng đang giữ để trang vẽ ngay.');
     expect(find.byType(TransactionDetailSheet), findsNothing);
     expect(tester.takeException(), isNull);
   });
