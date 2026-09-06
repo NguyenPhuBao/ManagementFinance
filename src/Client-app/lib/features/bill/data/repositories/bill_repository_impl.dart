@@ -60,6 +60,7 @@ class BillRepositoryImpl implements BillRepository {
     required int idaccount,
     double? amount,
     DateTime? occurredAt,
+    String? note,
   }) async {
     // UI truyền vào ảnh chụp `Bill` mà nó đang giữ; bấm nút hai lần thì lần
     // thứ hai vẫn mang isPaid = false. Trạng thái thật phải đọc lại từ CSDL.
@@ -111,7 +112,9 @@ class BillRepositoryImpl implements BillRepository {
           categoryId: Value(current.categoryId),
           amount: soTien,
           type: 'chi',
-          note: Value('$kGhiChuTraHoaDon${current.name}'),
+          // Tiền tố đứng TRƯỚC — `transactionOwnerOf` nhận diện bằng
+          // startsWith; ghi chú của lần trả (nếu có) nối sau bằng gạch dài.
+          note: Value(ghiChuTraHoaDon(current.name, note)),
           // Sợi dây để hoàn tác lần được ngược về đây. Cột CỤC BỘ (v16) —
           // tiền tố ghi chú ở trên KHÔNG đủ: người dùng gõ trùng tiền tố là
           // hoàn nhầm tiền vào ví bằng một khoản chi khác của họ.

@@ -32,7 +32,7 @@ void main() {
   /// Mở bảng qua modal thật để `Navigator.pop` bên trong có chỗ mà pop.
   Future<void> moBang(
     WidgetTester tester, {
-    required void Function(Wallet, double, DateTime) onConfirmed,
+    required void Function(Wallet, double, DateTime, String?) onConfirmed,
   }) async {
     tester.view.physicalSize = const Size(411, 900);
     tester.view.devicePixelRatio = 1.0;
@@ -63,7 +63,7 @@ void main() {
   }
 
   testWidgets('có ô ngày trả, điền sẵn hôm nay', (tester) async {
-    await moBang(tester, onConfirmed: (_, __, ___) {});
+    await moBang(tester, onConfirmed: (_, __, ___, ____) {});
 
     expect(find.byKey(const ValueKey('bill-pay-date')), findsOneWidget,
         reason: 'Trả hôm qua, hôm nay mới ghi — phải có chỗ chọn ngày.');
@@ -77,14 +77,15 @@ void main() {
       (tester) async {
     DateTime? ngayNhan;
     double? soTienNhan;
-    await moBang(tester, onConfirmed: (_, soTien, ngay) {
+    await moBang(tester, onConfirmed: (_, soTien, ngay, ___) {
       soTienNhan = soTien;
       ngayNhan = ngay;
     });
 
     await tester.tap(find.byKey(const ValueKey('bill-pay-date')));
     await tester.pumpAndSettle();
-    final picker = tester.widget<DatePickerDialog>(find.byType(DatePickerDialog));
+    final picker =
+        tester.widget<DatePickerDialog>(find.byType(DatePickerDialog));
     expect(picker.lastDate, DateTime(2026, 9, 6),
         reason: 'Khoản chi không được mang ngày chưa tới; repository sẽ ném '
             'ArgumentError, nên chặn ngay từ bộ chọn.');
@@ -103,7 +104,7 @@ void main() {
 
   testWidgets('không đổi ngày thì callback nhận hôm nay', (tester) async {
     DateTime? ngayNhan;
-    await moBang(tester, onConfirmed: (_, __, ngay) => ngayNhan = ngay);
+    await moBang(tester, onConfirmed: (_, __, ngay, ___) => ngayNhan = ngay);
 
     await tester.tap(find.text('Tiền mặt'));
     await tester.pumpAndSettle();
@@ -111,5 +112,29 @@ void main() {
     expect(ngayNhan, DateTime(2026, 9, 6),
         reason: 'Chỉ lấy phần ngày, bỏ giờ — giờ là chi tiết của lúc bấm nút, '
             'không phải của sự việc.');
+  });
+
+  testWidgets('ô ghi chú: có gõ thì callback nhận, để trống thì null',
+      (tester) async {
+    String? ghiChu = 'chưa gọi';
+    await moBang(tester, onConfirmed: (_, __, ___, note) => ghiChu = note);
+
+    expect(find.byKey(const ValueKey('bill-pay-note')), findsOneWidget,
+        reason: 'Mỗi lần trả một ghi chú riêng (số công tơ, mã giao dịch), '
+            'khác ghi chú cố định của hoá đơn.');
+    await tester.enterText(
+        find.byKey(const ValueKey('bill-pay-note')), 'Số công tơ 1234');
+    await tester.tap(find.text('Tiền mặt'));
+    await tester.pumpAndSettle();
+    expect(ghiChu, 'Số công tơ 1234');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('không gõ ghi chú thì callback nhận null', (tester) async {
+    String? ghiChu = 'chưa gọi';
+    await moBang(tester, onConfirmed: (_, __, ___, note) => ghiChu = note);
+    await tester.tap(find.text('Tiền mặt'));
+    await tester.pumpAndSettle();
+    expect(ghiChu, isNull);
   });
 }

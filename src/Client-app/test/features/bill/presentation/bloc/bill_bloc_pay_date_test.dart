@@ -10,6 +10,7 @@ import 'package:flowmoney/features/bill/presentation/bloc/bill_state.dart';
 class _GhiLaiRepository implements BillRepository {
   double? amount;
   DateTime? occurredAt;
+  String? note;
   bool daGoi = false;
 
   @override
@@ -19,10 +20,12 @@ class _GhiLaiRepository implements BillRepository {
     required int idaccount,
     double? amount,
     DateTime? occurredAt,
+    String? note,
   }) async {
     daGoi = true;
     this.amount = amount;
     this.occurredAt = occurredAt;
+    this.note = note;
   }
 
   @override
@@ -66,11 +69,13 @@ void main() {
       idaccount: 10,
       amount: 150000,
       occurredAt: DateTime(2026, 9, 4),
+      note: 'Số công tơ 1234',
     ));
     await expectLater(bloc.stream, emits(isA<BillOperationSuccess>()));
 
     expect(repo.daGoi, isTrue);
     expect(repo.amount, 150000);
+    expect(repo.note, 'Số công tơ 1234');
     expect(repo.occurredAt, DateTime(2026, 9, 4),
         reason: 'Ngày người dùng chọn trên bảng thanh toán phải thành ngày của '
             'khoản chi, không phải ngày bấm nút.');

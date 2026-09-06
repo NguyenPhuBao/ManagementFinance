@@ -34,12 +34,16 @@ class PayBillEvent extends BillEvent {
   /// Thành `date` của khoản chi — xem `BillRepository.payBill`.
   final DateTime? occurredAt;
 
+  /// Ghi chú riêng của lần trả này; `null`/rỗng = không có.
+  final String? note;
+
   PayBillEvent({
     required this.bill,
     required this.walletId,
     required this.idaccount,
     this.amount,
     this.occurredAt,
+    this.note,
   });
 }
 

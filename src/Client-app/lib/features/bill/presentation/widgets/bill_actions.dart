@@ -42,7 +42,7 @@ Future<void> moBangThanhToanHoaDon(BuildContext context, Bill bill) async {
       // Hoá đơn đã lưu sẵn ví thanh toán; luồng trả trước đây bày ra danh
       // sách không gợi ý gì nên người dùng phải tự nhớ.
       preferredWalletId: bill.walletId,
-      onConfirmed: (wallet, soTien, ngay) {
+      onConfirmed: (wallet, soTien, ngay, ghiChu) {
         context.read<BillBloc>().add(
               PayBillEvent(
                 bill: bill,
@@ -50,6 +50,7 @@ Future<void> moBangThanhToanHoaDon(BuildContext context, Bill bill) async {
                 idaccount: accountId,
                 amount: soTien,
                 occurredAt: ngay,
+                note: ghiChu,
               ),
             );
       },

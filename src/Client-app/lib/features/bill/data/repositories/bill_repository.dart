@@ -76,12 +76,17 @@ abstract class BillRepository {
   /// hạn của kỳ, nếu không ba kỳ bù dồn thành một cột ở ngày mở app trong
   /// thống kê theo ngày (cùng lý do với mục 3.14 `GOAL_FEATURE.md`). Không
   /// được ở tương lai. `updatedAt` của giao dịch vẫn là "bây giờ".
+  ///
+  /// [note] là ghi chú **của lần trả này** (số công tơ, mã giao dịch…), khác
+  /// ghi chú cố định trên hoá đơn. Được nối vào SAU tiền tố `kGhiChuTraHoaDon`
+  /// — tiền tố là thứ sổ giao dịch dùng để nhận diện khoản của hoá đơn.
   Future<void> payBill({
     required Bill bill,
     required String walletId,
     required int idaccount,
     double? amount,
     DateTime? occurredAt,
+    String? note,
   });
 
   /// Hoàn tác lần thanh toán của hoá đơn [billId].

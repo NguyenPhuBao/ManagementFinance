@@ -26,9 +26,10 @@ class BillPaymentSheet extends StatefulWidget {
   /// nên mỗi lần trả người dùng phải nhớ lại mình đã chọn ví nào lúc tạo.
   final String? preferredWalletId;
 
-  /// Gọi khi người dùng chọn ví: ví đã chọn, số tiền đã nhập và ngày trả
-  /// (chỉ phần ngày, không giờ).
-  final void Function(Wallet wallet, double amount, DateTime date) onConfirmed;
+  /// Gọi khi người dùng chọn ví: ví đã chọn, số tiền đã nhập, ngày trả (chỉ
+  /// phần ngày, không giờ) và ghi chú riêng của lần trả (`null` nếu để trống).
+  final void Function(Wallet wallet, double amount, DateTime date, String? note)
+      onConfirmed;
 
   /// "Hôm nay" cho phép tiêm — mặc định của ô ngày và trần của bộ chọn.
   final DateTime? today;
@@ -48,6 +49,7 @@ class BillPaymentSheet extends StatefulWidget {
 
 class _BillPaymentSheetState extends State<BillPaymentSheet> {
   late final TextEditingController _soTien;
+  final _ghiChu = TextEditingController();
   late DateTime _homNay;
   late DateTime _ngay;
   String? _loi;
@@ -81,6 +83,7 @@ class _BillPaymentSheetState extends State<BillPaymentSheet> {
   @override
   void dispose() {
     _soTien.dispose();
+    _ghiChu.dispose();
     super.dispose();
   }
 
@@ -102,7 +105,8 @@ class _BillPaymentSheetState extends State<BillPaymentSheet> {
       return;
     }
     Navigator.pop(context);
-    widget.onConfirmed(wallet, soTien, _ngay);
+    final ghiChu = _ghiChu.text.trim();
+    widget.onConfirmed(wallet, soTien, _ngay, ghiChu.isEmpty ? null : ghiChu);
   }
 
   @override
@@ -182,6 +186,27 @@ class _BillPaymentSheetState extends State<BillPaymentSheet> {
                 _dinhDangNgay.format(_ngay),
                 style: const TextStyle(fontSize: 15),
               ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'Ghi chú lần trả này (không bắt buộc)',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          TextField(
+            key: const ValueKey('bill-pay-note'),
+            controller: _ghiChu,
+            textInputAction: TextInputAction.done,
+            style: const TextStyle(fontSize: 15),
+            decoration: const InputDecoration(
+              isDense: true,
+              hintText: 'Số công tơ, mã giao dịch…',
+              border: OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 20),

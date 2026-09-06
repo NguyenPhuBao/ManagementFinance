@@ -122,6 +122,7 @@ class BillBloc extends Bloc<BillEvent, BillState> {
         idaccount: event.idaccount,
         amount: event.amount,
         occurredAt: event.occurredAt,
+        note: event.note,
       );
       emit(BillOperationSuccess('Thanh toán hóa đơn thành công'));
     } on BillAlreadyPaidException {
