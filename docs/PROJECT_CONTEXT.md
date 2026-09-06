@@ -517,6 +517,18 @@ src/Backend/
 
 **Giải pháp**: khoản chuyển có `categoryId = null` + `walletTransfer` = ví đích (cùng quy ước với Goal); `_collectPendingOps` **không** hoãn khoản chuyển vì danh mục (giải kẹt cả hàng cũ mang `'cat_transfer'`); `TransactionRepositoryImpl` đọc ví đích từ entity ở cả thêm lẫn xoá. Test canh: `test/features/transaction/presentation/add_transaction_page_test.dart`, `test/transaction_repository_test.dart`, và ca "transfer mang categoryId không phân giải được vẫn được đẩy" trong `sync_payload_contract_test.dart`.
 
+### 11.12 Mốc `Update_at` ở tương lai, và lỗi múi giờ do chính cách sửa tay
+**Lỗi gốc** (phát hiện 2026-09-05, commit `a677c0f`): 15 hàng của tài khoản 10 trên PostgreSQL (2 ví, 10 giao dịch, 1 mục tiêu, 2 hoá đơn) mang `Update_at` ở **tương lai**, xa nhất 10/11/2026. `_newestUpdateAt()` lấy `update_at` **lớn nhất** trong payload làm mốc pull, mốc chỉ tiến không lùi, nên một hàng hỏng là đủ đẩy mốc vọt lên; backend lọc `update_at > since` trả rỗng → máy ấy **không nhận dữ liệu mới nào trong hai tháng, hoàn toàn im lặng**. Đã chữa ở client **hai đầu** với ngữ nghĩa khác nhau có chủ ý: đường **ghi** *kẹp* mốc về hiện tại (vừa nhận xong, không có khoảng nào bị bỏ lỡ), đường **đọc** *vứt* mốc tương lai và full pull (mốc hỏng che đúng khoảng đã bỏ lỡ, kẹp là mất). Gộp hai hàm là hỏng một trong hai. Test: `test/core/sync/sync_checkpoint_test.dart`.
+
+**Lỗi thứ hai, do cách sửa dữ liệu**: 15 hàng ấy được kẹp về `NOW()` bằng SQL thô trong một phiên PostgreSQL có `TimeZone = Asia/Bangkok`. Cột `Update_at` là timestamp **không múi giờ**, nên nhận **giờ địa phương** (`22:23:04` ngày 05/09), trong khi Prisma ghi/đọc cột ấy như **UTC**. Hệ quả: 13 hàng "mới hơn" mọi thay đổi của client **~7 giờ**; backend LWW so `new Date(mapped.update_at) > existing.update_at` → từ chối mọi **cập nhật** ví/mục tiêu/hoá đơn/giao dịch của tài khoản 10 (conflict, G9 "server thắng"), lần pull kế tiếp ghi đè lại giá trị cũ lên máy, **phần chênh lệch mất luôn** (ví dụ số dư ví sau khi người dùng xoá giao dịch). Chỉ *cập nhật* bị ảnh hưởng; tạo mới và xoá mềm vẫn đi vì không so mốc. Người dùng chọn **chờ** tới khi UTC thật vượt `22:23:04Z` (05:23 sáng 06/09 giờ VN) thay vì chạy thêm một lệnh `UPDATE`.
+
+**Đã kiểm 09:44 ngày 06/09** (Prisma, chỉ đọc): cả bốn bảng `wallet`, `transaction`, `goal`, `bill` trả **0 hàng** `"Idaccount" = 10 AND "Update_at" > (NOW() AT TIME ZONE 'UTC')` → lỗi đã tự hết. Số dư hai ví Tiết kiệm/Tiền mặt của tài khoản 10 vẫn là giá trị **trước** các lần xoá bị vứt (2.100.000 / 6.800.081), chưa chỉnh.
+
+**Ba quy tắc rút ra khi đụng PostgreSQL bằng tay:**
+- Sửa cột timestamp không múi giờ thì ghi `NOW() AT TIME ZONE 'UTC'`, **không** ghi `NOW()`.
+- `WHERE "Update_at" > NOW()` trả **0 hàng** kể cả khi có hàng tương lai, vì PostgreSQL đổi cột không tz theo múi giờ **phiên** trước khi so — phải so với `NOW() AT TIME ZONE 'UTC'`.
+- Trước khi tin bất kỳ phép so mốc nào: `SELECT current_setting('TimeZone'), NOW(), NOW() AT TIME ZONE 'UTC'`.
+
 ---
 
 ## 12. Quy tắc phát triển (bắt buộc tuân theo)
@@ -548,7 +560,7 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-04)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-06)
 
 ### 🔐 Xác thực phiên đăng nhập
 
@@ -596,7 +608,12 @@ src/Backend/
 - **Sổ giao dịch chặn vuốt xoá khoản của mục tiêu và hoá đơn** (2026-09-06) — nguyên tắc: chỉ xoá được ở sổ khi giao dịch là nguồn sự thật duy nhất của hệ quả nó gây ra; khoản nạp/rút mục tiêu còn `current_amount`, khoản trả hoá đơn còn cờ Payed + kỳ kế tiếp, xoá rời chỉ hoàn ví (đã thấy tiến độ MuaXe đứng nguyên sau khi xoá hai khoản nạp). Nhận diện ở `features/transaction/domain/transaction_owner.dart` (`goalId` cục bộ, hoặc tiền tố ghi chú vì hàng kéo từ server không có `goalId`; kể cả dạng cũ "Tích lũy nhận từ …"); hàng tách thành `TransactionListRow` với `confirmDismiss` + SnackBar chỉ đường. Hoá đơn chưa có luồng hoàn tác thanh toán — muốn cho xoá thì phải làm luồng ấy trước
 - **Sổ giao dịch hiện danh mục + tên ví** (2026-09-06) — theo bố cục Stitch màn Home: tiêu đề = ghi chú (không có thì tên danh mục), dòng phụ "Danh mục • Ví" hoặc "Ví nguồn → Ví đích" với khoản chuyển, icon/màu của danh mục. Trước đó dòng phụ in thẳng UUID ví và không có danh mục ở đâu. Nội dung dòng tính ở hàm thuần `buildTransactionRowContent()` (`transaction_row_content.dart`), tên tra qua `TransactionLookup` dựng từ `walletDao.watchAll` + `categoryDao.watchAll`. **Phát hiện kèm:** seed backend lưu tên icon ngữ nghĩa (`food`, `bill`, `lend`…) còn ba mapper client chỉ hiểu tên Material → danh mục mặc định kéo về toàn rơi về icon mặc định; nay gom về **một** mapper `core/category/category_visuals.dart` hiểu cả hai bộ tên, `budget_visuals` và `category_page` uỷ quyền về đó (`category_add_page` còn bản riêng cho bộ chọn icon, chưa gộp)
 - **Sổ giao dịch: chi tiết + sửa + lọc/tìm** (2026-09-06). Bấm dòng → `TransactionDetailSheet` (đọc đủ; Sửa/Xoá chỉ với giao dịch thường, khoản mục tiêu/hoá đơn chỉ đọc theo cùng quy tắc `transactionOwnerOf`). Sửa dùng lại `AddTransactionPage` với `initial: EditTransactionArgs` qua `extra` của route `/add` (cùng `id`, `UpdateTransactionEvent`); `TransactionRepositoryImpl.updateTransaction` = hoàn trọn hệ quả cũ rồi áp trọn hệ quả mới lên ví (một đường `_applyBalances(sign)` dùng chung cho thêm/xoá/sửa), ghi đè hàng và đặt lại `pending` + `updatedAt` (LWW server). Lọc: `TransactionFilter` + `applyTransactionFilter` thuần Dart trên danh sách tháng của bloc (loại, ví — khoản chuyển khớp cả nguồn lẫn đích —, danh mục, tìm ghi chú bỏ dấu); `TransactionFilterBar` chỉ phát filter, trang giữ trạng thái; thẻ tổng tính trên tập đã lọc. Trang chủ "Giao dịch gần đây" dùng chung `buildTransactionRowContent`
-- **Test: 335/335 pass** (~15 giây), 39 file — cả 39 file đều đã được git theo dõi
+- **Ngân sách: nhịp chi, trang chi tiết riêng, lịch sử sáu kỳ** (2026-09-06, `0467ffd`). Thẻ trong danh sách thêm dòng "Nên chi X/ngày · còn N ngày" (`domain/budget_pace.dart`: ngày còn lại làm tròn **lên**, tối thiểu 1 khi còn trong kỳ; nhịp chi so với thời gian đã trôi, biên ±5 điểm phần trăm; mọi mốc lấy từ `currentPeriod` nên tháng ngắn và năm nhuận đúng theo). Trang **`/budget/detail/:id`** thay bottom sheet cũ: nhịp chi, sáu cột lịch sử (`domain/budget_history.dart` — `recentPeriods` đi lại đúng phép cắt của `currentPeriod`, kỳ cuối trùng kỳ hiện tại, các kỳ liền nhau không hở), và các khoản chi của kỳ dùng lại `buildTransactionRowContent` + `TransactionDetailSheet` của sổ (Sửa/Xoá đi qua `TransactionBloc`, **không** có đường xoá thứ hai). Đường dẫn là `/budget/detail/` chứ không phải `/budget/:id` vì `/budget/rules` sẽ bị tham số nuốt; đặt **ngoài** shell như trang cấu hình. Kèm sửa lỗi biên: `getExpenses` cắt `date < to` (biên **mở**) dù DAO lấy `<= to`, vì bộ chọn ngày trả 00:00 và khoản ghi ngày đầu kỳ sau từng bị đếm vào cả kỳ trước — đừng "tối ưu" bằng cách gọi DAO trực tiếp
+- **Thẻ ngân sách trang chủ đọc dữ liệu thật** (2026-09-06, `13bbd9f`) — trước là placeholder cứng "Ăn uống · Chưa thiết lập". Theo Stitch màn Home: **một** ngân sách, đã dùng / hạn mức, phần trăm, thanh bốn màu, dòng nên chi/ngày. `pickHomeBudget` (hàm thuần, test riêng) chọn ngân sách **đang chạy** có **tỉ lệ** đã chi cao nhất — so tỉ lệ chứ không so số tiền, và bỏ qua ngân sách hết hạn. Bấm thẻ `go('/budget')` vì cùng shell. `home_budget_card_test.dart` là test **đầu tiên** của feature `home`, dựng ở 411dp và bắt tràn bằng `takeException`
+- **Lựa chọn "Chặn" (`OverSpending = Stop`) có tác dụng thật** (2026-09-06, `91bde24`) — tồn tại trên form từ 03/09 nhưng không nơi nào đọc. Người dùng chốt: "Chặn" = **hỏi xác nhận** trước khi ghi khoản làm vượt, **không bao giờ từ chối ghi** (tiền đã tiêu thật, không ghi thì ví lệch); "Cảnh báo" = ghi luôn rồi báo. `domain/budget_impact.dart` là nơi **duy nhất** đọc `OverSpending`; ở chế độ sửa trừ số cũ ra trước, không thì báo vượt oan; khoản ngoài kỳ hiện tại không tính. `_saveTransaction` của form thêm giao dịch nay **async** (tra `budgetLookup` tiêm được, DI chưa có hoặc tra hỏng thì vẫn ghi) — widget test phải `pumpAndSettle`. Hộp thoại xác nhận nêu số vượt; snackbar sau lưu **không có con số** (banner tối giản)
+- **Gợi ý hạn mức từ ba tháng trước** (2026-09-06, `f746a32`) — form hiện "3 tháng gần nhất bạn chi trung bình X" dưới ô hạn mức sau khi chọn danh mục, nút "Dùng số này" điền số thô. `BudgetRepository.suggestAmount`: trung bình ba tháng dương lịch **trước** tháng hiện tại, làm tròn lên bội 10.000, `null` khi không có khoản chi nào — và `null` thì **không hiện gì** vì "trung bình 0 ₫" tệ hơn không gợi ý. Form nhận `suggestFor` là callback (form không đọc cubit), có số thứ tự `_generation` chống hai lần tra chồng nhau; `BudgetCubit.suggestAmount` không đổi state để lỗi nhỏ không thay cả trang bằng `BudgetError`
+- **Hai giới hạn có chủ ý của đợt ngân sách 06/09:** (1) **Lịch sử kỳ dùng hạn mức HIỆN TẠI cho cả kỳ cũ** (`BudgetPeriodSummary.amount`) — không có nơi nào lưu hạn mức cũ, muốn đúng phải có bảng lịch sử hạn mức ở backend; đổi hạn mức là các cột cũ đổi vạch theo. (2) **Stitch chưa có** màn chi tiết ngân sách, và màn Home lẫn màn danh sách cũng chưa vẽ dòng "nên chi/ngày" — người dùng chọn làm theo design system trước, vẽ Stitch sau; không tạo màn Stitch bằng MCP
+- **Test: 1049/1049 pass** (~30 giây), 97 file — cả 97 file đều đã được git theo dõi (kiểm 2026-09-06)
 
 ### 🔄 Việc còn dang dở
 
@@ -687,10 +704,23 @@ Phần backend (mã lỗi ổn định, vai trò lớp phòng thủ thứ hai) �
 Cập nhật ngày 2026-09-04, sau khi gộp `origin/main` và rà soát mô-đun
 OCR/Classify. Thứ tự đề nghị, việc rẻ nhất trước:
 
-1. **Chưa chạy app thật để xem giao diện ngân sách sau ba vòng sửa cuối** (bỏ ô
-   chốt sổ → thêm "Ngày cụ thể" → ngày kết thúc chỉ đọc). Bản build trong
-   `build/web` là **bản cũ**, chụp trước khi thêm "Ngày cụ thể". Dùng skill
-   `chay-app`.
+1. ~~Chưa chạy app thật để xem giao diện ngân sách~~ → **Đã xem trên máy ảo
+   Android 2026-09-06** (bản `f746a32`, tài khoản 10): thẻ trang chủ, dòng
+   nhịp chi ở danh sách, trang `/budget/detail/:id`, bảng chi tiết giao dịch
+   mở từ đó, và hộp thoại "Vượt ngân sách" (số vượt khớp tay) — không tràn,
+   không màn đỏ. **Chưa thấy được** dòng gợi ý hạn mức trên máy ảo vì tài
+   khoản ấy không có khoản chi nào trước tháng 9 (gợi ý `null` thì ẩn, đúng
+   thiết kế) — chỉ có widget test canh.
+
+   **Lỗi có sẵn lộ ra khi kiểm:** ngân sách nào mang
+   `threshold_warning_percent = 0` thì **không sửa được nữa** — form điền "0"
+   vào ô phần trăm rồi tự từ chối vì đòi 1–100. Số 0 đến từ backend:
+   `schema.prisma` đặt `@default(0)` cho `Threshold_Warning_Percent`, đường
+   *tạo* để trống là server ghi 0, pull về thành 0 (đường *sửa* gửi `null`
+   thì server giữ `null`, nên chỉ ngân sách tạo mới rồi chưa sửa lần nào mới
+   dính). `BudgetEntity.warningRatio` đã coi `≤ 0` là "không đặt" nên logic
+   cảnh báo không sai, chỉ form kẹt. Sửa rẻ ở client: khi đổ dữ liệu vào form
+   coi `0` như trống (`budget_form.dart` ~dòng 125). Chưa sửa, chưa có test.
 2. **Một dòng ở `_classifyFailure`, nhưng phải chờ backend trả mã lỗi ổn định.**
    `_classifyFailure` (`lib/core/sync/sync_engine.dart:1423`) hiện chỉ có nhánh
    cho `accountNotFoundCode`, khoá ngoại, `Ownership mismatch` và ràng buộc
