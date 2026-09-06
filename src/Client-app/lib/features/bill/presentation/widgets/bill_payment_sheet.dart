@@ -4,6 +4,8 @@ import '../../../../core/bill/bill_recurrence.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../domain/bill_status.dart';
+import 'bill_status_visuals.dart';
 
 /// Bảng thanh toán hoá đơn: **thông tin hoá đơn** ở trên, ba ô nhập (số tiền
 /// thật của kỳ, ngày trả, ghi chú lần trả), ví trả, và dưới cùng một nút
@@ -245,14 +247,17 @@ class _BillPaymentSheetState extends State<BillPaymentSheet> {
         ),
       );
 
-  /// Hoá đơn nào, hạn nào, chu kỳ gì, danh mục gì — để người dùng thấy ngay
-  /// mình đang trả cái gì mà không phải nhớ từ danh sách.
+  /// Khối thông tin hoá đơn — đủ như trang chi tiết (người dùng yêu cầu
+  /// 06/09: "hiện khá ít, muốn nhiều hơn"): trạng thái, đến hạn kèm còn/quá
+  /// bao nhiêu ngày, khoảng kỳ, chu kỳ, danh mục, ví của hoá đơn, nhắc
+  /// trước, tự động trả, ghi chú cố định của hoá đơn (khác ghi chú lần trả).
   Widget _khoiThongTin(Bill b) {
-    final phu = [
-      'Hạn ${_dinhDangNgay.format(b.dueDate)}',
-      if (b.isRecurrence) tenChuKyHoaDon(b.timeRecurrence),
-      if (widget.categoryName != null) widget.categoryName!,
-    ].join(' • ');
+    final status = billDisplayStatusOf(b, _homNay);
+    final nhac = b.timeNotification;
+    String tenVi = 'Ví đã xoá';
+    for (final w in widget.wallets) {
+      if (w.id == b.walletId) tenVi = w.name;
+    }
     return Container(
       key: const ValueKey('bill-pay-info'),
       padding: const EdgeInsets.all(12),
@@ -260,51 +265,125 @@ class _BillPaymentSheetState extends State<BillPaymentSheet> {
         color: AppColors.surfaceContainerLow,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
-            radius: 20,
-            backgroundColor: AppColors.primary.withValues(alpha: 0.08),
-            child: const Icon(Icons.receipt_long_outlined,
-                color: AppColors.primary, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  b.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primary),
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: AppColors.primary.withValues(alpha: 0.08),
+                child: const Icon(Icons.receipt_long_outlined,
+                    color: AppColors.primary, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      b.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: mauNenTrangThaiHoaDon(status),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        nhanTrangThaiHoaDon(status),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
+                          color: mauChuTrangThaiHoaDon(status),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  phu,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      fontSize: 12, color: AppColors.textSecondary),
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                _tien.format(b.amount),
+                style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          Text(
-            _tien.format(b.amount),
-            style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: AppColors.primary),
-          ),
+          const SizedBox(height: 10),
+          const Divider(height: 1),
+          const SizedBox(height: 6),
+          _dongThongTin('Đến hạn', _denHan(b.dueDate)),
+          // Hàng kéo về từ server có thể thiếu ngày bắt đầu — bỏ hàng này.
+          if (b.startDate != null)
+            _dongThongTin(
+                'Kỳ',
+                '${_dinhDangNgay.format(b.startDate!)} → '
+                    '${_dinhDangNgay.format(b.dueDate)}'),
+          _dongThongTin('Chu kỳ',
+              b.isRecurrence ? tenChuKyHoaDon(b.timeRecurrence) : 'Không lặp'),
+          _dongThongTin(
+              'Danh mục',
+              b.categoryId == null
+                  ? 'Chưa có danh mục'
+                  : (widget.categoryName ?? 'Danh mục đã xoá')),
+          _dongThongTin('Ví của hoá đơn', tenVi),
+          _dongThongTin('Nhắc trước',
+              (nhac == null || nhac.isEmpty) ? 'Không nhắc' : '$nhac ngày'),
+          _dongThongTin('Tự động trả', b.autoPayEnabled ? 'Bật' : 'Tắt'),
+          if (b.note.trim().isNotEmpty) _dongThongTin('Ghi chú', b.note.trim()),
         ],
       ),
     );
   }
+
+  /// "dd/MM/yyyy (còn N ngày)" / "(hôm nay)" / "(quá hạn N ngày)". So theo
+  /// NGÀY chứ không theo giờ: hạn 23h hôm nay vẫn là hôm nay.
+  String _denHan(DateTime due) {
+    final ngayHan = DateTime(due.year, due.month, due.day);
+    final chenh = ngayHan.difference(_homNay).inDays;
+    final phu = chenh == 0
+        ? 'hôm nay'
+        : chenh > 0
+            ? 'còn $chenh ngày'
+            : 'quá hạn ${-chenh} ngày';
+    return '${_dinhDangNgay.format(due)} ($phu)';
+  }
+
+  Widget _dongThongTin(String nhan, String giaTri) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 104,
+              child: Text(nhan,
+                  style: const TextStyle(
+                      fontSize: 12, color: AppColors.textSecondary)),
+            ),
+            Expanded(
+              child: Text(
+                giaTri,
+                style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.primary),
+              ),
+            ),
+          ],
+        ),
+      );
 
   Widget _dongVi(Wallet vi) {
     final laViCuaHoaDon = vi.id == widget.bill.walletId;

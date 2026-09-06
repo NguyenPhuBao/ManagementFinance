@@ -29,25 +29,32 @@ void main() {
         updatedAt: DateTime(2026, 9, 1),
       );
 
-  Bill hoaDon({String walletId = 'w1'}) => Bill(
+  Bill hoaDon({
+    String walletId = 'w1',
+    DateTime? dueDate,
+    String note = '',
+    bool tuTra = false,
+  }) =>
+      Bill(
         id: 'a',
         idaccount: 10,
         walletId: walletId,
         categoryId: 'c1',
         name: 'Tiền điện',
         amount: 200000,
-        startDate: DateTime(2026, 8, 8),
-        dueDate: DateTime(2026, 9, 8),
+        startDate: (dueDate ?? DateTime(2026, 9, 8))
+            .subtract(const Duration(days: 31)),
+        dueDate: dueDate ?? DateTime(2026, 9, 8),
         payStatus: 'Pending',
         isPaid: false,
-        autoPayEnabled: false,
+        autoPayEnabled: tuTra,
         timeNotification: '3',
         isRecurrence: true,
         timeRecurrence: kBillCycleMonth,
         recurrence: 'monthly',
         icon: 'receipt',
         colour: '#4CAF50',
-        note: '',
+        note: note,
         isDeleted: false,
         syncStatus: 'synced',
         syncRetryCount: 0,
@@ -96,9 +103,21 @@ void main() {
     expect(find.byKey(const ValueKey('bill-pay-info')), findsOneWidget);
     expect(find.text('Tiền điện'), findsOneWidget,
         reason: 'Bấm Thanh toán là phải thấy ngay mình đang trả hoá đơn nào.');
-    expect(find.textContaining('Hạn 08/09/2026'), findsOneWidget);
-    expect(find.textContaining('Hàng tháng'), findsOneWidget);
-    expect(find.textContaining('Điện nước'), findsOneWidget);
+    // Người dùng muốn thấy NHIỀU hơn tên + hạn: đủ như trang chi tiết.
+    expect(find.text('SẮP ĐẾN HẠN'), findsOneWidget,
+        reason: 'Cùng bốn nhãn trạng thái với danh sách.');
+    expect(find.text('08/09/2026 (còn 2 ngày)'), findsOneWidget,
+        reason: 'Đến hạn kèm còn bao nhiêu ngày, tính từ `today` tiêm vào.');
+    expect(find.text('08/08/2026 → 08/09/2026'), findsOneWidget,
+        reason: 'Khoảng kỳ tính tiền, từ startDate tới dueDate.');
+    expect(find.text('Hàng tháng'), findsOneWidget);
+    expect(find.text('Điện nước'), findsOneWidget);
+    expect(find.text('Tiền mặt'), findsOneWidget,
+        reason: 'Ví của hoá đơn, tra tên từ danh sách ví.');
+    expect(find.text('3 ngày'), findsOneWidget, reason: 'Nhắc trước.');
+    expect(find.text('Tắt'), findsOneWidget, reason: 'Tự động trả.');
+    expect(find.text('Ghi chú'), findsNothing,
+        reason: 'Hoá đơn không có ghi chú thì không bày hàng trống.');
     expect(find.text('Thanh toán bằng Tiền mặt'), findsOneWidget,
         reason: 'Ví mặc định là ví đã gắn với hoá đơn — một nút, không phải '
             'một danh sách phải chọn.');
@@ -214,5 +233,35 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('bill-pay-confirm')));
     await tester.pumpAndSettle();
     expect(ghiChu, 'Số công tơ 1234');
+  });
+
+  testWidgets('quá hạn, có ghi chú, bật tự trả → khối thông tin nói đủ',
+      (tester) async {
+    await moBang(
+      tester,
+      bill: hoaDon(
+        dueDate: DateTime(2026, 9, 3),
+        note: 'Số công tơ tháng trước 1200',
+        tuTra: true,
+      ),
+      onConfirmed: (_, __, ___, ____) {},
+    );
+    expect(find.text('QUÁ HẠN'), findsOneWidget);
+    expect(find.text('03/09/2026 (quá hạn 3 ngày)'), findsOneWidget);
+    expect(find.text('Số công tơ tháng trước 1200'), findsOneWidget,
+        reason: 'Ghi chú cố định của hoá đơn khác ghi chú của lần trả.');
+    expect(find.text('Bật'), findsOneWidget);
+    expect(tester.takeException(), isNull, reason: 'Không tràn ở 411dp.');
+  });
+
+  testWidgets('đến hạn hôm nay → "(hôm nay)"', (tester) async {
+    await moBang(
+      tester,
+      bill: hoaDon(dueDate: DateTime(2026, 9, 6, 23)),
+      onConfirmed: (_, __, ___, ____) {},
+    );
+    expect(find.text('06/09/2026 (hôm nay)'), findsOneWidget,
+        reason:
+            'So theo NGÀY, không theo giờ: hạn 23h hôm nay vẫn là hôm nay.');
   });
 }
