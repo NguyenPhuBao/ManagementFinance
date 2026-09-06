@@ -493,10 +493,32 @@ Trạng thái hiện tại (đã chạy thật, không phải đếm tay): `flut
 >
 > **Nhưng luật ignore vẫn còn nguyên.** Mọi file test tạo MỚI từ nay vẫn sẽ bị chặn âm thầm. Cần quyết định: đây là quy ước có chủ đích (thì phải nhớ `git add -f` mỗi lần), hay luật đặt quá rộng (thì nên đổi `test/` thành đường dẫn cụ thể hơn, ví dụ `/Test/` cho thư mục script test cục bộ ở gốc repo).
 
+### G23 — Tám việc thông báo làm được ngay ở client · ▶️ CHƯA LÀM (2026-09-06)
+
+Không phải "hoãn có chủ ý" — là **việc còn lại đã xếp thứ tự, làm được ngay**.
+Danh sách đầy đủ kèm ghi chú kỹ thuật cho từng việc nằm ở **mục 9b
+`docs/NOTIFICATION_FEATURE.md`**; ở đây chỉ ghi lối vào và hai điều dễ hiểu sai:
+
+- **Phần lớn KHÔNG chờ backend.** Bảng `AppNotifications` là cục bộ và không
+  nằm trong `SyncEntityType`, nên tổng kết tuần, nhắc ghi chép hằng ngày, ngưỡng
+  ngân sách chỉnh được, cảnh báo số dư thấp, nút hành động, badge, phân trang
+  danh sách — tất cả đều thuần client. Đúng **hai** việc chờ backend: cảnh báo
+  giao dịch ngân hàng/OCR (kênh Socket.io chưa xác thực, `io.emit` toàn cục) và
+  thông báo bảo mật.
+- **Ngưỡng cảnh báo ngân sách đã có cột ở cả sáu chặng đồng bộ**
+  (`threshold_warning_amount` / `threshold_warning_percent`, kiểm 2026-09-06) —
+  chỉ thiếu giao diện để người dùng đặt. Đừng viết lại tài liệu xin backend.
+
+⚠️ Việc số 2 (nhắc ghi chép hằng ngày) **khác bản chất mười ba loại hiện có**:
+nó suy từ việc *không có* dữ liệu, trong khi `buildNotificationCandidates` nhận
+trạng thái *đang có*. Nó cần một đầu vào mới, không phải thêm một luật.
+
+---
+
 ### Vùng chưa có test nào
 
 - ~~`lib/core/api/interceptors/auth_interceptor.dart`~~ — nay đã có `test/core/api/auth_interceptor_test.dart` (3 test, phiên 2026-09-03).
-- 4 feature không có test và cũng không được import từ test: **analytics**, **home**, **profile**, **ai_chat**. (**budget** đã có 34 test từ 2026-09-03.)
+- 3 feature không có test và cũng không được import từ test: **analytics**, **profile**, **ai_chat**. (**budget** đã có 34 test từ 2026-09-03; **home** có `home_budget_card_test.dart` từ 2026-09-06; **notification** có 8 tệp test.)
 
 ---
 

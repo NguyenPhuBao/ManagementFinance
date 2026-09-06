@@ -68,7 +68,7 @@
 ## Lệnh hay dùng
 
 ```bash
-# Test (chạy từ src/Client-app) — hiện 1216/1216 pass, ~70 giây
+# Test (chạy từ src/Client-app) — hiện 1277/1277 pass, ~85 giây
 flutter test
 flutter analyze          # mức nền: 25 issue, KHÔNG có error
 
@@ -127,7 +127,7 @@ bàn giao tạm giữa các phiên nên chết đi sống lại nhiều lần �
 
 Bộ test là lưới an toàn chính của dự án này — nhiều lỗi trong quá khứ hỏng **âm thầm** (không exception, không log). Khi sửa lỗi, viết test tái hiện **trước**, và ghi rõ trong `reason:` của assertion là nó canh chừng điều gì.
 
-Vùng chưa có test nào: các feature `analytics`, `home`, `profile`, `ai_chat`. (`notification` có test từ 2026-09-04.) (`auth_interceptor.dart` có test từ 2026-09-03; `budget` có test từ 2026-09-03.)
+Vùng chưa có test nào: các feature `analytics`, `profile`, `ai_chat`. (`notification` có 8 tệp test; `home` có test từ 2026-09-06.) (`auth_interceptor.dart` có test từ 2026-09-03; `budget` có test từ 2026-09-03.)
 
 ### ⚠️ Ba loại lỗi mà `flutter test` KHÔNG bắt được
 
