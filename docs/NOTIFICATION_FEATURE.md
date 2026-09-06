@@ -857,41 +857,6 @@ trong trung tâm thông báo là lịch sử và gộp theo ngày.
 
 ---
 
-## 9b. Việc còn lại — xếp theo thứ tự nên làm (chốt 2026-09-06)
-
-Bảng thông báo là **cục bộ**, nên gần như mọi việc dưới đây làm được ngay ở
-client. Chỉ hai mục cuối thật sự chờ backend.
-
-### Làm được ngay, không cần backend
-
-| # | Việc | Vì sao đứng ở đây | Ghi chú kỹ thuật |
-|---|---|---|---|
-| 1 | **Tổng kết tuần** | Loại thông báo mà Monarch và Capital One đều có, app thiếu hẳn. Giá trị cao nhất trong danh sách | Thêm một `NotificationKind`, một luật thuần, khoá chống trùng theo **tuần** (`yyyy-Www`). Dữ liệu đã nằm đủ trong SQLite. Cần bàn **câu chữ** trước: nói gì trong một dòng mà không thành bảng số liệu |
-| 2 | **Nhắc ghi chép hằng ngày** | MISA có; loại nhắc giữ chân người dùng tốt nhất | ⚠️ **Khác bản chất mười ba loại hiện có**: nó suy từ việc **không có** dữ liệu, chứ không từ dữ liệu. `buildNotificationCandidates` hiện nhận trạng thái *đang có*; cần một đầu vào mới kiểu "ngày giao dịch gần nhất". Đi qua `ReminderScheduler` vì nó phải nổ khi app đóng |
-| 3 | **Ngưỡng cảnh báo ngân sách chỉnh được** | Rocket Money cho chỉnh; app đang **cứng** 70/90% | ✅ **Cột đã sẵn sàng ở cả sáu chặng**: `thresholdWarningAmount` / `thresholdWarningPercent` có trong entity, payload đẩy (`sync_engine.dart:1111`), nhánh kéo về (`:697`), hợp đồng tên trường, và backend ghi thật (`sync.repository.js:318`). **Chỉ thiếu giao diện để đặt.** `isNearLimit` đã ưu tiên ngưỡng theo số tiền hơn ngưỡng phần trăm |
-| 4 | **Cảnh báo số dư ví thấp** | Hiện chỉ báo khi ví **âm** — tức là đã muộn | Ngưỡng lưu trong `NotificationPrefs` (cục bộ). Khoá chống trùng theo ngày như `walletNeg` |
-| 5 | **Nút hành động trên thông báo** (*Đã trả* / *Hoãn*) | Cả hai nền tảng đều hỗ trợ | `flutter_local_notifications` có `actions`; cần `onDidReceiveBackgroundNotificationResponse` (isolate nền) — đọc bẫy 7.7 trước, đây là chỗ dễ để import lọt ra ngoài `os_notifier_native.dart` |
-| 6 | **Badge số trên icon app** | Chuông trong app đã đếm đúng, ngoài app thì không | `DarwinNotificationDetails(badgeNumber:)`; Android tuỳ launcher |
-| 7 | **Trung tâm thông báo: phân trang, lọc, đánh dấu chưa đọc** | `watchFeed` giới hạn **cứng 50 hàng** trong khi dữ liệu giữ 90 ngày — thông báo thứ 51 không xem lại được | Bảng cục bộ, một mình client quyết. ⚠️ Đọc **bẫy 7.10** trước khi viết widget test cho trang này |
-| 8 | **Thông báo trên web** | Hiện là no-op có chủ ý | Cần Service Worker + luồng xin quyền riêng của trình duyệt. Ưu tiên thấp: web chỉ dùng để trình bày |
-
-### Chờ backend
-
-| Việc | Chặn ở đâu |
-|---|---|
-| **Cảnh báo giao dịch ngân hàng (Casso) và OCR** | Backend *đã* phát ba sự kiện qua Socket.io, nhưng handshake **không xác thực** và mỗi sự kiện còn `io.emit` **toàn cục** — nối vào lúc này là nối vào một lỗ rò dữ liệu. Xem `docs/superpowers/backend/CAN-LAM/2026-09-04-ocr-classify-review.md` |
-| **Thông báo bảo mật** (đăng nhập từ thiết bị lạ) | Chỉ server biết chuyện này |
-
-### Đã xong nhưng chưa nhìn tận mắt
-
-`khoaNhom` của app **chưa được xác minh trực quan**: hai lịch nhắc thử nghiệm
-mang bộ chi tiết cũ (xem cảnh báo ở mục 5c), còn Android 16 thì tự gộp giúp nên
-không tách bạch được bằng mắt. Bằng chứng hiện có dừng ở tầng `MethodChannel`.
-Muốn kiểm thật thì cần một thông báo **mới** do bản hiện tại đăng — dễ nhất là
-sau một lần đăng xuất (`cancelAll()`) rồi đăng nhập lại.
-
----
-
 ## 10. Commit đã tạo trong phiên 2026-09-04
 
 Lát 1–3 và phần hoá đơn:
