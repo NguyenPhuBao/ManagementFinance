@@ -27,9 +27,18 @@ class PayBillEvent extends BillEvent {
   final String walletId;
   final int idaccount;
 
+  /// Số tiền thật của kỳ này; `null` = dùng số đã lưu trên hoá đơn.
+  final double? amount;
+
   PayBillEvent({
     required this.bill,
     required this.walletId,
     required this.idaccount,
+    this.amount,
   });
+}
+
+class UndoPaymentEvent extends BillEvent {
+  final String billId;
+  UndoPaymentEvent({required this.billId});
 }

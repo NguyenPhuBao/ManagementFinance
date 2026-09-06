@@ -20,6 +20,7 @@ class BillBloc extends Bloc<BillEvent, BillState> {
     on<EditBillEvent>(_onEditBill);
     on<DeleteBillEvent>(_onDeleteBill);
     on<PayBillEvent>(_onPayBill);
+    on<UndoPaymentEvent>(_onUndoPayment);
   }
 
   Future<void> _onLoadBills(
@@ -85,14 +86,37 @@ class BillBloc extends Bloc<BillEvent, BillState> {
         bill: event.bill,
         walletId: event.walletId,
         idaccount: event.idaccount,
+        amount: event.amount,
       );
       emit(BillOperationSuccess('Thanh toán hóa đơn thành công'));
     } on BillAlreadyPaidException {
       // Không phải sự cố kỹ thuật — chỉ là người dùng bấm nút hai lần, hoặc
       // hoá đơn đã được trả trên máy khác rồi đồng bộ về.
       emit(BillError('Hóa đơn này đã được thanh toán rồi.'));
+    } on BillInvalidAmountException {
+      emit(BillError('Số tiền thanh toán phải lớn hơn 0.'));
     } catch (e) {
       emit(BillError('Thanh toán thất bại: $e'));
+    }
+  }
+
+  Future<void> _onUndoPayment(
+    UndoPaymentEvent event,
+    Emitter<BillState> emit,
+  ) async {
+    try {
+      await repository.undoPayment(billId: event.billId);
+      emit(BillOperationSuccess('Đã hoàn tác thanh toán'));
+    } on BillNotPaidException {
+      emit(BillError('Hóa đơn này chưa được thanh toán.'));
+    } on BillUndoUnavailableException {
+      // Lý do cụ thể, không phải lỗi chung chung: khoản chi được ghi bằng bản
+      // app cũ nên không có sợi dây `billId` để lần về.
+      emit(BillError(
+          'Không hoàn tác được: khoản chi của lần thanh toán này được ghi '
+          'bằng bản ứng dụng cũ. Hãy xoá nó thủ công ở sổ giao dịch.'));
+    } catch (e) {
+      emit(BillError('Hoàn tác thất bại: $e'));
     }
   }
 

@@ -254,6 +254,19 @@ class BillDao extends DatabaseAccessor<AppDatabase> with _$BillDaoMixin {
     );
   }
 
+  /// Kỳ kế tiếp được sinh ra khi trả hoá đơn [billId], nếu còn.
+  ///
+  /// Dùng cột **cục bộ** `generatedFromBillId` (v16) chứ không so tên và ngày:
+  /// so tên là đúng phép so mà cột này sinh ra để thay thế. Trả `null` khi hoá
+  /// đơn không lặp, hoặc kỳ ấy đã bị xoá.
+  Future<Bill?> getGeneratedFrom(String billId) {
+    return (select(bills)
+          ..where((t) =>
+              t.generatedFromBillId.equals(billId) & t.deletedAt.isNull())
+          ..limit(1))
+        .getSingleOrNull();
+  }
+
   /// Chỉ cập nhật cột có trong companion (xem chú thích ở CategoryDao.upsertAll).
   Future<void> upsertAll(List<BillsCompanion> entries) async {
     await batch((b) => b.insertAllOnConflictUpdate(bills, entries));

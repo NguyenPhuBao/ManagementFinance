@@ -346,6 +346,74 @@ void main() {
         reason: 'Ví của hoá đơn phải nằm đầu danh sách.');
   });
 
+  testWidgets('bảng thanh toán điền sẵn số tiền của hoá đơn, sửa được',
+      (tester) async {
+    await dungTrang(
+      tester,
+      [_bill(id: 'a', dueDate: DateTime(2026, 9, 11), amount: 200000)],
+      seed: true,
+    );
+
+    await tester.tap(find.text('Thanh toán'));
+    await tester.pumpAndSettle();
+
+    final o = tester.widget<TextField>(
+        find.byKey(const ValueKey('bill-pay-amount')));
+    expect(
+      o.controller!.text,
+      '200000',
+      reason: 'Hoá đơn điện nước mỗi kỳ một số khác nhau. Số thô, không dấu '
+          'chấm, để `CurrencyFormatter.parse` đọc như khi người dùng tự gõ — '
+          'cùng quy ước với nút "Dùng số này" của form ngân sách.',
+    );
+  });
+
+  testWidgets('chỉ hoá đơn đã trả mới có nút Hoàn tác', (tester) async {
+    await dungTrang(tester, [
+      _bill(id: 'a', dueDate: DateTime(2026, 9, 11)),
+      _bill(
+          id: 'b',
+          dueDate: DateTime(2026, 9, 4),
+          name: 'Da tra',
+          isPaid: true,
+          payStatus: 'Payed'),
+    ]);
+
+    expect(find.byKey(const ValueKey('bill-undo-a')), findsNothing,
+        reason: 'Hoá đơn chưa trả thì không có gì để hoàn tác.');
+
+    await tester.tap(find.text('Đã thanh toán (1)'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('bill-undo-b')),
+      findsOneWidget,
+      reason: 'Trả nhầm trước đây là kẹt hẳn: khoản chi bị chặn xoá ở sổ, hoá '
+          'đơn không có đường về Pending, kỳ kế tiếp đã sinh ra rồi.',
+    );
+  });
+
+  testWidgets('hoàn tác hỏi xác nhận và nói rõ ba hệ quả', (tester) async {
+    await dungTrang(tester, [
+      _bill(
+          id: 'b',
+          dueDate: DateTime(2026, 9, 4),
+          name: 'Da tra',
+          isPaid: true,
+          payStatus: 'Payed'),
+    ]);
+    await tester.tap(find.text('Đã thanh toán (1)'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('bill-undo-b')));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Hoàn'), findsWidgets);
+    expect(find.textContaining('gỡ kỳ kế tiếp'), findsOneWidget,
+        reason: 'Hoàn tác đụng tới ba thứ (ví, khoản chi, kỳ sau) nên phải '
+            'nói trước, không im lặng làm.');
+  });
+
   testWidgets('không tràn bố cục ở 411dp', (tester) async {
     await dungTrang(tester, [
       _bill(

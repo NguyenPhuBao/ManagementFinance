@@ -53,6 +53,7 @@ class BillRepositoryImpl implements BillRepository {
     required Bill bill,
     required String walletId,
     required int idaccount,
+    double? amount,
   }) async {
     // UI truyền vào ảnh chụp `Bill` mà nó đang giữ; bấm nút hai lần thì lần
     // thứ hai vẫn mang isPaid = false. Trạng thái thật phải đọc lại từ CSDL.
@@ -64,13 +65,26 @@ class BillRepositoryImpl implements BillRepository {
       throw BillAlreadyPaidException(bill.id);
     }
 
+    // Số tiền THẬT của kỳ này. Kiểm trước khi mở transaction: ô nhập nằm
+    // ngoài khối nguyên tử nên không được tin.
+    final soTien = amount ?? current.amount;
+    if (soTien <= 0) throw BillInvalidAmountException(soTien);
+
     final now = DateTime.now();
 
     // Cả bốn bước nằm trong một transaction: hỏng giữa chừng mà vẫn giữ lại
     // phần đã ghi thì ví bị trừ nhưng hoá đơn chưa đánh dấu (hoặc ngược lại).
     await db.transaction(() async {
-      // 1. Đánh dấu đã thanh toán (đặt cả isPaid lẫn payStatus).
+      // 1. Đánh dấu đã thanh toán (đặt cả isPaid lẫn payStatus), và ghi lại
+      //    số tiền THẬT đã trả — tab "Đã thanh toán" là lịch sử, nó phải nói
+      //    số đã trả chứ không phải con số dự kiến lúc tạo hoá đơn.
       await dataSource.markPaid(current.id);
+      if (soTien != current.amount) {
+        await dataSource.updateBill(BillsCompanion(
+          id: Value(current.id),
+          amount: Value(soTien),
+        ));
+      }
 
       // 2. Sinh giao dịch chi tương ứng.
       await db.transactionDao.insert(
@@ -81,9 +95,13 @@ class BillRepositoryImpl implements BillRepository {
           // Không gắn danh mục thì khoản chi này nằm ngoài mọi thống kê theo
           // danh mục và mọi ngân sách.
           categoryId: Value(current.categoryId),
-          amount: current.amount,
+          amount: soTien,
           type: 'chi',
           note: Value('$kGhiChuTraHoaDon${current.name}'),
+          // Sợi dây để hoàn tác lần được ngược về đây. Cột CỤC BỘ (v16) —
+          // tiền tố ghi chú ở trên KHÔNG đủ: người dùng gõ trùng tiền tố là
+          // hoàn nhầm tiền vào ví bằng một khoản chi khác của họ.
+          billId: Value(current.id),
           date: now,
           syncStatus: const Value('pending'),
           updatedAt: now,
@@ -93,7 +111,7 @@ class BillRepositoryImpl implements BillRepository {
       // 3. Trừ số dư ví.
       final wallet = await db.walletDao.getById(walletId);
       if (wallet != null) {
-        await db.walletDao.updateBalance(walletId, wallet.balance - current.amount);
+        await db.walletDao.updateBalance(walletId, wallet.balance - soTien);
       }
 
       // 4. Sinh hoá đơn kỳ kế tiếp.
@@ -104,9 +122,64 @@ class BillRepositoryImpl implements BillRepository {
       // theo nó thì hoá đơn không lặp cũng đẻ ra kỳ mới.
       if (current.isRecurrence) {
         await dataSource.insertBill(
-          _nextPeriodOf(current, now),
+          _nextPeriodOf(current, now, soTien),
         );
       }
+    });
+
+    syncEngine?.scheduleSync();
+  }
+
+  @override
+  Future<void> undoPayment({required String billId}) async {
+    final current = await dataSource.getBillById(billId);
+    if (current == null) {
+      throw StateError('Không tìm thấy hoá đơn $billId');
+    }
+    if (!current.isPaid && current.payStatus != 'Payed') {
+      throw BillNotPaidException(billId);
+    }
+
+    // Khoản chi mà lần trả đã sinh ra. Không tìm thấy thì DỪNG — xem
+    // `BillUndoUnavailableException`.
+    final khoanChi = await db.transactionDao.getByBill(billId);
+    if (khoanChi == null) {
+      throw BillUndoUnavailableException(billId);
+    }
+
+    final now = DateTime.now();
+
+    // Ba bước phải nguyên tử, cùng lý do với `payBill`: hỏng giữa chừng mà
+    // giữ lại phần đã ghi thì tiền về ví nhưng hoá đơn vẫn "đã trả".
+    await db.transaction(() async {
+      // 1. Hoàn tiền vào ĐÚNG ví đã bị trừ, ĐÚNG số đã trừ. Đọc từ giao dịch
+      //    chứ không từ hoá đơn: người dùng có thể đã trả bằng ví khác, và
+      //    với số tiền khác số ghi trên hoá đơn.
+      final wallet = await db.walletDao.getById(khoanChi.walletId);
+      if (wallet != null) {
+        await db.walletDao
+            .updateBalance(khoanChi.walletId, wallet.balance + khoanChi.amount);
+      }
+
+      // 2. Xoá mềm khoản chi (quy tắc 5 trong CLAUDE.md).
+      await db.transactionDao.softDelete(khoanChi.id);
+
+      // 3. Gỡ kỳ kế tiếp mà lần trả đã sinh ra. Để lại thì người dùng có hai
+      //    kỳ cùng mở, và trả lại lần nữa sẽ đẻ thêm một kỳ trùng.
+      final kySau = await db.billDao.getGeneratedFrom(billId);
+      if (kySau != null) {
+        await dataSource.softDeleteBill(kySau.id);
+      }
+
+      // 4. Đưa hoá đơn về chưa thanh toán. Đặt CẢ HAI cột, cùng lý do với
+      //    `markPaid`: nhánh đẩy gửi `pay_status` chứ không gửi `isPaid`.
+      await dataSource.updateBill(BillsCompanion(
+        id: Value(billId),
+        isPaid: const Value(false),
+        payStatus: const Value('Pending'),
+        syncStatus: const Value('pending'),
+        updatedAt: Value(now),
+      ));
     });
 
     syncEngine?.scheduleSync();
@@ -122,14 +195,18 @@ class BillRepositoryImpl implements BillRepository {
   /// đuôi nhau không hở và luôn giữ được `startDate < dueDate`. Vì chuỗi mất
   /// mốc gốc để neo, `nextBillDueDate` áp quy tắc ngày cuối tháng để mốc không
   /// tụt dần — xem `core/bill/bill_recurrence.dart`.
-  BillsCompanion _nextPeriodOf(Bill current, DateTime now) {
+  BillsCompanion _nextPeriodOf(Bill current, DateTime now, double soTien) {
     return BillsCompanion.insert(
       id: const Uuid().v4(),
       idaccount: current.idaccount,
+      // Sợi dây để hoàn tác gỡ đúng kỳ này. Cột CỤC BỘ (v16).
+      generatedFromBillId: Value(current.id),
       walletId: Value(current.walletId),
       categoryId: Value(current.categoryId),
       name: current.name,
-      amount: current.amount,
+      // Kỳ sau bắt đầu từ số VỪA TRẢ, không phải số cũ: một quy tắc duy nhất,
+      // không có "số mẫu" ẩn, và số vừa trả là ước lượng sát hơn.
+      amount: soTien,
       startDate: Value(current.dueDate),
       dueDate: nextBillDueDate(current.dueDate, current.timeRecurrence),
       payStatus: const Value('Pending'),

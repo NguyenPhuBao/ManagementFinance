@@ -152,6 +152,19 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
 
   // ── WRITE ─────────────────────────────────────────────────────────────────
 
+  /// Khoản chi sinh ra khi trả hoá đơn [billId], nếu còn.
+  ///
+  /// Dùng cột **cục bộ** `billId` (v16) chứ không dò tiền tố ghi chú: người
+  /// dùng gõ trùng tiền tố là hoàn nhầm tiền vào ví bằng một khoản chi khác
+  /// của chính họ. Trả `null` với khoản trả ghi bằng bản app trước 2026-09-06
+  /// — nơi gọi phải từ chối hoàn tác chứ không được đoán.
+  Future<Transaction?> getByBill(String billId) {
+    return (select(transactions)
+          ..where((t) => t.billId.equals(billId) & t.deletedAt.isNull())
+          ..limit(1))
+        .getSingleOrNull();
+  }
+
   Future<void> insert(TransactionsCompanion entry) async {
     await into(transactions).insert(entry, mode: InsertMode.insertOrReplace);
   }

@@ -13,7 +13,8 @@ import '../bloc/bill_state.dart';
 import '../../domain/bill_status.dart';
 import '../../../transaction/domain/transaction_lookup.dart';
 import '../../../../core/category/category_visuals.dart';
-import '../widgets/wallet_selection_bottom_sheet.dart';
+import '../../../../core/utils/currency_formatter.dart';
+import '../widgets/bill_payment_sheet.dart';
 
 /// Nhãn của từng trạng thái. Bản dựng hình Stitch chỉ có ba; nhãn "QUÁ HẠN" là
 /// thứ tư, để nói đúng `payStatus = 'Overdue'` mà trước đây không nơi nào đọc.
@@ -114,20 +115,53 @@ class _BillPageState extends State<BillPage> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (_) => WalletSelectionBottomSheet(
+      // Bàn phím số phải đẩy được bảng lên, không che ô nhập.
+      isScrollControlled: true,
+      builder: (_) => BillPaymentSheet(
         wallets: wallets,
+        initialAmount: bill.amount,
         // Hoá đơn đã lưu sẵn ví thanh toán; luồng trả trước đây bày ra danh
         // sách không gợi ý gì nên người dùng phải tự nhớ.
         preferredWalletId: bill.walletId,
-        onSelected: (wallet) {
+        onConfirmed: (wallet, soTien) {
           context.read<BillBloc>().add(
                 PayBillEvent(
                   bill: bill,
                   walletId: wallet.id,
                   idaccount: accountId,
+                  amount: soTien,
                 ),
               );
         },
+      ),
+    );
+  }
+
+  /// Hỏi trước khi hoàn tác: thao tác này trả tiền lại ví, xoá khoản chi và
+  /// gỡ kỳ kế tiếp — ba hệ quả, nên phải nói rõ trước.
+  void _hoiHoanTac(BuildContext context, Bill bill) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hoàn tác thanh toán'),
+        content: Text(
+          'Hoàn ${CurrencyFormatter.format(bill.amount)} về ví, xoá khoản chi '
+          'đã ghi${bill.isRecurrence ? ' và gỡ kỳ kế tiếp' : ''}. '
+          'Hoá đơn "${bill.name}" quay lại trạng thái chưa thanh toán.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Huỷ'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.read<BillBloc>().add(UndoPaymentEvent(billId: bill.id));
+            },
+            child: const Text('Hoàn tác'),
+          ),
+        ],
       ),
     );
   }
@@ -523,6 +557,22 @@ class _BillPageState extends State<BillPage> {
                           ),
                         ),
                         const Spacer(),
+                        if (isPaid)
+                          TextButton.icon(
+                            key: ValueKey('bill-undo-${bill.id}'),
+                            onPressed: () => _hoiHoanTac(context, bill),
+                            icon: const Icon(Icons.undo, size: 16),
+                            label: const FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text('Hoàn tác'),
+                            ),
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppColors.primary,
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 12),
+                              minimumSize: const Size(0, 36),
+                            ),
+                          ),
                         if (!isPaid)
                           ElevatedButton(
                             onPressed: () => _showPayModal(context, bill),
