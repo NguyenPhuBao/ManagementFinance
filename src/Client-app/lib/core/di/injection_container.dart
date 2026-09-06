@@ -40,6 +40,7 @@ import '../../features/category/data/services/personal_default_categories.dart';
 import '../../features/category/data/services/category_suggestion_engine.dart';
 import '../network/connection_monitor.dart';
 import '../notification/reminder_scheduler.dart';
+import '../notification/app_lifecycle_watcher.dart';
 import '../notification/notification_scanner.dart';
 import '../notification/os/os_notifier.dart';
 import '../notification/os/os_notifier_factory.dart';
@@ -245,6 +246,10 @@ Future<void> setupDependencies() async {
     ),
   );
 
+  // Vòng đời app — mốc kích hoạt quét KHÔNG phụ thuộc mạng. Là singleton vì
+  // mỗi bản là một observer nữa gắn vào WidgetsBinding.
+  sl.registerLazySingleton<AppLifecycleWatcher>(AppLifecycleWatcher.new);
+
   // Đăng ký SAU BudgetRepository vì scanner đọc qua nó. Là singleton: mỗi
   // listener thừa trên statusStream là thêm một lượt quét cho mỗi sự kiện.
   sl.registerLazySingleton<NotificationScanner>(
@@ -283,6 +288,10 @@ Future<void> setupDependencies() async {
       markOverdue: (idaccount, now) =>
           sl<AppDatabase>().billDao.markOverdue(idaccount, now),
       syncStatus: sl<SyncEngine>().statusStream,
+      // Mốc thứ hai, và là mốc duy nhất không cần mạng: app quay lại từ nền.
+      // Thiếu nó thì một phiên offline không có lượt quét nào — kể cả hai bộ
+      // tự chuyển tiền chạy bên trong `scan()`.
+      appLifecycle: sl<AppLifecycleWatcher>().stream,
       osNotifier: sl<OsNotifier>(),
       prefsStore: sl<NotificationPrefsStore>(),
       // Lịch phải theo kịp dữ liệu: hoá đơn vừa thanh toán mà lịch cũ còn

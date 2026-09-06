@@ -1,4 +1,8 @@
 import 'dart:async';
+// Lấy thẳng từ `dart:ui` với `show` thay vì import `package:flutter/widgets.dart`:
+// widgets kéo theo `Category` của foundation, trùng tên với data class Drift mà
+// `app_database.dart` phơi ra — đúng vết `sync_engine.dart` đã phải `hide`.
+import 'dart:ui' show AppLifecycleState;
 
 import 'package:drift/drift.dart' show Value;
 import 'package:uuid/uuid.dart';
@@ -90,10 +94,23 @@ class NotificationScanner {
   final Future<void> Function(int idaccount)? resyncLich;
 
   final Stream<SyncStatus> syncStatus;
+
+  /// Sự kiện vòng đời app. Bỏ trống thì chỉ còn hai mốc kích hoạt kia.
+  ///
+  /// Nhận qua tham số chứ không tự đi hỏi `WidgetsBinding`, đúng khuôn
+  /// [syncStatus]: nhờ vậy test bơm được một `StreamController` mà không phải
+  /// dựng binding, và **một** file duy nhất trong dự án chạm tới vòng đời của
+  /// hệ điều hành (`app_lifecycle_stream.dart`).
+  ///
+  /// Đây là mốc duy nhất bắt được quãng app nằm trong nền — quãng mà hạn hoá
+  /// đơn trôi qua, ngày đổi, và kỳ trích tới nơi.
+  final Stream<AppLifecycleState>? appLifecycle;
+
   final DateTime Function() clock;
   final String Function() idGenerator;
 
   StreamSubscription<SyncStatus>? _sub;
+  StreamSubscription<AppLifecycleState>? _subVongDoi;
   int? _idaccount;
 
   /// Chặn hai lượt quét chồng nhau: một lượt đang chạy mà sự kiện đồng bộ tiếp
@@ -128,6 +145,7 @@ class NotificationScanner {
     this.loadGoals,
     this.loadWallets,
     required this.syncStatus,
+    this.appLifecycle,
     this.markOverdue,
     this.osNotifier,
     this.prefsStore,
@@ -145,6 +163,7 @@ class NotificationScanner {
   /// hoạt n lượt quét.
   Future<void> start(int idaccount) async {
     await _sub?.cancel();
+    await _subVongDoi?.cancel();
     _idaccount = idaccount;
 
     // Dọn trước khi nghe: một lần mỗi phiên là đủ, và làm ở đây thì không phải
@@ -166,6 +185,33 @@ class NotificationScanner {
       // Bỏ qua lỗi ở đây: quét thất bại không được làm hỏng vòng đồng bộ.
       unawaited(scan(id).catchError((_) => 0));
     });
+
+    // Chỉ `resumed`, không phải mọi trạng thái: `paused` và `detached` là lúc
+    // hệ điều hành sắp đóng băng hoặc giết tiến trình, và quét ở đó nghĩa là
+    // khởi động hai bộ tự chuyển tiền đúng vào lúc chúng dễ bị cắt ngang nhất.
+    _subVongDoi = appLifecycle?.listen((s) {
+      if (s != AppLifecycleState.resumed) return;
+      final id = _idaccount;
+      if (id == null) return;
+      unawaited(scan(id).catchError((_) => 0));
+    });
+
+    // Quét NGAY, không chờ sự kiện đồng bộ nào.
+    //
+    // Không có bước này thì vòng quét bị buộc vào một sự kiện **mạng** trong
+    // một app offline-first: khi không có kết nối, `SyncEngine` thoát sớm ở
+    // `SyncStatus.pending` — một trạng thái **không** phải `isTerminal` — nên
+    // cả phiên offline không có lượt quét nào. Mất theo: mọi thông báo,
+    // `markOverdue`, và cả hai bộ tự chuyển tiền chạy bên trong `scan()`
+    // (hoá đơn bật tự trả sẽ không được trả).
+    //
+    // Nuốt lỗi: `start()` nằm trên đường đăng nhập, một lượt quét hỏng không
+    // được phép chặn nó.
+    try {
+      await scan(idaccount);
+    } catch (_) {
+      // Bỏ qua có chủ ý — xem chú thích trên.
+    }
   }
 
   /// Dừng hẳn. Gọi khi đăng xuất hoặc khi phiên chết.
@@ -179,6 +225,8 @@ class NotificationScanner {
   Future<void> stop() async {
     await _sub?.cancel();
     _sub = null;
+    await _subVongDoi?.cancel();
+    _subVongDoi = null;
     _idaccount = null;
     // Nuốt lỗi: đăng xuất không được phép thất bại vì hệ điều hành trở chứng.
     try {

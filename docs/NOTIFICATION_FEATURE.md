@@ -1,10 +1,11 @@
 # Hệ thống thông báo — tài liệu bàn giao
 
-> **Cập nhật:** 2026-09-04 · **Nhánh:** `TranQuangDat`
-> **Trạng thái:** cả bảy lát đã xong, **đã kiểm trên máy ảo Android**, và có
-> thêm **dải báo kết nối** (mục 9).
-> **Mức nền hiện tại:** `flutter test` **651/651 pass**, `flutter analyze`
-> **28 issue, KHÔNG error**, `flutter build web` xanh.
+> **Cập nhật:** 2026-09-06 · **Nhánh:** `TranQuangDat`
+> **Trạng thái:** cả bảy lát đã xong, **đã kiểm trên máy ảo Android**, có thêm
+> **dải báo kết nối** (mục 9), và **mốc kích hoạt quét đã được sửa lại cho
+> offline-first** (mục 4.5 — đọc trước nếu định đụng vào vòng quét).
+> **Mức nền hiện tại:** `flutter test` **1225/1225 pass**, `flutter analyze`
+> **25 issue, KHÔNG error**, `flutter build web` xanh.
 
 Đọc file này trước khi làm tiếp bất cứ việc gì thuộc thông báo. Mục 6 ghi lại
 từng lát đã làm gì và vì sao; mục 7 là những cái bẫy — **đọc mục 7 trước khi
@@ -173,18 +174,49 @@ ngưỡng phần trăm" — ai cài lại bằng `rawPercentSpent >= 0.9` sẽ l
 
 ### 4.5 Khi nào quét
 
-Chỉ **một** mốc, **không có `Timer.periodic`**: `NotificationScanner` nghe
-`SyncEngine.statusStream` và quét khi trạng thái `isTerminal`. Dữ liệu chỉ đổi
-khi có ghi cục bộ hoặc pull về, mà cả hai đều kết thúc bằng sự kiện đó.
+**Ba mốc, vẫn không có `Timer.periodic`** (sửa 2026-09-06 — trước đó chỉ có mốc
+thứ ba):
+
+| Mốc | Ghi chú |
+|---|---|
+| `start(idaccount)` | Quét ngay, `await` bên trong `start()`. Đây là mốc duy nhất chạy được khi máy hoàn toàn không có mạng |
+| `AppLifecycleState.resumed` | App quay lại từ nền — mốc duy nhất bắt được quãng app nằm trong nền, quãng mà hạn hoá đơn trôi qua, ngày đổi và kỳ trích tới nơi |
+| `SyncEngine.statusStream` ở trạng thái `isTerminal` | Giữ nguyên; cần cho lượt quét ngay sau khi pull mang dữ liệu mới về |
+
+⚠️ **Vì sao phải thêm hai mốc kia.** Bản đầu buộc vòng quét vào một sự kiện
+**mạng**, trong một app **offline-first** — và đó là chỗ hỏng. Khi không có kết
+nối, `SyncEngine._runSync()` thoát sớm ở `SyncStatus.pending`
+(`sync_engine.dart:360`), một trạng thái **không** nằm trong `isTerminal`
+(`sync_models.dart:134`). Hệ quả: cả một phiên offline **không có lượt quét
+nào** — không thông báo, `markOverdue` không chạy, và **hai bộ tự chuyển tiền
+nằm bên trong `scan()` cũng đứng im**, nên hoá đơn bật tự trả không được trả.
+Người dùng đi vùng sóng yếu một tuần thì mất cả hai.
+
+Chỉ nghe `resumed`. `paused` và `detached` là lúc hệ điều hành sắp đóng băng
+hoặc giết tiến trình; khởi động hai bộ tự chuyển tiền ở đó là chọn đúng thời
+điểm chúng dễ bị cắt ngang nhất.
+
+Nguồn sự kiện vòng đời là `lib/core/notification/app_lifecycle_watcher.dart` —
+**file duy nhất** trong vùng này chạm `WidgetsBinding`, cùng lý lẽ với
+`os_notifier_factory.dart`. Scanner nhận nó **qua tham số** (`appLifecycle`),
+đúng khuôn `syncStatus`, nên test bơm được `StreamController` mà không phải
+dựng binding. Stream **phải là broadcast**: `start()` huỷ rồi nghe lại ở mỗi
+lời gọi, và stream một-người-nghe sẽ ném ngay trên đường đăng nhập.
 
 `scan()` trả **số hàng thật sự được ghi** — tín hiệu duy nhất để quyết định có
 bắn ra hệ điều hành hay không. Từ lát 4, chính danh sách hàng vừa ghi ấy (chứ
 không phải danh sách ứng viên) là thứ được đẩy sang `OsNotifier.show()`.
 
-`start()` **huỷ subscription cũ trước khi tạo mới**. Được gọi ở
-`auth_bloc.dart` cạnh `SyncEngine.start()`; `stop()` ở hai chỗ đăng xuất /
-phiên chết. **Cố ý KHÔNG gắn ở `home_page.dart`** — chỗ đó gọi
+`start()` **huỷ cả hai subscription cũ trước khi tạo mới**, và `stop()` cắt cả
+hai. Được gọi ở `auth_bloc.dart` cạnh `SyncEngine.start()`; `stop()` ở hai chỗ
+đăng xuất / phiên chết. **Cố ý KHÔNG gắn ở `home_page.dart`** — chỗ đó gọi
 `SyncEngine.start()` ngay trong `build()`.
+
+⚠️ Lượt quét mở màn được **`await`** bên trong `start()`, và `auth_bloc.dart`
+await `start()`. Nghĩa là **hai bộ tự chuyển tiền nay chạy ngay khi đăng nhập**
+chứ không phải sau chu kỳ đồng bộ đầu tiên — đó chính là điều cần sửa, nhưng nó
+làm tiền chuyển sớm hơn trước ở một số tình huống. Lỗi bị nuốt tại chỗ: một
+lượt quét hỏng không được phép chặn đường đăng nhập.
 
 `silenceBefore = now − 30 ngày` chặn cơn lũ ở lần bật đầu tiên.
 
@@ -484,6 +516,22 @@ vứt đi thông tin mình đang cầm. Route ấy nằm ngoài shell y như `/g
 vào một nhánh tab thì **phải** cập nhật `nhanhThanhTab` cùng lúc, nếu không bấm
 thông báo sẽ làm app chết màn đỏ. `notification_deeplink_test.dart` canh chỗ đó.
 
+**7.9 Đừng buộc vòng quét vào một sự kiện MẠNG.** Đây là lỗi đã xảy ra và đã
+sửa ngày 2026-09-06 — ghi lại vì nó rất dễ tái phạm: `SyncEngine.statusStream`
+trông như một tín hiệu "dữ liệu vừa đổi", nhưng nó là tín hiệu "một chu kỳ mạng
+vừa kết thúc". Hai thứ ấy chỉ trùng nhau khi có mạng.
+
+Không có kết nối, `_runSync()` thoát sớm ở `SyncStatus.pending` — **không** nằm
+trong `isTerminal` — nên nghe riêng `isTerminal` là cả phiên offline không có
+lượt quét nào. Và vì `GoalAutoDepositRunner` với `BillAutoPayRunner` chạy **bên
+trong** `scan()`, mất luôn cả hai bộ tự chuyển tiền: người dùng bật tự trả hoá
+đơn rồi đi vùng sóng yếu, hoá đơn không được trả và cũng không có thông báo nào
+nói vì sao. Toàn bộ hỏng hóc này **im lặng** — không exception, không log.
+
+Quy tắc rút ra: mọi mốc kích hoạt mới phải trả lời được câu "mốc này còn nổ khi
+máy ở chế độ máy bay không?". Ba mốc hiện tại ở mục 4.5; hai trong ba mốc ấy
+độc lập hoàn toàn với mạng.
+
 ---
 
 ## 8. Kiểm thử
@@ -491,7 +539,8 @@ thông báo sẽ làm app chết màn đỏ. `notification_deeplink_test.dart` c
 | Tệp | Canh gì |
 |---|---|
 | `test/core/notification/notification_rules_test.dart` | Ngưỡng ngân sách; `dedupeKey` không đổi khi `spent` tăng trong cùng bậc nhưng đổi khi sang kỳ; hoá đơn so theo NGÀY; `silenceBefore` |
-| `test/core/notification/notification_scanner_test.dart` | Quét lại không đẻ hàng; `stop()` cắt đứt hẳn **và gọi `cancelAll()`**; `start()` hai lần chỉ quét một lần; bắn ra hệ điều hành đúng một lần cho mỗi hàng mới, và lỗi nền tảng không làm hỏng lượt quét |
+| `test/core/notification/notification_scanner_test.dart` | Quét lại không đẻ hàng; **`start()` quét ngay không chờ sự kiện đồng bộ nào**; **`resumed` kích hoạt quét còn `paused`/`detached` thì không**; `stop()` cắt đứt hẳn **cả hai nhánh** và gọi `cancelAll()`; `start()` hai lần không nhân đôi listener nào; bắn ra hệ điều hành đúng một lần cho mỗi hàng mới, và lỗi nền tảng không làm hỏng lượt quét |
+| `test/core/notification/app_lifecycle_watcher_test.dart` | Watcher thật sự được đăng ký vào `WidgetsBinding` (không thì stream im lặng mãi, **không lỗi không log**); stream là **broadcast** nên nghe lại được sau khi huỷ; `dispose()` gỡ observer và luỹ đẳng |
 | `test/core/notification/os/os_scheduled_id_test.dart` | Bốn giá trị **golden** của `md5(dedupeKey)` — khoá cứng để việc đổi thuật toán trở nên ồn ào; dải 31 bit; phân tán trên 1000 khoá |
 | `test/core/notification/os/os_notifier_native_test.dart` | Chặn ở tầng `MethodChannel`: `init()` luỹ đẳng, `show()` đẩy đúng id/tiêu đề/nội dung/payload, id kênh Android không đổi, `cancelAll()`, và **không** xin quyền báo thức chính xác |
 | `test/core/database/notification_dao_test.dart` | Khoá trùng ở tầng SQLite; hàng đã xoá vẫn chặn; lọc theo `idaccount`; purge |
