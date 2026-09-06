@@ -55,6 +55,25 @@ abstract class OsNotifier {
     String? payload,
   });
 
+  /// Payload của thông báo người dùng vừa **chạm vào**, khi app đang sống.
+  ///
+  /// Payload chính là `dedupeKey` — xem `deeplinkTuDedupeKey()`. Phải là
+  /// **broadcast**: nơi nhận có thể huỷ rồi nghe lại.
+  ///
+  /// Cú chạm không mang payload thì **không phát gì**, thay vì phát chuỗi
+  /// rỗng: không có payload nghĩa là không suy ra được màn nào, và phát ra là
+  /// ép nơi nhận tự lọc.
+  Stream<String> get payloadDaCham;
+
+  /// Payload của thông báo đã **mở app từ trạng thái đóng hẳn**.
+  ///
+  /// Đây là ca **chính** của lịch đặt trước: nó nổ khi app không còn chạy.
+  /// Lúc ấy [payloadDaCham] có thể chưa kịp có người nghe, nên đường duy nhất
+  /// còn lại là hỏi thẳng nền tảng. Trả `null` khi app mở bình thường.
+  ///
+  /// **Không bao giờ ném** — nó chạy trên đường khởi động app.
+  Future<String?> payloadKhoiDong();
+
   /// Id của các lịch **đang chờ** nổ.
   ///
   /// Cần cho `ReminderScheduler.resync()` để nó luỹ đẳng: biết cái nào đã
@@ -102,6 +121,12 @@ class NoopOsNotifier implements OsNotifier {
     required DateTime when,
     String? payload,
   }) async {}
+
+  @override
+  Stream<String> get payloadDaCham => const Stream<String>.empty();
+
+  @override
+  Future<String?> payloadKhoiDong() async => null;
 
   @override
   Future<Set<int>> pendingIds() async => const {};

@@ -2,9 +2,10 @@
 
 > **Cập nhật:** 2026-09-06 · **Nhánh:** `TranQuangDat`
 > **Trạng thái:** cả bảy lát đã xong, **đã kiểm trên máy ảo Android**, có thêm
-> **dải báo kết nối** (mục 9), và **mốc kích hoạt quét đã được sửa lại cho
-> offline-first** (mục 4.5 — đọc trước nếu định đụng vào vòng quét).
-> **Mức nền hiện tại:** `flutter test` **1225/1225 pass**, `flutter analyze`
+> **dải báo kết nối** (mục 9), **mốc kích hoạt quét đã được sửa lại cho
+> offline-first** (mục 4.5), và **cú chạm vào thông báo hệ điều hành nay điều
+> hướng thật** (mục 5b). Đọc hai mục ấy trước nếu định đụng vào vùng này.
+> **Mức nền hiện tại:** `flutter test` **1246/1246 pass**, `flutter analyze`
 > **25 issue, KHÔNG error**, `flutter build web` xanh.
 
 Đọc file này trước khi làm tiếp bất cứ việc gì thuộc thông báo. Mục 6 ghi lại
@@ -234,6 +235,55 @@ lượt quét hỏng không được phép chặn đường đăng nhập.
 - **`BillDao.markOverdue`** ghi `payStatus = 'Overdue'` — giá trị chưa bao giờ
   được ghi trong toàn bộ `lib/`. **Có điều kiện `payStatus = 'Pending'`**: xem
   bẫy 7.4.
+
+---
+
+## 5b. Chạm vào thông báo hệ điều hành (2026-09-06)
+
+Trước ngày này, `onDidReceiveNotificationResponse` là một **callback rỗng**:
+cú chạm mở app ra trang chủ và người dùng phải tự đi tìm lại thứ vừa hiện trên
+màn hình khoá. Hạ tầng đã có sẵn (`payload = dedupeKey`, và `thuocThanhTab()`
+đã giải xong phần khó là `go` hay `push`), chỉ thiếu đoạn nối.
+
+```
+lib/core/notification/notification_tap_router.dart   # nơi DUY NHẤT điều hướng
+lib/core/notification/notification_deeplink.dart     # + deeplinkTuDedupeKey()
+lib/core/notification/os/os_notifier.dart            # + payloadDaCham, payloadKhoiDong
+```
+
+**`deeplinkTuDedupeKey()` là một bản SAO của `NotificationCandidate.deeplink`,
+và đó là chủ ý.** Ở **cold start** — lịch nhắc nổ khi app đã đóng hẳn, tức là
+ca *chính* của lịch đặt trước — hàng tương ứng còn chưa tồn tại trong SQLite:
+vòng quét mới sinh ra nó *sau khi* app khởi động xong. Tra cột `deeplink` ở đó
+là một cuộc đua, và thua cuộc đua ấy nghĩa là cú chạm không đi đâu cả.
+
+Bản sao ấy được canh bằng một test duyệt **cả 13 loại**: nó dựng ứng viên thật
+từ bộ luật rồi khẳng định hàm suy ra đúng cột `deeplink`. Thêm loại thứ 14 mà
+quên ánh xạ là test đỏ ngay.
+
+**Hai đường vào, một lối ra.** `payloadDaCham` (app đang sống) và
+`payloadKhoiDong()` (app mở lên *vì* cú chạm) cùng đổ vào `NotificationTapRouter`.
+
+⚠️ **Trên Android một cú chạm có thể đến bằng CẢ HAI đường.** `start()` vì thế
+đọc chi tiết khởi động **trước** khi nghe stream, rồi nhớ payload ấy để bỏ qua
+**đúng một lần**. Nhớ mãi thì thông báo ấy chết vĩnh viễn trong cả phiên chạy;
+không nhớ thì màn hình nhảy hai lần, và với route dùng `push()` là chồng hai
+trang lên nhau.
+
+⚠️ **Chưa đăng nhập thì GIỮ LẠI, không vứt đi.** Token hết hạn sau vài ngày app
+đóng là chuyện thường, và điều hướng lúc ấy chỉ bị guard của router đá về
+`/login`. Chỉ giữ cú chạm **mới nhất**: xả cả hàng đợi sau khi đăng nhập là app
+tự nhảy qua mấy màn liên tiếp.
+
+**Chạm KHÔNG đánh dấu đã đọc.** Ở cold start hàng chưa tồn tại, nên đánh dấu
+đúng lúc lại là một cuộc đua nữa — đổi lấy quá ít. Thông báo ở lại trung tâm
+như lịch sử.
+
+⚠️ `FlowMoneyApp` nay là **StatefulWidget**, đừng đổi ngược lại.
+`AppRouter.createRouter()` trước đây bị gọi ngay trong `build()` — mỗi lần
+widget gốc dựng lại là một `GoRouter` mới và mất cả stack điều hướng. Nay nó
+được tạo một lần trong `initState`, và chính tham chiếu ấy cho phép điều hướng
+từ ngoài cây widget: cú chạm đến từ nền tảng, không kèm `BuildContext` nào.
 
 ---
 
@@ -555,7 +605,8 @@ máy ở chế độ máy bay không?". Ba mốc hiện tại ở mục 4.5; hai
 | `test/core/notification/reminder_scheduler_test.dart` | **Luỹ đẳng** (chạy lại không đặt lại lịch nào); trần 50 và cắt bỏ mốc **xa** nhất; giờ nhắc từ tuỳ chọn; mốc quá khứ và ngoài cửa sổ 30 ngày bị bỏ; hoá đơn trả/xoá thì huỷ lịch cũ; tắt công tắc thì dọn sạch |
 | `test/core/notification/notification_rules_goal_wallet_test.dart` | Bốn luật của lát 6, trọng tâm là **đơn vị lặp lại trong `dedupeKey`**: chúc mừng một lần trong đời, trễ tiến độ mỗi tháng, ví âm và đồng bộ hỏng mỗi ngày |
 | `test/features/goal/goal_entity_progress_test.dart` | `progress` kẹp [0,1] và không ra `Infinity` khi `targetAmount = 0`; `daysLeft` so theo NGÀY; `isBehindSchedule` có biên dung sai, im lặng khi thiếu `startDate`, không NaN khi kỳ dài 0 ngày |
-| `test/core/notification/notification_deeplink_test.dart` | Route nào kéo theo thanh tab; **không được so khớp bằng `startsWith` trần** (`/budgets` ≠ `/budget`) |
+| `test/core/notification/notification_deeplink_test.dart` | Route nào kéo theo thanh tab; **không được so khớp bằng `startsWith` trần** (`/budgets` ≠ `/budget`); và phép canh **cả 13 loại**: `deeplinkTuDedupeKey()` phải trả đúng cột `deeplink` mà bộ luật đặt — bản sao duy nhất trong vùng này, tồn tại vì cold start không tra CSDL được |
+| `test/core/notification/notification_tap_router_test.dart` | Cold start điều hướng được; **cùng payload đến bằng cả hai đường chỉ điều hướng một lần**, nhưng lần chạm sau vẫn chạy; chưa đăng nhập thì giữ lại và xả sau `AuthSuccess`, chỉ giữ **cái mới nhất**; `stop()` cắt hẳn |
 | `test/core/network/connection_monitor_test.dart` | **Ngưỡng ổn định**: mất mạng chớp nhoáng và chuỗi nhấp nháy đều không sinh sự kiện; đang online lúc khởi động thì không báo "khôi phục" |
 | `test/core/sync/sync_push_result_test.dart` | `pushResultStream` phát số thao tác đã lên; **không phát khi không có gì để đẩy**; server từ chối thì vẫn phát kèm số thất bại |
 | `test/shared/connection_banner_test.dart` | Ba dải và thứ tự ưu tiên giữa chúng; dải không được **đè lên** nội dung màn hình |

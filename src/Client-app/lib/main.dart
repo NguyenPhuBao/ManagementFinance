@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
@@ -9,6 +12,9 @@ import 'core/constants/app_constants.dart';
 import 'core/constants/app_router.dart';
 import 'core/di/injection_container.dart';
 import 'core/network/connection_monitor.dart';
+import 'core/notification/notification_deeplink.dart';
+import 'core/notification/notification_tap_router.dart';
+import 'core/notification/os/os_notifier.dart';
 import 'core/sync/sync_engine.dart';
 import 'shared/widgets/connection_banner.dart';
 import 'shared/theme/app_theme.dart';
@@ -63,7 +69,15 @@ Future<void> _khoiTaoMuiGio() async {
   }
 }
 
-class FlowMoneyApp extends StatelessWidget {
+/// ⚠️ **StatefulWidget có lý do**, đừng đổi ngược lại.
+///
+/// `AppRouter.createRouter()` trước đây được gọi ngay trong `build()`, tức là
+/// mỗi lần widget gốc dựng lại là một `GoRouter` hoàn toàn mới — mất cả stack
+/// điều hướng. Nay nó được tạo **một lần** trong `initState`, và nhờ giữ được
+/// tham chiếu ấy mà `NotificationTapRouter` điều hướng được từ ngoài cây
+/// widget: cú chạm vào thông báo cấp hệ điều hành đến từ nền tảng, không có
+/// `BuildContext` nào cả.
+class FlowMoneyApp extends StatefulWidget {
   final String initialRoute;
   final AuthBloc authBloc;
 
@@ -74,17 +88,49 @@ class FlowMoneyApp extends StatelessWidget {
   });
 
   @override
+  State<FlowMoneyApp> createState() => _FlowMoneyAppState();
+}
+
+class _FlowMoneyAppState extends State<FlowMoneyApp> {
+  late final GoRouter _router;
+  late final NotificationTapRouter _chamThongBao;
+
+  @override
+  void initState() {
+    super.initState();
+    _router = AppRouter.createRouter(widget.initialRoute, widget.authBloc);
+
+    _chamThongBao = NotificationTapRouter(
+      osNotifier: sl<OsNotifier>(),
+      // `go` hay `push` là quyết định bắt buộc, không phải thẩm mĩ: `push` một
+      // route nằm trong StatefulShellRoute khi đang ở ngoài shell làm app chết
+      // màn đỏ (bẫy 7.8 của docs/NOTIFICATION_FEATURE.md).
+      dieuHuong: (route) =>
+          thuocThanhTab(route) ? _router.go(route) : _router.push(route),
+      dangDangNhap: () => widget.authBloc.state is AuthSuccess,
+      phienDoi: widget.authBloc.stream,
+    );
+    // Nuốt lỗi: một cú chạm không dịch được không được phép chặn khởi động.
+    unawaited(_chamThongBao.start().catchError((_) {}));
+  }
+
+  @override
+  void dispose() {
+    unawaited(_chamThongBao.stop());
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
         // Dùng .value vì instance đã được tạo sẵn trong main()
-        BlocProvider<AuthBloc>.value(value: authBloc),
+        BlocProvider<AuthBloc>.value(value: widget.authBloc),
       ],
       child: MaterialApp.router(
         title: 'FlowMoney',
         theme: AppTheme.lightTheme,
-        // Truyền cả initialRoute lẫn authBloc vào router
-        routerConfig: AppRouter.createRouter(initialRoute, authBloc),
+        routerConfig: _router,
         debugShowCheckedModeBanner: false,
         // Dải báo kết nối bọc NGOÀI router nên phủ mọi trang mà không trang
         // nào phải biết đến nó.

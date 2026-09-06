@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
@@ -32,8 +34,45 @@ class LocalOsNotifier implements OsNotifier {
 
   bool _daKhoiTao = false;
 
+  /// Broadcast: `NotificationTapRouter` có thể huỷ rồi nghe lại.
+  final StreamController<String> _cham = StreamController<String>.broadcast();
+
   @override
   bool get isSupported => true;
+
+  @override
+  Stream<String> get payloadDaCham => _cham.stream;
+
+  @override
+  Future<String?> payloadKhoiDong() async {
+    // Cả `init()` cũng nằm trong try: hàm này chạy trên đường khởi động app,
+    // và một trục trặc của nền tảng ở đó không được phép làm app không mở lên.
+    try {
+      await init();
+      final chiTiet = await _plugin.getNotificationAppLaunchDetails();
+      if (chiTiet == null || !chiTiet.didNotificationLaunchApp) return null;
+
+      final payload = chiTiet.notificationResponse?.payload;
+      if (payload == null || payload.isEmpty) return null;
+      return payload;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Xử lý cú chạm khi app **đang sống**.
+  ///
+  /// Là phương thức của lớp chứ không phải hàm top-level: nó phải chạm tới
+  /// `_cham`, và gắn callback ở đây cũng khiến `init()` luỹ đẳng trở thành
+  /// điều kiện đủ để không có hai người cùng nghe một cú chạm.
+  void _khiChamVaoThongBao(NotificationResponse response) {
+    final payload = response.payload;
+    // Không payload thì không suy ra được màn nào — im lặng thay vì phát chuỗi
+    // rỗng ra cho nơi nhận tự lọc.
+    if (payload == null || payload.isEmpty) return;
+    if (_cham.isClosed) return;
+    _cham.add(payload);
+  }
 
   @override
   Future<void> init() async {
@@ -185,12 +224,3 @@ class LocalOsNotifier implements OsNotifier {
 /// stub — conditional import đòi ba file phơi ra cùng một API.
 OsNotifier createOsNotifier() => LocalOsNotifier();
 
-/// Xử lý cú chạm vào thông báo.
-///
-/// Lát này chưa điều hướng: `payload` mang `dedupeKey`, và việc dịch nó thành
-/// một đường dẫn trong app cần router — thứ chưa sẵn sàng ở tầng này. Cú chạm
-/// vẫn mở app, và vòng quét chạy ngay sau đó sinh đúng hàng trong trung tâm
-/// thông báo, nên người dùng không mất thông tin.
-void _khiChamVaoThongBao(NotificationResponse response) {
-  // Cố ý để trống. Xem chú thích trên.
-}

@@ -43,6 +43,13 @@ class _OsGia implements OsNotifier {
     lich[id] = (when: when, title: title, body: body, payload: payload);
   }
 
+  // Hai thành viên của cú chạm — bản giả này không dựng kịch bản chạm nào.
+  @override
+  Stream<String> get payloadDaCham => const Stream<String>.empty();
+
+  @override
+  Future<String?> payloadKhoiDong() async => null;
+
   @override
   Future<Set<int>> pendingIds() async => lich.keys.toSet();
   @override

@@ -27,8 +27,13 @@ void main() {
   const kenh = MethodChannel('dexterous.com/flutter/local_notifications');
   late List<MethodCall> daGoi;
 
+  /// Thứ nền tảng trả về cho `getNotificationAppLaunchDetails`. `null` = app
+  /// khởi động bình thường, không phải do người dùng chạm vào thông báo.
+  Map<Object?, Object?>? chiTietKhoiDong;
+
   setUp(() {
     daGoi = [];
+    chiTietKhoiDong = null;
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     // Trên máy thật, bản cài đặt theo nền tảng được gắn vào lúc plugin tự đăng
     // ký. Trong test không có bước đó, nên phải gắn tay — nếu không
@@ -38,10 +43,35 @@ void main() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(kenh, (call) async {
       daGoi.add(call);
+      if (call.method == 'getNotificationAppLaunchDetails') {
+        return chiTietKhoiDong;
+      }
       // `initialize` và `requestNotificationsPermission` đều trả bool.
       return true;
     });
   });
+
+  /// Giả lập cú chạm mà nền tảng đẩy NGƯỢC lên Dart.
+  ///
+  /// Đi qua đúng đường thật (`didReceiveNotificationResponse` trên cùng kênh)
+  /// chứ không gọi thẳng callback: cái đáng canh là plugin có được khai báo
+  /// kèm handler hay không, và chỉ đường này mới trả lời được câu đó.
+  Future<void> guiCuCham(String? payload) {
+    return TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .handlePlatformMessage(
+      kenh.name,
+      kenh.codec.encodeMethodCall(
+        MethodCall('didReceiveNotificationResponse', <String, Object?>{
+          'notificationId': 503122046,
+          'actionId': null,
+          'input': null,
+          'payload': payload,
+          'notificationResponseType': 0,
+        }),
+      ),
+      (_) {},
+    );
+  }
 
   tearDown(() {
     debugDefaultTargetPlatformOverride = null;
@@ -223,5 +253,109 @@ void main() {
             'Nhắc hoá đơn lệch mươi phút không sao. "Nhắc hoá đơn nên chính '
             'xác" nghe rất hợp lý nên người sau sẽ muốn thêm — test này là '
             'chỗ họ gặp lời giải thích.');
+  });
+
+  group('cú chạm vào thông báo', () {
+    test('phát payload ra stream khi app đang sống', () async {
+      final os = LocalOsNotifier();
+      await os.init();
+
+      final nhan = os.payloadDaCham.first;
+      await guiCuCham('billDue:hd1:2026-09-17:3');
+
+      expect(await nhan, 'billDue:hd1:2026-09-17:3',
+          reason: 'Payload là đường DUY NHẤT để app biết người dùng vừa bấm '
+              'vào thông báo nào. Nuốt nó đi thì cú chạm chỉ mở app ra trang '
+              'chủ và người dùng phải tự đi tìm lại thứ vừa hiện trên màn hình '
+              'khoá.');
+    });
+
+    test('stream là broadcast: nghe lại sau khi huỷ vẫn được', () async {
+      final os = LocalOsNotifier();
+      await os.init();
+
+      await os.payloadDaCham.listen((_) {}).cancel();
+
+      final nhan = os.payloadDaCham.first;
+      await guiCuCham('billDue:hd1:2026-09-17:3');
+
+      expect(await nhan, 'billDue:hd1:2026-09-17:3');
+    });
+
+    test('cú chạm không mang payload thì không phát gì', () async {
+      final os = LocalOsNotifier();
+      await os.init();
+      final daNhan = <String>[];
+      os.payloadDaCham.listen(daNhan.add);
+
+      await guiCuCham(null);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(daNhan, isEmpty,
+          reason: 'Không có payload thì không suy ra được màn nào. Phát chuỗi '
+              'rỗng ra là ép nơi nhận tự lọc, và sớm muộn sẽ có chỗ quên lọc '
+              'rồi điều hướng về một route vô nghĩa.');
+    });
+  });
+
+  group('payload đã mở app từ trạng thái đóng hẳn', () {
+    test('đọc được payload của thông báo đã khởi động app', () async {
+      chiTietKhoiDong = <Object?, Object?>{
+        'notificationLaunchedApp': true,
+        'notificationResponse': <Object?, Object?>{
+          'notificationId': 503122046,
+          'actionId': null,
+          'input': null,
+          'payload': 'goalAuto:mt1:2026-09-15T08:00',
+          'notificationResponseType': 0,
+        },
+      };
+
+      final os = LocalOsNotifier();
+
+      expect(await os.payloadKhoiDong(), 'goalAuto:mt1:2026-09-15T08:00',
+          reason: 'Đây là ca CHÍNH của lịch đặt trước: nó nổ khi app đã đóng '
+              'hẳn. Lúc ấy `onDidReceiveNotificationResponse` có thể chưa kịp '
+              'gắn, nên đường duy nhất còn lại là hỏi nền tảng xem app được mở '
+              'bởi thông báo nào.');
+    });
+
+    test('app mở bình thường thì trả null', () async {
+      chiTietKhoiDong = null;
+      final os = LocalOsNotifier();
+
+      expect(await os.payloadKhoiDong(), isNull);
+    });
+
+    test('mở từ thông báo nhưng không có payload thì trả null', () async {
+      chiTietKhoiDong = <Object?, Object?>{
+        'notificationLaunchedApp': true,
+        'notificationResponse': <Object?, Object?>{
+          'notificationId': 1,
+          'actionId': null,
+          'input': null,
+          'payload': null,
+          'notificationResponseType': 0,
+        },
+      };
+
+      final os = LocalOsNotifier();
+
+      expect(await os.payloadKhoiDong(), isNull);
+    });
+
+    test('nền tảng ném thì trả null chứ không làm chết khởi động', () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(kenh, (call) async {
+        throw PlatformException(code: 'loi', message: 'nền tảng trở chứng');
+      });
+
+      final os = LocalOsNotifier();
+
+      expect(await os.payloadKhoiDong(), isNull,
+          reason: 'Hàm này chạy trên đường khởi động app. Để một trục trặc của '
+              'nền tảng nổi lên ở đó là app không mở được — hỏng nặng hơn hẳn '
+              'so với việc bỏ lỡ một cú điều hướng.');
+    });
   });
 }

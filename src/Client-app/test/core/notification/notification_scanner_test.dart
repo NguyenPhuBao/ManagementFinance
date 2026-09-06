@@ -75,6 +75,13 @@ class OsNotifierGia implements OsNotifier {
     String? payload,
   }) async {}
 
+  // Hai thành viên của cú chạm — bản giả này không dựng kịch bản chạm nào.
+  @override
+  Stream<String> get payloadDaCham => const Stream<String>.empty();
+
+  @override
+  Future<String?> payloadKhoiDong() async => null;
+
   @override
   Future<Set<int>> pendingIds() async => const {};
 
