@@ -26,9 +26,9 @@ chạm vào hôm nay**.
 | 1 | [2026-09-04-ocr-classify-review.md](./2026-09-04-ocr-classify-review.md) — **chỉ mục Socket.io** | Không liên quan tính năng nào — đây là rò rỉ ở tầng hạ tầng | Socket.io **không xác thực**, `join_account` tin con số client tự khai, và bốn dòng `io.emit` phát cho **mọi** socket. `emitAuditActivity` đang rò tên người dùng ra socket ẩn danh **ngay lúc này** | một buổi (phải sửa cùng `Admin-web/src/hooks/useSocket.js`) |
 | 2 | [2026-09-04-backend-idempotent-delete.md](./2026-09-04-backend-idempotent-delete.md) | Toàn bộ đồng bộ offline-first, và ngân sách **"Ngày cụ thể"** | **(A)** `/sync/push` báo lỗi khi xoá bản ghi server không có → client đẩy lại **vĩnh viễn**. **(B)** `message` là nguyên văn stack trace Prisma → client phải dò chuỗi, hiện đã có **ba** phép khớp dựng tạm. **(C)** `upsertBudget` ép `time_recurrence = null` thành `'Month'` → **chặn hẳn** ngân sách "Ngày cụ thể". **(D)** `upsertBudget` nhánh tạo ghi `threshold_warning_percent ?? 0` (cộng `@default(0)` trong schema) → ngân sách để trống ô phần trăm quay về client với số 0; client đã vá form ngày 06/09, nhưng số 0 vẫn là dữ liệu sai nằm trên server | vài dòng + nửa buổi |
 | 3 | [CATEGORY_KEYWORD_SYNC.md](./CATEGORY_KEYWORD_SYNC.md) | Danh mục và từ khoá phân loại; chiều **xuống** client đã nối xong | Lỗ hổng **phân quyền** ở `POST /api/ai/classify/feedback` — `appendCategoryKeyword()` không đọc `create_by`, nên ghi được từ khoá vào danh mục của người khác. Chiều **lên** chưa có mô hình dữ liệu | một buổi |
-| 4 | [CATEGORY_STABLE_IDS.md](./CATEGORY_STABLE_IDS.md) | Danh mục mặc định trên mọi máy | `seed.js:150` vẫn `crypto.randomUUID()`, nên **tên danh mục** bị dùng làm khoá nối giữa hai phía. Đây là nguyên nhân gốc của các lỗi 11.3–11.6 trong `PROJECT_CONTEXT.md` | migration |
-| 5 | [CATEGORY_NAME_UNIQUENESS.md](./CATEGORY_NAME_UNIQUENESS.md) | Quy tắc trùng tên đã thi hành ở client **và** Admin-web | `/sync/push` chưa kiểm gì cả, và hai unique index của CSDL thi hành một quy tắc **khác** — lệch theo cả hai chiều. Thiếu `WHERE "Delete_at" IS NULL` là mỗi lần mở app client tạo lại danh mục đã xoá và bản ghi ấy **không bao giờ lên được server** | migration |
-| 6 | [CATEGORY_GROUP_MEMBERSHIP_SYNC.md](./CATEGORY_GROUP_MEMBERSHIP_SYNC.md) | Gom nhóm danh mục | Không có bảng/entity cho việc gán danh mục **mặc định** vào nhóm → quan hệ đó chỉ tồn tại trên một máy. Thứ **duy nhất** còn chặn G10 | entity mới |
+| 4 | [CATEGORY_STABLE_IDS.md](./CATEGORY_STABLE_IDS.md) | Danh mục mặc định trên mọi máy | Đã gán 13 Stable UUIDs trong `seed.js` làm Template và cấp API `GET /api/sync/default-categories` để Client-app nhân bản thành danh mục cá nhân | ✅ ĐÃ HOÀN THÀNH |
+| 5 | [CATEGORY_NAME_UNIQUENESS.md](./CATEGORY_NAME_UNIQUENESS.md) | Quy tắc duy nhất tên danh mục (Template & Cloned) | Đã cài 2 Partial Unique Indexes độc lập (`uq_category_owner_name`, `uq_category_default_name`). Gỡ bỏ hoàn toàn trigger chéo cũ. Người dùng được phép có danh mục trùng tên với template hệ thống | ✅ ĐÃ HOÀN THÀNH |
+| 6 | [CATEGORY_GROUP_MEMBERSHIP_SYNC.md](./CATEGORY_GROUP_MEMBERSHIP_SYNC.md) | Gom nhóm danh mục | Đã tạo bảng `category_group_membership` và hỗ trợ sync push/pull với `ENTITY_PRIORITY: 15` | ✅ ĐÃ HOÀN THÀNH |
 | 7 | [CATEGORY_CLASSIFY_ALIGNMENT.md](./CATEGORY_CLASSIFY_ALIGNMENT.md) | Bộ giá trị `classify` của danh mục | `validClassify` (`sync.validation.js:103`) rộng hơn thực tế | **một dòng** |
 
 ### 🟡 Nhóm 2 — client ĐÃ CÓ nhưng không có gì hỏng; đây là *mở khoá*
@@ -75,14 +75,8 @@ Không ai mất dữ liệu và không có gì sai số nếu chưa làm. Nhưng
    migration, làm lúc nào cũng được; nhưng client chờ **một câu xác nhận** rồi
    mới mở tính năng "bỏ qua kỳ này".
 
-> ⚠️ **Bước 5 không tách lẻ được.** `CATEGORY_STABLE_IDS` là nguyên nhân gốc:
-> ID ổn định cho seed là điều kiện để hai tài liệu kia không phải dùng *tên danh
-> mục* làm khoá nối. Làm `CATEGORY_NAME_UNIQUENESS` trước là phải làm lại.
->
-> Gộp bốn mục của nhóm 2 **và** cột `goal.Priority` vào đúng đợt migration này
-> là rẻ nhất — tất cả chỉ thêm cột nullable hoặc bool mặc định false, không
-> đụng dữ liệu cũ. `Priority` chưa có gì chờ nó, nhưng thêm sau lại tốn một
-> migration nữa.
+> 💡 **Cập nhật 2026-09-07:** Đợt migration đã hoàn tất 100%. `CATEGORY_STABLE_IDS` đã được đóng băng trong `seed.js` để làm bộ khung template cố định, và `CATEGORY_NAME_UNIQUENESS` đã thiết lập 2 partial unique indexes độc lập theo đúng Mô hình Template & Cloned được PO phê duyệt.
+
 
 ---
 

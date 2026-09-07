@@ -2498,4 +2498,29 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - [`Test/test_bank_sepay_flow.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/Test/test_bank_sepay_flow.js): **11/11 tests PASS (100%)**.
   - [`Test/test_ai_dedup_flow.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/Test/test_ai_dedup_flow.js): **10/10 tests PASS (100%)**.
 
+### 11.30. Hoàn Thiện Mô Hình Danh Mục Template & Cloned, Nâng Cấp Admin-Web & Thống Nhất Thương Hiệu FinanceAdmin (2026-09-07)
+- **1. Chuyển đổi Mô hình Danh mục Mẫu (Template & Cloned Model)**:
+  - **Nguyên lý:** Toàn bộ danh mục mặc định hệ thống (`is_default = true`) đóng vai trò là **Bộ khung mẫu (Template)** chuẩn do Admin quản lý.
+  - **Cấp phát cho người dùng:** Khi người dùng đăng ký mới, Client-app gọi API `GET /api/sync/default-categories` để lấy danh sách template, sau đó tự sinh 1 bộ danh mục cá nhân tương ứng (`is_default = false`, `create_by = idaccount`, UUID riêng) lưu vào SQLite cục bộ và đồng bộ lên Backend qua `POST /api/sync/push`. Backend không tự động tạo danh mục cho người dùng.
+  - **Gỡ bỏ trigger kiểm tra chéo (`trg_category_name_cross_default`)**: Người dùng được phép sở hữu danh mục cá nhân trùng tên với danh mục mẫu hệ thống. File migration `database/5_Drop_Cross_Default_Category_Trigger.sql` đã gỡ bỏ trigger và function kiểm tra chéo.
+  - **Tái xác lập 2 Partial Unique Indexes chuẩn hóa NFC & case-insensitive**:
+    - `uq_category_owner_name`: `UNIQUE ("Create_by", lower(regexp_replace(btrim(normalize("NameCategory", NFC)), '\s+', ' ', 'g')))` WHERE `Is_default = FALSE AND Delete_at IS NULL`.
+    - `uq_category_default_name`: `UNIQUE (lower(regexp_replace(btrim(normalize("NameCategory", NFC)), '\s+', ' ', 'g')))` WHERE `Is_default = TRUE AND Delete_at IS NULL`.
+- **2. Bảo Vệ Danh Mục Hệ Thống (System Category Protection)**:
+  - **Cấm xóa danh mục hệ thống**: `admin.service.deleteCategory` kiểm tra và từ chối ngay với HTTP 400 Bad Request nếu `is_default === true`. Trên giao diện Admin-web, nút Xóa bị vô hiệu hóa kèm tooltip giải thích.
+  - **Cấm chuyển đổi danh mục người dùng thành hệ thống**: `admin.service.updateCategory` chặn nâng cấp danh mục thường thành danh mục hệ thống (`is_default = true`). Trên Admin-web modal chỉnh sửa, trường `isDefault` bị vô hiệu hóa khi sửa danh mục người dùng.
+  - **Tạo mới độc lập**: Admin có thể tạo mới danh mục hệ thống trùng tên với danh mục người dùng đã có.
+  - **Endpoint mới**: `GET /api/sync/default-categories` trả về danh sách template danh mục hệ thống đang hoạt động.
+- **3. Nâng Cấp & Chuẩn Hóa Admin-web (FinanceAdmin)**:
+  - **Đồng bộ thương hiệu FinanceAdmin**: Thống nhất thương hiệu `FinanceAdmin` trên Sidebar (`Sidebar.jsx`), Trang Quên mật khẩu (`ForgotPasswordPage.jsx`), Tiêu đề HTML (`index.html`) và Trang Đăng nhập (`LoginPage.jsx`).
+  - **Tiện ích chuẩn hóa chuỗi (`src/Admin-web/src/utils/string.js`)**: Cung cấp hàm `normalizeCategoryName` (NFC, trim, lowercase, collapse whitespace) cho client-side validation trùng lặp và `normalizeVietnameseUnaccent` hỗ trợ tìm kiếm danh mục tiếng Việt không dấu.
+  - **Trang Quản lý danh mục (`CategoryPage.jsx`)**: Tìm kiếm thông minh tiếng Việt (có dấu & không dấu), chặn double-submit, vô hiệu hóa nút xóa danh mục hệ thống, bảo vệ trường Mặc định khi chỉnh sửa.
+  - **Hook Socket.io tập trung (`useSocket.js`)**: Quản lý vòng đời kết nối Socket.IO tập trung, truyền `auth: { token }`, tự động gỡ bỏ listener khi unmount (`socket.off`) tránh rò rỉ bộ nhớ tại `DashboardPage.jsx`.
+  - **Dọn dẹp mã nguồn**: Loại bỏ các endpoint API chết (`getQueueStatus`, `getSystemConfig`) khỏi `admin.api.js` và xóa thư mục trống `src/Admin-web/src/pages/system`.
+- **4. Kiểm thử tự động**:
+  - `Test/test_category_template_rules.js`: **8/8 tests PASS (100%)**.
+  - `Test/test_can_lam_fixes.js`: **10/10 tests PASS (100%)**.
+  - `npm run build` trong `src/Admin-web`: **Thành công 100% (0 errors, 137 modules transformed)**.
+
+
 

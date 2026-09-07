@@ -266,6 +266,45 @@ const syncService = {
       entities: status,
     };
   },
+
+  /**
+   * GET /api/sync/default-categories — Lấy danh sách danh mục template hệ thống
+   */
+  async getDefaultCategories() {
+    const { prisma } = require('../../config/db');
+    const categories = await prisma.category.findMany({
+      where: {
+        is_default: true,
+        delete_at: null,
+      },
+      select: {
+        idcategory: true,
+        name_category: true,
+        classify: true,
+        is_default: true,
+        is_group: true,
+        idgroup: true,
+        keyword: true,
+        icon: true,
+        create_at: true,
+        update_at: true,
+      },
+      orderBy: { create_at: 'asc' },
+    });
+    return categories.map((c) => ({
+      id: c.idcategory,
+      name: c.name_category,
+      classify: c.classify,
+      is_default: c.is_default,
+      is_group: c.is_group,
+      idgroup: c.idgroup,
+      keyword: c.keyword,
+      icon: c.icon,
+      created_at: c.create_at,
+      updated_at: c.update_at,
+    }));
+  },
 };
 
 module.exports = syncService;
+

@@ -214,36 +214,51 @@ Phần này đặc tả chi tiết toàn bộ các quy tắc ràng buộc, chố
 
 ## 🏷️ 1. QUY TẮC VỀ DANH MỤC (CATEGORY RULES)
 
-### 1.1. Ràng buộc duy nhất tên danh mục (Name Uniqueness)
-* **Quy tắc sở hữu cá nhân (`uq_category_owner_name`):**
-  * **Cột ràng buộc:** `UNIQUE (Create_by, Name)`
-  * **Điều kiện lọc:** `WHERE "Delete_at" IS NULL`
-  * **Ý nghĩa:** Một người dùng không được phép tạo 2 danh mục trùng tên nhau trong danh sách danh mục đang hoạt động của mình. Nếu một danh mục cũ đã bị xóa mềm (`Delete_at IS NOT NULL`), người dùng được phép tạo lại tên đó.
-* **Quy tắc danh mục hệ thống mặc định (`uq_category_default_name`):**
-  * **Cột ràng buộc:** `UNIQUE (Name)`
-  * **Điều kiện lọc:** `WHERE "Create_by" = 1 AND "Delete_at" IS NULL`
-  * **Ý nghĩa:** Đảm bảo toàn bộ danh mục mặc định của hệ thống không bao giờ bị trùng tên lẫn nhau.
-* **Chống trùng tên chéo qua Trigger CSDL (`trg_category_name_cross_default`):**
-  * **Cơ chế:** PostgreSQL Trigger chạy trước khi `INSERT` hoặc `UPDATE` vào bảng `category`.
-  * **Hành vi:** Ngăn người dùng tạo danh mục cá nhân có tên trùng với bất kỳ danh mục mặc định nào đang hoạt động của hệ thống.
-  * **Chuẩn hóa đối soát:** So sánh chuỗi không phân biệt hoa thường (`LOWER`), loại bỏ dấu tiếng Việt (`unaccent`), và cắt tỉa khoảng trắng (`TRIM`).
-  * *Ví dụ:* Nếu hệ thống đã có *"Ăn uống"*, người dùng tạo *"an uong"* hay *"ĂN UỐNG"* sẽ bị CSDL chặn ngay lập tức.
+### 1.1. Mô hình Danh mục Mẫu & Nhân bản Độc lập (Template & Cloned Model)
+* **Bản chất danh mục hệ thống:** Toàn bộ danh mục mặc định hệ thống (`Is_default = true`) đóng vai trò là **Bộ khung mẫu (Template)** chuẩn do Quản trị viên (Admin) thiết lập và duy trì.
+* **Quy trình cấp phát danh mục cho người dùng mới:**
+  * Khi người dùng đăng ký tài khoản thành công:
+    * Tại **Client-app**, ứng dụng gọi API `GET /api/sync/default-categories` để truy vấn danh sách các danh mục mẫu hệ thống đang hoạt động.
+    * Client-app tạo mới 1 bộ danh mục cá nhân tương tự với `create_by = idaccount`, `is_default = false`, và sinh UUID riêng biệt cho từng danh mục.
+    * Bộ danh mục cá nhân này được lưu vào SQLite cục bộ (Client-app không lưu danh mục hệ thống vào bảng danh mục hoạt động của người dùng).
+    * Sau đó, Client-app đẩy bộ danh mục cá nhân này lên Backend qua cơ chế Sync Push thông thường.
+  * **Phân định trách nhiệm:** Backend **không** xử lý tự động nhân bản danh mục trong quy trình đăng ký tài khoản, việc khởi tạo bộ danh mục ban đầu do Client-app chủ động quản lý.
+  * Một khi đã khởi tạo, bộ danh mục thuộc quyền sở hữu độc lập của người dùng và hoàn toàn tách biệt khỏi danh mục mẫu hệ thống.
 
-### 1.2. Bộ định danh UUID ổn định (Stable UUIDs)
-* 13 danh mục mặc định gốc của hệ thống được gán cứng 13 Stable UUIDs cố định trong [`seed.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/prisma/seed.js).
-* Tuyệt đối không sinh `crypto.randomUUID()` ngẫu nhiên khi chạy seed CSDL để tránh làm lệch ID với CSDL SQLite trên Client-app.
+### 1.2. Ràng buộc duy nhất tên danh mục (Category Uniqueness Rules)
+* Tên danh mục được so sánh không phân biệt hoa thường (`LOWER`), chuẩn hóa NFC, cắt khoảng trắng đầu cuối (`TRIM`) và thu gọn khoảng trắng thừa giữa các từ (`\s+ -> ' '`). Ví dụ: `"Ăn  UốNg"` tương đương `"ăn uống"`.
+* Ràng buộc duy nhất được chia thành **2 không gian tên (namespaces) độc lập**:
+  * **Danh mục người dùng (`uq_category_owner_name`):**
+    * **Cột ràng buộc:** `UNIQUE ("Create_by", lower(regexp_replace(btrim(normalize("NameCategory", NFC)), '\s+', ' ', 'g')))`
+    * **Điều kiện lọc:** `WHERE "Is_default" = FALSE AND "Delete_at" IS NULL`
+    * **Quy tắc:** Mỗi tài khoản không được phép tạo trùng tên danh mục cá nhân đang hoạt động.
+  * **Danh mục mẫu hệ thống (`uq_category_default_name`):**
+    * **Cột ràng buộc:** `UNIQUE (lower(regexp_replace(btrim(normalize("NameCategory", NFC)), '\s+', ' ', 'g')))`
+    * **Điều kiện lọc:** `WHERE "Is_default" = TRUE AND "Delete_at" IS NULL`
+    * **Quy tắc:** Toàn bộ danh mục mẫu hệ thống không được trùng tên nhau.
+* **Cho phép trùng tên giữa người dùng và hệ thống:**
+  * Người dùng **được phép** sở hữu danh mục cá nhân trùng tên với danh mục mẫu hệ thống (đây là điều kiện cốt lõi để mô hình nhân bản Template hoạt động).
+  * Trigger kiểm tra trùng chéo cũ (`trg_category_name_cross_default`) đã chính thức được gỡ bỏ khỏi CSDL.
+  * Admin cũng được phép tạo mới danh mục hệ thống trùng tên với danh mục người dùng đã tồn tại từ trước.
 
-### 1.3. Bộ giá trị phân loại (`Classify` Enum)
+### 1.3. Bảo vệ & Ràng buộc quản trị Danh mục Hệ thống (System Category Protection)
+* **Quyền tạo danh mục hệ thống:** Chỉ duy nhất tài khoản có vai trò Admin (`idrole = 1`) mới có quyền tạo danh mục hệ thống (`is_default = true`).
+* **Cấm chuyển đổi (No Conversion):** Tuyệt đối không cho phép chuyển đổi danh mục người dùng (`is_default = false`) thành danh mục hệ thống (`is_default = true`), kể cả khi thực hiện bởi Admin. Nếu cần thêm danh mục hệ thống, Admin phải tạo mới một bản ghi danh mục hệ thống riêng biệt.
+* **Bảo vệ chống xóa (Delete Protection):** Danh mục hệ thống **không thể bị xóa**.
+  * Trên giao diện Admin-web: Nút Xóa danh mục bị vô hiệu hóa với danh mục hệ thống kèm chú thích rõ ràng.
+  * Trên Backend API: `admin.service.deleteCategory` kiểm tra và từ chối ngay lập tức với mã lỗi HTTP 400 Bad Request nếu danh mục có `is_default === true`.
+
+### 1.4. Bộ giá trị phân loại (`Classify` Enum)
 * Giá trị của cột `classify` bắt buộc phải thuộc tập 3 giá trị chuẩn:
   * `'Thu'` (Khoản thu nhập)
   * `'Chi'` (Khoản chi tiêu)
   * `'Vay/no'` (Các khoản vay, nợ)
 * Validator ở Sync Engine (`sync.validation.js`) chỉ chấp nhận đúng 3 giá trị này.
 
-### 1.4. Phân quyền học từ khóa AI (Keyword Learning Permission)
+### 1.5. Phân quyền học từ khóa AI (Keyword Learning Permission)
 * Khi gọi `POST /api/ai/classify/feedback` để huấn luyện từ khóa danh mục:
-  * Người dùng chỉ được phép bổ sung từ khóa vào danh mục do chính họ tạo ra (`Create_by = idaccount`).
-  * Cấm tuyệt đối việc ghi đè từ khóa vào danh mục mặc định của hệ thống (`Create_by = 1`) hoặc danh mục của người dùng khác $\rightarrow$ Hệ thống lập tức từ chối với mã **HTTP 403 Forbidden**.
+  * Người dùng chỉ được phép bổ sung từ khóa vào danh mục do chính họ sở hữu (`Create_by = idaccount` và `Is_default = false`).
+  * Cấm tuyệt đối việc ghi đè từ khóa vào danh mục mặc định của hệ thống (`Is_default = true`) hoặc danh mục của người dùng khác $\rightarrow$ Hệ thống lập tức từ chối với mã **HTTP 403 Forbidden**.
 
 ### 1.5. Nhóm danh mục (`category_group` & `category_group_membership`)
 * Bảng quan hệ `category_group_membership` gắn kết Danh mục với Nhóm danh mục.

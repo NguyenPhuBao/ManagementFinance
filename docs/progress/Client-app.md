@@ -202,20 +202,39 @@ Client-app hoàn toàn làm chủ việc ghi nhận CSDL theo kiến trúc Offli
 * Gọi `POST /api/sync/push` để đẩy dữ liệu lên Cloud Backend (khi có kết nối Internet).
 * Backend **không cần Direct API** tạo giao dịch riêng cho OCR, toàn bộ giao dịch được đồng bộ tự nhiên qua Sync Engine chuẩn hóa.
 
+## 7. Khởi Tạo Danh Mục Khi Đăng Ký Tài Khoản Mới (Template & Cloned Model)
+
+Theo quyết định nghiệp vụ đã thống nhất của PO:
+* **Nguyên tắc:** Danh mục mặc định hệ thống (`is_default = true`) chỉ đóng vai trò là Template mẫu. Backend **không** tự động sinh danh mục cho người dùng khi gọi API đăng ký.
+* **Quy trình thực hiện tại Client-app:**
+  1. Sau khi người dùng xác thực OTP và đăng ký tài khoản thành công (`/api/auth/register/verify-otp`) hoặc đăng nhập lần đầu chưa có danh mục:
+  2. Client-app gọi API **`GET /api/sync/default-categories`** để nhận danh sách toàn bộ danh mục mẫu đang hoạt động của hệ thống.
+  3. Client-app sinh một bộ danh mục cá nhân tương ứng:
+     - `create_by = currentUserIdAccount`
+     - `is_default = false`
+     - `idcategory`: UUID v4 do Client-app tự sinh
+     - Giữ nguyên `name_category`, `classify`, `icon`, `keyword` từ template.
+  4. Lưu toàn bộ danh mục này vào bảng `category` trong CSDL SQLite cục bộ (Client-app không lưu danh mục hệ thống vào bảng này).
+  5. Đẩy bộ danh mục cá nhân này lên Backend qua cơ chế **`POST /api/sync/push`** (với `operation: 'create'`).
+  6. Từ thời điểm này, bộ danh mục thuộc sở hữu cá nhân độc lập của tài khoản, người dùng có thể tự do thêm/sửa/xóa hoặc đổi tên mà không ảnh hưởng tới hệ thống mẫu.
+
 ---
 
-## 7. Tích Hợp Realtime Socket.io Client Cho Toàn Ứng Dụng
+## 8. Tích Hợp Realtime Socket.io Client Cho Toàn Ứng Dụng
 
 Client-app duy trì kết nối Socket.io liên tục với Backend để nhận thông báo thời gian thực:
 
-* **Kết nối & Gia nhập phòng cá nhân:**
+* **Kết nối bảo mật qua JWT Handshake Token (Không dùng `join_account`):**
   ```dart
   socket = IO.io(backendUrl, <String, dynamic>{
-    'transports': ['websocket'],
+    'transports': ['websocket', 'polling'],
     'autoConnect': true,
+    'auth': {
+      'token': accessToken, // Token JWT hợp lệ từ auth.service
+    },
   });
-  // Khi đăng nhập thành công
-  socket.emit('join_account', currentUserIdAccount);
+  // Socket.io middleware trên Backend sẽ tự động xác thực token và đưa socket
+  // vào room riêng 'account_${idaccount}' an toàn tuyệt đối.
   ```
 
 * **Danh sách các sự kiện Realtime cần lắng nghe:**
@@ -228,7 +247,7 @@ Client-app duy trì kết nối Socket.io liên tục với Backend để nhận
 
 ---
 
-## 8. Danh Sách Các Endpoint Backend Client-App Cần Kết Nối
+## 9. Danh Sách Các Endpoint Backend Client-App Cần Kết Nối
 
 | Module | Method | Endpoint | Mục Đích |
 |---|---|---|---|
@@ -238,6 +257,7 @@ Client-app duy trì kết nối Socket.io liên tục với Backend để nhận
 | **Auth** | `POST` | `/api/auth/refresh` | Làm mới AccessToken khi hết hạn |
 | **Auth** | `POST` | `/api/auth/logout` | Đăng xuất & thu hồi RefreshToken |
 | **Auth** | `GET` | `/api/auth/me` | Lấy thông tin tài khoản và người dùng hiện tại |
+| **Sync** | `GET` | `/api/sync/default-categories` | Lấy danh sách danh mục mẫu mặc định để nhân bản cho user mới đăng ký |
 | **Sync** | `POST` | `/api/sync/push` | Đẩy hàng loạt thao tác offline (create/update/delete) lên server |
 | **Sync** | `GET` | `/api/sync/pull` | Kéo dữ liệu mới nhất từ server về SQLite máy |
 | **Sync** | `GET` | `/api/sync/status` | Kiểm tra tổng số lượng bản ghi để đối soát tính toàn vẹn |

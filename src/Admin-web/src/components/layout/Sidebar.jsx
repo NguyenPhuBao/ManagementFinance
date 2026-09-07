@@ -25,7 +25,7 @@ const Sidebar = ({ collapsed }) => {
             <span className="material-symbols-outlined">account_balance</span>
           </div>
           <div>
-            <h1 className="font-headline-md text-headline-md font-bold text-white whitespace-nowrap">Management</h1>
+            <h1 className="font-headline-md text-headline-md font-bold text-white whitespace-nowrap">FinanceAdmin</h1>
           </div>
         </div>
       </div>
