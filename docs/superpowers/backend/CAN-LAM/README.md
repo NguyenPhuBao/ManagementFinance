@@ -2,11 +2,37 @@
 
 **Cập nhật:** 2026-09-07
 
+> ## ✅ Đợt backend 2026-09-07 — client đã kiểm chứng bằng mã, không tin báo cáo
+>
+> `main` mang về một đợt sửa lớn. Client đọc mã nguồn và truy vấn thẳng
+> PostgreSQL để đối chiếu từng tuyên bố, thay vì đọc bảng trạng thái của
+> backend. Kết quả: **mục 1, 3, 4, 5, 7 xong; mục 6 bãi bỏ; mục 8, 9 và cả
+> `goal.Priority` lẫn `Idaccount` cho `uq_transaction_external` xong**.
+> Còn lại trong nhóm 1: **(D)** của mục 2, và **7b** (cột màu).
+>
+> ⚠️ **Đợt migration ban đầu KHÔNG chạy được.** `)2_can_lam_all_migrations.sql`
+> có một câu `DELETE FROM "category"` xoá cứng 5 danh mục mặc định ngoài bộ
+> 13 stable UUID. Trên CSDL thật, `fk_bill_category` là **RESTRICT** và có 6
+> hoá đơn trỏ tới, nên câu ấy ném 23503 và **toàn bộ tệp roll back** — đó là
+> lý do CSDL chưa từng có cột nào của đợt này. Ngoài ra `fk_transaction_category`
+> là **SET NULL**: nếu gỡ vướng cho DELETE chạy lọt thì 7 giao dịch mất danh
+> mục mà không báo lỗi. Client đã đổi thành xoá mềm (`UPDATE ... SET
+> "Delete_at" = NOW()`) trên nhánh `patch2`, chạy thử trong giao dịch rồi
+> `ROLLBACK` để kiểm, sau đó áp dụng thật. **Xin nhận bản vá ấy trước khi
+> chạy migration ở bất kỳ môi trường nào khác.**
+>
+> ⚠️ Bản vá **(B)** tuy đúng thứ client xin nhưng làm hỏng một chỗ phía
+> client mà không ai lường: `message` không còn mang mã SQLSTATE nên mọi
+> regex phân loại lỗi mất khả năng khớp, và lỗi vĩnh viễn im lặng tụt xuống
+> nhánh `transient`. Client đã tự vá (`_permanentCodes`) — **không cần
+> backend làm gì**, ghi lại để lần sau đổi hợp đồng lỗi thì báo trước.
+
 > Thư mục cha có 20 tài liệu, phần lớn đã xong hoặc chỉ để tham khảo lịch sử.
-> **Mười một tài liệu trong thư mục này là phần còn việc.**
-> (`CATEGORY_GROUP_MEMBERSHIP_SYNC.md` đã **đóng 2026-09-07** — giữ lại làm
-> hồ sơ, không còn việc.) Không cần mở gì
-> ở thư mục cha ngoài ba tệp bối cảnh liệt kê ở mục 4.
+> Thư mục này giữ **cả tài liệu còn việc lẫn tài liệu vừa đóng** — giữ cả hai để
+> đội backend thấy được cái gì đã xong mà không phải dò lại. Sau đợt 2026-09-07
+> chỉ còn **năm** mục thật sự phải làm; danh sách ngắn ấy ở **mục 2**, đọc nó
+> trước bảng phân nhóm bên dưới. Không cần mở gì ở thư mục cha ngoài ba tệp bối
+> cảnh liệt kê ở mục 4.
 
 ---
 
@@ -25,14 +51,14 @@ chạm vào hôm nay**.
 
 | # | Tài liệu | Client đã có gì | Backend thiếu gì | Chi phí |
 |---|---|---|---|---|
-| 1 | [2026-09-04-ocr-classify-review.md](./2026-09-04-ocr-classify-review.md) — **chỉ mục Socket.io** | Không liên quan tính năng nào — đây là rò rỉ ở tầng hạ tầng | Socket.io **không xác thực**, `join_account` tin con số client tự khai, và bốn dòng `io.emit` phát cho **mọi** socket. `emitAuditActivity` đang rò tên người dùng ra socket ẩn danh **ngay lúc này** | một buổi (phải sửa cùng `Admin-web/src/hooks/useSocket.js`) |
-| 2 | [2026-09-04-backend-idempotent-delete.md](./2026-09-04-backend-idempotent-delete.md) | Toàn bộ đồng bộ offline-first, và ngân sách **"Ngày cụ thể"** | **(A)** `/sync/push` báo lỗi khi xoá bản ghi server không có → client đẩy lại **vĩnh viễn**. **(B)** `message` là nguyên văn stack trace Prisma → client phải dò chuỗi, hiện đã có **ba** phép khớp dựng tạm. **(C)** `upsertBudget` ép `time_recurrence = null` thành `'Month'` → **chặn hẳn** ngân sách "Ngày cụ thể". **(D)** `upsertBudget` nhánh tạo ghi `threshold_warning_percent ?? 0` (cộng `@default(0)` trong schema) → ngân sách để trống ô phần trăm quay về client với số 0; client đã vá form ngày 06/09, nhưng số 0 vẫn là dữ liệu sai nằm trên server | vài dòng + nửa buổi |
-| 3 | [CATEGORY_KEYWORD_SYNC.md](./CATEGORY_KEYWORD_SYNC.md) | Danh mục và từ khoá phân loại; chiều **xuống** client đã nối xong | Lỗ hổng **phân quyền** ở `POST /api/ai/classify/feedback` — `appendCategoryKeyword()` không đọc `create_by`, nên ghi được từ khoá vào danh mục của người khác. Chiều **lên** chưa có mô hình dữ liệu | một buổi |
+| 1 | [2026-09-04-ocr-classify-review.md](./2026-09-04-ocr-classify-review.md) — **chỉ mục Socket.io** | Không liên quan tính năng nào — đây là rò rỉ ở tầng hạ tầng | Xác thực JWT ở handshake (`io.use`), `join_account` đã gỡ hẳn nên room lấy từ token chứ không từ con số client tự khai, và **không còn `io.emit` nào** — cả bốn sự kiện đều `io.to(room)`. `emitAuditActivity` nay chỉ phát vào `admin_room`. `Admin-web/src/hooks/useSocket.js` gửi kèm `auth: { token }` | ✅ **ĐÃ XONG** — client đo 2026-09-07 |
+| 2 | [2026-09-04-backend-idempotent-delete.md](./2026-09-04-backend-idempotent-delete.md) | Toàn bộ đồng bộ offline-first, và ngân sách **"Ngày cụ thể"** | **(A)** ✅ xoá luỹ đẳng — trả `synced` + `'Already absent'`. **(B)** ✅ mã lỗi có cấu trúc — `code` + `constraint` + thông báo tiếng Việt. **(C)** ✅ `time_recurrence === undefined ? 'Month' : ...`, `null` sống sót → ngân sách "Ngày cụ thể" thông. **(D)** ⛔ **CÒN** — nhánh tạo của `upsertBudget` vẫn `threshold_warning_percent ?? 0`, và schema vẫn `@default(0)` | **(D)** vài dòng |
+| 3 | [CATEGORY_KEYWORD_SYNC.md](./CATEGORY_KEYWORD_SYNC.md) | Danh mục và từ khoá phân loại, **cả hai chiều** | ✅ Lỗ hổng phân quyền đã bịt: `appendCategoryKeyword()` nhận `idaccount` và ném 403 khi danh mục là `is_default` hoặc khác `create_by`; `classify.service.js:196` có truyền tham số ấy. Chiều **lên** hoá ra không cần backend làm gì — `/sync/push` vốn đã nhận `keyword`, client nối xong 2026-09-07 | ✅ **ĐÃ XONG** |
 | 4 | [CATEGORY_STABLE_IDS.md](./CATEGORY_STABLE_IDS.md) | Danh mục mặc định trên mọi máy | Đã gán 13 Stable UUIDs trong `seed.js` làm Template và cấp API `GET /api/sync/default-categories` để Client-app nhân bản thành danh mục cá nhân | ✅ ĐÃ HOÀN THÀNH |
 | 5 | [CATEGORY_NAME_UNIQUENESS.md](./CATEGORY_NAME_UNIQUENESS.md) | Quy tắc duy nhất tên danh mục (Template & Cloned) | Đã cài 2 Partial Unique Indexes độc lập (`uq_category_owner_name`, `uq_category_default_name`). Gỡ bỏ hoàn toàn trigger chéo cũ. Người dùng được phép có danh mục trùng tên với template hệ thống | ✅ ĐÃ HOÀN THÀNH |
 | 6 | [CATEGORY_GROUP_MEMBERSHIP_SYNC.md](./CATEGORY_GROUP_MEMBERSHIP_SYNC.md) | Gom nhóm danh mục | ⛔ **ĐÃ BÃI BỎ:** Bảng trung gian thừa do sai sót trước đây của Client-app. Hệ thống dùng quan hệ tự tham chiếu `category.idgroup` theo mô hình Template & Cloned. Đã DROP TABLE và gỡ bỏ khỏi Prisma, Sync Engine và Codebase. | ❌ ĐÃ BÃI BỎ |
-| 7 | [CATEGORY_CLASSIFY_ALIGNMENT.md](./CATEGORY_CLASSIFY_ALIGNMENT.md) | Bộ giá trị `classify` của danh mục | `validClassify` (`sync.validation.js:103`) rộng hơn thực tế | **một dòng** |
-| 7b | [CATEGORY_COLOUR_COLUMN.md](./CATEGORY_COLOUR_COLUMN.md) | Chọn màu cho danh mục — client **vẫn gửi `colour` lên ở mỗi lần đẩy** | Bảng `category` có 12 cột và **không cột nào cho màu**, nên trường ấy bị bỏ qua **im lặng**: người dùng đổi màu rồi đăng nhập máy khác là mất. Đây là mục **nhẹ nhất** nhóm này — không vòng lặp, không rò rỉ, chỉ mất một lựa chọn người dùng đã bỏ công đặt. Bán kính sắp rộng ra: mỗi tài khoản sắp có 18 danh mục của riêng mình và sửa được màu cả 18 | một cột + hai dòng |
+| 7 | [CATEGORY_CLASSIFY_ALIGNMENT.md](./CATEGORY_CLASSIFY_ALIGNMENT.md) | Bộ giá trị `classify` của danh mục | ✅ `validClassify` (`sync.validation.js:110`) nay đúng `['Thu', 'Chi', 'Vay/no']` | ✅ **ĐÃ XONG** |
+| 7b | [CATEGORY_COLOUR_COLUMN.md](./CATEGORY_COLOUR_COLUMN.md) | Chọn màu cho danh mục — client **vẫn gửi `colour` lên ở mỗi lần đẩy** | ⛔ **CÒN** — bảng `category` vẫn 12 cột, không cột nào cho màu, nên trường ấy bị bỏ qua **im lặng**. ⚠️ Tài liệu này **chưa từng lên origin** tính tới 2026-09-07, nên backend chưa hề thấy nó — đợt migration bỏ sót là vì vậy, không phải vì từ chối. Lưu ý bảng `bill` **đã có** cột `Color`, nên đây là chuyện nhất quán chứ không phải kiểu dữ liệu mới | một cột + hai dòng |
 
 ### 🟡 Nhóm 2 — client ĐÃ CÓ nhưng không có gì hỏng; đây là *mở khoá*
 
@@ -41,8 +67,8 @@ Không ai mất dữ liệu và không có gì sai số nếu chưa làm. Nhưng
 
 | # | Tài liệu | Client đã có gì | Backend thiếu gì | Chi phí |
 |---|---|---|---|---|
-| 8 | [2026-09-05-backend-transaction-goal-id.md](./2026-09-05-backend-transaction-goal-id.md) | Lịch sử tích luỹ nối với mục tiêu bằng **ID** (schema v14) | Cột nullable `transaction.Idgoal`. Thiếu nó, hàng kéo về từ server rơi xuống nhánh so **tên** — nhánh vẫn còn đúng khuyết điểm mà cột này sinh ra để chữa | một cột |
-| 9 | [2026-09-05-backend-goal-auto-deposit.md](./2026-09-05-backend-goal-auto-deposit.md) | **Trích tiền tự động định kỳ** cho mục tiêu (schema v15) | Ba cột `auto_deposit_*`. Thiếu chúng, bật trích ở điện thoại rồi đăng nhập máy khác thì máy kia không trích gì cả | ba cột |
+| 8 | [2026-09-05-backend-transaction-goal-id.md](./2026-09-05-backend-transaction-goal-id.md) | Lịch sử tích luỹ nối với mục tiêu bằng **ID** (schema v14) | ✅ `transaction.Idgoal` đã có trong CSDL, kèm `fk_transaction_goal` (ON DELETE SET NULL) và `idx_transaction_goal`. `mapEntityFields` nhận cả `goalId` lẫn `goal_id` | ✅ **ĐÃ XONG** |
+| 9 | [2026-09-05-backend-goal-auto-deposit.md](./2026-09-05-backend-goal-auto-deposit.md) | **Trích tiền tự động định kỳ** cho mục tiêu (schema v15) | ✅ Cả **ba** cột `auto_deposit_amount` / `auto_deposit_wallet_id` / `auto_deposit_last_run` đã có trong CSDL và trong `mapEntityFields` — đúng yêu cầu "ba cột phải lên cùng một lúc" | ✅ **ĐÃ XONG** |
 | 10 | [2026-09-06-bill-chuoi-ky-va-an-han.md](./2026-09-06-bill-chuoi-ky-va-an-han.md) — **việc A và B** | **Hoàn tác thanh toán hoá đơn** (schema v16) | Hai cột nullable `transaction.Idbill` và `bill.Previous_bill_id` — hai đầu của sợi dây từ hoá đơn về khoản chi và về kỳ kế tiếp. Thiếu chúng, hoàn tác chỉ chạy trên đúng cái máy đã trả; máy khác từ chối có thông báo. Cột B còn mở luôn **lịch sử theo hoá đơn** ("sáu tháng qua tiền điện hết bao nhiêu") | hai cột |
 | 10b | [2026-09-06-bill-chuoi-ky-va-an-han.md](./2026-09-06-bill-chuoi-ky-va-an-han.md) — **việc D** | **Tự động thanh toán hoá đơn** (schema v17) | Cột `bill.Auto_pay` để cấu hình theo người dùng sang máy khác, và **chốt chặn trả hai lần** ở `/sync/push` (từ chối `transaction` thứ hai cùng `Idbill` chưa xoá mềm — phụ thuộc việc A). Thiếu chốt, hai máy cùng bật và cùng offline qua ngày đến hạn là hai khoản chi; client chỉ nhắc được "chỉ nên bật trên một thiết bị" | một cột + một phép kiểm |
 
@@ -56,35 +82,36 @@ Không ai mất dữ liệu và không có gì sai số nếu chưa làm. Nhưng
 |---|---|
 | [2026-09-06-bill-chuoi-ky-va-an-han.md](./2026-09-06-bill-chuoi-ky-va-an-han.md) — **việc C** | Client **chưa làm** ân hạn hoá đơn, và cố ý chưa làm cho tới khi có cột — cùng lối với `goal.Priority`. Bảng `bill` chỉ có `Start_date` và `Due_date`, hai đầu của CÙNG một kỳ, nên hoá đơn điện "kỳ 01–30/09 nhưng hạn trả 15/10" không diễn đạt được. Người dùng hôm nay vẫn dùng được bằng cách đặt hạn trả là mốc kết thúc kỳ |
 | [2026-09-06-bill-chuoi-ky-va-an-han.md](./2026-09-06-bill-chuoi-ky-va-an-han.md) — **việc E** | Client **chưa làm** "bỏ qua kỳ này" cho hoá đơn lặp, và cố ý chưa làm cho tới khi backend xác nhận nhận giá trị `Pay_status = 'Skipped'` — hàng bị từ chối ở `/sync/push` là kẹt hàng đợi đẩy vĩnh viễn | **Không thêm cột** (`VarChar(7)` vừa khít); chỉ rà whitelist/validator và chỗ tính nợ. Có thể chỉ là một câu xác nhận |
-| [2026-09-05-backend-goal-priority.md](./2026-09-05-backend-goal-priority.md) | Client **chưa làm** ưu tiên mục tiêu, và cố ý chưa làm cho tới khi có cột. Đây là tài liệu *mở đường*: xin **một** cột nullable `goal.Priority` **trước** khi viết mã, thay vì làm cột cục bộ rồi xin sau như hai lần trước. Danh sách hiện sắp theo hạn gần nhất trước, đã gần đúng thứ tự ưu tiên khi chỉ có vài mục tiêu |
-| [2026-09-04-ocr-classify-review.md](./2026-09-04-ocr-classify-review.md) — **phần OCR/Classify** (mục 2–8 của tài liệu) | Client-app **chưa có tính năng quét hoá đơn**: không có màn hình, không có repository, không có endpoint nào được gọi. `classifyBatch` sai kiểu tham số, `GEMINI_API_KEY` thiếu, dedup Quy tắc 3 chặn nhầm, cửa hậu `_mock*` — tất cả đều thật, nhưng **không ai chạm tới được từ app**. ⚠️ Riêng `uq_transaction_external` thiếu `Idaccount` thì **phải xong TRƯỚC** khi client nối luồng OCR, vì ràng buộc ấy là **toàn cục** |
+| [2026-09-05-backend-goal-priority.md](./2026-09-05-backend-goal-priority.md) | ✅ **Cột `goal.Priority` đã có trong CSDL** (2026-09-07), `mapEntityFields` cũng đã ánh xạ. Client **chưa làm** ưu tiên mục tiêu — nay không còn gì chặn, chỉ là chưa tới lượt. Danh sách hiện sắp theo hạn gần nhất trước, đã gần đúng thứ tự ưu tiên khi chỉ có vài mục tiêu |
+| [2026-09-04-ocr-classify-review.md](./2026-09-04-ocr-classify-review.md) — **phần OCR/Classify** (mục 2–8 của tài liệu) | Client-app **chưa có tính năng quét hoá đơn**: không có màn hình, không có repository, không có endpoint nào được gọi. `classifyBatch` sai kiểu tham số, `GEMINI_API_KEY` thiếu (`.env` trên máy này **không có biến ấy**), dedup Quy tắc 3 chặn nhầm, cửa hậu `_mock*` — tất cả đều thật, nhưng **không ai chạm tới được từ app**. ✅ Riêng `uq_transaction_external` nay **đã có `Idaccount`** (`UNIQUE ("Idaccount", "Provider", "Bank_tran_id")`, đo 2026-09-07), nên điều kiện chặn client nối luồng OCR đã được gỡ. ⚠️ Backend cũng đã đổi nhà cung cấp ngân hàng **Casso → SePay**; client vẫn còn cột `bank_casso_id` và giá trị provider `'Casso'` — không gãy đồng bộ vì hai trường ấy không nằm trong hợp đồng, nhưng là món nợ tên gọi |
 
 ---
 
-## 2. Thứ tự thi công đề nghị
+## 2. Còn lại phải làm gì
 
-1. **Socket.io** (nhóm 1 mục 1) — thứ duy nhất đang chảy máu dữ liệu thật.
-2. **`/sync/push`** (nhóm 1 mục 2), phần (A) và (C) — rẻ, và (A) cắt vòng lặp
-   đẩy lại bất kể nguyên nhân gốc là gì, kể cả nguyên nhân chưa ai tìm ra.
-3. **`validClassify`** (nhóm 1 mục 7) — một dòng.
-4. **Lỗ hổng phân quyền từ khoá** (nhóm 1 mục 3).
-5. **Một đợt migration duy nhất**: mục 4 → 5 của nhóm 1, **liền một mạch**,
-   cộng thêm **bốn** mục của nhóm 2 (8, 9, 10, 10b), **cột màu danh mục**
-   (nhóm 1 mục 7b), cột `goal.Priority` của nhóm 3, và `Idaccount` cho
-   `uq_transaction_external`.
-6. **Chốt chặn trả hai lần** ở `/sync/push` (nhóm 2 mục 10b, phần kiểm) — làm
-   **sau** bước 5 vì nó đọc cột `transaction.Idbill` của mục 10. Là mã kiểm ở
-   tầng ứng dụng, không phải unique index (hoàn tác rồi trả lại là hợp lệ).
-7. **`Pay_status = 'Skipped'`** (việc E của tài liệu hoá đơn) — không cần
-   migration, làm lúc nào cũng được; nhưng client chờ **một câu xác nhận** rồi
-   mới mở tính năng "bỏ qua kỳ này".
+Năm bước đầu của kế hoạch cũ **đã xong** trong đợt 2026-09-07 (Socket.io,
+(A) và (C) của `/sync/push`, `validClassify`, lỗ hổng phân quyền từ khoá, và
+cả đợt migration). Phần còn lại, xếp theo mức thiệt hại:
 
-> 💡 **Cập nhật 2026-09-07:** Đợt migration đã hoàn tất 100%. `CATEGORY_STABLE_IDS` đã được đóng băng trong `seed.js` để làm bộ khung template cố định, và `CATEGORY_NAME_UNIQUENESS` đã thiết lập 2 partial unique indexes độc lập theo đúng Mô hình Template & Cloned được PO phê duyệt.
+1. **(D) của `/sync/push`** (nhóm 1 mục 2) — vài dòng. Bỏ `?? 0` ở nhánh tạo
+   của `upsertBudget` **và** `@default(0)` trong `schema.prisma`. Cùng khuôn
+   với (C) đã sửa. Đây là mục duy nhất còn lại của một tài liệu mà backend
+   đã làm ba phần tư.
+2. **Cột màu danh mục** (nhóm 1 mục 7b) — một cột. ⚠️ Tài liệu ấy chưa từng
+   lên origin nên backend chưa hề thấy; đây không phải mục bị từ chối.
+3. **Hai cột hoá đơn** (nhóm 2 mục 10): `transaction.Idbill` và
+   `bill.Previous_bill_id`. Đo 2026-09-07: bảng `bill` có 18 cột, không có
+   cột nào trong hai cột ấy; `transaction` cũng chưa có `Idbill`.
+4. **`bill.Auto_pay` + chốt chặn trả hai lần** (nhóm 2 mục 10b) — làm **sau**
+   bước 3 vì phép kiểm đọc `transaction.Idbill`. Là mã kiểm ở tầng ứng dụng,
+   không phải unique index (hoàn tác rồi trả lại là hợp lệ).
+5. **`Pay_status = 'Skipped'`** (việc E của tài liệu hoá đơn) — không cần
+   migration; client chờ **một câu xác nhận** rồi mới mở tính năng "bỏ qua
+   kỳ này".
 
-
-> ⚠️ **Còn lại của đợt này (client ghi 2026-09-07):** cột **màu danh mục**
-> (`CATEGORY_COLOUR_COLUMN.md`, mục 7b) **chưa có** trong đợt migration —
-> bảng `category` vẫn 12 cột, không cột nào cho màu. Xin gộp vào đợt sau.
+> ⚠️ **Trước khi chạy migration ở môi trường mới:** lấy bản vá xoá mềm ở
+> nhánh `patch2`. Bản `)2_can_lam_all_migrations.sql` trên `main` sẽ roll back
+> toàn bộ khi gặp dữ liệu thật — xem banner đầu tài liệu này.
 
 ---
 

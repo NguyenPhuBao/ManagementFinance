@@ -1,5 +1,26 @@
 # Rà soát mô-đun OCR & Classify vừa gộp vào `main`
 
+> ## ✅ Phần Socket.io ĐÃ XONG — 2026-09-07, client đo bằng mã
+>
+> Đây là phần **duy nhất** của tài liệu này từng gây hại thật, và nó đã được
+> sửa trọn vẹn:
+>
+> - Xác thực JWT ở handshake qua `io.use`, kèm kiểm tài khoản còn hiệu lực.
+> - `join_account` **đã gỡ hẳn** — room lấy từ `socket.data.idaccount` do token
+>   quyết định, không còn tin con số client tự khai.
+> - `grep 'io.emit('` toàn `src/Backend` → **0 kết quả**. Cả bốn sự kiện đều
+>   `io.to(room)`; `emitAuditActivity` nay chỉ phát vào `admin_room`.
+> - `Admin-web/src/hooks/useSocket.js` gửi kèm `auth: { token }`.
+>
+> ✅ **`uq_transaction_external` cũng đã có `Idaccount`** (mục 7 của tài liệu
+> này): ràng buộc nay là `UNIQUE ("Idaccount", "Provider", "Bank_tran_id")`,
+> đo thẳng trên CSDL ngày 2026-09-07. Điều kiện chặn client gửi `provider` /
+> `bank_tran_id` trong payload đẩy **đã được gỡ**.
+>
+> Phần OCR/Classify (mục 2–8) vẫn còn nguyên, nhưng không gấp: client chưa có
+> màn hình quét hoá đơn nào. `.env` trên máy phát triển **không có**
+> `GEMINI_API_KEY`. Backend cũng đã đổi Casso → **SePay** trong cùng đợt.
+
 **Ngày:** 2026-09-04 · **Sửa lại cùng ngày** sau một vòng thẩm định phản biện
 **Phạm vi:** Backend (`core/socket.js`, `modules/ai/features/{ocr,classify,dedup}/`,
 `prisma/schema.prisma`, `middleware/audit-log.middleware.js`) và `docs/progress/Client-app.md`

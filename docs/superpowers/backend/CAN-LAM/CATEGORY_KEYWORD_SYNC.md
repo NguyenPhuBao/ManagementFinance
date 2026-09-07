@@ -1,5 +1,19 @@
 # Từ khoá phân loại danh mục: hai kho dữ liệu độc lập, không có đường nối
 
+> ## ✅ ĐÃ XONG CẢ HAI VẾ — 2026-09-07
+>
+> **Lỗ hổng phân quyền đã bịt.** `appendCategoryKeyword()` nay nhận `idaccount`
+> và ném 403 khi danh mục là `is_default` hoặc có `create_by` khác người gọi;
+> `classify.service.js:196` có truyền tham số ấy xuống. Kiểm bằng mã 2026-09-07.
+>
+> **Chiều lên hoá ra không cần backend làm gì.** `/sync/push` vốn đã nhận
+> trường `keyword` từ lâu — client chỉ chưa gửi. Client nối xong ngày
+> 2026-09-07 và có test hợp đồng canh chừng
+> (`sync_payload_contract_test.dart`, "payload mang keyword, nối bằng dấu
+> phẩy"). Từ khoá nay sống sót qua cài lại app và đăng nhập máy khác.
+>
+> Phần dưới giữ nguyên làm hồ sơ.
+
 > ## ⚠️ CẬP NHẬT 2026-09-04 — lỗ hổng phân quyền VẪN CÒN NGUYÊN, và nay **nguy hiểm hơn trước**
 >
 > Kiểm lại tại `fcf7659`, sau khi gộp `origin/main` `dfda862` (mô-đun OCR F013 và

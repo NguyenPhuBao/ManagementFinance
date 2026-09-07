@@ -561,7 +561,7 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-06)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-07)
 
 ### 🔐 Xác thực phiên đăng nhập
 
@@ -648,29 +648,40 @@ Xem đầy đủ tại **`docs/CLIENT_APP_KNOWN_GAPS.md`**. Phiên 2026-09-03 đ
 >
 > Hệ quả ít ai biết: **công cụ Grep tôn trọng `.gitignore` nên không nhìn thấy thư mục `test/`**. Muốn dò xem còn ai gọi một hàm sắp xoá thì phải dùng `grep` qua shell, nếu không sẽ thấy thiếu file và xoá nhầm.
 
-Vấn đề thuộc backend. **Mười tài liệu còn việc nay nằm ở
+Vấn đề thuộc backend. **Các tài liệu còn việc nằm ở
 `docs/superpowers/backend/CAN-LAM/`**, tách khỏi phần đã xong để đội backend
 không phải lọc giữa 20 tệp. README trong thư mục ấy là **cửa vào duy nhất**: nó
 chia việc theo *client đã có tính năng này chưa*, vì đó mới là thứ quyết định
 mức khẩn — và ranh giới ấy không suy ra được từ bảng dưới đây.
 
-Bảng dưới kiểm lại ngày **2026-09-04** tại `fcf7659`, sau khi gộp `origin/main`
-`dfda862` (mang mô-đun OCR F013 và bộ phân loại hai cấp F012). **Thứ tự là thứ
-tự thi công đề nghị**, không phải thứ tự chữ cái:
+Bảng dưới **kiểm lại ngày 2026-09-07** sau khi gộp `origin/main` `193b6d5`
+(đợt backend lớn: Socket.io, `/sync/push`, danh mục Template & Cloned, và một
+đợt migration) và sau khi **áp dụng migration ấy vào PostgreSQL**. Mỗi ô ✅ ở
+đây đều được đối chiếu bằng **mã nguồn hoặc truy vấn đọc trên CSDL thật**, không
+phải chép từ bảng trạng thái của backend. **Thứ tự là thứ tự thi công đề nghị**,
+không phải thứ tự chữ cái.
+
+> ⚠️ **Migration của đợt ấy không chạy được ở bản gốc.**
+> `)2_can_lam_all_migrations.sql` xoá **cứng** 5 danh mục mặc định ngoài bộ 13
+> stable UUID; `fk_bill_category` là RESTRICT và có 6 hoá đơn trỏ tới, nên câu
+> ấy ném 23503 và **cả tệp roll back**. Client đã đổi thành xoá mềm trên nhánh
+> **`patch2`** (commit `ea3611a`), chạy thử trong giao dịch rồi `ROLLBACK` để
+> kiểm, sau đó áp dụng thật. Bộ mặc định trên server nay còn **13 hàng sống +
+> 5 hàng xoá mềm**; 7 giao dịch và 6 hoá đơn giữ nguyên danh mục.
 
 | # | Tài liệu | Trạng thái |
 |---|---|---|
-| 1 | `CATEGORY_KEYWORD_SYNC.md` | ⛔ Chưa — **lỗ hổng phân quyền còn nguyên**: `appendCategoryKeyword()` không đọc `create_by`. **Nghiêm trọng hơn từ 2026-09-04** vì `keyword.matcher` nay là Tầng 1 trên đường quét hoá đơn. ✅ Chiều **xuống** client đã tự nối xong 2026-09-04; chiều **lên** vẫn cần backend quyết mô hình |
-| 2 | `2026-09-04-backend-idempotent-delete.md` | ⛔ Chưa — ba việc. **(A)** `/sync/push` trả lỗi khi xoá bản ghi server không có, làm client kẹt vĩnh viễn. **(B)** `message` là nguyên văn stack trace Prisma (lộ đường dẫn máy chủ + nội dung hàng), client phải dò chuỗi để phân loại. **(C)** `upsertBudget` ép `time_recurrence = null` thành `'Month'`, **chặn hẳn** lựa chọn "Ngày cụ thể" và làm ngân sách tự hết hạn sớm sau khi pull. A và B client đã vá tạm bằng **khớp chuỗi** (`record not found`, `23514`) nên dễ vỡ im lặng; C thì client **không vá được** |
-| 3 | `2026-09-04-ocr-classify-review.md` | ⛔ Chưa — **tám việc**, đã qua một vòng thẩm định phản biện và đo trực tiếp trên CSDL. **(1)** 🔴 **Socket.io không xác thực + bốn dòng `io.emit` toàn cục** — `emitAuditActivity` đang rò tên người dùng ra mọi socket ẩn danh **hôm nay**. **(2)** `classifyBatch` nhận sai kiểu tham số → phân loại từng mặt hàng **chưa bao giờ chạy**. **(3)** thiếu `GEMINI_API_KEY` trong `.env`. **(4)** dedup Quy tắc 3 bỏ quên `counterpart`/`note`/`provider` → chặn nhầm 409. **(5)** cửa hậu `_mock*`. **(6–8)** `uq_transaction_external` thiếu `Idaccount` (**chưa nổ được**), bốn chỗ lệch nhỏ, ba chỗ sai tài liệu |
-| 4 | `CATEGORY_NAME_UNIQUENESS.md` | ⚠️ **Một phần** — Admin-web đã thi hành quy tắc, nhưng còn 4 khoảng hở: không gom khoảng trắng, không chuẩn hoá NFC, thiếu vế chéo "người dùng với mặc định", và `/sync/push` chưa kiểm gì cả. CSDL **có** hai unique index nhưng chúng thi hành một quy tắc **khác** — lệch theo cả hai chiều, xem mục 2 của tài liệu |
-| 5 | `CATEGORY_STABLE_IDS.md` | ⛔ Chưa — `seed.js:150` vẫn `crypto.randomUUID()` |
+| 1 | `CATEGORY_KEYWORD_SYNC.md` | ✅ **Xong 2026-09-07** — `appendCategoryKeyword()` nhận `idaccount`, ném 403 khi danh mục là `is_default` hoặc khác `create_by`; `classify.service.js:196` có truyền xuống. Chiều **lên** hoá ra không cần backend: `/sync/push` vốn đã nhận `keyword`, client nối xong cùng ngày và có test hợp đồng |
+| 2 | `2026-09-04-backend-idempotent-delete.md` | ⚠️ **Ba trong bốn.** **(A)** ✅ xoá luỹ đẳng — trả `synced` + `'Already absent'`. **(B)** ✅ mã lỗi có cấu trúc (`code` + `constraint` + thông báo tiếng Việt). **(C)** ✅ `time_recurrence` giữ được `null` → ngân sách "Ngày cụ thể" thông. **(D)** ⛔ **CÒN** — `sync.repository.js:327` vẫn `?? 0` và schema vẫn `@default(0)`. ⚠️ Bản vá (B) làm hỏng phép phân loại lỗi phía client (regex `23505`/`23514` hết khớp vì `message` đổi) — client đã tự vá bằng `_permanentCodes`, backend không phải làm gì |
+| 3 | `2026-09-04-ocr-classify-review.md` | ⚠️ **Phần nguy hiểm đã xong.** **(1)** ✅ Socket.io: JWT ở handshake, `join_account` gỡ hẳn, `grep 'io.emit('` toàn backend → **0 kết quả**, cả bốn sự kiện vào room; `Admin-web/useSocket.js` gửi `auth: { token }`. **(6)** ✅ `uq_transaction_external` nay `UNIQUE ("Idaccount", "Provider", "Bank_tran_id")` — **điều kiện chặn client gửi `provider`/`bank_tran_id` đã gỡ**. Còn **(2)–(5)**: `classifyBatch` sai kiểu tham số, `.env` không có `GEMINI_API_KEY`, dedup Quy tắc 3, cửa hậu `_mock*` — không gấp, client chưa có màn quét hoá đơn nào. ⚠️ Backend đổi **Casso → SePay** trong cùng đợt |
+| 4 | `CATEGORY_NAME_UNIQUENESS.md` | ✅ **Xong 2026-09-07** — hai partial unique index `uq_category_owner_name` `(Create_by, tên chuẩn hoá NFC)` và `uq_category_default_name`, **cả hai có `WHERE "Delete_at" IS NULL`** và **không** có `Classify`. Trigger chéo đã DROP nên bản sao được trùng tên với khuôn. Đây là lần đầu client và PostgreSQL thi hành **cùng một** quy tắc trùng tên |
+| 5 | `CATEGORY_STABLE_IDS.md` | ✅ **Xong 2026-09-07** — `seed.js` đóng băng 13 UUID cố định, hết `crypto.randomUUID()` cho danh mục. Kèm API mới `GET /api/sync/default-categories`. ⚠️ Bộ mặc định thu từ 18 về 13: `Chi khác`, `Thu khác`, `Làm thêm`, `Trả nợ`, `Thu nợ` đã bị **xoá mềm** — tài khoản mới không còn được nhân bản chúng |
 | ~~6~~ | `CATEGORY_GROUP_MEMBERSHIP_SYNC.md` | ✅ **Đóng 2026-09-07** — không cần backend làm gì |
-| 7 | `CATEGORY_CLASSIFY_ALIGNMENT.md` | ⚠️ Gần xong — còn bước thu hẹp `validClassify` (`sync.validation.js:103`) |
-| 8 | `2026-09-05-backend-transaction-goal-id.md` | 🔓 **Mở khoá, không phải sửa lỗi** — xin cột nullable `transaction.Idgoal`. Client đã có cột **cục bộ** `transactions.goal_id` (schema v14) để nối giao dịch tích luỹ với mục tiêu bằng ID thay vì bằng tên. Không có gì hỏng hôm nay: máy tạo ra dữ liệu nối đúng, máy khác rơi xuống nhánh so tên. Nhưng nó **chặn hẳn** hướng bỏ bộ đếm `current_amount` để suy tiến độ từ chính giao dịch. Rẻ nhất là gộp vào đợt migration của bước 9 |
-| 10 | `2026-09-05-backend-goal-priority.md` | 🔓 **Mở đường, không phải sửa lỗi** — xin **một** cột nullable `goal.Priority`. Client **chưa làm** ưu tiên mục tiêu và cố ý chưa làm cho tới khi có cột: thứ tự do người dùng kéo thả là công sức không suy lại được, không có mặc định đúng, và sẽ quyết định **tiền đi đâu** nếu nối phân bổ tự động. Đi ngược lối "làm trước xin sau" của hai mục dưới, có chủ ý. Gộp vào cùng đợt migration |
-| 9 | `2026-09-05-backend-goal-auto-deposit.md` | 🔓 **Mở khoá, không phải sửa lỗi** — xin ba cột nullable cho cấu hình trích tiền tự động (`auto_deposit_*`). Client đã làm xong (schema v15) nhưng ba cột là **cục bộ**, nên máy thứ hai không trích gì cả. ⚠️ **Ba cột phải lên cùng lúc** — bỏ sót `auto_deposit_last_run` là hai máy cùng trích một kỳ, tệ hơn hiện trạng. Gộp vào đợt migration của bước 9 |
-| 11 | `2026-09-06-bill-chuoi-ky-va-an-han.md` | 🔓 **Hai phần.** **(A+B) Mở khoá:** xin hai cột nullable `transaction.Idbill` và `bill.Previous_bill_id` — hai đầu của sợi dây từ hoá đơn về khoản chi và về kỳ kế tiếp. Client đã làm xong hoàn tác thanh toán (schema **v16**) nhưng hai cột là **cục bộ**, nên hoàn tác chỉ chạy trên đúng cái máy đã trả. Cột B còn mở luôn **lịch sử theo hoá đơn**. Gộp vào cùng đợt migration. **(C) Mở đường:** xin `bill.Period_end` để tách kỳ tính tiền khỏi hạn trả — hoá đơn điện "kỳ 01–30/09, hạn 15/10" hiện **không diễn đạt được**; client cố ý chưa làm cho tới khi có cột. **(D) Mở khoá** (thêm 06/09 chiều): xin `bill.Auto_pay` cho tự động thanh toán (client xong, schema **v17**, cột cục bộ) và **chốt chặn trả hai lần** ở `/sync/push` — hai máy cùng bật, cùng offline là hai khoản chi, chỉ server mới thấy cả hai. **(E) Mở đường** (thêm 06/09 tối): xin nhận giá trị `Pay_status = 'Skipped'` (VarChar(7) vừa khít, **không cần migration**, có thể chỉ là một câu xác nhận có validator hay không) để client làm "bỏ qua kỳ này"; client cố ý chưa làm vì hàng bị `/sync/push` từ chối là kẹt hàng đợi đẩy vĩnh viễn |
+| 7 | `CATEGORY_CLASSIFY_ALIGNMENT.md` | ✅ **Xong 2026-09-07** — `validClassify` (`sync.validation.js:110`) nay đúng `['Thu', 'Chi', 'Vay/no']` |
+| 8 | `2026-09-05-backend-transaction-goal-id.md` | ✅ **Xong 2026-09-07** — cột `transaction.Idgoal` đã có trong CSDL, kèm `fk_transaction_goal` (ON DELETE SET NULL) và `idx_transaction_goal`; `mapEntityFields` nhận cả `goalId` lẫn `goal_id`. Client có thể bỏ nhánh so **tên** khi tới lượt |
+| 10 | `2026-09-05-backend-goal-priority.md` | ✅ **Cột đã có 2026-09-07** — `goal.Priority` (`Int?`) trong CSDL và trong `mapEntityFields`. Client **chưa làm** ưu tiên mục tiêu; nay không còn gì chặn, chỉ là chưa tới lượt. Lối "xin cột trước khi viết mã" đã chứng minh rẻ hơn hai lần "làm trước xin sau" |
+| 9 | `2026-09-05-backend-goal-auto-deposit.md` | ✅ **Xong 2026-09-07** — cả **ba** cột `auto_deposit_amount` / `auto_deposit_wallet_id` / `auto_deposit_last_run` lên **cùng một lúc** đúng như cảnh báo, và `mapEntityFields` đã ánh xạ |
+| 11 | `2026-09-06-bill-chuoi-ky-va-an-han.md` | ⛔ **Chưa có cột nào.** Đo 2026-09-07: bảng `bill` có 18 cột, **không** có `Previous_bill_id` lẫn `Auto_pay`; `transaction` **không** có `Idbill`. **(A+B) Mở khoá:** hai cột nullable — hoàn tác thanh toán hiện chỉ chạy trên đúng máy đã trả; cột B còn mở **lịch sử theo hoá đơn**. **(C) Mở đường:** `bill.Period_end` để tách kỳ tính tiền khỏi hạn trả. **(D) Mở khoá:** `bill.Auto_pay` + **chốt chặn trả hai lần** ở `/sync/push` — hai máy cùng bật, cùng offline là hai khoản chi. **(E) Mở đường:** nhận `Pay_status = 'Skipped'` (VarChar(7) vừa khít, không cần migration). ⚠️ Bảng `bill` **đã có** cột `Color` trong khi `category` thì không — lý lẽ sẵn cho mục màu danh mục |
 | — | `SESSION_VALIDITY_FINDINGS.md` | ✅ Xong |
 
 ### 💰 Ngân sách (2026-09-03)
