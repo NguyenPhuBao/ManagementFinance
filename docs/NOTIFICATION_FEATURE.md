@@ -352,6 +352,71 @@ qua**; tắt → cả hai biến mất; bật lại → cả hai trở về. B�
 nguyên vẹn suốt cả ba lượt — bằng chứng rằng nguồn mới không chen mất suất của
 hoá đơn.
 
+### 4.8 Nút hành động trên thông báo (2026-09-07)
+
+Hai nút, **chỉ** trên nhắc hoá đơn (`billDue` / `billOverdue` — xem
+`coHanhDong()`): **"Trả ngay"** và **"Hoãn 1 ngày"**.
+
+**Không có nút "Đã trả", và đó là quyết định sản phẩm chứ không phải giới hạn
+kỹ thuật.** `payBill` chuyển tiền thật: tạo giao dịch, trừ ví thanh toán. Chạy
+nó trong isolate nền nghĩa là chuyển tiền ở nơi không có giao diện, không xác
+nhận ví, không chỗ báo lỗi khi ví thiếu tiền — đi ngược đúng nguyên tắc mà
+`GOAL_FEATURE.md` mục 3.12 và spec tự trả hoá đơn đã chốt cho **hai** chỗ còn
+lại trong app tự chuyển tiền. Ai muốn một chạm là trả thì đã có
+`bills.autoPayEnabled`. "Trả ngay" vì thế **không ghi gì**: nó chỉ mở đúng hoá
+đơn ấy.
+
+**Mọi phép quyết định nằm ở `notification_actions.dart`** — file thuần, không
+import plugin. Lý do kép: bẫy 7.7, và handler chạy trong isolate nền nơi
+`flutter test` không dựng được ngữ cảnh. `os_notifier_native.dart` chỉ còn là
+lớp vỏ gọi plugin.
+
+**"Trả ngay" không nới `payloadDaCham`.** Nó đổi khoá thành `billOpen:<billId>`
+rồi đi tiếp qua đúng đường cũ, vì `deeplinkTuDedupeKey()` là nơi **duy nhất**
+suy route từ khoá. Nhờ vậy stream vẫn là `Stream<String>` và
+`NotificationTapRouter` không phải biết nút là gì.
+
+**"Hoãn" chạy hoàn toàn trong isolate nền** và **không** phát gì ra
+`payloadDaCham` — cả điểm của nó là xong việc mà không mở màn nào. Nó dời lịch
+đúng 24 giờ kể từ lúc **bấm** (một khoảng tuyệt đối, nên không cần múi giờ —
+`tz.local` trong isolate nền rơi về UTC, bẫy 7.3) và **giữ nguyên khoá**.
+
+#### Ba thứ đã hỏng trên máy thật mà `flutter test` không thấy
+
+Cả ba đều im lặng, và cả ba chỉ lộ ra khi chạy trên `emulator-5554`.
+
+**1. Thiếu `ActionBroadcastReceiver` trong `AndroidManifest.xml`.** Nút hiện
+đúng, `dumpsys notification` cho thấy `actions=2` với `PendingIntent` kiểu
+`broadcastIntent` — nhưng **không tiến trình nào nhận**: không log, không
+`logcat`, thông báo cũng không tự tắt. Plugin **không tự khai báo** receiver
+này; đó là bước phải làm tay, y như hai receiver kia của nó. Nay
+`android_manifest_receivers_test.dart` canh **cả ba**.
+
+**2. `resync()` huỷ mất lịch vừa hoãn.** Lý lẽ ban đầu — "cùng khoá nên cùng
+id, mà resync bỏ qua id đã nằm trong hàng chờ" — **sai**, và sai theo cách chỉ
+lộ ra ở ca duy nhất có thật. Nhánh bỏ qua ấy chỉ chạy cho lịch resync **muốn**,
+mà một hoá đơn chỉ được muốn khi mốc nhắc còn ở **tương lai**; trong khi người
+dùng chỉ bấm "Hoãn" được **sau khi** thông báo đã nổ, nên mốc gốc **luôn** đã
+qua. Sửa bằng tập `khongHuy` trong `resync()`: id của mọi hoá đơn **còn sống**
+(chưa trả, chưa xoá), tính **không** lọc theo mốc, và bước dọn dẹp bỏ qua
+chúng. Ngoại lệ giữ **hẹp** — trả hoặc xoá hoá đơn là lịch hoãn bị dọn như mọi
+lịch thừa khác, phép dọn dẹp của resync không được nới lỏng.
+
+**3. "Trả ngay" ở cold start mở nhầm danh sách.** Một cú bấm nút có **hai**
+đường vào, và bản đầu chỉ xử lý một: app đang sống thì qua
+`onDidReceiveNotificationResponse`, còn app đã đóng thì nền tảng mở app rồi
+`payloadKhoiDong()` hỏi `getNotificationAppLaunchDetails()` — chỗ ấy đọc
+`payload` mà bỏ qua `actionId`. Nay cả hai đường gọi chung
+`khoaSauChamNut()`.
+
+> **Bằng chứng đã đo** (2026-09-07, `emulator-5554`, đồng hồ máy ảo 22:28):
+> `am kill` rồi `pidof` trống → bấm "Hoãn" → `logcat` có
+> `Start proc … for broadcast {…/ActionBroadcastReceiver}` và
+> `I flutter : [Hoãn] isolate nền nhận "billDue:56bc…:2026-09-10:3"`, lịch mới
+> ở `2026-09-08 22:28:12` (đúng +24h), thông báo tự tắt, **app không mở lên**.
+> Mở app hai lượt sau đó, lịch hoãn **vẫn còn**. Bấm "Trả ngay" từ trạng thái
+> app đã chết thì mở thẳng trang chi tiết đúng hoá đơn, không màn đỏ.
+
 ---
 
 ## 5. Đã làm gì cho hoá đơn (lát 3)
@@ -842,6 +907,28 @@ một buổi đã mất vì chúng.
 gom hết output tới khi tiến trình kết thúc, nên một lượt treo trông y hệt một
 lượt đang chạy. Ghi thẳng ra file rồi đọc file.
 
+**7.11 `AndroidManifest.xml` là vùng mù của mọi công cụ trong dự án này.**
+`flutter test` không đọc nó, `flutter analyze` không đọc nó, `flutter build apk`
+vẫn thành công. `flutter_local_notifications` cần **ba** receiver được khai báo
+tay và **không tự khai báo cái nào**:
+
+| Receiver | Thiếu thì hỏng thế nào |
+|---|---|
+| `ScheduledNotificationReceiver` | Lịch đặt trước báo "đặt thành công" nhưng **không bao giờ nổ** |
+| `ScheduledNotificationBootReceiver` | Mọi lịch đang chờ mất sạch sau khi khởi động lại máy |
+| `ActionBroadcastReceiver` | Nút hành động **vẫn hiện**, hệ điều hành **vẫn dựng đúng** `PendingIntent`, nhưng broadcast không tới ai: isolate nền không chạy, thông báo cũng không tự tắt |
+
+Cả ba đều hỏng **hoàn toàn im lặng** — không exception, không log, không một
+dòng trong `logcat`. Cái thứ ba mất một lúc mới lần ra vì **mọi tầng đều trông
+như đúng**: `dumpsys notification` báo `actions=2` kèm `PendingIntent` đúng
+kiểu, còn `dumpsys package` thì **không** liệt kê receiver không có
+`intent-filter`, nên vắng mặt ở đó chẳng chứng minh gì. Phép kiểm dứt điểm là
+`grep dexterous` trong manifest **đã trộn** ở
+`build/app/intermediates/merged_manifest/`.
+
+`android_manifest_receivers_test.dart` nay canh cả ba. Nó đọc XML bằng chuỗi và
+xấu xí, nhưng đó là lưới duy nhất giăng được ở vùng này.
+
 ---
 
 ## 8. Kiểm thử
@@ -863,6 +950,9 @@ lượt đang chạy. Ghi thẳng ra file rồi đọc file.
 | `test/core/notification/prefs/notification_prefs_store_test.dart` | **Tách khoá theo tài khoản**; JSON hỏng trên đĩa; `clear()` không đụng tài khoản khác |
 | `test/features/notification/notification_settings_page_test.dart` | Ngưỡng số dư ví hiện đúng thứ đã lưu và ghi ngay khi đổi (⚠️ thẻ ấy nằm cuối trang cuộn, ở 800px của môi trường test nó dưới mép màn hình nên phải `ensureVisible` trước khi `tap`, nếu không cú chạm trượt ra nền); công tắc phản ánh đúng thứ đã lưu; ghi ngay không cần nút Lưu; **bật công tắc OS thì xin quyền, tắt thì không**; bị từ chối thì công tắc quay về tắt; chưa đăng nhập thì không ghi gì. Từ 2026-09-07 canh thêm thẻ **NHẮC GHI CHÉP**: công tắc tắt sẵn, bật thì ghi ngay, hàng chọn giờ **chỉ hiện khi công tắc bật**, và giờ hiển thị là 20:00 chứ không phải 08:00 của hoá đơn. ⚠️ Thẻ này cũng nằm cuối trang cuộn nên vẫn phải `ensureVisible` |
 | `test/core/notification/reminder_scheduler_test.dart` | **Luỹ đẳng** (chạy lại không đặt lại lịch nào); trần 50 và cắt bỏ mốc **xa** nhất; giờ nhắc từ tuỳ chọn; mốc quá khứ và ngoài cửa sổ 30 ngày bị bỏ; hoá đơn trả/xoá thì huỷ lịch cũ; tắt công tắc thì dọn sạch. Từ 2026-09-07 canh thêm **nhắc ghi chép hằng ngày** (mục 4.7): tắt sẵn; bật thì đúng **ba** lịch; giờ lấy từ tuỳ chọn **riêng** chứ không phải `gioNhac`; hôm nay đã có giao dịch thì bỏ lịch hôm nay còn giữ hai lịch sau; giao dịch **hôm qua** không cứu được hôm nay (so theo NGÀY, không theo 24 giờ); `null` = chưa từng ghi = **vẫn nhắc**; giờ đã trôi qua thì bỏ hôm nay; và ca quan trọng nhất — **ghi giao dịch xong thì lượt sau HUỶ lịch hôm nay**, chính là lý do chọn ba lịch rời thay vì một lịch lặp |
+| `test/core/notification/reminder_scheduler_test.dart` (nhóm *lịch hoãn*) | Ca đã **hỏng thật** trên máy ảo: lịch người dùng vừa hoãn phải sống sót qua `resync()` **dù mốc nhắc gốc đã trôi qua** — và đó là ca duy nhất có thật, vì chỉ hoãn được sau khi thông báo đã nổ. Kèm ba ranh giới giữ cho ngoại lệ **hẹp**: hoá đơn đã trả, đã xoá, và lịch lạ không thuộc hoá đơn nào thì **vẫn bị dọn** |
+| `test/core/notification/notification_actions_test.dart` | Toàn bộ phép quyết định của nút hành động, tách khỏi tầng plugin: loại nào **được** gắn nút (chỉ nhắc hoá đơn); `payloadTraNgay` dựng khoá mở đúng hoá đơn và trả `null` khi khoá thiếu id; `khoaSauChamNut` — **một** hàm cho **cả hai** đường vào của một cú bấm; và `lichHoan` dời đúng 24 giờ, **giữ nguyên khoá** nên cùng `osScheduledId` |
+| `test/core/notification/os/android_manifest_receivers_test.dart` | **Ba** receiver của `flutter_local_notifications` phải có mặt trong `AndroidManifest.xml`, và không cái nào được `exported="true"`. Vùng mà không công cụ nào khác chạm tới — đọc bẫy **7.11**. ⚠️ Bản đầu của test này tìm `exported="true"` trên **cả file** và đỏ oan vì `MainActivity` bắt buộc phải xuất; nay chỉ xét bên trong thẻ `<receiver>` |
 | `test/core/database/transaction_last_date_test.dart` | `getLastTransactionDate` — đầu vào **duy nhất** của lời nhắc ghi chép, và cả ba cách hỏng đều im lặng: đọc cả hàng đã xoá mềm, đọc lẫn tài khoản khác, hoặc trả `null` sai. ⚠️ `forTesting` bật `PRAGMA foreign_keys = ON` nên phải dựng hàng `wallets` trước, nếu không mọi lệnh chèn nổ `SqliteException(787)` |
 | `test/core/notification/notification_rules_goal_wallet_test.dart` | Bốn luật của lát 6, trọng tâm là **đơn vị lặp lại trong `dedupeKey`**: chúc mừng một lần trong đời, trễ tiến độ mỗi tháng, ví âm và đồng bộ hỏng mỗi ngày. Từ 2026-09-07 canh thêm **ví sắp cạn**: biên **đóng** ở đúng ngưỡng, ngưỡng `0` im hoàn toàn, ví âm chỉ ra **một** thông báo chứ không ra cả hai, và ví loại `debt` im ở **cả hai** luật |
 | `test/features/goal/goal_entity_progress_test.dart` | `progress` kẹp [0,1] và không ra `Infinity` khi `targetAmount = 0`; `daysLeft` so theo NGÀY; `isBehindSchedule` có biên dung sai, im lặng khi thiếu `startDate`, không NaN khi kỳ dài 0 ngày |
