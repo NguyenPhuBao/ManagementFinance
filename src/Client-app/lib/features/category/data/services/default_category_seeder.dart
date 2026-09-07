@@ -90,6 +90,16 @@ class DefaultCategorySeeder {
         );
       }
 
+      // Dời TRƯỚC, ẩn SAU. Bản mặc định sắp biến mất khỏi mọi danh sách; dữ
+      // liệu còn trỏ vào nó sẽ thành mồ côi — người dùng mở giao dịch cũ ra
+      // thấy một danh mục không còn tồn tại với họ. Đảo thứ tự này chính là
+      // lỗi 11.6, và dự án đã dính nó một lần.
+      await db.repointCategoryReferences(
+        idaccount: idaccount,
+        fromCategoryId: mau.id,
+        toCategoryId: id,
+      );
+
       daTao++;
     }
 

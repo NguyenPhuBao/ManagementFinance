@@ -50,6 +50,31 @@ void main() {
     ));
   }
 
+  Future<void> themGiaoDich({
+    required String id,
+    required int idaccount,
+    required String categoryId,
+  }) async {
+    // Ví phải có trước: `transactions.walletId` có khoá ngoại tới `wallets`,
+    // và thiếu nó thì test đỏ vì FIXTURE sai chứ không phải vì mã sai.
+    await db.walletDao.insert(WalletsCompanion.insert(
+      id: 'vi-$idaccount',
+      idaccount: idaccount,
+      name: 'Tiền mặt',
+      updatedAt: DateTime(2026, 9, 1),
+    ));
+    await db.transactionDao.insert(TransactionsCompanion.insert(
+      id: id,
+      walletId: 'vi-$idaccount',
+      idaccount: idaccount,
+      amount: 50000,
+      type: 'chi',
+      date: DateTime(2026, 9, 1),
+      categoryId: Value(categoryId),
+      updatedAt: DateTime(2026, 9, 1),
+    ));
+  }
+
   setUp(() async {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     soId = 0;
@@ -189,5 +214,33 @@ void main() {
 
     final ban = (await db.categoryDao.getOwnedIncludingDeleted(7)).single;
     expect(await db.categoryDao.getKeywords(7, ban.id), isEmpty);
+  });
+
+  group('dời dữ liệu cũ sang bản sao', () {
+    test('giao dịch đang trỏ vào bản mặc định được dời sang bản sao', () async {
+      final macDinh = await themMacDinh('Ăn uống', 'chi');
+      await themGiaoDich(id: 'gd-1', idaccount: 7, categoryId: macDinh);
+
+      await seeder.seedForAccount(7);
+
+      final ban = (await db.categoryDao.getOwnedIncludingDeleted(7)).single;
+      final gd = await db.transactionDao.getAll(7);
+      expect(gd.single.categoryId, ban.id,
+          reason: 'Bản mặc định sắp bị ẩn khỏi mọi danh sách. Không dời trước '
+              'thì giao dịch trỏ vào một danh mục người dùng không còn thấy — '
+              'đúng lỗi 11.6, và dự án đã dính nó một lần.');
+    });
+
+    test('chỉ dời dữ liệu của ĐÚNG tài khoản đang seed', () async {
+      final macDinh = await themMacDinh('Ăn uống', 'chi');
+      await themGiaoDich(id: 'gd-9', idaccount: 9, categoryId: macDinh);
+
+      await seeder.seedForAccount(7);
+
+      final gd = await db.transactionDao.getAll(9);
+      expect(gd.single.categoryId, macDinh,
+          reason: 'repointCategoryReferences lọc theo idaccount. Bỏ bộ lọc là '
+              'sửa dữ liệu của người khác.');
+    });
   });
 }
