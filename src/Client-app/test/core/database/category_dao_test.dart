@@ -1052,4 +1052,68 @@ void main() {
       expect(await conLai(), hasLength(2));
     });
   });
+
+  group('bộ mặc định và danh mục của tài khoản kể cả đã xoá', () {
+    Future<void> cat({
+      required String id,
+      required int idaccount,
+      required String name,
+      String classify = 'chi',
+      bool isDefault = false,
+      bool isDeleted = false,
+    }) {
+      return db.categoryDao.insert(CategoriesCompanion.insert(
+        id: id,
+        idaccount: idaccount,
+        name: name,
+        classify: classify,
+        isDefault: Value(isDefault),
+        isDeleted: Value(isDeleted),
+        updatedAt: DateTime(2026, 9, 7),
+      ));
+    }
+
+    test('getBackendDefaults chỉ trả hàng mặc định còn sống', () async {
+      await cat(id: 'd1', idaccount: 0, name: 'Ăn uống', isDefault: true);
+      await cat(
+          id: 'd2', idaccount: 0, name: 'Đã bỏ', isDefault: true,
+          isDeleted: true);
+      await cat(id: 'u1', idaccount: 7, name: 'Của tôi');
+
+      final ra = (await db.categoryDao.getBackendDefaults()).map((c) => c.id);
+
+      // CSDL mới đã có sẵn 13 danh mục mặc định do seed, nên khẳng định theo
+      // "có / không có" chứ không liệt kê cả danh sách — liệt kê là buộc test
+      // này phải sửa mỗi lần bộ seed đổi, mà nó không canh chừng bộ seed.
+      expect(ra, contains('d1'));
+      expect(ra, isNot(contains('d2')),
+          reason: 'Hàng mặc định đã xoá không còn là khuôn để sao chép.');
+      expect(ra, isNot(contains('u1')),
+          reason: 'Danh mục người dùng không phải khuôn của ai cả.');
+    });
+
+    test('getOwnedIncludingDeleted trả CẢ hàng đã xoá mềm', () async {
+      await cat(id: 'u1', idaccount: 7, name: 'Sống');
+      await cat(id: 'u2', idaccount: 7, name: 'Đã xoá', isDeleted: true);
+      await cat(id: 'd1', idaccount: 0, name: 'Ăn uống', isDefault: true);
+
+      final ra = await db.categoryDao.getOwnedIncludingDeleted(7);
+
+      expect(ra.map((c) => c.id).toSet(), {'u1', 'u2'},
+          reason: 'Hàng đã xoá mềm là BẰNG CHỨNG rằng tài khoản từng có bản '
+              'sao ấy. Bỏ nó ra khỏi phép đếm là tái hiện G16: danh mục người '
+              'dùng xoá sẽ mọc lại ở mỗi lần mở app. Hàng mặc định không '
+              'thuộc tài khoản nào nên không được tính.');
+    });
+
+    test('getOwnedIncludingDeleted không trả hàng của tài khoản khác',
+        () async {
+      await cat(id: 'u1', idaccount: 7, name: 'Của bảy');
+      await cat(id: 'u2', idaccount: 9, name: 'Của chín');
+
+      final ra = await db.categoryDao.getOwnedIncludingDeleted(7);
+
+      expect(ra.map((c) => c.id), ['u1']);
+    });
+  });
 }
