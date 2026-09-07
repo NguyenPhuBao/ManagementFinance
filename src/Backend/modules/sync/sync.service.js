@@ -11,8 +11,6 @@ const UPSERT_MAP = {
   bill: 'upsertBill',
   goal: 'upsertGoal',
   category: 'upsertCategory',
-  categoryGroupMembership: 'upsertCategoryGroupMembership',
-  category_group_membership: 'upsertCategoryGroupMembership',
 };
 
 // Map entity → repository pull method
@@ -23,8 +21,6 @@ const PULL_MAP = {
   bill: 'getBillsByAccount',
   goal: 'getGoalsByAccount',
   category: 'getCategoriesByAccount',
-  categoryGroupMembership: 'getCategoryGroupMembershipsByAccount',
-  category_group_membership: 'getCategoryGroupMembershipsByAccount',
 };
 
 // Plural key names for response
@@ -35,8 +31,6 @@ const ENTITY_KEYS = {
   bill: 'bills',
   goal: 'goals',
   category: 'categories',
-  categoryGroupMembership: 'categoryGroupMemberships',
-  category_group_membership: 'categoryGroupMemberships',
 };
 
 const ENTITY_PK_MAP = {
@@ -46,17 +40,13 @@ const ENTITY_PK_MAP = {
   bill: 'idbill',
   goal: 'idgoal',
   category: 'idcategory',
-  categoryGroupMembership: 'idmembership',
-  category_group_membership: 'idmembership',
 };
 
 // Dependency order to avoid Foreign Key violations:
-// Create/Update: category (10) -> categoryGroupMembership (15) -> wallet (20) -> budget/bill/goal (30) -> transaction (40)
-// Delete: transaction (60) -> budget/bill/goal (70) -> wallet (80) -> categoryGroupMembership (85) -> category (90)
+// Create/Update: category (10) -> wallet (20) -> budget/bill/goal (30) -> transaction (40)
+// Delete: transaction (60) -> budget/bill/goal (70) -> wallet (80) -> category (90)
 const ENTITY_PRIORITY = {
   category: 10,
-  categoryGroupMembership: 15,
-  category_group_membership: 15,
   wallet: 20,
   budget: 30,
   bill: 30,

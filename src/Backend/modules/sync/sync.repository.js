@@ -117,21 +117,6 @@ function mapEntityFields(entity, data) {
       if (m.isDeleted !== undefined) { m.delete_at = m.isDeleted ? new Date() : null; delete m.isDeleted; }
       if (m.deletedAt !== undefined) { m.delete_at = m.deletedAt ? new Date(m.deletedAt) : null; delete m.deletedAt; }
       break;
-
-    case 'categoryGroupMembership':
-    case 'category_group_membership':
-      if (m.id) { m.idmembership = m.id; delete m.id; }
-      if (m.membershipId !== undefined) { m.idmembership = m.membershipId; delete m.membershipId; }
-      if (m.categoryId !== undefined) { m.idcategory = m.categoryId; delete m.categoryId; }
-      if (m.groupId !== undefined) { m.idgroup = m.groupId; delete m.groupId; }
-      if (m.accountId !== undefined) { m.idaccount = m.accountId; delete m.accountId; }
-      if (m.createAt !== undefined) { m.create_at = new Date(m.createAt); delete m.createAt; }
-      else if (m.createdAt !== undefined) { m.create_at = new Date(m.createdAt); delete m.createdAt; }
-      if (m.updateAt !== undefined) { m.update_at = new Date(m.updateAt); delete m.updateAt; }
-      else if (m.updatedAt !== undefined) { m.update_at = new Date(m.updatedAt); delete m.updatedAt; }
-      if (m.isDeleted !== undefined) { m.delete_at = m.isDeleted ? new Date() : null; delete m.isDeleted; }
-      if (m.deletedAt !== undefined) { m.delete_at = m.deletedAt ? new Date(m.deletedAt) : null; delete m.deletedAt; }
-      break;
   }
   return m;
 }
@@ -519,60 +504,6 @@ const syncRepository = {
     });
   },
 
-  // ── CategoryGroupMembership ─────────────────────────────
-  async upsertCategoryGroupMembership(data) {
-    const mapped = mapEntityFields('categoryGroupMembership', data);
-    const existing = await prisma.category_group_membership.findUnique({
-      where: { idmembership: mapped.idmembership },
-    });
-    if (!existing) {
-      return prisma.category_group_membership.create({
-        data: {
-          idmembership: mapped.idmembership,
-          idcategory: mapped.idcategory,
-          idgroup: mapped.idgroup,
-          idaccount: mapped.idaccount,
-          update_at: mapped.update_at || new Date(),
-          delete_at: mapped.delete_at || null,
-        },
-      });
-    }
-    if (new Date(mapped.update_at) > new Date(existing.update_at)) {
-      return prisma.category_group_membership.update({
-        where: { idmembership: existing.idmembership },
-        data: {
-          idcategory: mapped.idcategory ?? existing.idcategory,
-          idgroup: mapped.idgroup ?? existing.idgroup,
-          delete_at: mapped.delete_at !== undefined ? mapped.delete_at : existing.delete_at,
-          update_at: mapped.update_at || new Date(),
-        },
-      });
-    }
-    return null;
-  },
-
-  async getCategoryGroupMembershipsByAccount(idaccount, since) {
-    return prisma.category_group_membership.findMany({
-      where: {
-        idaccount,
-        update_at: since ? { gt: new Date(since) } : undefined,
-      },
-      orderBy: { update_at: 'asc' },
-    });
-  },
-
-  async getCategoryGroupMembershipById(id) {
-    return prisma.category_group_membership.findUnique({ where: { idmembership: id } });
-  },
-
-  async countCategoryGroupMembership(idaccount) {
-    return prisma.category_group_membership.count({ where: { idaccount } });
-  },
-
-  async countCategory_group_membership(idaccount) {
-    return prisma.category_group_membership.count({ where: { idaccount } });
-  },
-
   // ── Lookup by ID (for conflict resolution) ──────────────
   async getWalletById(id) {
     return prisma.wallet.findUnique({ where: { idwallet: id } });
@@ -659,8 +590,6 @@ const syncRepository = {
       budget: { model: prisma.budget, pk: 'idbudget' },
       bill: { model: prisma.bill, pk: 'idbill' },
       goal: { model: prisma.goal, pk: 'idgoal' },
-      categoryGroupMembership: { model: prisma.category_group_membership, pk: 'idmembership' },
-      category_group_membership: { model: prisma.category_group_membership, pk: 'idmembership' },
     };
     const def = models[entity];
     if (!def) throw new Error(`Entity không hợp lệ: ${entity}`);

@@ -2522,5 +2522,21 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - `Test/test_can_lam_fixes.js`: **10/10 tests PASS (100%)**.
   - `npm run build` trong `src/Admin-web`: **Thành công 100% (0 errors, 137 modules transformed)**.
 
+### 11.31. Khảo Sát & Xóa Bỏ Bảng Thừa `category_group_membership` Khỏi Toàn Bộ Hệ Thống (2026-09-07)
+- **1. Nguyên nhân & Bối cảnh**:
+  - Bảng `category_group_membership` phát sinh do sai sót từ phía Client-app đề xuất trước đây nhằm gom nhóm danh mục mặc định.
+  - Sau khi PO chốt áp dụng **Mô hình Template & Cloned Model**, mỗi người dùng sở hữu bộ danh mục cá nhân riêng độc lập. Phân cấp nhóm danh mục được gom trực tiếp bằng quan hệ tự tham chiếu `category.idgroup` (`is_group = true`).
+  - Do đó bảng trung gian `category_group_membership` hoàn toàn thừa, không có dữ liệu (0 bản ghi) và không còn giá trị sử dụng.
+- **2. Các công việc đã thực thi**:
+  - **CSDL PostgreSQL / Supabase**: Tạo và thực thi script migration [`database/6_Drop_Category_Group_Membership.sql`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/database/6_Drop_Category_Group_Membership.sql) với lệnh `DROP TABLE IF EXISTS "category_group_membership" CASCADE;`.
+  - **Prisma Schema**: Gỡ bỏ model `category_group_membership` và các relations liên quan khỏi `account` và `category` trong `src/Backend/prisma/schema.prisma`. Tái sinh Prisma Client thành công (`rtk npx prisma generate`).
+  - **Sync Engine**: Gỡ bỏ entity `categoryGroupMembership` / `category_group_membership` khỏi `sync.validation.js` (`VALID_ENTITIES`, `ENTITY_PK_MAP`), `sync.service.js` (`UPSERT_MAP`, `PULL_MAP`, `ENTITY_KEYS`, `ENTITY_PRIORITY`), và `sync.repository.js` (xóa các hàm upsert, query, count và mapping `softDelete`).
+  - **Test Suites**: Cập nhật [`Test/test_can_lam_fixes.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/Test/test_can_lam_fixes.js) loại bỏ Test 5 và cleanup liên quan.
+  - **Tài liệu nguồn sự thật**: Cập nhật [`docs/Rule_Project/Rule_project.md`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/Rule_Project/Rule_project.md) mục 1.6, đánh dấu Deprecated & Obsolete cho `docs/superpowers/backend/CAN-LAM/CATEGORY_GROUP_MEMBERSHIP_SYNC.md` và `docs/superpowers/backend/CAN-LAM/README.md`.
+- **3. Kết quả kiểm thử**:
+  - `Test/test_can_lam_fixes.js`: **9/9 tests PASS (100%)**.
+  - `Test/test_category_template_rules.js`: **8/8 tests PASS (100%)**.
+  - `Test/test_sync_new_schema.js`: **PASS 100%** (Tất cả 7 entity cốt lõi sync push/pull/softDelete trơn tru).
+
 
 

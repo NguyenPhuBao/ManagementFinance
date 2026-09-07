@@ -260,12 +260,13 @@ Phần này đặc tả chi tiết toàn bộ các quy tắc ràng buộc, chố
   * Người dùng chỉ được phép bổ sung từ khóa vào danh mục do chính họ sở hữu (`Create_by = idaccount` và `Is_default = false`).
   * Cấm tuyệt đối việc ghi đè từ khóa vào danh mục mặc định của hệ thống (`Is_default = true`) hoặc danh mục của người dùng khác $\rightarrow$ Hệ thống lập tức từ chối với mã **HTTP 403 Forbidden**.
 
-### 1.5. Nhóm danh mục (`category_group` & `category_group_membership`)
-* Bảng quan hệ `category_group_membership` gắn kết Danh mục với Nhóm danh mục.
+### 1.6. Cấu trúc Nhóm danh mục (Category Hierarchy)
+* Nhóm danh mục được gom trực tiếp thông qua quan hệ **tự tham chiếu** (Self-referencing) trong bảng `category`:
+  * Cột `is_group = true`: Xác định bản ghi là Nhóm danh mục cha.
+  * Cột `idgroup`: Chứa ID của danh mục/nhóm cha (`idcategory`). Nếu là danh mục gốc thì `idgroup = null`.
+* **Không sử dụng bảng trung gian**: Hệ thống **không** có bảng `category_group` hay `category_group_membership` (đã loại bỏ hoàn toàn). Mọi quan hệ cha - con đều được biểu diễn trọn vẹn trong duy nhất bảng `category`.
 * Thứ tự ưu tiên đồng bộ (`ENTITY_PRIORITY`):
-  * `Category`: 10
-  * `CategoryGroup`: 12
-  * `CategoryGroupMembership`: 15 (đảm bảo cả Category và Group đều đã tồn tại trước khi tạo quan hệ).
+  * `category`: 10 (đồng bộ toàn bộ danh mục và nhóm cha-con).
 
 ---
 

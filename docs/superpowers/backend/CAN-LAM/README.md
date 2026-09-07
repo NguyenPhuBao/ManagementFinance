@@ -28,7 +28,7 @@ chạm vào hôm nay**.
 | 3 | [CATEGORY_KEYWORD_SYNC.md](./CATEGORY_KEYWORD_SYNC.md) | Danh mục và từ khoá phân loại; chiều **xuống** client đã nối xong | Lỗ hổng **phân quyền** ở `POST /api/ai/classify/feedback` — `appendCategoryKeyword()` không đọc `create_by`, nên ghi được từ khoá vào danh mục của người khác. Chiều **lên** chưa có mô hình dữ liệu | một buổi |
 | 4 | [CATEGORY_STABLE_IDS.md](./CATEGORY_STABLE_IDS.md) | Danh mục mặc định trên mọi máy | Đã gán 13 Stable UUIDs trong `seed.js` làm Template và cấp API `GET /api/sync/default-categories` để Client-app nhân bản thành danh mục cá nhân | ✅ ĐÃ HOÀN THÀNH |
 | 5 | [CATEGORY_NAME_UNIQUENESS.md](./CATEGORY_NAME_UNIQUENESS.md) | Quy tắc duy nhất tên danh mục (Template & Cloned) | Đã cài 2 Partial Unique Indexes độc lập (`uq_category_owner_name`, `uq_category_default_name`). Gỡ bỏ hoàn toàn trigger chéo cũ. Người dùng được phép có danh mục trùng tên với template hệ thống | ✅ ĐÃ HOÀN THÀNH |
-| 6 | [CATEGORY_GROUP_MEMBERSHIP_SYNC.md](./CATEGORY_GROUP_MEMBERSHIP_SYNC.md) | Gom nhóm danh mục | Đã tạo bảng `category_group_membership` và hỗ trợ sync push/pull với `ENTITY_PRIORITY: 15` | ✅ ĐÃ HOÀN THÀNH |
+| 6 | [CATEGORY_GROUP_MEMBERSHIP_SYNC.md](./CATEGORY_GROUP_MEMBERSHIP_SYNC.md) | Gom nhóm danh mục | ⛔ **ĐÃ BÃI BỎ:** Bảng trung gian thừa do sai sót trước đây của Client-app. Hệ thống dùng quan hệ tự tham chiếu `category.idgroup` theo mô hình Template & Cloned. Đã DROP TABLE và gỡ bỏ khỏi Prisma, Sync Engine và Codebase. | ❌ ĐÃ BÃI BỎ |
 | 7 | [CATEGORY_CLASSIFY_ALIGNMENT.md](./CATEGORY_CLASSIFY_ALIGNMENT.md) | Bộ giá trị `classify` của danh mục | `validClassify` (`sync.validation.js:103`) rộng hơn thực tế | **một dòng** |
 
 ### 🟡 Nhóm 2 — client ĐÃ CÓ nhưng không có gì hỏng; đây là *mở khoá*
