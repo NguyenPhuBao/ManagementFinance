@@ -6,6 +6,31 @@ function calcGrowth(current, previous) {
   return parseFloat(((current / previous) * 100).toFixed(2));
 }
 
+/**
+ * Lấy các thành phần thời gian theo múi giờ Việt Nam (Asia/Ho_Chi_Minh)
+ * @param {Date|string|number} dateInput 
+ * @returns {{ year: string, month: string, day: string, hour: string, minute: string }}
+ */
+function getVnTimeParts(dateInput) {
+  const d = new Date(dateInput);
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+  const parts = formatter.formatToParts(d);
+  const obj = {};
+  for (const p of parts) {
+    obj[p.type] = p.value;
+  }
+  if (obj.hour === '24') obj.hour = '00';
+  return obj;
+}
+
 const adminService = {
   async getTotalUsers() {
     const total = await adminRepository.countUsers();
@@ -137,10 +162,8 @@ const adminService = {
       if (existingDefault) {
         throw Object.assign(new Error(`Danh mục hệ thống "${trimmedName}" đã tồn tại trong hệ thống. Không được phép tạo trùng tên.`), { statusCode: 400 });
       }
-    }
-
-    // 2. Nhóm 1: Check unique [Idaccount & namecategory] (1 tài khoản không được có >1 category giống nhau)
-    if (idaccount) {
+    } else if (idaccount) {
+      // 2. Nhóm 1: Check unique [Idaccount & namecategory] (1 tài khoản không được có >1 category giống nhau)
       const existingUserCat = await prisma.category.findFirst({
         where: {
           create_by: Number(idaccount),
@@ -190,6 +213,11 @@ const adminService = {
       throw Object.assign(new Error('Không tìm thấy danh mục hoặc danh mục đã bị xóa'), { statusCode: 404 });
     }
 
+    // Ràng buộc: Không cho phép chuyển đổi danh mục người dùng thành danh mục hệ thống
+    if (!currentCat.is_default && isDefault) {
+      throw Object.assign(new Error('Không cho phép chuyển đổi danh mục người dùng thành danh mục hệ thống. Chỉ có thể tạo mới danh mục hệ thống.'), { statusCode: 400 });
+    }
+
     const targetIsDefault = data.is_default !== undefined ? isDefault : currentCat.is_default;
     const targetAccount = currentCat.create_by || (idaccount ? Number(idaccount) : null);
 
@@ -206,10 +234,8 @@ const adminService = {
       if (existingDefault) {
         throw Object.assign(new Error(`Danh mục hệ thống "${trimmedName}" đã tồn tại trong hệ thống. Không được phép đổi tên trùng.`), { statusCode: 400 });
       }
-    }
-
-    // 2. Nhóm 1: Check unique [Idaccount & namecategory] khi sửa (loại trừ chính idcategory đang sửa)
-    if (targetAccount) {
+    } else if (targetAccount) {
+      // 2. Nhóm 1: Check unique [Idaccount & namecategory] khi sửa (loại trừ chính idcategory đang sửa)
       const existingUserCat = await prisma.category.findFirst({
         where: {
           idcategory: { not: idcategory },
@@ -226,7 +252,7 @@ const adminService = {
     const result = await adminRepository.updateCategory(idcategory, {
       name: trimmedName,
       classify: canonicalClassify,
-      is_default: isDefault,
+      is_default: targetIsDefault,
       keyword: data.keyword !== undefined ? (data.keyword ? data.keyword.trim() : null) : undefined,
       icon: data.icon,
     });
@@ -234,6 +260,14 @@ const adminService = {
   },
 
   async deleteCategory(idcategory) {
+    const { prisma } = require('../../config/db');
+    const cat = await prisma.category.findUnique({ where: { idcategory } });
+    if (!cat || cat.delete_at) {
+      throw Object.assign(new Error('Không tìm thấy danh mục hoặc danh mục đã bị xóa'), { statusCode: 404 });
+    }
+    if (cat.is_default) {
+      throw Object.assign(new Error('Không được phép xóa danh mục mặc định của hệ thống.'), { statusCode: 400 });
+    }
     await adminRepository.deleteCategory(idcategory);
     return { id: idcategory };
   },
@@ -328,7 +362,7 @@ const adminService = {
 };
 
 function resolveFilterContext(params) {
-  const now = new Date();
+  const vnNow = getVnTimeParts(new Date());
   let period = 'today';
   let customType = null;
   let customDate = null;
@@ -345,17 +379,18 @@ function resolveFilterContext(params) {
     customYear = params.year ? parseInt(params.year, 10) : null;
   }
 
-  // 1. Custom Date (DD/MM/YYYY or YYYY-MM-DD)
+  // 1. Custom Date (YYYY-MM-DD or date:YYYY-MM-DD)
   if (customType === 'date' || (period && period.startsWith('date:')) || (customDate && !customMonth)) {
-    const rawDate = customDate || period.replace('date:', '');
-    const targetDate = new Date(rawDate);
-    if (!isNaN(targetDate.getTime())) {
-      const startDate = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 0, 0, 0, 0);
-      const endDate = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 23, 59, 59, 999);
-      const prevStartDate = new Date(startDate);
-      prevStartDate.setDate(prevStartDate.getDate() - 1);
-      const prevEndDate = new Date(endDate);
-      prevEndDate.setDate(prevEndDate.getDate() - 1);
+    const rawDate = (customDate || period.replace('date:', '')).trim();
+    const dateMatch = rawDate.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (dateMatch) {
+      const y = dateMatch[1];
+      const m = dateMatch[2].padStart(2, '0');
+      const d = dateMatch[3].padStart(2, '0');
+      const startDate = new Date(`${y}-${m}-${d}T00:00:00+07:00`);
+      const endDate = new Date(`${y}-${m}-${d}T23:59:59.999+07:00`);
+      const prevStartDate = new Date(startDate.getTime() - 24 * 60 * 60 * 1000);
+      const prevEndDate = new Date(endDate.getTime() - 24 * 60 * 60 * 1000);
 
       const buckets = [];
       for (let h = 0; h < 24; h++) {
@@ -364,8 +399,6 @@ function resolveFilterContext(params) {
         buckets.push({ key, label, count: 0 });
       }
 
-      const dayStr = startDate.getDate().toString().padStart(2, '0');
-      const monthStr = (startDate.getMonth() + 1).toString().padStart(2, '0');
       return {
         startDate,
         endDate,
@@ -373,8 +406,8 @@ function resolveFilterContext(params) {
         prevEndDate,
         buckets,
         format: 'hour',
-        period: `date:${startDate.getFullYear()}-${monthStr}-${dayStr}`,
-        label: `${dayStr}/${monthStr}/${startDate.getFullYear()}`,
+        period: `date:${y}-${m}-${d}`,
+        label: `${d}/${m}/${y}`,
       };
     }
   }
@@ -389,15 +422,19 @@ function resolveFilterContext(params) {
       m = parseInt(parts[1], 10);
     }
     if (m && y) {
-      const startDate = new Date(y, m - 1, 1, 0, 0, 0, 0);
+      const monthStr = m.toString().padStart(2, '0');
       const daysInMonth = new Date(y, m, 0).getDate();
-      const endDate = new Date(y, m - 1, daysInMonth, 23, 59, 59, 999);
-      const prevStartDate = new Date(y, m - 2, 1, 0, 0, 0, 0);
-      const prevDaysInMonth = new Date(y, m - 1, 0).getDate();
-      const prevEndDate = new Date(y, m - 2, prevDaysInMonth, 23, 59, 59, 999);
+      const startDate = new Date(`${y}-${monthStr}-01T00:00:00+07:00`);
+      const endDate = new Date(`${y}-${monthStr}-${daysInMonth.toString().padStart(2, '0')}T23:59:59.999+07:00`);
+
+      const prevY = m === 1 ? y - 1 : y;
+      const prevM = m === 1 ? 12 : m - 1;
+      const prevMonthStr = prevM.toString().padStart(2, '0');
+      const prevDaysInMonth = new Date(prevY, prevM, 0).getDate();
+      const prevStartDate = new Date(`${prevY}-${prevMonthStr}-01T00:00:00+07:00`);
+      const prevEndDate = new Date(`${prevY}-${prevMonthStr}-${prevDaysInMonth.toString().padStart(2, '0')}T23:59:59.999+07:00`);
 
       const buckets = [];
-      const monthStr = m.toString().padStart(2, '0');
       for (let d = 1; d <= daysInMonth; d++) {
         const dayStr = d.toString().padStart(2, '0');
         const key = `${y}-${monthStr}-${dayStr}`;
@@ -425,10 +462,10 @@ function resolveFilterContext(params) {
       y = parseInt(period.replace('year:', ''), 10);
     }
     if (y) {
-      const startDate = new Date(y, 0, 1, 0, 0, 0, 0);
-      const endDate = new Date(y, 11, 31, 23, 59, 59, 999);
-      const prevStartDate = new Date(y - 1, 0, 1, 0, 0, 0, 0);
-      const prevEndDate = new Date(y - 1, 11, 31, 23, 59, 59, 999);
+      const startDate = new Date(`${y}-01-01T00:00:00+07:00`);
+      const endDate = new Date(`${y}-12-31T23:59:59.999+07:00`);
+      const prevStartDate = new Date(`${y - 1}-01-01T00:00:00+07:00`);
+      const prevEndDate = new Date(`${y - 1}-12-31T23:59:59.999+07:00`);
 
       const buckets = [];
       for (let m = 1; m <= 12; m++) {
@@ -455,84 +492,84 @@ function resolveFilterContext(params) {
   const normalized = (period || 'today').toLowerCase();
 
   if (normalized === '7days' || normalized === '7d') {
-    const startDate = new Date(now);
-    startDate.setDate(startDate.getDate() - 6);
-    startDate.setHours(0, 0, 0, 0);
-    const endDate = new Date(now);
-    endDate.setHours(23, 59, 59, 999);
+    const todayEnd = new Date(`${vnNow.year}-${vnNow.month}-${vnNow.day}T23:59:59.999+07:00`);
+    const todayStart = new Date(`${vnNow.year}-${vnNow.month}-${vnNow.day}T00:00:00+07:00`);
+    const startDate = new Date(todayStart.getTime() - 6 * 24 * 60 * 60 * 1000);
+    const endDate = todayEnd;
 
-    const prevStartDate = new Date(startDate);
-    prevStartDate.setDate(prevStartDate.getDate() - 7);
-    const prevEndDate = new Date(startDate);
-    prevEndDate.setMilliseconds(prevEndDate.getMilliseconds() - 1);
+    const prevStartDate = new Date(startDate.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const prevEndDate = new Date(startDate.getTime() - 1);
 
     const buckets = [];
     for (let i = 0; i < 7; i++) {
-      const d = new Date(startDate);
-      d.setDate(d.getDate() + i);
-      const day = d.getDate().toString().padStart(2, '0');
-      const month = (d.getMonth() + 1).toString().padStart(2, '0');
-      const key = `${d.getFullYear()}-${month}-${day}`;
-      const label = `${day}/${month}`;
+      const d = new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000);
+      const parts = getVnTimeParts(d);
+      const key = `${parts.year}-${parts.month}-${parts.day}`;
+      const label = `${parts.day}/${parts.month}`;
       buckets.push({ key, label, count: 0 });
     }
     return { startDate, endDate, prevStartDate, prevEndDate, buckets, format: 'day', period: '7days', label: '7 ngày' };
   }
 
   if (normalized === '1year' || normalized === '1y' || normalized === '12months' || normalized === 'year') {
-    const startDate = new Date(now.getFullYear(), now.getMonth() - 11, 1, 0, 0, 0, 0);
-    const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-
-    const prevStartDate = new Date(now.getFullYear() - 1, now.getMonth() - 11, 1, 0, 0, 0, 0);
-    const prevEndDate = new Date(now.getFullYear() - 1, now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const currentY = parseInt(vnNow.year, 10);
+    const currentM = parseInt(vnNow.month, 10);
 
     const buckets = [];
-    for (let i = 0; i < 12; i++) {
-      const d = new Date(now.getFullYear(), now.getMonth() - 11 + i, 1);
-      const month = (d.getMonth() + 1).toString().padStart(2, '0');
-      const year = d.getFullYear();
-      const key = `${year}-${month}`;
-      const label = `Thg ${month}`;
+    for (let i = 11; i >= 0; i--) {
+      let targetM = currentM - i;
+      let targetY = currentY;
+      while (targetM <= 0) {
+        targetM += 12;
+        targetY -= 1;
+      }
+      const monthStr = targetM.toString().padStart(2, '0');
+      const key = `${targetY}-${monthStr}`;
+      const label = `Thg ${targetM}`;
       buckets.push({ key, label, count: 0 });
     }
+
+    const firstBucket = buckets[0];
+    const lastBucket = buckets[buckets.length - 1];
+    const [firstY, firstM] = firstBucket.key.split('-');
+    const [lastY, lastM] = lastBucket.key.split('-');
+    const lastDays = new Date(parseInt(lastY, 10), parseInt(lastM, 10), 0).getDate();
+
+    const startDate = new Date(`${firstY}-${firstM}-01T00:00:00+07:00`);
+    const endDate = new Date(`${lastY}-${lastM}-${lastDays.toString().padStart(2, '0')}T23:59:59.999+07:00`);
+
+    const prevStartDate = new Date(`${parseInt(firstY, 10) - 1}-${firstM}-01T00:00:00+07:00`);
+    const prevEndDate = new Date(`${parseInt(lastY, 10) - 1}-${lastM}-${lastDays.toString().padStart(2, '0')}T23:59:59.999+07:00`);
+
     return { startDate, endDate, prevStartDate, prevEndDate, buckets, format: 'month', period: '1year', label: '1 năm' };
   }
 
   if (normalized === '1month' || normalized === '1m' || normalized === '30days') {
-    const startDate = new Date(now);
-    startDate.setDate(startDate.getDate() - 29);
-    startDate.setHours(0, 0, 0, 0);
-    const endDate = new Date(now);
-    endDate.setHours(23, 59, 59, 999);
+    const todayEnd = new Date(`${vnNow.year}-${vnNow.month}-${vnNow.day}T23:59:59.999+07:00`);
+    const todayStart = new Date(`${vnNow.year}-${vnNow.month}-${vnNow.day}T00:00:00+07:00`);
+    const startDate = new Date(todayStart.getTime() - 29 * 24 * 60 * 60 * 1000);
+    const endDate = todayEnd;
 
-    const prevStartDate = new Date(startDate);
-    prevStartDate.setDate(prevStartDate.getDate() - 30);
-    const prevEndDate = new Date(startDate);
-    prevEndDate.setMilliseconds(prevEndDate.getMilliseconds() - 1);
+    const prevStartDate = new Date(startDate.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const prevEndDate = new Date(startDate.getTime() - 1);
 
     const buckets = [];
     for (let i = 0; i < 30; i++) {
-      const d = new Date(startDate);
-      d.setDate(d.getDate() + i);
-      const day = d.getDate().toString().padStart(2, '0');
-      const month = (d.getMonth() + 1).toString().padStart(2, '0');
-      const key = `${d.getFullYear()}-${month}-${day}`;
-      const label = `${day}/${month}`;
+      const d = new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000);
+      const parts = getVnTimeParts(d);
+      const key = `${parts.year}-${parts.month}-${parts.day}`;
+      const label = `${parts.day}/${parts.month}`;
       buckets.push({ key, label, count: 0 });
     }
     return { startDate, endDate, prevStartDate, prevEndDate, buckets, format: 'day', period: '1month', label: '1 tháng' };
   }
 
-  // Default: today (24 hours)
-  const startDate = new Date(now);
-  startDate.setHours(0, 0, 0, 0);
-  const endDate = new Date(now);
-  endDate.setHours(23, 59, 59, 999);
+  // Default: today (24 hours theo giờ Việt Nam)
+  const startDate = new Date(`${vnNow.year}-${vnNow.month}-${vnNow.day}T00:00:00+07:00`);
+  const endDate = new Date(`${vnNow.year}-${vnNow.month}-${vnNow.day}T23:59:59.999+07:00`);
 
-  const prevStartDate = new Date(startDate);
-  prevStartDate.setDate(prevStartDate.getDate() - 1);
-  const prevEndDate = new Date(endDate);
-  prevEndDate.setDate(prevEndDate.getDate() - 1);
+  const prevStartDate = new Date(startDate.getTime() - 24 * 60 * 60 * 1000);
+  const prevEndDate = new Date(endDate.getTime() - 24 * 60 * 60 * 1000);
 
   const buckets = [];
   for (let h = 0; h < 24; h++) {

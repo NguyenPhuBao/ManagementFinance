@@ -32,7 +32,7 @@ Backend đã hoàn thành đồng bộ **13 bảng CSDL** theo đặc tả chu�
 
 ## 2. Module Sync (Đồng Bộ Dữ Liệu 2 Chiều Offline-First)
 
-* **`POST /api/sync/batch` (Push Operations):**
+* **`POST /api/sync/push` (Push Operations):**
   * Nhận mảng các thao tác đồng bộ từ Client-app (`create`, `update`, `delete`) cho 6 thực thể (`category`, `wallet`, `transaction`, `budget`, `bill`, `goal`).
   * Áp dụng thuật toán **Last-Write-Wins (LWW)** dựa trên `Update_at` / `update_at`.
   * Tự động nhận diện Soft Delete (`Deleted_at` cho `transaction`, `Delete_at` cho các bảng còn lại).
@@ -162,7 +162,7 @@ Backend đã hoàn thành đồng bộ **13 bảng CSDL** theo đặc tả chu�
 * **Phân Định Trách Nhiệm Kiến Trúc (Separation of Concerns & Offline-First):**
   * Backend OCR giữ vai trò Stateless AI Service: Nhận ảnh $\rightarrow$ Self-healing $\rightarrow$ Khử trùng lặp $\rightarrow$ Phân loại 2 cấp $\rightarrow$ Đóng gói DTO $\rightarrow$ Bắn Realtime Notification và trả DTO về Client.
   * Backend OCR **không ghi CSDL giao dịch**, **không can thiệp số dư ví** hay quản lý trạng thái giao dịch tại bước này.
-  * Việc xác nhận giao dịch, chọn phương thức lưu (đơn lẻ hay chia nhóm), sinh UUID v4, ghi nhận CSDL SQLite cục bộ (với `status = 'Confirmed'`), cập nhật biến động số dư ví là do **Client-app đảm nhiệm**. Sau đó dữ liệu được đồng bộ an toàn lên Backend qua Sync Engine (`POST /api/sync/batch`).
+  * Việc xác nhận giao dịch, chọn phương thức lưu (đơn lẻ hay chia nhóm), sinh UUID v4, ghi nhận CSDL SQLite cục bộ (với `status = 'Confirmed'`), cập nhật biến động số dư ví là do **Client-app đảm nhiệm**. Sau đó dữ liệu được đồng bộ an toàn lên Backend qua Sync Engine (`POST /api/sync/push`).
 * **Tích Hợp Hệ Thống Thông Báo Realtime (Notification Module):**
   * EventBus publish sự kiện `ocr.completed` và `ocr.duplicate`.
   * Notification Service nhận sự kiện và gọi Socket.io (`emitOcrCompleted`, `emitOcrDuplicate`) gửi thông báo tới phòng riêng `account_<idaccount>` của user trên Client-app.
@@ -190,15 +190,28 @@ Backend đã hoàn thành đồng bộ **13 bảng CSDL** theo đặc tả chu�
   * `Test/test_ai_ocr_full_flow.js`: **PASS 18/18 (100%)** - Kiểm thử toàn diện OCR 3 loại chứng từ, Self-Healing, HTTP 422, và Realtime Notification
   * `Test/test_ai_classify_2level.js`: **PASS 23/23 (100%)** - Kiểm thử toàn diện kiến trúc 2 cấp độ và 3 cơ sở đối soát CSDL
 
-  * `Test/test_category_unique_rules.js`: **PASS 10/10 (100%)** - Kiểm thử toàn diện 2 nhóm Unique Category
-  * `Test/test_ai_classify_3tier.js`: **PASS 100%** - Bao gồm test case 2.5 Casso counterpart_name viết HOA
-  * `Test/test_admin_auth_fixes.js`: **PASS 100%** - Auth & Session Admin-web
-  * `Test/test_session_and_classify_alignment.js`: **PASS 100%** - Đồng bộ và phân loại
-  * `Test/test_admin_new_schema.js`: **PASS 100%**
-  * `Test/test_bank_full_flow.js`: PASS 100%
-  * `Test/test_bank_new_schema.js`: PASS 100%
-  * `Test/test_sync_new_schema.js`: PASS 100%
-  * `Test/test_auth_new_schema.js`: PASS 100%
-  * `Test/test_req_statuses.js`: PASS 12/12 (100%)
+  * `Test/test_category_template_rules.js`: **PASS 8/8 (100%)** - Kiểm thử toàn diện Mô hình Template & Cloned, gỡ bỏ trigger chéo, bảo vệ danh mục hệ thống
+  * `Test/test_can_lam_fixes.js`: **PASS 10/10 (100%)** - Toàn bộ 11 bản vá theo CAN-LAM
+
+---
+
+## 11. Hoàn Thiện Nghiệp Vụ Danh Mục Mẫu & Admin-web (2026-09-07)
+
+* **Chuyển đổi Mô hình Template & Cloned cho Danh mục:**
+  * Toàn bộ danh mục mặc định hệ thống (`is_default = true`) đóng vai trò là bộ khung mẫu (Template) do Admin quản lý.
+  * Khi người dùng đăng ký mới: Client-app gọi API `GET /api/sync/default-categories` để lấy template, tự sinh danh mục cá nhân (`is_default = false`, `create_by = idaccount`) lưu vào SQLite và đồng bộ lên Backend qua `POST /api/sync/push`.
+  * Gỡ bỏ Trigger kiểm tra chéo `trg_category_name_cross_default`: Cho phép người dùng sở hữu danh mục trùng tên với danh mục mẫu hệ thống.
+  * Tái xác nhận 2 Partial Unique Indexes chuẩn hóa NFC & case-insensitive:
+    * `uq_category_owner_name`: `(Create_by, lower(...))` khi `Is_default = FALSE AND Delete_at IS NULL`.
+    * `uq_category_default_name`: `(lower(...))` khi `Is_default = TRUE AND Delete_at IS NULL`.
+* **Bảo vệ Danh mục Hệ thống:**
+  * Cấm xóa: `admin.service.deleteCategory` trả về HTTP 400 Bad Request nếu `category.is_default === true`.
+  * Cấm chuyển đổi: Không cho phép chuyển đổi danh mục người dùng thành danh mục hệ thống kể cả với quyền Admin (`admin.service.updateCategory` trả về HTTP 400).
+* **Chuẩn Hóa Admin-web & FinanceAdmin:**
+  * Đồng bộ nhận diện thương hiệu `FinanceAdmin`.
+  * Bổ sung tiện ích `normalizeCategoryName` và `normalizeVietnameseUnaccent`.
+  * Vô hiệu hóa nút xóa danh mục hệ thống trên giao diện Admin-web.
+  * Quản lý kết nối Socket.io tập trung qua `useSocket.js`.
+
 
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TRANSACTION_TYPE_LABELS } from '../../utils/constants';
+import { normalizeCategoryName, normalizeVietnameseUnaccent } from '../../utils/string';
 import adminApi from '../../api/admin.api';
 import Pagination from '../../components/common/Pagination';
 
@@ -30,11 +31,15 @@ const CategoryPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  const filtered = categories.filter(c =>
-    c.name.toLowerCase().includes(search.toLowerCase()) &&
-    (filter.isDefault === 'all' || (filter.isDefault === 'yes' ? c.isDefault : !c.isDefault)) &&
-    (filter.type === 'all' || c.type === filter.type)
-  );
+  const searchNorm = normalizeVietnameseUnaccent(search);
+  const filtered = categories.filter(c => {
+    const matchSearch = !searchNorm ||
+      normalizeVietnameseUnaccent(c.name).includes(searchNorm) ||
+      c.name.toLowerCase().includes(search.toLowerCase());
+    const matchDefault = (filter.isDefault === 'all' || (filter.isDefault === 'yes' ? c.isDefault : !c.isDefault));
+    const matchType = (filter.type === 'all' || c.type === filter.type);
+    return matchSearch && matchDefault && matchType;
+  });
 
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;
   const start = (currentPage - 1) * pageSize;
@@ -77,20 +82,26 @@ const CategoryPage = () => {
     if (processing.isProcessing) return; // Chặn bấm nhiều lần
     
     const trimmedName = form.name.trim();
-    if (!trimmedName) {
-      alert('Vui lòng nhập tên danh mục');
+    const normName = normalizeCategoryName(trimmedName);
+    if (!normName) {
+      alert('Vui lòng nhập tên danh mục hợp lệ');
       return;
     }
 
-    const nameLower = trimmedName.toLowerCase();
     const isDefaultBool = form.isDefault === 'yes';
+
+    // Chặn chuyển đổi danh mục người dùng thành danh mục hệ thống
+    if (editingCategory && !editingCategory.isDefault && isDefaultBool) {
+      alert('Không được phép chuyển đổi danh mục người dùng thành danh mục hệ thống!');
+      return;
+    }
 
     // 1. Pre-validation Nhóm 2: Is_default & namecategory (Client-side instant feedback)
     if (isDefaultBool) {
       const dupDefault = categories.find((c) =>
         c.isDefault &&
         c.name &&
-        c.name.trim().toLowerCase() === nameLower &&
+        normalizeCategoryName(c.name) === normName &&
         (!editingCategory || c.id !== editingCategory.id)
       );
       if (dupDefault) {
@@ -131,7 +142,7 @@ const CategoryPage = () => {
     if (!categoryToDelete || processing.isProcessing) return; // Chặn bấm xóa nhiều lần
     setProcessing({ isProcessing: true, text: 'Đang xóa danh mục...' });
     try {
-      await adminApi.deleteCategory(categoryToDelete);
+      await adminApi.deleteCategory(categoryToDelete.id || categoryToDelete);
       setCategoryToDelete(null);
       toggleModal('deleteAlert', false);
       await fetchCategories();
@@ -143,8 +154,12 @@ const CategoryPage = () => {
     }
   };
 
-  const handleDeleteClick = (id) => {
-    setCategoryToDelete(id);
+  const handleDeleteClick = (cat) => {
+    if (cat.isDefault) {
+      alert('Không thể xóa danh mục mặc định của hệ thống!');
+      return;
+    }
+    setCategoryToDelete(cat);
     toggleModal('deleteAlert', true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -358,9 +373,22 @@ const CategoryPage = () => {
                                             <button className="p-1 text-secondary hover:text-primary transition-colors border border-transparent hover:border-on-background rounded cursor-pointer" onClick={() => openEditModal(item)} title="Sửa">
                                                 <span className="material-symbols-outlined text-[20px]">edit</span>
                                             </button>
-                                            <button className="p-1 text-secondary hover:text-error transition-colors ml-2 border border-transparent hover:border-on-background rounded cursor-pointer" onClick={() => handleDeleteClick(item.id)} title="Xóa">
+                                            {item.isDefault ? (
+                                              <span 
+                                                className="p-1 text-outline/40 cursor-not-allowed ml-2 inline-flex items-center align-middle" 
+                                                title="Danh mục hệ thống không thể xóa"
+                                              >
                                                 <span className="material-symbols-outlined text-[20px]">delete</span>
-                                            </button>
+                                              </span>
+                                            ) : (
+                                              <button 
+                                                className="p-1 text-secondary hover:text-error transition-colors ml-2 border border-transparent hover:border-on-background rounded cursor-pointer" 
+                                                onClick={() => handleDeleteClick(item)} 
+                                                title="Xóa"
+                                              >
+                                                <span className="material-symbols-outlined text-[20px]">delete</span>
+                                              </button>
+                                            )}
                                         </td>
                                     </tr>
                                 );
@@ -445,16 +473,21 @@ const CategoryPage = () => {
                         </div>
                         <div className="grid grid-cols-2 gap-4 items-start">
                             <div>
-                                <label className="block font-label-md text-on-surface mb-1">Mặc định</label>
+                                <label className="block font-label-md text-on-surface mb-1">Mặc định (Hệ thống)</label>
                                 <select 
-                                  disabled={processing.isProcessing}
+                                  disabled={processing.isProcessing || (editingCategory && !editingCategory.isDefault)}
                                   value={form.isDefault} 
                                   onChange={e => setForm({...form, isDefault: e.target.value})} 
                                   className="w-full px-3 py-2 border border-outline-variant rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md bg-white h-[40px] cursor-pointer disabled:bg-surface-container-low disabled:cursor-not-allowed"
                                 >
-                                    <option value="yes">Yes</option>
-                                    <option value="no">No</option>
+                                    <option value="yes" disabled={editingCategory && !editingCategory.isDefault}>Yes (Hệ thống)</option>
+                                    <option value="no">No (Tùy chỉnh)</option>
                                 </select>
+                                {editingCategory && !editingCategory.isDefault && (
+                                  <p className="text-[11px] text-on-surface-variant mt-1">
+                                    Không thể chuyển đổi danh mục người dùng thành danh mục hệ thống.
+                                  </p>
+                                )}
                             </div>
                             <div>
                                 <label className="block font-label-md text-on-surface mb-1">Phân loại</label>

@@ -454,7 +454,7 @@ Bảng `Transaction` trong CSDL PostgreSQL (Supabase) lưu trữ các trường 
    - *Cấp 2:* Nếu `Transaction` $\rightarrow$ phân loại danh mục cho từng món và giao dịch tổng; gom nhóm các món cùng danh mục thành `option_grouped` (gán sẵn `bank_tran_id = ${base}_grp_${idx+1}` để chống đụng ràng buộc Unique).
 5. **Đóng gói & Phản hồi:** Backend trả về DTO hoàn chỉnh (HTTP 200) và phát sự kiện realtime `ocr.completed`.
 6. **Client-app Review:** Hiển thị màn hình xác nhận: người dùng chọn ghi nhận theo 1 giao dịch tổng (`option_single`) hoặc nhiều giao dịch con gom nhóm (`option_grouped`).
-7. **Lưu SQLite & Đồng bộ:** Người dùng bấm xác nhận $\rightarrow$ Client-app sinh `UUID v4`, gán `status = 'Confirmed'`, tính toán và cập nhật lại số dư ví trong bảng `wallet` SQLite $\rightarrow$ Đưa vào `SyncQueue` đồng bộ về Backend qua `POST /api/sync/batch`.
+7. **Lưu SQLite & Đồng bộ:** Người dùng bấm xác nhận $\rightarrow$ Client-app sinh `UUID v4`, gán `status = 'Confirmed'`, tính toán và cập nhật lại số dư ví trong bảng `wallet` SQLite $\rightarrow$ Đưa vào `SyncQueue` đồng bộ về Backend qua `POST /api/sync/push`.
 
 ---
 
@@ -491,7 +491,7 @@ Bảng `Transaction` trong CSDL PostgreSQL (Supabase) lưu trữ các trường 
 
 **1. Về phía Backend (Server):**
 * **Kiến trúc Stateless & In-Memory:** Toàn bộ dữ liệu của quá trình xử lý OCR (ảnh Base64, kết quả bóc tách, DTO phân loại) **chỉ tồn tại trong bộ nhớ RAM (`In-Memory`)** của tiến trình Node.js xử lý request đó.
-* Backend **KHÔNG ghi bất kỳ bản ghi nào vào CSDL Supabase PostgreSQL** tại bước này.
+* Backend **KHÔNG ghi bất kỳ bản ghi giao dịch hay biến động số dư nào vào CSDL Supabase PostgreSQL** tại bước này (ngoại trừ siêu dữ liệu nhật ký hệ thống `auditlog` ghi nhận request API nếu đã xác thực).
 * Khi Client rớt mạng:
   * Phản hồi HTTP không gửi được do đường truyền đứt.
   * Khi hàm controller kết thúc, **Bộ gom rác tự động của Node.js (Garbage Collector)** sẽ tự động dọn dẹp và thu hồi toàn bộ vùng nhớ RAM chứa các object/DTO này.

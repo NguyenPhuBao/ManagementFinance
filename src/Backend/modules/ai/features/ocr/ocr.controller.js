@@ -18,7 +18,11 @@ const ocrController = {
         return res.status(401).json({ success: false, message: 'Chưa xác thực người dùng' });
       }
 
-      const { image_base64, mimetype, _mockExtraction, _mockUser, _mockWallets } = req.body;
+      const { image_base64, mimetype } = req.body;
+      const isTestEnv = process.env.NODE_ENV !== 'production';
+      const _mockExtraction = isTestEnv ? req.body._mockExtraction : undefined;
+      const _mockUser = isTestEnv ? req.body._mockUser : undefined;
+      const _mockWallets = isTestEnv ? req.body._mockWallets : undefined;
 
       if (!image_base64 && !_mockExtraction) {
         return res.status(400).json({

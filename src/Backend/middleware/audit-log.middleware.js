@@ -8,13 +8,21 @@ const logger = require('../core/logger');
 function auditLogMiddleware(req, res, next) {
   const time_req = new Date();
 
+  let logged = false;
+
   // Bắt sự kiện request bị client ngắt kết nối giữa chừng
   req.on('aborted', () => {
     req.auditStatus = 'Interrupted';
   });
 
-  // Lắng nghe sự kiện finish khi response đã hoàn tất gửi về client
-  res.on('finish', () => {
+  const handleLog = (isInterrupted = false) => {
+    if (logged) return;
+    logged = true;
+
+    if (isInterrupted || req.aborted || req.destroyed || (!res.writableEnded && !res.finished)) {
+      req.auditStatus = 'Interrupted';
+    }
+
     try {
       const time_res = new Date();
       const path = req.baseUrl ? `${req.baseUrl}${req.path}` : (req.originalUrl || req.url || '');
@@ -86,7 +94,14 @@ function auditLogMiddleware(req, res, next) {
         }
       });
     } catch (err) {
-      logger.error('[AuditLog] Unexpected error in middleware finish handler', { error: err.message });
+      logger.error('[AuditLog] Unexpected error in middleware log handler', { error: err.message });
+    }
+  };
+
+  res.on('finish', () => handleLog(false));
+  res.on('close', () => {
+    if (!res.writableEnded) {
+      handleLog(true);
     }
   });
 

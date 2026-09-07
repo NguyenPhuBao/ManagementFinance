@@ -1,4 +1,4 @@
-﻿const logger = require('../core/logger');
+const logger = require('../core/logger');
 const ResponseHandler = require('../core/response-handler');
 
 function errorHandler(err, req, res, _next) {
@@ -22,10 +22,20 @@ function errorHandler(err, req, res, _next) {
     }
   }
 
-  return ResponseHandler.error(res, process.env.NODE_ENV === 'production'
+  const statusCode = err.statusCode || (typeof err.status === 'number' ? err.status : 500);
+  const errorCode = err.errorCode || err.code || undefined;
+  const message = (process.env.NODE_ENV === 'production' && statusCode === 500 && !err.errorCode)
     ? 'Internal Server Error'
-    : err.message
-  );
+    : err.message;
+
+  return res.status(statusCode).json({
+    success: false,
+    statusCode,
+    code: errorCode,
+    message,
+    ...(err.data ? { data: err.data } : {}),
+    timestamp: new Date().toISOString(),
+  });
 }
 
 module.exports = errorHandler;

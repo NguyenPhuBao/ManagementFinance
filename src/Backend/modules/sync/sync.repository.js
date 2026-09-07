@@ -20,6 +20,8 @@ function mapEntityFields(entity, data) {
       if (m.walletId !== undefined) { m.idwallet = m.walletId; delete m.walletId; }
       if (m.walletTransfer !== undefined) { m.idwallet_transfer = m.walletTransfer; delete m.walletTransfer; }
       if (m.wallet_transfer !== undefined) { m.idwallet_transfer = m.wallet_transfer; delete m.wallet_transfer; }
+      if (m.goalId !== undefined) { m.idgoal = m.goalId; delete m.goalId; }
+      if (m.goal_id !== undefined) { m.idgoal = m.goal_id; delete m.goal_id; }
       if (m.bankTranId !== undefined) { m.bank_tran_id = m.bankTranId; delete m.bankTranId; }
       if (m.dateTransaction !== undefined) { m.date_transaction = new Date(m.dateTransaction); delete m.dateTransaction; }
       else if (m.createdAt !== undefined) { m.date_transaction = new Date(m.createdAt); delete m.createdAt; }
@@ -83,6 +85,10 @@ function mapEntityFields(entity, data) {
       if (m.targetDate !== undefined) { m.target_date = new Date(m.targetDate); delete m.targetDate; }
       if (m.cycleTakeMoney !== undefined) { m.cycle_take_money = m.cycleTakeMoney; delete m.cycleTakeMoney; }
       if (m.timeCycleTakeMoney !== undefined) { m.time_cycle_take_money = m.timeCycleTakeMoney ? new Date(m.timeCycleTakeMoney) : null; delete m.timeCycleTakeMoney; }
+      if (m.autoDepositAmount !== undefined) { m.auto_deposit_amount = m.autoDepositAmount; delete m.autoDepositAmount; }
+      if (m.autoDepositWalletId !== undefined) { m.auto_deposit_wallet_id = m.autoDepositWalletId; delete m.autoDepositWalletId; }
+      if (m.autoDepositLastRun !== undefined) { m.auto_deposit_last_run = m.autoDepositLastRun ? new Date(m.autoDepositLastRun) : null; delete m.autoDepositLastRun; }
+      if (m.priority !== undefined) { m.priority = Number(m.priority); }
       if (m.statusComplete !== undefined) {
         if (typeof m.statusComplete === 'boolean') {
           m.status_complete = m.statusComplete ? 'True' : 'False';
@@ -257,6 +263,7 @@ const syncRepository = {
           idwallet: mapped.idwallet,
           idcategory: mapped.idcategory || null,
           idwallet_transfer: mapped.idwallet_transfer || null,
+          idgoal: mapped.idgoal || null,
           bank_tran_id: mapped.bank_tran_id || null,
           amount: mapped.amount ?? 0,
           type: mapped.type || 'Transaction',
@@ -277,6 +284,7 @@ const syncRepository = {
           idwallet: mapped.idwallet ?? existing.idwallet,
           idcategory: mapped.idcategory !== undefined ? mapped.idcategory : existing.idcategory,
           idwallet_transfer: mapped.idwallet_transfer !== undefined ? mapped.idwallet_transfer : existing.idwallet_transfer,
+          idgoal: mapped.idgoal !== undefined ? mapped.idgoal : existing.idgoal,
           bank_tran_id: mapped.bank_tran_id !== undefined ? mapped.bank_tran_id : existing.bank_tran_id,
           amount: mapped.amount ?? existing.amount,
           type: mapped.type ?? existing.type,
@@ -322,7 +330,7 @@ const syncRepository = {
           start: mapped.start || new Date(),
           end: mapped.end || null,
           recurrence: mapped.recurrence ?? false,
-          time_recurrence: mapped.time_recurrence || 'Month',
+          time_recurrence: mapped.time_recurrence === undefined ? 'Month' : mapped.time_recurrence,
           nexttime_recurrence: mapped.nexttime_recurrence || null,
           note: mapped.note || null,
           update_at: mapped.update_at || new Date(),
@@ -343,7 +351,7 @@ const syncRepository = {
           start: mapped.start ?? existing.start,
           end: mapped.end !== undefined ? mapped.end : existing.end,
           recurrence: mapped.recurrence ?? existing.recurrence,
-          time_recurrence: mapped.time_recurrence ?? existing.time_recurrence,
+          time_recurrence: mapped.time_recurrence !== undefined ? mapped.time_recurrence : existing.time_recurrence,
           nexttime_recurrence: mapped.nexttime_recurrence !== undefined ? mapped.nexttime_recurrence : existing.nexttime_recurrence,
           note: mapped.note !== undefined ? mapped.note : existing.note,
           delete_at: mapped.delete_at !== undefined ? mapped.delete_at : existing.delete_at,
@@ -442,6 +450,10 @@ const syncRepository = {
           target_date: mapped.target_date || new Date(),
           cycle_take_money: mapped.cycle_take_money || null,
           time_cycle_take_money: mapped.time_cycle_take_money || null,
+          auto_deposit_amount: mapped.auto_deposit_amount !== undefined ? mapped.auto_deposit_amount : null,
+          auto_deposit_wallet_id: mapped.auto_deposit_wallet_id || null,
+          auto_deposit_last_run: mapped.auto_deposit_last_run || null,
+          priority: mapped.priority !== undefined ? mapped.priority : 1,
           status_complete: mapped.status_complete || 'False',
           recurrence: mapped.recurrence ?? false,
           time_recurrence: mapped.time_recurrence || null,
@@ -464,6 +476,10 @@ const syncRepository = {
           target_date: mapped.target_date ?? existing.target_date,
           cycle_take_money: mapped.cycle_take_money !== undefined ? mapped.cycle_take_money : existing.cycle_take_money,
           time_cycle_take_money: mapped.time_cycle_take_money !== undefined ? mapped.time_cycle_take_money : existing.time_cycle_take_money,
+          auto_deposit_amount: mapped.auto_deposit_amount !== undefined ? mapped.auto_deposit_amount : existing.auto_deposit_amount,
+          auto_deposit_wallet_id: mapped.auto_deposit_wallet_id !== undefined ? mapped.auto_deposit_wallet_id : existing.auto_deposit_wallet_id,
+          auto_deposit_last_run: mapped.auto_deposit_last_run !== undefined ? mapped.auto_deposit_last_run : existing.auto_deposit_last_run,
+          priority: mapped.priority !== undefined ? mapped.priority : existing.priority,
           status_complete: mapped.status_complete ?? existing.status_complete,
           recurrence: mapped.recurrence ?? existing.recurrence,
           time_recurrence: mapped.time_recurrence !== undefined ? mapped.time_recurrence : existing.time_recurrence,

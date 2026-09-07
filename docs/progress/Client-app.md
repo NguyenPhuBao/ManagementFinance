@@ -22,7 +22,7 @@ Client-app cần cập nhật cấu trúc các bảng SQLite cục bộ trên th
 ## 2. Module Sync — Đồng Bộ Dữ Liệu Offline-First
 
 * **Cập nhật Mapping Entity & Data Transfer Objects (DTO):**
-  * Chuẩn hóa tên trường gửi lên trong `POST /api/sync/batch`: `date_transaction`, `idwallet_transfer`, `deleted_at`, `status`.
+  * Chuẩn hóa tên trường gửi lên trong `POST /api/sync/push`: `date_transaction`, `idwallet_transfer`, `deleted_at`, `status`.
 * **Cơ chế Kéo Dữ Liệu (`Pull Changes`):**
   * Gọi `GET /api/sync/pull?since=last_sync_timestamp` khi khởi động ứng dụng hoặc khi phát hiện có mạng trở lại.
   * Cập nhật SQLite cục bộ theo thuật toán Last-Write-Wins (LWW).
@@ -199,23 +199,42 @@ Client-app hoàn toàn làm chủ việc ghi nhận CSDL theo kiến trúc Offli
 * Sau khi ghi nhận thành công vào SQLite cục bộ, Client-app đưa các thao tác vào hàng đợi đồng bộ (`SyncQueue`):
   * Thao tác `create` cho các bản ghi `transaction` vừa tạo.
   * Thao tác `update` cho các bản ghi `wallet` bị biến động số dư.
-* Gọi `POST /api/sync/batch` để đẩy dữ liệu lên Cloud Backend (khi có kết nối Internet).
+* Gọi `POST /api/sync/push` để đẩy dữ liệu lên Cloud Backend (khi có kết nối Internet).
 * Backend **không cần Direct API** tạo giao dịch riêng cho OCR, toàn bộ giao dịch được đồng bộ tự nhiên qua Sync Engine chuẩn hóa.
+
+## 7. Khởi Tạo Danh Mục Khi Đăng Ký Tài Khoản Mới (Template & Cloned Model)
+
+Theo quyết định nghiệp vụ đã thống nhất của PO:
+* **Nguyên tắc:** Danh mục mặc định hệ thống (`is_default = true`) chỉ đóng vai trò là Template mẫu. Backend **không** tự động sinh danh mục cho người dùng khi gọi API đăng ký.
+* **Quy trình thực hiện tại Client-app:**
+  1. Sau khi người dùng xác thực OTP và đăng ký tài khoản thành công (`/api/auth/register/verify-otp`) hoặc đăng nhập lần đầu chưa có danh mục:
+  2. Client-app gọi API **`GET /api/sync/default-categories`** để nhận danh sách toàn bộ danh mục mẫu đang hoạt động của hệ thống.
+  3. Client-app sinh một bộ danh mục cá nhân tương ứng:
+     - `create_by = currentUserIdAccount`
+     - `is_default = false`
+     - `idcategory`: UUID v4 do Client-app tự sinh
+     - Giữ nguyên `name_category`, `classify`, `icon`, `keyword` từ template.
+  4. Lưu toàn bộ danh mục này vào bảng `category` trong CSDL SQLite cục bộ (Client-app không lưu danh mục hệ thống vào bảng này).
+  5. Đẩy bộ danh mục cá nhân này lên Backend qua cơ chế **`POST /api/sync/push`** (với `operation: 'create'`).
+  6. Từ thời điểm này, bộ danh mục thuộc sở hữu cá nhân độc lập của tài khoản, người dùng có thể tự do thêm/sửa/xóa hoặc đổi tên mà không ảnh hưởng tới hệ thống mẫu.
 
 ---
 
-## 7. Tích Hợp Realtime Socket.io Client Cho Toàn Ứng Dụng
+## 8. Tích Hợp Realtime Socket.io Client Cho Toàn Ứng Dụng
 
 Client-app duy trì kết nối Socket.io liên tục với Backend để nhận thông báo thời gian thực:
 
-* **Kết nối & Gia nhập phòng cá nhân:**
+* **Kết nối bảo mật qua JWT Handshake Token (Không dùng `join_account`):**
   ```dart
   socket = IO.io(backendUrl, <String, dynamic>{
-    'transports': ['websocket'],
+    'transports': ['websocket', 'polling'],
     'autoConnect': true,
+    'auth': {
+      'token': accessToken, // Token JWT hợp lệ từ auth.service
+    },
   });
-  // Khi đăng nhập thành công
-  socket.emit('join_account', currentUserIdAccount);
+  // Socket.io middleware trên Backend sẽ tự động xác thực token và đưa socket
+  // vào room riêng 'account_${idaccount}' an toàn tuyệt đối.
   ```
 
 * **Danh sách các sự kiện Realtime cần lắng nghe:**
@@ -228,7 +247,7 @@ Client-app duy trì kết nối Socket.io liên tục với Backend để nhận
 
 ---
 
-## 8. Danh Sách Các Endpoint Backend Client-App Cần Kết Nối
+## 9. Danh Sách Các Endpoint Backend Client-App Cần Kết Nối
 
 | Module | Method | Endpoint | Mục Đích |
 |---|---|---|---|
@@ -238,7 +257,8 @@ Client-app duy trì kết nối Socket.io liên tục với Backend để nhận
 | **Auth** | `POST` | `/api/auth/refresh` | Làm mới AccessToken khi hết hạn |
 | **Auth** | `POST` | `/api/auth/logout` | Đăng xuất & thu hồi RefreshToken |
 | **Auth** | `GET` | `/api/auth/me` | Lấy thông tin tài khoản và người dùng hiện tại |
-| **Sync** | `POST` | `/api/sync/batch` | Đẩy hàng loạt thao tác offline (create/update/delete) lên server |
+| **Sync** | `GET` | `/api/sync/default-categories` | Lấy danh sách danh mục mẫu mặc định để nhân bản cho user mới đăng ký |
+| **Sync** | `POST` | `/api/sync/push` | Đẩy hàng loạt thao tác offline (create/update/delete) lên server |
 | **Sync** | `GET` | `/api/sync/pull` | Kéo dữ liệu mới nhất từ server về SQLite máy |
 | **Sync** | `GET` | `/api/sync/status` | Kiểm tra tổng số lượng bản ghi để đối soát tính toàn vẹn |
 | **Bank** | `GET` | `/api/bank/accounts` | Lấy danh sách tài khoản ngân hàng liên kết qua Casso |

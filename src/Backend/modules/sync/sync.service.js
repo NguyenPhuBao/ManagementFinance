@@ -81,7 +81,7 @@ const syncService = {
         const { localId, entity, operation, payload } = op;
 
         // Ownership check (type-safe comparison)
-        if (Number(payload.idaccount) !== Number(idaccount)) {
+        if (payload.idaccount !== undefined && payload.idaccount !== null && Number(payload.idaccount) !== Number(idaccount)) {
           results[idx] = {
             localId,
             status: 'error',
@@ -92,7 +92,7 @@ const syncService = {
         }
 
         // Normalize payload fields
-        payload.idaccount = Number(payload.idaccount);
+        payload.idaccount = Number(payload.idaccount ?? idaccount);
         if (!payload.id) {
           const pkField = ENTITY_PK_MAP[entity];
           if (pkField && payload[pkField]) {
@@ -108,22 +108,22 @@ const syncService = {
           }
         }
 
-        // Handle delete
+        // Handle delete — idempotent: không tìm thấy nghĩa là ĐÃ ở trạng thái mong muốn
         if (operation === 'delete') {
           const deleted = await syncRepository.softDelete(entity, payload.id);
           results[idx] = {
             localId,
-            status: deleted ? 'synced' : 'error',
-            message: deleted ? undefined : 'Record not found',
+            status: 'synced',
+            message: deleted ? undefined : 'Already absent',
           };
-          if (deleted) synced++; else errors++;
+          synced++;
           continue;
         }
 
         // Handle create/update (upsert with LWW)
         const upsertFn = syncRepository[UPSERT_MAP[entity]];
         if (!upsertFn) {
-          results[idx] = { localId, status: 'error', message: `Unknown entity: ${entity}` };
+          results[idx] = { localId, status: 'error', code: 'UNKNOWN_ENTITY', message: `Unknown entity: ${entity}` };
           errors++;
           continue;
         }
@@ -147,16 +147,42 @@ const syncService = {
       } catch (err) {
         logger.error('Sync push operation failed', { localId: op.localId, error: err.message });
         
-        let errorCode = undefined;
-        if (err.message && (/fk_\w+_account/i.test(err.message) || /Foreign key.*account/i.test(err.message))) {
-          errorCode = 'ACCOUNT_NOT_FOUND';
+        const rawMsg = String(err?.message || '');
+        const prismaCode = err?.code ?? null;
+        const sqlState = rawMsg.match(/code:\s*"(\d{5})"/)?.[1] ?? null;
+        const constraintMatch = rawMsg.match(/constraint\s*\\?"([\w.]+)\\?"/i)?.[1] ?? null;
+
+        let code = 'DB_ERROR';
+        let friendlyMessage = 'Dữ liệu không hợp lệ hoặc vi phạm ràng buộc cơ sở dữ liệu';
+
+        if (/fk_\w+_account/i.test(rawMsg) || /Foreign key.*account/i.test(rawMsg)) {
+          code = 'ACCOUNT_NOT_FOUND';
+          friendlyMessage = 'Tài khoản không tồn tại trong hệ thống';
+        } else if (sqlState === '23505' || prismaCode === 'P2002') {
+          code = 'UNIQUE_VIOLATION';
+          if (/uq_category|category.*name/i.test(rawMsg) || /category/i.test(constraintMatch || '')) {
+            code = 'CATEGORY_NAME_DUPLICATE';
+            friendlyMessage = 'Tên danh mục đã tồn tại trong tài khoản này';
+          } else {
+            friendlyMessage = 'Dữ liệu bị trùng lặp khóa duy nhất';
+          }
+        } else if (sqlState === '23503' || prismaCode === 'P2003') {
+          code = 'FOREIGN_KEY_VIOLATION';
+          friendlyMessage = 'Tham chiếu dữ liệu không tồn tại (vi phạm khóa ngoại)';
+        } else if (sqlState === '23514') {
+          code = 'CONSTRAINT_VIOLATION';
+          friendlyMessage = 'Dữ liệu vi phạm ràng buộc kiểm tra của cơ sở dữ liệu';
+        } else if (/cannot delete system default category/i.test(rawMsg)) {
+          code = 'FORBIDDEN_SYSTEM_DEFAULT';
+          friendlyMessage = 'Không thể xóa danh mục mặc định của hệ thống';
         }
 
         results[idx] = {
           localId: op.localId,
           status: 'error',
-          code: errorCode,
-          message: err.message,
+          code,
+          constraint: constraintMatch || undefined,
+          message: friendlyMessage,
         };
         errors++;
       }
@@ -230,6 +256,45 @@ const syncService = {
       entities: status,
     };
   },
+
+  /**
+   * GET /api/sync/default-categories — Lấy danh sách danh mục template hệ thống
+   */
+  async getDefaultCategories() {
+    const { prisma } = require('../../config/db');
+    const categories = await prisma.category.findMany({
+      where: {
+        is_default: true,
+        delete_at: null,
+      },
+      select: {
+        idcategory: true,
+        name_category: true,
+        classify: true,
+        is_default: true,
+        is_group: true,
+        idgroup: true,
+        keyword: true,
+        icon: true,
+        create_at: true,
+        update_at: true,
+      },
+      orderBy: { create_at: 'asc' },
+    });
+    return categories.map((c) => ({
+      id: c.idcategory,
+      name: c.name_category,
+      classify: c.classify,
+      is_default: c.is_default,
+      is_group: c.is_group,
+      idgroup: c.idgroup,
+      keyword: c.keyword,
+      icon: c.icon,
+      created_at: c.create_at,
+      updated_at: c.update_at,
+    }));
+  },
 };
 
 module.exports = syncService;
+

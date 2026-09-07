@@ -11,7 +11,7 @@ const ForgotPasswordPage = () => {
               <path d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path>
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">WealthCommand</h1>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">FinanceAdmin</h1>
           <p className="text-gray-500 text-sm mt-1">Hệ thống Quản trị Viên</p>
         </div>
         

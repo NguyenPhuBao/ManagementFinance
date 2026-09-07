@@ -2407,6 +2407,151 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - `docs/progress/Backend.md` (Mục 8 & 10: Tiến độ Backend OCR, Deduplication, Unique Constraint).
   - `docs/progress/Client-app.md` (Mục 6: Quy trình Client-app 2 luồng Online/Offline, xử lý mạng và an toàn số dư ví).
 
+### 11.26. Kế Hoạch Chuyển Đổi Module Bank Từ Casso Sang SePay Bank Hub (2026-09-05)
+- **Bối Cảnh & Lý Do Chuyển Đổi**:
+  - Casso cũ yêu cầu người dùng cuối (End-user) phải có tài khoản Casso, gây bất tiện lớn cho người dùng đại chúng của ứng dụng di động.
+  - Chuyển sang nền tảng **SePay Bank Hub**: Doanh nghiệp tích hợp chuyên nghiệp, hỗ trợ cơ chế **Hosted Link (In-App WebView)** cho phép người dùng cuối đăng nhập Internet Banking trực tiếp của hơn 20+ ngân hàng Việt Nam mà **hoàn toàn KHÔNG cần tạo tài khoản SePay**.
+  - Webhook IPN chuẩn hóa gửi biến động số dư theo thời gian thực (< 2 giây), bảo mật cao qua Webhook API Key và Basic Auth.
+- **Quy Tắc Nghiệp Vụ Bất Di Bất Dịch Cho Ví `Banking`**:
+  - Ví tạo từ liên kết ngân hàng có `Type = 'Banking'`.
+  - **Khóa chỉnh sửa thủ công:** Nghiêm cấm người dùng tự sửa số dư ví (`balance`), đổi tên hoặc đổi loại ví trên cả Client-app và Admin-web. Dropdown chọn ví khi tạo giao dịch thủ công (`Provider = 'Manual'`) sẽ tự động ẩn hoặc vô hiệu hóa ví Banking.
+  - **Chỉ biến động qua 3 nguồn dữ liệu:**
+    1. `SePay Bank Hub` (tự động đồng bộ qua Webhook IPN $\rightarrow$ Socket.io $\rightarrow$ người dùng duyệt).
+    2. `ORC AI` (quét hóa đơn chụp ảnh có chọn ví thanh toán là ví ngân hàng).
+    3. `SMS Parser` (đọc tin nhắn biến động số dư ngân hàng).
+- **Phân Tách Bộ Tài Liệu Đặc Tả Kỹ Thuật (3 Module)**:
+  - `docs/Bank/Backend.md`: Đặc tả chi tiết SePay Client SDK, cấu hình môi trường, xử lý Webhook IPN an toàn, BullMQ Worker, quy tắc ví Banking, checklist Cloud (HTTPS, CORS, Rate Limit).
+  - `docs/Bank/Admin-web.md`: Màn hình Quản lý tài khoản ngân hàng liên kết, Giám sát giao dịch BankSync, Giám sát Webhook IPN Logs (kèm cơ chế Retry), Dashboard KPIs & Realtime Socket.io, checklist Cloud (Vercel, HTTPS, RBAC).
+  - `docs/Bank/Client-app.md`: Luồng liên kết ngân hàng qua In-App WebView (JavaScript Message Channel / DeepLink), Quy tắc khóa sửa ví Banking trên UI Flutter, Lắng nghe biến động số dư thời gian thực (Socket.io), Màn hình Hộp thư giao dịch chờ duyệt (Bank Inbox UI với gợi ý AI: Confirm/Reject), Xử lý Offline/Reconnect.
+
+### 11.27. Hoàn Thành Triển Khai Nền Móng & Tích Hợp SePay Bank Hub Tại Backend (2026-09-05)
+- **Mã Nguồn Backend Đã Triển Khai**:
+  - `src/Backend/modules/bank/sepay/sepay.client.js`: SePay Bank Hub Client SDK, tự động quản lý Access Token qua Basic Auth, in-memory token cache (`cachedToken`), hàm `createLinkToken` sinh Hosted Link URL gắn với `customer_id: "account_${idaccount}"`, hàm `getBankAccounts`.
+  - `src/Backend/modules/bank/sepay/sepay.webhook.js`: Xác thực Webhook ApiKey Timing-Safe bằng `crypto.timingSafeEqual`, chuẩn hóa (normalize) đa biến thể payload SePay IPN (`gateway`, `amount`, `transfer_type`, `accumulated`, `reference_code`, `account_number`, `content`).
+  - `src/Backend/workers/bank.worker.js`: Nâng cấp hàm `processSepayTransaction` xử lý IPN, cập nhật số dư lũy kế `accumulated`, tự động gọi AI Classify 3-Tier gợi ý danh mục chi tiêu, tạo transaction `Pending` với `provider = 'BankSync'`, chống trùng lặp tuyệt đối (Idempotency), phát Socket.io `bank_transaction.incoming` tới User và `admin.bank_transaction_created` tới Admin.
+  - `src/Backend/modules/bank/bank.service.js`: Tích hợp `createLinkUrl`, `getAccounts`, `enqueueWebhookJob` (phản hồi SePay Webhook < 500ms).
+  - `src/Backend/modules/bank/bank.repository.js`: Hỗ trợ ánh xạ SePay account (`id_casso_account = bank_account_xid`) và tự động khởi sinh ví Banking trong bảng `wallet`.
+  - `src/Backend/modules/bank/bank.controller.js`: Bổ sung endpoint `POST /api/bank/link-url` và nâng cấp `handleWebhook`.
+  - `src/Backend/api/bank.routes.js`: Định tuyến `router.post('/link-url', authenticate, bankController.createLinkUrl)`.
+  - `src/Backend/config/index.js` & `.env.example`: Cập nhật 5 biến cấu hình SePay Bank Hub (`SEPAY_BANKHUB_API_URL`, `SEPAY_CLIENT_ID`, `SEPAY_CLIENT_SECRET`, `SEPAY_COMPANY_XID`, `SEPAY_WEBHOOK_API_KEY`).
+  - Dọn dẹp: Đã xóa hoàn toàn thư mục Casso cũ `src/Backend/modules/bank/casso/`.
+- **Kiểm Thử Tự Động TDD Khép Kín**:
+  - `Test/test_bank_sepay_flow.js`: **9/9 tests PASS 100%** (Token manager, Hosted Link token, ApiKey Timing-Safe check, Payload normalization, Controller routing, Worker IPN processing, Accumulated balance update, Idempotency duplicate check).
+  - Regression testing: `Test/test_ai_dedup_flow.js` (10/10 PASS), `Test/test_ai_classify_2level.js` (23/23 PASS).
+
+### 11.28. Chuẩn Hóa Kiến Trúc Module Bank Sang SePay Cá Nhân (my.sepay.vn) — Not Bank Hub (2026-09-07)
+- **Bối Cảnh & Quyết Định Chuyển Đổi**:
+  - **Lý do không dùng SePay Bank Hub:** Bank Hub là giải pháp B2B Open Banking đòi hỏi pháp nhân Doanh nghiệp (Giấy phép ĐKKD) và hợp đồng thương mại, không phù hợp với dự án cá nhân / Đồ án tốt nghiệp của sinh viên.
+  - **Lý do không dùng RPA / Playwright:** Môi trường Cloud Render (Free/Starter 512MB RAM) sẽ bị OOM Crash server khi khởi chạy Chromium, bị Cloudflare/Turnstile chặn, đồng thời OTP ngân hàng chỉ tồn tại 30-60 giây gây đứt gãy luồng tự động.
+  - **Giải pháp tối ưu — SePay Cá Nhân (`my.sepay.vn`):**
+    1. Chủ hệ thống (Admin/Sinh viên) chỉ cần 1 tài khoản SePay cá nhân miễn phí, liên kết thủ công tài khoản ngân hàng thực tế (MBBank, Vietcombank...), và cấu hình 1 Webhook URL công khai duy nhất trỏ về Backend Render (`https://managementfinance.onrender.com/api/bank/webhook`).
+    2. **Zero Credential Risk:** Người dùng cuối trên Client-app **tuyệt đối không nhập mật khẩu Internet Banking hay mã OTP ngân hàng**. Người dùng chỉ khai báo thông tin công khai: Số tài khoản, Tên ngân hàng, Tên chủ thẻ qua endpoint `POST /api/bank/register-account`.
+    3. Backend tự động định tuyến biến động số dư: Tra cứu `accountNumber` từ payload SePay gửi về $\rightarrow$ Tìm ra `idaccount` người dùng $\rightarrow$ Cập nhật số dư lũy kế `accumulated` $\rightarrow$ AI gợi ý danh mục $\rightarrow$ Bắn Socket.io thời gian thực tới điện thoại người dùng.
+- **Cập Nhật Toàn Bộ Bộ Tài Liệu Đặc Tả (`docs/Bank/`)**:
+  - [`docs/Bank/SePay.md`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/Bank/SePay.md): Tổng quan toàn bộ cơ chế SePay Cá Nhân, luồng mapping danh tính không cần mật khẩu, cấu trúc JSON payload thực tế dạng `camelCase` (`accountNumber`, `transferAmount`, `transferType: "in"|"out"`, `referenceCode`, `accumulated`), bảng ánh xạ CSDL PostgreSQL, quy tắc bảo toàn số dư ví `Banking`.
+  - [`docs/Bank/Backend.md`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/Bank/Backend.md): Đặc tả mã nguồn Backend cho SePay Cá Nhân, tối giản biến môi trường (`SEPAY_WEBHOOK_API_KEY`, `SEPAY_API_TOKEN`), xác thực timing-safe, module `sepay.webhook.js` chuẩn hóa payload camelCase, worker `bank.worker.js` mapping user theo STK + chống trùng `@@unique([provider, bank_tran_id])`, hướng dẫn 3 bước kết nối trên Render và `my.sepay.vn`.
+  - [`docs/Bank/Admin-web.md`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/Bank/Admin-web.md): Màn hình quản lý tài khoản ngân hàng người dùng khai báo, giám sát giao dịch BankSync, nhật ký Webhook IPN Logs (kèm cơ chế Retry), Dashboard KPIs & Realtime Socket.io.
+  - [`docs/Bank/Client-app.md`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/Bank/Client-app.md): Loại bỏ hoàn toàn WebView và Hosted Link của Bank Hub; thay bằng màn hình `BankRegisterPage` nhập STK + Tên NH + Tên chủ thẻ; quy tắc khóa sửa số dư ví Banking; lắng nghe Socket.io `bank_transaction.incoming` (rung, chuông, banner nổi); màn hình Bank Inbox duyệt giao dịch (Confirm/Reject).
+- **Mã Nguồn & Kiểm Thử TDD Khép Kín**:
+  - Endpoint `POST /api/bank/register-account` đã tích hợp đầy đủ tại Controller, Service, Repository, Routes.
+  - Bộ chuẩn hóa `sepay.webhook.js` hỗ trợ song song cả chuẩn camelCase của SePay Cá Nhân lẫn biến thể snake_case.
+  - `Test/test_bank_sepay_flow.js`: Nâng cấp và đạt **11/11 tests PASS 100%**.
+
+### 11.29. Hoàn Tất Toàn Bộ 11 Bản Vá & Hoàn Thiện Hệ Thống Backend Theo Khảo Sát `docs/superpowers/backend/CAN-LAM/` (2026-09-07)
+- **1. Bảo Mật Socket.io & Cách Ly Dữ Liệu Người Dùng Tuyệt Đối**:
+  - `src/Backend/core/socket.js`: Thêm middleware `io.use()` xác thực JWT handshake token trước khi thiết lập kết nối; tự động đưa socket vào room riêng `account_${idaccount}` (hoặc `admin_room` nếu role Admin).
+  - Loại bỏ hoàn toàn sự kiện `join_account` tự khai báo thiếu xác thực.
+  - Loại bỏ toàn bộ `io.emit()` broadcast toàn cục rò rỉ dữ liệu (`emitBankTransaction`, `emitOcrCompleted`, `emitOcrDuplicate`), chuyển sang `io.to('account_${idaccount}').emit(...)`.
+  - `emitAuditActivity` chỉ gửi vào `admin_room`.
+  - Cập nhật Admin-web (`useSocket.js`, `DashboardPage.jsx`) truyền `auth: { token }` khi kết nối Socket.io.
+- **2. Vá 3 Lỗ Hổng Cơ Chế `/sync/push`**:
+  - `src/Backend/modules/sync/sync.service.js`: Xóa bản ghi không tồn tại trả về `status: 'synced', message: 'Already absent'` (idempotent, không làm tăng error counter).
+  - Chuẩn hóa mã lỗi và ánh xạ SQLSTATE (`FOREIGN_KEY_VIOLATION`, `UNIQUE_VIOLATION`, `CONSTRAINT_VIOLATION`, `CATEGORY_NAME_DUPLICATE`, `ACCOUNT_NOT_FOUND`), che giấu hoàn toàn Prisma raw trace khỏi client.
+  - `src/Backend/modules/sync/sync.repository.js`: Sửa `upsertBudget` cả nhánh create và update kiểm tra `=== undefined` để giữ nguyên giá trị `time_recurrence = null` cho ngân sách theo ngày cụ thể.
+- **3. Phân Quyền Cập Nhật Từ Khóa AI (Self-Learning Feedback Loop)**:
+  - `src/Backend/modules/ai/features/classify/classify.repository.js` & `classify.service.js`: Thêm kiểm tra `category.create_by === idaccount` và ném HTTP 403 Forbidden nếu client cố gắn từ khóa vào danh mục mặc định hệ thống (`is_default = true`) hoặc danh mục của người khác.
+- **4. Đóng Băng 13 Stable UUIDs Cho Danh Mục Mặc Định**:
+  - `src/Backend/prisma/seed.js`: Gán 13 UUID cố định vĩnh viễn vào `DEFAULT_CATEGORIES`, chuyển sang cơ chế `upsert` theo `idcategory`, đảm bảo mọi môi trường dev/staging/production có ID đồng nhất và không sinh bản ghi trùng lặp.
+- **5. Thu Hẹp `validClassify`**:
+  - `src/Backend/modules/sync/sync.validation.js`: Thu hẹp tập giá trị cho phép về đúng `['Thu', 'Chi', 'Vay/no']`, loại bỏ các giá trị không hợp lệ.
+- **6. Sửa Lỗi Logic OCR & Dedup Fuzzy Matching (Rule 3)**:
+  - `src/Backend/modules/ai/features/classify/classify.service.js`: Sửa lời gọi `classifyBatch` trong `classifyExtractedReceipt` truyền đúng đối số object `{ items: batchItems, merchant, source: 'OCR' }`.
+  - `src/Backend/modules/ai/features/dedup/dedup.repository.js`: Nâng cấp hàm `findFuzzyTransfer` thêm lọc nhà cung cấp `provider: ['BankSync', 'SMS']`, sắp xếp `orderBy: { date_transaction: 'desc' }`, đối soát `counterpartAccount` và `note` để tránh chặn nhầm mã lỗi HTTP 409 giữa các giao dịch cùng số tiền trong ngày.
+  - `ocr.controller.js` & `classify.controller.js`: Chặn và loại bỏ các tham số `_mock*` query params khi ứng dụng vận hành trên môi trường Production (`NODE_ENV === 'production'`).
+- **7. Migration CSDL PostgreSQL & Ràng Buộc Nâng Cao**:
+  - Đã thực thi script SQL migration [`src/Backend/database/)2_can_lam_all_migrations.sql`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/database/%292_can_lam_all_migrations.sql):
+    - Dọn dẹp an toàn các danh mục mặc định cũ sinh ngẫu nhiên.
+    - Tạo 2 Partial Unique Indexes: `uq_category_owner_name` và `uq_category_default_name` (áp dụng khi `Delete_at IS NULL` kèm chuẩn hóa NFC).
+    - Tạo Trigger `trg_category_name_cross_default`: Ngăn chặn tạo danh mục cá nhân trùng tên với danh mục mặc định hệ thống.
+    - Tạo bảng `category_group_membership` (`Idmembership`, `Idaccount`, `Idcategory`, `Idgroup`, `Update_at`, `Delete_at`) kèm ràng buộc duy nhất `(Idaccount, Idcategory)`.
+    - Thêm cột `transaction.Idgoal` foreign key liên kết với `goal.Idgoal`.
+    - Nâng cấp ràng buộc `uq_transaction_external` thành `UNIQUE ("Idaccount", "Provider", "Bank_tran_id")` (per-account).
+    - Bổ sung các cột `goal.auto_deposit_amount`, `goal.auto_deposit_wallet_id`, `goal.auto_deposit_last_run`, `goal.Priority`.
+- **8. Tích Hợp Mô Hình Mới Vào Sync Engine & Prisma**:
+  - Cập nhật `src/Backend/prisma/schema.prisma` và tái sinh Prisma Client.
+  - Cập nhật `src/Backend/modules/sync/sync.repository.js`: Thêm ánh xạ `categoryGroupMembership`, `transaction.idgoal`, `goal.auto_deposit_*`, `goal.priority`; viết các hàm `upsertCategoryGroupMembership`, `getCategoryGroupMembershipsByAccount`, hỗ trợ Soft Delete cho entity mới.
+  - Cập nhật `sync.service.js` và `sync.validation.js` đăng ký đầy đủ entity mới với priority 15.
+- **9. Kiểm Thử Toàn Diện & Hồi Quy Đạt Chuẩn 100%**:
+  - [`Test/test_can_lam_fixes.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/Test/test_can_lam_fixes.js): **10/10 tests PASS (100%)**.
+  - [`Test/test_category_unique_rules.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/Test/test_category_unique_rules.js): **PASS 100%**.
+  - [`Test/test_sync_new_schema.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/Test/test_sync_new_schema.js): **PASS 100%**.
+  - [`Test/test_bank_sepay_flow.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/Test/test_bank_sepay_flow.js): **11/11 tests PASS (100%)**.
+  - [`Test/test_ai_dedup_flow.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/Test/test_ai_dedup_flow.js): **10/10 tests PASS (100%)**.
+
+### 11.30. Hoàn Thiện Mô Hình Danh Mục Template & Cloned, Nâng Cấp Admin-Web & Thống Nhất Thương Hiệu FinanceAdmin (2026-09-07)
+- **1. Chuyển đổi Mô hình Danh mục Mẫu (Template & Cloned Model)**:
+  - **Nguyên lý:** Toàn bộ danh mục mặc định hệ thống (`is_default = true`) đóng vai trò là **Bộ khung mẫu (Template)** chuẩn do Admin quản lý.
+  - **Cấp phát cho người dùng:** Khi người dùng đăng ký mới, Client-app gọi API `GET /api/sync/default-categories` để lấy danh sách template, sau đó tự sinh 1 bộ danh mục cá nhân tương ứng (`is_default = false`, `create_by = idaccount`, UUID riêng) lưu vào SQLite cục bộ và đồng bộ lên Backend qua `POST /api/sync/push`. Backend không tự động tạo danh mục cho người dùng.
+  - **Gỡ bỏ trigger kiểm tra chéo (`trg_category_name_cross_default`)**: Người dùng được phép sở hữu danh mục cá nhân trùng tên với danh mục mẫu hệ thống. File migration `src/Backend/database/5_Drop_Cross_Default_Category_Trigger.sql` đã gỡ bỏ trigger và function kiểm tra chéo.
+  - **Tái xác lập 2 Partial Unique Indexes chuẩn hóa NFC & case-insensitive**:
+    - `uq_category_owner_name`: `UNIQUE ("Create_by", lower(regexp_replace(btrim(normalize("NameCategory", NFC)), '\s+', ' ', 'g')))` WHERE `Is_default = FALSE AND Delete_at IS NULL`.
+    - `uq_category_default_name`: `UNIQUE (lower(regexp_replace(btrim(normalize("NameCategory", NFC)), '\s+', ' ', 'g')))` WHERE `Is_default = TRUE AND Delete_at IS NULL`.
+- **2. Bảo Vệ Danh Mục Hệ Thống (System Category Protection)**:
+  - **Cấm xóa danh mục hệ thống**: `admin.service.deleteCategory` kiểm tra và từ chối ngay với HTTP 400 Bad Request nếu `is_default === true`. Trên giao diện Admin-web, nút Xóa bị vô hiệu hóa kèm tooltip giải thích.
+  - **Cấm chuyển đổi danh mục người dùng thành hệ thống**: `admin.service.updateCategory` chặn nâng cấp danh mục thường thành danh mục hệ thống (`is_default = true`). Trên Admin-web modal chỉnh sửa, trường `isDefault` bị vô hiệu hóa khi sửa danh mục người dùng.
+  - **Tạo mới độc lập**: Admin có thể tạo mới danh mục hệ thống trùng tên với danh mục người dùng đã có.
+  - **Endpoint mới**: `GET /api/sync/default-categories` trả về danh sách template danh mục hệ thống đang hoạt động.
+- **3. Nâng Cấp & Chuẩn Hóa Admin-web (FinanceAdmin)**:
+  - **Đồng bộ thương hiệu FinanceAdmin**: Thống nhất thương hiệu `FinanceAdmin` trên Sidebar (`Sidebar.jsx`), Trang Quên mật khẩu (`ForgotPasswordPage.jsx`), Tiêu đề HTML (`index.html`) và Trang Đăng nhập (`LoginPage.jsx`).
+  - **Tiện ích chuẩn hóa chuỗi (`src/Admin-web/src/utils/string.js`)**: Cung cấp hàm `normalizeCategoryName` (NFC, trim, lowercase, collapse whitespace) cho client-side validation trùng lặp và `normalizeVietnameseUnaccent` hỗ trợ tìm kiếm danh mục tiếng Việt không dấu.
+  - **Trang Quản lý danh mục (`CategoryPage.jsx`)**: Tìm kiếm thông minh tiếng Việt (có dấu & không dấu), chặn double-submit, vô hiệu hóa nút xóa danh mục hệ thống, bảo vệ trường Mặc định khi chỉnh sửa.
+  - **Hook Socket.io tập trung (`useSocket.js`)**: Quản lý vòng đời kết nối Socket.IO tập trung, truyền `auth: { token }`, tự động gỡ bỏ listener khi unmount (`socket.off`) tránh rò rỉ bộ nhớ tại `DashboardPage.jsx`.
+  - **Dọn dẹp mã nguồn**: Loại bỏ các endpoint API chết (`getQueueStatus`, `getSystemConfig`) khỏi `admin.api.js` và xóa thư mục trống `src/Admin-web/src/pages/system`.
+- **4. Kiểm thử tự động**:
+  - `Test/test_category_template_rules.js`: **8/8 tests PASS (100%)**.
+  - `Test/test_can_lam_fixes.js`: **10/10 tests PASS (100%)**.
+  - `npm run build` trong `src/Admin-web`: **Thành công 100% (0 errors, 137 modules transformed)**.
+
+### 11.31. Khảo Sát & Xóa Bỏ Bảng Thừa `category_group_membership` Khỏi Toàn Bộ Hệ Thống (2026-09-07)
+- **1. Nguyên nhân & Bối cảnh**:
+  - Bảng `category_group_membership` phát sinh do sai sót từ phía Client-app đề xuất trước đây nhằm gom nhóm danh mục mặc định.
+  - Sau khi PO chốt áp dụng **Mô hình Template & Cloned Model**, mỗi người dùng sở hữu bộ danh mục cá nhân riêng độc lập. Phân cấp nhóm danh mục được gom trực tiếp bằng quan hệ tự tham chiếu `category.idgroup` (`is_group = true`).
+  - Do đó bảng trung gian `category_group_membership` hoàn toàn thừa, không có dữ liệu (0 bản ghi) và không còn giá trị sử dụng.
+- **2. Các công việc đã thực thi**:
+  - **CSDL PostgreSQL / Supabase**: Tạo và thực thi script migration [`src/Backend/database/6_Drop_Category_Group_Membership.sql`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/database/6_Drop_Category_Group_Membership.sql) với lệnh `DROP TABLE IF EXISTS "category_group_membership" CASCADE;`.
+  - **Prisma Schema**: Gỡ bỏ model `category_group_membership` và các relations liên quan khỏi `account` và `category` trong `src/Backend/prisma/schema.prisma`. Tái sinh Prisma Client thành công (`rtk npx prisma generate`).
+  - **Sync Engine**: Gỡ bỏ entity `categoryGroupMembership` / `category_group_membership` khỏi `sync.validation.js` (`VALID_ENTITIES`, `ENTITY_PK_MAP`), `sync.service.js` (`UPSERT_MAP`, `PULL_MAP`, `ENTITY_KEYS`, `ENTITY_PRIORITY`), và `sync.repository.js` (xóa các hàm upsert, query, count và mapping `softDelete`).
+  - **Test Suites**: Cập nhật [`Test/test_can_lam_fixes.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/Test/test_can_lam_fixes.js) loại bỏ Test 5 và cleanup liên quan.
+  - **Tài liệu nguồn sự thật**: Cập nhật [`docs/Rule_Project/Rule_project.md`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/Rule_Project/Rule_project.md) mục 1.6, đánh dấu Deprecated & Obsolete cho `docs/superpowers/backend/CAN-LAM/CATEGORY_GROUP_MEMBERSHIP_SYNC.md` và `docs/superpowers/backend/CAN-LAM/README.md`.
+- **3. Kết quả kiểm thử**:
+  - `Test/test_can_lam_fixes.js`: **9/9 tests PASS (100%)**.
+  - `Test/test_category_template_rules.js`: **8/8 tests PASS (100%)**.
+  - `Test/test_sync_new_schema.js`: **PASS 100%** (Tất cả 7 entity cốt lõi sync push/pull/softDelete trơn tru).
+
+### 11.32. Khắc Phục Triệt Để Sai Lệch Múi Giờ Audit Log & Dashboard Admin-Web (2026-09-07)
+- **1. Nguyên nhân gốc rễ**:
+  - Dữ liệu trong CSDL Supabase PostgreSQL lưu timestamp chuẩn UTC.
+  - Khi Backend chạy trên Cloud server (Vercel/Render/Docker), múi giờ hệ thống là UTC (`TZ=UTC`), dẫn đến các hàm `date.getHours()` trả về giờ UTC (07:28 thay vì 14:28 tại Việt Nam GMT+7).
+  - Bảng "Hoạt động gần đây" trên Admin-web hiển thị trực tiếp chuỗi server gửi về mà không convert theo giờ địa phương của trình duyệt.
+  - Các biểu đồ `getLoginStats` và `getRequestStats` gom bucket theo giờ server UTC và bộ lọc `today` bị lệch 7 tiếng so với ngày sinh hoạt tại Việt Nam.
+- **2. Các giải pháp đã triển khai (Defense-in-depth)**:
+  - **Backend (`src/Backend/modules/auth/auth.service.js`)**: Viết helper `formatVnTime` sử dụng `Intl.DateTimeFormat` chuẩn múi giờ `Asia/Ho_Chi_Minh` (GMT+7) cho cả API `getRecentActivities` và Socket.io real-time `emitAuditActivity`. Trả về trường `time_req` dạng ISO 8601 UTC string.
+  - **Backend (`src/Backend/modules/admin/admin.service.js`)**: Viết helper `getVnTimeParts` để gom bucket 24 giờ và thống kê theo ngày/tháng chuẩn múi giờ Việt Nam. Chuẩn hóa `resolveFilterContext` tính `startDate` và `endDate` cho bộ lọc `'today'` (và custom date) chuẩn theo múi giờ Việt Nam (+7).
+  - **Frontend (`src/Admin-web/src/pages/dashboard/DashboardPage.jsx`)**: Thêm helper `formatActivityTime` tự động convert `time_req` sang múi giờ của trình duyệt người dùng (`HH:mm` trong ngày hoặc `HH:mm DD/MM` nếu khác ngày).
+- **3. Kết quả kiểm thử**:
+  - API `getRecentActivities` trả về đúng giờ Việt Nam (`14:28` thay vì `07:28`).
+  - `npm --prefix src/Admin-web run build`: **Thành công 100% (137 modules transformed)**.
+  - `Test/test_can_lam_fixes.js`: **9/9 tests PASS (100%)**.
 
 
 

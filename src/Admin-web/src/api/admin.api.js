@@ -24,10 +24,7 @@ const adminApi = {
   deleteCategory: (id) => axiosClient.delete(`/admin/deletecategory/${id}`),
   syncCategories: () => axiosClient.post('/admin/categories/sync'),
 
-  // System
-  getQueueStatus: () => axiosClient.get('/admin/queue/status'),
-  getSystemConfig: () => axiosClient.get('/admin/config'),
-  updateSystemConfig: (data) => axiosClient.put('/admin/config', data),
+
 };
 
 export default adminApi;

@@ -84,12 +84,13 @@ df489f3d-6ddf-44c6-be3c-2402259ec9cf  Đi vay     Vay/no
 2. Đổi `createMany` sang **upsert theo `idcategory`**. Hiện seed bị chặn bởi `if (existingCat === 0)` nên chạy lại là không làm gì; với ID cố định thì upsert an toàn và giúp seed trở thành thao tác lặp lại được — thêm một danh mục mặc định mới sau này chỉ việc chạy lại seed.
 3. **Không** đổi tên hay xoá mục nào trong lần này. Đổi nhãn cứ đổi thoải mái **sau khi** ID đã ổn định — đó chính là điều mà việc này mở ra.
 
-## 5. Client-app sẽ làm gì sau đó
+## 5. Vai trò đối với Client-app theo Mô hình Template & Cloned (Đã duyệt 2026-09-07)
 
-1. Seed 13 danh mục mặc định bằng **đúng bộ UUID trên**, thay cho id dạng `cat_food`.
-2. Migration đổi id hàng cũ và repoint giao dịch/ngân sách/hoá đơn — **repoint trước, xoá sau**, theo đúng bài học của lỗi 11.6.
-3. Sau khi ổn định, **gỡ bỏ được** nhánh dò theo tên trong `_resolveCategoryId` và hàm `removeDuplicateLocalSeedCategories()`. Đây mới là phần lãi thật: bớt hẳn một lớp mã mà lịch sử dự án cho thấy rất dễ sinh lỗi.
-4. Khoá bộ ID vào `test/core/sync/sync_payload_contract_test.dart` — nó là hợp đồng giữa hai phía y như tên trường, và lệch thì cũng **hỏng âm thầm**.
+Theo quyết định chính thức của PO:
+1. 13 Stable UUIDs này đóng vai trò là **Bộ khung mẫu (Template)** chuẩn trên Backend, đảm bảo seed CSDL luôn mang ID cố định và không sinh rác trùng lặp khi chạy lại.
+2. **Client-app KHÔNG dùng chung 13 ID này cho giao dịch của người dùng.**
+3. Khi người dùng đăng ký mới, Client-app gọi API **`GET /api/sync/default-categories`** để lấy danh sách template này, sau đó **nhân bản** thành bộ danh mục cá nhân (`is_default = false`, `create_by = idaccount`, UUID riêng của người dùng) lưu vào SQLite và đồng bộ lên Backend qua `POST /api/sync/push`.
+4. Nhờ vậy, Client-app không phụ thuộc cứng vào bộ ID hệ thống, và người dùng sở hữu danh mục độc lập hoàn toàn.
 
 ## 6. Vì sao nên làm dù bước 3 đã xong
 

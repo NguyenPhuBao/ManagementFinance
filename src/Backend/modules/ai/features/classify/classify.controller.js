@@ -105,7 +105,15 @@ const classifyController = {
         return res.status(401).json({ success: false, message: 'Chua xac thuc nguoi dung' });
       }
 
-      const result = await classifyService.classifyTransaction(idaccount, req.body);
+      const isTestEnv = process.env.NODE_ENV !== 'production';
+      const payload = { ...req.body };
+      if (!isTestEnv) {
+        delete payload._mockUser;
+        delete payload._mockWallets;
+        delete payload._mockBankAccounts;
+      }
+
+      const result = await classifyService.classifyTransaction(idaccount, payload);
 
       return res.status(200).json({
         success: true,

@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const router = express.Router();
 const syncController = require('../modules/sync/sync.controller');
 const { authenticate } = require('../middleware/auth');
@@ -14,5 +14,8 @@ router.get('/pull', syncController.pull);
 
 // Status — Trạng thái sync
 router.get('/status', syncController.status);
+
+// Default Categories — Lấy danh mục template hệ thống cho client
+router.get('/default-categories', syncController.defaultCategories);
 
 module.exports = router;

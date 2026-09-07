@@ -1,189 +1,268 @@
+/**
+ * Bank Worker (BullMQ)
+ * Lắng nghe và xử lý các jobs từ hàng đợi 'bank-webhook'
+ * Hỗ trợ tiếp nhận SePay Bank Hub IPN, khử trùng lặp giao dịch (Idempotency),
+ * cập nhật số dư lũy kế (accumulated), gọi AI Classify 3-Tier và phát Socket.io realtime
+ */
+
 const { Worker } = require('bullmq');
 const { randomUUID } = require('crypto');
 const logger = require('../core/logger');
-const { prisma } = require('../config/db');
+const { prisma: defaultPrisma } = require('../config/db');
 const eventBus = require('../core/event-bus');
+const socketService = require('../core/socket');
 
 const Redis = require('ioredis');
 const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
   maxRetriesPerRequest: null,
 });
 
-const bankWorker = new Worker(
-  'bank-webhook',
-  async (job) => {
-    const { cassoTx } = job.data;
-    if (!cassoTx || typeof cassoTx !== 'object') {
-      logger.warn('Bank Worker: Invalid job payload, skipping', { jobId: job.id });
-      return;
-    }
+/**
+ * Xử lý logic nghiệp vụ một giao dịch từ SePay Bank Hub
+ * Tách độc lập để tối ưu khả năng Unit Test & Reusability
+ */
+async function processSepayTransaction({
+  txData,
+  prismaClient = defaultPrisma,
+  socketService: customSocket = socketService,
+  classifyService: customClassifyService,
+}) {
+  const {
+    bank_tran_id,
+    account_number,
+    bank_account_xid,
+    amount,
+    accumulated,
+    type,
+    transfer_type,
+    note,
+    gateway,
+    date_transaction,
+  } = txData;
 
-    // 1. Trích xuất an toàn với fallback đa nguồn (Casso v2 / Casso Flow)
-    const tid = cassoTx.tid || (cassoTx.id ? String(cassoTx.id) : null);
-    const subAccId = cassoTx.subAccId || cassoTx.bank_sub_acc_id || cassoTx.bankSubAccId || cassoTx.accountNumber;
-    const amount = Number(cassoTx.amount) || 0;
-    const description = cassoTx.description || cassoTx.memo || 'Giao dịch ngân hàng';
-    const rawCusum = cassoTx.cusum_balance !== undefined ? cassoTx.cusum_balance : cassoTx.cusumBalance;
-    const when = cassoTx.when || cassoTx.transactionDate || cassoTx.createdAt;
+  if (!account_number) {
+    logger.warn('processSepayTransaction: Missing account_number', { txData });
+    return { status: 'invalid_payload', reason: 'Missing account_number' };
+  }
 
-    logger.info('Bank Worker: Processing webhook transaction', { jobId: job.id, tid, subAccId, amount });
+  if (!bank_tran_id) {
+    logger.warn('processSepayTransaction: Missing bank_tran_id', { txData });
+    return { status: 'invalid_payload', reason: 'Missing bank_tran_id' };
+  }
 
-    if (!subAccId) {
-      logger.warn('Bank Worker: Missing account number in webhook payload', { jobId: job.id, cassoTx });
-      return;
-    }
-
-    if (!tid) {
-      logger.warn('Bank Worker: Missing transaction ID (tid/id) in webhook payload', { jobId: job.id, cassoTx });
-      return;
-    }
-
-    // 2. Tìm tài khoản NH dựa trên subAccId (số tài khoản)
-    const bankAcc = await prisma.bank_account.findFirst({
+  // 1. Tìm tài khoản ngân hàng tương ứng trong CSDL
+  // Ưu tiên tìm theo bank_account_xid nếu có, hoặc tìm theo account_number đang Active
+  let bankAcc = null;
+  if (bank_account_xid) {
+    bankAcc = await prismaClient.bank_account.findFirst({
       where: {
-        account_number: String(subAccId),
+        id_casso_account: String(bank_account_xid),
         connect_status: { in: ['Active', 'active'] },
         delete_at: null,
       },
     });
+  }
 
-    if (!bankAcc) {
-      logger.warn(`Bank Worker: No active bank_account found for account_number ${subAccId}`, { tid });
-      return;
-    }
-
-    const { idaccount } = bankAcc;
-
-    // 3. Khử trùng lặp qua (provider, bank_tran_id) — CSDL mới
-    const existing = await prisma.transaction.findFirst({
+  if (!bankAcc) {
+    bankAcc = await prismaClient.bank_account.findFirst({
       where: {
-        provider: { in: ['BankSync', 'Casso'] },
-        bank_tran_id: String(tid),
+        account_number: String(account_number),
+        connect_status: { in: ['Active', 'active'] },
+        delete_at: null,
       },
     });
+  }
 
-    if (existing) {
-      logger.info(`Bank Worker: Transaction ${tid} already exists. Skipping.`, { tid });
-      return;
-    }
-
-    // 4. Tìm hoặc tạo ví đồng bộ (wallet) tương ứng với tài khoản NH này
-    // CSDL mới: ví từ Casso = Type 'Banking' + Id_bank_casso
-    let wallet = await prisma.wallet.findFirst({
-      where: { idaccount, id_bank_casso: bankAcc.id_bank_account, delete_at: null },
+  if (!bankAcc) {
+    logger.warn(`processSepayTransaction: No active bank_account found for account_number ${account_number}`, {
+      bank_tran_id,
+      bank_account_xid,
     });
+    return { status: 'bank_account_not_found' };
+  }
 
-    // Tính toán số dư mới: ưu tiên cusum_balance từ ngân hàng, nếu thiếu sẽ fallback cộng dồn
-    let newBalance;
-    if (rawCusum !== undefined && rawCusum !== null) {
-      newBalance = Number(rawCusum);
-    } else {
-      // Prisma Decimal -> Number để tính toán an toàn
-      newBalance = Number(bankAcc.balance) + amount;
-      logger.warn('Bank Worker: cusum_balance is missing in webhook payload, fallback to current balance + amount', {
-        tid,
-        accountNumber: bankAcc.account_number,
-        currentBalance: Number(bankAcc.balance),
-        amount,
-        computedNewBalance: newBalance,
-      });
-    }
+  const { idaccount } = bankAcc;
 
-    if (!wallet) {
-      const bankDisplayName = bankAcc.bank_name || 'Bank';
-      const rawWalletName = `${bankDisplayName} - ${bankAcc.account_number}`;
-      // CSDL mới: name nvarchar(100)
-      const walletName = rawWalletName.length > 100 ? rawWalletName.substring(0, 100) : rawWalletName;
+  // 2. Khử trùng lặp tuyệt đối qua (provider = 'BankSync', bank_tran_id)
+  const existing = await prismaClient.transaction.findFirst({
+    where: {
+      provider: { in: ['BankSync', 'Casso'] },
+      bank_tran_id: String(bank_tran_id),
+    },
+  });
 
-      wallet = await prisma.wallet.create({
-        data: {
-          idwallet: randomUUID(),
-          idaccount,
-          name: walletName,
-          type: 'Banking',
-          id_bank_casso: bankAcc.id_bank_account,
-          balance: newBalance,
-          update_at: new Date(),
-        },
-      });
-    }
+  if (existing) {
+    logger.info(`processSepayTransaction: Transaction ${bank_tran_id} already exists. Skipping.`, {
+      bank_tran_id,
+    });
+    return { status: 'skipped_duplicate', existingId: existing.idtran };
+  }
 
-    // 5. Tự động gọi AI Phân loại giao dịch (Classify AI 3-Tier)
-    let predictedCategoryId = null;
+  // 3. Tìm hoặc tự động tạo ví Banking tương ứng
+  let wallet = await prismaClient.wallet.findFirst({
+    where: {
+      idaccount,
+      id_bank_casso: bankAcc.id_bank_account,
+      delete_at: null,
+    },
+  });
+
+  // Tính toán số dư mới: Ưu tiên số dư lũy kế từ SePay nếu có
+  let newBalance;
+  if (accumulated !== undefined && accumulated !== null && !isNaN(Number(accumulated))) {
+    newBalance = Number(accumulated);
+  } else {
+    // Fallback nếu thiếu accumulated: cộng hoặc trừ theo transfer_type
+    const currentBalance = Number(bankAcc.balance) || 0;
+    const isDebit = transfer_type === 'debit' || type === 'Chi';
+    newBalance = isDebit ? currentBalance - Math.abs(amount) : currentBalance + Math.abs(amount);
+  }
+
+  if (!wallet) {
+    const bankDisplayName = bankAcc.bank_name || gateway || 'Bank';
+    const rawWalletName = `${bankDisplayName} - ${bankAcc.account_number}`;
+    const walletName = rawWalletName.length > 100 ? rawWalletName.substring(0, 100) : rawWalletName;
+
+    wallet = await prismaClient.wallet.create({
+      data: {
+        idwallet: randomUUID(),
+        idaccount,
+        name: walletName,
+        type: 'Banking',
+        id_bank_casso: bankAcc.id_bank_account,
+        balance: newBalance,
+        update_at: new Date(),
+      },
+    });
+  }
+
+  // 4. Tự động gọi AI Classify gợi ý danh mục chi tiêu (3-Tier)
+  let predictedCategoryId = null;
+  let predictedCategoryName = null;
+  let aiConfidence = 0;
+
+  const classifyService =
+    customClassifyService || require('../modules/ai/features/classify/classify.service');
+
+  if (classifyService && typeof classifyService.classifySingle === 'function') {
     try {
-      const classifyService = require('../modules/ai/features/classify/classify.service');
       const predicted = await classifyService.classifySingle(idaccount, {
-        text: description,
-        amount,
-        merchant: bankAcc.bank_name || '',
+        text: note || 'Giao dịch ngân hàng',
+        amount: Math.abs(amount),
+        merchant: bankAcc.bank_name || gateway || '',
         source: 'BankSync',
-        counterpart_name: cassoTx.corresponsiveName || '',
       });
       if (predicted && predicted.category_id) {
         predictedCategoryId = predicted.category_id;
-        logger.info('Bank Worker: Transaction auto-classified by AI', {
-          tid,
+        predictedCategoryName = predicted.category_name;
+        aiConfidence = predicted.confidence || 0;
+        logger.info('processSepayTransaction: Auto-classified by AI', {
+          bank_tran_id,
           categoryId: predicted.category_id,
           categoryName: predicted.category_name,
-          confidence: predicted.confidence,
-          tier: predicted.tier_used,
         });
       }
     } catch (classifyErr) {
-      logger.warn('Bank Worker: Auto-classification failed, keeping category as null', {
-        tid,
+      logger.warn('processSepayTransaction: AI classification failed, category set to null', {
+        bank_tran_id,
         error: classifyErr.message,
       });
     }
+  }
 
-    // 6. Tạo giao dịch mới
-    // CSDL mới: date_transaction, provider = 'BankSync', bank_tran_id
-    const parsedDate = when ? new Date(when) : new Date();
-    const txDate = isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
+  // 5. Tạo bản ghi giao dịch với status = 'Pending'
+  const txDate = date_transaction instanceof Date && !isNaN(date_transaction.getTime())
+    ? date_transaction
+    : new Date();
 
-    const newTx = await prisma.transaction.create({
-      data: {
-        idtran: randomUUID(),
-        idaccount,
-        idwallet: wallet.idwallet,
-        amount: amount, // giữ nguyên dấu từ Casso (dương = vào, âm = ra)
-        type: 'Transaction',
-        status: 'Pending', // CSDL mới: Giao dịch ngân hàng luôn khởi tạo Pending chờ người dùng duyệt
-        note: description,
-        date_transaction: txDate, // CSDL mới: DateTransaction
-        update_at: new Date(),
-        provider: 'BankSync', // CSDL mới: BankSync
-        bank_tran_id: String(tid),
-        idcategory: predictedCategoryId, // Gán idcategory do AI dự đoán (hoặc null nếu chưa phân loại)
-      },
+  const newTx = await prismaClient.transaction.create({
+    data: {
+      idtran: randomUUID(),
+      idaccount,
+      idwallet: wallet.idwallet,
+      amount: Math.abs(amount),
+      type: type || (transfer_type === 'debit' ? 'Chi' : 'Thu'),
+      status: 'Pending',
+      provider: 'BankSync',
+      bank_tran_id: String(bank_tran_id),
+      idcategory: predictedCategoryId,
+      note: note || 'Giao dịch ngân hàng SePay',
+      date_transaction: txDate,
+      update_at: new Date(),
+    },
+  });
+
+  // 6. Cập nhật số dư đồng bộ cho cả bank_account và wallet
+  await prismaClient.bank_account.update({
+    where: { id_bank_account: bankAcc.id_bank_account },
+    data: { balance: newBalance, update_at: new Date() },
+  });
+
+  await prismaClient.wallet.update({
+    where: { idwallet: wallet.idwallet },
+    data: { balance: newBalance, update_at: new Date() },
+  });
+
+  // 7. Phát sự kiện thời gian thực qua Socket.io
+  const socketPayload = {
+    idtran: newTx.idtran,
+    amount: newTx.amount,
+    type: newTx.type,
+    status: newTx.status,
+    note: newTx.note,
+    gateway: bankAcc.bank_name || gateway,
+    account_number: bankAcc.account_number,
+    date_transaction: newTx.date_transaction,
+    suggested_category: predictedCategoryName,
+    confidence: aiConfidence,
+  };
+
+  if (customSocket) {
+    if (typeof customSocket.emitToUser === 'function') {
+      customSocket.emitToUser(idaccount, 'bank_transaction.incoming', socketPayload);
+    }
+    if (typeof customSocket.emitToAdmin === 'function') {
+      customSocket.emitToAdmin('admin.bank_transaction_created', socketPayload);
+    }
+  }
+
+  // 8. Publish EventBus nội bộ
+  if (eventBus && typeof eventBus.publish === 'function') {
+    await eventBus.publish('bank_transaction.pending', {
+      idtran: newTx.idtran,
+      idaccount,
+      amount: newTx.amount,
+      bankName: bankAcc.bank_name,
+      accountNumber: bankAcc.account_number,
+      description: newTx.note,
+      date: newTx.date_transaction,
     });
+    await eventBus.publish('transaction.created', { transactionId: newTx.idtran, idaccount });
+  }
 
-    // 6. Cập nhật số dư cho cả bank_account và wallet
-    await prisma.bank_account.update({
-      where: { id_bank_account: bankAcc.id_bank_account },
-      data: { balance: newBalance, update_at: new Date() },
-    });
+  logger.info('processSepayTransaction: Transaction successfully processed', {
+    bank_tran_id,
+    idtran: newTx.idtran,
+    newBalance,
+  });
 
-    await prisma.wallet.update({
-      where: { idwallet: wallet.idwallet },
-      data: { balance: newBalance, update_at: new Date() },
-    });
+  return { status: 'created', transaction: newTx, newBalance };
+}
 
-    // 7. Phát sự kiện sang Module Notification và EventBus hệ thống
-    if (eventBus && eventBus.publish) {
-      await eventBus.publish('bank_transaction.pending', {
-        idtran: newTx.idtran,
-        idaccount,
-        amount: newTx.amount,
-        bankName: bankAcc.bank_name,
-        accountNumber: bankAcc.account_number,
-        description: newTx.note,
-        date: newTx.date_transaction,
-      });
-      await eventBus.publish('transaction.created', { transactionId: newTx.idtran, idaccount });
+// BullMQ Worker instance
+const bankWorker = new Worker(
+  'bank-webhook',
+  async (job) => {
+    const { sepayTx, cassoTx } = job.data;
+    const tx = sepayTx || cassoTx;
+
+    if (!tx || typeof tx !== 'object') {
+      logger.warn('Bank Worker: Invalid job payload, skipping', { jobId: job.id });
+      return;
     }
 
-    logger.info('Bank Worker: Webhook transaction processed successfully', { jobId: job.id, tid, idtran: newTx.idtran });
+    logger.info('Bank Worker: Processing job', { jobId: job.id, tx });
+    await processSepayTransaction({ txData: tx });
   },
   {
     connection,
@@ -205,4 +284,7 @@ bankWorker.on('failed', (job, err) => {
 
 logger.info('Bank Worker started — listening on queue: bank-webhook');
 
-module.exports = { bankWorker };
+module.exports = {
+  bankWorker,
+  processSepayTransaction,
+};

@@ -1,4 +1,11 @@
-const VALID_ENTITIES = ['wallet', 'transaction', 'budget', 'bill', 'goal', 'category'];
+const VALID_ENTITIES = [
+  'wallet',
+  'transaction',
+  'budget',
+  'bill',
+  'goal',
+  'category',
+];
 const VALID_OPERATIONS = ['create', 'update', 'delete'];
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -100,7 +107,7 @@ function validatePush(body) {
 
         // For category: validate classify if provided (Thu, Chi, Vay/no)
         if (op.entity === 'category' && op.payload.classify) {
-          const validClassify = ['Thu', 'Chi', 'Vay/nợ', 'Vay/no', 'Vay/ng', 'Vay', 'no', 'thu', 'chi'];
+          const validClassify = ['Thu', 'Chi', 'Vay/no'];
           if (!validClassify.includes(op.payload.classify)) {
             errors.push(`${prefix}.payload.classify must be Thu, Chi, or Vay/no`);
           }

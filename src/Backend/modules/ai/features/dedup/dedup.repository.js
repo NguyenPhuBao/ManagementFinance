@@ -30,8 +30,8 @@ const dedupRepository = {
           provider: provider,
           deleted_at: null,
           OR: [
-            { bank_tran_id: String(bankTranId) },
-            { bank_tran_id: { startsWith: `${String(bankTranId)}_grp_` } },
+            { bank_tran_id: { equals: String(bankTranId).trim(), mode: 'insensitive' } },
+            { bank_tran_id: { startsWith: `${String(bankTranId).trim()}_grp_`, mode: 'insensitive' } },
           ],
         },
         select: {
@@ -131,6 +131,8 @@ const dedupRepository = {
   async findFuzzyTransfer(idaccount, amount, transactionDate, counterpartAccount, note, options = {}) {
     const targetAmount = Number(amount);
     const targetDate = new Date(transactionDate);
+    const cleanCounterpart = (counterpartAccount || '').trim().toLowerCase();
+    const cleanNote = (note || '').trim().toLowerCase();
 
     if (options._mockExistingTransactions) {
       return options._mockExistingTransactions.find((tx) => {
@@ -144,7 +146,14 @@ const dedupRepository = {
           txD.getDate() === targetDate.getDate();
         if (!sameDay) return false;
 
-        return true;
+        if (cleanCounterpart || cleanNote) {
+          const txNote = (tx.note || '').toLowerCase();
+          if (cleanCounterpart && txNote.includes(cleanCounterpart)) return true;
+          if (cleanNote && txNote && (txNote.includes(cleanNote) || cleanNote.includes(txNote))) return true;
+          return false;
+        }
+
+        return false;
       }) || null;
     }
 
@@ -159,6 +168,7 @@ const dedupRepository = {
         where: {
           idaccount: parsedId,
           amount: targetAmount,
+          provider: { in: ['BankSync', 'SMS'] },
           date_transaction: {
             gte: startOfDay,
             lte: endOfDay,
@@ -176,10 +186,23 @@ const dedupRepository = {
           note: true,
           status: true,
         },
+        orderBy: { date_transaction: 'desc' },
       });
 
       if (!candidates || candidates.length === 0) return null;
-      return candidates[0];
+
+      // Hậu lọc: Đối soát số tài khoản hoặc nội dung chuyển tiền, tránh chặn nhầm giao dịch cùng số tiền trong ngày
+      if (cleanCounterpart || cleanNote) {
+        const matched = candidates.find((c) => {
+          const cNote = (c.note || '').toLowerCase();
+          if (cleanCounterpart && cNote.includes(cleanCounterpart)) return true;
+          if (cleanNote && cNote && (cNote.includes(cleanNote) || cleanNote.includes(cNote))) return true;
+          return false;
+        });
+        return matched || null;
+      }
+
+      return null;
     } catch (err) {
       logger.error('Dedup Repository: findFuzzyTransfer failed', { error: err.message });
       return null;

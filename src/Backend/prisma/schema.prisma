@@ -126,7 +126,6 @@ model category {
   @@index([idcategory], map: "idx_category_id")
   @@index([idgroup], map: "idx_category_group")
   @@index([create_by], map: "idx_category_create_by")
-  @@unique([create_by, name_category, classify], map: "uq_category_owner_name_classify")
   @@map("category")
 }
 
@@ -261,12 +260,17 @@ model goal {
   icon                   String?   @default("flag") @db.VarChar(20) @map("Icon")
   color                  String?   @default("#4CAF50") @db.VarChar(20) @map("Color")
   note                   String?   @db.Text @map("Note")
+  auto_deposit_amount    Decimal?  @db.Decimal(18, 2) @map("auto_deposit_amount")
+  auto_deposit_wallet_id String?   @db.VarChar(36) @map("auto_deposit_wallet_id")
+  auto_deposit_last_run  DateTime? @db.Timestamp(6) @map("auto_deposit_last_run")
+  priority               Int?      @map("Priority")
   create_at              DateTime  @default(now()) @db.Timestamp(6) @map("Create_at")
   update_at              DateTime  @default(now()) @db.Timestamp(6) @map("Update_at")
   delete_at              DateTime? @db.Timestamp(6) @map("Delete_at")
 
-  account account  @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_goal_account")
-  wallet  wallet?  @relation(fields: [idwallet], references: [idwallet], onDelete: SetNull, onUpdate: NoAction, map: "fk_goal_wallet")
+  account     account       @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_goal_account")
+  wallet      wallet?       @relation(fields: [idwallet], references: [idwallet], onDelete: SetNull, onUpdate: NoAction, map: "fk_goal_wallet")
+  transaction transaction[]
 
   @@index([idaccount], map: "idx_goal_account")
   @@index([idwallet], map: "idx_goal_wallet")
@@ -280,6 +284,7 @@ model transaction {
   idwallet           String    @db.VarChar(36) @map("Idwallet")
   idcategory         String?   @db.VarChar(36) @map("Idcategory")
   idwallet_transfer  String?   @db.VarChar(36) @map("Idwallet_transfer")
+  idgoal             String?   @db.VarChar(36) @map("Idgoal")
   bank_tran_id       String?   @db.VarChar(100) @map("Bank_tran_id")
   amount             Decimal   @db.Decimal(15, 2) @map("Amount")
   type               String    @default("Transaction") @db.VarChar(20) @map("Type")
@@ -295,11 +300,13 @@ model transaction {
   category        category? @relation(fields: [idcategory], references: [idcategory], onUpdate: NoAction, map: "fk_transaction_category")
   wallet          wallet    @relation("WalletTx", fields: [idwallet], references: [idwallet], onDelete: Cascade, onUpdate: NoAction, map: "fk_transaction_wallet")
   transfer_wallet wallet?   @relation("TransferWallet", fields: [idwallet_transfer], references: [idwallet], onDelete: SetNull, onUpdate: NoAction, map: "fk_transaction_wallet_transfer")
+  goal            goal?     @relation(fields: [idgoal], references: [idgoal], onDelete: SetNull, onUpdate: NoAction, map: "fk_transaction_goal")
 
-  @@unique([provider, bank_tran_id], map: "uq_transaction_external")
+  @@unique([idaccount, provider, bank_tran_id], map: "uq_transaction_external")
   @@index([idaccount], map: "idx_transaction_account")
   @@index([idwallet], map: "idx_transaction_wallet")
   @@index([idcategory], map: "idx_transaction_category")
+  @@index([idgoal], map: "idx_transaction_goal")
   @@index([status], map: "idx_transaction_status")
   @@index([date_transaction], map: "idx_transaction_create")
   @@index([update_at], map: "idx_transaction_updated")
