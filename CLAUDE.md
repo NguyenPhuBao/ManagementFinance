@@ -57,9 +57,16 @@
    - Thi hành ở `CategoryManagementRepositoryImpl._hasDuplicateName()`. **Đừng** thay nó bằng `getCategoryRows` — hàm đó lọc theo `classify` và khử trùng lặp theo tên, tức loại đi đúng những hàng cần đối chiếu.
    - Phép kiểm tra **chỉ chạy khi tên thật sự đổi**, để người dùng còn sửa được danh mục cũ do bản client trước tạo ra. Đây là chủ ý, không phải lỗ hổng.
    - **Nơi thi hành:** client và Admin-web đã làm; đường `/sync/push` **chưa kiểm gì cả**. CSDL thì **có hai unique index nhưng chúng thi hành một quy tắc KHÁC** — lệch theo cả hai chiều, đừng đọc thành "CSDL chưa có ràng buộc gì". Trạng thái chi tiết ở mục 14 `docs/PROJECT_CONTEXT.md`.
-   - ⚠️ Vế "**chặt hơn**" của CSDL (hàng đã xoá mềm vẫn giữ chỗ tên) vẫn còn: xoá rồi tạo lại một danh mục cùng tên thì client cho qua còn PostgreSQL trả 23505. Đường kích hoạt **tự lặp ở mỗi lần mở app** thì đã đóng ngày 2026-09-05 — backend nhận 5 danh mục vào bộ mặc định, `ensureMissing()` được thay bằng `foldIntoBackendDefaults()`. Đọc **G16** trong `docs/CLIENT_APP_KNOWN_GAPS.md` trước khi đụng vào `PersonalDefaultCategories` hay `getNamesInUse`.
+   - ⚠️ Vế "**chặt hơn**" của CSDL (hàng đã xoá mềm vẫn giữ chỗ tên) vẫn còn: xoá rồi tạo lại một danh mục cùng tên thì client cho qua còn PostgreSQL trả 23505. Đường kích hoạt **tự lặp ở mỗi lần mở app** đã đóng từ 2026-09-05. Đọc **G16** trong `docs/CLIENT_APP_KNOWN_GAPS.md` trước khi đụng vào `DefaultCategorySeeder`, `PersonalDefaultCategories` hay `getNamesInUse`.
 
-8. **Bảng `AppNotifications` là CỤC BỘ — đừng kéo nó vào đường đồng bộ.** Nó cố ý không có `syncStatus`/`syncError`/`updatedAt`/`isDeleted`; việc vắng mặt những cột đó chính là tài liệu sống. Thêm vào `SyncEntityType` là phải chạm bảy bảng ánh xạ song song phía backend mà **không được gì** — thông báo suy lại được từ ngân sách/hoá đơn/mục tiêu trên từng máy.
+8. **Danh mục mặc định là KHUÔN, không phải thứ người dùng nhìn thấy** (từ 2026-09-07). Mỗi tài khoản có **bản sao riêng** của bộ mặc định, do `DefaultCategorySeeder` tạo sau lần pull đầu; hàng toàn cục (`isDefault = true`, `idaccount = 0`) không còn hiện trong bất kỳ danh sách nào. Thiết kế: `docs/superpowers/specs/2026-09-07-per-account-default-categories-design.md`.
+   - Luật tạo bản sao đếm **cả hàng đã xoá mềm**. Ba chữ ấy là khác biệt **duy nhất** với `ensureMissing()` cũ — thứ đã sinh ra G16. "Dọn dẹp" điều kiện ấy là tái hiện nguyên vẹn G16.
+   - Nó chạy sau **mọi** lần pull chứ không phải một lần trong đời (đó là cách một danh mục mặc định thêm về sau tới được tài khoản đã seed), nên **tính luỹ đẳng là thứ tuyệt đối không được làm hỏng**.
+   - `getNamesInUse` **vẫn đếm** hàng mặc định, và `purgeDataForOtherAccounts` **vẫn giữ** chúng. Hàm đầu phục vụ quy tắc trùng tên (hàng mặc định vẫn chiếm chỗ trong hai unique index của PostgreSQL); hàm sau giữ chính cái khuôn. Bỏ nhánh `idaccount = 0` ở hai chỗ ấy là hai kiểu hỏng khác nhau.
+   - ⚠️ Bản sao chỉ đầy đủ khi **bộ mặc định cục bộ** đầy đủ. Pull là tăng dần theo `since`, nên một máy có thể chỉ biết một phần bộ mặc định của server — đo được 2026-09-07: server có 18, máy kiểm thử tạo được 13 bản sao. Không phải lỗi, nhưng đừng trông chờ con số khớp.
+   - **Màu danh mục không có cột trên server** (bảng `category` có 12 cột, không cột nào cho màu), nên màu của bản sao chỉ sống trên máy đã tạo. Tài liệu xin: `docs/superpowers/backend/CAN-LAM/CATEGORY_COLOUR_COLUMN.md`.
+
+9. **Bảng `AppNotifications` là CỤC BỘ — đừng kéo nó vào đường đồng bộ.** Nó cố ý không có `syncStatus`/`syncError`/`updatedAt`/`isDeleted`; việc vắng mặt những cột đó chính là tài liệu sống. Thêm vào `SyncEntityType` là phải chạm bảy bảng ánh xạ song song phía backend mà **không được gì** — thông báo suy lại được từ ngân sách/hoá đơn/mục tiêu trên từng máy.
    - Tên bảng có tiền tố `App` vì Drift sinh data class **số ít** và `Notification` là lớp có thật trong `package:flutter/widgets.dart`. Cùng loại va chạm đã gặp với `Category` — xem dòng đầu `sync_engine.dart`.
    - ⚠️ Khi làm phần thông báo cấp hệ điều hành: `NotificationScanner.stop()` **phải** gọi `cancelAll()`. Lịch nằm trong AlarmManager/UNUserNotificationCenter chứ không trong SQLite, nên `purgeDataForOtherAccounts` không cứu được — nhắc hoá đơn của người đăng nhập trước sẽ nổ trên màn hình khoá của người sau.
 
@@ -68,7 +75,7 @@
 ## Lệnh hay dùng
 
 ```bash
-# Test (chạy từ src/Client-app) — hiện 1300/1300 pass, ~85 giây
+# Test (chạy từ src/Client-app) — hiện 1304/1304 pass, ~85 giây
 flutter test
 flutter analyze          # mức nền: 25 issue, KHÔNG có error
 

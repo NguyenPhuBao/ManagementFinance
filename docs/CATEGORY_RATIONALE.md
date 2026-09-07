@@ -161,12 +161,56 @@ Sau thay đổi 3 thì ánh xạ **đang chạy đúng** (13/13 khớp tên), n�
 
 ---
 
+## 5b. Thay đổi 5 — bản sao riêng cho từng tài khoản (2026-09-07)
+
+**Đảo lại thay đổi 3.** Thay đổi 3 đẩy năm danh mục *ra khỏi* bộ riêng để chúng
+thành mặc định toàn cục; thay đổi 5 làm ngược: **toàn bộ** bộ mặc định được sao
+chép *vào* từng tài khoản, còn hàng toàn cục lui về làm **khuôn** và không hiện
+ra ở đâu nữa.
+
+### Vì sao đổi hướng
+
+Danh mục mặc định là hàng dùng chung, nên người dùng **không sửa, không đổi tên,
+không xoá** được — mọi thao tác ấy sẽ đụng vào dữ liệu của mọi người. Bản sao
+riêng gỡ được điều đó, và kéo theo hai thứ miễn phí:
+
+- **`CategoryGroupMemberships` hết việc.** Bảng phụ ấy tồn tại chỉ vì không ghi
+  `Idgroup` riêng cho từng tài khoản lên một hàng dùng chung được. Bản sao thì
+  ghi thẳng vào `parentId` — cột đã có và đã đồng bộ. **G10 đóng mà backend
+  không phải làm gì.**
+- **Lỗ hổng phân quyền của `appendCategoryKeyword()` hẹp bán kính lại**: phản
+  hồi phân loại không còn ghi vào hàng mọi người cùng đọc. Nó **chưa được vá** —
+  xem `CATEGORY_KEYWORD_SYNC.md`.
+
+### Chỗ dễ làm hỏng nhất
+
+Luật tạo bản sao đếm **cả hàng đã xoá mềm**. Ba chữ ấy là khác biệt **duy nhất**
+với `ensureMissing()` — thứ đã sinh ra G16. Bỏ chúng đi là danh mục người dùng
+vừa xoá mọc lại ở mỗi lần mở app, và mỗi lần mọc lại là một thao tác đẩy hỏng
+vĩnh viễn.
+
+### Hai giới hạn đã biết
+
+- **Bản sao chỉ đầy đủ khi bộ mặc định cục bộ đầy đủ.** Pull tăng dần theo
+  `since`, nên một máy có thể chỉ biết một phần bộ mặc định của server. Đo được
+  2026-09-07: server có 18 hàng, máy kiểm thử tạo được 13 bản sao.
+- **Màu không theo được.** Bảng `category` không có cột màu, nên màu của bản sao
+  chỉ sống trên máy đã tạo. Tài liệu xin: `CATEGORY_COLOUR_COLUMN.md`.
+
+Thiết kế đầy đủ:
+`docs/superpowers/specs/2026-09-07-per-account-default-categories-design.md`.
+
+---
+
 ## 6. Những phương án đã cân nhắc rồi loại bỏ
 
 Ghi lại để người sau không mất công đề xuất lại:
 
 | Phương án | Vì sao loại |
 |---|---|
+| Giữ bản mặc định hiện **song song** với bản sao (2026-09-07) | Người dùng thấy 36 dòng với 18 cặp trùng tên, và quy tắc trùng tên chặn họ đổi tên bất kỳ bản nào |
+| Đếm bản sao **theo tài khoản** thay vì theo từng danh mục (2026-09-07) | Tài khoản đã có sẵn danh mục riêng sẽ bị từ chối seed, trong khi bản mặc định của nó đã bị ẩn — nó còn lại đúng vài danh mục |
+| Đếm bản sao **bỏ qua hàng đã xoá mềm** (2026-09-07) | Chính là `ensureMissing()` cũ, tức tái hiện nguyên vẹn G16 |
 | Xoá hẳn 5 mục backend không có | Tái hiện lỗi 11.6 hàng loạt; mất cả hai mục "Khác" và một nửa nghiệp vụ vay nợ; giao dịch cũ không có đích để chuyển sang |
 | Chuyển 5 mục tại chỗ, giữ id `cat_*` | `_resolveCategoryId` từ chối danh mục người dùng có id không phải UUID → giao dịch vẫn kẹt |
 | Giữ mỗi nhóm là một không gian tên riêng | PostgreSQL không có `Idgroup` trong unique index nên vẫn chặn — client cho tạo rồi đẩy lên mới vỡ |
