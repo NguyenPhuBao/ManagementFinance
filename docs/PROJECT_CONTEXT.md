@@ -637,10 +637,10 @@ src/Backend/
 
 ### 🔄 Việc còn dang dở
 
-Xem đầy đủ tại **`docs/CLIENT_APP_KNOWN_GAPS.md`**. Phiên 2026-09-03 đã đóng 9/10 mục còn mở; nay còn **G10** và **G15**:
+Xem đầy đủ tại **`docs/CLIENT_APP_KNOWN_GAPS.md`**. Phiên 2026-09-03 đã đóng 9/10 mục còn mở; **G10 đóng ngày 2026-09-07**, nay còn **G15**:
 
 - **G15 — Bản ghi vừa hết hạn vừa hỏng đồng bộ thì không sửa được.** ⏸️ **Hoãn có chủ ý** (2026-09-04): tab "Đã hết hạn" khoá sửa/xoá, nên một ngân sách vừa quá hạn vừa bị backend từ chối vĩnh viễn sẽ nằm lại mãi — hàng đợi đồng bộ vẫn thông vì `SyncEngine` chặn nó theo thời gian, nhưng người dùng không chữa được. Giữ nguyên vì tab đó là nền cho phần thống kê/báo cáo sẽ làm sau. Bán kính rủi ro hẹp: nguồn gây lỗi chính (form tạo ra `end ≤ start`) đã bịt cùng ngày.
-- **G10 — `CategoryGroupMemberships` không bao giờ được đồng bộ.** ⛔ **Không sửa được ở client**: backend không có bảng membership và cũng không có `SyncEntityType` tương ứng (`UPSERT_MAP`/`ENTITY_PRIORITY` chỉ có 6 entity), nên thêm entity mới ở client sẽ chỉ nhận `Unknown entity` và kẹt vĩnh viễn. Việc gán danh mục **mặc định** vào nhóm vì thế chỉ tồn tại trên một máy. Đề xuất chi tiết: `docs/superpowers/backend/CAN-LAM/CATEGORY_GROUP_MEMBERSHIP_SYNC.md`.
+- ~~**G10 — `CategoryGroupMemberships` không bao giờ được đồng bộ.**~~ ✅ **Đóng 2026-09-07, và không phải bằng cách xin backend thêm entity.** Bảng phụ ấy tồn tại chỉ vì danh mục mặc định là hàng toàn cục nên không ghi `Idgroup` riêng cho từng tài khoản được. Nay mỗi tài khoản có **bản sao riêng** của bộ mặc định, nên việc gán nhóm nằm gọn trong `Idgroup` của chính hàng họ sở hữu — cột đã có sẵn và đã đồng bộ.
 
 > ⚠️ **`.gitignore` dòng 77 vẫn có `test/`.** Luật này đã cắn **lần thứ ba** (phiên 2026-09-04). Mọi file test tạo **mới** vẫn sẽ bị bỏ qua trong im lặng — nhớ `git add -f`.
 >
@@ -663,7 +663,7 @@ tự thi công đề nghị**, không phải thứ tự chữ cái:
 | 3 | `2026-09-04-ocr-classify-review.md` | ⛔ Chưa — **tám việc**, đã qua một vòng thẩm định phản biện và đo trực tiếp trên CSDL. **(1)** 🔴 **Socket.io không xác thực + bốn dòng `io.emit` toàn cục** — `emitAuditActivity` đang rò tên người dùng ra mọi socket ẩn danh **hôm nay**. **(2)** `classifyBatch` nhận sai kiểu tham số → phân loại từng mặt hàng **chưa bao giờ chạy**. **(3)** thiếu `GEMINI_API_KEY` trong `.env`. **(4)** dedup Quy tắc 3 bỏ quên `counterpart`/`note`/`provider` → chặn nhầm 409. **(5)** cửa hậu `_mock*`. **(6–8)** `uq_transaction_external` thiếu `Idaccount` (**chưa nổ được**), bốn chỗ lệch nhỏ, ba chỗ sai tài liệu |
 | 4 | `CATEGORY_NAME_UNIQUENESS.md` | ⚠️ **Một phần** — Admin-web đã thi hành quy tắc, nhưng còn 4 khoảng hở: không gom khoảng trắng, không chuẩn hoá NFC, thiếu vế chéo "người dùng với mặc định", và `/sync/push` chưa kiểm gì cả. CSDL **có** hai unique index nhưng chúng thi hành một quy tắc **khác** — lệch theo cả hai chiều, xem mục 2 của tài liệu |
 | 5 | `CATEGORY_STABLE_IDS.md` | ⛔ Chưa — `seed.js:150` vẫn `crypto.randomUUID()` |
-| 6 | `CATEGORY_GROUP_MEMBERSHIP_SYNC.md` | ⛔ Chưa — thứ duy nhất còn chặn G10 |
+| ~~6~~ | `CATEGORY_GROUP_MEMBERSHIP_SYNC.md` | ✅ **Đóng 2026-09-07** — không cần backend làm gì |
 | 7 | `CATEGORY_CLASSIFY_ALIGNMENT.md` | ⚠️ Gần xong — còn bước thu hẹp `validClassify` (`sync.validation.js:103`) |
 | 8 | `2026-09-05-backend-transaction-goal-id.md` | 🔓 **Mở khoá, không phải sửa lỗi** — xin cột nullable `transaction.Idgoal`. Client đã có cột **cục bộ** `transactions.goal_id` (schema v14) để nối giao dịch tích luỹ với mục tiêu bằng ID thay vì bằng tên. Không có gì hỏng hôm nay: máy tạo ra dữ liệu nối đúng, máy khác rơi xuống nhánh so tên. Nhưng nó **chặn hẳn** hướng bỏ bộ đếm `current_amount` để suy tiến độ từ chính giao dịch. Rẻ nhất là gộp vào đợt migration của bước 9 |
 | 10 | `2026-09-05-backend-goal-priority.md` | 🔓 **Mở đường, không phải sửa lỗi** — xin **một** cột nullable `goal.Priority`. Client **chưa làm** ưu tiên mục tiêu và cố ý chưa làm cho tới khi có cột: thứ tự do người dùng kéo thả là công sức không suy lại được, không có mặc định đúng, và sẽ quyết định **tiền đi đâu** nếu nối phân bổ tự động. Đi ngược lối "làm trước xin sau" của hai mục dưới, có chủ ý. Gộp vào cùng đợt migration |
@@ -761,8 +761,9 @@ OCR/Classify. Thứ tự đề nghị, việc rẻ nhất trước:
    từng cái ở bảng ngay trên. Ba mục đầu: `CATEGORY_KEYWORD_SYNC` (lỗ hổng phân
    quyền, bản vá vài dòng, độc lập với phần thiết kế bảng mới) →
    `2026-09-04-backend-idempotent-delete` → `2026-09-04-ocr-classify-review`.
-4. **G10** là mục client duy nhất còn bị chặn hoàn toàn ở backend (mục 6 của
-   bảng trên). **G15** là hoãn có chủ ý, đừng tự ý "sửa" lại.
+4. **G10 đã đóng ngày 2026-09-07** (mục 6 của bảng trên) — và đóng bằng cách
+   đổi thiết kế phía client, không phải bằng cách chờ backend. **G15** là hoãn
+   có chủ ý, đừng tự ý "sửa" lại.
 5. **Tính năng "Ngày cụ thể" chưa đồng bộ được** — bị chặn ở việc (C) của
    `2026-09-04-backend-idempotent-delete.md`. Client không vá được: trên máy
    đang dùng thì đúng, đổi máy là mất.

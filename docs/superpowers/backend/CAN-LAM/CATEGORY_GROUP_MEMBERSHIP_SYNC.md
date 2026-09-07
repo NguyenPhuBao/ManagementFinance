@@ -1,8 +1,37 @@
 # Đồng bộ việc gán danh mục MẶC ĐỊNH vào nhóm
 
 **Người nhận:** đội Backend
-**Trạng thái:** cần backend bổ sung, phía Client-app **không thể tự làm**.
-**Mức độ:** không gây lỗi, nhưng một phần dữ liệu người dùng chỉ tồn tại trên đúng một máy.
+**Trạng thái:** ✅ **KHÔNG CẦN LÀM NỮA — đóng ngày 2026-09-07.**
+
+> ## Vì sao đóng mà backend không phải làm gì
+>
+> Yêu cầu dưới đây tồn tại **chỉ vì** danh mục mặc định là hàng **toàn cục**
+> (`Is_default = true`, `Create_by = 1`), dùng chung cho mọi tài khoản. Không
+> thể ghi `Idgroup` riêng cho từng người lên một hàng dùng chung, nên client
+> phải giữ một bảng phụ `CategoryGroupMemberships` khoá theo
+> `(idaccount, categoryId)` — và chính bảng phụ ấy là thứ không có đường đồng
+> bộ.
+>
+> Ngày 2026-09-07 client đổi hướng: **mỗi tài khoản có bản sao riêng của bộ
+> danh mục mặc định**, còn hàng toàn cục lui về làm khuôn và không hiện ra nữa.
+> Xem `docs/superpowers/specs/2026-09-07-per-account-default-categories-design.md`.
+>
+> Từ đó việc gán nhóm nằm gọn trong `Idgroup` của **chính hàng danh mục người
+> dùng sở hữu** — một cột đã có sẵn, đã nằm trong payload đẩy (`parentId` →
+> `mapEntityFields` → `Idgroup`), và đã được `upsertCategory` ghi thật. Không
+> cần entity mới, không cần bảng mới.
+>
+> Client đã gỡ mọi lời gọi tới bảng phụ ấy. Bảng vẫn còn trong lược đồ SQLite
+> cục bộ vì bỏ một bảng Drift là một migration trên máy người dùng đang có dữ
+> liệu, và nó không mua thêm gì — nhưng **không nơi nào ghi vào nó nữa**.
+>
+> **G10 trong `docs/CLIENT_APP_KNOWN_GAPS.md` đóng theo.**
+
+Phần dưới giữ nguyên làm hồ sơ, để người sau hiểu vì sao từng cần nó.
+
+---
+
+**Mức độ (khi còn hiệu lực):** không gây lỗi, nhưng một phần dữ liệu người dùng chỉ tồn tại trên đúng một máy.
 
 ---
 

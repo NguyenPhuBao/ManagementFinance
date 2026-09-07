@@ -3,7 +3,9 @@
 **Cập nhật:** 2026-09-07
 
 > Thư mục cha có 20 tài liệu, phần lớn đã xong hoặc chỉ để tham khảo lịch sử.
-> **Mười hai tài liệu trong thư mục này là toàn bộ phần còn việc.** Không cần mở gì
+> **Mười một tài liệu trong thư mục này là phần còn việc.**
+> (`CATEGORY_GROUP_MEMBERSHIP_SYNC.md` đã **đóng 2026-09-07** — giữ lại làm
+> hồ sơ, không còn việc.) Không cần mở gì
 > ở thư mục cha ngoài ba tệp bối cảnh liệt kê ở mục 4.
 
 ---
@@ -28,7 +30,7 @@ chạm vào hôm nay**.
 | 3 | [CATEGORY_KEYWORD_SYNC.md](./CATEGORY_KEYWORD_SYNC.md) | Danh mục và từ khoá phân loại; chiều **xuống** client đã nối xong | Lỗ hổng **phân quyền** ở `POST /api/ai/classify/feedback` — `appendCategoryKeyword()` không đọc `create_by`, nên ghi được từ khoá vào danh mục của người khác. Chiều **lên** chưa có mô hình dữ liệu | một buổi |
 | 4 | [CATEGORY_STABLE_IDS.md](./CATEGORY_STABLE_IDS.md) | Danh mục mặc định trên mọi máy | `seed.js:150` vẫn `crypto.randomUUID()`, nên **tên danh mục** bị dùng làm khoá nối giữa hai phía. Đây là nguyên nhân gốc của các lỗi 11.3–11.6 trong `PROJECT_CONTEXT.md` | migration |
 | 5 | [CATEGORY_NAME_UNIQUENESS.md](./CATEGORY_NAME_UNIQUENESS.md) | Quy tắc trùng tên đã thi hành ở client **và** Admin-web | `/sync/push` chưa kiểm gì cả, và hai unique index của CSDL thi hành một quy tắc **khác** — lệch theo cả hai chiều. Thiếu `WHERE "Delete_at" IS NULL` là mỗi lần mở app client tạo lại danh mục đã xoá và bản ghi ấy **không bao giờ lên được server** | migration |
-| 6 | [CATEGORY_GROUP_MEMBERSHIP_SYNC.md](./CATEGORY_GROUP_MEMBERSHIP_SYNC.md) | Gom nhóm danh mục | Không có bảng/entity cho việc gán danh mục **mặc định** vào nhóm → quan hệ đó chỉ tồn tại trên một máy. Thứ **duy nhất** còn chặn G10 | entity mới |
+| ~~6~~ | ~~[CATEGORY_GROUP_MEMBERSHIP_SYNC.md](./CATEGORY_GROUP_MEMBERSHIP_SYNC.md)~~ | ✅ **ĐÓNG 2026-09-07 — backend không phải làm gì.** Yêu cầu ấy tồn tại chỉ vì danh mục mặc định là hàng toàn cục nên không ghi `Idgroup` riêng cho từng tài khoản được. Nay **mỗi tài khoản có bản sao riêng**, nên việc gán nhóm nằm gọn trong `Idgroup` của chính hàng họ sở hữu — cột đã có, đã nằm trong payload đẩy, `upsertCategory` đã ghi thật. **G10 đóng theo** | — |
 | 7 | [CATEGORY_CLASSIFY_ALIGNMENT.md](./CATEGORY_CLASSIFY_ALIGNMENT.md) | Bộ giá trị `classify` của danh mục | `validClassify` (`sync.validation.js:103`) rộng hơn thực tế | **một dòng** |
 | 7b | [CATEGORY_COLOUR_COLUMN.md](./CATEGORY_COLOUR_COLUMN.md) | Chọn màu cho danh mục — client **vẫn gửi `colour` lên ở mỗi lần đẩy** | Bảng `category` có 12 cột và **không cột nào cho màu**, nên trường ấy bị bỏ qua **im lặng**: người dùng đổi màu rồi đăng nhập máy khác là mất. Đây là mục **nhẹ nhất** nhóm này — không vòng lặp, không rò rỉ, chỉ mất một lựa chọn người dùng đã bỏ công đặt. Bán kính sắp rộng ra: mỗi tài khoản sắp có 18 danh mục của riêng mình và sửa được màu cả 18 | một cột + hai dòng |
 
@@ -66,7 +68,7 @@ Không ai mất dữ liệu và không có gì sai số nếu chưa làm. Nhưng
    đẩy lại bất kể nguyên nhân gốc là gì, kể cả nguyên nhân chưa ai tìm ra.
 3. **`validClassify`** (nhóm 1 mục 7) — một dòng.
 4. **Lỗ hổng phân quyền từ khoá** (nhóm 1 mục 3).
-5. **Một đợt migration duy nhất**: mục 4 → 5 → 6 của nhóm 1, **liền một mạch**,
+5. **Một đợt migration duy nhất**: mục 4 → 5 của nhóm 1, **liền một mạch**,
    cộng thêm **bốn** mục của nhóm 2 (8, 9, 10, 10b), **cột màu danh mục**
    (nhóm 1 mục 7b), cột `goal.Priority` của nhóm 3, và `Idaccount` cho
    `uq_transaction_external`.
@@ -78,8 +80,9 @@ Không ai mất dữ liệu và không có gì sai số nếu chưa làm. Nhưng
    mới mở tính năng "bỏ qua kỳ này".
 
 > ⚠️ **Bước 5 không tách lẻ được.** `CATEGORY_STABLE_IDS` là nguyên nhân gốc:
-> ID ổn định cho seed là điều kiện để hai tài liệu kia không phải dùng *tên danh
-> mục* làm khoá nối. Làm `CATEGORY_NAME_UNIQUENESS` trước là phải làm lại.
+> ID ổn định cho seed là điều kiện để `CATEGORY_NAME_UNIQUENESS` không phải
+> dùng *tên danh mục* làm khoá nối. Làm `CATEGORY_NAME_UNIQUENESS` trước là
+> phải làm lại.
 >
 > Gộp bốn mục của nhóm 2, **cột màu danh mục** (7b) **và** cột `goal.Priority`
 > vào đúng đợt migration này
