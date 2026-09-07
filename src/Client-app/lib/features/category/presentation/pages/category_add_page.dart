@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/category/category_classify.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
@@ -28,7 +29,7 @@ class CategoryAddPage extends StatefulWidget {
 }
 
 class _CategoryAddPageState extends State<CategoryAddPage> {
-  static const _classifies = ['chi', 'thu', 'vay_no'];
+  static const _classifies = kCategoryClassifies;
   static const _icons = [
     'restaurant',
     'directions_car',
@@ -435,11 +436,6 @@ class _CategoryTypeSelector extends StatelessWidget {
       {required this.selected, required this.onChanged});
   final String selected;
   final ValueChanged<String> onChanged;
-  static const labels = {
-    'chi': 'Khoản chi',
-    'thu': 'Khoản thu',
-    'vay_no': 'Vay / nợ'
-  };
 
   @override
   Widget build(BuildContext context) => Container(
@@ -448,25 +444,25 @@ class _CategoryTypeSelector extends StatelessWidget {
             color: AppColors.surfaceContainerHigh,
             borderRadius: BorderRadius.circular(12)),
         child: Row(
-          children: labels.entries
-              .map((entry) => Expanded(
+          children: kCategoryClassifies
+              .map((classify) => Expanded(
                     child: InkWell(
-                      onTap: () => onChanged(entry.key),
+                      onTap: () => onChanged(classify),
                       borderRadius: BorderRadius.circular(8),
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         decoration: BoxDecoration(
-                          color: selected == entry.key
+                          color: selected == classify
                               ? AppColors.primary
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Text(entry.value,
+                        child: Text(categoryClassifyLabel(classify),
                             textAlign: TextAlign.center,
                             style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
-                                color: selected == entry.key
+                                color: selected == classify
                                     ? Colors.white
                                     : AppColors.textSecondary)),
                       ),

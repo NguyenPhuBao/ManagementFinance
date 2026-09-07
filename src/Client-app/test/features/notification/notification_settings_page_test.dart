@@ -24,6 +24,11 @@ class _OsGia implements OsNotifier {
   int soLanXinQuyen = 0;
   bool traVe = true;
 
+  /// Hệ điều hành có đang cho phép hay không — tách khỏi [traVe] vì "đang cho
+  /// phép" và "chịu cấp khi được xin" là hai chuyện khác nhau.
+  bool coQuyen = true;
+  int soLanHoiQuyen = 0;
+
   @override
   bool get isSupported => true;
   @override
@@ -32,6 +37,12 @@ class _OsGia implements OsNotifier {
   Future<bool> requestPermission() async {
     soLanXinQuyen++;
     return traVe;
+  }
+
+  @override
+  Future<bool> daCoQuyen() async {
+    soLanHoiQuyen++;
+    return coQuyen;
   }
 
   @override
@@ -49,6 +60,13 @@ class _OsGia implements OsNotifier {
     required DateTime when,
     String? payload,
   }) async {}
+
+  // Hai thành viên của cú chạm — bản giả này không dựng kịch bản chạm nào.
+  @override
+  Stream<String> get payloadDaCham => const Stream<String>.empty();
+
+  @override
+  Future<String?> payloadKhoiDong() async => null;
 
   @override
   Future<Set<int>> pendingIds() async => const {};
@@ -93,6 +111,94 @@ void main() {
                 'tắt riêng được nhóm ấy, và lựa chọn duy nhất còn lại là tắt '
                 'hết.');
       }
+    });
+
+    testWidgets('quyền bị thu hồi thì công tắc KHÔNG được sáng', (tester) async {
+      await store.write(accountId, const NotificationPrefs(osBat: true));
+      os.coQuyen = false;
+
+      await moTrang(tester);
+
+      final sw = tester.widget<Switch>(
+          find.byKey(NotificationSettingsPage.khoaCongTacOs));
+      expect(sw.value, isFalse,
+          reason: 'Người dùng có thể thu hồi quyền trong Cài đặt của máy sau '
+              'khi đã bật công tắc. Để nó sáng là nói dối: họ tin mình đang '
+              'nhận thông báo và sẽ không bao giờ đi tìm lý do vì sao chẳng '
+              'thấy gì.');
+      expect(os.soLanXinQuyen, 0,
+          reason: 'Chỉ HỎI, tuyệt đối không XIN lúc mở trang — trên iOS người '
+              'dùng chỉ được hỏi một lần trong cả vòng đời cài đặt.');
+    });
+
+    testWidgets('quyền bị thu hồi KHÔNG ghi đè tuỳ chọn đã lưu',
+        (tester) async {
+      await store.write(accountId, const NotificationPrefs(osBat: true));
+      os.coQuyen = false;
+
+      await moTrang(tester);
+
+      expect((await store.read(accountId)).osBat, isTrue,
+          reason: 'Công tắc hiển thị sự thật, nhưng ý muốn của người dùng thì '
+              'giữ nguyên: cấp lại quyền trong Cài đặt máy là thông báo chạy '
+              'lại ngay, không bắt họ vào đây gạt lại lần nữa.');
+    });
+
+    testWidgets('còn quyền thì công tắc phản ánh đúng tuỳ chọn', (tester) async {
+      await store.write(accountId, const NotificationPrefs(osBat: true));
+      os.coQuyen = true;
+
+      await moTrang(tester);
+
+      final sw = tester.widget<Switch>(
+          find.byKey(NotificationSettingsPage.khoaCongTacOs));
+      expect(sw.value, isTrue);
+    });
+
+    testWidgets('giờ im lặng tắt sẵn và chưa hiện hai mốc giờ', (tester) async {
+      await moTrang(tester);
+
+      final congTac = tester.widget<Switch>(
+          find.byKey(NotificationSettingsPage.khoaCongTacImLang));
+      expect(congTac.value, isFalse,
+          reason: 'Bật sẵn là lặng lẽ đổi hành vi của mọi bản đã cài — cảnh '
+              'báo lúc 23h thôi hiện ra ngoài mà không ai báo.');
+      expect(find.text('Từ'), findsNothing,
+          reason: 'Hai mốc giờ không có ý nghĩa gì khi công tắc còn tắt; hiện '
+              'chúng ra là mời người dùng chỉnh một thứ không có tác dụng.');
+    });
+
+    testWidgets('bật giờ im lặng thì hiện hai mốc và ghi ngay', (tester) async {
+      await moTrang(tester);
+
+      await tester
+          .ensureVisible(find.byKey(NotificationSettingsPage.khoaCongTacImLang));
+      await tester.tap(find.byKey(NotificationSettingsPage.khoaCongTacImLang));
+      await tester.pumpAndSettle();
+
+      expect((await store.read(accountId)).imLangBat, isTrue,
+          reason: 'Trang này không có nút Lưu; mỗi thay đổi phải xuống kho '
+              'ngay.');
+      expect(find.text('Từ'), findsOneWidget);
+      expect(find.text('Đến'), findsOneWidget);
+    });
+
+    testWidgets('nói rõ báo tự chuyển tiền không tắt được', (tester) async {
+      await moTrang(tester);
+
+      expect(find.textContaining('luôn được bật'), findsOneWidget,
+          reason: 'Bốn loại báo tiền vừa rời ví cố ý bỏ qua công tắc nhóm. Im '
+              'lặng về ngoại lệ ấy là để người dùng gạt tắt rồi tin rằng mình '
+              'đã tắt — một công tắc nói dối theo chiều ngược lại.');
+    });
+
+    testWidgets('mô tả nhóm không hứa những gì công tắc không làm được',
+        (tester) async {
+      await moTrang(tester);
+
+      expect(find.textContaining('Sắp đến hạn và quá hạn.'), findsOneWidget,
+          reason: 'Mô tả cũ liệt kê đúng hai loại này, nhưng công tắc khi ấy '
+              'còn tắt cả báo tự thanh toán. Nay hành vi khớp với câu chữ.');
     });
 
     testWidgets('công tắc phản ánh đúng thứ đã lưu', (tester) async {

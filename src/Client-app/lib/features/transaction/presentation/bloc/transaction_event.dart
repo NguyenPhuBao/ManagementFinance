@@ -39,6 +39,16 @@ class AddTransactionEvent extends TransactionEvent {
   List<Object?> get props => [transaction, destinationWalletId];
 }
 
+class UpdateTransactionEvent extends TransactionEvent {
+  final TransactionEntity before;
+  final TransactionEntity after;
+
+  const UpdateTransactionEvent({required this.before, required this.after});
+
+  @override
+  List<Object?> get props => [before, after];
+}
+
 class DeleteTransactionEvent extends TransactionEvent {
   final TransactionEntity transaction;
   const DeleteTransactionEvent(this.transaction);

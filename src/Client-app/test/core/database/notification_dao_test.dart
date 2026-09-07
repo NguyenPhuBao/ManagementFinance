@@ -140,6 +140,36 @@ void main() {
               'không dọn thì sau một năm màn danh sách tải hàng nghìn hàng.');
     });
 
+    test('khoiPhuc đưa một hàng đã xoá mềm trở lại danh sách', () async {
+      await db.notificationDao.insertIfAbsent(mau());
+      await db.notificationDao.dismiss('n1');
+
+      expect(await db.notificationDao.watchFeed(accountId).first, isEmpty);
+
+      await db.notificationDao.khoiPhuc('n1');
+
+      final hien = await db.notificationDao.watchFeed(accountId).first;
+      expect(hien.single.id, 'n1',
+          reason: 'Vuốt xoá là thao tác dễ lỡ tay nhất trên danh sách. Không '
+              'có đường quay lại thì hàng ấy mất khỏi giao diện VĨNH VIỄN: nó '
+              'vẫn nằm trong bảng để chặn trùng, nên lượt quét sau cũng không '
+              'sinh lại.');
+      expect(hien.single.dismissedAt, isNull);
+    });
+
+    test('khoiPhuc không đụng tới hàng khác', () async {
+      await db.notificationDao.insertIfAbsent(mau());
+      await db.notificationDao
+          .insertIfAbsent(mau(id: 'n2', dedupeKey: 'k2'));
+      await db.notificationDao.dismiss('n1');
+      await db.notificationDao.dismiss('n2');
+
+      await db.notificationDao.khoiPhuc('n1');
+
+      final hien = await db.notificationDao.watchFeed(accountId).first;
+      expect(hien.map((n) => n.id), ['n1']);
+    });
+
     test('purgeDataForOtherAccounts xoá thông báo của tài khoản khác',
         () async {
       await db.notificationDao.insertIfAbsent(mau(dedupeKey: 'k1'));

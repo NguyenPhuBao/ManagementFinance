@@ -6,7 +6,9 @@ import '../../../../core/bill/bill_recurrence.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../../../shared/widgets/segmented_choice.dart';
 import '../../../../core/auth/current_account.dart';
+import '../../domain/bill_auto_pay.dart' show kBillAutoPayHint;
 import '../../domain/bill_draft.dart';
 import '../../domain/bill_schedule.dart';
 import '../bloc/bill_bloc.dart';
@@ -36,6 +38,9 @@ class _BillEditPageState extends State<BillEditPage> {
   /// Số ngày nhắc trước hạn. `null` = tắt nhắc.
   String? _nhacTruoc;
 
+  /// Form Sửa là đường DUY NHẤT để tắt tự động thanh toán.
+  bool _tuTra = false;
+
   List<Wallet> _wallets = [];
   Wallet? _selectedWallet;
   List<Category> _categories = [];
@@ -54,6 +59,7 @@ class _BillEditPageState extends State<BillEditPage> {
     // sẵn lời cảnh báo — nay hạn luôn suy từ chu kỳ nên lưu lại là đổi hạn
     // của người dùng, không được đổi ngầm.
     _nhacTruoc = bill?.timeNotification;
+    _tuTra = bill?.autoPayEnabled ?? false;
     _lich = bill != null
         ? BillSchedule.fromBill(bill)
         : BillSchedule(
@@ -167,6 +173,7 @@ class _BillEditPageState extends State<BillEditPage> {
       timeRecurrence: _lich.storedTimeRecurrence,
       timeNotification: _nhacTruoc,
       note: _noteController.text.trim(),
+      autoPayEnabled: _tuTra,
     );
 
     context.read<BillBloc>().add(
@@ -301,27 +308,26 @@ class _BillEditPageState extends State<BillEditPage> {
                   ),
                   _canhBaoHanCuWidget(),
                   const SizedBox(height: 8),
-                  DropdownButtonFormField<String>(
-                    initialValue: _lich.timeRecurrence,
-                    decoration: const InputDecoration(
-                      labelText: 'Chu kỳ',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: const [
-                      DropdownMenuItem(
-                          value: kBillCycleWeek, child: Text('Hàng tuần')),
-                      DropdownMenuItem(
-                          value: kBillCycleMonth, child: Text('Hàng tháng')),
-                      DropdownMenuItem(
-                          value: kBillCycleQuarter, child: Text('Hàng quý')),
-                      DropdownMenuItem(
-                          value: kBillCycleYear, child: Text('Hàng năm')),
+                  const Text('Chu kỳ',
+                      style: TextStyle(
+                          fontSize: 12, color: AppColors.textSecondary)),
+                  const SizedBox(height: 6),
+                  // Cùng thanh chọn với form Thêm (06/09). Trước là
+                  // `DropdownButtonFormField` — cùng một ô chu kỳ mà hai form
+                  // hai kiểu.
+                  SegmentedChoice<String>(
+                    keyPrefix: 'bill-cycle',
+                    options: const [
+                      SegmentedOption(kBillCycleWeek, 'Hàng tuần'),
+                      SegmentedOption(kBillCycleMonth, 'Hàng tháng'),
+                      SegmentedOption(kBillCycleQuarter, 'Hàng quý'),
+                      SegmentedOption(kBillCycleYear, 'Hàng năm'),
                     ],
-                    onChanged: (val) {
-                      if (val == null) return;
-                      setState(() => _lich = _lich.copyWith(timeRecurrence: val));
-                    },
+                    selected: _lich.timeRecurrence,
+                    onChanged: (val) => setState(
+                        () => _lich = _lich.copyWith(timeRecurrence: val)),
                   ),
+                  const SizedBox(height: 8),
                   Row(
                     children: [
                       const Expanded(child: Text('Lặp lại theo chu kỳ')),
@@ -350,7 +356,42 @@ class _BillEditPageState extends State<BillEditPage> {
                     ],
                     onChanged: (v) => setState(() => _nhacTruoc = v),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(Icons.smart_toy, color: AppColors.primary),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Tự động thanh toán'),
+                            Text(
+                              'Trừ từ ví thanh toán khi đến hạn',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Switch(
+                        key: const ValueKey('bill-autopay-switch'),
+                        value: _tuTra,
+                        onChanged: (v) => setState(() => _tuTra = v),
+                      ),
+                    ],
+                  ),
+                  if (_tuTra) ...[
+                    const SizedBox(height: 4),
+                    const Text(
+                      kBillAutoPayHint,
+                      style: TextStyle(
+                          fontSize: 12, color: AppColors.textSecondary),
+                    ),
+                  ],
+                  const SizedBox(height: 8),
                   DropdownButtonFormField<Wallet>(
                     initialValue: _selectedWallet,
                     decoration: const InputDecoration(

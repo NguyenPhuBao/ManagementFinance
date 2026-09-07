@@ -37,6 +37,8 @@ class NotificationSettingsPage extends StatefulWidget {
 
   static const Key khoaCongTacOs = Key('notification_settings_os');
 
+  static const Key khoaCongTacImLang = Key('notification_settings_im_lang');
+
   static Key khoaCongTacNhom(NotificationGroup nhom) =>
       Key('notification_settings_${nhom.name}');
 
@@ -49,6 +51,15 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
   NotificationPrefs _prefs = NotificationPrefs.macDinh;
   bool _dangNap = true;
   int? _idaccount;
+
+  /// Hệ điều hành có **đang** cho phép hiện thông báo không.
+  ///
+  /// Tách khỏi `_prefs.osBat` vì hai thứ này trả lời hai câu khác nhau:
+  /// `osBat` là *ý muốn của người dùng*, còn cờ này là *sự thật của máy*.
+  /// Người dùng có thể thu hồi quyền trong Cài đặt của máy sau khi đã bật công
+  /// tắc, và khi ấy công tắc sáng trong lúc thông báo bị chặn hoàn toàn — nó
+  /// nói dối, và họ sẽ không bao giờ đi tìm lý do vì sao chẳng nhận được gì.
+  bool _coQuyenOs = true;
 
   NotificationPrefsStore get _store =>
       widget.store ?? sl<NotificationPrefsStore>();
@@ -69,10 +80,17 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     }
 
     final p = await _store.read(id);
+
+    // Chỉ HỎI, tuyệt đối không XIN: trên iOS người dùng chỉ được hỏi một lần
+    // trong cả vòng đời cài đặt, tiêu phí nó lúc mở trang là mất vĩnh viễn.
+    // Chỉ hỏi khi người dùng đã bật — tắt rồi thì câu trả lời không đổi gì.
+    final coQuyen = p.osBat ? await _os.daCoQuyen() : true;
+
     if (!mounted) return;
     setState(() {
       _idaccount = id;
       _prefs = p;
+      _coQuyenOs = coQuyen;
       _dangNap = false;
     });
   }
@@ -99,6 +117,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     }
 
     final duoc = await _os.requestPermission();
+    if (mounted) setState(() => _coQuyenOs = duoc);
     // Hệ điều hành từ chối thì công tắc phải quay về tắt. Để nó sáng là nói
     // dối: người dùng tưởng đã bật và sẽ không bao giờ đi tìm lý do vì sao
     // chẳng nhận được gì.
@@ -174,9 +193,48 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                             nhan: 'Hiện trên màn hình khoá',
                             phu: 'Tắt thì thông báo vẫn được lưu trong app, '
                                 'chỉ không hiện ra ngoài.',
-                            giaTri: _prefs.osBat,
+                            // Hiển thị SỰ THẬT, không phải chỉ ý muốn: quyền
+                            // bị thu hồi thì công tắc phải tắt. Nhưng
+                            // `_prefs.osBat` được GIỮ NGUYÊN trong kho — cấp
+                            // lại quyền trong Cài đặt máy là thông báo chạy
+                            // lại ngay, không bắt người dùng vào đây gạt lại.
+                            giaTri: _prefs.osBat && _coQuyenOs,
                             onChanged: _doiCongTacOs,
                           ),
+                          const Divider(
+                              height: 1, color: AppColors.outlineVariant),
+                          _hangCongTac(
+                            khoa: NotificationSettingsPage.khoaCongTacImLang,
+                            icon: Icons.bedtime_outlined,
+                            nhan: 'Giờ im lặng',
+                            phu: 'Trong khoảng này thông báo vẫn được lưu, '
+                                'chỉ không hiện ra ngoài.',
+                            giaTri: _prefs.imLangBat,
+                            onChanged: (v) =>
+                                _ghi(_prefs.copyWith(imLangBat: v)),
+                          ),
+                          // Hai mốc giờ chỉ hiện khi công tắc bật: chúng không
+                          // có ý nghĩa gì khi tính năng còn tắt, và mời người
+                          // dùng chỉnh một thứ không tác dụng là cách nhanh
+                          // nhất để họ mất tin vào trang cài đặt.
+                          if (_prefs.imLangBat) ...[
+                            const Divider(
+                                height: 1, color: AppColors.outlineVariant),
+                            _hangGioImLang(
+                              nhan: 'Từ',
+                              phut: _prefs.imLangTuPhut,
+                              onChon: (p) =>
+                                  _ghi(_prefs.copyWith(imLangTuPhut: p)),
+                            ),
+                            const Divider(
+                                height: 1, color: AppColors.outlineVariant),
+                            _hangGioImLang(
+                              nhan: 'Đến',
+                              phut: _prefs.imLangDenPhut,
+                              onChon: (p) =>
+                                  _ghi(_prefs.copyWith(imLangDenPhut: p)),
+                            ),
+                          ],
                         ],
                       ),
                       const SizedBox(height: 24),
@@ -197,6 +255,13 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                               onChanged: (v) => _doiNhom(nhom, v),
                             ),
                           ],
+                          // Bốn loại báo "tiền vừa rời ví" cố ý bỏ qua công
+                          // tắc nhóm — xem `luonBao()`. Im lặng về ngoại lệ ấy
+                          // là để người dùng gạt tắt rồi tin rằng mình đã tắt.
+                          const _GhiChu(
+                            'Báo khi app tự thanh toán hoá đơn hoặc tự trích '
+                            'tiền mục tiêu luôn được bật.',
+                          ),
                         ],
                       ),
                       const SizedBox(height: 24),
@@ -300,6 +365,36 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     return InkWell(
       onTap: onTap,
       child: _khung(icon: icon, nhan: nhan, phu: phu, trailing: trailing),
+    );
+  }
+
+  /// Một mốc của khoảng im lặng. Lưu bằng **số phút từ nửa đêm**, nên phải quy
+  /// đổi cả hai chiều ngay tại đây — chỗ duy nhất biết cả hai đơn vị.
+  Widget _hangGioImLang({
+    required String nhan,
+    required int phut,
+    required ValueChanged<int> onChon,
+  }) {
+    final gio = TimeOfDay(hour: phut ~/ 60, minute: phut % 60);
+
+    return _hangBam(
+      icon: Icons.nightlight_outlined,
+      nhan: nhan,
+      phu: nhan == 'Từ' ? 'Bắt đầu im lặng.' : 'Kết thúc im lặng.',
+      trailing: Text(
+        '${gio.hour.toString().padLeft(2, '0')}:'
+        '${gio.minute.toString().padLeft(2, '0')}',
+        style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          color: AppColors.primary,
+        ),
+      ),
+      onTap: () async {
+        final chon = await showTimePicker(context: context, initialTime: gio);
+        if (chon == null) return;
+        onChon(chon.hour * 60 + chon.minute);
+      },
     );
   }
 
@@ -408,6 +503,25 @@ IconData _iconNhom(NotificationGroup nhom) {
       return Icons.flag_outlined;
     case NotificationGroup.system:
       return Icons.sync_problem_outlined;
+  }
+}
+
+/// Dòng chú thích cuối thẻ. Chữ nhỏ, màu phụ — nó giải thích một ngoại lệ chứ
+/// không phải một hàng điều khiển.
+class _GhiChu extends StatelessWidget {
+  const _GhiChu(this.noiDung);
+
+  final String noiDung;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+      child: Text(
+        noiDung,
+        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+      ),
+    );
   }
 }
 

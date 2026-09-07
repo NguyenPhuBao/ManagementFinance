@@ -3,6 +3,8 @@ import '../../features/budget/data/models/budget_entity.dart';
 import '../../features/goal/data/models/goal_entity.dart';
 import '../../features/goal/domain/goal_auto_deposit.dart';
 import '../../features/goal/domain/goal_auto_deposit_runner.dart';
+import '../../features/bill/domain/bill_auto_pay.dart';
+import '../../features/bill/domain/bill_auto_pay_runner.dart';
 import '../../features/budget/presentation/widgets/budget_visuals.dart';
 
 /// Loại thông báo. Giá trị `.name` được ghi thẳng vào cột `kind`.
@@ -11,6 +13,8 @@ enum NotificationKind {
   budgetOverspent,
   billDueSoon,
   billOverdue,
+  billAutoPaid,
+  billAutoPayFailed,
   goalCompleted,
   goalCycleReady,
   goalBehind,
@@ -72,6 +76,10 @@ class NotificationRuleInput {
   /// bắn ra hệ điều hành.
   final List<GoalAutoDepositEvent> autoDeposits;
 
+  /// Các kỳ **tự động thanh toán hoá đơn** vừa chạy xong trong lượt quét này.
+  /// Cùng bản chất *sự kiện* như [autoDeposits].
+  final List<BillAutoPayEvent> autoPays;
+
   /// Lượt đồng bộ gần nhất kết thúc ở trạng thái lỗi.
   ///
   /// Là `bool` chứ không phải cả `SyncStatus`: bộ luật chỉ cần biết "hỏng hay
@@ -100,6 +108,7 @@ class NotificationRuleInput {
     this.goals = const [],
     this.wallets = const [],
     this.autoDeposits = const [],
+    this.autoPays = const [],
     this.syncFailed = false,
     this.silenceBefore,
     this.defaultBillLeadDays = mocNhacMacDinh,
@@ -118,6 +127,7 @@ List<NotificationCandidate> buildNotificationCandidates(
     ..._billCandidates(input),
     ..._goalCandidates(input),
     ..._autoDepositCandidates(input),
+    ..._autoPayCandidates(input),
     ..._walletCandidates(input),
     ..._syncCandidates(input),
   ];
@@ -426,6 +436,52 @@ List<NotificationCandidate> _autoDepositCandidates(NotificationRuleInput input) 
       // `silenceBefore` không loại được những kỳ trích bù từ nửa năm trước, và
       // lần mở app đầu tiên sẽ đổ ra cả chục thông báo cùng lúc.
       createdAt: e.ky,
+    ));
+  }
+
+  return ra;
+}
+
+/// Báo kết quả của các kỳ tự động thanh toán hoá đơn.
+///
+/// Cùng lý lẽ với [_autoDepositCandidates]: đây là chỗ thứ hai trong app tự
+/// chuyển tiền khi người dùng vắng mặt, nên thành công cũng phải báo (bao
+/// nhiêu, từ ví nào) và thất bại càng phải báo (nếu không họ tin hoá đơn đã
+/// trả rồi phát hiện khi bị cắt điện).
+///
+/// Khác một điểm: `createdAt` là **lúc quét**, không phải mốc kỳ. Tiền rời ví
+/// lúc quét, và cửa sổ im lặng không được nuốt một khoản trả bù cho kỳ hai
+/// tháng trước — trần 3 kỳ mỗi lượt của bộ chạy đã chặn cơn lũ rồi.
+List<NotificationCandidate> _autoPayCandidates(NotificationRuleInput input) {
+  final ra = <NotificationCandidate>[];
+
+  for (final e in input.autoPays) {
+    final thanhCong = e.loai == LoaiTuTra.traDu;
+    final khoa = khoaKyTuTra(e.billId, e.ky);
+    final tuVi = e.tenVi == null ? '' : ' từ ví ${e.tenVi}';
+
+    ra.add(NotificationCandidate(
+      kind: thanhCong
+          ? NotificationKind.billAutoPaid
+          : NotificationKind.billAutoPayFailed,
+      // Gộp theo KỲ: mỗi kỳ là một hàng riêng nên id + ngày hạn là đủ. Ví
+      // thiếu tiền thử lại ở mọi lượt quét nhưng chỉ báo một lần cho kỳ ấy.
+      dedupeKey: thanhCong ? 'billAuto:$khoa' : 'billAutoFail:$khoa',
+      title: thanhCong ? 'Đã tự thanh toán hoá đơn' : 'Chưa tự trả được hoá đơn',
+      body: thanhCong
+          ? 'Đã trả ${e.billName} ${_tien(e.soTien)}$tuVi.'
+          : e.loai == LoaiTuTra.viKhongDu
+              ? 'Ví ${e.tenVi ?? ''} không đủ tiền để tự trả ${e.billName}. '
+                  'Sẽ tự thử lại ở lần mở app sau.'
+              : 'Không tự trả được ${e.billName}: ví hoặc danh mục không còn '
+                  'dùng được. Mở hoá đơn để chọn lại.',
+      severity: thanhCong
+          ? NotificationSeverity.info
+          : NotificationSeverity.warning,
+      subjectType: 'bill',
+      subjectId: e.billId,
+      deeplink: '/bills',
+      createdAt: input.now,
     ));
   }
 

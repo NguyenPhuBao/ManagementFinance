@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../../../shared/widgets/segmented_choice.dart';
 import '../../data/models/budget_entity.dart';
 import '../../data/models/budget_period.dart';
 import '../widgets/budget_visuals.dart';
@@ -53,11 +54,17 @@ class BudgetForm extends StatefulWidget {
 
   final void Function(BudgetDraft) onSubmit;
 
+  /// Gợi ý hạn mức cho một danh mục (trung bình chi ba tháng trước). `null`
+  /// = không gợi ý. Là callback chứ không phải repository: form vẫn không đọc
+  /// cubit, và test tiêm thẳng một hàm.
+  final Future<double?> Function(String categoryId)? suggestFor;
+
   const BudgetForm({
     super.key,
     required this.categories,
     required this.editing,
     required this.onSubmit,
+    this.suggestFor,
   });
 
   @override
@@ -100,6 +107,13 @@ class _BudgetFormState extends State<BudgetForm> {
   /// "Ngày cụ thể" thì lấy lại nguyên vẹn.
   DateTime? _ngayKetThucBiGhiDe;
 
+  /// Gợi ý hạn mức của danh mục đang chọn; null = không có gì để gợi ý.
+  double? _suggestion;
+
+  /// Chống hai lần tra chồng nhau (đổi danh mục nhanh): kết quả của lần cũ về
+  /// sau không được đè lên lần mới.
+  int _suggestionGeneration = 0;
+
   @override
   void initState() {
     super.initState();
@@ -108,8 +122,13 @@ class _BudgetFormState extends State<BudgetForm> {
         text: b == null ? '' : b.amount.round().toString());
     _thresholdController = TextEditingController(
         text: b?.thresholdWarningAmount?.round().toString() ?? '');
+    // 0 không phải ngưỡng người dùng đặt: backend điền `0` cho ô để trống
+    // (`@default(0)` + `?? 0` ở nhánh tạo của `upsertBudget`) và pull mang
+    // nó về. Điền "0" vào ô thì validator 1–100 khoá luôn form — không sửa
+    // được gì ở ngân sách ấy nữa. Cùng cách hiểu với `BudgetEntity.warningRatio`.
+    final percent = b?.thresholdWarningPercent;
     _thresholdPercentController = TextEditingController(
-        text: b?.thresholdWarningPercent?.round().toString() ?? '');
+        text: percent == null || percent <= 0 ? '' : percent.round().toString());
     _noteController = TextEditingController(text: b?.note ?? '');
     _categoryId = b?.categoryId;
     // Ngân sách đang sửa giữ nguyên chu kỳ đã lưu, kể cả khi nó là null
@@ -120,6 +139,25 @@ class _BudgetFormState extends State<BudgetForm> {
     final now = DateTime.now();
     _startDate = b?.startDate ?? DateTime(now.year, now.month, 1);
     _endDate = b?.endDate;
+    _loadSuggestion(_categoryId);
+  }
+
+  Future<void> _loadSuggestion(String? categoryId) async {
+    final ask = widget.suggestFor;
+    if (ask == null || categoryId == null) {
+      if (_suggestion != null) setState(() => _suggestion = null);
+      return;
+    }
+    final generation = ++_suggestionGeneration;
+    double? value;
+    try {
+      value = await ask(categoryId);
+    } catch (_) {
+      // Gợi ý hỏng thì thôi không gợi ý — không được chặn form.
+      value = null;
+    }
+    if (!mounted || generation != _suggestionGeneration) return;
+    setState(() => _suggestion = value);
   }
 
   /// Ngày kết thúc của kỳ đầu tiên, suy từ ngày bắt đầu và chu kỳ.
@@ -240,6 +278,7 @@ class _BudgetFormState extends State<BudgetForm> {
                     _label('Hạn mức chi tiêu'),
                     const SizedBox(height: 8),
                     _amountField(),
+                    _suggestionHint(),
                   ],
                 )),
                 const SizedBox(height: 32),
@@ -420,52 +459,37 @@ class _BudgetFormState extends State<BudgetForm> {
     );
   }
 
+  /// Thanh chọn phân đoạn dùng chung với hoá đơn và mục tiêu (2026-09-06).
+  /// Trước đó là `Wrap` hai ô mỗi hàng — cùng khái niệm mà khác hình dạng
+  /// với hai form kia. Stitch "Cấu hình Ngân sách" cũng vẽ chu kỳ trên một
+  /// hàng chia đều.
   Widget _recurrencePicker() {
     // `null` ở cuối dãy là "Ngày cụ thể": không theo chu kỳ nào, người dùng tự
     // chọn ngày kết thúc.
     final luaChon = <String?>[...BudgetRecurrence.all, null];
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: luaChon.map((value) {
-        final selected = _timeRecurrence == value;
-        return GestureDetector(
-          onTap: () => setState(() {
-            final truocDoLaNgayCuThe = !_theoChuKy;
-            _timeRecurrence = value;
-            if (value == null) {
-              // Quay lại "Ngày cụ thể": ngày tự chọn được dùng lại nên không
-              // còn gì bị ghi đè.
-              _ngayKetThucBiGhiDe = null;
-            } else if (truocDoLaNgayCuThe && _endDate != null) {
-              _ngayKetThucBiGhiDe = _endDate;
-            }
-            _kiemTraThuTuNgay();
-          }),
-          child: Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: selected ? AppColors.primary : Colors.transparent,
-              border: Border.all(
-                color:
-                    selected ? AppColors.primary : AppColors.outlineVariant,
-                width: 2,
-              ),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              BudgetRecurrence.label(value),
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: selected ? Colors.white : AppColors.textSecondary,
-              ),
-            ),
-          ),
-        );
-      }).toList(),
+    return SegmentedChoice<String?>(
+      keyPrefix: 'budget-cycle',
+      options: [
+        for (final v in luaChon) SegmentedOption(v, BudgetRecurrence.label(v)),
+      ],
+      selected: _timeRecurrence,
+      onChanged: _chonChuKy,
     );
+  }
+
+  void _chonChuKy(String? value) {
+    setState(() {
+      final truocDoLaNgayCuThe = !_theoChuKy;
+      _timeRecurrence = value;
+      if (value == null) {
+        // Quay lại "Ngày cụ thể": ngày tự chọn được dùng lại nên không còn gì
+        // bị ghi đè.
+        _ngayKetThucBiGhiDe = null;
+      } else if (truocDoLaNgayCuThe && _endDate != null) {
+        _ngayKetThucBiGhiDe = _endDate;
+      }
+      _kiemTraThuTuNgay();
+    });
   }
 
   // ── Các ô nhập ──────────────────────────────────────────────────────────────
@@ -502,7 +526,38 @@ class _BudgetFormState extends State<BudgetForm> {
       // 2026-09-04. Repository cũng chặn, nhưng để nó chặn thì người dùng chỉ
       // nhận một snackbar đỏ chứ không thấy ô nào còn thiếu.
       validator: (v) => v == null ? 'Hãy chọn danh mục cho ngân sách này' : null,
-      onChanged: (v) => setState(() => _categoryId = v),
+      onChanged: (v) {
+        setState(() => _categoryId = v);
+        _loadSuggestion(v);
+      },
+    );
+  }
+
+  /// "3 tháng gần nhất bạn chi trung bình X" kèm nút điền thẳng vào ô hạn mức.
+  /// Không hiện gì khi không có dữ liệu: một dòng "trung bình 0 ₫" là gợi ý
+  /// sai, tệ hơn không gợi ý.
+  Widget _suggestionHint() {
+    final s = _suggestion;
+    if (s == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              '3 tháng gần nhất bạn chi trung bình '
+              '${CurrencyFormatter.format(s)}',
+              style: const TextStyle(
+                  fontSize: 12, color: AppColors.textSecondary),
+            ),
+          ),
+          TextButton(
+            onPressed: () =>
+                setState(() => _amountController.text = s.round().toString()),
+            child: const Text('Dùng số này'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -580,7 +635,10 @@ class _BudgetFormState extends State<BudgetForm> {
         const SizedBox(height: 8),
         _choiceRow(
           value: BudgetOverSpending.stop,
-          label: 'Chặn không cho tiêu thêm',
+          // "Chặn" = hỏi xác nhận rồi vẫn ghi (tiền đã tiêu thật ngoài đời,
+          // không ghi thì ví lệch) — xem `budget_impact.dart`. Nhãn phải nói
+          // đúng điều app làm.
+          label: 'Hỏi trước khi ghi khoản làm vượt',
         ),
       ],
     );

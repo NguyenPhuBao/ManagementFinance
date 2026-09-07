@@ -15,7 +15,8 @@ class Categories extends Table {
   // ── Business fields ──────────────────────────────────────────────────────
   TextColumn get name      => text()();
   TextColumn get classify  => text()();
-  // 'thu' | 'chi' | 'vay_no' | 'transfer'
+  // 'chi' | 'thu' | 'vay_no' — xem `kCategoryClassifies` (core/category).
+  // Không có 'transfer': khoản chuyển ví là LOẠI giao dịch, không có danh mục.
 
   TextColumn get icon    => text().withDefault(const Constant('category'))();
   TextColumn get colour  => text().withDefault(const Constant('#4CAF50'))();

@@ -12,7 +12,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
 import 'package:flowmoney/features/budget/data/repositories/budget_repository.dart';
+import 'package:flowmoney/features/budget/domain/budget_history.dart';
 import 'package:flowmoney/features/budget/presentation/bloc/budget_cubit.dart';
+import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
+import 'package:flowmoney/features/transaction/domain/transaction_lookup.dart';
 
 /// Repository giả — ghi lại lời gọi để khẳng định cubit KHÔNG chạm tới nó khi
 /// chưa có phiên đăng nhập.
@@ -80,6 +83,51 @@ class _FakeRepository implements BudgetRepository {
   Future<List<Category>> getExpenseCategories(int idaccount) async {
     calls.add('getExpenseCategories($idaccount)');
     return const [];
+  }
+
+  @override
+  Future<List<BudgetPeriodSummary>> getPeriodHistory(
+    String budgetId, {
+    int count = 6,
+    DateTime? now,
+  }) async {
+    calls.add('getPeriodHistory($budgetId)');
+    return const [];
+  }
+
+  @override
+  Future<List<TransactionEntity>> getPeriodTransactions(
+    String budgetId, {
+    DateTime? now,
+  }) async {
+    calls.add('getPeriodTransactions($budgetId)');
+    return const [];
+  }
+
+  @override
+  Future<TransactionLookup> lookupFor(int idaccount) async {
+    calls.add('lookupFor($idaccount)');
+    return TransactionLookup.empty;
+  }
+
+  @override
+  Future<BudgetView?> activeBudgetForCategory(
+    int idaccount,
+    String categoryId, {
+    DateTime? now,
+  }) async {
+    calls.add('activeBudgetForCategory($idaccount, $categoryId)');
+    return null;
+  }
+
+  @override
+  Future<double?> suggestAmount(
+    int idaccount,
+    String categoryId, {
+    DateTime? now,
+  }) async {
+    calls.add('suggestAmount($idaccount, $categoryId)');
+    return null;
   }
 }
 

@@ -20,7 +20,10 @@ class Transactions extends Table {
   // ± dương = tiền vào, âm = tiền ra
 
   TextColumn   get type    => text()();
-  // 'Transaction' | 'Transfer' (theo backend v2)
+  // 'chi' | 'thu' | 'transfer' — bộ giá trị NỘI BỘ của client, KHÔNG phải
+  // 'Transaction' | 'Transfer' của backend. `SyncPayloadNormalizer` quy đổi:
+  // chi/thu → Transaction với dấu amount, transfer → Transfer. Chiều tiền của
+  // giao dịch gắn danh mục vay/nợ cũng nằm ở đây (người dùng chọn trên form).
 
   /// status: trạng thái giao dịch — 'Pending' | 'Confirmed' | 'Rejected' | 'Fail'
   /// Mặc định 'Confirmed' (khớp backend default)
@@ -69,6 +72,22 @@ class Transactions extends Table {
   /// tệ hơn, một tên là **tiền tố** của tên khác ("Mua" với "Mua xe") thì nuốt
   /// luôn lịch sử của mục tiêu kia.
   TextColumn get goalId => text().nullable()();
+
+  /// billId: hoá đơn mà giao dịch này là khoản trả cho. NULL với mọi giao dịch
+  /// thường.
+  ///
+  /// ⚠️ **Cột CỤC BỘ — cùng lý do và cùng ràng buộc với [goalId] ở trên.**
+  ///
+  /// Vì sao cần: trước đây khoản trả hoá đơn chỉ nhận ra được bằng **tiền tố
+  /// ghi chú** (`kGhiChuTraHoaDon`), nên (1) người dùng gõ trùng tiền tố thì bị
+  /// chặn xoá oan, và (2) không có đường nào lần từ hoá đơn ngược về đúng
+  /// khoản chi nó đã sinh ra — thứ mà luồng **hoàn tác thanh toán** bắt buộc
+  /// phải có để hoàn đúng số tiền vào đúng ví.
+  ///
+  /// Hàng kéo về từ server và hàng do bản app cũ tạo đều để trống cột này, nên
+  /// hoàn tác chỉ làm được với khoản trả ghi từ bản 2026-09-06 trở đi;
+  /// `BillRepositoryImpl.undoPayment` từ chối có thông báo rõ thay vì đoán.
+  TextColumn get billId => text().nullable()();
 
   // ── Transfer fields (DB v2) ───────────────────────────────────────────────
   /// walletTransfer: Wallet_Transfer — ví đích khi chuyển khoản nội bộ

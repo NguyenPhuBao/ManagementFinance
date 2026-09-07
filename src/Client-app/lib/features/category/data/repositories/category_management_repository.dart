@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../../core/category/category_classify.dart';
 import '../../../../core/category/category_name.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/sync/sync_engine.dart';
@@ -50,6 +51,13 @@ abstract class CategoryManagementRepository {
     required int accountId,
     required String classify,
   });
+
+  /// Mọi danh mục con chọn được của tài khoản, không phân biệt `classify`.
+  ///
+  /// Cho bộ gợi ý theo ghi chú ở trang thêm giao dịch: từ 2026-09-05 chiều
+  /// tiền suy từ danh mục được chọn chứ không từ segment, nên không còn phân
+  /// loại nào để khoanh vùng trước khi tìm.
+  Future<List<Category>> selectableChildrenAll({required int accountId});
 }
 
 class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
@@ -394,6 +402,22 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
       (await db.categoryDao.getCategoryRows(accountId, classify))
           .where((category) => !category.isGroup)
           .toList();
+
+  @override
+  Future<List<Category>> selectableChildrenAll({required int accountId}) async {
+    // Đi qua `selectableChildren` từng classify để hưởng đúng phép khử trùng
+    // lặp theo tên của `getCategoryRows` (bản seed cũ ↔ bản UUID từ backend).
+    final perClassify = await Future.wait(kCategoryClassifies.map(
+      (classify) =>
+          selectableChildren(accountId: accountId, classify: classify),
+    ));
+    final seen = <String>{};
+    return [
+      for (final list in perClassify)
+        for (final category in list)
+          if (seen.add(category.id)) category,
+    ];
+  }
 
   CategoryTree _treeFromRows(
     List<Category> rows,

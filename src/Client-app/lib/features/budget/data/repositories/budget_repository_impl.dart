@@ -4,6 +4,9 @@ import 'package:uuid/uuid.dart';
 
 import '../../../../core/database/app_database.dart';
 import '../../../../core/sync/sync_engine.dart';
+import '../../../transaction/data/models/transaction_entity.dart';
+import '../../../transaction/domain/transaction_lookup.dart';
+import '../../domain/budget_history.dart';
 import '../datasources/budget_local_data_source.dart';
 import '../models/budget_entity.dart';
 import 'budget_repository.dart';
@@ -83,6 +86,101 @@ class BudgetRepositoryImpl implements BudgetRepository {
     if (budget == null) return null;
     final views = await _decorate(budget.idaccount, [budget], now);
     return views.isEmpty ? null : views.first;
+  }
+
+  @override
+  Future<List<BudgetPeriodSummary>> getPeriodHistory(
+    String budgetId, {
+    int count = 6,
+    DateTime? now,
+  }) async {
+    final b = await localDataSource.getBudgetById(budgetId);
+    if (b == null) return const [];
+    final moment = now ?? clock();
+    final periods = recentPeriods(b, count: count, now: moment);
+
+    final out = <BudgetPeriodSummary>[];
+    for (final ky in periods) {
+      final spent = await localDataSource.sumExpenses(
+        idaccount: b.idaccount,
+        categoryId: b.categoryId,
+        from: ky.from,
+        to: ky.to,
+      );
+      out.add(BudgetPeriodSummary(
+        from: ky.from,
+        to: ky.to,
+        amount: b.amount,
+        spent: spent,
+      ));
+    }
+    return out;
+  }
+
+  @override
+  Future<List<TransactionEntity>> getPeriodTransactions(
+    String budgetId, {
+    DateTime? now,
+  }) async {
+    final b = await localDataSource.getBudgetById(budgetId);
+    if (b == null) return const [];
+    final ky = b.currentPeriod(now ?? clock());
+    final rows = await localDataSource.getExpenses(
+      idaccount: b.idaccount,
+      categoryId: b.categoryId,
+      from: ky.from,
+      to: ky.to,
+    );
+    return rows.map(TransactionEntity.fromDrift).toList();
+  }
+
+  @override
+  Future<TransactionLookup> lookupFor(int idaccount) async {
+    return TransactionLookup(
+      wallets: await localDataSource.getWallets(idaccount),
+      categories: await localDataSource.getAllCategories(idaccount),
+    );
+  }
+
+  @override
+  Future<BudgetView?> activeBudgetForCategory(
+    int idaccount,
+    String categoryId, {
+    DateTime? now,
+  }) async {
+    final moment = now ?? clock();
+    final rows = await localDataSource.getBudgets(idaccount);
+    final matches = rows
+        .where((b) => b.categoryId == categoryId && !b.isExpired(moment))
+        .toList();
+    if (matches.isEmpty) return null;
+    // `_assertCategoryFree` đảm bảo tối đa một ngân sách đang chạy mỗi danh
+    // mục; lấy phần tử đầu là đủ.
+    final views = await _decorate(idaccount, [matches.first], moment);
+    return views.isEmpty ? null : views.first;
+  }
+
+  @override
+  Future<double?> suggestAmount(
+    int idaccount,
+    String categoryId, {
+    DateTime? now,
+  }) async {
+    final moment = now ?? clock();
+    const months = 3;
+    var total = 0.0;
+    for (var i = 1; i <= months; i++) {
+      // `DateTime` tự quy tháng âm về năm trước, nên tháng 1 lùi 3 vẫn đúng.
+      total += await localDataSource.sumExpenses(
+        idaccount: idaccount,
+        categoryId: categoryId,
+        from: DateTime(moment.year, moment.month - i, 1),
+        to: DateTime(moment.year, moment.month - i + 1, 1),
+      );
+    }
+    if (total <= 0) return null;
+    const step = 10000;
+    return (total / months / step).ceil() * step.toDouble();
   }
 
   /// Tính số đã chi và gắn tên/biểu tượng danh mục.

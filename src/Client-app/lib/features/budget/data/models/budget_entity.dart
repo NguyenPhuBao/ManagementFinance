@@ -31,7 +31,9 @@ class BudgetOverSpending {
   /// Vẫn cho tiêu tiếp, chỉ cảnh báo.
   static const over = 'Over';
 
-  /// Chặn không cho tiêu thêm.
+  /// Hỏi xác nhận trước khi ghi khoản làm vượt — vẫn ghi nếu người dùng
+  /// đồng ý, không bao giờ từ chối (tiền đã tiêu thật). Thi hành duy nhất ở
+  /// `domain/budget_impact.dart`.
   static const stop = 'Stop';
 }
 
@@ -202,6 +204,10 @@ class BudgetEntity {
     }
     return nextTimeRecurrence ?? advancePeriod(startDate, cycle);
   }
+
+  /// Mốc neo chu kỳ, công khai cho `recentPeriods` đi lại đúng phép cắt kỳ
+  /// của [currentPeriod]. Đọc tài liệu ở [_anchor].
+  DateTime get periodAnchor => _anchor;
 
   /// Thời khắc ngân sách ngừng theo dõi, hoặc null nếu chạy mãi.
   ///

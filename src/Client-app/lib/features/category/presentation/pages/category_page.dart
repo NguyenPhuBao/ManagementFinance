@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/category/category_classify.dart';
+import '../../../../core/category/category_visuals.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
@@ -235,12 +237,6 @@ class _TypeFilters extends StatelessWidget {
   final String selected;
   final ValueChanged<String> onChanged;
 
-  static const _labels = {
-    'chi': 'Khoản chi',
-    'thu': 'Khoản thu',
-    'vay_no': 'Vay / nợ',
-  };
-
   @override
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.all(4),
@@ -249,30 +245,30 @@ class _TypeFilters extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
-          children: _labels.entries
+          children: kCategoryClassifies
               .map(
-                (entry) => Expanded(
+                (classify) => Expanded(
                   child: Semantics(
-                    selected: selected == entry.key,
+                    selected: selected == classify,
                     button: true,
                     child: InkWell(
                       borderRadius: BorderRadius.circular(8),
-                      onTap: () => onChanged(entry.key),
+                      onTap: () => onChanged(classify),
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         decoration: BoxDecoration(
-                          color: selected == entry.key
+                          color: selected == classify
                               ? AppColors.primary
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          entry.value,
+                          categoryClassifyLabel(classify),
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
-                            color: selected == entry.key
+                            color: selected == classify
                                 ? AppColors.onPrimary
                                 : AppColors.textSecondary,
                           ),
@@ -334,23 +330,10 @@ class _CategoryAvatar extends StatelessWidget {
   }
 }
 
-Color _parseColor(String value) {
-  final normalized = value.replaceAll('#', '');
-  try {
-    return Color(int.parse('FF$normalized', radix: 16));
-  } catch (_) {
-    return const Color(0xFF10B981);
-  }
-}
+// Uỷ quyền về định nghĩa chung (2026-09-06): bản cũ ở đây chỉ hiểu tên Material
+// nên danh mục mặc định kéo từ backend (`food`, `bill`, `lend`…) toàn rơi về
+// icon mặc định.
+Color _parseColor(String value) =>
+    categoryColorFrom(value, fallback: const Color(0xFF10B981));
 
-IconData _iconFor(String icon) => switch (icon) {
-      'restaurant' => Icons.restaurant,
-      'directions_car' => Icons.directions_car,
-      'shopping_bag' => Icons.shopping_bag,
-      'receipt_long' || 'receipt' => Icons.receipt_long,
-      'home' => Icons.home,
-      'work' => Icons.work,
-      'favorite' => Icons.favorite,
-      'school' => Icons.school,
-      _ => Icons.category_outlined,
-    };
+IconData _iconFor(String icon) => categoryIconFor(icon);

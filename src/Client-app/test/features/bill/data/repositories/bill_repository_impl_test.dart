@@ -5,6 +5,7 @@ import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/bill/data/datasources/bill_local_datasource.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository_impl.dart';
+import 'package:flowmoney/features/bill/domain/bill_note.dart';
 import 'package:flowmoney/core/bill/bill_recurrence.dart';
 
 void main() {
@@ -109,8 +110,9 @@ void main() {
           reason: 'Chu kỳ lặp biến mất thì hoá đơn ngừng sinh kỳ mới.');
       expect(after.timeRecurrence, kBillCycleMonth);
       expect(after.timeNotification, '3');
-      expect(after.icon, 'bolt', reason: 'Icon người dùng chọn không được '
-          'rơi về mặc định.');
+      expect(after.icon, 'bolt',
+          reason: 'Icon người dùng chọn không được '
+              'rơi về mặc định.');
       expect(after.colour, '#FF0000');
       expect(after.startDate, DateTime(2026, 1, 20));
     });
@@ -179,6 +181,31 @@ void main() {
       expect(wallet?.balance, 800000.0);
     });
 
+    test('ghi chú của lần trả nối SAU tiền tố, tiền tố giữ nguyên', () async {
+      final bill = await seedBill();
+      await repository.payBill(
+        bill: bill,
+        walletId: walletId,
+        idaccount: accountId,
+        note: 'Kỳ 8, số công tơ 1234',
+      );
+
+      final tx = (await db.transactionDao.getAll(accountId)).single;
+      expect(tx.note, '${kGhiChuTraHoaDon}Tiền điện — Kỳ 8, số công tơ 1234',
+          reason: 'Sổ giao dịch nhận diện khoản của hoá đơn bằng tiền tố '
+              '(`transactionOwnerOf` dùng startsWith). Ghi chú người dùng '
+              'phải nối vào SAU, nếu không mất lớp chặn vuốt xoá.');
+    });
+
+    test('ghi chú rỗng hoặc toàn khoảng trắng thì ghi chú như cũ', () async {
+      final bill = await seedBill();
+      await repository.payBill(
+          bill: bill, walletId: walletId, idaccount: accountId, note: '   ');
+
+      final tx = (await db.transactionDao.getAll(accountId)).single;
+      expect(tx.note, '${kGhiChuTraHoaDon}Tiền điện');
+    });
+
     test('hoá đơn kỳ sau kế thừa đủ thuộc tính của kỳ hiện tại', () async {
       final bill = await seedBill(dueDate: DateTime(2026, 1, 31));
       await repository.payBill(
@@ -188,7 +215,8 @@ void main() {
           .firstWhere((b) => b.id != 'bill-1');
 
       expect(next.dueDate, DateTime(2026, 2, 28),
-          reason: 'Kỳ sau phải kẹp vào ngày cuối tháng, không tràn sang 03/03.');
+          reason:
+              'Kỳ sau phải kẹp vào ngày cuối tháng, không tràn sang 03/03.');
       expect(next.isPaid, false);
       expect(next.payStatus, 'Pending');
       expect(next.walletId, walletId,

@@ -1,10 +1,14 @@
 # Hệ thống thông báo — tài liệu bàn giao
 
-> **Cập nhật:** 2026-09-04 · **Nhánh:** `TranQuangDat`
-> **Trạng thái:** cả bảy lát đã xong, **đã kiểm trên máy ảo Android**, và có
-> thêm **dải báo kết nối** (mục 9).
-> **Mức nền hiện tại:** `flutter test` **651/651 pass**, `flutter analyze`
-> **28 issue, KHÔNG error**, `flutter build web` xanh.
+> **Cập nhật:** 2026-09-06 · **Nhánh:** `TranQuangDat`
+> **Trạng thái:** cả bảy lát đã xong, **đã kiểm trên máy ảo Android**, có thêm
+> **dải báo kết nối** (mục 9), **mốc kích hoạt quét đã được sửa lại cho
+> offline-first** (mục 4.5), **cú chạm vào thông báo hệ điều hành nay điều
+> hướng thật** (mục 5b), **bốn loại báo tiền vừa rời ví nay bỏ qua công tắc
+> nhóm** (mục 3), và **giờ im lặng · gộp thông báo · hoàn tác vuốt xoá**
+> (mục 5c). Đọc bốn mục ấy trước nếu định đụng vào vùng này.
+> **Mức nền hiện tại:** `flutter test` **1277/1277 pass**, `flutter analyze`
+> **25 issue, KHÔNG error**, `flutter build web` xanh.
 
 Đọc file này trước khi làm tiếp bất cứ việc gì thuộc thông báo. Mục 6 ghi lại
 từng lát đã làm gì và vì sao; mục 7 là những cái bẫy — **đọc mục 7 trước khi
@@ -53,21 +57,40 @@ uống"*, *"Nhắc nhở: Hóa đơn tiền điện sắp đến hạn"*, *"Ti�
 
 ## 3. Danh mục thông báo
 
-| Nhóm | Loại | `kind` | Trạng thái |
-|---|---|---|---|
-| Ngân sách | Chạm ngưỡng | `budgetNearLimit` | ✅ Xong |
-| | Vượt hạn mức | `budgetOverspent` | ✅ Xong |
-| Hoá đơn | Sắp đến hạn | `billDueSoon` | ✅ Xong |
-| | Quá hạn | `billOverdue` | ✅ Xong |
-| Mục tiêu | Hoàn thành | `goalCompleted` | ✅ Xong |
-| | Trễ tiến độ | `goalBehind` | ✅ Xong |
-| | Đã trích tự động | `goalAutoDeposited` | ✅ Xong |
-| | Chưa trích được | `goalAutoDepositFailed` | ✅ Xong |
-| Hệ thống | Đồng bộ hỏng | `syncFailed` | ✅ Xong |
-| | Số dư ví âm | `walletNegative` | ✅ Xong |
+**Mười ba loại**, xếp vào **bốn nhóm** công tắc. Cột cuối đánh dấu những loại
+**không chịu công tắc nhóm** — xem `luonBao()` trong `notification_prefs.dart`.
 
-Enum `NotificationKind` **đã khai đủ tám giá trị** — lát 6 chỉ việc thêm luật,
-không phải sửa enum hay migration.
+| Nhóm | Loại | `kind` | Luôn báo |
+|---|---|---|---|
+| Ngân sách | Chạm ngưỡng | `budgetNearLimit` | |
+| | Vượt hạn mức | `budgetOverspent` | |
+| Hoá đơn | Sắp đến hạn | `billDueSoon` | |
+| | Quá hạn | `billOverdue` | |
+| | **Đã tự thanh toán** | `billAutoPaid` | ⚠️ có |
+| | **Chưa tự trả được** | `billAutoPayFailed` | ⚠️ có |
+| Mục tiêu | Hoàn thành | `goalCompleted` | |
+| | Bắt đầu vòng mới | `goalCycleReady` | |
+| | Trễ tiến độ | `goalBehind` | |
+| | **Đã trích tự động** | `goalAutoDeposited` | ⚠️ có |
+| | **Chưa trích được** | `goalAutoDepositFailed` | ⚠️ có |
+| Hệ thống | Đồng bộ hỏng | `syncFailed` | |
+| | Số dư ví âm | `walletNegative` | |
+
+⚠️ **Bốn loại "luôn báo" là những loại DUY NHẤT báo việc tiền thật rời ví** khi
+người dùng vắng mặt. Trước 2026-09-06 chúng chịu chung công tắc với phần còn
+lại của nhóm, nghĩa là ai tắt nhóm Hoá đơn vì thấy nhắc hạn phiền thì **mất
+luôn cảnh báo app vừa trừ tiền** — và vì bộ lọc chạy *trước khi ghi*, trung tâm
+thông báo cũng không còn dấu vết nào; họ chỉ thấy số dư ví hụt đi. "Đừng nhắc
+tôi hoá đơn sắp tới hạn" và "đừng cho tôi biết app vừa rút tiền của tôi" là hai
+câu khác nhau.
+
+Muốn im hẳn thì vẫn còn **công tắc tổng** cho thông báo hệ điều hành — nó chỉ
+chặn bước bắn ra ngoài, hàng vẫn được ghi lại trong app. Trang cài đặt nói rõ
+ngoại lệ này bằng một dòng chú thích; im lặng về nó là để người dùng gạt tắt
+rồi tin rằng mình đã tắt.
+
+⚠️ **Đừng nới `luonBao()` ra cả nhóm.** Công tắc mất tác dụng thì người dùng sẽ
+tắt luôn công tắc tổng, và khi ấy họ mất mọi thứ.
 
 Giao dịch ngân hàng Casso và OCR **không** làm được ở client: backend có phát
 ba sự kiện đó qua Socket.io nhưng client chưa có `socket_io_client`, và quan
@@ -173,18 +196,49 @@ ngưỡng phần trăm" — ai cài lại bằng `rawPercentSpent >= 0.9` sẽ l
 
 ### 4.5 Khi nào quét
 
-Chỉ **một** mốc, **không có `Timer.periodic`**: `NotificationScanner` nghe
-`SyncEngine.statusStream` và quét khi trạng thái `isTerminal`. Dữ liệu chỉ đổi
-khi có ghi cục bộ hoặc pull về, mà cả hai đều kết thúc bằng sự kiện đó.
+**Ba mốc, vẫn không có `Timer.periodic`** (sửa 2026-09-06 — trước đó chỉ có mốc
+thứ ba):
+
+| Mốc | Ghi chú |
+|---|---|
+| `start(idaccount)` | Quét ngay, `await` bên trong `start()`. Đây là mốc duy nhất chạy được khi máy hoàn toàn không có mạng |
+| `AppLifecycleState.resumed` | App quay lại từ nền — mốc duy nhất bắt được quãng app nằm trong nền, quãng mà hạn hoá đơn trôi qua, ngày đổi và kỳ trích tới nơi |
+| `SyncEngine.statusStream` ở trạng thái `isTerminal` | Giữ nguyên; cần cho lượt quét ngay sau khi pull mang dữ liệu mới về |
+
+⚠️ **Vì sao phải thêm hai mốc kia.** Bản đầu buộc vòng quét vào một sự kiện
+**mạng**, trong một app **offline-first** — và đó là chỗ hỏng. Khi không có kết
+nối, `SyncEngine._runSync()` thoát sớm ở `SyncStatus.pending`
+(`sync_engine.dart:360`), một trạng thái **không** nằm trong `isTerminal`
+(`sync_models.dart:134`). Hệ quả: cả một phiên offline **không có lượt quét
+nào** — không thông báo, `markOverdue` không chạy, và **hai bộ tự chuyển tiền
+nằm bên trong `scan()` cũng đứng im**, nên hoá đơn bật tự trả không được trả.
+Người dùng đi vùng sóng yếu một tuần thì mất cả hai.
+
+Chỉ nghe `resumed`. `paused` và `detached` là lúc hệ điều hành sắp đóng băng
+hoặc giết tiến trình; khởi động hai bộ tự chuyển tiền ở đó là chọn đúng thời
+điểm chúng dễ bị cắt ngang nhất.
+
+Nguồn sự kiện vòng đời là `lib/core/notification/app_lifecycle_watcher.dart` —
+**file duy nhất** trong vùng này chạm `WidgetsBinding`, cùng lý lẽ với
+`os_notifier_factory.dart`. Scanner nhận nó **qua tham số** (`appLifecycle`),
+đúng khuôn `syncStatus`, nên test bơm được `StreamController` mà không phải
+dựng binding. Stream **phải là broadcast**: `start()` huỷ rồi nghe lại ở mỗi
+lời gọi, và stream một-người-nghe sẽ ném ngay trên đường đăng nhập.
 
 `scan()` trả **số hàng thật sự được ghi** — tín hiệu duy nhất để quyết định có
 bắn ra hệ điều hành hay không. Từ lát 4, chính danh sách hàng vừa ghi ấy (chứ
 không phải danh sách ứng viên) là thứ được đẩy sang `OsNotifier.show()`.
 
-`start()` **huỷ subscription cũ trước khi tạo mới**. Được gọi ở
-`auth_bloc.dart` cạnh `SyncEngine.start()`; `stop()` ở hai chỗ đăng xuất /
-phiên chết. **Cố ý KHÔNG gắn ở `home_page.dart`** — chỗ đó gọi
+`start()` **huỷ cả hai subscription cũ trước khi tạo mới**, và `stop()` cắt cả
+hai. Được gọi ở `auth_bloc.dart` cạnh `SyncEngine.start()`; `stop()` ở hai chỗ
+đăng xuất / phiên chết. **Cố ý KHÔNG gắn ở `home_page.dart`** — chỗ đó gọi
 `SyncEngine.start()` ngay trong `build()`.
+
+⚠️ Lượt quét mở màn được **`await`** bên trong `start()`, và `auth_bloc.dart`
+await `start()`. Nghĩa là **hai bộ tự chuyển tiền nay chạy ngay khi đăng nhập**
+chứ không phải sau chu kỳ đồng bộ đầu tiên — đó chính là điều cần sửa, nhưng nó
+làm tiền chuyển sớm hơn trước ở một số tình huống. Lỗi bị nuốt tại chỗ: một
+lượt quét hỏng không được phép chặn đường đăng nhập.
 
 `silenceBefore = now − 30 ngày` chặn cơn lũ ở lần bật đầu tiên.
 
@@ -202,6 +256,121 @@ phiên chết. **Cố ý KHÔNG gắn ở `home_page.dart`** — chỗ đó gọ
 - **`BillDao.markOverdue`** ghi `payStatus = 'Overdue'` — giá trị chưa bao giờ
   được ghi trong toàn bộ `lib/`. **Có điều kiện `payStatus = 'Pending'`**: xem
   bẫy 7.4.
+
+---
+
+## 5b. Chạm vào thông báo hệ điều hành (2026-09-06)
+
+Trước ngày này, `onDidReceiveNotificationResponse` là một **callback rỗng**:
+cú chạm mở app ra trang chủ và người dùng phải tự đi tìm lại thứ vừa hiện trên
+màn hình khoá. Hạ tầng đã có sẵn (`payload = dedupeKey`, và `thuocThanhTab()`
+đã giải xong phần khó là `go` hay `push`), chỉ thiếu đoạn nối.
+
+```
+lib/core/notification/notification_tap_router.dart   # nơi DUY NHẤT điều hướng
+lib/core/notification/notification_deeplink.dart     # + deeplinkTuDedupeKey()
+lib/core/notification/os/os_notifier.dart            # + payloadDaCham, payloadKhoiDong
+```
+
+**`deeplinkTuDedupeKey()` là một bản SAO của `NotificationCandidate.deeplink`,
+và đó là chủ ý.** Ở **cold start** — lịch nhắc nổ khi app đã đóng hẳn, tức là
+ca *chính* của lịch đặt trước — hàng tương ứng còn chưa tồn tại trong SQLite:
+vòng quét mới sinh ra nó *sau khi* app khởi động xong. Tra cột `deeplink` ở đó
+là một cuộc đua, và thua cuộc đua ấy nghĩa là cú chạm không đi đâu cả.
+
+Bản sao ấy được canh bằng một test duyệt **cả 13 loại**: nó dựng ứng viên thật
+từ bộ luật rồi khẳng định hàm suy ra đúng cột `deeplink`. Thêm loại thứ 14 mà
+quên ánh xạ là test đỏ ngay.
+
+**Hai đường vào, một lối ra.** `payloadDaCham` (app đang sống) và
+`payloadKhoiDong()` (app mở lên *vì* cú chạm) cùng đổ vào `NotificationTapRouter`.
+
+⚠️ **Trên Android một cú chạm có thể đến bằng CẢ HAI đường.** `start()` vì thế
+đọc chi tiết khởi động **trước** khi nghe stream, rồi nhớ payload ấy để bỏ qua
+**đúng một lần**. Nhớ mãi thì thông báo ấy chết vĩnh viễn trong cả phiên chạy;
+không nhớ thì màn hình nhảy hai lần, và với route dùng `push()` là chồng hai
+trang lên nhau.
+
+⚠️ **Chưa đăng nhập thì GIỮ LẠI, không vứt đi.** Token hết hạn sau vài ngày app
+đóng là chuyện thường, và điều hướng lúc ấy chỉ bị guard của router đá về
+`/login`. Chỉ giữ cú chạm **mới nhất**: xả cả hàng đợi sau khi đăng nhập là app
+tự nhảy qua mấy màn liên tiếp.
+
+**Chạm KHÔNG đánh dấu đã đọc.** Ở cold start hàng chưa tồn tại, nên đánh dấu
+đúng lúc lại là một cuộc đua nữa — đổi lấy quá ít. Thông báo ở lại trung tâm
+như lịch sử.
+
+⚠️ `FlowMoneyApp` nay là **StatefulWidget**, đừng đổi ngược lại.
+`AppRouter.createRouter()` trước đây bị gọi ngay trong `build()` — mỗi lần
+widget gốc dựng lại là một `GoRouter` mới và mất cả stack điều hướng. Nay nó
+được tạo một lần trong `initState`, và chính tham chiếu ấy cho phép điều hướng
+từ ngoài cây widget: cú chạm đến từ nền tảng, không kèm `BuildContext` nào.
+
+---
+
+## 5c. Giờ im lặng, gộp thông báo, hoàn tác vuốt xoá (2026-09-06)
+
+**Giờ im lặng** — `NotificationPrefs.dangImLang(luc)`, chặn ngay trước
+`_banRaHeDieuHanh`. Chỉ chặn **bước bắn ra hệ điều hành**; hàng vẫn ghi vào
+trung tâm trong app, đúng ngữ nghĩa công tắc tổng: "đừng đánh thức tôi", không
+phải "đừng ghi lại gì". Người dùng ngủ dậy mở app vẫn thấy đủ những gì đã xảy
+ra đêm qua.
+
+- **Mặc định TẮT.** Bật sẵn là lặng lẽ đổi hành vi của mọi bản đã cài — cùng lý
+  lẽ với việc lưu *nhóm bị tắt* thay vì *nhóm được bật*.
+- Hai mốc lưu bằng **số phút từ nửa đêm**, một trục duy nhất. Khoảng giờ im
+  lặng gần như luôn **vắt qua nửa đêm**, và đó là nơi phép so trần
+  (`tu <= x < den`) trả sai đúng nửa khoảng — có test canh riêng.
+- Hai mốc **trùng nhau** nghĩa là khoảng rỗng, **không phải cả ngày**: người
+  dùng lỡ tay đặt bằng nhau không được mất sạch thông báo.
+- **Lịch đặt trước không đi qua đây.** Giờ nhắc là do người dùng tự chọn và
+  đang nhìn thấy trên màn hình; app không đoán lại hộ họ.
+
+**Gộp thông báo Android** — mọi thông báo mang chung `khoaNhom`, kèm một **bản
+tóm tắt**. Từ Android 7, đặt `groupKey` mà không có bản tóm tắt thì chúng vẫn
+nằm rời và công sức gộp coi như không có.
+
+- Id bản tóm tắt là **số âm** (`-1`). `osScheduledId()` xoá bit dấu nên luôn
+  trả 0..2^31-1; chọn số âm là cách **duy nhất** bảo đảm nó không bao giờ ghi
+  đè một thông báo thật — mà nếu đụng thì hỏng hoàn toàn im lặng.
+- Bản tóm tắt đăng **sau** thông báo thật, để mọi phép kiểm và mọi người đọc
+  log đều thấy lời gọi đầu tiên là thứ nơi gọi vừa yêu cầu.
+- ⚠️ **Chỉ Android.** iOS gộp theo `threadIdentifier` và không có khái niệm bản
+  tóm tắt; đăng thêm ở đó là một thông báo **trống** trên màn hình khoá, và nó
+  không bao giờ lộ ra trong một lần kiểm chạy trên Android. Có test canh.
+
+⚠️ **Đổi chi tiết thông báo KHÔNG áp dụng ngược cho lịch đã đặt.** Đo được trên
+emulator-5554 ngày 2026-09-06: hai lịch nhắc nổ ra **không mang `khoaNhom`**,
+và `run-as … cat shared_prefs/scheduled_notifications.xml` cho thấy bản ghi
+lưu sẵn không có trường ấy.
+
+Lý do nằm ở chính tính **luỹ đẳng** của `resync()`: nó chỉ đặt những id **chưa**
+có trong `pendingIds()`. Lịch đã nằm trong hàng đợi giữ nguyên bộ chi tiết mà
+`flutter_local_notifications` đã *tuần tự hoá lúc đặt* — tức là của bản app cũ.
+Chúng chỉ nhận cấu hình mới khi `dedupeKey` đổi (hạn trả mới, số ngày nhắc mới)
+hoặc sau một lần `cancelAll()` (đăng xuất).
+
+Hệ quả thực tế: mọi thay đổi về hình thức thông báo **đến dần** với người dùng
+cũ, không đến ngay. Ai sửa phần này rồi kiểm trên một máy đã cài bản trước sẽ
+thấy "không có tác dụng" và đi tìm lỗi ở sai chỗ.
+
+Riêng phần hiển thị thì Android 16 **tự gộp** thông báo cùng app
+(`AUTOGROUP_SUMMARY`), nên người dùng vẫn thấy một cụm ngay cả khi khoá nhóm
+của app chưa tới. Đừng vì thế mà kết luận `khoaNhom` đang chạy — kiểm bằng
+`dumpsys notification` chứ không bằng mắt.
+
+**Hoàn tác vuốt xoá** — `NotificationDao.khoiPhuc(id)` gỡ `dismissedAt`, kèm
+SnackBar "Đã xoá thông báo · Hoàn tác". Cần thiết vì hàng đã xoá **vẫn nằm
+trong bảng** để chặn trùng: lượt quét sau nhìn thấy `dedupeKey` ấy rồi bỏ qua,
+nên không có hàm này thì một cú vuốt nhầm làm thông báo mất khỏi giao diện
+**vĩnh viễn**.
+
+⚠️ `NotificationCenterPage` nay nhận `idaccount` từ **route**, không tự hỏi
+`AuthBloc` — cùng mẫu `NotificationSettingsPage`. Bản đầu viết
+`idaccount ?? currentAccountIdOrNull(context)` và đó là lỗi thật: `null` khi ấy
+mang **hai nghĩa** ("chưa đăng nhập" và "chưa truyền, đi hỏi AuthBloc"), nên
+trạng thái chưa đăng nhập không biểu diễn được nếu cây không có provider — nó
+ném `ProviderNotFoundException` ngay giữa `build`.
 
 ---
 
@@ -345,8 +514,20 @@ thiếu nhóm mới và nó chết ngay từ đầu.
 
 | Công tắc | Hiệu lực |
 |---|---|
-| Bốn công tắc **nhóm** | Không **sinh** thông báo nhóm ấy — cả trong app lẫn ra hệ điều hành. Lọc ngay sau bộ luật, trước khi ghi. |
-| Công tắc **tổng** cho OS | Vẫn ghi vào trung tâm trong app, chỉ **không bắn** ra ngoài. Đây là "đừng làm phiền tôi", không phải "đừng ghi lại gì". |
+| Bốn công tắc **nhóm** | Không **sinh** thông báo nhóm ấy — cả trong app lẫn ra hệ điều hành. Lọc ngay sau bộ luật, trước khi ghi. **Trừ bốn loại `luonBao()`** — xem mục 3. |
+| Công tắc **tổng** cho OS | Vẫn ghi vào trung tâm trong app, chỉ **không bắn** ra ngoài. Đây là "đừng làm phiền tôi", không phải "đừng ghi lại gì". Đây cũng là **lối thoát duy nhất** cho bốn loại `luonBao()`. |
+
+⚠️ **Công tắc tổng hiển thị SỰ THẬT, không phải chỉ ý muốn.** `OsNotifier`
+có `daCoQuyen()` — câu **hỏi**, khác hẳn `requestPermission()` là câu **xin** —
+và trang cài đặt gọi nó mỗi lần mở. Người dùng có thể thu hồi quyền trong Cài
+đặt của máy sau khi đã bật công tắc; để nó sáng khi ấy là nói dối, và họ sẽ
+không bao giờ đi tìm lý do vì sao chẳng nhận được gì. Đã gặp thật trên
+emulator-5554 ngày 2026-09-06: `importance=NONE` mà công tắc vẫn bật.
+
+Giá trị hiển thị là `_prefs.osBat && _coQuyenOs`, nhưng **`osBat` trong kho giữ
+nguyên**: cấp lại quyền trong Cài đặt máy là thông báo chạy lại ngay, không bắt
+người dùng vào gạt lại lần nữa. Tuyệt đối **không xin quyền** lúc mở trang — iOS
+chỉ hỏi một lần trong cả vòng đời cài đặt.
 
 **Bật công tắc tổng là chỗ DUY NHẤT trong app xin quyền thông báo** — mắt xích
 còn thiếu của lát 4. Xin đúng lúc người dùng vừa chủ động bật, không phải lúc
@@ -484,6 +665,45 @@ vứt đi thông tin mình đang cầm. Route ấy nằm ngoài shell y như `/g
 vào một nhánh tab thì **phải** cập nhật `nhanhThanhTab` cùng lúc, nếu không bấm
 thông báo sẽ làm app chết màn đỏ. `notification_deeplink_test.dart` canh chỗ đó.
 
+**7.9 Đừng buộc vòng quét vào một sự kiện MẠNG.** Đây là lỗi đã xảy ra và đã
+sửa ngày 2026-09-06 — ghi lại vì nó rất dễ tái phạm: `SyncEngine.statusStream`
+trông như một tín hiệu "dữ liệu vừa đổi", nhưng nó là tín hiệu "một chu kỳ mạng
+vừa kết thúc". Hai thứ ấy chỉ trùng nhau khi có mạng.
+
+Không có kết nối, `_runSync()` thoát sớm ở `SyncStatus.pending` — **không** nằm
+trong `isTerminal` — nên nghe riêng `isTerminal` là cả phiên offline không có
+lượt quét nào. Và vì `GoalAutoDepositRunner` với `BillAutoPayRunner` chạy **bên
+trong** `scan()`, mất luôn cả hai bộ tự chuyển tiền: người dùng bật tự trả hoá
+đơn rồi đi vùng sóng yếu, hoá đơn không được trả và cũng không có thông báo nào
+nói vì sao. Toàn bộ hỏng hóc này **im lặng** — không exception, không log.
+
+Quy tắc rút ra: mọi mốc kích hoạt mới phải trả lời được câu "mốc này còn nổ khi
+máy ở chế độ máy bay không?". Ba mốc hiện tại ở mục 4.5; hai trong ba mốc ấy
+độc lập hoàn toàn với mạng.
+
+**7.10 Widget test của trung tâm thông báo — ba cái bẫy nằm chồng nhau.** Ghi
+lại vì cả ba đều làm test *treo* hoặc đỏ ở một chỗ hoàn toàn khác chỗ hỏng, và
+một buổi đã mất vì chúng.
+
+1. **`tester.pump()` không tham số KHÔNG đẩy đồng hồ** — nó chỉ dựng lại khung
+   hình. Drift đặt `Timer.run` khi `StreamBuilder` huỷ đăng ký
+   (`StreamQueryStore.markAsClosed`), mà Timer chỉ nổ khi có thời gian trôi
+   qua. Thiếu `Duration` là test đỏ với **"Pending timers"**, và từ đó **cả
+   file kẹt**: các test sau chỉ báo "did not complete". Dùng
+   `pump(Duration(milliseconds: 1))` sau khi gỡ cây.
+2. **`pumpAndSettle` không dùng được ở trang này.** Trang hiện
+   `CircularProgressIndicator` khi stream chưa phát, và vòng quay là animation
+   **vô hạn** — `pumpAndSettle` pump tới khi hết hạn 10 phút của chính nó, và
+   `--timeout` của `flutter test` không cắt được.
+3. **SnackBar trượt lên từ dưới đáy.** Màn hình test cao 600px; chạm vào nó
+   giữa chừng hoạt ảnh sẽ rơi **ra ngoài** cây dựng hình, và `tap()` chỉ in một
+   dòng cảnh báo rồi đi tiếp — test đỏ ở phép kiểm phía sau, không ở dòng
+   `tap()`. Cho hoạt ảnh chạy xong trước khi chạm.
+
+⚠️ Và một bài học về cách chạy: **đừng nối `flutter test` qua `| tail`.** Pipe
+gom hết output tới khi tiến trình kết thúc, nên một lượt treo trông y hệt một
+lượt đang chạy. Ghi thẳng ra file rồi đọc file.
+
 ---
 
 ## 8. Kiểm thử
@@ -491,7 +711,8 @@ thông báo sẽ làm app chết màn đỏ. `notification_deeplink_test.dart` c
 | Tệp | Canh gì |
 |---|---|
 | `test/core/notification/notification_rules_test.dart` | Ngưỡng ngân sách; `dedupeKey` không đổi khi `spent` tăng trong cùng bậc nhưng đổi khi sang kỳ; hoá đơn so theo NGÀY; `silenceBefore` |
-| `test/core/notification/notification_scanner_test.dart` | Quét lại không đẻ hàng; `stop()` cắt đứt hẳn **và gọi `cancelAll()`**; `start()` hai lần chỉ quét một lần; bắn ra hệ điều hành đúng một lần cho mỗi hàng mới, và lỗi nền tảng không làm hỏng lượt quét |
+| `test/core/notification/notification_scanner_test.dart` | Quét lại không đẻ hàng; **`start()` quét ngay không chờ sự kiện đồng bộ nào**; **`resumed` kích hoạt quét còn `paused`/`detached` thì không**; `stop()` cắt đứt hẳn **cả hai nhánh** và gọi `cancelAll()`; `start()` hai lần không nhân đôi listener nào; bắn ra hệ điều hành đúng một lần cho mỗi hàng mới, và lỗi nền tảng không làm hỏng lượt quét |
+| `test/core/notification/app_lifecycle_watcher_test.dart` | Watcher thật sự được đăng ký vào `WidgetsBinding` (không thì stream im lặng mãi, **không lỗi không log**); stream là **broadcast** nên nghe lại được sau khi huỷ; `dispose()` gỡ observer và luỹ đẳng |
 | `test/core/notification/os/os_scheduled_id_test.dart` | Bốn giá trị **golden** của `md5(dedupeKey)` — khoá cứng để việc đổi thuật toán trở nên ồn ào; dải 31 bit; phân tán trên 1000 khoá |
 | `test/core/notification/os/os_notifier_native_test.dart` | Chặn ở tầng `MethodChannel`: `init()` luỹ đẳng, `show()` đẩy đúng id/tiêu đề/nội dung/payload, id kênh Android không đổi, `cancelAll()`, và **không** xin quyền báo thức chính xác |
 | `test/core/database/notification_dao_test.dart` | Khoá trùng ở tầng SQLite; hàng đã xoá vẫn chặn; lọc theo `idaccount`; purge |
@@ -506,7 +727,9 @@ thông báo sẽ làm app chết màn đỏ. `notification_deeplink_test.dart` c
 | `test/core/notification/reminder_scheduler_test.dart` | **Luỹ đẳng** (chạy lại không đặt lại lịch nào); trần 50 và cắt bỏ mốc **xa** nhất; giờ nhắc từ tuỳ chọn; mốc quá khứ và ngoài cửa sổ 30 ngày bị bỏ; hoá đơn trả/xoá thì huỷ lịch cũ; tắt công tắc thì dọn sạch |
 | `test/core/notification/notification_rules_goal_wallet_test.dart` | Bốn luật của lát 6, trọng tâm là **đơn vị lặp lại trong `dedupeKey`**: chúc mừng một lần trong đời, trễ tiến độ mỗi tháng, ví âm và đồng bộ hỏng mỗi ngày |
 | `test/features/goal/goal_entity_progress_test.dart` | `progress` kẹp [0,1] và không ra `Infinity` khi `targetAmount = 0`; `daysLeft` so theo NGÀY; `isBehindSchedule` có biên dung sai, im lặng khi thiếu `startDate`, không NaN khi kỳ dài 0 ngày |
-| `test/core/notification/notification_deeplink_test.dart` | Route nào kéo theo thanh tab; **không được so khớp bằng `startsWith` trần** (`/budgets` ≠ `/budget`) |
+| `test/core/notification/notification_deeplink_test.dart` | Route nào kéo theo thanh tab; **không được so khớp bằng `startsWith` trần** (`/budgets` ≠ `/budget`); và phép canh **cả 13 loại**: `deeplinkTuDedupeKey()` phải trả đúng cột `deeplink` mà bộ luật đặt — bản sao duy nhất trong vùng này, tồn tại vì cold start không tra CSDL được |
+| `test/features/notification/notification_center_page_test.dart` | Vuốt xoá là xoá **mềm**; SnackBar có nút Hoàn tác; bấm vào thì hàng quay lại **và danh sách tự vẽ lại** qua `watchFeed`; chưa đăng nhập thì không đọc gì. Đọc bẫy **7.10** trước khi sửa file này |
+| `test/core/notification/notification_tap_router_test.dart` | Cold start điều hướng được; **cùng payload đến bằng cả hai đường chỉ điều hướng một lần**, nhưng lần chạm sau vẫn chạy; chưa đăng nhập thì giữ lại và xả sau `AuthSuccess`, chỉ giữ **cái mới nhất**; `stop()` cắt hẳn |
 | `test/core/network/connection_monitor_test.dart` | **Ngưỡng ổn định**: mất mạng chớp nhoáng và chuỗi nhấp nháy đều không sinh sự kiện; đang online lúc khởi động thì không báo "khôi phục" |
 | `test/core/sync/sync_push_result_test.dart` | `pushResultStream` phát số thao tác đã lên; **không phát khi không có gì để đẩy**; server từ chối thì vẫn phát kèm số thất bại |
 | `test/shared/connection_banner_test.dart` | Ba dải và thứ tự ưu tiên giữa chúng; dải không được **đè lên** nội dung màn hình |

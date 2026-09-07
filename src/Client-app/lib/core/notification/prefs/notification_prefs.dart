@@ -16,6 +16,8 @@ NotificationGroup nhomCua(NotificationKind kind) {
   switch (kind) {
     case NotificationKind.billDueSoon:
     case NotificationKind.billOverdue:
+    case NotificationKind.billAutoPaid:
+    case NotificationKind.billAutoPayFailed:
       return NotificationGroup.bill;
     case NotificationKind.budgetNearLimit:
     case NotificationKind.budgetOverspent:
@@ -29,6 +31,42 @@ NotificationGroup nhomCua(NotificationKind kind) {
     case NotificationKind.syncFailed:
     case NotificationKind.walletNegative:
       return NotificationGroup.system;
+  }
+}
+
+/// Loại thông báo **không chịu công tắc nhóm**.
+///
+/// Bốn loại này là những loại DUY NHẤT báo việc **tiền thật rời ví** trong lúc
+/// người dùng vắng mặt — hai chỗ trong app tự chuyển tiền hộ họ.
+///
+/// "Đừng nhắc tôi hoá đơn sắp tới hạn" và "đừng cho tôi biết app vừa rút tiền
+/// của tôi" là hai câu hoàn toàn khác nhau, nhưng trước đây người dùng chỉ gạt
+/// được **một** công tắc cho cả hai: tắt nhóm Hoá đơn vì thấy nhắc hạn phiền
+/// là mất luôn cảnh báo app vừa trừ tiền, và vì bộ lọc chạy trước khi ghi nên
+/// trung tâm thông báo cũng không còn dấu vết nào.
+///
+/// Muốn im hẳn thì vẫn còn **công tắc tổng** cho thông báo hệ điều hành —
+/// công tắc ấy chỉ chặn bước bắn ra ngoài, hàng vẫn được ghi lại trong app.
+///
+/// ⚠️ Đừng nới danh sách này ra cả nhóm: công tắc mất tác dụng thì người dùng
+/// sẽ tắt luôn công tắc tổng, và khi ấy họ mất mọi thứ.
+bool luonBao(NotificationKind kind) {
+  switch (kind) {
+    case NotificationKind.billAutoPaid:
+    case NotificationKind.billAutoPayFailed:
+    case NotificationKind.goalAutoDeposited:
+    case NotificationKind.goalAutoDepositFailed:
+      return true;
+    case NotificationKind.billDueSoon:
+    case NotificationKind.billOverdue:
+    case NotificationKind.budgetNearLimit:
+    case NotificationKind.budgetOverspent:
+    case NotificationKind.goalCompleted:
+    case NotificationKind.goalCycleReady:
+    case NotificationKind.goalBehind:
+    case NotificationKind.syncFailed:
+    case NotificationKind.walletNegative:
+      return false;
   }
 }
 
@@ -47,6 +85,9 @@ class NotificationPrefs {
     this.gioNhac = _gioMacDinh,
     this.phutNhac = _phutMacDinh,
     this.soNgayNhacHoaDon = _soNgayMacDinh,
+    this.imLangBat = false,
+    this.imLangTuPhut = _imLangTuMacDinh,
+    this.imLangDenPhut = _imLangDenMacDinh,
   });
 
   /// Công tắc **tổng** cho thông báo cấp hệ điều hành.
@@ -68,8 +109,27 @@ class NotificationPrefs {
   /// Số ngày nhắc trước hạn, dùng cho hoá đơn không tự đặt.
   final int soNgayNhacHoaDon;
 
+  /// Có bật khoảng giờ không bắn thông báo ra hệ điều hành không.
+  ///
+  /// **Mặc định TẮT.** Bật sẵn là lặng lẽ đổi hành vi của mọi bản đã cài —
+  /// cảnh báo vượt ngân sách lúc 23h thôi hiện ra ngoài mà không ai báo. Cùng
+  /// lý lẽ với việc lưu *nhóm bị tắt* thay vì *nhóm được bật*.
+  final bool imLangBat;
+
+  /// Mốc bắt đầu và kết thúc, tính bằng **số phút từ nửa đêm**.
+  ///
+  /// Một số nguyên thay vì cặp giờ/phút: khoảng giờ im lặng gần như luôn vắt
+  /// qua nửa đêm, và phép so trên một trục duy nhất đọc dễ hơn hẳn so với việc
+  /// so từng cặp.
+  final int imLangTuPhut;
+  final int imLangDenPhut;
+
   static const int _gioMacDinh = 8;
   static const int _phutMacDinh = 0;
+
+  static const int _imLangTuMacDinh = 22 * 60;
+  static const int _imLangDenMacDinh = 7 * 60;
+  static const int _phutTrongNgay = 24 * 60;
 
   /// Khớp `@default("3")` của cột `Time_notification` phía backend, để một hoá
   /// đơn tạo ở client và một hoá đơn tạo ở nơi khác hành xử như nhau.
@@ -84,7 +144,34 @@ class NotificationPrefs {
   bool batNhom(NotificationGroup nhom) => !nhomTat.contains(nhom);
 
   /// Loại thông báo này có được sinh không.
-  bool chapNhan(NotificationKind kind) => batNhom(nhomCua(kind));
+  bool chapNhan(NotificationKind kind) =>
+      luonBao(kind) || batNhom(nhomCua(kind));
+
+  /// [luc] có rơi vào khoảng giờ im lặng không.
+  ///
+  /// Chỉ chặn **bước bắn ra hệ điều hành** — hàng vẫn được ghi vào trung tâm
+  /// trong app, đúng ngữ nghĩa của công tắc tổng. Đây là "đừng đánh thức tôi",
+  /// không phải "đừng ghi lại gì".
+  ///
+  /// Lịch **đặt trước** không đi qua đây: giờ nhắc là do người dùng tự chọn và
+  /// đang nhìn thấy trên màn hình, app không nên đoán lại hộ họ.
+  bool dangImLang(DateTime luc) {
+    if (!imLangBat) return false;
+
+    // Hai mốc trùng nhau là khoảng RỖNG, không phải cả ngày. Người dùng lỡ tay
+    // đặt bằng nhau không được mất sạch thông báo hệ điều hành — đó là kiểu
+    // hỏng họ sẽ không bao giờ lần ra nguyên nhân.
+    if (imLangTuPhut == imLangDenPhut) return false;
+
+    final phut = luc.hour * 60 + luc.minute;
+
+    // Tính từ mốc đầu, KHÔNG tính mốc cuối: mốc cuối là lúc im lặng kết thúc.
+    if (imLangTuPhut < imLangDenPhut) {
+      return phut >= imLangTuPhut && phut < imLangDenPhut;
+    }
+    // Vắt qua nửa đêm — ca chính, và là chỗ phép so trần trả sai nửa khoảng.
+    return phut >= imLangTuPhut || phut < imLangDenPhut;
+  }
 
   NotificationPrefs copyWith({
     bool? osBat,
@@ -92,6 +179,9 @@ class NotificationPrefs {
     int? gioNhac,
     int? phutNhac,
     int? soNgayNhacHoaDon,
+    bool? imLangBat,
+    int? imLangTuPhut,
+    int? imLangDenPhut,
   }) {
     return NotificationPrefs(
       osBat: osBat ?? this.osBat,
@@ -99,6 +189,9 @@ class NotificationPrefs {
       gioNhac: gioNhac ?? this.gioNhac,
       phutNhac: phutNhac ?? this.phutNhac,
       soNgayNhacHoaDon: soNgayNhacHoaDon ?? this.soNgayNhacHoaDon,
+      imLangBat: imLangBat ?? this.imLangBat,
+      imLangTuPhut: imLangTuPhut ?? this.imLangTuPhut,
+      imLangDenPhut: imLangDenPhut ?? this.imLangDenPhut,
     );
   }
 
@@ -108,6 +201,9 @@ class NotificationPrefs {
         'gioNhac': gioNhac,
         'phutNhac': phutNhac,
         'soNgayNhacHoaDon': soNgayNhacHoaDon,
+        'imLangBat': imLangBat,
+        'imLangTuPhut': imLangTuPhut,
+        'imLangDenPhut': imLangDenPhut,
       };
 
   /// Đọc từ JSON, **không bao giờ ném**.
@@ -124,6 +220,11 @@ class NotificationPrefs {
       phutNhac: _docSo(json['phutNhac'], 0, 59, _phutMacDinh),
       soNgayNhacHoaDon:
           _docSo(json['soNgayNhacHoaDon'], 0, _soNgayToiDa, _soNgayMacDinh),
+      imLangBat: json['imLangBat'] is bool ? json['imLangBat']! as bool : false,
+      imLangTuPhut: _docSo(
+          json['imLangTuPhut'], 0, _phutTrongNgay - 1, _imLangTuMacDinh),
+      imLangDenPhut: _docSo(
+          json['imLangDenPhut'], 0, _phutTrongNgay - 1, _imLangDenMacDinh),
     );
   }
 
@@ -152,6 +253,9 @@ class NotificationPrefs {
       other.gioNhac == gioNhac &&
       other.phutNhac == phutNhac &&
       other.soNgayNhacHoaDon == soNgayNhacHoaDon &&
+      other.imLangBat == imLangBat &&
+      other.imLangTuPhut == imLangTuPhut &&
+      other.imLangDenPhut == imLangDenPhut &&
       other.nhomTat.length == nhomTat.length &&
       other.nhomTat.containsAll(nhomTat);
 
@@ -161,6 +265,9 @@ class NotificationPrefs {
         gioNhac,
         phutNhac,
         soNgayNhacHoaDon,
+        imLangBat,
+        imLangTuPhut,
+        imLangDenPhut,
         Object.hashAllUnordered(nhomTat),
       );
 

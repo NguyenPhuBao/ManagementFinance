@@ -56,7 +56,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 15;
+  int get schemaVersion => 17;
 
   @override
   MigrationStrategy get migration {
@@ -312,6 +312,36 @@ class AppDatabase extends _$AppDatabase {
           await m.addColumn(goals, goals.autoDepositAmount);
           await m.addColumn(goals, goals.autoDepositWalletId);
           await m.addColumn(goals, goals.autoDepositLastRun);
+        }
+
+        if (from < 16) {
+          // Hai đầu của một sợi dây cho luồng HOÀN TÁC thanh toán hoá đơn:
+          // khoản chi đã sinh ra, và kỳ kế tiếp đã sinh ra. Cả hai CỤC BỘ,
+          // không đi qua đồng bộ — xem chú thích ở `Transactions`/`Bills`.
+          //
+          // Không có bước suy dữ liệu cũ: khoản trả hoá đơn cũ chỉ nhận ra
+          // được bằng tiền tố ghi chú, và suy ngược từ đó ra ID chính là phép
+          // so bằng tên mà hai cột này sinh ra để thay thế. Chép cả lỗi ấy vào
+          // dữ liệu là chỗ không sửa được nữa — cùng lập luận với migration
+          // v14 của `goalId`. Hệ quả chấp nhận có chủ ý: hoàn tác chỉ làm được
+          // với khoản trả ghi từ bản 2026-09-06 trở đi.
+          await m.addColumn(transactions, transactions.billId);
+          await m.addColumn(bills, bills.generatedFromBillId);
+          await m.create(Index('idx_transaction_bill',
+              'CREATE INDEX IF NOT EXISTS idx_transaction_bill '
+              'ON transactions (idaccount, bill_id)'));
+        }
+
+        if (from < 17) {
+          // Tự động thanh toán hoá đơn. Một cột CỤC BỘ, không đi qua đồng bộ
+          // — xem chú thích ở `Bills`.
+          //
+          // Mặc định FALSE cho mọi hoá đơn cũ, kể cả những hoá đơn tạo bằng
+          // bản có công tắc "Tự động tạo giao dịch" bật sẵn (gỡ ngày 06/09):
+          // công tắc ấy không lưu ở đâu, nên không có gì để suy ra, và suy ra
+          // "đã đồng ý" từ một công tắc bật sẵn là chuyển tiền dựa trên một
+          // lựa chọn người dùng chưa từng đưa ra — cùng lập luận với v15.
+          await m.addColumn(bills, bills.autoPayEnabled);
         }
       },
       beforeOpen: (details) async {

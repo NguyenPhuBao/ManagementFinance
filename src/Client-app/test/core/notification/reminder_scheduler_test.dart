@@ -43,6 +43,9 @@ class OsGia implements OsNotifier {
   Future<void> init() async {}
   @override
   Future<bool> requestPermission() async => true;
+
+  @override
+  Future<bool> daCoQuyen() async => true;
   @override
   Future<void> show({
     required int id,
@@ -62,6 +65,13 @@ class OsGia implements OsNotifier {
     soLanDat++;
     lich[id] = (when: when, title: title, body: body, payload: payload);
   }
+
+  // Hai thành viên của cú chạm — bản giả này không dựng kịch bản chạm nào.
+  @override
+  Stream<String> get payloadDaCham => const Stream<String>.empty();
+
+  @override
+  Future<String?> payloadKhoiDong() async => null;
 
   @override
   Future<Set<int>> pendingIds() async => lich.keys.toSet();
@@ -111,6 +121,7 @@ void main() {
       dueDate: denHan,
       payStatus: daTra ? 'Payed' : 'Pending',
       isPaid: daTra,
+      autoPayEnabled: false,
       timeNotification: nhacTruoc,
       isRecurrence: true,
       timeRecurrence: 'Month',

@@ -147,6 +147,17 @@ class BudgetCubit extends Cubit<BudgetState> {
     }
   }
 
+  /// Gợi ý hạn mức cho form. Không đổi state: form nhận qua callback, và một
+  /// lỗi ở đây không đáng để thay cả trang bằng `BudgetError`.
+  Future<double?> suggestAmount(int? idaccount, String categoryId) async {
+    if (idaccount == null || idaccount <= 0) return null;
+    try {
+      return await repository.suggestAmount(idaccount, categoryId);
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> updateBudget(BudgetEntity budget) async {
     try {
       await repository.updateBudget(budget);

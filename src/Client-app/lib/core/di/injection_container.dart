@@ -15,12 +15,14 @@ import '../../features/goal/data/datasources/goal_local_data_source.dart';
 import '../../features/goal/data/models/goal_entity.dart';
 import '../../features/goal/data/repositories/goal_repository.dart';
 import '../../features/goal/domain/goal_auto_deposit_runner.dart';
+import '../../features/bill/domain/bill_auto_pay_runner.dart';
 import '../../features/goal/data/repositories/goal_repository_impl.dart';
 import '../../features/goal/presentation/bloc/goal_cubit.dart';
 import '../../features/budget/data/datasources/budget_local_data_source.dart';
 import '../../features/budget/data/repositories/budget_repository.dart';
 import '../../features/budget/data/repositories/budget_repository_impl.dart';
 import '../../features/budget/presentation/bloc/budget_cubit.dart';
+import '../../features/budget/presentation/bloc/budget_detail_cubit.dart';
 import '../../features/wallet/data/datasources/wallet_local_data_source.dart';
 import '../../features/wallet/data/repositories/wallet_repository.dart';
 import '../../features/wallet/data/repositories/wallet_repository_impl.dart';
@@ -38,6 +40,7 @@ import '../../features/category/data/services/personal_default_categories.dart';
 import '../../features/category/data/services/category_suggestion_engine.dart';
 import '../network/connection_monitor.dart';
 import '../notification/reminder_scheduler.dart';
+import '../notification/app_lifecycle_watcher.dart';
 import '../notification/notification_scanner.dart';
 import '../notification/os/os_notifier.dart';
 import '../notification/os/os_notifier_factory.dart';
@@ -197,6 +200,9 @@ Future<void> setupDependencies() async {
   sl.registerFactory<BudgetCubit>(
     () => BudgetCubit(repository: sl<BudgetRepository>()),
   );
+  sl.registerFactory<BudgetDetailCubit>(
+    () => BudgetDetailCubit(repository: sl<BudgetRepository>()),
+  );
 
   // ── 11. Thông báo ────────────────────────────────────────────────────────
   // Cửa ra hệ điều hành. `createOsNotifier()` trả bản không làm gì trên web,
@@ -240,6 +246,10 @@ Future<void> setupDependencies() async {
     ),
   );
 
+  // Vòng đời app — mốc kích hoạt quét KHÔNG phụ thuộc mạng. Là singleton vì
+  // mỗi bản là một observer nữa gắn vào WidgetsBinding.
+  sl.registerLazySingleton<AppLifecycleWatcher>(AppLifecycleWatcher.new);
+
   // Đăng ký SAU BudgetRepository vì scanner đọc qua nó. Là singleton: mỗi
   // listener thừa trên statusStream là thêm một lượt quét cho mỗi sự kiện.
   sl.registerLazySingleton<NotificationScanner>(
@@ -260,6 +270,12 @@ Future<void> setupDependencies() async {
         db: sl<AppDatabase>(),
         repository: sl<GoalRepository>(),
       ).chay(idaccount, now: now),
+      // Tự động thanh toán hoá đơn, cùng khuôn: chạy trong vòng quét, đi qua
+      // `payBill` hiện có. Xem chú thích ở `BillAutoPayRunner`.
+      runAutoPays: (idaccount, now) => BillAutoPayRunner(
+        db: sl<AppDatabase>(),
+        repository: sl<BillRepository>(),
+      ).chay(idaccount, now: now),
       // Mục tiêu và ví đọc thẳng từ DAO chứ không qua repository: scanner chỉ
       // cần đúng một phép đọc mỗi loại, và thu hẹp phụ thuộc thì vòng quét
       // không kéo theo cả chuỗi cubit/repository không liên quan.
@@ -272,6 +288,10 @@ Future<void> setupDependencies() async {
       markOverdue: (idaccount, now) =>
           sl<AppDatabase>().billDao.markOverdue(idaccount, now),
       syncStatus: sl<SyncEngine>().statusStream,
+      // Mốc thứ hai, và là mốc duy nhất không cần mạng: app quay lại từ nền.
+      // Thiếu nó thì một phiên offline không có lượt quét nào — kể cả hai bộ
+      // tự chuyển tiền chạy bên trong `scan()`.
+      appLifecycle: sl<AppLifecycleWatcher>().stream,
       osNotifier: sl<OsNotifier>(),
       prefsStore: sl<NotificationPrefsStore>(),
       // Lịch phải theo kịp dữ liệu: hoá đơn vừa thanh toán mà lịch cũ còn

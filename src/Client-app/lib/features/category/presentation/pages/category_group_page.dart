@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/category/category_classify.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
@@ -58,8 +59,7 @@ class _CategoryGroupPageState extends State<CategoryGroupPage> {
 
   Future<void> _load() async {
     if (widget.groupId != null) {
-      const classifies = ['chi', 'thu', 'vay_no'];
-      final trees = await Future.wait(classifies.map(
+      final trees = await Future.wait(kCategoryClassifies.map(
         (classify) =>
             _repository.loadTree(accountId: _accountId, classify: classify),
       ));
@@ -270,22 +270,17 @@ class _GroupTypeSelector extends StatelessWidget {
   const _GroupTypeSelector({required this.selected, required this.onChanged});
   final String selected;
   final ValueChanged<String> onChanged;
-  static const labels = {
-    'chi': 'Khoản chi',
-    'thu': 'Khoản thu',
-    'vay_no': 'Vay / nợ'
-  };
 
   @override
   Widget build(BuildContext context) => Row(
-        children: labels.entries
-            .map((entry) => Expanded(
+        children: kCategoryClassifies
+            .map((classify) => Expanded(
                   child: Padding(
                     padding: const EdgeInsets.only(right: 8),
                     child: ChoiceChip(
-                      label: Text(entry.value),
-                      selected: selected == entry.key,
-                      onSelected: (_) => onChanged(entry.key),
+                      label: Text(categoryClassifyLabel(classify)),
+                      selected: selected == classify,
+                      onSelected: (_) => onChanged(classify),
                     ),
                   ),
                 ))

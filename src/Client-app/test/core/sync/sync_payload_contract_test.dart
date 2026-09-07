@@ -169,6 +169,21 @@ void main() {
         syncStatus: const Value('pending'),
         updatedAt: Value(now),
       ));
+      // Khoản chuyển do bản app TRƯỚC 2026-09-05 tạo: màn thêm giao dịch gán
+      // `categoryId = 'cat_transfer'`, một id chưa từng được seed. Xem test
+      // "transfer mang categoryId không phân giải được vẫn được đẩy".
+      await db.transactionDao.insert(TransactionsCompanion(
+        id: const Value('77777777-7777-4777-8777-777777777777'),
+        idaccount: const Value(accountId),
+        walletId: const Value(walletId),
+        categoryId: const Value('cat_transfer'),
+        walletTransfer: const Value(walletId),
+        amount: const Value(50000),
+        type: const Value('transfer'),
+        date: Value(now),
+        syncStatus: const Value('pending'),
+        updatedAt: Value(now),
+      ));
       await db.budgetDao.insert(BudgetsCompanion(
         id: const Value('44444444-4444-4444-8444-444444444444'),
         idaccount: const Value(accountId),
@@ -292,6 +307,20 @@ void main() {
         expect(p['categoryId'], isNull,
             reason: 'Khoản chuyển ví không thuộc danh mục chi tiêu nào; để '
                 'nguyên là phần thống kê đếm nó thành chi tiêu thật.');
+      });
+
+      test('transfer mang categoryId không phân giải được vẫn được đẩy', () {
+        /// Canh chừng điều gì: `_collectPendingOps` hoãn mọi giao dịch có
+        /// `categoryId` mà `_resolveCategoryId` không tìm ra, để chờ pull về
+        /// danh mục. Với khoản chuyển thì danh mục là vô nghĩa (payload bỏ
+        /// nó đi), nhưng bản app cũ từng gán `'cat_transfer'` — id không có
+        /// thật — nên những hàng ấy nằm lại máy VĨNH VIỄN, im lặng, trong khi
+        /// số dư hai ví vẫn lên server. Khoản chuyển phải đi thẳng, bỏ danh mục.
+        final p = payloadCuaGiaoDich('77777777-7777-4777-8777-777777777777');
+        expect(p['type'], 'Transfer');
+        expect(p['categoryId'], isNull);
+        expect(p['idwallet_transfer'], isNotNull,
+            reason: 'Ví đích vẫn phải giữ — chỉ danh mục là thứ bị bỏ.');
       });
 
       test('KHÔNG giá trị nội bộ nào lọt lên backend', () {

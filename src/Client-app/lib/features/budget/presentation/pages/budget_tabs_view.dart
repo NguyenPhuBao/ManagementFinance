@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../data/models/budget_entity.dart';
+import '../../domain/budget_pace.dart';
 import '../bloc/budget_state.dart';
+import '../widgets/budget_pace_text.dart';
 import '../widgets/budget_visuals.dart';
 
 /// Phần hiển thị của trang ngân sách: hai tab, thẻ tổng quan, danh sách.
@@ -24,6 +26,10 @@ class BudgetTabsView extends StatelessWidget {
   /// link không hiện — thà thiếu còn hơn có một link không đi đâu cả.
   final VoidCallback? onOpenAnalytics;
 
+  /// Mốc thời gian cho dòng "nên chi/ngày". `null` = đồng hồ máy; test truyền
+  /// mốc cố định để số ngày còn lại không đổi theo ngày chạy.
+  final DateTime? now;
+
   const BudgetTabsView({
     super.key,
     required this.state,
@@ -32,6 +38,7 @@ class BudgetTabsView extends StatelessWidget {
     required this.onDelete,
     required this.onShowDetail,
     this.onOpenAnalytics,
+    this.now,
   });
 
   @override
@@ -76,6 +83,7 @@ class BudgetTabsView extends StatelessWidget {
                 onDelete: onDelete,
                 onShowDetail: onShowDetail,
                 onOpenAnalytics: onOpenAnalytics,
+                now: now,
               ),
               _ExpiredTab(
                 budgets: state.expired,
@@ -99,6 +107,10 @@ class _ActiveTab extends StatelessWidget {
   final void Function(BudgetView) onShowDetail;
   final VoidCallback? onOpenAnalytics;
 
+  /// Mốc thời gian cho dòng "nên chi/ngày". `null` = đồng hồ máy; test truyền
+  /// mốc cố định để số ngày còn lại không đổi theo ngày chạy.
+  final DateTime? now;
+
   const _ActiveTab({
     required this.state,
     required this.onCreate,
@@ -106,6 +118,7 @@ class _ActiveTab extends StatelessWidget {
     required this.onDelete,
     required this.onShowDetail,
     this.onOpenAnalytics,
+    this.now,
   });
 
   @override
@@ -157,6 +170,7 @@ class _ActiveTab extends StatelessWidget {
           else
             ...state.active.map((v) => _BudgetCard(
                   view: v,
+                  now: now,
                   onEdit: () => onEdit(v),
                   onDelete: () => onDelete(v),
                   onTap: () => onShowDetail(v),
@@ -266,7 +280,9 @@ class _OverviewCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      vuot ? 'ĐÃ TIÊU VƯỢT THÁNG NÀY' : 'CÒN LẠI THÁNG NÀY',
+                      // Stitch ghi "tháng này", nhưng ngân sách có thể theo
+                      // tuần/quý/năm hoặc "Ngày cụ thể" — "kỳ" mới đúng.
+                      vuot ? 'ĐÃ TIÊU VƯỢT KỲ NÀY' : 'CÒN LẠI KỲ NÀY',
                       style: const TextStyle(
                         fontSize: 12,
                         letterSpacing: 1.2,
@@ -303,8 +319,15 @@ class _OverviewCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          // `Wrap` chứ không phải `Row`: hai dòng chữ vẫn nằm hai đầu một
+          // hàng như Stitch khi vừa, còn số tiền dài ở 411dp thì xuống dòng
+          // thay vì bị cắt thành "đã ..." — con số chính của thẻ không được
+          // là thứ bị cắt.
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 4,
             children: [
               Text(
                 '$conLai% ngân sách còn lại',
@@ -314,17 +337,13 @@ class _OverviewCard extends StatelessWidget {
                   color: AppColors.textSecondary,
                 ),
               ),
-              Flexible(
-                child: Text(
-                  '${CurrencyFormatter.format(state.totalSpent)} / '
-                  '${CurrencyFormatter.format(state.totalAmount)} đã dùng',
-                  textAlign: TextAlign.end,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.primary,
-                  ),
+              Text(
+                '${CurrencyFormatter.format(state.totalSpent)} / '
+                '${CurrencyFormatter.format(state.totalAmount)} đã dùng',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.primary,
                 ),
               ),
             ],
@@ -346,12 +365,15 @@ class _BudgetCard extends StatelessWidget {
   final Future<bool> Function()? onDelete;
   final bool expired;
 
+  final DateTime? now;
+
   const _BudgetCard({
     required this.view,
     required this.onTap,
     this.onEdit,
     this.onDelete,
     this.expired = false,
+    this.now,
   });
 
   @override
@@ -473,6 +495,24 @@ class _BudgetCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             BudgetProgressBar(percent: b.percentSpent, color: mau),
+            // Ngân sách hết hạn không còn ngày nào để chia — `budgetPaceLine`
+            // cũng trả null ở đó, nhưng khỏi tính cho đỡ tốn.
+            if (!expired) ...[
+              const SizedBox(height: 8),
+              Builder(builder: (_) {
+                final line =
+                    budgetPaceLine(budgetPaceOf(b, now ?? DateTime.now()));
+                if (line == null) return const SizedBox.shrink();
+                return Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    line,
+                    style: const TextStyle(
+                        fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                );
+              }),
+            ],
           ],
         ),
       ),
@@ -576,9 +616,16 @@ class _CreateButton extends StatelessWidget {
         children: [
           Icon(Icons.add, size: 24),
           SizedBox(width: 8),
-          Text(
-            'Tạo ngân sách mới',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          // Co chữ thay vì tràn khi bề rộng hẹp hoặc cỡ chữ hệ thống lớn —
+          // lộ ra lần đầu khi dựng trang ở 411dp trong test.
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                'Tạo ngân sách mới',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              ),
+            ),
           ),
         ],
       ),

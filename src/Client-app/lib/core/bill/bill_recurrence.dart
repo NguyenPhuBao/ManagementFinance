@@ -116,3 +116,12 @@ String legacyFromTimeRecurrence(String timeRecurrence) {
       return 'once';
   }
 }
+
+/// Nhãn tiếng Việt của chu kỳ, dùng chung cho form và trang chi tiết.
+String tenChuKyHoaDon(String timeRecurrence) => switch (timeRecurrence) {
+      kBillCycleWeek => 'Hàng tuần',
+      kBillCycleMonth => 'Hàng tháng',
+      kBillCycleQuarter => 'Hàng quý',
+      kBillCycleYear => 'Hàng năm',
+      _ => timeRecurrence,
+    };

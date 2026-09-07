@@ -967,6 +967,11 @@ class $TransactionsTable extends Transactions
   late final GeneratedColumn<String> goalId = GeneratedColumn<String>(
       'goal_id', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _billIdMeta = const VerificationMeta('billId');
+  @override
+  late final GeneratedColumn<String> billId = GeneratedColumn<String>(
+      'bill_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _walletTransferMeta =
       const VerificationMeta('walletTransfer');
   @override
@@ -1043,6 +1048,7 @@ class $TransactionsTable extends Transactions
         date,
         images,
         goalId,
+        billId,
         walletTransfer,
         bankTranId,
         deletedAt,
@@ -1123,6 +1129,10 @@ class $TransactionsTable extends Transactions
     if (data.containsKey('goal_id')) {
       context.handle(_goalIdMeta,
           goalId.isAcceptableOrUnknown(data['goal_id']!, _goalIdMeta));
+    }
+    if (data.containsKey('bill_id')) {
+      context.handle(_billIdMeta,
+          billId.isAcceptableOrUnknown(data['bill_id']!, _billIdMeta));
     }
     if (data.containsKey('wallet_transfer')) {
       context.handle(
@@ -1205,6 +1215,8 @@ class $TransactionsTable extends Transactions
           .read(DriftSqlType.string, data['${effectivePrefix}images'])!,
       goalId: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}goal_id']),
+      billId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}bill_id']),
       walletTransfer: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}wallet_transfer']),
       bankTranId: attachedDatabase.typeMapping
@@ -1286,6 +1298,22 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   /// luôn lịch sử của mục tiêu kia.
   final String? goalId;
 
+  /// billId: hoá đơn mà giao dịch này là khoản trả cho. NULL với mọi giao dịch
+  /// thường.
+  ///
+  /// ⚠️ **Cột CỤC BỘ — cùng lý do và cùng ràng buộc với [goalId] ở trên.**
+  ///
+  /// Vì sao cần: trước đây khoản trả hoá đơn chỉ nhận ra được bằng **tiền tố
+  /// ghi chú** (`kGhiChuTraHoaDon`), nên (1) người dùng gõ trùng tiền tố thì bị
+  /// chặn xoá oan, và (2) không có đường nào lần từ hoá đơn ngược về đúng
+  /// khoản chi nó đã sinh ra — thứ mà luồng **hoàn tác thanh toán** bắt buộc
+  /// phải có để hoàn đúng số tiền vào đúng ví.
+  ///
+  /// Hàng kéo về từ server và hàng do bản app cũ tạo đều để trống cột này, nên
+  /// hoàn tác chỉ làm được với khoản trả ghi từ bản 2026-09-06 trở đi;
+  /// `BillRepositoryImpl.undoPayment` từ chối có thông báo rõ thay vì đoán.
+  final String? billId;
+
   /// walletTransfer: Wallet_Transfer — ví đích khi chuyển khoản nội bộ
   final String? walletTransfer;
 
@@ -1321,6 +1349,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       required this.date,
       required this.images,
       this.goalId,
+      this.billId,
       this.walletTransfer,
       this.bankTranId,
       this.deletedAt,
@@ -1348,6 +1377,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     map['images'] = Variable<String>(images);
     if (!nullToAbsent || goalId != null) {
       map['goal_id'] = Variable<String>(goalId);
+    }
+    if (!nullToAbsent || billId != null) {
+      map['bill_id'] = Variable<String>(billId);
     }
     if (!nullToAbsent || walletTransfer != null) {
       map['wallet_transfer'] = Variable<String>(walletTransfer);
@@ -1388,6 +1420,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       images: Value(images),
       goalId:
           goalId == null && nullToAbsent ? const Value.absent() : Value(goalId),
+      billId:
+          billId == null && nullToAbsent ? const Value.absent() : Value(billId),
       walletTransfer: walletTransfer == null && nullToAbsent
           ? const Value.absent()
           : Value(walletTransfer),
@@ -1426,6 +1460,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       date: serializer.fromJson<DateTime>(json['date']),
       images: serializer.fromJson<String>(json['images']),
       goalId: serializer.fromJson<String?>(json['goalId']),
+      billId: serializer.fromJson<String?>(json['billId']),
       walletTransfer: serializer.fromJson<String?>(json['walletTransfer']),
       bankTranId: serializer.fromJson<String?>(json['bankTranId']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
@@ -1454,6 +1489,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       'date': serializer.toJson<DateTime>(date),
       'images': serializer.toJson<String>(images),
       'goalId': serializer.toJson<String?>(goalId),
+      'billId': serializer.toJson<String?>(billId),
       'walletTransfer': serializer.toJson<String?>(walletTransfer),
       'bankTranId': serializer.toJson<String?>(bankTranId),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
@@ -1479,6 +1515,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           DateTime? date,
           String? images,
           Value<String?> goalId = const Value.absent(),
+          Value<String?> billId = const Value.absent(),
           Value<String?> walletTransfer = const Value.absent(),
           Value<String?> bankTranId = const Value.absent(),
           Value<DateTime?> deletedAt = const Value.absent(),
@@ -1501,6 +1538,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
         date: date ?? this.date,
         images: images ?? this.images,
         goalId: goalId.present ? goalId.value : this.goalId,
+        billId: billId.present ? billId.value : this.billId,
         walletTransfer:
             walletTransfer.present ? walletTransfer.value : this.walletTransfer,
         bankTranId: bankTranId.present ? bankTranId.value : this.bankTranId,
@@ -1529,6 +1567,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       date: data.date.present ? data.date.value : this.date,
       images: data.images.present ? data.images.value : this.images,
       goalId: data.goalId.present ? data.goalId.value : this.goalId,
+      billId: data.billId.present ? data.billId.value : this.billId,
       walletTransfer: data.walletTransfer.present
           ? data.walletTransfer.value
           : this.walletTransfer,
@@ -1564,6 +1603,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           ..write('date: $date, ')
           ..write('images: $images, ')
           ..write('goalId: $goalId, ')
+          ..write('billId: $billId, ')
           ..write('walletTransfer: $walletTransfer, ')
           ..write('bankTranId: $bankTranId, ')
           ..write('deletedAt: $deletedAt, ')
@@ -1591,6 +1631,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
         date,
         images,
         goalId,
+        billId,
         walletTransfer,
         bankTranId,
         deletedAt,
@@ -1617,6 +1658,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           other.date == this.date &&
           other.images == this.images &&
           other.goalId == this.goalId &&
+          other.billId == this.billId &&
           other.walletTransfer == this.walletTransfer &&
           other.bankTranId == this.bankTranId &&
           other.deletedAt == this.deletedAt &&
@@ -1641,6 +1683,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
   final Value<DateTime> date;
   final Value<String> images;
   final Value<String?> goalId;
+  final Value<String?> billId;
   final Value<String?> walletTransfer;
   final Value<String?> bankTranId;
   final Value<DateTime?> deletedAt;
@@ -1664,6 +1707,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.date = const Value.absent(),
     this.images = const Value.absent(),
     this.goalId = const Value.absent(),
+    this.billId = const Value.absent(),
     this.walletTransfer = const Value.absent(),
     this.bankTranId = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -1688,6 +1732,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     required DateTime date,
     this.images = const Value.absent(),
     this.goalId = const Value.absent(),
+    this.billId = const Value.absent(),
     this.walletTransfer = const Value.absent(),
     this.bankTranId = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -1718,6 +1763,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Expression<DateTime>? date,
     Expression<String>? images,
     Expression<String>? goalId,
+    Expression<String>? billId,
     Expression<String>? walletTransfer,
     Expression<String>? bankTranId,
     Expression<DateTime>? deletedAt,
@@ -1742,6 +1788,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       if (date != null) 'date': date,
       if (images != null) 'images': images,
       if (goalId != null) 'goal_id': goalId,
+      if (billId != null) 'bill_id': billId,
       if (walletTransfer != null) 'wallet_transfer': walletTransfer,
       if (bankTranId != null) 'bank_tran_id': bankTranId,
       if (deletedAt != null) 'deleted_at': deletedAt,
@@ -1768,6 +1815,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       Value<DateTime>? date,
       Value<String>? images,
       Value<String?>? goalId,
+      Value<String?>? billId,
       Value<String?>? walletTransfer,
       Value<String?>? bankTranId,
       Value<DateTime?>? deletedAt,
@@ -1791,6 +1839,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       date: date ?? this.date,
       images: images ?? this.images,
       goalId: goalId ?? this.goalId,
+      billId: billId ?? this.billId,
       walletTransfer: walletTransfer ?? this.walletTransfer,
       bankTranId: bankTranId ?? this.bankTranId,
       deletedAt: deletedAt ?? this.deletedAt,
@@ -1843,6 +1892,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     if (goalId.present) {
       map['goal_id'] = Variable<String>(goalId.value);
     }
+    if (billId.present) {
+      map['bill_id'] = Variable<String>(billId.value);
+    }
     if (walletTransfer.present) {
       map['wallet_transfer'] = Variable<String>(walletTransfer.value);
     }
@@ -1891,6 +1943,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
           ..write('date: $date, ')
           ..write('images: $images, ')
           ..write('goalId: $goalId, ')
+          ..write('billId: $billId, ')
           ..write('walletTransfer: $walletTransfer, ')
           ..write('bankTranId: $bankTranId, ')
           ..write('deletedAt: $deletedAt, ')
@@ -4670,6 +4723,22 @@ class $BillsTable extends Bills with TableInfo<$BillsTable, Bill> {
       type: DriftSqlType.string,
       requiredDuringInsert: false,
       defaultValue: const Constant(''));
+  static const VerificationMeta _generatedFromBillIdMeta =
+      const VerificationMeta('generatedFromBillId');
+  @override
+  late final GeneratedColumn<String> generatedFromBillId =
+      GeneratedColumn<String>('generated_from_bill_id', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _autoPayEnabledMeta =
+      const VerificationMeta('autoPayEnabled');
+  @override
+  late final GeneratedColumn<bool> autoPayEnabled = GeneratedColumn<bool>(
+      'auto_pay_enabled', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("auto_pay_enabled" IN (0, 1))'),
+      defaultValue: const Constant(false));
   static const VerificationMeta _deletedAtMeta =
       const VerificationMeta('deletedAt');
   @override
@@ -4739,6 +4808,8 @@ class $BillsTable extends Bills with TableInfo<$BillsTable, Bill> {
         icon,
         colour,
         note,
+        generatedFromBillId,
+        autoPayEnabled,
         deletedAt,
         isDeleted,
         syncStatus,
@@ -4844,6 +4915,18 @@ class $BillsTable extends Bills with TableInfo<$BillsTable, Bill> {
       context.handle(
           _noteMeta, note.isAcceptableOrUnknown(data['note']!, _noteMeta));
     }
+    if (data.containsKey('generated_from_bill_id')) {
+      context.handle(
+          _generatedFromBillIdMeta,
+          generatedFromBillId.isAcceptableOrUnknown(
+              data['generated_from_bill_id']!, _generatedFromBillIdMeta));
+    }
+    if (data.containsKey('auto_pay_enabled')) {
+      context.handle(
+          _autoPayEnabledMeta,
+          autoPayEnabled.isAcceptableOrUnknown(
+              data['auto_pay_enabled']!, _autoPayEnabledMeta));
+    }
     if (data.containsKey('deleted_at')) {
       context.handle(_deletedAtMeta,
           deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta));
@@ -4923,6 +5006,11 @@ class $BillsTable extends Bills with TableInfo<$BillsTable, Bill> {
           .read(DriftSqlType.string, data['${effectivePrefix}colour'])!,
       note: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}note'])!,
+      generatedFromBillId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}generated_from_bill_id']),
+      autoPayEnabled: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}auto_pay_enabled'])!,
       deletedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}deleted_at']),
       isDeleted: attachedDatabase.typeMapping
@@ -4984,6 +5072,34 @@ class Bill extends DataClass implements Insertable<Bill> {
   final String colour;
   final String note;
 
+  /// generatedFromBillId: hoá đơn kỳ TRƯỚC, khi hàng này được sinh ra lúc trả
+  /// hoá đơn ấy. NULL với mọi hoá đơn do người dùng tự tạo.
+  ///
+  /// ⚠️ **Cột CỤC BỘ — không nằm trong hợp đồng đồng bộ**, cùng lý do với
+  /// `transactions.goalId`/`transactions.billId`.
+  ///
+  /// Vì sao cần: **hoàn tác thanh toán** phải gỡ luôn kỳ kế tiếp mà lần trả đã
+  /// sinh ra, nếu không người dùng còn lại hai kỳ cùng mở và trả lại lần nữa
+  /// sẽ đẻ thêm một kỳ trùng. Tìm kỳ ấy bằng cách so tên và ngày là quay lại
+  /// đúng lối so bằng tên mà cột `goalId` sinh ra để thay thế.
+  final String? generatedFromBillId;
+
+  /// autoPayEnabled: app tự thanh toán hoá đơn này khi tới ngày đến hạn, trừ
+  /// từ chính [walletId] của nó (DB v17, 2026-09-06).
+  ///
+  /// ⚠️ **Cột CỤC BỘ — không nằm trong hợp đồng đồng bộ**, cùng khuôn với
+  /// `generatedFromBillId` và ba cột trích tự động của `Goals`. Hệ quả chấp
+  /// nhận có chủ ý: cấu hình không theo người dùng sang máy khác — và đó cũng
+  /// là lý do KHÔNG mượn một cột đang có: hai máy cùng bật, cùng offline, cùng
+  /// trả một kỳ là hai khoản chi trừ hai ví, cờ đã trả đồng bộ theo LWW không
+  /// chặn được. Xin cột phía backend ở việc D của
+  /// `2026-09-06-bill-chuoi-ky-va-an-han.md`.
+  ///
+  /// Không có cột "lần chạy cuối" như mục tiêu: mỗi kỳ hoá đơn là **một hàng
+  /// riêng**, nên cờ đã trả (`isPaid`/`payStatus`) chính là chốt chống trả hai
+  /// lần. Kỳ kế tiếp kế thừa cờ này khi được sinh ra lúc trả kỳ trước.
+  final bool autoPayEnabled;
+
   /// deletedAt: NULL = đang dùng, có giá trị = đã xóa mềm
   final DateTime? deletedAt;
   final bool isDeleted;
@@ -5010,6 +5126,8 @@ class Bill extends DataClass implements Insertable<Bill> {
       required this.icon,
       required this.colour,
       required this.note,
+      this.generatedFromBillId,
+      required this.autoPayEnabled,
       this.deletedAt,
       required this.isDeleted,
       required this.syncStatus,
@@ -5045,6 +5163,10 @@ class Bill extends DataClass implements Insertable<Bill> {
     map['icon'] = Variable<String>(icon);
     map['colour'] = Variable<String>(colour);
     map['note'] = Variable<String>(note);
+    if (!nullToAbsent || generatedFromBillId != null) {
+      map['generated_from_bill_id'] = Variable<String>(generatedFromBillId);
+    }
+    map['auto_pay_enabled'] = Variable<bool>(autoPayEnabled);
     if (!nullToAbsent || deletedAt != null) {
       map['deleted_at'] = Variable<DateTime>(deletedAt);
     }
@@ -5088,6 +5210,10 @@ class Bill extends DataClass implements Insertable<Bill> {
       icon: Value(icon),
       colour: Value(colour),
       note: Value(note),
+      generatedFromBillId: generatedFromBillId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(generatedFromBillId),
+      autoPayEnabled: Value(autoPayEnabled),
       deletedAt: deletedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(deletedAt),
@@ -5125,6 +5251,9 @@ class Bill extends DataClass implements Insertable<Bill> {
       icon: serializer.fromJson<String>(json['icon']),
       colour: serializer.fromJson<String>(json['colour']),
       note: serializer.fromJson<String>(json['note']),
+      generatedFromBillId:
+          serializer.fromJson<String?>(json['generatedFromBillId']),
+      autoPayEnabled: serializer.fromJson<bool>(json['autoPayEnabled']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
       syncStatus: serializer.fromJson<String>(json['syncStatus']),
@@ -5156,6 +5285,8 @@ class Bill extends DataClass implements Insertable<Bill> {
       'icon': serializer.toJson<String>(icon),
       'colour': serializer.toJson<String>(colour),
       'note': serializer.toJson<String>(note),
+      'generatedFromBillId': serializer.toJson<String?>(generatedFromBillId),
+      'autoPayEnabled': serializer.toJson<bool>(autoPayEnabled),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
       'isDeleted': serializer.toJson<bool>(isDeleted),
       'syncStatus': serializer.toJson<String>(syncStatus),
@@ -5184,6 +5315,8 @@ class Bill extends DataClass implements Insertable<Bill> {
           String? icon,
           String? colour,
           String? note,
+          Value<String?> generatedFromBillId = const Value.absent(),
+          bool? autoPayEnabled,
           Value<DateTime?> deletedAt = const Value.absent(),
           bool? isDeleted,
           String? syncStatus,
@@ -5211,6 +5344,10 @@ class Bill extends DataClass implements Insertable<Bill> {
         icon: icon ?? this.icon,
         colour: colour ?? this.colour,
         note: note ?? this.note,
+        generatedFromBillId: generatedFromBillId.present
+            ? generatedFromBillId.value
+            : this.generatedFromBillId,
+        autoPayEnabled: autoPayEnabled ?? this.autoPayEnabled,
         deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
         isDeleted: isDeleted ?? this.isDeleted,
         syncStatus: syncStatus ?? this.syncStatus,
@@ -5248,6 +5385,12 @@ class Bill extends DataClass implements Insertable<Bill> {
       icon: data.icon.present ? data.icon.value : this.icon,
       colour: data.colour.present ? data.colour.value : this.colour,
       note: data.note.present ? data.note.value : this.note,
+      generatedFromBillId: data.generatedFromBillId.present
+          ? data.generatedFromBillId.value
+          : this.generatedFromBillId,
+      autoPayEnabled: data.autoPayEnabled.present
+          ? data.autoPayEnabled.value
+          : this.autoPayEnabled,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
       isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
       syncStatus:
@@ -5283,6 +5426,8 @@ class Bill extends DataClass implements Insertable<Bill> {
           ..write('icon: $icon, ')
           ..write('colour: $colour, ')
           ..write('note: $note, ')
+          ..write('generatedFromBillId: $generatedFromBillId, ')
+          ..write('autoPayEnabled: $autoPayEnabled, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('syncStatus: $syncStatus, ')
@@ -5313,6 +5458,8 @@ class Bill extends DataClass implements Insertable<Bill> {
         icon,
         colour,
         note,
+        generatedFromBillId,
+        autoPayEnabled,
         deletedAt,
         isDeleted,
         syncStatus,
@@ -5342,6 +5489,8 @@ class Bill extends DataClass implements Insertable<Bill> {
           other.icon == this.icon &&
           other.colour == this.colour &&
           other.note == this.note &&
+          other.generatedFromBillId == this.generatedFromBillId &&
+          other.autoPayEnabled == this.autoPayEnabled &&
           other.deletedAt == this.deletedAt &&
           other.isDeleted == this.isDeleted &&
           other.syncStatus == this.syncStatus &&
@@ -5369,6 +5518,8 @@ class BillsCompanion extends UpdateCompanion<Bill> {
   final Value<String> icon;
   final Value<String> colour;
   final Value<String> note;
+  final Value<String?> generatedFromBillId;
+  final Value<bool> autoPayEnabled;
   final Value<DateTime?> deletedAt;
   final Value<bool> isDeleted;
   final Value<String> syncStatus;
@@ -5395,6 +5546,8 @@ class BillsCompanion extends UpdateCompanion<Bill> {
     this.icon = const Value.absent(),
     this.colour = const Value.absent(),
     this.note = const Value.absent(),
+    this.generatedFromBillId = const Value.absent(),
+    this.autoPayEnabled = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.syncStatus = const Value.absent(),
@@ -5422,6 +5575,8 @@ class BillsCompanion extends UpdateCompanion<Bill> {
     this.icon = const Value.absent(),
     this.colour = const Value.absent(),
     this.note = const Value.absent(),
+    this.generatedFromBillId = const Value.absent(),
+    this.autoPayEnabled = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.syncStatus = const Value.absent(),
@@ -5454,6 +5609,8 @@ class BillsCompanion extends UpdateCompanion<Bill> {
     Expression<String>? icon,
     Expression<String>? colour,
     Expression<String>? note,
+    Expression<String>? generatedFromBillId,
+    Expression<bool>? autoPayEnabled,
     Expression<DateTime>? deletedAt,
     Expression<bool>? isDeleted,
     Expression<String>? syncStatus,
@@ -5481,6 +5638,9 @@ class BillsCompanion extends UpdateCompanion<Bill> {
       if (icon != null) 'icon': icon,
       if (colour != null) 'colour': colour,
       if (note != null) 'note': note,
+      if (generatedFromBillId != null)
+        'generated_from_bill_id': generatedFromBillId,
+      if (autoPayEnabled != null) 'auto_pay_enabled': autoPayEnabled,
       if (deletedAt != null) 'deleted_at': deletedAt,
       if (isDeleted != null) 'is_deleted': isDeleted,
       if (syncStatus != null) 'sync_status': syncStatus,
@@ -5510,6 +5670,8 @@ class BillsCompanion extends UpdateCompanion<Bill> {
       Value<String>? icon,
       Value<String>? colour,
       Value<String>? note,
+      Value<String?>? generatedFromBillId,
+      Value<bool>? autoPayEnabled,
       Value<DateTime?>? deletedAt,
       Value<bool>? isDeleted,
       Value<String>? syncStatus,
@@ -5536,6 +5698,8 @@ class BillsCompanion extends UpdateCompanion<Bill> {
       icon: icon ?? this.icon,
       colour: colour ?? this.colour,
       note: note ?? this.note,
+      generatedFromBillId: generatedFromBillId ?? this.generatedFromBillId,
+      autoPayEnabled: autoPayEnabled ?? this.autoPayEnabled,
       deletedAt: deletedAt ?? this.deletedAt,
       isDeleted: isDeleted ?? this.isDeleted,
       syncStatus: syncStatus ?? this.syncStatus,
@@ -5601,6 +5765,13 @@ class BillsCompanion extends UpdateCompanion<Bill> {
     if (note.present) {
       map['note'] = Variable<String>(note.value);
     }
+    if (generatedFromBillId.present) {
+      map['generated_from_bill_id'] =
+          Variable<String>(generatedFromBillId.value);
+    }
+    if (autoPayEnabled.present) {
+      map['auto_pay_enabled'] = Variable<bool>(autoPayEnabled.value);
+    }
     if (deletedAt.present) {
       map['deleted_at'] = Variable<DateTime>(deletedAt.value);
     }
@@ -5648,6 +5819,8 @@ class BillsCompanion extends UpdateCompanion<Bill> {
           ..write('icon: $icon, ')
           ..write('colour: $colour, ')
           ..write('note: $note, ')
+          ..write('generatedFromBillId: $generatedFromBillId, ')
+          ..write('autoPayEnabled: $autoPayEnabled, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('syncStatus: $syncStatus, ')
@@ -8202,6 +8375,7 @@ typedef $$TransactionsTableCreateCompanionBuilder = TransactionsCompanion
   required DateTime date,
   Value<String> images,
   Value<String?> goalId,
+  Value<String?> billId,
   Value<String?> walletTransfer,
   Value<String?> bankTranId,
   Value<DateTime?> deletedAt,
@@ -8227,6 +8401,7 @@ typedef $$TransactionsTableUpdateCompanionBuilder = TransactionsCompanion
   Value<DateTime> date,
   Value<String> images,
   Value<String?> goalId,
+  Value<String?> billId,
   Value<String?> walletTransfer,
   Value<String?> bankTranId,
   Value<DateTime?> deletedAt,
@@ -8299,6 +8474,9 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<String> get goalId => $composableBuilder(
       column: $table.goalId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get billId => $composableBuilder(
+      column: $table.billId, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get walletTransfer => $composableBuilder(
       column: $table.walletTransfer,
@@ -8393,6 +8571,9 @@ class $$TransactionsTableOrderingComposer
   ColumnOrderings<String> get goalId => $composableBuilder(
       column: $table.goalId, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get billId => $composableBuilder(
+      column: $table.billId, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get walletTransfer => $composableBuilder(
       column: $table.walletTransfer,
       builder: (column) => ColumnOrderings(column));
@@ -8486,6 +8667,9 @@ class $$TransactionsTableAnnotationComposer
   GeneratedColumn<String> get goalId =>
       $composableBuilder(column: $table.goalId, builder: (column) => column);
 
+  GeneratedColumn<String> get billId =>
+      $composableBuilder(column: $table.billId, builder: (column) => column);
+
   GeneratedColumn<String> get walletTransfer => $composableBuilder(
       column: $table.walletTransfer, builder: (column) => column);
 
@@ -8569,6 +8753,7 @@ class $$TransactionsTableTableManager extends RootTableManager<
             Value<DateTime> date = const Value.absent(),
             Value<String> images = const Value.absent(),
             Value<String?> goalId = const Value.absent(),
+            Value<String?> billId = const Value.absent(),
             Value<String?> walletTransfer = const Value.absent(),
             Value<String?> bankTranId = const Value.absent(),
             Value<DateTime?> deletedAt = const Value.absent(),
@@ -8593,6 +8778,7 @@ class $$TransactionsTableTableManager extends RootTableManager<
             date: date,
             images: images,
             goalId: goalId,
+            billId: billId,
             walletTransfer: walletTransfer,
             bankTranId: bankTranId,
             deletedAt: deletedAt,
@@ -8617,6 +8803,7 @@ class $$TransactionsTableTableManager extends RootTableManager<
             required DateTime date,
             Value<String> images = const Value.absent(),
             Value<String?> goalId = const Value.absent(),
+            Value<String?> billId = const Value.absent(),
             Value<String?> walletTransfer = const Value.absent(),
             Value<String?> bankTranId = const Value.absent(),
             Value<DateTime?> deletedAt = const Value.absent(),
@@ -8641,6 +8828,7 @@ class $$TransactionsTableTableManager extends RootTableManager<
             date: date,
             images: images,
             goalId: goalId,
+            billId: billId,
             walletTransfer: walletTransfer,
             bankTranId: bankTranId,
             deletedAt: deletedAt,
@@ -9909,6 +10097,8 @@ typedef $$BillsTableCreateCompanionBuilder = BillsCompanion Function({
   Value<String> icon,
   Value<String> colour,
   Value<String> note,
+  Value<String?> generatedFromBillId,
+  Value<bool> autoPayEnabled,
   Value<DateTime?> deletedAt,
   Value<bool> isDeleted,
   Value<String> syncStatus,
@@ -9936,6 +10126,8 @@ typedef $$BillsTableUpdateCompanionBuilder = BillsCompanion Function({
   Value<String> icon,
   Value<String> colour,
   Value<String> note,
+  Value<String?> generatedFromBillId,
+  Value<bool> autoPayEnabled,
   Value<DateTime?> deletedAt,
   Value<bool> isDeleted,
   Value<String> syncStatus,
@@ -10006,6 +10198,14 @@ class $$BillsTableFilterComposer extends Composer<_$AppDatabase, $BillsTable> {
 
   ColumnFilters<String> get note => $composableBuilder(
       column: $table.note, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get generatedFromBillId => $composableBuilder(
+      column: $table.generatedFromBillId,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get autoPayEnabled => $composableBuilder(
+      column: $table.autoPayEnabled,
+      builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get deletedAt => $composableBuilder(
       column: $table.deletedAt, builder: (column) => ColumnFilters(column));
@@ -10094,6 +10294,14 @@ class $$BillsTableOrderingComposer
   ColumnOrderings<String> get note => $composableBuilder(
       column: $table.note, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get generatedFromBillId => $composableBuilder(
+      column: $table.generatedFromBillId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get autoPayEnabled => $composableBuilder(
+      column: $table.autoPayEnabled,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
       column: $table.deletedAt, builder: (column) => ColumnOrderings(column));
 
@@ -10178,6 +10386,12 @@ class $$BillsTableAnnotationComposer
   GeneratedColumn<String> get note =>
       $composableBuilder(column: $table.note, builder: (column) => column);
 
+  GeneratedColumn<String> get generatedFromBillId => $composableBuilder(
+      column: $table.generatedFromBillId, builder: (column) => column);
+
+  GeneratedColumn<bool> get autoPayEnabled => $composableBuilder(
+      column: $table.autoPayEnabled, builder: (column) => column);
+
   GeneratedColumn<DateTime> get deletedAt =>
       $composableBuilder(column: $table.deletedAt, builder: (column) => column);
 
@@ -10240,6 +10454,8 @@ class $$BillsTableTableManager extends RootTableManager<
             Value<String> icon = const Value.absent(),
             Value<String> colour = const Value.absent(),
             Value<String> note = const Value.absent(),
+            Value<String?> generatedFromBillId = const Value.absent(),
+            Value<bool> autoPayEnabled = const Value.absent(),
             Value<DateTime?> deletedAt = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
             Value<String> syncStatus = const Value.absent(),
@@ -10267,6 +10483,8 @@ class $$BillsTableTableManager extends RootTableManager<
             icon: icon,
             colour: colour,
             note: note,
+            generatedFromBillId: generatedFromBillId,
+            autoPayEnabled: autoPayEnabled,
             deletedAt: deletedAt,
             isDeleted: isDeleted,
             syncStatus: syncStatus,
@@ -10294,6 +10512,8 @@ class $$BillsTableTableManager extends RootTableManager<
             Value<String> icon = const Value.absent(),
             Value<String> colour = const Value.absent(),
             Value<String> note = const Value.absent(),
+            Value<String?> generatedFromBillId = const Value.absent(),
+            Value<bool> autoPayEnabled = const Value.absent(),
             Value<DateTime?> deletedAt = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
             Value<String> syncStatus = const Value.absent(),
@@ -10321,6 +10541,8 @@ class $$BillsTableTableManager extends RootTableManager<
             icon: icon,
             colour: colour,
             note: note,
+            generatedFromBillId: generatedFromBillId,
+            autoPayEnabled: autoPayEnabled,
             deletedAt: deletedAt,
             isDeleted: isDeleted,
             syncStatus: syncStatus,

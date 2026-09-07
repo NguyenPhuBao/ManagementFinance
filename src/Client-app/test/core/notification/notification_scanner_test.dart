@@ -14,6 +14,10 @@
 library;
 
 import 'dart:async';
+// `show` chứ không import trần: `package:flutter/widgets.dart` kéo theo
+// `Category` của foundation, trùng tên với data class Drift cùng tên mà
+// `app_database.dart` phơi ra.
+import 'dart:ui' show AppLifecycleState;
 
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
@@ -52,6 +56,9 @@ class OsNotifierGia implements OsNotifier {
   Future<bool> requestPermission() async => true;
 
   @override
+  Future<bool> daCoQuyen() async => true;
+
+  @override
   Future<void> show({
     required int id,
     required String title,
@@ -71,6 +78,13 @@ class OsNotifierGia implements OsNotifier {
     String? payload,
   }) async {}
 
+  // Hai thành viên của cú chạm — bản giả này không dựng kịch bản chạm nào.
+  @override
+  Stream<String> get payloadDaCham => const Stream<String>.empty();
+
+  @override
+  Future<String?> payloadKhoiDong() async => null;
+
   @override
   Future<Set<int>> pendingIds() async => const {};
 
@@ -87,16 +101,19 @@ void main() {
 
   late AppDatabase db;
   late StreamController<SyncStatus> syncStatus;
+  late StreamController<AppLifecycleState> vongDoi;
   late int soLanNap;
 
   setUp(() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     syncStatus = StreamController<SyncStatus>.broadcast();
+    vongDoi = StreamController<AppLifecycleState>.broadcast();
     soLanNap = 0;
   });
 
   tearDown(() async {
     await syncStatus.close();
+    await vongDoi.close();
     await db.close();
   });
 
@@ -141,6 +158,7 @@ void main() {
       loadGoals: (id, at) async => goals,
       loadWallets: (id, at) async => wallets,
       syncStatus: syncStatus.stream,
+      appLifecycle: vongDoi.stream,
       osNotifier: osNotifier,
       prefsStore: prefs,
       resyncLich: onResyncLich,
@@ -158,6 +176,7 @@ void main() {
       dueDate: denHan,
       payStatus: 'Pending',
       isPaid: false,
+      autoPayEnabled: false,
       timeNotification: '3',
       isRecurrence: true,
       timeRecurrence: 'Month',
@@ -208,9 +227,26 @@ void main() {
     /// Chờ cho micro-task của listener chạy xong.
     Future<void> nhipTho() => Future<void>.delayed(Duration.zero);
 
+    test('start() quét ngay, không chờ sự kiện đồng bộ nào', () async {
+      final scanner = dungScanner();
+      await scanner.start(accountId);
+
+      expect(soLanNap, 1,
+          reason: 'Khi mất mạng, SyncEngine thoát sớm ở SyncStatus.pending — '
+              'một trạng thái KHÔNG phải isTerminal. Chờ riêng sự kiện ấy '
+              'nghĩa là cả một phiên offline không sinh thông báo nào, và hai '
+              'bộ tự chuyển tiền chạy bên trong scan() cũng không chạy lần '
+              'nào: hoá đơn bật tự trả sẽ không được trả.');
+      expect((await db.notificationDao.getAll(accountId)).length, 1);
+      await scanner.stop();
+    });
+
     test('sự kiện đồng bộ kết thúc thì kích hoạt quét', () async {
       final scanner = dungScanner();
       await scanner.start(accountId);
+      // start() tự quét một lượt rồi. Đặt lại để test này chỉ nói về đúng một
+      // chuyện: sự kiện đồng bộ có kích hoạt thêm một lượt nữa không.
+      soLanNap = 0;
 
       syncStatus.add(SyncStatus.idle);
       await nhipTho();
@@ -223,6 +259,7 @@ void main() {
     test('trạng thái chưa kết thúc thì KHÔNG quét', () async {
       final scanner = dungScanner();
       await scanner.start(accountId);
+      soLanNap = 0;
 
       syncStatus.add(SyncStatus.syncing);
       await nhipTho();
@@ -237,6 +274,9 @@ void main() {
       final scanner = dungScanner();
       await scanner.start(accountId);
       await scanner.stop();
+      // Bỏ lượt quét mở màn của start() ra khỏi phép đếm — test này chỉ nói về
+      // việc stop() có cắt đứt hẳn nguồn kích hoạt hay không.
+      soLanNap = 0;
 
       syncStatus.add(SyncStatus.idle);
       await nhipTho();
@@ -250,6 +290,9 @@ void main() {
       final scanner = dungScanner();
       await scanner.start(accountId);
       await scanner.start(accountId);
+      // Hai lời gọi start() = hai lượt quét mở màn, chuyện đó là chủ ý. Điều
+      // test này canh là listener có bị nhân đôi không.
+      soLanNap = 0;
 
       syncStatus.add(SyncStatus.idle);
       await nhipTho();
@@ -264,15 +307,86 @@ void main() {
     test('start() cho tài khoản khác thì quét theo tài khoản mới', () async {
       final scanner = dungScanner();
       await scanner.start(accountId);
+      // Lượt quét mở màn của tài khoản cũ đã ghi hàng của nó rồi; chốt lại con
+      // số ấy để phần sau chỉ nói về những gì xảy ra SAU khi đổi tài khoản.
+      final cuaTaiKhoanCu =
+          (await db.notificationDao.getAll(accountId)).length;
       await scanner.start(9);
 
       syncStatus.add(SyncStatus.idle);
       await nhipTho();
 
       expect((await db.notificationDao.getAll(9)).length, 1);
-      expect((await db.notificationDao.getAll(accountId)).length, 0,
+      expect((await db.notificationDao.getAll(accountId)).length,
+          cuaTaiKhoanCu,
           reason: 'Đổi người đăng nhập mà scanner còn giữ id cũ là ghi thông '
               'báo của người mới vào hồ sơ người cũ.');
+      await scanner.stop();
+    });
+
+    test('app quay lại từ nền thì quét', () async {
+      final scanner = dungScanner();
+      await scanner.start(accountId);
+      soLanNap = 0;
+
+      vongDoi.add(AppLifecycleState.resumed);
+      await nhipTho();
+
+      expect(soLanNap, 1,
+          reason: 'Mốc này là thứ duy nhất bắt được quãng thời gian app nằm '
+              'trong nền: hạn hoá đơn trôi qua, ngày đổi, kỳ trích tới. Thiếu '
+              'nó thì một người mở app từ sáng và để đó cả ngày sẽ không nhận '
+              'được gì cho tới lần đồng bộ kế tiếp — mà khi offline thì không '
+              'có lần nào cả.');
+      await scanner.stop();
+    });
+
+    test('vào nền hoặc chết hẳn thì KHÔNG quét', () async {
+      final scanner = dungScanner();
+      await scanner.start(accountId);
+      soLanNap = 0;
+
+      vongDoi.add(AppLifecycleState.inactive);
+      vongDoi.add(AppLifecycleState.hidden);
+      vongDoi.add(AppLifecycleState.paused);
+      vongDoi.add(AppLifecycleState.detached);
+      await nhipTho();
+
+      expect(soLanNap, 0,
+          reason: 'Chỉ `resumed` mới là "người dùng đang nhìn màn hình". Quét '
+              'ở `paused`/`detached` là chạy hai bộ tự chuyển tiền đúng lúc hệ '
+              'điều hành sắp đóng băng tiến trình — công việc dở dang.');
+      await scanner.stop();
+    });
+
+    test('stop() cắt cả nhánh vòng đời', () async {
+      final scanner = dungScanner();
+      await scanner.start(accountId);
+      await scanner.stop();
+      soLanNap = 0;
+
+      vongDoi.add(AppLifecycleState.resumed);
+      await nhipTho();
+
+      expect(soLanNap, 0,
+          reason: 'stop() chạy khi đăng xuất. Còn sót nhánh vòng đời là mở lại '
+              'app sau khi đăng xuất vẫn quét, bằng idaccount của người vừa '
+              'rời đi — cùng loại lỗ rò mà cancelAll() sinh ra để bịt.');
+    });
+
+    test('start() hai lần không nhân đôi nhánh vòng đời', () async {
+      final scanner = dungScanner();
+      await scanner.start(accountId);
+      await scanner.start(accountId);
+      soLanNap = 0;
+
+      vongDoi.add(AppLifecycleState.resumed);
+      await nhipTho();
+
+      expect(soLanNap, 1,
+          reason: 'Cùng lý do như nhánh đồng bộ: không huỷ subscription cũ thì '
+              'mỗi lời gọi start() thêm một listener, và một lần mở lại app '
+              'thành n lượt quét.');
       await scanner.stop();
     });
   });
@@ -371,6 +485,48 @@ void main() {
           reason: 'Tắt nhóm là không sinh thông báo nhóm ấy — cả trong app lẫn '
               'ra hệ điều hành. Chỉ chặn ở bước bắn thì trung tâm thông báo '
               'vẫn đầy những mục người dùng đã nói là không muốn thấy.');
+    });
+
+    test('trong giờ im lặng VẪN ghi vào app, chỉ không bắn ra ngoài', () async {
+      final prefs = InMemoryNotificationPrefsStore();
+      // Đồng hồ của test là 10:00; khoảng 09:00–11:00 phủ đúng mốc ấy.
+      await prefs.write(
+        accountId,
+        const NotificationPrefs(
+          imLangBat: true,
+          imLangTuPhut: 9 * 60,
+          imLangDenPhut: 11 * 60,
+        ),
+      );
+      final os = OsNotifierGia();
+
+      final moi =
+          await dungScanner(osNotifier: os, prefs: prefs).scan(accountId);
+
+      expect(moi, 1);
+      expect(os.daBan, isEmpty,
+          reason: 'Giờ im lặng là "đừng đánh thức tôi", không phải "đừng ghi '
+              'lại gì" — cùng ngữ nghĩa với công tắc tổng. Chặn ở bước SINH là '
+              'người dùng ngủ dậy mở app và không thấy gì đã xảy ra đêm qua.');
+    });
+
+    test('ngoài giờ im lặng thì bắn bình thường', () async {
+      final prefs = InMemoryNotificationPrefsStore();
+      await prefs.write(
+        accountId,
+        const NotificationPrefs(
+          imLangBat: true,
+          imLangTuPhut: 22 * 60,
+          imLangDenPhut: 7 * 60,
+        ),
+      );
+      final os = OsNotifierGia();
+
+      await dungScanner(osNotifier: os, prefs: prefs).scan(accountId);
+
+      expect(os.daBan, hasLength(1),
+          reason: '10:00 nằm ngoài khoảng 22:00–07:00. Phép so vắt qua nửa đêm '
+              'viết sai sẽ làm im lặng cả ngày.');
     });
 
     test('tắt một nhóm không làm im các nhóm còn lại', () async {

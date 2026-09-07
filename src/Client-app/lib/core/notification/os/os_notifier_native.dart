@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
@@ -26,14 +28,63 @@ class LocalOsNotifier implements OsNotifier {
   /// và không hiểu vì sao vẫn kêu.
   static const String kenhNhacId = 'flowmoney_alerts';
 
+  /// Khoá gộp. Mọi thông báo của app vào **cùng một nhóm**: người dùng quan
+  /// tâm tới "FlowMoney có gì mới", không tới việc chuyện đó thuộc hoá đơn hay
+  /// ngân sách. Năm dòng riêng trên màn hình khoá là thứ khiến họ tắt hết.
+  static const String khoaNhom = 'flowmoney_alerts_group';
+
+  /// Id của bản tóm tắt. **Số âm có chủ ý.**
+  ///
+  /// `osScheduledId()` xoá bit dấu nên luôn trả về 0..2^31-1. Chọn một số âm
+  /// là cách DUY NHẤT bảo đảm bản tóm tắt không bao giờ ghi đè một thông báo
+  /// thật — và nếu nó đụng thì hỏng hoàn toàn im lặng.
+  static const int idTomTat = -1;
+
   static const String _kenhNhacTen = 'Nhắc tài chính';
   static const String _kenhNhacMoTa =
       'Nhắc hoá đơn đến hạn, cảnh báo ngân sách và tiến độ mục tiêu.';
 
   bool _daKhoiTao = false;
 
+  /// Broadcast: `NotificationTapRouter` có thể huỷ rồi nghe lại.
+  final StreamController<String> _cham = StreamController<String>.broadcast();
+
   @override
   bool get isSupported => true;
+
+  @override
+  Stream<String> get payloadDaCham => _cham.stream;
+
+  @override
+  Future<String?> payloadKhoiDong() async {
+    // Cả `init()` cũng nằm trong try: hàm này chạy trên đường khởi động app,
+    // và một trục trặc của nền tảng ở đó không được phép làm app không mở lên.
+    try {
+      await init();
+      final chiTiet = await _plugin.getNotificationAppLaunchDetails();
+      if (chiTiet == null || !chiTiet.didNotificationLaunchApp) return null;
+
+      final payload = chiTiet.notificationResponse?.payload;
+      if (payload == null || payload.isEmpty) return null;
+      return payload;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Xử lý cú chạm khi app **đang sống**.
+  ///
+  /// Là phương thức của lớp chứ không phải hàm top-level: nó phải chạm tới
+  /// `_cham`, và gắn callback ở đây cũng khiến `init()` luỹ đẳng trở thành
+  /// điều kiện đủ để không có hai người cùng nghe một cú chạm.
+  void _khiChamVaoThongBao(NotificationResponse response) {
+    final payload = response.payload;
+    // Không payload thì không suy ra được màn nào — im lặng thay vì phát chuỗi
+    // rỗng ra cho nơi nhận tự lọc.
+    if (payload == null || payload.isEmpty) return;
+    if (_cham.isClosed) return;
+    _cham.add(payload);
+  }
 
   @override
   Future<void> init() async {
@@ -100,6 +151,33 @@ class LocalOsNotifier implements OsNotifier {
   }
 
   @override
+  Future<bool> daCoQuyen() async {
+    try {
+      await init();
+
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        final android = _plugin.resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+        return await android?.areNotificationsEnabled() ?? false;
+      }
+
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        final ios = _plugin.resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin>();
+        // `checkPermissions` KHÔNG bật hộp thoại — khác `requestPermissions`.
+        final tt = await ios?.checkPermissions();
+        return tt?.isEnabled ?? false;
+      }
+
+      return false;
+    } catch (_) {
+      // Trang cài đặt gọi hàm này ngay lúc dựng; một trục trặc của nền tảng
+      // không được phép làm trắng màn hình.
+      return false;
+    }
+  }
+
+  @override
   Future<void> show({
     required int id,
     required String title,
@@ -122,8 +200,47 @@ class LocalOsNotifier implements OsNotifier {
           // đáng cắt ngang.
           importance: Importance.high,
           priority: Priority.high,
+          groupKey: khoaNhom,
         ),
-        iOS: DarwinNotificationDetails(),
+        iOS: DarwinNotificationDetails(threadIdentifier: khoaNhom),
+      ),
+    );
+
+    // SAU thông báo thật, không phải trước: mọi phép kiểm và mọi người đọc log
+    // đều mong lời gọi đầu tiên là thông báo mà nơi gọi vừa yêu cầu.
+    await _dangBanTomTat();
+  }
+
+  /// Đăng (hoặc cập nhật) bản tóm tắt của nhóm.
+  ///
+  /// Từ Android 7, đặt `groupKey` mà **không** có bản tóm tắt thì các thông báo
+  /// vẫn nằm rời nhau — công sức gộp coi như không có. Bản tóm tắt dùng id cố
+  /// định nên mỗi lần đăng lại chỉ ghi đè chính nó.
+  ///
+  /// `GroupAlertBehavior.children` để bản tóm tắt **im lặng**: tiếng và rung là
+  /// việc của thông báo thật, còn tóm tắt kêu nữa là mỗi sự kiện kêu hai lần.
+  Future<void> _dangBanTomTat() async {
+    // **Chỉ Android.** iOS gộp theo `threadIdentifier` và không có khái niệm
+    // bản tóm tắt; đăng thêm một cái ở đó là một thông báo TRỐNG nằm trên màn
+    // hình khoá — và nó không bao giờ lộ ra trong một lần kiểm chạy trên
+    // Android.
+    if (defaultTargetPlatform != TargetPlatform.android) return;
+
+    await _plugin.show(
+      id: idTomTat,
+      title: _kenhNhacTen,
+      body: null,
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          kenhNhacId,
+          _kenhNhacTen,
+          channelDescription: _kenhNhacMoTa,
+          importance: Importance.high,
+          priority: Priority.high,
+          groupKey: khoaNhom,
+          setAsGroupSummary: true,
+          groupAlertBehavior: GroupAlertBehavior.children,
+        ),
       ),
     );
   }
@@ -155,8 +272,11 @@ class LocalOsNotifier implements OsNotifier {
           channelDescription: _kenhNhacMoTa,
           importance: Importance.high,
           priority: Priority.high,
+          // Nhắc hoá đơn đặt trước là loại hay dồn lại nhất — bỏ nó ra ngoài
+          // nhóm là bỏ đúng chỗ cần gộp.
+          groupKey: khoaNhom,
         ),
-        iOS: DarwinNotificationDetails(),
+        iOS: DarwinNotificationDetails(threadIdentifier: khoaNhom),
       ),
     );
   }
@@ -185,12 +305,3 @@ class LocalOsNotifier implements OsNotifier {
 /// stub — conditional import đòi ba file phơi ra cùng một API.
 OsNotifier createOsNotifier() => LocalOsNotifier();
 
-/// Xử lý cú chạm vào thông báo.
-///
-/// Lát này chưa điều hướng: `payload` mang `dedupeKey`, và việc dịch nó thành
-/// một đường dẫn trong app cần router — thứ chưa sẵn sàng ở tầng này. Cú chạm
-/// vẫn mở app, và vòng quét chạy ngay sau đó sinh đúng hàng trong trung tâm
-/// thông báo, nên người dùng không mất thông tin.
-void _khiChamVaoThongBao(NotificationResponse response) {
-  // Cố ý để trống. Xem chú thích trên.
-}

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/category/category_classify.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
@@ -26,7 +27,9 @@ class ChooseCategoryPage extends StatefulWidget {
 }
 
 class _ChooseCategoryPageState extends State<ChooseCategoryPage> {
-  late int _selectedTab;
+  /// Tab đang mở — một trong `kCategoryClassifies`. Trước đây là chỉ số 0/1
+  /// nên tab vay/nợ không có chỗ đứng, và mọi giá trị lạ đều rơi về tab chi.
+  late String _classify;
   CategoryTree? _tree;
   bool _isLoading = true;
   String _searchQuery = '';
@@ -35,12 +38,12 @@ class _ChooseCategoryPageState extends State<ChooseCategoryPage> {
   CategoryManagementRepository get _repository =>
       widget.repository ?? sl<CategoryManagementRepository>();
 
-  String get _classify => _selectedTab == 0 ? 'chi' : 'thu';
-
   @override
   void initState() {
     super.initState();
-    _selectedTab = widget.classify == 'thu' ? 1 : 0;
+    _classify = kCategoryClassifies.contains(widget.classify)
+        ? widget.classify
+        : kCategoryClassifies.first;
     _loadTree();
   }
 
@@ -142,41 +145,42 @@ class _ChooseCategoryPageState extends State<ChooseCategoryPage> {
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
-          children: [
-            Expanded(child: _buildSegmentButton(0, 'Khoản chi')),
-            Expanded(child: _buildSegmentButton(1, 'Khoản thu')),
-          ],
+          children: kCategoryClassifies
+              .map((classify) => Expanded(child: _buildSegmentButton(classify)))
+              .toList(),
         ),
       );
 
-  Widget _buildSegmentButton(int index, String label) => GestureDetector(
-        onTap: () {
-          if (_selectedTab == index) return;
-          setState(() {
-            _selectedTab = index;
-            _expandedGroups.clear();
-          });
-          _loadTree();
-        },
-        child: Container(
-          alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: _selectedTab == index ? Colors.white : Colors.transparent,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: _selectedTab == index
-                  ? AppColors.primary
-                  : AppColors.textSecondary,
-            ),
+  Widget _buildSegmentButton(String classify) {
+    final selected = _classify == classify;
+    return GestureDetector(
+      key: Key('category-classify-$classify'),
+      onTap: () {
+        if (selected) return;
+        setState(() {
+          _classify = classify;
+          _expandedGroups.clear();
+        });
+        _loadTree();
+      },
+      child: Container(
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Text(
+          categoryClassifyLabel(classify),
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: selected ? AppColors.primary : AppColors.textSecondary,
           ),
         ),
-      );
+      ),
+    );
+  }
 
   Widget _buildSearchBar() => TextField(
         onChanged: (value) => setState(() => _searchQuery = value),

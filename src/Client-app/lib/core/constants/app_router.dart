@@ -17,6 +17,7 @@ import '../../features/analytics/presentation/pages/export_report_page.dart';
 import '../../features/transaction/presentation/pages/add_transaction_page.dart';
 import '../../features/transaction/presentation/pages/choose_category_page.dart';
 import '../../features/transaction/presentation/pages/transaction_page.dart';
+import '../../features/budget/presentation/pages/budget_detail_page.dart';
 import '../../features/budget/presentation/pages/budget_page.dart';
 import '../../features/budget/presentation/pages/budget_rules_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
@@ -38,6 +39,7 @@ import '../../features/bill/presentation/bloc/bill_bloc.dart';
 import '../../features/bill/presentation/pages/bill_page.dart';
 import '../../features/bill/presentation/pages/bill_add_page.dart';
 import '../../features/bill/presentation/pages/bill_edit_page.dart';
+import '../../features/bill/presentation/pages/bill_detail_page.dart';
 import '../../features/goal/presentation/pages/goal_page.dart';
 import '../../features/goal/presentation/pages/goal_add_page.dart';
 import '../../features/goal/presentation/pages/goal_detail_page.dart';
@@ -173,7 +175,12 @@ class AppRouter {
           ),
           GoRoute(
             path: '/add',
-            builder: (_, __) => const AddTransactionPage(),
+            // `extra` là EditTransactionArgs → trang mở ở chế độ sửa.
+            builder: (_, state) => AddTransactionPage(
+              initial: state.extra is EditTransactionArgs
+                  ? state.extra as EditTransactionArgs
+                  : null,
+            ),
             routes: [
               GoRoute(
                 path: 'category',
@@ -211,6 +218,15 @@ class AppRouter {
               builder: (_, state) => BudgetRulesPage(
                     budgetId: state.uri.queryParameters['id'],
                   )),
+          // Chi tiết một ngân sách. Đặt dưới `/budget/detail/` chứ không phải
+          // `/budget/:id` vì `/budget/rules` đã tồn tại và sẽ bị tham số nuốt.
+          // Ngoài shell như trang cấu hình, để `push` từ tab Ngân sách không
+          // dính bẫy `StatefulShellRoute` (7.8 NOTIFICATION_FEATURE.md).
+          GoRoute(
+            path: '/budget/detail/:id',
+            builder: (_, state) =>
+                BudgetDetailPage(budgetId: state.pathParameters['id']!),
+          ),
 
           // Category
           GoRoute(
@@ -274,11 +290,29 @@ class AppRouter {
               ),
             ),
           ),
+          // Chi tiết một hoá đơn. Ngoài shell như các route hoá đơn khác, nên
+          // `push` từ danh sách không dính bẫy `StatefulShellRoute`. Đặt SAU
+          // '/bills/add' và '/bills/:id/edit' — đường cụ thể trước đường có
+          // tham số, cùng lý do với '/goals/:id'.
+          GoRoute(
+            path: '/bills/:id',
+            builder: (_, s) => BlocProvider<BillBloc>(
+              create: (_) => sl<BillBloc>(),
+              child: BillDetailPage(
+                id: s.pathParameters['id']!,
+                bill: s.extra as Bill?,
+              ),
+            ),
+          ),
 
           // Notification
           GoRoute(
             path: '/notifications',
-            builder: (_, __) => const NotificationCenterPage(),
+            // Route đọc idaccount rồi truyền xuống; trang không hỏi AuthBloc —
+            // cùng mẫu với NotificationSettingsPage ngay bên dưới.
+            builder: (ctx, __) => NotificationCenterPage(
+              idaccount: currentAccountIdOrNull(ctx),
+            ),
           ),
           // Trang cài đặt tự đọc `idaccount` được truyền vào chứ không hỏi
           // AuthBloc — xem chú thích trong NotificationSettingsPage.

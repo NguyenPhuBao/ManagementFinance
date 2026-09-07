@@ -18,6 +18,7 @@ class TransactionBloc extends Bloc<TransactionEvent, TransactionState> {
     on<LoadTransactionsEvent>(_onLoadTransactions);
     on<TransactionsUpdatedEvent>(_onTransactionsUpdated);
     on<AddTransactionEvent>(_onAddTransaction);
+    on<UpdateTransactionEvent>(_onUpdateTransaction);
     on<DeleteTransactionEvent>(_onDeleteTransaction);
     on<FilterMonthEvent>(_onFilterMonth);
   }
@@ -114,6 +115,54 @@ class TransactionBloc extends Bloc<TransactionEvent, TransactionState> {
         ));
       }
     }
+  }
+
+  Future<void> _onUpdateTransaction(
+    UpdateTransactionEvent event,
+    Emitter<TransactionState> emit,
+  ) async {
+    // Cùng khuôn với thêm: trang sửa nghe `actionSuccess` để pop.
+    final currState = state is TransactionLoadedState
+        ? (state as TransactionLoadedState)
+        : null;
+    if (currState != null) {
+      emit(currState.copyWith(isSubmitting: true, actionSuccess: null));
+    }
+    try {
+      await transactionRepository.updateTransaction(event.before, event.after);
+      syncEngine?.scheduleSync();
+      _emitActionResult(emit, success: true);
+    } catch (e) {
+      _emitActionResult(emit, success: false, error: e.toString());
+    }
+  }
+
+  void _emitActionResult(
+    Emitter<TransactionState> emit, {
+    required bool success,
+    String? error,
+  }) {
+    if (state is TransactionLoadedState) {
+      final curr = state as TransactionLoadedState;
+      emit(curr.copyWith(
+        isSubmitting: false,
+        actionSuccess: success,
+        errorMessage: error,
+      ));
+      return;
+    }
+    final now = DateTime.now();
+    emit(TransactionLoadedState(
+      transactions: const [],
+      monthlyTransactions: const [],
+      totalIncome: 0,
+      totalExpense: 0,
+      selectedYear: now.year,
+      selectedMonth: now.month,
+      isSubmitting: false,
+      actionSuccess: success,
+      errorMessage: error,
+    ));
   }
 
   Future<void> _onDeleteTransaction(

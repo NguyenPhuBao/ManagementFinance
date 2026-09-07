@@ -78,6 +78,8 @@ class _BudgetRulesContent extends StatelessWidget {
       builder: (context, state) => switch (state) {
         BudgetEditorReady(:final categories, :final editing) => BudgetForm(
             categories: categories,
+            suggestFor: (id) =>
+                context.read<BudgetCubit>().suggestAmount(idaccount, id),
             editing: editing,
             onSubmit: (draft) => _submit(context, draft),
           ),

@@ -6,8 +6,12 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../../core/category/category_classify.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
+import '../../../budget/data/models/budget_entity.dart';
+import '../../../budget/data/repositories/budget_repository.dart';
+import '../../../budget/domain/budget_impact.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../../../features/category/data/models/category_suggestion.dart';
 import '../../../../features/category/data/repositories/category_management_repository.dart';
@@ -18,12 +22,37 @@ import '../bloc/transaction_bloc.dart';
 import '../bloc/transaction_event.dart';
 import '../bloc/transaction_state.dart';
 
+/// Dữ liệu mở trang ở chế độ SỬA: giao dịch gốc và danh mục của nó (đã tra
+/// sẵn ở nơi gọi, vì entity chỉ giữ `categoryId`). Đi qua `extra` của route
+/// `/add`.
+/// Xem [AddTransactionPage.budgetLookup].
+typedef BudgetLookup = Future<BudgetView?> Function(
+  int idaccount,
+  String categoryId,
+);
+
+class EditTransactionArgs {
+  const EditTransactionArgs({required this.transaction, this.category});
+
+  final TransactionEntity transaction;
+  final Category? category;
+}
+
 class AddTransactionPage extends StatefulWidget {
   final int idaccount;
   final CategoryManagementRepository? categoryRepository;
   final List<Wallet>? wallets;
   final CategorySuggestionEngine suggestionEngine;
   final TransactionBloc? transactionBloc;
+
+  /// Có giá trị → trang là "Sửa giao dịch": điền sẵn, lưu bằng
+  /// `UpdateTransactionEvent` (cùng `id`), không tạo hàng mới.
+  final EditTransactionArgs? initial;
+
+  /// Tra ngân sách đang chạy của một danh mục, để hỏi/báo trước khi ghi khoản
+  /// chi. `null` = lấy từ `sl<BudgetRepository>()`; test tiêm thẳng để không
+  /// phải dựng DI.
+  final BudgetLookup? budgetLookup;
 
   const AddTransactionPage({
     super.key,
@@ -32,6 +61,8 @@ class AddTransactionPage extends StatefulWidget {
     this.wallets,
     this.suggestionEngine = const CategorySuggestionEngine(),
     this.transactionBloc,
+    this.initial,
+    this.budgetLookup,
   });
 
   @override
@@ -39,7 +70,10 @@ class AddTransactionPage extends StatefulWidget {
 }
 
 class _AddTransactionPageState extends State<AddTransactionPage> {
-  int _selectedSegment = 0; // 0: Chi tiêu, 1: Thu nhập, 2: Chuyển khoản
+  /// Hai loại giao dịch (từ 2026-09-05): 0 = Giao dịch (biến động số dư, có
+  /// danh mục), 1 = Chuyển khoản (giữa hai ví, không danh mục). Chiều tiền
+  /// không còn là một segment — nó suy từ danh mục, xem [_resolvedType].
+  int _selectedSegment = 0;
   String _amountString = "0";
 
   List<Wallet> _wallets = [];
@@ -48,18 +82,64 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   Category? _selectedCategory;
   CategorySuggestion? _suggestion;
 
+  /// Chiều tiền người dùng chọn khi danh mục là vay/nợ: `'chi'` (tiền ra) hoặc
+  /// `'thu'` (tiền vào). `null` với mọi danh mục khác. Được gợi sẵn theo tên
+  /// danh mục lúc chọn ([_chonDanhMuc]) và đổi bằng công tắc trên form.
+  String? _debtDirection;
+
   DateTime _selectedDate = DateTime.now();
   final TextEditingController _noteController = TextEditingController();
   bool _isLoadingWallets = true;
 
+  /// Tác động lên ngân sách của khoản vừa gửi đi, để listener chọn lời nhắn
+  /// sau khi lưu xong. Đặt ngay trước khi gửi event, xoá ngay khi đã dùng.
+  BudgetImpact? _pendingImpact;
+
   CategoryManagementRepository get _categoryRepository =>
       widget.categoryRepository ?? sl<CategoryManagementRepository>();
+
+  TransactionEntity? get _editing => widget.initial?.transaction;
+  bool get _isEditing => _editing != null;
 
   @override
   void initState() {
     super.initState();
+    final editing = _editing;
+    if (editing != null) {
+      // Điền sẵn TRƯỚC khi gắn listener ghi chú, để lần gán text đầu không
+      // kích hoạt tra cứu gợi ý.
+      _selectedSegment = editing.type == 'transfer' ? 1 : 0;
+      _amountString = editing.amount == editing.amount.roundToDouble()
+          ? editing.amount.toInt().toString()
+          : editing.amount.toString();
+      _selectedDate = editing.date;
+      _noteController.text = editing.note;
+      final category = widget.initial?.category;
+      if (category != null) {
+        _selectedCategory = category;
+        // Chiều tiền đã chọn lúc tạo nằm ở `type`; không gợi lại theo tên.
+        _debtDirection =
+            isDebtClassify(category.classify) ? editing.type : null;
+      }
+    }
     _noteController.addListener(_onNoteChanged);
     _loadWallets();
+  }
+
+  /// Ở chế độ sửa, ví của giao dịch phải thắng ví đầu danh sách.
+  void _apDungViDangSua() {
+    final editing = _editing;
+    if (editing == null) return;
+    Wallet? find(String? id) {
+      if (id == null) return null;
+      for (final w in _wallets) {
+        if (w.id == id) return w;
+      }
+      return null;
+    }
+
+    _selectedWallet = find(editing.walletId) ?? _selectedWallet;
+    _destinationWallet = find(editing.walletTransfer) ?? _destinationWallet;
   }
 
   @override
@@ -78,6 +158,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         _selectedWallet = _wallets.isEmpty ? null : _wallets.first;
         _destinationWallet =
             _wallets.length > 1 ? _wallets[1] : _selectedWallet;
+        _apDungViDangSua();
         _isLoadingWallets = false;
       });
       return;
@@ -103,6 +184,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
           _selectedWallet = null;
           _destinationWallet = null;
         }
+        _apDungViDangSua();
         _isLoadingWallets = false;
       });
     }
@@ -120,7 +202,33 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     return widget.idaccount;
   }
 
-  String get _classify => _selectedSegment == 0 ? 'chi' : 'thu';
+  bool get _isTransfer => _selectedSegment == 1;
+
+  /// Giá trị `type` sẽ ghi xuống SQLite (`chi` | `thu` | `transfer`), suy từ
+  /// loại giao dịch và danh mục đã chọn. `null` khi chưa đủ dữ kiện.
+  ///
+  /// Backend chỉ có hai loại (`Transaction` ± amount, `Transfer`); bộ giá trị
+  /// nội bộ này được `SyncPayloadNormalizer` quy đổi, nên giữ nguyên nó là
+  /// giữ nguyên hợp đồng đồng bộ, DAO và mọi chỗ thống kê đọc `type`.
+  String? get _resolvedType {
+    if (_isTransfer) return 'transfer';
+    final category = _selectedCategory;
+    if (category == null) return null;
+    if (isDebtClassify(category.classify)) return _debtDirection;
+    return category.classify == 'thu' ? 'thu' : 'chi';
+  }
+
+  /// Đường DUY NHẤT để đặt danh mục — cả bảng chọn lẫn thẻ gợi ý đều qua đây,
+  /// để chiều tiền vay/nợ luôn được gợi sẵn kèm theo.
+  void _chonDanhMuc(Category category) {
+    setState(() {
+      _selectedCategory = category;
+      _suggestion = null;
+      _debtDirection = isDebtClassify(category.classify)
+          ? suggestDebtDirection(category.name)
+          : null;
+    });
+  }
 
   /// Hoãn việc tra cứu gợi ý cho tới khi người dùng ngừng gõ.
   ///
@@ -133,7 +241,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   void _onNoteChanged() {
     _hoanGoiY?.cancel();
     final note = _noteController.text.trim();
-    if (note.isEmpty || _selectedSegment == 2 || _selectedCategory != null) {
+    if (note.isEmpty || _isTransfer || _selectedCategory != null) {
       if (_suggestion != null && mounted) {
         setState(() => _suggestion = null);
       }
@@ -151,10 +259,10 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
 
   Future<void> _loadSuggestion(String note) async {
     final requestedSegment = _selectedSegment;
-    final requestedClassify = _classify;
-    final categories = await _categoryRepository.selectableChildren(
+    // Không còn segment chi/thu để khoanh vùng, nên tìm trên cả ba phân loại:
+    // chiều tiền suy từ danh mục được chọn, không phải ngược lại.
+    final categories = await _categoryRepository.selectableChildrenAll(
       accountId: _accountId(),
-      classify: requestedClassify,
     );
     // MỘT truy vấn cho cả tài khoản. Trước đây chỗ này gọi `loadKeywords` một
     // lần cho mỗi danh mục, nên tài khoản có 20 danh mục là 20 truy vấn — nhân
@@ -176,8 +284,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     );
     if (!mounted ||
         _selectedSegment != requestedSegment ||
-        _classify != requestedClassify ||
-        _selectedSegment == 2 ||
+        _isTransfer ||
         _selectedCategory != null ||
         _noteController.text.trim() != note) {
       return;
@@ -354,11 +461,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     }
   }
 
-  Color _getAmountColor() {
-    if (_selectedSegment == 0) return AppColors.primary;
-    if (_selectedSegment == 1) return AppColors.income;
-    return AppColors.primary;
-  }
+  Color _getAmountColor() =>
+      _resolvedType == 'thu' ? AppColors.income : AppColors.primary;
 
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
@@ -374,7 +478,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     }
   }
 
-  void _saveTransaction(BuildContext context) {
+  Future<void> _saveTransaction(BuildContext context) async {
     final amount = double.tryParse(_amountString.replaceAll('.', '')) ?? 0;
     if (amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -388,50 +492,131 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       );
       return;
     }
-    if (_selectedSegment != 2 && _selectedCategory == null) {
+    if (!_isTransfer && _selectedCategory == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Vui lòng chọn danh mục')),
       );
       return;
     }
-    if (_selectedSegment == 2 && _destinationWallet == null) {
+    if (_isTransfer && _destinationWallet == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Vui lòng chọn ví đích')),
       );
       return;
     }
+    final type = _resolvedType;
+    if (type == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng chọn chiều tiền')),
+      );
+      return;
+    }
 
-    final type = _selectedSegment == 0
-        ? 'chi'
-        : (_selectedSegment == 1 ? 'thu' : 'transfer');
-
-    final authState = context.read<AuthBloc>().state;
-    final user = (authState is AuthSuccess) ? authState.user : null;
-    final userIdAccount = int.tryParse(user?.id ?? '') ?? widget.idaccount;
-
+    final editing = _editing;
     final tx = TransactionEntity(
-      id: const Uuid().v4(),
+      // Sửa thì giữ nguyên id (và những gì form không đụng tới) — tạo id mới
+      // là nhân đôi giao dịch.
+      id: editing?.id ?? const Uuid().v4(),
       walletId: _selectedWallet!.id,
-      idaccount: userIdAccount,
-      categoryId:
-          _selectedSegment == 2 ? 'cat_transfer' : _selectedCategory!.id,
+      idaccount: editing?.idaccount ?? _accountId(),
+      // Khoản chuyển KHÔNG có danh mục. Trước đây chỗ này gán 'cat_transfer' —
+      // một id chưa từng được seed — và SyncEngine hoãn đẩy hàng ấy vĩnh viễn
+      // vì không phân giải được danh mục.
+      categoryId: _isTransfer ? null : _selectedCategory!.id,
+      walletTransfer: _isTransfer ? _destinationWallet!.id : null,
+      goalId: editing?.goalId,
       amount: amount,
       type: type,
       note: _noteController.text.trim(),
       date: _selectedDate,
-      images: const [],
+      images: editing?.images ?? const [],
       syncStatus: 'pending',
       isDeleted: false,
       updatedAt: DateTime.now(),
     );
 
-    context.read<TransactionBloc>().add(
-          AddTransactionEvent(
-            transaction: tx,
-            destinationWalletId:
-                _selectedSegment == 2 ? _destinationWallet?.id : null,
+    final bloc = context.read<TransactionBloc>();
+
+    // Ngân sách của danh mục: "Chặn" thì hỏi trước khi ghi khoản làm vượt,
+    // "Cảnh báo" thì ghi luôn rồi báo. Đây là nơi DUY NHẤT đọc `OverSpending`.
+    final impact = await _budgetImpactFor(tx, editing);
+    if (!context.mounted) return;
+    if (impact != null && impact.requiresConfirmation) {
+      final ok = await _confirmOverBudget(context, impact);
+      if (ok != true || !context.mounted) return;
+    }
+    _pendingImpact = impact;
+
+    if (editing != null) {
+      bloc.add(UpdateTransactionEvent(before: editing, after: tx));
+      return;
+    }
+    bloc.add(AddTransactionEvent(
+      transaction: tx,
+      destinationWalletId: tx.walletTransfer,
+    ));
+  }
+
+  Future<BudgetImpact?> _budgetImpactFor(
+    TransactionEntity tx,
+    TransactionEntity? editing,
+  ) async {
+    final categoryId = tx.categoryId;
+    if (tx.type != 'chi' || categoryId == null) return null;
+
+    BudgetView? view;
+    try {
+      view = await _lookupBudget(tx.idaccount, categoryId);
+    } catch (_) {
+      // Tra ngân sách hỏng không được chặn việc ghi giao dịch.
+      return null;
+    }
+    if (view == null) return null;
+
+    final now = DateTime.now();
+    // Sửa: số cũ đã nằm trong "đã chi" nếu nó cùng danh mục và cùng kỳ —
+    // phải trừ ra, không thì báo vượt oan.
+    var previous = 0.0;
+    if (editing != null &&
+        editing.type == 'chi' &&
+        editing.categoryId == categoryId &&
+        budgetPeriodContains(view.budget, editing.date, now)) {
+      previous = editing.amount;
+    }
+    return budgetImpactOf(
+      view: view,
+      amount: tx.amount,
+      previousAmount: previous,
+      date: tx.date,
+      now: now,
+    );
+  }
+
+  Future<BudgetView?> _lookupBudget(int idaccount, String categoryId) {
+    final custom = widget.budgetLookup;
+    if (custom != null) return custom(idaccount, categoryId);
+    if (!sl.isRegistered<BudgetRepository>()) return Future.value(null);
+    return sl<BudgetRepository>().activeBudgetForCategory(idaccount, categoryId);
+  }
+
+  Future<bool?> _confirmOverBudget(BuildContext context, BudgetImpact impact) {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Vượt ngân sách'),
+        content: Text(budgetImpactDialogText(impact)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Huỷ'),
           ),
-        );
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Vẫn ghi'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -440,8 +625,17 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       listener: (context, state) {
         if (state is TransactionLoadedState) {
           if (state.actionSuccess == true) {
+            // Lời nhắn về ngân sách thay lời nhắn mặc định — chung chung,
+            // không con số (banner tạm thời tối giản theo ý người dùng).
+            final impactText = budgetImpactSnackText(_pendingImpact);
+            _pendingImpact = null;
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Thêm giao dịch thành công!')),
+              SnackBar(
+                content: Text(impactText ??
+                    (_isEditing
+                        ? 'Đã lưu thay đổi'
+                        : 'Thêm giao dịch thành công!')),
+              ),
             );
             context.pop(true);
           } else if (state.actionSuccess == false &&
@@ -463,9 +657,9 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                   color: AppColors.primary, size: 28),
               onPressed: () => context.pop(),
             ),
-            title: const Text(
-              'Thêm giao dịch',
-              style: TextStyle(
+            title: Text(
+              _isEditing ? 'Sửa giao dịch' : 'Thêm giao dịch',
+              style: const TextStyle(
                 color: AppColors.primary,
                 fontWeight: FontWeight.w600,
                 fontSize: 20,
@@ -526,31 +720,19 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       ),
       child: Row(
         children: [
-          Expanded(child: _buildSegmentButton(0, 'Chi tiêu')),
-          Expanded(child: _buildSegmentButton(1, 'Thu nhập')),
-          Expanded(child: _buildSegmentButton(2, 'Chuyển khoản')),
+          Expanded(child: _buildSegmentButton(0, 'Giao dịch')),
+          Expanded(child: _buildSegmentButton(1, 'Chuyển khoản')),
         ],
       ),
     );
   }
 
   Widget _buildSegmentButton(int index, String title) {
-    bool isSelected = _selectedSegment == index;
-    Color bgColor = Colors.transparent;
-    Color textColor = AppColors.textSecondary;
-
-    if (isSelected) {
-      if (index == 0) {
-        bgColor = AppColors.expense;
-        textColor = Colors.white;
-      } else if (index == 1) {
-        bgColor = AppColors.income;
-        textColor = Colors.white;
-      } else {
-        bgColor = AppColors.primary;
-        textColor = Colors.white;
-      }
-    }
+    final isSelected = _selectedSegment == index;
+    // Cả hai loại đều tô `primary` khi chọn: màu xanh/đỏ của thu/chi nay theo
+    // danh mục (ô số tiền), không còn gắn vào segment.
+    final bgColor = isSelected ? AppColors.primary : Colors.transparent;
+    final textColor = isSelected ? Colors.white : AppColors.textSecondary;
 
     return GestureDetector(
       key: Key('transaction-type-$index'),
@@ -606,7 +788,10 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   }
 
   Widget _buildFormCard(BuildContext context) {
-    bool isTransfer = _selectedSegment == 2;
+    final isTransfer = _isTransfer;
+    final selectedCategory = _selectedCategory;
+    final showDebtDirection =
+        selectedCategory != null && isDebtClassify(selectedCategory.classify);
     final walletDisplay = _isLoadingWallets
         ? 'Đang tải ví...'
         : (_selectedWallet != null
@@ -671,18 +856,21 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
               ),
               showArrow: true,
               onTap: () async {
+                // Mở đúng tab của danh mục đang chọn; lần đầu thì tab chi.
                 final selected = await context.push<Category>(
                   '/add/category',
-                  extra: _classify,
+                  extra: selectedCategory?.classify ?? kCategoryClassifies.first,
                 );
-                if (selected != null) {
-                  setState(() {
-                    _selectedCategory = selected;
-                    _suggestion = null;
-                  });
-                }
+                if (selected != null) _chonDanhMuc(selected);
               },
             ),
+            if (showDebtDirection) ...[
+              Divider(
+                  height: 1,
+                  indent: 64,
+                  color: AppColors.outlineVariant.withValues(alpha: 0.3)),
+              _buildDebtDirectionRow(),
+            ],
             if (_suggestion != null) ...[
               Divider(
                   height: 1,
@@ -813,10 +1001,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                 ),
                 const Spacer(),
                 ElevatedButton(
-                  onPressed: () => setState(() {
-                    _selectedCategory = suggestion.category;
-                    _suggestion = null;
-                  }),
+                  onPressed: () => _chonDanhMuc(suggestion.category),
                   child: const Text('Chọn danh mục này'),
                 ),
               ],
@@ -824,6 +1009,39 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
           ],
         ),
       );
+
+  /// Công tắc chiều tiền — chỉ hiện khi danh mục là vay/nợ, vì đó là phân loại
+  /// duy nhất gom cả tiền vào lẫn tiền ra (Cho vay/Trả nợ ↔ Đi vay/Thu nợ).
+  Widget _buildDebtDirectionRow() => _buildFormRow(
+        icon: Icons.swap_vert,
+        label: 'Chiều tiền',
+        valueWidget: Wrap(
+          spacing: 8,
+          children: [
+            _directionChip('chi', 'Tiền ra'),
+            _directionChip('thu', 'Tiền vào'),
+          ],
+        ),
+      );
+
+  Widget _directionChip(String direction, String label) {
+    final selected = _debtDirection == direction;
+    return ChoiceChip(
+      key: Key('debt-direction-$direction'),
+      label: Text(label),
+      selected: selected,
+      showCheckmark: false,
+      selectedColor: AppColors.primary,
+      backgroundColor: Colors.white,
+      side: const BorderSide(color: AppColors.outlineVariant),
+      labelStyle: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: selected ? Colors.white : AppColors.primary,
+      ),
+      onSelected: (_) => setState(() => _debtDirection = direction),
+    );
+  }
 
   Widget _buildFormRow({
     required IconData icon,

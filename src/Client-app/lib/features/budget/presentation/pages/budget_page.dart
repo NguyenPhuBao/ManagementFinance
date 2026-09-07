@@ -7,7 +7,6 @@ import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../data/models/budget_entity.dart';
 import '../bloc/budget_cubit.dart';
-import 'budget_detail_sheet.dart';
 import 'budget_tabs_view.dart';
 
 class BudgetPage extends StatelessWidget {
@@ -194,20 +193,8 @@ Future<bool> _confirmDelete(BuildContext context, BudgetView view) async {
   return true;
 }
 
-/// Mở bảng chi tiết chỉ đọc.
-///
-/// Dùng bottom sheet chứ không mở thêm một trang: ngân sách hết hạn chỉ cần xem
-/// lại con số đã chốt, không có thao tác nào để làm ở đó.
+/// Mở trang chi tiết. Từ 2026-09-06 là một trang riêng thay cho bottom sheet:
+/// nhịp chi, lịch sử sáu kỳ và danh sách giao dịch không vừa một sheet.
 void _showDetail(BuildContext context, BudgetView view) {
-  showModalBottomSheet<void>(
-    context: context,
-    backgroundColor: Colors.white,
-    // Nội dung cao hơn nửa màn hình thì sheet tự cho kéo lên; bản thân bảng
-    // cũng cuộn được nên không bao giờ cắt mất phần cuối.
-    isScrollControlled: true,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-    ),
-    builder: (_) => BudgetDetailSheet(view: view),
-  );
+  context.push('/budget/detail/${view.budget.id}');
 }

@@ -152,8 +152,43 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
 
   // ── WRITE ─────────────────────────────────────────────────────────────────
 
+  /// Khoản chi sinh ra khi trả hoá đơn [billId], nếu còn.
+  ///
+  /// Dùng cột **cục bộ** `billId` (v16) chứ không dò tiền tố ghi chú: người
+  /// dùng gõ trùng tiền tố là hoàn nhầm tiền vào ví bằng một khoản chi khác
+  /// của chính họ. Trả `null` với khoản trả ghi bằng bản app trước 2026-09-06
+  /// — nơi gọi phải từ chối hoàn tác chứ không được đoán.
+  Future<Transaction?> getByBill(String billId) {
+    return (select(transactions)
+          ..where((t) => t.billId.equals(billId) & t.deletedAt.isNull())
+          ..limit(1))
+        .getSingleOrNull();
+  }
+
+  /// Mọi khoản trả hoá đơn còn sống của [idaccount], theo `billId`.
+  ///
+  /// Một truy vấn cho cả trang hoá đơn thay vì gọi [getByBill] cho từng dòng.
+  /// Hoá đơn kéo về từ server không có mục ở đây (cột `billId` cục bộ) — nơi
+  /// gọi phải coi đó là "không biết ngày trả", không được đoán.
+  Future<Map<String, Transaction>> getBillPayments(int idaccount) async {
+    final rows = await (select(transactions)
+          ..where((t) =>
+              t.idaccount.equals(idaccount) &
+              t.billId.isNotNull() &
+              t.deletedAt.isNull()))
+        .get();
+    return {for (final t in rows) t.billId!: t};
+  }
+
   Future<void> insert(TransactionsCompanion entry) async {
     await into(transactions).insert(entry, mode: InsertMode.insertOrReplace);
+  }
+
+  /// Ghi đè các cột có trong [values] cho hàng [id]. Nơi gọi tự đặt
+  /// `syncStatus`/`updatedAt` — DAO không đoán ý (repair có lúc không muốn
+  /// đổi mốc).
+  Future<void> updateRow(String id, TransactionsCompanion values) async {
+    await (update(transactions)..where((t) => t.id.equals(id))).write(values);
   }
 
   Future<void> softDelete(String id) async {

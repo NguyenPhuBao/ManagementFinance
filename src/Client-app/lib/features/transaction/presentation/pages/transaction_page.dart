@@ -2,13 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/category/category_classify.dart';
+import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../../../shared/widgets/confirm_dialog.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../data/models/transaction_entity.dart';
+import '../../domain/transaction_filter.dart';
+import '../../domain/transaction_lookup.dart';
 import '../bloc/transaction_bloc.dart';
 import '../bloc/transaction_event.dart';
 import '../bloc/transaction_state.dart';
+import '../widgets/transaction_detail_sheet.dart';
+import '../widgets/transaction_filter_bar.dart';
+import '../widgets/transaction_list_row.dart';
+import 'add_transaction_page.dart';
 
 class TransactionPage extends StatefulWidget {
   final int idaccount;
@@ -25,10 +34,29 @@ class TransactionPage extends StatefulWidget {
 class _TransactionPageState extends State<TransactionPage> {
   late DateTime _selectedMonthDate;
 
+  /// Điều kiện lọc hiện tại; giữ nguyên khi đổi tháng — người dùng đang xem
+  /// "chi ở ví Tiết kiệm" thì lật sang tháng trước vẫn muốn xem đúng thứ đó.
+  TransactionFilter _filter = const TransactionFilter();
+
+  // Hai stream tra tên ví/danh mục cho từng dòng. Tạo MỘT lần cho mỗi tài
+  // khoản và giữ lại: tạo trong build là mỗi lần đổi tháng lại đăng ký lại,
+  // danh sách chớp trắng một nhịp.
+  int? _lookupAccount;
+  Stream<List<Wallet>>? _wallets;
+  Stream<List<Category>>? _categories;
+
   @override
   void initState() {
     super.initState();
     _selectedMonthDate = DateTime.now();
+  }
+
+  void _ensureLookupStreams(int idaccount) {
+    if (_lookupAccount == idaccount) return;
+    _lookupAccount = idaccount;
+    final db = sl<AppDatabase>();
+    _wallets = db.walletDao.watchAll(idaccount);
+    _categories = db.categoryDao.watchAll(idaccount);
   }
 
   void _changeMonth(int deltaYears, int deltaMonths, BuildContext blocContext) {
@@ -54,6 +82,7 @@ class _TransactionPageState extends State<TransactionPage> {
     if (authState is AuthSuccess && authState.user != null) {
       currentUserId = int.tryParse(authState.user!.id) ?? widget.idaccount;
     }
+    _ensureLookupStreams(currentUserId);
 
     return BlocProvider<TransactionBloc>(
       create: (context) => sl<TransactionBloc>()
@@ -102,21 +131,54 @@ class _TransactionPageState extends State<TransactionPage> {
                         }
 
                         if (state is TransactionLoadedState) {
-                          final txs = state.monthlyTransactions;
+                          // Bộ lọc chạy trên danh sách tháng đã có trong bloc;
+                          // thẻ tổng và danh sách cùng tính trên tập đã lọc để
+                          // hai thứ luôn nói cùng một chuyện.
+                          final txs = applyTransactionFilter(
+                              state.monthlyTransactions, _filter);
+                          final summary = summarizeTransactions(txs);
 
-                          return Column(
-                            children: [
-                              _buildMonthlySummaryCard(
-                                totalIncome: state.totalIncome,
-                                totalExpense: state.totalExpense,
-                              ),
-                              const SizedBox(height: 12),
-                              Expanded(
-                                child: txs.isEmpty
-                                    ? _buildEmptyState()
-                                    : _buildGroupedTransactionList(txs, blocContext),
-                              ),
-                            ],
+                          return StreamBuilder<List<Wallet>>(
+                            stream: _wallets,
+                            builder: (_, wallets) =>
+                                StreamBuilder<List<Category>>(
+                              stream: _categories,
+                              builder: (_, categories) {
+                                final walletList =
+                                    wallets.data ?? const <Wallet>[];
+                                final lookup = TransactionLookup(
+                                  wallets: walletList,
+                                  categories: categories.data ?? const [],
+                                );
+                                return Column(
+                                  children: [
+                                    TransactionFilterBar(
+                                      filter: _filter,
+                                      lookup: lookup,
+                                      wallets: walletList,
+                                      onChanged: (f) =>
+                                          setState(() => _filter = f),
+                                      pickCategory: () => context.push<Category>(
+                                        '/add/category',
+                                        extra: kCategoryClassifies.first,
+                                      ),
+                                    ),
+                                    _buildMonthlySummaryCard(
+                                      totalIncome: summary.income,
+                                      totalExpense: summary.expense,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Expanded(
+                                      child: txs.isEmpty
+                                          ? _buildEmptyState(
+                                              filtered: _filter.isActive)
+                                          : _buildGroupedTransactionList(
+                                              txs, blocContext, lookup),
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
                           );
                         }
 
@@ -136,6 +198,53 @@ class _TransactionPageState extends State<TransactionPage> {
                 ],
               ),
             ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Bảng chi tiết của một dòng: Sửa → mở `/add` ở chế độ sửa rồi tải lại
+  /// tháng; Xoá → hỏi xác nhận rồi đi cùng đường với vuốt xoá.
+  Future<void> _showDetail(
+    BuildContext blocContext,
+    TransactionEntity tx,
+    TransactionLookup lookup,
+  ) async {
+    await showModalBottomSheet<void>(
+      context: blocContext,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) => TransactionDetailSheet(
+        transaction: tx,
+        lookup: lookup,
+        onEdit: () async {
+          Navigator.of(sheetContext).pop();
+          final result = await context.push(
+            '/add',
+            extra: EditTransactionArgs(
+              transaction: tx,
+              category: lookup.category(tx.categoryId),
+            ),
+          );
+          if (result == true && blocContext.mounted) {
+            blocContext.read<TransactionBloc>().add(FilterMonthEvent(
+                  year: _selectedMonthDate.year,
+                  month: _selectedMonthDate.month,
+                ));
+          }
+        },
+        onDelete: () async {
+          final ok = await ConfirmDialog.show(
+            sheetContext,
+            title: 'Xoá giao dịch?',
+            message: 'Số dư ví sẽ được hoàn lại. Không hoàn tác được.',
+          );
+          if (!ok || !sheetContext.mounted) return;
+          Navigator.of(sheetContext).pop();
+          blocContext.read<TransactionBloc>().add(DeleteTransactionEvent(tx));
+          ScaffoldMessenger.of(blocContext).showSnackBar(
+            const SnackBar(content: Text('Đã xóa giao dịch')),
           );
         },
       ),
@@ -240,7 +349,7 @@ class _TransactionPageState extends State<TransactionPage> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState({bool filtered = false}) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -252,25 +361,29 @@ class _TransactionPageState extends State<TransactionPage> {
               color: AppColors.surfaceContainerHigh,
               shape: BoxShape.circle,
             ),
-            child: const Icon(
-              Icons.receipt_long,
+            child: Icon(
+              filtered ? Icons.filter_alt_off_outlined : Icons.receipt_long,
               size: 40,
               color: AppColors.outline,
             ),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Chưa có giao dịch nào trong tháng này',
-            style: TextStyle(
+          Text(
+            filtered
+                ? 'Không có giao dịch nào khớp bộ lọc'
+                : 'Chưa có giao dịch nào trong tháng này',
+            style: const TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w500,
               color: AppColors.textSecondary,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Nhấn nút (+) để thêm giao dịch mới',
-            style: TextStyle(
+          Text(
+            filtered
+                ? 'Đổi điều kiện hoặc bấm "Xoá lọc"'
+                : 'Nhấn nút (+) để thêm giao dịch mới',
+            style: const TextStyle(
               fontSize: 13,
               color: AppColors.outline,
             ),
@@ -283,6 +396,7 @@ class _TransactionPageState extends State<TransactionPage> {
   Widget _buildGroupedTransactionList(
     List<TransactionEntity> transactions,
     BuildContext blocContext,
+    TransactionLookup lookup,
   ) {
     // Group transactions by Date (YYYY-MM-DD)
     final Map<String, List<TransactionEntity>> grouped = {};
@@ -354,93 +468,16 @@ class _TransactionPageState extends State<TransactionPage> {
                   ],
                 ),
               ),
-              // Day Items
-              ...dayTxs.map((tx) {
-                return Dismissible(
-                  key: Key(tx.id),
-                  direction: DismissDirection.endToStart,
-                  background: Container(
-                    alignment: Alignment.centerRight,
-                    padding: const EdgeInsets.only(right: 20),
-                    color: AppColors.error,
-                    child: const Icon(Icons.delete, color: Colors.white),
-                  ),
-                  onDismissed: (_) {
-                    blocContext.read<TransactionBloc>().add(
+              // Day Items — vuốt xoá; khoản của mục tiêu/hoá đơn bị chặn
+              // ngay trong widget (xem `TransactionListRow`).
+              ...dayTxs.map((tx) => TransactionListRow(
+                    transaction: tx,
+                    lookup: lookup,
+                    onTap: () => _showDetail(blocContext, tx, lookup),
+                    onDelete: () => blocContext.read<TransactionBloc>().add(
                           DeleteTransactionEvent(tx),
-                        );
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Đã xóa giao dịch')),
-                    );
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: const BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(
-                          color: AppColors.surfaceContainer,
-                          width: 1,
                         ),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 44,
-                          height: 44,
-                          decoration: const BoxDecoration(
-                            color: AppColors.surfaceContainer,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            tx.type == 'chi'
-                                ? Icons.arrow_downward
-                                : (tx.type == 'thu' ? Icons.arrow_upward : Icons.swap_horiz),
-                            color: tx.type == 'chi'
-                                ? AppColors.error
-                                : (tx.type == 'thu' ? AppColors.income : AppColors.primary),
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                tx.note.isNotEmpty ? tx.note : (tx.type == 'chi' ? 'Khoản chi' : 'Khoản thu'),
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.primary,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'Ví: ${tx.walletId}',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Text(
-                          '${tx.type == 'chi' ? '-' : (tx.type == 'thu' ? '+' : '')}${formatter.format(tx.amount)}đ',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: tx.type == 'chi'
-                                ? AppColors.error
-                                : (tx.type == 'thu' ? AppColors.income : AppColors.primary),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }),
+                  )),
             ],
           ),
         );

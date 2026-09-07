@@ -159,6 +159,138 @@ void main() {
           reason: 'Tắt nhóm ngân sách không được làm im nhóm hoá đơn — đó là '
               'lý do người dùng có bốn công tắc chứ không phải một.');
     });
+
+    test('bốn loại báo TIỀN VỪA RỜI VÍ không chịu công tắc nhóm', () {
+      const p = NotificationPrefs(nhomTat: {
+        NotificationGroup.bill,
+        NotificationGroup.goal,
+      });
+
+      expect(p.chapNhan(NotificationKind.billAutoPaid), isTrue);
+      expect(p.chapNhan(NotificationKind.billAutoPayFailed), isTrue);
+      expect(p.chapNhan(NotificationKind.goalAutoDeposited), isTrue);
+      expect(p.chapNhan(NotificationKind.goalAutoDepositFailed), isTrue,
+          reason: 'Đây là bốn loại DUY NHẤT báo việc tiền thật rời ví trong '
+              'lúc người dùng vắng mặt. "Đừng nhắc tôi hoá đơn sắp tới hạn" và '
+              '"đừng cho tôi biết app vừa rút tiền của tôi" là hai câu hoàn '
+              'toàn khác nhau, và người dùng chỉ gạt được một công tắc. Muốn '
+              'im hẳn thì đã có công tắc tổng cho thông báo hệ điều hành.');
+    });
+
+    test('tắt nhóm vẫn chặn các loại KHÁC của chính nhóm ấy', () {
+      const p = NotificationPrefs(nhomTat: {
+        NotificationGroup.bill,
+        NotificationGroup.goal,
+      });
+
+      expect(p.chapNhan(NotificationKind.billDueSoon), isFalse);
+      expect(p.chapNhan(NotificationKind.billOverdue), isFalse);
+      expect(p.chapNhan(NotificationKind.goalBehind), isFalse);
+      expect(p.chapNhan(NotificationKind.goalCompleted), isFalse,
+          reason: 'Ngoại lệ chỉ dành cho bốn loại tự chuyển tiền. Nới rộng ra '
+              'cả nhóm là công tắc mất tác dụng và người dùng sẽ tắt luôn công '
+              'tắc tổng — mất hết.');
+    });
+  });
+
+  group('giờ im lặng', () {
+    DateTime luc(int gio, [int phut = 0]) =>
+        DateTime(2026, 9, 15, gio, phut);
+
+    test('mặc định TẮT — không im lặng giờ nào cả', () {
+      const p = NotificationPrefs.macDinh;
+
+      expect(p.imLangBat, isFalse);
+      for (var gio = 0; gio < 24; gio++) {
+        expect(p.dangImLang(luc(gio)), isFalse,
+            reason: 'Bật sẵn là lặng lẽ đổi hành vi của mọi bản đã cài: cảnh '
+                'báo vượt ngân sách lúc 23h thôi hiện ra ngoài mà không ai '
+                'báo. Cùng lý lẽ với việc lưu nhóm bị TẮT thay vì nhóm bật.');
+      }
+    });
+
+    test('khoảng QUA NỬA ĐÊM là ca chính, phải đúng cả hai phía', () {
+      const p = NotificationPrefs(
+        imLangBat: true,
+        imLangTuPhut: 22 * 60,
+        imLangDenPhut: 7 * 60,
+      );
+
+      expect(p.dangImLang(luc(23)), isTrue);
+      expect(p.dangImLang(luc(2)), isTrue,
+          reason: '2 giờ sáng nằm SAU nửa đêm nên số phút của nó nhỏ hơn mốc '
+              'bắt đầu. Phép so "tu <= x < den" trần sẽ trả false ở đây, và '
+              'giờ im lặng im lặng hỏng đúng nửa khoảng.');
+      expect(p.dangImLang(luc(12)), isFalse);
+    });
+
+    test('khoảng trong CÙNG NGÀY vẫn phải đúng', () {
+      const p = NotificationPrefs(
+        imLangBat: true,
+        imLangTuPhut: 13 * 60,
+        imLangDenPhut: 15 * 60,
+      );
+
+      expect(p.dangImLang(luc(14)), isTrue);
+      expect(p.dangImLang(luc(9)), isFalse);
+      expect(p.dangImLang(luc(23)), isFalse);
+    });
+
+    test('biên: tính từ mốc đầu, không tính mốc cuối', () {
+      const p = NotificationPrefs(
+        imLangBat: true,
+        imLangTuPhut: 22 * 60 + 30,
+        imLangDenPhut: 7 * 60,
+      );
+
+      expect(p.dangImLang(luc(22, 29)), isFalse);
+      expect(p.dangImLang(luc(22, 30)), isTrue);
+      expect(p.dangImLang(luc(6, 59)), isTrue);
+      expect(p.dangImLang(luc(7, 0)), isFalse,
+          reason: 'Mốc cuối là lúc im lặng KẾT THÚC. Tính cả nó thì một khoảng '
+              '22:00–22:00 sẽ thành im lặng cả ngày.');
+    });
+
+    test('hai mốc trùng nhau nghĩa là KHÔNG im lặng, không phải cả ngày', () {
+      const p = NotificationPrefs(
+        imLangBat: true,
+        imLangTuPhut: 22 * 60,
+        imLangDenPhut: 22 * 60,
+      );
+
+      expect(p.dangImLang(luc(22)), isFalse);
+      expect(p.dangImLang(luc(3)), isFalse,
+          reason: 'Người dùng lỡ tay đặt hai mốc bằng nhau không được mất sạch '
+              'thông báo hệ điều hành — đó là kiểu hỏng họ sẽ không bao giờ '
+              'lần ra nguyên nhân.');
+    });
+
+    test('JSON hỏng hoặc ngoài dải quy về mặc định chứ không ném', () {
+      final p = NotificationPrefs.fromJson(const {
+        'imLangBat': 'có',
+        'imLangTuPhut': 5000,
+        'imLangDenPhut': -3,
+      });
+
+      expect(p.imLangBat, isFalse);
+      expect(p.imLangTuPhut, NotificationPrefs.macDinh.imLangTuPhut);
+      expect(p.imLangDenPhut, NotificationPrefs.macDinh.imLangDenPhut);
+    });
+
+    test('đi trọn vòng qua JSON', () {
+      const goc = NotificationPrefs(
+        imLangBat: true,
+        imLangTuPhut: 21 * 60 + 45,
+        imLangDenPhut: 6 * 60 + 15,
+      );
+
+      final ve = NotificationPrefs.fromJson(goc.toJson());
+
+      expect(ve, goc,
+          reason: 'Thiếu một trường trong toJson/fromJson thì tuỳ chọn im lặng '
+              'trở về mặc định sau mỗi lần mở app — hỏng im lặng, đúng nghĩa '
+              'đen.');
+    });
   });
 
   test('copyWith chỉ đổi thứ được nêu', () {

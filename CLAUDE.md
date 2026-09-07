@@ -18,12 +18,13 @@
 | Việc | Đọc thêm |
 |---|---|
 | Làm tiếp phía client | `docs/CLIENT_APP_KNOWN_GAPS.md` — các mục dang dở kèm **lý do hoãn** và **bán kính ảnh hưởng** |
-| Việc thuộc backend | **`docs/superpowers/backend/CAN-LAM/README.md`** — **cửa vào duy nhất**, giữ đủ **10 tài liệu còn việc**; thư mục cha chỉ còn tài liệu đã xong và bối cảnh. README chia việc theo *client đã có tính năng ấy chưa* (mục 1, ba nhóm) rồi mới tới **thứ tự thi công năm bước** (mục 2) — đọc theo đúng thứ tự ấy. Việc đang gây hại **ngay lúc này** là **Socket.io không xác thực + `io.emit` toàn cục** (`2026-09-04-ocr-classify-review.md`); sau đó `2026-09-04-backend-idempotent-delete.md` (ba lỗ hổng `/sync/push`, một trong đó chặn hẳn ngân sách "Ngày cụ thể") và `CATEGORY_KEYWORD_SYNC.md` (lỗ hổng phân quyền). Bảng trạng thái đầy đủ ở mục 14 `docs/PROJECT_CONTEXT.md` |
+| Việc thuộc backend | **`docs/superpowers/backend/CAN-LAM/README.md`** — **cửa vào duy nhất**, giữ đủ **11 tài liệu còn việc**; thư mục cha chỉ còn tài liệu đã xong và bối cảnh. README chia việc theo *client đã có tính năng ấy chưa* (mục 1, ba nhóm) rồi mới tới **thứ tự thi công năm bước** (mục 2) — đọc theo đúng thứ tự ấy. Việc đang gây hại **ngay lúc này** là **Socket.io không xác thực + `io.emit` toàn cục** (`2026-09-04-ocr-classify-review.md`); sau đó `2026-09-04-backend-idempotent-delete.md` (ba lỗ hổng `/sync/push`, một trong đó chặn hẳn ngân sách "Ngày cụ thể") và `CATEGORY_KEYWORD_SYNC.md` (lỗ hổng phân quyền). Bảng trạng thái đầy đủ ở mục 14 `docs/PROJECT_CONTEXT.md` |
 | Đụng vào đồng bộ | `src/Client-app/test/core/sync/sync_payload_contract_test.dart` — đọc **như tài liệu**, đây là nơi duy nhất ghi hợp đồng tên trường giữa hai phía |
+| Đụng vào hoá đơn | `docs/bill/BILL_DOCUMENTATION.md` (⚠️ thư mục bị `.gitignore` chặn, chỉ có trên máy đã dựng) và **bộ test như tài liệu**: `test/features/bill/domain/bill_status_test.dart` (bốn trạng thái hiển thị + số liệu thẻ tổng), `bill_payment_test.dart` (trả theo số tiền kỳ này, hoàn tác), `test/core/database/bill_overdue_test.dart` (cờ quá hạn đi **hai chiều**). Ba thứ dễ vấp nhất: bảng `Bills` mang **hai cặp cột trùng nghĩa** (`payStatus`/`isPaid` và `isRecurrence`+`timeRecurrence`/`recurrence`) — đọc và ghi theo cột **chính thức**, cột chuỗi cũ chỉ được suy ra; mỗi kỳ của hoá đơn lặp là **một hàng mới**, không phải một hàng sống lâu; và hai cột nối `transactions.billId` / `bills.generatedFromBillId` là **cục bộ** (v16) nên hàng kéo về từ server luôn để trống — hoàn tác phải từ chối chứ không được đoán |
 | Đụng vào thông báo | `docs/NOTIFICATION_FEATURE.md` — **trạng thái bàn giao, phần việc còn lại, và bảy cái bẫy**. Mục 7 phải đọc trước khi đụng vào phần hệ điều hành. Bảng thông báo **cục bộ**, không nằm trong `SyncEntityType` |
 | Đụng vào danh mục | `docs/CATEGORY_RATIONALE.md` — **lý do** của từng thay đổi, bằng chứng đo được, và các phương án đã loại bỏ. Đọc trước khi định "dọn dẹp" vùng này |
 | Đụng vào mục tiêu tiết kiệm | `docs/GOAL_FEATURE.md` — **quyết định kèm lý do, và bảy cái bẫy**. Mục 4 phải đọc trước khi sửa gì. Ba cái đáng nhớ nhất: `walletTransfer` **không có khoá ngoại**; suy chiều nạp/rút từ vị trí ví là **diễn giải lại lịch sử**; và `_collectPendingOps` dựng payload **thô** — phép quy đổi `chi → Transaction` chạy ở bước POST, đọc dừng ở đó là kết luận nhầm |
-| Đụng vào **trích tiền tự động** | Mục **3.12 và 3.13** `docs/GOAL_FEATURE.md` trước đã. Đây là chỗ **duy nhất** trong app tự chuyển tiền khi người dùng vắng mặt, nên phần lớn thiết kế là về việc *dừng đúng lúc*. Ba thứ dễ hỏng nhất: mốc chạy chỉ đặt **khi bật công tắc** (không phải ngày tạo mục tiêu); ví thiếu tiền thì **giữ nguyên mốc** để kỳ ấy tự thử lại; và `null` mang **hai nghĩa khác nhau** trong `updateGoal` — `cycleTakeMoney` là *xoá*, `icon`/`colour` là *giữ nguyên*. Lịch nhắc đi chung bộ đặt lịch với hoá đơn, **bắt buộc** — xem `NOTIFICATION_FEATURE.md` |
+| Đụng vào **trích tiền tự động** hoặc **tự động thanh toán hoá đơn** | Mục **3.12 và 3.13** `docs/GOAL_FEATURE.md` trước đã; hoá đơn thì mục **6.5** `docs/bill/BILL_DOCUMENTATION.md` và spec `docs/superpowers/specs/2026-09-06-bill-auto-pay-design.md`. Đây là **hai** chỗ trong app tự chuyển tiền khi người dùng vắng mặt, nên phần lớn thiết kế là về việc *dừng đúng lúc*. Hoá đơn khác mục tiêu ở chỗ **không có "lần chạy cuối"**: mỗi kỳ là một hàng, cờ đã trả là chốt chống trả hai lần; bộ chạy đi qua `payBill` với `occurredAt = dueDate`, trả bù trần 3 kỳ, và cột `autoPayEnabled` là **cục bộ** (hai máy cùng bật là hai khoản chi — chờ việc D backend). Ba thứ dễ hỏng nhất: mốc chạy chỉ đặt **khi bật công tắc** (không phải ngày tạo mục tiêu); ví thiếu tiền thì **giữ nguyên mốc** để kỳ ấy tự thử lại; và `null` mang **hai nghĩa khác nhau** trong `updateGoal` — `cycleTakeMoney` là *xoá*, `icon`/`colour` là *giữ nguyên*. Lịch nhắc đi chung bộ đặt lịch với hoá đơn, **bắt buộc** — xem `NOTIFICATION_FEATURE.md` |
 
 > ⚠️ **Tài liệu là ảnh chụp, không phải nguồn sự thật.** Luôn đối chiếu với mã nguồn thật trước khi kết luận. Phiên 2026-09-02 có nhiều kết luận sai vì tin vào tài liệu/trí nhớ thay vì mở file ra đọc.
 
@@ -67,7 +68,7 @@
 ## Lệnh hay dùng
 
 ```bash
-# Test (chạy từ src/Client-app) — hiện 894/894 pass, ~30 giây
+# Test (chạy từ src/Client-app) — hiện 1277/1277 pass, ~85 giây
 flutter test
 flutter analyze          # mức nền: 25 issue, KHÔNG có error
 
@@ -87,6 +88,15 @@ cd src/Client-app && flutter run -d chrome --web-port 9090
 
 Bốn thứ dưới đây **đã từng gây thiệt hại thật**. Chúng vốn chỉ nằm trong file
 bàn giao tạm giữa các phiên nên chết đi sống lại nhiều lần — nay ghi ở đây.
+
+- **Đừng ngắt `flutter test` giữa chừng, và đừng chạy hai lần cùng lúc.**
+  `flutter_tester.exe` mồ côi giữ `build/native_assets/windows/sqlite3.dll`,
+  mọi lần chạy sau nổ `PathExistsException` cho tới khi tắt hết tester và xoá
+  thư mục ấy. Muốn chặn treo thì chạy nền ghi log + `--timeout 60s`. Widget
+  test treo đủ 10 phút/test mà `--timeout` không cắt được là dấu hiệu
+  `bloc.close()` chờ một stream không bao giờ `done` — thăm dò bằng một
+  `test()` thường bọc `FakeAsync().run(...)`, chạy đồng bộ nên không thể treo
+  (đã vấp 2026-09-06 với `asyncMap` trên `Stream.value`).
 
 - **Bash tool ở đây là Git Bash, không phải PowerShell.** Commit message nhiều
   dòng thì dùng `git commit -F -` với heredoc `<<'EOF'`. Here-string
@@ -117,7 +127,7 @@ bàn giao tạm giữa các phiên nên chết đi sống lại nhiều lần �
 
 Bộ test là lưới an toàn chính của dự án này — nhiều lỗi trong quá khứ hỏng **âm thầm** (không exception, không log). Khi sửa lỗi, viết test tái hiện **trước**, và ghi rõ trong `reason:` của assertion là nó canh chừng điều gì.
 
-Vùng chưa có test nào: các feature `analytics`, `home`, `profile`, `ai_chat`. (`notification` có test từ 2026-09-04.) (`auth_interceptor.dart` có test từ 2026-09-03; `budget` có test từ 2026-09-03.)
+Vùng chưa có test nào: các feature `analytics`, `profile`, `ai_chat`. (`notification` có 8 tệp test; `home` có test từ 2026-09-06.) (`auth_interceptor.dart` có test từ 2026-09-03; `budget` có test từ 2026-09-03.)
 
 ### ⚠️ Ba loại lỗi mà `flutter test` KHÔNG bắt được
 

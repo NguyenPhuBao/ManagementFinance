@@ -145,6 +145,34 @@ class Bills extends Table {
   TextColumn get colour => text().withDefault(const Constant('#4CAF50'))();
   TextColumn get note   => text().withDefault(const Constant(''))();
 
+  /// generatedFromBillId: hoá đơn kỳ TRƯỚC, khi hàng này được sinh ra lúc trả
+  /// hoá đơn ấy. NULL với mọi hoá đơn do người dùng tự tạo.
+  ///
+  /// ⚠️ **Cột CỤC BỘ — không nằm trong hợp đồng đồng bộ**, cùng lý do với
+  /// `transactions.goalId`/`transactions.billId`.
+  ///
+  /// Vì sao cần: **hoàn tác thanh toán** phải gỡ luôn kỳ kế tiếp mà lần trả đã
+  /// sinh ra, nếu không người dùng còn lại hai kỳ cùng mở và trả lại lần nữa
+  /// sẽ đẻ thêm một kỳ trùng. Tìm kỳ ấy bằng cách so tên và ngày là quay lại
+  /// đúng lối so bằng tên mà cột `goalId` sinh ra để thay thế.
+  TextColumn get generatedFromBillId => text().nullable()();
+
+  /// autoPayEnabled: app tự thanh toán hoá đơn này khi tới ngày đến hạn, trừ
+  /// từ chính [walletId] của nó (DB v17, 2026-09-06).
+  ///
+  /// ⚠️ **Cột CỤC BỘ — không nằm trong hợp đồng đồng bộ**, cùng khuôn với
+  /// `generatedFromBillId` và ba cột trích tự động của `Goals`. Hệ quả chấp
+  /// nhận có chủ ý: cấu hình không theo người dùng sang máy khác — và đó cũng
+  /// là lý do KHÔNG mượn một cột đang có: hai máy cùng bật, cùng offline, cùng
+  /// trả một kỳ là hai khoản chi trừ hai ví, cờ đã trả đồng bộ theo LWW không
+  /// chặn được. Xin cột phía backend ở việc D của
+  /// `2026-09-06-bill-chuoi-ky-va-an-han.md`.
+  ///
+  /// Không có cột "lần chạy cuối" như mục tiêu: mỗi kỳ hoá đơn là **một hàng
+  /// riêng**, nên cờ đã trả (`isPaid`/`payStatus`) chính là chốt chống trả hai
+  /// lần. Kỳ kế tiếp kế thừa cờ này khi được sinh ra lúc trả kỳ trước.
+  BoolColumn get autoPayEnabled => boolean().withDefault(const Constant(false))();
+
   // ── Soft delete (DB v2) ───────────────────────────────────────────────────
   /// deletedAt: NULL = đang dùng, có giá trị = đã xóa mềm
   DateTimeColumn get deletedAt => dateTime().nullable()();

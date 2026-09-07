@@ -8,6 +8,8 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/auth/current_account.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../../../shared/widgets/segmented_choice.dart';
+import '../../domain/bill_auto_pay.dart' show kBillAutoPayHint;
 import '../../domain/bill_draft.dart';
 import '../../domain/bill_schedule.dart';
 import '../bloc/bill_bloc.dart';
@@ -33,8 +35,12 @@ class _BillAddPageState extends State<BillAddPage> {
   );
   /// Bật/tắt nhắc trước hạn. Tắt thì ghi `timeNotification = null`.
   bool _pushNotificationsEnabled = true;
-  bool _autoPayEnabled = true;
   String _selectedReminderDay = '3';
+
+  /// TẮT sẵn. Bản trước có công tắc cùng tên bật sẵn mà không lưu ở đâu (gỡ
+  /// 06/09); nay có cột và bộ chạy thật, nhưng bật sẵn vẫn là chuyển tiền
+  /// dựa trên một lựa chọn người dùng chưa từng đưa ra.
+  bool _autoPayEnabled = false;
 
   List<Wallet> _wallets = [];
   Wallet? _selectedWallet;
@@ -156,6 +162,7 @@ class _BillAddPageState extends State<BillAddPage> {
       timeNotification:
           _pushNotificationsEnabled ? _selectedReminderDay : null,
       note: _noteController.text.trim(),
+      autoPayEnabled: _autoPayEnabled,
     );
 
     context.read<BillBloc>().add(
@@ -354,19 +361,27 @@ class _BillAddPageState extends State<BillAddPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Row(
-                children: [
-                  Icon(Icons.notifications_active, color: AppColors.secondary),
-                  SizedBox(width: 12),
-                  Text(
-                    'Bật nhắc nhở thông báo đẩy',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.primary,
+              // `Expanded` ở cả hai tầng: nhãn dài + công tắc tràn 128px ở
+              // 411dp. Bộ test chạy 1280px nên không ai thấy cho tới khi có
+              // widget test dựng đúng bề rộng điện thoại.
+              const Expanded(
+                child: Row(
+                  children: [
+                    Icon(Icons.notifications_active,
+                        color: AppColors.secondary),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Bật nhắc nhở thông báo đẩy',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.primary,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               Switch(
                 value: _pushNotificationsEnabled,
@@ -378,14 +393,16 @@ class _BillAddPageState extends State<BillAddPage> {
           ),
           if (_pushNotificationsEnabled) ...[
             const SizedBox(height: 16),
-            Row(
+            // `Wrap` chứ không phải `Row`: bốn chip tràn 115px ở 411dp, và
+            // chip thứ tư ('7 ngày') là chip mới thêm hôm 04/09 nên chỗ tràn
+            // này chưa từng có ai nhìn thấy.
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: [
                 _buildReminderDayChip('1 ngày', '1'),
-                const SizedBox(width: 8),
                 _buildReminderDayChip('3 ngày', '3'),
-                const SizedBox(width: 8),
                 _buildReminderDayChip('5 ngày', '5'),
-                const SizedBox(width: 8),
                 // Mốc '7' được CSDL cho phép ở cả hai đầu nhưng UI trước đây
                 // thiếu — người dùng không đặt được nhắc trước một tuần.
                 _buildReminderDayChip('7 ngày', '7'),
@@ -393,47 +410,72 @@ class _BillAddPageState extends State<BillAddPage> {
             ),
           ],
           const SizedBox(height: 16),
-          const Divider(color: AppColors.outlineVariant, height: 1),
+          const Divider(height: 1),
           const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Row(
+          _buildAutoPaySwitch(),
+        ],
+      ),
+    );
+  }
+
+  /// Khối theo Stitch "Thêm Hóa Đơn Định Kỳ" (biểu tượng `smart_toy`, dưới
+  /// các chip nhắc, sau vạch mỏng) — nhưng công tắc TẮT sẵn, và có dòng phụ
+  /// nói rõ ba điều người dùng cần biết trước khi uỷ quyền: trừ ví nào, lúc
+  /// nào, và vì sao chỉ nên bật trên một thiết bị (cột cục bộ, hai máy cùng
+  /// bật là hai khoản chi).
+  Widget _buildAutoPaySwitch() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Expanded(
+              child: Row(
                 children: [
                   Icon(Icons.smart_toy, color: AppColors.primary),
                   SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Tự động tạo giao dịch',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.primary,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Tự động thanh toán',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.primary,
+                          ),
                         ),
-                      ),
-                      Text(
-                        'Thanh toán khi đến hạn',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.onSurfaceVariant,
+                        Text(
+                          'Trừ từ ví thanh toán khi đến hạn',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               ),
-              Switch(
-                value: _autoPayEnabled,
-                onChanged: (val) => setState(() => _autoPayEnabled = val),
-                activeThumbColor: Colors.white,
-                activeTrackColor: AppColors.primary,
-              ),
-            ],
+            ),
+            Switch(
+              key: const ValueKey('bill-autopay-switch'),
+              value: _autoPayEnabled,
+              onChanged: (val) => setState(() => _autoPayEnabled = val),
+              activeThumbColor: Colors.white,
+              activeTrackColor: AppColors.primary,
+            ),
+          ],
+        ),
+        if (_autoPayEnabled) ...[
+          const SizedBox(height: 8),
+          const Text(
+            kBillAutoPayHint,
+            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
           ),
         ],
-      ),
+      ],
     );
   }
 
@@ -627,56 +669,24 @@ class _BillAddPageState extends State<BillAddPage> {
     );
   }
 
+  /// Bốn chu kỳ trên **một hàng ngang**, chia đều bề rộng.
+  ///
+  /// Từng là `Wrap` và xếp thành bốn hàng dọc — lý do và cách tránh nằm ở
+  /// [SegmentedChoice], nay dùng chung với ngân sách và mục tiêu.
   Widget _buildCycleSelector() {
-    // Dùng Wrap thay vì Row: bốn lựa chọn không phải lúc nào cũng đủ chỗ trên
-    // một hàng ở khung điện thoại.
     const nhan = <String, String>{
       kBillCycleWeek: 'Hàng tuần',
       kBillCycleMonth: 'Hàng tháng',
       kBillCycleQuarter: 'Hàng quý',
       kBillCycleYear: 'Hàng năm',
     };
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: nhan.entries
-          .map((e) => _buildCycleOption(e.value, e.key))
-          .toList(),
-    );
-  }
-
-  Widget _buildCycleOption(String label, String value) {
-    final isSelected = _lich.timeRecurrence == value;
-    return SizedBox(
-      child: GestureDetector(
-        onTap: () => _chonChuKy(value),
-        child: Container(
-          padding:
-              const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
-          decoration: BoxDecoration(
-            color: isSelected ? Colors.white : Colors.transparent,
-            borderRadius: BorderRadius.circular(6),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 2,
-                      offset: const Offset(0, 1),
-                    )
-                  ]
-                : null,
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: isSelected ? AppColors.primary : AppColors.onSurfaceVariant,
-            ),
-          ),
-        ),
-      ),
+    return SegmentedChoice<String>(
+      keyPrefix: 'bill-cycle',
+      options: [
+        for (final e in nhan.entries) SegmentedOption(e.key, e.value),
+      ],
+      selected: _lich.timeRecurrence,
+      onChanged: _chonChuKy,
     );
   }
 
@@ -731,12 +741,19 @@ class _BillAddPageState extends State<BillAddPage> {
               children: [
                 Icon(Icons.add_task, color: Colors.white),
                 SizedBox(width: 8),
-                Text(
-                  'Tạo Hóa Đơn & Đăng Ký Nhắc Nhở',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+                // Nhãn dài tràn 141px ở 411dp. Co chữ thay vì tràn, cũng là
+                // đường phòng khi người dùng đặt cỡ chữ hệ thống lớn.
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      'Tạo Hóa Đơn & Đăng Ký Nhắc Nhở',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ),
               ],
