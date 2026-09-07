@@ -15,6 +15,18 @@ function hashOtp(otp) {
   return crypto.createHash('sha256').update(otp).digest('hex');
 }
 
+function formatVnTime(dateInput) {
+  if (!dateInput) return 'Vừa xong';
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return 'Vừa xong';
+  return new Intl.DateTimeFormat('vi-VN', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(d);
+}
+
 function getTokenExpiry(idrole) {
   if (idrole === 1) {
     return {
@@ -659,11 +671,8 @@ const authService = {
         time_res: data.time_res,
       });
 
-      // Format time string
-      const date = new Date(data.time_req || Date.now());
-      const hours = date.getHours().toString().padStart(2, '0');
-      const minutes = date.getMinutes().toString().padStart(2, '0');
-      const timeFormatted = `${hours}:${minutes}`;
+      // Format time string theo múi giờ Việt Nam (Asia/Ho_Chi_Minh)
+      const timeFormatted = formatVnTime(log.time_req || data.time_req || Date.now());
 
       // Emit real-time event to Admin-web
       const { emitAuditActivity } = require('../../core/socket');
@@ -675,8 +684,8 @@ const authService = {
         reason: data.reason || null,
         status: reqStatus,
         time: timeFormatted,
-        time_req: log.time_req,
-        time_res: log.time_res,
+        time_req: log.time_req ? log.time_req.toISOString() : new Date().toISOString(),
+        time_res: log.time_res ? log.time_res.toISOString() : new Date().toISOString(),
       });
 
       return log;
@@ -690,10 +699,7 @@ const authService = {
     const { total, page, limit, totalPages, items } = await authRepository.getRecentAuditLogs(opts);
 
     const formattedItems = items.map((log) => {
-      const date = new Date(log.time_req);
-      const hours = date.getHours().toString().padStart(2, '0');
-      const minutes = date.getMinutes().toString().padStart(2, '0');
-      const timeFormatted = `${hours}:${minutes}`;
+      const timeFormatted = formatVnTime(log.time_req);
 
       return {
         id: log.idlog,
@@ -703,8 +709,8 @@ const authService = {
         reason: log.reason || null,
         status: log.req_status || 'Pass',
         time: timeFormatted,
-        time_req: log.time_req,
-        time_res: log.time_res,
+        time_req: log.time_req ? log.time_req.toISOString() : null,
+        time_res: log.time_res ? log.time_res.toISOString() : null,
       };
     });
 
