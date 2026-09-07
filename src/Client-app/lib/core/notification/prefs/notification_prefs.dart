@@ -91,6 +91,9 @@ class NotificationPrefs {
     this.imLangTuPhut = _imLangTuMacDinh,
     this.imLangDenPhut = _imLangDenMacDinh,
     this.nguongSoDuThap = _nguongSoDuMacDinh,
+    this.nhacGhiChepBat = false,
+    this.gioNhacGhiChep = _gioGhiChepMacDinh,
+    this.phutNhacGhiChep = _phutGhiChepMacDinh,
   });
 
   /// Công tắc **tổng** cho thông báo cấp hệ điều hành.
@@ -138,8 +141,38 @@ class NotificationPrefs {
   /// giờ im lặng.
   final int nguongSoDuThap;
 
+  /// Có nhắc người dùng ghi chép vào cuối ngày không.
+  ///
+  /// **Mặc định TẮT**, cùng lý lẽ với giờ im lặng và [nguongSoDuThap]: mọi bản
+  /// ghi đang nằm trên máy người dùng đều thiếu trường này, nên bật sẵn là
+  /// lặng lẽ cho cả tập người dùng hiện tại một thông báo mỗi ngày mà không ai
+  /// báo trước.
+  ///
+  /// ⚠️ Lời nhắc này **không đi qua bộ luật** và **không sinh hàng** nào trong
+  /// `AppNotifications`. Mười bốn loại kia đều là *bản ghi* một việc đã xảy ra
+  /// và người dùng đọc lại chúng trong trung tâm thông báo; lời nhắc này chỉ
+  /// có nghĩa khi họ **đang không mở app**, nên lúc mở ra xem thì nó đã hết lý
+  /// do tồn tại. Nó sống hoàn toàn trong `ReminderScheduler`.
+  final bool nhacGhiChepBat;
+
+  /// Giờ và phút bắn lời nhắc ghi chép.
+  ///
+  /// **Riêng, không dùng chung [gioNhac].** Giờ nhắc chung mặc định 8h sáng vì
+  /// nó là của hoá đơn — nhắc trước khi tới hạn thì phải sớm. Một câu "hôm nay
+  /// ghi chép chưa" lúc 8h sáng là hỏi trước khi có gì để ghi.
+  ///
+  /// Giờ im lặng **không chặn** lời nhắc này: đây là mốc người dùng tự chọn và
+  /// đang nhìn thấy trên màn hình, app không được đoán lại hộ họ — cùng lý lẽ
+  /// đã ghi ở [dangImLang] cho mọi lịch đặt trước.
+  final int gioNhacGhiChep;
+  final int phutNhacGhiChep;
+
   static const int _gioMacDinh = 8;
   static const int _phutMacDinh = 0;
+
+  /// 20:00 — cuối ngày, sau bữa tối, còn đủ tỉnh táo để mở app ghi lại.
+  static const int _gioGhiChepMacDinh = 20;
+  static const int _phutGhiChepMacDinh = 0;
 
   static const int _imLangTuMacDinh = 22 * 60;
   static const int _imLangDenMacDinh = 7 * 60;
@@ -205,6 +238,9 @@ class NotificationPrefs {
     int? imLangTuPhut,
     int? imLangDenPhut,
     int? nguongSoDuThap,
+    bool? nhacGhiChepBat,
+    int? gioNhacGhiChep,
+    int? phutNhacGhiChep,
   }) {
     return NotificationPrefs(
       osBat: osBat ?? this.osBat,
@@ -216,6 +252,9 @@ class NotificationPrefs {
       imLangTuPhut: imLangTuPhut ?? this.imLangTuPhut,
       imLangDenPhut: imLangDenPhut ?? this.imLangDenPhut,
       nguongSoDuThap: nguongSoDuThap ?? this.nguongSoDuThap,
+      nhacGhiChepBat: nhacGhiChepBat ?? this.nhacGhiChepBat,
+      gioNhacGhiChep: gioNhacGhiChep ?? this.gioNhacGhiChep,
+      phutNhacGhiChep: phutNhacGhiChep ?? this.phutNhacGhiChep,
     );
   }
 
@@ -229,6 +268,9 @@ class NotificationPrefs {
         'imLangTuPhut': imLangTuPhut,
         'imLangDenPhut': imLangDenPhut,
         'nguongSoDuThap': nguongSoDuThap,
+        'nhacGhiChepBat': nhacGhiChepBat,
+        'gioNhacGhiChep': gioNhacGhiChep,
+        'phutNhacGhiChep': phutNhacGhiChep,
       };
 
   /// Đọc từ JSON, **không bao giờ ném**.
@@ -252,6 +294,13 @@ class NotificationPrefs {
           json['imLangDenPhut'], 0, _phutTrongNgay - 1, _imLangDenMacDinh),
       nguongSoDuThap: _docSo(json['nguongSoDuThap'], 0, _nguongSoDuToiDa,
           _nguongSoDuMacDinh),
+      nhacGhiChepBat: json['nhacGhiChepBat'] is bool
+          ? json['nhacGhiChepBat']! as bool
+          : false,
+      gioNhacGhiChep:
+          _docSo(json['gioNhacGhiChep'], 0, 23, _gioGhiChepMacDinh),
+      phutNhacGhiChep:
+          _docSo(json['phutNhacGhiChep'], 0, 59, _phutGhiChepMacDinh),
     );
   }
 
@@ -284,6 +333,9 @@ class NotificationPrefs {
       other.imLangTuPhut == imLangTuPhut &&
       other.imLangDenPhut == imLangDenPhut &&
       other.nguongSoDuThap == nguongSoDuThap &&
+      other.nhacGhiChepBat == nhacGhiChepBat &&
+      other.gioNhacGhiChep == gioNhacGhiChep &&
+      other.phutNhacGhiChep == phutNhacGhiChep &&
       other.nhomTat.length == nhomTat.length &&
       other.nhomTat.containsAll(nhomTat);
 
@@ -297,6 +349,9 @@ class NotificationPrefs {
         imLangTuPhut,
         imLangDenPhut,
         nguongSoDuThap,
+        nhacGhiChepBat,
+        gioNhacGhiChep,
+        phutNhacGhiChep,
         Object.hashAllUnordered(nhomTat),
       );
 

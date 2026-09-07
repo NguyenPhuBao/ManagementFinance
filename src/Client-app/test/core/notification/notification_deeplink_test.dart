@@ -23,6 +23,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/notification/notification_deeplink.dart';
 import 'package:flowmoney/core/notification/notification_rules.dart';
+import 'package:flowmoney/core/notification/reminder_scheduler.dart';
 import 'package:flowmoney/features/bill/domain/bill_auto_pay.dart';
 import 'package:flowmoney/features/bill/domain/bill_auto_pay_runner.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
@@ -278,6 +279,29 @@ void main() {
 
       expect(khoa.split(':').length, greaterThan(3));
       expect(deeplinkTuDedupeKey(khoa), '/goals/mt-abc');
+    });
+
+    test('lời nhắc ghi chép dẫn thẳng tới trang thêm giao dịch', () {
+      final khoa = ghiChepDedupeKey(DateTime(2026, 9, 15));
+
+      expect(khoa, 'ghiChep:2026-09-15',
+          reason: 'Ngày phải nằm trong khoá và phải đệm 0: đó là thứ làm '
+              'resync luỹ đẳng, và cũng là thứ deeplink cắt bằng chữ.');
+      expect(deeplinkTuDedupeKey(khoa), '/add',
+          reason: 'Đây là loại nhắc DUY NHẤT bảo người dùng đi làm một việc cụ '
+              'thể. Đổ họ về /notifications là bắt tự tìm đường tới chỗ ghi — '
+              'và lời nhắc mất gần hết tác dụng.');
+      expect(thuocThanhTab('/add'), false,
+          reason: '/add nằm NGOÀI StatefulShellRoute nên phải `push`. Nếu ai '
+              'đó kéo nó vào một nhánh tab mà quên cập nhật nhanhThanhTab thì '
+              'chạm vào lời nhắc sẽ làm app chết màn đỏ — bẫy 7.8.');
+    });
+
+    test('khoá ghi chép của bản app cũ không làm gì hỏng', () {
+      // Lịch đã đặt vẫn nằm trong AlarmManager sau khi nâng cấp app, nên hàm
+      // này phải chịu được cả những khoá nó không còn hiểu.
+      expect(deeplinkTuDedupeKey('ghiChep'), '/add');
+      expect(deeplinkTuDedupeKey('ghiChep:'), '/add');
     });
   });
 }

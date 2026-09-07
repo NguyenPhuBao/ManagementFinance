@@ -45,6 +45,11 @@ class NotificationSettingsPage extends StatefulWidget {
 
   static const Key khoaNguongSoDu = Key('notification_settings_nguong_so_du');
 
+  static const Key khoaCongTacGhiChep =
+      Key('notification_settings_ghi_chep');
+
+  static const Key khoaGioGhiChep = Key('notification_settings_gio_ghi_chep');
+
   @override
   State<NotificationSettingsPage> createState() =>
       _NotificationSettingsPageState();
@@ -155,6 +160,20 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     );
     if (chon == null) return;
     await _ghi(_prefs.copyWith(gioNhac: chon.hour, phutNhac: chon.minute));
+  }
+
+  /// Giờ RIÊNG cho lời nhắc ghi chép — xem `NotificationPrefs.gioNhacGhiChep`.
+  Future<void> _chonGioGhiChep() async {
+    final chon = await showTimePicker(
+      context: context,
+      initialTime:
+          TimeOfDay(hour: _prefs.gioNhacGhiChep, minute: _prefs.phutNhacGhiChep),
+    );
+    if (chon == null) return;
+    await _ghi(_prefs.copyWith(
+      gioNhacGhiChep: chon.hour,
+      phutNhacGhiChep: chon.minute,
+    ));
   }
 
   @override
@@ -295,6 +314,48 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                         tieuDe: 'SỐ DƯ VÍ',
                         children: [_hangNguongSoDu()],
                       ),
+                      const SizedBox(height: 24),
+                      _the(
+                        tieuDe: 'NHẮC GHI CHÉP',
+                        children: [
+                          _hangCongTac(
+                            khoa:
+                                NotificationSettingsPage.khoaCongTacGhiChep,
+                            icon: Icons.edit_calendar_outlined,
+                            nhan: 'Nhắc ghi chép hằng ngày',
+                            phu: 'Nhắc vào cuối ngày nếu hôm đó bạn chưa ghi '
+                                'giao dịch nào.',
+                            giaTri: _prefs.nhacGhiChepBat,
+                            onChanged: (v) =>
+                                _ghi(_prefs.copyWith(nhacGhiChepBat: v)),
+                          ),
+                          // Giờ chỉ hiện khi công tắc bật, cùng lý lẽ với hai
+                          // mốc giờ im lặng bên trên.
+                          if (_prefs.nhacGhiChepBat) ...[
+                            const Divider(
+                                height: 1, color: AppColors.outlineVariant),
+                            _hangBam(
+                              khoa: NotificationSettingsPage.khoaGioGhiChep,
+                              icon: Icons.schedule_outlined,
+                              nhan: 'Giờ nhắc',
+                              phu: 'Giờ im lặng không chặn lời nhắc này.',
+                              trailing: Text(
+                                _gioGhiChepHienThi,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                              onTap: _chonGioGhiChep,
+                            ),
+                          ],
+                          const _GhiChu(
+                            'Lời nhắc này chỉ hiện ngoài màn hình, không lưu '
+                            'vào trung tâm thông báo.',
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -304,6 +365,10 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
   String get _gioHienThi =>
       '${_prefs.gioNhac.toString().padLeft(2, '0')}:'
       '${_prefs.phutNhac.toString().padLeft(2, '0')}';
+
+  String get _gioGhiChepHienThi =>
+      '${_prefs.gioNhacGhiChep.toString().padLeft(2, '0')}:'
+      '${_prefs.phutNhacGhiChep.toString().padLeft(2, '0')}';
 
   Widget _the({required String tieuDe, required List<Widget> children}) {
     return Container(
@@ -369,8 +434,10 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     required String phu,
     required Widget trailing,
     required VoidCallback onTap,
+    Key? khoa,
   }) {
     return InkWell(
+      key: khoa,
       onTap: onTap,
       child: _khung(icon: icon, nhan: nhan, phu: phu, trailing: trailing),
     );

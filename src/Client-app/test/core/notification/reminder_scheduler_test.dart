@@ -563,4 +563,178 @@ void main() {
               'vượt 64 mà mỗi bên đều tưởng mình còn dư chỗ.');
     });
   });
+
+  group('nhắc ghi chép hằng ngày', () {
+    /// Dựng một bộ đặt lịch **không có hoá đơn nào**, để mọi lịch đếm được đều
+    /// là lịch nhắc ghi chép.
+    ReminderScheduler dungGhiChep({
+      DateTime? mocGiaoDichCuoi,
+      DateTime? luc,
+    }) {
+      return ReminderScheduler(
+        osNotifier: os,
+        loadBills: (id, at) async => const [],
+        loadLastTransactionAt: (id) async => mocGiaoDichCuoi,
+        prefsStore: prefs,
+        clock: () => luc ?? now,
+      );
+    }
+
+    Future<void> bat({int gio = 20, int phut = 0}) => prefs.write(
+          accountId,
+          NotificationPrefs(
+            nhacGhiChepBat: true,
+            gioNhacGhiChep: gio,
+            phutNhacGhiChep: phut,
+          ),
+        );
+
+    test('tắt sẵn — không đặt lịch nhắc ghi chép nào', () async {
+      final soLich = await dungGhiChep().resync(accountId);
+
+      expect(soLich, 0,
+          reason: 'nhacGhiChepBat mặc định false. Bật sẵn là mọi bản đã cài '
+              'bỗng nhiên nhận một thông báo mỗi ngày mà không ai báo trước.');
+      expect(os.lich, isEmpty);
+    });
+
+    test('bật thì đặt BA lịch: hôm nay và hai ngày kế', () async {
+      await bat();
+
+      final soLich = await dungGhiChep().resync(accountId);
+
+      expect(soLich, 3,
+          reason: 'Ba chứ không phải một: đặt một lịch rồi chờ lượt resync sau '
+              'gia hạn là người dùng không mở app sẽ chỉ được nhắc ĐÚNG MỘT '
+              'lần rồi im — mà đó chính là người cần nhắc nhất.');
+      expect(
+        os.lich.values.map((l) => l.when).toList()..sort(),
+        [
+          DateTime(2026, 9, 15, 20),
+          DateTime(2026, 9, 16, 20),
+          DateTime(2026, 9, 17, 20),
+        ],
+      );
+    });
+
+    test('giờ nhắc lấy từ tuỳ chọn RIÊNG, không phải gioNhac', () async {
+      await bat(gio: 21, phut: 30);
+
+      await dungGhiChep().resync(accountId);
+
+      expect(os.lich.values.first.when, DateTime(2026, 9, 15, 21, 30),
+          reason: 'gioNhac (mặc định 08:00) là của hoá đơn. Dùng chung là hỏi '
+              '"hôm nay ghi chép chưa" trước khi có gì để ghi.');
+    });
+
+    test('hôm nay ĐÃ có giao dịch thì bỏ qua lịch hôm nay', () async {
+      await bat();
+
+      // Cùng ngày với `now`, sớm hơn giờ nhắc.
+      final soLich = await dungGhiChep(
+        mocGiaoDichCuoi: DateTime(2026, 9, 15, 9),
+      ).resync(accountId);
+
+      expect(soLich, 2);
+      expect(
+        os.lich.values.map((l) => l.when).toList()..sort(),
+        [DateTime(2026, 9, 16, 20), DateTime(2026, 9, 17, 20)],
+        reason: 'Nhắc người vừa ghi xong là đúng kiểu làm phiền khiến người '
+            'dùng tắt hẳn thông báo. Chỉ HÔM NAY biết được, hai ngày sau thì '
+            'không — nên chúng vẫn được đặt.',
+      );
+    });
+
+    test('giao dịch của HÔM QUA không cứu được hôm nay', () async {
+      await bat();
+
+      final soLich = await dungGhiChep(
+        mocGiaoDichCuoi: DateTime(2026, 9, 14, 23, 59),
+      ).resync(accountId);
+
+      expect(soLich, 3,
+          reason: 'So theo NGÀY, không theo khoảng 24 giờ. 23:59 hôm qua cách '
+              '`now` chưa tới 11 tiếng nhưng vẫn là một ngày khác.');
+    });
+
+    test('chưa từng ghi giao dịch nào thì vẫn được nhắc', () async {
+      await bat();
+
+      final soLich =
+          await dungGhiChep(mocGiaoDichCuoi: null).resync(accountId);
+
+      expect(soLich, 3,
+          reason: 'null nghĩa là "chưa từng ghi gì" và phải đọc thành CẦN '
+              'nhắc. Đọc thành "vừa ghi xong" là người mới cài app — đúng '
+              'người cần nhắc nhất — không bao giờ được nhắc.');
+    });
+
+    test('giờ nhắc đã trôi qua thì bỏ qua hôm nay', () async {
+      await bat();
+
+      final soLich = await dungGhiChep(
+        luc: DateTime(2026, 9, 15, 21),
+      ).resync(accountId);
+
+      expect(soLich, 2,
+          reason: 'Mốc quá khứ thì Android bắn NGAY còn iOS lặng lẽ bỏ — hai '
+              'nền tảng hỏng theo hai kiểu, cả hai đều sai. Cùng lý lẽ với '
+              'nhánh hoá đơn.');
+      expect(os.lich.values.map((l) => l.when).toList()..sort(),
+          [DateTime(2026, 9, 16, 20), DateTime(2026, 9, 17, 20)]);
+    });
+
+    test('tắt công tắc tổng thì không đặt lịch nào', () async {
+      await prefs.write(
+        accountId,
+        const NotificationPrefs(osBat: false, nhacGhiChepBat: true),
+      );
+
+      expect(await dungGhiChep().resync(accountId), 0);
+    });
+
+    test('luỹ đẳng — chạy lần hai không đặt lại lịch nào', () async {
+      await bat();
+      final bo = dungGhiChep();
+
+      await bo.resync(accountId);
+      final sauLan1 = os.soLanDat;
+      await bo.resync(accountId);
+
+      expect(os.soLanDat, sauLan1,
+          reason: 'resync chạy sau mỗi lần ghi và mỗi lần pull. Huỷ-rồi-đặt-'
+              'lại ở mỗi lượt là mỗi lượt thêm một cơ hội để lịch rơi mất.');
+    });
+
+    test('ghi giao dịch xong thì lượt sau HUỶ lịch hôm nay', () async {
+      await bat();
+      await dungGhiChep().resync(accountId);
+      final idHomNay = osScheduledId('ghiChep:2026-09-15');
+      expect(os.lich.containsKey(idHomNay), true);
+
+      // Người dùng ghi một giao dịch lúc 15h — lượt quét kế tiếp chạy resync.
+      await dungGhiChep(mocGiaoDichCuoi: DateTime(2026, 9, 15, 15))
+          .resync(accountId);
+
+      expect(os.daHuy, contains(idHomNay),
+          reason: 'Đây là cả lý do chọn ba lịch RỜI thay vì một lịch lặp '
+              '`DateTimeComponents.time`: lịch lặp chỉ tốn một suất nhưng '
+              'không bỏ qua được ngày nào, nên nó nhắc cả những hôm người dùng '
+              'đã ghi rồi.');
+      expect(os.lich.containsKey(idHomNay), false);
+    });
+
+    test('tắt công tắc thì dọn sạch lịch đã đặt trước đó', () async {
+      await bat();
+      await dungGhiChep().resync(accountId);
+      expect(os.lich, hasLength(3));
+
+      await prefs.write(accountId, const NotificationPrefs());
+      await dungGhiChep().resync(accountId);
+
+      expect(os.lich, isEmpty,
+          reason: 'Lịch đã đặt nằm trong AlarmManager và không tự biến mất khi '
+              'người dùng gạt công tắc.');
+    });
+  });
 }

@@ -135,6 +135,90 @@ void main() {
     });
   });
 
+  group('nhắc ghi chép hằng ngày', () {
+    test('mặc định TẮT, và giờ mặc định là 20:00', () {
+      const p = NotificationPrefs.macDinh;
+      expect(p.nhacGhiChepBat, false,
+          reason: 'Bật sẵn nghĩa là mọi bản đã cài bỗng nhiên nhận một thông '
+              'báo mỗi ngày mà không ai báo trước — cùng lý lẽ đã dùng cho giờ '
+              'im lặng và ngưỡng số dư thấp.');
+      expect(p.gioNhacGhiChep, 20,
+          reason: 'Giờ RIÊNG, không dùng chung gioNhac. Giờ nhắc chung mặc '
+              'định 8h sáng vì nó là của hoá đơn; một lời nhắc "hôm nay ghi '
+              'chép chưa" lúc 8h sáng là hỏi trước khi có gì để ghi.');
+      expect(p.phutNhacGhiChep, 0);
+    });
+
+    test('JSON đi một vòng không mất gì', () {
+      const goc = NotificationPrefs(
+        nhacGhiChepBat: true,
+        gioNhacGhiChep: 21,
+        phutNhacGhiChep: 30,
+      );
+      final lai = NotificationPrefs.fromJson(goc.toJson());
+
+      expect(lai.nhacGhiChepBat, true);
+      expect(lai.gioNhacGhiChep, 21);
+      expect(lai.phutNhacGhiChep, 30);
+    });
+
+    test('hai bản chỉ khác ba trường mới thì KHÔNG bằng nhau', () {
+      // ⚠️ `expect(lai, goc)` ở test đi-một-vòng KHÔNG canh được điều này: mọi
+      // trường khác vẫn bằng nhau, nên hai đối tượng so ra bằng ngay cả khi ba
+      // trường mới bị bỏ quên trong `==`. Phải so hai bản chỉ khác đúng chúng.
+      const bat = NotificationPrefs(nhacGhiChepBat: true);
+      const tat = NotificationPrefs(nhacGhiChepBat: false);
+      const khacGio = NotificationPrefs(nhacGhiChepBat: true, gioNhacGhiChep: 21);
+      const khacPhut =
+          NotificationPrefs(nhacGhiChepBat: true, phutNhacGhiChep: 30);
+
+      expect(bat == tat, false,
+          reason: 'Bỏ quên một trường trong == là trang cài đặt tưởng không có '
+              'gì đổi và bỏ qua lần ghi — người dùng gạt công tắc rồi thấy nó '
+              'tự trở về chỗ cũ.');
+      expect(bat == khacGio, false);
+      expect(bat == khacPhut, false);
+      expect(bat.hashCode == tat.hashCode, false,
+          reason: '`Object.hash` là hàm tất định, nên hai đầu vào khác nhau '
+              'phải cho hai mã khác nhau. Bằng nhau ở đây nghĩa là trường ấy '
+              'không được truyền vào hash — == và hashCode lệch nhau.');
+    });
+
+    test('bản ghi cũ thiếu ba trường thì rơi về TẮT', () {
+      final cu = NotificationPrefs.fromJson(const {'osBat': true});
+      expect(cu.nhacGhiChepBat, false,
+          reason: 'Mọi bản ghi đang nằm trên máy người dùng đều thiếu trường '
+              'này. Rơi về bật là đổi hành vi sau một lần cập nhật app.');
+      expect(cu.gioNhacGhiChep, 20);
+    });
+
+    test('giờ và phút ngoài dải quy về mặc định', () {
+      final xau = NotificationPrefs.fromJson(const {
+        'nhacGhiChepBat': true,
+        'gioNhacGhiChep': 24,
+        'phutNhacGhiChep': 60,
+      });
+      expect(xau.gioNhacGhiChep, 20);
+      expect(xau.phutNhacGhiChep, 0);
+      expect(xau.nhacGhiChepBat, true,
+          reason: 'Một trường hỏng chỉ được làm hỏng chính nó, không kéo cả '
+              'bản ghi về mặc định.');
+    });
+
+    test('copyWith giữ nguyên ba trường khi không truyền', () {
+      const goc = NotificationPrefs(
+        nhacGhiChepBat: true,
+        gioNhacGhiChep: 19,
+        phutNhacGhiChep: 15,
+      );
+      final moi = goc.copyWith(osBat: false);
+
+      expect(moi.nhacGhiChepBat, true);
+      expect(moi.gioNhacGhiChep, 19);
+      expect(moi.phutNhacGhiChep, 15);
+    });
+  });
+
   group('ánh xạ loại thông báo sang nhóm', () {
     test('mỗi loại thuộc đúng một nhóm', () {
       expect(nhomCua(NotificationKind.billDueSoon), NotificationGroup.bill);

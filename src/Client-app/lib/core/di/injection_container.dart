@@ -246,6 +246,11 @@ Future<void> setupDependencies() async {
             days: ReminderScheduler.cuaSo.inDays,
             now: now,
           ),
+      // Nguồn thứ ba: lời nhắc ghi chép hằng ngày. Đi chung bộ đặt lịch vì
+      // cùng lý do như mục tiêu — `resync()` huỷ mọi lịch chờ không nằm trong
+      // tập nó muốn, nên một bộ đặt lịch riêng sẽ xoá sạch lịch của bộ kia.
+      loadLastTransactionAt: (idaccount) =>
+          sl<AppDatabase>().transactionDao.getLastTransactionDate(idaccount),
       prefsStore: sl<NotificationPrefsStore>(),
     ),
   );

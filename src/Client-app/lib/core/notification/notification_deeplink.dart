@@ -97,6 +97,18 @@ String deeplinkTuDedupeKey(String key) {
     case 'walletLow':
       return '/wallets';
 
+    // Lời nhắc ghi chép hằng ngày — khoá do `ghiChepDedupeKey()` sinh. Khác
+    // mọi nhánh còn lại: nó **không** ứng với hàng nào trong
+    // `AppNotifications`, nên phép canh 14 loại ở test không chạm tới nó và
+    // nhánh này có test riêng.
+    //
+    // Đây là loại nhắc duy nhất bảo người dùng đi làm một việc cụ thể, nên nó
+    // đổ thẳng vào trang ghi chứ không về trung tâm thông báo. `/add` nằm
+    // NGOÀI `StatefulShellRoute` nên `push` chạy tốt — kéo nó vào một nhánh
+    // tab thì phải cập nhật `nhanhThanhTab` cùng lúc (bẫy 7.8).
+    case 'ghiChep':
+      return '/add';
+
     // `syncFailed` và mọi khoá lạ: không có màn nào để mở.
     default:
       return routeThongBao;

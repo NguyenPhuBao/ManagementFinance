@@ -27,6 +27,7 @@ class ReminderScheduler {
     required this.osNotifier,
     required this.loadBills,
     this.loadGoals,
+    this.loadLastTransactionAt,
     this.prefsStore,
     DateTime Function()? clock,
   }) : clock = clock ?? DateTime.now;
@@ -37,6 +38,15 @@ class ReminderScheduler {
   /// Bỏ trống thì không đặt lịch nhắc kỳ trích nào — dùng cho test của phần
   /// hoá đơn, để chúng không phải dựng dữ liệu mục tiêu.
   final GoalsLoader? loadGoals;
+
+  /// Mốc giao dịch gần nhất của tài khoản. Bỏ trống thì không đặt lịch nhắc
+  /// ghi chép nào — cùng lý do như [loadGoals].
+  ///
+  /// `null` **trả về từ hàm này** nghĩa là *chưa từng ghi giao dịch nào*, và
+  /// phải đọc thành **cần nhắc**: người mới cài app chính là người cần nhắc
+  /// nhất. Đừng lẫn với việc bỏ trống chính callback này, vốn nghĩa là *tính
+  /// năng không được nối vào*.
+  final Future<DateTime?> Function(int idaccount)? loadLastTransactionAt;
 
   /// Bỏ trống thì chạy như `NotificationPrefs.macDinh` — bật hết.
   final NotificationPrefsStore? prefsStore;
@@ -56,6 +66,18 @@ class ReminderScheduler {
   /// nào cũng được miễn là dưới 64 và việc cắt bớt là **có chủ ý** chứ không
   /// phó mặc cho nền tảng chọn hộ.
   static const int tranSoLich = 50;
+
+  /// Số ngày đặt trước cho lời nhắc ghi chép.
+  ///
+  /// **Ba, và con số này là một đánh đổi có tính toán.** Đặt một lịch rồi chờ
+  /// lượt `resync` sau gia hạn thì người không mở app chỉ được nhắc **đúng một
+  /// lần** rồi im — mà đó chính là người cần nhắc nhất. Đặt nhiều ngày hơn thì
+  /// tốn suất trong [tranSoLich], và phép cắt sắp theo **thời gian** nên lịch
+  /// hằng ngày luôn nằm gần nhất và **thắng** nhắc hoá đơn. Hoá đơn là tiền,
+  /// nhắc ghi chép là thói quen — không được đảo thứ tự ấy. Ba suất trên năm
+  /// mươi thì không đe doạ gì, mà vẫn phủ được một người mở app vài ngày một
+  /// lần. Sau ba lần bị lờ đi, nhắc tiếp là làm phiền.
+  static const int soNgayNhacGhiChep = 3;
 
   /// Đồng bộ lại toàn bộ lịch nhắc của [idaccount]. Trả về số lịch đang chờ.
   ///
@@ -171,9 +193,53 @@ class ReminderScheduler {
       }
     }
 
+    // Nguồn ứng viên thứ ba, và là nguồn DUY NHẤT suy từ việc **không có** dữ
+    // liệu. Không đi qua bộ luật và không sinh hàng nào trong
+    // `AppNotifications` — xem chú thích ở `NotificationPrefs.nhacGhiChepBat`.
+    // Cũng không chịu công tắc nhóm nào: nó không phải một `NotificationKind`.
+    final docMoc = loadLastTransactionAt;
+    if (docMoc != null && prefs.osBat && prefs.nhacGhiChepBat) {
+      final homNay = _dauNgay(at);
+      final mocCuoi = await docMoc(idaccount);
+
+      // `null` = chưa từng ghi gì = CẦN nhắc. Đọc ngược lại là người mới cài
+      // app không bao giờ được nhắc.
+      final daGhiHomNay = mocCuoi != null && _dauNgay(mocCuoi) == homNay;
+
+      for (var i = 0; i < soNgayNhacGhiChep; i++) {
+        // Chỉ **hôm nay** mới biết được đã ghi hay chưa; hai ngày sau thì
+        // không, nên chúng vẫn được đặt. Nếu người dùng ghi sớm vào ngày ấy
+        // thì lượt `resync` của chính ngày ấy sẽ gỡ lịch đi — đó là cả lý do
+        // chọn ba lịch RỜI thay vì một lịch lặp `DateTimeComponents.time`:
+        // lịch lặp chỉ tốn một suất nhưng không bỏ qua được ngày nào.
+        if (i == 0 && daGhiHomNay) continue;
+
+        final ngay = DateTime(homNay.year, homNay.month, homNay.day + i);
+        final moc = DateTime(ngay.year, ngay.month, ngay.day,
+            prefs.gioNhacGhiChep, prefs.phutNhacGhiChep);
+
+        // Mốc đã trôi qua: Android bắn NGAY còn iOS lặng lẽ bỏ — cùng lý lẽ
+        // với nhánh hoá đơn bên trên.
+        if (!moc.isAfter(at)) continue;
+
+        final khoa = ghiChepDedupeKey(ngay);
+        tatCa.add(_Lich(
+          id: osScheduledId(khoa),
+          khoa: khoa,
+          when: moc,
+          // Câu HỎI, không phải câu khẳng định. Hai lịch của ngày mai và ngày
+          // kia được đặt lúc chưa ai biết hôm ấy có ghi gì không, nên một câu
+          // "hôm nay bạn chưa ghi gì" có thể nói sai — và một thông báo nói
+          // sai là thứ người dùng tắt ngay lần đầu gặp.
+          title: 'Hôm nay bạn đã ghi gì chưa?',
+          body: 'Ghi lại vài dòng để cuối tháng còn nhìn lại được.',
+        ));
+      }
+    }
+
     // Cắt phải bỏ những mốc XA nhất: bỏ mốc gần nhất là người dùng mất đúng
-    // cái nhắc họ cần trước tiên. Trần tính trên TỔNG hai loại — iOS đếm chung
-    // một hàng đợi 64 lịch, nên cắt riêng từng loại là cả hai đều tưởng mình
+    // cái nhắc họ cần trước tiên. Trần tính trên TỔNG ba loại — iOS đếm chung
+    // một hàng đợi 64 lịch, nên cắt riêng từng loại là cả ba đều tưởng mình
     // còn dư chỗ.
     tatCa.sort((a, b) => a.when.compareTo(b.when));
     for (final l in tatCa.take(tranSoLich)) {
@@ -203,6 +269,24 @@ class ReminderScheduler {
 }
 
 DateTime _dauNgay(DateTime d) => DateTime(d.year, d.month, d.day);
+
+/// Khoá của lời nhắc ghi chép cho **một ngày**.
+///
+/// Ngày nằm trong khoá là thứ làm `resync()` luỹ đẳng: cùng một ngày luôn cho
+/// cùng `osScheduledId`, nên lượt chạy sau nhận ra lịch đã đặt và không đặt
+/// lại.
+///
+/// ⚠️ Tiền tố `ghiChep` được `deeplinkTuDedupeKey()` so khớp **bằng chữ**, y
+/// như `billDue` và `walletNeg`. Đổi tiền tố ở đây mà quên đổi bên ấy thì cú
+/// chạm rơi về `/notifications` — không lỗi, không log, chỉ là đi sai chỗ.
+///
+/// Khác mọi khoá còn lại ở một điểm: nó **không** tương ứng với hàng nào trong
+/// `AppNotifications`. Lời nhắc này chỉ sống ở tầng hệ điều hành.
+String ghiChepDedupeKey(DateTime ngay) {
+  final thang = ngay.month.toString().padLeft(2, '0');
+  final ngayTrongThang = ngay.day.toString().padLeft(2, '0');
+  return 'ghiChep:${ngay.year}-$thang-$ngayTrongThang';
+}
 
 /// Rút gọn số tiền cho câu nhắc. Bản riêng ở đây thay vì dùng chung với bộ luật
 /// vì hàm bên ấy là private — và một lời nhắc chỉ cần đủ để người dùng quyết
