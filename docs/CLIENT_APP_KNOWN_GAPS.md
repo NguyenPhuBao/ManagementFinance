@@ -334,7 +334,7 @@ Ba điều kiện dừng, vì gộp là thao tác phá huỷ:
 
 ---
 
-### G17 — Danh sách mục tiêu rỗng ở lần vào đầu tiên sau khi khởi động nguội · ⚠️ ĐÓNG MỘT NỬA (2026-09-07)
+### G17 — Trang đọc theo tài khoản không đăng ký lại khi phiên tới muộn · ⚠️ CÒN HAI TRANG (2026-09-07)
 
 Tái hiện nhiều lần trên máy ảo. Vào Mục tiêu **ngay sau khi mở app nguội** thì
 danh sách rỗng dù CSDL có dữ liệu; thoát ra vào lại là thấy.
@@ -360,19 +360,28 @@ build chạy lại khi phiên tới, cộng `key: ValueKey(idaccount)` trên
 cùng nhau. Test canh: `goal_page_cold_start_test.dart`, đỏ đúng chỗ trước bản
 vá (`Expected: contains <10>, Actual: [0]`).
 
-**Vì sao mới đóng một nửa.** Bản ghi cũ hoãn mục này vì muốn một trạng thái
-*"đang chờ phiên"* — khác hẳn *"không có dữ liệu"* — làm ở **mọi** trang đọc
-theo tài khoản. Điều đó vẫn đúng và vẫn chưa có. Kiểm 2026-09-07:
-`budget_page.dart:19` có **cùng hình dạng** (đọc bằng `currentAccountIdOrNull`
-rồi `BlocProvider` tạo một lần), nên nhiều khả năng cũng hỏng y hệt ở khởi động
-nguội — chưa dựng test nên chưa khẳng định. `bill_page` và `wallet_list_page`
-cần soi tiếp.
+**Đã lan ra kiểm bốn trang đọc theo tài khoản. Kết quả:**
 
-**Vì sao vẫn sửa lẻ một trang:** lỗi ở trang Mục tiêu là thứ người dùng gặp
-thật và đã ghi lại hai lần. Để nguyên chờ một bản dọn chung là để nguyên một
-lỗi có thật. Bản vá này dùng đúng lối mà `home_page`/`transaction_page` đã
-dùng, nên nó **không** tạo ra kiểu xử lý thứ hai — nó gom trang Mục tiêu về
-kiểu đang có.
+| Trang | Hình dạng | Trạng thái |
+|---|---|---|
+| `goal_page` | `currentAccountIdOrNull` + `BlocProvider.create` | ✅ **Đã sửa** — có test |
+| `budget_page` | **y hệt** | ✅ **Đã sửa 2026-09-07** — test đỏ trước ở đúng assertion, rồi xanh |
+| `bill_page` | Khác: `addPostFrameCallback` trong `initState`, `if (accountId == null) return;` | ⛔ **Còn** — chưa có phiên thì không nạp gì và **không bao giờ thử lại** |
+| `wallet_list_page` | Khác: **tự chép tay** `int.tryParse(user?.id ?? '') ?? 0` thay vì gọi `currentAccountIdOrNull` | ⛔ **Còn** — vừa cùng lỗi đăng-ký-một-lần, vừa là bản chép tay mà G4 sinh ra để xoá bỏ |
+
+Hai trang đầu dùng chung một bản vá: `context.watch<AuthBloc>()` để build chạy
+lại, cộng `key: ValueKey(idaccount)` để `create` chạy lần nữa. Hai trang sau có
+**hình dạng khác** nên mỗi trang cần test và bản vá riêng — đó là lý do chưa gộp.
+
+**Ý ban đầu vẫn chưa làm:** một trạng thái *"đang chờ phiên"* — khác hẳn
+*"không có dữ liệu"* — dùng chung cho mọi trang. Bản vá hiện tại làm trang tự
+khỏi, nhưng trong vài nhịp đầu người dùng vẫn thấy màn rỗng chứ không thấy
+"đang tải". Với `wallet_list_page` thì việc dọn còn phải gồm cả gỡ bản chép tay.
+
+**Vì sao sửa lẻ từng trang thay vì chờ bản dọn chung:** lỗi ở trang Mục tiêu là
+thứ người dùng gặp thật và đã ghi lại hai lần. Bản vá dùng đúng lối mà
+`home_page`/`transaction_page` vốn đã dùng, nên nó **không** đẻ ra kiểu xử lý
+thứ hai — nó gom các trang lệch về kiểu đang có.
 
 ⚠️ **`?? 0` giữ nguyên, có chủ ý.** Đây là bài học G4: đường ĐỌC không được
 mặc định về `1` (tài khoản admin thật), và `0` là "rỗng, không phải dữ liệu
