@@ -72,14 +72,7 @@ Rồi bổ sung phía sync:
 
 Giữ nguyên mô hình dữ liệu hiện có, không đụng tới danh mục dùng chung.
 
-### Lựa chọn B — "Nhân bản" danh mục mặc định thành danh mục riêng
-
-Khi người dùng gán một danh mục mặc định vào nhóm, tạo một bản sao thuộc về họ
-(`Create_by = idaccount`, `is_default = false`, `Idgroup` trỏ tới nhóm).
-
-**Không khuyến nghị:** làm phình bảng `category`, phá vỡ ràng buộc
-`uq_category_owner_name_classify` khi tên trùng, và mọi giao dịch cũ vẫn trỏ tới
-`Idcategory` gốc nên báo cáo sẽ tách làm đôi.
+> **Cập nhật 2026-09-07:** Backend đã hoàn thành tạo bảng `category_group_membership` và hỗ trợ đầy đủ Sync Push/Pull/SoftDelete với `ENTITY_PRIORITY: 15`. Đồng thời, theo mô hình Template & Cloned được PO duyệt, người dùng có bộ danh mục cá nhân riêng độc lập để quản lý và phân nhóm.
 
 ## 4. Phía Client-app cần làm gì sau khi backend xong
 

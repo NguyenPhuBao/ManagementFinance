@@ -79,6 +79,19 @@ const syncController = {
       return ResponseHandler.error(res, error.message);
     }
   },
+  /**
+* GET /api/sync/default-categories
+* Lấy danh sách danh mục template hệ thống cho Client-app
+*/
+  async defaultCategories(req, res) {
+    try {
+      const result = await syncService.getDefaultCategories();
+      return ResponseHandler.success(res, result, 'Danh sách danh mục mặc định hệ thống');
+    } catch (error) {
+      logger.error('Get default categories failed', { error: error.message });
+      return ResponseHandler.error(res, error.message);
+    }
+  },
 };
 
 module.exports = syncController;

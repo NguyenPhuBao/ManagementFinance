@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { io } from 'socket.io-client';
+import useSocket from '../../hooks/useSocket';
 import { TIME_FILTERS, TIME_FILTER_LABELS, STORAGE_KEYS } from '../../utils/constants';
 import adminApi from '../../api/admin.api';
 import Pagination from '../../components/common/Pagination';
@@ -302,6 +302,7 @@ const StatCard = ({ icon, title, value, badge, badgeColor }) => (
 );
 
 const DashboardPage = () => {
+  const socket = useSocket();
   const [loading, setLoading] = useState(true);
   const now = new Date();
 
@@ -476,19 +477,11 @@ const DashboardPage = () => {
     fetchActivities(activityPage, activityLimit);
   }, [activityPage, activityLimit]);
 
-  // Lắng nghe Real-time Socket.io
+  // Lắng nghe Real-time Socket.io qua useSocket hook
   useEffect(() => {
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3000' : window.location.origin);
-    const token = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
-    const socket = io(socketUrl, {
-      path: '/socket.io',
-      transports: ['websocket', 'polling'],
-      reconnectionAttempts: 5,
-      auth: { token },
-    });
+    if (!socket) return;
 
-
-    socket.on('audit_activity', (data) => {
+    const handleAuditActivity = (data) => {
       const newActivity = {
         key: data.id ? String(data.id) : Date.now().toString(),
         id: data.id,
@@ -557,12 +550,14 @@ const DashboardPage = () => {
           };
         });
       }
-    });
+    };
+
+    socket.on('audit_activity', handleAuditActivity);
 
     return () => {
-      socket.disconnect();
+      socket.off('audit_activity', handleAuditActivity);
     };
-  }, [activityLimit]);
+  }, [socket, activityLimit]);
 
   // Handlers chọn Date Picker
   const handleSelectDay = (day) => {

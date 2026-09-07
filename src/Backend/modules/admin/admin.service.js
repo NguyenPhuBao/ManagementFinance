@@ -137,10 +137,8 @@ const adminService = {
       if (existingDefault) {
         throw Object.assign(new Error(`Danh mục hệ thống "${trimmedName}" đã tồn tại trong hệ thống. Không được phép tạo trùng tên.`), { statusCode: 400 });
       }
-    }
-
-    // 2. Nhóm 1: Check unique [Idaccount & namecategory] (1 tài khoản không được có >1 category giống nhau)
-    if (idaccount) {
+    } else if (idaccount) {
+      // 2. Nhóm 1: Check unique [Idaccount & namecategory] (1 tài khoản không được có >1 category giống nhau)
       const existingUserCat = await prisma.category.findFirst({
         where: {
           create_by: Number(idaccount),
@@ -190,6 +188,11 @@ const adminService = {
       throw Object.assign(new Error('Không tìm thấy danh mục hoặc danh mục đã bị xóa'), { statusCode: 404 });
     }
 
+    // Ràng buộc: Không cho phép chuyển đổi danh mục người dùng thành danh mục hệ thống
+    if (!currentCat.is_default && isDefault) {
+      throw Object.assign(new Error('Không cho phép chuyển đổi danh mục người dùng thành danh mục hệ thống. Chỉ có thể tạo mới danh mục hệ thống.'), { statusCode: 400 });
+    }
+
     const targetIsDefault = data.is_default !== undefined ? isDefault : currentCat.is_default;
     const targetAccount = currentCat.create_by || (idaccount ? Number(idaccount) : null);
 
@@ -206,10 +209,8 @@ const adminService = {
       if (existingDefault) {
         throw Object.assign(new Error(`Danh mục hệ thống "${trimmedName}" đã tồn tại trong hệ thống. Không được phép đổi tên trùng.`), { statusCode: 400 });
       }
-    }
-
-    // 2. Nhóm 1: Check unique [Idaccount & namecategory] khi sửa (loại trừ chính idcategory đang sửa)
-    if (targetAccount) {
+    } else if (targetAccount) {
+      // 2. Nhóm 1: Check unique [Idaccount & namecategory] khi sửa (loại trừ chính idcategory đang sửa)
       const existingUserCat = await prisma.category.findFirst({
         where: {
           idcategory: { not: idcategory },
@@ -226,7 +227,7 @@ const adminService = {
     const result = await adminRepository.updateCategory(idcategory, {
       name: trimmedName,
       classify: canonicalClassify,
-      is_default: isDefault,
+      is_default: targetIsDefault,
       keyword: data.keyword !== undefined ? (data.keyword ? data.keyword.trim() : null) : undefined,
       icon: data.icon,
     });
@@ -234,6 +235,14 @@ const adminService = {
   },
 
   async deleteCategory(idcategory) {
+    const { prisma } = require('../../config/db');
+    const cat = await prisma.category.findUnique({ where: { idcategory } });
+    if (!cat || cat.delete_at) {
+      throw Object.assign(new Error('Không tìm thấy danh mục hoặc danh mục đã bị xóa'), { statusCode: 404 });
+    }
+    if (cat.is_default) {
+      throw Object.assign(new Error('Không được phép xóa danh mục mặc định của hệ thống.'), { statusCode: 400 });
+    }
     await adminRepository.deleteCategory(idcategory);
     return { id: idcategory };
   },
