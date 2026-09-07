@@ -6,7 +6,7 @@
 > - Danh mục hệ thống (`Is_default = true`) đóng vai trò là **Template mẫu** do Admin quản lý.
 > - Khi người dùng đăng ký mới, Client-app gọi `GET /api/sync/default-categories` để lấy template, rồi tự sinh 1 bộ danh mục cá nhân (`Is_default = false`, `Create_by = idaccount`, UUID riêng) lưu vào SQLite và đồng bộ lên Backend qua `POST /api/sync/push`.
 > - Do đó: **Người dùng ĐƯỢC PHÉP sở hữu danh mục cá nhân trùng tên với danh mục mẫu hệ thống**.
-> - **Trigger kiểm tra chéo (`trg_category_name_cross_default`) ĐÃ BỊ LOẠI BỎ HOÀN TOÀN** khỏi CSDL theo script `database/5_Drop_Cross_Default_Category_Trigger.sql`.
+> - **Trigger kiểm tra chéo (`trg_category_name_cross_default`) ĐÃ BỊ LOẠI BỎ HOÀN TOÀN** khỏi CSDL theo script `src/Backend/database/5_Drop_Cross_Default_Category_Trigger.sql`.
 > - Toàn bộ các đề xuất cũ về việc dùng trigger cấm trùng tên chéo hay gộp chung không gian tên giữa người dùng và hệ thống **đều bị bãi bỏ** vì sai lệch với kiến trúc nghiệp vụ.
 
 **Người nhận:** Đội Backend & Client-app  

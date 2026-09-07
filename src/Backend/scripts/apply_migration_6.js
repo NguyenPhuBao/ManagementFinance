@@ -5,7 +5,7 @@ const { pool } = require('../config/db');
 
 async function run() {
   try {
-    const sqlPath = path.join(__dirname, '../../../database/6_Drop_Category_Group_Membership.sql');
+    const sqlPath = path.join(__dirname, '../database/6_Drop_Category_Group_Membership.sql');
     const sql = fs.readFileSync(sqlPath, 'utf-8');
     console.log('Applying 6_Drop_Category_Group_Membership.sql to Supabase / PostgreSQL...');
     await pool.query(sql);

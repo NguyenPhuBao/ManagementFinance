@@ -2502,7 +2502,7 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
 - **1. Chuyển đổi Mô hình Danh mục Mẫu (Template & Cloned Model)**:
   - **Nguyên lý:** Toàn bộ danh mục mặc định hệ thống (`is_default = true`) đóng vai trò là **Bộ khung mẫu (Template)** chuẩn do Admin quản lý.
   - **Cấp phát cho người dùng:** Khi người dùng đăng ký mới, Client-app gọi API `GET /api/sync/default-categories` để lấy danh sách template, sau đó tự sinh 1 bộ danh mục cá nhân tương ứng (`is_default = false`, `create_by = idaccount`, UUID riêng) lưu vào SQLite cục bộ và đồng bộ lên Backend qua `POST /api/sync/push`. Backend không tự động tạo danh mục cho người dùng.
-  - **Gỡ bỏ trigger kiểm tra chéo (`trg_category_name_cross_default`)**: Người dùng được phép sở hữu danh mục cá nhân trùng tên với danh mục mẫu hệ thống. File migration `database/5_Drop_Cross_Default_Category_Trigger.sql` đã gỡ bỏ trigger và function kiểm tra chéo.
+  - **Gỡ bỏ trigger kiểm tra chéo (`trg_category_name_cross_default`)**: Người dùng được phép sở hữu danh mục cá nhân trùng tên với danh mục mẫu hệ thống. File migration `src/Backend/database/5_Drop_Cross_Default_Category_Trigger.sql` đã gỡ bỏ trigger và function kiểm tra chéo.
   - **Tái xác lập 2 Partial Unique Indexes chuẩn hóa NFC & case-insensitive**:
     - `uq_category_owner_name`: `UNIQUE ("Create_by", lower(regexp_replace(btrim(normalize("NameCategory", NFC)), '\s+', ' ', 'g')))` WHERE `Is_default = FALSE AND Delete_at IS NULL`.
     - `uq_category_default_name`: `UNIQUE (lower(regexp_replace(btrim(normalize("NameCategory", NFC)), '\s+', ' ', 'g')))` WHERE `Is_default = TRUE AND Delete_at IS NULL`.
@@ -2528,7 +2528,7 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - Sau khi PO chốt áp dụng **Mô hình Template & Cloned Model**, mỗi người dùng sở hữu bộ danh mục cá nhân riêng độc lập. Phân cấp nhóm danh mục được gom trực tiếp bằng quan hệ tự tham chiếu `category.idgroup` (`is_group = true`).
   - Do đó bảng trung gian `category_group_membership` hoàn toàn thừa, không có dữ liệu (0 bản ghi) và không còn giá trị sử dụng.
 - **2. Các công việc đã thực thi**:
-  - **CSDL PostgreSQL / Supabase**: Tạo và thực thi script migration [`database/6_Drop_Category_Group_Membership.sql`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/database/6_Drop_Category_Group_Membership.sql) với lệnh `DROP TABLE IF EXISTS "category_group_membership" CASCADE;`.
+  - **CSDL PostgreSQL / Supabase**: Tạo và thực thi script migration [`src/Backend/database/6_Drop_Category_Group_Membership.sql`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/database/6_Drop_Category_Group_Membership.sql) với lệnh `DROP TABLE IF EXISTS "category_group_membership" CASCADE;`.
   - **Prisma Schema**: Gỡ bỏ model `category_group_membership` và các relations liên quan khỏi `account` và `category` trong `src/Backend/prisma/schema.prisma`. Tái sinh Prisma Client thành công (`rtk npx prisma generate`).
   - **Sync Engine**: Gỡ bỏ entity `categoryGroupMembership` / `category_group_membership` khỏi `sync.validation.js` (`VALID_ENTITIES`, `ENTITY_PK_MAP`), `sync.service.js` (`UPSERT_MAP`, `PULL_MAP`, `ENTITY_KEYS`, `ENTITY_PRIORITY`), và `sync.repository.js` (xóa các hàm upsert, query, count và mapping `softDelete`).
   - **Test Suites**: Cập nhật [`Test/test_can_lam_fixes.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/Test/test_can_lam_fixes.js) loại bỏ Test 5 và cleanup liên quan.
