@@ -56,16 +56,20 @@ class Transactions extends Table {
   /// goalId: mục tiêu tiết kiệm mà giao dịch này thuộc về. NULL với mọi giao
   /// dịch thường.
   ///
-  /// ⚠️ **Cột CỤC BỘ — cố ý KHÔNG nằm trong hợp đồng đồng bộ.** Bảng `goal`
-  /// phía backend không có chiều ngược lại, và thêm trường vào payload đẩy đòi
-  /// backend sửa trước (quy tắc 4 trong `CLAUDE.md`).
-  /// `sync_payload_contract_test.dart` khoá đúng bộ khoá của payload giao dịch
-  /// nên nó bắt được ngay nếu cột này lọt vào.
+  /// ✅ **ĐÃ ĐỒNG BỘ từ 2026-09-07**, khi backend thêm cột `transaction.Idgoal`.
+  /// Tên trong payload là **`idgoal`**, KHÔNG phải `goal_id` — `goal_id` là tên
+  /// cột Drift và vẫn nằm trong danh sách *cấm rò rỉ* của
+  /// `sync_payload_contract_test.dart`. Hai cái tên chỉ khác nhau ở đúng chỗ
+  /// này, và gửi nhầm thì backend bỏ qua **trong im lặng**.
   ///
-  /// Vì là cục bộ, hàng **kéo về từ server luôn để trống** cột này — cũng như
-  /// mọi hàng do bản app cũ tạo. Nơi đọc (`TransactionDao.watchByGoal`) phải
-  /// giữ nhánh tra theo ghi chú cho những hàng đó, nếu không lịch sử tích luỹ
-  /// đã có sẽ biến mất sau lần đồng bộ đầu tiên.
+  /// ⚠️ Nhánh kéo về dùng `Value.absent()` khi server không gửi `idgoal`, chứ
+  /// KHÔNG ghi đè null. Mọi hàng đã nằm sẵn trên server đều mang NULL cho tới
+  /// khi client đẩy lại từng hàng, nên ghi đè thẳng là xoá sạch liên kết cục bộ
+  /// ngay ở chu kỳ đồng bộ đầu tiên. Có test canh đúng ca này.
+  ///
+  /// Vì hàng cũ trên server vẫn trống cột này, nơi đọc
+  /// (`TransactionDao.watchByGoal`) **vẫn phải giữ** nhánh tra theo ghi chú —
+  /// nó chỉ teo dần khi từng hàng được đẩy lại, chứ không hết ngay.
   ///
   /// Vì sao cần: trước đây lịch sử tích luỹ tra bằng
   /// `note LIKE '%Tích lũy mục tiêu: <tên>%'`. Tên mục tiêu không duy nhất, và

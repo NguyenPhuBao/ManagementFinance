@@ -357,21 +357,30 @@ vài nhịp và khẳng định trang không hiện trạng thái rỗng trong l
 
 ---
 
-### G18 — Nhánh dự phòng của lịch sử tích luỹ vẫn so bằng TÊN mục tiêu · ⏸️ HOÃN CÓ CHỦ Ý (2026-09-05)
+### G18 — Nhánh dự phòng của lịch sử tích luỹ vẫn so bằng TÊN mục tiêu · ⏸️ THU HẸP DẦN (2026-09-07)
 
-`TransactionDao.watchByGoal` có hai nhánh: nối bằng `goal_id` cho hàng mới, và
-`note LIKE '%Tích lũy mục tiêu: <tên>%'` cho hàng cũ. Nhánh thứ hai mang đúng
-khuyết điểm mà `goal_id` sinh ra để chữa — mục tiêu tên `"Mua"` vẫn nuốt lịch sử
-của `"Mua xe"`.
+`TransactionDao.watchByGoal` có hai nhánh: nối bằng `goal_id` cho hàng có ID, và
+`note LIKE '%Tích lũy mục tiêu: <tên>%'` cho hàng không có. Nhánh thứ hai mang
+đúng khuyết điểm mà `goal_id` sinh ra để chữa — mục tiêu tên `"Mua"` vẫn nuốt
+lịch sử của `"Mua xe"`.
 
-**Vì sao giữ:** bỏ đi thì lịch sử tích luỹ **đã có** biến mất khỏi màn hình. Hai
-loại hàng không bao giờ mang `goal_id`: hàng do bản app trước schema v14 tạo, và
-**mọi hàng kéo về từ server** — vì cột ấy là cục bộ.
+**Đã đổi 2026-09-07:** backend có cột `transaction.Idgoal`, và client nay **đẩy**
+`idgoal` trong payload giao dịch **lẫn đọc lại** ở nhánh pull. Nguồn sinh ra hàng
+thiếu ID đã tắt: từ nay mọi hàng đi qua đồng bộ đều mang liên kết.
 
-**Vì sao chưa dứt điểm được:** loại thứ nhất tắt dần theo thời gian, loại thứ hai
-thì **không** — cứ đăng nhập máy mới là lại đầy hàng thiếu ID. Chỉ khi backend
-có cột `Idgoal` thì nhánh này mới bỏ được. Xem
-`docs/superpowers/backend/DA-XONG/2026-09-05-backend-transaction-goal-id.md`.
+**Vì sao vẫn chưa gỡ được nhánh so tên:** hàng **đã nằm sẵn** trên server đều
+mang `Idgoal = NULL`, vì chúng được đẩy lên trước khi client biết gửi trường này.
+Chúng chỉ nhận ID khi được đẩy lại — tức khi người dùng sửa gì đó, hoặc không bao
+giờ. Bỏ nhánh so tên bây giờ là lịch sử tích luỹ **đã có** biến mất khỏi màn hình.
+Nhánh ấy nay **teo dần** thay vì đứng yên; gỡ được khi không còn hàng nào
+`goal_id IS NULL` mà ghi chú khớp mẫu.
+
+⚠️ **Nhánh pull dùng `Value.absent()`, KHÔNG ghi đè null.** Server im lặng về
+`idgoal` nghĩa là *chưa biết*, không phải *hãy xoá*. Ghi đè thẳng thì đúng ở chu
+kỳ đồng bộ đầu tiên sau bản vá, mọi liên kết cục bộ đang có bị xoá sạch và toàn
+bộ lịch sử rơi xuống nhánh so tên — tái hiện nguyên vẹn G18 mà không có lỗi nào
+báo ra. Đã dựng bản ngây thơ để xem test có bắt được không: **có**, và đó là
+`'hàng server KHÔNG có idgoal thì liên kết cục bộ phải còn nguyên'`.
 
 ⚠️ Điều kiện `goal_id IS NULL` ở nhánh dự phòng là thứ chặn không cho một hàng
 đã có chủ bị mục tiêu khác nhận vơ. **Đừng bỏ nó khi dọn dẹp.**

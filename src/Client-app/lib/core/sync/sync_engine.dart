@@ -516,6 +516,20 @@ class SyncEngine {
                   num.tryParse(t['amount'].toString()) ?? 0,
                 )),
                 note: Value(t['note']?.toString() ?? ''),
+                // Server im lặng về `idgoal` nghĩa là **chưa biết**, không
+                // phải **hãy xoá**. Cột `transaction.Idgoal` mới có ngày
+                // 2026-09-07, nên mọi hàng đã nằm sẵn trên server đều mang
+                // NULL cho tới khi client đẩy lại từng hàng một. Gán thẳng
+                // `Value(null)` ở đây là xoá sạch liên kết cục bộ ngay ở chu
+                // kỳ đồng bộ đầu tiên — và lịch sử tích luỹ lặng lẽ rơi hết
+                // xuống nhánh so TÊN, tức tái hiện nguyên vẹn G18.
+                //
+                // `Value.absent()` để Drift bỏ qua cột này khi ghi đè, giữ
+                // nguyên giá trị đang có. Đánh đổi: server KHÔNG gỡ được liên
+                // kết theo chiều này — chấp nhận được, vì chỉ client đặt nó.
+                goalId: (t['idgoal'] ?? t['goal_id']) != null
+                    ? Value((t['idgoal'] ?? t['goal_id']).toString())
+                    : const Value.absent(),
                 date: Value(DateTime.tryParse(
                         (t['date_transaction'] ?? t['date'])?.toString() ?? '') ??
                     DateTime.now()),
@@ -1105,6 +1119,7 @@ class SyncEngine {
           // `idwallet_transfer` (bỏ qua nếu không phải giao dịch chuyển khoản).
           'idwallet_transfer':
               t.walletTransfer != null ? _toValidUuid(t.walletTransfer!) : null,
+          'idgoal': t.goalId != null ? _toValidUuid(t.goalId!) : null,
           'amount': t.amount,
           'type': t.type,
           'note': t.note,

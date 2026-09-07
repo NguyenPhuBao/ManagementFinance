@@ -82,6 +82,7 @@ void main() {
   const accountId = 7;
   const walletId = '11111111-1111-4111-8111-111111111111';
   const categoryId = '22222222-2222-4222-8222-222222222222';
+  const goalId = '66666666-6666-4666-8666-666666666666';
 
   late AppDatabase db;
   late _Client client;
@@ -140,6 +141,11 @@ void main() {
         amount: const Value(-45000),
         type: const Value('chi'),
         date: Value(now),
+        // Nối với mục tiêu bằng ID. Trước 2026-09-07 cột này là cục bộ nên
+        // hàng kéo về từ server luôn trống, và `watchByGoal` phải rơi xuống
+        // nhánh so TÊN — nhánh mang đúng khuyết điểm mà cột này sinh ra để
+        // chữa ("Mua" nuốt lịch sử của "Mua xe").
+        goalId: const Value(goalId),
         syncStatus: const Value('pending'),
         updatedAt: Value(now),
       ));
@@ -266,8 +272,22 @@ void main() {
           'amount', 'type', 'note',
           'dateTransaction', // normalizer đổi date → dateTransaction
           'is_deleted', 'update_at', 'idaccount',
+          // Khoá nối tới mục tiêu, mở khoá 2026-09-07 khi backend thêm cột
+          // `transaction.Idgoal`. Tên payload là `idgoal` — KHÔNG phải
+          // `goal_id`, vốn là tên cột Drift cục bộ và vẫn nằm trong danh sách
+          // cấm rò rỉ bên dưới. Hai cái tên khác nhau ở đúng một chỗ này, và
+          // gửi nhầm tên thì backend bỏ qua trong im lặng.
+          'idgoal',
         },
       );
+    });
+
+    test('payload giao dịch mang idgoal của khoản nạp mục tiêu', () {
+      final p = payloadOf('transaction');
+      expect(p['idgoal'], goalId,
+          reason: 'Thiếu giá trị này thì hàng lên server mang Idgoal = NULL, '
+              'và máy thứ hai kéo về vẫn phải đoán chủ sở hữu bằng cách so '
+              'TÊN mục tiêu trong ghi chú — đúng khuyết điểm G18.');
     });
 
     group('giá trị `type` và dấu của `amount`', () {
@@ -468,6 +488,20 @@ void main() {
             'update_at': '2026-09-01T10:00:00.000Z',
           },
         ],
+        'transactions': [
+          {
+            'idtran': '99999999-9999-4999-8999-999999999999',
+            'idaccount': accountId,
+            'idwallet': walletId,
+            'idcategory': categoryId,
+            'amount': -100000,
+            'type': 'Transaction',
+            'note': 'Tích lũy mục tiêu: Mua laptop',
+            'date_transaction': '2026-09-01T02:00:00.000Z',
+            'idgoal': goalId,
+            'update_at': '2026-09-01T10:00:00.000Z',
+          },
+        ],
         'goals': [
           {
             'idgoal': '66666666-6666-4666-8666-666666666666',
@@ -500,6 +534,13 @@ void main() {
           reason: 'backend dùng "total_amount", không phải "amount"');
       expect(budgets.single.overSpending, 'Stop');
 
+      final tran = (await db.transactionDao.getAll(accountId))
+          .firstWhere((t) => t.id == '99999999-9999-4999-8999-999999999999');
+      expect(tran.goalId, goalId,
+          reason: 'Nửa còn lại của G18: đẩy `idgoal` lên mà không đọc lại thì '
+              'hàng kéo về máy thứ hai vẫn trống cột nối, và nó vẫn phải so '
+              'TÊN mục tiêu trong ghi chú để đoán chủ sở hữu.');
+
       final goals = await db.goalDao.getAll(accountId);
       expect(goals.single.isCompleted, true,
           reason: 'backend dùng "status_complete" dạng chuỗi "True"');
@@ -518,6 +559,59 @@ void main() {
               'trích lại đúng kỳ mà máy thứ nhất vừa trích xong.');
     });
 
+    test('hàng server KHÔNG có idgoal thì liên kết cục bộ phải còn nguyên',
+        () async {
+      // Đây là trạng thái THẬT ngay sau khi backend thêm cột: mọi hàng đã nằm
+      // sẵn trên server đều mang `Idgoal = NULL`, vì chúng được đẩy lên từ
+      // trước khi client biết gửi trường này. Nhánh pull ghi đè thẳng sẽ xoá
+      // sạch liên kết cục bộ ở đúng chu kỳ đồng bộ đầu tiên — và lịch sử tích
+      // luỹ lặng lẽ rơi hết xuống nhánh so TÊN, tức tái hiện nguyên vẹn G18.
+      // Ví phải có trước: `transactions.wallet_id` là khoá ngoại thật.
+      await db.walletDao.insert(WalletsCompanion(
+        id: const Value(walletId),
+        idaccount: const Value(accountId),
+        name: const Value('Ví tiền mặt'),
+        type: const Value('cash'),
+        balance: const Value(1000),
+        syncStatus: const Value('synced'),
+        updatedAt: Value(DateTime(2026, 9, 1)),
+      ));
+      await db.transactionDao.insert(TransactionsCompanion(
+        id: const Value('88888888-8888-4888-8888-888888888888'),
+        idaccount: const Value(accountId),
+        walletId: const Value(walletId),
+        amount: const Value(-70000),
+        type: const Value('chi'),
+        date: Value(DateTime(2026, 9, 1)),
+        goalId: const Value(goalId),
+        syncStatus: const Value('synced'),
+        updatedAt: Value(DateTime(2026, 9, 1)),
+      ));
+
+      client.adapter.pullData = {
+        'transactions': [
+          {
+            'idtran': '88888888-8888-4888-8888-888888888888',
+            'idaccount': accountId,
+            'idwallet': walletId,
+            'amount': -70000,
+            'type': 'Transaction',
+            'date_transaction': '2026-09-01T02:00:00.000Z',
+            // KHÔNG có khoá 'idgoal' — đúng như hàng cũ trên server.
+            'update_at': '2026-09-02T10:00:00.000Z',
+          },
+        ],
+      };
+
+      await runSync();
+
+      final tran = (await db.transactionDao.getAll(accountId))
+          .firstWhere((t) => t.id == '88888888-8888-4888-8888-888888888888');
+      expect(tran.goalId, goalId,
+          reason: 'Server im lặng về idgoal nghĩa là CHUA BIET, không phải '
+              'HAY XOA. Ghi đè null vào đây là mất liên kết mà không có lỗi '
+              'nào báo ra.');
+    });
     test('cờ đúng/sai của mục tiêu đọc được ở MỌI dạng backend có thể gửi',
         () async {
       client.adapter.pullData = {
