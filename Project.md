@@ -2538,5 +2538,20 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - `Test/test_category_template_rules.js`: **8/8 tests PASS (100%)**.
   - `Test/test_sync_new_schema.js`: **PASS 100%** (Tất cả 7 entity cốt lõi sync push/pull/softDelete trơn tru).
 
+### 11.32. Khắc Phục Triệt Để Sai Lệch Múi Giờ Audit Log & Dashboard Admin-Web (2026-09-07)
+- **1. Nguyên nhân gốc rễ**:
+  - Dữ liệu trong CSDL Supabase PostgreSQL lưu timestamp chuẩn UTC.
+  - Khi Backend chạy trên Cloud server (Vercel/Render/Docker), múi giờ hệ thống là UTC (`TZ=UTC`), dẫn đến các hàm `date.getHours()` trả về giờ UTC (07:28 thay vì 14:28 tại Việt Nam GMT+7).
+  - Bảng "Hoạt động gần đây" trên Admin-web hiển thị trực tiếp chuỗi server gửi về mà không convert theo giờ địa phương của trình duyệt.
+  - Các biểu đồ `getLoginStats` và `getRequestStats` gom bucket theo giờ server UTC và bộ lọc `today` bị lệch 7 tiếng so với ngày sinh hoạt tại Việt Nam.
+- **2. Các giải pháp đã triển khai (Defense-in-depth)**:
+  - **Backend (`src/Backend/modules/auth/auth.service.js`)**: Viết helper `formatVnTime` sử dụng `Intl.DateTimeFormat` chuẩn múi giờ `Asia/Ho_Chi_Minh` (GMT+7) cho cả API `getRecentActivities` và Socket.io real-time `emitAuditActivity`. Trả về trường `time_req` dạng ISO 8601 UTC string.
+  - **Backend (`src/Backend/modules/admin/admin.service.js`)**: Viết helper `getVnTimeParts` để gom bucket 24 giờ và thống kê theo ngày/tháng chuẩn múi giờ Việt Nam. Chuẩn hóa `resolveFilterContext` tính `startDate` và `endDate` cho bộ lọc `'today'` (và custom date) chuẩn theo múi giờ Việt Nam (+7).
+  - **Frontend (`src/Admin-web/src/pages/dashboard/DashboardPage.jsx`)**: Thêm helper `formatActivityTime` tự động convert `time_req` sang múi giờ của trình duyệt người dùng (`HH:mm` trong ngày hoặc `HH:mm DD/MM` nếu khác ngày).
+- **3. Kết quả kiểm thử**:
+  - API `getRecentActivities` trả về đúng giờ Việt Nam (`14:28` thay vì `07:28`).
+  - `npm --prefix src/Admin-web run build`: **Thành công 100% (137 modules transformed)**.
+  - `Test/test_can_lam_fixes.js`: **9/9 tests PASS (100%)**.
+
 
 

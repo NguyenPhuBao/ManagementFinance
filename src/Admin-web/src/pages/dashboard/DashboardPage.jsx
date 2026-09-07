@@ -66,6 +66,31 @@ const getStatusBadge = (status) => {
   );
 };
 
+const formatActivityTime = (item) => {
+  if (!item) return 'Vừa xong';
+  const rawTime = item.time_req || item.timeReq;
+  if (!rawTime) return item.time || 'Vừa xong';
+
+  const date = new Date(rawTime);
+  if (isNaN(date.getTime())) return item.time || 'Vừa xong';
+
+  const now = new Date();
+  const isToday =
+    date.getDate() === now.getDate() &&
+    date.getMonth() === now.getMonth() &&
+    date.getFullYear() === now.getFullYear();
+
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+
+  if (isToday) {
+    return `${hours}:${minutes}`;
+  }
+  const day = date.getDate().toString().padStart(2, '0');
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  return `${hours}:${minutes} ${day}/${month}`;
+};
+
 const InteractiveLineChart = ({
   data = [],
   gradientId = 'chartGrad',
@@ -460,7 +485,8 @@ const DashboardPage = () => {
           action: item.action || 'Yêu cầu hệ thống',
           reason: item.reason || null,
           status: item.status || 'Pass',
-          time: item.time || 'Vừa xong',
+          time: formatActivityTime(item),
+          time_req: item.time_req,
           isNew: false,
         })));
 
@@ -489,7 +515,8 @@ const DashboardPage = () => {
         action: data.action || 'Yêu cầu hệ thống',
         reason: data.reason || null,
         status: data.status || 'Pass',
-        time: data.time || 'Vừa xong',
+        time: formatActivityTime(data),
+        time_req: data.time_req,
         isNew: true,
       };
 
