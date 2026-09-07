@@ -435,22 +435,25 @@ lập kịch bản ở **tương lai** nên vỡ ngay khi phép chặn đầu tr
 
 ---
 
-### G21 — Cấu hình trích tự động không theo người dùng sang máy khác · ⏸️ CHẶN Ở BACKEND (2026-09-05)
+### G21 — Cấu hình trích tự động không theo người dùng sang máy khác · ✅ ĐÓNG (2026-09-07)
 
-**Hiện trạng:** ba cột `auto_deposit_amount`, `auto_deposit_wallet_id`,
-`auto_deposit_last_run` là **cục bộ** (schema v15). Bật trích trên điện thoại
-rồi đăng nhập ở máy khác thì máy kia không trích gì cả, và không có gì trên màn
-hình nói vì sao. Chu kỳ và **mốc neo** thì có đồng bộ (`cycle_take_money`,
-`time_cycle_take_money`), nên máy mới vẫn hiện đúng nhịp kế hoạch trong hộp dự
-báo — càng dễ hiểu nhầm là nó đang chạy.
+**Đã đóng.** Backend thêm ba cột `auto_deposit_amount`,
+`auto_deposit_wallet_id`, `auto_deposit_last_run` vào bảng `goal` trong đợt
+2026-09-07; client đẩy và kéo **cả ba cùng một lúc**. Bật trích ở máy A rồi
+đăng nhập máy B thì B nhận đủ cấu hình **lẫn mốc kỳ gần nhất**, nên nó không
+trích lại kỳ mà A vừa trích xong.
 
-**Vì sao chưa đẩy lên:** bảng `goal` phía backend chưa có ba cột ấy, và quy tắc
-4 trong `CLAUDE.md` cấm thêm trường vào payload trước khi backend sẵn sàng.
+⚠️ **Ba cột vẫn phải đi cùng nhau.** `auto_deposit_last_run` là cột chặn trích
+hai lần. Ai đó "dọn dẹp" payload và bỏ nó ra thì mỗi máy giữ một mốc riêng và
+**cả hai cùng chuyển tiền** — tệ hơn hẳn hiện trạng cũ, nơi máy thứ hai đơn
+giản là không trích gì. `sync_payload_contract_test.dart` khoá bộ khoá của
+payload mục tiêu (21 trường) nên nó bắt được ngay.
 
-⚠️ **Đừng đẩy một phần.** Nếu chỉ `amount` và `wallet_id` đồng bộ mà bỏ
-`last_run`, mỗi máy giữ một mốc riêng và **cả hai cùng chuyển tiền** khi tới kỳ.
-Hiện trạng (máy thứ hai không trích gì) vẫn tốt hơn hẳn. Chi tiết và các bước
-phải làm ở `docs/superpowers/backend/DA-XONG/2026-09-05-backend-goal-auto-deposit.md`.
+**Khe hở còn lại, chấp nhận được:** hai máy cùng mở, cùng tới kỳ, cùng chưa kịp
+kéo `last_run` của nhau thì vẫn trích hai lần. Hẹp vì trích chỉ chạy khi app mở,
+và `Current_amount` là giá trị tuyệt đối nên LWW hội tụ chứ không cộng dồn sai.
+Vá triệt để cần một khoá phía máy chủ trên `(Idgoal, kỳ trích)` — phụ thuộc
+`transaction.Idgoal`, cột nay đã có nhưng client chưa đẩy (xem **G18**).
 
 ---
 

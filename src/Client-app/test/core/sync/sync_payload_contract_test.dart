@@ -214,6 +214,12 @@ void main() {
         name: const Value('Mua laptop'),
         targetAmount: const Value(20000000),
         targetDate: Value(now),
+        // Bật trích tự động để payload mang giá trị thật chứ không phải null —
+        // một trường luôn null thì test không phân biệt được "có gửi" với
+        // "gửi nhầm tên".
+        autoDepositAmount: const Value(500000),
+        autoDepositWalletId: const Value(walletId),
+        autoDepositLastRun: Value(DateTime.utc(2026, 9, 1, 3)),
         syncStatus: const Value('pending'),
         updatedAt: Value(now),
       ));
@@ -385,8 +391,28 @@ void main() {
           'time_cycle_take_money', 'status_complete', 'recurrence',
           'time_recurrence', 'icon', 'color', 'note', 'is_deleted',
           'update_at', 'idaccount',
+          // Ba cột trích tự động, mở khoá 2026-09-07 khi backend thêm chúng
+          // vào bảng `goal`. Chúng phải đi CÙNG NHAU: thiếu `last_run` thì mỗi
+          // máy giữ một mốc riêng và cả hai cùng chuyển tiền khi tới kỳ — hỏng
+          // nặng hơn hiện trạng "máy thứ hai không trích gì".
+          'auto_deposit_amount', 'auto_deposit_wallet_id',
+          'auto_deposit_last_run',
         },
       );
+    });
+
+    test('payload mục tiêu mang đủ GIÁ TRỊ của ba cột trích tự động', () {
+      final p = payloadOf('goal');
+      expect(p['auto_deposit_amount'], 500000,
+          reason: 'Số tiền trích mỗi kỳ. Đúng tên khoá mà sai giá trị thì '
+              'backend ghi null, và người dùng thấy công tắc bật mà không '
+              'trích — im lặng y như sai tên.');
+      expect(p['auto_deposit_wallet_id'], walletId,
+          reason: 'Ví NGUỒN của khoản trích, khác `idwallet` là ví NHẬN.');
+      expect(p['auto_deposit_last_run'], '2026-09-01T03:00:00.000Z',
+          reason: 'Mốc kỳ gần nhất đã trích, gửi dạng ISO 8601 UTC như mọi cột '
+              'thời gian khác. Đây là cột chống trích hai lần: sai định dạng '
+              'thì backend lưu null và máy kia coi như chưa từng trích.');
     });
 
     test('KHÔNG được rò rỉ trường thuần client lên backend', () {
@@ -398,12 +424,6 @@ void main() {
           'isLocalOnly',
           'is_local_only',
           'keywords',
-          // Ba cột trích tự động là CỤC BỘ (schema v15): bảng `goal` phía
-          // backend không có chúng, và thêm trường vào payload đẩy đòi backend
-          // sửa trước.
-          'auto_deposit_amount',
-          'auto_deposit_wallet_id',
-          'auto_deposit_last_run',
           'goal_id', // cột cục bộ của transactions (schema v14)
           'updatedAt', // phải đã được đổi thành update_at
         ]) {
@@ -457,6 +477,9 @@ void main() {
             'current_amount': 1000,
             'target_date': '2026-12-01T00:00:00.000Z',
             'status_complete': 'True',
+            'auto_deposit_amount': 750000,
+            'auto_deposit_wallet_id': walletId,
+            'auto_deposit_last_run': '2026-09-01T03:00:00.000Z',
             'update_at': '2026-09-01T10:00:00.000Z',
           },
         ],
@@ -480,6 +503,19 @@ void main() {
       final goals = await db.goalDao.getAll(accountId);
       expect(goals.single.isCompleted, true,
           reason: 'backend dùng "status_complete" dạng chuỗi "True"');
+      expect(goals.single.autoDepositAmount, 750000,
+          reason: 'Chiều KÉO VỀ là nửa còn lại của G21: đẩy lên mà không đọc '
+              'lại thì máy thứ hai vẫn không biết trích tự động đang bật.');
+      expect(goals.single.autoDepositWalletId, walletId);
+      // So bằng `.toUtc()` chứ không so thẳng: Drift trả DateTime **local**,
+      // nên `DateTime.utc(...)` không bao giờ bằng nó dù cùng một thời điểm
+      // (Dart so cả cờ isUtc). Phép so này VẪN bắt được lỗi múi giờ thật —
+      // nếu mã đọc bỏ hậu tố Z và hiểu 03:00 là giờ địa phương thì `.toUtc()`
+      // ra 2026-08-31T20:00Z và test đỏ.
+      expect(goals.single.autoDepositLastRun?.toUtc(),
+          DateTime.utc(2026, 9, 1, 3),
+          reason: 'Mốc kỳ gần nhất phải về được máy thứ hai, nếu không nó sẽ '
+              'trích lại đúng kỳ mà máy thứ nhất vừa trích xong.');
     });
 
     test('cờ đúng/sai của mục tiêu đọc được ở MỌI dạng backend có thể gửi',

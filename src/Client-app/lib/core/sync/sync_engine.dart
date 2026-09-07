@@ -829,6 +829,14 @@ class SyncEngine {
                 timeCycleTakeMoney: Value(g['time_cycle_take_money'] != null
                     ? DateTime.tryParse(g['time_cycle_take_money'].toString())
                     : null),
+                autoDepositAmount: Value(
+                    num.tryParse(g['auto_deposit_amount']?.toString() ?? '')
+                        ?.toDouble()),
+                autoDepositWalletId:
+                    Value(g['auto_deposit_wallet_id']?.toString()),
+                autoDepositLastRun: Value(g['auto_deposit_last_run'] != null
+                    ? DateTime.tryParse(g['auto_deposit_last_run'].toString())
+                    : null),
                 // `doiSangBool` chứ không so cứng: `Recurrence` là boolean
                 // thật còn `Status_complete` là chuỗi — hai kiểu khác nhau
                 // trong CÙNG một bảng. So khớp cứng từng kiểu thì chỉ cần một
@@ -1210,6 +1218,16 @@ class SyncEngine {
           'cycle_take_money': g.cycleTakeMoney,
           'time_cycle_take_money':
               g.timeCycleTakeMoney?.toUtc().toIso8601String(),
+          // Ba cột trích tự động đi CÙNG NHAU (G21, mở khoá 2026-09-07).
+          // `auto_deposit_last_run` là cột chặn trích hai lần: bỏ nó lại thì
+          // mỗi máy giữ một mốc riêng và cả hai cùng chuyển tiền khi tới kỳ —
+          // hỏng nặng hơn hiện trạng "máy thứ hai không trích gì".
+          'auto_deposit_amount': g.autoDepositAmount,
+          'auto_deposit_wallet_id': g.autoDepositWalletId != null
+              ? _toValidUuid(g.autoDepositWalletId!)
+              : null,
+          'auto_deposit_last_run':
+              g.autoDepositLastRun?.toUtc().toIso8601String(),
           'status_complete': g.isCompleted ? 'True' : 'False',
           'recurrence': g.recurrence,
           'time_recurrence': g.timeRecurrence,

@@ -252,7 +252,7 @@ ngược ra hạn định rồi bị vứt, và ví nguồn thì không hề đi
 lại ghi "Tạo Mục Tiêu & **Bật Lập Lịch Tự Động**" — một lời hứa về chức năng
 không tồn tại.
 
-Nay ba mảnh ấy đều được lưu (ba cột **cục bộ**, mục 5), và
+Nay ba mảnh ấy đều được lưu (ba cột, mục 5 — **đã đồng bộ từ 2026-09-07**), và
 `GoalAutoDepositRunner` chạy các kỳ đã tới hạn.
 
 **Nơi chạy là `NotificationScanner.scan()`**, tức mỗi khi một chu kỳ đồng bộ kết
@@ -333,10 +333,17 @@ iOS lặng lẽ bỏ, và những kỳ ấy dù sao cũng được trích bù �
 từng ngày từ năm 1990 là hàng chục nghìn vòng lặp ngay trong vòng quét thông
 báo — app treo. Vượt trần thì bỏ qua và im lặng.
 
-**Ba cột kia vẫn là cục bộ**, nên cấu hình trích tự động **không theo người dùng
-sang máy khác**. Chu kỳ thì có (nó vốn đã đồng bộ), nên trên máy mới mục tiêu vẫn hiện
-đúng nhịp kế hoạch, chỉ là không tự trích. Thà vậy còn hơn hai máy cùng trích
-một kỳ — đó cũng là lý do KHÔNG mượn cột `time_cycle_take_money` đang có sẵn:
+**Ba cột kia nay đã đồng bộ** (2026-09-07, G21 đóng): backend đã có
+`auto_deposit_amount` / `auto_deposit_wallet_id` / `auto_deposit_last_run`, và
+client đẩy **cả ba cùng một lúc**. Bật trích ở máy này thì máy kia nhận đủ cấu
+hình **lẫn mốc kỳ gần nhất**, nên nó không trích lại kỳ vừa xong.
+
+⚠️ Đúng một khe hở còn lại: hai máy cùng mở, cùng tới kỳ, cùng chưa kịp kéo
+`last_run` của nhau thì vẫn trích hai lần. Hẹp, vì trích chỉ chạy khi app mở và
+`Current_amount` là giá trị tuyệt đối nên LWW hội tụ chứ không cộng dồn sai. Vá
+triệt để cần khoá phía máy chủ trên `(Idgoal, kỳ trích)`.
+
+Đây cũng là lý do KHÔNG mượn cột `time_cycle_take_money` đang có sẵn:
 nó dùng chung với backend/Admin-web, và đổi ý nghĩa một cột dùng chung mà phía
 kia chưa đồng ý là cách hỏng im lặng nhất.
 
@@ -684,7 +691,7 @@ giá trị từ Admin-web nếu có — nhưng đừng tưởng có tính năng 
 
 | Việc | Ghi chú |
 |---|---|
-| Cấu hình trích tự động **không sang máy khác** | Ba cột `auto_deposit_*` là cục bộ. Chu kỳ và mốc neo thì có đồng bộ, nên máy mới hiện đúng nhịp kế hoạch mà không tự trích — càng dễ hiểu nhầm. **G21**, chặn ở backend |
+| ~~Cấu hình trích tự động **không sang máy khác**~~ | ✅ **Đóng 2026-09-07.** Backend đã có ba cột `auto_deposit_*`, client đẩy và kéo cả ba. Còn lại đúng một khe hở hẹp: hai máy cùng mở đúng lúc tới kỳ. **G21 đóng** |
 | Không có bộ **lập lịch nền** | Giờ trong mốc trích chỉ giữ được chiều "không sớm hơn". Có lời nhắc AlarmManager nổ đúng giờ kể cả khi app đóng, nhưng nó chỉ báo tin. **G22** — cố ý, đừng "sửa" |
 | Quy tắc trùng tên chỉ có ở **client** | `/sync/push` và PostgreSQL chưa kiểm gì — cùng tình trạng với danh mục. Xem mục 3.15 |
 | **Ưu tiên mục tiêu** chưa có | Bảng `goal` phía backend không có cột nào cho việc này. Làm cột cục bộ thì mắc đúng bệnh G21 — thứ tự đặt trên máy này không sang máy khác |
@@ -709,7 +716,7 @@ nullable** nên gộp chung một đợt migration là rẻ nhất:
 | Tài liệu | Xin gì | Trạng thái ở client |
 |---|---|---|
 | `2026-09-05-backend-transaction-goal-id.md` | `transaction.Idgoal` | Đã làm, cột **cục bộ** (v14). Máy khác rơi xuống nhánh so tên |
-| `2026-09-05-backend-goal-auto-deposit.md` | Ba cột `auto_deposit_*` | Đã làm, cột **cục bộ** (v15). Máy khác không trích gì cả — **G21** |
+| `2026-09-05-backend-goal-auto-deposit.md` | Ba cột `auto_deposit_*` | ✅ **Xong 2026-09-07** — backend có cột, client đẩy và kéo cả ba. **G21 đóng** |
 | `2026-09-05-backend-goal-priority.md` | `goal.Priority` | **Chưa làm, và cố ý chưa làm** cho tới khi có cột |
 
 Hai tài liệu đầu **không chặn gì hôm nay**; cái đầu chặn hướng bỏ bộ đếm

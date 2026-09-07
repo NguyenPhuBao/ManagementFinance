@@ -225,16 +225,20 @@ class Goals extends Table {
 
   // ── Trích tiền tự động (DB v15) ───────────────────────────────────────────
   //
-  // ⚠️ BA CỘT DƯỚI ĐÂY LÀ **CỤC BỘ**, cố ý không nằm trong hợp đồng đồng bộ.
-  // Bảng `goal` phía backend không có chúng, và thêm trường vào payload đẩy đòi
-  // backend sửa trước (quy tắc 4 trong `CLAUDE.md`).
-  // `sync_payload_contract_test.dart` khoá đúng bộ khoá của payload mục tiêu
-  // nên nó bắt được ngay nếu một trong ba cột này lọt vào.
+  // ✅ Ba cột dưới đây ĐÃ ĐỒNG BỘ từ 2026-09-07, khi backend thêm
+  // `auto_deposit_amount` / `auto_deposit_wallet_id` / `auto_deposit_last_run`
+  // vào bảng `goal`. Trước đó chúng là cục bộ và G21 ghi lại hệ quả: bật trích
+  // ở máy này thì máy kia không trích gì cả.
   //
-  // Hệ quả phải chấp nhận: cấu hình trích tự động **không theo người dùng sang
-  // máy khác**. Chu kỳ (`cycleTakeMoney`) thì có — nó vốn đã đồng bộ — nên trên
-  // máy mới mục tiêu vẫn hiện đúng nhịp kế hoạch, chỉ là không tự trích. Thà
-  // vậy còn hơn hai máy cùng trích một kỳ.
+  // ⚠️ **Ba cột phải đi cùng nhau trong payload.** `autoDepositLastRun` là cột
+  // chặn trích hai lần; đẩy hai cột đầu mà bỏ nó thì mỗi máy giữ một mốc riêng
+  // và **cả hai cùng chuyển tiền** khi tới kỳ — hỏng nặng hơn hẳn hiện trạng
+  // cũ. `sync_payload_contract_test.dart` khoá đúng bộ khoá của payload mục
+  // tiêu nên nó bắt được ngay nếu một cột rơi ra.
+  //
+  // Khe hở còn lại, chấp nhận được: hai máy cùng mở, cùng tới kỳ, cùng chưa kịp
+  // kéo `last_run` của nhau thì vẫn trích hai lần. Vá triệt để cần một khoá
+  // phía máy chủ trên `(Idgoal, kỳ trích)`.
 
   /// autoDepositAmount: số tiền trích mỗi kỳ. NULL = không bật trích tự động.
   RealColumn get autoDepositAmount => real().nullable()();
