@@ -375,6 +375,13 @@ giờ. Bỏ nhánh so tên bây giờ là lịch sử tích luỹ **đã có** b
 Nhánh ấy nay **teo dần** thay vì đứng yên; gỡ được khi không còn hàng nào
 `goal_id IS NULL` mà ghi chú khớp mẫu.
 
+**Đã đo trên máy thật** (`emulator-5554`, tài khoản 10, 2026-09-07): trước bản vá,
+cả **12** giao dịch tích luỹ trên server đều `Idgoal = NULL` — chính con số ấy là
+thứ nhánh `Value.absent()` bảo vệ. Sau bản vá, gửi thêm 1.000 đ vào `MuaXe` sinh
+ra hàng **đầu tiên** có `Idgoal`, và giá trị khớp chính xác `idgoal` của mục tiêu
+(`dc2656fa-…`); `current_amount` đi từ 1.100.000 lên 1.101.000. Mười hai hàng cũ
+vẫn `NULL` — đúng như mô tả ở trên, chúng chỉ nhận ID khi được đẩy lại.
+
 ⚠️ **Nhánh pull dùng `Value.absent()`, KHÔNG ghi đè null.** Server im lặng về
 `idgoal` nghĩa là *chưa biết*, không phải *hãy xoá*. Ghi đè thẳng thì đúng ở chu
 kỳ đồng bộ đầu tiên sau bản vá, mọi liên kết cục bộ đang có bị xoá sạch và toàn
