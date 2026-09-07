@@ -1,6 +1,20 @@
 # Danh mục mặc định thành bản sao riêng của từng tài khoản
 
-> **Trạng thái: thiết kế đã duyệt 2026-09-07, chưa viết mã.**
+> **Trạng thái: ĐÃ THI CÔNG XONG 2026-09-07** (`2c1055e` … `47dad96`).
+> Kiểm trên `emulator-5554`: tạo 13 bản sao, đẩy `36/36 succeeded`, từ khoá đi
+> cùng, bộ mặc định vẫn nguyên 18 hàng. `flutter test` 1304/1304.
+>
+> **Ba điều khác với thiết kế, phát hiện khi thi công:**
+> 1. Chỗ lọc `idaccount = 0` trong `app_database.dart` **không phải** truy vấn
+>    hiển thị mà là `purgeDataForOtherAccounts` — bỏ nó là xoá mất chính cái
+>    khuôn. Giữ nguyên.
+> 2. Ẩn bản mặc định làm **cả cơ chế `CategoryGroupMemberships` thành mã chết**,
+>    nên nó bị gỡ luôn. **G10 đóng theo mà backend không phải làm gì.**
+> 3. Sau khi seed **không ai hẹn đồng bộ** — hàng nằm `pending` tới lần khởi
+>    động nguội sau. Chỉ máy ảo bắt được; đã sửa ở `5120b16`.
+>
+> Hai giới hạn còn lại thành **G23** và **G24** trong
+> `docs/CLIENT_APP_KNOWN_GAPS.md`.
 >
 > Thay đổi này **đảo lại** quyết định ngày 2026-09-05 (`foldIntoBackendDefaults`).
 > Đọc `docs/CATEGORY_RATIONALE.md` trước — nó ghi vì sao vùng này đã thay đổi
@@ -176,12 +190,14 @@ còn nằm trên máy người dùng đã cài từ trước.
 - **Backend phình 18 hàng mỗi tài khoản.** Đây là thay đổi thật về dữ liệu, đã
   nói rõ với người dùng và được chấp nhận.
 - **Nhóm danh mục không đi theo — đã chốt.** Bản sao được tạo **không thuộc
-  nhóm nào**. `CategoryGroupMemberships` không đồng bộ được (**G10**, chặn ở
-  backend) nên việc gán nhóm chỉ tồn tại trên một máy; kế thừa nó sẽ là chép
-  một thứ vốn đã không đi đâu.
+  nhóm nào**. Lúc viết spec này, `CategoryGroupMemberships` không đồng bộ được
+  (**G10**, chặn ở backend) nên việc gán nhóm chỉ tồn tại trên một máy; kế thừa
+  nó sẽ là chép một thứ vốn đã không đi đâu.
   ⚠️ Hệ quả phải xử lý: hàng membership đang trỏ vào **bản mặc định** sẽ trỏ
-  vào một danh mục không còn hiện ra. Trang nhóm danh mục phải chịu được điều
-  đó, hoặc những hàng ấy phải được dọn cùng lúc.
+  vào một danh mục không còn hiện ra.
+  ✅ **Khi thi công hoá ra còn xa hơn thế:** cả cơ chế membership thành mã chết,
+  vì bản sao dùng `parentId` — cột đã có và đã đồng bộ. Đã gỡ cách dùng (giữ
+  bảng), và **G10 đóng mà backend không phải làm gì**.
 - **Đường ghi khác vẫn tạo được dữ liệu vi phạm.** Quy tắc trùng tên hiện chỉ
   client thi hành; `/sync/push` **chưa kiểm gì cả**. 18 hàng mới mỗi tài khoản
   đi qua đúng đường đó.

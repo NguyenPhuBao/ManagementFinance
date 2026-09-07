@@ -7,7 +7,7 @@
 > hướng thật** (mục 5b), **bốn loại báo tiền vừa rời ví nay bỏ qua công tắc
 > nhóm** (mục 3), và **giờ im lặng · gộp thông báo · hoàn tác vuốt xoá**
 > (mục 5c). Đọc bốn mục ấy trước nếu định đụng vào vùng này.
-> **Mức nền hiện tại:** `flutter test` **1300/1300 pass**, `flutter analyze`
+> **Mức nền hiện tại:** `flutter test` **1304/1304 pass**, `flutter analyze`
 > **25 issue, KHÔNG error**, `flutter build web` xanh.
 
 Đọc file này trước khi làm tiếp bất cứ việc gì thuộc thông báo. Mục 6 ghi lại

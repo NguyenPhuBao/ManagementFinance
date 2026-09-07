@@ -68,11 +68,12 @@ Ba lý do, xếp theo mức thuyết phục:
 
 1. **Đây là dữ liệu người dùng tự nhập, và nó đang mất.** Không phải giá trị
    suy ra được, không phải cache. Người dùng chọn màu là một hành động có chủ ý.
-2. **Sắp có nhiều màu hơn hẳn.** Client đang chuyển bộ danh mục mặc định thành
-   **bản sao riêng của từng tài khoản** (spec
+2. **Bán kính vừa rộng ra gấp nhiều lần.** Ngày 2026-09-07 client **đã** chuyển
+   bộ danh mục mặc định thành **bản sao riêng của từng tài khoản** (spec
    `docs/superpowers/specs/2026-09-07-per-account-default-categories-design.md`).
-   Sau thay đổi ấy, mỗi tài khoản có 18 danh mục **của riêng mình** và sửa được
-   màu của cả 18 — nên bán kính của lỗi này rộng ra gấp nhiều lần.
+   Trước đó người dùng gần như không đổi màu được gì — hàng mặc định là toàn cục
+   và bị chặn sửa. Nay mỗi tài khoản sở hữu cả bộ danh mục của mình và **sửa
+   được màu của từng cái**, nên số màu có thể mất tăng theo đúng tỉ lệ ấy.
 3. **Client không sửa được.** Không có cột thì không có chỗ ghi. Đây là một
    trong số ít việc mà client đã làm xong phần của mình từ lâu và chỉ đang chờ.
 
@@ -140,9 +141,10 @@ trả một dạng thì trả `color` cho khớp tên cột, và **báo lại** 
 
 ## 5. Cái này KHÔNG giải quyết
 
-- **Màu của nhóm danh mục** đi cùng đường, nhưng việc gán danh mục mặc định vào
-  nhóm còn chặn ở `CATEGORY_GROUP_MEMBERSHIP_SYNC.md` (G10). Cột màu không gỡ
-  được việc ấy.
+- **Màu của nhóm danh mục** đi cùng đường — nhóm cũng là một hàng `category`,
+  nên nó nhận cột màu này luôn. (Việc gán danh mục **mặc định** vào nhóm thì đã
+  hết ý nghĩa từ 2026-09-07: mỗi tài khoản có bản sao riêng, nên nhóm nằm gọn
+  trong `Idgroup`. `CATEGORY_GROUP_MEMBERSHIP_SYNC.md` đã đóng.)
 - **Từ khoá phân loại** là việc khác và **không** cần backend làm gì: cột
   `Keyword` đã có và `/sync/push` đã nhận. Xem `CATEGORY_KEYWORD_SYNC.md` cho
   phần còn lại (lỗ hổng phân quyền ở `POST /api/ai/classify/feedback`).

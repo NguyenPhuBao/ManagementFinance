@@ -150,7 +150,8 @@ dart run build_runner watch --delete-conflicting-outputs
 
 Thêm hai điều:
 
-- **Danh mục mặc định dùng chung không gian tên với danh mục người dùng.** Người dùng nhìn thấy cả hai trong cùng một danh sách chọn nên hai mục trùng tên là không phân biệt được. Vì danh mục mặc định là hàng dùng chung, tên của nó chiếm chỗ với **mọi** tài khoản.
+- **Danh mục mặc định dùng chung không gian tên với danh mục người dùng.** Vì nó là hàng dùng chung, tên của nó chiếm chỗ với **mọi** tài khoản.
+  - ⚠️ **Từ 2026-09-07 chúng không còn HIỂN THỊ nữa** (mỗi tài khoản có bản sao riêng), nhưng vẫn **chiếm chỗ tên**: `getNamesInUse` cố ý còn đếm chúng, và hai unique index của PostgreSQL vẫn tính chúng. Ẩn khỏi danh sách **không phải** là ra khỏi quy tắc trùng tên — nhầm hai điều này là cho người dùng tạo một danh mục mà đẩy lên sẽ hỏng.
 - **Hàng đã xoá mềm không giữ chỗ.** Phép so tên đi qua **bốn bước, theo đúng thứ tự**: gộp Unicode về dạng NFC → chữ thường → cắt khoảng trắng hai đầu → gom khoảng trắng ở giữa. Định nghĩa **duy nhất** nằm ở `lib/core/category/category_name.dart` (`normalizeCategoryName`); mọi nơi so tên đều phải gọi hàm đó.
   - Bước NFC không phải tuỳ chọn: "Cà phê" gõ từ hai bàn phím khác nhau có thể ra hai chuỗi khác byte (6 và 8 ký tự) mà mắt thường không phân biệt được.
   - Vì sao chốt đủ bốn bước ngay: **nới lỏng về sau là miễn phí, siết chặt về sau thì phải dọn dữ liệu** — bỏ bớt một bước bây giờ nghĩa là mai kia thêm lại sẽ có sẵn dữ liệu vi phạm và `CREATE UNIQUE INDEX` phía PostgreSQL sẽ thất bại.
@@ -638,7 +639,7 @@ src/Backend/
 
 ### 🔄 Việc còn dang dở
 
-Xem đầy đủ tại **`docs/CLIENT_APP_KNOWN_GAPS.md`**. Phiên 2026-09-03 đã đóng 9/10 mục còn mở; **G10 đóng ngày 2026-09-07**, nay còn **G15**:
+Xem đầy đủ tại **`docs/CLIENT_APP_KNOWN_GAPS.md`**. Phiên 2026-09-03 đã đóng 9/10 mục còn mở; **G10 đóng ngày 2026-09-07**, và cùng ngày mở thêm **G23** (bản sao danh mục chỉ đầy đủ khi bộ mặc định *cục bộ* đầy đủ — tự khỏi ở lượt pull sau) và **G24** (màu danh mục không có cột trên server, chặn ở backend). Nay còn **G15**, **G23**, **G24**:
 
 - **G15 — Bản ghi vừa hết hạn vừa hỏng đồng bộ thì không sửa được.** ⏸️ **Hoãn có chủ ý** (2026-09-04): tab "Đã hết hạn" khoá sửa/xoá, nên một ngân sách vừa quá hạn vừa bị backend từ chối vĩnh viễn sẽ nằm lại mãi — hàng đợi đồng bộ vẫn thông vì `SyncEngine` chặn nó theo thời gian, nhưng người dùng không chữa được. Giữ nguyên vì tab đó là nền cho phần thống kê/báo cáo sẽ làm sau. Bán kính rủi ro hẹp: nguồn gây lỗi chính (form tạo ra `end ≤ start`) đã bịt cùng ngày.
 - ~~**G10 — `CategoryGroupMemberships` không bao giờ được đồng bộ.**~~ ✅ **Đóng 2026-09-07, và không phải bằng cách xin backend thêm entity.** Bảng phụ ấy tồn tại chỉ vì danh mục mặc định là hàng toàn cục nên không ghi `Idgroup` riêng cho từng tài khoản được. Nay mỗi tài khoản có **bản sao riêng** của bộ mặc định, nên việc gán nhóm nằm gọn trong `Idgroup` của chính hàng họ sở hữu — cột đã có sẵn và đã đồng bộ.

@@ -20,6 +20,8 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > | **G17** | Danh sách rỗng ở lần vào đầu sau khởi động nguội — cần sửa ở **mọi** trang đọc theo tài khoản, không riêng mục tiêu |
 > | **G18** | Nhánh dự phòng của lịch sử tích luỹ còn so bằng tên — chặn ở backend |
 > | **G19** | **Không phải lỗi** — ghi lại để người sau không "sửa" nhầm |
+> | **G23** | Bản sao danh mục chỉ đầy đủ khi bộ mặc định **cục bộ** đầy đủ — pull tăng dần, tự khỏi ở lượt sau |
+> | **G24** | Màu danh mục **không có cột** trên server — chặn ở backend |
 > | **G21** | Cấu hình trích tự động **không theo người dùng sang máy khác** — chặn ở backend |
 > | **G22** | **Không phải lỗi** — giờ trong mốc neo chỉ giữ được một chiều |
 >
@@ -195,7 +197,7 @@ Bốn test canh vùng này ở `test/core/sync/sync_failure_handling_test.dart`,
 >
 > Cũng vá luôn một lỗ hổng có sẵn từ bản gốc: hàng seed `cat_*` **tự khớp tên với chính nó**, bị dùng làm đích trỏ tới rồi bị xoá mềm ngay sau — giao dịch kết thúc ở một danh mục đã xoá. Nay `_findOwned` loại chính hàng đó ra khỏi tập ứng viên.
 >
-> 8 test canh vùng này ở `test/features/category/data/personal_default_categories_test.dart`.
+> 6 test canh vùng này ở `test/features/category/data/personal_default_categories_test.dart` (còn 6 sau khi nhóm `foldIntoBackendDefaults` bị gỡ ngày 2026-09-07 — xem G16).
 >
 > **Máy đã lỡ tạo bản trùng cũng đã tự thoát được.** Bản vá trên ngăn phát sinh mới; bước khử trùng lặp sau pull dọn nốt hậu quả cũ — xem cuối mục này.
 
@@ -297,9 +299,26 @@ Và bản ghi đó không thoát ra được: `_classifyFailure` (`lib/core/sync
 
 **Còn chờ backend:** thêm `WHERE "Delete_at" IS NULL` vào unique index — xem `CATEGORY_NAME_UNIQUENESS.md` mục 4.1 và mục 10 của `2026-09-04-ocr-classify-review.md`. Khi có, bản ghi bị chặn tự quay lại hàng đợi mà người dùng không phải làm gì.
 
+> ### ⚠️ Cập nhật 2026-09-07 — cách đóng đã đổi, nhưng G16 vẫn đóng
+>
+> `foldIntoBackendDefaults()` **đã bị gỡ**. Hướng đi đảo chiều: mỗi tài khoản nay
+> có **bản sao riêng** của toàn bộ bộ mặc định (`DefaultCategorySeeder`), còn
+> hàng toàn cục lui về làm khuôn và không hiện ra ở đâu. Để hàm gộp chạy song
+> song với bước sao chép là một vòng lặp huỷ lẫn nhau.
+>
+> **Vì sao G16 vẫn không quay lại:** luật tạo bản sao đếm **cả hàng đã xoá mềm**.
+> Người dùng xoá một danh mục thì hàng xoá mềm còn đó, và lượt seed sau nhìn thấy
+> nó nên **không tạo lại**. Ba chữ ấy là khác biệt **duy nhất** với `ensureMissing()`
+> — ai "dọn dẹp" chúng đi là tái hiện nguyên vẹn G16.
+>
+> Thiết kế: `docs/superpowers/specs/2026-09-07-per-account-default-categories-design.md`.
+>
+> Phần dưới giữ nguyên làm hồ sơ của chặng 2026-09-05.
+
 **Đóng ngày 2026-09-05 — bằng cách bỏ hẳn nguồn kích hoạt.** Câu hỏi mà `ensureMissing` không trả lời được ("chưa từng có" hay "người dùng đã cố tình xoá") nay **không cần trả lời nữa**: backend đã nhận đúng 5 danh mục ấy vào bộ mặc định của nó (`Create_by = 1`, `Is_default = true`), nên không tài khoản nào phải giữ bản riêng.
 
 `ensureMissing()` được thay bằng `foldIntoBackendDefaults()`: gộp bản riêng vào bản mặc định (dời tham chiếu ở cả `transactions`, `budgets`, `bills`) rồi **xoá mềm** bản riêng — và **không tạo mới gì cả**. Danh mục mặc định là toàn cục, không thuộc tài khoản nào, nên không còn gì để "mọc lại" ở mỗi lần mở app.
+
 
 Ba điều kiện dừng, vì gộp là thao tác phá huỷ:
 
@@ -309,7 +328,7 @@ Ba điều kiện dừng, vì gộp là thao tác phá huỷ:
 | Trùng tên nhưng **khác classify** | Không gộp. Quy tắc 7 không tính classify, nên một danh mục người dùng tự tạo có thể trùng tên mà khác loại; gộp nó là âm thầm đổi loại của mọi giao dịch bên trong |
 | Hàng của tài khoản khác | Không đụng. `getNamesInUse` trả cả hàng mặc định của mọi tài khoản nên phép lọc phải nằm ở chính chỗ tìm bản riêng |
 
-Test canh chừng: `test/features/category/data/personal_default_categories_test.dart`, nhóm `foldIntoBackendDefaults` — chín ca, phần lớn canh đúng câu hỏi *khi nào thì KHÔNG được gộp*.
+~~Test canh chừng: nhóm `foldIntoBackendDefaults` — chín ca.~~ **Nhóm ấy đã bị xoá cùng hàm, 2026-09-07.** Phép canh cho cơ chế hiện tại nằm ở `test/features/category/data/services/default_category_seeder_test.dart` — 13 ca, trong đó ca *"bản sao đã bị xoá mềm thì KHÔNG tạo lại"* chính là phép canh G16.
 
 ⚠️ **Phần lệch ràng buộc với CSDL thì KHÔNG đóng.** `uq_category_owner_name_classify` vẫn không có `WHERE "Delete_at" IS NULL`, nên hàng đã xoá mềm vẫn giữ chỗ tên ở PostgreSQL trong khi client cho tạo lại (quy tắc 7). Người dùng xoá rồi tạo lại một danh mục **của chính họ** cùng tên vẫn nhận 23505. Khác biệt là nay nó chỉ xảy ra khi họ thật sự làm điều đó, chứ không tự sinh ở mỗi lần mở app. Lớp cầm máu `_uniqueConstraintPattern` vì thế **giữ nguyên**, đừng gỡ.
 
@@ -455,6 +474,46 @@ khi người dùng vắng mặt; đổi vài giờ sớm hơn lấy rủi ro ấ
 **Nếu vẫn muốn làm:** `GoalAutoDepositRunner` viết độc lập với *khi nào* nó được
 gọi, nên thêm một trigger nền chỉ là gọi `chay()` thêm một chỗ nữa. Phần khó nằm
 ở kết nối CSDL trong isolate nền, không nằm ở logic trích.
+
+---
+
+### G23 — Bản sao danh mục chỉ đầy đủ khi bộ mặc định CỤC BỘ đầy đủ · ⏸️ CHẤP NHẬN ĐƯỢC (2026-09-07)
+
+`DefaultCategorySeeder` sao chép từ những hàng mặc định **đã có trên máy này**
+(`getBackendDefaults()` đọc SQLite, không gọi mạng). Mà pull là **tăng dần theo
+`since`**: hàng nào không đổi kể từ mốc kiểm cuối thì không bao giờ được gửi lại.
+
+Hệ quả: một máy có thể chỉ biết một phần bộ mặc định của server, và bản sao thiếu
+theo. **Đo được 2026-09-07 trên `emulator-5554`:** server có **18** hàng mặc định,
+máy ấy tạo được **13** bản sao (hai trong số còn lại bị chặn đúng luật vì tài
+khoản từng có bản riêng cùng tên; ba cái còn lại đơn giản là chưa từng về máy).
+
+**Vì sao không sửa ngay:** bước seed chạy sau **mọi** lần pull và luỹ đẳng, nên
+khi một hàng mặc định thật sự về máy thì bản sao được tạo ở lượt kế tiếp. Người
+dùng không mất gì — họ chỉ có ít danh mục dựng sẵn hơn, và tự thêm được.
+
+**Nếu muốn dứt điểm:** cần một lần pull đầy đủ bộ mặc định (bỏ `since` cho riêng
+nhánh `is_default = true`) ở lần đăng nhập đầu. Đó là thay đổi ở đường đồng bộ,
+không phải ở bước seed — đừng vá bằng cách cho seeder gọi mạng.
+
+---
+
+### G24 — Màu danh mục không có chỗ trên server · ⛔ CHẶN Ở BACKEND (2026-09-07)
+
+Bảng `category` phía PostgreSQL có **đúng 12 cột** và không cột nào cho màu.
+Client vẫn đẩy khoá `colour` lên ở mỗi lần đồng bộ, backend **bỏ qua im lặng** —
+đúng kiểu hỏng mà quy tắc 4 của `CLAUDE.md` mô tả, lần này còn khó thấy hơn vì
+tên trường không sai, chỉ là không có chỗ nào để ghi.
+
+Hệ quả: màu người dùng chọn **chỉ sống trên máy đã chọn**. Đăng nhập máy khác
+hoặc cài lại app là mất, không lỗi, không log.
+
+Lỗi này **có sẵn từ trước**, không do thay đổi 2026-09-07 sinh ra — nhưng bán
+kính vừa rộng ra hẳn: trước đây người dùng gần như không đổi màu được gì vì hàng
+mặc định là toàn cục và bị chặn sửa; nay họ sở hữu cả bộ và sửa được từng cái.
+
+**Client không sửa được** — không có cột thì không có chỗ ghi. Tài liệu xin:
+`docs/superpowers/backend/CAN-LAM/CATEGORY_COLOUR_COLUMN.md`.
 
 ---
 
