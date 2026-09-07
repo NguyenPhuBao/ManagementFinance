@@ -564,6 +564,77 @@ void main() {
     });
   });
 
+  group('lịch hoãn', () {
+    /// Khoá + id của lời nhắc cho một hoá đơn. Nút "Hoãn" **giữ nguyên khoá**,
+    /// nên lịch hoãn dùng đúng id này — xem `notification_actions.dart`.
+    ({String khoa, int id}) khoaCua(DateTime denHan, {int nhacTruoc = 3}) {
+      final k = billDueDedupeKey(
+          billId: 'hd1', dueDate: denHan, leadDays: nhacTruoc);
+      return (khoa: k, id: osScheduledId(k));
+    }
+
+    /// Giả lập trạng thái SAU khi người dùng bấm "Hoãn": lịch nằm ở một mốc
+    /// mới, mang đúng khoá cũ.
+    void daHoan(({String khoa, int id}) k, DateTime toi) {
+      os.lich[k.id] =
+          (when: toi, title: 'Nhắc lại', body: '...', payload: k.khoa);
+    }
+
+    test('lịch hoãn của hoá đơn CHƯA trả sống sót qua resync', () async {
+      // Đến hạn 16/09, nhắc trước 3 ngày → mốc nhắc gốc là 13/09 08:00, đã
+      // trôi qua so với `now` (15/09 10:00). Đó KHÔNG phải một ca hiếm mà là
+      // ca duy nhất có thật: người dùng chỉ bấm "Hoãn" được sau khi thông báo
+      // đã nổ, nên mốc gốc luôn nằm ở quá khứ.
+      final k = khoaCua(DateTime(2026, 9, 16));
+      daHoan(k, DateTime(2026, 9, 16, 9));
+
+      await dung([hoaDon(denHan: DateTime(2026, 9, 16))]).resync(accountId);
+
+      expect(os.daHuy, isNot(contains(k.id)),
+          reason: 'resync chỉ giữ hoá đơn có mốc nhắc còn ở TƯƠNG LAI, nên nếu '
+              'không có ngoại lệ thì nó huỷ đúng lịch người dùng vừa hoãn — '
+              'và họ bị nhắc lại ngay lượt quét sau, hoặc mất hẳn lời nhắc. '
+              'Không lỗi, không log.');
+      expect(os.lich.containsKey(k.id), true);
+      expect(os.lich[k.id]!.when, DateTime(2026, 9, 16, 9),
+          reason: 'Và phải giữ nguyên MỐC ĐÃ HOÃN, không đặt lại mốc gốc.');
+    });
+
+    test('lịch hoãn của hoá đơn ĐÃ TRẢ thì vẫn bị dọn', () async {
+      final k = khoaCua(DateTime(2026, 9, 16));
+      daHoan(k, DateTime(2026, 9, 16, 9));
+
+      await dung([hoaDon(denHan: DateTime(2026, 9, 16), daTra: true)])
+          .resync(accountId);
+
+      expect(os.daHuy, contains(k.id),
+          reason: 'Đây là ranh giới của ngoại lệ trên. Giữ lịch của một hoá '
+              'đơn đã trả là điện thoại vẫn kêu đòi trả một khoản đã trả — '
+              'đúng thứ phép dọn dẹp của resync sinh ra để chặn.');
+    });
+
+    test('lịch hoãn của hoá đơn ĐÃ XOÁ thì vẫn bị dọn', () async {
+      final k = khoaCua(DateTime(2026, 9, 16));
+      daHoan(k, DateTime(2026, 9, 16, 9));
+
+      await dung([hoaDon(denHan: DateTime(2026, 9, 16), daXoa: true)])
+          .resync(accountId);
+
+      expect(os.daHuy, contains(k.id));
+    });
+
+    test('lịch lạ không thuộc hoá đơn nào vẫn bị dọn', () async {
+      // Ngoại lệ phải HẸP. Nới nó thành "đừng huỷ gì cả" là lịch của một bản
+      // app cũ nằm lại trong AlarmManager mãi mãi.
+      os.lich[999999] =
+          (when: DateTime(2026, 9, 20), title: 'x', body: 'y', payload: 'la');
+
+      await dung([hoaDon(denHan: DateTime(2026, 9, 16))]).resync(accountId);
+
+      expect(os.daHuy, contains(999999));
+    });
+  });
+
   group('nhắc ghi chép hằng ngày', () {
     /// Dựng một bộ đặt lịch **không có hoá đơn nào**, để mọi lịch đếm được đều
     /// là lịch nhắc ghi chép.

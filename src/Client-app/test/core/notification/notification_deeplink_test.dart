@@ -22,6 +22,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/notification/notification_deeplink.dart';
+import 'package:flowmoney/core/notification/notification_actions.dart';
 import 'package:flowmoney/core/notification/notification_rules.dart';
 import 'package:flowmoney/core/notification/reminder_scheduler.dart';
 import 'package:flowmoney/features/bill/domain/bill_auto_pay.dart';
@@ -295,6 +296,27 @@ void main() {
           reason: '/add nằm NGOÀI StatefulShellRoute nên phải `push`. Nếu ai '
               'đó kéo nó vào một nhánh tab mà quên cập nhật nhanhThanhTab thì '
               'chạm vào lời nhắc sẽ làm app chết màn đỏ — bẫy 7.8.');
+    });
+
+    test('nút "Trả ngay" mở ĐÚNG hoá đơn ấy, không phải danh sách', () {
+      final payload = payloadTraNgay('billDue:hd1:2026-09-20:3');
+
+      expect(payload, 'billOpen:hd1');
+      expect(deeplinkTuDedupeKey(payload!), '/bills/hd1',
+          reason: 'Cú CHẠM thường vẫn mở /bills — đó là cột deeplink bộ luật '
+              'đặt và có phép canh cả 14 loại. Nhưng cái NÚT đã biết chính xác '
+              'hoá đơn nào, nên đổ về danh sách là vứt đi thông tin đang cầm.');
+      expect(thuocThanhTab('/bills/hd1'), false,
+          reason: '/bills/<id> nằm ngoài StatefulShellRoute nên phải `push`. '
+              'Kéo nó vào một nhánh tab mà quên cập nhật nhanhThanhTab thì bấm '
+              'nút sẽ làm app chết màn đỏ — bẫy 7.8.');
+    });
+
+    test('billOpen thiếu id rơi về danh sách hoá đơn', () {
+      expect(deeplinkTuDedupeKey('billOpen'), '/bills');
+      expect(deeplinkTuDedupeKey('billOpen:'), '/bills',
+          reason: 'Không bao giờ được dựng "/bills/" — route ấy không khớp gì '
+              'và người dùng rơi vào màn trống.');
     });
 
     test('khoá ghi chép của bản app cũ không làm gì hỏng', () {

@@ -91,8 +91,26 @@ class ReminderScheduler {
 
     final mongMuon = <int, _Lich>{};
 
-    /// Ứng viên của **cả hai** loại, gộp lại trước khi cắt theo trần.
+    /// Ứng viên của **cả ba** loại, gộp lại trước khi cắt theo trần.
     final tatCa = <_Lich>[];
+
+    /// Id của lời nhắc thuộc những hoá đơn **còn sống** — chưa trả, chưa xoá.
+    ///
+    /// Khác [mongMuon] ở đúng một điểm, và điểm ấy là cả lý do nó tồn tại: tập
+    /// này **không lọc theo mốc nhắc**. Nó chỉ dùng ở bước dọn dẹp bên dưới,
+    /// để đừng huỷ mất một lịch người dùng vừa bấm **"Hoãn"**.
+    ///
+    /// Vì sao cần: nút "Hoãn" giữ nguyên khoá (và do đó nguyên id) rồi dời lịch
+    /// sang mốc mới. Nhưng người dùng chỉ bấm "Hoãn" được **sau khi thông báo
+    /// đã nổ**, nên mốc nhắc gốc khi ấy **luôn** nằm ở quá khứ — hoá đơn rơi
+    /// vào nhánh `if (!mocNhac.isAfter(at)) continue;` và biến mất khỏi
+    /// [mongMuon]. Không có tập này thì lượt quét kế tiếp huỷ đúng cái lịch
+    /// người dùng vừa hoãn, im lặng.
+    ///
+    /// Ngoại lệ được giữ **hẹp** có chủ ý: chỉ hoá đơn còn sống. Trả hoặc xoá
+    /// hoá đơn là id rời khỏi tập này và lịch hoãn bị dọn như mọi lịch thừa
+    /// khác — phép dọn dẹp của `resync` không được nới lỏng.
+    final khongHuy = <int>{};
 
     // Tắt công tắc tổng, hoặc tắt riêng nhóm hoá đơn → không có lịch nào được
     // phép tồn tại. Vẫn chạy tiếp xuống phần dọn dẹp bên dưới: lịch đã đặt
@@ -111,6 +129,17 @@ class ReminderScheduler {
 
         final leadDays = billLeadDays(b, fallback: prefs.soNgayNhacHoaDon);
         final hanTra = DateTime(b.dueDate.year, b.dueDate.month, b.dueDate.day);
+        final khoa = billDueDedupeKey(
+          billId: b.id,
+          dueDate: hanTra,
+          leadDays: leadDays,
+        );
+
+        // Ghi nhận TRƯỚC hai phép lọc theo mốc bên dưới — xem chú thích ở
+        // `khongHuy`. Một lịch đã hoãn mang đúng khoá này nhưng nằm ở mốc khác
+        // hẳn, và mốc gốc thì luôn đã trôi qua.
+        khongHuy.add(osScheduledId(khoa));
+
         final mocNhac = DateTime(
           hanTra.year,
           hanTra.month,
@@ -124,12 +153,6 @@ class ReminderScheduler {
         // vẫn tới qua vòng quét trong app.
         if (!mocNhac.isAfter(at)) continue;
         if (mocNhac.isAfter(at.add(cuaSo))) continue;
-
-        final khoa = billDueDedupeKey(
-          billId: b.id,
-          dueDate: hanTra,
-          leadDays: leadDays,
-        );
         final soNgay = hanTra.difference(_dauNgay(at)).inDays;
 
         // Hoá đơn bật tự trả: người dùng đã uỷ quyền cho app trả, nhưng bộ
@@ -249,7 +272,10 @@ class ReminderScheduler {
     final dangCho = await osNotifier.pendingIds();
 
     for (final id in dangCho) {
-      if (!mongMuon.containsKey(id)) await osNotifier.cancel(id);
+      if (mongMuon.containsKey(id)) continue;
+      // Lịch đã hoãn của một hoá đơn còn sống — giữ nguyên cả mốc lẫn id.
+      if (khongHuy.contains(id)) continue;
+      await osNotifier.cancel(id);
     }
 
     for (final entry in mongMuon.entries) {

@@ -65,6 +65,12 @@ const String routeThongBao = '/notifications';
 /// rồi khẳng định hàm này trả về đúng cột `deeplink` bộ luật đã đặt. Thêm loại
 /// thứ 15 mà quên ánh xạ là test đỏ ngay.
 ///
+/// ⚠️ **Hai nhánh KHÔNG nằm trong phép canh ấy**, vì chúng không ứng với
+/// `NotificationKind` nào: `ghiChep` (lời nhắc ghi chép hằng ngày, mục 4.7 —
+/// chỉ sống ở tầng hệ điều hành, không có hàng trong `AppNotifications`) và
+/// `billOpen` (payload của nút "Trả ngay", xem `notification_actions.dart`).
+/// Cả hai có test riêng. Sửa chúng thì phép canh 14 loại **không** đỏ.
+///
 /// **Không bao giờ ném và không bao giờ trả `null`.** Khoá đến từ payload của
 /// hệ điều hành: nó có thể là lịch do một bản app cũ đặt và vẫn còn nằm trong
 /// AlarmManager sau khi nâng cấp.
@@ -92,6 +98,19 @@ String deeplinkTuDedupeKey(String key) {
       // `split(':').last` sẽ ra "00".
       if (phan.length < 2 || phan[1].isEmpty) return routeThongBao;
       return goalDeeplink(phan[1]);
+
+    // Payload của nút "Trả ngay" — xem `notification_actions.dart`. Khác nhánh
+    // `billDue` ở trên đúng một điểm: cú **chạm** thường mở danh sách hoá đơn
+    // (đúng cột `deeplink` mà bộ luật đặt, và có phép canh cả 14 loại), còn cái
+    // nút thì đã biết chính xác hoá đơn nào — đổ người dùng về danh sách là vứt
+    // đi thông tin mình đang cầm.
+    //
+    // `/bills/<id>` nằm NGOÀI `StatefulShellRoute` y như `/bills`, nên `push`
+    // chạy tốt. Kéo nó vào một nhánh tab thì phải cập nhật `nhanhThanhTab` cùng
+    // lúc, nếu không bấm nút sẽ làm app chết màn đỏ (bẫy 7.8).
+    case 'billOpen':
+      if (phan.length < 2 || phan[1].isEmpty) return '/bills';
+      return '/bills/${phan[1]}';
 
     case 'walletNeg':
     case 'walletLow':

@@ -41,12 +41,21 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <!-- Hai receiver của flutter_local_notifications. Thiếu chúng thì lịch
-             đặt trước vẫn "đặt thành công" nhưng KHÔNG BAO GIỜ nổ, và không có
-             lỗi nào báo ra — kiểu hỏng im lặng khó lần ra nhất. -->
+        <!-- BA receiver của flutter_local_notifications. Thiếu cái nào cũng
+             hỏng im lặng — không exception, không log, không một dòng trong
+             logcat — nên `android_manifest_receivers_test.dart` canh cả ba.
+             Lịch đặt trước vẫn "đặt thành công" nhưng KHÔNG BAO GIỜ nổ nếu
+             thiếu hai cái đầu; nút hành động vẫn HIỆN nhưng bấm không tới ai
+             nếu thiếu cái thứ ba. -->
         <receiver
             android:exported="false"
             android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
+        <!-- Nhận cú bấm nút hành động khi app đã đóng, rồi khởi động isolate
+             nền gọi `khiChamNutLucAppDong`. Plugin KHÔNG tự khai báo nó; đây
+             là bước phải làm tay, và đó chính là lý do nó dễ bị bỏ sót. -->
+        <receiver
+            android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver" />
         <receiver
             android:exported="false"
             android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
