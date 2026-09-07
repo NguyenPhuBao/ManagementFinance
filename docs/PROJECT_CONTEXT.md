@@ -162,18 +162,31 @@ Thêm hai điều:
 
 Phép kiểm tra **chỉ chạy khi tên thật sự đổi**. Bản client trước 2026-09-03 loại danh mục mặc định khỏi phép kiểm tra, nên máy người dùng có thể đang giữ một danh mục riêng trùng tên với danh mục mặc định; chặn tuyệt đối sẽ khiến họ không sửa nổi danh mục đó nữa, kể cả chỉ đổi icon.
 
-> ⚠️ **CSDL CHƯA thi hành quy tắc này.** PostgreSQL vẫn đang giữ:
+> ✅ **CSDL nay thi hành ĐÚNG quy tắc này — từ 2026-09-07.** PostgreSQL giữ:
 >
 > ```sql
-> UNIQUE (Create_by, NameCategory, Classify)                        -- uq_category_owner_name_classify
-> UNIQUE (NameCategory, Classify) WHERE Is_default = TRUE           -- uq_category_default_name_classify
+> UNIQUE (Create_by, lower(NFC(NameCategory)))  WHERE Is_default = FALSE AND Delete_at IS NULL
+>                                               -- uq_category_owner_name
+> UNIQUE (lower(NFC(NameCategory)))             WHERE Is_default = TRUE  AND Delete_at IS NULL
+>                                               -- uq_category_default_name
 > ```
 >
-> Hai ràng buộc này lệch quy tắc theo **cả hai chiều**: lỏng hơn ở `Classify`, ở việc tách khoá riêng cho danh mục mặc định và ở so tên phân biệt hoa/thường; nhưng **chặt hơn** ở chỗ hàng đã xoá mềm vẫn giữ chỗ — nên xoá một danh mục rồi tạo lại cùng tên sẽ được client cho qua mà CSDL từ chối.
+> Khớp cả ba điểm từng lệch: bỏ `Classify` khỏi khoá, so tên đã chuẩn hoá NFC và
+> không phân biệt hoa/thường, và **hàng đã xoá mềm không còn giữ chỗ tên**. Vế
+> "chặt hơn" — xoá một danh mục rồi tạo lại cùng tên bị CSDL từ chối trong khi
+> client cho qua — vì thế đã hết. Trigger kiểm chéo "người dùng không được trùng
+> tên với mặc định" cũng đã DROP, đúng như mô hình bản sao cần.
 >
-> Dòng "chặt hơn" đó có một đường kích hoạt **tự lặp**, xem **G16** trong `docs/CLIENT_APP_KNOWN_GAPS.md`. Từ 2026-09-04 client xếp vi phạm UNIQUE (`23505`) vào `permanent` nên bản ghi hỏng bị chặn theo thời gian và có ghi `syncError` — **không còn hoàn toàn âm thầm, không còn kéo chậm hàng đợi**. Nhưng bản ghi vẫn sinh ra ở mỗi lần mở app và vẫn không lên được server.
+> Đo thẳng trên `localhost:5432/PersonFinance` ngày 2026-09-07, không đọc tài liệu.
 >
-> Việc cần backend làm, kèm SQL và cách kiểm chứng: `docs/superpowers/backend/DA-XONG/CATEGORY_NAME_UNIQUENESS.md`.
+> ⚠️ **Lớp cầm máu phía client giữ nguyên, đừng gỡ.** `_classifyFailure` vẫn xếp
+> vi phạm UNIQUE vào `permanent`: 23505 còn xảy ra được vì những lý do khác, và
+> không có nó thì bản ghi hỏng quay lại bị đẩy ở mọi chu kỳ. Từ cùng ngày, phép
+> phân loại đi theo `code` của backend (`UNIQUE_VIOLATION`,
+> `CATEGORY_NAME_DUPLICATE`) chứ không dò chuỗi nữa.
+>
+> Hồ sơ của chặng cũ: `docs/superpowers/backend/DA-XONG/CATEGORY_NAME_UNIQUENESS.md`
+> và **G16** trong `docs/CLIENT_APP_KNOWN_GAPS.md`.
 
 ---
 

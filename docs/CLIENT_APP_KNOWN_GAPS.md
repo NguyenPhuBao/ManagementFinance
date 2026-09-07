@@ -303,6 +303,65 @@ sách hết hạn. Có test canh riêng ca này.
 
 ---
 
+### ~~G16 — Xoá một danh mục cá nhân mặc định thì nó mọc lại ở mỗi lần mở app~~ · ✅ ĐÃ ĐÓNG (2026-09-05)
+
+Chuỗi năm bước, mỗi bước đều đúng theo ý đồ riêng của nó, nhưng ghép lại thì hỏng:
+
+1. Người dùng xoá một trong 5 danh mục cá nhân mặc định. Xoá mềm, đẩy lên, server đặt `Delete_at`.
+2. Lần mở app sau, `PersonalDefaultCategories.ensureMissing()` chạy (gọi ở `auth_bloc.dart:135` khi đăng nhập và `:176` khi khôi phục phiên).
+3. Hàm đó hỏi `CategoryDao.getNamesInUse()` xem tài khoản còn thiếu gì. Nhưng `getNamesInUse` lọc `isDeleted = false` **và** `deletedAt IS NULL` — nên nó **không thấy hàng người dùng vừa xoá**, và kết luận là còn thiếu.
+4. `_create()` tạo lại danh mục với **UUID mới**, `syncStatus = 'pending'`.
+5. Đẩy lên đụng `uq_category_owner_name_classify` phía PostgreSQL. Index đó **không có mệnh đề `WHERE`** nên hàng đã xoá mềm vẫn giữ chỗ tên → PostgreSQL trả **23505**.
+
+Và bản ghi đó không thoát ra được: `_classifyFailure` (`lib/core/sync/sync_engine.dart`) không có nhánh nào cho vi phạm UNIQUE — chỉ có `23514` cho ràng buộc CHECK — nên 23505 rơi vào `transient` và được **đẩy lại ở mọi chu kỳ**. `_markBlockedById` chỉ chạy với `permanent`, nên bản ghi giữ nguyên `pending` mãi mãi.
+
+**Mỗi lần mở app lại thêm một bản ghi kẹt.**
+
+**Vì sao trước đây không ai thấy.** `getNamesInUse` lọc hàng đã xoá là **cố ý và đúng** — quy tắc 7 nói "hàng đã xoá mềm không giữ chỗ", nên người dùng phải tạo lại được danh mục cùng tên. Lỗi nằm ở chỗ `ensureMissing` dùng nhầm hàm đó để trả lời một câu hỏi khác: *"tài khoản này có chủ ý không muốn danh mục đó không?"* — chứ không phải *"tên này còn trống không?"*.
+
+**Đã làm ở phía client (2026-09-04):** `_classifyFailure` có thêm `_uniqueConstraintPattern` khớp `23505 | violates unique constraint | unique constraint failed` → xếp `permanent`. Bản ghi hỏng nay bị chặn **theo thời gian** thay vì đẩy lại ở mọi chu kỳ, nên nó không còn kích hoạt giãn cách luỹ tiến và không kéo chậm các thay đổi khác. Hai test canh chừng ở `test/core/sync/sync_failure_handling_test.dart` — một cho dạng câu chữ Prisma bọc, một cho mã SQLSTATE trần, vì Prisma đổi cách diễn đạt theo phiên bản.
+
+> ⚠️ Đây là **lớp cầm máu, không phải bản vá gốc**. Bản ghi vẫn được tạo ra ở mỗi lần mở app, chỉ là không còn đẩy lại vô hạn.
+
+**Còn chờ backend:** thêm `WHERE "Delete_at" IS NULL` vào unique index — xem `CATEGORY_NAME_UNIQUENESS.md` mục 4.1 và mục 10 của `2026-09-04-ocr-classify-review.md`. Khi có, bản ghi bị chặn tự quay lại hàng đợi mà người dùng không phải làm gì.
+
+> ### ⚠️ Cập nhật 2026-09-07 — cách đóng đã đổi, nhưng G16 vẫn đóng
+>
+> `foldIntoBackendDefaults()` **đã bị gỡ**. Hướng đi đảo chiều: mỗi tài khoản nay
+> có **bản sao riêng** của toàn bộ bộ mặc định (`DefaultCategorySeeder`), còn
+> hàng toàn cục lui về làm khuôn và không hiện ra ở đâu. Để hàm gộp chạy song
+> song với bước sao chép là một vòng lặp huỷ lẫn nhau.
+>
+> **Vì sao G16 vẫn không quay lại:** luật tạo bản sao đếm **cả hàng đã xoá mềm**.
+> Người dùng xoá một danh mục thì hàng xoá mềm còn đó, và lượt seed sau nhìn thấy
+> nó nên **không tạo lại**. Ba chữ ấy là khác biệt **duy nhất** với `ensureMissing()`
+> — ai "dọn dẹp" chúng đi là tái hiện nguyên vẹn G16.
+>
+> Thiết kế: `docs/superpowers/specs/2026-09-07-per-account-default-categories-design.md`.
+>
+> Phần dưới giữ nguyên làm hồ sơ của chặng 2026-09-05.
+
+**Đóng ngày 2026-09-05 — bằng cách bỏ hẳn nguồn kích hoạt.** Câu hỏi mà `ensureMissing` không trả lời được ("chưa từng có" hay "người dùng đã cố tình xoá") nay **không cần trả lời nữa**: backend đã nhận đúng 5 danh mục ấy vào bộ mặc định của nó (`Create_by = 1`, `Is_default = true`), nên không tài khoản nào phải giữ bản riêng.
+
+`ensureMissing()` được thay bằng `foldIntoBackendDefaults()`: gộp bản riêng vào bản mặc định (dời tham chiếu ở cả `transactions`, `budgets`, `bills`) rồi **xoá mềm** bản riêng — và **không tạo mới gì cả**. Danh mục mặc định là toàn cục, không thuộc tài khoản nào, nên không còn gì để "mọc lại" ở mỗi lần mở app.
+
+
+Ba điều kiện dừng, vì gộp là thao tác phá huỷ:
+
+| Tình huống | Xử lý |
+|---|---|
+| Không thấy bản mặc định (backend cũ, hoặc pull hỏng) | Không đụng gì — không tạo, không xoá |
+| Trùng tên nhưng **khác classify** | Không gộp. Quy tắc 7 không tính classify, nên một danh mục người dùng tự tạo có thể trùng tên mà khác loại; gộp nó là âm thầm đổi loại của mọi giao dịch bên trong |
+| Hàng của tài khoản khác | Không đụng. `getNamesInUse` trả cả hàng mặc định của mọi tài khoản nên phép lọc phải nằm ở chính chỗ tìm bản riêng |
+
+~~Test canh chừng: nhóm `foldIntoBackendDefaults` — chín ca.~~ **Nhóm ấy đã bị xoá cùng hàm, 2026-09-07.** Phép canh cho cơ chế hiện tại nằm ở `test/features/category/data/services/default_category_seeder_test.dart` — 13 ca, trong đó ca *"bản sao đã bị xoá mềm thì KHÔNG tạo lại"* chính là phép canh G16.
+
+✅ **Phần lệch ràng buộc với CSDL cũng đã đóng — 2026-09-07.** Trước đó `uq_category_owner_name_classify` không có `WHERE "Delete_at" IS NULL`, nên hàng đã xoá mềm vẫn giữ chỗ tên ở PostgreSQL trong khi client cho tạo lại (quy tắc 7): xoá rồi tạo lại một danh mục **của chính mình** cùng tên vẫn nhận 23505. Đợt migration 2026-09-07 thay nó bằng hai partial unique index **có** mệnh đề ấy — và bỏ luôn `Classify` khỏi khoá, đúng quy tắc 7. Đo trên CSDL thật cùng ngày.
+
+⚠️ Lớp cầm máu `_uniqueConstraintPattern` trong `_classifyFailure` **vẫn giữ, đừng gỡ.** Nó không còn phục vụ ca trên nữa, nhưng 23505 vẫn xảy ra được — hai người dùng khác nhau trùng tên danh mục mặc định, hay bất kỳ ràng buộc UNIQUE nào khác — và không có nó thì bản ghi hỏng quay lại bị đẩy ở mọi chu kỳ. Từ 2026-09-07 nhánh phân loại đi theo `code` của backend (`UNIQUE_VIOLATION`, `CATEGORY_NAME_DUPLICATE`), regex chỉ còn là đường dự phòng.
+
+---
+
 ### G17 — Trang đọc theo tài khoản không đăng ký lại khi phiên tới muộn · ✅ ĐÓNG (2026-09-07)
 
 Tái hiện nhiều lần trên máy ảo. Vào Mục tiêu **ngay sau khi mở app nguội** thì
