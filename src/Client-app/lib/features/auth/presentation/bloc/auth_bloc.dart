@@ -304,6 +304,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     final daTao = await seeder?.seedForAccount(idAcc) ?? 0;
     if (daTao > 0) {
       debugPrint('[Category] Đã tạo $daTao bản sao danh mục mặc định.');
+      // ⚠️ Phải hẹn một chu kỳ đẩy. Bước seed chạy SAU chu kỳ đồng bộ vừa xong
+      // (nó nằm trong `.then()` của `engine.start()`), nên những hàng vừa tạo
+      // không có ai đẩy đi: chúng nằm ở `pending` cho tới lần khởi động nguội
+      // kế tiếp. Đo được trên emulator-5554 ngày 2026-09-07 — 13 bản sao được
+      // tạo, app quay lại tiền cảnh, và không một chu kỳ đồng bộ nào chạy.
+      //
+      // Cùng khuôn với `CategoryManagementRepositoryImpl`: mọi đường ghi danh
+      // mục đều kết thúc bằng `scheduleSync()`.
+      if (sl.isRegistered<SyncEngine>()) {
+        sl<SyncEngine>().scheduleSync();
+      }
     }
   }
 }
