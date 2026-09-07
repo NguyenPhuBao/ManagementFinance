@@ -242,6 +242,9 @@ void main() {
           'isGroup', // mapEntityFields: isGroup → Is_group
           'parentId', // mapEntityFields: parentId → Idgroup
           'update_at', 'idaccount',
+          // `keyword` KHÔNG có mặt ở đây có chủ đích: danh mục trong bộ dựng
+          // này không có từ khoá nào, và gửi chuỗi rỗng là lệnh XOÁ phía
+          // server. Nhóm "PUSH — từ khoá phân loại của danh mục" canh ca có.
         },
       );
     });
@@ -607,6 +610,43 @@ void main() {
             'lặng lẽ quay về khớp regex trên thông báo Prisma, và không có lỗi '
             'nào báo ra. Đổi chuỗi này thì phải đổi cả backend cùng lúc.',
       );
+    });
+  });
+
+  group('PUSH — từ khoá phân loại của danh mục', () {
+    setUp(() async {
+      final now = DateTime.now();
+      await db.walletDao.insert(WalletsCompanion(
+        id: const Value(walletId),
+        idaccount: const Value(accountId),
+        name: const Value('Ví tiền mặt'),
+        syncStatus: const Value('pending'),
+        updatedAt: Value(now),
+      ));
+      await db.categoryDao.insert(CategoriesCompanion.insert(
+        id: categoryId,
+        idaccount: accountId,
+        name: 'Cà phê',
+        classify: 'chi',
+        updatedAt: now,
+      ));
+      await db.categoryDao.replaceKeywords(
+        accountId: accountId,
+        categoryId: categoryId,
+        keywords: ['cà phê', 'trà sữa'],
+        now: now,
+      );
+      await runSync();
+    });
+
+    test('payload mang keyword, nối bằng dấu phẩy', () {
+      expect(payloadOf('category')['keyword'], 'cà phê,trà sữa',
+          reason: 'Backend lưu từ khoá thành MỘT chuỗi nối bằng dấu phẩy trên '
+              'chính hàng category (cột Keyword, @db.Text), và /sync/push đã '
+              'nhận nó ở cả nhánh tạo lẫn nhánh cập nhật. Sai tên trường hoặc '
+              'sai định dạng thì KHÔNG có lỗi nào báo ra — từ khoá chỉ đơn '
+              'giản không bao giờ tới nơi, và mất hẳn khi người dùng cài lại '
+              'app.');
     });
   });
 }

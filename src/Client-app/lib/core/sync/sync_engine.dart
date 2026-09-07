@@ -930,6 +930,9 @@ class SyncEngine {
     // Nếu categories push sau thì backend báo FK constraint violation.
     final syncableCategories =
         await _db.categoryDao.getSyncableCategories(idaccount);
+    // Nạp từ khoá MỘT lần cho cả lô. `getKeywords` trong vòng lặp sinh một
+    // truy vấn cho mỗi danh mục, mà vòng này chạy ở MỌI chu kỳ đẩy.
+    final tuKhoaTheoDanhMuc = await _db.categoryDao.getAllKeywords(idaccount);
     // Nhóm phải được đẩy TRƯỚC danh mục con của nó: backend có khoá ngoại
     // fk_category_parent (Idgroup → Idcategory), con đi trước sẽ vi phạm FK.
     syncableCategories.sort((a, b) {
@@ -957,6 +960,15 @@ class SyncEngine {
           'colour': c.colour,
           'is_default': c.isDefault,
           'is_deleted': c.isDeleted,
+          // Backend lưu từ khoá thành MỘT chuỗi nối bằng dấu phẩy trên chính
+          // hàng `category` (cột `Keyword`, `@db.Text`), và `/sync/push` đã
+          // nhận nó ở cả nhánh tạo lẫn nhánh cập nhật.
+          //
+          // ⚠️ Chỉ gửi khi CÓ từ khoá. Chuỗi rỗng là lệnh XOÁ: backend cũng tự
+          // học từ khoá qua `recordFeedback()` → `appendCategoryKeyword()`, nên
+          // một chuỗi rỗng từ client quét sạch thứ server vừa học được.
+          if ((tuKhoaTheoDanhMuc[c.id] ?? const <String>[]).isNotEmpty)
+            'keyword': tuKhoaTheoDanhMuc[c.id]!.join(','),
           // Cấu trúc nhóm — backend mapEntityFields() nhận camelCase:
           // isGroup → Is_group, parentId → Idgroup.
           'isGroup': c.isGroup,
@@ -1031,6 +1043,15 @@ class SyncEngine {
           'colour': cat.colour,
           'is_default': cat.isDefault,
           'is_deleted': cat.isDeleted,
+          // Backend lưu từ khoá thành MỘT chuỗi nối bằng dấu phẩy trên chính
+          // hàng `category` (cột `Keyword`, `@db.Text`), và `/sync/push` đã
+          // nhận nó ở cả nhánh tạo lẫn nhánh cập nhật.
+          //
+          // ⚠️ Chỉ gửi khi CÓ từ khoá. Chuỗi rỗng là lệnh XOÁ: backend cũng tự
+          // học từ khoá qua `recordFeedback()` → `appendCategoryKeyword()`, nên
+          // một chuỗi rỗng từ client quét sạch thứ server vừa học được.
+          if ((tuKhoaTheoDanhMuc[cat.id] ?? const <String>[]).isNotEmpty)
+            'keyword': tuKhoaTheoDanhMuc[cat.id]!.join(','),
           'isGroup': cat.isGroup,
           'parentId':
               cat.parentId != null ? _toValidUuid(cat.parentId!) : null,
