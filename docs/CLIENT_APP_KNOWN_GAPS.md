@@ -334,26 +334,50 @@ Ba điều kiện dừng, vì gộp là thao tác phá huỷ:
 
 ---
 
-### G17 — Danh sách mục tiêu rỗng ở lần vào đầu tiên sau khi khởi động nguội · ⏸️ HOÃN CÓ CHỦ Ý (2026-09-05)
+### G17 — Danh sách mục tiêu rỗng ở lần vào đầu tiên sau khi khởi động nguội · ⚠️ ĐÓNG MỘT NỬA (2026-09-07)
 
 Tái hiện nhiều lần trên máy ảo. Vào Mục tiêu **ngay sau khi mở app nguội** thì
 danh sách rỗng dù CSDL có dữ liệu; thoát ra vào lại là thấy.
 
-Trang dựng trước khi `AuthBloc` khôi phục xong phiên, `currentAccountIdOrNull`
-trả `null`, rồi `?? 0` biến nó thành tài khoản 0 — và `watchGoals(0)` đương
-nhiên rỗng.
+**Nguyên nhân gốc — ghi chép cũ nói sai.** Bản ghi 2026-09-05 đổ cho `?? 0`.
+Nhưng `?? 0` chỉ làm lỗi **im lặng** thay vì nổ; bỏ nó đi thì trang hiện thông
+báo lỗi thay vì danh sách rỗng — vẫn hỏng, chỉ ồn ào hơn.
 
-**Vì sao `?? 0` vẫn đúng:** đây là bài học G4. Đường ĐỌC không được mặc định về
-`1` (tài khoản admin thật), và `0` là "rỗng, không phải dữ liệu của ai". Sửa
-bằng cách đổi hằng số là đi ngược lại chính bài học ấy.
+Gốc thật: `GoalPage` đọc mã tài khoản **đúng một lần**, bên trong
+`BlocProvider.create`. `currentAccountIdOrNull` dùng `context.read<AuthBloc>()`
+— `read` **không đăng ký** gì cả — và `create` chỉ chạy một lần trong đời của
+provider. Trang dựng trước khi phiên khôi phục xong sẽ đăng ký `watchGoals(0)`
+rồi **giữ nguyên đăng ký ấy mãi**. Thoát ra vào lại thì provider mới được dựng,
+lúc đó phiên đã sẵn sàng — đúng cách người dùng vô tình "chữa" nó.
 
-**Vì sao hoãn:** cách sửa đúng là thêm một trạng thái *"đang chờ phiên"* — khác
-hẳn *"không có dữ liệu"* — và nó phải làm ở **mọi trang đọc theo tài khoản**,
-không riêng mục tiêu (`bill_page`, `budget`, `wallet_list_page` đều cùng dạng).
-Sửa lẻ một trang là để lại một kiểu xử lý thứ hai cho cùng một tình huống.
+`home_page` và `transaction_page` không mắc lỗi này vì chúng dùng
+`context.watch<AuthBloc>()`.
 
-**Cách làm:** dựng test tái hiện trước — bơm `AuthBloc` phát `AuthSuccess` trễ
-vài nhịp và khẳng định trang không hiện trạng thái rỗng trong lúc chờ.
+**Đã sửa cho trang Mục tiêu (2026-09-07):** `context.watch<AuthBloc>()` để
+build chạy lại khi phiên tới, cộng `key: ValueKey(idaccount)` trên
+`BlocProvider` để `create` chạy lần nữa với đúng tài khoản. Thiếu khoá thì
+`watch` chỉ khiến build chạy lại mà cubit vẫn giữ đăng ký cũ — hai nửa phải đi
+cùng nhau. Test canh: `goal_page_cold_start_test.dart`, đỏ đúng chỗ trước bản
+vá (`Expected: contains <10>, Actual: [0]`).
+
+**Vì sao mới đóng một nửa.** Bản ghi cũ hoãn mục này vì muốn một trạng thái
+*"đang chờ phiên"* — khác hẳn *"không có dữ liệu"* — làm ở **mọi** trang đọc
+theo tài khoản. Điều đó vẫn đúng và vẫn chưa có. Kiểm 2026-09-07:
+`budget_page.dart:19` có **cùng hình dạng** (đọc bằng `currentAccountIdOrNull`
+rồi `BlocProvider` tạo một lần), nên nhiều khả năng cũng hỏng y hệt ở khởi động
+nguội — chưa dựng test nên chưa khẳng định. `bill_page` và `wallet_list_page`
+cần soi tiếp.
+
+**Vì sao vẫn sửa lẻ một trang:** lỗi ở trang Mục tiêu là thứ người dùng gặp
+thật và đã ghi lại hai lần. Để nguyên chờ một bản dọn chung là để nguyên một
+lỗi có thật. Bản vá này dùng đúng lối mà `home_page`/`transaction_page` đã
+dùng, nên nó **không** tạo ra kiểu xử lý thứ hai — nó gom trang Mục tiêu về
+kiểu đang có.
+
+⚠️ **`?? 0` giữ nguyên, có chủ ý.** Đây là bài học G4: đường ĐỌC không được
+mặc định về `1` (tài khoản admin thật), và `0` là "rỗng, không phải dữ liệu
+của ai". Nay nó chỉ còn là trạng thái **tạm** trong vài nhịp đầu, vì khoá
+`ValueKey` kéo trang về đúng tài khoản ngay khi phiên tới.
 
 ---
 

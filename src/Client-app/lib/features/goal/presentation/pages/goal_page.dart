@@ -12,17 +12,30 @@ import '../widgets/goal_progress.dart';
 import '../../domain/goal_grouping.dart';
 import '../bloc/goal_cubit.dart';
 import '../../../../core/auth/current_account.dart';
+import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
 
 class GoalPage extends StatelessWidget {
   const GoalPage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // ĐĂNG KÝ với AuthBloc, không chỉ đọc một phát (G17).
+    //
+    // `currentAccountIdOrNull` dùng `context.read` bên trong, mà `read` không
+    // đăng ký gì cả — cộng với việc `BlocProvider.create` chỉ chạy MỘT lần,
+    // trang được dựng trước khi phiên khôi phục xong sẽ đăng ký
+    // `watchGoals(0)` rồi giữ nguyên đăng ký ấy mãi. Người dùng thấy danh
+    // sách rỗng dù CSDL có dữ liệu, và chỉ thoát ra vào lại mới thấy.
+    // `home_page` và `transaction_page` không mắc lỗi này vì chúng `watch`.
+    context.watch<AuthBloc>();
+    final idaccount = currentAccountIdOrNull(context) ?? 0;
+
     return BlocProvider<GoalCubit>(
-      create: (_) {
-        final idaccount = currentAccountIdOrNull(context) ?? 0;
-        return sl<GoalCubit>()..watchGoals(idaccount);
-      },
+      // Khoá theo mã tài khoản: khi phiên tới, khoá đổi nên provider được dựng
+      // lại và `create` chạy lần nữa với đúng tài khoản. Thiếu khoá này thì
+      // `watch` ở trên chỉ khiến build chạy lại mà cubit vẫn giữ đăng ký cũ.
+      key: ValueKey(idaccount),
+      create: (_) => sl<GoalCubit>()..watchGoals(idaccount),
       child: const _GoalPageContent(),
     );
   }
