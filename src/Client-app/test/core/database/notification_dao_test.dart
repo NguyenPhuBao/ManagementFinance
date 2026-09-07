@@ -125,6 +125,93 @@ void main() {
     });
   });
 
+  group('lọc và phân trang', () {
+    test('lọc theo kinds chỉ trả về loại được yêu cầu', () async {
+      await db.notificationDao.insertIfAbsent(
+          mau(id: 'ns', kind: 'budgetNearLimit', dedupeKey: 'k1'));
+      await db.notificationDao
+          .insertIfAbsent(mau(id: 'hd', kind: 'billDueSoon', dedupeKey: 'k2'));
+
+      final chiHoaDon = await db.notificationDao
+          .watchFeed(accountId, kinds: const ['billDueSoon', 'billOverdue'])
+          .first;
+
+      expect(chiHoaDon.map((n) => n.id), ['hd'],
+          reason: 'Chip lọc theo nhóm quy đổi thành danh sách kind rồi truyền '
+              'xuống đây. Lọc ở tầng Dart sau khi đã LIMIT là trang thứ hai '
+              'trống rỗng trong khi CSDL vẫn còn hàng khớp.');
+    });
+
+    test('không truyền kinds thì trả về mọi loại', () async {
+      await db.notificationDao.insertIfAbsent(
+          mau(id: 'ns', kind: 'budgetNearLimit', dedupeKey: 'k1'));
+      await db.notificationDao
+          .insertIfAbsent(mau(id: 'hd', kind: 'billDueSoon', dedupeKey: 'k2'));
+
+      expect((await db.notificationDao.watchFeed(accountId).first).length, 2,
+          reason: 'null nghĩa là KHÔNG lọc. Hiểu nhầm thành danh sách rỗng là '
+              'chip "Tất cả" cho ra màn hình trắng.');
+    });
+
+    test('chiChuaDoc bỏ qua hàng đã đọc', () async {
+      await db.notificationDao.insertIfAbsent(mau(id: 'da', dedupeKey: 'k1'));
+      await db.notificationDao.insertIfAbsent(mau(id: 'chua', dedupeKey: 'k2'));
+      await db.notificationDao.markRead('da');
+
+      final loc =
+          await db.notificationDao.watchFeed(accountId, chiChuaDoc: true).first;
+
+      expect(loc.map((n) => n.id), ['chua']);
+    });
+
+    test('giới hạn áp dụng SAU khi lọc, không phải trước', () async {
+      // Hàng MỚI NHẤT cố ý là loại bị lọc ra. Nếu LIMIT chạy trước điều kiện
+      // lọc thì truy vấn lấy đúng hàng ấy rồi vứt đi, và kết quả là rỗng.
+      await db.notificationDao.insertIfAbsent(mau(
+          id: 'hd',
+          kind: 'billDueSoon',
+          dedupeKey: 'k1',
+          createdAt: DateTime(2026, 9, 1)));
+      await db.notificationDao.insertIfAbsent(mau(
+          id: 'ns',
+          kind: 'budgetNearLimit',
+          dedupeKey: 'k2',
+          createdAt: DateTime(2026, 9, 4)));
+
+      final trang1 = await db.notificationDao
+          .watchFeed(accountId, limit: 1, kinds: const ['billDueSoon'])
+          .first;
+
+      expect(trang1.map((n) => n.id), ['hd'],
+          reason: 'Phân trang và lọc phải nằm trong CÙNG một câu SQL. Tách ra '
+              'là người dùng bấm "Tải thêm" mãi mà danh sách không dài ra.');
+    });
+
+    test('markUnread đưa hàng đã đọc trở lại chưa đọc', () async {
+      await db.notificationDao.insertIfAbsent(mau());
+      await db.notificationDao.markRead('n1');
+      expect(await db.notificationDao.watchUnreadCount(accountId).first, 0);
+
+      await db.notificationDao.markUnread('n1');
+
+      expect(await db.notificationDao.watchUnreadCount(accountId).first, 1,
+          reason: 'Đánh dấu chưa đọc là đường quay lại cho "Đọc tất cả" — nút '
+              'ấy đọc hộ cả những mục người dùng chưa kịp xem.');
+      expect(
+          (await db.notificationDao.getAll(accountId)).single.readAt, isNull);
+    });
+
+    test('markUnread không đụng hàng khác', () async {
+      await db.notificationDao.insertIfAbsent(mau(dedupeKey: 'k1'));
+      await db.notificationDao.insertIfAbsent(mau(id: 'n2', dedupeKey: 'k2'));
+      await db.notificationDao.markAllRead(accountId);
+
+      await db.notificationDao.markUnread('n1');
+
+      expect(await db.notificationDao.watchUnreadCount(accountId).first, 1);
+    });
+  });
+
   group('dọn dẹp', () {
     test('purgeOlderThan xoá hàng cũ hơn mốc', () async {
       await db.notificationDao.insertIfAbsent(

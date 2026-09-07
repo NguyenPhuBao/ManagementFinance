@@ -45,10 +45,31 @@ class NotificationDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// Danh sách hiển thị: bỏ hàng đã xoá mềm, mới nhất lên trước.
-  Stream<List<AppNotification>> watchFeed(int idaccount, {int limit = 50}) {
+  ///
+  /// [kinds] `null` nghĩa là **không lọc** — khác hẳn danh sách rỗng, vốn
+  /// nghĩa là không loại nào khớp. Nhận `List<String>` chứ không phải
+  /// `NotificationGroup` có chủ ý: DAO nằm ở tầng CSDL, kéo
+  /// `notification_prefs.dart` vào đây là buộc tầng lưu trữ phụ thuộc tầng
+  /// thông báo. Nơi gọi tự quy đổi nhóm thành danh sách `kind`.
+  ///
+  /// Cả hai bộ lọc và [limit] phải nằm trong **cùng một câu SQL**. Lọc ở tầng
+  /// Dart sau khi đã cắt là bấm "Tải thêm" mãi mà danh sách không dài ra: câu
+  /// truy vấn lấy đúng `limit` hàng mới nhất rồi vứt gần hết đi, trong khi
+  /// những hàng khớp vẫn nằm nguyên trong bảng.
+  Stream<List<AppNotification>> watchFeed(
+    int idaccount, {
+    int limit = 50,
+    List<String>? kinds,
+    bool chiChuaDoc = false,
+  }) {
     return (select(appNotifications)
-          ..where((t) =>
-              t.idaccount.equals(idaccount) & t.dismissedAt.isNull())
+          ..where((t) {
+            var dieuKien =
+                t.idaccount.equals(idaccount) & t.dismissedAt.isNull();
+            if (kinds != null) dieuKien = dieuKien & t.kind.isIn(kinds);
+            if (chiChuaDoc) dieuKien = dieuKien & t.readAt.isNull();
+            return dieuKien;
+          })
           ..orderBy([(t) => OrderingTerm.desc(t.createdAt)])
           ..limit(limit))
         .watch();
@@ -74,6 +95,16 @@ class NotificationDao extends DatabaseAccessor<AppDatabase>
           ..where((t) =>
               t.idaccount.equals(idaccount) & t.readAt.isNull()))
         .write(AppNotificationsCompanion(readAt: Value(DateTime.now())));
+  }
+
+  /// Gỡ cờ đã đọc — đối xứng với [markRead].
+  ///
+  /// Cần thiết vì "Đọc tất cả" đọc hộ **cả** những mục người dùng chưa kịp
+  /// xem: không có đường quay lại thì một cú bấm nhầm xoá sạch dấu vết những
+  /// gì còn phải xử lý, và chuông trên Home tụt về 0 trong khi việc vẫn còn đó.
+  Future<void> markUnread(String id) async {
+    await (update(appNotifications)..where((t) => t.id.equals(id)))
+        .write(const AppNotificationsCompanion(readAt: Value(null)));
   }
 
   /// Xoá mềm. Xem chú thích cột `dismissedAt` để biết vì sao không DELETE.
