@@ -214,7 +214,7 @@ còn nằm trên máy người dùng đã cài từ trước.
 - **Danh mục mặc định thứ 19 xuất hiện sau khi tài khoản đã seed** → lần chạy
   kế tiếp tạo đúng **một** bản sao cho nó, không đụng 18 bản đã có.
 - Cập nhật `sync_payload_contract_test.dart` nếu payload đẩy đổi hình dạng.
-  ⚠️ Payload danh mục hiện có **đúng 5 trường** và **không** có `keyword` — nếu
+  ⚠️ Payload danh mục hiện có **12 khoá** và **không** có `keyword` — nếu
   ai đó định thêm từ khoá vào đường đẩy thì phải sửa hợp đồng cùng lúc, nếu
   không tên trường sai sẽ **im lặng** (quy tắc 4 của `CLAUDE.md`).
 
@@ -232,7 +232,7 @@ Vế thứ hai **làm được, và thuần client** — kiểm ngày 2026-09-07
 | `/sync/push` nhánh **cập nhật** | **đã nhận** — `keyword: mapped.keyword !== undefined ? … : existing.keyword` (`:153`) |
 | `mapEntityFields('category')` | truyền `keyword` qua **không đổi tên** |
 | Pull | **đã đọc** — tách chuỗi nối bằng dấu phẩy rồi `_gieoTuKhoaKhiTrong` |
-| **Payload đẩy của client** | ❌ **thiếu** — chỉ có `namecategory`, `classify`, `icon`, `colour`, `is_default` (`sync_engine.dart:954` và `:1028`) |
+| **Payload đẩy của client** | ❌ **thiếu** — 12 khoá (`id`, `name`, `namecategory`, `classify`, `icon`, `colour`, `is_default`, `is_deleted`, `isGroup`, `parentId`, `updated_at`, `idaccount`) và **không có `keyword`** (`sync_engine.dart:950` và `:1025`) |
 
 Nên việc phải làm là **thêm `keyword` vào payload đẩy**, nối các từ khoá bằng
 dấu phẩy đúng như backend đang lưu. Không cần backend làm gì.
@@ -262,7 +262,8 @@ Bảng `category` có đúng 12 cột và **không có cột màu**:
 `Idcategory, Create_by, NameCategory, Classify, Is_default, Is_group, Idgroup,
 Keyword, Icon, Create_at, Update_at, Delete_at`.
 
-Client vẫn đẩy `colour` lên (normalizer đổi thành `color`), và backend **bỏ qua
+Client vẫn đẩy `colour` lên — `categoryForPush` **không** đổi tên khoá này
+(phép đổi `colour` → `color` chỉ có ở `walletForPush`) — và backend **bỏ qua
 im lặng** — đúng kiểu hỏng mà quy tắc 4 mô tả. Nghĩa là **màu của bản sao cũng
 chỉ sống trên máy đã seed**, y hệt vấn đề từ khoá vừa gỡ, nhưng lần này **không
 gỡ được ở client** vì không có cột để ghi vào.
