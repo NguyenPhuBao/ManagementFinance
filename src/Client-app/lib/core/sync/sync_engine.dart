@@ -1520,7 +1520,7 @@ class SyncEngine {
   }
 
   /// Mã lỗi ổn định do backend gắn cho lỗi vỡ khoá ngoại tới bảng `account`
-  /// (có từ 2026-09-03, xem `docs/superpowers/backend/SESSION_VALIDITY_FINDINGS.md`).
+  /// (có từ 2026-09-03, xem `docs/superpowers/backend/DA-XONG/SESSION_VALIDITY_FINDINGS.md`).
   static const String accountNotFoundCode = 'ACCOUNT_NOT_FOUND';
 
   /// Các mã lỗi có cấu trúc mà backend gắn cho một thao tác đẩy khi **thử lại
@@ -1640,7 +1640,7 @@ class SyncEngine {
   /// chưa có từ khoá nào** ở máy này.
   ///
   /// Vì sao không ghi đè: cột `Keyword` phía backend là **một chuỗi dùng chung
-  /// cho mọi tài khoản** (xem `docs/superpowers/backend/CAN-LAM/CATEGORY_KEYWORD_SYNC.md`),
+  /// cho mọi tài khoản** (xem `docs/superpowers/backend/DA-XONG/CATEGORY_KEYWORD_SYNC.md`),
   /// còn `CategoryKeywords` phía client là dữ liệu **riêng từng người dùng**,
   /// sửa được trong màn quản lý danh mục. Ghi đè ở mỗi chu kỳ pull sẽ khiến
   /// thao tác xoá từ khoá của người dùng không bao giờ dính — nó bị hồi sinh ở

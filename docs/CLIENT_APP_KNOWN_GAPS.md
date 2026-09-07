@@ -371,7 +371,7 @@ loại hàng không bao giờ mang `goal_id`: hàng do bản app trước schema
 **Vì sao chưa dứt điểm được:** loại thứ nhất tắt dần theo thời gian, loại thứ hai
 thì **không** — cứ đăng nhập máy mới là lại đầy hàng thiếu ID. Chỉ khi backend
 có cột `Idgoal` thì nhánh này mới bỏ được. Xem
-`docs/superpowers/backend/CAN-LAM/2026-09-05-backend-transaction-goal-id.md`.
+`docs/superpowers/backend/DA-XONG/2026-09-05-backend-transaction-goal-id.md`.
 
 ⚠️ Điều kiện `goal_id IS NULL` ở nhánh dự phòng là thứ chặn không cho một hàng
 đã có chủ bị mục tiêu khác nhận vơ. **Đừng bỏ nó khi dọn dẹp.**
@@ -450,7 +450,7 @@ báo — càng dễ hiểu nhầm là nó đang chạy.
 ⚠️ **Đừng đẩy một phần.** Nếu chỉ `amount` và `wallet_id` đồng bộ mà bỏ
 `last_run`, mỗi máy giữ một mốc riêng và **cả hai cùng chuyển tiền** khi tới kỳ.
 Hiện trạng (máy thứ hai không trích gì) vẫn tốt hơn hẳn. Chi tiết và các bước
-phải làm ở `docs/superpowers/backend/CAN-LAM/2026-09-05-backend-goal-auto-deposit.md`.
+phải làm ở `docs/superpowers/backend/DA-XONG/2026-09-05-backend-goal-auto-deposit.md`.
 
 ---
 

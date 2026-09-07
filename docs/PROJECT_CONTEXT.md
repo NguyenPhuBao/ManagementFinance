@@ -173,7 +173,7 @@ Phép kiểm tra **chỉ chạy khi tên thật sự đổi**. Bản client trư
 >
 > Dòng "chặt hơn" đó có một đường kích hoạt **tự lặp**, xem **G16** trong `docs/CLIENT_APP_KNOWN_GAPS.md`. Từ 2026-09-04 client xếp vi phạm UNIQUE (`23505`) vào `permanent` nên bản ghi hỏng bị chặn theo thời gian và có ghi `syncError` — **không còn hoàn toàn âm thầm, không còn kéo chậm hàng đợi**. Nhưng bản ghi vẫn sinh ra ở mỗi lần mở app và vẫn không lên được server.
 >
-> Việc cần backend làm, kèm SQL và cách kiểm chứng: `docs/superpowers/backend/CAN-LAM/CATEGORY_NAME_UNIQUENESS.md`.
+> Việc cần backend làm, kèm SQL và cách kiểm chứng: `docs/superpowers/backend/DA-XONG/CATEGORY_NAME_UNIQUENESS.md`.
 
 ---
 
@@ -648,11 +648,17 @@ Xem đầy đủ tại **`docs/CLIENT_APP_KNOWN_GAPS.md`**. Phiên 2026-09-03 đ
 >
 > Hệ quả ít ai biết: **công cụ Grep tôn trọng `.gitignore` nên không nhìn thấy thư mục `test/`**. Muốn dò xem còn ai gọi một hàm sắp xoá thì phải dùng `grep` qua shell, nếu không sẽ thấy thiếu file và xoá nhầm.
 
-Vấn đề thuộc backend. **Các tài liệu còn việc nằm ở
-`docs/superpowers/backend/CAN-LAM/`**, tách khỏi phần đã xong để đội backend
-không phải lọc giữa 20 tệp. README trong thư mục ấy là **cửa vào duy nhất**: nó
-chia việc theo *client đã có tính năng này chưa*, vì đó mới là thứ quyết định
-mức khẩn — và ranh giới ấy không suy ra được từ bảng dưới đây.
+Vấn đề thuộc backend. Thư mục `docs/superpowers/backend/` được **chia ba** ngày
+2026-09-07: **`CAN-LAM/`** giữ đúng phần **còn việc** (nay chỉ bốn mục) và README
+trong đó là **cửa vào duy nhất**; **`DA-XONG/`** giữ 16 tài liệu **đã đóng**, mở khi
+cần biết *vì sao* lược đồ có hình dạng hôm nay chứ không phải khi tìm việc; thư mục
+cha chỉ còn mục lục và ba tệp bối cảnh (`New_Database.md`,
+`2026-08-10-backend-sync-spec.md`, `PROGRESS-BACKEND.md`).
+
+Bảng dưới giữ **cả** mục đã đóng lẫn mục còn việc, vì nó là nơi duy nhất đọc được
+toàn cảnh một lượt. Muốn biết *phải làm gì tiếp* thì đọc `CAN-LAM/README.md` —
+nó chia việc theo *client đã có tính năng này chưa*, ranh giới không suy ra được
+từ bảng này.
 
 Bảng dưới **kiểm lại ngày 2026-09-07** sau khi gộp `origin/main` `193b6d5`
 (đợt backend lớn: Socket.io, `/sync/push`, danh mục Template & Cloned, và một

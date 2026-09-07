@@ -594,7 +594,7 @@ Stitch **không có** màn này; bố cục bám đúng kiểu thẻ của `sett
 
 #### Tài liệu backend ✅ XONG
 
-`docs/superpowers/backend/2026-09-04-notification-backend.md`, đã nối vào mục 3
+`docs/superpowers/backend/DA-XONG/2026-09-04-notification-backend.md`, đã nối vào mục 3
 của README backend.
 
 **Kết luận: backend không cần làm gì để tính năng này chạy.** Thông báo là cục

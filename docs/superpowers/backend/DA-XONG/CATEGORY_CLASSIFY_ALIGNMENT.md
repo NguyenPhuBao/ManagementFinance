@@ -28,7 +28,7 @@ Giá trị thứ ba đang **không thống nhất** giữa tài liệu và mã n
 
 | Nơi | Giá trị đang dùng | Ghi chú |
 |---|---|---|
-| `docs/superpowers/backend/New_Database.md` | **`Vay/nợ`** (có dấu) | Được coi là "nguồn sự thật" |
+| `../New_Database.md` | **`Vay/nợ`** (có dấu) | Được coi là "nguồn sự thật" |
 | `docs/superpowers/plans/2026-09-01-align-postgresql-schema.md` | **`Vay/nợ`** (có dấu) | Ghi rõ "canonical category class" |
 | `src/Backend/database/New_Database.sql` (dòng 109) | `Vay/no` (không dấu) | CHECK constraint |
 | `src/Backend/prisma/migrations/20260901090000_align_new_database/migration.sql` (dòng 96) | `Vay/no` (không dấu) | **Migration đã áp dụng vào CSDL** |
@@ -81,7 +81,7 @@ Giữ nguyên thứ đang chạy, chỉ sửa **tài liệu** cho khớp thực 
 
 **Việc cần làm:**
 
-1. Sửa `docs/superpowers/backend/New_Database.md`:
+1. Sửa `../New_Database.md`:
    - dòng 87: `Check in (Thu, Chi, Vay/nợ)` → `Check in (Thu, Chi, Vay/no)`
    - dòng 304: `Classify IN ('Thu', 'Chi', 'Vay/nợ')` → `... 'Vay/no')`
 2. Sửa `docs/superpowers/plans/2026-09-01-align-postgresql-schema.md` cho khớp, hoặc đánh dấu kế hoạch đó là đã thay thế bởi tài liệu này.
