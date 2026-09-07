@@ -24,7 +24,7 @@ class AppNotifications extends Table {
   /// chính của tài khoản khác hiện ra trên máy dùng chung.
   IntColumn get idaccount => integer()();
 
-  /// Giá trị `.name` của `NotificationKind` — **13 loại**, xem enum ấy để có
+  /// Giá trị `.name` của `NotificationKind` — **14 loại**, xem enum ấy để có
   /// danh sách chính xác thay vì tin vào chú thích này:
   ///
   /// `budgetNearLimit` | `budgetOverspent` | `billDueSoon` | `billOverdue`

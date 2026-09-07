@@ -61,9 +61,9 @@ const String routeThongBao = '/notifications';
 ///
 /// Thông tin này đã có sẵn ở `NotificationCandidate.deeplink`. Nhân bản là
 /// điều dự án này vốn tránh, nên đi kèm một phép canh trong
-/// `notification_deeplink_test.dart`: nó dựng ứng viên thật cho **cả 13 loại**
+/// `notification_deeplink_test.dart`: nó dựng ứng viên thật cho **cả 14 loại**
 /// rồi khẳng định hàm này trả về đúng cột `deeplink` bộ luật đã đặt. Thêm loại
-/// thứ 14 mà quên ánh xạ là test đỏ ngay.
+/// thứ 15 mà quên ánh xạ là test đỏ ngay.
 ///
 /// **Không bao giờ ném và không bao giờ trả `null`.** Khoá đến từ payload của
 /// hệ điều hành: nó có thể là lịch do một bản app cũ đặt và vẫn còn nằm trong
