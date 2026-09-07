@@ -5,6 +5,7 @@ import '../../../../core/di/injection_container.dart';
 import '../../../../core/notification/os/os_notifier.dart';
 import '../../../../core/notification/prefs/notification_prefs.dart';
 import '../../../../core/notification/prefs/notification_prefs_store.dart';
+import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
 
 /// Trang cài đặt thông báo — `/settings/notifications`.
@@ -41,6 +42,8 @@ class NotificationSettingsPage extends StatefulWidget {
 
   static Key khoaCongTacNhom(NotificationGroup nhom) =>
       Key('notification_settings_${nhom.name}');
+
+  static const Key khoaNguongSoDu = Key('notification_settings_nguong_so_du');
 
   @override
   State<NotificationSettingsPage> createState() =>
@@ -287,6 +290,11 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                           _hangSoNgay(),
                         ],
                       ),
+                      const SizedBox(height: 24),
+                      _the(
+                        tieuDe: 'SỐ DƯ VÍ',
+                        children: [_hangNguongSoDu()],
+                      ),
                     ],
                   ),
                 ),
@@ -424,6 +432,43 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
         onChanged: (v) {
           if (v == null) return;
           _ghi(_prefs.copyWith(soNgayNhacHoaDon: v));
+        },
+      ),
+    );
+  }
+
+  Widget _hangNguongSoDu() {
+    // Danh sách rời chứ không phải ô nhập tiền, cùng lý lẽ với `_hangSoNgay`:
+    // gõ tay mở đường cho những giá trị mà `NotificationPrefs` sẽ lặng lẽ quy
+    // về 0, và người dùng chỉ thấy con số của mình biến mất.
+    const luaChon = [0, 50000, 100000, 200000, 500000, 1000000, 2000000];
+
+    return _khung(
+      icon: Icons.account_balance_wallet_outlined,
+      nhan: 'Cảnh báo số dư thấp',
+      phu: 'Báo khi một ví còn dưới mức này. Ví nợ không tính.',
+      trailing: DropdownButton<int>(
+        key: NotificationSettingsPage.khoaNguongSoDu,
+        // Giá trị lạ — do sửa tay hoặc do một bản sau đổi danh sách — rơi về
+        // `null` kèm `hint`, chứ không được ném giữa `build`.
+        value: luaChon.contains(_prefs.nguongSoDuThap)
+            ? _prefs.nguongSoDuThap
+            : null,
+        hint: Text(CurrencyFormatter.format(_prefs.nguongSoDuThap)),
+        underline: const SizedBox.shrink(),
+        items: [
+          for (final n in luaChon)
+            DropdownMenuItem(
+              value: n,
+              // `0` phải đọc thành "Tắt", không phải "0 ₫": một ngưỡng bằng
+              // không đọc như "báo khi ví hết sạch", trong khi nó tắt hẳn
+              // tính năng.
+              child: Text(n == 0 ? 'Tắt' : CurrencyFormatter.format(n)),
+            ),
+        ],
+        onChanged: (v) {
+          if (v == null) return;
+          _ghi(_prefs.copyWith(nguongSoDuThap: v));
         },
       ),
     );

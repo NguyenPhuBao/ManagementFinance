@@ -1,5 +1,5 @@
-/// Bốn luật của lát 6: mục tiêu hoàn thành, mục tiêu trễ tiến độ, đồng bộ
-/// hỏng, ví âm.
+/// Bốn luật của lát 6 — mục tiêu hoàn thành, mục tiêu trễ tiến độ, đồng bộ
+/// hỏng, ví âm — cộng luật **ví sắp cạn** thêm ngày 2026-09-07.
 ///
 /// Điểm chung khiến chúng khó hơn hai nhóm trước: **không có "kỳ" tự nhiên**.
 /// Ngân sách có chu kỳ, hoá đơn có hạn trả — cả hai cho sẵn một mốc để đưa vào
@@ -53,12 +53,13 @@ void main() {
     String ten = 'Tiền mặt',
     double soDu = 100000,
     bool daXoa = false,
+    String loai = 'cash',
   }) {
     return Wallet(
       id: id,
       idaccount: 7,
       name: ten,
-      type: 'cash',
+      type: loai,
       balance: soDu,
       currency: 'VND',
       icon: 'wallet',
@@ -80,6 +81,7 @@ void main() {
     bool dongBoHong = false,
     DateTime? at,
     DateTime? silenceBefore,
+    int nguongSoDuThap = 0,
   }) {
     return buildNotificationCandidates(NotificationRuleInput(
       now: at ?? now,
@@ -88,6 +90,7 @@ void main() {
       autoDeposits: autoDeposits,
       syncFailed: dongBoHong,
       silenceBefore: silenceBefore,
+      lowBalanceThreshold: nguongSoDuThap,
     ));
   }
 
@@ -419,6 +422,120 @@ void main() {
 
     test('ví đã xoá thì im lặng', () {
       expect(chay(wallets: [vi(soDu: -50000, daXoa: true)]), isEmpty);
+    });
+
+    test('ví loại NỢ đang âm thì KHÔNG báo', () {
+      expect(chay(wallets: [vi(soDu: -5000000, loai: 'debt')]), isEmpty,
+          reason: 'Ví nợ mang số dư âm là đúng bản chất của nó, không phải dấu '
+              'hiệu ghi nhầm. Trước 2026-09-07 nó bị nhắc lại mỗi ngày cho tới '
+              'khi trả hết nợ — đúng loại nhiễu khiến người dùng tắt cả nhóm.');
+    });
+  });
+
+  group('ví sắp cạn', () {
+    test('số dư dưới ngưỡng thì cảnh báo, và là cảnh báo chứ không nghiêm trọng',
+        () {
+      final ra = chay(
+        wallets: [vi(soDu: 30000, ten: 'Ví tiêu vặt')],
+        nguongSoDuThap: 100000,
+      ).single;
+
+      expect(ra.kind, NotificationKind.walletLowBalance);
+      expect(ra.severity, NotificationSeverity.warning,
+          reason: 'Ví cạn là chuyện còn kịp xử lý; chỉ ví ÂM mới là dấu hiệu '
+              'có gì đó đã sai. Hai mức nghiêm trọng khác nhau.');
+      expect(ra.body, contains('Ví tiêu vặt'));
+      expect(ra.deeplink, '/wallets');
+    });
+
+    test('số dư ĐÚNG BẰNG ngưỡng vẫn cảnh báo', () {
+      expect(
+        chay(wallets: [vi(soDu: 100000)], nguongSoDuThap: 100000),
+        hasLength(1),
+        reason: 'Biên đóng, cùng quy ước với thang màu ngân sách: chạm mốc là '
+            'báo. Người dùng đặt "báo khi còn dưới 100 nghìn" đọc con số ấy là '
+            'mốc, không phải một giá trị bị loại trừ.',
+      );
+    });
+
+    test('số dư trên ngưỡng thì im', () {
+      expect(
+        chay(wallets: [vi(soDu: 100001)], nguongSoDuThap: 100000),
+        isEmpty,
+      );
+    });
+
+    test('ngưỡng 0 nghĩa là TẮT, không phải "báo khi hết sạch"', () {
+      expect(chay(wallets: [vi(soDu: 0)], nguongSoDuThap: 0), isEmpty,
+          reason: 'Mặc định của tuỳ chọn là 0. Hiểu 0 thành một ngưỡng thật sẽ '
+              'bật tính năng cho MỌI bản đã cài mà người dùng không hề đặt gì.');
+    });
+
+    test('ví âm chỉ ra cảnh báo ÂM, không ra cả hai', () {
+      final ra = chay(wallets: [vi(soDu: -50000)], nguongSoDuThap: 100000);
+
+      expect(ra.map((c) => c.kind), [NotificationKind.walletNegative],
+          reason: 'Số dư âm cũng thoả điều kiện "dưới ngưỡng". Không loại trừ '
+              'thì mỗi ví âm đẻ hai thông báo nói cùng một chuyện.');
+    });
+
+    test('ví loại NỢ không bị cảnh báo sắp cạn', () {
+      expect(
+        chay(wallets: [vi(soDu: 1000, loai: 'debt')], nguongSoDuThap: 100000),
+        isEmpty,
+      );
+    });
+
+    test('ví đã xoá thì im lặng', () {
+      expect(
+        chay(
+          wallets: [vi(soDu: 1000, daXoa: true)],
+          nguongSoDuThap: 100000,
+        ),
+        isEmpty,
+      );
+    });
+
+    test('nhắc tối đa một lần mỗi ngày', () {
+      final v = vi(soDu: 1000);
+      final sang = chay(
+        wallets: [v],
+        nguongSoDuThap: 100000,
+        at: DateTime(2026, 9, 15, 8),
+      ).single;
+      final toi = chay(
+        wallets: [v],
+        nguongSoDuThap: 100000,
+        at: DateTime(2026, 9, 15, 22),
+      ).single;
+
+      expect(sang.dedupeKey, toi.dedupeKey,
+          reason: 'Ví ở trạng thái cạn cho tới khi người dùng nạp tiền — cùng '
+              'lý lẽ với ví âm.');
+    });
+
+    test('sang ngày mới thì nhắc lại được', () {
+      final v = vi(soDu: 1000);
+      final homNay =
+          chay(wallets: [v], nguongSoDuThap: 100000).single.dedupeKey;
+      final homSau = chay(
+        wallets: [v],
+        nguongSoDuThap: 100000,
+        at: DateTime(2026, 9, 16),
+      ).single.dedupeKey;
+
+      expect(homNay == homSau, isFalse);
+    });
+
+    test('khoá của hai ví khác nhau thì khác nhau', () {
+      final ra = chay(
+        wallets: [vi(id: 'v1', soDu: 1000), vi(id: 'v2', soDu: 2000)],
+        nguongSoDuThap: 100000,
+      );
+
+      expect(ra.map((c) => c.dedupeKey).toSet(), hasLength(2),
+          reason: 'Quên id ví trong khoá thì ví thứ hai bị coi là trùng và im '
+              'lặng biến mất.');
     });
   });
 

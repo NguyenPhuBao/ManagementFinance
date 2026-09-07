@@ -30,6 +30,7 @@ NotificationGroup nhomCua(NotificationKind kind) {
       return NotificationGroup.goal;
     case NotificationKind.syncFailed:
     case NotificationKind.walletNegative:
+    case NotificationKind.walletLowBalance:
       return NotificationGroup.system;
   }
 }
@@ -66,6 +67,7 @@ bool luonBao(NotificationKind kind) {
     case NotificationKind.goalBehind:
     case NotificationKind.syncFailed:
     case NotificationKind.walletNegative:
+    case NotificationKind.walletLowBalance:
       return false;
   }
 }
@@ -88,6 +90,7 @@ class NotificationPrefs {
     this.imLangBat = false,
     this.imLangTuPhut = _imLangTuMacDinh,
     this.imLangDenPhut = _imLangDenMacDinh,
+    this.nguongSoDuThap = _nguongSoDuMacDinh,
   });
 
   /// Công tắc **tổng** cho thông báo cấp hệ điều hành.
@@ -124,6 +127,17 @@ class NotificationPrefs {
   final int imLangTuPhut;
   final int imLangDenPhut;
 
+  /// Cảnh báo khi số dư một ví xuống tới mức này, đơn vị **đồng**.
+  ///
+  /// `0` = **tắt**, và đó là mặc định. Một con số thay vì một cặp
+  /// công tắc-cộng-số vì cặp ấy biểu diễn được một trạng thái vô nghĩa (bật
+  /// nhưng ngưỡng bằng 0), còn một con số thì không.
+  ///
+  /// Mặc định tắt vì mọi bản ghi có sẵn trên máy người dùng đều thiếu trường
+  /// này — bật sẵn là lặng lẽ đổi hành vi của mọi bản đã cài, cùng lý lẽ với
+  /// giờ im lặng.
+  final int nguongSoDuThap;
+
   static const int _gioMacDinh = 8;
   static const int _phutMacDinh = 0;
 
@@ -138,6 +152,14 @@ class NotificationPrefs {
   /// Trần của `soNgayNhacHoaDon`. Rộng hơn cửa sổ quét 30 ngày một chút để
   /// không chặn oan, nhưng vẫn loại được những con số vô nghĩa.
   static const int _soNgayToiDa = 60;
+
+  static const int _nguongSoDuMacDinh = 0;
+
+  /// Trần của [nguongSoDuThap] — một tỉ đồng. Không phải hạn chế sản phẩm mà
+  /// là lưới chắn dữ liệu hỏng: một con số vô nghĩa lớn biến cảnh báo thành
+  /// luôn-bật cho mọi ví, đúng kiểu hỏng mà `BudgetEntity.warningRatio` đã
+  /// chặn ở phía ngân sách.
+  static const int _nguongSoDuToiDa = 1000000000;
 
   static const NotificationPrefs macDinh = NotificationPrefs();
 
@@ -182,6 +204,7 @@ class NotificationPrefs {
     bool? imLangBat,
     int? imLangTuPhut,
     int? imLangDenPhut,
+    int? nguongSoDuThap,
   }) {
     return NotificationPrefs(
       osBat: osBat ?? this.osBat,
@@ -192,6 +215,7 @@ class NotificationPrefs {
       imLangBat: imLangBat ?? this.imLangBat,
       imLangTuPhut: imLangTuPhut ?? this.imLangTuPhut,
       imLangDenPhut: imLangDenPhut ?? this.imLangDenPhut,
+      nguongSoDuThap: nguongSoDuThap ?? this.nguongSoDuThap,
     );
   }
 
@@ -204,6 +228,7 @@ class NotificationPrefs {
         'imLangBat': imLangBat,
         'imLangTuPhut': imLangTuPhut,
         'imLangDenPhut': imLangDenPhut,
+        'nguongSoDuThap': nguongSoDuThap,
       };
 
   /// Đọc từ JSON, **không bao giờ ném**.
@@ -225,6 +250,8 @@ class NotificationPrefs {
           json['imLangTuPhut'], 0, _phutTrongNgay - 1, _imLangTuMacDinh),
       imLangDenPhut: _docSo(
           json['imLangDenPhut'], 0, _phutTrongNgay - 1, _imLangDenMacDinh),
+      nguongSoDuThap: _docSo(json['nguongSoDuThap'], 0, _nguongSoDuToiDa,
+          _nguongSoDuMacDinh),
     );
   }
 
@@ -256,6 +283,7 @@ class NotificationPrefs {
       other.imLangBat == imLangBat &&
       other.imLangTuPhut == imLangTuPhut &&
       other.imLangDenPhut == imLangDenPhut &&
+      other.nguongSoDuThap == nguongSoDuThap &&
       other.nhomTat.length == nhomTat.length &&
       other.nhomTat.containsAll(nhomTat);
 
@@ -268,6 +296,7 @@ class NotificationPrefs {
         imLangBat,
         imLangTuPhut,
         imLangDenPhut,
+        nguongSoDuThap,
         Object.hashAllUnordered(nhomTat),
       );
 

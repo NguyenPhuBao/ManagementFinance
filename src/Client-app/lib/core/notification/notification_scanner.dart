@@ -299,6 +299,7 @@ class NotificationScanner {
           syncFailed: syncFailed ?? _dongBoHong,
           silenceBefore: at.subtract(cuaSoSuKien),
           defaultBillLeadDays: prefs.soNgayNhacHoaDon,
+          lowBalanceThreshold: prefs.nguongSoDuThap,
         ),
         // Lọc ở đây chứ không ở bước bắn: tắt một nhóm nghĩa là không sinh
         // thông báo nhóm ấy CẢ trong app. Chỉ chặn lúc bắn thì trung tâm thông

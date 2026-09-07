@@ -157,12 +157,12 @@ void main() {
           updatedAt: DateTime(2026, 9, 1),
         );
 
-    Wallet viAm() => Wallet(
-          id: 'vi1',
+    Wallet vi({required String id, required double soDu}) => Wallet(
+          id: id,
           idaccount: 7,
           name: 'Tiền mặt',
           type: 'cash',
-          balance: -50000,
+          balance: soDu,
           currency: 'VND',
           icon: 'wallet',
           colour: '#4CAF50',
@@ -175,7 +175,7 @@ void main() {
           updatedAt: DateTime(2026, 9, 1),
         );
 
-    /// Một đầu vào cố tình dựng đủ rộng để bộ luật sinh ra **cả 13 loại**.
+    /// Một đầu vào cố tình dựng đủ rộng để bộ luật sinh ra **cả 14 loại**.
     List<NotificationCandidate> tatCaUngVien() =>
         buildNotificationCandidates(NotificationRuleInput(
           now: now,
@@ -191,7 +191,11 @@ void main() {
             mucTieu(id: 'mt-xong', current: 10000000, lapLai: true),
             mucTieu(id: 'mt-tre', current: 2000000),
           ],
-          wallets: [viAm()],
+          wallets: [
+            vi(id: 'vi-am', soDu: -50000),
+            vi(id: 'vi-can', soDu: 1000),
+          ],
+          lowBalanceThreshold: 100000,
           autoDeposits: [
             GoalAutoDepositEvent(
               goalId: 'mt-trich',
@@ -231,12 +235,12 @@ void main() {
           syncFailed: true,
         ));
 
-    test('đầu vào của phép canh phủ đủ cả 13 loại thông báo', () {
+    test('đầu vào của phép canh phủ đủ cả 14 loại thông báo', () {
       final phu = tatCaUngVien().map((c) => c.kind).toSet();
 
       expect(phu, containsAll(NotificationKind.values),
           reason: 'Phép canh bên dưới chỉ có giá trị khi nó thật sự chạy qua '
-              'mọi loại. Thêm loại thứ 14 mà quên dựng đầu vào cho nó thì '
+              'mọi loại. Thêm loại thứ 15 mà quên dựng đầu vào cho nó thì '
               'chính test này đỏ, chứ không phải im lặng bỏ sót.');
     });
 

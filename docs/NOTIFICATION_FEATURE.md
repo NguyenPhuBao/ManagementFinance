@@ -57,7 +57,7 @@ uống"*, *"Nhắc nhở: Hóa đơn tiền điện sắp đến hạn"*, *"Ti�
 
 ## 3. Danh mục thông báo
 
-**Mười ba loại**, xếp vào **bốn nhóm** công tắc. Cột cuối đánh dấu những loại
+**Mười bốn loại**, xếp vào **bốn nhóm** công tắc. Cột cuối đánh dấu những loại
 **không chịu công tắc nhóm** — xem `luonBao()` trong `notification_prefs.dart`.
 
 | Nhóm | Loại | `kind` | Luôn báo |
@@ -75,6 +75,23 @@ uống"*, *"Nhắc nhở: Hóa đơn tiền điện sắp đến hạn"*, *"Ti�
 | | **Chưa trích được** | `goalAutoDepositFailed` | ⚠️ có |
 | Hệ thống | Đồng bộ hỏng | `syncFailed` | |
 | | Số dư ví âm | `walletNegative` | |
+| | Số dư ví sắp cạn | `walletLowBalance` | |
+
+**`walletLowBalance`** (2026-09-07) là loại duy nhất **tắt sẵn**: nó chỉ sinh
+khi `NotificationPrefs.nguongSoDuThap > 0`, mà mặc định là `0`. Con số ấy vừa
+là ngưỡng vừa là công tắc — một cặp công tắc-cộng-số biểu diễn được trạng thái
+vô nghĩa "bật nhưng ngưỡng bằng 0", còn một con số thì không. Mặc định tắt vì
+mọi bản ghi có sẵn trên máy người dùng đều thiếu trường này, và bật sẵn là lặng
+lẽ đổi hành vi của mọi bản đã cài — cùng lý lẽ với giờ im lặng.
+
+⚠️ **Ví loại `debt` không sinh cảnh báo ví nào cả**, kể cả `walletNegative`.
+Ví nợ mang số dư âm là đúng bản chất của nó; trước 2026-09-07 nó bị nhắc lại
+**mỗi ngày** cho tới khi trả hết nợ. Đây là đổi hành vi có chủ ý, không phải
+tác dụng phụ.
+
+Thứ tự loại trừ trong `_walletCandidates` là thứ giữ cho mỗi ví ra **một**
+thông báo: số dư âm cũng thoả điều kiện "dưới ngưỡng", nên thiếu `continue` ở
+nhánh trên là mỗi ví âm đẻ hai thông báo nói cùng một chuyện.
 
 ⚠️ **Bốn loại "luôn báo" là những loại DUY NHẤT báo việc tiền thật rời ví** khi
 người dùng vắng mặt. Trước 2026-09-06 chúng chịu chung công tắc với phần còn

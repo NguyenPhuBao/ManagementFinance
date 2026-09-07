@@ -94,6 +94,7 @@ String deeplinkTuDedupeKey(String key) {
       return goalDeeplink(phan[1]);
 
     case 'walletNeg':
+    case 'walletLow':
       return '/wallets';
 
     // `syncFailed` và mọi khoá lạ: không có màn nào để mở.

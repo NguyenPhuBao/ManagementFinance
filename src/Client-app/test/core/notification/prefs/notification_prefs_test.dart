@@ -293,6 +293,63 @@ void main() {
     });
   });
 
+  group('ngưỡng số dư ví thấp', () {
+    test('mặc định là 0, nghĩa là TẮT', () {
+      expect(NotificationPrefs.macDinh.nguongSoDuThap, 0,
+          reason: 'Bật sẵn là lặng lẽ đổi hành vi của mọi bản đã cài — cùng lý '
+              'lẽ với giờ im lặng và với việc lưu nhóm bị TẮT. Người dùng chưa '
+              'từng thấy tuỳ chọn này không được đột nhiên nhận thông báo mới.');
+    });
+
+    test('đi trọn vòng qua JSON', () {
+      const goc = NotificationPrefs(nguongSoDuThap: 250000);
+
+      expect(NotificationPrefs.fromJson(goc.toJson()), goc,
+          reason: 'Quên trường trong toJson/fromJson thì ngưỡng người dùng đặt '
+              'biến mất sau mỗi lần mở app, mà không có lỗi nào báo ra.');
+    });
+
+    test('thiếu trường quy về 0 chứ không ném', () {
+      expect(NotificationPrefs.fromJson(const {}).nguongSoDuThap, 0,
+          reason: 'Mọi bản ghi có sẵn trên máy người dùng đều thiếu trường này.');
+    });
+
+    test('sai kiểu quy về 0', () {
+      expect(
+        NotificationPrefs.fromJson(const {'nguongSoDuThap': '250000'})
+            .nguongSoDuThap,
+        0,
+      );
+    });
+
+    test('số âm quy về 0', () {
+      expect(
+        NotificationPrefs.fromJson(const {'nguongSoDuThap': -1}).nguongSoDuThap,
+        0,
+        reason: 'Ngưỡng âm chỉ có thể đến từ dữ liệu hỏng, và nếu lọt qua thì '
+            'nó bật cảnh báo cho mọi ví có số dư dương.',
+      );
+    });
+
+    test('số vượt trần quy về 0', () {
+      expect(
+        NotificationPrefs.fromJson(
+                const {'nguongSoDuThap': 1000000000000}).nguongSoDuThap,
+        0,
+        reason: 'Một con số vô nghĩa lớn biến cảnh báo thành luôn-bật cho mọi '
+            'ví — cùng kiểu hỏng mà BudgetEntity.warningRatio đã chặn.',
+      );
+    });
+
+    test('copyWith đổi được ngưỡng', () {
+      expect(
+        NotificationPrefs.macDinh.copyWith(nguongSoDuThap: 100000)
+            .nguongSoDuThap,
+        100000,
+      );
+    });
+  });
+
   test('copyWith chỉ đổi thứ được nêu', () {
     const goc = NotificationPrefs.macDinh;
     final moi = goc.copyWith(gioNhac: 20);
@@ -301,5 +358,6 @@ void main() {
     expect(moi.phutNhac, goc.phutNhac);
     expect(moi.osBat, goc.osBat);
     expect(moi.soNgayNhacHoaDon, goc.soNgayNhacHoaDon);
+    expect(moi.nguongSoDuThap, goc.nguongSoDuThap);
   });
 }

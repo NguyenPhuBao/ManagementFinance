@@ -22,6 +22,7 @@ enum NotificationKind {
   goalAutoDepositFailed,
   syncFailed,
   walletNegative,
+  walletLowBalance,
 }
 
 enum NotificationSeverity { info, warning, critical }
@@ -101,6 +102,16 @@ class NotificationRuleInput {
   /// dụng mà thật ra không.
   final int defaultBillLeadDays;
 
+  /// Cảnh báo khi số dư một ví xuống tới mức này, đơn vị **đồng**.
+  ///
+  /// `0` = **tắt**, và đó là mặc định. Một con số thay vì một cặp
+  /// công tắc-cộng-số vì cặp ấy biểu diễn được một trạng thái vô nghĩa (bật
+  /// nhưng ngưỡng bằng 0), còn một con số thì không.
+  ///
+  /// Đến từ `NotificationPrefs.nguongSoDuThap`, cùng đường với
+  /// [defaultBillLeadDays].
+  final int lowBalanceThreshold;
+
   const NotificationRuleInput({
     required this.now,
     this.budgets = const [],
@@ -112,6 +123,7 @@ class NotificationRuleInput {
     this.syncFailed = false,
     this.silenceBefore,
     this.defaultBillLeadDays = mocNhacMacDinh,
+    this.lowBalanceThreshold = 0,
   });
 }
 
@@ -490,14 +502,55 @@ List<NotificationCandidate> _autoPayCandidates(NotificationRuleInput input) {
 
 // ── Ví ───────────────────────────────────────────────────────────────────────
 
+/// Giá trị cột `type` của ví nợ.
+///
+/// Cột lưu chuỗi thô (`cash` | `saving` | `bank` | `ewallet` | `investment` |
+/// `debt`) và dự án chưa có enum dùng chung cho nó; hằng số này ít nhất giữ
+/// chuỗi ấy khỏi nằm trần giữa một câu lệnh điều kiện.
+const String _loaiViNo = 'debt';
+
 List<NotificationCandidate> _walletCandidates(NotificationRuleInput input) {
   final ra = <NotificationCandidate>[];
 
   for (final v in input.wallets) {
     if (v.isDeleted) continue;
-    // Số dư 0 là chuyện bình thường; âm mới là dấu hiệu ghi nhầm giao dịch.
-    if (v.balance >= 0) continue;
 
+    // Ví nợ mang số dư âm là ĐÚNG bản chất của nó, không phải dấu hiệu ghi
+    // nhầm. Trước 2026-09-07 nó bị nhắc lại mỗi ngày cho tới khi trả hết nợ —
+    // đúng loại nhiễu khiến người dùng tắt cả nhóm, và khi ấy họ mất luôn
+    // những cảnh báo thật sự cần.
+    if (v.type == _loaiViNo) continue;
+
+    // Số dư 0 là chuyện bình thường; âm mới là dấu hiệu ghi nhầm giao dịch.
+    if (v.balance >= 0) {
+      final nguong = input.lowBalanceThreshold;
+
+      // `0` là TẮT, không phải "báo khi hết sạch". Đây là mặc định của tuỳ
+      // chọn, nên hiểu nó thành một ngưỡng thật là bật tính năng cho mọi bản
+      // đã cài mà người dùng chưa hề đặt gì.
+      if (nguong <= 0 || v.balance > nguong) continue;
+
+      ra.add(NotificationCandidate(
+        kind: NotificationKind.walletLowBalance,
+        // Gộp theo NGÀY, cùng lý lẽ với ví âm: ví ở trạng thái cạn cho tới khi
+        // người dùng nạp tiền.
+        dedupeKey: 'walletLow:${v.id}:${_ngayGon(_dauNgay(input.now))}',
+        title: 'Số dư ví sắp cạn',
+        body: '${v.name} chỉ còn ${_tien(v.balance)}.',
+        // Cảnh báo, không phải nghiêm trọng: ví cạn là chuyện còn kịp xử lý,
+        // chỉ ví ÂM mới là dấu hiệu có gì đó đã sai.
+        severity: NotificationSeverity.warning,
+        subjectType: 'wallet',
+        subjectId: v.id,
+        deeplink: '/wallets',
+        createdAt: input.now,
+      ));
+      continue;
+    }
+
+    // Số dư âm cũng thoả điều kiện "dưới ngưỡng". `continue` ở nhánh trên là
+    // thứ giữ cho mỗi ví chỉ ra MỘT thông báo — không có nó thì mỗi ví âm đẻ
+    // hai thông báo nói cùng một chuyện.
     ra.add(NotificationCandidate(
       kind: NotificationKind.walletNegative,
       // Gộp theo NGÀY: ví ở trạng thái âm cho tới khi người dùng nạp tiền.

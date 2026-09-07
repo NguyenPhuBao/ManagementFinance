@@ -279,6 +279,57 @@ void main() {
     });
   });
 
+  group('ngưỡng số dư ví thấp', () {
+    testWidgets('mặc định hiện là TẮT', (tester) async {
+      await moTrang(tester);
+
+      expect(find.text('Cảnh báo số dư thấp'), findsOneWidget);
+      expect(
+        tester
+            .widget<DropdownButton<int>>(
+                find.byKey(NotificationSettingsPage.khoaNguongSoDu))
+            .value,
+        0,
+        reason: 'Mặc định của tuỳ chọn là 0 = tắt. Hiện một số tiền nào đó khi '
+            'người dùng chưa đặt gì là nói dối về trạng thái thật.',
+      );
+    });
+
+    testWidgets('ngưỡng đã lưu được hiện lại', (tester) async {
+      await store.write(
+          accountId, const NotificationPrefs(nguongSoDuThap: 200000));
+
+      await moTrang(tester);
+
+      expect(
+        tester
+            .widget<DropdownButton<int>>(
+                find.byKey(NotificationSettingsPage.khoaNguongSoDu))
+            .value,
+        200000,
+      );
+    });
+
+    testWidgets('đổi ngưỡng thì ghi ngay vào kho', (tester) async {
+      await moTrang(tester);
+
+      // Thẻ này nằm cuối một trang cuộn được, nên ở 800px của môi trường test
+      // nó nằm dưới mép màn hình và `tap` sẽ trượt ra nền.
+      await tester
+          .ensureVisible(find.byKey(NotificationSettingsPage.khoaNguongSoDu));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(NotificationSettingsPage.khoaNguongSoDu));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('100.000 ₫').last);
+      await tester.pumpAndSettle();
+
+      expect((await store.read(accountId)).nguongSoDuThap, 100000,
+          reason: 'Ghi ngay chứ không đợi nút Lưu — trang này không có nút nào '
+              'như vậy, đúng khuôn của mọi mục còn lại.');
+    });
+  });
+
   group('xin quyền', () {
     testWidgets('BẬT công tắc tổng thì xin quyền hệ điều hành', (tester) async {
       await store.write(accountId, const NotificationPrefs(osBat: false));
