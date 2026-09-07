@@ -534,7 +534,7 @@ String _moTaNhom(NotificationGroup nhom) {
     case NotificationGroup.goal:
       return 'Hoàn thành và trễ tiến độ.';
     case NotificationGroup.system:
-      return 'Đồng bộ hỏng và số dư ví âm.';
+      return 'Đồng bộ hỏng và cảnh báo số dư ví.';
   }
 }
 
