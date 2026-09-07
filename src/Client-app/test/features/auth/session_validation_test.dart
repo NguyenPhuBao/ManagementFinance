@@ -400,9 +400,11 @@ void main() {
         updatedAt: DateTime(2026, 9, 1),
       ));
 
-      final defaultsBefore = (await db.categoryDao.getAll(10))
-          .where((c) => c.idaccount == 0)
-          .length;
+      // Đếm qua `getBackendDefaults` chứ không qua `getAll`: từ 2026-09-07
+      // danh mục mặc định KHÔNG còn hiện trong các truy vấn hiển thị, nhưng
+      // hàng của chúng vẫn phải nằm nguyên trong CSDL — chúng là khuôn để
+      // `DefaultCategorySeeder` sao chép cho từng tài khoản.
+      final defaultsBefore = (await db.categoryDao.getBackendDefaults()).length;
       expect(defaultsBefore, greaterThan(0));
 
       final removed = await db.purgeDataForOtherAccounts(10);
@@ -412,9 +414,10 @@ void main() {
       expect((await db.walletDao.getById('w-current'))?.id, 'w-current');
       expect(await db.categoryDao.getById('cat-old'), null);
       expect((await db.categoryDao.getById('cat-current'))?.id, 'cat-current');
-      // Danh mục mặc định (idaccount = 0) là dữ liệu dùng chung → phải còn.
-      final defaultsAfter =
-          (await db.categoryDao.getAll(10)).where((c) => c.idaccount == 0).length;
+      // Danh mục mặc định (idaccount = 0) là khuôn dùng chung → phải còn.
+      // Dọn mất chúng nghĩa là tài khoản kế tiếp đăng nhập trên máy này không
+      // có gì để sao chép, và người dùng thấy danh sách danh mục rỗng.
+      final defaultsAfter = (await db.categoryDao.getBackendDefaults()).length;
       expect(defaultsAfter, defaultsBefore);
     });
 

@@ -333,16 +333,18 @@ void main() {
 
     for (final rows in [watchedRows, fetchedRows]) {
       final ids = rows.map((row) => row.id);
-      // Danh mục mặc định (idaccount = 0) vẫn hiển thị cho người dùng.
-      expect(ids, contains('global-transport'));
+      // Từ 2026-09-07 danh mục mặc định (idaccount = 0) KHÔNG còn hiển thị.
+      // Chúng chỉ là khuôn để `DefaultCategorySeeder` sao chép thành bản riêng
+      // của từng tài khoản; hiện ra là người dùng thấy hai bản trùng tên cho
+      // mỗi danh mục và không đổi tên được bản nào.
+      expect(ids, isNot(contains('global-transport')));
+      expect(ids, isNot(contains('global-food')));
       // Đã xoá mềm và của tài khoản khác thì không hiện.
       expect(ids, isNot(contains('deleted-food')));
       expect(ids, isNot(contains('other-account-food')));
-      // Trùng tên "Food" chỉ còn MỘT — bản của chính người dùng thắng bản mặc
-      // định vì truy vấn sắp xếp theo idaccount giảm dần.
-      expect(rows.where((row) => row.name == 'Food'), hasLength(1));
+      // Bản của chính người dùng vẫn còn, và vẫn chỉ MỘT cho mỗi tên.
       expect(ids, contains('personal-food'));
-      expect(ids, isNot(contains('global-food')));
+      expect(rows.where((row) => row.name == 'Food'), hasLength(1));
     }
   });
 
@@ -1114,6 +1116,38 @@ void main() {
       final ra = await db.categoryDao.getOwnedIncludingDeleted(7);
 
       expect(ra.map((c) => c.id), ['u1']);
+    });
+
+    test('truy vấn hiển thị KHÔNG còn trả hàng mặc định', () async {
+      await cat(id: 'd1', idaccount: 0, name: 'Khuôn', isDefault: true);
+      await cat(id: 'u1', idaccount: 7, name: 'Của tôi');
+
+      expect((await db.categoryDao.getAll(7)).map((c) => c.id), ['u1'],
+          reason: 'Bản mặc định nay chỉ là khuôn để sao chép. Còn hiện ra là '
+              'người dùng thấy hai bản trùng tên cho mỗi danh mục, và quy tắc '
+              'trùng tên chặn họ đổi tên bất kỳ bản nào.');
+      expect(
+          (await db.categoryDao.getCategoryRows(7, 'chi')).map((c) => c.id),
+          ['u1']);
+      expect((await db.categoryDao.getByClassify(7, 'chi')).map((c) => c.id),
+          ['u1']);
+      expect((await db.categoryDao.watchAll(7).first).map((c) => c.id),
+          ['u1']);
+      expect(
+          (await db.categoryDao.watchCategoryRows(7, 'chi').first)
+              .map((c) => c.id),
+          ['u1']);
+    });
+
+    test('getNamesInUse VẪN đếm hàng mặc định', () async {
+      await cat(id: 'd1', idaccount: 0, name: 'Khuôn', isDefault: true);
+
+      expect((await db.categoryDao.getNamesInUse(7)).map((c) => c.id),
+          contains('d1'),
+          reason: 'Hàm này phục vụ quy tắc TRÙNG TÊN, không phải hiển thị. Bản '
+              'mặc định vẫn chiếm chỗ trong CSDL và trong hai unique index của '
+              'PostgreSQL, nên bỏ nó ra là cho người dùng tạo một danh mục mà '
+              'đẩy lên sẽ hỏng.');
     });
   });
 }

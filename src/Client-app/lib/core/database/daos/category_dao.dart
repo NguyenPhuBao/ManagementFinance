@@ -19,7 +19,7 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
   Future<List<Category>> getAll(int idaccount) async {
     final list = await (select(categories)
           ..where((t) =>
-              (t.idaccount.equals(0) | t.idaccount.equals(idaccount)) &
+              t.idaccount.equals(idaccount) &
               t.deletedAt.isNull())
           ..orderBy([
             (t) => OrderingTerm.desc(t.idaccount),
@@ -38,7 +38,7 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
   Stream<List<Category>> watchAll(int idaccount) {
     return (select(categories)
           ..where((t) =>
-              (t.idaccount.equals(0) | t.idaccount.equals(idaccount)) &
+              t.idaccount.equals(idaccount) &
               t.deletedAt.isNull())
           ..orderBy([
             (t) => OrderingTerm.desc(t.idaccount),
@@ -58,7 +58,7 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
   Stream<List<Category>> watchCategoryRows(int accountId, String classify) {
     return (select(categories)
           ..where((t) =>
-              (t.idaccount.equals(0) | t.idaccount.equals(accountId)) &
+              t.idaccount.equals(accountId) &
               t.classify.equals(classify) &
               t.isDeleted.equals(false))
           ..orderBy([
@@ -91,7 +91,7 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
   Future<List<Category>> getCategoryRows(int accountId, String classify) async {
     final list = await (select(categories)
           ..where((t) =>
-              (t.idaccount.equals(0) | t.idaccount.equals(accountId)) &
+              t.idaccount.equals(accountId) &
               t.classify.equals(classify) &
               t.isDeleted.equals(false))
           ..orderBy([
@@ -324,7 +324,7 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
   Future<List<Category>> getByClassify(int idaccount, String classify) async {
     final list = await (select(categories)
           ..where((t) =>
-              (t.idaccount.equals(0) | t.idaccount.equals(idaccount)) &
+              t.idaccount.equals(idaccount) &
               t.classify.equals(classify) &
               t.deletedAt.isNull())
           ..orderBy([

@@ -71,26 +71,6 @@ void main() {
   // Nguyên nhân không phải phép kiểm trùng sai, mà là nó chạy sai thời điểm.
 
   group('Máy mới: không sinh bản trùng với bản đã có trên backend', () {
-    /// Đúng trạng thái SQLite sau lần pull đầu tiên trên một máy mới.
-    Future<void> pullVe(String id, String name, String classify) =>
-        db.categoryDao.insert(CategoriesCompanion.insert(
-          id: id,
-          idaccount: accountId,
-          name: name,
-          classify: classify,
-          isDefault: const Value(false),
-          syncStatus: const Value('synced'),
-          updatedAt: DateTime(2026, 9, 1),
-        ));
-
-    Future<void> pullDu5() async {
-      await pullVe('3f7bd9b9-1f76-4632-b996-99556415d994', 'Chi khác', 'chi');
-      await pullVe('c69de4dd-8d77-474a-823b-5b6346284fc5', 'Thu khác', 'thu');
-      await pullVe('7fa9d024-91d7-49ed-8866-f73e7146e9fc', 'Làm thêm', 'thu');
-      await pullVe('dac4608a-dc42-41ad-bf56-e636f5c6312c', 'Trả nợ', 'vay_no');
-      await pullVe('59ada9c9-4be6-44ca-934a-2bc5af869431', 'Thu nợ', 'vay_no');
-    }
-
     test('convertLegacyRows trên máy sạch KHÔNG tạo gì cả', () async {
       await service.convertLegacyRows(accountId);
 
