@@ -11,6 +11,8 @@ const UPSERT_MAP = {
   bill: 'upsertBill',
   goal: 'upsertGoal',
   category: 'upsertCategory',
+  categoryGroupMembership: 'upsertCategoryGroupMembership',
+  category_group_membership: 'upsertCategoryGroupMembership',
 };
 
 // Map entity → repository pull method
@@ -21,6 +23,8 @@ const PULL_MAP = {
   bill: 'getBillsByAccount',
   goal: 'getGoalsByAccount',
   category: 'getCategoriesByAccount',
+  categoryGroupMembership: 'getCategoryGroupMembershipsByAccount',
+  category_group_membership: 'getCategoryGroupMembershipsByAccount',
 };
 
 // Plural key names for response
@@ -31,6 +35,8 @@ const ENTITY_KEYS = {
   bill: 'bills',
   goal: 'goals',
   category: 'categories',
+  categoryGroupMembership: 'categoryGroupMemberships',
+  category_group_membership: 'categoryGroupMemberships',
 };
 
 const ENTITY_PK_MAP = {
@@ -40,13 +46,17 @@ const ENTITY_PK_MAP = {
   bill: 'idbill',
   goal: 'idgoal',
   category: 'idcategory',
+  categoryGroupMembership: 'idmembership',
+  category_group_membership: 'idmembership',
 };
 
 // Dependency order to avoid Foreign Key violations:
-// Create/Update: category (10) -> wallet (20) -> budget/bill/goal (30) -> transaction (40)
-// Delete: transaction (60) -> budget/bill/goal (70) -> wallet (80) -> category (90)
+// Create/Update: category (10) -> categoryGroupMembership (15) -> wallet (20) -> budget/bill/goal (30) -> transaction (40)
+// Delete: transaction (60) -> budget/bill/goal (70) -> wallet (80) -> categoryGroupMembership (85) -> category (90)
 const ENTITY_PRIORITY = {
   category: 10,
+  categoryGroupMembership: 15,
+  category_group_membership: 15,
   wallet: 20,
   budget: 30,
   bill: 30,
@@ -81,7 +91,7 @@ const syncService = {
         const { localId, entity, operation, payload } = op;
 
         // Ownership check (type-safe comparison)
-        if (Number(payload.idaccount) !== Number(idaccount)) {
+        if (payload.idaccount !== undefined && payload.idaccount !== null && Number(payload.idaccount) !== Number(idaccount)) {
           results[idx] = {
             localId,
             status: 'error',
@@ -92,7 +102,7 @@ const syncService = {
         }
 
         // Normalize payload fields
-        payload.idaccount = Number(payload.idaccount);
+        payload.idaccount = Number(payload.idaccount ?? idaccount);
         if (!payload.id) {
           const pkField = ENTITY_PK_MAP[entity];
           if (pkField && payload[pkField]) {
@@ -108,22 +118,22 @@ const syncService = {
           }
         }
 
-        // Handle delete
+        // Handle delete — idempotent: không tìm thấy nghĩa là ĐÃ ở trạng thái mong muốn
         if (operation === 'delete') {
           const deleted = await syncRepository.softDelete(entity, payload.id);
           results[idx] = {
             localId,
-            status: deleted ? 'synced' : 'error',
-            message: deleted ? undefined : 'Record not found',
+            status: 'synced',
+            message: deleted ? undefined : 'Already absent',
           };
-          if (deleted) synced++; else errors++;
+          synced++;
           continue;
         }
 
         // Handle create/update (upsert with LWW)
         const upsertFn = syncRepository[UPSERT_MAP[entity]];
         if (!upsertFn) {
-          results[idx] = { localId, status: 'error', message: `Unknown entity: ${entity}` };
+          results[idx] = { localId, status: 'error', code: 'UNKNOWN_ENTITY', message: `Unknown entity: ${entity}` };
           errors++;
           continue;
         }
@@ -147,16 +157,42 @@ const syncService = {
       } catch (err) {
         logger.error('Sync push operation failed', { localId: op.localId, error: err.message });
         
-        let errorCode = undefined;
-        if (err.message && (/fk_\w+_account/i.test(err.message) || /Foreign key.*account/i.test(err.message))) {
-          errorCode = 'ACCOUNT_NOT_FOUND';
+        const rawMsg = String(err?.message || '');
+        const prismaCode = err?.code ?? null;
+        const sqlState = rawMsg.match(/code:\s*"(\d{5})"/)?.[1] ?? null;
+        const constraintMatch = rawMsg.match(/constraint\s*\\?"([\w.]+)\\?"/i)?.[1] ?? null;
+
+        let code = 'DB_ERROR';
+        let friendlyMessage = 'Dữ liệu không hợp lệ hoặc vi phạm ràng buộc cơ sở dữ liệu';
+
+        if (/fk_\w+_account/i.test(rawMsg) || /Foreign key.*account/i.test(rawMsg)) {
+          code = 'ACCOUNT_NOT_FOUND';
+          friendlyMessage = 'Tài khoản không tồn tại trong hệ thống';
+        } else if (sqlState === '23505' || prismaCode === 'P2002') {
+          code = 'UNIQUE_VIOLATION';
+          if (/uq_category|category.*name/i.test(rawMsg) || /category/i.test(constraintMatch || '')) {
+            code = 'CATEGORY_NAME_DUPLICATE';
+            friendlyMessage = 'Tên danh mục đã tồn tại trong tài khoản này';
+          } else {
+            friendlyMessage = 'Dữ liệu bị trùng lặp khóa duy nhất';
+          }
+        } else if (sqlState === '23503' || prismaCode === 'P2003') {
+          code = 'FOREIGN_KEY_VIOLATION';
+          friendlyMessage = 'Tham chiếu dữ liệu không tồn tại (vi phạm khóa ngoại)';
+        } else if (sqlState === '23514') {
+          code = 'CONSTRAINT_VIOLATION';
+          friendlyMessage = 'Dữ liệu vi phạm ràng buộc kiểm tra của cơ sở dữ liệu';
+        } else if (/cannot delete system default category/i.test(rawMsg)) {
+          code = 'FORBIDDEN_SYSTEM_DEFAULT';
+          friendlyMessage = 'Không thể xóa danh mục mặc định của hệ thống';
         }
 
         results[idx] = {
           localId: op.localId,
           status: 'error',
-          code: errorCode,
-          message: err.message,
+          code,
+          constraint: constraintMatch || undefined,
+          message: friendlyMessage,
         };
         errors++;
       }

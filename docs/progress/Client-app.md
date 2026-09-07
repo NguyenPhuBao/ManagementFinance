@@ -22,7 +22,7 @@ Client-app cần cập nhật cấu trúc các bảng SQLite cục bộ trên th
 ## 2. Module Sync — Đồng Bộ Dữ Liệu Offline-First
 
 * **Cập nhật Mapping Entity & Data Transfer Objects (DTO):**
-  * Chuẩn hóa tên trường gửi lên trong `POST /api/sync/batch`: `date_transaction`, `idwallet_transfer`, `deleted_at`, `status`.
+  * Chuẩn hóa tên trường gửi lên trong `POST /api/sync/push`: `date_transaction`, `idwallet_transfer`, `deleted_at`, `status`.
 * **Cơ chế Kéo Dữ Liệu (`Pull Changes`):**
   * Gọi `GET /api/sync/pull?since=last_sync_timestamp` khi khởi động ứng dụng hoặc khi phát hiện có mạng trở lại.
   * Cập nhật SQLite cục bộ theo thuật toán Last-Write-Wins (LWW).
@@ -199,7 +199,7 @@ Client-app hoàn toàn làm chủ việc ghi nhận CSDL theo kiến trúc Offli
 * Sau khi ghi nhận thành công vào SQLite cục bộ, Client-app đưa các thao tác vào hàng đợi đồng bộ (`SyncQueue`):
   * Thao tác `create` cho các bản ghi `transaction` vừa tạo.
   * Thao tác `update` cho các bản ghi `wallet` bị biến động số dư.
-* Gọi `POST /api/sync/batch` để đẩy dữ liệu lên Cloud Backend (khi có kết nối Internet).
+* Gọi `POST /api/sync/push` để đẩy dữ liệu lên Cloud Backend (khi có kết nối Internet).
 * Backend **không cần Direct API** tạo giao dịch riêng cho OCR, toàn bộ giao dịch được đồng bộ tự nhiên qua Sync Engine chuẩn hóa.
 
 ---
@@ -238,7 +238,7 @@ Client-app duy trì kết nối Socket.io liên tục với Backend để nhận
 | **Auth** | `POST` | `/api/auth/refresh` | Làm mới AccessToken khi hết hạn |
 | **Auth** | `POST` | `/api/auth/logout` | Đăng xuất & thu hồi RefreshToken |
 | **Auth** | `GET` | `/api/auth/me` | Lấy thông tin tài khoản và người dùng hiện tại |
-| **Sync** | `POST` | `/api/sync/batch` | Đẩy hàng loạt thao tác offline (create/update/delete) lên server |
+| **Sync** | `POST` | `/api/sync/push` | Đẩy hàng loạt thao tác offline (create/update/delete) lên server |
 | **Sync** | `GET` | `/api/sync/pull` | Kéo dữ liệu mới nhất từ server về SQLite máy |
 | **Sync** | `GET` | `/api/sync/status` | Kiểm tra tổng số lượng bản ghi để đối soát tính toàn vẹn |
 | **Bank** | `GET` | `/api/bank/accounts` | Lấy danh sách tài khoản ngân hàng liên kết qua Casso |

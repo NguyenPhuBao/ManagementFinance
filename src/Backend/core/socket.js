@@ -1,6 +1,8 @@
 const { Server } = require('socket.io');
+const jwt = require('jsonwebtoken');
 const config = require('../config');
 const logger = require('./logger');
+const { isAccountValid } = require('../middleware/auth');
 
 let io = null;
 
@@ -18,24 +20,57 @@ function initSocket(httpServer) {
     transports: ['websocket', 'polling'],
   });
 
-  io.on('connection', (socket) => {
-    logger.info(`[Socket] Client connected: ${socket.id}`);
-
-    // Cho phép client join room theo idaccount để nhận thông báo riêng tư
-    socket.on('join_account', (idaccount) => {
-      if (idaccount) {
-        const room = `account_${idaccount}`;
-        socket.join(room);
-        logger.info(`[Socket] Client ${socket.id} joined room ${room}`);
+  // Middleware xác thực JWT lúc bắt tay (Handshake Authentication)
+  io.use(async (socket, next) => {
+    try {
+      const rawToken = socket.handshake.auth?.token || socket.handshake.headers?.authorization;
+      if (!rawToken) {
+        return next(new Error('Authentication error: Missing token'));
       }
-    });
+
+      const token = rawToken.startsWith('Bearer ') ? rawToken.slice(7).trim() : rawToken.trim();
+      let decoded;
+      try {
+        decoded = jwt.verify(token, config.jwt.accessSecret);
+      } catch (err) {
+        return next(new Error(`Authentication error: ${err.name === 'TokenExpiredError' ? 'Token expired' : 'Invalid token'}`));
+      }
+
+      const valid = await isAccountValid(decoded.idaccount);
+      if (!valid) {
+        return next(new Error('Authentication error: Account no longer exists or is inactive'));
+      }
+
+      socket.data.idaccount = Number(decoded.idaccount);
+      socket.data.idrole = Number(decoded.idrole);
+      next();
+    } catch (error) {
+      logger.error('[Socket] Auth middleware error', { error: error.message });
+      next(new Error('Authentication error: Internal server error'));
+    }
+  });
+
+  io.on('connection', (socket) => {
+    const { idaccount, idrole } = socket.data;
+    logger.info(`[Socket] Authenticated client connected: ${socket.id} (idaccount=${idaccount}, idrole=${idrole})`);
+
+    // Tự động gia nhập room cá nhân theo danh tính đã xác thực
+    const userRoom = `account_${idaccount}`;
+    socket.join(userRoom);
+    logger.info(`[Socket] Client ${socket.id} joined room ${userRoom}`);
+
+    // Nếu là Admin (idrole === 1), tự động gia nhập admin_room
+    if (idrole === 1) {
+      socket.join('admin_room');
+      logger.info(`[Socket] Admin client ${socket.id} joined room admin_room`);
+    }
 
     socket.on('disconnect', (reason) => {
       logger.info(`[Socket] Client disconnected: ${socket.id} (${reason})`);
     });
   });
 
-  logger.info('Socket.io server initialized');
+  logger.info('Socket.io server initialized with JWT authentication');
   return io;
 }
 
@@ -48,7 +83,7 @@ function getIO() {
 }
 
 /**
- * Emit a new audit activity to all connected clients (Admin Dashboard)
+ * Emit a new audit activity to Admin Dashboard only (chỉ gửi tới admin_room)
  * @param {Object} activityData 
  */
 function emitAuditActivity(activityData) {
@@ -57,8 +92,8 @@ function emitAuditActivity(activityData) {
     return;
   }
   try {
-    io.emit('audit_activity', activityData);
-    logger.debug('[Socket] Emitted audit_activity', {
+    io.to('admin_room').emit('audit_activity', activityData);
+    logger.debug('[Socket] Emitted audit_activity to admin_room', {
       user: activityData.user,
       action: activityData.action,
     });
@@ -80,8 +115,6 @@ function emitBankTransaction(idaccount, txData) {
   try {
     const room = `account_${idaccount}`;
     io.to(room).emit('bank_transaction.incoming', txData);
-    // Đồng thời phát chung để client đang ở chế độ broadcast cũng nhận được
-    io.emit(`bank_transaction:${idaccount}`, txData);
     logger.info(`[Socket] Emitted bank_transaction.incoming to room ${room}`, { idtran: txData.idtran });
   } catch (error) {
     logger.error('[Socket] Failed to emit bank transaction', { error: error.message });
@@ -101,7 +134,6 @@ function emitOcrCompleted(idaccount, ocrData) {
   try {
     const room = `account_${idaccount}`;
     io.to(room).emit('ocr.completed', ocrData);
-    io.emit(`ocr_completed:${idaccount}`, ocrData);
     logger.info(`[Socket] Emitted ocr.completed to room ${room}`);
   } catch (error) {
     logger.error('[Socket] Failed to emit ocr completed', { error: error.message });
@@ -121,7 +153,6 @@ function emitOcrDuplicate(idaccount, duplicateData) {
   try {
     const room = `account_${idaccount}`;
     io.to(room).emit('ocr.duplicate', duplicateData);
-    io.emit(`ocr_duplicate:${idaccount}`, duplicateData);
     logger.info(`[Socket] Emitted ocr.duplicate to room ${room}`);
   } catch (error) {
     logger.error('[Socket] Failed to emit ocr duplicate', { error: error.message });
@@ -136,4 +167,5 @@ module.exports = {
   emitOcrCompleted,
   emitOcrDuplicate,
 };
+
 

@@ -61,15 +61,19 @@ const classifyRepository = {
    * @param {string} newKeyword 
    * @returns {Promise<object>}
    */
-  async appendCategoryKeyword(idcategory, newKeyword) {
+  async appendCategoryKeyword(idcategory, newKeyword, idaccount = null) {
     try {
       const category = await prisma.category.findUnique({
         where: { idcategory },
-        select: { idcategory: true, keyword: true },
+        select: { idcategory: true, keyword: true, create_by: true, is_default: true },
       });
 
       if (!category) {
         throw Object.assign(new Error('Khong tim thay danh muc'), { statusCode: 404 });
+      }
+
+      if (category.is_default || (idaccount && Number(category.create_by) !== Number(idaccount))) {
+        throw Object.assign(new Error('Khong the hoc tu khoa tren danh muc mac dinh hoac cua nguoi khac'), { statusCode: 403 });
       }
 
       // Tách bằng dấu phẩy ',' chuẩn theo chỉ đạo của PO (không phụ thuộc khoảng trắng)

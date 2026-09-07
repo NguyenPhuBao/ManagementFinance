@@ -192,8 +192,8 @@ const classifyService = {
       throw Object.assign(new Error('Tu khoa hoc khong hop le'), { statusCode: 400 });
     }
 
-    // Cập nhật vào DB
-    const updatedCategory = await classifyRepository.appendCategoryKeyword(idcategory, keywordToLearn);
+    // Cập nhật vào DB với kiểm tra quyền sở hữu (không ghi vào danh mục mặc định hoặc của user khác)
+    const updatedCategory = await classifyRepository.appendCategoryKeyword(idcategory, keywordToLearn, idaccount);
 
     logger.info('ClassifyService: Self-learning feedback recorded', {
       idaccount,
@@ -330,6 +330,8 @@ const classifyService = {
           destination_wallet_id: txClassification.destination_wallet_id || null,
           note: extraction.note || '',
         },
+        transaction_info: null,
+        invoice_info: null,
         options: [
           {
             type: 'Transfer',
@@ -356,6 +358,8 @@ const classifyService = {
             note: extraction.note || '',
           },
         ],
+        option_single: null,
+        option_grouped: null,
       };
     }
 
@@ -369,7 +373,11 @@ const classifyService = {
         amount: item.total_price || item.unit_price || 0,
       }));
 
-      const batchResults = await this.classifyBatch(idaccount, batchItems);
+      const batchResults = await this.classifyBatch(idaccount, {
+        items: batchItems,
+        merchant: extraction.merchant_name || '',
+        source: 'OCR',
+      });
 
       // Gom nhóm theo category_id
       const groupMap = new Map();
@@ -419,7 +427,6 @@ const classifyService = {
       };
     }
 
-
     // 3. Kịch bản Transaction
     // 3a. Nếu là Biên lai ngân hàng hoặc SMS thanh toán cho bên thứ 3 (Shopee, Grab, điện nước...)
     if (extraction.document_type === 'BANK_TRANSFER' || extraction.document_type === 'SMS_BANKING') {
@@ -428,6 +435,7 @@ const classifyService = {
         detected_type: 'Transaction',
         provider: extraction.document_type === 'SMS_BANKING' ? 'SMS' : 'BankSync',
         bank_tran_id: extraction.transaction_code || null,
+        transfer_details: null,
         transaction_info: {
           amount: totalAmount,
           transaction_date: extraction.transaction_date || new Date(),
@@ -439,6 +447,8 @@ const classifyService = {
           counterpart_account: extraction.destination_account || null,
           note: extraction.note || '',
         },
+        invoice_info: null,
+        options: null,
         option_single: {
           title: 'Ghi nhận Chi tiêu',
           provider: extraction.document_type === 'SMS_BANKING' ? 'SMS' : 'BankSync',
@@ -450,6 +460,7 @@ const classifyService = {
           suggested_category_icon: txClassification.category_icon,
           note: extraction.note || (extraction.destination_name ? `Thanh toán ${extraction.destination_name}` : 'Chi tiêu'),
         },
+        option_grouped: optionGrouped,
       };
     }
 
@@ -459,6 +470,8 @@ const classifyService = {
       detected_type: 'Transaction',
       provider: 'ORC',
       bank_tran_id: extraction.invoice_no || null,
+      transfer_details: null,
+      transaction_info: null,
       invoice_info: {
         merchant_name: extraction.merchant_name || null,
         merchant_address: extraction.merchant_address || null,
@@ -468,6 +481,7 @@ const classifyService = {
         vat_amount: extraction.vat_amount || 0,
         payment_method: extraction.payment_method || null,
       },
+      options: null,
       option_single: {
         title: 'Ghi nhận 1 giao dịch tổng',
         amount: totalAmount,
@@ -478,7 +492,7 @@ const classifyService = {
           ? `${extraction.merchant_name}: ${rawItems.map((i) => i.name).join(', ')}`
           : (extraction.note || 'Chi tiêu'),
       },
-      ...(optionGrouped ? { option_grouped: optionGrouped } : {}),
+      option_grouped: optionGrouped,
     };
   },
 };

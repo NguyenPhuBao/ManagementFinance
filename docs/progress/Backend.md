@@ -32,7 +32,7 @@ Backend đã hoàn thành đồng bộ **13 bảng CSDL** theo đặc tả chu�
 
 ## 2. Module Sync (Đồng Bộ Dữ Liệu 2 Chiều Offline-First)
 
-* **`POST /api/sync/batch` (Push Operations):**
+* **`POST /api/sync/push` (Push Operations):**
   * Nhận mảng các thao tác đồng bộ từ Client-app (`create`, `update`, `delete`) cho 6 thực thể (`category`, `wallet`, `transaction`, `budget`, `bill`, `goal`).
   * Áp dụng thuật toán **Last-Write-Wins (LWW)** dựa trên `Update_at` / `update_at`.
   * Tự động nhận diện Soft Delete (`Deleted_at` cho `transaction`, `Delete_at` cho các bảng còn lại).
@@ -162,7 +162,7 @@ Backend đã hoàn thành đồng bộ **13 bảng CSDL** theo đặc tả chu�
 * **Phân Định Trách Nhiệm Kiến Trúc (Separation of Concerns & Offline-First):**
   * Backend OCR giữ vai trò Stateless AI Service: Nhận ảnh $\rightarrow$ Self-healing $\rightarrow$ Khử trùng lặp $\rightarrow$ Phân loại 2 cấp $\rightarrow$ Đóng gói DTO $\rightarrow$ Bắn Realtime Notification và trả DTO về Client.
   * Backend OCR **không ghi CSDL giao dịch**, **không can thiệp số dư ví** hay quản lý trạng thái giao dịch tại bước này.
-  * Việc xác nhận giao dịch, chọn phương thức lưu (đơn lẻ hay chia nhóm), sinh UUID v4, ghi nhận CSDL SQLite cục bộ (với `status = 'Confirmed'`), cập nhật biến động số dư ví là do **Client-app đảm nhiệm**. Sau đó dữ liệu được đồng bộ an toàn lên Backend qua Sync Engine (`POST /api/sync/batch`).
+  * Việc xác nhận giao dịch, chọn phương thức lưu (đơn lẻ hay chia nhóm), sinh UUID v4, ghi nhận CSDL SQLite cục bộ (với `status = 'Confirmed'`), cập nhật biến động số dư ví là do **Client-app đảm nhiệm**. Sau đó dữ liệu được đồng bộ an toàn lên Backend qua Sync Engine (`POST /api/sync/push`).
 * **Tích Hợp Hệ Thống Thông Báo Realtime (Notification Module):**
   * EventBus publish sự kiện `ocr.completed` và `ocr.duplicate`.
   * Notification Service nhận sự kiện và gọi Socket.io (`emitOcrCompleted`, `emitOcrDuplicate`) gửi thông báo tới phòng riêng `account_<idaccount>` của user trên Client-app.

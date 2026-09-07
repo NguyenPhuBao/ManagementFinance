@@ -1,13 +1,16 @@
-﻿import { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
+import { STORAGE_KEYS } from '../utils/constants';
 
 const useSocket = (namespace = '/') => {
   const socketRef = useRef(null);
 
   useEffect(() => {
+    const token = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
     const socket = io(namespace, {
       transports: ['websocket', 'polling'],
       autoConnect: true,
+      auth: { token },
     });
 
     socket.on('connect', () => {
@@ -33,3 +36,4 @@ const useSocket = (namespace = '/') => {
 };
 
 export default useSocket;
+
