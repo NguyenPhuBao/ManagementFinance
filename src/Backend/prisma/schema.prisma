@@ -43,7 +43,6 @@ model account {
   bill         bill[]
   goal         goal[]
   transaction  transaction[]
-  category_group_membership category_group_membership[]
 
   @@index([idrole], map: "idx_account_role")
   @@map("account")
@@ -123,32 +122,11 @@ model category {
   budget     budget[]
   bill       bill[]
   transaction transaction[]
-  memberships_as_category category_group_membership[] @relation("MembershipCategory")
-  memberships_as_group    category_group_membership[] @relation("MembershipGroup")
 
   @@index([idcategory], map: "idx_category_id")
   @@index([idgroup], map: "idx_category_group")
   @@index([create_by], map: "idx_category_create_by")
   @@map("category")
-}
-
-/// Bảng liên kết danh mục mặc định vào nhóm của người dùng (2.6b)
-model category_group_membership {
-  idmembership String    @id @db.VarChar(36) @map("Idmembership")
-  idaccount    Int       @map("Idaccount")
-  idcategory   String    @db.VarChar(36) @map("Idcategory")
-  idgroup      String    @db.VarChar(36) @map("Idgroup")
-  update_at    DateTime  @default(now()) @db.Timestamp(6) @map("Update_at")
-  delete_at    DateTime? @db.Timestamp(6) @map("Delete_at")
-
-  account  account  @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: Cascade, map: "fk_membership_account")
-  category category @relation("MembershipCategory", fields: [idcategory], references: [idcategory], onDelete: Cascade, onUpdate: Cascade, map: "fk_membership_category")
-  group    category @relation("MembershipGroup", fields: [idgroup], references: [idcategory], onDelete: Cascade, onUpdate: Cascade, map: "fk_membership_group")
-
-  @@unique([idaccount, idcategory], map: "uq_membership_owner_category")
-  @@index([idaccount], map: "idx_membership_account")
-  @@index([update_at], map: "idx_membership_update_at")
-  @@map("category_group_membership")
 }
 
 /// Bảng tài khoản ngân hàng (2.7)

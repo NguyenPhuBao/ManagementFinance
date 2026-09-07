@@ -1,10 +1,15 @@
-# Đồng bộ việc gán danh mục MẶC ĐỊNH vào nhóm
+# [ĐÃ BÃI BỎ] Đồng bộ việc gán danh mục MẶC ĐỊNH vào nhóm
 
-**Người nhận:** đội Backend
-**Trạng thái:** cần backend bổ sung, phía Client-app **không thể tự làm**.
-**Mức độ:** không gây lỗi, nhưng một phần dữ liệu người dùng chỉ tồn tại trên đúng một máy.
+> [!CAUTION]
+> **TÀI LIỆU NÀY ĐÃ BỊ BÃI BỎ HOÀN TOÀN (DEPRECATED & OBSOLETE - 2026-09-07)**
+> Theo quyết định của Product Owner (PO) và Nguyên tắc Kiến trúc Dự án:
+> 1. Toàn dự án thống nhất áp dụng **Mô hình Danh mục Template & Cloned**: Danh mục hệ thống (`is_default = true`) chỉ đóng vai trò là khung mẫu chuẩn. Mỗi người dùng sở hữu bộ danh mục cá nhân độc lập (`is_default = false`, `create_by = idaccount`).
+> 2. Phân nhóm danh mục được xử lý **trực tiếp qua quan hệ tự tham chiếu** `category.idgroup` (với `is_group = true`), hoàn toàn không sử dụng bảng trung gian.
+> 3. Bảng `category_group_membership` là đề xuất sai lệch trước đây của thành viên làm Client-app. **Bảng này đã bị xóa hoàn toàn khỏi PostgreSQL / Supabase (`DROP TABLE IF EXISTS "category_group_membership" CASCADE;`), gỡ bỏ khỏi Prisma Schema và Backend Sync Engine.**
+> 4. Phía Client-app không được phép tạo bảng hay đẩy entity này lên server nữa.
 
----
+**Người nhận:** đội Backend & đội Client-app
+**Trạng thái:** ❌ **ĐÃ BÃI BỎ VÀ XÓA BỎ HOÀN TOÀN**
 
 ## 1. Vấn đề
 

@@ -5,8 +5,6 @@ const VALID_ENTITIES = [
   'bill',
   'goal',
   'category',
-  'categoryGroupMembership',
-  'category_group_membership',
 ];
 const VALID_OPERATIONS = ['create', 'update', 'delete'];
 
@@ -32,8 +30,6 @@ const ENTITY_PK_MAP = {
   bill: 'idbill',
   goal: 'idgoal',
   category: 'idcategory',
-  categoryGroupMembership: 'idmembership',
-  category_group_membership: 'idmembership',
 };
 
 /**
