@@ -259,6 +259,37 @@ lượt quét hỏng không được phép chặn đường đăng nhập.
 
 `silenceBefore = now − 30 ngày` chặn cơn lũ ở lần bật đầu tiên.
 
+### 4.6 Đường đọc: `watchFeed` — lọc, phân trang (2026-09-07)
+
+`NotificationDao.watchFeed(idaccount, {limit, kinds, chiChuaDoc})` là đường
+đọc **duy nhất** của cả trung tâm thông báo lẫn panel trên Home. Ba quyết định
+đáng nhớ:
+
+- **Nhận `List<String>? kinds`, KHÔNG nhận `NotificationGroup`.** DAO nằm ở
+  tầng CSDL; kéo `notification_prefs.dart` vào đó là buộc tầng lưu trữ phụ
+  thuộc tầng thông báo. Trang tự quy đổi nhóm sang danh sách `kind`, và nó quy
+  đổi **qua `nhomCua()`** chứ không chép tay — bảng ấy dùng `switch` không có
+  `default`, nên thêm một `NotificationKind` mà quên xếp nhóm là lỗi biên dịch.
+  Một danh sách chép tay ở tầng giao diện sẽ bỏ mất đúng cái lưới ấy.
+- **`kinds == null` nghĩa là *không lọc*, khác hẳn danh sách rỗng** (không loại
+  nào khớp). Hiểu nhầm hai thứ này là chip "Tất cả" cho ra màn hình trắng và
+  không có lối quay lại. Có test canh riêng cho cả hai vế.
+- **Lọc và `limit` phải nằm trong cùng một câu SQL.** Lọc ở tầng Dart sau khi
+  đã cắt là truy vấn lấy đúng `limit` hàng mới nhất rồi vứt gần hết đi, trong
+  khi những hàng khớp vẫn nằm nguyên trong bảng — người dùng bấm "Tải thêm"
+  mãi mà danh sách không dài ra.
+
+Trang tải **20 hàng một lần** và biết "còn hàng chưa tải" bằng cách hỏi *trang
+này có đầy không* (`items.length >= _gioiHan`), không bằng một truy vấn `COUNT`
+riêng. Đánh đổi đã biết và đã chấp nhận: khi số hàng chia hết cho bước trang
+thì nút "Tải thêm" thừa ra một lượt — bấm vào thì danh sách không dài thêm và
+nút biến mất. Rẻ hơn hẳn cái giá của một stream thứ hai đánh thức mỗi khung
+hình.
+
+Đổi bộ lọc thì **`_gioiHan` về lại trang đầu**; giữ nguyên giới hạn cũ là đổi
+chip xong tải luôn sáu chục hàng của nhóm mới — đúng thứ phân trang sinh ra để
+tránh.
+
 ---
 
 ## 5. Đã làm gì cho hoá đơn (lát 3)
@@ -718,7 +749,7 @@ Quy tắc rút ra: mọi mốc kích hoạt mới phải trả lời được c�
 máy ở chế độ máy bay không?". Ba mốc hiện tại ở mục 4.5; hai trong ba mốc ấy
 độc lập hoàn toàn với mạng.
 
-**7.10 Widget test của trung tâm thông báo — ba cái bẫy nằm chồng nhau.** Ghi
+**7.10 Widget test của trung tâm thông báo — bốn cái bẫy nằm chồng nhau.** Ghi
 lại vì cả ba đều làm test *treo* hoặc đỏ ở một chỗ hoàn toàn khác chỗ hỏng, và
 một buổi đã mất vì chúng.
 
@@ -736,6 +767,14 @@ một buổi đã mất vì chúng.
    giữa chừng hoạt ảnh sẽ rơi **ra ngoài** cây dựng hình, và `tap()` chỉ in một
    dòng cảnh báo rồi đi tiếp — test đỏ ở phép kiểm phía sau, không ở dòng
    `tap()`. Cho hoạt ảnh chạy xong trước khi chạm.
+4. **`longPress` kích hoạt luôn `onTap` khi chưa có `onLongPress`** (thêm
+   2026-09-07). Không có recognizer nào tranh chấp thì `TapGestureRecognizer`
+   thắng arena kể cả với một cú nhấn dài, nên một test nhấn giữ rồi kiểm
+   **trạng thái CSDL** có thể xanh trong khi cử chỉ ấy chưa được nối vào đâu
+   cả — ở đây cả `onTap` lẫn `onLongPress` đều dẫn tới `markRead`, hai đường
+   khác hẳn nhau cho ra cùng một hàng. Phải kiểm thêm thứ **chỉ đường mới sinh
+   ra** (dải báo "Đã đánh dấu…"). Đã tự chứng minh: gỡ `onLongPress` ra thì
+   phép kiểm CSDL vẫn xanh, chỉ phép kiểm dải báo mới đỏ.
 
 ⚠️ Và một bài học về cách chạy: **đừng nối `flutter test` qua `| tail`.** Pipe
 gom hết output tới khi tiến trình kết thúc, nên một lượt treo trông y hệt một
@@ -752,7 +791,7 @@ lượt đang chạy. Ghi thẳng ra file rồi đọc file.
 | `test/core/notification/app_lifecycle_watcher_test.dart` | Watcher thật sự được đăng ký vào `WidgetsBinding` (không thì stream im lặng mãi, **không lỗi không log**); stream là **broadcast** nên nghe lại được sau khi huỷ; `dispose()` gỡ observer và luỹ đẳng |
 | `test/core/notification/os/os_scheduled_id_test.dart` | Bốn giá trị **golden** của `md5(dedupeKey)` — khoá cứng để việc đổi thuật toán trở nên ồn ào; dải 31 bit; phân tán trên 1000 khoá |
 | `test/core/notification/os/os_notifier_native_test.dart` | Chặn ở tầng `MethodChannel`: `init()` luỹ đẳng, `show()` đẩy đúng id/tiêu đề/nội dung/payload, id kênh Android không đổi, `cancelAll()`, và **không** xin quyền báo thức chính xác |
-| `test/core/database/notification_dao_test.dart` | Khoá trùng ở tầng SQLite; hàng đã xoá vẫn chặn; lọc theo `idaccount`; purge |
+| `test/core/database/notification_dao_test.dart` | Khoá trùng ở tầng SQLite; hàng đã xoá vẫn chặn; lọc theo `idaccount`; purge. Từ 2026-09-07 canh thêm **bộ lọc và phân trang của `watchFeed`**: `kinds` `null` là *không lọc* chứ không phải *không khớp gì*, `chiChuaDoc` bỏ hàng đã đọc, và ca quan trọng nhất — **`limit` phải chạy SAU điều kiện lọc** (hàng mới nhất cố ý thuộc loại bị lọc ra, nên nếu cắt trước thì kết quả rỗng). Cùng `markUnread` hai chiều |
 | `test/core/database/notification_schema_v13_test.dart` | Migration v12→v13 giữ nguyên dữ liệu cũ, không đẩy bản ghi nào vào hàng đợi |
 | `test/core/database/bill_upcoming_test.dart` | `getUpcoming` lọc cả hai cột trạng thái; `markOverdue` không ghi đè lần hai |
 | `test/core/utils/relative_time_test.dart` | Biên 59 giây / 60 phút / qua nửa đêm |
@@ -765,7 +804,7 @@ lượt đang chạy. Ghi thẳng ra file rồi đọc file.
 | `test/core/notification/notification_rules_goal_wallet_test.dart` | Bốn luật của lát 6, trọng tâm là **đơn vị lặp lại trong `dedupeKey`**: chúc mừng một lần trong đời, trễ tiến độ mỗi tháng, ví âm và đồng bộ hỏng mỗi ngày. Từ 2026-09-07 canh thêm **ví sắp cạn**: biên **đóng** ở đúng ngưỡng, ngưỡng `0` im hoàn toàn, ví âm chỉ ra **một** thông báo chứ không ra cả hai, và ví loại `debt` im ở **cả hai** luật |
 | `test/features/goal/goal_entity_progress_test.dart` | `progress` kẹp [0,1] và không ra `Infinity` khi `targetAmount = 0`; `daysLeft` so theo NGÀY; `isBehindSchedule` có biên dung sai, im lặng khi thiếu `startDate`, không NaN khi kỳ dài 0 ngày |
 | `test/core/notification/notification_deeplink_test.dart` | Route nào kéo theo thanh tab; **không được so khớp bằng `startsWith` trần** (`/budgets` ≠ `/budget`); và phép canh **cả 14 loại**: `deeplinkTuDedupeKey()` phải trả đúng cột `deeplink` mà bộ luật đặt — bản sao duy nhất trong vùng này, tồn tại vì cold start không tra CSDL được |
-| `test/features/notification/notification_center_page_test.dart` | Vuốt xoá là xoá **mềm**; SnackBar có nút Hoàn tác; bấm vào thì hàng quay lại **và danh sách tự vẽ lại** qua `watchFeed`; chưa đăng nhập thì không đọc gì. Đọc bẫy **7.10** trước khi sửa file này |
+| `test/features/notification/notification_center_page_test.dart` | Vuốt xoá là xoá **mềm**; SnackBar có nút Hoàn tác; bấm vào thì hàng quay lại **và danh sách tự vẽ lại** qua `watchFeed`; chưa đăng nhập thì không đọc gì. Từ 2026-09-07 canh thêm: chip nhóm thu hẹp danh sách, chip "Chưa đọc" bỏ mục đã đọc, **quay lại "Tất cả" thì danh sách đầy đủ trở lại** (canh chỗ `null` bị hiểu nhầm thành danh sách rỗng), nút "Tải thêm" hiện/biến mất đúng lúc, nhấn giữ đảo được cả hai chiều, và **hàng chip không tràn ở 411dp**. Đọc bẫy **7.10** trước khi sửa file này — nay có **bốn** mục, mục 4 nói vì sao một test nhấn giữ có thể xanh giả |
 | `test/core/notification/notification_tap_router_test.dart` | Cold start điều hướng được; **cùng payload đến bằng cả hai đường chỉ điều hướng một lần**, nhưng lần chạm sau vẫn chạy; chưa đăng nhập thì giữ lại và xả sau `AuthSuccess`, chỉ giữ **cái mới nhất**; `stop()` cắt hẳn |
 | `test/core/network/connection_monitor_test.dart` | **Ngưỡng ổn định**: mất mạng chớp nhoáng và chuỗi nhấp nháy đều không sinh sự kiện; đang online lúc khởi động thì không báo "khôi phục" |
 | `test/core/sync/sync_push_result_test.dart` | `pushResultStream` phát số thao tác đã lên; **không phát khi không có gì để đẩy**; server từ chối thì vẫn phát kèm số thất bại |

@@ -646,9 +646,10 @@ src/Backend/
   > Đã kiểm trên `emulator-5554`: quét chạy trong chế độ máy bay, chạm thông báo mở đúng màn cho cả route trong shell (`go`) lẫn ngoài shell (`push`), hoàn tác đưa hàng trở lại, công tắc quyền đúng cả hai chiều. **Việc còn lại phần lớn là thuần client** — bảng `AppNotifications` cục bộ và không nằm trong `SyncEntityType`, nên chỉ có cảnh báo giao dịch ngân hàng/OCR (kênh Socket.io chưa xác thực) và thông báo bảo mật là thật sự chờ backend
 - **Thông báo: ba việc treo cuối cùng nay đã nhìn tận mắt** (2026-09-07, chỉ kiểm và cập nhật tài liệu, không đổi mã). (1) **`khoaNhom`** — bằng chứng quyết định là bảng nhóm→tóm tắt của hệ điều hành trỏ vào bản tóm tắt **id −1 của app**, tức nhóm do app cầm chứ không phải `AUTOGROUP_SUMMARY` của Android 16; `mSoundNotificationKey` trỏ về thông báo thật nên `GroupAlertBehavior.children` chạy đúng. (2) **Nổ khi app đóng hoàn toàn** — tiến trình bị `am kill`, `pidof` rỗng, rồi `ActivityManager: Start proc … for broadcast {…ScheduledNotificationReceiver}` với **0 dòng `I/flutter`**. (3) **Giờ im lặng** có đối chứng: cùng luật `walletNegative`, bật thì 2 hàng vào app / **0** thông báo hệ điều hành, tắt thì 1 hàng / **1** thông báo. Ba cái bẫy mới ghi vào `NOTIFICATION_FEATURE.md` mục 8: lịch dùng `inexactAllowWhileIdle` có **cửa sổ trễ 1 giờ** nên nhảy đồng hồ tới đúng giờ hẹn thì **không nổ**; `am force-stop` huỷ sạch lịch nên phải dùng `am kill`; và trước khi nhảy đồng hồ phải đối chiếu mốc ấy với hạn hoá đơn + kỳ trích mục tiêu, vì `scan()` chạy ngay khi app quay lại tiền cảnh (tổng số dư trước/sau đều 8.890.081đ)
 - **Thông báo: cảnh báo số dư ví thấp, và ví nợ ra khỏi cảnh báo ví** (2026-09-07, `80fa0cb` + `2a88dc6`, **schema không đổi**). Trước bản này app chỉ báo khi ví đã **âm** — tức là đã muộn. Loại thứ 14 `walletLowBalance`, nhóm `system`, khoá theo ngày như `walletNeg`. Ngưỡng là `NotificationPrefs.nguongSoDuThap` (đơn vị đồng, **cục bộ**, không đồng bộ), và **`0` vừa là ngưỡng vừa là công tắc**: một cặp công tắc-cộng-số biểu diễn được trạng thái vô nghĩa "bật nhưng ngưỡng bằng 0", còn một con số thì không. Mặc định `0` để mọi bản ghi có sẵn — vốn đều thiếu trường này — rơi về **tắt**, cùng lý lẽ với giờ im lặng. Giao diện là **danh sách chọn sẵn** (Tắt · 50k · 100k · 200k · 500k · 1tr · 2tr) chứ không phải ô nhập tiền, theo đúng lý lẽ đã ghi sẵn ở `_hangSoNgay`: gõ tay mở đường cho những giá trị mà `NotificationPrefs` lặng lẽ quy về `0`, và người dùng chỉ thấy con số của mình biến mất. **Đổi hành vi có chủ ý:** ví loại `debt` nay không sinh cảnh báo ví nào cả, kể cả `walletNegative` — ví nợ mang số dư âm là đúng bản chất của nó, trước đây nó bị nhắc lại mỗi ngày cho tới khi trả hết nợ. Thứ tự loại trừ trong `_walletCandidates` là thứ giữ cho mỗi ví ra **một** thông báo: số dư âm cũng thoả điều kiện "dưới ngưỡng". Đã xem trên `emulator-5554` ở 411dp
-- **Kiểm lại danh sách việc thông báo còn lại** (2026-09-07). Một mục hoá ra **đã xong từ trước**: "ngưỡng cảnh báo ngân sách chỉnh được" — giao diện có sẵn ở `budget_form.dart:320-346`, nạp/lưu/kiểm hợp lệ đủ, vào được từ `/budget/rules` cả khi tạo lẫn khi sửa, và có `budget_form_threshold_zero_test.dart`. Con số "cứng 70/90%" mà danh sách nhắc tới là **thang màu** `_cautionAt`/`_criticalAt` ở `budget_visuals.dart`, do người dùng chốt 2026-09-04 và cố ý toàn cục — hai việc khác nhau bị gộp nhầm. ⚠️ Còn một chỗ chưa ai ghi: khoá chống trùng ở `notification_rules.dart` dùng `budgetHealthOf().name` (thang màu **toàn cục**) chứ không dùng ngưỡng người dùng đặt, nên đặt ngưỡng 50% thì được nhắc ở 50%, rồi 70%, rồi 90% — ba lần, và không test nào phủ ngưỡng dưới 70%
+- **Kiểm lại danh sách việc thông báo còn lại** (2026-09-07). Một mục hoá ra **đã xong từ trước**: "ngưỡng cảnh báo ngân sách chỉnh được" — giao diện có sẵn ở `budget_form.dart:320-346`, nạp/lưu/kiểm hợp lệ đủ, vào được từ `/budget/rules` cả khi tạo lẫn khi sửa, và có `budget_form_threshold_zero_test.dart`. Con số "cứng 70/90%" mà danh sách nhắc tới là **thang màu** `_cautionAt`/`_criticalAt` ở `budget_visuals.dart`, do người dùng chốt 2026-09-04 và cố ý toàn cục — hai việc khác nhau bị gộp nhầm. ⚠️ **Đính chính 2026-09-07 (chiều):** bản trước của dòng này viết rằng khoá chống trùng dùng `budgetHealthOf().name` là "một chỗ hỏng chưa ai ghi" — **sai cả hai vế**. Việc leo lên một bậc mới sinh thêm thông báo là **thiết kế có chủ ý** và có test canh (`notification_rules_test.dart`, ca *"ĐỔI khi leo lên một bậc mới"*), với lý lẽ *"mỗi bậc được nhắc đúng một lần trong kỳ; không phân biệt bậc thì người dùng chỉ được báo ở mốc 70% rồi im lặng cho tới lúc vượt hẳn"*. Vế "không test nào phủ ngưỡng dưới 70%" cũng sai: chính ca test ấy dùng `nguongPhanTram: 60` (dòng 131–134). Bài học: mã sản phẩm cho biết code **làm gì**, chỉ test mới cho biết nó **định làm gì** — đọc mã test trước khi kết luận là lỗi
 - **Danh mục mặc định thành bản sao riêng của từng tài khoản** (2026-09-07, `2c1055e`…`5120b16`, **schema không đổi**). Trước đây mọi tài khoản dùng chung 18 hàng mặc định của backend; chúng không đồng bộ và không thuộc về ai, nên người dùng **không sửa, không đổi tên, không xoá** được. Nay `DefaultCategorySeeder` chạy **sau mỗi lần pull** và tạo bản sao cho từng danh mục mặc định mà tài khoản **chưa từng** có bản cùng (tên chuẩn hoá, `classify`) — **tính cả hàng đã xoá mềm**. Ba chữ ấy là khác biệt **duy nhất** với `ensureMissing()` cũ, thứ đã sinh ra G16; bỏ chúng đi là danh mục vừa xoá mọc lại ở mỗi lần mở app. Bản sao mang `isDefault = false`, UUID mới, giữ icon/màu, **chép cả từ khoá**, và **không** kế thừa nhóm. Dữ liệu cũ trỏ vào bản mặc định được **dời trước**, ẩn sau (lỗi 11.6). Năm truy vấn hiển thị bỏ nhánh `idaccount = 0`; **`getNamesInUse` vẫn đếm** hàng mặc định (quy tắc trùng tên) và **`purgeDataForOtherAccounts` vẫn giữ** chúng (đó là cái khuôn). `foldIntoBackendDefaults()` bị gỡ vì chạy ngược chiều. Từ khoá nay **đẩy được lên backend** — cột `Keyword` và `/sync/push` đã sẵn từ trước, thiếu đúng payload phía client. **G10 đóng theo** mà backend không phải làm gì. Đã kiểm trên `emulator-5554`: tạo 13 bản sao, đẩy `36/36 succeeded`, server có 15 danh mục riêng kèm từ khoá, bộ mặc định vẫn nguyên 18. ⚠️ Máy ảo bắt được một lỗi mà bộ test không thấy: sau khi seed **không ai hẹn đồng bộ**, hàng nằm `pending` tới lần khởi động nguội sau — đã sửa (`5120b16`). ⚠️ Hai giới hạn còn: bản sao chỉ đầy đủ khi **bộ mặc định cục bộ** đầy đủ (pull tăng dần — server 18, máy kiểm tạo 13), và **màu không có cột trên server** (`CATEGORY_COLOUR_COLUMN.md`)
-- **Test: 1325/1325 pass** (~110 giây) — đều đã `git add -f` (kiểm 2026-09-07, cuối phiên)
+- **Trung tâm thông báo: lọc, phân trang, đánh dấu chưa đọc** (2026-09-07 tối, **schema không đổi**, chỉ hai file mã). Trước bản này trang `/notifications` đọc thẳng `watchFeed(idaccount)` với mặc định 50 hàng và không có bộ lọc nào — thông báo thứ 51 không xem lại được trong khi bảng giữ dữ liệu 90 ngày. Nay `watchFeed` nhận thêm `kinds` và `chiChuaDoc`, trang có dải sáu chip (Tất cả · Chưa đọc · Hoá đơn · Ngân sách · Mục tiêu · Hệ thống) cuộn ngang, tải 20 hàng một lần kèm nút "Tải thêm", và **nhấn giữ** một mục để đảo cờ đã đọc — đường quay lại cho nút "Đọc tất cả", vốn đọc hộ cả những mục người dùng chưa kịp xem. Lý do của từng quyết định (vì sao DAO nhận `List<String>` chứ không phải `NotificationGroup`, vì sao `null` khác danh sách rỗng, vì sao không dùng truy vấn `COUNT`) ở **mục 4.6 `docs/NOTIFICATION_FEATURE.md`**. Đã xem trên `emulator-5554` ở 411dp: dải chip không tràn và cuộn tới được cả sáu, lọc "Hoá đơn" thu 6 mục xuống 2, nhấn giữ đảo đúng cả hai chiều. ⚠️ **Phân trang chưa nhìn tận mắt** — tài khoản kiểm thử chỉ có 6 thông báo còn trang đầu tải 20, nên nút "Tải thêm" không có cớ xuất hiện; nó chỉ được phủ bằng widget test. ⚠️ Bẫy mới, đã ghi vào **7.10 mục 4**: `longPress` kích hoạt luôn `onTap` khi widget chưa có `onLongPress`, nên một test nhấn giữ chỉ kiểm trạng thái CSDL có thể **xanh giả**
+- **Test: 1340/1340 pass** (~110 giây) — đều đã `git add -f` (kiểm 2026-09-07, tối)
 
 ### 🔄 Việc còn dang dở
 
@@ -761,14 +762,34 @@ G15, G17, G21. Bản trước của mục này ghi ngày 04/09 và **sai bốn t
 **Không còn lỗi client nào sửa được mà không phải chờ ai.** Việc tiếp theo là
 một lựa chọn, không phải một hàng đợi.
 
-1. **Chọn mảng mới.** Hai hướng, và đây là quyết định của người dùng:
-   - **Nối trang Phân tích vào dữ liệu thật** — mảng trống lớn nhất.
-     `AnalyticsPage` và `ExportReportPage` đều là giao diện tĩnh, **0** tham
-     chiếu Bloc/Repository/Dao, mọi con số viết cứng. Nó cũng đang **chặn**
-     việc "Tổng kết tuần" của mảng thông báo.
-   - **Bốn mục thông báo còn lại** — nhắc ghi chép hằng ngày, nút hành động,
-     badge, phân trang/lọc trung tâm thông báo. Danh sách đầy đủ ở mục 9b
-     `docs/NOTIFICATION_FEATURE.md`.
+1. **Người dùng đã chọn mảng thông báo** (2026-09-07 tối), hoãn mảng Phân tích
+   *"vì còn nhiều cái liên quan chưa triển khai"*. Thứ tự đã duyệt:
+   **#7 lọc/phân trang ✅ xong → #2 nhắc ghi chép hằng ngày → #6 badge →
+   #5 nút hành động** — rủi ro tăng dần, hai mục đụng tầng hệ điều hành nằm
+   cuối. **Ba mục còn lại:**
+   - **#2 nhắc ghi chép hằng ngày.** Thiết kế đã trình bày và đang chờ duyệt:
+     **không** đi qua bộ luật (lời nhắc chỉ có nghĩa khi người dùng *không* mở
+     app, nên một hàng trong trung tâm thông báo là nhiễu) — thay vào đó là
+     nguồn ứng viên thứ ba trong `ReminderScheduler`, ba lịch một lần, bỏ qua
+     hôm nay nếu đã có giao dịch.
+   - **#6 badge số trên icon app** — `DarwinNotificationDetails(badgeNumber:)`;
+     Android tuỳ launcher nên có thể **không kiểm được trên máy ảo**.
+   - **#5 nút hành động** (*Đã trả* / *Hoãn*) — rủi ro nhất: cần
+     `onDidReceiveBackgroundNotificationResponse` chạy trong **isolate nền**,
+     nơi không có DI container và không có sẵn kết nối Drift. Đọc bẫy **7.7**
+     trước, đây là chỗ dễ làm lọt import ra ngoài `os_notifier_native.dart`.
+
+   ⚠️ Danh sách đầy đủ kèm ghi chú kỹ thuật nằm ở
+   `docs/superpowers/plans/2026-09-06-thong-bao-viec-con-lai.md` — thư mục ấy
+   **bị `.gitignore` chặn**, nên file chỉ có trên máy đã dựng nó, và công cụ
+   Grep lẫn `git status` đều không thấy: mở bằng `cat` hoặc Read. (Bản trước
+   của mục này trỏ tới "mục 9b `docs/NOTIFICATION_FEATURE.md`" — **mục ấy
+   không tồn tại**; con trỏ chết đã hai phiên.)
+
+   Mảng **Phân tích** vẫn là khoảng trống lớn nhất khi quay lại: `AnalyticsPage`
+   và `ExportReportPage` đều là giao diện tĩnh, **0** tham chiếu
+   Bloc/Repository/Dao, mọi con số viết cứng — và nó đang **chặn** việc "Tổng
+   kết tuần" của mảng thông báo.
 2. **Bốn việc còn lại của backend**, ở `docs/superpowers/backend/CAN-LAM/`:
    lỗ **(D)** `threshold_warning_percent` bị ép về `0`; **cột màu danh mục**
    (tài liệu xin nay đã lên origin); và **hai mục hoá đơn** — `transaction.Idbill`
