@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/auth/current_account.dart';
+import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../widgets/bill_status_header.dart';
@@ -37,12 +38,28 @@ class _BillPageState extends State<BillPage> {
   /// trong hai thứ đó.
   TransactionLookup _lookup = TransactionLookup.empty;
 
-  @override
-  void initState() {
-    super.initState();
+  /// Tài khoản đã nạp xong, để không nạp lại ở mỗi lần dựng.
+  int? _daNapCho;
+
+  /// Nạp đúng MỘT lần cho mỗi mã tài khoản.
+  ///
+  /// Trước đây việc này nằm trong `addPostFrameCallback` của `initState` kèm
+  /// `if (accountId == null) return;`. `initState` chỉ chạy một lần, nên khi
+  /// trang được dựng trước lúc `AuthBloc` khôi phục xong phiên thì nó bỏ qua
+  /// và **không bao giờ thử lại** — trang hoá đơn trống cho tới khi người dùng
+  /// thoát ra vào lại. Cùng họ với G17 ở trang Mục tiêu và Ngân sách, chỉ khác
+  /// hình dạng: ở đây không có `BlocProvider` để gắn khoá, vì `BillBloc` do
+  /// router cung cấp.
+  ///
+  /// Gọi từ `build` (nơi đã `watch` AuthBloc) nên nó chạy lại khi phiên tới.
+  /// Việc gửi sự kiện hoãn sang `addPostFrameCallback`: phát một sự kiện bloc
+  /// **trong lúc dựng** là lỗi khung.
+  void _thuNap() {
+    final accountId = currentAccountIdOrNull(context);
+    if (accountId == null || _daNapCho == accountId) return;
+    _daNapCho = accountId;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final accountId = currentAccountIdOrNull(context);
-      if (accountId == null) return; // chưa có phiên → không nạp gì
+      if (!mounted) return;
       context.read<BillBloc>().add(LoadBillsEvent(idaccount: accountId));
       _napTenGoi(accountId);
     });
@@ -65,6 +82,12 @@ class _BillPageState extends State<BillPage> {
 
   @override
   Widget build(BuildContext context) {
+    // ĐĂNG KÝ với AuthBloc: `currentAccountIdOrNull` dùng `context.read` bên
+    // trong, mà `read` không đăng ký gì — thiếu dòng này thì `_thuNap()` bên
+    // dưới không bao giờ được gọi lại khi phiên tới.
+    context.watch<AuthBloc>();
+    _thuNap();
+
     final currencyFormatter =
         NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
     final dateFormatter = DateFormat('dd/MM/yyyy');

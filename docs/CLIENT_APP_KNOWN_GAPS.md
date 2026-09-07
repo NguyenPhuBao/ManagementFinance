@@ -334,7 +334,7 @@ Ba điều kiện dừng, vì gộp là thao tác phá huỷ:
 
 ---
 
-### G17 — Trang đọc theo tài khoản không đăng ký lại khi phiên tới muộn · ⚠️ CÒN HAI TRANG (2026-09-07)
+### G17 — Trang đọc theo tài khoản không đăng ký lại khi phiên tới muộn · ✅ ĐÓNG (2026-09-07)
 
 Tái hiện nhiều lần trên máy ảo. Vào Mục tiêu **ngay sau khi mở app nguội** thì
 danh sách rỗng dù CSDL có dữ liệu; thoát ra vào lại là thấy.
@@ -360,28 +360,35 @@ build chạy lại khi phiên tới, cộng `key: ValueKey(idaccount)` trên
 cùng nhau. Test canh: `goal_page_cold_start_test.dart`, đỏ đúng chỗ trước bản
 vá (`Expected: contains <10>, Actual: [0]`).
 
-**Đã lan ra kiểm bốn trang đọc theo tài khoản. Kết quả:**
+**Đã kiểm và sửa cả bốn trang đọc theo tài khoản.** Mỗi trang có test riêng,
+và mỗi test đều **đỏ trước** ở đúng assertion "phiên tới rồi mà trang chưa bao
+giờ hỏi lại":
 
-| Trang | Hình dạng | Trạng thái |
-|---|---|---|
-| `goal_page` | `currentAccountIdOrNull` + `BlocProvider.create` | ✅ **Đã sửa** — có test |
-| `budget_page` | **y hệt** | ✅ **Đã sửa 2026-09-07** — test đỏ trước ở đúng assertion, rồi xanh |
-| `bill_page` | Khác: `addPostFrameCallback` trong `initState`, `if (accountId == null) return;` | ⛔ **Còn** — chưa có phiên thì không nạp gì và **không bao giờ thử lại** |
-| `wallet_list_page` | Khác: **tự chép tay** `int.tryParse(user?.id ?? '') ?? 0` thay vì gọi `currentAccountIdOrNull` | ⛔ **Còn** — vừa cùng lỗi đăng-ký-một-lần, vừa là bản chép tay mà G4 sinh ra để xoá bỏ |
+| Trang | Hỏng vì | Bằng chứng đỏ | Bản vá |
+|---|---|---|---|
+| `goal_page` | `currentAccountIdOrNull` + `BlocProvider.create` (chạy một lần) | `Actual: [0]` | `watch` + `ValueKey` |
+| `budget_page` | y hệt | `Actual: []` ở assertion thứ hai | `watch` + `ValueKey` |
+| `wallet_list_page` | y hệt, **cộng** bản chép tay `int.tryParse(user?.id ?? '') ?? 0` | `Actual: [0]` | `watch` + `ValueKey`, và gọi `currentAccountIdOrNull` thay bản chép tay |
+| `bill_page` | **Khác:** nạp trong `addPostFrameCallback` của `initState` với `if (accountId == null) return;` | `Actual: []` | `watch` + `_thuNap()` gọi từ `build`, hoãn việc phát sự kiện sang `addPostFrameCallback` |
 
-Hai trang đầu dùng chung một bản vá: `context.watch<AuthBloc>()` để build chạy
-lại, cộng `key: ValueKey(idaccount)` để `create` chạy lần nữa. Hai trang sau có
-**hình dạng khác** nên mỗi trang cần test và bản vá riêng — đó là lý do chưa gộp.
+Ba trang đầu dùng chung bản vá `context.watch<AuthBloc>()` + `key:
+ValueKey(idaccount)`. **Hai nửa phải đi cùng nhau:** thiếu `watch` thì build
+không chạy lại, thiếu khoá thì build chạy lại mà cubit vẫn giữ đăng ký cũ.
 
-**Ý ban đầu vẫn chưa làm:** một trạng thái *"đang chờ phiên"* — khác hẳn
-*"không có dữ liệu"* — dùng chung cho mọi trang. Bản vá hiện tại làm trang tự
-khỏi, nhưng trong vài nhịp đầu người dùng vẫn thấy màn rỗng chứ không thấy
-"đang tải". Với `wallet_list_page` thì việc dọn còn phải gồm cả gỡ bản chép tay.
+`bill_page` không dùng được khoá vì nó **không có `BlocProvider`** — `BillBloc`
+do router cung cấp. Ở đó bản vá là một hàm `_thuNap()` gọi từ `build`, có chốt
+`_daNapCho` để chỉ nạp một lần cho mỗi mã tài khoản, và **hoãn việc phát sự
+kiện** sang `addPostFrameCallback` — phát sự kiện bloc trong lúc dựng là lỗi
+khung.
 
-**Vì sao sửa lẻ từng trang thay vì chờ bản dọn chung:** lỗi ở trang Mục tiêu là
-thứ người dùng gặp thật và đã ghi lại hai lần. Bản vá dùng đúng lối mà
-`home_page`/`transaction_page` vốn đã dùng, nên nó **không** đẻ ra kiểu xử lý
-thứ hai — nó gom các trang lệch về kiểu đang có.
+**Việc gỡ được kèm theo:** `wallet_list_page` là bản chép tay **cuối cùng** của
+phép suy mã tài khoản mà G4 sinh ra để xoá bỏ. Nay cả bốn trang đều đi qua
+`currentAccountIdOrNull`.
+
+**Còn lại, cố ý chưa làm:** một trạng thái *"đang chờ phiên"* — khác hẳn *"không
+có dữ liệu"* — dùng chung cho mọi trang. Bản vá hiện tại làm trang **tự khỏi**,
+nhưng trong vài nhịp đầu người dùng vẫn thấy màn rỗng chứ không thấy "đang tải".
+Đó là việc giao diện, tách riêng được, và không còn lỗi nào chờ nó.
 
 ⚠️ **`?? 0` giữ nguyên, có chủ ý.** Đây là bài học G4: đường ĐỌC không được
 mặc định về `1` (tài khoản admin thật), và `0` là "rỗng, không phải dữ liệu

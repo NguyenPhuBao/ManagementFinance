@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/auth/current_account.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
@@ -16,11 +17,20 @@ class WalletListPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final authState = context.read<AuthBloc>().state;
+    // `watch` chứ không `read` (G17): `read` không đăng ký gì, và
+    // `BlocProvider.create` chỉ chạy MỘT lần — trang dựng trước khi phiên
+    // khôi phục xong sẽ gọi `loadWallets(0)` rồi không bao giờ hỏi lại.
+    final authState = context.watch<AuthBloc>().state;
     final user = (authState is AuthSuccess) ? authState.user : null;
-    final idaccount = int.tryParse(user?.id ?? '') ?? 0;
+
+    // Phép suy mã tài khoản có ĐÚNG MỘT định nghĩa, ở
+    // `core/auth/current_account.dart` (bài học G4). Trang này từng chép tay
+    // `int.tryParse(user?.id ?? '') ?? 0` — bản chép tay cuối cùng còn sót.
+    final idaccount = currentAccountIdOrNull(context) ?? 0;
 
     return BlocProvider<WalletCubit>(
+      // Khoá theo mã tài khoản: phiên tới thì khoá đổi và `create` chạy lại.
+      key: ValueKey(idaccount),
       create: (_) => sl<WalletCubit>()..loadWallets(idaccount),
       child: _WalletListView(idaccount: idaccount, user: user),
     );
