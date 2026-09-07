@@ -1,7 +1,9 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/api/interceptors/auth_interceptor.dart';
+import '../../../category/data/services/default_category_seeder.dart';
 import '../../../category/data/services/personal_default_categories.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
@@ -141,10 +143,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         }
         unawaited(engine.start(idaccount: idAcc).then((_) async {
           // Pull hỏng (mất mạng, server lỗi) thì CSDL cục bộ chưa đáng tin.
-          // Bản mặc định của backend chưa chắc đã về, mà thiếu nó thì phép gộp
-          // không có đích — bỏ qua, lần mở app sau thử lại.
+          // Bộ mặc định của backend chưa chắc đã về, mà thiếu nó thì không có
+          // khuôn để sao chép — bỏ qua, lần mở app sau thử lại.
           if (!engine.hasCompletedPull) return;
-          await personal?.foldIntoBackendDefaults(idAcc);
+          await _taoBanSaoDanhMuc(idAcc);
         }));
       }
       emit(AuthSuccess(user: user));
@@ -184,12 +186,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           await sl<NotificationScanner>().start(idAcc);
         }
         await engine.start(idaccount: idAcc);
-        // Gộp bản riêng của 5 danh mục vào bản mặc định của backend, SAU khi đã
-        // pull — bản mặc định chỉ có mặt ở máy này sau khi pull mang nó về.
-        // Không có nó thì hàm không đụng gì, đúng như G14 dạy: đừng quyết định
-        // về danh mục khi CSDL cục bộ chưa đáng tin.
+        // Tạo bản sao riêng của bộ danh mục mặc định, SAU khi đã pull — bộ
+        // mặc định chỉ có mặt ở máy này sau khi pull mang nó về. Chưa có thì
+        // hàm không tạo gì, đúng như G14 dạy: đừng quyết định về danh mục khi
+        // CSDL cục bộ chưa đáng tin.
         if (engine.hasCompletedPull) {
-          await personal?.foldIntoBackendDefaults(idAcc);
+          await _taoBanSaoDanhMuc(idAcc);
         }
         await defaultAccountDataInitializer?.ensureForAccount(idAcc);
       }
@@ -282,6 +284,26 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           registration: registration,
         ),
       );
+    }
+  }
+
+  /// Tạo bản sao riêng của bộ danh mục mặc định cho [idAcc].
+  ///
+  /// ⚠️ **Cố ý KHÔNG bọc `try/catch`.** Bản mặc định toàn cục đã bị ẩn khỏi mọi
+  /// danh sách, nên một lượt seed hỏng trong im lặng nghĩa là người dùng mở app
+  /// ra thấy danh sách danh mục **rỗng** và không ghi nổi một giao dịch, mà
+  /// không ai biết vì sao. Trước đây bộ mặc định toàn cục chính là tấm lưới đỡ
+  /// cho tình huống ấy; nay không còn.
+  ///
+  /// Luật trong `DefaultCategorySeeder` vốn luỹ đẳng nên lần mở app sau tự thử
+  /// lại — đó mới là cơ chế phục hồi, không phải việc nuốt lỗi ở đây.
+  Future<void> _taoBanSaoDanhMuc(int idAcc) async {
+    final seeder = sl.isRegistered<DefaultCategorySeeder>()
+        ? sl<DefaultCategorySeeder>()
+        : null;
+    final daTao = await seeder?.seedForAccount(idAcc) ?? 0;
+    if (daTao > 0) {
+      debugPrint('[Category] Đã tạo $daTao bản sao danh mục mặc định.');
     }
   }
 }

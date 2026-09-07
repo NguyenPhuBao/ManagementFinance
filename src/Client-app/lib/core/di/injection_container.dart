@@ -36,6 +36,7 @@ import '../../features/bill/data/repositories/bill_repository.dart';
 import '../../features/bill/data/repositories/bill_repository_impl.dart';
 import '../../features/bill/presentation/bloc/bill_bloc.dart';
 import '../../features/category/data/repositories/category_management_repository.dart';
+import '../../features/category/data/services/default_category_seeder.dart';
 import '../../features/category/data/services/personal_default_categories.dart';
 import '../../features/category/data/services/category_suggestion_engine.dart';
 import '../network/connection_monitor.dart';
@@ -117,6 +118,9 @@ Future<void> setupDependencies() async {
   // Năm danh mục mà bộ mặc định của backend không có được tạo riêng cho từng
   // tài khoản (xem PersonalDefaultCategories) — danh mục người dùng thì đồng bộ
   // được, còn danh mục mặc định thì không.
+  sl.registerLazySingleton<DefaultCategorySeeder>(
+    () => DefaultCategorySeeder(db: sl()),
+  );
   sl.registerLazySingleton<PersonalDefaultCategories>(
     () => PersonalDefaultCategories(db: sl()),
   );
