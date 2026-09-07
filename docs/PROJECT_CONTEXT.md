@@ -630,6 +630,7 @@ src/Backend/
   5. **Công tắc quyền nói dối** (`0a4d3c2`). Quyền bị thu hồi trong Cài đặt máy thì công tắc vẫn sáng. `OsNotifier.daCoQuyen()` là câu **hỏi**, khác câu **xin**; hiển thị là `osBat && _coQuyenOs` nhưng `osBat` trong kho **giữ nguyên**, nên cấp lại quyền là chạy lại ngay
   6. **Một dòng nhật ký cho mỗi lượt quét** (`63a043e`) — trước đó vòng quét im lặng hoàn toàn, không phân biệt được "đã quét, không có gì" với "không quét lần nào"
   > Đã kiểm trên `emulator-5554`: quét chạy trong chế độ máy bay, chạm thông báo mở đúng màn cho cả route trong shell (`go`) lẫn ngoài shell (`push`), hoàn tác đưa hàng trở lại, công tắc quyền đúng cả hai chiều. **Việc còn lại phần lớn là thuần client** — bảng `AppNotifications` cục bộ và không nằm trong `SyncEntityType`, nên chỉ có cảnh báo giao dịch ngân hàng/OCR (kênh Socket.io chưa xác thực) và thông báo bảo mật là thật sự chờ backend
+- **Thông báo: ba việc treo cuối cùng nay đã nhìn tận mắt** (2026-09-07, chỉ kiểm và cập nhật tài liệu, không đổi mã). (1) **`khoaNhom`** — bằng chứng quyết định là bảng nhóm→tóm tắt của hệ điều hành trỏ vào bản tóm tắt **id −1 của app**, tức nhóm do app cầm chứ không phải `AUTOGROUP_SUMMARY` của Android 16; `mSoundNotificationKey` trỏ về thông báo thật nên `GroupAlertBehavior.children` chạy đúng. (2) **Nổ khi app đóng hoàn toàn** — tiến trình bị `am kill`, `pidof` rỗng, rồi `ActivityManager: Start proc … for broadcast {…ScheduledNotificationReceiver}` với **0 dòng `I/flutter`**. (3) **Giờ im lặng** có đối chứng: cùng luật `walletNegative`, bật thì 2 hàng vào app / **0** thông báo hệ điều hành, tắt thì 1 hàng / **1** thông báo. Ba cái bẫy mới ghi vào `NOTIFICATION_FEATURE.md` mục 8: lịch dùng `inexactAllowWhileIdle` có **cửa sổ trễ 1 giờ** nên nhảy đồng hồ tới đúng giờ hẹn thì **không nổ**; `am force-stop` huỷ sạch lịch nên phải dùng `am kill`; và trước khi nhảy đồng hồ phải đối chiếu mốc ấy với hạn hoá đơn + kỳ trích mục tiêu, vì `scan()` chạy ngay khi app quay lại tiền cảnh (tổng số dư trước/sau đều 8.890.081đ)
 - **Test: 1277/1277 pass** (~85 giây), 125 file — đều đã `git add -f` (kiểm 2026-09-06 tối muộn)
 
 ### 🔄 Việc còn dang dở
@@ -934,8 +935,6 @@ Hoá đơn tạo từ app trước đây **không bao giờ lên tới backend**
 - Analytics (báo cáo chi tiết)
 - AI chat integration hoàn chỉnh
 - Casso bank integration
-- Kiểm thông báo nổ khi app **đóng hoàn toàn** — phải chờ tới mốc lịch thật
-  hoặc chỉnh đồng hồ máy ảo (xem `docs/NOTIFICATION_FEATURE.md` mục 8)
 - Build production / deploy
 
 ---

@@ -359,6 +359,25 @@ Riêng phần hiển thị thì Android 16 **tự gộp** thông báo cùng app
 của app chưa tới. Đừng vì thế mà kết luận `khoaNhom` đang chạy — kiểm bằng
 `dumpsys notification` chứ không bằng mắt.
 
+✅ **Đã kiểm bằng `dumpsys` ngày 2026-09-07** trên `emulator-5554`, và bằng
+chứng quyết định **không** phải hai dòng `groupKey` mà là bảng nhóm→tóm tắt của
+hệ điều hành:
+
+```
+0|com.flowmoney.flowmoney|g:flowmoney_alerts_group -> 0|com.flowmoney.flowmoney|-1|null|10227
+```
+
+Nó trỏ vào **bản tóm tắt id −1 của app**, tức nhóm này do app cầm chứ không
+phải `AUTOGROUP_SUMMARY` của Android — đây mới là chỗ tách bạch được hai khả
+năng. Kèm theo: bản tóm tắt mang `flags=AUTO_CANCEL|GROUP_SUMMARY`,
+`android.text=null`, `groupAlertBehavior=2`, còn `mSoundNotificationKey` và
+`mVibrateNotificationKey` đều trỏ về **thông báo thật** — `children` chạy đúng,
+bản tóm tắt im lặng.
+
+Đường `zonedSchedule` cũng xác nhận, và xác nhận luôn cảnh báo ngay trên: trong
+ba lịch đang chờ lúc ấy, hai lịch do bản hiện tại đặt **có** `groupKey` trong
+`scheduled_notifications.xml`, còn lịch đặt từ bản trước thì **không**.
+
 **Hoàn tác vuốt xoá** — `NotificationDao.khoiPhuc(id)` gỡ `dismissedAt`, kèm
 SnackBar "Đã xoá thông báo · Hoàn tác". Cần thiết vì hàng đã xoá **vẫn nằm
 trong bảng** để chặn trùng: lượt quét sau nhìn thấy `dedupeKey` ấy rồi bỏ qua,
@@ -768,10 +787,66 @@ có cây widget thật, cây route thật, và một màn hình 411dp thật.
   "Xem tất cả", "Đọc tất cả", bấm từng loại thông báo, vuốt xoá
   (`endToStart` — vuốt phải sang trái), trang cài đặt.
 
-### Chưa kiểm được
+### Kiểm bổ sung ngày 2026-09-07 — ba việc còn treo, nay đã có bằng chứng
 
-Thông báo nổ khi app **đóng hoàn toàn** — phải chờ tới mốc lịch thật, hoặc
-chỉnh đồng hồ máy ảo (việc này đụng đồng hồ hệ thống nên cần người dùng đồng ý).
+**Thông báo nổ khi app đóng hoàn toàn.** Tiến trình bị giết bằng
+`adb shell am kill` (**không** `force-stop` — xem dưới), `pidof` rỗng suốt quãng
+chờ. Khi mốc lịch qua:
+
+```
+ActivityManager: Start proc 7727:com.flowmoney.flowmoney/u0a227
+  for broadcast {com.flowmoney.flowmoney/...ScheduledNotificationReceiver}
+```
+
+Thông báo nổ ra với **0 dòng `I/flutter`** — Dart không chạy, đúng cơ chế mong
+muốn, cùng dấu hiệu như phép kiểm `adb reboot` ở trên.
+
+⚠️ **Nhảy đồng hồ tới đúng giờ hẹn thì lịch KHÔNG nổ.** `zonedSchedule` dùng
+`AndroidScheduleMode.inexactAllowWhileIdle`, và `dumpsys alarm` cho thấy mốc ấy
+mang `window=+1h0m0s0ms`: Android được phép hoãn tới **một tiếng**. Đo được:
+đặt đồng hồ tới 08:00 rồi chờ hơn hai phút — không nổ, alarm vẫn nằm trong danh
+sách chờ với `maxWhenElapsed=+57m`; đẩy tiếp qua 09:00 (cuối cửa sổ) thì nổ
+**ngay lập tức**. Ai kiểm lại phần này mà chỉ nhảy tới đúng giờ hẹn sẽ kết luận
+nhầm là hỏng.
+
+**Giờ im lặng, bằng một thông báo thật trong khoảng giờ ấy.** Cùng một luật
+(`walletNegative`), cùng một cái ví, chỉ khác cái công tắc:
+
+| Lúc | Giờ im lặng | Lượt quét ghi được | Thông báo hệ điều hành mới |
+|---|---|---|---|
+| 09:06, trong khoảng 07:00→11:00 | **BẬT** | 2 hàng | **0** |
+| 09:00 hôm sau | **TẮT** | 1 hàng | **1** (`Số dư ví đang âm`) |
+
+Cả hai hàng ở lượt đầu đều thấy trong trung tâm thông báo trong app — đúng ngữ
+nghĩa "đừng đánh thức tôi", không phải "đừng ghi lại gì". Đối chứng ở dòng thứ
+hai là phần bắt buộc: không có nó thì "0 thông báo" chỉ chứng minh được rằng
+không có gì để bắn.
+
+Trong **chính** khung giờ im lặng ấy, lịch nhắc hoá đơn **vẫn nổ** (mốc 09:05) —
+đúng quyết định "lịch đặt trước không đi qua giờ im lặng" ở mục 5c.
+
+**`khoaNhom`** — xem mục 5c, bằng chứng ghi ở đó cạnh phần thiết kế.
+
+### Kỹ thuật máy ảo dùng cho ba phép kiểm trên
+
+- **Đặt đồng hồ:** `adb shell settings put global auto_time 0` rồi
+  `adb shell cmd alarm set-time <epoch_ms>`. (`adb shell date` **không** dùng
+  được vì máy ảo không root.) Trả lại bằng `settings put global auto_time 1`,
+  máy ảo tự đồng bộ lại từ host sau vài giây.
+- ⚠️ **`am force-stop` huỷ sạch lịch trong AlarmManager** và đưa app vào
+  `stopped=true` khiến Android chặn luôn broadcast — dùng nó là tự phá phép
+  kiểm. `am kill` giết tiến trình mà giữ nguyên lịch, đó mới là thứ mô phỏng
+  đúng "người dùng đóng app".
+- **Trước khi nhảy đồng hồ phải biết mốc ấy chạm vào cái gì.** Hai bộ tự chuyển
+  tiền nằm trong `scan()`, và `scan()` chạy ngay khi app quay lại tiền cảnh
+  (mục 4.5) — nhảy qua một hạn hoá đơn hoặc một kỳ trích là **tiền thật rời
+  ví** trong tài khoản kiểm thử. Lần này mốc 11–12/09 được chọn vì hạn chưa trả
+  gần nhất là 18/09 và kỳ trích gần nhất là 06/10; kiểm lại tổng số dư trước và
+  sau đều là 8.890.081đ.
+- Đọc dữ liệu riêng của app: `adb shell run-as com.flowmoney.flowmoney cat
+  shared_prefs/scheduled_notifications.xml` (bản debug). Máy ảo **không có**
+  `sqlite3`.
+- AVD của dự án là **`FlowMoney_16G`** (dữ liệu ở `D:\Android\avd\`).
 
 ### Cách chạy trên máy ảo
 
