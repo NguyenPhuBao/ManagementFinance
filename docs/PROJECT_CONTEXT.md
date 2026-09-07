@@ -648,7 +648,7 @@ src/Backend/
 - **Thông báo: cảnh báo số dư ví thấp, và ví nợ ra khỏi cảnh báo ví** (2026-09-07, `80fa0cb` + `2a88dc6`, **schema không đổi**). Trước bản này app chỉ báo khi ví đã **âm** — tức là đã muộn. Loại thứ 14 `walletLowBalance`, nhóm `system`, khoá theo ngày như `walletNeg`. Ngưỡng là `NotificationPrefs.nguongSoDuThap` (đơn vị đồng, **cục bộ**, không đồng bộ), và **`0` vừa là ngưỡng vừa là công tắc**: một cặp công tắc-cộng-số biểu diễn được trạng thái vô nghĩa "bật nhưng ngưỡng bằng 0", còn một con số thì không. Mặc định `0` để mọi bản ghi có sẵn — vốn đều thiếu trường này — rơi về **tắt**, cùng lý lẽ với giờ im lặng. Giao diện là **danh sách chọn sẵn** (Tắt · 50k · 100k · 200k · 500k · 1tr · 2tr) chứ không phải ô nhập tiền, theo đúng lý lẽ đã ghi sẵn ở `_hangSoNgay`: gõ tay mở đường cho những giá trị mà `NotificationPrefs` lặng lẽ quy về `0`, và người dùng chỉ thấy con số của mình biến mất. **Đổi hành vi có chủ ý:** ví loại `debt` nay không sinh cảnh báo ví nào cả, kể cả `walletNegative` — ví nợ mang số dư âm là đúng bản chất của nó, trước đây nó bị nhắc lại mỗi ngày cho tới khi trả hết nợ. Thứ tự loại trừ trong `_walletCandidates` là thứ giữ cho mỗi ví ra **một** thông báo: số dư âm cũng thoả điều kiện "dưới ngưỡng". Đã xem trên `emulator-5554` ở 411dp
 - **Kiểm lại danh sách việc thông báo còn lại** (2026-09-07). Một mục hoá ra **đã xong từ trước**: "ngưỡng cảnh báo ngân sách chỉnh được" — giao diện có sẵn ở `budget_form.dart:320-346`, nạp/lưu/kiểm hợp lệ đủ, vào được từ `/budget/rules` cả khi tạo lẫn khi sửa, và có `budget_form_threshold_zero_test.dart`. Con số "cứng 70/90%" mà danh sách nhắc tới là **thang màu** `_cautionAt`/`_criticalAt` ở `budget_visuals.dart`, do người dùng chốt 2026-09-04 và cố ý toàn cục — hai việc khác nhau bị gộp nhầm. ⚠️ Còn một chỗ chưa ai ghi: khoá chống trùng ở `notification_rules.dart` dùng `budgetHealthOf().name` (thang màu **toàn cục**) chứ không dùng ngưỡng người dùng đặt, nên đặt ngưỡng 50% thì được nhắc ở 50%, rồi 70%, rồi 90% — ba lần, và không test nào phủ ngưỡng dưới 70%
 - **Danh mục mặc định thành bản sao riêng của từng tài khoản** (2026-09-07, `2c1055e`…`5120b16`, **schema không đổi**). Trước đây mọi tài khoản dùng chung 18 hàng mặc định của backend; chúng không đồng bộ và không thuộc về ai, nên người dùng **không sửa, không đổi tên, không xoá** được. Nay `DefaultCategorySeeder` chạy **sau mỗi lần pull** và tạo bản sao cho từng danh mục mặc định mà tài khoản **chưa từng** có bản cùng (tên chuẩn hoá, `classify`) — **tính cả hàng đã xoá mềm**. Ba chữ ấy là khác biệt **duy nhất** với `ensureMissing()` cũ, thứ đã sinh ra G16; bỏ chúng đi là danh mục vừa xoá mọc lại ở mỗi lần mở app. Bản sao mang `isDefault = false`, UUID mới, giữ icon/màu, **chép cả từ khoá**, và **không** kế thừa nhóm. Dữ liệu cũ trỏ vào bản mặc định được **dời trước**, ẩn sau (lỗi 11.6). Năm truy vấn hiển thị bỏ nhánh `idaccount = 0`; **`getNamesInUse` vẫn đếm** hàng mặc định (quy tắc trùng tên) và **`purgeDataForOtherAccounts` vẫn giữ** chúng (đó là cái khuôn). `foldIntoBackendDefaults()` bị gỡ vì chạy ngược chiều. Từ khoá nay **đẩy được lên backend** — cột `Keyword` và `/sync/push` đã sẵn từ trước, thiếu đúng payload phía client. **G10 đóng theo** mà backend không phải làm gì. Đã kiểm trên `emulator-5554`: tạo 13 bản sao, đẩy `36/36 succeeded`, server có 15 danh mục riêng kèm từ khoá, bộ mặc định vẫn nguyên 18. ⚠️ Máy ảo bắt được một lỗi mà bộ test không thấy: sau khi seed **không ai hẹn đồng bộ**, hàng nằm `pending` tới lần khởi động nguội sau — đã sửa (`5120b16`). ⚠️ Hai giới hạn còn: bản sao chỉ đầy đủ khi **bộ mặc định cục bộ** đầy đủ (pull tăng dần — server 18, máy kiểm tạo 13), và **màu không có cột trên server** (`CATEGORY_COLOUR_COLUMN.md`)
-- **Test: 1304/1304 pass** (~85 giây) — đều đã `git add -f` (kiểm 2026-09-07)
+- **Test: 1325/1325 pass** (~110 giây) — đều đã `git add -f` (kiểm 2026-09-07, cuối phiên)
 
 ### 🔄 Việc còn dang dở
 
@@ -669,7 +669,7 @@ cha chỉ còn mục lục và ba tệp bối cảnh (`New_Database.md`,
 `2026-08-10-backend-sync-spec.md`, `PROGRESS-BACKEND.md`).
 
 Bảng dưới giữ **cả** mục đã đóng lẫn mục còn việc, vì nó là nơi duy nhất đọc được
-toàn cảnh một lượt. Muốn biết *phải làm gì tiếp* thì đọc `CAN-LAM/README.md` —
+toàn cảnh một lượt. Muốn biết *phải làm gì tiếp* thì đọc `docs/superpowers/backend/CAN-LAM/README.md` —
 nó chia việc theo *client đã có tính năng này chưa*, ranh giới không suy ra được
 từ bảng này.
 
@@ -754,61 +754,52 @@ Phần backend (mã lỗi ổn định, vai trò lớp phòng thủ thứ hai) �
 
 ### 🚀 Bắt đầu từ đâu ở phiên sau
 
-Cập nhật ngày 2026-09-04, sau khi gộp `origin/main` và rà soát mô-đun
-OCR/Classify. Thứ tự đề nghị, việc rẻ nhất trước:
+Viết lại ngày **2026-09-07 (cuối phiên)**, sau khi gộp đợt backend lớn và đóng
+G15, G17, G21. Bản trước của mục này ghi ngày 04/09 và **sai bốn trong sáu
+điểm** — giữ nguyên là chỉ đường cho người sau đi vào việc đã xong.
 
-1. ~~Chưa chạy app thật để xem giao diện ngân sách~~ → **Đã xem trên máy ảo
-   Android 2026-09-06** (bản `f746a32`, tài khoản 10): thẻ trang chủ, dòng
-   nhịp chi ở danh sách, trang `/budget/detail/:id`, bảng chi tiết giao dịch
-   mở từ đó, và hộp thoại "Vượt ngân sách" (số vượt khớp tay) — không tràn,
-   không màn đỏ. **Chưa thấy được** dòng gợi ý hạn mức trên máy ảo vì tài
-   khoản ấy không có khoản chi nào trước tháng 9 (gợi ý `null` thì ẩn, đúng
-   thiết kế) — chỉ có widget test canh.
+**Không còn lỗi client nào sửa được mà không phải chờ ai.** Việc tiếp theo là
+một lựa chọn, không phải một hàng đợi.
 
-   **Lỗi có sẵn lộ ra khi kiểm:** ngân sách nào mang
-   `threshold_warning_percent = 0` thì **không sửa được nữa** — form điền "0"
-   vào ô phần trăm rồi tự từ chối vì đòi 1–100. Số 0 đến từ backend:
-   `schema.prisma` đặt `@default(0)` cho `Threshold_Warning_Percent`, đường
-   *tạo* để trống là server ghi 0, pull về thành 0 (đường *sửa* gửi `null`
-   thì server giữ `null`, nên chỉ ngân sách tạo mới rồi chưa sửa lần nào mới
-   dính). `BudgetEntity.warningRatio` đã coi `≤ 0` là "không đặt" nên logic
-   cảnh báo không sai, chỉ form kẹt. **Đã vá ở client cùng ngày**: form coi
-   `≤ 0` như ô trống khi đổ dữ liệu (`budget_form.dart`, test
-   `budget_form_threshold_zero_test.dart`). Số 0 vẫn nằm trên server cho tới
-   khi backend làm việc **D** trong `2026-09-04-backend-idempotent-delete.md`.
-   Cùng đợt: nhãn "Chặn" đổi thành "Hỏi trước khi ghi khoản làm vượt" cho
-   đúng nghĩa; cột lịch sử có trần 64dp (một kỳ không còn phình cả thẻ); thẻ
-   tổng quan đầu trang dùng `Wrap` để số tiền dài xuống dòng thay vì bị cắt,
-   tiêu đề đổi "THÁNG NÀY" → "KỲ NÀY".
-2. **Một dòng ở `_classifyFailure`, nhưng phải chờ backend trả mã lỗi ổn định.**
-   `_classifyFailure` (`lib/core/sync/sync_engine.dart:1423`) hiện chỉ có nhánh
-   cho `accountNotFoundCode`, khoá ngoại, `Ownership mismatch` và ràng buộc
-   CHECK (`23514`). Mọi **vi phạm UNIQUE (`23505`)** rơi xuống
-   `return SyncFailureKind.transient` ở cuối hàm và bị **đẩy lại mãi**. Điều
-   này phủ cả hai nguồn: vi phạm trùng tên danh mục, và va chạm
-   `uq_transaction_external` mô tả ở mục 3 bảng trên. Khi backend trả mã ổn
-   định thì thêm nhánh `permanent` tương ứng — nhớ viết test tái hiện **trước**.
-3. **Bảy tài liệu chờ backend** trong `docs/superpowers/backend/` — thứ tự thi
-   công và lý do xếp thứ tự nằm ở `README.md` mục 2 của thư mục đó, trạng thái
-   từng cái ở bảng ngay trên. Ba mục đầu: `CATEGORY_KEYWORD_SYNC` (lỗ hổng phân
-   quyền, bản vá vài dòng, độc lập với phần thiết kế bảng mới) →
-   `2026-09-04-backend-idempotent-delete` → `2026-09-04-ocr-classify-review`.
-4. **G10 đã đóng ngày 2026-09-07** (mục 6 của bảng trên) — và đóng bằng cách
-   đổi thiết kế phía client, không phải bằng cách chờ backend. **G15** là hoãn
-   có chủ ý, đừng tự ý "sửa" lại.
-5. **Tính năng "Ngày cụ thể" chưa đồng bộ được** — bị chặn ở việc (C) của
-   `2026-09-04-backend-idempotent-delete.md`. Client không vá được: trên máy
-   đang dùng thì đúng, đổi máy là mất.
-6. **Kịch bản nâng cấp CSDL v7 → v12 chưa từng chạy thật** (chỉ có test). Người
+1. **Chọn mảng mới.** Hai hướng, và đây là quyết định của người dùng:
+   - **Nối trang Phân tích vào dữ liệu thật** — mảng trống lớn nhất.
+     `AnalyticsPage` và `ExportReportPage` đều là giao diện tĩnh, **0** tham
+     chiếu Bloc/Repository/Dao, mọi con số viết cứng. Nó cũng đang **chặn**
+     việc "Tổng kết tuần" của mảng thông báo.
+   - **Bốn mục thông báo còn lại** — nhắc ghi chép hằng ngày, nút hành động,
+     badge, phân trang/lọc trung tâm thông báo. Danh sách đầy đủ ở mục 9b
+     `docs/NOTIFICATION_FEATURE.md`.
+2. **Bốn việc còn lại của backend**, ở `docs/superpowers/backend/CAN-LAM/`:
+   lỗ **(D)** `threshold_warning_percent` bị ép về `0`; **cột màu danh mục**
+   (tài liệu xin nay đã lên origin); và **hai mục hoá đơn** — `transaction.Idbill`
+   + `bill.Previous_bill_id`, rồi `bill.Auto_pay` + chốt chặn trả hai lần.
+   README trong thư mục ấy là cửa vào duy nhất; thư mục `DA-XONG/` bên cạnh giữ
+   16 tài liệu đã đóng.
+3. **Bản vá migration ở nhánh `patch2` chưa đi đâu cả.**
+   `)2_can_lam_all_migrations.sql` trên `main` có một câu `DELETE FROM "category"`
+   xoá cứng 5 danh mục mặc định; `fk_bill_category` là RESTRICT nên nó ném 23503
+   và **cả tệp roll back**. Nhánh `patch2` (commit `ea3611a`) đổi thành xoá mềm.
+   CSDL trên máy này đã áp dụng bản vá ấy; **môi trường khác thì chưa**.
+4. **Kịch bản nâng cấp CSDL v7 → v17 chưa từng chạy thật** (chỉ có test). Người
    dùng đã quyết định không chạy. Ghi lại vì: nếu sau này có báo cáo **mất danh
    mục** hoặc **giao dịch không đồng bộ sau khi cập nhật app**, đây là chỗ nghi
    đầu tiên. Cách kiểm: dựng worktree ở `ea0941b`, chạy bản cũ để sinh CSDL v7,
-   rồi mở bản mới **cùng origin**. Nay có thêm bước v11→v12 nên rủi ro nhỉnh
-   hơn phiên trước.
+   rồi mở bản mới **cùng origin**. Số bước migration nay nhiều hơn hẳn phiên
+   trước nên rủi ro cũng nhỉnh hơn.
+
+> ⚠️ **Ba điều bản cũ của mục này nói sai — đừng chép lại từ đâu đó:**
+> - *"`_classifyFailure` không có nhánh nào cho vi phạm UNIQUE (23505)"* — sai từ
+>   2026-09-04 (`_uniqueConstraintPattern`), và từ 2026-09-07 phép phân loại đi
+>   theo **`code`** của backend (`_permanentCodes`) chứ không dò chuỗi nữa.
+> - *"Tính năng 'Ngày cụ thể' chưa đồng bộ được"* — việc (C) đã xong, backend giữ
+>   được `time_recurrence = null`.
+> - *"G15 là hoãn có chủ ý, đừng tự ý sửa"* — G15 **đã đóng** 2026-09-07 sau khi
+>   người dùng đổi quyết định.
 
 Muốn xác minh thay đổi ngoài bộ test thì dùng skill **`chay-app`** (Chrome
 headless + truy vấn PostgreSQL). ⚠️ Skill đó nằm trong `.claude/` nên **không
-được push** — chỉ có trên máy đã dựng nó.
+được push** — chỉ có trên máy đã dựng nó. Với thay đổi **giao diện** thì Chrome
+1280px không đủ: phải chạy máy ảo Android ở 411dp, xem mục ⚠️ trong `CLAUDE.md`.
 
 ### 🎯 Mục tiêu tiết kiệm (2026-09-05) — **hoạt động đầy đủ trên client**
 

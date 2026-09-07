@@ -323,7 +323,7 @@ Và bản ghi đó không thoát ra được: `_classifyFailure` (`lib/core/sync
 
 > ⚠️ Đây là **lớp cầm máu, không phải bản vá gốc**. Bản ghi vẫn được tạo ra ở mỗi lần mở app, chỉ là không còn đẩy lại vô hạn.
 
-**Còn chờ backend:** thêm `WHERE "Delete_at" IS NULL` vào unique index — xem `CATEGORY_NAME_UNIQUENESS.md` mục 4.1 và mục 10 của `2026-09-04-ocr-classify-review.md`. Khi có, bản ghi bị chặn tự quay lại hàng đợi mà người dùng không phải làm gì.
+~~**Còn chờ backend:** thêm `WHERE "Delete_at" IS NULL` vào unique index~~ — ✅ **backend làm xong 2026-09-07**, xem đoạn cuối mục này. Hồ sơ: `CATEGORY_NAME_UNIQUENESS.md` mục 4.1 và mục 10 của `2026-09-04-ocr-classify-review.md`. Khi có, bản ghi bị chặn tự quay lại hàng đợi mà người dùng không phải làm gì.
 
 > ### ⚠️ Cập nhật 2026-09-07 — cách đóng đã đổi, nhưng G16 vẫn đóng
 >

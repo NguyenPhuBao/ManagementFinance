@@ -19,7 +19,7 @@ Bốn thay đổi, mỗi cái do một lỗi **có thật** buộc phải làm �
 | Quy tắc trùng tên: bỏ `classify` và nhóm cha khỏi khoá, tính cả danh mục mặc định | Bốn đường tạo được danh mục trùng tên; ba trong số đó client cho tạo còn PostgreSQL chặn, nên thao tác đẩy **thất bại im lặng** |
 | Gom mọi phép so tên về **một định nghĩa duy nhất**, thêm bước gộp Unicode NFC | Ba biến thể so tên cùng tồn tại và đã lệch nhau; một trong số đó nằm trên đường đồng bộ và **không chuẩn hoá gì cả** |
 | Bộ danh mục mặc định khớp đúng 13 mục của backend; 5 mục thừa thành danh mục cá nhân | Hai phía chỉ khớp **10/18** tên, khiến giao dịch dùng 8 mục còn lại **không bao giờ đẩy lên được** |
-| *(chưa làm — chờ backend)* ID cố định cho danh mục mặc định | Nguyên nhân gốc của cả bốn lỗi 11.3–11.6 |
+| ✅ *(backend làm xong 2026-09-07)* ID cố định cho danh mục mặc định | Nguyên nhân gốc của cả bốn lỗi 11.3–11.6 |
 
 Kết quả: `flutter test` từ **144 → 180 test**, `flutter analyze` **29 issue, không error**.
 
@@ -151,9 +151,14 @@ Giữ id dạng slug thì giao dịch kẹt y như cũ, chỉ đổi nguyên nh�
 
 ---
 
-## 5. Thay đổi 4 — ID cố định (chưa làm, chờ backend)
+## 5. Thay đổi 4 — ID cố định (✅ backend đã làm, 2026-09-07)
 
-`prisma/seed.js` sinh ID bằng `crypto.randomUUID()`, nên **seed lại là ra bộ khác hoàn toàn**. Đây là lý do tên bị dùng làm khoá nối ngay từ đầu, và là nguyên nhân gốc của bốn lỗi 11.3–11.6 cùng cả lớp mã vá víu quanh chúng.
+> ✅ **Đã xong 2026-09-07.** `seed.js` nay đóng băng **13 stable UUID**, hết
+> `crypto.randomUUID()` cho danh mục; backend còn cấp thêm
+> `GET /api/sync/default-categories`. Phần dưới giữ làm hồ sơ vì nó ghi *vì sao*
+> tên danh mục từng bị dùng làm khoá nối.
+
+`prisma/seed.js` **từng** sinh ID bằng `crypto.randomUUID()`, nên seed lại là ra bộ khác hoàn toàn. Đây là lý do tên bị dùng làm khoá nối ngay từ đầu, và là nguyên nhân gốc của bốn lỗi 11.3–11.6 cùng cả lớp mã vá víu quanh chúng.
 
 Sau thay đổi 3 thì ánh xạ **đang chạy đúng** (13/13 khớp tên), nên việc này không còn gấp. Nhưng nó vẫn là thứ duy nhất khiến không phải làm lại lần nữa: chỉ cần ai đó sửa một nhãn cho đẹp hơn là ánh xạ đứt, **không test hay lỗi nào bắt được**; và reset CSDL vẫn phá mọi thứ.
 
@@ -193,7 +198,11 @@ vĩnh viễn.
 
 - **Bản sao chỉ đầy đủ khi bộ mặc định cục bộ đầy đủ.** Pull tăng dần theo
   `since`, nên một máy có thể chỉ biết một phần bộ mặc định của server. Đo được
-  2026-09-07: server có 18 hàng, máy kiểm thử tạo được 13 bản sao.
+  2026-09-07 (sáng): server có 18 hàng, máy kiểm thử tạo được 13 bản sao.
+  ⚠️ **Chiều cùng ngày con số đổi:** đợt migration của backend thu bộ khuôn về
+  đúng 13 stable UUID, **xoá mềm** 5 hàng `Chi khác`, `Thu khác`, `Làm thêm`,
+  `Trả nợ`, `Thu nợ`. Server nay có **13 hàng sống + 5 hàng đã xoá mềm**; máy
+  nào đã pull 5 hàng ấy sẽ nhận cờ xoá ở lượt pull sau.
 - **Màu không theo được.** Bảng `category` không có cột màu, nên màu của bản sao
   chỉ sống trên máy đã tạo. Tài liệu xin: `CATEGORY_COLOUR_COLUMN.md`.
 

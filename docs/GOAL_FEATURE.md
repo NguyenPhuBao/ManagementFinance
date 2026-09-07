@@ -1,7 +1,8 @@
 # Mục tiêu tiết kiệm — thiết kế, lý do, và những cái bẫy
 
 **Cập nhật:** 2026-09-05
-**Trạng thái:** hoạt động đầy đủ trên client. Một việc chờ backend (mục 8).
+**Trạng thái:** hoạt động đầy đủ trên client. **Không còn việc nào chờ backend**
+(cập nhật 2026-09-07 — xem mục 8).
 
 > **Mục đích của tài liệu này** giống `CATEGORY_RATIONALE.md`: giữ lại **vì sao**,
 > không phải **cái gì**. Cái gì thì đọc mã và test là ra; vì sao thì mất theo
@@ -710,14 +711,15 @@ giá trị từ Admin-web nếu có — nhưng đừng tưởng có tính năng 
 
 ## 8. Việc phía backend
 
-Ba tài liệu, tất cả ở `docs/superpowers/backend/CAN-LAM/`. Cả ba chỉ xin **cột
-nullable** nên gộp chung một đợt migration là rẻ nhất:
+Ba tài liệu, **cả ba đã đóng ngày 2026-09-07** và nay nằm ở
+`docs/superpowers/backend/DA-XONG/`. Cả ba chỉ xin **cột nullable** nên backend
+gộp chung một đợt migration — đúng như đề nghị.
 
 | Tài liệu | Xin gì | Trạng thái ở client |
 |---|---|---|
-| `2026-09-05-backend-transaction-goal-id.md` | `transaction.Idgoal` | Đã làm, cột **cục bộ** (v14). Máy khác rơi xuống nhánh so tên |
+| `2026-09-05-backend-transaction-goal-id.md` | `transaction.Idgoal` | ✅ **Xong 2026-09-07** — cột đã có, client đẩy `idgoal` và đọc lại. Nhánh so **tên** vẫn giữ cho hàng cũ trên server (đều `NULL`), teo dần — **G18** |
 | `2026-09-05-backend-goal-auto-deposit.md` | Ba cột `auto_deposit_*` | ✅ **Xong 2026-09-07** — backend có cột, client đẩy và kéo cả ba. **G21 đóng** |
-| `2026-09-05-backend-goal-priority.md` | `goal.Priority` | **Chưa làm, và cố ý chưa làm** cho tới khi có cột |
+| `2026-09-05-backend-goal-priority.md` | `goal.Priority` | ✅ **Cột đã có 2026-09-07.** Client **chưa làm** tính năng ưu tiên — nay không còn gì chặn, chỉ là chưa tới lượt |
 
 Hai tài liệu đầu **không chặn gì hôm nay**; cái đầu chặn hướng bỏ bộ đếm
 `current_amount` để suy tiến độ từ chính giao dịch.

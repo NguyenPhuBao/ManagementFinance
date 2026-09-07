@@ -7,7 +7,7 @@
 > hướng thật** (mục 5b), **bốn loại báo tiền vừa rời ví nay bỏ qua công tắc
 > nhóm** (mục 3), và **giờ im lặng · gộp thông báo · hoàn tác vuốt xoá**
 > (mục 5c). Đọc bốn mục ấy trước nếu định đụng vào vùng này.
-> **Mức nền hiện tại:** `flutter test` **1304/1304 pass**, `flutter analyze`
+> **Mức nền hiện tại:** `flutter test` **1325/1325 pass**, `flutter analyze`
 > **25 issue, KHÔNG error**, `flutter build web` xanh.
 
 Đọc file này trước khi làm tiếp bất cứ việc gì thuộc thông báo. Mục 6 ghi lại
@@ -109,10 +109,10 @@ rồi tin rằng mình đã tắt.
 ⚠️ **Đừng nới `luonBao()` ra cả nhóm.** Công tắc mất tác dụng thì người dùng sẽ
 tắt luôn công tắc tổng, và khi ấy họ mất mọi thứ.
 
-Giao dịch ngân hàng Casso và OCR **không** làm được ở client: backend có phát
+Giao dịch ngân hàng và OCR **không** làm được ở client: backend có phát
 ba sự kiện đó qua Socket.io nhưng client chưa có `socket_io_client`, và quan
 trọng hơn là kênh socket đó đang là **bước 1 trong chín bước sửa backend** vì
-handshake không xác thực và mỗi sự kiện còn `io.emit` toàn cục.
+handshake không xác thực và mỗi sự kiện còn `io.emit` toàn cục. ✅ **Đã sửa 2026-09-07** — JWT ở handshake, `join_account` gỡ hẳn, không còn `io.emit` nào; nay chỉ còn chờ client dựng luồng OCR/ngân hàng (backend đã đổi nhà cung cấp **Casso → SePay**).
 
 ---
 
@@ -609,7 +609,7 @@ client đọc lại khi pull (`sync_engine.dart:741`). Không có việc gì ph�
 Đính chính được ghi lại trong tài liệu backend thay vì xoá lặng lẽ, vì nhận
 định sai ấy đã đi qua ít nhất hai bản tài liệu.
 
-Ba việc còn lại là thật nhưng **không chặn gì hôm nay**: socket không xác thực
+Ba việc còn lại là thật nhưng **không chặn gì hôm nay**. ⚠️ Cập nhật 2026-09-07: **socket đã được xác thực** (JWT ở handshake, 0 `io.emit`), nên vế "chưa xác thực" trong đoạn dưới đã hết đúng — phần còn thiếu chỉ là client chưa có luồng OCR/ngân hàng. 
 (đã là bước 1 vì lý do khác, và client **cố ý chưa nối socket**), backend không
 có scheduler, queue `send-notification` rỗng cả ba phía — không ai đẩy việc
 vào, worker 0 byte, và `index.js` cũng không nạp worker ấy.
