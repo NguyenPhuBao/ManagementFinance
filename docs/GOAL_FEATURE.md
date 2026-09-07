@@ -1,6 +1,6 @@
 # Mục tiêu tiết kiệm — thiết kế, lý do, và những cái bẫy
 
-**Cập nhật:** 2026-09-05
+**Cập nhật:** 2026-09-07
 **Trạng thái:** hoạt động đầy đủ trên client. **Không còn việc nào chờ backend**
 (cập nhật 2026-09-07 — xem mục 8).
 

@@ -18,10 +18,10 @@
 | Việc | Đọc thêm |
 |---|---|
 | Làm tiếp phía client | `docs/CLIENT_APP_KNOWN_GAPS.md` — các mục dang dở kèm **lý do hoãn** và **bán kính ảnh hưởng** |
-| Việc thuộc backend | **`docs/superpowers/backend/CAN-LAM/README.md`** — **cửa vào duy nhất**. Sau đợt backend 2026-09-07 chỉ còn **bốn** mục: **(D)** của `/sync/push` (`threshold_warning_percent` bị ép về 0), **cột màu danh mục**, và **hai mục hoá đơn** (`transaction.Idbill` + `bill.Previous_bill_id`, rồi `bill.Auto_pay` + chốt chặn trả hai lần). README chia việc theo *client đã có tính năng ấy chưa* rồi mới tới danh sách còn lại ở mục 2 — đọc theo đúng thứ tự ấy. Tài liệu **đã đóng** nằm ở **`DA-XONG/`** (16 tệp, kèm ghi chú đóng bằng cách nào) — mở khi cần biết *vì sao* lược đồ có hình dạng hôm nay, không phải khi tìm việc. Thư mục cha chỉ còn mục lục và ba tệp bối cảnh. Bảng trạng thái đầy đủ ở mục 14 `docs/PROJECT_CONTEXT.md` |
+| Việc thuộc backend | **`docs/superpowers/backend/CAN-LAM/README.md`** — **cửa vào duy nhất**. Sau đợt backend 2026-09-07 chỉ còn **năm** mục: **(D)** của `/sync/push` (`threshold_warning_percent` bị ép về 0), **cột màu danh mục**, **hai mục hoá đơn** (`transaction.Idbill` + `bill.Previous_bill_id`, rồi `bill.Auto_pay` + chốt chặn trả hai lần), và **`Pay_status = 'Skipped'`** — mục cuối không cần migration, client chỉ chờ **một câu xác nhận** rồi mới mở tính năng "bỏ qua kỳ này". Đếm theo **mục 2 của README ấy**; hai bản tóm tắt từng ghi "bốn" vì bỏ sót mục cuối. README chia việc theo *client đã có tính năng ấy chưa* rồi mới tới danh sách còn lại ở mục 2 — đọc theo đúng thứ tự ấy. Tài liệu **đã đóng** nằm ở **`DA-XONG/`** (16 tệp, kèm ghi chú đóng bằng cách nào) — mở khi cần biết *vì sao* lược đồ có hình dạng hôm nay, không phải khi tìm việc. Thư mục cha chỉ còn mục lục và ba tệp bối cảnh. Bảng trạng thái đầy đủ ở mục 14 `docs/PROJECT_CONTEXT.md` |
 | Đụng vào đồng bộ | `src/Client-app/test/core/sync/sync_payload_contract_test.dart` — đọc **như tài liệu**, đây là nơi duy nhất ghi hợp đồng tên trường giữa hai phía |
 | Đụng vào hoá đơn | `docs/bill/BILL_DOCUMENTATION.md` (⚠️ thư mục bị `.gitignore` chặn, chỉ có trên máy đã dựng) và **bộ test như tài liệu**: `test/features/bill/domain/bill_status_test.dart` (bốn trạng thái hiển thị + số liệu thẻ tổng), `bill_payment_test.dart` (trả theo số tiền kỳ này, hoàn tác), `test/core/database/bill_overdue_test.dart` (cờ quá hạn đi **hai chiều**). Ba thứ dễ vấp nhất: bảng `Bills` mang **hai cặp cột trùng nghĩa** (`payStatus`/`isPaid` và `isRecurrence`+`timeRecurrence`/`recurrence`) — đọc và ghi theo cột **chính thức**, cột chuỗi cũ chỉ được suy ra; mỗi kỳ của hoá đơn lặp là **một hàng mới**, không phải một hàng sống lâu; và hai cột nối `transactions.billId` / `bills.generatedFromBillId` là **cục bộ** (v16) nên hàng kéo về từ server luôn để trống — hoàn tác phải từ chối chứ không được đoán |
-| Đụng vào thông báo | `docs/NOTIFICATION_FEATURE.md` — **trạng thái bàn giao, phần việc còn lại, và bảy cái bẫy**. Mục 7 phải đọc trước khi đụng vào phần hệ điều hành. Bảng thông báo **cục bộ**, không nằm trong `SyncEntityType` |
+| Đụng vào thông báo | `docs/NOTIFICATION_FEATURE.md` — **trạng thái bàn giao, phần việc còn lại, và mười một cái bẫy**. Mục 7 phải đọc trước khi đụng vào phần hệ điều hành; riêng **7.11** (`AndroidManifest.xml` là vùng mù của `flutter test`, `flutter analyze` **và** `flutter build apk`) phải đọc trước khi đụng vào nút hành động hay lịch đặt trước. Bảng thông báo **cục bộ**, không nằm trong `SyncEntityType` |
 | Đụng vào danh mục | `docs/CATEGORY_RATIONALE.md` — **lý do** của từng thay đổi, bằng chứng đo được, và các phương án đã loại bỏ. Đọc trước khi định "dọn dẹp" vùng này |
 | Đụng vào mục tiêu tiết kiệm | `docs/GOAL_FEATURE.md` — **quyết định kèm lý do, và bảy cái bẫy**. Mục 4 phải đọc trước khi sửa gì. Ba cái đáng nhớ nhất: `walletTransfer` **không có khoá ngoại**; suy chiều nạp/rút từ vị trí ví là **diễn giải lại lịch sử**; và `_collectPendingOps` dựng payload **thô** — phép quy đổi `chi → Transaction` chạy ở bước POST, đọc dừng ở đó là kết luận nhầm |
 | Đụng vào **trích tiền tự động** hoặc **tự động thanh toán hoá đơn** | Mục **3.12 và 3.13** `docs/GOAL_FEATURE.md` trước đã; hoá đơn thì mục **6.5** `docs/bill/BILL_DOCUMENTATION.md` và spec `docs/superpowers/specs/2026-09-06-bill-auto-pay-design.md`. Đây là **hai** chỗ trong app tự chuyển tiền khi người dùng vắng mặt, nên phần lớn thiết kế là về việc *dừng đúng lúc*. Hoá đơn khác mục tiêu ở chỗ **không có "lần chạy cuối"**: mỗi kỳ là một hàng, cờ đã trả là chốt chống trả hai lần; bộ chạy đi qua `payBill` với `occurredAt = dueDate`, trả bù trần 3 kỳ, và cột `autoPayEnabled` là **cục bộ** (hai máy cùng bật là hai khoản chi — chờ việc D backend). Ba thứ dễ hỏng nhất: mốc chạy chỉ đặt **khi bật công tắc** (không phải ngày tạo mục tiêu); ví thiếu tiền thì **giữ nguyên mốc** để kỳ ấy tự thử lại; và `null` mang **hai nghĩa khác nhau** trong `updateGoal` — `cycleTakeMoney` là *xoá*, `icon`/`colour` là *giữ nguyên*. Lịch nhắc đi chung bộ đặt lịch với hoá đơn, **bắt buộc** — xem `NOTIFICATION_FEATURE.md` |
@@ -75,7 +75,7 @@
 ## Lệnh hay dùng
 
 ```bash
-# Test (chạy từ src/Client-app) — hiện 1325/1325 pass, ~110 giây
+# Test (chạy từ src/Client-app) — hiện 1391/1391 pass, ~110 giây
 flutter test
 flutter analyze          # mức nền: 25 issue, KHÔNG có error
 
@@ -134,7 +134,7 @@ bàn giao tạm giữa các phiên nên chết đi sống lại nhiều lần �
 
 Bộ test là lưới an toàn chính của dự án này — nhiều lỗi trong quá khứ hỏng **âm thầm** (không exception, không log). Khi sửa lỗi, viết test tái hiện **trước**, và ghi rõ trong `reason:` của assertion là nó canh chừng điều gì.
 
-Vùng chưa có test nào: các feature `analytics`, `profile`, `ai_chat`. (`notification` có 8 tệp test; `home` có test từ 2026-09-06.) (`auth_interceptor.dart` có test từ 2026-09-03; `budget` có test từ 2026-09-03.)
+Vùng chưa có test nào: các feature `analytics`, `profile`, `ai_chat`. (`notification` có 22 tệp test; `home` có test từ 2026-09-06.) (`auth_interceptor.dart` có test từ 2026-09-03; `budget` có test từ 2026-09-03.)
 
 ### ⚠️ Ba loại lỗi mà `flutter test` KHÔNG bắt được
 

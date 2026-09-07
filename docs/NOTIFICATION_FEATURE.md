@@ -1,14 +1,22 @@
 # Hệ thống thông báo — tài liệu bàn giao
 
-> **Cập nhật:** 2026-09-06 · **Nhánh:** `TranQuangDat`
+> **Cập nhật:** 2026-09-07 · **Nhánh:** `TranQuangDat`
 > **Trạng thái:** cả bảy lát đã xong, **đã kiểm trên máy ảo Android**, có thêm
 > **dải báo kết nối** (mục 9), **mốc kích hoạt quét đã được sửa lại cho
 > offline-first** (mục 4.5), **cú chạm vào thông báo hệ điều hành nay điều
 > hướng thật** (mục 5b), **bốn loại báo tiền vừa rời ví nay bỏ qua công tắc
 > nhóm** (mục 3), và **giờ im lặng · gộp thông báo · hoàn tác vuốt xoá**
 > (mục 5c). Đọc bốn mục ấy trước nếu định đụng vào vùng này.
-> **Mức nền hiện tại:** `flutter test` **1325/1325 pass**, `flutter analyze`
-> **25 issue, KHÔNG error**, `flutter build web` xanh.
+>
+> **Thêm ngày 2026-09-07 (tối):** **lọc + phân trang + đánh dấu chưa đọc** cho
+> trung tâm thông báo (mục 4.6), **nhắc ghi chép hằng ngày** — loại nhắc duy
+> nhất suy từ việc *không có* dữ liệu, và cố ý **không** phải `NotificationKind`
+> thứ mười lăm (mục 4.7), và **nút hành động** *Trả ngay* / *Hoãn 1 ngày* chạy
+> trong isolate nền (mục 4.8). Số bẫy ở mục 7 nay là **mười một** — bẫy **7.11**
+> mới nói về `AndroidManifest.xml`, vùng mù của mọi công cụ trong dự án này.
+>
+> **Mức nền hiện tại:** `flutter test` **1391/1391 pass**, `flutter analyze`
+> **25 issue, KHÔNG error**, `flutter build web` xanh (dựng lại 2026-09-07).
 
 Đọc file này trước khi làm tiếp bất cứ việc gì thuộc thông báo. Mục 6 ghi lại
 từng lát đã làm gì và vì sao; mục 7 là những cái bẫy — **đọc mục 7 trước khi

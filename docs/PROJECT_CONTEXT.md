@@ -797,10 +797,15 @@ một lựa chọn, không phải một hàng đợi.
    và `ExportReportPage` đều là giao diện tĩnh, **0** tham chiếu
    Bloc/Repository/Dao, mọi con số viết cứng — và nó đang **chặn** việc "Tổng
    kết tuần" của mảng thông báo.
-2. **Bốn việc còn lại của backend**, ở `docs/superpowers/backend/CAN-LAM/`:
+2. **Năm việc còn lại của backend**, ở `docs/superpowers/backend/CAN-LAM/`:
    lỗ **(D)** `threshold_warning_percent` bị ép về `0`; **cột màu danh mục**
-   (tài liệu xin nay đã lên origin); và **hai mục hoá đơn** — `transaction.Idbill`
-   + `bill.Previous_bill_id`, rồi `bill.Auto_pay` + chốt chặn trả hai lần.
+   (tài liệu xin nay đã lên origin); **hai mục hoá đơn** — `transaction.Idbill`
+   + `bill.Previous_bill_id`, rồi `bill.Auto_pay` + chốt chặn trả hai lần; và
+   **`Pay_status = 'Skipped'`**, mục duy nhất không cần migration — client chỉ
+   chờ **một câu xác nhận** rồi mới mở tính năng "bỏ qua kỳ này".
+   ⚠️ Bản trước của dòng này (và của `CLAUDE.md`) ghi **bốn**, bỏ sót mục cuối.
+   Con số đúng lấy theo **mục 2 của README trong thư mục ấy** — đó là cửa vào
+   duy nhất, và nó luôn là bản đếm có thẩm quyền.
    README trong thư mục ấy là cửa vào duy nhất; thư mục `DA-XONG/` bên cạnh giữ
    16 tài liệu đã đóng.
 3. **Bản vá migration ở nhánh `patch2` chưa đi đâu cả.**
