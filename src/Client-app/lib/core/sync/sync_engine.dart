@@ -1085,7 +1085,57 @@ class SyncEngine {
       alreadyInBatch.add(resolvedId);
     }
 
-    // ── 3. Transactions (sau category + wallet vì FK → cả 2) ──────────────────
+    // ── 3. Goals (sau wallet, và phải đứng TRƯỚC transactions) ───────────────
+    //
+    // Từ 2026-09-07 payload giao dịch mang `idgoal`, và cột ấy phía server có
+    // khoá ngoại `fk_transaction_goal`. Đẩy giao dịch trước mục tiêu thì hàng bị
+    // từ chối vì mục tiêu chưa tồn tại — đúng ca người dùng tạo mục tiêu rồi nạp
+    // tiền trong lúc offline, cả hai cùng nằm chờ trong một lô. Cùng lý do khiến
+    // categories phải đứng trước transactions. Có test canh thứ tự này.
+    for (final g in await _db.goalDao.getPending(idaccount)) {
+      if (_isSyncBlocked(g.syncBlockedUntil)) continue;
+      final validId = _toValidUuid(g.id);
+      ops.add(SyncOperation(
+        localId: g.id,
+        entity: SyncEntityType.goal,
+        operation:
+            g.isDeleted ? SyncOperationType.delete : SyncOperationType.update,
+        payload: {
+          'id': validId,
+          'name': g.name,
+          'target_amount': g.targetAmount,
+          'current_amount': g.currentAmount,
+          'start_date': g.startDate?.toUtc().toIso8601String(),
+          'target_date': g.targetDate.toUtc().toIso8601String(),
+          'idwallet': g.walletId != null ? _toValidUuid(g.walletId!) : null,
+          'cycle_take_money': g.cycleTakeMoney,
+          'time_cycle_take_money':
+              g.timeCycleTakeMoney?.toUtc().toIso8601String(),
+          // Ba cột trích tự động đi CÙNG NHAU (G21, mở khoá 2026-09-07).
+          // `auto_deposit_last_run` là cột chặn trích hai lần: bỏ nó lại thì
+          // mỗi máy giữ một mốc riêng và cả hai cùng chuyển tiền khi tới kỳ —
+          // hỏng nặng hơn hiện trạng "máy thứ hai không trích gì".
+          'auto_deposit_amount': g.autoDepositAmount,
+          'auto_deposit_wallet_id': g.autoDepositWalletId != null
+              ? _toValidUuid(g.autoDepositWalletId!)
+              : null,
+          'auto_deposit_last_run':
+              g.autoDepositLastRun?.toUtc().toIso8601String(),
+          'status_complete': g.isCompleted ? 'True' : 'False',
+          'recurrence': g.recurrence,
+          'time_recurrence': g.timeRecurrence,
+          'icon': g.icon,
+          'color': g.colour,
+          'note': g.note,
+          'is_deleted': g.isDeleted,
+          'updated_at': g.updatedAt.toUtc().toIso8601String(),
+          'idaccount': g.idaccount > 0 ? g.idaccount : idaccount,
+        },
+        createdAt: now,
+      ));
+    }
+
+    // ── 4. Transactions (sau category + wallet + goal vì FK → cả 3) ──────────
     final pendingTx = await _db.transactionDao.getPending(idaccount);
     for (final t in pendingTx) {
       if (_isSyncBlocked(t.syncBlockedUntil)) continue;
@@ -1132,7 +1182,7 @@ class SyncEngine {
       ));
     }
 
-    // ── 4. Budgets (sau category + wallet) ────────────────────────────────────
+    // ── 5. Budgets (sau category + wallet) ────────────────────────────────────
     // Payload dùng đúng tên field Prisma của backend (idcategory, total_amount,
     // start, over_spending, ...) vì backend mapEntityFields() chỉ nhận diện
     // các key camelCase cụ thể (totalAmount, categoryId, ...) — gửi sẵn tên
@@ -1171,7 +1221,7 @@ class SyncEngine {
       ));
     }
 
-    // ── 5. Bills (sau category + wallet) ──────────────────────────────────────
+    // ── 6. Bills (sau category + wallet) ──────────────────────────────────────
     // idwallet/idcategory là NOT NULL trên backend — bắt buộc phải gửi kèm.
     // Lưu ý: form tạo/sửa bill hiện tại (bill_edit_page.dart) chưa cho chọn
     // ví/danh mục nên các giá trị này có thể vẫn null cho tới khi UI đó được
@@ -1213,49 +1263,6 @@ class SyncEngine {
       ));
     }
 
-    // ── 6. Goals (sau wallet) ──────────────────────────────────────────────────
-    for (final g in await _db.goalDao.getPending(idaccount)) {
-      if (_isSyncBlocked(g.syncBlockedUntil)) continue;
-      final validId = _toValidUuid(g.id);
-      ops.add(SyncOperation(
-        localId: g.id,
-        entity: SyncEntityType.goal,
-        operation:
-            g.isDeleted ? SyncOperationType.delete : SyncOperationType.update,
-        payload: {
-          'id': validId,
-          'name': g.name,
-          'target_amount': g.targetAmount,
-          'current_amount': g.currentAmount,
-          'start_date': g.startDate?.toUtc().toIso8601String(),
-          'target_date': g.targetDate.toUtc().toIso8601String(),
-          'idwallet': g.walletId != null ? _toValidUuid(g.walletId!) : null,
-          'cycle_take_money': g.cycleTakeMoney,
-          'time_cycle_take_money':
-              g.timeCycleTakeMoney?.toUtc().toIso8601String(),
-          // Ba cột trích tự động đi CÙNG NHAU (G21, mở khoá 2026-09-07).
-          // `auto_deposit_last_run` là cột chặn trích hai lần: bỏ nó lại thì
-          // mỗi máy giữ một mốc riêng và cả hai cùng chuyển tiền khi tới kỳ —
-          // hỏng nặng hơn hiện trạng "máy thứ hai không trích gì".
-          'auto_deposit_amount': g.autoDepositAmount,
-          'auto_deposit_wallet_id': g.autoDepositWalletId != null
-              ? _toValidUuid(g.autoDepositWalletId!)
-              : null,
-          'auto_deposit_last_run':
-              g.autoDepositLastRun?.toUtc().toIso8601String(),
-          'status_complete': g.isCompleted ? 'True' : 'False',
-          'recurrence': g.recurrence,
-          'time_recurrence': g.timeRecurrence,
-          'icon': g.icon,
-          'color': g.colour,
-          'note': g.note,
-          'is_deleted': g.isDeleted,
-          'updated_at': g.updatedAt.toUtc().toIso8601String(),
-          'idaccount': g.idaccount > 0 ? g.idaccount : idaccount,
-        },
-        createdAt: now,
-      ));
-    }
 
     return ops;
   }

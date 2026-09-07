@@ -282,6 +282,25 @@ void main() {
       );
     });
 
+    test('mục tiêu phải được đẩy TRƯỚC giao dịch nạp vào nó', () {
+      final thuTu = client.adapter.pushed
+          .map((op) => op['entity'].toString())
+          .toList();
+      final viTriGoal = thuTu.indexOf('goal');
+      final viTriTran = thuTu.indexOf('transaction');
+      expect(viTriGoal, isNonNegative);
+      expect(viTriTran, isNonNegative);
+      expect(
+        viTriGoal,
+        lessThan(viTriTran),
+        reason: 'Từ 2026-09-07 payload giao dịch mang `idgoal`, và phía server '
+            'cột ấy có khoá ngoại `fk_transaction_goal`. Đẩy giao dịch trước '
+            'mục tiêu thì hàng bị từ chối vì mục tiêu chưa tồn tại — đúng ca '
+            'người dùng tạo mục tiêu rồi nạp tiền trong lúc offline, cả hai '
+            'cùng nằm chờ trong một lô. Cùng lý do khiến categories phải đứng '
+            'trước transactions.',
+      );
+    });
     test('payload giao dịch mang idgoal của khoản nạp mục tiêu', () {
       final p = payloadOf('transaction');
       expect(p['idgoal'], goalId,
