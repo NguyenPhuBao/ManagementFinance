@@ -571,6 +571,119 @@ void main() {
             'báo ra — đúng khuôn mẫu hỏng âm thầm của dự án này.',
       );
     });
+    // ── Backend đổi cách báo lỗi, 2026-09-07 ──────────────────────────────
+    // `/sync/push` không còn trả nguyên văn stack trace của Prisma. Đó chính
+    // là việc (B) client xin trong `2026-09-04-backend-idempotent-delete.md`:
+    // gắn một `code` ổn định thay vì bắt client dò chuỗi. Backend đã làm.
+    //
+    // Nhưng cái giá đi kèm không ai lường: `message` nay là câu tiếng Việt cho
+    // người dùng đọc, nên MỌI regex bên dưới — `23505`, `23514`,
+    // `violates ... constraint` — không còn khớp gì cả. Lỗi vĩnh viễn im lặng
+    // tụt xuống nhánh `transient` ở cuối `_classifyFailure`, và bản ghi quay
+    // lại bị đẩy ở MỌI chu kỳ, đúng vòng lặp mà G3 và G16 sinh ra để chặn.
+    //
+    // Bốn test dưới canh chừng đúng chỗ ấy: phân loại phải đi theo `code`,
+    // không theo câu chữ.
+
+    test('Mã UNIQUE_VIOLATION là lỗi vĩnh viễn dù thông báo không còn 23505',
+        () async {
+      await seedPendingCategory();
+
+      await runOnce(_CodedFailureAdapter(
+        code: 'UNIQUE_VIOLATION',
+        message: 'Dữ liệu bị trùng lặp khóa duy nhất',
+      ));
+
+      final row = await db.categoryDao.getById(catId);
+      expect(
+        row?.syncBlockedUntil,
+        clock.add(const Duration(seconds: 30)),
+        reason: 'Đây là cùng một lỗi với test 23505 ở trên, chỉ khác cách '
+            'backend diễn đạt. Nếu phân loại còn phụ thuộc câu chữ thì bản vá '
+            '(B) của backend vô tình mở lại đúng vòng lặp mà G16 đã đóng — và '
+            'mở một cách hoàn toàn im lặng.',
+      );
+      expect(row?.syncStatus, 'pending',
+          reason: 'Chặn theo thời gian, không loại vĩnh viễn khỏi hàng đợi.');
+    });
+
+    test('Mã CATEGORY_NAME_DUPLICATE là lỗi vĩnh viễn', () async {
+      await seedPendingCategory();
+
+      await runOnce(_CodedFailureAdapter(
+        code: 'CATEGORY_NAME_DUPLICATE',
+        message: 'Tên danh mục đã tồn tại trong tài khoản này',
+      ));
+
+      final row = await db.categoryDao.getById(catId);
+      expect(
+        row?.syncBlockedUntil,
+        clock.add(const Duration(seconds: 30)),
+        reason: 'Backend chia nhỏ UNIQUE_VIOLATION thành một mã riêng cho '
+            'danh mục. Một mã mới không được phép làm mất phân loại: đây vẫn '
+            'là 23505, đẩy lại bao nhiêu lần cũng hỏng y như vậy cho tới khi '
+            'người dùng đổi tên.',
+      );
+    });
+
+    test('Mã CONSTRAINT_VIOLATION là lỗi vĩnh viễn', () async {
+      await seedPendingCategory();
+
+      await runOnce(_CodedFailureAdapter(
+        code: 'CONSTRAINT_VIOLATION',
+        message: 'Dữ liệu vi phạm ràng buộc kiểm tra của cơ sở dữ liệu',
+      ));
+
+      final row = await db.categoryDao.getById(catId);
+      expect(
+        row?.syncBlockedUntil,
+        clock.add(const Duration(seconds: 30)),
+        reason: 'Đây là SQLSTATE 23514 dưới tên mới — ví dụ ngân sách có End '
+            'không lớn hơn Start. Xếp vào transient nghĩa là gửi lại ở mọi chu '
+            'kỳ, và mỗi chu kỳ kết thúc ở error nên kích hoạt giãn cách luỹ '
+            'tiến (G2), kéo chậm mọi thay đổi khác của người dùng.',
+      );
+    });
+
+    test('Mã FORBIDDEN_SYSTEM_DEFAULT là lỗi vĩnh viễn', () async {
+      await seedPendingCategory();
+
+      await runOnce(_CodedFailureAdapter(
+        code: 'FORBIDDEN_SYSTEM_DEFAULT',
+        message: 'Không thể xóa danh mục mặc định của hệ thống',
+      ));
+
+      final row = await db.categoryDao.getById(catId);
+      expect(
+        row?.syncBlockedUntil,
+        clock.add(const Duration(seconds: 30)),
+        reason: 'Backend từ chối cho xoá danh mục mẫu của hệ thống. Không có '
+            'lần thử lại nào đổi được kết quả ấy, nên để ở transient là đẩy '
+            'lại vô ích ở mọi chu kỳ.',
+      );
+    });
+
+    test('Mã FOREIGN_KEY_VIOLATION vẫn là lỗi tạm thời', () async {
+      await seedPendingCategory();
+
+      await runOnce(_CodedFailureAdapter(
+        code: 'FOREIGN_KEY_VIOLATION',
+        message: 'Tham chiếu dữ liệu không tồn tại (vi phạm khóa ngoại)',
+      ));
+
+      final row = await db.categoryDao.getById(catId);
+      expect(
+        row?.syncBlockedUntil,
+        isNull,
+        reason: 'Khoá ngoại tới category/wallet/parent vỡ thường chỉ là sai '
+            'THỨ TỰ đẩy: Pull xong là đẩy lại được. Chặn nó theo thời gian là '
+            'trì hoãn một bản ghi vốn sẽ tự khỏi ở chu kỳ sau. Lưu ý khoá '
+            'ngoại tới `account` KHÔNG đi qua đây — backend gắn mã riêng '
+            'ACCOUNT_NOT_FOUND cho nó, và đó là phiên chết chứ không phải lỗi '
+            'thứ tự.',
+      );
+    });
+
 
     test('Bản ghi đang bị chặn KHÔNG được gom vào batch', () async {
       await seedPendingCategory();

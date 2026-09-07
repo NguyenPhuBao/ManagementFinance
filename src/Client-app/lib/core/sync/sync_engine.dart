@@ -1523,6 +1523,27 @@ class SyncEngine {
   /// (có từ 2026-09-03, xem `docs/superpowers/backend/SESSION_VALIDITY_FINDINGS.md`).
   static const String accountNotFoundCode = 'ACCOUNT_NOT_FOUND';
 
+  /// Các mã lỗi có cấu trúc mà backend gắn cho một thao tác đẩy khi **thử lại
+  /// y nguyên cũng hỏng y như vậy** (`sync.service.js`, hợp đồng 2026-09-07).
+  ///
+  /// Từ bản vá ấy backend KHÔNG còn trả nguyên văn stack trace của Prisma;
+  /// `message` nay là câu tiếng Việt cho người dùng đọc. Nên mọi regex bên
+  /// dưới tụt xuống thành **đường dự phòng** cho backend cũ, và phân loại thật
+  /// phải đi theo `code`. Bỏ qua điều đó thì lỗi vĩnh viễn im lặng rơi xuống
+  /// nhánh `transient` ở cuối hàm — đúng vòng lặp đẩy-lại-mãi mà G3 và G16
+  /// sinh ra để chặn.
+  ///
+  /// `FOREIGN_KEY_VIOLATION` cố ý KHÔNG nằm ở đây: khoá ngoại tới
+  /// category/wallet/parent vỡ thường chỉ là sai **thứ tự** đẩy, Pull xong là
+  /// đẩy lại được. Khoá ngoại tới `account` cũng không — nó có mã riêng
+  /// `ACCOUNT_NOT_FOUND` và nghĩa là phiên chết, không phải dữ liệu hỏng.
+  static const Set<String> _permanentCodes = {
+    'UNIQUE_VIOLATION',
+    'CATEGORY_NAME_DUPLICATE',
+    'CONSTRAINT_VIOLATION',
+    'FORBIDDEN_SYSTEM_DEFAULT',
+  };
+
   /// Khoá ngoại trỏ tới bảng `account` bị vỡ nghĩa là `idaccount` đang dùng
   /// không tồn tại trên server — tức phiên đăng nhập đã chết.
   /// Khớp `fk_category_account`, `fk_transaction_account`, `fk_wallet_account`…
@@ -1565,6 +1586,13 @@ class SyncEngine {
     // phiên chết, mà KHÔNG có lỗi nào báo ra.
     if (code == accountNotFoundCode) {
       return SyncFailureKind.sessionInvalid;
+    }
+
+    // Phần còn lại của hợp đồng mã lỗi. Phải đứng TRƯỚC mọi phép khớp chuỗi:
+    // khi backend đã gửi `code` thì `message` là câu tiếng Việt, không còn
+    // mang mã SQLSTATE nào để mà khớp.
+    if (code != null && _permanentCodes.contains(code)) {
+      return SyncFailureKind.permanent;
     }
     // Dự phòng cho backend chưa cập nhật — vẫn còn đang chạy ở máy khác.
     if (_accountFkPattern.hasMatch(message)) {
