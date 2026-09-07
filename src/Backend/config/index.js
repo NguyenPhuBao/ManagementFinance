@@ -56,6 +56,18 @@ const config = {
     apiKey: process.env.CASSO_API_KEY,
     webhookSecret: process.env.CASSO_WEBHOOK_SECRET,
   },
+
+  sepay: {
+    apiUrl: process.env.SEPAY_BANKHUB_API_URL || 'https://bankhub-api.sepay.vn',
+    clientId: process.env.SEPAY_CLIENT_ID,
+    clientSecret: process.env.SEPAY_CLIENT_SECRET,
+    companyXid: process.env.SEPAY_COMPANY_XID,
+    webhookApiKey: process.env.SEPAY_WEBHOOK_API_KEY,
+  },
+
+  gemini: {
+    apiKey: process.env.GEMINI_API_KEY,
+  },
 };
 
 module.exports = config;

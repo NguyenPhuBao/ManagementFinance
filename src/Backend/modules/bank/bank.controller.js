@@ -1,11 +1,56 @@
+/**
+ * Bank Controller
+ * Điều phối các endpoint của Module Bank (SePay Bank Hub)
+ */
+
 const bankService = require('./bank.service');
-const cassoWebhook = require('./casso/casso.webhook');
+const sepayWebhook = require('./sepay/sepay.webhook');
 const ResponseHandler = require('../../core/response-handler');
 const logger = require('../../core/logger');
 
 const bankController = {
   /**
+   * POST /api/bank/register-account
+   * Người dùng tự khai báo/đăng ký tài khoản ngân hàng trên Client-app
+   */
+  async registerAccount(req, res, next) {
+    try {
+      const idaccount = req.user.idaccount;
+      const { account_number, bank_name, account_name, balance } = req.body;
+      const result = await bankService.registerAccount(idaccount, {
+        account_number,
+        bank_name,
+        account_name,
+        balance,
+      });
+      return ResponseHandler.success(res, result, 'Đăng ký tài khoản ngân hàng thành công', 201);
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * POST /api/bank/link-url
+   * Sinh đường dẫn Hosted Link (In-App WebView) cho người dùng cuối liên kết ngân hàng
+   */
+  async createLinkUrl(req, res, next) {
+    try {
+      const idaccount = req.user.idaccount;
+      const userInfo = {
+        fullname: req.user.fullname || req.user.username,
+        email: req.user.email,
+      };
+
+      const result = await bankService.createLinkUrl(idaccount, userInfo);
+      return ResponseHandler.success(res, result, 'Tạo liên kết ngân hàng thành công');
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
    * GET /api/bank/accounts
+   * Lấy danh sách tài khoản ngân hàng của user
    */
   async getAccounts(req, res, next) {
     try {
@@ -19,10 +64,11 @@ const bankController = {
 
   /**
    * GET /api/bank/transactions
+   * Lấy lịch sử giao dịch từ ngân hàng
    */
   async getTransactions(req, res, next) {
     try {
-      const { since } = req.query; // YYYY-MM-DD
+      const { since } = req.query;
       const transactions = await bankService.getTransactions(since);
       return ResponseHandler.success(res, transactions, 'Lấy lịch sử giao dịch thành công');
     } catch (error) {
@@ -32,7 +78,7 @@ const bankController = {
 
   /**
    * GET /api/bank/pending-transactions
-   * Lấy danh sách giao dịch ngân hàng đang chờ duyệt
+   * Lấy danh sách giao dịch ngân hàng đang chờ duyệt của user
    */
   async getPendingTransactions(req, res, next) {
     try {
@@ -46,7 +92,7 @@ const bankController = {
 
   /**
    * POST /api/bank/confirm-transaction
-   * Xác nhận duyệt giao dịch và gán danh mục
+   * Người dùng xác nhận duyệt giao dịch và gán danh mục
    */
   async confirmTransaction(req, res, next) {
     try {
@@ -61,7 +107,7 @@ const bankController = {
 
   /**
    * POST /api/bank/reject-transaction
-   * Từ chối giao dịch ngân hàng
+   * Người dùng từ chối giao dịch ngân hàng
    */
   async rejectTransaction(req, res, next) {
     try {
@@ -76,35 +122,43 @@ const bankController = {
 
   /**
    * POST /api/bank/webhook
-   * Public endpoint, chỉ verify qua Secure-Token
+   * Endpoint tiếp nhận Webhook IPN từ SePay Bank Hub
+   * Xác thực an toàn qua Header: Authorization: ApiKey <KEY>
+   * Phản hồi ngay lập tức trong < 500ms
    */
   async handleWebhook(req, res, next) {
     try {
-      // 1. Verify signature
-      if (!cassoWebhook.verifySignature(req)) {
+      // 1. Xác thực chữ ký/API Key của Webhook (Timing-Safe)
+      const isValid = sepayWebhook.verifySignature(req);
+      if (!isValid) {
+        logger.warn('Unauthorized Webhook attempt on /api/bank/webhook', {
+          ip: req.ip,
+          headers: req.headers,
+        });
         return res.status(401).json({
+          success: false,
           error: 1,
-          message: 'Invalid Secure-Token',
+          message: 'Invalid Webhook Authorization ApiKey',
         });
       }
 
-      // 2. Lấy payload
+      // 2. Đưa payload vào hàng đợi BullMQ để xử lý bất đồng bộ
       const payload = req.body;
-      
-      // 3. Đưa vào hàng đợi
       await bankService.enqueueWebhookJob(payload);
 
-      // 4. Trả về ngay lập tức để webhook không bị timeout
+      // 3. Phản hồi HTTP 200 OK ngay lập tức
       return res.status(200).json({
+        success: true,
         error: 0,
-        message: 'ok',
+        message: 'Webhook received successfully',
       });
     } catch (error) {
       logger.error('Webhook processing error:', { error: error.message, stack: error.stack });
-      // Trả 200 kèm error code để Casso không retry spam vô hạn làm nghẽn hệ thống khi có sự cố nội bộ
+      // Trả 200 kèm error code để tránh retry bão hòa queue nếu lỗi nội bộ
       return res.status(200).json({
+        success: false,
         error: 1,
-        message: 'Webhook received but internal processing encountered an error',
+        message: 'Webhook received but internal queueing failed',
       });
     }
   },

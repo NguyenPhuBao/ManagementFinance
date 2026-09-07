@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
-import { TIME_FILTERS, TIME_FILTER_LABELS } from '../../utils/constants';
+import { TIME_FILTERS, TIME_FILTER_LABELS, STORAGE_KEYS } from '../../utils/constants';
 import adminApi from '../../api/admin.api';
 import Pagination from '../../components/common/Pagination';
 
@@ -479,11 +479,14 @@ const DashboardPage = () => {
   // Lắng nghe Real-time Socket.io
   useEffect(() => {
     const socketUrl = import.meta.env.VITE_SOCKET_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3000' : window.location.origin);
+    const token = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
     const socket = io(socketUrl, {
       path: '/socket.io',
       transports: ['websocket', 'polling'],
       reconnectionAttempts: 5,
+      auth: { token },
     });
+
 
     socket.on('audit_activity', (data) => {
       const newActivity = {

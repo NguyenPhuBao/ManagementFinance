@@ -82,4 +82,4 @@ function authenticateOptional(req, res, next) {
   next();
 }
 
-module.exports = { authenticate, authenticateOptional, invalidateAccountCache };
+module.exports = { authenticate, authenticateOptional, invalidateAccountCache, isAccountValid };

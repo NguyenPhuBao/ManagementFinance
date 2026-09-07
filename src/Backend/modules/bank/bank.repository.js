@@ -1,35 +1,144 @@
+/**
+ * Bank Repository
+ * Quản trị dữ liệu tài khoản ngân hàng và giao dịch trong PostgreSQL (Prisma)
+ */
+
 const { randomUUID } = require('crypto');
 const { prisma } = require('../../config/db');
+const logger = require('../../core/logger');
 
 const bankRepository = {
   /**
-   * Lưu hoặc cập nhật danh sách thẻ ngân hàng lấy từ Casso
-   * CSDL mới: Connect_status in ('Active', 'expired', 'Disconnected'), Id_casso_account unique
+   * Người dùng tự khai báo/đăng ký tài khoản ngân hàng từ Client-app
+   * Tự động tạo bản ghi bank_account và ví wallet Banking
    */
-  async upsertBankAccounts(idaccount, cassoAccountList) {
+  async registerAccount(idaccount, { account_number, bank_name, account_name, balance = 0 }) {
+    const accNumber = String(account_number).trim();
+    const externalId = `acc_${accNumber}`;
+
+    const updateData = {
+      idaccount,
+      id_casso_account: externalId,
+      account_number: accNumber,
+      account_name: account_name || 'Tài khoản ngân hàng',
+      bank_name: bank_name || 'Ngân hàng',
+      balance: Number(balance) || 0,
+      connect_status: 'Active',
+      update_at: new Date(),
+    };
+
+    const upserted = await prisma.bank_account.upsert({
+      where: { id_casso_account: externalId },
+      update: updateData,
+      create: {
+        id_bank_account: randomUUID(),
+        ...updateData,
+      },
+    });
+
+    let wallet = await prisma.wallet.findFirst({
+      where: {
+        idaccount,
+        id_bank_casso: upserted.id_bank_account,
+        delete_at: null,
+      },
+    });
+
+    if (!wallet) {
+      const rawWalletName = `${upserted.bank_name} - ${upserted.account_number}`;
+      const walletName = rawWalletName.length > 100 ? rawWalletName.substring(0, 100) : rawWalletName;
+
+      wallet = await prisma.wallet.create({
+        data: {
+          idwallet: randomUUID(),
+          idaccount,
+          name: walletName,
+          type: 'Banking',
+          id_bank_casso: upserted.id_bank_account,
+          balance: Number(balance) || 0,
+          update_at: new Date(),
+        },
+      });
+      logger.info('Auto-created Banking wallet for registered account', {
+        idaccount,
+        walletName,
+      });
+    }
+
+    return { bank_account: upserted, wallet };
+  },
+
+  /**
+   * Lưu hoặc cập nhật danh sách tài khoản ngân hàng từ SePay / Gateway
+   * Đồng thời tự động sinh ví Banking tương ứng trong bảng wallet nếu chưa có
+   *
+   * @param {number} idaccount User ID
+   * @param {Array<Object>} accountList Danh sách tài khoản
+   */
+  async upsertBankAccounts(idaccount, accountList) {
     const results = [];
-    for (const acc of cassoAccountList) {
-      const cassoAccountId = String(acc.id);
+    for (const acc of accountList) {
+      const sepayAccountId = String(acc.bank_account_xid || acc.id_casso_account || acc.id);
+      const accountNumber = String(acc.account_number || acc.bankSubAccId || acc.accountNumber || 'UNKNOWN');
+      const accountName = String(acc.account_name || acc.holder_name || acc.virtualAccountName || 'Unknown Name');
+      const bankName = String(acc.gateway || acc.bank_name || acc.bankAbbrName || 'Unknown Bank');
+      const balance = acc.accumulated !== undefined ? Number(acc.accumulated) : Number(acc.balance) || 0;
+      const status =
+        acc.status === 'active' || acc.status === 'Active' || acc.connect_status === 'Active'
+          ? 'Active'
+          : 'Expired';
 
       const updateData = {
-        idaccount: idaccount,
-        id_casso_account: cassoAccountId,
-        account_number: acc.bankSubAccId || acc.accountNumber || 'UNKNOWN',
-        account_name: acc.accountName || acc.virtualAccountName || 'Unknown Name',
-        bank_name: acc.bankAbbrName || acc.bankName || 'Unknown Bank',
-        balance: acc.balance || 0,
-        connect_status: 'Active',
+        idaccount,
+        id_casso_account: sepayAccountId,
+        account_number: accountNumber,
+        account_name: accountName,
+        bank_name: bankName,
+        balance,
+        connect_status: status,
         update_at: new Date(),
       };
 
       const upserted = await prisma.bank_account.upsert({
-        where: { id_casso_account: cassoAccountId },
+        where: { id_casso_account: sepayAccountId },
         update: updateData,
         create: {
           id_bank_account: randomUUID(),
           ...updateData,
         },
       });
+
+      // Tự động kiểm tra và khởi tạo ví Banking nếu chưa tồn tại
+      const existingWallet = await prisma.wallet.findFirst({
+        where: {
+          idaccount,
+          id_bank_casso: upserted.id_bank_account,
+          delete_at: null,
+        },
+      });
+
+      if (!existingWallet) {
+        const rawWalletName = `${bankName} - ${accountNumber}`;
+        const walletName = rawWalletName.length > 100 ? rawWalletName.substring(0, 100) : rawWalletName;
+
+        await prisma.wallet.create({
+          data: {
+            idwallet: randomUUID(),
+            idaccount,
+            name: walletName,
+            type: 'Banking',
+            id_bank_casso: upserted.id_bank_account,
+            balance,
+            update_at: new Date(),
+          },
+        });
+        logger.info('Auto-created Banking wallet for linked bank account', {
+          idaccount,
+          bankAccountId: upserted.id_bank_account,
+          walletName,
+        });
+      }
+
       results.push(upserted);
     }
     return results;
@@ -52,7 +161,7 @@ const bankRepository = {
     return prisma.bank_account.update({
       where: { id_casso_account: idCassoAccount },
       data: {
-        balance: balance,
+        balance,
         update_at: new Date(),
       },
     });
@@ -60,7 +169,6 @@ const bankRepository = {
 
   /**
    * Tìm giao dịch dựa trên (provider, bank_tran_id) để tránh duplicate (Webhook)
-   * CSDL mới: bank_tran_id, provider
    */
   async findTransactionByExternalId(provider, externalId) {
     return prisma.transaction.findFirst({
@@ -72,7 +180,7 @@ const bankRepository = {
   },
 
   /**
-   * Tạo transaction mới từ Webhook Casso (mặc định status = Pending chờ người dùng duyệt)
+   * Tạo transaction mới từ Webhook (mặc định status = Pending chờ người dùng duyệt)
    */
   async createTransactionFromWebhook(data) {
     return prisma.transaction.create({
@@ -120,31 +228,37 @@ const bankRepository = {
   },
 
   /**
-   * Xác nhận giao dịch ngân hàng (Duyệt và gán danh mục)
+   * Người dùng xác nhận duyệt giao dịch (Chuyển sang Confirmed)
    */
   async confirmTransaction(idtran, idaccount, { idcategory, note }) {
+    const data = {
+      status: 'Confirmed',
+      update_at: new Date(),
+    };
+    if (idcategory) {
+      data.idcategory = idcategory;
+    }
+    if (note) {
+      data.note = note;
+    }
+
     return prisma.transaction.update({
       where: {
-        idtran: String(idtran),
-        idaccount: Number(idaccount),
+        idtran,
+        idaccount,
       },
-      data: {
-        status: 'Confirmed',
-        idcategory: idcategory || null,
-        ...(note !== undefined ? { note } : {}),
-        update_at: new Date(),
-      },
+      data,
     });
   },
 
   /**
-   * Từ chối giao dịch ngân hàng (Chuyển status sang Rejected)
+   * Người dùng từ chối giao dịch (Chuyển sang Rejected)
    */
   async rejectTransaction(idtran, idaccount) {
     return prisma.transaction.update({
       where: {
-        idtran: String(idtran),
-        idaccount: Number(idaccount),
+        idtran,
+        idaccount,
       },
       data: {
         status: 'Rejected',
@@ -154,39 +268,17 @@ const bankRepository = {
   },
 
   /**
-   * Đánh dấu giao dịch bị lỗi xử lý (Fail)
+   * Đánh dấu giao dịch bị lỗi (Fail)
    */
   async failTransaction(idtran, idaccount) {
     return prisma.transaction.update({
       where: {
-        idtran: String(idtran),
-        idaccount: Number(idaccount),
+        idtran,
+        idaccount,
       },
       data: {
         status: 'Fail',
         update_at: new Date(),
-      },
-    });
-  },
-
-  /**
-   * Tìm bank_account bằng id_casso_account
-   */
-  async findBankAccountByCassoId(cassoAccountId) {
-    return prisma.bank_account.findUnique({
-      where: { id_casso_account: String(cassoAccountId) },
-    });
-  },
-
-  /**
-   * Tìm bank_account bằng account_number
-   */
-  async findBankAccountByAccountNumber(accountNumber) {
-    return prisma.bank_account.findFirst({
-      where: {
-        account_number: String(accountNumber),
-        connect_status: { in: ['Active', 'active'] },
-        delete_at: null,
       },
     });
   },
