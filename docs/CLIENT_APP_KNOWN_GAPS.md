@@ -261,76 +261,45 @@ Xoá vật lý là ngoại lệ có chủ ý của quy tắc 5: hàng `pending` 
 
 ---
 
-### G15 — Bản ghi vừa hết hạn vừa hỏng đồng bộ thì không sửa được · ⏸️ HOÃN CÓ CHỦ Ý (2026-09-04)
+### G15 — Bản ghi vừa hết hạn vừa hỏng đồng bộ thì không sửa được · ✅ ĐÓNG (2026-09-07)
 
-Tab **"Đã hết hạn"** của trang ngân sách khoá cả sửa lẫn xoá — đúng yêu cầu: số liệu đã chốt sổ không được đổi về sau. Nhưng khoá đó không phân biệt "đã chốt sổ" với "hỏng, chưa bao giờ lên tới server".
+Tab **"Đã hết hạn"** của trang ngân sách khoá cả sửa lẫn xoá — đúng yêu cầu: số
+liệu đã chốt sổ không được đổi về sau. Nhưng khoá đó không phân biệt "đã chốt
+sổ" với "hỏng, chưa bao giờ lên tới server".
 
-Một ngân sách rơi vào **cả hai** trạng thái sẽ kẹt không lối thoát: nó không đẩy lên được (backend từ chối vĩnh viễn), và người dùng cũng không mở ra sửa hay xoá được. `SyncEngine` chặn nó theo thời gian nên hàng đợi đồng bộ vẫn thông — các thay đổi khác không bị kéo chậm — nhưng bản ghi đó nằm lại mãi.
+Một ngân sách rơi vào **cả hai** trạng thái kẹt không lối thoát: không đẩy lên
+được (backend từ chối vĩnh viễn), mà cũng không mở ra sửa hay xoá được. **Đã
+gặp thật** ngày 2026-09-04 với một ngân sách bị sửa thành `end = start`, vi phạm
+`chk_budget_end_after_start`; lối thoát duy nhất khi ấy là xoá dữ liệu site của
+trình duyệt rồi pull lại từ server.
 
-**Đã gặp thật** ngày 2026-09-04: một ngân sách bị sửa thành `end = start`, vi phạm `chk_budget_end_after_start`. Cách thoát duy nhất là xoá dữ liệu site của trình duyệt rồi pull lại từ server.
+**Đã sửa 2026-09-07** theo đúng hướng ghi sẵn ở đây: *khoá thao tác là để bảo
+vệ số liệu đã chốt, không phải để nhốt dữ liệu hỏng.*
 
-**Vì sao hoãn.** Người dùng cân nhắc và quyết định giữ nguyên: tab hết hạn là nền cho phần thống kê/báo cáo sẽ làm sau, nới khoá bây giờ sẽ phải tính lại khi làm tới đó.
+- Quy tắc gom về **một nơi**: `domain/budget_locking.dart`,
+  `budgetActionsLocked({expired, budget})`. Trước đó phép kiểm nằm rải **ba**
+  chỗ trong giao diện — chặn vuốt xoá, bỏ nút Sửa trên trang chi tiết, và (chỗ
+  thật sự quyết định) danh sách hết hạn dựng thẻ mà **không truyền** `onEdit`/
+  `onDelete`. Nới hai chỗ đầu mà quên chỗ thứ ba thì không có gì đổi cả.
+- `BudgetEntity` nay mang `syncError` (cột đã có sẵn trong bảng từ G3, chỉ là
+  chưa đưa lên tầng model) và `hasSyncError`.
+- Thẻ hỏng có dấu hiệu riêng — biểu tượng `cloud_off` kèm chữ "Chưa đồng bộ
+  được". **Không** nêu nguyên văn lỗi backend: nó là stack trace hoặc câu
+  tiếng Việt của server, cả hai đều không giúp người dùng làm gì.
+- Dòng thông báo đầu tab đổi theo: câu cũ "không sửa hay xoá" nay chỉ hiện khi
+  **không có** thẻ hỏng. Để nguyên là giao diện nói sai về chính nó — người
+  dùng thấy một thẻ sửa được ngay dưới dòng bảo không sửa được.
 
-**Bán kính rủi ro còn lại — hẹp.** Cần một bản ghi đồng thời hết hạn *và* có lỗi đẩy vĩnh viễn. Nguồn gây lỗi chính đã bị bịt cùng ngày: form không còn tạo ra được `end ≤ start` (ô ngày kết thúc chỉ đọc khi theo chu kỳ, và có phép kiểm thứ tự ngày cho "Ngày cụ thể"). Còn lại là các lỗi vĩnh viễn khác từ backend — `Ownership mismatch`, vi phạm ràng buộc khác, trùng khoá — vốn hiếm và thường đi kèm dữ liệu đã hỏng sẵn.
+**Yêu cầu gốc KHÔNG bị nới.** Ngân sách hết hạn và đồng bộ sạch vẫn khoá y như
+trước. Hai phép canh cho chiều ấy nằm cùng chỗ với phép canh cho ngoại lệ:
+`budget_locking_test.dart` (ca *"hết hạn và đồng bộ sạch thì khoá"*) và
+`budget_tabs_view_test.dart` (ca *"bản ghi SẠCH vẫn khoá, kể cả khi có thẻ
+hỏng"* — mở cả danh sách vì có **một** thẻ hỏng là bỏ luôn yêu cầu gốc mà không
+ai nhận ra).
 
-**Hướng sửa khi quay lại.** Bản ghi có `syncError` phải luôn mở sửa/xoá được, kể cả ở tab hết hạn, kèm dấu hiệu trên thẻ cho biết nó chưa đồng bộ được. Khoá thao tác là để bảo vệ số liệu đã chốt, không phải để nhốt dữ liệu hỏng.
-
----
-
-### ~~G16 — Xoá một danh mục cá nhân mặc định thì nó mọc lại ở mỗi lần mở app~~ · ✅ ĐÃ ĐÓNG (2026-09-05)
-
-Chuỗi năm bước, mỗi bước đều đúng theo ý đồ riêng của nó, nhưng ghép lại thì hỏng:
-
-1. Người dùng xoá một trong 5 danh mục cá nhân mặc định. Xoá mềm, đẩy lên, server đặt `Delete_at`.
-2. Lần mở app sau, `PersonalDefaultCategories.ensureMissing()` chạy (gọi ở `auth_bloc.dart:135` khi đăng nhập và `:176` khi khôi phục phiên).
-3. Hàm đó hỏi `CategoryDao.getNamesInUse()` xem tài khoản còn thiếu gì. Nhưng `getNamesInUse` lọc `isDeleted = false` **và** `deletedAt IS NULL` — nên nó **không thấy hàng người dùng vừa xoá**, và kết luận là còn thiếu.
-4. `_create()` tạo lại danh mục với **UUID mới**, `syncStatus = 'pending'`.
-5. Đẩy lên đụng `uq_category_owner_name_classify` phía PostgreSQL. Index đó **không có mệnh đề `WHERE`** nên hàng đã xoá mềm vẫn giữ chỗ tên → PostgreSQL trả **23505**.
-
-Và bản ghi đó không thoát ra được: `_classifyFailure` (`lib/core/sync/sync_engine.dart`) không có nhánh nào cho vi phạm UNIQUE — chỉ có `23514` cho ràng buộc CHECK — nên 23505 rơi vào `transient` và được **đẩy lại ở mọi chu kỳ**. `_markBlockedById` chỉ chạy với `permanent`, nên bản ghi giữ nguyên `pending` mãi mãi.
-
-**Mỗi lần mở app lại thêm một bản ghi kẹt.**
-
-**Vì sao trước đây không ai thấy.** `getNamesInUse` lọc hàng đã xoá là **cố ý và đúng** — quy tắc 7 nói "hàng đã xoá mềm không giữ chỗ", nên người dùng phải tạo lại được danh mục cùng tên. Lỗi nằm ở chỗ `ensureMissing` dùng nhầm hàm đó để trả lời một câu hỏi khác: *"tài khoản này có chủ ý không muốn danh mục đó không?"* — chứ không phải *"tên này còn trống không?"*.
-
-**Đã làm ở phía client (2026-09-04):** `_classifyFailure` có thêm `_uniqueConstraintPattern` khớp `23505 | violates unique constraint | unique constraint failed` → xếp `permanent`. Bản ghi hỏng nay bị chặn **theo thời gian** thay vì đẩy lại ở mọi chu kỳ, nên nó không còn kích hoạt giãn cách luỹ tiến và không kéo chậm các thay đổi khác. Hai test canh chừng ở `test/core/sync/sync_failure_handling_test.dart` — một cho dạng câu chữ Prisma bọc, một cho mã SQLSTATE trần, vì Prisma đổi cách diễn đạt theo phiên bản.
-
-> ⚠️ Đây là **lớp cầm máu, không phải bản vá gốc**. Bản ghi vẫn được tạo ra ở mỗi lần mở app, chỉ là không còn đẩy lại vô hạn.
-
-**Còn chờ backend:** thêm `WHERE "Delete_at" IS NULL` vào unique index — xem `CATEGORY_NAME_UNIQUENESS.md` mục 4.1 và mục 10 của `2026-09-04-ocr-classify-review.md`. Khi có, bản ghi bị chặn tự quay lại hàng đợi mà người dùng không phải làm gì.
-
-> ### ⚠️ Cập nhật 2026-09-07 — cách đóng đã đổi, nhưng G16 vẫn đóng
->
-> `foldIntoBackendDefaults()` **đã bị gỡ**. Hướng đi đảo chiều: mỗi tài khoản nay
-> có **bản sao riêng** của toàn bộ bộ mặc định (`DefaultCategorySeeder`), còn
-> hàng toàn cục lui về làm khuôn và không hiện ra ở đâu. Để hàm gộp chạy song
-> song với bước sao chép là một vòng lặp huỷ lẫn nhau.
->
-> **Vì sao G16 vẫn không quay lại:** luật tạo bản sao đếm **cả hàng đã xoá mềm**.
-> Người dùng xoá một danh mục thì hàng xoá mềm còn đó, và lượt seed sau nhìn thấy
-> nó nên **không tạo lại**. Ba chữ ấy là khác biệt **duy nhất** với `ensureMissing()`
-> — ai "dọn dẹp" chúng đi là tái hiện nguyên vẹn G16.
->
-> Thiết kế: `docs/superpowers/specs/2026-09-07-per-account-default-categories-design.md`.
->
-> Phần dưới giữ nguyên làm hồ sơ của chặng 2026-09-05.
-
-**Đóng ngày 2026-09-05 — bằng cách bỏ hẳn nguồn kích hoạt.** Câu hỏi mà `ensureMissing` không trả lời được ("chưa từng có" hay "người dùng đã cố tình xoá") nay **không cần trả lời nữa**: backend đã nhận đúng 5 danh mục ấy vào bộ mặc định của nó (`Create_by = 1`, `Is_default = true`), nên không tài khoản nào phải giữ bản riêng.
-
-`ensureMissing()` được thay bằng `foldIntoBackendDefaults()`: gộp bản riêng vào bản mặc định (dời tham chiếu ở cả `transactions`, `budgets`, `bills`) rồi **xoá mềm** bản riêng — và **không tạo mới gì cả**. Danh mục mặc định là toàn cục, không thuộc tài khoản nào, nên không còn gì để "mọc lại" ở mỗi lần mở app.
-
-
-Ba điều kiện dừng, vì gộp là thao tác phá huỷ:
-
-| Tình huống | Xử lý |
-|---|---|
-| Không thấy bản mặc định (backend cũ, hoặc pull hỏng) | Không đụng gì — không tạo, không xoá |
-| Trùng tên nhưng **khác classify** | Không gộp. Quy tắc 7 không tính classify, nên một danh mục người dùng tự tạo có thể trùng tên mà khác loại; gộp nó là âm thầm đổi loại của mọi giao dịch bên trong |
-| Hàng của tài khoản khác | Không đụng. `getNamesInUse` trả cả hàng mặc định của mọi tài khoản nên phép lọc phải nằm ở chính chỗ tìm bản riêng |
-
-~~Test canh chừng: nhóm `foldIntoBackendDefaults` — chín ca.~~ **Nhóm ấy đã bị xoá cùng hàm, 2026-09-07.** Phép canh cho cơ chế hiện tại nằm ở `test/features/category/data/services/default_category_seeder_test.dart` — 13 ca, trong đó ca *"bản sao đã bị xoá mềm thì KHÔNG tạo lại"* chính là phép canh G16.
-
-⚠️ **Phần lệch ràng buộc với CSDL thì KHÔNG đóng.** `uq_category_owner_name_classify` vẫn không có `WHERE "Delete_at" IS NULL`, nên hàng đã xoá mềm vẫn giữ chỗ tên ở PostgreSQL trong khi client cho tạo lại (quy tắc 7). Người dùng xoá rồi tạo lại một danh mục **của chính họ** cùng tên vẫn nhận 23505. Khác biệt là nay nó chỉ xảy ra khi họ thật sự làm điều đó, chứ không tự sinh ở mỗi lần mở app. Lớp cầm máu `_uniqueConstraintPattern` vì thế **giữ nguyên**, đừng gỡ.
+⚠️ Chuỗi `syncError` **rỗng** không tính là hỏng. Vài đường ghi xoá cột ấy về
+rỗng chứ không về `null`; coi rỗng là "đang hỏng" sẽ mở khoá cho **mọi** ngân
+sách hết hạn. Có test canh riêng ca này.
 
 ---
 

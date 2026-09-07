@@ -4,6 +4,7 @@ import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../data/models/budget_entity.dart';
 import '../../domain/budget_pace.dart';
+import '../../domain/budget_locking.dart';
 import '../bloc/budget_state.dart';
 import '../widgets/budget_pace_text.dart';
 import '../widgets/budget_visuals.dart';
@@ -88,6 +89,8 @@ class BudgetTabsView extends StatelessWidget {
               _ExpiredTab(
                 budgets: state.expired,
                 onShowDetail: onShowDetail,
+                onEdit: onEdit,
+                onDelete: onDelete,
               ),
             ],
           ),
@@ -190,7 +193,17 @@ class _ExpiredTab extends StatelessWidget {
   final List<BudgetView> budgets;
   final void Function(BudgetView) onShowDetail;
 
-  const _ExpiredTab({required this.budgets, required this.onShowDetail});
+  /// Chỉ dùng cho bản ghi **chưa lên tới server được** (G15). Ngân sách đã chốt
+  /// sổ vẫn khoá — quyết định nằm ở `budgetActionsLocked`, không ở đây.
+  final void Function(BudgetView) onEdit;
+  final Future<bool> Function(BudgetView) onDelete;
+
+  const _ExpiredTab({
+    required this.budgets,
+    required this.onShowDetail,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -209,15 +222,23 @@ class _ExpiredTab extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _ReadOnlyNotice(),
+          _ReadOnlyNotice(
+            coHongDongBo: budgets.any((v) => v.budget.hasSyncError),
+          ),
           const SizedBox(height: 16),
-          // Không Dismissible, không nút chỉnh: hai thao tác này bị khoá ở đây
-          // và widget test canh đúng chuyện đó.
-          ...budgets.map((v) => _BudgetCard(
-                view: v,
-                onTap: () => onShowDetail(v),
-                expired: true,
-              )),
+          // Không Dismissible, không nút chỉnh — TRỪ bản ghi chưa lên tới
+          // server được (G15). Ngân sách đã chốt sổ vẫn khoá, và widget test
+          // canh cả hai chiều.
+          ...budgets.map((v) {
+            final khoa = budgetActionsLocked(expired: true, budget: v.budget);
+            return _BudgetCard(
+              view: v,
+              onTap: () => onShowDetail(v),
+              expired: true,
+              onEdit: khoa ? null : () => onEdit(v),
+              onDelete: khoa ? null : () => onDelete(v),
+            );
+          }),
           const SizedBox(height: 80),
         ],
       ),
@@ -226,7 +247,11 @@ class _ExpiredTab extends StatelessWidget {
 }
 
 class _ReadOnlyNotice extends StatelessWidget {
-  const _ReadOnlyNotice();
+  /// Có ít nhất một thẻ hết hạn **chưa lên tới server được** (G15) — tức có
+  /// thẻ vẫn sửa/xoá được, nên câu chữ phải đổi theo.
+  final bool coHongDongBo;
+
+  const _ReadOnlyNotice({required this.coHongDongBo});
 
   @override
   Widget build(BuildContext context) {
@@ -236,14 +261,23 @@ class _ReadOnlyNotice extends StatelessWidget {
         color: AppColors.surfaceContainerLow,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: const Row(
+      child: Row(
         children: [
-          Icon(Icons.lock_outline, size: 18, color: AppColors.textSecondary),
-          SizedBox(width: 10),
+          const Icon(Icons.lock_outline,
+              size: 18, color: AppColors.textSecondary),
+          const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Ngân sách đã hết hạn chỉ xem được, không sửa hay xoá.',
-              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              // Câu này từng nói "không sửa hay xoá" cho MỌI thẻ. Từ khi có
+              // ngoại lệ G15, để nguyên là giao diện nói sai về chính nó —
+              // người dùng thấy một thẻ sửa được ngay dưới dòng bảo không sửa
+              // được.
+              coHongDongBo
+                  ? 'Ngân sách đã hết hạn chỉ xem được. Thẻ chưa đồng bộ được '
+                      'thì vẫn sửa hoặc xoá được.'
+                  : 'Ngân sách đã hết hạn chỉ xem được, không sửa hay xoá.',
+              style: const TextStyle(
+                  fontSize: 13, color: AppColors.textSecondary),
             ),
           ),
         ],
@@ -380,7 +414,13 @@ class _BudgetCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final card = _body(context);
     final remove = onDelete;
-    if (expired || remove == null) return card;
+    // Hết hạn thì khoá vuốt xoá — TRỪ bản ghi chưa lên tới server được
+    // (G15). Quy tắc nằm ở `domain/budget_locking.dart`, không cài lại ở
+    // đây: trước kia phép kiểm nằm rải hai chỗ và nới một chỗ là quên chỗ kia.
+    if (budgetActionsLocked(expired: expired, budget: view.budget) ||
+        remove == null) {
+      return card;
+    }
 
     return Dismissible(
       key: ValueKey('budget-dismiss-${view.budget.id}'),
@@ -452,6 +492,30 @@ class _BudgetCard extends StatelessWidget {
                         _subtitle(b),
                         style: TextStyle(fontSize: 14, color: mau),
                       ),
+                      // Dấu hiệu cho bản ghi chưa lên tới server được (G15).
+                      // Không nêu nguyên văn lỗi backend: nó là stack trace
+                      // hoặc câu tiếng Việt của server, cả hai đều không giúp
+                      // người dùng làm gì.
+                      if (b.hasSyncError) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.cloud_off,
+                                size: 14, color: AppColors.expense),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                'Chưa đồng bộ được',
+                                key: ValueKey('budget-sync-error-${b.id}'),
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    fontSize: 12, color: AppColors.expense),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
