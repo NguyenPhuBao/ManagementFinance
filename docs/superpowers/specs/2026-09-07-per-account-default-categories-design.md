@@ -20,7 +20,7 @@ Ba quyết định đã chốt với người dùng:
 | Làm sao biết đã seed rồi, để không seed lại? | **Đếm bản sao, kể cả hàng đã xoá mềm** |
 | Đơn vị của phép đếm | **Theo từng danh mục**, không theo tài khoản — xem mục 4 |
 | Bản sao có kế thừa **nhóm** của bản mặc định không? | **Không** |
-| Bản sao có mang theo **từ khoá phân loại** không? | **Có** — kèm một giới hạn thật, xem mục 10 |
+| Bản sao có mang theo **từ khoá phân loại** không? | **Có**, và từ khoá **phải sống sót** qua cài lại app / máy khác — xem mục 10 |
 | Backend thêm danh mục mặc định thứ 19 về sau thì sao? | **Tài khoản đã seed vẫn nhận bản sao của nó** ở lần chạy kế tiếp |
 
 ## 2. Hiện trạng đo được (2026-09-07)
@@ -204,6 +204,11 @@ còn nằm trên máy người dùng đã cài từ trước.
   truy vấn đã sửa, vì bỏ sót một cái là bỏ sót đúng một màn hình.
 - **Từ khoá được chép sang bản sao**, và chép **không đè** từ khoá người dùng
   đã tự sửa.
+- **Payload đẩy của danh mục mang `keyword`** — và `sync_payload_contract_test.dart`
+  canh chừng nó, vì tên trường sai thì im lặng (quy tắc 4).
+- **Từ khoá sống sót một vòng đẩy–kéo**: đẩy lên rồi xoá CSDL cục bộ và pull lại
+  thì từ khoá của bản sao vẫn còn. Đây là phép canh cho đúng yêu cầu người dùng
+  đặt ra; test đơn vị trên payload **không** đủ để khẳng định điều đó.
 - **Bản sao không thuộc nhóm nào**, và trang nhóm danh mục chịu được hàng
   membership trỏ vào một bản mặc định đã bị ẩn.
 - **Danh mục mặc định thứ 19 xuất hiện sau khi tài khoản đã seed** → lần chạy
@@ -213,34 +218,59 @@ còn nằm trên máy người dùng đã cài từ trước.
   ai đó định thêm từ khoá vào đường đẩy thì phải sửa hợp đồng cùng lúc, nếu
   không tên trường sai sẽ **im lặng** (quy tắc 4 của `CLAUDE.md`).
 
-## 10. Từ khoá phân loại — chép, nhưng chỉ đi được một chiều
+## 10. Từ khoá phân loại — chép, VÀ đưa vào đường đẩy
 
-**Đã chốt: bản sao mang theo từ khoá của bản mặc định.**
+**Đã chốt: bản sao mang theo từ khoá, và từ khoá phải sống sót qua cài lại app
+hoặc đăng nhập máy khác.**
 
-Cơ chế: khi tạo bản sao, đọc `getKeywords(idaccount, <id bản mặc định>)` rồi
-`replaceKeywords()` cho bản sao. Cả hai hàm đã có ở `CategoryDao`. Khoá duy nhất
-của bảng là `(idaccount, categoryId, normalizedKeyword)` nên chép sang một
-`categoryId` mới không đụng gì.
+Vế thứ hai **làm được, và thuần client** — kiểm ngày 2026-09-07:
 
-⚠️ **Giới hạn thật, đo được 2026-09-07:** payload đẩy của danh mục có **đúng 5
-trường** — `namecategory`, `classify`, `icon`, `colour`, `is_default`
-(`sync_engine.dart:954` và `:1028`). **Không có `keyword`.** Backend lưu từ khoá
-thành một chuỗi nối bằng dấu phẩy **trên chính hàng category**, và client chỉ
-**đọc** chuỗi ấy khi pull (`_gieoTuKhoaKhiTrong`), không bao giờ ghi ngược lên.
+| Chặng | Trạng thái |
+|---|---|
+| Cột `Keyword` trong bảng `category` | **có thật** (`schema.prisma:113`, `@db.Text`) |
+| `/sync/push` nhánh **tạo** | **đã nhận** — `keyword: mapped.keyword \|\| null` (`sync.repository.js:133`) |
+| `/sync/push` nhánh **cập nhật** | **đã nhận** — `keyword: mapped.keyword !== undefined ? … : existing.keyword` (`:153`) |
+| `mapEntityFields('category')` | truyền `keyword` qua **không đổi tên** |
+| Pull | **đã đọc** — tách chuỗi nối bằng dấu phẩy rồi `_gieoTuKhoaKhiTrong` |
+| **Payload đẩy của client** | ❌ **thiếu** — chỉ có `namecategory`, `classify`, `icon`, `colour`, `is_default` (`sync_engine.dart:954` và `:1028`) |
 
-Nghĩa là từ khoá của bản sao **chỉ sống trên máy đã seed**. Máy thứ hai, hoặc
-chính máy ấy sau khi cài lại app, sẽ kéo bản sao về với chuỗi `Keyword` rỗng và
-từ khoá biến mất — **không có lỗi nào báo ra**, bộ gợi ý chỉ đơn giản kém đi.
+Nên việc phải làm là **thêm `keyword` vào payload đẩy**, nối các từ khoá bằng
+dấu phẩy đúng như backend đang lưu. Không cần backend làm gì.
 
-Đây không phải thứ sửa được ở client: xem `docs/superpowers/backend/CAN-LAM/CATEGORY_KEYWORD_SYNC.md`,
-vốn đã xin backend đưa từ khoá vào đường đồng bộ (kèm một lỗ hổng phân quyền
-cần vá cùng lúc). Cho tới khi việc ấy xong, đây là **suy giảm chấp nhận được**,
-không phải lỗi — nhưng phải ghi lại để người sau không đi tìm nguyên nhân ở sai
-chỗ.
+⚠️ **Bắt buộc cập nhật `sync_payload_contract_test.dart` trong CÙNG lần sửa** —
+quy tắc 4 của `CLAUDE.md`: tên trường sai thì **im lặng**, không báo lỗi.
+
+⚠️ **Rủi ro ghi đè phải cân nhắc khi thi công.** Backend cũng tự ghi vào cột ấy:
+`recordFeedback()` → `appendCategoryKeyword()` **nối thêm** từ khoá học được từ
+phản hồi người dùng. Client đẩy lên một danh sách đầy đủ là **thay cả chuỗi**,
+nên từ khoá server vừa học có thể bị xoá. Cần quyết ở bước lập kế hoạch: chỉ đẩy
+khi client thật sự có thay đổi, hay hợp nhất hai danh sách trước khi đẩy.
+
+**Một tác dụng phụ tốt:** `appendCategoryKeyword()` không đối chiếu chủ sở hữu
+(lỗ hổng ở mục 4 `CATEGORY_KEYWORD_SYNC.md`), nên phản hồi trên một danh mục
+**mặc định** hiện ghi vào hàng **mọi người cùng đọc**. Sau thay đổi này người
+dùng không còn dùng hàng mặc định nữa, nên bán kính của lỗ hổng ấy **hẹp lại** —
+nhưng nó **chưa được vá**, và tài liệu backend vẫn phải làm.
 
 `_gieoTuKhoaKhiTrong` chỉ gieo khi danh mục **chưa có** từ khoá nào, nên nó
 không đè lên thứ người dùng đã tự sửa. Đường chép ở bước seed phải giữ đúng tính
 chất ấy.
+
+### ⚠️ Phát hiện kèm theo: màu danh mục KHÔNG có chỗ trên server
+
+Bảng `category` có đúng 12 cột và **không có cột màu**:
+`Idcategory, Create_by, NameCategory, Classify, Is_default, Is_group, Idgroup,
+Keyword, Icon, Create_at, Update_at, Delete_at`.
+
+Client vẫn đẩy `colour` lên (normalizer đổi thành `color`), và backend **bỏ qua
+im lặng** — đúng kiểu hỏng mà quy tắc 4 mô tả. Nghĩa là **màu của bản sao cũng
+chỉ sống trên máy đã seed**, y hệt vấn đề từ khoá vừa gỡ, nhưng lần này **không
+gỡ được ở client** vì không có cột để ghi vào.
+
+Đây là lỗi **có sẵn từ trước**, không phải do thay đổi này sinh ra, và nằm ngoài
+phạm vi spec. Ghi lại vì nó sẽ lộ ra ngay khi ai đó kiểm "bản sao có giống bản
+mặc định không" trên máy thứ hai. Muốn sửa thì cần một tài liệu xin backend thêm
+cột — chưa viết.
 
 ## 11. Danh mục mặc định thêm về sau
 
