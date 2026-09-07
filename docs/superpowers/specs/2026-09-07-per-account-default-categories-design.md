@@ -19,6 +19,9 @@ Ba quyết định đã chốt với người dùng:
 | Sau khi có bản sao, bản mặc định toàn cục còn hiện không? | **Ẩn hẳn — cho MỌI tài khoản, không điều kiện.** Bản mặc định chỉ còn là khuôn để sao chép |
 | Làm sao biết đã seed rồi, để không seed lại? | **Đếm bản sao, kể cả hàng đã xoá mềm** |
 | Đơn vị của phép đếm | **Theo từng danh mục**, không theo tài khoản — xem mục 4 |
+| Bản sao có kế thừa **nhóm** của bản mặc định không? | **Không** |
+| Bản sao có mang theo **từ khoá phân loại** không? | **Có** — kèm một giới hạn thật, xem mục 10 |
+| Backend thêm danh mục mặc định thứ 19 về sau thì sao? | **Tài khoản đã seed vẫn nhận bản sao của nó** ở lần chạy kế tiếp |
 
 ## 2. Hiện trạng đo được (2026-09-07)
 
@@ -172,14 +175,13 @@ còn nằm trên máy người dùng đã cài từ trước.
 
 - **Backend phình 18 hàng mỗi tài khoản.** Đây là thay đổi thật về dữ liệu, đã
   nói rõ với người dùng và được chấp nhận.
-- **Nhóm danh mục không đi theo.** `CategoryGroupMemberships` không đồng bộ
-  được (**G10**, chặn ở backend), nên bản sao **không** kế thừa việc bản mặc
-  định thuộc nhóm nào. Cần quyết: gán lại nhóm ở client khi tạo bản sao, hay
-  để trống.
-- **Từ khoá phân loại.** Bảng `CategoryKeywords` gắn theo `idaccount`; phải
-  kiểm bản sao có mang theo từ khoá của bản mặc định không, và có nên mang
-  không. `CATEGORY_KEYWORD_SYNC.md` ghi rằng vùng này còn một lỗ hổng phân
-  quyền phía backend.
+- **Nhóm danh mục không đi theo — đã chốt.** Bản sao được tạo **không thuộc
+  nhóm nào**. `CategoryGroupMemberships` không đồng bộ được (**G10**, chặn ở
+  backend) nên việc gán nhóm chỉ tồn tại trên một máy; kế thừa nó sẽ là chép
+  một thứ vốn đã không đi đâu.
+  ⚠️ Hệ quả phải xử lý: hàng membership đang trỏ vào **bản mặc định** sẽ trỏ
+  vào một danh mục không còn hiện ra. Trang nhóm danh mục phải chịu được điều
+  đó, hoặc những hàng ấy phải được dọn cùng lúc.
 - **Đường ghi khác vẫn tạo được dữ liệu vi phạm.** Quy tắc trùng tên hiện chỉ
   client thi hành; `/sync/push` **chưa kiểm gì cả**. 18 hàng mới mỗi tài khoản
   đi qua đúng đường đó.
@@ -200,12 +202,55 @@ còn nằm trên máy người dùng đã cài từ trước.
   trả `null` và giao dịch kẹt vĩnh viễn.
 - **Truy vấn danh sách không còn trả hàng `idaccount = 0`** — một test cho mỗi
   truy vấn đã sửa, vì bỏ sót một cái là bỏ sót đúng một màn hình.
+- **Từ khoá được chép sang bản sao**, và chép **không đè** từ khoá người dùng
+  đã tự sửa.
+- **Bản sao không thuộc nhóm nào**, và trang nhóm danh mục chịu được hàng
+  membership trỏ vào một bản mặc định đã bị ẩn.
+- **Danh mục mặc định thứ 19 xuất hiện sau khi tài khoản đã seed** → lần chạy
+  kế tiếp tạo đúng **một** bản sao cho nó, không đụng 18 bản đã có.
 - Cập nhật `sync_payload_contract_test.dart` nếu payload đẩy đổi hình dạng.
+  ⚠️ Payload danh mục hiện có **đúng 5 trường** và **không** có `keyword` — nếu
+  ai đó định thêm từ khoá vào đường đẩy thì phải sửa hợp đồng cùng lúc, nếu
+  không tên trường sai sẽ **im lặng** (quy tắc 4 của `CLAUDE.md`).
 
-## 10. Việc chưa quyết
+## 10. Từ khoá phân loại — chép, nhưng chỉ đi được một chiều
 
-1. Bản sao có kế thừa **nhóm** của bản mặc định không (G10 chặn đường đồng bộ).
-2. Bản sao có mang theo **từ khoá phân loại** không.
-3. Có cần một đường dọn cho tài khoản đã seed rồi mà backend về sau **thêm**
-   danh mục mặc định thứ 19 không — luật hiện tại sẽ tạo bản sao cho nó ở lần
-   chạy kế tiếp, và đó có thể là điều mong muốn hoặc không.
+**Đã chốt: bản sao mang theo từ khoá của bản mặc định.**
+
+Cơ chế: khi tạo bản sao, đọc `getKeywords(idaccount, <id bản mặc định>)` rồi
+`replaceKeywords()` cho bản sao. Cả hai hàm đã có ở `CategoryDao`. Khoá duy nhất
+của bảng là `(idaccount, categoryId, normalizedKeyword)` nên chép sang một
+`categoryId` mới không đụng gì.
+
+⚠️ **Giới hạn thật, đo được 2026-09-07:** payload đẩy của danh mục có **đúng 5
+trường** — `namecategory`, `classify`, `icon`, `colour`, `is_default`
+(`sync_engine.dart:954` và `:1028`). **Không có `keyword`.** Backend lưu từ khoá
+thành một chuỗi nối bằng dấu phẩy **trên chính hàng category**, và client chỉ
+**đọc** chuỗi ấy khi pull (`_gieoTuKhoaKhiTrong`), không bao giờ ghi ngược lên.
+
+Nghĩa là từ khoá của bản sao **chỉ sống trên máy đã seed**. Máy thứ hai, hoặc
+chính máy ấy sau khi cài lại app, sẽ kéo bản sao về với chuỗi `Keyword` rỗng và
+từ khoá biến mất — **không có lỗi nào báo ra**, bộ gợi ý chỉ đơn giản kém đi.
+
+Đây không phải thứ sửa được ở client: xem `docs/superpowers/backend/CAN-LAM/CATEGORY_KEYWORD_SYNC.md`,
+vốn đã xin backend đưa từ khoá vào đường đồng bộ (kèm một lỗ hổng phân quyền
+cần vá cùng lúc). Cho tới khi việc ấy xong, đây là **suy giảm chấp nhận được**,
+không phải lỗi — nhưng phải ghi lại để người sau không đi tìm nguyên nhân ở sai
+chỗ.
+
+`_gieoTuKhoaKhiTrong` chỉ gieo khi danh mục **chưa có** từ khoá nào, nên nó
+không đè lên thứ người dùng đã tự sửa. Đường chép ở bước seed phải giữ đúng tính
+chất ấy.
+
+## 11. Danh mục mặc định thêm về sau
+
+**Đã chốt: tài khoản đã seed vẫn nhận bản sao của danh mục mặc định mới.**
+
+Việc này **không cần cơ chế riêng** — luật ở mục 4 đã cho sẵn: danh mục mặc định
+thứ 19 xuất hiện thì tài khoản chưa từng có bản sao cùng (tên, `classify`), nên
+lần chạy kế tiếp tạo một bản. Đừng thêm một "đường dọn" thứ hai cho việc này;
+hai cơ chế cùng tạo danh mục là đúng cách G16 và G14 đã sinh ra.
+
+Điều đi kèm: bước seed vì thế **không phải việc chỉ chạy một lần**, mà là một
+phép đối chiếu chạy sau **mọi** lần pull. Tính luỹ đẳng ở mục 4 là thứ khiến
+điều đó an toàn, và là thứ tuyệt đối không được làm hỏng.
