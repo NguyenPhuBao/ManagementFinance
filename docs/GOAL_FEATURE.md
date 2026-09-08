@@ -309,9 +309,25 @@ dùng sang máy khác, **trạng thái thi hành** (số tiền, ví nguồn, đ
 nó trích lúc 21 giờ. Biểu mẫu nói thẳng điều này ngay dưới ô chọn giờ thay vì để
 người dùng tự phát hiện.
 
-⚠️ **Nhịp bước từng kỳ một từ mốc neo**, nên mốc rơi vào ngày 31 sẽ bị kẹp về
-28/02 rồi bước tiếp **từ đó** — tức nhịp trôi dần chứ không quay lại ngày 31.
-Bảng chọn ngày báo trước điều này.
+✅ **Nhịp neo vào mốc gốc, không trôi** (sửa 2026-09-08). Mốc rơi vào ngày 31 bị
+kẹp về 28/02 ở tháng ngắn — đúng — nhưng kỳ sau **quay lại ngày 31**:
+
+```
+31/01 → 28/02 → 31/03 → 30/04 → 31/05
+```
+
+Bản trước bước **từng kỳ một** từ mốc trước đó, nên sau khi kẹp xuống 28 nó bước
+tiếp *từ 28* và nhịp tụt vĩnh viễn, hoàn toàn im lặng. Nay mọi mốc tính từ mốc
+gốc qua `mocThuN(goc, chuKy, n)` — cùng khuôn `advancePeriodFrom(anchor, steps)`
+bên ngân sách và `anchorDay` bên hoá đơn, nên ba vùng ngày tháng của app nói
+cùng một thứ tiếng.
+
+Mốc gốc là `timeCycleTakeMoney` (lựa chọn của người dùng). Mục tiêu bật trước
+khi có ô chọn ấy thì gốc rơi về `autoDepositLastRun`, tức giữ nguyên hành vi cũ.
+
+⚠️ `kyKeTiep` — dùng để đặt lịch nhắc trước — phải dùng **đúng phép dựng mốc
+này**. Hai bên trôi khác nhau là điện thoại nhắc một ngày còn tiền bị trừ vào
+ngày khác.
 
 ### Lời nhắc khi app đóng
 

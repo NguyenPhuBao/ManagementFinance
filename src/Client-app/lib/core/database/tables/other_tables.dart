@@ -238,12 +238,22 @@ class Goals extends Table {
   /// cycleTakeMoney: chu kỳ trích tiền — 'Day'|'Week'|'Month'|'Quarter'|'Year'
   TextColumn get cycleTakeMoney => text().nullable()();
 
-  /// timeCycleTakeMoney: thời điểm cụ thể trích tiền trong chu kỳ
+  /// timeCycleTakeMoney: thời điểm cụ thể trích tiền trong chu kỳ — **mốc neo**
+  /// quyết định *nhịp* ("ngày 15 hàng tháng lúc 08:00").
   ///
-  /// ⚠️ Cột này đồng bộ hai chiều nhưng **client chưa bao giờ ghi**. Bộ trích
-  /// tự động cố ý KHÔNG dùng nó làm mốc chạy: nó là cột dùng chung với
-  /// backend/Admin-web, và đổi ý nghĩa một cột dùng chung mà phía kia chưa
-  /// đồng ý là cách hỏng im lặng nhất. Mốc chạy nằm ở [autoDepositLastRun].
+  /// ⚠️ Đừng lẫn với mốc **chạy**: cột này nói kỳ rơi vào lúc nào, còn
+  /// [autoDepositLastRun] nói đã trích tới đâu. Bộ trích cần **cả hai** — chỉ
+  /// có nhịp thì chọn "ngày 1" vào ngày 15 sẽ trích bù cho mùng 1 vừa trôi qua;
+  /// chỉ có mốc chạy thì lựa chọn của người dùng không có tác dụng nào, im
+  /// lặng. Xem `cacKyDenHan`.
+  ///
+  /// Từ 2026-09-08 nó cũng là **mốc gốc** để tính kỳ thứ n (`mocThuN`), thay
+  /// cho việc cộng dồn từ kỳ trước vốn làm nhịp "ngày 31" tụt xuống 28 vĩnh
+  /// viễn sau tháng Hai.
+  ///
+  /// (Chú thích cũ ở đây ghi *"client chưa bao giờ ghi"* — **sai từ lâu**:
+  /// `GoalRepositoryImpl` ghi nó ở cả đường tạo lẫn đường sửa khi bật trích tự
+  /// động.)
   DateTimeColumn get timeCycleTakeMoney => dateTime().nullable()();
 
   // ── Trích tiền tự động (DB v15) ───────────────────────────────────────────

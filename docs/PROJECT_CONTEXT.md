@@ -664,7 +664,10 @@ src/Backend/
   > **Đã kiểm trên `emulator-5554`**: form Thêm hoá đơn định kỳ, chọn 28/02/2026 → ô hạn hiện **28/03/2026**. Migration v17→v18 chạy êm trên CSDL thật đang có dữ liệu.
   > Đã cân nhắc và **loại RRULE (RFC 5545)**: đặc tả bỏ qua occurrence rơi vào ngày không tồn tại, nên `FREQ=MONTHLY;BYMONTHDAY=31` **không sinh kỳ nào cho tháng Hai** — hoá đơn biến mất. Lý lẽ đầy đủ ở mục 5 tài liệu xin backend.
   > Bài học quá trình: lần đầu điều tra tôi tìm thấy quy tắc ấy được ghi là "đánh đổi có chủ ý, quyết định 2026-09-04" mô tả **đúng** ca người dùng gặp, nên kết luận đây không phải lỗi. Sai. Lý lẽ biện minh cho nó (*"chuỗi mất mốc gốc để neo"*) **không thành lập ở kỳ đầu tiên**, nơi mốc gốc chính là ngày người dùng vừa chọn. Một quyết định có chủ ý chỉ chứng minh ai đó đã cân nhắc **một** tình huống, không chứng minh nó đúng ở **mọi đường dẫn** tới đoạn mã ấy.
-- **Test: 1424/1424 pass** (~85 giây) — đều đã `git add -f` (kiểm 2026-09-08)
+- **Mục tiêu: nhịp trích tự động neo vào mốc gốc, không còn trôi** (2026-09-08, **schema không đổi**). Cùng bệnh với hoá đơn, phát hiện khi rà soát: `cacKyDenHan` và `kyKeTiep` bước **từng kỳ một** từ mốc trước đó, nên mốc "ngày 31" bị kẹp về 28/02 rồi bước tiếp *từ 28* — nhịp tụt xuống 28 vĩnh viễn, im lặng. Nay mọi mốc tính từ mốc gốc qua `mocThuN(goc, chuKy, n)`: `31/01 → 28/02 → 31/03 → 30/04`. Mốc gốc là `timeCycleTakeMoney`; mục tiêu bật trước khi có ô chọn ấy thì gốc rơi về `autoDepositLastRun`, giữ nguyên hành vi cũ. Lý do ở **mục 3.12 `docs/GOAL_FEATURE.md`**. 7 test mới.
+  > Chú thích cũ ở cột `Goals.timeCycleTakeMoney` ghi *"client chưa bao giờ ghi"* — **sai từ lâu**: `GoalRepositoryImpl` ghi nó ở cả đường tạo lẫn đường sửa khi bật trích tự động. Đã sửa lại chú thích; nó từng là lý do tin rằng mốc neo không dùng được làm gốc.
+  > Mức nghiêm trọng thấp hơn hoá đơn có chủ ý được ghi lại: trích tự động chỉ chuyển tiền giữa hai ví **của chính người dùng**, sớm vài ngày không lỡ cam kết với ai. Hoá đơn thì "ngày trả tiền nhà" là ngày với người khác.
+- **Test: 1431/1431 pass** (~55 giây) — đều đã `git add -f` (kiểm 2026-09-08)
 
 ### 🔄 Việc còn dang dở
 
