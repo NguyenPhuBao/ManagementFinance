@@ -25,6 +25,7 @@ NotificationGroup nhomCua(NotificationKind kind) {
     case NotificationKind.goalCompleted:
     case NotificationKind.goalCycleReady:
     case NotificationKind.goalBehind:
+    case NotificationKind.goalMilestone:
     case NotificationKind.goalAutoDeposited:
     case NotificationKind.goalAutoDepositFailed:
       return NotificationGroup.goal;
@@ -65,6 +66,10 @@ bool luonBao(NotificationKind kind) {
     case NotificationKind.goalCompleted:
     case NotificationKind.goalCycleReady:
     case NotificationKind.goalBehind:
+    // Cột mốc là lời ghi nhận, không phải báo tiền rời ví — nên nó **chịu**
+    // công tắc nhóm Mục tiêu như ba loại trên. Nới danh sách `luonBao` ra cho
+    // nó là làm đúng cái việc mà cảnh báo ở đầu hàm này cấm.
+    case NotificationKind.goalMilestone:
     case NotificationKind.syncFailed:
     case NotificationKind.walletNegative:
     case NotificationKind.walletLowBalance:

@@ -177,7 +177,7 @@ void main() {
           updatedAt: DateTime(2026, 9, 1),
         );
 
-    /// Một đầu vào cố tình dựng đủ rộng để bộ luật sinh ra **cả 14 loại**.
+    /// Một đầu vào cố tình dựng đủ rộng để bộ luật sinh ra **cả 15 loại**.
     List<NotificationCandidate> tatCaUngVien() =>
         buildNotificationCandidates(NotificationRuleInput(
           now: now,
@@ -191,7 +191,11 @@ void main() {
           ],
           goals: [
             mucTieu(id: 'mt-xong', current: 10000000, lapLai: true),
+            // 20% — dưới mốc 25 nên hàng này CHỈ sinh `goalBehind`. Nâng nó
+            // lên cho tiện là mất luôn ca "trễ mà chưa tới mốc nào".
             mucTieu(id: 'mt-tre', current: 2000000),
+            // 50% — hàng duy nhất sinh `goalMilestone`.
+            mucTieu(id: 'mt-moc', current: 5000000),
           ],
           wallets: [
             vi(id: 'vi-am', soDu: -50000),
@@ -237,7 +241,7 @@ void main() {
           syncFailed: true,
         ));
 
-    test('đầu vào của phép canh phủ đủ cả 14 loại thông báo', () {
+    test('đầu vào của phép canh phủ đủ cả 15 loại thông báo', () {
       final phu = tatCaUngVien().map((c) => c.kind).toSet();
 
       expect(phu, containsAll(NotificationKind.values),
@@ -304,7 +308,7 @@ void main() {
       expect(payload, 'billOpen:hd1');
       expect(deeplinkTuDedupeKey(payload!), '/bills/hd1',
           reason: 'Cú CHẠM thường vẫn mở /bills — đó là cột deeplink bộ luật '
-              'đặt và có phép canh cả 14 loại. Nhưng cái NÚT đã biết chính xác '
+              'đặt và có phép canh cả 15 loại. Nhưng cái NÚT đã biết chính xác '
               'hoá đơn nào, nên đổ về danh sách là vứt đi thông tin đang cầm.');
       expect(thuocThanhTab('/bills/hd1'), false,
           reason: '/bills/<id> nằm ngoài StatefulShellRoute nên phải `push`. '

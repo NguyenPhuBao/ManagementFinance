@@ -599,6 +599,42 @@ câu "chưa có ví nào" — câu ấy sẽ là một lời nói dối khi tài
 ví. Trạng thái này **chưa xem trên máy thật**: dựng nó đòi xoá bớt ví của dữ liệu
 đang có.
 
+### 3.21 Cột mốc tiến độ: báo **mốc cao nhất**, và khoá theo vòng
+
+Trước 2026-09-08 app chỉ lên tiếng về một mục tiêu ở **hai** thời điểm: đạt
+100% (`goalCompleted`) và khi chậm tiến độ (`goalBehind`). Người dùng đi ba
+phần tư chặng đường mà không được ghi nhận gì — xem mục 10.4.
+
+`goalMilestone` lấp chỗ ấy với ba mốc **25 / 50 / 75**.
+
+**Không có mốc 100** trong `_mocTienDo`: `goalCompleted` đã lo mốc ấy, và mục
+tiêu đạt đủ tiền còn không đi tới được đoạn mã này (nhánh `daHoanThanh` đã
+`continue` phía trên). Thêm vào là hai lời chúc mừng cho cùng một việc.
+**Không có mốc dưới 25** vì gần như mọi mục tiêu vượt ngay ở khoản nạp đầu
+tiên, và một lời chúc mừng ai cũng nhận được thì không còn là lời chúc mừng.
+
+**Vượt nhiều mốc cùng lúc thì chỉ báo mốc cao nhất.** Nạp một phát từ 10% lên
+80% vượt cả ba; bắn ba tin cho MỘT thao tác là ồn, và chỉ mốc cao nhất mang
+tin mới. Hằng số `_mocTienDo` vì thế **xếp giảm dần** — `_mocDaVuot` lấy phần
+tử đầu tiên khớp, nên đảo thứ tự sẽ luôn trả 25 và hai mốc kia chết lặng.
+
+**Khoá chống trùng theo khuôn `goalCycle:`, cố ý KHÁC khuôn `goalDone:`** —
+`goalMilestone:<id>:<startDate>:<mốc>`. Đây đúng là cái bẫy đã ghi ở mục 3.17:
+`goalDone:<id>` không mang mốc thời gian vì "một mục tiêu chỉ hoàn thành một
+lần trong đời", và mục tiêu **lặp lại** phá đúng giả định ấy. Cột mốc thì mỗi
+vòng phải báo lại, nên nó gắn `startDate` — cột mà `batDauVongMoi` đặt lại.
+Đoạn `:<mốc>` ở cuối là thứ giữ cho ba mốc không nuốt nhau.
+
+⚠️ **Luật phải đứng TRƯỚC phép kiểm `isBehindSchedule`** trong
+`_goalCandidates`. Dòng ấy `continue` cho mọi mục tiêu đang đúng nhịp, nên đặt
+cột mốc sau nó thì **chỉ mục tiêu đang TRỄ mới được ghi nhận quãng đã đi** —
+đúng ngược ý định, và im lặng. Đã dựng bản sai có chủ ý để kiểm: **3 test đỏ**,
+nên lưới này có thật.
+
+Cột mốc **chịu công tắc nhóm** Mục tiêu (`luonBao` trả `false`): nó là lời ghi
+nhận, không phải tin "tiền vừa rời ví". Nới `luonBao` ra cho nó là làm đúng
+việc mà cảnh báo ở đầu hàm ấy cấm.
+
 ---
 
 ## 4. Bảy cái bẫy
@@ -770,10 +806,11 @@ quyết định **tiền đi đâu** — ba lý do khiến nó không nên là c
 
 ## 9. Kiểm thử
 
-**279 test** riêng cho mục tiêu, trên tổng **1431** của dự án (đếm lại
-2026-09-08 bằng cách chạy thật `flutter test test/features/goal
-test/core/notification/notification_rules_goal_wallet_test.dart`; con số cũ ghi
-ở đây là 222/893 và đã lạc hậu — **đừng chép lại từ trí nhớ**).
+**289 test** riêng cho mục tiêu, trên tổng **1441** của dự án (đếm lại
+2026-09-08 sau khi thêm luật cột mốc, bằng cách chạy thật `flutter test
+test/features/goal test/core/notification/notification_rules_goal_wallet_test.dart`;
+con số ghi ở đây trước đó là 222/893 và đã lạc hậu — **đừng chép lại từ trí
+nhớ**).
 
 | Tệp | Canh gì |
 |---|---|
@@ -790,7 +827,7 @@ test/core/notification/notification_rules_goal_wallet_test.dart`; con số cũ g
 | `goal_auto_deposit_test.dart` | Bước kỳ (tháng ngắn, **năm nhuận**), **mốc neo**, trần số kỳ, quyết định trích. Từ 2026-09-08 canh thêm: **nhịp neo vào mốc gốc, không trôi** — ngày 31 kẹp ở tháng ngắn rồi **quay lại** 31, ngày 30 không bị kéo lên cuối tháng, `kyKeTiep` dùng chung nhịp, và mục tiêu chưa có mốc neo vẫn chạy như trước |
 | `goal_auto_deposit_runner_test.dart` | Trích bù nhiều kỳ, ví cạn giữa chừng, cấu hình hỏng, cách ly tài khoản |
 | `core/notification/reminder_scheduler_test.dart` | Lịch nhắc kỳ trích: đúng mốc kỳ, trùng khoá thông báo, và **không huỷ lịch hoá đơn** |
-| `core/notification/notification_rules_goal_wallet_test.dart` | Hai luật thông báo |
+| `core/notification/notification_rules_goal_wallet_test.dart` | Hai luật thông báo. Từ 2026-09-08 canh thêm **cột mốc** (mục 3.21): mốc cao nhất, ba khoá riêng, khoá gắn `startDate` cho mục tiêu lặp lại, và ca **vừa ở cột mốc vừa chậm tiến độ** — ca duy nhất bắt được việc đặt luật sai chỗ |
 
 ### ⚠️ Ba thứ bộ test **không** bắt được ở vùng này
 
@@ -880,8 +917,8 @@ bỏ qua chứ đừng chuyển một phần, phải có trần mỗi lượt, v
 
 | Hạng | Việc | Vì sao ở đây |
 |---|---|---|
-| 1 | **Ưu tiên mục tiêu** | Việc **duy nhất** mà backend đã làm xong phần của họ và client chưa nhận. Quy ước giá trị đã chốt sẵn |
-| 1 | **Cột mốc 25/50/75%** | Chỉ thêm luật vào `notification_rules.dart`; hạ tầng khử trùng đã có |
+| 🔨 | **Ưu tiên mục tiêu** | **Đang làm 2026-09-08.** Việc duy nhất mà backend đã làm xong phần của họ và client chưa nhận; quy ước giá trị chốt sẵn ở `DA-XONG/2026-09-05-backend-goal-priority.md` mục 4 |
+| ✅ | ~~**Cột mốc 25/50/75%**~~ | **Xong 2026-09-08** — `goalMilestone`, mục **3.21** |
 | 1 | **Đưa mục tiêu lên màn hình chính** | Hiện chỉ vào được qua một mục trong drawer của `home_page` — một tính năng làm kỹ tới mức này mà bị chôn ba lớp |
 | 2 | **Làm tròn số lẻ** | Giá trị cao và hợp văn hoá "nuôi heo đất", nhưng là chỗ **thứ ba** app tự chuyển tiền — xem cảnh báo ở 10.2 |
 | 2 | **Chuyển giữa hai mục tiêu** | Một hàm gọi `withdraw` + `deposit` trong cùng khối nguyên tử |

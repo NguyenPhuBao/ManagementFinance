@@ -18,6 +18,7 @@ enum NotificationKind {
   goalCompleted,
   goalCycleReady,
   goalBehind,
+  goalMilestone,
   goalAutoDeposited,
   goalAutoDepositFailed,
   syncFailed,
@@ -317,6 +318,33 @@ List<NotificationCandidate> _billCandidates(NotificationRuleInput input) {
 /// `notification_deeplink_test.dart` canh chỗ đó.
 String goalDeeplink(String goalId) => '/goals/$goalId';
 
+/// Các mốc tiến độ được ghi nhận, phần trăm, **xếp giảm dần**.
+///
+/// Thứ tự giảm dần không phải để cho đẹp: [_mocDaVuot] lấy phần tử **đầu tiên**
+/// khớp, nên đảo thứ tự sẽ luôn trả về 25 và hai mốc còn lại chết lặng.
+///
+/// Cố ý **không có 100**: mốc ấy đã có `goalCompleted` lo, và mục tiêu đạt đủ
+/// tiền còn không đi tới được đoạn mã này (nhánh `daHoanThanh` đã `continue`).
+/// Thêm 100 vào đây là hai lời chúc mừng cho cùng một việc.
+///
+/// Cũng cố ý **không có mốc dưới 25**: gần như mọi mục tiêu đều vượt ngay ở
+/// khoản nạp đầu tiên, và một lời chúc mừng ai cũng nhận được thì không còn là
+/// lời chúc mừng.
+const _mocTienDo = [75, 50, 25];
+
+/// Mốc **cao nhất** mà mục tiêu đã vượt, hoặc `null` nếu chưa tới mốc nào.
+///
+/// Trả về một mốc chứ không phải danh sách, vì một khoản nạp lớn có thể vượt
+/// cả ba cùng lúc — bắn ba tin cho MỘT thao tác là ồn, và chỉ mốc cao nhất
+/// mang tin mới.
+int? _mocDaVuot(GoalEntity g) {
+  final phanTram = g.progress * 100;
+  for (final m in _mocTienDo) {
+    if (phanTram >= m) return m;
+  }
+  return null;
+}
+
 List<NotificationCandidate> _goalCandidates(NotificationRuleInput input) {
   final ra = <NotificationCandidate>[];
 
@@ -367,6 +395,36 @@ List<NotificationCandidate> _goalCandidates(NotificationRuleInput input) {
         createdAt: input.now,
       ));
       continue;
+    }
+
+    // ⚠️ Cột mốc phải đứng TRƯỚC phép kiểm chậm tiến độ ngay dưới. Dòng ấy
+    // `continue` cho mọi mục tiêu đang đúng nhịp, nên đặt cột mốc sau nó thì
+    // chỉ những mục tiêu đang TRỄ mới được ghi nhận quãng đã đi — đúng ngược
+    // với ý định. Hai luật này độc lập và một mục tiêu có thể trúng cả hai.
+    final moc = _mocDaVuot(g);
+    if (moc != null) {
+      ra.add(NotificationCandidate(
+        kind: NotificationKind.goalMilestone,
+        // Khoá theo khuôn `goalCycle:` chứ KHÔNG theo khuôn `goalDone:`.
+        // `goalDone:<id>` cố ý không mang mốc thời gian vì "một mục tiêu chỉ
+        // hoàn thành một lần trong đời"; mục tiêu lặp lại phá đúng giả định
+        // ấy (mục 3.17 `GOAL_FEATURE.md`). Cột mốc thì mỗi vòng phải báo lại,
+        // và `batDauVongMoi` đặt lại `startDate` — nên mốc bắt đầu là thứ
+        // phân biệt hai vòng. Phần `:$moc` ở cuối giữ cho ba mốc không nuốt
+        // nhau: dùng chung một khoá thì người dùng chỉ được báo ở mốc đầu.
+        //
+        // Id nằm ở đoạn THỨ HAI vì `duongDanTuKhoa` đọc `phan[1]`.
+        dedupeKey: 'goalMilestone:${g.id}:'
+            '${g.startDate?.millisecondsSinceEpoch ?? 0}:$moc',
+        title: 'Đã đi được $moc% chặng đường',
+        body: 'Mục tiêu ${g.name} đã tích được ${_tien(g.currentAmount)} '
+            'trên ${_tien(g.targetAmount)}.',
+        severity: NotificationSeverity.info,
+        subjectType: 'goal',
+        subjectId: g.id,
+        deeplink: goalDeeplink(g.id),
+        createdAt: input.now,
+      ));
     }
 
     if (!g.isBehindSchedule(input.now)) continue;

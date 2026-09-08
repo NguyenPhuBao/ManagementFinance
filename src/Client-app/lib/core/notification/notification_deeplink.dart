@@ -91,6 +91,7 @@ String deeplinkTuDedupeKey(String key) {
     case 'goalDone':
     case 'goalCycle':
     case 'goalBehind':
+    case 'goalMilestone':
     case 'goalAuto':
     case 'goalAutoFail':
       // Id nằm ở đoạn THỨ HAI, không phải đoạn cuối: `khoaKyTrich` sinh
