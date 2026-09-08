@@ -790,13 +790,25 @@ trên cùng một màn hình. Rỗng thì nói *"Không có khoản nào"* — c
 *"0 khoản · đã gửi 0 đ"* cãi nhau với thân bảng đang nói không có gì, và đó là
 lỗi chỉ đọc trên máy thật mới thấy vì cả hai chuỗi đều "đúng".
 
-⚠️ **Chưa có bộ lọc "tay / tự động", nhưng nay đã có DỮ LIỆU cho nó.**
-Bản dựng ngày 2026-09-08 không phân biệt được hai loại: `GoalAutoDepositRunner`
-gọi đúng `depositToGoal` với đúng tiền tố ghi chú của khoản nạp tay, nên chúng
-**giống hệt nhau trên mọi cột**. Cùng ngày, mục **3.25** đã mở đường bằng một
-**hậu tố** ghi chú — không cột mới, không đụng backend. Bước còn lại chỉ là một
-enum lọc thứ ba, và thứ tự *hiện nhãn trước, lọc sau* là chủ ý: lọc theo một
-dấu hiệu người dùng chưa nhìn thấy bao giờ thì họ không hiểu bộ lọc đang làm gì.
+**Bộ lọc thứ ba — nguồn "Tay / Tự động" — có từ cuối ngày 2026-09-08**, ngay
+sau khi mục **3.25** gắn được nhãn. Thứ tự *hiện nhãn trước, lọc sau* là chủ ý:
+lọc theo một dấu hiệu người dùng chưa nhìn thấy bao giờ thì họ không hiểu bộ lọc
+đang làm gì. Ba quyết định của dải này:
+
+- **Enum riêng (`LocNguon`), không phải chip thứ tư của dải chiều tiền.** "Tự
+  động" là *nguồn* của khoản, còn gửi/rút là *chiều* — nhét chung là trộn hai
+  tầng nghĩa, và "Tự động" vốn là tập con của "Đã gửi".
+- **Khoản rút luôn thuộc "Tay".** Không có đường nào trong app tự rút tiền khỏi
+  mục tiêu. Bản sai có chủ ý đảo nghĩa hai chip đã làm đúng test này đỏ.
+- **Dải chỉ hiện khi lịch sử có ít nhất một khoản tự động**, xét trên danh sách
+  **gốc** chứ không phải danh sách đã lọc — nếu không, chọn "Tay" xong là dải
+  tự biến mất và người dùng hết đường quay lại. Mục tiêu chưa bật trích tự động
+  thì một chip "Tự động" lọc ra rỗng chỉ là nhiễu, và ba dải trên 411dp là cái
+  giá không đáng trả cho một chip vô dụng.
+
+Bản dựng trước đó không phân biệt được hai loại: `GoalAutoDepositRunner` gọi
+đúng `depositToGoal` với đúng tiền tố ghi chú của khoản nạp tay, nên chúng
+**giống hệt nhau trên mọi cột** — đó là lý do nhãn phải ra đời trước.
 
 > ⚠️ Câu trước ở đây từng kết luận **"muốn phân biệt thì phải thêm cột mới"**.
 > Kết luận ấy **sai**, và nó sai vì được viết ra mà chưa mở mã đọc: khi người
@@ -1077,8 +1089,8 @@ trên Admin-web. Không có việc gì phải làm — nó nằm ngoài `CAN-LAM
 
 ## 9. Kiểm thử
 
-**367 test** riêng cho mục tiêu, trên tổng **1529** của dự án (đếm lại
-2026-09-08 sau đợt nhãn "(tự động)", bằng cách chạy thật `flutter test
+**376 test** riêng cho mục tiêu, trên tổng **1538** của dự án (đếm lại
+2026-09-08 sau đợt bộ lọc nguồn "Tay / Tự động", bằng cách chạy thật `flutter test
 test/features/goal test/core/notification/notification_rules_goal_wallet_test.dart`;
 hai con số ghi ở đây trước đó là 222/893 rồi 351/1513, đều đã lạc hậu —
 **đừng chép lại từ trí nhớ**).
@@ -1096,8 +1108,8 @@ hai con số ghi ở đây trước đó là 222/893 rồi 351/1513, đều đã
 | `presentation/widgets/goal_progress_test.dart` | Một định nghĩa duy nhất của tỉ lệ |
 | `presentation/widgets/goal_appearance_test.dart` | Bảng tra biểu tượng/màu, dữ liệu rác, và **giá trị ngoài bảng chọn** |
 | `goal_edit_form_test.dart` | `showDatePicker` với mục tiêu **quá hạn** — xem mục 3.9 |
-| `goal_history_filter_test.dart` | **Mục 3.24.** Hai bộ lọc và phép **giao** của chúng, hai biên thời gian dễ sai im lặng, và `tongKet` phải tính trên danh sách đã lọc |
-| `presentation/widgets/goal_history_sheet_test.dart` | **Mục 3.24 + 3.25.** Chip có đổi danh sách thật không, dòng tổng đi theo bộ lọc, hai ca rỗng, chỉ dòng tự động mang nhãn, và khổ 411dp — từ 2026-09-08 khổ ấy dựng cả **chip "Tự động"** cạnh số tiền dài, vì máy ảo không kiểm hộ được (nhãn chỉ hiện từ kỳ trích kế tiếp) |
+| `goal_history_filter_test.dart` | **Mục 3.24.** Ba bộ lọc và phép **giao** của chúng, hai biên thời gian dễ sai im lặng, `tongKet` phải tính trên danh sách đã lọc, và **khoản rút thuộc "Tay"** — ca duy nhất bắt được bản đảo nghĩa hai chip nguồn |
+| `presentation/widgets/goal_history_sheet_test.dart` | **Mục 3.24 + 3.25.** Chip có đổi danh sách thật không, dòng tổng đi theo bộ lọc, hai ca rỗng, chỉ dòng tự động mang nhãn, dải nguồn **chỉ hiện khi có khoản tự động** (ca này phải ép đỏ bằng bản luôn-hiện, vì trước khi có dải nó xanh oan), và khổ 411dp với đủ **ba dải** + chip "Tự động" cạnh số tiền dài — máy ảo không kiểm hộ được vì chưa mục tiêu nào có khoản tự động lẫn đủ 6 khoản để mở bảng. ⚠️ Đếm nhãn theo `find.byType(NhanTuDong)`, không theo chữ: "Tự động" nay còn là nhãn chip |
 | `presentation/pages/goal_detail_live_test.dart` | **Bẫy 4.5** — trang đăng ký với dòng dữ liệu và cập nhật theo. Từ 2026-09-08 canh thêm **mục 3.25** trên chính trang chi tiết: chỉ khoản tự động mang nhãn, và tiêu đề dòng **không lặp lại** chữ "(tự động)" |
 | `goal_priority_test.dart` | **Mục 3.22.** Hai chế độ của `uuTienSauKhiKeo` (ghi một hàng / đánh số lại), giá trị luôn dương và không trùng, vị trí ngoài dải không ném, và `viTriThaThucTe` — chỗ duy nhất sửa cái lệch một ô của `ReorderableListView` |
 | `goal_grouping_test.dart` | Hai tab, và từ 2026-09-08 canh **thứ tự ưu tiên**: ưu tiên thắng hạn định, `NULL` xếp cuối, trùng số rơi về hạn định, và tab đã hoàn thành **không** dùng ưu tiên |
@@ -1200,7 +1212,7 @@ bỏ qua chứ đừng chuyển một phần, phải có trần mỗi lượt, v
 | ✅ | ~~**Trang chi tiết thiếu nội dung**~~ | **Xong 2026-09-08** — khối "Cấu hình" bốn dòng, và **sửa lỗi hộp dự báo** ngoại suy từ vài ngày. Mục **3.23** và **3.7** |
 | ✅ | ~~**Lịch sử tích luỹ dài không giới hạn**~~ | **Xong 2026-09-08** — cắt 5 dòng + bảng đầy đủ có **hai bộ lọc**. Mục **3.24** |
 | ✅ | ~~**Nhãn "(tự động)" cho khoản trích tự động**~~ | **Xong 2026-09-08** — hậu tố ghi chú, không cột mới, không đụng backend. Mục **3.25** |
-| 1 | **Bộ lọc "tay / tự động"** | Nay chỉ còn một enum lọc thứ ba: dữ liệu đã có từ mục 3.25 |
+| ✅ | ~~**Bộ lọc "tay / tự động"**~~ | **Xong 2026-09-08** — `LocNguon`, dải chip thứ ba chỉ hiện khi có khoản tự động. Mục **3.24** |
 | 2 | **Làm tròn số lẻ** | Giá trị cao và hợp văn hoá "nuôi heo đất", nhưng là chỗ **thứ ba** app tự chuyển tiền — xem cảnh báo ở 10.2 |
 | 2 | **Chuyển giữa hai mục tiêu** | Một hàm gọi `withdraw` + `deposit` trong cùng khối nguyên tử |
 | 3 | **Chia thu nhập theo ưu tiên** | Cần ưu tiên xong trước |

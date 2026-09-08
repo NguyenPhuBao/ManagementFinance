@@ -119,6 +119,62 @@ void main() {
     });
   });
 
+  /// Canh chừng điều gì: nguồn của khoản (app tự trích hay người dùng tự bấm)
+  /// là tầng nghĩa KHÁC với chiều tiền. Lọc sai tầng thì "Tay" nuốt mất khoản
+  /// rút, hoặc "Tự động" hiện cả khoản người dùng vừa tự bấm — mà hai loại ấy
+  /// cố ý giống hệt nhau trên mọi cột khác (mục 3.25), nên không còn gì trên
+  /// màn hình cãi lại được.
+  group('locKhoan — nguồn (tay / tự động)', () {
+    final dsNguon = [
+      k(ngay: DateTime(2026, 9, 7), soTien: 100000, tuDong: true),
+      k(ngay: DateTime(2026, 9, 5), soTien: 50000),
+      k(ngay: DateTime(2026, 9, 1), soTien: 500000, rut: true),
+      k(ngay: DateTime(2026, 8, 7), soTien: 100000, tuDong: true),
+    ];
+
+    test('mặc định không lọc theo nguồn', () {
+      expect(locKhoan(dsNguon, now: now).length, 4);
+    });
+
+    test('"Tự động" chỉ giữ khoản do app trích', () {
+      final ra = locKhoan(dsNguon, nguon: LocNguon.tuDong, now: now);
+      expect(ra.map((x) => x.ngay.day), [7, 7]);
+      expect(ra.every((x) => x.laTuDong), isTrue);
+    });
+
+    test('"Tay" giữ khoản nạp tay VÀ khoản rút', () {
+      final ra = locKhoan(dsNguon, nguon: LocNguon.tay, now: now);
+      expect(ra.map((x) => x.soTien), [50000, 500000],
+          reason: 'Khoản rút không bao giờ tự động — không có đường nào trong '
+              'app tự rút tiền khỏi mục tiêu — nên nó thuộc về "Tay". Loại nó '
+              'đi là người dùng chọn "Tay" rồi thấy khoản mình vừa tự rút biến '
+              'mất.');
+    });
+
+    test('giao với chiều tiền: "Đã gửi" + "Tay" chỉ còn khoản nạp tay', () {
+      final ra = locKhoan(
+        dsNguon,
+        chieu: LocChieu.daGui,
+        nguon: LocNguon.tay,
+        now: now,
+      );
+      expect(ra.map((x) => x.soTien), [50000]);
+    });
+
+    test('"Tự động" + "Đã rút" là tập rỗng, không ném', () {
+      final ra = locKhoan(
+        dsNguon,
+        chieu: LocChieu.daRut,
+        nguon: LocNguon.tuDong,
+        now: now,
+      );
+      expect(ra, isEmpty,
+          reason: 'Hai chip hợp lệ riêng lẻ nhưng loại trừ nhau. Kết quả rỗng '
+              'là đúng, và bảng phải nói "không khớp bộ lọc" chứ không được '
+              'ném hay hiện nhầm.');
+    });
+  });
+
   group('tongKet', () {
     test('đếm và cộng riêng hai chiều', () {
       final t = tongKet(dsMau);

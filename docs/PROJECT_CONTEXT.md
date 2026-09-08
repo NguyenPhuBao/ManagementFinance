@@ -694,7 +694,7 @@ src/Backend/
 - **Mục tiêu: nhịp trích tự động neo vào mốc gốc, không còn trôi** (2026-09-08, **schema không đổi**). Cùng bệnh với hoá đơn, phát hiện khi rà soát: `cacKyDenHan` và `kyKeTiep` bước **từng kỳ một** từ mốc trước đó, nên mốc "ngày 31" bị kẹp về 28/02 rồi bước tiếp *từ 28* — nhịp tụt xuống 28 vĩnh viễn, im lặng. Nay mọi mốc tính từ mốc gốc qua `mocThuN(goc, chuKy, n)`: `31/01 → 28/02 → 31/03 → 30/04`. Mốc gốc là `timeCycleTakeMoney`; mục tiêu bật trước khi có ô chọn ấy thì gốc rơi về `autoDepositLastRun`, giữ nguyên hành vi cũ. Lý do ở **mục 3.12 `docs/GOAL_FEATURE.md`**. 7 test mới.
   > Chú thích cũ ở cột `Goals.timeCycleTakeMoney` ghi *"client chưa bao giờ ghi"* — **sai từ lâu**: `GoalRepositoryImpl` ghi nó ở cả đường tạo lẫn đường sửa khi bật trích tự động. Đã sửa lại chú thích; nó từng là lý do tin rằng mốc neo không dùng được làm gốc.
   > Mức nghiêm trọng thấp hơn hoá đơn có chủ ý được ghi lại: trích tự động chỉ chuyển tiền giữa hai ví **của chính người dùng**, sớm vài ngày không lỡ cam kết với ai. Hoá đơn thì "ngày trả tiền nhà" là ngày với người khác.
-- **Test: 1529/1529 pass** (~75 giây) — đều đã `git add -f` (kiểm 2026-09-08)
+- **Test: 1538/1538 pass** (~75 giây) — đều đã `git add -f` (kiểm 2026-09-08)
 
 ### 🔄 Việc còn dang dở
 
@@ -988,7 +988,10 @@ Tóm tắt:
   là một **hậu tố** ghi chú `' (tự động)'`, đọc lại bằng `laKhoanTuDong` đòi đủ
   **cặp** tiền tố + hậu tố. Khoản cũ không có hậu tố nên đọc là "tay" và
   **không đoán ngược** — nhãn tự lành từ kỳ trích kế tiếp. Lý lẽ và ba phương
-  án đã loại ở mục **3.25 `docs/GOAL_FEATURE.md`**; 16 test mới.
+  án đã loại ở mục **3.25 `docs/GOAL_FEATURE.md`**; 16 test mới. Cuối ngày
+  thêm **bộ lọc nguồn "Tay / Tự động"** cho bảng lịch sử (`LocNguon`, dải chip
+  thứ ba, chỉ hiện khi có khoản tự động; khoản rút thuộc "Tay") — mục 3.24,
+  9 test mới.
   > Kết luận trước đó — *"muốn phân biệt thì phải thêm cột mới"* — đã được ghi
   > vào tài liệu mà **chưa mở mã đọc**, và nó sai: có tới hai đường không cần
   > cột nào. Chỉ lộ ra khi người dùng hỏi lại.

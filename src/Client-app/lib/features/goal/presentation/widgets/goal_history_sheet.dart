@@ -45,6 +45,7 @@ class GoalHistorySheet extends StatefulWidget {
 class _GoalHistorySheetState extends State<GoalHistorySheet> {
   LocChieu _chieu = LocChieu.tatCa;
   LocKhoang _khoang = LocKhoang.tatCa;
+  LocNguon _nguon = LocNguon.tatCa;
 
   @override
   Widget build(BuildContext context) {
@@ -53,6 +54,7 @@ class _GoalHistorySheetState extends State<GoalHistorySheet> {
       widget.khoan,
       chieu: _chieu,
       khoang: _khoang,
+      nguon: _nguon,
       now: now,
     );
     // Tổng tính trên danh sách ĐÃ LỌC: dòng tổng nằm ngay trên dải chip nên
@@ -125,6 +127,18 @@ class _GoalHistorySheetState extends State<GoalHistorySheet> {
             nhanCua: (v) => v.nhan,
             onChon: (v) => setState(() => _khoang = v),
           ),
+          // Dải thứ ba CHỈ hiện khi có thứ để phân biệt. Mục tiêu chưa bật
+          // trích tự động thì một chip "Tự động" lọc ra rỗng chỉ là nhiễu, và
+          // ba dải trên 411dp là cái giá không đáng trả cho một chip vô dụng.
+          // Xét trên danh sách GỐC chứ không phải danh sách đã lọc: nếu không,
+          // chọn "Tay" xong là dải tự biến mất và người dùng hết đường quay lại.
+          if (widget.khoan.any((k) => k.laTuDong))
+            _DaiChip<LocNguon>(
+              cacGiaTri: LocNguon.values,
+              dangChon: _nguon,
+              nhanCua: (v) => v.nhan,
+              onChon: (v) => setState(() => _nguon = v),
+            ),
           const Divider(height: 1),
           Expanded(
             child: hien.isEmpty

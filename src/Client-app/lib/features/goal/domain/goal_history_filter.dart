@@ -56,6 +56,21 @@ enum LocKhoang {
   final String nhan;
 }
 
+/// Lọc theo nguồn của khoản: app tự trích hay người dùng tự bấm.
+///
+/// Là tầng nghĩa KHÁC với [LocChieu], nên là một enum riêng chứ không phải chip
+/// thứ tư của dải chiều tiền: "tự động" là tập con của "đã gửi", nhét chung một
+/// dải là trộn hai tầng. Khoản **rút** luôn thuộc [tay] — không có đường nào
+/// trong app tự rút tiền khỏi mục tiêu.
+enum LocNguon {
+  tatCa('Tất cả'),
+  tay('Tay'),
+  tuDong('Tự động');
+
+  const LocNguon(this.nhan);
+  final String nhan;
+}
+
 DateTime _ngayGon(DateTime d) => DateTime(d.year, d.month, d.day);
 
 /// Mốc sớm nhất còn được giữ lại, hoặc `null` khi không cắt gì.
@@ -83,6 +98,7 @@ List<KhoanTichLuy> locKhoan(
   List<KhoanTichLuy> tatCa, {
   LocChieu chieu = LocChieu.tatCa,
   LocKhoang khoang = LocKhoang.tatCa,
+  LocNguon nguon = LocNguon.tatCa,
   required DateTime now,
 }) {
   final moc = _mocSomNhat(khoang, now);
@@ -90,6 +106,10 @@ List<KhoanTichLuy> locKhoan(
   return tatCa.where((k) {
     if (chieu == LocChieu.daGui && k.laKhoanRut) return false;
     if (chieu == LocChieu.daRut && !k.laKhoanRut) return false;
+    // Khoản rút có `laTuDong = false` nên tự nhiên rơi vào "Tay" — đúng ý:
+    // không có đường nào trong app tự rút tiền khỏi mục tiêu.
+    if (nguon == LocNguon.tuDong && !k.laTuDong) return false;
+    if (nguon == LocNguon.tay && k.laTuDong) return false;
     if (moc != null && _ngayGon(k.ngay).isBefore(_ngayGon(moc))) return false;
     return true;
   }).toList();
