@@ -810,11 +810,17 @@ một lựa chọn, không phải một hàng đợi.
    duy nhất, và nó luôn là bản đếm có thẩm quyền.
    README trong thư mục ấy là cửa vào duy nhất; thư mục `DA-XONG/` bên cạnh giữ
    16 tài liệu đã đóng.
-3. **Bản vá migration ở nhánh `patch2` chưa đi đâu cả.**
+3. **Bản vá migration ở nhánh `patch2` — đã bàn giao cho backend (2026-09-08).**
    `)2_can_lam_all_migrations.sql` trên `main` có một câu `DELETE FROM "category"`
    xoá cứng 5 danh mục mặc định; `fk_bill_category` là RESTRICT nên nó ném 23503
    và **cả tệp roll back**. Nhánh `patch2` (commit `ea3611a`) đổi thành xoá mềm.
-   CSDL trên máy này đã áp dụng bản vá ấy; **môi trường khác thì chưa**.
+   CSDL trên máy này đã ở trạng thái đúng — đo 2026-09-08: **13 hàng mặc định
+   sống, 5 hàng đã xoá mềm** — nhưng **tệp trong repo vẫn là bản xoá cứng**, nên
+   môi trường khác chạy nó vẫn hỏng y như vậy.
+   ✅ **Người dùng đã thông báo cho người phụ trách backend ngày 2026-09-08.**
+   Việc sửa tệp thuộc về họ; nhánh `patch2` giữ nguyên tại chỗ làm bản tham
+   chiếu. **Đừng nêu lại đây như việc treo của phía client** — nó đã lặp qua ba
+   phiên bàn giao trước khi được chuyển đi đúng người.
 4. **Kịch bản nâng cấp CSDL v7 → v17 chưa từng chạy thật** (chỉ có test). Người
    dùng đã quyết định không chạy. Ghi lại vì: nếu sau này có báo cáo **mất danh
    mục** hoặc **giao dịch không đồng bộ sau khi cập nhật app**, đây là chỗ nghi

@@ -21,6 +21,10 @@
 > `ROLLBACK` để kiểm, sau đó áp dụng thật. **Xin nhận bản vá ấy trước khi
 > chạy migration ở bất kỳ môi trường nào khác.**
 >
+> ✅ **Đã bàn giao 2026-09-08:** người dùng đã thông báo cho người phụ trách
+> backend. Việc sửa tệp thuộc về phía backend; nhánh `patch2` giữ nguyên tại
+> chỗ làm bản tham chiếu.
+>
 > ⚠️ Bản vá **(B)** tuy đúng thứ client xin nhưng làm hỏng một chỗ phía
 > client mà không ai lường: `message` không còn mang mã SQLSTATE nên mọi
 > regex phân loại lỗi mất khả năng khớp, và lỗi vĩnh viễn im lặng tụt xuống
