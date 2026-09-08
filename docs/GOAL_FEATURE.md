@@ -1,8 +1,11 @@
 # Mục tiêu tiết kiệm — thiết kế, lý do, và những cái bẫy
 
-**Cập nhật:** 2026-09-07
+**Cập nhật:** 2026-09-08
 **Trạng thái:** hoạt động đầy đủ trên client. **Không còn việc nào chờ backend**
 (cập nhật 2026-09-07 — xem mục 8).
+
+Mục **10** là đối chiếu với app khác trên thị trường: cái gì FlowMoney đã mạnh
+hơn (và không nên "sửa"), cái gì còn thiếu, xếp hạng kèm lý do.
 
 > **Mục đích của tài liệu này** giống `CATEGORY_RATIONALE.md`: giữ lại **vì sao**,
 > không phải **cái gì**. Cái gì thì đọc mã và test là ra; vì sao thì mất theo
@@ -653,15 +656,29 @@ tự gọi `_loadGoal()` sau mỗi thao tác. Đồng bộ kéo về một thay 
 đang mở thì màn hình vẫn hiện số cũ. Trang danh sách thì ngược lại — nó nghe
 `watchGoals` nên tự cập nhật.
 
-### 4.6 Danh sách rỗng ở lần vào **đầu tiên** sau khi khởi động nguội
+### 4.6 ~~Danh sách rỗng ở lần vào **đầu tiên** sau khi khởi động nguội~~ — ✅ ĐÃ SỬA
 
-Tái hiện được nhiều lần. Trang dựng trước khi `AuthBloc` khôi phục xong phiên,
-`currentAccountIdOrNull` trả `null`, rồi `?? 0` biến nó thành tài khoản 0 — và
-`watchGoals(0)` đương nhiên rỗng. Thoát ra vào lại là thấy.
+> ✅ **Đóng bằng G17.** Mục này từng mô tả một lỗi còn tồn; nay không còn đúng.
+> Giữ lại vì cái bẫy bên dưới vẫn là bẫy thật cho mọi trang **khác** đọc
+> `currentAccountIdOrNull`.
+
+Trang dựng trước khi `AuthBloc` khôi phục xong phiên, `currentAccountIdOrNull`
+trả `null`, rồi `?? 0` biến nó thành tài khoản 0 — và `watchGoals(0)` đương
+nhiên rỗng. Thoát ra vào lại là thấy.
 
 `?? 0` đúng ở chỗ nó **không** ghi nhầm vào tài khoản admin (bài học G4), nhưng
-nó cũng không đợi phiên. Cần một trạng thái "đang chờ phiên" thay vì đọc luôn với
-id 0.
+nó cũng không đợi phiên.
+
+`GoalPage` nay chặn ca ấy bằng **hai** thứ phải đi cùng nhau, và thiếu một trong
+hai là lỗi quay lại:
+
+| | Làm gì | Thiếu nó thì |
+|---|---|---|
+| `context.watch<AuthBloc>()` | Đăng ký với phiên, không chỉ đọc một phát | `read` không đăng ký gì, nên phiên tới nơi cũng không dựng lại |
+| `key: ValueKey(idaccount)` | Ép `BlocProvider` dựng lại khi mã tài khoản đổi | `create` chỉ chạy MỘT lần, nên `watch` chỉ khiến build chạy lại còn cubit vẫn giữ đăng ký `watchGoals(0)` cũ |
+
+Canh bằng `test/features/goal/presentation/pages/goal_page_cold_start_test.dart`.
+`home_page` và `transaction_page` không mắc lỗi này vì chúng vốn đã `watch`.
 
 ### 4.7 `GoalDao.insert` dùng `insertOrReplace`
 
@@ -711,7 +728,7 @@ giá trị từ Admin-web nếu có — nhưng đừng tưởng có tính năng 
 | ~~Cấu hình trích tự động **không sang máy khác**~~ | ✅ **Đóng 2026-09-07.** Backend đã có ba cột `auto_deposit_*`, client đẩy và kéo cả ba. Còn lại đúng một khe hở hẹp: hai máy cùng mở đúng lúc tới kỳ. **G21 đóng** |
 | Không có bộ **lập lịch nền** | Giờ trong mốc trích chỉ giữ được chiều "không sớm hơn". Có lời nhắc AlarmManager nổ đúng giờ kể cả khi app đóng, nhưng nó chỉ báo tin. **G22** — cố ý, đừng "sửa" |
 | Quy tắc trùng tên chỉ có ở **client** | `/sync/push` và PostgreSQL chưa kiểm gì — cùng tình trạng với danh mục. Xem mục 3.15 |
-| **Ưu tiên mục tiêu** chưa có | Bảng `goal` phía backend không có cột nào cho việc này. Làm cột cục bộ thì mắc đúng bệnh G21 — thứ tự đặt trên máy này không sang máy khác |
+| **Ưu tiên mục tiêu** chưa có | ⚠️ Dòng cũ ở đây ghi *"bảng `goal` phía backend không có cột nào cho việc này"* — **sai từ 2026-09-07**, cột `Priority Int?` đã có (mục 8 nói đúng, mục này thì không). Nay không còn gì chặn; quy ước giá trị chốt sẵn ở `DA-XONG/2026-09-05-backend-goal-priority.md` mục 4. Xem mục **10.5** |
 
 **Đã đóng ngày 2026-09-05** (giữ lại đây để không ai mở lại nhầm):
 
@@ -753,7 +770,10 @@ quyết định **tiền đi đâu** — ba lý do khiến nó không nên là c
 
 ## 9. Kiểm thử
 
-Khoảng **222 test** riêng cho mục tiêu, trên tổng 893 của dự án.
+**279 test** riêng cho mục tiêu, trên tổng **1431** của dự án (đếm lại
+2026-09-08 bằng cách chạy thật `flutter test test/features/goal
+test/core/notification/notification_rules_goal_wallet_test.dart`; con số cũ ghi
+ở đây là 222/893 và đã lạc hậu — **đừng chép lại từ trí nhớ**).
 
 | Tệp | Canh gì |
 |---|---|
@@ -785,3 +805,96 @@ Cả ba đều lộ ra trên máy ảo Android trong phiên 2026-09-05:
 
 Đụng vào giao diện hoặc điều hướng thì **phải chạy máy ảo**. Xem `CLAUDE.md`,
 mục "Ghi chú về kiểm thử".
+
+---
+
+## 10. Đối chiếu với app khác trên thị trường
+
+**Khảo sát 2026-09-08.** Đây là lần khảo sát **thứ hai**; lần đầu (2026-09-05)
+nằm trong `docs/superpowers/backend/DA-XONG/2026-09-05-backend-goal-priority.md`
+mục 1 và chỉ rút ra hai việc (làm tròn số lẻ, ưu tiên mục tiêu). Lần này đi rộng
+hơn và xếp hạng lại.
+
+App đã xem: YNAB, Monarch Money, Copilot; Monzo, Revolut, Starling; Qapital,
+Acorns; và phía Việt Nam là Money Lover, MISA MoneyKeeper, MoMo. Nguồn ở cuối
+mục.
+
+### 10.1 Chỗ FlowMoney đã mạnh — đừng "sửa" hai thứ này
+
+**Tiền di chuyển thật.** Mỗi lần nạp ghi đúng một giao dịch `type='transfer'`
+mang cả ví nguồn lẫn ví đích, trong một `db.transaction` nguyên tử (mục 3.2).
+Money Lover, MISA MoneyKeeper và phần lớn app quản lý chi tiêu cùng loại chỉ coi
+mục tiêu là **một con số đếm tiến độ**, không đụng tới số dư ví. Nhóm ngân hàng
+số (Monzo Pots, Revolut Vaults, Starling Spaces) thì có chuyển tiền thật — và
+FlowMoney đứng cùng nhóm đó, không đứng nhóm trên.
+
+**Không tự hoà giải tiến độ với số dư ví** (mục 3.4). Monarch đi tới **cùng một
+kết luận** sau ba đời tính năng: bản Goals 3.0 của họ gọi việc dời tiền là *fund
+allocations* — người dùng tự dời, app chỉ đối chiếu và báo. Họ có thêm một lựa
+chọn "khoán trọn một tài khoản cho một mục tiêu" (`fully allocating an account`)
+để tự đồng bộ số dư, nhưng đó là **lựa chọn phụ**, không phải mặc định. Ai định
+"dọn dẹp" mục 3.4 thành tự trừ tiến độ nên đọc dòng này trước.
+
+### 10.2 Ba cơ chế tự động hoá chưa có
+
+| Cơ chế | Ai làm | FlowMoney |
+|---|---|---|
+| **Làm tròn số lẻ** — mỗi khoản chi làm tròn lên, phần lẻ vào mục tiêu | Monzo Roundups, Revolut, Qapital, Acorns | ⛔ chưa |
+| **Chia thu nhập** — lương về thì tách theo tỉ lệ vào từng mục tiêu | Monzo *Salary Sorter*, Qapital *Payday Divvy* | ⛔ chưa |
+| **Quy tắc theo hành vi** — chi ở chỗ X thì trích thêm; tiêu dưới hạn mức thì phần dư vào tiết kiệm | Qapital *Guilty Pleasure*, *Spend Less* | ⛔ chưa |
+
+⚠️ **Cả ba đều là "app chuyển tiền khi người dùng vắng mặt"**, tức cùng loại với
+trích tự động (mục 3.12) và tự trả hoá đơn. Làm bất kỳ cái nào thì phần lớn
+thiết kế là về việc **dừng đúng lúc**, không phải về việc chuyển: ví thiếu thì
+bỏ qua chứ đừng chuyển một phần, phải có trần mỗi lượt, và phải hoàn tác được.
+Đi qua `depositToGoal` chứ đừng tự ghi — cùng lý do đã ghi ở mục 3.12.
+
+### 10.3 Quản lý nhiều mục tiêu
+
+- **Ưu tiên và phân bổ theo thứ tự.** Monarch cho gán priority cho từng mục tiêu.
+  FlowMoney sắp cứng theo hạn gần nhất (`chiaMucTieu`), nên người dùng không nói
+  được "quỹ khẩn cấp quan trọng hơn cái laptop". Cột `Priority` phía backend
+  **đã có từ 2026-09-07**; quy ước giá trị đã chốt sẵn ở tài liệu backend mục 4.
+- **Chuyển tiền giữa hai mục tiêu.** Monarch *fund allocations* làm một thao tác.
+  FlowMoney phải rút về ví rồi nạp sang — hai giao dịch cho một ý định.
+- **Loại mục tiêu thứ hai: trả nợ.** Monarch Goals 3.0 tách *Save Up* và *Pay
+  Down*, kèm hai chiến lược Avalanche (lãi cao trước) và Snowball (dư nợ nhỏ
+  trước). FlowMoney chỉ có danh mục `Trả nợ`/`Thu nợ`, không có thực thể nợ.
+  **Đây là cả một loại thực thể mới** — không nên gộp vào bảng `Goals`.
+
+### 10.4 Động lực
+
+- **Cột mốc.** Hầu hết app báo ở 25/50/75%. FlowMoney chỉ báo ở **100%**
+  (`goalCompleted`) và khi **chậm tiến độ** (`goalBehind`) — người dùng đi ba
+  phần tư chặng đường mà app im lặng. Rẻ nhất trong mọi việc ở mục này.
+- **Khoá mục tiêu.** Monzo *locked pots*: khoá theo thời hạn, nạp vào được nhưng
+  không rút ra. FlowMoney cho rút tự do (chỉ chặn bằng hai trần ở mục 3.5).
+- **Nhiều kiểu mục tiêu.** YNAB có **ba** kiểu: góp đều mỗi kỳ (không có đích),
+  đạt đích trước ngày X, và bù đầy tới một mức. FlowMoney chỉ có kiểu thứ hai —
+  `targetAmount` và `targetDate` đều bắt buộc — nên "tháng nào cũng để dành 2
+  triệu, không có đích" hiện **không diễn đạt được**.
+- **Nhãn phân loại mục tiêu.** Thiết kế Stitch *có* nhãn trên mỗi thẻ ("THIẾT BỊ
+  LÀM VIỆC", "AN TOÀN TÀI CHÍNH"); bản dựng chưa làm.
+
+### 10.5 Xếp hạng, và lý do xếp như vậy
+
+| Hạng | Việc | Vì sao ở đây |
+|---|---|---|
+| 1 | **Ưu tiên mục tiêu** | Việc **duy nhất** mà backend đã làm xong phần của họ và client chưa nhận. Quy ước giá trị đã chốt sẵn |
+| 1 | **Cột mốc 25/50/75%** | Chỉ thêm luật vào `notification_rules.dart`; hạ tầng khử trùng đã có |
+| 1 | **Đưa mục tiêu lên màn hình chính** | Hiện chỉ vào được qua một mục trong drawer của `home_page` — một tính năng làm kỹ tới mức này mà bị chôn ba lớp |
+| 2 | **Làm tròn số lẻ** | Giá trị cao và hợp văn hoá "nuôi heo đất", nhưng là chỗ **thứ ba** app tự chuyển tiền — xem cảnh báo ở 10.2 |
+| 2 | **Chuyển giữa hai mục tiêu** | Một hàm gọi `withdraw` + `deposit` trong cùng khối nguyên tử |
+| 3 | **Chia thu nhập theo ưu tiên** | Cần ưu tiên xong trước |
+| 3 | **Khoá mục tiêu**, **kiểu mục tiêu góp đều** | Đổi bất biến của `targetAmount`/`targetDate` — không còn là việc nhỏ |
+| — | **Mục tiêu trả nợ** | Ngoài phạm vi đồ án |
+
+**Nguồn:** [Monarch — Introducing Goals 3.0](https://help.monarch.com/hc/en-us/articles/44373110771860-Introducing-Goals-3-0) ·
+[Monarch — Using Save Up Goals](https://help.monarch.com/hc/en-us/articles/44373182867476-Using-Save-Up-Goals) ·
+[YNAB — Getting Started with Targets](https://support.ynab.com/en_us/getting-started-with-targets-ryAEP08xC) ·
+[Monzo — Roundups on pots](https://monzo.com/ie/help/managing-money/help-roundups) ·
+[Monzo — Locking Pots](https://monzo.com/help/budgeting-overdrafts-savings/what-are-locked-pots) ·
+[Qapital — The Rules](https://www.qapital.com/blog/save-money-qapital-rules/) ·
+[Trophy — How to Gamify a Savings App](https://trophy.so/blog/gamify-a-savings-app) ·
+[NerdWallet — Best Budget Apps](https://www.nerdwallet.com/finance/learn/best-budget-apps) ·
+[So sánh Sổ Thu Chi MISA và Money Lover](https://premiumvns.com/so-sanh-so-thu-chi-misa-va-money-lover/)
