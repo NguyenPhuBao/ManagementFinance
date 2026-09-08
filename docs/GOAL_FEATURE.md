@@ -1089,7 +1089,7 @@ trên Admin-web. Không có việc gì phải làm — nó nằm ngoài `CAN-LAM
 
 ## 9. Kiểm thử
 
-**376 test** riêng cho mục tiêu, trên tổng **1538** của dự án (đếm lại
+**376 test** riêng cho mục tiêu, trên tổng **1587** của dự án (đếm lại
 2026-09-08 sau đợt bộ lọc nguồn "Tay / Tự động", bằng cách chạy thật `flutter test
 test/features/goal test/core/notification/notification_rules_goal_wallet_test.dart`;
 hai con số ghi ở đây trước đó là 222/893 rồi 351/1513, đều đã lạc hậu —

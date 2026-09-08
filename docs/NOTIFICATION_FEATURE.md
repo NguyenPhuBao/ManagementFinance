@@ -21,7 +21,7 @@
 > chỉ lên tiếng ở 100% và khi chậm tiến độ. Lý do và bảng xếp hạng ở mục **10**
 > `docs/GOAL_FEATURE.md`; khoá chống trùng ở mục 6 dưới đây.
 >
-> **Mức nền hiện tại:** `flutter test` **1538/1538 pass**, `flutter analyze`
+> **Mức nền hiện tại:** `flutter test` **1587/1587 pass**, `flutter analyze`
 > **25 issue, KHÔNG error** (đo lại 2026-09-08 sau đợt nhãn "(tự động)" của
 > mục tiêu). Con số test đổi gần như mỗi phiên — `CLAUDE.md` là nơi chép nó
 > gần nhất, đừng tin bản ở đây nếu hai chỗ lệch nhau.

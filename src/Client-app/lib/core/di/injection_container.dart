@@ -6,6 +6,9 @@ import '../../core/api/dio_client.dart';
 import '../../core/database/app_database.dart';
 import '../../core/sync/sync_checkpoint_store.dart';
 import '../../core/sync/sync_engine.dart';
+import '../../features/analytics/data/analytics_repository.dart';
+import '../../features/analytics/data/analytics_repository_impl.dart';
+import '../../features/analytics/presentation/bloc/analytics_cubit.dart';
 import '../../features/auth/data/datasources/auth_local_data_source.dart';
 import '../../features/auth/data/datasources/auth_remote_data_source.dart';
 import '../../features/auth/data/repositories/auth_repository.dart';
@@ -207,6 +210,19 @@ Future<void> setupDependencies() async {
   );
   sl.registerFactory<BudgetDetailCubit>(
     () => BudgetDetailCubit(repository: sl<BudgetRepository>()),
+  );
+
+  // ── 10b. Features — Phân tích ──────────────────────────────────────────────
+  // Đọc thẳng Drift cho giao dịch/danh mục, và mượn BudgetRepository cho cột
+  // "% ngân sách" thay vì tính lại số đã chi lần thứ hai.
+  sl.registerLazySingleton<AnalyticsRepository>(
+    () => AnalyticsRepositoryImpl(
+      db: sl<AppDatabase>(),
+      budgetRepository: sl<BudgetRepository>(),
+    ),
+  );
+  sl.registerFactory<AnalyticsCubit>(
+    () => AnalyticsCubit(repository: sl<AnalyticsRepository>()),
   );
 
   // ── 11. Thông báo ────────────────────────────────────────────────────────

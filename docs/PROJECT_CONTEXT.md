@@ -694,7 +694,7 @@ src/Backend/
 - **Mục tiêu: nhịp trích tự động neo vào mốc gốc, không còn trôi** (2026-09-08, **schema không đổi**). Cùng bệnh với hoá đơn, phát hiện khi rà soát: `cacKyDenHan` và `kyKeTiep` bước **từng kỳ một** từ mốc trước đó, nên mốc "ngày 31" bị kẹp về 28/02 rồi bước tiếp *từ 28* — nhịp tụt xuống 28 vĩnh viễn, im lặng. Nay mọi mốc tính từ mốc gốc qua `mocThuN(goc, chuKy, n)`: `31/01 → 28/02 → 31/03 → 30/04`. Mốc gốc là `timeCycleTakeMoney`; mục tiêu bật trước khi có ô chọn ấy thì gốc rơi về `autoDepositLastRun`, giữ nguyên hành vi cũ. Lý do ở **mục 3.12 `docs/GOAL_FEATURE.md`**. 7 test mới.
   > Chú thích cũ ở cột `Goals.timeCycleTakeMoney` ghi *"client chưa bao giờ ghi"* — **sai từ lâu**: `GoalRepositoryImpl` ghi nó ở cả đường tạo lẫn đường sửa khi bật trích tự động. Đã sửa lại chú thích; nó từng là lý do tin rằng mốc neo không dùng được làm gốc.
   > Mức nghiêm trọng thấp hơn hoá đơn có chủ ý được ghi lại: trích tự động chỉ chuyển tiền giữa hai ví **của chính người dùng**, sớm vài ngày không lỡ cam kết với ai. Hoá đơn thì "ngày trả tiền nhà" là ngày với người khác.
-- **Test: 1538/1538 pass** (~75 giây) — đều đã `git add -f` (kiểm 2026-09-08)
+- **Test: 1587/1587 pass** (~75 giây) — đều đã `git add -f` (kiểm 2026-09-08)
 
 ### 🔄 Việc còn dang dở
 
@@ -830,10 +830,12 @@ một lựa chọn, không phải một hàng đợi.
    của mục này trỏ tới "mục 9b `docs/NOTIFICATION_FEATURE.md`" — **mục ấy
    không tồn tại**; con trỏ chết đã hai phiên.)
 
-   Mảng **Phân tích** vẫn là khoảng trống lớn nhất khi quay lại: `AnalyticsPage`
-   và `ExportReportPage` đều là giao diện tĩnh, **0** tham chiếu
-   Bloc/Repository/Dao, mọi con số viết cứng — và nó đang **chặn** việc "Tổng
-   kết tuần" của mảng thông báo.
+   Mảng **Phân tích** — **lát 2a xong 2026-09-08**: `AnalyticsPage` nay đọc
+   số thật qua `AnalyticsCubit` → `AnalyticsRepository` (Drift + mượn
+   `BudgetRepository` cho "% ngân sách"). Trước đó nó là giao diện tĩnh, **0**
+   tham chiếu Bloc/Repository/Dao, và hiện *"T6 2026"* cứng khi đang là tháng 9.
+   `ExportReportPage` **vẫn** tĩnh (lát 2c). Tầng tổng hợp mà "Tổng kết tuần"
+   chờ nay đã có. Lý do và bẫy: `docs/ANALYTICS_FEATURE.md`.
 2. **Năm việc còn lại của backend**, ở `docs/superpowers/backend/CAN-LAM/`:
    lỗ **(D)** `threshold_warning_percent` bị ép về `0`; **cột màu danh mục**
    (tài liệu xin nay đã lên origin); **hai mục hoá đơn** — `transaction.Idbill`
@@ -1000,6 +1002,26 @@ Tóm tắt:
 trên route không có `WalletCubit`, màn đỏ do `DropdownButton` có `value` ngoài
 `items`, và dấu hiển thị sai của khoản rút. Bộ test xanh cả ba lần.
 
+### 📊 Trang Phân tích (2026-09-08) — **lát 2a xong, số thật thay số cứng**
+
+**Đọc `docs/ANALYTICS_FEATURE.md` trước khi làm tiếp.** Tóm tắt:
+
+- Trước 2026-09-08 trang này hiện **số giả** ở một tab điều hướng chính, kể cả
+  tháng ("T6 2026" khi đang là tháng 9). Nay bố cục giữ nguyên theo Stitch, mọi
+  con số đi qua `domain/thong_ke_thang.dart` (thuần, test bằng danh sách) →
+  `AnalyticsRepositoryImpl` (gộp ba stream theo khuôn `watchBudgets`) →
+  `AnalyticsCubit` (tháng lấy từ `clock`, `idaccount` từ phiên, không đoán).
+- **`'transfer'` không phải thu, không phải chi**; biên tháng `[from, to)` mượn
+  ngân sách; "% ngân sách" mượn `watchBudgets(now: mốc)` và **phải lọc**
+  `isExpired`; danh mục không có ngân sách thì nhãn đổi thành "% tổng chi".
+- "Số dư còn lại" = thu − chi của tháng, âm hiện âm; tháng trước bằng 0 → "Không
+  có dữ liệu", không "tăng ∞%"; donut top‑4 + "Khác"; tháng rỗng nói rỗng.
+- **Không cần thư viện biểu đồ** cho lát này (donut là `SweepGradient` sẵn có);
+  chọn thư viện lùi sang 2b, một lần cho cả biểu đồ tiến độ mục tiêu.
+- 4 tệp test, 49 test; ba bản sai có chủ ý (biên đóng, bỏ lọc hết hạn, bỏ huỷ
+  đăng ký) mỗi cái làm đúng một test đỏ. Test 411dp bắt được tên danh mục tràn
+  **521px** ở bản Stitch chép sang.
+
 ### 🔔 Hệ thống thông báo (2026-09-04) — **cả bảy lát xong**
 
 **Đọc `docs/NOTIFICATION_FEATURE.md` trước khi làm tiếp.** Tóm tắt:
@@ -1065,7 +1087,7 @@ Hoá đơn tạo từ app trước đây **không bao giờ lên tới backend**
   đó là tạo vòng lặp đẩy vô tận.
 
 ### ❌ Chưa làm / Tiếp theo
-- Analytics (báo cáo chi tiết)
+- Analytics: lát **2a xong 2026-09-08** (trang Phân tích số thật, 49 test); còn **2b** biểu đồ theo thời gian (chỗ chọn thư viện biểu đồ) và **2c** trang Xuất báo cáo vẫn số cứng — `docs/ANALYTICS_FEATURE.md` mục 7
 - AI chat integration hoàn chỉnh
 - Casso bank integration
 - Build production / deploy

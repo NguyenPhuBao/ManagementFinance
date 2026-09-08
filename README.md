@@ -43,7 +43,7 @@ mục "Ghi chú về kiểm thử" trong [`CLAUDE.md`](CLAUDE.md).
 
 ```bash
 cd src/Client-app
-flutter test        # mức nền: 1538/1538 pass, ~75 giây (đo 2026-09-08)
+flutter test        # mức nền: 1587/1587 pass, ~75 giây (đo 2026-09-08)
 flutter analyze     # mức nền: 25 issue, KHÔNG có error
 ```
 
