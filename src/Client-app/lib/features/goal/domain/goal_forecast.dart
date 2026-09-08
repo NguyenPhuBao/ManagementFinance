@@ -54,11 +54,41 @@ double? tocDoThucTe(GoalEntity goal, DateTime now) {
   if (batDau == null) return null;
 
   final soNgayDaQua = _soNgay(batDau, now);
-  if (soNgayDaQua <= 0) return null;
+  if (!_duCuaSo(soNgayDaQua, goal.cycleTakeMoney)) return null;
 
   final moiNgay = goal.currentAmount / soNgayDaQua;
   return moiNgay * soNgayChuKy(goal.cycleTakeMoney);
 }
+
+/// Đã theo dõi đủ lâu để nói một câu về **nhịp** chưa?
+///
+/// ## Vì sao cần, và vì sao `soNgayDaQua > 0` là chưa đủ
+///
+/// Cả [tocDoThucTe] lẫn [duBaoHoanThanh] đều **ngoại suy**: lấy số tiền của
+/// *n* ngày đã qua rồi nhân lên độ dài chu kỳ. Hệ số phóng đại là `chuKỳ / n`,
+/// nên *n* càng nhỏ thì con số càng bịa.
+///
+/// Đo được trên máy thật ngày 2026-09-08: mục tiêu tạo 05/09, xem 08/09, đã
+/// tích 1.101.000 đ, chu kỳ tháng → màn hình hiện **"đang tích 11.010.000 đ
+/// mỗi tháng"**, gấp mười lần tổng đã tích được cả đời mục tiêu, kèm dự báo
+/// hoàn thành ngay tháng ấy cho một mục tiêu hạn 2028. Phép chặn cũ
+/// (`soNgayDaQua <= 0`) chỉ đỡ được phép chia cho 0, không đỡ được việc bịa
+/// ra một nhịp.
+///
+/// ## Vì sao là NỬA chu kỳ, không phải một chu kỳ trọn
+///
+/// Nửa chu kỳ đưa hệ số phóng đại tối đa về **2** — mức sai lệch chấp nhận
+/// được cho một câu ước lượng. Đợi trọn một chu kỳ thì mục tiêu hàng tháng câm
+/// suốt tháng đầu, mà tháng đầu mới là lúc người dùng mở ra xem nhiều nhất.
+///
+/// ## Vì sao ngưỡng tính THEO chu kỳ, không phải một số ngày cứng
+///
+/// Chu kỳ **ngày** không có ngoại suy nào để chặn (hệ số bằng 1), nên một
+/// ngưỡng cứng kiểu "phải đủ 7 ngày" sẽ bắt nó im lặng vô cớ. Ngược lại chu kỳ
+/// **năm** thì hai tháng vẫn là hệ số 6 — cùng một lỗi với ca ba ngày, chỉ
+/// khác thang.
+bool _duCuaSo(int soNgayDaQua, String? chuKy) =>
+    soNgayDaQua > 0 && soNgayDaQua * 2 >= soNgayChuKy(chuKy);
 
 /// Tiền CẦN tích mỗi chu kỳ để kịp hạn, tính từ [now].
 ///
@@ -96,7 +126,10 @@ DateTime? duBaoHoanThanh(GoalEntity goal, DateTime now) {
   if (batDau == null) return null;
 
   final soNgayDaQua = _soNgay(batDau, now);
-  if (soNgayDaQua <= 0) return null;
+  // Cùng cửa sổ với `tocDoThucTe`, và phải là CÙNG MỘT phép kiểm: chặn một
+  // chỗ mà để chỗ kia nói tiếp thì hộp dự báo vẫn sai, chỉ sai gọn hơn — hai
+  // dòng cạnh nhau trên màn hình vốn đọc như một câu.
+  if (!_duCuaSo(soNgayDaQua, goal.cycleTakeMoney)) return null;
 
   final moiNgay = goal.currentAmount / soNgayDaQua;
   if (moiNgay <= 0) return null;

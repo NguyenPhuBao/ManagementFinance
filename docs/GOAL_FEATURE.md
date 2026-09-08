@@ -174,6 +174,26 @@ dùng để tính ngược ra ngày hạn rồi bị vứt bỏ.
 Mọi hàm trả `null` khi **không đủ căn cứ**, cùng nguyên tắc với
 `isBehindSchedule`: im lặng đúng hơn là báo bừa.
 
+⚠️ **"Không đủ căn cứ" gồm cả CỬA SỔ QUÁ NGẮN** (sửa 2026-09-08). Trước đó
+phép chặn duy nhất là `soNgayDaQua <= 0`, tức nó chỉ đỡ được phép chia cho 0
+chứ không đỡ được việc **bịa ra một nhịp**. Đo trên máy thật: mục tiêu tạo
+05/09, xem 08/09, đã tích 1.101.000 đ, chu kỳ tháng → màn hình hiện *"đang tích
+**11.010.000 đ** mỗi tháng"*, gấp mười lần tổng đã tích được cả đời mục tiêu,
+kèm dự báo hoàn thành ngay tháng ấy cho một mục tiêu hạn 2028.
+
+`_duCuaSo` nay đòi **ít nhất nửa chu kỳ**: `soNgayDaQua * 2 >= soNgayChuKy`.
+Ngưỡng tính **theo chu kỳ**, không phải một số ngày cứng — chu kỳ *ngày* không
+có ngoại suy nào để chặn (hệ số bằng 1) nên ngưỡng cứng sẽ bắt nó im lặng vô
+cớ, còn chu kỳ *năm* thì hai tháng vẫn là hệ số 6. Nửa chu kỳ đưa hệ số phóng
+đại tối đa về **2**; đợi trọn một chu kỳ thì mục tiêu hàng tháng câm suốt tháng
+đầu, mà tháng đầu mới là lúc người dùng mở ra xem nhiều nhất.
+
+Phép chặn phải áp cho **cả** `tocDoThucTe` lẫn `duBaoHoanThanh` — hai dòng cạnh
+nhau trên màn hình đọc như một câu, chặn một chỗ mà để chỗ kia nói tiếp thì hộp
+dự báo vẫn sai, chỉ sai gọn hơn. `tocDoKeHoach` **không** chịu phép chặn này:
+nó chia phần còn thiếu cho số ngày còn lại, tức một *kế hoạch*, không phải một
+ước lượng từ quá khứ.
+
 ### 3.8 Nạp vượt mục tiêu thì **nhắc**, không chặn
 
 Tiết kiệm dư là chuyện bình thường — gửi tròn số, hoặc gộp luôn khoản tháng sau.
@@ -697,6 +717,43 @@ giống lần sắp nào. Vá triệt để cần khoá thứ tự kiểu phân 
 đắt hơn giá trị nó mang lại. Hậu quả tệ nhất là kéo lại vài mục tiêu: không mất
 tiền, không mất bản ghi, không kẹt hàng đợi.
 
+### 3.23 Khối "Cấu hình": chỗ thiếu là chỗ HIỂN THỊ, không phải dữ liệu
+
+Người dùng báo trang chi tiết **thiếu nội dung** (2026-09-08). Đo lại thì trang
+không thiếu dữ liệu — cả bốn thứ dưới đây đều nằm sẵn trên `GoalEntity` mà
+không dòng nào trên trang nói tới:
+
+| Dòng | Đã có sẵn ở | Trước đó dùng vào việc gì |
+|---|---|---|
+| Hạn chót + đếm ngược | `targetDate`, `daysLeft` | `targetDate` chỉ xuất hiện lẫn trong câu dự báo; `daysLeft` **không nơi nào gọi** |
+| Đúng nhịp / chậm | `isBehindSchedule` | Chỉ dùng cho **thông báo**, không cho màn hình |
+| Ví tích luỹ | `walletId` | Chỉ dùng cho hộp thoại đổi ví và phép tính cảnh báo — chưa bao giờ hiện **tên** |
+| Trích tự động | `autoDepositEnabled` + ba cột | **Không hiện ở đâu** trên trang |
+
+**Dòng cuối là chỗ nghiêm trọng nhất.** App tự chuyển tiền của người dùng mỗi
+kỳ, mà trang chính của mục tiêu không nói gì — phải mở trang Sửa mới biết. Với
+một tính năng chuyển tiền lúc người dùng vắng mặt thì đó là chỗ im lặng không
+chấp nhận được. Đo trên máy thật 2026-09-08: mục tiêu `MuaXe` đang bật trích
+**100.000 đ mỗi tháng từ ví `test`**, và trước bản này màn hình không hề nói.
+
+**Ba quyết định nhỏ, mỗi cái có test:**
+
+- `moTaHanChot` **không bao giờ hiện số ngày âm**. `daysLeft` trả số âm khi quá
+  hạn — đúng số học, nhưng *"Còn -7 ngày"* đọc lên thì vô nghĩa, và đó lại là
+  ca hay gặp nhất với mục tiêu cũ bỏ dở. Mục tiêu **đã đạt** thì thôi đếm
+  ngược: hô "Quá hạn 7 ngày" cho việc người dùng đã làm xong là trách họ vì
+  chính thành quả của họ.
+- `moTaTrichTuDong` dùng chung `autoDepositEnabled` — định nghĩa duy nhất của
+  "đang bật", vốn đòi **cả ba** mảnh. Tự viết lại phép kiểm ở đây là để màn
+  hình nói đang bật trong khi bộ chạy không chạy.
+- Ví không tra được tên thì vẫn nói phần biết chắc. `autoDepositWalletId`
+  **không có khoá ngoại** (cùng lý do với `walletTransfer`, bẫy 4.1) nên ví có
+  thể đã bị xoá mềm; trả chuỗi rỗng khi ấy là giấu luôn việc app đang trừ tiền.
+
+Khối đặt **sau** hộp dự báo và cảnh báo ví: hai khối kia nói về *cần làm gì*,
+khối này nói về *đang cài đặt thế nào* — thứ người dùng tra lại chứ không đọc
+mỗi lần mở.
+
 ---
 
 ## 4. Bảy cái bẫy
@@ -891,7 +948,7 @@ quyết định **tiền đi đâu** — ba lý do khiến nó không nên là c
 
 ## 9. Kiểm thử
 
-**313 test** riêng cho mục tiêu, trên tổng **1466** của dự án (đếm lại
+**333 test** riêng cho mục tiêu, trên tổng **1495** của dự án (đếm lại
 2026-09-08 sau khi thêm luật cột mốc và thứ tự ưu tiên, bằng cách chạy thật `flutter test
 test/features/goal test/core/notification/notification_rules_goal_wallet_test.dart`;
 con số ghi ở đây trước đó là 222/893 và đã lạc hậu — **đừng chép lại từ trí
@@ -900,7 +957,8 @@ nhớ**).
 | Tệp | Canh gì |
 |---|---|
 | `goal_entity_progress_test.dart` | `progress`, `daysLeft`, `isBehindSchedule` — biên dung sai, chia 0, quá hạn |
-| `goal_forecast_test.dart` | Ba hàm dự báo, kể cả các nhánh "không đủ căn cứ" |
+| `goal_forecast_test.dart` | Ba hàm dự báo, kể cả các nhánh "không đủ căn cứ". Từ 2026-09-08 canh thêm **cửa sổ tối thiểu** (mục 3.7): ca thật ba ngày/chu kỳ tháng, nửa chu kỳ là ngưỡng, chu kỳ ngày đủ ngay, chu kỳ năm cần lâu hơn, và "chưa nạp đồng nào" vẫn trả `0.0` chứ không `null` |
+| `presentation/widgets/goal_config_card_test.dart` | **Mục 3.23.** `moTaHanChot` (đếm ngược, quá hạn, đã đạt), `moTaTrichTuDong` (tắt/bật, thiếu mảnh, ví đã xoá), bốn dòng của khối, và khổ 411dp |
 | `goal_deposit_warning_test.dart` | `remainingAmount`, cảnh báo nạp vượt |
 | `goal_deposit_default_wallets_test.dart` | Bất biến ví nguồn ≠ ví nhận |
 | `goal_history_direction_test.dart` | **Bẫy 4.2** — đổi ví không làm khoản nạp cũ đọc thành rút |
@@ -1007,6 +1065,7 @@ bỏ qua chứ đừng chuyển một phần, phải có trần mỗi lượt, v
 | ✅ | ~~**Ưu tiên mục tiêu**~~ | **Xong 2026-09-08** — schema v19, mục **3.22**. Kiểm trọn vòng trên máy ảo, `Priority` 100/200 đã lên PostgreSQL |
 | ✅ | ~~**Cột mốc 25/50/75%**~~ | **Xong 2026-09-08** — `goalMilestone`, mục **3.21** |
 | ✅ | ~~**Đưa mục tiêu lên màn hình chính**~~ | **Xong 2026-09-08** — `HomeGoalCard`, chọn mục tiêu **ưu tiên nhất**. Cùng lượt **gỡ khối thông báo** khỏi trang chủ theo yêu cầu người dùng |
+| ✅ | ~~**Trang chi tiết thiếu nội dung**~~ | **Xong 2026-09-08** — khối "Cấu hình" bốn dòng, và **sửa lỗi hộp dự báo** ngoại suy từ vài ngày. Mục **3.23** và **3.7** |
 | 2 | **Làm tròn số lẻ** | Giá trị cao và hợp văn hoá "nuôi heo đất", nhưng là chỗ **thứ ba** app tự chuyển tiền — xem cảnh báo ở 10.2 |
 | 2 | **Chuyển giữa hai mục tiêu** | Một hàm gọi `withdraw` + `deposit` trong cùng khối nguyên tử |
 | 3 | **Chia thu nhập theo ưu tiên** | Cần ưu tiên xong trước |

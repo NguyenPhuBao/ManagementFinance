@@ -14,6 +14,7 @@ import '../../domain/goal_deposit_warning.dart';
 import '../../domain/goal_forecast.dart';
 import '../../domain/goal_history_direction.dart';
 import '../../domain/goal_wallet_shortfall.dart';
+import '../widgets/goal_config_card.dart';
 import '../widgets/goal_progress.dart';
 
 class GoalDetailPage extends StatefulWidget {
@@ -34,6 +35,13 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
   /// Tính ở đây chứ không trong `build`: nó cần đọc CSDL (số dư ví + tổng của
   /// mọi mục tiêu dùng chung ví ấy), mà `build` thì chạy lại rất nhiều lần.
   String? _canhBaoVi;
+
+  /// Tên hai ví, tra sẵn cho `GoalConfigCard`.
+  ///
+  /// `null` nghĩa là chưa gán hoặc ví đã bị xoá mềm — widget nói "Chưa gán ví"
+  /// chứ không để ô trống, vì ô trống trông y hệt một lỗi tải dữ liệu.
+  String? _tenViTichLuy;
+  String? _tenViNguonTrich;
 
   /// Đăng ký với dòng dữ liệu mục tiêu — **bẫy 4.5 đã đóng 2026-09-08**.
   ///
@@ -60,10 +68,13 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     setState(() => _isLoading = true);
     final goal = await _goalRepository.getGoalById(widget.id);
     final canhBao = goal == null ? null : await _tinhCanhBaoVi(goal);
+    final ten = goal == null ? (null, null) : await _tenCacVi(goal);
     if (mounted) {
       setState(() {
         _goal = goal;
         _canhBaoVi = canhBao;
+        _tenViTichLuy = ten.$1;
+        _tenViNguonTrich = ten.$2;
         _isLoading = false;
       });
     }
@@ -101,15 +112,35 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
       if (moi == null) return;
 
       final canhBao = await _tinhCanhBaoVi(moi);
+      final ten = await _tenCacVi(moi);
       if (!mounted) return;
       setState(() {
         _goal = moi;
         _canhBaoVi = canhBao;
+        _tenViTichLuy = ten.$1;
+        _tenViNguonTrich = ten.$2;
         // KHÔNG đụng `_isLoading`. Đường này là cập nhật nền, không phải một
         // lần tải do người dùng gây ra; bật cờ tải ở đây làm cả trang nháy về
         // vòng quay mỗi lần đồng bộ chạy xong.
       });
     });
+  }
+
+  /// Tên ví tích luỹ và ví nguồn trích, tra một lượt.
+  ///
+  /// Trả `null` cho ví không tìm thấy thay vì ném: ví có thể đã bị xoá mềm sau
+  /// khi mục tiêu trỏ vào nó, và `autoDepositWalletId` **không có khoá ngoại**
+  /// (cùng lý do với `walletTransfer`, bẫy 4.1) nên không có gì ở tầng CSDL
+  /// bảo đảm nó còn tồn tại.
+  Future<(String?, String?)> _tenCacVi(GoalEntity goal) async {
+    final db = sl<AppDatabase>();
+    Future<String?> ten(String? id) async {
+      if (id == null || id.isEmpty) return null;
+      final w = await db.walletDao.getById(id);
+      return w?.name;
+    }
+
+    return (await ten(goal.walletId), await ten(goal.autoDepositWalletId));
   }
 
   /// So số dư THẬT của ví tích lũy với TỔNG của mọi mục tiêu trỏ vào ví ấy.
@@ -858,6 +889,20 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                       const SizedBox(height: 12),
                       _buildCanhBaoVi(_canhBaoVi!),
                     ],
+                    // Khối "Cấu hình" — thêm 2026-09-08 sau khi người dùng
+                    // báo trang này thiếu nội dung. Cả bốn dòng của nó đều là
+                    // dữ liệu đã nằm sẵn trên `GoalEntity`; chỗ thiếu là chỗ
+                    // hiển thị, không phải dữ liệu.
+                    //
+                    // Đặt SAU hộp dự báo và cảnh báo ví: hai khối kia nói về
+                    // việc *cần làm gì*, khối này nói về *đang cài đặt thế
+                    // nào* — thứ người dùng tra lại chứ không đọc mỗi lần mở.
+                    const SizedBox(height: 12),
+                    GoalConfigCard(
+                      goal: _goal!,
+                      tenViTichLuy: _tenViTichLuy,
+                      tenViNguonTrich: _tenViNguonTrich,
+                    ),
                     const SizedBox(height: 32),
                     _buildHistorySection(currencyFormatter),
                   ],
@@ -1012,7 +1057,12 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     if (_goal!.isCompleted || _goal!.remainingAmount <= 0) {
       mota = 'Không cần tích thêm đồng nào.';
     } else if (thucTe == null) {
-      mota = 'Gửi thêm vài lần để app ước lượng được nhịp tích lũy của bạn.';
+      // Lý do là CHƯA ĐỦ THỜI GIAN, không phải chưa đủ số lần nạp — xem
+      // `_duCuaSo` ở `goal_forecast.dart`. Câu cũ ("gửi thêm vài lần") sai
+      // hướng: người dùng nạp thêm mười lần trong cùng ngày vẫn không mở được
+      // hộp này, và họ sẽ tưởng tính năng hỏng.
+      mota = 'Cần theo dõi thêm ít lâu để app ước lượng được nhịp tích lũy. '
+          'Nhịp $nhipLabel chỉ có nghĩa khi đã qua ít nhất nửa chu kỳ.';
     } else if (duBao == null) {
       mota = 'Chưa tích được đồng nào $nhipLabel, nên chưa ước lượng được '
           'ngày đạt mục tiêu.';
