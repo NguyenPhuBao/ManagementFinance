@@ -1177,10 +1177,9 @@ bỏ qua chứ đừng chuyển một phần, phải có trần mỗi lượt, v
 
 ### 10.3 Quản lý nhiều mục tiêu
 
-- **Ưu tiên và phân bổ theo thứ tự.** Monarch cho gán priority cho từng mục tiêu.
-  FlowMoney sắp cứng theo hạn gần nhất (`chiaMucTieu`), nên người dùng không nói
-  được "quỹ khẩn cấp quan trọng hơn cái laptop". Cột `Priority` phía backend
-  **đã có từ 2026-09-07**; quy ước giá trị đã chốt sẵn ở tài liệu backend mục 4.
+- **Ưu tiên và phân bổ theo thứ tự.** ✅ *Nửa đầu xong 2026-09-08* (kéo thả,
+  mục 3.22). Monarch cho gán priority cho từng mục tiêu; FlowMoney từng sắp
+  cứng theo hạn gần nhất. Còn lại là **phân bổ** theo thứ tự ấy — xem 10.2.
 - **Chuyển tiền giữa hai mục tiêu.** Monarch *fund allocations* làm một thao tác.
   FlowMoney phải rút về ví rồi nạp sang — hai giao dịch cho một ý định.
 - **Loại mục tiêu thứ hai: trả nợ.** Monarch Goals 3.0 tách *Save Up* và *Pay
@@ -1190,9 +1189,17 @@ bỏ qua chứ đừng chuyển một phần, phải có trần mỗi lượt, v
 
 ### 10.4 Động lực
 
-- **Cột mốc.** Hầu hết app báo ở 25/50/75%. FlowMoney chỉ báo ở **100%**
-  (`goalCompleted`) và khi **chậm tiến độ** (`goalBehind`) — người dùng đi ba
-  phần tư chặng đường mà app im lặng. Rẻ nhất trong mọi việc ở mục này.
+- **Cột mốc.** ✅ *Xong 2026-09-08* (`goalMilestone`, mục 3.21). Trước đó
+  FlowMoney chỉ báo ở **100%** và khi **chậm tiến độ** — người dùng đi ba phần
+  tư chặng đường mà app im lặng.
+- **Biểu đồ tiến độ theo thời gian.** Trang chi tiết hiện chỉ có vòng phần trăm
+  và năm dòng lịch sử; không có đường "số đã tích theo tuần/tháng". Đây là thứ
+  làm trang chi tiết "đầy" nhất. ⚠️ Mục này **không** nằm trong bảng khảo sát
+  bên trên — nó là đề xuất của phiên 2026-09-08 và người dùng đã duyệt thứ tự;
+  ghi ở đây để nó không chỉ sống trong chat.
+- **Số liệu tổng hợp và chuỗi liên tiếp.** Số lần nạp, trung bình mỗi lần, số
+  kỳ nạp liên tiếp — đếm được ngay từ `_khoanLichSu` đang có, không cần dữ liệu
+  mới. Cùng nguồn gốc với mục trên.
 - **Khoá mục tiêu.** Monzo *locked pots*: khoá theo thời hạn, nạp vào được nhưng
   không rút ra. FlowMoney cho rút tự do (chỉ chặn bằng hai trần ở mục 3.5).
 - **Nhiều kiểu mục tiêu.** YNAB có **ba** kiểu: góp đều mỗi kỳ (không có đích),
@@ -1213,6 +1220,8 @@ bỏ qua chứ đừng chuyển một phần, phải có trần mỗi lượt, v
 | ✅ | ~~**Lịch sử tích luỹ dài không giới hạn**~~ | **Xong 2026-09-08** — cắt 5 dòng + bảng đầy đủ có **hai bộ lọc**. Mục **3.24** |
 | ✅ | ~~**Nhãn "(tự động)" cho khoản trích tự động**~~ | **Xong 2026-09-08** — hậu tố ghi chú, không cột mới, không đụng backend. Mục **3.25** |
 | ✅ | ~~**Bộ lọc "tay / tự động"**~~ | **Xong 2026-09-08** — `LocNguon`, dải chip thứ ba chỉ hiện khi có khoản tự động. Mục **3.24** |
+| 1 | **Biểu đồ tiến độ theo thời gian** | Làm **sau lát 2b của Phân tích** — 2b là chỗ chọn thư viện biểu đồ, chọn một lần dùng cho cả hai; làm trước là chọn hai lần. Xem thứ tự đã duyệt ở mục 14 `PROJECT_CONTEXT.md` |
+| 2 | **Số liệu tổng hợp, chuỗi liên tiếp** | Nhỏ, độc lập, đếm từ lịch sử đang có — việc chen giữa khi cần một hạng mục ngắn |
 | 2 | **Làm tròn số lẻ** | Giá trị cao và hợp văn hoá "nuôi heo đất", nhưng là chỗ **thứ ba** app tự chuyển tiền — xem cảnh báo ở 10.2 |
 | 2 | **Chuyển giữa hai mục tiêu** | Một hàm gọi `withdraw` + `deposit` trong cùng khối nguyên tử |
 | 3 | **Chia thu nhập theo ưu tiên** | Cần ưu tiên xong trước |

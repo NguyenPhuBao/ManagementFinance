@@ -238,6 +238,7 @@ khi hoà) — phát hiện nhờ chạy chứ không nhờ đọc.
   "Techcombank"/"Tiền mặt" và lịch sử xuất `BaoCao_Thang6.pdf` đều bịa; nút xuất
   chỉ hiện snackbar. Nay đã có `ThongKeThang` để đổ vào.
 - **Tổng kết tuần** — spec `2026-09-07-weekly-summary-notification-design.md`
-  đang chờ đúng tầng tổng hợp này.
+  chờ một **màn phạm vi tuần**. Tầng tổng hợp đã có (`tongThuChi` nhận biên bất
+  kỳ); còn thiếu giao diện — có thể là một chế độ "tuần" của chính trang này.
 - Tiêu đề trang là "Thống kê", tab dưới là "Phân tích" — hai tên cho một chỗ,
   lấy từ Stitch. Chưa đổi vì chưa ai nói tên nào đúng.

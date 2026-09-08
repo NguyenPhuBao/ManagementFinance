@@ -807,6 +807,17 @@ G15, G17, G21. Bản trước của mục này ghi ngày 04/09 và **sai bốn t
 **Không còn lỗi client nào sửa được mà không phải chờ ai.** Việc tiếp theo là
 một lựa chọn, không phải một hàng đợi.
 
+**Thứ tự đã duyệt tối 2026-09-08** (người dùng hỏi "nên làm theo thứ tự nào",
+đã chốt — đừng bàn lại từ đầu): ✅ bộ lọc tay/tự động của lịch sử mục tiêu →
+✅ **2a** Phân tích số thật → **2b** biểu đồ theo thời gian (chỗ **chọn thư
+viện biểu đồ, một lần** cho cả bước sau) → **2c** trang Xuất báo cáo → biểu
+đồ tiến độ mục tiêu theo thời gian (rẻ hẳn sau 2b) → Tổng kết tuần (spec có
+sẵn) → số liệu tổng hợp mục tiêu (nhỏ, chen giữa được) → nối Socket.io phía
+client (cuối, không thêm gì người dùng thấy). **Round-up cố ý để ngoài** — chỗ
+thứ ba app tự chuyển tiền trong khi chỗ thứ hai (`bill.Auto_pay`) còn treo
+backend. Lý do từng bước: mục 10.5 `docs/GOAL_FEATURE.md` và mục 7
+`docs/ANALYTICS_FEATURE.md`.
+
 1. **Người dùng đã chọn mảng thông báo** (2026-09-07 tối), hoãn mảng Phân tích
    *"vì còn nhiều cái liên quan chưa triển khai"*. Thứ tự đã duyệt:
    **#7 lọc/phân trang ✅ → #2 nhắc ghi chép ✅ → #5 nút hành động ✅ →
@@ -814,8 +825,11 @@ một lựa chọn, không phải một hàng đợi.
    nghị của tôi và người dùng đồng ý.
 
    **Mảng thông báo nay chỉ còn hai mục, cả hai đều bị chặn bởi việc khác:**
-   - **#1 Tổng kết tuần** — chờ mảng Phân tích có một màn dữ liệu thật phạm vi
-     đúng một tuần. Spec đã viết xong:
+   - **#1 Tổng kết tuần** — chờ một **màn dữ liệu thật phạm vi đúng một
+     tuần** để thông báo trỏ tới. Từ 2026-09-08 tầng tổng hợp **đã có**
+     (`thong_ke_thang.dart` nhận biên `[from, to)` bất kỳ, tuần hay tháng đều
+     là một lời gọi), nên chỗ chặn thu hẹp còn *màn hình tuần* — trang Phân
+     tích hiện theo **tháng**. Spec đã viết xong:
      `docs/superpowers/specs/2026-09-07-weekly-summary-notification-design.md`.
    - **#8 Thông báo trên web** — ưu tiên thấp có chủ ý; cần Service Worker và
      luồng xin quyền riêng của trình duyệt, mà web chỉ dùng để trình bày.

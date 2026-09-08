@@ -67,7 +67,7 @@ kèm các quy tắc mà vi phạm sẽ hỏng âm thầm. Sau đó:
 | Việc còn dang dở, kèm **lý do hoãn** | [`docs/CLIENT_APP_KNOWN_GAPS.md`](docs/CLIENT_APP_KNOWN_GAPS.md) |
 | Việc phía backend còn phải làm | [`docs/superpowers/backend/CAN-LAM/README.md`](docs/superpowers/backend/CAN-LAM/README.md) — cửa vào duy nhất |
 | Vì sao lược đồ có hình dạng hôm nay | [`docs/superpowers/backend/DA-XONG/`](docs/superpowers/backend/DA-XONG) |
-| Mục tiêu tiết kiệm · Thông báo · Danh mục | [`GOAL_FEATURE.md`](docs/GOAL_FEATURE.md) · [`NOTIFICATION_FEATURE.md`](docs/NOTIFICATION_FEATURE.md) · [`CATEGORY_RATIONALE.md`](docs/CATEGORY_RATIONALE.md) |
+| Mục tiêu tiết kiệm · Thông báo · Danh mục · Phân tích | [`GOAL_FEATURE.md`](docs/GOAL_FEATURE.md) · [`NOTIFICATION_FEATURE.md`](docs/NOTIFICATION_FEATURE.md) · [`CATEGORY_RATIONALE.md`](docs/CATEGORY_RATIONALE.md) · [`ANALYTICS_FEATURE.md`](docs/ANALYTICS_FEATURE.md) |
 | Hợp đồng tên trường giữa hai phía | `src/Client-app/test/core/sync/sync_payload_contract_test.dart` — đọc **như tài liệu**, đây là nơi duy nhất ghi nó |
 
 Các tài liệu ấy trả lời câu **"vì sao"**, không phải câu "cái gì": cái gì thì đọc
