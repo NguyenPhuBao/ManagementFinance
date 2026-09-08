@@ -41,8 +41,10 @@ kê/báo cáo đã có thật.**
 - **Trỏ vào `/home`.** Thật nhưng nhạt: chạm vào thông báo rồi quay về đúng chỗ
   vừa đứng thì gần như không đi đâu cả.
 - **Nối trang Phân tích vào dữ liệu thật trước.** Đúng chỗ đáng lẽ phải đến,
-  nhưng đó là một việc riêng, lớn hơn hẳn, và vùng `analytics` hiện **không có
-  tệp test nào**.
+  nhưng đó là một việc riêng, lớn hơn hẳn — và lúc viết spec, vùng `analytics`
+  không có tệp test nào. **Việc ấy đã làm xong 2026-09-08** (lát 2a, 4 tệp
+  test — `docs/ANALYTICS_FEATURE.md`), nhưng trang ấy hiện theo **tháng**, nên
+  điều kiện ở mục 3 vẫn chưa đủ.
 
 ---
 
@@ -76,6 +78,12 @@ không phải ngược lại.
 
 Một màn hình có **dữ liệu thật, phạm vi đúng một tuần**. Có thể là trang Phân
 tích sau khi được nối vào dữ liệu, hoặc một màn tổng kết tuần riêng.
+
+> **Cập nhật 2026-09-08:** tầng tổng hợp đã có — `tongThuChi` / `chiTheoDanhMuc`
+> trong `lib/features/analytics/domain/thong_ke_thang.dart` nhận biên
+> `[from, to)` bất kỳ, nên "một tuần" chỉ là một cặp mốc. Thứ còn thiếu là
+> **màn hình** phạm vi tuần (trang Phân tích chọn theo tháng). Đó là một lát
+> giao diện nhỏ, không còn là "việc riêng, lớn hơn hẳn" như mục 1 từng nói.
 
 Chừng nào chưa có, đừng dựng thông báo này — kể cả với một chỗ đến tạm.
 
