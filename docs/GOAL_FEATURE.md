@@ -262,6 +262,11 @@ chấm** trên thẻ (không mở menu nào — mọi thao tác nằm ở trang 
 **"Xem tất cả"** ở lịch sử tích luỹ (danh sách vốn đã hiện toàn bộ, nên nó vừa
 không làm gì vừa ngụ ý sai rằng có phần bị giấu).
 
+⚠️ **Nút ấy quay lại ngày 2026-09-08, và lần này làm thật** — xem mục 3.24. Lý
+lẽ gỡ nó nói về một nút **rỗng**, không nói rằng danh sách phải hiện hết mãi
+mãi; cắt bớt rồi làm cái nút ấy có tác dụng chính là điều kiện mà quyết định cũ
+còn thiếu.
+
 Trang chi tiết trước đây **không nghe dòng dữ liệu** (bẫy 4.5, đóng 2026-09-08)
 nên phải tự `_loadGoal()`
 sau khi trang sửa đóng. Việc đó dựng lại dòng lịch sử tích luỹ, và
@@ -754,6 +759,53 @@ Khối đặt **sau** hộp dự báo và cảnh báo ví: hai khối kia nói v
 khối này nói về *đang cài đặt thế nào* — thứ người dùng tra lại chứ không đọc
 mỗi lần mở.
 
+### 3.24 Lịch sử tích luỹ: cắt 5 dòng, phần còn lại vào bảng có bộ lọc
+
+Danh sách cũ hiện **toàn bộ** không có trần (`itemCount: txs.length`). Với 11
+khoản thì cuộn hết trong 2 cú vuốt — đo trên máy thật — nhưng nó **tăng tuyến
+tính không giới hạn**: một mục tiêu trích hàng ngày chạy hai năm là **730 dòng**.
+
+Nửa **kỹ thuật** của vấn đề không nhìn màn hình mà thấy được: danh sách dùng
+`shrinkWrap: true` + `NeverScrollableScrollPhysics` bên trong
+`SingleChildScrollView` của cả trang, tức **dựng mọi dòng cùng lúc, không ảo
+hoá** — trên một trang mà từ 2026-09-08 vẽ lại **mỗi lượt đồng bộ** (bẫy 4.5).
+Cắt xuống 5 dòng chỉ *giấu* vấn đề; đưa danh sách đầy đủ vào một `ListView` có
+vùng cuộn **riêng** mới thật sự sửa nó.
+
+**Bảng là bottom sheet, không phải trang mới.** Mọi route mới trong dự án này
+đều phải trả lời câu hỏi *nó có nằm trong `StatefulShellRoute` không* — đặt
+nhầm là app chết màn đỏ (bẫy 7.8 `NOTIFICATION_FEATURE.md`). Bottom sheet không
+đụng router nên tránh trọn vẹn cả lớp lỗi ấy.
+
+**Hai bộ lọc, và chúng GIAO nhau:** chiều tiền (Tất cả / Đã gửi / Đã rút) và
+khoảng thời gian (Mọi lúc / 30 ngày / 3 tháng / Năm nay). Dải chip **cuộn ngang
+chứ không `Wrap`** — cùng bài học ở trung tâm thông báo: bảy chip trên hai dải
+cần nhiều hơn 411dp, `Wrap` xuống hàng và ăn mất một dòng lịch sử.
+
+Dòng tổng tính trên danh sách **đã lọc**: nó nằm ngay trên dải chip nên phải
+nói về đúng thứ đang hiện; giữ tổng của cả danh sách là hai con số cãi nhau
+trên cùng một màn hình. Rỗng thì nói *"Không có khoản nào"* — chuỗi
+*"0 khoản · đã gửi 0 đ"* cãi nhau với thân bảng đang nói không có gì, và đó là
+lỗi chỉ đọc trên máy thật mới thấy vì cả hai chuỗi đều "đúng".
+
+⚠️ **KHÔNG có bộ lọc "tay / tự động", và đó là giới hạn của DỮ LIỆU.**
+`GoalAutoDepositRunner` gọi đúng `depositToGoal` với đúng tiền tố ghi chú của
+khoản nạp tay, nên hai loại **giống hệt nhau trên mọi cột**. Sự giống nhau ấy
+**có chủ ý** (mục 3.12): nhờ nó mà `laKhoanRutKhoiMucTieu` đọc đúng chiều cho
+cả hai. Muốn phân biệt thì phải thêm **cột mới**, và **đổi tiền tố ghi chú là
+cách sai** — nó đâm thẳng vào bẫy 4.2, thứ từng làm mọi dòng lịch sử hiện dấu
+trừ. Nếu làm thì làm cùng lúc với việc gắn nhãn "tự động" trên từng dòng: hiện
+dấu hiệu rồi mới lọc theo nó mới có nghĩa.
+
+**Biên thời gian có hai chỗ dễ sai im lặng**, cả hai có test: *"Năm nay"* cắt
+theo **năm dương lịch** chứ không phải 365 ngày (ngày 08/09 thì 365 ngày trước
+gồm cả bốn tháng cuối năm ngoái — một câu nói dối nhỏ mà người dùng phát hiện
+ngay khi cộng lại), và **cả hai đầu** của phép so phải chuẩn hoá về ngày, nếu
+không người dùng lọc "30 ngày" sẽ mất một khoản chỉ vì mở app buổi chiều.
+
+> ⚠️ Ca thứ hai từng **xanh oan**: bản test đầu tiên viết cho nó không thật sự
+> canh điều nó nói, và chỉ lộ ra khi dựng bản sai có chủ ý. Đã viết lại.
+
 ---
 
 ## 4. Bảy cái bẫy
@@ -948,7 +1000,7 @@ quyết định **tiền đi đâu** — ba lý do khiến nó không nên là c
 
 ## 9. Kiểm thử
 
-**333 test** riêng cho mục tiêu, trên tổng **1495** của dự án (đếm lại
+**351 test** riêng cho mục tiêu, trên tổng **1513** của dự án (đếm lại
 2026-09-08 sau khi thêm luật cột mốc và thứ tự ưu tiên, bằng cách chạy thật `flutter test
 test/features/goal test/core/notification/notification_rules_goal_wallet_test.dart`;
 con số ghi ở đây trước đó là 222/893 và đã lạc hậu — **đừng chép lại từ trí
@@ -967,6 +1019,8 @@ nhớ**).
 | `presentation/widgets/goal_progress_test.dart` | Một định nghĩa duy nhất của tỉ lệ |
 | `presentation/widgets/goal_appearance_test.dart` | Bảng tra biểu tượng/màu, dữ liệu rác, và **giá trị ngoài bảng chọn** |
 | `goal_edit_form_test.dart` | `showDatePicker` với mục tiêu **quá hạn** — xem mục 3.9 |
+| `goal_history_filter_test.dart` | **Mục 3.24.** Hai bộ lọc và phép **giao** của chúng, hai biên thời gian dễ sai im lặng, và `tongKet` phải tính trên danh sách đã lọc |
+| `presentation/widgets/goal_history_sheet_test.dart` | Chip có đổi danh sách thật không, dòng tổng đi theo bộ lọc, hai ca rỗng, và khổ 411dp |
 | `goal_priority_test.dart` | **Mục 3.22.** Hai chế độ của `uuTienSauKhiKeo` (ghi một hàng / đánh số lại), giá trị luôn dương và không trùng, vị trí ngoài dải không ném, và `viTriThaThucTe` — chỗ duy nhất sửa cái lệch một ô của `ReorderableListView` |
 | `goal_grouping_test.dart` | Hai tab, và từ 2026-09-08 canh **thứ tự ưu tiên**: ưu tiên thắng hạn định, `NULL` xếp cuối, trùng số rơi về hạn định, và tab đã hoàn thành **không** dùng ưu tiên |
 | `goal_auto_deposit_test.dart` | Bước kỳ (tháng ngắn, **năm nhuận**), **mốc neo**, trần số kỳ, quyết định trích. Từ 2026-09-08 canh thêm: **nhịp neo vào mốc gốc, không trôi** — ngày 31 kẹp ở tháng ngắn rồi **quay lại** 31, ngày 30 không bị kéo lên cuối tháng, `kyKeTiep` dùng chung nhịp, và mục tiêu chưa có mốc neo vẫn chạy như trước |
@@ -1066,6 +1120,7 @@ bỏ qua chứ đừng chuyển một phần, phải có trần mỗi lượt, v
 | ✅ | ~~**Cột mốc 25/50/75%**~~ | **Xong 2026-09-08** — `goalMilestone`, mục **3.21** |
 | ✅ | ~~**Đưa mục tiêu lên màn hình chính**~~ | **Xong 2026-09-08** — `HomeGoalCard`, chọn mục tiêu **ưu tiên nhất**. Cùng lượt **gỡ khối thông báo** khỏi trang chủ theo yêu cầu người dùng |
 | ✅ | ~~**Trang chi tiết thiếu nội dung**~~ | **Xong 2026-09-08** — khối "Cấu hình" bốn dòng, và **sửa lỗi hộp dự báo** ngoại suy từ vài ngày. Mục **3.23** và **3.7** |
+| ✅ | ~~**Lịch sử tích luỹ dài không giới hạn**~~ | **Xong 2026-09-08** — cắt 5 dòng + bảng đầy đủ có **hai bộ lọc**. Mục **3.24** |
 | 2 | **Làm tròn số lẻ** | Giá trị cao và hợp văn hoá "nuôi heo đất", nhưng là chỗ **thứ ba** app tự chuyển tiền — xem cảnh báo ở 10.2 |
 | 2 | **Chuyển giữa hai mục tiêu** | Một hàm gọi `withdraw` + `deposit` trong cùng khối nguyên tử |
 | 3 | **Chia thu nhập theo ưu tiên** | Cần ưu tiên xong trước |

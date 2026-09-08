@@ -14,7 +14,9 @@ import '../../domain/goal_deposit_warning.dart';
 import '../../domain/goal_forecast.dart';
 import '../../domain/goal_history_direction.dart';
 import '../../domain/goal_wallet_shortfall.dart';
+import '../../domain/goal_history_filter.dart';
 import '../widgets/goal_config_card.dart';
+import '../widgets/goal_history_sheet.dart';
 import '../widgets/goal_progress.dart';
 
 class GoalDetailPage extends StatefulWidget {
@@ -42,6 +44,19 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
   /// chứ không để ô trống, vì ô trống trông y hệt một lỗi tải dữ liệu.
   String? _tenViTichLuy;
   String? _tenViNguonTrich;
+
+  /// Số dòng lịch sử dựng ngay trên trang. Phần còn lại nằm ở bảng đầy đủ.
+  ///
+  /// Năm là con số vừa đủ để thấy *nhịp gần đây* mà không kéo trang dài thêm
+  /// một màn hình. Bỏ trần đi thì trang tăng tuyến tính không giới hạn, và
+  /// danh sách ở đây **không ảo hoá** (`shrinkWrap` + `NeverScrollable`) nên
+  /// mọi dòng được dựng cùng lúc, mỗi lượt đồng bộ.
+  static const int _soDongLichSuToiDa = 5;
+
+  /// Toàn bộ lịch sử đã rút gọn, giữ lại để mở bảng đầy đủ mà không phải mở
+  /// một dòng dữ liệu thứ hai.
+  List<KhoanTichLuy> _khoanLichSu = const [];
+  int get _soKhoanLichSu => _khoanLichSu.length;
 
   /// Đăng ký với dòng dữ liệu mục tiêu — **bẫy 4.5 đã đóng 2026-09-08**.
   ///
@@ -124,6 +139,40 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
         // vòng quay mỗi lần đồng bộ chạy xong.
       });
     });
+  }
+
+  /// Đổi hàng Drift sang dạng rút gọn cho tầng lọc.
+  ///
+  /// Chiều tiền đọc từ **tiền tố ghi chú** qua `laKhoanRutKhoiMucTieu` — đúng
+  /// một nơi quyết định, cùng hàm mà dòng trên trang đang dùng. Tự so ví ở đây
+  /// là bản sao thứ hai của bẫy 4.2.
+  List<KhoanTichLuy> _doiSangKhoan(List<dynamic> txs) => [
+        for (final tx in txs)
+          KhoanTichLuy(
+            ngay: tx.date as DateTime,
+            soTien: tx.amount as double,
+            laKhoanRut: laKhoanRutKhoiMucTieu(
+              ghiChu: (tx.note as String?) ?? '',
+              viCuaHang: tx.walletId as String,
+              viTichLuy: _goal?.walletId,
+            ),
+          ),
+      ];
+
+  /// Mở bảng lịch sử đầy đủ kèm bộ lọc.
+  void _moBangLichSu() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => GoalHistorySheet(
+        tenMucTieu: _goal?.name ?? '',
+        khoan: _khoanLichSu,
+      ),
+    );
   }
 
   /// Tên ví tích luỹ và ví nguồn trích, tra một lượt.
@@ -1142,18 +1191,32 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Nút "Xem tất cả" từng đứng bên phải nhãn này với `onPressed: () {}`.
-        // Danh sách bên dưới vốn đã hiện TOÀN BỘ lịch sử (`itemCount:
-        // txs.length`, không cắt bớt), nên ngoài việc không làm gì, nó còn ngụ
-        // ý sai rằng đang có phần bị giấu đi.
-        const Text(
-          'LỊCH SỬ TÍCH LŨY',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            color: AppColors.onSurfaceVariant,
-            letterSpacing: 0.5,
-          ),
+        // Nút "Xem tất cả" từng bị GỠ ngày 2026-09-06 vì nó có
+        // `onPressed: () {}` trong khi danh sách bên dưới đã hiện toàn bộ —
+        // vừa không làm gì vừa ngụ ý sai rằng có phần bị giấu.
+        //
+        // Nay nó **quay lại và làm thật** (2026-09-08). Lý lẽ cũ nói về một
+        // nút rỗng, không nói rằng danh sách phải hiện hết mãi mãi: danh sách
+        // không có trần, và một mục tiêu trích hàng ngày chạy hai năm là 730
+        // dòng dựng cùng lúc trên một trang nay vẽ lại mỗi lượt đồng bộ.
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'LỊCH SỬ TÍCH LŨY',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: AppColors.onSurfaceVariant,
+                letterSpacing: 0.5,
+              ),
+            ),
+            if (_soKhoanLichSu > _soDongLichSuToiDa)
+              TextButton(
+                onPressed: _moBangLichSu,
+                child: const Text('Xem tất cả'),
+              ),
+          ],
         ),
         const SizedBox(height: 16),
         StreamBuilder<dynamic>(
@@ -1180,6 +1243,10 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
             }
 
             final txs = (snapshot.data as List<dynamic>?) ?? [];
+            // Ghi lại để nhãn phía trên biết có nên hiện nút "Xem tất cả"
+            // không, và để bảng đầy đủ có sẵn dữ liệu mà không phải mở một
+            // dòng dữ liệu thứ hai.
+            _khoanLichSu = _doiSangKhoan(txs);
             if (txs.isEmpty) {
               return const Padding(
                 padding: EdgeInsets.all(16),
@@ -1192,13 +1259,17 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
               );
             }
 
+            // Chỉ dựng tối đa `_soDongLichSuToiDa` dòng ở đây. Phần còn lại
+            // nằm trong bảng đầy đủ, nơi có vùng cuộn RIÊNG nên `ListView`
+            // ảo hoá thật sự.
+            final hienThi = txs.take(_soDongLichSuToiDa).toList();
             return ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: txs.length,
+              itemCount: hienThi.length,
               separatorBuilder: (_, __) => const SizedBox(height: 16),
               itemBuilder: (context, index) {
-                final tx = txs[index];
+                final tx = hienThi[index];
                 final dateStr = DateFormat('dd/MM/yyyy HH:mm').format(tx.date as DateTime);
                 final amount = (tx.amount as double);
                 // Chiều tiền đọc từ tiền tố ghi chú do chính app sinh ra, KHÔNG
