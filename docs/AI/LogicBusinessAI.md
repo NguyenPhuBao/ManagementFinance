@@ -119,5 +119,5 @@ Hệ thống thiết kế theo kiến trúc **Offline-First**, phân định rõ
 
 ## 3. CÁC TÀI LIỆU ĐẶC TẢ CHI TIẾT TỪNG CHỨC NĂNG
 
-* Đặc tả kỹ thuật & API **Receipt OCR**: Xem tại [docs/AI/ORC.md](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/AI/ORC.md).
-* Đặc tả kỹ thuật & API **AI Transaction Classification**: Xem tại [docs/AI/Classify.md](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/AI/Classify.md).
+* Đặc tả kỹ thuật & API **Receipt OCR**: Xem tại [docs/AI/ORC.md](ORC.md).
+* Đặc tả kỹ thuật & API **AI Transaction Classification**: Xem tại [docs/AI/Classify.md](Classify.md).

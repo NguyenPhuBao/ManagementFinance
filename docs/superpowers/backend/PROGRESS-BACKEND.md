@@ -1,23 +1,39 @@
-# Backend Progress — FlowMoney NestJS
+# Backend Progress — FlowMoney (Express + Prisma)
 
-> Cập nhật lần cuối: 2026-08-10  
-> Người phụ trách: _(tên thành viên backend)_  
+> **Bảng trạng thái cập nhật 2026-09-08.** Phần *thân* tài liệu bên dưới vẫn là
+> bản kế hoạch gốc ngày **2026-08-10** và cố ý giữ nguyên: nó là đặc tả B1→B7
+> mà backend đã làm theo, đọc để biết *ý định ban đầu*.
+> Người phụ trách: _(tên thành viên backend)_ ·
 > Spec chi tiết: [`2026-08-10-backend-sync-spec.md`](./2026-08-10-backend-sync-spec.md)
+
+> ⚠️ **Tiêu đề cũ ghi "NestJS" — sai.** Backend là **Express 4** +
+> Prisma + PostgreSQL (`src/Backend/package.json`, `app.js`, `api/*.routes.js`).
+> Không có `@nestjs/*` nào trong `dependencies`.
 
 ---
 
 ## 📊 Tổng Quan Tiến Độ
 
-| Task | Tên | Trạng thái | Ngày hoàn thành |
+⚠️ **Bảng này từng ghi B1–B4 và B7 là 🔴 CHƯA LÀM suốt gần một tháng sau khi
+chúng đã chạy thật** — cả app client vận hành trên chính `/sync/push` và
+`/sync/pull` ấy. Bảng dưới đây được dựng lại ngày 2026-09-08 bằng cách **mở mã
+`src/Backend` ra đọc**, không phải chép lại báo cáo; cột cuối ghi chỗ kiểm để
+người sau tự đối chiếu thay vì tin bảng này.
+
+| Task | Tên | Trạng thái | Kiểm ở đâu (2026-09-08) |
 |---|---|---|---|
-| **B0** | Auth API (login, register, refresh token) | ✅ HOÀN THÀNH | — |
-| **B1** | Prisma models: Wallet, Transaction, Budget, Bill, Goal | 🔴 CHƯA LÀM | — |
-| **B2** | `POST /api/sync/push` — nhận batch từ client | 🔴 CHƯA LÀM | — |
-| **B3** | `GET /api/sync/pull` — trả data mới cho client | 🔴 CHƯA LÀM | — |
-| **B4** | Conflict resolution (Last-Write-Wins) | 🔴 CHƯA LÀM | — |
-| **B5** | `GET /api/sync/status` | 🟡 Nice-to-have | — |
-| **B6** | Default categories endpoint | 🟡 Nice-to-have | — |
-| **B7** | ForgotPassword endpoint | 🔴 CHƯA LÀM | — |
+| **B0** | Auth API (login, register, refresh token) | ✅ HOÀN THÀNH | `api/auth.routes.js` |
+| **B1** | Prisma models: Wallet, Transaction, Budget, Bill, Goal | ✅ HOÀN THÀNH | `prisma/schema.prisma` — **13 model** |
+| **B2** | `POST /api/sync/push` — nhận batch từ client | ✅ HOÀN THÀNH | `api/sync.routes.js:10` → `modules/sync/sync.controller.js` |
+| **B3** | `GET /api/sync/pull` — trả data mới cho client | ✅ HOÀN THÀNH | `api/sync.routes.js:13` |
+| **B4** | Conflict resolution (Last-Write-Wins) | ✅ HOÀN THÀNH | `modules/sync/sync.service.js:123` (*"upsert with LWW"*), trả `status: 'conflict'` và đếm ở `summary.conflicts` |
+| **B5** | `GET /api/sync/status` | ✅ HOÀN THÀNH | `api/sync.routes.js:16` — không còn là "nice-to-have" |
+| **B6** | Default categories endpoint | ⬜ **BÃI BỎ — thiết kế đã đổi** | Không có `api/category.routes.js`. Danh mục mặc định về qua chính `/sync/pull`, rồi `DefaultCategorySeeder` phía client **tạo bản sao riêng cho từng tài khoản** (quy tắc 8 `CLAUDE.md`, spec `2026-09-07-per-account-default-categories-design.md`). Một endpoint riêng nay không giải quyết vấn đề gì |
+| **B7** | ForgotPassword endpoint | ✅ HOÀN THÀNH | `api/auth.routes.js:37-39` — `/forgot-password`, `/verify-otp`, `/reset-password` |
+
+> **Việc backend còn lại KHÔNG nằm ở tài liệu này.** Cửa vào duy nhất là
+> [`CAN-LAM/README.md`](./CAN-LAM/README.md) mục 2 — hiện **sáu** mục, không
+> mục nào thuộc B1→B7.
 
 ---
 
@@ -32,7 +48,7 @@
 
 ---
 
-## 🔴 B1: Prisma Models (VIỆC ĐẦU TIÊN)
+## ✅ B1: Prisma Models — *đã xong; phần dưới là kế hoạch gốc 2026-08-10*
 
 **Spec:** [Section 6 — Prisma Schema](./2026-08-10-backend-sync-spec.md#6-prisma-schema-để-thêm-vào-schemaprisma)
 
@@ -67,7 +83,7 @@ npx prisma studio   # kiểm tra bảng trực quan
 
 ---
 
-## 🔴 B2: POST /api/sync/push
+## ✅ B2: POST /api/sync/push — *đã xong*
 
 **Spec:** [Section 3.1](./2026-08-10-backend-sync-spec.md#31-post-apisyncpush--client-gửi-dữ-liệu-local-lên-server)
 
@@ -118,7 +134,7 @@ Client gửi batch các thao tác (create/update/delete) lên server sau khi có
 
 ---
 
-## 🔴 B3: GET /api/sync/pull
+## ✅ B3: GET /api/sync/pull — *đã xong*
 
 **Spec:** [Section 3.2](./2026-08-10-backend-sync-spec.md#32-get-apisyncpullsincetimestamp--kéo-data-mới-từ-server)
 
@@ -154,7 +170,7 @@ Client gọi sau khi login hoặc khi cần lấy data từ thiết bị/session
 
 ---
 
-## 🔴 B4: Conflict Resolution
+## ✅ B4: Conflict Resolution — *đã xong*
 
 **Spec:** [Section 4.1](./2026-08-10-backend-sync-spec.md#41-conflict-resolution-last-write-wins)
 
@@ -176,7 +192,7 @@ T_client = T_server  →  Coi là synced (idempotent)
 
 ---
 
-## 🟡 B5: GET /api/sync/status
+## ✅ B5: GET /api/sync/status — *đã xong, không còn là nice-to-have*
 
 Trả về số records pending của user (để debug, không bắt buộc cho MVP).
 
@@ -190,7 +206,7 @@ Trả về số records pending của user (để debug, không bắt buộc cho
 
 ---
 
-## 🟡 B6: Default Categories Endpoint
+## ⬜ B6: Default Categories Endpoint — *BÃI BỎ, thiết kế đã đổi (xem bảng trên)*
 
 Client đã seed sẵn 18 danh mục mặc định vào local SQLite (không cần sync).  
 Endpoint này chỉ cần khi muốn đồng bộ danh mục từ server thay vì hardcode.
@@ -199,7 +215,7 @@ Endpoint này chỉ cần khi muốn đồng bộ danh mục từ server thay v�
 
 ---
 
-## 🔴 B7: ForgotPassword
+## ✅ B7: ForgotPassword — *đã xong*
 
 Client đã có UI sẵn (`ForgotPasswordPage`), chỉ thiếu backend endpoint.
 
@@ -209,7 +225,7 @@ Client đã có UI sẵn (`ForgotPasswordPage`), chỉ thiếu backend endpoint.
 
 ---
 
-## 📋 Thứ Tự Implement Khuyến Nghị
+## 📋 Thứ Tự Implement Khuyến Nghị *(lịch sử — đã đi hết)*
 
 ```
 B1 (Prisma schema + migrate)

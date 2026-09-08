@@ -1,5 +1,12 @@
 # Thiết kế: tự động thanh toán hoá đơn (client, schema v17)
 
+> **Trạng thái: ĐÃ THI CÔNG** (soát lại 2026-09-08) —
+> `lib/features/bill/domain/bill_auto_pay.dart` +
+> `bill_auto_pay_runner.dart`, cột `autoPayEnabled` ở
+> `lib/core/database/tables/other_tables.dart:174`.
+> ⚠️ Cột ấy vẫn là **cục bộ**: hai máy cùng bật là hai khoản chi. Việc backend
+> tương ứng nằm ở `CAN-LAM/README.md` mục 2.
+
 **Ngày:** 2026-09-06 · **Phạm vi:** `src/Client-app` · **Tiền lệ:** trích tiền
 tự động của mục tiêu (mục 3.12–3.14 `docs/GOAL_FEATURE.md`, schema v15).
 

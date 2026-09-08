@@ -589,7 +589,7 @@ src/Backend/
 
 ### ✅ Đã hoàn thành
 - Schema PostgreSQL aligned với New_Database.md (migration đã apply)
-- SQLite schema (Drift) aligned với backend schema — `schemaVersion = 12`
+- SQLite schema (Drift) aligned với backend schema — `schemaVersion` nay là **19** (dòng này từng đứng ở 12 rất lâu; con số đúng luôn nằm ở `AppDatabase.schemaVersion`, đừng chép từ đây)
 - Sync engine: thứ tự batch đúng, nhóm danh mục đẩy trước danh mục con
 - FK violation fix: `_resolveCategoryId` + step 1b
 - Category dedup trong UI
@@ -681,7 +681,7 @@ src/Backend/
   > Dựng **bản sai có chủ ý** để kiểm cái bẫy thứ ba (dời luật xuống sau `isBehindSchedule`): **3 test đỏ**. Test xanh sẵn không chứng minh gì — đây là lần thứ năm kỹ thuật này đáng công trong dự án.
   > ⚠️ Hai test cũ phải sửa, và **cả hai đều là lưới an toàn hoạt động đúng**: phép canh *"phủ đủ cả 14 loại"* của `notification_deeplink_test` đỏ vì nay có 15 (và phải dựng thêm một mục tiêu 50% — hàng 20% cũ không sinh cột mốc); còn *"đi đúng nhịp thì im lặng"* dùng `expect(ra, isEmpty)` cho một mục tiêu **70%**, tức một phép canh **rộng hơn** điều nó muốn nói. Thu hẹp về đúng `goalBehind` thay vì nới luật.
   > **Đã kiểm trên `emulator-5554`**: `dumpsys notification --noredact` cho `android.title=(Đã đi được 50% chặng đường)` trên mục tiêu `MuaXe` 1.101.000/2.000.000 = 55%.
-- **Mục tiêu: thứ tự ưu tiên kéo thả** (2026-09-08, **schema v19**). Danh sách vốn sắp cứng theo hạn gần nhất nên người dùng không nói được *"quỹ khẩn cấp quan trọng hơn cái laptop"*. Cột `Priority Int?` phía backend có từ 2026-09-07 — đây là việc **duy nhất** mà backend đã làm xong phần của họ mà client chưa nhận. Quy ước giá trị lấy **nguyên** từ `DA-XONG/2026-09-05-backend-goal-priority.md` mục 4, không phát minh lại: số **cách nhau 100**, `NULL` xếp **cuối**, trùng số rơi về `targetDate`. `uuTienSauKhiKeo` có **hai chế độ** — còn khe thì ghi **một** hàng, hết khe hoặc còn hàng `null` thì đánh số lại cả danh sách; lần kéo đầu luôn rơi vào chế độ hai và đó là *một* lần trong đời danh sách. Chỉ tab "Đang theo đuổi" dùng ưu tiên. Payload mục tiêu 18 → **19 trường**. Lý do đầy đủ ở **mục 3.22 `docs/GOAL_FEATURE.md`**. 24 test mới.
+- **Mục tiêu: thứ tự ưu tiên kéo thả** (2026-09-08, **schema v19**). Danh sách vốn sắp cứng theo hạn gần nhất nên người dùng không nói được *"quỹ khẩn cấp quan trọng hơn cái laptop"*. Cột `Priority Int?` phía backend có từ 2026-09-07 — đây là việc **duy nhất** mà backend đã làm xong phần của họ mà client chưa nhận. Quy ước giá trị lấy **nguyên** từ `DA-XONG/2026-09-05-backend-goal-priority.md` mục 4, không phát minh lại: số **cách nhau 100**, `NULL` xếp **cuối**, trùng số rơi về `targetDate`. `uuTienSauKhiKeo` có **hai chế độ** — còn khe thì ghi **một** hàng, hết khe hoặc còn hàng `null` thì đánh số lại cả danh sách; lần kéo đầu luôn rơi vào chế độ hai và đó là *một* lần trong đời danh sách. Chỉ tab "Đang theo đuổi" dùng ưu tiên. Payload mục tiêu nay **22 trường** (đếm lại 2026-09-08; dòng này từng ghi "18 → 19" vì cộng dồn mà quên ba cột `auto_deposit_*`). Lý do đầy đủ ở **mục 3.22 `docs/GOAL_FEATURE.md`**. 24 test mới.
   > ⚠️ **`ReorderableListView.onReorder` trả `newIndex` tính trên danh sách CÒN NGUYÊN phần tử đang kéo**, nên kéo *xuống* thì con số ấy lớn hơn vị trí cuối cùng đúng một đơn vị. `viTriThaThucTe` là chỗ duy nhất sửa việc đó, và nó có test riêng — dùng thẳng `newIndex` là mục tiêu rơi lệch một ô, im lặng.
   > ⚠️ Migration v19 **cố ý không suy giá trị** cho hàng cũ, khác hẳn `anchorDay` của v18: ở đó ngày đến hạn là ý định người dùng đã đưa ra và chỉ cần đọc lại, còn ở đây mọi thứ tự bịa ra đều sai với người đã sắp tay. Cùng lập luận đã dùng cho v15 và v17.
   > ⚠️ Hai test migration hoá đơn (v17, v18) đỏ vì bản dựng thử của chúng chỉ có bảng `bills`, mà v19 `ALTER TABLE goals`. Sửa ở phía **bản dựng thử** — một CSDL v17 thật luôn có bảng ấy — chứ không bọc `try/catch` quanh migration.
@@ -959,7 +959,7 @@ Tóm tắt:
   đứng **TRƯỚC** phép kiểm `isBehindSchedule` — mục 3.21.
 - **Thứ tự ưu tiên kéo thả** (2026-09-08, schema **v19**, cột `priority`). Số
   cách nhau **100**, `NULL` xếp **cuối**, trùng số rơi về `targetDate`. Chỉ tab
-  "Đang theo đuổi" dùng nó. Payload mục tiêu 18 → **19 trường**. Lần kéo đầu
+  "Đang theo đuổi" dùng nó. Payload mục tiêu nay **22 trường** (đếm lại 2026-09-08). Lần kéo đầu
   đánh số lại cả danh sách (mọi hàng đang `null`), từ lần sau chỉ ghi **một**
   hàng. ⚠️ `ReorderableListView` trả `newIndex` **lệch một ô** khi kéo xuống —
   `viTriThaThucTe` là chỗ duy nhất sửa. Khoảng trống chấp nhận được: **G25** —

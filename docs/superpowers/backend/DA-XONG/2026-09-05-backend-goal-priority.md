@@ -132,8 +132,8 @@ Theo thứ tự:
    đầu, đồng bộ đủ hai chiều, nhưng `GoalEntity` không mang nên không tầng nào
    phía trên nhìn thấy.
 2. Thêm `'priority'` vào payload đẩy **và** cập nhật
-   `sync_payload_contract_test.dart` cùng lúc — payload mục tiêu hiện khoá đúng
-   **18 trường**. Sai tên trường thì **im lặng** (quy tắc 4 trong `CLAUDE.md`),
+   `sync_payload_contract_test.dart` cùng lúc — payload mục tiêu khi ấy khoá đúng
+   **18 trường** (ảnh chụp 2026-09-05; nay là **22**). Sai tên trường thì **im lặng** (quy tắc 4 trong `CLAUDE.md`),
    và test hợp đồng là thứ duy nhất bắt được.
 3. Đọc `priority` ở nhánh pull.
 4. Giao diện kéo thả ở tab "Đang theo đuổi", và sắp lại trong `chiaMucTieu` —

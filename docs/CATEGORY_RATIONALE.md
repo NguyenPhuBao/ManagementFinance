@@ -21,7 +21,7 @@ Bốn thay đổi, mỗi cái do một lỗi **có thật** buộc phải làm �
 | Bộ danh mục mặc định khớp đúng 13 mục của backend; 5 mục thừa thành danh mục cá nhân | Hai phía chỉ khớp **10/18** tên, khiến giao dịch dùng 8 mục còn lại **không bao giờ đẩy lên được** |
 | ✅ *(backend làm xong 2026-09-07)* ID cố định cho danh mục mặc định | Nguyên nhân gốc của cả bốn lỗi 11.3–11.6 |
 
-Kết quả: `flutter test` từ **144 → 180 test**, `flutter analyze` **29 issue, không error**.
+Kết quả **đo ngay sau đợt ấy** (2026-09-03): `flutter test` từ **144 → 180 test**, `flutter analyze` **29 issue, không error**. Đây là con số *lịch sử của đợt này*, không phải mức nền hôm nay — mức nền hiện tại nằm ở `CLAUDE.md`.
 
 ---
 
@@ -264,6 +264,6 @@ flutter test test/features/category/ test/core/category/ test/core/database/cate
 flutter analyze
 ```
 
-Mức nền sau đợt thay đổi: **180/180 test pass**, **29 issue, không error**.
+Mức nền **tại thời điểm đóng đợt** (2026-09-03): **180/180 test pass**, **29 issue, không error**. Toàn dự án đã đi xa khỏi con số ấy — xem `CLAUDE.md` để biết mức nền hôm nay.
 
-Riêng phần danh mục có **74 test** trải trên 5 file, trong đó nhiều test ghi rõ trong `reason:` là nó đang canh chừng lỗi nào — vì lớp lỗi này không tự lộ ra khi dùng tay.
+Riêng phần danh mục nay có **125 test** trên 10 file (đo lại 2026-09-08 bằng chính lệnh trên; con số cũ ghi ở đây là 74 test/5 file). Nhiều test ghi rõ trong `reason:` là nó đang canh chừng lỗi nào — vì lớp lỗi này không tự lộ ra khi dùng tay.

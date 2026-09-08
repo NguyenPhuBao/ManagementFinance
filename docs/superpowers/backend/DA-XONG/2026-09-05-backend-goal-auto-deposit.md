@@ -92,7 +92,7 @@ Bốn việc, theo thứ tự:
 1. Thêm ba khoá vào `_collectPendingOps` (nhánh `goal`) và vào nhánh pull của
    `sync_engine.dart`.
 2. **Cập nhật `sync_payload_contract_test.dart` cùng lúc** — payload mục tiêu
-   hiện khoá đúng **18 trường**, và ba cột này đang nằm trong danh sách *cấm rò
+   khi ấy khoá đúng **18 trường** (ảnh chụp 2026-09-05; nay là **22**), và ba cột này đang nằm trong danh sách *cấm rò
    rỉ*. Không sửa test thì nó đỏ ngay, và đó là điều đúng: hợp đồng tên trường
    là thứ duy nhất bắt được lỗi này, vì sai tên trường thì **im lặng** (quy tắc
    4 trong `CLAUDE.md`).

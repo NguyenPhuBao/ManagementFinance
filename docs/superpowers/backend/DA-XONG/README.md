@@ -30,7 +30,7 @@ Tám tài liệu này chuyển từ `CAN-LAM/` sang đây sau khi client đối 
 
 ## 2. Đã xong từ trước, hoặc chỉ để tham khảo lịch sử
 
-Tám tài liệu này vốn nằm ở thư mục cha; gom về đây để thư mục cha chỉ còn ba
+Tám tài liệu này vốn nằm ở thư mục cha; gom về đây để thư mục cha chỉ còn bốn
 tệp bối cảnh và hai mục lục.
 
 | Tài liệu | Trạng thái |

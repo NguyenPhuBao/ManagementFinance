@@ -6,7 +6,7 @@ Tài liệu này tổng hợp toàn bộ các tính năng, API, mô hình dữ l
 
 ## 1. Cơ Sở Dữ Liệu & Mô Hình Dữ Liệu Mới (Supabase PostgreSQL)
 
-Backend đã hoàn thành đồng bộ **13 bảng CSDL** theo đặc tả chuẩn [New_Database.md](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/superpowers/backend/New_Database.md):
+Backend đã hoàn thành đồng bộ **13 bảng CSDL** theo đặc tả chuẩn [New_Database.md](../superpowers/backend/New_Database.md):
 
 * **`Transaction`**:
   * `Status` (`Varchar(10)`): Ràng buộc Check `Status IN ('Pending', 'Confirmed', 'Rejected', 'Fail') - Default 'Confirmed'`.
@@ -112,7 +112,7 @@ Backend đã hoàn thành đồng bộ **13 bảng CSDL** theo đặc tả chu�
 
 ## 7. Module AI — Chức Năng Phân Loại Giao Dịch (F012 — Hoàn Thành & Tối Ưu Hóa)
 
-* **Chuẩn RAG 4 Giai Đoạn ([docs/AI/Standard_RAG.md](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/AI/Standard_RAG.md)):**
+* **Chuẩn RAG 4 Giai Đoạn ([docs/AI/Standard_RAG.md](../AI/Standard_RAG.md)):**
   * Áp dụng Tiền xử lý Unicode NFC (`cleanVietnameseText`), loại bỏ mã hex/FT ngân hàng, hỗ trợ không dấu (`removeVietnameseTones`).
 * **Kiến Trúc Mô Hình Lai 3 Tầng (3-Tier Hybrid):**
   * **Tầng 1 (Keyword Matcher):** So khớp trực tiếp `Category.Keyword` của user ($0 - 5ms$, $\text{Confidence} \ge 0.95$). Chạy đồng bộ cả trên Client SQLite.
@@ -120,7 +120,7 @@ Backend đã hoàn thành đồng bộ **13 bảng CSDL** theo đặc tả chu�
     * Tách từ khóa chuẩn hóa theo dấu phẩy `,` (`rawKw.split(',')`).
   * **Tầng 2 (Local NLP / Similarity):** So khớp độ tương đồng từ vựng N-gram / Jaccard Similarity ($5 - 15ms$, $0$đ) và sinh Top-3 `suggested_categories`. Phân tách từ khóa dấu phẩy thành khoảng trắng để tokenizer chính xác.
   * **Tầng 3 (LLM Gemini Flash):** Kích hoạt khi $\text{Confidence} < 0.60$ với Strict Grounding và xếp hạng danh mục U-Shaped Context Ordering.
-* **Chuẩn Hóa Chữ Thường Tại Nguồn Repository ([classify.repository.js](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/modules/ai/features/classify/classify.repository.js)):**
+* **Chuẩn Hóa Chữ Thường Tại Nguồn Repository ([classify.repository.js](../../src/Backend/modules/ai/features/classify/classify.repository.js)):**
   * Tự động sinh `namecategory_lower` và `keyword_lower` ngay khi truy vấn CSDL lên.
   * Cơ chế tự học `appendCategoryKeyword` chuẩn hóa phân tách và nối lại bằng dấu phẩy `,` không có khoảng trắng (`existingKeywords.join(',')`).
 * **Cơ Chế Tự Học Cá Nhân Hóa (Self-Learning Feedback Loop):**

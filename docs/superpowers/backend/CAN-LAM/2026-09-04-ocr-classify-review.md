@@ -439,7 +439,9 @@ phân biệt hai người dùng.
 
 ### 7.2. Vì sao chưa nổ, và khi nào sẽ nổ
 
-Payload đẩy của client (`sync_engine.dart:972-987`) có đúng 11 trường và
+Payload đẩy của client (`sync_engine.dart:972-987`) có đúng 11 trường **tại
+thời điểm đo, 2026-09-04** (nay là 12 — `idgoal` vào ngày 2026-09-07; số trường
+không đổi kết luận dưới đây) và
 **không có `provider` lẫn `bank_tran_id`**. Backend do đó ghi
 `bank_tran_id = NULL` (`sync.repository.js:260`) và `provider = 'Manual'`
 (`:264`). PostgreSQL coi mỗi NULL là khác biệt, nên `uq_transaction_external`

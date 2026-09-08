@@ -1,6 +1,31 @@
 # Kế Hoạch & Tiến Độ Client-App (Flutter Mobile App)
 
-Tài liệu này tổng hợp toàn bộ các nhiệm vụ, hạng mục kỹ thuật và chức năng mà **Client-app** cần triển khai hoặc điều chỉnh để đồng bộ hoàn toàn với Backend và đặc tả CSDL mới ([New_Database.md](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/superpowers/backend/New_Database.md)).
+Tài liệu này tổng hợp toàn bộ các nhiệm vụ, hạng mục kỹ thuật và chức năng mà **Client-app** cần triển khai hoặc điều chỉnh để đồng bộ hoàn toàn với Backend và đặc tả CSDL mới ([New_Database.md](../superpowers/backend/New_Database.md)).
+
+> ## ⚠️ Đây là KẾ HOẠCH, không phải bảng trạng thái — soát 2026-09-08
+>
+> Tài liệu này liệt kê *việc cần làm* và **không mang dấu hoàn thành nào**, nên
+> đọc lướt rất dễ tưởng mọi mục còn dang dở. Trạng thái thật nằm ở **mục 14
+> `docs/PROJECT_CONTEXT.md`** và `docs/CLIENT_APP_KNOWN_GAPS.md`.
+>
+> Ba chỗ đã đối chiếu bằng mã trong đợt soát này:
+>
+> 1. **Mục 4 (Socket.io) — CHƯA LÀM, và đó là mục lớn nhất còn lại ở đây.**
+>    Backend đã có Socket.io (`src/Backend/core/socket.js`), nhưng client
+>    **không có gói `socket_io_client`** trong `pubspec.yaml`; không dòng nào
+>    trong `lib/` kết nối. Server cũng chưa phát sự kiện tên
+>    `bank_transaction.incoming`.
+> 2. **Mục 7 bước 2 SAI:** không có endpoint `GET /api/sync/default-categories`
+>    (`src/Backend/api/` không có `category.routes.js`, và mục B6 đã **bãi bỏ**
+>    — xem `PROGRESS-BACKEND.md`). Việc *tạo bản sao danh mục mặc định cho từng
+>    tài khoản* **đã làm xong** ngày 2026-09-07, nhưng đi đường khác: danh mục
+>    mẫu về theo `/sync/pull` rồi `DefaultCategorySeeder` nhân bản sau lần pull
+>    đầu. Thiết kế thật:
+>    `docs/superpowers/specs/2026-09-07-per-account-default-categories-design.md`
+>    và quy tắc 8 `CLAUDE.md`.
+> 3. **Bảng ở mục 1 liệt kê `status` và `provider` của `transaction`** — hai cột
+>    ấy có thật trong lược đồ nhưng **KHÔNG nằm trong hợp đồng đồng bộ theo
+>    chiều nào cả** (quy tắc 4 `CLAUDE.md`). Có cột không có nghĩa là có đồng bộ.
 
 ---
 

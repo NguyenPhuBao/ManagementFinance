@@ -1,6 +1,6 @@
 # Backend — CHỈ ĐỌC THƯ MỤC NÀY
 
-**Cập nhật:** 2026-09-07
+**Cập nhật:** 2026-09-08 (thêm mục 6 — `BILL_ANCHOR_DAY.md`; banner đợt 2026-09-07 bên dưới giữ nguyên vì nó nói về đợt ấy)
 
 > ## ✅ Đợt backend 2026-09-07 — client đã kiểm chứng bằng mã, không tin báo cáo
 >

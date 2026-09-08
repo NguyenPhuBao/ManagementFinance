@@ -21,8 +21,10 @@
 > chỉ lên tiếng ở 100% và khi chậm tiến độ. Lý do và bảng xếp hạng ở mục **10**
 > `docs/GOAL_FEATURE.md`; khoá chống trùng ở mục 6 dưới đây.
 >
-> **Mức nền hiện tại:** `flutter test` **1513/1513 pass**, `flutter analyze`
-> **25 issue, KHÔNG error** (đo lại 2026-09-08, cuối ngày).
+> **Mức nền hiện tại:** `flutter test` **1529/1529 pass**, `flutter analyze`
+> **25 issue, KHÔNG error** (đo lại 2026-09-08 sau đợt nhãn "(tự động)" của
+> mục tiêu). Con số test đổi gần như mỗi phiên — `CLAUDE.md` là nơi chép nó
+> gần nhất, đừng tin bản ở đây nếu hai chỗ lệch nhau.
 
 Đọc file này trước khi làm tiếp bất cứ việc gì thuộc thông báo. Mục 6 ghi lại
 từng lát đã làm gì và vì sao; mục 7 là những cái bẫy — **đọc mục 7 trước khi
@@ -906,13 +908,23 @@ số biến thiên (`spent`, phần trăm thô); vuốt xoá bằng DELETE thay 
 `dismissedAt`. Cả ba **không làm app chết**, chỉ khiến người dùng tắt thông báo
 và không bao giờ bật lại.
 
-**7.2 Đổi người đăng nhập — lỗ nghiêm trọng nhất, CHƯA XỬ LÝ HẾT.**
-`purgeDataForOtherAccounts` đã thêm bảng thông báo và có test canh. Nhưng khi
-làm lát 4, **`stop()` PHẢI gọi `osNotifier.cancelAll()`**. Không có nó thì lịch
-hoá đơn của người trước vẫn nổ **trên màn hình khoá** sau khi người khác đăng
-nhập — dữ liệu tài chính ra khỏi app hoàn toàn, và `purgeDataForOtherAccounts`
-không cứu được vì lịch nằm trong AlarmManager/UNUserNotificationCenter chứ
-không trong SQLite.
+**7.2 Đổi người đăng nhập — lỗ nghiêm trọng nhất. ✅ ĐÃ ĐÓNG**, nhưng đọc kỹ
+vì nó dễ bị gỡ ra lúc dọn dẹp. `purgeDataForOtherAccounts` đã thêm bảng thông
+báo, và **`stop()` gọi `osNotifier.cancelAll()`** —
+`notification_scanner.dart:263`, có test canh ở
+`notification_scanner_test.dart` (*"stop() huỷ toàn bộ lịch đã đặt trên hệ điều
+hành"*). Gỡ lời gọi ấy thì lịch hoá đơn của người trước vẫn nổ **trên màn hình
+khoá** sau khi người khác đăng nhập — dữ liệu tài chính ra khỏi app hoàn toàn,
+và `purgeDataForOtherAccounts` không cứu được vì lịch nằm trong
+AlarmManager/UNUserNotificationCenter chứ không trong SQLite.
+
+> ⚠️ Đoạn này từng ghi *"CHƯA XỬ LÝ HẾT … khi làm lát 4"* trong khi đầu tài
+> liệu đã tuyên bố cả bảy lát xong — hai câu cãi nhau ngay trong một tệp. Sửa
+> 2026-09-08 sau khi mở mã ra đọc.
+
+⚠️ **Đừng nhầm với `BadgeUpdater`: nó TUYỆT ĐỐI không được gọi `cancelAll()`**
+(`badge_updater_test.dart` có test riêng cho luật ngược này), vì ở đó lệnh ấy
+cuốn theo cả lịch chưa nổ. Cùng một lời gọi, hai chỗ, hai luật trái nhau.
 
 **7.3 Múi giờ.** Quên `tz.initializeTimeZones()` + `tz.setLocalLocation()` thì
 `zonedSchedule` chạy theo UTC, nhắc lệch 7 tiếng ở Việt Nam — **không có lỗi

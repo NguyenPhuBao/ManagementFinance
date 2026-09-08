@@ -1000,9 +1000,14 @@ cả hàng**, đưa mọi cột không gán về mặc định. Nhánh pull đú
 | **Mốc neo** của nhịp trích | `timeCycleTakeMoney` | `time_cycle_take_money` | `Time_cycle_take_money` |
 | **Thứ tự ưu tiên** | `priority` (v19) | `priority` | `Priority` |
 
-Payload mục tiêu có **19 trường** (18 + `priority` từ 2026-09-08). Hợp đồng đầy đủ ở
+Payload mục tiêu có **22 trường**. Hợp đồng đầy đủ ở
 `test/core/sync/sync_payload_contract_test.dart` — **nơi duy nhất** ghi tên
-trường giữa hai phía.
+trường giữa hai phía; con số trên đếm bằng máy từ chính tệp ấy (2026-09-08).
+
+> ⚠️ Dòng này từng ghi **19 trường** ("18 + `priority`"). Sai: phép cộng ấy bỏ
+> quên ba cột `auto_deposit_*` vào payload ngày 2026-09-07, và con số 18 vốn là
+> ảnh chụp *trước* đợt ấy. Đây đúng kiểu lỗi mà dự án đã vấp nhiều lần — **đếm
+> lại từ hợp đồng, đừng cộng dồn từ trí nhớ**.
 
 ---
 

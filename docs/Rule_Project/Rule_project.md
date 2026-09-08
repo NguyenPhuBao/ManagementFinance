@@ -181,7 +181,7 @@ Mọi yêu cầu kỹ thuật phải đi qua 4 Phase tuần tự:
 Khi kết thúc một nhiệm vụ kỹ thuật, AI **bắt buộc** phải hoàn thành 2 công việc cuối cùng trước khi báo cáo hoàn tất cho PO:
 
 1. **Cập nhật Nguồn Sự Thật (Documentation Update):**
-   * Đọc và cập nhật lại file [`Project.md`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/Project.md) và các tài liệu liên quan để phản ánh đúng hiện trạng sau thay đổi.
+   * Đọc và cập nhật lại file [`Project.md`](../../Project.md) và các tài liệu liên quan để phản ánh đúng hiện trạng sau thay đổi.
 2. **Cập nhật CodeGraph:**
    * Chạy lệnh cập nhật đồ thị mã nguồn dự án:  
      ```bash
