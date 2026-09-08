@@ -8,6 +8,7 @@ import 'package:flowmoney/features/goal/data/datasources/goal_local_data_source.
 import 'package:flowmoney/features/goal/data/models/goal_entity.dart';
 import 'package:flowmoney/features/goal/data/repositories/goal_repository.dart';
 import 'package:flowmoney/features/goal/data/repositories/goal_repository_impl.dart';
+import 'package:flowmoney/features/goal/domain/goal_history_direction.dart';
 
 void main() {
   late AppDatabase db;
@@ -87,8 +88,43 @@ void main() {
               'thì nhìn vào hàng không biết được ví nào nhận — và payload đẩy '
               'đã có sẵn `idwallet_transfer` cho nó.');
       expect(tx.amount, 1000000.0);
-      expect(tx.note, 'Tích lũy mục tiêu: Mua Laptop');
+      expect(tx.note, 'Tích lũy mục tiêu: Mua Laptop',
+          reason: 'Nạp tay KHÔNG mang hậu tố "(tự động)". Dán nhãn cho khoản '
+              'người dùng tự bấm là nói dối về việc ai đã chuyển tiền.');
       expect(tx.goalId, 'g1');
+    });
+
+    test('cờ `tuDong` gắn hậu tố "(tự động)" vào ghi chú', () async {
+      await repository.depositToGoal(
+        goalId: 'g1',
+        goalName: 'Mua Laptop',
+        depositAmount: 1000000.0,
+        walletId: 'w1',
+        idaccount: 1,
+        tuDong: true,
+      );
+
+      final tx = (await db.transactionDao.getAll(1)).single;
+      expect(tx.note, 'Tích lũy mục tiêu: Mua Laptop$kHauToTuDong',
+          reason: 'Ghi chú là chỗ DUY NHẤT phân biệt hai loại khoản nạp — mọi '
+              'cột khác của chúng cố ý giống hệt nhau (mục 3.12 '
+              '`GOAL_FEATURE.md`). Sai ở đây thì nhãn không bao giờ hiện, và '
+              'hỏng im lặng vì tiến độ mục tiêu vẫn tăng đúng.');
+      expect(laKhoanTuDong(tx.note), isTrue,
+          reason: 'Nơi ghi và nơi đọc phải khớp nhau. Ghép chuỗi đúng mà phép '
+              'đọc vẫn trả false là ca đã xảy ra thật khi hai bên dùng hai '
+              'biến thể khoảng trắng khác nhau.');
+      expect(
+        laKhoanRutKhoiMucTieu(
+          ghiChu: tx.note,
+          viCuaHang: tx.walletId,
+          viTichLuy: 'w_nhan',
+        ),
+        isFalse,
+        reason: 'Bất biến quan trọng nhất của đợt này: hậu tố KHÔNG được đụng '
+            'tới phép đọc chiều tiền. Hỏng thì mọi khoản trích tự động hiện '
+            'dấu trừ trong khi tiến độ mục tiêu đi lên.',
+      );
     });
 
     test('số dư hai ví và tiến độ mục tiêu đều đổi đúng', () async {

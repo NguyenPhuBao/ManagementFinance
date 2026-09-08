@@ -24,8 +24,14 @@ void main() {
     required DateTime ngay,
     double soTien = 100000,
     bool rut = false,
+    bool tuDong = false,
   }) =>
-      KhoanTichLuy(ngay: ngay, soTien: soTien, laKhoanRut: rut);
+      KhoanTichLuy(
+        ngay: ngay,
+        soTien: soTien,
+        laKhoanRut: rut,
+        laTuDong: tuDong,
+      );
 
   final dsMau = [
     k(ngay: DateTime(2026, 9, 7), soTien: 100000),

@@ -18,6 +18,7 @@ import '../../domain/goal_history_filter.dart';
 import '../widgets/goal_config_card.dart';
 import '../widgets/goal_history_sheet.dart';
 import '../widgets/goal_progress.dart';
+import '../widgets/nhan_tu_dong.dart';
 
 class GoalDetailPage extends StatefulWidget {
   final String id;
@@ -146,17 +147,22 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
   /// Chiều tiền đọc từ **tiền tố ghi chú** qua `laKhoanRutKhoiMucTieu` — đúng
   /// một nơi quyết định, cùng hàm mà dòng trên trang đang dùng. Tự so ví ở đây
   /// là bản sao thứ hai của bẫy 4.2.
+  ///
+  /// Nhãn "tự động" đọc từ **hậu tố** cùng ghi chú ấy, qua `laKhoanTuDong` —
+  /// cùng lối, cùng lý do.
   List<KhoanTichLuy> _doiSangKhoan(List<dynamic> txs) => [
         for (final tx in txs)
-          KhoanTichLuy(
-            ngay: tx.date as DateTime,
-            soTien: tx.amount as double,
-            laKhoanRut: laKhoanRutKhoiMucTieu(
-              ghiChu: (tx.note as String?) ?? '',
-              viCuaHang: tx.walletId as String,
-              viTichLuy: _goal?.walletId,
+          for (final ghiChu in [(tx.note as String?) ?? ''])
+            KhoanTichLuy(
+              ngay: tx.date as DateTime,
+              soTien: tx.amount as double,
+              laKhoanRut: laKhoanRutKhoiMucTieu(
+                ghiChu: ghiChu,
+                viCuaHang: tx.walletId as String,
+                viTichLuy: _goal?.walletId,
+              ),
+              laTuDong: laKhoanTuDong(ghiChu),
             ),
-          ),
       ];
 
   /// Mở bảng lịch sử đầy đủ kèm bộ lọc.
@@ -1276,8 +1282,9 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                 // từ vị trí ví — so ví là diễn giải hàng cũ bằng cấu hình hiện
                 // tại của mục tiêu, nên đổi ví một lần là lịch sử đọc sai hết.
                 // Xem `goal_history_direction.dart`.
+                final ghiChu = (tx.note as String?) ?? '';
                 final laKhoanRut = laKhoanRutKhoiMucTieu(
-                  ghiChu: (tx.note as String?) ?? '',
+                  ghiChu: ghiChu,
                   viCuaHang: tx.walletId as String,
                   viTichLuy: _goal!.walletId,
                 );
@@ -1305,13 +1312,27 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            tx.note.toString(),
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.primary,
-                              fontSize: 15,
-                            ),
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  // Cắt hậu tố: chip ngay bên cạnh đã nói
+                                  // "Tự động" rồi, để nguyên là dòng mang
+                                  // đúng ba chữ ấy hai lần.
+                                  ghiChuKhongHauTo(ghiChu),
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.primary,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                              ),
+                              if (laKhoanTuDong(ghiChu)) ...[
+                                const SizedBox(width: 6),
+                                const NhanTuDong(),
+                              ],
+                            ],
                           ),
                           const SizedBox(height: 4),
                           Text(

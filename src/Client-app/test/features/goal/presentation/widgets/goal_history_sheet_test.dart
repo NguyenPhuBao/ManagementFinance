@@ -15,9 +15,25 @@ void main() {
   final now = DateTime(2026, 9, 8, 12);
 
   final khoan = [
-    KhoanTichLuy(ngay: DateTime(2026, 9, 7), soTien: 100000, laKhoanRut: false),
-    KhoanTichLuy(ngay: DateTime(2026, 9, 1), soTien: 500000, laKhoanRut: true),
-    KhoanTichLuy(ngay: DateTime(2026, 7, 1), soTien: 200000, laKhoanRut: false),
+    KhoanTichLuy(
+      ngay: DateTime(2026, 9, 7),
+      soTien: 100000,
+      laKhoanRut: false,
+      laTuDong: false,
+    ),
+    KhoanTichLuy(
+      ngay: DateTime(2026, 9, 1),
+      soTien: 500000,
+      laKhoanRut: true,
+      laTuDong: false,
+    ),
+    // Khoản duy nhất do bộ trích tự động ghi.
+    KhoanTichLuy(
+      ngay: DateTime(2026, 7, 1),
+      soTien: 200000,
+      laKhoanRut: false,
+      laTuDong: true,
+    ),
   ];
 
   Widget dung(List<KhoanTichLuy> ds) => MaterialApp(
@@ -25,6 +41,32 @@ void main() {
           body: GoalHistorySheet(tenMucTieu: 'MuaXe', khoan: ds, now: now),
         ),
       );
+
+  testWidgets('CHỈ dòng do app tự trích mới mang nhãn "Tự động"',
+      (tester) async {
+    await tester.pumpWidget(dung(khoan));
+
+    expect(find.text('Tự động'), findsOneWidget,
+        reason: 'Ba khoản, một cái tự động. Nhãn dán lên cả ba là nói dối về '
+            'việc ai đã chuyển tiền — mà khoản trích tự động và khoản nạp tay '
+            'cố ý giống hệt nhau trên mọi cột khác, nên không còn gì trên màn '
+            'hình cãi lại được.');
+  });
+
+  testWidgets('không khoản nào tự động thì không có nhãn nào', (tester) async {
+    await tester.pumpWidget(dung([
+      KhoanTichLuy(
+        ngay: DateTime(2026, 9, 7),
+        soTien: 100000,
+        laKhoanRut: false,
+        laTuDong: false,
+      ),
+    ]));
+
+    expect(find.text('Tự động'), findsNothing,
+        reason: 'Mọi khoản ghi trước đợt này đều đọc là "tay". Nhãn phải VẮNG '
+            'MẶT chứ không được đoán ngược cho lịch sử cũ.');
+  });
 
   testWidgets('mở ra là thấy tất cả, kèm dòng tổng hai chiều', (tester) async {
     await tester.pumpWidget(dung(khoan));
@@ -70,6 +112,7 @@ void main() {
         ngay: DateTime(2026, 9, 7),
         soTien: 100000,
         laKhoanRut: false,
+        laTuDong: false,
       ),
     ]));
 
@@ -105,12 +148,24 @@ void main() {
         ngay: DateTime(2026, 9, 7),
         soTien: 123456789,
         laKhoanRut: true,
+        laTuDong: false,
+      ),
+      // Dòng chật nhất dựng được: chip "Tự động" và số tiền dài cùng tranh bề
+      // rộng với tiêu đề trên một hàng.
+      KhoanTichLuy(
+        ngay: DateTime(2026, 9, 6),
+        soTien: 987654321,
+        laKhoanRut: false,
+        laTuDong: true,
       ),
     ]));
 
     expect(tester.takeException(), isNull,
         reason: 'Bảy chip trên hai dải cần nhiều hơn 411dp. Dùng `Wrap` thì '
             'chúng xuống hàng và ăn mất một dòng lịch sử; dải cuộn ngang thì '
-            'không bao giờ tràn — cùng bài học ở trung tâm thông báo.');
+            'không bao giờ tràn — cùng bài học ở trung tâm thông báo. Chip '
+            '"Tự động" là thứ MỚI chen vào hàng tiêu đề, và máy ảo không kiểm '
+            'hộ được: nó chỉ hiện từ kỳ trích tự động kế tiếp trở đi.');
+    expect(find.text('Tự động'), findsOneWidget);
   });
 }

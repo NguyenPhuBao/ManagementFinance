@@ -17,10 +17,21 @@ class KhoanTichLuy {
   /// `laKhoanRutKhoiMucTieu` rồi truyền kết quả vào đây, chứ không tự suy lại.
   final bool laKhoanRut;
 
+  /// Khoản này do **app tự chuyển tiền**, hay do người dùng tự bấm?
+  ///
+  /// Đọc từ **hậu tố ghi chú** qua `laKhoanTuDong` — cùng lối với [laKhoanRut]
+  /// và cùng lý do: đó là thứ duy nhất nằm trong chính hàng dữ liệu, đi qua
+  /// được đồng bộ, và không đổi khi cấu hình mục tiêu đổi.
+  ///
+  /// **Bắt buộc chứ không mặc định**, cùng kỷ luật với [laKhoanRut]: nơi dựng
+  /// danh sách phải nói ra nó biết gì, thay vì lặng lẽ nhận `false`.
+  final bool laTuDong;
+
   const KhoanTichLuy({
     required this.ngay,
     required this.soTien,
     required this.laKhoanRut,
+    required this.laTuDong,
   });
 }
 

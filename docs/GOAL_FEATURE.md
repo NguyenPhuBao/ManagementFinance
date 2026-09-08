@@ -20,7 +20,7 @@ hơn (và không nên "sửa"), cái gì còn thiếu, xếp hạng kèm lý do.
 |---|---|
 | Bất cứ việc gì | Mục 3 (quyết định + lý do) và mục 4 (**bảy cái bẫy**, hai đã đóng — 4.5 và 4.6) |
 | Đụng vào nạp/rút tiền | Mục 3.1 → 3.4, và `goal_repository_impl.dart` — mọi chú thích ở đó là bản rút gọn của tài liệu này |
-| Đụng vào lịch sử tích luỹ | **Bẫy 4.2** trước đã (suy chiều tiền từ vị trí ví là sai, đã vấp), rồi mục **3.24** — cắt 5 dòng, bảng đầy đủ có bộ lọc, và **vì sao không có bộ lọc "tay / tự động"** |
+| Đụng vào lịch sử tích luỹ | **Bẫy 4.2** trước đã (suy chiều tiền từ vị trí ví là sai, đã vấp), rồi mục **3.24** (cắt 5 dòng, bảng đầy đủ có bộ lọc) và **3.25** (nhãn "(tự động)" — hậu tố ghi chú, và ba đường đã loại) |
 | Đụng vào trang chi tiết | Mục **3.23** (khối Cấu hình) và **bẫy 4.5** (trang nghe dòng dữ liệu từ 2026-09-08) |
 | Đụng vào hộp dự báo | Mục **3.7** — có **cửa sổ tối thiểu nửa chu kỳ**, thiếu nó là màn hình nói "đang tích 11 triệu mỗi tháng" cho một mục tiêu mới tích 1,1 triệu |
 | Muốn biết nên làm gì tiếp | Mục **10** — đối chiếu với app thị trường, kèm bảng xếp hạng |
@@ -790,14 +790,18 @@ trên cùng một màn hình. Rỗng thì nói *"Không có khoản nào"* — c
 *"0 khoản · đã gửi 0 đ"* cãi nhau với thân bảng đang nói không có gì, và đó là
 lỗi chỉ đọc trên máy thật mới thấy vì cả hai chuỗi đều "đúng".
 
-⚠️ **KHÔNG có bộ lọc "tay / tự động", và đó là giới hạn của DỮ LIỆU.**
-`GoalAutoDepositRunner` gọi đúng `depositToGoal` với đúng tiền tố ghi chú của
-khoản nạp tay, nên hai loại **giống hệt nhau trên mọi cột**. Sự giống nhau ấy
-**có chủ ý** (mục 3.12): nhờ nó mà `laKhoanRutKhoiMucTieu` đọc đúng chiều cho
-cả hai. Muốn phân biệt thì phải thêm **cột mới**, và **đổi tiền tố ghi chú là
-cách sai** — nó đâm thẳng vào bẫy 4.2, thứ từng làm mọi dòng lịch sử hiện dấu
-trừ. Nếu làm thì làm cùng lúc với việc gắn nhãn "tự động" trên từng dòng: hiện
-dấu hiệu rồi mới lọc theo nó mới có nghĩa.
+⚠️ **Chưa có bộ lọc "tay / tự động", nhưng nay đã có DỮ LIỆU cho nó.**
+Bản dựng ngày 2026-09-08 không phân biệt được hai loại: `GoalAutoDepositRunner`
+gọi đúng `depositToGoal` với đúng tiền tố ghi chú của khoản nạp tay, nên chúng
+**giống hệt nhau trên mọi cột**. Cùng ngày, mục **3.25** đã mở đường bằng một
+**hậu tố** ghi chú — không cột mới, không đụng backend. Bước còn lại chỉ là một
+enum lọc thứ ba, và thứ tự *hiện nhãn trước, lọc sau* là chủ ý: lọc theo một
+dấu hiệu người dùng chưa nhìn thấy bao giờ thì họ không hiểu bộ lọc đang làm gì.
+
+> ⚠️ Câu trước ở đây từng kết luận **"muốn phân biệt thì phải thêm cột mới"**.
+> Kết luận ấy **sai**, và nó sai vì được viết ra mà chưa mở mã đọc: khi người
+> dùng hỏi lại thì hoá ra có tới hai đường không cần cột nào. Ghi lại nguyên
+> văn ở đây để lần sau đừng phán về chi phí trước khi kiểm.
 
 **Biên thời gian có hai chỗ dễ sai im lặng**, cả hai có test: *"Năm nay"* cắt
 theo **năm dương lịch** chứ không phải 365 ngày (ngày 08/09 thì 365 ngày trước
@@ -807,6 +811,66 @@ không người dùng lọc "30 ngày" sẽ mất một khoản chỉ vì mở a
 
 > ⚠️ Ca thứ hai từng **xanh oan**: bản test đầu tiên viết cho nó không thật sự
 > canh điều nó nói, và chỉ lộ ra khi dựng bản sai có chủ ý. Đã viết lại.
+
+---
+
+### 3.25 Nhãn "(tự động)": hậu tố ghi chú, không phải cột mới
+
+**Vấn đề.** Khoản do `GoalAutoDepositRunner` trích và khoản người dùng tự bấm
+**giống hệt nhau trên mọi cột** — cùng `Type = 'transfer'`, cùng `Idgoal`, cùng
+tiền tố ghi chú. Sự giống nhau ấy **có chủ ý** (mục 3.12): nhờ nó mà
+`laKhoanRutKhoiMucTieu` đọc đúng chiều tiền cho cả hai bằng **một** tiền tố.
+Cái giá là người dùng mở lịch sử ra không biết khoản nào do chính mình chuyển.
+
+**Cách làm: gắn HẬU TỐ vào ghi chú** — `'Tích lũy mục tiêu: MuaXe (tự động)'`.
+Bốn điều đã kiểm **bằng mã** trước khi viết một dòng nào:
+
+| Câu hỏi | Đo ở đâu | Kết luận |
+|---|---|---|
+| Có phá phép đọc chiều tiền không? | `laKhoanRutKhoiMucTieu` dùng `startsWith` | **Không** — hậu tố không đụng đầu chuỗi |
+| Có phá nhánh dự phòng của lịch sử không? | `TransactionDao.watchByGoal` dùng `note.like('%…%')` | **Không** — có dấu bao hai đầu |
+| Có bị cắt cụt ở server không? | `transaction.Note` là `@db.Text` | **Không** — không giới hạn độ dài |
+| Có cần backend không? | `note` đã nằm trong payload đẩy | **Không** — backend không phải làm gì |
+
+**Không** phải sửa `sync_payload_contract_test.dart`: đây là đổi *giá trị* của
+một trường đã có, không thêm trường mới. Quy tắc 4 nói về trường mới rơi im lặng.
+
+**Phép đọc đòi ĐỦ CẶP tiền tố + hậu tố.** Ghi chú là dữ liệu **sửa được**:
+người dùng gõ tay ba chữ ấy vào một giao dịch bất kỳ không biến nó thành khoản
+do app tự chuyển. Chỉ bộ chạy nền ghi ra đủ cặp. Khoản **rút** không bao giờ tự
+động — không có đường nào trong app tự rút tiền khỏi mục tiêu.
+
+**Khoản cũ không có hậu tố nên đọc là "tay", và KHÔNG được đoán ngược.** Bịa
+nhãn cho lịch sử cũ đúng là kiểu tự tiện mà cả tính năng mục tiêu tránh từ đầu.
+Nhãn tự lành từ kỳ trích kế tiếp. Đã đọc trên máy ảo ngày 2026-09-08: năm dòng
+lịch sử thật của `MuaXe` đều **không** mang nhãn, đúng như thiết kế.
+
+**Hạn chế phải nói ra:** `updateTransaction` cho sửa ghi chú, nên nhãn có thể
+mất. Mất thì đọc thành "tay" — rơi về mặc định **an toàn**, không phải về một
+lời khẳng định sai.
+
+**Ba phương án đã LOẠI, đừng dựng lại:**
+
+- **Suy từ `date != updatedAt`** — sai im lặng: `updateTransaction` bump
+  `updatedAt`, nên khoản nạp tay bị sửa về sau sẽ đọc thành tự động.
+- **Cột cục bộ trên `transactions`** — mắc đúng bệnh bẫy 4.4 và G21: hàng kéo
+  về từ server luôn trống, máy thứ hai thấy mọi khoản là "tay".
+- **Đổi tiền tố ghi chú** — đâm thẳng vào bẫy 4.2.
+
+**Trình bày.** Chip hình viên thuốc, nền 12% độ đục của màu trung tính, chữ khổ
+`label-sm` — đúng quy ước "Chips/Badges" của hệ thiết kế *Kinetic Finance* trên
+Stitch. Màu **trung tính chứ không phải xanh "thu nhập"**: nhãn nói *ai đã
+chuyển tiền*, không nói khoản ấy tốt hay xấu.
+
+Hai nơi dựng dòng lịch sử bằng **hai đoạn mã khác nhau** (trang chi tiết và
+bảng đầy đủ), nên cả hai đều có test riêng — sửa một chỗ mà quên chỗ kia thì cả
+hai màn hình vẫn chạy, chỉ nói hai chuyện khác nhau về cùng một khoản tiền.
+Trang chi tiết hiện **ghi chú thô** làm tiêu đề nên phải cắt hậu tố qua
+`ghiChuKhongHauTo`, nếu không dòng ấy mang đúng ba chữ đó hai lần.
+
+> Đội backend đã được báo bằng `docs/superpowers/backend/TRANSACTION_NOTE_ENCODING.md`
+> — **không xin gì**, chỉ để họ biết app mã hoá ý nghĩa vào `Note` mà đừng vô
+> tình phá, và Admin-web sẽ thấy chữ "(tự động)".
 
 ---
 
@@ -994,6 +1058,12 @@ viết mã. Thứ tự ưu tiên là công sức người dùng bỏ ra bằng t
 suy lại được, không có mặc định đúng, và nếu về sau nối phân bổ tự động thì nó
 quyết định **tiền đi đâu** — ba lý do khiến nó không nên là cột cục bộ.
 
+**Tài liệu thứ tư, thêm 2026-09-08, KHÔNG xin gì:**
+`docs/superpowers/backend/TRANSACTION_NOTE_ENCODING.md` báo cho backend biết
+client mã hoá chiều tiền và nguồn gốc bản ghi vào `transaction.Note` (hai tiền
+tố + một hậu tố), để họ đừng cắt/chuẩn hoá cột ấy và đừng dọn chữ "(tự động)"
+trên Admin-web. Không có việc gì phải làm — nó nằm ngoài `CAN-LAM/` có chủ ý.
+
 > ⚠️ Tài liệu cũ `2026-08-23-backend-goal-wallet-id.md` xin cột `wallet_id` cho
 > bảng `goal`. **Việc đó đã xong** — backend có `Idwallet` (tên khác với tên tài
 > liệu xin). Tài liệu ấy không còn việc gì.
@@ -1002,11 +1072,11 @@ quyết định **tiền đi đâu** — ba lý do khiến nó không nên là c
 
 ## 9. Kiểm thử
 
-**351 test** riêng cho mục tiêu, trên tổng **1513** của dự án (đếm lại
-2026-09-08 sau khi thêm luật cột mốc và thứ tự ưu tiên, bằng cách chạy thật `flutter test
+**367 test** riêng cho mục tiêu, trên tổng **1529** của dự án (đếm lại
+2026-09-08 sau đợt nhãn "(tự động)", bằng cách chạy thật `flutter test
 test/features/goal test/core/notification/notification_rules_goal_wallet_test.dart`;
-con số ghi ở đây trước đó là 222/893 và đã lạc hậu — **đừng chép lại từ trí
-nhớ**).
+hai con số ghi ở đây trước đó là 222/893 rồi 351/1513, đều đã lạc hậu —
+**đừng chép lại từ trí nhớ**).
 
 | Tệp | Canh gì |
 |---|---|
@@ -1015,18 +1085,19 @@ nhớ**).
 | `presentation/widgets/goal_config_card_test.dart` | **Mục 3.23.** `moTaHanChot` (đếm ngược, quá hạn, đã đạt), `moTaTrichTuDong` (tắt/bật, thiếu mảnh, ví đã xoá), bốn dòng của khối, và khổ 411dp |
 | `goal_deposit_warning_test.dart` | `remainingAmount`, cảnh báo nạp vượt |
 | `goal_deposit_default_wallets_test.dart` | Bất biến ví nguồn ≠ ví nhận |
-| `goal_history_direction_test.dart` | **Bẫy 4.2** — đổi ví không làm khoản nạp cũ đọc thành rút |
+| `goal_history_direction_test.dart` | **Bẫy 4.2** — đổi ví không làm khoản nạp cũ đọc thành rút. Từ 2026-09-08 canh thêm **mục 3.25**: hậu tố không đụng phép đọc chiều tiền, `laKhoanTuDong` đòi đủ **cặp** tiền tố + hậu tố, và `ghiChuKhongHauTo` cắt đúng **một** lần ở cuối (tên mục tiêu có thể tự nó kết thúc bằng "(tự động)") |
 | `goal_wallet_shortfall_test.dart` | Cảnh báo lệch, cộng dồn nhiều mục tiêu |
 | `data/repositories/goal_repository_impl_test.dart` | Nạp, rút, đổi ví, nguyên tử, lịch sử. Từ 2026-09-08 thêm `capNhatUuTien`: chỉ chạm hàng có tên trong map, đánh dấu `pending`, id lạ không ném |
 | `presentation/widgets/goal_progress_test.dart` | Một định nghĩa duy nhất của tỉ lệ |
 | `presentation/widgets/goal_appearance_test.dart` | Bảng tra biểu tượng/màu, dữ liệu rác, và **giá trị ngoài bảng chọn** |
 | `goal_edit_form_test.dart` | `showDatePicker` với mục tiêu **quá hạn** — xem mục 3.9 |
 | `goal_history_filter_test.dart` | **Mục 3.24.** Hai bộ lọc và phép **giao** của chúng, hai biên thời gian dễ sai im lặng, và `tongKet` phải tính trên danh sách đã lọc |
-| `presentation/widgets/goal_history_sheet_test.dart` | Chip có đổi danh sách thật không, dòng tổng đi theo bộ lọc, hai ca rỗng, và khổ 411dp |
+| `presentation/widgets/goal_history_sheet_test.dart` | **Mục 3.24 + 3.25.** Chip có đổi danh sách thật không, dòng tổng đi theo bộ lọc, hai ca rỗng, chỉ dòng tự động mang nhãn, và khổ 411dp — từ 2026-09-08 khổ ấy dựng cả **chip "Tự động"** cạnh số tiền dài, vì máy ảo không kiểm hộ được (nhãn chỉ hiện từ kỳ trích kế tiếp) |
+| `presentation/pages/goal_detail_live_test.dart` | **Bẫy 4.5** — trang đăng ký với dòng dữ liệu và cập nhật theo. Từ 2026-09-08 canh thêm **mục 3.25** trên chính trang chi tiết: chỉ khoản tự động mang nhãn, và tiêu đề dòng **không lặp lại** chữ "(tự động)" |
 | `goal_priority_test.dart` | **Mục 3.22.** Hai chế độ của `uuTienSauKhiKeo` (ghi một hàng / đánh số lại), giá trị luôn dương và không trùng, vị trí ngoài dải không ném, và `viTriThaThucTe` — chỗ duy nhất sửa cái lệch một ô của `ReorderableListView` |
 | `goal_grouping_test.dart` | Hai tab, và từ 2026-09-08 canh **thứ tự ưu tiên**: ưu tiên thắng hạn định, `NULL` xếp cuối, trùng số rơi về hạn định, và tab đã hoàn thành **không** dùng ưu tiên |
 | `goal_auto_deposit_test.dart` | Bước kỳ (tháng ngắn, **năm nhuận**), **mốc neo**, trần số kỳ, quyết định trích. Từ 2026-09-08 canh thêm: **nhịp neo vào mốc gốc, không trôi** — ngày 31 kẹp ở tháng ngắn rồi **quay lại** 31, ngày 30 không bị kéo lên cuối tháng, `kyKeTiep` dùng chung nhịp, và mục tiêu chưa có mốc neo vẫn chạy như trước |
-| `goal_auto_deposit_runner_test.dart` | Trích bù nhiều kỳ, ví cạn giữa chừng, cấu hình hỏng, cách ly tài khoản |
+| `goal_auto_deposit_runner_test.dart` | Trích bù nhiều kỳ, ví cạn giữa chừng, cấu hình hỏng, cách ly tài khoản. Từ 2026-09-08 canh **hậu tố "(tự động)"** đi trọn vòng qua CSDL rồi quay về, và chiều tiền vẫn đọc đúng trên chính chuỗi ấy |
 | `core/notification/reminder_scheduler_test.dart` | Lịch nhắc kỳ trích: đúng mốc kỳ, trùng khoá thông báo, và **không huỷ lịch hoá đơn** |
 | `core/notification/notification_rules_goal_wallet_test.dart` | Hai luật thông báo. Từ 2026-09-08 canh thêm **cột mốc** (mục 3.21): mốc cao nhất, ba khoá riêng, khoá gắn `startDate` cho mục tiêu lặp lại, và ca **vừa ở cột mốc vừa chậm tiến độ** — ca duy nhất bắt được việc đặt luật sai chỗ |
 
@@ -1123,6 +1194,8 @@ bỏ qua chứ đừng chuyển một phần, phải có trần mỗi lượt, v
 | ✅ | ~~**Đưa mục tiêu lên màn hình chính**~~ | **Xong 2026-09-08** — `HomeGoalCard`, chọn mục tiêu **ưu tiên nhất**. Cùng lượt **gỡ khối thông báo** khỏi trang chủ theo yêu cầu người dùng |
 | ✅ | ~~**Trang chi tiết thiếu nội dung**~~ | **Xong 2026-09-08** — khối "Cấu hình" bốn dòng, và **sửa lỗi hộp dự báo** ngoại suy từ vài ngày. Mục **3.23** và **3.7** |
 | ✅ | ~~**Lịch sử tích luỹ dài không giới hạn**~~ | **Xong 2026-09-08** — cắt 5 dòng + bảng đầy đủ có **hai bộ lọc**. Mục **3.24** |
+| ✅ | ~~**Nhãn "(tự động)" cho khoản trích tự động**~~ | **Xong 2026-09-08** — hậu tố ghi chú, không cột mới, không đụng backend. Mục **3.25** |
+| 1 | **Bộ lọc "tay / tự động"** | Nay chỉ còn một enum lọc thứ ba: dữ liệu đã có từ mục 3.25 |
 | 2 | **Làm tròn số lẻ** | Giá trị cao và hợp văn hoá "nuôi heo đất", nhưng là chỗ **thứ ba** app tự chuyển tiền — xem cảnh báo ở 10.2 |
 | 2 | **Chuyển giữa hai mục tiêu** | Một hàm gọi `withdraw` + `deposit` trong cùng khối nguyên tử |
 | 3 | **Chia thu nhập theo ưu tiên** | Cần ưu tiên xong trước |

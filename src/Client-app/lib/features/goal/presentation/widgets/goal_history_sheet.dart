@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../shared/theme/app_colors.dart';
 import '../../domain/goal_history_filter.dart';
+import 'nhan_tu_dong.dart';
 
 /// Bảng "Lịch sử tích lũy" đầy đủ, mở từ nút **Xem tất cả** ở trang chi tiết.
 ///
@@ -227,13 +228,28 @@ class _Dong extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                rut ? 'Rút khỏi mục tiêu' : 'Gửi vào mục tiêu',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                  color: AppColors.primary,
-                ),
+              Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      rut ? 'Rút khỏi mục tiêu' : 'Gửi vào mục tiêu',
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                  // Đọc thẳng cờ của hàng, KHÔNG suy từ chiều tiền: mọi khoản
+                  // rút đều là tay, nhưng khoản gửi thì có cả hai loại — và
+                  // suy như thế là dán nhãn lên đúng những khoản người dùng
+                  // vừa tự tay bấm.
+                  if (khoan.laTuDong) ...[
+                    const SizedBox(width: 6),
+                    const NhanTuDong(),
+                  ],
+                ],
               ),
               const SizedBox(height: 2),
               Text(

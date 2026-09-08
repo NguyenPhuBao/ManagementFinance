@@ -162,6 +162,10 @@ class GoalAutoDepositRunner {
           // là ba sự việc của ba ngày dồn thành một cột trong thống kê theo
           // ngày — trong khi thông báo, vốn lấy mốc kỳ, hiện đúng ba ngày.
           occurredAt: ky,
+          // Chỗ DUY NHẤT trong app truyền cờ này. Nó chỉ thêm hậu tố vào ghi
+          // chú — không đổi chiều tiền, không đổi cột nào khác — để lịch sử
+          // nói được ai đã chuyển khoản tiền ấy.
+          tuDong: true,
         );
       } catch (e) {
         // `depositToGoal` là một khối nguyên tử — hỏng thì không để lại gì. Nuốt

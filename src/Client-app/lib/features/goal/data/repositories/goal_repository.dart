@@ -167,6 +167,16 @@ abstract class GoalRepository {
     /// Chỉ đổi cột `date`. `updatedAt` vẫn là "bây giờ" vì nó là sổ sách đồng
     /// bộ, không phải ngày của sự việc.
     DateTime? occurredAt,
+
+    /// Khoản này do **app tự chuyển tiền**, không phải do người dùng bấm.
+    ///
+    /// Chỉ gắn thêm hậu tố `kHauToTuDong` vào ghi chú; mọi cột khác giữ nguyên.
+    /// Sự giống nhau ấy là có chủ ý — xem `goal_history_direction.dart`.
+    ///
+    /// Mặc định `false`, và **chỉ `GoalAutoDepositRunner` được truyền `true`**.
+    /// Đường nạp tay bật cờ này lên là dán nhãn sai lên chính thao tác người
+    /// dùng vừa thực hiện.
+    bool tuDong,
   });
   /// Lịch sử tích luỹ của một mục tiêu.
   ///

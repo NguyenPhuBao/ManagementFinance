@@ -343,6 +343,7 @@ class GoalRepositoryImpl implements GoalRepository {
     required int idaccount,
     required String walletId,
     DateTime? occurredAt,
+    bool tuDong = false,
   }) async {
     // Một lần nạp là bốn thao tác ghi: tăng tiến độ mục tiêu, có thể đánh dấu
     // hoàn thành, đổi số dư hai ví, và chèn MỘT giao dịch chuyển khoản. Chạy
@@ -477,7 +478,13 @@ class GoalRepositoryImpl implements GoalRepository {
           walletTransfer: Value(viNhan),
           amount: depositAmount,
           type: 'transfer',
-          note: Value('$kGhiChuNapMucTieu$goalName'),
+          // Hậu tố là chỗ DUY NHẤT phân biệt khoản app tự chuyển với khoản
+          // người dùng tự bấm — mọi cột còn lại của hai loại cố ý giống hệt
+          // nhau. Nó đi SAU tên mục tiêu để không đụng tới `startsWith` của
+          // `laKhoanRutKhoiMucTieu`; xem `goal_history_direction.dart`.
+          note: Value(
+            '$kGhiChuNapMucTieu$goalName${tuDong ? kHauToTuDong : ''}',
+          ),
           goalId: Value(goalId),
           // `date` là ngày của SỰ VIỆC, `updatedAt` là sổ sách ĐỒNG BỘ — hai
           // thứ khác nhau và chỉ cái đầu lùi về mốc kỳ. Lùi `updatedAt` theo

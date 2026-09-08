@@ -1,6 +1,6 @@
 # Backend — mục lục
 
-**Cập nhật 2026-09-07.** Tệp này chỉ nói *cái gì nằm ở đâu*. Trạng thái và thứ
+**Cập nhật 2026-09-08.** Tệp này chỉ nói *cái gì nằm ở đâu*. Trạng thái và thứ
 tự thi công nằm trong README của từng thư mục con — **cố ý không lặp lại ở đây**,
 vì trước đó cùng một bảng trạng thái tồn tại ở hai nơi và chúng lệch nhau.
 
@@ -10,14 +10,14 @@ vì trước đó cùng một bảng trạng thái tồn tại ở hai nơi và 
 
 | Bạn cần gì | Mở cái này |
 |---|---|
-| **Việc backend còn phải làm** | 👉 [`CAN-LAM/README.md`](./CAN-LAM/README.md) — **cửa vào duy nhất**. Sau đợt 2026-09-07 chỉ còn **bốn** mục |
+| **Việc backend còn phải làm** | 👉 [`CAN-LAM/README.md`](./CAN-LAM/README.md) — **cửa vào duy nhất**. Đếm theo **mục 2** của chính tệp ấy, đừng đếm ở đây: bảng này từng ghi "bốn" trong khi mục 2 đã có sáu |
 | Lý lẽ đằng sau một quyết định đã đi vào lược đồ | [`DA-XONG/README.md`](./DA-XONG/README.md) — 16 tài liệu đã đóng, kèm ghi chú *đóng bằng cách nào* |
 | Client-app còn nợ gì | `docs/CLIENT_APP_KNOWN_GAPS.md` |
 | Bức tranh toàn cục | Mục 14 `docs/PROJECT_CONTEXT.md` |
 
 ---
 
-## Ba tệp bối cảnh, nằm ngay thư mục này
+## Bốn tệp bối cảnh, nằm ngay thư mục này
 
 Không phải việc cần làm, nhưng cần để hiểu hai thư mục con:
 
@@ -26,6 +26,7 @@ Không phải việc cần làm, nhưng cần để hiểu hai thư mục con:
 | [New_Database.md](./New_Database.md) | Lược đồ chuẩn của PostgreSQL. `CLAUDE.md` chỉ định đây là **nguồn sự thật** cho schema |
 | [2026-08-10-backend-sync-spec.md](./2026-08-10-backend-sync-spec.md) | Hợp đồng `/sync/push` và `/sync/pull` |
 | [PROGRESS-BACKEND.md](./PROGRESS-BACKEND.md) | Checklist B1→B7 và tiến độ backend |
+| [TRANSACTION_NOTE_ENCODING.md](./TRANSACTION_NOTE_ENCODING.md) | Client mã hoá chiều tiền và nguồn gốc của khoản tích luỹ vào `transaction.Note`. **Không xin gì** — chỉ để backend biết mà đừng vô tình phá |
 
 ---
 

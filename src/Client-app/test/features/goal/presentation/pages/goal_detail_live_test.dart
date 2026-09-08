@@ -26,6 +26,7 @@ import 'package:flowmoney/features/auth/data/repositories/auth_repository.dart';
 import 'package:flowmoney/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:flowmoney/features/goal/data/models/goal_entity.dart';
 import 'package:flowmoney/features/goal/data/repositories/goal_repository.dart';
+import 'package:flowmoney/features/goal/domain/goal_history_direction.dart';
 import 'package:flowmoney/features/goal/presentation/pages/goal_detail_page.dart';
 
 class _StubAuthRepository implements AuthRepository {
@@ -78,16 +79,38 @@ class _LiveGoalRepository implements GoalRepository {
   @override
   Future<GoalEntity?> getGoalById(String id) async => hienTai;
 
+  /// Các hàng lịch sử trang sẽ dựng. Mặc định rỗng — chỉ nhóm test nhãn "Tự
+  /// động" mới đặt giá trị.
+  List<dynamic> khoanLichSu = const [];
+
   @override
   Stream<dynamic> watchGoalTransactions(
     int idaccount,
     String goalId,
     String goalName,
   ) =>
-      Stream<List<dynamic>>.value(const []);
+      Stream<List<dynamic>>.value(khoanLichSu);
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// Một hàng giao dịch đủ dùng cho phần lịch sử của trang chi tiết.
+///
+/// Trang đọc bốn trường qua ép kiểu trên `dynamic` (`date`, `amount`, `note`,
+/// `walletId`), nên không cần dựng cả một hàng Drift thật.
+class _HangGiaoDich {
+  final DateTime date;
+  final double amount;
+  final String note;
+  final String walletId;
+
+  const _HangGiaoDich({
+    required this.date,
+    required this.amount,
+    required this.note,
+    required this.walletId,
+  });
 }
 
 void main() {
@@ -177,5 +200,56 @@ void main() {
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();
+  });
+
+  /// Nhãn "Tự động" trên **năm dòng lịch sử của chính trang chi tiết**.
+  ///
+  /// Bảng đầy đủ có test riêng ở `goal_history_sheet_test.dart`, nhưng hai nơi
+  /// dựng dòng bằng hai đoạn mã khác nhau — sửa một chỗ mà quên chỗ kia là lỗi
+  /// im lặng đúng nghĩa: cả hai màn hình vẫn chạy, chỉ nói hai chuyện khác
+  /// nhau về cùng một khoản tiền. Nhóm này nằm ở đây vì đây là nơi duy nhất
+  /// dựng được trang chi tiết thật.
+  group('nhãn "Tự động" trên dòng lịch sử', () {
+    final khoan = [
+      _HangGiaoDich(
+        date: DateTime(2026, 9, 5, 9),
+        amount: 100000,
+        note: 'Tích lũy mục tiêu: MuaXe$kHauToTuDong',
+        walletId: 'w_nguon',
+      ),
+      _HangGiaoDich(
+        date: DateTime(2026, 9, 3, 20),
+        amount: 200000,
+        note: 'Tích lũy mục tiêu: MuaXe',
+        walletId: 'w_nguon',
+      ),
+    ];
+
+    testWidgets('CHỈ khoản do app trích mới mang nhãn', (tester) async {
+      repo.khoanLichSu = khoan;
+      await moTrang(tester);
+
+      expect(find.text('Tự động'), findsOneWidget,
+          reason: 'Hai khoản, một cái tự động. Dán cả hai là nói dối về việc '
+              'ai đã chuyển tiền; không dán cái nào là để nguyên vấn đề mà '
+              'đợt này sinh ra để sửa.');
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+    });
+
+    testWidgets('tiêu đề dòng KHÔNG lặp lại chữ "(tự động)"', (tester) async {
+      repo.khoanLichSu = khoan;
+      await moTrang(tester);
+
+      expect(find.text('Tích lũy mục tiêu: MuaXe'), findsNWidgets(2),
+          reason: 'Trang này hiện ghi chú THÔ làm tiêu đề. Không cắt hậu tố '
+              'thì dòng tự động mang chữ ấy hai lần — một trong tiêu đề, một '
+              'trong chip — còn bảng đầy đủ thì chỉ có chip. Hai màn hình '
+              'trình bày cùng một khoản theo hai kiểu.');
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+    });
   });
 }
