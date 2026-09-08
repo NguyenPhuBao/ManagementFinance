@@ -15,7 +15,7 @@
 > trong isolate nền (mục 4.8). Số bẫy ở mục 7 nay là **mười một** — bẫy **7.11**
 > mới nói về `AndroidManifest.xml`, vùng mù của mọi công cụ trong dự án này.
 >
-> **Mức nền hiện tại:** `flutter test` **1391/1391 pass**, `flutter analyze`
+> **Mức nền hiện tại:** `flutter test` **1402/1402 pass**, `flutter analyze`
 > **25 issue, KHÔNG error**, `flutter build web` xanh (dựng lại 2026-09-07).
 
 Đọc file này trước khi làm tiếp bất cứ việc gì thuộc thông báo. Mục 6 ghi lại
@@ -424,6 +424,107 @@ lịch thừa khác, phép dọn dẹp của resync không được nới lỏng
 > ở `2026-09-08 22:28:12` (đúng +24h), thông báo tự tắt, **app không mở lên**.
 > Mở app hai lượt sau đó, lịch hoãn **vẫn còn**. Bấm "Trả ngay" từ trạng thái
 > app đã chết thì mở thẳng trang chi tiết đúng hoá đơn, không màn đỏ.
+
+---
+
+### 4.9 Badge số trên icon app (2026-09-08)
+
+Badge mang **số chưa đọc trong app** — đúng con số `watchUnreadCount` mà chuông
+trên Home đang hiện. Không có phép đếm thứ hai: hai phép đếm sẽ trôi khỏi nhau
+và không ai phát hiện, vì badge sai **không ném lỗi, không ghi log**.
+
+#### Android không có API badge thật
+
+Điều app điều khiển được chắc chắn là **có thông báo trên khay hay không** —
+Android suy chấm trên icon từ đó. Con số thì đi kèm bản tóm tắt nhóm
+(`AndroidNotificationDetails.number`) và **launcher tự quyết định** vẽ số, vẽ
+chấm, hay bỏ qua hẳn; chú thích của gói nói thẳng: *"Numbers are only displayed
+if the launcher application supports the display of badges and numbers."*
+
+Nên tách bạch khi đọc mã: **chấm là phần chắc chắn, số là phần có thể**. iOS thì
+đặt được thẳng qua `badgeNumber`, nhưng cũng **không có API riêng** — đường duy
+nhất là một thông báo mang con số ấy, tắt hết phần hiển thị (`idBadge = -2`).
+
+> ⚠️ **Đo được trên máy thật (2026-09-08): con số gần như KHÔNG BAO GIỜ hiện
+> trên Android.** Nó nằm trên bản tóm tắt nhóm, mà Android **tự gỡ bản tóm tắt
+> khi nhóm chỉ còn một thông báo con** — và một là số lượng thường gặp nhất.
+> `getActiveNotifications()` đếm 2 ngay sau khi bắn (con + tóm tắt), rồi
+> `dumpsys notification` chỉ còn 1 vài giây sau. Thêm nữa, khi khay **trống**
+> thì `datBadge(6)` chạy trót lọt nhưng chẳng hiện gì cả: không có thông báo con
+> thì bản tóm tắt cũng không được hiển thị.
+>
+> **Hệ quả cần nhớ:** trên Android badge thực chất là **chấm**, và chấm suy từ
+> *thông báo đang trên khay*, không từ số chưa đọc. Nghĩa là còn 6 mục chưa đọc
+> trong app mà khay trống thì **không có chấm** — Android không cho làm khác,
+> trừ khi đăng một thông báo trống chỉ để giữ chấm, và điều đó tệ hơn hẳn thứ nó
+> đổi lấy. Con số vì thế là phần **thêm vào cho launcher nào vẽ được và cho
+> iOS**, không phải phần chính.
+
+#### Vì sao đọc hết trong app phải dọn khay
+
+Đọc hết mà không đụng tới khay thì thông báo vẫn nằm nguyên đó, nên **chấm sáng
+vĩnh viễn** — badge chỉ đúng một nửa. Đây là lý do mục này từng bị xếp là "nửa
+việc riêng".
+
+#### ⚠️ Nhưng dọn SẠCH khay là sai — có thông báo mà bảng không biết
+
+Ca hỏng nguy hiểm nhất của cả mục này, và nó **im lặng**:
+
+- **Lịch nhắc hoá đơn nổ lúc app đóng.** Hàng trong bảng chỉ sinh *sau đó*, khi
+  app mở và vòng quét chạy (xem đầu `reminder_scheduler.dart`). Trước lúc ấy
+  khay có, bảng trống.
+- **Nhắc ghi chép hằng ngày** thì *không bao giờ* sinh hàng — mục 4.7.
+
+Nghĩa là **số chưa đọc bằng 0 KHÔNG có nghĩa là khay phải trống**. Dọn sạch ở
+đó là xoá mất một lời nhắc thật trước khi người dùng kịp nhìn.
+
+`BadgeUpdater.dongBo()` vì thế đi từ **chiều ngược lại**: chỉ huỷ những id suy
+ra được từ `dedupeKey` của một hàng **đã đọc hoặc đã xoá mềm**, rồi giao tập ấy
+với khay. Id nào không khớp hàng nào thì **được giữ nguyên** — nên nhắc ghi chép
+miễn nhiễm **theo cấu trúc**, không nhờ một điều kiện `if` mà người sau có thể
+dọn nhầm.
+
+#### Ba thứ dễ làm hỏng nhất
+
+**1. `cancelAll()` — tuyệt đối không dùng để dọn khay.** Nó cuốn theo **cả lịch
+đang chờ** trong AlarmManager, tức xoá sạch mọi nhắc hoá đơn chưa nổ. Cùng họ
+với lỗi đã làm mất lịch vừa hoãn ở phiên trước, và nó **không lộ ra cho tới ngày
+lời nhắc lẽ ra phải tới**. Có test canh riêng.
+
+**2. Bản tóm tắt chỉ được gỡ khi không còn thông báo con nào.** Còn con mà gỡ
+tóm tắt là chúng bung ra nằm rời rạc — đúng thứ `groupKey` sinh ra để tránh. Và
+"còn con" là chuyện thường, xem ca nhắc ghi chép ở trên.
+
+**3. Duyệt khay phải duyệt trên bản sao.** `cancel()` làm thông báo rời khay,
+nên một bản cài đặt trả về tập sống sẽ bị sửa ngay giữa vòng lặp. Lỗi ấy rơi
+thẳng vào `catch` bao ngoài, tức badge **lặng lẽ ngừng cập nhật**. Đã vấp đúng
+một lần khi viết test: bản giả trả thẳng tập gốc, `ConcurrentModificationError`
+bị nuốt, và một test lẽ ra phải đỏ thì **xanh oan**.
+
+#### Vòng đời
+
+`NotificationScanner` **sở hữu** `BadgeUpdater`: `start()`/`stop()` lan truyền
+xuống. Lý do là `auth_bloc` đã có bốn chỗ gọi start/stop, và một lối song song
+nghĩa là bốn chỗ nữa phải nhớ — chỗ bị quên sẽ cập nhật badge của người vừa đăng
+xuất bằng dữ liệu người mới. `stop()` gọi **trước** `cancelAll()`, nếu không lượt
+đẩy cuối dựng lại đúng bản tóm tắt vừa gỡ đi.
+
+#### `catch` phải ghi log, không được câm
+
+`dongBo()` nuốt lỗi có chủ ý (nó chạy trong một stream suốt vòng đời app), nhưng
+nó **ghi lại bằng `debugPrint`**. Badge lệch không ném ra đâu cả, nên một `catch`
+câm biến mọi trục trặc ở đây thành thứ không chẩn đoán được — đã mất một vòng
+dựng lại APK vì đúng điều đó. Dòng log ấy (`badge=N, khay=M, đã huỷ=K`) chính là
+thứ đã phân định được "code không chạy" với "code chạy đúng nhưng Android không
+vẽ".
+
+> **Bằng chứng đã đo** (2026-09-08, `emulator-5554`, Pixel Launcher):
+> tạo hoá đơn tuần hạn 10/09 → `[BadgeUpdater] badge=7, khay=2, đã huỷ=0`, và
+> **icon app hiện chấm**. Bấm "Đọc tất cả" → `badge=0, khay=1, đã huỷ=1`,
+> `dumpsys notification` còn **0** record của app, và **chấm tắt**. Ảnh so sánh
+> hai trạng thái icon đã chụp. Ca "khay trống nhưng còn 6 chưa đọc" cũng đo
+> được: `badge=6, khay=0` — chạy trót lọt, không hiện gì, đúng như giới hạn nền
+> tảng nói ở trên.
 
 ---
 

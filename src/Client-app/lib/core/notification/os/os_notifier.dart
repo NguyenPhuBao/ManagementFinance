@@ -94,10 +94,37 @@ abstract class OsNotifier {
   /// huỷ-rồi-đặt-lại toàn bộ, và mỗi vòng như vậy là một cơ hội để lịch rơi.
   Future<Set<int>> pendingIds();
 
+  /// Id của các thông báo **đang hiện trên khay**.
+  ///
+  /// Khác hẳn [pendingIds]: đó là lịch **chưa nổ**, còn đây là thứ người dùng
+  /// **đang nhìn thấy**. Badge của Android suy từ tập này chứ không từ bảng
+  /// `AppNotifications`, nên không đọc được nó thì không có cách nào biết vì
+  /// sao chấm trên icon vẫn sáng.
+  ///
+  /// Trả rỗng trên iOS ở những bản không phơi ra danh sách này, và trên mọi
+  /// nền tảng chưa cài đặt. Nơi gọi phải coi tập rỗng là *"không biết"*, không
+  /// phải *"chắc chắn khay trống"* — suy nhầm chiều đó là huỷ oan.
+  Future<Set<int>> activeIds();
+
+  /// Đặt số badge trên icon app.
+  ///
+  /// Android **không có API badge thật**: con số đi kèm bản tóm tắt nhóm, và
+  /// launcher tự quyết định vẽ số, vẽ chấm, hay bỏ qua hẳn. Điều app điều
+  /// khiển được chắc chắn là **có thông báo trên khay hay không** — nên
+  /// [soLuong] bằng 0 còn có nghĩa là dọn nốt bản tóm tắt, nếu không chấm vẫn
+  /// sáng dù đã đọc hết. iOS thì đặt được thẳng qua `badgeNumber`.
+  ///
+  /// **Không bao giờ ném** — nơi gọi là một stream chạy suốt vòng đời app.
+  Future<void> datBadge(int soLuong);
+
   /// Huỷ một thông báo/lịch theo id.
   Future<void> cancel(int id);
 
   /// Huỷ **tất cả**. Bắt buộc gọi khi đăng xuất — xem `NotificationScanner.stop()`.
+  ///
+  /// ⚠️ Huỷ **cả lịch đang chờ**, không chỉ thứ đang hiện. Đừng dùng nó để dọn
+  /// khay: `BadgeUpdater` huỷ theo từng id có chủ đích đúng vì lời gọi này sẽ
+  /// cuốn theo mọi lịch nhắc chưa nổ.
   Future<void> cancelAll();
 }
 
@@ -146,6 +173,12 @@ class NoopOsNotifier implements OsNotifier {
 
   @override
   Future<Set<int>> pendingIds() async => const {};
+
+  @override
+  Future<Set<int>> activeIds() async => const {};
+
+  @override
+  Future<void> datBadge(int soLuong) async {}
 
   @override
   Future<void> cancel(int id) async {}

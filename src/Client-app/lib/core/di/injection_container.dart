@@ -42,6 +42,7 @@ import '../../features/category/data/services/category_suggestion_engine.dart';
 import '../network/connection_monitor.dart';
 import '../notification/reminder_scheduler.dart';
 import '../notification/app_lifecycle_watcher.dart';
+import '../notification/badge_updater.dart';
 import '../notification/notification_scanner.dart';
 import '../notification/os/os_notifier.dart';
 import '../notification/os/os_notifier_factory.dart';
@@ -302,6 +303,11 @@ Future<void> setupDependencies() async {
       // tự chuyển tiền chạy bên trong `scan()`.
       appLifecycle: sl<AppLifecycleWatcher>().stream,
       osNotifier: sl<OsNotifier>(),
+      // Scanner sở hữu vòng đời của nó — xem chú thích ở trường `badgeUpdater`.
+      badgeUpdater: BadgeUpdater(
+        dao: sl<AppDatabase>().notificationDao,
+        osNotifier: sl<OsNotifier>(),
+      ),
       prefsStore: sl<NotificationPrefsStore>(),
       // Lịch phải theo kịp dữ liệu: hoá đơn vừa thanh toán mà lịch cũ còn
       // nguyên là điện thoại vẫn kêu nhắc trả một hoá đơn đã trả.

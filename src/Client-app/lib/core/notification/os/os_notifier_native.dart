@@ -51,6 +51,14 @@ class LocalOsNotifier implements OsNotifier {
   /// thật — và nếu nó đụng thì hỏng hoàn toàn im lặng.
   static const int idTomTat = -1;
 
+  /// Id của thông báo **chỉ để đặt badge trên iOS**. Số âm, cùng lý lẽ với
+  /// [idTomTat].
+  ///
+  /// iOS không có API đặt badge riêng: đường duy nhất là đăng một thông báo
+  /// mang `badgeNumber`. Nó dùng id cố định để mỗi lần đặt lại chỉ ghi đè
+  /// chính nó thay vì chồng thêm một cái mới sau mỗi lần đọc.
+  static const int idBadge = -2;
+
   static const String _kenhNhacTen = 'Nhắc tài chính';
   static const String _kenhNhacMoTa =
       'Nhắc hoá đơn đến hạn, cảnh báo ngân sách và tiến độ mục tiêu.';
@@ -335,7 +343,10 @@ class LocalOsNotifier implements OsNotifier {
   ///
   /// `GroupAlertBehavior.children` để bản tóm tắt **im lặng**: tiếng và rung là
   /// việc của thông báo thật, còn tóm tắt kêu nữa là mỗi sự kiện kêu hai lần.
-  Future<void> _dangBanTomTat() async {
+  /// [soLuong] là con số badge. `null` nghĩa là **giữ nguyên** con số đang có —
+  /// dùng cho đường bắn thông báo, nơi số chưa đọc là việc của `BadgeUpdater`
+  /// chứ không phải của nơi đang bắn.
+  Future<void> _dangBanTomTat({int? soLuong}) async {
     // **Chỉ Android.** iOS gộp theo `threadIdentifier` và không có khái niệm
     // bản tóm tắt; đăng thêm một cái ở đó là một thông báo TRỐNG nằm trên màn
     // hình khoá — và nó không bao giờ lộ ra trong một lần kiểm chạy trên
@@ -346,7 +357,7 @@ class LocalOsNotifier implements OsNotifier {
       id: idTomTat,
       title: _kenhNhacTen,
       body: null,
-      notificationDetails: const NotificationDetails(
+      notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
           kenhNhacId,
           _kenhNhacTen,
@@ -356,6 +367,11 @@ class LocalOsNotifier implements OsNotifier {
           groupKey: khoaNhom,
           setAsGroupSummary: true,
           groupAlertBehavior: GroupAlertBehavior.children,
+          // Con số badge của cả nhóm. Launcher nào không vẽ số thì bỏ qua nó
+          // và chỉ vẽ chấm — chú thích của gói nói thẳng điều đó. Nên đây là
+          // phần **có thể** hiện, còn phần chắc chắn hiện là sự tồn tại của
+          // chính thông báo này.
+          number: soLuong,
         ),
       ),
     );
@@ -390,6 +406,56 @@ class LocalOsNotifier implements OsNotifier {
     await init();
     final cho = await _plugin.pendingNotificationRequests();
     return {for (final r in cho) r.id};
+  }
+
+  @override
+  Future<Set<int>> activeIds() async {
+    await init();
+    final dang = await _plugin.getActiveNotifications();
+    // `id` là `null` cho thông báo **không do gói này đăng** (ví dụ đẩy qua
+    // Firebase). Bỏ chúng đi thay vì đoán: `BadgeUpdater` chỉ huỷ thứ khớp một
+    // hàng trong bảng, và một thông báo lạ thì không khớp gì cả.
+    return {for (final n in dang) if (n.id != null) n.id!};
+  }
+
+  @override
+  Future<void> datBadge(int soLuong) async {
+    await init();
+
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      if (soLuong > 0) {
+        await _dangBanTomTat(soLuong: soLuong);
+        return;
+      }
+
+      // Số 0: dọn nốt bản tóm tắt, nhưng **chỉ khi không còn thông báo con
+      // nào**. Còn con mà gỡ tóm tắt là các thông báo bung ra nằm rời rạc —
+      // đúng thứ `groupKey` sinh ra để tránh. Và "còn con" là chuyện thường:
+      // nhắc ghi chép hằng ngày không có hàng nào trong bảng nên số chưa đọc
+      // bằng 0 trong khi nó vẫn nằm trên khay.
+      final conLai = (await activeIds())..remove(idTomTat);
+      if (conLai.isEmpty) await _plugin.cancel(id: idTomTat);
+      return;
+    }
+
+    // iOS đặt được badge thẳng, nhưng **không có API riêng** cho việc đó —
+    // đường duy nhất là một thông báo mang `badgeNumber`. Tắt hết phần hiển
+    // thị để nó không bao giờ lộ ra: người dùng chỉ thấy con số trên icon.
+    await _plugin.show(
+      id: idBadge,
+      title: null,
+      body: null,
+      notificationDetails: NotificationDetails(
+        iOS: DarwinNotificationDetails(
+          badgeNumber: soLuong,
+          presentAlert: false,
+          presentBanner: false,
+          presentList: false,
+          presentSound: false,
+          presentBadge: true,
+        ),
+      ),
+    );
   }
 
   @override

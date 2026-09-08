@@ -655,7 +655,11 @@ src/Backend/
   > 1. **Thiếu `ActionBroadcastReceiver` trong `AndroidManifest.xml`.** Nút hiện đúng, `dumpsys notification` báo `actions=2` với `PendingIntent` đúng kiểu, nhưng không tiến trình nào nhận. Plugin **không tự khai báo** receiver này. Nay có `android_manifest_receivers_test.dart` canh **cả ba** receiver — vùng mà `flutter test`, `flutter analyze` và `flutter build apk` đều không nhìn thấy. Xem bẫy **7.11**.
   > 2. **`resync()` huỷ mất lịch vừa hoãn.** Lý lẽ "cùng khoá nên sống sót" **sai**: nhánh bỏ qua ấy chỉ chạy cho lịch resync *muốn*, mà hoá đơn chỉ được muốn khi mốc nhắc còn ở tương lai — trong khi chỉ hoãn được **sau khi** thông báo đã nổ. Sửa bằng tập `khongHuy` trong `resync()`.
   > 3. **"Trả ngay" ở cold start mở nhầm danh sách.** Một cú bấm có **hai** đường vào; `payloadKhoiDong()` đọc `payload` mà bỏ qua `actionId`. Nay cả hai gọi chung `khoaSauChamNut()`.
-- **Test: 1391/1391 pass** (~110 giây) — đều đã `git add -f` (kiểm 2026-09-07, tối)
+- **Thông báo: badge số trên icon app** (2026-09-08, **schema không đổi**). `BadgeUpdater` nghe `watchUnreadCount` rồi đẩy sang `OsNotifier.datBadge()`; `NotificationScanner` **sở hữu** vòng đời của nó (`auth_bloc` đã có bốn chỗ start/stop, một lối song song là bốn chỗ nữa phải nhớ). Hai method mới trên interface: `activeIds()` và `datBadge()`. ⚠️ **Huỷ CHỌN LỌC, tuyệt đối không dọn sạch khay**: chỉ huỷ id suy từ `dedupeKey` của hàng đã đọc/đã xoá mềm, vì lịch hoá đơn nổ lúc app đóng và nhắc ghi chép hằng ngày **nằm trên khay mà bảng không biết** — số chưa đọc bằng 0 KHÔNG có nghĩa là khay phải trống. Và **không bao giờ `cancelAll()`**: nó cuốn theo cả lịch đang chờ trong AlarmManager. Lý do đầy đủ ở **mục 4.9 `docs/NOTIFICATION_FEATURE.md`**. 11 test mới.
+  > ⚠️ **Đo trên máy thật đã sửa lại chính lời hứa ban đầu:** con số **gần như không bao giờ hiện trên Android** — nó nằm trên bản tóm tắt nhóm, mà Android **tự gỡ bản tóm tắt khi nhóm chỉ còn một thông báo con**, và một là số lượng thường gặp nhất. Khay trống thì `datBadge(6)` chạy trót lọt mà không hiện gì cả. Nên trên Android badge thực chất là **chấm**, suy từ *thông báo đang trên khay* chứ không từ số chưa đọc; con số chỉ có nghĩa cho iOS và cho launcher nào vẽ được. Phần người dùng thấy vẫn đúng: **đọc hết trong app thì chấm tắt**.
+  > **Bằng chứng** (`emulator-5554`, Pixel Launcher): tạo hoá đơn tuần hạn 10/09 → `[BadgeUpdater] badge=7, khay=2, đã huỷ=0` và **icon có chấm**; bấm "Đọc tất cả" → `badge=0, khay=1, đã huỷ=1`, `dumpsys notification` còn **0** record của app, **chấm tắt**.
+  > Bài học kèm theo: `catch` **câm** ở `dongBo()` suýt dẫn tới kết luận sai rằng code không chạy — mất một vòng dựng lại APK. Nay nó ghi `debugPrint`, và chính dòng log ấy phân định được "không chạy" với "chạy đúng nhưng Android không vẽ".
+- **Test: 1402/1402 pass** (~100 giây) — đều đã `git add -f` (kiểm 2026-09-08)
 
 ### 🔄 Việc còn dang dở
 
@@ -770,21 +774,19 @@ một lựa chọn, không phải một hàng đợi.
 
 1. **Người dùng đã chọn mảng thông báo** (2026-09-07 tối), hoãn mảng Phân tích
    *"vì còn nhiều cái liên quan chưa triển khai"*. Thứ tự đã duyệt:
-   **#7 lọc/phân trang ✅ xong → #2 nhắc ghi chép ✅ xong → #5 nút hành động
-   ✅ xong → #6 badge**. Thứ tự #5 và #6 được **đảo** giữa chừng theo đề nghị
-   của tôi và người dùng đồng ý: #6 gần như **không kiểm chứng được** trên phần
-   cứng đang có, nên để cuối. **Một mục còn lại:**
-   - **#6 badge số trên icon app.** ⚠️ Đọc kỹ trước khi hứa gì: **Android không
-     có API badge thật** — nó suy từ thông báo đang hiện, và phần lớn launcher
-     chỉ vẽ một **chấm**, số chỉ hiện khi nhấn giữ icon; launcher mặc định của
-     máy ảo thường không vẽ gì cả. iOS thì `DarwinNotificationDetails(badgeNumber:)`
-     chạy chắc nhưng **không có máy iOS để xem**. Và nửa việc ít ai nghĩ tới là
-     **xoá badge**: đọc hết thông báo trong app thì badge phải về 0, mà
-     `flutter_local_notifications` không có API đặt badge trực tiếp — phải bắn
-     một thông báo im lặng `badgeNumber: 0` hoặc thêm một gói phụ thuộc mới.
-     Nghĩa là mục này viết được và test xanh được, nhưng câu "nó chạy" sẽ chỉ
-     dựa vào tài liệu của gói chứ không dựa vào thứ nhìn thấy — khác hẳn ba mục
-     trước. Nói rõ điều đó với người dùng trước khi làm.
+   **#7 lọc/phân trang ✅ → #2 nhắc ghi chép ✅ → #5 nút hành động ✅ →
+   #6 badge ✅** (2026-09-08). Thứ tự #5 và #6 được **đảo** giữa chừng theo đề
+   nghị của tôi và người dùng đồng ý.
+
+   **Mảng thông báo nay chỉ còn hai mục, cả hai đều bị chặn bởi việc khác:**
+   - **#1 Tổng kết tuần** — chờ mảng Phân tích có một màn dữ liệu thật phạm vi
+     đúng một tuần. Spec đã viết xong:
+     `docs/superpowers/specs/2026-09-07-weekly-summary-notification-design.md`.
+   - **#8 Thông báo trên web** — ưu tiên thấp có chủ ý; cần Service Worker và
+     luồng xin quyền riêng của trình duyệt, mà web chỉ dùng để trình bày.
+
+   Ngoài ra hai việc **chờ backend**: cảnh báo giao dịch ngân hàng/OCR (kênh
+   Socket.io chưa xác thực, `io.emit` toàn cục) và thông báo bảo mật.
 
    ⚠️ Danh sách đầy đủ kèm ghi chú kỹ thuật nằm ở
    `docs/superpowers/plans/2026-09-06-thong-bao-viec-con-lai.md` — thư mục ấy
