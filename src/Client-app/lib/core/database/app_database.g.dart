@@ -5983,6 +5983,12 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
   late final GeneratedColumn<DateTime> autoDepositLastRun =
       GeneratedColumn<DateTime>('auto_deposit_last_run', aliasedName, true,
           type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _priorityMeta =
+      const VerificationMeta('priority');
+  @override
+  late final GeneratedColumn<int> priority = GeneratedColumn<int>(
+      'priority', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
   static const VerificationMeta _recurrenceMeta =
       const VerificationMeta('recurrence');
   @override
@@ -6095,6 +6101,7 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
         autoDepositAmount,
         autoDepositWalletId,
         autoDepositLastRun,
+        priority,
         recurrence,
         timeRecurrence,
         icon,
@@ -6195,6 +6202,10 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
           _autoDepositLastRunMeta,
           autoDepositLastRun.isAcceptableOrUnknown(
               data['auto_deposit_last_run']!, _autoDepositLastRunMeta));
+    }
+    if (data.containsKey('priority')) {
+      context.handle(_priorityMeta,
+          priority.isAcceptableOrUnknown(data['priority']!, _priorityMeta));
     }
     if (data.containsKey('recurrence')) {
       context.handle(
@@ -6300,6 +6311,8 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
       autoDepositLastRun: attachedDatabase.typeMapping.read(
           DriftSqlType.dateTime,
           data['${effectivePrefix}auto_deposit_last_run']),
+      priority: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}priority']),
       recurrence: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}recurrence'])!,
       timeRecurrence: attachedDatabase.typeMapping
@@ -6350,12 +6363,22 @@ class Goal extends DataClass implements Insertable<Goal> {
   /// cycleTakeMoney: chu kỳ trích tiền — 'Day'|'Week'|'Month'|'Quarter'|'Year'
   final String? cycleTakeMoney;
 
-  /// timeCycleTakeMoney: thời điểm cụ thể trích tiền trong chu kỳ
+  /// timeCycleTakeMoney: thời điểm cụ thể trích tiền trong chu kỳ — **mốc neo**
+  /// quyết định *nhịp* ("ngày 15 hàng tháng lúc 08:00").
   ///
-  /// ⚠️ Cột này đồng bộ hai chiều nhưng **client chưa bao giờ ghi**. Bộ trích
-  /// tự động cố ý KHÔNG dùng nó làm mốc chạy: nó là cột dùng chung với
-  /// backend/Admin-web, và đổi ý nghĩa một cột dùng chung mà phía kia chưa
-  /// đồng ý là cách hỏng im lặng nhất. Mốc chạy nằm ở [autoDepositLastRun].
+  /// ⚠️ Đừng lẫn với mốc **chạy**: cột này nói kỳ rơi vào lúc nào, còn
+  /// [autoDepositLastRun] nói đã trích tới đâu. Bộ trích cần **cả hai** — chỉ
+  /// có nhịp thì chọn "ngày 1" vào ngày 15 sẽ trích bù cho mùng 1 vừa trôi qua;
+  /// chỉ có mốc chạy thì lựa chọn của người dùng không có tác dụng nào, im
+  /// lặng. Xem `cacKyDenHan`.
+  ///
+  /// Từ 2026-09-08 nó cũng là **mốc gốc** để tính kỳ thứ n (`mocThuN`), thay
+  /// cho việc cộng dồn từ kỳ trước vốn làm nhịp "ngày 31" tụt xuống 28 vĩnh
+  /// viễn sau tháng Hai.
+  ///
+  /// (Chú thích cũ ở đây ghi *"client chưa bao giờ ghi"* — **sai từ lâu**:
+  /// `GoalRepositoryImpl` ghi nó ở cả đường tạo lẫn đường sửa khi bật trích tự
+  /// động.)
   final DateTime? timeCycleTakeMoney;
 
   /// autoDepositAmount: số tiền trích mỗi kỳ. NULL = không bật trích tự động.
@@ -6375,6 +6398,27 @@ class Goal extends DataClass implements Insertable<Goal> {
   /// tiêu làm mốc thay thế là bật công tắc hôm nay rồi bị trích ngược lại sáu
   /// kỳ cùng một lúc.
   final DateTime? autoDepositLastRun;
+
+  /// priority: thứ tự ưu tiên do người dùng **kéo thả**. NULL = chưa sắp.
+  ///
+  /// Số **nhỏ hơn đứng trước**, các giá trị cách nhau **100** (100, 200, 300…).
+  /// Quy ước ấy không đặt ra ở đây — nó chốt từ 2026-09-05 ở
+  /// `docs/superpowers/backend/DA-XONG/2026-09-05-backend-goal-priority.md`
+  /// mục 4, và cột `Priority Int?` phía backend có từ 2026-09-07.
+  ///
+  /// **Vì sao thưa chứ không phải 1, 2, 3:** chèn một mục tiêu vào giữa mà
+  /// đánh số liên tục thì phải ghi lại cả danh sách, tức một thao tác kéo thả
+  /// sinh ra *n* bản ghi `pending` cùng lúc. Với khe 100, chèn giữa hai hàng
+  /// chỉ ghi **một** hàng. Xem `goal_priority.dart`.
+  ///
+  /// ⚠️ **Không đặt UNIQUE lên cột này.** Trùng số là va chạm vô hại — thứ tự
+  /// rơi về `targetDate`, cùng quy tắc phụ mà `chiaMucTieu` đang dùng. Một
+  /// ràng buộc duy nhất ở đây biến va chạm ấy thành một bản ghi kẹt vĩnh viễn
+  /// trong hàng đợi đẩy.
+  ///
+  /// ⚠️ **NULL xếp CUỐI**, không phải đầu: mục tiêu chưa từng được sắp không
+  /// có lý do nhảy lên trên những cái người dùng đã cố ý xếp.
+  final int? priority;
 
   /// recurrence: tự động lặp lại mục tiêu sau khi hoàn thành
   final bool recurrence;
@@ -6408,6 +6452,7 @@ class Goal extends DataClass implements Insertable<Goal> {
       this.autoDepositAmount,
       this.autoDepositWalletId,
       this.autoDepositLastRun,
+      this.priority,
       required this.recurrence,
       this.timeRecurrence,
       required this.icon,
@@ -6450,6 +6495,9 @@ class Goal extends DataClass implements Insertable<Goal> {
     }
     if (!nullToAbsent || autoDepositLastRun != null) {
       map['auto_deposit_last_run'] = Variable<DateTime>(autoDepositLastRun);
+    }
+    if (!nullToAbsent || priority != null) {
+      map['priority'] = Variable<int>(priority);
     }
     map['recurrence'] = Variable<bool>(recurrence);
     if (!nullToAbsent || timeRecurrence != null) {
@@ -6504,6 +6552,9 @@ class Goal extends DataClass implements Insertable<Goal> {
       autoDepositLastRun: autoDepositLastRun == null && nullToAbsent
           ? const Value.absent()
           : Value(autoDepositLastRun),
+      priority: priority == null && nullToAbsent
+          ? const Value.absent()
+          : Value(priority),
       recurrence: Value(recurrence),
       timeRecurrence: timeRecurrence == null && nullToAbsent
           ? const Value.absent()
@@ -6549,6 +6600,7 @@ class Goal extends DataClass implements Insertable<Goal> {
           serializer.fromJson<String?>(json['autoDepositWalletId']),
       autoDepositLastRun:
           serializer.fromJson<DateTime?>(json['autoDepositLastRun']),
+      priority: serializer.fromJson<int?>(json['priority']),
       recurrence: serializer.fromJson<bool>(json['recurrence']),
       timeRecurrence: serializer.fromJson<String?>(json['timeRecurrence']),
       icon: serializer.fromJson<String>(json['icon']),
@@ -6582,6 +6634,7 @@ class Goal extends DataClass implements Insertable<Goal> {
       'autoDepositAmount': serializer.toJson<double?>(autoDepositAmount),
       'autoDepositWalletId': serializer.toJson<String?>(autoDepositWalletId),
       'autoDepositLastRun': serializer.toJson<DateTime?>(autoDepositLastRun),
+      'priority': serializer.toJson<int?>(priority),
       'recurrence': serializer.toJson<bool>(recurrence),
       'timeRecurrence': serializer.toJson<String?>(timeRecurrence),
       'icon': serializer.toJson<String>(icon),
@@ -6612,6 +6665,7 @@ class Goal extends DataClass implements Insertable<Goal> {
           Value<double?> autoDepositAmount = const Value.absent(),
           Value<String?> autoDepositWalletId = const Value.absent(),
           Value<DateTime?> autoDepositLastRun = const Value.absent(),
+          Value<int?> priority = const Value.absent(),
           bool? recurrence,
           Value<String?> timeRecurrence = const Value.absent(),
           String? icon,
@@ -6648,6 +6702,7 @@ class Goal extends DataClass implements Insertable<Goal> {
         autoDepositLastRun: autoDepositLastRun.present
             ? autoDepositLastRun.value
             : this.autoDepositLastRun,
+        priority: priority.present ? priority.value : this.priority,
         recurrence: recurrence ?? this.recurrence,
         timeRecurrence:
             timeRecurrence.present ? timeRecurrence.value : this.timeRecurrence,
@@ -6695,6 +6750,7 @@ class Goal extends DataClass implements Insertable<Goal> {
       autoDepositLastRun: data.autoDepositLastRun.present
           ? data.autoDepositLastRun.value
           : this.autoDepositLastRun,
+      priority: data.priority.present ? data.priority.value : this.priority,
       recurrence:
           data.recurrence.present ? data.recurrence.value : this.recurrence,
       timeRecurrence: data.timeRecurrence.present
@@ -6736,6 +6792,7 @@ class Goal extends DataClass implements Insertable<Goal> {
           ..write('autoDepositAmount: $autoDepositAmount, ')
           ..write('autoDepositWalletId: $autoDepositWalletId, ')
           ..write('autoDepositLastRun: $autoDepositLastRun, ')
+          ..write('priority: $priority, ')
           ..write('recurrence: $recurrence, ')
           ..write('timeRecurrence: $timeRecurrence, ')
           ..write('icon: $icon, ')
@@ -6768,6 +6825,7 @@ class Goal extends DataClass implements Insertable<Goal> {
         autoDepositAmount,
         autoDepositWalletId,
         autoDepositLastRun,
+        priority,
         recurrence,
         timeRecurrence,
         icon,
@@ -6799,6 +6857,7 @@ class Goal extends DataClass implements Insertable<Goal> {
           other.autoDepositAmount == this.autoDepositAmount &&
           other.autoDepositWalletId == this.autoDepositWalletId &&
           other.autoDepositLastRun == this.autoDepositLastRun &&
+          other.priority == this.priority &&
           other.recurrence == this.recurrence &&
           other.timeRecurrence == this.timeRecurrence &&
           other.icon == this.icon &&
@@ -6828,6 +6887,7 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
   final Value<double?> autoDepositAmount;
   final Value<String?> autoDepositWalletId;
   final Value<DateTime?> autoDepositLastRun;
+  final Value<int?> priority;
   final Value<bool> recurrence;
   final Value<String?> timeRecurrence;
   final Value<String> icon;
@@ -6856,6 +6916,7 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     this.autoDepositAmount = const Value.absent(),
     this.autoDepositWalletId = const Value.absent(),
     this.autoDepositLastRun = const Value.absent(),
+    this.priority = const Value.absent(),
     this.recurrence = const Value.absent(),
     this.timeRecurrence = const Value.absent(),
     this.icon = const Value.absent(),
@@ -6885,6 +6946,7 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     this.autoDepositAmount = const Value.absent(),
     this.autoDepositWalletId = const Value.absent(),
     this.autoDepositLastRun = const Value.absent(),
+    this.priority = const Value.absent(),
     this.recurrence = const Value.absent(),
     this.timeRecurrence = const Value.absent(),
     this.icon = const Value.absent(),
@@ -6919,6 +6981,7 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     Expression<double>? autoDepositAmount,
     Expression<String>? autoDepositWalletId,
     Expression<DateTime>? autoDepositLastRun,
+    Expression<int>? priority,
     Expression<bool>? recurrence,
     Expression<String>? timeRecurrence,
     Expression<String>? icon,
@@ -6951,6 +7014,7 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
         'auto_deposit_wallet_id': autoDepositWalletId,
       if (autoDepositLastRun != null)
         'auto_deposit_last_run': autoDepositLastRun,
+      if (priority != null) 'priority': priority,
       if (recurrence != null) 'recurrence': recurrence,
       if (timeRecurrence != null) 'time_recurrence': timeRecurrence,
       if (icon != null) 'icon': icon,
@@ -6982,6 +7046,7 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
       Value<double?>? autoDepositAmount,
       Value<String?>? autoDepositWalletId,
       Value<DateTime?>? autoDepositLastRun,
+      Value<int?>? priority,
       Value<bool>? recurrence,
       Value<String?>? timeRecurrence,
       Value<String>? icon,
@@ -7010,6 +7075,7 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
       autoDepositAmount: autoDepositAmount ?? this.autoDepositAmount,
       autoDepositWalletId: autoDepositWalletId ?? this.autoDepositWalletId,
       autoDepositLastRun: autoDepositLastRun ?? this.autoDepositLastRun,
+      priority: priority ?? this.priority,
       recurrence: recurrence ?? this.recurrence,
       timeRecurrence: timeRecurrence ?? this.timeRecurrence,
       icon: icon ?? this.icon,
@@ -7072,6 +7138,9 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
       map['auto_deposit_last_run'] =
           Variable<DateTime>(autoDepositLastRun.value);
     }
+    if (priority.present) {
+      map['priority'] = Variable<int>(priority.value);
+    }
     if (recurrence.present) {
       map['recurrence'] = Variable<bool>(recurrence.value);
     }
@@ -7133,6 +7202,7 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
           ..write('autoDepositAmount: $autoDepositAmount, ')
           ..write('autoDepositWalletId: $autoDepositWalletId, ')
           ..write('autoDepositLastRun: $autoDepositLastRun, ')
+          ..write('priority: $priority, ')
           ..write('recurrence: $recurrence, ')
           ..write('timeRecurrence: $timeRecurrence, ')
           ..write('icon: $icon, ')
@@ -10671,6 +10741,7 @@ typedef $$GoalsTableCreateCompanionBuilder = GoalsCompanion Function({
   Value<double?> autoDepositAmount,
   Value<String?> autoDepositWalletId,
   Value<DateTime?> autoDepositLastRun,
+  Value<int?> priority,
   Value<bool> recurrence,
   Value<String?> timeRecurrence,
   Value<String> icon,
@@ -10700,6 +10771,7 @@ typedef $$GoalsTableUpdateCompanionBuilder = GoalsCompanion Function({
   Value<double?> autoDepositAmount,
   Value<String?> autoDepositWalletId,
   Value<DateTime?> autoDepositLastRun,
+  Value<int?> priority,
   Value<bool> recurrence,
   Value<String?> timeRecurrence,
   Value<String> icon,
@@ -10767,6 +10839,9 @@ class $$GoalsTableFilterComposer extends Composer<_$AppDatabase, $GoalsTable> {
   ColumnFilters<DateTime> get autoDepositLastRun => $composableBuilder(
       column: $table.autoDepositLastRun,
       builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get priority => $composableBuilder(
+      column: $table.priority, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<bool> get recurrence => $composableBuilder(
       column: $table.recurrence, builder: (column) => ColumnFilters(column));
@@ -10866,6 +10941,9 @@ class $$GoalsTableOrderingComposer
       column: $table.autoDepositLastRun,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get priority => $composableBuilder(
+      column: $table.priority, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<bool> get recurrence => $composableBuilder(
       column: $table.recurrence, builder: (column) => ColumnOrderings(column));
 
@@ -10957,6 +11035,9 @@ class $$GoalsTableAnnotationComposer
   GeneratedColumn<DateTime> get autoDepositLastRun => $composableBuilder(
       column: $table.autoDepositLastRun, builder: (column) => column);
 
+  GeneratedColumn<int> get priority =>
+      $composableBuilder(column: $table.priority, builder: (column) => column);
+
   GeneratedColumn<bool> get recurrence => $composableBuilder(
       column: $table.recurrence, builder: (column) => column);
 
@@ -11033,6 +11114,7 @@ class $$GoalsTableTableManager extends RootTableManager<
             Value<double?> autoDepositAmount = const Value.absent(),
             Value<String?> autoDepositWalletId = const Value.absent(),
             Value<DateTime?> autoDepositLastRun = const Value.absent(),
+            Value<int?> priority = const Value.absent(),
             Value<bool> recurrence = const Value.absent(),
             Value<String?> timeRecurrence = const Value.absent(),
             Value<String> icon = const Value.absent(),
@@ -11062,6 +11144,7 @@ class $$GoalsTableTableManager extends RootTableManager<
             autoDepositAmount: autoDepositAmount,
             autoDepositWalletId: autoDepositWalletId,
             autoDepositLastRun: autoDepositLastRun,
+            priority: priority,
             recurrence: recurrence,
             timeRecurrence: timeRecurrence,
             icon: icon,
@@ -11091,6 +11174,7 @@ class $$GoalsTableTableManager extends RootTableManager<
             Value<double?> autoDepositAmount = const Value.absent(),
             Value<String?> autoDepositWalletId = const Value.absent(),
             Value<DateTime?> autoDepositLastRun = const Value.absent(),
+            Value<int?> priority = const Value.absent(),
             Value<bool> recurrence = const Value.absent(),
             Value<String?> timeRecurrence = const Value.absent(),
             Value<String> icon = const Value.absent(),
@@ -11120,6 +11204,7 @@ class $$GoalsTableTableManager extends RootTableManager<
             autoDepositAmount: autoDepositAmount,
             autoDepositWalletId: autoDepositWalletId,
             autoDepositLastRun: autoDepositLastRun,
+            priority: priority,
             recurrence: recurrence,
             timeRecurrence: timeRecurrence,
             icon: icon,

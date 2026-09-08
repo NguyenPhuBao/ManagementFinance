@@ -635,6 +635,67 @@ Cột mốc **chịu công tắc nhóm** Mục tiêu (`luonBao` trả `false`): 
 nhận, không phải tin "tiền vừa rời ví". Nới `luonBao` ra cho nó là làm đúng
 việc mà cảnh báo ở đầu hàm ấy cấm.
 
+### 3.22 Ưu tiên mục tiêu: số thưa, `NULL` xếp cuối, và chỉ một tab dùng nó
+
+Danh sách trước đây sắp cứng theo hạn gần nhất, nên người dùng không nói được
+"quỹ khẩn cấp quan trọng hơn cái laptop". Cột `Priority Int?` phía backend có
+từ 2026-09-07; client nhận nó ngày 2026-09-08 (**schema v19**).
+
+**Quy ước giá trị lấy nguyên từ tài liệu backend** (`DA-XONG/2026-09-05-backend-goal-priority.md`
+mục 4), không phát minh lại: số **cách nhau 100**, nhỏ hơn đứng trước, `NULL`
+xếp **cuối**, trùng số thì sắp tiếp theo `targetDate`.
+
+**Vì sao thưa chứ không phải 1, 2, 3:** chèn một mục tiêu vào giữa mà đánh số
+liên tục thì phải ghi lại cả danh sách — một thao tác kéo thả sinh ra *n* bản
+ghi `pending`. Với khe 100, chèn giữa hai hàng chỉ ghi **một** hàng.
+
+`uuTienSauKhiKeo` vì thế có **hai chế độ**, và cần cả hai:
+
+| Khi nào | Ghi mấy hàng |
+|---|---|
+| Mọi hàng đã có số **phân biệt** và chỗ thả còn khe | **một** |
+| Còn hàng `null`, có số trùng nhau, hoặc hết khe | **cả danh sách** |
+
+Lần kéo **đầu tiên** luôn rơi vào chế độ hai vì mọi hàng đang mang `null`. Đó
+là *một* lần ghi *n* hàng trong đời danh sách, không phải mỗi lần kéo. Ép đại
+một giá trị vào chỗ chật (giữa 100 và 101 không còn số nguyên nào) là hai hàng
+trùng số, và khi ấy thứ tự rơi về `targetDate` — tức thao tác kéo thả **biến
+mất ở lần mở app sau**, không lỗi, không dấu hiệu gì.
+
+⚠️ **`priority` luôn DƯƠNG.** `0` và số âm đi qua đường đồng bộ thì không phân
+biệt được với "chưa sắp", và một mục tiêu đã sắp mà bị đọc thành chưa sắp sẽ
+nhảy xuống cuối. Kéo lên đầu khi hàng đầu đã là `1` thì đánh số lại cả danh
+sách chứ không lùi xuống `0`.
+
+⚠️ **`ReorderableListView.onReorder` trả `newIndex` tính trên danh sách CÒN
+NGUYÊN phần tử đang kéo**, nên kéo **xuống** thì con số ấy lớn hơn vị trí cuối
+cùng đúng một đơn vị. `viTriThaThucTe` là chỗ duy nhất sửa việc đó — dùng thẳng
+`newIndex` là mục tiêu rơi lệch một ô, im lặng. Kéo **lên** thì không trừ gì.
+
+**Chỉ tab "Đang theo đuổi" dùng ưu tiên.** Tab "Đã hoàn thành" giữ nguyên thứ
+tự cũ (mới đạt lên đầu): đã xong rồi thì "quan trọng hơn" không còn nghĩa gì,
+và áp ưu tiên ở đó sẽ đẩy mục tiêu vừa đạt được xuống đáy chỉ vì nó từng được
+xếp thấp — cùng lập luận đã dùng để cho hai tab sắp ngược nhau (mục 3.18).
+
+**Migration v19 cố ý KHÔNG suy giá trị cho hàng cũ**, khác hẳn `anchorDay` của
+v18. Ở đó ngày đến hạn là một ý định người dùng đã đưa ra và chỉ cần đọc lại;
+ở đây mọi thứ tự bịa ra đều sai với người đã sắp tay, và `NULL` có nghĩa riêng
+rõ ràng. Đánh số theo `targetDate` để danh sách "trông đã được sắp" là biến thứ
+tự mặc định thành một lựa chọn người dùng chưa từng đưa ra — cùng lập luận đã
+dùng cho v15 và v17.
+
+✅ **Đã kiểm trọn vòng trên máy ảo 2026-09-08:** kéo `MuaXe` (hạn 27/04/2028)
+lên trên `MuaDT` (hạn 05/09/2027) → danh sách đổi ngay, thứ tự **sống qua khởi
+động nguội**, và truy vấn thẳng PostgreSQL thấy `Priority` 100 / 200 — tức lần
+kéo đầu đánh số lại cả danh sách và **cả hai hàng đã lên tới server**.
+
+**Khe hở còn lại, chấp nhận được:** hai máy cùng sắp lại khi ngoại tuyến thì
+LWW phân xử **theo từng hàng**, không theo cả danh sách, nên kết quả có thể là
+một thứ tự trộn giữa hai lần sắp. Không hàng nào sai, nhưng tổng thể không
+giống lần sắp nào. Vá triệt để cần khoá thứ tự kiểu phân số (`"a0"`, `"a0V"`) —
+đắt hơn giá trị nó mang lại. Hậu quả tệ nhất là kéo lại vài mục tiêu: không mất
+tiền, không mất bản ghi, không kẹt hàng đợi.
+
 ---
 
 ## 4. Bảy cái bẫy
@@ -739,8 +800,9 @@ cả hàng**, đưa mọi cột không gán về mặc định. Nhánh pull đú
 | Ví nguồn trích | `autoDepositWalletId` | — **không đẩy** — | — chưa có — |
 | Mốc kỳ đã trích | `autoDepositLastRun` | — **không đẩy** — | — chưa có — |
 | **Mốc neo** của nhịp trích | `timeCycleTakeMoney` | `time_cycle_take_money` | `Time_cycle_take_money` |
+| **Thứ tự ưu tiên** | `priority` (v19) | `priority` | `Priority` |
 
-Payload mục tiêu có **18 trường**. Hợp đồng đầy đủ ở
+Payload mục tiêu có **19 trường** (18 + `priority` từ 2026-09-08). Hợp đồng đầy đủ ở
 `test/core/sync/sync_payload_contract_test.dart` — **nơi duy nhất** ghi tên
 trường giữa hai phía.
 
@@ -764,7 +826,7 @@ giá trị từ Admin-web nếu có — nhưng đừng tưởng có tính năng 
 | ~~Cấu hình trích tự động **không sang máy khác**~~ | ✅ **Đóng 2026-09-07.** Backend đã có ba cột `auto_deposit_*`, client đẩy và kéo cả ba. Còn lại đúng một khe hở hẹp: hai máy cùng mở đúng lúc tới kỳ. **G21 đóng** |
 | Không có bộ **lập lịch nền** | Giờ trong mốc trích chỉ giữ được chiều "không sớm hơn". Có lời nhắc AlarmManager nổ đúng giờ kể cả khi app đóng, nhưng nó chỉ báo tin. **G22** — cố ý, đừng "sửa" |
 | Quy tắc trùng tên chỉ có ở **client** | `/sync/push` và PostgreSQL chưa kiểm gì — cùng tình trạng với danh mục. Xem mục 3.15 |
-| **Ưu tiên mục tiêu** chưa có | ⚠️ Dòng cũ ở đây ghi *"bảng `goal` phía backend không có cột nào cho việc này"* — **sai từ 2026-09-07**, cột `Priority Int?` đã có (mục 8 nói đúng, mục này thì không). Nay không còn gì chặn; quy ước giá trị chốt sẵn ở `DA-XONG/2026-09-05-backend-goal-priority.md` mục 4. Xem mục **10.5** |
+| ~~**Ưu tiên mục tiêu** chưa có~~ | ✅ **Xong 2026-09-08** — schema v19, kéo thả ở tab "Đang theo đuổi", đồng bộ đủ hai chiều. Mục **3.22** |
 
 **Đã đóng ngày 2026-09-05** (giữ lại đây để không ai mở lại nhầm):
 
@@ -788,7 +850,7 @@ gộp chung một đợt migration — đúng như đề nghị.
 |---|---|---|
 | `2026-09-05-backend-transaction-goal-id.md` | `transaction.Idgoal` | ✅ **Xong 2026-09-07** — cột đã có, client đẩy `idgoal` và đọc lại. Nhánh so **tên** vẫn giữ cho hàng cũ trên server (đều `NULL`), teo dần — **G18** |
 | `2026-09-05-backend-goal-auto-deposit.md` | Ba cột `auto_deposit_*` | ✅ **Xong 2026-09-07** — backend có cột, client đẩy và kéo cả ba. **G21 đóng** |
-| `2026-09-05-backend-goal-priority.md` | `goal.Priority` | ✅ **Cột đã có 2026-09-07.** Client **chưa làm** tính năng ưu tiên — nay không còn gì chặn, chỉ là chưa tới lượt |
+| `2026-09-05-backend-goal-priority.md` | `goal.Priority` | ✅ **Đóng trọn 2026-09-08.** Cột có từ 2026-09-07, client nhận ở schema v19 và đẩy/kéo `priority`. Quy ước giá trị ở mục 4 của tài liệu ấy vẫn là nguồn duy nhất — mục **3.22** chỉ nhắc lại |
 
 Hai tài liệu đầu **không chặn gì hôm nay**; cái đầu chặn hướng bỏ bộ đếm
 `current_amount` để suy tiến độ từ chính giao dịch.
@@ -806,8 +868,8 @@ quyết định **tiền đi đâu** — ba lý do khiến nó không nên là c
 
 ## 9. Kiểm thử
 
-**289 test** riêng cho mục tiêu, trên tổng **1441** của dự án (đếm lại
-2026-09-08 sau khi thêm luật cột mốc, bằng cách chạy thật `flutter test
+**313 test** riêng cho mục tiêu, trên tổng **1466** của dự án (đếm lại
+2026-09-08 sau khi thêm luật cột mốc và thứ tự ưu tiên, bằng cách chạy thật `flutter test
 test/features/goal test/core/notification/notification_rules_goal_wallet_test.dart`;
 con số ghi ở đây trước đó là 222/893 và đã lạc hậu — **đừng chép lại từ trí
 nhớ**).
@@ -820,10 +882,12 @@ nhớ**).
 | `goal_deposit_default_wallets_test.dart` | Bất biến ví nguồn ≠ ví nhận |
 | `goal_history_direction_test.dart` | **Bẫy 4.2** — đổi ví không làm khoản nạp cũ đọc thành rút |
 | `goal_wallet_shortfall_test.dart` | Cảnh báo lệch, cộng dồn nhiều mục tiêu |
-| `data/repositories/goal_repository_impl_test.dart` | Nạp, rút, đổi ví, nguyên tử, lịch sử |
+| `data/repositories/goal_repository_impl_test.dart` | Nạp, rút, đổi ví, nguyên tử, lịch sử. Từ 2026-09-08 thêm `capNhatUuTien`: chỉ chạm hàng có tên trong map, đánh dấu `pending`, id lạ không ném |
 | `presentation/widgets/goal_progress_test.dart` | Một định nghĩa duy nhất của tỉ lệ |
 | `presentation/widgets/goal_appearance_test.dart` | Bảng tra biểu tượng/màu, dữ liệu rác, và **giá trị ngoài bảng chọn** |
 | `goal_edit_form_test.dart` | `showDatePicker` với mục tiêu **quá hạn** — xem mục 3.9 |
+| `goal_priority_test.dart` | **Mục 3.22.** Hai chế độ của `uuTienSauKhiKeo` (ghi một hàng / đánh số lại), giá trị luôn dương và không trùng, vị trí ngoài dải không ném, và `viTriThaThucTe` — chỗ duy nhất sửa cái lệch một ô của `ReorderableListView` |
+| `goal_grouping_test.dart` | Hai tab, và từ 2026-09-08 canh **thứ tự ưu tiên**: ưu tiên thắng hạn định, `NULL` xếp cuối, trùng số rơi về hạn định, và tab đã hoàn thành **không** dùng ưu tiên |
 | `goal_auto_deposit_test.dart` | Bước kỳ (tháng ngắn, **năm nhuận**), **mốc neo**, trần số kỳ, quyết định trích. Từ 2026-09-08 canh thêm: **nhịp neo vào mốc gốc, không trôi** — ngày 31 kẹp ở tháng ngắn rồi **quay lại** 31, ngày 30 không bị kéo lên cuối tháng, `kyKeTiep` dùng chung nhịp, và mục tiêu chưa có mốc neo vẫn chạy như trước |
 | `goal_auto_deposit_runner_test.dart` | Trích bù nhiều kỳ, ví cạn giữa chừng, cấu hình hỏng, cách ly tài khoản |
 | `core/notification/reminder_scheduler_test.dart` | Lịch nhắc kỳ trích: đúng mốc kỳ, trùng khoá thông báo, và **không huỷ lịch hoá đơn** |
@@ -917,7 +981,7 @@ bỏ qua chứ đừng chuyển một phần, phải có trần mỗi lượt, v
 
 | Hạng | Việc | Vì sao ở đây |
 |---|---|---|
-| 🔨 | **Ưu tiên mục tiêu** | **Đang làm 2026-09-08.** Việc duy nhất mà backend đã làm xong phần của họ và client chưa nhận; quy ước giá trị chốt sẵn ở `DA-XONG/2026-09-05-backend-goal-priority.md` mục 4 |
+| ✅ | ~~**Ưu tiên mục tiêu**~~ | **Xong 2026-09-08** — schema v19, mục **3.22**. Kiểm trọn vòng trên máy ảo, `Priority` 100/200 đã lên PostgreSQL |
 | ✅ | ~~**Cột mốc 25/50/75%**~~ | **Xong 2026-09-08** — `goalMilestone`, mục **3.21** |
 | 1 | **Đưa mục tiêu lên màn hình chính** | Hiện chỉ vào được qua một mục trong drawer của `home_page` — một tính năng làm kỹ tới mức này mà bị chôn ba lớp |
 | 2 | **Làm tròn số lẻ** | Giá trị cao và hợp văn hoá "nuôi heo đất", nhưng là chỗ **thứ ba** app tự chuyển tiền — xem cảnh báo ở 10.2 |

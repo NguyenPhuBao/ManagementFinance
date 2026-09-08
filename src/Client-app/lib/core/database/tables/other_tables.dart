@@ -291,6 +291,29 @@ class Goals extends Table {
   /// kỳ cùng một lúc.
   DateTimeColumn get autoDepositLastRun => dateTime().nullable()();
 
+  // ── Thứ tự ưu tiên (DB v19) ───────────────────────────────────────────────
+
+  /// priority: thứ tự ưu tiên do người dùng **kéo thả**. NULL = chưa sắp.
+  ///
+  /// Số **nhỏ hơn đứng trước**, các giá trị cách nhau **100** (100, 200, 300…).
+  /// Quy ước ấy không đặt ra ở đây — nó chốt từ 2026-09-05 ở
+  /// `docs/superpowers/backend/DA-XONG/2026-09-05-backend-goal-priority.md`
+  /// mục 4, và cột `Priority Int?` phía backend có từ 2026-09-07.
+  ///
+  /// **Vì sao thưa chứ không phải 1, 2, 3:** chèn một mục tiêu vào giữa mà
+  /// đánh số liên tục thì phải ghi lại cả danh sách, tức một thao tác kéo thả
+  /// sinh ra *n* bản ghi `pending` cùng lúc. Với khe 100, chèn giữa hai hàng
+  /// chỉ ghi **một** hàng. Xem `goal_priority.dart`.
+  ///
+  /// ⚠️ **Không đặt UNIQUE lên cột này.** Trùng số là va chạm vô hại — thứ tự
+  /// rơi về `targetDate`, cùng quy tắc phụ mà `chiaMucTieu` đang dùng. Một
+  /// ràng buộc duy nhất ở đây biến va chạm ấy thành một bản ghi kẹt vĩnh viễn
+  /// trong hàng đợi đẩy.
+  ///
+  /// ⚠️ **NULL xếp CUỐI**, không phải đầu: mục tiêu chưa từng được sắp không
+  /// có lý do nhảy lên trên những cái người dùng đã cố ý xếp.
+  IntColumn get priority => integer().nullable()();
+
   /// recurrence: tự động lặp lại mục tiêu sau khi hoàn thành
   BoolColumn get recurrence => boolean().withDefault(const Constant(false))();
 

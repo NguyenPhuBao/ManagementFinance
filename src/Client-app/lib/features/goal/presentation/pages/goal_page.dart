@@ -10,6 +10,7 @@ import '../../data/models/goal_entity.dart';
 import '../widgets/goal_appearance.dart';
 import '../widgets/goal_progress.dart';
 import '../../domain/goal_grouping.dart';
+import '../../domain/goal_priority.dart';
 import '../bloc/goal_cubit.dart';
 import '../../../../core/auth/current_account.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
@@ -205,10 +206,57 @@ class _GoalPageContent extends StatelessWidget {
                       'tài chính của bạn!',
             )
           else
-            ...goals.map((goal) => Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: _theMucTieu(context, goal, currencyFormatter),
-                )),
+            // Kéo thả để sắp thứ tự ưu tiên.
+            //
+            // `shrinkWrap` + `NeverScrollableScrollPhysics` vì nó nằm trong
+            // `SingleChildScrollView` đã có: hai vùng cuộn lồng nhau thì cú
+            // vuốt bị vùng trong nuốt và thẻ tổng kết bên dưới không tới được.
+            //
+            // Danh sách này chỉ dài bằng số mục tiêu đang theo đuổi nên dựng
+            // hết một lượt không tốn gì đáng kể.
+            ReorderableListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              buildDefaultDragHandles: false,
+              itemCount: goals.length,
+              // `ValueKey` theo **id**, không phải theo chỉ số. Khoá theo chỉ
+              // số thì sau mỗi lần thả Flutter coi như không có gì đổi chỗ và
+              // hoạt ảnh nhảy loạn.
+              itemBuilder: (context, i) => Padding(
+                key: ValueKey(goals[i].id),
+                padding: const EdgeInsets.only(bottom: 16),
+                child: ReorderableDragStartListener(
+                  index: i,
+                  // Nghe trên cả thẻ chứ không chỉ một tay nắm nhỏ: thẻ mục
+                  // tiêu cao và không có chỗ nào đặt tay nắm mà không đè lên
+                  // nội dung. Cú CHẠM vẫn mở trang chi tiết như cũ —
+                  // `ReorderableDragStartListener` chỉ bắt thao tác kéo dài.
+                  child: _theMucTieu(context, goals[i], currencyFormatter),
+                ),
+              ),
+              onReorder: (cu, moi) {
+                final ra = uuTienSauKhiKeo(
+                  dangHien: goals,
+                  tuViTri: cu,
+                  // ⚠️ Không dùng thẳng `moi`. Xem `viTriThaThucTe`.
+                  toiViTri: viTriThaThucTe(cu: cu, moi: moi),
+                );
+                if (ra.isEmpty) return;
+                context.read<GoalCubit>().sapLaiUuTien(ra);
+              },
+            ),
+          if (goals.length > 1)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                'Nhấn giữ một mục tiêu để kéo đổi thứ tự ưu tiên.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary.withValues(alpha: 0.8),
+                ),
+              ),
+            ),
           const SizedBox(height: 16),
 
           // Thẻ tổng kết.

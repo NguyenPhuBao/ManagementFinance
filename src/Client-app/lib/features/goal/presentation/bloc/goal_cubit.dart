@@ -226,6 +226,19 @@ class GoalCubit extends Cubit<GoalState> {
     }
   }
 
+  /// Ghi lại thứ tự sau một lần kéo thả trên tab "Đang theo đuổi".
+  ///
+  /// Không `emit` gì khi thành công: trang đang nghe `watchGoals`, nên dòng dữ
+  /// liệu tự đẩy danh sách mới ra. Phát thêm một trạng thái ở đây là vẽ lại
+  /// hai lần cho một thao tác.
+  Future<void> sapLaiUuTien(Map<String, int> uuTienMoi) async {
+    try {
+      await repository.capNhatUuTien(uuTienMoi);
+    } catch (e) {
+      emit(GoalError(e.toString()));
+    }
+  }
+
   @override
   Future<void> close() {
     _goalsSubscription?.cancel();

@@ -75,11 +75,11 @@
 ## Lệnh hay dùng
 
 ```bash
-# Test (chạy từ src/Client-app) — hiện 1431/1431 pass, ~55 giây
+# Test (chạy từ src/Client-app) — hiện 1466/1466 pass, ~80 giây
 flutter test
 flutter analyze          # mức nền: 25 issue, KHÔNG có error
 
-# Sau khi sửa Drift tables/DAOs
+# Sau khi sửa Drift tables/DAOs (schema hiện tại: v19)
 dart run build_runner build --delete-conflicting-outputs
 
 # Chạy app

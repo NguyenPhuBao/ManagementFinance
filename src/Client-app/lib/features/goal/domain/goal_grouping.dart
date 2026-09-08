@@ -40,8 +40,36 @@ NhomMucTieu chiaMucTieu(List<GoalEntity> tatCa) {
     (g.daHoanThanh ? daHoanThanh : dangTheoDuoi).add(g);
   }
 
-  dangTheoDuoi.sort((a, b) => a.targetDate.compareTo(b.targetDate));
+  // Đang theo đuổi: **ưu tiên trước, hạn định sau**.
+  //
+  // Ưu tiên thắng hạn định vì cả tính năng ấy sinh ra để người dùng nói được
+  // "quỹ khẩn cấp quan trọng hơn cái laptop" — để hạn định thắng là nó không
+  // có tác dụng nào. `targetDate` tụt xuống làm **quy tắc phụ**, và nó cần
+  // thiết: trùng `priority` là chuyện được phép (xem chú thích cột), nên thiếu
+  // quy tắc phụ thì hai hàng trùng số lại quay về thứ tự tuỳ SQLite.
+  dangTheoDuoi.sort((a, b) {
+    final theoUuTien = _soSanhUuTien(a.priority, b.priority);
+    if (theoUuTien != 0) return theoUuTien;
+    return a.targetDate.compareTo(b.targetDate);
+  });
+
+  // Đã hoàn thành: **KHÔNG** dùng ưu tiên. Đã xong rồi thì "quan trọng hơn"
+  // không còn nghĩa gì, và áp ưu tiên ở đây sẽ đẩy mục tiêu vừa đạt được xuống
+  // đáy chỉ vì nó từng được xếp thấp — cùng lập luận đã dùng để cho hai tab
+  // sắp ngược nhau.
   daHoanThanh.sort((a, b) => b.targetDate.compareTo(a.targetDate));
 
   return NhomMucTieu(dangTheoDuoi: dangTheoDuoi, daHoanThanh: daHoanThanh);
+}
+
+/// So hai giá trị `priority`, với `null` xếp **CUỐI**.
+///
+/// `null` nghĩa là "chưa sắp". Xếp nó lên đầu — thứ mà phép so mặc định của
+/// `int?` không làm được nên rất dễ tự viết sai — là để mục tiêu người dùng
+/// chưa từng đụng tới nhảy lên trên những cái họ đã cố ý xếp.
+int _soSanhUuTien(int? a, int? b) {
+  if (a == null && b == null) return 0;
+  if (a == null) return 1;
+  if (b == null) return -1;
+  return a.compareTo(b);
 }

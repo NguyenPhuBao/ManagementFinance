@@ -226,6 +226,9 @@ void main() {
         autoDepositAmount: const Value(500000),
         autoDepositWalletId: const Value(walletId),
         autoDepositLastRun: Value(DateTime.utc(2026, 9, 1, 3)),
+        // Cùng lý do như ba cột trên: một giá trị THẬT chứ không phải null,
+        // nếu không test không phân biệt được "có gửi" với "gửi nhầm tên".
+        priority: const Value(200),
         syncStatus: const Value('pending'),
         updatedAt: Value(now),
       ));
@@ -436,8 +439,20 @@ void main() {
           // nặng hơn hiện trạng "máy thứ hai không trích gì".
           'auto_deposit_amount', 'auto_deposit_wallet_id',
           'auto_deposit_last_run',
+          // Thứ tự ưu tiên, mở khoá 2026-09-08. Cột `Priority` phía backend
+          // có từ 2026-09-07. Đây là thứ tự người dùng tự sắp bằng kéo thả —
+          // công sức bỏ ra, không suy lại được — nên nó KHÔNG được làm cột
+          // cục bộ; đó đúng là bệnh mà G21 đã ghi lại.
+          'priority',
         },
       );
+    });
+
+    test('payload mục tiêu mang GIÁ TRỊ của thứ tự ưu tiên', () {
+      expect(payloadOf('goal')['priority'], 200,
+          reason: 'Đúng tên khoá mà sai giá trị thì backend ghi null, và thứ '
+              'tự người dùng vừa kéo biến mất khi sang máy khác — im lặng y '
+              'như sai tên. Số NHỎ hơn đứng trước, các giá trị cách nhau 100.');
     });
 
     test('payload mục tiêu mang đủ GIÁ TRỊ của ba cột trích tự động', () {

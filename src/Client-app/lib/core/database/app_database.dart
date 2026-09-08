@@ -56,7 +56,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 18;
+  int get schemaVersion => 19;
 
   @override
   MigrationStrategy get migration {
@@ -363,6 +363,19 @@ class AppDatabase extends _$AppDatabase {
             "datetime(due_date / 1000, 'unixepoch', 'localtime')) AS INTEGER) "
             'WHERE anchor_day IS NULL',
           );
+        }
+        if (from < 19) {
+          // Thứ tự ưu tiên mục tiêu — xem chú thích ở `Goals.priority`.
+          //
+          // **Cố ý KHÔNG suy giá trị cho hàng cũ**, khác hẳn `anchorDay` ngay
+          // trên. Ở đó ngày đến hạn là một ý định người dùng đã đưa ra và chỉ
+          // cần đọc lại; còn ở đây mọi thứ tự bịa ra đều sai với người đã sắp
+          // tay, và `NULL` có nghĩa riêng rõ ràng — "chưa sắp", xếp cuối.
+          //
+          // Đánh số theo `targetDate` để danh sách "trông đã được sắp" là biến
+          // thứ tự mặc định thành một lựa chọn người dùng chưa từng đưa ra —
+          // cùng lập luận đã dùng cho v15 và v17.
+          await m.addColumn(goals, goals.priority);
         }
       },
       beforeOpen: (details) async {

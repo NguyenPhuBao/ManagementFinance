@@ -41,6 +41,35 @@ void _createV17Bills(dynamic database) {
 /// Mốc mili-giây của một ngày địa phương — cùng đơn vị Drift ghi xuống.
 int _ms(int y, int m, int d) => DateTime(y, m, d).millisecondsSinceEpoch;
 
+/// Bảng `goals` của một CSDL v17 — dựng ở đây chỉ để chuỗi migration chạy
+/// tới cuối.
+///
+/// Tệp này canh phần **hoá đơn**, nhưng migration v19 thêm cột
+/// `goals.priority`, và `ALTER TABLE` trên một bảng không tồn tại thì cả
+/// chuỗi dừng ngay ở đó. Một CSDL v17 thật luôn có bảng này — thiếu nó ở
+/// đây là thiếu ở phía **bản dựng thử**, không phải ở phía mã nguồn.
+void _createV17Goals(dynamic database) {
+  database.execute('''
+    CREATE TABLE goals (
+      id TEXT NOT NULL PRIMARY KEY, idaccount INTEGER NOT NULL,
+      name TEXT NOT NULL, target_amount REAL NOT NULL,
+      current_amount REAL NOT NULL DEFAULT 0, start_date INTEGER,
+      target_date INTEGER NOT NULL, wallet_id TEXT,
+      cycle_take_money TEXT, time_cycle_take_money INTEGER,
+      auto_deposit_amount REAL, auto_deposit_wallet_id TEXT,
+      auto_deposit_last_run INTEGER,
+      recurrence INTEGER NOT NULL DEFAULT 0, time_recurrence TEXT,
+      icon TEXT NOT NULL DEFAULT 'flag', colour TEXT NOT NULL DEFAULT '#4CAF50',
+      note TEXT NOT NULL DEFAULT '',
+      is_completed INTEGER NOT NULL DEFAULT 0, deleted_at INTEGER,
+      is_deleted INTEGER NOT NULL DEFAULT 0,
+      sync_status TEXT NOT NULL DEFAULT 'pending',
+      sync_retry_count INTEGER NOT NULL DEFAULT 0, sync_error TEXT,
+      sync_blocked_until INTEGER, updated_at INTEGER NOT NULL
+    )
+  ''');
+}
+
 void main() {
   late AppDatabase db;
 
@@ -48,6 +77,7 @@ void main() {
     db = AppDatabase.forTesting(NativeDatabase.memory(
       setup: (database) {
         _createV17Bills(database);
+        _createV17Goals(database);
 
         // Kỳ giữa của một chuỗi "ngày 31": bắt đầu 28/02, hạn 31/03. Đây là
         // hàng mà suy sai sẽ làm hỏng.

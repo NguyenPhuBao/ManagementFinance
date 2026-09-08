@@ -1485,4 +1485,65 @@ void main() {
               'dính lại mãi và hộp dự báo cứ so với một nhịp người dùng đã bỏ.');
     });
   });
+
+  group('capNhatUuTien', () {
+    setUp(() async {
+      await db.goalDao.insert(
+        GoalsCompanion.insert(
+          id: 'g2',
+          idaccount: 1,
+          name: 'Mua Xe',
+          targetAmount: 50000000.0,
+          walletId: const Value('w_nhan'),
+          targetDate: DateTime.now().add(const Duration(days: 200)),
+          syncStatus: const Value('synced'),
+          updatedAt: DateTime.now(),
+        ),
+      );
+      await (db.update(db.goals)..where((t) => t.id.equals('g1')))
+          .write(const GoalsCompanion(syncStatus: Value('synced')));
+    });
+
+    test('ghi đúng giá trị cho từng mục tiêu trong map', () async {
+      await repository.capNhatUuTien({'g1': 200, 'g2': 100});
+
+      expect((await repository.getGoalById('g1'))!.priority, 200);
+      expect((await repository.getGoalById('g2'))!.priority, 100);
+    });
+
+    test('chỉ chạm những mục tiêu CÓ TÊN trong map', () async {
+      await repository.capNhatUuTien({'g2': 100});
+
+      expect((await repository.getGoalById('g1'))!.priority, isNull,
+          reason: 'Đây chính là lý do hàm nhận một map thay vì cả danh sách: '
+              'kéo thả thường chỉ đổi MỘT hàng, và ghi lại những hàng không '
+              'đổi là đẩy rác lên hàng đợi đồng bộ.');
+      expect((await repository.getGoalById('g1'))!.syncStatus, 'synced');
+    });
+
+    test('đánh dấu pending để thứ tự đi được sang máy khác', () async {
+      await repository.capNhatUuTien({'g1': 300});
+
+      final g = await repository.getGoalById('g1');
+      expect(g!.syncStatus, 'pending',
+          reason: 'Thứ tự người dùng sắp tay không suy lại được. Quên đánh '
+              'dấu pending là nó ở lại đúng máy này — đúng bệnh mà G21 đã ghi '
+              'với ba cột auto_deposit_*.');
+    });
+
+    test('map rỗng thì không đụng gì', () async {
+      await repository.capNhatUuTien(const {});
+
+      expect((await repository.getGoalById('g1'))!.syncStatus, 'synced');
+    });
+
+    test('id không tồn tại thì bỏ qua, không ném', () async {
+      await repository.capNhatUuTien({'khong-co-that': 100, 'g1': 100});
+
+      expect((await repository.getGoalById('g1'))!.priority, 100,
+          reason: 'Một id lạ không được kéo theo cả thao tác kéo thả. Danh '
+              'sách có thể đã đổi giữa lúc dựng và lúc thả — ví dụ đồng bộ vừa '
+              'kéo về một cờ xoá.');
+    });
+  });
 }

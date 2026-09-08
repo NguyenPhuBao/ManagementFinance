@@ -626,6 +626,33 @@ class GoalRepositoryImpl implements GoalRepository {
   }
 
   @override
+  Future<void> capNhatUuTien(Map<String, int> uuTienMoi) async {
+    if (uuTienMoi.isEmpty || db == null) return;
+
+    // Cả nhóm trong MỘT khối nguyên tử. Lần kéo đầu tiên đánh số lại cả danh
+    // sách (mọi hàng đang mang `null`), và một sự cố ở giữa để lại nửa danh
+    // sách mang số mới nửa còn `null` — tức một thứ tự không giống lần sắp
+    // nào, và không có gì trên màn hình nói ra điều đó.
+    await db!.transaction(() async {
+      final now = DateTime.now();
+      for (final e in uuTienMoi.entries) {
+        await (db!.update(db!.goals)..where((t) => t.id.equals(e.key))).write(
+          GoalsCompanion(
+            priority: Value(e.value),
+            // Thứ tự người dùng sắp tay KHÔNG suy lại được, nên nó phải đi
+            // qua đường đồng bộ. Quên đánh dấu là nó ở lại đúng máy này —
+            // bệnh mà G21 đã ghi với ba cột `auto_deposit_*`.
+            syncStatus: const Value('pending'),
+            updatedAt: Value(now),
+          ),
+        );
+      }
+    });
+
+    syncEngine?.scheduleSync();
+  }
+
+  @override
   Future<void> changeWallet(String goalId, String walletId) async {
     if (db == null) return;
 

@@ -203,5 +203,16 @@ abstract class GoalRepository {
   /// nếu không thì lần nạp sau không biết chuyển tiền đi đâu.
   Future<void> changeWallet(String goalId, String walletId);
 
+  /// Ghi lại thứ tự ưu tiên sau một lần kéo thả.
+  ///
+  /// [uuTienMoi] ánh xạ id mục tiêu sang giá trị `priority` mới, và **chỉ
+  /// những mục tiêu có tên trong đó mới bị chạm**. Kéo thả thường chỉ đổi MỘT
+  /// hàng (xem `uuTienSauKhiKeo`), nên nhận cả danh sách rồi ghi lại tất cả là
+  /// đẩy rác lên hàng đợi đồng bộ.
+  ///
+  /// Id không tồn tại thì bỏ qua chứ không ném: danh sách có thể đã đổi giữa
+  /// lúc dựng màn hình và lúc người dùng thả tay.
+  Future<void> capNhatUuTien(Map<String, int> uuTienMoi);
+
   Future<void> deleteGoal(String id);
 }
