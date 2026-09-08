@@ -171,6 +171,8 @@ class _BillEditPageState extends State<BillEditPage> {
       categoryId: category.id,
       isRecurring: _lich.isRecurring,
       timeRecurrence: _lich.storedTimeRecurrence,
+      // Ngày gốc đi cùng ngày bắt đầu — xem `Bills.anchorDay`.
+      anchorDay: _lich.anchorDayHieuLuc,
       timeNotification: _nhacTruoc,
       note: _noteController.text.trim(),
       autoPayEnabled: _tuTra,

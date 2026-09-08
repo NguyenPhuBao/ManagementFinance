@@ -56,7 +56,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 17;
+  int get schemaVersion => 18;
 
   @override
   MigrationStrategy get migration {
@@ -342,6 +342,27 @@ class AppDatabase extends _$AppDatabase {
           // "đã đồng ý" từ một công tắc bật sẵn là chuyển tiền dựa trên một
           // lựa chọn người dùng chưa từng đưa ra — cùng lập luận với v15.
           await m.addColumn(bills, bills.autoPayEnabled);
+        }
+        if (from < 18) {
+          // Ngày gốc của chuỗi hoá đơn — xem chú thích ở `Bills.anchorDay`.
+          await m.addColumn(bills, bills.anchorDay);
+
+          // Suy ngày gốc từ **ngày đến hạn đang lưu**, không phải ngày bắt đầu.
+          //
+          // Lý do: hoá đơn cũ được tính bằng quy tắc "cuối tháng" nay đã bỏ.
+          // Lấy ngày bắt đầu làm gốc sẽ đổi hạn của chúng ngay ở kỳ kế tiếp —
+          // đúng lớp lỗi âm thầm mà `canhBaoHanCu` sinh ra để chặn. Lấy ngày
+          // đến hạn thì hạn hiện tại giữ nguyên và ý định gần nhất của người
+          // dùng được bảo toàn.
+          //
+          // `strftime('%d')` trả chuỗi có số 0 đứng đầu ('05'), nên phải ép về
+          // số nguyên — so sánh chuỗi với số ở SQLite **không** báo lỗi, nó chỉ
+          // lặng lẽ trả sai.
+          await customStatement(
+            "UPDATE bills SET anchor_day = CAST(strftime('%d', "
+            "datetime(due_date / 1000, 'unixepoch', 'localtime')) AS INTEGER) "
+            'WHERE anchor_day IS NULL',
+          );
         }
       },
       beforeOpen: (details) async {

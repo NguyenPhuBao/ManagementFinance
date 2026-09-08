@@ -20,6 +20,13 @@ class BillSchedule {
 
   final bool repeat;
 
+  /// Ngày trong tháng mà người dùng thật sự chọn — xem `Bills.anchorDay`.
+  ///
+  /// `null` nghĩa là *chưa biết*, và khi ấy ngày của [startDate] đóng vai trò
+  /// ấy. Hai thứ này chỉ khác nhau ở **hoá đơn thuộc chuỗi**: kỳ thứ ba của một
+  /// chuỗi bắt đầu ngày 31 có [startDate] 28/02 nhưng ngày gốc vẫn là 31.
+  final int? anchorDay;
+
   /// Hạn trả đang lưu trong bản ghi khi nó **không khớp** chu kỳ.
   ///
   /// Chỉ để cảnh báo, không phải giá trị sẽ ghi xuống. Xem [canhBaoHanCu].
@@ -29,11 +36,16 @@ class BillSchedule {
     required this.startDate,
     required this.timeRecurrence,
     required this.repeat,
+    this.anchorDay,
     this.hanCuKhongKhop,
   });
 
-  /// Ngày đến hạn — luôn do chu kỳ quyết định.
-  DateTime get dueDate => nextBillDueDate(startDate, timeRecurrence);
+  /// Ngày gốc dùng để tính hạn. Suy từ [startDate] khi chưa có.
+  int get anchorDayHieuLuc => anchorDay ?? startDate.day;
+
+  /// Ngày đến hạn — luôn do chu kỳ và ngày gốc quyết định.
+  DateTime get dueDate =>
+      nextBillDueDate(startDate, timeRecurrence, anchorDay: anchorDayHieuLuc);
 
   bool get isRecurring => repeat;
 
@@ -69,10 +81,15 @@ class BillSchedule {
     String? timeRecurrence,
     bool? repeat,
   }) {
+    // Người dùng vừa chọn một ngày bắt đầu khác nghĩa là họ vừa nói lại ý định
+    // của mình, nên ngày gốc đi theo ngày mới. Giữ ngày gốc cũ ở đây là để một
+    // hoá đơn vừa được đổi sang ngày 15 vẫn đến hạn vào ngày 31.
+    final anchorMoi = startDate != null ? startDate.day : anchorDay;
     final moi = BillSchedule(
       startDate: startDate ?? this.startDate,
       timeRecurrence: timeRecurrence ?? this.timeRecurrence,
       repeat: repeat ?? this.repeat,
+      anchorDay: anchorMoi,
       hanCuKhongKhop: hanCuKhongKhop,
     );
     // Người dùng vừa chỉnh cho khớp lại thì cảnh báo tự tắt.
@@ -81,17 +98,28 @@ class BillSchedule {
             startDate: moi.startDate,
             timeRecurrence: moi.timeRecurrence,
             repeat: moi.repeat,
+            anchorDay: moi.anchorDay,
           )
         : moi;
   }
 
   static BillSchedule fromBill(Bill bill) {
     final batDau = bill.startDate ?? bill.dueDate;
-    final hanTheoChuKy = nextBillDueDate(batDau, bill.timeRecurrence);
+    // Ngày gốc của **bản ghi**, không suy lại từ ngày bắt đầu: với kỳ thứ ba
+    // của một chuỗi ngày 31, ngày bắt đầu là 28/02 nhưng ngày gốc vẫn là 31.
+    // Suy lại ở đây là mở form ra rồi lưu là hạ hoá đơn ấy xuống ngày 28 —
+    // đúng lớp lỗi âm thầm mà `canhBaoHanCu` sinh ra để chặn.
+    final goc = bill.anchorDay;
+    final hanTheoChuKy = nextBillDueDate(
+      batDau,
+      bill.timeRecurrence,
+      anchorDay: goc ?? batDau.day,
+    );
     return BillSchedule(
       startDate: batDau,
       timeRecurrence: bill.timeRecurrence,
       repeat: bill.isRecurrence,
+      anchorDay: goc,
       hanCuKhongKhop: hanTheoChuKy == bill.dueDate ? null : bill.dueDate,
     );
   }

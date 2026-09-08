@@ -659,7 +659,12 @@ src/Backend/
   > ⚠️ **Đo trên máy thật đã sửa lại chính lời hứa ban đầu:** con số **gần như không bao giờ hiện trên Android** — nó nằm trên bản tóm tắt nhóm, mà Android **tự gỡ bản tóm tắt khi nhóm chỉ còn một thông báo con**, và một là số lượng thường gặp nhất. Khay trống thì `datBadge(6)` chạy trót lọt mà không hiện gì cả. Nên trên Android badge thực chất là **chấm**, suy từ *thông báo đang trên khay* chứ không từ số chưa đọc; con số chỉ có nghĩa cho iOS và cho launcher nào vẽ được. Phần người dùng thấy vẫn đúng: **đọc hết trong app thì chấm tắt**.
   > **Bằng chứng** (`emulator-5554`, Pixel Launcher): tạo hoá đơn tuần hạn 10/09 → `[BadgeUpdater] badge=7, khay=2, đã huỷ=0` và **icon có chấm**; bấm "Đọc tất cả" → `badge=0, khay=1, đã huỷ=1`, `dumpsys notification` còn **0** record của app, **chấm tắt**.
   > Bài học kèm theo: `catch` **câm** ở `dongBo()` suýt dẫn tới kết luận sai rằng code không chạy — mất một vòng dựng lại APK. Nay nó ghi `debugPrint`, và chính dòng log ấy phân định được "không chạy" với "chạy đúng nhưng Android không vẽ".
-- **Test: 1402/1402 pass** (~100 giây) — đều đã `git add -f` (kiểm 2026-09-08)
+- **Hoá đơn: ngày gốc thay cho quy tắc đoán cuối tháng** (2026-09-08, **schema v18**). Người dùng báo: đăng ký hoá đơn định kỳ vào 28/02 thì ô "Ngày đến hạn" (chỉ đọc) hiện **31/03** thay vì 28/03. Nguyên nhân: `nextBillDueDate` áp quy tắc *"mốc rơi đúng ngày cuối tháng thì kỳ sau cũng rơi vào ngày cuối tháng"* — một phép **đoán ý định từ dữ liệu**, đúng cho chuỗi bắt đầu 31/01 nhưng sai cho người chọn 28/02. Nay cột cục bộ `Bills.anchorDay` lưu **ngày người dùng thật sự chọn** và được chép sang từng kỳ, nên hai chuỗi cùng đi qua 28/02 vẫn tách được nhau: gốc 31 → 28/02 → **31/03** → 30/04; gốc 28 → 28/02 → **28/03** → 28/04. Đây đúng mô hình `advancePeriodFrom(anchor, steps)` mà ngân sách dùng từ đầu, nên ba vùng ngày tháng nay nhất quán. Lý do đầy đủ ở **mục "Ngày gốc" `docs/bill/BILL_DOCUMENTATION.md`**; xin cột đồng bộ ở `docs/superpowers/backend/CAN-LAM/BILL_ANCHOR_DAY.md`. 22 test mới.
+  > ⚠️ **Ba chốt chặn, cả ba đều hỏng âm thầm nếu sai:** (1) migration suy ngày gốc từ **ngày đến hạn**, không phải ngày bắt đầu — hoá đơn `bắt đầu 28/02, hạn 31/03` phải ra gốc **31**, lấy ngày bắt đầu là hạ nó xuống 28 vĩnh viễn mà người dùng không bấm gì; (2) `BillSchedule.fromBill` **không** suy lại ngày gốc từ ngày bắt đầu, nếu không mở form Sửa rồi lưu là đổi hạn của kỳ giữa chuỗi; (3) đổi ngày bắt đầu trên form thì ngày gốc **đi theo** — giữ gốc cũ là hoá đơn vừa đổi sang ngày 15 vẫn đến hạn ngày 31.
+  > **Đã kiểm trên `emulator-5554`**: form Thêm hoá đơn định kỳ, chọn 28/02/2026 → ô hạn hiện **28/03/2026**. Migration v17→v18 chạy êm trên CSDL thật đang có dữ liệu.
+  > Đã cân nhắc và **loại RRULE (RFC 5545)**: đặc tả bỏ qua occurrence rơi vào ngày không tồn tại, nên `FREQ=MONTHLY;BYMONTHDAY=31` **không sinh kỳ nào cho tháng Hai** — hoá đơn biến mất. Lý lẽ đầy đủ ở mục 5 tài liệu xin backend.
+  > Bài học quá trình: lần đầu điều tra tôi tìm thấy quy tắc ấy được ghi là "đánh đổi có chủ ý, quyết định 2026-09-04" mô tả **đúng** ca người dùng gặp, nên kết luận đây không phải lỗi. Sai. Lý lẽ biện minh cho nó (*"chuỗi mất mốc gốc để neo"*) **không thành lập ở kỳ đầu tiên**, nơi mốc gốc chính là ngày người dùng vừa chọn. Một quyết định có chủ ý chỉ chứng minh ai đó đã cân nhắc **một** tình huống, không chứng minh nó đúng ở **mọi đường dẫn** tới đoạn mã ấy.
+- **Test: 1424/1424 pass** (~85 giây) — đều đã `git add -f` (kiểm 2026-09-08)
 
 ### 🔄 Việc còn dang dở
 
@@ -994,7 +999,9 @@ Hoá đơn tạo từ app trước đây **không bao giờ lên tới backend**
   (`insertOrReplace` thay cả hàng — từng biến hoá đơn đã trả thành chưa trả).
 - Nguồn sự thật của chu kỳ là `isRecurrence` + `timeRecurrence`; cột chuỗi cũ
   `recurrence` chỉ được suy ra từ chúng.
-- `nextBillDueDate` áp **quy tắc ngày cuối tháng** — xem mục 5 tài liệu bill.
+- `nextBillDueDate` neo vào **ngày gốc** (`Bills.anchorDay`, v18) và kẹp khi
+  tháng đích ngắn hơn. Quy tắc "đoán cuối tháng" đã BỎ ngày 2026-09-08 — xem
+  mục "Ngày gốc" tài liệu bill.
 - `BillDao.markOverdue` ghi có điều kiện `payStatus = 'Pending'`; bỏ điều kiện
   đó là tạo vòng lặp đẩy vô tận.
 

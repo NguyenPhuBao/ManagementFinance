@@ -159,6 +159,8 @@ class _BillAddPageState extends State<BillAddPage> {
       categoryId: category.id,
       isRecurring: _lich.isRecurring,
       timeRecurrence: _lich.storedTimeRecurrence,
+      // Ngày gốc đi cùng ngày bắt đầu — xem `Bills.anchorDay`.
+      anchorDay: _lich.anchorDayHieuLuc,
       timeNotification:
           _pushNotificationsEnabled ? _selectedReminderDay : null,
       note: _noteController.text.trim(),

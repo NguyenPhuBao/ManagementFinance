@@ -173,6 +173,29 @@ class Bills extends Table {
   /// lần. Kỳ kế tiếp kế thừa cờ này khi được sinh ra lúc trả kỳ trước.
   BoolColumn get autoPayEnabled => boolean().withDefault(const Constant(false))();
 
+  /// anchorDay: **ngày trong tháng mà người dùng thật sự chọn** khi tạo hoá
+  /// đơn — 1..31 (DB v18, 2026-09-08).
+  ///
+  /// Vì sao cần: chuỗi hoá đơn nối đuôi nhau (ngày bắt đầu kỳ sau = ngày đến
+  /// hạn kỳ trước) nên số ngày gốc **biến mất** sau kỳ thứ hai. Nhìn vào một
+  /// mốc 28/02 đơn độc thì không biết nó từ 31/01 kẹp xuống hay do người dùng
+  /// tự chọn — hai ý định khác hẳn nhau, và bản trước phải **đoán** bằng "quy
+  /// tắc ngày cuối tháng". Cú đoán ấy sai với người đăng ký lần đầu vào 28/02:
+  /// họ muốn ngày 28 hàng tháng và nhận về 31/03. Người dùng báo 2026-09-08.
+  ///
+  /// Lưu ngày gốc là thay một phép đoán bằng một sự kiện. Xem
+  /// `core/bill/bill_recurrence.dart`.
+  ///
+  /// ⚠️ **Cột CỤC BỘ — không nằm trong hợp đồng đồng bộ**, cùng khuôn với
+  /// `autoPayEnabled` và `generatedFromBillId`. Hàng kéo từ server luôn để
+  /// trống, và khi trống thì `nextBillDueDate` neo vào ngày của chính mốc hiện
+  /// tại — tức chuỗi tạo trên máy khác vẫn có thể tụt dần. Tài liệu xin cột
+  /// phía backend: `docs/superpowers/backend/CAN-LAM/BILL_ANCHOR_DAY.md`.
+  ///
+  /// NULL với mọi hoá đơn tạo trước v18; migration suy nó từ ngày đến hạn đang
+  /// lưu để **không đổi hạn** của hoá đơn cũ.
+  IntColumn get anchorDay => integer().nullable()();
+
   // ── Soft delete (DB v2) ───────────────────────────────────────────────────
   /// deletedAt: NULL = đang dùng, có giá trị = đã xóa mềm
   DateTimeColumn get deletedAt => dateTime().nullable()();

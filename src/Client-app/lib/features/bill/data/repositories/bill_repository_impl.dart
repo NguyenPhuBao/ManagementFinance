@@ -212,8 +212,9 @@ class BillRepositoryImpl implements BillRepository {
   ///
   /// Kỳ sau bắt đầu **đúng tại ngày đến hạn của kỳ trước**, nên các kỳ nối
   /// đuôi nhau không hở và luôn giữ được `startDate < dueDate`. Vì chuỗi mất
-  /// mốc gốc để neo, `nextBillDueDate` áp quy tắc ngày cuối tháng để mốc không
-  /// tụt dần — xem `core/bill/bill_recurrence.dart`.
+  /// mốc gốc theo cách ấy, `anchorDay` được **chép sang từng kỳ** để mốc không
+  /// tụt dần — xem `core/bill/bill_recurrence.dart`. Quên chép là hoá đơn
+  /// "ngày 31 hàng tháng" tụt về 28 vĩnh viễn ngay sau tháng Hai đầu tiên.
   BillsCompanion _nextPeriodOf(Bill current, DateTime now, double soTien) {
     return BillsCompanion.insert(
       id: const Uuid().v4(),
@@ -227,7 +228,15 @@ class BillRepositoryImpl implements BillRepository {
       // không có "số mẫu" ẩn, và số vừa trả là ước lượng sát hơn.
       amount: soTien,
       startDate: Value(current.dueDate),
-      dueDate: nextBillDueDate(current.dueDate, current.timeRecurrence),
+      // Ngày gốc đi theo cả chuỗi — đây là chỗ duy nhất giữ được nó. Kỳ cũ
+      // chưa có (hoá đơn tạo trước v18, hoặc kéo từ server) thì neo vào ngày
+      // đến hạn hiện tại, tức giữ nguyên hành vi cũ thay vì đoán.
+      anchorDay: Value(current.anchorDay ?? current.dueDate.day),
+      dueDate: nextBillDueDate(
+        current.dueDate,
+        current.timeRecurrence,
+        anchorDay: current.anchorDay ?? current.dueDate.day,
+      ),
       payStatus: const Value('Pending'),
       isPaid: const Value(false),
       timeNotification: Value(current.timeNotification),

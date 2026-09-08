@@ -1281,16 +1281,20 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   /// goalId: mục tiêu tiết kiệm mà giao dịch này thuộc về. NULL với mọi giao
   /// dịch thường.
   ///
-  /// ⚠️ **Cột CỤC BỘ — cố ý KHÔNG nằm trong hợp đồng đồng bộ.** Bảng `goal`
-  /// phía backend không có chiều ngược lại, và thêm trường vào payload đẩy đòi
-  /// backend sửa trước (quy tắc 4 trong `CLAUDE.md`).
-  /// `sync_payload_contract_test.dart` khoá đúng bộ khoá của payload giao dịch
-  /// nên nó bắt được ngay nếu cột này lọt vào.
+  /// ✅ **ĐÃ ĐỒNG BỘ từ 2026-09-07**, khi backend thêm cột `transaction.Idgoal`.
+  /// Tên trong payload là **`idgoal`**, KHÔNG phải `goal_id` — `goal_id` là tên
+  /// cột Drift và vẫn nằm trong danh sách *cấm rò rỉ* của
+  /// `sync_payload_contract_test.dart`. Hai cái tên chỉ khác nhau ở đúng chỗ
+  /// này, và gửi nhầm thì backend bỏ qua **trong im lặng**.
   ///
-  /// Vì là cục bộ, hàng **kéo về từ server luôn để trống** cột này — cũng như
-  /// mọi hàng do bản app cũ tạo. Nơi đọc (`TransactionDao.watchByGoal`) phải
-  /// giữ nhánh tra theo ghi chú cho những hàng đó, nếu không lịch sử tích luỹ
-  /// đã có sẽ biến mất sau lần đồng bộ đầu tiên.
+  /// ⚠️ Nhánh kéo về dùng `Value.absent()` khi server không gửi `idgoal`, chứ
+  /// KHÔNG ghi đè null. Mọi hàng đã nằm sẵn trên server đều mang NULL cho tới
+  /// khi client đẩy lại từng hàng, nên ghi đè thẳng là xoá sạch liên kết cục bộ
+  /// ngay ở chu kỳ đồng bộ đầu tiên. Có test canh đúng ca này.
+  ///
+  /// Vì hàng cũ trên server vẫn trống cột này, nơi đọc
+  /// (`TransactionDao.watchByGoal`) **vẫn phải giữ** nhánh tra theo ghi chú —
+  /// nó chỉ teo dần khi từng hàng được đẩy lại, chứ không hết ngay.
   ///
   /// Vì sao cần: trước đây lịch sử tích luỹ tra bằng
   /// `note LIKE '%Tích lũy mục tiêu: <tên>%'`. Tên mục tiêu không duy nhất, và
@@ -4739,6 +4743,12 @@ class $BillsTable extends Bills with TableInfo<$BillsTable, Bill> {
       defaultConstraints: GeneratedColumn.constraintIsAlways(
           'CHECK ("auto_pay_enabled" IN (0, 1))'),
       defaultValue: const Constant(false));
+  static const VerificationMeta _anchorDayMeta =
+      const VerificationMeta('anchorDay');
+  @override
+  late final GeneratedColumn<int> anchorDay = GeneratedColumn<int>(
+      'anchor_day', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
   static const VerificationMeta _deletedAtMeta =
       const VerificationMeta('deletedAt');
   @override
@@ -4810,6 +4820,7 @@ class $BillsTable extends Bills with TableInfo<$BillsTable, Bill> {
         note,
         generatedFromBillId,
         autoPayEnabled,
+        anchorDay,
         deletedAt,
         isDeleted,
         syncStatus,
@@ -4927,6 +4938,10 @@ class $BillsTable extends Bills with TableInfo<$BillsTable, Bill> {
           autoPayEnabled.isAcceptableOrUnknown(
               data['auto_pay_enabled']!, _autoPayEnabledMeta));
     }
+    if (data.containsKey('anchor_day')) {
+      context.handle(_anchorDayMeta,
+          anchorDay.isAcceptableOrUnknown(data['anchor_day']!, _anchorDayMeta));
+    }
     if (data.containsKey('deleted_at')) {
       context.handle(_deletedAtMeta,
           deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta));
@@ -5011,6 +5026,8 @@ class $BillsTable extends Bills with TableInfo<$BillsTable, Bill> {
           data['${effectivePrefix}generated_from_bill_id']),
       autoPayEnabled: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}auto_pay_enabled'])!,
+      anchorDay: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}anchor_day']),
       deletedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}deleted_at']),
       isDeleted: attachedDatabase.typeMapping
@@ -5100,6 +5117,29 @@ class Bill extends DataClass implements Insertable<Bill> {
   /// lần. Kỳ kế tiếp kế thừa cờ này khi được sinh ra lúc trả kỳ trước.
   final bool autoPayEnabled;
 
+  /// anchorDay: **ngày trong tháng mà người dùng thật sự chọn** khi tạo hoá
+  /// đơn — 1..31 (DB v18, 2026-09-08).
+  ///
+  /// Vì sao cần: chuỗi hoá đơn nối đuôi nhau (ngày bắt đầu kỳ sau = ngày đến
+  /// hạn kỳ trước) nên số ngày gốc **biến mất** sau kỳ thứ hai. Nhìn vào một
+  /// mốc 28/02 đơn độc thì không biết nó từ 31/01 kẹp xuống hay do người dùng
+  /// tự chọn — hai ý định khác hẳn nhau, và bản trước phải **đoán** bằng "quy
+  /// tắc ngày cuối tháng". Cú đoán ấy sai với người đăng ký lần đầu vào 28/02:
+  /// họ muốn ngày 28 hàng tháng và nhận về 31/03. Người dùng báo 2026-09-08.
+  ///
+  /// Lưu ngày gốc là thay một phép đoán bằng một sự kiện. Xem
+  /// `core/bill/bill_recurrence.dart`.
+  ///
+  /// ⚠️ **Cột CỤC BỘ — không nằm trong hợp đồng đồng bộ**, cùng khuôn với
+  /// `autoPayEnabled` và `generatedFromBillId`. Hàng kéo từ server luôn để
+  /// trống, và khi trống thì `nextBillDueDate` neo vào ngày của chính mốc hiện
+  /// tại — tức chuỗi tạo trên máy khác vẫn có thể tụt dần. Tài liệu xin cột
+  /// phía backend: `docs/superpowers/backend/CAN-LAM/BILL_ANCHOR_DAY.md`.
+  ///
+  /// NULL với mọi hoá đơn tạo trước v18; migration suy nó từ ngày đến hạn đang
+  /// lưu để **không đổi hạn** của hoá đơn cũ.
+  final int? anchorDay;
+
   /// deletedAt: NULL = đang dùng, có giá trị = đã xóa mềm
   final DateTime? deletedAt;
   final bool isDeleted;
@@ -5128,6 +5168,7 @@ class Bill extends DataClass implements Insertable<Bill> {
       required this.note,
       this.generatedFromBillId,
       required this.autoPayEnabled,
+      this.anchorDay,
       this.deletedAt,
       required this.isDeleted,
       required this.syncStatus,
@@ -5167,6 +5208,9 @@ class Bill extends DataClass implements Insertable<Bill> {
       map['generated_from_bill_id'] = Variable<String>(generatedFromBillId);
     }
     map['auto_pay_enabled'] = Variable<bool>(autoPayEnabled);
+    if (!nullToAbsent || anchorDay != null) {
+      map['anchor_day'] = Variable<int>(anchorDay);
+    }
     if (!nullToAbsent || deletedAt != null) {
       map['deleted_at'] = Variable<DateTime>(deletedAt);
     }
@@ -5214,6 +5258,9 @@ class Bill extends DataClass implements Insertable<Bill> {
           ? const Value.absent()
           : Value(generatedFromBillId),
       autoPayEnabled: Value(autoPayEnabled),
+      anchorDay: anchorDay == null && nullToAbsent
+          ? const Value.absent()
+          : Value(anchorDay),
       deletedAt: deletedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(deletedAt),
@@ -5254,6 +5301,7 @@ class Bill extends DataClass implements Insertable<Bill> {
       generatedFromBillId:
           serializer.fromJson<String?>(json['generatedFromBillId']),
       autoPayEnabled: serializer.fromJson<bool>(json['autoPayEnabled']),
+      anchorDay: serializer.fromJson<int?>(json['anchorDay']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
       syncStatus: serializer.fromJson<String>(json['syncStatus']),
@@ -5287,6 +5335,7 @@ class Bill extends DataClass implements Insertable<Bill> {
       'note': serializer.toJson<String>(note),
       'generatedFromBillId': serializer.toJson<String?>(generatedFromBillId),
       'autoPayEnabled': serializer.toJson<bool>(autoPayEnabled),
+      'anchorDay': serializer.toJson<int?>(anchorDay),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
       'isDeleted': serializer.toJson<bool>(isDeleted),
       'syncStatus': serializer.toJson<String>(syncStatus),
@@ -5317,6 +5366,7 @@ class Bill extends DataClass implements Insertable<Bill> {
           String? note,
           Value<String?> generatedFromBillId = const Value.absent(),
           bool? autoPayEnabled,
+          Value<int?> anchorDay = const Value.absent(),
           Value<DateTime?> deletedAt = const Value.absent(),
           bool? isDeleted,
           String? syncStatus,
@@ -5348,6 +5398,7 @@ class Bill extends DataClass implements Insertable<Bill> {
             ? generatedFromBillId.value
             : this.generatedFromBillId,
         autoPayEnabled: autoPayEnabled ?? this.autoPayEnabled,
+        anchorDay: anchorDay.present ? anchorDay.value : this.anchorDay,
         deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
         isDeleted: isDeleted ?? this.isDeleted,
         syncStatus: syncStatus ?? this.syncStatus,
@@ -5391,6 +5442,7 @@ class Bill extends DataClass implements Insertable<Bill> {
       autoPayEnabled: data.autoPayEnabled.present
           ? data.autoPayEnabled.value
           : this.autoPayEnabled,
+      anchorDay: data.anchorDay.present ? data.anchorDay.value : this.anchorDay,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
       isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
       syncStatus:
@@ -5428,6 +5480,7 @@ class Bill extends DataClass implements Insertable<Bill> {
           ..write('note: $note, ')
           ..write('generatedFromBillId: $generatedFromBillId, ')
           ..write('autoPayEnabled: $autoPayEnabled, ')
+          ..write('anchorDay: $anchorDay, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('syncStatus: $syncStatus, ')
@@ -5460,6 +5513,7 @@ class Bill extends DataClass implements Insertable<Bill> {
         note,
         generatedFromBillId,
         autoPayEnabled,
+        anchorDay,
         deletedAt,
         isDeleted,
         syncStatus,
@@ -5491,6 +5545,7 @@ class Bill extends DataClass implements Insertable<Bill> {
           other.note == this.note &&
           other.generatedFromBillId == this.generatedFromBillId &&
           other.autoPayEnabled == this.autoPayEnabled &&
+          other.anchorDay == this.anchorDay &&
           other.deletedAt == this.deletedAt &&
           other.isDeleted == this.isDeleted &&
           other.syncStatus == this.syncStatus &&
@@ -5520,6 +5575,7 @@ class BillsCompanion extends UpdateCompanion<Bill> {
   final Value<String> note;
   final Value<String?> generatedFromBillId;
   final Value<bool> autoPayEnabled;
+  final Value<int?> anchorDay;
   final Value<DateTime?> deletedAt;
   final Value<bool> isDeleted;
   final Value<String> syncStatus;
@@ -5548,6 +5604,7 @@ class BillsCompanion extends UpdateCompanion<Bill> {
     this.note = const Value.absent(),
     this.generatedFromBillId = const Value.absent(),
     this.autoPayEnabled = const Value.absent(),
+    this.anchorDay = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.syncStatus = const Value.absent(),
@@ -5577,6 +5634,7 @@ class BillsCompanion extends UpdateCompanion<Bill> {
     this.note = const Value.absent(),
     this.generatedFromBillId = const Value.absent(),
     this.autoPayEnabled = const Value.absent(),
+    this.anchorDay = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.syncStatus = const Value.absent(),
@@ -5611,6 +5669,7 @@ class BillsCompanion extends UpdateCompanion<Bill> {
     Expression<String>? note,
     Expression<String>? generatedFromBillId,
     Expression<bool>? autoPayEnabled,
+    Expression<int>? anchorDay,
     Expression<DateTime>? deletedAt,
     Expression<bool>? isDeleted,
     Expression<String>? syncStatus,
@@ -5641,6 +5700,7 @@ class BillsCompanion extends UpdateCompanion<Bill> {
       if (generatedFromBillId != null)
         'generated_from_bill_id': generatedFromBillId,
       if (autoPayEnabled != null) 'auto_pay_enabled': autoPayEnabled,
+      if (anchorDay != null) 'anchor_day': anchorDay,
       if (deletedAt != null) 'deleted_at': deletedAt,
       if (isDeleted != null) 'is_deleted': isDeleted,
       if (syncStatus != null) 'sync_status': syncStatus,
@@ -5672,6 +5732,7 @@ class BillsCompanion extends UpdateCompanion<Bill> {
       Value<String>? note,
       Value<String?>? generatedFromBillId,
       Value<bool>? autoPayEnabled,
+      Value<int?>? anchorDay,
       Value<DateTime?>? deletedAt,
       Value<bool>? isDeleted,
       Value<String>? syncStatus,
@@ -5700,6 +5761,7 @@ class BillsCompanion extends UpdateCompanion<Bill> {
       note: note ?? this.note,
       generatedFromBillId: generatedFromBillId ?? this.generatedFromBillId,
       autoPayEnabled: autoPayEnabled ?? this.autoPayEnabled,
+      anchorDay: anchorDay ?? this.anchorDay,
       deletedAt: deletedAt ?? this.deletedAt,
       isDeleted: isDeleted ?? this.isDeleted,
       syncStatus: syncStatus ?? this.syncStatus,
@@ -5772,6 +5834,9 @@ class BillsCompanion extends UpdateCompanion<Bill> {
     if (autoPayEnabled.present) {
       map['auto_pay_enabled'] = Variable<bool>(autoPayEnabled.value);
     }
+    if (anchorDay.present) {
+      map['anchor_day'] = Variable<int>(anchorDay.value);
+    }
     if (deletedAt.present) {
       map['deleted_at'] = Variable<DateTime>(deletedAt.value);
     }
@@ -5821,6 +5886,7 @@ class BillsCompanion extends UpdateCompanion<Bill> {
           ..write('note: $note, ')
           ..write('generatedFromBillId: $generatedFromBillId, ')
           ..write('autoPayEnabled: $autoPayEnabled, ')
+          ..write('anchorDay: $anchorDay, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('syncStatus: $syncStatus, ')
@@ -7347,8 +7413,13 @@ class AppNotification extends DataClass implements Insertable<AppNotification> {
   /// chính của tài khoản khác hiện ra trên máy dùng chung.
   final int idaccount;
 
+  /// Giá trị `.name` của `NotificationKind` — **14 loại**, xem enum ấy để có
+  /// danh sách chính xác thay vì tin vào chú thích này:
+  ///
   /// `budgetNearLimit` | `budgetOverspent` | `billDueSoon` | `billOverdue`
-  /// | `goalCompleted` | `goalBehind` | `syncFailed` | `walletNegative`
+  /// | `billAutoPaid` | `billAutoPayFailed` | `goalCompleted` |
+  /// `goalCycleReady` | `goalBehind` | `goalAutoDeposited` |
+  /// `goalAutoDepositFailed` | `syncFailed` | `walletNegative`
   final String kind;
 
   /// Khoá chống trùng — **trái tim của bảng này**.
@@ -10099,6 +10170,7 @@ typedef $$BillsTableCreateCompanionBuilder = BillsCompanion Function({
   Value<String> note,
   Value<String?> generatedFromBillId,
   Value<bool> autoPayEnabled,
+  Value<int?> anchorDay,
   Value<DateTime?> deletedAt,
   Value<bool> isDeleted,
   Value<String> syncStatus,
@@ -10128,6 +10200,7 @@ typedef $$BillsTableUpdateCompanionBuilder = BillsCompanion Function({
   Value<String> note,
   Value<String?> generatedFromBillId,
   Value<bool> autoPayEnabled,
+  Value<int?> anchorDay,
   Value<DateTime?> deletedAt,
   Value<bool> isDeleted,
   Value<String> syncStatus,
@@ -10206,6 +10279,9 @@ class $$BillsTableFilterComposer extends Composer<_$AppDatabase, $BillsTable> {
   ColumnFilters<bool> get autoPayEnabled => $composableBuilder(
       column: $table.autoPayEnabled,
       builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get anchorDay => $composableBuilder(
+      column: $table.anchorDay, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get deletedAt => $composableBuilder(
       column: $table.deletedAt, builder: (column) => ColumnFilters(column));
@@ -10302,6 +10378,9 @@ class $$BillsTableOrderingComposer
       column: $table.autoPayEnabled,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get anchorDay => $composableBuilder(
+      column: $table.anchorDay, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
       column: $table.deletedAt, builder: (column) => ColumnOrderings(column));
 
@@ -10392,6 +10471,9 @@ class $$BillsTableAnnotationComposer
   GeneratedColumn<bool> get autoPayEnabled => $composableBuilder(
       column: $table.autoPayEnabled, builder: (column) => column);
 
+  GeneratedColumn<int> get anchorDay =>
+      $composableBuilder(column: $table.anchorDay, builder: (column) => column);
+
   GeneratedColumn<DateTime> get deletedAt =>
       $composableBuilder(column: $table.deletedAt, builder: (column) => column);
 
@@ -10456,6 +10538,7 @@ class $$BillsTableTableManager extends RootTableManager<
             Value<String> note = const Value.absent(),
             Value<String?> generatedFromBillId = const Value.absent(),
             Value<bool> autoPayEnabled = const Value.absent(),
+            Value<int?> anchorDay = const Value.absent(),
             Value<DateTime?> deletedAt = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
             Value<String> syncStatus = const Value.absent(),
@@ -10485,6 +10568,7 @@ class $$BillsTableTableManager extends RootTableManager<
             note: note,
             generatedFromBillId: generatedFromBillId,
             autoPayEnabled: autoPayEnabled,
+            anchorDay: anchorDay,
             deletedAt: deletedAt,
             isDeleted: isDeleted,
             syncStatus: syncStatus,
@@ -10514,6 +10598,7 @@ class $$BillsTableTableManager extends RootTableManager<
             Value<String> note = const Value.absent(),
             Value<String?> generatedFromBillId = const Value.absent(),
             Value<bool> autoPayEnabled = const Value.absent(),
+            Value<int?> anchorDay = const Value.absent(),
             Value<DateTime?> deletedAt = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
             Value<String> syncStatus = const Value.absent(),
@@ -10543,6 +10628,7 @@ class $$BillsTableTableManager extends RootTableManager<
             note: note,
             generatedFromBillId: generatedFromBillId,
             autoPayEnabled: autoPayEnabled,
+            anchorDay: anchorDay,
             deletedAt: deletedAt,
             isDeleted: isDeleted,
             syncStatus: syncStatus,
