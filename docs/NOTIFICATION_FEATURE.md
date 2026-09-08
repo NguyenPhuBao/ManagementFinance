@@ -1,6 +1,6 @@
 # Hệ thống thông báo — tài liệu bàn giao
 
-> **Cập nhật:** 2026-09-07 · **Nhánh:** `TranQuangDat`
+> **Cập nhật:** 2026-09-08 · **Nhánh:** `TranQuangDat`
 > **Trạng thái:** cả bảy lát đã xong, **đã kiểm trên máy ảo Android**, có thêm
 > **dải báo kết nối** (mục 9), **mốc kích hoạt quét đã được sửa lại cho
 > offline-first** (mục 4.5), **cú chạm vào thông báo hệ điều hành nay điều
@@ -21,8 +21,8 @@
 > chỉ lên tiếng ở 100% và khi chậm tiến độ. Lý do và bảng xếp hạng ở mục **10**
 > `docs/GOAL_FEATURE.md`; khoá chống trùng ở mục 6 dưới đây.
 >
-> **Mức nền hiện tại:** `flutter test` **1441/1441 pass**, `flutter analyze`
-> **25 issue, KHÔNG error** (đo lại 2026-09-08).
+> **Mức nền hiện tại:** `flutter test` **1513/1513 pass**, `flutter analyze`
+> **25 issue, KHÔNG error** (đo lại 2026-09-08, cuối ngày).
 
 Đọc file này trước khi làm tiếp bất cứ việc gì thuộc thông báo. Mục 6 ghi lại
 từng lát đã làm gì và vì sao; mục 7 là những cái bẫy — **đọc mục 7 trước khi

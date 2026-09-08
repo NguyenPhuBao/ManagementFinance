@@ -10,19 +10,25 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > nguyên (kể cả phần *vì sao hoãn*) vì nó ghi lại bối cảnh và bán kính ảnh
 > hưởng — thứ vẫn cần khi ai đó đọc lại đoạn mã tương ứng.
 >
-> **Đang mở tính tới 2026-09-05:**
+> **Đang mở tính tới 2026-09-08.** Mục đã đóng vẫn nằm lại trong bảng, gạch
+> ngang tên — xoá đi thì người sau lại mở ra làm lần nữa.
+>
+> ⚠️ **Bảng này trôi khỏi thân tài liệu ba lần rồi** (G16, G17, G21 — cả ba đều
+> ghi *còn mở* trong khi mục tương ứng bên dưới ghi *đã đóng*). Sửa một mục ở
+> thân thì **phải sửa dòng của nó ở đây cùng lúc**; đây là bảng người đọc nhìn
+> trước tiên nên nó sai là cả tài liệu sai.
 >
 > | Mục | Vì sao còn mở |
 > |---|---|
 > | ~~**G10**~~ | ✅ **Đóng 2026-09-07** — mỗi tài khoản nay có bản sao riêng, việc gán nhóm nằm trong `Idgroup` của chính hàng ấy |
 > | **G15** | Hoãn có chủ ý — bản ghi vừa hết hạn vừa hỏng đồng bộ |
-> | **G16** | ✅ Nguồn tự sinh đã đóng 2026-09-05 (backend nhận 5 danh mục vào bộ mặc định). Lệch ràng buộc với CSDL thì vẫn còn |
+> | ~~**G16**~~ | ✅ **Đóng trọn 2026-09-07.** Nguồn tự sinh đóng 2026-09-05; **vế lệch ràng buộc với CSDL cũng đã đóng** — hai partial unique index mới đều có `WHERE "Delete_at" IS NULL`. ⚠️ Dòng cũ ở đây ghi vế ấy *vẫn còn*, mâu thuẫn với chính mục G16 bên dưới; sửa 2026-09-08. Lớp cầm máu `_uniqueConstraintPattern` **vẫn giữ, đừng gỡ** |
 > | ~~**G17**~~ | ✅ **Đóng 2026-09-07** — `context.watch<AuthBloc>()` + `key: ValueKey(idaccount)` trên `GoalPage`, có test canh. ⚠️ Dòng cũ ở đây ghi mục này còn mở, mâu thuẫn với chính mục G17 bên dưới; sửa 2026-09-08 |
 > | **G18** | Nhánh dự phòng của lịch sử tích luỹ còn so bằng tên — chặn ở backend |
 > | **G19** | **Không phải lỗi** — ghi lại để người sau không "sửa" nhầm |
 > | **G23** | Bản sao danh mục chỉ đầy đủ khi bộ mặc định **cục bộ** đầy đủ — pull tăng dần, tự khỏi ở lượt sau |
 > | **G24** | Màu danh mục **không có cột** trên server — chặn ở backend |
-> | **G21** | Cấu hình trích tự động **không theo người dùng sang máy khác** — chặn ở backend |
+> | ~~**G21**~~ | ✅ **Đóng 2026-09-07** — backend đã có ba cột `auto_deposit_*`, client đẩy và kéo cả ba. ⚠️ Dòng cũ ở đây ghi *chặn ở backend*, mâu thuẫn với chính mục G21 bên dưới; sửa 2026-09-08. Còn đúng một khe hở hẹp: hai máy cùng mở đúng lúc tới kỳ |
 > | **G22** | **Không phải lỗi** — giờ trong mốc neo chỉ giữ được một chiều |
 > | **G25** | **Không phải lỗi** — hai máy cùng sắp lại thứ tự ưu tiên khi ngoại tuyến thì được một thứ tự trộn (2026-09-08) |
 >

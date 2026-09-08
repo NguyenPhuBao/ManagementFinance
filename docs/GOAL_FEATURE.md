@@ -20,7 +20,10 @@ hơn (và không nên "sửa"), cái gì còn thiếu, xếp hạng kèm lý do.
 |---|---|
 | Bất cứ việc gì | Mục 3 (quyết định + lý do) và mục 4 (**bảy cái bẫy**, hai đã đóng — 4.5 và 4.6) |
 | Đụng vào nạp/rút tiền | Mục 3.1 → 3.4, và `goal_repository_impl.dart` — mọi chú thích ở đó là bản rút gọn của tài liệu này |
-| Đụng vào lịch sử tích luỹ | **Bẫy 4.2** trước đã. Suy chiều tiền từ vị trí ví là sai, đã vấp |
+| Đụng vào lịch sử tích luỹ | **Bẫy 4.2** trước đã (suy chiều tiền từ vị trí ví là sai, đã vấp), rồi mục **3.24** — cắt 5 dòng, bảng đầy đủ có bộ lọc, và **vì sao không có bộ lọc "tay / tự động"** |
+| Đụng vào trang chi tiết | Mục **3.23** (khối Cấu hình) và **bẫy 4.5** (trang nghe dòng dữ liệu từ 2026-09-08) |
+| Đụng vào hộp dự báo | Mục **3.7** — có **cửa sổ tối thiểu nửa chu kỳ**, thiếu nó là màn hình nói "đang tích 11 triệu mỗi tháng" cho một mục tiêu mới tích 1,1 triệu |
+| Muốn biết nên làm gì tiếp | Mục **10** — đối chiếu với app thị trường, kèm bảng xếp hạng |
 | Đụng vào đồng bộ | **Bẫy 4.3**, rồi `sync_payload_contract_test.dart` |
 | Đụng vào tiến độ / phần trăm | Mục 3.6 — chỉ có **một** định nghĩa và nó nằm trên `GoalEntity` |
 
@@ -267,9 +270,8 @@ lẽ gỡ nó nói về một nút **rỗng**, không nói rằng danh sách ph�
 mãi; cắt bớt rồi làm cái nút ấy có tác dụng chính là điều kiện mà quyết định cũ
 còn thiếu.
 
-Trang chi tiết trước đây **không nghe dòng dữ liệu** (bẫy 4.5, đóng 2026-09-08)
-nên phải tự `_loadGoal()`
-sau khi trang sửa đóng. Việc đó dựng lại dòng lịch sử tích luỹ, và
+Trang chi tiết trước đây **không nghe dòng dữ liệu** (bẫy 4.5, đóng
+2026-09-08) nên phải tự `_loadGoal()` sau khi trang sửa đóng. Việc đó dựng lại dòng lịch sử tích luỹ, và
 `StreamBuilder` quay về trạng thái chưa có dữ liệu — trộn ca ấy với "rỗng thật"
 làm lịch sử **nháy thành "Chưa có khoản tích lũy nào"** rồi hiện lại, trông y
 như vừa mất dữ liệu. Đã phân biệt bằng `connectionState`.
