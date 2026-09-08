@@ -31,7 +31,8 @@
 > nhánh `transient`. Client đã tự vá (`_permanentCodes`) — **không cần
 > backend làm gì**, ghi lại để lần sau đổi hợp đồng lỗi thì báo trước.
 
-> Thư mục cha có 20 tài liệu, phần lớn đã xong hoặc chỉ để tham khảo lịch sử.
+> Thư mục cha nay chỉ còn **mục lục và ba tệp bối cảnh** (đếm lại 2026-09-08;
+> dòng cũ ở đây ghi "20 tài liệu" và đã lạc hậu từ lúc dọn sang `DA-XONG/`).
 > Thư mục này giữ **cả tài liệu còn việc lẫn tài liệu vừa đóng** — giữ cả hai để
 > đội backend thấy được cái gì đã xong mà không phải dò lại. Sau đợt 2026-09-07
 > chỉ còn **sáu** mục thật sự phải làm; danh sách ngắn ấy ở **mục 2**, đọc nó
@@ -59,7 +60,8 @@ chạm vào hôm nay**.
 | **2** | [CATEGORY_COLOUR_COLUMN.md](./CATEGORY_COLOUR_COLUMN.md) | Chọn màu cho danh mục — client **vẫn gửi `colour` lên ở mỗi lần đẩy** | ⛔ **CÒN** — bảng `category` vẫn 12 cột, không cột nào cho màu, nên trường ấy bị bỏ qua **im lặng**. ⚠️ Tài liệu này **chưa từng lên origin** tính tới 2026-09-07, nên backend chưa hề thấy nó — đợt migration bỏ sót là vì vậy, không phải vì từ chối. Lưu ý bảng `bill` **đã có** cột `Color`, nên đây là chuyện nhất quán chứ không phải kiểu dữ liệu mới | một cột + hai dòng |
 
 > 📁 **Mọi mục đã đóng của thư mục này nay nằm ở [`../DA-XONG/`](../DA-XONG/README.md)**
-> — tám tài liệu, kèm ghi chú *đóng bằng cách nào*. Giữ lại vì lý lẽ trong đó
+> — **16 tài liệu** (đếm lại 2026-09-08; dòng cũ ghi "tám"), kèm ghi chú *đóng
+> bằng cách nào*. Giữ lại vì lý lẽ trong đó
 > vẫn là thứ giải thích **vì sao** lược đồ hôm nay có hình dạng như vậy; chỉ là
 > không còn việc để làm.
 

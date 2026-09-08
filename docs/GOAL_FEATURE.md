@@ -18,7 +18,7 @@ hơn (và không nên "sửa"), cái gì còn thiếu, xếp hạng kèm lý do.
 
 | Việc | Đọc |
 |---|---|
-| Bất cứ việc gì | Mục 3 (quyết định + lý do) và mục 4 (**bảy cái bẫy**) |
+| Bất cứ việc gì | Mục 3 (quyết định + lý do) và mục 4 (**bảy cái bẫy**, một đã đóng — xem 4.6) |
 | Đụng vào nạp/rút tiền | Mục 3.1 → 3.4, và `goal_repository_impl.dart` — mọi chú thích ở đó là bản rút gọn của tài liệu này |
 | Đụng vào lịch sử tích luỹ | **Bẫy 4.2** trước đã. Suy chiều tiền từ vị trí ví là sai, đã vấp |
 | Đụng vào đồng bộ | **Bẫy 4.3**, rồi `sync_payload_contract_test.dart` |
@@ -290,7 +290,7 @@ sau rơi vào ngày 5 lúc 14 giờ. Nay người dùng chọn được "ngày 1
 08:00", và lựa chọn ấy lưu ở **`timeCycleTakeMoney`**.
 
 **Vì sao là cột đó chứ không phải một cột cục bộ thứ tư:** tên nó vốn có nghĩa
-là *"thời điểm cụ thể trích tiền trong chu kỳ"*, nó đã nằm sẵn trong 18 khoá của
+là *"thời điểm cụ thể trích tiền trong chu kỳ"*, nó đã nằm sẵn trong 18 khoá (nay là 19) của
 payload mục tiêu, và client chưa bao giờ ghi. Đây là dùng đúng nghĩa gốc, khác
 hẳn việc mượn nó làm mốc-đã-chạy (thứ đã bị loại ở mục 3.12). Phía backend chỉ
 lưu và trả lại qua `sync.repository.js`, **không có cron nào đọc** — nên không
@@ -699,6 +699,10 @@ tiền, không mất bản ghi, không kẹt hàng đợi.
 ---
 
 ## 4. Bảy cái bẫy
+
+> Sáu cái còn hiệu lực. **4.6 đã đóng ngày 2026-09-07** (G17) và được giữ
+> lại vì cái bẫy bên dưới nó vẫn là bẫy thật cho mọi trang **khác** đọc theo
+> tài khoản.
 
 ### 4.1 `walletTransfer` **không có khoá ngoại**
 

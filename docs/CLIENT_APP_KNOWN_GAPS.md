@@ -1,6 +1,6 @@
 # Client-app — Việc còn dang dở & rủi ro đã biết
 
-**Cập nhật:** 2026-09-07
+**Cập nhật:** 2026-09-08
 **Mục đích:** ghi lại những hạng mục đã được **cân nhắc và cố ý hoãn**, kèm lý do và bán kính ảnh hưởng. Không có tài liệu này thì người tiếp theo sẽ hoặc bỏ sót, hoặc làm lại từ đầu việc phân tích rủi ro.
 
 Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nhất.
@@ -17,13 +17,14 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > | ~~**G10**~~ | ✅ **Đóng 2026-09-07** — mỗi tài khoản nay có bản sao riêng, việc gán nhóm nằm trong `Idgroup` của chính hàng ấy |
 > | **G15** | Hoãn có chủ ý — bản ghi vừa hết hạn vừa hỏng đồng bộ |
 > | **G16** | ✅ Nguồn tự sinh đã đóng 2026-09-05 (backend nhận 5 danh mục vào bộ mặc định). Lệch ràng buộc với CSDL thì vẫn còn |
-> | **G17** | Danh sách rỗng ở lần vào đầu sau khởi động nguội — cần sửa ở **mọi** trang đọc theo tài khoản, không riêng mục tiêu |
+> | ~~**G17**~~ | ✅ **Đóng 2026-09-07** — `context.watch<AuthBloc>()` + `key: ValueKey(idaccount)` trên `GoalPage`, có test canh. ⚠️ Dòng cũ ở đây ghi mục này còn mở, mâu thuẫn với chính mục G17 bên dưới; sửa 2026-09-08 |
 > | **G18** | Nhánh dự phòng của lịch sử tích luỹ còn so bằng tên — chặn ở backend |
 > | **G19** | **Không phải lỗi** — ghi lại để người sau không "sửa" nhầm |
 > | **G23** | Bản sao danh mục chỉ đầy đủ khi bộ mặc định **cục bộ** đầy đủ — pull tăng dần, tự khỏi ở lượt sau |
 > | **G24** | Màu danh mục **không có cột** trên server — chặn ở backend |
 > | **G21** | Cấu hình trích tự động **không theo người dùng sang máy khác** — chặn ở backend |
 > | **G22** | **Không phải lỗi** — giờ trong mốc neo chỉ giữ được một chiều |
+> | **G25** | **Không phải lỗi** — hai máy cùng sắp lại thứ tự ưu tiên khi ngoại tuyến thì được một thứ tự trộn (2026-09-08) |
 >
 > **G20 đã đóng ngày 2026-09-05** — `depositToGoal` nhận `occurredAt` chặn hai
 > đầu; đã kiểm cả bằng test lẫn trên máy ảo Android.
@@ -611,6 +612,41 @@ mặc định là toàn cục và bị chặn sửa; nay họ sở hữu cả b�
 
 **Client không sửa được** — không có cột thì không có chỗ ghi. Tài liệu xin:
 `docs/superpowers/backend/CAN-LAM/CATEGORY_COLOUR_COLUMN.md`.
+
+---
+
+### G25 — Hai máy cùng sắp lại thứ tự ưu tiên khi ngoại tuyến thì được một thứ tự trộn · ✅ CỐ Ý (2026-09-08)
+
+Thứ tự ưu tiên mục tiêu (schema v19) đồng bộ qua cột `Priority`, và phép phân
+xử của dự án là **LWW theo từng hàng**. Sắp lại danh sách thì lại là một thao
+tác trên **cả danh sách**. Hai thứ ấy không khớp nhau.
+
+Máy A kéo `MuaXe` lên đầu, máy B kéo `MuaDT` lên đầu, cả hai đang ngoại tuyến.
+Khi cùng đẩy lên, mỗi hàng thắng riêng theo `Update_at` của nó — kết quả có thể
+là một thứ tự **không giống lần sắp nào**. Không hàng nào sai, không có lỗi,
+không có gì trên màn hình nói ra điều đó.
+
+**Vì sao không vá:**
+
+- Vá triệt để cần khoá thứ tự kiểu **phân số hoặc chuỗi** (`"a0"`, `"a0V"`, lối
+  của LexoRank) thay cho số nguyên. Đó là đổi cả kiểu dữ liệu ở hai đầu, cho
+  một tình huống cần hai máy cùng hoạt động và cùng ngoại tuyến.
+- Hậu quả tệ nhất là người dùng **kéo lại vài mục tiêu**. Không mất tiền, không
+  mất bản ghi, không kẹt hàng đợi đẩy — khác hẳn G21, nơi cấu hình trích tự
+  động không sang máy khác thì tiền không được chuyển mà cũng không ai biết.
+- FlowMoney gần như luôn chỉ có một máy hoạt động cho mỗi tài khoản.
+
+**Bán kính:** `uuTienSauKhiKeo`, `GoalRepositoryImpl.capNhatUuTien`, và nhánh
+`priority` của `sync_engine.dart`. Ghi ở đây để người sau không tưởng chỗ này
+bị bỏ sót — nó đã được cân nhắc, và lý lẽ nằm ở
+`docs/superpowers/backend/DA-XONG/2026-09-05-backend-goal-priority.md` mục 5.
+
+> ⚠️ Đừng nhầm với một khoảng trống **khác** cũng thuộc vùng mục tiêu và cũng
+> đang mở: `GoalDetailPage` **không nghe dòng dữ liệu** (bẫy 4.5
+> `GOAL_FEATURE.md`), nên đồng bộ kéo về một thay đổi của mục tiêu **đang mở**
+> thì màn hình vẫn hiện số cũ. Bán kính của nó vừa rộng ra vì `priority` nay
+> cũng đi qua đường đồng bộ. Đó là lỗi **sửa được ở client**, không phải một
+> đánh đổi — nên nó không có mục G nào và nằm trong danh sách việc phải làm.
 
 ---
 
