@@ -1,9 +1,9 @@
 # Trang Phân tích — thiết kế, lý do, và những cái bẫy
 
 **Cập nhật:** 2026-09-08
-**Trạng thái:** lát **2a** xong — mọi con số trên trang là số thật từ SQLite.
-Còn **2b** (biểu đồ theo thời gian) và **2c** (trang Xuất báo cáo, vẫn là số
-cứng). Xem mục 7.
+**Trạng thái:** lát **2a** xong — mọi con số trên trang là số thật từ SQLite —
+và lát **2b** xong: khối "Xu hướng 6 tháng" vẽ bằng `fl_chart`. Còn **2c**
+(trang Xuất báo cáo, vẫn là số cứng). Xem mục 7.
 
 > Cùng mục đích với `GOAL_FEATURE.md`: giữ lại **vì sao**. Cái gì thì đọc mã và
 > test là ra.
@@ -17,8 +17,9 @@ cứng). Xem mục 7.
 | Bất cứ việc gì | Mục 3 (quyết định) và mục 4 (bẫy) |
 | Sửa phép tính | `domain/thong_ke_thang.dart` và test của nó — **không** có CSDL, kiểm bằng danh sách |
 | Sửa cách gộp dữ liệu | Mục 3.3 (mốc tra ngân sách) trước, rồi `data/analytics_repository_impl.dart` |
-| Đụng giao diện | Màn Stitch **"FlowMoney Analytics Dashboard"** — bố cục lấy nguyên từ đó; và mục 4.4 về font của bộ test |
-| Làm tiếp 2b / 2c | Mục 7 |
+| Đụng giao diện | Màn Stitch **"FlowMoney Analytics Dashboard"** — bố cục lấy nguyên từ đó **trừ khối xu hướng**, xem 3.11; và mục 4.4 về font của bộ test |
+| Đụng biểu đồ | Mục **3.11** (vì sao `fl_chart`, vì sao ghim phiên bản) và **3.12** (vì sao lệch Stitch) |
+| Làm tiếp 2c | Mục 7 |
 
 ---
 
@@ -44,10 +45,11 @@ chọn tháng → Tổng thu / Tổng chi (kèm % so tháng trước) → "Số 
 donut "Chi tiêu theo hạng mục" với **bốn** ô chú giải → "Chi tiết danh mục" với
 "% ngân sách". Việc của 2a là **thay số**, không phải thay hình.
 
-Donut hiện có là `SweepGradient` tự vẽ, nên **không cần thư viện biểu đồ** cho
-lát này. Quyết định chọn thư viện lùi sang 2b, khi cần biểu đồ theo thời gian —
-và **chọn một lần** cho cả biểu đồ tiến độ mục tiêu (mục 10.5
-`GOAL_FEATURE.md`).
+Donut hiện có là `SweepGradient` tự vẽ, nên 2a **không cần thư viện biểu đồ**;
+quyết định chọn thư viện lùi sang 2b và đã chốt ở đó — `fl_chart`, xem mục
+**3.11**. Donut vẫn giữ nguyên `SweepGradient`, **không** viết lại bằng
+`fl_chart`: nó đang đúng và đang có test, đổi sang thư viện chỉ để "cho đồng
+bộ" là rủi ro thuần.
 
 ### 3.2 Tầng thuần tách khỏi Drift
 
@@ -142,6 +144,58 @@ Cùng lý do với lịch sử mục tiêu (mục 3.24 `GOAL_FEATURE.md`): danh 
 trang không ảo hoá, và route mới phải trả lời "nằm trong `StatefulShellRoute`
 không" — đặt nhầm là màn đỏ (bẫy 7.8 `NOTIFICATION_FEATURE.md`).
 
+### 3.11 `fl_chart`, không tự vẽ Canvas — và ghim phiên bản
+
+Lát 2b là chỗ **chọn thư viện biểu đồ một lần** cho cả biểu đồ tiến độ mục
+tiêu về sau (hạng 1, mục 10.5 `GOAL_FEATURE.md`). Đo được ngày 2026-09-08
+trước khi chọn: `pubspec.yaml` **không có thư viện biểu đồ nào**, và `lib/`
+**không có một `CustomPainter` nào cả** — donut chỉ là `SweepGradient` trên
+một `Container` tròn. Nghĩa là "dự án có tiền lệ tự vẽ" **không đúng**: chưa
+chỗ nào từng chạm Canvas API.
+
+Phương án đã loại và lý do:
+
+- **Widget thuần** (mỗi cột một `Container` trong `Row`). Ưu điểm thật là test
+  được đúng chiều cao tỉ lệ, còn thư viện thì vẽ vào canvas nên widget test
+  chỉ khẳng định được widget tồn tại. Loại vì **hình thức quan trọng hơn** ở
+  đây, và vì cái được kia lấy lại được bằng cách khác — xem đoạn cuối mục này.
+- **`CustomPainter` tự vẽ.** Loại vì đường cong, trục, nhãn, tooltip và
+  animation đều phải viết tay để ra kết quả xấu hơn, rồi phải nuôi mãi.
+
+Ba điều **không** phải lý do chọn, ghi ra để không ai viện dẫn nhầm về sau:
+hiệu năng (`fl_chart` bên trong cũng là `CustomPainter`, nhưng với sáu điểm dữ
+liệu thì chênh lệch không đo được), kích thước app (thêm phụ thuộc chỉ làm nó
+lớn hơn), và "thư viện thì chuẩn hơn". Lý do thật chỉ có một: **công sức cho
+các biểu đồ tiếp theo**.
+
+Phiên bản **ghim chính xác `1.2.0`**, không `^`, lệch quy ước của mọi phụ thuộc
+khác trong `pubspec.yaml`. Cố ý: `fl_chart` đổi API giữa các bản, và biểu đồ
+hỏng thì **hỏng lặng lẽ** — vẽ ra hình khác chứ không ném lỗi, nên một bản nâng
+âm thầm sẽ không có gì bắt được. Nới ra thì phải xem lại biểu đồ trên máy thật.
+
+Phần test không mất gì: **phép tính nằm trọn ở `chuoiTheoThang()` tầng domain**
+và được kiểm bằng danh sách ở đó. Lỗi âm thầm nằm trong con số chứ không trong
+nét vẽ. Widget test chỉ còn canh ba thứ mà nó canh được thật: khối có mặt,
+**nhãn trục lấy từ dữ liệu** (bản sai có chủ ý đổi nhãn thành `T${i + 1}` đã
+làm đúng test ấy đỏ), và 411dp không tràn.
+
+### 3.12 Khối xu hướng **lệch Stitch có chủ ý**
+
+Đã tra cả 35 màn Stitch ngày 2026-09-08: màn "Analytics Dashboard" chỉ có
+`conic-gradient` (donut) và màn "Chi tiết mục tiêu" chỉ có một `<svg>` vòng
+tiến độ. **Không màn nào có biểu đồ đường hay cột.** Nghĩa là bản thiết kế trả
+lời được *tiền đi đâu* nhưng không chỗ nào trả lời *đang tăng hay đang giảm*.
+
+Khối nằm **giữa** khối tổng và donut, theo thứ tự câu hỏi: bao nhiêu → xu hướng
+ra sao → đi vào đâu. Đây là chỗ đi lệch thiết kế, đã ghi tại chỗ trong
+`_KhoiXuHuong` — **đừng "sửa lại cho khớp Stitch"**.
+
+Sáu tháng chứ không mười hai: ở 411dp, mười hai mốc trục là nhãn chồng lên
+nhau. Chuỗi vẫn nhận `soThang` bất kỳ nên đổi được, nhưng phải xem lại trục.
+
+Hai đường có **chú giải chữ** ("Thu" / "Chi") chứ không chỉ dựa vào màu:
+xanh/đỏ là quy ước chứ không hiển nhiên, và người mù màu đọc không ra.
+
 ---
 
 ## 4. Bẫy
@@ -194,6 +248,22 @@ thật. Không test nào thấy vì FAB không thuộc trang.
 `HomePage`, tab này nằm trong `MainShell` không có drawer. Giữ để khớp thiết
 kế, ghi lại để không ai tưởng là lỗi mới.
 
+**4.9 Tooltip của `fl_chart` tràn khỏi màn hình nếu không chặn.** Mặc định thư
+viện đặt hộp tooltip ngay cạnh điểm chạm và **để nó lòi ra ngoài**. Điểm cuối
+của chuỗi là tháng đang xem — nằm sát mép phải — nên đó lại đúng là điểm người
+dùng chạm nhiều nhất, và hộp bị cắt mất chữ. Phải bật **`fitInsideHorizontally`
+và `fitInsideVertically`**.
+
+Thấy được nhờ chụp máy ảo 411dp rồi **nhìn ảnh**; đây là loại lỗi mà bộ test
+không thể bắt, vì tooltip do thư viện vẽ vào canvas chứ không phải widget. Đó
+là cái giá đã biết trước của quyết định 3.11 — biểu đồ phải kiểm bằng mắt trên
+máy thật, mỗi lần nâng phiên bản `fl_chart` cũng vậy.
+
+**4.10 Tháng rỗng vẫn thấy biểu đồ — trừ khi tháng đang xem rỗng.** Trang giữ
+nguyên hành vi 3.9: `tk.rong` thì cả thân trang thay bằng lời nhắn rỗng, nên
+mở một tháng chưa ghi gì sẽ **không** thấy xu hướng năm tháng trước đó. Biết mà
+chấp nhận, không phải bỏ sót; đổi thì phải bàn lại 3.9 chứ đừng sửa lặng lẽ.
+
 ---
 
 ## 5. Luồng dữ liệu
@@ -209,8 +279,15 @@ AnalyticsPage ──watch AuthBloc──▶ idaccount
 ```
 
 `ThongKeThang` mang: tổng tháng này, tổng tháng trước, chi theo danh mục (thô,
-cho donut), và cùng danh sách ấy đã tra tên/biểu tượng/màu/ngân sách (cho bảng).
-Widget **không cộng gì cả**.
+cho donut), cùng danh sách ấy đã tra tên/biểu tượng/màu/ngân sách (cho bảng),
+và **`chuoi`** — sáu điểm `DiemThoiGian` cho biểu đồ xu hướng. Widget **không
+cộng gì cả**.
+
+⚠️ `chuoi` nhìn **xa hơn** `tongTruoc` nhiều, nên nó phải được dựng từ **toàn
+bộ** giao dịch của tài khoản. `transactionDao.watchAll` đã trả về tất cả nên
+không cần truy vấn mới — nhưng ai đó "tối ưu" bằng cách lọc `txs` theo tháng
+đang xem trước khi vào `_dung()` sẽ làm biểu đồ phẳng lì mà không lỗi nào báo.
+Test `sáu điểm, cũ nhất trước, mang số thật của cả tháng ở xa` canh đúng chỗ ấy.
 
 ---
 
@@ -221,19 +298,31 @@ Widget **không cộng gì cả**.
 | `thong_ke_thang_test.dart` | Biên tháng (tháng 12, **năm nhuận**, tháng 2 thường), biên `to` mở, loại `transfer`, % với tháng trước = 0, gom danh mục và sắp ổn định khi hoà, top‑4 + Khác (kể cả đúng 5), `rutGon` (làm tròn, bỏ `.0`), 12 tháng gần nhất cuộn qua năm trước |
 | `analytics_repository_impl_test.dart` | Đổi hàng Drift → thuần, cách ly `idaccount`, ba chữ cho ba ca danh mục **kể cả xoá mềm giữ tên thật**, "% ngân sách" bám ngân sách đang chạy và **bỏ ngân sách hết hạn**, stream phát lại khi ghi thêm |
 | `analytics_cubit_test.dart` | `null` không đoán tài khoản; tháng lấy từ `clock` và `now` đi xuống repository; đổi tháng huỷ đăng ký cũ; lỗi stream không nổ |
-| `analytics_page_test.dart` | Tháng từ đồng hồ (không còn "T6 2026"), ba thẻ, "% ngân sách"/"% tổng chi", donut + Khác + tâm rút gọn, rỗng, chọn tháng, "Xem tất cả", và **411dp với tên dài** |
+| `analytics_page_test.dart` | Tháng từ đồng hồ (không còn "T6 2026"), ba thẻ, "% ngân sách"/"% tổng chi", donut + Khác + tâm rút gọn, rỗng, chọn tháng, "Xem tất cả", **411dp với tên dài**, và khối xu hướng: sáu nhãn tháng lấy từ dữ liệu, chú giải Thu/Chi, chuỗi rỗng không nổ, 411dp với số hàng trăm triệu |
 
-Bốn bản sai có chủ ý đã dùng, mỗi cái làm đúng một test đỏ: biên đóng, bỏ lọc
-hết hạn, bỏ huỷ đăng ký, và `categoryDao.watchAll` thay cho truy vấn kể cả xoá
-mềm. Thêm một test tự cãi với lời giải thích của nó (thứ tự
-khi hoà) — phát hiện nhờ chạy chứ không nhờ đọc.
+Lát 2b thêm vào `thong_ke_thang_test.dart` sáu ca cho `chuoiTheoThang`: thứ tự
+**cũ nhất trước**, cuộn qua năm trước, **năm nhuận**, tháng rỗng giữ chỗ,
+`transfer` bị bỏ, và tổng các điểm bằng đúng số đã ghi (các khoảng không chồng
+nhau).
+
+Sáu bản sai có chủ ý đã dùng, mỗi cái làm đúng một test đỏ: biên đóng, bỏ lọc
+hết hạn, bỏ huỷ đăng ký, `categoryDao.watchAll` thay cho truy vấn kể cả xoá
+mềm, **đảo thứ tự chuỗi thành mới-nhất-trước**, và **nhãn trục đếm `T${i + 1}`
+thay vì lấy từ dữ liệu**. Thêm một test tự cãi với lời giải thích của nó (thứ
+tự khi hoà) — phát hiện nhờ chạy chứ không nhờ đọc.
+
+⚠️ **Ba thứ của biểu đồ mà bộ test không với tới:** vị trí tooltip (bẫy 4.9),
+màu và độ dày nét, và việc đường cong có vọt xuống dưới 0 giữa hai điểm hay
+không (`preventCurveOverShooting`). Cả ba chỉ kiểm được bằng mắt trên máy thật.
 
 ---
 
 ## 7. Còn lại
 
-- **2b — biểu đồ theo thời gian.** Chỗ chọn thư viện; chọn một lần cho cả biểu
-  đồ tiến độ mục tiêu.
+- ✅ ~~**2b — biểu đồ theo thời gian.**~~ **Xong 2026-09-08.** `fl_chart` ghim
+  `1.2.0`, khối "Xu hướng 6 tháng" — mục **3.11** và **3.12**. Thư viện nay đã
+  chọn, nên **biểu đồ tiến độ mục tiêu** (hạng 1 mục 10.5 `GOAL_FEATURE.md`)
+  chỉ còn là việc đổ dữ liệu khác vào cùng một khuôn.
 - **2c — trang Xuất báo cáo** (`export_report_page.dart`): vẫn số cứng — ví
   "Techcombank"/"Tiền mặt" và lịch sử xuất `BaoCao_Thang6.pdf` đều bịa; nút xuất
   chỉ hiện snackbar. Nay đã có `ThongKeThang` để đổ vào.

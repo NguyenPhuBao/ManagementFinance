@@ -22,6 +22,7 @@ ThongKeThang _tk(int nam, int thang, {double chi = 0}) => ThongKeThang(
       tongTruoc: const TongThuChi(thu: 0, chi: 0),
       chiTheoDanhMuc: const [],
       danhMuc: const [],
+      chuoi: const [],
     );
 
 class _RepoGia implements AnalyticsRepository {

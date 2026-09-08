@@ -168,6 +168,9 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
       tongTruoc: tongTruoc,
       chiTheoDanhMuc: chi,
       danhMuc: dong,
+      // Dựng từ `khoan` — TOÀN BỘ giao dịch của tài khoản, chưa lọc tháng.
+      // Chuỗi nhìn xa sáu tháng, xa hơn `tong`/`tongTruoc` nhiều.
+      chuoi: chuoiTheoThang(khoan, nam: nam, thang: thang),
     );
   }
 }

@@ -183,3 +183,47 @@ List<({int nam, int thang})> cacThangGanNhat(DateTime now, {int soThang = 12}) =
           return (nam: d.year, thang: d.month);
         }(),
     ];
+
+/// Một điểm trên biểu đồ xu hướng: tổng thu và tổng chi của trọn một tháng.
+class DiemThoiGian {
+  final int nam;
+  final int thang;
+  final TongThuChi tong;
+
+  const DiemThoiGian({
+    required this.nam,
+    required this.thang,
+    required this.tong,
+  });
+}
+
+/// [soThang] tháng liên tiếp kết thúc ở ([nam], [thang]), **cũ nhất trước**.
+///
+/// Thứ tự **ngược** với `cacThangGanNhat`: hàm kia phục vụ bộ chọn tháng nên
+/// xếp mới nhất trước, còn trục thời gian thì đọc từ trái sang phải. Lấy nhầm
+/// hàm là biểu đồ chạy lùi mà không lỗi nào báo.
+///
+/// Tháng không có giao dịch vẫn là một điểm mang số 0 chứ không bị bỏ: bỏ đi
+/// là trục co lại, hai tháng cách nhau nửa năm hiện ra như liền kề.
+///
+/// Mọi luật đếm mượn nguyên `tongThuChi` — biên `[from, to)`, `'transfer'`
+/// không phải thu cũng không phải chi — nên ở đây không có luật mới nào.
+List<DiemThoiGian> chuoiTheoThang(
+  List<KhoanThuChi> ds, {
+  required int nam,
+  required int thang,
+  int soThang = 6,
+}) =>
+    [
+      for (var i = soThang - 1; i >= 0; i--)
+        () {
+          // `thang - i` bằng 0 hay âm tự cuộn về năm trước nhờ `DateTime`.
+          final d = DateTime(nam, thang - i, 1);
+          final b = bienThang(d.year, d.month);
+          return DiemThoiGian(
+            nam: d.year,
+            thang: d.month,
+            tong: tongThuChi(ds, from: b.from, to: b.to),
+          );
+        }(),
+    ];

@@ -1197,6 +1197,13 @@ bỏ qua chứ đừng chuyển một phần, phải có trần mỗi lượt, v
   làm trang chi tiết "đầy" nhất. ⚠️ Mục này **không** nằm trong bảng khảo sát
   bên trên — nó là đề xuất của phiên 2026-09-08 và người dùng đã duyệt thứ tự;
   ghi ở đây để nó không chỉ sống trong chat.
+  ✅ **Chỗ chặn đã gỡ 2026-09-08:** thư viện biểu đồ nay đã chọn —
+  **`fl_chart`, ghim `1.2.0`** — và `_KhoiXuHuong` ở
+  `analytics_page.dart` là khuôn có sẵn để chép: `LineChart` hai đường, gradient
+  dưới đường, tooltip đã chặn tràn. Lý do chọn và ba cái bẫy: mục **3.11**,
+  **3.12** và bẫy **4.9** `docs/ANALYTICS_FEATURE.md`. Việc còn lại thuần là
+  dựng chuỗi *số đã tích luỹ theo thời gian* ở tầng domain thuần rồi test ở đó
+  — **đừng** tính trong widget.
 - **Số liệu tổng hợp và chuỗi liên tiếp.** Số lần nạp, trung bình mỗi lần, số
   kỳ nạp liên tiếp — đếm được ngay từ `_khoanLichSu` đang có, không cần dữ liệu
   mới. Cùng nguồn gốc với mục trên.
@@ -1220,7 +1227,7 @@ bỏ qua chứ đừng chuyển một phần, phải có trần mỗi lượt, v
 | ✅ | ~~**Lịch sử tích luỹ dài không giới hạn**~~ | **Xong 2026-09-08** — cắt 5 dòng + bảng đầy đủ có **hai bộ lọc**. Mục **3.24** |
 | ✅ | ~~**Nhãn "(tự động)" cho khoản trích tự động**~~ | **Xong 2026-09-08** — hậu tố ghi chú, không cột mới, không đụng backend. Mục **3.25** |
 | ✅ | ~~**Bộ lọc "tay / tự động"**~~ | **Xong 2026-09-08** — `LocNguon`, dải chip thứ ba chỉ hiện khi có khoản tự động. Mục **3.24** |
-| 1 | **Biểu đồ tiến độ theo thời gian** | Làm **sau lát 2b của Phân tích** — 2b là chỗ chọn thư viện biểu đồ, chọn một lần dùng cho cả hai; làm trước là chọn hai lần. Xem thứ tự đã duyệt ở mục 14 `PROJECT_CONTEXT.md` |
+| 1 | **Biểu đồ tiến độ theo thời gian** | **Nay đã rẻ**: lát 2b của Phân tích xong 2026-09-08 nên thư viện đã chọn (`fl_chart` ghim `1.2.0`) và `_KhoiXuHuong` là khuôn chép được. Chỉ còn dựng chuỗi tích luỹ ở tầng domain. Xem mục 3.11 `ANALYTICS_FEATURE.md` |
 | 2 | **Số liệu tổng hợp, chuỗi liên tiếp** | Nhỏ, độc lập, đếm từ lịch sử đang có — việc chen giữa khi cần một hạng mục ngắn |
 | 2 | **Làm tròn số lẻ** | Giá trị cao và hợp văn hoá "nuôi heo đất", nhưng là chỗ **thứ ba** app tự chuyển tiền — xem cảnh báo ở 10.2 |
 | 2 | **Chuyển giữa hai mục tiêu** | Một hàm gọi `withdraw` + `deposit` trong cùng khối nguyên tử |

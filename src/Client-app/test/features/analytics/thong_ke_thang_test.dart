@@ -237,4 +237,78 @@ void main() {
               'thật thì chú giải thiếu một ô, hiện "Khác" thì nhất quán.');
     });
   });
+
+  group('chuoiTheoThang — biểu đồ xu hướng theo thời gian', () {
+    test('đủ số tháng, CŨ NHẤT TRƯỚC, tháng cuối là tháng đang xem', () {
+      final ds = chuoiTheoThang(const [], nam: 2026, thang: 9);
+      expect(ds.length, 6);
+      expect((ds.first.nam, ds.first.thang), (2026, 4));
+      expect((ds.last.nam, ds.last.thang), (2026, 9),
+          reason: 'Trục thời gian đọc trái sang phải, nên điểm cuối phải là '
+              'tháng đang xem. `cacThangGanNhat` sắp NGƯỢC LẠI (mới nhất '
+              'trước) vì nó phục vụ bộ chọn tháng — dùng nhầm thứ tự ấy là '
+              'biểu đồ chạy lùi mà không có lỗi nào báo.');
+    });
+
+    test('cuộn qua năm trước khi tháng đang xem ở đầu năm', () {
+      final ds = chuoiTheoThang(const [], nam: 2026, thang: 2);
+      expect((ds.first.nam, ds.first.thang), (2025, 9));
+      expect((ds[3].nam, ds[3].thang), (2025, 12),
+          reason: 'Lùi từ tháng 2 phải đi qua tháng 12 năm trước, không phải '
+              'tháng 0. Tự trừ rồi cộng 12 là chỗ đã sinh lỗi ở nhiều app.');
+    });
+
+    test('khoản ngày 29/02 năm nhuận rơi đúng điểm tháng 2', () {
+      final ds = chuoiTheoThang(
+        [k(ngay: DateTime(2028, 2, 29, 12), soTien: 700000)],
+        nam: 2028,
+        thang: 2,
+      );
+      expect(ds.last.tong.chi, 700000,
+          reason: 'Chia trục bằng "mỗi tháng 30 ngày" là đánh rơi ngày 29/02 '
+              'của năm nhuận — sai im lặng, cột chỉ thấp đi.');
+    });
+
+    test('tháng không có giao dịch vẫn giữ chỗ với số 0', () {
+      final ds = chuoiTheoThang(
+        [k(ngay: DateTime(2026, 9, 5), soTien: 300000)],
+        nam: 2026,
+        thang: 9,
+      );
+      expect(ds.length, 6);
+      expect(ds.take(5).every((d) => d.tong.thu == 0 && d.tong.chi == 0),
+          isTrue);
+      expect(ds.last.tong.chi, 300000,
+          reason: 'Bỏ tháng rỗng khỏi chuỗi là trục thời gian co lại: hai '
+              'tháng cách nhau nửa năm sẽ nằm cạnh nhau như liền kề.');
+    });
+
+    test('chuyển ví không vào thu lẫn chi của bất kỳ điểm nào', () {
+      final ds = chuoiTheoThang(
+        [k(ngay: DateTime(2026, 9, 5), soTien: 500000, loai: 'transfer')],
+        nam: 2026,
+        thang: 9,
+      );
+      expect(ds.last.tong.chi, 0);
+      expect(ds.last.tong.thu, 0,
+          reason: 'Tiền đổi chỗ giữa hai ví không phải thu cũng không phải '
+              'chi. Đếm nó là mỗi kỳ trích tự động vào mục tiêu đội đường '
+              '"chi" lên — đúng lỗi mục 3.2 GOAL_FEATURE đã sửa một lần.');
+    });
+
+    test('khoản lúc 00:00 ngày 1 thuộc đúng một điểm, không đếm hai lần', () {
+      final ds = chuoiTheoThang(
+        [k(ngay: DateTime(2026, 9, 1), soTien: 200000)],
+        nam: 2026,
+        thang: 9,
+      );
+      expect(ds.last.tong.chi, 200000);
+      expect(ds[4].tong.chi, 0,
+          reason: 'Biên `to` mở: khoản 00:00 ngày 1 tháng 9 thuộc tháng 9, '
+              'không thuộc tháng 8. Đóng biên là nó hiện ở cả hai cột.');
+      expect(ds.fold(0.0, (s, d) => s + d.tong.chi), 200000,
+          reason: 'Tổng mọi điểm phải bằng đúng số tiền đã ghi — các khoảng '
+              'không được chồng lên nhau.');
+    });
+  });
 }

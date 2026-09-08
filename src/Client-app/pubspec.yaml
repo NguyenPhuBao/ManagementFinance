@@ -49,6 +49,12 @@ dependencies:
   timezone: ^0.11.1
   flutter_timezone: ^5.1.0
 
+  # Biểu đồ (trang Phân tích, và biểu đồ tiến độ mục tiêu sau này).
+  # GHIM phiên bản chính xác, không dùng `^`: fl_chart có tiếng đổi API giữa
+  # các bản, và biểu đồ hỏng thì hỏng lặng lẽ — vẽ ra hình khác chứ không ném
+  # lỗi. Nới ra thì phải xem lại biểu đồ trên máy thật, đừng nới rồi tin test.
+  fl_chart: 1.2.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

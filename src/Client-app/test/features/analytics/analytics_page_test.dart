@@ -89,6 +89,7 @@ ThongKeThang _tk({
   double thuTruoc = 0,
   double chiTruoc = 1000000,
   List<DongDanhMuc> danhMuc = const [],
+  List<DiemThoiGian>? chuoi,
 }) =>
     ThongKeThang(
       nam: nam,
@@ -104,6 +105,10 @@ ThongKeThang _tk({
           ),
       ],
       danhMuc: danhMuc,
+      // Mặc định là sáu điểm toàn số 0 — đúng cấu trúc chuỗi thật, để test
+      // nào không nói gì về biểu đồ vẫn đi qua nhánh thường thay vì nhánh
+      // "chưa có chuỗi".
+      chuoi: chuoi ?? chuoiTheoThang(const [], nam: nam, thang: thang),
     );
 
 void main() {
@@ -315,5 +320,80 @@ void main() {
             'rộng, nên tên dài tràn qua cột số tiền. Flutter báo tràn qua '
             'FlutterError.reportError chứ không ném ra chỗ gọi — test chỉ '
             'pumpWidget sẽ xanh dù màn hình đầy sọc vàng.');
+  });
+
+  group('biểu đồ xu hướng', () {
+    List<DiemThoiGian> chuoiMau() => [
+          for (var i = 0; i < 6; i++)
+            DiemThoiGian(
+              nam: 2026,
+              thang: 4 + i,
+              tong: TongThuChi(
+                thu: 1000000.0 * (i + 1),
+                chi: 500000.0 * (i + 1),
+              ),
+            ),
+        ];
+
+    testWidgets('hiện tiêu đề và đủ sáu nhãn tháng của chuỗi', (tester) async {
+      await moTrang(tester);
+      await phat(tester, _tk(chuoi: chuoiMau()));
+
+      expect(find.text('Xu hướng 6 tháng'), findsOneWidget);
+      for (final nhan in ['T4', 'T5', 'T6', 'T7', 'T8', 'T9']) {
+        expect(find.text(nhan), findsWidgets,
+            reason: 'Nhãn trục là Text thật do fl_chart dựng, nên thiếu một '
+                'tháng là test thấy được. Đây là chỗ duy nhất chứng minh '
+                'chuỗi đi tới được biểu đồ chứ không dừng ở repository.');
+      }
+    });
+
+    testWidgets('có chú giải phân biệt đường thu và đường chi',
+        (tester) async {
+      await moTrang(tester);
+      await phat(tester, _tk(chuoi: chuoiMau()));
+
+      expect(find.text('Thu'), findsOneWidget);
+      expect(find.text('Chi'), findsOneWidget,
+          reason: 'Hai đường cùng khung mà không chú giải thì người dùng phải '
+              'đoán màu nào là gì. Xanh/đỏ là quy ước, không phải hiển nhiên '
+              'với người mù màu.');
+    });
+
+    testWidgets('chuỗi rỗng thì bỏ qua khối chứ không nổ', (tester) async {
+      await moTrang(tester);
+      await phat(tester, _tk(chuoi: const []));
+
+      expect(find.text('Xu hướng 6 tháng'), findsNothing);
+      expect(tester.takeException(), isNull,
+          reason: 'Biểu đồ không có điểm nào là chia cho 0 khi tính thang '
+              'đo. Trang phải bỏ qua khối, không được kéo cả màn hình chết '
+              'theo.');
+    });
+
+    testWidgets('biểu đồ không tràn ở khổ 411dp với số tiền lớn',
+        (tester) async {
+      tester.view.physicalSize = const Size(411 * 3, 900 * 3);
+      tester.view.devicePixelRatio = 3.0;
+      addTearDown(tester.view.reset);
+
+      await moTrang(tester);
+      await phat(
+        tester,
+        _tk(chuoi: [
+          for (var i = 0; i < 6; i++)
+            DiemThoiGian(
+              nam: 2026,
+              thang: 4 + i,
+              tong: const TongThuChi(thu: 987654321.0, chi: 123456789.0),
+            ),
+        ]),
+      );
+
+      expect(tester.takeException(), isNull,
+          reason: 'Nhãn trục trái mang số tiền rút gọn; số hàng trăm triệu là '
+              'chuỗi dài nhất có thể, và font của bộ test rộng gấp đôi ngoài '
+              'đời nên đây là ca chật nhất.');
+    });
   });
 }

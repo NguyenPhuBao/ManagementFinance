@@ -809,9 +809,10 @@ một lựa chọn, không phải một hàng đợi.
 
 **Thứ tự đã duyệt tối 2026-09-08** (người dùng hỏi "nên làm theo thứ tự nào",
 đã chốt — đừng bàn lại từ đầu): ✅ bộ lọc tay/tự động của lịch sử mục tiêu →
-✅ **2a** Phân tích số thật → **2b** biểu đồ theo thời gian (chỗ **chọn thư
-viện biểu đồ, một lần** cho cả bước sau) → **2c** trang Xuất báo cáo → biểu
-đồ tiến độ mục tiêu theo thời gian (rẻ hẳn sau 2b) → Tổng kết tuần (spec có
+✅ **2a** Phân tích số thật → ✅ **2b** biểu đồ theo thời gian (**thư viện đã
+chọn: `fl_chart`, ghim `1.2.0`** — mục 3.11 `ANALYTICS_FEATURE.md`) → **2c**
+trang Xuất báo cáo → biểu đồ tiến độ mục tiêu theo thời gian (**nay rẻ thật**:
+khuôn biểu đồ đã có, chỉ đổi dữ liệu) → Tổng kết tuần (spec có
 sẵn) → số liệu tổng hợp mục tiêu (nhỏ, chen giữa được) → nối Socket.io phía
 client (cuối, không thêm gì người dùng thấy). **Round-up cố ý để ngoài** — chỗ
 thứ ba app tự chuyển tiền trong khi chỗ thứ hai (`bill.Auto_pay`) còn treo
@@ -844,12 +845,18 @@ backend. Lý do từng bước: mục 10.5 `docs/GOAL_FEATURE.md` và mục 7
    của mục này trỏ tới "mục 9b `docs/NOTIFICATION_FEATURE.md`" — **mục ấy
    không tồn tại**; con trỏ chết đã hai phiên.)
 
-   Mảng **Phân tích** — **lát 2a xong 2026-09-08**: `AnalyticsPage` nay đọc
-   số thật qua `AnalyticsCubit` → `AnalyticsRepository` (Drift + mượn
-   `BudgetRepository` cho "% ngân sách"). Trước đó nó là giao diện tĩnh, **0**
-   tham chiếu Bloc/Repository/Dao, và hiện *"T6 2026"* cứng khi đang là tháng 9.
+   Mảng **Phân tích** — **lát 2a và 2b xong 2026-09-08**: `AnalyticsPage` nay
+   đọc số thật qua `AnalyticsCubit` → `AnalyticsRepository` (Drift + mượn
+   `BudgetRepository` cho "% ngân sách"), và mang khối **"Xu hướng 6 tháng"**
+   vẽ bằng `fl_chart`. Trước đó nó là giao diện tĩnh, **0** tham chiếu
+   Bloc/Repository/Dao, và hiện *"T6 2026"* cứng khi đang là tháng 9.
    `ExportReportPage` **vẫn** tĩnh (lát 2c). Tầng tổng hợp mà "Tổng kết tuần"
    chờ nay đã có. Lý do và bẫy: `docs/ANALYTICS_FEATURE.md`.
+
+   ⚠️ **`fl_chart` là phụ thuộc đầu tiên và duy nhất của dự án dành cho việc
+   vẽ**, ghim cứng `1.2.0`. Trước 2026-09-08 `lib/` không có một
+   `CustomPainter` nào; donut là `SweepGradient` và **vẫn giữ nguyên như thế**.
+   Mọi biểu đồ về sau dùng chung `fl_chart` — đừng chọn lại lần thứ hai.
 2. **Năm việc còn lại của backend**, ở `docs/superpowers/backend/CAN-LAM/`:
    lỗ **(D)** `threshold_warning_percent` bị ép về `0`; **cột màu danh mục**
    (tài liệu xin nay đã lên origin); **hai mục hoá đơn** — `transaction.Idbill`

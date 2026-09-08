@@ -60,6 +60,12 @@ class ThongKeThang {
   /// Cùng thứ tự với [chiTheoDanhMuc], đã tra thông tin hiển thị.
   final List<DongDanhMuc> danhMuc;
 
+  /// Sáu tháng liên tiếp kết thúc ở tháng đang xem, **cũ nhất trước** — nguồn
+  /// cho biểu đồ xu hướng. Nhìn xa hơn [tongTruoc] nên nó phải được dựng từ
+  /// **toàn bộ** giao dịch của tài khoản, không phải từ danh sách đã lọc theo
+  /// tháng đang xem.
+  final List<DiemThoiGian> chuoi;
+
   const ThongKeThang({
     required this.nam,
     required this.thang,
@@ -67,6 +73,7 @@ class ThongKeThang {
     required this.tongTruoc,
     required this.chiTheoDanhMuc,
     required this.danhMuc,
+    required this.chuoi,
   });
 
   double? get thuSoVoiTruoc => phanTramSoVoi(tong.thu, tongTruoc.thu);

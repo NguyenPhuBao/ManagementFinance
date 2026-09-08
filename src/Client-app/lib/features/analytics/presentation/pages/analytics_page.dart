@@ -1,3 +1,4 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -93,6 +94,9 @@ class _NoiDung extends StatelessWidget {
         }
         return [
           _KhoiTong(tk: thongKe),
+          const SizedBox(height: 24),
+          // Thứ tự câu hỏi: bao nhiêu → xu hướng ra sao → tiền đi đâu.
+          _KhoiXuHuong(chuoi: thongKe.chuoi),
           const SizedBox(height: 24),
           _KhoiDonut(tk: thongKe),
           const SizedBox(height: 24),
@@ -450,6 +454,254 @@ class _TheConLai extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ── Xu hướng theo thời gian ───────────────────────────────────────────────
+
+/// Sáu tháng gần nhất, hai đường: thu và chi.
+///
+/// **Cố ý lệch bản Stitch.** Màn "Analytics Dashboard" chỉ có donut, tức chỉ
+/// trả lời *tiền đi đâu*; câu *đang tăng hay đang giảm* không có chỗ nào trên
+/// trang trả lời. Khối này nằm giữa khối tổng và donut vì đó là thứ tự câu
+/// hỏi: bao nhiêu → xu hướng ra sao → đi vào đâu. Đừng "sửa lại cho khớp
+/// Stitch".
+class _KhoiXuHuong extends StatelessWidget {
+  final List<DiemThoiGian> chuoi;
+  const _KhoiXuHuong({required this.chuoi});
+
+  @override
+  Widget build(BuildContext context) {
+    // Không điểm nào thì không có thang đo — bỏ khối, đừng chia cho 0.
+    if (chuoi.isEmpty) return const SizedBox.shrink();
+
+    var dinh = 0.0;
+    for (final d in chuoi) {
+      if (d.tong.thu > dinh) dinh = d.tong.thu;
+      if (d.tong.chi > dinh) dinh = d.tong.chi;
+    }
+    // Trần cao hơn đỉnh để đường không dính mép trên. Sáu tháng rỗng sạch thì
+    // `dinh` bằng 0 và mọi phép chia thang đo sau đây sẽ hỏng, nên đặt 1.
+    final maxY = dinh <= 0 ? 1.0 : dinh * 1.15;
+    final buoc = maxY / 3;
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: _theTrang(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Cùng lý do với tiêu đề donut: Text đứng trong Row không co được.
+          const SizedBox(
+            width: double.infinity,
+            child: Text(
+              'Xu hướng 6 tháng',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Wrap(
+            spacing: 20,
+            runSpacing: 8,
+            children: [
+              _ChuGiaiDuong(mau: AppColors.income, ten: 'Thu'),
+              _ChuGiaiDuong(mau: AppColors.expense, ten: 'Chi'),
+            ],
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            height: 180,
+            child: LineChart(
+              LineChartData(
+                minX: 0,
+                maxX: (chuoi.length - 1).toDouble(),
+                minY: 0,
+                maxY: maxY,
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  horizontalInterval: buoc,
+                  getDrawingHorizontalLine: (_) => const FlLine(
+                    color: AppColors.outlineVariant,
+                    strokeWidth: 1,
+                  ),
+                ),
+                borderData: FlBorderData(show: false),
+                titlesData: FlTitlesData(
+                  topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      interval: buoc,
+                      // Số tiền rút gọn nên "123.5M" là chuỗi dài nhất; font
+                      // của bộ test rộng gấp đôi ngoài đời nên chừa rộng tay.
+                      reservedSize: 46,
+                      getTitlesWidget: (v, meta) => Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: Text(
+                          rutGon(v),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.right,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      interval: 1,
+                      reservedSize: 26,
+                      getTitlesWidget: (v, meta) {
+                        final i = v.round();
+                        // fl_chart hỏi cả những mốc ngoài dải khi vẽ lưới.
+                        if (i < 0 || i >= chuoi.length) {
+                          return const SizedBox.shrink();
+                        }
+                        // Tháng đang xem là điểm cuối — in đậm để biết mình
+                        // đang đứng ở đâu trên trục.
+                        final cuoi = i == chuoi.length - 1;
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            'T${chuoi[i].thang}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight:
+                                  cuoi ? FontWeight.bold : FontWeight.normal,
+                              color: cuoi
+                                  ? AppColors.primary
+                                  : AppColors.textSecondary,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                lineTouchData: LineTouchData(
+                  touchTooltipData: LineTouchTooltipData(
+                    getTooltipColor: (_) => AppColors.primary,
+                    // Bắt buộc: mặc định fl_chart đặt hộp giữa điểm chạm và
+                    // để nó tràn ra ngoài. Chạm điểm cuối (tháng đang xem,
+                    // sát mép phải) là hộp lòi khỏi màn hình và mất chữ —
+                    // thấy trên máy ảo 411dp, không test nào bắt được vì
+                    // tooltip vẽ trong canvas của thư viện.
+                    fitInsideHorizontally: true,
+                    fitInsideVertically: true,
+                    getTooltipItems: (spots) => [
+                      for (final s in spots)
+                        LineTooltipItem(
+                          '${s.barIndex == 0 ? 'Thu' : 'Chi'} ${rutGon(s.y)}',
+                          const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                lineBarsData: [
+                  _duong(
+                    [
+                      for (var i = 0; i < chuoi.length; i++)
+                        FlSpot(i.toDouble(), chuoi[i].tong.thu),
+                    ],
+                    AppColors.income,
+                  ),
+                  _duong(
+                    [
+                      for (var i = 0; i < chuoi.length; i++)
+                        FlSpot(i.toDouble(), chuoi[i].tong.chi),
+                    ],
+                    AppColors.expense,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Thứ tự trong `lineBarsData` **là** thứ tự `barIndex` của tooltip: đường
+  /// thu phải đứng trước để nhãn "Thu"/"Chi" không đổi chỗ cho nhau.
+  static LineChartBarData _duong(List<FlSpot> diem, Color mau) =>
+      LineChartBarData(
+        spots: diem,
+        isCurved: true,
+        curveSmoothness: 0.25,
+        // Đường cong nội suy có thể vọt xuống dưới 0 giữa hai điểm, vẽ ra một
+        // tháng "âm tiền" không có thật.
+        preventCurveOverShooting: true,
+        color: mau,
+        barWidth: 3,
+        isStrokeCapRound: true,
+        dotData: FlDotData(
+          show: true,
+          getDotPainter: (spot, percent, bar, index) => FlDotCirclePainter(
+            radius: 3.5,
+            color: mau,
+            strokeWidth: 2,
+            strokeColor: Colors.white,
+          ),
+        ),
+        belowBarData: BarAreaData(
+          show: true,
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              mau.withValues(alpha: 0.25),
+              mau.withValues(alpha: 0.0),
+            ],
+          ),
+        ),
+      );
+}
+
+class _ChuGiaiDuong extends StatelessWidget {
+  final Color mau;
+  final String ten;
+  const _ChuGiaiDuong({required this.mau, required this.ten});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: mau, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          ten,
+          style: const TextStyle(
+            fontSize: 12,
+            color: AppColors.textSecondary,
+          ),
+        ),
+      ],
     );
   }
 }

@@ -222,6 +222,35 @@ void main() {
     });
   });
 
+  group('chuỗi xu hướng', () {
+    test('sáu điểm, cũ nhất trước, mang số thật của cả tháng ở xa', () async {
+      await giaoDich(id: 't_xa', ngay: DateTime(2026, 4, 10), soTien: 800000);
+      await giaoDich(id: 't_nay', ngay: DateTime(2026, 9, 3), soTien: 300000);
+
+      final tk = await lanDau();
+
+      expect(tk.chuoi.length, 6);
+      expect((tk.chuoi.first.nam, tk.chuoi.first.thang), (2026, 4));
+      expect((tk.chuoi.last.nam, tk.chuoi.last.thang), (2026, 9));
+      expect(tk.chuoi.first.tong.chi, 800000,
+          reason: 'Chuỗi nhìn xa hơn hai tháng mà `tong`/`tongTruoc` cần. Lọc '
+              '`txs` theo tháng đang xem trước khi dựng chuỗi là điểm đầu '
+              'rỗng trong khi dữ liệu vẫn nằm nguyên trong CSDL — biểu đồ '
+              'phẳng lì mà không lỗi nào báo.');
+      expect(tk.chuoi.last.tong.chi, 300000);
+    });
+
+    test('KHÔNG lấy giao dịch của tài khoản khác vào chuỗi', () async {
+      await giaoDich(
+          id: 't1', ngay: DateTime(2026, 5, 5), soTien: 999999, idaccount: 2);
+      final tk = await lanDau();
+      expect(tk.chuoi.every((d) => d.tong.chi == 0 && d.tong.thu == 0), isTrue,
+          reason: 'Cách ly theo idaccount phải đúng ở MỌI đường ra số, không '
+              'riêng thẻ tổng. Biểu đồ là chỗ dễ quên nhất vì nó đọc lại cùng '
+              'danh sách giao dịch.');
+    });
+  });
+
   group('stream', () {
     test('ghi thêm giao dịch thì phát lại số mới', () async {
       final ds = <ThongKeThang>[];
