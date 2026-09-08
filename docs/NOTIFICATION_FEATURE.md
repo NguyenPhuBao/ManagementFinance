@@ -15,7 +15,7 @@
 > trong isolate nền (mục 4.8). Số bẫy ở mục 7 nay là **mười một** — bẫy **7.11**
 > mới nói về `AndroidManifest.xml`, vùng mù của mọi công cụ trong dự án này.
 >
-> **Mức nền hiện tại:** `flutter test` **1402/1402 pass**, `flutter analyze`
+> **Mức nền hiện tại:** `flutter test` **1431/1431 pass**, `flutter analyze`
 > **25 issue, KHÔNG error**, `flutter build web` xanh (dựng lại 2026-09-07).
 
 Đọc file này trước khi làm tiếp bất cứ việc gì thuộc thông báo. Mục 6 ghi lại
@@ -1045,6 +1045,7 @@ xấu xí, nhưng đó là lưới duy nhất giăng được ở vùng này.
 | Tệp | Canh gì |
 |---|---|
 | `test/core/notification/notification_rules_test.dart` | Ngưỡng ngân sách; `dedupeKey` không đổi khi `spent` tăng trong cùng bậc nhưng đổi khi sang kỳ; hoá đơn so theo NGÀY; `silenceBefore` |
+| `test/core/notification/badge_updater_test.dart` | Badge mang đúng số chưa đọc và lọc theo `idaccount`; **huỷ CHỌN LỌC** trên khay — hàng đã đọc bị huỷ, hàng chưa đọc giữ nguyên, và **thông báo mà bảng không biết thì không bị đụng tới** (nhắc ghi chép, lịch nổ lúc app đóng); **KHÔNG BAO GIỜ gọi `cancelAll()`** vì nó cuốn theo cả lịch đang chờ; `start()` luỹ đẳng, `stop()` cắt đứt hẳn |
 | `test/core/notification/notification_scanner_test.dart` | Ngưỡng số dư ví thấp đi được **từ kho tuỳ chọn tới bộ luật** (và không đặt thì im) — cùng phép canh đã có cho số ngày nhắc hoá đơn; quét lại không đẻ hàng; **`start()` quét ngay không chờ sự kiện đồng bộ nào**; **`resumed` kích hoạt quét còn `paused`/`detached` thì không**; `stop()` cắt đứt hẳn **cả hai nhánh** và gọi `cancelAll()`; `start()` hai lần không nhân đôi listener nào; bắn ra hệ điều hành đúng một lần cho mỗi hàng mới, và lỗi nền tảng không làm hỏng lượt quét |
 | `test/core/notification/app_lifecycle_watcher_test.dart` | Watcher thật sự được đăng ký vào `WidgetsBinding` (không thì stream im lặng mãi, **không lỗi không log**); stream là **broadcast** nên nghe lại được sau khi huỷ; `dispose()` gỡ observer và luỹ đẳng |
 | `test/core/notification/os/os_scheduled_id_test.dart` | Bốn giá trị **golden** của `md5(dedupeKey)` — khoá cứng để việc đổi thuật toán trở nên ồn ào; dải 31 bit; phân tán trên 1000 khoá |

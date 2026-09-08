@@ -34,7 +34,7 @@
 > Thư mục cha có 20 tài liệu, phần lớn đã xong hoặc chỉ để tham khảo lịch sử.
 > Thư mục này giữ **cả tài liệu còn việc lẫn tài liệu vừa đóng** — giữ cả hai để
 > đội backend thấy được cái gì đã xong mà không phải dò lại. Sau đợt 2026-09-07
-> chỉ còn **năm** mục thật sự phải làm; danh sách ngắn ấy ở **mục 2**, đọc nó
+> chỉ còn **sáu** mục thật sự phải làm; danh sách ngắn ấy ở **mục 2**, đọc nó
 > trước bảng phân nhóm bên dưới. Không cần mở gì ở thư mục cha ngoài ba tệp bối
 > cảnh liệt kê ở mục 4.
 
@@ -108,6 +108,12 @@ cả đợt migration). Phần còn lại, xếp theo mức thiệt hại:
 5. **`Pay_status = 'Skipped'`** (việc E của tài liệu hoá đơn) — không cần
    migration; client chờ **một câu xác nhận** rồi mới mở tính năng "bỏ qua
    kỳ này".
+6. **`bill.Anchor_day`** (`BILL_ANCHOR_DAY.md`, thêm 2026-09-08) — một cột
+   `SMALLINT` nullable. Client đã làm xong phần của mình ở DB v18 nhưng cột
+   đang là **cục bộ**, nên hoá đơn đi qua đường đồng bộ mất ngày gốc và chuỗi
+   tạo trên máy khác vẫn có thể tụt dần. ⚠️ Ràng buộc **duy nhất**: server
+   không bao giờ được tự tính lại cột này từ `Due_date` — nó là *ý định của
+   người dùng*, không phải giá trị suy ra được.
 
 > ⚠️ **Trước khi chạy migration ở môi trường mới:** lấy bản vá xoá mềm ở
 > nhánh `patch2`. Bản `)2_can_lam_all_migrations.sql` trên `main` sẽ roll back
