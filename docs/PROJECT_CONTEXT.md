@@ -1023,7 +1023,7 @@ Tóm tắt:
 trên route không có `WalletCubit`, màn đỏ do `DropdownButton` có `value` ngoài
 `items`, và dấu hiển thị sai của khoản rút. Bộ test xanh cả ba lần.
 
-### 📊 Trang Phân tích (2026-09-08) — **lát 2a xong, số thật thay số cứng**
+### 📊 Trang Phân tích (2026-09-08) — **lát 2a và 2b xong**
 
 **Đọc `docs/ANALYTICS_FEATURE.md` trước khi làm tiếp.** Tóm tắt:
 
@@ -1037,11 +1037,17 @@ trên route không có `WalletCubit`, màn đỏ do `DropdownButton` có `value`
   `isExpired`; danh mục không có ngân sách thì nhãn đổi thành "% tổng chi".
 - "Số dư còn lại" = thu − chi của tháng, âm hiện âm; tháng trước bằng 0 → "Không
   có dữ liệu", không "tăng ∞%"; donut top‑4 + "Khác"; tháng rỗng nói rỗng.
-- **Không cần thư viện biểu đồ** cho lát này (donut là `SweepGradient` sẵn có);
-  chọn thư viện lùi sang 2b, một lần cho cả biểu đồ tiến độ mục tiêu.
-- 4 tệp test, 49 test; ba bản sai có chủ ý (biên đóng, bỏ lọc hết hạn, bỏ huỷ
-  đăng ký) mỗi cái làm đúng một test đỏ. Test 411dp bắt được tên danh mục tràn
-  **521px** ở bản Stitch chép sang.
+- **Lát 2b (2026-09-08):** khối **"Xu hướng 6 tháng"** — hai đường thu/chi vẽ
+  bằng **`fl_chart` ghim `1.2.0`**, đặt giữa khối tổng và donut. Chuỗi do
+  `chuoiTheoThang()` dựng ở tầng thuần, **cũ nhất trước**, tháng rỗng giữ chỗ
+  với số 0. Donut **vẫn** là `SweepGradient`, không viết lại. Khối này **lệch
+  bản Stitch có chủ ý** — không màn nào trong 35 màn có biểu đồ đường/cột.
+- 4 tệp test, **61 test**; **sáu** bản sai có chủ ý (biên đóng, bỏ lọc hết hạn,
+  bỏ huỷ đăng ký, `watchAll` thay truy vấn kể cả xoá mềm, đảo thứ tự chuỗi,
+  nhãn trục không lấy từ dữ liệu) mỗi cái làm đúng một test đỏ. Test 411dp bắt
+  được tên danh mục tràn **521px** ở bản Stitch chép sang.
+- ⚠️ Tầng vẽ của biểu đồ **không test được** — tooltip từng tràn khỏi màn hình
+  và chỉ ảnh chụp máy ảo mới thấy (bẫy 4.9 `ANALYTICS_FEATURE.md`).
 
 ### 🔔 Hệ thống thông báo (2026-09-04) — **cả bảy lát xong**
 
@@ -1108,7 +1114,7 @@ Hoá đơn tạo từ app trước đây **không bao giờ lên tới backend**
   đó là tạo vòng lặp đẩy vô tận.
 
 ### ❌ Chưa làm / Tiếp theo
-- Analytics: lát **2a xong 2026-09-08** (trang Phân tích số thật, 49 test); còn **2b** biểu đồ theo thời gian (chỗ chọn thư viện biểu đồ) và **2c** trang Xuất báo cáo vẫn số cứng — `docs/ANALYTICS_FEATURE.md` mục 7
+- Analytics: lát **2a và 2b xong 2026-09-08** (số thật, rồi biểu đồ xu hướng 6 tháng bằng `fl_chart`; 61 test); còn **2c** trang Xuất báo cáo vẫn số cứng — `docs/ANALYTICS_FEATURE.md` mục 7
 - AI chat integration hoàn chỉnh
 - Casso bank integration
 - Build production / deploy

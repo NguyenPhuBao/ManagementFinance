@@ -698,7 +698,7 @@ Trạng thái hiện tại (đã chạy thật, không phải đếm tay, đo 20
 ### Vùng chưa có test nào
 
 - ~~`lib/core/api/interceptors/auth_interceptor.dart`~~ — nay đã có `test/core/api/auth_interceptor_test.dart` (3 test, phiên 2026-09-03).
-- ~~3 feature không có test~~ → nay còn **hai**: **profile**, **ai_chat** (đo lại 2026-09-08 bằng `find`/`flutter test`, con số cũ ở đây đã lạc hậu nhiều đợt). **analytics** có 4 tệp / 49 test từ 2026-09-08 (lát 2a — `docs/ANALYTICS_FEATURE.md`); **budget** 24 tệp; **home** 2 tệp; **notification** 20 tệp trong `test/core/notification/` + `test/features/notification/` (cộng 3 tệp liên quan nằm chỗ khác).
+- ~~3 feature không có test~~ → nay còn **hai**: **profile**, **ai_chat** (đo lại 2026-09-08 bằng `find`/`flutter test`, con số cũ ở đây đã lạc hậu nhiều đợt). **analytics** có 4 tệp / **61** test từ 2026-09-08 (lát 2a **và 2b** — `docs/ANALYTICS_FEATURE.md`); **budget** 24 tệp; **home** 2 tệp; **notification** 20 tệp trong `test/core/notification/` + `test/features/notification/` (cộng 3 tệp liên quan nằm chỗ khác).
 
 ---
 
