@@ -8,10 +8,12 @@ import '../../../../core/sync/sync_engine.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../widgets/home_action_buttons.dart';
 import '../widgets/home_budget_card.dart';
+import '../widgets/home_goal_card.dart';
 import '../../../budget/data/models/budget_entity.dart';
 import '../../../budget/data/repositories/budget_repository.dart';
+import '../../../goal/data/models/goal_entity.dart';
+import '../../../goal/data/repositories/goal_repository.dart';
 import '../../../../shared/widgets/notification_bell.dart';
-import '../../../notification/presentation/widgets/notification_panel.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../transaction/data/models/transaction_entity.dart';
 import '../../../transaction/domain/transaction_lookup.dart';
@@ -48,9 +50,18 @@ class HomePage extends StatelessWidget {
               _buildHeroSection(context),
               const SizedBox(height: 32),
 
-              // Panel thông báo — ẩn hoàn toàn khi chưa có mục nào, nên không
-              // cần bọc thêm điều kiện ở đây.
-              NotificationPanel(idaccount: currentUserId),
+              // Khối thông báo đã được GỠ khỏi trang chủ ngày 2026-09-08 theo
+              // yêu cầu người dùng: thông báo chỉ xem khi bấm vào chức năng đó,
+              // tức cái chuông ở `_buildHeader` (dẫn tới `/notifications`).
+              //
+              // ⚠️ Đây là chỗ **đi lệch thiết kế Stitch** màn Home, nơi khối
+              // thông báo nằm ngay đầu trang. Ghi ra để lần sau đối chiếu với
+              // Stitch thì biết đây là lệch có chủ ý, không phải bỏ sót.
+              //
+              // `NotificationPanel` vẫn còn trong mã nguồn dù nay không nơi nào
+              // dựng nó: hai trang thông báo trích dẫn nó làm **mẫu** cho lối
+              // "trang không tự đi hỏi `AuthBloc`", và test của nó canh đúng
+              // lối ấy.
 
               // Reactive Total Asset Balance from SQLite Wallets
               Builder(
@@ -158,6 +169,8 @@ class HomePage extends StatelessWidget {
                 },
               ),
 
+              const SizedBox(height: 32),
+              _buildGoalSection(context, currentUserId),
               const SizedBox(height: 32),
               _buildBudgetSection(context, currentUserId),
               const SizedBox(height: 32),
@@ -681,6 +694,29 @@ class HomePage extends StatelessWidget {
   /// Thẻ ngân sách — dữ liệu thật qua `watchBudgets` (phát lại cả khi có giao
   /// dịch mới), thay placeholder cứng tồn tại tới 2026-09-06. Bấm thẻ nhảy
   /// sang tab Ngân sách bằng `go`: trang chủ và tab ấy cùng nằm trong shell.
+  /// Khối "Mục tiêu tiết kiệm" — cùng khuôn với [_buildBudgetSection].
+  ///
+  /// Trước 2026-09-08 mục tiêu chỉ vào được qua **một dòng trong drawer**,
+  /// trong khi ngân sách đã có hẳn một khối ở đây.
+  ///
+  /// Chạm vào đi tới `/goals` bằng **`push`**, không phải `go`: `/goals` nằm
+  /// NGOÀI `StatefulShellRoute`, và `go` từ trong shell sẽ thay cả stack thay
+  /// vì chồng lên — người dùng mất nút quay lại. Cùng bẫy 7.8
+  /// `NOTIFICATION_FEATURE.md`, chỗ `_buildBudgetSection` dùng `go` vì
+  /// `/budget` thì ngược lại, nó **thuộc** shell.
+  Widget _buildGoalSection(BuildContext context, int? idaccount) {
+    final stream = idaccount != null
+        ? sl<GoalRepository>().watchGoals(idaccount)
+        : Stream<List<GoalEntity>>.value(const []);
+    return StreamBuilder<List<GoalEntity>>(
+      stream: stream,
+      builder: (_, snapshot) => HomeGoalCard(
+        goals: snapshot.data ?? const [],
+        onTap: () => context.push('/goals'),
+      ),
+    );
+  }
+
   Widget _buildBudgetSection(BuildContext context, int? idaccount) {
     final stream = idaccount != null
         ? sl<BudgetRepository>().watchBudgets(idaccount)

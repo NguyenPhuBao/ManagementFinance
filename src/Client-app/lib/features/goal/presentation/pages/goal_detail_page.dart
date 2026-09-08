@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -33,12 +35,25 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
   /// mọi mục tiêu dùng chung ví ấy), mà `build` thì chạy lại rất nhiều lần.
   String? _canhBaoVi;
 
+  /// Đăng ký với dòng dữ liệu mục tiêu — **bẫy 4.5 đã đóng 2026-09-08**.
+  ///
+  /// Bản trước chỉ gọi `getGoalById` một lần trong `initState` rồi tự giữ
+  /// `_goal` trong `State`. Đồng bộ kéo về một thay đổi của chính mục tiêu
+  /// **đang mở** thì màn hình vẫn hiện số cũ — không lỗi, không log, người
+  /// dùng chỉ phát hiện khi thoát ra vào lại.
+  StreamSubscription<List<GoalEntity>>? _dongDuLieu;
 
   @override
   void initState() {
     super.initState();
     _goalRepository = sl<GoalRepository>();
     _loadGoal();
+  }
+
+  @override
+  void dispose() {
+    _dongDuLieu?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadGoal() async {
@@ -52,6 +67,49 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
         _isLoading = false;
       });
     }
+    if (goal != null) _dangKyDongDuLieu(goal.idaccount);
+  }
+
+  /// Nghe `watchGoals` của **cả tài khoản**, không phải riêng mục tiêu này.
+  ///
+  /// Hai lý do, và cần cả hai:
+  ///
+  /// 1. `GoalRepository` không có `watchGoalById`, và thêm một hàm mới chỉ để
+  ///    một trang dùng thì đắt hơn phần nó tiết kiệm được.
+  /// 2. `_canhBaoVi` cộng dồn **mọi** mục tiêu trỏ vào cùng ví, nên một mục
+  ///    tiêu *khác* nạp tiền cũng làm câu cảnh báo ở đây đổi. Nghe hẹp lại
+  ///    đúng một hàng là bỏ sót vế ấy.
+  ///
+  /// Mã tài khoản lấy từ **chính mục tiêu vừa đọc**, không từ `AuthBloc`: hàm
+  /// này chạy sau một `await` nên `context` có thể đã tháo, và đọc phiên ở đây
+  /// là mở lại đúng cửa mà G17 vừa đóng.
+  void _dangKyDongDuLieu(int idaccount) {
+    if (_dongDuLieu != null) return;
+    _dongDuLieu = _goalRepository.watchGoals(idaccount).listen((danhSach) async {
+      if (!mounted) return;
+
+      // `firstWhereOrNull` viết tay: hàng có thể đã biến mất khỏi danh sách vì
+      // vừa bị xoá mềm ở máy khác. Khi ấy giữ nguyên những gì đang hiện —
+      // `orElse: () => throw` là màn đỏ ngay giữa một lượt đồng bộ nền.
+      GoalEntity? moi;
+      for (final g in danhSach) {
+        if (g.id == widget.id) {
+          moi = g;
+          break;
+        }
+      }
+      if (moi == null) return;
+
+      final canhBao = await _tinhCanhBaoVi(moi);
+      if (!mounted) return;
+      setState(() {
+        _goal = moi;
+        _canhBaoVi = canhBao;
+        // KHÔNG đụng `_isLoading`. Đường này là cập nhật nền, không phải một
+        // lần tải do người dùng gây ra; bật cờ tải ở đây làm cả trang nháy về
+        // vòng quay mỗi lần đồng bộ chạy xong.
+      });
+    });
   }
 
   /// So số dư THẬT của ví tích lũy với TỔNG của mọi mục tiêu trỏ vào ví ấy.

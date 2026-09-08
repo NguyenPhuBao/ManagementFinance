@@ -18,7 +18,7 @@ hơn (và không nên "sửa"), cái gì còn thiếu, xếp hạng kèm lý do.
 
 | Việc | Đọc |
 |---|---|
-| Bất cứ việc gì | Mục 3 (quyết định + lý do) và mục 4 (**bảy cái bẫy**, một đã đóng — xem 4.6) |
+| Bất cứ việc gì | Mục 3 (quyết định + lý do) và mục 4 (**bảy cái bẫy**, hai đã đóng — 4.5 và 4.6) |
 | Đụng vào nạp/rút tiền | Mục 3.1 → 3.4, và `goal_repository_impl.dart` — mọi chú thích ở đó là bản rút gọn của tài liệu này |
 | Đụng vào lịch sử tích luỹ | **Bẫy 4.2** trước đã. Suy chiều tiền từ vị trí ví là sai, đã vấp |
 | Đụng vào đồng bộ | **Bẫy 4.3**, rồi `sync_payload_contract_test.dart` |
@@ -242,7 +242,8 @@ chấm** trên thẻ (không mở menu nào — mọi thao tác nằm ở trang 
 **"Xem tất cả"** ở lịch sử tích luỹ (danh sách vốn đã hiện toàn bộ, nên nó vừa
 không làm gì vừa ngụ ý sai rằng có phần bị giấu).
 
-Trang chi tiết **không nghe dòng dữ liệu** (bẫy 4.5) nên phải tự `_loadGoal()`
+Trang chi tiết trước đây **không nghe dòng dữ liệu** (bẫy 4.5, đóng 2026-09-08)
+nên phải tự `_loadGoal()`
 sau khi trang sửa đóng. Việc đó dựng lại dòng lịch sử tích luỹ, và
 `StreamBuilder` quay về trạng thái chưa có dữ liệu — trộn ca ấy với "rỗng thật"
 làm lịch sử **nháy thành "Chưa có khoản tích lũy nào"** rồi hiện lại, trông y
@@ -700,9 +701,10 @@ tiền, không mất bản ghi, không kẹt hàng đợi.
 
 ## 4. Bảy cái bẫy
 
-> Sáu cái còn hiệu lực. **4.6 đã đóng ngày 2026-09-07** (G17) và được giữ
-> lại vì cái bẫy bên dưới nó vẫn là bẫy thật cho mọi trang **khác** đọc theo
-> tài khoản.
+> **Năm cái còn hiệu lực.** 4.6 đóng 2026-09-07 (G17), 4.5 đóng 2026-09-08.
+> Cả hai được giữ lại: cái đầu vì bẫy bên dưới nó vẫn thật với mọi trang
+> **khác** đọc theo tài khoản, cái sau vì lý lẽ của bản sửa là thứ đáng đọc
+> trước khi ai đó viết một trang chi tiết mới.
 
 ### 4.1 `walletTransfer` **không có khoá ngoại**
 
@@ -750,12 +752,29 @@ chủ bị mục tiêu khác nhận vơ. **Đừng bỏ nó.**
 
 Yêu cầu backend: `docs/superpowers/backend/DA-XONG/2026-09-05-backend-transaction-goal-id.md`.
 
-### 4.5 `GoalDetailPage` **bỏ qua** cubit và không nghe dòng dữ liệu
+### 4.5 ~~`GoalDetailPage` **bỏ qua** cubit và không nghe dòng dữ liệu~~ — ✅ ĐÃ SỬA
 
-Nó lấy `sl<GoalRepository>()` trong `initState` và tự giữ `_goal` trong `State`,
-tự gọi `_loadGoal()` sau mỗi thao tác. Đồng bộ kéo về một thay đổi của mục tiêu
-đang mở thì màn hình vẫn hiện số cũ. Trang danh sách thì ngược lại — nó nghe
-`watchGoals` nên tự cập nhật.
+> ✅ **Đóng 2026-09-08.** Trang nay đăng ký `watchGoals` trong `_loadGoal()` và
+> huỷ đăng ký ở `dispose()`. Ba test canh ở
+> `test/features/goal/presentation/pages/goal_detail_live_test.dart`.
+
+Bản cũ lấy `sl<GoalRepository>()` trong `initState`, gọi `getGoalById` đúng
+**một lần** rồi tự giữ `_goal` trong `State`. Đồng bộ kéo về một thay đổi của
+mục tiêu đang mở thì màn hình vẫn hiện số cũ — không lỗi, không log, người dùng
+chỉ phát hiện khi thoát ra vào lại. Bán kính rộng thêm khi `priority` đi qua
+đường đồng bộ, và đó là lý do nó được sửa cùng đợt.
+
+**Ba quyết định của bản sửa:**
+
+| | Làm gì | Vì sao |
+|---|---|---|
+| Phạm vi nghe | `watchGoals` của **cả tài khoản**, không riêng mục tiêu này | `_canhBaoVi` cộng dồn **mọi** mục tiêu trỏ vào cùng ví, nên một mục tiêu *khác* nạp tiền cũng làm câu cảnh báo ở đây đổi |
+| Nguồn mã tài khoản | Lấy từ **chính mục tiêu vừa đọc** | Hàm chạy sau một `await` nên `context` có thể đã tháo; đọc `AuthBloc` ở đó là mở lại đúng cửa mà G17 vừa đóng |
+| `_isLoading` | **Không đụng** ở đường stream | Đây là cập nhật nền, không phải một lần tải do người dùng gây ra; bật cờ tải làm cả trang nháy về vòng quay mỗi lần đồng bộ xong |
+
+⚠️ Hàng có thể **biến mất** khỏi danh sách vì vừa bị xoá mềm ở máy khác. Khi ấy
+giữ nguyên những gì đang hiện — `firstWhere(orElse: () => throw)` là màn đỏ ngay
+giữa một lượt đồng bộ nền.
 
 ### 4.6 ~~Danh sách rỗng ở lần vào **đầu tiên** sau khi khởi động nguội~~ — ✅ ĐÃ SỬA
 
@@ -987,7 +1006,7 @@ bỏ qua chứ đừng chuyển một phần, phải có trần mỗi lượt, v
 |---|---|---|
 | ✅ | ~~**Ưu tiên mục tiêu**~~ | **Xong 2026-09-08** — schema v19, mục **3.22**. Kiểm trọn vòng trên máy ảo, `Priority` 100/200 đã lên PostgreSQL |
 | ✅ | ~~**Cột mốc 25/50/75%**~~ | **Xong 2026-09-08** — `goalMilestone`, mục **3.21** |
-| 1 | **Đưa mục tiêu lên màn hình chính** | Hiện chỉ vào được qua một mục trong drawer của `home_page` — một tính năng làm kỹ tới mức này mà bị chôn ba lớp |
+| ✅ | ~~**Đưa mục tiêu lên màn hình chính**~~ | **Xong 2026-09-08** — `HomeGoalCard`, chọn mục tiêu **ưu tiên nhất**. Cùng lượt **gỡ khối thông báo** khỏi trang chủ theo yêu cầu người dùng |
 | 2 | **Làm tròn số lẻ** | Giá trị cao và hợp văn hoá "nuôi heo đất", nhưng là chỗ **thứ ba** app tự chuyển tiền — xem cảnh báo ở 10.2 |
 | 2 | **Chuyển giữa hai mục tiêu** | Một hàm gọi `withdraw` + `deposit` trong cùng khối nguyên tử |
 | 3 | **Chia thu nhập theo ưu tiên** | Cần ưu tiên xong trước |

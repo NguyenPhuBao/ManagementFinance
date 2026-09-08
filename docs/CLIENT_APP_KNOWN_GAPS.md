@@ -641,8 +641,8 @@ không có gì trên màn hình nói ra điều đó.
 bị bỏ sót — nó đã được cân nhắc, và lý lẽ nằm ở
 `docs/superpowers/backend/DA-XONG/2026-09-05-backend-goal-priority.md` mục 5.
 
-> ⚠️ Đừng nhầm với một khoảng trống **khác** cũng thuộc vùng mục tiêu và cũng
-> đang mở: `GoalDetailPage` **không nghe dòng dữ liệu** (bẫy 4.5
+> ⚠️ Đừng nhầm với một lỗi **khác** cũng thuộc vùng mục tiêu, nay **đã sửa**
+> (2026-09-08): `GoalDetailPage` không nghe dòng dữ liệu (bẫy 4.5
 > `GOAL_FEATURE.md`), nên đồng bộ kéo về một thay đổi của mục tiêu **đang mở**
 > thì màn hình vẫn hiện số cũ. Bán kính của nó vừa rộng ra vì `priority` nay
 > cũng đi qua đường đồng bộ. Đó là lỗi **sửa được ở client**, không phải một
