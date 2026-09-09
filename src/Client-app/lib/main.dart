@@ -18,7 +18,7 @@ import 'core/notification/os/os_notifier.dart';
 import 'core/realtime/realtime_channel.dart';
 import 'core/realtime/realtime_wakeup.dart';
 import 'core/sync/sync_engine.dart';
-import 'shared/widgets/connection_banner.dart';
+import 'shared/widgets/app_toast.dart';
 import 'shared/theme/app_theme.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 
@@ -143,9 +143,9 @@ class _FlowMoneyAppState extends State<FlowMoneyApp> {
         theme: AppTheme.lightTheme,
         routerConfig: _router,
         debugShowCheckedModeBanner: false,
-        // Dải báo kết nối bọc NGOÀI router nên phủ mọi trang mà không trang
-        // nào phải biết đến nó.
-        builder: (context, child) => ConnectionBanner(
+        // Toast bọc NGOÀI router nên phủ mọi trang mà không trang nào phải
+        // biết đến nó.
+        builder: (context, child) => AppToast(
           connectionEvents: sl<ConnectionMonitor>().events,
           pushResults: sl<SyncEngine>().pushResultStream,
           child: child ?? const SizedBox.shrink(),
