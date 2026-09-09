@@ -42,11 +42,15 @@ export const CATEGORY_DEFAULTS = {
 export const USER_STATUS = {
   ACTIVE: 'active',
   INACTIVE: 'inactive',
+  PENDING_DELETE: 'pendingdelete',
+  DELETED: 'deleted',
 };
 
 export const USER_STATUS_LABELS = {
-  active: 'Hoạt động',
-  inactive: 'Ngừng hoạt động',
+  active: 'Đang hoạt động',
+  inactive: 'Vô hiệu hóa',
+  pendingdelete: 'Chờ xóa',
+  deleted: 'Đã xóa',
 };
 
 // Time filters for dashboard
