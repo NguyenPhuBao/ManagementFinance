@@ -643,7 +643,7 @@ src/Backend/
   4. **Giờ im lặng, gộp thông báo Android, hoàn tác vuốt xoá** (`8c91c32`, schema không đổi). Giờ im lặng **tắt sẵn**, lưu bằng số phút từ nửa đêm nên khoảng vắt qua nửa đêm đúng; chỉ chặn bước bắn ra ngoài. Gộp: `khoaNhom` + bản tóm tắt id **âm** (`osScheduledId` luôn trả 0..2³¹−1), **chỉ Android**. `NotificationDao.khoiPhuc()` + SnackBar hoàn tác — cần thiết vì hàng đã xoá vẫn giữ chỗ chống trùng nên vuốt nhầm là mất vĩnh viễn
   5. **Công tắc quyền nói dối** (`0a4d3c2`). Quyền bị thu hồi trong Cài đặt máy thì công tắc vẫn sáng. `OsNotifier.daCoQuyen()` là câu **hỏi**, khác câu **xin**; hiển thị là `osBat && _coQuyenOs` nhưng `osBat` trong kho **giữ nguyên**, nên cấp lại quyền là chạy lại ngay
   6. **Một dòng nhật ký cho mỗi lượt quét** (`63a043e`) — trước đó vòng quét im lặng hoàn toàn, không phân biệt được "đã quét, không có gì" với "không quét lần nào"
-  > Đã kiểm trên `emulator-5554`: quét chạy trong chế độ máy bay, chạm thông báo mở đúng màn cho cả route trong shell (`go`) lẫn ngoài shell (`push`), hoàn tác đưa hàng trở lại, công tắc quyền đúng cả hai chiều. **Việc còn lại phần lớn là thuần client** — bảng `AppNotifications` cục bộ và không nằm trong `SyncEntityType`, nên chỉ có cảnh báo giao dịch ngân hàng/OCR (kênh Socket.io chưa xác thực) và thông báo bảo mật là thật sự chờ backend
+  > Đã kiểm trên `emulator-5554`: quét chạy trong chế độ máy bay, chạm thông báo mở đúng màn cho cả route trong shell (`go`) lẫn ngoài shell (`push`), hoàn tác đưa hàng trở lại, công tắc quyền đúng cả hai chiều. **Việc còn lại phần lớn là thuần client** — bảng `AppNotifications` cục bộ và không nằm trong `SyncEntityType`, nên chỉ có cảnh báo giao dịch ngân hàng/OCR và thông báo bảo mật là thật sự chờ backend. ⚠️ Câu trong ngoặc ở bản trước — "kênh Socket.io chưa xác thực" — **đã lạc hậu**: backend sửa 2026-09-07, client nối 2026-09-09
 - **Thông báo: ba việc treo cuối cùng nay đã nhìn tận mắt** (2026-09-07, chỉ kiểm và cập nhật tài liệu, không đổi mã). (1) **`khoaNhom`** — bằng chứng quyết định là bảng nhóm→tóm tắt của hệ điều hành trỏ vào bản tóm tắt **id −1 của app**, tức nhóm do app cầm chứ không phải `AUTOGROUP_SUMMARY` của Android 16; `mSoundNotificationKey` trỏ về thông báo thật nên `GroupAlertBehavior.children` chạy đúng. (2) **Nổ khi app đóng hoàn toàn** — tiến trình bị `am kill`, `pidof` rỗng, rồi `ActivityManager: Start proc … for broadcast {…ScheduledNotificationReceiver}` với **0 dòng `I/flutter`**. (3) **Giờ im lặng** có đối chứng: cùng luật `walletNegative`, bật thì 2 hàng vào app / **0** thông báo hệ điều hành, tắt thì 1 hàng / **1** thông báo. Ba cái bẫy mới ghi vào `NOTIFICATION_FEATURE.md` mục 8: lịch dùng `inexactAllowWhileIdle` có **cửa sổ trễ 1 giờ** nên nhảy đồng hồ tới đúng giờ hẹn thì **không nổ**; `am force-stop` huỷ sạch lịch nên phải dùng `am kill`; và trước khi nhảy đồng hồ phải đối chiếu mốc ấy với hạn hoá đơn + kỳ trích mục tiêu, vì `scan()` chạy ngay khi app quay lại tiền cảnh (tổng số dư trước/sau đều 8.890.081đ)
 - **Thông báo: cảnh báo số dư ví thấp, và ví nợ ra khỏi cảnh báo ví** (2026-09-07, `80fa0cb` + `2a88dc6`, **schema không đổi**). Trước bản này app chỉ báo khi ví đã **âm** — tức là đã muộn. Loại thứ 14 `walletLowBalance`, nhóm `system`, khoá theo ngày như `walletNeg`. Ngưỡng là `NotificationPrefs.nguongSoDuThap` (đơn vị đồng, **cục bộ**, không đồng bộ), và **`0` vừa là ngưỡng vừa là công tắc**: một cặp công tắc-cộng-số biểu diễn được trạng thái vô nghĩa "bật nhưng ngưỡng bằng 0", còn một con số thì không. Mặc định `0` để mọi bản ghi có sẵn — vốn đều thiếu trường này — rơi về **tắt**, cùng lý lẽ với giờ im lặng. Giao diện là **danh sách chọn sẵn** (Tắt · 50k · 100k · 200k · 500k · 1tr · 2tr) chứ không phải ô nhập tiền, theo đúng lý lẽ đã ghi sẵn ở `_hangSoNgay`: gõ tay mở đường cho những giá trị mà `NotificationPrefs` lặng lẽ quy về `0`, và người dùng chỉ thấy con số của mình biến mất. **Đổi hành vi có chủ ý:** ví loại `debt` nay không sinh cảnh báo ví nào cả, kể cả `walletNegative` — ví nợ mang số dư âm là đúng bản chất của nó, trước đây nó bị nhắc lại mỗi ngày cho tới khi trả hết nợ. Thứ tự loại trừ trong `_walletCandidates` là thứ giữ cho mỗi ví ra **một** thông báo: số dư âm cũng thoả điều kiện "dưới ngưỡng". Đã xem trên `emulator-5554` ở 411dp
 - **Kiểm lại danh sách việc thông báo còn lại** (2026-09-07). Một mục hoá ra **đã xong từ trước**: "ngưỡng cảnh báo ngân sách chỉnh được" — giao diện có sẵn ở `budget_form.dart:320-346`, nạp/lưu/kiểm hợp lệ đủ, vào được từ `/budget/rules` cả khi tạo lẫn khi sửa, và có `budget_form_threshold_zero_test.dart`. Con số "cứng 70/90%" mà danh sách nhắc tới là **thang màu** `_cautionAt`/`_criticalAt` ở `budget_visuals.dart`, do người dùng chốt 2026-09-04 và cố ý toàn cục — hai việc khác nhau bị gộp nhầm. ⚠️ **Đính chính 2026-09-07 (chiều):** bản trước của dòng này viết rằng khoá chống trùng dùng `budgetHealthOf().name` là "một chỗ hỏng chưa ai ghi" — **sai cả hai vế**. Việc leo lên một bậc mới sinh thêm thông báo là **thiết kế có chủ ý** và có test canh (`notification_rules_test.dart`, ca *"ĐỔI khi leo lên một bậc mới"*), với lý lẽ *"mỗi bậc được nhắc đúng một lần trong kỳ; không phân biệt bậc thì người dùng chỉ được báo ở mốc 70% rồi im lặng cho tới lúc vượt hẳn"*. Vế "không test nào phủ ngưỡng dưới 70%" cũng sai: chính ca test ấy dùng `nguongPhanTram: 60` (dòng 131–134). Bài học: mã sản phẩm cho biết code **làm gì**, chỉ test mới cho biết nó **định làm gì** — đọc mã test trước khi kết luận là lỗi
@@ -842,9 +842,9 @@ G15, G17, G21. Bản trước của mục này ghi ngày 04/09 và **sai bốn t
 **Không còn lỗi client nào sửa được mà không phải chờ ai.** Việc tiếp theo là
 một lựa chọn, không phải một hàng đợi.
 
-**Thứ tự đã duyệt tối 2026-09-08 — ĐÃ XONG HẾT, TRỪ MỘT.** Việc kế tiếp là
-**nối Socket.io phía client**, và nó là mục duy nhất còn lại trong danh sách
-này (người dùng hỏi "nên làm theo thứ tự nào", đã chốt — đừng bàn lại từ đầu):
+**Thứ tự đã duyệt tối 2026-09-08 — NAY ĐÃ XONG HẾT** (mục cuối, Socket.io,
+đóng ngày 2026-09-09). Danh sách giữ lại để người sau thấy đường đã đi, đừng
+bàn lại từ đầu:
 ✅ bộ lọc tay/tự động của lịch sử mục tiêu →
 ✅ **2a** Phân tích số thật → ✅ **2b** biểu đồ theo thời gian (**thư viện đã
 chọn: `fl_chart`, ghim `1.2.0`** — mục 3.11 `ANALYTICS_FEATURE.md`) →
@@ -852,7 +852,43 @@ chọn: `fl_chart`, ghim `1.2.0`** — mục 3.11 `ANALYTICS_FEATURE.md`) →
 **3.26** `GOAL_FEATURE.md`) → ✅ Tổng kết tuần (2026-09-09; bốn câu hỏi mở của
 spec đã chốt với người dùng, bàn giao ở mục **5d** `NOTIFICATION_FEATURE.md`)
 → ✅ số liệu tổng hợp mục tiêu (mục **3.27** `GOAL_FEATURE.md`) →
-**nối Socket.io phía client** (cuối, không thêm gì người dùng thấy).
+✅ **nối Socket.io phía client** (2026-09-09; xem khối ngay dưới).
+
+> ### ✅ Socket.io phía client — xong 2026-09-09
+>
+> `lib/core/realtime/` giữ **một** kết nối tới backend, xác thực JWT ngay ở bắt
+> tay, tự nối lại theo giãn cách **2 → 5 → 15 → 30 → 60 giây**, và **nối lại
+> ngay** khi có mạng trở lại. Vòng đời bám đúng `NotificationScanner`: bốn chỗ
+> trong `AuthBloc`, hai vào hai ra.
+>
+> **Ba điều dễ vấp nhất**, đọc trước khi đụng vào:
+>
+> 1. **Payload là hộp đen — client không đọc trường nào.** Chỉ dùng *tên sự
+>    kiện*. Vì `bank_transaction.incoming` được backend phát từ hai chỗ với hai
+>    hình dạng khác nhau, và trường `type` mang hai nghĩa. Có test cấm chữ số
+>    xuất hiện trong lời nhắn để canh chừng ai đó bắt đầu đọc payload.
+> 2. **`io.io()` cache `Manager` theo `scheme://host:port` và dùng lại options
+>    của lần dựng đầu** — nên phải `enableForceNew()`, nếu không token mới bị bỏ
+>    qua **im lặng**. Cùng lý do ấy, cơ chế nối lại của thư viện bị **tắt**:
+>    mỗi lần thử phải đọc lại token từ kho.
+> 3. **`AppConstants.baseUrl` có hậu tố `/api`, socket thì không** — dùng
+>    `socketBaseUrlFrom()`, đừng cắt chuỗi tại chỗ.
+>
+> **Phạm vi thật hẹp hơn tài liệu kế hoạch mô tả:** chỉ có kênh + đánh thức
+> đồng bộ + toast. Không có màn "Giao dịch chờ duyệt" (G26
+> `CLIENT_APP_KNOWN_GAPS.md`), không badge đếm. Ba sự kiện backend đang phát
+> đều thuộc tính năng client chưa có, nên **giá trị thật của kênh nằm ở việc
+> backend bắc `sync.completed` ra socket** — mục 7 của
+> `docs/superpowers/backend/CAN-LAM/README.md`.
+>
+> Cùng đợt, dải báo kín ngang đổi thành **toast nổi ở đáy**
+> (`shared/widgets/app_toast.dart`, thay `connection_banner.dart`), theo màn
+> Stitch *"Thông báo nổi (toast) - FlowMoney"*. Thứ tự ưu tiên nay là **đồng bộ
+> > realtime > kết nối**, và **một nguồn luôn được cập nhật chính nó** — vế
+> cuối là thứ giữ cho "Đã kết nối lại" thay thế được "Không có kết nối".
+>
+> Thiết kế đầy đủ:
+> `docs/superpowers/specs/2026-09-09-socket-io-realtime-channel-design.md`.
 
 > ⚠️ Mục 5 của spec Tổng kết tuần có **ba** câu hỏi, không phải năm — đếm bằng
 > máy 2026-09-09. Con số "5" từng đi qua ba tài liệu tóm tắt vì đếm theo trí
@@ -877,8 +913,12 @@ backend. Lý do từng bước: mục 10.5 `docs/GOAL_FEATURE.md` và mục 7
    - **#8 Thông báo trên web** — ưu tiên thấp có chủ ý; cần Service Worker và
      luồng xin quyền riêng của trình duyệt, mà web chỉ dùng để trình bày.
 
-   Ngoài ra hai việc **chờ backend**: cảnh báo giao dịch ngân hàng/OCR (kênh
-   Socket.io chưa xác thực, `io.emit` toàn cục) và thông báo bảo mật.
+   Ngoài ra hai việc **chờ backend**: cảnh báo giao dịch ngân hàng/OCR và
+   thông báo bảo mật. ⚠️ **Lý do đã đổi, đừng chép câu cũ:** kênh Socket.io
+   nay **đã xác thực** (backend sửa 2026-09-07) và client **đã nối**
+   (2026-09-09) — ba sự kiện ấy tới nơi và hiện thành toast. Chỗ còn thiếu là
+   tính năng phía client để *làm gì đó* với chúng (G26), chứ không phải kênh
+   truyền.
 
    ⚠️ Danh sách đầy đủ kèm ghi chú kỹ thuật nằm ở
    `docs/superpowers/plans/2026-09-06-thong-bao-viec-con-lai.md` — thư mục ấy

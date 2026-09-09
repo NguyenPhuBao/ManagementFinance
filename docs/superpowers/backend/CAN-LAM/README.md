@@ -1,6 +1,6 @@
 # Backend — CHỈ ĐỌC THƯ MỤC NÀY
 
-**Cập nhật:** 2026-09-08 (thêm mục 6 — `BILL_ANCHOR_DAY.md`; banner đợt 2026-09-07 bên dưới giữ nguyên vì nó nói về đợt ấy)
+**Cập nhật:** 2026-09-09 (thêm mục 7 và 8 — hai tệp `SOCKET_*`; banner đợt 2026-09-07 bên dưới giữ nguyên vì nó nói về đợt ấy)
 
 > ## ✅ Đợt backend 2026-09-07 — client đã kiểm chứng bằng mã, không tin báo cáo
 >
@@ -35,7 +35,8 @@
 > dòng cũ ở đây ghi "20 tài liệu" và đã lạc hậu từ lúc dọn sang `DA-XONG/`).
 > Thư mục này giữ **cả tài liệu còn việc lẫn tài liệu vừa đóng** — giữ cả hai để
 > đội backend thấy được cái gì đã xong mà không phải dò lại. Sau đợt 2026-09-07
-> chỉ còn **sáu** mục thật sự phải làm; danh sách ngắn ấy ở **mục 2**, đọc nó
+> chỉ còn **tám** mục thật sự phải làm (đếm lại 2026-09-09 sau khi client nối
+Socket.io); danh sách ngắn ấy ở **mục 2**, đọc nó
 > trước bảng phân nhóm bên dưới. Không cần mở gì ở thư mục cha ngoài ba tệp bối
 > cảnh liệt kê ở mục 4.
 
@@ -116,6 +117,20 @@ cả đợt migration). Phần còn lại, xếp theo mức thiệt hại:
    tạo trên máy khác vẫn có thể tụt dần. ⚠️ Ràng buộc **duy nhất**: server
    không bao giờ được tự tính lại cột này từ `Due_date` — nó là *ý định của
    người dùng*, không phải giá trị suy ra được.
+
+7. **Bắc `sync.completed` ra socket** ([SOCKET_SYNC_COMPLETED.md](./SOCKET_SYNC_COMPLETED.md),
+   thêm 2026-09-09) — một listener cộng một hàm phát, không migration. Sự kiện
+   **đã được publish** vào EventBus ở `sync.service.js:194` nhưng không ai bắc
+   ra socket. Đây là mục duy nhất trong danh sách này biến một hạng mục đã xong
+   về hạ tầng thành thứ người dùng cảm nhận được: chênh lệch giữa **15 phút** và
+   **tức thì** cho thay đổi từ máy khác.
+8. **Thống nhất payload `bank_transaction.incoming`**
+   ([SOCKET_BANK_EVENT_PAYLOAD.md](./SOCKET_BANK_EVENT_PAYLOAD.md), thêm
+   2026-09-09) — sự kiện này phát ra **hai hình dạng khác nhau** tuỳ đường
+   (`bank.worker.js` snake_case, `notification.service.js` camelCase), và
+   trường `type` mang **hai nghĩa** khác nhau. Không chặn client hôm nay vì
+   client cố ý không đọc trường nào, nhưng nó sẽ hỏng **im lặng** với bất kỳ ai
+   bắt đầu đọc payload.
 
 > ⚠️ **Trước khi chạy migration ở môi trường mới:** lấy bản vá xoá mềm ở
 > nhánh `patch2`. Bản `)2_can_lam_all_migrations.sql` trên `main` sẽ roll back

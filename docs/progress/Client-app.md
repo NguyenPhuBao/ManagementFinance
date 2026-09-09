@@ -10,11 +10,14 @@ Tài liệu này tổng hợp toàn bộ các nhiệm vụ, hạng mục kỹ th
 >
 > Ba chỗ đã đối chiếu bằng mã trong đợt soát này:
 >
-> 1. **Mục 4 (Socket.io) — CHƯA LÀM, và đó là mục lớn nhất còn lại ở đây.**
->    Backend đã có Socket.io (`src/Backend/core/socket.js`), nhưng client
->    **không có gói `socket_io_client`** trong `pubspec.yaml`; không dòng nào
->    trong `lib/` kết nối. Server cũng chưa phát sự kiện tên
->    `bank_transaction.incoming`.
+> 1. **Mục 4 và 8 (Socket.io) — ĐÃ LÀM XONG ngày 2026-09-09.** Client nay có
+>    `socket_io_client`, giữ một kết nối xác thực bằng JWT
+>    (`lib/core/realtime/`), tự nối lại theo giãn cách, và mọi sự kiện nhận
+>    được đều đánh thức đồng bộ ngay cộng hiện một toast. Đã kiểm trên máy ảo:
+>    bắt tay thành công với `account_10`. **Phạm vi thật hẹp hơn tài liệu này
+>    mô tả** — không có màn "Giao dịch chờ duyệt", không có badge đếm; xem
+>    `docs/superpowers/specs/2026-09-09-socket-io-realtime-channel-design.md`
+>    và mục "Giao dịch chờ duyệt" trong `docs/CLIENT_APP_KNOWN_GAPS.md`.
 > 2. **Mục 7 bước 2 SAI:** không có endpoint `GET /api/sync/default-categories`
 >    (`src/Backend/api/` không có `category.routes.js`, và mục B6 đã **bãi bỏ**
 >    — xem `PROGRESS-BACKEND.md`). Việc *tạo bản sao danh mục mặc định cho từng
@@ -266,9 +269,19 @@ Client-app duy trì kết nối Socket.io liên tục với Backend để nhận
   | Tên Sự Kiện | Payload Nhận Về | Hành Động Phía Client-App |
   |---|---|---|
   | **`bank_transaction.incoming`** | `{ idaccount, amount, bank_name, description }` | Hiển thị Banner/Push giao dịch ngân hàng mới về, tăng Badge đếm tại Tab Giao dịch chờ duyệt. |
-  | **`notification.new`** | `{ idaccount, title, content, type }` | Hiển thị thông báo chung hệ thống / cập nhật chuông thông báo. |
   | **`ocr.completed`** | `{ idaccount, status, total_amount, ... }` | Nhận thông báo tiến trình bóc tách OCR ngầm đã xong $\rightarrow$ Hiển thị thông báo hoàn tất bóc tách. |
   | **`ocr.duplicate`** | `{ idaccount, error, existing_transaction }` | Nhận cảnh báo realtime phát hiện hóa đơn/biên lai đã tồn tại. |
+
+> ⚠️ **`notification.new` KHÔNG TỒN TẠI** — đã đo bằng mã ngày 2026-09-09.
+> Bảng này trước đó liệt kê nó như một sự kiện có thật, nhưng không dòng nào
+> trong `src/Backend` phát nó. Backend chỉ phát **ba** sự kiện tới người dùng
+> thường, đúng ba dòng còn lại ở trên, cộng `audit_activity` chỉ gửi tới
+> `admin_room` (dành cho Admin-web, không phải app).
+>
+> ⚠️ **Hình dạng payload trong bảng này chỉ đúng một nửa.**
+> `bank_transaction.incoming` được phát từ hai chỗ với hai bộ tên trường khác
+> nhau — xem `docs/superpowers/backend/CAN-LAM/SOCKET_BANK_EVENT_PAYLOAD.md`.
+> Chính vì thế client **cố ý không đọc trường nào**; nó chỉ dùng tên sự kiện.
 
 ---
 

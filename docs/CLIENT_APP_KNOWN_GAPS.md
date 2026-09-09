@@ -656,6 +656,37 @@ bị bỏ sót — nó đã được cân nhắc, và lý lẽ nằm ở
 
 ---
 
+### G26 — Không có màn "Giao dịch chờ duyệt" cho giao dịch ngân hàng về · ✅ CỐ Ý (2026-09-09)
+
+Khi nối Socket.io, client bắt được sự kiện `bank_transaction.incoming` và hiện
+một toast. Nhưng nó **không** có chỗ nào để người dùng *duyệt* giao dịch ấy —
+gán danh mục, xác nhận hoặc từ chối.
+
+Backend đã có sẵn cả ba endpoint (`api/bank.routes.js`):
+
+- `GET  /api/bank/pending-transactions`
+- `POST /api/bank/confirm-transaction`
+- `POST /api/bank/reject-transaction`
+
+**Vì sao hoãn:** đây là **một tính năng riêng**, không phải phần còn thiếu của
+việc nối socket. Nó kéo theo cả một luồng liên kết ngân hàng (`register-account`,
+`link-url`, WebView của SePay), một màn danh sách, và một khái niệm mới trong
+giao diện — "giao dịch chưa được duyệt" — mà SQLite cục bộ hiện **không phân
+biệt được**: cột `status` và `provider` có trong bảng nhưng **không nằm trong
+hợp đồng đồng bộ theo chiều nào cả** (quy tắc 4 `CLAUDE.md`), nên một giao dịch
+`Pending` kéo về qua `/sync/pull` trông y hệt một giao dịch bình thường.
+
+**Bán kính nếu làm:** thêm `status`/`provider` vào hợp đồng đồng bộ (và do đó
+vào `sync_payload_contract_test.dart`), một màn hình mới, và một badge đếm ở
+tab Giao dịch. ⚠️ **Phải lên Stitch trước** — đây là màn hình mới, chưa có
+thiết kế nào.
+
+**Không chặn gì đang chạy.** Kênh realtime vẫn có ích mà không cần nó: mọi sự
+kiện đều đánh thức đồng bộ, nên giao dịch ngân hàng vẫn hiện ra trong danh sách
+sau vài giây thay vì sau 15 phút.
+
+---
+
 ## 2. Vấn đề đã biết nhưng thuộc về Backend
 
 Xem hai tài liệu riêng trong `docs/superpowers/backend/`:
