@@ -720,7 +720,11 @@ src/Backend/
   > **Chỗ neo là quyết định lớn nhất:** chuỗi dựng **đi lùi** từ `currentAmount` chứ không cộng xuôi từ 0, vì lịch sử **không** bảo đảm cộng lại bằng số tiền đang giữ (mục 3.4 — tiến độ cố ý không tự hoà giải). Đo thật: "MuaXe" của tài khoản 10 có **11 khoản, tổng 2.201.000 đ**, trong khi mục tiêu giữ **1.101.000 đ**. Cộng xuôi là điểm cuối biểu đồ cãi nhau với vòng phần trăm ngay phía trên. Điểm gốc âm sinh ra từ phép đi lùi bị **kẹp ở 0** khi đem vẽ.
   > **Một dòng dữ liệu nuôi cả biểu đồ lẫn danh sách:** `StreamBuilder` của `watchGoalTransactions` được dời lên bọc cả hai khối. Dòng thứ hai là chạy cùng câu truy vấn hai lần và mở cửa cho hai bản dữ liệu lệch nhau trên một màn hình.
   > **Đã kiểm trên `emulator-5554`, và máy thật bắt được HAI lỗi bộ test không thấy** — cả hai nay là bẫy **4.17** và **4.18** `ANALYTICS_FEATURE.md`: (1) `fl_chart` mặc định **không cắt** vùng vẽ (`clipData` là `FlClipData.none()`) nên điểm âm kéo đường xanh tràn khỏi thẻ, đè lên trang — không exception, không log, `takeException()` vẫn xanh; (2) fl_chart vẽ nhãn trục ở **cả hai biên** cộng thêm mốc theo `interval`, nên "08/27" in đè "09/27". Kiểm lại sau khi sửa: hai mục tiêu, **0 pixel vàng** (sọc cảnh báo tràn).
-- **Test: 1740/1740 pass** (~190 giây) — đều đã `git add -f` (kiểm 2026-09-09)
+- **Mục tiêu: ba con số tổng hợp và chuỗi kỳ liên tiếp** (2026-09-09, **schema không đổi**). Thẻ ba ô ngay dưới biểu đồ: số lần nạp, trung bình mỗi lần, và chuỗi kỳ nạp liên tiếp kèm biểu tượng ngọn lửa. Đếm từ lịch sử đã có — không cột mới, không truy vấn mới. Lý do ở mục **3.27** `docs/GOAL_FEATURE.md`. 20 test mới.
+  > **Kỳ cắt bằng `mocThuN` neo vào `startDate`** — chính phép bước kỳ mà bộ trích tự động dùng, cùng khuôn với `advancePeriodFrom` bên ngân sách và `anchorDay` bên hoá đơn. Bản thứ tư của cùng một luật là bản duy nhất không có test năm nhuận. **Kỳ hiện tại chưa nạp không phá chuỗi** (nó đang dở); kỳ rỗng ở giữa thì cắt thật. Khoản rút bị loại khỏi cả ba con số và không phá chuỗi.
+  > ⚠️ **Bài học kiểm thử đắt hơn tính năng:** hai test "năm nhuận" và "tháng ngắn" viết lần đầu **không canh gì cả** — thay `mocThuN` bằng phép cộng tháng thô vẫn xanh, vì bộ ngày tôi chọn cho ra cùng một chuỗi ở cả hai cách cắt. Chỉ **bản sai có chủ ý** mới lộ ra. Cùng loại với bẫy 4.15 `ANALYTICS_FEATURE.md`; chi tiết ở cuối mục 3.27 `GOAL_FEATURE.md`.
+  > **Đã kiểm trên `emulator-5554`**: "MuaXe" hiện *11 lần nạp · 200.091 đ · 1 tháng liên tiếp* (khớp 2.201.000 / 11 đo được ở bảng lịch sử), "MuaDT" hiện *1 · 700.000 đ · 1*; **0 pixel vàng** ở cả hai màn.
+- **Test: 1760/1760 pass** (~190 giây) — đều đã `git add -f` (kiểm 2026-09-09)
 
 ### 🔄 Việc còn dang dở
 
@@ -833,16 +837,17 @@ G15, G17, G21. Bản trước của mục này ghi ngày 04/09 và **sai bốn t
 **Không còn lỗi client nào sửa được mà không phải chờ ai.** Việc tiếp theo là
 một lựa chọn, không phải một hàng đợi.
 
-**Thứ tự đã duyệt tối 2026-09-08** (✅ cả 2c **và** biểu đồ tiến độ mục tiêu
-xong 2026-09-09 — việc kế tiếp là Tổng kết tuần, hoặc số liệu tổng hợp mục tiêu
-nếu muốn một hạng mục ngắn) (người dùng hỏi "nên làm theo thứ tự nào",
+**Thứ tự đã duyệt tối 2026-09-08** (✅ cả 2c, biểu đồ tiến độ mục tiêu **và** số
+liệu tổng hợp đều xong 2026-09-09 — việc kế tiếp là **Tổng kết tuần**, nhưng
+spec của nó còn **5 câu hỏi mở** ở mục 5 phải chốt trước khi viết mã; sau đó là
+nối Socket.io) (người dùng hỏi "nên làm theo thứ tự nào",
 đã chốt — đừng bàn lại từ đầu): ✅ bộ lọc tay/tự động của lịch sử mục tiêu →
 ✅ **2a** Phân tích số thật → ✅ **2b** biểu đồ theo thời gian (**thư viện đã
 chọn: `fl_chart`, ghim `1.2.0`** — mục 3.11 `ANALYTICS_FEATURE.md`) → **2c**
 trang Xuất báo cáo → ✅ biểu đồ tiến độ mục tiêu theo thời gian (mục **3.26**
 `GOAL_FEATURE.md`) → Tổng kết tuần (spec có
-sẵn, còn **5 câu hỏi mở** ở mục 5) → số liệu tổng hợp mục tiêu (nhỏ, chen giữa
-được) → nối Socket.io phía
+sẵn, còn **5 câu hỏi mở** ở mục 5) → ✅ số liệu tổng hợp mục tiêu (mục **3.27**
+`GOAL_FEATURE.md`) → nối Socket.io phía
 client (cuối, không thêm gì người dùng thấy). **Round-up cố ý để ngoài** — chỗ
 thứ ba app tự chuyển tiền trong khi chỗ thứ hai (`bill.Auto_pay`) còn treo
 backend. Lý do từng bước: mục 10.5 `docs/GOAL_FEATURE.md` và mục 7

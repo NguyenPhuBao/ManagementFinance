@@ -19,6 +19,7 @@ import '../widgets/goal_config_card.dart';
 import '../widgets/goal_history_sheet.dart';
 import '../widgets/goal_progress.dart';
 import '../widgets/goal_progress_chart.dart';
+import '../widgets/goal_stats_card.dart';
 import '../widgets/nhan_tu_dong.dart';
 
 class GoalDetailPage extends StatefulWidget {
@@ -1224,6 +1225,10 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
             // từng khoản. Khối tự biến mất khi chưa có khoản nào.
             if (!dangTai) ...[
               GoalProgressChart(goal: _goal!, khoan: _khoanLichSu),
+              if (_khoanLichSu.isNotEmpty) const SizedBox(height: 12),
+              // Thẻ ba con số tóm tắt đúng chuỗi mà biểu đồ vừa vẽ ra, nên nó
+              // đứng ngay dưới chứ không phải một chỗ khác trên trang.
+              GoalStatsCard(goal: _goal!, khoan: _khoanLichSu),
               if (_khoanLichSu.isNotEmpty) const SizedBox(height: 32),
             ],
             // Nút "Xem tất cả" từng bị GỠ ngày 2026-09-06 vì nó có

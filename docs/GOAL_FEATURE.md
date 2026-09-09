@@ -26,7 +26,7 @@ hơn (và không nên "sửa"), cái gì còn thiếu, xếp hạng kèm lý do.
 | Muốn biết nên làm gì tiếp | Mục **10** — đối chiếu với app thị trường, kèm bảng xếp hạng |
 | Đụng vào đồng bộ | **Bẫy 4.3**, rồi `sync_payload_contract_test.dart` |
 | Đụng vào tiến độ / phần trăm | Mục 3.6 — chỉ có **một** định nghĩa và nó nằm trên `GoalEntity` |
-| Đụng vào biểu đồ tiến độ | Mục **3.26**, rồi bẫy **4.17** và **4.18** `ANALYTICS_FEATURE.md` (fl_chart không cắt vùng vẽ; nhãn trục chồng nhau) — cả hai chỉ lộ trên máy thật |
+| Đụng vào biểu đồ tiến độ | Mục **3.26** (và **3.27** cho thẻ ba con số ngay dưới nó), rồi bẫy **4.17** và **4.18** `ANALYTICS_FEATURE.md` (fl_chart không cắt vùng vẽ; nhãn trục chồng nhau) — cả hai chỉ lộ trên máy thật |
 
 ---
 
@@ -950,6 +950,51 @@ không nhồi thêm. Thiết kế nằm trên Stitch, màn *"Chi tiết mục ti
 
 ---
 
+### 3.27 Ba con số tổng hợp: chuỗi đếm **kỳ**, và kỳ cắt bằng `mocThuN`
+
+Thẻ dưới biểu đồ có ba ô: **số lần nạp**, **trung bình mỗi lần**, và **chuỗi kỳ
+liên tiếp**. Cả ba đọc từ lịch sử đã có — không cột mới, không truy vấn mới,
+không đụng backend.
+
+**Cả ba loại khoản rút ra từ đầu.** Chúng nói về thói quen *bỏ tiền vào*; đếm cả
+lần rút là trộn hai chiều tiền vào một con số, và "trung bình mỗi lần" trên một
+danh sách toàn khoản rút là phép chia cho 0. Không còn khoản nạp nào thì **giấu
+cả thẻ** thay vì hiện "0 lần · 0 đ".
+
+**Kỳ cắt bằng `mocThuN` neo vào `startDate`** — chính phép bước kỳ mà bộ trích
+tự động dùng (mục 3.12), và cùng khuôn với `advancePeriodFrom` bên ngân sách lẫn
+`anchorDay` bên hoá đơn. Dựng bản thứ tư ở đây là bốn luật lệch nhau cho cùng
+một câu hỏi *"kỳ này từ ngày nào tới ngày nào"*, và bản mới nhất luôn là bản
+chưa có test năm nhuận.
+
+**Kỳ hiện tại chưa nạp thì KHÔNG phá chuỗi.** Nó đang dở, chưa hết hạn để nói là
+đứt — phép đếm lùi một kỳ rồi mới bắt đầu. Không có luật này thì mỗi đầu kỳ chuỗi
+của mọi người tụt về 0 và con số hết nghĩa ngay ngày đầu tiên người dùng nhìn nó.
+Kỳ rỗng ở **giữa** thì cắt thật: đó là điều duy nhất chữ "liên tiếp" hứa.
+
+**Khoản rút không phá chuỗi.** Rút một lần rồi vẫn nạp đều thì thói quen ấy không
+đứt. **Khoản ghi trước mốc gốc** không thuộc kỳ nào (không có kỳ số âm) nhưng vẫn
+là một lần nạp thật — nó vào hai ô kia, không vào chuỗi.
+
+**`startDate` null thì giấu riêng ô chuỗi**, hai ô kia vẫn hiện — cùng lối với
+đường kế hoạch của biểu đồ (mục 3.26). Chu kỳ trống hoặc lạ quy về **tháng**,
+đúng lựa chọn của `mocKeTiep`, và nhãn (`tenDonViKy`) phải nói cùng đơn vị mà
+phép đếm đã cắt. Mục tiêu trải quá **5000 kỳ** (dữ liệu hỏng: mốc gốc năm 1970 +
+chu kỳ ngày) trả `null` chứ không kẹp — một con số tính trên cửa sổ bị cắt cụt
+trông vẫn như thật. Ngọn lửa chỉ hiện khi chuỗi **lớn hơn 0**: gắn nó vào số 0 là
+chúc mừng người dùng vì đã bỏ dở.
+
+> ⚠️ **Bài học kiểm thử, đắt hơn tính năng.** Hai test "năm nhuận" và "tháng
+> ngắn" viết lần đầu **không canh gì cả**: thay `mocThuN` bằng phép cộng tháng
+> thô `DateTime(y, m + n, d)` vẫn xanh, vì với bộ ngày tôi chọn thì hai cách cắt
+> kỳ ra **cùng một** chuỗi. Chỉ bản sai có chủ ý mới lộ ra. Phải chọn ngày nằm
+> đúng chỗ hai cách đọc tách nhau — với mốc gốc 31/01 thì đó là khoản ghi
+> **01/03**: cắt đúng thì nó thuộc kỳ 2, cộng thô thì nó vẫn nằm trong kỳ 1 (vì
+> `DateTime(2024, 2, 31)` không ném lỗi, Dart chuẩn hoá thành 02/03). Cùng loại
+> lỗi với bẫy **4.15** `ANALYTICS_FEATURE.md`.
+
+---
+
 ## 4. Bảy cái bẫy
 
 > **Năm cái còn hiệu lực.** 4.6 đóng 2026-09-07 (G17), 4.5 đóng 2026-09-08.
@@ -1262,9 +1307,9 @@ bỏ qua chứ đừng chuyển một phần, phải có trần mỗi lượt, v
   trang chỉ có vòng phần trăm và năm dòng lịch sử. ⚠️ Mục này **không** nằm
   trong bảng khảo sát bên trên — nó là đề xuất của phiên 2026-09-08 và người
   dùng đã duyệt thứ tự; ghi ở đây để nó không chỉ sống trong chat.
-- **Số liệu tổng hợp và chuỗi liên tiếp.** Số lần nạp, trung bình mỗi lần, số
-  kỳ nạp liên tiếp — đếm được ngay từ `_khoanLichSu` đang có, không cần dữ liệu
-  mới. Cùng nguồn gốc với mục trên.
+- **Số liệu tổng hợp và chuỗi liên tiếp.** ✅ *Xong 2026-09-09* — mục **3.27**.
+  Thẻ ba ô dưới biểu đồ: số lần nạp, trung bình mỗi lần, chuỗi kỳ liên tiếp.
+  Đếm từ `_khoanLichSu` đang có, không cần dữ liệu mới.
 - **Khoá mục tiêu.** Monzo *locked pots*: khoá theo thời hạn, nạp vào được nhưng
   không rút ra. FlowMoney cho rút tự do (chỉ chặn bằng hai trần ở mục 3.5).
 - **Nhiều kiểu mục tiêu.** YNAB có **ba** kiểu: góp đều mỗi kỳ (không có đích),
@@ -1286,7 +1331,7 @@ bỏ qua chứ đừng chuyển một phần, phải có trần mỗi lượt, v
 | ✅ | ~~**Nhãn "(tự động)" cho khoản trích tự động**~~ | **Xong 2026-09-08** — hậu tố ghi chú, không cột mới, không đụng backend. Mục **3.25** |
 | ✅ | ~~**Bộ lọc "tay / tự động"**~~ | **Xong 2026-09-08** — `LocNguon`, dải chip thứ ba chỉ hiện khi có khoản tự động. Mục **3.24** |
 | ✅ | ~~**Biểu đồ tiến độ theo thời gian**~~ | **Xong 2026-09-09** — mục **3.26**. Kiểm trọn vòng trên máy ảo; hai lỗi chỉ máy thật mới thấy đã ghi ở bẫy **4.17** và **4.18** `ANALYTICS_FEATURE.md` |
-| 1 | **Số liệu tổng hợp, chuỗi liên tiếp** | Nhỏ, độc lập, đếm từ lịch sử đang có — việc chen giữa khi cần một hạng mục ngắn |
+| ✅ | ~~**Số liệu tổng hợp, chuỗi liên tiếp**~~ | **Xong 2026-09-09** — mục **3.27**. Kiểm trên máy ảo với cả hai mục tiêu |
 | 2 | **Làm tròn số lẻ** | Giá trị cao và hợp văn hoá "nuôi heo đất", nhưng là chỗ **thứ ba** app tự chuyển tiền — xem cảnh báo ở 10.2 |
 | 2 | **Chuyển giữa hai mục tiêu** | Một hàm gọi `withdraw` + `deposit` trong cùng khối nguyên tử |
 | 3 | **Chia thu nhập theo ưu tiên** | Cần ưu tiên xong trước |
