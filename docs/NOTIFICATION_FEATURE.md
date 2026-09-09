@@ -67,7 +67,7 @@ uống"*, *"Nhắc nhở: Hóa đơn tiền điện sắp đến hạn"*, *"Ti�
 | **Đồng bộ** | **Không** đồng bộ giữa thiết bị. Bảng cục bộ, **không** thêm vào `SyncEntityType`, **không** chạm `sync_payload_contract_test.dart`. |
 | **Phạm vi** | Bốn nhóm: hoá đơn, ngân sách, mục tiêu, hệ thống. |
 | **Cài đặt** | Công tắc theo từng nhóm + một công tắc tổng cho thông báo hệ điều hành. |
-| **Backend** | Viết tài liệu yêu cầu, chừa chỗ sẵn. **Không nối socket.** |
+| **Backend** | Viết tài liệu yêu cầu, chừa chỗ sẵn. **Không nối socket** *(đúng cho mảng thông báo; client có nối Socket.io ngày 2026-09-09, nhưng cho việc khác — bảng `AppNotifications` vẫn hoàn toàn cục bộ)*. |
 
 ---
 
@@ -127,10 +127,23 @@ rồi tin rằng mình đã tắt.
 ⚠️ **Đừng nới `luonBao()` ra cả nhóm.** Công tắc mất tác dụng thì người dùng sẽ
 tắt luôn công tắc tổng, và khi ấy họ mất mọi thứ.
 
-Giao dịch ngân hàng và OCR **không** làm được ở client: backend có phát
-ba sự kiện đó qua Socket.io nhưng client chưa có `socket_io_client`, và quan
-trọng hơn là kênh socket đó đang là **bước 1 trong chín bước sửa backend** vì
-handshake không xác thực và mỗi sự kiện còn `io.emit` toàn cục. ✅ **Đã sửa 2026-09-07** — JWT ở handshake, `join_account` gỡ hẳn, không còn `io.emit` nào; nay chỉ còn chờ client dựng luồng OCR/ngân hàng (backend đã đổi nhà cung cấp **Casso → SePay**).
+Giao dịch ngân hàng và OCR **không** làm được ở client *(đúng khi viết đoạn
+này; xem cập nhật bên dưới)*: backend có phát ba sự kiện đó qua Socket.io nhưng
+client chưa có `socket_io_client`, và quan trọng hơn là kênh socket đó đang là
+**bước 1 trong chín bước sửa backend** vì handshake không xác thực và mỗi sự
+kiện còn `io.emit` toàn cục.
+
+✅ **Đã sửa 2026-09-07** — JWT ở handshake, `join_account` gỡ hẳn, không còn
+`io.emit` nào (backend đã đổi nhà cung cấp **Casso → SePay**).
+
+✅ **Client đã nối 2026-09-09.** Ba sự kiện ấy nay **tới nơi** và hiện thành
+toast, và mỗi sự kiện đều đánh thức đồng bộ. Nhưng chúng **không** đi vào bảng
+`AppNotifications` — đó là quyết định có chủ ý, không phải việc còn sót: thông
+báo trong bảng ấy là dữ liệu **suy ra được** từ ngân sách/hoá đơn/mục tiêu trên
+từng máy, còn tin từ server thì không. Chi tiết ở mục 2 của
+`docs/superpowers/specs/2026-09-09-socket-io-realtime-channel-design.md`. Phần
+còn thiếu là **màn duyệt giao dịch** (G26 `CLIENT_APP_KNOWN_GAPS.md`), không
+phải kênh truyền.
 
 ---
 
@@ -154,7 +167,7 @@ lib/core/database/
 lib/core/utils/relative_time.dart    # "10 phút trước" / "Hôm qua"
 
 lib/shared/widgets/notification_bell.dart      # Chuông dùng chung
-lib/shared/widgets/connection_banner.dart      # Dải báo kết nối — mục 9
+lib/shared/widgets/app_toast.dart              # Toast nổi ở đáy — mục 9
 
 lib/features/notification/presentation/
 ├── pages/notification_center_page.dart      # /notifications
@@ -935,8 +948,8 @@ client đọc lại khi pull (`sync_engine.dart:741`). Không có việc gì ph�
 Đính chính được ghi lại trong tài liệu backend thay vì xoá lặng lẽ, vì nhận
 định sai ấy đã đi qua ít nhất hai bản tài liệu.
 
-Ba việc còn lại là thật nhưng **không chặn gì hôm nay**. ⚠️ Cập nhật 2026-09-07: **socket đã được xác thực** (JWT ở handshake, 0 `io.emit`), nên vế "chưa xác thực" trong đoạn dưới đã hết đúng — phần còn thiếu chỉ là client chưa có luồng OCR/ngân hàng. 
-(đã là bước 1 vì lý do khác, và client **cố ý chưa nối socket**), backend không
+Ba việc còn lại là thật nhưng **không chặn gì hôm nay**. ⚠️ Cập nhật 2026-09-07: **socket đã được xác thực** (JWT ở handshake, 0 `io.emit`), nên vế "chưa xác thực" trong đoạn dưới đã hết đúng. ⚠️ Cập nhật 2026-09-09: vế "client cố ý chưa nối socket" **cũng đã hết đúng** — client nối rồi; phần còn thiếu là màn duyệt giao dịch (G26), không phải kênh.
+(đã là bước 1 vì lý do khác), backend không
 có scheduler, queue `send-notification` rỗng cả ba phía — không ai đẩy việc
 vào, worker 0 byte, và `index.js` cũng không nạp worker ấy.
 
@@ -1162,7 +1175,7 @@ lượt RED, vì `expect` ném sớm nên chưa chạm tới bước dọn dẹp
 | `test/core/notification/notification_tap_router_test.dart` | Cold start điều hướng được; **cùng payload đến bằng cả hai đường chỉ điều hướng một lần**, nhưng lần chạm sau vẫn chạy; chưa đăng nhập thì giữ lại và xả sau `AuthSuccess`, chỉ giữ **cái mới nhất**; `stop()` cắt hẳn |
 | `test/core/network/connection_monitor_test.dart` | **Ngưỡng ổn định**: mất mạng chớp nhoáng và chuỗi nhấp nháy đều không sinh sự kiện; đang online lúc khởi động thì không báo "khôi phục" |
 | `test/core/sync/sync_push_result_test.dart` | `pushResultStream` phát số thao tác đã lên; **không phát khi không có gì để đẩy**; server từ chối thì vẫn phát kèm số thất bại |
-| `test/shared/connection_banner_test.dart` | Ba dải và thứ tự ưu tiên giữa chúng; dải không được **đè lên** nội dung màn hình |
+| `test/shared/app_toast_test.dart` | Ba nguồn toast và thứ tự ưu tiên giữa chúng. ⚠️ **Luật bố cục đã ĐẢO NGƯỢC ngày 2026-09-09**: bản dải cũ **không được đè lên** nội dung (phải đẩy trang xuống), toast mới thì **phải đè** và **không được** chạm vào bố cục trang. Lý lẽ cũ — che thanh tiêu đề và nút chuông — chỉ đúng với dải nổi **ở đỉnh**; toast nằm ở **đáy** |
 | `test/features/layout/no_overflow_test.dart` | Ba hàng từng tràn, dựng ở **320/360/411dp** — bắt bằng `tester.takeException()` |
 
 ⚠️ `.gitignore` dòng 77 có `test/` → file test mới bị bỏ qua **âm thầm**. Phải
@@ -1282,7 +1295,7 @@ thì phải biết, và việc đồng bộ sau đó cũng phải biết.
 
 ```
 lib/core/network/connection_monitor.dart     # Ngưỡng ổn định, tách khỏi SyncEngine
-lib/shared/widgets/connection_banner.dart    # Dải, bọc ngoài router
+lib/shared/widgets/app_toast.dart            # Toast nổi ở đáy, bọc ngoài router
 ```
 
 ### Vì sao KHÔNG dùng bảng `AppNotifications`

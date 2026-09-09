@@ -567,6 +567,8 @@ src/Backend/
 | `src/Client-app/lib/core/database/daos/category_dao.dart` | Dedup + repair categories |
 | `src/Client-app/lib/core/database/daos/transaction_dao.dart` | Transaction queries + repair |
 | `src/Client-app/lib/core/sync/sync_payload_normalizer.dart` | Field name mapping |
+| `src/Client-app/lib/core/realtime/realtime_channel.dart` | Kênh thời gian thực: bắt tay JWT, backoff nối lại, nghe cả `onConnectivityChanged` |
+| `src/Client-app/lib/core/realtime/realtime_event.dart` | Ba sự kiện backend phát, và **lý do client không đọc payload** |
 | `src/Backend/modules/sync/sync.repository.js` | Prisma queries cho sync |
 | `src/Backend/modules/sync/sync.service.js` | Business logic sync |
 | `src/Backend/prisma/schema.prisma` | DB schema (Prisma) |
@@ -729,7 +731,7 @@ src/Backend/
   > **Số tuần ISO tự viết** — Dart không có sẵn, và năm ISO khác năm dương lịch ở cả hai chiều (31/12/2025 là 2026-W01, 01/01/2021 là 2020-W53).
   > **Đã kiểm trên `emulator-5554`**: thẻ "TỔNG KẾT TUẦN" mặc định tắt, bật lên hiện đúng hai hàng *Ngày trong tuần: Thứ Hai* và *Giờ nhắc: 08:00*, bộ chọn thứ đủ bảy dòng; **0 pixel vàng**.
 - **Soát tài liệu sau ba hạng mục 2026-09-09** — bắt **chín** chỗ lạc hậu (đếm loại thông báo 14/15 → 16, "bốn nhóm" → năm, "tổng ba nguồn" của trần lịch → bốn, số tệp test notification 20 → 22, và bảng ở mục 3 `NOTIFICATION_FEATURE` **thiếu hẳn hàng `weeklySummary`**), một **mâu thuẫn nội bộ** (`PROJECT_CONTEXT` vừa nói Tổng kết tuần đã xong vừa nói nó là việc kế tiếp), và **một khuyết tật thật**: trung tâm thông báo có năm nhóm nhưng dải chip chỉ có bốn. Hai bẫy mới: **7.12** (lưới canh `nhomCua` không canh chip) và **7.13** (thiếu `dongTrang()` là **treo cả tệp test**, không phải một test đỏ).
-- **Test: 1801/1801 pass** (~190 giây) — đều đã `git add -f` (kiểm 2026-09-09)
+- **Test: 1843/1843 pass** (~200 giây) — đều đã `git add -f` (kiểm lại 2026-09-09 sau khi nối Socket.io; con số 1801 ở đây là mức nền TRƯỚC hạng mục ấy)
 
 ### 🔄 Việc còn dang dở
 
@@ -743,11 +745,13 @@ Xem đầy đủ tại **`docs/CLIENT_APP_KNOWN_GAPS.md`**. Phiên 2026-09-03 đ
 > Hệ quả ít ai biết: **công cụ Grep tôn trọng `.gitignore` nên không nhìn thấy thư mục `test/`**. Muốn dò xem còn ai gọi một hàm sắp xoá thì phải dùng `grep` qua shell, nếu không sẽ thấy thiếu file và xoá nhầm.
 
 Vấn đề thuộc backend. Thư mục `docs/superpowers/backend/` được **chia ba** ngày
-2026-09-07: **`CAN-LAM/`** giữ đúng phần **còn việc** (**sáu** mục — đếm lại 2026-09-09 từ mục 2 của README ấy; dòng này từng ghi "bốn") và README
+2026-09-07: **`CAN-LAM/`** giữ đúng phần **còn việc** (**tám** mục — đếm bằng máy 2026-09-09 từ mục 2 của README ấy, sau khi thêm hai mục Socket.io; dòng này từng ghi "bốn" rồi "sáu") và README
 trong đó là **cửa vào duy nhất**; **`DA-XONG/`** giữ 16 tài liệu **đã đóng**, mở khi
 cần biết *vì sao* lược đồ có hình dạng hôm nay chứ không phải khi tìm việc; thư mục
-cha chỉ còn mục lục và ba tệp bối cảnh (`New_Database.md`,
-`2026-08-10-backend-sync-spec.md`, `PROGRESS-BACKEND.md`).
+cha chỉ còn mục lục và **bốn** tệp bối cảnh (`New_Database.md`,
+`2026-08-10-backend-sync-spec.md`, `PROGRESS-BACKEND.md`,
+`TRANSACTION_NOTE_ENCODING.md`) — đếm bằng máy 2026-09-09; dòng này từng ghi
+"ba" vì viết trước khi tệp thứ tư ra đời.
 
 Bảng dưới giữ **cả** mục đã đóng lẫn mục còn việc, vì nó là nơi duy nhất đọc được
 toàn cảnh một lượt. Muốn biết *phải làm gì tiếp* thì đọc `docs/superpowers/backend/CAN-LAM/README.md` —
@@ -1169,8 +1173,10 @@ trên route không có `WalletCubit`, màn đỏ do `DropdownButton` có `value`
 - **Trang cài đặt** `/settings/notifications`: công tắc tổng + bốn công tắc
   nhóm + giờ nhắc + số ngày nhắc, lưu trong `FlutterSecureStorage` theo từng
   `idaccount`.
-- **Dải báo kết nối** (`ConnectionBanner`) bọc ngoài router qua
-  `MaterialApp.builder`: mất mạng, có mạng lại, và kết quả đồng bộ.
+- **Toast nổi ở đáy** (`AppToast`, trước là `ConnectionBanner`) bọc ngoài
+  router qua `MaterialApp.builder`: mất mạng, có mạng lại, kết quả đồng bộ, và
+  **sự kiện thời gian thực** (thêm 2026-09-09). Thứ tự ưu tiên: **đồng bộ >
+  realtime > kết nối**, và **một nguồn luôn được cập nhật chính nó**.
 
 ⚠️ `NotificationScanner.stop()` gọi `cancelAll()`. Lịch nằm trong
 AlarmManager/UNUserNotificationCenter chứ không trong SQLite, nên

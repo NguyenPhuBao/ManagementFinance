@@ -80,6 +80,17 @@ Client-app cần xây dựng các màn hình và luồng giao dịch ngân hàng
 
 ## 4. Tích Hợp Realtime Socket.io & Notification Client
 
+> ⚠️ **Mục này MÂU THUẪN với mục 8 và với mã đang chạy — đọc mục 8.**
+> `join_account` **đã bị backend gỡ hẳn** ngày 2026-09-07: room lấy từ
+> `socket.data.idaccount` mà middleware bắt tay tự gắn từ JWT, nên client emit
+> sự kiện ấy là vô nghĩa (và trước đó là một lỗ hổng — ai cũng khai được số
+> nào). Bản client làm ngày 2026-09-09 **không** emit gì cả.
+>
+> Hai chi tiết khác trong mục này cũng **chưa làm và cố ý chưa làm**: câu thông
+> báo nêu số tiền và tên ngân hàng (client cố ý dùng câu chung chung, không đọc
+> payload), và badge đếm giao dịch chờ duyệt (cần màn duyệt — G26
+> `docs/CLIENT_APP_KNOWN_GAPS.md`).
+
 * **Khởi tạo kết nối Socket.io Client:**
   * Kết nối tới server Backend qua WebSocket / Polling.
   * Khi người dùng đăng nhập thành công, emit sự kiện:

@@ -31,7 +31,7 @@
 > nhánh `transient`. Client đã tự vá (`_permanentCodes`) — **không cần
 > backend làm gì**, ghi lại để lần sau đổi hợp đồng lỗi thì báo trước.
 
-> Thư mục cha nay chỉ còn **mục lục và ba tệp bối cảnh** (đếm lại 2026-09-08;
+> Thư mục cha nay chỉ còn **mục lục và bốn tệp bối cảnh** (đếm bằng máy 2026-09-09 — con số "ba" ở bản trước viết trước khi `TRANSACTION_NOTE_ENCODING.md` ra đời;
 > dòng cũ ở đây ghi "20 tài liệu" và đã lạc hậu từ lúc dọn sang `DA-XONG/`).
 > Thư mục này giữ **cả tài liệu còn việc lẫn tài liệu vừa đóng** — giữ cả hai để
 > đội backend thấy được cái gì đã xong mà không phải dò lại. Sau đợt 2026-09-07
@@ -147,7 +147,7 @@ tốn hơn dự kiến, hãy ghi lại lý do vào chính tài liệu ấy — c
 
 ---
 
-## 4. Ba tệp bối cảnh, nằm ở thư mục cha
+## 4. Bốn tệp bối cảnh, nằm ở thư mục cha
 
 Không phải việc cần làm, nhưng cần để hiểu phần trên:
 
@@ -156,6 +156,9 @@ Không phải việc cần làm, nhưng cần để hiểu phần trên:
 - [`../2026-08-10-backend-sync-spec.md`](../2026-08-10-backend-sync-spec.md) —
   hợp đồng `/sync/push` và `/sync/pull`.
 - [`../PROGRESS-BACKEND.md`](../PROGRESS-BACKEND.md) — checklist B1→B7.
+- [`../TRANSACTION_NOTE_ENCODING.md`](../TRANSACTION_NOTE_ENCODING.md)
+  (2026-09-08) — **không xin gì**, chỉ báo rằng client mã hoá ý nghĩa vào
+  `transaction.Note`. Tệp thứ tư; tiêu đề mục này từng ghi "Ba" và bỏ sót nó.
 
 ⚠️ **Backend lệch tên cột giữa các bảng**, ít nhất ba kiểu: `category` dùng
 `Delete_at`, `transaction` dùng `Deleted_at`, và cột ngày của giao dịch là
