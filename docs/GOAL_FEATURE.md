@@ -1,6 +1,6 @@
 # Mục tiêu tiết kiệm — thiết kế, lý do, và những cái bẫy
 
-**Cập nhật:** 2026-09-08
+**Cập nhật:** 2026-09-09
 **Trạng thái:** hoạt động đầy đủ trên client. **Không còn việc nào chờ backend**
 (cập nhật 2026-09-07 — xem mục 8).
 
@@ -21,11 +21,12 @@ hơn (và không nên "sửa"), cái gì còn thiếu, xếp hạng kèm lý do.
 | Bất cứ việc gì | Mục 3 (quyết định + lý do) và mục 4 (**bảy cái bẫy**, hai đã đóng — 4.5 và 4.6) |
 | Đụng vào nạp/rút tiền | Mục 3.1 → 3.4, và `goal_repository_impl.dart` — mọi chú thích ở đó là bản rút gọn của tài liệu này |
 | Đụng vào lịch sử tích luỹ | **Bẫy 4.2** trước đã (suy chiều tiền từ vị trí ví là sai, đã vấp), rồi mục **3.24** (cắt 5 dòng, bảng đầy đủ có bộ lọc) và **3.25** (nhãn "(tự động)" — hậu tố ghi chú, và ba đường đã loại) |
-| Đụng vào trang chi tiết | Mục **3.23** (khối Cấu hình) và **bẫy 4.5** (trang nghe dòng dữ liệu từ 2026-09-08) |
+| Đụng vào trang chi tiết | Mục **3.23** (khối Cấu hình), **3.26** (biểu đồ tiến độ — và vì sao chuỗi dựng **đi lùi**), và **bẫy 4.5** (trang nghe dòng dữ liệu từ 2026-09-08) |
 | Đụng vào hộp dự báo | Mục **3.7** — có **cửa sổ tối thiểu nửa chu kỳ**, thiếu nó là màn hình nói "đang tích 11 triệu mỗi tháng" cho một mục tiêu mới tích 1,1 triệu |
 | Muốn biết nên làm gì tiếp | Mục **10** — đối chiếu với app thị trường, kèm bảng xếp hạng |
 | Đụng vào đồng bộ | **Bẫy 4.3**, rồi `sync_payload_contract_test.dart` |
 | Đụng vào tiến độ / phần trăm | Mục 3.6 — chỉ có **một** định nghĩa và nó nằm trên `GoalEntity` |
+| Đụng vào biểu đồ tiến độ | Mục **3.26**, rồi bẫy **4.17** và **4.18** `ANALYTICS_FEATURE.md` (fl_chart không cắt vùng vẽ; nhãn trục chồng nhau) — cả hai chỉ lộ trên máy thật |
 
 ---
 
@@ -886,6 +887,69 @@ Trang chi tiết hiện **ghi chú thô** làm tiêu đề nên phải cắt h�
 
 ---
 
+### 3.26 Biểu đồ tiến độ theo thời gian: neo vào `currentAmount`, đi **lùi**
+
+Trước khối này, trang chi tiết trả lời được *đang ở đâu* (vòng phần trăm) nhưng
+chỉ trả lời được *đi nhanh hay chậm* bằng hai chữ "Chậm so với nhịp" ở thẻ Cấu
+hình. Khối vẽ **cùng một luật** ấy ra thành hình.
+
+**Chỗ neo là quyết định lớn nhất.** Lịch sử giao dịch **không bảo đảm** cộng lại
+bằng `currentAmount` — mục 3.4 nói rõ tiến độ cố ý không tự hoà giải. Đo thật
+trên máy ảo ngày 2026-09-09, mục tiêu "MuaXe" của tài khoản 10: bảng lịch sử nói
+**11 khoản · đã gửi 2.201.000 đ** trong khi mục tiêu đang giữ **1.101.000 đ**.
+
+Cộng xuôi từ 0 thì điểm cuối biểu đồ ra 2.201.000 trong khi vòng phần trăm ngay
+phía trên nói 1.101.000 — **hai con số cho cùng một thứ, cạnh nhau trên một màn
+hình**. Nên chuỗi được dựng **đi lùi**: điểm cuối *là* `currentAmount`, các điểm
+trước suy ra bằng cách trừ dần từng khoản. Phần lịch sử dôi ra lộ thành một điểm
+gốc lệch, không dồn vào điểm cuối.
+
+**Đi lùi thì điểm gốc có thể âm**, và một mục tiêu "từng giữ âm một triệu" vừa
+là lời nói dối vừa rơi ra ngoài dải của biểu đồ. Giá trị **đem vẽ** vì thế bị
+kẹp ở 0 (`_khongAm`), còn biến cộng dồn giữ nguyên dạng thô — kẹp cả biến chạy
+thì sai số dồn lại và điểm cuối trượt khỏi chỗ neo.
+
+**Đường kế hoạch mượn nguyên định nghĩa của `GoalEntity.isBehindSchedule`:**
+tuyến tính theo ngày từ `startDate` tới `targetDate`. Đây là chỗ dễ đẻ ra luật
+thứ hai nhất — thẻ Cấu hình đã nói "Chậm so với nhịp" bằng luật ấy rồi. Dòng chú
+thích dưới biểu đồ cũng dùng **đúng** `GoalEntity.bienDungSai`, nên "Chậm hơn kế
+hoạch" và "Chậm so với nhịp" không bao giờ nói ngược nhau.
+
+**`startDate` là `null` thì giấu đường kế hoạch, vẫn vẽ đường thực tế** — cùng
+kỷ luật im lặng với `isBehindSchedule`. Giấu cả khối là vứt luôn phần app biết
+chắc. Chú giải "Kế hoạch" và dòng chú thích cũng biến mất theo: một mục chú giải
+trỏ vào đường không tồn tại là chỉ vào chỗ trống.
+
+**Trục** trải từ ngày bắt đầu tới **hạn chót** chứ không dừng ở hôm nay: khoảng
+trống bên phải chính là quãng đường còn phải đi. Quá hạn thì kéo tới hôm nay,
+nếu không điểm hôm nay rơi ra ngoài vùng vẽ đúng lúc cần nhìn nhất. Trần trục
+dọc phủ **cả** số tiền đích lẫn đỉnh thực tế, vì nạp vượt mục tiêu được phép
+(mục 3.8).
+
+**Đường thực tế vẽ THẲNG, không cong.** Tiền vào theo từng khoản rời rạc; một
+đường cong nội suy vẽ ra số dư ở những ngày chưa hề có giao dịch nào — và còn
+vọt xuống dưới 0 giữa hai điểm (bẫy 4.9 `ANALYTICS_FEATURE.md`). Sau khoản cuối,
+đường **kéo phẳng tới hôm nay**: một mục tiêu đứng im bốn tháng phải đọc ra là
+đứng im, chứ không phải là hết dữ liệu.
+
+**Một dòng dữ liệu nuôi cả biểu đồ lẫn danh sách.** `StreamBuilder` của
+`watchGoalTransactions` được **dời lên** bọc cả hai khối. Mở dòng thứ hai cho
+biểu đồ là chạy đúng câu truy vấn ấy hai lần, và mở cửa cho hai bản dữ liệu lệch
+nhau trên cùng một màn hình.
+
+Phép tính ở `domain/goal_progress_series.dart`, phần vẽ ở
+`presentation/widgets/goal_progress_chart.dart` — trang chi tiết đã 1.500 dòng,
+không nhồi thêm. Thiết kế nằm trên Stitch, màn *"Chi tiết mục tiêu - FlowMoney"*
+(`382b422dd00d41189cb20d00b25dc7d1`), sửa vào chính màn ấy chứ không dựng riêng.
+
+> **Phương án đã loại:** sáu mốc đều nhau theo kiểu `_KhoiXuHuong` của trang
+> Phân tích. Mục tiêu ba tuần và mục tiêu ba năm dùng chung một trục, nên số mốc
+> cố định làm nhãn hoặc trùng nhau hoặc thưa vô nghĩa. Trục ở đây là **thời gian
+> thật** (`millisecondsSinceEpoch`), và nhãn đổi khuôn `dd/MM` ↔ `MM/yy` theo độ
+> dài quãng.
+
+---
+
 ## 4. Bảy cái bẫy
 
 > **Năm cái còn hiệu lực.** 4.6 đóng 2026-09-07 (G17), 4.5 đóng 2026-09-08.
@@ -1192,18 +1256,12 @@ bỏ qua chứ đừng chuyển một phần, phải có trần mỗi lượt, v
 - **Cột mốc.** ✅ *Xong 2026-09-08* (`goalMilestone`, mục 3.21). Trước đó
   FlowMoney chỉ báo ở **100%** và khi **chậm tiến độ** — người dùng đi ba phần
   tư chặng đường mà app im lặng.
-- **Biểu đồ tiến độ theo thời gian.** Trang chi tiết hiện chỉ có vòng phần trăm
-  và năm dòng lịch sử; không có đường "số đã tích theo tuần/tháng". Đây là thứ
-  làm trang chi tiết "đầy" nhất. ⚠️ Mục này **không** nằm trong bảng khảo sát
-  bên trên — nó là đề xuất của phiên 2026-09-08 và người dùng đã duyệt thứ tự;
-  ghi ở đây để nó không chỉ sống trong chat.
-  ✅ **Chỗ chặn đã gỡ 2026-09-08:** thư viện biểu đồ nay đã chọn —
-  **`fl_chart`, ghim `1.2.0`** — và `_KhoiXuHuong` ở
-  `analytics_page.dart` là khuôn có sẵn để chép: `LineChart` hai đường, gradient
-  dưới đường, tooltip đã chặn tràn. Lý do chọn và ba cái bẫy: mục **3.11**,
-  **3.12** và bẫy **4.9** `docs/ANALYTICS_FEATURE.md`. Việc còn lại thuần là
-  dựng chuỗi *số đã tích luỹ theo thời gian* ở tầng domain thuần rồi test ở đó
-  — **đừng** tính trong widget.
+- **Biểu đồ tiến độ theo thời gian.** ✅ *Xong 2026-09-09* — mục **3.26**. Khối
+  "TIẾN ĐỘ THEO THỜI GIAN" trên trang chi tiết: hai đường (thực tế và kế hoạch)
+  cộng một dòng chú thích nói chậm/đúng nhịp/vượt kèm **số tiền**. Trước đó
+  trang chỉ có vòng phần trăm và năm dòng lịch sử. ⚠️ Mục này **không** nằm
+  trong bảng khảo sát bên trên — nó là đề xuất của phiên 2026-09-08 và người
+  dùng đã duyệt thứ tự; ghi ở đây để nó không chỉ sống trong chat.
 - **Số liệu tổng hợp và chuỗi liên tiếp.** Số lần nạp, trung bình mỗi lần, số
   kỳ nạp liên tiếp — đếm được ngay từ `_khoanLichSu` đang có, không cần dữ liệu
   mới. Cùng nguồn gốc với mục trên.
@@ -1227,8 +1285,8 @@ bỏ qua chứ đừng chuyển một phần, phải có trần mỗi lượt, v
 | ✅ | ~~**Lịch sử tích luỹ dài không giới hạn**~~ | **Xong 2026-09-08** — cắt 5 dòng + bảng đầy đủ có **hai bộ lọc**. Mục **3.24** |
 | ✅ | ~~**Nhãn "(tự động)" cho khoản trích tự động**~~ | **Xong 2026-09-08** — hậu tố ghi chú, không cột mới, không đụng backend. Mục **3.25** |
 | ✅ | ~~**Bộ lọc "tay / tự động"**~~ | **Xong 2026-09-08** — `LocNguon`, dải chip thứ ba chỉ hiện khi có khoản tự động. Mục **3.24** |
-| 1 | **Biểu đồ tiến độ theo thời gian** | **Nay đã rẻ**: lát 2b của Phân tích xong 2026-09-08 nên thư viện đã chọn (`fl_chart` ghim `1.2.0`) và `_KhoiXuHuong` là khuôn chép được. Chỉ còn dựng chuỗi tích luỹ ở tầng domain. Xem mục 3.11 `ANALYTICS_FEATURE.md` |
-| 2 | **Số liệu tổng hợp, chuỗi liên tiếp** | Nhỏ, độc lập, đếm từ lịch sử đang có — việc chen giữa khi cần một hạng mục ngắn |
+| ✅ | ~~**Biểu đồ tiến độ theo thời gian**~~ | **Xong 2026-09-09** — mục **3.26**. Kiểm trọn vòng trên máy ảo; hai lỗi chỉ máy thật mới thấy đã ghi ở bẫy **4.17** và **4.18** `ANALYTICS_FEATURE.md` |
+| 1 | **Số liệu tổng hợp, chuỗi liên tiếp** | Nhỏ, độc lập, đếm từ lịch sử đang có — việc chen giữa khi cần một hạng mục ngắn |
 | 2 | **Làm tròn số lẻ** | Giá trị cao và hợp văn hoá "nuôi heo đất", nhưng là chỗ **thứ ba** app tự chuyển tiền — xem cảnh báo ở 10.2 |
 | 2 | **Chuyển giữa hai mục tiêu** | Một hàm gọi `withdraw` + `deposit` trong cùng khối nguyên tử |
 | 3 | **Chia thu nhập theo ưu tiên** | Cần ưu tiên xong trước |

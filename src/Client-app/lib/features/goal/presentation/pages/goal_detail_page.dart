@@ -18,6 +18,7 @@ import '../../domain/goal_history_filter.dart';
 import '../widgets/goal_config_card.dart';
 import '../widgets/goal_history_sheet.dart';
 import '../widgets/goal_progress.dart';
+import '../widgets/goal_progress_chart.dart';
 import '../widgets/nhan_tu_dong.dart';
 
 class GoalDetailPage extends StatefulWidget {
@@ -1194,49 +1195,68 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     // đây chỗ này rơi về 1 và lấy giao dịch của tài khoản admin.
     if (accountId == null) return const SizedBox.shrink();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Nút "Xem tất cả" từng bị GỠ ngày 2026-09-06 vì nó có
-        // `onPressed: () {}` trong khi danh sách bên dưới đã hiện toàn bộ —
-        // vừa không làm gì vừa ngụ ý sai rằng có phần bị giấu.
+    return StreamBuilder<dynamic>(
+      stream: _goalRepository.watchGoalTransactions(
+          accountId, widget.id, _goal?.name ?? ''),
+      builder: (context, snapshot) {
+        // MỘT dòng dữ liệu nuôi cả biểu đồ lẫn danh sách. Mở dòng thứ hai cho
+        // biểu đồ là chạy đúng câu truy vấn ấy hai lần, và mở cửa cho hai bản
+        // dữ liệu lệch nhau trên cùng một màn hình.
         //
-        // Nay nó **quay lại và làm thật** (2026-09-08). Lý lẽ cũ nói về một
-        // nút rỗng, không nói rằng danh sách phải hiện hết mãi mãi: danh sách
-        // không có trần, và một mục tiêu trích hàng ngày chạy hai năm là 730
-        // dòng dựng cùng lúc trên một trang nay vẽ lại mỗi lượt đồng bộ.
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        // Dòng dữ liệu được dựng LẠI mỗi khi `_goal` đổi, vì tên mục tiêu là
+        // tham số của nó. Sau khi trang sửa đóng, `_loadGoal()` đổi `_goal` và
+        // StreamBuilder quay về trạng thái chưa có dữ liệu — trộn ca ấy với
+        // "rỗng thật" làm lịch sử nháy thành "Chưa có khoản tích lũy nào" rồi
+        // hiện lại. Trông y như vừa mất dữ liệu.
+        final dangTai = !snapshot.hasData &&
+            snapshot.connectionState == ConnectionState.waiting;
+        final txs = (snapshot.data as List<dynamic>?) ?? [];
+        // Ghi lại để nhãn phía dưới biết có nên hiện nút "Xem tất cả" không,
+        // và để bảng đầy đủ có sẵn dữ liệu mà không phải mở một dòng dữ liệu
+        // thứ hai.
+        if (!dangTai) _khoanLichSu = _doiSangKhoan(txs);
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'LỊCH SỬ TÍCH LŨY',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: AppColors.onSurfaceVariant,
-                letterSpacing: 0.5,
-              ),
+            // Biểu đồ đứng NGAY TRÊN lịch sử vì hai khối đọc cùng một dữ
+            // liệu: một cái vẽ hình dáng của cả quãng đường, một cái liệt kê
+            // từng khoản. Khối tự biến mất khi chưa có khoản nào.
+            if (!dangTai) ...[
+              GoalProgressChart(goal: _goal!, khoan: _khoanLichSu),
+              if (_khoanLichSu.isNotEmpty) const SizedBox(height: 32),
+            ],
+            // Nút "Xem tất cả" từng bị GỠ ngày 2026-09-06 vì nó có
+            // `onPressed: () {}` trong khi danh sách bên dưới đã hiện toàn bộ
+            // — vừa không làm gì vừa ngụ ý sai rằng có phần bị giấu.
+            //
+            // Nay nó **quay lại và làm thật** (2026-09-08). Lý lẽ cũ nói về
+            // một nút rỗng, không nói rằng danh sách phải hiện hết mãi mãi:
+            // danh sách không có trần, và một mục tiêu trích hàng ngày chạy
+            // hai năm là 730 dòng dựng cùng lúc trên một trang nay vẽ lại mỗi
+            // lượt đồng bộ.
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'LỊCH SỬ TÍCH LŨY',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.onSurfaceVariant,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                if (_soKhoanLichSu > _soDongLichSuToiDa)
+                  TextButton(
+                    onPressed: _moBangLichSu,
+                    child: const Text('Xem tất cả'),
+                  ),
+              ],
             ),
-            if (_soKhoanLichSu > _soDongLichSuToiDa)
-              TextButton(
-                onPressed: _moBangLichSu,
-                child: const Text('Xem tất cả'),
-              ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        StreamBuilder<dynamic>(
-          stream: _goalRepository.watchGoalTransactions(
-              accountId, widget.id, _goal?.name ?? ''),
-          builder: (context, snapshot) {
-            // Dòng dữ liệu được dựng LẠI mỗi khi `_goal` đổi, vì tên mục tiêu
-            // là tham số của nó. Sau khi trang sửa đóng, `_loadGoal()` đổi
-            // `_goal` và StreamBuilder quay về trạng thái chưa có dữ liệu —
-            // trộn ca ấy với "rỗng thật" làm lịch sử nháy thành "Chưa có khoản
-            // tích lũy nào" rồi hiện lại. Trông y như vừa mất dữ liệu.
-            if (!snapshot.hasData &&
-                snapshot.connectionState == ConnectionState.waiting) {
-              return const Padding(
+            const SizedBox(height: 16),
+            if (dangTai)
+              const Padding(
                 padding: EdgeInsets.all(16),
                 child: Center(
                   child: SizedBox(
@@ -1245,124 +1265,122 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   ),
                 ),
-              );
-            }
-
-            final txs = (snapshot.data as List<dynamic>?) ?? [];
-            // Ghi lại để nhãn phía trên biết có nên hiện nút "Xem tất cả"
-            // không, và để bảng đầy đủ có sẵn dữ liệu mà không phải mở một
-            // dòng dữ liệu thứ hai.
-            _khoanLichSu = _doiSangKhoan(txs);
-            if (txs.isEmpty) {
-              return const Padding(
+              )
+            else if (txs.isEmpty)
+              const Padding(
                 padding: EdgeInsets.all(16),
                 child: Center(
                   child: Text(
                     'Chưa có khoản tích lũy nào.',
-                    style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                    style:
+                        TextStyle(color: AppColors.textSecondary, fontSize: 13),
                   ),
                 ),
-              );
-            }
+              )
+            else
+              _danhSachLichSu(txs, currencyFormatter),
+          ],
+        );
+      },
+    );
+  }
 
-            // Chỉ dựng tối đa `_soDongLichSuToiDa` dòng ở đây. Phần còn lại
-            // nằm trong bảng đầy đủ, nơi có vùng cuộn RIÊNG nên `ListView`
-            // ảo hoá thật sự.
-            final hienThi = txs.take(_soDongLichSuToiDa).toList();
-            return ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: hienThi.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 16),
-              itemBuilder: (context, index) {
-                final tx = hienThi[index];
-                final dateStr = DateFormat('dd/MM/yyyy HH:mm').format(tx.date as DateTime);
-                final amount = (tx.amount as double);
-                // Chiều tiền đọc từ tiền tố ghi chú do chính app sinh ra, KHÔNG
-                // từ vị trí ví — so ví là diễn giải hàng cũ bằng cấu hình hiện
-                // tại của mục tiêu, nên đổi ví một lần là lịch sử đọc sai hết.
-                // Xem `goal_history_direction.dart`.
-                final ghiChu = (tx.note as String?) ?? '';
-                final laKhoanRut = laKhoanRutKhoiMucTieu(
-                  ghiChu: ghiChu,
-                  viCuaHang: tx.walletId as String,
-                  viTichLuy: _goal!.walletId,
-                );
+  /// Năm dòng lịch sử gần nhất.
+  ///
+  /// Chỉ dựng tối đa [_soDongLichSuToiDa] dòng ở đây. Phần còn lại nằm trong
+  /// bảng đầy đủ, nơi có vùng cuộn RIÊNG nên `ListView` ảo hoá thật sự.
+  Widget _danhSachLichSu(List<dynamic> txs, NumberFormat currencyFormatter) {
+    final hienThi = txs.take(_soDongLichSuToiDa).toList();
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: hienThi.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 16),
+      itemBuilder: (context, index) {
+        final tx = hienThi[index];
+        final dateStr = DateFormat('dd/MM/yyyy HH:mm').format(tx.date as DateTime);
+        final amount = (tx.amount as double);
+        // Chiều tiền đọc từ tiền tố ghi chú do chính app sinh ra, KHÔNG
+        // từ vị trí ví — so ví là diễn giải hàng cũ bằng cấu hình hiện
+        // tại của mục tiêu, nên đổi ví một lần là lịch sử đọc sai hết.
+        // Xem `goal_history_direction.dart`.
+        final ghiChu = (tx.note as String?) ?? '';
+        final laKhoanRut = laKhoanRutKhoiMucTieu(
+          ghiChu: ghiChu,
+          viCuaHang: tx.walletId as String,
+          viTichLuy: _goal!.walletId,
+        );
 
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: laKhoanRut
-                            ? const Color(0xFFFBEDEC)
-                            : const Color(0xFFF0F5EE),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.savings_outlined,
-                        color: Color(0xFF2E6B27),
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  // Cắt hậu tố: chip ngay bên cạnh đã nói
-                                  // "Tự động" rồi, để nguyên là dòng mang
-                                  // đúng ba chữ ấy hai lần.
-                                  ghiChuKhongHauTo(ghiChu),
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.primary,
-                                    fontSize: 15,
-                                  ),
-                                ),
-                              ),
-                              if (laKhoanTuDong(ghiChu)) ...[
-                                const SizedBox(width: 6),
-                                const NhanTuDong(),
-                              ],
-                            ],
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: laKhoanRut
+                    ? const Color(0xFFFBEDEC)
+                    : const Color(0xFFF0F5EE),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.savings_outlined,
+                color: Color(0xFF2E6B27),
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          // Cắt hậu tố: chip ngay bên cạnh đã nói
+                          // "Tự động" rồi, để nguyên là dòng mang
+                          // đúng ba chữ ấy hai lần.
+                          ghiChuKhongHauTo(ghiChu),
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                            fontSize: 15,
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            dateStr,
-                            style: TextStyle(
-                              color: AppColors.onSurfaceVariant.withValues(alpha: 0.7),
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
+                      if (laKhoanTuDong(ghiChu)) ...[
+                        const SizedBox(width: 6),
+                        const NhanTuDong(),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    dateStr,
+                    style: TextStyle(
+                      color: AppColors.onSurfaceVariant.withValues(alpha: 0.7),
+                      fontSize: 12,
                     ),
-                    Text(
-                      '${laKhoanRut ? '−' : '+'}'
-                      '${currencyFormatter.format(amount)}',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: laKhoanRut
-                            ? AppColors.error
-                            : const Color(0xFF2E6B27),
-                      ),
-                    ),
-                  ],
-                );
-              },
-            );
-          },
-        ),
-      ],
+                  ),
+                ],
+              ),
+            ),
+            Text(
+              '${laKhoanRut ? '−' : '+'}'
+              '${currencyFormatter.format(amount)}',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: laKhoanRut
+                    ? AppColors.error
+                    : const Color(0xFF2E6B27),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 

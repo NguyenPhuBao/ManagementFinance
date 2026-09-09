@@ -716,7 +716,11 @@ src/Backend/
   > **Android ≤ 9 lùi về sheet chia sẻ** (minSdk của app là 24). Đường lùi ấy **không kiểm được ở đây** vì máy ảo là API 36, nên cố ý giữ nguyên đường cũ đã chạy thật thay vì viết thêm luồng xin quyền chưa ai chạy bao giờ.
   > ⚠️ Hai đường trả về hai thứ khác nhau và giao diện phải nói đúng: `xuat()` trả đường dẫn khi lưu thật, trả `null` khi chỉ mở sheet. Nói "Đã lưu" cho cả hai ca là đẩy người dùng đi tìm một tệp không tồn tại — có test canh.
   > **Đã kiểm trên `emulator-5554`**: sau khi bấm Tải xuống, `ls /sdcard/Download` cho `BaoCao_01-09-2026_30-09-2026.pdf` (24.101 byte) và `.csv` (2.270 byte, còn nguyên BOM); banner hiện *"Đã lưu vào Tải về/BaoCao_01-09-2026_30-09-2026.pdf"*.
-- **Test: 1708/1708 pass** (~190 giây) — đều đã `git add -f` (kiểm 2026-09-09)
+- **Mục tiêu: biểu đồ tiến độ theo thời gian** (2026-09-09, **schema không đổi**). Khối "TIẾN ĐỘ THEO THỜI GIAN" trên trang chi tiết: đường **thực tế** (tích luỹ) và đường **kế hoạch** (nét đứt, tuyến tính từ `startDate` tới `targetDate`), cộng một dòng chú thích nói chậm / bám sát / vượt kèm **số tiền**. Lý do từng quyết định ở mục **3.26** `docs/GOAL_FEATURE.md`. Thiết kế sinh vào **chính màn Stitch** *"Chi tiết mục tiêu - FlowMoney"* trước khi dựng Flutter. 32 test mới.
+  > **Chỗ neo là quyết định lớn nhất:** chuỗi dựng **đi lùi** từ `currentAmount` chứ không cộng xuôi từ 0, vì lịch sử **không** bảo đảm cộng lại bằng số tiền đang giữ (mục 3.4 — tiến độ cố ý không tự hoà giải). Đo thật: "MuaXe" của tài khoản 10 có **11 khoản, tổng 2.201.000 đ**, trong khi mục tiêu giữ **1.101.000 đ**. Cộng xuôi là điểm cuối biểu đồ cãi nhau với vòng phần trăm ngay phía trên. Điểm gốc âm sinh ra từ phép đi lùi bị **kẹp ở 0** khi đem vẽ.
+  > **Một dòng dữ liệu nuôi cả biểu đồ lẫn danh sách:** `StreamBuilder` của `watchGoalTransactions` được dời lên bọc cả hai khối. Dòng thứ hai là chạy cùng câu truy vấn hai lần và mở cửa cho hai bản dữ liệu lệch nhau trên một màn hình.
+  > **Đã kiểm trên `emulator-5554`, và máy thật bắt được HAI lỗi bộ test không thấy** — cả hai nay là bẫy **4.17** và **4.18** `ANALYTICS_FEATURE.md`: (1) `fl_chart` mặc định **không cắt** vùng vẽ (`clipData` là `FlClipData.none()`) nên điểm âm kéo đường xanh tràn khỏi thẻ, đè lên trang — không exception, không log, `takeException()` vẫn xanh; (2) fl_chart vẽ nhãn trục ở **cả hai biên** cộng thêm mốc theo `interval`, nên "08/27" in đè "09/27". Kiểm lại sau khi sửa: hai mục tiêu, **0 pixel vàng** (sọc cảnh báo tràn).
+- **Test: 1740/1740 pass** (~190 giây) — đều đã `git add -f` (kiểm 2026-09-09)
 
 ### 🔄 Việc còn dang dở
 
@@ -829,14 +833,16 @@ G15, G17, G21. Bản trước của mục này ghi ngày 04/09 và **sai bốn t
 **Không còn lỗi client nào sửa được mà không phải chờ ai.** Việc tiếp theo là
 một lựa chọn, không phải một hàng đợi.
 
-**Thứ tự đã duyệt tối 2026-09-08** (✅ cả 2c xong 2026-09-09 — việc kế tiếp là
-biểu đồ tiến độ mục tiêu) (người dùng hỏi "nên làm theo thứ tự nào",
+**Thứ tự đã duyệt tối 2026-09-08** (✅ cả 2c **và** biểu đồ tiến độ mục tiêu
+xong 2026-09-09 — việc kế tiếp là Tổng kết tuần, hoặc số liệu tổng hợp mục tiêu
+nếu muốn một hạng mục ngắn) (người dùng hỏi "nên làm theo thứ tự nào",
 đã chốt — đừng bàn lại từ đầu): ✅ bộ lọc tay/tự động của lịch sử mục tiêu →
 ✅ **2a** Phân tích số thật → ✅ **2b** biểu đồ theo thời gian (**thư viện đã
 chọn: `fl_chart`, ghim `1.2.0`** — mục 3.11 `ANALYTICS_FEATURE.md`) → **2c**
-trang Xuất báo cáo → biểu đồ tiến độ mục tiêu theo thời gian (**nay rẻ thật**:
-khuôn biểu đồ đã có, chỉ đổi dữ liệu) → Tổng kết tuần (spec có
-sẵn) → số liệu tổng hợp mục tiêu (nhỏ, chen giữa được) → nối Socket.io phía
+trang Xuất báo cáo → ✅ biểu đồ tiến độ mục tiêu theo thời gian (mục **3.26**
+`GOAL_FEATURE.md`) → Tổng kết tuần (spec có
+sẵn, còn **5 câu hỏi mở** ở mục 5) → số liệu tổng hợp mục tiêu (nhỏ, chen giữa
+được) → nối Socket.io phía
 client (cuối, không thêm gì người dùng thấy). **Round-up cố ý để ngoài** — chỗ
 thứ ba app tự chuyển tiền trong khi chỗ thứ hai (`bill.Auto_pay`) còn treo
 backend. Lý do từng bước: mục 10.5 `docs/GOAL_FEATURE.md` và mục 7

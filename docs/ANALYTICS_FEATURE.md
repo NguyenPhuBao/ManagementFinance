@@ -455,6 +455,25 @@ xuất hiện ở nhiều khối, `contains` trên cả tệp là phép canh r�
 `, và pypdf báo *"Cannot
 find Root object"* — trông y như lỗi sinh tệp. Dùng **`adb exec-out`**.
 
+**4.17 `fl_chart` mặc định KHÔNG cắt vùng vẽ.** `LineChartData.clipData` mặc
+định là `FlClipData.none()`: điểm nằm ngoài `minY`/`maxY` vẫn được **vẽ**, chứ
+không bị cắt — nó tràn khỏi khung, khỏi thẻ, và đè lên phần trang bên dưới.
+Thấy trên máy ảo ngày 2026-09-09 ở biểu đồ tiến độ mục tiêu: một điểm âm kéo
+đường xanh chạy dài qua dòng chú thích và ra ngoài thẻ. **Không exception,
+không log**, và không widget test nào bắt được vì mọi thứ vẽ trong canvas của
+thư viện — kể cả test đã hỏi `takeException()` vẫn xanh.
+
+Đặt `clipData: const FlClipData.all()` cho **mọi** biểu đồ. Nó là lớp phòng thủ
+thứ hai chứ không thay được việc kẹp dữ liệu ở tầng thuần: cắt hình chỉ giấu
+điểm sai đi, còn tầng thuần mới quyết định điểm ấy **đáng lẽ là bao nhiêu**.
+
+**4.18 `fl_chart` vẽ nhãn trục ở CẢ hai biên, cộng thêm các mốc theo
+`interval`.** Nên một mốc rơi gần biên sẽ in **đè** lên nhãn biên. Thấy cùng
+ngày ở mục tiêu "MuaDT": "08/27" và "09/27" chồng nhau thành một mớ không đọc
+được. Đặt `interval` bằng `(max - min) / 3` **không** cho ra đúng bốn nhãn như
+tưởng. Luật lọc nằm ở `hienNhanTruc` (`goal_progress_series.dart`) và có test
+riêng — bỏ mốc cách biên dưới 12% dải, giữ nguyên hai nhãn biên.
+
 ---
 
 ## 5. Luồng dữ liệu
