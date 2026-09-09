@@ -6,6 +6,7 @@
 /// ngày), nhãn bộ lọc, và khổ 411dp của điện thoại thật với tên danh mục dài.
 library;
 
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -27,6 +28,7 @@ void main() {
     String loai = 'chi',
     String? danhMuc = 'c_an',
     String tenDanhMuc = 'Ăn uống',
+    String vi = 'w1',
     String tenVi = 'Tiền mặt',
     String tieuDe = 'Ăn trưa',
   }) =>
@@ -39,7 +41,7 @@ void main() {
         tenDanhMuc: tenDanhMuc,
         mauHex: '#F25F5C',
         icon: 'restaurant',
-        walletId: 'w1',
+        walletId: vi,
         tenVi: tenVi,
         tieuDe: tieuDe,
       );
@@ -73,6 +75,15 @@ void main() {
     t.view.physicalSize = const Size(411 * 3, 900 * 3);
     t.view.devicePixelRatio = 3.0;
     addTearDown(t.view.reset);
+  }
+
+  /// Cuộn tới khối cần kiểm. Trang báo cáo nay dài hơn một màn hình, và
+  /// `ListView` **không dựng** hàng ngoài khung nhìn — `find.text` cho khối ở
+  /// dưới sẽ trả rỗng dù widget hoàn toàn đúng (cùng bẫy 4.6 của bottom sheet).
+  Future<void> cuonToi(WidgetTester t, Finder f) async {
+    await t.scrollUntilVisible(f, 300,
+        scrollable: find.byType(Scrollable).first);
+    await t.pumpAndSettle();
   }
 
   testWidgets('ba thẻ tổng lấy số từ báo cáo', (t) async {
@@ -132,7 +143,10 @@ void main() {
       ),
     ])));
 
-    expect(find.text('750.000 ₫'), findsOneWidget);
+    await cuonToi(t, find.text('CHI THEO DANH MỤC'));
+    // Không khẳng định trên số tiền: cùng con số ấy còn xuất hiện ở khối
+    // "TOP 5 KHOẢN CHI" và ở danh sách giao dịch. Phần trăm thì chỉ bảng này
+    // có.
     expect(find.text('(75,0%)'), findsOneWidget);
     expect(find.text('(25,0%)'), findsOneWidget);
   });
@@ -144,11 +158,17 @@ void main() {
       g(ngay: DateTime(2026, 9, 8, 20), tieuDe: 'Cà phê'),
     ])));
 
-    expect(find.text('08/09/2026'), findsOneWidget,
-        reason: 'Một tiêu đề cho cả ngày, không phải mỗi dòng một tiêu đề.');
-    expect(find.text('Ăn trưa'), findsOneWidget);
-    expect(find.text('Cà phê'), findsOneWidget);
-    expect(find.text('Tiền mặt'), findsNWidgets(2));
+    await cuonToi(t, find.text('DANH SÁCH GIAO DỊCH'));
+    final khoi = find.byKey(const Key('khoiGiaoDich'));
+    expect(find.descendant(of: khoi, matching: find.text('08/09/2026')),
+        findsOneWidget,
+        reason: 'Một tiêu đề cho cả ngày, không phải mỗi dòng một tiêu đề. '
+            'Phải tìm TRONG khối giao dịch: ngày ấy nay còn hiện ở "Số liệu '
+            'nhanh" và "Top 5 khoản chi".');
+    expect(find.descendant(of: khoi, matching: find.text('Cà phê')),
+        findsOneWidget);
+    expect(find.descendant(of: khoi, matching: find.text('Tiền mặt')),
+        findsNWidgets(2));
   });
 
   testWidgets('khoản thu mang dấu +, khoản chi mang dấu −', (t) async {
@@ -158,8 +178,12 @@ void main() {
       g(ngay: DateTime(2026, 9, 6), loai: 'chi', soTien: 80000),
     ])));
 
-    expect(find.text('+500.000 ₫'), findsOneWidget);
-    expect(find.text('-80.000 ₫'), findsOneWidget);
+    await cuonToi(t, find.text('DANH SÁCH GIAO DỊCH'));
+    final khoi = find.byKey(const Key('khoiGiaoDich'));
+    expect(find.descendant(of: khoi, matching: find.text('+500.000 ₫')),
+        findsOneWidget);
+    expect(find.descendant(of: khoi, matching: find.text('-80.000 ₫')),
+        findsOneWidget);
   });
 
   testWidgets('báo cáo rỗng nói rõ là rỗng, không vẽ bảng trống', (t) async {
@@ -181,6 +205,145 @@ void main() {
     expect(nut.onPressed, isNull,
         reason: 'Sinh tệp là lát 2c-2. Nút bấm được mà không ra tệp chính là '
             'kiểu "nút xuất chỉ hiện snackbar" mà lát này đang đi dọn.');
+  });
+
+  group('các khối chi tiết thêm ở lát 2c-1b', () {
+    BaoCao voiDongTien(List<DongGiaoDich> ds, {double soDu = 5000000}) =>
+        dungBaoCao(ds,
+            loc: LocBaoCao(
+                from: DateTime(2026, 9, 1), to: DateTime(2026, 10, 1)),
+            soDuHienTai: soDu);
+
+    testWidgets('khối dòng tiền hiện số dư đầu kỳ và cuối kỳ', (t) async {
+      khoDienThoai(t);
+      await t.pumpWidget(duoi(voiDongTien([
+        g(ngay: DateTime(2026, 9, 5), loai: 'chi', soTien: 1000000),
+      ])));
+
+      expect(find.text('SỐ DƯ ĐẦU KỲ'), findsOneWidget);
+      expect(find.text('6.000.000 ₫'), findsOneWidget);
+      expect(find.text('SỐ DƯ CUỐI KỲ'), findsOneWidget);
+      expect(find.textContaining('Suy ngược từ số dư hiện tại'), findsOneWidget,
+          reason: 'App không lưu lịch sử số dư nên hai con số này là suy ra. '
+              'Ví tạo GIỮA kỳ mang theo số dư ban đầu không phải giao dịch, '
+              'nên nó bị tính vào số dư đầu kỳ — người đọc có quyền biết con '
+              'số từ đâu ra.');
+      expect(find.text('5.000.000 ₫'), findsOneWidget,
+          reason: 'Đầu kỳ 6 triệu, chi 1 triệu, cuối kỳ 5 triệu — phép cân của '
+              'cả tờ báo cáo phải đọc được bằng mắt.');
+    });
+
+    testWidgets('lọc theo ví thì khối dòng tiền biến mất, không hiện số 0',
+        (t) async {
+      khoDienThoai(t);
+      final bc = dungBaoCao(
+        [g(ngay: DateTime(2026, 9, 5))],
+        loc: LocBaoCao(
+            from: DateTime(2026, 9, 1),
+            to: DateTime(2026, 10, 1),
+            walletId: 'w1'),
+        soDuHienTai: 5000000,
+      );
+      await t.pumpWidget(duoi(bc));
+      expect(find.text('SỐ DƯ ĐẦU KỲ'), findsNothing);
+    });
+
+    testWidgets('thẻ tổng mang phần trăm so với kỳ trước', (t) async {
+      khoDienThoai(t);
+      await t.pumpWidget(duoi(dungBaoCao([
+        g(ngay: DateTime(2026, 9, 5), soTien: 200000),
+        g(ngay: DateTime(2026, 8, 5), soTien: 100000),
+      ], loc: LocBaoCao(from: DateTime(2026, 9, 1), to: DateTime(2026, 10, 1)))));
+
+      // Tìm đúng chuỗi có mũi tên: `textContaining('100,0%')` khớp nhầm ô
+      // "(100,0%)" của bảng chi theo danh mục — khoản chi duy nhất thì tỉ lệ
+      // của nó cũng là 100%. Test ấy xanh cả khi widget không hề vẽ phần so
+      // sánh kỳ trước.
+      expect(find.text('▲ 100,0%'), findsOneWidget,
+          reason: 'Chi 200k so với 100k của tháng trước là tăng 100%. Không có '
+              'con số này thì người đọc không biết tháng này bất thường hay '
+              'bình thường.');
+    });
+
+    testWidgets('bảng thu theo danh mục hiện bên cạnh bảng chi', (t) async {
+      khoDienThoai(t);
+      await t.pumpWidget(duoi(dungBaoCao([
+        g(
+            ngay: DateTime(2026, 9, 5),
+            loai: 'thu',
+            danhMuc: 'c_luong',
+            tenDanhMuc: 'Lương',
+            soTien: 9000000),
+        g(ngay: DateTime(2026, 9, 6), loai: 'chi', soTien: 100000),
+      ], loc: LocBaoCao(from: DateTime(2026, 9, 1), to: DateTime(2026, 10, 1)))));
+
+      await cuonToi(t, find.text('THU THEO DANH MỤC'));
+      expect(find.text('THU THEO DANH MỤC'), findsOneWidget);
+      expect(find.text('Lương'), findsWidgets);
+    });
+
+    testWidgets('bảng ngân sách hiện hạn mức và đánh dấu khoản vượt', (t) async {
+      khoDienThoai(t);
+      await t.pumpWidget(duoi(dungBaoCao(
+        [g(ngay: DateTime(2026, 9, 5), soTien: 1200000)],
+        loc: LocBaoCao(from: DateTime(2026, 9, 1), to: DateTime(2026, 10, 1)),
+        nganSach: const [
+          DongNganSach(
+              categoryId: 'c_an',
+              ten: 'Ăn uống',
+              hanMuc: 1000000,
+              daChi: 1200000),
+        ],
+      )));
+
+      await cuonToi(t, find.text('NGÂN SÁCH KỲ NÀY'));
+      expect(find.text('NGÂN SÁCH KỲ NÀY'), findsOneWidget);
+      expect(find.textContaining('Vượt'), findsOneWidget,
+          reason: 'Vượt ngân sách là thứ người dùng cần thấy ngay, không phải '
+              'tự so hai con số.');
+    });
+
+    testWidgets('bảng phân bổ theo ví và top khoản chi', (t) async {
+      khoDienThoai(t);
+      await t.pumpWidget(duoi(dungBaoCao([
+        g(
+            ngay: DateTime(2026, 9, 5),
+            vi: 'v2',
+            tenVi: 'Ngân hàng ACB',
+            soTien: 700000,
+            tieuDe: 'Thuê nhà'),
+      ], loc: LocBaoCao(from: DateTime(2026, 9, 1), to: DateTime(2026, 10, 1)))));
+
+      await cuonToi(t, find.text('KHOẢN CHI LỚN NHẤT'));
+      expect(find.text('KHOẢN CHI LỚN NHẤT'), findsOneWidget);
+      expect(find.text('Thuê nhà'), findsWidgets);
+      await cuonToi(t, find.text('PHÂN BỔ THEO VÍ'));
+      expect(find.text('Ngân hàng ACB'), findsWidgets);
+      expect(find.text('0 ₫'), findsOneWidget,
+          reason: 'Ví ấy không có khoản thu nào. "+0 ₫" là số không mang dấu '
+              'cộng — thấy trên máy ảo, và nó làm cả bảng trông như lỗi định '
+              'dạng.');
+      expect(find.text('+0 ₫'), findsNothing);
+    });
+
+    testWidgets('số liệu nhanh hiện chi trung bình mỗi ngày', (t) async {
+      khoDienThoai(t);
+      await t.pumpWidget(duoi(dungBaoCao([
+        g(ngay: DateTime(2026, 9, 5), soTien: 300000),
+      ], loc: LocBaoCao(from: DateTime(2026, 9, 1), to: DateTime(2026, 10, 1)))));
+
+      await cuonToi(t, find.text('CHI MỖI NGÀY'));
+      expect(find.text('10.000 ₫'), findsOneWidget);
+    });
+
+    testWidgets('có biểu đồ thu/chi trong kỳ', (t) async {
+      khoDienThoai(t);
+      await t.pumpWidget(duoi(dungBaoCao([
+        g(ngay: DateTime(2026, 9, 5), soTien: 300000),
+      ], loc: LocBaoCao(from: DateTime(2026, 9, 1), to: DateTime(2026, 10, 1)))));
+
+      expect(find.byType(LineChart), findsOneWidget);
+    });
   });
 
   testWidgets('411dp: tên danh mục dài và số hàng trăm triệu không tràn',

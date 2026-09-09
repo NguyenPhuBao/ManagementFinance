@@ -699,7 +699,12 @@ src/Backend/
   > ⚠️ **Bẫy mới, mức trắng-cả-trang:** theme của app đặt `minimumSize: Size(double.infinity, 52)` cho mọi `ElevatedButton`. Nút đặt trần trong một `Row` đòi bề ngang vô hạn, Flutter bỏ layout **cả khung hình** — trang chỉ còn AppBar trên nền trơn, **không màn đỏ và không một dòng nào trong `adb logcat`**. Bộ test không thấy vì nó dựng bằng `MaterialApp` **trần**. Cách sửa: widget test phải dựng bằng `AppTheme.lightTheme`; làm vậy là test đỏ ngay, rồi mới bọc `Expanded`. Ghi ở bẫy **4.11 `ANALYTICS_FEATURE.md`**.
   > Màn Xem trước **không có trong Stitch cũ**, nên đã **sinh vào chính dự án Stitch** (`f0a0d1457401478596753a48531bc097`, design system "Kinetic Finance") rồi mới dựng Flutter theo nó. ⚠️ `generate_screen_from_text` **báo timeout hai lần nhưng cả hai đều thành công**, và `list_screens` cập nhật chậm hơn `get_project` nhiều phút — đừng dùng `list_screens` để kết luận "sinh hỏng". Hậu quả: dự án có một màn trùng phải xoá tay, MCP không có lệnh xoá màn.
   > **Đã kiểm trên `emulator-5554`** (tài khoản 10): chip ví hiện đúng ba ví thật (Tiết kiệm / Tiền mặt / test); báo cáo tháng 9 ra 14.625.000 − 1.045.000 = 13.580.000, **khớp từng đồng với trang Phân tích**; "Tháng trước" ra `01/08/2026 – 31/08/2026` với trạng thái rỗng; 0 pixel vàng ở khổ 411dp.
-- **Test: 1645/1645 pass** (~90 giây) — đều đã `git add -f` (kiểm 2026-09-09)
+- **Phân tích: lát 2c‑1b — báo cáo chi tiết theo chuẩn app thị trường** (2026-09-09, **schema không đổi**). Người dùng xem bản 2c‑1 rồi nói *"chỉ có các thông tin cơ bản, hãy tham khảo các app quản lý tài chính cá nhân tương tự"*. Khảo sát Money Lover, MISA MoneyKeeper, Copilot, PocketSmith → tờ báo cáo từ **bốn khối lên mười**: dòng tiền (số dư đầu/cuối kỳ, kiểu Money Lover), phần trăm **so với kỳ liền trước** (Copilot), **thu theo danh mục** đối xứng với chi (PocketSmith, lối bảng lãi–lỗ cá nhân), biểu đồ thu chi trong kỳ, số liệu nhanh, **ngân sách kỳ này** (chỗ FlowMoney mạnh hơn Money Lover), phân bổ theo ví, top 5 khoản chi. `chiTheoDanhMuc` nhận thêm tham số `loai` để dựng cả hai chiều — **một định nghĩa**, không viết bản sao. Lý do đầy đủ ở **mục 3.15 và 3.16 `docs/ANALYTICS_FEATURE.md`**. 38 test mới.
+  > **Dòng tiền là số suy ngược** từ số dư ví hiện tại, và có hai giới hạn đã ghi thẳng lên màn hình: **biến mất khi lọc theo một ví** (chiều tiền của `transfer` không suy được từ vị trí ví — bẫy mục 3.2 `GOAL_FEATURE.md`), và **lệch khi có ví tạo giữa kỳ** (số dư ban đầu của ví không phải một giao dịch — đã kiểm mã `lib/features/wallet`).
+  > `khoangKyTruoc` lùi **theo tháng** khi khoảng trùng khít tháng dương lịch, không trừ số ngày: tháng 9 dài 30 ngày nên trừ 30 ngày ra `02/08–01/09`, lệch một ngày và phần trăm sai mà không ai thấy. Ba **bản sai có chủ ý** đã chứng minh test bắt được: bỏ nhánh lùi theo tháng (**3 test đỏ**), bỏ bước trừ phần sau kỳ của dòng tiền, và sắp nhóm ngày tăng dần.
+  > ⚠️ Trang dài ra làm hỏng lối viết test cũ: `ListView` **không dựng** hàng ngoài khung nhìn, và một con số nay xuất hiện ở nhiều khối. Test phải `scrollUntilVisible` rồi tìm **trong phạm vi** một khối bằng `Key` — bẫy **4.12**.
+  > **Đã kiểm trên `emulator-5554`** (tài khoản 10): ngân sách hiện *"Di chuyển 285.000/50.000 — Vượt 235.000 đ"* và *"Giáo dục 45.000/50.000 — Còn 5.000 đ"*; phân bổ ba ví thật; số dư đầu kỳ ra **âm** và đó là số thật (thu tháng 9 nhiều hơn tổng số dư hiện có). 0 pixel vàng ở khổ 411dp trên bốn ảnh chụp.
+- **Test: 1683/1683 pass** (~100 giây) — đều đã `git add -f` (kiểm 2026-09-09)
 
 ### 🔄 Việc còn dang dở
 
@@ -812,7 +817,7 @@ G15, G17, G21. Bản trước của mục này ghi ngày 04/09 và **sai bốn t
 **Không còn lỗi client nào sửa được mà không phải chờ ai.** Việc tiếp theo là
 một lựa chọn, không phải một hàng đợi.
 
-**Thứ tự đã duyệt tối 2026-09-08** (✅ 2c‑1 xong 2026-09-09; 2c‑2 — sinh tệp —
+**Thứ tự đã duyệt tối 2026-09-08** (✅ 2c‑1 và 2c‑1b xong 2026-09-09; 2c‑2 — sinh tệp —
 còn treo, xem mục 7 `ANALYTICS_FEATURE.md`) (người dùng hỏi "nên làm theo thứ tự nào",
 đã chốt — đừng bàn lại từ đầu): ✅ bộ lọc tay/tự động của lịch sử mục tiêu →
 ✅ **2a** Phân tích số thật → ✅ **2b** biểu đồ theo thời gian (**thư viện đã
@@ -859,7 +864,11 @@ backend. Lý do từng bước: mục 10.5 `docs/GOAL_FEATURE.md` và mục 7
    **Lát 2c‑1 xong 2026-09-09**: `ExportReportPage` không còn tĩnh — ví, danh
    mục và phạm vi thời gian lấy từ CSDL, và nút mở màn **Xem trước báo cáo**
    (`ReportPreviewPage`, dựng theo màn Stitch sinh cùng ngày). Ba khối bịa của
-   bản Stitch cũ đã bỏ (lịch sử xuất, mật khẩu PDF, "Đích đến"). Còn **2c‑2**:
+   bản Stitch cũ đã bỏ (lịch sử xuất, mật khẩu PDF, "Đích đến"). **Lát 2c‑1b**
+   cùng ngày mở tờ báo cáo từ bốn khối lên **mười**, lấy chuẩn từ Money Lover /
+   MISA / Copilot / PocketSmith: dòng tiền (số dư đầu và cuối kỳ), so với kỳ
+   trước, biểu đồ thu chi, số liệu nhanh, thu theo danh mục, ngân sách kỳ này,
+   phân bổ theo ví, top 5 khoản chi. Còn **2c‑2**:
    nút "Tải xuống" sinh tệp thật, hiện **tắt** có chủ ý. Tầng tổng hợp mà
    "Tổng kết tuần" chờ nay đã có. Lý do và bẫy: `docs/ANALYTICS_FEATURE.md`.
 
@@ -1124,7 +1133,7 @@ Hoá đơn tạo từ app trước đây **không bao giờ lên tới backend**
   đó là tạo vòng lặp đẩy vô tận.
 
 ### ❌ Chưa làm / Tiếp theo
-- Analytics: lát **2a và 2b xong 2026-09-08** (số thật, rồi biểu đồ xu hướng 6 tháng bằng `fl_chart`), **2c‑1 xong 2026-09-09** (trang Xuất báo cáo đọc số thật + màn Xem trước; 8 tệp test, 107 test); còn **2c‑2** là nút "Tải xuống" sinh tệp thật — `docs/ANALYTICS_FEATURE.md` mục 7
+- Analytics: lát **2a và 2b xong 2026-09-08** (số thật, rồi biểu đồ xu hướng 6 tháng bằng `fl_chart`), **2c‑1 và 2c‑1b xong 2026-09-09** (trang Xuất báo cáo đọc số thật; màn Xem trước nay mười khối theo chuẩn app thị trường; 8 tệp test, **145** test); còn **2c‑2** là nút "Tải xuống" sinh tệp thật — `docs/ANALYTICS_FEATURE.md` mục 7
 - AI chat integration hoàn chỉnh
 - Casso bank integration
 - Build production / deploy

@@ -1,4 +1,6 @@
 import '../../../core/database/app_database.dart';
+import '../../budget/data/models/budget_entity.dart';
+import '../../budget/data/repositories/budget_repository.dart';
 import '../domain/bao_cao_xuat.dart';
 import 'bao_cao_repository.dart';
 
@@ -8,12 +10,22 @@ import 'bao_cao_repository.dart';
 /// thuần, chỗ kiểm được bằng danh sách. Việc ở đây chỉ là tra tên.
 class BaoCaoRepositoryImpl implements BaoCaoRepository {
   final AppDatabase db;
+  final BudgetRepository budgetRepository;
 
-  BaoCaoRepositoryImpl({required this.db});
+  /// Tiêm đồng hồ để test không phụ thuộc ngày chạy máy.
+  final DateTime Function() clock;
+
+  BaoCaoRepositoryImpl({
+    required this.db,
+    required this.budgetRepository,
+    DateTime Function()? clock,
+  }) : clock = clock ?? DateTime.now;
 
   @override
   Future<BaoCao> layBaoCao(int idaccount, {required LocBaoCao loc}) async {
     // `getAll` đã lọc `deletedAt` — giao dịch đã xoá mềm không thuộc báo cáo.
+    // Lấy **toàn bộ** giao dịch chứ không lọc theo kỳ: kỳ trước và dòng tiền
+    // nhìn ra ngoài khoảng đang xem, `dungBaoCao` tự cắt.
     final txs = await db.transactionDao.getAll(idaccount);
 
     // Ví và danh mục thì lấy **kể cả hàng đã xoá mềm**: giao dịch cũ vẫn trỏ
@@ -57,7 +69,55 @@ class BaoCaoRepositoryImpl implements BaoCaoRepository {
         }(),
     ];
 
-    return dungBaoCao(ds, loc: loc);
+    // Tổng số dư **ví còn sống** — cùng phép cộng với trang chủ, để con số
+    // "số dư cuối kỳ" khớp với số tiền người dùng nhìn thấy ở nơi khác.
+    final viSong = await db.walletDao.getAll(idaccount);
+    final soDu = viSong.fold<double>(0, (s, v) => s + v.balance);
+
+    return dungBaoCao(
+      ds,
+      loc: loc,
+      soDuHienTai: soDu,
+      nganSach: await _nganSach(idaccount, loc: loc, catTheoId: catTheoId),
+    );
+  }
+
+  /// Ngân sách **đang chạy** của kỳ, theo danh mục.
+  ///
+  /// Mốc tra lấy cùng quy tắc với trang Phân tích (mục 3.3): kỳ đang chứa hôm
+  /// nay thì lấy "bây giờ" để số đã chi khớp trang Ngân sách; kỳ đã qua thì lấy
+  /// giây cuối của kỳ, để ngân sách còn sống tới cuối kỳ vẫn được tính.
+  ///
+  /// `watchBudgets` trả **cả** ngân sách đã hết hạn (trang Ngân sách tự chia
+  /// tab), nên phải lọc `isExpired` ở đây — bỏ dòng ấy là một ngân sách chết từ
+  /// tháng 6 vẫn hiện trên báo cáo tháng 9.
+  Future<List<DongNganSach>> _nganSach(
+    int idaccount, {
+    required LocBaoCao loc,
+    required Map<String, Category> catTheoId,
+  }) async {
+    final at = clock();
+    final trongKy = !at.isBefore(loc.from) && at.isBefore(loc.to);
+    final moc = trongKy ? at : loc.to.subtract(const Duration(seconds: 1));
+
+    final ds = await budgetRepository.watchBudgets(idaccount, now: moc).first;
+    final ra = <DongNganSach>[];
+    for (final v in ds) {
+      final BudgetEntity b = v.budget;
+      final id = b.categoryId;
+      // Ngân sách tổng (`categoryId == null`) không thuộc dòng nào.
+      if (id == null || b.isExpired(moc)) continue;
+      // Danh mục đã lọc riêng thì chỉ giữ ngân sách của chính nó.
+      if (loc.categoryId != null && id != loc.categoryId) continue;
+      ra.add(DongNganSach(
+        categoryId: id,
+        ten: catTheoId[id]?.name ?? 'Danh mục đã xoá',
+        hanMuc: b.amount,
+        daChi: b.spent,
+      ));
+    }
+    ra.sort((a, b) => b.tiLe.compareTo(a.tiLe));
+    return ra;
   }
 
   @override

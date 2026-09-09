@@ -2,10 +2,12 @@
 
 **Cập nhật:** 2026-09-09
 **Trạng thái:** lát **2a** xong — mọi con số trên trang là số thật từ SQLite —
-lát **2b** xong (khối "Xu hướng 6 tháng" vẽ bằng `fl_chart`), và lát **2c‑1**
-xong 2026-09-09: trang Xuất báo cáo đọc ví/danh mục/thời gian thật rồi mở màn
-**Xem trước báo cáo**. Còn **2c‑2**: nút "Tải xuống" sinh tệp thật — hiện đang
-**tắt** có chủ ý. Xem mục 7.
+lát **2b** xong (khối "Xu hướng 6 tháng" vẽ bằng `fl_chart`), lát **2c‑1** xong
+(trang Xuất báo cáo đọc ví/danh mục/thời gian thật rồi mở màn **Xem trước báo
+cáo**), và lát **2c‑1b** xong cùng ngày: báo cáo nay có **mười khối** thay vì
+bốn — dòng tiền, so với kỳ trước, biểu đồ, số liệu nhanh, thu theo danh mục,
+ngân sách, phân bổ theo ví, top 5 khoản chi. Còn **2c‑2**: nút "Tải xuống" sinh
+tệp thật — hiện đang **tắt** có chủ ý. Xem mục 7.
 
 > Cùng mục đích với `GOAL_FEATURE.md`: giữ lại **vì sao**. Cái gì thì đọc mã và
 > test là ra.
@@ -21,7 +23,7 @@ xong 2026-09-09: trang Xuất báo cáo đọc ví/danh mục/thời gian thật
 | Sửa cách gộp dữ liệu | Mục 3.3 (mốc tra ngân sách) trước, rồi `data/analytics_repository_impl.dart` |
 | Đụng giao diện | Màn Stitch **"FlowMoney Analytics Dashboard"** — bố cục lấy nguyên từ đó **trừ khối xu hướng**, xem **3.12**; và mục 4.4 về font của bộ test |
 | Đụng biểu đồ | Mục **3.11** (vì sao `fl_chart`, vì sao ghim phiên bản), **3.12** (vì sao lệch Stitch), và bẫy **4.9** (tooltip tràn — thứ duy nhất phải kiểm bằng mắt) |
-| Đụng trang Xuất báo cáo / màn Xem trước | Mục **3.13** (vì sao xem trước rồi mới tải), **3.14** (ảnh chụp, không phải luồng sống; và màn Stitch mới), bẫy **4.11** |
+| Đụng trang Xuất báo cáo / màn Xem trước | Mục **3.13** (vì sao xem trước rồi mới tải), **3.14** (ảnh chụp, không phải luồng sống; và màn Stitch mới), **3.15** (mười khối lấy chuẩn từ app thị trường), **3.16** (dòng tiền là số suy ngược, hai giới hạn), bẫy **4.11**–**4.14** |
 | Làm tiếp 2c‑2 (sinh tệp) | Mục 7 |
 
 ---
@@ -238,6 +240,56 @@ theo nó. ⚠️ Lần sinh ấy **báo timeout hai lần nhưng cả hai đều
 xoá tay (MCP không có lệnh xoá màn).
 
 
+### 3.15 Báo cáo chi tiết — lấy chuẩn từ app thị trường
+
+**Khảo sát 2026-09-09**, sau khi người dùng nói bản 2c‑1 *"chỉ có các thông tin
+cơ bản"*. App đã xem: **Money Lover**, **MISA MoneyKeeper** (phía Việt Nam),
+**Copilot**, **PocketSmith** (quốc tế). Ba điều rút ra, và cả ba đều thành khối
+trên màn Xem trước:
+
+- **Money Lover** có hẳn một mục trợ giúp riêng cho *"Số dư đầu kỳ – Số dư cuối
+  kỳ"*: báo cáo của họ kể **một câu chuyện dòng tiền**, không phải một đống số
+  rời. → khối "Dòng tiền trong kỳ".
+- **Copilot** có tab Cash Flow kèm **so sánh với kỳ liền trước**. → phần trăm
+  ▲/▼ dưới mỗi thẻ tổng, và `khoangKyTruoc`.
+- **PocketSmith** dựng báo cáo như một **bảng lãi–lỗ cá nhân**: thu theo danh
+  mục *và* chi theo danh mục. → bảng "Thu theo danh mục", đối xứng với bảng chi.
+
+Bốn khối còn lại là thứ FlowMoney có sẵn dữ liệu mà báo cáo chưa dùng: **ngân
+sách kỳ này** (chỗ FlowMoney mạnh hơn Money Lover — app kia không gắn ngân sách
+vào báo cáo), **phân bổ theo ví**, **top 5 khoản chi**, và **số liệu nhanh**
+(chi mỗi ngày, số giao dịch, ngày chi nhiều nhất, khoản chi lớn nhất) theo lối
+MISA/Money Lover.
+
+`chiTheoDanhMuc` của `thong_ke_thang.dart` nay nhận thêm `loai` (mặc định
+`'chi'`) để dựng cả bảng thu — **một định nghĩa cho hai chiều**, không viết bản
+sao thứ hai. Tên hàm giữ nguyên vì trang Phân tích chỉ dùng chiều chi.
+
+### 3.16 Dòng tiền là số **suy ngược**, và nó có hai giới hạn đã biết
+
+App không lưu lịch sử số dư. Số dư cuối kỳ = tổng số dư ví hiện tại **trừ** phần
+phát sinh sau kỳ; số dư đầu kỳ = cuối kỳ trừ thu và cộng chi trong kỳ. Phép cân
+`đầu kỳ + thu − chi = cuối kỳ` vì thế luôn đúng theo cách dựng.
+
+Hai giới hạn, cả hai đều ghi thẳng lên màn hình bằng dòng *"Suy ngược từ số dư
+hiện tại của các ví"*:
+
+1. **Lọc theo một ví thì không có khối này.** Với một ví riêng, khoản
+   `transfer` ảnh hưởng thật tới số dư nhưng **chiều tiền không suy được** từ vị
+   trí ví — đúng cái bẫy đã ghi ở mục 3.2 `GOAL_FEATURE.md` (đổi ví tích luỹ một
+   lần là mọi khoản nạp cũ đọc thành khoản rút). Thà không hiện còn hơn hiện một
+   con số có thể sai.
+2. **Ví tạo giữa kỳ làm số dư đầu kỳ lệch.** Số dư ban đầu của một ví **không
+   phải là giao dịch** (đã kiểm: `lib/features/wallet` không sinh giao dịch nào
+   khi tạo ví), nên nó bị quy hết về "trước kỳ". Money Lover tránh việc này bằng
+   cách ghi số dư ban đầu thành một giao dịch — sửa được, nhưng đó là đổi cách
+   ghi dữ liệu chứ không phải sửa báo cáo.
+
+⚠️ Trên tài khoản thử (id 10), số dư đầu kỳ ra **âm**. Đó là số thật của dữ liệu
+ấy, không phải lỗi: tháng 9 thu nhiều hơn chi 13,58 triệu trong khi tổng số dư
+hiện tại chỉ 8,89 triệu.
+
+
 ## 4. Bẫy
 
 **4.1 Tài khoản.** `AnalyticsPage` phải `context.watch<AuthBloc>()` + `ValueKey(idaccount)`
@@ -318,6 +370,27 @@ vậy xong thì test đỏ ngay đúng lỗi ấy, rồi mới bọc `Expanded`.
 nào cũng nên theo: `MaterialApp(theme: AppTheme.lightTheme, ...)` trong test,
 nếu không mọi ràng buộc do theme sinh ra đều vô hình.
 
+**4.12 Trang báo cáo dài hơn một màn hình — `find.text` không còn đủ.**
+`ListView` **không dựng** hàng ngoài khung nhìn, nên mọi khối từ "Thu chi trong
+kỳ" trở xuống trả rỗng nếu test không cuộn tới (cùng bẫy 4.6 của bottom sheet).
+Và vì nội dung nay phong phú, **một con số xuất hiện ở nhiều khối**: cùng một
+ngày nằm ở "Số liệu nhanh", "Top 5 khoản chi" và tiêu đề nhóm ngày; cùng một số
+tiền nằm ở bảng danh mục lẫn top 5. Test phải `scrollUntilVisible` rồi tìm
+**trong phạm vi** một khối (`find.descendant` với `Key('khoiGiaoDich')`), nếu
+không hoặc là xanh oan, hoặc là đỏ vì "tìm được hai".
+
+**4.13 Số 0 vẫn mang dấu.** `CurrencyFormatter.formatIncome(0)` trả `"+0 ₫"`.
+Một ví không phát sinh khoản thu nào hiện ra như lỗi định dạng — thấy trên máy
+ảo. Bảng "Phân bổ theo ví" bỏ dấu khi số bằng 0.
+
+**4.14 Khoản nạp mục tiêu kiểu CŨ được đếm là thu và chi thật.** Trên tài khoản
+thử có một cặp hàng `Type = 'Transaction'` ±500.000 mang ghi chú *"Tích lũy mục
+tiêu"* — cách ghi trước khi mục tiêu chuyển sang `transfer`. Báo cáo (và trang
+Phân tích) đếm chúng là thu/chi thật, nên "Khoản chi lớn nhất" của tháng 9 là
+một lần nạp mục tiêu. **Hai trang khớp nhau**, nên đây không phải lỗi của báo
+cáo; sửa nó là đi diễn giải lại lịch sử — việc mà mục 3.16 và `GOAL_FEATURE.md`
+đều khuyên đừng làm.
+
 ---
 
 ## 5. Luồng dữ liệu
@@ -344,15 +417,23 @@ ExportReportPage ──watch AuthBloc──▶ idaccount
    ├─ BaoCaoRepository.watchVi / watchDanhMuc ─▶ chip ví, sheet danh mục
    └─ [Xem trước báo cáo] ─▶ khoangCuaPhamVi(phạm vi, now, tuỳ chọn)
          └─ BaoCaoRepository.layBaoCao(idaccount, loc)   (Future, một ảnh chụp)
-               ├─ transactionDao.getAll ─┐
-               ├─ wallets (KỂ CẢ đã xoá) ┼─▶ dungBaoCao() ─▶ BaoCao
-               └─ categories (KỂ CẢ xoá) ┘
+               ├─ transactionDao.getAll ─┐   (TOÀN BỘ, không lọc kỳ)
+               ├─ wallets (KỂ CẢ đã xoá) ┤
+               ├─ categories (KỂ CẢ xoá) ┼─▶ dungBaoCao() ─▶ BaoCao
+               ├─ tổng số dư ví CÒN SỐNG ┤
+               └─ budgetRepository ──────┘
                      └─▶ ReportPreviewPage(baoCao: …)  — không đọc CSDL
 ```
 
 `dungBaoCao` mượn nguyên luật đếm của `thong_ke_thang.dart` (`tongThuChi`,
 `chiTheoDanhMuc`), nên hai trang không thể nói hai con số khác nhau về cùng một
 tháng. Ví và danh mục tra tên **kể cả hàng đã xoá mềm** — cùng lý do mục 3.8.
+
+⚠️ Repository truyền **toàn bộ** giao dịch của tài khoản chứ không lọc sẵn theo
+kỳ: kỳ trước (mục 3.15) và dòng tiền (mục 3.16) đều nhìn ra ngoài khoảng đang
+xem. Ai "tối ưu" bằng cách lọc trước khi gọi sẽ làm hai khối ấy sai mà không lỗi
+nào báo — cùng bẫy với `chuoi` của `ThongKeThang`. Riêng **tổng số dư** thì lấy
+từ ví **còn sống** (`walletDao.getAll`), để khớp con số trang chủ hiện.
 
 ⚠️ `chuoi` nhìn **xa hơn** `tongTruoc` nhiều, nên nó phải được dựng từ **toàn
 bộ** giao dịch của tài khoản. `transactionDao.watchAll` đã trả về tất cả nên
@@ -369,9 +450,9 @@ Test `sáu điểm, cũ nhất trước, mang số thật của cả tháng ở 
 | `thong_ke_thang_test.dart` | Biên tháng (tháng 12, **năm nhuận**, tháng 2 thường), biên `to` mở, loại `transfer`, % với tháng trước = 0, gom danh mục và sắp ổn định khi hoà, top‑4 + Khác (kể cả đúng 5), `rutGon` (làm tròn, bỏ `.0`), 12 tháng gần nhất cuộn qua năm trước |
 | `analytics_repository_impl_test.dart` | Đổi hàng Drift → thuần, cách ly `idaccount`, ba chữ cho ba ca danh mục **kể cả xoá mềm giữ tên thật**, "% ngân sách" bám ngân sách đang chạy và **bỏ ngân sách hết hạn**, stream phát lại khi ghi thêm |
 | `analytics_cubit_test.dart` | `null` không đoán tài khoản; tháng lấy từ `clock` và `now` đi xuống repository; đổi tháng huỷ đăng ký cũ; lỗi stream không nổ |
-| `bao_cao_xuat_test.dart` | Tầng thuần của lát 2c: bốn phạm vi thời gian (**tháng 1 lùi sang năm trước**, quý IV, tuỳ chỉnh cộng một ngày, năm nhuận), lọc theo ví/danh mục, `'transfer'` bị loại khỏi **cả** tổng lẫn danh sách, gom danh mục, nhóm theo ngày mới-nhất-trước, báo cáo rỗng |
-| `bao_cao_repository_impl_test.dart` | Tra tên ví/danh mục **kể cả hàng đã xoá mềm**, ba chữ cho ba ca danh mục, tiêu đề lấy ghi chú rồi mới tới tên danh mục, cách ly `idaccount`, giao dịch đã xoá mềm không vào báo cáo, danh sách cho bộ lọc chỉ lấy hàng còn sống |
-| `report_preview_page_test.dart` | Ba thẻ tổng, **khoảng hiện ngày cuối thật** (biên `to` mở), nhãn bộ lọc, bảng danh mục có %, nhóm ngày kèm tên ví, dấu +/−, trạng thái rỗng, **nút Tải xuống phải TẮT**, 411dp |
+| `bao_cao_xuat_test.dart` | Tầng thuần của lát 2c: bốn phạm vi thời gian (**tháng 1 lùi sang năm trước**, quý IV, tuỳ chỉnh cộng một ngày, năm nhuận), lọc theo ví/danh mục, `'transfer'` bị loại khỏi **cả** tổng lẫn danh sách, gom danh mục, nhóm theo ngày mới-nhất-trước, báo cáo rỗng. Lát 2c‑1b thêm: `khoangKyTruoc` (**tháng lùi theo tháng, không trừ N ngày**; quý; tuỳ chỉnh), dòng tiền (trừ phần sau kỳ, `transfer` không làm lệch, lọc ví thì `null`), thu theo danh mục, phân bổ theo ví, số liệu nhanh (**chia cho số ngày CỦA KỲ**), top 5, và độ chia của biểu đồ đổi theo độ dài kỳ |
+| `bao_cao_repository_impl_test.dart` | Tra tên ví/danh mục **kể cả hàng đã xoá mềm**, ba chữ cho ba ca danh mục, tiêu đề lấy ghi chú rồi mới tới tên danh mục, cách ly `idaccount`, giao dịch đã xoá mềm không vào báo cáo, danh sách cho bộ lọc chỉ lấy hàng còn sống; **dòng tiền dùng tổng số dư ví còn sống**, và ngân sách hết hạn không lên báo cáo |
+| `report_preview_page_test.dart` | Ba thẻ tổng, **khoảng hiện ngày cuối thật** (biên `to` mở), nhãn bộ lọc, bảng danh mục có %, nhóm ngày kèm tên ví, dấu +/−, trạng thái rỗng, **nút Tải xuống phải TẮT**, 411dp; và tám khối của 2c‑1b: dòng tiền (kèm dòng "suy ngược", và **biến mất khi lọc ví**), `▲ %` so kỳ trước, thu theo danh mục, ngân sách có nhãn "Vượt", phân bổ theo ví (**số 0 không mang dấu**), top 5, số liệu nhanh, và có `LineChart` |
 | `export_report_page_test.dart` | Ví lấy từ CSDL (không còn "Techcombank"), không còn lịch sử xuất bịa, bộ lọc đi **nguyên vẹn** xuống repository (khoảng theo đồng hồ, id ví, id danh mục), mở đúng màn Xem trước, 411dp |
 | `analytics_page_test.dart` | Tháng từ đồng hồ (không còn "T6 2026"), ba thẻ, "% ngân sách"/"% tổng chi", donut + Khác + tâm rút gọn, rỗng, chọn tháng, "Xem tất cả", **411dp với tên dài**, và khối xu hướng: sáu nhãn tháng lấy từ dữ liệu, chú giải Thu/Chi, chuỗi rỗng không nổ, 411dp với số hàng trăm triệu |
 
@@ -402,11 +483,17 @@ không (`preventCurveOverShooting`). Cả ba chỉ kiểm được bằng mắt 
   2026-09-09.** Ví/danh mục/thời gian lấy từ CSDL, tầng thuần `bao_cao_xuat.dart`,
   màn `report_preview_page.dart` theo màn Stitch mới. Ba khối bịa đã bỏ (mục
   3.13).
+- ✅ ~~**2c‑1b — báo cáo chi tiết theo chuẩn app thị trường.**~~ **Xong
+  2026-09-09.** Tám khối mới, lý do và nguồn khảo sát ở mục **3.15**; dòng tiền
+  và hai giới hạn của nó ở mục **3.16**.
 - **2c‑2 — nút "Tải xuống" sinh tệp thật.** Hiện đang **tắt** có chủ ý. Định
   dạng chốt sau: CSV rẻ (tự viết chuỗi, chỉ cần một thư viện chia sẻ tệp), PDF
   cần `pdf` + một font có dấu tiếng Việt — font mặc định của thư viện **mất
   dấu im lặng**. Giao diện đã có ô chọn PDF/CSV và màn Xem trước đã mang đủ số
-  liệu, nên lát này chỉ còn phần sinh tệp và nơi lưu.
+  liệu, nên lát này chỉ còn phần sinh tệp và nơi lưu. ⚠️ Báo cáo nay **có biểu
+  đồ**, nên bản PDF cũng phải có: hoặc chụp widget thành ảnh rồi nhúng, hoặc vẽ
+  lại bằng thư viện PDF. Đây là công thêm mà lát 2c‑1b tạo ra, biết trước để
+  không ngạc nhiên.
 - **Tổng kết tuần** — spec `2026-09-07-weekly-summary-notification-design.md`
   chờ một **màn phạm vi tuần**. Tầng tổng hợp đã có (`tongThuChi` nhận biên bất
   kỳ); còn thiếu giao diện — có thể là một chế độ "tuần" của chính trang này.

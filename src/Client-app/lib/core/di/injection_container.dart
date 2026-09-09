@@ -229,7 +229,10 @@ Future<void> setupDependencies() async {
   // Trang Xuất báo cáo đọc thẳng repository (không cubit): màn Xem trước là
   // một ảnh chụp theo bộ lọc, không phải luồng dữ liệu sống.
   sl.registerLazySingleton<BaoCaoRepository>(
-    () => BaoCaoRepositoryImpl(db: sl<AppDatabase>()),
+    () => BaoCaoRepositoryImpl(
+      db: sl<AppDatabase>(),
+      budgetRepository: sl<BudgetRepository>(),
+    ),
   );
 
   // ── 11. Thông báo ────────────────────────────────────────────────────────

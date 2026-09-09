@@ -107,15 +107,19 @@ class ChiTheoDanhMuc {
 ///
 /// Hoà thì sắp theo `categoryId` để hai lần vẽ không đảo chỗ nhau; `null`
 /// (chưa phân loại) xếp sau các id thật khi hoà.
+/// [loai] mặc định `'chi'` — tên hàm giữ nguyên vì trang Phân tích chỉ dùng
+/// chiều ấy. Trang Xuất báo cáo gọi lại nó với `'thu'` để dựng bảng thu theo
+/// danh mục: một định nghĩa cho cả hai chiều, đừng viết bản sao thứ hai.
 List<ChiTheoDanhMuc> chiTheoDanhMuc(
   List<KhoanThuChi> ds, {
   required DateTime from,
   required DateTime to,
+  String loai = 'chi',
 }) {
   final gom = <String?, double>{};
   var tong = 0.0;
   for (final k in ds) {
-    if (k.loai != 'chi' || !_trongKhoang(k.ngay, from, to)) continue;
+    if (k.loai != loai || !_trongKhoang(k.ngay, from, to)) continue;
     gom[k.categoryId] = (gom[k.categoryId] ?? 0) + k.soTien;
     tong += k.soTien;
   }

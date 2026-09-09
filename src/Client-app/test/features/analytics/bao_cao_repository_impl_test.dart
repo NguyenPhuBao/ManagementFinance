@@ -15,9 +15,13 @@ import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/analytics/data/bao_cao_repository.dart';
 import 'package:flowmoney/features/analytics/data/bao_cao_repository_impl.dart';
 import 'package:flowmoney/features/analytics/domain/bao_cao_xuat.dart';
+import 'package:flowmoney/features/budget/data/datasources/budget_local_data_source.dart';
+import 'package:flowmoney/features/budget/data/repositories/budget_repository.dart';
+import 'package:flowmoney/features/budget/data/repositories/budget_repository_impl.dart';
 
 void main() {
   late AppDatabase db;
+  late BudgetRepository budgets;
   late BaoCaoRepository repo;
 
   final now = DateTime(2026, 9, 8, 12);
@@ -26,7 +30,12 @@ void main() {
 
   setUp(() async {
     db = AppDatabase.forTesting(NativeDatabase.memory());
-    repo = BaoCaoRepositoryImpl(db: db);
+    budgets = BudgetRepositoryImpl(
+      localDataSource: BudgetLocalDataSourceImpl(db: db),
+      clock: () => now,
+    );
+    repo = BaoCaoRepositoryImpl(
+        db: db, budgetRepository: budgets, clock: () => now);
 
     await db.walletDao.insert(WalletsCompanion.insert(
       id: 'w1',
@@ -166,6 +175,88 @@ void main() {
               from: locThang9.from, to: locThang9.to, walletId: 'w2'));
       expect(bc.soGiaoDich, 1);
       expect(bc.nhom.single.dong.single.tenVi, 'Ngân hàng');
+    });
+  });
+
+  group('dòng tiền', () {
+    test('số dư cuối kỳ suy từ TỔNG số dư ví hiện tại', () async {
+      await db.walletDao.insert(WalletsCompanion.insert(
+        id: 'w2',
+        idaccount: 1,
+        name: 'Ngân hàng',
+        balance: const Value(5000000.0),
+        updatedAt: now,
+      ));
+      // w1 = 10.000.000 (setUp) + w2 = 5.000.000 → 15.000.000
+      await giaoDich(id: 't1', ngay: DateTime(2026, 9, 5), soTien: 200000);
+      await giaoDich(id: 't2', ngay: DateTime(2026, 10, 9), soTien: 500000);
+
+      final bc = await repo.layBaoCao(1, loc: locThang9);
+
+      expect(bc.dongTien!.cuoiKy, 15500000,
+          reason: 'Số dư hiện tại đã trừ khoản chi 500k của tháng 10, nên số '
+              'dư cuối tháng 9 phải cộng lại. Lấy thẳng số dư hiện tại là tờ '
+              'báo cáo tháng 9 mang số của hôm nay.');
+      expect(bc.dongTien!.dauKy, 15700000);
+    });
+
+    test('ví đã xoá mềm không tính vào số dư hiện tại', () async {
+      await db.walletDao.insert(WalletsCompanion.insert(
+        id: 'w2',
+        idaccount: 1,
+        name: 'Ví cũ',
+        balance: const Value(9000000.0),
+        updatedAt: now,
+      ));
+      await db.walletDao.softDelete('w2');
+
+      final bc = await repo.layBaoCao(1, loc: locThang9);
+
+      expect(bc.dongTien!.cuoiKy, 10000000,
+          reason: 'Số dư trên báo cáo phải khớp với số tiền người dùng thấy ở '
+              'trang chủ; trang ấy cũng bỏ ví đã xoá.');
+    });
+  });
+
+  group('ngân sách của kỳ', () {
+    test('ngân sách đang chạy vào báo cáo kèm hạn mức và số đã chi', () async {
+      await budgets.addBudget(
+        idaccount: 1,
+        categoryId: 'c_an',
+        amount: 1000000,
+        startDate: DateTime(2026, 9, 1),
+        endDate: null,
+        recurrence: true,
+        timeRecurrence: 'Month',
+      );
+      await giaoDich(id: 't1', ngay: DateTime(2026, 9, 5), soTien: 320000);
+
+      final bc = await repo.layBaoCao(1, loc: locThang9);
+
+      expect(bc.nganSach.single.ten, 'Ăn uống');
+      expect(bc.nganSach.single.hanMuc, 1000000);
+      expect(bc.nganSach.single.daChi, 320000);
+      expect(bc.nganSach.single.vuot, isFalse);
+    });
+
+    test('ngân sách ĐÃ HẾT HẠN trước kỳ thì không lên báo cáo', () async {
+      await budgets.addBudget(
+        idaccount: 1,
+        categoryId: 'c_an',
+        amount: 1000000,
+        startDate: DateTime(2026, 6, 1),
+        endDate: DateTime(2026, 6, 30),
+        recurrence: false,
+        timeRecurrence: null,
+      );
+      await giaoDich(id: 't1', ngay: DateTime(2026, 9, 5), soTien: 100000);
+
+      final bc = await repo.layBaoCao(1, loc: locThang9);
+
+      expect(bc.nganSach, isEmpty,
+          reason: 'Một ngân sách chết từ tháng 6 mà vẫn hiện trên báo cáo '
+              'tháng 9 là so với một hạn mức không còn tồn tại — cùng bẫy đã '
+              'đóng ở trang Phân tích.');
     });
   });
 
