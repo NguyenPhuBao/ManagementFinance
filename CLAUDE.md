@@ -80,7 +80,7 @@
 ## Lệnh hay dùng
 
 ```bash
-# Test (chạy từ src/Client-app) — hiện 1876/1876 pass, ~200 giây
+# Test (chạy từ src/Client-app) — hiện 1896/1896 pass, ~200 giây
 flutter test
 flutter analyze          # mức nền: 25 issue, KHÔNG có error
 
@@ -139,7 +139,7 @@ bàn giao tạm giữa các phiên nên chết đi sống lại nhiều lần �
 
 Bộ test là lưới an toàn chính của dự án này — nhiều lỗi trong quá khứ hỏng **âm thầm** (không exception, không log). Khi sửa lỗi, viết test tái hiện **trước**, và ghi rõ trong `reason:` của assertion là nó canh chừng điều gì.
 
-Vùng chưa có test nào: các feature `profile`, `ai_chat`. (`wallet` có **4** tệp / **16** test — thêm `domain/wallet_type_test.dart` ngày 2026-09-09; `core/utils/currency_formatter_test.dart` có **17** test, trong đó **một test quét cả `lib/`** cấm dựng `NumberFormat` ngoài `CurrencyFormatter`; `core/database/wallet_schema_v20_test.dart` có **5** test — đếm bằng máy.) (`core/realtime/` có **4** tệp test / **32** test từ 2026-09-09 — đếm bằng máy.) (`analytics` có **10** tệp test / **170** test — 6 tệp thêm ngày 2026-09-09 cho lát 2c; đếm bằng máy). (`notification` có **22** tệp dưới `test/core/notification/` + `test/features/notification/` — 14 ở gốc, 5 trong `os/` và `prefs/`, 3 ở `features/` — cộng 3 tệp liên quan nằm chỗ khác. Đếm lại bằng máy 2026-09-09 sau khi thêm `tuan_iso_test` và `notification_rules_weekly_test`; `home` có test từ 2026-09-06.) (`auth_interceptor.dart` có test từ 2026-09-03; `budget` có test từ 2026-09-03.)
+Vùng chưa có test nào: các feature `profile`, `ai_chat`. (`wallet` có **7** tệp / **26** test — ba tệp thêm ngày 2026-09-09 cho đợt sửa sáu lỗi quản lý ví (`wallet_default_flag_test`, `wallet_cubit_total_test`, `wallet_list_actions_test`); `core/utils/currency_formatter_test.dart` có **17** test, trong đó **một test quét cả `lib/`** cấm dựng `NumberFormat` ngoài `CurrencyFormatter`; hai tệp ví ở `core/database/` (`wallet_schema_v20_test.dart`, `wallet_order_test.dart`) có **9** test — đếm bằng máy.) (`core/realtime/` có **4** tệp test / **32** test từ 2026-09-09 — đếm bằng máy.) (`analytics` có **10** tệp test / **170** test — 6 tệp thêm ngày 2026-09-09 cho lát 2c; đếm bằng máy). (`notification` có **22** tệp dưới `test/core/notification/` + `test/features/notification/` — 14 ở gốc, 5 trong `os/` và `prefs/`, 3 ở `features/` — cộng 3 tệp liên quan nằm chỗ khác. Đếm lại bằng máy 2026-09-09 sau khi thêm `tuan_iso_test` và `notification_rules_weekly_test`; `home` có test từ 2026-09-06.) (`auth_interceptor.dart` có test từ 2026-09-03; `budget` có test từ 2026-09-03.)
 
 ### ⚠️ Ba loại lỗi mà `flutter test` KHÔNG bắt được
 
