@@ -18,6 +18,7 @@ import '../../../../features/category/data/models/category_suggestion.dart';
 import '../../../../features/category/data/repositories/category_management_repository.dart';
 import '../../../../features/category/data/services/category_suggestion_engine.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../domain/vi_chon_san.dart';
 import '../../data/models/transaction_entity.dart';
 import '../bloc/transaction_bloc.dart';
 import '../bloc/transaction_event.dart';
@@ -127,6 +128,18 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     _loadWallets();
   }
 
+  /// Chọn sẵn ví nguồn và ví đích theo cờ "Ví mặc định".
+  ///
+  /// Luật nằm ở `vi_chon_san.dart` để test được không cần dựng cả trang này.
+  void _apDungViChonSan() {
+    final chon = chonViChonSan<Wallet>(
+      _wallets,
+      laMacDinh: (w) => w.isDefault,
+    );
+    _selectedWallet = chon.nguon;
+    _destinationWallet = chon.dich;
+  }
+
   /// Ở chế độ sửa, ví của giao dịch phải thắng ví đầu danh sách.
   void _apDungViDangSua() {
     final editing = _editing;
@@ -156,9 +169,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     if (configuredWallets != null) {
       setState(() {
         _wallets = configuredWallets;
-        _selectedWallet = _wallets.isEmpty ? null : _wallets.first;
-        _destinationWallet =
-            _wallets.length > 1 ? _wallets[1] : _selectedWallet;
+        _apDungViChonSan();
         _apDungViDangSua();
         _isLoadingWallets = false;
       });
@@ -174,17 +185,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     if (mounted) {
       setState(() {
         _wallets = list;
-        if (_wallets.isNotEmpty) {
-          _selectedWallet = _wallets.first;
-          if (_wallets.length > 1) {
-            _destinationWallet = _wallets[1];
-          } else {
-            _destinationWallet = _wallets.first;
-          }
-        } else {
-          _selectedWallet = null;
-          _destinationWallet = null;
-        }
+        _apDungViChonSan();
         _apDungViDangSua();
         _isLoadingWallets = false;
       });
