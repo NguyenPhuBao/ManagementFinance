@@ -15,6 +15,8 @@ import 'core/network/connection_monitor.dart';
 import 'core/notification/notification_deeplink.dart';
 import 'core/notification/notification_tap_router.dart';
 import 'core/notification/os/os_notifier.dart';
+import 'core/realtime/realtime_channel.dart';
+import 'core/realtime/realtime_wakeup.dart';
 import 'core/sync/sync_engine.dart';
 import 'shared/widgets/connection_banner.dart';
 import 'shared/theme/app_theme.dart';
@@ -30,6 +32,15 @@ void main() async {
   // Bắt đầu theo dõi kết nối ngay: nó đọc trạng thái hiện tại trước để không
   // báo "đã kết nối lại" cho một sự cố chưa từng xảy ra.
   await sl<ConnectionMonitor>().start();
+
+  // Sự kiện thời gian thực đánh thức đồng bộ ngay, thay vì chờ hết chu kỳ 15
+  // phút. Đăng ký MỘT lần cho cả vòng đời app: `RealtimeChannel` là singleton
+  // và luồng của nó là broadcast, nên nối lại ở mỗi lần đăng nhập chỉ tạo
+  // thêm subscription trùng.
+  noiRealtimeVaoDongBo(
+    events: sl<RealtimeChannel>().events,
+    dongBoNgay: () => sl<SyncEngine>().syncNow(),
+  );
 
   // Kiểm tra token trước khi khởi động UI
   // → Có token  = đã đăng nhập → vào /home trực tiếp (offline OK)

@@ -9,6 +9,7 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/sync/sync_engine.dart';
 import '../../../../core/notification/notification_scanner.dart';
+import '../../../../core/realtime/realtime_channel.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../../wallet/data/services/default_account_data_initializer.dart';
 import 'auth_event.dart';
@@ -81,6 +82,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     if (sl.isRegistered<NotificationScanner>()) {
       await sl<NotificationScanner>().stop();
     }
+    // Dừng kênh thời gian thực cùng lúc. Socket còn sống sau khi đăng xuất
+    // nghĩa là máy vẫn nằm trong room `account_<id>` của người vừa rời đi —
+    // đây là lỗi bảo mật, không phải lỗi giao diện.
+    if (sl.isRegistered<RealtimeChannel>()) {
+      await sl<RealtimeChannel>().stop();
+    }
     await authRepository.logout();
     emit(AuthUnauthenticated());
   }
@@ -141,6 +148,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         if (sl.isRegistered<NotificationScanner>()) {
           await sl<NotificationScanner>().start(idAcc);
         }
+        // Kênh thời gian thực sống đúng bằng vòng đời của phiên đăng nhập, y
+        // như bộ quét thông báo ngay trên.
+        if (sl.isRegistered<RealtimeChannel>()) {
+          await sl<RealtimeChannel>().start(idaccount: idAcc);
+        }
         unawaited(engine.start(idaccount: idAcc).then((_) async {
           // Pull hỏng (mất mạng, server lỗi) thì CSDL cục bộ chưa đáng tin.
           // Bộ mặc định của backend chưa chắc đã về, mà thiếu nó thì không có
@@ -185,6 +197,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         if (sl.isRegistered<NotificationScanner>()) {
           await sl<NotificationScanner>().start(idAcc);
         }
+        // Kênh thời gian thực sống đúng bằng vòng đời của phiên đăng nhập, y
+        // như bộ quét thông báo ngay trên.
+        if (sl.isRegistered<RealtimeChannel>()) {
+          await sl<RealtimeChannel>().start(idaccount: idAcc);
+        }
         await engine.start(idaccount: idAcc);
         // Tạo bản sao riêng của bộ danh mục mặc định, SAU khi đã pull — bộ
         // mặc định chỉ có mặt ở máy này sau khi pull mang nó về. Chưa có thì
@@ -213,6 +230,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     // xuất vẫn quét, và quét bằng idaccount của người vừa rời đi.
     if (sl.isRegistered<NotificationScanner>()) {
       await sl<NotificationScanner>().stop();
+    }
+    // Dừng kênh thời gian thực cùng lúc. Socket còn sống sau khi đăng xuất
+    // nghĩa là máy vẫn nằm trong room `account_<id>` của người vừa rời đi —
+    // đây là lỗi bảo mật, không phải lỗi giao diện.
+    if (sl.isRegistered<RealtimeChannel>()) {
+      await sl<RealtimeChannel>().stop();
     }
     await authRepository.logout();
     emit(AuthUnauthenticated());

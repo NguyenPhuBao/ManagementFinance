@@ -4,6 +4,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../core/api/interceptors/auth_interceptor.dart';
 import '../../core/api/dio_client.dart';
 import '../../core/database/app_database.dart';
+import '../../core/realtime/realtime_channel.dart';
 import '../../core/sync/sync_checkpoint_store.dart';
 import '../../core/sync/sync_engine.dart';
 import '../../features/analytics/data/analytics_repository.dart';
@@ -247,6 +248,14 @@ Future<void> setupDependencies() async {
   // phản ứng ngay với cú nhấp nháy đầu tiên; dải báo hỏi "có đáng nói với
   // người dùng không" và phải chờ trạng thái ổn định.
   sl.registerLazySingleton<ConnectionMonitor>(() => ConnectionMonitor());
+
+  // Kênh thời gian thực. Cũng tách khỏi SyncEngine, và cũng vì hai câu hỏi
+  // khác nhau: SyncEngine hỏi "khi nào thì đồng bộ", kênh này chỉ thuật lại
+  // "server vừa nói gì". Thiết kế đầy đủ ở
+  // docs/superpowers/specs/2026-09-09-socket-io-realtime-channel-design.md
+  sl.registerLazySingleton<RealtimeChannel>(
+    () => RealtimeChannel(secureStorage: sl<FlutterSecureStorage>()),
+  );
 
   sl.registerLazySingleton<OsNotifier>(createOsNotifier);
 
