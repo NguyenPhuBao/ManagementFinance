@@ -89,10 +89,27 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
 
   // ── WRITE ────────────────────────────────────────────────────────────────
 
+  /// Giữ bất biến "mỗi tài khoản có nhiều nhất MỘT ví mặc định".
+  ///
+  /// Đặt ở đây, không ở `WalletRepositoryImpl`: cả đường thêm và đường sửa đều
+  /// đi qua datasource, còn repository trước bản này chỉ chặn ở đường thêm —
+  /// nên sửa một ví thứ hai thành mặc định là có hai hàng cùng cờ, và
+  /// `getDefault` ném `StateError` ở lần thêm ví tiếp theo.
+  ///
+  /// Gọi SAU khi ghi, không phải trước: ví vừa ghi là ví được giữ cờ.
+  Future<void> _giuMotViMacDinh(WalletEntity wallet) async {
+    if (!wallet.isDefault) return;
+    await _db.walletDao.clearDefaultExcept(
+      idaccount: wallet.idaccount,
+      keepId: wallet.id,
+    );
+  }
+
   @override
   Future<void> insert(WalletEntity wallet) async {
     try {
       await _db.walletDao.insert(_toCompanion(wallet));
+      await _giuMotViMacDinh(wallet);
     } catch (e) {
       throw CacheException('Không thể lưu ví: $e');
     }
@@ -102,6 +119,7 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
   Future<void> update(WalletEntity wallet) async {
     try {
       await _db.walletDao.update_(_toCompanion(wallet));
+      await _giuMotViMacDinh(wallet);
     } catch (e) {
       throw CacheException('Không thể cập nhật ví: $e');
     }

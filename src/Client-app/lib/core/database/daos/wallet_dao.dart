@@ -38,14 +38,49 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
     return (select(wallets)..where((t) => t.id.equals(id))).getSingleOrNull();
   }
 
-  /// Lấy ví mặc định của user
+  /// Lấy ví mặc định của user.
+  ///
+  /// Cố ý KHÔNG dùng `getSingleOrNull()` trần: hàm ấy **ném** `StateError` khi
+  /// có hơn một hàng, và hai hàng cùng cờ là trạng thái đến được từ server —
+  /// `SyncEngine.upsertAll` ghi thẳng, không qua chốt nào của client. Làm nổ
+  /// luồng "thêm ví" vì dữ liệu máy khác gửi về là sai. `limit(1)` cộng thứ tự
+  /// xác định cho một câu trả lời luôn có: hàng được sửa gần nhất, tức ý định
+  /// mới nhất của người dùng.
   Future<Wallet?> getDefault(int idaccount) {
     return (select(wallets)
           ..where((t) =>
               t.idaccount.equals(idaccount) &
               t.isDefault.equals(true) &
-              t.deletedAt.isNull()))
+              t.deletedAt.isNull())
+          ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)])
+          ..limit(1))
         .getSingleOrNull();
+  }
+
+  /// Bỏ cờ mặc định của mọi ví khác trong cùng tài khoản, giữ lại [keepId].
+  ///
+  /// Ba chốt trong `where` đều có việc: `idaccount` để không đụng tài khoản
+  /// khác trên cùng máy, `deletedAt.isNull()` để hàng đã xoá mềm không bị đánh
+  /// dấu pending vô ích, và `isDefault.equals(true)` để lưu một ví **không**
+  /// mặc định không kéo cả bảng về `pending` — mỗi hàng bị chạm là một lần đẩy.
+  ///
+  /// Đánh `pending` là bắt buộc, không phải cho gọn: xoá cờ mà không vào hàng
+  /// đợi thì máy này có một ví mặc định còn máy kia vẫn có hai, vĩnh viễn.
+  Future<void> clearDefaultExcept({
+    required int idaccount,
+    required String keepId,
+  }) async {
+    await (update(wallets)
+          ..where((t) =>
+              t.idaccount.equals(idaccount) &
+              t.id.equals(keepId).not() &
+              t.isDefault.equals(true) &
+              t.deletedAt.isNull()))
+        .write(WalletsCompanion(
+      isDefault: const Value(false),
+      syncStatus: const Value('pending'),
+      updatedAt: Value(DateTime.now()),
+    ));
   }
 
   /// Lấy các record chưa sync (pending)

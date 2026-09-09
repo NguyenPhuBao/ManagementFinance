@@ -59,19 +59,9 @@ class WalletRepositoryImpl implements WalletRepository {
       updatedAt:      DateTime.now(),
     );
 
-    // Nếu isDefault = true, bỏ mặc định của ví cũ trước
-    if (isDefault) {
-      final currentDefault = await _localDataSource.getDefault(idaccount);
-      if (currentDefault != null) {
-        await _localDataSource.update(
-          currentDefault.copyWith(
-            isDefault:  false,
-            syncStatus: 'pending',
-            updatedAt:  DateTime.now(),
-          ),
-        );
-      }
-    }
+    // Bất biến "nhiều nhất một ví mặc định" nay do datasource giữ, cho CẢ đường
+    // thêm và đường sửa. Khối chỉ xử lý đường thêm từng ở đây đã bỏ: nó
+    // che mất việc đường sửa không được bảo vệ gì cả.
 
     await _localDataSource.insert(wallet);
     _syncEngine.scheduleSync();   // Trigger background sync
