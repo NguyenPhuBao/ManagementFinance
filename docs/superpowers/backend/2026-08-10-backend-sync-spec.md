@@ -40,7 +40,8 @@ CREATE TABLE wallet (
     idaccount   INT           NOT NULL,
     name        VARCHAR(100)  NOT NULL,
     type        VARCHAR(20)   NOT NULL DEFAULT 'cash',
-    -- 'cash' | 'bank' | 'ewallet' | 'investment' | 'debt'
+    -- 'cash' | 'bank' | 'saving' | 'banking' (sửa 2026-09-09; dòng cũ liệt kê
+    -- 'ewallet'/'investment'/'debt' — cả ba đều vỡ chk_wallet_type)
     balance     DECIMAL(15,2) NOT NULL DEFAULT 0,
     currency    VARCHAR(10)   NOT NULL DEFAULT 'VND',
     icon        VARCHAR(50)   DEFAULT 'wallet',

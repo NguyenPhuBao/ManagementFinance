@@ -282,11 +282,22 @@ Phần này đặc tả chi tiết toàn bộ các quy tắc ràng buộc, chố
   * `false`: Tách biệt khỏi tổng tài sản (ví tiết kiệm mục tiêu riêng biệt, tài khoản quỹ nhóm...).
 
 ### 2.3. Loại ví (`Type` Enum)
-* Hệ thống hỗ trợ 4 phân loại ví cơ bản:
+
+> ⚠️ **Sửa 2026-09-09 — bốn loại ở bản trước KHÔNG khớp CSDL.** `'E-wallet'` và
+> `'Credit'` chưa bao giờ hợp lệ: ràng buộc `chk_wallet_type` của PostgreSQL chỉ
+> nhận `Cash | Bank | Saving | Banking`, nên ví tạo bằng hai loại ấy vỡ CHECK ở
+> mỗi lần đẩy và kẹt hàng đợi đồng bộ vĩnh viễn, im lặng.
+
+* Người dùng chọn được **ba** loại:
   * `'Cash'`: Tiền mặt trong ví/két.
-  * `'Bank'`: Tài khoản ngân hàng (có thể liên kết qua `id_bank_casso` / SePay).
-  * `'E-wallet'`: Ví điện tử (MoMo, ZaloPay, ViettelPay...).
-  * `'Credit'`: Thẻ tín dụng (theo dõi hạn mức và dư nợ âm).
+  * `'Bank'`: Tài khoản ngân hàng.
+  * `'Saving'`: Tài khoản/sổ tiết kiệm.
+* Loại thứ tư, `'Banking'`, **do hệ thống tạo** qua luồng liên kết ngân hàng
+  (SePay) và không nằm trong ô chọn: ràng buộc `chk_wallet_banking_link` đòi nó
+  đi kèm `Id_bank_casso`.
+* Định nghĩa duy nhất phía client: `lib/features/wallet/domain/wallet_type.dart`.
+* Ví điện tử (MoMo, ZaloPay…) nay khai bằng `'Bank'`; thẻ tín dụng chưa có loại
+  riêng — xem G26 `docs/CLIENT_APP_KNOWN_GAPS.md`.
 
 ### 2.4. Xóa ví (Soft Delete)
 * Xóa ví là xóa mềm qua trường `delete_at`.

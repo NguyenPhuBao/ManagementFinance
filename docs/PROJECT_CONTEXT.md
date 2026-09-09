@@ -591,7 +591,7 @@ src/Backend/
 
 ### ✅ Đã hoàn thành
 - Schema PostgreSQL aligned với New_Database.md (migration đã apply)
-- SQLite schema (Drift) aligned với backend schema — `schemaVersion` nay là **19** (dòng này từng đứng ở 12 rất lâu; con số đúng luôn nằm ở `AppDatabase.schemaVersion`, đừng chép từ đây)
+- SQLite schema (Drift) aligned với backend schema — `schemaVersion` nay là **20** (dòng này từng đứng ở 12 rất lâu; con số đúng luôn nằm ở `AppDatabase.schemaVersion`, đừng chép từ đây)
 - Sync engine: thứ tự batch đúng, nhóm danh mục đẩy trước danh mục con
 - FK violation fix: `_resolveCategoryId` + step 1b
 - Category dedup trong UI
@@ -731,7 +731,11 @@ src/Backend/
   > **Số tuần ISO tự viết** — Dart không có sẵn, và năm ISO khác năm dương lịch ở cả hai chiều (31/12/2025 là 2026-W01, 01/01/2021 là 2020-W53).
   > **Đã kiểm trên `emulator-5554`**: thẻ "TỔNG KẾT TUẦN" mặc định tắt, bật lên hiện đúng hai hàng *Ngày trong tuần: Thứ Hai* và *Giờ nhắc: 08:00*, bộ chọn thứ đủ bảy dòng; **0 pixel vàng**.
 - **Soát tài liệu sau ba hạng mục 2026-09-09** — bắt **chín** chỗ lạc hậu (đếm loại thông báo 14/15 → 16, "bốn nhóm" → năm, "tổng ba nguồn" của trần lịch → bốn, số tệp test notification 20 → 22, và bảng ở mục 3 `NOTIFICATION_FEATURE` **thiếu hẳn hàng `weeklySummary`**), một **mâu thuẫn nội bộ** (`PROJECT_CONTEXT` vừa nói Tổng kết tuần đã xong vừa nói nó là việc kế tiếp), và **một khuyết tật thật**: trung tâm thông báo có năm nhóm nhưng dải chip chỉ có bốn. Hai bẫy mới: **7.12** (lưới canh `nhomCua` không canh chip) và **7.13** (thiếu `dongTrang()` là **treo cả tệp test**, không phải một test đỏ).
-- **Test: 1843/1843 pass** (~200 giây) — đều đã `git add -f` (kiểm lại 2026-09-09 sau khi nối Socket.io; con số 1801 ở đây là mức nền TRƯỚC hạng mục ấy)
+- **Test: 1876/1876 pass** (~200 giây) — đều đã `git add -f` (đếm lại 2026-09-09 sau loại ví + định dạng tiền; 1843 là mức nền sau Socket.io, 1801 trước đó)
+
+- **Loại ví thu về ba, và một lỗi kẹt hàng đợi im lặng được đóng** (2026-09-09, **schema v20**). Giao diện cũ cho chọn `ewallet` và `debt` — hai giá trị mà `chk_wallet_type` của PostgreSQL **không nhận** — nên ví tạo bằng chúng vỡ CHECK ở mọi lần đẩy và nằm lại trong hàng đợi vĩnh viễn, không một dòng nào báo ra. Nay `lib/features/wallet/domain/wallet_type.dart` là **nguồn duy nhất**, thay cho bốn danh sách không khớp nhau. `banking` đọc được nhưng không tạo được. ⚠️ Hệ quả người dùng thấy: chốt "ví loại NỢ đang âm thì không nhắc" (2026-09-07) mất chỗ bám vì `debt` không còn — ai theo dõi thẻ tín dụng sẽ bị nhắc "ví âm" mỗi ngày; chữa được thì phải thêm khái niệm "ví được phép âm", xem G26.
+
+- **Định dạng tiền gộp về một chỗ** (2026-09-09). `CurrencyFormatter` đã tồn tại từ lâu nhưng **21 tệp vẫn tự dựng `NumberFormat`, sáu kiểu, 45 chỗ** — hậu quả là app hiện **hai ký hiệu tiền** cùng lúc (`đ` ở 18 chỗ, `₫` ở phần còn lại). Nay `lib/` không còn chỗ nào dựng `NumberFormat` ngoài chính tệp ấy, và có test quét cả `lib/` để canh. Quy tắc: chấm ngăn nghìn, phẩy cho thập phân, ký hiệu `đ`; `format()` **làm tròn về đồng chẵn** (bản đầu hiện phần lẻ và bộ test lộ ra ngay: mọi số tính ra đều thành `7.927.272,73 đ`), `formatCoLe()` mới hiện phần lẻ.
 
 ### 🔄 Việc còn dang dở
 

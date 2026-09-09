@@ -320,7 +320,7 @@ tại. Có test canh đúng chỗ ấy.
 **Font PDF phải NHÚNG.** Font mặc định của gói `pdf` là Helvetica —
 **không có glyph tiếng Việt** và mất dấu **im lặng**: tệp vẫn mở được, chỉ là
 "Ăn uống" thành ô trống. Nhúng `Roboto` (Apache 2.0, đã kiểm cmap có đủ dấu và
-cả `₫`) vào `assets/fonts/`. **Không** dùng `PdfGoogleFonts` của gói `printing`:
+cả `₫` lẫn `đ`) vào `assets/fonts/`. **Không** dùng `PdfGoogleFonts` của gói `printing`:
 hàm ấy tải font qua mạng lúc chạy, mà app này offline-first.
 
 Có một test canh đúng chỗ ấy: tệp sinh ra **không được chứa chuỗi "Helvetica"**
@@ -333,7 +333,7 @@ và **phải chứa "Roboto"**. Đó là cách duy nhất bắt được lỗi m
 - **Dòng `sep=;`** trước mọi thứ khác. Excel dùng dấu phân cách theo *locale*
   máy: vi‑VN là chấm phẩy, en‑US là phẩy. Không khai báo thì một trong hai bên
   mở ra thấy mọi cột dồn vào một.
-- **Số tiền là số nguyên thô**, không phân cách nghìn, không `₫`. Cột phải cộng
+- **Số tiền là số nguyên thô**, không phân cách nghìn, không ký hiệu tiền. Cột phải cộng
   được, và Excel tiếng Việt còn đọc `1.045.000` thành *một phẩy không bốn năm*.
   Khoản chi mang **dấu âm** — cùng một cột mà không có dấu thì tổng cột ra
   "thu cộng chi", một con số không có nghĩa gì.
@@ -431,7 +431,8 @@ tiền nằm ở bảng danh mục lẫn top 5. Test phải `scrollUntilVisible`
 **trong phạm vi** một khối (`find.descendant` với `Key('khoiGiaoDich')`), nếu
 không hoặc là xanh oan, hoặc là đỏ vì "tìm được hai".
 
-**4.13 Số 0 vẫn mang dấu.** `CurrencyFormatter.formatIncome(0)` trả `"+0 ₫"`.
+**4.13 Số 0 vẫn mang dấu.** `CurrencyFormatter.formatIncome(0)` trả `"+0 đ"`
+(ký hiệu đổi từ `₫` sang `đ` ngày 2026-09-09 khi gộp định dạng tiền về một chỗ).
 Một ví không phát sinh khoản thu nào hiện ra như lỗi định dạng — thấy trên máy
 ảo. Bảng "Phân bổ theo ví" bỏ dấu khi số bằng 0.
 
