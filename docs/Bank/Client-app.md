@@ -170,6 +170,15 @@ Mỗi tài khoản ngân hàng được khai báo sẽ tương ứng với một
 
 ### 2.4. Nhận Biến Động Số Dư Thời Gian Thực (Socket.io)
 
+> ⚠️ **Mục này là bản thiết kế cũ, KHÔNG khớp mã đang chạy (soát 2026-09-09).**
+> Client đã nối Socket.io thật, nhưng ở `lib/core/realtime/` chứ **không** phải
+> `lib/core/services/socket_service.dart`; nó **không** emit `join_account`
+> (backend đã gỡ, room suy từ JWT), **tắt** cơ chế nối lại của thư viện để tự
+> làm backoff có đọc lại token, và **không đọc trường nào** trong payload. Xem
+> `docs/superpowers/specs/2026-09-09-socket-io-realtime-channel-design.md`.
+> Đoạn mã bên dưới giữ nguyên làm bối cảnh của mảng Ngân hàng — **đừng chép
+> nó**.
+
 #### A. Socket Service (`src/Client-app/lib/core/services/socket_service.dart`)
 Duy trì kết nối WebSocket liên tục với Backend Render Cloud:
 

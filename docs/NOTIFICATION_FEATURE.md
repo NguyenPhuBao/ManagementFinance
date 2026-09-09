@@ -102,10 +102,20 @@ vô nghĩa "bật nhưng ngưỡng bằng 0", còn một con số thì không. M
 mọi bản ghi có sẵn trên máy người dùng đều thiếu trường này, và bật sẵn là lặng
 lẽ đổi hành vi của mọi bản đã cài — cùng lý lẽ với giờ im lặng.
 
-⚠️ **Ví loại `debt` không sinh cảnh báo ví nào cả**, kể cả `walletNegative`.
-Ví nợ mang số dư âm là đúng bản chất của nó; trước 2026-09-07 nó bị nhắc lại
-**mỗi ngày** cho tới khi trả hết nợ. Đây là đổi hành vi có chủ ý, không phải
-tác dụng phụ.
+⚠️ ~~**Ví loại `debt` không sinh cảnh báo ví nào cả**, kể cả `walletNegative`.~~
+**Chốt này ĐÃ GỠ ngày 2026-09-09 — nay KHÔNG loại ví nào được miễn trừ.**
+
+Lý lẽ cũ vẫn đúng ở chỗ nó đúng: ví nợ mang số dư âm là đúng bản chất của nó,
+và trước 2026-09-07 nó bị nhắc **mỗi ngày** cho tới khi trả hết nợ. Nhưng loại
+`debt` **không còn tồn tại**: ngày 2026-09-09 loại ví thu về ba
+(`WalletType` — `cash | bank | saving`) vì hai giá trị `ewallet` và `debt` vỡ
+`chk_wallet_type` của PostgreSQL và làm ví kẹt hàng đợi đẩy vĩnh viễn. Ví cũ
+chuyển thành `bank`, và không còn tín hiệu nào để nhận ra "âm là cố ý".
+
+**Hệ quả có thật:** ai từng theo dõi thẻ tín dụng bằng ví `debt` nay sẽ được
+nhắc "ví âm" mỗi ngày trở lại. Chữa đúng thì cần một khái niệm **mới** — "ví
+được phép âm" — chứ không phải khôi phục chuỗi `'debt'` đã chết. Xem **G27**
+`docs/CLIENT_APP_KNOWN_GAPS.md`.
 
 Thứ tự loại trừ trong `_walletCandidates` là thứ giữ cho mỗi ví ra **một**
 thông báo: số dư âm cũng thoả điều kiện "dưới ngưỡng", nên thiếu `continue` ở
@@ -1168,7 +1178,7 @@ lượt RED, vì `expect` ném sớm nên chưa chạm tới bước dọn dẹp
 | `test/core/notification/notification_actions_test.dart` | Toàn bộ phép quyết định của nút hành động, tách khỏi tầng plugin: loại nào **được** gắn nút (chỉ nhắc hoá đơn); `payloadTraNgay` dựng khoá mở đúng hoá đơn và trả `null` khi khoá thiếu id; `khoaSauChamNut` — **một** hàm cho **cả hai** đường vào của một cú bấm; và `lichHoan` dời đúng 24 giờ, **giữ nguyên khoá** nên cùng `osScheduledId` |
 | `test/core/notification/os/android_manifest_receivers_test.dart` | **Ba** receiver của `flutter_local_notifications` phải có mặt trong `AndroidManifest.xml`, và không cái nào được `exported="true"`. Vùng mà không công cụ nào khác chạm tới — đọc bẫy **7.11**. ⚠️ Bản đầu của test này tìm `exported="true"` trên **cả file** và đỏ oan vì `MainActivity` bắt buộc phải xuất; nay chỉ xét bên trong thẻ `<receiver>` |
 | `test/core/database/transaction_last_date_test.dart` | `getLastTransactionDate` — đầu vào **duy nhất** của lời nhắc ghi chép, và cả ba cách hỏng đều im lặng: đọc cả hàng đã xoá mềm, đọc lẫn tài khoản khác, hoặc trả `null` sai. ⚠️ `forTesting` bật `PRAGMA foreign_keys = ON` nên phải dựng hàng `wallets` trước, nếu không mọi lệnh chèn nổ `SqliteException(787)` |
-| `test/core/notification/notification_rules_goal_wallet_test.dart` | Bốn luật của lát 6, trọng tâm là **đơn vị lặp lại trong `dedupeKey`**: chúc mừng một lần trong đời, trễ tiến độ mỗi tháng, ví âm và đồng bộ hỏng mỗi ngày. Từ 2026-09-07 canh thêm **ví sắp cạn**: biên **đóng** ở đúng ngưỡng, ngưỡng `0` im hoàn toàn, ví âm chỉ ra **một** thông báo chứ không ra cả hai, và ví loại `debt` im ở **cả hai** luật |
+| `test/core/notification/notification_rules_goal_wallet_test.dart` | Bốn luật của lát 6, trọng tâm là **đơn vị lặp lại trong `dedupeKey`**: chúc mừng một lần trong đời, trễ tiến độ mỗi tháng, ví âm và đồng bộ hỏng mỗi ngày. Từ 2026-09-07 canh thêm **ví sắp cạn**: biên **đóng** ở đúng ngưỡng, ngưỡng `0` im hoàn toàn, ví âm chỉ ra **một** thông báo chứ không ra cả hai, và ~~ví loại `debt` im ở **cả hai** luật~~ — **hai test ấy đã đảo chiều 2026-09-09**: loại `debt` không còn tồn tại nên KHÔNG loại ví nào được miễn trừ nữa. Chúng vẫn ở đó, viết lại kèm lý do, để người sau không "sửa" về như cũ |
 | `test/features/goal/goal_entity_progress_test.dart` | `progress` kẹp [0,1] và không ra `Infinity` khi `targetAmount = 0`; `daysLeft` so theo NGÀY; `isBehindSchedule` có biên dung sai, im lặng khi thiếu `startDate`, không NaN khi kỳ dài 0 ngày |
 | `test/core/notification/notification_deeplink_test.dart` | Route nào kéo theo thanh tab; **không được so khớp bằng `startsWith` trần** (`/budgets` ≠ `/budget`); và phép canh **cả 16 loại**: `deeplinkTuDedupeKey()` phải trả đúng cột `deeplink` mà bộ luật đặt — bản sao duy nhất trong vùng này, tồn tại vì cold start không tra CSDL được. Từ 2026-09-07 thêm nhánh `ghiChep` → **`/add`**: nó KHÔNG phải một `NotificationKind` nên phép canh 16 loại không chạm tới, phải có test riêng, và test ấy khẳng định luôn `/add` nằm ngoài thanh tab (bẫy 7.8) |
 | `test/features/notification/notification_center_page_test.dart` | Vuốt xoá là xoá **mềm**; SnackBar có nút Hoàn tác; bấm vào thì hàng quay lại **và danh sách tự vẽ lại** qua `watchFeed`; chưa đăng nhập thì không đọc gì. Từ 2026-09-07 canh thêm: chip nhóm thu hẹp danh sách, chip "Chưa đọc" bỏ mục đã đọc, **quay lại "Tất cả" thì danh sách đầy đủ trở lại** (canh chỗ `null` bị hiểu nhầm thành danh sách rỗng), nút "Tải thêm" hiện/biến mất đúng lúc, nhấn giữ đảo được cả hai chiều, và **hàng chip không tràn ở 411dp**. Đọc bẫy **7.10** trước khi sửa file này — nay có **bốn** mục, mục 4 nói vì sao một test nhấn giữ có thể xanh giả |

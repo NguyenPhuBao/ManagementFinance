@@ -297,7 +297,7 @@ Phần này đặc tả chi tiết toàn bộ các quy tắc ràng buộc, chố
   đi kèm `Id_bank_casso`.
 * Định nghĩa duy nhất phía client: `lib/features/wallet/domain/wallet_type.dart`.
 * Ví điện tử (MoMo, ZaloPay…) nay khai bằng `'Bank'`; thẻ tín dụng chưa có loại
-  riêng — xem G26 `docs/CLIENT_APP_KNOWN_GAPS.md`.
+  riêng — xem **G27** `docs/CLIENT_APP_KNOWN_GAPS.md`.
 
 ### 2.4. Xóa ví (Soft Delete)
 * Xóa ví là xóa mềm qua trường `delete_at`.

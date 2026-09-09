@@ -32,6 +32,7 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > | **G22** | **Không phải lỗi** — giờ trong mốc neo chỉ giữ được một chiều |
 > | **G25** | **Không phải lỗi** — hai máy cùng sắp lại thứ tự ưu tiên khi ngoại tuyến thì được một thứ tự trộn (2026-09-08) |
 > | **G26** | Hoãn có chủ ý — chưa có màn **duyệt giao dịch ngân hàng** cho sự kiện realtime trỏ tới; đây là một tính năng riêng, không phải phần còn thiếu của việc nối socket (2026-09-09) |
+> | **G27** | Hoãn có chủ ý — không còn cách nói "ví này **được phép âm**" sau khi loại `debt` bị bỏ; cần một cột mới ở cả hai đầu cho một tình huống CSDL hiện không có hàng nào (2026-09-09) |
 >
 > **G20 đã đóng ngày 2026-09-05** — `depositToGoal` nhận `occurredAt` chặn hai
 > đầu; đã kiểm cả bằng test lẫn trên máy ảo Android.
@@ -685,6 +686,34 @@ thiết kế nào.
 **Không chặn gì đang chạy.** Kênh realtime vẫn có ích mà không cần nó: mọi sự
 kiện đều đánh thức đồng bộ, nên giao dịch ngân hàng vẫn hiện ra trong danh sách
 sau vài giây thay vì sau 15 phút.
+
+---
+
+### G27 — Không còn cách nào nói "ví này được phép âm" · ⏸️ HOÃN CÓ CHỦ Ý (2026-09-09)
+
+Từ 2026-09-07, ví loại `debt` mang số dư âm **không** sinh cảnh báo: âm là đúng
+bản chất của nó, và trước đó nó bị nhắc mỗi ngày cho tới khi trả hết nợ — đúng
+loại nhiễu khiến người dùng tắt cả nhóm thông báo.
+
+Ngày 2026-09-09 loại ví thu về ba (`WalletType`: `cash | bank | saving`) vì
+`ewallet` và `debt` vỡ `chk_wallet_type` của PostgreSQL và làm ví **kẹt hàng
+đợi đẩy vĩnh viễn**. Ví cũ chuyển thành `bank`, và chốt kia mất chỗ bám: không
+còn tín hiệu nào để phân biệt "âm vì đang nợ" với "âm vì ghi nhầm".
+
+**Hệ quả:** ai từng theo dõi thẻ tín dụng bằng ví `debt` nay được nhắc "ví âm"
+mỗi ngày trở lại.
+
+**Vì sao hoãn:** chữa đúng cần một khái niệm **mới** — một cờ "ví được phép âm"
+trên bảng `wallets` — chứ không phải khôi phục chuỗi `'debt'` đã chết. Cờ ấy là
+cột mới ở **cả hai đầu** (client + PostgreSQL, tức một tài liệu `CAN-LAM` nữa),
+cho một tình huống mà CSDL hiện **không có hàng nào**: đo 2026-09-09, server chỉ
+có ví `Cash` (3) và `Saving` (2).
+
+**Bán kính nếu làm:** cột mới trên `wallets` + hợp đồng đồng bộ
+(`sync_payload_contract_test.dart`), một công tắc ở trang sửa ví, và khôi phục
+hai nhánh loại trừ trong `_walletCandidates`. Hai test ở
+`notification_rules_goal_wallet_test.dart` đã ghi lại chiều cũ lẫn chiều mới —
+đọc chúng trước khi làm.
 
 ---
 
