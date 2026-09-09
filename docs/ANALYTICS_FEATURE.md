@@ -1,13 +1,13 @@
 # Trang Phân tích — thiết kế, lý do, và những cái bẫy
 
 **Cập nhật:** 2026-09-09
-**Trạng thái:** lát **2a** xong — mọi con số trên trang là số thật từ SQLite —
+**Trạng thái:** **mảng Phân tích đã xong cả 2a, 2b, 2c** (2026-09-09). Lát **2a** xong — mọi con số trên trang là số thật từ SQLite —
 lát **2b** xong (khối "Xu hướng 6 tháng" vẽ bằng `fl_chart`), lát **2c‑1** xong
 (trang Xuất báo cáo đọc ví/danh mục/thời gian thật rồi mở màn **Xem trước báo
 cáo**), và lát **2c‑1b** xong cùng ngày: báo cáo nay có **mười khối** thay vì
 bốn — dòng tiền, so với kỳ trước, biểu đồ, số liệu nhanh, thu theo danh mục,
-ngân sách, phân bổ theo ví, top 5 khoản chi. Còn **2c‑2**: nút "Tải xuống" sinh
-tệp thật — hiện đang **tắt** có chủ ý. Xem mục 7.
+ngân sách, phân bổ theo ví, top 5 khoản chi. Lát **2c‑2** xong: nút "Tải xuống" sinh tệp **PDF hoặc CSV** thật rồi đưa ra
+sheet chia sẻ/lưu của hệ điều hành. Xem mục 7.
 
 > Cùng mục đích với `GOAL_FEATURE.md`: giữ lại **vì sao**. Cái gì thì đọc mã và
 > test là ra.
@@ -23,6 +23,7 @@ tệp thật — hiện đang **tắt** có chủ ý. Xem mục 7.
 | Sửa cách gộp dữ liệu | Mục 3.3 (mốc tra ngân sách) trước, rồi `data/analytics_repository_impl.dart` |
 | Đụng giao diện | Màn Stitch **"FlowMoney Analytics Dashboard"** — bố cục lấy nguyên từ đó **trừ khối xu hướng**, xem **3.12**; và mục 4.4 về font của bộ test |
 | Đụng biểu đồ | Mục **3.11** (vì sao `fl_chart`, vì sao ghim phiên bản), **3.12** (vì sao lệch Stitch), và bẫy **4.9** (tooltip tràn — thứ duy nhất phải kiểm bằng mắt) |
+| Sinh tệp PDF/CSV | Mục **3.17** (vì sao nhúng font, vì sao qua sheet chia sẻ), **3.18** (ba luật của CSV cho Excel tiếng Việt), bẫy **4.15**–**4.16** |
 | Đụng trang Xuất báo cáo / màn Xem trước | Mục **3.13** (vì sao xem trước rồi mới tải), **3.14** (ảnh chụp, không phải luồng sống; và màn Stitch mới), **3.15** (mười khối lấy chuẩn từ app thị trường), **3.16** (dòng tiền là số suy ngược, hai giới hạn), bẫy **4.11**–**4.14** |
 | Làm tiếp 2c‑2 (sinh tệp) | Mục 7 |
 
@@ -290,6 +291,45 @@ hiện tại của các ví"*:
 hiện tại chỉ 8,89 triệu.
 
 
+### 3.17 Sinh tệp: PDF **và** CSV, giao qua sheet chia sẻ
+
+Giao diện đã bày hai ô định dạng nên phải làm **cả hai** — bày một ô rồi không
+làm là đúng cái kiểu "lời hứa suông" mà lát 2c‑1 vừa dọn. Ba quyết định:
+
+**Thư viện.** `pdf` dựng tài liệu, `share_plus` đưa tệp ra ngoài. CSV thì tự
+viết chuỗi, không cần thư viện nào.
+
+**Nơi lưu: thư mục tạm rồi mở sheet chia sẻ**, không ghi thẳng vào "Tải về".
+Ghi vào bộ nhớ chung cần `WRITE_EXTERNAL_STORAGE` (Android ≤ 9) hoặc
+`MediaStore` qua kênh nền tảng (Android 10+); còn qua sheet thì **người dùng tự
+chọn nơi lưu**, kể cả "Lưu vào Tệp", và app không xin thêm quyền nào. Đây cũng
+là lý do dòng "Đích đến: Lưu vào Tải về" của bản Stitch đã bỏ từ 2c‑1.
+
+**Font PDF phải NHÚNG.** Font mặc định của gói `pdf` là Helvetica —
+**không có glyph tiếng Việt** và mất dấu **im lặng**: tệp vẫn mở được, chỉ là
+"Ăn uống" thành ô trống. Nhúng `Roboto` (Apache 2.0, đã kiểm cmap có đủ dấu và
+cả `₫`) vào `assets/fonts/`. **Không** dùng `PdfGoogleFonts` của gói `printing`:
+hàm ấy tải font qua mạng lúc chạy, mà app này offline-first.
+
+Có một test canh đúng chỗ ấy: tệp sinh ra **không được chứa chuỗi "Helvetica"**
+và **phải chứa "Roboto"**. Đó là cách duy nhất bắt được lỗi mất dấu bằng máy.
+
+### 3.18 CSV cho Excel tiếng Việt — ba thứ nhỏ, cả ba đều hỏng im lặng
+
+- **BOM UTF-8** ở đầu tệp. Không có nó, Excel đoán bảng mã và "Ăn uống" thành
+  "Ăn uống" — tệp vẫn mở được, đó mới là chỗ nguy.
+- **Dòng `sep=;`** trước mọi thứ khác. Excel dùng dấu phân cách theo *locale*
+  máy: vi‑VN là chấm phẩy, en‑US là phẩy. Không khai báo thì một trong hai bên
+  mở ra thấy mọi cột dồn vào một.
+- **Số tiền là số nguyên thô**, không phân cách nghìn, không `₫`. Cột phải cộng
+  được, và Excel tiếng Việt còn đọc `1.045.000` thành *một phẩy không bốn năm*.
+  Khoản chi mang **dấu âm** — cùng một cột mà không có dấu thì tổng cột ra
+  "thu cộng chi", một con số không có nghĩa gì.
+
+Ngược lại, **PDF là tài liệu để ĐỌC** nên số ở đó có phân cách nghìn và ký hiệu
+tiền. Hai định dạng cố ý khác nhau ở điểm này.
+
+
 ## 4. Bẫy
 
 **4.1 Tài khoản.** `AnalyticsPage` phải `context.watch<AuthBloc>()` + `ValueKey(idaccount)`
@@ -391,6 +431,17 @@ một lần nạp mục tiêu. **Hai trang khớp nhau**, nên đây không ph�
 cáo; sửa nó là đi diễn giải lại lịch sử — việc mà mục 3.16 và `GOAL_FEATURE.md`
 đều khuyên đừng làm.
 
+**4.15 Test "có dấu âm" suýt không canh gì cả.** Phép kiểm đầu tiên chỉ tìm
+`';-50000'` trong cả tệp — nhưng con số ấy cũng nằm ở dòng "Tổng chi" và ở bảng
+danh mục, nên **bản sai có chủ ý (bỏ dấu ở dòng giao dịch) đi lọt**. Phải cho
+danh mục ấy *hai* khoản để tổng khác số của từng dòng, rồi khẳng định trên
+**trọn dòng** `Ăn trưa;Ăn uống;Tiền mặt;-50000`. Bài học chung: khi một con số
+xuất hiện ở nhiều khối, `contains` trên cả tệp là phép canh rỗng.
+
+**4.16 `adb shell cat` làm hỏng tệp nhị phân.** Kéo tệp PDF ra bằng
+`adb shell run-as … cat` trên Windows thì bị chèn ``, và pypdf báo *"Cannot
+find Root object"* — trông y như lỗi sinh tệp. Dùng **`adb exec-out`**.
+
 ---
 
 ## 5. Luồng dữ liệu
@@ -452,6 +503,7 @@ Test `sáu điểm, cũ nhất trước, mang số thật của cả tháng ở 
 | `analytics_cubit_test.dart` | `null` không đoán tài khoản; tháng lấy từ `clock` và `now` đi xuống repository; đổi tháng huỷ đăng ký cũ; lỗi stream không nổ |
 | `bao_cao_xuat_test.dart` | Tầng thuần của lát 2c: bốn phạm vi thời gian (**tháng 1 lùi sang năm trước**, quý IV, tuỳ chỉnh cộng một ngày, năm nhuận), lọc theo ví/danh mục, `'transfer'` bị loại khỏi **cả** tổng lẫn danh sách, gom danh mục, nhóm theo ngày mới-nhất-trước, báo cáo rỗng. Lát 2c‑1b thêm: `khoangKyTruoc` (**tháng lùi theo tháng, không trừ N ngày**; quý; tuỳ chỉnh), dòng tiền (trừ phần sau kỳ, `transfer` không làm lệch, lọc ví thì `null`), thu theo danh mục, phân bổ theo ví, số liệu nhanh (**chia cho số ngày CỦA KỲ**), top 5, và độ chia của biểu đồ đổi theo độ dài kỳ |
 | `bao_cao_repository_impl_test.dart` | Tra tên ví/danh mục **kể cả hàng đã xoá mềm**, ba chữ cho ba ca danh mục, tiêu đề lấy ghi chú rồi mới tới tên danh mục, cách ly `idaccount`, giao dịch đã xoá mềm không vào báo cáo, danh sách cho bộ lọc chỉ lấy hàng còn sống; **dòng tiền dùng tổng số dư ví còn sống**, và ngân sách hết hạn không lên báo cáo |
+| `xuat_tep_test.dart` | Nội dung tệp: CSV có **BOM**, dòng `sep=;`, CRLF, số nguyên thô mang dấu, thoát ngoặc kép và dấu phân cách, không có `transfer`, không bịa dòng tiền; PDF hợp lệ, **không rơi về Helvetica**, và báo cáo rỗng vẫn ra tệp. Tên tệp không mang ký tự cấm |
 | `report_preview_page_test.dart` | Ba thẻ tổng, **khoảng hiện ngày cuối thật** (biên `to` mở), nhãn bộ lọc, bảng danh mục có %, nhóm ngày kèm tên ví, dấu +/−, trạng thái rỗng, **nút Tải xuống phải TẮT**, 411dp; và tám khối của 2c‑1b: dòng tiền (kèm dòng "suy ngược", và **biến mất khi lọc ví**), `▲ %` so kỳ trước, thu theo danh mục, ngân sách có nhãn "Vượt", phân bổ theo ví (**số 0 không mang dấu**), top 5, số liệu nhanh, và có `LineChart` |
 | `export_report_page_test.dart` | Ví lấy từ CSDL (không còn "Techcombank"), không còn lịch sử xuất bịa, bộ lọc đi **nguyên vẹn** xuống repository (khoảng theo đồng hồ, id ví, id danh mục), mở đúng màn Xem trước, 411dp |
 | `analytics_page_test.dart` | Tháng từ đồng hồ (không còn "T6 2026"), ba thẻ, "% ngân sách"/"% tổng chi", donut + Khác + tâm rút gọn, rỗng, chọn tháng, "Xem tất cả", **411dp với tên dài**, và khối xu hướng: sáu nhãn tháng lấy từ dữ liệu, chú giải Thu/Chi, chuỗi rỗng không nổ, 411dp với số hàng trăm triệu |
@@ -486,14 +538,14 @@ không (`preventCurveOverShooting`). Cả ba chỉ kiểm được bằng mắt 
 - ✅ ~~**2c‑1b — báo cáo chi tiết theo chuẩn app thị trường.**~~ **Xong
   2026-09-09.** Tám khối mới, lý do và nguồn khảo sát ở mục **3.15**; dòng tiền
   và hai giới hạn của nó ở mục **3.16**.
-- **2c‑2 — nút "Tải xuống" sinh tệp thật.** Hiện đang **tắt** có chủ ý. Định
-  dạng chốt sau: CSV rẻ (tự viết chuỗi, chỉ cần một thư viện chia sẻ tệp), PDF
-  cần `pdf` + một font có dấu tiếng Việt — font mặc định của thư viện **mất
-  dấu im lặng**. Giao diện đã có ô chọn PDF/CSV và màn Xem trước đã mang đủ số
-  liệu, nên lát này chỉ còn phần sinh tệp và nơi lưu. ⚠️ Báo cáo nay **có biểu
-  đồ**, nên bản PDF cũng phải có: hoặc chụp widget thành ảnh rồi nhúng, hoặc vẽ
-  lại bằng thư viện PDF. Đây là công thêm mà lát 2c‑1b tạo ra, biết trước để
-  không ngạc nhiên.
+- ✅ ~~**2c‑2 — nút "Tải xuống" sinh tệp thật.**~~ **Xong 2026-09-09.** PDF và
+  CSV, giao qua sheet chia sẻ của hệ điều hành — mục **3.17** và **3.18**. Biểu
+  đồ trong PDF vẽ bằng `pw.Chart` của chính gói `pdf` chứ **không** chụp widget:
+  chụp đòi widget đang nằm trong khung nhìn, mà `ListView` thì tháo widget ngoài
+  màn hình.
+- **Mảng Phân tích đến đây là xong.** Việc tiếp theo trong thứ tự đã duyệt là
+  **biểu đồ tiến độ mục tiêu** (hạng 1 mục 10.5 `GOAL_FEATURE.md`), nay rẻ hẳn
+  vì khuôn biểu đồ đã có ở cả màn hình lẫn PDF.
 - **Tổng kết tuần** — spec `2026-09-07-weekly-summary-notification-design.md`
   chờ một **màn phạm vi tuần**. Tầng tổng hợp đã có (`tongThuChi` nhận biên bất
   kỳ); còn thiếu giao diện — có thể là một chế độ "tuần" của chính trang này.

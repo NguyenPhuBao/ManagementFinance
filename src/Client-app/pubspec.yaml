@@ -54,6 +54,11 @@ dependencies:
   # các bản, và biểu đồ hỏng thì hỏng lặng lẽ — vẽ ra hình khác chứ không ném
   # lỗi. Nới ra thì phải xem lại biểu đồ trên máy thật, đừng nới rồi tin test.
   fl_chart: 1.2.0
+  # Xuất báo cáo ra tệp (lát 2c-2). `pdf` dựng tài liệu, `share_plus` đưa tệp
+  # ra sheet chia sẻ/lưu của hệ điều hành — cách này KHÔNG cần quyền ghi bộ
+  # nhớ trên Android 10+, và người dùng tự chọn nơi lưu.
+  pdf: ^3.12.0
+  share_plus: ^12.0.2
 
 dev_dependencies:
   flutter_test:
@@ -64,3 +69,17 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  # Font cho tệp PDF. **Bắt buộc phải nhúng**: font mặc định của gói `pdf` là
+  # Helvetica, không có glyph tiếng Việt, và nó **mất dấu im lặng** — chữ vẫn
+  # in ra, chỉ là "Ăn uống" thành "An uong" hoặc ô trống. Roboto (Apache 2.0)
+  # phủ đủ dấu và cả ký hiệu ₫ (đã kiểm cmap trước khi nhúng).
+  #
+  # Không dùng `PdfGoogleFonts` của gói `printing`: nó TẢI font lúc chạy, mà
+  # app này offline-first.
+  fonts:
+    - family: RobotoPdf
+      fonts:
+        - asset: assets/fonts/Roboto-Regular.ttf
+        - asset: assets/fonts/Roboto-Bold.ttf
+          weight: 700

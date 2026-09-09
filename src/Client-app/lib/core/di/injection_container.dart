@@ -10,6 +10,8 @@ import '../../features/analytics/data/analytics_repository.dart';
 import '../../features/analytics/data/analytics_repository_impl.dart';
 import '../../features/analytics/data/bao_cao_repository.dart';
 import '../../features/analytics/data/bao_cao_repository_impl.dart';
+import '../../features/analytics/data/xuat_tep_service.dart';
+import '../../features/analytics/data/xuat_tep_service_impl.dart';
 import '../../features/analytics/presentation/bloc/analytics_cubit.dart';
 import '../../features/auth/data/datasources/auth_local_data_source.dart';
 import '../../features/auth/data/datasources/auth_remote_data_source.dart';
@@ -228,6 +230,7 @@ Future<void> setupDependencies() async {
   );
   // Trang Xuất báo cáo đọc thẳng repository (không cubit): màn Xem trước là
   // một ảnh chụp theo bộ lọc, không phải luồng dữ liệu sống.
+  sl.registerLazySingleton<XuatTepService>(() => XuatTepServiceImpl());
   sl.registerLazySingleton<BaoCaoRepository>(
     () => BaoCaoRepositoryImpl(
       db: sl<AppDatabase>(),

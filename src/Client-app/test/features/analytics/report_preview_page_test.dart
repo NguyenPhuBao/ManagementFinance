@@ -11,11 +11,46 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
+import 'package:flowmoney/core/di/injection_container.dart';
+import 'package:flowmoney/features/analytics/data/xuat_tep_service.dart';
 import 'package:flowmoney/features/analytics/domain/bao_cao_xuat.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
 import 'package:flowmoney/features/analytics/presentation/pages/report_preview_page.dart';
 
+class _DichVuGia implements XuatTepService {
+  final goi = <String>[];
+  Object? loi;
+
+  @override
+  Future<void> xuat(
+    BaoCao bc, {
+    required String dinhDang,
+    required String nhanVi,
+    required String nhanDanhMuc,
+    required DateTime lapNgay,
+  }) async {
+    goi.add(dinhDang);
+    if (loi != null) throw loi!;
+  }
+}
+
 void main() {
+  late _DichVuGia dichVu;
+
+  setUp(() async {
+    dichVu = _DichVuGia();
+    if (sl.isRegistered<XuatTepService>()) {
+      await sl.unregister<XuatTepService>();
+    }
+    sl.registerFactory<XuatTepService>(() => dichVu);
+  });
+
+  tearDown(() async {
+    if (sl.isRegistered<XuatTepService>()) {
+      await sl.unregister<XuatTepService>();
+    }
+  });
+
   // `DateFormatter` dùng locale `vi_VN`, và `intl` **ném lỗi** chứ không lùi về
   // mặc định khi locale chưa nạp. Ngoài đời `main.dart` gọi hàm này lúc khởi
   // động; trong test thì phải tự gọi, nếu không cả trang chết ngay ở dòng ngày
@@ -195,16 +230,30 @@ void main() {
         reason: 'Bảng rỗng với tiêu đề đầy đủ trông như lỗi tải dữ liệu.');
   });
 
-  testWidgets('nút Tải xuống chưa làm gì thì phải TẮT, không giả vờ', (t) async {
+  testWidgets('nút Tải xuống gọi dịch vụ xuất, kèm ĐÚNG định dạng đã chọn',
+      (t) async {
     khoDienThoai(t);
     await t.pumpWidget(duoi(baoCao([g(ngay: DateTime(2026, 9, 5))])));
 
-    final nut = t.widget<ElevatedButton>(
-      find.widgetWithText(ElevatedButton, 'Tải xuống'),
-    );
-    expect(nut.onPressed, isNull,
-        reason: 'Sinh tệp là lát 2c-2. Nút bấm được mà không ra tệp chính là '
-            'kiểu "nút xuất chỉ hiện snackbar" mà lát này đang đi dọn.');
+    await t.tap(find.widgetWithText(ElevatedButton, 'Tải xuống'));
+    await t.pumpAndSettle();
+
+    expect(dichVu.goi, ['PDF'],
+        reason: 'Định dạng người dùng chọn ở trang trước phải đi tới tận nơi '
+            'sinh tệp. Bỏ qua nó là bấm CSV mà nhận PDF — không lỗi nào báo.');
+  });
+
+  testWidgets('xuất tệp hỏng thì NÓI RA, không nuốt lỗi', (t) async {
+    khoDienThoai(t);
+    dichVu.loi = Exception('hết chỗ trống');
+    await t.pumpWidget(duoi(baoCao([g(ngay: DateTime(2026, 9, 5))])));
+
+    await t.tap(find.widgetWithText(ElevatedButton, 'Tải xuống'));
+    await t.pumpAndSettle();
+
+    expect(find.textContaining('Không xuất được'), findsOneWidget,
+        reason: 'Bấm "Tải xuống" mà không thấy gì thì người dùng sẽ bấm tiếp '
+            'mãi; im lặng là kiểu hỏng tệ nhất ở đây.');
   });
 
   group('các khối chi tiết thêm ở lát 2c-1b', () {

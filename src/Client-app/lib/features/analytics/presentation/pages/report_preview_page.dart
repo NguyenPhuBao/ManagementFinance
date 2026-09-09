@@ -2,9 +2,11 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/category/category_visuals.dart';
+import '../../../../core/di/injection_container.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../data/xuat_tep_service.dart';
 import '../../domain/bao_cao_xuat.dart';
 
 /// Màn **Xem trước báo cáo** — tờ báo cáo của một khoảng đã chốt.
@@ -23,8 +25,8 @@ class ReportPreviewPage extends StatelessWidget {
   final String nhanVi;
   final String nhanDanhMuc;
 
-  /// Định dạng tệp người dùng đã chọn ở trang trước. Lát 2c-1 chỉ **hiện** nó;
-  /// việc sinh tệp là lát 2c-2.
+  /// Định dạng tệp người dùng đã chọn ở trang trước — `'PDF'` hoặc `'CSV'`.
+  /// Nút "Tải xuống" chuyển thẳng giá trị này xuống `XuatTepService`.
   final String dinhDang;
 
   final DateTime lapNgay;
@@ -1129,29 +1131,89 @@ class ReportPreviewPage extends StatelessWidget {
               // hạn và làm **hỏng cả khung hình** — trang trắng trơn, không đỏ,
               // không một dòng lỗi nào trong logcat. Đã vấp thật 2026-09-09.
               Expanded(
-                child:
-                    // `onPressed: null` là **có chủ ý**: sinh tệp là lát 2c-2.
-                    // Nút bấm được mà không ra tệp chính là kiểu "nút xuất chỉ
-                    // hiện snackbar" mà lát này đang đi dọn.
-                    ElevatedButton.icon(
-                  onPressed: null,
-                  icon: const Icon(Icons.download, size: 20),
-                  label: const Text(
-                    'Tải xuống',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
+                child: _NutTaiXuong(
+                  baoCao: baoCao,
+                  dinhDang: dinhDang,
+                  nhanVi: nhanVi,
+                  nhanDanhMuc: nhanDanhMuc,
+                  lapNgay: lapNgay,
                 ),
               ),
             ],
+          ),
+        ),
+      );
+}
+
+/// Nút "Tải xuống": sinh tệp rồi mở sheet chia sẻ/lưu của hệ điều hành.
+///
+/// Là widget **riêng và có state** để trang giữ nguyên `StatelessWidget`: chỉ
+/// mỗi cái nút cần biết mình đang bận hay không.
+class _NutTaiXuong extends StatefulWidget {
+  final BaoCao baoCao;
+  final String dinhDang;
+  final String nhanVi;
+  final String nhanDanhMuc;
+  final DateTime lapNgay;
+
+  const _NutTaiXuong({
+    required this.baoCao,
+    required this.dinhDang,
+    required this.nhanVi,
+    required this.nhanDanhMuc,
+    required this.lapNgay,
+  });
+
+  @override
+  State<_NutTaiXuong> createState() => _NutTaiXuongState();
+}
+
+class _NutTaiXuongState extends State<_NutTaiXuong> {
+  bool _dangXuat = false;
+
+  Future<void> _xuat() async {
+    setState(() => _dangXuat = true);
+    try {
+      await sl<XuatTepService>().xuat(
+        widget.baoCao,
+        dinhDang: widget.dinhDang,
+        nhanVi: widget.nhanVi,
+        nhanDanhMuc: widget.nhanDanhMuc,
+        lapNgay: widget.lapNgay,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      // NÓI RA. Bấm "Tải xuống" mà không thấy gì thì người dùng sẽ bấm tiếp
+      // mãi — im lặng là kiểu hỏng tệ nhất ở đây.
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Không xuất được tệp: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _dangXuat = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => ElevatedButton.icon(
+        onPressed: _dangXuat ? null : _xuat,
+        icon: _dangXuat
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child:
+                    CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              )
+            : const Icon(Icons.download, size: 20),
+        label: const Text(
+          'Tải xuống',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
         ),
       );

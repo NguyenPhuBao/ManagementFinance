@@ -704,7 +704,13 @@ src/Backend/
   > `khoangKyTruoc` lùi **theo tháng** khi khoảng trùng khít tháng dương lịch, không trừ số ngày: tháng 9 dài 30 ngày nên trừ 30 ngày ra `02/08–01/09`, lệch một ngày và phần trăm sai mà không ai thấy. Ba **bản sai có chủ ý** đã chứng minh test bắt được: bỏ nhánh lùi theo tháng (**3 test đỏ**), bỏ bước trừ phần sau kỳ của dòng tiền, và sắp nhóm ngày tăng dần.
   > ⚠️ Trang dài ra làm hỏng lối viết test cũ: `ListView` **không dựng** hàng ngoài khung nhìn, và một con số nay xuất hiện ở nhiều khối. Test phải `scrollUntilVisible` rồi tìm **trong phạm vi** một khối bằng `Key` — bẫy **4.12**.
   > **Đã kiểm trên `emulator-5554`** (tài khoản 10): ngân sách hiện *"Di chuyển 285.000/50.000 — Vượt 235.000 đ"* và *"Giáo dục 45.000/50.000 — Còn 5.000 đ"*; phân bổ ba ví thật; số dư đầu kỳ ra **âm** và đó là số thật (thu tháng 9 nhiều hơn tổng số dư hiện có). 0 pixel vàng ở khổ 411dp trên bốn ảnh chụp.
-- **Test: 1683/1683 pass** (~100 giây) — đều đã `git add -f` (kiểm 2026-09-09)
+- **Phân tích: lát 2c‑2 — nút "Tải xuống" sinh tệp PDF/CSV thật** (2026-09-09, **schema không đổi**). Giao diện đã bày hai ô định dạng nên làm **cả hai**; bày một ô rồi không làm là đúng cái kiểu "lời hứa suông" mà 2c‑1 vừa dọn. Thêm hai phụ thuộc: `pdf` dựng tài liệu, `share_plus` đưa tệp ra sheet chia sẻ/lưu của hệ điều hành. CSV tự viết chuỗi, không cần thư viện. Lý do đầy đủ ở **mục 3.17 và 3.18 `docs/ANALYTICS_FEATURE.md`**. 19 test mới.
+  > **Nơi lưu là thư mục tạm rồi mở sheet chia sẻ**, không ghi thẳng vào "Tải về": ghi vào bộ nhớ chung cần `WRITE_EXTERNAL_STORAGE` (Android ≤ 9) hoặc `MediaStore` qua kênh nền tảng (Android 10+), còn qua sheet thì người dùng tự chọn nơi lưu và app **không xin thêm quyền nào**.
+  > ⚠️ **Font PDF phải nhúng.** Font mặc định của gói `pdf` là Helvetica — không có glyph tiếng Việt và **mất dấu im lặng** (tệp vẫn mở được, chỉ là "Ăn uống" thành ô trống). Nay nhúng `Roboto` (Apache 2.0) ở `assets/fonts/`, **thư mục assets đầu tiên của dự án**. Test canh bằng cách cấm chuỗi "Helvetica" xuất hiện trong tệp sinh ra.
+  > ⚠️ **CSV cho Excel tiếng Việt có ba luật, cả ba hỏng im lặng:** BOM UTF-8, dòng `sep=;` (Excel dùng dấu phân cách theo locale máy), và số tiền là **số nguyên thô mang dấu** (Excel vi-VN đọc `1.045.000` thành một phẩy không bốn năm). PDF thì ngược lại — là tài liệu để đọc nên có phân cách nghìn và ký hiệu `₫`.
+  > Một test **suýt không canh gì cả**: phép kiểm "chi mang dấu âm" tìm `;-50000` trong cả tệp, nhưng con số ấy cũng nằm ở dòng "Tổng chi" và bảng danh mục nên bản sai có chủ ý **đi lọt**. Đã siết lại thành khẳng định trên trọn dòng — bẫy **4.15**.
+  > **Đã kiểm trên `emulator-5554`**: bấm Tải xuống mở đúng sheet chia sẻ với tên `BaoCao_01-09-2026_30-09-2026.pdf`; kéo tệp về bằng `adb exec-out` (⚠️ `adb shell cat` chèn `` làm hỏng tệp nhị phân — bẫy 4.16) rồi trích chữ: **2 trang, đủ dấu tiếng Việt và ký hiệu ₫, có cả biểu đồ**. Tệp CSV cũng đúng: BOM, `sep=;`, CRLF, `Tổng chi;-1045000`.
+- **Test: 1702/1702 pass** (~140 giây) — đều đã `git add -f` (kiểm 2026-09-09)
 
 ### 🔄 Việc còn dang dở
 
@@ -817,8 +823,8 @@ G15, G17, G21. Bản trước của mục này ghi ngày 04/09 và **sai bốn t
 **Không còn lỗi client nào sửa được mà không phải chờ ai.** Việc tiếp theo là
 một lựa chọn, không phải một hàng đợi.
 
-**Thứ tự đã duyệt tối 2026-09-08** (✅ 2c‑1 và 2c‑1b xong 2026-09-09; 2c‑2 — sinh tệp —
-còn treo, xem mục 7 `ANALYTICS_FEATURE.md`) (người dùng hỏi "nên làm theo thứ tự nào",
+**Thứ tự đã duyệt tối 2026-09-08** (✅ cả 2c xong 2026-09-09 — việc kế tiếp là
+biểu đồ tiến độ mục tiêu) (người dùng hỏi "nên làm theo thứ tự nào",
 đã chốt — đừng bàn lại từ đầu): ✅ bộ lọc tay/tự động của lịch sử mục tiêu →
 ✅ **2a** Phân tích số thật → ✅ **2b** biểu đồ theo thời gian (**thư viện đã
 chọn: `fl_chart`, ghim `1.2.0`** — mục 3.11 `ANALYTICS_FEATURE.md`) → **2c**
@@ -868,8 +874,9 @@ backend. Lý do từng bước: mục 10.5 `docs/GOAL_FEATURE.md` và mục 7
    cùng ngày mở tờ báo cáo từ bốn khối lên **mười**, lấy chuẩn từ Money Lover /
    MISA / Copilot / PocketSmith: dòng tiền (số dư đầu và cuối kỳ), so với kỳ
    trước, biểu đồ thu chi, số liệu nhanh, thu theo danh mục, ngân sách kỳ này,
-   phân bổ theo ví, top 5 khoản chi. Còn **2c‑2**:
-   nút "Tải xuống" sinh tệp thật, hiện **tắt** có chủ ý. Tầng tổng hợp mà
+   phân bổ theo ví, top 5 khoản chi. **Lát 2c‑2 xong cùng ngày**: nút "Tải xuống"
+   sinh tệp **PDF hoặc CSV** thật rồi đưa ra sheet chia sẻ/lưu của hệ điều
+   hành — **mảng Phân tích đến đây là xong**. Tầng tổng hợp mà
    "Tổng kết tuần" chờ nay đã có. Lý do và bẫy: `docs/ANALYTICS_FEATURE.md`.
 
    ⚠️ **`fl_chart` là phụ thuộc đầu tiên và duy nhất của dự án dành cho việc
@@ -1133,7 +1140,7 @@ Hoá đơn tạo từ app trước đây **không bao giờ lên tới backend**
   đó là tạo vòng lặp đẩy vô tận.
 
 ### ❌ Chưa làm / Tiếp theo
-- Analytics: lát **2a và 2b xong 2026-09-08** (số thật, rồi biểu đồ xu hướng 6 tháng bằng `fl_chart`), **2c‑1 và 2c‑1b xong 2026-09-09** (trang Xuất báo cáo đọc số thật; màn Xem trước nay mười khối theo chuẩn app thị trường; 8 tệp test, **145** test); còn **2c‑2** là nút "Tải xuống" sinh tệp thật — `docs/ANALYTICS_FEATURE.md` mục 7
+- Analytics: lát **2a và 2b xong 2026-09-08** (số thật, rồi biểu đồ xu hướng 6 tháng bằng `fl_chart`), **2c‑1, 2c‑1b và 2c‑2 xong 2026-09-09** (trang Xuất báo cáo đọc số thật; màn Xem trước mười khối theo chuẩn app thị trường; nút Tải xuống sinh tệp PDF/CSV thật; 9 tệp test, **164** test) — mảng Phân tích **đã xong**, `docs/ANALYTICS_FEATURE.md` mục 7
 - AI chat integration hoàn chỉnh
 - Casso bank integration
 - Build production / deploy
