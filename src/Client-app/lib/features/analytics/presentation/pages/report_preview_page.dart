@@ -1174,13 +1174,21 @@ class _NutTaiXuongState extends State<_NutTaiXuong> {
   Future<void> _xuat() async {
     setState(() => _dangXuat = true);
     try {
-      await sl<XuatTepService>().xuat(
+      final noiLuu = await sl<XuatTepService>().xuat(
         widget.baoCao,
         dinhDang: widget.dinhDang,
         nhanVi: widget.nhanVi,
         nhanDanhMuc: widget.nhanDanhMuc,
         lapNgay: widget.lapNgay,
       );
+      if (!mounted) return;
+      // `null` nghĩa là tệp đi qua sheet chia sẻ chứ chưa nằm ở đâu cả — nói
+      // "đã lưu" khi ấy là nói dối, và người dùng sẽ đi tìm một tệp không có.
+      if (noiLuu != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Đã lưu vào $noiLuu')),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       // NÓI RA. Bấm "Tải xuống" mà không thấy gì thì người dùng sẽ bấm tiếp

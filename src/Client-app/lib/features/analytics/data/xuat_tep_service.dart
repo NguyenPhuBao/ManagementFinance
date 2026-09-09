@@ -8,9 +8,13 @@ import '../domain/bao_cao_xuat.dart';
 abstract class XuatTepService {
   /// [dinhDang] là `'PDF'` hoặc `'CSV'` (không phân biệt hoa thường).
   ///
+  /// Trả về **đường dẫn hiển thị** của tệp đã lưu vào máy (`Tải về/…`), hoặc
+  /// `null` khi máy không lưu thẳng được và tệp đã đi qua sheet chia sẻ. Giao
+  /// diện nói đúng cái đã xảy ra, không nói "đã lưu" cho cả hai ca.
+  ///
   /// Ném lỗi khi ghi tệp hỏng — giao diện bắt và **nói ra**, đừng nuốt: người
   /// dùng bấm "Tải xuống" mà không thấy gì sẽ bấm tiếp mãi.
-  Future<void> xuat(
+  Future<String?> xuat(
     BaoCao bc, {
     required String dinhDang,
     required String nhanVi,

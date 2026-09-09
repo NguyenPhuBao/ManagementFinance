@@ -709,8 +709,14 @@ src/Backend/
   > ⚠️ **Font PDF phải nhúng.** Font mặc định của gói `pdf` là Helvetica — không có glyph tiếng Việt và **mất dấu im lặng** (tệp vẫn mở được, chỉ là "Ăn uống" thành ô trống). Nay nhúng `Roboto` (Apache 2.0) ở `assets/fonts/`, **thư mục assets đầu tiên của dự án**. Test canh bằng cách cấm chuỗi "Helvetica" xuất hiện trong tệp sinh ra.
   > ⚠️ **CSV cho Excel tiếng Việt có ba luật, cả ba hỏng im lặng:** BOM UTF-8, dòng `sep=;` (Excel dùng dấu phân cách theo locale máy), và số tiền là **số nguyên thô mang dấu** (Excel vi-VN đọc `1.045.000` thành một phẩy không bốn năm). PDF thì ngược lại — là tài liệu để đọc nên có phân cách nghìn và ký hiệu `₫`.
   > Một test **suýt không canh gì cả**: phép kiểm "chi mang dấu âm" tìm `;-50000` trong cả tệp, nhưng con số ấy cũng nằm ở dòng "Tổng chi" và bảng danh mục nên bản sai có chủ ý **đi lọt**. Đã siết lại thành khẳng định trên trọn dòng — bẫy **4.15**.
-  > **Đã kiểm trên `emulator-5554`**: bấm Tải xuống mở đúng sheet chia sẻ với tên `BaoCao_01-09-2026_30-09-2026.pdf`; kéo tệp về bằng `adb exec-out` (⚠️ `adb shell cat` chèn `` làm hỏng tệp nhị phân — bẫy 4.16) rồi trích chữ: **2 trang, đủ dấu tiếng Việt và ký hiệu ₫, có cả biểu đồ**. Tệp CSV cũng đúng: BOM, `sep=;`, CRLF, `Tổng chi;-1045000`.
-- **Test: 1702/1702 pass** (~140 giây) — đều đã `git add -f` (kiểm 2026-09-09)
+  > **Đã kiểm trên `emulator-5554`**: bấm Tải xuống mở đúng sheet chia sẻ với tên `BaoCao_01-09-2026_30-09-2026.pdf`; kéo tệp về bằng `adb exec-out` (⚠️ `adb shell cat` chèn `
+` làm hỏng tệp nhị phân — bẫy 4.16) rồi trích chữ: **2 trang, đủ dấu tiếng Việt và ký hiệu ₫, có cả biểu đồ**. Tệp CSV cũng đúng: BOM, `sep=;`, CRLF, `Tổng chi;-1045000`.
+- **Phân tích: tệp báo cáo lưu THẲNG vào thư mục Tải về** (2026-09-09, **schema không đổi**). Người dùng xem bản 2c‑2 rồi nói *"tôi muốn nó sẽ tải xuống lưu vào máy"* — sheet chia sẻ là một bước thừa. Nay tệp đi qua `MediaStore` và nằm luôn ở `/sdcard/Download`. Kênh `flowmoney/luu_tep` với **mã Kotlin trong `MainActivity`** — đây là **chỗ mã gốc đầu tiên do dự án tự viết** (trước đó mọi thứ gốc đều đến từ plugin). 6 test mới.
+  > **Vì sao phải có mã gốc:** đặt một tệp vào bộ nhớ chung mà không xin quyền chỉ làm được qua `MediaStore` (Android 10+). `WRITE_EXTERNAL_STORAGE` đã bị thu hồi tác dụng từ chính bản ấy, còn hộp thoại chọn thư mục (SAF) thì bắt người dùng bấm thêm. `IS_PENDING` bật trong lúc ghi rồi mới tắt, để ứng dụng khác không đọc phải tệp dở; MediaStore tự đổi tên khi trùng (`BaoCao (1).pdf` — đã thấy trên máy ảo).
+  > **Android ≤ 9 lùi về sheet chia sẻ** (minSdk của app là 24). Đường lùi ấy **không kiểm được ở đây** vì máy ảo là API 36, nên cố ý giữ nguyên đường cũ đã chạy thật thay vì viết thêm luồng xin quyền chưa ai chạy bao giờ.
+  > ⚠️ Hai đường trả về hai thứ khác nhau và giao diện phải nói đúng: `xuat()` trả đường dẫn khi lưu thật, trả `null` khi chỉ mở sheet. Nói "Đã lưu" cho cả hai ca là đẩy người dùng đi tìm một tệp không tồn tại — có test canh.
+  > **Đã kiểm trên `emulator-5554`**: sau khi bấm Tải xuống, `ls /sdcard/Download` cho `BaoCao_01-09-2026_30-09-2026.pdf` (24.101 byte) và `.csv` (2.270 byte, còn nguyên BOM); banner hiện *"Đã lưu vào Tải về/BaoCao_01-09-2026_30-09-2026.pdf"*.
+- **Test: 1708/1708 pass** (~190 giây) — đều đã `git add -f` (kiểm 2026-09-09)
 
 ### 🔄 Việc còn dang dở
 
@@ -875,8 +881,8 @@ backend. Lý do từng bước: mục 10.5 `docs/GOAL_FEATURE.md` và mục 7
    MISA / Copilot / PocketSmith: dòng tiền (số dư đầu và cuối kỳ), so với kỳ
    trước, biểu đồ thu chi, số liệu nhanh, thu theo danh mục, ngân sách kỳ này,
    phân bổ theo ví, top 5 khoản chi. **Lát 2c‑2 xong cùng ngày**: nút "Tải xuống"
-   sinh tệp **PDF hoặc CSV** thật rồi đưa ra sheet chia sẻ/lưu của hệ điều
-   hành — **mảng Phân tích đến đây là xong**. Tầng tổng hợp mà
+   sinh tệp **PDF hoặc CSV** thật và **lưu thẳng vào thư mục Tải về** của máy
+   qua `MediaStore` — **mảng Phân tích đến đây là xong**. Tầng tổng hợp mà
    "Tổng kết tuần" chờ nay đã có. Lý do và bẫy: `docs/ANALYTICS_FEATURE.md`.
 
    ⚠️ **`fl_chart` là phụ thuộc đầu tiên và duy nhất của dự án dành cho việc
@@ -1140,7 +1146,7 @@ Hoá đơn tạo từ app trước đây **không bao giờ lên tới backend**
   đó là tạo vòng lặp đẩy vô tận.
 
 ### ❌ Chưa làm / Tiếp theo
-- Analytics: lát **2a và 2b xong 2026-09-08** (số thật, rồi biểu đồ xu hướng 6 tháng bằng `fl_chart`), **2c‑1, 2c‑1b và 2c‑2 xong 2026-09-09** (trang Xuất báo cáo đọc số thật; màn Xem trước mười khối theo chuẩn app thị trường; nút Tải xuống sinh tệp PDF/CSV thật; 9 tệp test, **164** test) — mảng Phân tích **đã xong**, `docs/ANALYTICS_FEATURE.md` mục 7
+- Analytics: lát **2a và 2b xong 2026-09-08** (số thật, rồi biểu đồ xu hướng 6 tháng bằng `fl_chart`), **2c‑1, 2c‑1b và 2c‑2 xong 2026-09-09** (trang Xuất báo cáo đọc số thật; màn Xem trước mười khối theo chuẩn app thị trường; nút Tải xuống sinh tệp PDF/CSV thật và lưu vào thư mục Tải về; 10 tệp test, **170** test) — mảng Phân tích **đã xong**, `docs/ANALYTICS_FEATURE.md` mục 7
 - AI chat integration hoàn chỉnh
 - Casso bank integration
 - Build production / deploy

@@ -20,9 +20,10 @@ import 'package:flowmoney/features/analytics/presentation/pages/report_preview_p
 class _DichVuGia implements XuatTepService {
   final goi = <String>[];
   Object? loi;
+  String? noiLuu = 'Tải về/BaoCao_01-09-2026_30-09-2026.pdf';
 
   @override
-  Future<void> xuat(
+  Future<String?> xuat(
     BaoCao bc, {
     required String dinhDang,
     required String nhanVi,
@@ -31,6 +32,7 @@ class _DichVuGia implements XuatTepService {
   }) async {
     goi.add(dinhDang);
     if (loi != null) throw loi!;
+    return noiLuu;
   }
 }
 
@@ -241,6 +243,30 @@ void main() {
     expect(dichVu.goi, ['PDF'],
         reason: 'Định dạng người dùng chọn ở trang trước phải đi tới tận nơi '
             'sinh tệp. Bỏ qua nó là bấm CSV mà nhận PDF — không lỗi nào báo.');
+  });
+
+  testWidgets('lưu xong thì nói RÕ tệp nằm ở đâu', (t) async {
+    khoDienThoai(t);
+    await t.pumpWidget(duoi(baoCao([g(ngay: DateTime(2026, 9, 5))])));
+
+    await t.tap(find.widgetWithText(ElevatedButton, 'Tải xuống'));
+    await t.pumpAndSettle();
+
+    expect(find.textContaining('Tải về/BaoCao_01-09-2026_30-09-2026.pdf'),
+        findsOneWidget,
+        reason: 'Tệp lưu vào bộ nhớ chung thì người dùng phải biết đường mà '
+            'tìm. "Đã lưu" trống không thì họ vẫn phải đi lục cả máy.');
+  });
+
+  testWidgets('máy không lưu thẳng được thì KHÔNG nói dối là đã lưu', (t) async {
+    khoDienThoai(t);
+    dichVu.noiLuu = null; // Android 9 trở xuống: chỉ mở được sheet chia sẻ.
+    await t.pumpWidget(duoi(baoCao([g(ngay: DateTime(2026, 9, 5))])));
+
+    await t.tap(find.widgetWithText(ElevatedButton, 'Tải xuống'));
+    await t.pumpAndSettle();
+
+    expect(find.textContaining('Đã lưu'), findsNothing);
   });
 
   testWidgets('xuất tệp hỏng thì NÓI RA, không nuốt lỗi', (t) async {
