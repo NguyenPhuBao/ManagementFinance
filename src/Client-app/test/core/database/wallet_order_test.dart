@@ -11,7 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// thiết kế Stitch có nút "SẮP XẾP" trên màn Quản lý ví: không có thứ tự nào để
 /// giữ.
 ///
-/// ⚠️ `walletDao.getAll` được gọi từ 15 chỗ — hoá đơn, mục tiêu, ngân sách,
+/// ⚠️ `walletDao.getAll` được gọi từ 14 chỗ — hoá đơn, mục tiêu, ngân sách,
 /// phân tích, thêm giao dịch, `SyncEngine`. Đổi thứ tự ở đây là đổi thứ tự MỌI
 /// bộ chọn ví trong app, có chủ ý: chúng phải giống nhau.
 ///

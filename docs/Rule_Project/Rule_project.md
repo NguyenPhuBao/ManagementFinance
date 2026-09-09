@@ -276,6 +276,8 @@ Phần này đặc tả chi tiết toàn bộ các quy tắc ràng buộc, chố
 * Mỗi tài khoản (`idaccount`) chỉ có **duy nhất 1 ví mặc định** (`is_default = true`) tại một thời điểm.
 * Khi người dùng chỉ định một ví mới làm ví mặc định, hệ thống tự động gỡ cờ mặc định (`is_default = false`) của tất cả các ví còn lại thuộc tài khoản đó.
 
+> ⚠️ **Luật này chỉ được thi hành đầy đủ từ 2026-09-09.** Trước đó chỉ đường **thêm** ví gỡ cờ của ví cũ; đường **sửa** ghi thẳng, nên sửa một ví thứ hai thành mặc định là có hai hàng cùng cờ. Không unique index nào chặn ở **cả hai đầu** (đo `pg_constraint` 2026-09-09), nên luật chỉ do mã giữ. Nay chốt nằm ở `WalletLocalDataSourceImpl` — chỗ cả hai đường đều đi qua — dựa trên `WalletDao.clearDefaultExcept`. Vế đọc cũng phải chịu được trạng thái hai hàng, vì nó **đến được từ server** qua `upsertAll`.
+
 ### 2.2. Tính toán tổng tài sản (`include_in_total`)
 * Cờ boolean xác định số dư của ví có được tính vào Tổng tài sản (Net Worth) hiển thị trên màn hình tổng quan hay không:
   * `true`: Cộng số dư vào tổng tài sản (ví tiền mặt, thẻ ngân hàng chi tiêu chính).
