@@ -11,10 +11,13 @@ const UserListPage = () => {
   
   const [modals, setModals] = useState({
       filter: false,
-      blockAlert: false
+      blockAlert: false,
+      deleteAlert: false,
   });
   const [userToBlock, setUserToBlock] = useState(null);
+  const [userToDelete, setUserToDelete] = useState(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [deletingUser, setDeletingUser] = useState(false);
   const [detailUserId, setDetailUserId] = useState(null);
 
   const [filter, setFilter] = useState({ location: 'all', status: 'all' });
@@ -95,26 +98,84 @@ const UserListPage = () => {
     }
   };
 
+  const handleDeleteClick = (user) => {
+    setUserToDelete(user);
+    toggleModal('deleteAlert', true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const confirmDelete = async () => {
+    if (!userToDelete || deletingUser) return;
+    setDeletingUser(true);
+    try {
+      await adminApi.deleteUser(userToDelete.id);
+      // Loại bỏ user đã xóa mềm khỏi danh sách hiển thị
+      setUsers(prev => prev.filter(u => u.id !== userToDelete.id));
+      setUserToDelete(null);
+      toggleModal('deleteAlert', false);
+    } catch (err) {
+      console.error('Lỗi xóa người dùng:', err);
+    } finally {
+      setDeletingUser(false);
+    }
+  };
+
   return (
     <>
     {/* Full-screen Loading Overlay & Operation Blocker */}
-    {updatingStatus && (
+    {(updatingStatus || deletingUser) && (
       <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[9999] flex flex-col items-center justify-center pointer-events-auto select-none animate-in fade-in duration-200">
         <div className="bg-white/95 backdrop-blur-md px-8 py-6 rounded-2xl shadow-2xl border border-outline-variant flex flex-col items-center gap-4 text-center max-w-xs mx-4">
           <div className="relative flex items-center justify-center">
-            <span className="material-symbols-outlined animate-spin text-primary text-5xl">progress_activity</span>
+            <span className={`material-symbols-outlined animate-spin ${deletingUser ? 'text-error' : 'text-primary'} text-5xl`}>progress_activity</span>
           </div>
           <div className="space-y-1">
             <h4 className="font-title-md font-bold text-on-surface text-base">
-              {userToBlock?.status === 'active' ? 'Đang vô hiệu hóa tài khoản' : 'Đang kích hoạt tài khoản'}
+              {deletingUser ? 'Đang xóa mềm người dùng' : userToBlock?.status === 'active' ? 'Đang vô hiệu hóa tài khoản' : 'Đang kích hoạt tài khoản'}
             </h4>
-            <p className="font-body-sm text-on-surface-variant text-xs">Vui lòng chờ trong giây lát...</p>
+            <p className="font-body-sm text-on-surface-variant text-xs">
+              {deletingUser ? 'Đang vô hiệu hóa ví, ngắt kết nối ngân hàng và thu hồi quyền...' : 'Vui lòng chờ trong giây lát...'}
+            </p>
           </div>
         </div>
       </div>
     )}
 
     <div className="bg-surface-bright relative p-4 md:p-6 min-h-full">
+      {/* Delete User Alert Banner */}
+      {modals.deleteAlert && (
+          <div className="mb-6 bg-surface-container-low border-2 border-error/70 rounded-xl p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-in fade-in zoom-in-95 duration-200 shadow-md">
+              <div className="flex items-start gap-3 text-on-surface">
+                  <span className="material-symbols-outlined text-error text-3xl mt-0.5">delete_forever</span>
+                  <div className="space-y-1">
+                      <p className="font-body-lg font-bold text-error">
+                          Xác nhận xóa người dùng: {userToDelete?.name} (@{userToDelete?.username})?
+                      </p>
+                      <p className="font-body-sm text-on-surface-variant text-xs leading-relaxed">
+                          ⚠️ Người dùng sẽ được xóa mềm, toàn bộ ví liên quan sẽ ngừng hoạt động, liên kết ngân hàng sẽ bị ngắt kết nối và phiên làm việc sẽ bị cưỡng chế đăng xuất ngay lập tức.
+                      </p>
+                  </div>
+              </div>
+              <div className="flex items-center gap-3 self-end md:self-center shrink-0">
+                  <button 
+                    disabled={deletingUser}
+                    className="px-4 py-2 bg-error text-white rounded font-label-md hover:opacity-90 transition-colors cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2" 
+                    onClick={confirmDelete}
+                  >
+                    {deletingUser && <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>}
+                    Xác nhận xóa
+                  </button>
+                  <button 
+                    disabled={deletingUser}
+                    className="px-4 py-2 bg-surface-container-high text-on-surface rounded font-label-md hover:bg-surface-container-low transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" 
+                    onClick={() => { setUserToDelete(null); toggleModal('deleteAlert', false); }}
+                  >
+                    Hủy bỏ
+                  </button>
+              </div>
+          </div>
+      )}
+
       {modals.blockAlert && (
           <div className="mb-6 bg-surface-container-low border border-error-container rounded-lg p-4 flex flex-col md:flex-row items-center justify-between gap-4 animate-in fade-in zoom-in-95 duration-200">
               <div className="flex items-center gap-3 text-on-surface">
@@ -212,15 +273,27 @@ const UserListPage = () => {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-right">
-                                            <button 
-                                                className={`px-3 py-1.5 rounded font-label-md text-[12px] transition-colors shadow-sm cursor-pointer border ${isActive ? 'bg-white border-error text-error hover:bg-error-container' : 'bg-primary border-primary text-white hover:bg-surface-tint'}`} 
-                                                onClick={() => handleBlockClick(item)}
-                                            >
-                                                {isActive ? 'Vô hiệu hóa' : 'Kích hoạt'}
-                                            </button>
-                                            <button className="p-1.5 text-secondary hover:text-primary transition-colors ml-2 border border-transparent hover:border-on-background rounded cursor-pointer" onClick={() => setDetailUserId(item.id)} title="Xem chi tiết">
-                                                <span className="material-symbols-outlined text-[20px]">visibility</span>
-                                            </button>
+                                            <div className="flex items-center justify-end gap-2">
+                                                <button 
+                                                    className={`px-3 py-1.5 rounded font-label-md text-[12px] transition-colors shadow-sm cursor-pointer border ${isActive ? 'bg-white border-error text-error hover:bg-error-container' : 'bg-primary border-primary text-white hover:bg-surface-tint'}`} 
+                                                    onClick={() => handleBlockClick(item)}
+                                                >
+                                                    {isActive ? 'Vô hiệu hóa' : 'Kích hoạt'}
+                                                </button>
+                                                {!isActive && (
+                                                    <button 
+                                                        className="px-3 py-1.5 rounded font-label-md text-[12px] transition-colors shadow-sm cursor-pointer border border-error bg-white text-error hover:bg-error hover:text-white flex items-center gap-1 font-semibold"
+                                                        onClick={() => handleDeleteClick(item)}
+                                                        title="Xóa người dùng"
+                                                    >
+                                                        <span className="material-symbols-outlined text-[16px]">delete</span>
+                                                        Xóa
+                                                    </button>
+                                                )}
+                                                <button className="p-1.5 text-secondary hover:text-primary transition-colors border border-transparent hover:border-on-background rounded cursor-pointer" onClick={() => setDetailUserId(item.id)} title="Xem chi tiết">
+                                                    <span className="material-symbols-outlined text-[20px]">visibility</span>
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 );

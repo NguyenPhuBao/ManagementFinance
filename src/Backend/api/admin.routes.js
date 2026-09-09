@@ -18,6 +18,8 @@ router.get('/request-stats', adminController.getRequestStats);
 router.get('/getuser', adminController.getUsers);
 router.get('/getuser/:id', adminController.getUserDetail);
 router.patch('/updatestatus/:id', adminController.updateStatus);
+router.delete('/deleteuser/:id', adminController.deleteUser);
+router.delete('/users/:id', adminController.deleteUser);
 
 // Quản lý danh mục
 router.get('/getcategory', adminController.getCategories);

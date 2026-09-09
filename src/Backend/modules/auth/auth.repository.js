@@ -11,9 +11,21 @@ function normalizePurpose(p) {
 }
 
 const authRepository = {
+  async findAccountsByUsername(username) {
+    if (!username) return [];
+    return prisma.account.findMany({
+      where: { username: { equals: username, mode: 'insensitive' } },
+      include: {
+        role: { select: { idrole: true, rolename: true } },
+        User: { select: { iduser: true, fullname: true, email: true, phone: true, country_code: true, address: true } },
+      },
+    });
+  },
+
   async findAccountByUsername(username) {
-    return prisma.account.findUnique({
-      where: { username },
+    if (!username) return null;
+    return prisma.account.findFirst({
+      where: { username: { equals: username, mode: 'insensitive' } },
       include: {
         role: { select: { idrole: true, rolename: true } },
         User: { select: { iduser: true, fullname: true, email: true, phone: true, country_code: true, address: true } },
@@ -22,9 +34,23 @@ const authRepository = {
   },
 
   async findAccountByEmail(email) {
-    // CSDL mới: Account.Email là unique — tìm trực tiếp trên account
-    return prisma.account.findUnique({
-      where: { email },
+    if (!email) return null;
+    return prisma.account.findFirst({
+      where: { email: { equals: email, mode: 'insensitive' } },
+      include: {
+        role: { select: { idrole: true, rolename: true } },
+        User: { select: { iduser: true, fullname: true, email: true, phone: true, country_code: true, address: true } },
+      },
+    });
+  },
+
+  async findActiveAccountByEmail(email) {
+    if (!email) return null;
+    return prisma.account.findFirst({
+      where: {
+        email: { equals: email, mode: 'insensitive' },
+        delete_at: null,
+      },
       include: {
         role: { select: { idrole: true, rolename: true } },
         User: { select: { iduser: true, fullname: true, email: true, phone: true, country_code: true, address: true } },

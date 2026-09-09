@@ -71,9 +71,24 @@ const adminController = {
     }
   },
 
+  async deleteUser(req, res) {
+    try {
+      const iduser = parseInt(req.params.id, 10);
+      if (isNaN(iduser)) return ResponseHandler.badRequest(res, 'ID người dùng không hợp lệ');
+      const result = await adminService.deleteUser(iduser);
+      logger.info('User soft deleted', { iduser, ...result });
+      req.auditActionName = 'Xóa người dùng (xóa mềm)';
+      return ResponseHandler.success(res, result, 'Xóa người dùng thành công');
+    } catch (error) {
+      const statusCode = error.statusCode || 500;
+      logger.error('deleteUser failed', { error: error.message });
+      return ResponseHandler.error(res, error.message, statusCode);
+    }
+  },
+
   async getCategories(req, res) {
     try {
-      const result = await adminService.getCategories();
+      const result = await adminService.getCategories(req.query);
       return ResponseHandler.success(res, result, 'Danh sách danh mục');
     } catch (error) {
       logger.error('getCategories failed', { error: error.message });

@@ -62,6 +62,7 @@ const adminService = {
     const users = await adminRepository.getAllUsers();
     return users.map((u) => ({
       id: u.iduser,
+      idaccount: u.account.idaccount,
       fullname: u.fullname,
       email: u.email,
       phone: u.phone,
@@ -114,8 +115,38 @@ const adminService = {
     };
   },
 
-  async getCategories() {
-    const cats = await adminRepository.getAllCategories();
+  async deleteUser(iduser) {
+    const u = await adminRepository.getUserById(iduser);
+    if (!u) {
+      throw Object.assign(new Error('Không tìm thấy người dùng'), { statusCode: 404 });
+    }
+
+    if (u.account.idrole === 1) {
+      throw Object.assign(new Error('Không thể xóa tài khoản Quản trị viên'), { statusCode: 403 });
+    }
+
+    const idaccount = u.account.idaccount;
+    await adminRepository.softDeleteUser(iduser);
+
+    // 1. Invalidate auth cache
+    const { invalidateAccountCache } = require('../../middleware/auth');
+    invalidateAccountCache(idaccount);
+
+    // 2. Emit force logout via Socket.IO
+    const { emitForceLogout } = require('../../core/socket');
+    emitForceLogout(idaccount, 'ACCOUNT_DELETED', 'Tài khoản của bạn đã bị ngừng hoạt động hoặc xóa bởi quản trị viên.');
+
+    return {
+      message: 'Người dùng đã được xóa mềm thành công',
+      iduser,
+      idaccount,
+      username: u.account.username,
+      fullname: u.fullname,
+    };
+  },
+
+  async getCategories(filters = {}) {
+    const cats = await adminRepository.getAllCategories(filters);
     return cats.map((c) => ({
       id: c.idcategory,
       name: c.name_category,
@@ -125,6 +156,7 @@ const adminService = {
       idgroup: c.idgroup,
       keyword: c.keyword,
       icon: c.icon,
+      created_by_id: c.create_by,
       created_by: c.account ? c.account.username : null,
       created_by_name: c.account?.User?.fullname || null,
       created_at: c.create_at,

@@ -23,7 +23,7 @@ model account {
   idaccount  Int              @id @default(autoincrement()) @map("Idaccount")
   idrole     Int              @map("Idrole")
   email      String           @unique @db.VarChar(100) @map("Email")
-  username   String           @unique @db.VarChar(255) @map("Username")
+  username   String           @db.VarChar(255) @map("Username")
   password   String           @db.VarChar(255) @map("Password")
   status     String           @default("Active") @db.VarChar(20) @map("Status")
   type       String           @default("Basic") @db.VarChar(7) @map("Type")
@@ -45,6 +45,7 @@ model account {
   transaction  transaction[]
 
   @@index([idrole], map: "idx_account_role")
+  @@index([username], map: "idx_account_username")
   @@map("account")
 }
 
@@ -160,7 +161,7 @@ model wallet {
   type            String    @default("Cash") @db.VarChar(7) @map("Type")
   balance         Decimal   @default(0) @db.Decimal(15, 2) @map("Balance")
   currency        String    @default("VND") @db.VarChar(3) @map("Currency")
-  status          String    @default("Active") @db.VarChar(7) @map("Status")
+  status          String    @default("Active") @db.VarChar(20) @map("Status")
   include_in_total Boolean  @default(true) @map("IncludeInTotal")
   is_default      Boolean   @default(false) @map("Is_default")
   icon            String?   @default("wallet") @db.VarChar(20) @map("Icon")

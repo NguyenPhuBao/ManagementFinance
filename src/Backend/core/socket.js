@@ -38,7 +38,9 @@ function initSocket(httpServer) {
 
       const valid = await isAccountValid(decoded.idaccount);
       if (!valid) {
-        return next(new Error('Authentication error: Account no longer exists or is inactive'));
+        return next(Object.assign(new Error('Authentication error: Account no longer exists, inactive, or deleted'), {
+          data: { code: 'ACCOUNT_DELETED', idaccount: Number(decoded.idaccount) },
+        }));
       }
 
       socket.data.idaccount = Number(decoded.idaccount);
@@ -159,6 +161,35 @@ function emitOcrDuplicate(idaccount, duplicateData) {
   }
 }
 
+/**
+ * Phát thông báo cưỡng chế đăng xuất tới Client-app của user
+ * @param {number} idaccount 
+ * @param {string} reason 
+ * @param {string} message 
+ */
+function emitForceLogout(idaccount, reason = 'ACCOUNT_DELETED', message = 'Tài khoản của bạn đã bị ngừng hoạt động hoặc xóa bởi quản trị viên.') {
+  if (!io) {
+    logger.warn('[Socket] Attempted to emit force logout before Socket.io initialized');
+    return;
+  }
+  try {
+    const room = `account_${idaccount}`;
+    io.to(room).emit('account.force_logout', {
+      idaccount: Number(idaccount),
+      reason,
+      message,
+    });
+    logger.info(`[Socket] Emitted account.force_logout to room ${room}`);
+
+    // Disconnect all sockets in that room immediately
+    if (typeof io.in(room).disconnectSockets === 'function') {
+      io.in(room).disconnectSockets(true);
+    }
+  } catch (error) {
+    logger.error('[Socket] Failed to emit force logout', { error: error.message });
+  }
+}
+
 module.exports = {
   initSocket,
   getIO,
@@ -166,6 +197,7 @@ module.exports = {
   emitBankTransaction,
   emitOcrCompleted,
   emitOcrDuplicate,
+  emitForceLogout,
 };
 
 
