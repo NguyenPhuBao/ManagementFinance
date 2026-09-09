@@ -1,25 +1,64 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/auth/current_account.dart';
+import '../../../../core/di/injection_container.dart';
+import '../../../../shared/theme/app_colors.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../data/bao_cao_repository.dart';
+import '../../domain/bao_cao_xuat.dart';
+import 'report_preview_page.dart';
+
+/// Trang **Xuất báo cáo** — chọn bộ lọc rồi mở màn Xem trước.
+///
+/// Bố cục theo màn Stitch "Xuất Báo cáo Tài chính - FlowMoney". Ba khối của
+/// bản Stitch đã bỏ vì **không có gì đỡ phía sau**: lịch sử xuất (cần một bảng
+/// cục bộ để ghi lại), ô mật khẩu PDF, và dòng "Đích đến". Ô `.xlsx` cũng bỏ:
+/// nó cần thêm một thư viện nữa mà `.csv` đã phục vụ đúng nhu cầu "phù hợp
+/// tính toán".
+///
+/// Trước 2026-09-09 trang này là **số cứng**: ví "Techcombank" bịa, lịch sử
+/// xuất bịa, nút xuất chỉ hiện snackbar.
 class ExportReportPage extends StatefulWidget {
-  const ExportReportPage({super.key});
+  /// Tiêm đồng hồ để test không phụ thuộc ngày chạy máy.
+  final DateTime Function()? clock;
+
+  const ExportReportPage({super.key, this.clock});
 
   @override
   State<ExportReportPage> createState() => _ExportReportPageState();
 }
 
 class _ExportReportPageState extends State<ExportReportPage> {
-  final String _selectedReportType = 'Báo cáo Tổng quan Thu Chi';
-  int _selectedTimeIndex = 0; // 0: Tháng này, 1: Tháng trước, 2: Quý này, 3: Tùy chỉnh
-  int _selectedWalletIndex = 0; // 0: Tất cả các ví, 1: Techcombank, 2: Tiền mặt
-  String _selectedFormat = 'pdf'; // 'pdf', 'xlsx', 'csv'
-  bool _isPasswordProtected = false;
+  PhamViThoiGian _pv = PhamViThoiGian.thangNay;
+  ({DateTime from, DateTime to})? _tuyChon;
 
-  final List<String> _timeOptions = ['Tháng này', 'Tháng trước', 'Quý này', 'Tùy chỉnh'];
-  final List<String> _walletOptions = ['Tất cả các ví', 'Techcombank', 'Tiền mặt'];
+  String? _walletId;
+  String _nhanVi = 'Tất cả các ví';
+  String? _categoryId;
+  String _nhanDanhMuc = 'Tất cả danh mục';
+
+  String _dinhDang = 'pdf';
+  bool _dangDung = false;
+
+  DateTime get _now => (widget.clock ?? DateTime.now)();
+
+  static const _nhanPhamVi = {
+    PhamViThoiGian.thangNay: 'Tháng này',
+    PhamViThoiGian.thangTruoc: 'Tháng trước',
+    PhamViThoiGian.quyNay: 'Quý này',
+    PhamViThoiGian.tuyChinh: 'Tùy chỉnh',
+  };
 
   @override
   Widget build(BuildContext context) {
+    // ĐĂNG KÝ với AuthBloc chứ không chỉ đọc một phát — cùng lý do với trang
+    // Phân tích: phiên tới muộn thì trang phải dựng lại.
+    context.watch<AuthBloc>();
+    final idaccount = currentAccountIdOrNull(context);
+    final repo = sl<BaoCaoRepository>();
+
     return Scaffold(
       backgroundColor: const Color(0xFFFAF9F5),
       appBar: AppBar(
@@ -27,277 +66,86 @@ class _ExportReportPageState extends State<ExportReportPage> {
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF1A1C1A)),
+          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
           onPressed: () => context.pop(),
         ),
         title: const Text(
           'Xuất Báo cáo Tài chính',
           style: TextStyle(
-            color: Color(0xFF1A1C1A),
+            color: AppColors.textPrimary,
             fontWeight: FontWeight.w600,
             fontSize: 18,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.help_outline, color: Color(0xFF1A1C1A)),
-            onPressed: () {},
-          ),
-        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Section 1: Parameters Form
-            _buildCardContainer(
+            _the(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildSectionLabel('LOẠI BÁO CÁO'),
+                  _nhanMuc('LOẠI BÁO CÁO'),
                   const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF4F4F0),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFE8E8E4)),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          _selectedReportType,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFF1A1C1A),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const Icon(Icons.keyboard_arrow_down, color: Color(0xFF77767D)),
-                      ],
-                    ),
-                  ),
+                  _oTinh('Báo cáo Tổng quan Thu Chi'),
                   const SizedBox(height: 20),
-                  _buildSectionLabel('THỜI GIAN'),
+                  _nhanMuc('THỜI GIAN'),
                   const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE8E8E4),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: List.generate(_timeOptions.length, (index) {
-                        final isSelected = _selectedTimeIndex == index;
-                        return Expanded(
-                          child: GestureDetector(
-                            onTap: () => setState(() => _selectedTimeIndex = index),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              decoration: BoxDecoration(
-                                color: isSelected ? Colors.white : Colors.transparent,
-                                borderRadius: BorderRadius.circular(8),
-                                boxShadow: isSelected
-                                    ? [
-                                        BoxShadow(
-                                          color: Colors.black.withValues(alpha: 0.05),
-                                          blurRadius: 4,
-                                        )
-                                      ]
-                                    : null,
-                              ),
-                              child: Text(
-                                _timeOptions[index],
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                                  color: isSelected ? const Color(0xFF00020D) : const Color(0xFF46464C),
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      }),
-                    ),
-                  ),
+                  _chonThoiGian(),
                   const SizedBox(height: 20),
-                  _buildSectionLabel('LỌC THEO VÍ'),
+                  _nhanMuc('LỌC THEO VÍ'),
                   const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: List.generate(_walletOptions.length, (index) {
-                      final isSelected = _selectedWalletIndex == index;
-                      return ChoiceChip(
-                        label: Text(_walletOptions[index]),
-                        selected: isSelected,
-                        onSelected: (_) => setState(() => _selectedWalletIndex = index),
-                        selectedColor: const Color(0xFF00020D),
-                        backgroundColor: Colors.white,
-                        labelStyle: TextStyle(
-                          color: isSelected ? Colors.white : const Color(0xFF46464C),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          side: BorderSide(
-                            color: isSelected ? const Color(0xFF00020D) : const Color(0xFFE8E8E4),
-                          ),
-                        ),
-                        showCheckmark: false,
-                      );
-                    }),
-                  ),
+                  _chipVi(repo, idaccount),
                   const SizedBox(height: 20),
-                  _buildSectionLabel('DANH MỤC'),
+                  _nhanMuc('DANH MỤC'),
                   const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF4F4F0),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFE8E8E4)),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Tất cả danh mục',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFF1A1C1A),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        Icon(Icons.category_outlined, color: Color(0xFF77767D), size: 20),
-                      ],
-                    ),
-                  ),
+                  _oChonDanhMuc(repo, idaccount),
                 ],
               ),
             ),
             const SizedBox(height: 20),
-
-            // Section 2: Format selection
-            _buildCardContainer(
+            _the(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildSectionLabel('ĐỊNH DẠNG TỆP'),
+                  _nhanMuc('ĐỊNH DẠNG TỆP'),
                   const SizedBox(height: 12),
-                  _buildFormatOption(
+                  _oDinhDang(
                     id: 'pdf',
                     icon: Icons.picture_as_pdf_outlined,
-                    title: 'Tệp PDF (.pdf)',
-                    subtitle: 'Đầy đủ biểu đồ & bảng kê',
-                    iconBgColor: const Color(0xFF181C2C),
-                    iconColor: Colors.white,
+                    tieuDe: 'Tệp PDF (.pdf)',
+                    phu: 'Đầy đủ bảng kê',
                   ),
                   const SizedBox(height: 10),
-                  _buildFormatOption(
-                    id: 'xlsx',
-                    icon: Icons.table_chart_outlined,
-                    title: 'Tệp Excel (.xlsx)',
-                    subtitle: 'Phù hợp tính toán',
-                    iconBgColor: const Color(0xFFE8E8E4),
-                    iconColor: const Color(0xFF46464C),
-                  ),
-                  const SizedBox(height: 10),
-                  _buildFormatOption(
+                  _oDinhDang(
                     id: 'csv',
                     icon: Icons.insert_drive_file_outlined,
-                    title: 'Tệp CSV (.csv)',
-                    subtitle: 'Dữ liệu thô',
-                    iconBgColor: const Color(0xFFE8E8E4),
-                    iconColor: const Color(0xFF46464C),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Section 3: Security & Destination
-            _buildCardContainer(
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Row(
-                        children: [
-                          Icon(Icons.lock_outline, color: Color(0xFF46464C), size: 22),
-                          SizedBox(width: 12),
-                          Text(
-                            'Đặt mật khẩu bảo vệ file PDF',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Color(0xFF1A1C1A),
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Switch(
-                        value: _isPasswordProtected,
-                        onChanged: (val) => setState(() => _isPasswordProtected = val),
-                        activeThumbColor: const Color(0xFF00020D),
-                      ),
-                    ],
-                  ),
-                  const Divider(height: 24, color: Color(0xFFE8E8E4)),
-                  const Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.folder_open_outlined, color: Color(0xFF46464C), size: 22),
-                          SizedBox(width: 12),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Đích đến',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Color(0xFF1A1C1A),
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              Text(
-                                'Lưu vào Tải về (Downloads)',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF808498),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      Icon(Icons.chevron_right, color: Color(0xFF77767D)),
-                    ],
+                    tieuDe: 'Tệp CSV (.csv)',
+                    phu: 'Dữ liệu thô, mở được bằng Excel',
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 24),
-
-            // Action Button
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Đang xuất báo cáo tài chính...')),
-                  );
-                },
-                icon: const Icon(Icons.download, color: Colors.white),
+                onPressed: (idaccount == null || _dangDung)
+                    ? null
+                    : () => _moXemTruoc(repo, idaccount),
+                icon: _dangDung
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.visibility_outlined,
+                        color: Colors.white),
                 label: const Text(
-                  'Xuất & Tải Báo Cáo',
+                  'Xem trước báo cáo',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 16,
@@ -305,40 +153,13 @@ class _ExportReportPageState extends State<ExportReportPage> {
                   ),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF00020D),
+                  backgroundColor: AppColors.primary,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                   elevation: 2,
                 ),
-              ),
-            ),
-            const SizedBox(height: 28),
-
-            // Section 4: History
-            _buildSectionLabel('LỊCH SỬ XUẤT GẦN ĐÂY'),
-            const SizedBox(height: 12),
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE8E8E4)),
-              ),
-              child: Column(
-                children: [
-                  _buildHistoryItem(
-                    icon: Icons.description_outlined,
-                    fileName: 'BaoCao_Thang6.pdf',
-                    dateSize: 'Đã tải: 15/06/2026 • 1.8MB',
-                  ),
-                  const Divider(height: 1, color: Color(0xFFE8E8E4)),
-                  _buildHistoryItem(
-                    icon: Icons.table_view_outlined,
-                    fileName: 'ThuChi_TongHop_Q2.xlsx',
-                    dateSize: 'Đã tải: 01/04/2026 • 2.4MB',
-                  ),
-                ],
               ),
             ),
             const SizedBox(height: 32),
@@ -348,56 +169,255 @@ class _ExportReportPageState extends State<ExportReportPage> {
     );
   }
 
-  Widget _buildSectionLabel(String text) {
-    return Text(
-      text,
-      style: const TextStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
-        color: Color(0xFF46464C),
-        letterSpacing: 0.8,
-      ),
-    );
-  }
-
-  Widget _buildCardContainer({required Widget child}) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+  Future<void> _moXemTruoc(BaoCaoRepository repo, int idaccount) async {
+    final k = khoangCuaPhamVi(_pv, now: _now, tuyChon: _tuyChon);
+    setState(() => _dangDung = true);
+    try {
+      final bc = await repo.layBaoCao(
+        idaccount,
+        loc: LocBaoCao(
+          from: k.from,
+          to: k.to,
+          walletId: _walletId,
+          categoryId: _categoryId,
+        ),
+      );
+      if (!mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ReportPreviewPage(
+            baoCao: bc,
+            nhanVi: _nhanVi,
+            nhanDanhMuc: _nhanDanhMuc,
+            dinhDang: _dinhDang.toUpperCase(),
+            lapNgay: _now,
           ),
-        ],
-      ),
-      child: child,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _dangDung = false);
+    }
+  }
+
+  Future<void> _chonKhoangTuyChinh() async {
+    final chon = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(_now.year + 1, 12, 31),
+      currentDate: _now,
+    );
+    if (!mounted) return;
+    setState(() {
+      _pv = PhamViThoiGian.tuyChinh;
+      // `null` khi người dùng thoát bộ chọn — giữ nguyên khoảng cũ thay vì
+      // xoá, và `khoangCuaPhamVi` tự lùi về tháng này nếu chưa từng chọn.
+      if (chon != null) _tuyChon = (from: chon.start, to: chon.end);
+    });
+  }
+
+  Widget _chonThoiGian() => Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerHigh,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            for (final pv in PhamViThoiGian.values)
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    if (pv == PhamViThoiGian.tuyChinh) {
+                      _chonKhoangTuyChinh();
+                    } else {
+                      setState(() => _pv = pv);
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: _pv == pv ? Colors.white : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: _pv == pv
+                          ? [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.05),
+                                blurRadius: 4,
+                              )
+                            ]
+                          : null,
+                    ),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        _nhanPhamVi[pv]!,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight:
+                              _pv == pv ? FontWeight.w600 : FontWeight.w500,
+                          color: _pv == pv
+                              ? AppColors.primary
+                              : const Color(0xFF46464C),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      );
+
+  Widget _chipVi(BaoCaoRepository repo, int? idaccount) {
+    if (idaccount == null) return _oTinh('Chưa đăng nhập');
+    return StreamBuilder<List<LuaChonLoc>>(
+      stream: repo.watchVi(idaccount),
+      builder: (context, snap) {
+        final ds = snap.data ?? const <LuaChonLoc>[];
+        return Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _chip('Tất cả các ví', _walletId == null, () {
+              setState(() {
+                _walletId = null;
+                _nhanVi = 'Tất cả các ví';
+              });
+            }),
+            for (final v in ds)
+              _chip(v.ten, _walletId == v.id, () {
+                setState(() {
+                  _walletId = v.id;
+                  _nhanVi = v.ten;
+                });
+              }),
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildFormatOption({
+  Widget _chip(String ten, bool chon, VoidCallback onTap) => ChoiceChip(
+        label: Text(ten),
+        selected: chon,
+        onSelected: (_) => onTap(),
+        selectedColor: AppColors.primary,
+        backgroundColor: Colors.white,
+        labelStyle: TextStyle(
+          color: chon ? Colors.white : const Color(0xFF46464C),
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(
+            color: chon ? AppColors.primary : AppColors.outlineVariant,
+          ),
+        ),
+        showCheckmark: false,
+      );
+
+  Widget _oChonDanhMuc(BaoCaoRepository repo, int? idaccount) => InkWell(
+        onTap: idaccount == null ? null : () => _moSheetDanhMuc(repo, idaccount),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.outlineVariant),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _nhanDanhMuc,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              const Icon(Icons.category_outlined,
+                  color: AppColors.textSecondary, size: 20),
+            ],
+          ),
+        ),
+      );
+
+  Future<void> _moSheetDanhMuc(BaoCaoRepository repo, int idaccount) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: StreamBuilder<List<LuaChonLoc>>(
+          stream: repo.watchDanhMuc(idaccount),
+          builder: (context, snap) {
+            final ds = snap.data ?? const <LuaChonLoc>[];
+            return ListView(
+              shrinkWrap: true,
+              children: [
+                ListTile(
+                  title: const Text('Tất cả danh mục'),
+                  trailing: _categoryId == null
+                      ? const Icon(Icons.check, color: AppColors.primary)
+                      : null,
+                  onTap: () {
+                    setState(() {
+                      _categoryId = null;
+                      _nhanDanhMuc = 'Tất cả danh mục';
+                    });
+                    Navigator.of(sheetContext).pop();
+                  },
+                ),
+                for (final c in ds)
+                  ListTile(
+                    title: Text(c.ten),
+                    trailing: _categoryId == c.id
+                        ? const Icon(Icons.check, color: AppColors.primary)
+                        : null,
+                    onTap: () {
+                      setState(() {
+                        _categoryId = c.id;
+                        _nhanDanhMuc = c.ten;
+                      });
+                      Navigator.of(sheetContext).pop();
+                    },
+                  ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _oDinhDang({
     required String id,
     required IconData icon,
-    required String title,
-    required String subtitle,
-    required Color iconBgColor,
-    required Color iconColor,
+    required String tieuDe,
+    required String phu,
   }) {
-    final isSelected = _selectedFormat == id;
+    final chon = _dinhDang == id;
     return GestureDetector(
-      onTap: () => setState(() => _selectedFormat = id),
+      onTap: () => setState(() => _dinhDang = id),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFDEE1F8).withValues(alpha: 0.2) : Colors.white,
+          color: chon
+              ? const Color(0xFFDEE1F8).withValues(alpha: 0.2)
+              : Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? const Color(0xFF00020D) : const Color(0xFFE8E8E4),
-            width: isSelected ? 2 : 1,
+            color: chon ? AppColors.primary : AppColors.outlineVariant,
+            width: chon ? 2 : 1,
           ),
         ),
         child: Row(
@@ -406,10 +426,12 @@ class _ExportReportPageState extends State<ExportReportPage> {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: iconBgColor,
+                color: chon ? AppColors.primary : AppColors.surfaceContainerHigh,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(icon, color: iconColor, size: 20),
+              child: Icon(icon,
+                  color: chon ? Colors.white : const Color(0xFF46464C),
+                  size: 20),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -417,16 +439,18 @@ class _ExportReportPageState extends State<ExportReportPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    title,
+                    tieuDe,
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF1A1C1A),
+                      color: AppColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    subtitle,
+                    phu,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 12,
                       color: Color(0xFF46464C),
@@ -436,8 +460,8 @@ class _ExportReportPageState extends State<ExportReportPage> {
               ),
             ),
             Icon(
-              isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-              color: isSelected ? const Color(0xFF00020D) : const Color(0xFF77767D),
+              chon ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+              color: chon ? AppColors.primary : AppColors.textSecondary,
             ),
           ],
         ),
@@ -445,54 +469,48 @@ class _ExportReportPageState extends State<ExportReportPage> {
     );
   }
 
-  Widget _buildHistoryItem({
-    required IconData icon,
-    required String fileName,
-    required String dateSize,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: const BoxDecoration(
-              color: Color(0xFFE8E8E4),
-              shape: BoxShape.circle,
+  Widget _nhanMuc(String text) => Text(
+        text,
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF46464C),
+          letterSpacing: 0.8,
+        ),
+      );
+
+  Widget _oTinh(String text) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.outlineVariant),
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontSize: 14,
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      );
+
+  Widget _the({required Widget child}) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
             ),
-            child: Icon(icon, color: const Color(0xFF00020D), size: 22),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  fileName,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1C1A),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  dateSize,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF46464C),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Color(0xFF808498)),
-            onPressed: () {},
-          ),
-        ],
-      ),
-    );
-  }
+          ],
+        ),
+        child: child,
+      );
 }

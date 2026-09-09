@@ -1,9 +1,11 @@
 # Trang Phân tích — thiết kế, lý do, và những cái bẫy
 
-**Cập nhật:** 2026-09-08
+**Cập nhật:** 2026-09-09
 **Trạng thái:** lát **2a** xong — mọi con số trên trang là số thật từ SQLite —
-và lát **2b** xong: khối "Xu hướng 6 tháng" vẽ bằng `fl_chart`. Còn **2c**
-(trang Xuất báo cáo, vẫn là số cứng). Xem mục 7.
+lát **2b** xong (khối "Xu hướng 6 tháng" vẽ bằng `fl_chart`), và lát **2c‑1**
+xong 2026-09-09: trang Xuất báo cáo đọc ví/danh mục/thời gian thật rồi mở màn
+**Xem trước báo cáo**. Còn **2c‑2**: nút "Tải xuống" sinh tệp thật — hiện đang
+**tắt** có chủ ý. Xem mục 7.
 
 > Cùng mục đích với `GOAL_FEATURE.md`: giữ lại **vì sao**. Cái gì thì đọc mã và
 > test là ra.
@@ -19,7 +21,8 @@ và lát **2b** xong: khối "Xu hướng 6 tháng" vẽ bằng `fl_chart`. Còn
 | Sửa cách gộp dữ liệu | Mục 3.3 (mốc tra ngân sách) trước, rồi `data/analytics_repository_impl.dart` |
 | Đụng giao diện | Màn Stitch **"FlowMoney Analytics Dashboard"** — bố cục lấy nguyên từ đó **trừ khối xu hướng**, xem **3.12**; và mục 4.4 về font của bộ test |
 | Đụng biểu đồ | Mục **3.11** (vì sao `fl_chart`, vì sao ghim phiên bản), **3.12** (vì sao lệch Stitch), và bẫy **4.9** (tooltip tràn — thứ duy nhất phải kiểm bằng mắt) |
-| Làm tiếp 2c | Mục 7 |
+| Đụng trang Xuất báo cáo / màn Xem trước | Mục **3.13** (vì sao xem trước rồi mới tải), **3.14** (ảnh chụp, không phải luồng sống; và màn Stitch mới), bẫy **4.11** |
+| Làm tiếp 2c‑2 (sinh tệp) | Mục 7 |
 
 ---
 
@@ -198,6 +201,43 @@ xanh/đỏ là quy ước chứ không hiển nhiên, và người mù màu đ�
 
 ---
 
+### 3.13 2c — **xem trước trong app**, tải xuống là bước sau
+
+Câu hỏi thật của trang Xuất báo cáo là *nút "Xuất" làm gì*. Hai hướng đã trình:
+sinh tệp thật ngay (PDF/CSV — thêm thư viện, thêm quyền, phần ghi tệp không
+test tự động được), hay chỉ mở một màn xem trước. Người dùng chọn hướng thứ hai
+**kèm một nút tải xuống trên chính màn xem trước** (2026-09-09).
+
+Hệ quả chia việc: **2c‑1** (lát này) là bộ lọc thật + tầng thuần + màn Xem
+trước, **không thêm phụ thuộc nào**; **2c‑2** là nút Tải xuống sinh tệp thật.
+Giữa hai lát, nút "Tải xuống" để `onPressed: null` — **tắt hẳn**, có test canh.
+Một nút bấm được mà không ra tệp chính là kiểu "nút xuất chỉ hiện snackbar" mà
+lát này đang đi dọn.
+
+Ba khối của bản Stitch đã **bỏ** vì không có gì đỡ phía sau: "Lịch sử xuất gần
+đây" (bịa hoàn toàn — muốn thật thì cần một bảng cục bộ), ô "Đặt mật khẩu bảo
+vệ file PDF", và dòng "Đích đến: Lưu vào Tải về". Ô `.xlsx` cũng bỏ: nó cần
+thêm một thư viện nữa mà `.csv` đã phục vụ đúng nhu cầu "phù hợp tính toán".
+
+### 3.14 Màn Xem trước là **ảnh chụp**, không phải luồng sống
+
+`BaoCaoRepository.layBaoCao` trả `Future`, không `Stream` — ngược với
+`AnalyticsRepository.watchThang`. Tờ báo cáo là của một khoảng đã chốt; để nó
+tự đổi dưới tay người dùng khi đồng bộ kéo về một giao dịch mới là thứ không ai
+muốn ở một thứ sắp mang đi nộp. Trang Xem trước vì thế **không đọc CSDL**:
+trang Xuất dựng xong rồi đẩy `BaoCao` sang, nên nó kiểm được bằng widget test
+thuần.
+
+Màn này **không có trong Stitch cũ** — 32 màn không màn nào là báo cáo/kết quả.
+Nó được **sinh vào chính dự án Stitch** ngày 2026-09-09 (màn "Xem trước báo cáo
+- FlowMoney", id `f0a0d1457401478596753a48531bc097`, design system "Kinetic
+Finance" `assets/e8b7d56ef9284443bfacb7474e52c74a`) rồi mới dựng bằng Flutter
+theo nó. ⚠️ Lần sinh ấy **báo timeout hai lần nhưng cả hai đều thành công** —
+`list_screens` cập nhật chậm hơn `get_project` nhiều phút, nên đừng tin
+`list_screens` để kết luận "sinh hỏng"; hậu quả là dự án có một màn trùng phải
+xoá tay (MCP không có lệnh xoá màn).
+
+
 ## 4. Bẫy
 
 **4.1 Tài khoản.** `AnalyticsPage` phải `context.watch<AuthBloc>()` + `ValueKey(idaccount)`
@@ -264,6 +304,20 @@ nguyên hành vi 3.9: `tk.rong` thì cả thân trang thay bằng lời nhắn r
 mở một tháng chưa ghi gì sẽ **không** thấy xu hướng năm tháng trước đó. Biết mà
 chấp nhận, không phải bỏ sót; đổi thì phải bàn lại 3.9 chứ đừng sửa lặng lẽ.
 
+**4.11 Theme của app bắt mọi `ElevatedButton` rộng vô hạn — nút trần trong
+`Row` làm TRẮNG cả trang.** `AppTheme.lightTheme` đặt
+`minimumSize: Size(double.infinity, 52)`. Thanh dưới của màn Xem trước có
+`Row(Text, ElevatedButton)`; nút không bọc `Expanded` đòi bề ngang vô hạn, và
+Flutter **bỏ layout cả khung hình**: trang chỉ còn AppBar trên nền trơn, không
+màn đỏ, **không một dòng nào trong `adb logcat`** — phải `flutter run` mới thấy
+`RenderBox was not laid out`.
+
+Bộ test không bắt được vì nó dựng bằng `MaterialApp` **trần**, không có theme
+của app. Cách sửa đúng là **dựng widget test bằng `AppTheme.lightTheme`**; làm
+vậy xong thì test đỏ ngay đúng lỗi ấy, rồi mới bọc `Expanded`. Bất kỳ trang mới
+nào cũng nên theo: `MaterialApp(theme: AppTheme.lightTheme, ...)` trong test,
+nếu không mọi ràng buộc do theme sinh ra đều vô hình.
+
 ---
 
 ## 5. Luồng dữ liệu
@@ -283,6 +337,23 @@ cho donut), cùng danh sách ấy đã tra tên/biểu tượng/màu/ngân sách
 và **`chuoi`** — sáu điểm `DiemThoiGian` cho biểu đồ xu hướng. Widget **không
 cộng gì cả**.
 
+Trang **Xuất báo cáo** đi đường riêng, không qua cubit nào:
+
+```
+ExportReportPage ──watch AuthBloc──▶ idaccount
+   ├─ BaoCaoRepository.watchVi / watchDanhMuc ─▶ chip ví, sheet danh mục
+   └─ [Xem trước báo cáo] ─▶ khoangCuaPhamVi(phạm vi, now, tuỳ chọn)
+         └─ BaoCaoRepository.layBaoCao(idaccount, loc)   (Future, một ảnh chụp)
+               ├─ transactionDao.getAll ─┐
+               ├─ wallets (KỂ CẢ đã xoá) ┼─▶ dungBaoCao() ─▶ BaoCao
+               └─ categories (KỂ CẢ xoá) ┘
+                     └─▶ ReportPreviewPage(baoCao: …)  — không đọc CSDL
+```
+
+`dungBaoCao` mượn nguyên luật đếm của `thong_ke_thang.dart` (`tongThuChi`,
+`chiTheoDanhMuc`), nên hai trang không thể nói hai con số khác nhau về cùng một
+tháng. Ví và danh mục tra tên **kể cả hàng đã xoá mềm** — cùng lý do mục 3.8.
+
 ⚠️ `chuoi` nhìn **xa hơn** `tongTruoc` nhiều, nên nó phải được dựng từ **toàn
 bộ** giao dịch của tài khoản. `transactionDao.watchAll` đã trả về tất cả nên
 không cần truy vấn mới — nhưng ai đó "tối ưu" bằng cách lọc `txs` theo tháng
@@ -298,6 +369,10 @@ Test `sáu điểm, cũ nhất trước, mang số thật của cả tháng ở 
 | `thong_ke_thang_test.dart` | Biên tháng (tháng 12, **năm nhuận**, tháng 2 thường), biên `to` mở, loại `transfer`, % với tháng trước = 0, gom danh mục và sắp ổn định khi hoà, top‑4 + Khác (kể cả đúng 5), `rutGon` (làm tròn, bỏ `.0`), 12 tháng gần nhất cuộn qua năm trước |
 | `analytics_repository_impl_test.dart` | Đổi hàng Drift → thuần, cách ly `idaccount`, ba chữ cho ba ca danh mục **kể cả xoá mềm giữ tên thật**, "% ngân sách" bám ngân sách đang chạy và **bỏ ngân sách hết hạn**, stream phát lại khi ghi thêm |
 | `analytics_cubit_test.dart` | `null` không đoán tài khoản; tháng lấy từ `clock` và `now` đi xuống repository; đổi tháng huỷ đăng ký cũ; lỗi stream không nổ |
+| `bao_cao_xuat_test.dart` | Tầng thuần của lát 2c: bốn phạm vi thời gian (**tháng 1 lùi sang năm trước**, quý IV, tuỳ chỉnh cộng một ngày, năm nhuận), lọc theo ví/danh mục, `'transfer'` bị loại khỏi **cả** tổng lẫn danh sách, gom danh mục, nhóm theo ngày mới-nhất-trước, báo cáo rỗng |
+| `bao_cao_repository_impl_test.dart` | Tra tên ví/danh mục **kể cả hàng đã xoá mềm**, ba chữ cho ba ca danh mục, tiêu đề lấy ghi chú rồi mới tới tên danh mục, cách ly `idaccount`, giao dịch đã xoá mềm không vào báo cáo, danh sách cho bộ lọc chỉ lấy hàng còn sống |
+| `report_preview_page_test.dart` | Ba thẻ tổng, **khoảng hiện ngày cuối thật** (biên `to` mở), nhãn bộ lọc, bảng danh mục có %, nhóm ngày kèm tên ví, dấu +/−, trạng thái rỗng, **nút Tải xuống phải TẮT**, 411dp |
+| `export_report_page_test.dart` | Ví lấy từ CSDL (không còn "Techcombank"), không còn lịch sử xuất bịa, bộ lọc đi **nguyên vẹn** xuống repository (khoảng theo đồng hồ, id ví, id danh mục), mở đúng màn Xem trước, 411dp |
 | `analytics_page_test.dart` | Tháng từ đồng hồ (không còn "T6 2026"), ba thẻ, "% ngân sách"/"% tổng chi", donut + Khác + tâm rút gọn, rỗng, chọn tháng, "Xem tất cả", **411dp với tên dài**, và khối xu hướng: sáu nhãn tháng lấy từ dữ liệu, chú giải Thu/Chi, chuỗi rỗng không nổ, 411dp với số hàng trăm triệu |
 
 Lát 2b thêm vào `thong_ke_thang_test.dart` sáu ca cho `chuoiTheoThang`: thứ tự
@@ -323,9 +398,15 @@ không (`preventCurveOverShooting`). Cả ba chỉ kiểm được bằng mắt 
   `1.2.0`, khối "Xu hướng 6 tháng" — mục **3.11** và **3.12**. Thư viện nay đã
   chọn, nên **biểu đồ tiến độ mục tiêu** (hạng 1 mục 10.5 `GOAL_FEATURE.md`)
   chỉ còn là việc đổ dữ liệu khác vào cùng một khuôn.
-- **2c — trang Xuất báo cáo** (`export_report_page.dart`): vẫn số cứng — ví
-  "Techcombank"/"Tiền mặt" và lịch sử xuất `BaoCao_Thang6.pdf` đều bịa; nút xuất
-  chỉ hiện snackbar. Nay đã có `ThongKeThang` để đổ vào.
+- ✅ ~~**2c‑1 — trang Xuất báo cáo đọc số thật + màn Xem trước.**~~ **Xong
+  2026-09-09.** Ví/danh mục/thời gian lấy từ CSDL, tầng thuần `bao_cao_xuat.dart`,
+  màn `report_preview_page.dart` theo màn Stitch mới. Ba khối bịa đã bỏ (mục
+  3.13).
+- **2c‑2 — nút "Tải xuống" sinh tệp thật.** Hiện đang **tắt** có chủ ý. Định
+  dạng chốt sau: CSV rẻ (tự viết chuỗi, chỉ cần một thư viện chia sẻ tệp), PDF
+  cần `pdf` + một font có dấu tiếng Việt — font mặc định của thư viện **mất
+  dấu im lặng**. Giao diện đã có ô chọn PDF/CSV và màn Xem trước đã mang đủ số
+  liệu, nên lát này chỉ còn phần sinh tệp và nơi lưu.
 - **Tổng kết tuần** — spec `2026-09-07-weekly-summary-notification-design.md`
   chờ một **màn phạm vi tuần**. Tầng tổng hợp đã có (`tongThuChi` nhận biên bất
   kỳ); còn thiếu giao diện — có thể là một chế độ "tuần" của chính trang này.

@@ -1,0 +1,210 @@
+/// Repository của trang Xuất báo cáo trên CSDL Drift trong bộ nhớ.
+///
+/// Canh chừng điều gì: tầng thuần (`bao_cao_xuat_test.dart`) đã kiểm phép lọc
+/// và phép cộng; tệp này kiểm phần **nối** — hàng Drift có đổi đúng sang dòng
+/// thuần không, tên ví và tên danh mục có tra đúng không **kể cả khi hàng ấy đã
+/// xoá mềm**, và tiêu đề mỗi dòng lấy từ đâu. Sai ở đây không ném lỗi: tờ báo
+/// cáo vẫn in ra, chỉ là in tên khác hoặc thiếu dòng.
+library;
+
+import 'package:drift/drift.dart' hide isNull, isNotNull;
+import 'package:drift/native.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/analytics/data/bao_cao_repository.dart';
+import 'package:flowmoney/features/analytics/data/bao_cao_repository_impl.dart';
+import 'package:flowmoney/features/analytics/domain/bao_cao_xuat.dart';
+
+void main() {
+  late AppDatabase db;
+  late BaoCaoRepository repo;
+
+  final now = DateTime(2026, 9, 8, 12);
+  final locThang9 =
+      LocBaoCao(from: DateTime(2026, 9, 1), to: DateTime(2026, 10, 1));
+
+  setUp(() async {
+    db = AppDatabase.forTesting(NativeDatabase.memory());
+    repo = BaoCaoRepositoryImpl(db: db);
+
+    await db.walletDao.insert(WalletsCompanion.insert(
+      id: 'w1',
+      idaccount: 1,
+      name: 'Tiền mặt',
+      balance: const Value(10000000.0),
+      updatedAt: now,
+    ));
+    await db.categoryDao.insert(CategoriesCompanion.insert(
+      id: 'c_an',
+      idaccount: 1,
+      name: 'Ăn uống',
+      classify: 'chi',
+      icon: const Value('restaurant'),
+      colour: const Value('#F25F5C'),
+      updatedAt: now,
+    ));
+  });
+
+  tearDown(() => db.close());
+
+  Future<void> giaoDich({
+    required String id,
+    required DateTime ngay,
+    double soTien = 100000,
+    String loai = 'chi',
+    String? danhMuc = 'c_an',
+    String vi = 'w1',
+    String ghiChu = '',
+    int idaccount = 1,
+  }) =>
+      db.transactionDao.insert(TransactionsCompanion.insert(
+        id: id,
+        walletId: vi,
+        idaccount: idaccount,
+        categoryId: Value(danhMuc),
+        amount: soTien,
+        type: loai,
+        note: Value(ghiChu),
+        date: ngay,
+        updatedAt: now,
+      ));
+
+  group('layBaoCao — đổi hàng Drift sang dòng thuần', () {
+    test('tra đúng tên ví, tên danh mục, màu và biểu tượng', () async {
+      await giaoDich(id: 't1', ngay: DateTime(2026, 9, 5), ghiChu: 'Ăn trưa');
+
+      final bc = await repo.layBaoCao(1, loc: locThang9);
+      final d = bc.nhom.single.dong.single;
+
+      expect(d.tenVi, 'Tiền mặt');
+      expect(d.tenDanhMuc, 'Ăn uống');
+      expect(d.mauHex, '#F25F5C');
+      expect(d.icon, 'restaurant');
+      expect(d.tieuDe, 'Ăn trưa');
+    });
+
+    test('không ghi chú thì tiêu đề lấy tên danh mục', () async {
+      await giaoDich(id: 't1', ngay: DateTime(2026, 9, 5), ghiChu: '');
+
+      final bc = await repo.layBaoCao(1, loc: locThang9);
+      expect(bc.nhom.single.dong.single.tieuDe, 'Ăn uống',
+          reason: 'Ghi chú rỗng là mặc định của cột. Để trống thì dòng báo cáo '
+              'chỉ còn số tiền, không biết là khoản gì.');
+    });
+
+    test('khoản chưa phân loại mang nhãn "Chưa phân loại"', () async {
+      await giaoDich(id: 't1', ngay: DateTime(2026, 9, 5), danhMuc: null);
+
+      final bc = await repo.layBaoCao(1, loc: locThang9);
+      expect(bc.nhom.single.dong.single.tenDanhMuc, 'Chưa phân loại');
+    });
+
+    test('danh mục đã xoá mềm vẫn giữ TÊN THẬT', () async {
+      await giaoDich(id: 't1', ngay: DateTime(2026, 9, 5));
+      await db.categoryDao.softDelete('c_an');
+
+      final bc = await repo.layBaoCao(1, loc: locThang9);
+      expect(bc.nhom.single.dong.single.tenDanhMuc, 'Ăn uống',
+          reason: 'Cùng luật với trang Phân tích: tên vẫn nằm trong hàng, và '
+              '"Ăn uống" có ích hơn "Danh mục đã xoá". Lọc `deletedAt` khi tra '
+              'tên là 5 danh mục mặc định bị xoá mềm hôm 2026-09-07 kéo theo '
+              'cả một trang báo cáo mất tên.');
+    });
+
+    test('ví đã xoá mềm vẫn giữ TÊN THẬT', () async {
+      await giaoDich(id: 't1', ngay: DateTime(2026, 9, 5));
+      await db.walletDao.softDelete('w1');
+
+      final bc = await repo.layBaoCao(1, loc: locThang9);
+      expect(bc.nhom.single.dong.single.tenVi, 'Tiền mặt');
+    });
+
+    test('id danh mục không còn hàng nào thì nói thẳng là đã xoá', () async {
+      await giaoDich(id: 't1', ngay: DateTime(2026, 9, 5), danhMuc: 'c_bay_gio');
+
+      final bc = await repo.layBaoCao(1, loc: locThang9);
+      expect(bc.nhom.single.dong.single.tenDanhMuc, 'Danh mục đã xoá',
+          reason: 'Ba ca phải ra ba chữ khác nhau: có danh mục / chưa phân '
+              'loại / id trỏ vào hàng chưa từng đồng bộ về máy này.');
+    });
+  });
+
+  group('layBaoCao — phạm vi dữ liệu', () {
+    test('không lấy giao dịch của tài khoản khác', () async {
+      await giaoDich(id: 't1', ngay: DateTime(2026, 9, 5), idaccount: 1);
+      await giaoDich(id: 't2', ngay: DateTime(2026, 9, 6), idaccount: 2);
+
+      final bc = await repo.layBaoCao(1, loc: locThang9);
+      expect(bc.soGiaoDich, 1,
+          reason: 'Quy tắc 2: `idaccount` chỉ đến từ phiên đăng nhập. Trộn hai '
+              'tài khoản trong một tờ báo cáo là rò dữ liệu người khác.');
+    });
+
+    test('giao dịch đã xoá mềm không vào báo cáo', () async {
+      await giaoDich(id: 't1', ngay: DateTime(2026, 9, 5));
+      await giaoDich(id: 't2', ngay: DateTime(2026, 9, 6));
+      await db.transactionDao.softDelete('t2');
+
+      final bc = await repo.layBaoCao(1, loc: locThang9);
+      expect(bc.soGiaoDich, 1);
+    });
+
+    test('bộ lọc ví đi xuống tới tầng thuần', () async {
+      await db.walletDao.insert(WalletsCompanion.insert(
+        id: 'w2',
+        idaccount: 1,
+        name: 'Ngân hàng',
+        balance: const Value(0),
+        updatedAt: now,
+      ));
+      await giaoDich(id: 't1', ngay: DateTime(2026, 9, 5), vi: 'w1');
+      await giaoDich(id: 't2', ngay: DateTime(2026, 9, 6), vi: 'w2');
+
+      final bc = await repo.layBaoCao(1,
+          loc: LocBaoCao(
+              from: locThang9.from, to: locThang9.to, walletId: 'w2'));
+      expect(bc.soGiaoDich, 1);
+      expect(bc.nhom.single.dong.single.tenVi, 'Ngân hàng');
+    });
+  });
+
+  group('danh sách cho bộ lọc', () {
+    test('ví: chỉ ví còn sống của đúng tài khoản', () async {
+      await db.walletDao.insert(WalletsCompanion.insert(
+        id: 'w2',
+        idaccount: 1,
+        name: 'Ngân hàng',
+        balance: const Value(0),
+        updatedAt: now,
+      ));
+      await db.walletDao.insert(WalletsCompanion.insert(
+        id: 'w9',
+        idaccount: 2,
+        name: 'Ví người khác',
+        balance: const Value(0),
+        updatedAt: now,
+      ));
+      await db.walletDao.softDelete('w2');
+
+      final ds = await repo.watchVi(1).first;
+      expect(ds.map((v) => v.ten).toList(), ['Tiền mặt'],
+          reason: 'Chip lọc là thứ người dùng chọn TỪ BÂY GIỜ — ví đã xoá '
+              'không còn là lựa chọn, dù giao dịch cũ vẫn giữ tên nó.');
+    });
+
+    test('danh mục: chỉ danh mục còn sống của đúng tài khoản', () async {
+      await db.categoryDao.insert(CategoriesCompanion.insert(
+        id: 'c_xe',
+        idaccount: 1,
+        name: 'Di chuyển',
+        classify: 'chi',
+        updatedAt: now,
+      ));
+      await db.categoryDao.softDelete('c_xe');
+
+      final ds = await repo.watchDanhMuc(1).first;
+      expect(ds.map((c) => c.ten).toList(), ['Ăn uống']);
+    });
+  });
+}

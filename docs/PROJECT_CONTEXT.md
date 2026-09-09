@@ -574,7 +574,7 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-08)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-09)
 
 ### 🔐 Xác thực phiên đăng nhập
 
@@ -694,7 +694,12 @@ src/Backend/
 - **Mục tiêu: nhịp trích tự động neo vào mốc gốc, không còn trôi** (2026-09-08, **schema không đổi**). Cùng bệnh với hoá đơn, phát hiện khi rà soát: `cacKyDenHan` và `kyKeTiep` bước **từng kỳ một** từ mốc trước đó, nên mốc "ngày 31" bị kẹp về 28/02 rồi bước tiếp *từ 28* — nhịp tụt xuống 28 vĩnh viễn, im lặng. Nay mọi mốc tính từ mốc gốc qua `mocThuN(goc, chuKy, n)`: `31/01 → 28/02 → 31/03 → 30/04`. Mốc gốc là `timeCycleTakeMoney`; mục tiêu bật trước khi có ô chọn ấy thì gốc rơi về `autoDepositLastRun`, giữ nguyên hành vi cũ. Lý do ở **mục 3.12 `docs/GOAL_FEATURE.md`**. 7 test mới.
   > Chú thích cũ ở cột `Goals.timeCycleTakeMoney` ghi *"client chưa bao giờ ghi"* — **sai từ lâu**: `GoalRepositoryImpl` ghi nó ở cả đường tạo lẫn đường sửa khi bật trích tự động. Đã sửa lại chú thích; nó từng là lý do tin rằng mốc neo không dùng được làm gốc.
   > Mức nghiêm trọng thấp hơn hoá đơn có chủ ý được ghi lại: trích tự động chỉ chuyển tiền giữa hai ví **của chính người dùng**, sớm vài ngày không lỡ cam kết với ai. Hoá đơn thì "ngày trả tiền nhà" là ngày với người khác.
-- **Test: 1587/1587 pass** (~75 giây) — đều đã `git add -f` (kiểm 2026-09-08)
+- **Phân tích: lát 2c‑1 — trang Xuất báo cáo đọc số thật, thêm màn Xem trước** (2026-09-09, **schema không đổi**). Trang này là chỗ số cứng cuối cùng của mảng Phân tích: chip ví ghi "Techcombank"/"Tiền mặt" bịa ra, khối "Lịch sử xuất gần đây" ghi hai tên tệp bịa, nút xuất chỉ hiện snackbar. Nay ví/danh mục/thời gian lấy từ CSDL qua `BaoCaoRepository`, và nút mở màn **Xem trước báo cáo** dựng theo màn Stitch sinh cùng ngày. Tầng thuần mới `bao_cao_xuat.dart` **mượn nguyên** `tongThuChi`/`chiTheoDanhMuc` của `thong_ke_thang.dart` nên hai trang không thể nói hai con số khác nhau về cùng một tháng. Ba khối bịa đã bỏ hẳn, cùng ô `.xlsx`. Người dùng chốt hướng "xem trước rồi mới tải xuống", nên nút **Tải xuống để `onPressed: null`** cho tới lát 2c‑2 — có test canh đúng chỗ ấy. Lý do đầy đủ ở **mục 3.13 và 3.14 `docs/ANALYTICS_FEATURE.md`**. 46 test mới (4 tệp).
+  > Hai **bản sai có chủ ý** ở tầng thuần, mỗi bản đúng một test đỏ: lấy thẳng ngày cuối người dùng chọn làm biên `to` (mất trọn ngày cuối), và sắp nhóm ngày tăng dần. Một bản nữa ở repository: tra tên danh mục bằng `categoryDao.getAll` (lọc hàng đã xoá mềm) → dòng báo cáo mất tên thật.
+  > ⚠️ **Bẫy mới, mức trắng-cả-trang:** theme của app đặt `minimumSize: Size(double.infinity, 52)` cho mọi `ElevatedButton`. Nút đặt trần trong một `Row` đòi bề ngang vô hạn, Flutter bỏ layout **cả khung hình** — trang chỉ còn AppBar trên nền trơn, **không màn đỏ và không một dòng nào trong `adb logcat`**. Bộ test không thấy vì nó dựng bằng `MaterialApp` **trần**. Cách sửa: widget test phải dựng bằng `AppTheme.lightTheme`; làm vậy là test đỏ ngay, rồi mới bọc `Expanded`. Ghi ở bẫy **4.11 `ANALYTICS_FEATURE.md`**.
+  > Màn Xem trước **không có trong Stitch cũ**, nên đã **sinh vào chính dự án Stitch** (`f0a0d1457401478596753a48531bc097`, design system "Kinetic Finance") rồi mới dựng Flutter theo nó. ⚠️ `generate_screen_from_text` **báo timeout hai lần nhưng cả hai đều thành công**, và `list_screens` cập nhật chậm hơn `get_project` nhiều phút — đừng dùng `list_screens` để kết luận "sinh hỏng". Hậu quả: dự án có một màn trùng phải xoá tay, MCP không có lệnh xoá màn.
+  > **Đã kiểm trên `emulator-5554`** (tài khoản 10): chip ví hiện đúng ba ví thật (Tiết kiệm / Tiền mặt / test); báo cáo tháng 9 ra 14.625.000 − 1.045.000 = 13.580.000, **khớp từng đồng với trang Phân tích**; "Tháng trước" ra `01/08/2026 – 31/08/2026` với trạng thái rỗng; 0 pixel vàng ở khổ 411dp.
+- **Test: 1645/1645 pass** (~90 giây) — đều đã `git add -f` (kiểm 2026-09-09)
 
 ### 🔄 Việc còn dang dở
 
@@ -807,7 +812,8 @@ G15, G17, G21. Bản trước của mục này ghi ngày 04/09 và **sai bốn t
 **Không còn lỗi client nào sửa được mà không phải chờ ai.** Việc tiếp theo là
 một lựa chọn, không phải một hàng đợi.
 
-**Thứ tự đã duyệt tối 2026-09-08** (người dùng hỏi "nên làm theo thứ tự nào",
+**Thứ tự đã duyệt tối 2026-09-08** (✅ 2c‑1 xong 2026-09-09; 2c‑2 — sinh tệp —
+còn treo, xem mục 7 `ANALYTICS_FEATURE.md`) (người dùng hỏi "nên làm theo thứ tự nào",
 đã chốt — đừng bàn lại từ đầu): ✅ bộ lọc tay/tự động của lịch sử mục tiêu →
 ✅ **2a** Phân tích số thật → ✅ **2b** biểu đồ theo thời gian (**thư viện đã
 chọn: `fl_chart`, ghim `1.2.0`** — mục 3.11 `ANALYTICS_FEATURE.md`) → **2c**
@@ -850,8 +856,12 @@ backend. Lý do từng bước: mục 10.5 `docs/GOAL_FEATURE.md` và mục 7
    `BudgetRepository` cho "% ngân sách"), và mang khối **"Xu hướng 6 tháng"**
    vẽ bằng `fl_chart`. Trước đó nó là giao diện tĩnh, **0** tham chiếu
    Bloc/Repository/Dao, và hiện *"T6 2026"* cứng khi đang là tháng 9.
-   `ExportReportPage` **vẫn** tĩnh (lát 2c). Tầng tổng hợp mà "Tổng kết tuần"
-   chờ nay đã có. Lý do và bẫy: `docs/ANALYTICS_FEATURE.md`.
+   **Lát 2c‑1 xong 2026-09-09**: `ExportReportPage` không còn tĩnh — ví, danh
+   mục và phạm vi thời gian lấy từ CSDL, và nút mở màn **Xem trước báo cáo**
+   (`ReportPreviewPage`, dựng theo màn Stitch sinh cùng ngày). Ba khối bịa của
+   bản Stitch cũ đã bỏ (lịch sử xuất, mật khẩu PDF, "Đích đến"). Còn **2c‑2**:
+   nút "Tải xuống" sinh tệp thật, hiện **tắt** có chủ ý. Tầng tổng hợp mà
+   "Tổng kết tuần" chờ nay đã có. Lý do và bẫy: `docs/ANALYTICS_FEATURE.md`.
 
    ⚠️ **`fl_chart` là phụ thuộc đầu tiên và duy nhất của dự án dành cho việc
    vẽ**, ghim cứng `1.2.0`. Trước 2026-09-08 `lib/` không có một
@@ -1114,7 +1124,7 @@ Hoá đơn tạo từ app trước đây **không bao giờ lên tới backend**
   đó là tạo vòng lặp đẩy vô tận.
 
 ### ❌ Chưa làm / Tiếp theo
-- Analytics: lát **2a và 2b xong 2026-09-08** (số thật, rồi biểu đồ xu hướng 6 tháng bằng `fl_chart`; 61 test); còn **2c** trang Xuất báo cáo vẫn số cứng — `docs/ANALYTICS_FEATURE.md` mục 7
+- Analytics: lát **2a và 2b xong 2026-09-08** (số thật, rồi biểu đồ xu hướng 6 tháng bằng `fl_chart`), **2c‑1 xong 2026-09-09** (trang Xuất báo cáo đọc số thật + màn Xem trước; 8 tệp test, 107 test); còn **2c‑2** là nút "Tải xuống" sinh tệp thật — `docs/ANALYTICS_FEATURE.md` mục 7
 - AI chat integration hoàn chỉnh
 - Casso bank integration
 - Build production / deploy
