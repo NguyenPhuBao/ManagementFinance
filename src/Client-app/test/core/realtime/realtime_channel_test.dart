@@ -5,7 +5,10 @@
 /// không cần backend, và không cần `socket_io_client`.
 library;
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:fake_async/fake_async.dart';
+import 'dart:async';
+
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -50,6 +53,31 @@ class _FakeSecureStorage implements FlutterSecureStorage {
       _store[key] = value;
     }
   }
+
+  @override
+  dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
+}
+
+/// Connectivity giả: test tự quyết định khi nào "đổi mạng".
+/// Cùng khuôn với `test/core/network/connection_monitor_test.dart`.
+class _ConnectivityGia implements Connectivity {
+  final _controller = StreamController<List<ConnectivityResult>>.broadcast();
+  List<ConnectivityResult> hienTai = [ConnectivityResult.wifi];
+
+  void doi(List<ConnectivityResult> moi) {
+    hienTai = moi;
+    _controller.add(moi);
+  }
+
+  void mat() => doi([ConnectivityResult.none]);
+  void co() => doi([ConnectivityResult.wifi]);
+
+  @override
+  Future<List<ConnectivityResult>> checkConnectivity() async => hienTai;
+
+  @override
+  Stream<List<ConnectivityResult>> get onConnectivityChanged =>
+      _controller.stream;
 
   @override
   dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
@@ -100,15 +128,18 @@ class _FakeSocket implements RealtimeSocket {
 void main() {
   late List<_FakeSocket> daTao;
   late _FakeSecureStorage kho;
+  late _ConnectivityGia mang;
 
   setUp(() {
     daTao = [];
     kho = _FakeSecureStorage({AppConstants.accessTokenKey: 'token-1'});
+    mang = _ConnectivityGia();
   });
 
   RealtimeChannel dungKenh() => RealtimeChannel(
         secureStorage: kho,
         apiBaseUrl: 'http://127.0.0.1:3000/api',
+        connectivity: mang,
         socketFactory: ({required String url, required String token}) {
           final s = _FakeSocket(url: url, token: token);
           daTao.add(s);
@@ -144,6 +175,7 @@ void main() {
     final kenh = RealtimeChannel(
       secureStorage: _FakeSecureStorage(),
       apiBaseUrl: 'http://127.0.0.1:3000/api',
+      connectivity: mang,
       socketFactory: ({required String url, required String token}) {
         final s = _FakeSocket(url: url, token: token);
         daTao.add(s);
@@ -351,6 +383,68 @@ void main() {
               async.flushMicrotasks();
 
               expect(daTao, hasLength(2));
+              kenh.stop();
+            }));
+
+    test('mạng về thì nối lại NGAY, không nằm chờ hết giãn cách',
+        () => FakeAsync().run((async) {
+              final kenh = dungKenh();
+              kenh.start(idaccount: 10);
+              async.flushMicrotasks();
+
+              // Bốn lần hỏng liên tiếp đẩy giãn cách lên 30 giây.
+              for (var i = 0; i < 4; i++) {
+                daTao.last.banNoiHong();
+                async.elapse(khoangChoLanThu(i + 1));
+                async.flushMicrotasks();
+              }
+              expect(daTao, hasLength(5));
+
+              daTao.last.banNoiHong();
+              // Đang chờ 60 giây. Mạng về ở giây thứ hai.
+              async.elapse(const Duration(seconds: 2));
+              mang.co();
+              async.elapse(const Duration(milliseconds: 100));
+              async.flushMicrotasks();
+
+              expect(daTao, hasLength(6),
+                  reason: 'Đo trên máy ảo ngày 2026-09-09: mạng về lúc 16:51:36 '
+                      'mà kênh nằm im tới 16:52:02 mới nối — 26 giây vô ích, vì '
+                      'nó chỉ biết chờ hết giãn cách. SyncEngine không có lỗi '
+                      'này vì nó nghe onConnectivityChanged. Giãn cách là để '
+                      'khỏi dội vào một server đang hỏng, KHÔNG phải để phạt '
+                      'người dùng vừa đi qua một cái hầm.');
+
+              // Và bậc giãn cách phải về ĐẦU, không chỉ nối lại một lần.
+              daTao.last.banNoiHong();
+              async.elapse(const Duration(seconds: 2));
+              async.flushMicrotasks();
+              expect(daTao, hasLength(7),
+                  reason: 'Không reset _soLanHong thì lần hỏng kế tiếp nhảy '
+                      'thẳng lên 60 giây, và người dùng vừa có mạng lại phải '
+                      'chờ cả phút. Bản sai có chủ ý "quên reset" đi lọt qua '
+                      'phép kiểm ở trên, nên phải canh thêm ở đây.');
+
+              kenh.stop();
+            }));
+
+    test('mạng MẤT thì không thử nối, khỏi tốn công vô ích',
+        () => FakeAsync().run((async) {
+              final kenh = dungKenh();
+              kenh.start(idaccount: 10);
+              async.flushMicrotasks();
+
+              daTao.last.banNoiHong();
+              async.elapse(const Duration(seconds: 1));
+              mang.mat();
+              async.elapse(const Duration(milliseconds: 100));
+              async.flushMicrotasks();
+
+              expect(daTao, hasLength(1),
+                  reason: 'Chỉ sự kiện CÓ mạng mới đáng nối lại ngay. Phản ứng '
+                      'với cả sự kiện mất mạng là tự bắn thêm một lần nối chắc '
+                      'chắn hỏng.');
+
               kenh.stop();
             }));
 

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -45,8 +46,10 @@ class RealtimeChannel {
     required FlutterSecureStorage secureStorage,
     String? apiBaseUrl,
     RealtimeSocketFactory? socketFactory,
+    Connectivity? connectivity,
   })  : _kho = secureStorage,
         _apiBaseUrl = apiBaseUrl ?? AppConstants.baseUrl,
+        _mang = connectivity ?? Connectivity(),
         _taoSocket = socketFactory ??
             (({required String url, required String token}) =>
                 IoRealtimeSocket(url: url, token: token));
@@ -54,6 +57,7 @@ class RealtimeChannel {
   final FlutterSecureStorage _kho;
   final String _apiBaseUrl;
   final RealtimeSocketFactory _taoSocket;
+  final Connectivity _mang;
 
   final _controller = StreamController<RealtimeEvent>.broadcast();
 
@@ -65,6 +69,11 @@ class RealtimeChannel {
   bool _daDung = true;
   Timer? _henNoiLai;
   int _soLanHong = 0;
+  StreamSubscription<List<ConnectivityResult>>? _subMang;
+
+  /// Có đang nối được hay không. Chỉ dùng để khỏi bắn thêm một lần nối khi
+  /// mạng nhấp nháy lúc socket vẫn đang khoẻ.
+  bool _dangNoi = false;
 
   /// Bật kênh sau khi đăng nhập thành công.
   ///
@@ -75,6 +84,31 @@ class RealtimeChannel {
     await stop();
     _daDung = false;
     _idaccount = idaccount;
+
+    // Mạng về thì nối lại NGAY, đừng nằm chờ hết giãn cách.
+    //
+    // Đo trên máy ảo 2026-09-09: sau bốn lần hỏng, giãn cách đã lên 30 giây;
+    // mạng về lúc 16:51:36 mà kênh im tới 16:52:02 mới nối. Giãn cách sinh ra
+    // để khỏi dội vào một server đang hỏng, KHÔNG phải để phạt người dùng vừa
+    // đi qua một cái hầm — và tín hiệu "vừa có mạng" nói rõ rằng lần hỏng
+    // trước đó không còn nói gì về hiện tại.
+    //
+    // `SyncEngine.start()` nghe cùng luồng này với cùng lý do.
+    await _subMang?.cancel();
+    _subMang = _mang.onConnectivityChanged.listen((results) {
+      final coMang = results.any((r) => r != ConnectivityResult.none);
+      // Chỉ sự kiện CÓ mạng mới đáng nối lại; phản ứng với cả sự kiện mất mạng
+      // là tự bắn thêm một lần nối chắc chắn hỏng.
+      if (!coMang || _daDung || _dangNoi) return;
+      debugPrint('[RealtimeChannel] Có mạng trở lại — nối lại ngay');
+      _soLanHong = 0;
+      _henNoiLai?.cancel();
+      _henNoiLai = null;
+      _socket?.dispose();
+      _socket = null;
+      unawaited(_noi());
+    });
+
     await _noi();
   }
 
@@ -87,6 +121,9 @@ class RealtimeChannel {
     _henNoiLai?.cancel();
     _henNoiLai = null;
     _soLanHong = 0;
+    _dangNoi = false;
+    await _subMang?.cancel();
+    _subMang = null;
     _socket?.dispose();
     _socket = null;
   }
@@ -113,6 +150,7 @@ class RealtimeChannel {
       ..onAny(_khiCoSuKien)
       ..onConnect(() {
         debugPrint('[RealtimeChannel] Đã nối (idaccount=$_idaccount)');
+        _dangNoi = true;
         // Nối được thì lịch sử hỏng cũ không còn nói gì về hiện tại. Không
         // reset thì một máy từng mất mạng lâu sẽ mãi chờ 60 giây cho mỗi lần
         // chớp mạng về sau.
@@ -120,10 +158,12 @@ class RealtimeChannel {
       })
       ..onConnectError((e) {
         debugPrint('[RealtimeChannel] Nối hỏng: $e');
+        _dangNoi = false;
         _datHenNoiLai();
       })
       ..onDisconnect((r) {
         debugPrint('[RealtimeChannel] Đứt kết nối: $r');
+        _dangNoi = false;
         _datHenNoiLai();
       })
       ..connect();
