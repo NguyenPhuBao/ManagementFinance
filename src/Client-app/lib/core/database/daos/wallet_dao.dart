@@ -10,11 +10,31 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
 
   // ── READ ──────────────────────────────────────────────────────────────────
 
+  /// Thứ tự hiển thị ví — dùng chung cho MỌI đường đọc danh sách.
+  ///
+  /// Trước đây là `updatedAt` giảm dần, mà mỗi giao dịch đều bump `updatedAt`
+  /// của ví qua [updateBalance] — nên danh sách ví tự xáo lại mỗi lần người
+  /// dùng ghi chép. Nút "SẮP XẾP" trên thiết kế Stitch tồn tại đúng vì chỗ này
+  /// không có thứ tự nào để giữ.
+  ///
+  /// Ví mặc định lên đầu (thiết kế vẽ nó ở đầu, kèm nhãn "MẶC ĐỊNH"), rồi tới
+  /// tên. `lower()` để tên viết hoa không bị dồn thành một khối riêng: phép so
+  /// mặc định của SQLite là nhị phân, 'Z' đứng trước 'v'. Nó chỉ chuẩn hoá chữ
+  /// ASCII, nên dấu tiếng Việt vẫn xếp sau — chấp nhận được, cái cần sửa ở đây
+  /// là tính ỔN ĐỊNH, không phải chất lượng phép so tiếng Việt.
+  ///
+  /// Bảng `wallets` không có `createdAt`, nên tên là mốc ổn định duy nhất hiện
+  /// có. Cột thứ tự do người dùng kéo thả (nếu làm) chèn vào TRƯỚC hai khoá này.
+  List<OrderClauseGenerator<$WalletsTable>> get _thuTuHienThi => [
+        (t) => OrderingTerm.desc(t.isDefault),
+        (t) => OrderingTerm.asc(t.name.lower()),
+      ];
+
   /// Lấy tất cả ví của user (không xóa mềm)
   Future<List<Wallet>> getAll(int idaccount) {
     return (select(wallets)
           ..where((t) => t.idaccount.equals(idaccount) & t.deletedAt.isNull())
-          ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)]))
+          ..orderBy(_thuTuHienThi))
         .get();
   }
 
@@ -29,7 +49,7 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
   Stream<List<Wallet>> watchAll(int idaccount) {
     return (select(wallets)
           ..where((t) => t.idaccount.equals(idaccount) & t.deletedAt.isNull())
-          ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)]))
+          ..orderBy(_thuTuHienThi))
         .watch();
   }
 
