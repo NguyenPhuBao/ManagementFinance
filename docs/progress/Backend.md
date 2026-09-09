@@ -253,8 +253,24 @@ Backend đã hoàn thành đồng bộ **13 bảng CSDL** theo đặc tả chu�
   * `TEST 2`: Tạo lại tài khoản mới với email & sđt trùng của tài khoản đã xóa mềm $\rightarrow$ **PASS**.
   * `TEST 3`: Ràng buộc cặp (Username + Password) cả 3 case: trùng cả 2 (chặn), trùng username khác pass (cho phép), khác username trùng pass (cho phép) $\rightarrow$ **PASS**.
   * `TEST 4`: Đăng nhập vào tài khoản đã xóa mềm bị từ chối với mã 403 $\rightarrow$ **PASS**.
-  * **Kết quả: 4/4 bài kiểm thử đạt 100% PASS.**
-
-
-
+### 5.4. Cơ Chế Vô Hiệu Hóa Tài Khoản (Reason_Inactive) & Quản Lý 4 Trạng Thái Người Dùng
+* **Migration 8 (`database/8_Add_Reason_Inactive_To_Account.sql`):**
+  * Thêm cột `Reason_Inactive TEXT DEFAULT NULL` vào bảng `account`.
+  * Cập nhật `schema.prisma` và generate Prisma client.
+* **Backend API & Auth/Sync:**
+  * `PATCH /api/admin/updatestatus/:id`: Nhận `reason_inactive` bắt buộc khi vô hiệu hóa (HTTP 400 nếu rỗng). Lưu DB `status = 'Inactive'`, `reason_inactive = reason`. Khi mở khóa (`Active`), xóa lý do về `null`.
+  * Phát socket `account.force_logout` với mã sự kiện `ACCOUNT_INACTIVE` kèm lý do cụ thể.
+  * `adminRepository.getAllUsers()`: Bỏ điều kiện `delete_at: null`, trả về toàn bộ người dùng ở cả 4 trạng thái (`Active`, `Inactive`, `PendingDelete`, `Deleted`), kèm `reason_inactive` và `delete_at`.
+  * `middleware/auth.js`: Phản hồi HTTP 401 với `{ code: 'ACCOUNT_INACTIVE', reason_inactive: '...' }` khi tài khoản bị vô hiệu hóa gửi request (áp dụng cho toàn bộ API và module Sync).
+  * `authService.login`: Phản hồi HTTP 403 kèm nội dung lý do khi tài khoản bị vô hiệu hóa cố gắng đăng nhập.
+* **Admin-web:**
+  * Bỏ hoàn toàn banner thông báo xác nhận inline ở đầu trang.
+  * Thêm Modal popup nổi yêu cầu nhập lý do vô hiệu hóa bắt buộc (disabled nút Vô hiệu hóa nếu chưa nhập).
+  * Chuẩn hóa 4 trạng thái người dùng với màu sắc:
+    * `Active` (Hoạt động): Xanh lá (`bg-[#dcfce7] text-[#166534]`).
+    * `Inactive` (Vô hiệu hóa): Xám xanh (`bg-[#f1f5f9] text-[#475569] border-[#cbd5e1]`).
+    * `PendingDelete` (Chờ xóa): Vàng (`bg-[#fef3c7] text-[#92400e] border-[#fde68a]`).
+    * `Deleted` (Đã xóa): Đỏ (`bg-[#fee2e2] text-[#991b1b] border-[#fecaca]`).
+  * Bộ lọc người dùng: Bổ sung đủ 5 tùy chọn (Tất cả, Hoạt động, Vô hiệu hóa, Chờ xóa, Đã xóa).
+  * Nút hành động tương ứng: `active` (Vô hiệu hóa), `inactive` (Kích hoạt & Xóa), `pendingdelete` (Kích hoạt khôi phục), `deleted` (Chỉ xem chi tiết).
 

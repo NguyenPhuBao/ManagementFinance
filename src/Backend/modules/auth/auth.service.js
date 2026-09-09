@@ -313,7 +313,13 @@ const authService = {
     } else if (account.status === 'Deleted' || account.delete_at !== null) {
       throw Object.assign(new Error("Tài khoản đã bị xóa khỏi hệ thống"), { statusCode: 403 });
     } else if (account.status !== 'Active') {
-      throw Object.assign(new Error("Tai khoan da bi vo hieu hoa"), { statusCode: 403 });
+      const msg = account.reason_inactive
+        ? `Tài khoản đã bị vô hiệu hóa. Lý do: ${account.reason_inactive}`
+        : "Tai khoan da bi vo hieu hoa";
+      throw Object.assign(new Error(msg), {
+        statusCode: 403,
+        reason_inactive: account.reason_inactive || null,
+      });
     }
 
     const payload = {

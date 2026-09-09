@@ -329,3 +329,48 @@ Client-app duy trì kết nối Socket.io liên tục với Backend để nhận
      > *"Tài khoản của bạn đã bị ngừng hoạt động hoặc xóa bởi Quản trị viên. Bạn không thể tiếp tục truy cập vào hệ thống."*
 4. **Ngăn chặn đăng nhập lại**:
    * Khi người dùng cố gắng đăng nhập lại với thông tin cũ, Backend sẽ từ chối với mã HTTP 403 Forbidden (*"Tài khoản đã bị xóa khỏi hệ thống"*).
+
+---
+
+## 11. Xử Lý Cơ Chế Vô Hiệu Hóa Tài Khoản Kèm Lý Do (`ACCOUNT_INACTIVE` & `Reason_Inactive`)
+
+Thành viên phụ trách **Client-app** cần triển khai các hạng mục sau để hoàn tất đồng bộ với Backend:
+
+### 11.1. Cập Nhật CSDL SQLite Cục Bộ (Drift / Sqflite)
+* Bổ sung cột `reason_inactive`: `TEXT` NULL vào bảng lưu trữ tài khoản / thông tin người dùng (`account_table` hoặc `user_table`).
+* Lưu trữ lý do vô hiệu hóa khi nhận từ API login, profile hoặc qua sự kiện Socket/HTTP 401.
+
+### 11.2. Lắng Nghe Sự Kiện Socket.IO Real-Time (`account.force_logout`)
+* Khi nhận sự kiện `account.force_logout`:
+  ```dart
+  socket.on('account.force_logout', (data) {
+    final int? targetIdAccount = data['idaccount'] as int?;
+    final String? code = data['reason'] as String?;
+    final String message = data['message'] ?? 'Tài khoản của bạn đã bị vô hiệu hóa.';
+    
+    if (targetIdAccount != null && targetIdAccount == currentUserIdAccount) {
+      if (code == 'ACCOUNT_INACTIVE') {
+        // Hiển thị Dialog thông báo tài khoản bị vô hiệu hóa kèm lý do cụ thể
+        _showInactivationDialog(message);
+      }
+      _executeForceLogout(message);
+    }
+  });
+  ```
+
+### 11.3. Bắt Mã Lỗi `ACCOUNT_INACTIVE` Trong Dio Interceptor (`auth_interceptor.dart`)
+* Trong hàm `onError`:
+  * Khi API trả về HTTP `401 Unauthorized` với mã `{ code: 'ACCOUNT_INACTIVE' }`:
+    * Bỏ qua cơ chế thử làm mới token (`/auth/refresh`).
+    * Trích xuất `reason_inactive = resData['reason_inactive']`.
+    * Hiển thị thông báo dạng `AlertDialog`:
+      > *"Tài khoản của bạn đã bị quản trị viên vô hiệu hóa.*  
+      > *Lý do: [reason_inactive]"*
+    * Gọi `_executeForceLogout` xóa sạch token trong `FlutterSecureStorage` và điều hướng về màn hình Đăng nhập.
+
+### 11.4. Màn Hình Đăng Nhập (`/login`)
+* Khi đăng nhập thất bại với HTTP 403 Forbidden:
+  * Trích xuất thông điệp từ response (`resData['message']`).
+  * Nếu tài khoản bị vô hiệu hóa, thông điệp từ Backend sẽ có dạng:  
+    `"Tài khoản đã bị vô hiệu hóa. Lý do: <Lý do cụ thể>"`
+  * Hiển thị trực quan thông điệp này trên form đăng nhập để người dùng hiểu rõ nguyên nhân.

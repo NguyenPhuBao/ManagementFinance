@@ -25,9 +25,10 @@ model account {
   email      String           @unique @db.VarChar(100) @map("Email")
   username   String           @db.VarChar(255) @map("Username")
   password   String           @db.VarChar(255) @map("Password")
-  status     String           @default("Active") @db.VarChar(20) @map("Status")
-  type       String           @default("Basic") @db.VarChar(7) @map("Type")
-  create_at  DateTime         @default(now()) @db.Timestamp(6) @map("Create_at")
+  status          String           @default("Active") @db.VarChar(20) @map("Status")
+  type            String           @default("Basic") @db.VarChar(7) @map("Type")
+  reason_inactive String?          @db.Text @map("Reason_Inactive")
+  create_at       DateTime         @default(now()) @db.Timestamp(6) @map("Create_at")
   update_at  DateTime         @default(now()) @db.Timestamp(6) @map("Update_at")
   delete_at  DateTime?        @db.Timestamp(6) @map("Delete_at")
 

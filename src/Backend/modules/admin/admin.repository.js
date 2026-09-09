@@ -33,8 +33,7 @@ const adminRepository = {
   async getAllUsers() {
     return prisma.user.findMany({
       where: {
-        delete_at: null,
-        account: { idrole: 2, delete_at: null },
+        account: { idrole: 2 },
       },
       select: {
         iduser: true,
@@ -45,12 +44,15 @@ const adminRepository = {
         country_code: true,
         create_at: true,
         update_at: true,
+        delete_at: true,
         account: {
           select: {
             idaccount: true,
             username: true,
             status: true,
             type: true,
+            reason_inactive: true,
+            delete_at: true,
             update_at: true,
           },
         },
@@ -71,6 +73,7 @@ const adminRepository = {
         country_code: true,
         create_at: true,
         update_at: true,
+        delete_at: true,
         account: {
           select: {
             idaccount: true,
@@ -78,6 +81,8 @@ const adminRepository = {
             status: true,
             type: true,
             idrole: true,
+            reason_inactive: true,
+            delete_at: true,
             update_at: true,
             role: { select: { rolename: true } },
           },
@@ -86,13 +91,14 @@ const adminRepository = {
     });
   },
 
-  async updateAccountStatus(iduser, newStatus) {
+  async updateAccountStatus(iduser, newStatus, reasonInactive = null) {
     return prisma.user.update({
       where: { iduser, account: { idrole: 2 } },
       data: {
         account: {
           update: {
             status: newStatus,
+            reason_inactive: reasonInactive,
             update_at: new Date(),
           },
         },
@@ -106,6 +112,7 @@ const adminRepository = {
             username: true,
             status: true,
             type: true,
+            reason_inactive: true,
           },
         },
       },

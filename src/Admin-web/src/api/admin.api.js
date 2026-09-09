@@ -15,7 +15,7 @@ const adminApi = {
   // Users
   getUsers: () => axiosClient.get('/admin/getuser'),
   getUserById: (id) => axiosClient.get(`/admin/getuser/${id}`),
-  updateUserStatus: (id) => axiosClient.patch(`/admin/updatestatus/${id}`),
+  updateUserStatus: (id, data) => axiosClient.patch(`/admin/updatestatus/${id}`, data),
   deleteUser: (id) => axiosClient.delete(`/admin/deleteuser/${id}`),
 
   // Categories

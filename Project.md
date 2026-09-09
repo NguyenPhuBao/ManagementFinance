@@ -174,14 +174,18 @@ Role (1) ──▶ Account (N) ──▶ User (1)
 | Cột | Kiểu | Mô tả |
 |-----|------|-------|
 | `idaccount` | INT PK (auto) | ID tài khoản |
-| `username` | VARCHAR(50) UNIQUE | Tên đăng nhập |
+| `username` | VARCHAR(255) | Tên đăng nhập |
+| `email` | VARCHAR(100) | Email (Partial Unique `WHERE Delete_at IS NULL`) |
 | `password` | VARCHAR(255) | Mật khẩu (bcrypt hash) |
-| `status` | VARCHAR(10) | `Active` / `Inactive` |
+| `status` | VARCHAR(20) | `Active` / `Inactive` / `PendingDelete` / `Deleted` |
+| `type` | VARCHAR(20) | `Basic` / `Premium` |
+| `Reason_Inactive` | TEXT NULL | Lý do vô hiệu hóa tài khoản (khi status = Inactive) |
+| `delete_at` | TIMESTAMP NULL | Thời điểm xóa mềm |
 | `created_at` | TIMESTAMP | Ngày tạo |
 | `updated_at` | TIMESTAMP | Ngày cập nhật |
 | `idrole` | INT FK→Role | 1=admin, 2=user |
 
-> 🆕 **2026-08-17**: Thêm giá trị `'Deleted'` vào cột `status` để hỗ trợ **soft delete tài khoản**. Khi status = `'Deleted'`, tài khoản không thể đăng nhập và toàn bộ refresh token bị revoke. Data vẫn giữ nguyên trong DB cho mục đích audit.
+> 🆕 **2026-09-09**: Hỗ trợ 4 trạng thái chuẩn hóa (`Active`: xanh lá, `Inactive`: xám xanh, `PendingDelete`: vàng, `Deleted`: đỏ). Cột `Reason_Inactive` lưu lý do quản trị viên vô hiệu hóa tài khoản. Khi Inactive, toàn bộ token bị cưỡng chế đăng xuất kèm thông báo lý do.
 
 ##### Bảng User
 | Cột | Kiểu | Mô tả |
@@ -763,16 +767,18 @@ Admin-web → GET /api/admin/getuser
   → authenticate + authorize('admin')
   → adminController.getUsers()
   → adminService.getUsers()
-  → adminRepository.getAllUsers() [DB: User JOIN Account WHERE idrole=2]
-  → 200 OK [{id, fullname, email, status...}]
+  → adminRepository.getAllUsers() [DB: User JOIN Account WHERE idrole=2 — lấy toàn bộ người dùng ở mọi trạng thái]
+  → 200 OK [{id, fullname, email, status, reason_inactive, delete_at...}]
 
-Admin-web → PATCH /api/admin/updatestatus/:id
+Admin-web → PATCH /api/admin/updatestatus/:id { status, reason_inactive }
   → authenticate + authorize('admin')
   → adminController.updateStatus()
-  → adminService.updateStatus(id)
+  → adminService.updateStatus(id, req.body)
     → getUserById() → kiểm tra tồn tại + current status
-    → updateAccountStatus(id, newStatus) [DB: UPDATE account SET status]
-    → 200 OK {previousStatus, newStatus}
+    → Nếu Inactive: kiểm tra reason_inactive bắt buộc (400 Bad Request nếu thiếu)
+    → updateAccountStatus(id, newStatus, reason_inactive) [DB: UPDATE account SET status, reason_inactive]
+    → Nếu Inactive: emitForceLogout(idaccount, 'ACCOUNT_INACTIVE', reason) [Socket.IO → account_${idaccount}]
+    → 200 OK {previousStatus, newStatus, reason_inactive}
 
 Admin-web → DELETE /api/admin/deleteuser/:id (hoặc /api/admin/users/:id)
   → authenticate + authorize('admin')
