@@ -324,6 +324,11 @@ Future<void> setupDependencies() async {
       ],
       loadWallets: (idaccount, now) =>
           sl<AppDatabase>().walletDao.getAll(idaccount),
+      // Tổng kết tuần chỉ cần biết tuần vừa khép CÓ giao dịch hay không —
+      // không tổng, không gom danh mục. Câu chữ đã chốt không nêu số nào.
+      loadWeekActivity: (idaccount, from, to) => sl<AppDatabase>()
+          .transactionDao
+          .coGiaoDichTrongKhoang(idaccount, from, to),
       markOverdue: (idaccount, now) =>
           sl<AppDatabase>().billDao.markOverdue(idaccount, now),
       syncStatus: sl<SyncEngine>().statusStream,

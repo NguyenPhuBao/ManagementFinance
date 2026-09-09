@@ -724,7 +724,11 @@ src/Backend/
   > **Kỳ cắt bằng `mocThuN` neo vào `startDate`** — chính phép bước kỳ mà bộ trích tự động dùng, cùng khuôn với `advancePeriodFrom` bên ngân sách và `anchorDay` bên hoá đơn. Bản thứ tư của cùng một luật là bản duy nhất không có test năm nhuận. **Kỳ hiện tại chưa nạp không phá chuỗi** (nó đang dở); kỳ rỗng ở giữa thì cắt thật. Khoản rút bị loại khỏi cả ba con số và không phá chuỗi.
   > ⚠️ **Bài học kiểm thử đắt hơn tính năng:** hai test "năm nhuận" và "tháng ngắn" viết lần đầu **không canh gì cả** — thay `mocThuN` bằng phép cộng tháng thô vẫn xanh, vì bộ ngày tôi chọn cho ra cùng một chuỗi ở cả hai cách cắt. Chỉ **bản sai có chủ ý** mới lộ ra. Cùng loại với bẫy 4.15 `ANALYTICS_FEATURE.md`; chi tiết ở cuối mục 3.27 `GOAL_FEATURE.md`.
   > **Đã kiểm trên `emulator-5554`**: "MuaXe" hiện *11 lần nạp · 200.091 đ · 1 tháng liên tiếp* (khớp 2.201.000 / 11 đo được ở bảng lịch sử), "MuaDT" hiện *1 · 700.000 đ · 1*; **0 pixel vàng** ở cả hai màn.
-- **Test: 1760/1760 pass** (~190 giây) — đều đã `git add -f` (kiểm 2026-09-09)
+- **Thông báo: Tổng kết tuần** (2026-09-09, **schema không đổi**). Loại thông báo **thứ 16**, nhóm **mới** `summary`, và là loại thứ hai đi qua `ReminderScheduler` (nổ được khi app đã đóng). Bàn giao ở mục **5d** `docs/NOTIFICATION_FEATURE.md`; spec kèm lý do bốn quyết định ở `docs/superpowers/specs/2026-09-07-weekly-summary-notification-design.md`. **39** test mới (đếm bằng máy: 1760 → 1785 ở lát 1-2, → 1799 ở lát 3-4).
+  > **Giờ do người dùng chọn**, không phải mốc cố định — người dùng chốt phương án tốn hơn vì lịch đặt trước không đi qua giờ im lặng. Công tắc **mặc định TẮT**, cùng lý lẽ với `nhacGhiChepBat`; chính nó giữ cho 30 test cũ của `ReminderScheduler` không phải sửa kỳ vọng.
+  > **Số tuần ISO tự viết** — Dart không có sẵn, và năm ISO khác năm dương lịch ở cả hai chiều (31/12/2025 là 2026-W01, 01/01/2021 là 2020-W53).
+  > **Đã kiểm trên `emulator-5554`**: thẻ "TỔNG KẾT TUẦN" mặc định tắt, bật lên hiện đúng hai hàng *Ngày trong tuần: Thứ Hai* và *Giờ nhắc: 08:00*, bộ chọn thứ đủ bảy dòng; **0 pixel vàng**.
+- **Test: 1799/1799 pass** (~190 giây) — đều đã `git add -f` (kiểm 2026-09-09)
 
 ### 🔄 Việc còn dang dở
 

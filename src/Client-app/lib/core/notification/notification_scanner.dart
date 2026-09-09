@@ -22,6 +22,7 @@ import 'badge_updater.dart';
 import 'notification_rules.dart';
 import 'os/os_notifier.dart';
 import 'os/os_scheduled_id.dart';
+import 'tuan_iso.dart';
 import 'prefs/notification_prefs.dart';
 import 'prefs/notification_prefs_store.dart';
 
@@ -36,6 +37,16 @@ typedef BudgetViewsLoader = Future<List<BudgetView>> Function(
 /// Nạp hoá đơn tới hạn trong cửa sổ nhắc. Cùng lý do như trên: closure thay vì
 /// cả một repository.
 typedef BillsLoader = Future<List<Bill>> Function(int idaccount, DateTime now);
+
+/// Khoảng `[from, to)` có giao dịch nào không.
+///
+/// Trả `bool` chứ không phải một bản tổng hợp, cùng kỷ luật thu hẹp phụ thuộc
+/// với các loader khác: câu chữ của Tổng kết tuần không nêu số nào.
+typedef WeekActivityLoader = Future<bool> Function(
+  int idaccount,
+  DateTime from,
+  DateTime to,
+);
 
 /// Nạp mục tiêu của một tài khoản. Cùng lý do closure như trên.
 typedef GoalsLoader = Future<List<GoalEntity>> Function(
@@ -66,6 +77,10 @@ class NotificationScanner {
   /// cần một phần của bộ luật không phải dựng cả chuỗi phụ thuộc.
   final GoalsLoader? loadGoals;
   final WalletsLoader? loadWallets;
+
+  /// Bỏ trống thì Tổng kết tuần **tắt hẳn** — cùng khuôn với `loadGoals` và
+  /// `loadWallets`.
+  final WeekActivityLoader? loadWeekActivity;
 
   /// Tuỳ chọn: bỏ trống thì scanner chỉ đọc, không ghi gì ngoài bảng thông báo.
   final OverdueMarker? markOverdue;
@@ -158,6 +173,7 @@ class NotificationScanner {
     this.runAutoPays,
     this.loadGoals,
     this.loadWallets,
+    this.loadWeekActivity,
     required this.syncStatus,
     this.appLifecycle,
     this.markOverdue,
@@ -313,6 +329,16 @@ class NotificationScanner {
       final prefs =
           await prefsStore?.read(idaccount) ?? NotificationPrefs.macDinh;
 
+      // Chỉ HỎI khi người dùng đã bật. Công tắc mặc định tắt, nên với phần lớn
+      // bản cài đây là một truy vấn không bao giờ chạy — và bộ luật nhận
+      // `false`, đúng nghĩa "không có căn cứ để báo".
+      var tuanQuaCoGiaoDich = false;
+      final docTuan = loadWeekActivity;
+      if (docTuan != null && prefs.tongKetTuanBat) {
+        final tuan = tuanTruoc(at);
+        tuanQuaCoGiaoDich = await docTuan(idaccount, tuan.from, tuan.to);
+      }
+
       final ungVien = buildNotificationCandidates(
         NotificationRuleInput(
           now: at,
@@ -326,6 +352,7 @@ class NotificationScanner {
           silenceBefore: at.subtract(cuaSoSuKien),
           defaultBillLeadDays: prefs.soNgayNhacHoaDon,
           lowBalanceThreshold: prefs.nguongSoDuThap,
+          tuanQuaCoGiaoDich: tuanQuaCoGiaoDich,
         ),
         // Lọc ở đây chứ không ở bước bắn: tắt một nhóm nghĩa là không sinh
         // thông báo nhóm ấy CẢ trong app. Chỉ chặn lúc bắn thì trung tâm thông

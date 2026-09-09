@@ -1,6 +1,9 @@
 # Tổng kết tuần — thiết kế, và lý do hoãn
 
-> **Trạng thái: ĐANG LÀM, từ 2026-09-09.** Bốn câu hỏi mở đã chốt với người
+> **Trạng thái: ✅ ĐÃ LÀM XONG 2026-09-09.** Bàn giao ở mục **5d**
+> `docs/NOTIFICATION_FEATURE.md`.
+>
+> **Trạng thái cũ: ĐANG LÀM, từ 2026-09-09.** Bốn câu hỏi mở đã chốt với người
 > dùng (mục 5), và điều kiện ở mục 3 **đã đủ** — xem ghi chú 2026-09-09 ở đó.
 >
 > Từ 2026-09-07 tới 2026-09-09 tài liệu này ở trạng thái *hoãn có chủ ý*: câu

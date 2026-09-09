@@ -260,6 +260,43 @@ class ReminderScheduler {
       }
     }
 
+    // Nguồn ứng viên thứ **tư**, và là nguồn duy nhất mà mốc đến từ **tuỳ chọn
+    // của người dùng** chứ không từ một bản ghi. Người dùng chốt phương án này
+    // (2026-09-09) thay vì mốc cố định, vì lịch đặt trước không đi qua giờ im
+    // lặng: một mốc do app tự đặt sẽ kêu xuyên qua khung giờ họ đã nói là muốn
+    // yên, còn mốc do họ chọn thì không phải chuyện app quyết thay.
+    if (prefs.osBat &&
+        prefs.tongKetTuanBat &&
+        prefs.batNhom(NotificationGroup.summary)) {
+      final moc = _mocTongKetKeTiep(at, prefs);
+      if (moc.isAfter(at) && !moc.isAfter(at.add(cuaSo))) {
+        // Khoá VÀ câu chữ lấy từ chính bộ luật, gọi với `now` là thời khắc
+        // lịch sẽ nổ. Chép tay ở đây là hai định nghĩa cho một thông báo, và
+        // khoá lệch nghĩa là vòng quét sinh thêm một cái thứ hai cạnh nó thay
+        // vì thay chỗ nó.
+        //
+        // `tuanQuaCoGiaoDich: true` là **giả định lạc quan**, và nó là một
+        // đánh đổi có chủ ý: lúc đặt lịch thì tuần ấy còn chưa khép nên chưa
+        // ai biết nó có trống không. Tuần trống vẫn nổ lịch, nhưng **không**
+        // sinh hàng nào trong trung tâm thông báo — luật (c) vẫn giữ. Chờ tới
+        // lúc biết chắc thì cửa sổ giữa "tuần khép" và "mốc nổ" chỉ vài giờ,
+        // và đúng những người cần được kéo lại là những người không mở app
+        // trong vài giờ ấy.
+        final uv = buildNotificationCandidates(NotificationRuleInput(
+          now: moc,
+          tuanQuaCoGiaoDich: true,
+        )).firstWhere((c) => c.kind == NotificationKind.weeklySummary);
+
+        tatCa.add(_Lich(
+          id: osScheduledId(uv.dedupeKey),
+          khoa: uv.dedupeKey,
+          when: moc,
+          title: uv.title,
+          body: uv.body,
+        ));
+      }
+    }
+
     // Cắt phải bỏ những mốc XA nhất: bỏ mốc gần nhất là người dùng mất đúng
     // cái nhắc họ cần trước tiên. Trần tính trên TỔNG ba loại — iOS đếm chung
     // một hàng đợi 64 lịch, nên cắt riêng từng loại là cả ba đều tưởng mình
@@ -295,6 +332,25 @@ class ReminderScheduler {
 }
 
 DateTime _dauNgay(DateTime d) => DateTime(d.year, d.month, d.day);
+
+/// Mốc Tổng kết tuần kế tiếp **sau** [at], theo thứ và giờ người dùng chọn.
+///
+/// Cộng ngày bằng cách dựng lại `DateTime` chứ không `add(Duration(days: 7))`:
+/// phép cộng thời lượng đi qua mốc đổi giờ mùa sẽ lệch một tiếng, và tuy Việt
+/// Nam không có đổi giờ thì máy người dùng vẫn có thể đặt múi giờ khác.
+DateTime _mocTongKetKeTiep(DateTime at, NotificationPrefs prefs) {
+  final homNay = _dauNgay(at);
+  // `%` của Dart với số chia dương luôn cho kết quả không âm, nên không cần
+  // cộng 7 rồi lấy dư lần nữa.
+  final lech = (prefs.thuTongKet - homNay.weekday) % 7;
+
+  final moc = DateTime(homNay.year, homNay.month, homNay.day + lech,
+      prefs.gioTongKet, prefs.phutTongKet);
+  // Đúng ngày nhưng đã qua giờ: đặt vào mốc đã trôi qua là Android bắn NGAY.
+  if (moc.isAfter(at)) return moc;
+  return DateTime(homNay.year, homNay.month, homNay.day + lech + 7,
+      prefs.gioTongKet, prefs.phutTongKet);
+}
 
 /// Khoá của lời nhắc ghi chép cho **một ngày**.
 ///

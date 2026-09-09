@@ -50,6 +50,11 @@ class NotificationSettingsPage extends StatefulWidget {
 
   static const Key khoaGioGhiChep = Key('notification_settings_gio_ghi_chep');
 
+  static const Key khoaCongTacTongKet =
+      Key('notification_settings_tong_ket');
+  static const Key khoaThuTongKet = Key('notification_settings_thu_tong_ket');
+  static const Key khoaGioTongKet = Key('notification_settings_gio_tong_ket');
+
   @override
   State<NotificationSettingsPage> createState() =>
       _NotificationSettingsPageState();
@@ -174,6 +179,49 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       gioNhacGhiChep: chon.hour,
       phutNhacGhiChep: chon.minute,
     ));
+  }
+
+  /// Giờ RIÊNG cho Tổng kết tuần — xem `NotificationPrefs.thuTongKet`.
+  Future<void> _chonGioTongKet() async {
+    final chon = await showTimePicker(
+      context: context,
+      initialTime:
+          TimeOfDay(hour: _prefs.gioTongKet, minute: _prefs.phutTongKet),
+    );
+    if (chon == null) return;
+    await _ghi(_prefs.copyWith(
+      gioTongKet: chon.hour,
+      phutTongKet: chon.minute,
+    ));
+  }
+
+  /// Chọn thứ trong tuần. Bảy dòng trong một bảng chọn thay vì bảy chip: chúng
+  /// không vừa một hàng ở 411dp, và một `Wrap` hai hàng đọc như hai nhóm.
+  Future<void> _chonThuTongKet() async {
+    final chon = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var thu = DateTime.monday; thu <= DateTime.sunday; thu++)
+              ListTile(
+                title: Text(_tenThu(thu)),
+                trailing: thu == _prefs.thuTongKet
+                    ? const Icon(Icons.check, color: AppColors.income)
+                    : null,
+                onTap: () => Navigator.pop(ctx, thu),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (chon == null) return;
+    await _ghi(_prefs.copyWith(thuTongKet: chon));
   }
 
   @override
@@ -356,6 +404,61 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                           ),
                         ],
                       ),
+                      const SizedBox(height: 16),
+                      _the(
+                        tieuDe: 'TỔNG KẾT TUẦN',
+                        children: [
+                          _hangCongTac(
+                            khoa:
+                                NotificationSettingsPage.khoaCongTacTongKet,
+                            icon: Icons.calendar_view_week_outlined,
+                            nhan: 'Tổng kết tuần',
+                            phu: 'Mỗi tuần một lời mời nhìn lại bạn đã tiêu '
+                                'vào đâu.',
+                            giaTri: _prefs.tongKetTuanBat,
+                            onChanged: (v) =>
+                                _ghi(_prefs.copyWith(tongKetTuanBat: v)),
+                          ),
+                          // Thứ và giờ chỉ hiện khi công tắc bật, cùng lý lẽ
+                          // với lời nhắc ghi chép bên trên.
+                          if (_prefs.tongKetTuanBat) ...[
+                            const Divider(
+                                height: 1, color: AppColors.outlineVariant),
+                            _hangBam(
+                              khoa: NotificationSettingsPage.khoaThuTongKet,
+                              icon: Icons.event_outlined,
+                              nhan: 'Ngày trong tuần',
+                              phu: 'Tổng kết nói về tuần vừa khép lại.',
+                              trailing: Text(
+                                _tenThu(_prefs.thuTongKet),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                              onTap: _chonThuTongKet,
+                            ),
+                            const Divider(
+                                height: 1, color: AppColors.outlineVariant),
+                            _hangBam(
+                              khoa: NotificationSettingsPage.khoaGioTongKet,
+                              icon: Icons.schedule_outlined,
+                              nhan: 'Giờ nhắc',
+                              phu: 'Giờ im lặng không chặn lời nhắc này.',
+                              trailing: Text(
+                                _gioTongKetHienThi,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                              onTap: _chonGioTongKet,
+                            ),
+                          ],
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -365,6 +468,10 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
   String get _gioHienThi =>
       '${_prefs.gioNhac.toString().padLeft(2, '0')}:'
       '${_prefs.phutNhac.toString().padLeft(2, '0')}';
+
+  String get _gioTongKetHienThi =>
+      '${_prefs.gioTongKet.toString().padLeft(2, '0')}:'
+      '${_prefs.phutTongKet.toString().padLeft(2, '0')}';
 
   String get _gioGhiChepHienThi =>
       '${_prefs.gioNhacGhiChep.toString().padLeft(2, '0')}:'
@@ -660,3 +767,16 @@ class _ChuaDangNhap extends StatelessWidget {
     );
   }
 }
+
+/// Tên thứ trong tuần theo quy ước `DateTime.weekday` (1 = thứ Hai).
+String _tenThu(int thu) => switch (thu) {
+      DateTime.tuesday => 'Thứ Ba',
+      DateTime.wednesday => 'Thứ Tư',
+      DateTime.thursday => 'Thứ Năm',
+      DateTime.friday => 'Thứ Sáu',
+      DateTime.saturday => 'Thứ Bảy',
+      DateTime.sunday => 'Chủ nhật',
+      // Thứ Hai là mặc định, và cũng là chỗ rơi cho giá trị lạ — `fromJson` đã
+      // kẹp về dải 1–7 nên nhánh này chỉ còn là lưới cuối.
+      _ => 'Thứ Hai',
+    };

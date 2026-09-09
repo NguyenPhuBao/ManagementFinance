@@ -688,6 +688,51 @@ ném `ProviderNotFoundException` ngay giữa `build`.
 
 ---
 
+## 5d. Tổng kết tuần (2026-09-09)
+
+Loại thông báo **thứ 16**, và là loại đầu tiên có **nhóm riêng** (`summary`).
+Spec đầy đủ kèm lý do bốn quyết định:
+`docs/superpowers/specs/2026-09-07-weekly-summary-notification-design.md`.
+
+**Câu chữ cố ý không nêu số** — *"Tuần qua đã khép lại. Xem lại bạn đã tiêu vào
+đâu."* Ba phương án có số đã bị loại khi chốt. Hệ quả kỹ thuật: bộ luật chỉ cần
+biết tuần vừa khép **có giao dịch nào không**, nên `NotificationRuleInput` chỉ
+thêm đúng một `bool`, và `TransactionDao.coGiaoDichTrongKhoang` trả `bool` chứ
+không tính tổng.
+
+**Giờ do người dùng chọn** (`tongKetTuanBat` + `thuTongKet` + `gioTongKet`),
+không phải mốc cố định. Lý do: lịch đặt trước **không đi qua giờ im lặng** (mục
+5c), nên một mốc do app tự đặt sẽ kêu xuyên qua khung giờ người dùng đã nói là
+muốn yên. Thứ khiến nhắc hoá đơn không phiền không phải giờ của nó, mà là việc
+giờ ấy do họ đặt và đang nhìn thấy trên màn hình.
+
+**Công tắc mặc định TẮT**, cùng lý lẽ đã ghi ở `nhacGhiChepBat` — nặng hơn một
+bậc vì loại này nổ khi app đã đóng. ⚠️ Đây cũng là thứ giữ cho **30 test cũ của
+`ReminderScheduler`** không phải sửa: mặc định bật thì mọi test đếm lịch đều
+lệch đúng một, và "sửa kỳ vọng" ở 30 chỗ là cách chắc chắn nhất để làm mờ đi
+một trong số chúng.
+
+**Số tuần ISO tự viết** (`tuan_iso.dart`) — Dart không có sẵn. Đi qua **thứ Năm
+của chính tuần ấy** nên năm ISO đúng ở cả hai chiều: 31/12/2025 là `2026-W01`,
+01/01/2021 là `2020-W53`.
+
+**Khoá `weekly:<nam>-W<tuan>:<thứ Hai>`.** Đoạn thứ ba tồn tại vì
+`deeplinkTuDedupeKey` chạy ở **cold start**: nó không tra được CSDL, và phép
+nghịch đảo của số tuần ISO là hàm dễ sai mà không ai kiểm lại.
+
+**Chỗ đến là `/export-report?from=&to=`** — tham số qua query string chứ không
+qua `extra`, vì `extra` không sống qua một tiến trình mới. Trang tự lùi về
+"tháng này" khi ngày hỏng hoặc thiếu.
+
+> ⚠️ **Một chỗ lệch có chủ ý.** Lịch được đặt **lạc quan**: lúc đặt thì tuần ấy
+> còn chưa khép nên chưa ai biết nó có trống không. Tuần trống **vẫn nổ lịch**,
+> nhưng **không** sinh hàng nào trong trung tâm thông báo — luật "tuần trống thì
+> không báo" vẫn giữ ở tầng bộ luật. Chờ tới lúc biết chắc thì cửa sổ giữa "tuần
+> khép" và "mốc nổ" chỉ vài giờ, và đúng những người cần được kéo lại là những
+> người không mở app trong vài giờ ấy.
+
+---
+
 ## 6. Từng lát đã làm gì
 
 ### Lát 4 — `OsNotifier` + thông báo hệ điều hành thật ✅ XONG

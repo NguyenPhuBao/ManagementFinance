@@ -98,6 +98,7 @@ class OsGia implements OsNotifier {
 }
 
 void main() {
+  mainTongKetTuan();
   const accountId = 7;
   final now = DateTime(2026, 9, 15, 10);
 
@@ -817,3 +818,134 @@ void main() {
     });
   });
 }
+
+/// Lịch **Tổng kết tuần** — thêm 2026-09-09.
+///
+/// Nguồn ứng viên thứ **tư** của `resync`. Khác ba nguồn kia ở chỗ nó không
+/// gắn với bản ghi nào: mốc đến từ tuỳ chọn của người dùng, và khoá phải
+/// **trùng khít** khoá mà bộ luật sinh ra khi app mở — nếu lệch thì thông báo
+/// hệ điều hành và hàng trong trung tâm thông báo là hai thứ khác nhau cho
+/// cùng một tuần.
+void mainTongKetTuan() {
+  group('resync — Tổng kết tuần', () {
+    test('đặt đúng một lịch vào thứ và giờ người dùng chọn', () async {
+      final os = OsGia();
+      final s = ReminderScheduler(
+        osNotifier: os,
+        loadBills: (_, __) async => [],
+        prefsStore: kho(const NotificationPrefs(
+          tongKetTuanBat: true,
+          thuTongKet: DateTime.monday,
+          gioTongKet: 8,
+          phutTongKet: 0,
+        )),
+        clock: () => DateTime(2026, 9, 9, 10),
+      );
+
+      await s.resync(7, now: DateTime(2026, 9, 9, 10));
+
+      final lich = _lichTuan(os);
+      expect(lich.length, 1);
+      expect(
+        lich.single.when,
+        DateTime(2026, 9, 14, 8),
+        reason: '09/09/2026 là thứ Tư, nên thứ Hai kế tiếp là 14/09. Mốc đã '
+            'trôi qua thì Android bắn NGAY còn iOS lặng lẽ bỏ — hai kiểu hỏng '
+            'khác nhau, cả hai đều sai.',
+      );
+    });
+
+    test('khoá của lịch TRÙNG KHÍT khoá bộ luật sinh ra lúc ấy', () async {
+      final os = OsGia();
+      final s = ReminderScheduler(
+        osNotifier: os,
+        loadBills: (_, __) async => [],
+        prefsStore: kho(const NotificationPrefs(tongKetTuanBat: true)),
+        clock: () => DateTime(2026, 9, 9, 10),
+      );
+      await s.resync(7, now: DateTime(2026, 9, 9, 10));
+
+      final khoaLich = _lichTuan(os).single.payload!;
+      final khoaLuat = buildNotificationCandidates(NotificationRuleInput(
+        // Đúng thời khắc lịch nổ: 14/09 08:00.
+        now: DateTime(2026, 9, 14, 8),
+        tuanQuaCoGiaoDich: true,
+      )).firstWhere((c) => c.kind == NotificationKind.weeklySummary).dedupeKey;
+
+      expect(
+        khoaLich,
+        khoaLuat,
+        reason: 'Hai khoá lệch nhau nghĩa là hai thông báo cho một tuần: một '
+            'cái do lịch bắn, một cái do vòng quét sinh. Cùng khoá thì cái sau '
+            'THAY CHỖ cái trước — đúng cách nhắc trích tự động đang làm.',
+      );
+    });
+
+    test('tắt nhóm Tổng kết thì không đặt lịch nào', () async {
+      final os = OsGia();
+      final s = ReminderScheduler(
+        osNotifier: os,
+        loadBills: (_, __) async => [],
+        prefsStore: kho(const NotificationPrefs(
+          tongKetTuanBat: true,
+          nhomTat: {NotificationGroup.summary},
+        )),
+        clock: () => DateTime(2026, 9, 9, 10),
+      );
+      await s.resync(7, now: DateTime(2026, 9, 9, 10));
+
+      expect(
+        _lichTuan(os),
+        isEmpty,
+        reason: 'Công tắc nhóm phải chặn được cả đường lịch đặt trước, nếu '
+            'không thì tắt trong app mà điện thoại vẫn kêu.',
+      );
+    });
+
+    test('tắt công tắc tổng thì không đặt lịch nào', () async {
+      final os = OsGia();
+      final s = ReminderScheduler(
+        osNotifier: os,
+        loadBills: (_, __) async => [],
+        prefsStore: kho(const NotificationPrefs(
+          tongKetTuanBat: true,
+          osBat: false,
+        )),
+        clock: () => DateTime(2026, 9, 9, 10),
+      );
+      await s.resync(7, now: DateTime(2026, 9, 9, 10));
+      expect(_lichTuan(os), isEmpty);
+    });
+
+    test('đứng đúng ngày nhưng đã qua giờ thì lùi sang tuần sau', () async {
+      final os = OsGia();
+      final s = ReminderScheduler(
+        osNotifier: os,
+        loadBills: (_, __) async => [],
+        prefsStore: kho(const NotificationPrefs(tongKetTuanBat: true)),
+        clock: () => DateTime(2026, 9, 7, 9),
+      );
+      // 07/09/2026 là thứ Hai, 09:00 — mốc 08:00 đã trôi qua.
+      await s.resync(7, now: DateTime(2026, 9, 7, 9));
+
+      expect(
+        _lichTuan(os).single.when,
+        DateTime(2026, 9, 14, 8),
+        reason: 'Đặt vào mốc đã qua là Android bắn ngay lập tức — người dùng '
+            'nhận tổng kết tuần lúc 09:00 thứ Hai vì đã mở app muộn 1 tiếng.',
+      );
+    });
+  });
+}
+
+/// Kho tuỳ chọn đã nạp sẵn một bản ghi — `resync` chỉ đọc nên không cần hơn.
+InMemoryNotificationPrefsStore kho(NotificationPrefs p) {
+  final k = InMemoryNotificationPrefsStore();
+  k.write(7, p);
+  return k;
+}
+
+/// Chỉ những lịch của Tổng kết tuần, lọc theo tiền tố khoá.
+Iterable<({DateTime when, String title, String body, String? payload})>
+    _lichTuan(OsGia os) =>
+        os.lich.values.where((l) => l.payload?.startsWith('weekly:') ?? false);

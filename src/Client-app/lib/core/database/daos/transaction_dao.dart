@@ -144,6 +144,33 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
         .watch();
   }
 
+  /// Khoảng `[from, to)` có giao dịch nào không.
+  ///
+  /// Trả **bool** chứ không phải tổng: thông báo Tổng kết tuần cố ý không nêu
+  /// số nào, nên nó chỉ cần biết có hay không. Viết sẵn một hàm tính tổng khi
+  /// chưa ai dùng đến là thêm một thứ phải giữ đúng mà không ai kiểm.
+  ///
+  /// Biên `to` **mở**, cùng quy ước với `tuanTruoc` và `tongThuChi`: lấy biên
+  /// đóng thì một khoản ghi đúng nửa đêm bị đếm vào hai tuần.
+  ///
+  /// `limit(1)` chứ không `count()`: câu hỏi là "có hay không", và một tuần
+  /// bận rộn không đáng phải đếm hết.
+  Future<bool> coGiaoDichTrongKhoang(
+    int idaccount,
+    DateTime from,
+    DateTime to,
+  ) async {
+    final hang = await (select(transactions)
+          ..where((t) =>
+              t.idaccount.equals(idaccount) &
+              t.deletedAt.isNull() &
+              t.date.isBiggerOrEqualValue(from) &
+              t.date.isSmallerThanValue(to))
+          ..limit(1))
+        .getSingleOrNull();
+    return hang != null;
+  }
+
   /// Tổng thu/chi theo tháng
   Future<Map<String, double>> getSummaryByMonth(
     int idaccount,

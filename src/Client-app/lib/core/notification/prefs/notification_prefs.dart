@@ -113,6 +113,10 @@ class NotificationPrefs {
     this.nhacGhiChepBat = false,
     this.gioNhacGhiChep = _gioGhiChepMacDinh,
     this.phutNhacGhiChep = _phutGhiChepMacDinh,
+    this.tongKetTuanBat = false,
+    this.thuTongKet = _thuTongKetMacDinh,
+    this.gioTongKet = _gioTongKetMacDinh,
+    this.phutTongKet = _phutTongKetMacDinh,
   });
 
   /// Công tắc **tổng** cho thông báo cấp hệ điều hành.
@@ -186,6 +190,35 @@ class NotificationPrefs {
   final int gioNhacGhiChep;
   final int phutNhacGhiChep;
 
+  /// Có bắn Tổng kết tuần không.
+  ///
+  /// **Mặc định TẮT**, cùng lý lẽ đã ghi ở [nhacGhiChepBat] và [imLangBat]:
+  /// mọi bản ghi đang nằm trên máy người dùng đều thiếu trường này, nên bật
+  /// sẵn là lặng lẽ cho cả tập người dùng hiện tại một thông báo mỗi tuần mà
+  /// không ai báo trước. Nặng hơn hai trường kia một bậc, vì loại này nổ **khi
+  /// app đã đóng** và **không đi qua giờ im lặng**.
+  ///
+  /// Công tắc nhóm `summary` vẫn tồn tại và vẫn chặn được — hai thứ khác nhau:
+  /// công tắc này là "tôi có muốn loại này không", công tắc nhóm là "tạm im
+  /// cả nhóm". Cùng hình dạng với cặp `nhacGhiChepBat` + công tắc tổng.
+  final bool tongKetTuanBat;
+
+  /// Thứ trong tuần để bắn Tổng kết tuần — **1 = thứ Hai … 7 = Chủ nhật**,
+  /// đúng quy ước của `DateTime.weekday`.
+  ///
+  /// Người dùng chọn được thay vì app đặt cứng, và đó là một quyết định về
+  /// **sự tôn trọng**, không phải về tính linh hoạt: lịch đặt trước không đi
+  /// qua giờ im lặng (xem [dangImLang]), nên một mốc do app tự đặt sẽ kêu
+  /// xuyên qua khung giờ người dùng đã nói là muốn yên. Thứ khiến nhắc hoá đơn
+  /// không phiền không phải giờ của nó, mà là việc giờ ấy do họ đặt và đang
+  /// nhìn thấy trên màn hình.
+  final int thuTongKet;
+
+  /// Giờ và phút bắn Tổng kết tuần. **Riêng**, không dùng chung [gioNhac] —
+  /// cùng lý lẽ với [gioNhacGhiChep].
+  final int gioTongKet;
+  final int phutTongKet;
+
   static const int _gioMacDinh = 8;
   static const int _phutMacDinh = 0;
 
@@ -204,6 +237,13 @@ class NotificationPrefs {
   /// Trần của `soNgayNhacHoaDon`. Rộng hơn cửa sổ quét 30 ngày một chút để
   /// không chặn oan, nhưng vẫn loại được những con số vô nghĩa.
   static const int _soNgayToiDa = 60;
+
+  /// Thứ Hai 08:00 — đầu tuần làm việc, và là lúc "tuần qua" vừa mới khép lại
+  /// nên câu chữ còn đúng nghĩa. Có mặc định hợp lý để bản cài mới không bắt
+  /// ai phải vào cấu hình trước khi tính năng có ích.
+  static const int _thuTongKetMacDinh = DateTime.monday;
+  static const int _gioTongKetMacDinh = 8;
+  static const int _phutTongKetMacDinh = 0;
 
   static const int _nguongSoDuMacDinh = 0;
 
@@ -260,6 +300,10 @@ class NotificationPrefs {
     bool? nhacGhiChepBat,
     int? gioNhacGhiChep,
     int? phutNhacGhiChep,
+    bool? tongKetTuanBat,
+    int? thuTongKet,
+    int? gioTongKet,
+    int? phutTongKet,
   }) {
     return NotificationPrefs(
       osBat: osBat ?? this.osBat,
@@ -274,6 +318,10 @@ class NotificationPrefs {
       nhacGhiChepBat: nhacGhiChepBat ?? this.nhacGhiChepBat,
       gioNhacGhiChep: gioNhacGhiChep ?? this.gioNhacGhiChep,
       phutNhacGhiChep: phutNhacGhiChep ?? this.phutNhacGhiChep,
+      tongKetTuanBat: tongKetTuanBat ?? this.tongKetTuanBat,
+      thuTongKet: thuTongKet ?? this.thuTongKet,
+      gioTongKet: gioTongKet ?? this.gioTongKet,
+      phutTongKet: phutTongKet ?? this.phutTongKet,
     );
   }
 
@@ -290,6 +338,10 @@ class NotificationPrefs {
         'nhacGhiChepBat': nhacGhiChepBat,
         'gioNhacGhiChep': gioNhacGhiChep,
         'phutNhacGhiChep': phutNhacGhiChep,
+        'tongKetTuanBat': tongKetTuanBat,
+        'thuTongKet': thuTongKet,
+        'gioTongKet': gioTongKet,
+        'phutTongKet': phutTongKet,
       };
 
   /// Đọc từ JSON, **không bao giờ ném**.
@@ -320,6 +372,14 @@ class NotificationPrefs {
           _docSo(json['gioNhacGhiChep'], 0, 23, _gioGhiChepMacDinh),
       phutNhacGhiChep:
           _docSo(json['phutNhacGhiChep'], 0, 59, _phutGhiChepMacDinh),
+      // Dải 1–7 theo `DateTime.weekday`. Một giá trị 0 hay 8 lọt vào phép tính
+      // mốc kế tiếp sẽ đẩy lịch lệch hẳn một tuần, im lặng.
+      tongKetTuanBat: json['tongKetTuanBat'] is bool
+          ? json['tongKetTuanBat']! as bool
+          : false,
+      thuTongKet: _docSo(json['thuTongKet'], 1, 7, _thuTongKetMacDinh),
+      gioTongKet: _docSo(json['gioTongKet'], 0, 23, _gioTongKetMacDinh),
+      phutTongKet: _docSo(json['phutTongKet'], 0, 59, _phutTongKetMacDinh),
     );
   }
 

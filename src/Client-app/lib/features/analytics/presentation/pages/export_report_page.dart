@@ -24,15 +24,43 @@ class ExportReportPage extends StatefulWidget {
   /// Tiêm đồng hồ để test không phụ thuộc ngày chạy máy.
   final DateTime Function()? clock;
 
-  const ExportReportPage({super.key, this.clock});
+  /// Phạm vi đặt sẵn, đến từ `?from=&to=` của route.
+  ///
+  /// Đường vào của thông báo **Tổng kết tuần**: nó mở trang này với đúng tuần
+  /// vừa khép thay vì để người dùng tự chọn lại. [denNgay] là ngày **cuối cùng
+  /// được tính vào** — cùng quy ước với bộ chọn khoảng ngày, và
+  /// `khoangCuaPhamVi` tự cộng thêm một ngày để ra biên mở.
+  ///
+  /// Thiếu một trong hai, hoặc [denNgay] đứng trước [tuNgay], thì bỏ qua cả
+  /// cặp và trang lùi về "tháng này": một phạm vi nửa vời còn khó hiểu hơn
+  /// phạm vi mặc định.
+  final DateTime? tuNgay;
+  final DateTime? denNgay;
+
+  const ExportReportPage({
+    super.key,
+    this.clock,
+    this.tuNgay,
+    this.denNgay,
+  });
 
   @override
   State<ExportReportPage> createState() => _ExportReportPageState();
 }
 
 class _ExportReportPageState extends State<ExportReportPage> {
-  PhamViThoiGian _pv = PhamViThoiGian.thangNay;
+  late PhamViThoiGian _pv;
   ({DateTime from, DateTime to})? _tuyChon;
+
+  @override
+  void initState() {
+    super.initState();
+    final tu = widget.tuNgay;
+    final den = widget.denNgay;
+    final hopLe = tu != null && den != null && !den.isBefore(tu);
+    _pv = hopLe ? PhamViThoiGian.tuyChinh : PhamViThoiGian.thangNay;
+    if (hopLe) _tuyChon = (from: tu, to: den);
+  }
 
   String? _walletId;
   String _nhanVi = 'Tất cả các ví';
