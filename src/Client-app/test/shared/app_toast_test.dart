@@ -32,6 +32,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/network/connection_monitor.dart';
+import 'package:flowmoney/core/realtime/realtime_event.dart';
 import 'package:flowmoney/core/sync/sync_models.dart';
 import 'package:flowmoney/shared/widgets/app_toast.dart';
 
@@ -40,15 +41,18 @@ void main() {
 
   late StreamController<ConnectionEvent> ketNoi;
   late StreamController<SyncResult> dayLen;
+  late StreamController<RealtimeEvent> realtime;
 
   setUp(() {
     ketNoi = StreamController<ConnectionEvent>.broadcast();
     dayLen = StreamController<SyncResult>.broadcast();
+    realtime = StreamController<RealtimeEvent>.broadcast();
   });
 
   tearDown(() async {
     await ketNoi.close();
     await dayLen.close();
+    await realtime.close();
   });
 
   Future<void> dung(WidgetTester tester) async {
@@ -57,6 +61,7 @@ void main() {
         body: AppToast(
           connectionEvents: ketNoi.stream,
           pushResults: dayLen.stream,
+          realtimeEvents: realtime.stream,
           tuAnSau: tuAn,
           child: const Text('nội dung màn hình'),
         ),
@@ -235,6 +240,107 @@ void main() {
       expect(find.textContaining('Đã kết nối lại'), findsOneWidget,
           reason: 'Ưu tiên chỉ áp dụng khi toast đồng bộ CÒN đang hiện. Chặn '
               'vĩnh viễn là lần mất mạng sau không báo khôi phục được nữa.');
+    });
+  });
+
+  group('sự kiện thời gian thực', () {
+    testWidgets('giao dịch ngân hàng hiện đúng câu, không kèm số',
+        (tester) async {
+      await dung(tester);
+      realtime.add(RealtimeEvent.giaoDichNganHang);
+      await nhip(tester);
+
+      expect(find.text('Vừa có giao dịch mới từ ngân hàng'), findsOneWidget);
+    });
+
+    testWidgets('hoá đơn trùng hiện câu cảnh báo', (tester) async {
+      await dung(tester);
+      realtime.add(RealtimeEvent.ocrTrung);
+      await nhip(tester);
+
+      expect(
+          find.text('Hoá đơn này đã được ghi nhận trước đó'), findsOneWidget);
+    });
+
+    testWidgets('toast realtime cũng tự ẩn', (tester) async {
+      await dung(tester);
+      realtime.add(RealtimeEvent.ocrXong);
+      await nhip(tester);
+      expect(find.text('Đã bóc tách xong hoá đơn'), findsOneWidget);
+
+      await choTanHan(tester);
+      expect(find.text('Đã bóc tách xong hoá đơn'), findsNothing);
+    });
+
+    testWidgets('realtime ghi đè được toast kết nối', (tester) async {
+      await dung(tester);
+      ketNoi.add(ConnectionEvent.khoiPhuc);
+      await nhip(tester);
+      realtime.add(RealtimeEvent.giaoDichNganHang);
+      await nhip(tester);
+
+      expect(find.text('Vừa có giao dịch mới từ ngân hàng'), findsOneWidget,
+          reason: 'Realtime xếp trên trạng thái kết nối: nó nói về một việc vừa '
+              'xảy ra với tiền của người dùng.');
+      expect(find.textContaining('Đã kết nối lại'), findsNothing);
+    });
+
+    testWidgets('realtime KHÔNG ghi đè kết quả đồng bộ đang hiện',
+        (tester) async {
+      await dung(tester);
+      dayLen.add(ketQua(thanhCong: 2));
+      await nhip(tester);
+      realtime.add(RealtimeEvent.giaoDichNganHang);
+      await nhip(tester);
+
+      expect(find.textContaining('Đã đồng bộ'), findsOneWidget,
+          reason: 'Thứ tự ưu tiên: đồng bộ > realtime > kết nối. Toast đồng bộ '
+              'trả lời câu người dùng thật sự lo — dữ liệu vừa ghi đã an toàn '
+              'chưa.');
+      expect(find.text('Vừa có giao dịch mới từ ngân hàng'), findsNothing);
+    });
+
+    testWidgets('sự kiện bị nuốt KHÔNG được xếp hàng hiện sau', (tester) async {
+      await dung(tester);
+      dayLen.add(ketQua(thanhCong: 2));
+      await nhip(tester);
+      realtime.add(RealtimeEvent.giaoDichNganHang);
+      await nhip(tester);
+
+      // Toast đồng bộ hết hạn và biến mất.
+      await choTanHan(tester);
+
+      expect(find.text('Vừa có giao dịch mới từ ngân hàng'), findsNothing,
+          reason: 'Thông báo tạm thời trễ vài giây là thông báo sai ngữ cảnh: '
+              'người dùng đã chuyển sang việc khác. Bỏ hẳn, không xếp hàng.');
+    });
+
+    testWidgets('toast đồng bộ ẩn rồi thì realtime hiện được bình thường',
+        (tester) async {
+      await dung(tester);
+      dayLen.add(ketQua(thanhCong: 2));
+      await nhip(tester);
+      await choTanHan(tester);
+
+      realtime.add(RealtimeEvent.ocrXong);
+      await nhip(tester);
+
+      expect(find.text('Đã bóc tách xong hoá đơn'), findsOneWidget,
+          reason: 'Ưu tiên chỉ áp dụng khi toast đồng bộ CÒN đang hiện. Chặn '
+              'vĩnh viễn là sự kiện realtime về sau không bao giờ hiện được '
+              'nữa.');
+    });
+
+    testWidgets('mất kết nối vẫn thắng realtime', (tester) async {
+      await dung(tester);
+      realtime.add(RealtimeEvent.giaoDichNganHang);
+      await nhip(tester);
+      ketNoi.add(ConnectionEvent.mat);
+      await nhip(tester);
+
+      expect(find.textContaining('Không có kết nối'), findsOneWidget,
+          reason: 'Mất mạng là trạng thái đang diễn ra và nói về an toàn dữ '
+              'liệu, nên nó xếp ngang bậc đồng bộ chứ không phải bậc kết nối.');
     });
   });
 

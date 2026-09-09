@@ -148,6 +148,7 @@ class _FlowMoneyAppState extends State<FlowMoneyApp> {
         builder: (context, child) => AppToast(
           connectionEvents: sl<ConnectionMonitor>().events,
           pushResults: sl<SyncEngine>().pushResultStream,
+          realtimeEvents: sl<RealtimeChannel>().events,
           child: child ?? const SizedBox.shrink(),
         ),
       ),

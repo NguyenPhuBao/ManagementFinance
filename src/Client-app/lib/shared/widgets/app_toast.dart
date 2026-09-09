@@ -3,10 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../core/network/connection_monitor.dart';
+import '../../core/realtime/realtime_event.dart';
 import '../../core/sync/sync_models.dart';
 import '../theme/app_colors.dart';
 
-/// Toast nổi ở đáy màn hình, báo tình trạng kết nối và đồng bộ.
+/// Toast nổi ở đáy màn hình, báo tình trạng kết nối, kết quả đồng bộ, và các
+/// sự kiện thời gian thực từ máy chủ.
 ///
 /// Bọc quanh nội dung màn hình chứ không thay thế nó — đặt ở `MaterialApp.builder`
 /// nên phủ mọi trang mà không trang nào phải biết đến nó.
@@ -64,12 +66,14 @@ class AppToast extends StatefulWidget {
     required this.child,
     required this.connectionEvents,
     required this.pushResults,
+    required this.realtimeEvents,
     this.tuAnSau = const Duration(seconds: 4),
   });
 
   final Widget child;
   final Stream<ConnectionEvent> connectionEvents;
   final Stream<SyncResult> pushResults;
+  final Stream<RealtimeEvent> realtimeEvents;
 
   /// Bao lâu thì toast tự biến mất. Áp dụng cho **mọi** toast, kể cả mất kết nối.
   final Duration tuAnSau;
@@ -81,6 +85,7 @@ class AppToast extends StatefulWidget {
 class _AppToastState extends State<AppToast> {
   StreamSubscription<ConnectionEvent>? _subKetNoi;
   StreamSubscription<SyncResult>? _subDay;
+  StreamSubscription<RealtimeEvent>? _subRealtime;
   Timer? _dongHoAn;
   Timer? _dongHoDon;
 
@@ -97,12 +102,14 @@ class _AppToastState extends State<AppToast> {
     super.initState();
     _subKetNoi = widget.connectionEvents.listen(_khiDoiKetNoi);
     _subDay = widget.pushResults.listen(_khiDayXong);
+    _subRealtime = widget.realtimeEvents.listen(_khiCoRealtime);
   }
 
   @override
   void dispose() {
     _subKetNoi?.cancel();
     _subDay?.cancel();
+    _subRealtime?.cancel();
     _dongHoAn?.cancel();
     _dongHoDon?.cancel();
     super.dispose();
@@ -160,6 +167,23 @@ class _AppToastState extends State<AppToast> {
         icon: Icons.cloud_done_outlined,
         bac: _Bac.dongBo,
         nguon: _Nguon.dongBo,
+      ),
+    );
+  }
+
+  /// Sự kiện từ máy chủ. Chữ và màu suy từ chính enum — payload không được đọc,
+  /// xem chú thích đầu `realtime_event.dart`.
+  void _khiCoRealtime(RealtimeEvent e) {
+    final laCanhBao = e == RealtimeEvent.ocrTrung;
+    _hien(
+      _NoiDungToast(
+        chu: e.loiNhan,
+        mau: laCanhBao ? AppColors.warning : AppColors.income,
+        icon: laCanhBao
+            ? Icons.info_outline
+            : Icons.notifications_active_outlined,
+        bac: _Bac.realtime,
+        nguon: _Nguon.realtime,
       ),
     );
   }
@@ -311,6 +335,9 @@ enum _Bac {
   /// Trạng thái kết nối — thấp nhất.
   ketNoi,
 
+  /// Sự kiện thời gian thực: một việc vừa xảy ra với tiền của người dùng.
+  realtime,
+
   /// Kết quả đồng bộ, và cả việc mất mạng — cao nhất. Cả hai nói về cùng một
   /// nỗi lo: dữ liệu vừa ghi đã an toàn chưa.
   dongBo,
@@ -318,7 +345,7 @@ enum _Bac {
 
 /// Ai phát ra thông báo. Dùng để cho một nguồn được cập nhật chính nó bất kể
 /// bậc — xem `_hien`.
-enum _Nguon { ketNoi, dongBo }
+enum _Nguon { ketNoi, realtime, dongBo }
 
 class _NoiDungToast {
   const _NoiDungToast({
