@@ -72,6 +72,10 @@ dev_dependencies:
   flutter_lints: ^4.0.0
   drift_dev: ^2.21.0
   build_runner: ^2.4.13
+  # Đồng hồ giả cho các test có hẹn giờ (backoff nối lại của RealtimeChannel).
+  # Vốn đã có sẵn dưới dạng phụ thuộc bắc cầu của flutter_test, nhưng khai báo
+  # thẳng ở đây thì `flutter analyze` mới không kêu, và bản dùng mới được ghim.
+  fake_async: ^1.3.3
 
 flutter:
   uses-material-design: true

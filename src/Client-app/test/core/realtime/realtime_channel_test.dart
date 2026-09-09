@@ -5,6 +5,7 @@
 /// không cần backend, và không cần `socket_io_client`.
 library;
 
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -241,5 +242,147 @@ void main() {
     expect(thay, isEmpty);
 
     await sub.cancel();
+  });
+
+  group('nối lại', () {
+    test('bảng giãn cách: 2 → 5 → 15 → 30 → 60, rồi giữ 60', () {
+      expect(khoangChoLanThu(1), const Duration(seconds: 2));
+      expect(khoangChoLanThu(2), const Duration(seconds: 5));
+      expect(khoangChoLanThu(3), const Duration(seconds: 15));
+      expect(khoangChoLanThu(4), const Duration(seconds: 30));
+      expect(khoangChoLanThu(5), const Duration(seconds: 60));
+      expect(khoangChoLanThu(6), const Duration(seconds: 60),
+          reason: 'Chạm trần thì giữ nguyên, không giãn tiếp — server hỏng cả '
+              'ngày thì client vẫn phải thử lại mỗi phút.');
+      expect(khoangChoLanThu(99), const Duration(seconds: 60));
+      expect(khoangChoLanThu(0), const Duration(seconds: 2),
+          reason: 'Giá trị vô lý phải quy về lần đầu chứ không được ném lỗi.');
+    });
+
+    test('nối hỏng thì thử lại sau đúng khoảng chờ, và ĐỌC LẠI token',
+        () => FakeAsync().run((async) {
+              kho = _FakeSecureStorage(
+                  {AppConstants.accessTokenKey: 'token-cu'});
+              final kenh = dungKenh();
+              kenh.start(idaccount: 10);
+              async.flushMicrotasks();
+
+              expect(daTao, hasLength(1));
+              expect(daTao[0].token, 'token-cu');
+
+              // AuthInterceptor làm mới token trong lúc socket đang đứt.
+              kho.write(key: AppConstants.accessTokenKey, value: 'token-moi');
+              daTao[0].banNoiHong();
+
+              async.elapse(const Duration(seconds: 1));
+              expect(daTao, hasLength(1),
+                  reason: 'Chưa hết khoảng chờ thì chưa được thử lại.');
+
+              async.elapse(const Duration(seconds: 2));
+              async.flushMicrotasks();
+              expect(daTao, hasLength(2));
+              expect(daTao[1].token, 'token-moi',
+                  reason: 'Token truy cập có hạn. Nối lại bằng token cũ là gõ '
+                      'cửa server bằng đúng chuỗi vừa bị từ chối — đó chính là '
+                      'lý do tắt cơ chế nối lại của thư viện.');
+
+              kenh.stop();
+            }));
+
+    test('giãn cách nới dần qua các lần hỏng liên tiếp',
+        () => FakeAsync().run((async) {
+              final kenh = dungKenh();
+              kenh.start(idaccount: 10);
+              async.flushMicrotasks();
+
+              daTao[0].banNoiHong();
+              async.elapse(const Duration(seconds: 2));
+              async.flushMicrotasks();
+              expect(daTao, hasLength(2));
+
+              daTao[1].banNoiHong();
+              async.elapse(const Duration(seconds: 2));
+              expect(daTao, hasLength(2),
+                  reason: 'Lần thứ hai phải chờ 5 giây, không phải 2.');
+              async.elapse(const Duration(seconds: 3));
+              async.flushMicrotasks();
+              expect(daTao, hasLength(3));
+
+              kenh.stop();
+            }));
+
+    test('nối được thì giãn cách reset về đầu',
+        () => FakeAsync().run((async) {
+              final kenh = dungKenh();
+              kenh.start(idaccount: 10);
+              async.flushMicrotasks();
+
+              daTao[0].banNoiHong();
+              async.elapse(const Duration(seconds: 2));
+              async.flushMicrotasks();
+              daTao[1].banNoiHong();
+              async.elapse(const Duration(seconds: 5));
+              async.flushMicrotasks();
+              expect(daTao, hasLength(3));
+
+              // Lần này nối được, rồi lại đứt.
+              daTao[2].banNoiDuoc();
+              daTao[2].banDut();
+              async.elapse(const Duration(seconds: 2));
+              async.flushMicrotasks();
+
+              expect(daTao, hasLength(4),
+                  reason: 'Reset rồi thì lần đứt kế tiếp chỉ chờ 2 giây. Không '
+                      'reset thì một máy đã từng mất mạng lâu sẽ mãi mãi chờ 60 '
+                      'giây cho mỗi lần chớp mạng.');
+
+              kenh.stop();
+            }));
+
+    test('đứt kết nối cũng kích hoạt nối lại',
+        () => FakeAsync().run((async) {
+              final kenh = dungKenh();
+              kenh.start(idaccount: 10);
+              async.flushMicrotasks();
+
+              daTao[0].banNoiDuoc();
+              daTao[0].banDut('transport close');
+              async.elapse(const Duration(seconds: 2));
+              async.flushMicrotasks();
+
+              expect(daTao, hasLength(2));
+              kenh.stop();
+            }));
+
+    test('stop() huỷ được lần nối lại ĐANG CHỜ',
+        () => FakeAsync().run((async) {
+              final kenh = dungKenh();
+              kenh.start(idaccount: 10);
+              async.flushMicrotasks();
+
+              daTao[0].banNoiHong();
+              expect(async.pendingTimers, isNotEmpty,
+                  reason: 'Dựng bối cảnh: phải đang có một hẹn giờ nối lại thì '
+                      'phép kiểm bên dưới mới có nghĩa.');
+
+              kenh.stop();
+
+              // Canh THẲNG cái hẹn giờ, không canh gián tiếp qua "có socket mới
+              // hay không". Chốt `if (_daDung) return` trong `_noi()` đã chặn
+              // lần nối lại rồi, nên một test chỉ đếm số socket sẽ xanh KỂ CẢ
+              // khi hẹn giờ vẫn còn sống — đã kiểm bằng bản sai có chủ ý.
+              expect(async.pendingTimers, isEmpty,
+                  reason: 'Hẹn giờ sót lại giữ đối tượng sống thêm tới một phút '
+                      'sau khi đăng xuất, rồi nổ một lần vô ích. Cùng loại lỗi '
+                      'với việc quên gọi cancelAll() khi dừng '
+                      'NotificationScanner.');
+
+              async.elapse(const Duration(seconds: 120));
+              async.flushMicrotasks();
+
+              expect(daTao, hasLength(1),
+                  reason: 'Và không có lần nối lại nào SAU khi đã dừng — nối '
+                      'lại lúc ấy là nối bằng token của người vừa rời đi.');
+            }));
   });
 }
