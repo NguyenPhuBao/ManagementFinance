@@ -81,7 +81,12 @@ class WalletCubit extends Cubit<WalletState> {
       );
 
       final updated = [...currentWallets, wallet];
-      final newTotal = updated.fold(0.0, (s, w) => s + w.balance);
+      // Hỏi repository chứ không tự cộng lại. `getTotalBalance` là ĐỊNH NGHĨA
+      // duy nhất của "tổng tài sản" — nó lọc `includeInTotal`. Phép `fold` từng
+      // ở đây là bản thứ hai của luật ấy và nó thiếu đúng phép lọc, nên con số
+      // hiện ngay sau khi bấm Lưu cộng cả ví người dùng đã cố ý loại ra, rồi
+      // nhảy về đúng ở lượt tải lại ngay sau đó.
+      final newTotal = await _repository.getTotalBalance(idaccount);
 
       emit(WalletOperationSuccess(
         wallets:      updated,
