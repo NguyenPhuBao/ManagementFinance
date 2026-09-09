@@ -60,6 +60,12 @@ dependencies:
   pdf: ^3.12.0
   share_plus: ^12.0.2
 
+  # Kênh thời gian thực. Backend chạy socket.io v4; socket_io_client 3.x nói
+  # đúng giao thức ấy. KHÔNG ghim cứng như fl_chart: ở đây client chỉ dùng vài
+  # API bề mặt (connect/dispose/onAny), và hỏng thì hỏng ồn ào — mất kết nối,
+  # chứ không phải vẽ ra hình sai trong im lặng.
+  socket_io_client: ^3.1.6
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
