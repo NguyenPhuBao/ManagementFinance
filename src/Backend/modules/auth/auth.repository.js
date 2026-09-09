@@ -178,11 +178,11 @@ const authRepository = {
 
   async scheduleDeletion(idaccount) {
     const scheduledAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // +30 days
-    // CSDL mới: dùng Delete_at thay scheduled_delete_at
     return prisma.account.update({
       where: { idaccount },
       data: {
         status: 'PendingDelete',
+        countdown: 30,
         delete_at: scheduledAt,
         update_at: new Date(),
       },
@@ -194,6 +194,7 @@ const authRepository = {
       where: { idaccount },
       data: {
         status: 'Active',
+        countdown: null,
         delete_at: null,
         update_at: new Date(),
       },

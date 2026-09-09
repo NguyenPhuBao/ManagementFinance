@@ -537,5 +537,44 @@ Khi xóa một người dùng (`DELETE /api/admin/deleteuser/:id` hoặc `DELETE
 * **Đăng nhập đa tài khoản cùng Username**:
   * Khi đăng nhập bằng `(username, password)`: Backend tìm kiếm danh sách các tài khoản có cùng username, dùng `bcrypt.compare` để tìm tài khoản khớp đúng mật khẩu của người dùng.
   * Nếu tài khoản khớp đó đang bị xóa mềm hoặc vô hiệu hóa $\rightarrow$ Từ chối đăng nhập với mã HTTP 403.
-  * Nếu tài khoản khớp đang hoạt động (`Active`) $\rightarrow$ Đăng nhập thành công và cấp phát token.
+  * Nếu tài khoản khớp đang hoạt động (`Active`) hoặc đang trong thời hạn chờ xóa (`PendingDelete` còn hạn) $\rightarrow$ Đăng nhập thành công và cấp phát token.
+
+### 11.5. Quy tắc Vô hiệu hóa có Lý do & Chuẩn hóa 4 Trạng Thái Tài Khoản
+* **Chuẩn hóa 4 trạng thái tài khoản & Màu sắc đại diện:**
+  * 🟢 **`Active`** (Đang hoạt động): Xanh lá (`#22c55e`). Cho phép truy cập đầy đủ tính năng. Nút thao tác trên Admin-web: "Vô hiệu hóa".
+  * 🔘 **`Inactive`** (Vô hiệu hóa): Xám xanh (`#64748b`). Tài khoản bị khóa tạm thời bởi Admin. Bị chặn đăng nhập và từ chối mọi request với mã HTTP 401/403 kèm lý do. Nút thao tác trên Admin-web: "Kích hoạt" và "Xóa".
+  * 🟡 **`PendingDelete`** (Chờ xóa): Vàng (`#eab308`). Tài khoản do người dùng client yêu cầu xóa, đang trong thời gian ân hạn 30 ngày. Trên Admin-web: **Hoàn toàn không thể thao tác**, chỉ hiển thị nhãn "Chỉ xem" và nút xem chi tiết tương tự trạng thái Deleted.
+  * 🔴 **`Deleted`** (Đã xóa mềm): Đỏ (`#ef4444`). Tài khoản đã xóa mềm, ví ngừng hoạt động, ngân hàng ngắt kết nối. Trên Admin-web: Không có nút thao tác, chỉ xem chi tiết.
+* **Quy tắc Vô hiệu hóa tài khoản (`Reason_Inactive`):**
+  * Bảng `account` có cột `"Reason_Inactive" TEXT NULL`.
+  * Khi Admin chuyển tài khoản sang `Inactive`: Bắt buộc cung cấp lý do vô hiệu hóa (HTTP 400 nếu rỗng).
+  * Backend lưu `Reason_Inactive`, xóa cache xác thực và phát sự kiện Socket `account.force_logout` với `code = 'ACCOUNT_INACTIVE'` kèm lý do.
+  * Khi kích hoạt lại `Active`: Hệ thống tự động xóa sạch `Reason_Inactive = null`.
+
+### 11.6. Quy tắc Cơ Chế Chờ Xóa Tài Khoản (PendingDelete) & Countdown 30 Ngày
+* **Cột đếm ngược `"Countdown"` (INT, NULL DEFAULT NULL) trong bảng `account`:**
+  * Khi tài khoản chuyển từ trạng thái khác sang `PendingDelete`: **Bắt buộc** thiết lập `Countdown = 30` và `Delete_at = now() + 30 days`.
+* **Cơ chế Lập lịch cập nhật vào 00:00:00 Múi giờ Việt Nam (UTC+7 / Asia/Ho_Chi_Minh):**
+  * Backend chạy `scheduler.service.js` tự động lúc 00:00:00 UTC+7 mỗi ngày.
+  * Quét toàn bộ tài khoản `PendingDelete` có `Countdown > 0`.
+  * Mỗi ngày giảm `Countdown = Countdown - 1`.
+* **Quyền sử dụng & Hủy xóa trong 30 ngày:**
+  * Trong suốt 30 ngày đếm ngược (`Countdown > 0`), người dùng **vẫn có thể lựa chọn tiếp tục sử dụng tài khoản**.
+  * Middleware Auth cho phép tài khoản `PendingDelete` còn hạn truy cập bình thường (`valid = true`).
+  * Khi đăng nhập (`POST /api/auth/login`), server trả về `status: 'PendingDelete'` kèm `countdown` số ngày còn lại để Client-app hiển thị banner cảnh báo.
+  * **Kích hoạt lại / Hủy xóa**: Nếu người dùng đổi ý và chọn "Kích hoạt lại tài khoản" tại Client-app:
+    * Client-app gọi API `POST /api/auth/cancel-delete`.
+    * Backend chuyển `status = 'Active'`, xóa `Countdown = null`, xóa `Delete_at = null`.
+* **Kích hoạt xóa mềm khi Countdown về 0:**
+  * Khi `Countdown` chạm `0` (vào lúc 0h00 hoặc khi Client-app phát hiện countdown về 0 và đồng bộ về Backend):
+    * Hệ thống tự động chuyển tài khoản sang trạng thái `Deleted`, `Countdown = 0`, `Delete_at = now()`.
+    * Xóa mềm bảng `user` (`Delete_at = now()`).
+    * Toàn bộ ví liên quan ngừng hoạt động (`status = 'Inactive'`).
+    * Toàn bộ liên kết ngân hàng bị ngắt kết nối (`connect_status = 'Disconnected'`).
+    * Toàn bộ token bị thu hồi ngay lập tức (`refreshtoken.status = true`).
+    * Phát sự kiện Socket `account.force_logout` với mã `ACCOUNT_DELETED` để cưỡng chế client out về màn hình đăng nhập.
+* **Bảo vệ trên Admin-web:**
+  * Đối với tài khoản `PendingDelete`, Admin-web hoàn toàn không thể thao tác (không có nút Kích hoạt, Vô hiệu hóa hay Xóa).
+  * API Backend `PATCH /api/admin/updatestatus/:id` và `DELETE /api/admin/deleteuser/:id` sẽ từ chối với mã lỗi HTTP 400 nếu Admin cố ý can thiệp vào tài khoản đang trong quá trình `PendingDelete`.
+
 

@@ -21,14 +21,25 @@ async function getAccountValidity(idaccount) {
   try {
     const account = await prisma.account.findUnique({
       where: { idaccount: numId },
-      select: { idaccount: true, status: true, delete_at: true, reason_inactive: true },
+      select: { idaccount: true, status: true, delete_at: true, reason_inactive: true, countdown: true },
     });
     const statusLower = account?.status ? account.status.toLowerCase() : '';
-    const valid = !!account && statusLower !== 'inactive' && statusLower !== 'deleted' && !account.delete_at;
+    
+    // Tài khoản PendingDelete vẫn hợp lệ nếu còn trong thời hạn 30 ngày (countdown > 0)
+    const isPendingDeleteValid = statusLower === 'pendingdelete' && 
+      (account.countdown === null || account.countdown > 0) &&
+      (!account.delete_at || new Date(account.delete_at) > new Date());
+
+    const valid = !!account && (
+      (statusLower === 'active' && !account.delete_at) ||
+      isPendingDeleteValid
+    );
+
     const result = {
       valid,
       status: account?.status || null,
       reason_inactive: account?.reason_inactive || null,
+      countdown: account?.countdown ?? null,
       timestamp: now,
     };
     accountCache.set(numId, result);

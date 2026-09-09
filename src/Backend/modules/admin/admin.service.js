@@ -72,6 +72,7 @@ const adminService = {
       status: u.account ? u.account.status : (u.delete_at ? 'Deleted' : 'Active'),
       type: u.account ? (u.account.type || 'Basic') : 'Basic',
       reason_inactive: u.account ? u.account.reason_inactive : null,
+      countdown: u.account ? u.account.countdown : null,
       delete_at: u.account ? u.account.delete_at : u.delete_at,
       created_at: u.create_at,
       updated_at: u.account ? (u.account.update_at || u.update_at) : u.update_at,
@@ -94,6 +95,7 @@ const adminService = {
       type: u.account.type || 'Basic',
       rolename: u.account.role.rolename,
       reason_inactive: u.account.reason_inactive || null,
+      countdown: u.account.countdown ?? null,
       delete_at: u.account.delete_at || u.delete_at,
       created_at: u.create_at,
       updated_at: u.account.update_at || u.update_at,
@@ -105,6 +107,19 @@ const adminService = {
     if (!u) throw Object.assign(new Error('Không tìm thấy người dùng'), { statusCode: 404 });
 
     const currentStatus = u.account.status;
+    if (currentStatus === 'PendingDelete') {
+      throw Object.assign(
+        new Error('Tài khoản đang trong trạng thái Chờ xóa (PendingDelete) do người dùng yêu cầu, quản trị viên không thể thay đổi trạng thái!'),
+        { statusCode: 400 }
+      );
+    }
+    if (currentStatus === 'Deleted') {
+      throw Object.assign(
+        new Error('Tài khoản đã bị xóa khỏi hệ thống, không thể thay đổi trạng thái!'),
+        { statusCode: 400 }
+      );
+    }
+
     const targetStatus = data.status || (currentStatus === 'Active' ? 'Inactive' : 'Active');
 
     if (targetStatus === 'Inactive') {
@@ -154,6 +169,19 @@ const adminService = {
 
     if (u.account.idrole === 1) {
       throw Object.assign(new Error('Không thể xóa tài khoản Quản trị viên'), { statusCode: 403 });
+    }
+
+    if (u.account.status === 'PendingDelete') {
+      throw Object.assign(
+        new Error('Tài khoản đang trong trạng thái Chờ xóa (PendingDelete) do người dùng yêu cầu, quản trị viên không thể thao tác xóa!'),
+        { statusCode: 400 }
+      );
+    }
+    if (u.account.status === 'Deleted' || u.account.delete_at) {
+      throw Object.assign(
+        new Error('Tài khoản đã bị xóa khỏi hệ thống trước đó!'),
+        { statusCode: 400 }
+      );
     }
 
     const idaccount = u.account.idaccount;

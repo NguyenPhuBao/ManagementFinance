@@ -28,6 +28,7 @@ model account {
   status          String           @default("Active") @db.VarChar(20) @map("Status")
   type            String           @default("Basic") @db.VarChar(7) @map("Type")
   reason_inactive String?          @db.Text @map("Reason_Inactive")
+  countdown       Int?             @map("Countdown")
   create_at       DateTime         @default(now()) @db.Timestamp(6) @map("Create_at")
   update_at  DateTime         @default(now()) @db.Timestamp(6) @map("Update_at")
   delete_at  DateTime?        @db.Timestamp(6) @map("Delete_at")
