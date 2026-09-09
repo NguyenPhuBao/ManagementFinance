@@ -22,7 +22,7 @@ thông báo như thế chỉ có giá trị bằng đúng cái màn hình nó m�
 | Đường dẫn | Trạng thái |
 |---|---|
 | `/analytics` | `AnalyticsPage` là `StatelessWidget` chỉ import `material.dart`, `app_colors.dart`, `go_router`. **Không** một tham chiếu `Bloc`/`Repository`/`Dao`/`context.read` nào. Mọi con số viết cứng trong mã: `'Tháng này (T6 2026)'`, `'+25.000.000đ'`, `'Tăng 12% so với T5'` |
-| `/analytics/export`, `/export-report` | `ExportReportPage` — cùng tình trạng, 0 tham chiếu dữ liệu |
+| `/analytics/export`, `/export-report` | `ExportReportPage` — **đã đọc dữ liệu thật từ 2026-09-09** (lát 2c), mở màn `ReportPreviewPage` và xuất được tệp PDF/CSV |
 | `/transactions` | **Dữ liệu thật**, có dòng tổng thu/chi/net và bộ lọc. Nhưng xem theo **THÁNG** (`_selectedMonthDate`) |
 | `/home` | **Dữ liệu thật** — giao dịch gần đây, tổng thu/chi tháng |
 

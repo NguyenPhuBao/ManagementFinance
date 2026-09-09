@@ -704,12 +704,12 @@ src/Backend/
   > `khoangKyTruoc` lùi **theo tháng** khi khoảng trùng khít tháng dương lịch, không trừ số ngày: tháng 9 dài 30 ngày nên trừ 30 ngày ra `02/08–01/09`, lệch một ngày và phần trăm sai mà không ai thấy. Ba **bản sai có chủ ý** đã chứng minh test bắt được: bỏ nhánh lùi theo tháng (**3 test đỏ**), bỏ bước trừ phần sau kỳ của dòng tiền, và sắp nhóm ngày tăng dần.
   > ⚠️ Trang dài ra làm hỏng lối viết test cũ: `ListView` **không dựng** hàng ngoài khung nhìn, và một con số nay xuất hiện ở nhiều khối. Test phải `scrollUntilVisible` rồi tìm **trong phạm vi** một khối bằng `Key` — bẫy **4.12**.
   > **Đã kiểm trên `emulator-5554`** (tài khoản 10): ngân sách hiện *"Di chuyển 285.000/50.000 — Vượt 235.000 đ"* và *"Giáo dục 45.000/50.000 — Còn 5.000 đ"*; phân bổ ba ví thật; số dư đầu kỳ ra **âm** và đó là số thật (thu tháng 9 nhiều hơn tổng số dư hiện có). 0 pixel vàng ở khổ 411dp trên bốn ảnh chụp.
-- **Phân tích: lát 2c‑2 — nút "Tải xuống" sinh tệp PDF/CSV thật** (2026-09-09, **schema không đổi**). Giao diện đã bày hai ô định dạng nên làm **cả hai**; bày một ô rồi không làm là đúng cái kiểu "lời hứa suông" mà 2c‑1 vừa dọn. Thêm hai phụ thuộc: `pdf` dựng tài liệu, `share_plus` đưa tệp ra sheet chia sẻ/lưu của hệ điều hành. CSV tự viết chuỗi, không cần thư viện. Lý do đầy đủ ở **mục 3.17 và 3.18 `docs/ANALYTICS_FEATURE.md`**. 19 test mới.
-  > **Nơi lưu là thư mục tạm rồi mở sheet chia sẻ**, không ghi thẳng vào "Tải về": ghi vào bộ nhớ chung cần `WRITE_EXTERNAL_STORAGE` (Android ≤ 9) hoặc `MediaStore` qua kênh nền tảng (Android 10+), còn qua sheet thì người dùng tự chọn nơi lưu và app **không xin thêm quyền nào**.
+- **Phân tích: lát 2c‑2 — nút "Tải xuống" sinh tệp PDF/CSV thật** (2026-09-09, **schema không đổi**). Giao diện đã bày hai ô định dạng nên làm **cả hai**; bày một ô rồi không làm là đúng cái kiểu "lời hứa suông" mà 2c‑1 vừa dọn. Thêm hai phụ thuộc: `pdf` dựng tài liệu, `share_plus` đưa tệp ra sheet chia sẻ/lưu của hệ điều hành (**nay chỉ còn là đường lùi** — xem mục ngay dưới). CSV tự viết chuỗi, không cần thư viện. Lý do đầy đủ ở **mục 3.17 và 3.18 `docs/ANALYTICS_FEATURE.md`**. 19 test mới.
+  > ⚠️ **Quyết định về NƠI LƯU của mục này đã bị mục ngay dưới thay thế trong cùng ngày** — đọc tiếp trước khi tin. Bản đầu ghi tệp vào thư mục tạm rồi mở sheet chia sẻ, vì ghi vào bộ nhớ chung cần `WRITE_EXTERNAL_STORAGE` (Android ≤ 9) hoặc `MediaStore` qua kênh nền tảng (Android 10+); nay chính `MediaStore` ấy đã được làm, và sheet chia sẻ chỉ còn là đường lùi.
   > ⚠️ **Font PDF phải nhúng.** Font mặc định của gói `pdf` là Helvetica — không có glyph tiếng Việt và **mất dấu im lặng** (tệp vẫn mở được, chỉ là "Ăn uống" thành ô trống). Nay nhúng `Roboto` (Apache 2.0) ở `assets/fonts/`, **thư mục assets đầu tiên của dự án**. Test canh bằng cách cấm chuỗi "Helvetica" xuất hiện trong tệp sinh ra.
   > ⚠️ **CSV cho Excel tiếng Việt có ba luật, cả ba hỏng im lặng:** BOM UTF-8, dòng `sep=;` (Excel dùng dấu phân cách theo locale máy), và số tiền là **số nguyên thô mang dấu** (Excel vi-VN đọc `1.045.000` thành một phẩy không bốn năm). PDF thì ngược lại — là tài liệu để đọc nên có phân cách nghìn và ký hiệu `₫`.
   > Một test **suýt không canh gì cả**: phép kiểm "chi mang dấu âm" tìm `;-50000` trong cả tệp, nhưng con số ấy cũng nằm ở dòng "Tổng chi" và bảng danh mục nên bản sai có chủ ý **đi lọt**. Đã siết lại thành khẳng định trên trọn dòng — bẫy **4.15**.
-  > **Đã kiểm trên `emulator-5554`**: bấm Tải xuống mở đúng sheet chia sẻ với tên `BaoCao_01-09-2026_30-09-2026.pdf`; kéo tệp về bằng `adb exec-out` (⚠️ `adb shell cat` chèn `
+  > **Đã kiểm trên `emulator-5554`** (ở bản đầu, khi tệp còn đi qua sheet chia sẻ): bấm Tải xuống mở đúng sheet với tên `BaoCao_01-09-2026_30-09-2026.pdf`; kéo tệp về bằng `adb exec-out` (⚠️ `adb shell cat` chèn `
 ` làm hỏng tệp nhị phân — bẫy 4.16) rồi trích chữ: **2 trang, đủ dấu tiếng Việt và ký hiệu ₫, có cả biểu đồ**. Tệp CSV cũng đúng: BOM, `sep=;`, CRLF, `Tổng chi;-1045000`.
 - **Phân tích: tệp báo cáo lưu THẲNG vào thư mục Tải về** (2026-09-09, **schema không đổi**). Người dùng xem bản 2c‑2 rồi nói *"tôi muốn nó sẽ tải xuống lưu vào máy"* — sheet chia sẻ là một bước thừa. Nay tệp đi qua `MediaStore` và nằm luôn ở `/sdcard/Download`. Kênh `flowmoney/luu_tep` với **mã Kotlin trong `MainActivity`** — đây là **chỗ mã gốc đầu tiên do dự án tự viết** (trước đó mọi thứ gốc đều đến từ plugin). 6 test mới.
   > **Vì sao phải có mã gốc:** đặt một tệp vào bộ nhớ chung mà không xin quyền chỉ làm được qua `MediaStore` (Android 10+). `WRITE_EXTERNAL_STORAGE` đã bị thu hồi tác dụng từ chính bản ấy, còn hộp thoại chọn thư mục (SAF) thì bắt người dùng bấm thêm. `IS_PENDING` bật trong lúc ghi rồi mới tắt, để ứng dụng khác không đọc phải tệp dở; MediaStore tự đổi tên khi trùng (`BaoCao (1).pdf` — đã thấy trên máy ảo).
@@ -885,11 +885,15 @@ backend. Lý do từng bước: mục 10.5 `docs/GOAL_FEATURE.md` và mục 7
    qua `MediaStore` — **mảng Phân tích đến đây là xong**. Tầng tổng hợp mà
    "Tổng kết tuần" chờ nay đã có. Lý do và bẫy: `docs/ANALYTICS_FEATURE.md`.
 
-   ⚠️ **`fl_chart` là phụ thuộc đầu tiên và duy nhất của dự án dành cho việc
-   vẽ**, ghim cứng `1.2.0`. Trước 2026-09-08 `lib/` không có một
-   `CustomPainter` nào; donut là `SweepGradient` và **vẫn giữ nguyên như thế**.
-   Mọi biểu đồ về sau dùng chung `fl_chart` — đừng chọn lại lần thứ hai.
-2. **Năm việc còn lại của backend**, ở `docs/superpowers/backend/CAN-LAM/`:
+   ⚠️ **`fl_chart` là thư viện vẽ duy nhất cho biểu đồ TRÊN MÀN HÌNH**, ghim
+   cứng `1.2.0`. Trước 2026-09-08 `lib/` không có một `CustomPainter` nào;
+   donut là `SweepGradient` và **vẫn giữ nguyên như thế**. Mọi biểu đồ trên
+   màn hình về sau dùng chung `fl_chart` — đừng chọn lại lần thứ hai.
+   Từ 2026-09-09 có **một chỗ vẽ thứ hai**: biểu đồ trong tệp PDF dùng
+   `pw.Chart` của chính gói `pdf`, vì `fl_chart` vẽ ra widget chứ không ra
+   trang giấy. Hai chỗ ấy **cố ý tách**, không phải quên gộp.
+2. **Sáu việc còn lại của backend**, ở `docs/superpowers/backend/CAN-LAM/`
+   (đếm lại 2026-09-09 từ mục 2 của README ấy — dòng này từng ghi "năm"):
    lỗ **(D)** `threshold_warning_percent` bị ép về `0`; **cột màu danh mục**
    (tài liệu xin nay đã lên origin); **hai mục hoá đơn** — `transaction.Idbill`
    + `bill.Previous_bill_id`, rồi `bill.Auto_pay` + chốt chặn trả hai lần; và

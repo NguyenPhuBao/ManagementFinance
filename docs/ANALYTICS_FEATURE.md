@@ -215,7 +215,8 @@ Hệ quả chia việc: **2c‑1** (lát này) là bộ lọc thật + tầng th
 trước, **không thêm phụ thuộc nào**; **2c‑2** là nút Tải xuống sinh tệp thật.
 Giữa hai lát, nút "Tải xuống" để `onPressed: null` — **tắt hẳn**, có test canh.
 Một nút bấm được mà không ra tệp chính là kiểu "nút xuất chỉ hiện snackbar" mà
-lát này đang đi dọn.
+lát này đang đi dọn. *(2c‑2 đã xong cùng ngày, nên nút nay **chạy thật** — đoạn
+này giữ lại vì nó là lý do của cách làm, không phải mô tả hiện trạng.)*
 
 Ba khối của bản Stitch đã **bỏ** vì không có gì đỡ phía sau: "Lịch sử xuất gần
 đây" (bịa hoàn toàn — muốn thật thì cần một bảng cục bộ), ô "Đặt mật khẩu bảo
@@ -291,13 +292,13 @@ hiện tại của các ví"*:
 hiện tại chỉ 8,89 triệu.
 
 
-### 3.17 Sinh tệp: PDF **và** CSV, giao qua sheet chia sẻ
+### 3.17 Sinh tệp: PDF **và** CSV, lưu thẳng vào thư mục Tải về
 
 Giao diện đã bày hai ô định dạng nên phải làm **cả hai** — bày một ô rồi không
 làm là đúng cái kiểu "lời hứa suông" mà lát 2c‑1 vừa dọn. Ba quyết định:
 
-**Thư viện.** `pdf` dựng tài liệu, `share_plus` đưa tệp ra ngoài. CSV thì tự
-viết chuỗi, không cần thư viện nào.
+**Thư viện.** `pdf` dựng tài liệu; `share_plus` chỉ còn dùng cho **đường lùi**
+(xem dưới). CSV thì tự viết chuỗi, không cần thư viện nào.
 
 **Nơi lưu: thẳng vào thư mục Tải về của máy**, qua `MediaStore` (kênh
 `flowmoney/luu_tep`, mã Kotlin trong `MainActivity`). Người dùng nói rõ *"tôi
