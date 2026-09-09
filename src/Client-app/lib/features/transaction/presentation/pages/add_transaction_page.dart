@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../../../../core/utils/currency_formatter.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -397,7 +398,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                             ),
                           ),
                           Text(
-                            "${NumberFormat('#,###', 'vi_VN').format(wallet.balance)}đ",
+                            "${CurrencyFormatter.formatSoThoi(wallet.balance)}đ",
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
@@ -454,8 +455,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     if (_amountString.contains('.')) return "$_amountStringđ";
     try {
       final number = int.parse(_amountString);
-      final formatter = NumberFormat('#,###', 'vi_VN');
-      return "${formatter.format(number)}đ";
+      return "${CurrencyFormatter.formatSoThoi(number)}đ";
     } catch (_) {
       return "$_amountStringđ";
     }
@@ -795,13 +795,13 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     final walletDisplay = _isLoadingWallets
         ? 'Đang tải ví...'
         : (_selectedWallet != null
-            ? '${_selectedWallet!.name} • ${NumberFormat('#,###', 'vi_VN').format(_selectedWallet!.balance)}đ'
+            ? '${_selectedWallet!.name} • ${CurrencyFormatter.formatSoThoi(_selectedWallet!.balance)}đ'
             : 'Chọn ví');
 
     final destWalletDisplay = _isLoadingWallets
         ? 'Đang tải ví...'
         : (_destinationWallet != null
-            ? '${_destinationWallet!.name} • ${NumberFormat('#,###', 'vi_VN').format(_destinationWallet!.balance)}đ'
+            ? '${_destinationWallet!.name} • ${CurrencyFormatter.formatSoThoi(_destinationWallet!.balance)}đ'
             : 'Chọn ví đích');
 
     return Container(

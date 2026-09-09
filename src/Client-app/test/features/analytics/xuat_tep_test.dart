@@ -96,9 +96,9 @@ void main() {
         () {
       final s = csv(baoCao([g(ngay: DateTime(2026, 9, 5), soTien: 1045000)]));
       expect(s, contains('-1045000'),
-          reason: 'Cột số phải cộng được trong Excel. "1.045.000 ₫" là chữ, và '
+          reason: 'Cột số phải cộng được trong Excel. "1.045.000 đ" là chữ, và '
               'Excel tiếng Việt còn đọc dấu chấm thành dấu thập phân.');
-      expect(s, isNot(contains('₫')));
+      expect(s, isNot(contains('đ')));
       expect(s, isNot(contains('1.045.000')));
     });
 

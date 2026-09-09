@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -25,8 +26,6 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final db = sl<AppDatabase>();
-    final formatter = NumberFormat('#,###', 'vi_VN');
-
     final authState = context.watch<AuthBloc>().state;
     int? currentUserId;
     if (authState is AuthSuccess && authState.user != null) {
@@ -82,12 +81,12 @@ class HomePage extends StatelessWidget {
                       final wallets = snapshot.data ?? [];
                       final totalBalance = wallets.fold<double>(0.0, (sum, w) => sum + w.balance);
                       if (snapshot.hasData) {
-                        debugPrint('📊 [SQLite DB Log] Wallets count: ${wallets.length} | Total balance: ${formatter.format(totalBalance)}đ');
+                        debugPrint('📊 [SQLite DB Log] Wallets count: ${wallets.length} | Total balance: ${CurrencyFormatter.formatSoThoi(totalBalance)}đ');
                         for (final w in wallets) {
-                          debugPrint('   • Ví "${w.name}" (Account ${w.idaccount}): ${formatter.format(w.balance)}đ');
+                          debugPrint('   • Ví "${w.name}" (Account ${w.idaccount}): ${CurrencyFormatter.formatSoThoi(w.balance)}đ');
                         }
                       }
-                      return _buildAssetCard(totalBalance, formatter);
+                      return _buildAssetCard(totalBalance);
                     },
                   );
                 },
@@ -127,7 +126,7 @@ class HomePage extends StatelessWidget {
                       if (snapshot.hasData) {
                         debugPrint('💳 [SQLite DB Log] Transactions count: ${transactions.length}');
                         for (final t in transactions.take(5)) {
-                          debugPrint('   • Giao dịch: [${t.type.toUpperCase()}] ${formatter.format(t.amount)}đ | Ghi chú: ${t.note} | Account: ${t.idaccount}');
+                          debugPrint('   • Giao dịch: [${t.type.toUpperCase()}] ${CurrencyFormatter.formatSoThoi(t.amount)}đ | Ghi chú: ${t.note} | Account: ${t.idaccount}');
                         }
                       }
 
@@ -144,7 +143,7 @@ class HomePage extends StatelessWidget {
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildStatsGrid(monthlyIncome, monthlyExpense, formatter),
+                          _buildStatsGrid(monthlyIncome, monthlyExpense),
                           const SizedBox(height: 32),
                           StreamBuilder<List<Wallet>>(
                             stream: walletStream,
@@ -362,7 +361,7 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildAssetCard(double totalBalance, NumberFormat formatter) {
+  Widget _buildAssetCard(double totalBalance) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -410,7 +409,7 @@ class HomePage extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            '${formatter.format(totalBalance)}đ',
+            '${CurrencyFormatter.formatSoThoi(totalBalance)}đ',
             style: const TextStyle(
               fontSize: 34,
               fontWeight: FontWeight.bold,
@@ -509,16 +508,16 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildStatsGrid(double income, double expense, NumberFormat formatter) {
+  Widget _buildStatsGrid(double income, double expense) {
     final net = income - expense;
     return Row(
       children: [
-        Expanded(child: _buildStatCard('Thu nhập', '${formatter.format(income)}đ', income > 0 ? 0.8 : 0.0, AppColors.income)),
+        Expanded(child: _buildStatCard('Thu nhập', '${CurrencyFormatter.formatSoThoi(income)}đ', income > 0 ? 0.8 : 0.0, AppColors.income)),
         const SizedBox(width: 12),
-        Expanded(child: _buildStatCard('Chi tiêu', '${formatter.format(expense)}đ', expense > 0 ? 0.4 : 0.0, AppColors.error)),
+        Expanded(child: _buildStatCard('Chi tiêu', '${CurrencyFormatter.formatSoThoi(expense)}đ', expense > 0 ? 0.4 : 0.0, AppColors.error)),
         const SizedBox(width: 12),
         Expanded(
-            child: _buildStatCard('Thu net', '${net >= 0 ? '+' : ''}${formatter.format(net)}đ', net != 0 ? 0.6 : 0.0, const Color(0xFF3B82F6))),
+            child: _buildStatCard('Thu net', '${net >= 0 ? '+' : ''}${CurrencyFormatter.formatSoThoi(net)}đ', net != 0 ? 0.6 : 0.0, const Color(0xFF3B82F6))),
       ],
     );
   }

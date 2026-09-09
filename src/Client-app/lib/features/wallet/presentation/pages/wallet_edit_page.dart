@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../../domain/wallet_type.dart';
 import '../../../../core/di/injection_container.dart';
@@ -20,8 +20,6 @@ class WalletEditPage extends StatefulWidget {
 class _WalletEditPageState extends State<WalletEditPage> {
   final TextEditingController _balanceController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
-  final NumberFormat _currencyFormat = NumberFormat.decimalPattern('vi_VN');
-
   bool _isLoading = true;
   bool _isSaving = false;
   WalletEntity? _wallet;
@@ -68,7 +66,7 @@ class _WalletEditPageState extends State<WalletEditPage> {
         setState(() {
           _wallet = wallet;
           _nameController.text = wallet.name;
-          _balanceController.text = _currencyFormat.format(wallet.balance.toInt());
+          _balanceController.text = CurrencyFormatter.formatSoThoi(wallet.balance.toInt());
 
           // Ví `banking` do luồng liên kết ngân hàng tạo ra và KHÔNG nằm
           // trong danh sách chọn được. Bản trước dùng `indexOf` rồi bỏ qua khi
@@ -363,7 +361,7 @@ class _WalletEditPageState extends State<WalletEditPage> {
                         final digitsOnly = value.replaceAll('.', '');
                         if (digitsOnly.isNotEmpty) {
                           final number = int.tryParse(digitsOnly) ?? 0;
-                          final formatted = _currencyFormat.format(number);
+                          final formatted = CurrencyFormatter.formatSoThoi(number);
                           if (_balanceController.text != formatted) {
                             _balanceController.value = TextEditingValue(
                               text: formatted,

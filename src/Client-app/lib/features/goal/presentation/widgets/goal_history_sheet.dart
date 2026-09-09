@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/utils/currency_formatter.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../shared/theme/app_colors.dart';
@@ -60,12 +61,6 @@ class _GoalHistorySheetState extends State<GoalHistorySheet> {
     // Tổng tính trên danh sách ĐÃ LỌC: dòng tổng nằm ngay trên dải chip nên
     // nó phải nói về đúng thứ đang hiện.
     final tong = tongKet(hien);
-    final tien = NumberFormat.currency(
-      locale: 'vi_VN',
-      symbol: 'đ',
-      decimalDigits: 0,
-    );
-
     return DraggableScrollableSheet(
       initialChildSize: 0.75,
       minChildSize: 0.4,
@@ -105,8 +100,8 @@ class _GoalHistorySheetState extends State<GoalHistorySheet> {
                   tong.soKhoan == 0
                       ? 'Không có khoản nào'
                       : '${tong.soKhoan} khoản · đã gửi '
-                          '${tien.format(tong.daGui)}'
-                          '${tong.daRut > 0 ? ' · đã rút ${tien.format(tong.daRut)}' : ''}',
+                          '${CurrencyFormatter.format(tong.daGui)}'
+                          '${tong.daRut > 0 ? ' · đã rút ${CurrencyFormatter.format(tong.daRut)}' : ''}',
                   style: const TextStyle(
                     fontSize: 13,
                     color: AppColors.textSecondary,
@@ -159,7 +154,7 @@ class _GoalHistorySheetState extends State<GoalHistorySheet> {
                     padding: const EdgeInsets.all(20),
                     itemCount: hien.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 16),
-                    itemBuilder: (_, i) => _Dong(khoan: hien[i], tien: tien),
+                    itemBuilder: (_, i) => _Dong(khoan: hien[i]),
                   ),
           ),
         ],
@@ -214,9 +209,8 @@ class _DaiChip<T> extends StatelessWidget {
 
 class _Dong extends StatelessWidget {
   final KhoanTichLuy khoan;
-  final NumberFormat tien;
 
-  const _Dong({required this.khoan, required this.tien});
+  const _Dong({required this.khoan});
 
   @override
   Widget build(BuildContext context) {
@@ -278,7 +272,7 @@ class _Dong extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         Text(
-          '${rut ? '−' : '+'}${tien.format(khoan.soTien)}',
+          '${rut ? '−' : '+'}${CurrencyFormatter.format(khoan.soTien)}',
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 14,

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import '../../../../core/utils/currency_formatter.dart';
 
 import '../../../../core/category/category_visuals.dart';
 import '../../../../shared/theme/app_colors.dart';
@@ -35,7 +35,7 @@ TransactionRowContent buildTransactionRowContent(
   TransactionEntity tx,
   TransactionLookup lookup,
 ) {
-  final money = NumberFormat('#,###', 'vi_VN').format(tx.amount);
+  final money = CurrencyFormatter.formatSoThoi(tx.amount);
   final wallet = lookup.walletName(tx.walletId);
   final note = tx.note.trim();
 

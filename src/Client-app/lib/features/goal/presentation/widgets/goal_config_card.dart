@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/utils/currency_formatter.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../shared/theme/app_colors.dart';
@@ -32,11 +33,6 @@ String moTaHanChot(GoalEntity goal, DateTime now) {
 String moTaTrichTuDong(GoalEntity goal, {required String? tenViNguon}) {
   if (!goal.autoDepositEnabled) return 'Đang tắt';
 
-  final tien = NumberFormat.currency(
-    locale: 'vi_VN',
-    symbol: 'đ',
-    decimalDigits: 0,
-  );
   final nhip = switch (goal.cycleTakeMoney) {
     'Day' => 'mỗi ngày',
     'Week' => 'mỗi tuần',
@@ -45,7 +41,7 @@ String moTaTrichTuDong(GoalEntity goal, {required String? tenViNguon}) {
     _ => 'mỗi tháng',
   };
 
-  final soTien = tien.format(goal.autoDepositAmount);
+  final soTien = CurrencyFormatter.format(goal.autoDepositAmount ?? 0);
   return tenViNguon == null
       ? '$soTien $nhip'
       : '$soTien $nhip từ $tenViNguon';

@@ -534,7 +534,7 @@ class _BudgetFormState extends State<BudgetForm> {
   }
 
   /// "3 tháng gần nhất bạn chi trung bình X" kèm nút điền thẳng vào ô hạn mức.
-  /// Không hiện gì khi không có dữ liệu: một dòng "trung bình 0 ₫" là gợi ý
+  /// Không hiện gì khi không có dữ liệu: một dòng "trung bình 0 đ" là gợi ý
   /// sai, tệ hơn không gợi ý.
   Widget _suggestionHint() {
     final s = _suggestion;

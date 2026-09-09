@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../../domain/wallet_type.dart';
 import '../../../../core/di/injection_container.dart';
@@ -36,7 +36,6 @@ class _WalletAddForm extends StatefulWidget {
 class _WalletAddFormState extends State<_WalletAddForm> {
   final TextEditingController _balanceController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
-  final NumberFormat _currencyFormat = NumberFormat.decimalPattern('vi_VN');
   bool _isSaving = false;
 
   int _selectedTypeIndex = 0;
@@ -228,7 +227,7 @@ class _WalletAddFormState extends State<_WalletAddForm> {
                     final digitsOnly = value.replaceAll('.', '');
                     if (digitsOnly.isNotEmpty) {
                       final number = int.tryParse(digitsOnly) ?? 0;
-                      final formatted = _currencyFormat.format(number);
+                      final formatted = CurrencyFormatter.formatSoThoi(number);
                       if (_balanceController.text != formatted) {
                         _balanceController.value = TextEditingValue(
                           text: formatted,

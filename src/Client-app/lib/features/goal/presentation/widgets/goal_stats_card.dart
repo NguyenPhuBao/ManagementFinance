@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import '../../../../core/utils/currency_formatter.dart';
 
 import '../../../../shared/theme/app_colors.dart';
 import '../../data/models/goal_entity.dart';
@@ -40,11 +40,6 @@ class GoalStatsCard extends StatelessWidget {
     // Chưa có khoản nạp nào thì cả ba con số đều vô nghĩa.
     if (tk == null) return const SizedBox.shrink();
 
-    final tien = NumberFormat.currency(
-      locale: 'vi_VN',
-      symbol: 'đ',
-      decimalDigits: 0,
-    );
     final chuoi = tk.chuoiKy;
 
     return Container(
@@ -63,7 +58,7 @@ class GoalStatsCard extends StatelessWidget {
             _O(soLieu: '${tk.soLanNap}', nhan: 'lần nạp'),
             const _VachDoc(),
             _O(
-              soLieu: tien.format(tk.trungBinhMoiLan),
+              soLieu: CurrencyFormatter.format(tk.trungBinhMoiLan),
               nhan: 'trung bình mỗi lần',
             ),
             // Không có mốc gốc thì không cắt được kỳ. Một ô trống mang nhãn

@@ -634,7 +634,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
           for (final n in luaChon)
             DropdownMenuItem(
               value: n,
-              // `0` phải đọc thành "Tắt", không phải "0 ₫": một ngưỡng bằng
+              // `0` phải đọc thành "Tắt", không phải "0 đ": một ngưỡng bằng
               // không đọc như "báo khi ví hết sạch", trong khi nó tắt hẳn
               // tính năng.
               child: Text(n == 0 ? 'Tắt' : CurrencyFormatter.format(n)),

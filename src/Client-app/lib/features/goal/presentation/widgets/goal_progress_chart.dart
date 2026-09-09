@@ -1,4 +1,5 @@
 import 'package:fl_chart/fl_chart.dart';
+import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -362,12 +363,6 @@ class _ChuThichNhip extends StatelessWidget {
     }
 
     final cham = nhip == NhipKeHoach.cham;
-    final tien = NumberFormat.currency(
-      locale: 'vi_VN',
-      symbol: 'đ',
-      decimalDigits: 0,
-    );
-
     return SizedBox(
       width: double.infinity,
       child: Text.rich(
@@ -376,7 +371,7 @@ class _ChuThichNhip extends StatelessWidget {
           children: [
             TextSpan(text: cham ? 'Chậm hơn kế hoạch ' : 'Vượt kế hoạch '),
             TextSpan(
-              text: tien.format(chenhLech.abs()),
+              text: CurrencyFormatter.format(chenhLech.abs()),
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: cham ? AppColors.error : AppColors.income,

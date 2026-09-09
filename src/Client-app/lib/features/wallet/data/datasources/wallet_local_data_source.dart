@@ -1,5 +1,5 @@
 import 'package:drift/drift.dart';
-import 'package:intl/intl.dart';
+import '../../../../core/utils/currency_formatter.dart';
 
 import '../../../../core/database/app_database.dart';
 import '../../../../core/errors/app_exceptions.dart';
@@ -114,7 +114,7 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
       if (wallet != null) {
         // 1. Ràng buộc 1: Ví có tiền (balance != 0)
         if (wallet.balance != 0) {
-          final formatted = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ', decimalDigits: 0).format(wallet.balance);
+          final formatted = CurrencyFormatter.format(wallet.balance);
           throw CacheException('Ví "${wallet.name}" đang có số dư ($formatted). Vui lòng điều chuyển số dư về 0đ trước khi xóa!');
         }
 

@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../../../../core/utils/currency_formatter.dart';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -363,8 +364,6 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
       return;
     }
 
-    final tien =
-        NumberFormat.currency(locale: 'vi_VN', symbol: 'đ', decimalDigits: 0);
     final amountController = TextEditingController();
     final viNhanKhaDung =
         wallets.where((w) => w.id != viTichLuy.id).toList();
@@ -411,7 +410,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Mục tiêu đang giữ ${tien.format(_goal!.currentAmount)} '
+                'Mục tiêu đang giữ ${CurrencyFormatter.format(_goal!.currentAmount)} '
                 'trong ví "${viTichLuy.name}".',
                 style: const TextStyle(
                     fontSize: 13, color: AppColors.textSecondary),
@@ -462,7 +461,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                         .map((w) => DropdownMenuItem<Wallet>(
                               value: w,
                               child: Text(
-                                '${w.name} (Số dư: ${tien.format(w.balance)})',
+                                '${w.name} (Số dư: ${CurrencyFormatter.format(w.balance)})',
                                 style: const TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w500),
@@ -490,7 +489,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                   if (soTien > _goal!.currentAmount) {
                     messenger.showSnackBar(SnackBar(
                       content: Text('Mục tiêu chỉ đang giữ '
-                          '${tien.format(_goal!.currentAmount)}.'),
+                          '${CurrencyFormatter.format(_goal!.currentAmount)}.'),
                       backgroundColor: Colors.red,
                     ));
                     return;
@@ -517,7 +516,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                   if (ctx.mounted) Navigator.pop(ctx);
                   if (!mounted) return;
                   messenger.showSnackBar(SnackBar(
-                    content: Text('Đã rút ${tien.format(soTien)} khỏi mục '
+                    content: Text('Đã rút ${CurrencyFormatter.format(soTien)} khỏi mục '
                         'tiêu về "${selectedTargetWallet.name}".'),
                   ));
                   _loadGoal();
@@ -600,8 +599,6 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     final messenger = ScaffoldMessenger.of(context);
 
     final amountController = TextEditingController();
-    final currencyFormatter = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ', decimalDigits: 0);
-
     // Chỉ còn MỘT ô chọn: ví nguồn. Ví nhận đã cố định ở trên.
     final viNguonKhaDung =
         wallets.where((w) => w.id != viNhan.id).toList();
@@ -650,7 +647,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Số tiền hiện tại: ${currencyFormatter.format(_goal!.currentAmount)} / ${currencyFormatter.format(_goal!.targetAmount)}',
+                    'Số tiền hiện tại: ${CurrencyFormatter.format(_goal!.currentAmount)} / ${CurrencyFormatter.format(_goal!.targetAmount)}',
                     style: const TextStyle(
                       fontSize: 13,
                       color: AppColors.textSecondary,
@@ -658,7 +655,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Còn thiếu ${currencyFormatter.format(_goal!.remainingAmount)}',
+                    'Còn thiếu ${CurrencyFormatter.format(_goal!.remainingAmount)}',
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
@@ -712,7 +709,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                           return DropdownMenuItem<Wallet>(
                             value: w,
                             child: Text(
-                              '${w.name} (Số dư: ${currencyFormatter.format(w.balance)})',
+                              '${w.name} (Số dư: ${CurrencyFormatter.format(w.balance)})',
                               style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                             ),
                           );
@@ -794,7 +791,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                           SnackBar(
                             content: Text(
                               'Số dư ví "${selectedSourceWallet.name}" không đủ. '
-                              'Hiện có: ${currencyFormatter.format(selectedSourceWallet.balance)}',
+                              'Hiện có: ${CurrencyFormatter.format(selectedSourceWallet.balance)}',
                             ),
                             backgroundColor: Colors.red,
                           ),
@@ -828,7 +825,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                       // vẫn đúng khi người dùng mở lại trang ấy.
                       messenger.showSnackBar(
                         SnackBar(
-                          content: Text('Đã gửi thêm ${currencyFormatter.format(deposit)} vào mục tiêu!'),
+                          content: Text('Đã gửi thêm ${CurrencyFormatter.format(deposit)} vào mục tiêu!'),
                           backgroundColor: AppColors.income,
                         ),
                       );
@@ -874,7 +871,6 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
       );
     }
 
-    final currencyFormatter = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ', decimalDigits: 0);
     final remaining = (_goal!.targetAmount - _goal!.currentAmount).clamp(0.0, double.infinity);
 
     return Scaffold(
@@ -935,7 +931,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                   children: [
                     GoalProgressRing(goal: _goal!),
                     const SizedBox(height: 32),
-                    _buildAmountInfo(currencyFormatter, remaining),
+                    _buildAmountInfo(remaining),
                     if (_goal!.note.trim().isNotEmpty) ...[
                       const SizedBox(height: 16),
                       _buildGhiChu(_goal!.note.trim()),
@@ -961,7 +957,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                       tenViNguonTrich: _tenViNguonTrich,
                     ),
                     const SizedBox(height: 32),
-                    _buildHistorySection(currencyFormatter),
+                    _buildHistorySection(),
                   ],
                 ),
               ),
@@ -973,7 +969,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     );
   }
 
-  Widget _buildAmountInfo(NumberFormat currencyFormatter, double remaining) {
+  Widget _buildAmountInfo(double remaining) {
     return Column(
       children: [
         Row(
@@ -982,7 +978,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
           textBaseline: TextBaseline.alphabetic,
           children: [
             Text(
-              currencyFormatter.format(_goal!.currentAmount),
+              CurrencyFormatter.format(_goal!.currentAmount),
               style: const TextStyle(
                 fontSize: 32,
                 fontWeight: FontWeight.w900,
@@ -991,7 +987,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
               ),
             ),
             Text(
-              ' / ${currencyFormatter.format(_goal!.targetAmount)}',
+              ' / ${CurrencyFormatter.format(_goal!.targetAmount)}',
               style: TextStyle(
                 fontSize: 14,
                 color: AppColors.onSurfaceVariant.withValues(alpha: 0.8),
@@ -1010,7 +1006,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
             children: [
               const TextSpan(text: 'Còn lại '),
               TextSpan(
-                text: currencyFormatter.format(remaining),
+                text: CurrencyFormatter.format(remaining),
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   color: AppColors.primary,
@@ -1084,9 +1080,6 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     final duBao = duBaoHoanThanh(_goal!, now);
     final thucTe = tocDoThucTe(_goal!, now);
     final keHoach = tocDoKeHoach(_goal!, now: now);
-    final tien = NumberFormat.currency(
-        locale: 'vi_VN', symbol: 'đ', decimalDigits: 0);
-
     // Dòng đầu: dự báo THẬT thay cho câu lặp lại hạn chót.
     //
     // `targetDate` được tính một lần lúc tạo từ chu kỳ người dùng nhập, rồi
@@ -1126,9 +1119,9 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     } else {
       final canThem = keHoach == null
           ? ''
-          : ' · cần ${tien.format(keHoach)} để kịp hạn '
+          : ' · cần ${CurrencyFormatter.format(keHoach)} để kịp hạn '
               '${DateFormat('MM/yyyy').format(_goal!.targetDate)}';
-      mota = 'Đang tích ${tien.format(thucTe)} $nhipLabel$canThem.';
+      mota = 'Đang tích ${CurrencyFormatter.format(thucTe)} $nhipLabel$canThem.';
     }
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1190,7 +1183,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     );
   }
 
-  Widget _buildHistorySection(NumberFormat currencyFormatter) {
+  Widget _buildHistorySection() {
     final accountId = currentAccountIdOrNull(context);
     // Không có phiên thì không có lịch sử nào thuộc về ai để hiển thị. Trước
     // đây chỗ này rơi về 1 và lấy giao dịch của tài khoản admin.
@@ -1283,7 +1276,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                 ),
               )
             else
-              _danhSachLichSu(txs, currencyFormatter),
+              _danhSachLichSu(txs),
           ],
         );
       },
@@ -1294,7 +1287,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
   ///
   /// Chỉ dựng tối đa [_soDongLichSuToiDa] dòng ở đây. Phần còn lại nằm trong
   /// bảng đầy đủ, nơi có vùng cuộn RIÊNG nên `ListView` ảo hoá thật sự.
-  Widget _danhSachLichSu(List<dynamic> txs, NumberFormat currencyFormatter) {
+  Widget _danhSachLichSu(List<dynamic> txs) {
     final hienThi = txs.take(_soDongLichSuToiDa).toList();
     return ListView.separated(
       shrinkWrap: true,
@@ -1374,7 +1367,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
             ),
             Text(
               '${laKhoanRut ? '−' : '+'}'
-              '${currencyFormatter.format(amount)}',
+              '${CurrencyFormatter.format(amount)}',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
@@ -1397,9 +1390,6 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
   /// đâu cả**.
   Future<void> _xacNhanVongMoi() async {
     final goal = _goal!;
-    final tien = NumberFormat.currency(
-        locale: 'vi_VN', symbol: 'đ', decimalDigits: 0);
-
     final dongY = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -1407,7 +1397,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
         content: Text(
           'Tiến độ của "${goal.name}" sẽ về 0 và hạn định dời sang kỳ tiếp '
           'theo.\n\n'
-          '${tien.format(goal.currentAmount)} đã tích được vẫn nằm nguyên '
+          '${CurrencyFormatter.format(goal.currentAmount)} đã tích được vẫn nằm nguyên '
           'trong ví — không đồng nào bị chuyển đi. Muốn tiêu số ấy thì dùng '
           '"Rút khỏi mục tiêu".',
         ),

@@ -329,7 +329,7 @@ void main() {
 
       await tester.tap(find.byKey(NotificationSettingsPage.khoaNguongSoDu));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('100.000 ₫').last);
+      await tester.tap(find.text('100.000 đ').last);
       await tester.pumpAndSettle();
 
       expect((await store.read(accountId)).nguongSoDuThap, 100000,

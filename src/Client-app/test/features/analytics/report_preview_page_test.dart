@@ -140,9 +140,9 @@ void main() {
       ),
     ])));
 
-    expect(find.text('14.625.000 ₫'), findsOneWidget);
-    expect(find.text('1.045.000 ₫'), findsOneWidget);
-    expect(find.text('13.580.000 ₫'), findsOneWidget,
+    expect(find.text('14.625.000 đ'), findsOneWidget);
+    expect(find.text('1.045.000 đ'), findsOneWidget);
+    expect(find.text('13.580.000 đ'), findsOneWidget,
         reason: 'Còn lại = thu − chi. Đây là con số người dùng nhìn đầu tiên '
             'trên tờ báo cáo mang đi nộp.');
   });
@@ -217,9 +217,9 @@ void main() {
 
     await cuonToi(t, find.text('DANH SÁCH GIAO DỊCH'));
     final khoi = find.byKey(const Key('khoiGiaoDich'));
-    expect(find.descendant(of: khoi, matching: find.text('+500.000 ₫')),
+    expect(find.descendant(of: khoi, matching: find.text('+500.000 đ')),
         findsOneWidget);
-    expect(find.descendant(of: khoi, matching: find.text('-80.000 ₫')),
+    expect(find.descendant(of: khoi, matching: find.text('-80.000 đ')),
         findsOneWidget);
   });
 
@@ -296,14 +296,14 @@ void main() {
       ])));
 
       expect(find.text('SỐ DƯ ĐẦU KỲ'), findsOneWidget);
-      expect(find.text('6.000.000 ₫'), findsOneWidget);
+      expect(find.text('6.000.000 đ'), findsOneWidget);
       expect(find.text('SỐ DƯ CUỐI KỲ'), findsOneWidget);
       expect(find.textContaining('Suy ngược từ số dư hiện tại'), findsOneWidget,
           reason: 'App không lưu lịch sử số dư nên hai con số này là suy ra. '
               'Ví tạo GIỮA kỳ mang theo số dư ban đầu không phải giao dịch, '
               'nên nó bị tính vào số dư đầu kỳ — người đọc có quyền biết con '
               'số từ đâu ra.');
-      expect(find.text('5.000.000 ₫'), findsOneWidget,
+      expect(find.text('5.000.000 đ'), findsOneWidget,
           reason: 'Đầu kỳ 6 triệu, chi 1 triệu, cuối kỳ 5 triệu — phép cân của '
               'cả tờ báo cáo phải đọc được bằng mắt.');
     });
@@ -394,11 +394,11 @@ void main() {
       expect(find.text('Thuê nhà'), findsWidgets);
       await cuonToi(t, find.text('PHÂN BỔ THEO VÍ'));
       expect(find.text('Ngân hàng ACB'), findsWidgets);
-      expect(find.text('0 ₫'), findsOneWidget,
-          reason: 'Ví ấy không có khoản thu nào. "+0 ₫" là số không mang dấu '
+      expect(find.text('0 đ'), findsOneWidget,
+          reason: 'Ví ấy không có khoản thu nào. "+0 đ" là số không mang dấu '
               'cộng — thấy trên máy ảo, và nó làm cả bảng trông như lỗi định '
               'dạng.');
-      expect(find.text('+0 ₫'), findsNothing);
+      expect(find.text('+0 đ'), findsNothing);
     });
 
     testWidgets('số liệu nhanh hiện chi trung bình mỗi ngày', (t) async {
@@ -408,7 +408,7 @@ void main() {
       ], loc: LocBaoCao(from: DateTime(2026, 9, 1), to: DateTime(2026, 10, 1)))));
 
       await cuonToi(t, find.text('CHI MỖI NGÀY'));
-      expect(find.text('10.000 ₫'), findsOneWidget);
+      expect(find.text('10.000 đ'), findsOneWidget);
     });
 
     testWidgets('có biểu đồ thu/chi trong kỳ', (t) async {

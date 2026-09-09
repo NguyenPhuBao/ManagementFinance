@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -88,8 +89,6 @@ class _BillPageState extends State<BillPage> {
     context.watch<AuthBloc>();
     _thuNap();
 
-    final currencyFormatter =
-        NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
     final dateFormatter = DateFormat('dd/MM/yyyy');
     final now = widget.now ?? DateTime.now();
 
@@ -159,8 +158,8 @@ class _BillPageState extends State<BillPage> {
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
                         child: _buildSummaryCard(
-                          totalAmountStr: currencyFormatter
-                              .format(state.summary.unpaidAmount),
+                          totalAmountStr: CurrencyFormatter.format(
+                              state.summary.unpaidAmount),
                           unpaidCount: state.summary.unpaidCount,
                           progress: state.summary.progress,
                         ),
@@ -183,8 +182,7 @@ class _BillPageState extends State<BillPage> {
                               context,
                               sections.unpaid,
                               now: now,
-                              currencyFormatter: currencyFormatter,
-                              dateFormatter: dateFormatter,
+                                                            dateFormatter: dateFormatter,
                               khiTrong: 'Không còn hoá đơn nào phải trả.',
                               payments: state.payments,
                             ),
@@ -192,8 +190,7 @@ class _BillPageState extends State<BillPage> {
                               context,
                               sections.paid,
                               now: now,
-                              currencyFormatter: currencyFormatter,
-                              dateFormatter: dateFormatter,
+                                                            dateFormatter: dateFormatter,
                               khiTrong: 'Chưa có hoá đơn nào được thanh toán.',
                               payments: state.payments,
                             ),
@@ -224,7 +221,6 @@ class _BillPageState extends State<BillPage> {
     BuildContext context,
     List<Bill> bills, {
     required DateTime now,
-    required NumberFormat currencyFormatter,
     required DateFormat dateFormatter,
     required String khiTrong,
     required Map<String, Transaction> payments,
@@ -293,7 +289,7 @@ class _BillPageState extends State<BillPage> {
             icon: categoryIconFor(danhMuc?.icon),
             iconColor:
                 categoryColorFrom(danhMuc?.colour, fallback: AppColors.primary),
-            amount: currencyFormatter.format(bill.amount),
+            amount: CurrencyFormatter.format(bill.amount),
             status: nhanTrangThaiHoaDon(status),
             statusColor: mauChuTrangThaiHoaDon(status),
             statusBg: mauNenTrangThaiHoaDon(status),

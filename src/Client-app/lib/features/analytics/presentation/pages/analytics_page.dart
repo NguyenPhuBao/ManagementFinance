@@ -1,8 +1,8 @@
 import 'package:fl_chart/fl_chart.dart';
+import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../../../../core/auth/current_account.dart';
 import '../../../../core/category/category_visuals.dart';
@@ -123,9 +123,7 @@ class _NoiDung extends StatelessWidget {
 
 // ── Định dạng dùng chung ──────────────────────────────────────────────────
 
-final NumberFormat _tien = NumberFormat('#,###', 'vi_VN');
-
-String _dong(double x) => '${_tien.format(x.round())}đ';
+String _dong(double x) => '${CurrencyFormatter.formatSoThoi(x.round())}đ';
 
 /// `T9 2026` — nhãn ngắn của một tháng.
 String _nhanThang(int nam, int thang) => 'T$thang $nam';

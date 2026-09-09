@@ -89,7 +89,7 @@ void main() {
 
     expect(find.text('Dùng số này'), findsNothing);
     expect(find.textContaining('3 tháng gần nhất'), findsNothing,
-        reason: 'Một dòng "trung bình 0 ₫" là gợi ý sai, tệ hơn không gợi ý.');
+        reason: 'Một dòng "trung bình 0 đ" là gợi ý sai, tệ hơn không gợi ý.');
   });
 
   testWidgets('không tiêm callback thì form vẫn như cũ', (tester) async {

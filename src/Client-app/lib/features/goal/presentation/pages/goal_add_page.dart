@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -189,10 +190,8 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
       _nameController.text = goal.name;
       _noteController.text = goal.note;
 
-      final formatter =
-          NumberFormat.currency(locale: 'vi_VN', symbol: '', decimalDigits: 0);
       _targetAmountController.text =
-          formatter.format(goal.targetAmount).trim();
+          CurrencyFormatter.formatSoThoi(goal.targetAmount).trim();
 
       // Gán SAU số tiền mục tiêu, và phải chặn cặp listener tính chéo lại.
       // Dòng trên vừa kích hoạt `_onTargetAmountOrDateChanged`, thứ đã ghi một
@@ -202,7 +201,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
       if (goal.autoDepositAmount != null) {
         _isRecalculatingFromDate = true;
         _depositAmountController.text =
-            formatter.format(goal.autoDepositAmount!).trim();
+            CurrencyFormatter.formatSoThoi(goal.autoDepositAmount!).trim();
         _isRecalculatingFromDate = false;
       }
 
@@ -270,9 +269,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
     }
 
     final suggested = (targetAmount / periods).ceilToDouble();
-    final formatter = NumberFormat.currency(locale: 'vi_VN', symbol: '', decimalDigits: 0);
-
-    final formattedStr = formatter.format(suggested).trim();
+    final formattedStr = CurrencyFormatter.formatSoThoi(suggested).trim();
     if (_depositAmountController.text != formattedStr) {
       _depositAmountController.value = TextEditingValue(
         text: formattedStr,
@@ -522,7 +519,6 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
     String? loaiTruViId,
     String? thongDiepRong,
   }) {
-    final currencyFormatter = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ', decimalDigits: 0);
     final danhSach = loaiTruViId == null
         ? wallets
         : wallets.where((w) => w.id != loaiTruViId).toList();
@@ -692,7 +688,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                           ),
                         ),
                         subtitle: Text(
-                          '${wallet.typeLabel} • Số dư: ${currencyFormatter.format(wallet.balance)}',
+                          '${wallet.typeLabel} • Số dư: ${CurrencyFormatter.format(wallet.balance)}',
                           style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                         ),
                         trailing: isSelected
@@ -715,7 +711,6 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
 
   @override
   Widget build(BuildContext context) {
-    final currencyFormatter = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ', decimalDigits: 0);
     final estimatedCompletionDate = _calculateEstimatedCompletionDate();
 
     return BlocListener<GoalCubit, GoalState>(
@@ -961,7 +956,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                                 // trỏ đúng chỗ, giống câu báo lỗi khi xoá ví.
                                 ? 'Đổi ở trang chi tiết mục tiêu'
                                 : _selectedSavingsWallet != null
-                                    ? '${_selectedSavingsWallet!.typeLabel} • ${currencyFormatter.format(_selectedSavingsWallet!.balance)}'
+                                    ? '${_selectedSavingsWallet!.typeLabel} • ${CurrencyFormatter.format(_selectedSavingsWallet!.balance)}'
                                     : 'Bấm để chọn ví tích lũy',
                             iconColor: AppColors.income,
                             showChevron: !_isEdit,
@@ -1128,7 +1123,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                               icon: Icons.account_balance,
                               title: _selectedSourceWallet?.name ?? 'Chọn ví nguồn trích',
                               subtitle: _selectedSourceWallet != null
-                                  ? '${_selectedSourceWallet!.typeLabel} • ${currencyFormatter.format(_selectedSourceWallet!.balance)}'
+                                  ? '${_selectedSourceWallet!.typeLabel} • ${CurrencyFormatter.format(_selectedSourceWallet!.balance)}'
                                   : 'Bấm để chọn ví trích tiền',
                               iconColor: AppColors.primary,
                               onTap: () {

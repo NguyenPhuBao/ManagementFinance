@@ -987,7 +987,7 @@ class ReportPreviewPage extends StatelessWidget {
   }
 
   /// Số tiền kèm dấu, nhưng **số 0 thì không mang dấu**: một ví không phát
-  /// sinh khoản thu nào hiện "+0 ₫" trông như lỗi định dạng (thấy trên máy ảo
+  /// sinh khoản thu nào hiện "+0 đ" trông như lỗi định dạng (thấy trên máy ảo
   /// 2026-09-09).
   static String _coDau(double soTien, {required bool thu}) {
     if (soTien == 0) return CurrencyFormatter.format(0);
