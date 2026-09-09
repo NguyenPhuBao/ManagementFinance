@@ -25,6 +25,15 @@ import 'package:flowmoney/core/database/app_database.dart';
 // `database` là sqlite3.Database do NativeDatabase.memory(setup:) truyền vào.
 // Dùng dynamic để khỏi phải thêm `sqlite3` làm phụ thuộc trực tiếp.
 void _createLegacyNonCategoryTables(dynamic database, {int atVersion = 2}) {
+  // `wallets` cũng phải mang đúng những cột mà [atVersion] hẳn đã có, cùng lý
+  // do như `budgets` ngay dưới: ba cột trạng thái thất bại được thêm ở bước
+  // `from < 9`, nên một fixture khai `user_version = 9` mà thiếu chúng là một
+  // trạng thái KHÔNG tồn tại trên máy người dùng. Chuyện đó không lộ ra cho tới
+  // khi v20 chạy `UPDATE wallets SET sync_error = NULL ...`.
+  final walletsSyncFailureCols = atVersion >= 9
+      ? ', sync_retry_count INTEGER NOT NULL DEFAULT 0, sync_error TEXT, '
+          'sync_blocked_until INTEGER'
+      : '';
   database.execute('''
     CREATE TABLE wallets (
       id TEXT NOT NULL PRIMARY KEY,
@@ -37,7 +46,7 @@ void _createLegacyNonCategoryTables(dynamic database, {int atVersion = 2}) {
       colour TEXT NOT NULL DEFAULT '#4CAF50',
       is_default INTEGER NOT NULL DEFAULT 0,
       is_deleted INTEGER NOT NULL DEFAULT 0,
-      sync_status TEXT NOT NULL DEFAULT 'pending',
+      sync_status TEXT NOT NULL DEFAULT 'pending'$walletsSyncFailureCols,
       updated_at INTEGER NOT NULL
     )
   ''');

@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../domain/wallet_type.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../../../shared/theme/app_colors.dart';
@@ -39,7 +40,6 @@ class _WalletAddFormState extends State<_WalletAddForm> {
   bool _isSaving = false;
 
   int _selectedTypeIndex = 0;
-  final List<String> _walletTypes = ['Tiền mặt', 'Ngân hàng', 'Ví điện tử', 'Thẻ tín dụng'];
 
   int _selectedIconIndex = 0;
   final List<IconData> _iconOptions = [
@@ -63,8 +63,6 @@ class _WalletAddFormState extends State<_WalletAddForm> {
   bool _isDefault = true;
   bool _includeInTotal = true;
 
-  // Map type index sang type key
-  final List<String> _walletTypeKeys = ['cash', 'bank', 'ewallet', 'debt'];
 
   @override
   void dispose() {
@@ -95,7 +93,7 @@ class _WalletAddFormState extends State<_WalletAddForm> {
       await context.read<WalletCubit>().addWallet(
         idaccount: widget.idaccount,
         name:      name,
-        type:      _walletTypeKeys[_selectedTypeIndex],
+        type:      WalletType.chonDuoc[_selectedTypeIndex].khoa,
         balance:   balance,
         icon:      iconKey,
         colour:    colour,
@@ -286,7 +284,7 @@ class _WalletAddFormState extends State<_WalletAddForm> {
                 mainAxisSpacing: 8.0,
                 childAspectRatio: 3.5,
               ),
-              itemCount: _walletTypes.length,
+              itemCount: WalletType.chonDuoc.length,
               itemBuilder: (context, index) {
                 final isSelected = index == _selectedTypeIndex;
                 return GestureDetector(
@@ -299,7 +297,7 @@ class _WalletAddFormState extends State<_WalletAddForm> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      _walletTypes[index],
+                      WalletType.chonDuoc[index].nhan,
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,

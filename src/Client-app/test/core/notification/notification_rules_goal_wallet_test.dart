@@ -432,11 +432,23 @@ void main() {
       expect(chay(wallets: [vi(soDu: -50000, daXoa: true)]), isEmpty);
     });
 
-    test('ví loại NỢ đang âm thì KHÔNG báo', () {
-      expect(chay(wallets: [vi(soDu: -5000000, loai: 'debt')]), isEmpty,
-          reason: 'Ví nợ mang số dư âm là đúng bản chất của nó, không phải dấu '
-              'hiệu ghi nhầm. Trước 2026-09-07 nó bị nhắc lại mỗi ngày cho tới '
-              'khi trả hết nợ — đúng loại nhiễu khiến người dùng tắt cả nhóm.');
+    test('KHÔNG còn loại ví nào được miễn trừ cảnh báo âm', () {
+      // ⚠️ Test này từng khẳng định điều NGƯỢC LẠI, và việc nó đảo chiều là có
+      // chủ đích — ghi lại đây để người sau không "sửa" nó về như cũ.
+      //
+      // Từ 2026-09-07 ví loại `debt` mang số dư âm được bỏ qua, vì âm là đúng
+      // bản chất của nó; trước đó nó bị nhắc mỗi ngày cho tới khi trả hết nợ.
+      // Ngày 2026-09-09 loại ví thu về ba (`WalletType`) theo yêu cầu người
+      // dùng, và `debt` biến mất — ví cũ chuyển thành `bank`. Không còn tín
+      // hiệu nào để nhận ra "âm là cố ý", nên chốt kia không còn chỗ bám.
+      //
+      // Hệ quả có thật: ai từng theo dõi thẻ tín dụng bằng ví `debt` nay sẽ
+      // được nhắc "ví âm" mỗi ngày. Muốn chữa thì cần một khái niệm MỚI — "ví
+      // được phép âm" — chứ không phải khôi phục chuỗi `'debt'` đã chết.
+      final ra = chay(wallets: [vi(soDu: -5000000, loai: 'bank')]);
+
+      expect(ra, hasLength(1));
+      expect(ra.single.kind, NotificationKind.walletNegative);
     });
   });
 
@@ -487,11 +499,15 @@ void main() {
               'thì mỗi ví âm đẻ hai thông báo nói cùng một chuyện.');
     });
 
-    test('ví loại NỢ không bị cảnh báo sắp cạn', () {
-      expect(
-        chay(wallets: [vi(soDu: 1000, loai: 'debt')], nguongSoDuThap: 100000),
-        isEmpty,
+    test('KHÔNG còn loại ví nào được miễn trừ cảnh báo sắp cạn', () {
+      // Cùng lý do như chốt cảnh báo âm ngay trên — xem chú thích ở đó.
+      final ra = chay(
+        wallets: [vi(soDu: 1000, loai: 'bank')],
+        nguongSoDuThap: 100000,
       );
+
+      expect(ra, hasLength(1));
+      expect(ra.single.kind, NotificationKind.walletLowBalance);
     });
 
     test('ví đã xoá thì im lặng', () {

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../domain/wallet_type.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../data/models/wallet_entity.dart';
@@ -26,8 +27,8 @@ class _WalletEditPageState extends State<WalletEditPage> {
   WalletEntity? _wallet;
 
   int _selectedTypeIndex = 0;
-  final List<String> _walletTypes = ['Tiền mặt', 'Ngân hàng', 'Ví điện tử', 'Thẻ tín dụng'];
-  final List<String> _walletTypeKeys = ['cash', 'bank', 'ewallet', 'debt'];
+  /// Ví liên kết ngân hàng thì KHÔNG cho đổi loại — xem `_loaiCoDinh`.
+  bool _loaiCoDinh = false;
 
   int _selectedIconIndex = 0;
   final List<IconData> _iconOptions = [
@@ -69,8 +70,16 @@ class _WalletEditPageState extends State<WalletEditPage> {
           _nameController.text = wallet.name;
           _balanceController.text = _currencyFormat.format(wallet.balance.toInt());
 
-          final typeIdx = _walletTypeKeys.indexOf(wallet.type);
-          if (typeIdx != -1) _selectedTypeIndex = typeIdx;
+          // Ví `banking` do luồng liên kết ngân hàng tạo ra và KHÔNG nằm
+          // trong danh sách chọn được. Bản trước dùng `indexOf` rồi bỏ qua khi
+          // `-1`, nên ô chọn đứng nguyên ở "Tiền mặt" — lưu lại là âm thầm đổi
+          // loại ví, và vỡ `chk_wallet_banking_link` vì `Id_bank_casso` vẫn
+          // còn. Ở đây khoá hẳn ô chọn thay vì đoán.
+          final loai = WalletType.tuKhoa(wallet.type);
+          _loaiCoDinh = !WalletType.chonDuoc.contains(loai);
+          if (!_loaiCoDinh) {
+            _selectedTypeIndex = WalletType.chonDuoc.indexOf(loai);
+          }
 
           final iconIdx = _iconKeys.indexOf(wallet.icon);
           if (iconIdx != -1) _selectedIconIndex = iconIdx;
@@ -121,7 +130,10 @@ class _WalletEditPageState extends State<WalletEditPage> {
     try {
       final updatedWallet = _wallet!.copyWith(
         name:           name,
-        type:           _walletTypeKeys[_selectedTypeIndex],
+        // Loại cố định thì giữ nguyên chữ đang có, đừng dựng lại từ ô chọn.
+        type:           _loaiCoDinh
+            ? (_wallet?.type ?? WalletType.cash.khoa)
+            : WalletType.chonDuoc[_selectedTypeIndex].khoa,
         balance:        balance,
         icon:           iconKey,
         colour:         colour,
@@ -285,10 +297,13 @@ class _WalletEditPageState extends State<WalletEditPage> {
             child: Wrap(
               spacing: 8.0,
               runSpacing: 8.0,
-              children: List.generate(_walletTypes.length, (index) {
-                final isSelected = index == _selectedTypeIndex;
+              children: List.generate(
+                  _loaiCoDinh ? 1 : WalletType.chonDuoc.length, (index) {
+                final isSelected = _loaiCoDinh || index == _selectedTypeIndex;
                 return GestureDetector(
-                  onTap: () => setState(() => _selectedTypeIndex = index),
+                  onTap: _loaiCoDinh
+                      ? null
+                      : () => setState(() => _selectedTypeIndex = index),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -300,7 +315,9 @@ class _WalletEditPageState extends State<WalletEditPage> {
                       ),
                     ),
                     child: Text(
-                      _walletTypes[index],
+                      _loaiCoDinh
+                          ? WalletType.tuKhoa(_wallet?.type).nhan
+                          : WalletType.chonDuoc[index].nhan,
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w400,

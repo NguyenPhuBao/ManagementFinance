@@ -1,3 +1,4 @@
+import '../../domain/wallet_type.dart';
 import 'package:equatable/equatable.dart';
 
 /// Domain entity Wallet — dùng trong toàn bộ business logic.
@@ -11,7 +12,7 @@ class WalletEntity extends Equatable {
   final int idaccount;
   final String name;
   final String
-      type; // 'cash' | 'saving' | 'bank' | 'ewallet' | 'investment' | 'debt'
+      type; // Khoá của `WalletType` — 'cash' | 'bank' | 'saving' | 'banking'
   final double balance;
   final String currency;
   final String icon;
@@ -38,15 +39,8 @@ class WalletEntity extends Equatable {
     required this.updatedAt,
   });
 
-  /// Label hiển thị loại ví
-  String get typeLabel => switch (type) {
-        'bank' => 'Ngân hàng',
-        'saving' => 'Tiết kiệm',
-        'ewallet' => 'Ví điện tử',
-        'investment' => 'Đầu tư',
-        'debt' => 'Thẻ tín dụng',
-        _ => 'Tiền mặt',
-      };
+  /// Label hiển thị loại ví. Nhãn nằm ở `WalletType`, đây chỉ là lối tắt.
+  String get typeLabel => WalletType.tuKhoa(type).nhan;
 
   WalletEntity copyWith({
     String? id,

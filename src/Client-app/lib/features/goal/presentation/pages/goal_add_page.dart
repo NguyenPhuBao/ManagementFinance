@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/widgets/segmented_choice.dart';
+import '../../../wallet/domain/wallet_type.dart';
+import '../../../wallet/presentation/widgets/wallet_type_icon.dart';
 import '../../../wallet/data/models/wallet_entity.dart';
 import '../../../wallet/presentation/bloc/wallet_cubit.dart';
 import '../bloc/goal_cubit.dart';
@@ -678,11 +680,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Icon(
-                            wallet.type == 'bank'
-                                ? Icons.account_balance
-                                : (wallet.type == 'ewallet'
-                                    ? Icons.account_balance_wallet
-                                    : Icons.wallet),
+                            WalletType.tuKhoa(wallet.type).icon,
                             color: itemColor,
                           ),
                         ),

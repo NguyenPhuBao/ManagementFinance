@@ -620,24 +620,22 @@ List<NotificationCandidate> _autoPayCandidates(NotificationRuleInput input) {
 
 // ── Ví ───────────────────────────────────────────────────────────────────────
 
-/// Giá trị cột `type` của ví nợ.
-///
-/// Cột lưu chuỗi thô (`cash` | `saving` | `bank` | `ewallet` | `investment` |
-/// `debt`) và dự án chưa có enum dùng chung cho nó; hằng số này ít nhất giữ
-/// chuỗi ấy khỏi nằm trần giữa một câu lệnh điều kiện.
-const String _loaiViNo = 'debt';
-
 List<NotificationCandidate> _walletCandidates(NotificationRuleInput input) {
   final ra = <NotificationCandidate>[];
 
   for (final v in input.wallets) {
     if (v.isDeleted) continue;
 
-    // Ví nợ mang số dư âm là ĐÚNG bản chất của nó, không phải dấu hiệu ghi
-    // nhầm. Trước 2026-09-07 nó bị nhắc lại mỗi ngày cho tới khi trả hết nợ —
-    // đúng loại nhiễu khiến người dùng tắt cả nhóm, và khi ấy họ mất luôn
-    // những cảnh báo thật sự cần.
-    if (v.type == _loaiViNo) continue;
+    // ⚠️ Ở đây từng có một chốt: ví loại `debt` mang số dư âm là ĐÚNG bản chất
+    // của nó, nên không nhắc. Chốt ấy **đã gỡ ngày 2026-09-09** cùng lúc với
+    // việc thu loại ví về ba (`WalletType`) — không còn loại `debt` thì không
+    // còn tín hiệu nào để nhận ra "âm là cố ý".
+    //
+    // Hệ quả có thật, ghi lại để người sau không tưởng là bỏ sót: ai từng theo
+    // dõi thẻ tín dụng bằng ví `debt` nay có ví `bank` mang số dư âm, và sẽ
+    // được nhắc "ví âm" mỗi ngày — đúng loại nhiễu mà bản 2026-09-07 gỡ đi.
+    // Muốn chữa thì cần một khái niệm mới ("ví được phép âm"), không phải khôi
+    // phục chuỗi cũ.
 
     // Số dư 0 là chuyện bình thường; âm mới là dấu hiệu ghi nhầm giao dịch.
     if (v.balance >= 0) {

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../domain/wallet_type.dart';
+import '../widgets/wallet_type_icon.dart';
 import '../../../../core/auth/current_account.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/utils/currency_formatter.dart';
@@ -423,7 +425,9 @@ class _WalletItem extends StatelessWidget {
   });
 
   Color get _iconColor {
-    if (wallet.type == 'debt' || wallet.balance < 0) {
+    // `wallet.type == 'debt'` đã bỏ: loại ấy không còn tồn tại (xem
+    // `WalletType`), và số dư âm vốn đã là điều kiện thật sự cần bắt.
+    if (wallet.balance < 0) {
       return const Color(0xFFD32F2F);
     }
     if (wallet.isDefault || wallet.type == 'cash') {
@@ -433,7 +437,7 @@ class _WalletItem extends StatelessWidget {
   }
 
   Color get _iconBg {
-    if (wallet.type == 'debt' || wallet.balance < 0) {
+    if (wallet.balance < 0) {
       return const Color(0xFFFFEBEE);
     }
     if (wallet.isDefault || wallet.type == 'cash') {
@@ -442,14 +446,7 @@ class _WalletItem extends StatelessWidget {
     return AppColors.surfaceContainerHigh;
   }
 
-  IconData get _iconData => switch (wallet.type) {
-        'bank' => Icons.account_balance,
-        'saving' => Icons.savings,
-        'ewallet' => Icons.account_balance_wallet,
-        'investment' => Icons.trending_up,
-        'debt' => Icons.credit_card,
-        _ => Icons.payments,
-      };
+  IconData get _iconData => WalletType.tuKhoa(wallet.type).icon;
 
   @override
   Widget build(BuildContext context) {

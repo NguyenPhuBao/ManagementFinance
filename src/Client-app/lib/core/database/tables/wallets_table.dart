@@ -17,7 +17,10 @@ class Wallets extends Table {
   // ── Business fields ──────────────────────────────────────────────────────
   TextColumn get name    => text()();
   TextColumn get type    => text().withDefault(const Constant('cash'))();
-  // Kiểu ví: 'cash' | 'bank' | 'ewallet' | 'investment' | 'debt'
+  // Kiểu ví — khoá của `WalletType`: 'cash' | 'bank' | 'saving' | 'banking'.
+  // Ba loại đầu người dùng chọn được; 'banking' chỉ đến từ luồng liên kết ngân
+  // hàng của server. PostgreSQL có `chk_wallet_type` chỉ nhận đúng bốn giá trị
+  // ấy (viết hoa), nên giá trị lạ ở đây là bản ghi kẹt hàng đợi đẩy vĩnh viễn.
 
   RealColumn get balance  => real().withDefault(const Constant(0.0))();
   TextColumn get currency => text().withDefault(const Constant('VND'))();

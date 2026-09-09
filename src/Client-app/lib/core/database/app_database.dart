@@ -56,7 +56,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 19;
+  int get schemaVersion => 20;
 
   @override
   MigrationStrategy get migration {
@@ -376,6 +376,36 @@ class AppDatabase extends _$AppDatabase {
           // thứ tự mặc định thành một lựa chọn người dùng chưa từng đưa ra —
           // cùng lập luận đã dùng cho v15 và v17.
           await m.addColumn(goals, goals.priority);
+        }
+        if (from < 20) {
+          // Thu loại ví về đúng bốn giá trị `chk_wallet_type` của PostgreSQL
+          // cho phép (`Cash | Bank | Saving | Banking`, đo trên CSDL
+          // 2026-09-09). Giao diện cũ cho chọn `ewallet` và `debt`, nên ví tạo
+          // bằng hai loại ấy **vỡ CHECK ở mỗi lần đẩy** và nằm lại trong hàng
+          // đợi vĩnh viễn — không exception, không log, không gì trên màn hình.
+          //
+          // Phép ánh xạ ở đây phải khớp `WalletType.tuKhoa`: ví điện tử và thẻ
+          // tín dụng đều gần "ngân hàng" hơn "tiền mặt"; thứ không nhận ra thì
+          // về tiền mặt.
+          await customStatement(
+            "UPDATE wallets SET type = 'bank' WHERE type IN ('ewallet', 'debt')",
+          );
+          await customStatement(
+            "UPDATE wallets SET type = 'cash' "
+            "WHERE type NOT IN ('cash', 'bank', 'saving', 'banking')",
+          );
+
+          // Đổi loại thôi CHƯA ĐỦ. Những ví ấy đã hỏng đẩy nhiều lần nên đang
+          // mang `sync_error` và một mốc `sync_blocked_until` ở tương lai; để
+          // nguyên thì chúng nằm im tới tận mốc ấy, và người dùng không thấy ví
+          // của mình lên server dù bản vá đã cài.
+          //
+          // Chỉ đụng vào hàng ĐANG chờ đẩy — quét cả bảng là ép đẩy lại mọi ví
+          // ở lần mở app kế tiếp, một đợt request thừa cho thứ không hề đổi.
+          await customStatement(
+            "UPDATE wallets SET sync_error = NULL, sync_blocked_until = NULL, "
+            "sync_retry_count = 0 WHERE sync_status = 'pending'",
+          );
         }
       },
       beforeOpen: (details) async {

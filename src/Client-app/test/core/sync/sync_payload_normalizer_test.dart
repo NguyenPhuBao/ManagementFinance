@@ -90,4 +90,34 @@ void main() {
 
     expect(payload['type'], 'Saving');
   });
+
+  test('loại ví lạ KHÔNG được gửi nguyên si lên server', () {
+    // `chk_wallet_type` trên PostgreSQL chỉ nhận đúng bốn chuỗi này (đo thẳng
+    // trên CSDL 2026-09-09). Bản trước để giá trị lạ đi qua nguyên vẹn, nên ví
+    // tạo bằng "Ví điện tử" hoặc "Thẻ tín dụng" trên giao diện cũ vỡ CHECK ở
+    // mỗi lần đẩy và **kẹt hàng đợi vĩnh viễn**, không một dòng nào báo ra.
+    const choPhep = {'Cash', 'Bank', 'Saving', 'Banking'};
+    for (final la in ['ewallet', 'debt', 'investment', 'linh tinh', '']) {
+      final payload = SyncPayloadNormalizer.walletForPush({'type': la});
+      expect(choPhep.contains(payload['type']), isTrue,
+          reason: 'Loại "$la" bị đẩy lên nguyên si là vỡ chk_wallet_type.');
+    }
+  });
+
+  test('hai loại đã bỏ đẩy lên thành Bank', () {
+    expect(SyncPayloadNormalizer.walletForPush({'type': 'ewallet'})['type'],
+        'Bank');
+    expect(SyncPayloadNormalizer.walletForPush({'type': 'debt'})['type'],
+        'Bank',
+        reason: 'Phải khớp với `WalletType.tuKhoa` và với migration cục bộ — '
+            'ba chỗ cùng một phép ánh xạ thì mới không lệch nhau.');
+  });
+
+  test('ví Banking kéo từ server vẫn quay lại đúng chữ khi đẩy lên', () {
+    expect(SyncPayloadNormalizer.walletForPush({'type': 'banking'})['type'],
+        'Banking',
+        reason: 'Client không TẠO được Banking, nhưng ví kéo về rồi sửa tên thì '
+            'vẫn phải đẩy lại đúng loại — đổi nó sang Bank là vỡ '
+            'chk_wallet_banking_link vì Id_bank_casso vẫn còn.');
+  });
 }
