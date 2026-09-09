@@ -39,18 +39,11 @@ class WalletListPage extends StatelessWidget {
   }
 }
 
-class _WalletListView extends StatefulWidget {
+class _WalletListView extends StatelessWidget {
   final int idaccount;
   final UserModel? user;
 
   const _WalletListView({required this.idaccount, required this.user});
-
-  @override
-  State<_WalletListView> createState() => _WalletListViewState();
-}
-
-class _WalletListViewState extends State<_WalletListView> {
-  final Map<String, bool> _walletSwitches = {};
 
   @override
   Widget build(BuildContext context) {
@@ -95,7 +88,7 @@ class _WalletListViewState extends State<_WalletListView> {
                 duration: const Duration(seconds: 4),
               ),
             );
-            context.read<WalletCubit>().loadWallets(widget.idaccount);
+            context.read<WalletCubit>().loadWallets(idaccount);
           }
         },
         builder: (context, state) {
@@ -104,7 +97,7 @@ class _WalletListViewState extends State<_WalletListView> {
             WalletError(:final message) => _ErrorView(
                 message: message,
                 onRetry: () =>
-                    context.read<WalletCubit>().loadWallets(widget.idaccount),
+                    context.read<WalletCubit>().loadWallets(idaccount),
               ),
             WalletLoaded(:final wallets, :final totalBalance) ||
             WalletOperating(:final wallets, :final totalBalance) ||
@@ -135,7 +128,7 @@ class _WalletListViewState extends State<_WalletListView> {
               children: [
                 _buildOverviewCard(totalBalance),
                 const SizedBox(height: 24),
-                _buildWalletListHeader(context),
+                _buildWalletListHeader(),
                 const SizedBox(height: 12),
                 _buildWalletList(context, wallets),
                 const SizedBox(height: 24),
@@ -196,34 +189,19 @@ class _WalletListViewState extends State<_WalletListView> {
     );
   }
 
-  Widget _buildWalletListHeader(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        const Text(
-          'DANH SÁCH VÍ',
-          style: TextStyle(
-            fontSize: 12,
-            letterSpacing: 0.6,
-            fontWeight: FontWeight.w700,
-            color: AppColors.textSecondary,
-          ),
-        ),
-        GestureDetector(
-          onTap: () {
-            // Action sắp xếp ví
-          },
-          child: const Text(
-            'SẮP XẾP',
-            style: TextStyle(
-              fontSize: 12,
-              letterSpacing: 0.6,
-              fontWeight: FontWeight.bold,
-              color: AppColors.secondary,
-            ),
-          ),
-        ),
-      ],
+  /// Nút "SẮP XẾP" của thiết kế Stitch đã gỡ khỏi đây: `onTap` của nó là một
+  /// thân hàm rỗng, nên nó hiện đầy đủ trên màn hình mà không làm gì. Nó quay
+  /// lại cùng tính năng sắp xếp thật — thứ tự hiện tại đã ổn định (ví mặc định
+  /// rồi tới tên, xem `WalletDao`), nên chỗ này không còn hứa suông nào.
+  Widget _buildWalletListHeader() {
+    return const Text(
+      'DANH SÁCH VÍ',
+      style: TextStyle(
+        fontSize: 12,
+        letterSpacing: 0.6,
+        fontWeight: FontWeight.w700,
+        color: AppColors.textSecondary,
+      ),
     );
   }
 
@@ -231,21 +209,14 @@ class _WalletListViewState extends State<_WalletListView> {
     return Column(
       children: [
         ...wallets.map((w) {
-          final isSwitched = _walletSwitches[w.id] ?? true;
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: _WalletItem(
               wallet: w,
-              isSwitched: isSwitched,
-              onToggleSwitch: (val) {
-                setState(() {
-                  _walletSwitches[w.id] = val;
-                });
-              },
               onTap: () async {
                 final result = await context.push('/wallets/${w.id}/edit');
                 if (result == true && context.mounted) {
-                  context.read<WalletCubit>().loadWallets(widget.idaccount);
+                  context.read<WalletCubit>().loadWallets(idaccount);
                 }
               },
               onDelete: () => _confirmDelete(context, w),
@@ -262,7 +233,7 @@ class _WalletListViewState extends State<_WalletListView> {
       onTap: () async {
         final result = await context.push('/wallets/add');
         if (result == true && context.mounted) {
-          context.read<WalletCubit>().loadWallets(widget.idaccount);
+          context.read<WalletCubit>().loadWallets(idaccount);
         }
       },
       borderRadius: BorderRadius.circular(16),
@@ -320,7 +291,7 @@ class _WalletListViewState extends State<_WalletListView> {
       context.read<WalletCubit>().deleteWallet(
             walletId: wallet.id,
             walletName: wallet.name,
-            idaccount: widget.idaccount,
+            idaccount: idaccount,
           );
     }
   }
@@ -411,15 +382,11 @@ class _WalletListViewState extends State<_WalletListView> {
 
 class _WalletItem extends StatelessWidget {
   final WalletEntity wallet;
-  final bool isSwitched;
-  final ValueChanged<bool>? onToggleSwitch;
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
 
   const _WalletItem({
     required this.wallet,
-    required this.isSwitched,
-    this.onToggleSwitch,
     this.onTap,
     this.onDelete,
   });
@@ -451,7 +418,6 @@ class _WalletItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isNegative = wallet.balance < 0;
-    final bool useSwitch = wallet.type == 'bank';
 
     return InkWell(
       onTap: onTap,
@@ -530,33 +496,30 @@ class _WalletItem extends StatelessWidget {
                 ],
               ),
             ),
-            // Trailing action
-            if (useSwitch)
-              Transform.scale(
-                scale: 0.8,
-                child: Switch(
-                  value: isSwitched,
-                  activeThumbColor: Colors.white,
-                  activeTrackColor: AppColors.secondary,
-                  onChanged: onToggleSwitch,
+            // Trailing action — MỘT bộ hành động cho mọi loại ví.
+            //
+            // Trước đây ví `bank` hiện một `Switch` THAY CHỖ menu này, nên nó
+            // không có đường nào tới "Chỉnh sửa" hay "Xóa ví". Bản thân công
+            // tắc ấy cũng không ghi đi đâu: nó chỉ đổi một `Map` trong `State`,
+            // rời trang là mất. Thiết kế Stitch nói rõ nó là bật/tắt ví, tức
+            // cột `status` — thứ đã có ở cả hai đầu CSDL nhưng client chưa
+            // mang. Công tắc quay lại khi làm tính năng lưu trữ ví, gắn vào
+            // `status` thật, và khi ấy nó nằm CẠNH menu chứ không thay chỗ.
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert,
+                  color: AppColors.textSecondary, size: 20),
+              onSelected: (value) {
+                if (value == 'edit') onTap?.call();
+                if (value == 'delete') onDelete?.call();
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: 'edit', child: Text('Chỉnh sửa')),
+                PopupMenuItem(
+                  value: 'delete',
+                  child: Text('Xóa ví', style: TextStyle(color: Colors.red)),
                 ),
-              )
-            else
-              PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert,
-                    color: AppColors.textSecondary, size: 20),
-                onSelected: (value) {
-                  if (value == 'edit') onTap?.call();
-                  if (value == 'delete') onDelete?.call();
-                },
-                itemBuilder: (_) => const [
-                  PopupMenuItem(value: 'edit', child: Text('Chỉnh sửa')),
-                  PopupMenuItem(
-                    value: 'delete',
-                    child: Text('Xóa ví', style: TextStyle(color: Colors.red)),
-                  ),
-                ],
-              ),
+              ],
+            ),
           ],
         ),
       ),
