@@ -498,6 +498,7 @@ void main() {
             'name': 'Ví ngân hàng',
             'balance': 5000,
             'color': '#123456',
+            'include_in_total': false,
             'update_at': '2026-09-01T10:00:00.000Z',
           },
         ],
@@ -558,6 +559,10 @@ void main() {
       final wallet = await db.walletDao.getById(walletId);
       expect(wallet?.balance, 5000, reason: 'đọc "balance"');
       expect(wallet?.colour, '#123456', reason: 'backend dùng "color"');
+      expect(wallet?.includeInTotal, false,
+          reason: 'Nửa còn lại của cờ này: nó NẰM trong payload đẩy lên nhưng '
+              'nhánh kéo về không đọc, nên máy thứ hai KHÔNG BAO GIỜ biết '
+              'ví nào bị loại khỏi tổng tài sản. Hỏng im lặng, quy tắc 4.');
 
       final category = await db.categoryDao.getById(categoryId);
       expect(category?.name, 'Ăn uống', reason: 'backend dùng "name_category"');
@@ -645,6 +650,43 @@ void main() {
           reason: 'Server im lặng về idgoal nghĩa là CHUA BIET, không phải '
               'HAY XOA. Ghi đè null vào đây là mất liên kết mà không có lỗi '
               'nào báo ra.');
+    });
+    test('hàng server KHÔNG có include_in_total thì cờ cục bộ phải còn nguyên',
+        () async {
+      // Ví này đang bị người dùng cố ý loại khỏi tổng tài sản ở máy hiện tại.
+      // Payload thiếu khoá là trạng thái THẬT của mọi backend chưa trả cột ấy,
+      // và `doiSangBool(null)` trả `false` — nên bản đọc thẳng không "giữ
+      // nguyên", nó ĐỔI cờ. Đây là ca phân biệt được hai cách cài đặt.
+      await db.walletDao.insert(WalletsCompanion(
+        id: const Value(walletId),
+        idaccount: const Value(accountId),
+        name: const Value('Ví tiết kiệm'),
+        type: const Value('saving'),
+        balance: const Value(1000),
+        includeInTotal: const Value(true),
+        syncStatus: const Value('synced'),
+        updatedAt: Value(DateTime(2026, 9, 1)),
+      ));
+
+      client.adapter.pullData = {
+        'wallets': [
+          {
+            'idwallet': walletId,
+            'idaccount': accountId,
+            'name': 'Ví tiết kiệm',
+            'balance': 1000,
+            // KHÔNG có khoá 'include_in_total' — đúng như hàng cũ trên server.
+            'update_at': '2026-09-02T10:00:00.000Z',
+          },
+        ],
+      };
+
+      await runSync();
+
+      expect((await db.walletDao.getById(walletId))?.includeInTotal, true,
+          reason: 'Server im lặng về cờ này nghĩa là CHƯA BIẾT, không phải '
+              'HÃY LOẠI. Ghi `false` vào đây là lặng lẽ cộng lại vào tổng tài '
+              'sản một ví mà người dùng đã cố ý loại ra.');
     });
     test('cờ đúng/sai của mục tiêu đọc được ở MỌI dạng backend có thể gửi',
         () async {

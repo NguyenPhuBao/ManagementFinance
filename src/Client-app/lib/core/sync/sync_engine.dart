@@ -480,6 +480,13 @@ class SyncEngine {
                 colour: Value(
                     (w['color'] ?? w['colour'])?.toString() ?? '#4CAF50'),
                 isDefault: Value(doiSangBool(w['is_default'])),
+                // Server im lặng về cờ này nghĩa là CHƯA BIẾT, không phải
+                // "hãy loại ví khỏi tổng": `doiSangBool(null)` trả `false`, nên
+                // đọc thẳng sẽ lặng lẽ tắt cờ của mọi ví ngay lượt pull đầu
+                // tiên gặp một payload thiếu khoá — cùng bài học với `idgoal`.
+                includeInTotal: w['include_in_total'] != null
+                    ? Value(doiSangBool(w['include_in_total']))
+                    : const Value.absent(),
                 isDeleted: Value(w['delete_at'] != null),
                 deletedAt: Value(_deletedAtFrom(w['delete_at'])),
                 syncStatus: const Value('synced'),
