@@ -89,16 +89,34 @@ async function saveRefreshToken(token, payload, req) {
 }
 
 const authService = {
+  // Helper: Kiểm tra tính hợp lệ của cặp Username + Password
+  // - Cấm trùng đồng thời cả Username và Password (so khớp với mọi account trong hệ thống bằng bcrypt.compare).
+  // - Cho phép nếu trùng Username nhưng khác Password, hoặc trùng Password nhưng khác Username.
+  async validateUsernamePasswordPair(username, password) {
+    if (!username || !password) return;
+    const accounts = await authRepository.findAccountsByUsername(username.trim());
+    if (!accounts || accounts.length === 0) return;
+
+    for (const acc of accounts) {
+      const isMatch = await bcrypt.compare(password, acc.password);
+      if (isMatch) {
+        throw Object.assign(
+          new Error("Tên đăng nhập và mật khẩu này đã tồn tại trong hệ thống. Vui lòng thay đổi tên đăng nhập hoặc mật khẩu khác."),
+          { statusCode: 400 }
+        );
+      }
+    }
+  },
+
   // ---------- REGISTER OTP: SEND OTP ----------
   async sendRegisterOtp(data) {
-    // 1. Kiểm tra username đã tồn tại chưa
-    const existingUsername = await authRepository.findAccountByUsername(data.username);
-    if (existingUsername) {
-      throw Object.assign(new Error("Username đã được sử dụng"), { statusCode: 409 });
+    // 1. Kiểm tra cặp username + password (nếu có password)
+    if (data.password) {
+      await this.validateUsernamePasswordPair(data.username, data.password);
     }
 
-    // 2. Kiểm tra email đã tồn tại chưa
-    const existingEmail = await authRepository.findAccountByEmail(data.email);
+    // 2. Kiểm tra email đã tồn tại ở tài khoản ĐANG HOẠT ĐỘNG chưa
+    const existingEmail = await authRepository.findActiveAccountByEmail(data.email);
     if (existingEmail) {
       throw Object.assign(new Error("Email đã được sử dụng"), { statusCode: 409 });
     }
@@ -136,13 +154,12 @@ const authService = {
     // 3. Đánh dấu OTP đã sử dụng
     await authRepository.markOtpUsed(record.id_otp);
 
-    // 4. Kiểm tra lại race condition
-    const existingUsername = await authRepository.findAccountByUsername(data.username);
-    if (existingUsername) {
-      throw Object.assign(new Error("Username đã được sử dụng"), { statusCode: 409 });
+    // 4. Kiểm tra lại race condition cho cặp (username + password) và active email
+    if (data.password) {
+      await this.validateUsernamePasswordPair(data.username, data.password);
     }
 
-    const existingEmail = await authRepository.findAccountByEmail(data.email);
+    const existingEmail = await authRepository.findActiveAccountByEmail(data.email);
     if (existingEmail) {
       throw Object.assign(new Error("Email đã được sử dụng"), { statusCode: 409 });
     }
@@ -199,14 +216,11 @@ const authService = {
   async register(data, req) {
     if (!req) req = {};
 
-    // 1. Kiem tra username da ton tai
-    const existingUsername = await authRepository.findAccountByUsername(data.username);
-    if (existingUsername) {
-      throw Object.assign(new Error("Username da duoc su dung"), { statusCode: 409 });
-    }
+    // 1. Kiem tra cap username + password
+    await this.validateUsernamePasswordPair(data.username, data.password);
 
-    // 2. Kiem tra email da ton tai
-    const existingEmail = await authRepository.findAccountByEmail(data.email);
+    // 2. Kiem tra email da ton tai o tai khoan active chua
+    const existingEmail = await authRepository.findActiveAccountByEmail(data.email);
     if (existingEmail) {
       throw Object.assign(new Error("Email da duoc su dung"), { statusCode: 409 });
     }
@@ -261,17 +275,31 @@ const authService = {
 
   async login(username, password, req) {
     if (!req) req = {};
-    const account = await authRepository.findAccountByUsername(username);
-    if (!account) throw Object.assign(new Error("Sai tai khoan hoac mat khau"), { statusCode: 401 });
+    const accounts = await authRepository.findAccountsByUsername(username);
+    if (!accounts || accounts.length === 0) {
+      throw Object.assign(new Error("Sai tai khoan hoac mat khau"), { statusCode: 401 });
+    }
 
+    // So khớp mật khẩu qua bcrypt.compare với các account có username tương ứng
+    let matchedAccount = null;
+    for (const acc of accounts) {
+      const isMatch = await bcrypt.compare(password, acc.password);
+      if (isMatch) {
+        matchedAccount = acc;
+        break;
+      }
+    }
+
+    if (!matchedAccount) {
+      throw Object.assign(new Error("Sai tai khoan hoac mat khau"), { statusCode: 401 });
+    }
+
+    const account = matchedAccount;
     let pendingDeleteCancelled = false;
 
     if (account.status === 'PendingDelete') {
       if (account.delete_at && account.delete_at > new Date()) {
         // Còn trong 30 ngày → cho đăng nhập, tự động hủy yêu cầu xóa
-        const isMatch = await bcrypt.compare(password, account.password);
-        if (!isMatch) throw Object.assign(new Error("Sai tai khoan hoac mat khau"), { statusCode: 401 });
-
         await authRepository.cancelDeletion(account.idaccount);
         pendingDeleteCancelled = true;
         logger.info("PendingDelete account recovered on login", { username: account.username });
@@ -282,15 +310,10 @@ const authService = {
           { statusCode: 403 }
         );
       }
-    } else if (account.status === 'Deleted') {
-      throw Object.assign(new Error("Tài khoản đã bị xóa vĩnh viễn"), { statusCode: 403 });
+    } else if (account.status === 'Deleted' || account.delete_at !== null) {
+      throw Object.assign(new Error("Tài khoản đã bị xóa khỏi hệ thống"), { statusCode: 403 });
     } else if (account.status !== 'Active') {
       throw Object.assign(new Error("Tai khoan da bi vo hieu hoa"), { statusCode: 403 });
-    }
-
-    if (!pendingDeleteCancelled) {
-      const isMatch = await bcrypt.compare(password, account.password);
-      if (!isMatch) throw Object.assign(new Error("Sai tai khoan hoac mat khau"), { statusCode: 401 });
     }
 
     const payload = {

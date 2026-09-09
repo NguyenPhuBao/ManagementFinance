@@ -112,9 +112,100 @@ const adminRepository = {
     });
   },
 
-  async getAllCategories() {
+  async softDeleteUser(iduser) {
+    const user = await prisma.user.findUnique({
+      where: { iduser },
+      select: {
+        iduser: true,
+        idaccount: true,
+        account: { select: { idaccount: true, idrole: true, status: true, username: true } },
+      },
+    });
+    if (!user) return null;
+
+    const idaccount = user.idaccount;
+    const now = new Date();
+
+    return prisma.$transaction(async (tx) => {
+      // 1. Soft delete account
+      const updatedAccount = await tx.account.update({
+        where: { idaccount },
+        data: {
+          status: 'Deleted',
+          delete_at: now,
+          update_at: now,
+        },
+      });
+
+      // 2. Soft delete user
+      const updatedUser = await tx.user.update({
+        where: { iduser },
+        data: {
+          delete_at: now,
+          update_at: now,
+        },
+      });
+
+      // 3. Toàn bộ ví liên quan ngừng hoạt động (status = 'Inactive')
+      await tx.wallet.updateMany({
+        where: { idaccount, delete_at: null },
+        data: {
+          status: 'Inactive',
+          update_at: now,
+        },
+      });
+
+      // 4. Dữ liệu ngân hàng không bị xóa, ngắt kết nối (connect_status = 'Disconnected')
+      await tx.bank_account.updateMany({
+        where: { idaccount, delete_at: null },
+        data: {
+          connect_status: 'Disconnected',
+          update_at: now,
+        },
+      });
+
+      // 5. Thu hồi toàn bộ token ngay lập tức (status = true)
+      await tx.refreshtoken.updateMany({
+        where: { idaccount },
+        data: {
+          status: true,
+          update_at: now,
+        },
+      });
+
+      return {
+        user: updatedUser,
+        account: updatedAccount,
+      };
+    });
+  },
+
+  async getAllCategories(filters = {}) {
+    const where = { delete_at: null };
+
+    if (filters.created_by && filters.created_by !== 'all') {
+      const createdByNum = Number(filters.created_by);
+      if (!isNaN(createdByNum) && String(filters.created_by).trim() !== '') {
+        where.create_by = createdByNum;
+      } else {
+        where.account = { username: { equals: String(filters.created_by).trim(), mode: 'insensitive' } };
+      }
+    }
+
+    if (filters.keyword && typeof filters.keyword === 'string' && filters.keyword.trim()) {
+      where.keyword = { contains: filters.keyword.trim(), mode: 'insensitive' };
+    }
+
+    if (filters.is_default !== undefined && filters.is_default !== 'all' && filters.is_default !== '') {
+      where.is_default = filters.is_default === 'yes' || filters.is_default === 'true' || filters.is_default === true;
+    }
+
+    if (filters.classify && filters.classify !== 'all' && filters.classify !== '') {
+      where.classify = filters.classify;
+    }
+
     return prisma.category.findMany({
-      where: { delete_at: null },
+      where,
       select: {
         idcategory: true,
         create_by: true,

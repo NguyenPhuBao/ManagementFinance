@@ -21,9 +21,10 @@ async function isAccountValid(idaccount) {
   try {
     const account = await prisma.account.findUnique({
       where: { idaccount: numId },
-      select: { idaccount: true, status: true },
+      select: { idaccount: true, status: true, delete_at: true },
     });
-    const valid = !!account && account.status !== 'inactive';
+    const statusLower = account?.status ? account.status.toLowerCase() : '';
+    const valid = !!account && statusLower !== 'inactive' && statusLower !== 'deleted' && !account.delete_at;
     accountCache.set(numId, { valid, timestamp: now });
     return valid;
   } catch (error) {
@@ -58,7 +59,10 @@ async function authenticate(req, res, next) {
 
   const valid = await isAccountValid(decoded.idaccount);
   if (!valid) {
-    return ResponseHandler.unauthorized(res, 'Account no longer exists or is inactive');
+    return ResponseHandler.unauthorized(res, 'Account no longer exists, is inactive, or has been deleted', {
+      code: 'ACCOUNT_DELETED',
+      idaccount: Number(decoded.idaccount),
+    });
   }
 
   req.user = decoded;

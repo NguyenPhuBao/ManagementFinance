@@ -236,6 +236,9 @@ Phần này đặc tả chi tiết toàn bộ các quy tắc ràng buộc, chố
     * **Cột ràng buộc:** `UNIQUE (lower(regexp_replace(btrim(normalize("NameCategory", NFC)), '\s+', ' ', 'g')))`
     * **Điều kiện lọc:** `WHERE "Is_default" = TRUE AND "Delete_at" IS NULL`
     * **Quy tắc:** Toàn bộ danh mục mẫu hệ thống không được trùng tên nhau.
+* **Xóa mềm không giữ chỗ (Soft-delete Re-creation):**
+  * Khi một danh mục đã bị xóa mềm (`Delete_at IS NOT NULL`), người tạo (`Create_by` / `Idaccount`) hoàn toàn **được phép tạo mới một danh mục khác có cùng tên** (kể cả cùng hay khác loại thu/chi/nhóm).
+  * Do các Partial Unique Index đều có điều kiện `WHERE "Delete_at" IS NULL`, các bản ghi đã xóa mềm không giữ chỗ và không gây xung đột khi tạo lại.
 * **Cho phép trùng tên giữa người dùng và hệ thống:**
   * Người dùng **được phép** sở hữu danh mục cá nhân trùng tên với danh mục mẫu hệ thống (đây là điều kiện cốt lõi để mô hình nhân bản Template hoạt động).
   * Trigger kiểm tra trùng chéo cũ (`trg_category_name_cross_default`) đã chính thức được gỡ bỏ khỏi CSDL.
@@ -474,3 +477,65 @@ Bộ máy chống trùng lặp giao dịch (Deduplication Engine) vận hành th
 ### 10.3. Phân quyền vai trò (Role-Based Access Control)
 * `idrole = 1` (**Admin**): Quản trị người dùng, danh mục mặc định toàn hệ thống, xem audit logs, cấu hình hệ thống.
 * `idrole = 2` (**User**): Chỉ có quyền truy cập, đồng bộ và thao tác trên dữ liệu thuộc quyền sở hữu của chính tài khoản đó (`idaccount`).
+
+---
+
+## 👤 11. QUY TẮC QUẢN LÝ TÀI KHOẢN, NGƯỜI DÙNG & XÓA MỀM (ACCOUNT & USER MANAGEMENT RULES)
+
+### 11.1. Điều kiện hiển thị nút Xóa trên Giao diện Quản trị (Admin-web)
+* Trên bảng quản lý người dùng (`UserListPage.jsx`):
+  * Người dùng đang ở trạng thái **Hoạt động (`active`)**: Cột Hành động chỉ hiển thị nút **"Vô hiệu hóa"** và icon xem chi tiết.
+  * Người dùng đang ở trạng thái **Vô hiệu hóa (`inactive` / "Ngừng hoạt động")**: Cột Hành động hiển thị thêm nút **"Xóa"** (màu đỏ) cạnh nút **"Kích hoạt"**.
+  * Khi bấm "Xóa": Mở modal cảnh báo rõ ràng các tác động (xóa mềm tài khoản, ngừng hoạt động toàn bộ ví, ngắt kết nối ngân hàng, thu hồi phiên làm việc) trước khi thực hiện.
+
+### 11.2. Quy trình Xóa mềm 5 bước trong Transaction (Backend Soft-Delete Standard)
+Khi xóa một người dùng (`DELETE /api/admin/deleteuser/:id` hoặc `DELETE /api/admin/users/:id`), toàn bộ thao tác được bọc trong một Database Transaction (`prisma.$transaction`) tuân thủ nghiêm ngặt 5 bước:
+1. **Xóa mềm bảng `account`**: Cập nhật `status = 'Inactive'`, `delete_at = now()`, `update_at = now()`.
+2. **Xóa mềm bảng `user`**: Cập nhật `delete_at = now()`, `update_at = now()`.
+3. **Ngừng hoạt động toàn bộ Ví liên quan**: Toàn bộ ví của tài khoản chuyển sang `status = 'Inactive'`, `update_at = now()`. Tuyệt đối không xóa bản ghi ví để bảo toàn tính toàn vẹn của lịch sử giao dịch.
+4. **Ngắt kết nối tài khoản Ngân hàng**: Dữ liệu tài khoản ngân hàng liên kết **không bị xóa**, chỉ cập nhật trạng thái liên kết sang `connect_status = 'Disconnected'`, `update_at = now()`. Nếu sau này người dùng liên kết lại thì có thể kích hoạt kết nối lại bình thường.
+5. **Thu hồi toàn bộ Token ngay lập tức**:
+   * Cập nhật toàn bộ Refresh Token trong bảng `refreshtoken`: `status = true` (đã thu hồi), `update_at = now()`.
+   * Xóa bộ nhớ cache xác thực tức thì qua `invalidateAccountCache(idaccount)`.
+
+### 11.3. Cơ chế Cưỡng chế Đăng xuất & Hàng đợi 24/24 (Force Logout & Offline Parity)
+* **Kênh Real-time (Khi người dùng đang Online)**:
+  * Backend phát ngay sự kiện `account.force_logout` qua Socket.IO tới phòng cá nhân `account_${idaccount}` với payload: `{ idaccount, reason: 'ACCOUNT_DELETED', message: 'Tài khoản của bạn đã bị ngừng hoạt động hoặc xóa bởi quản trị viên.' }`.
+  * Máy chủ ngắt kết nối socket của client ngay lập tức (`io.in(room).disconnectSockets(true)`).
+* **Hàng đợi 24/24 (Khi người dùng mất mạng / Offline)**:
+  * Trạng thái xóa mềm được lưu cố định và vĩnh viễn (24/24) tại CSDL (`account.delete_at IS NOT NULL`).
+  * Nhận diện khi Client-app có kết nối internet trở lại (thông qua `ConnectionMonitor` / `Connectivity` trên Client-app kích hoạt kết nối lại):
+    * **Qua Socket.io Handshake**: Middleware bắt tay từ chối kết nối kèm mã lỗi `ACCOUNT_DELETED`.
+    * **Qua HTTP API (`authenticate` middleware)**: Mọi yêu cầu HTTP (như sync, lấy thông tin tài khoản) đều bị từ chối với mã HTTP 401 Unauthorized kèm body chuẩn hóa:
+      ```json
+      {
+        "success": false,
+        "statusCode": 401,
+        "code": "ACCOUNT_DELETED",
+        "message": "Tài khoản của bạn đã bị ngừng hoạt động hoặc xóa bởi quản trị viên."
+      }
+      ```
+  * **Trách nhiệm của Client-app**:
+    * Khi nhận được sự kiện Socket hoặc mã lỗi `ACCOUNT_DELETED`:
+      1. So khớp chính xác `targetIdAccount == currentUserIdAccount` (tránh đăng xuất nhầm nhóm người dùng khác).
+      2. Xóa sạch toàn bộ token trong `FlutterSecureStorage`.
+      3. Cưỡng chế điều hướng về màn hình Đăng nhập (`LoginScreen`) qua `AuthBloc`.
+      4. Hiển thị thông báo lý do tài khoản đã bị ngừng hoạt động hoặc xóa.
+      5. Ngăn chặn người dùng đăng nhập lại (API Login sẽ từ chối tài khoản có `delete_at !== null` với mã HTTP 403).
+
+### 11.4. Quy tắc Ràng buộc Duy nhất khi Đăng ký mới (Registration Uniqueness Rules)
+* **Cho phép dùng lại Email & Số điện thoại của tài khoản đã xóa mềm**:
+  * Các chỉ mục duy nhất trên Email (`account_Email_key` và `user_Email_key`) được chuyển đổi thành **Partial Unique Index** lọc:  
+    `WHERE ("Delete_at" IS NULL)`
+  * Khi tài khoản cũ đã bị xóa mềm (`Delete_at IS NOT NULL`), email và số điện thoại đó hoàn toàn được phép tái sử dụng để tạo một tài khoản mới.
+* **Quy tắc cặp `(Username + Password)`**:
+  * Cấm trùng đồng thời cả **Tên đăng nhập (Username)** và **Mật khẩu (Password)** với bất kỳ tài khoản nào trong hệ thống (kể cả tài khoản cũ).
+  * **Được phép trùng 1 trong 2**:
+    * Trùng `Username` nhưng khác `Password` $\rightarrow$ **Hợp lệ, cho phép tạo!**
+    * Trùng `Password` nhưng khác `Username` $\rightarrow$ **Hợp lệ, cho phép tạo!**
+  * **Cơ chế hiện thực**: Vì mật khẩu trong CSDL được băm bằng thuật toán `bcrypt` có salt ngẫu nhiên, chỉ mục tĩnh của CSDL không thể so sánh. Ràng buộc `(Username + Password)` được kiểm soát tại tầng ứng dụng (`auth.service.validateUsernamePasswordPair`) bằng `bcrypt.compare()` đối chiếu với tất cả các tài khoản có username trùng khớp.
+* **Đăng nhập đa tài khoản cùng Username**:
+  * Khi đăng nhập bằng `(username, password)`: Backend tìm kiếm danh sách các tài khoản có cùng username, dùng `bcrypt.compare` để tìm tài khoản khớp đúng mật khẩu của người dùng.
+  * Nếu tài khoản khớp đó đang bị xóa mềm hoặc vô hiệu hóa $\rightarrow$ Từ chối đăng nhập với mã HTTP 403.
+  * Nếu tài khoản khớp đang hoạt động (`Active`) $\rightarrow$ Đăng nhập thành công và cấp phát token.
+

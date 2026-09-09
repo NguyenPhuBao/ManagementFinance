@@ -21,11 +21,10 @@ const CategoryPage = () => {
       syncAlert: false,
   });
   const [editingCategory, setEditingCategory] = useState(null);
-  const [categoryToDelete, setCategoryToDelete] = useState(null);
   const [processing, setProcessing] = useState({ isProcessing: false, text: '' });
-
   const [form, setForm] = useState({ name: '', isDefault: 'yes', type: 'expense', keyword: '' });
-  const [filter, setFilter] = useState({ isDefault: 'all', type: 'all' });
+  const [filter, setFilter] = useState({ isDefault: 'all', type: 'all', createdBy: 'all', keyword: '' });
+  const [users, setUsers] = useState([]);
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -38,7 +37,13 @@ const CategoryPage = () => {
       c.name.toLowerCase().includes(search.toLowerCase());
     const matchDefault = (filter.isDefault === 'all' || (filter.isDefault === 'yes' ? c.isDefault : !c.isDefault));
     const matchType = (filter.type === 'all' || c.type === filter.type);
-    return matchSearch && matchDefault && matchType;
+    const matchCreatedBy = filter.createdBy === 'all' ||
+      (filter.createdBy === '1' && (c.created_by_id === 1 || c.isDefault)) ||
+      String(c.created_by_id) === String(filter.createdBy) ||
+      c.created_by_username === filter.createdBy;
+    const matchKeyword = !filter.keyword || !filter.keyword.trim() ||
+      (c.keyword && c.keyword.toLowerCase().includes(filter.keyword.trim().toLowerCase()));
+    return matchSearch && matchDefault && matchType && matchCreatedBy && matchKeyword;
   });
 
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;
@@ -50,9 +55,24 @@ const CategoryPage = () => {
     setCurrentPage(1);
   }, [search, filter]);
 
-  const fetchCategories = async () => {
+  const fetchCategories = async (filterOverride = filter) => {
     try {
-      const res = await adminApi.getCategories();
+      setLoading(true);
+      const params = {};
+      if (filterOverride.isDefault && filterOverride.isDefault !== 'all') {
+        params.is_default = filterOverride.isDefault === 'yes';
+      }
+      if (filterOverride.type && filterOverride.type !== 'all') {
+        params.classify = TYPE_TO_CLASSIFY[filterOverride.type];
+      }
+      if (filterOverride.createdBy && filterOverride.createdBy !== 'all') {
+        params.created_by = filterOverride.createdBy;
+      }
+      if (filterOverride.keyword && filterOverride.keyword.trim()) {
+        params.keyword = filterOverride.keyword.trim();
+      }
+
+      const res = await adminApi.getCategories(params);
       const mapped = res.data.map((c) => ({
         id: c.id,
         name: c.name,
@@ -60,17 +80,24 @@ const CategoryPage = () => {
         classify: c.classify,
         isDefault: c.is_default,
         keyword: c.keyword || '',
+        created_by_id: c.created_by_id,
+        created_by_username: c.created_by,
         created_by: c.created_by_name || c.created_by || (c.is_default ? 'Hệ thống' : 'Người dùng'),
-        created_at: c.created_at,
+        created_at: c.create_at,
       }));
       setCategories(mapped);
     } catch (err) {
       console.error('Lỗi tải danh mục:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchCategories().finally(() => setLoading(false));
+    fetchCategories();
+    adminApi.getUsers().then(res => {
+      setUsers(res.data || []);
+    }).catch(err => console.error('Lỗi tải danh sách người dùng:', err));
   }, []);
 
   const toggleModal = (modalName, isOpen) => {
@@ -302,8 +329,14 @@ const CategoryPage = () => {
                           onChange={(e) => setSearch(e.target.value)}
                       />
                   </div>
-                  <button className="px-4 py-2 border border-outline rounded text-on-surface font-label-md text-label-md hover:bg-surface-container-low transition-colors flex items-center gap-2 cursor-pointer" onClick={() => toggleModal('filter', true)}>
+                  <button 
+                      className="px-4 py-2 border border-outline rounded text-on-surface font-label-md text-label-md hover:bg-surface-container-low transition-colors flex items-center gap-2 cursor-pointer relative" 
+                      onClick={() => toggleModal('filter', true)}
+                  >
                       <span className="material-symbols-outlined text-[18px]">filter_alt</span>Lọc
+                      {(filter.isDefault !== 'all' || filter.type !== 'all' || filter.createdBy !== 'all' || (filter.keyword && filter.keyword.trim())) && (
+                        <span className="w-2 h-2 rounded-full bg-primary absolute top-2 right-2"></span>
+                      )}
                   </button>
                   <button className="px-4 py-2 border rounded font-label-md text-label-md transition-colors flex items-center gap-2 bg-primary text-white border-transparent hover:bg-surface-tint shadow-sm cursor-pointer" onClick={startAdd}>
                       Thêm danh mục mới
@@ -530,7 +563,7 @@ const CategoryPage = () => {
       {/* Filter Modal */}
       {modals.filter && (
           <div className="fixed inset-0 bg-on-background/50 flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-lg w-full max-w-sm shadow-xl overflow-hidden animate-in fade-in zoom-in duration-200">
+              <div className="bg-white rounded-lg w-full max-w-md shadow-xl overflow-hidden animate-in fade-in zoom-in duration-200">
                   <div className="px-6 py-4 border-b border-outline-variant flex items-center justify-between">
                       <h3 className="font-headline-sm text-on-surface m-0">Lọc danh mục</h3>
                       <button className="text-on-surface-variant hover:text-on-surface cursor-pointer" onClick={() => toggleModal('filter', false)}>
@@ -541,7 +574,11 @@ const CategoryPage = () => {
                       <div className="grid grid-cols-2 gap-4 items-start">
                           <div>
                               <label className="block font-label-md text-on-surface mb-1">Mặc định</label>
-                              <select value={filter.isDefault} onChange={e => setFilter({...filter, isDefault: e.target.value})} className="w-full px-3 py-2 border border-outline-variant rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md bg-white h-[40px] cursor-pointer">
+                              <select 
+                                  value={filter.isDefault} 
+                                  onChange={e => setFilter(prev => ({...prev, isDefault: e.target.value}))} 
+                                  className="w-full px-3 py-2 border border-outline-variant rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md bg-white h-[40px] cursor-pointer"
+                              >
                                   <option value="all">Tất cả</option>
                                   <option value="yes">Yes</option>
                                   <option value="no">No</option>
@@ -549,7 +586,11 @@ const CategoryPage = () => {
                           </div>
                           <div>
                               <label className="block font-label-md text-on-surface mb-1">Loại danh mục</label>
-                              <select value={filter.type} onChange={e => setFilter({...filter, type: e.target.value})} className="w-full px-3 py-2 border border-outline-variant rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md bg-white h-[40px] cursor-pointer">
+                              <select 
+                                  value={filter.type} 
+                                  onChange={e => setFilter(prev => ({...prev, type: e.target.value}))} 
+                                  className="w-full px-3 py-2 border border-outline-variant rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md bg-white h-[40px] cursor-pointer"
+                              >
                                   <option value="all">Tất cả</option>
                                   {Object.keys(TRANSACTION_TYPE_LABELS).map(key => (
                                       <option key={key} value={key}>{TRANSACTION_TYPE_LABELS[key]}</option>
@@ -557,10 +598,57 @@ const CategoryPage = () => {
                               </select>
                           </div>
                       </div>
+
+                      <div className="grid grid-cols-2 gap-4 items-start">
+                          <div>
+                              <label className="block font-label-md text-on-surface mb-1">Người tạo</label>
+                              <select 
+                                  value={filter.createdBy} 
+                                  onChange={e => setFilter(prev => ({...prev, createdBy: e.target.value}))} 
+                                  className="w-full px-3 py-2 border border-outline-variant rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md bg-white h-[40px] cursor-pointer text-ellipsis overflow-hidden"
+                              >
+                                  <option value="all">Tất cả</option>
+                                  <option value="1">Hệ thống (Admin)</option>
+                                  {users.map(u => (
+                                      <option key={u.id || u.idaccount} value={u.idaccount || u.username}>
+                                          {u.fullname ? `${u.fullname} (@${u.username})` : u.username}
+                                      </option>
+                                  ))}
+                              </select>
+                          </div>
+                          <div>
+                              <label className="block font-label-md text-on-surface mb-1">Từ khóa (Keyword)</label>
+                              <input 
+                                  type="text" 
+                                  placeholder="Nhập từ khóa..."
+                                  value={filter.keyword} 
+                                  onChange={e => setFilter(prev => ({...prev, keyword: e.target.value}))} 
+                                  className="w-full px-3 py-2 border border-outline-variant rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md bg-white h-[40px]"
+                              />
+                          </div>
+                      </div>
                   </div>
                   <div className="px-6 py-4 bg-surface-bright border-t border-outline-variant flex justify-end gap-3">
-                      <button className="px-4 py-2 border border-outline rounded text-on-surface font-label-md hover:bg-surface-container-low transition-colors cursor-pointer" onClick={() => { setFilter({ isDefault: 'all', type: 'all' }); toggleModal('filter', false); }}>Đặt lại</button>
-                      <button className="px-4 py-2 bg-primary text-white rounded font-label-md hover:bg-surface-tint transition-colors cursor-pointer" onClick={() => toggleModal('filter', false)}>Áp dụng</button>
+                      <button 
+                          className="px-4 py-2 border border-outline rounded text-on-surface font-label-md hover:bg-surface-container-low transition-colors cursor-pointer" 
+                          onClick={() => { 
+                              const reset = { isDefault: 'all', type: 'all', createdBy: 'all', keyword: '' };
+                              setFilter(reset); 
+                              toggleModal('filter', false);
+                              fetchCategories(reset);
+                          }}
+                      >
+                          Đặt lại
+                      </button>
+                      <button 
+                          className="px-4 py-2 bg-primary text-white rounded font-label-md hover:bg-surface-tint transition-colors cursor-pointer" 
+                          onClick={() => {
+                              toggleModal('filter', false);
+                              fetchCategories(filter);
+                          }}
+                      >
+                          Áp dụng
+                      </button>
                   </div>
               </div>
           </div>

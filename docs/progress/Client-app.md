@@ -269,3 +269,63 @@ Client-app duy trì kết nối Socket.io liên tục với Backend để nhận
 | **AI Classify** | `POST` | `/api/ai/classify/single` | Gợi ý danh mục cho 1 giao dịch lẻ (SMS, Nhập tay) |
 | **AI Classify** | `POST` | `/api/ai/classify/batch` | Gợi ý danh mục hàng loạt cho các món hàng |
 | **AI Classify** | `POST` | `/api/ai/classify/feedback` | Ghi nhận phản hồi người dùng khi đổi danh mục để AI tự học |
+
+---
+
+## 10. Hướng Dẫn Triển Khai: Cơ Chế Nhận Diện Internet & Xử Lý Cưỡng Chế Đăng Xuất (Force Logout)
+
+Để đáp ứng đầy đủ yêu cầu nghiệp vụ quản lý tài khoản từ Backend (khi tài khoản bị Admin xóa mềm hoặc vô hiệu hóa), **Client-app** cần triển khai cơ chế nhận diện mạng và xử lý cưỡng chế đăng xuất theo đặc tả sau:
+
+### 10.1. Cơ chế Nhận Diện Kết Nối Mỗi Khi Có Internet
+* Sử dụng `ConnectionMonitor` (kết hợp `connectivity_plus: ^6.1.1`):
+  * Lắng nghe luồng `Connectivity().onConnectivityChanged`.
+  * Khi trạng thái mạng chuyển từ offline sang online (`results.any((r) => r != ConnectivityResult.none)`):
+    1. Tự động kích hoạt kết nối lại kênh **Socket.IO Client**.
+    2. Gửi request kiểm tra phiên / đồng bộ dữ liệu (`GET /api/auth/me` hoặc `GET /api/sync/pull`).
+
+### 10.2. Lắng Nghe Sự Kiện Socket Real-Time (`account.force_logout`)
+* Khi Socket.IO kết nối và tham gia phòng cá nhân, đăng ký lắng nghe sự kiện:
+  ```dart
+  socket.on('account.force_logout', (data) {
+    // data: { 'idaccount': 28, 'reason': 'ACCOUNT_DELETED', 'message': '...' }
+    final int? targetIdAccount = data['idaccount'] as int?;
+    
+    // BẮT BUỘC: Kiểm tra đúng ID tài khoản đang đăng nhập trên thiết bị
+    // Tránh đăng xuất nhầm hoặc ảnh hưởng tới các tài khoản khác
+    if (targetIdAccount != null && targetIdAccount == currentUserIdAccount) {
+      _executeForceLogout(data['message'] ?? 'Tài khoản của bạn đã bị ngừng hoạt động.');
+    }
+  });
+  ```
+
+### 10.3. Xử Lý Mã Lỗi `ACCOUNT_DELETED` trong Dio Interceptor (`auth_interceptor.dart`)
+* Trong `onError` của Dio:
+  * Khi nhận phản hồi HTTP `401 Unauthorized` từ bất kỳ request nào:
+    * Kiểm tra payload phản hồi:
+      ```dart
+      if (err.response?.statusCode == 401) {
+        final resData = err.response?.data;
+        if (resData is Map && resData['code'] == 'ACCOUNT_DELETED') {
+          // Bỏ qua thử làm mới token (không gọi /auth/refresh)
+          _executeForceLogout(resData['message'] ?? 'Tài khoản của bạn đã bị xóa hoặc ngưng hoạt động.');
+          return;
+        }
+      }
+      ```
+
+### 10.4. Luồng Thực Thi Cưỡng Chế Đăng Xuất (`_executeForceLogout`)
+1. **Xóa dữ liệu bảo mật cục bộ**:
+   * Xóa sạch các khóa lưu trữ trong `FlutterSecureStorage`:
+     ```dart
+     await secureStorage.delete(key: AppConstants.accessTokenKey);
+     await secureStorage.delete(key: AppConstants.refreshTokenKey);
+     ```
+2. **Cập nhật State Management**:
+   * Phát sự kiện đăng xuất vào `AuthBloc`: `context.read<AuthBloc>().add(AuthLoggedOut())`.
+   * Chuyển trạng thái ứng dụng về `Unauthenticated`.
+3. **Điều hướng & Giao diện người dùng**:
+   * Sử dụng `go_router` điều hướng cưỡng chế về màn hình Đăng nhập (`/login`).
+   * Hiển thị thông báo dạng `Dialog` hoặc `SnackBar` cảnh báo:
+     > *"Tài khoản của bạn đã bị ngừng hoạt động hoặc xóa bởi Quản trị viên. Bạn không thể tiếp tục truy cập vào hệ thống."*
+4. **Ngăn chặn đăng nhập lại**:
+   * Khi người dùng cố gắng đăng nhập lại với thông tin cũ, Backend sẽ từ chối với mã HTTP 403 Forbidden (*"Tài khoản đã bị xóa khỏi hệ thống"*).

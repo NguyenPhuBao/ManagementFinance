@@ -773,9 +773,19 @@ Admin-web → PATCH /api/admin/updatestatus/:id
     → getUserById() → kiểm tra tồn tại + current status
     → updateAccountStatus(id, newStatus) [DB: UPDATE account SET status]
     → 200 OK {previousStatus, newStatus}
+
+Admin-web → DELETE /api/admin/deleteuser/:id (hoặc /api/admin/users/:id)
+  → authenticate + authorize('admin')
+  → adminController.deleteUser()
+  → adminService.deleteUser(id)
+    → getUserById() → kiểm tra tồn tại, cấm xóa tài khoản Admin (idrole=1)
+    → softDeleteUser(iduser) [DB Transaction 5 bước: account deleted/delete_at, user delete_at, all wallets inactive, bank disconnected, all refreshtokens revoked]
+    → invalidateAccountCache(idaccount)
+    → emitForceLogout(idaccount) [Socket.IO → account_${idaccount}]
+    → 200 OK {message, iduser, idaccount, username}
 ```
 
-> Admin module hiện tại chưa emit event. Sau này có thể emit `user.status.changed` → Notification Worker → Socket.IO → admin-web.
+> **Cơ chế Force Logout**: Admin module phát sự kiện `account.force_logout` qua Socket.IO tới phòng `account_${idaccount}` của người dùng để cưỡng chế đăng xuất ngay lập tức nếu online. Nếu offline, trạng thái xóa lưu cố định 24/24 trong DB; khi thiết bị có internet kết nối lại, Socket handshake và HTTP auth middleware trả về mã lỗi `ACCOUNT_DELETED` (HTTP 401) để Client-app xóa token và chuyển hướng về màn hình Đăng nhập.
 
 **Module Sync** — Đồng bộ (REST API + Emit Event)
 
@@ -2551,6 +2561,41 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
 - **3. Kết quả kiểm thử**:
   - API `getRecentActivities` trả về đúng giờ Việt Nam (`14:28` thay vì `07:28`).
   - `npm --prefix src/Admin-web run build`: **Thành công 100% (137 modules transformed)**.
+  - `Test/test_can_lam_fixes.js`: **9/9 tests PASS (100%)**.
+
+### 11.33. Xác Thực Quy Tắc Nghiệp Vụ: Danh Mục Đã Xóa Mềm Có Thể Tạo Mới Cùng Tên (2026-09-07)
+- **1. Yêu cầu nghiệp vụ**: Danh mục đã xóa mềm (`Delete_at IS NOT NULL`) phải được phép tạo mới lại với cùng tên và cùng id người tạo (`Create_by` / `Idaccount`).
+- **2. Kết quả kiểm tra hiện trạng**:
+  - Hệ thống **đã có sẵn và hoạt động hoàn hảo 100%** trên cả 3 tầng:
+    - **PostgreSQL / Supabase**: Partial Unique Index `uq_category_owner_name` có điều kiện lọc `WHERE "Is_default" = FALSE AND "Delete_at" IS NULL`. Bản ghi đã xóa mềm bị loại khỏi cây index nên không gây xung đột khóa duy nhất.
+    - **Backend Admin Service**: `addCategory` và `updateCategory` có bộ lọc `delete_at: null`, bỏ qua các danh mục đã xóa mềm khi kiểm tra trùng tên.
+    - **Backend Sync Engine**: `upsertCategory` ủy quyền cho PostgreSQL Partial Unique Index xử lý và chấp nhận tạo mới sau khi danh mục cũ đã soft delete.
+    - **Client-app (SQLite Drift)**: `categoryDao.getNamesInUse` chỉ lấy các danh mục có `isDeleted = false AND deletedAt IS NULL`, cho phép người dùng tạo lại danh mục trùng tên với danh mục đã xóa mềm.
+- **3. Kiểm chứng thực nghiệm**:
+  - Đã chạy kiểm thử tự động tại [`Test/test_soft_deleted_category_recreation.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/Test/test_soft_deleted_category_recreation.js):
+    - Đang active tạo trùng tên $\rightarrow$ Bị chặn chính xác bởi CSDL (`Unique constraint failed`).
+    - Sau khi xóa mềm $\rightarrow$ Tạo mới cùng tên thành công qua Prisma CSDL, qua `adminService.addCategory` và qua `syncRepository.upsertCategory`.
+
+### 11.34. Bổ Sung Bộ Lọc Người Tạo & Từ Khóa Cho Quản Lý Danh Mục Admin-Web (2026-09-07)
+- **1. Yêu cầu nghiệp vụ**:
+  - Thêm 2 trường lọc trong modal Lọc danh mục: Người tạo (Dropdown chọn người dùng, mặc định 'Tất cả') và Từ khóa (Keyword input text, mặc định rỗng, so khớp chuỗi con).
+  - Nâng cấp API tìm kiếm Backend `GET /api/admin/getcategory` hỗ trợ nhận các tham số lọc `created_by`, `keyword`, `is_default`, `classify`.
+- **2. Triển khai kỹ thuật**:
+  - **Backend**:
+    - `src/Backend/modules/admin/admin.repository.js`: Cập nhật `getAllCategories(filters)` áp dụng điều kiện lọc `where` theo `created_by` (hỗ trợ cả idaccount số và username chuỗi), `keyword` (`mode: 'insensitive'`, `contains` - so khớp ký tự chuỗi con), `is_default`, `classify`.
+    - `src/Backend/modules/admin/admin.service.js`: Truyền `filters` xuống repository, bổ sung trường `created_by_id: c.create_by` trong kết quả danh mục; bổ sung trường `idaccount: u.account.idaccount` trong `getUsers()` để frontend gán `value` cho dropdown người tạo.
+    - `src/Backend/modules/admin/admin.controller.js`: Chuyển tiếp `req.query` vào `adminService.getCategories(req.query)`.
+  - **Frontend Admin-web**:
+    - `src/Admin-web/src/api/admin.api.js`: Nâng cấp `getCategories: (params) => axiosClient.get('/admin/getcategory', { params })`.
+    - `src/Admin-web/src/pages/categories/CategoryPage.jsx`:
+      - Gọi `adminApi.getUsers()` lấy danh sách người dùng cho dropdown Người tạo.
+      - Mở rộng state `filter` với `createdBy` và `keyword`.
+      - Nâng cấp Modal Lọc dạng lưới 2x2 gồm: Mặc định, Loại danh mục, Người tạo, Từ khóa (Keyword).
+      - Nút "Đặt lại" và "Áp dụng" kích hoạt lại `fetchCategories(params)`.
+      - Nút "Lọc" hiển thị chấm trạng thái (active indicator) khi có bất kỳ bộ lọc nào đang được áp dụng.
+- **3. Kiểm chứng & Chất lượng**:
+  - [`Test/test_admin_category_filters.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/Test/test_admin_category_filters.js): **6/6 tests PASS (100%)** (kiểm tra `getUsers`, `getCategories` mặc định, lọc theo `created_by=1`, lọc theo `keyword` chuỗi con case-insensitive, kết hợp nhiều filter, và keyword không tồn tại).
+  - `npm --prefix src/Admin-web run build`: **Thành công 100% (137 modules transformed, 0 errors)**.
   - `Test/test_can_lam_fixes.js`: **9/9 tests PASS (100%)**.
 
 

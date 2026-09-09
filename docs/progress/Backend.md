@@ -213,5 +213,48 @@ Backend đã hoàn thành đồng bộ **13 bảng CSDL** theo đặc tả chu�
   * Vô hiệu hóa nút xóa danh mục hệ thống trên giao diện Admin-web.
   * Quản lý kết nối Socket.io tập trung qua `useSocket.js`.
 
+---
+
+## 5. Cập Nhật Ngày 2026-09-07 — Nghiệp Vụ Quản Lý Người Dùng, Xóa Mềm & Ràng Buộc Đăng Ký
+
+### 5.1. Chức năng Xóa Mềm Người Dùng (Soft Delete User)
+* **API Endpoints:**
+  * `DELETE /api/admin/deleteuser/:id`
+  * `DELETE /api/admin/users/:id` (RESTful alias)
+  * Yêu cầu xác thực Admin: `authenticate` + `authorize('admin')`.
+  * Kiểm tra an toàn: Chặn không cho xóa tài khoản Quản trị viên (`idrole === 1`).
+* **Quy trình Transaction 5 bước (`adminRepository.softDeleteUser`):**
+  1. `account`: `status = 'Deleted'`, `delete_at = now()`, `update_at = now()`.
+  2. `user`: `delete_at = now()`, `update_at = now()`.
+  3. `wallet`: Toàn bộ ví của tài khoản chuyển sang `status = 'Inactive'`, `update_at = now()`.
+  4. `bank_account`: Dữ liệu ngân hàng không bị xóa; ngắt kết nối `connect_status = 'Disconnected'`, `update_at = now()`.
+  5. `refreshtoken`: Thu hồi toàn bộ refresh token (`status = true`), `update_at = now()`.
+* **Cơ chế Cưỡng chế Đăng xuất (Force Logout 24/24):**
+  * Xóa cache xác thực bộ nhớ: `invalidateAccountCache(idaccount)`.
+  * Kênh Socket.io: Phát sự kiện `account.force_logout` tới phòng cá nhân `account_${idaccount}` và ngắt kết nối socket của client ngay lập tức.
+  * Kênh HTTP Fallback (khi offline có internet lại):
+    * `isAccountValid` kiểm tra trạng thái tài khoản và `delete_at`.
+    * Middleware `authenticate` trả về HTTP 401 với mã lỗi `{ code: 'ACCOUNT_DELETED' }` để Client-app nhận diện và xử lý đăng xuất.
+    * Socket handshake từ chối kèm mã `ACCOUNT_DELETED`.
+
+### 5.2. Điều Chỉnh Ràng Buộc CSDL & Quy Tắc Đăng Ký Mới
+* **Migration 7 (`database/7_Update_Account_User_Delete_Rules.sql`):**
+  * `account_Email_key` & `user_Email_key`: Chuyển sang Partial Unique Index `WHERE ("Delete_at" IS NULL)` $\rightarrow$ Cho phép người dùng đăng ký tài khoản mới bằng email và số điện thoại trùng với tài khoản cũ đã bị xóa mềm.
+  * `account_Username_key`: Chuyển từ UNIQUE đơn lẻ sang regular index `idx_account_username` $\rightarrow$ Cho phép nhiều tài khoản cùng Username nếu khác Password.
+  * `wallet.Status`: Mở rộng từ `VARCHAR(7)` lên `VARCHAR(20)` để lưu trữ chuẩn xác giá trị `'Inactive'` (8 ký tự).
+* **Kiểm Soát Cặp `(Username + Password)` tại Service:**
+  * Thêm `authService.validateUsernamePasswordPair(username, password)` sử dụng `bcrypt.compare` đối chiếu với tất cả tài khoản có cùng username trong hệ thống.
+  * Cấm trùng đồng thời cả `Username + Password`. Cho phép nếu trùng Username nhưng khác Password, hoặc trùng Password nhưng khác Username.
+  * `authService.login`: Duyệt danh sách các tài khoản có cùng username, so khớp mật khẩu bằng `bcrypt.compare` để tìm đúng tài khoản người dùng, sau đó kiểm tra trạng thái xóa mềm / vô hiệu hóa.
+
+### 5.3. Kiểm Thử Tự Động (TDD)
+* Bộ test `Test/test_user_soft_delete_and_auth_rules.js`:
+  * `TEST 1`: Xóa mềm account, user, ví inactive, bank disconnected, tokens revoked, cache invalid $\rightarrow$ **PASS**.
+  * `TEST 2`: Tạo lại tài khoản mới với email & sđt trùng của tài khoản đã xóa mềm $\rightarrow$ **PASS**.
+  * `TEST 3`: Ràng buộc cặp (Username + Password) cả 3 case: trùng cả 2 (chặn), trùng username khác pass (cho phép), khác username trùng pass (cho phép) $\rightarrow$ **PASS**.
+  * `TEST 4`: Đăng nhập vào tài khoản đã xóa mềm bị từ chối với mã 403 $\rightarrow$ **PASS**.
+  * **Kết quả: 4/4 bài kiểm thử đạt 100% PASS.**
+
+
 
 
