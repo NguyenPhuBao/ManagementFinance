@@ -272,5 +272,32 @@ Backend đã hoàn thành đồng bộ **13 bảng CSDL** theo đặc tả chu�
     * `PendingDelete` (Chờ xóa): Vàng (`bg-[#fef3c7] text-[#92400e] border-[#fde68a]`).
     * `Deleted` (Đã xóa): Đỏ (`bg-[#fee2e2] text-[#991b1b] border-[#fecaca]`).
   * Bộ lọc người dùng: Bổ sung đủ 5 tùy chọn (Tất cả, Hoạt động, Vô hiệu hóa, Chờ xóa, Đã xóa).
-  * Nút hành động tương ứng: `active` (Vô hiệu hóa), `inactive` (Kích hoạt & Xóa), `pendingdelete` (Kích hoạt khôi phục), `deleted` (Chỉ xem chi tiết).
+  * Nút hành động tương ứng: `active` (Vô hiệu hóa), `inactive` (Kích hoạt & Xóa), `pendingdelete` (Chỉ xem, không được thao tác), `deleted` (Chỉ xem chi tiết).
+
+### 5.5. Cơ Chế Chờ Xóa Tài Khoản (PendingDelete), Countdown 30 Ngày & Scheduler 0h00 UTC+7
+* **Migration 9 (`database/9_Add_Countdown_To_Account.sql`):**
+  * Thêm cột `Countdown INT DEFAULT NULL` vào bảng `account`.
+  * Cập nhật `schema.prisma` (`countdown Int? @map("Countdown")`) và generate Prisma client.
+  * Cập nhật `New_Database.sql`.
+* **Bộ Lập Lịch Tự Động (`core/scheduler.service.js`):**
+  * Khởi động độc lập trong `index.js` khi server bootstrap.
+  * Tính toán thời gian tới 00:00:00 múi giờ Việt Nam (UTC+7 / Asia/Ho_Chi_Minh) và tự động lên lịch chạy mỗi ngày.
+  * Quét danh sách tài khoản `PendingDelete` có `countdown > 0`:
+    * Giảm `countdown = countdown - 1`.
+    * Khi `countdown` chạm `0`: Tự động thực thi quy trình Soft-Delete 5 bước (status = 'Deleted', ví Inactive, ngân hàng Disconnected, revoke tokens, emit force logout).
+* **Nghiệp vụ Auth Service & Middleware:**
+  * `authRepository.scheduleDeletion(idaccount)`: Thiết lập `status = 'PendingDelete'`, `countdown = 30`, `delete_at = now() + 30 days`.
+  * `authRepository.cancelDeletion(idaccount)`: Phục hồi `status = 'Active'`, xóa `countdown = null`, xóa `delete_at = null`.
+  * `middleware/auth.js`: Cho phép tài khoản `PendingDelete` còn hạn (`countdown > 0`) vượt qua xác thực (`valid = true`) để người dùng có thể tiếp tục sử dụng app và hủy yêu cầu xóa.
+  * `authService.login`: Cho phép đăng nhập khi `PendingDelete` còn hạn, trả về `countdown` để Client-app hiển thị cảnh báo. Từ chối 403 khi hết hạn.
+* **Bảo vệ trên Admin:**
+  * `adminService.updateStatus` & `deleteUser`: Chặn và trả về lỗi HTTP 400 nếu quản trị viên cố ý can thiệp vào tài khoản `PendingDelete`.
+  * `adminRepository.getAllUsers` & `getUserById`: Select và map trường `countdown` về cho Admin-web.
+* **Admin-web:**
+  * `UserListPage.jsx`: Hiển thị nhãn màu vàng `Chờ xóa (${countdown} ngày)`.
+  * Cột Hành động: Ẩn toàn bộ nút thao tác đối với `pendingdelete`, hiển thị nhãn "Chỉ xem" tương tự trạng thái `deleted`.
+  * `UserDetailModal.jsx`: Hiển thị rõ số ngày đếm ngược còn lại khi xem chi tiết.
+* **Kiểm thử tự động (`scratch/test_pending_delete_and_countdown.js`):**
+  * Đạt kết quả **100% PASS (6/6 test cases)**: User yêu cầu xóa set 30 ngày, auth middleware valid, admin bị chặn 400, scheduler giảm countdown, kích hoạt lại xóa countdown, countdown về 0 tự động soft-delete.
+
 

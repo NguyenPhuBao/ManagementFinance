@@ -298,18 +298,16 @@ const authService = {
     let pendingDeleteCancelled = false;
 
     if (account.status === 'PendingDelete') {
-      if (account.delete_at && account.delete_at > new Date()) {
-        // Còn trong 30 ngày → cho đăng nhập, tự động hủy yêu cầu xóa
-        await authRepository.cancelDeletion(account.idaccount);
-        pendingDeleteCancelled = true;
-        logger.info("PendingDelete account recovered on login", { username: account.username });
-      } else {
+      const isExpired = (account.countdown !== null && account.countdown <= 0) || (account.delete_at && account.delete_at <= new Date());
+      if (isExpired) {
         // Hết 30 ngày → từ chối đăng nhập
         throw Object.assign(
           new Error("Tài khoản đã hết thời gian khôi phục (30 ngày). Vui lòng liên hệ hỗ trợ."),
           { statusCode: 403 }
         );
       }
+      // Vẫn trong thời hạn 30 ngày → Cho phép đăng nhập và sử dụng tiếp
+      logger.info("PendingDelete account logged in during grace period", { username: account.username, countdown: account.countdown });
     } else if (account.status === 'Deleted' || account.delete_at !== null) {
       throw Object.assign(new Error("Tài khoản đã bị xóa khỏi hệ thống"), { statusCode: 403 });
     } else if (account.status !== 'Active') {
@@ -329,6 +327,7 @@ const authService = {
       rolename: account.role.rolename,
       type: account.type || 'Basic',
       status: account.status || 'Active',
+      countdown: account.countdown ?? null,
     };
 
     const { accessToken, refreshToken } = generateTokens(payload, account.idrole);
@@ -350,6 +349,7 @@ const authService = {
         country_code: account.User ? account.User.country_code : null,
         type: account.type || 'Basic',
         status: account.status || 'Active',
+        countdown: account.countdown ?? null,
       },
     };
   },
@@ -487,9 +487,16 @@ const authService = {
     const isMatch = await bcrypt.compare(password, account.password);
     if (!isMatch) throw Object.assign(new Error("Mật khẩu không đúng"), { statusCode: 400 });
 
-    await authRepository.scheduleDeletion(idaccount);
-    await this.revokeAllTokens(idaccount);
-    logger.info("Account scheduled for deletion (30 days grace period)", { idaccount });
+    const updated = await authRepository.scheduleDeletion(idaccount);
+    const { invalidateAccountCache } = require('../../middleware/auth');
+    invalidateAccountCache(idaccount);
+    logger.info("Account scheduled for deletion (30 days grace period, countdown: 30)", { idaccount });
+    return {
+      idaccount,
+      status: 'PendingDelete',
+      countdown: 30,
+      scheduled_delete_at: updated.delete_at,
+    };
   },
 
   // ---------- CANCEL DELETION ----------
@@ -500,12 +507,16 @@ const authService = {
     if (account.status !== 'PendingDelete') {
       throw Object.assign(new Error("Tài khoản không ở trạng thái chờ xóa"), { statusCode: 400 });
     }
-    if (account.delete_at && account.delete_at <= new Date()) {
+    const isExpired = (account.countdown !== null && account.countdown <= 0) || (account.delete_at && account.delete_at <= new Date());
+    if (isExpired) {
       throw Object.assign(new Error("Đã hết thời gian khôi phục (30 ngày)"), { statusCode: 403 });
     }
 
     await authRepository.cancelDeletion(idaccount);
-    logger.info("Account deletion cancelled by user", { idaccount });
+    const { invalidateAccountCache } = require('../../middleware/auth');
+    invalidateAccountCache(idaccount);
+    logger.info("Account deletion cancelled by user, restored to Active", { idaccount });
+    return { idaccount, status: 'Active', countdown: null };
   },
 
   // ---------- GET PROFILE ----------

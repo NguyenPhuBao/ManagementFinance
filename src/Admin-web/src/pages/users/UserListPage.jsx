@@ -75,6 +75,7 @@ const UserListPage = () => {
           address: u.address || '',
           username: u.username,
           reason_inactive: u.reason_inactive || null,
+          countdown: u.countdown ?? null,
           delete_at: u.delete_at || null,
           created_at: u.created_at,
         }));
@@ -297,7 +298,9 @@ const UserListPage = () => {
                                         <td className="px-6 py-4 text-on-surface-variant font-tabular-nums">{item.phone}</td>
                                         <td className="px-6 py-4 text-center">
                                             <span className={`inline-flex items-center px-2.5 py-1 rounded-full font-label-md text-[11px] font-medium ${getStatusBadge(item.status)}`}>
-                                              {USER_STATUS_LABELS[item.status] || item.status}
+                                              {item.status === 'pendingdelete' && item.countdown !== null && item.countdown !== undefined
+                                                ? `Chờ xóa (${item.countdown} ngày)`
+                                                : (USER_STATUS_LABELS[item.status] || item.status)}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-right">
@@ -329,13 +332,7 @@ const UserListPage = () => {
                                                     </>
                                                 )}
                                                 {item.status === 'pendingdelete' && (
-                                                    <button 
-                                                        className="px-3 py-1.5 rounded font-label-md text-[12px] transition-colors shadow-sm cursor-pointer border border-primary bg-primary text-white hover:bg-surface-tint font-medium" 
-                                                        onClick={() => handleActivateClick(item)}
-                                                        title="Hủy yêu cầu xóa và khôi phục tài khoản"
-                                                    >
-                                                        Kích hoạt
-                                                    </button>
+                                                    <span className="text-xs text-amber-800 font-medium px-2 italic">Chỉ xem</span>
                                                 )}
                                                 {item.status === 'deleted' && (
                                                     <span className="text-xs text-error font-medium px-2 italic">Đã xóa</span>

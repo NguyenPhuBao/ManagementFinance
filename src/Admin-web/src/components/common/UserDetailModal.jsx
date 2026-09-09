@@ -54,8 +54,16 @@ const UserDetailModal = ({ userId, onClose }) => {
               {/* Status badge */}
               <div className="flex justify-between items-center pb-4 border-b border-outline-variant/50">
                 <span className="font-label-sm text-on-surface-variant uppercase">Trạng thái</span>
-                <span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${user.status?.toLowerCase() === 'active' ? 'bg-[#dcfce7] text-[#166534]' : 'bg-surface-container-high text-secondary'}`}>
-                  {USER_STATUS_LABELS[user.status?.toLowerCase()] || user.status}
+                <span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${
+                  user.status?.toLowerCase() === 'active' ? 'bg-[#dcfce7] text-[#166534] border border-[#bbf7d0]' :
+                  user.status?.toLowerCase() === 'inactive' ? 'bg-[#f1f5f9] text-[#475569] border border-[#cbd5e1]' :
+                  user.status?.toLowerCase() === 'pendingdelete' ? 'bg-[#fef3c7] text-[#92400e] border border-[#fde68a]' :
+                  user.status?.toLowerCase() === 'deleted' ? 'bg-[#fee2e2] text-[#991b1b] border border-[#fecaca]' :
+                  'bg-surface-container-high text-secondary'
+                }`}>
+                  {user.status?.toLowerCase() === 'pendingdelete' && user.countdown !== null && user.countdown !== undefined
+                    ? `Chờ xóa (${user.countdown} ngày)`
+                    : (USER_STATUS_LABELS[user.status?.toLowerCase()] || user.status)}
                 </span>
               </div>
 
@@ -78,6 +86,21 @@ const UserDetailModal = ({ userId, onClose }) => {
                 <div className="space-y-0">
                   <RowItem label="Username" value={user.username} />
                   <RowItem label="Vai trò" value={user.rolename} />
+                  {user.status?.toLowerCase() === 'pendingdelete' && (
+                    <RowItem 
+                      label="Thời gian chờ xóa" 
+                      value={`${user.countdown ?? 30} ngày còn lại`} 
+                    />
+                  )}
+                  {user.reason_inactive && (
+                    <RowItem label="Lý do vô hiệu hóa" value={user.reason_inactive} />
+                  )}
+                  {user.delete_at && (
+                    <RowItem 
+                      label={user.status?.toLowerCase() === 'pendingdelete' ? 'Dự kiến xóa' : 'Thời điểm xóa'} 
+                      value={new Date(user.delete_at).toLocaleString('vi-VN')} 
+                    />
+                  )}
                   <RowItem label="Ngày tạo" value={user.created_at ? new Date(user.created_at).toLocaleString('vi-VN') : '—'} isLast />
                 </div>
               </div>

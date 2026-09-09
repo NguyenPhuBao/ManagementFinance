@@ -142,8 +142,8 @@ const authController = {
   async deleteAccount(req, res) {
     try {
       const { password } = req.body;
-      await authService.deleteAccount(req.user.idaccount, password);
-      return ResponseHandler.success(res, null, 'Tài khoản của bạn sẽ bị xóa sau 30 ngày. Đăng nhập lại để hủy yêu cầu.');
+      const result = await authService.deleteAccount(req.user.idaccount, password);
+      return ResponseHandler.success(res, result, 'Tài khoản của bạn đã được chuyển sang trạng thái chờ xóa trong 30 ngày.');
     } catch (error) {
       const statusCode = error.statusCode || 500;
       return ResponseHandler.error(res, error.message, statusCode);
@@ -152,8 +152,8 @@ const authController = {
 
   async cancelDelete(req, res) {
     try {
-      await authService.cancelDeletion(req.user.idaccount);
-      return ResponseHandler.success(res, null, 'Yêu cầu xóa tài khoản đã được hủy thành công');
+      const result = await authService.cancelDeletion(req.user.idaccount);
+      return ResponseHandler.success(res, result, 'Yêu cầu xóa tài khoản đã được hủy thành công, tài khoản đã được kích hoạt lại.');
     } catch (error) {
       const statusCode = error.statusCode || 500;
       return ResponseHandler.error(res, error.message, statusCode);

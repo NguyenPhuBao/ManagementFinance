@@ -35,6 +35,10 @@ async function bootstrap() {
     const notificationService = require('./modules/notification/notification.service');
     await notificationService.initNotificationListeners();
 
+    // 3c. Initialize Scheduler Service (Daily Countdown at 0h00 UTC+7)
+    const { initScheduler } = require('./core/scheduler.service');
+    initScheduler();
+
     // 4. Start listening
     httpServer.listen(config.port, config.host, () => {
       logger.info(`WealthCommand Backend running at http://${config.host}:${config.port}`);

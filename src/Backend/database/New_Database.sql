@@ -30,6 +30,7 @@ CREATE TABLE "account" (
     "Status"    VARCHAR(20)  NOT NULL DEFAULT 'Active',
     "Type"      VARCHAR(20)  NOT NULL DEFAULT 'Basic',
     "Reason_Inactive" TEXT,
+    "Countdown"   INTEGER,
     "Create_at" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "Update_at" TIMESTAMP(6),
     "Delete_at" TIMESTAMP(6),

@@ -180,12 +180,13 @@ Role (1) ──▶ Account (N) ──▶ User (1)
 | `status` | VARCHAR(20) | `Active` / `Inactive` / `PendingDelete` / `Deleted` |
 | `type` | VARCHAR(20) | `Basic` / `Premium` |
 | `Reason_Inactive` | TEXT NULL | Lý do vô hiệu hóa tài khoản (khi status = Inactive) |
+| `Countdown` | INT NULL | Số ngày đếm ngược chờ xóa (30 ngày khi PendingDelete, null khi Active/Deleted) |
 | `delete_at` | TIMESTAMP NULL | Thời điểm xóa mềm |
 | `created_at` | TIMESTAMP | Ngày tạo |
 | `updated_at` | TIMESTAMP | Ngày cập nhật |
 | `idrole` | INT FK→Role | 1=admin, 2=user |
 
-> 🆕 **2026-09-09**: Hỗ trợ 4 trạng thái chuẩn hóa (`Active`: xanh lá, `Inactive`: xám xanh, `PendingDelete`: vàng, `Deleted`: đỏ). Cột `Reason_Inactive` lưu lý do quản trị viên vô hiệu hóa tài khoản. Khi Inactive, toàn bộ token bị cưỡng chế đăng xuất kèm thông báo lý do.
+> 🆕 **2026-09-09**: Hỗ trợ 4 trạng thái chuẩn hóa (`Active`: xanh lá, `Inactive`: xám xanh, `PendingDelete`: vàng, `Deleted`: đỏ). Cột `Reason_Inactive` lưu lý do quản trị viên vô hiệu hóa tài khoản. Cột `Countdown` lưu số ngày đếm ngược chờ xóa (30 ngày) do người dùng yêu cầu, được cập nhật tự động vào 00:00:00 UTC+7 hàng ngày (`scheduler.service.js`). Khi về 0, hệ thống tự động xóa mềm. Trên Admin-web, tài khoản `PendingDelete` ở chế độ chỉ xem, khóa toàn bộ thao tác quản trị.
 
 ##### Bảng User
 | Cột | Kiểu | Mô tả |

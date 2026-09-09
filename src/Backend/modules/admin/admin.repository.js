@@ -52,6 +52,7 @@ const adminRepository = {
             status: true,
             type: true,
             reason_inactive: true,
+            countdown: true,
             delete_at: true,
             update_at: true,
           },
@@ -82,6 +83,7 @@ const adminRepository = {
             type: true,
             idrole: true,
             reason_inactive: true,
+            countdown: true,
             delete_at: true,
             update_at: true,
             role: { select: { rolename: true } },
@@ -139,6 +141,7 @@ const adminRepository = {
         where: { idaccount },
         data: {
           status: 'Deleted',
+          countdown: 0,
           delete_at: now,
           update_at: now,
         },
@@ -164,10 +167,9 @@ const adminRepository = {
 
       // 4. Dữ liệu ngân hàng không bị xóa, ngắt kết nối (connect_status = 'Disconnected')
       await tx.bank_account.updateMany({
-        where: { idaccount, delete_at: null },
+        where: { idaccount },
         data: {
           connect_status: 'Disconnected',
-          update_at: now,
         },
       });
 

@@ -374,3 +374,75 @@ Thành viên phụ trách **Client-app** cần triển khai các hạng mục sa
   * Nếu tài khoản bị vô hiệu hóa, thông điệp từ Backend sẽ có dạng:  
     `"Tài khoản đã bị vô hiệu hóa. Lý do: <Lý do cụ thể>"`
   * Hiển thị trực quan thông điệp này trên form đăng nhập để người dùng hiểu rõ nguyên nhân.
+
+---
+
+## 12. Hướng Dẫn Triển Khai Cơ Chế Chờ Xóa Tài Khoản (PendingDelete) & Đếm Ngược 30 Ngày
+
+Thành viên phụ trách **Client-app** cần triển khai các hạng mục sau để hoàn tất luồng người dùng yêu cầu xóa tài khoản:
+
+### 12.1. Cập Nhật CSDL SQLite Cục Bộ
+* Bổ sung cột `countdown`: `INTEGER` NULL vào bảng lưu trữ tài khoản người dùng (`account_table`).
+* Mặc định là `NULL` khi tài khoản `Active` hoặc `Deleted`.
+* Giá trị là số nguyên (`30, 29, ..., 1`) khi tài khoản ở trạng thái `PendingDelete`.
+
+### 12.2. Giao Diện Yêu Cầu Xóa Tài Khoản (Màn hình Cài đặt)
+* **Vị trí**: `SettingsScreen` $\rightarrow$ "Xóa tài khoản".
+* **Luồng xử lý**:
+  1. Hiển thị Dialog cảnh báo nghiêm ngặt:
+     > *"Bạn có chắc chắn muốn yêu cầu xóa tài khoản? Tài khoản của bạn sẽ có 30 ngày ân hạn để khôi phục. Sau 30 ngày, tài khoản cùng toàn bộ ví và dữ liệu liên kết sẽ bị xóa vĩnh viễn."*
+  2. Yêu cầu người dùng nhập lại mật khẩu hiện tại để xác thực.
+  3. Gửi request HTTP:
+     * **Method**: `DELETE /api/auth/account`
+     * **Headers**: `Authorization: Bearer <access_token>`
+     * **Body**: `{"password": "<mật khẩu người dùng>"}`
+  4. Phản hồi thành công từ Backend:
+     ```json
+     {
+       "success": true,
+       "data": {
+         "idaccount": 123,
+         "status": "PendingDelete",
+         "countdown": 30,
+         "scheduled_delete_at": "2026-10-09T..."
+       },
+       "message": "Tài khoản của bạn đã được chuyển sang trạng thái chờ xóa trong 30 ngày."
+     }
+     ```
+  5. Cập nhật state tài khoản cục bộ sang `PendingDelete` kèm `countdown = 30`.
+
+### 12.3. Trải Nghiệm Tiếp Tục Sử Dụng & Banner Cảnh Báo
+* **Cho phép dùng tiếp**: Trong suốt 30 ngày, người dùng **vẫn được phép đăng nhập và sử dụng toàn bộ tính năng của app bình thường** (thêm giao dịch, quản lý ví, đồng bộ sync).
+* **Banner cảnh báo**: Khi `status == 'PendingDelete'`, hiển thị một Banner cảnh báo nổi bật ở đầu `HomeScreen` hoặc `DashboardScreen`:
+  > *"⚠️ Tài khoản của bạn đang trong thời gian chờ xóa. Còn **[countdown]** ngày nữa tài khoản sẽ bị xóa vĩnh viễn.*  
+  > *[Nút: Tiếp tục dùng / Hủy xóa]"*
+
+### 12.4. Tính Năng Kích Hoạt Lại Tài Khoản (Hủy Xóa)
+* Khi người dùng đổi ý và nhấn vào nút **"Kích hoạt lại"** trên Banner hoặc trong mục Cài đặt:
+  1. Gửi request HTTP:
+     * **Method**: `POST /api/auth/cancel-delete`
+     * **Headers**: `Authorization: Bearer <access_token>`
+     * **Body**: `{}`
+  2. Phản hồi thành công từ Backend:
+     ```json
+     {
+       "success": true,
+       "data": {
+         "idaccount": 123,
+         "status": "Active",
+         "countdown": null
+       },
+       "message": "Yêu cầu xóa tài khoản đã được hủy thành công, tài khoản đã được kích hoạt lại."
+     }
+     ```
+  3. Cập nhật state cục bộ sang `Active`, xóa `countdown = null` và ẩn Banner cảnh báo.
+
+### 12.5. Xử Lý Khi Hết Hạn 30 Ngày (Countdown Chạm 0)
+* **Thời điểm**: Vào lúc **00:00:00 theo múi giờ Việt Nam (UTC+7)** mỗi ngày, Scheduler của Backend sẽ tự động giảm `countdown`. Khi countdown về 0, server tự động thực thi xóa mềm toàn diện và gửi Socket `account.force_logout` (`reason: 'ACCOUNT_DELETED'`).
+* **Trách nhiệm của Client-app**:
+  1. Khi nhận được Socket `account.force_logout` hoặc khi mở app nhận lỗi HTTP 401 `{ code: 'ACCOUNT_DELETED' }`:
+     * Đánh dấu toàn bộ ví cục bộ sang `Inactive`.
+     * Đánh dấu ngân hàng cục bộ sang `Disconnected`.
+     * Xóa sạch token trong `FlutterSecureStorage`.
+     * Điều hướng ngay về màn hình Đăng nhập.
+     * Hiển thị thông báo: *"Tài khoản của bạn đã hết thời hạn 30 ngày chờ xóa và đã được xóa khỏi hệ thống."*
