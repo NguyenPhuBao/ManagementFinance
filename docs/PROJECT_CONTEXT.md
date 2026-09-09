@@ -720,7 +720,7 @@ src/Backend/
 
 ### 🔄 Việc còn dang dở
 
-Xem đầy đủ tại **`docs/CLIENT_APP_KNOWN_GAPS.md`**. Phiên 2026-09-03 đã đóng 9/10 mục còn mở; **G10 đóng ngày 2026-09-07**, và cùng ngày mở thêm **G23** (bản sao danh mục chỉ đầy đủ khi bộ mặc định *cục bộ* đầy đủ — tự khỏi ở lượt pull sau) và **G24** (màu danh mục không có cột trên server, chặn ở backend). Nay còn **G15**, **G23**, **G24**:
+Xem đầy đủ tại **`docs/CLIENT_APP_KNOWN_GAPS.md`**. Phiên 2026-09-03 đã đóng 9/10 mục còn mở; **G10 đóng ngày 2026-09-07**, và cùng ngày mở thêm **G23** (bản sao danh mục chỉ đầy đủ khi bộ mặc định *cục bộ* đầy đủ — tự khỏi ở lượt pull sau) và **G24** (màu danh mục không có cột trên server, chặn ở backend). **G15 đóng 2026-09-07** (dòng này từng còn liệt kê nó — soát lại 2026-09-09 từ chính `CLIENT_APP_KNOWN_GAPS.md`). Nay còn **G18** (⏸️ thu hẹp dần), **G23** (⏸️ chấp nhận được) và **G24** (⛔ chặn ở backend):
 
 - **G15 — Bản ghi vừa hết hạn vừa hỏng đồng bộ thì không sửa được.** ⏸️ **Hoãn có chủ ý** (2026-09-04): tab "Đã hết hạn" khoá sửa/xoá, nên một ngân sách vừa quá hạn vừa bị backend từ chối vĩnh viễn sẽ nằm lại mãi — hàng đợi đồng bộ vẫn thông vì `SyncEngine` chặn nó theo thời gian, nhưng người dùng không chữa được. Giữ nguyên vì tab đó là nền cho phần thống kê/báo cáo sẽ làm sau. Bán kính rủi ro hẹp: nguồn gây lỗi chính (form tạo ra `end ≤ start`) đã bịt cùng ngày.
 - ~~**G10 — `CategoryGroupMemberships` không bao giờ được đồng bộ.**~~ ✅ **Đóng 2026-09-07, và không phải bằng cách xin backend thêm entity.** Bảng phụ ấy tồn tại chỉ vì danh mục mặc định là hàng toàn cục nên không ghi `Idgroup` riêng cho từng tài khoản được. Nay mỗi tài khoản có **bản sao riêng** của bộ mặc định, nên việc gán nhóm nằm gọn trong `Idgroup` của chính hàng họ sở hữu — cột đã có sẵn và đã đồng bộ.
@@ -730,7 +730,7 @@ Xem đầy đủ tại **`docs/CLIENT_APP_KNOWN_GAPS.md`**. Phiên 2026-09-03 đ
 > Hệ quả ít ai biết: **công cụ Grep tôn trọng `.gitignore` nên không nhìn thấy thư mục `test/`**. Muốn dò xem còn ai gọi một hàm sắp xoá thì phải dùng `grep` qua shell, nếu không sẽ thấy thiếu file và xoá nhầm.
 
 Vấn đề thuộc backend. Thư mục `docs/superpowers/backend/` được **chia ba** ngày
-2026-09-07: **`CAN-LAM/`** giữ đúng phần **còn việc** (nay chỉ bốn mục) và README
+2026-09-07: **`CAN-LAM/`** giữ đúng phần **còn việc** (**sáu** mục — đếm lại 2026-09-09 từ mục 2 của README ấy; dòng này từng ghi "bốn") và README
 trong đó là **cửa vào duy nhất**; **`DA-XONG/`** giữ 16 tài liệu **đã đóng**, mở khi
 cần biết *vì sao* lược đồ có hình dạng hôm nay chứ không phải khi tìm việc; thư mục
 cha chỉ còn mục lục và ba tệp bối cảnh (`New_Database.md`,
