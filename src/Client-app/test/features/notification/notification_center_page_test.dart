@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/core/notification/prefs/notification_prefs.dart';
 import 'package:flowmoney/features/notification/presentation/pages/notification_center_page.dart';
 
 void main() {
@@ -98,6 +99,34 @@ void main() {
     ));
     await nhip(tester);
   }
+
+  group('dải chip lọc', () {
+    testWidgets('mỗi nhóm thông báo có ĐÚNG một chip', (tester) async {
+      await moTrang(tester);
+
+      expect(
+        find.byType(ChoiceChip),
+        // Hai chip không lọc theo nhóm: "Tất cả" và "Chưa đọc".
+        findsNWidgets(NotificationGroup.values.length + 2),
+        reason: 'Chú thích của `_Loc.kinds` hứa rằng thêm một loại mà quên xếp '
+            'nhóm sẽ thành lỗi biên dịch — nhưng lưới ấy canh `nhomCua`, KHÔNG '
+            'canh việc nhóm mới có chip. Nhóm `summary` thêm ngày 2026-09-09 '
+            'đã lọt qua đúng khe ấy: thông báo Tổng kết tuần chỉ hiện ở "Tất '
+            'cả", không lọc theo nhóm được. Đếm chip theo '
+            '`NotificationGroup.values` là phép canh còn thiếu.',
+      );
+      // ⚠️ BẮT BUỘC — xem chú thích ở `dongTrang`. Thiếu nó là drift đặt timer
+      // 0 giây sau khi khung kiểm đã chốt, và **cả tệp kẹt lại từ đó**. Lượt
+      // chạy đầu không lộ ra vì `expect` ném sớm nên chưa tới chỗ này.
+      await dongTrang(tester);
+    });
+
+    testWidgets('có chip Tổng kết', (tester) async {
+      await moTrang(tester);
+      expect(find.widgetWithText(ChoiceChip, 'Tổng kết'), findsOneWidget);
+      await dongTrang(tester);
+    });
+  });
 
   /// Vuốt phải sang trái — đúng chiều `DismissDirection.endToStart`.
   Future<void> vuotXoa(WidgetTester tester) async {

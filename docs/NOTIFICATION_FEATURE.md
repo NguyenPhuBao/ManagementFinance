@@ -73,7 +73,7 @@ uống"*, *"Nhắc nhở: Hóa đơn tiền điện sắp đến hạn"*, *"Ti�
 
 ## 3. Danh mục thông báo
 
-**Mười bốn loại**, xếp vào **bốn nhóm** công tắc. Cột cuối đánh dấu những loại
+**Mười sáu loại**, xếp vào **năm nhóm** công tắc. Cột cuối đánh dấu những loại
 **không chịu công tắc nhóm** — xem `luonBao()` trong `notification_prefs.dart`.
 
 | Nhóm | Loại | `kind` | Luôn báo |
@@ -93,6 +93,7 @@ uống"*, *"Nhắc nhở: Hóa đơn tiền điện sắp đến hạn"*, *"Ti�
 | Hệ thống | Đồng bộ hỏng | `syncFailed` | |
 | | Số dư ví âm | `walletNegative` | |
 | | Số dư ví sắp cạn | `walletLowBalance` | |
+| Tổng kết | **Tổng kết tuần** | `weeklySummary` | |
 
 **`walletLowBalance`** (2026-09-07) là loại duy nhất **tắt sẵn**: nó chỉ sinh
 khi `NotificationPrefs.nguongSoDuThap > 0`, mà mặc định là `0`. Con số ấy vừa
@@ -311,8 +312,8 @@ tránh.
 
 Vẫn **không** là một `NotificationKind`. Lời nhắc này cố ý đứng ngoài bảng ấy,
 và đó là quyết định trung tâm của nó. (Lúc viết dòng này bảng có mười bốn loại;
-nay là **mười lăm** sau khi thêm `goalMilestone` ngày 2026-09-08 — con số thì
-đổi, còn lý lẽ dưới đây thì không.)
+nay là **mười sáu** — `goalMilestone` thêm 2026-09-08, `weeklySummary` thêm
+2026-09-09. Con số thì đổi, còn lý lẽ dưới đây thì không.)
 
 **Vì sao đứng ngoài bộ luật.** Mọi loại trong bảng đều là *bản ghi* một việc đã
 xảy ra, và người dùng đọc lại chúng trong trung tâm thông báo. Lời nhắc này
@@ -336,7 +337,8 @@ phiền khiến họ tắt hẳn thông báo. Ba lịch rời thì `resync()` �
 tự huỷ cái không còn cần — **gỡ được** lịch của hôm nay ngay khi người dùng ghi
 một giao dịch, vì ghi giao dịch nghĩa là mở app, và mở app nghĩa là có lượt quét.
 
-**Vì sao đúng ba ngày.** Trần `tranSoLich = 50` tính trên **tổng ba** nguồn, và
+**Vì sao đúng ba ngày.** Trần `tranSoLich = 50` tính trên **tổng mọi** nguồn
+(ba lúc viết dòng này; **bốn** từ 2026-09-09 khi Tổng kết tuần thêm vào), và
 phép cắt sắp theo *thời gian* nên lịch hằng ngày luôn nằm gần nhất và **thắng**
 nhắc hoá đơn. Hoá đơn là tiền, nhắc ghi chép là thói quen — không được đảo thứ
 tự ấy. Ba suất trên năm mươi thì không đe doạ gì, mà vẫn phủ được người mở app
@@ -573,7 +575,7 @@ ca *chính* của lịch đặt trước — hàng tương ứng còn chưa tồ
 vòng quét mới sinh ra nó *sau khi* app khởi động xong. Tra cột `deeplink` ở đó
 là một cuộc đua, và thua cuộc đua ấy nghĩa là cú chạm không đi đâu cả.
 
-Bản sao ấy được canh bằng một test duyệt **cả 15 loại**: nó dựng ứng viên thật
+Bản sao ấy được canh bằng một test duyệt **cả 16 loại**: nó dựng ứng viên thật
 từ bộ luật rồi khẳng định hàm suy ra đúng cột `deeplink`. Thêm loại thứ 14 mà
 quên ánh xạ là test đỏ ngay.
 
@@ -1107,6 +1109,28 @@ xấu xí, nhưng đó là lưới duy nhất giăng được ở vùng này.
 
 ---
 
+**7.12 Lưới canh `nhomCua` KHÔNG canh việc nhóm mới có chip lọc.** Chú thích
+của `_Loc.kinds` (`notification_center_page.dart`) hứa rằng thêm một
+`NotificationKind` mà quên xếp nhóm sẽ thành **lỗi biên dịch** — đúng, nhưng nó
+canh `switch` của `nhomCua()`, không canh dải chip. Thêm `NotificationGroup`
+thì `_Loc` **im lặng thiếu một mục**: nhóm `summary` (2026-09-09) lọt đúng khe
+ấy và thông báo Tổng kết tuần chỉ hiện ở chip "Tất cả", không lọc theo nhóm
+được. Phép canh còn thiếu nay nằm ở `notification_center_page_test`: số
+`ChoiceChip` phải bằng `NotificationGroup.values.length + 2`.
+
+**7.13 Widget test của trung tâm thông báo PHẢI gọi `dongTrang()` trước khi
+kết thúc.** `StreamBuilder` huỷ đăng ký lúc test kết thúc, và drift đặt một
+timer 0 giây (`StreamQueryStore.markAsClosed`) **sau khi khung kiểm đã chốt**.
+Hậu quả không phải một test đỏ mà là **cả tệp treo** — `--timeout 60s` không
+cắt được, tiến trình `flutter_tester` sống hàng chục phút và **không in một
+dòng nào**. Đã vấp thật 2026-09-09, mất hai lượt chạy 10 và 16 phút.
+
+⚠️ Cái bẫy trong cái bẫy: hai test viết sai vẫn **chạy xong trong một giây** ở
+lượt RED, vì `expect` ném sớm nên chưa chạm tới bước dọn dẹp. Nó chỉ treo khi
+`expect` bắt đầu qua — tức đúng lúc bạn tưởng mình vừa làm nó xanh.
+
+---
+
 ## 8. Kiểm thử
 
 | Tệp | Canh gì |
@@ -1123,7 +1147,7 @@ xấu xí, nhưng đó là lưới duy nhất giăng được ở vùng này.
 | `test/core/utils/relative_time_test.dart` | Biên 59 giây / 60 phút / qua nửa đêm |
 | `test/shared/widgets/notification_bell_test.dart` | Chấm đỏ khớp số chưa đọc, bám dòng dữ liệu |
 | `test/features/notification/notification_panel_test.dart` | Rỗng → biến mất hoàn toàn; >3 mục chỉ hiện 3 |
-| `test/core/notification/prefs/notification_prefs_test.dart` | Mặc định là **bật hết**; JSON hỏng/sai kiểu/ngoài dải quy về mặc định chứ không ném; ánh xạ **mười lăm** `kind` sang bốn nhóm; **ngưỡng số dư ví thấp** mặc định `0` và mọi dữ liệu hỏng (thiếu / sai kiểu / âm / vượt trần) đều về `0` — tức là **tắt**. Từ 2026-09-07 canh thêm ba trường **nhắc ghi chép**: mặc định TẮT và 20:00, bản ghi cũ thiếu trường thì rơi về tắt, giờ/phút ngoài dải quy về mặc định mà **không** kéo cả bản ghi theo, và hai bản chỉ khác ba trường ấy thì **không bằng nhau** (phép so `==`/`hashCode` — đây là chỗ test đi-một-vòng KHÔNG canh được) |
+| `test/core/notification/prefs/notification_prefs_test.dart` | Mặc định là **bật hết**; JSON hỏng/sai kiểu/ngoài dải quy về mặc định chứ không ném; ánh xạ **mười sáu** `kind` sang **năm** nhóm; **ngưỡng số dư ví thấp** mặc định `0` và mọi dữ liệu hỏng (thiếu / sai kiểu / âm / vượt trần) đều về `0` — tức là **tắt**. Từ 2026-09-07 canh thêm ba trường **nhắc ghi chép**: mặc định TẮT và 20:00, bản ghi cũ thiếu trường thì rơi về tắt, giờ/phút ngoài dải quy về mặc định mà **không** kéo cả bản ghi theo, và hai bản chỉ khác ba trường ấy thì **không bằng nhau** (phép so `==`/`hashCode` — đây là chỗ test đi-một-vòng KHÔNG canh được) |
 | `test/core/notification/prefs/notification_prefs_store_test.dart` | **Tách khoá theo tài khoản**; JSON hỏng trên đĩa; `clear()` không đụng tài khoản khác |
 | `test/features/notification/notification_settings_page_test.dart` | Ngưỡng số dư ví hiện đúng thứ đã lưu và ghi ngay khi đổi (⚠️ thẻ ấy nằm cuối trang cuộn, ở 800px của môi trường test nó dưới mép màn hình nên phải `ensureVisible` trước khi `tap`, nếu không cú chạm trượt ra nền); công tắc phản ánh đúng thứ đã lưu; ghi ngay không cần nút Lưu; **bật công tắc OS thì xin quyền, tắt thì không**; bị từ chối thì công tắc quay về tắt; chưa đăng nhập thì không ghi gì. Từ 2026-09-07 canh thêm thẻ **NHẮC GHI CHÉP**: công tắc tắt sẵn, bật thì ghi ngay, hàng chọn giờ **chỉ hiện khi công tắc bật**, và giờ hiển thị là 20:00 chứ không phải 08:00 của hoá đơn. ⚠️ Thẻ này cũng nằm cuối trang cuộn nên vẫn phải `ensureVisible` |
 | `test/core/notification/reminder_scheduler_test.dart` | **Luỹ đẳng** (chạy lại không đặt lại lịch nào); trần 50 và cắt bỏ mốc **xa** nhất; giờ nhắc từ tuỳ chọn; mốc quá khứ và ngoài cửa sổ 30 ngày bị bỏ; hoá đơn trả/xoá thì huỷ lịch cũ; tắt công tắc thì dọn sạch. Từ 2026-09-07 canh thêm **nhắc ghi chép hằng ngày** (mục 4.7): tắt sẵn; bật thì đúng **ba** lịch; giờ lấy từ tuỳ chọn **riêng** chứ không phải `gioNhac`; hôm nay đã có giao dịch thì bỏ lịch hôm nay còn giữ hai lịch sau; giao dịch **hôm qua** không cứu được hôm nay (so theo NGÀY, không theo 24 giờ); `null` = chưa từng ghi = **vẫn nhắc**; giờ đã trôi qua thì bỏ hôm nay; và ca quan trọng nhất — **ghi giao dịch xong thì lượt sau HUỶ lịch hôm nay**, chính là lý do chọn ba lịch rời thay vì một lịch lặp |
@@ -1133,7 +1157,7 @@ xấu xí, nhưng đó là lưới duy nhất giăng được ở vùng này.
 | `test/core/database/transaction_last_date_test.dart` | `getLastTransactionDate` — đầu vào **duy nhất** của lời nhắc ghi chép, và cả ba cách hỏng đều im lặng: đọc cả hàng đã xoá mềm, đọc lẫn tài khoản khác, hoặc trả `null` sai. ⚠️ `forTesting` bật `PRAGMA foreign_keys = ON` nên phải dựng hàng `wallets` trước, nếu không mọi lệnh chèn nổ `SqliteException(787)` |
 | `test/core/notification/notification_rules_goal_wallet_test.dart` | Bốn luật của lát 6, trọng tâm là **đơn vị lặp lại trong `dedupeKey`**: chúc mừng một lần trong đời, trễ tiến độ mỗi tháng, ví âm và đồng bộ hỏng mỗi ngày. Từ 2026-09-07 canh thêm **ví sắp cạn**: biên **đóng** ở đúng ngưỡng, ngưỡng `0` im hoàn toàn, ví âm chỉ ra **một** thông báo chứ không ra cả hai, và ví loại `debt` im ở **cả hai** luật |
 | `test/features/goal/goal_entity_progress_test.dart` | `progress` kẹp [0,1] và không ra `Infinity` khi `targetAmount = 0`; `daysLeft` so theo NGÀY; `isBehindSchedule` có biên dung sai, im lặng khi thiếu `startDate`, không NaN khi kỳ dài 0 ngày |
-| `test/core/notification/notification_deeplink_test.dart` | Route nào kéo theo thanh tab; **không được so khớp bằng `startsWith` trần** (`/budgets` ≠ `/budget`); và phép canh **cả 15 loại**: `deeplinkTuDedupeKey()` phải trả đúng cột `deeplink` mà bộ luật đặt — bản sao duy nhất trong vùng này, tồn tại vì cold start không tra CSDL được. Từ 2026-09-07 thêm nhánh `ghiChep` → **`/add`**: nó KHÔNG phải một `NotificationKind` nên phép canh 15 loại không chạm tới, phải có test riêng, và test ấy khẳng định luôn `/add` nằm ngoài thanh tab (bẫy 7.8) |
+| `test/core/notification/notification_deeplink_test.dart` | Route nào kéo theo thanh tab; **không được so khớp bằng `startsWith` trần** (`/budgets` ≠ `/budget`); và phép canh **cả 16 loại**: `deeplinkTuDedupeKey()` phải trả đúng cột `deeplink` mà bộ luật đặt — bản sao duy nhất trong vùng này, tồn tại vì cold start không tra CSDL được. Từ 2026-09-07 thêm nhánh `ghiChep` → **`/add`**: nó KHÔNG phải một `NotificationKind` nên phép canh 16 loại không chạm tới, phải có test riêng, và test ấy khẳng định luôn `/add` nằm ngoài thanh tab (bẫy 7.8) |
 | `test/features/notification/notification_center_page_test.dart` | Vuốt xoá là xoá **mềm**; SnackBar có nút Hoàn tác; bấm vào thì hàng quay lại **và danh sách tự vẽ lại** qua `watchFeed`; chưa đăng nhập thì không đọc gì. Từ 2026-09-07 canh thêm: chip nhóm thu hẹp danh sách, chip "Chưa đọc" bỏ mục đã đọc, **quay lại "Tất cả" thì danh sách đầy đủ trở lại** (canh chỗ `null` bị hiểu nhầm thành danh sách rỗng), nút "Tải thêm" hiện/biến mất đúng lúc, nhấn giữ đảo được cả hai chiều, và **hàng chip không tràn ở 411dp**. Đọc bẫy **7.10** trước khi sửa file này — nay có **bốn** mục, mục 4 nói vì sao một test nhấn giữ có thể xanh giả |
 | `test/core/notification/notification_tap_router_test.dart` | Cold start điều hướng được; **cùng payload đến bằng cả hai đường chỉ điều hướng một lần**, nhưng lần chạm sau vẫn chạy; chưa đăng nhập thì giữ lại và xả sau `AuthSuccess`, chỉ giữ **cái mới nhất**; `stop()` cắt hẳn |
 | `test/core/network/connection_monitor_test.dart` | **Ngưỡng ổn định**: mất mạng chớp nhoáng và chuỗi nhấp nháy đều không sinh sự kiện; đang online lúc khởi động thì không báo "khôi phục" |

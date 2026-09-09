@@ -298,8 +298,8 @@ class ReminderScheduler {
     }
 
     // Cắt phải bỏ những mốc XA nhất: bỏ mốc gần nhất là người dùng mất đúng
-    // cái nhắc họ cần trước tiên. Trần tính trên TỔNG ba loại — iOS đếm chung
-    // một hàng đợi 64 lịch, nên cắt riêng từng loại là cả ba đều tưởng mình
+    // cái nhắc họ cần trước tiên. Trần tính trên TỔNG bốn loại — iOS đếm chung
+    // một hàng đợi 64 lịch, nên cắt riêng từng loại là cả bốn đều tưởng mình
     // còn dư chỗ.
     tatCa.sort((a, b) => a.when.compareTo(b.when));
     for (final l in tatCa.take(tranSoLich)) {

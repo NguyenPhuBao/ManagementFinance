@@ -24,13 +24,14 @@ class AppNotifications extends Table {
   /// chính của tài khoản khác hiện ra trên máy dùng chung.
   IntColumn get idaccount => integer()();
 
-  /// Giá trị `.name` của `NotificationKind` — **14 loại**, xem enum ấy để có
+  /// Giá trị `.name` của `NotificationKind` — **16 loại**, xem enum ấy để có
   /// danh sách chính xác thay vì tin vào chú thích này:
   ///
   /// `budgetNearLimit` | `budgetOverspent` | `billDueSoon` | `billOverdue`
   /// | `billAutoPaid` | `billAutoPayFailed` | `goalCompleted` |
-  /// `goalCycleReady` | `goalBehind` | `goalAutoDeposited` |
-  /// `goalAutoDepositFailed` | `syncFailed` | `walletNegative`
+  /// `goalCycleReady` | `goalBehind` | `goalMilestone` | `goalAutoDeposited` |
+  /// `goalAutoDepositFailed` | `syncFailed` | `walletNegative` |
+  /// `walletLowBalance` | `weeklySummary`
   TextColumn get kind => text()();
 
   /// Khoá chống trùng — **trái tim của bảng này**.

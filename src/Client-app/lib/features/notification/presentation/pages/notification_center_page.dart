@@ -182,11 +182,17 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
 
 /// Bộ lọc của trung tâm thông báo.
 ///
-/// "Chưa đọc" nằm chung dải với bốn nhóm thay vì là một công tắc riêng: hai bộ
+/// "Chưa đọc" nằm chung dải với các nhóm thay vì là một công tắc riêng: hai bộ
 /// lọc chồng nhau (nhóm × trạng thái đọc) là mười hai tổ hợp người dùng phải
 /// tự dựng trong đầu, còn một dải chip thì đọc được bằng mắt và luôn có đúng
 /// một mục đang sáng.
-enum _Loc { tatCa, chuaDoc, hoaDon, nganSach, mucTieu, heThong }
+/// ⚠️ **Mỗi `NotificationGroup` phải có đúng một mục ở đây.** Lưới an toàn
+/// của `kinds` bên dưới canh `nhomCua()`, tức nó bắt được "loại mới quên xếp
+/// nhóm" — nhưng **không** bắt được "nhóm mới quên chip". Nhóm `summary`
+/// (2026-09-09) đã lọt qua đúng khe ấy và thông báo Tổng kết tuần chỉ hiện ở
+/// "Tất cả". Phép canh còn thiếu nay nằm ở `notification_center_page_test`:
+/// số `ChoiceChip` phải bằng `NotificationGroup.values.length + 2`.
+enum _Loc { tatCa, chuaDoc, hoaDon, nganSach, mucTieu, heThong, tongKet }
 
 extension on _Loc {
   String get nhan => switch (this) {
@@ -196,6 +202,7 @@ extension on _Loc {
         _Loc.nganSach => 'Ngân sách',
         _Loc.mucTieu => 'Mục tiêu',
         _Loc.heThong => 'Hệ thống',
+        _Loc.tongKet => 'Tổng kết',
       };
 
   /// Nhóm tương ứng — `null` với hai chip không lọc theo nhóm.
@@ -204,6 +211,7 @@ extension on _Loc {
         _Loc.nganSach => NotificationGroup.budget,
         _Loc.mucTieu => NotificationGroup.goal,
         _Loc.heThong => NotificationGroup.system,
+        _Loc.tongKet => NotificationGroup.summary,
         _Loc.tatCa || _Loc.chuaDoc => null,
       };
 
@@ -234,7 +242,7 @@ class _HangChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Cuộn ngang chứ không `Wrap`: sáu chip cần khoảng 540px còn điện thoại
+    // Cuộn ngang chứ không `Wrap`: bảy chip cần khoảng 630px còn điện thoại
     // thật rộng 411dp, nên `Wrap` xuống hàng thứ hai và ăn mất một thẻ thông
     // báo trên màn hình vốn đã chật. `SingleChildScrollView` cho `Row` bề rộng
     // vô hạn nên cũng không bao giờ tràn.
