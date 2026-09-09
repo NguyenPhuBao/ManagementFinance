@@ -589,6 +589,8 @@ String _tenNhom(NotificationGroup nhom) {
       return 'Mục tiêu';
     case NotificationGroup.system:
       return 'Hệ thống';
+    case NotificationGroup.summary:
+      return 'Tổng kết';
   }
 }
 
@@ -602,6 +604,8 @@ String _moTaNhom(NotificationGroup nhom) {
       return 'Hoàn thành và trễ tiến độ.';
     case NotificationGroup.system:
       return 'Đồng bộ hỏng và cảnh báo số dư ví.';
+    case NotificationGroup.summary:
+      return 'Nhìn lại tuần vừa qua.';
   }
 }
 
@@ -615,6 +619,8 @@ IconData _iconNhom(NotificationGroup nhom) {
       return Icons.flag_outlined;
     case NotificationGroup.system:
       return Icons.sync_problem_outlined;
+    case NotificationGroup.summary:
+      return Icons.calendar_view_week_outlined;
   }
 }
 

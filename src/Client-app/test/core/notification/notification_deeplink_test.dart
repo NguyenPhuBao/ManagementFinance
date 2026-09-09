@@ -239,14 +239,15 @@ void main() {
             ),
           ],
           syncFailed: true,
+          tuanQuaCoGiaoDich: true,
         ));
 
-    test('đầu vào của phép canh phủ đủ cả 15 loại thông báo', () {
+    test('đầu vào của phép canh phủ đủ cả 16 loại thông báo', () {
       final phu = tatCaUngVien().map((c) => c.kind).toSet();
 
       expect(phu, containsAll(NotificationKind.values),
           reason: 'Phép canh bên dưới chỉ có giá trị khi nó thật sự chạy qua '
-              'mọi loại. Thêm loại thứ 15 mà quên dựng đầu vào cho nó thì '
+              'mọi loại. Thêm loại thứ 17 mà quên dựng đầu vào cho nó thì '
               'chính test này đỏ, chứ không phải im lặng bỏ sót.');
     });
 

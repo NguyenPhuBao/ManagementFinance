@@ -6,6 +6,7 @@ import '../../features/goal/domain/goal_auto_deposit_runner.dart';
 import '../../features/bill/domain/bill_auto_pay.dart';
 import '../../features/bill/domain/bill_auto_pay_runner.dart';
 import '../../features/budget/presentation/widgets/budget_visuals.dart';
+import 'tuan_iso.dart';
 
 /// Loại thông báo. Giá trị `.name` được ghi thẳng vào cột `kind`.
 enum NotificationKind {
@@ -24,6 +25,7 @@ enum NotificationKind {
   syncFailed,
   walletNegative,
   walletLowBalance,
+  weeklySummary,
 }
 
 enum NotificationSeverity { info, warning, critical }
@@ -113,6 +115,14 @@ class NotificationRuleInput {
   /// [defaultBillLeadDays].
   final int lowBalanceThreshold;
 
+  /// Tuần **vừa khép lại** có ít nhất một giao dịch không.
+  ///
+  /// Là `bool` chứ không phải tổng thu/chi, cùng kỷ luật thu hẹp đầu vào với
+  /// [syncFailed]: câu chữ đã chốt **không nêu số nào**, nên bộ luật chỉ cần
+  /// biết có hay không. Đưa vào đây một bản tổng hợp là bắt mọi test dựng dữ
+  /// liệu mà câu thông báo không bao giờ đọc tới.
+  final bool tuanQuaCoGiaoDich;
+
   const NotificationRuleInput({
     required this.now,
     this.budgets = const [],
@@ -125,6 +135,7 @@ class NotificationRuleInput {
     this.silenceBefore,
     this.defaultBillLeadDays = mocNhacMacDinh,
     this.lowBalanceThreshold = 0,
+    this.tuanQuaCoGiaoDich = false,
   });
 }
 
@@ -143,12 +154,61 @@ List<NotificationCandidate> buildNotificationCandidates(
     ..._autoPayCandidates(input),
     ..._walletCandidates(input),
     ..._syncCandidates(input),
+    ..._weeklySummaryCandidates(input),
   ];
 
   final chan = input.silenceBefore;
   if (chan == null) return ra;
   return ra.where((c) => !c.createdAt.isBefore(chan)).toList();
 }
+
+// ── Tổng kết tuần ────────────────────────────────────────────────────────────
+
+/// Một thông báo cho **tuần vừa khép lại**, nếu tuần ấy có giao dịch.
+///
+/// Chỉ nhìn **một** tuần liền trước, không quét ngược nhiều tuần (chốt (b) của
+/// spec): quét ngược thì cửa sổ `silenceBefore` 30 ngày phải gánh việc chặn lũ,
+/// một việc nó không sinh ra để làm.
+List<NotificationCandidate> _weeklySummaryCandidates(
+  NotificationRuleInput input,
+) {
+  // Tuần trống thì không báo — tổng kết của việc không có gì là nhiễu thuần
+  // tuý, và đây cũng là dữ liệu duy nhất luật này cần đọc.
+  if (!input.tuanQuaCoGiaoDich) return const [];
+
+  final tuan = tuanTruoc(input.now);
+  final ngayCuoi = tuan.to.subtract(const Duration(days: 1));
+
+  return [
+    NotificationCandidate(
+      kind: NotificationKind.weeklySummary,
+      // Đoạn thứ ba là ngày thứ Hai của tuần. Nó tồn tại vì
+      // `deeplinkTuDedupeKey` chạy ở **cold start**: nó không tra được CSDL,
+      // và phép nghịch đảo của số tuần ISO là một hàm dễ sai mà không ai kiểm
+      // lại. Chở sẵn ngày đi thì rẻ hơn và tự nói ra nghĩa của nó.
+      dedupeKey: 'weekly:${khoaTuan(tuan.from)}:${_ngayKhoa(tuan.from)}',
+      title: 'Tổng kết tuần',
+      // Cố ý KHÔNG nêu số. Thông báo là cái cửa, không phải bản báo cáo —
+      // ba phương án có số đã bị loại khi chốt với người dùng.
+      body: 'Tuần qua đã khép lại. Xem lại bạn đã tiêu vào đâu.',
+      severity: NotificationSeverity.info,
+      subjectType: 'week',
+      // `to` là ngày CUỐI CÙNG được tính vào: trang Xuất báo cáo tự cộng thêm
+      // một ngày để ra biên mở, đúng như bộ chọn khoảng ngày vẫn làm. Đưa
+      // thẳng biên mở vào đây là báo cáo nuốt thêm trọn ngày thứ Hai kế tiếp.
+      deeplink: '/export-report?from=${_ngayKhoa(tuan.from)}'
+          '&to=${_ngayKhoa(ngayCuoi)}',
+      // Mốc của **sự kiện** là lúc tuần khép, không phải lúc quét: cửa sổ
+      // `silenceBefore` lọc theo cột này.
+      createdAt: tuan.to,
+    ),
+  ];
+}
+
+/// `yyyy-MM-dd`, dạng duy nhất dùng trong khoá tuần và tham số truy vấn.
+String _ngayKhoa(DateTime d) => '${d.year.toString().padLeft(4, '0')}-'
+    '${d.month.toString().padLeft(2, '0')}-'
+    '${d.day.toString().padLeft(2, '0')}';
 
 // ── Ngân sách ────────────────────────────────────────────────────────────────
 

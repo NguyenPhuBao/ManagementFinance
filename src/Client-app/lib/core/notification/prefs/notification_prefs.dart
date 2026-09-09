@@ -5,7 +5,7 @@ import '../notification_rules.dart';
 /// Nhóm chứ không phải từng `NotificationKind`: tám công tắc là quá nhiều để
 /// người dùng hiểu, và hai loại trong cùng nhóm luôn được bật/tắt cùng nhau
 /// trong thực tế (ai tắt "sắp đến hạn" thì cũng không muốn "quá hạn").
-enum NotificationGroup { bill, budget, goal, system }
+enum NotificationGroup { bill, budget, goal, system, summary }
 
 /// Loại thông báo thuộc nhóm nào.
 ///
@@ -33,6 +33,16 @@ NotificationGroup nhomCua(NotificationKind kind) {
     case NotificationKind.walletNegative:
     case NotificationKind.walletLowBalance:
       return NotificationGroup.system;
+    // Nhóm RIÊNG, cố ý không gộp vào `system`. Nhóm ấy đang là "Đồng bộ hỏng
+    // và số dư ví âm"; ai tắt tổng kết tuần vì thấy phiền thì **không** có ý
+    // tắt luôn cảnh báo ví âm. Đúng loại nhầm lẫn mà commit `dfb8721` đã phải
+    // đi sửa một lần.
+    //
+    // Kho tuỳ chọn lưu nhóm bị **TẮT** chứ không phải nhóm được bật, nên nhóm
+    // mới tự động BẬT với mọi bản ghi cũ — chính là lý do định dạng ấy được
+    // chọn từ đầu.
+    case NotificationKind.weeklySummary:
+      return NotificationGroup.summary;
   }
 }
 
@@ -73,6 +83,10 @@ bool luonBao(NotificationKind kind) {
     case NotificationKind.syncFailed:
     case NotificationKind.walletNegative:
     case NotificationKind.walletLowBalance:
+    // Tổng kết tuần **chịu** công tắc nhóm: nó không báo tiền rời ví, nó chỉ
+    // mời người dùng quay lại xem. Đúng loại thông báo mà người ta phải tắt
+    // được, nếu không họ sẽ tắt công tắc tổng và mất mọi thứ.
+    case NotificationKind.weeklySummary:
       return false;
   }
 }

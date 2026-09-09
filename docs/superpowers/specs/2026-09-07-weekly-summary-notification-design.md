@@ -1,9 +1,11 @@
 # Tổng kết tuần — thiết kế, và lý do hoãn
 
-> **Trạng thái: hoãn có chủ ý, 2026-09-07.** Không một dòng mã nào được viết.
-> Tài liệu này tồn tại để phiên sau không phải bàn lại từ đầu — câu chữ đã
-> chốt với người dùng, hình dạng kỹ thuật đã dò xong, và điều kiện để bắt đầu
-> đã ghi rõ.
+> **Trạng thái: ĐANG LÀM, từ 2026-09-09.** Bốn câu hỏi mở đã chốt với người
+> dùng (mục 5), và điều kiện ở mục 3 **đã đủ** — xem ghi chú 2026-09-09 ở đó.
+>
+> Từ 2026-09-07 tới 2026-09-09 tài liệu này ở trạng thái *hoãn có chủ ý*: câu
+> chữ đã chốt, hình dạng kỹ thuật đã dò xong, nhưng chỗ thông báo dẫn tới chưa
+> tồn tại.
 
 Loại thông báo này đứng **đầu** danh sách việc còn lại của mảng thông báo:
 Monarch và Capital One đều có, FlowMoney thiếu hẳn. Nó bị hoãn không phải vì
@@ -87,6 +89,13 @@ tích sau khi được nối vào dữ liệu, hoặc một màn tổng kết tu
 
 Chừng nào chưa có, đừng dựng thông báo này — kể cả với một chỗ đến tạm.
 
+> **✅ Đã đủ — cập nhật 2026-09-09.** Lát 2c của mảng Phân tích (làm xong
+> **sau** ghi chú 2026-09-08 ở trên) cho `ExportReportPage` một phạm vi
+> **`PhamViThoiGian.tuyChinh`** với bộ chọn khoảng ngày, và `ReportPreviewPage`
+> dựng trọn mười khối báo cáo cho **khoảng bất kỳ**. Màn hình phạm vi tuần vì
+> thế đã tồn tại; không cần dựng màn mới, cũng không cần một thiết kế Stitch
+> mới. Điều kiện ở mục này coi như đóng.
+
 ---
 
 ## 4. Hình dạng kỹ thuật — sáu chỗ phải chạm
@@ -146,7 +155,14 @@ Kèm theo, ngoài sáu chỗ trên:
 
 ---
 
-## 5. Câu hỏi còn mở — phải chốt trước khi viết mã
+## 5. Câu hỏi đã chốt (2026-09-09)
+
+> **Bốn câu, không phải năm.** Mục này vốn có **ba** câu (a, b, c); con số "5"
+> đi qua ba tài liệu tóm tắt là đếm theo trí nhớ, đã sửa 2026-09-09. Câu **(d)**
+> là câu thứ tư, phát hiện khi rà lại mã ngày 2026-09-09.
+
+**Người dùng chốt 2026-09-09:** (a) theo phương án **giờ do người dùng chọn**;
+(b), (c), (d) theo đề nghị.
 
 ### a) Nổ lúc nào, và có nổ khi app đóng không?
 
@@ -167,6 +183,22 @@ nhắc hoá đơn.
 tổng kết tuần và nhắc hoá đơn: giờ nhắc hoá đơn do người dùng tự chọn và đang
 nhìn thấy trên màn hình, còn mốc tổng kết tuần là do app tự đặt.
 
+### ✅ CHỐT (a): `ReminderScheduler`, và **giờ do người dùng chọn**
+
+Người dùng chọn phương án tốn hơn thay vì mốc cố định 08:00 thứ Hai, và lý do
+nằm ngay ở đoạn cảnh báo trên: điều khiến nhắc hoá đơn không phiền **không phải**
+là giờ của nó, mà là việc giờ ấy **do người dùng đặt và đang nhìn thấy trên màn
+hình**. Đặt một mốc cố định rồi để nó xuyên qua giờ im lặng là app tự quyết thay
+người dùng đúng ở chỗ họ đã nói rằng họ quan tâm.
+
+Hệ quả: cần **một ô cấu hình mới** trong trang Cài đặt thông báo — chọn *thứ*
+trong tuần và *giờ*. Mặc định **thứ Hai 08:00** để bản cài mới vẫn có hành vi
+hợp lý mà không bắt ai phải cấu hình trước.
+
+Vì lịch nằm trong AlarmManager chứ không trong SQLite, đổi cấu hình phải **huỷ
+lịch cũ rồi đặt lại** — cùng ràng buộc mà `NotificationScanner.stop()` phải gọi
+`cancelAll()` (quy tắc 9 `CLAUDE.md`).
+
 ### b) Biên tuần
 
 Khuyến nghị: **thứ Hai → Chủ nhật** (quy ước Việt Nam), và luật chỉ nhìn **một
@@ -174,10 +206,39 @@ tuần liền trước**, không quét ngược nhiều tuần. Chỉ nhìn mộ
 `silenceBefore` (30 ngày) không bao giờ phải gánh việc chặn lũ, và `createdAt`
 đặt bằng **thời điểm kết thúc tuần** để phép lọc ấy so đúng.
 
+### ✅ CHỐT (b): theo khuyến nghị.
+
 ### c) Tuần trống thì sao?
 
 Khuyến nghị: **không báo**. Tổng kết của việc không có gì là nhiễu thuần tuý —
 và đây đúng là dữ liệu duy nhất mà luật cần đọc (mục 4).
+
+### ✅ CHỐT (c): theo khuyến nghị.
+
+---
+
+### d) Chạm vào thông báo thì mở đi đâu?
+
+Câu này **không có trong bản 2026-09-07** — nó lộ ra khi rà lại mã ngày
+2026-09-09. `ReportPreviewPage` nhận một đối tượng `BaoCao` **dựng sẵn** qua
+`extra` của go_router, nên **khởi động nguội không mở thẳng nó được**: `extra`
+không sống qua một tiến trình mới, và cold start thì không tra CSDL được (đó
+đúng là lý do `deeplinkTuDedupeKey` tồn tại).
+
+Hai đường:
+
+- **Mở `/export-report` với phạm vi đặt sẵn là tuần vừa rồi** — thêm tham số
+  truy vấn cho route, an toàn với khởi động nguội. Người dùng thấy trang đã
+  chọn đúng tuần và bấm thêm một lần để xem báo cáo đầy đủ.
+- **Route mới dựng thẳng báo cáo rồi hiện màn xem trước** — bớt một cú chạm,
+  nhưng phải cho trang xem trước một lối vào cấp route tự dựng dữ liệu.
+
+### ✅ CHỐT (d): đường thứ nhất.
+
+`/export-report?from=<ISO>&to=<ISO>` đặt `PhamViThoiGian.tuyChinh` với đúng
+khoảng ấy. Rẻ hơn nhiều, và trang Xuất báo cáo **đã hiện số thật** từ lát 2c nên
+nó không phải một chỗ trống. Tham số đi qua **query string** chứ không qua
+`extra`, đúng vì lý do cold start ở trên.
 
 ---
 

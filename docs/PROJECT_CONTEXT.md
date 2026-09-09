@@ -839,14 +839,15 @@ một lựa chọn, không phải một hàng đợi.
 
 **Thứ tự đã duyệt tối 2026-09-08** (✅ cả 2c, biểu đồ tiến độ mục tiêu **và** số
 liệu tổng hợp đều xong 2026-09-09 — việc kế tiếp là **Tổng kết tuần**, nhưng
-spec của nó còn **5 câu hỏi mở** ở mục 5 phải chốt trước khi viết mã; sau đó là
-nối Socket.io) (người dùng hỏi "nên làm theo thứ tự nào",
+spec của nó còn **ba** câu hỏi mở ở mục 5 phải chốt trước khi viết mã — đếm
+bằng máy 2026-09-09, con số "5" chép qua ba tài liệu trước đó là đếm theo trí
+nhớ; sau đó là nối Socket.io) (người dùng hỏi "nên làm theo thứ tự nào",
 đã chốt — đừng bàn lại từ đầu): ✅ bộ lọc tay/tự động của lịch sử mục tiêu →
 ✅ **2a** Phân tích số thật → ✅ **2b** biểu đồ theo thời gian (**thư viện đã
 chọn: `fl_chart`, ghim `1.2.0`** — mục 3.11 `ANALYTICS_FEATURE.md`) → **2c**
 trang Xuất báo cáo → ✅ biểu đồ tiến độ mục tiêu theo thời gian (mục **3.26**
 `GOAL_FEATURE.md`) → Tổng kết tuần (spec có
-sẵn, còn **5 câu hỏi mở** ở mục 5) → ✅ số liệu tổng hợp mục tiêu (mục **3.27**
+sẵn, còn **ba** câu hỏi mở ở mục 5) → ✅ số liệu tổng hợp mục tiêu (mục **3.27**
 `GOAL_FEATURE.md`) → nối Socket.io phía
 client (cuối, không thêm gì người dùng thấy). **Round-up cố ý để ngoài** — chỗ
 thứ ba app tự chuyển tiền trong khi chỗ thứ hai (`bill.Auto_pay`) còn treo
