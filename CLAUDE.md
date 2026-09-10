@@ -39,6 +39,9 @@
 ## Quy tắc chí mạng
 
 1. **Chỉ sửa `src/Client-app`.** Không đụng `src/Backend` trừ khi được cho phép rõ ràng trong chính yêu cầu đó. Cần backend làm gì thì **viết tài liệu** vào `docs/superpowers/backend/`.
+   - ⚠️ **Một câu duyệt chung KHÔNG gỡ được quy tắc này** (vấp ngày 2026-09-10). Tôi trình ba lối cho một việc, một lối là "tôi sửa cả hai đầu", người dùng đáp *"hãy làm theo đề xuất của bạn"* — và tôi đã đổi `schema.prisma` rồi chạy `prisma migrate deploy` lên PostgreSQL thật. Họ không hề có ý gỡ quy tắc. Phép duyệt phải **gọi tên chính việc bị cấm**; "ok", "làm đi", "theo đề xuất của bạn" thì không. Và **đừng gộp** một lối vi phạm quy tắc chung với việc được phép vào cùng một câu hỏi — tách ra, để một chữ duyệt không thể bị hiểu thành duyệt cả hai.
+   - **Viết tài liệu LÀ phần việc hoàn tất**, không kèm lời mời tự làm. Tài liệu phải tự đủ để người nhận làm theo mà không hỏi lại: đo được gì, chạy gì, áp theo quy ước nào của repo (`prisma/migrations/` + `migrate deploy` + `generate`, **không** chạy SQL tay), và kiểm lại bằng câu truy vấn nào. Khuôn đầy đủ: `CAN-LAM/WALLET_STATUS_COLUMN_WIDTH.md`.
+   - ⚠️ **CSDL dev trên máy này đang lệch khỏi lược đồ chuẩn** vì đúng sự việc trên: `wallet."Status"` là `varchar(16)` thay vì 7, và `_prisma_migrations` thừa một dòng. Chưa hoàn tác được (môi trường chặn mọi lệnh đổi lược đồ, kể cả lệnh hoàn tác). Hệ quả dễ hiểu lầm: **trên riêng máy này, đẩy `'Inactive'` lên sẽ không còn lỗi** — đừng dùng nó để kết luận G28 đã tự khỏi. Lệnh dọn ở mục **3b** của tài liệu vừa dẫn.
    - `docs/` gốc **không** bị `.gitignore` chặn, nhưng một số thư mục con thì có (`docs/category/`, `docs/bill/`, `docs/deploy_Cloud/`, `docs/superpowers/plans/`…). Tạo tài liệu ở chỗ mới thì kiểm trước bằng `git check-ignore -v <path>`, nếu không nó biến mất âm thầm.
 
 2. **`idaccount` CHỈ đến từ phiên đăng nhập.** Không bao giờ suy ra từ dữ liệu trong SQLite, không bao giờ mặc định về `1` — đó là tài khoản **admin thật**, không phải giá trị "chưa biết".
@@ -99,8 +102,10 @@ cd src/Client-app && flutter run -d chrome --web-port 9090
 
 ## Ghi chú vận hành
 
-Bốn thứ dưới đây **đã từng gây thiệt hại thật**. Chúng vốn chỉ nằm trong file
-bàn giao tạm giữa các phiên nên chết đi sống lại nhiều lần — nay ghi ở đây.
+Những thứ dưới đây **đã từng gây thiệt hại thật**. Bốn mục đầu vốn chỉ nằm
+trong file bàn giao tạm giữa các phiên nên chết đi sống lại nhiều lần; năm mục
+cuối thêm ngày 2026-09-10, sau một phiên mà **lượt soát tìm ra lỗi trong chính
+công việc vừa làm nhiều hơn trong tài liệu cũ**.
 
 - **Đừng ngắt `flutter test` giữa chừng, và đừng chạy hai lần cùng lúc.**
   `flutter_tester.exe` mồ côi giữ `build/native_assets/windows/sqlite3.dll`,
@@ -135,6 +140,34 @@ bàn giao tạm giữa các phiên nên chết đi sống lại nhiều lần �
   Vô hại, nhưng nhớ kiểm `git diff --stat` để chắc không bị nhiễu toàn file.
 
 ---
+
+- **Đừng lọc kết quả một phép ĐO qua `head`/`tail`.** Ngày 2026-09-10 một lượt
+  đo `pg_constraint` bị `tail -25` cắt mất bốn dòng đầu, và tôi kết luận bảng
+  `wallet` "không có CHECK constraint nào" — sai hoàn toàn, bảng có 18 ràng buộc
+  đủ cả bốn `chk_wallet_*`. Kết luận sai ấy đã kịp đi vào `CLAUDE.md` và
+  `PROJECT_CONTEXT.md` trước khi lượt soát bắt được. Lọc bằng **dấu hiệu từng
+  dòng** (`console.log('ROW| ...')` rồi `grep "^ROW|"`), hoặc in ra tệp rồi đọc.
+  Đây là **lần thứ hai** output bị cắt làm sai kết luận — lần trước là `grep` qua
+  rtk. Khi kết quả trông đáng ngờ, kiểm lại bằng Python thay vì tin `grep`.
+
+- **Mọi con số trong tài liệu phải ĐẾM BẰNG SCRIPT, và ghi kèm ngày đếm.** Cùng
+  phiên ấy tôi viết "ba cột" rồi liệt kê hai, và chép lại con số "14 chỗ gọi"
+  đã cũ. Dự án đã có nếp "đếm bằng máy" ở nhiều chỗ — theo nó, đừng đếm bằng mắt.
+
+- **Trước khi commit một hạng mục, quét API MỚI THÊM có 0 chỗ gọi.** Ngày
+  2026-09-10 tôi thêm `WalletDao.watchActive` vào cả DAO lẫn datasource mà không
+  chỗ nào cần — chỉ lộ ra khi đếm chỗ gọi để sửa một con số trong tài liệu.
+
+- **Đổi một quyết định thì grep theo TỪ KHOÁ CỦA QUYẾT ĐỊNH CŨ, không chỉ sửa chỗ
+  vừa đụng.** Khi `wallet.status` chuyển thành cột cục bộ, ba chú thích ở ba tệp
+  khác vẫn nói nó "đi ra máy khác qua `/sync/push`". Chúng chỉ lộ ra khi grep
+  đúng cụm chữ ấy.
+
+- **Lượt soát tài liệu phải quét cả tài liệu KHÔNG do mình sửa.** Soát bốn tệp
+  vừa chạm là chưa đủ: lượt quét rộng ngày 2026-09-10 bắt được một mục của phiên
+  trước nói ngược mục mới ngay bên trên nó, một dòng tổng kết lỗ hổng bỏ sót bốn
+  mục, và bảng tóm tắt của `CLIENT_APP_KNOWN_GAPS.md` **trôi khỏi thân lần thứ
+  năm**. Cách rẻ: `grep` tên tính năng và tên hằng số vừa đổi trên toàn `docs/`.
 
 ## Ghi chú về kiểm thử
 
