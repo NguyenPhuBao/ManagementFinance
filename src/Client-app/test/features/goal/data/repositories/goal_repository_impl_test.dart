@@ -1582,4 +1582,19 @@ void main() {
               'kéo về một cờ xoá.');
     });
   });
+  group('đọc priority — G32', () {
+    test('hàng mang priority 0 đọc ra là chưa sắp', () async {
+      await (db.update(db.goals)..where((t) => t.id.equals('g1')))
+          .write(const GoalsCompanion(priority: Value(0)));
+
+      expect((await repository.getGoalById('g1'))!.priority, isNull,
+          reason: 'Máy đã kéo về trước bản vá còn giữ 0 trong SQLite. Đọc là '
+              'số thì mục tiêu chưa sắp đứng ĐẦU danh sách, và kéo thả tính khe '
+              'từ một số người dùng chưa từng đặt.');
+      expect((await repository.getGoals(1)).single.priority, isNull,
+          reason: 'Đường đọc danh sách phải theo cùng luật với đường đọc từng '
+              'hàng — hai đường lệch nhau là trang danh sách và trang chi tiết '
+              'nói hai điều khác nhau về cùng một mục tiêu.');
+    });
+  });
 }

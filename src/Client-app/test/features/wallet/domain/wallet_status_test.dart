@@ -14,12 +14,14 @@
 /// đọc ngược) phải khớp nhau và được canh ở đây.
 ///
 /// ⚠️ **`khoaGuiLen` hôm nay không có chỗ gọi nào ngoài tệp test này**, và đó
-/// là chủ ý — không phải mã chết bỏ quên. Lược đồ PostgreSQL tự mâu thuẫn ở
-/// đúng cột này: CHECK cho phép `'Inactive'` trong khi kiểu cột là
-/// `varchar(7)`, mà chuỗi ấy dài **8 ký tự**. Nên `status` là cột **cục bộ**
-/// cho tới khi backend nới cột, và phép ánh xạ ở đây được giữ sống bằng test
-/// để ngày nối lại chỉ tốn một dòng.
-/// Xem `docs/superpowers/backend/CAN-LAM/WALLET_STATUS_COLUMN_WIDTH.md`.
+/// là chủ ý — không phải mã chết bỏ quên. Lý do ban đầu, đo 2026-09-10: lược
+/// đồ PostgreSQL tự mâu thuẫn ở đúng cột này — CHECK cho phép `'Inactive'`
+/// trong khi kiểu cột là `varchar(7)`, mà chuỗi ấy dài **8 ký tự**. Tối cùng
+/// ngày CSDL dev đã nới cột lên `varchar(20)`, nhưng `status` vẫn là cột
+/// **cục bộ** cho tới khi mở lại G28 (người dùng chốt để sau), và phép ánh xạ
+/// ở đây được giữ sống bằng test để ngày nối lại chỉ tốn một dòng.
+/// Xem G28 `docs/CLIENT_APP_KNOWN_GAPS.md` và
+/// `docs/superpowers/backend/CAN-LAM/WALLET_STATUS_COLUMN_WIDTH.md`.
 library;
 
 import 'package:flutter_test/flutter_test.dart';

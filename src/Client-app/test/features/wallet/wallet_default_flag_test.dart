@@ -14,8 +14,13 @@ import 'package:flutter_test/flutter_test.dart';
 /// tới lỗi: đặt A mặc định → sửa B thành mặc định → thêm ví C có tích "đặt làm
 /// mặc định" → `addWallet` gọi `getDefault` → nổ, người dùng thấy `WalletError`.
 ///
-/// Không có unique index nào chặn ở cả SQLite lẫn PostgreSQL (đo `pg_constraint`
-/// ngày 2026-09-09), nên bất biến này chỉ do mã giữ.
+/// SQLite không có unique index nào chặn, nên phía client bất biến này chỉ do
+/// mã giữ. ⚠️ Câu cũ ở đây ghi "cả PostgreSQL cũng không" là **sai** — phép đo
+/// 2026-09-09 dùng `pg_constraint`, nơi partial unique index không hiện; đo lại
+/// `pg_indexes` 2026-09-10: server có `uq_wallet_default_active (Idaccount)
+/// WHERE Is_default AND Delete_at IS NULL`. Nó chặn hàng thứ hai ở **server**,
+/// không giúp gì cho SQLite; và hai máy cùng đặt mặc định khi ngoại tuyến thì
+/// máy đẩy sau nhận 23505 → xếp vĩnh viễn (xem `domain/rang_buoc_vi.dart`).
 ///
 /// ⚠️ Có HAI luật độc lập ở đây, và một bản sai có chủ ý đã chứng minh chúng
 /// cần hai ca test riêng: phép **thoát sớm** ở `_giuMotViMacDinh` (không mặc

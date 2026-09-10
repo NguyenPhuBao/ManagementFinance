@@ -33,7 +33,12 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > | **G25** | **Không phải lỗi** — hai máy cùng sắp lại thứ tự ưu tiên khi ngoại tuyến thì được một thứ tự trộn (2026-09-08) |
 > | **G26** | Hoãn có chủ ý — chưa có màn **duyệt giao dịch ngân hàng** cho sự kiện realtime trỏ tới; đây là một tính năng riêng, không phải phần còn thiếu của việc nối socket (2026-09-09) |
 > | **G27** | Hoãn có chủ ý — không còn cách nói "ví này **được phép âm**" sau khi loại `debt` bị bỏ; cần một cột mới ở cả hai đầu cho một tình huống CSDL hiện không có hàng nào (2026-09-09) |
-> | **G28** | ⛔ **Chặn ở backend** — cột `wallet."Status"` là `varchar(7)` trong khi chính `chk_wallet_status` cho phép `'Inactive'` (8 ký tự), nên **lưu trữ ví chỉ sống trên máy đã bấm** (2026-09-10) |
+> | **G28** | ⏸️ **Hết chặn phía server, chờ client mở lại** — CSDL dev đã áp `database/7` tối 2026-09-10 nên `wallet."Status"` nay `varchar(20)`, chứa được `'Inactive'`. Client vẫn để cột cục bộ, nên **lưu trữ ví chỉ sống trên máy đã bấm** cho tới khi mở lại ba chỗ. Người dùng chốt **để sau** |
+> | **G29** | ⛔ **Chặn ở backend** — `/sync/push` lọc `Note` bằng biểu thức bắt nhầm (số tài khoản, "mật khẩu wifi", hậu tố `(tự động)`), và bản đã lọc **đè lên máy** ngay chu kỳ đồng bộ ấy — tái hiện đầu-cuối trên máy ảo 2026-09-10. Chưa hỏng dữ liệu thật nào |
+> | **G30** | ⏸️ **Chặn tạm, chờ backend bỏ index** — server có `uq_wallet_saving_active` (một ví Tiết kiệm mỗi tài khoản), luật chỉ tồn tại ở SQL; client khoá ô "Tiết kiệm" và chốt ở datasource từ 2026-09-10 cho tới khi backend `DROP INDEX`. Chốt **trùng tên ví** cùng ngày thì vĩnh viễn |
+> | **G31** | ⛔ **Chặn ở backend** — tên mục tiêu hoặc hoá đơn dài hơn 100 ký tự, tên danh mục dài hơn 200, vỡ `P2000` trên server và rơi xuống `DB_ERROR`, nên bản ghi bị **gửi lại mãi**. ✅ Bảy ô tên của client giới hạn theo code point từ 2026-09-10; còn mở vì bản client cũ, Admin-web và mọi nguồn ghi khác vẫn chờ backend ánh xạ lỗi |
+> | **G32** | ⛔ **Chặn ở backend** — `Number(null)` ở `mapEntityFields('goal')` ghi mục tiêu **chưa sắp** thành `Priority = 0`, nên sau một vòng đồng bộ nó nhảy lên **đầu** danh sách; tái hiện đầu-cuối trên máy ảo (2026-09-10). ✅ Client đọc `<= 0` là chưa sắp từ cùng ngày; còn mở vì giá trị sai vẫn nằm trên server và bản client cũ vẫn thấy lỗi |
+> | **G33** | 🔴 **Lỗi đang chạy, client sửa được** — trang Xoá tài khoản hứa *"đăng nhập lại trong 30 ngày là tự khôi phục"*, nhưng backend không làm vậy (`pendingDeleteCancelled` luôn `false`), nên người tin lời hứa **mất tài khoản sau 30 ngày** mà không được báo (2026-09-10). Cách sửa đã chốt, nằm trong spec cưỡng chế đăng xuất — **chờ duyệt** |
 >
 > **G20 đã đóng ngày 2026-09-05** — `depositToGoal` nhận `occurredAt` chặn hai
 > đầu; đã kiểm cả bằng test lẫn trên máy ảo Android.
@@ -718,7 +723,7 @@ hai nhánh loại trừ trong `_walletCandidates`. Hai test ở
 
 ---
 
-### G28 — Lưu trữ ví chỉ sống trên máy đã bấm · ⛔ CHẶN Ở BACKEND (2026-09-10)
+### G28 — Lưu trữ ví chỉ sống trên máy đã bấm · ⏸️ HẾT CHẶN PHÍA SERVER, CHỜ CLIENT MỞ LẠI (2026-09-10; tiêu đề trước ghi "chặn ở CSDL — tệp `database/7` chưa áp", trước nữa "chặn ở backend")
 
 Tính năng **lưu trữ ví** (2026-09-10) ghi trạng thái vào cột `wallets.status`
 của SQLite. Cột cùng tên đã có sẵn ở PostgreSQL và `upsertWallet` phía backend
@@ -744,8 +749,8 @@ kéo chậm cả hàng đợi. Đây là điều `flutter test` **không** bắt
 **Vì sao không vá ở client:** không có chỗ ghi thì không có cách ghi. Cột được
 gỡ khỏi **cả hai** chiều của đồng bộ, cùng diện với `bills.autoPayEnabled` và
 `bills.anchorDay`. Chiều **kéo về** phải im lặng cùng lúc chứ không chỉ chiều
-đẩy: server luôn trả `'Active'` cho mọi ví — nó chưa bao giờ nhận được giá trị
-nào khác — nên một bản chỉ gỡ chiều đẩy sẽ khiến ví vừa lưu trữ **tự bỏ lưu
+đẩy: client không đẩy cột này nên server giữ `'Active'` cho mọi ví của tài khoản còn dùng (chỉ ví của tài khoản đã bị xoá hẳn mới bị `scheduler.service.js` đặt `'Inactive'`)
+— nên một bản chỉ gỡ chiều đẩy sẽ khiến ví vừa lưu trữ **tự bỏ lưu
 trữ** sau đúng một chu kỳ đồng bộ, im lặng. Có test riêng canh ca ấy, và nó gửi
 `'status': 'Active'` chứ không gửi payload thiếu khoá, vì dạng thiếu khoá không
 phân biệt được hai cách cài đặt.
@@ -754,7 +759,7 @@ phân biệt được hai cách cài đặt.
 báo gì. Cùng hạng với `bill.Auto_pay` nhưng **nhẹ hơn**: lưu trữ ví không tự
 tiêu tiền của ai, chỉ làm một ví hiện lại ở máy chưa bấm.
 
-**Bán kính khi backend nới cột:** một dòng `ALTER TABLE` (không cần đụng CHECK —
+**Bán kính khi mở lại** (phía server đã xong trên CSDL dev tối 2026-09-10 — một dòng `ALTER TABLE`, không cần đụng CHECK —
 nó đã cho phép đúng hai giá trị cần thiết), rồi client mở lại **ba chỗ** — nhánh
 đẩy và nhánh kéo về của `sync_engine.dart`, cộng `walletForPush` trong
 `sync_payload_normalizer.dart` — và cập nhật `sync_payload_contract_test.dart`
@@ -770,14 +775,206 @@ chỉ ngược về tài liệu xin:
 ngày cột ấy từng bị đổi sang `varchar(16)` **ngoài quy trình**, rồi được hoàn
 tác theo yêu cầu **đích danh** của người dùng — đo lại: `varchar(7)`, lịch sử
 migration 3 dòng, bốn CHECK đủ, số hàng không đổi. Nên trên máy ấy đẩy
-`'Inactive'` lên **lại vỡ như mọi môi trường khác** — G28 vẫn đúng. Diễn biến
+`'Inactive'` lên **lại vỡ** — G28 vẫn đúng trên máy ấy. Diễn biến
 đầy đủ ở mục **3b** của `CAN-LAM/WALLET_STATUS_COLUMN_WIDTH.md`.
+
+⚠️ **Cập nhật cùng ngày, sau khi gộp `main` (`bef37d3`) — chỗ chặn đã dời từ mã
+sang CSDL.** Backend **đã** làm phần của mình từ 2026-09-09 (`7523c8c`, NPBao):
+`schema.prisma` khai `wallet.status` là `VarChar(20)`, và bước 4 của
+`src/Backend/database/7_Update_Account_User_Delete_Rules.sql` nới đúng cột ấy. Lúc
+mục này được viết, commit ấy chỉ nằm trên `main`. Đo lại sau khi gộp: CSDL dev vẫn
+`varchar(7)` vì **tệp 7 chưa được áp** — cùng với 8, 9, 10, 11
+(`docs/superpowers/backend/CAN-LAM/DEV_DB_MIGRATIONS_7_11.md`). Nên câu "lược đồ tự
+mâu thuẫn" ở trên đúng với **CSDL**, không còn đúng với **mã nguồn** backend. Bán
+kính phía client không đổi: vẫn đúng ba chỗ ở đoạn trên. Người dùng chốt **để
+sau** — đừng mở lại khi chưa được hỏi.
+
+✅ **Cập nhật tối 2026-09-10 — tệp 7 đã áp lên CSDL dev.** Người dùng yêu cầu
+**đích danh** áp `database/7`–`11`; đo lại: `wallet."Status"` là
+`character varying(20)`. Chỗ chặn phía server của G28 **đã hết** trên máy này.
+Client **chưa** mở lại ba chỗ — vẫn theo lời chốt *để sau*. ⚠️ Chưa đo môi trường
+nào khác (CSDL cloud), đừng suy ra từ máy này.
+
+---
+
+### G29 — `/sync/push` viết lại ghi chú, và bản đã lọc đè lên máy · ⛔ CHẶN Ở BACKEND (2026-09-10)
+
+Đợt `main` ngày 2026-09-10 cho `/sync/push` chạy mọi `note` (giao dịch, ngân sách,
+hoá đơn, mục tiêu) qua `filterSensitiveNote()` rồi mới mã hoá. Mục đích đúng — NĐ
+13/2023, PCI-DSS. Nhưng hai biểu thức của bộ lọc **bắt nhầm**: phần số thẻ cộng
+gộp các số rời nhau và không kiểm Luhn (`0912345678 2500000` thành "số thẻ"; số tài
+khoản từ 13 chữ số cũng vậy), còn từ khoá mật khẩu không đòi dấu `:` nên nuốt từ
+đứng sau (`mật khẩu wifi` mất `wifi`; `Két mật khẩu (tự động)` mất `(tự`).
+
+**Tái hiện đầu-cuối trên máy ảo:** thêm một khoản qua giao diện với ghi chú
+`KiemThuDongBo STK 1903 4567 8901 23 mat khau wifi`. Server lưu bản đã lọc (mã
+hoá), và **trong cùng giây** lượt kéo về đè lên SQLite: hàng mang `synced`, màn Sổ
+giao dịch hiện `… STK [THÔNG TIN THẺ ĐÃ ĐƯỢC LƯỢC BỎ] Mật khẩu: [ĐÃ LƯỢC BỎ]`. Không
+lỗi, không log phía client. Khoản thử đã xoá mềm sau khi đo.
+
+**Vì sao không vá ở client:** đường đè là **chủ ý** của backend —
+`docs/progress/Client-app.md` mục 13.9 ghi client "lưu thẳng" `note` kéo về, để bản
+sao trên máy cũng được làm sạch khi đó thật là số thẻ. Giữ bản gốc ở client là vô
+hiệu bộ lọc đúng chỗ nó có ích; và client cũng không có cách nào biết một chuỗi
+kéo về đã bị lọc **nhầm**. Chỗ sửa là độ chính xác của bộ lọc.
+
+**Bán kính:** mất nội dung không đảo ngược ở cả hai đầu; và vỡ quy ước ghi chú do
+app sinh — hậu tố `(tự động)` mất thì khoản trích tự động đọc thành nạp tay
+(`goal_history_direction.dart`). Tiền tố `Điều chỉnh số dư` và hai tiền tố mục tiêu
+sống sót ở mọi ca đã đo. **Chưa hỏng dữ liệu thật:** chạy bộ lọc trên mọi ghi chú
+đang có (26 hàng không rỗng, đo 2026-09-10) thì chỉ đúng khoản thử bị viết lại.
+
+⚠️ **Khi làm mục 13.3 của `Client-app.md`** (cảnh báo trước khi lưu): **đừng** dán
+mã mẫu `SensitiveNoteValidator` ở 13.10.2 — đo 2026-09-10 nó chặn nhầm **5/10**
+ghi chú hợp lệ, gồm cả `Thay pin: 350000` ("pin" là pin điện thoại). Theo quy tắc đã
+sửa trong tài liệu xin, và chừa chuỗi do app sinh.
+
+Tài liệu xin: `docs/superpowers/backend/CAN-LAM/SYNC_NOTE_FILTER_REWRITE.md`.
+
+---
+
+### G30 — Chỉ một ví Tiết kiệm mỗi tài khoản, vì một index không ai ghi thành luật · ⏸️ CHẶN TẠM, CHỜ BACKEND (2026-09-10)
+
+PostgreSQL có `uq_wallet_saving_active ("Idaccount") WHERE "Type" = 'Saving' AND
+"Delete_at" IS NULL` từ migration 2026-09-01. Luật ấy **không có** trong
+`Rule_project.md` mục 2 lẫn `New_Database.md` 3.2.8 — chỉ có trong SQL, từ bản
+`New_Database.sql` 2026-08-26 khi Tiết kiệm còn được coi là "một ví cứng".
+
+Client tạo sẵn ví "Tiết kiệm" (`saving`) cho mọi tài khoản mới, rồi vẫn cho
+chọn "Tiết kiệm" khi thêm ví. Ví thứ hai: SQLite ghi bình thường → server trả
+23505 → `UNIQUE_VIOLATION` → xếp **vĩnh viễn** → ví không bao giờ lên server;
+giao dịch trong ví vỡ `fk_transaction_wallet` → coi là tạm thời → thử lại mãi.
+Im lặng, cùng lớp với `ewallet`/`debt`.
+
+**Cách xử lý (người dùng chốt 2026-09-10):** xin backend bỏ index
+(`CAN-LAM/WALLET_SAVING_INDEX.md`) **và** chặn tạm trong lúc chờ —
+`wallet/domain/rang_buoc_vi.dart` (`viTietKiemDaCo`), chốt ở
+`WalletLocalDataSourceImpl._kiemRangBuocServer`, và màn Thêm ví khoá ô "Tiết
+kiệm" kèm dòng giải thích. Khi backend xác nhận đã bỏ: gỡ `viTietKiemDaCo`, hai
+chỗ gọi nó, nhóm test "một ví Tiết kiệm" ở hai tệp test, và dòng này.
+
+**Không phải gap:** chốt **trùng tên ví** thêm cùng ngày (`viTrungTen`, cùng
+tệp) canh `uq_wallet_account_name_active` — luật hợp lý, có trong
+`New_Database.md`, ở lại vĩnh viễn.
+
+**Bài học đo:** phép đo 2026-09-09 "không unique index nào ở server" dùng
+`pg_constraint`, nơi partial unique index **không hiện**. Đo `pg_indexes`.
+
+### G31 — Tên dài hơn độ rộng cột kẹt hàng đợi đẩy, vì server gọi đó là lỗi tạm thời · ⛔ CHẶN Ở BACKEND (2026-09-10)
+
+Trên PostgreSQL, `wallet.Name`, `goal.Name`, `bill.Name` rộng **100** ký tự và
+`category.NameCategory` rộng **200** (đo `information_schema.columns`). Form
+client không giới hạn độ dài: quét `lib/` ngày 2026-09-10 được 3 chỗ `maxLength`
+/ `LengthLimitingTextInputFormatter`, **không** chỗ nào ở bốn form ấy.
+
+`upsertGoal`, `upsertBill`, `upsertCategory` không cắt chuỗi. Tên dài hơn → Prisma
+`P2000` → `sync.service.js` không có nhánh cho mã ấy → `DB_ERROR` → client xếp
+**tạm thời** (`_classifyFailure`, `sync_engine.dart:1716`) → gửi lại ở mọi chu
+kỳ, và giãn cách luỹ tiến áp lên **cả** hàng đợi. Không lỗi nào hiện ra.
+
+Riêng ví thì không kẹt mà **bị cắt âm thầm**: `upsertWallet` lưu 100 ký tự đầu,
+và lượt kéo về mang bản đã cắt về máy (suy từ mã, chưa đo trên máy ảo).
+
+**Cách xử lý:** client giới hạn độ dài ở form, vì client là nơi duy nhất báo được
+cho người dùng lúc họ đang gõ; và xin backend ánh xạ `22001` / `P2000` về
+`CONSTRAINT_VIOLATION` để bản client cũ cùng mọi nguồn ghi khác không lặp vô hạn —
+`docs/superpowers/backend/CAN-LAM/SYNC_PUSH_ERROR_MAPPING.md`.
+
+✅ **Phía client xong cùng ngày.** Bảy ô tên — Thêm ví, Sửa ví, Thêm/Sửa mục
+tiêu, Thêm hoá đơn, Sửa hoá đơn, Thêm/Sửa danh mục, Nhóm danh mục — đi qua
+`GioiHanDoRong` ở `lib/core/utils/gioi_han_do_dai.dart`: 100 cho tên ví, mục
+tiêu, hoá đơn; 200 cho tên danh mục. Bộ lọc đếm **code point** chứ không dùng
+`maxLength`, vì PostgreSQL đếm `varchar(n)` theo code point còn `maxLength` đếm
+theo grapheme — chữ gõ ở dạng tách dấu và emoji sẽ lọt qua. Nó cắt theo trọn cụm
+grapheme, và theo đúng chính sách của Flutter về việc có cắt lúc bộ gõ đang ghép
+chữ hay không (Android cắt ngay — nên bấm Lưu lúc chữ cuối chưa chốt vẫn không
+lọt). Test: 12 ca thuần ở `core/utils/gioi_han_do_dai_test.dart`, và mỗi ô một
+widget test. Kiểm trên `emulator-5554`: gõ 120 ký tự vào ô tên mục tiêu, ô dừng
+ở 100.
+
+**Còn mở:** phía server — bản client đã cài trước đó, Admin-web và mọi nguồn ghi
+khác vẫn lặp vô hạn cho tới khi backend ánh xạ lỗi. Hàng tạo trước bản vá mà dài
+hơn cột thì vẫn kẹt; gõ bất kỳ phím nào vào ô tên ở màn Sửa là bộ lọc cắt nó
+xuống vừa cột.
+
+### G32 — Mục tiêu chưa sắp nhảy lên đầu danh sách sau một vòng đồng bộ · ⛔ CHẶN Ở BACKEND (2026-09-10)
+
+Client gửi `priority: null` cho mục tiêu chưa sắp. `mapEntityFields('goal')` ở
+backend gọi `Number(m.priority)`, mà `Number(null) === 0`, nên server lưu `0`.
+Lượt kéo về đọc `int.tryParse('0')` thành `0`, và `_soSanhUuTien`
+(`goal_grouping.dart:70-73`) xếp `0` **trước** mọi số đã sắp.
+
+**Tái hiện đầu-cuối trên `emulator-5554` ngày 2026-09-10:** tạo mục tiêu
+"ThuUuTien" bên cạnh hai mục tiêu đã sắp (100 và 200). Một giây sau khi lưu nó
+đứng cuối; 16 giây sau, qua một chu kỳ đẩy rồi kéo, nó đứng **đầu**, và server
+mang `Priority = 0`. Không lỗi, không log.
+
+Client không bao giờ tự sinh `priority <= 0` (`goal_priority.dart:101-104`), nên
+mọi giá trị ấy kéo về đều là một `null` bị ép.
+
+**Cách xử lý:** xin backend giữ `null`
+(`docs/superpowers/backend/CAN-LAM/GOAL_PRIORITY_NULL_TO_ZERO.md`); client đọc
+`<= 0` như chưa sắp. Phía client chỉ sửa được **hiển thị** trên máy đã cập nhật —
+giá trị trên server và bản client cũ vẫn chờ backend.
+
+✅ **Phía client xong cùng ngày.** Một định nghĩa,
+`goal/domain/uu_tien_hop_le.dart`, áp ở ba ranh giới: `GoalEntity.fromDrift`
+(mọi đường đọc mục tiêu, nên hàng `0` kéo về từ trước bản vá cũng về đúng
+chỗ), nhánh kéo về của `SyncEngine` (SQLite lưu `NULL` thay vì `0`), và payload
+đẩy lên (gửi `null` thay vì đẩy lại `0`, để hàng tự lành khi backend sửa). Áp ở
+cả ba chứ không chỉ chỗ sắp xếp: `_mocChenDuoc` coi `0` là một số thật, nên kéo
+thả sẽ tính khe từ nó trong khi danh sách lại xếp nó như chưa sắp. Test: 4 ca
+thuần, 1 ca repository, 1 ca payload đẩy, 1 tệp kéo về. Kiểm trên
+`emulator-5554`: cài bản vá, "ThuUuTien" — kéo về từ trước bản vá và đang đứng
+đầu — về **cuối** danh sách ngay khi mở trang, không cần đồng bộ lại.
+
+**Còn mở:** phía server — giá trị `0` vẫn nằm trên server, và bản client đã cài
+trước đó vẫn thấy mục tiêu nhảy lên đầu. Mục tiêu thử "ThuUuTien"
+(`f7482924-2326-4105-bc33-abc1d993a4cb`) đã được xoá mềm qua giao diện sau khi
+kiểm.
+
+---
+
+### G33 — Trang Xoá tài khoản hứa "đăng nhập lại là tự khôi phục", backend không làm vậy · 🔴 LỖI ĐANG CHẠY, CLIENT SỬA ĐƯỢC (2026-09-10)
+
+Có **hai** đặc tả nói ngược nhau về giai đoạn chờ xoá. Bản 2026-08-17
+(`docs/superpowers/auth/2026-08-17-auth-account-design.md`, thư mục gitignore)
+cho đăng nhập lại trong 30 ngày là **tự khôi phục**; bản
+`docs/progress/Client-app.md` mục 12 cho người dùng **dùng tiếp** trong 30 ngày và
+huỷ bằng một nút. Backend chạy theo **bản mục 12**: `auth.service.js:309` khai
+`pendingDeleteCancelled = false` và không chỗ nào gán lại, còn nhánh
+`PendingDelete` của `login` chỉ ghi log rồi cấp token. Client vẫn chạy theo bản cũ:
+
+- `delete_account_page.dart` gửi yêu cầu xong thì đăng xuất, và nói *"hãy đăng
+  nhập lại trong vòng 30 ngày — hệ thống sẽ tự động khôi phục tài khoản cho
+  bạn"*;
+- `login_page.dart` chờ cờ `pendingDeleteCancelled` để hiện "Tài khoản đã được
+  khôi phục" — cờ ấy không bao giờ bật.
+
+**Hệ quả:** người dùng tin lời hứa, đăng nhập lại, thấy app chạy bình thường.
+Tài khoản vẫn `PendingDelete`, và hết 30 ngày thì bộ đếm ngược của backend ẩn
+danh hoá dữ liệu rồi xoá mềm tài khoản. Không một chữ nào báo trước.
+
+**Vì sao chưa sửa:** phát hiện ngày 2026-09-10 trong lúc thiết kế hạng mục cưỡng
+chế đăng xuất. Cách sửa — dùng tiếp 30 ngày, thẻ nhắc đóng được trên Trang chủ,
+nút huỷ ở Cài đặt, trang Xoá tài khoản thôi đăng xuất và thôi hứa — đã chốt với
+người dùng, nằm ở mục 4–5 của
+`docs/superpowers/specs/2026-09-10-cuong-che-dang-xuat-va-cho-xoa-design.md`,
+**đang chờ duyệt**. Trước tối 2026-09-10 đường này còn không chạy nổi trên CSDL dev
+(thiếu cột `Countdown`); nay `database/9` đã áp nên lỗi **xảy ra được thật**.
+
+**Bán kính:** chỉ người đã gửi yêu cầu xoá. CSDL dev hiện không có tài khoản
+`PendingDelete` nào (đo tối 2026-09-10).
 
 ---
 
 ## 2. Vấn đề đã biết nhưng thuộc về Backend
 
-Xem hai tài liệu riêng trong `docs/superpowers/backend/`:
+Tám gạch đầu dòng đầu tiên dưới đây là **ảnh chụp cũ**: bảy tệp nay nằm ở
+`docs/superpowers/backend/DA-XONG/` (đã đóng), riêng
+`2026-09-04-backend-idempotent-delete.md` còn ở `CAN-LAM/`. Dòng này từng ghi
+"hai tài liệu" trong khi liệt kê tám — sửa 2026-09-10. Việc backend còn mở đọc ở
+`docs/superpowers/backend/CAN-LAM/README.md` mục 2:
 
 - **`SESSION_VALIDITY_FINDINGS.md`** — token của tài khoản đã xoá vẫn dùng được; `/auth/me` không chạm CSDL; `/sync/push` luôn trả HTTP 200.
 - **`CATEGORY_CLASSIFY_ALIGNMENT.md`** — giá trị `Vay/nợ` (tài liệu) lệch với `Vay/no` (CSDL, seed, client).
@@ -787,8 +984,11 @@ Xem hai tài liệu riêng trong `docs/superpowers/backend/`:
 - **`CATEGORY_NAME_UNIQUENESS.md`** — hai unique index của `category` đang khác quy tắc nghiệp vụ theo cả hai chiều; client đã thi hành đúng quy tắc, CSDL thì chưa.
 - **`CATEGORY_STABLE_IDS.md`** — ID danh mục mặc định sinh ngẫu nhiên mỗi lần seed, nên tên bị dùng làm khoá nối giữa hai phía; đây là nguyên nhân gốc của các lỗi 11.3–11.6.
 - **`2026-09-04-backend-idempotent-delete.md`** — ba lỗ hổng của `/sync/push`: xoá một bản ghi không tồn tại bị trả về là lỗi (làm client đẩy lại vĩnh viễn); `message` là nguyên văn stack trace Prisma kèm đường dẫn máy chủ; và `budget.time_recurrence = null` bị ép về `'Month'`, **chặn hẳn** lựa chọn ngân sách "Ngày cụ thể".
+- **`CAN-LAM/AUTH_401_BODY_CODE.md`** (2026-09-10) — body 401 cho tài khoản bị khoá hoặc xoá không mang `code` / `reason_inactive`, vì tham số thứ ba của `ResponseHandler.unauthorized` rơi mất; client chưa phân biệt được *bị khoá* với *hết phiên*. Không mở G riêng cho tài liệu này: cưỡng chế đăng xuất phía client **chưa làm** nên nhánh HTTP chưa có gì để hỏng. ⚠️ Nhưng cùng vùng ấy **có** một lỗi đang chạy, không do backend — **G33**.
+- **`CAN-LAM/RULE_PROJECT_DOC_DRIFT.md`** (2026-09-10) — tài liệu backend (`docs/Rule_Project/`, `docs/progress/Backend.md`) nói ngược mã và CSDL: 56 chỗ sửa theo dòng cộng ba việc sửa mã (đo lại tối 2026-09-10). Không mở G: không mã client nào hỏng vì nó, nhưng đó là những tài liệu người mới đọc **trước** mã.
+- G31 và G32 ở trên có tài liệu xin riêng: `CAN-LAM/SYNC_PUSH_ERROR_MAPPING.md` và `CAN-LAM/GOAL_PRIORITY_NULL_TO_ZERO.md`.
 
-Client **không** phụ thuộc vào việc backend có sửa hay không.
+Với tám tài liệu cũ, client **không** phụ thuộc vào việc backend có sửa hay không. Với các mục ghi *chặn ở backend* hoặc *chờ backend* ở bảng tóm tắt đầu tài liệu thì có.
 
 ---
 
@@ -796,7 +996,7 @@ Client **không** phụ thuộc vào việc backend có sửa hay không.
 
 Trạng thái hiện tại (đã chạy thật, không phải đếm tay, đo 2026-09-08): `flutter test` toàn bộ **1529/1529 pass** trong ~75 giây, trên **144 file test / 33.892 dòng**. Trước phiên 2026-09-02 là 56 pass / 9 fail và mất hơn 10 phút (một test treo tới timeout); mốc 180 pass / 27 file ghi ở đây trước đó là con số **cuối phiên 2026-09-03** và đã lạc hậu năm ngày.
 
-> ⚠️ **`.gitignore` dòng 77 có `test/`** — luật này khớp mọi thư mục tên `test` ở mọi cấp, và **đã tồn tại từ trước** phiên 2026-09-02 (kiểm chứng: `git diff .gitignore` chỉ thêm đúng một dòng `src/Backend/scripts/seed_roles.js`).
+> ⚠️ **`.gitignore` có `test/`** (dòng 78, đo 2026-09-10 — từng ghi 77) — luật này khớp mọi thư mục tên `test` ở mọi cấp, và **đã tồn tại từ trước** phiên 2026-09-02 (kiểm chứng: `git diff .gitignore` chỉ thêm đúng một dòng `src/Backend/scripts/seed_roles.js`).
 >
 > Hệ quả đã đo được **tại thời điểm phát hiện** (2026-09-02): 16/23 file test đang được git theo dõi (commit trước khi luật có hiệu lực), 7/23 file thì không. Bảy file đó chứa 45 test:
 >

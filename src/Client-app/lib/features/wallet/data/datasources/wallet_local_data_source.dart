@@ -3,6 +3,7 @@ import '../../../../core/utils/currency_formatter.dart';
 
 import '../../../../core/database/app_database.dart';
 import '../../../../core/errors/app_exceptions.dart';
+import '../../domain/rang_buoc_vi.dart';
 import '../models/wallet_entity.dart';
 
 /// Abstract — cho phép mock trong test
@@ -123,12 +124,33 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
     );
   }
 
+  /// Hai ràng buộc mà PostgreSQL thi hành bằng partial unique index — xem
+  /// `domain/rang_buoc_vi.dart`. Gọi **TRƯỚC** khi ghi: ghi rồi mới ném là
+  /// hàng đã nằm trong SQLite và vẫn bị đẩy lên, tức đúng lỗi cần chặn.
+  ///
+  /// Đặt ở đây cùng chỗ với [_giuMotViMacDinh], vì cả đường thêm lẫn đường sửa
+  /// đều đi qua datasource. Đọc `getAll` chứ không `getActive`: ví lưu trữ vẫn
+  /// nằm trong index của server.
+  Future<void> _kiemRangBuocServer(WalletEntity wallet) async {
+    final viHienCo =
+        (await _db.walletDao.getAll(wallet.idaccount)).map(_toEntity);
+    if (viTrungTen(viHienCo, wallet.name, boQuaId: wallet.id) != null) {
+      throw CacheException(thongBaoTrungTen(wallet.name));
+    }
+    if (wallet.type == 'saving' &&
+        viTietKiemDaCo(viHienCo, boQuaId: wallet.id) != null) {
+      throw const CacheException(thongBaoMotViTietKiem);
+    }
+  }
+
   @override
   Future<void> insert(WalletEntity wallet) async {
     try {
+      await _kiemRangBuocServer(wallet);
       await _db.walletDao.insert(_toCompanion(wallet));
       await _giuMotViMacDinh(wallet);
     } catch (e) {
+      if (e is CacheException) rethrow;
       throw CacheException('Không thể lưu ví: $e');
     }
   }
@@ -136,9 +158,11 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
   @override
   Future<void> update(WalletEntity wallet) async {
     try {
+      await _kiemRangBuocServer(wallet);
       await _db.walletDao.update_(_toCompanion(wallet));
       await _giuMotViMacDinh(wallet);
     } catch (e) {
+      if (e is CacheException) rethrow;
       throw CacheException('Không thể cập nhật ví: $e');
     }
   }

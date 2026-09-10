@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -14,6 +15,7 @@ import '../../domain/bill_draft.dart';
 import '../../domain/bill_schedule.dart';
 import '../bloc/bill_bloc.dart';
 import '../bloc/bill_event.dart';
+import '../../../../core/utils/gioi_han_do_dai.dart';
 
 class BillAddPage extends StatefulWidget {
   const BillAddPage({super.key});
@@ -276,6 +278,7 @@ class _BillAddPageState extends State<BillAddPage> {
           _buildTextField(
             controller: _nameController,
             icon: Icons.payments_outlined,
+            inputFormatters: const [GioiHanDoRong(DoRongCot.tenHoaDon)],
             placeholder: 'e.g. Netflix Premium',
           ),
           const SizedBox(height: 16),
@@ -498,6 +501,7 @@ class _BillAddPageState extends State<BillAddPage> {
     required IconData icon,
     required String placeholder,
     TextInputType? keyboardType,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -513,6 +517,7 @@ class _BillAddPageState extends State<BillAddPage> {
             child: TextField(
               controller: controller,
               keyboardType: keyboardType,
+              inputFormatters: inputFormatters,
               style: const TextStyle(fontSize: 16, color: AppColors.primary),
               decoration: InputDecoration(
                 hintText: placeholder,

@@ -49,6 +49,16 @@ sai. Đó là lý do quy ước này chấp nhận được — không phải v�
 
 ## 3. Backend cần biết gì
 
+> ⚠️ **Cập nhật 2026-09-10 — yêu cầu số 1 dưới đây nay đang bị vi phạm.** Đợt
+> `main` ngày 2026-09-10 cho `/sync/push` chạy mọi `Note` qua
+> `filterSensitiveNote()` rồi mới mã hoá, và bộ lọc ấy bắt nhầm cả chuỗi do app
+> sinh: `Tích lũy mục tiêu: Két mật khẩu (tự động)` bị lưu thành
+> `… Két Mật khẩu: [ĐÃ LƯỢC BỎ] động)` — mất hậu tố, nên khoản trích tự động đọc
+> thành khoản nạp tay. Bản đã lọc còn **đè lên máy người dùng** ở ngay chu kỳ đồng
+> bộ ấy. Tái hiện đầu-cuối và việc xin sửa:
+> [`CAN-LAM/SYNC_NOTE_FILTER_REWRITE.md`](./CAN-LAM/SYNC_NOTE_FILTER_REWRITE.md).
+> Tài liệu này vẫn "không xin gì" — việc xin nằm ở tệp kia.
+
 **Ba điều, tất cả đều là "đừng làm", không phải "hãy làm":**
 
 1. **Đừng cắt, chuẩn hoá, hay viết hoa lại `Note`** của giao dịch mang `Idgoal`.

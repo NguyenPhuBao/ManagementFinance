@@ -3,6 +3,27 @@
 **Ngày:** 2026-09-10 · **Xin từ:** client (`src/Client-app`) · **Cỡ việc:** một
 dòng `ALTER TABLE`, không đụng mã ứng dụng.
 
+> ⚠️ **Cập nhật cùng ngày, sau khi gộp `main` (`bef37d3`) — mục 4 và 4b dưới đây
+> đã bị thay.** Backend **đã làm** phần mã của việc này từ **2026-09-09**, trước cả
+> khi tài liệu này được viết — chỉ là trên `main`, lúc ấy chưa gộp về nhánh client.
+> Commit `7523c8c` (NPBao) đổi `schema.prisma` sang `@db.VarChar(20)` và thêm
+> `src/Backend/database/7_Update_Account_User_Delete_Rules.sql`, mà bước 4 của tệp
+> ấy chính là `ALTER TABLE public.wallet ALTER COLUMN "Status" TYPE VARCHAR(20)`.
+> Dòng `schema.prisma:163` trích ở mục 2 là ảnh chụp **trước** lần gộp (đo bằng
+> `git show 53a370f:…` → `VarChar(7)`, `git show bef37d3:…` → `VarChar(20)`).
+>
+> Đo lại trên CSDL dev sau khi gộp: `wallet."Status"` **vẫn `varchar(7)`**, và
+> **không bước nào** của tệp 7 có mặt (index email chưa có `WHERE`,
+> `account_Username_key` vẫn UNIQUE). Nên việc còn lại **không phải nới cột** mà là
+> **áp tệp 7** — gộp vào [`DEV_DB_MIGRATIONS_7_11.md`](./DEV_DB_MIGRATIONS_7_11.md).
+> **Đừng** tạo migration `varchar(16)` theo mục 4b nữa: nó sẽ đè lên `varchar(20)`
+> của backend. Mục 5 (client mở lại ba chỗ khi cột đủ rộng) vẫn đúng nguyên văn.
+>
+> ✅ **Tối 2026-09-10:** tệp 7 **đã áp** lên CSDL dev (cùng 8–11, theo yêu cầu đích
+> danh của người dùng) — đo lại `wallet."Status"` là `character varying(20)`. Việc
+> phía server xong trên máy này; mục 5 (client mở lại ba chỗ) người dùng vẫn chốt
+> **để sau**.
+
 ---
 
 ## 1. Tóm tắt
@@ -231,7 +252,7 @@ SELECT count(*) FROM wallet;                                  -- không đổi
 
 ---
 
-## 5. Client sẽ làm gì khi cột được nới
+## 5. Client sẽ làm gì khi cột được nới (CSDL dev đã nới tối 2026-09-10 — việc phía client người dùng chốt để sau, G28)
 
 Hiện tại `status` là cột **cục bộ**, cố ý không đi theo chiều nào của đồng bộ —
 cùng diện với `bills.autoPayEnabled` và `bills.anchorDay` (đo lại 2026-09-10:

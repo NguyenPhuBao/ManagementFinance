@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import '../../../../core/database/app_database.dart';
+import '../../domain/uu_tien_hop_le.dart';
 
 class GoalEntity {
   final String id;
@@ -119,7 +120,7 @@ class GoalEntity {
       autoDepositLastRun: d.autoDepositLastRun,
       recurrence: d.recurrence,
       timeRecurrence: d.timeRecurrence,
-      priority: d.priority,
+      priority: uuTienHopLe(d.priority),
       icon: d.icon,
       colour: d.colour,
       note: d.note,

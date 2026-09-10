@@ -9,6 +9,7 @@ import '../../../../shared/theme/app_colors.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../data/models/category_tree.dart';
 import '../../data/repositories/category_management_repository.dart';
+import '../../../../core/utils/gioi_han_do_dai.dart';
 
 class CategoryAddPage extends StatefulWidget {
   const CategoryAddPage({
@@ -340,6 +341,9 @@ class _CategoryAddPageState extends State<CategoryAddPage> {
                   TextField(
                     controller: _nameController,
                     textInputAction: TextInputAction.next,
+                    inputFormatters: const [
+                      GioiHanDoRong(DoRongCot.tenDanhMuc),
+                    ],
                     decoration:
                         const InputDecoration(hintText: 'e.g. Thuê nhà'),
                   ),

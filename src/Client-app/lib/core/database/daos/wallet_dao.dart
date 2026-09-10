@@ -157,10 +157,12 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
 
   /// Bật/tắt lưu trữ cho một ví.
   ///
-  /// ⚠️ Cột `status` **không** đi qua đồng bộ (G28): `chk_wallet_status` của
-  /// PostgreSQL cho phép `'Inactive'` nhưng kiểu cột là `varchar(7)`, mà chuỗi
-  /// ấy dài 8 ký tự — đẩy lên là ví kẹt hàng đợi đẩy. Nên lưu trữ ví chỉ sống
-  /// trên máy đã bấm cho tới khi backend nới cột.
+  /// ⚠️ Cột `status` **không** đi qua đồng bộ (G28). Lý do ban đầu, đo ngày
+  /// 2026-09-10: `chk_wallet_status` của PostgreSQL cho phép `'Inactive'` nhưng
+  /// kiểu cột là `varchar(7)`, mà chuỗi ấy dài 8 ký tự — đẩy lên là ví kẹt hàng
+  /// đợi đẩy. Tối cùng ngày CSDL dev đã nới cột lên `varchar(20)` (áp
+  /// `database/7`), nhưng client **cố ý chưa** nối lại — đó là G28, người dùng
+  /// chốt để sau. Nên lưu trữ ví vẫn chỉ sống trên máy đã bấm.
   ///
   /// Vẫn đánh `pending`, và **có chủ ý**: `updatedAt` đổi thì hàng này phải
   /// được đẩy lên như mọi thay đổi khác — chỉ riêng cột `status` là không đi

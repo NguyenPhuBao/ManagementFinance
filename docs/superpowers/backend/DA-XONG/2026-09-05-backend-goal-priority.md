@@ -5,6 +5,13 @@
 **Ưu tiên:** Thấp — **client chưa làm tính năng này**, đây là tài liệu *mở đường*
 **Từ:** Client-app
 
+> ⚠️ **Mở lại một phần ngày 2026-09-10.** Cột đã có và tài liệu này vẫn đóng,
+> nhưng đường đồng bộ **không giữ quy ước NULL ở mục 4**: `mapEntityFields('goal')`
+> gọi `Number(m.priority)`, mà `Number(null) === 0`, nên mục tiêu chưa sắp được
+> lưu là `0` và nhảy lên đầu danh sách sau một vòng đồng bộ — đã tái hiện
+> đầu-cuối trên máy ảo. Xin sửa ở
+> [`../CAN-LAM/GOAL_PRIORITY_NULL_TO_ZERO.md`](../CAN-LAM/GOAL_PRIORITY_NULL_TO_ZERO.md).
+
 ---
 
 ## 1. Tóm tắt trong ba câu

@@ -44,7 +44,9 @@ void main() {
     'features/transaction/presentation/pages/transaction_page.dart':
         'Bảng tra tên ví cho sổ giao dịch.',
     'features/wallet/data/datasources/wallet_local_data_source.dart':
-        'Màn Quản lý ví phải thấy cả hai nhóm để còn bỏ lưu trữ được.',
+        'Màn Quản lý ví phải thấy cả hai nhóm để còn bỏ lưu trữ được. Và '
+            'chốt `_kiemRangBuocServer` phải nhìn CẢ ví lưu trữ: hai partial '
+            'unique index của server không nhìn `Status`.',
     'features/bill/presentation/pages/bill_page.dart':
         'Bảng tra tên ví (`TransactionLookup`) cho thẻ hoá đơn, KHÔNG phải '
             'bộ chọn — hoá đơn cũ trỏ vào ví nay đã lưu trữ vẫn phải hiện '

@@ -6,13 +6,13 @@
 > **bằng chứng đo được**, và **những phương án đã cân nhắc rồi loại bỏ** — đó là
 > phần dễ mất nhất khi người khác đọc lại đoạn mã sau này.
 
-**Ngày:** 2026-09-03 · **Phạm vi:** `src/Client-app` · **Commit:** `6b93ee8`, `0f8a820`, `d2cea8c`, `e7c7a44`, `103d381`
+**Ngày:** 2026-09-03 · **Phạm vi:** `src/Client-app` · **Commit:** `6b93ee8`, `0f8a820`, `d2cea8c`, `e7c7a44`, `103d381` · **Cập nhật:** 2026-09-07 (thay đổi 5), 2026-09-10 (thay đổi 6)
 
 ---
 
 ## 0. Tóm tắt cho người vội
 
-Bốn thay đổi, mỗi cái do một lỗi **có thật** buộc phải làm — không có cái nào là dọn dẹp cho đẹp:
+Sáu thay đổi, mỗi cái do một lỗi **có thật** buộc phải làm — không có cái nào là dọn dẹp cho đẹp. Bảng này từng ghi "Bốn" và thiếu hàng của thay đổi 5 dù thân tài liệu đã có mục 5b; bổ sung 2026-09-10:
 
 | Thay đổi | Lỗi buộc phải sửa |
 |---|---|
@@ -20,6 +20,8 @@ Bốn thay đổi, mỗi cái do một lỗi **có thật** buộc phải làm �
 | Gom mọi phép so tên về **một định nghĩa duy nhất**, thêm bước gộp Unicode NFC | Ba biến thể so tên cùng tồn tại và đã lệch nhau; một trong số đó nằm trên đường đồng bộ và **không chuẩn hoá gì cả** |
 | Bộ danh mục mặc định khớp đúng 13 mục của backend; 5 mục thừa thành danh mục cá nhân | Hai phía chỉ khớp **10/18** tên, khiến giao dịch dùng 8 mục còn lại **không bao giờ đẩy lên được** |
 | ✅ *(backend làm xong 2026-09-07)* ID cố định cho danh mục mặc định | Nguyên nhân gốc của cả bốn lỗi 11.3–11.6 |
+| Bản sao riêng của bộ mặc định cho từng tài khoản; hàng toàn cục lui về làm khuôn (2026-09-07) | Hàng mặc định dùng chung nên người dùng không sửa, đổi tên hay xoá được; bảng phụ `CategoryGroupMemberships` tồn tại chỉ vì thế (G10) |
+| Tên danh mục dừng ở 200 code point (2026-09-10) | `NameCategory` là `varchar(200)`; tên dài hơn vỡ `P2000`, rơi xuống `DB_ERROR`, và bị gửi lại ở mọi chu kỳ đồng bộ (G31) |
 
 Kết quả **đo ngay sau đợt ấy** (2026-09-03): `flutter test` từ **144 → 180 test**, `flutter analyze` **29 issue, không error**. Đây là con số *lịch sử của đợt này*, không phải mức nền hôm nay — mức nền hiện tại nằm ở `CLAUDE.md`.
 
@@ -208,6 +210,33 @@ vĩnh viễn.
 
 Thiết kế đầy đủ:
 `docs/superpowers/specs/2026-09-07-per-account-default-categories-design.md`.
+
+---
+
+## 5c. Thay đổi 6 — tên danh mục dừng ở 200 code point (2026-09-10)
+
+### Lỗi buộc phải sửa
+
+`category."NameCategory"` là `varchar(200)` (đo `information_schema.columns`
+ngày 2026-09-10). Ô tên ở màn Thêm/Sửa danh mục và màn Nhóm danh mục không giới
+hạn gì, còn `upsertCategory` phía backend không cắt chuỗi. Tên dài hơn vỡ `P2000`
+ở `/sync/push`; backend chưa ánh xạ mã ấy nên trả `DB_ERROR`, và client xếp
+`DB_ERROR` là lỗi tạm thời — danh mục bị gửi lại ở mọi chu kỳ đồng bộ, không lỗi
+nào hiện ra. Nhóm danh mục cũng là một hàng `category`, nên màn Nhóm là đường
+ghi thứ hai vào đúng cột ấy. **G31** `docs/CLIENT_APP_KNOWN_GAPS.md`.
+
+### Vì sao đếm code point, không dùng `maxLength`
+
+PostgreSQL đếm `varchar(n)` theo **code point**; `maxLength` của Flutter đếm theo
+**cụm grapheme**. Hai cách đếm lệch nhau đúng ở những tên dễ gặp trong app này:
+chữ có dấu gõ ở dạng tách (một chữ "ề" là 3 code point) và emoji (một emoji gia
+đình là 5). `maxLength` còn vẽ bộ đếm "0/200" dưới ô, thứ thiết kế Stitch không
+có. Bộ lọc riêng ở `lib/core/utils/gioi_han_do_dai.dart` đếm code point, cắt
+theo trọn cụm grapheme, và theo đúng chính sách của Flutter về việc cắt lúc bộ gõ
+đang ghép chữ.
+
+Cùng một bộ lọc chặn cả tên ví, mục tiêu, hoá đơn ở 100 — tài liệu này chỉ ghi
+phần thuộc danh mục.
 
 ---
 

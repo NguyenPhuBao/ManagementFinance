@@ -88,12 +88,13 @@ class SyncPayloadNormalizer {
     // đợi vĩnh viễn — im lặng, không log, không gì trên màn hình.
     normalized['type'] =
         WalletType.tuKhoa(normalized['type']?.toString()).khoaGuiLen;
-    // ⚠️ KHÔNG chuẩn hoá `status` ở đây, vì nó không được phép có mặt trong
-    // payload: cột `Status` của PostgreSQL là varchar(7) còn giá trị cần
-    // gửi là 'Inactive' — 8 ký tự. Xem chú thích dài ở nhánh kéo về ví
-    // trong `sync_engine.dart`. `WalletStatus.khoaGuiLen` vẫn giữ nguyên và
-    // vẫn được test canh, để ngày backend nới cột thì chỉ cần một dòng ở
-    // đây là xong.
+    // ⚠️ KHÔNG chuẩn hoá `status` ở đây, vì nó cố ý không có mặt trong
+    // payload (G28). Lý do ban đầu: cột `Status` của PostgreSQL là varchar(7)
+    // còn giá trị cần gửi là 'Inactive' — 8 ký tự. CSDL dev đã nới lên
+    // varchar(20) tối 2026-09-10, nhưng việc nối lại người dùng chốt để sau.
+    // Xem chú thích dài ở nhánh kéo về ví trong `sync_engine.dart`.
+    // `WalletStatus.khoaGuiLen` vẫn giữ nguyên và vẫn được test canh, để ngày
+    // mở lại thì chỉ cần một dòng ở đây.
     return normalized;
   }
 

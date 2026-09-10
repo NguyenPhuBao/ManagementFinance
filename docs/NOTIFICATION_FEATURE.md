@@ -1188,7 +1188,7 @@ lượt RED, vì `expect` ném sớm nên chưa chạm tới bước dọn dẹp
 | `test/shared/app_toast_test.dart` | Ba nguồn toast và thứ tự ưu tiên giữa chúng. ⚠️ **Luật bố cục đã ĐẢO NGƯỢC ngày 2026-09-09**: bản dải cũ **không được đè lên** nội dung (phải đẩy trang xuống), toast mới thì **phải đè** và **không được** chạm vào bố cục trang. Lý lẽ cũ — che thanh tiêu đề và nút chuông — chỉ đúng với dải nổi **ở đỉnh**; toast nằm ở **đáy** |
 | `test/features/layout/no_overflow_test.dart` | Ba hàng từng tràn, dựng ở **320/360/411dp** — bắt bằng `tester.takeException()` |
 
-⚠️ `.gitignore` dòng 77 có `test/` → file test mới bị bỏ qua **âm thầm**. Phải
+⚠️ `.gitignore` có `test/` (dòng 78, đo 2026-09-10 — từng ghi 77) → file test mới bị bỏ qua **âm thầm**. Phải
 `git add -f` **từng đường dẫn** (thêm cả thư mục thì git từ chối nguyên lệnh).
 
 ### ⚠️ `flutter test` xanh KHÔNG đủ cho vùng này

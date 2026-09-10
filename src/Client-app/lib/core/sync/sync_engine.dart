@@ -12,6 +12,7 @@ import 'sync_models.dart';
 import 'category_icon_registry.dart';
 import 'sync_checkpoint_store.dart';
 import 'sync_payload_normalizer.dart';
+import '../../features/goal/domain/uu_tien_hop_le.dart';
 
 /// SyncEngine — bộ máy đồng bộ offline-first.
 ///
@@ -491,21 +492,27 @@ class SyncEngine {
                 // theo chiều nào của đồng bộ — cùng diện với
                 // `bills.autoPayEnabled` và `bills.anchorDay`.
                 //
-                // Lý do là một con số, đo thẳng trên PostgreSQL ngày
+                // Lý do ban đầu là một con số, đo thẳng trên PostgreSQL ngày
                 // 2026-09-10: `chk_wallet_status` CHO PHÉP `'Inactive'`,
-                // nhưng kiểu cột `Status` là **varchar(7)** còn chuỗi ấy
-                // dài **8 ký tự** — lược đồ tự mâu thuẫn, và không giá trị
-                // nào vừa cả hai ngoài `'Active'`. Đẩy lên là
-                // hàng ví vỡ ở tầng CSDL và kẹt hàng đợi đẩy, thử lại ở
-                // MỌI chu kỳ, kéo chậm cả hàng đợi. Đã vấp thật trên máy
-                // ảo, và đó là cách phát hiện ra con số ấy.
+                // nhưng kiểu cột `Status` khi ấy là **varchar(7)** còn chuỗi
+                // ấy dài **8 ký tự** — lược đồ tự mâu thuẫn. Đẩy lên là hàng
+                // ví vỡ ở tầng CSDL và kẹt hàng đợi đẩy, thử lại ở MỌI chu
+                // kỳ, kéo chậm cả hàng đợi. Đã vấp thật trên máy ảo, và đó là
+                // cách phát hiện ra con số ấy. Tối cùng ngày CSDL dev đã nới
+                // cột lên `varchar(20)` (áp `database/7`), nhưng cả hai chiều
+                // vẫn **cố ý** tắt cho tới khi mở lại G28 — người dùng chốt
+                // để sau.
                 //
-                // Nhánh KÉO VỀ cũng phải im lặng theo, không chỉ nhánh đẩy:
-                // server luôn trả `'Active'` cho mọi ví (nó chưa bao giờ
-                // nhận được giá trị nào khác), nên đọc cột này về là ví vừa
-                // lưu trữ lặng lẽ sống lại ở lượt pull kế tiếp.
+                // Nhánh KÉO VỀ phải im lặng cùng lúc với nhánh đẩy: client
+                // không bao giờ đẩy cột này, nên server giữ `'Active'` cho
+                // mọi ví của tài khoản còn dùng (chỉ ví của tài khoản đã bị
+                // xoá hẳn mới bị `scheduler.service.js` đặt `'Inactive'`).
+                // Đọc cột về là ví vừa lưu trữ lặng lẽ sống lại ở lượt pull
+                // kế tiếp.
                 //
-                // Mở lại cả hai chiều khi backend nới cột — tài liệu xin:
+                // Mở lại cả hai chiều cùng lúc, kèm cập nhật
+                // `sync_payload_contract_test.dart` — G28 ở
+                // `docs/CLIENT_APP_KNOWN_GAPS.md`, và
                 // `docs/superpowers/backend/CAN-LAM/WALLET_STATUS_COLUMN_WIDTH.md`.
                 isDeleted: Value(w['delete_at'] != null),
                 deletedAt: Value(_deletedAtFrom(w['delete_at'])),
@@ -888,8 +895,10 @@ class SyncEngine {
                 // nhưng JSON đi qua nhiều tầng và một giá trị `"200"` phải
                 // đọc được. Giá trị rác về `null` — tức "chưa sắp", xếp cuối —
                 // thay vì làm hỏng cả hàng.
-                priority: Value(
-                    int.tryParse(g['priority']?.toString() ?? '')),
+                // `<= 0` là `null` bị backend ép (G32): lưu nguyên thì mục tiêu
+                // chưa sắp đứng đầu danh sách — xem `uu_tien_hop_le.dart`.
+                priority: Value(uuTienHopLe(
+                    int.tryParse(g['priority']?.toString() ?? ''))),
                 icon: Value(g['icon']?.toString() ?? 'flag'),
                 colour: Value(g['color']?.toString() ?? '#4CAF50'),
                 note: Value(g['note']?.toString() ?? ''),
@@ -1160,7 +1169,9 @@ class SyncEngine {
           // thả — công sức bỏ ra, KHÔNG suy lại được, và không có mặc định
           // đúng nào — nên nó phải đi qua đường đồng bộ chứ không được làm
           // cột cục bộ như `auto_deposit_*` từng làm (G21).
-          'priority': g.priority,
+          // `<= 0` về máy từ `Number(null)` của backend (G32). Đẩy lại là giữ
+          // cái sai ấy trên server; gửi `null` để hàng tự lành khi backend sửa.
+          'priority': uuTienHopLe(g.priority),
           'status_complete': g.isCompleted ? 'True' : 'False',
           'recurrence': g.recurrence,
           'time_recurrence': g.timeRecurrence,

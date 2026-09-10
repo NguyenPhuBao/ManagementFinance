@@ -20,6 +20,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flowmoney/core/bill/bill_recurrence.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/di/injection_container.dart';
+import 'package:flowmoney/core/utils/gioi_han_do_dai.dart';
 import 'package:flowmoney/features/auth/data/models/user_model.dart';
 import 'package:flowmoney/features/auth/data/repositories/auth_repository.dart';
 import 'package:flowmoney/features/auth/presentation/bloc/auth_bloc.dart';
@@ -94,6 +95,22 @@ void main() {
   // Công tắc "Tự động tạo giao dịch" bật sẵn không lưu ở đâu đã bị gỡ ngày
   // 06/09. Cùng ngày, tự động thanh toán được làm THẬT (cột v17 + bộ chạy) và
   // công tắc quay lại, TẮT sẵn — canh ở `bill_auto_pay_ui_test.dart`.
+
+  testWidgets('tên hoá đơn dừng ở độ rộng cột trên server — G31',
+      (tester) async {
+    await dungTrangThem(tester);
+    final oTen = find.byWidgetPredicate((w) =>
+        w is TextField && w.decoration?.hintText == 'e.g. Netflix Premium');
+    final boDieuKhien = tester.widget<TextField>(oTen).controller!;
+
+    await tester.enterText(oTen, 'a' * (DoRongCot.tenHoaDon + 50));
+    await tester.pump();
+
+    expect(boDieuKhien.text.length, DoRongCot.tenHoaDon,
+        reason: '`bill.Name` là varchar(100). Tên dài hơn vỡ P2000 ở '
+            '/sync/push, backend trả DB_ERROR, và hoá đơn bị gửi lại ở mọi chu '
+            'kỳ đồng bộ mà không một lỗi nào hiện ra.');
+  });
 
   testWidgets('không tràn bố cục ở 411dp', (tester) async {
     await dungTrangThem(tester);
