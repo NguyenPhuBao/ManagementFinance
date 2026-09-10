@@ -11,6 +11,8 @@ const logger = require('../core/logger');
 const { prisma: defaultPrisma } = require('../config/db');
 const eventBus = require('../core/event-bus');
 const socketService = require('../core/socket');
+const { hashBlindIndex } = require('../utils/crypto.util');
+const { maskAccountNumber } = require('../utils/masking.util');
 
 const Redis = require('ioredis');
 const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
@@ -64,9 +66,13 @@ async function processSepayTransaction({
   }
 
   if (!bankAcc) {
+    const accHash = hashBlindIndex(account_number);
     bankAcc = await prismaClient.bank_account.findFirst({
       where: {
-        account_number: String(account_number),
+        OR: [
+          ...(accHash ? [{ account_number_hash: accHash }] : []),
+          { account_number: String(account_number) },
+        ],
         connect_status: { in: ['Active', 'active'] },
         delete_at: null,
       },
@@ -74,7 +80,7 @@ async function processSepayTransaction({
   }
 
   if (!bankAcc) {
-    logger.warn(`processSepayTransaction: No active bank_account found for account_number ${account_number}`, {
+    logger.warn(`processSepayTransaction: No active bank_account found for account_number ${maskAccountNumber(account_number)}`, {
       bank_tran_id,
       bank_account_xid,
     });

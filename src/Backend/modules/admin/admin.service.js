@@ -1,4 +1,6 @@
 const adminRepository = require('./admin.repository');
+const { maskEmail, maskPhone, maskAddress } = require('../../utils/masking.util');
+const { validateReasonInactive } = require('../../utils/content-filter.util');
 
 function calcGrowth(current, previous) {
   if (current === 0) return 0;
@@ -64,9 +66,9 @@ const adminService = {
       id: u.iduser,
       idaccount: u.account ? u.account.idaccount : null,
       fullname: u.fullname,
-      email: u.email,
-      phone: u.phone,
-      address: u.address,
+      email: maskEmail(u.email),
+      phone: maskPhone(u.phone),
+      address: maskAddress(u.address),
       country_code: u.country_code,
       username: u.account ? u.account.username : null,
       status: u.account ? u.account.status : (u.delete_at ? 'Deleted' : 'Active'),
@@ -86,9 +88,9 @@ const adminService = {
       id: u.iduser,
       idaccount: u.account.idaccount,
       fullname: u.fullname,
-      email: u.email,
-      phone: u.phone,
-      address: u.address,
+      email: maskEmail(u.email),
+      phone: maskPhone(u.phone),
+      address: maskAddress(u.address),
       country_code: u.country_code,
       username: u.account.username,
       status: u.account.status,
@@ -124,8 +126,9 @@ const adminService = {
 
     if (targetStatus === 'Inactive') {
       const reason = (data.reason_inactive || data.reason || '').trim();
-      if (!reason) {
-        throw Object.assign(new Error('Vui lòng cung cấp lý do vô hiệu hóa tài khoản'), { statusCode: 400 });
+      const validation = validateReasonInactive(reason);
+      if (!validation.valid) {
+        throw Object.assign(new Error(validation.error), { statusCode: 400 });
       }
 
       await adminRepository.updateAccountStatus(iduser, 'Inactive', reason);

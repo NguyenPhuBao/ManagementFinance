@@ -84,7 +84,7 @@ Ba tài liệu này **không phải việc cần làm** — chúng là nền đ�
 
 | # | Tài liệu | Nội dung |
 |---|---|---|
-| 1 | [New_Database.md](./New_Database.md) | Lược đồ chuẩn của PostgreSQL. `CLAUDE.md` chỉ định đây là **nguồn sự thật** cho schema |
+| 1 | [New_Database.md](../../Rule_Project/New_Database.md) | Lược đồ chuẩn của PostgreSQL (đã chuyển vào `docs/Rule_Project/`). Đây là **nguồn sự thật** cho schema |
 | 2 | [2026-08-10-backend-sync-spec.md](./2026-08-10-backend-sync-spec.md) | Hợp đồng `/sync/push` và `/sync/pull`: định dạng request/response, thứ tự entity, quy tắc LWW |
 | 3 | [PROGRESS-BACKEND.md](./PROGRESS-BACKEND.md) | Checklist B1→B7 và tiến độ từng bước |
 

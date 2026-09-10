@@ -1,4 +1,5 @@
 const { prisma } = require('../../config/db');
+const { encrypt, decrypt, isEncrypted } = require('../../utils/crypto.util');
 
 // Chuẩn hóa purpose sang enum CSDL (Register, Reset_password, Change_email)
 function normalizePurpose(p) {
@@ -8,6 +9,15 @@ function normalizePurpose(p) {
   if (lower.includes('reset') || lower.includes('password')) return 'Reset_password';
   if (lower.includes('email')) return 'Change_email';
   return p;
+}
+
+function formatUser(user) {
+  if (!user) return user;
+  return {
+    ...user,
+    phone: user.phone ? decrypt(user.phone) : null,
+    address: user.address ? decrypt(user.address) : null,
+  };
 }
 
 const authRepository = {
@@ -75,6 +85,9 @@ const authRepository = {
   },
 
   async createAccountWithUser(data) {
+    const encPhone = data.phone ? (isEncrypted(data.phone) ? data.phone : encrypt(data.phone)) : null;
+    const encAddress = data.address ? (isEncrypted(data.address) ? data.address : encrypt(data.address)) : null;
+
     return prisma.$transaction(async (tx) => {
       const account = await tx.account.create({
         data: {
@@ -90,7 +103,8 @@ const authRepository = {
         data: {
           fullname: data.fullname,
           email: data.email,
-          phone: data.phone || null,
+          phone: encPhone,
+          address: encAddress,
           country_code: data.country_code || null,
           idaccount: account.idaccount,
         },
@@ -102,7 +116,8 @@ const authRepository = {
           iduser: user.iduser,
           fullname: user.fullname,
           email: user.email,
-          phone: user.phone,
+          phone: data.phone || null,
+          address: data.address || null,
           country_code: user.country_code,
         },
       };
@@ -202,7 +217,7 @@ const authRepository = {
   },
 
   async getProfile(idaccount) {
-    return prisma.user.findUnique({
+    const user = await prisma.user.findUnique({
       where: { idaccount },
       include: {
         account: {
@@ -216,12 +231,21 @@ const authRepository = {
         },
       },
     });
+    return formatUser(user);
   },
 
   async updateProfile(idaccount, data) {
-    return prisma.user.update({
+    const updateData = { ...data, update_at: new Date() };
+    if (updateData.phone && !isEncrypted(updateData.phone)) {
+      updateData.phone = encrypt(updateData.phone);
+    }
+    if (updateData.address && !isEncrypted(updateData.address)) {
+      updateData.address = encrypt(updateData.address);
+    }
+
+    const updated = await prisma.user.update({
       where: { idaccount },
-      data: { ...data, update_at: new Date() },
+      data: updateData,
       include: {
         account: {
           select: {
@@ -232,6 +256,7 @@ const authRepository = {
         },
       },
     });
+    return formatUser(updated);
   },
 
   async updateEmail(idaccount, newEmail) {

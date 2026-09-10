@@ -427,11 +427,12 @@ Client: GET /api/sync/pull?since=<timestamp> → kéo data từ thiết bị kh�
 
 | Hạng mục | Giải pháp |
 |----------|-----------|
+| **Bảo vệ dữ liệu & Pháp luật** | Tuân thủ 100% tài liệu [`docs/Rule_Project/Data_Security.md`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/Rule_Project/Data_Security.md) (Nghị định 13/2023/NĐ-CP, chuẩn PCI-DSS, OWASP): Phân loại 23 nhóm dữ liệu nhạy cảm, tối thiểu hóa dữ liệu (Data Minimization), User-scoped Isolation, mã hóa at-rest (AES-256) & in-transit (TLS 1.3), cấm lưu trữ CVV/mật khẩu ngân hàng/sinh trắc học trên server. |
 | **Kết nối** | HTTPS toàn bộ + Reverse Proxy (`trust proxy: 1`) |
 | **Rate Limiting** | `express-rate-limit`: Tự động miễn trừ cho Authenticated Users (Client-app/Admin có JWT Token); hỗ trợ tắt hoàn toàn bằng `RATE_LIMIT_MAX=0` hoặc `RATE_LIMIT_ENABLED=false` trong `.env` |
 | **Input Validation** | Joi (Schema validation cho Auth, Admin, Sync, v.v.) |
-| **Audit Logging** | Ghi nhận real-time mọi request vào bảng `audit_log` + broadcast qua Socket.IO |
-| **Logging** | Winston (request, lỗi, queue job) |
+| **Audit Logging** | Ghi nhận real-time mọi request vào bảng `audit_log` + broadcast qua Socket.IO (room riêng `admin_room`) |
+| **Logging** | Winston (request, lỗi, queue job; tuyệt đối không log thông tin nhạy cảm/mật khẩu/OTP/token) |
 | **Monitoring** | Sentry (lỗi), Prometheus/Grafana (CPU, memory, queue size) |
 
 ### 3.7 Triển Khai (Deployment)
@@ -2295,7 +2296,7 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - `Test/test_admin_new_schema.js`: Kiểm thử trọn vẹn Dashboard Stats, User Management, Category Management, Audit Log Stats $\rightarrow$ **PASS 100%**.
 
 ### 11.18. Đồng Bộ Toàn Diện & Xóa Bỏ Mâu Thuẫn Trong Đặc Tả CSDL New_Database.md (2026-09-01)
-- **Rà soát & Chuẩn hóa Nguồn sự thật (`docs/superpowers/backend/New_Database.md`)**:
+- **Rà soát & Chuẩn hóa Nguồn sự thật (`docs/Rule_Project/New_Database.md`)**:
   - **`Category.Classify`**: Đồng bộ 100% giữa Bảng mục 2.6 và Ràng buộc mục 3.2.6 thành `nvarchar(7) Check in (Thu, Chi, Vay/nợ)`.
   - **`Bank_account.Connect_status`**: Chuẩn hóa thành `varchar(12) Check in (Active, Expired, Disconnected) - Default Active`, loại bỏ hoàn toàn mâu thuẫn `Active, Inactive` cũ.
   - **`Bill.Pay_status`**: Chuẩn hóa thành `varchar(7) Check in (Pending, Payed, Overdue) - Default Pending`, xóa bỏ mâu thuẫn gán giá trị boolean `FALSE`.
@@ -2601,9 +2602,26 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
       - Nút "Đặt lại" và "Áp dụng" kích hoạt lại `fetchCategories(params)`.
       - Nút "Lọc" hiển thị chấm trạng thái (active indicator) khi có bất kỳ bộ lọc nào đang được áp dụng.
 - **3. Kiểm chứng & Chất lượng**:
-  - [`Test/test_admin_category_filters.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/Test/test_admin_category_filters.js): **6/6 tests PASS (100%)** (kiểm tra `getUsers`, `getCategories` mặc định, lọc theo `created_by=1`, lọc theo `keyword` chuỗi con case-insensitive, kết hợp nhiều filter, và keyword không tồn tại).
-  - `npm --prefix src/Admin-web run build`: **Thành công 100% (137 modules transformed, 0 errors)**.
-  - `Test/test_can_lam_fixes.js`: **9/9 tests PASS (100%)**.
+### 11.35. Triển Khai Cơ Chế Lưu Trữ Dữ Liệu Tự Động & Chốt Chặn Bảo Mật CSDL (2026-09-10)
+- **1. Yêu cầu & Căn cứ pháp lý:**
+  - Tuân thủ Nghị định 13/2023/NĐ-CP (PDPD), Nghị định 53/2022/NĐ-CP (An ninh mạng) và Luật Kế toán 2015.
+  - Xây dựng mô hình lai kết hợp PostgreSQL Security Triggers và Backend Schedulers quản lý vòng đời lưu trữ dữ liệu.
+- **2. Triển khai kỹ thuật:**
+  - **Tầng CSDL (PostgreSQL Engine):**
+    - `src/Backend/database/10_Data_Security_And_Retention_Triggers.sql`:
+      + Trigger `trg_protect_auditlog` trên bảng `audit_log`: Chặn tuyệt đối `UPDATE` (Bảo đảm tính Append-only) và chặn `DELETE` nếu log chưa đủ 12 tháng (365 ngày) theo Nghị định 53/2022/NĐ-CP.
+      + Trigger `trg_protect_transaction` trên bảng `transaction`: Chặn `DELETE` vật lý nếu giao dịch chưa đủ 5 năm theo Luật Kế toán 2015 (bắt buộc dùng Soft Delete `Deleted_at`).
+  - **Tầng Backend (Scheduler Service):**
+    - `src/Backend/core/scheduler.service.js`:
+      + `runDailyOtpPurgeTask()`: Tự động xóa sạch mã `otp_code` tạo quá 24 giờ.
+      + `runDailyRefreshTokenPurgeTask()`: Tự động xóa sạch `refreshtoken` hết hạn hoặc bị thu hồi quá 30 ngày.
+      + `processFullSoftDelete(idaccount)`: Nâng cấp quy trình khi tài khoản hết 30 ngày ân hạn `PendingDelete`: thực thi ẩn danh hóa triệt để PII (`fullname = 'Người dùng đã xóa'`, `phone = null`, `address = null`, email ẩn danh dạng `deleted_<idaccount>_<random>@anonymized.local`, mật khẩu gán hash vô hiệu), xóa ảnh chứng từ và ghi chú giao dịch riêng tư nhưng bảo toàn số tiền, ví, ngày để giữ sổ cái kế toán 5 năm.
+      + `runDailyMaintenanceRoutine()`: Điều phối chạy tự động toàn bộ chu trình bảo trì và thanh lọc vào 00:00:00 UTC+7 mỗi ngày.
+- **3. Kiểm thử & Nghiệm thu chất lượng:**
+  - `Test/test_data_retention_and_security_rules.js`: **6/6 tests PASS (100%)** qua quy trình TDD chuẩn mực (Red $\rightarrow$ Green).
+  - `Test/test_user_soft_delete_and_auth_rules.js`: **4/4 tests PASS (100%)**.
+  - `Test/test_admin_new_schema.js`: **PASS 100%**, xác nhận trigger CSDL bảo vệ vững chắc ngay cả trong thao tác dọn dẹp hệ thống.
+
 
 
 

@@ -6,6 +6,8 @@
 const { randomUUID } = require('crypto');
 const { prisma } = require('../../config/db');
 const logger = require('../../core/logger');
+const { encrypt, decrypt, hashBlindIndex } = require('../../utils/crypto.util');
+const { filterSensitiveNote } = require('../../utils/content-filter.util');
 
 const bankRepository = {
   /**
@@ -15,11 +17,14 @@ const bankRepository = {
   async registerAccount(idaccount, { account_number, bank_name, account_name, balance = 0 }) {
     const accNumber = String(account_number).trim();
     const externalId = `acc_${accNumber}`;
+    const encryptedAccNumber = encrypt(accNumber);
+    const accNumberHash = hashBlindIndex(accNumber);
 
     const updateData = {
       idaccount,
       id_casso_account: externalId,
-      account_number: accNumber,
+      account_number: encryptedAccNumber,
+      account_number_hash: accNumberHash,
       account_name: account_name || 'Tài khoản ngân hàng',
       bank_name: bank_name || 'Ngân hàng',
       balance: Number(balance) || 0,
@@ -88,10 +93,14 @@ const bankRepository = {
           ? 'Active'
           : 'Expired';
 
+      const encryptedAccNumber = encrypt(accountNumber);
+      const accNumberHash = hashBlindIndex(accountNumber);
+
       const updateData = {
         idaccount,
         id_casso_account: sepayAccountId,
-        account_number: accountNumber,
+        account_number: encryptedAccNumber,
+        account_number_hash: accNumberHash,
         account_name: accountName,
         bank_name: bankName,
         balance,
@@ -183,6 +192,9 @@ const bankRepository = {
    * Tạo transaction mới từ Webhook (mặc định status = Pending chờ người dùng duyệt)
    */
   async createTransactionFromWebhook(data) {
+    const rawNote = data.note || 'Giao dịch ngân hàng';
+    const safeNote = encrypt(filterSensitiveNote(rawNote));
+
     return prisma.transaction.create({
       data: {
         idtran: data.idtran || randomUUID(),
@@ -195,7 +207,7 @@ const bankRepository = {
         type: data.type || 'Transaction',
         status: data.status || 'Pending',
         provider: data.provider || 'BankSync',
-        note: data.note || 'Giao dịch ngân hàng',
+        note: safeNote,
         images: data.images || null,
         date_transaction: data.date_transaction || data.create_at || new Date(),
         update_at: new Date(),
@@ -208,7 +220,7 @@ const bankRepository = {
    * Lấy danh sách các giao dịch đang Pending (chờ duyệt) của người dùng
    */
   async getPendingTransactions(idaccount) {
-    return prisma.transaction.findMany({
+    const list = await prisma.transaction.findMany({
       where: {
         idaccount,
         status: 'Pending',
@@ -225,6 +237,11 @@ const bankRepository = {
       },
       orderBy: { date_transaction: 'desc' },
     });
+
+    return list.map((tx) => ({
+      ...tx,
+      note: tx.note ? decrypt(tx.note) : tx.note,
+    }));
   },
 
   /**
@@ -239,7 +256,7 @@ const bankRepository = {
       data.idcategory = idcategory;
     }
     if (note) {
-      data.note = note;
+      data.note = encrypt(filterSensitiveNote(note));
     }
 
     return prisma.transaction.update({

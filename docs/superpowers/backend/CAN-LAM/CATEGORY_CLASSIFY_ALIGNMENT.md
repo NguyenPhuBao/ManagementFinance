@@ -4,7 +4,7 @@
 >
 > Backend đã chốt `Vay/no` đúng như khuyến nghị:
 >
-> - `New_Database.md` đã sửa (dòng 87 và 304) → `Check in (Thu, Chi, Vay/no)`. ✅
+> - `docs/Rule_Project/New_Database.md` đã sửa (dòng 87 và 304) → `Check in (Thu, Chi, Vay/no)`. ✅
 > - `sync.service.js` chuẩn hoá mọi biến thể (`Vay/nợ`, `Vay`, `no`, `vay_no`,
 >   `vay_nợ`, `Vay/ng`) về `Vay/no` trước khi ghi. ✅
 > - **Còn thiếu — bước 3:** `sync.validation.js` dòng 103 vẫn chấp nhận danh sách
@@ -29,7 +29,7 @@ Giá trị thứ ba đang **không thống nhất** giữa tài liệu và mã n
 
 | Nơi | Giá trị đang dùng | Ghi chú |
 |---|---|---|
-| `docs/superpowers/backend/New_Database.md` | **`Vay/nợ`** (có dấu) | Được coi là "nguồn sự thật" |
+| `docs/Rule_Project/New_Database.md` | **`Vay/nợ`** (có dấu) | Được coi là "nguồn sự thật" |
 | `docs/superpowers/plans/2026-09-01-align-postgresql-schema.md` | **`Vay/nợ`** (có dấu) | Ghi rõ "canonical category class" |
 | `src/Backend/database/New_Database.sql` (dòng 109) | `Vay/no` (không dấu) | CHECK constraint |
 | `src/Backend/prisma/migrations/20260901090000_align_new_database/migration.sql` (dòng 96) | `Vay/no` (không dấu) | **Migration đã áp dụng vào CSDL** |
@@ -45,7 +45,7 @@ Kế hoạch align schema mới được thực hiện một nửa — phần te
 
 ### Vậy vì sao phải xử lý?
 
-Vì đây là **bom hẹn giờ**. Bất kỳ ai đọc `New_Database.md` rồi đổi CHECK constraint sang `Vay/nợ` mà không đổi client cùng lúc sẽ khiến:
+Vì đây là **bom hẹn giờ**. Bất kỳ ai đọc `docs/Rule_Project/New_Database.md` rồi đổi CHECK constraint sang `Vay/nợ` mà không đổi client cùng lúc sẽ khiến:
 
 - client vẫn gửi `Vay/no`
 - PostgreSQL từ chối vì vi phạm `ck_category_classify`
@@ -82,7 +82,7 @@ Giữ nguyên thứ đang chạy, chỉ sửa **tài liệu** cho khớp thực 
 
 **Việc cần làm:**
 
-1. Sửa `docs/superpowers/backend/New_Database.md`:
+1. Sửa `docs/Rule_Project/New_Database.md`:
    - dòng 87: `Check in (Thu, Chi, Vay/nợ)` → `Check in (Thu, Chi, Vay/no)`
    - dòng 304: `Classify IN ('Thu', 'Chi', 'Vay/nợ')` → `... 'Vay/no')`
 2. Sửa `docs/superpowers/plans/2026-09-01-align-postgresql-schema.md` cho khớp, hoặc đánh dấu kế hoạch đó là đã thay thế bởi tài liệu này.
@@ -140,7 +140,7 @@ Làm đúng như tài liệu đang mô tả. Tốn công hơn hẳn và **bắt 
 
 **Chọn A.** Lợi ích của B chỉ là dấu tiếng Việt trong một giá trị enum mà người dùng không nhìn thấy, trong khi cái giá là migration dữ liệu, hai lần đổi constraint, và một cửa sổ thời gian mà app cũ và app mới phải cùng chạy được.
 
-Dù chọn phương án nào, **hãy chốt bằng văn bản và cập nhật `New_Database.md`** — nguyên nhân gốc của cả vấn đề này là tài liệu và mã nguồn nói hai điều khác nhau suốt một thời gian dài mà không ai phát hiện.
+Dù chọn phương án nào, **hãy chốt bằng văn bản và cập nhật `docs/Rule_Project/New_Database.md`** — nguyên nhân gốc của cả vấn đề này là tài liệu và mã nguồn nói hai điều khác nhau suốt một thời gian dài mà không ai phát hiện.
 
 ---
 

@@ -1,4 +1,17 @@
 const { prisma } = require('../../config/db');
+const { encrypt, decrypt } = require('../../utils/crypto.util');
+const { filterSensitiveNote } = require('../../utils/content-filter.util');
+
+function prepareSafeNote(note, defaultVal = null) {
+  if (note === undefined) return undefined;
+  if (!note) return defaultVal;
+  return encrypt(filterSensitiveNote(note));
+}
+
+function restoreSafeNote(note) {
+  if (!note) return note;
+  return decrypt(note);
+}
 
 // Map field client (camelCase hoặc alias) → DB model fields theo CSDL mới
 function mapEntityFields(entity, data) {
@@ -269,7 +282,7 @@ const syncRepository = {
           type: mapped.type || 'Transaction',
           status: mapped.status || (mapped.provider && ['BankSync', 'Casso', 'SMS', 'ORC', 'OCR'].includes(mapped.provider) ? 'Pending' : 'Confirmed'),
           provider: mapped.provider || 'Manual',
-          note: mapped.note || '',
+          note: prepareSafeNote(mapped.note, ''),
           images: mapped.images || null,
           date_transaction: mapped.date_transaction || new Date(),
           update_at: mapped.update_at || new Date(),
@@ -290,7 +303,7 @@ const syncRepository = {
           type: mapped.type ?? existing.type,
           status: mapped.status ?? existing.status,
           provider: mapped.provider ?? existing.provider,
-          note: mapped.note ?? existing.note,
+          note: mapped.note !== undefined ? prepareSafeNote(mapped.note, '') : existing.note,
           images: mapped.images !== undefined ? mapped.images : existing.images,
           date_transaction: mapped.date_transaction ?? existing.date_transaction,
           deleted_at: mapped.deleted_at !== undefined ? mapped.deleted_at : existing.deleted_at,
@@ -302,13 +315,14 @@ const syncRepository = {
   },
 
   async getTransactionsByAccount(idaccount, since) {
-    return prisma.transaction.findMany({
+    const list = await prisma.transaction.findMany({
       where: {
         idaccount,
         update_at: since ? { gt: new Date(since) } : undefined,
       },
       orderBy: { update_at: 'asc' },
     });
+    return list.map((item) => ({ ...item, note: restoreSafeNote(item.note) }));
   },
 
   // ── Budget ──────────────────────────────────────────────
@@ -332,7 +346,7 @@ const syncRepository = {
           recurrence: mapped.recurrence ?? false,
           time_recurrence: mapped.time_recurrence === undefined ? 'Month' : mapped.time_recurrence,
           nexttime_recurrence: mapped.nexttime_recurrence || null,
-          note: mapped.note || null,
+          note: prepareSafeNote(mapped.note, null),
           update_at: mapped.update_at || new Date(),
         },
       });
@@ -353,7 +367,7 @@ const syncRepository = {
           recurrence: mapped.recurrence ?? existing.recurrence,
           time_recurrence: mapped.time_recurrence !== undefined ? mapped.time_recurrence : existing.time_recurrence,
           nexttime_recurrence: mapped.nexttime_recurrence !== undefined ? mapped.nexttime_recurrence : existing.nexttime_recurrence,
-          note: mapped.note !== undefined ? mapped.note : existing.note,
+          note: mapped.note !== undefined ? prepareSafeNote(mapped.note, null) : existing.note,
           delete_at: mapped.delete_at !== undefined ? mapped.delete_at : existing.delete_at,
           update_at: mapped.update_at || new Date(),
         },
@@ -363,13 +377,14 @@ const syncRepository = {
   },
 
   async getBudgetsByAccount(idaccount, since) {
-    return prisma.budget.findMany({
+    const list = await prisma.budget.findMany({
       where: {
         idaccount,
         update_at: since ? { gt: new Date(since) } : undefined,
       },
       orderBy: { update_at: 'asc' },
     });
+    return list.map((item) => ({ ...item, note: restoreSafeNote(item.note) }));
   },
 
   // ── Bill ────────────────────────────────────────────────
@@ -393,7 +408,7 @@ const syncRepository = {
           time_notification: mapped.time_notification || '3',
           icon: mapped.icon || 'receipt',
           color: mapped.color || '#4CAF50',
-          note: mapped.note || null,
+          note: prepareSafeNote(mapped.note, null),
           update_at: mapped.update_at || new Date(),
         },
       });
@@ -414,7 +429,7 @@ const syncRepository = {
           time_notification: mapped.time_notification ?? existing.time_notification,
           icon: mapped.icon ?? existing.icon,
           color: mapped.color ?? existing.color,
-          note: mapped.note !== undefined ? mapped.note : existing.note,
+          note: mapped.note !== undefined ? prepareSafeNote(mapped.note, null) : existing.note,
           delete_at: mapped.delete_at !== undefined ? mapped.delete_at : existing.delete_at,
           update_at: mapped.update_at || new Date(),
         },
@@ -424,13 +439,14 @@ const syncRepository = {
   },
 
   async getBillsByAccount(idaccount, since) {
-    return prisma.bill.findMany({
+    const list = await prisma.bill.findMany({
       where: {
         idaccount,
         update_at: since ? { gt: new Date(since) } : undefined,
       },
       orderBy: { update_at: 'asc' },
     });
+    return list.map((item) => ({ ...item, note: restoreSafeNote(item.note) }));
   },
 
   // ── Goal ────────────────────────────────────────────────
@@ -459,7 +475,7 @@ const syncRepository = {
           time_recurrence: mapped.time_recurrence || null,
           icon: mapped.icon || 'flag',
           color: mapped.color || '#4CAF50',
-          note: mapped.note || null,
+          note: prepareSafeNote(mapped.note, null),
           update_at: mapped.update_at || new Date(),
         },
       });
@@ -485,7 +501,7 @@ const syncRepository = {
           time_recurrence: mapped.time_recurrence !== undefined ? mapped.time_recurrence : existing.time_recurrence,
           icon: mapped.icon ?? existing.icon,
           color: mapped.color ?? existing.color,
-          note: mapped.note !== undefined ? mapped.note : existing.note,
+          note: mapped.note !== undefined ? prepareSafeNote(mapped.note, null) : existing.note,
           delete_at: mapped.delete_at !== undefined ? mapped.delete_at : existing.delete_at,
           update_at: mapped.update_at || new Date(),
         },
@@ -495,13 +511,14 @@ const syncRepository = {
   },
 
   async getGoalsByAccount(idaccount, since) {
-    return prisma.goal.findMany({
+    const list = await prisma.goal.findMany({
       where: {
         idaccount,
         update_at: since ? { gt: new Date(since) } : undefined,
       },
       orderBy: { update_at: 'asc' },
     });
+    return list.map((item) => ({ ...item, note: restoreSafeNote(item.note) }));
   },
 
   // ── Lookup by ID (for conflict resolution) ──────────────

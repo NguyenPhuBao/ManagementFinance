@@ -93,8 +93,8 @@ tốn hơn dự kiến, hãy ghi lại lý do vào chính tài liệu ấy — c
 
 Không phải việc cần làm, nhưng cần để hiểu phần trên:
 
-- [`../New_Database.md`](../New_Database.md) — lược đồ chuẩn của PostgreSQL.
-  `CLAUDE.md` chỉ định đây là **nguồn sự thật** cho schema.
+- [`New_Database.md`](../../../Rule_Project/New_Database.md) — lược đồ chuẩn của PostgreSQL (đã chuyển vào `docs/Rule_Project/`).
+  Đây là **nguồn sự thật** cho schema.
 - [`../2026-08-10-backend-sync-spec.md`](../2026-08-10-backend-sync-spec.md) —
   hợp đồng `/sync/push` và `/sync/pull`.
 - [`../PROGRESS-BACKEND.md`](../PROGRESS-BACKEND.md) — checklist B1→B7.
