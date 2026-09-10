@@ -6,6 +6,17 @@ const { prisma } = require("../../config/db");
 const authRepository = require("./auth.repository");
 const emailService = require("../../core/email.service");
 const logger = require("../../core/logger");
+const { encrypt, decrypt } = require("../../utils/crypto.util");
+
+function sanitizeAuditReason(text) {
+  if (!text || typeof text !== 'string') return null;
+  let sanitized = text
+    .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[EMAIL]')
+    .replace(/(?:\+84|0)[1-9][0-9]{7,9}\b/g, '[SĐT]')
+    .replace(/\b(?:eyJ[a-zA-Z0-9_-]{10,})\b/g, '[TOKEN]')
+    .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, '[UUID]');
+  return sanitized.substring(0, 200);
+}
 
 function hashToken(token) {
   return crypto.createHash("sha256").update(token).digest("hex");
@@ -168,13 +179,13 @@ const authService = {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(data.password, salt);
 
-    // 6. Tạo account + user trong transaction
+    // 6. Tạo account + user trong transaction (Mã hóa SĐT At-Rest)
     const account = await authRepository.createAccountWithUser({
       username: data.username,
       hashedPassword,
       fullname: data.fullname,
       email: data.email,
-      phone: data.phone || null,
+      phone: data.phone ? encrypt(data.phone) : null,
       country_code: data.country_code || null,
       type: 'Basic',
     });
@@ -204,7 +215,7 @@ const authService = {
         rolename: account.role.rolename,
         fullname: account.User.fullname,
         email: account.User.email,
-        phone: account.User.phone,
+        phone: decrypt(account.User.phone),
         country_code: account.User.country_code,
         type: account.type || 'Basic',
         status: account.status || 'Active',
@@ -229,13 +240,13 @@ const authService = {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(data.password, salt);
 
-    // 4. Tao account + user trong transaction
+    // 4. Tao account + user trong transaction (Mã hóa SĐT At-Rest)
     const account = await authRepository.createAccountWithUser({
       username: data.username,
       hashedPassword,
       fullname: data.fullname,
       email: data.email,
-      phone: data.phone || null,
+      phone: data.phone ? encrypt(data.phone) : null,
       country_code: data.country_code || null,
       type: 'Basic',
     });
@@ -265,7 +276,7 @@ const authService = {
         rolename: account.role.rolename,
         fullname: account.User.fullname,
         email: account.User.email,
-        phone: account.User.phone,
+        phone: decrypt(account.User.phone),
         country_code: account.User.country_code,
         type: account.type || 'Basic',
         status: account.status || 'Active',
@@ -345,7 +356,7 @@ const authService = {
         rolename: account.role.rolename,
         fullname: account.User ? account.User.fullname : "",
         email: account.User ? account.User.email : (account.email || ""),
-        phone: account.User ? account.User.phone : null,
+        phone: account.User ? decrypt(account.User.phone) : null,
         country_code: account.User ? account.User.country_code : null,
         type: account.type || 'Basic',
         status: account.status || 'Active',
@@ -526,8 +537,8 @@ const authService = {
     return {
       fullname: user.fullname,
       email: user.email,
-      phone: user.phone,
-      address: user.address,
+      phone: decrypt(user.phone),
+      address: decrypt(user.address),
       country_code: user.country_code,
       type: user.account?.type || 'Basic',
       status: user.account?.status || 'Active',
@@ -540,16 +551,16 @@ const authService = {
   async updateProfile(idaccount, data) {
     const allowed = {};
     if (data.fullname !== undefined) allowed.fullname = data.fullname;
-    if (data.phone !== undefined) allowed.phone = data.phone;
-    if (data.address !== undefined) allowed.address = data.address;
+    if (data.phone !== undefined) allowed.phone = data.phone ? encrypt(data.phone) : null;
+    if (data.address !== undefined) allowed.address = data.address ? encrypt(data.address) : null;
     if (data.country_code !== undefined) allowed.country_code = data.country_code;
 
     const updated = await authRepository.updateProfile(idaccount, allowed);
     return {
       fullname: updated.fullname,
       email: updated.email,
-      phone: updated.phone,
-      address: updated.address,
+      phone: decrypt(updated.phone),
+      address: decrypt(updated.address),
       country_code: updated.country_code,
       type: updated.account?.type || 'Basic',
       status: updated.account?.status || 'Active',
@@ -656,7 +667,7 @@ const authService = {
       }
     }
 
-    return reasonText ? String(reasonText).substring(0, 200) : null;
+    return reasonText ? sanitizeAuditReason(reasonText) : null;
   },
 
   formatActionName(method, path, req) {

@@ -8,6 +8,7 @@ const sepayWebhook = require('./sepay/sepay.webhook');
 const bankRepository = require('./bank.repository');
 const { getQueue } = require('../../core/queue');
 const logger = require('../../core/logger');
+const { maskAccountNumber } = require('../../utils/masking.util');
 
 const bankService = {
   /**
@@ -60,8 +61,12 @@ const bankService = {
       });
     }
 
-    // 3. Luôn trả về danh sách tài khoản ngân hàng từ DB
-    return bankRepository.getBankAccountsByUser(idaccount);
+    // 3. Luôn trả về danh sách tài khoản ngân hàng từ DB (Masking theo chuẩn PCI-DSS)
+    const list = await bankRepository.getBankAccountsByUser(idaccount);
+    return list.map((acc) => ({
+      ...acc,
+      account_number: maskAccountNumber(acc.account_number),
+    }));
   },
 
   /**

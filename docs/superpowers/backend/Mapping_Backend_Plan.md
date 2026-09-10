@@ -1,8 +1,8 @@
 # Kế hoạch Sửa Backend theo CSDL mới
 
 > **Ngày:** 2026-08-26
-> **Mục đích:** Sửa toàn bộ Backend (Node.js/Express/Prisma) để khớp CSDL mới (`New_Database.md`) — sau khi đã thay thế schema.
-> **Tham chiếu:** `MIGRATION_MAPPING_PLAN.md` (mapping bảng/cột), `New_Database.md` (CSDL chuẩn)
+> **Mục đích:** Sửa toàn bộ Backend (Node.js/Express/Prisma) để khớp CSDL mới (`docs/Rule_Project/New_Database.md`) — sau khi đã thay thế schema.
+> **Tham chiếu:** `MIGRATION_MAPPING_PLAN.md` (mapping bảng/cột), `docs/Rule_Project/New_Database.md` (CSDL chuẩn)
 > **Nguyên tắc:** Tuân theo CSDL mới **hoàn toàn**. Client-app sẽ được sửa riêng trong đợt sau.
 
 ---
@@ -39,7 +39,7 @@ Backend hiện tại (Node.js Express + Prisma + BullMQ) có **6 module internet
 
 ### 2.1. Prisma Schema — `src/Backend/prisma/schema.prisma`
 
-> Chi tiết 13 models mới đã có trong `MIGRATION_MAPPING_PLAN.md` + `New_Database.md`. Đây là phần tóm tắt.
+> Chi tiết 13 models mới đã có trong `MIGRATION_MAPPING_PLAN.md` + `docs/Rule_Project/New_Database.md`. Đây là phần tóm tắt.
 
 - [ ] Viết lại toàn bộ 13 models theo CSDL mới (tên field PascalCase hoặc giữ snake_case theo quyết định — **đề xuất giữ snake_case DB + `@map` cho Prisma field camelCase** để code đỡ rối)
 - [ ] Thêm relation: `Category.Idgroup` tự tham chiếu; `Wallet.Id_bank_casso` → Bank_account (**varchar(36)** — khớp `Id_bank_account`); `Bill.Idwallet/Idcategory`; `Goal.Idwallet`; `Transaction.Wallet_Transfer`
@@ -218,7 +218,7 @@ Backend hiện tại (Node.js Express + Prisma + BullMQ) có **6 module internet
 | 3 | `Wallet.Type` Bank vs Banking | **`Bank` = user tự tạo ví ngân hàng ảo; `Banking` = CHỈ tạo từ Casso (liên kết NH), user không tự tạo** | `Type='Banking'` → bắt buộc `Id_bank_casso NOT NULL`; `Type != 'Banking'` → `Id_bank_casso NULL`. |
 | 4 | Thu/chi & giao dịch chưa phân loại | **Giữ `Amount` dấu ± — giao dịch webhook ghi TRƯỚC (chưa vội phân loại), phân loại category SAU** | `Amount` dương = vào, âm = ra (xác định dòng tiền ngay, không chờ category). Webhook: `Idcategory=NULL` lúc ghi → worker cập nhật `Idcategory` sau. Thu/chi hoàn chỉnh từ `Category.classify`. |
 | 5 | Reset DB + seed | **Đồng ý — phải backfill `Account.Email = User.Email`** | Thêm bước backfill trước khi seed; không để NULL/trùng. |
-| 6 | Tên field Prisma | **PO giao cho tôi quyết** | **Chốt: DB snake_case** (đúng `New_Database.md`), **Prisma field camelCase + `@map`** — code sạch, DB đúng chuẩn. |
+| 6 | Tên field Prisma | **PO giao cho tôi quyết** | **Chốt: DB snake_case** (đúng `docs/Rule_Project/New_Database.md`), **Prisma field camelCase + `@map`** — code sạch, DB đúng chuẩn. |
 | 7 | Có đồng bộ Category hoàn chỉnh ngay không? | **Đồng bộ hoàn chỉnh** — đảm bảo không xung đột sau này | CSDL mới gộp `Keyword` vào cột `Category.Keyword` + `Idgroup` tự tham chiếu → **chỉ cần sync entity `category` là đủ** (bao gồm group + keyword). KHÔNG tách bảng riêng. |
 
 ---

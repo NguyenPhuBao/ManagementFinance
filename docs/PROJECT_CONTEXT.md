@@ -31,9 +31,11 @@ ManagementFinance/
 │   ├── Backend/          ← Node.js + Express + Prisma + PostgreSQL
 │   └── Client-app/       ← Flutter (Web/Mobile, Dart)
 ├── docs/
+│   ├── Rule_Project/
+│   │   ├── New_Database.md   ← Schema chuẩn PostgreSQL (nguồn sự thật)
+│   │   ├── Data_Security.md  ← Nguyên tắc bảo mật & phân loại dữ liệu
+│   │   └── Rule_project.md   ← Quy tắc toàn dự án
 │   └── superpowers/
-│       ├── backend/
-│       │   └── New_Database.md   ← Schema chuẩn PostgreSQL (nguồn sự thật)
 │       └── plans/
 │           └── PROGRESS-BACKEND.md
 └── Project.md            ← Tài liệu gốc của dự án
@@ -98,7 +100,7 @@ dart run build_runner watch --delete-conflicting-outputs
 
 ## 4. Database Schema (PostgreSQL)
 
-> Schema chuẩn xem tại: `docs/superpowers/backend/New_Database.md`
+> Schema chuẩn xem tại: `docs/Rule_Project/New_Database.md`
 > Prisma schema: `src/Backend/prisma/schema.prisma`
 
 ### Bảng chính
@@ -556,7 +558,7 @@ src/Backend/
 | `src/Backend/modules/sync/sync.repository.js` | Prisma queries cho sync |
 | `src/Backend/modules/sync/sync.service.js` | Business logic sync |
 | `src/Backend/prisma/schema.prisma` | DB schema (Prisma) |
-| `docs/superpowers/backend/New_Database.md` | DB schema chuẩn (nguồn sự thật) |
+| `docs/Rule_Project/New_Database.md` | DB schema chuẩn (nguồn sự thật) |
 
 ---
 

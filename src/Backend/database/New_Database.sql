@@ -2,7 +2,7 @@
 -- WEALTHCOMMAND / FLOWMONEY — CSDL MỚI (v2)
 -- ============================================================================
 -- Ngày: 2026-08-26
--- Nguồn: New_Database.md (13 bảng) — áp dụng hoàn toàn CSDL mới
+-- Nguồn: docs/Rule_Project/New_Database.md (13 bảng) — áp dụng hoàn toàn CSDL mới
 -- Lưu ý: uuid là id tự sinh tại Client-app, Backend chỉ ghi nhận mã.
 -- Cơ chế xóa mềm: Delete_at NULL = đang dùng; có giá trị = đã xóa mềm.
 -- ============================================================================

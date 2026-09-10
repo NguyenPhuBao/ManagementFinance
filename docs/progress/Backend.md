@@ -6,7 +6,7 @@ Tài liệu này tổng hợp toàn bộ các tính năng, API, mô hình dữ l
 
 ## 1. Cơ Sở Dữ Liệu & Mô Hình Dữ Liệu Mới (Supabase PostgreSQL)
 
-Backend đã hoàn thành đồng bộ **13 bảng CSDL** theo đặc tả chuẩn [New_Database.md](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/superpowers/backend/New_Database.md):
+Backend đã hoàn thành đồng bộ **13 bảng CSDL** theo đặc tả chuẩn [New_Database.md](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/Rule_Project/New_Database.md):
 
 * **`Transaction`**:
   * `Status` (`Varchar(10)`): Ràng buộc Check `Status IN ('Pending', 'Confirmed', 'Rejected', 'Fail') - Default 'Confirmed'`.
@@ -299,5 +299,114 @@ Backend đã hoàn thành đồng bộ **13 bảng CSDL** theo đặc tả chu�
   * `UserDetailModal.jsx`: Hiển thị rõ số ngày đếm ngược còn lại khi xem chi tiết.
 * **Kiểm thử tự động (`scratch/test_pending_delete_and_countdown.js`):**
   * Đạt kết quả **100% PASS (6/6 test cases)**: User yêu cầu xóa set 30 ngày, auth middleware valid, admin bị chặn 400, scheduler giảm countdown, kích hoạt lại xóa countdown, countdown về 0 tự động soft-delete.
+
+---
+
+## 6. Bảo Mật CSDL, Quản Trị Thời Hạn Lưu Trữ (Data Retention) & Chốt Chặn Pháp Lý (2026-09-10)
+
+Tuân thủ toàn diện **Nghị định 13/2023/NĐ-CP** (Bảo vệ dữ liệu cá nhân), **Nghị định 53/2022/NĐ-CP** (Luật An ninh mạng), **Luật Kế toán 2015** (Luật số 88/2015/QH13) và chuẩn **PCI-DSS v4.0**, Backend đã triển khai mô hình lai (Hybrid Architecture) kết hợp chốt chặn an ninh bất biến ở tầng CSDL và chu trình tự động ở tầng Backend:
+
+### 6.1. Tầng CSDL (PostgreSQL Engine Security Triggers)
+* **Migration SQL:** [`src/Backend/database/10_Data_Security_And_Retention_Triggers.sql`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/database/10_Data_Security_And_Retention_Triggers.sql)
+* **Trigger 1: `trg_protect_auditlog` (Bảng `audit_log`)**:
+  - Chặn tuyệt đối mọi thao tác `UPDATE` (Bảo đảm nguyên tắc bất biến **Append-only** cho nhật ký kiểm toán).
+  - Chặn thao tác `DELETE` nếu bản ghi log chưa đủ 12 tháng (365 ngày) theo đúng Điều 26 Nghị định 53/2022/NĐ-CP.
+* **Trigger 2: `trg_protect_transaction` (Bảng `transaction`)**:
+  - Chặn thao tác `DELETE` vật lý đối với các giao dịch tài chính phát sinh trong vòng 5 năm theo Điều 41 Luật Kế toán 2015. Bắt buộc áp dụng cơ chế xóa mềm qua trường `Deleted_at`.
+
+### 6.2. Tầng Backend (Scheduler & Retention Service)
+* **File cập nhật:** [`src/Backend/core/scheduler.service.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/core/scheduler.service.js)
+* **`runDailyOtpPurgeTask()`**: Tự động thanh lọc các mã `otp_code` cũ quá 24 giờ kể từ thời điểm tạo (`created_at < now - 24h`).
+* **`runDailyRefreshTokenPurgeTask()`**: Tự động thanh lọc các `refreshtoken` đã hết hạn hoặc bị thu hồi quá 30 ngày (`update_at < now - 30d`).
+* **Nâng cấp `processFullSoftDelete(idaccount)`**:
+  - Khi tài khoản countdown về `0` (hết thời hạn ân hạn 30 ngày `PendingDelete`), hệ thống tự động:
+    1. **Ẩn danh hóa thông tin cá nhân (PII Anonymization):** Họ tên $\rightarrow$ `"Người dùng đã xóa"`, SĐT $\rightarrow$ `null`, Địa chỉ $\rightarrow$ `null`.
+    2. **Cắt đứt hoàn toàn danh tính Email:** Chuyển thành email ẩn danh không thể tái nhận dạng dạng `deleted_<idaccount>_<random_hex>@anonymized.local`.
+    3. **Vô hiệu hóa mật khẩu:** Gán chuỗi hash vô hiệu hóa không thể đảo ngược (`$2a$10$DELETEDACCOUNTPROTECTIONHASHVOID...`).
+    4. **Xóa ảnh chứng từ và ghi chú riêng tư:** `transaction.images = null`, `transaction.note = null` đối với các giao dịch của tài khoản bị xóa.
+    5. **Bảo toàn số tiền, danh mục, ví và ngày giao dịch:** Giữ nguyên vẹn toàn bộ dữ liệu dòng tiền để duy trì tính toàn vẹn sổ cái kế toán 5 năm của hệ thống.
+* **`runDailyMaintenanceRoutine()`**: Điều phối chạy tự động toàn bộ chu trình bảo trì và thanh lọc vào lúc **00:00:00 UTC+7** mỗi đêm.
+
+### 6.3. Kiểm Thử Tự Động (TDD & Hồi Quy)
+* [`Test/test_data_retention_and_security_rules.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/Test/test_data_retention_and_security_rules.js): **PASS 100% (6/6 tests)** (kiểm tra Trigger UPDATE audit_log, Trigger DELETE audit_log < 12 tháng, Trigger DELETE transaction < 5 năm, Purge OTP > 24h, Purge Token > 30 ngày, Ẩn danh hóa PII).
+* [`Test/test_user_soft_delete_and_auth_rules.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/Test/test_user_soft_delete_and_auth_rules.js): **PASS 100% (4/4 tests)** (kiểm thử hồi quy xóa mềm tài khoản, đăng ký lại email/sđt trùng, cặp username-password, chặn login tài khoản xóa).
+* [`Test/test_admin_new_schema.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/Test/test_admin_new_schema.js): **PASS 100%** toàn bộ suite module Admin-web.
+
+### 6.4. Nguồn Sự Thật CSDL & Tài Liệu Bảo Mật
+* Đã thiết lập tài liệu Nguồn sự thật CSDL tại [`docs/Rule_Project/New_Database.md`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/Rule_Project/New_Database.md) (tích hợp chuẩn mã hóa, băm và thời hạn lưu trữ theo luật cho từng cột của 13 bảng).
+* Đã bổ sung Khung pháp lý & Ma trận thời hạn lưu trữ vào [`docs/Rule_Project/Data_Security.md`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/Rule_Project/Data_Security.md).
+
+---
+
+## 7. Chuẩn Yêu Cầu Lưu Trữ Dữ Liệu CSDL, Mã Hóa 2 Đầu & Che Mờ Dữ Liệu (2026-09-10)
+
+Tuân thủ nghiêm ngặt **Nghị định 13/2023/NĐ-CP**, **PCI-DSS v4.0**, **Nghị định 53/2022/NĐ-CP** và **Luật Kế toán 2015**, Backend đã hoàn thành toàn bộ các hạng mục kỹ thuật nhằm bảo vệ dữ liệu người dùng và loại bỏ hoàn toàn nguy cơ vi phạm pháp luật:
+
+### 7.1. Tầng CSDL & Triggers (Database Security Layer)
+* **Migration SQL:** [`src/Backend/database/11_Data_Security_Encryption_And_Masking.sql`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/database/11_Data_Security_Encryption_And_Masking.sql)
+  * Nâng cấp `User.Phone` lên `VARCHAR(256)` phục vụ lưu trữ chuỗi mã hóa ciphertext (kèm IV và Auth Tag).
+  * Nâng cấp `bank_account.Account_number` lên `VARCHAR(256)` phục vụ lưu trữ chuỗi mã hóa ciphertext.
+  * Thêm cột `bank_account.Account_number_hash` (`VARCHAR(64)` có Index B-Tree) lưu chuỗi Blind Index HMAC-SHA256 phục vụ tra soát nhanh $O(1)$ cho Webhook SePay/Casso mà không cần giải mã toàn bảng.
+* **Trigger 1: `trg_check_phone_encrypted` (Bảng `User`)**:
+  * Kiểm tra dữ liệu đầu vào; nếu phát hiện số điện thoại dạng chuỗi số rõ (plaintext 8-15 chữ số), trigger lập tức ném ngoại lệ SQL chặn đứng lệnh lưu.
+* **Trigger 2: `trg_check_bank_account_encrypted` (Bảng `bank_account`)**:
+  * Kiểm tra dữ liệu đầu vào; nếu phát hiện số tài khoản dạng chuỗi số rõ (plaintext 6-25 chữ số), trigger lập tức ném ngoại lệ SQL chặn đứng lệnh lưu.
+* **Đồng bộ Prisma Schema:** Cập nhật [`src/Backend/prisma/schema.prisma`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/prisma/schema.prisma) và chạy `rtk npx prisma generate`.
+
+### 7.2. Tầng Ứng Dụng (Application Encryption & Masking Utilities)
+* **Crypto Utility ([`src/Backend/utils/crypto.util.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/utils/crypto.util.js)):**
+  * Mã hóa chuẩn AES-256-GCM (Authenticated Encryption kèm IV ngẫu nhiên và Authentication Tag chống giả mạo).
+  * `hashBlindIndex(accountNumber)`: Sinh HMAC-SHA256 một chiều với bí mật `BLIND_INDEX_SECRET`.
+* **Masking Utility ([`src/Backend/utils/masking.util.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/utils/masking.util.js)):**
+  * `maskEmail`: `ph***@gmail.com`
+  * `maskPhone`: `098****321`
+  * `maskAccountNumber`: `**** **** **** 1234`
+  * `maskFullname`: `Nguyễn P. B.` (khi xuất báo cáo công cộng)
+  * `maskAddress`: `*** Phường Bến Nghé, Quận 1, TP.HCM`
+* **Content Filter Utility ([`src/Backend/utils/content-filter.util.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/utils/content-filter.util.js)):**
+  * `validateReasonInactive`: Quét và chặn đứng lý do khóa tài khoản nếu chứa SĐT, Email, CCCD, Thẻ ngân hàng, hoặc từ ngữ thô tục/xúc phạm (ném lỗi `400 Bad Request`).
+  * `filterSensitiveNote`: Tự động lược bỏ số thẻ tín dụng, mã CVV, mật khẩu trước khi mã hóa At-Rest cho trường `Note`.
+* **Storage Utility ([`src/Backend/utils/storage.util.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/utils/storage.util.js)):**
+  * `getPresignedReceiptUrl`: Tạo đường dẫn Pre-Signed URL có chữ ký HMAC kèm thời hạn ngắn (15 - 30 phút) cho ảnh chứng từ `transaction.images`.
+
+### 7.3. Tích Hợp Vào Các Module Nghiệp Vụ
+* **Module Admin ([`src/Backend/modules/admin/admin.service.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/modules/admin/admin.service.js)):**
+  * Tích hợp `validateReasonInactive` khi Admin khóa tài khoản người dùng (`updateStatus`).
+  * Masking Email, SĐT, Địa chỉ khi Admin lấy danh sách người dùng (`getUsers`) hoặc chi tiết (`getUserDetail`).
+* **Module Auth ([`src/Backend/modules/auth/auth.service.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/modules/auth/auth.service.js) & [`auth.repository.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/modules/auth/auth.repository.js)):**
+  * Tự động mã hóa `Phone` và `Address` khi đăng ký (`registerWithOtp`, `register`, `createAccountWithUser`) và cập nhật hồ sơ (`updateProfile`).
+  * Tự động giải mã `Phone` và `Address` khi trả về profile người dùng.
+  * Làm sạch `Reason` trong Audit Log, khử sạch PII, token, SĐT trước khi lưu.
+* **Module Bank & Worker ([`src/Backend/modules/bank/bank.service.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/modules/bank/bank.service.js), [`bank.repository.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/modules/bank/bank.repository.js), [`bank.worker.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/workers/bank.worker.js)):**
+  * Tự động mã hóa `Account_number` AES-256 + sinh `Account_number_hash` khi liên kết tài khoản ngân hàng.
+  * Worker SePay/Casso tính `hashBlindIndex(account_number)` và truy vấn $O(1)$ qua cột `Account_number_hash`.
+  * Masking số tài khoản khi trả về API và khi ghi log.
+  * Lọc dữ liệu nhạy cảm và mã hóa At-Rest trường `Note`.
+* **Module Sync ([`src/Backend/modules/sync/sync.repository.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/modules/sync/sync.repository.js)):**
+  * Tự động lọc sạch thẻ/CVV/pwd và mã hóa At-Rest AES-256 cho `note` khi upsert `transaction`, `budget`, `bill`, `goal`.
+  * Tự động giải mã `note` khi đọc dữ liệu đồng bộ về Client.
+* **Core Logger ([`src/Backend/core/logger.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/core/logger.js)):**
+  * Bổ sung Winston Custom Format tự động phát hiện và che giấu các trường nhạy cảm (`balance`, `password`, `token`, `otp`, `code_hash`, `cvv`, `refreshtoken`) trên mọi luồng console/file transport.
+
+### 7.4. Kết Quả Kiểm Thử Toàn Diện (TDD Test Suites)
+1. [`Test/test_data_security_encryption_and_masking.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/Test/test_data_security_encryption_and_masking.js): **PASS 100% (13/13 test cases)**
+   - Mã hóa At-Rest và Masking Phone
+   - Trigger CSDL chặn lưu SĐT dạng rõ
+   - Mã hóa At-Rest và Masking Address
+   - Masking Fullname khi xuất báo cáo công cộng
+   - Mã hóa STK và sinh Blind Index
+   - Trigger CSDL chặn lưu STK dạng rõ
+   - Tìm kiếm $O(1)$ qua Blind Index
+   - Chặn PII và từ ngữ xúc phạm trong lý do khóa tài khoản
+   - Cập nhật thành công lý do hợp lệ và khôi phục Active an toàn
+   - API Admin getUsers đã mask email và SĐT
+   - Note được lọc sạch thẻ/CVV/pwd và mã hóa At-Rest AES-256 trong CSDL
+   - Pre-signed URL thời hạn ngắn cho ảnh chứng từ giao dịch
+   - Logger tự động che toàn bộ trường Balance, Password, Token nhạy cảm
+2. [`Test/test_data_retention_and_security_rules.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/Test/test_data_retention_and_security_rules.js): **PASS 100% (6/6 tests)** (Bảo đảm không phát sinh lỗi hồi quy).
+3. [`Test/test_user_soft_delete_and_auth_rules.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/Test/test_user_soft_delete_and_auth_rules.js): **PASS 100% (4/4 tests)** (Bảo đảm không phát sinh lỗi hồi quy).
+4. [`Test/test_admin_new_schema.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/Test/test_admin_new_schema.js): **PASS 100%**.
+
+
 
 

@@ -1,6 +1,6 @@
 # Kế Hoạch & Tiến Độ Client-App (Flutter Mobile App)
 
-Tài liệu này tổng hợp toàn bộ các nhiệm vụ, hạng mục kỹ thuật và chức năng mà **Client-app** cần triển khai hoặc điều chỉnh để đồng bộ hoàn toàn với Backend và đặc tả CSDL mới ([New_Database.md](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/superpowers/backend/New_Database.md)).
+Tài liệu này tổng hợp toàn bộ các nhiệm vụ, hạng mục kỹ thuật và chức năng mà **Client-app** cần triển khai hoặc điều chỉnh để đồng bộ hoàn toàn với Backend và đặc tả CSDL mới ([New_Database.md](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/Rule_Project/New_Database.md)).
 
 ---
 
@@ -446,3 +446,69 @@ Thành viên phụ trách **Client-app** cần triển khai các hạng mục sa
      * Xóa sạch token trong `FlutterSecureStorage`.
      * Điều hướng ngay về màn hình Đăng nhập.
      * Hiển thị thông báo: *"Tài khoản của bạn đã hết thời hạn 30 ngày chờ xóa và đã được xóa khỏi hệ thống."*
+
+---
+
+## 13. Hướng Dẫn Tuân Thủ Quy Định Pháp Luật & Bảo Mật Dữ Liệu Với CSDL Mới (Data Security & Compliance Guide)
+
+Nhằm tuân thủ **Nghị định 13/2023/NĐ-CP** (Bảo vệ dữ liệu cá nhân), **PCI-DSS v4.0** (Chuẩn bảo mật dữ liệu thẻ ngân hàng), **Nghị định 53/2022/NĐ-CP** (Luật An ninh mạng) và **Luật Kế toán 2015**, thành viên xây dựng **Client-app** bắt buộc phải triển khai các quy tắc kỹ thuật sau để đảm bảo hệ thống không vi phạm pháp luật:
+
+### 13.1. Cập Nhật CSDL SQLite Cục Bộ & Cơ Chế 2 Đầu Chặn Dữ Liệu Rõ
+* **Bảng `user` cục bộ**: Cột `phone` và `address` điều chỉnh kiểu `TEXT` hỗ trợ độ dài lớn để nhận và lưu trữ chuỗi dữ liệu mã hóa.
+  > [!CAUTION]
+  > **Chốt chặn CSDL 2 đầu:** Trên Supabase PostgreSQL, Backend đã kích hoạt Trigger `trg_check_phone_encrypted`. Nếu Client-app gửi lệnh hoặc đồng bộ dữ liệu SĐT dạng số rõ (8-15 chữ số), CSDL sẽ ném ngoại lệ SQL chặn đứng lập tức.
+* **Bảng `bank_account` cục bộ**: Cột `account_number` chuyển sang kiểu `TEXT` hỗ trợ lưu trữ chuỗi ciphertext.
+  > [!CAUTION]
+  > Trên Supabase PostgreSQL, Trigger `trg_check_bank_account_encrypted` sẽ ném ngoại lệ SQL chặn đứng nếu STK gửi lên là chuỗi số rõ (6-25 chữ số). Client-app bắt buộc phải gửi qua các API nghiệp vụ của Backend để được mã hóa an toàn trước khi lưu.
+
+### 13.2. Che Mờ Dữ Liệu Cá Nhân (Data Masking) Trên Giao Diện Client-App
+Để bảo vệ quyền riêng tư của người dùng nơi công cộng, Client-app cần áp dụng hàm tiện ích che mờ khi hiển thị:
+* **Số điện thoại**: Masking dạng `098****321` (giữ 3 số đầu và 3 số cuối, che 4 số giữa) trên màn hình Profile, Cài đặt và Báo cáo.
+* **Email**: Masking dạng `ph***@gmail.com` (giữ 2 ký tự đầu tên hòm thư).
+* **Số tài khoản ngân hàng**: Hiển thị dạng `**** **** **** 1234` (chỉ hiển thị 4 số cuối).
+* **Tính năng Ẩn số dư (Eye Masking Toggle)**:
+  * Trên `HomeScreen` / `DashboardScreen`, cung cấp icon con mắt 👁️ để bật/tắt hiển thị số dư thực tế (`15,000,000 đ` $\leftrightarrow$ `****** đ`).
+  * Lưu trạng thái ẩn số dư vào `SharedPreferences` để duy trì trải nghiệm riêng tư khi mở app ở nơi đông người.
+
+### 13.3. Kiểm Soát & Lọc Nội Dung Trường Ghi Chú (`Note`)
+Trường `Note` của Giao dịch (`transaction`), Ngân sách (`budget`), Hóa đơn (`bill`), Mục tiêu (`goal`):
+* **Placeholder cảnh báo**:
+  * Tại các trường nhập liệu ghi chú trên giao diện, hiển thị placeholder hướng dẫn:
+    > *"Nhập ghi chú chi tiêu (Không nhập mã PIN, mật khẩu, số thẻ ngân hàng hoặc CVV)..."*
+* **Regex Client Validation (Chặn vô tình nhập số thẻ)**:
+  * Thêm bộ kiểm tra Client-side: Nếu phát hiện chuỗi số liên tục 13-19 chữ số (định dạng số thẻ tín dụng Visa/MasterCard) hoặc chứa từ khóa nhạy cảm (`cvv`, `cvc`, `pin`, `password`, `mat khau`), hiển thị cảnh báo yêu cầu người dùng xóa bỏ trước khi lưu.
+* **Xử lý Backend**: Backend sẽ tự động lọc bỏ các mẫu dữ liệu thẻ nhạy cảm còn sót và mã hóa At-Rest AES-256-GCM trước khi ghi vào CSDL.
+
+### 13.4. Bảo Mật Tệp Ảnh Chứng Từ & Hóa Đơn (`Images`)
+* **Hiển thị ảnh từ Server (Receipts & Transfers)**:
+  * Backend lưu ảnh trong **Private Bucket**, tuyệt đối không cấp quyền truy cập public.
+  * Client-app khi cần tải/xem ảnh phải sử dụng **Pre-Signed URL** (có thời hạn 15-30 phút) do Backend sinh.
+  * Không cache đường dẫn URL này vào database cục bộ lâu dài vì link sẽ tự động hết hạn sau 30 phút; chỉ cache dữ liệu ảnh vật lý đã mã hóa hoặc gọi lại API để lấy Pre-Signed URL mới.
+* **Chụp & Lưu trữ ảnh cục bộ trên thiết bị**:
+  * Tệp ảnh chụp hóa đơn/biên lai phải được lưu trong thư mục riêng tư của ứng dụng (`getApplicationDocumentsDirectory()` qua package `path_provider`).
+  * **Tuyệt đối không lưu vào Thư viện ảnh chung của thiết bị (Public Gallery / DCIM)** nếu người dùng không yêu cầu, nhằm ngăn chặn các ứng dụng độc hại khác trên máy đọc trộm chứng từ tài chính.
+
+### 13.5. Nguyên Tắc Bảo Vệ Dữ Liệu Sinh Trắc Học & SMS Banking
+* **Xác thực Sinh trắc học (Biometrics — Vân tay / FaceID)**:
+  * Sử dụng package `local_auth` để xác thực mở khóa ứng dụng hoặc xác nhận giao dịch nhạy cảm.
+  * **Nguyên tắc bất di bất dịch:** Xử lý xác thực cục bộ 100% trên thiết bị. **Tuyệt đối không thu thập, không truyền tải và không lưu trữ bất kỳ dữ liệu sinh trắc học nào lên server Backend.**
+* **Quyền Đọc Tin Nhắn (SMS Banking Reader)**:
+  * Client-app chỉ quét và đọc các tin nhắn biến động số dư nhận từ danh sách các Brandname ngân hàng chính thức tại Việt Nam (VCB, VietinBank, BIDV, MBBank, Techcombank, ACB, VPBank...).
+  * **Tuyệt đối không đọc hoặc tải các tin nhắn SMS cá nhân của người dùng lên server Backend.** Toàn bộ quy trình phân tích cú pháp SMS được thực hiện cục bộ trên máy trước khi tạo giao dịch.
+* **Không xin quyền vượt quá nhu cầu:** Ứng dụng **tuyệt đối không yêu cầu quyền truy cập Danh bạ (Contacts)** hoặc quyền theo dõi vị trí GPS nền liên tục.
+
+### 13.6. Không Ghi Log Dữ Liệu Nhạy Cảm (Zero Sensitive Logging on Client)
+* Trong suốt quá trình phát triển và phát hành ứng dụng:
+  * Tuyệt đối không sử dụng `print()`, `debugPrint()`, hoặc thư viện logger để in ra: Mật khẩu, mã OTP, Token JWT, số tài khoản đầy đủ, số dư thực tế hoặc mã định danh nhạy cảm ra terminal / Logcat / Xcode Console.
+  * Đảm bảo cấu hình cờ `kDebugMode` hoặc loại bỏ toàn bộ log debug trước khi build bản phát hành (Release Mode).
+
+### 13.7. Lưu Trữ Khóa Xác Thực An Toàn (Secure Token Storage)
+* Mọi token xác thực (`access_token`, `refresh_token`) bắt buộc phải được lưu trữ trong:
+  * **Android**: `EncryptedSharedPreferences` qua Android KeyStore.
+  * **iOS**: `Keychain Services` với thuộc tính truy cập an toàn.
+  * Thực thi qua package chuẩn `flutter_secure_storage`. Tuyệt đối không lưu token trong `SharedPreferences` thông thường dạng plaintext.
+
+### 13.8. Vòng Đời Dữ Liệu Cục Bộ (Local Data Retention)
+* **Dữ liệu giao dịch lịch sử**: Duy trì lưu trữ trên SQLite tối thiểu 5 năm phục vụ tra cứu sổ cái tài chính cá nhân ngoại tuyến (khớp với Điều 41 Luật Kế toán 2015).
+* **Dọn dẹp khi đăng xuất / đổi tài khoản**:
+  * Khi người dùng đăng xuất (`Logout`) hoặc tài khoản hết hạn 30 ngày xóa mềm (`ACCOUNT_DELETED`): Xóa sạch toàn bộ token trong `FlutterSecureStorage`, xóa toàn bộ cache ảnh chứng từ tạm thời.
