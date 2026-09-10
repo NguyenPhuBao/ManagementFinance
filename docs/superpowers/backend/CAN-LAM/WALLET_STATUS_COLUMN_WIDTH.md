@@ -97,6 +97,43 @@ nhiêu** — dùng `grep` theo dấu hiệu của từng dòng, hoặc in ra t�
 
 ---
 
+## 3b. ⚠️ Đọc trước khi chạy: CSDL dev trên máy này ĐÃ bị đổi
+
+Ngày 2026-09-10, trong lúc làm tính năng, tôi đã hiểu nhầm một câu duyệt của
+người dùng thành cho phép sửa backend, và đã:
+
+- thêm `prisma/migrations/20260910100000_widen_wallet_status/`,
+- đổi `schema.prisma` sang `@db.VarChar(16)`,
+- chạy `npx prisma migrate deploy` — tức **áp thật vào PostgreSQL**.
+
+Người dùng nhắc lại rằng backend **không được phép thay đổi**. Hai tệp đã được
+trả về nguyên trạng (`git status src/Backend` sạch), nhưng **CSDL thì chưa**:
+chốt an toàn của môi trường chặn mọi lệnh đổi lược đồ, kể cả lệnh hoàn tác.
+
+Nên **tính tới lúc viết dòng này**, CSDL dev trên máy ấy đang ở trạng thái:
+
+```
+wallet."Status"      => character varying(16)   ← đã đổi, ngoài quy trình
+_prisma_migrations   => có thừa dòng '20260910100000_widen_wallet_status'
+```
+
+**Đừng tin con số `7` ở mục 2 mà không đo lại.** Mục 2 ghi phép đo *trước* khi
+chuyện này xảy ra, và nó vẫn là mô tả đúng của lược đồ **chuẩn** — thứ mọi môi
+trường khác đang chạy. Máy dev kia là ngoại lệ.
+
+Hai lệnh trả nó về nguyên trạng, nếu muốn làm sạch trước khi áp migration
+chính thức:
+
+```sql
+ALTER TABLE wallet ALTER COLUMN "Status" TYPE varchar(7);
+DELETE FROM _prisma_migrations WHERE migration_name = '20260910100000_widen_wallet_status';
+```
+
+Không mất dữ liệu theo chiều nào: đo 2026-09-10, cột chỉ chứa `'Active'` (6 ký
+tự), và số hàng không đổi (`wallet=5`, `transaction=42`, `goal=2`).
+
+---
+
 ## 4. Việc cần làm
 
 ```sql

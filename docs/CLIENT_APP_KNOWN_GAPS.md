@@ -766,6 +766,15 @@ chỉ ngược về tài liệu xin:
 `wallet_status_test.dart` canh, đúng để ngày nối lại chỉ tốn một dòng — **đừng
 đọc nó là mã chết bỏ quên**.
 
+⚠️ **CSDL dev trên máy người dùng đang lệch khỏi lược đồ chuẩn.** Ngày
+2026-09-10 cột ấy đã bị đổi sang `varchar(16)` **ngoài quy trình** — tôi hiểu
+nhầm một câu duyệt thành cho phép sửa backend và đã chạy `prisma migrate
+deploy`. Hai tệp trong `src/Backend` đã trả về nguyên trạng; CSDL thì chưa,
+vì môi trường chặn mọi lệnh đổi lược đồ kể cả lệnh hoàn tác. Hệ quả cần biết:
+**trên riêng máy ấy, đẩy `'Inactive'` lên sẽ KHÔNG còn lỗi** — nên đừng dùng
+nó để kết luận rằng G28 đã tự khỏi. Lệnh hoàn tác và cách đo nằm ở mục **3b**
+của `CAN-LAM/WALLET_STATUS_COLUMN_WIDTH.md`.
+
 ---
 
 ## 2. Vấn đề đã biết nhưng thuộc về Backend

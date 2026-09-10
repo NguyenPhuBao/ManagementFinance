@@ -140,9 +140,12 @@ cả đợt migration). Phần còn lại, xếp theo mức thiệt hại:
    tự mâu thuẫn ở đúng cột này** — `chk_wallet_status` cho phép `'Inactive'`
    nhưng kiểu cột không chứa nổi nó, nên không giá trị nào vừa cả hai ngoài
    `'Active'`. Không cần đụng CHECK, chỉ nới kiểu cột cho khớp ràng buộc đã
-   có. Tài liệu ấy cũng ghi lại **một phép đo sai của chính phiên 2026-09-10**
-   (kết luận nhầm rằng bảng không có CHECK nào, do lọc output qua `tail`) —
-   giữ lại vì bài học về cách đo, không phải vì kết luận.
+   có. ⚠️ **Đọc mục 3b của tài liệu ấy trước khi chạy gì:** CSDL dev trên máy
+   người dùng **đã bị đổi sang `varchar(16)` ngoài quy trình** ngày 2026-09-10
+   và chưa hoàn tác được, nên đừng tin con số `7` mà không đo lại. Tài liệu
+   cũng ghi lại **một phép đo sai của chính phiên ấy** (kết luận nhầm rằng bảng
+   không có CHECK nào, do lọc output qua `tail`) — giữ lại vì bài học về cách
+   đo, không phải vì kết luận.
 
 > ⚠️ **Trước khi chạy migration ở môi trường mới:** lấy bản vá xoá mềm ở
 > nhánh `patch2`. Bản `)2_can_lam_all_migrations.sql` trên `main` sẽ roll back
