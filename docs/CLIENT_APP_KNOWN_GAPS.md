@@ -749,8 +749,8 @@ kéo chậm cả hàng đợi. Đây là điều `flutter test` **không** bắt
 **Vì sao không vá ở client:** không có chỗ ghi thì không có cách ghi. Cột được
 gỡ khỏi **cả hai** chiều của đồng bộ, cùng diện với `bills.autoPayEnabled` và
 `bills.anchorDay`. Chiều **kéo về** phải im lặng cùng lúc chứ không chỉ chiều
-đẩy: server luôn trả `'Active'` cho mọi ví — nó chưa bao giờ nhận được giá trị
-nào khác — nên một bản chỉ gỡ chiều đẩy sẽ khiến ví vừa lưu trữ **tự bỏ lưu
+đẩy: client không đẩy cột này nên server giữ `'Active'` cho mọi ví của tài khoản còn dùng (chỉ ví của tài khoản đã bị xoá hẳn mới bị `scheduler.service.js` đặt `'Inactive'`)
+— nên một bản chỉ gỡ chiều đẩy sẽ khiến ví vừa lưu trữ **tự bỏ lưu
 trữ** sau đúng một chu kỳ đồng bộ, im lặng. Có test riêng canh ca ấy, và nó gửi
 `'status': 'Active'` chứ không gửi payload thiếu khoá, vì dạng thiếu khoá không
 phân biệt được hai cách cài đặt.
@@ -759,7 +759,7 @@ phân biệt được hai cách cài đặt.
 báo gì. Cùng hạng với `bill.Auto_pay` nhưng **nhẹ hơn**: lưu trữ ví không tự
 tiêu tiền của ai, chỉ làm một ví hiện lại ở máy chưa bấm.
 
-**Bán kính khi backend nới cột:** một dòng `ALTER TABLE` (không cần đụng CHECK —
+**Bán kính khi mở lại** (phía server đã xong trên CSDL dev tối 2026-09-10 — một dòng `ALTER TABLE`, không cần đụng CHECK —
 nó đã cho phép đúng hai giá trị cần thiết), rồi client mở lại **ba chỗ** — nhánh
 đẩy và nhánh kéo về của `sync_engine.dart`, cộng `walletForPush` trong
 `sync_payload_normalizer.dart` — và cập nhật `sync_payload_contract_test.dart`

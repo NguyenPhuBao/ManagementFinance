@@ -252,7 +252,7 @@ SELECT count(*) FROM wallet;                                  -- không đổi
 
 ---
 
-## 5. Client sẽ làm gì khi cột được nới
+## 5. Client sẽ làm gì khi cột được nới (CSDL dev đã nới tối 2026-09-10 — việc phía client người dùng chốt để sau, G28)
 
 Hiện tại `status` là cột **cục bộ**, cố ý không đi theo chiều nào của đồng bộ —
 cùng diện với `bills.autoPayEnabled` và `bills.anchorDay` (đo lại 2026-09-10:

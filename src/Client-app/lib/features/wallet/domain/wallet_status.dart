@@ -11,22 +11,24 @@
 /// chk_wallet_status CHECK (Status = ANY (ARRAY['Active','Inactive']))
 /// ```
 ///
-/// ⚠️ **Nhưng [khoaGuiLen] hiện KHÔNG được dùng ở đâu ngoài test.** Lược đồ
-/// PostgreSQL tự mâu thuẫn ở đúng cột này: CHECK cho phép `'Inactive'` trong
-/// khi kiểu cột là `varchar(7)` — chuỗi ấy dài **8 ký tự**. Không giá trị nào
-/// vừa cả hai ngoài `'Active'`, nên ví lưu trữ đẩy lên là **kẹt hàng đợi đẩy**,
-/// đo được trên máy ảo ngày 2026-09-10. Vì thế `status` là cột **cục bộ**:
+/// ⚠️ **Nhưng [khoaGuiLen] hiện KHÔNG được dùng ở đâu ngoài test.** Lý do ban
+/// đầu, đo ngày 2026-09-10: lược đồ PostgreSQL tự mâu thuẫn ở đúng cột này —
+/// CHECK cho phép `'Inactive'` trong khi kiểu cột là `varchar(7)`, chuỗi ấy
+/// dài **8 ký tự** — nên ví lưu trữ đẩy lên là **kẹt hàng đợi đẩy**, đo được
+/// trên máy ảo. Vì thế `status` là cột **cục bộ**:
 /// `sync_payload_normalizer.dart` **không** đi qua tệp này, và nhánh kéo về
 /// cũng không đọc cột ấy.
 ///
-/// [khoaGuiLen] vẫn ở lại và vẫn được test canh, để ngày backend nới cột thì
-/// việc nối lại chỉ là một dòng. Xin nới cột:
+/// Tối cùng ngày CSDL dev đã nới cột lên `varchar(20)` (áp `database/7`), nên
+/// chỗ chặn phía server đã hết; `status` vẫn cục bộ vì việc nối lại (G28)
+/// người dùng chốt để sau. [khoaGuiLen] vẫn ở lại và vẫn được test canh, để
+/// ngày nối lại chỉ là một dòng. Xem G28 `docs/CLIENT_APP_KNOWN_GAPS.md` và
 /// `docs/superpowers/backend/CAN-LAM/WALLET_STATUS_COLUMN_WIDTH.md`.
 ///
 /// ## Vì sao tệp này KHÔNG import Flutter
 ///
 /// Cùng lý do với `wallet_type.dart`: nó được `wallet_dao.dart` và tầng đồng
-/// bộ dùng tới, và khi cột được nới thì `sync_payload_normalizer.dart` — tầng
+/// bộ dùng tới, và khi nối lại G28 thì `sync_payload_normalizer.dart` — tầng
 /// hợp đồng giữa client và server, không import gì cả — sẽ dùng nó. Giữ Dart
 /// thuần là giữ khả năng ấy.
 ///

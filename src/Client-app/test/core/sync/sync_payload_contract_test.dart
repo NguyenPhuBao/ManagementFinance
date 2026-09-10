@@ -251,14 +251,18 @@ void main() {
     });
 
     test('ví lưu trữ KHÔNG được mang `status` lên server', () async {
-      // Cột `Status` của PostgreSQL là **varchar(7)**, đo thẳng trên CSDL ngày
-      // 2026-09-10 (`information_schema.columns`). Giá trị cần gửi lên là
-      // `'Inactive'` — **8 ký tự**. Đẩy lên là hàng ví vỡ ở tầng CSDL, backend
-      // trả về lỗi ràng buộc, và ví kẹt hàng đợi đẩy: thử lại ở MỌI chu kỳ,
-      // kéo chậm cả hàng đợi. Đã vấp thật trên máy ảo.
+      // Lý do ban đầu, đo thẳng trên CSDL ngày 2026-09-10
+      // (`information_schema.columns`): cột `Status` của PostgreSQL là
+      // **varchar(7)**, còn giá trị cần gửi lên là `'Inactive'` — **8 ký tự**.
+      // Đẩy lên là hàng ví vỡ ở tầng CSDL, backend trả về lỗi ràng buộc, và ví
+      // kẹt hàng đợi đẩy: thử lại ở MỌI chu kỳ, kéo chậm cả hàng đợi. Đã vấp
+      // thật trên máy ảo.
       //
-      // Nên `status` là cột CỤC BỘ cho tới khi backend nới cột — cùng diện với
-      // `bills.autoPayEnabled` và `bills.anchorDay`. Tài liệu xin:
+      // Tối cùng ngày CSDL dev đã nới cột lên `varchar(20)` (áp `database/7`),
+      // nhưng `status` vẫn là cột CỤC BỘ cho tới khi mở lại G28 — người dùng
+      // chốt để sau; mở lại thì test này đổi sang canh chiều ngược lại. Cùng
+      // diện với `bills.autoPayEnabled` và `bills.anchorDay`. Xem G28
+      // `docs/CLIENT_APP_KNOWN_GAPS.md` và
       // `docs/superpowers/backend/CAN-LAM/WALLET_STATUS_COLUMN_WIDTH.md`.
       const viLuuTru = '22222222-2222-4222-8222-222222222222';
       await db.walletDao.insert(WalletsCompanion(
@@ -280,8 +284,9 @@ void main() {
 
       for (final p in payloads) {
         expect(p.containsKey('status'), isFalse,
-            reason: 'Ví ${p['id']} mang `status` lên server. Với ví lưu trữ đó '
-                'là chuỗi 8 ký tự nhét vào cột varchar(7) — bản ghi kẹt hàng '
+            reason: 'Ví ${p['id']} mang `status` lên server, trong khi `status` '
+                'là cột cục bộ cho tới khi mở lại G28. Ở CSDL nào chưa nới cột '
+                '(varchar(7)), ví lưu trữ gửi chuỗi 8 ký tự — bản ghi kẹt hàng '
                 'đợi đẩy và thử lại vĩnh viễn.');
       }
       expect(payloads.any((p) => p['id'] == viLuuTru), isTrue,
@@ -726,10 +731,13 @@ void main() {
     test('server KHÔNG bỏ được lưu trữ của ví — kể cả khi nó gửi status',
         () async {
       // Đây là nửa thứ hai của việc `status` là cột cục bộ, và là nửa dễ
-      // quên: server luôn trả `'Active'` cho MỌI ví, vì nó chưa bao giờ nhận
-      // được giá trị nào khác (client không đẩy cột này lên — cột `Status`
-      // là varchar(7) còn `'Inactive'` dài 8 ký tự). Đọc cột ấy về là ví vừa
-      // lưu trữ lặng lẽ sống lại ở đúng lượt pull kế tiếp.
+      // quên: client không đẩy cột này lên, nên server giữ `'Active'` cho MỌI
+      // ví của tài khoản còn dùng (chỉ ví của tài khoản đã bị xoá hẳn mới bị
+      // `scheduler.service.js` đặt `'Inactive'`). Lý do ban đầu của việc không
+      // đẩy: cột `Status` là varchar(7) còn `'Inactive'` dài 8 ký tự; CSDL dev
+      // đã nới lên varchar(20) tối 2026-09-10, nhưng việc nối lại — G28 —
+      // người dùng chốt để sau. Đọc cột ấy về là ví vừa lưu trữ lặng lẽ sống
+      // lại ở đúng lượt pull kế tiếp.
       //
       // Payload dưới đây cố ý mang `'status': 'Active'` — dạng KHÓ nhất, vì
       // một bản đọc thẳng sẽ vượt qua ca 'server im lặng' mà vỡ ở đây.
