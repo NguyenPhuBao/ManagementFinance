@@ -55,8 +55,32 @@ function verifyPresignedUrl(key, expiresAt, signature) {
   return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature));
 }
 
+/**
+ * Trích xuất key gốc của ảnh từ Pre-signed URL hoặc chuỗi lưu trữ
+ * @param {string|null} urlOrKey 
+ * @returns {string|null}
+ */
+function cleanStorageKey(urlOrKey) {
+  if (!urlOrKey || typeof urlOrKey !== 'string') return null;
+  const str = urlOrKey.trim();
+  if (!str) return null;
+  if (str.startsWith('data:image')) return str;
+  try {
+    if (str.includes('/storage/private/')) {
+      const parts = str.split('/storage/private/')[1];
+      const rawKey = parts.split('?')[0];
+      return decodeURIComponent(rawKey);
+    }
+    return str.split('?')[0];
+  } catch {
+    return str;
+  }
+}
+
 module.exports = {
   getPresignedReceiptUrl,
   verifyPresignedUrl,
+  cleanStorageKey,
   DEFAULT_TTL_SECONDS,
 };
+
