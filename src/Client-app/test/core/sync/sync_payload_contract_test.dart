@@ -242,17 +242,24 @@ void main() {
           'id', 'name', 'type', 'balance', 'currency', 'icon',
           'color', // normalizer đổi colour → color
           'is_default', 'is_deleted', 'include_in_total',
-          'status', // lưu trữ ví — chk_wallet_status nhận Active|Inactive
+          // ⚠️ `status` (lưu trữ ví) CỐ Ý vắng mặt — nhóm PUSH ngay dưới
+          // canh riêng điều đó, kèm con số đo được.
           'update_at', // normalizer đổi updated_at → update_at
           'idaccount',
         },
       );
     });
 
-    test('ví lưu trữ đẩy lên đúng chữ mà chk_wallet_status cho phép', () async {
-      // Ví thứ hai, cố ý mang trạng thái lưu trữ: ví trong `setUp` đang hoạt
-      // động, nên nếu chỉ có nó thì một bản gửi thẳng khoá cục bộ ('active')
-      // vẫn trượt qua — hai chuỗi chỉ khác nhau ở chữ hoa đầu.
+    test('ví lưu trữ KHÔNG được mang `status` lên server', () async {
+      // Cột `Status` của PostgreSQL là **varchar(7)**, đo thẳng trên CSDL ngày
+      // 2026-09-10 (`information_schema.columns`). Giá trị cần gửi lên là
+      // `'Inactive'` — **8 ký tự**. Đẩy lên là hàng ví vỡ ở tầng CSDL, backend
+      // trả về lỗi ràng buộc, và ví kẹt hàng đợi đẩy: thử lại ở MỌI chu kỳ,
+      // kéo chậm cả hàng đợi. Đã vấp thật trên máy ảo.
+      //
+      // Nên `status` là cột CỤC BỘ cho tới khi backend nới cột — cùng diện với
+      // `bills.autoPayEnabled` và `bills.anchorDay`. Tài liệu xin:
+      // `docs/superpowers/backend/CAN-LAM/WALLET_STATUS_COLUMN_WIDTH.md`.
       const viLuuTru = '22222222-2222-4222-8222-222222222222';
       await db.walletDao.insert(WalletsCompanion(
         id: const Value(viLuuTru),
@@ -270,14 +277,17 @@ void main() {
           .where((op) => op['entity'] == 'wallet')
           .map((op) => op['payload'] as Map<String, dynamic>)
           .toList();
-      final p = payloads.firstWhere((p) => p['id'] == viLuuTru);
 
-      expect(p['status'], 'Inactive',
-          reason: 'chk_wallet_status chỉ nhận Active|Inactive. Gửi khoá cục bộ '
-              "'inactive' là vỡ CHECK, và bản ghi kẹt hàng đợi đẩy vĩnh viễn — "
-              'im lặng, đúng như ewallet/debt của loại ví trước đây.');
-      expect(payloads.firstWhere((p) => p['id'] == walletId)['status'], 'Active',
-          reason: 'Ví đang hoạt động cũng phải đi qua đúng phép ánh xạ ấy.');
+      for (final p in payloads) {
+        expect(p.containsKey('status'), isFalse,
+            reason: 'Ví ${p['id']} mang `status` lên server. Với ví lưu trữ đó '
+                'là chuỗi 8 ký tự nhét vào cột varchar(7) — bản ghi kẹt hàng '
+                'đợi đẩy và thử lại vĩnh viễn.');
+      }
+      expect(payloads.any((p) => p['id'] == viLuuTru), isTrue,
+          reason: 'Ví lưu trữ VẪN phải được đẩy lên — tên, số dư, cờ mặc định '
+              'của nó vẫn phải tới được máy khác. Chỉ riêng trạng thái lưu trữ '
+              'là ở lại máy này.');
     });
 
     test('category — phải có isGroup/parentId để backend dựng lại cây nhóm', () {
@@ -531,7 +541,6 @@ void main() {
             'balance': 5000,
             'color': '#123456',
             'include_in_total': false,
-            'status': 'Inactive',
             'update_at': '2026-09-01T10:00:00.000Z',
           },
         ],
@@ -596,12 +605,6 @@ void main() {
           reason: 'Nửa còn lại của cờ này: nó NẰM trong payload đẩy lên nhưng '
               'nhánh kéo về không đọc, nên máy thứ hai KHÔNG BAO GIỜ biết '
               'ví nào bị loại khỏi tổng tài sản. Hỏng im lặng, quy tắc 4.');
-      expect(wallet?.status, 'inactive',
-          reason: 'Backend gửi chữ HOA (chk_wallet_status nhận '
-              'Active|Inactive) còn SQLite lưu chữ thường. Không chuẩn '
-              "hoá ở nhánh kéo về thì mọi phép so `status == 'inactive'` "
-              'trong app trượt hết — im lặng, và ví lưu trữ hiện lại ở '
-              'mọi bộ chọn trên máy thứ hai.');
 
       final category = await db.categoryDao.getById(categoryId);
       expect(category?.name, 'Ăn uống', reason: 'backend dùng "name_category"');
@@ -690,13 +693,16 @@ void main() {
               'HAY XOA. Ghi đè null vào đây là mất liên kết mà không có lỗi '
               'nào báo ra.');
     });
-    test('hàng server KHÔNG có status thì trạng thái lưu trữ phải còn nguyên',
+    test('server KHÔNG bỏ được lưu trữ của ví — kể cả khi nó gửi status',
         () async {
-      // Trạng thái THẬT của mọi hàng ví đã nằm sẵn trên server: chúng được đẩy
-      // lên từ trước khi client biết gửi trường này, nên `Status` của chúng là
-      // giá trị mặc định chứ không phải ý định của người dùng. Đọc thẳng
-      // `w['status']` là ví vừa lưu trữ ở máy này lặng lẽ sống lại ở đúng chu
-      // kỳ đồng bộ tiếp theo.
+      // Đây là nửa thứ hai của việc `status` là cột cục bộ, và là nửa dễ
+      // quên: server luôn trả `'Active'` cho MỌI ví, vì nó chưa bao giờ nhận
+      // được giá trị nào khác (client không đẩy cột này lên — cột `Status`
+      // là varchar(7) còn `'Inactive'` dài 8 ký tự). Đọc cột ấy về là ví vừa
+      // lưu trữ lặng lẽ sống lại ở đúng lượt pull kế tiếp.
+      //
+      // Payload dưới đây cố ý mang `'status': 'Active'` — dạng KHÓ nhất, vì
+      // một bản đọc thẳng sẽ vượt qua ca 'server im lặng' mà vỡ ở đây.
       await db.walletDao.insert(WalletsCompanion(
         id: const Value(walletId),
         idaccount: const Value(accountId),
@@ -715,7 +721,7 @@ void main() {
             'idaccount': accountId,
             'name': 'Ví thẻ cũ',
             'balance': 1000,
-            // KHÔNG có khoá 'status' — đúng như hàng cũ trên server.
+            'status': 'Active',
             'update_at': '2026-09-02T10:00:00.000Z',
           },
         ],
@@ -724,8 +730,9 @@ void main() {
       await runSync();
 
       expect((await db.walletDao.getById(walletId))?.status, 'inactive',
-          reason: 'Server im lặng về cột này nghĩa là CHƯA BIẾT, không phải '
-              'HÃY KÍCH HOẠT LẠI. Cùng bài học với include_in_total và idgoal.');
+          reason: 'Lưu trữ ví sống hoàn toàn trên máy này. Đọc `status` từ '
+              'payload là mọi ví lưu trữ tự bỏ lưu trữ sau đúng một chu kỳ '
+              'đồng bộ — im lặng, không thông báo nào.');
     });
     test('hàng server KHÔNG có include_in_total thì cờ cục bộ phải còn nguyên',
         () async {

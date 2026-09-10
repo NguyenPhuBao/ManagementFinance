@@ -7,7 +7,6 @@ import 'package:drift/drift.dart';
 import '../api/dio_client.dart';
 import '../bill/bill_recurrence.dart';
 import '../database/app_database.dart';
-import '../../features/wallet/domain/wallet_status.dart';
 import 'backend_bool.dart';
 import 'sync_models.dart';
 import 'category_icon_registry.dart';
@@ -488,18 +487,24 @@ class SyncEngine {
                 includeInTotal: w['include_in_total'] != null
                     ? Value(doiSangBool(w['include_in_total']))
                     : const Value.absent(),
-                // Cùng lý do, và cùng bài học: mọi hàng ví đã nằm sẵn trên
-                // server đều mang `Status` mặc định chứ không phải ý định
-                // của người dùng, vì chúng được đẩy lên từ trước khi client
-                // biết gửi trường này. Đọc thẳng là ví vừa lưu trữ ở máy
-                // này lặng lẽ sống lại ở chu kỳ đồng bộ tiếp theo.
+                // ⚠️ `status` (lưu trữ ví) là cột CỤC BỘ, cố ý không đi
+                // theo chiều nào của đồng bộ — cùng diện với
+                // `bills.autoPayEnabled` và `bills.anchorDay`.
                 //
-                // Backend gửi chữ HOA (`chk_wallet_status` nhận
-                // Active|Inactive) còn SQLite lưu chữ thường, nên phải đi
-                // qua `WalletStatus` chứ không chép nguyên chuỗi.
-                status: w['status'] != null
-                    ? Value(WalletStatus.tuKhoa(w['status'].toString()).khoa)
-                    : const Value.absent(),
+                // Lý do là một con số, đo thẳng trên PostgreSQL ngày
+                // 2026-09-10: cột `Status` là **varchar(7)**, còn giá trị
+                // cần gửi lên là `'Inactive'` — **8 ký tự**. Đẩy lên là
+                // hàng ví vỡ ở tầng CSDL và kẹt hàng đợi đẩy, thử lại ở
+                // MỌI chu kỳ, kéo chậm cả hàng đợi. Đã vấp thật trên máy
+                // ảo, và đó là cách phát hiện ra con số ấy.
+                //
+                // Nhánh KÉO VỀ cũng phải im lặng theo, không chỉ nhánh đẩy:
+                // server luôn trả `'Active'` cho mọi ví (nó chưa bao giờ
+                // nhận được giá trị nào khác), nên đọc cột này về là ví vừa
+                // lưu trữ lặng lẽ sống lại ở lượt pull kế tiếp.
+                //
+                // Mở lại cả hai chiều khi backend nới cột — tài liệu xin:
+                // `docs/superpowers/backend/CAN-LAM/WALLET_STATUS_COLUMN_WIDTH.md`.
                 isDeleted: Value(w['delete_at'] != null),
                 deletedAt: Value(_deletedAtFrom(w['delete_at'])),
                 syncStatus: const Value('synced'),
@@ -1050,7 +1055,7 @@ class SyncEngine {
           'is_default': w.isDefault,
           'is_deleted': w.isDeleted,
           'include_in_total': w.includeInTotal,
-          'status': w.status,
+          // ⚠️ `status` CỐ Ý KHÔNG có mặt — xem chú thích ở nhánh kéo về.
           'updated_at': w.updatedAt.toUtc().toIso8601String(),
           'idaccount': w.idaccount > 0 ? w.idaccount : idaccount,
         },

@@ -519,8 +519,13 @@ class _MucLuuTruState extends State<_MucLuuTru> {
               padding: const EdgeInsets.only(bottom: 12),
               child: _WalletItem(
                 wallet: w,
-                // Ví lưu trữ vẫn sửa và xoá được: đóng băng nói về việc ghi
-                // chép mới, không phải về quyền quản lý chính cái ví.
+                // Cố ý KHÔNG truyền `onDelete`: menu ở đây chỉ có "Chỉnh
+                // sửa" và "Bỏ lưu trữ". Ví lưu trữ vẫn xoá được — đóng
+                // băng nói về việc ghi chép mới, không phải về quyền quản
+                // lý chính cái ví — nhưng đường xoá đi qua màn Sửa ví, nơi
+                // đã có nút xoá và câu xác nhận đầy đủ. Bày lại "Xóa ví"
+                // ngay cạnh "Bỏ lưu trữ" là đặt hành động không hoàn tác
+                // được sát ngay hành động khôi phục.
                 onTap: () async {
                   final result =
                       await context.push('/wallets/${w.id}/edit');

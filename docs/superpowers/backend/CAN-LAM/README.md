@@ -35,10 +35,10 @@
 > dòng cũ ở đây ghi "20 tài liệu" và đã lạc hậu từ lúc dọn sang `DA-XONG/`).
 > Thư mục này giữ **cả tài liệu còn việc lẫn tài liệu vừa đóng** — giữ cả hai để
 > đội backend thấy được cái gì đã xong mà không phải dò lại. Sau đợt 2026-09-07
-> chỉ còn **tám** mục thật sự phải làm (đếm lại 2026-09-09 sau khi client nối
-Socket.io); danh sách ngắn ấy ở **mục 2**, đọc nó
+> chỉ còn **chín** mục thật sự phải làm (đếm lại 2026-09-10 sau khi client làm
+lưu trữ ví); danh sách ngắn ấy ở **mục 2**, đọc nó
 > trước bảng phân nhóm bên dưới. Không cần mở gì ở thư mục cha ngoài ba tệp bối
-> cảnh liệt kê ở mục 4.
+> cảnh liệt kê ở mục 4 — **bốn** tệp, đúng như dòng đầu khối này nói.
 
 ---
 
@@ -131,6 +131,18 @@ cả đợt migration). Phần còn lại, xếp theo mức thiệt hại:
    trường `type` mang **hai nghĩa** khác nhau. Không chặn client hôm nay vì
    client cố ý không đọc trường nào, nhưng nó sẽ hỏng **im lặng** với bất kỳ ai
    bắt đầu đọc payload.
+9. **Nới cột `wallet.Status`**
+   ([WALLET_STATUS_COLUMN_WIDTH.md](./WALLET_STATUS_COLUMN_WIDTH.md), thêm
+   2026-09-10) — một dòng `ALTER TABLE`, không đụng mã ứng dụng. Cột là
+   `varchar(7)` còn giá trị cần ghi là `'Inactive'` — **8 ký tự**. Client đã
+   làm xong tính năng **lưu trữ ví** nhưng phải để cột `status` **cục bộ**,
+   nên lưu trữ chỉ có hiệu lực trên máy đã bấm. ⚠️ Tài liệu ấy còn ghi lại
+   **hai điều `CLAUDE.md` đang nói sai**: bảng `wallet` **không có CHECK
+   constraint nào** (`chk_wallet_type`, `chk_wallet_status`,
+   `chk_wallet_currency`, `chk_wallet_banking_link` đều không tồn tại — đo
+   `pg_constraint` ngày 2026-09-10), và "lưu trữ ví không cần một dòng
+   backend nào" là kết luận sai vì nó đọc `upsertWallet` mà không đo độ rộng
+   cột.
 
 > ⚠️ **Trước khi chạy migration ở môi trường mới:** lấy bản vá xoá mềm ở
 > nhánh `patch2`. Bản `)2_can_lam_all_migrations.sql` trên `main` sẽ roll back

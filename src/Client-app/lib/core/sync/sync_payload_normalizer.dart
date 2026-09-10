@@ -1,4 +1,3 @@
-import '../../features/wallet/domain/wallet_status.dart';
 import '../../features/wallet/domain/wallet_type.dart';
 
 /// Chuẩn hóa enum nội bộ của Client trước khi gửi sang Sync API.
@@ -89,12 +88,12 @@ class SyncPayloadNormalizer {
     // đợi vĩnh viễn — im lặng, không log, không gì trên màn hình.
     normalized['type'] =
         WalletType.tuKhoa(normalized['type']?.toString()).khoaGuiLen;
-    // Cùng một cái bẫy, cùng một cách đóng: `chk_wallet_status` chỉ nhận
-    // 'Active' và 'Inactive' (chữ hoa), còn SQLite lưu chữ thường. Gửi thẳng
-    // khoá cục bộ lên là vỡ CHECK và ví kẹt hàng đợi đẩy vĩnh viễn — hai
-    // chuỗi chỉ khác nhau mỗi chữ đầu nên nhìn qua rất dễ tưởng là xong.
-    normalized['status'] =
-        WalletStatus.tuKhoa(normalized['status']?.toString()).khoaGuiLen;
+    // ⚠️ KHÔNG chuẩn hoá `status` ở đây, vì nó không được phép có mặt trong
+    // payload: cột `Status` của PostgreSQL là varchar(7) còn giá trị cần
+    // gửi là 'Inactive' — 8 ký tự. Xem chú thích dài ở nhánh kéo về ví
+    // trong `sync_engine.dart`. `WalletStatus.khoaGuiLen` vẫn giữ nguyên và
+    // vẫn được test canh, để ngày backend nới cột thì chỉ cần một dòng ở
+    // đây là xong.
     return normalized;
   }
 
