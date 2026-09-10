@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -18,6 +19,7 @@ import '../../domain/goal_deposit_wallets.dart';
 import '../../domain/goal_edit_form.dart';
 import '../widgets/goal_appearance.dart';
 import '../../../../core/auth/current_account.dart';
+import '../../../../core/utils/gioi_han_do_dai.dart';
 
 /// Trang tạo mục tiêu, và — khi có [goalId] — cũng là trang **sửa**.
 ///
@@ -877,6 +879,9 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                           _buildTextField(
                             controller: _nameController,
                             hint: 'e.g. Mua Laptop MacBook Pro',
+                            inputFormatters: const [
+                              GioiHanDoRong(DoRongCot.tenMucTieu),
+                            ],
                           ),
                           const SizedBox(height: 16),
                           Row(
@@ -1469,11 +1474,13 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
     TextInputType keyboardType = TextInputType.text,
     IconData? suffixIcon,
     int maxLines = 1,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       maxLines: maxLines,
+      inputFormatters: inputFormatters,
       style: TextStyle(
         fontSize: 16,
         color: textColor,

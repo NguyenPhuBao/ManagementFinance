@@ -9,6 +9,7 @@ import '../../../../shared/theme/app_colors.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../data/models/category_tree.dart';
 import '../../data/repositories/category_management_repository.dart';
+import '../../../../core/utils/gioi_han_do_dai.dart';
 
 class CategoryGroupPage extends StatefulWidget {
   const CategoryGroupPage({
@@ -172,6 +173,9 @@ class _CategoryGroupPageState extends State<CategoryGroupPage> {
                           const SizedBox(height: 8),
                           TextField(
                             controller: _nameController,
+                            inputFormatters: const [
+                              GioiHanDoRong(DoRongCot.tenDanhMuc),
+                            ],
                             decoration: const InputDecoration(
                                 hintText: 'e.g. Chi tiêu Sinh hoạt'),
                           ),

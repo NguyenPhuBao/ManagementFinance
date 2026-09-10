@@ -18,6 +18,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flowmoney/core/bill/bill_recurrence.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/di/injection_container.dart';
+import 'package:flowmoney/core/utils/gioi_han_do_dai.dart';
 import 'package:flowmoney/features/auth/data/models/user_model.dart';
 import 'package:flowmoney/features/auth/data/repositories/auth_repository.dart';
 import 'package:flowmoney/features/auth/presentation/bloc/auth_bloc.dart';
@@ -113,6 +114,22 @@ void main() {
     ));
     await tester.pumpAndSettle();
   }
+
+  testWidgets('tên hoá đơn ở màn Sửa cũng dừng ở độ rộng cột — G31',
+      (tester) async {
+    await dungTrangSua(tester);
+    final oTen = find.byWidgetPredicate((w) =>
+        w is TextField && w.decoration?.labelText == 'Tên dịch vụ / Hóa đơn');
+    final boDieuKhien = tester.widget<TextField>(oTen).controller!;
+
+    await tester.enterText(oTen, 'a' * (DoRongCot.tenHoaDon + 50));
+    await tester.pump();
+
+    expect(boDieuKhien.text.length, DoRongCot.tenHoaDon,
+        reason: 'Màn Sửa là đường thứ hai ghi `bill.Name`. Chặn ở màn Thêm '
+            'mà quên màn này là người dùng đổi tên thành chuỗi dài và hoá đơn '
+            'kẹt hàng đợi đẩy y như cũ.');
+  });
 
   testWidgets('không tràn bố cục ở 411dp', (tester) async {
     await dungTrangSua(tester);

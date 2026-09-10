@@ -81,9 +81,9 @@ engine gói lỗi theo cách nào.
 
 **Client:** quét `maxLength` và `LengthLimitingTextInputFormatter` toàn `lib/`
 được **3** chỗ — ô OTP và ô mã liên kết ngân hàng — **không** chỗ nào ở form ví,
-mục tiêu, hoá đơn, danh mục. Client thêm giới hạn ở phía mình trong đợt này. Nhánh
-3.1 phía server vẫn cần: bản client đã cài, Admin-web và mọi nguồn ghi khác không
-đi qua form ấy.
+mục tiêu, hoá đơn, danh mục — đo trước bản vá. Client đã thêm giới hạn ở phía
+mình cùng ngày (mục 5). Nhánh 3.1 phía server vẫn cần: bản client đã cài trước
+đó, Admin-web và mọi nguồn ghi khác không đi qua form ấy.
 
 **`23502` thì hôm nay client không chạm tới.** Form thêm hoá đơn bắt chọn ví và
 danh mục (`bill_add_page.dart:128-144`, kèm chú thích nói đúng kiểu kẹt hàng đợi
@@ -212,7 +212,11 @@ Dùng tài khoản thử, đừng dùng tài khoản thật.
 
 ## 5. Liên quan tới client
 
-- Client thêm giới hạn độ dài ở form trong đợt này: 100 cho tên ví, mục tiêu,
-  hoá đơn; 200 cho tên danh mục. Xem G31 `docs/CLIENT_APP_KNOWN_GAPS.md`.
+- ✅ Client đã giới hạn độ dài ở bảy ô tên (2026-09-10): 100 cho tên ví, mục
+  tiêu, hoá đơn; 200 cho tên danh mục và nhóm danh mục. Bộ lọc đếm **code point**
+  cho khớp cách PostgreSQL đếm `varchar(n)` — `maxLength` của Flutter đếm theo
+  grapheme nên không dùng được (`lib/core/utils/gioi_han_do_dai.dart`). Bản client
+  đã cài trước đó, Admin-web và mọi nguồn ghi khác thì chỉ nhánh 3.1 chặn được.
+  Xem G31 `docs/CLIENT_APP_KNOWN_GAPS.md`.
 - Khi 3.1 và 3.3 xong, client **không phải đổi gì**: `CONSTRAINT_VIOLATION` từng
   thao tác đã được xếp vĩnh viễn.

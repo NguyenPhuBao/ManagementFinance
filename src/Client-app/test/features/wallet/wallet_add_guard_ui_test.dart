@@ -21,6 +21,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:flowmoney/core/di/injection_container.dart';
 import 'package:flowmoney/core/errors/app_exceptions.dart';
+import 'package:flowmoney/core/utils/gioi_han_do_dai.dart';
 import 'package:flowmoney/features/auth/data/models/user_model.dart';
 import 'package:flowmoney/features/auth/data/repositories/auth_repository.dart';
 import 'package:flowmoney/features/auth/presentation/bloc/auth_bloc.dart';
@@ -205,6 +206,19 @@ void main() {
 
       expect(repo.luoiGoiThem.single.type, 'saving');
     });
+  });
+
+  testWidgets('tên ví dừng ở độ rộng cột trên server — G31', (tester) async {
+    await _moTrang(tester, _RepoGia([]));
+    final boDieuKhien = tester.widget<TextField>(_oTenVi).controller!;
+
+    await tester.enterText(_oTenVi, 'a' * (DoRongCot.tenVi + 50));
+    await tester.pump();
+
+    expect(boDieuKhien.text.length, DoRongCot.tenVi,
+        reason: '`wallet.Name` là varchar(100). Với ví, server không kẹt mà CẮT '
+            'âm thầm (`upsertWallet` lấy 100 ký tự đầu), rồi lượt kéo về mang '
+            'bản đã cắt đè lên máy — người dùng mất đuôi tên mà không hay.');
   });
 
   testWidgets('trùng tên thì báo ngay, không gọi thêm ví, không rời trang',

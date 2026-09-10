@@ -36,7 +36,7 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > | **G28** | ⛔ **Chặn ở CSDL, không còn ở mã backend** — cột `wallet."Status"` trên CSDL dev vẫn là `varchar(7)` trong khi chính `chk_wallet_status` cho phép `'Inactive'` (8 ký tự), nên **lưu trữ ví chỉ sống trên máy đã bấm** (2026-09-10). ⚠️ Cập nhật cùng ngày sau khi gộp `main`: backend **đã** đổi `schema.prisma` sang `VarChar(20)` và viết `database/7_…sql` từ 2026-09-09 (`7523c8c`) — tệp ấy chỉ **chưa được áp**. Người dùng chốt **để sau** |
 > | **G29** | ⛔ **Chặn ở backend** — `/sync/push` lọc `Note` bằng biểu thức bắt nhầm (số tài khoản, "mật khẩu wifi", hậu tố `(tự động)`), và bản đã lọc **đè lên máy** ngay chu kỳ đồng bộ ấy — tái hiện đầu-cuối trên máy ảo 2026-09-10. Chưa hỏng dữ liệu thật nào |
 > | **G30** | ⏸️ **Chặn tạm, chờ backend bỏ index** — server có `uq_wallet_saving_active` (một ví Tiết kiệm mỗi tài khoản), luật chỉ tồn tại ở SQL; client khoá ô "Tiết kiệm" và chốt ở datasource từ 2026-09-10 cho tới khi backend `DROP INDEX`. Chốt **trùng tên ví** cùng ngày thì vĩnh viễn |
-> | **G31** | ⛔ **Chặn ở backend** — tên mục tiêu hoặc hoá đơn dài hơn 100 ký tự, tên danh mục dài hơn 200, vỡ `P2000` trên server và rơi xuống `DB_ERROR`, nên client **gửi lại mãi**; form client chưa giới hạn độ dài (2026-09-10) |
+> | **G31** | ⛔ **Chặn ở backend** — tên mục tiêu hoặc hoá đơn dài hơn 100 ký tự, tên danh mục dài hơn 200, vỡ `P2000` trên server và rơi xuống `DB_ERROR`, nên bản ghi bị **gửi lại mãi**. ✅ Bảy ô tên của client giới hạn theo code point từ 2026-09-10; còn mở vì bản client cũ, Admin-web và mọi nguồn ghi khác vẫn chờ backend ánh xạ lỗi |
 > | **G32** | ⛔ **Chặn ở backend** — `Number(null)` ở `mapEntityFields('goal')` ghi mục tiêu **chưa sắp** thành `Priority = 0`, nên sau một vòng đồng bộ nó nhảy lên **đầu** danh sách; tái hiện đầu-cuối trên máy ảo (2026-09-10) |
 >
 > **G20 đã đóng ngày 2026-09-05** — `depositToGoal` nhận `occurredAt` chặn hai
@@ -872,6 +872,23 @@ và lượt kéo về mang bản đã cắt về máy (suy từ mã, chưa đo t
 cho người dùng lúc họ đang gõ; và xin backend ánh xạ `22001` / `P2000` về
 `CONSTRAINT_VIOLATION` để bản client cũ cùng mọi nguồn ghi khác không lặp vô hạn —
 `docs/superpowers/backend/CAN-LAM/SYNC_PUSH_ERROR_MAPPING.md`.
+
+✅ **Phía client xong cùng ngày.** Bảy ô tên — Thêm ví, Sửa ví, Thêm/Sửa mục
+tiêu, Thêm hoá đơn, Sửa hoá đơn, Thêm/Sửa danh mục, Nhóm danh mục — đi qua
+`GioiHanDoRong` ở `lib/core/utils/gioi_han_do_dai.dart`: 100 cho tên ví, mục
+tiêu, hoá đơn; 200 cho tên danh mục. Bộ lọc đếm **code point** chứ không dùng
+`maxLength`, vì PostgreSQL đếm `varchar(n)` theo code point còn `maxLength` đếm
+theo grapheme — chữ gõ ở dạng tách dấu và emoji sẽ lọt qua. Nó cắt theo trọn cụm
+grapheme, và theo đúng chính sách của Flutter về việc có cắt lúc bộ gõ đang ghép
+chữ hay không (Android cắt ngay — nên bấm Lưu lúc chữ cuối chưa chốt vẫn không
+lọt). Test: 12 ca thuần ở `core/utils/gioi_han_do_dai_test.dart`, và mỗi ô một
+widget test. Kiểm trên `emulator-5554`: gõ 120 ký tự vào ô tên mục tiêu, ô dừng
+ở 100.
+
+**Còn mở:** phía server — bản client đã cài trước đó, Admin-web và mọi nguồn ghi
+khác vẫn lặp vô hạn cho tới khi backend ánh xạ lỗi. Hàng tạo trước bản vá mà dài
+hơn cột thì vẫn kẹt; gõ bất kỳ phím nào vào ô tên ở màn Sửa là bộ lọc cắt nó
+xuống vừa cột.
 
 ### G32 — Mục tiêu chưa sắp nhảy lên đầu danh sách sau một vòng đồng bộ · ⛔ CHẶN Ở BACKEND (2026-09-10)
 

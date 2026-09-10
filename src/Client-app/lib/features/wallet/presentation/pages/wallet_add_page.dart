@@ -12,6 +12,7 @@ import '../../../../core/di/injection_container.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../bloc/wallet_cubit.dart';
+import '../../../../core/utils/gioi_han_do_dai.dart';
 
 class WalletAddPage extends StatelessWidget {
   const WalletAddPage({super.key});
@@ -302,6 +303,7 @@ class _WalletAddFormState extends State<_WalletAddForm> {
             title: 'TÊN VÍ TÀI CHÍNH',
             child: TextField(
               controller: _nameController,
+              inputFormatters: const [GioiHanDoRong(DoRongCot.tenVi)],
               decoration: InputDecoration(
                 hintText: 'Ví Tiền Mặt, Techcombank...',
                 filled: true,

@@ -10,6 +10,7 @@ import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../data/models/wallet_entity.dart';
 import '../../data/repositories/wallet_repository.dart';
+import '../../../../core/utils/gioi_han_do_dai.dart';
 
 class WalletEditPage extends StatefulWidget {
   final String id;
@@ -314,6 +315,7 @@ class _WalletEditPageState extends State<WalletEditPage> {
             title: 'TÊN VÍ TÀI CHÍNH',
             child: TextField(
               controller: _nameController,
+              inputFormatters: const [GioiHanDoRong(DoRongCot.tenVi)],
               decoration: InputDecoration(
                 filled: true,
                 fillColor: AppColors.surfaceContainerLow,

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/core/utils/gioi_han_do_dai.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
 import 'package:flowmoney/features/category/presentation/pages/category_add_page.dart';
 import 'package:flowmoney/features/category/presentation/pages/category_group_page.dart';
@@ -138,6 +139,44 @@ void main() {
     await tester.tap(find.text('Tạo nhóm danh mục'));
     await tester.pumpAndSettle();
     expect(find.text('Tạo nhóm danh mục'), findsOneWidget);
+  });
+
+  testWidgets('tên danh mục dừng ở độ rộng cột trên server — G31',
+      (tester) async {
+    await tester.pumpWidget(app(CategoryAddPage(
+      repository: FakeCategoryRepository(),
+      accountId: 1,
+    )));
+    await tester.pumpAndSettle();
+    final oTen = find.byWidgetPredicate(
+        (w) => w is TextField && w.decoration?.hintText == 'e.g. Thuê nhà');
+    final boDieuKhien = tester.widget<TextField>(oTen).controller!;
+
+    await tester.enterText(oTen, 'a' * (DoRongCot.tenDanhMuc + 50));
+    await tester.pump();
+
+    expect(boDieuKhien.text.length, DoRongCot.tenDanhMuc,
+        reason: '`category.NameCategory` là varchar(200). Tên dài hơn vỡ P2000 '
+            'ở /sync/push và danh mục bị gửi lại ở mọi chu kỳ đồng bộ.');
+  });
+
+  testWidgets('tên nhóm danh mục cũng dừng ở độ rộng cột — G31',
+      (tester) async {
+    await tester.pumpWidget(app(CategoryGroupPage(
+      repository: FakeCategoryRepository(),
+      accountId: 1,
+    )));
+    await tester.pumpAndSettle();
+    final oTen = find.byWidgetPredicate((w) =>
+        w is TextField && w.decoration?.hintText == 'e.g. Chi tiêu Sinh hoạt');
+    final boDieuKhien = tester.widget<TextField>(oTen).controller!;
+
+    await tester.enterText(oTen, 'a' * (DoRongCot.tenDanhMuc + 50));
+    await tester.pump();
+
+    expect(boDieuKhien.text.length, DoRongCot.tenDanhMuc,
+        reason: 'Nhóm cũng là một hàng `category` (Is_group = true), ghi vào '
+            'cùng cột NameCategory — màn này là đường ghi thứ hai.');
   });
 
   testWidgets(

@@ -13,6 +13,7 @@ import '../../domain/bill_draft.dart';
 import '../../domain/bill_schedule.dart';
 import '../bloc/bill_bloc.dart';
 import '../bloc/bill_event.dart';
+import '../../../../core/utils/gioi_han_do_dai.dart';
 
 class BillEditPage extends StatefulWidget {
   final String id;
@@ -277,6 +278,9 @@ class _BillEditPageState extends State<BillEditPage> {
                 children: [
                   TextField(
                     controller: _nameController,
+                    inputFormatters: const [
+                      GioiHanDoRong(DoRongCot.tenHoaDon),
+                    ],
                     decoration: const InputDecoration(
                       labelText: 'Tên dịch vụ / Hóa đơn',
                       border: OutlineInputBorder(),

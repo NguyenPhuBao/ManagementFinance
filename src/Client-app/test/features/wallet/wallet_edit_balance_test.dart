@@ -16,6 +16,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/di/injection_container.dart';
+import 'package:flowmoney/core/utils/gioi_han_do_dai.dart';
 import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 import 'package:flowmoney/features/wallet/data/repositories/wallet_repository.dart';
 import 'package:flowmoney/features/wallet/data/services/dieu_chinh_so_du_service.dart';
@@ -116,6 +117,21 @@ WalletEntity _vi({double soDu = 1000000}) => WalletEntity(
     );
 
 void main() {
+  testWidgets('tên ví ở màn Sửa cũng dừng ở độ rộng cột — G31',
+      (tester) async {
+    await _moTrang(tester, _RepoGhiLai(_vi()), _DichVuGia());
+    final oTen = find.byWidgetPredicate(
+        (w) => w is TextField && w.controller?.text == 'Tiền mặt');
+    final boDieuKhien = tester.widget<TextField>(oTen).controller!;
+
+    await tester.enterText(oTen, 'a' * (DoRongCot.tenVi + 50));
+    await tester.pump();
+
+    expect(boDieuKhien.text.length, DoRongCot.tenVi,
+        reason: 'Màn Sửa là đường thứ hai ghi `wallet.Name`; chặn ở màn Thêm mà '
+            'quên màn này thì đổi tên vẫn bị server cắt âm thầm.');
+  });
+
   testWidgets('sửa ô số dư thì đi qua đường ĐỐI SOÁT, không ghi đè',
       (tester) async {
     final repo = _RepoGhiLai(_vi());
