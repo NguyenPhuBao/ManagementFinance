@@ -86,6 +86,12 @@ class WalletRepositoryImpl implements WalletRepository {
   }
 
   @override
+  Future<void> setArchived(String id, {required bool luuTru}) async {
+    await _localDataSource.setArchived(id, luuTru: luuTru);
+    _syncEngine.scheduleSync();
+  }
+
+  @override
   Future<double> getTotalBalance(int idaccount) async {
     final wallets = await _localDataSource.getAll(idaccount);
     // Luật "ví nào được cộng" nằm ở `viTinhVaoTong` — nó lọc CẢ

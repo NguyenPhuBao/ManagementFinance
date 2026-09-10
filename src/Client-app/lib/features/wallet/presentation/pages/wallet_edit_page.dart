@@ -3,6 +3,7 @@ import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../domain/wallet_status.dart';
 import '../../domain/wallet_type.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
@@ -52,6 +53,14 @@ class _WalletEditPageState extends State<WalletEditPage> {
   bool _isDefault = false;
   bool _includeInTotal = true;
 
+  /// Công tắc "Kích hoạt hoạt động" — mặt trái của lưu trữ ví.
+  ///
+  /// ⚠️ KHÔNG ghi qua `copyWith(status: ...)` như hai cờ trên. Hai chốt
+  /// chặn (không lưu trữ ví mặc định, không lưu trữ ví hoạt động cuối cùng)
+  /// chỉ nằm trong `WalletRepository.setArchived`; ghi thẳng qua
+  /// `updateWallet` là đi vòng qua cả hai, im lặng.
+  bool _dangHoatDong = true;
+
   @override
   void initState() {
     super.initState();
@@ -87,6 +96,7 @@ class _WalletEditPageState extends State<WalletEditPage> {
 
           _isDefault = wallet.isDefault;
           _includeInTotal = wallet.includeInTotal;
+          _dangHoatDong = WalletStatus.laHoatDong(wallet.status);
           _isLoading = false;
         });
       } else if (mounted) {
@@ -137,10 +147,22 @@ class _WalletEditPageState extends State<WalletEditPage> {
         colour:         colour,
         isDefault:      _isDefault,
         includeInTotal: _includeInTotal,
+        // Trạng thái lưu trữ cố ý GIỮ NGUYÊN ở đây — nó đi đường riêng
+        // ngay dưới, đường duy nhất có chốt chặn.
+        status:         _wallet!.status,
         updatedAt:      DateTime.now(),
       );
 
       await sl<WalletRepository>().updateWallet(updatedWallet);
+
+      // Chỉ gọi khi người dùng THẬT SỰ đổi công tắc: mỗi lần gọi là một
+      // lần ghi và một lần vào hàng đợi đẩy, nên sửa tên ví không được kéo
+      // theo một lượt đẩy trạng thái vô ích.
+      if (_dangHoatDong != WalletStatus.laHoatDong(_wallet!.status)) {
+        await sl<WalletRepository>()
+            .setArchived(widget.id, luuTru: !_dangHoatDong);
+      }
+
       if (mounted) context.pop(true);
     } catch (e) {
       if (mounted) {
@@ -489,6 +511,12 @@ class _WalletEditPageState extends State<WalletEditPage> {
             value: _includeInTotal,
             onChanged: (val) => setState(() => _includeInTotal = val),
           ),
+          const Divider(height: 1, color: AppColors.borderSubtle),
+          _buildSwitchTile(
+            title: 'Kích hoạt hoạt động',
+            value: _dangHoatDong,
+            onChanged: (val) => setState(() => _dangHoatDong = val),
+          ),
         ],
       ),
     );
@@ -504,12 +532,18 @@ class _WalletEditPageState extends State<WalletEditPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w400,
-              color: AppColors.onSurface,
+          // `Expanded` chứ không `Text` trần: nhãn dài hơn chỗ trống thì
+          // hàng này TRÀN, và Flutter báo tràn qua `FlutterError.reportError`
+          // chứ không ném ra chỗ gọi — nên nó chỉ hiện thành sọc vàng trên
+          // máy thật, im lặng với mọi test chỉ `pumpWidget` + `expect`.
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w400,
+                color: AppColors.onSurface,
+              ),
             ),
           ),
           Switch(

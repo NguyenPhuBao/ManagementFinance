@@ -55,6 +55,9 @@ class _RepoGia implements WalletRepository {
   }
 
   @override
+  Future<void> setArchived(String id, {required bool luuTru}) async {}
+
+  @override
   Future<void> updateWallet(WalletEntity wallet) async {}
 
   @override

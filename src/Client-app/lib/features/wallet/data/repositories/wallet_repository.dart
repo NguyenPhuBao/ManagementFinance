@@ -34,6 +34,15 @@ abstract class WalletRepository {
   /// Xoá mềm ví
   Future<void> deleteWallet(String id);
 
-  /// Tổng số dư các ví có includeInTotal = true (không tính ví đã xoá)
+  /// Bật/tắt **lưu trữ** cho một ví — đóng băng, không phải xoá.
+  ///
+  /// Hai chốt chặn (không lưu trữ ví mặc định, không lưu trữ ví hoạt động cuối
+  /// cùng) nằm ở datasource và ném `CacheException`; nơi gọi phải để lỗi ấy
+  /// lên tới màn hình chứ không nuốt lặng.
+  Future<void> setArchived(String id, {required bool luuTru});
+
+  /// Tổng số dư các ví được **tính vào tổng tài sản** — xem `viTinhVaoTong`:
+  /// nó lọc cả cờ `includeInTotal` lẫn ví đã lưu trữ (ví đã xoá thì không có
+  /// mặt từ đầu).
   Future<double> getTotalBalance(int idaccount);
 }

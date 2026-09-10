@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../domain/wallet_status.dart';
 import '../../domain/wallet_type.dart';
 import '../widgets/wallet_type_icon.dart';
 import '../../../../core/auth/current_account.dart';
@@ -117,6 +118,15 @@ class _WalletListView extends StatelessWidget {
     double totalBalance,
     bool isOperating,
   ) {
+    // Hai nhóm, một nguồn: `WalletCubit` tải MỌI ví (kể cả lưu trữ) vì màn
+    // này là chỗ duy nhất trong app còn thấy chúng — bỏ lưu trữ phải làm
+    // được từ đây. Việc chia nhóm là việc hiển thị, nên nó nằm ở đây.
+    final viHoatDong =
+        wallets.where((w) => WalletStatus.laHoatDong(w.status)).toList();
+    final viLuuTru =
+        wallets.where((w) => !WalletStatus.laHoatDong(w.status)).toList();
+    final soViLuuTru = viLuuTru.length;
+
     return Stack(
       children: [
         SafeArea(
@@ -126,11 +136,18 @@ class _WalletListView extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildOverviewCard(totalBalance),
+                _buildOverviewCard(totalBalance, soViLuuTru),
                 const SizedBox(height: 24),
                 _buildWalletListHeader(),
                 const SizedBox(height: 12),
-                _buildWalletList(context, wallets),
+                _buildWalletList(context, viHoatDong),
+                if (viLuuTru.isNotEmpty) ...[
+                  const SizedBox(height: 24),
+                  _MucLuuTru(
+                    vi: viLuuTru,
+                    idaccount: idaccount,
+                  ),
+                ],
                 const SizedBox(height: 24),
                 _buildBankIntegrationSection(context),
                 const SizedBox(height: 32),
@@ -147,7 +164,7 @@ class _WalletListView extends StatelessWidget {
     );
   }
 
-  Widget _buildOverviewCard(double totalBalance) {
+  Widget _buildOverviewCard(double totalBalance, int soViLuuTru) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
       width: double.infinity,
@@ -184,6 +201,19 @@ class _WalletListView extends StatelessWidget {
               color: AppColors.primary,
             ),
           ),
+          // Thiếu dòng này thì người dùng lưu trữ một ví, thấy tổng tài sản
+          // tụt đúng số dư ví ấy, và không màn nào nói vì sao. Chỉ hiện khi
+          // thật sự có ví lưu trữ — nếu không nó là một dòng nhiễu vĩnh viễn.
+          if (soViLuuTru > 0) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Không gồm $soViLuuTru ví đã lưu trữ',
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -220,6 +250,7 @@ class _WalletListView extends StatelessWidget {
                 }
               },
               onDelete: () => _confirmDelete(context, w),
+              onArchive: () => doiLuuTru(context, w, idaccount),
             ),
           );
         }),
@@ -380,16 +411,149 @@ class _WalletListView extends StatelessWidget {
   }
 }
 
+/// Đổi trạng thái lưu trữ của một ví, kèm một câu xác nhận.
+///
+/// Hộp thoại **chỉ hỏi ở chiều lưu trữ**: bỏ lưu trữ là hành động khôi phục,
+/// không mất gì, nên bắt xác nhận chỉ là một cú chạm thừa.
+///
+/// Câu cảnh báo nói thẳng hai thứ sẽ DỪNG. Ví đang gắn mục tiêu hoặc hoá đơn
+/// tự động vẫn lưu trữ được — chốt chặn cố ý không cản, vì lưu trữ chính là
+/// lối thoát cho những ví không xoá nổi — nhưng hai bộ chạy tự động sẽ bỏ qua
+/// ví ấy, và im lặng ở đây là người dùng mất một kỳ nạp mà không biết.
+Future<void> doiLuuTru(
+  BuildContext context,
+  WalletEntity wallet,
+  int idaccount,
+) async {
+  final dangLuuTru = !WalletStatus.laHoatDong(wallet.status);
+
+  if (!dangLuuTru) {
+    final dongY = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Lưu trữ ví?'),
+        content: Text(
+          'Ví "${wallet.name}" sẽ được cất đi: không hiện ra khi ghi giao '
+          'dịch, không cộng vào tổng tài sản, và mọi khoản trả hoá đơn hay '
+          'nạp mục tiêu tự động từ ví này sẽ dừng lại.\n\n'
+          'Số dư và toàn bộ lịch sử giao dịch được giữ nguyên. Bạn có thể bỏ '
+          'lưu trữ bất cứ lúc nào.',
+        ),
+        actions: [
+          // `Navigator.pop`, KHÔNG phải `ctx.pop` của go_router: hộp thoại
+          // này nằm ngoài cây route, và `ctx.pop` ở đó ném 'No GoRouter
+          // found in context'. Cùng cách viết với hộp thoại xoá ví ngay
+          // dưới đây.
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Hủy'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Lưu trữ'),
+          ),
+        ],
+      ),
+    );
+    if (dongY != true || !context.mounted) return;
+  }
+
+  await context.read<WalletCubit>().setArchived(
+        walletId: wallet.id,
+        luuTru: !dangLuuTru,
+        idaccount: idaccount,
+      );
+}
+
+/// Mục "ĐÃ LƯU TRỮ (n)" ở cuối danh sách ví — thu gọn được.
+///
+/// Mở sẵn khi vào trang, theo thiết kế Stitch: người dùng mở màn này để LÀM gì
+/// đó với ví, và thứ họ hay tìm nhất ở đây là đường bỏ lưu trữ.
+class _MucLuuTru extends StatefulWidget {
+  const _MucLuuTru({required this.vi, required this.idaccount});
+
+  final List<WalletEntity> vi;
+  final int idaccount;
+
+  @override
+  State<_MucLuuTru> createState() => _MucLuuTruState();
+}
+
+class _MucLuuTruState extends State<_MucLuuTru> {
+  bool _mo = true;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          onTap: () => setState(() => _mo = !_mo),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'ĐÃ LƯU TRỮ (${widget.vi.length})',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    letterSpacing: 0.6,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                Icon(
+                  _mo ? Icons.expand_less : Icons.expand_more,
+                  size: 20,
+                  color: AppColors.textSecondary,
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (_mo) ...[
+          const SizedBox(height: 8),
+          ...widget.vi.map(
+            (w) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _WalletItem(
+                wallet: w,
+                // Ví lưu trữ vẫn sửa và xoá được: đóng băng nói về việc ghi
+                // chép mới, không phải về quyền quản lý chính cái ví.
+                onTap: () async {
+                  final result =
+                      await context.push('/wallets/${w.id}/edit');
+                  if (result == true && context.mounted) {
+                    context
+                        .read<WalletCubit>()
+                        .loadWallets(widget.idaccount);
+                  }
+                },
+                onArchive: () => doiLuuTru(context, w, widget.idaccount),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 class _WalletItem extends StatelessWidget {
   final WalletEntity wallet;
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
+  final VoidCallback? onArchive;
 
   const _WalletItem({
     required this.wallet,
     this.onTap,
     this.onDelete,
+    this.onArchive,
   });
+
+  bool get _daLuuTru => !WalletStatus.laHoatDong(wallet.status);
 
   Color get _iconColor {
     // `wallet.type == 'debt'` đã bỏ: loại ấy không còn tồn tại (xem
@@ -482,6 +646,25 @@ class _WalletItem extends StatelessWidget {
                           ),
                         ),
                       ],
+                      if (_daLuuTru) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Text(
+                            'LƯU TRỮ',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 2),
@@ -490,7 +673,15 @@ class _WalletItem extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: isNegative ? AppColors.error : AppColors.primary,
+                      // Ví lưu trữ dùng màu xám cho CẢ số dư âm: thiết kế
+                      // Stitch vẽ chúng mờ hẳn đi, và một con số đỏ chói
+                      // trong khối 'đã cất đi' đọc như một cảnh báo cần xử
+                      // lý — đúng thứ người dùng vừa chủ động dẹp sang bên.
+                      color: _daLuuTru
+                          ? AppColors.textSecondary
+                          : (isNegative
+                              ? AppColors.error
+                              : AppColors.primary),
                     ),
                   ),
                 ],
@@ -511,13 +702,24 @@ class _WalletItem extends StatelessWidget {
               onSelected: (value) {
                 if (value == 'edit') onTap?.call();
                 if (value == 'delete') onDelete?.call();
+                if (value == 'archive') onArchive?.call();
               },
-              itemBuilder: (_) => const [
-                PopupMenuItem(value: 'edit', child: Text('Chỉnh sửa')),
-                PopupMenuItem(
-                  value: 'delete',
-                  child: Text('Xóa ví', style: TextStyle(color: Colors.red)),
-                ),
+              itemBuilder: (_) => [
+                const PopupMenuItem(
+                    value: 'edit', child: Text('Chỉnh sửa')),
+                // Chữ đổi theo trạng thái của CHÍNH ví này. Một nhãn cố
+                // định là người dùng bấm mà không biết nó sẽ làm gì.
+                if (onArchive != null)
+                  PopupMenuItem(
+                    value: 'archive',
+                    child: Text(_daLuuTru ? 'Bỏ lưu trữ' : 'Lưu trữ'),
+                  ),
+                if (onDelete != null)
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Text('Xóa ví',
+                        style: TextStyle(color: Colors.red)),
+                  ),
               ],
             ),
           ],

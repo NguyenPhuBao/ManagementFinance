@@ -133,6 +133,30 @@ class WalletCubit extends Cubit<WalletState> {
     }
   }
 
+  // ── Lưu trữ ───────────────────────────────────────────────────────────────
+
+  /// Bật/tắt lưu trữ cho một ví, rồi tải lại danh sách.
+  ///
+  /// KHÔNG tự sửa danh sách trong bộ nhớ như [deleteWallet] làm: ví lưu trữ
+  /// vẫn ở lại màn hình, chỉ đổi mục — và tổng tài sản đổi theo. Hỏi lại
+  /// repository là cách duy nhất để hai thứ ấy không lệch nhau một nhịp, đúng
+  /// bài học của `6fd2ce9`.
+  ///
+  /// Hai chốt chặn ở datasource ném `CacheException`; đưa nó lên `WalletError`
+  /// để màn hình còn nói được vì sao không lưu trữ được.
+  Future<void> setArchived({
+    required String walletId,
+    required bool luuTru,
+    required int idaccount,
+  }) async {
+    try {
+      await _repository.setArchived(walletId, luuTru: luuTru);
+      await loadWallets(idaccount);
+    } catch (e) {
+      emit(WalletError(e.toString()));
+    }
+  }
+
   // ── Delete ────────────────────────────────────────────────────────────────
 
   /// Xoá mềm ví
