@@ -1,7 +1,7 @@
 # Kế hoạch Mapping — Chuyển đổi hoàn toàn sang CSDL mới
 
 > **Ngày:** 2026-08-26
-> **Mục đích:** Thay thế CSDL hiện tại (13 models) bằng CSDL mới thiết kế lại (`New_Database.md` — 13 bảng)
+> **Mục đích:** Thay thế CSDL hiện tại (13 models) bằng CSDL mới thiết kế lại (`docs/Rule_Project/New_Database.md` — 13 bảng)
 > **Phạm vi:** Backend PostgreSQL + Prisma schema + Sync API
 
 ---
@@ -11,7 +11,7 @@
 | Chiến lược | Mô tả | Ưu điểm |
 |---|---|---|
 | **Không migrate trực tiếp dữ liệu cũ** | CSDL mới có cấu trúc khác nhiều (đổi PK category, đổi cơ chế xóa mềm, thêm enum) | Tránh rủi ro mất data, đơn giản hóa |
-| **Tạo bảng mới + seed lại** | Dựng lại toàn bộ bảng theo `New_Database.md`, seed dữ liệu nền (role, danh mục default, ví Saving) | Sạch, nhất quán |
+| **Tạo bảng mới + seed lại** | Dựng lại toàn bộ bảng theo `docs/Rule_Project/New_Database.md`, seed dữ liệu nền (role, danh mục default, ví Saving) | Sạch, nhất quán |
 | **Giữ nguyên các dữ liệu hệ thống cần thiết** | Role, tài khoản admin/user, refresh token (đang dùng) | Không làm mất phiên đăng nhập |
 
 > 💡 Đây là đồ án — dữ liệu người dùng thật không nhiều. Chọn **tạo mới + seed** thay vì migrate phức tạp là hợp lý. Nếu sau này cần giữ data, sẽ viết script chuyển đổi riêng.
@@ -303,7 +303,7 @@ UPDATE <table> SET delete_at = COALESCE(updated_at, NOW()) WHERE is_deleted = tr
 - [ ] Backup CSDL hiện tại (pg_dump / Supabase backup)
 
 ### Bước 2 — Viết lại `schema.prisma` theo CSDL mới
-- [ ] 13 models mới (đặt tên theo `New_Database.md`)
+- [ ] 13 models mới (đặt tên theo `docs/Rule_Project/New_Database.md`)
 - [ ] Thêm relation, index, unique, check theo ràng buộc mới
 - [ ] `npx prisma validate` — kiểm tra cú pháp
 

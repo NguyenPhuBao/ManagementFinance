@@ -23,11 +23,13 @@ model account {
   idaccount  Int              @id @default(autoincrement()) @map("Idaccount")
   idrole     Int              @map("Idrole")
   email      String           @unique @db.VarChar(100) @map("Email")
-  username   String           @unique @db.VarChar(255) @map("Username")
+  username   String           @db.VarChar(255) @map("Username")
   password   String           @db.VarChar(255) @map("Password")
-  status     String           @default("Active") @db.VarChar(20) @map("Status")
-  type       String           @default("Basic") @db.VarChar(7) @map("Type")
-  create_at  DateTime         @default(now()) @db.Timestamp(6) @map("Create_at")
+  status          String           @default("Active") @db.VarChar(20) @map("Status")
+  type            String           @default("Basic") @db.VarChar(7) @map("Type")
+  reason_inactive String?          @db.Text @map("Reason_Inactive")
+  countdown       Int?             @map("Countdown")
+  create_at       DateTime         @default(now()) @db.Timestamp(6) @map("Create_at")
   update_at  DateTime         @default(now()) @db.Timestamp(6) @map("Update_at")
   delete_at  DateTime?        @db.Timestamp(6) @map("Delete_at")
 
@@ -45,6 +47,7 @@ model account {
   transaction  transaction[]
 
   @@index([idrole], map: "idx_account_role")
+  @@index([username], map: "idx_account_username")
   @@map("account")
 }
 
@@ -54,7 +57,7 @@ model User {
   idaccount    Int       @unique @map("Idaccount")
   fullname     String    @db.VarChar(100) @map("Fullname")
   email        String    @unique @db.VarChar(100) @map("Email")
-  phone        String?   @db.VarChar(15) @map("Phone")
+  phone        String?   @db.VarChar(256) @map("Phone")
   address      String?   @db.Text @map("Address")
   country_code String?   @db.Char(4) @map("Country_code")
   create_at    DateTime  @default(now()) @db.Timestamp(6) @map("Create_at")
@@ -134,20 +137,22 @@ model bank_account {
   id_bank_account  String     @id @db.VarChar(36) @map("Id_bank_account")
   idaccount        Int        @map("Idaccount")
   id_casso_account String     @unique @db.VarChar(100) @map("Id_casso_account")
-  account_number   String     @db.VarChar(50) @map("Account_number")
-  account_name     String     @db.VarChar(255) @map("Account_name")
-  bank_name        String     @db.VarChar(100) @map("Bank_name")
-  balance          Decimal    @default(0) @db.Decimal(15, 2) @map("Balance")
-  connect_status   String     @default("Active") @db.VarChar(12) @map("Connect_status")
-  create_at        DateTime   @default(now()) @db.Timestamp(6) @map("Create_at")
-  update_at        DateTime   @default(now()) @db.Timestamp(6) @map("Update_at")
-  delete_at        DateTime?  @db.Timestamp(6) @map("Delete_at")
+  account_number      String     @db.VarChar(256) @map("Account_number")
+  account_number_hash String?    @db.VarChar(64) @map("Account_number_hash")
+  account_name        String     @db.VarChar(255) @map("Account_name")
+  bank_name           String     @db.VarChar(100) @map("Bank_name")
+  balance             Decimal    @default(0) @db.Decimal(15, 2) @map("Balance")
+  connect_status      String     @default("Active") @db.VarChar(12) @map("Connect_status")
+  create_at           DateTime   @default(now()) @db.Timestamp(6) @map("Create_at")
+  update_at           DateTime   @default(now()) @db.Timestamp(6) @map("Update_at")
+  delete_at           DateTime?  @db.Timestamp(6) @map("Delete_at")
 
   account account @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_bank_account_owner")
   wallet  wallet[]
 
   @@index([idaccount], map: "idx_bank_account_owner")
   @@index([connect_status], map: "idx_bank_account_status")
+  @@index([account_number_hash], map: "idx_bank_account_number_hash")
   @@map("bank_account")
 }
 
@@ -160,7 +165,7 @@ model wallet {
   type            String    @default("Cash") @db.VarChar(7) @map("Type")
   balance         Decimal   @default(0) @db.Decimal(15, 2) @map("Balance")
   currency        String    @default("VND") @db.VarChar(3) @map("Currency")
-  status          String    @default("Active") @db.VarChar(7) @map("Status")
+  status          String    @default("Active") @db.VarChar(20) @map("Status")
   include_in_total Boolean  @default(true) @map("IncludeInTotal")
   is_default      Boolean   @default(false) @map("Is_default")
   icon            String?   @default("wallet") @db.VarChar(20) @map("Icon")

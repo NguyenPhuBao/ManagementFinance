@@ -174,14 +174,19 @@ Role (1) ──▶ Account (N) ──▶ User (1)
 | Cột | Kiểu | Mô tả |
 |-----|------|-------|
 | `idaccount` | INT PK (auto) | ID tài khoản |
-| `username` | VARCHAR(50) UNIQUE | Tên đăng nhập |
+| `username` | VARCHAR(255) | Tên đăng nhập |
+| `email` | VARCHAR(100) | Email (Partial Unique `WHERE Delete_at IS NULL`) |
 | `password` | VARCHAR(255) | Mật khẩu (bcrypt hash) |
-| `status` | VARCHAR(10) | `Active` / `Inactive` |
+| `status` | VARCHAR(20) | `Active` / `Inactive` / `PendingDelete` / `Deleted` |
+| `type` | VARCHAR(20) | `Basic` / `Premium` |
+| `Reason_Inactive` | TEXT NULL | Lý do vô hiệu hóa tài khoản (khi status = Inactive) |
+| `Countdown` | INT NULL | Số ngày đếm ngược chờ xóa (30 ngày khi PendingDelete, null khi Active/Deleted) |
+| `delete_at` | TIMESTAMP NULL | Thời điểm xóa mềm |
 | `created_at` | TIMESTAMP | Ngày tạo |
 | `updated_at` | TIMESTAMP | Ngày cập nhật |
 | `idrole` | INT FK→Role | 1=admin, 2=user |
 
-> 🆕 **2026-08-17**: Thêm giá trị `'Deleted'` vào cột `status` để hỗ trợ **soft delete tài khoản**. Khi status = `'Deleted'`, tài khoản không thể đăng nhập và toàn bộ refresh token bị revoke. Data vẫn giữ nguyên trong DB cho mục đích audit.
+> 🆕 **2026-09-09**: Hỗ trợ 4 trạng thái chuẩn hóa (`Active`: xanh lá, `Inactive`: xám xanh, `PendingDelete`: vàng, `Deleted`: đỏ). Cột `Reason_Inactive` lưu lý do quản trị viên vô hiệu hóa tài khoản. Cột `Countdown` lưu số ngày đếm ngược chờ xóa (30 ngày) do người dùng yêu cầu, được cập nhật tự động vào 00:00:00 UTC+7 hàng ngày (`scheduler.service.js`). Khi về 0, hệ thống tự động xóa mềm. Trên Admin-web, tài khoản `PendingDelete` ở chế độ chỉ xem, khóa toàn bộ thao tác quản trị.
 
 ##### Bảng User
 | Cột | Kiểu | Mô tả |
@@ -422,11 +427,12 @@ Client: GET /api/sync/pull?since=<timestamp> → kéo data từ thiết bị kh�
 
 | Hạng mục | Giải pháp |
 |----------|-----------|
+| **Bảo vệ dữ liệu & Pháp luật** | Tuân thủ 100% tài liệu [`docs/Rule_Project/Data_Security.md`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/Rule_Project/Data_Security.md) (Nghị định 13/2023/NĐ-CP, chuẩn PCI-DSS, OWASP): Phân loại 23 nhóm dữ liệu nhạy cảm, tối thiểu hóa dữ liệu (Data Minimization), User-scoped Isolation, mã hóa at-rest (AES-256) & in-transit (TLS 1.3), cấm lưu trữ CVV/mật khẩu ngân hàng/sinh trắc học trên server. |
 | **Kết nối** | HTTPS toàn bộ + Reverse Proxy (`trust proxy: 1`) |
 | **Rate Limiting** | `express-rate-limit`: Tự động miễn trừ cho Authenticated Users (Client-app/Admin có JWT Token); hỗ trợ tắt hoàn toàn bằng `RATE_LIMIT_MAX=0` hoặc `RATE_LIMIT_ENABLED=false` trong `.env` |
 | **Input Validation** | Joi (Schema validation cho Auth, Admin, Sync, v.v.) |
-| **Audit Logging** | Ghi nhận real-time mọi request vào bảng `audit_log` + broadcast qua Socket.IO |
-| **Logging** | Winston (request, lỗi, queue job) |
+| **Audit Logging** | Ghi nhận real-time mọi request vào bảng `audit_log` + broadcast qua Socket.IO (room riêng `admin_room`) |
+| **Logging** | Winston (request, lỗi, queue job; tuyệt đối không log thông tin nhạy cảm/mật khẩu/OTP/token) |
 | **Monitoring** | Sentry (lỗi), Prometheus/Grafana (CPU, memory, queue size) |
 
 ### 3.7 Triển Khai (Deployment)
@@ -763,19 +769,31 @@ Admin-web → GET /api/admin/getuser
   → authenticate + authorize('admin')
   → adminController.getUsers()
   → adminService.getUsers()
-  → adminRepository.getAllUsers() [DB: User JOIN Account WHERE idrole=2]
-  → 200 OK [{id, fullname, email, status...}]
+  → adminRepository.getAllUsers() [DB: User JOIN Account WHERE idrole=2 — lấy toàn bộ người dùng ở mọi trạng thái]
+  → 200 OK [{id, fullname, email, status, reason_inactive, delete_at...}]
 
-Admin-web → PATCH /api/admin/updatestatus/:id
+Admin-web → PATCH /api/admin/updatestatus/:id { status, reason_inactive }
   → authenticate + authorize('admin')
   → adminController.updateStatus()
-  → adminService.updateStatus(id)
+  → adminService.updateStatus(id, req.body)
     → getUserById() → kiểm tra tồn tại + current status
-    → updateAccountStatus(id, newStatus) [DB: UPDATE account SET status]
-    → 200 OK {previousStatus, newStatus}
+    → Nếu Inactive: kiểm tra reason_inactive bắt buộc (400 Bad Request nếu thiếu)
+    → updateAccountStatus(id, newStatus, reason_inactive) [DB: UPDATE account SET status, reason_inactive]
+    → Nếu Inactive: emitForceLogout(idaccount, 'ACCOUNT_INACTIVE', reason) [Socket.IO → account_${idaccount}]
+    → 200 OK {previousStatus, newStatus, reason_inactive}
+
+Admin-web → DELETE /api/admin/deleteuser/:id (hoặc /api/admin/users/:id)
+  → authenticate + authorize('admin')
+  → adminController.deleteUser()
+  → adminService.deleteUser(id)
+    → getUserById() → kiểm tra tồn tại, cấm xóa tài khoản Admin (idrole=1)
+    → softDeleteUser(iduser) [DB Transaction 5 bước: account deleted/delete_at, user delete_at, all wallets inactive, bank disconnected, all refreshtokens revoked]
+    → invalidateAccountCache(idaccount)
+    → emitForceLogout(idaccount) [Socket.IO → account_${idaccount}]
+    → 200 OK {message, iduser, idaccount, username}
 ```
 
-> Admin module hiện tại chưa emit event. Sau này có thể emit `user.status.changed` → Notification Worker → Socket.IO → admin-web.
+> **Cơ chế Force Logout**: Admin module phát sự kiện `account.force_logout` qua Socket.IO tới phòng `account_${idaccount}` của người dùng để cưỡng chế đăng xuất ngay lập tức nếu online. Nếu offline, trạng thái xóa lưu cố định 24/24 trong DB; khi thiết bị có internet kết nối lại, Socket handshake và HTTP auth middleware trả về mã lỗi `ACCOUNT_DELETED` (HTTP 401) để Client-app xóa token và chuyển hướng về màn hình Đăng nhập.
 
 **Module Sync** — Đồng bộ (REST API + Emit Event)
 
@@ -2278,7 +2296,7 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - `Test/test_admin_new_schema.js`: Kiểm thử trọn vẹn Dashboard Stats, User Management, Category Management, Audit Log Stats $\rightarrow$ **PASS 100%**.
 
 ### 11.18. Đồng Bộ Toàn Diện & Xóa Bỏ Mâu Thuẫn Trong Đặc Tả CSDL New_Database.md (2026-09-01)
-- **Rà soát & Chuẩn hóa Nguồn sự thật (`docs/superpowers/backend/New_Database.md`)**:
+- **Rà soát & Chuẩn hóa Nguồn sự thật (`docs/Rule_Project/New_Database.md`)**:
   - **`Category.Classify`**: Đồng bộ 100% giữa Bảng mục 2.6 và Ràng buộc mục 3.2.6 thành `nvarchar(7) Check in (Thu, Chi, Vay/nợ)`.
   - **`Bank_account.Connect_status`**: Chuẩn hóa thành `varchar(12) Check in (Active, Expired, Disconnected) - Default Active`, loại bỏ hoàn toàn mâu thuẫn `Active, Inactive` cũ.
   - **`Bill.Pay_status`**: Chuẩn hóa thành `varchar(7) Check in (Pending, Payed, Overdue) - Default Pending`, xóa bỏ mâu thuẫn gán giá trị boolean `FALSE`.
@@ -2552,6 +2570,58 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - API `getRecentActivities` trả về đúng giờ Việt Nam (`14:28` thay vì `07:28`).
   - `npm --prefix src/Admin-web run build`: **Thành công 100% (137 modules transformed)**.
   - `Test/test_can_lam_fixes.js`: **9/9 tests PASS (100%)**.
+
+### 11.33. Xác Thực Quy Tắc Nghiệp Vụ: Danh Mục Đã Xóa Mềm Có Thể Tạo Mới Cùng Tên (2026-09-07)
+- **1. Yêu cầu nghiệp vụ**: Danh mục đã xóa mềm (`Delete_at IS NOT NULL`) phải được phép tạo mới lại với cùng tên và cùng id người tạo (`Create_by` / `Idaccount`).
+- **2. Kết quả kiểm tra hiện trạng**:
+  - Hệ thống **đã có sẵn và hoạt động hoàn hảo 100%** trên cả 3 tầng:
+    - **PostgreSQL / Supabase**: Partial Unique Index `uq_category_owner_name` có điều kiện lọc `WHERE "Is_default" = FALSE AND "Delete_at" IS NULL`. Bản ghi đã xóa mềm bị loại khỏi cây index nên không gây xung đột khóa duy nhất.
+    - **Backend Admin Service**: `addCategory` và `updateCategory` có bộ lọc `delete_at: null`, bỏ qua các danh mục đã xóa mềm khi kiểm tra trùng tên.
+    - **Backend Sync Engine**: `upsertCategory` ủy quyền cho PostgreSQL Partial Unique Index xử lý và chấp nhận tạo mới sau khi danh mục cũ đã soft delete.
+    - **Client-app (SQLite Drift)**: `categoryDao.getNamesInUse` chỉ lấy các danh mục có `isDeleted = false AND deletedAt IS NULL`, cho phép người dùng tạo lại danh mục trùng tên với danh mục đã xóa mềm.
+- **3. Kiểm chứng thực nghiệm**:
+  - Đã chạy kiểm thử tự động tại [`Test/test_soft_deleted_category_recreation.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/Test/test_soft_deleted_category_recreation.js):
+    - Đang active tạo trùng tên $\rightarrow$ Bị chặn chính xác bởi CSDL (`Unique constraint failed`).
+    - Sau khi xóa mềm $\rightarrow$ Tạo mới cùng tên thành công qua Prisma CSDL, qua `adminService.addCategory` và qua `syncRepository.upsertCategory`.
+
+### 11.34. Bổ Sung Bộ Lọc Người Tạo & Từ Khóa Cho Quản Lý Danh Mục Admin-Web (2026-09-07)
+- **1. Yêu cầu nghiệp vụ**:
+  - Thêm 2 trường lọc trong modal Lọc danh mục: Người tạo (Dropdown chọn người dùng, mặc định 'Tất cả') và Từ khóa (Keyword input text, mặc định rỗng, so khớp chuỗi con).
+  - Nâng cấp API tìm kiếm Backend `GET /api/admin/getcategory` hỗ trợ nhận các tham số lọc `created_by`, `keyword`, `is_default`, `classify`.
+- **2. Triển khai kỹ thuật**:
+  - **Backend**:
+    - `src/Backend/modules/admin/admin.repository.js`: Cập nhật `getAllCategories(filters)` áp dụng điều kiện lọc `where` theo `created_by` (hỗ trợ cả idaccount số và username chuỗi), `keyword` (`mode: 'insensitive'`, `contains` - so khớp ký tự chuỗi con), `is_default`, `classify`.
+    - `src/Backend/modules/admin/admin.service.js`: Truyền `filters` xuống repository, bổ sung trường `created_by_id: c.create_by` trong kết quả danh mục; bổ sung trường `idaccount: u.account.idaccount` trong `getUsers()` để frontend gán `value` cho dropdown người tạo.
+    - `src/Backend/modules/admin/admin.controller.js`: Chuyển tiếp `req.query` vào `adminService.getCategories(req.query)`.
+  - **Frontend Admin-web**:
+    - `src/Admin-web/src/api/admin.api.js`: Nâng cấp `getCategories: (params) => axiosClient.get('/admin/getcategory', { params })`.
+    - `src/Admin-web/src/pages/categories/CategoryPage.jsx`:
+      - Gọi `adminApi.getUsers()` lấy danh sách người dùng cho dropdown Người tạo.
+      - Mở rộng state `filter` với `createdBy` và `keyword`.
+      - Nâng cấp Modal Lọc dạng lưới 2x2 gồm: Mặc định, Loại danh mục, Người tạo, Từ khóa (Keyword).
+      - Nút "Đặt lại" và "Áp dụng" kích hoạt lại `fetchCategories(params)`.
+      - Nút "Lọc" hiển thị chấm trạng thái (active indicator) khi có bất kỳ bộ lọc nào đang được áp dụng.
+- **3. Kiểm chứng & Chất lượng**:
+### 11.35. Triển Khai Cơ Chế Lưu Trữ Dữ Liệu Tự Động & Chốt Chặn Bảo Mật CSDL (2026-09-10)
+- **1. Yêu cầu & Căn cứ pháp lý:**
+  - Tuân thủ Nghị định 13/2023/NĐ-CP (PDPD), Nghị định 53/2022/NĐ-CP (An ninh mạng) và Luật Kế toán 2015.
+  - Xây dựng mô hình lai kết hợp PostgreSQL Security Triggers và Backend Schedulers quản lý vòng đời lưu trữ dữ liệu.
+- **2. Triển khai kỹ thuật:**
+  - **Tầng CSDL (PostgreSQL Engine):**
+    - `src/Backend/database/10_Data_Security_And_Retention_Triggers.sql`:
+      + Trigger `trg_protect_auditlog` trên bảng `audit_log`: Chặn tuyệt đối `UPDATE` (Bảo đảm tính Append-only) và chặn `DELETE` nếu log chưa đủ 12 tháng (365 ngày) theo Nghị định 53/2022/NĐ-CP.
+      + Trigger `trg_protect_transaction` trên bảng `transaction`: Chặn `DELETE` vật lý nếu giao dịch chưa đủ 5 năm theo Luật Kế toán 2015 (bắt buộc dùng Soft Delete `Deleted_at`).
+  - **Tầng Backend (Scheduler Service):**
+    - `src/Backend/core/scheduler.service.js`:
+      + `runDailyOtpPurgeTask()`: Tự động xóa sạch mã `otp_code` tạo quá 24 giờ.
+      + `runDailyRefreshTokenPurgeTask()`: Tự động xóa sạch `refreshtoken` hết hạn hoặc bị thu hồi quá 30 ngày.
+      + `processFullSoftDelete(idaccount)`: Nâng cấp quy trình khi tài khoản hết 30 ngày ân hạn `PendingDelete`: thực thi ẩn danh hóa triệt để PII (`fullname = 'Người dùng đã xóa'`, `phone = null`, `address = null`, email ẩn danh dạng `deleted_<idaccount>_<random>@anonymized.local`, mật khẩu gán hash vô hiệu), xóa ảnh chứng từ và ghi chú giao dịch riêng tư nhưng bảo toàn số tiền, ví, ngày để giữ sổ cái kế toán 5 năm.
+      + `runDailyMaintenanceRoutine()`: Điều phối chạy tự động toàn bộ chu trình bảo trì và thanh lọc vào 00:00:00 UTC+7 mỗi ngày.
+- **3. Kiểm thử & Nghiệm thu chất lượng:**
+  - `Test/test_data_retention_and_security_rules.js`: **6/6 tests PASS (100%)** qua quy trình TDD chuẩn mực (Red $\rightarrow$ Green).
+  - `Test/test_user_soft_delete_and_auth_rules.js`: **4/4 tests PASS (100%)**.
+  - `Test/test_admin_new_schema.js`: **PASS 100%**, xác nhận trigger CSDL bảo vệ vững chắc ngay cả trong thao tác dọn dẹp hệ thống.
+
 
 
 

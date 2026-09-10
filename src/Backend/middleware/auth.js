@@ -9,27 +9,50 @@ const logger = require('../core/logger');
 const accountCache = new Map();
 const CACHE_TTL_MS = 60 * 1000; // 60 seconds TTL
 
-async function isAccountValid(idaccount) {
-  if (!idaccount) return false;
+async function getAccountValidity(idaccount) {
+  if (!idaccount) return { valid: false, status: null, reason_inactive: null };
   const numId = Number(idaccount);
   const now = Date.now();
   const cached = accountCache.get(numId);
   if (cached && now - cached.timestamp < CACHE_TTL_MS) {
-    return cached.valid;
+    return cached;
   }
 
   try {
     const account = await prisma.account.findUnique({
       where: { idaccount: numId },
-      select: { idaccount: true, status: true },
+      select: { idaccount: true, status: true, delete_at: true, reason_inactive: true, countdown: true },
     });
-    const valid = !!account && account.status !== 'inactive';
-    accountCache.set(numId, { valid, timestamp: now });
-    return valid;
+    const statusLower = account?.status ? account.status.toLowerCase() : '';
+    
+    // Tài khoản PendingDelete vẫn hợp lệ nếu còn trong thời hạn 30 ngày (countdown > 0)
+    const isPendingDeleteValid = statusLower === 'pendingdelete' && 
+      (account.countdown === null || account.countdown > 0) &&
+      (!account.delete_at || new Date(account.delete_at) > new Date());
+
+    const valid = !!account && (
+      (statusLower === 'active' && !account.delete_at) ||
+      isPendingDeleteValid
+    );
+
+    const result = {
+      valid,
+      status: account?.status || null,
+      reason_inactive: account?.reason_inactive || null,
+      countdown: account?.countdown ?? null,
+      timestamp: now,
+    };
+    accountCache.set(numId, result);
+    return result;
   } catch (error) {
     logger.warn('isAccountValid DB check failed, defaulting to optimistic pass', { idaccount, error: error.message });
-    return true; // Fallback optimistically if DB has transient error
+    return { valid: true, status: 'Active', reason_inactive: null, timestamp: now };
   }
+}
+
+async function isAccountValid(idaccount) {
+  const info = await getAccountValidity(idaccount);
+  return info.valid;
 }
 
 function invalidateAccountCache(idaccount) {
@@ -56,9 +79,18 @@ async function authenticate(req, res, next) {
     return ResponseHandler.unauthorized(res, 'Invalid token');
   }
 
-  const valid = await isAccountValid(decoded.idaccount);
-  if (!valid) {
-    return ResponseHandler.unauthorized(res, 'Account no longer exists or is inactive');
+  const accountInfo = await getAccountValidity(decoded.idaccount);
+  if (!accountInfo.valid) {
+    const isInactive = accountInfo.status?.toLowerCase() === 'inactive';
+    const errorMsg = isInactive
+      ? (accountInfo.reason_inactive ? `Tài khoản đã bị vô hiệu hóa. Lý do: ${accountInfo.reason_inactive}` : 'Tài khoản đã bị vô hiệu hóa')
+      : 'Account no longer exists or has been deleted';
+
+    return ResponseHandler.unauthorized(res, errorMsg, {
+      code: isInactive ? 'ACCOUNT_INACTIVE' : 'ACCOUNT_DELETED',
+      idaccount: Number(decoded.idaccount),
+      reason_inactive: accountInfo.reason_inactive || null,
+    });
   }
 
   req.user = decoded;
@@ -82,4 +114,4 @@ function authenticateOptional(req, res, next) {
   next();
 }
 
-module.exports = { authenticate, authenticateOptional, invalidateAccountCache, isAccountValid };
+module.exports = { authenticate, authenticateOptional, invalidateAccountCache, isAccountValid, getAccountValidity };

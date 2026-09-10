@@ -2,7 +2,7 @@
 -- WEALTHCOMMAND / FLOWMONEY — CSDL MỚI (v2)
 -- ============================================================================
 -- Ngày: 2026-08-26
--- Nguồn: New_Database.md (13 bảng) — áp dụng hoàn toàn CSDL mới
+-- Nguồn: docs/Rule_Project/New_Database.md (13 bảng) — áp dụng hoàn toàn CSDL mới
 -- Lưu ý: uuid là id tự sinh tại Client-app, Backend chỉ ghi nhận mã.
 -- Cơ chế xóa mềm: Delete_at NULL = đang dùng; có giá trị = đã xóa mềm.
 -- ============================================================================
@@ -29,6 +29,8 @@ CREATE TABLE "account" (
     "Password"  VARCHAR(255) NOT NULL,
     "Status"    VARCHAR(20)  NOT NULL DEFAULT 'Active',
     "Type"      VARCHAR(20)  NOT NULL DEFAULT 'Basic',
+    "Reason_Inactive" TEXT,
+    "Countdown"   INTEGER,
     "Create_at" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "Update_at" TIMESTAMP(6),
     "Delete_at" TIMESTAMP(6),

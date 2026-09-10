@@ -15,10 +15,11 @@ const adminApi = {
   // Users
   getUsers: () => axiosClient.get('/admin/getuser'),
   getUserById: (id) => axiosClient.get(`/admin/getuser/${id}`),
-  updateUserStatus: (id) => axiosClient.patch(`/admin/updatestatus/${id}`),
+  updateUserStatus: (id, data) => axiosClient.patch(`/admin/updatestatus/${id}`, data),
+  deleteUser: (id) => axiosClient.delete(`/admin/deleteuser/${id}`),
 
   // Categories
-  getCategories: () => axiosClient.get('/admin/getcategory'),
+  getCategories: (params) => axiosClient.get('/admin/getcategory', { params }),
   createCategory: (data) => axiosClient.post('/admin/addcategory', data),
   updateCategory: (id, data) => axiosClient.put(`/admin/updatecategory/${id}`, data),
   deleteCategory: (id) => axiosClient.delete(`/admin/deletecategory/${id}`),

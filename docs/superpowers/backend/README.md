@@ -23,7 +23,7 @@ Không phải việc cần làm, nhưng cần để hiểu hai thư mục con:
 
 | Tệp | Nội dung |
 |---|---|
-| [New_Database.md](./New_Database.md) | Lược đồ chuẩn của PostgreSQL. `CLAUDE.md` chỉ định đây là **nguồn sự thật** cho schema |
+| [New_Database.md](../../Rule_Project/New_Database.md) | Lược đồ chuẩn của PostgreSQL (đã chuyển vào `docs/Rule_Project/` ở nhánh `main`, 2026-09-10). Đây là **nguồn sự thật** cho schema |
 | [2026-08-10-backend-sync-spec.md](./2026-08-10-backend-sync-spec.md) | Hợp đồng `/sync/push` và `/sync/pull` |
 | [PROGRESS-BACKEND.md](./PROGRESS-BACKEND.md) | Checklist B1→B7 và tiến độ backend |
 | [TRANSACTION_NOTE_ENCODING.md](./TRANSACTION_NOTE_ENCODING.md) | Client mã hoá chiều tiền và nguồn gốc của khoản tích luỹ vào `transaction.Note`. **Không xin gì** — chỉ để backend biết mà đừng vô tình phá |

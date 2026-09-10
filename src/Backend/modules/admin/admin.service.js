@@ -1,4 +1,6 @@
 const adminRepository = require('./admin.repository');
+const { maskEmail, maskPhone, maskAddress } = require('../../utils/masking.util');
+const { validateReasonInactive } = require('../../utils/content-filter.util');
 
 function calcGrowth(current, previous) {
   if (current === 0) return 0;
@@ -62,16 +64,20 @@ const adminService = {
     const users = await adminRepository.getAllUsers();
     return users.map((u) => ({
       id: u.iduser,
+      idaccount: u.account ? u.account.idaccount : null,
       fullname: u.fullname,
-      email: u.email,
-      phone: u.phone,
-      address: u.address,
+      email: maskEmail(u.email),
+      phone: maskPhone(u.phone),
+      address: maskAddress(u.address),
       country_code: u.country_code,
-      username: u.account.username,
-      status: u.account.status,
-      type: u.account.type || 'Basic',
+      username: u.account ? u.account.username : null,
+      status: u.account ? u.account.status : (u.delete_at ? 'Deleted' : 'Active'),
+      type: u.account ? (u.account.type || 'Basic') : 'Basic',
+      reason_inactive: u.account ? u.account.reason_inactive : null,
+      countdown: u.account ? u.account.countdown : null,
+      delete_at: u.account ? u.account.delete_at : u.delete_at,
       created_at: u.create_at,
-      updated_at: u.account.update_at || u.update_at,
+      updated_at: u.account ? (u.account.update_at || u.update_at) : u.update_at,
     }));
   },
 
@@ -80,42 +86,129 @@ const adminService = {
     if (!u) throw Object.assign(new Error('Không tìm thấy người dùng'), { statusCode: 404 });
     return {
       id: u.iduser,
+      idaccount: u.account.idaccount,
       fullname: u.fullname,
-      email: u.email,
-      phone: u.phone,
-      address: u.address,
+      email: maskEmail(u.email),
+      phone: maskPhone(u.phone),
+      address: maskAddress(u.address),
       country_code: u.country_code,
       username: u.account.username,
       status: u.account.status,
       type: u.account.type || 'Basic',
       rolename: u.account.role.rolename,
+      reason_inactive: u.account.reason_inactive || null,
+      countdown: u.account.countdown ?? null,
+      delete_at: u.account.delete_at || u.delete_at,
       created_at: u.create_at,
       updated_at: u.account.update_at || u.update_at,
     };
   },
 
-  async updateStatus(iduser) {
+  async updateStatus(iduser, data = {}) {
     const u = await adminRepository.getUserById(iduser);
     if (!u) throw Object.assign(new Error('Không tìm thấy người dùng'), { statusCode: 404 });
 
     const currentStatus = u.account.status;
-    const newStatus = currentStatus === 'Active' ? 'Inactive' : 'Active';
+    if (currentStatus === 'PendingDelete') {
+      throw Object.assign(
+        new Error('Tài khoản đang trong trạng thái Chờ xóa (PendingDelete) do người dùng yêu cầu, quản trị viên không thể thay đổi trạng thái!'),
+        { statusCode: 400 }
+      );
+    }
+    if (currentStatus === 'Deleted') {
+      throw Object.assign(
+        new Error('Tài khoản đã bị xóa khỏi hệ thống, không thể thay đổi trạng thái!'),
+        { statusCode: 400 }
+      );
+    }
 
-    await adminRepository.updateAccountStatus(iduser, newStatus);
+    const targetStatus = data.status || (currentStatus === 'Active' ? 'Inactive' : 'Active');
+
+    if (targetStatus === 'Inactive') {
+      const reason = (data.reason_inactive || data.reason || '').trim();
+      const validation = validateReasonInactive(reason);
+      if (!validation.valid) {
+        throw Object.assign(new Error(validation.error), { statusCode: 400 });
+      }
+
+      await adminRepository.updateAccountStatus(iduser, 'Inactive', reason);
+      const { invalidateAccountCache } = require('../../middleware/auth');
+      invalidateAccountCache(u.account.idaccount);
+
+      // Phát sự kiện cưỡng chế đăng xuất qua Socket.IO kèm lý do
+      const { emitForceLogout } = require('../../core/socket');
+      emitForceLogout(u.account.idaccount, 'ACCOUNT_INACTIVE', `Tài khoản của bạn đã bị vô hiệu hóa. Lý do: ${reason}`);
+
+      return {
+        id: iduser,
+        username: u.account.username,
+        fullname: u.fullname,
+        previousStatus: currentStatus,
+        newStatus: 'Inactive',
+        reason_inactive: reason,
+      };
+    } else {
+      // Re-activate tài khoản
+      await adminRepository.updateAccountStatus(iduser, 'Active', null);
+      const { invalidateAccountCache } = require('../../middleware/auth');
+      invalidateAccountCache(u.account.idaccount);
+
+      return {
+        id: iduser,
+        username: u.account.username,
+        fullname: u.fullname,
+        previousStatus: currentStatus,
+        newStatus: 'Active',
+        reason_inactive: null,
+      };
+    }
+  },
+
+  async deleteUser(iduser) {
+    const u = await adminRepository.getUserById(iduser);
+    if (!u) {
+      throw Object.assign(new Error('Không tìm thấy người dùng'), { statusCode: 404 });
+    }
+
+    if (u.account.idrole === 1) {
+      throw Object.assign(new Error('Không thể xóa tài khoản Quản trị viên'), { statusCode: 403 });
+    }
+
+    if (u.account.status === 'PendingDelete') {
+      throw Object.assign(
+        new Error('Tài khoản đang trong trạng thái Chờ xóa (PendingDelete) do người dùng yêu cầu, quản trị viên không thể thao tác xóa!'),
+        { statusCode: 400 }
+      );
+    }
+    if (u.account.status === 'Deleted' || u.account.delete_at) {
+      throw Object.assign(
+        new Error('Tài khoản đã bị xóa khỏi hệ thống trước đó!'),
+        { statusCode: 400 }
+      );
+    }
+
+    const idaccount = u.account.idaccount;
+    await adminRepository.softDeleteUser(iduser);
+
+    // 1. Invalidate auth cache
     const { invalidateAccountCache } = require('../../middleware/auth');
-    invalidateAccountCache(u.account.idaccount);
+    invalidateAccountCache(idaccount);
+
+    // 2. Emit force logout via Socket.IO
+    const { emitForceLogout } = require('../../core/socket');
+    emitForceLogout(idaccount, 'ACCOUNT_DELETED', 'Tài khoản của bạn đã bị ngừng hoạt động hoặc xóa bởi quản trị viên.');
 
     return {
-      id: iduser,
+      message: 'Người dùng đã được xóa mềm thành công',
+      iduser,
+      idaccount,
       username: u.account.username,
       fullname: u.fullname,
-      previousStatus: currentStatus,
-      newStatus,
     };
   },
 
-  async getCategories() {
-    const cats = await adminRepository.getAllCategories();
+  async getCategories(filters = {}) {
+    const cats = await adminRepository.getAllCategories(filters);
     return cats.map((c) => ({
       id: c.idcategory,
       name: c.name_category,
@@ -125,6 +218,7 @@ const adminService = {
       idgroup: c.idgroup,
       keyword: c.keyword,
       icon: c.icon,
+      created_by_id: c.create_by,
       created_by: c.account ? c.account.username : null,
       created_by_name: c.account?.User?.fullname || null,
       created_at: c.create_at,

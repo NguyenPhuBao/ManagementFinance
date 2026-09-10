@@ -6,6 +6,17 @@ const { prisma } = require("../../config/db");
 const authRepository = require("./auth.repository");
 const emailService = require("../../core/email.service");
 const logger = require("../../core/logger");
+const { encrypt, decrypt } = require("../../utils/crypto.util");
+
+function sanitizeAuditReason(text) {
+  if (!text || typeof text !== 'string') return null;
+  let sanitized = text
+    .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[EMAIL]')
+    .replace(/(?:\+84|0)[1-9][0-9]{7,9}\b/g, '[SĐT]')
+    .replace(/\b(?:eyJ[a-zA-Z0-9_-]{10,})\b/g, '[TOKEN]')
+    .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, '[UUID]');
+  return sanitized.substring(0, 200);
+}
 
 function hashToken(token) {
   return crypto.createHash("sha256").update(token).digest("hex");
@@ -89,16 +100,34 @@ async function saveRefreshToken(token, payload, req) {
 }
 
 const authService = {
+  // Helper: Kiểm tra tính hợp lệ của cặp Username + Password
+  // - Cấm trùng đồng thời cả Username và Password (so khớp với mọi account trong hệ thống bằng bcrypt.compare).
+  // - Cho phép nếu trùng Username nhưng khác Password, hoặc trùng Password nhưng khác Username.
+  async validateUsernamePasswordPair(username, password) {
+    if (!username || !password) return;
+    const accounts = await authRepository.findAccountsByUsername(username.trim());
+    if (!accounts || accounts.length === 0) return;
+
+    for (const acc of accounts) {
+      const isMatch = await bcrypt.compare(password, acc.password);
+      if (isMatch) {
+        throw Object.assign(
+          new Error("Tên đăng nhập và mật khẩu này đã tồn tại trong hệ thống. Vui lòng thay đổi tên đăng nhập hoặc mật khẩu khác."),
+          { statusCode: 400 }
+        );
+      }
+    }
+  },
+
   // ---------- REGISTER OTP: SEND OTP ----------
   async sendRegisterOtp(data) {
-    // 1. Kiểm tra username đã tồn tại chưa
-    const existingUsername = await authRepository.findAccountByUsername(data.username);
-    if (existingUsername) {
-      throw Object.assign(new Error("Username đã được sử dụng"), { statusCode: 409 });
+    // 1. Kiểm tra cặp username + password (nếu có password)
+    if (data.password) {
+      await this.validateUsernamePasswordPair(data.username, data.password);
     }
 
-    // 2. Kiểm tra email đã tồn tại chưa
-    const existingEmail = await authRepository.findAccountByEmail(data.email);
+    // 2. Kiểm tra email đã tồn tại ở tài khoản ĐANG HOẠT ĐỘNG chưa
+    const existingEmail = await authRepository.findActiveAccountByEmail(data.email);
     if (existingEmail) {
       throw Object.assign(new Error("Email đã được sử dụng"), { statusCode: 409 });
     }
@@ -136,13 +165,12 @@ const authService = {
     // 3. Đánh dấu OTP đã sử dụng
     await authRepository.markOtpUsed(record.id_otp);
 
-    // 4. Kiểm tra lại race condition
-    const existingUsername = await authRepository.findAccountByUsername(data.username);
-    if (existingUsername) {
-      throw Object.assign(new Error("Username đã được sử dụng"), { statusCode: 409 });
+    // 4. Kiểm tra lại race condition cho cặp (username + password) và active email
+    if (data.password) {
+      await this.validateUsernamePasswordPair(data.username, data.password);
     }
 
-    const existingEmail = await authRepository.findAccountByEmail(data.email);
+    const existingEmail = await authRepository.findActiveAccountByEmail(data.email);
     if (existingEmail) {
       throw Object.assign(new Error("Email đã được sử dụng"), { statusCode: 409 });
     }
@@ -151,13 +179,13 @@ const authService = {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(data.password, salt);
 
-    // 6. Tạo account + user trong transaction
+    // 6. Tạo account + user trong transaction (Mã hóa SĐT At-Rest)
     const account = await authRepository.createAccountWithUser({
       username: data.username,
       hashedPassword,
       fullname: data.fullname,
       email: data.email,
-      phone: data.phone || null,
+      phone: data.phone ? encrypt(data.phone) : null,
       country_code: data.country_code || null,
       type: 'Basic',
     });
@@ -187,7 +215,7 @@ const authService = {
         rolename: account.role.rolename,
         fullname: account.User.fullname,
         email: account.User.email,
-        phone: account.User.phone,
+        phone: decrypt(account.User.phone),
         country_code: account.User.country_code,
         type: account.type || 'Basic',
         status: account.status || 'Active',
@@ -199,14 +227,11 @@ const authService = {
   async register(data, req) {
     if (!req) req = {};
 
-    // 1. Kiem tra username da ton tai
-    const existingUsername = await authRepository.findAccountByUsername(data.username);
-    if (existingUsername) {
-      throw Object.assign(new Error("Username da duoc su dung"), { statusCode: 409 });
-    }
+    // 1. Kiem tra cap username + password
+    await this.validateUsernamePasswordPair(data.username, data.password);
 
-    // 2. Kiem tra email da ton tai
-    const existingEmail = await authRepository.findAccountByEmail(data.email);
+    // 2. Kiem tra email da ton tai o tai khoan active chua
+    const existingEmail = await authRepository.findActiveAccountByEmail(data.email);
     if (existingEmail) {
       throw Object.assign(new Error("Email da duoc su dung"), { statusCode: 409 });
     }
@@ -215,13 +240,13 @@ const authService = {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(data.password, salt);
 
-    // 4. Tao account + user trong transaction
+    // 4. Tao account + user trong transaction (Mã hóa SĐT At-Rest)
     const account = await authRepository.createAccountWithUser({
       username: data.username,
       hashedPassword,
       fullname: data.fullname,
       email: data.email,
-      phone: data.phone || null,
+      phone: data.phone ? encrypt(data.phone) : null,
       country_code: data.country_code || null,
       type: 'Basic',
     });
@@ -251,7 +276,7 @@ const authService = {
         rolename: account.role.rolename,
         fullname: account.User.fullname,
         email: account.User.email,
-        phone: account.User.phone,
+        phone: decrypt(account.User.phone),
         country_code: account.User.country_code,
         type: account.type || 'Basic',
         status: account.status || 'Active',
@@ -261,36 +286,49 @@ const authService = {
 
   async login(username, password, req) {
     if (!req) req = {};
-    const account = await authRepository.findAccountByUsername(username);
-    if (!account) throw Object.assign(new Error("Sai tai khoan hoac mat khau"), { statusCode: 401 });
+    const accounts = await authRepository.findAccountsByUsername(username);
+    if (!accounts || accounts.length === 0) {
+      throw Object.assign(new Error("Sai tai khoan hoac mat khau"), { statusCode: 401 });
+    }
 
+    // So khớp mật khẩu qua bcrypt.compare với các account có username tương ứng
+    let matchedAccount = null;
+    for (const acc of accounts) {
+      const isMatch = await bcrypt.compare(password, acc.password);
+      if (isMatch) {
+        matchedAccount = acc;
+        break;
+      }
+    }
+
+    if (!matchedAccount) {
+      throw Object.assign(new Error("Sai tai khoan hoac mat khau"), { statusCode: 401 });
+    }
+
+    const account = matchedAccount;
     let pendingDeleteCancelled = false;
 
     if (account.status === 'PendingDelete') {
-      if (account.delete_at && account.delete_at > new Date()) {
-        // Còn trong 30 ngày → cho đăng nhập, tự động hủy yêu cầu xóa
-        const isMatch = await bcrypt.compare(password, account.password);
-        if (!isMatch) throw Object.assign(new Error("Sai tai khoan hoac mat khau"), { statusCode: 401 });
-
-        await authRepository.cancelDeletion(account.idaccount);
-        pendingDeleteCancelled = true;
-        logger.info("PendingDelete account recovered on login", { username: account.username });
-      } else {
+      const isExpired = (account.countdown !== null && account.countdown <= 0) || (account.delete_at && account.delete_at <= new Date());
+      if (isExpired) {
         // Hết 30 ngày → từ chối đăng nhập
         throw Object.assign(
           new Error("Tài khoản đã hết thời gian khôi phục (30 ngày). Vui lòng liên hệ hỗ trợ."),
           { statusCode: 403 }
         );
       }
-    } else if (account.status === 'Deleted') {
-      throw Object.assign(new Error("Tài khoản đã bị xóa vĩnh viễn"), { statusCode: 403 });
+      // Vẫn trong thời hạn 30 ngày → Cho phép đăng nhập và sử dụng tiếp
+      logger.info("PendingDelete account logged in during grace period", { username: account.username, countdown: account.countdown });
+    } else if (account.status === 'Deleted' || account.delete_at !== null) {
+      throw Object.assign(new Error("Tài khoản đã bị xóa khỏi hệ thống"), { statusCode: 403 });
     } else if (account.status !== 'Active') {
-      throw Object.assign(new Error("Tai khoan da bi vo hieu hoa"), { statusCode: 403 });
-    }
-
-    if (!pendingDeleteCancelled) {
-      const isMatch = await bcrypt.compare(password, account.password);
-      if (!isMatch) throw Object.assign(new Error("Sai tai khoan hoac mat khau"), { statusCode: 401 });
+      const msg = account.reason_inactive
+        ? `Tài khoản đã bị vô hiệu hóa. Lý do: ${account.reason_inactive}`
+        : "Tai khoan da bi vo hieu hoa";
+      throw Object.assign(new Error(msg), {
+        statusCode: 403,
+        reason_inactive: account.reason_inactive || null,
+      });
     }
 
     const payload = {
@@ -300,6 +338,7 @@ const authService = {
       rolename: account.role.rolename,
       type: account.type || 'Basic',
       status: account.status || 'Active',
+      countdown: account.countdown ?? null,
     };
 
     const { accessToken, refreshToken } = generateTokens(payload, account.idrole);
@@ -317,10 +356,11 @@ const authService = {
         rolename: account.role.rolename,
         fullname: account.User ? account.User.fullname : "",
         email: account.User ? account.User.email : (account.email || ""),
-        phone: account.User ? account.User.phone : null,
+        phone: account.User ? decrypt(account.User.phone) : null,
         country_code: account.User ? account.User.country_code : null,
         type: account.type || 'Basic',
         status: account.status || 'Active',
+        countdown: account.countdown ?? null,
       },
     };
   },
@@ -458,9 +498,16 @@ const authService = {
     const isMatch = await bcrypt.compare(password, account.password);
     if (!isMatch) throw Object.assign(new Error("Mật khẩu không đúng"), { statusCode: 400 });
 
-    await authRepository.scheduleDeletion(idaccount);
-    await this.revokeAllTokens(idaccount);
-    logger.info("Account scheduled for deletion (30 days grace period)", { idaccount });
+    const updated = await authRepository.scheduleDeletion(idaccount);
+    const { invalidateAccountCache } = require('../../middleware/auth');
+    invalidateAccountCache(idaccount);
+    logger.info("Account scheduled for deletion (30 days grace period, countdown: 30)", { idaccount });
+    return {
+      idaccount,
+      status: 'PendingDelete',
+      countdown: 30,
+      scheduled_delete_at: updated.delete_at,
+    };
   },
 
   // ---------- CANCEL DELETION ----------
@@ -471,12 +518,16 @@ const authService = {
     if (account.status !== 'PendingDelete') {
       throw Object.assign(new Error("Tài khoản không ở trạng thái chờ xóa"), { statusCode: 400 });
     }
-    if (account.delete_at && account.delete_at <= new Date()) {
+    const isExpired = (account.countdown !== null && account.countdown <= 0) || (account.delete_at && account.delete_at <= new Date());
+    if (isExpired) {
       throw Object.assign(new Error("Đã hết thời gian khôi phục (30 ngày)"), { statusCode: 403 });
     }
 
     await authRepository.cancelDeletion(idaccount);
-    logger.info("Account deletion cancelled by user", { idaccount });
+    const { invalidateAccountCache } = require('../../middleware/auth');
+    invalidateAccountCache(idaccount);
+    logger.info("Account deletion cancelled by user, restored to Active", { idaccount });
+    return { idaccount, status: 'Active', countdown: null };
   },
 
   // ---------- GET PROFILE ----------
@@ -486,8 +537,8 @@ const authService = {
     return {
       fullname: user.fullname,
       email: user.email,
-      phone: user.phone,
-      address: user.address,
+      phone: decrypt(user.phone),
+      address: decrypt(user.address),
       country_code: user.country_code,
       type: user.account?.type || 'Basic',
       status: user.account?.status || 'Active',
@@ -500,16 +551,16 @@ const authService = {
   async updateProfile(idaccount, data) {
     const allowed = {};
     if (data.fullname !== undefined) allowed.fullname = data.fullname;
-    if (data.phone !== undefined) allowed.phone = data.phone;
-    if (data.address !== undefined) allowed.address = data.address;
+    if (data.phone !== undefined) allowed.phone = data.phone ? encrypt(data.phone) : null;
+    if (data.address !== undefined) allowed.address = data.address ? encrypt(data.address) : null;
     if (data.country_code !== undefined) allowed.country_code = data.country_code;
 
     const updated = await authRepository.updateProfile(idaccount, allowed);
     return {
       fullname: updated.fullname,
       email: updated.email,
-      phone: updated.phone,
-      address: updated.address,
+      phone: decrypt(updated.phone),
+      address: decrypt(updated.address),
       country_code: updated.country_code,
       type: updated.account?.type || 'Basic',
       status: updated.account?.status || 'Active',
@@ -616,7 +667,7 @@ const authService = {
       }
     }
 
-    return reasonText ? String(reasonText).substring(0, 200) : null;
+    return reasonText ? sanitizeAuditReason(reasonText) : null;
   },
 
   formatActionName(method, path, req) {

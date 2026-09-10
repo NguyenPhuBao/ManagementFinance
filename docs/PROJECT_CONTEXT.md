@@ -31,9 +31,11 @@ ManagementFinance/
 │   ├── Backend/          ← Node.js + Express + Prisma + PostgreSQL
 │   └── Client-app/       ← Flutter (Web/Mobile, Dart)
 ├── docs/
+│   ├── Rule_Project/
+│   │   ├── New_Database.md   ← Schema chuẩn PostgreSQL (nguồn sự thật)
+│   │   ├── Data_Security.md  ← Nguyên tắc bảo mật & phân loại dữ liệu
+│   │   └── Rule_project.md   ← Quy tắc toàn dự án
 │   └── superpowers/
-│       ├── backend/
-│       │   └── New_Database.md   ← Schema chuẩn PostgreSQL (nguồn sự thật)
 │       └── plans/
 │           └── PROGRESS-BACKEND.md
 └── Project.md            ← Tài liệu gốc của dự án
@@ -98,7 +100,7 @@ dart run build_runner watch --delete-conflicting-outputs
 
 ## 4. Database Schema (PostgreSQL)
 
-> Schema chuẩn xem tại: `docs/superpowers/backend/New_Database.md`
+> Schema chuẩn xem tại: `docs/Rule_Project/New_Database.md`
 > Prisma schema: `src/Backend/prisma/schema.prisma`
 
 ### Bảng chính
@@ -572,7 +574,7 @@ src/Backend/
 | `src/Backend/modules/sync/sync.repository.js` | Prisma queries cho sync |
 | `src/Backend/modules/sync/sync.service.js` | Business logic sync |
 | `src/Backend/prisma/schema.prisma` | DB schema (Prisma) |
-| `docs/superpowers/backend/New_Database.md` | DB schema chuẩn (nguồn sự thật) |
+| `docs/Rule_Project/New_Database.md` | DB schema chuẩn (nguồn sự thật) |
 
 ---
 
@@ -783,10 +785,11 @@ Vấn đề thuộc backend. Thư mục `docs/superpowers/backend/` được **c
 2026-09-07: **`CAN-LAM/`** giữ đúng phần **còn việc** (**tám** mục — đếm bằng máy 2026-09-09 từ mục 2 của README ấy, sau khi thêm hai mục Socket.io; dòng này từng ghi "bốn" rồi "sáu") và README
 trong đó là **cửa vào duy nhất**; **`DA-XONG/`** giữ 16 tài liệu **đã đóng**, mở khi
 cần biết *vì sao* lược đồ có hình dạng hôm nay chứ không phải khi tìm việc; thư mục
-cha chỉ còn mục lục và **bốn** tệp bối cảnh (`New_Database.md`,
-`2026-08-10-backend-sync-spec.md`, `PROGRESS-BACKEND.md`,
-`TRANSACTION_NOTE_ENCODING.md`) — đếm bằng máy 2026-09-09; dòng này từng ghi
-"ba" vì viết trước khi tệp thứ tư ra đời.
+cha chỉ còn mục lục và **ba** tệp bối cảnh (`2026-08-10-backend-sync-spec.md`,
+`PROGRESS-BACKEND.md`, `TRANSACTION_NOTE_ENCODING.md`) — đếm lại bằng máy
+2026-09-10. ⚠️ **`New_Database.md` đã rời thư mục ấy**: nhánh `main` chuyển nó
+sang `docs/Rule_Project/` cùng ngày, nên mọi liên kết tương đối cũ đều hỏng.
+Dòng này từng ghi "ba" rồi "bốn" rồi lại "ba" — đếm bằng máy mỗi lần chạm vào.
 
 Bảng dưới giữ **cả** mục đã đóng lẫn mục còn việc, vì nó là nơi duy nhất đọc được
 toàn cảnh một lượt. Muốn biết *phải làm gì tiếp* thì đọc `docs/superpowers/backend/CAN-LAM/README.md` —

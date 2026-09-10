@@ -1,7 +1,7 @@
 # 📜 TỔNG HỢP NGUYÊN TẮC & QUY TẮC DỰ ÁN — MANAGEMENTFINANCE
 > **Source of Truth** về các nguyên tắc kiến trúc, quy trình vận hành phát triển phần mềm, cùng toàn bộ các quy tắc kỹ thuật và nghiệp vụ cụ thể của hệ thống **ManagementFinance**.
 >
-> *Ngày cập nhật:* 2026-09-07  
+> *Ngày cập nhật:* 2026-09-10  
 > *Phạm vi áp dụng:* Toàn bộ dự án (`src/Backend`, `src/Admin-web`, `src/Client-app`).
 
 ---
@@ -11,12 +11,13 @@
 ## ⚡ 1. KHẨU HIỆU & QUY TẮC CỐT LÕI (TL;DR)
 
 ```
-RTK | CODEGRAPH | PROJECT.MD | SKILL→PHASE | KARPATHY | SELF-CHECK
+RTK | CODEGRAPH | PROJECT.MD | DATA_SECURITY | SKILL→PHASE | KARPATHY | SELF-CHECK
 ```
 
 * **RTK mọi lệnh CLI:** Mọi lệnh terminal bắt buộc có tiền tố `rtk` (ví dụ: `rtk npm test`, `rtk git status`).
 * **CodeGraph kiểm tra tác động:** Dùng `brief`, `deps`, `context`, `impact` trước khi sửa mã nguồn.
 * **Project.md nắm ngữ cảnh:** Đọc `Project.md` để nắm kiến trúc, tech stack và quy ước trước khi bắt đầu.
+* **Data_Security.md tuân thủ pháp luật:** Bắt buộc tuân thủ 100% nguyên tắc bảo vệ dữ liệu nhạy cảm theo `docs/Rule_Project/Data_Security.md` (Nghị định 13/2023/NĐ-CP, PCI-DSS, OWASP).
 * **Đúng Skill $\rightarrow$ Đúng Phase:** Tuân thủ 4 Phase tuần tự (Scope $\rightarrow$ TDD $\rightarrow$ Systematic Debug $\rightarrow$ Verify & Ship).
 * **Karpathy Guidelines:** Think before coding, Simplicity first, Plan then execute, Test everything.
 * **Self-Check trước khi "Done":** Chỉ bàn giao khi kiểm thử 100% PASS, tài liệu và CodeGraph đã cập nhật.
@@ -160,19 +161,29 @@ Mọi yêu cầu kỹ thuật phải đi qua 4 Phase tuần tự:
 
 ---
 
-## 🛡️ 6. NGUYÊN TẮC AN NINH & BẢO MẬT HỆ THỐNG
+## 🛡️ 6. NGUYÊN TẮC AN NINH, BẢO MẬT HỆ THỐNG & DỮ LIỆU (DATA_SECURITY.MD)
 
-1. **Socket.io Security:**
+Toàn bộ quy trình xử lý, lưu trữ, truyền tải dữ liệu bắt buộc tuân thủ chặt chẽ tài liệu nguồn sự thật [`docs/Rule_Project/Data_Security.md`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/Rule_Project/Data_Security.md) nhằm đảm bảo tuân thủ pháp luật (Nghị định 13/2023/NĐ-CP, PCI-DSS, OWASP):
+
+1. **Nguyên tắc Tối thiểu hóa dữ liệu (Data Minimization):**
+   * Chỉ thu thập dữ liệu phục vụ trực tiếp cho tính năng tài chính cốt lõi khi có sự đồng ý của người dùng.
+   * **Nghiêm cấm thu thập:** Mật khẩu/Tên đăng nhập Internet Banking, số thẻ tín dụng kèm CVV/CVC, GPS liên tục, danh bạ điện thoại, SMS cá nhân ngoài biến động số dư. Sinh trắc học (vân tay, khuôn mặt) chỉ xử lý cục bộ trên máy qua Biometrics API, tuyệt đối không đẩy lên server.
+2. **User-scoped Isolation (Cách ly dữ liệu người dùng tuyệt đối):**
+   * Mọi câu query đọc/ghi vào CSDL bắt buộc phải có điều kiện lọc theo `userId` hoặc `idaccount` từ JWT token đã xác thực; cấm truy vấn dữ liệu không kèm ràng buộc người sở hữu.
+3. **Socket.io Security & Phân lập phòng:**
    * Bắt buộc xác thực token JWT ngay từ bước kết nối (handshake).
    * Phân lập phòng (Room) theo từng tài khoản (`account_${idaccount}`). Tuyệt đối không phát sự kiện chứa thông tin người dùng (`audit_activity`, notification) ra phòng ẩn danh toàn cục.
-2. **Bảo mật phản hồi lỗi (Error Obfuscation):**
+4. **Bảo mật phản hồi lỗi (Error Obfuscation):**
    * Che giấu toàn bộ thông tin nội bộ của CSDL, stack trace Prisma trước khi trả về client.
    * Ánh xạ thành mã lỗi chuẩn hóa (`CONSTRAINT_VIOLATION`, `FOREIGN_KEY_VIOLATION`, `UNIQUE_VIOLATION`).
-3. **Môi trường Production Guard:**
+5. **Môi trường Production Guard:**
    * Chặn hoàn toàn các tham số giả lập (`_mock*`, mock headers) khi chạy trên môi trường Production.
-4. **Bảo vệ mật khẩu & Mã xác thực:**
-   * Mã OTP (email reset password, change email) bắt buộc lưu trữ dưới dạng băm (SHA-256 hash).
-   * Mật khẩu tài khoản băm bằng thuật toán an toàn với salt (bcrypt).
+6. **Bảo vệ mật khẩu, Mã xác thực & Dữ liệu nhạy cảm:**
+   * Mật khẩu băm bằng thuật toán an toàn (`bcrypt` / `Argon2id`).
+   * Mã OTP và Refresh Token lưu trữ dưới dạng băm (SHA-256 hash), không lưu plaintext, không in ra file log/console.
+   * Dữ liệu tài chính, số dư, lịch sử giao dịch mã hóa at-rest (AES-256) và in-transit (TLS 1.3 / HTTPS).
+7. **Cấm để lộ PII qua Public Endpoints:**
+   * Các endpoint công khai chỉ trả về cấu hình hệ thống hoặc dữ liệu thống kê tổng hợp đã ẩn danh hoàn toàn (không thể tái nhận dạng cá nhân).
 
 ---
 
@@ -194,11 +205,12 @@ Khi kết thúc một nhiệm vụ kỹ thuật, AI **bắt buộc** phải hoà
 
 ## ✅ 8. BẢNG TỰ KIỂM TRA TRƯỚC KHI BÁO "DONE" (SELF-CHECKLIST)
 
-Trước khi gửi câu trả lời hoàn thành tới PO, hãy tự kiểm tra 6 câu hỏi sau:
+Trước khi gửi câu trả lời hoàn thành tới PO, hãy tự kiểm tra 7 câu hỏi sau:
 
 - [ ] **RTK?** Mọi lệnh CLI đã chạy có tiền tố `rtk` chưa?
 - [ ] **CodeGraph?** Đã dùng `context`/`deps`/`brief`/`impact` để phân tích tác động chưa?
 - [ ] **Project.md?** Đã đọc và nắm vững ngữ cảnh dự án chưa?
+- [ ] **Data Security?** Đã tuân thủ nguyên tắc bảo mật dữ liệu & pháp luật trong `Data_Security.md` chưa?
 - [ ] **Skill & Phase?** Đã tuân thủ quy trình 4-Phase và dùng đúng skill chưa?
 - [ ] **Test?** Toàn bộ bài kiểm thử đã chạy và đạt 100% PASS chưa?
 - [ ] **Tài liệu & CodeGraph?** Đã cập nhật `Project.md` và chạy `rtk npx codegraph build` chưa?
@@ -236,6 +248,9 @@ Phần này đặc tả chi tiết toàn bộ các quy tắc ràng buộc, chố
     * **Cột ràng buộc:** `UNIQUE (lower(regexp_replace(btrim(normalize("NameCategory", NFC)), '\s+', ' ', 'g')))`
     * **Điều kiện lọc:** `WHERE "Is_default" = TRUE AND "Delete_at" IS NULL`
     * **Quy tắc:** Toàn bộ danh mục mẫu hệ thống không được trùng tên nhau.
+* **Xóa mềm không giữ chỗ (Soft-delete Re-creation):**
+  * Khi một danh mục đã bị xóa mềm (`Delete_at IS NOT NULL`), người tạo (`Create_by` / `Idaccount`) hoàn toàn **được phép tạo mới một danh mục khác có cùng tên** (kể cả cùng hay khác loại thu/chi/nhóm).
+  * Do các Partial Unique Index đều có điều kiện `WHERE "Delete_at" IS NULL`, các bản ghi đã xóa mềm không giữ chỗ và không gây xung đột khi tạo lại.
 * **Cho phép trùng tên giữa người dùng và hệ thống:**
   * Người dùng **được phép** sở hữu danh mục cá nhân trùng tên với danh mục mẫu hệ thống (đây là điều kiện cốt lõi để mô hình nhân bản Template hoạt động).
   * Trigger kiểm tra trùng chéo cũ (`trg_category_name_cross_default`) đã chính thức được gỡ bỏ khỏi CSDL.
@@ -487,3 +502,186 @@ Bộ máy chống trùng lặp giao dịch (Deduplication Engine) vận hành th
 ### 10.3. Phân quyền vai trò (Role-Based Access Control)
 * `idrole = 1` (**Admin**): Quản trị người dùng, danh mục mặc định toàn hệ thống, xem audit logs, cấu hình hệ thống.
 * `idrole = 2` (**User**): Chỉ có quyền truy cập, đồng bộ và thao tác trên dữ liệu thuộc quyền sở hữu của chính tài khoản đó (`idaccount`).
+
+---
+
+## 👤 11. QUY TẮC QUẢN LÝ TÀI KHOẢN, NGƯỜI DÙNG & XÓA MỀM (ACCOUNT & USER MANAGEMENT RULES)
+
+### 11.1. Điều kiện hiển thị nút Xóa trên Giao diện Quản trị (Admin-web)
+* Trên bảng quản lý người dùng (`UserListPage.jsx`):
+  * Người dùng đang ở trạng thái **Hoạt động (`active`)**: Cột Hành động chỉ hiển thị nút **"Vô hiệu hóa"** và icon xem chi tiết.
+  * Người dùng đang ở trạng thái **Vô hiệu hóa (`inactive` / "Ngừng hoạt động")**: Cột Hành động hiển thị thêm nút **"Xóa"** (màu đỏ) cạnh nút **"Kích hoạt"**.
+  * Khi bấm "Xóa": Mở modal cảnh báo rõ ràng các tác động (xóa mềm tài khoản, ngừng hoạt động toàn bộ ví, ngắt kết nối ngân hàng, thu hồi phiên làm việc) trước khi thực hiện.
+
+### 11.2. Quy trình Xóa mềm 5 bước trong Transaction (Backend Soft-Delete Standard)
+Khi xóa một người dùng (`DELETE /api/admin/deleteuser/:id` hoặc `DELETE /api/admin/users/:id`), toàn bộ thao tác được bọc trong một Database Transaction (`prisma.$transaction`) tuân thủ nghiêm ngặt 5 bước:
+1. **Xóa mềm bảng `account`**: Cập nhật `status = 'Inactive'`, `delete_at = now()`, `update_at = now()`.
+2. **Xóa mềm bảng `user`**: Cập nhật `delete_at = now()`, `update_at = now()`.
+3. **Ngừng hoạt động toàn bộ Ví liên quan**: Toàn bộ ví của tài khoản chuyển sang `status = 'Inactive'`, `update_at = now()`. Tuyệt đối không xóa bản ghi ví để bảo toàn tính toàn vẹn của lịch sử giao dịch.
+4. **Ngắt kết nối tài khoản Ngân hàng**: Dữ liệu tài khoản ngân hàng liên kết **không bị xóa**, chỉ cập nhật trạng thái liên kết sang `connect_status = 'Disconnected'`, `update_at = now()`. Nếu sau này người dùng liên kết lại thì có thể kích hoạt kết nối lại bình thường.
+5. **Thu hồi toàn bộ Token ngay lập tức**:
+   * Cập nhật toàn bộ Refresh Token trong bảng `refreshtoken`: `status = true` (đã thu hồi), `update_at = now()`.
+   * Xóa bộ nhớ cache xác thực tức thì qua `invalidateAccountCache(idaccount)`.
+
+### 11.3. Cơ chế Cưỡng chế Đăng xuất & Hàng đợi 24/24 (Force Logout & Offline Parity)
+* **Kênh Real-time (Khi người dùng đang Online)**:
+  * Backend phát ngay sự kiện `account.force_logout` qua Socket.IO tới phòng cá nhân `account_${idaccount}` với payload: `{ idaccount, reason: 'ACCOUNT_DELETED', message: 'Tài khoản của bạn đã bị ngừng hoạt động hoặc xóa bởi quản trị viên.' }`.
+  * Máy chủ ngắt kết nối socket của client ngay lập tức (`io.in(room).disconnectSockets(true)`).
+* **Hàng đợi 24/24 (Khi người dùng mất mạng / Offline)**:
+  * Trạng thái xóa mềm được lưu cố định và vĩnh viễn (24/24) tại CSDL (`account.delete_at IS NOT NULL`).
+  * Nhận diện khi Client-app có kết nối internet trở lại (thông qua `ConnectionMonitor` / `Connectivity` trên Client-app kích hoạt kết nối lại):
+    * **Qua Socket.io Handshake**: Middleware bắt tay từ chối kết nối kèm mã lỗi `ACCOUNT_DELETED`.
+    * **Qua HTTP API (`authenticate` middleware)**: Mọi yêu cầu HTTP (như sync, lấy thông tin tài khoản) đều bị từ chối với mã HTTP 401 Unauthorized kèm body chuẩn hóa:
+      ```json
+      {
+        "success": false,
+        "statusCode": 401,
+        "code": "ACCOUNT_DELETED",
+        "message": "Tài khoản của bạn đã bị ngừng hoạt động hoặc xóa bởi quản trị viên."
+      }
+      ```
+  * **Trách nhiệm của Client-app**:
+    * Khi nhận được sự kiện Socket hoặc mã lỗi `ACCOUNT_DELETED`:
+      1. So khớp chính xác `targetIdAccount == currentUserIdAccount` (tránh đăng xuất nhầm nhóm người dùng khác).
+      2. Xóa sạch toàn bộ token trong `FlutterSecureStorage`.
+      3. Cưỡng chế điều hướng về màn hình Đăng nhập (`LoginScreen`) qua `AuthBloc`.
+      4. Hiển thị thông báo lý do tài khoản đã bị ngừng hoạt động hoặc xóa.
+      5. Ngăn chặn người dùng đăng nhập lại (API Login sẽ từ chối tài khoản có `delete_at !== null` với mã HTTP 403).
+
+### 11.4. Quy tắc Ràng buộc Duy nhất khi Đăng ký mới (Registration Uniqueness Rules)
+* **Cho phép dùng lại Email & Số điện thoại của tài khoản đã xóa mềm**:
+  * Các chỉ mục duy nhất trên Email (`account_Email_key` và `user_Email_key`) được chuyển đổi thành **Partial Unique Index** lọc:  
+    `WHERE ("Delete_at" IS NULL)`
+  * Khi tài khoản cũ đã bị xóa mềm (`Delete_at IS NOT NULL`), email và số điện thoại đó hoàn toàn được phép tái sử dụng để tạo một tài khoản mới.
+* **Quy tắc cặp `(Username + Password)`**:
+  * Cấm trùng đồng thời cả **Tên đăng nhập (Username)** và **Mật khẩu (Password)** với bất kỳ tài khoản nào trong hệ thống (kể cả tài khoản cũ).
+  * **Được phép trùng 1 trong 2**:
+    * Trùng `Username` nhưng khác `Password` $\rightarrow$ **Hợp lệ, cho phép tạo!**
+    * Trùng `Password` nhưng khác `Username` $\rightarrow$ **Hợp lệ, cho phép tạo!**
+  * **Cơ chế hiện thực**: Vì mật khẩu trong CSDL được băm bằng thuật toán `bcrypt` có salt ngẫu nhiên, chỉ mục tĩnh của CSDL không thể so sánh. Ràng buộc `(Username + Password)` được kiểm soát tại tầng ứng dụng (`auth.service.validateUsernamePasswordPair`) bằng `bcrypt.compare()` đối chiếu với tất cả các tài khoản có username trùng khớp.
+* **Đăng nhập đa tài khoản cùng Username**:
+  * Khi đăng nhập bằng `(username, password)`: Backend tìm kiếm danh sách các tài khoản có cùng username, dùng `bcrypt.compare` để tìm tài khoản khớp đúng mật khẩu của người dùng.
+  * Nếu tài khoản khớp đó đang bị xóa mềm hoặc vô hiệu hóa $\rightarrow$ Từ chối đăng nhập với mã HTTP 403.
+  * Nếu tài khoản khớp đang hoạt động (`Active`) hoặc đang trong thời hạn chờ xóa (`PendingDelete` còn hạn) $\rightarrow$ Đăng nhập thành công và cấp phát token.
+
+### 11.5. Quy tắc Vô hiệu hóa có Lý do & Chuẩn hóa 4 Trạng Thái Tài Khoản
+* **Chuẩn hóa 4 trạng thái tài khoản & Màu sắc đại diện:**
+  * 🟢 **`Active`** (Đang hoạt động): Xanh lá (`#22c55e`). Cho phép truy cập đầy đủ tính năng. Nút thao tác trên Admin-web: "Vô hiệu hóa".
+  * 🔘 **`Inactive`** (Vô hiệu hóa): Xám xanh (`#64748b`). Tài khoản bị khóa tạm thời bởi Admin. Bị chặn đăng nhập và từ chối mọi request với mã HTTP 401/403 kèm lý do. Nút thao tác trên Admin-web: "Kích hoạt" và "Xóa".
+  * 🟡 **`PendingDelete`** (Chờ xóa): Vàng (`#eab308`). Tài khoản do người dùng client yêu cầu xóa, đang trong thời gian ân hạn 30 ngày. Trên Admin-web: **Hoàn toàn không thể thao tác**, chỉ hiển thị nhãn "Chỉ xem" và nút xem chi tiết tương tự trạng thái Deleted.
+  * 🔴 **`Deleted`** (Đã xóa mềm): Đỏ (`#ef4444`). Tài khoản đã xóa mềm, ví ngừng hoạt động, ngân hàng ngắt kết nối. Trên Admin-web: Không có nút thao tác, chỉ xem chi tiết.
+* **Quy tắc Vô hiệu hóa tài khoản (`Reason_Inactive`):**
+  * Bảng `account` có cột `"Reason_Inactive" TEXT NULL`.
+  * Khi Admin chuyển tài khoản sang `Inactive`: Bắt buộc cung cấp lý do vô hiệu hóa (HTTP 400 nếu rỗng).
+  * Backend lưu `Reason_Inactive`, xóa cache xác thực và phát sự kiện Socket `account.force_logout` với `code = 'ACCOUNT_INACTIVE'` kèm lý do.
+  * Khi kích hoạt lại `Active`: Hệ thống tự động xóa sạch `Reason_Inactive = null`.
+
+### 11.6. Quy tắc Cơ Chế Chờ Xóa Tài Khoản (PendingDelete) & Countdown 30 Ngày
+* **Cột đếm ngược `"Countdown"` (INT, NULL DEFAULT NULL) trong bảng `account`:**
+  * Khi tài khoản chuyển từ trạng thái khác sang `PendingDelete`: **Bắt buộc** thiết lập `Countdown = 30` và `Delete_at = now() + 30 days`.
+* **Cơ chế Lập lịch cập nhật vào 00:00:00 Múi giờ Việt Nam (UTC+7 / Asia/Ho_Chi_Minh):**
+  * Backend chạy `scheduler.service.js` tự động lúc 00:00:00 UTC+7 mỗi ngày.
+  * Quét toàn bộ tài khoản `PendingDelete` có `Countdown > 0`.
+  * Mỗi ngày giảm `Countdown = Countdown - 1`.
+* **Quyền sử dụng & Hủy xóa trong 30 ngày:**
+  * Trong suốt 30 ngày đếm ngược (`Countdown > 0`), người dùng **vẫn có thể lựa chọn tiếp tục sử dụng tài khoản**.
+  * Middleware Auth cho phép tài khoản `PendingDelete` còn hạn truy cập bình thường (`valid = true`).
+  * Khi đăng nhập (`POST /api/auth/login`), server trả về `status: 'PendingDelete'` kèm `countdown` số ngày còn lại để Client-app hiển thị banner cảnh báo.
+  * **Kích hoạt lại / Hủy xóa**: Nếu người dùng đổi ý và chọn "Kích hoạt lại tài khoản" tại Client-app:
+    * Client-app gọi API `POST /api/auth/cancel-delete`.
+    * Backend chuyển `status = 'Active'`, xóa `Countdown = null`, xóa `Delete_at = null`.
+* **Kích hoạt xóa mềm khi Countdown về 0:**
+  * Khi `Countdown` chạm `0` (vào lúc 0h00 hoặc khi Client-app phát hiện countdown về 0 và đồng bộ về Backend):
+    * Hệ thống tự động chuyển tài khoản sang trạng thái `Deleted`, `Countdown = 0`, `Delete_at = now()`.
+    * Xóa mềm bảng `user` (`Delete_at = now()`).
+    * Toàn bộ ví liên quan ngừng hoạt động (`status = 'Inactive'`).
+    * Toàn bộ liên kết ngân hàng bị ngắt kết nối (`connect_status = 'Disconnected'`).
+    * Toàn bộ token bị thu hồi ngay lập tức (`refreshtoken.status = true`).
+    * Phát sự kiện Socket `account.force_logout` với mã `ACCOUNT_DELETED` để cưỡng chế client out về màn hình đăng nhập.
+* **Bảo vệ trên Admin-web:**
+  * Đối với tài khoản `PendingDelete`, Admin-web hoàn toàn không thể thao tác (không có nút Kích hoạt, Vô hiệu hóa hay Xóa).
+  * API Backend `PATCH /api/admin/updatestatus/:id` và `DELETE /api/admin/deleteuser/:id` sẽ từ chối với mã lỗi HTTP 400 nếu Admin cố ý can thiệp vào tài khoản đang trong quá trình `PendingDelete`.
+
+---
+
+## 🔒 12. QUY TẮC BẢO MẬT DỮ LIỆU, PHÂN LOẠI DỮ LIỆU NHẠY CẢM & TUÂN THỦ PHÁP LUẬT (DATA_SECURITY.MD)
+
+Tất cả các thành phần hệ thống (`src/Backend`, `src/Admin-web`, `src/Client-app`) khi tiếp nhận, lưu trữ, xử lý, truyền tải hoặc hiển thị dữ liệu **BẮT BUỘC TUÂN THỦ 100% NGUYÊN TẮC** trong [`docs/Rule_Project/Data_Security.md`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/Rule_Project/Data_Security.md) và cấu trúc lược đồ bảo mật dữ liệu tại [`docs/Rule_Project/New_Database.md`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/Rule_Project/New_Database.md) nhằm đảm bảo tuân thủ đúng pháp luật (Nghị định 13/2023/NĐ-CP về bảo vệ dữ liệu cá nhân, Nghị định 53/2022/NĐ-CP về an ninh mạng, Luật Kế toán 2015, chuẩn PCI-DSS, khuyến nghị OWASP).
+
+### 12.1. Phân loại 23 nhóm dữ liệu & Cấp độ bảo vệ bắt buộc
+* **Mức độ Rất cao (Critical / Highly Sensitive):**
+  * *Thông tin xác thực & bí mật:* Mật khẩu (băm an toàn bằng `bcrypt` / `Argon2id`), mã PIN, mã OTP 6 số (hash SHA-256 `code_hash`, hết hạn 5-10 phút, không lưu lâu dài, cấm in ra console/file log), token đăng nhập (`token_hash` lưu DB, xoay vòng token, thu hồi khi logout/đổi pass).
+  * *Thông tin định danh mức cao:* Số CMND/CCCD, hộ chiếu, mã số thuế $\rightarrow$ Mã hóa at-rest, ghi nhận audit log mọi truy cập.
+  * *Dữ liệu tài chính ngân hàng:* Số tài khoản, số thẻ (token hóa, tuân thủ PCI-DSS, tuyệt đối không lưu mã CVV/CVC), số dư ví/tài khoản, hạn mức, khoản nợ, lịch sử giao dịch $\rightarrow$ Mã hóa at-rest (AES-256) & in-transit (TLS 1.3 / HTTPS), phân quyền nghiêm ngặt theo `userId`/`idaccount`, không log chi tiết số dư/nội dung giao dịch vào log file.
+  * *Dữ liệu sinh trắc học:* Vân tay, nhận diện khuôn mặt $\rightarrow$ Ưu tiên xử lý cục bộ 100% trên thiết bị người dùng qua Local Authentication / Biometrics API; **tuyệt đối không truyền tải hoặc lưu trữ trên server backend**.
+* **Mức độ Cao (High):**
+  * Họ tên, ngày sinh, địa chỉ, số điện thoại, email $\rightarrow$ Che một phần (masking) khi hiển thị trên giao diện công cộng, mã hóa khi lưu trữ, yêu cầu sự đồng ý rõ ràng khi xử lý.
+  * Hóa đơn, biên lai, danh mục chi tiêu, mục tiêu tiết kiệm, ngân sách $\rightarrow$ Lưu trữ an toàn, gắn quyền sở hữu cá nhân.
+* **Mức độ Trung bình (Medium):**
+  * Dữ liệu thiết bị & phiên (IP, device name, user-agent) $\rightarrow$ Chỉ thu thập khi cần cho bảo vệ tài khoản và chống gian lận, có thời hạn lưu trữ.
+  * Audit log $\rightarrow$ Dùng cho kiểm toán, bảo đảm tính toàn vẹn bất biến (Append-only), không tiết lộ cho người dùng khác.
+
+### 12.2. Nguyên tắc vàng — Tối thiểu hóa dữ liệu (Data Minimization)
+* Chỉ thu thập dữ liệu thực sự cần thiết cho tính năng tài chính cốt lõi khi có sự đồng ý của người dùng. Nếu không có dữ liệu đó mà hệ thống vẫn chạy bình thường $\rightarrow$ **tuyệt đối không thu thập**.
+* **Danh mục TUYỆT ĐỐI KHÔNG thu thập / không lưu trữ:**
+  1. Tên đăng nhập (username) và mật khẩu (password) Internet Banking của người dùng (Module Bank dùng mô hình SePay Cá Nhân an toàn, người dùng chỉ khai báo STK và tên ngân hàng, không lưu credentials).
+  2. Số thẻ tín dụng đầy đủ kèm mã bảo mật CVV/CVC.
+  3. Dữ liệu vị trí GPS liên tục.
+  4. Danh bạ điện thoại, tin nhắn SMS cá nhân ngoài các tin nhắn biến động số dư ngân hàng được người dùng cấp quyền đọc cục bộ.
+  5. Dữ liệu sinh trắc học đưa lên máy chủ.
+
+### 12.3. Ranh giới dữ liệu công khai vs dữ liệu cá nhân
+* **Dữ liệu công khai hợp lệ:** Cấu hình hệ thống mặc định (tiền tệ VND, ngôn ngữ), danh mục chi tiêu/thu nhập mẫu hệ thống (`is_default = true`), tỷ giá/lãi suất tham khảo công khai, dữ liệu thống kê tổng hợp đã ẩn danh hoàn toàn (khi không thể tái nhận dạng cá nhân).
+* **Ranh giới bảo mật:** Bất kỳ dữ liệu nào khi kết hợp có thể nhận dạng một cá nhân cụ thể (kể cả số tài khoản, email, số điện thoại) đều **KHÔNG ĐƯỢC COI LÀ CÔNG KHAI**. Tuyệt đối không để lộ qua các endpoint công khai (Public Endpoints).
+
+### 12.4. Sáu chốt chặn kỹ thuật bắt buộc khi lập trình & xử lý dữ liệu
+1. **User-scoped Isolation:** Mọi query đọc/ghi vào CSDL bắt buộc có điều kiện lọc theo `idaccount` / `userId` từ JWT token đã xác thực; cấm truy vấn dữ liệu không kèm ràng buộc người sở hữu.
+2. **Không ghi log dữ liệu nhạy cảm (Zero Sensitive Logging):** Cấm tuyệt đối lệnh `console.log`, `logger.info`, `logger.error` in ra mật khẩu, OTP plaintext, token plaintext, CVV hoặc nội dung giao dịch chi tiết. Winston Logger tích hợp format tự động che giấu các trường nhạy cảm (`balance`, `password`, `token`, `otp`, `code_hash`, `cvv`, `refreshtoken`).
+3. **Mã hóa đa tầng:** Mã hóa in-transit (TLS 1.3 / HTTPS) cho toàn bộ kết nối và mã hóa at-rest (AES-256-GCM) cho dữ liệu nhạy cảm.
+4. **Xác thực & Thu hồi phiên:** Token rotation, reuse detection, thu hồi toàn bộ token khi đổi mật khẩu hoặc xóa tài khoản.
+5. **Rate Limiting & Chống Brute-force:** Áp dụng rate limiter nghiêm ngặt trên các route nhạy cảm (login, otp, register, forgot-password).
+6. **Socket.io Privacy:** Mọi sự kiện thời gian thực chỉ được gửi vào room riêng `account_${idaccount}`, cấm broadcast toàn cục các sự kiện chứa PII hoặc dữ liệu tài chính.
+
+### 12.5. Quy định Thời hạn lưu trữ dữ liệu (Data Retention Policy theo Luật)
+Tuân thủ **Nghị định 13/2023/NĐ-CP**, **Nghị định 53/2022/NĐ-CP**, **Luật Kế toán 2015 (Điều 41)** và **PCI-DSS v4.0**, toàn bộ dữ liệu trong hệ thống được phân định thời hạn lưu trữ và chu trình xử lý nghiêm ngặt:
+
+| Nhóm dữ liệu | Bảng CSDL | Thời hạn quy định | Cơ chế xử lý & Chốt chặn kỹ thuật | Căn cứ pháp lý |
+|---|---|---|---|---|
+| **Mã OTP tạm thời** | `otp_code` | Tối đa **24 giờ** | • Hiệu lực mã 10 phút, hash SHA-256.<br>• **Scheduler Auto-Purge**: Chạy tự động mỗi đêm lúc 00:00 UTC+7 xóa vật lý các bản ghi `created_at < now - 24h`. | OWASP & NĐ 13/2023 |
+| **Token phiên đăng nhập** | `refreshtoken` | Tối đa **30 ngày** sau hết hạn/thu hồi | • Hash SHA-256.<br>• **Scheduler Auto-Purge**: Chạy tự động lúc 00:00 UTC+7 xóa vật lý các bản ghi có `(Expired < now OR Status = true) AND Update_at < now - 30d`. | OWASP Session Management & NĐ 53/2022 |
+| **Nhật ký kiểm toán** | `audit_log` | Tối thiểu **12 tháng** (365 ngày) | • Bất biến **Append-only**.<br>• **Trigger `trg_protect_auditlog`**: Khóa chặn tuyệt đối lệnh `UPDATE` và chặn lệnh `DELETE` nếu log chưa đủ 12 tháng. | Nghị định 53/2022/NĐ-CP (Điều 26) |
+| **Giao dịch tài chính cốt lõi** | `transaction` | Tối thiểu **5 năm** | • Bắt buộc dùng Soft Delete qua `Deleted_at`.<br>• **Trigger `trg_protect_transaction`**: Khóa chặn tuyệt đối lệnh `DELETE` vật lý đối với mọi giao dịch phát sinh dưới 5 năm. | Luật Kế toán 2015 (Điều 41) & NĐ 174/2016 |
+| **Tài khoản ngân hàng & Ví** | `bank_account`, `wallet` | Tối thiểu **5 năm** sau xóa mềm | • Chỉ xóa mềm (`Delete_at = now()`), ngắt kết nối ngân hàng.<br>• Giữ bản ghi tham chiếu để bảo toàn tính toàn vẹn của sổ cái và lịch sử giao dịch. | Luật Kế toán 2015 |
+| **Kế hoạch & Định mức** | `budget`, `bill`, `goal` | Tối thiểu **3 - 5 năm** | • Xóa mềm qua `Delete_at`, lưu trữ phục vụ báo cáo đối soát. | Best Practice Tài chính |
+| **Tài khoản & Định danh** | `account`, `user` | **30 ngày ân hạn** (`PendingDelete`) | • Trong 30 ngày: Người dùng được quyền dùng tiếp hoặc hủy xóa (`POST /api/auth/cancel-delete`).<br>• Hết 30 ngày: Tự động chuyển `Deleted` và thực thi **Quy trình Ẩn danh hóa triệt để (PII Anonymization)**: Họ tên $\rightarrow$ `"Người dùng đã xóa"`, SĐT/Địa chỉ $\rightarrow$ `null`, Email $\rightarrow$ `deleted_<id>_<hash>@anonymized.local`, Ghi chú & Ảnh chứng từ $\rightarrow$ `null`. Giữ nguyên số tiền và ngày giao dịch để duy trì sổ cái. | Nghị định 13/2023/NĐ-CP (Điều 9) |
+
+### 12.6. Cơ chế Bảo vệ 2 Đầu (Two-layer Defense Architecture)
+Hệ thống thiết lập cơ chế bảo mật 2 đầu: **Đầu 1 (Tầng Ứng dụng Backend / Client)** và **Đầu 2 (Tầng CSDL PostgreSQL Engine Triggers)**:
+
+1. **Bảo vệ Số điện thoại (`User.Phone`):**
+   - **Tầng CSDL:** Cột `Phone` kiểu `VARCHAR(256)`. **Trigger `trg_check_phone_encrypted`** ném ngoại lệ SQL chặn đứng lập tức nếu phát hiện chuỗi SĐT dạng số rõ (8 - 15 chữ số).
+   - **Tầng Ứng dụng:** Mã hóa At-Rest chuẩn **AES-256-GCM** trước khi ghi vào CSDL; Giải mã trong suốt khi trả về cho chính chủ; Che mờ (Masking) `098****321` khi hiển thị danh sách quản trị hoặc xuất báo cáo.
+2. **Bảo vệ Số tài khoản ngân hàng (`bank_account.Account_number`):**
+   - **Tầng CSDL:** Cột `Account_number` kiểu `VARCHAR(256)`. **Trigger `trg_check_bank_account_encrypted`** ném ngoại lệ SQL chặn đứng lập tức nếu phát hiện STK dạng số rõ (6 - 25 chữ số).
+   - **Tầng Ứng dụng:** Mã hóa At-Rest chuẩn **AES-256-GCM**; Masking `**** **** **** 1234` khi hiển thị trên giao diện Client và Admin.
+3. **Mã hóa Địa chỉ nhà (`User.Address`):**
+   - Mã hóa At-Rest AES-256-GCM trong CSDL; Masking trên giao diện quản trị Admin-web.
+4. **Kiểm soát Lý do khóa tài khoản (`Reason_Inactive`):**
+   - Tiện ích `validateReasonInactive` tự động quét phát hiện SĐT, Email, CCCD, Thẻ ngân hàng, hoặc từ ngữ thô tục/xúc phạm. Nếu phát hiện vi phạm, hệ thống từ chối lưu và trả về mã lỗi `400 Bad Request`.
+5. **Lọc dữ liệu nhạy cảm & Mã hóa At-Rest cho `Note`:**
+   - Trường ghi chú của Giao dịch, Ngân sách, Hóa đơn, Mục tiêu được quét qua `filterSensitiveNote` để tự động loại bỏ số thẻ tín dụng, CVV, mật khẩu, sau đó được mã hóa At-Rest AES-256-GCM trước khi lưu.
+
+### 12.7. Tra soát Ngân hàng Tức thời O(1) Qua Blind Indexing
+* Nhằm giải quyết bài toán mã hóa At-Rest số tài khoản ngân hàng mà vẫn duy trì hiệu năng xử lý tức thời cho Webhook SePay/Casso:
+  * Bảng `bank_account` bổ sung cột `Account_number_hash` `VARCHAR(64)` có chỉ mục B-Tree Index.
+  * Sinh mã hash một chiều bằng thuật toán `HMAC-SHA256` với khóa bí mật `BLIND_INDEX_SECRET` qua hàm `hashBlindIndex(accountNumber)`.
+  * SePay/Casso Worker tính hash từ STK nhận được và truy vấn $O(1)$ theo `Account_number_hash`, loại bỏ hoàn toàn việc phải quét toàn bộ bảng (Table Scan) hay giải mã tuần tự.
+
+### 12.8. Bảo mật Tệp Ảnh Chứng Từ Bằng Pre-Signed URL
+* Toàn bộ ảnh hóa đơn, biên lai chuyển tiền (`transaction.images`) được lưu trong **Private Bucket**, cấm public URL trực tiếp ra ngoài Internet.
+* Khi Client hoặc Admin cần hiển thị ảnh chứng từ:
+  * Backend sử dụng tiện ích `storage.util.js` sinh **Pre-Signed URL** có chữ ký bảo mật HMAC kèm thời hạn ngắn (15 - 30 phút).
+  * URL sau khi hết thời hạn (TTL) sẽ tự động vô hiệu hóa, bảo vệ tuyệt đối chứng từ tài chính khỏi việc bị sao chép hoặc rò rỉ công khai.
+
+
+

@@ -11,15 +11,36 @@ const UserListPage = () => {
   
   const [modals, setModals] = useState({
       filter: false,
-      blockAlert: false
+      inactivateModal: false,
+      activateModal: false,
+      deleteAlert: false,
   });
   const [userToBlock, setUserToBlock] = useState(null);
+  const [inactivateReason, setInactivateReason] = useState('');
+  const [inactivateError, setInactivateError] = useState('');
+  const [userToDelete, setUserToDelete] = useState(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [deletingUser, setDeletingUser] = useState(false);
   const [detailUserId, setDetailUserId] = useState(null);
 
   const [filter, setFilter] = useState({ location: 'all', status: 'all' });
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+
+  const getStatusBadge = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'active':
+        return 'bg-[#dcfce7] text-[#166534] border border-[#bbf7d0]'; // Xanh lá
+      case 'inactive':
+        return 'bg-[#f1f5f9] text-[#475569] border border-[#cbd5e1]'; // Xám xanh
+      case 'pendingdelete':
+        return 'bg-[#fef3c7] text-[#92400e] border border-[#fde68a]'; // Vàng
+      case 'deleted':
+        return 'bg-[#fee2e2] text-[#991b1b] border border-[#fecaca]'; // Đỏ
+      default:
+        return 'bg-surface-container-high text-secondary border border-outline-variant';
+    }
+  };
 
   const filteredUsers = users.filter((u) => {
     const matchSearch = u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()) || (u.phone || '').includes(search);
@@ -53,6 +74,9 @@ const UserListPage = () => {
           status: u.status ? u.status.toLowerCase() : 'active',
           address: u.address || '',
           username: u.username,
+          reason_inactive: u.reason_inactive || null,
+          countdown: u.countdown ?? null,
+          delete_at: u.delete_at || null,
           created_at: u.created_at,
         }));
         setUsers(mapped);
@@ -69,79 +93,145 @@ const UserListPage = () => {
     setModals(prev => ({ ...prev, [modalName]: isOpen }));
   };
 
-  const handleBlockClick = (user) => {
+  const handleInactivateClick = (user) => {
     setUserToBlock(user);
-    toggleModal('blockAlert', true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setInactivateReason('');
+    setInactivateError('');
+    toggleModal('inactivateModal', true);
   };
 
-  const confirmBlock = async () => {
+  const confirmInactivate = async (e) => {
+    if (e) e.preventDefault();
+    if (!inactivateReason.trim()) {
+      setInactivateError('Vui lòng nhập lý do vô hiệu hóa tài khoản.');
+      return;
+    }
     if (!userToBlock || updatingStatus) return;
     setUpdatingStatus(true);
     try {
-      await adminApi.updateUserStatus(userToBlock.id);
-      // Cập nhật UI local sau khi API thành công
+      await adminApi.updateUserStatus(userToBlock.id, {
+        status: 'Inactive',
+        reason_inactive: inactivateReason.trim(),
+      });
       setUsers(prev => prev.map(u =>
         u.id === userToBlock.id
-          ? { ...u, status: u.status === 'active' ? 'inactive' : 'active' }
+          ? { ...u, status: 'inactive', reason_inactive: inactivateReason.trim() }
           : u
       ));
       setUserToBlock(null);
-      toggleModal('blockAlert', false);
+      setInactivateReason('');
+      toggleModal('inactivateModal', false);
     } catch (err) {
-      console.error('Lỗi cập nhật trạng thái:', err);
+      console.error('Lỗi vô hiệu hóa tài khoản:', err);
+      setInactivateError(err.response?.data?.message || err.message || 'Lỗi khi vô hiệu hóa tài khoản');
     } finally {
       setUpdatingStatus(false);
+    }
+  };
+
+  const handleActivateClick = (user) => {
+    setUserToBlock(user);
+    toggleModal('activateModal', true);
+  };
+
+  const confirmActivate = async () => {
+    if (!userToBlock || updatingStatus) return;
+    setUpdatingStatus(true);
+    try {
+      await adminApi.updateUserStatus(userToBlock.id, { status: 'Active' });
+      setUsers(prev => prev.map(u =>
+        u.id === userToBlock.id
+          ? { ...u, status: 'active', reason_inactive: null }
+          : u
+      ));
+      setUserToBlock(null);
+      toggleModal('activateModal', false);
+    } catch (err) {
+      console.error('Lỗi kích hoạt tài khoản:', err);
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const handleDeleteClick = (user) => {
+    setUserToDelete(user);
+    toggleModal('deleteAlert', true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const confirmDelete = async () => {
+    if (!userToDelete || deletingUser) return;
+    setDeletingUser(true);
+    try {
+      await adminApi.deleteUser(userToDelete.id);
+      // Loại bỏ user đã xóa mềm khỏi danh sách hiển thị
+      setUsers(prev => prev.filter(u => u.id !== userToDelete.id));
+      setUserToDelete(null);
+      toggleModal('deleteAlert', false);
+    } catch (err) {
+      console.error('Lỗi xóa người dùng:', err);
+    } finally {
+      setDeletingUser(false);
     }
   };
 
   return (
     <>
     {/* Full-screen Loading Overlay & Operation Blocker */}
-    {updatingStatus && (
+    {(updatingStatus || deletingUser) && (
       <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[9999] flex flex-col items-center justify-center pointer-events-auto select-none animate-in fade-in duration-200">
         <div className="bg-white/95 backdrop-blur-md px-8 py-6 rounded-2xl shadow-2xl border border-outline-variant flex flex-col items-center gap-4 text-center max-w-xs mx-4">
           <div className="relative flex items-center justify-center">
-            <span className="material-symbols-outlined animate-spin text-primary text-5xl">progress_activity</span>
+            <span className={`material-symbols-outlined animate-spin ${deletingUser ? 'text-error' : 'text-primary'} text-5xl`}>progress_activity</span>
           </div>
           <div className="space-y-1">
             <h4 className="font-title-md font-bold text-on-surface text-base">
-              {userToBlock?.status === 'active' ? 'Đang vô hiệu hóa tài khoản' : 'Đang kích hoạt tài khoản'}
+              {deletingUser ? 'Đang xóa mềm người dùng' : userToBlock?.status === 'active' ? 'Đang vô hiệu hóa tài khoản' : 'Đang kích hoạt tài khoản'}
             </h4>
-            <p className="font-body-sm text-on-surface-variant text-xs">Vui lòng chờ trong giây lát...</p>
+            <p className="font-body-sm text-on-surface-variant text-xs">
+              {deletingUser ? 'Đang vô hiệu hóa ví, ngắt kết nối ngân hàng và thu hồi quyền...' : 'Vui lòng chờ trong giây lát...'}
+            </p>
           </div>
         </div>
       </div>
     )}
 
     <div className="bg-surface-bright relative p-4 md:p-6 min-h-full">
-      {modals.blockAlert && (
-          <div className="mb-6 bg-surface-container-low border border-error-container rounded-lg p-4 flex flex-col md:flex-row items-center justify-between gap-4 animate-in fade-in zoom-in-95 duration-200">
-              <div className="flex items-center gap-3 text-on-surface">
-                  <span className="material-symbols-outlined text-error">warning</span>
-                  <p className="font-body-lg">
-                      Bạn có chắc chắn muốn {userToBlock?.status === 'active' ? 'vô hiệu hóa' : 'kích hoạt'} tài khoản <strong>{userToBlock?.name}</strong> hay không?
-                  </p>
+      {/* Delete User Alert Banner */}
+      {modals.deleteAlert && (
+          <div className="mb-6 bg-surface-container-low border-2 border-error/70 rounded-xl p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-in fade-in zoom-in-95 duration-200 shadow-md">
+              <div className="flex items-start gap-3 text-on-surface">
+                  <span className="material-symbols-outlined text-error text-3xl mt-0.5">delete_forever</span>
+                  <div className="space-y-1">
+                      <p className="font-body-lg font-bold text-error">
+                          Xác nhận xóa người dùng: {userToDelete?.name} (@{userToDelete?.username})?
+                      </p>
+                      <p className="font-body-sm text-on-surface-variant text-xs leading-relaxed">
+                          ⚠️ Người dùng sẽ được xóa mềm, toàn bộ ví liên quan sẽ ngừng hoạt động, liên kết ngân hàng sẽ bị ngắt kết nối và phiên làm việc sẽ bị cưỡng chế đăng xuất ngay lập tức.
+                      </p>
+                  </div>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 self-end md:self-center shrink-0">
                   <button 
-                    disabled={updatingStatus}
-                    className="px-4 py-1.5 bg-error text-white rounded font-label-md hover:opacity-90 transition-colors cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2" 
-                    onClick={confirmBlock}
+                    disabled={deletingUser}
+                    className="px-4 py-2 bg-error text-white rounded font-label-md hover:opacity-90 transition-colors cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2" 
+                    onClick={confirmDelete}
                   >
-                    {updatingStatus && <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>}
-                    Xác nhận
+                    {deletingUser && <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>}
+                    Xác nhận xóa
                   </button>
                   <button 
-                    disabled={updatingStatus}
-                    className="px-4 py-1.5 bg-surface-container-high text-on-surface rounded font-label-md hover:bg-surface-container-low transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" 
-                    onClick={() => { setUserToBlock(null); toggleModal('blockAlert', false); }}
+                    disabled={deletingUser}
+                    className="px-4 py-2 bg-surface-container-high text-on-surface rounded font-label-md hover:bg-surface-container-low transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" 
+                    onClick={() => { setUserToDelete(null); toggleModal('deleteAlert', false); }}
                   >
                     Hủy bỏ
                   </button>
               </div>
           </div>
       )}
+
+
 
       <div className="max-w-[1440px] mx-auto w-full">
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-stack-lg gap-4">
@@ -207,20 +297,50 @@ const UserListPage = () => {
                                         <td className="px-6 py-4 text-on-surface-variant">{item.email}</td>
                                         <td className="px-6 py-4 text-on-surface-variant font-tabular-nums">{item.phone}</td>
                                         <td className="px-6 py-4 text-center">
-                                            <span className={`inline-flex items-center px-2 py-1 rounded-full font-label-md text-[10px] ${isActive ? 'bg-[#dcfce7] text-[#166534]' : 'bg-surface-container-high text-secondary'}`}>
-                                              {USER_STATUS_LABELS[item.status] || item.status}
+                                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full font-label-md text-[11px] font-medium ${getStatusBadge(item.status)}`}>
+                                              {item.status === 'pendingdelete' && item.countdown !== null && item.countdown !== undefined
+                                                ? `Chờ xóa (${item.countdown} ngày)`
+                                                : (USER_STATUS_LABELS[item.status] || item.status)}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-right">
-                                            <button 
-                                                className={`px-3 py-1.5 rounded font-label-md text-[12px] transition-colors shadow-sm cursor-pointer border ${isActive ? 'bg-white border-error text-error hover:bg-error-container' : 'bg-primary border-primary text-white hover:bg-surface-tint'}`} 
-                                                onClick={() => handleBlockClick(item)}
-                                            >
-                                                {isActive ? 'Vô hiệu hóa' : 'Kích hoạt'}
-                                            </button>
-                                            <button className="p-1.5 text-secondary hover:text-primary transition-colors ml-2 border border-transparent hover:border-on-background rounded cursor-pointer" onClick={() => setDetailUserId(item.id)} title="Xem chi tiết">
-                                                <span className="material-symbols-outlined text-[20px]">visibility</span>
-                                            </button>
+                                            <div className="flex items-center justify-end gap-2">
+                                                {item.status === 'active' && (
+                                                    <button 
+                                                        className="px-3 py-1.5 rounded font-label-md text-[12px] transition-colors shadow-sm cursor-pointer border border-error bg-white text-error hover:bg-error-container font-medium" 
+                                                        onClick={() => handleInactivateClick(item)}
+                                                    >
+                                                        Vô hiệu hóa
+                                                    </button>
+                                                )}
+                                                {item.status === 'inactive' && (
+                                                    <>
+                                                        <button 
+                                                            className="px-3 py-1.5 rounded font-label-md text-[12px] transition-colors shadow-sm cursor-pointer border border-primary bg-primary text-white hover:bg-surface-tint font-medium" 
+                                                            onClick={() => handleActivateClick(item)}
+                                                        >
+                                                            Kích hoạt
+                                                        </button>
+                                                        <button 
+                                                            className="px-3 py-1.5 rounded font-label-md text-[12px] transition-colors shadow-sm cursor-pointer border border-error bg-white text-error hover:bg-error hover:text-white flex items-center gap-1 font-semibold"
+                                                            onClick={() => handleDeleteClick(item)}
+                                                            title="Xóa người dùng"
+                                                        >
+                                                            <span className="material-symbols-outlined text-[16px]">delete</span>
+                                                            Xóa
+                                                        </button>
+                                                    </>
+                                                )}
+                                                {item.status === 'pendingdelete' && (
+                                                    <span className="text-xs text-amber-800 font-medium px-2 italic">Chỉ xem</span>
+                                                )}
+                                                {item.status === 'deleted' && (
+                                                    <span className="text-xs text-error font-medium px-2 italic">Đã xóa</span>
+                                                )}
+                                                <button className="p-1.5 text-secondary hover:text-primary transition-colors border border-transparent hover:border-on-background rounded cursor-pointer" onClick={() => setDetailUserId(item.id)} title="Xem chi tiết">
+                                                    <span className="material-symbols-outlined text-[20px]">visibility</span>
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 );
@@ -276,16 +396,24 @@ const UserListPage = () => {
                           <label className="block text-[11px] font-bold uppercase tracking-wider text-on-surface mb-3">Trạng thái</label>
                           <div className="space-y-3">
                               <label className="flex items-center gap-3 cursor-pointer group">
-                                  <input type="radio" name="status" value="all" checked={filter.status === 'all'} onChange={e => setFilter({ ...filter, status: e.target.value })} className="w-4 h-4 text-primary focus:ring-primary border-outline-variant" />
+                                  <input type="radio" name="status" value="all" checked={filter.status === 'all'} onChange={e => setFilter({ ...filter, status: e.target.value })} className="w-4 h-4 text-primary focus:ring-primary border-outline-variant cursor-pointer" />
                                   <span className="text-on-surface font-body-md group-hover:text-primary transition-colors">Tất cả</span>
                               </label>
                               <label className="flex items-center gap-3 cursor-pointer group">
-                                  <input type="radio" name="status" value="active" checked={filter.status === 'active'} onChange={e => setFilter({ ...filter, status: e.target.value })} className="w-4 h-4 text-primary focus:ring-primary border-outline-variant" />
+                                  <input type="radio" name="status" value="active" checked={filter.status === 'active'} onChange={e => setFilter({ ...filter, status: e.target.value })} className="w-4 h-4 text-primary focus:ring-primary border-outline-variant cursor-pointer" />
                                   <span className="text-on-surface font-body-md group-hover:text-primary transition-colors">{USER_STATUS_LABELS['active']}</span>
                               </label>
                               <label className="flex items-center gap-3 cursor-pointer group">
-                                  <input type="radio" name="status" value="inactive" checked={filter.status === 'inactive'} onChange={e => setFilter({ ...filter, status: e.target.value })} className="w-4 h-4 text-primary focus:ring-primary border-outline-variant" />
+                                  <input type="radio" name="status" value="inactive" checked={filter.status === 'inactive'} onChange={e => setFilter({ ...filter, status: e.target.value })} className="w-4 h-4 text-primary focus:ring-primary border-outline-variant cursor-pointer" />
                                   <span className="text-on-surface font-body-md group-hover:text-primary transition-colors">{USER_STATUS_LABELS['inactive']}</span>
+                              </label>
+                              <label className="flex items-center gap-3 cursor-pointer group">
+                                  <input type="radio" name="status" value="pendingdelete" checked={filter.status === 'pendingdelete'} onChange={e => setFilter({ ...filter, status: e.target.value })} className="w-4 h-4 text-primary focus:ring-primary border-outline-variant cursor-pointer" />
+                                  <span className="text-on-surface font-body-md group-hover:text-primary transition-colors">{USER_STATUS_LABELS['pendingdelete']}</span>
+                              </label>
+                              <label className="flex items-center gap-3 cursor-pointer group">
+                                  <input type="radio" name="status" value="deleted" checked={filter.status === 'deleted'} onChange={e => setFilter({ ...filter, status: e.target.value })} className="w-4 h-4 text-primary focus:ring-primary border-outline-variant cursor-pointer" />
+                                  <span className="text-on-surface font-body-md group-hover:text-primary transition-colors">{USER_STATUS_LABELS['deleted']}</span>
                               </label>
                           </div>
                       </div>
@@ -296,6 +424,133 @@ const UserListPage = () => {
                   </div>
               </div>
           </div>
+      )}
+
+      {/* Inactivate User Modal */}
+      {modals.inactivateModal && userToBlock && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden border border-outline-variant animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-outline-variant flex items-center justify-between bg-surface">
+              <div className="flex items-center gap-2.5 text-error">
+                <span className="material-symbols-outlined text-2xl">block</span>
+                <h3 className="font-headline-sm text-on-surface font-bold text-lg m-0">Vô hiệu hóa tài khoản</h3>
+              </div>
+              <button 
+                className="text-on-surface-variant hover:text-on-surface cursor-pointer p-1 rounded-full hover:bg-surface-container-high transition-colors" 
+                onClick={() => { toggleModal('inactivateModal', false); setUserToBlock(null); }}
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            {/* Body */}
+            <form onSubmit={confirmInactivate}>
+              <div className="p-6 space-y-4">
+                <div className="bg-surface-container-low p-3.5 rounded-xl border border-outline-variant/60 space-y-1">
+                  <p className="text-xs text-on-surface-variant font-medium">Tài khoản vô hiệu hóa:</p>
+                  <p className="font-title-md font-bold text-on-surface text-sm">
+                    {userToBlock.name} <span className="font-normal text-on-surface-variant">(@{userToBlock.username})</span>
+                  </p>
+                  <p className="text-xs text-on-surface-variant">{userToBlock.email}</p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-on-surface">
+                    Lý do vô hiệu hóa <span className="text-error">*</span>
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={inactivateReason}
+                    onChange={(e) => {
+                      setInactivateReason(e.target.value);
+                      if (inactivateError) setInactivateError('');
+                    }}
+                    placeholder="Nhập lý do vô hiệu hóa (vi phạm chính sách, yêu cầu bảo mật, gian lận...)"
+                    className={`w-full px-3.5 py-2.5 border rounded-lg text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all resize-none ${
+                      inactivateError ? 'border-error ring-1 ring-error' : 'border-outline-variant focus:border-primary'
+                    }`}
+                    autoFocus
+                  />
+                  {inactivateError && (
+                    <p className="text-xs text-error font-medium flex items-center gap-1 mt-1">
+                      <span className="material-symbols-outlined text-sm">error</span>
+                      {inactivateError}
+                    </p>
+                  )}
+                  <p className="text-[11px] text-on-surface-variant">
+                    ⚠️ Người dùng sẽ bị cưỡng chế đăng xuất và nhận được thông báo kèm lý do này khi truy cập lại.
+                  </p>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-4 bg-surface-bright border-t border-outline-variant flex justify-end items-center gap-3">
+                <button
+                  type="button"
+                  disabled={updatingStatus}
+                  className="px-4 py-2 border border-outline rounded-lg text-on-surface font-label-md hover:bg-surface-container-low transition-colors cursor-pointer text-sm disabled:opacity-50"
+                  onClick={() => { toggleModal('inactivateModal', false); setUserToBlock(null); }}
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="submit"
+                  disabled={updatingStatus || !inactivateReason.trim()}
+                  className="px-5 py-2 bg-error text-white rounded-lg font-label-md hover:opacity-90 transition-all cursor-pointer shadow-sm text-sm font-semibold flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {updatingStatus && <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>}
+                  Vô hiệu hóa
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Activate User Modal */}
+      {modals.activateModal && userToBlock && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden border border-outline-variant animate-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b border-outline-variant flex items-center justify-between bg-surface">
+              <div className="flex items-center gap-2 text-primary">
+                <span className="material-symbols-outlined text-2xl">check_circle</span>
+                <h3 className="font-headline-sm text-on-surface font-bold text-lg m-0">Kích hoạt tài khoản</h3>
+              </div>
+              <button 
+                className="text-on-surface-variant hover:text-on-surface cursor-pointer p-1 rounded-full hover:bg-surface-container-high transition-colors" 
+                onClick={() => { toggleModal('activateModal', false); setUserToBlock(null); }}
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="p-6 space-y-3">
+              <p className="text-sm text-on-surface">
+                Bạn có chắc chắn muốn kích hoạt lại tài khoản <strong>{userToBlock.name}</strong> (@{userToBlock.username})?
+              </p>
+              <p className="text-xs text-on-surface-variant">
+                Lý do vô hiệu hóa trước đó sẽ được xóa bỏ và người dùng có thể đăng nhập bình thường.
+              </p>
+            </div>
+            <div className="px-6 py-4 bg-surface-bright border-t border-outline-variant flex justify-end items-center gap-3">
+              <button
+                disabled={updatingStatus}
+                className="px-4 py-2 border border-outline rounded-lg text-on-surface font-label-md hover:bg-surface-container-low transition-colors cursor-pointer text-sm disabled:opacity-50"
+                onClick={() => { toggleModal('activateModal', false); setUserToBlock(null); }}
+              >
+                Hủy bỏ
+              </button>
+              <button
+                disabled={updatingStatus}
+                className="px-5 py-2 bg-primary text-white rounded-lg font-label-md hover:bg-surface-tint transition-all cursor-pointer shadow-sm text-sm font-semibold flex items-center gap-2 disabled:opacity-50"
+                onClick={confirmActivate}
+              >
+                {updatingStatus && <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>}
+                Kích hoạt
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
 
