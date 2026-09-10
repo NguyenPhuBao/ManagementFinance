@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
+import '../../data/services/dieu_chinh_so_du_service.dart';
+import '../../domain/wallet_status.dart';
+import '../../domain/wallet_type.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../data/models/wallet_entity.dart';
@@ -19,15 +22,13 @@ class WalletEditPage extends StatefulWidget {
 class _WalletEditPageState extends State<WalletEditPage> {
   final TextEditingController _balanceController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
-  final NumberFormat _currencyFormat = NumberFormat.decimalPattern('vi_VN');
-
   bool _isLoading = true;
   bool _isSaving = false;
   WalletEntity? _wallet;
 
   int _selectedTypeIndex = 0;
-  final List<String> _walletTypes = ['Tiền mặt', 'Ngân hàng', 'Ví điện tử', 'Thẻ tín dụng'];
-  final List<String> _walletTypeKeys = ['cash', 'bank', 'ewallet', 'debt'];
+  /// Ví liên kết ngân hàng thì KHÔNG cho đổi loại — xem `_loaiCoDinh`.
+  bool _loaiCoDinh = false;
 
   int _selectedIconIndex = 0;
   final List<IconData> _iconOptions = [
@@ -53,6 +54,14 @@ class _WalletEditPageState extends State<WalletEditPage> {
   bool _isDefault = false;
   bool _includeInTotal = true;
 
+  /// Công tắc "Kích hoạt hoạt động" — mặt trái của lưu trữ ví.
+  ///
+  /// ⚠️ KHÔNG ghi qua `copyWith(status: ...)` như hai cờ trên. Hai chốt
+  /// chặn (không lưu trữ ví mặc định, không lưu trữ ví hoạt động cuối cùng)
+  /// chỉ nằm trong `WalletRepository.setArchived`; ghi thẳng qua
+  /// `updateWallet` là đi vòng qua cả hai, im lặng.
+  bool _dangHoatDong = true;
+
   @override
   void initState() {
     super.initState();
@@ -67,10 +76,18 @@ class _WalletEditPageState extends State<WalletEditPage> {
         setState(() {
           _wallet = wallet;
           _nameController.text = wallet.name;
-          _balanceController.text = _currencyFormat.format(wallet.balance.toInt());
+          _balanceController.text = CurrencyFormatter.formatSoThoi(wallet.balance.toInt());
 
-          final typeIdx = _walletTypeKeys.indexOf(wallet.type);
-          if (typeIdx != -1) _selectedTypeIndex = typeIdx;
+          // Ví `banking` do luồng liên kết ngân hàng tạo ra và KHÔNG nằm
+          // trong danh sách chọn được. Bản trước dùng `indexOf` rồi bỏ qua khi
+          // `-1`, nên ô chọn đứng nguyên ở "Tiền mặt" — lưu lại là âm thầm đổi
+          // loại ví, và vỡ `chk_wallet_banking_link` vì `Id_bank_casso` vẫn
+          // còn. Ở đây khoá hẳn ô chọn thay vì đoán.
+          final loai = WalletType.tuKhoa(wallet.type);
+          _loaiCoDinh = !WalletType.chonDuoc.contains(loai);
+          if (!_loaiCoDinh) {
+            _selectedTypeIndex = WalletType.chonDuoc.indexOf(loai);
+          }
 
           final iconIdx = _iconKeys.indexOf(wallet.icon);
           if (iconIdx != -1) _selectedIconIndex = iconIdx;
@@ -80,6 +97,7 @@ class _WalletEditPageState extends State<WalletEditPage> {
 
           _isDefault = wallet.isDefault;
           _includeInTotal = wallet.includeInTotal;
+          _dangHoatDong = WalletStatus.laHoatDong(wallet.status);
           _isLoading = false;
         });
       } else if (mounted) {
@@ -121,16 +139,49 @@ class _WalletEditPageState extends State<WalletEditPage> {
     try {
       final updatedWallet = _wallet!.copyWith(
         name:           name,
-        type:           _walletTypeKeys[_selectedTypeIndex],
-        balance:        balance,
+        // Loại cố định thì giữ nguyên chữ đang có, đừng dựng lại từ ô chọn.
+        type:           _loaiCoDinh
+            ? (_wallet?.type ?? WalletType.cash.khoa)
+            : WalletType.chonDuoc[_selectedTypeIndex].khoa,
+        // Số dư giữ NGUYÊN ở đây. Nó đi đường riêng ngay dưới — đường duy
+        // nhất sinh ra một khoản trong sổ giao dịch, để lịch sử và số dư
+        // không trôi khỏi nhau.
+        balance:        _wallet!.balance,
         icon:           iconKey,
         colour:         colour,
         isDefault:      _isDefault,
         includeInTotal: _includeInTotal,
+        // Trạng thái lưu trữ cố ý GIỮ NGUYÊN ở đây — nó đi đường riêng
+        // ngay dưới, đường duy nhất có chốt chặn.
+        status:         _wallet!.status,
         updatedAt:      DateTime.now(),
       );
 
       await sl<WalletRepository>().updateWallet(updatedWallet);
+
+      // Chỉ gọi khi người dùng THẬT SỰ đổi công tắc: mỗi lần gọi là một
+      // lần ghi và một lần vào hàng đợi đẩy, nên sửa tên ví không được kéo
+      // theo một lượt đẩy trạng thái vô ích.
+      if (_dangHoatDong != WalletStatus.laHoatDong(_wallet!.status)) {
+        await sl<WalletRepository>()
+            .setArchived(widget.id, luuTru: !_dangHoatDong);
+      }
+
+      // Ô số dư là đường ĐỐI SOÁT, không phải ô ghi đè. Trước bản này nó
+      // ghi thẳng vào cột `balance`, nên số dư ví trôi khỏi lịch sử giao
+      // dịch mà không dòng nào giải thích — và "số dư cuối kỳ" của báo cáo,
+      // vốn suy ngược từ số dư hiện tại, không đối chiếu được với gì cả.
+      //
+      // Dịch vụ tự bỏ qua khi hai số bằng nhau, nên không cần so ở đây;
+      // nhưng vẫn so, để sửa mỗi tên ví không kéo theo một lượt đọc CSDL.
+      if (balance != _wallet!.balance) {
+        await sl<DieuChinhSoDuService>().dieuChinh(
+          walletId: widget.id,
+          soDuThucTe: balance,
+          lyDo: '',
+        );
+      }
+
       if (mounted) context.pop(true);
     } catch (e) {
       if (mounted) {
@@ -285,10 +336,13 @@ class _WalletEditPageState extends State<WalletEditPage> {
             child: Wrap(
               spacing: 8.0,
               runSpacing: 8.0,
-              children: List.generate(_walletTypes.length, (index) {
-                final isSelected = index == _selectedTypeIndex;
+              children: List.generate(
+                  _loaiCoDinh ? 1 : WalletType.chonDuoc.length, (index) {
+                final isSelected = _loaiCoDinh || index == _selectedTypeIndex;
                 return GestureDetector(
-                  onTap: () => setState(() => _selectedTypeIndex = index),
+                  onTap: _loaiCoDinh
+                      ? null
+                      : () => setState(() => _selectedTypeIndex = index),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -300,7 +354,9 @@ class _WalletEditPageState extends State<WalletEditPage> {
                       ),
                     ),
                     child: Text(
-                      _walletTypes[index],
+                      _loaiCoDinh
+                          ? WalletType.tuKhoa(_wallet?.type).nhan
+                          : WalletType.chonDuoc[index].nhan,
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w400,
@@ -315,6 +371,8 @@ class _WalletEditPageState extends State<WalletEditPage> {
           const SizedBox(height: 24.0),
           _buildFormSection(
             title: 'SỐ DƯ VÍ HIỆN TẠI',
+            chuThich: 'Sửa số dư sẽ tạo một khoản điều chỉnh trong sổ giao '
+                'dịch, để lịch sử khớp với số thực tế.',
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               decoration: BoxDecoration(
@@ -346,7 +404,7 @@ class _WalletEditPageState extends State<WalletEditPage> {
                         final digitsOnly = value.replaceAll('.', '');
                         if (digitsOnly.isNotEmpty) {
                           final number = int.tryParse(digitsOnly) ?? 0;
-                          final formatted = _currencyFormat.format(number);
+                          final formatted = CurrencyFormatter.formatSoThoi(number);
                           if (_balanceController.text != formatted) {
                             _balanceController.value = TextEditingValue(
                               text: formatted,
@@ -429,7 +487,11 @@ class _WalletEditPageState extends State<WalletEditPage> {
     );
   }
 
-  Widget _buildFormSection({required String title, required Widget child}) {
+  Widget _buildFormSection({
+    required String title,
+    required Widget child,
+    String? chuThich,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -442,6 +504,16 @@ class _WalletEditPageState extends State<WalletEditPage> {
             color: AppColors.onSurfaceVariant,
           ),
         ),
+        if (chuThich != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            chuThich,
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
         const SizedBox(height: 12.0),
         child,
       ],
@@ -474,6 +546,12 @@ class _WalletEditPageState extends State<WalletEditPage> {
             value: _includeInTotal,
             onChanged: (val) => setState(() => _includeInTotal = val),
           ),
+          const Divider(height: 1, color: AppColors.borderSubtle),
+          _buildSwitchTile(
+            title: 'Kích hoạt hoạt động',
+            value: _dangHoatDong,
+            onChanged: (val) => setState(() => _dangHoatDong = val),
+          ),
         ],
       ),
     );
@@ -489,12 +567,18 @@ class _WalletEditPageState extends State<WalletEditPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w400,
-              color: AppColors.onSurface,
+          // `Expanded` chứ không `Text` trần: nhãn dài hơn chỗ trống thì
+          // hàng này TRÀN, và Flutter báo tràn qua `FlutterError.reportError`
+          // chứ không ném ra chỗ gọi — nên nó chỉ hiện thành sọc vàng trên
+          // máy thật, im lặng với mọi test chỉ `pumpWidget` + `expect`.
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w400,
+                color: AppColors.onSurface,
+              ),
             ),
           ),
           Switch(

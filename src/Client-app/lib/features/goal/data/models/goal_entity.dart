@@ -62,6 +62,12 @@ class GoalEntity {
   /// đồng ý trước.
   final String? timeRecurrence;
 
+  /// Thứ tự ưu tiên do người dùng kéo thả. `null` = **chưa sắp**, xếp CUỐI.
+  ///
+  /// Số nhỏ hơn đứng trước, các giá trị cách nhau 100. Quy ước đầy đủ ở chú
+  /// thích cột `Goals.priority`; phép sắp lại ở `goal_priority.dart`.
+  final int? priority;
+
   final String icon;
   final String colour;
   final String note;
@@ -86,6 +92,7 @@ class GoalEntity {
     this.autoDepositLastRun,
     this.recurrence = false,
     this.timeRecurrence,
+    this.priority,
     this.icon = 'flag',
     this.colour = '#4CAF50',
     this.note = '',
@@ -112,6 +119,7 @@ class GoalEntity {
       autoDepositLastRun: d.autoDepositLastRun,
       recurrence: d.recurrence,
       timeRecurrence: d.timeRecurrence,
+      priority: d.priority,
       icon: d.icon,
       colour: d.colour,
       note: d.note,
@@ -139,6 +147,7 @@ class GoalEntity {
       autoDepositLastRun: Value(autoDepositLastRun),
       recurrence: Value(recurrence),
       timeRecurrence: Value(timeRecurrence),
+      priority: Value(priority),
       icon: Value(icon),
       colour: Value(colour),
       note: Value(note),
@@ -165,6 +174,7 @@ class GoalEntity {
     DateTime? autoDepositLastRun,
     bool? recurrence,
     String? timeRecurrence,
+    int? priority,
     String? icon,
     String? colour,
     String? note,
@@ -189,6 +199,7 @@ class GoalEntity {
       autoDepositLastRun: autoDepositLastRun ?? this.autoDepositLastRun,
       recurrence: recurrence ?? this.recurrence,
       timeRecurrence: timeRecurrence ?? this.timeRecurrence,
+      priority: priority ?? this.priority,
       icon: icon ?? this.icon,
       colour: colour ?? this.colour,
       note: note ?? this.note,

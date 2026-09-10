@@ -5,6 +5,7 @@ import '../../../../core/di/injection_container.dart';
 import '../../../../core/notification/os/os_notifier.dart';
 import '../../../../core/notification/prefs/notification_prefs.dart';
 import '../../../../core/notification/prefs/notification_prefs_store.dart';
+import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
 
 /// Trang cài đặt thông báo — `/settings/notifications`.
@@ -41,6 +42,18 @@ class NotificationSettingsPage extends StatefulWidget {
 
   static Key khoaCongTacNhom(NotificationGroup nhom) =>
       Key('notification_settings_${nhom.name}');
+
+  static const Key khoaNguongSoDu = Key('notification_settings_nguong_so_du');
+
+  static const Key khoaCongTacGhiChep =
+      Key('notification_settings_ghi_chep');
+
+  static const Key khoaGioGhiChep = Key('notification_settings_gio_ghi_chep');
+
+  static const Key khoaCongTacTongKet =
+      Key('notification_settings_tong_ket');
+  static const Key khoaThuTongKet = Key('notification_settings_thu_tong_ket');
+  static const Key khoaGioTongKet = Key('notification_settings_gio_tong_ket');
 
   @override
   State<NotificationSettingsPage> createState() =>
@@ -152,6 +165,63 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     );
     if (chon == null) return;
     await _ghi(_prefs.copyWith(gioNhac: chon.hour, phutNhac: chon.minute));
+  }
+
+  /// Giờ RIÊNG cho lời nhắc ghi chép — xem `NotificationPrefs.gioNhacGhiChep`.
+  Future<void> _chonGioGhiChep() async {
+    final chon = await showTimePicker(
+      context: context,
+      initialTime:
+          TimeOfDay(hour: _prefs.gioNhacGhiChep, minute: _prefs.phutNhacGhiChep),
+    );
+    if (chon == null) return;
+    await _ghi(_prefs.copyWith(
+      gioNhacGhiChep: chon.hour,
+      phutNhacGhiChep: chon.minute,
+    ));
+  }
+
+  /// Giờ RIÊNG cho Tổng kết tuần — xem `NotificationPrefs.thuTongKet`.
+  Future<void> _chonGioTongKet() async {
+    final chon = await showTimePicker(
+      context: context,
+      initialTime:
+          TimeOfDay(hour: _prefs.gioTongKet, minute: _prefs.phutTongKet),
+    );
+    if (chon == null) return;
+    await _ghi(_prefs.copyWith(
+      gioTongKet: chon.hour,
+      phutTongKet: chon.minute,
+    ));
+  }
+
+  /// Chọn thứ trong tuần. Bảy dòng trong một bảng chọn thay vì bảy chip: chúng
+  /// không vừa một hàng ở 411dp, và một `Wrap` hai hàng đọc như hai nhóm.
+  Future<void> _chonThuTongKet() async {
+    final chon = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var thu = DateTime.monday; thu <= DateTime.sunday; thu++)
+              ListTile(
+                title: Text(_tenThu(thu)),
+                trailing: thu == _prefs.thuTongKet
+                    ? const Icon(Icons.check, color: AppColors.income)
+                    : null,
+                onTap: () => Navigator.pop(ctx, thu),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (chon == null) return;
+    await _ghi(_prefs.copyWith(thuTongKet: chon));
   }
 
   @override
@@ -287,6 +357,108 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                           _hangSoNgay(),
                         ],
                       ),
+                      const SizedBox(height: 24),
+                      _the(
+                        tieuDe: 'SỐ DƯ VÍ',
+                        children: [_hangNguongSoDu()],
+                      ),
+                      const SizedBox(height: 24),
+                      _the(
+                        tieuDe: 'NHẮC GHI CHÉP',
+                        children: [
+                          _hangCongTac(
+                            khoa:
+                                NotificationSettingsPage.khoaCongTacGhiChep,
+                            icon: Icons.edit_calendar_outlined,
+                            nhan: 'Nhắc ghi chép hằng ngày',
+                            phu: 'Nhắc vào cuối ngày nếu hôm đó bạn chưa ghi '
+                                'giao dịch nào.',
+                            giaTri: _prefs.nhacGhiChepBat,
+                            onChanged: (v) =>
+                                _ghi(_prefs.copyWith(nhacGhiChepBat: v)),
+                          ),
+                          // Giờ chỉ hiện khi công tắc bật, cùng lý lẽ với hai
+                          // mốc giờ im lặng bên trên.
+                          if (_prefs.nhacGhiChepBat) ...[
+                            const Divider(
+                                height: 1, color: AppColors.outlineVariant),
+                            _hangBam(
+                              khoa: NotificationSettingsPage.khoaGioGhiChep,
+                              icon: Icons.schedule_outlined,
+                              nhan: 'Giờ nhắc',
+                              phu: 'Giờ im lặng không chặn lời nhắc này.',
+                              trailing: Text(
+                                _gioGhiChepHienThi,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                              onTap: _chonGioGhiChep,
+                            ),
+                          ],
+                          const _GhiChu(
+                            'Lời nhắc này chỉ hiện ngoài màn hình, không lưu '
+                            'vào trung tâm thông báo.',
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      _the(
+                        tieuDe: 'TỔNG KẾT TUẦN',
+                        children: [
+                          _hangCongTac(
+                            khoa:
+                                NotificationSettingsPage.khoaCongTacTongKet,
+                            icon: Icons.calendar_view_week_outlined,
+                            nhan: 'Tổng kết tuần',
+                            phu: 'Mỗi tuần một lời mời nhìn lại bạn đã tiêu '
+                                'vào đâu.',
+                            giaTri: _prefs.tongKetTuanBat,
+                            onChanged: (v) =>
+                                _ghi(_prefs.copyWith(tongKetTuanBat: v)),
+                          ),
+                          // Thứ và giờ chỉ hiện khi công tắc bật, cùng lý lẽ
+                          // với lời nhắc ghi chép bên trên.
+                          if (_prefs.tongKetTuanBat) ...[
+                            const Divider(
+                                height: 1, color: AppColors.outlineVariant),
+                            _hangBam(
+                              khoa: NotificationSettingsPage.khoaThuTongKet,
+                              icon: Icons.event_outlined,
+                              nhan: 'Ngày trong tuần',
+                              phu: 'Tổng kết nói về tuần vừa khép lại.',
+                              trailing: Text(
+                                _tenThu(_prefs.thuTongKet),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                              onTap: _chonThuTongKet,
+                            ),
+                            const Divider(
+                                height: 1, color: AppColors.outlineVariant),
+                            _hangBam(
+                              khoa: NotificationSettingsPage.khoaGioTongKet,
+                              icon: Icons.schedule_outlined,
+                              nhan: 'Giờ nhắc',
+                              phu: 'Giờ im lặng không chặn lời nhắc này.',
+                              trailing: Text(
+                                _gioTongKetHienThi,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                              onTap: _chonGioTongKet,
+                            ),
+                          ],
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -296,6 +468,14 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
   String get _gioHienThi =>
       '${_prefs.gioNhac.toString().padLeft(2, '0')}:'
       '${_prefs.phutNhac.toString().padLeft(2, '0')}';
+
+  String get _gioTongKetHienThi =>
+      '${_prefs.gioTongKet.toString().padLeft(2, '0')}:'
+      '${_prefs.phutTongKet.toString().padLeft(2, '0')}';
+
+  String get _gioGhiChepHienThi =>
+      '${_prefs.gioNhacGhiChep.toString().padLeft(2, '0')}:'
+      '${_prefs.phutNhacGhiChep.toString().padLeft(2, '0')}';
 
   Widget _the({required String tieuDe, required List<Widget> children}) {
     return Container(
@@ -361,8 +541,10 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     required String phu,
     required Widget trailing,
     required VoidCallback onTap,
+    Key? khoa,
   }) {
     return InkWell(
+      key: khoa,
       onTap: onTap,
       child: _khung(icon: icon, nhan: nhan, phu: phu, trailing: trailing),
     );
@@ -429,6 +611,43 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     );
   }
 
+  Widget _hangNguongSoDu() {
+    // Danh sách rời chứ không phải ô nhập tiền, cùng lý lẽ với `_hangSoNgay`:
+    // gõ tay mở đường cho những giá trị mà `NotificationPrefs` sẽ lặng lẽ quy
+    // về 0, và người dùng chỉ thấy con số của mình biến mất.
+    const luaChon = [0, 50000, 100000, 200000, 500000, 1000000, 2000000];
+
+    return _khung(
+      icon: Icons.account_balance_wallet_outlined,
+      nhan: 'Cảnh báo số dư thấp',
+      phu: 'Báo khi một ví còn dưới mức này. Ví nợ không tính.',
+      trailing: DropdownButton<int>(
+        key: NotificationSettingsPage.khoaNguongSoDu,
+        // Giá trị lạ — do sửa tay hoặc do một bản sau đổi danh sách — rơi về
+        // `null` kèm `hint`, chứ không được ném giữa `build`.
+        value: luaChon.contains(_prefs.nguongSoDuThap)
+            ? _prefs.nguongSoDuThap
+            : null,
+        hint: Text(CurrencyFormatter.format(_prefs.nguongSoDuThap)),
+        underline: const SizedBox.shrink(),
+        items: [
+          for (final n in luaChon)
+            DropdownMenuItem(
+              value: n,
+              // `0` phải đọc thành "Tắt", không phải "0 đ": một ngưỡng bằng
+              // không đọc như "báo khi ví hết sạch", trong khi nó tắt hẳn
+              // tính năng.
+              child: Text(n == 0 ? 'Tắt' : CurrencyFormatter.format(n)),
+            ),
+        ],
+        onChanged: (v) {
+          if (v == null) return;
+          _ghi(_prefs.copyWith(nguongSoDuThap: v));
+        },
+      ),
+    );
+  }
+
   Widget _khung({
     required IconData icon,
     required String nhan,
@@ -477,6 +696,8 @@ String _tenNhom(NotificationGroup nhom) {
       return 'Mục tiêu';
     case NotificationGroup.system:
       return 'Hệ thống';
+    case NotificationGroup.summary:
+      return 'Tổng kết';
   }
 }
 
@@ -489,7 +710,9 @@ String _moTaNhom(NotificationGroup nhom) {
     case NotificationGroup.goal:
       return 'Hoàn thành và trễ tiến độ.';
     case NotificationGroup.system:
-      return 'Đồng bộ hỏng và số dư ví âm.';
+      return 'Đồng bộ hỏng và cảnh báo số dư ví.';
+    case NotificationGroup.summary:
+      return 'Nhìn lại tuần vừa qua.';
   }
 }
 
@@ -503,6 +726,8 @@ IconData _iconNhom(NotificationGroup nhom) {
       return Icons.flag_outlined;
     case NotificationGroup.system:
       return Icons.sync_problem_outlined;
+    case NotificationGroup.summary:
+      return Icons.calendar_view_week_outlined;
   }
 }
 
@@ -542,3 +767,16 @@ class _ChuaDangNhap extends StatelessWidget {
     );
   }
 }
+
+/// Tên thứ trong tuần theo quy ước `DateTime.weekday` (1 = thứ Hai).
+String _tenThu(int thu) => switch (thu) {
+      DateTime.tuesday => 'Thứ Ba',
+      DateTime.wednesday => 'Thứ Tư',
+      DateTime.thursday => 'Thứ Năm',
+      DateTime.friday => 'Thứ Sáu',
+      DateTime.saturday => 'Thứ Bảy',
+      DateTime.sunday => 'Chủ nhật',
+      // Thứ Hai là mặc định, và cũng là chỗ rơi cho giá trị lạ — `fromJson` đã
+      // kẹp về dải 1–7 nên nhánh này chỉ còn là lưới cuối.
+      _ => 'Thứ Hai',
+    };

@@ -43,3 +43,56 @@ bool laKhoanRutKhoiMucTieu({
   if (viTichLuy == null || viTichLuy.isEmpty) return false;
   return viCuaHang == viTichLuy;
 }
+
+/// Hậu tố ghi chú của khoản nạp do **bộ trích tự động** ghi.
+///
+/// ## Vì sao là HẬU TỐ chứ không phải một tiền tố riêng
+///
+/// Khoản trích tự động và khoản nạp tay cố ý giống hệt nhau trên mọi cột (mục
+/// 3.12 `GOAL_FEATURE.md`), và sự giống nhau ấy là thứ cho `laKhoanRutKhoiMucTieu`
+/// ở trên đọc đúng chiều tiền cho cả hai bằng **một** tiền tố. Một tiền tố riêng
+/// cho khoản tự động sẽ rơi khỏi cả hai nhánh `startsWith` và bị đọc chiều bằng
+/// vị trí ví — đúng cái bẫy vừa gỡ. Hậu tố thì không đụng gì tới đầu chuỗi.
+///
+/// Ba đường khác đã bị loại, đừng dựng lại:
+/// - **Suy từ `date != updatedAt`**: sai im lặng — `updateTransaction` bump
+///   `updatedAt`, nên khoản nạp tay bị sửa về sau sẽ đọc thành tự động.
+/// - **Một cột cục bộ trên `transactions`**: hàng kéo về từ server luôn trống,
+///   nên máy thứ hai thấy mọi khoản là "tay" (cùng bệnh với bẫy 4.4 và G21).
+/// - **Đổi tiền tố**: đâm thẳng vào bẫy 4.2.
+///
+/// Hạn chế phải nói ra: ghi chú **sửa được** (`updateTransaction`), nên nhãn có
+/// thể mất. Mất thì đọc thành "tay" — rơi về mặc định an toàn, không phải về
+/// một lời khẳng định sai.
+const String kHauToTuDong = ' (tự động)';
+
+/// Khoản nạp này do app tự chuyển tiền, hay do người dùng tự bấm?
+///
+/// Đòi **đủ cặp** tiền tố + hậu tố, không chỉ hậu tố. Ghi chú là dữ liệu sửa
+/// được: người dùng gõ tay đúng ba chữ ấy vào một giao dịch bất kỳ không biến
+/// nó thành khoản do app tự chuyển. Chỉ `GoalAutoDepositRunner` ghi ra đủ cặp.
+///
+/// Khoản **rút** không bao giờ tự động — không có đường nào trong app tự rút
+/// tiền khỏi mục tiêu — nên tiền tố rút không được nhận ở đây.
+///
+/// Khoản ghi trước đợt này không có hậu tố nên đọc là **tay**. Đó là chủ ý:
+/// đoán ngược cho lịch sử cũ là bịa ra một sự thật chưa từng được ghi lại. Nhãn
+/// tự lành từ kỳ trích kế tiếp.
+bool laKhoanTuDong(String ghiChu) =>
+    ghiChu.startsWith(kGhiChuNapMucTieu) && ghiChu.endsWith(kHauToTuDong);
+
+/// Ghi chú đã bỏ hậu tố, cho nơi nào hiện ghi chú **thô** làm tiêu đề dòng.
+///
+/// Trang chi tiết mục tiêu là một nơi như thế. Không cắt thì dòng ấy mang chữ
+/// "(tự động)" hai lần — một trong tiêu đề, một trong chip — trong khi bảng
+/// đầy đủ chỉ có chip.
+///
+/// Hai điều khiến nó không phải một `replaceAll`:
+/// - Chỉ cắt khi [laKhoanTuDong] nhận. Chỗ nào không dán nhãn thì chỗ ấy cũng
+///   không được xoá chữ, nếu không ba chữ người dùng tự gõ biến mất khỏi màn
+///   hình mà không có gì thay thế.
+/// - Cắt **đúng một lần, ở cuối**. Người dùng đặt tên mục tiêu là "Quỹ (tự
+///   động)" thì `replaceAll` ăn luôn vào tên họ đặt.
+String ghiChuKhongHauTo(String ghiChu) => laKhoanTuDong(ghiChu)
+    ? ghiChu.substring(0, ghiChu.length - kHauToTuDong.length)
+    : ghiChu;

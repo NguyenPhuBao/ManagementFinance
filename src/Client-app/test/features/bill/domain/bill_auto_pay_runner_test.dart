@@ -260,6 +260,20 @@ void main() {
       expect((await db.billDao.getById('b1'))!.isPaid, isFalse);
     });
 
+    test('ví ĐÃ LƯU TRỮ: khongChayDuoc, không trả', () async {
+      await seedBill();
+      await db.walletDao.setStatus(walletId, luuTru: true);
+
+      final ra = await runner.chay(accountId, now: DateTime(2025, 10, 1));
+
+      expect(ra.single.loai, LoaiTuTra.khongChayDuoc,
+          reason: 'Lưu trữ ví là ĐÓNG BĂNG nó: không sinh kỳ mới, không tự rút '
+              'tiền. Trả im lặng khỏi một ví người dùng đã cất đi là cách hỏng '
+              'tệ nhất — họ không nhìn ví ấy nữa nên sẽ không thấy gì cả.');
+      expect((await db.billDao.getById('b1'))!.isPaid, isFalse);
+      expect((await db.walletDao.getById(walletId))!.balance, 1000000.0);
+    });
+
     test('mỗi hoá đơn độc lập: hoá đơn hỏng không chặn hoá đơn khác', () async {
       await seedBill(id: 'hong', name: 'Hỏng', wallet: 'w-da-xoa');
       await seedBill(id: 'tot', name: 'Tốt');

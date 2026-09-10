@@ -1,7 +1,11 @@
 # Mục tiêu tiết kiệm — thiết kế, lý do, và những cái bẫy
 
-**Cập nhật:** 2026-09-05
-**Trạng thái:** hoạt động đầy đủ trên client. Một việc chờ backend (mục 8).
+**Cập nhật:** 2026-09-09
+**Trạng thái:** hoạt động đầy đủ trên client. **Không còn việc nào chờ backend**
+(cập nhật 2026-09-07 — xem mục 8).
+
+Mục **10** là đối chiếu với app khác trên thị trường: cái gì FlowMoney đã mạnh
+hơn (và không nên "sửa"), cái gì còn thiếu, xếp hạng kèm lý do.
 
 > **Mục đích của tài liệu này** giống `CATEGORY_RATIONALE.md`: giữ lại **vì sao**,
 > không phải **cái gì**. Cái gì thì đọc mã và test là ra; vì sao thì mất theo
@@ -14,11 +18,15 @@
 
 | Việc | Đọc |
 |---|---|
-| Bất cứ việc gì | Mục 3 (quyết định + lý do) và mục 4 (**bảy cái bẫy**) |
+| Bất cứ việc gì | Mục 3 (quyết định + lý do) và mục 4 (**bảy cái bẫy**, hai đã đóng — 4.5 và 4.6) |
 | Đụng vào nạp/rút tiền | Mục 3.1 → 3.4, và `goal_repository_impl.dart` — mọi chú thích ở đó là bản rút gọn của tài liệu này |
-| Đụng vào lịch sử tích luỹ | **Bẫy 4.2** trước đã. Suy chiều tiền từ vị trí ví là sai, đã vấp |
+| Đụng vào lịch sử tích luỹ | **Bẫy 4.2** trước đã (suy chiều tiền từ vị trí ví là sai, đã vấp), rồi mục **3.24** (cắt 5 dòng, bảng đầy đủ có bộ lọc) và **3.25** (nhãn "(tự động)" — hậu tố ghi chú, và ba đường đã loại) |
+| Đụng vào trang chi tiết | Mục **3.23** (khối Cấu hình), **3.26** (biểu đồ tiến độ — và vì sao chuỗi dựng **đi lùi**), và **bẫy 4.5** (trang nghe dòng dữ liệu từ 2026-09-08) |
+| Đụng vào hộp dự báo | Mục **3.7** — có **cửa sổ tối thiểu nửa chu kỳ**, thiếu nó là màn hình nói "đang tích 11 triệu mỗi tháng" cho một mục tiêu mới tích 1,1 triệu |
+| Muốn biết nên làm gì tiếp | Mục **10** — đối chiếu với app thị trường, kèm bảng xếp hạng |
 | Đụng vào đồng bộ | **Bẫy 4.3**, rồi `sync_payload_contract_test.dart` |
 | Đụng vào tiến độ / phần trăm | Mục 3.6 — chỉ có **một** định nghĩa và nó nằm trên `GoalEntity` |
+| Đụng vào biểu đồ tiến độ | Mục **3.26** (và **3.27** cho thẻ ba con số ngay dưới nó), rồi bẫy **4.17** và **4.18** `ANALYTICS_FEATURE.md` (fl_chart không cắt vùng vẽ; nhãn trục chồng nhau) — cả hai chỉ lộ trên máy thật |
 
 ---
 
@@ -170,6 +178,26 @@ dùng để tính ngược ra ngày hạn rồi bị vứt bỏ.
 Mọi hàm trả `null` khi **không đủ căn cứ**, cùng nguyên tắc với
 `isBehindSchedule`: im lặng đúng hơn là báo bừa.
 
+⚠️ **"Không đủ căn cứ" gồm cả CỬA SỔ QUÁ NGẮN** (sửa 2026-09-08). Trước đó
+phép chặn duy nhất là `soNgayDaQua <= 0`, tức nó chỉ đỡ được phép chia cho 0
+chứ không đỡ được việc **bịa ra một nhịp**. Đo trên máy thật: mục tiêu tạo
+05/09, xem 08/09, đã tích 1.101.000 đ, chu kỳ tháng → màn hình hiện *"đang tích
+**11.010.000 đ** mỗi tháng"*, gấp mười lần tổng đã tích được cả đời mục tiêu,
+kèm dự báo hoàn thành ngay tháng ấy cho một mục tiêu hạn 2028.
+
+`_duCuaSo` nay đòi **ít nhất nửa chu kỳ**: `soNgayDaQua * 2 >= soNgayChuKy`.
+Ngưỡng tính **theo chu kỳ**, không phải một số ngày cứng — chu kỳ *ngày* không
+có ngoại suy nào để chặn (hệ số bằng 1) nên ngưỡng cứng sẽ bắt nó im lặng vô
+cớ, còn chu kỳ *năm* thì hai tháng vẫn là hệ số 6. Nửa chu kỳ đưa hệ số phóng
+đại tối đa về **2**; đợi trọn một chu kỳ thì mục tiêu hàng tháng câm suốt tháng
+đầu, mà tháng đầu mới là lúc người dùng mở ra xem nhiều nhất.
+
+Phép chặn phải áp cho **cả** `tocDoThucTe` lẫn `duBaoHoanThanh` — hai dòng cạnh
+nhau trên màn hình đọc như một câu, chặn một chỗ mà để chỗ kia nói tiếp thì hộp
+dự báo vẫn sai, chỉ sai gọn hơn. `tocDoKeHoach` **không** chịu phép chặn này:
+nó chia phần còn thiếu cho số ngày còn lại, tức một *kế hoạch*, không phải một
+ước lượng từ quá khứ.
+
 ### 3.8 Nạp vượt mục tiêu thì **nhắc**, không chặn
 
 Tiết kiệm dư là chuyện bình thường — gửi tròn số, hoặc gộp luôn khoản tháng sau.
@@ -238,8 +266,13 @@ chấm** trên thẻ (không mở menu nào — mọi thao tác nằm ở trang 
 **"Xem tất cả"** ở lịch sử tích luỹ (danh sách vốn đã hiện toàn bộ, nên nó vừa
 không làm gì vừa ngụ ý sai rằng có phần bị giấu).
 
-Trang chi tiết **không nghe dòng dữ liệu** (bẫy 4.5) nên phải tự `_loadGoal()`
-sau khi trang sửa đóng. Việc đó dựng lại dòng lịch sử tích luỹ, và
+⚠️ **Nút ấy quay lại ngày 2026-09-08, và lần này làm thật** — xem mục 3.24. Lý
+lẽ gỡ nó nói về một nút **rỗng**, không nói rằng danh sách phải hiện hết mãi
+mãi; cắt bớt rồi làm cái nút ấy có tác dụng chính là điều kiện mà quyết định cũ
+còn thiếu.
+
+Trang chi tiết trước đây **không nghe dòng dữ liệu** (bẫy 4.5, đóng
+2026-09-08) nên phải tự `_loadGoal()` sau khi trang sửa đóng. Việc đó dựng lại dòng lịch sử tích luỹ, và
 `StreamBuilder` quay về trạng thái chưa có dữ liệu — trộn ca ấy với "rỗng thật"
 làm lịch sử **nháy thành "Chưa có khoản tích lũy nào"** rồi hiện lại, trông y
 như vừa mất dữ liệu. Đã phân biệt bằng `connectionState`.
@@ -252,7 +285,7 @@ ngược ra hạn định rồi bị vứt, và ví nguồn thì không hề đi
 lại ghi "Tạo Mục Tiêu & **Bật Lập Lịch Tự Động**" — một lời hứa về chức năng
 không tồn tại.
 
-Nay ba mảnh ấy đều được lưu (ba cột **cục bộ**, mục 5), và
+Nay ba mảnh ấy đều được lưu (ba cột, mục 5 — **đã đồng bộ từ 2026-09-07**), và
 `GoalAutoDepositRunner` chạy các kỳ đã tới hạn.
 
 **Nơi chạy là `NotificationScanner.scan()`**, tức mỗi khi một chu kỳ đồng bộ kết
@@ -286,7 +319,7 @@ sau rơi vào ngày 5 lúc 14 giờ. Nay người dùng chọn được "ngày 1
 08:00", và lựa chọn ấy lưu ở **`timeCycleTakeMoney`**.
 
 **Vì sao là cột đó chứ không phải một cột cục bộ thứ tư:** tên nó vốn có nghĩa
-là *"thời điểm cụ thể trích tiền trong chu kỳ"*, nó đã nằm sẵn trong 18 khoá của
+là *"thời điểm cụ thể trích tiền trong chu kỳ"*, nó đã nằm sẵn trong 18 khoá (nay là 19) của
 payload mục tiêu, và client chưa bao giờ ghi. Đây là dùng đúng nghĩa gốc, khác
 hẳn việc mượn nó làm mốc-đã-chạy (thứ đã bị loại ở mục 3.12). Phía backend chỉ
 lưu và trả lại qua `sync.repository.js`, **không có cron nào đọc** — nên không
@@ -308,9 +341,25 @@ dùng sang máy khác, **trạng thái thi hành** (số tiền, ví nguồn, đ
 nó trích lúc 21 giờ. Biểu mẫu nói thẳng điều này ngay dưới ô chọn giờ thay vì để
 người dùng tự phát hiện.
 
-⚠️ **Nhịp bước từng kỳ một từ mốc neo**, nên mốc rơi vào ngày 31 sẽ bị kẹp về
-28/02 rồi bước tiếp **từ đó** — tức nhịp trôi dần chứ không quay lại ngày 31.
-Bảng chọn ngày báo trước điều này.
+✅ **Nhịp neo vào mốc gốc, không trôi** (sửa 2026-09-08). Mốc rơi vào ngày 31 bị
+kẹp về 28/02 ở tháng ngắn — đúng — nhưng kỳ sau **quay lại ngày 31**:
+
+```
+31/01 → 28/02 → 31/03 → 30/04 → 31/05
+```
+
+Bản trước bước **từng kỳ một** từ mốc trước đó, nên sau khi kẹp xuống 28 nó bước
+tiếp *từ 28* và nhịp tụt vĩnh viễn, hoàn toàn im lặng. Nay mọi mốc tính từ mốc
+gốc qua `mocThuN(goc, chuKy, n)` — cùng khuôn `advancePeriodFrom(anchor, steps)`
+bên ngân sách và `anchorDay` bên hoá đơn, nên ba vùng ngày tháng của app nói
+cùng một thứ tiếng.
+
+Mốc gốc là `timeCycleTakeMoney` (lựa chọn của người dùng). Mục tiêu bật trước
+khi có ô chọn ấy thì gốc rơi về `autoDepositLastRun`, tức giữ nguyên hành vi cũ.
+
+⚠️ `kyKeTiep` — dùng để đặt lịch nhắc trước — phải dùng **đúng phép dựng mốc
+này**. Hai bên trôi khác nhau là điện thoại nhắc một ngày còn tiền bị trừ vào
+ngày khác.
 
 ### Lời nhắc khi app đóng
 
@@ -333,10 +382,17 @@ iOS lặng lẽ bỏ, và những kỳ ấy dù sao cũng được trích bù �
 từng ngày từ năm 1990 là hàng chục nghìn vòng lặp ngay trong vòng quét thông
 báo — app treo. Vượt trần thì bỏ qua và im lặng.
 
-**Ba cột kia vẫn là cục bộ**, nên cấu hình trích tự động **không theo người dùng
-sang máy khác**. Chu kỳ thì có (nó vốn đã đồng bộ), nên trên máy mới mục tiêu vẫn hiện
-đúng nhịp kế hoạch, chỉ là không tự trích. Thà vậy còn hơn hai máy cùng trích
-một kỳ — đó cũng là lý do KHÔNG mượn cột `time_cycle_take_money` đang có sẵn:
+**Ba cột kia nay đã đồng bộ** (2026-09-07, G21 đóng): backend đã có
+`auto_deposit_amount` / `auto_deposit_wallet_id` / `auto_deposit_last_run`, và
+client đẩy **cả ba cùng một lúc**. Bật trích ở máy này thì máy kia nhận đủ cấu
+hình **lẫn mốc kỳ gần nhất**, nên nó không trích lại kỳ vừa xong.
+
+⚠️ Đúng một khe hở còn lại: hai máy cùng mở, cùng tới kỳ, cùng chưa kịp kéo
+`last_run` của nhau thì vẫn trích hai lần. Hẹp, vì trích chỉ chạy khi app mở và
+`Current_amount` là giá trị tuyệt đối nên LWW hội tụ chứ không cộng dồn sai. Vá
+triệt để cần khoá phía máy chủ trên `(Idgoal, kỳ trích)`.
+
+Đây cũng là lý do KHÔNG mượn cột `time_cycle_take_money` đang có sẵn:
 nó dùng chung với backend/Admin-web, và đổi ý nghĩa một cột dùng chung mà phía
 kia chưa đồng ý là cách hỏng im lặng nhất.
 
@@ -572,9 +628,379 @@ câu "chưa có ví nào" — câu ấy sẽ là một lời nói dối khi tài
 ví. Trạng thái này **chưa xem trên máy thật**: dựng nó đòi xoá bớt ví của dữ liệu
 đang có.
 
+### 3.21 Cột mốc tiến độ: báo **mốc cao nhất**, và khoá theo vòng
+
+Trước 2026-09-08 app chỉ lên tiếng về một mục tiêu ở **hai** thời điểm: đạt
+100% (`goalCompleted`) và khi chậm tiến độ (`goalBehind`). Người dùng đi ba
+phần tư chặng đường mà không được ghi nhận gì — xem mục 10.4.
+
+`goalMilestone` lấp chỗ ấy với ba mốc **25 / 50 / 75**.
+
+**Không có mốc 100** trong `_mocTienDo`: `goalCompleted` đã lo mốc ấy, và mục
+tiêu đạt đủ tiền còn không đi tới được đoạn mã này (nhánh `daHoanThanh` đã
+`continue` phía trên). Thêm vào là hai lời chúc mừng cho cùng một việc.
+**Không có mốc dưới 25** vì gần như mọi mục tiêu vượt ngay ở khoản nạp đầu
+tiên, và một lời chúc mừng ai cũng nhận được thì không còn là lời chúc mừng.
+
+**Vượt nhiều mốc cùng lúc thì chỉ báo mốc cao nhất.** Nạp một phát từ 10% lên
+80% vượt cả ba; bắn ba tin cho MỘT thao tác là ồn, và chỉ mốc cao nhất mang
+tin mới. Hằng số `_mocTienDo` vì thế **xếp giảm dần** — `_mocDaVuot` lấy phần
+tử đầu tiên khớp, nên đảo thứ tự sẽ luôn trả 25 và hai mốc kia chết lặng.
+
+**Khoá chống trùng theo khuôn `goalCycle:`, cố ý KHÁC khuôn `goalDone:`** —
+`goalMilestone:<id>:<startDate>:<mốc>`. Đây đúng là cái bẫy đã ghi ở mục 3.17:
+`goalDone:<id>` không mang mốc thời gian vì "một mục tiêu chỉ hoàn thành một
+lần trong đời", và mục tiêu **lặp lại** phá đúng giả định ấy. Cột mốc thì mỗi
+vòng phải báo lại, nên nó gắn `startDate` — cột mà `batDauVongMoi` đặt lại.
+Đoạn `:<mốc>` ở cuối là thứ giữ cho ba mốc không nuốt nhau.
+
+⚠️ **Luật phải đứng TRƯỚC phép kiểm `isBehindSchedule`** trong
+`_goalCandidates`. Dòng ấy `continue` cho mọi mục tiêu đang đúng nhịp, nên đặt
+cột mốc sau nó thì **chỉ mục tiêu đang TRỄ mới được ghi nhận quãng đã đi** —
+đúng ngược ý định, và im lặng. Đã dựng bản sai có chủ ý để kiểm: **3 test đỏ**,
+nên lưới này có thật.
+
+Cột mốc **chịu công tắc nhóm** Mục tiêu (`luonBao` trả `false`): nó là lời ghi
+nhận, không phải tin "tiền vừa rời ví". Nới `luonBao` ra cho nó là làm đúng
+việc mà cảnh báo ở đầu hàm ấy cấm.
+
+### 3.22 Ưu tiên mục tiêu: số thưa, `NULL` xếp cuối, và chỉ một tab dùng nó
+
+Danh sách trước đây sắp cứng theo hạn gần nhất, nên người dùng không nói được
+"quỹ khẩn cấp quan trọng hơn cái laptop". Cột `Priority Int?` phía backend có
+từ 2026-09-07; client nhận nó ngày 2026-09-08 (**schema v19**).
+
+**Quy ước giá trị lấy nguyên từ tài liệu backend** (`DA-XONG/2026-09-05-backend-goal-priority.md`
+mục 4), không phát minh lại: số **cách nhau 100**, nhỏ hơn đứng trước, `NULL`
+xếp **cuối**, trùng số thì sắp tiếp theo `targetDate`.
+
+**Vì sao thưa chứ không phải 1, 2, 3:** chèn một mục tiêu vào giữa mà đánh số
+liên tục thì phải ghi lại cả danh sách — một thao tác kéo thả sinh ra *n* bản
+ghi `pending`. Với khe 100, chèn giữa hai hàng chỉ ghi **một** hàng.
+
+`uuTienSauKhiKeo` vì thế có **hai chế độ**, và cần cả hai:
+
+| Khi nào | Ghi mấy hàng |
+|---|---|
+| Mọi hàng đã có số **phân biệt** và chỗ thả còn khe | **một** |
+| Còn hàng `null`, có số trùng nhau, hoặc hết khe | **cả danh sách** |
+
+Lần kéo **đầu tiên** luôn rơi vào chế độ hai vì mọi hàng đang mang `null`. Đó
+là *một* lần ghi *n* hàng trong đời danh sách, không phải mỗi lần kéo. Ép đại
+một giá trị vào chỗ chật (giữa 100 và 101 không còn số nguyên nào) là hai hàng
+trùng số, và khi ấy thứ tự rơi về `targetDate` — tức thao tác kéo thả **biến
+mất ở lần mở app sau**, không lỗi, không dấu hiệu gì.
+
+⚠️ **`priority` luôn DƯƠNG.** `0` và số âm đi qua đường đồng bộ thì không phân
+biệt được với "chưa sắp", và một mục tiêu đã sắp mà bị đọc thành chưa sắp sẽ
+nhảy xuống cuối. Kéo lên đầu khi hàng đầu đã là `1` thì đánh số lại cả danh
+sách chứ không lùi xuống `0`.
+
+⚠️ **`ReorderableListView.onReorder` trả `newIndex` tính trên danh sách CÒN
+NGUYÊN phần tử đang kéo**, nên kéo **xuống** thì con số ấy lớn hơn vị trí cuối
+cùng đúng một đơn vị. `viTriThaThucTe` là chỗ duy nhất sửa việc đó — dùng thẳng
+`newIndex` là mục tiêu rơi lệch một ô, im lặng. Kéo **lên** thì không trừ gì.
+
+**Chỉ tab "Đang theo đuổi" dùng ưu tiên.** Tab "Đã hoàn thành" giữ nguyên thứ
+tự cũ (mới đạt lên đầu): đã xong rồi thì "quan trọng hơn" không còn nghĩa gì,
+và áp ưu tiên ở đó sẽ đẩy mục tiêu vừa đạt được xuống đáy chỉ vì nó từng được
+xếp thấp — cùng lập luận đã dùng để cho hai tab sắp ngược nhau (mục 3.18).
+
+**Migration v19 cố ý KHÔNG suy giá trị cho hàng cũ**, khác hẳn `anchorDay` của
+v18. Ở đó ngày đến hạn là một ý định người dùng đã đưa ra và chỉ cần đọc lại;
+ở đây mọi thứ tự bịa ra đều sai với người đã sắp tay, và `NULL` có nghĩa riêng
+rõ ràng. Đánh số theo `targetDate` để danh sách "trông đã được sắp" là biến thứ
+tự mặc định thành một lựa chọn người dùng chưa từng đưa ra — cùng lập luận đã
+dùng cho v15 và v17.
+
+✅ **Đã kiểm trọn vòng trên máy ảo 2026-09-08:** kéo `MuaXe` (hạn 27/04/2028)
+lên trên `MuaDT` (hạn 05/09/2027) → danh sách đổi ngay, thứ tự **sống qua khởi
+động nguội**, và truy vấn thẳng PostgreSQL thấy `Priority` 100 / 200 — tức lần
+kéo đầu đánh số lại cả danh sách và **cả hai hàng đã lên tới server**.
+
+**Khe hở còn lại, chấp nhận được:** hai máy cùng sắp lại khi ngoại tuyến thì
+LWW phân xử **theo từng hàng**, không theo cả danh sách, nên kết quả có thể là
+một thứ tự trộn giữa hai lần sắp. Không hàng nào sai, nhưng tổng thể không
+giống lần sắp nào. Vá triệt để cần khoá thứ tự kiểu phân số (`"a0"`, `"a0V"`) —
+đắt hơn giá trị nó mang lại. Hậu quả tệ nhất là kéo lại vài mục tiêu: không mất
+tiền, không mất bản ghi, không kẹt hàng đợi.
+
+### 3.23 Khối "Cấu hình": chỗ thiếu là chỗ HIỂN THỊ, không phải dữ liệu
+
+Người dùng báo trang chi tiết **thiếu nội dung** (2026-09-08). Đo lại thì trang
+không thiếu dữ liệu — cả bốn thứ dưới đây đều nằm sẵn trên `GoalEntity` mà
+không dòng nào trên trang nói tới:
+
+| Dòng | Đã có sẵn ở | Trước đó dùng vào việc gì |
+|---|---|---|
+| Hạn chót + đếm ngược | `targetDate`, `daysLeft` | `targetDate` chỉ xuất hiện lẫn trong câu dự báo; `daysLeft` **không nơi nào gọi** |
+| Đúng nhịp / chậm | `isBehindSchedule` | Chỉ dùng cho **thông báo**, không cho màn hình |
+| Ví tích luỹ | `walletId` | Chỉ dùng cho hộp thoại đổi ví và phép tính cảnh báo — chưa bao giờ hiện **tên** |
+| Trích tự động | `autoDepositEnabled` + ba cột | **Không hiện ở đâu** trên trang |
+
+**Dòng cuối là chỗ nghiêm trọng nhất.** App tự chuyển tiền của người dùng mỗi
+kỳ, mà trang chính của mục tiêu không nói gì — phải mở trang Sửa mới biết. Với
+một tính năng chuyển tiền lúc người dùng vắng mặt thì đó là chỗ im lặng không
+chấp nhận được. Đo trên máy thật 2026-09-08: mục tiêu `MuaXe` đang bật trích
+**100.000 đ mỗi tháng từ ví `test`**, và trước bản này màn hình không hề nói.
+
+**Ba quyết định nhỏ, mỗi cái có test:**
+
+- `moTaHanChot` **không bao giờ hiện số ngày âm**. `daysLeft` trả số âm khi quá
+  hạn — đúng số học, nhưng *"Còn -7 ngày"* đọc lên thì vô nghĩa, và đó lại là
+  ca hay gặp nhất với mục tiêu cũ bỏ dở. Mục tiêu **đã đạt** thì thôi đếm
+  ngược: hô "Quá hạn 7 ngày" cho việc người dùng đã làm xong là trách họ vì
+  chính thành quả của họ.
+- `moTaTrichTuDong` dùng chung `autoDepositEnabled` — định nghĩa duy nhất của
+  "đang bật", vốn đòi **cả ba** mảnh. Tự viết lại phép kiểm ở đây là để màn
+  hình nói đang bật trong khi bộ chạy không chạy.
+- Ví không tra được tên thì vẫn nói phần biết chắc. `autoDepositWalletId`
+  **không có khoá ngoại** (cùng lý do với `walletTransfer`, bẫy 4.1) nên ví có
+  thể đã bị xoá mềm; trả chuỗi rỗng khi ấy là giấu luôn việc app đang trừ tiền.
+
+Khối đặt **sau** hộp dự báo và cảnh báo ví: hai khối kia nói về *cần làm gì*,
+khối này nói về *đang cài đặt thế nào* — thứ người dùng tra lại chứ không đọc
+mỗi lần mở.
+
+### 3.24 Lịch sử tích luỹ: cắt 5 dòng, phần còn lại vào bảng có bộ lọc
+
+Danh sách cũ hiện **toàn bộ** không có trần (`itemCount: txs.length`). Với 11
+khoản thì cuộn hết trong 2 cú vuốt — đo trên máy thật — nhưng nó **tăng tuyến
+tính không giới hạn**: một mục tiêu trích hàng ngày chạy hai năm là **730 dòng**.
+
+Nửa **kỹ thuật** của vấn đề không nhìn màn hình mà thấy được: danh sách dùng
+`shrinkWrap: true` + `NeverScrollableScrollPhysics` bên trong
+`SingleChildScrollView` của cả trang, tức **dựng mọi dòng cùng lúc, không ảo
+hoá** — trên một trang mà từ 2026-09-08 vẽ lại **mỗi lượt đồng bộ** (bẫy 4.5).
+Cắt xuống 5 dòng chỉ *giấu* vấn đề; đưa danh sách đầy đủ vào một `ListView` có
+vùng cuộn **riêng** mới thật sự sửa nó.
+
+**Bảng là bottom sheet, không phải trang mới.** Mọi route mới trong dự án này
+đều phải trả lời câu hỏi *nó có nằm trong `StatefulShellRoute` không* — đặt
+nhầm là app chết màn đỏ (bẫy 7.8 `NOTIFICATION_FEATURE.md`). Bottom sheet không
+đụng router nên tránh trọn vẹn cả lớp lỗi ấy.
+
+**Hai bộ lọc, và chúng GIAO nhau:** chiều tiền (Tất cả / Đã gửi / Đã rút) và
+khoảng thời gian (Mọi lúc / 30 ngày / 3 tháng / Năm nay). Dải chip **cuộn ngang
+chứ không `Wrap`** — cùng bài học ở trung tâm thông báo: bảy chip trên hai dải
+cần nhiều hơn 411dp, `Wrap` xuống hàng và ăn mất một dòng lịch sử.
+
+Dòng tổng tính trên danh sách **đã lọc**: nó nằm ngay trên dải chip nên phải
+nói về đúng thứ đang hiện; giữ tổng của cả danh sách là hai con số cãi nhau
+trên cùng một màn hình. Rỗng thì nói *"Không có khoản nào"* — chuỗi
+*"0 khoản · đã gửi 0 đ"* cãi nhau với thân bảng đang nói không có gì, và đó là
+lỗi chỉ đọc trên máy thật mới thấy vì cả hai chuỗi đều "đúng".
+
+**Bộ lọc thứ ba — nguồn "Tay / Tự động" — có từ cuối ngày 2026-09-08**, ngay
+sau khi mục **3.25** gắn được nhãn. Thứ tự *hiện nhãn trước, lọc sau* là chủ ý:
+lọc theo một dấu hiệu người dùng chưa nhìn thấy bao giờ thì họ không hiểu bộ lọc
+đang làm gì. Ba quyết định của dải này:
+
+- **Enum riêng (`LocNguon`), không phải chip thứ tư của dải chiều tiền.** "Tự
+  động" là *nguồn* của khoản, còn gửi/rút là *chiều* — nhét chung là trộn hai
+  tầng nghĩa, và "Tự động" vốn là tập con của "Đã gửi".
+- **Khoản rút luôn thuộc "Tay".** Không có đường nào trong app tự rút tiền khỏi
+  mục tiêu. Bản sai có chủ ý đảo nghĩa hai chip đã làm đúng test này đỏ.
+- **Dải chỉ hiện khi lịch sử có ít nhất một khoản tự động**, xét trên danh sách
+  **gốc** chứ không phải danh sách đã lọc — nếu không, chọn "Tay" xong là dải
+  tự biến mất và người dùng hết đường quay lại. Mục tiêu chưa bật trích tự động
+  thì một chip "Tự động" lọc ra rỗng chỉ là nhiễu, và ba dải trên 411dp là cái
+  giá không đáng trả cho một chip vô dụng.
+
+Bản dựng trước đó không phân biệt được hai loại: `GoalAutoDepositRunner` gọi
+đúng `depositToGoal` với đúng tiền tố ghi chú của khoản nạp tay, nên chúng
+**giống hệt nhau trên mọi cột** — đó là lý do nhãn phải ra đời trước.
+
+> ⚠️ Câu trước ở đây từng kết luận **"muốn phân biệt thì phải thêm cột mới"**.
+> Kết luận ấy **sai**, và nó sai vì được viết ra mà chưa mở mã đọc: khi người
+> dùng hỏi lại thì hoá ra có tới hai đường không cần cột nào. Ghi lại nguyên
+> văn ở đây để lần sau đừng phán về chi phí trước khi kiểm.
+
+**Biên thời gian có hai chỗ dễ sai im lặng**, cả hai có test: *"Năm nay"* cắt
+theo **năm dương lịch** chứ không phải 365 ngày (ngày 08/09 thì 365 ngày trước
+gồm cả bốn tháng cuối năm ngoái — một câu nói dối nhỏ mà người dùng phát hiện
+ngay khi cộng lại), và **cả hai đầu** của phép so phải chuẩn hoá về ngày, nếu
+không người dùng lọc "30 ngày" sẽ mất một khoản chỉ vì mở app buổi chiều.
+
+> ⚠️ Ca thứ hai từng **xanh oan**: bản test đầu tiên viết cho nó không thật sự
+> canh điều nó nói, và chỉ lộ ra khi dựng bản sai có chủ ý. Đã viết lại.
+
+---
+
+### 3.25 Nhãn "(tự động)": hậu tố ghi chú, không phải cột mới
+
+**Vấn đề.** Khoản do `GoalAutoDepositRunner` trích và khoản người dùng tự bấm
+**giống hệt nhau trên mọi cột** — cùng `Type = 'transfer'`, cùng `Idgoal`, cùng
+tiền tố ghi chú. Sự giống nhau ấy **có chủ ý** (mục 3.12): nhờ nó mà
+`laKhoanRutKhoiMucTieu` đọc đúng chiều tiền cho cả hai bằng **một** tiền tố.
+Cái giá là người dùng mở lịch sử ra không biết khoản nào do chính mình chuyển.
+
+**Cách làm: gắn HẬU TỐ vào ghi chú** — `'Tích lũy mục tiêu: MuaXe (tự động)'`.
+Bốn điều đã kiểm **bằng mã** trước khi viết một dòng nào:
+
+| Câu hỏi | Đo ở đâu | Kết luận |
+|---|---|---|
+| Có phá phép đọc chiều tiền không? | `laKhoanRutKhoiMucTieu` dùng `startsWith` | **Không** — hậu tố không đụng đầu chuỗi |
+| Có phá nhánh dự phòng của lịch sử không? | `TransactionDao.watchByGoal` dùng `note.like('%…%')` | **Không** — có dấu bao hai đầu |
+| Có bị cắt cụt ở server không? | `transaction.Note` là `@db.Text` | **Không** — không giới hạn độ dài |
+| Có cần backend không? | `note` đã nằm trong payload đẩy | **Không** — backend không phải làm gì |
+
+**Không** phải sửa `sync_payload_contract_test.dart`: đây là đổi *giá trị* của
+một trường đã có, không thêm trường mới. Quy tắc 4 nói về trường mới rơi im lặng.
+
+**Phép đọc đòi ĐỦ CẶP tiền tố + hậu tố.** Ghi chú là dữ liệu **sửa được**:
+người dùng gõ tay ba chữ ấy vào một giao dịch bất kỳ không biến nó thành khoản
+do app tự chuyển. Chỉ bộ chạy nền ghi ra đủ cặp. Khoản **rút** không bao giờ tự
+động — không có đường nào trong app tự rút tiền khỏi mục tiêu.
+
+**Khoản cũ không có hậu tố nên đọc là "tay", và KHÔNG được đoán ngược.** Bịa
+nhãn cho lịch sử cũ đúng là kiểu tự tiện mà cả tính năng mục tiêu tránh từ đầu.
+Nhãn tự lành từ kỳ trích kế tiếp. Đã đọc trên máy ảo ngày 2026-09-08: năm dòng
+lịch sử thật của `MuaXe` đều **không** mang nhãn, đúng như thiết kế.
+
+**Hạn chế phải nói ra:** `updateTransaction` cho sửa ghi chú, nên nhãn có thể
+mất. Mất thì đọc thành "tay" — rơi về mặc định **an toàn**, không phải về một
+lời khẳng định sai.
+
+**Ba phương án đã LOẠI, đừng dựng lại:**
+
+- **Suy từ `date != updatedAt`** — sai im lặng: `updateTransaction` bump
+  `updatedAt`, nên khoản nạp tay bị sửa về sau sẽ đọc thành tự động.
+- **Cột cục bộ trên `transactions`** — mắc đúng bệnh bẫy 4.4 và G21: hàng kéo
+  về từ server luôn trống, máy thứ hai thấy mọi khoản là "tay".
+- **Đổi tiền tố ghi chú** — đâm thẳng vào bẫy 4.2.
+
+**Trình bày.** Chip hình viên thuốc, nền 12% độ đục của màu trung tính, chữ khổ
+`label-sm` — đúng quy ước "Chips/Badges" của hệ thiết kế *Kinetic Finance* trên
+Stitch. Màu **trung tính chứ không phải xanh "thu nhập"**: nhãn nói *ai đã
+chuyển tiền*, không nói khoản ấy tốt hay xấu.
+
+Hai nơi dựng dòng lịch sử bằng **hai đoạn mã khác nhau** (trang chi tiết và
+bảng đầy đủ), nên cả hai đều có test riêng — sửa một chỗ mà quên chỗ kia thì cả
+hai màn hình vẫn chạy, chỉ nói hai chuyện khác nhau về cùng một khoản tiền.
+Trang chi tiết hiện **ghi chú thô** làm tiêu đề nên phải cắt hậu tố qua
+`ghiChuKhongHauTo`, nếu không dòng ấy mang đúng ba chữ đó hai lần.
+
+> Đội backend đã được báo bằng `docs/superpowers/backend/TRANSACTION_NOTE_ENCODING.md`
+> — **không xin gì**, chỉ để họ biết app mã hoá ý nghĩa vào `Note` mà đừng vô
+> tình phá, và Admin-web sẽ thấy chữ "(tự động)".
+
+---
+
+### 3.26 Biểu đồ tiến độ theo thời gian: neo vào `currentAmount`, đi **lùi**
+
+Trước khối này, trang chi tiết trả lời được *đang ở đâu* (vòng phần trăm) nhưng
+chỉ trả lời được *đi nhanh hay chậm* bằng hai chữ "Chậm so với nhịp" ở thẻ Cấu
+hình. Khối vẽ **cùng một luật** ấy ra thành hình.
+
+**Chỗ neo là quyết định lớn nhất.** Lịch sử giao dịch **không bảo đảm** cộng lại
+bằng `currentAmount` — mục 3.4 nói rõ tiến độ cố ý không tự hoà giải. Đo thật
+trên máy ảo ngày 2026-09-09, mục tiêu "MuaXe" của tài khoản 10: bảng lịch sử nói
+**11 khoản · đã gửi 2.201.000 đ** trong khi mục tiêu đang giữ **1.101.000 đ**.
+
+Cộng xuôi từ 0 thì điểm cuối biểu đồ ra 2.201.000 trong khi vòng phần trăm ngay
+phía trên nói 1.101.000 — **hai con số cho cùng một thứ, cạnh nhau trên một màn
+hình**. Nên chuỗi được dựng **đi lùi**: điểm cuối *là* `currentAmount`, các điểm
+trước suy ra bằng cách trừ dần từng khoản. Phần lịch sử dôi ra lộ thành một điểm
+gốc lệch, không dồn vào điểm cuối.
+
+**Đi lùi thì điểm gốc có thể âm**, và một mục tiêu "từng giữ âm một triệu" vừa
+là lời nói dối vừa rơi ra ngoài dải của biểu đồ. Giá trị **đem vẽ** vì thế bị
+kẹp ở 0 (`_khongAm`), còn biến cộng dồn giữ nguyên dạng thô — kẹp cả biến chạy
+thì sai số dồn lại và điểm cuối trượt khỏi chỗ neo.
+
+**Đường kế hoạch mượn nguyên định nghĩa của `GoalEntity.isBehindSchedule`:**
+tuyến tính theo ngày từ `startDate` tới `targetDate`. Đây là chỗ dễ đẻ ra luật
+thứ hai nhất — thẻ Cấu hình đã nói "Chậm so với nhịp" bằng luật ấy rồi. Dòng chú
+thích dưới biểu đồ cũng dùng **đúng** `GoalEntity.bienDungSai`, nên "Chậm hơn kế
+hoạch" và "Chậm so với nhịp" không bao giờ nói ngược nhau.
+
+**`startDate` là `null` thì giấu đường kế hoạch, vẫn vẽ đường thực tế** — cùng
+kỷ luật im lặng với `isBehindSchedule`. Giấu cả khối là vứt luôn phần app biết
+chắc. Chú giải "Kế hoạch" và dòng chú thích cũng biến mất theo: một mục chú giải
+trỏ vào đường không tồn tại là chỉ vào chỗ trống.
+
+**Trục** trải từ ngày bắt đầu tới **hạn chót** chứ không dừng ở hôm nay: khoảng
+trống bên phải chính là quãng đường còn phải đi. Quá hạn thì kéo tới hôm nay,
+nếu không điểm hôm nay rơi ra ngoài vùng vẽ đúng lúc cần nhìn nhất. Trần trục
+dọc phủ **cả** số tiền đích lẫn đỉnh thực tế, vì nạp vượt mục tiêu được phép
+(mục 3.8).
+
+**Đường thực tế vẽ THẲNG, không cong.** Tiền vào theo từng khoản rời rạc; một
+đường cong nội suy vẽ ra số dư ở những ngày chưa hề có giao dịch nào — và còn
+vọt xuống dưới 0 giữa hai điểm (bẫy 4.9 `ANALYTICS_FEATURE.md`). Sau khoản cuối,
+đường **kéo phẳng tới hôm nay**: một mục tiêu đứng im bốn tháng phải đọc ra là
+đứng im, chứ không phải là hết dữ liệu.
+
+**Một dòng dữ liệu nuôi cả biểu đồ lẫn danh sách.** `StreamBuilder` của
+`watchGoalTransactions` được **dời lên** bọc cả hai khối. Mở dòng thứ hai cho
+biểu đồ là chạy đúng câu truy vấn ấy hai lần, và mở cửa cho hai bản dữ liệu lệch
+nhau trên cùng một màn hình.
+
+Phép tính ở `domain/goal_progress_series.dart`, phần vẽ ở
+`presentation/widgets/goal_progress_chart.dart` — trang chi tiết đã 1.500 dòng,
+không nhồi thêm. Thiết kế nằm trên Stitch, màn *"Chi tiết mục tiêu - FlowMoney"*
+(`382b422dd00d41189cb20d00b25dc7d1`), sửa vào chính màn ấy chứ không dựng riêng.
+
+> **Phương án đã loại:** sáu mốc đều nhau theo kiểu `_KhoiXuHuong` của trang
+> Phân tích. Mục tiêu ba tuần và mục tiêu ba năm dùng chung một trục, nên số mốc
+> cố định làm nhãn hoặc trùng nhau hoặc thưa vô nghĩa. Trục ở đây là **thời gian
+> thật** (`millisecondsSinceEpoch`), và nhãn đổi khuôn `dd/MM` ↔ `MM/yy` theo độ
+> dài quãng.
+
+---
+
+### 3.27 Ba con số tổng hợp: chuỗi đếm **kỳ**, và kỳ cắt bằng `mocThuN`
+
+Thẻ dưới biểu đồ có ba ô: **số lần nạp**, **trung bình mỗi lần**, và **chuỗi kỳ
+liên tiếp**. Cả ba đọc từ lịch sử đã có — không cột mới, không truy vấn mới,
+không đụng backend.
+
+**Cả ba loại khoản rút ra từ đầu.** Chúng nói về thói quen *bỏ tiền vào*; đếm cả
+lần rút là trộn hai chiều tiền vào một con số, và "trung bình mỗi lần" trên một
+danh sách toàn khoản rút là phép chia cho 0. Không còn khoản nạp nào thì **giấu
+cả thẻ** thay vì hiện "0 lần · 0 đ".
+
+**Kỳ cắt bằng `mocThuN` neo vào `startDate`** — chính phép bước kỳ mà bộ trích
+tự động dùng (mục 3.12), và cùng khuôn với `advancePeriodFrom` bên ngân sách lẫn
+`anchorDay` bên hoá đơn. Dựng bản thứ tư ở đây là bốn luật lệch nhau cho cùng
+một câu hỏi *"kỳ này từ ngày nào tới ngày nào"*, và bản mới nhất luôn là bản
+chưa có test năm nhuận.
+
+**Kỳ hiện tại chưa nạp thì KHÔNG phá chuỗi.** Nó đang dở, chưa hết hạn để nói là
+đứt — phép đếm lùi một kỳ rồi mới bắt đầu. Không có luật này thì mỗi đầu kỳ chuỗi
+của mọi người tụt về 0 và con số hết nghĩa ngay ngày đầu tiên người dùng nhìn nó.
+Kỳ rỗng ở **giữa** thì cắt thật: đó là điều duy nhất chữ "liên tiếp" hứa.
+
+**Khoản rút không phá chuỗi.** Rút một lần rồi vẫn nạp đều thì thói quen ấy không
+đứt. **Khoản ghi trước mốc gốc** không thuộc kỳ nào (không có kỳ số âm) nhưng vẫn
+là một lần nạp thật — nó vào hai ô kia, không vào chuỗi.
+
+**`startDate` null thì giấu riêng ô chuỗi**, hai ô kia vẫn hiện — cùng lối với
+đường kế hoạch của biểu đồ (mục 3.26). Chu kỳ trống hoặc lạ quy về **tháng**,
+đúng lựa chọn của `mocKeTiep`, và nhãn (`tenDonViKy`) phải nói cùng đơn vị mà
+phép đếm đã cắt. Mục tiêu trải quá **5000 kỳ** (dữ liệu hỏng: mốc gốc năm 1970 +
+chu kỳ ngày) trả `null` chứ không kẹp — một con số tính trên cửa sổ bị cắt cụt
+trông vẫn như thật. Ngọn lửa chỉ hiện khi chuỗi **lớn hơn 0**: gắn nó vào số 0 là
+chúc mừng người dùng vì đã bỏ dở.
+
+> ⚠️ **Bài học kiểm thử, đắt hơn tính năng.** Hai test "năm nhuận" và "tháng
+> ngắn" viết lần đầu **không canh gì cả**: thay `mocThuN` bằng phép cộng tháng
+> thô `DateTime(y, m + n, d)` vẫn xanh, vì với bộ ngày tôi chọn thì hai cách cắt
+> kỳ ra **cùng một** chuỗi. Chỉ bản sai có chủ ý mới lộ ra. Phải chọn ngày nằm
+> đúng chỗ hai cách đọc tách nhau — với mốc gốc 31/01 thì đó là khoản ghi
+> **01/03**: cắt đúng thì nó thuộc kỳ 2, cộng thô thì nó vẫn nằm trong kỳ 1 (vì
+> `DateTime(2024, 2, 31)` không ném lỗi, Dart chuẩn hoá thành 02/03). Cùng loại
+> lỗi với bẫy **4.15** `ANALYTICS_FEATURE.md`.
+
 ---
 
 ## 4. Bảy cái bẫy
+
+> **Năm cái còn hiệu lực.** 4.6 đóng 2026-09-07 (G17), 4.5 đóng 2026-09-08.
+> Cả hai được giữ lại: cái đầu vì bẫy bên dưới nó vẫn thật với mọi trang
+> **khác** đọc theo tài khoản, cái sau vì lý lẽ của bản sửa là thứ đáng đọc
+> trước khi ai đó viết một trang chi tiết mới.
 
 ### 4.1 `walletTransfer` **không có khoá ngoại**
 
@@ -620,24 +1046,55 @@ vẫn nuốt lịch sử của `"Mua xe"`.
 Điều kiện `goal_id IS NULL` ở nhánh dự phòng là thứ chặn không cho một hàng đã có
 chủ bị mục tiêu khác nhận vơ. **Đừng bỏ nó.**
 
-Yêu cầu backend: `docs/superpowers/backend/CAN-LAM/2026-09-05-backend-transaction-goal-id.md`.
+Yêu cầu backend: `docs/superpowers/backend/DA-XONG/2026-09-05-backend-transaction-goal-id.md`.
 
-### 4.5 `GoalDetailPage` **bỏ qua** cubit và không nghe dòng dữ liệu
+### 4.5 ~~`GoalDetailPage` **bỏ qua** cubit và không nghe dòng dữ liệu~~ — ✅ ĐÃ SỬA
 
-Nó lấy `sl<GoalRepository>()` trong `initState` và tự giữ `_goal` trong `State`,
-tự gọi `_loadGoal()` sau mỗi thao tác. Đồng bộ kéo về một thay đổi của mục tiêu
-đang mở thì màn hình vẫn hiện số cũ. Trang danh sách thì ngược lại — nó nghe
-`watchGoals` nên tự cập nhật.
+> ✅ **Đóng 2026-09-08.** Trang nay đăng ký `watchGoals` trong `_loadGoal()` và
+> huỷ đăng ký ở `dispose()`. Ba test canh ở
+> `test/features/goal/presentation/pages/goal_detail_live_test.dart`.
 
-### 4.6 Danh sách rỗng ở lần vào **đầu tiên** sau khi khởi động nguội
+Bản cũ lấy `sl<GoalRepository>()` trong `initState`, gọi `getGoalById` đúng
+**một lần** rồi tự giữ `_goal` trong `State`. Đồng bộ kéo về một thay đổi của
+mục tiêu đang mở thì màn hình vẫn hiện số cũ — không lỗi, không log, người dùng
+chỉ phát hiện khi thoát ra vào lại. Bán kính rộng thêm khi `priority` đi qua
+đường đồng bộ, và đó là lý do nó được sửa cùng đợt.
 
-Tái hiện được nhiều lần. Trang dựng trước khi `AuthBloc` khôi phục xong phiên,
-`currentAccountIdOrNull` trả `null`, rồi `?? 0` biến nó thành tài khoản 0 — và
-`watchGoals(0)` đương nhiên rỗng. Thoát ra vào lại là thấy.
+**Ba quyết định của bản sửa:**
+
+| | Làm gì | Vì sao |
+|---|---|---|
+| Phạm vi nghe | `watchGoals` của **cả tài khoản**, không riêng mục tiêu này | `_canhBaoVi` cộng dồn **mọi** mục tiêu trỏ vào cùng ví, nên một mục tiêu *khác* nạp tiền cũng làm câu cảnh báo ở đây đổi |
+| Nguồn mã tài khoản | Lấy từ **chính mục tiêu vừa đọc** | Hàm chạy sau một `await` nên `context` có thể đã tháo; đọc `AuthBloc` ở đó là mở lại đúng cửa mà G17 vừa đóng |
+| `_isLoading` | **Không đụng** ở đường stream | Đây là cập nhật nền, không phải một lần tải do người dùng gây ra; bật cờ tải làm cả trang nháy về vòng quay mỗi lần đồng bộ xong |
+
+⚠️ Hàng có thể **biến mất** khỏi danh sách vì vừa bị xoá mềm ở máy khác. Khi ấy
+giữ nguyên những gì đang hiện — `firstWhere(orElse: () => throw)` là màn đỏ ngay
+giữa một lượt đồng bộ nền.
+
+### 4.6 ~~Danh sách rỗng ở lần vào **đầu tiên** sau khi khởi động nguội~~ — ✅ ĐÃ SỬA
+
+> ✅ **Đóng bằng G17.** Mục này từng mô tả một lỗi còn tồn; nay không còn đúng.
+> Giữ lại vì cái bẫy bên dưới vẫn là bẫy thật cho mọi trang **khác** đọc
+> `currentAccountIdOrNull`.
+
+Trang dựng trước khi `AuthBloc` khôi phục xong phiên, `currentAccountIdOrNull`
+trả `null`, rồi `?? 0` biến nó thành tài khoản 0 — và `watchGoals(0)` đương
+nhiên rỗng. Thoát ra vào lại là thấy.
 
 `?? 0` đúng ở chỗ nó **không** ghi nhầm vào tài khoản admin (bài học G4), nhưng
-nó cũng không đợi phiên. Cần một trạng thái "đang chờ phiên" thay vì đọc luôn với
-id 0.
+nó cũng không đợi phiên.
+
+`GoalPage` nay chặn ca ấy bằng **hai** thứ phải đi cùng nhau, và thiếu một trong
+hai là lỗi quay lại:
+
+| | Làm gì | Thiếu nó thì |
+|---|---|---|
+| `context.watch<AuthBloc>()` | Đăng ký với phiên, không chỉ đọc một phát | `read` không đăng ký gì, nên phiên tới nơi cũng không dựng lại |
+| `key: ValueKey(idaccount)` | Ép `BlocProvider` dựng lại khi mã tài khoản đổi | `create` chỉ chạy MỘT lần, nên `watch` chỉ khiến build chạy lại còn cubit vẫn giữ đăng ký `watchGoals(0)` cũ |
+
+Canh bằng `test/features/goal/presentation/pages/goal_page_cold_start_test.dart`.
+`home_page` và `transaction_page` không mắc lỗi này vì chúng vốn đã `watch`.
 
 ### 4.7 `GoalDao.insert` dùng `insertOrReplace`
 
@@ -662,10 +1119,16 @@ cả hàng**, đưa mọi cột không gán về mặc định. Nhánh pull đú
 | Ví nguồn trích | `autoDepositWalletId` | — **không đẩy** — | — chưa có — |
 | Mốc kỳ đã trích | `autoDepositLastRun` | — **không đẩy** — | — chưa có — |
 | **Mốc neo** của nhịp trích | `timeCycleTakeMoney` | `time_cycle_take_money` | `Time_cycle_take_money` |
+| **Thứ tự ưu tiên** | `priority` (v19) | `priority` | `Priority` |
 
-Payload mục tiêu có **18 trường**. Hợp đồng đầy đủ ở
+Payload mục tiêu có **22 trường**. Hợp đồng đầy đủ ở
 `test/core/sync/sync_payload_contract_test.dart` — **nơi duy nhất** ghi tên
-trường giữa hai phía.
+trường giữa hai phía; con số trên đếm bằng máy từ chính tệp ấy (2026-09-08).
+
+> ⚠️ Dòng này từng ghi **19 trường** ("18 + `priority`"). Sai: phép cộng ấy bỏ
+> quên ba cột `auto_deposit_*` vào payload ngày 2026-09-07, và con số 18 vốn là
+> ảnh chụp *trước* đợt ấy. Đây đúng kiểu lỗi mà dự án đã vấp nhiều lần — **đếm
+> lại từ hợp đồng, đừng cộng dồn từ trí nhớ**.
 
 ---
 
@@ -684,10 +1147,10 @@ giá trị từ Admin-web nếu có — nhưng đừng tưởng có tính năng 
 
 | Việc | Ghi chú |
 |---|---|
-| Cấu hình trích tự động **không sang máy khác** | Ba cột `auto_deposit_*` là cục bộ. Chu kỳ và mốc neo thì có đồng bộ, nên máy mới hiện đúng nhịp kế hoạch mà không tự trích — càng dễ hiểu nhầm. **G21**, chặn ở backend |
+| ~~Cấu hình trích tự động **không sang máy khác**~~ | ✅ **Đóng 2026-09-07.** Backend đã có ba cột `auto_deposit_*`, client đẩy và kéo cả ba. Còn lại đúng một khe hở hẹp: hai máy cùng mở đúng lúc tới kỳ. **G21 đóng** |
 | Không có bộ **lập lịch nền** | Giờ trong mốc trích chỉ giữ được chiều "không sớm hơn". Có lời nhắc AlarmManager nổ đúng giờ kể cả khi app đóng, nhưng nó chỉ báo tin. **G22** — cố ý, đừng "sửa" |
 | Quy tắc trùng tên chỉ có ở **client** | `/sync/push` và PostgreSQL chưa kiểm gì — cùng tình trạng với danh mục. Xem mục 3.15 |
-| **Ưu tiên mục tiêu** chưa có | Bảng `goal` phía backend không có cột nào cho việc này. Làm cột cục bộ thì mắc đúng bệnh G21 — thứ tự đặt trên máy này không sang máy khác |
+| ~~**Ưu tiên mục tiêu** chưa có~~ | ✅ **Xong 2026-09-08** — schema v19, kéo thả ở tab "Đang theo đuổi", đồng bộ đủ hai chiều. Mục **3.22** |
 
 **Đã đóng ngày 2026-09-05** (giữ lại đây để không ai mở lại nhầm):
 
@@ -703,14 +1166,15 @@ giá trị từ Admin-web nếu có — nhưng đừng tưởng có tính năng 
 
 ## 8. Việc phía backend
 
-Ba tài liệu, tất cả ở `docs/superpowers/backend/CAN-LAM/`. Cả ba chỉ xin **cột
-nullable** nên gộp chung một đợt migration là rẻ nhất:
+Ba tài liệu, **cả ba đã đóng ngày 2026-09-07** và nay nằm ở
+`docs/superpowers/backend/DA-XONG/`. Cả ba chỉ xin **cột nullable** nên backend
+gộp chung một đợt migration — đúng như đề nghị.
 
 | Tài liệu | Xin gì | Trạng thái ở client |
 |---|---|---|
-| `2026-09-05-backend-transaction-goal-id.md` | `transaction.Idgoal` | Đã làm, cột **cục bộ** (v14). Máy khác rơi xuống nhánh so tên |
-| `2026-09-05-backend-goal-auto-deposit.md` | Ba cột `auto_deposit_*` | Đã làm, cột **cục bộ** (v15). Máy khác không trích gì cả — **G21** |
-| `2026-09-05-backend-goal-priority.md` | `goal.Priority` | **Chưa làm, và cố ý chưa làm** cho tới khi có cột |
+| `2026-09-05-backend-transaction-goal-id.md` | `transaction.Idgoal` | ✅ **Xong 2026-09-07** — cột đã có, client đẩy `idgoal` và đọc lại. Nhánh so **tên** vẫn giữ cho hàng cũ trên server (đều `NULL`), teo dần — **G18** |
+| `2026-09-05-backend-goal-auto-deposit.md` | Ba cột `auto_deposit_*` | ✅ **Xong 2026-09-07** — backend có cột, client đẩy và kéo cả ba. **G21 đóng** |
+| `2026-09-05-backend-goal-priority.md` | `goal.Priority` | ✅ **Đóng trọn 2026-09-08.** Cột có từ 2026-09-07, client nhận ở schema v19 và đẩy/kéo `priority`. Quy ước giá trị ở mục 4 của tài liệu ấy vẫn là nguồn duy nhất — mục **3.22** chỉ nhắc lại |
 
 Hai tài liệu đầu **không chặn gì hôm nay**; cái đầu chặn hướng bỏ bộ đếm
 `current_amount` để suy tiến độ từ chính giao dịch.
@@ -720,6 +1184,12 @@ viết mã. Thứ tự ưu tiên là công sức người dùng bỏ ra bằng t
 suy lại được, không có mặc định đúng, và nếu về sau nối phân bổ tự động thì nó
 quyết định **tiền đi đâu** — ba lý do khiến nó không nên là cột cục bộ.
 
+**Tài liệu thứ tư, thêm 2026-09-08, KHÔNG xin gì:**
+`docs/superpowers/backend/TRANSACTION_NOTE_ENCODING.md` báo cho backend biết
+client mã hoá chiều tiền và nguồn gốc bản ghi vào `transaction.Note` (hai tiền
+tố + một hậu tố), để họ đừng cắt/chuẩn hoá cột ấy và đừng dọn chữ "(tự động)"
+trên Admin-web. Không có việc gì phải làm — nó nằm ngoài `CAN-LAM/` có chủ ý.
+
 > ⚠️ Tài liệu cũ `2026-08-23-backend-goal-wallet-id.md` xin cột `wallet_id` cho
 > bảng `goal`. **Việc đó đã xong** — backend có `Idwallet` (tên khác với tên tài
 > liệu xin). Tài liệu ấy không còn việc gì.
@@ -728,24 +1198,34 @@ quyết định **tiền đi đâu** — ba lý do khiến nó không nên là c
 
 ## 9. Kiểm thử
 
-Khoảng **222 test** riêng cho mục tiêu, trên tổng 893 của dự án.
+**376 test** riêng cho mục tiêu, trên tổng **1587** của dự án (đếm lại
+2026-09-08 sau đợt bộ lọc nguồn "Tay / Tự động", bằng cách chạy thật `flutter test
+test/features/goal test/core/notification/notification_rules_goal_wallet_test.dart`;
+hai con số ghi ở đây trước đó là 222/893 rồi 351/1513, đều đã lạc hậu —
+**đừng chép lại từ trí nhớ**).
 
 | Tệp | Canh gì |
 |---|---|
 | `goal_entity_progress_test.dart` | `progress`, `daysLeft`, `isBehindSchedule` — biên dung sai, chia 0, quá hạn |
-| `goal_forecast_test.dart` | Ba hàm dự báo, kể cả các nhánh "không đủ căn cứ" |
+| `goal_forecast_test.dart` | Ba hàm dự báo, kể cả các nhánh "không đủ căn cứ". Từ 2026-09-08 canh thêm **cửa sổ tối thiểu** (mục 3.7): ca thật ba ngày/chu kỳ tháng, nửa chu kỳ là ngưỡng, chu kỳ ngày đủ ngay, chu kỳ năm cần lâu hơn, và "chưa nạp đồng nào" vẫn trả `0.0` chứ không `null` |
+| `presentation/widgets/goal_config_card_test.dart` | **Mục 3.23.** `moTaHanChot` (đếm ngược, quá hạn, đã đạt), `moTaTrichTuDong` (tắt/bật, thiếu mảnh, ví đã xoá), bốn dòng của khối, và khổ 411dp |
 | `goal_deposit_warning_test.dart` | `remainingAmount`, cảnh báo nạp vượt |
 | `goal_deposit_default_wallets_test.dart` | Bất biến ví nguồn ≠ ví nhận |
-| `goal_history_direction_test.dart` | **Bẫy 4.2** — đổi ví không làm khoản nạp cũ đọc thành rút |
+| `goal_history_direction_test.dart` | **Bẫy 4.2** — đổi ví không làm khoản nạp cũ đọc thành rút. Từ 2026-09-08 canh thêm **mục 3.25**: hậu tố không đụng phép đọc chiều tiền, `laKhoanTuDong` đòi đủ **cặp** tiền tố + hậu tố, và `ghiChuKhongHauTo` cắt đúng **một** lần ở cuối (tên mục tiêu có thể tự nó kết thúc bằng "(tự động)") |
 | `goal_wallet_shortfall_test.dart` | Cảnh báo lệch, cộng dồn nhiều mục tiêu |
-| `data/repositories/goal_repository_impl_test.dart` | Nạp, rút, đổi ví, nguyên tử, lịch sử |
+| `data/repositories/goal_repository_impl_test.dart` | Nạp, rút, đổi ví, nguyên tử, lịch sử. Từ 2026-09-08 thêm `capNhatUuTien`: chỉ chạm hàng có tên trong map, đánh dấu `pending`, id lạ không ném |
 | `presentation/widgets/goal_progress_test.dart` | Một định nghĩa duy nhất của tỉ lệ |
 | `presentation/widgets/goal_appearance_test.dart` | Bảng tra biểu tượng/màu, dữ liệu rác, và **giá trị ngoài bảng chọn** |
 | `goal_edit_form_test.dart` | `showDatePicker` với mục tiêu **quá hạn** — xem mục 3.9 |
-| `goal_auto_deposit_test.dart` | Bước kỳ (tháng ngắn, **năm nhuận**), **mốc neo**, trần số kỳ, quyết định trích |
-| `goal_auto_deposit_runner_test.dart` | Trích bù nhiều kỳ, ví cạn giữa chừng, cấu hình hỏng, cách ly tài khoản |
+| `goal_history_filter_test.dart` | **Mục 3.24.** Ba bộ lọc và phép **giao** của chúng, hai biên thời gian dễ sai im lặng, `tongKet` phải tính trên danh sách đã lọc, và **khoản rút thuộc "Tay"** — ca duy nhất bắt được bản đảo nghĩa hai chip nguồn |
+| `presentation/widgets/goal_history_sheet_test.dart` | **Mục 3.24 + 3.25.** Chip có đổi danh sách thật không, dòng tổng đi theo bộ lọc, hai ca rỗng, chỉ dòng tự động mang nhãn, dải nguồn **chỉ hiện khi có khoản tự động** (ca này phải ép đỏ bằng bản luôn-hiện, vì trước khi có dải nó xanh oan), và khổ 411dp với đủ **ba dải** + chip "Tự động" cạnh số tiền dài — máy ảo không kiểm hộ được vì chưa mục tiêu nào có khoản tự động lẫn đủ 6 khoản để mở bảng. ⚠️ Đếm nhãn theo `find.byType(NhanTuDong)`, không theo chữ: "Tự động" nay còn là nhãn chip |
+| `presentation/pages/goal_detail_live_test.dart` | **Bẫy 4.5** — trang đăng ký với dòng dữ liệu và cập nhật theo. Từ 2026-09-08 canh thêm **mục 3.25** trên chính trang chi tiết: chỉ khoản tự động mang nhãn, và tiêu đề dòng **không lặp lại** chữ "(tự động)" |
+| `goal_priority_test.dart` | **Mục 3.22.** Hai chế độ của `uuTienSauKhiKeo` (ghi một hàng / đánh số lại), giá trị luôn dương và không trùng, vị trí ngoài dải không ném, và `viTriThaThucTe` — chỗ duy nhất sửa cái lệch một ô của `ReorderableListView` |
+| `goal_grouping_test.dart` | Hai tab, và từ 2026-09-08 canh **thứ tự ưu tiên**: ưu tiên thắng hạn định, `NULL` xếp cuối, trùng số rơi về hạn định, và tab đã hoàn thành **không** dùng ưu tiên |
+| `goal_auto_deposit_test.dart` | Bước kỳ (tháng ngắn, **năm nhuận**), **mốc neo**, trần số kỳ, quyết định trích. Từ 2026-09-08 canh thêm: **nhịp neo vào mốc gốc, không trôi** — ngày 31 kẹp ở tháng ngắn rồi **quay lại** 31, ngày 30 không bị kéo lên cuối tháng, `kyKeTiep` dùng chung nhịp, và mục tiêu chưa có mốc neo vẫn chạy như trước |
+| `goal_auto_deposit_runner_test.dart` | Trích bù nhiều kỳ, ví cạn giữa chừng, cấu hình hỏng, cách ly tài khoản. Từ 2026-09-08 canh **hậu tố "(tự động)"** đi trọn vòng qua CSDL rồi quay về, và chiều tiền vẫn đọc đúng trên chính chuỗi ấy |
 | `core/notification/reminder_scheduler_test.dart` | Lịch nhắc kỳ trích: đúng mốc kỳ, trùng khoá thông báo, và **không huỷ lịch hoá đơn** |
-| `core/notification/notification_rules_goal_wallet_test.dart` | Hai luật thông báo |
+| `core/notification/notification_rules_goal_wallet_test.dart` | Hai luật thông báo. Từ 2026-09-08 canh thêm **cột mốc** (mục 3.21): mốc cao nhất, ba khoá riêng, khoá gắn `startDate` cho mục tiêu lặp lại, và ca **vừa ở cột mốc vừa chậm tiến độ** — ca duy nhất bắt được việc đặt luật sai chỗ |
 
 ### ⚠️ Ba thứ bộ test **không** bắt được ở vùng này
 
@@ -760,3 +1240,110 @@ Cả ba đều lộ ra trên máy ảo Android trong phiên 2026-09-05:
 
 Đụng vào giao diện hoặc điều hướng thì **phải chạy máy ảo**. Xem `CLAUDE.md`,
 mục "Ghi chú về kiểm thử".
+
+---
+
+## 10. Đối chiếu với app khác trên thị trường
+
+**Khảo sát 2026-09-08.** Đây là lần khảo sát **thứ hai**; lần đầu (2026-09-05)
+nằm trong `docs/superpowers/backend/DA-XONG/2026-09-05-backend-goal-priority.md`
+mục 1 và chỉ rút ra hai việc (làm tròn số lẻ, ưu tiên mục tiêu). Lần này đi rộng
+hơn và xếp hạng lại.
+
+App đã xem: YNAB, Monarch Money, Copilot; Monzo, Revolut, Starling; Qapital,
+Acorns; và phía Việt Nam là Money Lover, MISA MoneyKeeper, MoMo. Nguồn ở cuối
+mục.
+
+### 10.1 Chỗ FlowMoney đã mạnh — đừng "sửa" hai thứ này
+
+**Tiền di chuyển thật.** Mỗi lần nạp ghi đúng một giao dịch `type='transfer'`
+mang cả ví nguồn lẫn ví đích, trong một `db.transaction` nguyên tử (mục 3.2).
+Money Lover, MISA MoneyKeeper và phần lớn app quản lý chi tiêu cùng loại chỉ coi
+mục tiêu là **một con số đếm tiến độ**, không đụng tới số dư ví. Nhóm ngân hàng
+số (Monzo Pots, Revolut Vaults, Starling Spaces) thì có chuyển tiền thật — và
+FlowMoney đứng cùng nhóm đó, không đứng nhóm trên.
+
+**Không tự hoà giải tiến độ với số dư ví** (mục 3.4). Monarch đi tới **cùng một
+kết luận** sau ba đời tính năng: bản Goals 3.0 của họ gọi việc dời tiền là *fund
+allocations* — người dùng tự dời, app chỉ đối chiếu và báo. Họ có thêm một lựa
+chọn "khoán trọn một tài khoản cho một mục tiêu" (`fully allocating an account`)
+để tự đồng bộ số dư, nhưng đó là **lựa chọn phụ**, không phải mặc định. Ai định
+"dọn dẹp" mục 3.4 thành tự trừ tiến độ nên đọc dòng này trước.
+
+### 10.2 Ba cơ chế tự động hoá chưa có
+
+| Cơ chế | Ai làm | FlowMoney |
+|---|---|---|
+| **Làm tròn số lẻ** — mỗi khoản chi làm tròn lên, phần lẻ vào mục tiêu | Monzo Roundups, Revolut, Qapital, Acorns | ⛔ chưa |
+| **Chia thu nhập** — lương về thì tách theo tỉ lệ vào từng mục tiêu | Monzo *Salary Sorter*, Qapital *Payday Divvy* | ⛔ chưa |
+| **Quy tắc theo hành vi** — chi ở chỗ X thì trích thêm; tiêu dưới hạn mức thì phần dư vào tiết kiệm | Qapital *Guilty Pleasure*, *Spend Less* | ⛔ chưa |
+
+⚠️ **Cả ba đều là "app chuyển tiền khi người dùng vắng mặt"**, tức cùng loại với
+trích tự động (mục 3.12) và tự trả hoá đơn. Làm bất kỳ cái nào thì phần lớn
+thiết kế là về việc **dừng đúng lúc**, không phải về việc chuyển: ví thiếu thì
+bỏ qua chứ đừng chuyển một phần, phải có trần mỗi lượt, và phải hoàn tác được.
+Đi qua `depositToGoal` chứ đừng tự ghi — cùng lý do đã ghi ở mục 3.12.
+
+### 10.3 Quản lý nhiều mục tiêu
+
+- **Ưu tiên và phân bổ theo thứ tự.** ✅ *Nửa đầu xong 2026-09-08* (kéo thả,
+  mục 3.22). Monarch cho gán priority cho từng mục tiêu; FlowMoney từng sắp
+  cứng theo hạn gần nhất. Còn lại là **phân bổ** theo thứ tự ấy — xem 10.2.
+- **Chuyển tiền giữa hai mục tiêu.** Monarch *fund allocations* làm một thao tác.
+  FlowMoney phải rút về ví rồi nạp sang — hai giao dịch cho một ý định.
+- **Loại mục tiêu thứ hai: trả nợ.** Monarch Goals 3.0 tách *Save Up* và *Pay
+  Down*, kèm hai chiến lược Avalanche (lãi cao trước) và Snowball (dư nợ nhỏ
+  trước). FlowMoney chỉ có danh mục `Trả nợ`/`Thu nợ`, không có thực thể nợ.
+  **Đây là cả một loại thực thể mới** — không nên gộp vào bảng `Goals`.
+
+### 10.4 Động lực
+
+- **Cột mốc.** ✅ *Xong 2026-09-08* (`goalMilestone`, mục 3.21). Trước đó
+  FlowMoney chỉ báo ở **100%** và khi **chậm tiến độ** — người dùng đi ba phần
+  tư chặng đường mà app im lặng.
+- **Biểu đồ tiến độ theo thời gian.** ✅ *Xong 2026-09-09* — mục **3.26**. Khối
+  "TIẾN ĐỘ THEO THỜI GIAN" trên trang chi tiết: hai đường (thực tế và kế hoạch)
+  cộng một dòng chú thích nói chậm/đúng nhịp/vượt kèm **số tiền**. Trước đó
+  trang chỉ có vòng phần trăm và năm dòng lịch sử. ⚠️ Mục này **không** nằm
+  trong bảng khảo sát bên trên — nó là đề xuất của phiên 2026-09-08 và người
+  dùng đã duyệt thứ tự; ghi ở đây để nó không chỉ sống trong chat.
+- **Số liệu tổng hợp và chuỗi liên tiếp.** ✅ *Xong 2026-09-09* — mục **3.27**.
+  Thẻ ba ô dưới biểu đồ: số lần nạp, trung bình mỗi lần, chuỗi kỳ liên tiếp.
+  Đếm từ `_khoanLichSu` đang có, không cần dữ liệu mới.
+- **Khoá mục tiêu.** Monzo *locked pots*: khoá theo thời hạn, nạp vào được nhưng
+  không rút ra. FlowMoney cho rút tự do (chỉ chặn bằng hai trần ở mục 3.5).
+- **Nhiều kiểu mục tiêu.** YNAB có **ba** kiểu: góp đều mỗi kỳ (không có đích),
+  đạt đích trước ngày X, và bù đầy tới một mức. FlowMoney chỉ có kiểu thứ hai —
+  `targetAmount` và `targetDate` đều bắt buộc — nên "tháng nào cũng để dành 2
+  triệu, không có đích" hiện **không diễn đạt được**.
+- **Nhãn phân loại mục tiêu.** Thiết kế Stitch *có* nhãn trên mỗi thẻ ("THIẾT BỊ
+  LÀM VIỆC", "AN TOÀN TÀI CHÍNH"); bản dựng chưa làm.
+
+### 10.5 Xếp hạng, và lý do xếp như vậy
+
+| Hạng | Việc | Vì sao ở đây |
+|---|---|---|
+| ✅ | ~~**Ưu tiên mục tiêu**~~ | **Xong 2026-09-08** — schema v19, mục **3.22**. Kiểm trọn vòng trên máy ảo, `Priority` 100/200 đã lên PostgreSQL |
+| ✅ | ~~**Cột mốc 25/50/75%**~~ | **Xong 2026-09-08** — `goalMilestone`, mục **3.21** |
+| ✅ | ~~**Đưa mục tiêu lên màn hình chính**~~ | **Xong 2026-09-08** — `HomeGoalCard`, chọn mục tiêu **ưu tiên nhất**. Cùng lượt **gỡ khối thông báo** khỏi trang chủ theo yêu cầu người dùng |
+| ✅ | ~~**Trang chi tiết thiếu nội dung**~~ | **Xong 2026-09-08** — khối "Cấu hình" bốn dòng, và **sửa lỗi hộp dự báo** ngoại suy từ vài ngày. Mục **3.23** và **3.7** |
+| ✅ | ~~**Lịch sử tích luỹ dài không giới hạn**~~ | **Xong 2026-09-08** — cắt 5 dòng + bảng đầy đủ có **hai bộ lọc**. Mục **3.24** |
+| ✅ | ~~**Nhãn "(tự động)" cho khoản trích tự động**~~ | **Xong 2026-09-08** — hậu tố ghi chú, không cột mới, không đụng backend. Mục **3.25** |
+| ✅ | ~~**Bộ lọc "tay / tự động"**~~ | **Xong 2026-09-08** — `LocNguon`, dải chip thứ ba chỉ hiện khi có khoản tự động. Mục **3.24** |
+| ✅ | ~~**Biểu đồ tiến độ theo thời gian**~~ | **Xong 2026-09-09** — mục **3.26**. Kiểm trọn vòng trên máy ảo; hai lỗi chỉ máy thật mới thấy đã ghi ở bẫy **4.17** và **4.18** `ANALYTICS_FEATURE.md` |
+| ✅ | ~~**Số liệu tổng hợp, chuỗi liên tiếp**~~ | **Xong 2026-09-09** — mục **3.27**. Kiểm trên máy ảo với cả hai mục tiêu |
+| 2 | **Làm tròn số lẻ** | Giá trị cao và hợp văn hoá "nuôi heo đất", nhưng là chỗ **thứ ba** app tự chuyển tiền — xem cảnh báo ở 10.2 |
+| 2 | **Chuyển giữa hai mục tiêu** | Một hàm gọi `withdraw` + `deposit` trong cùng khối nguyên tử |
+| 3 | **Chia thu nhập theo ưu tiên** | Cần ưu tiên xong trước |
+| 3 | **Khoá mục tiêu**, **kiểu mục tiêu góp đều** | Đổi bất biến của `targetAmount`/`targetDate` — không còn là việc nhỏ |
+| — | **Mục tiêu trả nợ** | Ngoài phạm vi đồ án |
+
+**Nguồn:** [Monarch — Introducing Goals 3.0](https://help.monarch.com/hc/en-us/articles/44373110771860-Introducing-Goals-3-0) ·
+[Monarch — Using Save Up Goals](https://help.monarch.com/hc/en-us/articles/44373182867476-Using-Save-Up-Goals) ·
+[YNAB — Getting Started with Targets](https://support.ynab.com/en_us/getting-started-with-targets-ryAEP08xC) ·
+[Monzo — Roundups on pots](https://monzo.com/ie/help/managing-money/help-roundups) ·
+[Monzo — Locking Pots](https://monzo.com/help/budgeting-overdrafts-savings/what-are-locked-pots) ·
+[Qapital — The Rules](https://www.qapital.com/blog/save-money-qapital-rules/) ·
+[Trophy — How to Gamify a Savings App](https://trophy.so/blog/gamify-a-savings-app) ·
+[NerdWallet — Best Budget Apps](https://www.nerdwallet.com/finance/learn/best-budget-apps) ·
+[So sánh Sổ Thu Chi MISA và Money Lover](https://premiumvns.com/so-sanh-so-thu-chi-misa-va-money-lover/)

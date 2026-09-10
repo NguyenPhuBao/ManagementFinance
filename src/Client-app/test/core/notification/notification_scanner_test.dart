@@ -88,6 +88,14 @@ class OsNotifierGia implements OsNotifier {
   @override
   Future<Set<int>> pendingIds() async => const {};
 
+  // Hai thành viên của badge — bản giả này không canh badge, xem
+  // badge_updater_test.dart.
+  @override
+  Future<Set<int>> activeIds() async => const {};
+
+  @override
+  Future<void> datBadge(int soLuong) async {}
+
   @override
   Future<void> cancel(int id) async => daHuy.add(id);
 
@@ -626,12 +634,12 @@ void main() {
           updatedAt: DateTime(2026, 9, 1),
         );
 
-    Wallet viAm() => Wallet(
+    Wallet vi({double soDu = -50000}) => Wallet(
           id: 'vi1',
           idaccount: accountId,
           name: 'Tiền mặt',
           type: 'cash',
-          balance: -50000,
+          balance: soDu,
           currency: 'VND',
           icon: 'wallet',
           colour: '#4CAF50',
@@ -648,7 +656,7 @@ void main() {
       final moi = await dungScanner(
         budgets: const [],
         goals: [mucTieu()],
-        wallets: [viAm()],
+        wallets: [vi()],
       ).scan(accountId);
 
       expect(moi, 2);
@@ -656,6 +664,36 @@ void main() {
           .map((n) => n.kind)
           .toSet();
       expect(loai, {'goalCompleted', 'walletNegative'});
+    });
+
+    test('ngưỡng số dư thấp trong tuỳ chọn được dùng thật', () async {
+      final prefs = InMemoryNotificationPrefsStore();
+      await prefs.write(
+          accountId, const NotificationPrefs(nguongSoDuThap: 100000));
+
+      final moi = await dungScanner(
+        prefs: prefs,
+        budgets: const [],
+        wallets: [vi(soDu: 1000)],
+      ).scan(accountId);
+
+      expect(moi, 1,
+          reason: 'Ngưỡng người dùng đặt phải tới được bộ luật. Lưu mà không '
+              'ai đọc thì ô nhập trông như có tác dụng mà thật ra không — '
+              'đúng kiểu hỏng mà số ngày nhắc hoá đơn đã vấp một lần.');
+      expect((await db.notificationDao.getAll(accountId)).single.kind,
+          'walletLowBalance');
+    });
+
+    test('không đặt ngưỡng thì ví còn ít tiền vẫn im', () async {
+      final moi = await dungScanner(
+        budgets: const [],
+        wallets: [vi(soDu: 1000)],
+      ).scan(accountId);
+
+      expect(moi, 0,
+          reason: 'Mặc định là 0 = tắt. Bộ quét quên truyền tuỳ chọn và để bộ '
+              'luật dùng một mốc dựng sẵn sẽ bật tính năng cho mọi bản đã cài.');
     });
 
     test('đồng bộ kết thúc ở trạng thái lỗi thì sinh thông báo', () async {

@@ -152,7 +152,8 @@ dart run build_runner watch --delete-conflicting-outputs
 
 Thêm hai điều:
 
-- **Danh mục mặc định dùng chung không gian tên với danh mục người dùng.** Người dùng nhìn thấy cả hai trong cùng một danh sách chọn nên hai mục trùng tên là không phân biệt được. Vì danh mục mặc định là hàng dùng chung, tên của nó chiếm chỗ với **mọi** tài khoản.
+- **Danh mục mặc định dùng chung không gian tên với danh mục người dùng.** Vì nó là hàng dùng chung, tên của nó chiếm chỗ với **mọi** tài khoản.
+  - ⚠️ **Từ 2026-09-07 chúng không còn HIỂN THỊ nữa** (mỗi tài khoản có bản sao riêng), nhưng vẫn **chiếm chỗ tên**: `getNamesInUse` cố ý còn đếm chúng, và hai unique index của PostgreSQL vẫn tính chúng. Ẩn khỏi danh sách **không phải** là ra khỏi quy tắc trùng tên — nhầm hai điều này là cho người dùng tạo một danh mục mà đẩy lên sẽ hỏng.
 - **Hàng đã xoá mềm không giữ chỗ.** Phép so tên đi qua **bốn bước, theo đúng thứ tự**: gộp Unicode về dạng NFC → chữ thường → cắt khoảng trắng hai đầu → gom khoảng trắng ở giữa. Định nghĩa **duy nhất** nằm ở `lib/core/category/category_name.dart` (`normalizeCategoryName`); mọi nơi so tên đều phải gọi hàm đó.
   - Bước NFC không phải tuỳ chọn: "Cà phê" gõ từ hai bàn phím khác nhau có thể ra hai chuỗi khác byte (6 và 8 ký tự) mà mắt thường không phân biệt được.
   - Vì sao chốt đủ bốn bước ngay: **nới lỏng về sau là miễn phí, siết chặt về sau thì phải dọn dữ liệu** — bỏ bớt một bước bây giờ nghĩa là mai kia thêm lại sẽ có sẵn dữ liệu vi phạm và `CREATE UNIQUE INDEX` phía PostgreSQL sẽ thất bại.
@@ -163,18 +164,31 @@ Thêm hai điều:
 
 Phép kiểm tra **chỉ chạy khi tên thật sự đổi**. Bản client trước 2026-09-03 loại danh mục mặc định khỏi phép kiểm tra, nên máy người dùng có thể đang giữ một danh mục riêng trùng tên với danh mục mặc định; chặn tuyệt đối sẽ khiến họ không sửa nổi danh mục đó nữa, kể cả chỉ đổi icon.
 
-> ⚠️ **CSDL CHƯA thi hành quy tắc này.** PostgreSQL vẫn đang giữ:
+> ✅ **CSDL nay thi hành ĐÚNG quy tắc này — từ 2026-09-07.** PostgreSQL giữ:
 >
 > ```sql
-> UNIQUE (Create_by, NameCategory, Classify)                        -- uq_category_owner_name_classify
-> UNIQUE (NameCategory, Classify) WHERE Is_default = TRUE           -- uq_category_default_name_classify
+> UNIQUE (Create_by, lower(NFC(NameCategory)))  WHERE Is_default = FALSE AND Delete_at IS NULL
+>                                               -- uq_category_owner_name
+> UNIQUE (lower(NFC(NameCategory)))             WHERE Is_default = TRUE  AND Delete_at IS NULL
+>                                               -- uq_category_default_name
 > ```
 >
-> Hai ràng buộc này lệch quy tắc theo **cả hai chiều**: lỏng hơn ở `Classify`, ở việc tách khoá riêng cho danh mục mặc định và ở so tên phân biệt hoa/thường; nhưng **chặt hơn** ở chỗ hàng đã xoá mềm vẫn giữ chỗ — nên xoá một danh mục rồi tạo lại cùng tên sẽ được client cho qua mà CSDL từ chối.
+> Khớp cả ba điểm từng lệch: bỏ `Classify` khỏi khoá, so tên đã chuẩn hoá NFC và
+> không phân biệt hoa/thường, và **hàng đã xoá mềm không còn giữ chỗ tên**. Vế
+> "chặt hơn" — xoá một danh mục rồi tạo lại cùng tên bị CSDL từ chối trong khi
+> client cho qua — vì thế đã hết. Trigger kiểm chéo "người dùng không được trùng
+> tên với mặc định" cũng đã DROP, đúng như mô hình bản sao cần.
 >
-> Dòng "chặt hơn" đó có một đường kích hoạt **tự lặp**, xem **G16** trong `docs/CLIENT_APP_KNOWN_GAPS.md`. Từ 2026-09-04 client xếp vi phạm UNIQUE (`23505`) vào `permanent` nên bản ghi hỏng bị chặn theo thời gian và có ghi `syncError` — **không còn hoàn toàn âm thầm, không còn kéo chậm hàng đợi**. Nhưng bản ghi vẫn sinh ra ở mỗi lần mở app và vẫn không lên được server.
+> Đo thẳng trên `localhost:5432/PersonFinance` ngày 2026-09-07, không đọc tài liệu.
 >
-> Việc cần backend làm, kèm SQL và cách kiểm chứng: `docs/superpowers/backend/CAN-LAM/CATEGORY_NAME_UNIQUENESS.md`.
+> ⚠️ **Lớp cầm máu phía client giữ nguyên, đừng gỡ.** `_classifyFailure` vẫn xếp
+> vi phạm UNIQUE vào `permanent`: 23505 còn xảy ra được vì những lý do khác, và
+> không có nó thì bản ghi hỏng quay lại bị đẩy ở mọi chu kỳ. Từ cùng ngày, phép
+> phân loại đi theo `code` của backend (`UNIQUE_VIOLATION`,
+> `CATEGORY_NAME_DUPLICATE`) chứ không dò chuỗi nữa.
+>
+> Hồ sơ của chặng cũ: `docs/superpowers/backend/DA-XONG/CATEGORY_NAME_UNIQUENESS.md`
+> và **G16** trong `docs/CLIENT_APP_KNOWN_GAPS.md`.
 
 ---
 
@@ -555,6 +569,8 @@ src/Backend/
 | `src/Client-app/lib/core/database/daos/category_dao.dart` | Dedup + repair categories |
 | `src/Client-app/lib/core/database/daos/transaction_dao.dart` | Transaction queries + repair |
 | `src/Client-app/lib/core/sync/sync_payload_normalizer.dart` | Field name mapping |
+| `src/Client-app/lib/core/realtime/realtime_channel.dart` | Kênh thời gian thực: bắt tay JWT, backoff nối lại, nghe cả `onConnectivityChanged` |
+| `src/Client-app/lib/core/realtime/realtime_event.dart` | Ba sự kiện backend phát, và **lý do client không đọc payload** |
 | `src/Backend/modules/sync/sync.repository.js` | Prisma queries cho sync |
 | `src/Backend/modules/sync/sync.service.js` | Business logic sync |
 | `src/Backend/prisma/schema.prisma` | DB schema (Prisma) |
@@ -562,7 +578,7 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-06)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-09)
 
 ### 🔐 Xác thực phiên đăng nhập
 
@@ -577,7 +593,7 @@ src/Backend/
 
 ### ✅ Đã hoàn thành
 - Schema PostgreSQL aligned với New_Database.md (migration đã apply)
-- SQLite schema (Drift) aligned với backend schema — `schemaVersion = 12`
+- SQLite schema (Drift) aligned với backend schema — `schemaVersion` nay là **20** (dòng này từng đứng ở 12 rất lâu; con số đúng luôn nằm ở `AppDatabase.schemaVersion`, đừng chép từ đây)
 - Sync engine: thứ tự batch đúng, nhóm danh mục đẩy trước danh mục con
 - FK violation fix: `_resolveCategoryId` + step 1b
 - Category dedup trong UI
@@ -631,43 +647,183 @@ src/Backend/
   4. **Giờ im lặng, gộp thông báo Android, hoàn tác vuốt xoá** (`8c91c32`, schema không đổi). Giờ im lặng **tắt sẵn**, lưu bằng số phút từ nửa đêm nên khoảng vắt qua nửa đêm đúng; chỉ chặn bước bắn ra ngoài. Gộp: `khoaNhom` + bản tóm tắt id **âm** (`osScheduledId` luôn trả 0..2³¹−1), **chỉ Android**. `NotificationDao.khoiPhuc()` + SnackBar hoàn tác — cần thiết vì hàng đã xoá vẫn giữ chỗ chống trùng nên vuốt nhầm là mất vĩnh viễn
   5. **Công tắc quyền nói dối** (`0a4d3c2`). Quyền bị thu hồi trong Cài đặt máy thì công tắc vẫn sáng. `OsNotifier.daCoQuyen()` là câu **hỏi**, khác câu **xin**; hiển thị là `osBat && _coQuyenOs` nhưng `osBat` trong kho **giữ nguyên**, nên cấp lại quyền là chạy lại ngay
   6. **Một dòng nhật ký cho mỗi lượt quét** (`63a043e`) — trước đó vòng quét im lặng hoàn toàn, không phân biệt được "đã quét, không có gì" với "không quét lần nào"
-  > Đã kiểm trên `emulator-5554`: quét chạy trong chế độ máy bay, chạm thông báo mở đúng màn cho cả route trong shell (`go`) lẫn ngoài shell (`push`), hoàn tác đưa hàng trở lại, công tắc quyền đúng cả hai chiều. **Việc còn lại phần lớn là thuần client** — bảng `AppNotifications` cục bộ và không nằm trong `SyncEntityType`, nên chỉ có cảnh báo giao dịch ngân hàng/OCR (kênh Socket.io chưa xác thực) và thông báo bảo mật là thật sự chờ backend
-- **Test: 1277/1277 pass** (~85 giây), 125 file — đều đã `git add -f` (kiểm 2026-09-06 tối muộn)
+  > Đã kiểm trên `emulator-5554`: quét chạy trong chế độ máy bay, chạm thông báo mở đúng màn cho cả route trong shell (`go`) lẫn ngoài shell (`push`), hoàn tác đưa hàng trở lại, công tắc quyền đúng cả hai chiều. **Việc còn lại phần lớn là thuần client** — bảng `AppNotifications` cục bộ và không nằm trong `SyncEntityType`, nên chỉ có cảnh báo giao dịch ngân hàng/OCR và thông báo bảo mật là thật sự chờ backend. ⚠️ Câu trong ngoặc ở bản trước — "kênh Socket.io chưa xác thực" — **đã lạc hậu**: backend sửa 2026-09-07, client nối 2026-09-09
+- **Thông báo: ba việc treo cuối cùng nay đã nhìn tận mắt** (2026-09-07, chỉ kiểm và cập nhật tài liệu, không đổi mã). (1) **`khoaNhom`** — bằng chứng quyết định là bảng nhóm→tóm tắt của hệ điều hành trỏ vào bản tóm tắt **id −1 của app**, tức nhóm do app cầm chứ không phải `AUTOGROUP_SUMMARY` của Android 16; `mSoundNotificationKey` trỏ về thông báo thật nên `GroupAlertBehavior.children` chạy đúng. (2) **Nổ khi app đóng hoàn toàn** — tiến trình bị `am kill`, `pidof` rỗng, rồi `ActivityManager: Start proc … for broadcast {…ScheduledNotificationReceiver}` với **0 dòng `I/flutter`**. (3) **Giờ im lặng** có đối chứng: cùng luật `walletNegative`, bật thì 2 hàng vào app / **0** thông báo hệ điều hành, tắt thì 1 hàng / **1** thông báo. Ba cái bẫy mới ghi vào `NOTIFICATION_FEATURE.md` mục 8: lịch dùng `inexactAllowWhileIdle` có **cửa sổ trễ 1 giờ** nên nhảy đồng hồ tới đúng giờ hẹn thì **không nổ**; `am force-stop` huỷ sạch lịch nên phải dùng `am kill`; và trước khi nhảy đồng hồ phải đối chiếu mốc ấy với hạn hoá đơn + kỳ trích mục tiêu, vì `scan()` chạy ngay khi app quay lại tiền cảnh (tổng số dư trước/sau đều 8.890.081đ)
+- **Thông báo: cảnh báo số dư ví thấp, và ví nợ ra khỏi cảnh báo ví** (2026-09-07, `80fa0cb` + `2a88dc6`, **schema không đổi**). ⚠️ **Vế "ví nợ ra khỏi cảnh báo" đã bị GỠ ngày 2026-09-09** cùng lúc với việc thu loại ví về ba — loại `debt` không còn thì chốt ấy không còn chỗ bám; xem mục ngay dưới và bẫy ở `NOTIFICATION_FEATURE.md`. Trước bản này app chỉ báo khi ví đã **âm** — tức là đã muộn. Loại thứ 14 `walletLowBalance`, nhóm `system`, khoá theo ngày như `walletNeg`. Ngưỡng là `NotificationPrefs.nguongSoDuThap` (đơn vị đồng, **cục bộ**, không đồng bộ), và **`0` vừa là ngưỡng vừa là công tắc**: một cặp công tắc-cộng-số biểu diễn được trạng thái vô nghĩa "bật nhưng ngưỡng bằng 0", còn một con số thì không. Mặc định `0` để mọi bản ghi có sẵn — vốn đều thiếu trường này — rơi về **tắt**, cùng lý lẽ với giờ im lặng. Giao diện là **danh sách chọn sẵn** (Tắt · 50k · 100k · 200k · 500k · 1tr · 2tr) chứ không phải ô nhập tiền, theo đúng lý lẽ đã ghi sẵn ở `_hangSoNgay`: gõ tay mở đường cho những giá trị mà `NotificationPrefs` lặng lẽ quy về `0`, và người dùng chỉ thấy con số của mình biến mất. **Đổi hành vi có chủ ý:** ví loại `debt` nay không sinh cảnh báo ví nào cả, kể cả `walletNegative` — ví nợ mang số dư âm là đúng bản chất của nó, trước đây nó bị nhắc lại mỗi ngày cho tới khi trả hết nợ. Thứ tự loại trừ trong `_walletCandidates` là thứ giữ cho mỗi ví ra **một** thông báo: số dư âm cũng thoả điều kiện "dưới ngưỡng". Đã xem trên `emulator-5554` ở 411dp
+- **Kiểm lại danh sách việc thông báo còn lại** (2026-09-07). Một mục hoá ra **đã xong từ trước**: "ngưỡng cảnh báo ngân sách chỉnh được" — giao diện có sẵn ở `budget_form.dart:320-346`, nạp/lưu/kiểm hợp lệ đủ, vào được từ `/budget/rules` cả khi tạo lẫn khi sửa, và có `budget_form_threshold_zero_test.dart`. Con số "cứng 70/90%" mà danh sách nhắc tới là **thang màu** `_cautionAt`/`_criticalAt` ở `budget_visuals.dart`, do người dùng chốt 2026-09-04 và cố ý toàn cục — hai việc khác nhau bị gộp nhầm. ⚠️ **Đính chính 2026-09-07 (chiều):** bản trước của dòng này viết rằng khoá chống trùng dùng `budgetHealthOf().name` là "một chỗ hỏng chưa ai ghi" — **sai cả hai vế**. Việc leo lên một bậc mới sinh thêm thông báo là **thiết kế có chủ ý** và có test canh (`notification_rules_test.dart`, ca *"ĐỔI khi leo lên một bậc mới"*), với lý lẽ *"mỗi bậc được nhắc đúng một lần trong kỳ; không phân biệt bậc thì người dùng chỉ được báo ở mốc 70% rồi im lặng cho tới lúc vượt hẳn"*. Vế "không test nào phủ ngưỡng dưới 70%" cũng sai: chính ca test ấy dùng `nguongPhanTram: 60` (dòng 131–134). Bài học: mã sản phẩm cho biết code **làm gì**, chỉ test mới cho biết nó **định làm gì** — đọc mã test trước khi kết luận là lỗi
+- **Danh mục mặc định thành bản sao riêng của từng tài khoản** (2026-09-07, `2c1055e`…`5120b16`, **schema không đổi**). Trước đây mọi tài khoản dùng chung 18 hàng mặc định của backend; chúng không đồng bộ và không thuộc về ai, nên người dùng **không sửa, không đổi tên, không xoá** được. Nay `DefaultCategorySeeder` chạy **sau mỗi lần pull** và tạo bản sao cho từng danh mục mặc định mà tài khoản **chưa từng** có bản cùng (tên chuẩn hoá, `classify`) — **tính cả hàng đã xoá mềm**. Ba chữ ấy là khác biệt **duy nhất** với `ensureMissing()` cũ, thứ đã sinh ra G16; bỏ chúng đi là danh mục vừa xoá mọc lại ở mỗi lần mở app. Bản sao mang `isDefault = false`, UUID mới, giữ icon/màu, **chép cả từ khoá**, và **không** kế thừa nhóm. Dữ liệu cũ trỏ vào bản mặc định được **dời trước**, ẩn sau (lỗi 11.6). Năm truy vấn hiển thị bỏ nhánh `idaccount = 0`; **`getNamesInUse` vẫn đếm** hàng mặc định (quy tắc trùng tên) và **`purgeDataForOtherAccounts` vẫn giữ** chúng (đó là cái khuôn). `foldIntoBackendDefaults()` bị gỡ vì chạy ngược chiều. Từ khoá nay **đẩy được lên backend** — cột `Keyword` và `/sync/push` đã sẵn từ trước, thiếu đúng payload phía client. **G10 đóng theo** mà backend không phải làm gì. Đã kiểm trên `emulator-5554`: tạo 13 bản sao, đẩy `36/36 succeeded`, server có 15 danh mục riêng kèm từ khoá, bộ mặc định vẫn nguyên 18. ⚠️ Máy ảo bắt được một lỗi mà bộ test không thấy: sau khi seed **không ai hẹn đồng bộ**, hàng nằm `pending` tới lần khởi động nguội sau — đã sửa (`5120b16`). ⚠️ Hai giới hạn còn: bản sao chỉ đầy đủ khi **bộ mặc định cục bộ** đầy đủ (pull tăng dần — server 18, máy kiểm tạo 13), và **màu không có cột trên server** (`CATEGORY_COLOUR_COLUMN.md`)
+- **Trung tâm thông báo: lọc, phân trang, đánh dấu chưa đọc** (2026-09-07 tối, **schema không đổi**, chỉ hai file mã). Trước bản này trang `/notifications` đọc thẳng `watchFeed(idaccount)` với mặc định 50 hàng và không có bộ lọc nào — thông báo thứ 51 không xem lại được trong khi bảng giữ dữ liệu 90 ngày. Nay `watchFeed` nhận thêm `kinds` và `chiChuaDoc`, trang có dải sáu chip (Tất cả · Chưa đọc · Hoá đơn · Ngân sách · Mục tiêu · Hệ thống) cuộn ngang, tải 20 hàng một lần kèm nút "Tải thêm", và **nhấn giữ** một mục để đảo cờ đã đọc — đường quay lại cho nút "Đọc tất cả", vốn đọc hộ cả những mục người dùng chưa kịp xem. Lý do của từng quyết định (vì sao DAO nhận `List<String>` chứ không phải `NotificationGroup`, vì sao `null` khác danh sách rỗng, vì sao không dùng truy vấn `COUNT`) ở **mục 4.6 `docs/NOTIFICATION_FEATURE.md`**. Đã xem trên `emulator-5554` ở 411dp: dải chip không tràn và cuộn tới được cả sáu, lọc "Hoá đơn" thu 6 mục xuống 2, nhấn giữ đảo đúng cả hai chiều. ⚠️ **Phân trang chưa nhìn tận mắt** — tài khoản kiểm thử chỉ có 6 thông báo còn trang đầu tải 20, nên nút "Tải thêm" không có cớ xuất hiện; nó chỉ được phủ bằng widget test. ⚠️ Bẫy mới, đã ghi vào **7.10 mục 4**: `longPress` kích hoạt luôn `onTap` khi widget chưa có `onLongPress`, nên một test nhấn giữ chỉ kiểm trạng thái CSDL có thể **xanh giả**
+- **Thông báo: nhắc ghi chép hằng ngày** (2026-09-07 tối, **schema không đổi**). Loại nhắc duy nhất trong app suy từ việc **không có** dữ liệu — và cố ý **không phải** một `NotificationKind` nào cả. (Lúc viết dòng này bảng có 14 loại; nay là **16** — `goalMilestone` thêm 2026-09-08, `weeklySummary` thêm 2026-09-09. Con số đổi, lý lẽ dưới đây thì không.) Lý do: mười bốn loại kia là *bản ghi* một việc đã xảy ra và người dùng đọc lại chúng trong trung tâm thông báo, còn lời nhắc này chỉ có nghĩa khi họ **đang không mở app**; lúc mở ra xem thì nó đã hết lý do tồn tại. Nên nó **không sinh hàng nào** trong `AppNotifications` và sống hoàn toàn trong `ReminderScheduler` — nguồn ứng viên **thứ ba** bên cạnh hoá đơn và mục tiêu. Mỗi lượt `resync()` đặt **ba lịch rời** (hôm nay + hai ngày kế) vào giờ người dùng chọn, **bỏ qua hôm nay nếu đã có giao dịch**. Ba lịch rời chứ không phải một lịch lặp `DateTimeComponents.time`: lịch lặp chỉ tốn một suất nhưng **không bỏ qua được ngày nào**, nên nó nhắc cả những hôm người dùng đã ghi rồi. Ba ngày vì trần 50 tính trên **tổng mọi** nguồn (ba lúc ấy; **bốn** từ 2026-09-09, khi Tổng kết tuần thêm vào) và phép cắt sắp theo thời gian — lịch hằng ngày luôn gần nhất nên nó *thắng* nhắc hoá đơn, mà hoá đơn là tiền còn nhắc ghi chép là thói quen. Đầu vào mới: `TransactionDao.getLastTransactionDate()`; `null` = chưa từng ghi = **vẫn nhắc**. Ba trường mới trong `NotificationPrefs` (**cục bộ**, không đồng bộ), **mặc định TẮT**, giờ **riêng** mặc định **20:00** — không dùng chung `gioNhac` (08:00, của hoá đơn), và giờ im lặng **không chặn** nó. Chạm vào mở thẳng **`/add`**. Lý do đầy đủ ở **mục 4.7 `docs/NOTIFICATION_FEATURE.md`**. 28 test mới. **Đã đo trên `emulator-5554`** (đồng hồ máy ảo 21:34): bật → đúng hai lịch 20:00 cho 08/09 và 09/09, lịch hôm nay bị bỏ vì đã trôi qua; tắt → cả hai biến mất; bật lại → cả hai trở về; bốn lịch hoá đơn 08:00 nguyên vẹn suốt ba lượt. ⚠️ **Đổi tuỳ chọn không đặt lại lịch ngay** — lịch chỉ theo kịp ở lượt quét sau; đây là hành vi **có sẵn**, đúng vậy với `gioNhac` từ trước, nhưng trên máy thật nó trông hệt một lỗi
+- **Thông báo: nút hành động trên thông báo hệ điều hành** (2026-09-07 tối, **schema không đổi**). Hai nút trên nhắc hoá đơn: **"Trả ngay"** mở thẳng trang chi tiết hoá đơn ấy, **"Hoãn 1 ngày"** dời lịch 24 giờ **hoàn toàn trong isolate nền**, không mở app. ⚠️ **Cố ý KHÔNG có nút "Đã trả"**: `payBill` chuyển tiền thật (tạo giao dịch, trừ ví), và chạy nó trong isolate nền là chuyển tiền ở nơi không có giao diện, không xác nhận ví, không chỗ báo lỗi — đi ngược đúng nguyên tắc đã chốt cho hai chỗ tự chuyển tiền còn lại. Ai muốn một chạm là trả thì đã có `autoPayEnabled`. Mọi phép quyết định nằm ở `notification_actions.dart` (file thuần, không import plugin — bẫy 7.7 cộng với việc `flutter test` không dựng được isolate nền). Lý do đầy đủ ở **mục 4.8 `docs/NOTIFICATION_FEATURE.md`**. 23 test mới.
+  > **Ba lỗi chỉ máy thật mới thấy, cả ba đều im lặng** — đây là ví dụ mạnh nhất từ trước tới nay cho quy tắc "đụng giao diện/điều hướng thì phải chạy máy ảo":
+  > 1. **Thiếu `ActionBroadcastReceiver` trong `AndroidManifest.xml`.** Nút hiện đúng, `dumpsys notification` báo `actions=2` với `PendingIntent` đúng kiểu, nhưng không tiến trình nào nhận. Plugin **không tự khai báo** receiver này. Nay có `android_manifest_receivers_test.dart` canh **cả ba** receiver — vùng mà `flutter test`, `flutter analyze` và `flutter build apk` đều không nhìn thấy. Xem bẫy **7.11**.
+  > 2. **`resync()` huỷ mất lịch vừa hoãn.** Lý lẽ "cùng khoá nên sống sót" **sai**: nhánh bỏ qua ấy chỉ chạy cho lịch resync *muốn*, mà hoá đơn chỉ được muốn khi mốc nhắc còn ở tương lai — trong khi chỉ hoãn được **sau khi** thông báo đã nổ. Sửa bằng tập `khongHuy` trong `resync()`.
+  > 3. **"Trả ngay" ở cold start mở nhầm danh sách.** Một cú bấm có **hai** đường vào; `payloadKhoiDong()` đọc `payload` mà bỏ qua `actionId`. Nay cả hai gọi chung `khoaSauChamNut()`.
+- **Thông báo: badge số trên icon app** (2026-09-08, **schema không đổi**). `BadgeUpdater` nghe `watchUnreadCount` rồi đẩy sang `OsNotifier.datBadge()`; `NotificationScanner` **sở hữu** vòng đời của nó (`auth_bloc` đã có bốn chỗ start/stop, một lối song song là bốn chỗ nữa phải nhớ). Hai method mới trên interface: `activeIds()` và `datBadge()`. ⚠️ **Huỷ CHỌN LỌC, tuyệt đối không dọn sạch khay**: chỉ huỷ id suy từ `dedupeKey` của hàng đã đọc/đã xoá mềm, vì lịch hoá đơn nổ lúc app đóng và nhắc ghi chép hằng ngày **nằm trên khay mà bảng không biết** — số chưa đọc bằng 0 KHÔNG có nghĩa là khay phải trống. Và **không bao giờ `cancelAll()`**: nó cuốn theo cả lịch đang chờ trong AlarmManager. Lý do đầy đủ ở **mục 4.9 `docs/NOTIFICATION_FEATURE.md`**. 11 test mới.
+  > ⚠️ **Đo trên máy thật đã sửa lại chính lời hứa ban đầu:** con số **gần như không bao giờ hiện trên Android** — nó nằm trên bản tóm tắt nhóm, mà Android **tự gỡ bản tóm tắt khi nhóm chỉ còn một thông báo con**, và một là số lượng thường gặp nhất. Khay trống thì `datBadge(6)` chạy trót lọt mà không hiện gì cả. Nên trên Android badge thực chất là **chấm**, suy từ *thông báo đang trên khay* chứ không từ số chưa đọc; con số chỉ có nghĩa cho iOS và cho launcher nào vẽ được. Phần người dùng thấy vẫn đúng: **đọc hết trong app thì chấm tắt**.
+  > **Bằng chứng** (`emulator-5554`, Pixel Launcher): tạo hoá đơn tuần hạn 10/09 → `[BadgeUpdater] badge=7, khay=2, đã huỷ=0` và **icon có chấm**; bấm "Đọc tất cả" → `badge=0, khay=1, đã huỷ=1`, `dumpsys notification` còn **0** record của app, **chấm tắt**.
+  > Bài học kèm theo: `catch` **câm** ở `dongBo()` suýt dẫn tới kết luận sai rằng code không chạy — mất một vòng dựng lại APK. Nay nó ghi `debugPrint`, và chính dòng log ấy phân định được "không chạy" với "chạy đúng nhưng Android không vẽ".
+- **Mục tiêu: lịch sử tích luỹ cắt 5 dòng, phần còn lại vào bảng có bộ lọc** (2026-09-08, **schema không đổi**). Người dùng hỏi phần lịch sử có quá dài không. Đo: 11 khoản cuộn hết trong **2 cú vuốt** — chưa dài, nhưng danh sách **không có trần** (`itemCount: txs.length`), và một mục tiêu trích hàng ngày chạy hai năm là **730 dòng**. Nửa kỹ thuật không nhìn màn hình mà thấy được: `shrinkWrap` + `NeverScrollableScrollPhysics` trong `SingleChildScrollView` của cả trang tức **dựng mọi dòng cùng lúc, không ảo hoá** — trên một trang mà từ hôm nay vẽ lại mỗi lượt đồng bộ. Nay trang giữ **5 dòng**, phần còn lại vào một **bottom sheet** có vùng cuộn riêng, kèm **hai bộ lọc giao nhau**: chiều tiền và khoảng thời gian. 18 test mới.
+  > Nút **"Xem tất cả"** từng bị gỡ ngày 2026-09-06 vì nó có `onPressed: () {}`. Lý lẽ ấy nói về một nút **rỗng**, không nói rằng danh sách phải hiện hết mãi mãi — nay nút quay lại và **làm thật**. Đây là ca đúng mẫu bài học đã lưu: một quyết định có chủ ý chỉ chứng minh ai đó đã cân nhắc MỘT tình huống.
+  > ⚠️ **Không có bộ lọc "tay / tự động"**, và đó là giới hạn của **dữ liệu**: `GoalAutoDepositRunner` gọi đúng `depositToGoal` với đúng tiền tố ghi chú của khoản nạp tay nên hai loại giống hệt nhau trên mọi cột. Sự giống nhau ấy **có chủ ý** (mục 3.12) — nhờ nó `laKhoanRutKhoiMucTieu` đọc đúng chiều cho cả hai. Muốn phân biệt phải thêm **cột mới**; **đổi tiền tố ghi chú là cách sai**, nó đâm thẳng vào bẫy 4.2.
+  > ⚠️ Bảng là **bottom sheet chứ không phải trang mới**: mọi route mới đều phải trả lời câu hỏi *có nằm trong `StatefulShellRoute` không* (bẫy 7.8), còn bottom sheet không đụng router.
+  > **Một test xanh oan đã bị bắt.** Ca "biên tính theo ngày" viết lần đầu **không thật sự canh điều nó nói** — chỉ lộ ra khi dựng bản sai có chủ ý, và bản sai ấy chạy qua nó trót lọt. Đã viết lại để test đúng ca *khoản lúc rạng sáng ngày biên*. Đây là lần thứ hai trong ngày kỹ thuật này lộ ra test vô dụng.
+  > **Đã kiểm trên `emulator-5554`**: trang chi tiết còn đúng 5 dòng kèm nút "Xem tất cả"; bảng mở ra hiện **"11 khoản · đã gửi 2.201.000 đ"**, hai dải chip, 0 pixel vàng; chọn "Đã rút" ra rỗng kèm câu giải thích (MuaXe thật sự không có khoản rút nào), và "Đã rút" + "30 ngày" giao nhau đúng.
+- **Mục tiêu: hộp dự báo hết ngoại suy, và khối "Cấu hình" trên trang chi tiết** (2026-09-08, **schema không đổi**). Người dùng báo trang chi tiết **thiếu nội dung**. Đo lại thì phát hiện **một lỗi thật** nằm ngay trên màn hình ấy: mục tiêu `MuaXe` tạo 05/09, xem 08/09, đã tích 1.101.000 đ, chu kỳ tháng → hộp dự báo hiện *"đang tích **11.010.000 đ** mỗi tháng"* — gấp mười lần tổng đã tích được cả đời mục tiêu — kèm dự báo hoàn thành ngay tháng ấy cho một mục tiêu hạn 2028. Số học đúng (`1.101.000 / 3 ngày × 30`), cái sai là **ngoại suy**: phép chặn cũ chỉ có `soNgayDaQua <= 0`, tức chỉ đỡ phép chia cho 0 chứ không đỡ việc bịa ra một nhịp. `_duCuaSo` nay đòi **ít nhất nửa chu kỳ**, và ngưỡng tính **theo chu kỳ** chứ không phải một số ngày cứng. 20 test mới.
+  > Còn lại thì trang **không thiếu dữ liệu — nó thiếu chỗ hiển thị**. Bốn thứ của khối `GoalConfigCard` đều nằm sẵn trên `GoalEntity`: hạn chót + `daysLeft` (**không nơi nào gọi** trước đó), `isBehindSchedule` (chỉ dùng cho thông báo), tên ví tích luỹ (chỉ dùng cho hộp thoại), và **trích tự động** (không hiện ở đâu).
+  > ⚠️ **Dòng trích tự động là chỗ nghiêm trọng nhất:** app tự chuyển tiền mỗi kỳ mà trang chính của mục tiêu không nói gì, phải mở trang Sửa mới biết. Với một tính năng chuyển tiền lúc người dùng vắng mặt thì đó là chỗ im lặng không chấp nhận được.
+  > **Đã kiểm trên `emulator-5554`**: hộp dự báo nay hiện *"CHƯA ĐỦ DỮ LIỆU ĐỂ DỰ BÁO"* kèm lý do đúng (thiếu **thời gian**, không phải thiếu số lần nạp — câu cũ nói sai hướng); khối Cấu hình hiện `27/04/2028 · Còn 597 ngày`, `Đang đúng nhịp`, `Tiết kiệm`, và **`100.000 đ mỗi tháng từ test`** — tức mục tiêu ấy vẫn đang tự trừ tiền, thứ trước bản này màn hình không hề nói. 0 pixel vàng ở khổ 411dp.
+- **Trang chủ: bỏ khối thông báo, thêm khối mục tiêu** (2026-09-08, **schema không đổi**). Hai thay đổi đi cùng nhau vì cái sau lấy đúng chỗ cái trước để lại. **Gỡ `NotificationPanel`** theo yêu cầu người dùng: thông báo chỉ xem khi bấm vào chức năng đó, tức cái chuông ở thanh tiêu đề. **Thêm `HomeGoalCard`**: trước đó mục tiêu chỉ vào được qua **một dòng trong drawer**, trong khi ngân sách đã có hẳn một khối — một tính năng có trích tự động, dự báo và cột mốc mà bị chôn ba lớp. Phép chọn `chonMucTieuTrangChu` **gọi `chiaMucTieu`** chứ không tự lọc và tự sắp: thứ tự mục tiêu có đúng MỘT định nghĩa, và viết lại ở đây là bản sao thứ hai chờ ngày lệch (bài học mục 3.6 và 3.18). 12 test mới.
+  > ⚠️ **Cả hai thay đổi đều đi LỆCH thiết kế Stitch màn Home**, nơi khối thông báo nằm ngay đầu trang và **không có** phần mục tiêu nào. Lệch có chủ ý theo yêu cầu người dùng; ghi ở cả hai chỗ trong mã để lần sau đối chiếu Stitch thì biết đây không phải bỏ sót.
+  > `NotificationPanel` **vẫn còn** trong mã nguồn dù nay không nơi nào dựng nó: hai trang thông báo trích dẫn nó làm **mẫu** cho lối *"trang không tự đi hỏi `AuthBloc`"*, và test 97 dòng của nó canh đúng lối ấy. Gỡ luôn là làm hỏng hai chú thích và mất một phép canh, đổi lấy đúng 157 dòng.
+  > ⚠️ Chạm thẻ đi `/goals` bằng **`push`**, không phải `go`: `/goals` nằm NGOÀI `StatefulShellRoute` (bẫy 7.8 `NOTIFICATION_FEATURE.md`). `_buildBudgetSection` ngay bên cạnh thì dùng `go` vì `/budget` ngược lại, nó **thuộc** shell — hai dòng cạnh nhau, hai cách gọi khác nhau, và cả hai đều đúng.
+  > **Đã kiểm trên `emulator-5554`**: trang chủ không còn khối thông báo, chuông vẫn ở thanh tiêu đề; thẻ mục tiêu hiện **MuaXe** — cái có `priority` 100 — dù MuaDT hạn gần hơn (05/09/2027 so với 27/04/2028), tức ưu tiên đã thắng hạn định trên máy thật; chạm vào mở `/goals` kèm nút quay lại. Cụm pixel vàng duy nhất trên ảnh là **bóng đèn thẻ Insight AI** (34×50 px), không phải sọc tràn.
+- **Mục tiêu: trang chi tiết nghe dòng dữ liệu** (2026-09-08, **bẫy 4.5 đóng**). `GoalDetailPage` vốn gọi `getGoalById` đúng một lần trong `initState` rồi tự giữ `_goal` trong `State`, nên đồng bộ kéo về một thay đổi của mục tiêu **đang mở** thì màn hình vẫn hiện số cũ — không lỗi, không log, chỉ phát hiện khi thoát ra vào lại. Bán kính vừa rộng thêm vì `priority` nay cũng đi qua đường đồng bộ. Nay trang đăng ký `watchGoals` và huỷ ở `dispose()`. 3 test mới.
+  > Ba quyết định: nghe **cả tài khoản** chứ không riêng mục tiêu này (vì `_canhBaoVi` cộng dồn mọi mục tiêu trỏ vào cùng ví, nên một mục tiêu *khác* nạp tiền cũng làm câu cảnh báo đổi); lấy mã tài khoản từ **chính mục tiêu vừa đọc** chứ không từ `AuthBloc` (hàm chạy sau một `await` nên `context` có thể đã tháo — đọc phiên ở đó là mở lại đúng cửa G17 vừa đóng); và **không đụng `_isLoading`** ở đường stream (đây là cập nhật nền, bật cờ tải làm cả trang nháy về vòng quay mỗi lần đồng bộ xong).
+  > ⚠️ Hàng có thể **biến mất** khỏi danh sách vì vừa bị xoá mềm ở máy khác; khi ấy giữ nguyên những gì đang hiện. `firstWhere(orElse: () => throw)` ở đó là màn đỏ ngay giữa một lượt đồng bộ nền — có test canh riêng ca này.
+- **Mục tiêu: thông báo cột mốc 25/50/75%** (2026-09-08, **schema không đổi**). Trước bản này app chỉ lên tiếng về một mục tiêu ở **hai** thời điểm — đạt 100% (`goalCompleted`) và chậm tiến độ (`goalBehind`) — nên người dùng đi ba phần tư chặng đường mà không được ghi nhận gì. `goalMilestone` là `NotificationKind` **thứ mười lăm**. Ba quyết định: vượt nhiều mốc cùng lúc thì chỉ báo **mốc cao nhất** (nạp một phát từ 10% lên 80% vượt cả ba; ba tin cho một thao tác là ồn); khoá chống trùng theo khuôn `goalCycle:` **chứ không** khuôn `goalDone:` vì mục tiêu **lặp lại** phải được báo lại mỗi vòng; và luật phải đứng **TRƯỚC** phép kiểm `isBehindSchedule`, nếu không chỉ mục tiêu đang trễ mới được ghi nhận quãng đã đi. Lý do đầy đủ ở **mục 3.21 `docs/GOAL_FEATURE.md`**. 10 test mới.
+  > Dựng **bản sai có chủ ý** để kiểm cái bẫy thứ ba (dời luật xuống sau `isBehindSchedule`): **3 test đỏ**. Test xanh sẵn không chứng minh gì — đây là lần thứ năm kỹ thuật này đáng công trong dự án.
+  > ⚠️ Hai test cũ phải sửa, và **cả hai đều là lưới an toàn hoạt động đúng**: phép canh *"phủ đủ cả 14 loại"* của `notification_deeplink_test` đỏ vì nay có 15 (và phải dựng thêm một mục tiêu 50% — hàng 20% cũ không sinh cột mốc); còn *"đi đúng nhịp thì im lặng"* dùng `expect(ra, isEmpty)` cho một mục tiêu **70%**, tức một phép canh **rộng hơn** điều nó muốn nói. Thu hẹp về đúng `goalBehind` thay vì nới luật.
+  > **Đã kiểm trên `emulator-5554`**: `dumpsys notification --noredact` cho `android.title=(Đã đi được 50% chặng đường)` trên mục tiêu `MuaXe` 1.101.000/2.000.000 = 55%.
+- **Mục tiêu: thứ tự ưu tiên kéo thả** (2026-09-08, **schema v19**). Danh sách vốn sắp cứng theo hạn gần nhất nên người dùng không nói được *"quỹ khẩn cấp quan trọng hơn cái laptop"*. Cột `Priority Int?` phía backend có từ 2026-09-07 — đây là việc **duy nhất** mà backend đã làm xong phần của họ mà client chưa nhận. Quy ước giá trị lấy **nguyên** từ `DA-XONG/2026-09-05-backend-goal-priority.md` mục 4, không phát minh lại: số **cách nhau 100**, `NULL` xếp **cuối**, trùng số rơi về `targetDate`. `uuTienSauKhiKeo` có **hai chế độ** — còn khe thì ghi **một** hàng, hết khe hoặc còn hàng `null` thì đánh số lại cả danh sách; lần kéo đầu luôn rơi vào chế độ hai và đó là *một* lần trong đời danh sách. Chỉ tab "Đang theo đuổi" dùng ưu tiên. Payload mục tiêu nay **22 trường** (đếm lại 2026-09-08; dòng này từng ghi "18 → 19" vì cộng dồn mà quên ba cột `auto_deposit_*`). Lý do đầy đủ ở **mục 3.22 `docs/GOAL_FEATURE.md`**. 24 test mới.
+  > ⚠️ **`ReorderableListView.onReorder` trả `newIndex` tính trên danh sách CÒN NGUYÊN phần tử đang kéo**, nên kéo *xuống* thì con số ấy lớn hơn vị trí cuối cùng đúng một đơn vị. `viTriThaThucTe` là chỗ duy nhất sửa việc đó, và nó có test riêng — dùng thẳng `newIndex` là mục tiêu rơi lệch một ô, im lặng.
+  > ⚠️ Migration v19 **cố ý không suy giá trị** cho hàng cũ, khác hẳn `anchorDay` của v18: ở đó ngày đến hạn là ý định người dùng đã đưa ra và chỉ cần đọc lại, còn ở đây mọi thứ tự bịa ra đều sai với người đã sắp tay. Cùng lập luận đã dùng cho v15 và v17.
+  > ⚠️ Hai test migration hoá đơn (v17, v18) đỏ vì bản dựng thử của chúng chỉ có bảng `bills`, mà v19 `ALTER TABLE goals`. Sửa ở phía **bản dựng thử** — một CSDL v17 thật luôn có bảng ấy — chứ không bọc `try/catch` quanh migration.
+  > **Đã kiểm trọn vòng trên `emulator-5554`**: kéo `MuaXe` (hạn 27/04/2028) lên trên `MuaDT` (hạn 05/09/2027) → đổi ngay, **sống qua khởi động nguội**, và truy vấn thẳng PostgreSQL thấy `Priority` **100 / 200** — tức lần kéo đầu đánh số lại cả danh sách và cả hai hàng đã lên tới server. 0 pixel vàng ở khổ 411dp.
+- **Hoá đơn: ngày gốc thay cho quy tắc đoán cuối tháng** (2026-09-08, **schema v18**). Người dùng báo: đăng ký hoá đơn định kỳ vào 28/02 thì ô "Ngày đến hạn" (chỉ đọc) hiện **31/03** thay vì 28/03. Nguyên nhân: `nextBillDueDate` áp quy tắc *"mốc rơi đúng ngày cuối tháng thì kỳ sau cũng rơi vào ngày cuối tháng"* — một phép **đoán ý định từ dữ liệu**, đúng cho chuỗi bắt đầu 31/01 nhưng sai cho người chọn 28/02. Nay cột cục bộ `Bills.anchorDay` lưu **ngày người dùng thật sự chọn** và được chép sang từng kỳ, nên hai chuỗi cùng đi qua 28/02 vẫn tách được nhau: gốc 31 → 28/02 → **31/03** → 30/04; gốc 28 → 28/02 → **28/03** → 28/04. Đây đúng mô hình `advancePeriodFrom(anchor, steps)` mà ngân sách dùng từ đầu, nên ba vùng ngày tháng nay nhất quán. Lý do đầy đủ ở **mục "Ngày gốc" `docs/bill/BILL_DOCUMENTATION.md`**; xin cột đồng bộ ở `docs/superpowers/backend/CAN-LAM/BILL_ANCHOR_DAY.md`. 22 test mới.
+  > ⚠️ **Ba chốt chặn, cả ba đều hỏng âm thầm nếu sai:** (1) migration suy ngày gốc từ **ngày đến hạn**, không phải ngày bắt đầu — hoá đơn `bắt đầu 28/02, hạn 31/03` phải ra gốc **31**, lấy ngày bắt đầu là hạ nó xuống 28 vĩnh viễn mà người dùng không bấm gì; (2) `BillSchedule.fromBill` **không** suy lại ngày gốc từ ngày bắt đầu, nếu không mở form Sửa rồi lưu là đổi hạn của kỳ giữa chuỗi; (3) đổi ngày bắt đầu trên form thì ngày gốc **đi theo** — giữ gốc cũ là hoá đơn vừa đổi sang ngày 15 vẫn đến hạn ngày 31.
+  > **Đã kiểm trên `emulator-5554`**: form Thêm hoá đơn định kỳ, chọn 28/02/2026 → ô hạn hiện **28/03/2026**. Migration v17→v18 chạy êm trên CSDL thật đang có dữ liệu.
+  > Đã cân nhắc và **loại RRULE (RFC 5545)**: đặc tả bỏ qua occurrence rơi vào ngày không tồn tại, nên `FREQ=MONTHLY;BYMONTHDAY=31` **không sinh kỳ nào cho tháng Hai** — hoá đơn biến mất. Lý lẽ đầy đủ ở mục 5 tài liệu xin backend.
+  > Bài học quá trình: lần đầu điều tra tôi tìm thấy quy tắc ấy được ghi là "đánh đổi có chủ ý, quyết định 2026-09-04" mô tả **đúng** ca người dùng gặp, nên kết luận đây không phải lỗi. Sai. Lý lẽ biện minh cho nó (*"chuỗi mất mốc gốc để neo"*) **không thành lập ở kỳ đầu tiên**, nơi mốc gốc chính là ngày người dùng vừa chọn. Một quyết định có chủ ý chỉ chứng minh ai đó đã cân nhắc **một** tình huống, không chứng minh nó đúng ở **mọi đường dẫn** tới đoạn mã ấy.
+- **Mục tiêu: nhịp trích tự động neo vào mốc gốc, không còn trôi** (2026-09-08, **schema không đổi**). Cùng bệnh với hoá đơn, phát hiện khi rà soát: `cacKyDenHan` và `kyKeTiep` bước **từng kỳ một** từ mốc trước đó, nên mốc "ngày 31" bị kẹp về 28/02 rồi bước tiếp *từ 28* — nhịp tụt xuống 28 vĩnh viễn, im lặng. Nay mọi mốc tính từ mốc gốc qua `mocThuN(goc, chuKy, n)`: `31/01 → 28/02 → 31/03 → 30/04`. Mốc gốc là `timeCycleTakeMoney`; mục tiêu bật trước khi có ô chọn ấy thì gốc rơi về `autoDepositLastRun`, giữ nguyên hành vi cũ. Lý do ở **mục 3.12 `docs/GOAL_FEATURE.md`**. 7 test mới.
+  > Chú thích cũ ở cột `Goals.timeCycleTakeMoney` ghi *"client chưa bao giờ ghi"* — **sai từ lâu**: `GoalRepositoryImpl` ghi nó ở cả đường tạo lẫn đường sửa khi bật trích tự động. Đã sửa lại chú thích; nó từng là lý do tin rằng mốc neo không dùng được làm gốc.
+  > Mức nghiêm trọng thấp hơn hoá đơn có chủ ý được ghi lại: trích tự động chỉ chuyển tiền giữa hai ví **của chính người dùng**, sớm vài ngày không lỡ cam kết với ai. Hoá đơn thì "ngày trả tiền nhà" là ngày với người khác.
+- **Phân tích: lát 2c‑1 — trang Xuất báo cáo đọc số thật, thêm màn Xem trước** (2026-09-09, **schema không đổi**). Trang này là chỗ số cứng cuối cùng của mảng Phân tích: chip ví ghi "Techcombank"/"Tiền mặt" bịa ra, khối "Lịch sử xuất gần đây" ghi hai tên tệp bịa, nút xuất chỉ hiện snackbar. Nay ví/danh mục/thời gian lấy từ CSDL qua `BaoCaoRepository`, và nút mở màn **Xem trước báo cáo** dựng theo màn Stitch sinh cùng ngày. Tầng thuần mới `bao_cao_xuat.dart` **mượn nguyên** `tongThuChi`/`chiTheoDanhMuc` của `thong_ke_thang.dart` nên hai trang không thể nói hai con số khác nhau về cùng một tháng. Ba khối bịa đã bỏ hẳn, cùng ô `.xlsx`. Người dùng chốt hướng "xem trước rồi mới tải xuống", nên nút **Tải xuống để `onPressed: null`** cho tới lát 2c‑2 — có test canh đúng chỗ ấy. Lý do đầy đủ ở **mục 3.13 và 3.14 `docs/ANALYTICS_FEATURE.md`**. 46 test mới (4 tệp).
+  > Hai **bản sai có chủ ý** ở tầng thuần, mỗi bản đúng một test đỏ: lấy thẳng ngày cuối người dùng chọn làm biên `to` (mất trọn ngày cuối), và sắp nhóm ngày tăng dần. Một bản nữa ở repository: tra tên danh mục bằng `categoryDao.getAll` (lọc hàng đã xoá mềm) → dòng báo cáo mất tên thật.
+  > ⚠️ **Bẫy mới, mức trắng-cả-trang:** theme của app đặt `minimumSize: Size(double.infinity, 52)` cho mọi `ElevatedButton`. Nút đặt trần trong một `Row` đòi bề ngang vô hạn, Flutter bỏ layout **cả khung hình** — trang chỉ còn AppBar trên nền trơn, **không màn đỏ và không một dòng nào trong `adb logcat`**. Bộ test không thấy vì nó dựng bằng `MaterialApp` **trần**. Cách sửa: widget test phải dựng bằng `AppTheme.lightTheme`; làm vậy là test đỏ ngay, rồi mới bọc `Expanded`. Ghi ở bẫy **4.11 `ANALYTICS_FEATURE.md`**.
+  > Màn Xem trước **không có trong Stitch cũ**, nên đã **sinh vào chính dự án Stitch** (`f0a0d1457401478596753a48531bc097`, design system "Kinetic Finance") rồi mới dựng Flutter theo nó. ⚠️ `generate_screen_from_text` **báo timeout hai lần nhưng cả hai đều thành công**, và `list_screens` cập nhật chậm hơn `get_project` nhiều phút — đừng dùng `list_screens` để kết luận "sinh hỏng". Hậu quả: dự án có một màn trùng phải xoá tay, MCP không có lệnh xoá màn.
+  > **Đã kiểm trên `emulator-5554`** (tài khoản 10): chip ví hiện đúng ba ví thật (Tiết kiệm / Tiền mặt / test); báo cáo tháng 9 ra 14.625.000 − 1.045.000 = 13.580.000, **khớp từng đồng với trang Phân tích**; "Tháng trước" ra `01/08/2026 – 31/08/2026` với trạng thái rỗng; 0 pixel vàng ở khổ 411dp.
+- **Phân tích: lát 2c‑1b — báo cáo chi tiết theo chuẩn app thị trường** (2026-09-09, **schema không đổi**). Người dùng xem bản 2c‑1 rồi nói *"chỉ có các thông tin cơ bản, hãy tham khảo các app quản lý tài chính cá nhân tương tự"*. Khảo sát Money Lover, MISA MoneyKeeper, Copilot, PocketSmith → tờ báo cáo từ **bốn khối lên mười**: dòng tiền (số dư đầu/cuối kỳ, kiểu Money Lover), phần trăm **so với kỳ liền trước** (Copilot), **thu theo danh mục** đối xứng với chi (PocketSmith, lối bảng lãi–lỗ cá nhân), biểu đồ thu chi trong kỳ, số liệu nhanh, **ngân sách kỳ này** (chỗ FlowMoney mạnh hơn Money Lover), phân bổ theo ví, top 5 khoản chi. `chiTheoDanhMuc` nhận thêm tham số `loai` để dựng cả hai chiều — **một định nghĩa**, không viết bản sao. Lý do đầy đủ ở **mục 3.15 và 3.16 `docs/ANALYTICS_FEATURE.md`**. 38 test mới.
+  > **Dòng tiền là số suy ngược** từ số dư ví hiện tại, và có hai giới hạn đã ghi thẳng lên màn hình: **biến mất khi lọc theo một ví** (chiều tiền của `transfer` không suy được từ vị trí ví — bẫy mục 3.2 `GOAL_FEATURE.md`), và **lệch khi có ví tạo giữa kỳ** (số dư ban đầu của ví không phải một giao dịch — đã kiểm mã `lib/features/wallet`).
+  > `khoangKyTruoc` lùi **theo tháng** khi khoảng trùng khít tháng dương lịch, không trừ số ngày: tháng 9 dài 30 ngày nên trừ 30 ngày ra `02/08–01/09`, lệch một ngày và phần trăm sai mà không ai thấy. Ba **bản sai có chủ ý** đã chứng minh test bắt được: bỏ nhánh lùi theo tháng (**3 test đỏ**), bỏ bước trừ phần sau kỳ của dòng tiền, và sắp nhóm ngày tăng dần.
+  > ⚠️ Trang dài ra làm hỏng lối viết test cũ: `ListView` **không dựng** hàng ngoài khung nhìn, và một con số nay xuất hiện ở nhiều khối. Test phải `scrollUntilVisible` rồi tìm **trong phạm vi** một khối bằng `Key` — bẫy **4.12**.
+  > **Đã kiểm trên `emulator-5554`** (tài khoản 10): ngân sách hiện *"Di chuyển 285.000/50.000 — Vượt 235.000 đ"* và *"Giáo dục 45.000/50.000 — Còn 5.000 đ"*; phân bổ ba ví thật; số dư đầu kỳ ra **âm** và đó là số thật (thu tháng 9 nhiều hơn tổng số dư hiện có). 0 pixel vàng ở khổ 411dp trên bốn ảnh chụp.
+- **Phân tích: lát 2c‑2 — nút "Tải xuống" sinh tệp PDF/CSV thật** (2026-09-09, **schema không đổi**). Giao diện đã bày hai ô định dạng nên làm **cả hai**; bày một ô rồi không làm là đúng cái kiểu "lời hứa suông" mà 2c‑1 vừa dọn. Thêm hai phụ thuộc: `pdf` dựng tài liệu, `share_plus` đưa tệp ra sheet chia sẻ/lưu của hệ điều hành (**nay chỉ còn là đường lùi** — xem mục ngay dưới). CSV tự viết chuỗi, không cần thư viện. Lý do đầy đủ ở **mục 3.17 và 3.18 `docs/ANALYTICS_FEATURE.md`**. 19 test mới.
+  > ⚠️ **Quyết định về NƠI LƯU của mục này đã bị mục ngay dưới thay thế trong cùng ngày** — đọc tiếp trước khi tin. Bản đầu ghi tệp vào thư mục tạm rồi mở sheet chia sẻ, vì ghi vào bộ nhớ chung cần `WRITE_EXTERNAL_STORAGE` (Android ≤ 9) hoặc `MediaStore` qua kênh nền tảng (Android 10+); nay chính `MediaStore` ấy đã được làm, và sheet chia sẻ chỉ còn là đường lùi.
+  > ⚠️ **Font PDF phải nhúng.** Font mặc định của gói `pdf` là Helvetica — không có glyph tiếng Việt và **mất dấu im lặng** (tệp vẫn mở được, chỉ là "Ăn uống" thành ô trống). Nay nhúng `Roboto` (Apache 2.0) ở `assets/fonts/`, **thư mục assets đầu tiên của dự án**. Test canh bằng cách cấm chuỗi "Helvetica" xuất hiện trong tệp sinh ra.
+  > ⚠️ **CSV cho Excel tiếng Việt có ba luật, cả ba hỏng im lặng:** BOM UTF-8, dòng `sep=;` (Excel dùng dấu phân cách theo locale máy), và số tiền là **số nguyên thô mang dấu** (Excel vi-VN đọc `1.045.000` thành một phẩy không bốn năm). PDF thì ngược lại — là tài liệu để đọc nên có phân cách nghìn và ký hiệu `₫`.
+  > Một test **suýt không canh gì cả**: phép kiểm "chi mang dấu âm" tìm `;-50000` trong cả tệp, nhưng con số ấy cũng nằm ở dòng "Tổng chi" và bảng danh mục nên bản sai có chủ ý **đi lọt**. Đã siết lại thành khẳng định trên trọn dòng — bẫy **4.15**.
+  > **Đã kiểm trên `emulator-5554`** (ở bản đầu, khi tệp còn đi qua sheet chia sẻ): bấm Tải xuống mở đúng sheet với tên `BaoCao_01-09-2026_30-09-2026.pdf`; kéo tệp về bằng `adb exec-out` (⚠️ `adb shell cat` chèn `
+` làm hỏng tệp nhị phân — bẫy 4.16) rồi trích chữ: **2 trang, đủ dấu tiếng Việt và ký hiệu tiền, có cả biểu đồ** (lần kiểm ấy thấy `₫`; từ 2026-09-09 app in `đ`). Tệp CSV cũng đúng: BOM, `sep=;`, CRLF, `Tổng chi;-1045000`.
+- **Phân tích: tệp báo cáo lưu THẲNG vào thư mục Tải về** (2026-09-09, **schema không đổi**). Người dùng xem bản 2c‑2 rồi nói *"tôi muốn nó sẽ tải xuống lưu vào máy"* — sheet chia sẻ là một bước thừa. Nay tệp đi qua `MediaStore` và nằm luôn ở `/sdcard/Download`. Kênh `flowmoney/luu_tep` với **mã Kotlin trong `MainActivity`** — đây là **chỗ mã gốc đầu tiên do dự án tự viết** (trước đó mọi thứ gốc đều đến từ plugin). 6 test mới.
+  > **Vì sao phải có mã gốc:** đặt một tệp vào bộ nhớ chung mà không xin quyền chỉ làm được qua `MediaStore` (Android 10+). `WRITE_EXTERNAL_STORAGE` đã bị thu hồi tác dụng từ chính bản ấy, còn hộp thoại chọn thư mục (SAF) thì bắt người dùng bấm thêm. `IS_PENDING` bật trong lúc ghi rồi mới tắt, để ứng dụng khác không đọc phải tệp dở; MediaStore tự đổi tên khi trùng (`BaoCao (1).pdf` — đã thấy trên máy ảo).
+  > **Android ≤ 9 lùi về sheet chia sẻ** (minSdk của app là 24). Đường lùi ấy **không kiểm được ở đây** vì máy ảo là API 36, nên cố ý giữ nguyên đường cũ đã chạy thật thay vì viết thêm luồng xin quyền chưa ai chạy bao giờ.
+  > ⚠️ Hai đường trả về hai thứ khác nhau và giao diện phải nói đúng: `xuat()` trả đường dẫn khi lưu thật, trả `null` khi chỉ mở sheet. Nói "Đã lưu" cho cả hai ca là đẩy người dùng đi tìm một tệp không tồn tại — có test canh.
+  > **Đã kiểm trên `emulator-5554`**: sau khi bấm Tải xuống, `ls /sdcard/Download` cho `BaoCao_01-09-2026_30-09-2026.pdf` (24.101 byte) và `.csv` (2.270 byte, còn nguyên BOM); banner hiện *"Đã lưu vào Tải về/BaoCao_01-09-2026_30-09-2026.pdf"*.
+- **Mục tiêu: biểu đồ tiến độ theo thời gian** (2026-09-09, **schema không đổi**). Khối "TIẾN ĐỘ THEO THỜI GIAN" trên trang chi tiết: đường **thực tế** (tích luỹ) và đường **kế hoạch** (nét đứt, tuyến tính từ `startDate` tới `targetDate`), cộng một dòng chú thích nói chậm / bám sát / vượt kèm **số tiền**. Lý do từng quyết định ở mục **3.26** `docs/GOAL_FEATURE.md`. Thiết kế sinh vào **chính màn Stitch** *"Chi tiết mục tiêu - FlowMoney"* trước khi dựng Flutter. 32 test mới.
+  > **Chỗ neo là quyết định lớn nhất:** chuỗi dựng **đi lùi** từ `currentAmount` chứ không cộng xuôi từ 0, vì lịch sử **không** bảo đảm cộng lại bằng số tiền đang giữ (mục 3.4 — tiến độ cố ý không tự hoà giải). Đo thật: "MuaXe" của tài khoản 10 có **11 khoản, tổng 2.201.000 đ**, trong khi mục tiêu giữ **1.101.000 đ**. Cộng xuôi là điểm cuối biểu đồ cãi nhau với vòng phần trăm ngay phía trên. Điểm gốc âm sinh ra từ phép đi lùi bị **kẹp ở 0** khi đem vẽ.
+  > **Một dòng dữ liệu nuôi cả biểu đồ lẫn danh sách:** `StreamBuilder` của `watchGoalTransactions` được dời lên bọc cả hai khối. Dòng thứ hai là chạy cùng câu truy vấn hai lần và mở cửa cho hai bản dữ liệu lệch nhau trên một màn hình.
+  > **Đã kiểm trên `emulator-5554`, và máy thật bắt được HAI lỗi bộ test không thấy** — cả hai nay là bẫy **4.17** và **4.18** `ANALYTICS_FEATURE.md`: (1) `fl_chart` mặc định **không cắt** vùng vẽ (`clipData` là `FlClipData.none()`) nên điểm âm kéo đường xanh tràn khỏi thẻ, đè lên trang — không exception, không log, `takeException()` vẫn xanh; (2) fl_chart vẽ nhãn trục ở **cả hai biên** cộng thêm mốc theo `interval`, nên "08/27" in đè "09/27". Kiểm lại sau khi sửa: hai mục tiêu, **0 pixel vàng** (sọc cảnh báo tràn).
+- **Mục tiêu: ba con số tổng hợp và chuỗi kỳ liên tiếp** (2026-09-09, **schema không đổi**). Thẻ ba ô ngay dưới biểu đồ: số lần nạp, trung bình mỗi lần, và chuỗi kỳ nạp liên tiếp kèm biểu tượng ngọn lửa. Đếm từ lịch sử đã có — không cột mới, không truy vấn mới. Lý do ở mục **3.27** `docs/GOAL_FEATURE.md`. 20 test mới.
+  > **Kỳ cắt bằng `mocThuN` neo vào `startDate`** — chính phép bước kỳ mà bộ trích tự động dùng, cùng khuôn với `advancePeriodFrom` bên ngân sách và `anchorDay` bên hoá đơn. Bản thứ tư của cùng một luật là bản duy nhất không có test năm nhuận. **Kỳ hiện tại chưa nạp không phá chuỗi** (nó đang dở); kỳ rỗng ở giữa thì cắt thật. Khoản rút bị loại khỏi cả ba con số và không phá chuỗi.
+  > ⚠️ **Bài học kiểm thử đắt hơn tính năng:** hai test "năm nhuận" và "tháng ngắn" viết lần đầu **không canh gì cả** — thay `mocThuN` bằng phép cộng tháng thô vẫn xanh, vì bộ ngày tôi chọn cho ra cùng một chuỗi ở cả hai cách cắt. Chỉ **bản sai có chủ ý** mới lộ ra. Cùng loại với bẫy 4.15 `ANALYTICS_FEATURE.md`; chi tiết ở cuối mục 3.27 `GOAL_FEATURE.md`.
+  > **Đã kiểm trên `emulator-5554`**: "MuaXe" hiện *11 lần nạp · 200.091 đ · 1 tháng liên tiếp* (khớp 2.201.000 / 11 đo được ở bảng lịch sử), "MuaDT" hiện *1 · 700.000 đ · 1*; **0 pixel vàng** ở cả hai màn.
+- **Thông báo: Tổng kết tuần** (2026-09-09, **schema không đổi**). Loại thông báo **thứ 16**, nhóm **mới** `summary`, và là loại thứ hai đi qua `ReminderScheduler` (nổ được khi app đã đóng). Bàn giao ở mục **5d** `docs/NOTIFICATION_FEATURE.md`; spec kèm lý do bốn quyết định ở `docs/superpowers/specs/2026-09-07-weekly-summary-notification-design.md`. **39** test mới (đếm bằng máy: 1760 → 1785 ở lát 1-2, → 1799 ở lát 3-4).
+  > **Giờ do người dùng chọn**, không phải mốc cố định — người dùng chốt phương án tốn hơn vì lịch đặt trước không đi qua giờ im lặng. Công tắc **mặc định TẮT**, cùng lý lẽ với `nhacGhiChepBat`; chính nó giữ cho 30 test cũ của `ReminderScheduler` không phải sửa kỳ vọng.
+  > **Số tuần ISO tự viết** — Dart không có sẵn, và năm ISO khác năm dương lịch ở cả hai chiều (31/12/2025 là 2026-W01, 01/01/2021 là 2020-W53).
+  > **Đã kiểm trên `emulator-5554`**: thẻ "TỔNG KẾT TUẦN" mặc định tắt, bật lên hiện đúng hai hàng *Ngày trong tuần: Thứ Hai* và *Giờ nhắc: 08:00*, bộ chọn thứ đủ bảy dòng; **0 pixel vàng**.
+- **Soát tài liệu sau ba hạng mục 2026-09-09** — bắt **chín** chỗ lạc hậu (đếm loại thông báo 14/15 → 16, "bốn nhóm" → năm, "tổng ba nguồn" của trần lịch → bốn, số tệp test notification 20 → 22, và bảng ở mục 3 `NOTIFICATION_FEATURE` **thiếu hẳn hàng `weeklySummary`**), một **mâu thuẫn nội bộ** (`PROJECT_CONTEXT` vừa nói Tổng kết tuần đã xong vừa nói nó là việc kế tiếp), và **một khuyết tật thật**: trung tâm thông báo có năm nhóm nhưng dải chip chỉ có bốn. Hai bẫy mới: **7.12** (lưới canh `nhomCua` không canh chip) và **7.13** (thiếu `dongTrang()` là **treo cả tệp test**, không phải một test đỏ).
+- **Test: 1876/1876 pass** (~200 giây) — đều đã `git add -f` (đếm lại 2026-09-09 sau loại ví + định dạng tiền; 1843 là mức nền sau Socket.io, 1801 trước đó)
+
+- **Loại ví thu về ba, và một lỗi kẹt hàng đợi im lặng được đóng** (2026-09-09, **schema v20**). Giao diện cũ cho chọn `ewallet` và `debt` — hai giá trị mà `chk_wallet_type` của PostgreSQL **không nhận** — nên ví tạo bằng chúng vỡ CHECK ở mọi lần đẩy và nằm lại trong hàng đợi vĩnh viễn, không một dòng nào báo ra. Nay `lib/features/wallet/domain/wallet_type.dart` là **nguồn duy nhất**, thay cho bốn danh sách không khớp nhau. `banking` đọc được nhưng không tạo được. ⚠️ Hệ quả người dùng thấy: chốt "ví loại NỢ đang âm thì không nhắc" (2026-09-07) mất chỗ bám vì `debt` không còn — ai theo dõi thẻ tín dụng sẽ bị nhắc "ví âm" mỗi ngày; chữa được thì phải thêm khái niệm "ví được phép âm", xem G26.
+
+- **Định dạng tiền gộp về một chỗ** (2026-09-09). `CurrencyFormatter` đã tồn tại từ lâu nhưng **21 tệp vẫn tự dựng `NumberFormat`, sáu kiểu, 45 chỗ** — hậu quả là app hiện **hai ký hiệu tiền** cùng lúc (`đ` ở 18 chỗ, `₫` ở phần còn lại). Nay `lib/` không còn chỗ nào dựng `NumberFormat` ngoài chính tệp ấy, và có test quét cả `lib/` để canh. Quy tắc: chấm ngăn nghìn, phẩy cho thập phân, ký hiệu `đ`; `format()` **làm tròn về đồng chẵn** (bản đầu hiện phần lẻ và bộ test lộ ra ngay: mọi số tính ra đều thành `7.927.272,73 đ`), `formatCoLe()` mới hiện phần lẻ.
+
+- **Sáu lỗi vùng quản lý ví, tìm ra bằng một lượt khảo sát đối chiếu app thị trường** (2026-09-09, **schema không đổi**). Lượt khảo sát đi bốn trục — mô hình dữ liệu, luồng quản lý, số liệu, tính năng sản phẩm — và đối chiếu Money Lover, Sổ Thu Chi MISA, Wallet by BudgetBakers, Spendee. Nó tách được **lỗi đang chạy** khỏi **thiếu tính năng**; đây là phần lỗi, làm trước theo yêu cầu người dùng.
+  > 1. **`include_in_total` đẩy lên nhưng không kéo về.** Cờ nằm trong hợp đồng đẩy (12 trường) và `upsertWallet` phía backend ghi nó đầy đủ, nhưng mapper pull không đọc — máy thứ hai giữ mặc định `true` của Drift và **không bao giờ** biết ví nào bị loại khỏi tổng. Phép đọc có chốt khoá-vắng-mặt, mượn nguyên bài học `idgoal`: `doiSangBool(null)` trả `false` nên đọc thẳng sẽ *tắt* cờ chứ không *giữ* nó.
+  > 2. **Hai ví cùng làm mặc định, và câu đọc nổ khi gặp trạng thái ấy.** Chỉ đường THÊM giữ bất biến, đường SỬA ghi thẳng; mà `getDefault` dùng `getSingleOrNull()` — ném `StateError` khi có hơn một hàng (`Bad state: Too many elements`, đo được bằng test đỏ). Không unique index nào chặn ở cả hai đầu. Chốt chuyển xuống `WalletLocalDataSourceImpl` (chỗ **cả hai** đường đi qua) dựa trên `WalletDao.clearDefaultExcept`; vế đọc thêm thứ tự xác định + `limit(1)`, vì hai hàng mặc định **đến được từ server** qua `upsertAll`.
+  > 3. **Cờ "Ví mặc định" không có tác dụng nào.** Trang thêm giao dịch lấy `_wallets.first`, mà `getAll` sắp theo `updatedAt` giảm dần → ví chọn sẵn là ví *vừa bị đổi gần nhất*. Ngoài vùng ví, `getDefault` không được gọi ở đâu trong `lib/`. Luật tách ra `transaction/domain/vi_chon_san.dart` (hàm thuần). **Ví đích phải đổi cùng lúc**: luật cũ lấy chỉ số 1 cứng, nên chỉ sửa ví nguồn là khoản chuyển có nguồn trùng đích khi ví mặc định nằm giữa danh sách.
+  > 4. **Thứ tự danh sách ví xáo lại mỗi lần ghi chép**, vì mọi giao dịch đều bump `updatedAt` của ví. Nay: ví mặc định trước, rồi `lower(name)` — `lower()` để tên viết hoa không dồn thành khối riêng (phép so nhị phân của SQLite đặt `'Z'` trước `'v'`); nó chỉ chuẩn hoá ASCII nên dấu tiếng Việt vẫn xếp sau, chấp nhận được vì thứ cần sửa là tính **ổn định**. Bảng `wallets` **không có `createdAt`**, nên tên là mốc ổn định duy nhất hiện có. ⚠️ `walletDao.getAll` được gọi từ **14 chỗ**, nên đây là đổi thứ tự **mọi** bộ chọn ví trong app — có chủ ý.
+  > 5. **Tổng tài sản sai một nhịp sau khi thêm ví**: `WalletCubit` tự `fold` mọi ví, không lọc `includeInTotal` — một bản thứ hai của luật "tổng tài sản", và bản này thiếu đúng phép lọc (1.050.000đ thay vì 150.000đ khi có ví 900.000đ bị loại). Bỏ hẳn bản thứ hai, hỏi `getTotalBalance`.
+  > 6. **Hai điều khiển chết trên màn Quản lý ví.** Nút "SẮP XẾP" có `onTap` thân rỗng; công tắc trên hàng ví **nhận thao tác rồi bỏ đi** (`_walletSwitches` chỉ là `Map` trong `State`). Công tắc còn kéo theo một khuyết tật chưa từng ghi: nó hiện **thay chỗ** `PopupMenuButton` khi `type == 'bank'`, nên ví ngân hàng không có "Chỉnh sửa" lẫn "Xóa ví" nào. Cả hai đều là tính năng **thật** trong thiết kế Stitch — màn "Quản lý ví" có nút sắp xếp, và đoạn JS của nó log `'Wallet activated'`/`'Wallet deactivated'` cho công tắc, tức cột `status`. Gỡ để màn hình không còn hứa suông; chúng quay lại cùng hai tính năng ấy, và khi ấy công tắc nằm **cạnh** menu chứ không thay chỗ.
+  > **Bản sai có chủ ý lại lộ ra một test rỗng nghĩa** — lần thứ tư của dự án theo đúng khuôn mục 5.1 bàn giao. Ca "lưu ví không mặc định thì không đụng ví khác" tuyên bố canh câu `WHERE` của `clearDefaultExcept`, nhưng luồng ấy **thoát sớm** ở `_giuMotViMacDinh` nên không bao giờ chạy tới câu `WHERE`; gỡ `isDefault.equals(true)` đi lọt. Đã tách thành hai ca cho hai luật.
+  > **20 test mới**, nền `flutter test` **1876 → 1896**, `flutter analyze` giữ nguyên **25 issue / 0 error**. **Đã kiểm trên `emulator-5554`** ở 411dp: nút SẮP XẾP biến mất, cả ba hàng ví đều có menu ba chấm mở đủ "Chỉnh sửa"/"Xóa ví", ví mặc định *Tiết kiệm* lên đầu kèm nhãn MẶC ĐỊNH, trang thêm giao dịch chọn sẵn đúng *Tiết kiệm*, tab Chuyển khoản có ví nguồn **khác** ví đích (*Tiết kiệm* → *test*), **0 pixel vàng** ở mọi màn.
+  > ⚠️ **Phần "thiếu tính năng" của lượt khảo sát chưa làm**, xếp theo giá trị: ~~**lưu trữ ví (archive)**~~ — ✅ **làm xong 2026-09-10**, xem mục ngay dưới. ⚠️ Câu *"không cần một dòng backend nào"* viết ở đây đã **bị bác bỏ**: `upsertWallet` xử lý `status` thật, nhưng cột `wallet."Status"` là `varchar(7)` còn `'Inactive'` dài 8 ký tự, nên nó **chặn ở backend** (G28); **điều chỉnh số dư** (Money Lover sinh một giao dịch bù và loại nó khỏi thống kê); **sắp xếp ví**; **xem giao dịch của một ví** (`TransactionFilter.walletId` đã có, thiếu đường vào); **hạn mức thấu chi** (bản có nguyên tắc của G27, theo khuôn BudgetBakers); **đa tiền tệ** (`chk_wallet_currency` cho `VND | USD`, entity và repository đã mang `currency`, nhưng `WalletCubit.addWallet` bỏ tham số và không màn nào cho chọn).
+
+- **Lưu trữ ví (archive)** (2026-09-10, **schema không đổi** — cột `status` đã có sẵn trong SQLite từ trước, mặc định `'active'`). Tính năng đầu tiên của đợt "thêm phần mới" sau khi đóng sáu lỗi vùng ví. Lưu trữ là **đóng băng**, không phải xoá: ví lưu trữ biến khỏi mọi bộ chọn ví, thôi cộng vào tổng tài sản, và hai bộ chạy tự động bỏ qua nó — nhưng lịch sử giao dịch cũ không đụng tới, và **mọi con số cũ quay lại nguyên vẹn** khi bỏ lưu trữ, vì phép loại khỏi tổng là *suy ra* chứ không ghi đè `includeInTotal`. Đây là lối thoát cho ba ràng buộc xoá ví (còn số dư / đã có giao dịch / đang gắn mục tiêu) khiến ví dùng thật gần như không bao giờ xoá được.
+  > **Hai tệp thuần mới.** `wallet_status.dart` giữ ba phép ánh xạ phải khớp nhau (khoá cục bộ chữ thường, khoá gửi lên chữ hoa, phép đọc ngược), cùng khuôn với `wallet_type.dart`. `vi_tinh_vao_tong.dart` là **định nghĩa duy nhất** của "ví nào được cộng vào tổng tài sản" — luật ấy vốn có **bốn** bản chép tay không khớp nhau, và **ba** trong số đó quên hẳn phép lọc `includeInTotal`: trang chủ và "số dư cuối kỳ" của báo cáo đều cộng `fold` trần trên mọi ví (bản thứ tư, `WalletCubit.addWallet`, đã đóng ở `6fd2ce9`). Cả ba nay đi qua một hàm; đó là lỗi có sẵn, sửa kèm vì nó nằm đúng trên dòng phải đụng.
+  > **Hai phép đọc danh sách ví, không còn một.** `getActive`/`watchActive` cho **bộ chọn ví**; `getAll`/`watchAll` giữ nguyên nghĩa cũ cho những chỗ phải thấy ví lưu trữ (màn Quản lý ví, bảng tra tên ví của sổ giao dịch và báo cáo, đường đồng bộ). Chọn nhầm **không gây lỗi nào**: bộ chọn gọi `getAll` thì ví lưu trữ hiện lại như chưa cất đi, còn bảng tra tên gọi `getActive` thì dòng giao dịch cũ hiện "Ví đã xoá". `wallet_picker_sources_test.dart` quét cả `lib/` và bắt mọi chỗ gọi phải được phân loại **tay** kèm lý do — chính nó bắt được ba tệp đổi nhầm ở lượt đầu (`bill_page`, `bill_detail_page`, `budget_local_data_source` dựng `TransactionLookup` chứ không phải bộ chọn).
+  > **Hai chốt chặn, khác hẳn ba ràng buộc của xoá:** không lưu trữ ví **mặc định** (nó được chọn sẵn mỗi lần ghi giao dịch), và không lưu trữ **ví hoạt động cuối cùng**. Hai chốt **độc lập** nhau — một tài khoản có thể không có ví nào mang cờ mặc định, vì trạng thái ấy đến được từ server. Cả hai chỉ canh chiều lưu trữ. Ví còn số dư, đã có giao dịch, hay đang gắn mục tiêu thì **vẫn lưu trữ được**; hộp thoại xác nhận nói thẳng rằng trả hoá đơn và nạp mục tiêu tự động sẽ dừng.
+  > ⚠️ **`status` là cột CỤC BỘ, không đi theo chiều nào của đồng bộ** — cùng diện với `bills.autoPayEnabled` và `bills.anchorDay`. Lý do là một con số đo thẳng trên PostgreSQL ngày 2026-09-10: cột `wallet."Status"` là **`varchar(7)`** còn giá trị cần gửi là `'Inactive'` — **8 ký tự**. Bản đầu có đẩy lên, và trên máy ảo nó **kẹt hàng đợi đẩy**, thử lại ở mọi chu kỳ. Nhánh **kéo về** phải im lặng cùng lúc: server luôn trả `'Active'` cho mọi ví, nên một bản chỉ gỡ nhánh đẩy sẽ khiến ví vừa lưu trữ tự bỏ lưu trữ sau đúng một chu kỳ. Tài liệu xin backend nới cột: `docs/superpowers/backend/CAN-LAM/WALLET_STATUS_COLUMN_WIDTH.md`. Hệ quả trong lúc chờ: lưu trữ chỉ có hiệu lực trên **máy đã bấm**.
+  > ⚠️ **Lược đồ PostgreSQL tự mâu thuẫn ở đúng cột này.** `chk_wallet_status` cho phép `ARRAY['Active','Inactive']`, nhưng kiểu cột là `varchar(7)` còn `'Inactive'` dài **8 ký tự** — CHECK tuyên bố hợp lệ một giá trị mà cột không chứa nổi, nên trên thực tế cột này là **một hằng số** chứ không phải một trạng thái. **Hai** cột còn lại của bảng có CHECK kèm chuỗi thì không vướng: `Type` là `varchar(7)` và chuỗi dài nhất CHECK cho phép là `'Banking'` — vừa khít; `Currency` là `varchar(3)` với `VND`/`USD`. Vì thế **"lưu trữ ví không cần một dòng backend nào" (bàn giao 2026-09-09) là kết luận sai**: nó đọc `upsertWallet` — đúng, hàm ấy xử lý `status` ở cả hai nhánh — mà không đo độ rộng cột.
+  > **Thiết kế Stitch.** Công tắc bật/tắt ví đã nằm trong thiết kế từ đầu ở cả ba màn ví; nhưng **mục "Đã lưu trữ" là khối mới**, nên nó được thiết kế trên Stitch trước — màn `2c950ea26ebf4a4590a26d0742d2a7dd` (*"Quản lý ví - có mục Đã lưu trữ"*), tạo **mới** chứ không sửa màn đã duyệt. Design system của vùng ví là **`Zenith Wallet`** (`assets/75bae118…`), **không** phải `Kinetic Finance` của dự án — khớp bằng chính màu trong HTML của màn ví hiện có. Màn **Thêm ví** cố ý không có công tắc, dù Stitch vẽ: tạo một ví rồi lưu trữ nó ngay trong cùng một biểu mẫu không có nghĩa gì.
+  > **52 test mới**, nền `flutter test` **1896 → 1948**, `flutter analyze` giữ nguyên **25 issue / 0 error**, schema Drift **không đổi** (v20). **Đã kiểm trên `emulator-5554`** ở 411dp, đủ vòng: lưu trữ ví *test* (−10.000đ) → tổng nhảy 8.890.081 → **8.900.081**, hiện dòng "Không gồm 1 ví đã lưu trữ" và mục "ĐÃ LƯU TRỮ (1)" → **khởi động lại app** → **một chu kỳ đồng bộ đầy đủ** (đẩy 1/1, "Đã đồng bộ xong") → trạng thái vẫn còn → bỏ lưu trữ đưa ví về đúng chỗ cũ và tổng về đúng số cũ. Chính máy ảo là nơi bắt được lỗi `varchar(7)`; `flutter test` xanh suốt vì hợp đồng đồng bộ được canh bằng adapter giả, không bằng CSDL thật.
+  > **Hai lỗi bắt được trong lúc làm:** `_buildSwitchTile` của màn Sửa ví có `Text` trần trong `Row` nên nhãn dài là **tràn bố cục ở 411dp** (bọc `Expanded`; bắt được vì widget test mới dựng ở khổ 411dp thay vì 800×600); và `ctx.pop` trong hộp thoại ném *"No GoRouter found in context"* — hộp thoại nằm ngoài cây route, phải dùng `Navigator.pop`.
+  > **Một test rỗng nghĩa, lần thứ năm của dự án.** Ca "ghi entity trở lại không làm mất trạng thái" đi theo chiều `inactive → inactive`, mà `update_` chỉ ghi những cột companion **có mang** nên cột vắng mặt được giữ nguyên — bản thiếu hẳn dòng `status` vẫn xanh. Đã đổi sang chiều `active → inactive`, chiều duy nhất phân biệt được hai cách cài đặt.
+  > ⚠️ **Một phép đo sai trong chính phiên này, ghi lại để không lặp.** Lượt đo `pg_constraint` đầu tiên kết luận bảng `wallet` "không có CHECK constraint nào" và bốn `chk_wallet_*` đã bị sửa nhầm ở `CLAUDE.md` lẫn mục này. Câu truy vấn đúng, nhưng tôi lọc output qua `tail -25` nên **bốn dòng CHECK nằm ở đầu danh sách bị cắt mất**. Đo lại đầy đủ: bảng có **18** ràng buộc, đủ cả bốn CHECK — tài liệu cũ vẫn đúng. Bài học: **đừng lọc output của một phép đo qua `head`/`tail` khi chưa biết nó dài bao nhiêu**; lọc bằng `grep` theo dấu hiệu từng dòng, hoặc in ra tệp rồi đọc. Đây là lần thứ hai của dự án bị output cắt làm sai kết luận (lần trước: `grep` qua rtk, bàn giao 2026-09-09 mục 5.5).
+
+- **Điều chỉnh số dư ví (đối soát)** (2026-09-10, **schema không đổi**). Người dùng đếm ví ngoài đời rồi nhập **số dư thực tế**; app sinh một khoản bù để lịch sử giao dịch khớp lại với số ấy, và khoản bù **nằm ngoài thống kê** — nó là phép *sửa sổ*, không phải thu nhập hay chi tiêu. Khuôn của Money Lover.
+  > **Lỗ nó bịt là một lỗ đang chảy.** Ô số dư ở màn Sửa ví vốn **ghi thẳng** vào cột `balance` qua `updateWallet`: cộng hết giao dịch của ví ra một số, ví hiện một số khác, và không màn nào nói vì sao. Đó cũng là thứ khiến "số dư cuối kỳ" của báo cáo — vốn **suy ngược** từ số dư hiện tại (mục 3.16 `ANALYTICS_FEATURE.md`) — không đối chiếu được với gì cả. Nay ô ấy là đường **đối soát**, và có một dòng chú thích ngay dưới nói rõ nó sẽ tạo một khoản trong sổ.
+  > **Khoản bù là `thu`/`chi`, KHÔNG phải `transfer`** — dù `transfer` vốn đã bị loại khỏi thống kê nên thoạt nhìn tiện hơn. Lý do: `TransactionRepository._applyBalances` **cố ý không động vào ví nào** khi khoản chuyển thiếu ví đích ("đừng trừ một nửa"), nên khoản bù kiểu ấy sẽ không đổi số dư và **xoá cũng không hoàn lại**. Đi qua `addTransaction` với `thu`/`chi` thì cả phép cộng trừ lẫn phép hoàn lại khi xoá đều có sẵn và đúng cả hai chiều — có test canh đúng ca xoá.
+  > **Nhận dạng bằng CẶP điều kiện, cả hai đều đồng bộ được.** Chân ghi chú (tiền tố `Điều chỉnh số dư`) **sửa được** — `TRANSACTION_NOTE_ENCODING.md` nói thẳng đánh đổi ấy — nên có chân thứ hai mang tính cấu trúc: khoản bù **không mang danh mục**, thứ giao diện thêm giao dịch không tạo ra được vì nó **bắt buộc chọn danh mục** (`add_transaction_page.dart:496`). ⚠️ Riêng chân danh mục thì **không đủ**: giao dịch kéo về từ server có thể trống danh mục — **17 hàng** như thế đã có trên CSDL, đo 2026-09-10 — nên loại theo mỗi cột ấy là giấu mất chi tiêu thật.
+  > **Gom một trùng lặp đã có, không mở rộng phạm vi.** Luật "`transfer` không phải thu/chi" bị chép tay ở **năm** chỗ (bốn trong `bao_cao_xuat.dart`, một trong `thong_ke_thang.dart`). Cả năm nay đi qua `analytics/domain/khoan_vao_thong_ke.dart`, và vế loại khoản điều chỉnh chỉ thêm vào **một** chỗ. Hai kiểu thuần `DongGiaoDich` và `KhoanThuChi` nhận thêm trường `ghiChu` **không bắt buộc** — để `null` là "nơi gọi chưa điền", và khi ấy hàng được **TÍNH**: mặc định an toàn, vì giấu nhầm một khoản chi thật tệ hơn đếm nhầm một khoản bù.
+  > **Ba chốt chặn.** Chênh lệch **bằng 0** thì không ghi gì — `chk_transaction_nonzero_amount` của PostgreSQL bắt `Amount <> 0` (đo 2026-09-10), nên một khoản 0đ là bản ghi vỡ ở tầng CSDL rồi kẹt hàng đợi đẩy. Có **ngưỡng nửa đồng**: số dư là `double` nên mọi phép cộng dồn để lại đuôi lẻ, và không có ngưỡng thì một ví "đúng" vẫn đẻ ra khoản bù `0,0000001đ` — thứ CHECK kia cho đi qua vì nó khác 0 thật. Và **ví lưu trữ thì từ chối**: đóng băng nghĩa là không ghi giao dịch mới.
+  > **Đồng bộ: không đổi gì.** Payload giao dịch vẫn **12 trường**. Đo thẳng trên PostgreSQL trước khi làm: `Idcategory` **nullable** thật, `Note` là `text` không giới hạn, `chk_transaction_type` nhận `Transaction | Transfer` nên `thu`/`chi` vẫn ánh xạ đúng.
 
 ### 🔄 Việc còn dang dở
 
-Xem đầy đủ tại **`docs/CLIENT_APP_KNOWN_GAPS.md`**. Phiên 2026-09-03 đã đóng 9/10 mục còn mở; nay còn **G10** và **G15**:
+Xem đầy đủ tại **`docs/CLIENT_APP_KNOWN_GAPS.md`**. Phiên 2026-09-03 đã đóng 9/10 mục còn mở; **G10 đóng ngày 2026-09-07**, và cùng ngày mở thêm **G23** (bản sao danh mục chỉ đầy đủ khi bộ mặc định *cục bộ* đầy đủ — tự khỏi ở lượt pull sau) và **G24** (màu danh mục không có cột trên server, chặn ở backend). **G15 đóng 2026-09-07** (dòng này từng còn liệt kê nó — soát lại 2026-09-09 từ chính `CLIENT_APP_KNOWN_GAPS.md`). Đếm lại từ chính `CLIENT_APP_KNOWN_GAPS.md` ngày 2026-09-10 — dòng cũ ở đây chỉ liệt kê ba mục và đã bỏ sót bốn: mục **chưa đóng** nay là **G18** (⏸️ thu hẹp dần), **G23** (⏸️ chấp nhận được), **G24** (⛔ chặn ở backend), **G26** (✅ cố ý — chờ màn duyệt giao dịch ngân hàng), **G27** (⏸️ hoãn có chủ ý — "ví được phép âm") và **G28** (⛔ chặn ở backend — lưu trữ ví chỉ sống trên máy đã bấm, mở 2026-09-10). **G19**, **G22** và **G25** ghi *không phải lỗi*, giữ lại để người sau không "sửa" nhầm:
 
 - **G15 — Bản ghi vừa hết hạn vừa hỏng đồng bộ thì không sửa được.** ⏸️ **Hoãn có chủ ý** (2026-09-04): tab "Đã hết hạn" khoá sửa/xoá, nên một ngân sách vừa quá hạn vừa bị backend từ chối vĩnh viễn sẽ nằm lại mãi — hàng đợi đồng bộ vẫn thông vì `SyncEngine` chặn nó theo thời gian, nhưng người dùng không chữa được. Giữ nguyên vì tab đó là nền cho phần thống kê/báo cáo sẽ làm sau. Bán kính rủi ro hẹp: nguồn gây lỗi chính (form tạo ra `end ≤ start`) đã bịt cùng ngày.
-- **G10 — `CategoryGroupMemberships` không bao giờ được đồng bộ.** ⛔ **Không sửa được ở client**: backend không có bảng membership và cũng không có `SyncEntityType` tương ứng (`UPSERT_MAP`/`ENTITY_PRIORITY` chỉ có 6 entity), nên thêm entity mới ở client sẽ chỉ nhận `Unknown entity` và kẹt vĩnh viễn. Việc gán danh mục **mặc định** vào nhóm vì thế chỉ tồn tại trên một máy. Đề xuất chi tiết: `docs/superpowers/backend/CAN-LAM/CATEGORY_GROUP_MEMBERSHIP_SYNC.md`.
+- ~~**G10 — `CategoryGroupMemberships` không bao giờ được đồng bộ.**~~ ✅ **Đóng 2026-09-07, và không phải bằng cách xin backend thêm entity.** Bảng phụ ấy tồn tại chỉ vì danh mục mặc định là hàng toàn cục nên không ghi `Idgroup` riêng cho từng tài khoản được. Nay mỗi tài khoản có **bản sao riêng** của bộ mặc định, nên việc gán nhóm nằm gọn trong `Idgroup` của chính hàng họ sở hữu — cột đã có sẵn và đã đồng bộ.
 
 > ⚠️ **`.gitignore` dòng 77 vẫn có `test/`.** Luật này đã cắn **lần thứ ba** (phiên 2026-09-04). Mọi file test tạo **mới** vẫn sẽ bị bỏ qua trong im lặng — nhớ `git add -f`.
 >
 > Hệ quả ít ai biết: **công cụ Grep tôn trọng `.gitignore` nên không nhìn thấy thư mục `test/`**. Muốn dò xem còn ai gọi một hàm sắp xoá thì phải dùng `grep` qua shell, nếu không sẽ thấy thiếu file và xoá nhầm.
 
-Vấn đề thuộc backend. **Mười tài liệu còn việc nay nằm ở
-`docs/superpowers/backend/CAN-LAM/`**, tách khỏi phần đã xong để đội backend
-không phải lọc giữa 20 tệp. README trong thư mục ấy là **cửa vào duy nhất**: nó
-chia việc theo *client đã có tính năng này chưa*, vì đó mới là thứ quyết định
-mức khẩn — và ranh giới ấy không suy ra được từ bảng dưới đây.
+Vấn đề thuộc backend. Thư mục `docs/superpowers/backend/` được **chia ba** ngày
+2026-09-07: **`CAN-LAM/`** giữ đúng phần **còn việc** (**tám** mục — đếm bằng máy 2026-09-09 từ mục 2 của README ấy, sau khi thêm hai mục Socket.io; dòng này từng ghi "bốn" rồi "sáu") và README
+trong đó là **cửa vào duy nhất**; **`DA-XONG/`** giữ 16 tài liệu **đã đóng**, mở khi
+cần biết *vì sao* lược đồ có hình dạng hôm nay chứ không phải khi tìm việc; thư mục
+cha chỉ còn mục lục và **ba** tệp bối cảnh (`2026-08-10-backend-sync-spec.md`,
+`PROGRESS-BACKEND.md`, `TRANSACTION_NOTE_ENCODING.md`) — đếm lại bằng máy
+2026-09-10. ⚠️ **`New_Database.md` đã rời thư mục ấy**: nhánh `main` chuyển nó
+sang `docs/Rule_Project/` cùng ngày, nên mọi liên kết tương đối cũ đều hỏng.
+Dòng này từng ghi "ba" rồi "bốn" rồi lại "ba" — đếm bằng máy mỗi lần chạm vào.
 
-Bảng dưới kiểm lại ngày **2026-09-04** tại `fcf7659`, sau khi gộp `origin/main`
-`dfda862` (mang mô-đun OCR F013 và bộ phân loại hai cấp F012). **Thứ tự là thứ
-tự thi công đề nghị**, không phải thứ tự chữ cái:
+Bảng dưới giữ **cả** mục đã đóng lẫn mục còn việc, vì nó là nơi duy nhất đọc được
+toàn cảnh một lượt. Muốn biết *phải làm gì tiếp* thì đọc `docs/superpowers/backend/CAN-LAM/README.md` —
+nó chia việc theo *client đã có tính năng này chưa*, ranh giới không suy ra được
+từ bảng này.
+
+Bảng dưới **kiểm lại ngày 2026-09-07** sau khi gộp `origin/main` `193b6d5`
+(đợt backend lớn: Socket.io, `/sync/push`, danh mục Template & Cloned, và một
+đợt migration) và sau khi **áp dụng migration ấy vào PostgreSQL**. Mỗi ô ✅ ở
+đây đều được đối chiếu bằng **mã nguồn hoặc truy vấn đọc trên CSDL thật**, không
+phải chép từ bảng trạng thái của backend. **Thứ tự là thứ tự thi công đề nghị**,
+không phải thứ tự chữ cái.
+
+> ⚠️ **Migration của đợt ấy không chạy được ở bản gốc.**
+> `)2_can_lam_all_migrations.sql` xoá **cứng** 5 danh mục mặc định ngoài bộ 13
+> stable UUID; `fk_bill_category` là RESTRICT và có 6 hoá đơn trỏ tới, nên câu
+> ấy ném 23503 và **cả tệp roll back**. Client đã đổi thành xoá mềm trên nhánh
+> **`patch2`** (commit `ea3611a`), chạy thử trong giao dịch rồi `ROLLBACK` để
+> kiểm, sau đó áp dụng thật. Bộ mặc định trên server nay còn **13 hàng sống +
+> 5 hàng xoá mềm**; 7 giao dịch và 6 hoá đơn giữ nguyên danh mục.
 
 | # | Tài liệu | Trạng thái |
 |---|---|---|
-| 1 | `CATEGORY_KEYWORD_SYNC.md` | ⛔ Chưa — **lỗ hổng phân quyền còn nguyên**: `appendCategoryKeyword()` không đọc `create_by`. **Nghiêm trọng hơn từ 2026-09-04** vì `keyword.matcher` nay là Tầng 1 trên đường quét hoá đơn. ✅ Chiều **xuống** client đã tự nối xong 2026-09-04; chiều **lên** vẫn cần backend quyết mô hình |
-| 2 | `2026-09-04-backend-idempotent-delete.md` | ⛔ Chưa — ba việc. **(A)** `/sync/push` trả lỗi khi xoá bản ghi server không có, làm client kẹt vĩnh viễn. **(B)** `message` là nguyên văn stack trace Prisma (lộ đường dẫn máy chủ + nội dung hàng), client phải dò chuỗi để phân loại. **(C)** `upsertBudget` ép `time_recurrence = null` thành `'Month'`, **chặn hẳn** lựa chọn "Ngày cụ thể" và làm ngân sách tự hết hạn sớm sau khi pull. A và B client đã vá tạm bằng **khớp chuỗi** (`record not found`, `23514`) nên dễ vỡ im lặng; C thì client **không vá được** |
-| 3 | `2026-09-04-ocr-classify-review.md` | ⛔ Chưa — **tám việc**, đã qua một vòng thẩm định phản biện và đo trực tiếp trên CSDL. **(1)** 🔴 **Socket.io không xác thực + bốn dòng `io.emit` toàn cục** — `emitAuditActivity` đang rò tên người dùng ra mọi socket ẩn danh **hôm nay**. **(2)** `classifyBatch` nhận sai kiểu tham số → phân loại từng mặt hàng **chưa bao giờ chạy**. **(3)** thiếu `GEMINI_API_KEY` trong `.env`. **(4)** dedup Quy tắc 3 bỏ quên `counterpart`/`note`/`provider` → chặn nhầm 409. **(5)** cửa hậu `_mock*`. **(6–8)** `uq_transaction_external` thiếu `Idaccount` (**chưa nổ được**), bốn chỗ lệch nhỏ, ba chỗ sai tài liệu |
-| 4 | `CATEGORY_NAME_UNIQUENESS.md` | ⚠️ **Một phần** — Admin-web đã thi hành quy tắc, nhưng còn 4 khoảng hở: không gom khoảng trắng, không chuẩn hoá NFC, thiếu vế chéo "người dùng với mặc định", và `/sync/push` chưa kiểm gì cả. CSDL **có** hai unique index nhưng chúng thi hành một quy tắc **khác** — lệch theo cả hai chiều, xem mục 2 của tài liệu |
-| 5 | `CATEGORY_STABLE_IDS.md` | ⛔ Chưa — `seed.js:150` vẫn `crypto.randomUUID()` |
-| 6 | `CATEGORY_GROUP_MEMBERSHIP_SYNC.md` | ⛔ Chưa — thứ duy nhất còn chặn G10 |
-| 7 | `CATEGORY_CLASSIFY_ALIGNMENT.md` | ⚠️ Gần xong — còn bước thu hẹp `validClassify` (`sync.validation.js:103`) |
-| 8 | `2026-09-05-backend-transaction-goal-id.md` | 🔓 **Mở khoá, không phải sửa lỗi** — xin cột nullable `transaction.Idgoal`. Client đã có cột **cục bộ** `transactions.goal_id` (schema v14) để nối giao dịch tích luỹ với mục tiêu bằng ID thay vì bằng tên. Không có gì hỏng hôm nay: máy tạo ra dữ liệu nối đúng, máy khác rơi xuống nhánh so tên. Nhưng nó **chặn hẳn** hướng bỏ bộ đếm `current_amount` để suy tiến độ từ chính giao dịch. Rẻ nhất là gộp vào đợt migration của bước 9 |
-| 10 | `2026-09-05-backend-goal-priority.md` | 🔓 **Mở đường, không phải sửa lỗi** — xin **một** cột nullable `goal.Priority`. Client **chưa làm** ưu tiên mục tiêu và cố ý chưa làm cho tới khi có cột: thứ tự do người dùng kéo thả là công sức không suy lại được, không có mặc định đúng, và sẽ quyết định **tiền đi đâu** nếu nối phân bổ tự động. Đi ngược lối "làm trước xin sau" của hai mục dưới, có chủ ý. Gộp vào cùng đợt migration |
-| 9 | `2026-09-05-backend-goal-auto-deposit.md` | 🔓 **Mở khoá, không phải sửa lỗi** — xin ba cột nullable cho cấu hình trích tiền tự động (`auto_deposit_*`). Client đã làm xong (schema v15) nhưng ba cột là **cục bộ**, nên máy thứ hai không trích gì cả. ⚠️ **Ba cột phải lên cùng lúc** — bỏ sót `auto_deposit_last_run` là hai máy cùng trích một kỳ, tệ hơn hiện trạng. Gộp vào đợt migration của bước 9 |
-| 11 | `2026-09-06-bill-chuoi-ky-va-an-han.md` | 🔓 **Hai phần.** **(A+B) Mở khoá:** xin hai cột nullable `transaction.Idbill` và `bill.Previous_bill_id` — hai đầu của sợi dây từ hoá đơn về khoản chi và về kỳ kế tiếp. Client đã làm xong hoàn tác thanh toán (schema **v16**) nhưng hai cột là **cục bộ**, nên hoàn tác chỉ chạy trên đúng cái máy đã trả. Cột B còn mở luôn **lịch sử theo hoá đơn**. Gộp vào cùng đợt migration. **(C) Mở đường:** xin `bill.Period_end` để tách kỳ tính tiền khỏi hạn trả — hoá đơn điện "kỳ 01–30/09, hạn 15/10" hiện **không diễn đạt được**; client cố ý chưa làm cho tới khi có cột. **(D) Mở khoá** (thêm 06/09 chiều): xin `bill.Auto_pay` cho tự động thanh toán (client xong, schema **v17**, cột cục bộ) và **chốt chặn trả hai lần** ở `/sync/push` — hai máy cùng bật, cùng offline là hai khoản chi, chỉ server mới thấy cả hai. **(E) Mở đường** (thêm 06/09 tối): xin nhận giá trị `Pay_status = 'Skipped'` (VarChar(7) vừa khít, **không cần migration**, có thể chỉ là một câu xác nhận có validator hay không) để client làm "bỏ qua kỳ này"; client cố ý chưa làm vì hàng bị `/sync/push` từ chối là kẹt hàng đợi đẩy vĩnh viễn |
+| 1 | `CATEGORY_KEYWORD_SYNC.md` | ✅ **Xong 2026-09-07** — `appendCategoryKeyword()` nhận `idaccount`, ném 403 khi danh mục là `is_default` hoặc khác `create_by`; `classify.service.js:196` có truyền xuống. Chiều **lên** hoá ra không cần backend: `/sync/push` vốn đã nhận `keyword`, client nối xong cùng ngày và có test hợp đồng |
+| 2 | `2026-09-04-backend-idempotent-delete.md` | ⚠️ **Ba trong bốn.** **(A)** ✅ xoá luỹ đẳng — trả `synced` + `'Already absent'`. **(B)** ✅ mã lỗi có cấu trúc (`code` + `constraint` + thông báo tiếng Việt). **(C)** ✅ `time_recurrence` giữ được `null` → ngân sách "Ngày cụ thể" thông. **(D)** ⛔ **CÒN** — `sync.repository.js:327` vẫn `?? 0` và schema vẫn `@default(0)`. ⚠️ Bản vá (B) làm hỏng phép phân loại lỗi phía client (regex `23505`/`23514` hết khớp vì `message` đổi) — client đã tự vá bằng `_permanentCodes`, backend không phải làm gì |
+| 3 | `2026-09-04-ocr-classify-review.md` | ⚠️ **Phần nguy hiểm đã xong.** **(1)** ✅ Socket.io: JWT ở handshake, `join_account` gỡ hẳn, `grep 'io.emit('` toàn backend → **0 kết quả**, cả bốn sự kiện vào room; `Admin-web/useSocket.js` gửi `auth: { token }`. **(6)** ✅ `uq_transaction_external` nay `UNIQUE ("Idaccount", "Provider", "Bank_tran_id")` — **điều kiện chặn client gửi `provider`/`bank_tran_id` đã gỡ**. Còn **(2)–(5)**: `classifyBatch` sai kiểu tham số, `.env` không có `GEMINI_API_KEY`, dedup Quy tắc 3, cửa hậu `_mock*` — không gấp, client chưa có màn quét hoá đơn nào. ⚠️ Backend đổi **Casso → SePay** trong cùng đợt |
+| 4 | `CATEGORY_NAME_UNIQUENESS.md` | ✅ **Xong 2026-09-07** — hai partial unique index `uq_category_owner_name` `(Create_by, tên chuẩn hoá NFC)` và `uq_category_default_name`, **cả hai có `WHERE "Delete_at" IS NULL`** và **không** có `Classify`. Trigger chéo đã DROP nên bản sao được trùng tên với khuôn. Đây là lần đầu client và PostgreSQL thi hành **cùng một** quy tắc trùng tên |
+| 5 | `CATEGORY_STABLE_IDS.md` | ✅ **Xong 2026-09-07** — `seed.js` đóng băng 13 UUID cố định, hết `crypto.randomUUID()` cho danh mục. Kèm API mới `GET /api/sync/default-categories`. ⚠️ Bộ mặc định thu từ 18 về 13: `Chi khác`, `Thu khác`, `Làm thêm`, `Trả nợ`, `Thu nợ` đã bị **xoá mềm** — tài khoản mới không còn được nhân bản chúng |
+| ~~6~~ | `CATEGORY_GROUP_MEMBERSHIP_SYNC.md` | ✅ **Đóng 2026-09-07** — không cần backend làm gì |
+| 7 | `CATEGORY_CLASSIFY_ALIGNMENT.md` | ✅ **Xong 2026-09-07** — `validClassify` (`sync.validation.js:110`) nay đúng `['Thu', 'Chi', 'Vay/no']` |
+| 8 | `2026-09-05-backend-transaction-goal-id.md` | ✅ **Xong 2026-09-07** — cột `transaction.Idgoal` đã có trong CSDL, kèm `fk_transaction_goal` (ON DELETE SET NULL) và `idx_transaction_goal`; `mapEntityFields` nhận cả `goalId` lẫn `goal_id`. Client có thể bỏ nhánh so **tên** khi tới lượt |
+| 10 | `2026-09-05-backend-goal-priority.md` | ✅ **Cột đã có 2026-09-07** — `goal.Priority` (`Int?`) trong CSDL và trong `mapEntityFields`. Client **chưa làm** ưu tiên mục tiêu; nay không còn gì chặn, chỉ là chưa tới lượt. Lối "xin cột trước khi viết mã" đã chứng minh rẻ hơn hai lần "làm trước xin sau" |
+| 9 | `2026-09-05-backend-goal-auto-deposit.md` | ✅ **Xong 2026-09-07** — cả **ba** cột `auto_deposit_amount` / `auto_deposit_wallet_id` / `auto_deposit_last_run` lên **cùng một lúc** đúng như cảnh báo, và `mapEntityFields` đã ánh xạ |
+| 11 | `2026-09-06-bill-chuoi-ky-va-an-han.md` | ⛔ **Chưa có cột nào.** Đo 2026-09-07: bảng `bill` có 18 cột, **không** có `Previous_bill_id` lẫn `Auto_pay`; `transaction` **không** có `Idbill`. **(A+B) Mở khoá:** hai cột nullable — hoàn tác thanh toán hiện chỉ chạy trên đúng máy đã trả; cột B còn mở **lịch sử theo hoá đơn**. **(C) Mở đường:** `bill.Period_end` để tách kỳ tính tiền khỏi hạn trả. **(D) Mở khoá:** `bill.Auto_pay` + **chốt chặn trả hai lần** ở `/sync/push` — hai máy cùng bật, cùng offline là hai khoản chi. **(E) Mở đường:** nhận `Pay_status = 'Skipped'` (VarChar(7) vừa khít, không cần migration). ⚠️ Bảng `bill` **đã có** cột `Color` trong khi `category` thì không — lý lẽ sẵn cho mục màu danh mục |
 | — | `SESSION_VALIDITY_FINDINGS.md` | ✅ Xong |
 
 ### 💰 Ngân sách (2026-09-03)
@@ -721,64 +877,170 @@ Phần backend (mã lỗi ổn định, vai trò lớp phòng thủ thứ hai) �
 
 ### 🚀 Bắt đầu từ đâu ở phiên sau
 
-Cập nhật ngày 2026-09-04, sau khi gộp `origin/main` và rà soát mô-đun
-OCR/Classify. Thứ tự đề nghị, việc rẻ nhất trước:
+Viết lại ngày **2026-09-07 (cuối phiên)**, sau khi gộp đợt backend lớn và đóng
+G15, G17, G21. Bản trước của mục này ghi ngày 04/09 và **sai bốn trong sáu
+điểm** — giữ nguyên là chỉ đường cho người sau đi vào việc đã xong.
 
-1. ~~Chưa chạy app thật để xem giao diện ngân sách~~ → **Đã xem trên máy ảo
-   Android 2026-09-06** (bản `f746a32`, tài khoản 10): thẻ trang chủ, dòng
-   nhịp chi ở danh sách, trang `/budget/detail/:id`, bảng chi tiết giao dịch
-   mở từ đó, và hộp thoại "Vượt ngân sách" (số vượt khớp tay) — không tràn,
-   không màn đỏ. **Chưa thấy được** dòng gợi ý hạn mức trên máy ảo vì tài
-   khoản ấy không có khoản chi nào trước tháng 9 (gợi ý `null` thì ẩn, đúng
-   thiết kế) — chỉ có widget test canh.
+**Không còn lỗi client nào sửa được mà không phải chờ ai.** Việc tiếp theo là
+một lựa chọn, không phải một hàng đợi.
 
-   **Lỗi có sẵn lộ ra khi kiểm:** ngân sách nào mang
-   `threshold_warning_percent = 0` thì **không sửa được nữa** — form điền "0"
-   vào ô phần trăm rồi tự từ chối vì đòi 1–100. Số 0 đến từ backend:
-   `schema.prisma` đặt `@default(0)` cho `Threshold_Warning_Percent`, đường
-   *tạo* để trống là server ghi 0, pull về thành 0 (đường *sửa* gửi `null`
-   thì server giữ `null`, nên chỉ ngân sách tạo mới rồi chưa sửa lần nào mới
-   dính). `BudgetEntity.warningRatio` đã coi `≤ 0` là "không đặt" nên logic
-   cảnh báo không sai, chỉ form kẹt. **Đã vá ở client cùng ngày**: form coi
-   `≤ 0` như ô trống khi đổ dữ liệu (`budget_form.dart`, test
-   `budget_form_threshold_zero_test.dart`). Số 0 vẫn nằm trên server cho tới
-   khi backend làm việc **D** trong `2026-09-04-backend-idempotent-delete.md`.
-   Cùng đợt: nhãn "Chặn" đổi thành "Hỏi trước khi ghi khoản làm vượt" cho
-   đúng nghĩa; cột lịch sử có trần 64dp (một kỳ không còn phình cả thẻ); thẻ
-   tổng quan đầu trang dùng `Wrap` để số tiền dài xuống dòng thay vì bị cắt,
-   tiêu đề đổi "THÁNG NÀY" → "KỲ NÀY".
-2. **Một dòng ở `_classifyFailure`, nhưng phải chờ backend trả mã lỗi ổn định.**
-   `_classifyFailure` (`lib/core/sync/sync_engine.dart:1423`) hiện chỉ có nhánh
-   cho `accountNotFoundCode`, khoá ngoại, `Ownership mismatch` và ràng buộc
-   CHECK (`23514`). Mọi **vi phạm UNIQUE (`23505`)** rơi xuống
-   `return SyncFailureKind.transient` ở cuối hàm và bị **đẩy lại mãi**. Điều
-   này phủ cả hai nguồn: vi phạm trùng tên danh mục, và va chạm
-   `uq_transaction_external` mô tả ở mục 3 bảng trên. Khi backend trả mã ổn
-   định thì thêm nhánh `permanent` tương ứng — nhớ viết test tái hiện **trước**.
-3. **Bảy tài liệu chờ backend** trong `docs/superpowers/backend/` — thứ tự thi
-   công và lý do xếp thứ tự nằm ở `README.md` mục 2 của thư mục đó, trạng thái
-   từng cái ở bảng ngay trên. Ba mục đầu: `CATEGORY_KEYWORD_SYNC` (lỗ hổng phân
-   quyền, bản vá vài dòng, độc lập với phần thiết kế bảng mới) →
-   `2026-09-04-backend-idempotent-delete` → `2026-09-04-ocr-classify-review`.
-4. **G10** là mục client duy nhất còn bị chặn hoàn toàn ở backend (mục 6 của
-   bảng trên). **G15** là hoãn có chủ ý, đừng tự ý "sửa" lại.
-5. **Tính năng "Ngày cụ thể" chưa đồng bộ được** — bị chặn ở việc (C) của
-   `2026-09-04-backend-idempotent-delete.md`. Client không vá được: trên máy
-   đang dùng thì đúng, đổi máy là mất.
-6. **Kịch bản nâng cấp CSDL v7 → v12 chưa từng chạy thật** (chỉ có test). Người
+**Thứ tự đã duyệt tối 2026-09-08 — NAY ĐÃ XONG HẾT** (mục cuối, Socket.io,
+đóng ngày 2026-09-09). Danh sách giữ lại để người sau thấy đường đã đi, đừng
+bàn lại từ đầu:
+✅ bộ lọc tay/tự động của lịch sử mục tiêu →
+✅ **2a** Phân tích số thật → ✅ **2b** biểu đồ theo thời gian (**thư viện đã
+chọn: `fl_chart`, ghim `1.2.0`** — mục 3.11 `ANALYTICS_FEATURE.md`) →
+✅ **2c** trang Xuất báo cáo → ✅ biểu đồ tiến độ mục tiêu theo thời gian (mục
+**3.26** `GOAL_FEATURE.md`) → ✅ Tổng kết tuần (2026-09-09; bốn câu hỏi mở của
+spec đã chốt với người dùng, bàn giao ở mục **5d** `NOTIFICATION_FEATURE.md`)
+→ ✅ số liệu tổng hợp mục tiêu (mục **3.27** `GOAL_FEATURE.md`) →
+✅ **nối Socket.io phía client** (2026-09-09; xem khối ngay dưới).
+
+> ### ✅ Socket.io phía client — xong 2026-09-09
+>
+> `lib/core/realtime/` giữ **một** kết nối tới backend, xác thực JWT ngay ở bắt
+> tay, tự nối lại theo giãn cách **2 → 5 → 15 → 30 → 60 giây**, và **nối lại
+> ngay** khi có mạng trở lại. Vòng đời bám đúng `NotificationScanner`: bốn chỗ
+> trong `AuthBloc`, hai vào hai ra.
+>
+> **Ba điều dễ vấp nhất**, đọc trước khi đụng vào:
+>
+> 1. **Payload là hộp đen — client không đọc trường nào.** Chỉ dùng *tên sự
+>    kiện*. Vì `bank_transaction.incoming` được backend phát từ hai chỗ với hai
+>    hình dạng khác nhau, và trường `type` mang hai nghĩa. Có test cấm chữ số
+>    xuất hiện trong lời nhắn để canh chừng ai đó bắt đầu đọc payload.
+> 2. **`io.io()` cache `Manager` theo `scheme://host:port` và dùng lại options
+>    của lần dựng đầu** — nên phải `enableForceNew()`, nếu không token mới bị bỏ
+>    qua **im lặng**. Cùng lý do ấy, cơ chế nối lại của thư viện bị **tắt**:
+>    mỗi lần thử phải đọc lại token từ kho.
+> 3. **`AppConstants.baseUrl` có hậu tố `/api`, socket thì không** — dùng
+>    `socketBaseUrlFrom()`, đừng cắt chuỗi tại chỗ.
+>
+> **Phạm vi thật hẹp hơn tài liệu kế hoạch mô tả:** chỉ có kênh + đánh thức
+> đồng bộ + toast. Không có màn "Giao dịch chờ duyệt" (G26
+> `CLIENT_APP_KNOWN_GAPS.md`), không badge đếm. Ba sự kiện backend đang phát
+> đều thuộc tính năng client chưa có, nên **giá trị thật của kênh nằm ở việc
+> backend bắc `sync.completed` ra socket** — mục 7 của
+> `docs/superpowers/backend/CAN-LAM/README.md`.
+>
+> Cùng đợt, dải báo kín ngang đổi thành **toast nổi ở đáy**
+> (`shared/widgets/app_toast.dart`, thay `connection_banner.dart`), theo màn
+> Stitch *"Thông báo nổi (toast) - FlowMoney"*. Thứ tự ưu tiên nay là **đồng bộ
+> > realtime > kết nối**, và **một nguồn luôn được cập nhật chính nó** — vế
+> cuối là thứ giữ cho "Đã kết nối lại" thay thế được "Không có kết nối".
+>
+> Thiết kế đầy đủ:
+> `docs/superpowers/specs/2026-09-09-socket-io-realtime-channel-design.md`.
+
+> ⚠️ Mục 5 của spec Tổng kết tuần có **ba** câu hỏi, không phải năm — đếm bằng
+> máy 2026-09-09. Con số "5" từng đi qua ba tài liệu tóm tắt vì đếm theo trí
+> nhớ. Câu thứ tư (chỗ đến của deeplink) là câu **mới**, phát hiện khi rà mã. **Round-up cố ý để ngoài** — chỗ
+thứ ba app tự chuyển tiền trong khi chỗ thứ hai (`bill.Auto_pay`) còn treo
+backend. Lý do từng bước: mục 10.5 `docs/GOAL_FEATURE.md` và mục 7
+`docs/ANALYTICS_FEATURE.md`.
+
+1. **Người dùng đã chọn mảng thông báo** (2026-09-07 tối), hoãn mảng Phân tích
+   *"vì còn nhiều cái liên quan chưa triển khai"*. Thứ tự đã duyệt:
+   **#7 lọc/phân trang ✅ → #2 nhắc ghi chép ✅ → #5 nút hành động ✅ →
+   #6 badge ✅** (2026-09-08). Thứ tự #5 và #6 được **đảo** giữa chừng theo đề
+   nghị của tôi và người dùng đồng ý.
+
+   **Mảng thông báo nay chỉ còn hai mục, cả hai đều bị chặn bởi việc khác:**
+   - **#1 Tổng kết tuần** — chờ một **màn dữ liệu thật phạm vi đúng một
+     tuần** để thông báo trỏ tới. Từ 2026-09-08 tầng tổng hợp **đã có**
+     (`thong_ke_thang.dart` nhận biên `[from, to)` bất kỳ, tuần hay tháng đều
+     là một lời gọi), nên chỗ chặn thu hẹp còn *màn hình tuần* — trang Phân
+     tích hiện theo **tháng**. Spec đã viết xong:
+     `docs/superpowers/specs/2026-09-07-weekly-summary-notification-design.md`.
+   - **#8 Thông báo trên web** — ưu tiên thấp có chủ ý; cần Service Worker và
+     luồng xin quyền riêng của trình duyệt, mà web chỉ dùng để trình bày.
+
+   Ngoài ra hai việc **chờ backend**: cảnh báo giao dịch ngân hàng/OCR và
+   thông báo bảo mật. ⚠️ **Lý do đã đổi, đừng chép câu cũ:** kênh Socket.io
+   nay **đã xác thực** (backend sửa 2026-09-07) và client **đã nối**
+   (2026-09-09) — ba sự kiện ấy tới nơi và hiện thành toast. Chỗ còn thiếu là
+   tính năng phía client để *làm gì đó* với chúng (G26), chứ không phải kênh
+   truyền.
+
+   ⚠️ Danh sách đầy đủ kèm ghi chú kỹ thuật nằm ở
+   `docs/superpowers/plans/2026-09-06-thong-bao-viec-con-lai.md` — thư mục ấy
+   **bị `.gitignore` chặn**, nên file chỉ có trên máy đã dựng nó, và công cụ
+   Grep lẫn `git status` đều không thấy: mở bằng `cat` hoặc Read. (Bản trước
+   của mục này trỏ tới "mục 9b `docs/NOTIFICATION_FEATURE.md`" — **mục ấy
+   không tồn tại**; con trỏ chết đã hai phiên.)
+
+   Mảng **Phân tích** — **lát 2a và 2b xong 2026-09-08**: `AnalyticsPage` nay
+   đọc số thật qua `AnalyticsCubit` → `AnalyticsRepository` (Drift + mượn
+   `BudgetRepository` cho "% ngân sách"), và mang khối **"Xu hướng 6 tháng"**
+   vẽ bằng `fl_chart`. Trước đó nó là giao diện tĩnh, **0** tham chiếu
+   Bloc/Repository/Dao, và hiện *"T6 2026"* cứng khi đang là tháng 9.
+   **Lát 2c‑1 xong 2026-09-09**: `ExportReportPage` không còn tĩnh — ví, danh
+   mục và phạm vi thời gian lấy từ CSDL, và nút mở màn **Xem trước báo cáo**
+   (`ReportPreviewPage`, dựng theo màn Stitch sinh cùng ngày). Ba khối bịa của
+   bản Stitch cũ đã bỏ (lịch sử xuất, mật khẩu PDF, "Đích đến"). **Lát 2c‑1b**
+   cùng ngày mở tờ báo cáo từ bốn khối lên **mười**, lấy chuẩn từ Money Lover /
+   MISA / Copilot / PocketSmith: dòng tiền (số dư đầu và cuối kỳ), so với kỳ
+   trước, biểu đồ thu chi, số liệu nhanh, thu theo danh mục, ngân sách kỳ này,
+   phân bổ theo ví, top 5 khoản chi. **Lát 2c‑2 xong cùng ngày**: nút "Tải xuống"
+   sinh tệp **PDF hoặc CSV** thật và **lưu thẳng vào thư mục Tải về** của máy
+   qua `MediaStore` — **mảng Phân tích đến đây là xong**. Tầng tổng hợp mà
+   "Tổng kết tuần" chờ nay đã có. Lý do và bẫy: `docs/ANALYTICS_FEATURE.md`.
+
+   ⚠️ **`fl_chart` là thư viện vẽ duy nhất cho biểu đồ TRÊN MÀN HÌNH**, ghim
+   cứng `1.2.0`. Trước 2026-09-08 `lib/` không có một `CustomPainter` nào;
+   donut là `SweepGradient` và **vẫn giữ nguyên như thế**. Mọi biểu đồ trên
+   màn hình về sau dùng chung `fl_chart` — đừng chọn lại lần thứ hai.
+   Từ 2026-09-09 có **một chỗ vẽ thứ hai**: biểu đồ trong tệp PDF dùng
+   `pw.Chart` của chính gói `pdf`, vì `fl_chart` vẽ ra widget chứ không ra
+   trang giấy. Hai chỗ ấy **cố ý tách**, không phải quên gộp.
+2. **Sáu việc còn lại của backend**, ở `docs/superpowers/backend/CAN-LAM/`
+   (đếm lại 2026-09-09 từ mục 2 của README ấy — dòng này từng ghi "năm"):
+   lỗ **(D)** `threshold_warning_percent` bị ép về `0`; **cột màu danh mục**
+   (tài liệu xin nay đã lên origin); **hai mục hoá đơn** — `transaction.Idbill`
+   + `bill.Previous_bill_id`, rồi `bill.Auto_pay` + chốt chặn trả hai lần; và
+   **`Pay_status = 'Skipped'`**, mục duy nhất không cần migration — client chỉ
+   chờ **một câu xác nhận** rồi mới mở tính năng "bỏ qua kỳ này".
+   ⚠️ Bản trước của dòng này (và của `CLAUDE.md`) ghi **bốn**, bỏ sót mục cuối.
+   Con số đúng lấy theo **mục 2 của README trong thư mục ấy** — đó là cửa vào
+   duy nhất, và nó luôn là bản đếm có thẩm quyền.
+   README trong thư mục ấy là cửa vào duy nhất; thư mục `DA-XONG/` bên cạnh giữ
+   16 tài liệu đã đóng.
+3. **Bản vá migration ở nhánh `patch2` — đã bàn giao cho backend (2026-09-08).**
+   `)2_can_lam_all_migrations.sql` trên `main` có một câu `DELETE FROM "category"`
+   xoá cứng 5 danh mục mặc định; `fk_bill_category` là RESTRICT nên nó ném 23503
+   và **cả tệp roll back**. Nhánh `patch2` (commit `ea3611a`) đổi thành xoá mềm.
+   CSDL trên máy này đã ở trạng thái đúng — đo 2026-09-08: **13 hàng mặc định
+   sống, 5 hàng đã xoá mềm** — nhưng **tệp trong repo vẫn là bản xoá cứng**, nên
+   môi trường khác chạy nó vẫn hỏng y như vậy.
+   ✅ **Người dùng đã thông báo cho người phụ trách backend ngày 2026-09-08.**
+   Việc sửa tệp thuộc về họ; nhánh `patch2` giữ nguyên tại chỗ làm bản tham
+   chiếu. **Đừng nêu lại đây như việc treo của phía client** — nó đã lặp qua ba
+   phiên bàn giao trước khi được chuyển đi đúng người.
+4. **Kịch bản nâng cấp CSDL v7 → v17 chưa từng chạy thật** (chỉ có test). Người
    dùng đã quyết định không chạy. Ghi lại vì: nếu sau này có báo cáo **mất danh
    mục** hoặc **giao dịch không đồng bộ sau khi cập nhật app**, đây là chỗ nghi
    đầu tiên. Cách kiểm: dựng worktree ở `ea0941b`, chạy bản cũ để sinh CSDL v7,
-   rồi mở bản mới **cùng origin**. Nay có thêm bước v11→v12 nên rủi ro nhỉnh
-   hơn phiên trước.
+   rồi mở bản mới **cùng origin**. Số bước migration nay nhiều hơn hẳn phiên
+   trước nên rủi ro cũng nhỉnh hơn.
+
+> ⚠️ **Ba điều bản cũ của mục này nói sai — đừng chép lại từ đâu đó:**
+> - *"`_classifyFailure` không có nhánh nào cho vi phạm UNIQUE (23505)"* — sai từ
+>   2026-09-04 (`_uniqueConstraintPattern`), và từ 2026-09-07 phép phân loại đi
+>   theo **`code`** của backend (`_permanentCodes`) chứ không dò chuỗi nữa.
+> - *"Tính năng 'Ngày cụ thể' chưa đồng bộ được"* — việc (C) đã xong, backend giữ
+>   được `time_recurrence = null`.
+> - *"G15 là hoãn có chủ ý, đừng tự ý sửa"* — G15 **đã đóng** 2026-09-07 sau khi
+>   người dùng đổi quyết định.
 
 Muốn xác minh thay đổi ngoài bộ test thì dùng skill **`chay-app`** (Chrome
 headless + truy vấn PostgreSQL). ⚠️ Skill đó nằm trong `.claude/` nên **không
-được push** — chỉ có trên máy đã dựng nó.
+được push** — chỉ có trên máy đã dựng nó. Với thay đổi **giao diện** thì Chrome
+1280px không đủ: phải chạy máy ảo Android ở 411dp, xem mục ⚠️ trong `CLAUDE.md`.
 
 ### 🎯 Mục tiêu tiết kiệm (2026-09-05) — **hoạt động đầy đủ trên client**
 
-**Đọc `docs/GOAL_FEATURE.md` trước khi làm tiếp** — nhất là mục 4, bảy cái bẫy.
+**Đọc `docs/GOAL_FEATURE.md` trước khi làm tiếp** — nhất là mục 4 (bảy cái bẫy,
+4.6 đã đóng) và mục **10**, đối chiếu với app thị trường.
 Tóm tắt:
 
 - **Ví nhận bắt buộc lúc tạo, và KHOÁ sau khoản nạp đầu tiên.** Tiền đã tích
@@ -813,8 +1075,9 @@ Tóm tắt:
 - **Biểu tượng và màu riêng từng mục tiêu** đã nối dữ liệu. Bảng tra cố ý không
   chứa `'flag'` (giá trị dự phòng), nên mục tiêu cũ mang `'flag'` được **chèn
   vào đầu** bảng chọn thay vì bị bỏ qua — mục 3.10.
-- **Trích tiền tự động ĐÃ CHẠY THẬT** (schema **v15**, ba cột cục bộ
-  `auto_deposit_*`). Trước đây khối "Tự động trích tiền định kỳ" thu ba thông
+- **Trích tiền tự động ĐÃ CHẠY THẬT** (schema **v15**, ba cột `auto_deposit_*`
+  — ⚠️ dòng cũ ở đây ghi chúng là **cục bộ**, sai từ 2026-09-07: backend đã
+  thêm cả ba và client đẩy/kéo đủ, **G21 đóng**). Trước đây khối "Tự động trích tiền định kỳ" thu ba thông
   tin và lưu đúng một, còn nút bấm thì hứa "Bật Lập Lịch Tự Động" — một lời hứa
   về chức năng không tồn tại. Bộ chạy nằm trong `NotificationScanner.scan()`,
   **không phải WorkManager**: kỳ bỏ lỡ được trích bù khi app mở lại, đổi lại
@@ -849,6 +1112,18 @@ Tóm tắt:
   sách. Thêm `GoalEntity.daHoanThanh` làm **định nghĩa duy nhất** của "đã xong",
   luật thông báo đổi sang gọi nó. `chiaMucTieu` cũng vá luôn chỗ
   `goalDao.watchAll` **không có `orderBy` nào** — mục 3.18.
+- **Cột mốc tiến độ 25/50/75%** (2026-09-08). `NotificationKind` thứ **mười
+  lăm**. Trước nó app chỉ lên tiếng ở 100% và khi chậm tiến độ. Báo **mốc cao
+  nhất** đã vượt, một tin; khoá chống trùng theo khuôn `goalCycle:` chứ không
+  `goalDone:` vì mục tiêu **lặp lại** phải được báo lại mỗi vòng; và luật phải
+  đứng **TRƯỚC** phép kiểm `isBehindSchedule` — mục 3.21.
+- **Thứ tự ưu tiên kéo thả** (2026-09-08, schema **v19**, cột `priority`). Số
+  cách nhau **100**, `NULL` xếp **cuối**, trùng số rơi về `targetDate`. Chỉ tab
+  "Đang theo đuổi" dùng nó. Payload mục tiêu nay **22 trường** (đếm lại 2026-09-08). Lần kéo đầu
+  đánh số lại cả danh sách (mọi hàng đang `null`), từ lần sau chỉ ghi **một**
+  hàng. ⚠️ `ReorderableListView` trả `newIndex` **lệch một ô** khi kéo xuống —
+  `viTriThaThucTe` là chỗ duy nhất sửa. Khoảng trống chấp nhận được: **G25** —
+  mục 3.22.
 - **Ô ghi chú** cho mục tiêu. `null` là giữ nguyên, **chuỗi rỗng mới là xoá** —
   khác `cycleTakeMoney` (null = xoá) và giống `icon`/`colour` ở nửa đầu. Cột
   `note` đã đồng bộ sẵn, chỉ thiếu chỗ nhập — mục 3.19.
@@ -866,9 +1141,50 @@ Tóm tắt:
   ⚠️ Chỉ nới ở chỗ **ĐỌC**. Payload đẩy vẫn gửi đúng một dạng — nới cả hai đầu
   là mất luôn khả năng phát hiện khi hai phía lệch nhau.
 
+- **Nhãn "(tự động)" trên dòng lịch sử tích luỹ** (2026-09-08, **schema không
+  đổi, backend không phải làm gì**). Khoản do bộ chạy nền trích và khoản người
+  dùng tự bấm vốn **giống hệt nhau trên mọi cột** — sự giống nhau ấy có chủ ý,
+  vì nhờ nó mà phép đọc chiều tiền dùng chung được một tiền tố. Cách phân biệt
+  là một **hậu tố** ghi chú `' (tự động)'`, đọc lại bằng `laKhoanTuDong` đòi đủ
+  **cặp** tiền tố + hậu tố. Khoản cũ không có hậu tố nên đọc là "tay" và
+  **không đoán ngược** — nhãn tự lành từ kỳ trích kế tiếp. Lý lẽ và ba phương
+  án đã loại ở mục **3.25 `docs/GOAL_FEATURE.md`**; 16 test mới. Cuối ngày
+  thêm **bộ lọc nguồn "Tay / Tự động"** cho bảng lịch sử (`LocNguon`, dải chip
+  thứ ba, chỉ hiện khi có khoản tự động; khoản rút thuộc "Tay") — mục 3.24,
+  9 test mới.
+  > Kết luận trước đó — *"muốn phân biệt thì phải thêm cột mới"* — đã được ghi
+  > vào tài liệu mà **chưa mở mã đọc**, và nó sai: có tới hai đường không cần
+  > cột nào. Chỉ lộ ra khi người dùng hỏi lại.
+
 ⚠️ Ba lỗi ở vùng này **chỉ máy ảo Android mới lộ ra**: `ProviderNotFoundError`
 trên route không có `WalletCubit`, màn đỏ do `DropdownButton` có `value` ngoài
 `items`, và dấu hiển thị sai của khoản rút. Bộ test xanh cả ba lần.
+
+### 📊 Trang Phân tích (2026-09-08) — **lát 2a và 2b xong**
+
+**Đọc `docs/ANALYTICS_FEATURE.md` trước khi làm tiếp.** Tóm tắt:
+
+- Trước 2026-09-08 trang này hiện **số giả** ở một tab điều hướng chính, kể cả
+  tháng ("T6 2026" khi đang là tháng 9). Nay bố cục giữ nguyên theo Stitch, mọi
+  con số đi qua `domain/thong_ke_thang.dart` (thuần, test bằng danh sách) →
+  `AnalyticsRepositoryImpl` (gộp ba stream theo khuôn `watchBudgets`) →
+  `AnalyticsCubit` (tháng lấy từ `clock`, `idaccount` từ phiên, không đoán).
+- **`'transfer'` không phải thu, không phải chi**; biên tháng `[from, to)` mượn
+  ngân sách; "% ngân sách" mượn `watchBudgets(now: mốc)` và **phải lọc**
+  `isExpired`; danh mục không có ngân sách thì nhãn đổi thành "% tổng chi".
+- "Số dư còn lại" = thu − chi của tháng, âm hiện âm; tháng trước bằng 0 → "Không
+  có dữ liệu", không "tăng ∞%"; donut top‑4 + "Khác"; tháng rỗng nói rỗng.
+- **Lát 2b (2026-09-08):** khối **"Xu hướng 6 tháng"** — hai đường thu/chi vẽ
+  bằng **`fl_chart` ghim `1.2.0`**, đặt giữa khối tổng và donut. Chuỗi do
+  `chuoiTheoThang()` dựng ở tầng thuần, **cũ nhất trước**, tháng rỗng giữ chỗ
+  với số 0. Donut **vẫn** là `SweepGradient`, không viết lại. Khối này **lệch
+  bản Stitch có chủ ý** — không màn nào trong 35 màn có biểu đồ đường/cột.
+- 4 tệp test, **61 test**; **sáu** bản sai có chủ ý (biên đóng, bỏ lọc hết hạn,
+  bỏ huỷ đăng ký, `watchAll` thay truy vấn kể cả xoá mềm, đảo thứ tự chuỗi,
+  nhãn trục không lấy từ dữ liệu) mỗi cái làm đúng một test đỏ. Test 411dp bắt
+  được tên danh mục tràn **521px** ở bản Stitch chép sang.
+- ⚠️ Tầng vẽ của biểu đồ **không test được** — tooltip từng tràn khỏi màn hình
+  và chỉ ảnh chụp máy ảo mới thấy (bẫy 4.9 `ANALYTICS_FEATURE.md`).
 
 ### 🔔 Hệ thống thông báo (2026-09-04) — **cả bảy lát xong**
 
@@ -895,8 +1211,10 @@ trên route không có `WalletCubit`, màn đỏ do `DropdownButton` có `value`
 - **Trang cài đặt** `/settings/notifications`: công tắc tổng + bốn công tắc
   nhóm + giờ nhắc + số ngày nhắc, lưu trong `FlutterSecureStorage` theo từng
   `idaccount`.
-- **Dải báo kết nối** (`ConnectionBanner`) bọc ngoài router qua
-  `MaterialApp.builder`: mất mạng, có mạng lại, và kết quả đồng bộ.
+- **Toast nổi ở đáy** (`AppToast`, trước là `ConnectionBanner`) bọc ngoài
+  router qua `MaterialApp.builder`: mất mạng, có mạng lại, kết quả đồng bộ, và
+  **sự kiện thời gian thực** (thêm 2026-09-09). Thứ tự ưu tiên: **đồng bộ >
+  realtime > kết nối**, và **một nguồn luôn được cập nhật chính nó**.
 
 ⚠️ `NotificationScanner.stop()` gọi `cancelAll()`. Lịch nằm trong
 AlarmManager/UNUserNotificationCenter chứ không trong SQLite, nên
@@ -928,16 +1246,16 @@ Hoá đơn tạo từ app trước đây **không bao giờ lên tới backend**
   (`insertOrReplace` thay cả hàng — từng biến hoá đơn đã trả thành chưa trả).
 - Nguồn sự thật của chu kỳ là `isRecurrence` + `timeRecurrence`; cột chuỗi cũ
   `recurrence` chỉ được suy ra từ chúng.
-- `nextBillDueDate` áp **quy tắc ngày cuối tháng** — xem mục 5 tài liệu bill.
+- `nextBillDueDate` neo vào **ngày gốc** (`Bills.anchorDay`, v18) và kẹp khi
+  tháng đích ngắn hơn. Quy tắc "đoán cuối tháng" đã BỎ ngày 2026-09-08 — xem
+  mục "Ngày gốc" tài liệu bill.
 - `BillDao.markOverdue` ghi có điều kiện `payStatus = 'Pending'`; bỏ điều kiện
   đó là tạo vòng lặp đẩy vô tận.
 
 ### ❌ Chưa làm / Tiếp theo
-- Analytics (báo cáo chi tiết)
+- Analytics: lát **2a và 2b xong 2026-09-08** (số thật, rồi biểu đồ xu hướng 6 tháng bằng `fl_chart`), **2c‑1, 2c‑1b và 2c‑2 xong 2026-09-09** (trang Xuất báo cáo đọc số thật; màn Xem trước mười khối theo chuẩn app thị trường; nút Tải xuống sinh tệp PDF/CSV thật và lưu vào thư mục Tải về; 10 tệp test, **170** test) — mảng Phân tích **đã xong**, `docs/ANALYTICS_FEATURE.md` mục 7
 - AI chat integration hoàn chỉnh
 - Casso bank integration
-- Kiểm thông báo nổ khi app **đóng hoàn toàn** — phải chờ tới mốc lịch thật
-  hoặc chỉnh đồng hồ máy ảo (xem `docs/NOTIFICATION_FEATURE.md` mục 8)
 - Build production / deploy
 
 ---

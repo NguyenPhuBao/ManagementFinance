@@ -1,6 +1,6 @@
 /// Thẻ tổng quan đầu trang ngân sách: đọc được ở 411dp và nói đúng "kỳ".
 ///
-/// Vì sao cần: trên máy ảo 2026-09-06 dòng "330.000 ₫ / 100.000 ₫ đã dùng"
+/// Vì sao cần: trên máy ảo 2026-09-06 dòng "330.000 đ / 100.000 đ đã dùng"
 /// bị cắt thành "đã ..." vì nằm cùng hàng với "0% ngân sách còn lại" — con số
 /// quan trọng nhất của thẻ lại là thứ bị cắt. Và tiêu đề ghi "THÁNG NÀY" trong
 /// khi ngân sách có thể theo tuần, quý, năm hoặc "Ngày cụ thể".
@@ -66,7 +66,7 @@ void main() {
     expect(
       paragraph.didExceedMaxLines,
       isFalse,
-      reason: '"330.000 ₫ / 100.000 ₫ đã dùng" là con số chính của thẻ; bị '
+      reason: '"330.000 đ / 100.000 đ đã dùng" là con số chính của thẻ; bị '
           'cắt thành "đã ..." thì thẻ mất luôn ý nghĩa.',
     );
     expect(tester.takeException(), isNull);

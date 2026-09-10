@@ -59,8 +59,6 @@ class _BillPaymentSheetState extends State<BillPaymentSheet> {
   String? _loi;
 
   static final _dinhDangNgay = DateFormat('dd/MM/yyyy');
-  static final _tien = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
-
   @override
   void initState() {
     super.initState();
@@ -313,7 +311,7 @@ class _BillPaymentSheetState extends State<BillPaymentSheet> {
               ),
               const SizedBox(width: 8),
               Text(
-                _tien.format(b.amount),
+                CurrencyFormatter.format(b.amount),
                 style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
@@ -407,7 +405,7 @@ class _BillPaymentSheetState extends State<BillPaymentSheet> {
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
               Text(
-                'Số dư: ${_tien.format(vi.balance)}',
+                'Số dư: ${CurrencyFormatter.format(vi.balance)}',
                 style: const TextStyle(
                     fontSize: 12, color: AppColors.textSecondary),
               ),
@@ -446,7 +444,7 @@ class _BillPaymentSheetState extends State<BillPaymentSheet> {
               ),
               title: Text(widget.wallets[i].name),
               subtitle:
-                  Text('Số dư: ${_tien.format(widget.wallets[i].balance)}'),
+                  Text('Số dư: ${CurrencyFormatter.format(widget.wallets[i].balance)}'),
               onTap: () => setState(() {
                 _vi = widget.wallets[i];
                 _dangChonVi = false;

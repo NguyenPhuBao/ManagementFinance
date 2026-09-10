@@ -1,5 +1,5 @@
 import 'package:drift/drift.dart';
-import 'package:intl/intl.dart';
+import '../../../../core/utils/currency_formatter.dart';
 
 import '../../../../core/database/app_database.dart';
 import '../../../../core/errors/app_exceptions.dart';
@@ -9,11 +9,14 @@ import '../models/wallet_entity.dart';
 abstract class WalletLocalDataSource {
   Future<List<WalletEntity>> getAll(int idaccount);
   Stream<List<WalletEntity>> watchAll(int idaccount);
+  Future<List<WalletEntity>> getActive(int idaccount);
+
   Future<WalletEntity?> getById(String id);
   Future<WalletEntity?> getDefault(int idaccount);
   Future<void> insert(WalletEntity wallet);
   Future<void> update(WalletEntity wallet);
   Future<void> softDelete(String id);
+  Future<void> setArchived(String id, {required bool luuTru});
   Future<void> updateBalance(String id, double newBalance);
 }
 
@@ -36,6 +39,7 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
     isDefault:      w.isDefault,
     isDeleted:      w.isDeleted,
     includeInTotal: w.includeInTotal,
+    status:         w.status,
     syncStatus:     w.syncStatus,
     updatedAt:      w.updatedAt,
   );
@@ -52,6 +56,9 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
     isDefault:      Value(e.isDefault),
     isDeleted:      Value(e.isDeleted),
     includeInTotal: Value(e.includeInTotal),
+    // Thiếu cột này thì mỗi lần người dùng sửa tên ví là ví tự bỏ lưu trữ —
+    // im lặng, vì `update_` chỉ ghi những cột companion có mang.
+    status:         Value(e.status),
     syncStatus:     Value(e.syncStatus),
     updatedAt:      Value(e.updatedAt),
   );
@@ -76,6 +83,17 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
   }
 
   @override
+  Future<List<WalletEntity>> getActive(int idaccount) async {
+    try {
+      final rows = await _db.walletDao.getActive(idaccount);
+      return rows.map(_toEntity).toList();
+    } catch (e) {
+      throw CacheException('Không thể tải danh sách ví: $e');
+    }
+  }
+
+
+  @override
   Future<WalletEntity?> getById(String id) async {
     final row = await _db.walletDao.getById(id);
     return row == null ? null : _toEntity(row);
@@ -89,10 +107,27 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
 
   // ── WRITE ────────────────────────────────────────────────────────────────
 
+  /// Giữ bất biến "mỗi tài khoản có nhiều nhất MỘT ví mặc định".
+  ///
+  /// Đặt ở đây, không ở `WalletRepositoryImpl`: cả đường thêm và đường sửa đều
+  /// đi qua datasource, còn repository trước bản này chỉ chặn ở đường thêm —
+  /// nên sửa một ví thứ hai thành mặc định là có hai hàng cùng cờ, và
+  /// `getDefault` ném `StateError` ở lần thêm ví tiếp theo.
+  ///
+  /// Gọi SAU khi ghi, không phải trước: ví vừa ghi là ví được giữ cờ.
+  Future<void> _giuMotViMacDinh(WalletEntity wallet) async {
+    if (!wallet.isDefault) return;
+    await _db.walletDao.clearDefaultExcept(
+      idaccount: wallet.idaccount,
+      keepId: wallet.id,
+    );
+  }
+
   @override
   Future<void> insert(WalletEntity wallet) async {
     try {
       await _db.walletDao.insert(_toCompanion(wallet));
+      await _giuMotViMacDinh(wallet);
     } catch (e) {
       throw CacheException('Không thể lưu ví: $e');
     }
@@ -102,6 +137,7 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
   Future<void> update(WalletEntity wallet) async {
     try {
       await _db.walletDao.update_(_toCompanion(wallet));
+      await _giuMotViMacDinh(wallet);
     } catch (e) {
       throw CacheException('Không thể cập nhật ví: $e');
     }
@@ -114,7 +150,7 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
       if (wallet != null) {
         // 1. Ràng buộc 1: Ví có tiền (balance != 0)
         if (wallet.balance != 0) {
-          final formatted = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ', decimalDigits: 0).format(wallet.balance);
+          final formatted = CurrencyFormatter.format(wallet.balance);
           throw CacheException('Ví "${wallet.name}" đang có số dư ($formatted). Vui lòng điều chuyển số dư về 0đ trước khi xóa!');
         }
 
@@ -143,6 +179,57 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
     } catch (e) {
       if (e is CacheException) rethrow;
       throw CacheException('Không thể xóa ví: $e');
+    }
+  }
+
+  /// Bật/tắt lưu trữ cho một ví.
+  ///
+  /// Hai chốt chặn ở đây cố ý **khác hẳn** ba ràng buộc của [softDelete] (còn
+  /// số dư / đã có giao dịch / đang gắn mục tiêu). Lưu trữ sinh ra chính là
+  /// **lối thoát** cho ba ràng buộc ấy — ví dùng thật gần như không bao giờ
+  /// xoá được — nên bắt nó cũng đòi số dư 0 là làm nó vô dụng.
+  ///
+  /// Hai chốt còn lại là chốt về *tính dùng được của app*:
+  ///
+  /// 1. **Ví mặc định** được chọn sẵn mỗi lần ghi giao dịch (`vi_chon_san.dart`),
+  ///    nên lưu trữ nó là màn thêm giao dịch mở ra với một ví không còn trong
+  ///    danh sách chọn.
+  /// 2. **Ví hoạt động cuối cùng**: lưu trữ hết thì không ghi được giao dịch
+  ///    nào nữa, và không màn nào nói vì sao.
+  ///
+  /// Hai chốt độc lập nhau — một tài khoản có thể không có ví nào mang cờ mặc
+  /// định, vì trạng thái ấy đến được từ server — nên chốt 1 không bao hàm chốt
+  /// 2. Cả hai chỉ canh chiều **lưu trữ**; bỏ lưu trữ thì không gì cản.
+  ///
+  /// Ví đang gắn mục tiêu hoặc hoá đơn tự động vẫn lưu trữ được: cảnh báo là
+  /// việc của hộp thoại xác nhận, không phải của chốt chặn.
+  @override
+  Future<void> setArchived(String id, {required bool luuTru}) async {
+    try {
+      if (luuTru) {
+        final wallet = await _db.walletDao.getById(id);
+        if (wallet == null) {
+          throw const CacheException('Không tìm thấy ví cần lưu trữ.');
+        }
+        if (wallet.isDefault) {
+          throw CacheException(
+              'Ví "${wallet.name}" đang là ví mặc định. Hãy đặt một ví khác '
+              'làm mặc định trước khi lưu trữ ví này.');
+        }
+        final conLai = (await _db.walletDao.getActive(wallet.idaccount))
+            .where((w) => w.id != id)
+            .toList();
+        if (conLai.isEmpty) {
+          throw const CacheException(
+              'Đây là ví đang hoạt động cuối cùng. Lưu trữ nó thì không ghi '
+              'được giao dịch nào nữa — hãy tạo ví khác trước.');
+        }
+      }
+
+      await _db.walletDao.setStatus(id, luuTru: luuTru);
+    } catch (e) {
+      if (e is CacheException) rethrow;
+      throw CacheException('Không thể đổi trạng thái lưu trữ của ví: $e');
     }
   }
 

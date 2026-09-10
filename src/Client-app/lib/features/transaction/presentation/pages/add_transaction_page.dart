@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../../../../core/utils/currency_formatter.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -17,6 +18,7 @@ import '../../../../features/category/data/models/category_suggestion.dart';
 import '../../../../features/category/data/repositories/category_management_repository.dart';
 import '../../../../features/category/data/services/category_suggestion_engine.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../domain/vi_chon_san.dart';
 import '../../data/models/transaction_entity.dart';
 import '../bloc/transaction_bloc.dart';
 import '../bloc/transaction_event.dart';
@@ -126,6 +128,18 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     _loadWallets();
   }
 
+  /// Chọn sẵn ví nguồn và ví đích theo cờ "Ví mặc định".
+  ///
+  /// Luật nằm ở `vi_chon_san.dart` để test được không cần dựng cả trang này.
+  void _apDungViChonSan() {
+    final chon = chonViChonSan<Wallet>(
+      _wallets,
+      laMacDinh: (w) => w.isDefault,
+    );
+    _selectedWallet = chon.nguon;
+    _destinationWallet = chon.dich;
+  }
+
   /// Ở chế độ sửa, ví của giao dịch phải thắng ví đầu danh sách.
   void _apDungViDangSua() {
     final editing = _editing;
@@ -155,9 +169,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     if (configuredWallets != null) {
       setState(() {
         _wallets = configuredWallets;
-        _selectedWallet = _wallets.isEmpty ? null : _wallets.first;
-        _destinationWallet =
-            _wallets.length > 1 ? _wallets[1] : _selectedWallet;
+        _apDungViChonSan();
         _apDungViDangSua();
         _isLoadingWallets = false;
       });
@@ -168,22 +180,12 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     final userIdAccount = int.tryParse(user?.id ?? '') ?? widget.idaccount;
 
     final db = sl<AppDatabase>();
-    final list = await db.walletDao.getAll(userIdAccount);
+    final list = await db.walletDao.getActive(userIdAccount);
 
     if (mounted) {
       setState(() {
         _wallets = list;
-        if (_wallets.isNotEmpty) {
-          _selectedWallet = _wallets.first;
-          if (_wallets.length > 1) {
-            _destinationWallet = _wallets[1];
-          } else {
-            _destinationWallet = _wallets.first;
-          }
-        } else {
-          _selectedWallet = null;
-          _destinationWallet = null;
-        }
+        _apDungViChonSan();
         _apDungViDangSua();
         _isLoadingWallets = false;
       });
@@ -397,7 +399,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                             ),
                           ),
                           Text(
-                            "${NumberFormat('#,###', 'vi_VN').format(wallet.balance)}đ",
+                            "${CurrencyFormatter.formatSoThoi(wallet.balance)}đ",
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
@@ -454,8 +456,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     if (_amountString.contains('.')) return "$_amountStringđ";
     try {
       final number = int.parse(_amountString);
-      final formatter = NumberFormat('#,###', 'vi_VN');
-      return "${formatter.format(number)}đ";
+      return "${CurrencyFormatter.formatSoThoi(number)}đ";
     } catch (_) {
       return "$_amountStringđ";
     }
@@ -795,13 +796,13 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     final walletDisplay = _isLoadingWallets
         ? 'Đang tải ví...'
         : (_selectedWallet != null
-            ? '${_selectedWallet!.name} • ${NumberFormat('#,###', 'vi_VN').format(_selectedWallet!.balance)}đ'
+            ? '${_selectedWallet!.name} • ${CurrencyFormatter.formatSoThoi(_selectedWallet!.balance)}đ'
             : 'Chọn ví');
 
     final destWalletDisplay = _isLoadingWallets
         ? 'Đang tải ví...'
         : (_destinationWallet != null
-            ? '${_destinationWallet!.name} • ${NumberFormat('#,###', 'vi_VN').format(_destinationWallet!.balance)}đ'
+            ? '${_destinationWallet!.name} • ${CurrencyFormatter.formatSoThoi(_destinationWallet!.balance)}đ'
             : 'Chọn ví đích');
 
     return Container(

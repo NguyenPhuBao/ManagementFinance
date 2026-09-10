@@ -76,6 +76,14 @@ class OsGia implements OsNotifier {
   @override
   Future<Set<int>> pendingIds() async => lich.keys.toSet();
 
+  // Hai thành viên của badge — bản giả này không canh badge, xem
+  // badge_updater_test.dart.
+  @override
+  Future<Set<int>> activeIds() async => const {};
+
+  @override
+  Future<void> datBadge(int soLuong) async {}
+
   @override
   Future<void> cancel(int id) async {
     daHuy.add(id);
@@ -90,6 +98,7 @@ class OsGia implements OsNotifier {
 }
 
 void main() {
+  mainTongKetTuan();
   const accountId = 7;
   final now = DateTime(2026, 9, 15, 10);
 
@@ -563,4 +572,380 @@ void main() {
               'vượt 64 mà mỗi bên đều tưởng mình còn dư chỗ.');
     });
   });
+
+  group('lịch hoãn', () {
+    /// Khoá + id của lời nhắc cho một hoá đơn. Nút "Hoãn" **giữ nguyên khoá**,
+    /// nên lịch hoãn dùng đúng id này — xem `notification_actions.dart`.
+    ({String khoa, int id}) khoaCua(DateTime denHan, {int nhacTruoc = 3}) {
+      final k = billDueDedupeKey(
+          billId: 'hd1', dueDate: denHan, leadDays: nhacTruoc);
+      return (khoa: k, id: osScheduledId(k));
+    }
+
+    /// Giả lập trạng thái SAU khi người dùng bấm "Hoãn": lịch nằm ở một mốc
+    /// mới, mang đúng khoá cũ.
+    void daHoan(({String khoa, int id}) k, DateTime toi) {
+      os.lich[k.id] =
+          (when: toi, title: 'Nhắc lại', body: '...', payload: k.khoa);
+    }
+
+    test('lịch hoãn của hoá đơn CHƯA trả sống sót qua resync', () async {
+      // Đến hạn 16/09, nhắc trước 3 ngày → mốc nhắc gốc là 13/09 08:00, đã
+      // trôi qua so với `now` (15/09 10:00). Đó KHÔNG phải một ca hiếm mà là
+      // ca duy nhất có thật: người dùng chỉ bấm "Hoãn" được sau khi thông báo
+      // đã nổ, nên mốc gốc luôn nằm ở quá khứ.
+      final k = khoaCua(DateTime(2026, 9, 16));
+      daHoan(k, DateTime(2026, 9, 16, 9));
+
+      await dung([hoaDon(denHan: DateTime(2026, 9, 16))]).resync(accountId);
+
+      expect(os.daHuy, isNot(contains(k.id)),
+          reason: 'resync chỉ giữ hoá đơn có mốc nhắc còn ở TƯƠNG LAI, nên nếu '
+              'không có ngoại lệ thì nó huỷ đúng lịch người dùng vừa hoãn — '
+              'và họ bị nhắc lại ngay lượt quét sau, hoặc mất hẳn lời nhắc. '
+              'Không lỗi, không log.');
+      expect(os.lich.containsKey(k.id), true);
+      expect(os.lich[k.id]!.when, DateTime(2026, 9, 16, 9),
+          reason: 'Và phải giữ nguyên MỐC ĐÃ HOÃN, không đặt lại mốc gốc.');
+    });
+
+    test('lịch hoãn của hoá đơn ĐÃ TRẢ thì vẫn bị dọn', () async {
+      final k = khoaCua(DateTime(2026, 9, 16));
+      daHoan(k, DateTime(2026, 9, 16, 9));
+
+      await dung([hoaDon(denHan: DateTime(2026, 9, 16), daTra: true)])
+          .resync(accountId);
+
+      expect(os.daHuy, contains(k.id),
+          reason: 'Đây là ranh giới của ngoại lệ trên. Giữ lịch của một hoá '
+              'đơn đã trả là điện thoại vẫn kêu đòi trả một khoản đã trả — '
+              'đúng thứ phép dọn dẹp của resync sinh ra để chặn.');
+    });
+
+    test('lịch hoãn của hoá đơn ĐÃ XOÁ thì vẫn bị dọn', () async {
+      final k = khoaCua(DateTime(2026, 9, 16));
+      daHoan(k, DateTime(2026, 9, 16, 9));
+
+      await dung([hoaDon(denHan: DateTime(2026, 9, 16), daXoa: true)])
+          .resync(accountId);
+
+      expect(os.daHuy, contains(k.id));
+    });
+
+    test('lịch lạ không thuộc hoá đơn nào vẫn bị dọn', () async {
+      // Ngoại lệ phải HẸP. Nới nó thành "đừng huỷ gì cả" là lịch của một bản
+      // app cũ nằm lại trong AlarmManager mãi mãi.
+      os.lich[999999] =
+          (when: DateTime(2026, 9, 20), title: 'x', body: 'y', payload: 'la');
+
+      await dung([hoaDon(denHan: DateTime(2026, 9, 16))]).resync(accountId);
+
+      expect(os.daHuy, contains(999999));
+    });
+  });
+
+  group('nhắc ghi chép hằng ngày', () {
+    /// Dựng một bộ đặt lịch **không có hoá đơn nào**, để mọi lịch đếm được đều
+    /// là lịch nhắc ghi chép.
+    ReminderScheduler dungGhiChep({
+      DateTime? mocGiaoDichCuoi,
+      DateTime? luc,
+    }) {
+      return ReminderScheduler(
+        osNotifier: os,
+        loadBills: (id, at) async => const [],
+        loadLastTransactionAt: (id) async => mocGiaoDichCuoi,
+        prefsStore: prefs,
+        clock: () => luc ?? now,
+      );
+    }
+
+    Future<void> bat({int gio = 20, int phut = 0}) => prefs.write(
+          accountId,
+          NotificationPrefs(
+            nhacGhiChepBat: true,
+            gioNhacGhiChep: gio,
+            phutNhacGhiChep: phut,
+          ),
+        );
+
+    test('tắt sẵn — không đặt lịch nhắc ghi chép nào', () async {
+      final soLich = await dungGhiChep().resync(accountId);
+
+      expect(soLich, 0,
+          reason: 'nhacGhiChepBat mặc định false. Bật sẵn là mọi bản đã cài '
+              'bỗng nhiên nhận một thông báo mỗi ngày mà không ai báo trước.');
+      expect(os.lich, isEmpty);
+    });
+
+    test('bật thì đặt BA lịch: hôm nay và hai ngày kế', () async {
+      await bat();
+
+      final soLich = await dungGhiChep().resync(accountId);
+
+      expect(soLich, 3,
+          reason: 'Ba chứ không phải một: đặt một lịch rồi chờ lượt resync sau '
+              'gia hạn là người dùng không mở app sẽ chỉ được nhắc ĐÚNG MỘT '
+              'lần rồi im — mà đó chính là người cần nhắc nhất.');
+      expect(
+        os.lich.values.map((l) => l.when).toList()..sort(),
+        [
+          DateTime(2026, 9, 15, 20),
+          DateTime(2026, 9, 16, 20),
+          DateTime(2026, 9, 17, 20),
+        ],
+      );
+    });
+
+    test('giờ nhắc lấy từ tuỳ chọn RIÊNG, không phải gioNhac', () async {
+      await bat(gio: 21, phut: 30);
+
+      await dungGhiChep().resync(accountId);
+
+      expect(os.lich.values.first.when, DateTime(2026, 9, 15, 21, 30),
+          reason: 'gioNhac (mặc định 08:00) là của hoá đơn. Dùng chung là hỏi '
+              '"hôm nay ghi chép chưa" trước khi có gì để ghi.');
+    });
+
+    test('hôm nay ĐÃ có giao dịch thì bỏ qua lịch hôm nay', () async {
+      await bat();
+
+      // Cùng ngày với `now`, sớm hơn giờ nhắc.
+      final soLich = await dungGhiChep(
+        mocGiaoDichCuoi: DateTime(2026, 9, 15, 9),
+      ).resync(accountId);
+
+      expect(soLich, 2);
+      expect(
+        os.lich.values.map((l) => l.when).toList()..sort(),
+        [DateTime(2026, 9, 16, 20), DateTime(2026, 9, 17, 20)],
+        reason: 'Nhắc người vừa ghi xong là đúng kiểu làm phiền khiến người '
+            'dùng tắt hẳn thông báo. Chỉ HÔM NAY biết được, hai ngày sau thì '
+            'không — nên chúng vẫn được đặt.',
+      );
+    });
+
+    test('giao dịch của HÔM QUA không cứu được hôm nay', () async {
+      await bat();
+
+      final soLich = await dungGhiChep(
+        mocGiaoDichCuoi: DateTime(2026, 9, 14, 23, 59),
+      ).resync(accountId);
+
+      expect(soLich, 3,
+          reason: 'So theo NGÀY, không theo khoảng 24 giờ. 23:59 hôm qua cách '
+              '`now` chưa tới 11 tiếng nhưng vẫn là một ngày khác.');
+    });
+
+    test('chưa từng ghi giao dịch nào thì vẫn được nhắc', () async {
+      await bat();
+
+      final soLich =
+          await dungGhiChep(mocGiaoDichCuoi: null).resync(accountId);
+
+      expect(soLich, 3,
+          reason: 'null nghĩa là "chưa từng ghi gì" và phải đọc thành CẦN '
+              'nhắc. Đọc thành "vừa ghi xong" là người mới cài app — đúng '
+              'người cần nhắc nhất — không bao giờ được nhắc.');
+    });
+
+    test('giờ nhắc đã trôi qua thì bỏ qua hôm nay', () async {
+      await bat();
+
+      final soLich = await dungGhiChep(
+        luc: DateTime(2026, 9, 15, 21),
+      ).resync(accountId);
+
+      expect(soLich, 2,
+          reason: 'Mốc quá khứ thì Android bắn NGAY còn iOS lặng lẽ bỏ — hai '
+              'nền tảng hỏng theo hai kiểu, cả hai đều sai. Cùng lý lẽ với '
+              'nhánh hoá đơn.');
+      expect(os.lich.values.map((l) => l.when).toList()..sort(),
+          [DateTime(2026, 9, 16, 20), DateTime(2026, 9, 17, 20)]);
+    });
+
+    test('tắt công tắc tổng thì không đặt lịch nào', () async {
+      await prefs.write(
+        accountId,
+        const NotificationPrefs(osBat: false, nhacGhiChepBat: true),
+      );
+
+      expect(await dungGhiChep().resync(accountId), 0);
+    });
+
+    test('luỹ đẳng — chạy lần hai không đặt lại lịch nào', () async {
+      await bat();
+      final bo = dungGhiChep();
+
+      await bo.resync(accountId);
+      final sauLan1 = os.soLanDat;
+      await bo.resync(accountId);
+
+      expect(os.soLanDat, sauLan1,
+          reason: 'resync chạy sau mỗi lần ghi và mỗi lần pull. Huỷ-rồi-đặt-'
+              'lại ở mỗi lượt là mỗi lượt thêm một cơ hội để lịch rơi mất.');
+    });
+
+    test('ghi giao dịch xong thì lượt sau HUỶ lịch hôm nay', () async {
+      await bat();
+      await dungGhiChep().resync(accountId);
+      final idHomNay = osScheduledId('ghiChep:2026-09-15');
+      expect(os.lich.containsKey(idHomNay), true);
+
+      // Người dùng ghi một giao dịch lúc 15h — lượt quét kế tiếp chạy resync.
+      await dungGhiChep(mocGiaoDichCuoi: DateTime(2026, 9, 15, 15))
+          .resync(accountId);
+
+      expect(os.daHuy, contains(idHomNay),
+          reason: 'Đây là cả lý do chọn ba lịch RỜI thay vì một lịch lặp '
+              '`DateTimeComponents.time`: lịch lặp chỉ tốn một suất nhưng '
+              'không bỏ qua được ngày nào, nên nó nhắc cả những hôm người dùng '
+              'đã ghi rồi.');
+      expect(os.lich.containsKey(idHomNay), false);
+    });
+
+    test('tắt công tắc thì dọn sạch lịch đã đặt trước đó', () async {
+      await bat();
+      await dungGhiChep().resync(accountId);
+      expect(os.lich, hasLength(3));
+
+      await prefs.write(accountId, const NotificationPrefs());
+      await dungGhiChep().resync(accountId);
+
+      expect(os.lich, isEmpty,
+          reason: 'Lịch đã đặt nằm trong AlarmManager và không tự biến mất khi '
+              'người dùng gạt công tắc.');
+    });
+  });
 }
+
+/// Lịch **Tổng kết tuần** — thêm 2026-09-09.
+///
+/// Nguồn ứng viên thứ **tư** của `resync`. Khác ba nguồn kia ở chỗ nó không
+/// gắn với bản ghi nào: mốc đến từ tuỳ chọn của người dùng, và khoá phải
+/// **trùng khít** khoá mà bộ luật sinh ra khi app mở — nếu lệch thì thông báo
+/// hệ điều hành và hàng trong trung tâm thông báo là hai thứ khác nhau cho
+/// cùng một tuần.
+void mainTongKetTuan() {
+  group('resync — Tổng kết tuần', () {
+    test('đặt đúng một lịch vào thứ và giờ người dùng chọn', () async {
+      final os = OsGia();
+      final s = ReminderScheduler(
+        osNotifier: os,
+        loadBills: (_, __) async => [],
+        prefsStore: kho(const NotificationPrefs(
+          tongKetTuanBat: true,
+          thuTongKet: DateTime.monday,
+          gioTongKet: 8,
+          phutTongKet: 0,
+        )),
+        clock: () => DateTime(2026, 9, 9, 10),
+      );
+
+      await s.resync(7, now: DateTime(2026, 9, 9, 10));
+
+      final lich = _lichTuan(os);
+      expect(lich.length, 1);
+      expect(
+        lich.single.when,
+        DateTime(2026, 9, 14, 8),
+        reason: '09/09/2026 là thứ Tư, nên thứ Hai kế tiếp là 14/09. Mốc đã '
+            'trôi qua thì Android bắn NGAY còn iOS lặng lẽ bỏ — hai kiểu hỏng '
+            'khác nhau, cả hai đều sai.',
+      );
+    });
+
+    test('khoá của lịch TRÙNG KHÍT khoá bộ luật sinh ra lúc ấy', () async {
+      final os = OsGia();
+      final s = ReminderScheduler(
+        osNotifier: os,
+        loadBills: (_, __) async => [],
+        prefsStore: kho(const NotificationPrefs(tongKetTuanBat: true)),
+        clock: () => DateTime(2026, 9, 9, 10),
+      );
+      await s.resync(7, now: DateTime(2026, 9, 9, 10));
+
+      final khoaLich = _lichTuan(os).single.payload!;
+      final khoaLuat = buildNotificationCandidates(NotificationRuleInput(
+        // Đúng thời khắc lịch nổ: 14/09 08:00.
+        now: DateTime(2026, 9, 14, 8),
+        tuanQuaCoGiaoDich: true,
+      )).firstWhere((c) => c.kind == NotificationKind.weeklySummary).dedupeKey;
+
+      expect(
+        khoaLich,
+        khoaLuat,
+        reason: 'Hai khoá lệch nhau nghĩa là hai thông báo cho một tuần: một '
+            'cái do lịch bắn, một cái do vòng quét sinh. Cùng khoá thì cái sau '
+            'THAY CHỖ cái trước — đúng cách nhắc trích tự động đang làm.',
+      );
+    });
+
+    test('tắt nhóm Tổng kết thì không đặt lịch nào', () async {
+      final os = OsGia();
+      final s = ReminderScheduler(
+        osNotifier: os,
+        loadBills: (_, __) async => [],
+        prefsStore: kho(const NotificationPrefs(
+          tongKetTuanBat: true,
+          nhomTat: {NotificationGroup.summary},
+        )),
+        clock: () => DateTime(2026, 9, 9, 10),
+      );
+      await s.resync(7, now: DateTime(2026, 9, 9, 10));
+
+      expect(
+        _lichTuan(os),
+        isEmpty,
+        reason: 'Công tắc nhóm phải chặn được cả đường lịch đặt trước, nếu '
+            'không thì tắt trong app mà điện thoại vẫn kêu.',
+      );
+    });
+
+    test('tắt công tắc tổng thì không đặt lịch nào', () async {
+      final os = OsGia();
+      final s = ReminderScheduler(
+        osNotifier: os,
+        loadBills: (_, __) async => [],
+        prefsStore: kho(const NotificationPrefs(
+          tongKetTuanBat: true,
+          osBat: false,
+        )),
+        clock: () => DateTime(2026, 9, 9, 10),
+      );
+      await s.resync(7, now: DateTime(2026, 9, 9, 10));
+      expect(_lichTuan(os), isEmpty);
+    });
+
+    test('đứng đúng ngày nhưng đã qua giờ thì lùi sang tuần sau', () async {
+      final os = OsGia();
+      final s = ReminderScheduler(
+        osNotifier: os,
+        loadBills: (_, __) async => [],
+        prefsStore: kho(const NotificationPrefs(tongKetTuanBat: true)),
+        clock: () => DateTime(2026, 9, 7, 9),
+      );
+      // 07/09/2026 là thứ Hai, 09:00 — mốc 08:00 đã trôi qua.
+      await s.resync(7, now: DateTime(2026, 9, 7, 9));
+
+      expect(
+        _lichTuan(os).single.when,
+        DateTime(2026, 9, 14, 8),
+        reason: 'Đặt vào mốc đã qua là Android bắn ngay lập tức — người dùng '
+            'nhận tổng kết tuần lúc 09:00 thứ Hai vì đã mở app muộn 1 tiếng.',
+      );
+    });
+  });
+}
+
+/// Kho tuỳ chọn đã nạp sẵn một bản ghi — `resync` chỉ đọc nên không cần hơn.
+InMemoryNotificationPrefsStore kho(NotificationPrefs p) {
+  final k = InMemoryNotificationPrefsStore();
+  k.write(7, p);
+  return k;
+}
+
+/// Chỉ những lịch của Tổng kết tuần, lọc theo tiền tố khoá.
+Iterable<({DateTime when, String title, String body, String? payload})>
+    _lichTuan(OsGia os) =>
+        os.lich.values.where((l) => l.payload?.startsWith('weekly:') ?? false);

@@ -6,10 +6,35 @@
 
 | # | Việc | Ưu tiên | Trạng thái |
 |---|---|---|---|
-| **A** (mục 2–7) | Xoá một bản ghi không tồn tại phải là **thành công** | 🔴 Cao — đang làm **kẹt vĩnh viễn** hàng đợi đồng bộ | ⛔ Chưa |
-| **B** (mục 8) | `message` trả về phải là **mã lỗi ổn định**, không phải stack trace Prisma | 🟡 Trung bình — kèm rò rỉ đường dẫn máy chủ và nội dung hàng dữ liệu | ⛔ Chưa |
-| **C** (mục 9) | `budget.time_recurrence = null` phải được **giữ nguyên**, không ép về `'Month'` | 🔴 Cao — đang **chặn hẳn** tính năng ngân sách "Ngày cụ thể" | ⛔ Chưa |
-| **D** (mục 10) | `budget.threshold_warning_percent = null` phải được **giữ nguyên**, không ép về `0` — bỏ cả `?? 0` lẫn `@default(0)` | 🟡 Trung bình — client đã vá form 2026-09-06, nhưng server vẫn đang ghi dữ liệu sai; cùng khuôn với C, sửa chung một lần | ⛔ Chưa |
+| **A** (mục 2–7) | Xoá một bản ghi không tồn tại phải là **thành công** | 🔴 Cao — đang làm **kẹt vĩnh viễn** hàng đợi đồng bộ | ✅ **XONG 2026-09-07** — trả `status: 'synced'`, `message: 'Already absent'` |
+| **B** (mục 8) | `message` trả về phải là **mã lỗi ổn định**, không phải stack trace Prisma | 🟡 Trung bình — kèm rò rỉ đường dẫn máy chủ và nội dung hàng dữ liệu | ✅ **XONG 2026-09-07** — có `code` + `constraint` + thông báo tiếng Việt. ⚠️ Xem cảnh báo dưới bảng |
+| **C** (mục 9) | `budget.time_recurrence = null` phải được **giữ nguyên**, không ép về `'Month'` | 🔴 Cao — đang **chặn hẳn** tính năng ngân sách "Ngày cụ thể" | ✅ **XONG 2026-09-07** — `=== undefined ? 'Month' : ...` |
+| **D** (mục 10) | `budget.threshold_warning_percent = null` phải được **giữ nguyên**, không ép về `0` — bỏ cả `?? 0` lẫn `@default(0)` | 🟡 Trung bình — client đã vá form 2026-09-06, nhưng server vẫn đang ghi dữ liệu sai | ⛔ **CÒN** — kiểm 2026-09-07: `sync.repository.js:327` vẫn `?? 0`, `schema.prisma:193` vẫn `@default(0)` |
+
+> ## ⚠️ Bản vá (B) đã làm hỏng một chỗ phía client — đã tự vá, ghi lại để rút kinh nghiệm
+>
+> (B) đúng là thứ client xin, và bản backend làm còn tốt hơn đề nghị: có cả
+> `code`, `constraint` lẫn thông báo tiếng Việt cho người dùng đọc.
+>
+> Nhưng nó **thay luôn** `message`: chuỗi ấy không còn mang mã SQLSTATE nào.
+> Client đang phân loại lỗi bằng regex `23505` và `23514` trên chính chuỗi đó,
+> nên sau bản vá mọi lỗi vĩnh viễn **im lặng** tụt xuống nhánh `transient` —
+> tức bản ghi hỏng quay lại được đẩy ở mọi chu kỳ, đúng vòng lặp mà G3 và G16
+> sinh ra để đóng. Không một lỗi nào báo ra; bộ test client vẫn xanh vì nó
+> kiểm bằng thông báo **cũ**.
+>
+> Client đã tự sửa ngày 2026-09-07 (`_permanentCodes`, phân loại theo `code`
+> trước mọi phép khớp chuỗi, giữ regex làm đường dự phòng cho backend cũ).
+> **Backend không phải làm gì thêm.**
+>
+> Bài học cho cả hai phía: `message` là **giao diện**, không phải văn bản tự
+> do. Lần sau đổi hình dạng lỗi, báo trước một câu là đủ.
+>
+> Bốn mã client hiện coi là lỗi vĩnh viễn: `UNIQUE_VIOLATION`,
+> `CATEGORY_NAME_DUPLICATE`, `CONSTRAINT_VIOLATION`, `FORBIDDEN_SYSTEM_DEFAULT`.
+> `FOREIGN_KEY_VIOLATION` cố ý **không** nằm trong tập ấy (sai thứ tự đẩy thì
+> Pull xong là khỏi), và `ACCOUNT_NOT_FOUND` vẫn là phiên chết. Thêm mã mới
+> nào vào nhóm "thử lại cũng vô ích" thì báo client một tiếng.
 
 Bốn việc **độc lập**, làm riêng được (C và D cùng hàm, tiện sửa chung).
 

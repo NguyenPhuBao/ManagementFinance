@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/auth/current_account.dart';
+import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../widgets/bill_status_header.dart';
@@ -37,12 +39,28 @@ class _BillPageState extends State<BillPage> {
   /// trong hai thứ đó.
   TransactionLookup _lookup = TransactionLookup.empty;
 
-  @override
-  void initState() {
-    super.initState();
+  /// Tài khoản đã nạp xong, để không nạp lại ở mỗi lần dựng.
+  int? _daNapCho;
+
+  /// Nạp đúng MỘT lần cho mỗi mã tài khoản.
+  ///
+  /// Trước đây việc này nằm trong `addPostFrameCallback` của `initState` kèm
+  /// `if (accountId == null) return;`. `initState` chỉ chạy một lần, nên khi
+  /// trang được dựng trước lúc `AuthBloc` khôi phục xong phiên thì nó bỏ qua
+  /// và **không bao giờ thử lại** — trang hoá đơn trống cho tới khi người dùng
+  /// thoát ra vào lại. Cùng họ với G17 ở trang Mục tiêu và Ngân sách, chỉ khác
+  /// hình dạng: ở đây không có `BlocProvider` để gắn khoá, vì `BillBloc` do
+  /// router cung cấp.
+  ///
+  /// Gọi từ `build` (nơi đã `watch` AuthBloc) nên nó chạy lại khi phiên tới.
+  /// Việc gửi sự kiện hoãn sang `addPostFrameCallback`: phát một sự kiện bloc
+  /// **trong lúc dựng** là lỗi khung.
+  void _thuNap() {
+    final accountId = currentAccountIdOrNull(context);
+    if (accountId == null || _daNapCho == accountId) return;
+    _daNapCho = accountId;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final accountId = currentAccountIdOrNull(context);
-      if (accountId == null) return; // chưa có phiên → không nạp gì
+      if (!mounted) return;
       context.read<BillBloc>().add(LoadBillsEvent(idaccount: accountId));
       _napTenGoi(accountId);
     });
@@ -65,8 +83,12 @@ class _BillPageState extends State<BillPage> {
 
   @override
   Widget build(BuildContext context) {
-    final currencyFormatter =
-        NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
+    // ĐĂNG KÝ với AuthBloc: `currentAccountIdOrNull` dùng `context.read` bên
+    // trong, mà `read` không đăng ký gì — thiếu dòng này thì `_thuNap()` bên
+    // dưới không bao giờ được gọi lại khi phiên tới.
+    context.watch<AuthBloc>();
+    _thuNap();
+
     final dateFormatter = DateFormat('dd/MM/yyyy');
     final now = widget.now ?? DateTime.now();
 
@@ -136,8 +158,8 @@ class _BillPageState extends State<BillPage> {
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
                         child: _buildSummaryCard(
-                          totalAmountStr: currencyFormatter
-                              .format(state.summary.unpaidAmount),
+                          totalAmountStr: CurrencyFormatter.format(
+                              state.summary.unpaidAmount),
                           unpaidCount: state.summary.unpaidCount,
                           progress: state.summary.progress,
                         ),
@@ -160,8 +182,7 @@ class _BillPageState extends State<BillPage> {
                               context,
                               sections.unpaid,
                               now: now,
-                              currencyFormatter: currencyFormatter,
-                              dateFormatter: dateFormatter,
+                                                            dateFormatter: dateFormatter,
                               khiTrong: 'Không còn hoá đơn nào phải trả.',
                               payments: state.payments,
                             ),
@@ -169,8 +190,7 @@ class _BillPageState extends State<BillPage> {
                               context,
                               sections.paid,
                               now: now,
-                              currencyFormatter: currencyFormatter,
-                              dateFormatter: dateFormatter,
+                                                            dateFormatter: dateFormatter,
                               khiTrong: 'Chưa có hoá đơn nào được thanh toán.',
                               payments: state.payments,
                             ),
@@ -201,7 +221,6 @@ class _BillPageState extends State<BillPage> {
     BuildContext context,
     List<Bill> bills, {
     required DateTime now,
-    required NumberFormat currencyFormatter,
     required DateFormat dateFormatter,
     required String khiTrong,
     required Map<String, Transaction> payments,
@@ -270,7 +289,7 @@ class _BillPageState extends State<BillPage> {
             icon: categoryIconFor(danhMuc?.icon),
             iconColor:
                 categoryColorFrom(danhMuc?.colour, fallback: AppColors.primary),
-            amount: currencyFormatter.format(bill.amount),
+            amount: CurrencyFormatter.format(bill.amount),
             status: nhanTrangThaiHoaDon(status),
             statusColor: mauChuTrangThaiHoaDon(status),
             statusBg: mauNenTrangThaiHoaDon(status),

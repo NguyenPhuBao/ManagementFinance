@@ -1,3 +1,6 @@
+import 'dart:async';
+import '../../../../core/utils/currency_formatter.dart';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -12,7 +15,13 @@ import '../../domain/goal_deposit_warning.dart';
 import '../../domain/goal_forecast.dart';
 import '../../domain/goal_history_direction.dart';
 import '../../domain/goal_wallet_shortfall.dart';
+import '../../domain/goal_history_filter.dart';
+import '../widgets/goal_config_card.dart';
+import '../widgets/goal_history_sheet.dart';
 import '../widgets/goal_progress.dart';
+import '../widgets/goal_progress_chart.dart';
+import '../widgets/goal_stats_card.dart';
+import '../widgets/nhan_tu_dong.dart';
 
 class GoalDetailPage extends StatefulWidget {
   final String id;
@@ -33,6 +42,33 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
   /// mọi mục tiêu dùng chung ví ấy), mà `build` thì chạy lại rất nhiều lần.
   String? _canhBaoVi;
 
+  /// Tên hai ví, tra sẵn cho `GoalConfigCard`.
+  ///
+  /// `null` nghĩa là chưa gán hoặc ví đã bị xoá mềm — widget nói "Chưa gán ví"
+  /// chứ không để ô trống, vì ô trống trông y hệt một lỗi tải dữ liệu.
+  String? _tenViTichLuy;
+  String? _tenViNguonTrich;
+
+  /// Số dòng lịch sử dựng ngay trên trang. Phần còn lại nằm ở bảng đầy đủ.
+  ///
+  /// Năm là con số vừa đủ để thấy *nhịp gần đây* mà không kéo trang dài thêm
+  /// một màn hình. Bỏ trần đi thì trang tăng tuyến tính không giới hạn, và
+  /// danh sách ở đây **không ảo hoá** (`shrinkWrap` + `NeverScrollable`) nên
+  /// mọi dòng được dựng cùng lúc, mỗi lượt đồng bộ.
+  static const int _soDongLichSuToiDa = 5;
+
+  /// Toàn bộ lịch sử đã rút gọn, giữ lại để mở bảng đầy đủ mà không phải mở
+  /// một dòng dữ liệu thứ hai.
+  List<KhoanTichLuy> _khoanLichSu = const [];
+  int get _soKhoanLichSu => _khoanLichSu.length;
+
+  /// Đăng ký với dòng dữ liệu mục tiêu — **bẫy 4.5 đã đóng 2026-09-08**.
+  ///
+  /// Bản trước chỉ gọi `getGoalById` một lần trong `initState` rồi tự giữ
+  /// `_goal` trong `State`. Đồng bộ kéo về một thay đổi của chính mục tiêu
+  /// **đang mở** thì màn hình vẫn hiện số cũ — không lỗi, không log, người
+  /// dùng chỉ phát hiện khi thoát ra vào lại.
+  StreamSubscription<List<GoalEntity>>? _dongDuLieu;
 
   @override
   void initState() {
@@ -41,17 +77,128 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     _loadGoal();
   }
 
+  @override
+  void dispose() {
+    _dongDuLieu?.cancel();
+    super.dispose();
+  }
+
   Future<void> _loadGoal() async {
     setState(() => _isLoading = true);
     final goal = await _goalRepository.getGoalById(widget.id);
     final canhBao = goal == null ? null : await _tinhCanhBaoVi(goal);
+    final ten = goal == null ? (null, null) : await _tenCacVi(goal);
     if (mounted) {
       setState(() {
         _goal = goal;
         _canhBaoVi = canhBao;
+        _tenViTichLuy = ten.$1;
+        _tenViNguonTrich = ten.$2;
         _isLoading = false;
       });
     }
+    if (goal != null) _dangKyDongDuLieu(goal.idaccount);
+  }
+
+  /// Nghe `watchGoals` của **cả tài khoản**, không phải riêng mục tiêu này.
+  ///
+  /// Hai lý do, và cần cả hai:
+  ///
+  /// 1. `GoalRepository` không có `watchGoalById`, và thêm một hàm mới chỉ để
+  ///    một trang dùng thì đắt hơn phần nó tiết kiệm được.
+  /// 2. `_canhBaoVi` cộng dồn **mọi** mục tiêu trỏ vào cùng ví, nên một mục
+  ///    tiêu *khác* nạp tiền cũng làm câu cảnh báo ở đây đổi. Nghe hẹp lại
+  ///    đúng một hàng là bỏ sót vế ấy.
+  ///
+  /// Mã tài khoản lấy từ **chính mục tiêu vừa đọc**, không từ `AuthBloc`: hàm
+  /// này chạy sau một `await` nên `context` có thể đã tháo, và đọc phiên ở đây
+  /// là mở lại đúng cửa mà G17 vừa đóng.
+  void _dangKyDongDuLieu(int idaccount) {
+    if (_dongDuLieu != null) return;
+    _dongDuLieu = _goalRepository.watchGoals(idaccount).listen((danhSach) async {
+      if (!mounted) return;
+
+      // `firstWhereOrNull` viết tay: hàng có thể đã biến mất khỏi danh sách vì
+      // vừa bị xoá mềm ở máy khác. Khi ấy giữ nguyên những gì đang hiện —
+      // `orElse: () => throw` là màn đỏ ngay giữa một lượt đồng bộ nền.
+      GoalEntity? moi;
+      for (final g in danhSach) {
+        if (g.id == widget.id) {
+          moi = g;
+          break;
+        }
+      }
+      if (moi == null) return;
+
+      final canhBao = await _tinhCanhBaoVi(moi);
+      final ten = await _tenCacVi(moi);
+      if (!mounted) return;
+      setState(() {
+        _goal = moi;
+        _canhBaoVi = canhBao;
+        _tenViTichLuy = ten.$1;
+        _tenViNguonTrich = ten.$2;
+        // KHÔNG đụng `_isLoading`. Đường này là cập nhật nền, không phải một
+        // lần tải do người dùng gây ra; bật cờ tải ở đây làm cả trang nháy về
+        // vòng quay mỗi lần đồng bộ chạy xong.
+      });
+    });
+  }
+
+  /// Đổi hàng Drift sang dạng rút gọn cho tầng lọc.
+  ///
+  /// Chiều tiền đọc từ **tiền tố ghi chú** qua `laKhoanRutKhoiMucTieu` — đúng
+  /// một nơi quyết định, cùng hàm mà dòng trên trang đang dùng. Tự so ví ở đây
+  /// là bản sao thứ hai của bẫy 4.2.
+  ///
+  /// Nhãn "tự động" đọc từ **hậu tố** cùng ghi chú ấy, qua `laKhoanTuDong` —
+  /// cùng lối, cùng lý do.
+  List<KhoanTichLuy> _doiSangKhoan(List<dynamic> txs) => [
+        for (final tx in txs)
+          for (final ghiChu in [(tx.note as String?) ?? ''])
+            KhoanTichLuy(
+              ngay: tx.date as DateTime,
+              soTien: tx.amount as double,
+              laKhoanRut: laKhoanRutKhoiMucTieu(
+                ghiChu: ghiChu,
+                viCuaHang: tx.walletId as String,
+                viTichLuy: _goal?.walletId,
+              ),
+              laTuDong: laKhoanTuDong(ghiChu),
+            ),
+      ];
+
+  /// Mở bảng lịch sử đầy đủ kèm bộ lọc.
+  void _moBangLichSu() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => GoalHistorySheet(
+        tenMucTieu: _goal?.name ?? '',
+        khoan: _khoanLichSu,
+      ),
+    );
+  }
+
+  /// Tên ví tích luỹ và ví nguồn trích, tra một lượt.
+  ///
+  /// Trả `null` cho ví không tìm thấy thay vì ném: ví có thể đã bị xoá mềm sau
+  /// khi mục tiêu trỏ vào nó, và `autoDepositWalletId` **không có khoá ngoại**
+  /// (cùng lý do với `walletTransfer`, bẫy 4.1) nên không có gì ở tầng CSDL
+  /// bảo đảm nó còn tồn tại.
+  Future<(String?, String?)> _tenCacVi(GoalEntity goal) async {
+    final db = sl<AppDatabase>();
+    Future<String?> ten(String? id) async {
+      if (id == null || id.isEmpty) return null;
+      final w = await db.walletDao.getById(id);
+      return w?.name;
+    }
+
+    return (await ten(goal.walletId), await ten(goal.autoDepositWalletId));
   }
 
   /// So số dư THẬT của ví tích lũy với TỔNG của mọi mục tiêu trỏ vào ví ấy.
@@ -88,7 +235,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     final accountId = currentAccountIdOrNull(context);
     final wallets = accountId == null
         ? <Wallet>[]
-        : await sl<AppDatabase>().walletDao.getAll(accountId);
+        : await sl<AppDatabase>().walletDao.getActive(accountId);
     if (!mounted) return;
 
     final messenger = ScaffoldMessenger.of(context);
@@ -189,7 +336,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     final accountId = currentAccountIdOrNull(context);
     final wallets = accountId == null
         ? <Wallet>[]
-        : await db.walletDao.getAll(accountId);
+        : await db.walletDao.getActive(accountId);
     if (!mounted) return;
 
     final messenger = ScaffoldMessenger.of(context);
@@ -217,8 +364,6 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
       return;
     }
 
-    final tien =
-        NumberFormat.currency(locale: 'vi_VN', symbol: 'đ', decimalDigits: 0);
     final amountController = TextEditingController();
     final viNhanKhaDung =
         wallets.where((w) => w.id != viTichLuy.id).toList();
@@ -265,7 +410,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Mục tiêu đang giữ ${tien.format(_goal!.currentAmount)} '
+                'Mục tiêu đang giữ ${CurrencyFormatter.format(_goal!.currentAmount)} '
                 'trong ví "${viTichLuy.name}".',
                 style: const TextStyle(
                     fontSize: 13, color: AppColors.textSecondary),
@@ -316,7 +461,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                         .map((w) => DropdownMenuItem<Wallet>(
                               value: w,
                               child: Text(
-                                '${w.name} (Số dư: ${tien.format(w.balance)})',
+                                '${w.name} (Số dư: ${CurrencyFormatter.format(w.balance)})',
                                 style: const TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w500),
@@ -344,7 +489,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                   if (soTien > _goal!.currentAmount) {
                     messenger.showSnackBar(SnackBar(
                       content: Text('Mục tiêu chỉ đang giữ '
-                          '${tien.format(_goal!.currentAmount)}.'),
+                          '${CurrencyFormatter.format(_goal!.currentAmount)}.'),
                       backgroundColor: Colors.red,
                     ));
                     return;
@@ -371,7 +516,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                   if (ctx.mounted) Navigator.pop(ctx);
                   if (!mounted) return;
                   messenger.showSnackBar(SnackBar(
-                    content: Text('Đã rút ${tien.format(soTien)} khỏi mục '
+                    content: Text('Đã rút ${CurrencyFormatter.format(soTien)} khỏi mục '
                         'tiêu về "${selectedTargetWallet.name}".'),
                   ));
                   _loadGoal();
@@ -401,7 +546,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     final accountId = currentAccountIdOrNull(context);
     final wallets = accountId == null
         ? <Wallet>[]
-        : await db.walletDao.getAll(accountId);
+        : await db.walletDao.getActive(accountId);
 
     if (!mounted) return;
     if (accountId == null || wallets.isEmpty) {
@@ -454,8 +599,6 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     final messenger = ScaffoldMessenger.of(context);
 
     final amountController = TextEditingController();
-    final currencyFormatter = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ', decimalDigits: 0);
-
     // Chỉ còn MỘT ô chọn: ví nguồn. Ví nhận đã cố định ở trên.
     final viNguonKhaDung =
         wallets.where((w) => w.id != viNhan.id).toList();
@@ -504,7 +647,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Số tiền hiện tại: ${currencyFormatter.format(_goal!.currentAmount)} / ${currencyFormatter.format(_goal!.targetAmount)}',
+                    'Số tiền hiện tại: ${CurrencyFormatter.format(_goal!.currentAmount)} / ${CurrencyFormatter.format(_goal!.targetAmount)}',
                     style: const TextStyle(
                       fontSize: 13,
                       color: AppColors.textSecondary,
@@ -512,7 +655,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Còn thiếu ${currencyFormatter.format(_goal!.remainingAmount)}',
+                    'Còn thiếu ${CurrencyFormatter.format(_goal!.remainingAmount)}',
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
@@ -566,7 +709,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                           return DropdownMenuItem<Wallet>(
                             value: w,
                             child: Text(
-                              '${w.name} (Số dư: ${currencyFormatter.format(w.balance)})',
+                              '${w.name} (Số dư: ${CurrencyFormatter.format(w.balance)})',
                               style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                             ),
                           );
@@ -648,7 +791,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                           SnackBar(
                             content: Text(
                               'Số dư ví "${selectedSourceWallet.name}" không đủ. '
-                              'Hiện có: ${currencyFormatter.format(selectedSourceWallet.balance)}',
+                              'Hiện có: ${CurrencyFormatter.format(selectedSourceWallet.balance)}',
                             ),
                             backgroundColor: Colors.red,
                           ),
@@ -682,7 +825,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                       // vẫn đúng khi người dùng mở lại trang ấy.
                       messenger.showSnackBar(
                         SnackBar(
-                          content: Text('Đã gửi thêm ${currencyFormatter.format(deposit)} vào mục tiêu!'),
+                          content: Text('Đã gửi thêm ${CurrencyFormatter.format(deposit)} vào mục tiêu!'),
                           backgroundColor: AppColors.income,
                         ),
                       );
@@ -728,7 +871,6 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
       );
     }
 
-    final currencyFormatter = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ', decimalDigits: 0);
     final remaining = (_goal!.targetAmount - _goal!.currentAmount).clamp(0.0, double.infinity);
 
     return Scaffold(
@@ -789,7 +931,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                   children: [
                     GoalProgressRing(goal: _goal!),
                     const SizedBox(height: 32),
-                    _buildAmountInfo(currencyFormatter, remaining),
+                    _buildAmountInfo(remaining),
                     if (_goal!.note.trim().isNotEmpty) ...[
                       const SizedBox(height: 16),
                       _buildGhiChu(_goal!.note.trim()),
@@ -800,8 +942,22 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                       const SizedBox(height: 12),
                       _buildCanhBaoVi(_canhBaoVi!),
                     ],
+                    // Khối "Cấu hình" — thêm 2026-09-08 sau khi người dùng
+                    // báo trang này thiếu nội dung. Cả bốn dòng của nó đều là
+                    // dữ liệu đã nằm sẵn trên `GoalEntity`; chỗ thiếu là chỗ
+                    // hiển thị, không phải dữ liệu.
+                    //
+                    // Đặt SAU hộp dự báo và cảnh báo ví: hai khối kia nói về
+                    // việc *cần làm gì*, khối này nói về *đang cài đặt thế
+                    // nào* — thứ người dùng tra lại chứ không đọc mỗi lần mở.
+                    const SizedBox(height: 12),
+                    GoalConfigCard(
+                      goal: _goal!,
+                      tenViTichLuy: _tenViTichLuy,
+                      tenViNguonTrich: _tenViNguonTrich,
+                    ),
                     const SizedBox(height: 32),
-                    _buildHistorySection(currencyFormatter),
+                    _buildHistorySection(),
                   ],
                 ),
               ),
@@ -813,7 +969,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     );
   }
 
-  Widget _buildAmountInfo(NumberFormat currencyFormatter, double remaining) {
+  Widget _buildAmountInfo(double remaining) {
     return Column(
       children: [
         Row(
@@ -822,7 +978,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
           textBaseline: TextBaseline.alphabetic,
           children: [
             Text(
-              currencyFormatter.format(_goal!.currentAmount),
+              CurrencyFormatter.format(_goal!.currentAmount),
               style: const TextStyle(
                 fontSize: 32,
                 fontWeight: FontWeight.w900,
@@ -831,7 +987,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
               ),
             ),
             Text(
-              ' / ${currencyFormatter.format(_goal!.targetAmount)}',
+              ' / ${CurrencyFormatter.format(_goal!.targetAmount)}',
               style: TextStyle(
                 fontSize: 14,
                 color: AppColors.onSurfaceVariant.withValues(alpha: 0.8),
@@ -850,7 +1006,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
             children: [
               const TextSpan(text: 'Còn lại '),
               TextSpan(
-                text: currencyFormatter.format(remaining),
+                text: CurrencyFormatter.format(remaining),
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   color: AppColors.primary,
@@ -924,9 +1080,6 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     final duBao = duBaoHoanThanh(_goal!, now);
     final thucTe = tocDoThucTe(_goal!, now);
     final keHoach = tocDoKeHoach(_goal!, now: now);
-    final tien = NumberFormat.currency(
-        locale: 'vi_VN', symbol: 'đ', decimalDigits: 0);
-
     // Dòng đầu: dự báo THẬT thay cho câu lặp lại hạn chót.
     //
     // `targetDate` được tính một lần lúc tạo từ chu kỳ người dùng nhập, rồi
@@ -954,16 +1107,21 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     if (_goal!.isCompleted || _goal!.remainingAmount <= 0) {
       mota = 'Không cần tích thêm đồng nào.';
     } else if (thucTe == null) {
-      mota = 'Gửi thêm vài lần để app ước lượng được nhịp tích lũy của bạn.';
+      // Lý do là CHƯA ĐỦ THỜI GIAN, không phải chưa đủ số lần nạp — xem
+      // `_duCuaSo` ở `goal_forecast.dart`. Câu cũ ("gửi thêm vài lần") sai
+      // hướng: người dùng nạp thêm mười lần trong cùng ngày vẫn không mở được
+      // hộp này, và họ sẽ tưởng tính năng hỏng.
+      mota = 'Cần theo dõi thêm ít lâu để app ước lượng được nhịp tích lũy. '
+          'Nhịp $nhipLabel chỉ có nghĩa khi đã qua ít nhất nửa chu kỳ.';
     } else if (duBao == null) {
       mota = 'Chưa tích được đồng nào $nhipLabel, nên chưa ước lượng được '
           'ngày đạt mục tiêu.';
     } else {
       final canThem = keHoach == null
           ? ''
-          : ' · cần ${tien.format(keHoach)} để kịp hạn '
+          : ' · cần ${CurrencyFormatter.format(keHoach)} để kịp hạn '
               '${DateFormat('MM/yyyy').format(_goal!.targetDate)}';
-      mota = 'Đang tích ${tien.format(thucTe)} $nhipLabel$canThem.';
+      mota = 'Đang tích ${CurrencyFormatter.format(thucTe)} $nhipLabel$canThem.';
     }
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1025,41 +1183,78 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     );
   }
 
-  Widget _buildHistorySection(NumberFormat currencyFormatter) {
+  Widget _buildHistorySection() {
     final accountId = currentAccountIdOrNull(context);
     // Không có phiên thì không có lịch sử nào thuộc về ai để hiển thị. Trước
     // đây chỗ này rơi về 1 và lấy giao dịch của tài khoản admin.
     if (accountId == null) return const SizedBox.shrink();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Nút "Xem tất cả" từng đứng bên phải nhãn này với `onPressed: () {}`.
-        // Danh sách bên dưới vốn đã hiện TOÀN BỘ lịch sử (`itemCount:
-        // txs.length`, không cắt bớt), nên ngoài việc không làm gì, nó còn ngụ
-        // ý sai rằng đang có phần bị giấu đi.
-        const Text(
-          'LỊCH SỬ TÍCH LŨY',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            color: AppColors.onSurfaceVariant,
-            letterSpacing: 0.5,
-          ),
-        ),
-        const SizedBox(height: 16),
-        StreamBuilder<dynamic>(
-          stream: _goalRepository.watchGoalTransactions(
-              accountId, widget.id, _goal?.name ?? ''),
-          builder: (context, snapshot) {
-            // Dòng dữ liệu được dựng LẠI mỗi khi `_goal` đổi, vì tên mục tiêu
-            // là tham số của nó. Sau khi trang sửa đóng, `_loadGoal()` đổi
-            // `_goal` và StreamBuilder quay về trạng thái chưa có dữ liệu —
-            // trộn ca ấy với "rỗng thật" làm lịch sử nháy thành "Chưa có khoản
-            // tích lũy nào" rồi hiện lại. Trông y như vừa mất dữ liệu.
-            if (!snapshot.hasData &&
-                snapshot.connectionState == ConnectionState.waiting) {
-              return const Padding(
+    return StreamBuilder<dynamic>(
+      stream: _goalRepository.watchGoalTransactions(
+          accountId, widget.id, _goal?.name ?? ''),
+      builder: (context, snapshot) {
+        // MỘT dòng dữ liệu nuôi cả biểu đồ lẫn danh sách. Mở dòng thứ hai cho
+        // biểu đồ là chạy đúng câu truy vấn ấy hai lần, và mở cửa cho hai bản
+        // dữ liệu lệch nhau trên cùng một màn hình.
+        //
+        // Dòng dữ liệu được dựng LẠI mỗi khi `_goal` đổi, vì tên mục tiêu là
+        // tham số của nó. Sau khi trang sửa đóng, `_loadGoal()` đổi `_goal` và
+        // StreamBuilder quay về trạng thái chưa có dữ liệu — trộn ca ấy với
+        // "rỗng thật" làm lịch sử nháy thành "Chưa có khoản tích lũy nào" rồi
+        // hiện lại. Trông y như vừa mất dữ liệu.
+        final dangTai = !snapshot.hasData &&
+            snapshot.connectionState == ConnectionState.waiting;
+        final txs = (snapshot.data as List<dynamic>?) ?? [];
+        // Ghi lại để nhãn phía dưới biết có nên hiện nút "Xem tất cả" không,
+        // và để bảng đầy đủ có sẵn dữ liệu mà không phải mở một dòng dữ liệu
+        // thứ hai.
+        if (!dangTai) _khoanLichSu = _doiSangKhoan(txs);
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Biểu đồ đứng NGAY TRÊN lịch sử vì hai khối đọc cùng một dữ
+            // liệu: một cái vẽ hình dáng của cả quãng đường, một cái liệt kê
+            // từng khoản. Khối tự biến mất khi chưa có khoản nào.
+            if (!dangTai) ...[
+              GoalProgressChart(goal: _goal!, khoan: _khoanLichSu),
+              if (_khoanLichSu.isNotEmpty) const SizedBox(height: 12),
+              // Thẻ ba con số tóm tắt đúng chuỗi mà biểu đồ vừa vẽ ra, nên nó
+              // đứng ngay dưới chứ không phải một chỗ khác trên trang.
+              GoalStatsCard(goal: _goal!, khoan: _khoanLichSu),
+              if (_khoanLichSu.isNotEmpty) const SizedBox(height: 32),
+            ],
+            // Nút "Xem tất cả" từng bị GỠ ngày 2026-09-06 vì nó có
+            // `onPressed: () {}` trong khi danh sách bên dưới đã hiện toàn bộ
+            // — vừa không làm gì vừa ngụ ý sai rằng có phần bị giấu.
+            //
+            // Nay nó **quay lại và làm thật** (2026-09-08). Lý lẽ cũ nói về
+            // một nút rỗng, không nói rằng danh sách phải hiện hết mãi mãi:
+            // danh sách không có trần, và một mục tiêu trích hàng ngày chạy
+            // hai năm là 730 dòng dựng cùng lúc trên một trang nay vẽ lại mỗi
+            // lượt đồng bộ.
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'LỊCH SỬ TÍCH LŨY',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.onSurfaceVariant,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                if (_soKhoanLichSu > _soDongLichSuToiDa)
+                  TextButton(
+                    onPressed: _moBangLichSu,
+                    child: const Text('Xem tất cả'),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (dangTai)
+              const Padding(
                 padding: EdgeInsets.all(16),
                 child: Center(
                   child: SizedBox(
@@ -1068,101 +1263,122 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   ),
                 ),
-              );
-            }
-
-            final txs = (snapshot.data as List<dynamic>?) ?? [];
-            if (txs.isEmpty) {
-              return const Padding(
+              )
+            else if (txs.isEmpty)
+              const Padding(
                 padding: EdgeInsets.all(16),
                 child: Center(
                   child: Text(
                     'Chưa có khoản tích lũy nào.',
-                    style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                    style:
+                        TextStyle(color: AppColors.textSecondary, fontSize: 13),
                   ),
                 ),
-              );
-            }
+              )
+            else
+              _danhSachLichSu(txs),
+          ],
+        );
+      },
+    );
+  }
 
-            return ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: txs.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 16),
-              itemBuilder: (context, index) {
-                final tx = txs[index];
-                final dateStr = DateFormat('dd/MM/yyyy HH:mm').format(tx.date as DateTime);
-                final amount = (tx.amount as double);
-                // Chiều tiền đọc từ tiền tố ghi chú do chính app sinh ra, KHÔNG
-                // từ vị trí ví — so ví là diễn giải hàng cũ bằng cấu hình hiện
-                // tại của mục tiêu, nên đổi ví một lần là lịch sử đọc sai hết.
-                // Xem `goal_history_direction.dart`.
-                final laKhoanRut = laKhoanRutKhoiMucTieu(
-                  ghiChu: (tx.note as String?) ?? '',
-                  viCuaHang: tx.walletId as String,
-                  viTichLuy: _goal!.walletId,
-                );
+  /// Năm dòng lịch sử gần nhất.
+  ///
+  /// Chỉ dựng tối đa [_soDongLichSuToiDa] dòng ở đây. Phần còn lại nằm trong
+  /// bảng đầy đủ, nơi có vùng cuộn RIÊNG nên `ListView` ảo hoá thật sự.
+  Widget _danhSachLichSu(List<dynamic> txs) {
+    final hienThi = txs.take(_soDongLichSuToiDa).toList();
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: hienThi.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 16),
+      itemBuilder: (context, index) {
+        final tx = hienThi[index];
+        final dateStr = DateFormat('dd/MM/yyyy HH:mm').format(tx.date as DateTime);
+        final amount = (tx.amount as double);
+        // Chiều tiền đọc từ tiền tố ghi chú do chính app sinh ra, KHÔNG
+        // từ vị trí ví — so ví là diễn giải hàng cũ bằng cấu hình hiện
+        // tại của mục tiêu, nên đổi ví một lần là lịch sử đọc sai hết.
+        // Xem `goal_history_direction.dart`.
+        final ghiChu = (tx.note as String?) ?? '';
+        final laKhoanRut = laKhoanRutKhoiMucTieu(
+          ghiChu: ghiChu,
+          viCuaHang: tx.walletId as String,
+          viTichLuy: _goal!.walletId,
+        );
 
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: laKhoanRut
-                            ? const Color(0xFFFBEDEC)
-                            : const Color(0xFFF0F5EE),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.savings_outlined,
-                        color: Color(0xFF2E6B27),
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            tx.note.toString(),
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.primary,
-                              fontSize: 15,
-                            ),
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: laKhoanRut
+                    ? const Color(0xFFFBEDEC)
+                    : const Color(0xFFF0F5EE),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.savings_outlined,
+                color: Color(0xFF2E6B27),
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          // Cắt hậu tố: chip ngay bên cạnh đã nói
+                          // "Tự động" rồi, để nguyên là dòng mang
+                          // đúng ba chữ ấy hai lần.
+                          ghiChuKhongHauTo(ghiChu),
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                            fontSize: 15,
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            dateStr,
-                            style: TextStyle(
-                              color: AppColors.onSurfaceVariant.withValues(alpha: 0.7),
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
+                      if (laKhoanTuDong(ghiChu)) ...[
+                        const SizedBox(width: 6),
+                        const NhanTuDong(),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    dateStr,
+                    style: TextStyle(
+                      color: AppColors.onSurfaceVariant.withValues(alpha: 0.7),
+                      fontSize: 12,
                     ),
-                    Text(
-                      '${laKhoanRut ? '−' : '+'}'
-                      '${currencyFormatter.format(amount)}',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: laKhoanRut
-                            ? AppColors.error
-                            : const Color(0xFF2E6B27),
-                      ),
-                    ),
-                  ],
-                );
-              },
-            );
-          },
-        ),
-      ],
+                  ),
+                ],
+              ),
+            ),
+            Text(
+              '${laKhoanRut ? '−' : '+'}'
+              '${CurrencyFormatter.format(amount)}',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: laKhoanRut
+                    ? AppColors.error
+                    : const Color(0xFF2E6B27),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -1174,9 +1390,6 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
   /// đâu cả**.
   Future<void> _xacNhanVongMoi() async {
     final goal = _goal!;
-    final tien = NumberFormat.currency(
-        locale: 'vi_VN', symbol: 'đ', decimalDigits: 0);
-
     final dongY = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -1184,7 +1397,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
         content: Text(
           'Tiến độ của "${goal.name}" sẽ về 0 và hạn định dời sang kỳ tiếp '
           'theo.\n\n'
-          '${tien.format(goal.currentAmount)} đã tích được vẫn nằm nguyên '
+          '${CurrencyFormatter.format(goal.currentAmount)} đã tích được vẫn nằm nguyên '
           'trong ví — không đồng nào bị chuyển đi. Muốn tiêu số ấy thì dùng '
           '"Rút khỏi mục tiêu".',
         ),

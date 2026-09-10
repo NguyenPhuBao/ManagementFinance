@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -48,9 +49,6 @@ class _BillDetailPageState extends State<BillDetailPage> {
   bool _dangTai = true;
 
   static final _ngay = DateFormat('dd/MM/yyyy');
-  // Cùng ký hiệu "đ" với trang danh sách (CurrencyFormatter in "₫").
-  static final _tien = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
-
   @override
   void initState() {
     super.initState();
@@ -243,7 +241,7 @@ class _BillDetailPageState extends State<BillDetailPage> {
             children: [
               Expanded(
                 child: Text(
-                  _tien.format(b.amount),
+                  CurrencyFormatter.format(b.amount),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -415,7 +413,7 @@ class _BillDetailPageState extends State<BillDetailPage> {
           ),
           const SizedBox(width: 8),
           Text(
-            _tien.format(b.amount),
+            CurrencyFormatter.format(b.amount),
             style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,

@@ -61,9 +61,15 @@ const String routeThongBao = '/notifications';
 ///
 /// Thông tin này đã có sẵn ở `NotificationCandidate.deeplink`. Nhân bản là
 /// điều dự án này vốn tránh, nên đi kèm một phép canh trong
-/// `notification_deeplink_test.dart`: nó dựng ứng viên thật cho **cả 13 loại**
+/// `notification_deeplink_test.dart`: nó dựng ứng viên thật cho **cả 16 loại**
 /// rồi khẳng định hàm này trả về đúng cột `deeplink` bộ luật đã đặt. Thêm loại
-/// thứ 14 mà quên ánh xạ là test đỏ ngay.
+/// thứ 17 mà quên ánh xạ là test đỏ ngay.
+///
+/// ⚠️ **Hai nhánh KHÔNG nằm trong phép canh ấy**, vì chúng không ứng với
+/// `NotificationKind` nào: `ghiChep` (lời nhắc ghi chép hằng ngày, mục 4.7 —
+/// chỉ sống ở tầng hệ điều hành, không có hàng trong `AppNotifications`) và
+/// `billOpen` (payload của nút "Trả ngay", xem `notification_actions.dart`).
+/// Cả hai có test riêng. Sửa chúng thì phép canh 16 loại **không** đỏ.
 ///
 /// **Không bao giờ ném và không bao giờ trả `null`.** Khoá đến từ payload của
 /// hệ điều hành: nó có thể là lịch do một bản app cũ đặt và vẫn còn nằm trong
@@ -85,6 +91,7 @@ String deeplinkTuDedupeKey(String key) {
     case 'goalDone':
     case 'goalCycle':
     case 'goalBehind':
+    case 'goalMilestone':
     case 'goalAuto':
     case 'goalAutoFail':
       // Id nằm ở đoạn THỨ HAI, không phải đoạn cuối: `khoaKyTrich` sinh
@@ -93,11 +100,57 @@ String deeplinkTuDedupeKey(String key) {
       if (phan.length < 2 || phan[1].isEmpty) return routeThongBao;
       return goalDeeplink(phan[1]);
 
+    // Payload của nút "Trả ngay" — xem `notification_actions.dart`. Khác nhánh
+    // `billDue` ở trên đúng một điểm: cú **chạm** thường mở danh sách hoá đơn
+    // (đúng cột `deeplink` mà bộ luật đặt, và có phép canh cả 16 loại), còn cái
+    // nút thì đã biết chính xác hoá đơn nào — đổ người dùng về danh sách là vứt
+    // đi thông tin mình đang cầm.
+    //
+    // `/bills/<id>` nằm NGOÀI `StatefulShellRoute` y như `/bills`, nên `push`
+    // chạy tốt. Kéo nó vào một nhánh tab thì phải cập nhật `nhanhThanhTab` cùng
+    // lúc, nếu không bấm nút sẽ làm app chết màn đỏ (bẫy 7.8).
+    case 'billOpen':
+      if (phan.length < 2 || phan[1].isEmpty) return '/bills';
+      return '/bills/${phan[1]}';
+
     case 'walletNeg':
+    case 'walletLow':
       return '/wallets';
+
+    // Tổng kết tuần. Khoá là `weekly:<nam>-W<tuan>:<thứ Hai yyyy-MM-dd>`, và
+    // đoạn thứ ba tồn tại **chính vì hàm này**: ở cold start không tra được
+    // CSDL, còn phép nghịch đảo của số tuần ISO là một hàm dễ sai mà không ai
+    // kiểm lại. Chở sẵn ngày đi thì rẻ hơn.
+    //
+    // Thiếu đoạn ấy hoặc ngày hỏng (lịch do bản app cũ đặt) thì vẫn mở đúng
+    // trang, chỉ là không đặt sẵn phạm vi — trang tự lùi về "tháng này". Đổ
+    // người dùng về trung tâm thông báo ở đây là vứt đi thông tin đang cầm.
+    case 'weekly':
+      if (phan.length < 3) return '/export-report';
+      final dau = DateTime.tryParse(phan[2]);
+      if (dau == null) return '/export-report';
+      final cuoi = dau.add(const Duration(days: 6));
+      return '/export-report?from=${_ngay(dau)}&to=${_ngay(cuoi)}';
+
+    // Lời nhắc ghi chép hằng ngày — khoá do `ghiChepDedupeKey()` sinh. Khác
+    // mọi nhánh còn lại: nó **không** ứng với hàng nào trong
+    // `AppNotifications`, nên phép canh 16 loại ở test không chạm tới nó và
+    // nhánh này có test riêng.
+    //
+    // Đây là loại nhắc duy nhất bảo người dùng đi làm một việc cụ thể, nên nó
+    // đổ thẳng vào trang ghi chứ không về trung tâm thông báo. `/add` nằm
+    // NGOÀI `StatefulShellRoute` nên `push` chạy tốt — kéo nó vào một nhánh
+    // tab thì phải cập nhật `nhanhThanhTab` cùng lúc (bẫy 7.8).
+    case 'ghiChep':
+      return '/add';
 
     // `syncFailed` và mọi khoá lạ: không có màn nào để mở.
     default:
       return routeThongBao;
   }
 }
+
+/// `yyyy-MM-dd` — cùng định dạng mà bộ luật ghi vào khoá và deeplink.
+String _ngay(DateTime d) => '${d.year.toString().padLeft(4, '0')}-'
+    '${d.month.toString().padLeft(2, '0')}-'
+    '${d.day.toString().padLeft(2, '0')}';

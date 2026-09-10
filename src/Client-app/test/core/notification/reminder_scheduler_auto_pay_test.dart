@@ -55,6 +55,14 @@ class _OsGia implements OsNotifier {
 
   @override
   Future<Set<int>> pendingIds() async => lich.keys.toSet();
+  // Hai thành viên của badge — bản giả này không canh badge, xem
+  // badge_updater_test.dart.
+  @override
+  Future<Set<int>> activeIds() async => const {};
+
+  @override
+  Future<void> datBadge(int soLuong) async {}
+
   @override
   Future<void> cancel(int id) async => lich.remove(id);
   @override

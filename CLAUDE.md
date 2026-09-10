@@ -1,0 +1,190 @@
+# FlowMoney — Hướng dẫn cho AI assistant
+
+Ứng dụng quản lý tài chính cá nhân (đồ án tốt nghiệp). Flutter client (`src/Client-app`, Drift/SQLite, BLoC) ↔ Node/Express/Prisma/PostgreSQL (`src/Backend`). Kiến trúc **offline-first**: ghi vào SQLite trước, đồng bộ nền hai chiều sau.
+
+---
+
+## Đọc gì trước khi làm
+
+**Luôn luôn:** `docs/PROJECT_CONTEXT.md` — đọc có trọng tâm, không đọc tuần tự:
+
+1. **Mục 12** — Quy tắc phát triển bắt buộc
+2. **Mục 14** — Trạng thái hiện tại (cái gì xong, cái gì dang dở)
+3. **Mục 11** — Các lỗi đã sửa, đọc để **không lặp lại**
+4. Mục 6 & 7 — chỉ khi đụng tới đồng bộ hoặc CSDL cục bộ
+
+**Rồi tuỳ việc:**
+
+| Việc | Đọc thêm |
+|---|---|
+| Làm tiếp phía client | `docs/CLIENT_APP_KNOWN_GAPS.md` — các mục dang dở kèm **lý do hoãn** và **bán kính ảnh hưởng** |
+| Việc thuộc backend | **`docs/superpowers/backend/CAN-LAM/README.md`** — **cửa vào duy nhất**. Nay còn **chín** mục: **(D)** của `/sync/push` (`threshold_warning_percent` bị ép về 0), **cột màu danh mục**, **hai mục hoá đơn** (`transaction.Idbill` + `bill.Previous_bill_id`, rồi `bill.Auto_pay` + chốt chặn trả hai lần), **`Pay_status = 'Skipped'`** (không cần migration, client chỉ chờ **một câu xác nhận**), **`bill.Anchor_day`** (thêm 2026-09-08 — client đã làm xong ở DB v18 nhưng cột đang cục bộ), và **hai mục Socket.io** thêm 2026-09-09: bắc **`sync.completed`** ra socket (mục **đáng làm nhất** — nó là chênh lệch giữa 15 phút và tức thì cho đa thiết bị) và **thống nhất payload `bank_transaction.incoming`** (đang phát ra hai hình dạng), và **nới cột `wallet."Status"`** (thêm 2026-09-10 — một dòng `ALTER TABLE`; cột là `varchar(7)` trong khi chính `chk_wallet_status` cho phép `'Inactive'` dài 8 ký tự, nên **lưu trữ ví chỉ sống trên máy đã bấm** — G28). Đếm theo **mục 2 của README ấy**; các bản tóm tắt trước từng ghi "bốn" rồi "năm" vì đếm theo trí nhớ. README chia việc theo *client đã có tính năng ấy chưa* rồi mới tới danh sách còn lại ở mục 2 — đọc theo đúng thứ tự ấy. Tài liệu **đã đóng** nằm ở **`DA-XONG/`** (16 tệp, kèm ghi chú đóng bằng cách nào) — mở khi cần biết *vì sao* lược đồ có hình dạng hôm nay, không phải khi tìm việc. Thư mục cha chỉ còn mục lục và **ba** tệp bối cảnh (đếm lại 2026-09-10) — trong đó `TRANSACTION_NOTE_ENCODING.md` (2026-09-08) **không xin gì**, chỉ báo rằng client mã hoá ý nghĩa vào `transaction.Note`. ⚠️ **`New_Database.md` nay ở `docs/Rule_Project/`**, nhánh `main` chuyển ngày 2026-09-10; mọi liên kết tương đối cũ trỏ vào `docs/superpowers/backend/New_Database.md` đều đã hỏng. Bảng trạng thái đầy đủ ở mục 14 `docs/PROJECT_CONTEXT.md` |
+| Đụng vào đồng bộ | `src/Client-app/test/core/sync/sync_payload_contract_test.dart` — đọc **như tài liệu**, đây là nơi duy nhất ghi hợp đồng tên trường giữa hai phía |
+| Đụng vào hoá đơn | `docs/bill/BILL_DOCUMENTATION.md` (⚠️ thư mục bị `.gitignore` chặn, chỉ có trên máy đã dựng) và **bộ test như tài liệu**: `test/features/bill/domain/bill_status_test.dart` (bốn trạng thái hiển thị + số liệu thẻ tổng), `bill_payment_test.dart` (trả theo số tiền kỳ này, hoàn tác), `test/core/database/bill_overdue_test.dart` (cờ quá hạn đi **hai chiều**). **Bốn** thứ dễ vấp nhất: ngày đến hạn neo vào **ngày gốc** `Bills.anchorDay` (v18, cột **cục bộ**) chứ không suy từ ngày hiện tại — quy tắc "đoán cuối tháng" đã bỏ ngày 2026-09-08, và ba chốt chặn quanh nó ở mục "Ngày gốc" của tài liệu; bảng `Bills` mang **hai cặp cột trùng nghĩa** (`payStatus`/`isPaid` và `isRecurrence`+`timeRecurrence`/`recurrence`) — đọc và ghi theo cột **chính thức**, cột chuỗi cũ chỉ được suy ra; mỗi kỳ của hoá đơn lặp là **một hàng mới**, không phải một hàng sống lâu; và hai cột nối `transactions.billId` / `bills.generatedFromBillId` là **cục bộ** (v16) nên hàng kéo về từ server luôn để trống — hoàn tác phải từ chối chứ không được đoán |
+| Đụng vào thông báo | `docs/NOTIFICATION_FEATURE.md` — **trạng thái bàn giao, phần việc còn lại, và mười ba cái bẫy**. Mục 7 phải đọc trước khi đụng vào phần hệ điều hành; riêng **7.11** (`AndroidManifest.xml` là vùng mù của `flutter test`, `flutter analyze` **và** `flutter build apk`) phải đọc trước khi đụng vào nút hành động hay lịch đặt trước; **7.13** phải đọc trước khi viết widget test cho trung tâm thông báo — thiếu `dongTrang()` là **treo cả tệp**, không phải một test đỏ. Bảng thông báo **cục bộ**, không nằm trong `SyncEntityType`. Loại thứ **16** là **Tổng kết tuần** (2026-09-09, mục **5d**): nhóm riêng `summary`, công tắc **mặc định tắt**, giờ do người dùng chọn, và số tuần ISO **tự viết** ở `tuan_iso.dart` — năm ISO khác năm dương lịch ở cả hai chiều |
+| Đụng vào danh mục | `docs/CATEGORY_RATIONALE.md` — **lý do** của từng thay đổi, bằng chứng đo được, và các phương án đã loại bỏ. Đọc trước khi định "dọn dẹp" vùng này |
+| Đụng vào mục tiêu tiết kiệm | `docs/GOAL_FEATURE.md` — **quyết định kèm lý do, và bảy cái bẫy** (4.5 và 4.6 đã đóng, còn năm). Mục 4 phải đọc trước khi sửa gì; mục **10** là đối chiếu với app thị trường, kèm bảng xếp hạng việc tiếp theo. Ba cái đáng nhớ nhất: `walletTransfer` **không có khoá ngoại**; suy chiều nạp/rút từ vị trí ví là **diễn giải lại lịch sử**; và `_collectPendingOps` dựng payload **thô** — phép quy đổi `chi → Transaction` chạy ở bước POST, đọc dừng ở đó là kết luận nhầm. Payload mục tiêu nay **22 trường** (đếm bằng máy từ chính `sync_payload_contract_test.dart` ngày 2026-09-08; các bản trước ghi 19 vì cộng `18 + priority` mà quên ba cột `auto_deposit_*` thêm hôm 2026-09-07 — **đừng cộng dồn, hãy đếm lại**). Năm tính năng mới nhất có mục riêng: **3.21** cột mốc 25/50/75% (khoá chống trùng theo khuôn `goalCycle:`, và luật phải đứng **trước** phép kiểm `isBehindSchedule`), **3.22** thứ tự ưu tiên kéo thả (schema **v19**; số cách nhau 100, `NULL` xếp cuối, và `ReorderableListView` trả `newIndex` **lệch một ô** khi kéo xuống), và **3.25** nhãn "(tự động)" (**hậu tố** ghi chú chứ không cột mới — phép đọc đòi đủ **cặp** tiền tố + hậu tố, và khoản cũ đọc là "tay", không đoán ngược), và **3.26** biểu đồ tiến độ theo thời gian (chuỗi dựng **đi lùi** từ `currentAmount` vì lịch sử không bảo đảm cộng lại bằng nó; đường kế hoạch mượn **nguyên** luật của `isBehindSchedule` nên không đẻ luật thứ hai; `startDate` null thì giấu kế hoạch chứ không giấu cả khối), và **3.27** ba con số tổng hợp (chuỗi đếm **kỳ** chứ không đếm khoản; kỳ cắt bằng `mocThuN` neo mốc gốc — **đừng** dựng bản thứ tư của luật ấy; kỳ hiện tại chưa nạp **không** phá chuỗi) |
+| Đụng vào trang Phân tích | `docs/ANALYTICS_FEATURE.md` — lát **2a** (số thật thay số cứng) và **2b** (khối "Xu hướng 6 tháng") xong 2026-09-08; **2c‑1** và **2c‑1b** xong 2026-09-09 (trang Xuất báo cáo đọc số thật, mở màn **Xem trước báo cáo** nay có **mười khối**: dòng tiền, so kỳ trước, biểu đồ, số liệu nhanh, thu/chi theo danh mục, ngân sách, phân bổ theo ví, top 5 khoản chi — mục **3.15** ghi khảo sát Money Lover/MISA/Copilot/PocketSmith đứng sau các khối ấy). **2c‑2** cũng xong: nút "Tải xuống" sinh tệp **PDF hoặc CSV** thật và **lưu thẳng vào thư mục Tải về** qua `MediaStore` (kênh `flowmoney/luu_tep`, mã Kotlin trong `MainActivity` — **chỗ mã gốc đầu tiên do dự án tự viết**); Android ≤ 9 lùi về sheet chia sẻ — **mảng Phân tích đến đây là xong**. Font PDF phải **nhúng** (`assets/fonts/Roboto-*.ttf`): font mặc định của gói `pdf` không có dấu tiếng Việt và **mất dấu im lặng**; có test canh bằng cách cấm chuỗi "Helvetica" xuất hiện trong tệp. CSV thì bắt buộc **BOM + dòng `sep=;` + số nguyên thô mang dấu** — mục **3.17** và **3.18**. Bốn thứ dễ vấp: `'transfer'` **không** phải thu/chi (và bị loại khỏi **cả** danh sách của báo cáo); "% ngân sách" mượn `watchBudgets(now: mốc)` và **phải lọc `isExpired`**; font của bộ test rộng gấp đôi ngoài đời nên tiêu đề/nhãn phải co được (bẫy 4.4); và **theme của app ép mọi `ElevatedButton` rộng vô hạn** — nút trần trong `Row` làm trắng cả trang mà không một dòng log nào, nên widget test phải dựng bằng `AppTheme.lightTheme` (bẫy **4.11**). Riêng **dòng tiền** (số dư đầu/cuối kỳ) là số **suy ngược** từ số dư hiện tại: nó **biến mất khi lọc theo một ví** và lệch khi có ví tạo giữa kỳ — mục **3.16**, đừng "sửa" thành luôn hiện |
+| Đụng vào **biểu đồ** (bất kỳ đâu trong app) | Thư viện là **`fl_chart`, ghim cứng `1.2.0`** (không `^`) — mục **3.11** `docs/ANALYTICS_FEATURE.md` nói vì sao chọn nó, vì sao ghim, và ba lý do **không** phải lý do chọn. Chỗ chọn ấy nay đã dùng cho **cả hai** khối biểu đồ của app: "Xu hướng 6 tháng" ở trang Phân tích và "Tiến độ theo thời gian" ở trang chi tiết mục tiêu. Phép tính phải nằm ở tầng domain thuần và được test ở đó; tầng vẽ **không test được** — vị trí tooltip, màu, nét, và đường cong vọt dưới 0 chỉ kiểm được bằng mắt trên máy ảo 411dp (bẫy **4.9**, đã vấp thật). Hai bẫy thêm ngày 2026-09-09, **cả hai đều chỉ lộ trên máy thật**: **4.17** `clipData` mặc định là `FlClipData.none()` nên điểm ngoài dải vẫn được **vẽ** và tràn khỏi thẻ (đặt `FlClipData.all()` cho mọi biểu đồ), và **4.18** fl_chart vẽ nhãn trục ở **cả hai biên** cộng thêm mốc theo `interval` nên hai nhãn cuối chồng nhau |
+| Đụng vào **loại ví** | `lib/features/wallet/domain/wallet_type.dart` là **nguồn duy nhất** — nhãn, khoá cục bộ, khoá đẩy lên. Chỉ **ba** loại chọn được (`cash`, `bank`, `saving`); `banking` **đọc được nhưng không tạo được** vì nó chỉ có nghĩa khi đi kèm `Id_bank_casso`, thứ chỉ luồng liên kết ngân hàng của server tạo ra. ⚠️ PostgreSQL có `chk_wallet_type` chỉ nhận `Cash \| Bank \| Saving \| Banking`: giá trị lạ lọt lên là bản ghi **kẹt hàng đợi đẩy vĩnh viễn, im lặng** — đó là lỗi đã có thật với `ewallet`/`debt` của giao diện cũ, đóng ngày 2026-09-09 (migration **v20**). Đo lại đầy đủ 2026-09-10: bảng có **18** ràng buộc, đủ cả bốn `chk_wallet_*`. ⚠️ Nhưng CHECK **không** thay được việc kiểm độ rộng cột: `Type` là `varchar(7)`, vừa khít `'Banking'` — xem hàng dưới để biết `Status` đã vấp đúng chỗ đó. Enum là **Dart thuần** để `sync_payload_normalizer.dart` dùng được; biểu tượng nằm ở `presentation/widgets/wallet_type_icon.dart`. Ba chỗ ánh xạ phải khớp nhau: `tuKhoa`, `walletForPush`, và migration v20. **Trạng thái** ví (`active`/`inactive`, tính năng **lưu trữ ví**) nằm ở tệp riêng `domain/wallet_status.dart`, cùng khuôn — nhưng nó **không đi qua đồng bộ**, xem hàng dưới |
+| Đụng vào **quản lý ví** (khác *loại* ví ở trên) | Sáu bất biến, tất cả đều hỏng **im lặng** nếu phá — bốn cái đầu đóng ngày 2026-09-09, hai cái sau đến cùng tính năng lưu trữ ví 2026-09-10; mục 14 `docs/PROJECT_CONTEXT.md`. **Một ví mặc định mỗi tài khoản**: chốt ở `WalletLocalDataSourceImpl` chứ không ở repository, vì cả đường thêm lẫn đường sửa đều qua datasource; và `getDefault` **phải chịu được hai hàng** vì trạng thái ấy đến từ server qua `upsertAll` — không unique index nào chặn ở cả hai đầu. **Thứ tự hiển thị** có một định nghĩa duy nhất ở `WalletDao._thuTuHienThi` (ví mặc định → `lower(name)`); đổi nó là đổi **mọi** đường đọc danh sách ví trong app — đếm bằng máy 2026-09-10: **7** chỗ gọi `getAll`, **3** chỗ `watchAll`, **9** chỗ `getActive` (con số "14 chỗ gọi" ghi ở đây trước 2026-09-10 đúng cho tới khi có hai phép đọc). Bảng `wallets` **không có `createdAt`** nên tên là mốc ổn định duy nhất hiện có. **Cờ mặc định chọn sẵn ví** khi ghi giao dịch qua `transaction/domain/vi_chon_san.dart`, và ví đích phải là ví **khác** ví nguồn chứ không phải chỉ số 1. **Lưu trữ ví là ĐÓNG BĂNG, không phải xoá** (2026-09-10): có **hai** phép đọc danh sách — `getActive` cho **bộ chọn ví**, `getAll`/`watchAll` cho những chỗ phải thấy ví lưu trữ (màn Quản lý ví, bảng tra tên ví, đường đồng bộ). Chọn nhầm **không gây lỗi nào**, nên `test/features/wallet/wallet_picker_sources_test.dart` quét cả `lib/` và bắt mọi chỗ gọi phải được phân loại **tay** kèm lý do. Cố ý **không** có `watchActive`. Hai chốt chặn khi lưu trữ — không lưu trữ ví **mặc định**, không lưu trữ **ví hoạt động cuối cùng** — nằm ở `WalletLocalDataSourceImpl.setArchived`, và **màn Sửa ví phải đi qua đó** chứ không `copyWith(status:)`: màn ấy gọi thẳng `updateWallet`, nên ghi trạng thái kiểu kia là đi vòng qua cả hai chốt. Phép "ví nào cộng vào tổng tài sản" có một định nghĩa duy nhất ở `wallet/domain/vi_tinh_vao_tong.dart` — nó lọc **cả** `includeInTotal` lẫn ví lưu trữ, và ba chỗ cộng tổng (trang chủ, báo cáo, repository) đều phải đi qua nó. **Đối soát số dư** (2026-09-10): ô số dư ở màn Sửa ví **không còn ghi đè** — nó sinh một khoản bù qua `wallet/data/services/dieu_chinh_so_du_service.dart`, đi đường `TransactionRepository.addTransaction` để phép cộng trừ **và phép hoàn lại khi xoá** đều dùng lại `_applyBalances`. Khoản bù là `thu`/`chi` chứ **không** `transfer`, vì `_applyBalances` cố ý bỏ qua khoản chuyển thiếu ví đích. Nhận dạng bằng **cặp** điều kiện — không danh mục **và** tiền tố `Điều chỉnh số dư` — vì ghi chú sửa được còn danh mục rỗng là thứ giao diện thêm giao dịch không tạo ra được; ⚠️ riêng chân danh mục **không đủ** (17 hàng trên server đang trống danh mục thật). Luật loại khỏi thống kê có **một** định nghĩa ở `analytics/domain/khoan_vao_thong_ke.dart`, thay cho **năm** bản chép tay của câu `!= 'transfer'`. Ba chốt: chênh lệch 0 thì không ghi (`chk_transaction_nonzero_amount`), ngưỡng **nửa đồng** cho đuôi lẻ của `double`, và **ví lưu trữ thì từ chối**. **`include_in_total` đi cả hai chiều** từ 2026-09-09. ⚠️ **`status` thì KHÔNG đi chiều nào cả, và đó là chủ ý** (2026-09-10): lược đồ PostgreSQL **tự mâu thuẫn ở đúng cột này** — `chk_wallet_status` cho phép `'Inactive'` nhưng kiểu cột là **`varchar(7)`**, mà chuỗi ấy dài **8 ký tự**. Nên không giá trị nào vừa cả hai ngoài `'Active'`; đẩy lên là ví **kẹt hàng đợi đẩy**, đã vấp thật trên máy ảo. Nhánh **kéo về** cũng phải im lặng theo, nếu không ví vừa lưu trữ tự bỏ lưu trữ sau một chu kỳ. Xin nới cột: `docs/superpowers/backend/CAN-LAM/WALLET_STATUS_COLUMN_WIDTH.md` |
+| Đụng vào **hiển thị số tiền** | `lib/core/utils/currency_formatter.dart` là **nơi DUY NHẤT** được dựng `NumberFormat` — có test quét cả `lib/` để cấm chỗ khác. Quy tắc: **chấm** ngăn nghìn, **phẩy** cho thập phân, ký hiệu **`đ`** (không phải `₫`). `format()` **làm tròn về đồng chẵn**; muốn phần lẻ thì `formatCoLe()`; ô nhập liệu dùng `formatSoThoi()` (không kèm ký hiệu). ⚠️ Đừng cho `format()` hiện phần lẻ: mọi số **tính ra** (thiếu hụt, trung bình ngày) đều có đuôi lẻ và màn hình sẽ đầy `7.927.272,73 đ`. CSV xuất báo cáo **vẫn là số nguyên thô**, không đi qua đây |
+| Đụng vào **kênh thời gian thực** (Socket.io) | Spec `docs/superpowers/specs/2026-09-09-socket-io-realtime-channel-design.md`, và khối "✅ Socket.io phía client" ở mục 14 `docs/PROJECT_CONTEXT.md`. **Ba thứ dễ vấp nhất:** payload là **hộp đen**, client chỉ đọc **tên sự kiện** — vì `bank_transaction.incoming` được backend phát từ **hai** chỗ với **hai** hình dạng, và trường `type` mang **hai** nghĩa (tài liệu: `CAN-LAM/SOCKET_BANK_EVENT_PAYLOAD.md`); `io.io()` **cache `Manager` theo `scheme://host:port`** và dùng lại options của lần dựng đầu nên phải `enableForceNew()`, nếu không token mới bị bỏ qua **im lặng**, và cũng vì thế cơ chế nối lại của thư viện bị **tắt** để mỗi lần thử đọc lại token; `AppConstants.baseUrl` có hậu tố **`/api`** còn socket thì không — dùng `socketBaseUrlFrom()`. Kênh nghe **cả `onConnectivityChanged`** để mạng về là nối ngay chứ không nằm chờ hết giãn cách (đo được 26 giây chết trên máy ảo trước khi vá). Chỉ **`realtime_socket.dart`** được import `socket_io_client` |
+| Đụng vào **trích tiền tự động** hoặc **tự động thanh toán hoá đơn** | Mục **3.12 và 3.13** `docs/GOAL_FEATURE.md` trước đã; hoá đơn thì mục **6.5** `docs/bill/BILL_DOCUMENTATION.md` và spec `docs/superpowers/specs/2026-09-06-bill-auto-pay-design.md`. Đây là **hai** chỗ trong app tự chuyển tiền khi người dùng vắng mặt, nên phần lớn thiết kế là về việc *dừng đúng lúc*. Hoá đơn khác mục tiêu ở chỗ **không có "lần chạy cuối"**: mỗi kỳ là một hàng, cờ đã trả là chốt chống trả hai lần; bộ chạy đi qua `payBill` với `occurredAt = dueDate`, trả bù trần 3 kỳ, và cột `autoPayEnabled` là **cục bộ** (hai máy cùng bật là hai khoản chi — chờ việc D backend). Ba thứ dễ hỏng nhất: mốc chạy chỉ đặt **khi bật công tắc** (không phải ngày tạo mục tiêu); ví thiếu tiền thì **giữ nguyên mốc** để kỳ ấy tự thử lại; và `null` mang **hai nghĩa khác nhau** trong `updateGoal` — `cycleTakeMoney` là *xoá*, `icon`/`colour` là *giữ nguyên*. Lịch nhắc đi chung bộ đặt lịch với hoá đơn, **bắt buộc** — xem `NOTIFICATION_FEATURE.md` |
+
+> ⚠️ **Tài liệu là ảnh chụp, không phải nguồn sự thật.** Luôn đối chiếu với mã nguồn thật trước khi kết luận. Phiên 2026-09-02 có nhiều kết luận sai vì tin vào tài liệu/trí nhớ thay vì mở file ra đọc.
+
+---
+
+## Quy tắc chí mạng
+
+1. **Chỉ sửa `src/Client-app`.** Không đụng `src/Backend` trừ khi được cho phép rõ ràng trong chính yêu cầu đó. Cần backend làm gì thì **viết tài liệu** vào `docs/superpowers/backend/`.
+   - ⚠️ **Một câu duyệt chung KHÔNG gỡ được quy tắc này** (vấp ngày 2026-09-10). Tôi trình ba lối cho một việc, một lối là "tôi sửa cả hai đầu", người dùng đáp *"hãy làm theo đề xuất của bạn"* — và tôi đã đổi `schema.prisma` rồi chạy `prisma migrate deploy` lên PostgreSQL thật. Họ không hề có ý gỡ quy tắc. Phép duyệt phải **gọi tên chính việc bị cấm**; "ok", "làm đi", "theo đề xuất của bạn" thì không. Và **đừng gộp** một lối vi phạm quy tắc chung với việc được phép vào cùng một câu hỏi — tách ra, để một chữ duyệt không thể bị hiểu thành duyệt cả hai.
+   - **Viết tài liệu LÀ phần việc hoàn tất**, không kèm lời mời tự làm. Tài liệu phải tự đủ để người nhận làm theo mà không hỏi lại: đo được gì, chạy gì, áp theo quy ước nào của repo (`prisma/migrations/` + `migrate deploy` + `generate`, **không** chạy SQL tay), và kiểm lại bằng câu truy vấn nào. Khuôn đầy đủ: `CAN-LAM/WALLET_STATUS_COLUMN_WIDTH.md`.
+   - ⚠️ **CSDL dev trên máy này đang lệch khỏi lược đồ chuẩn** vì đúng sự việc trên: `wallet."Status"` là `varchar(16)` thay vì 7, và `_prisma_migrations` thừa một dòng. Chưa hoàn tác được (môi trường chặn mọi lệnh đổi lược đồ, kể cả lệnh hoàn tác). Hệ quả dễ hiểu lầm: **trên riêng máy này, đẩy `'Inactive'` lên sẽ không còn lỗi** — đừng dùng nó để kết luận G28 đã tự khỏi. Lệnh dọn ở mục **3b** của tài liệu vừa dẫn.
+   - `docs/` gốc **không** bị `.gitignore` chặn, nhưng một số thư mục con thì có (`docs/category/`, `docs/bill/`, `docs/deploy_Cloud/`, `docs/superpowers/plans/`…). Tạo tài liệu ở chỗ mới thì kiểm trước bằng `git check-ignore -v <path>`, nếu không nó biến mất âm thầm.
+
+2. **`idaccount` CHỈ đến từ phiên đăng nhập.** Không bao giờ suy ra từ dữ liệu trong SQLite, không bao giờ mặc định về `1` — đó là tài khoản **admin thật**, không phải giá trị "chưa biết".
+
+3. **Pull dùng `insertAllOnConflictUpdate`, KHÔNG dùng `insertOrReplace`.** `insertOrReplace` thay **cả hàng**, mọi cột không gán bị đưa về mặc định — từng xoá sạch cấu trúc nhóm danh mục sau mỗi lần pull.
+
+4. **Tên trường sai thì im lặng, không báo lỗi.** Payload đi qua ba nơi định nghĩa độc lập (client dựng tay → `SyncPayloadNormalizer` → `mapEntityFields` phía backend). Thêm trường mới cho sync thì **phải** cập nhật `sync_payload_contract_test.dart` cùng lúc.
+   - ⚠️ **`provider`, `bank_tran_id`, `status`, `images` KHÔNG nằm trong hợp đồng đồng bộ theo chiều nào cả** — payload đẩy giao dịch có **12 trường** (đếm lại 2026-09-08; con số 11 ghi ở đây trước đó đúng cho tới khi `idgoal` vào ngày 2026-09-07) và nhánh kéo về cũng không đọc chúng. Cột tồn tại ở cả hai đầu nên nhìn qua rất dễ tưởng là có. Ví cũng có một cột như thế, vì **lý do khác**: `wallet.status` (lưu trữ ví) không đi chiều nào vì cột trên PostgreSQL là `varchar(7)` mà giá trị cần gửi dài 8 ký tự — payload đẩy ví vẫn **12 trường**.
+   - ✅ **Điều kiện chặn đã gỡ ngày 2026-09-07.** `uq_transaction_external` nay là `UNIQUE ("Idaccount", "Provider", "Bank_tran_id")` — đo thẳng trên CSDL, không phải đọc tài liệu. Trước đó ràng buộc là **toàn cục** và chỉ trơ vì client gửi lên toàn NULL, nên thêm hai trường ấy vào payload là tự tạo vòng lặp đẩy vô hạn giữa hai tài khoản khác nhau. Nay `docs/progress/Client-app.md` mục 6.4 làm theo được. Vẫn phải **cập nhật `sync_payload_contract_test.dart` cùng lúc**, và nhớ backend đã đổi nhà cung cấp **Casso → SePay** (client còn cột `bank_casso_id` và giá trị provider `'Casso'`).
+
+5. **Không xoá vật lý dữ liệu người dùng** — dùng soft delete (`delete_at` / `isDeleted`).
+   - ⚠️ Điều này áp dụng cho **cả PostgreSQL**, kể cả với bản ghi thử của chính mình. Một hàng đã từng đồng bộ thì client vẫn giữ bản sao; xoá cứng ở server khiến client đẩy lên và nhận `Record not found` **ở mọi chu kỳ**, kẹt vòng lặp vô hạn và kéo chậm cả hàng đợi. Đã vấp ngày 2026-09-04. Muốn dọn thì đặt `delete_at`, hoặc xoá qua giao diện để cờ xoá đi đúng đường đồng bộ.
+   - ⚠️ Backend **không nhất quán tên cột**, ít nhất ba kiểu: `category` dùng `Delete_at`, `transaction` dùng `Deleted_at`, và cột ngày của giao dịch là `DateTransaction` (không gạch dưới) chứ không phải `Date_transaction`. Đừng suy tên từ bảng này sang bảng kia — mở `schema.prisma` ra đọc. Truy vấn sai tên cột ở PostgreSQL thì báo lỗi ngay, nhưng viết sai trong payload đồng bộ thì **im lặng** (quy tắc 4).
+
+6. **`.gitignore` dòng 77 có `test/`** → mọi file test tạo mới đều bị git bỏ qua **âm thầm**. Nhớ `git add -f`, nếu không công sức viết test sẽ biến mất khỏi repo.
+   - ⚠️ **`git add src/Client-app/test` (cả thư mục) thất bại kể cả khi mọi file bên trong đã được theo dõi.** Git từ chối nguyên lệnh và không stage gì cả. Phải liệt kê từng đường dẫn kèm `-f`.
+   - ⚠️ **Công cụ Grep tôn trọng `.gitignore` nên KHÔNG nhìn thấy thư mục `test/`.** Dò xem còn ai gọi một hàm sắp xoá thì phải dùng `grep` qua shell, nếu không sẽ thấy thiếu file và xoá nhầm.
+
+7. **Tên danh mục là duy nhất trong phạm vi một tài khoản** — **không** tính `classify`, **không** tính nhóm cha, và tính **cả danh mục mặc định** (chúng dùng chung không gian tên với danh mục người dùng). Hàng đã xoá mềm không giữ chỗ. Hai tài khoản khác nhau thì được trùng tên.
+   - Phép so tên có **một định nghĩa duy nhất**: `normalizeCategoryName()` ở `lib/core/category/category_name.dart` — NFC → chữ thường → trim → gom khoảng trắng. **Đừng tự viết lại biến thể khác**; trước đây mỗi nơi một kiểu và chúng đã lệch nhau.
+   - ⚠️ **Cùng file đó còn `removeVietnameseTones()` — TUYỆT ĐỐI không dùng nó cho quy tắc trùng tên.** Bỏ dấu là phép so *mất thông tin*: "đá" với "da", "sắn" với "săn" thành một. Nó chỉ dành cho **gợi ý**, nơi đoán sai chỉ tốn một cú chạm để sửa. Siết quy tắc trùng tên bằng nó sẽ từ chối những cặp tên hợp lệ mà người dùng phân biệt được bằng mắt.
+   - Thi hành ở `CategoryManagementRepositoryImpl._hasDuplicateName()`. **Đừng** thay nó bằng `getCategoryRows` — hàm đó lọc theo `classify` và khử trùng lặp theo tên, tức loại đi đúng những hàng cần đối chiếu.
+   - Phép kiểm tra **chỉ chạy khi tên thật sự đổi**, để người dùng còn sửa được danh mục cũ do bản client trước tạo ra. Đây là chủ ý, không phải lỗ hổng.
+   - **Nơi thi hành:** client và Admin-web kiểm trước khi ghi; đường `/sync/push` **vẫn không kiểm trước** — nó chỉ dịch lỗi của CSDL thành mã `CATEGORY_NAME_DUPLICATE`. Nhưng từ 2026-09-07 hai unique index của PostgreSQL thi hành **đúng cùng một quy tắc** với client: `uq_category_owner_name` khoá `(Create_by, tên chuẩn hoá NFC)` — **không** có `Classify` — và `uq_category_default_name` cho hàng mặc định, cả hai đều `WHERE "Delete_at" IS NULL`. Trigger chéo "người dùng không được trùng tên với mặc định" đã DROP, đúng như mô hình bản sao cần.
+   - ✅ Vế "**chặt hơn**" của CSDL **đã đóng ngày 2026-09-07**: hai index mới đều có `WHERE "Delete_at" IS NULL`, nên xoá rồi tạo lại một danh mục cùng tên không còn trả 23505. Đường kích hoạt tự lặp ở mỗi lần mở app đã đóng từ trước, 2026-09-05. Vẫn đọc **G16** trong `docs/CLIENT_APP_KNOWN_GAPS.md` trước khi đụng vào `DefaultCategorySeeder`, `PersonalDefaultCategories` hay `getNamesInUse` — phép phân loại lỗi vĩnh viễn phía client vẫn cần, chỉ là đường kích hoạt đã hẹp lại.
+
+8. **Danh mục mặc định là KHUÔN, không phải thứ người dùng nhìn thấy** (từ 2026-09-07). Mỗi tài khoản có **bản sao riêng** của bộ mặc định, do `DefaultCategorySeeder` tạo sau lần pull đầu; hàng toàn cục (`isDefault = true`, `idaccount = 0`) không còn hiện trong bất kỳ danh sách nào. Thiết kế: `docs/superpowers/specs/2026-09-07-per-account-default-categories-design.md`.
+   - Luật tạo bản sao đếm **cả hàng đã xoá mềm**. Ba chữ ấy là khác biệt **duy nhất** với `ensureMissing()` cũ — thứ đã sinh ra G16. "Dọn dẹp" điều kiện ấy là tái hiện nguyên vẹn G16.
+   - Nó chạy sau **mọi** lần pull chứ không phải một lần trong đời (đó là cách một danh mục mặc định thêm về sau tới được tài khoản đã seed), nên **tính luỹ đẳng là thứ tuyệt đối không được làm hỏng**.
+   - `getNamesInUse` **vẫn đếm** hàng mặc định, và `purgeDataForOtherAccounts` **vẫn giữ** chúng. Hàm đầu phục vụ quy tắc trùng tên (hàng mặc định vẫn chiếm chỗ trong hai unique index của PostgreSQL); hàm sau giữ chính cái khuôn. Bỏ nhánh `idaccount = 0` ở hai chỗ ấy là hai kiểu hỏng khác nhau.
+   - ⚠️ Bản sao chỉ đầy đủ khi **bộ mặc định cục bộ** đầy đủ. Pull là tăng dần theo `since`, nên một máy có thể chỉ biết một phần bộ mặc định của server. Từ 2026-09-07 server còn **13 hàng mặc định sống** (5 hàng `Chi khác`, `Thu khác`, `Làm thêm`, `Trả nợ`, `Thu nợ` đã bị **xoá mềm** khi backend thu bộ khuôn về đúng 13 stable UUID) — máy nào đã pull 5 hàng ấy sẽ nhận cờ xoá ở lượt pull sau. Đừng trông chờ con số khớp giữa hai máy.
+   - **Màu danh mục không có cột trên server** (bảng `category` có 12 cột, không cột nào cho màu), nên màu của bản sao chỉ sống trên máy đã tạo. Tài liệu xin: `docs/superpowers/backend/CAN-LAM/CATEGORY_COLOUR_COLUMN.md`.
+
+9. **Bảng `AppNotifications` là CỤC BỘ — đừng kéo nó vào đường đồng bộ.** Nó cố ý không có `syncStatus`/`syncError`/`updatedAt`/`isDeleted`; việc vắng mặt những cột đó chính là tài liệu sống. Thêm vào `SyncEntityType` là phải chạm bảy bảng ánh xạ song song phía backend mà **không được gì** — thông báo suy lại được từ ngân sách/hoá đơn/mục tiêu trên từng máy.
+   - Tên bảng có tiền tố `App` vì Drift sinh data class **số ít** và `Notification` là lớp có thật trong `package:flutter/widgets.dart`. Cùng loại va chạm đã gặp với `Category` — xem dòng đầu `sync_engine.dart`.
+   - ⚠️ Khi làm phần thông báo cấp hệ điều hành: `NotificationScanner.stop()` **phải** gọi `cancelAll()`. Lịch nằm trong AlarmManager/UNUserNotificationCenter chứ không trong SQLite, nên `purgeDataForOtherAccounts` không cứu được — nhắc hoá đơn của người đăng nhập trước sẽ nổ trên màn hình khoá của người sau.
+
+---
+
+## Lệnh hay dùng
+
+```bash
+# Test (chạy từ src/Client-app) — hiện 1976/1976 pass, ~145 giây
+flutter test
+flutter analyze          # mức nền: 25 issue, KHÔNG có error
+
+# Sau khi sửa Drift tables/DAOs (schema hiện tại: v20)
+dart run build_runner build --delete-conflicting-outputs
+
+# Chạy app
+cd src/Backend && npm run dev                          # localhost:3000
+cd src/Client-app && flutter run -d chrome --web-port 9090
+```
+
+**Trước khi báo là xong:** chạy `flutter test` và `flutter analyze`, đối chiếu với mức nền ở trên. Có lỗi mới phát sinh thì nói thẳng, đừng bỏ qua.
+
+---
+
+## Ghi chú vận hành
+
+Những thứ dưới đây **đã từng gây thiệt hại thật**. Bốn mục đầu vốn chỉ nằm
+trong file bàn giao tạm giữa các phiên nên chết đi sống lại nhiều lần; năm mục
+cuối thêm ngày 2026-09-10, sau một phiên mà **lượt soát tìm ra lỗi trong chính
+công việc vừa làm nhiều hơn trong tài liệu cũ**.
+
+- **Đừng ngắt `flutter test` giữa chừng, và đừng chạy hai lần cùng lúc.**
+  `flutter_tester.exe` mồ côi giữ `build/native_assets/windows/sqlite3.dll`,
+  mọi lần chạy sau nổ `PathExistsException` cho tới khi tắt hết tester và xoá
+  thư mục ấy. Muốn chặn treo thì chạy nền ghi log + `--timeout 60s`. Widget
+  test treo đủ 10 phút/test mà `--timeout` không cắt được là dấu hiệu
+  `bloc.close()` chờ một stream không bao giờ `done` — thăm dò bằng một
+  `test()` thường bọc `FakeAsync().run(...)`, chạy đồng bộ nên không thể treo
+  (đã vấp 2026-09-06 với `asyncMap` trên `Stream.value`).
+
+- **Bash tool ở đây là Git Bash, không phải PowerShell.** Commit message nhiều
+  dòng thì dùng `git commit -F -` với heredoc `<<'EOF'`. Here-string
+  `@'...'@` của PowerShell **làm lọt ký tự `@` vào message mà không báo lỗi** —
+  đã phải `reset --soft HEAD~3` và commit lại cả ba lần.
+
+- **Ghi file dài thì dùng công cụ Write, đừng qua `cat > file <<'EOF'`.** Nội
+  dung nhiều backtick hoặc dấu nháy làm shell hiểu sai và chết với
+  `unexpected EOF`, dù heredoc đã được trích dẫn.
+
+- **Truy vấn PostgreSQL: máy này không có `psql`,** nhưng chạy được qua Prisma.
+  Phải chạy **từ `src/Backend`** thì Node mới phân giải được `@prisma/client` —
+  đặt script ở `/tmp` sẽ báo `MODULE_NOT_FOUND`:
+  ```bash
+  cd src/Backend && node -e "const {PrismaClient}=require('@prisma/client');
+  const p=new PrismaClient();(async()=>{console.log(await p.\$queryRawUnsafe('SELECT 1'));
+  await p.\$disconnect();})();"
+  ```
+  ⚠️ Chỉ dùng truy vấn **đọc**. Xoá cứng ở PostgreSQL vi phạm quy tắc 5.
+
+- **Repo đặt `core.autocrlf=true` và không có `.gitattributes`.** Sửa file bằng
+  script Python (ghi ra LF) sẽ khiến git cảnh báo `LF will be replaced by CRLF`.
+  Vô hại, nhưng nhớ kiểm `git diff --stat` để chắc không bị nhiễu toàn file.
+
+---
+
+- **Đừng lọc kết quả một phép ĐO qua `head`/`tail`.** Ngày 2026-09-10 một lượt
+  đo `pg_constraint` bị `tail -25` cắt mất bốn dòng đầu, và tôi kết luận bảng
+  `wallet` "không có CHECK constraint nào" — sai hoàn toàn, bảng có 18 ràng buộc
+  đủ cả bốn `chk_wallet_*`. Kết luận sai ấy đã kịp đi vào `CLAUDE.md` và
+  `PROJECT_CONTEXT.md` trước khi lượt soát bắt được. Lọc bằng **dấu hiệu từng
+  dòng** (`console.log('ROW| ...')` rồi `grep "^ROW|"`), hoặc in ra tệp rồi đọc.
+  Đây là **lần thứ hai** output bị cắt làm sai kết luận — lần trước là `grep` qua
+  rtk. Khi kết quả trông đáng ngờ, kiểm lại bằng Python thay vì tin `grep`.
+
+- **Mọi con số trong tài liệu phải ĐẾM BẰNG SCRIPT, và ghi kèm ngày đếm.** Cùng
+  phiên ấy tôi viết "ba cột" rồi liệt kê hai, và chép lại con số "14 chỗ gọi"
+  đã cũ. Dự án đã có nếp "đếm bằng máy" ở nhiều chỗ — theo nó, đừng đếm bằng mắt.
+
+- **Trước khi commit một hạng mục, quét API MỚI THÊM có 0 chỗ gọi.** Ngày
+  2026-09-10 tôi thêm `WalletDao.watchActive` vào cả DAO lẫn datasource mà không
+  chỗ nào cần — chỉ lộ ra khi đếm chỗ gọi để sửa một con số trong tài liệu.
+
+- **Đổi một quyết định thì grep theo TỪ KHOÁ CỦA QUYẾT ĐỊNH CŨ, không chỉ sửa chỗ
+  vừa đụng.** Khi `wallet.status` chuyển thành cột cục bộ, ba chú thích ở ba tệp
+  khác vẫn nói nó "đi ra máy khác qua `/sync/push`". Chúng chỉ lộ ra khi grep
+  đúng cụm chữ ấy.
+
+- **Lượt soát tài liệu phải quét cả tài liệu KHÔNG do mình sửa.** Soát bốn tệp
+  vừa chạm là chưa đủ: lượt quét rộng ngày 2026-09-10 bắt được một mục của phiên
+  trước nói ngược mục mới ngay bên trên nó, một dòng tổng kết lỗ hổng bỏ sót bốn
+  mục, và bảng tóm tắt của `CLIENT_APP_KNOWN_GAPS.md` **trôi khỏi thân lần thứ
+  năm**. Cách rẻ: `grep` tên tính năng và tên hằng số vừa đổi trên toàn `docs/`.
+
+## Ghi chú về kiểm thử
+
+Bộ test là lưới an toàn chính của dự án này — nhiều lỗi trong quá khứ hỏng **âm thầm** (không exception, không log). Khi sửa lỗi, viết test tái hiện **trước**, và ghi rõ trong `reason:` của assertion là nó canh chừng điều gì.
+
+Vùng chưa có test nào: các feature `profile`, `ai_chat`. (`wallet` có **13** tệp / **62** test — năm tệp thêm ngày 2026-09-10 cho tính năng lưu trữ ví (`domain/wallet_status_test`, `domain/vi_tinh_vao_tong_test`, `wallet_archive_test`, `wallet_archive_ui_test`, `wallet_edit_archive_switch_test`, `wallet_picker_sources_test`); `core/utils/currency_formatter_test.dart` có **17** test, trong đó **một test quét cả `lib/`** cấm dựng `NumberFormat` ngoài `CurrencyFormatter`; **`wallet_picker_sources_test.dart` là test quét `lib/` thứ hai** — nó bắt mọi chỗ đọc danh sách ví phải được phân loại tay là *bộ chọn ví* hay *bảng tra tên*, vì chọn nhầm hỏng im lặng. Ba tệp ví ở `core/database/` (`wallet_schema_v20_test.dart`, `wallet_order_test.dart`, `wallet_archive_dao_test.dart`) có **17** test — đếm bằng máy 2026-09-10.) (`core/realtime/` có **4** tệp test / **32** test từ 2026-09-09 — đếm bằng máy.) (`analytics` có **10** tệp test / **170** test — 6 tệp thêm ngày 2026-09-09 cho lát 2c; đếm bằng máy). (`notification` có **22** tệp dưới `test/core/notification/` + `test/features/notification/` — 14 ở gốc, 5 trong `os/` và `prefs/`, 3 ở `features/` — cộng 3 tệp liên quan nằm chỗ khác. Đếm lại bằng máy 2026-09-09 sau khi thêm `tuan_iso_test` và `notification_rules_weekly_test`; `home` có test từ 2026-09-06.) (`auth_interceptor.dart` có test từ 2026-09-03; `budget` có test từ 2026-09-03.)
+
+### ⚠️ Ba loại lỗi mà `flutter test` KHÔNG bắt được
+
+Phát hiện ngày 2026-09-04 khi chạy app trên máy ảo Android. Cả ba đều để bộ test xanh, nên **đụng vào giao diện hoặc điều hướng thì phải chạy trên máy ảo trước khi báo xong** — `flutter test` và `flutter build web` không thay thế được.
+
+1. **Tràn bố cục.** Bộ test và skill `chay-app` chạy Chrome ở **1280px**, còn điện thoại thật là **411dp** — rộng gấp ba. Tìm được ba chỗ tràn (21px, 3,9px, 0,315px) đã nằm sẵn trong mã từ lâu. Muốn test được thì phải **trích widget ra** rồi dựng trong `SizedBox` hẹp có chủ ý, và bắt bằng `tester.takeException()`: Flutter báo lỗi tràn qua `FlutterError.reportError` chứ **không ném ra chỗ gọi**, nên test chỉ `pumpWidget` + `expect(find...)` sẽ xanh ngay cả khi màn hình đầy sọc cảnh báo.
+
+2. **Điều hướng qua `StatefulShellRoute`.** `push` một route nằm trong shell từ một trang ngoài shell làm app **chết màn đỏ** (`!keyReservation.contains(key)`). Chỉ nổ khi có cây route thật. Xem bẫy 7.8 `docs/NOTIFICATION_FEATURE.md`.
+
+3. **Thứ tự thực tế giữa hai luồng bất đồng bộ.** Hai stream có thể đều đúng khi test riêng, nhưng trên máy thật cái này ghi đè cái kia. Ví dụ đã gặp: `SyncEngine` đẩy xong sau 0,4 giây còn bộ theo dõi kết nối báo ở giây thứ 3, nên dải "đã đồng bộ" bị dải "đã kết nối lại" nuốt mất.
+
+**Chạy máy ảo:** `flutter build apk --debug`, rồi `adb install -r build/app/outputs/flutter-apk/app-debug.apk` và `adb shell am start -n com.flowmoney.flowmoney/.MainActivity`. ⚠️ `adb` **không có trong PATH** — dùng `%LOCALAPPDATA%/Android/Sdk/platform-tools/adb.exe`.
+
+**Mẹo dò tràn hàng loạt:** sọc cảnh báo của Flutter là **vàng thuần** và không màn nào của app dùng màu ấy, nên đếm pixel vàng trong ảnh `adb exec-out screencap` rẻ hơn hẳn việc mở từng ảnh ra nhìn. Cẩn thận dương tính giả với màn hình launcher của Android.

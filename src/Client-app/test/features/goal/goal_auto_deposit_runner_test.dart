@@ -16,6 +16,7 @@ import 'package:flowmoney/features/goal/data/datasources/goal_local_data_source.
 import 'package:flowmoney/features/goal/data/repositories/goal_repository_impl.dart';
 import 'package:flowmoney/features/goal/domain/goal_auto_deposit.dart';
 import 'package:flowmoney/features/goal/domain/goal_auto_deposit_runner.dart';
+import 'package:flowmoney/features/goal/domain/goal_history_direction.dart';
 
 void main() {
   late AppDatabase db;
@@ -113,6 +114,31 @@ void main() {
           reason: 'Dùng ĐÚNG tiền tố của khoản nạp tay. Một tiền tố riêng cho '
               'khoản tự động sẽ rơi khỏi `laKhoanRutKhoiMucTieu` và bị đọc '
               'chiều tiền bằng vị trí ví — đúng cái bẫy 4.2.');
+    });
+
+    test('ghi chú mang HẬU TỐ "(tự động)", và chiều tiền vẫn đọc đúng',
+        () async {
+      await themMucTieu();
+
+      await runner.chay(1, now: DateTime(2025, 10, 6));
+
+      final tx = (await db.transactionDao.getAll(1)).single;
+      expect(tx.note, 'Tích lũy mục tiêu: MuaXe$kHauToTuDong',
+          reason: 'Đây là chỗ DUY NHẤT trong app ghi ra hậu tố. Bộ chạy quên '
+              'bật cờ thì khoản do app tự chuyển tiền trông y hệt khoản người '
+              'dùng tự bấm — hỏng hoàn toàn im lặng, vì tiền vẫn đi đúng chỗ.');
+      expect(laKhoanTuDong(tx.note), isTrue);
+      expect(
+        laKhoanRutKhoiMucTieu(
+          ghiChu: tx.note,
+          viCuaHang: tx.walletId,
+          viTichLuy: 'w_nhan',
+        ),
+        isFalse,
+        reason: 'Hậu tố không được đụng tới phép đọc chiều tiền. Kiểm ở ĐÂY '
+            'chứ không chỉ ở test thuần: chuỗi thật đi qua CSDL rồi mới quay '
+            'về, và đó mới là chuỗi người dùng nhìn thấy.',
+      );
     });
 
     test('chưa tới kỳ thì không làm gì cả', () async {
@@ -232,6 +258,21 @@ void main() {
               'nên ca này xảy ra thật. Ném ra ở đây sẽ giết cả vòng quét thông '
               'báo đang gọi nó.');
       expect(await db.transactionDao.getAll(1), isEmpty);
+    });
+
+    test('ví nguồn ĐÃ LƯU TRỮ thì dừng, không rút tiền', () async {
+      await themMucTieu();
+      await db.walletDao.setStatus('w_nguon', luuTru: true);
+
+      final events = await runner.chay(1, now: DateTime(2025, 10, 6));
+
+      expect(events.single.loai, LoaiTrich.khongChayDuoc,
+          reason: 'Lưu trữ ví là ĐÓNG BĂNG nó. Rút tiền im lặng khỏi một ví mà '
+              'người dùng đã cất đi là đúng cách hỏng tệ nhất ở đây: họ không '
+              'nhìn ví ấy nữa nên sẽ không thấy gì cả.');
+      expect(await db.transactionDao.getAll(1), isEmpty);
+      expect((await db.walletDao.getById('w_nguon'))!.balance, 5000000.0);
+      expect((await db.goalDao.getAll(1)).single.currentAmount, 0);
     });
 
     test('ví nguồn trùng ví tích luỹ thì báo, không chuyển tiền', () async {

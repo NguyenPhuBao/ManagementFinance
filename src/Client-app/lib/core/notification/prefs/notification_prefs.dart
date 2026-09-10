@@ -5,7 +5,7 @@ import '../notification_rules.dart';
 /// Nhóm chứ không phải từng `NotificationKind`: tám công tắc là quá nhiều để
 /// người dùng hiểu, và hai loại trong cùng nhóm luôn được bật/tắt cùng nhau
 /// trong thực tế (ai tắt "sắp đến hạn" thì cũng không muốn "quá hạn").
-enum NotificationGroup { bill, budget, goal, system }
+enum NotificationGroup { bill, budget, goal, system, summary }
 
 /// Loại thông báo thuộc nhóm nào.
 ///
@@ -25,12 +25,24 @@ NotificationGroup nhomCua(NotificationKind kind) {
     case NotificationKind.goalCompleted:
     case NotificationKind.goalCycleReady:
     case NotificationKind.goalBehind:
+    case NotificationKind.goalMilestone:
     case NotificationKind.goalAutoDeposited:
     case NotificationKind.goalAutoDepositFailed:
       return NotificationGroup.goal;
     case NotificationKind.syncFailed:
     case NotificationKind.walletNegative:
+    case NotificationKind.walletLowBalance:
       return NotificationGroup.system;
+    // Nhóm RIÊNG, cố ý không gộp vào `system`. Nhóm ấy đang là "Đồng bộ hỏng
+    // và số dư ví âm"; ai tắt tổng kết tuần vì thấy phiền thì **không** có ý
+    // tắt luôn cảnh báo ví âm. Đúng loại nhầm lẫn mà commit `dfb8721` đã phải
+    // đi sửa một lần.
+    //
+    // Kho tuỳ chọn lưu nhóm bị **TẮT** chứ không phải nhóm được bật, nên nhóm
+    // mới tự động BẬT với mọi bản ghi cũ — chính là lý do định dạng ấy được
+    // chọn từ đầu.
+    case NotificationKind.weeklySummary:
+      return NotificationGroup.summary;
   }
 }
 
@@ -64,8 +76,17 @@ bool luonBao(NotificationKind kind) {
     case NotificationKind.goalCompleted:
     case NotificationKind.goalCycleReady:
     case NotificationKind.goalBehind:
+    // Cột mốc là lời ghi nhận, không phải báo tiền rời ví — nên nó **chịu**
+    // công tắc nhóm Mục tiêu như ba loại trên. Nới danh sách `luonBao` ra cho
+    // nó là làm đúng cái việc mà cảnh báo ở đầu hàm này cấm.
+    case NotificationKind.goalMilestone:
     case NotificationKind.syncFailed:
     case NotificationKind.walletNegative:
+    case NotificationKind.walletLowBalance:
+    // Tổng kết tuần **chịu** công tắc nhóm: nó không báo tiền rời ví, nó chỉ
+    // mời người dùng quay lại xem. Đúng loại thông báo mà người ta phải tắt
+    // được, nếu không họ sẽ tắt công tắc tổng và mất mọi thứ.
+    case NotificationKind.weeklySummary:
       return false;
   }
 }
@@ -88,6 +109,14 @@ class NotificationPrefs {
     this.imLangBat = false,
     this.imLangTuPhut = _imLangTuMacDinh,
     this.imLangDenPhut = _imLangDenMacDinh,
+    this.nguongSoDuThap = _nguongSoDuMacDinh,
+    this.nhacGhiChepBat = false,
+    this.gioNhacGhiChep = _gioGhiChepMacDinh,
+    this.phutNhacGhiChep = _phutGhiChepMacDinh,
+    this.tongKetTuanBat = false,
+    this.thuTongKet = _thuTongKetMacDinh,
+    this.gioTongKet = _gioTongKetMacDinh,
+    this.phutTongKet = _phutTongKetMacDinh,
   });
 
   /// Công tắc **tổng** cho thông báo cấp hệ điều hành.
@@ -124,8 +153,78 @@ class NotificationPrefs {
   final int imLangTuPhut;
   final int imLangDenPhut;
 
+  /// Cảnh báo khi số dư một ví xuống tới mức này, đơn vị **đồng**.
+  ///
+  /// `0` = **tắt**, và đó là mặc định. Một con số thay vì một cặp
+  /// công tắc-cộng-số vì cặp ấy biểu diễn được một trạng thái vô nghĩa (bật
+  /// nhưng ngưỡng bằng 0), còn một con số thì không.
+  ///
+  /// Mặc định tắt vì mọi bản ghi có sẵn trên máy người dùng đều thiếu trường
+  /// này — bật sẵn là lặng lẽ đổi hành vi của mọi bản đã cài, cùng lý lẽ với
+  /// giờ im lặng.
+  final int nguongSoDuThap;
+
+  /// Có nhắc người dùng ghi chép vào cuối ngày không.
+  ///
+  /// **Mặc định TẮT**, cùng lý lẽ với giờ im lặng và [nguongSoDuThap]: mọi bản
+  /// ghi đang nằm trên máy người dùng đều thiếu trường này, nên bật sẵn là
+  /// lặng lẽ cho cả tập người dùng hiện tại một thông báo mỗi ngày mà không ai
+  /// báo trước.
+  ///
+  /// ⚠️ Lời nhắc này **không đi qua bộ luật** và **không sinh hàng** nào trong
+  /// `AppNotifications`. Mười bốn loại kia đều là *bản ghi* một việc đã xảy ra
+  /// và người dùng đọc lại chúng trong trung tâm thông báo; lời nhắc này chỉ
+  /// có nghĩa khi họ **đang không mở app**, nên lúc mở ra xem thì nó đã hết lý
+  /// do tồn tại. Nó sống hoàn toàn trong `ReminderScheduler`.
+  final bool nhacGhiChepBat;
+
+  /// Giờ và phút bắn lời nhắc ghi chép.
+  ///
+  /// **Riêng, không dùng chung [gioNhac].** Giờ nhắc chung mặc định 8h sáng vì
+  /// nó là của hoá đơn — nhắc trước khi tới hạn thì phải sớm. Một câu "hôm nay
+  /// ghi chép chưa" lúc 8h sáng là hỏi trước khi có gì để ghi.
+  ///
+  /// Giờ im lặng **không chặn** lời nhắc này: đây là mốc người dùng tự chọn và
+  /// đang nhìn thấy trên màn hình, app không được đoán lại hộ họ — cùng lý lẽ
+  /// đã ghi ở [dangImLang] cho mọi lịch đặt trước.
+  final int gioNhacGhiChep;
+  final int phutNhacGhiChep;
+
+  /// Có bắn Tổng kết tuần không.
+  ///
+  /// **Mặc định TẮT**, cùng lý lẽ đã ghi ở [nhacGhiChepBat] và [imLangBat]:
+  /// mọi bản ghi đang nằm trên máy người dùng đều thiếu trường này, nên bật
+  /// sẵn là lặng lẽ cho cả tập người dùng hiện tại một thông báo mỗi tuần mà
+  /// không ai báo trước. Nặng hơn hai trường kia một bậc, vì loại này nổ **khi
+  /// app đã đóng** và **không đi qua giờ im lặng**.
+  ///
+  /// Công tắc nhóm `summary` vẫn tồn tại và vẫn chặn được — hai thứ khác nhau:
+  /// công tắc này là "tôi có muốn loại này không", công tắc nhóm là "tạm im
+  /// cả nhóm". Cùng hình dạng với cặp `nhacGhiChepBat` + công tắc tổng.
+  final bool tongKetTuanBat;
+
+  /// Thứ trong tuần để bắn Tổng kết tuần — **1 = thứ Hai … 7 = Chủ nhật**,
+  /// đúng quy ước của `DateTime.weekday`.
+  ///
+  /// Người dùng chọn được thay vì app đặt cứng, và đó là một quyết định về
+  /// **sự tôn trọng**, không phải về tính linh hoạt: lịch đặt trước không đi
+  /// qua giờ im lặng (xem [dangImLang]), nên một mốc do app tự đặt sẽ kêu
+  /// xuyên qua khung giờ người dùng đã nói là muốn yên. Thứ khiến nhắc hoá đơn
+  /// không phiền không phải giờ của nó, mà là việc giờ ấy do họ đặt và đang
+  /// nhìn thấy trên màn hình.
+  final int thuTongKet;
+
+  /// Giờ và phút bắn Tổng kết tuần. **Riêng**, không dùng chung [gioNhac] —
+  /// cùng lý lẽ với [gioNhacGhiChep].
+  final int gioTongKet;
+  final int phutTongKet;
+
   static const int _gioMacDinh = 8;
   static const int _phutMacDinh = 0;
+
+  /// 20:00 — cuối ngày, sau bữa tối, còn đủ tỉnh táo để mở app ghi lại.
+  static const int _gioGhiChepMacDinh = 20;
+  static const int _phutGhiChepMacDinh = 0;
 
   static const int _imLangTuMacDinh = 22 * 60;
   static const int _imLangDenMacDinh = 7 * 60;
@@ -138,6 +237,21 @@ class NotificationPrefs {
   /// Trần của `soNgayNhacHoaDon`. Rộng hơn cửa sổ quét 30 ngày một chút để
   /// không chặn oan, nhưng vẫn loại được những con số vô nghĩa.
   static const int _soNgayToiDa = 60;
+
+  /// Thứ Hai 08:00 — đầu tuần làm việc, và là lúc "tuần qua" vừa mới khép lại
+  /// nên câu chữ còn đúng nghĩa. Có mặc định hợp lý để bản cài mới không bắt
+  /// ai phải vào cấu hình trước khi tính năng có ích.
+  static const int _thuTongKetMacDinh = DateTime.monday;
+  static const int _gioTongKetMacDinh = 8;
+  static const int _phutTongKetMacDinh = 0;
+
+  static const int _nguongSoDuMacDinh = 0;
+
+  /// Trần của [nguongSoDuThap] — một tỉ đồng. Không phải hạn chế sản phẩm mà
+  /// là lưới chắn dữ liệu hỏng: một con số vô nghĩa lớn biến cảnh báo thành
+  /// luôn-bật cho mọi ví, đúng kiểu hỏng mà `BudgetEntity.warningRatio` đã
+  /// chặn ở phía ngân sách.
+  static const int _nguongSoDuToiDa = 1000000000;
 
   static const NotificationPrefs macDinh = NotificationPrefs();
 
@@ -182,6 +296,14 @@ class NotificationPrefs {
     bool? imLangBat,
     int? imLangTuPhut,
     int? imLangDenPhut,
+    int? nguongSoDuThap,
+    bool? nhacGhiChepBat,
+    int? gioNhacGhiChep,
+    int? phutNhacGhiChep,
+    bool? tongKetTuanBat,
+    int? thuTongKet,
+    int? gioTongKet,
+    int? phutTongKet,
   }) {
     return NotificationPrefs(
       osBat: osBat ?? this.osBat,
@@ -192,6 +314,14 @@ class NotificationPrefs {
       imLangBat: imLangBat ?? this.imLangBat,
       imLangTuPhut: imLangTuPhut ?? this.imLangTuPhut,
       imLangDenPhut: imLangDenPhut ?? this.imLangDenPhut,
+      nguongSoDuThap: nguongSoDuThap ?? this.nguongSoDuThap,
+      nhacGhiChepBat: nhacGhiChepBat ?? this.nhacGhiChepBat,
+      gioNhacGhiChep: gioNhacGhiChep ?? this.gioNhacGhiChep,
+      phutNhacGhiChep: phutNhacGhiChep ?? this.phutNhacGhiChep,
+      tongKetTuanBat: tongKetTuanBat ?? this.tongKetTuanBat,
+      thuTongKet: thuTongKet ?? this.thuTongKet,
+      gioTongKet: gioTongKet ?? this.gioTongKet,
+      phutTongKet: phutTongKet ?? this.phutTongKet,
     );
   }
 
@@ -204,6 +334,14 @@ class NotificationPrefs {
         'imLangBat': imLangBat,
         'imLangTuPhut': imLangTuPhut,
         'imLangDenPhut': imLangDenPhut,
+        'nguongSoDuThap': nguongSoDuThap,
+        'nhacGhiChepBat': nhacGhiChepBat,
+        'gioNhacGhiChep': gioNhacGhiChep,
+        'phutNhacGhiChep': phutNhacGhiChep,
+        'tongKetTuanBat': tongKetTuanBat,
+        'thuTongKet': thuTongKet,
+        'gioTongKet': gioTongKet,
+        'phutTongKet': phutTongKet,
       };
 
   /// Đọc từ JSON, **không bao giờ ném**.
@@ -225,6 +363,23 @@ class NotificationPrefs {
           json['imLangTuPhut'], 0, _phutTrongNgay - 1, _imLangTuMacDinh),
       imLangDenPhut: _docSo(
           json['imLangDenPhut'], 0, _phutTrongNgay - 1, _imLangDenMacDinh),
+      nguongSoDuThap: _docSo(json['nguongSoDuThap'], 0, _nguongSoDuToiDa,
+          _nguongSoDuMacDinh),
+      nhacGhiChepBat: json['nhacGhiChepBat'] is bool
+          ? json['nhacGhiChepBat']! as bool
+          : false,
+      gioNhacGhiChep:
+          _docSo(json['gioNhacGhiChep'], 0, 23, _gioGhiChepMacDinh),
+      phutNhacGhiChep:
+          _docSo(json['phutNhacGhiChep'], 0, 59, _phutGhiChepMacDinh),
+      // Dải 1–7 theo `DateTime.weekday`. Một giá trị 0 hay 8 lọt vào phép tính
+      // mốc kế tiếp sẽ đẩy lịch lệch hẳn một tuần, im lặng.
+      tongKetTuanBat: json['tongKetTuanBat'] is bool
+          ? json['tongKetTuanBat']! as bool
+          : false,
+      thuTongKet: _docSo(json['thuTongKet'], 1, 7, _thuTongKetMacDinh),
+      gioTongKet: _docSo(json['gioTongKet'], 0, 23, _gioTongKetMacDinh),
+      phutTongKet: _docSo(json['phutTongKet'], 0, 59, _phutTongKetMacDinh),
     );
   }
 
@@ -256,6 +411,10 @@ class NotificationPrefs {
       other.imLangBat == imLangBat &&
       other.imLangTuPhut == imLangTuPhut &&
       other.imLangDenPhut == imLangDenPhut &&
+      other.nguongSoDuThap == nguongSoDuThap &&
+      other.nhacGhiChepBat == nhacGhiChepBat &&
+      other.gioNhacGhiChep == gioNhacGhiChep &&
+      other.phutNhacGhiChep == phutNhacGhiChep &&
       other.nhomTat.length == nhomTat.length &&
       other.nhomTat.containsAll(nhomTat);
 
@@ -268,6 +427,10 @@ class NotificationPrefs {
         imLangBat,
         imLangTuPhut,
         imLangDenPhut,
+        nguongSoDuThap,
+        nhacGhiChepBat,
+        gioNhacGhiChep,
+        phutNhacGhiChep,
         Object.hashAllUnordered(nhomTat),
       );
 

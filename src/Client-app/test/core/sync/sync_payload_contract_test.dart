@@ -82,6 +82,7 @@ void main() {
   const accountId = 7;
   const walletId = '11111111-1111-4111-8111-111111111111';
   const categoryId = '22222222-2222-4222-8222-222222222222';
+  const goalId = '66666666-6666-4666-8666-666666666666';
 
   late AppDatabase db;
   late _Client client;
@@ -140,6 +141,11 @@ void main() {
         amount: const Value(-45000),
         type: const Value('chi'),
         date: Value(now),
+        // Nối với mục tiêu bằng ID. Trước 2026-09-07 cột này là cục bộ nên
+        // hàng kéo về từ server luôn trống, và `watchByGoal` phải rơi xuống
+        // nhánh so TÊN — nhánh mang đúng khuyết điểm mà cột này sinh ra để
+        // chữa ("Mua" nuốt lịch sử của "Mua xe").
+        goalId: const Value(goalId),
         syncStatus: const Value('pending'),
         updatedAt: Value(now),
       ));
@@ -214,6 +220,15 @@ void main() {
         name: const Value('Mua laptop'),
         targetAmount: const Value(20000000),
         targetDate: Value(now),
+        // Bật trích tự động để payload mang giá trị thật chứ không phải null —
+        // một trường luôn null thì test không phân biệt được "có gửi" với
+        // "gửi nhầm tên".
+        autoDepositAmount: const Value(500000),
+        autoDepositWalletId: const Value(walletId),
+        autoDepositLastRun: Value(DateTime.utc(2026, 9, 1, 3)),
+        // Cùng lý do như ba cột trên: một giá trị THẬT chứ không phải null,
+        // nếu không test không phân biệt được "có gửi" với "gửi nhầm tên".
+        priority: const Value(200),
         syncStatus: const Value('pending'),
         updatedAt: Value(now),
       ));
@@ -227,10 +242,52 @@ void main() {
           'id', 'name', 'type', 'balance', 'currency', 'icon',
           'color', // normalizer đổi colour → color
           'is_default', 'is_deleted', 'include_in_total',
+          // ⚠️ `status` (lưu trữ ví) CỐ Ý vắng mặt — nhóm PUSH ngay dưới
+          // canh riêng điều đó, kèm con số đo được.
           'update_at', // normalizer đổi updated_at → update_at
           'idaccount',
         },
       );
+    });
+
+    test('ví lưu trữ KHÔNG được mang `status` lên server', () async {
+      // Cột `Status` của PostgreSQL là **varchar(7)**, đo thẳng trên CSDL ngày
+      // 2026-09-10 (`information_schema.columns`). Giá trị cần gửi lên là
+      // `'Inactive'` — **8 ký tự**. Đẩy lên là hàng ví vỡ ở tầng CSDL, backend
+      // trả về lỗi ràng buộc, và ví kẹt hàng đợi đẩy: thử lại ở MỌI chu kỳ,
+      // kéo chậm cả hàng đợi. Đã vấp thật trên máy ảo.
+      //
+      // Nên `status` là cột CỤC BỘ cho tới khi backend nới cột — cùng diện với
+      // `bills.autoPayEnabled` và `bills.anchorDay`. Tài liệu xin:
+      // `docs/superpowers/backend/CAN-LAM/WALLET_STATUS_COLUMN_WIDTH.md`.
+      const viLuuTru = '22222222-2222-4222-8222-222222222222';
+      await db.walletDao.insert(WalletsCompanion(
+        id: const Value(viLuuTru),
+        idaccount: const Value(accountId),
+        name: const Value('Ví thẻ cũ'),
+        type: const Value('bank'),
+        balance: const Value(0),
+        status: const Value('inactive'),
+        syncStatus: const Value('pending'),
+        updatedAt: Value(DateTime.now()),
+      ));
+      await runSync();
+
+      final payloads = client.adapter.pushed
+          .where((op) => op['entity'] == 'wallet')
+          .map((op) => op['payload'] as Map<String, dynamic>)
+          .toList();
+
+      for (final p in payloads) {
+        expect(p.containsKey('status'), isFalse,
+            reason: 'Ví ${p['id']} mang `status` lên server. Với ví lưu trữ đó '
+                'là chuỗi 8 ký tự nhét vào cột varchar(7) — bản ghi kẹt hàng '
+                'đợi đẩy và thử lại vĩnh viễn.');
+      }
+      expect(payloads.any((p) => p['id'] == viLuuTru), isTrue,
+          reason: 'Ví lưu trữ VẪN phải được đẩy lên — tên, số dư, cờ mặc định '
+              'của nó vẫn phải tới được máy khác. Chỉ riêng trạng thái lưu trữ '
+              'là ở lại máy này.');
     });
 
     test('category — phải có isGroup/parentId để backend dựng lại cây nhóm', () {
@@ -242,6 +299,9 @@ void main() {
           'isGroup', // mapEntityFields: isGroup → Is_group
           'parentId', // mapEntityFields: parentId → Idgroup
           'update_at', 'idaccount',
+          // `keyword` KHÔNG có mặt ở đây có chủ đích: danh mục trong bộ dựng
+          // này không có từ khoá nào, và gửi chuỗi rỗng là lệnh XOÁ phía
+          // server. Nhóm "PUSH — từ khoá phân loại của danh mục" canh ca có.
         },
       );
     });
@@ -257,8 +317,41 @@ void main() {
           'amount', 'type', 'note',
           'dateTransaction', // normalizer đổi date → dateTransaction
           'is_deleted', 'update_at', 'idaccount',
+          // Khoá nối tới mục tiêu, mở khoá 2026-09-07 khi backend thêm cột
+          // `transaction.Idgoal`. Tên payload là `idgoal` — KHÔNG phải
+          // `goal_id`, vốn là tên cột Drift cục bộ và vẫn nằm trong danh sách
+          // cấm rò rỉ bên dưới. Hai cái tên khác nhau ở đúng một chỗ này, và
+          // gửi nhầm tên thì backend bỏ qua trong im lặng.
+          'idgoal',
         },
       );
+    });
+
+    test('mục tiêu phải được đẩy TRƯỚC giao dịch nạp vào nó', () {
+      final thuTu = client.adapter.pushed
+          .map((op) => op['entity'].toString())
+          .toList();
+      final viTriGoal = thuTu.indexOf('goal');
+      final viTriTran = thuTu.indexOf('transaction');
+      expect(viTriGoal, isNonNegative);
+      expect(viTriTran, isNonNegative);
+      expect(
+        viTriGoal,
+        lessThan(viTriTran),
+        reason: 'Từ 2026-09-07 payload giao dịch mang `idgoal`, và phía server '
+            'cột ấy có khoá ngoại `fk_transaction_goal`. Đẩy giao dịch trước '
+            'mục tiêu thì hàng bị từ chối vì mục tiêu chưa tồn tại — đúng ca '
+            'người dùng tạo mục tiêu rồi nạp tiền trong lúc offline, cả hai '
+            'cùng nằm chờ trong một lô. Cùng lý do khiến categories phải đứng '
+            'trước transactions.',
+      );
+    });
+    test('payload giao dịch mang idgoal của khoản nạp mục tiêu', () {
+      final p = payloadOf('transaction');
+      expect(p['idgoal'], goalId,
+          reason: 'Thiếu giá trị này thì hàng lên server mang Idgoal = NULL, '
+              'và máy thứ hai kéo về vẫn phải đoán chủ sở hữu bằng cách so '
+              'TÊN mục tiêu trong ghi chú — đúng khuyết điểm G18.');
     });
 
     group('giá trị `type` và dấu của `amount`', () {
@@ -382,8 +475,40 @@ void main() {
           'time_cycle_take_money', 'status_complete', 'recurrence',
           'time_recurrence', 'icon', 'color', 'note', 'is_deleted',
           'update_at', 'idaccount',
+          // Ba cột trích tự động, mở khoá 2026-09-07 khi backend thêm chúng
+          // vào bảng `goal`. Chúng phải đi CÙNG NHAU: thiếu `last_run` thì mỗi
+          // máy giữ một mốc riêng và cả hai cùng chuyển tiền khi tới kỳ — hỏng
+          // nặng hơn hiện trạng "máy thứ hai không trích gì".
+          'auto_deposit_amount', 'auto_deposit_wallet_id',
+          'auto_deposit_last_run',
+          // Thứ tự ưu tiên, mở khoá 2026-09-08. Cột `Priority` phía backend
+          // có từ 2026-09-07. Đây là thứ tự người dùng tự sắp bằng kéo thả —
+          // công sức bỏ ra, không suy lại được — nên nó KHÔNG được làm cột
+          // cục bộ; đó đúng là bệnh mà G21 đã ghi lại.
+          'priority',
         },
       );
+    });
+
+    test('payload mục tiêu mang GIÁ TRỊ của thứ tự ưu tiên', () {
+      expect(payloadOf('goal')['priority'], 200,
+          reason: 'Đúng tên khoá mà sai giá trị thì backend ghi null, và thứ '
+              'tự người dùng vừa kéo biến mất khi sang máy khác — im lặng y '
+              'như sai tên. Số NHỎ hơn đứng trước, các giá trị cách nhau 100.');
+    });
+
+    test('payload mục tiêu mang đủ GIÁ TRỊ của ba cột trích tự động', () {
+      final p = payloadOf('goal');
+      expect(p['auto_deposit_amount'], 500000,
+          reason: 'Số tiền trích mỗi kỳ. Đúng tên khoá mà sai giá trị thì '
+              'backend ghi null, và người dùng thấy công tắc bật mà không '
+              'trích — im lặng y như sai tên.');
+      expect(p['auto_deposit_wallet_id'], walletId,
+          reason: 'Ví NGUỒN của khoản trích, khác `idwallet` là ví NHẬN.');
+      expect(p['auto_deposit_last_run'], '2026-09-01T03:00:00.000Z',
+          reason: 'Mốc kỳ gần nhất đã trích, gửi dạng ISO 8601 UTC như mọi cột '
+              'thời gian khác. Đây là cột chống trích hai lần: sai định dạng '
+              'thì backend lưu null và máy kia coi như chưa từng trích.');
     });
 
     test('KHÔNG được rò rỉ trường thuần client lên backend', () {
@@ -395,12 +520,6 @@ void main() {
           'isLocalOnly',
           'is_local_only',
           'keywords',
-          // Ba cột trích tự động là CỤC BỘ (schema v15): bảng `goal` phía
-          // backend không có chúng, và thêm trường vào payload đẩy đòi backend
-          // sửa trước.
-          'auto_deposit_amount',
-          'auto_deposit_wallet_id',
-          'auto_deposit_last_run',
           'goal_id', // cột cục bộ của transactions (schema v14)
           'updatedAt', // phải đã được đổi thành update_at
         ]) {
@@ -421,6 +540,7 @@ void main() {
             'name': 'Ví ngân hàng',
             'balance': 5000,
             'color': '#123456',
+            'include_in_total': false,
             'update_at': '2026-09-01T10:00:00.000Z',
           },
         ],
@@ -445,6 +565,20 @@ void main() {
             'update_at': '2026-09-01T10:00:00.000Z',
           },
         ],
+        'transactions': [
+          {
+            'idtran': '99999999-9999-4999-8999-999999999999',
+            'idaccount': accountId,
+            'idwallet': walletId,
+            'idcategory': categoryId,
+            'amount': -100000,
+            'type': 'Transaction',
+            'note': 'Tích lũy mục tiêu: Mua laptop',
+            'date_transaction': '2026-09-01T02:00:00.000Z',
+            'idgoal': goalId,
+            'update_at': '2026-09-01T10:00:00.000Z',
+          },
+        ],
         'goals': [
           {
             'idgoal': '66666666-6666-4666-8666-666666666666',
@@ -454,6 +588,9 @@ void main() {
             'current_amount': 1000,
             'target_date': '2026-12-01T00:00:00.000Z',
             'status_complete': 'True',
+            'auto_deposit_amount': 750000,
+            'auto_deposit_wallet_id': walletId,
+            'auto_deposit_last_run': '2026-09-01T03:00:00.000Z',
             'update_at': '2026-09-01T10:00:00.000Z',
           },
         ],
@@ -464,6 +601,10 @@ void main() {
       final wallet = await db.walletDao.getById(walletId);
       expect(wallet?.balance, 5000, reason: 'đọc "balance"');
       expect(wallet?.colour, '#123456', reason: 'backend dùng "color"');
+      expect(wallet?.includeInTotal, false,
+          reason: 'Nửa còn lại của cờ này: nó NẰM trong payload đẩy lên nhưng '
+              'nhánh kéo về không đọc, nên máy thứ hai KHÔNG BAO GIỜ biết '
+              'ví nào bị loại khỏi tổng tài sản. Hỏng im lặng, quy tắc 4.');
 
       final category = await db.categoryDao.getById(categoryId);
       expect(category?.name, 'Ăn uống', reason: 'backend dùng "name_category"');
@@ -474,11 +615,162 @@ void main() {
           reason: 'backend dùng "total_amount", không phải "amount"');
       expect(budgets.single.overSpending, 'Stop');
 
+      final tran = (await db.transactionDao.getAll(accountId))
+          .firstWhere((t) => t.id == '99999999-9999-4999-8999-999999999999');
+      expect(tran.goalId, goalId,
+          reason: 'Nửa còn lại của G18: đẩy `idgoal` lên mà không đọc lại thì '
+              'hàng kéo về máy thứ hai vẫn trống cột nối, và nó vẫn phải so '
+              'TÊN mục tiêu trong ghi chú để đoán chủ sở hữu.');
+
       final goals = await db.goalDao.getAll(accountId);
       expect(goals.single.isCompleted, true,
           reason: 'backend dùng "status_complete" dạng chuỗi "True"');
+      expect(goals.single.autoDepositAmount, 750000,
+          reason: 'Chiều KÉO VỀ là nửa còn lại của G21: đẩy lên mà không đọc '
+              'lại thì máy thứ hai vẫn không biết trích tự động đang bật.');
+      expect(goals.single.autoDepositWalletId, walletId);
+      // So bằng `.toUtc()` chứ không so thẳng: Drift trả DateTime **local**,
+      // nên `DateTime.utc(...)` không bao giờ bằng nó dù cùng một thời điểm
+      // (Dart so cả cờ isUtc). Phép so này VẪN bắt được lỗi múi giờ thật —
+      // nếu mã đọc bỏ hậu tố Z và hiểu 03:00 là giờ địa phương thì `.toUtc()`
+      // ra 2026-08-31T20:00Z và test đỏ.
+      expect(goals.single.autoDepositLastRun?.toUtc(),
+          DateTime.utc(2026, 9, 1, 3),
+          reason: 'Mốc kỳ gần nhất phải về được máy thứ hai, nếu không nó sẽ '
+              'trích lại đúng kỳ mà máy thứ nhất vừa trích xong.');
     });
 
+    test('hàng server KHÔNG có idgoal thì liên kết cục bộ phải còn nguyên',
+        () async {
+      // Đây là trạng thái THẬT ngay sau khi backend thêm cột: mọi hàng đã nằm
+      // sẵn trên server đều mang `Idgoal = NULL`, vì chúng được đẩy lên từ
+      // trước khi client biết gửi trường này. Nhánh pull ghi đè thẳng sẽ xoá
+      // sạch liên kết cục bộ ở đúng chu kỳ đồng bộ đầu tiên — và lịch sử tích
+      // luỹ lặng lẽ rơi hết xuống nhánh so TÊN, tức tái hiện nguyên vẹn G18.
+      // Ví phải có trước: `transactions.wallet_id` là khoá ngoại thật.
+      await db.walletDao.insert(WalletsCompanion(
+        id: const Value(walletId),
+        idaccount: const Value(accountId),
+        name: const Value('Ví tiền mặt'),
+        type: const Value('cash'),
+        balance: const Value(1000),
+        syncStatus: const Value('synced'),
+        updatedAt: Value(DateTime(2026, 9, 1)),
+      ));
+      await db.transactionDao.insert(TransactionsCompanion(
+        id: const Value('88888888-8888-4888-8888-888888888888'),
+        idaccount: const Value(accountId),
+        walletId: const Value(walletId),
+        amount: const Value(-70000),
+        type: const Value('chi'),
+        date: Value(DateTime(2026, 9, 1)),
+        goalId: const Value(goalId),
+        syncStatus: const Value('synced'),
+        updatedAt: Value(DateTime(2026, 9, 1)),
+      ));
+
+      client.adapter.pullData = {
+        'transactions': [
+          {
+            'idtran': '88888888-8888-4888-8888-888888888888',
+            'idaccount': accountId,
+            'idwallet': walletId,
+            'amount': -70000,
+            'type': 'Transaction',
+            'date_transaction': '2026-09-01T02:00:00.000Z',
+            // KHÔNG có khoá 'idgoal' — đúng như hàng cũ trên server.
+            'update_at': '2026-09-02T10:00:00.000Z',
+          },
+        ],
+      };
+
+      await runSync();
+
+      final tran = (await db.transactionDao.getAll(accountId))
+          .firstWhere((t) => t.id == '88888888-8888-4888-8888-888888888888');
+      expect(tran.goalId, goalId,
+          reason: 'Server im lặng về idgoal nghĩa là CHUA BIET, không phải '
+              'HAY XOA. Ghi đè null vào đây là mất liên kết mà không có lỗi '
+              'nào báo ra.');
+    });
+    test('server KHÔNG bỏ được lưu trữ của ví — kể cả khi nó gửi status',
+        () async {
+      // Đây là nửa thứ hai của việc `status` là cột cục bộ, và là nửa dễ
+      // quên: server luôn trả `'Active'` cho MỌI ví, vì nó chưa bao giờ nhận
+      // được giá trị nào khác (client không đẩy cột này lên — cột `Status`
+      // là varchar(7) còn `'Inactive'` dài 8 ký tự). Đọc cột ấy về là ví vừa
+      // lưu trữ lặng lẽ sống lại ở đúng lượt pull kế tiếp.
+      //
+      // Payload dưới đây cố ý mang `'status': 'Active'` — dạng KHÓ nhất, vì
+      // một bản đọc thẳng sẽ vượt qua ca 'server im lặng' mà vỡ ở đây.
+      await db.walletDao.insert(WalletsCompanion(
+        id: const Value(walletId),
+        idaccount: const Value(accountId),
+        name: const Value('Ví thẻ cũ'),
+        type: const Value('bank'),
+        balance: const Value(1000),
+        status: const Value('inactive'),
+        syncStatus: const Value('synced'),
+        updatedAt: Value(DateTime(2026, 9, 1)),
+      ));
+
+      client.adapter.pullData = {
+        'wallets': [
+          {
+            'idwallet': walletId,
+            'idaccount': accountId,
+            'name': 'Ví thẻ cũ',
+            'balance': 1000,
+            'status': 'Active',
+            'update_at': '2026-09-02T10:00:00.000Z',
+          },
+        ],
+      };
+
+      await runSync();
+
+      expect((await db.walletDao.getById(walletId))?.status, 'inactive',
+          reason: 'Lưu trữ ví sống hoàn toàn trên máy này. Đọc `status` từ '
+              'payload là mọi ví lưu trữ tự bỏ lưu trữ sau đúng một chu kỳ '
+              'đồng bộ — im lặng, không thông báo nào.');
+    });
+    test('hàng server KHÔNG có include_in_total thì cờ cục bộ phải còn nguyên',
+        () async {
+      // Ví này đang bị người dùng cố ý loại khỏi tổng tài sản ở máy hiện tại.
+      // Payload thiếu khoá là trạng thái THẬT của mọi backend chưa trả cột ấy,
+      // và `doiSangBool(null)` trả `false` — nên bản đọc thẳng không "giữ
+      // nguyên", nó ĐỔI cờ. Đây là ca phân biệt được hai cách cài đặt.
+      await db.walletDao.insert(WalletsCompanion(
+        id: const Value(walletId),
+        idaccount: const Value(accountId),
+        name: const Value('Ví tiết kiệm'),
+        type: const Value('saving'),
+        balance: const Value(1000),
+        includeInTotal: const Value(true),
+        syncStatus: const Value('synced'),
+        updatedAt: Value(DateTime(2026, 9, 1)),
+      ));
+
+      client.adapter.pullData = {
+        'wallets': [
+          {
+            'idwallet': walletId,
+            'idaccount': accountId,
+            'name': 'Ví tiết kiệm',
+            'balance': 1000,
+            // KHÔNG có khoá 'include_in_total' — đúng như hàng cũ trên server.
+            'update_at': '2026-09-02T10:00:00.000Z',
+          },
+        ],
+      };
+
+      await runSync();
+
+      expect((await db.walletDao.getById(walletId))?.includeInTotal, true,
+          reason: 'Server im lặng về cờ này nghĩa là CHƯA BIẾT, không phải '
+              'HÃY LOẠI. Ghi `false` vào đây là lặng lẽ cộng lại vào tổng tài '
+              'sản một ví mà người dùng đã cố ý loại ra.');
+    });
     test('cờ đúng/sai của mục tiêu đọc được ở MỌI dạng backend có thể gửi',
         () async {
       client.adapter.pullData = {
@@ -607,6 +899,43 @@ void main() {
             'lặng lẽ quay về khớp regex trên thông báo Prisma, và không có lỗi '
             'nào báo ra. Đổi chuỗi này thì phải đổi cả backend cùng lúc.',
       );
+    });
+  });
+
+  group('PUSH — từ khoá phân loại của danh mục', () {
+    setUp(() async {
+      final now = DateTime.now();
+      await db.walletDao.insert(WalletsCompanion(
+        id: const Value(walletId),
+        idaccount: const Value(accountId),
+        name: const Value('Ví tiền mặt'),
+        syncStatus: const Value('pending'),
+        updatedAt: Value(now),
+      ));
+      await db.categoryDao.insert(CategoriesCompanion.insert(
+        id: categoryId,
+        idaccount: accountId,
+        name: 'Cà phê',
+        classify: 'chi',
+        updatedAt: now,
+      ));
+      await db.categoryDao.replaceKeywords(
+        accountId: accountId,
+        categoryId: categoryId,
+        keywords: ['cà phê', 'trà sữa'],
+        now: now,
+      );
+      await runSync();
+    });
+
+    test('payload mang keyword, nối bằng dấu phẩy', () {
+      expect(payloadOf('category')['keyword'], 'cà phê,trà sữa',
+          reason: 'Backend lưu từ khoá thành MỘT chuỗi nối bằng dấu phẩy trên '
+              'chính hàng category (cột Keyword, @db.Text), và /sync/push đã '
+              'nhận nó ở cả nhánh tạo lẫn nhánh cập nhật. Sai tên trường hoặc '
+              'sai định dạng thì KHÔNG có lỗi nào báo ra — từ khoá chỉ đơn '
+              'giản không bao giờ tới nơi, và mất hẳn khi người dùng cài lại '
+              'app.');
     });
   });
 }

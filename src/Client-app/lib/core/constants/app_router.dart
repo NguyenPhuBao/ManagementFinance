@@ -165,7 +165,17 @@ class AppRouter {
           // Analytics & Report Export standalone routes
           GoRoute(
             path: '/export-report',
-            builder: (_, __) => const ExportReportPage(),
+            // `?from=&to=` đặt sẵn phạm vi — đường mà thông báo Tổng kết tuần
+            // đi vào. Tham số qua QUERY STRING chứ không qua `extra`: cú chạm
+            // vào thông báo có thể xảy ra ở **cold start**, và `extra` không
+            // sống qua một tiến trình mới.
+            //
+            // Ngày hỏng hoặc thiếu thì trang tự lùi về "tháng này" — mở đúng
+            // trang mà không đặt phạm vi vẫn tốt hơn là không mở gì.
+            builder: (_, state) => ExportReportPage(
+              tuNgay: DateTime.tryParse(state.uri.queryParameters['from'] ?? ''),
+              denNgay: DateTime.tryParse(state.uri.queryParameters['to'] ?? ''),
+            ),
           ),
 
           // Transactions

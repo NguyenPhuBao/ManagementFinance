@@ -1,6 +1,6 @@
 # Client-app — Việc còn dang dở & rủi ro đã biết
 
-**Cập nhật:** 2026-09-05
+**Cập nhật:** 2026-09-10
 **Mục đích:** ghi lại những hạng mục đã được **cân nhắc và cố ý hoãn**, kèm lý do và bán kính ảnh hưởng. Không có tài liệu này thì người tiếp theo sẽ hoặc bỏ sót, hoặc làm lại từ đầu việc phân tích rủi ro.
 
 Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nhất.
@@ -10,18 +10,30 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > nguyên (kể cả phần *vì sao hoãn*) vì nó ghi lại bối cảnh và bán kính ảnh
 > hưởng — thứ vẫn cần khi ai đó đọc lại đoạn mã tương ứng.
 >
-> **Đang mở tính tới 2026-09-05:**
+> **Đang mở tính tới 2026-09-10.** Mục đã đóng vẫn nằm lại trong bảng, gạch
+> ngang tên — xoá đi thì người sau lại mở ra làm lần nữa.
+>
+> ⚠️ **Bảng này trôi khỏi thân tài liệu năm lần rồi** (G16, G17, G21, G18, G15 — cả năm đều
+> ghi *còn mở* trong khi mục tương ứng bên dưới ghi *đã đóng*). Sửa một mục ở
+> thân thì **phải sửa dòng của nó ở đây cùng lúc**; đây là bảng người đọc nhìn
+> trước tiên nên nó sai là cả tài liệu sai.
 >
 > | Mục | Vì sao còn mở |
 > |---|---|
-> | **G10** | Chặn ở backend — chưa có bảng cho việc gán danh mục mặc định vào nhóm |
-> | **G15** | Hoãn có chủ ý — bản ghi vừa hết hạn vừa hỏng đồng bộ |
-> | **G16** | ✅ Nguồn tự sinh đã đóng 2026-09-05 (backend nhận 5 danh mục vào bộ mặc định). Lệch ràng buộc với CSDL thì vẫn còn |
-> | **G17** | Danh sách rỗng ở lần vào đầu sau khởi động nguội — cần sửa ở **mọi** trang đọc theo tài khoản, không riêng mục tiêu |
-> | **G18** | Nhánh dự phòng của lịch sử tích luỹ còn so bằng tên — chặn ở backend |
+> | ~~**G10**~~ | ✅ **Đóng 2026-09-07** — mỗi tài khoản nay có bản sao riêng, việc gán nhóm nằm trong `Idgroup` của chính hàng ấy |
+> | ~~**G15**~~ | ✅ **Đóng 2026-09-07** — tab "Đã hết hạn" nay phân biệt "đã chốt sổ" với "hỏng, chưa bao giờ lên tới server". ⚠️ Dòng cũ ở đây ghi *hoãn có chủ ý*, mâu thuẫn với chính mục G15 bên dưới — **lần trôi thứ năm**; sửa 2026-09-10 |
+> | ~~**G16**~~ | ✅ **Đóng trọn 2026-09-07.** Nguồn tự sinh đóng 2026-09-05; **vế lệch ràng buộc với CSDL cũng đã đóng** — hai partial unique index mới đều có `WHERE "Delete_at" IS NULL`. ⚠️ Dòng cũ ở đây ghi vế ấy *vẫn còn*, mâu thuẫn với chính mục G16 bên dưới; sửa 2026-09-08. Lớp cầm máu `_uniqueConstraintPattern` **vẫn giữ, đừng gỡ** |
+> | ~~**G17**~~ | ✅ **Đóng 2026-09-07** — `context.watch<AuthBloc>()` + `key: ValueKey(idaccount)` trên `GoalPage`, có test canh. ⚠️ Dòng cũ ở đây ghi mục này còn mở, mâu thuẫn với chính mục G17 bên dưới; sửa 2026-09-08 |
+> | **G18** | ⏸️ **THU HẸP DẦN, không còn chặn ở backend.** Cột `transaction.Idgoal` đã có từ 2026-09-07 và client đẩy/đọc nó; thứ còn lại chỉ là **hàng cũ trên server mang `Idgoal = NULL`**, chúng nhận ID khi được đẩy lại. ⚠️ Dòng cũ ở đây ghi *chặn ở backend*, mâu thuẫn với chính mục G18 bên dưới — **lần trôi thứ tư**; sửa 2026-09-08 |
 > | **G19** | **Không phải lỗi** — ghi lại để người sau không "sửa" nhầm |
-> | **G21** | Cấu hình trích tự động **không theo người dùng sang máy khác** — chặn ở backend |
+> | **G23** | Bản sao danh mục chỉ đầy đủ khi bộ mặc định **cục bộ** đầy đủ — pull tăng dần, tự khỏi ở lượt sau |
+> | **G24** | Màu danh mục **không có cột** trên server — chặn ở backend |
+> | ~~**G21**~~ | ✅ **Đóng 2026-09-07** — backend đã có ba cột `auto_deposit_*`, client đẩy và kéo cả ba. ⚠️ Dòng cũ ở đây ghi *chặn ở backend*, mâu thuẫn với chính mục G21 bên dưới; sửa 2026-09-08. Còn đúng một khe hở hẹp: hai máy cùng mở đúng lúc tới kỳ |
 > | **G22** | **Không phải lỗi** — giờ trong mốc neo chỉ giữ được một chiều |
+> | **G25** | **Không phải lỗi** — hai máy cùng sắp lại thứ tự ưu tiên khi ngoại tuyến thì được một thứ tự trộn (2026-09-08) |
+> | **G26** | Hoãn có chủ ý — chưa có màn **duyệt giao dịch ngân hàng** cho sự kiện realtime trỏ tới; đây là một tính năng riêng, không phải phần còn thiếu của việc nối socket (2026-09-09) |
+> | **G27** | Hoãn có chủ ý — không còn cách nói "ví này **được phép âm**" sau khi loại `debt` bị bỏ; cần một cột mới ở cả hai đầu cho một tình huống CSDL hiện không có hàng nào (2026-09-09) |
+> | **G28** | ⛔ **Chặn ở backend** — cột `wallet."Status"` là `varchar(7)` trong khi chính `chk_wallet_status` cho phép `'Inactive'` (8 ký tự), nên **lưu trữ ví chỉ sống trên máy đã bấm** (2026-09-10) |
 >
 > **G20 đã đóng ngày 2026-09-05** — `depositToGoal` nhận `occurredAt` chặn hai
 > đầu; đã kiểm cả bằng test lẫn trên máy ảo Android.
@@ -37,7 +49,7 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 | **G9** | `conflict` = LWW đã phân xử, server thắng → `markSynced` để thoát vòng đẩy lại vô hạn. | `sync_failure_handling_test.dart` |
 | **G11** | `schemaVersion` 7 → 8 + migration `UPDATE categories SET is_local_only = 0, sync_status = 'pending' WHERE is_local_only = 1`. | `category_dao_test.dart` |
 | **G12** | `AuthInterceptor` phát `sessionExpiredStream` khi xoá token (chỉ khi thật sự có token để mất, tránh dội sự kiện); AuthBloc nghe kênh này song song với `SyncEngine`. | `test/core/api/auth_interceptor_test.dart`, `session_validation_test.dart` |
-| **G10** | ⛔ Không sửa được ở client — xem `docs/superpowers/backend/CAN-LAM/CATEGORY_GROUP_MEMBERSHIP_SYNC.md`. | — |
+| ~~**G10**~~ | ✅ **ĐÓNG 2026-09-07 — không cần backend làm gì.** Bảng ấy tồn tại chỉ vì danh mục mặc định là hàng toàn cục nên không ghi `Idgroup` riêng cho từng tài khoản được. Nay **mỗi tài khoản có bản sao riêng** của bộ mặc định, nên việc gán nhóm nằm gọn trong `Idgroup` của chính hàng họ sở hữu — cột đã có và đã đồng bộ. Client đã gỡ mọi lời gọi tới bảng phụ; bảng còn trong lược đồ cục bộ nhưng không nơi nào ghi vào nữa. Xem `docs/superpowers/specs/2026-09-07-per-account-default-categories-design.md`. | `default_category_seeder_test.dart` |
 
 
 ## 1. Việc đã cố ý hoãn
@@ -77,7 +89,7 @@ Chúng dùng `await statusStream.where((s) => s == SyncStatus.idle).first` kèm 
 
 ### ~~G3 — Lược đồ SQLite không có trạng thái thất bại~~ · ✅ ĐÃ SỬA (2026-09-03)
 
-**Hiện trạng:** `schemaVersion = 7`. Các bảng chỉ có `syncStatus` với đúng hai giá trị được ghi trong thực tế: `'pending'` và `'synced'`. Không có `syncRetryCount`, `syncError`, `syncBlockedUntil`. Một bản ghi lỗi vĩnh viễn vẫn nằm ở `pending` mãi mãi.
+**Hiện trạng LÚC PHÁT HIỆN (2026-09-02):** `schemaVersion = 7`. Các bảng chỉ có `syncStatus` với đúng hai giá trị được ghi trong thực tế: `'pending'` và `'synced'`. Không có `syncRetryCount`, `syncError`, `syncBlockedUntil`. Một bản ghi lỗi vĩnh viễn vẫn nằm ở `pending` mãi mãi.
 
 **Vì sao hoãn:** cần bump `schemaVersion` + viết migration chạy trên máy người dùng thật — rủi ro cao hơn hẳn các thay đổi thuần logic.
 
@@ -147,15 +159,19 @@ Test bao phủ: `category_create_test.dart` — *"Pull đọc cờ xoá của da
 
 ---
 
-### G10 — `CategoryGroupMemberships` không bao giờ được đồng bộ · ⛔ CHẶN Ở BACKEND
+### ~~G10 — `CategoryGroupMemberships` không bao giờ được đồng bộ~~ · ✅ ĐÓNG (2026-09-07)
 
-Quan hệ "danh mục mặc định thuộc nhóm nào" lưu trong bảng `CategoryGroupMemberships` nhưng **không có `SyncEntityType` tương ứng** (`sync_models.dart:11` chỉ có wallet/transaction/category/budget/bill/goal). Nghĩa là: nhóm và danh mục cá nhân giờ đã đồng bộ được, nhưng việc **gán danh mục mặc định vào nhóm** vẫn chỉ tồn tại trên một máy.
+Quan hệ "danh mục mặc định thuộc nhóm nào" lưu trong bảng `CategoryGroupMemberships`, và bảng ấy **không có `SyncEntityType` tương ứng** nên chỉ tồn tại trên một máy.
+
+**Cách đóng không phải là thêm entity.** Bảng phụ ấy tồn tại chỉ vì danh mục mặc định là hàng **toàn cục** — không ghi `Idgroup` riêng cho từng tài khoản lên một hàng dùng chung được. Ngày 2026-09-07 client đổi hướng: mỗi tài khoản có **bản sao riêng** của bộ mặc định, còn hàng toàn cục lui về làm khuôn. Từ đó việc gán nhóm nằm gọn trong `Idgroup` của chính hàng người dùng sở hữu — một cột đã có sẵn, đã nằm trong payload đẩy và đã được `upsertCategory` ghi thật.
+
+Client đã gỡ mọi lời gọi tới bảng phụ. Bảng vẫn còn trong lược đồ SQLite cục bộ vì bỏ một bảng Drift là một migration trên máy đang có dữ liệu, nhưng **không nơi nào ghi vào nó nữa**.
 
 ---
 
 ### ~~G11 — Không có migration đưa `isLocalOnly` của dữ liệu cũ về `false`~~ · ✅ ĐÃ SỬA (2026-09-03)
 
-`schemaVersion` vẫn là 7. Người dùng đã có nhóm danh mục tạo **trước** phiên 2026-09-02 sẽ mang `isLocalOnly = true`, và bộ lọc trong `getSyncableCategories` sẽ loại chúng khỏi batch đẩy — tức **nhóm cũ không bao giờ lên backend**, chỉ nhóm tạo mới mới lên.
+**Mô tả lúc phát hiện (2026-09-02):** `schemaVersion` khi ấy vẫn là 7. Người dùng đã có nhóm danh mục tạo **trước** phiên 2026-09-02 sẽ mang `isLocalOnly = true`, và bộ lọc trong `getSyncableCategories` sẽ loại chúng khỏi batch đẩy — tức **nhóm cũ không bao giờ lên backend**, chỉ nhóm tạo mới mới lên.
 
 **Cách sửa:** bump `schemaVersion` lên 8 + migration `UPDATE categories SET is_local_only = 0, sync_status = 'pending' WHERE is_local_only = 1`.
 
@@ -191,7 +207,7 @@ Bốn test canh vùng này ở `test/core/sync/sync_failure_handling_test.dart`,
 >
 > Cũng vá luôn một lỗ hổng có sẵn từ bản gốc: hàng seed `cat_*` **tự khớp tên với chính nó**, bị dùng làm đích trỏ tới rồi bị xoá mềm ngay sau — giao dịch kết thúc ở một danh mục đã xoá. Nay `_findOwned` loại chính hàng đó ra khỏi tập ứng viên.
 >
-> 8 test canh vùng này ở `test/features/category/data/personal_default_categories_test.dart`.
+> 6 test canh vùng này ở `test/features/category/data/personal_default_categories_test.dart` (còn 6 sau khi nhóm `foldIntoBackendDefaults` bị gỡ ngày 2026-09-07 — xem G16).
 >
 > **Máy đã lỡ tạo bản trùng cũng đã tự thoát được.** Bản vá trên ngăn phát sinh mới; bước khử trùng lặp sau pull dọn nốt hậu quả cũ — xem cuối mục này.
 
@@ -255,19 +271,45 @@ Xoá vật lý là ngoại lệ có chủ ý của quy tắc 5: hàng `pending` 
 
 ---
 
-### G15 — Bản ghi vừa hết hạn vừa hỏng đồng bộ thì không sửa được · ⏸️ HOÃN CÓ CHỦ Ý (2026-09-04)
+### G15 — Bản ghi vừa hết hạn vừa hỏng đồng bộ thì không sửa được · ✅ ĐÓNG (2026-09-07)
 
-Tab **"Đã hết hạn"** của trang ngân sách khoá cả sửa lẫn xoá — đúng yêu cầu: số liệu đã chốt sổ không được đổi về sau. Nhưng khoá đó không phân biệt "đã chốt sổ" với "hỏng, chưa bao giờ lên tới server".
+Tab **"Đã hết hạn"** của trang ngân sách khoá cả sửa lẫn xoá — đúng yêu cầu: số
+liệu đã chốt sổ không được đổi về sau. Nhưng khoá đó không phân biệt "đã chốt
+sổ" với "hỏng, chưa bao giờ lên tới server".
 
-Một ngân sách rơi vào **cả hai** trạng thái sẽ kẹt không lối thoát: nó không đẩy lên được (backend từ chối vĩnh viễn), và người dùng cũng không mở ra sửa hay xoá được. `SyncEngine` chặn nó theo thời gian nên hàng đợi đồng bộ vẫn thông — các thay đổi khác không bị kéo chậm — nhưng bản ghi đó nằm lại mãi.
+Một ngân sách rơi vào **cả hai** trạng thái kẹt không lối thoát: không đẩy lên
+được (backend từ chối vĩnh viễn), mà cũng không mở ra sửa hay xoá được. **Đã
+gặp thật** ngày 2026-09-04 với một ngân sách bị sửa thành `end = start`, vi phạm
+`chk_budget_end_after_start`; lối thoát duy nhất khi ấy là xoá dữ liệu site của
+trình duyệt rồi pull lại từ server.
 
-**Đã gặp thật** ngày 2026-09-04: một ngân sách bị sửa thành `end = start`, vi phạm `chk_budget_end_after_start`. Cách thoát duy nhất là xoá dữ liệu site của trình duyệt rồi pull lại từ server.
+**Đã sửa 2026-09-07** theo đúng hướng ghi sẵn ở đây: *khoá thao tác là để bảo
+vệ số liệu đã chốt, không phải để nhốt dữ liệu hỏng.*
 
-**Vì sao hoãn.** Người dùng cân nhắc và quyết định giữ nguyên: tab hết hạn là nền cho phần thống kê/báo cáo sẽ làm sau, nới khoá bây giờ sẽ phải tính lại khi làm tới đó.
+- Quy tắc gom về **một nơi**: `domain/budget_locking.dart`,
+  `budgetActionsLocked({expired, budget})`. Trước đó phép kiểm nằm rải **ba**
+  chỗ trong giao diện — chặn vuốt xoá, bỏ nút Sửa trên trang chi tiết, và (chỗ
+  thật sự quyết định) danh sách hết hạn dựng thẻ mà **không truyền** `onEdit`/
+  `onDelete`. Nới hai chỗ đầu mà quên chỗ thứ ba thì không có gì đổi cả.
+- `BudgetEntity` nay mang `syncError` (cột đã có sẵn trong bảng từ G3, chỉ là
+  chưa đưa lên tầng model) và `hasSyncError`.
+- Thẻ hỏng có dấu hiệu riêng — biểu tượng `cloud_off` kèm chữ "Chưa đồng bộ
+  được". **Không** nêu nguyên văn lỗi backend: nó là stack trace hoặc câu
+  tiếng Việt của server, cả hai đều không giúp người dùng làm gì.
+- Dòng thông báo đầu tab đổi theo: câu cũ "không sửa hay xoá" nay chỉ hiện khi
+  **không có** thẻ hỏng. Để nguyên là giao diện nói sai về chính nó — người
+  dùng thấy một thẻ sửa được ngay dưới dòng bảo không sửa được.
 
-**Bán kính rủi ro còn lại — hẹp.** Cần một bản ghi đồng thời hết hạn *và* có lỗi đẩy vĩnh viễn. Nguồn gây lỗi chính đã bị bịt cùng ngày: form không còn tạo ra được `end ≤ start` (ô ngày kết thúc chỉ đọc khi theo chu kỳ, và có phép kiểm thứ tự ngày cho "Ngày cụ thể"). Còn lại là các lỗi vĩnh viễn khác từ backend — `Ownership mismatch`, vi phạm ràng buộc khác, trùng khoá — vốn hiếm và thường đi kèm dữ liệu đã hỏng sẵn.
+**Yêu cầu gốc KHÔNG bị nới.** Ngân sách hết hạn và đồng bộ sạch vẫn khoá y như
+trước. Hai phép canh cho chiều ấy nằm cùng chỗ với phép canh cho ngoại lệ:
+`budget_locking_test.dart` (ca *"hết hạn và đồng bộ sạch thì khoá"*) và
+`budget_tabs_view_test.dart` (ca *"bản ghi SẠCH vẫn khoá, kể cả khi có thẻ
+hỏng"* — mở cả danh sách vì có **một** thẻ hỏng là bỏ luôn yêu cầu gốc mà không
+ai nhận ra).
 
-**Hướng sửa khi quay lại.** Bản ghi có `syncError` phải luôn mở sửa/xoá được, kể cả ở tab hết hạn, kèm dấu hiệu trên thẻ cho biết nó chưa đồng bộ được. Khoá thao tác là để bảo vệ số liệu đã chốt, không phải để nhốt dữ liệu hỏng.
+⚠️ Chuỗi `syncError` **rỗng** không tính là hỏng. Vài đường ghi xoá cột ấy về
+rỗng chứ không về `null`; coi rỗng là "đang hỏng" sẽ mở khoá cho **mọi** ngân
+sách hết hạn. Có test canh riêng ca này.
 
 ---
 
@@ -291,11 +333,28 @@ Và bản ghi đó không thoát ra được: `_classifyFailure` (`lib/core/sync
 
 > ⚠️ Đây là **lớp cầm máu, không phải bản vá gốc**. Bản ghi vẫn được tạo ra ở mỗi lần mở app, chỉ là không còn đẩy lại vô hạn.
 
-**Còn chờ backend:** thêm `WHERE "Delete_at" IS NULL` vào unique index — xem `CATEGORY_NAME_UNIQUENESS.md` mục 4.1 và mục 10 của `2026-09-04-ocr-classify-review.md`. Khi có, bản ghi bị chặn tự quay lại hàng đợi mà người dùng không phải làm gì.
+~~**Còn chờ backend:** thêm `WHERE "Delete_at" IS NULL` vào unique index~~ — ✅ **backend làm xong 2026-09-07**, xem đoạn cuối mục này. Hồ sơ: `CATEGORY_NAME_UNIQUENESS.md` mục 4.1 và mục 10 của `2026-09-04-ocr-classify-review.md`. Khi có, bản ghi bị chặn tự quay lại hàng đợi mà người dùng không phải làm gì.
+
+> ### ⚠️ Cập nhật 2026-09-07 — cách đóng đã đổi, nhưng G16 vẫn đóng
+>
+> `foldIntoBackendDefaults()` **đã bị gỡ**. Hướng đi đảo chiều: mỗi tài khoản nay
+> có **bản sao riêng** của toàn bộ bộ mặc định (`DefaultCategorySeeder`), còn
+> hàng toàn cục lui về làm khuôn và không hiện ra ở đâu. Để hàm gộp chạy song
+> song với bước sao chép là một vòng lặp huỷ lẫn nhau.
+>
+> **Vì sao G16 vẫn không quay lại:** luật tạo bản sao đếm **cả hàng đã xoá mềm**.
+> Người dùng xoá một danh mục thì hàng xoá mềm còn đó, và lượt seed sau nhìn thấy
+> nó nên **không tạo lại**. Ba chữ ấy là khác biệt **duy nhất** với `ensureMissing()`
+> — ai "dọn dẹp" chúng đi là tái hiện nguyên vẹn G16.
+>
+> Thiết kế: `docs/superpowers/specs/2026-09-07-per-account-default-categories-design.md`.
+>
+> Phần dưới giữ nguyên làm hồ sơ của chặng 2026-09-05.
 
 **Đóng ngày 2026-09-05 — bằng cách bỏ hẳn nguồn kích hoạt.** Câu hỏi mà `ensureMissing` không trả lời được ("chưa từng có" hay "người dùng đã cố tình xoá") nay **không cần trả lời nữa**: backend đã nhận đúng 5 danh mục ấy vào bộ mặc định của nó (`Create_by = 1`, `Is_default = true`), nên không tài khoản nào phải giữ bản riêng.
 
 `ensureMissing()` được thay bằng `foldIntoBackendDefaults()`: gộp bản riêng vào bản mặc định (dời tham chiếu ở cả `transactions`, `budgets`, `bills`) rồi **xoá mềm** bản riêng — và **không tạo mới gì cả**. Danh mục mặc định là toàn cục, không thuộc tài khoản nào, nên không còn gì để "mọc lại" ở mỗi lần mở app.
+
 
 Ba điều kiện dừng, vì gộp là thao tác phá huỷ:
 
@@ -305,50 +364,108 @@ Ba điều kiện dừng, vì gộp là thao tác phá huỷ:
 | Trùng tên nhưng **khác classify** | Không gộp. Quy tắc 7 không tính classify, nên một danh mục người dùng tự tạo có thể trùng tên mà khác loại; gộp nó là âm thầm đổi loại của mọi giao dịch bên trong |
 | Hàng của tài khoản khác | Không đụng. `getNamesInUse` trả cả hàng mặc định của mọi tài khoản nên phép lọc phải nằm ở chính chỗ tìm bản riêng |
 
-Test canh chừng: `test/features/category/data/personal_default_categories_test.dart`, nhóm `foldIntoBackendDefaults` — chín ca, phần lớn canh đúng câu hỏi *khi nào thì KHÔNG được gộp*.
+~~Test canh chừng: nhóm `foldIntoBackendDefaults` — chín ca.~~ **Nhóm ấy đã bị xoá cùng hàm, 2026-09-07.** Phép canh cho cơ chế hiện tại nằm ở `test/features/category/data/services/default_category_seeder_test.dart` — 13 ca, trong đó ca *"bản sao đã bị xoá mềm thì KHÔNG tạo lại"* chính là phép canh G16.
 
-⚠️ **Phần lệch ràng buộc với CSDL thì KHÔNG đóng.** `uq_category_owner_name_classify` vẫn không có `WHERE "Delete_at" IS NULL`, nên hàng đã xoá mềm vẫn giữ chỗ tên ở PostgreSQL trong khi client cho tạo lại (quy tắc 7). Người dùng xoá rồi tạo lại một danh mục **của chính họ** cùng tên vẫn nhận 23505. Khác biệt là nay nó chỉ xảy ra khi họ thật sự làm điều đó, chứ không tự sinh ở mỗi lần mở app. Lớp cầm máu `_uniqueConstraintPattern` vì thế **giữ nguyên**, đừng gỡ.
+✅ **Phần lệch ràng buộc với CSDL cũng đã đóng — 2026-09-07.** Trước đó `uq_category_owner_name_classify` không có `WHERE "Delete_at" IS NULL`, nên hàng đã xoá mềm vẫn giữ chỗ tên ở PostgreSQL trong khi client cho tạo lại (quy tắc 7): xoá rồi tạo lại một danh mục **của chính mình** cùng tên vẫn nhận 23505. Đợt migration 2026-09-07 thay nó bằng hai partial unique index **có** mệnh đề ấy — và bỏ luôn `Classify` khỏi khoá, đúng quy tắc 7. Đo trên CSDL thật cùng ngày.
+
+⚠️ Lớp cầm máu `_uniqueConstraintPattern` trong `_classifyFailure` **vẫn giữ, đừng gỡ.** Nó không còn phục vụ ca trên nữa, nhưng 23505 vẫn xảy ra được — hai người dùng khác nhau trùng tên danh mục mặc định, hay bất kỳ ràng buộc UNIQUE nào khác — và không có nó thì bản ghi hỏng quay lại bị đẩy ở mọi chu kỳ. Từ 2026-09-07 nhánh phân loại đi theo `code` của backend (`UNIQUE_VIOLATION`, `CATEGORY_NAME_DUPLICATE`), regex chỉ còn là đường dự phòng.
 
 ---
 
-### G17 — Danh sách mục tiêu rỗng ở lần vào đầu tiên sau khi khởi động nguội · ⏸️ HOÃN CÓ CHỦ Ý (2026-09-05)
+### G17 — Trang đọc theo tài khoản không đăng ký lại khi phiên tới muộn · ✅ ĐÓNG (2026-09-07)
 
 Tái hiện nhiều lần trên máy ảo. Vào Mục tiêu **ngay sau khi mở app nguội** thì
 danh sách rỗng dù CSDL có dữ liệu; thoát ra vào lại là thấy.
 
-Trang dựng trước khi `AuthBloc` khôi phục xong phiên, `currentAccountIdOrNull`
-trả `null`, rồi `?? 0` biến nó thành tài khoản 0 — và `watchGoals(0)` đương
-nhiên rỗng.
+**Nguyên nhân gốc — ghi chép cũ nói sai.** Bản ghi 2026-09-05 đổ cho `?? 0`.
+Nhưng `?? 0` chỉ làm lỗi **im lặng** thay vì nổ; bỏ nó đi thì trang hiện thông
+báo lỗi thay vì danh sách rỗng — vẫn hỏng, chỉ ồn ào hơn.
 
-**Vì sao `?? 0` vẫn đúng:** đây là bài học G4. Đường ĐỌC không được mặc định về
-`1` (tài khoản admin thật), và `0` là "rỗng, không phải dữ liệu của ai". Sửa
-bằng cách đổi hằng số là đi ngược lại chính bài học ấy.
+Gốc thật: `GoalPage` đọc mã tài khoản **đúng một lần**, bên trong
+`BlocProvider.create`. `currentAccountIdOrNull` dùng `context.read<AuthBloc>()`
+— `read` **không đăng ký** gì cả — và `create` chỉ chạy một lần trong đời của
+provider. Trang dựng trước khi phiên khôi phục xong sẽ đăng ký `watchGoals(0)`
+rồi **giữ nguyên đăng ký ấy mãi**. Thoát ra vào lại thì provider mới được dựng,
+lúc đó phiên đã sẵn sàng — đúng cách người dùng vô tình "chữa" nó.
 
-**Vì sao hoãn:** cách sửa đúng là thêm một trạng thái *"đang chờ phiên"* — khác
-hẳn *"không có dữ liệu"* — và nó phải làm ở **mọi trang đọc theo tài khoản**,
-không riêng mục tiêu (`bill_page`, `budget`, `wallet_list_page` đều cùng dạng).
-Sửa lẻ một trang là để lại một kiểu xử lý thứ hai cho cùng một tình huống.
+`home_page` và `transaction_page` không mắc lỗi này vì chúng dùng
+`context.watch<AuthBloc>()`.
 
-**Cách làm:** dựng test tái hiện trước — bơm `AuthBloc` phát `AuthSuccess` trễ
-vài nhịp và khẳng định trang không hiện trạng thái rỗng trong lúc chờ.
+**Đã sửa cho trang Mục tiêu (2026-09-07):** `context.watch<AuthBloc>()` để
+build chạy lại khi phiên tới, cộng `key: ValueKey(idaccount)` trên
+`BlocProvider` để `create` chạy lần nữa với đúng tài khoản. Thiếu khoá thì
+`watch` chỉ khiến build chạy lại mà cubit vẫn giữ đăng ký cũ — hai nửa phải đi
+cùng nhau. Test canh: `goal_page_cold_start_test.dart`, đỏ đúng chỗ trước bản
+vá (`Expected: contains <10>, Actual: [0]`).
+
+**Đã kiểm và sửa cả bốn trang đọc theo tài khoản.** Mỗi trang có test riêng,
+và mỗi test đều **đỏ trước** ở đúng assertion "phiên tới rồi mà trang chưa bao
+giờ hỏi lại":
+
+| Trang | Hỏng vì | Bằng chứng đỏ | Bản vá |
+|---|---|---|---|
+| `goal_page` | `currentAccountIdOrNull` + `BlocProvider.create` (chạy một lần) | `Actual: [0]` | `watch` + `ValueKey` |
+| `budget_page` | y hệt | `Actual: []` ở assertion thứ hai | `watch` + `ValueKey` |
+| `wallet_list_page` | y hệt, **cộng** bản chép tay `int.tryParse(user?.id ?? '') ?? 0` | `Actual: [0]` | `watch` + `ValueKey`, và gọi `currentAccountIdOrNull` thay bản chép tay |
+| `bill_page` | **Khác:** nạp trong `addPostFrameCallback` của `initState` với `if (accountId == null) return;` | `Actual: []` | `watch` + `_thuNap()` gọi từ `build`, hoãn việc phát sự kiện sang `addPostFrameCallback` |
+
+Ba trang đầu dùng chung bản vá `context.watch<AuthBloc>()` + `key:
+ValueKey(idaccount)`. **Hai nửa phải đi cùng nhau:** thiếu `watch` thì build
+không chạy lại, thiếu khoá thì build chạy lại mà cubit vẫn giữ đăng ký cũ.
+
+`bill_page` không dùng được khoá vì nó **không có `BlocProvider`** — `BillBloc`
+do router cung cấp. Ở đó bản vá là một hàm `_thuNap()` gọi từ `build`, có chốt
+`_daNapCho` để chỉ nạp một lần cho mỗi mã tài khoản, và **hoãn việc phát sự
+kiện** sang `addPostFrameCallback` — phát sự kiện bloc trong lúc dựng là lỗi
+khung.
+
+**Việc gỡ được kèm theo:** `wallet_list_page` là bản chép tay **cuối cùng** của
+phép suy mã tài khoản mà G4 sinh ra để xoá bỏ. Nay cả bốn trang đều đi qua
+`currentAccountIdOrNull`.
+
+**Còn lại, cố ý chưa làm:** một trạng thái *"đang chờ phiên"* — khác hẳn *"không
+có dữ liệu"* — dùng chung cho mọi trang. Bản vá hiện tại làm trang **tự khỏi**,
+nhưng trong vài nhịp đầu người dùng vẫn thấy màn rỗng chứ không thấy "đang tải".
+Đó là việc giao diện, tách riêng được, và không còn lỗi nào chờ nó.
+
+⚠️ **`?? 0` giữ nguyên, có chủ ý.** Đây là bài học G4: đường ĐỌC không được
+mặc định về `1` (tài khoản admin thật), và `0` là "rỗng, không phải dữ liệu
+của ai". Nay nó chỉ còn là trạng thái **tạm** trong vài nhịp đầu, vì khoá
+`ValueKey` kéo trang về đúng tài khoản ngay khi phiên tới.
 
 ---
 
-### G18 — Nhánh dự phòng của lịch sử tích luỹ vẫn so bằng TÊN mục tiêu · ⏸️ HOÃN CÓ CHỦ Ý (2026-09-05)
+### G18 — Nhánh dự phòng của lịch sử tích luỹ vẫn so bằng TÊN mục tiêu · ⏸️ THU HẸP DẦN (2026-09-07)
 
-`TransactionDao.watchByGoal` có hai nhánh: nối bằng `goal_id` cho hàng mới, và
-`note LIKE '%Tích lũy mục tiêu: <tên>%'` cho hàng cũ. Nhánh thứ hai mang đúng
-khuyết điểm mà `goal_id` sinh ra để chữa — mục tiêu tên `"Mua"` vẫn nuốt lịch sử
-của `"Mua xe"`.
+`TransactionDao.watchByGoal` có hai nhánh: nối bằng `goal_id` cho hàng có ID, và
+`note LIKE '%Tích lũy mục tiêu: <tên>%'` cho hàng không có. Nhánh thứ hai mang
+đúng khuyết điểm mà `goal_id` sinh ra để chữa — mục tiêu tên `"Mua"` vẫn nuốt
+lịch sử của `"Mua xe"`.
 
-**Vì sao giữ:** bỏ đi thì lịch sử tích luỹ **đã có** biến mất khỏi màn hình. Hai
-loại hàng không bao giờ mang `goal_id`: hàng do bản app trước schema v14 tạo, và
-**mọi hàng kéo về từ server** — vì cột ấy là cục bộ.
+**Đã đổi 2026-09-07:** backend có cột `transaction.Idgoal`, và client nay **đẩy**
+`idgoal` trong payload giao dịch **lẫn đọc lại** ở nhánh pull. Nguồn sinh ra hàng
+thiếu ID đã tắt: từ nay mọi hàng đi qua đồng bộ đều mang liên kết.
 
-**Vì sao chưa dứt điểm được:** loại thứ nhất tắt dần theo thời gian, loại thứ hai
-thì **không** — cứ đăng nhập máy mới là lại đầy hàng thiếu ID. Chỉ khi backend
-có cột `Idgoal` thì nhánh này mới bỏ được. Xem
-`docs/superpowers/backend/CAN-LAM/2026-09-05-backend-transaction-goal-id.md`.
+**Vì sao vẫn chưa gỡ được nhánh so tên:** hàng **đã nằm sẵn** trên server đều
+mang `Idgoal = NULL`, vì chúng được đẩy lên trước khi client biết gửi trường này.
+Chúng chỉ nhận ID khi được đẩy lại — tức khi người dùng sửa gì đó, hoặc không bao
+giờ. Bỏ nhánh so tên bây giờ là lịch sử tích luỹ **đã có** biến mất khỏi màn hình.
+Nhánh ấy nay **teo dần** thay vì đứng yên; gỡ được khi không còn hàng nào
+`goal_id IS NULL` mà ghi chú khớp mẫu.
+
+**Đã đo trên máy thật** (`emulator-5554`, tài khoản 10, 2026-09-07): trước bản vá,
+cả **12** giao dịch tích luỹ trên server đều `Idgoal = NULL` — chính con số ấy là
+thứ nhánh `Value.absent()` bảo vệ. Sau bản vá, gửi thêm 1.000 đ vào `MuaXe` sinh
+ra hàng **đầu tiên** có `Idgoal`, và giá trị khớp chính xác `idgoal` của mục tiêu
+(`dc2656fa-…`); `current_amount` đi từ 1.100.000 lên 1.101.000. Mười hai hàng cũ
+vẫn `NULL` — đúng như mô tả ở trên, chúng chỉ nhận ID khi được đẩy lại.
+
+⚠️ **Nhánh pull dùng `Value.absent()`, KHÔNG ghi đè null.** Server im lặng về
+`idgoal` nghĩa là *chưa biết*, không phải *hãy xoá*. Ghi đè thẳng thì đúng ở chu
+kỳ đồng bộ đầu tiên sau bản vá, mọi liên kết cục bộ đang có bị xoá sạch và toàn
+bộ lịch sử rơi xuống nhánh so tên — tái hiện nguyên vẹn G18 mà không có lỗi nào
+báo ra. Đã dựng bản ngây thơ để xem test có bắt được không: **có**, và đó là
+`'hàng server KHÔNG có idgoal thì liên kết cục bộ phải còn nguyên'`.
 
 ⚠️ Điều kiện `goal_id IS NULL` ở nhánh dự phòng là thứ chặn không cho một hàng
 đã có chủ bị mục tiêu khác nhận vơ. **Đừng bỏ nó khi dọn dẹp.**
@@ -412,22 +529,35 @@ lập kịch bản ở **tương lai** nên vỡ ngay khi phép chặn đầu tr
 
 ---
 
-### G21 — Cấu hình trích tự động không theo người dùng sang máy khác · ⏸️ CHẶN Ở BACKEND (2026-09-05)
+### G21 — Cấu hình trích tự động không theo người dùng sang máy khác · ✅ ĐÓNG (2026-09-07)
 
-**Hiện trạng:** ba cột `auto_deposit_amount`, `auto_deposit_wallet_id`,
-`auto_deposit_last_run` là **cục bộ** (schema v15). Bật trích trên điện thoại
-rồi đăng nhập ở máy khác thì máy kia không trích gì cả, và không có gì trên màn
-hình nói vì sao. Chu kỳ và **mốc neo** thì có đồng bộ (`cycle_take_money`,
-`time_cycle_take_money`), nên máy mới vẫn hiện đúng nhịp kế hoạch trong hộp dự
-báo — càng dễ hiểu nhầm là nó đang chạy.
+**Đã đóng.** Backend thêm ba cột `auto_deposit_amount`,
+`auto_deposit_wallet_id`, `auto_deposit_last_run` vào bảng `goal` trong đợt
+2026-09-07; client đẩy và kéo **cả ba cùng một lúc**. Bật trích ở máy A rồi
+đăng nhập máy B thì B nhận đủ cấu hình **lẫn mốc kỳ gần nhất**, nên nó không
+trích lại kỳ mà A vừa trích xong.
 
-**Vì sao chưa đẩy lên:** bảng `goal` phía backend chưa có ba cột ấy, và quy tắc
-4 trong `CLAUDE.md` cấm thêm trường vào payload trước khi backend sẵn sàng.
+**Đã đo trên máy thật, không chỉ bằng test** (`emulator-5554`, tài khoản 10,
+2026-09-07): mục tiêu `MuaXe` vốn đã bật trích 100.000 đ/tháng từ ví `test`
+nhưng ba cột trên server vẫn `null` — đúng vì trước bản vá chúng không bao giờ
+được đẩy. Bấm Lưu một lần là cả ba lên tới PostgreSQL: `auto_deposit_amount`
+= 100000, `auto_deposit_wallet_id` = ví **`test` (Cash)**, `auto_deposit_last_run`
+có giá trị. Mục tiêu `MuaDT` (không bật trích) vẫn `null` cả ba, nên không phải
+ghi bừa. Đáng chú ý nhất: ví nguồn khác hẳn `idwallet` = ví **`Tiết kiệm`
+(Saving)** là ví NHẬN — gửi nhầm một trong hai thì app sẽ trích tiền từ đúng cái
+ví lẽ ra phải nhận, và không có gì báo lỗi.
 
-⚠️ **Đừng đẩy một phần.** Nếu chỉ `amount` và `wallet_id` đồng bộ mà bỏ
-`last_run`, mỗi máy giữ một mốc riêng và **cả hai cùng chuyển tiền** khi tới kỳ.
-Hiện trạng (máy thứ hai không trích gì) vẫn tốt hơn hẳn. Chi tiết và các bước
-phải làm ở `docs/superpowers/backend/CAN-LAM/2026-09-05-backend-goal-auto-deposit.md`.
+⚠️ **Ba cột vẫn phải đi cùng nhau.** `auto_deposit_last_run` là cột chặn trích
+hai lần. Ai đó "dọn dẹp" payload và bỏ nó ra thì mỗi máy giữ một mốc riêng và
+**cả hai cùng chuyển tiền** — tệ hơn hẳn hiện trạng cũ, nơi máy thứ hai đơn
+giản là không trích gì. `sync_payload_contract_test.dart` khoá bộ khoá của
+payload mục tiêu (21 trường) nên nó bắt được ngay.
+
+**Khe hở còn lại, chấp nhận được:** hai máy cùng mở, cùng tới kỳ, cùng chưa kịp
+kéo `last_run` của nhau thì vẫn trích hai lần. Hẹp vì trích chỉ chạy khi app mở,
+và `Current_amount` là giá trị tuyệt đối nên LWW hội tụ chứ không cộng dồn sai.
+Vá triệt để cần một khoá phía máy chủ trên `(Idgoal, kỳ trích)` — phụ thuộc
+`transaction.Idgoal`, cột nay đã có nhưng client chưa đẩy (xem **G18**).
 
 ---
 
@@ -454,13 +584,206 @@ gọi, nên thêm một trigger nền chỉ là gọi `chay()` thêm một chỗ
 
 ---
 
+### G23 — Bản sao danh mục chỉ đầy đủ khi bộ mặc định CỤC BỘ đầy đủ · ⏸️ CHẤP NHẬN ĐƯỢC (2026-09-07)
+
+`DefaultCategorySeeder` sao chép từ những hàng mặc định **đã có trên máy này**
+(`getBackendDefaults()` đọc SQLite, không gọi mạng). Mà pull là **tăng dần theo
+`since`**: hàng nào không đổi kể từ mốc kiểm cuối thì không bao giờ được gửi lại.
+
+Hệ quả: một máy có thể chỉ biết một phần bộ mặc định của server, và bản sao thiếu
+theo. **Đo được 2026-09-07 trên `emulator-5554`:** server có **18** hàng mặc định,
+máy ấy tạo được **13** bản sao (hai trong số còn lại bị chặn đúng luật vì tài
+khoản từng có bản riêng cùng tên; ba cái còn lại đơn giản là chưa từng về máy).
+
+**Vì sao không sửa ngay:** bước seed chạy sau **mọi** lần pull và luỹ đẳng, nên
+khi một hàng mặc định thật sự về máy thì bản sao được tạo ở lượt kế tiếp. Người
+dùng không mất gì — họ chỉ có ít danh mục dựng sẵn hơn, và tự thêm được.
+
+**Nếu muốn dứt điểm:** cần một lần pull đầy đủ bộ mặc định (bỏ `since` cho riêng
+nhánh `is_default = true`) ở lần đăng nhập đầu. Đó là thay đổi ở đường đồng bộ,
+không phải ở bước seed — đừng vá bằng cách cho seeder gọi mạng.
+
+---
+
+### G24 — Màu danh mục không có chỗ trên server · ⛔ CHẶN Ở BACKEND (2026-09-07)
+
+Bảng `category` phía PostgreSQL có **đúng 12 cột** và không cột nào cho màu.
+Client vẫn đẩy khoá `colour` lên ở mỗi lần đồng bộ, backend **bỏ qua im lặng** —
+đúng kiểu hỏng mà quy tắc 4 của `CLAUDE.md` mô tả, lần này còn khó thấy hơn vì
+tên trường không sai, chỉ là không có chỗ nào để ghi.
+
+Hệ quả: màu người dùng chọn **chỉ sống trên máy đã chọn**. Đăng nhập máy khác
+hoặc cài lại app là mất, không lỗi, không log.
+
+Lỗi này **có sẵn từ trước**, không do thay đổi 2026-09-07 sinh ra — nhưng bán
+kính vừa rộng ra hẳn: trước đây người dùng gần như không đổi màu được gì vì hàng
+mặc định là toàn cục và bị chặn sửa; nay họ sở hữu cả bộ và sửa được từng cái.
+
+**Client không sửa được** — không có cột thì không có chỗ ghi. Tài liệu xin:
+`docs/superpowers/backend/CAN-LAM/CATEGORY_COLOUR_COLUMN.md`.
+
+---
+
+### G25 — Hai máy cùng sắp lại thứ tự ưu tiên khi ngoại tuyến thì được một thứ tự trộn · ✅ CỐ Ý (2026-09-08)
+
+Thứ tự ưu tiên mục tiêu (schema v19) đồng bộ qua cột `Priority`, và phép phân
+xử của dự án là **LWW theo từng hàng**. Sắp lại danh sách thì lại là một thao
+tác trên **cả danh sách**. Hai thứ ấy không khớp nhau.
+
+Máy A kéo `MuaXe` lên đầu, máy B kéo `MuaDT` lên đầu, cả hai đang ngoại tuyến.
+Khi cùng đẩy lên, mỗi hàng thắng riêng theo `Update_at` của nó — kết quả có thể
+là một thứ tự **không giống lần sắp nào**. Không hàng nào sai, không có lỗi,
+không có gì trên màn hình nói ra điều đó.
+
+**Vì sao không vá:**
+
+- Vá triệt để cần khoá thứ tự kiểu **phân số hoặc chuỗi** (`"a0"`, `"a0V"`, lối
+  của LexoRank) thay cho số nguyên. Đó là đổi cả kiểu dữ liệu ở hai đầu, cho
+  một tình huống cần hai máy cùng hoạt động và cùng ngoại tuyến.
+- Hậu quả tệ nhất là người dùng **kéo lại vài mục tiêu**. Không mất tiền, không
+  mất bản ghi, không kẹt hàng đợi đẩy — khác hẳn G21, nơi cấu hình trích tự
+  động không sang máy khác thì tiền không được chuyển mà cũng không ai biết.
+- FlowMoney gần như luôn chỉ có một máy hoạt động cho mỗi tài khoản.
+
+**Bán kính:** `uuTienSauKhiKeo`, `GoalRepositoryImpl.capNhatUuTien`, và nhánh
+`priority` của `sync_engine.dart`. Ghi ở đây để người sau không tưởng chỗ này
+bị bỏ sót — nó đã được cân nhắc, và lý lẽ nằm ở
+`docs/superpowers/backend/DA-XONG/2026-09-05-backend-goal-priority.md` mục 5.
+
+> ⚠️ Đừng nhầm với một lỗi **khác** cũng thuộc vùng mục tiêu, nay **đã sửa**
+> (2026-09-08): `GoalDetailPage` không nghe dòng dữ liệu (bẫy 4.5
+> `GOAL_FEATURE.md`), nên đồng bộ kéo về một thay đổi của mục tiêu **đang mở**
+> thì màn hình vẫn hiện số cũ. Bán kính của nó vừa rộng ra vì `priority` nay
+> cũng đi qua đường đồng bộ. Đó là lỗi **sửa được ở client**, không phải một
+> đánh đổi — nên nó không có mục G nào và nằm trong danh sách việc phải làm.
+
+---
+
+### G26 — Không có màn "Giao dịch chờ duyệt" cho giao dịch ngân hàng về · ✅ CỐ Ý (2026-09-09)
+
+Khi nối Socket.io, client bắt được sự kiện `bank_transaction.incoming` và hiện
+một toast. Nhưng nó **không** có chỗ nào để người dùng *duyệt* giao dịch ấy —
+gán danh mục, xác nhận hoặc từ chối.
+
+Backend đã có sẵn cả ba endpoint (`api/bank.routes.js`):
+
+- `GET  /api/bank/pending-transactions`
+- `POST /api/bank/confirm-transaction`
+- `POST /api/bank/reject-transaction`
+
+**Vì sao hoãn:** đây là **một tính năng riêng**, không phải phần còn thiếu của
+việc nối socket. Nó kéo theo cả một luồng liên kết ngân hàng (`register-account`,
+`link-url`, WebView của SePay), một màn danh sách, và một khái niệm mới trong
+giao diện — "giao dịch chưa được duyệt" — mà SQLite cục bộ hiện **không phân
+biệt được**: cột `status` và `provider` có trong bảng nhưng **không nằm trong
+hợp đồng đồng bộ theo chiều nào cả** (quy tắc 4 `CLAUDE.md`), nên một giao dịch
+`Pending` kéo về qua `/sync/pull` trông y hệt một giao dịch bình thường.
+
+**Bán kính nếu làm:** thêm `status`/`provider` vào hợp đồng đồng bộ (và do đó
+vào `sync_payload_contract_test.dart`), một màn hình mới, và một badge đếm ở
+tab Giao dịch. ⚠️ **Phải lên Stitch trước** — đây là màn hình mới, chưa có
+thiết kế nào.
+
+**Không chặn gì đang chạy.** Kênh realtime vẫn có ích mà không cần nó: mọi sự
+kiện đều đánh thức đồng bộ, nên giao dịch ngân hàng vẫn hiện ra trong danh sách
+sau vài giây thay vì sau 15 phút.
+
+---
+
+### G27 — Không còn cách nào nói "ví này được phép âm" · ⏸️ HOÃN CÓ CHỦ Ý (2026-09-09)
+
+Từ 2026-09-07, ví loại `debt` mang số dư âm **không** sinh cảnh báo: âm là đúng
+bản chất của nó, và trước đó nó bị nhắc mỗi ngày cho tới khi trả hết nợ — đúng
+loại nhiễu khiến người dùng tắt cả nhóm thông báo.
+
+Ngày 2026-09-09 loại ví thu về ba (`WalletType`: `cash | bank | saving`) vì
+`ewallet` và `debt` vỡ `chk_wallet_type` của PostgreSQL và làm ví **kẹt hàng
+đợi đẩy vĩnh viễn**. Ví cũ chuyển thành `bank`, và chốt kia mất chỗ bám: không
+còn tín hiệu nào để phân biệt "âm vì đang nợ" với "âm vì ghi nhầm".
+
+**Hệ quả:** ai từng theo dõi thẻ tín dụng bằng ví `debt` nay được nhắc "ví âm"
+mỗi ngày trở lại.
+
+**Vì sao hoãn:** chữa đúng cần một khái niệm **mới** — một cờ "ví được phép âm"
+trên bảng `wallets` — chứ không phải khôi phục chuỗi `'debt'` đã chết. Cờ ấy là
+cột mới ở **cả hai đầu** (client + PostgreSQL, tức một tài liệu `CAN-LAM` nữa),
+cho một tình huống mà CSDL hiện **không có hàng nào**: đo 2026-09-09, server chỉ
+có ví `Cash` (3) và `Saving` (2).
+
+**Bán kính nếu làm:** cột mới trên `wallets` + hợp đồng đồng bộ
+(`sync_payload_contract_test.dart`), một công tắc ở trang sửa ví, và khôi phục
+hai nhánh loại trừ trong `_walletCandidates`. Hai test ở
+`notification_rules_goal_wallet_test.dart` đã ghi lại chiều cũ lẫn chiều mới —
+đọc chúng trước khi làm.
+
+---
+
+### G28 — Lưu trữ ví chỉ sống trên máy đã bấm · ⛔ CHẶN Ở BACKEND (2026-09-10)
+
+Tính năng **lưu trữ ví** (2026-09-10) ghi trạng thái vào cột `wallets.status`
+của SQLite. Cột cùng tên đã có sẵn ở PostgreSQL và `upsertWallet` phía backend
+đã xử lý nó ở cả nhánh tạo lẫn nhánh cập nhật — nên nhìn qua thì đây là thứ đẩy
+lên được ngay. Nó không.
+
+Lược đồ **tự mâu thuẫn ở đúng cột ấy**, hai phép đo trên cùng một cột:
+
+```
+chk_wallet_status => CHECK (("Status")::text = ANY (ARRAY['Active','Inactive']))
+Status            => character varying(7)
+```
+
+CHECK tuyên bố `'Inactive'` hợp lệ; kiểu cột không chứa nổi nó — chuỗi ấy dài
+**8 ký tự**. Không giá trị nào vừa **cả hai** ngoài `'Active'`, nên trên thực tế
+cột này là một **hằng số** chứ không phải một trạng thái.
+
+Bản đầu của client có đẩy `status` lên, và trên máy ảo nó **kẹt hàng đợi đẩy**:
+backend trả lỗi ràng buộc, bản ghi quay lại hàng đợi và thử lại ở mọi chu kỳ,
+kéo chậm cả hàng đợi. Đây là điều `flutter test` **không** bắt được — hợp đồng
+đồng bộ được canh bằng adapter giả, không bằng CSDL thật.
+
+**Vì sao không vá ở client:** không có chỗ ghi thì không có cách ghi. Cột được
+gỡ khỏi **cả hai** chiều của đồng bộ, cùng diện với `bills.autoPayEnabled` và
+`bills.anchorDay`. Chiều **kéo về** phải im lặng cùng lúc chứ không chỉ chiều
+đẩy: server luôn trả `'Active'` cho mọi ví — nó chưa bao giờ nhận được giá trị
+nào khác — nên một bản chỉ gỡ chiều đẩy sẽ khiến ví vừa lưu trữ **tự bỏ lưu
+trữ** sau đúng một chu kỳ đồng bộ, im lặng. Có test riêng canh ca ấy, và nó gửi
+`'status': 'Active'` chứ không gửi payload thiếu khoá, vì dạng thiếu khoá không
+phân biệt được hai cách cài đặt.
+
+**Hệ quả:** hai máy cùng một tài khoản thấy khác nhau, và người dùng không được
+báo gì. Cùng hạng với `bill.Auto_pay` nhưng **nhẹ hơn**: lưu trữ ví không tự
+tiêu tiền của ai, chỉ làm một ví hiện lại ở máy chưa bấm.
+
+**Bán kính khi backend nới cột:** một dòng `ALTER TABLE` (không cần đụng CHECK —
+nó đã cho phép đúng hai giá trị cần thiết), rồi client mở lại **ba chỗ** — nhánh
+đẩy và nhánh kéo về của `sync_engine.dart`, cộng `walletForPush` trong
+`sync_payload_normalizer.dart` — và cập nhật `sync_payload_contract_test.dart`
+cùng lúc (payload đẩy ví **12 → 13** trường). Cả ba chỗ đều còn nguyên chú thích
+chỉ ngược về tài liệu xin:
+`docs/superpowers/backend/CAN-LAM/WALLET_STATUS_COLUMN_WIDTH.md`.
+
+`WalletStatus.khoaGuiLen` (`'Active'`/`'Inactive'`) vẫn ở lại và vẫn được
+`wallet_status_test.dart` canh, đúng để ngày nối lại chỉ tốn một dòng — **đừng
+đọc nó là mã chết bỏ quên**.
+
+⚠️ **CSDL dev trên máy người dùng đang lệch khỏi lược đồ chuẩn.** Ngày
+2026-09-10 cột ấy đã bị đổi sang `varchar(16)` **ngoài quy trình** — tôi hiểu
+nhầm một câu duyệt thành cho phép sửa backend và đã chạy `prisma migrate
+deploy`. Hai tệp trong `src/Backend` đã trả về nguyên trạng; CSDL thì chưa,
+vì môi trường chặn mọi lệnh đổi lược đồ kể cả lệnh hoàn tác. Hệ quả cần biết:
+**trên riêng máy ấy, đẩy `'Inactive'` lên sẽ KHÔNG còn lỗi** — nên đừng dùng
+nó để kết luận rằng G28 đã tự khỏi. Lệnh hoàn tác và cách đo nằm ở mục **3b**
+của `CAN-LAM/WALLET_STATUS_COLUMN_WIDTH.md`.
+
+---
+
 ## 2. Vấn đề đã biết nhưng thuộc về Backend
 
 Xem hai tài liệu riêng trong `docs/superpowers/backend/`:
 
 - **`SESSION_VALIDITY_FINDINGS.md`** — token của tài khoản đã xoá vẫn dùng được; `/auth/me` không chạm CSDL; `/sync/push` luôn trả HTTP 200.
 - **`CATEGORY_CLASSIFY_ALIGNMENT.md`** — giá trị `Vay/nợ` (tài liệu) lệch với `Vay/no` (CSDL, seed, client).
-- **`CATEGORY_GROUP_MEMBERSHIP_SYNC.md`** — G10: backend chưa có bảng/entity cho việc gán danh mục **mặc định** vào nhóm, nên quan hệ đó chỉ tồn tại trên một máy.
+- ~~**`CATEGORY_GROUP_MEMBERSHIP_SYNC.md`**~~ — G10 đã **đóng 2026-09-07**; backend không phải làm gì.
 - **`2026-09-05-backend-goal-auto-deposit.md`** — G21: ba cột cấu hình trích tiền tự động chưa có chỗ chứa ở backend. **Ba cột phải lên cùng lúc**, đẩy một phần là hai máy cùng trích một kỳ.
 - **`CATEGORY_KEYWORD_SYNC.md`** — từ khoá phân loại tồn tại ở hai kho độc lập, không có đường nối; kèm một lỗ hổng phân quyền trong `POST /api/ai/classify/feedback`.
 - **`CATEGORY_NAME_UNIQUENESS.md`** — hai unique index của `category` đang khác quy tắc nghiệp vụ theo cả hai chiều; client đã thi hành đúng quy tắc, CSDL thì chưa.
@@ -473,7 +796,7 @@ Client **không** phụ thuộc vào việc backend có sửa hay không.
 
 ## 3. Lưu ý về kiểm thử
 
-Trạng thái hiện tại (đã chạy thật, không phải đếm tay): `flutter test` toàn bộ **180/180 pass** trong ~10 giây, trên **27 file test / 6859 dòng**. Trước phiên 2026-09-02 là 56 pass / 9 fail và mất hơn 10 phút (một test treo tới timeout).
+Trạng thái hiện tại (đã chạy thật, không phải đếm tay, đo 2026-09-08): `flutter test` toàn bộ **1529/1529 pass** trong ~75 giây, trên **144 file test / 33.892 dòng**. Trước phiên 2026-09-02 là 56 pass / 9 fail và mất hơn 10 phút (một test treo tới timeout); mốc 180 pass / 27 file ghi ở đây trước đó là con số **cuối phiên 2026-09-03** và đã lạc hậu năm ngày.
 
 > ⚠️ **`.gitignore` dòng 77 có `test/`** — luật này khớp mọi thư mục tên `test` ở mọi cấp, và **đã tồn tại từ trước** phiên 2026-09-02 (kiểm chứng: `git diff .gitignore` chỉ thêm đúng một dòng `src/Backend/scripts/seed_roles.js`).
 >
@@ -496,7 +819,7 @@ Trạng thái hiện tại (đã chạy thật, không phải đếm tay): `flut
 ### Vùng chưa có test nào
 
 - ~~`lib/core/api/interceptors/auth_interceptor.dart`~~ — nay đã có `test/core/api/auth_interceptor_test.dart` (3 test, phiên 2026-09-03).
-- 3 feature không có test và cũng không được import từ test: **analytics**, **profile**, **ai_chat**. (**budget** đã có 34 test từ 2026-09-03; **home** có `home_budget_card_test.dart` từ 2026-09-06; **notification** có 8 tệp test.)
+- ~~3 feature không có test~~ → nay còn **hai**: **profile**, **ai_chat** (đo lại 2026-09-08 bằng `find`/`flutter test`, con số cũ ở đây đã lạc hậu nhiều đợt). **analytics** có 4 tệp / **61** test từ 2026-09-08 (lát 2a **và 2b** — `docs/ANALYTICS_FEATURE.md`); **budget** 24 tệp; **home** 2 tệp; **notification** 20 tệp trong `test/core/notification/` + `test/features/notification/` (cộng 3 tệp liên quan nằm chỗ khác).
 
 ---
 

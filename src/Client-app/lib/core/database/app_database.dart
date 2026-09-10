@@ -56,7 +56,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 17;
+  int get schemaVersion => 20;
 
   @override
   MigrationStrategy get migration {
@@ -342,6 +342,70 @@ class AppDatabase extends _$AppDatabase {
           // "đã đồng ý" từ một công tắc bật sẵn là chuyển tiền dựa trên một
           // lựa chọn người dùng chưa từng đưa ra — cùng lập luận với v15.
           await m.addColumn(bills, bills.autoPayEnabled);
+        }
+        if (from < 18) {
+          // Ngày gốc của chuỗi hoá đơn — xem chú thích ở `Bills.anchorDay`.
+          await m.addColumn(bills, bills.anchorDay);
+
+          // Suy ngày gốc từ **ngày đến hạn đang lưu**, không phải ngày bắt đầu.
+          //
+          // Lý do: hoá đơn cũ được tính bằng quy tắc "cuối tháng" nay đã bỏ.
+          // Lấy ngày bắt đầu làm gốc sẽ đổi hạn của chúng ngay ở kỳ kế tiếp —
+          // đúng lớp lỗi âm thầm mà `canhBaoHanCu` sinh ra để chặn. Lấy ngày
+          // đến hạn thì hạn hiện tại giữ nguyên và ý định gần nhất của người
+          // dùng được bảo toàn.
+          //
+          // `strftime('%d')` trả chuỗi có số 0 đứng đầu ('05'), nên phải ép về
+          // số nguyên — so sánh chuỗi với số ở SQLite **không** báo lỗi, nó chỉ
+          // lặng lẽ trả sai.
+          await customStatement(
+            "UPDATE bills SET anchor_day = CAST(strftime('%d', "
+            "datetime(due_date / 1000, 'unixepoch', 'localtime')) AS INTEGER) "
+            'WHERE anchor_day IS NULL',
+          );
+        }
+        if (from < 19) {
+          // Thứ tự ưu tiên mục tiêu — xem chú thích ở `Goals.priority`.
+          //
+          // **Cố ý KHÔNG suy giá trị cho hàng cũ**, khác hẳn `anchorDay` ngay
+          // trên. Ở đó ngày đến hạn là một ý định người dùng đã đưa ra và chỉ
+          // cần đọc lại; còn ở đây mọi thứ tự bịa ra đều sai với người đã sắp
+          // tay, và `NULL` có nghĩa riêng rõ ràng — "chưa sắp", xếp cuối.
+          //
+          // Đánh số theo `targetDate` để danh sách "trông đã được sắp" là biến
+          // thứ tự mặc định thành một lựa chọn người dùng chưa từng đưa ra —
+          // cùng lập luận đã dùng cho v15 và v17.
+          await m.addColumn(goals, goals.priority);
+        }
+        if (from < 20) {
+          // Thu loại ví về đúng bốn giá trị `chk_wallet_type` của PostgreSQL
+          // cho phép (`Cash | Bank | Saving | Banking`, đo trên CSDL
+          // 2026-09-09). Giao diện cũ cho chọn `ewallet` và `debt`, nên ví tạo
+          // bằng hai loại ấy **vỡ CHECK ở mỗi lần đẩy** và nằm lại trong hàng
+          // đợi vĩnh viễn — không exception, không log, không gì trên màn hình.
+          //
+          // Phép ánh xạ ở đây phải khớp `WalletType.tuKhoa`: ví điện tử và thẻ
+          // tín dụng đều gần "ngân hàng" hơn "tiền mặt"; thứ không nhận ra thì
+          // về tiền mặt.
+          await customStatement(
+            "UPDATE wallets SET type = 'bank' WHERE type IN ('ewallet', 'debt')",
+          );
+          await customStatement(
+            "UPDATE wallets SET type = 'cash' "
+            "WHERE type NOT IN ('cash', 'bank', 'saving', 'banking')",
+          );
+
+          // Đổi loại thôi CHƯA ĐỦ. Những ví ấy đã hỏng đẩy nhiều lần nên đang
+          // mang `sync_error` và một mốc `sync_blocked_until` ở tương lai; để
+          // nguyên thì chúng nằm im tới tận mốc ấy, và người dùng không thấy ví
+          // của mình lên server dù bản vá đã cài.
+          //
+          // Chỉ đụng vào hàng ĐANG chờ đẩy — quét cả bảng là ép đẩy lại mọi ví
+          // ở lần mở app kế tiếp, một đợt request thừa cho thứ không hề đổi.
+          await customStatement(
+            "UPDATE wallets SET sync_error = NULL, sync_blocked_until = NULL, "
+            "sync_retry_count = 0 WHERE sync_status = 'pending'",
+          );
         }
       },
       beforeOpen: (details) async {

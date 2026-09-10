@@ -480,6 +480,33 @@ class SyncEngine {
                 colour: Value(
                     (w['color'] ?? w['colour'])?.toString() ?? '#4CAF50'),
                 isDefault: Value(doiSangBool(w['is_default'])),
+                // Server im lặng về cờ này nghĩa là CHƯA BIẾT, không phải
+                // "hãy loại ví khỏi tổng": `doiSangBool(null)` trả `false`, nên
+                // đọc thẳng sẽ lặng lẽ tắt cờ của mọi ví ngay lượt pull đầu
+                // tiên gặp một payload thiếu khoá — cùng bài học với `idgoal`.
+                includeInTotal: w['include_in_total'] != null
+                    ? Value(doiSangBool(w['include_in_total']))
+                    : const Value.absent(),
+                // ⚠️ `status` (lưu trữ ví) là cột CỤC BỘ, cố ý không đi
+                // theo chiều nào của đồng bộ — cùng diện với
+                // `bills.autoPayEnabled` và `bills.anchorDay`.
+                //
+                // Lý do là một con số, đo thẳng trên PostgreSQL ngày
+                // 2026-09-10: `chk_wallet_status` CHO PHÉP `'Inactive'`,
+                // nhưng kiểu cột `Status` là **varchar(7)** còn chuỗi ấy
+                // dài **8 ký tự** — lược đồ tự mâu thuẫn, và không giá trị
+                // nào vừa cả hai ngoài `'Active'`. Đẩy lên là
+                // hàng ví vỡ ở tầng CSDL và kẹt hàng đợi đẩy, thử lại ở
+                // MỌI chu kỳ, kéo chậm cả hàng đợi. Đã vấp thật trên máy
+                // ảo, và đó là cách phát hiện ra con số ấy.
+                //
+                // Nhánh KÉO VỀ cũng phải im lặng theo, không chỉ nhánh đẩy:
+                // server luôn trả `'Active'` cho mọi ví (nó chưa bao giờ
+                // nhận được giá trị nào khác), nên đọc cột này về là ví vừa
+                // lưu trữ lặng lẽ sống lại ở lượt pull kế tiếp.
+                //
+                // Mở lại cả hai chiều khi backend nới cột — tài liệu xin:
+                // `docs/superpowers/backend/CAN-LAM/WALLET_STATUS_COLUMN_WIDTH.md`.
                 isDeleted: Value(w['delete_at'] != null),
                 deletedAt: Value(_deletedAtFrom(w['delete_at'])),
                 syncStatus: const Value('synced'),
@@ -516,6 +543,20 @@ class SyncEngine {
                   num.tryParse(t['amount'].toString()) ?? 0,
                 )),
                 note: Value(t['note']?.toString() ?? ''),
+                // Server im lặng về `idgoal` nghĩa là **chưa biết**, không
+                // phải **hãy xoá**. Cột `transaction.Idgoal` mới có ngày
+                // 2026-09-07, nên mọi hàng đã nằm sẵn trên server đều mang
+                // NULL cho tới khi client đẩy lại từng hàng một. Gán thẳng
+                // `Value(null)` ở đây là xoá sạch liên kết cục bộ ngay ở chu
+                // kỳ đồng bộ đầu tiên — và lịch sử tích luỹ lặng lẽ rơi hết
+                // xuống nhánh so TÊN, tức tái hiện nguyên vẹn G18.
+                //
+                // `Value.absent()` để Drift bỏ qua cột này khi ghi đè, giữ
+                // nguyên giá trị đang có. Đánh đổi: server KHÔNG gỡ được liên
+                // kết theo chiều này — chấp nhận được, vì chỉ client đặt nó.
+                goalId: (t['idgoal'] ?? t['goal_id']) != null
+                    ? Value((t['idgoal'] ?? t['goal_id']).toString())
+                    : const Value.absent(),
                 date: Value(DateTime.tryParse(
                         (t['date_transaction'] ?? t['date'])?.toString() ?? '') ??
                     DateTime.now()),
@@ -829,12 +870,26 @@ class SyncEngine {
                 timeCycleTakeMoney: Value(g['time_cycle_take_money'] != null
                     ? DateTime.tryParse(g['time_cycle_take_money'].toString())
                     : null),
+                autoDepositAmount: Value(
+                    num.tryParse(g['auto_deposit_amount']?.toString() ?? '')
+                        ?.toDouble()),
+                autoDepositWalletId:
+                    Value(g['auto_deposit_wallet_id']?.toString()),
+                autoDepositLastRun: Value(g['auto_deposit_last_run'] != null
+                    ? DateTime.tryParse(g['auto_deposit_last_run'].toString())
+                    : null),
                 // `doiSangBool` chứ không so cứng: `Recurrence` là boolean
                 // thật còn `Status_complete` là chuỗi — hai kiểu khác nhau
                 // trong CÙNG một bảng. So khớp cứng từng kiểu thì chỉ cần một
                 // bên đổi cách tuần tự hoá là cờ lặng lẽ về `false`.
                 recurrence: Value(doiSangBool(g['recurrence'])),
                 timeRecurrence: Value(g['time_recurrence']?.toString()),
+                // `int.tryParse` trên chuỗi: Prisma trả `Priority` là số,
+                // nhưng JSON đi qua nhiều tầng và một giá trị `"200"` phải
+                // đọc được. Giá trị rác về `null` — tức "chưa sắp", xếp cuối —
+                // thay vì làm hỏng cả hàng.
+                priority: Value(
+                    int.tryParse(g['priority']?.toString() ?? '')),
                 icon: Value(g['icon']?.toString() ?? 'flag'),
                 colour: Value(g['color']?.toString() ?? '#4CAF50'),
                 note: Value(g['note']?.toString() ?? ''),
@@ -930,6 +985,9 @@ class SyncEngine {
     // Nếu categories push sau thì backend báo FK constraint violation.
     final syncableCategories =
         await _db.categoryDao.getSyncableCategories(idaccount);
+    // Nạp từ khoá MỘT lần cho cả lô. `getKeywords` trong vòng lặp sinh một
+    // truy vấn cho mỗi danh mục, mà vòng này chạy ở MỌI chu kỳ đẩy.
+    final tuKhoaTheoDanhMuc = await _db.categoryDao.getAllKeywords(idaccount);
     // Nhóm phải được đẩy TRƯỚC danh mục con của nó: backend có khoá ngoại
     // fk_category_parent (Idgroup → Idcategory), con đi trước sẽ vi phạm FK.
     syncableCategories.sort((a, b) {
@@ -957,6 +1015,15 @@ class SyncEngine {
           'colour': c.colour,
           'is_default': c.isDefault,
           'is_deleted': c.isDeleted,
+          // Backend lưu từ khoá thành MỘT chuỗi nối bằng dấu phẩy trên chính
+          // hàng `category` (cột `Keyword`, `@db.Text`), và `/sync/push` đã
+          // nhận nó ở cả nhánh tạo lẫn nhánh cập nhật.
+          //
+          // ⚠️ Chỉ gửi khi CÓ từ khoá. Chuỗi rỗng là lệnh XOÁ: backend cũng tự
+          // học từ khoá qua `recordFeedback()` → `appendCategoryKeyword()`, nên
+          // một chuỗi rỗng từ client quét sạch thứ server vừa học được.
+          if ((tuKhoaTheoDanhMuc[c.id] ?? const <String>[]).isNotEmpty)
+            'keyword': tuKhoaTheoDanhMuc[c.id]!.join(','),
           // Cấu trúc nhóm — backend mapEntityFields() nhận camelCase:
           // isGroup → Is_group, parentId → Idgroup.
           'isGroup': c.isGroup,
@@ -990,6 +1057,7 @@ class SyncEngine {
           'is_default': w.isDefault,
           'is_deleted': w.isDeleted,
           'include_in_total': w.includeInTotal,
+          // ⚠️ `status` CỐ Ý KHÔNG có mặt — xem chú thích ở nhánh kéo về.
           'updated_at': w.updatedAt.toUtc().toIso8601String(),
           'idaccount': w.idaccount > 0 ? w.idaccount : idaccount,
         },
@@ -1031,6 +1099,15 @@ class SyncEngine {
           'colour': cat.colour,
           'is_default': cat.isDefault,
           'is_deleted': cat.isDeleted,
+          // Backend lưu từ khoá thành MỘT chuỗi nối bằng dấu phẩy trên chính
+          // hàng `category` (cột `Keyword`, `@db.Text`), và `/sync/push` đã
+          // nhận nó ở cả nhánh tạo lẫn nhánh cập nhật.
+          //
+          // ⚠️ Chỉ gửi khi CÓ từ khoá. Chuỗi rỗng là lệnh XOÁ: backend cũng tự
+          // học từ khoá qua `recordFeedback()` → `appendCategoryKeyword()`, nên
+          // một chuỗi rỗng từ client quét sạch thứ server vừa học được.
+          if ((tuKhoaTheoDanhMuc[cat.id] ?? const <String>[]).isNotEmpty)
+            'keyword': tuKhoaTheoDanhMuc[cat.id]!.join(','),
           'isGroup': cat.isGroup,
           'parentId':
               cat.parentId != null ? _toValidUuid(cat.parentId!) : null,
@@ -1042,7 +1119,63 @@ class SyncEngine {
       alreadyInBatch.add(resolvedId);
     }
 
-    // ── 3. Transactions (sau category + wallet vì FK → cả 2) ──────────────────
+    // ── 3. Goals (sau wallet, và phải đứng TRƯỚC transactions) ───────────────
+    //
+    // Từ 2026-09-07 payload giao dịch mang `idgoal`, và cột ấy phía server có
+    // khoá ngoại `fk_transaction_goal`. Đẩy giao dịch trước mục tiêu thì hàng bị
+    // từ chối vì mục tiêu chưa tồn tại — đúng ca người dùng tạo mục tiêu rồi nạp
+    // tiền trong lúc offline, cả hai cùng nằm chờ trong một lô. Cùng lý do khiến
+    // categories phải đứng trước transactions. Có test canh thứ tự này.
+    for (final g in await _db.goalDao.getPending(idaccount)) {
+      if (_isSyncBlocked(g.syncBlockedUntil)) continue;
+      final validId = _toValidUuid(g.id);
+      ops.add(SyncOperation(
+        localId: g.id,
+        entity: SyncEntityType.goal,
+        operation:
+            g.isDeleted ? SyncOperationType.delete : SyncOperationType.update,
+        payload: {
+          'id': validId,
+          'name': g.name,
+          'target_amount': g.targetAmount,
+          'current_amount': g.currentAmount,
+          'start_date': g.startDate?.toUtc().toIso8601String(),
+          'target_date': g.targetDate.toUtc().toIso8601String(),
+          'idwallet': g.walletId != null ? _toValidUuid(g.walletId!) : null,
+          'cycle_take_money': g.cycleTakeMoney,
+          'time_cycle_take_money':
+              g.timeCycleTakeMoney?.toUtc().toIso8601String(),
+          // Ba cột trích tự động đi CÙNG NHAU (G21, mở khoá 2026-09-07).
+          // `auto_deposit_last_run` là cột chặn trích hai lần: bỏ nó lại thì
+          // mỗi máy giữ một mốc riêng và cả hai cùng chuyển tiền khi tới kỳ —
+          // hỏng nặng hơn hiện trạng "máy thứ hai không trích gì".
+          'auto_deposit_amount': g.autoDepositAmount,
+          'auto_deposit_wallet_id': g.autoDepositWalletId != null
+              ? _toValidUuid(g.autoDepositWalletId!)
+              : null,
+          'auto_deposit_last_run':
+              g.autoDepositLastRun?.toUtc().toIso8601String(),
+          // Thứ tự ưu tiên (2026-09-08). Cột `Priority` phía backend có từ
+          // 2026-09-07. Đây là thứ tự người dùng tự sắp bằng thao tác kéo
+          // thả — công sức bỏ ra, KHÔNG suy lại được, và không có mặc định
+          // đúng nào — nên nó phải đi qua đường đồng bộ chứ không được làm
+          // cột cục bộ như `auto_deposit_*` từng làm (G21).
+          'priority': g.priority,
+          'status_complete': g.isCompleted ? 'True' : 'False',
+          'recurrence': g.recurrence,
+          'time_recurrence': g.timeRecurrence,
+          'icon': g.icon,
+          'color': g.colour,
+          'note': g.note,
+          'is_deleted': g.isDeleted,
+          'updated_at': g.updatedAt.toUtc().toIso8601String(),
+          'idaccount': g.idaccount > 0 ? g.idaccount : idaccount,
+        },
+        createdAt: now,
+      ));
+    }
+
+    // ── 4. Transactions (sau category + wallet + goal vì FK → cả 3) ──────────
     final pendingTx = await _db.transactionDao.getPending(idaccount);
     for (final t in pendingTx) {
       if (_isSyncBlocked(t.syncBlockedUntil)) continue;
@@ -1076,6 +1209,7 @@ class SyncEngine {
           // `idwallet_transfer` (bỏ qua nếu không phải giao dịch chuyển khoản).
           'idwallet_transfer':
               t.walletTransfer != null ? _toValidUuid(t.walletTransfer!) : null,
+          'idgoal': t.goalId != null ? _toValidUuid(t.goalId!) : null,
           'amount': t.amount,
           'type': t.type,
           'note': t.note,
@@ -1088,7 +1222,7 @@ class SyncEngine {
       ));
     }
 
-    // ── 4. Budgets (sau category + wallet) ────────────────────────────────────
+    // ── 5. Budgets (sau category + wallet) ────────────────────────────────────
     // Payload dùng đúng tên field Prisma của backend (idcategory, total_amount,
     // start, over_spending, ...) vì backend mapEntityFields() chỉ nhận diện
     // các key camelCase cụ thể (totalAmount, categoryId, ...) — gửi sẵn tên
@@ -1127,7 +1261,7 @@ class SyncEngine {
       ));
     }
 
-    // ── 5. Bills (sau category + wallet) ──────────────────────────────────────
+    // ── 6. Bills (sau category + wallet) ──────────────────────────────────────
     // idwallet/idcategory là NOT NULL trên backend — bắt buộc phải gửi kèm.
     // Lưu ý: form tạo/sửa bill hiện tại (bill_edit_page.dart) chưa cho chọn
     // ví/danh mục nên các giá trị này có thể vẫn null cho tới khi UI đó được
@@ -1169,39 +1303,6 @@ class SyncEngine {
       ));
     }
 
-    // ── 6. Goals (sau wallet) ──────────────────────────────────────────────────
-    for (final g in await _db.goalDao.getPending(idaccount)) {
-      if (_isSyncBlocked(g.syncBlockedUntil)) continue;
-      final validId = _toValidUuid(g.id);
-      ops.add(SyncOperation(
-        localId: g.id,
-        entity: SyncEntityType.goal,
-        operation:
-            g.isDeleted ? SyncOperationType.delete : SyncOperationType.update,
-        payload: {
-          'id': validId,
-          'name': g.name,
-          'target_amount': g.targetAmount,
-          'current_amount': g.currentAmount,
-          'start_date': g.startDate?.toUtc().toIso8601String(),
-          'target_date': g.targetDate.toUtc().toIso8601String(),
-          'idwallet': g.walletId != null ? _toValidUuid(g.walletId!) : null,
-          'cycle_take_money': g.cycleTakeMoney,
-          'time_cycle_take_money':
-              g.timeCycleTakeMoney?.toUtc().toIso8601String(),
-          'status_complete': g.isCompleted ? 'True' : 'False',
-          'recurrence': g.recurrence,
-          'time_recurrence': g.timeRecurrence,
-          'icon': g.icon,
-          'color': g.colour,
-          'note': g.note,
-          'is_deleted': g.isDeleted,
-          'updated_at': g.updatedAt.toUtc().toIso8601String(),
-          'idaccount': g.idaccount > 0 ? g.idaccount : idaccount,
-        },
-        createdAt: now,
-      ));
-    }
 
     return ops;
   }
@@ -1499,8 +1600,29 @@ class SyncEngine {
   }
 
   /// Mã lỗi ổn định do backend gắn cho lỗi vỡ khoá ngoại tới bảng `account`
-  /// (có từ 2026-09-03, xem `docs/superpowers/backend/SESSION_VALIDITY_FINDINGS.md`).
+  /// (có từ 2026-09-03, xem `docs/superpowers/backend/DA-XONG/SESSION_VALIDITY_FINDINGS.md`).
   static const String accountNotFoundCode = 'ACCOUNT_NOT_FOUND';
+
+  /// Các mã lỗi có cấu trúc mà backend gắn cho một thao tác đẩy khi **thử lại
+  /// y nguyên cũng hỏng y như vậy** (`sync.service.js`, hợp đồng 2026-09-07).
+  ///
+  /// Từ bản vá ấy backend KHÔNG còn trả nguyên văn stack trace của Prisma;
+  /// `message` nay là câu tiếng Việt cho người dùng đọc. Nên mọi regex bên
+  /// dưới tụt xuống thành **đường dự phòng** cho backend cũ, và phân loại thật
+  /// phải đi theo `code`. Bỏ qua điều đó thì lỗi vĩnh viễn im lặng rơi xuống
+  /// nhánh `transient` ở cuối hàm — đúng vòng lặp đẩy-lại-mãi mà G3 và G16
+  /// sinh ra để chặn.
+  ///
+  /// `FOREIGN_KEY_VIOLATION` cố ý KHÔNG nằm ở đây: khoá ngoại tới
+  /// category/wallet/parent vỡ thường chỉ là sai **thứ tự** đẩy, Pull xong là
+  /// đẩy lại được. Khoá ngoại tới `account` cũng không — nó có mã riêng
+  /// `ACCOUNT_NOT_FOUND` và nghĩa là phiên chết, không phải dữ liệu hỏng.
+  static const Set<String> _permanentCodes = {
+    'UNIQUE_VIOLATION',
+    'CATEGORY_NAME_DUPLICATE',
+    'CONSTRAINT_VIOLATION',
+    'FORBIDDEN_SYSTEM_DEFAULT',
+  };
 
   /// Khoá ngoại trỏ tới bảng `account` bị vỡ nghĩa là `idaccount` đang dùng
   /// không tồn tại trên server — tức phiên đăng nhập đã chết.
@@ -1544,6 +1666,13 @@ class SyncEngine {
     // phiên chết, mà KHÔNG có lỗi nào báo ra.
     if (code == accountNotFoundCode) {
       return SyncFailureKind.sessionInvalid;
+    }
+
+    // Phần còn lại của hợp đồng mã lỗi. Phải đứng TRƯỚC mọi phép khớp chuỗi:
+    // khi backend đã gửi `code` thì `message` là câu tiếng Việt, không còn
+    // mang mã SQLSTATE nào để mà khớp.
+    if (code != null && _permanentCodes.contains(code)) {
+      return SyncFailureKind.permanent;
     }
     // Dự phòng cho backend chưa cập nhật — vẫn còn đang chạy ở máy khác.
     if (_accountFkPattern.hasMatch(message)) {
@@ -1591,7 +1720,7 @@ class SyncEngine {
   /// chưa có từ khoá nào** ở máy này.
   ///
   /// Vì sao không ghi đè: cột `Keyword` phía backend là **một chuỗi dùng chung
-  /// cho mọi tài khoản** (xem `docs/superpowers/backend/CAN-LAM/CATEGORY_KEYWORD_SYNC.md`),
+  /// cho mọi tài khoản** (xem `docs/superpowers/backend/DA-XONG/CATEGORY_KEYWORD_SYNC.md`),
   /// còn `CategoryKeywords` phía client là dữ liệu **riêng từng người dùng**,
   /// sửa được trong màn quản lý danh mục. Ghi đè ở mỗi chu kỳ pull sẽ khiến
   /// thao tác xoá từ khoá của người dùng không bao giờ dính — nó bị hồi sinh ở

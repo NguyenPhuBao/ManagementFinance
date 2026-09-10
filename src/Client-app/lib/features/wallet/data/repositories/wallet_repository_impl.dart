@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 import '../../../../core/sync/sync_engine.dart';
 import '../datasources/wallet_local_data_source.dart';
 import '../models/wallet_entity.dart';
+import '../../domain/vi_tinh_vao_tong.dart';
 import 'wallet_repository.dart';
 
 class WalletRepositoryImpl implements WalletRepository {
@@ -59,19 +60,9 @@ class WalletRepositoryImpl implements WalletRepository {
       updatedAt:      DateTime.now(),
     );
 
-    // Nếu isDefault = true, bỏ mặc định của ví cũ trước
-    if (isDefault) {
-      final currentDefault = await _localDataSource.getDefault(idaccount);
-      if (currentDefault != null) {
-        await _localDataSource.update(
-          currentDefault.copyWith(
-            isDefault:  false,
-            syncStatus: 'pending',
-            updatedAt:  DateTime.now(),
-          ),
-        );
-      }
-    }
+    // Bất biến "nhiều nhất một ví mặc định" nay do datasource giữ, cho CẢ đường
+    // thêm và đường sửa. Khối chỉ xử lý đường thêm từng ở đây đã bỏ: nó
+    // che mất việc đường sửa không được bảo vệ gì cả.
 
     await _localDataSource.insert(wallet);
     _syncEngine.scheduleSync();   // Trigger background sync
@@ -95,11 +86,20 @@ class WalletRepositoryImpl implements WalletRepository {
   }
 
   @override
+  Future<void> setArchived(String id, {required bool luuTru}) async {
+    await _localDataSource.setArchived(id, luuTru: luuTru);
+    _syncEngine.scheduleSync();
+  }
+
+  @override
   Future<double> getTotalBalance(int idaccount) async {
     final wallets = await _localDataSource.getAll(idaccount);
-    // Chỉ cộng ví có includeInTotal = true
+    // Luật "ví nào được cộng" nằm ở `viTinhVaoTong` — nó lọc CẢ
+    // `includeInTotal` lẫn ví đã lưu trữ. Đọc `getAll` chứ không `getActive`
+    // là có chủ ý: phép lọc phải nằm ở đúng MỘT chỗ, và chỗ ấy là hàm kia.
     return wallets
-        .where((w) => w.includeInTotal)
+        .where((w) =>
+            viTinhVaoTong(includeInTotal: w.includeInTotal, status: w.status))
         .fold<double>(0.0, (sum, w) => sum + w.balance);
   }
 }

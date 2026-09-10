@@ -4,8 +4,16 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../core/api/interceptors/auth_interceptor.dart';
 import '../../core/api/dio_client.dart';
 import '../../core/database/app_database.dart';
+import '../../core/realtime/realtime_channel.dart';
 import '../../core/sync/sync_checkpoint_store.dart';
 import '../../core/sync/sync_engine.dart';
+import '../../features/analytics/data/analytics_repository.dart';
+import '../../features/analytics/data/analytics_repository_impl.dart';
+import '../../features/analytics/data/bao_cao_repository.dart';
+import '../../features/analytics/data/bao_cao_repository_impl.dart';
+import '../../features/analytics/data/xuat_tep_service.dart';
+import '../../features/analytics/data/xuat_tep_service_impl.dart';
+import '../../features/analytics/presentation/bloc/analytics_cubit.dart';
 import '../../features/auth/data/datasources/auth_local_data_source.dart';
 import '../../features/auth/data/datasources/auth_remote_data_source.dart';
 import '../../features/auth/data/repositories/auth_repository.dart';
@@ -25,6 +33,7 @@ import '../../features/budget/presentation/bloc/budget_cubit.dart';
 import '../../features/budget/presentation/bloc/budget_detail_cubit.dart';
 import '../../features/wallet/data/datasources/wallet_local_data_source.dart';
 import '../../features/wallet/data/repositories/wallet_repository.dart';
+import '../../features/wallet/data/services/dieu_chinh_so_du_service.dart';
 import '../../features/wallet/data/repositories/wallet_repository_impl.dart';
 import '../../features/wallet/data/services/default_account_data_initializer.dart';
 import '../../features/wallet/presentation/bloc/wallet_cubit.dart';
@@ -36,11 +45,13 @@ import '../../features/bill/data/repositories/bill_repository.dart';
 import '../../features/bill/data/repositories/bill_repository_impl.dart';
 import '../../features/bill/presentation/bloc/bill_bloc.dart';
 import '../../features/category/data/repositories/category_management_repository.dart';
+import '../../features/category/data/services/default_category_seeder.dart';
 import '../../features/category/data/services/personal_default_categories.dart';
 import '../../features/category/data/services/category_suggestion_engine.dart';
 import '../network/connection_monitor.dart';
 import '../notification/reminder_scheduler.dart';
 import '../notification/app_lifecycle_watcher.dart';
+import '../notification/badge_updater.dart';
 import '../notification/notification_scanner.dart';
 import '../notification/os/os_notifier.dart';
 import '../notification/os/os_notifier_factory.dart';
@@ -117,6 +128,9 @@ Future<void> setupDependencies() async {
   // Năm danh mục mà bộ mặc định của backend không có được tạo riêng cho từng
   // tài khoản (xem PersonalDefaultCategories) — danh mục người dùng thì đồng bộ
   // được, còn danh mục mặc định thì không.
+  sl.registerLazySingleton<DefaultCategorySeeder>(
+    () => DefaultCategorySeeder(db: sl()),
+  );
   sl.registerLazySingleton<PersonalDefaultCategories>(
     () => PersonalDefaultCategories(db: sl()),
   );
@@ -153,6 +167,12 @@ Future<void> setupDependencies() async {
       walletDao: sl<AppDatabase>().walletDao,
       syncEngine: sl(),
     ),
+  );
+  // Điều chỉnh số dư ví (đối soát). Đăng ký SAU TransactionRepository vì nó
+  // ghi khoản bù qua đó — cố ý, để phép cộng trừ số dư và phép hoàn lại khi
+  // xoá đều dùng lại `_applyBalances` thay vì ghi thẳng `updateBalance`.
+  sl.registerLazySingleton<DieuChinhSoDuService>(
+    () => DieuChinhSoDuService(db: sl(), transactionRepository: sl()),
   );
   sl.registerFactory<TransactionBloc>(
     () => TransactionBloc(
@@ -204,6 +224,28 @@ Future<void> setupDependencies() async {
     () => BudgetDetailCubit(repository: sl<BudgetRepository>()),
   );
 
+  // ── 10b. Features — Phân tích ──────────────────────────────────────────────
+  // Đọc thẳng Drift cho giao dịch/danh mục, và mượn BudgetRepository cho cột
+  // "% ngân sách" thay vì tính lại số đã chi lần thứ hai.
+  sl.registerLazySingleton<AnalyticsRepository>(
+    () => AnalyticsRepositoryImpl(
+      db: sl<AppDatabase>(),
+      budgetRepository: sl<BudgetRepository>(),
+    ),
+  );
+  sl.registerFactory<AnalyticsCubit>(
+    () => AnalyticsCubit(repository: sl<AnalyticsRepository>()),
+  );
+  // Trang Xuất báo cáo đọc thẳng repository (không cubit): màn Xem trước là
+  // một ảnh chụp theo bộ lọc, không phải luồng dữ liệu sống.
+  sl.registerLazySingleton<XuatTepService>(() => XuatTepServiceImpl());
+  sl.registerLazySingleton<BaoCaoRepository>(
+    () => BaoCaoRepositoryImpl(
+      db: sl<AppDatabase>(),
+      budgetRepository: sl<BudgetRepository>(),
+    ),
+  );
+
   // ── 11. Thông báo ────────────────────────────────────────────────────────
   // Cửa ra hệ điều hành. `createOsNotifier()` trả bản không làm gì trên web,
   // nên phần còn lại của app không cần biết mình đang chạy ở đâu. Đây là nơi
@@ -213,6 +255,14 @@ Future<void> setupDependencies() async {
   // phản ứng ngay với cú nhấp nháy đầu tiên; dải báo hỏi "có đáng nói với
   // người dùng không" và phải chờ trạng thái ổn định.
   sl.registerLazySingleton<ConnectionMonitor>(() => ConnectionMonitor());
+
+  // Kênh thời gian thực. Cũng tách khỏi SyncEngine, và cũng vì hai câu hỏi
+  // khác nhau: SyncEngine hỏi "khi nào thì đồng bộ", kênh này chỉ thuật lại
+  // "server vừa nói gì". Thiết kế đầy đủ ở
+  // docs/superpowers/specs/2026-09-09-socket-io-realtime-channel-design.md
+  sl.registerLazySingleton<RealtimeChannel>(
+    () => RealtimeChannel(secureStorage: sl<FlutterSecureStorage>()),
+  );
 
   sl.registerLazySingleton<OsNotifier>(createOsNotifier);
 
@@ -242,6 +292,11 @@ Future<void> setupDependencies() async {
             days: ReminderScheduler.cuaSo.inDays,
             now: now,
           ),
+      // Nguồn thứ ba: lời nhắc ghi chép hằng ngày. Đi chung bộ đặt lịch vì
+      // cùng lý do như mục tiêu — `resync()` huỷ mọi lịch chờ không nằm trong
+      // tập nó muốn, nên một bộ đặt lịch riêng sẽ xoá sạch lịch của bộ kia.
+      loadLastTransactionAt: (idaccount) =>
+          sl<AppDatabase>().transactionDao.getLastTransactionDate(idaccount),
       prefsStore: sl<NotificationPrefsStore>(),
     ),
   );
@@ -285,6 +340,11 @@ Future<void> setupDependencies() async {
       ],
       loadWallets: (idaccount, now) =>
           sl<AppDatabase>().walletDao.getAll(idaccount),
+      // Tổng kết tuần chỉ cần biết tuần vừa khép CÓ giao dịch hay không —
+      // không tổng, không gom danh mục. Câu chữ đã chốt không nêu số nào.
+      loadWeekActivity: (idaccount, from, to) => sl<AppDatabase>()
+          .transactionDao
+          .coGiaoDichTrongKhoang(idaccount, from, to),
       markOverdue: (idaccount, now) =>
           sl<AppDatabase>().billDao.markOverdue(idaccount, now),
       syncStatus: sl<SyncEngine>().statusStream,
@@ -293,6 +353,11 @@ Future<void> setupDependencies() async {
       // tự chuyển tiền chạy bên trong `scan()`.
       appLifecycle: sl<AppLifecycleWatcher>().stream,
       osNotifier: sl<OsNotifier>(),
+      // Scanner sở hữu vòng đời của nó — xem chú thích ở trường `badgeUpdater`.
+      badgeUpdater: BadgeUpdater(
+        dao: sl<AppDatabase>().notificationDao,
+        osNotifier: sl<OsNotifier>(),
+      ),
       prefsStore: sl<NotificationPrefsStore>(),
       // Lịch phải theo kịp dữ liệu: hoá đơn vừa thanh toán mà lịch cũ còn
       // nguyên là điện thoại vẫn kêu nhắc trả một hoá đơn đã trả.

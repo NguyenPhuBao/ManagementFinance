@@ -18,6 +18,8 @@ void main() {
     required String id,
     double amount = 1000000,
     double spent = 0,
+    String? loiDongBo,
+    String tenDanhMuc = 'Ăn uống',
   }) {
     return BudgetView(
       budget: BudgetEntity(
@@ -27,9 +29,10 @@ void main() {
         amount: amount,
         spent: spent,
         startDate: DateTime(2026, 9, 1),
+        syncError: loiDongBo,
         updatedAt: DateTime(2026, 9, 1),
       ),
-      categoryName: 'Ăn uống',
+      categoryName: tenDanhMuc,
     );
   }
 
@@ -118,6 +121,75 @@ void main() {
 
     expect(find.byKey(const ValueKey('budget-edit-b1')), findsNothing,
         reason: 'Sửa hạn mức của một kỳ đã đóng làm số liệu lịch sử đổi theo.');
+  });
+
+  testWidgets('tab đã hết hạn: bản ghi HỎNG ĐỒNG BỘ thì mở lại sửa và xoá',
+      (tester) async {
+    await dung(tester, expired: [
+      view(id: 'b1', loiDongBo: 'violates check constraint '
+          'chk_budget_end_after_start'),
+    ]);
+    await tester.tap(find.textContaining('Đã hết hạn'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('budget-edit-b1')), findsOneWidget,
+        reason: 'Canh chừng G15. Bản ghi này không đẩy lên được; khoá luôn cả '
+            'sửa lẫn xoá là nhốt nó vĩnh viễn, và lối thoát duy nhất trở thành '
+            'xoá dữ liệu site của trình duyệt.');
+    expect(find.byType(Dismissible), findsOneWidget,
+        reason: 'Xoá cũng phải mở, không chỉ sửa: có lỗi mà người dùng không '
+            'muốn sửa thì phải bỏ được bản ghi đi.');
+    expect(find.byKey(const ValueKey('budget-sync-error-b1')), findsOneWidget,
+        reason: 'Phải có dấu hiệu vì sao thẻ này khác các thẻ hết hạn còn lại '
+            '— nếu không, việc nó sửa được trông như một lỗi giao diện.');
+  });
+
+  testWidgets('tab đã hết hạn: bản ghi SẠCH vẫn khoá, kể cả khi có thẻ hỏng',
+      (tester) async {
+    await dung(tester, expired: [
+      view(id: 'b1', loiDongBo: 'lỗi gì đó'),
+      view(id: 'b2'),
+    ]);
+    await tester.tap(find.textContaining('Đã hết hạn'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('budget-edit-b2')), findsNothing,
+        reason: 'Ngoại lệ G15 chỉ áp cho bản ghi hỏng. Mở cả danh sách vì có '
+            'MỘT thẻ hỏng là bỏ luôn yêu cầu gốc mà không ai nhận ra.');
+    expect(find.byKey(const ValueKey('budget-sync-error-b2')), findsNothing);
+  });
+
+  testWidgets('411dp: thẻ hỏng đồng bộ ở tab hết hạn KHÔNG tràn bố cục',
+      (tester) async {
+    // 411dp là bề rộng điện thoại thật; bộ test và skill `chay-app` chạy Chrome
+    // ở 1280px nên không bao giờ thấy tràn. Sáu chỗ tràn của mảng hoá đơn chỉ
+    // lộ ra khi dựng hẹp có chủ ý như thế này.
+    tester.view.physicalSize = const Size(411, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await dung(tester, expired: [
+      view(
+        id: 'b1',
+        // Tên dài có thật trong dữ liệu người dùng, và dấu hiệu "Chưa đồng bộ
+        // được" nằm ngay dưới nó.
+        tenDanhMuc: 'Ăn uống ngoài hàng và cà phê cuối tuần',
+        loiDongBo: 'violates check constraint chk_budget_end_after_start',
+      ),
+    ]);
+    await tester.tap(find.textContaining('Đã hết hạn'));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.takeException(),
+      isNull,
+      reason: 'Dấu hiệu mới là một Row gồm icon + chữ — đúng hình dạng đã gây '
+          'tràn sáu lần ở mảng hoá đơn. Flutter báo tràn qua '
+          'FlutterError.reportError chứ KHÔNG ném ra chỗ gọi, nên chỉ '
+          '`takeException` mới thấy; test chỉ pump rồi `expect(find...)` sẽ '
+          'xanh ngay cả khi màn hình đầy sọc vàng.',
+    );
+    expect(find.byKey(const ValueKey('budget-sync-error-b1')), findsOneWidget);
   });
 
   testWidgets('chạm thẻ đã hết hạn KHÔNG mở trang sửa', (tester) async {

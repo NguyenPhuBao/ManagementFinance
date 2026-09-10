@@ -1281,16 +1281,20 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   /// goalId: mục tiêu tiết kiệm mà giao dịch này thuộc về. NULL với mọi giao
   /// dịch thường.
   ///
-  /// ⚠️ **Cột CỤC BỘ — cố ý KHÔNG nằm trong hợp đồng đồng bộ.** Bảng `goal`
-  /// phía backend không có chiều ngược lại, và thêm trường vào payload đẩy đòi
-  /// backend sửa trước (quy tắc 4 trong `CLAUDE.md`).
-  /// `sync_payload_contract_test.dart` khoá đúng bộ khoá của payload giao dịch
-  /// nên nó bắt được ngay nếu cột này lọt vào.
+  /// ✅ **ĐÃ ĐỒNG BỘ từ 2026-09-07**, khi backend thêm cột `transaction.Idgoal`.
+  /// Tên trong payload là **`idgoal`**, KHÔNG phải `goal_id` — `goal_id` là tên
+  /// cột Drift và vẫn nằm trong danh sách *cấm rò rỉ* của
+  /// `sync_payload_contract_test.dart`. Hai cái tên chỉ khác nhau ở đúng chỗ
+  /// này, và gửi nhầm thì backend bỏ qua **trong im lặng**.
   ///
-  /// Vì là cục bộ, hàng **kéo về từ server luôn để trống** cột này — cũng như
-  /// mọi hàng do bản app cũ tạo. Nơi đọc (`TransactionDao.watchByGoal`) phải
-  /// giữ nhánh tra theo ghi chú cho những hàng đó, nếu không lịch sử tích luỹ
-  /// đã có sẽ biến mất sau lần đồng bộ đầu tiên.
+  /// ⚠️ Nhánh kéo về dùng `Value.absent()` khi server không gửi `idgoal`, chứ
+  /// KHÔNG ghi đè null. Mọi hàng đã nằm sẵn trên server đều mang NULL cho tới
+  /// khi client đẩy lại từng hàng, nên ghi đè thẳng là xoá sạch liên kết cục bộ
+  /// ngay ở chu kỳ đồng bộ đầu tiên. Có test canh đúng ca này.
+  ///
+  /// Vì hàng cũ trên server vẫn trống cột này, nơi đọc
+  /// (`TransactionDao.watchByGoal`) **vẫn phải giữ** nhánh tra theo ghi chú —
+  /// nó chỉ teo dần khi từng hàng được đẩy lại, chứ không hết ngay.
   ///
   /// Vì sao cần: trước đây lịch sử tích luỹ tra bằng
   /// `note LIKE '%Tích lũy mục tiêu: <tên>%'`. Tên mục tiêu không duy nhất, và
@@ -4739,6 +4743,12 @@ class $BillsTable extends Bills with TableInfo<$BillsTable, Bill> {
       defaultConstraints: GeneratedColumn.constraintIsAlways(
           'CHECK ("auto_pay_enabled" IN (0, 1))'),
       defaultValue: const Constant(false));
+  static const VerificationMeta _anchorDayMeta =
+      const VerificationMeta('anchorDay');
+  @override
+  late final GeneratedColumn<int> anchorDay = GeneratedColumn<int>(
+      'anchor_day', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
   static const VerificationMeta _deletedAtMeta =
       const VerificationMeta('deletedAt');
   @override
@@ -4810,6 +4820,7 @@ class $BillsTable extends Bills with TableInfo<$BillsTable, Bill> {
         note,
         generatedFromBillId,
         autoPayEnabled,
+        anchorDay,
         deletedAt,
         isDeleted,
         syncStatus,
@@ -4927,6 +4938,10 @@ class $BillsTable extends Bills with TableInfo<$BillsTable, Bill> {
           autoPayEnabled.isAcceptableOrUnknown(
               data['auto_pay_enabled']!, _autoPayEnabledMeta));
     }
+    if (data.containsKey('anchor_day')) {
+      context.handle(_anchorDayMeta,
+          anchorDay.isAcceptableOrUnknown(data['anchor_day']!, _anchorDayMeta));
+    }
     if (data.containsKey('deleted_at')) {
       context.handle(_deletedAtMeta,
           deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta));
@@ -5011,6 +5026,8 @@ class $BillsTable extends Bills with TableInfo<$BillsTable, Bill> {
           data['${effectivePrefix}generated_from_bill_id']),
       autoPayEnabled: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}auto_pay_enabled'])!,
+      anchorDay: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}anchor_day']),
       deletedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}deleted_at']),
       isDeleted: attachedDatabase.typeMapping
@@ -5100,6 +5117,29 @@ class Bill extends DataClass implements Insertable<Bill> {
   /// lần. Kỳ kế tiếp kế thừa cờ này khi được sinh ra lúc trả kỳ trước.
   final bool autoPayEnabled;
 
+  /// anchorDay: **ngày trong tháng mà người dùng thật sự chọn** khi tạo hoá
+  /// đơn — 1..31 (DB v18, 2026-09-08).
+  ///
+  /// Vì sao cần: chuỗi hoá đơn nối đuôi nhau (ngày bắt đầu kỳ sau = ngày đến
+  /// hạn kỳ trước) nên số ngày gốc **biến mất** sau kỳ thứ hai. Nhìn vào một
+  /// mốc 28/02 đơn độc thì không biết nó từ 31/01 kẹp xuống hay do người dùng
+  /// tự chọn — hai ý định khác hẳn nhau, và bản trước phải **đoán** bằng "quy
+  /// tắc ngày cuối tháng". Cú đoán ấy sai với người đăng ký lần đầu vào 28/02:
+  /// họ muốn ngày 28 hàng tháng và nhận về 31/03. Người dùng báo 2026-09-08.
+  ///
+  /// Lưu ngày gốc là thay một phép đoán bằng một sự kiện. Xem
+  /// `core/bill/bill_recurrence.dart`.
+  ///
+  /// ⚠️ **Cột CỤC BỘ — không nằm trong hợp đồng đồng bộ**, cùng khuôn với
+  /// `autoPayEnabled` và `generatedFromBillId`. Hàng kéo từ server luôn để
+  /// trống, và khi trống thì `nextBillDueDate` neo vào ngày của chính mốc hiện
+  /// tại — tức chuỗi tạo trên máy khác vẫn có thể tụt dần. Tài liệu xin cột
+  /// phía backend: `docs/superpowers/backend/CAN-LAM/BILL_ANCHOR_DAY.md`.
+  ///
+  /// NULL với mọi hoá đơn tạo trước v18; migration suy nó từ ngày đến hạn đang
+  /// lưu để **không đổi hạn** của hoá đơn cũ.
+  final int? anchorDay;
+
   /// deletedAt: NULL = đang dùng, có giá trị = đã xóa mềm
   final DateTime? deletedAt;
   final bool isDeleted;
@@ -5128,6 +5168,7 @@ class Bill extends DataClass implements Insertable<Bill> {
       required this.note,
       this.generatedFromBillId,
       required this.autoPayEnabled,
+      this.anchorDay,
       this.deletedAt,
       required this.isDeleted,
       required this.syncStatus,
@@ -5167,6 +5208,9 @@ class Bill extends DataClass implements Insertable<Bill> {
       map['generated_from_bill_id'] = Variable<String>(generatedFromBillId);
     }
     map['auto_pay_enabled'] = Variable<bool>(autoPayEnabled);
+    if (!nullToAbsent || anchorDay != null) {
+      map['anchor_day'] = Variable<int>(anchorDay);
+    }
     if (!nullToAbsent || deletedAt != null) {
       map['deleted_at'] = Variable<DateTime>(deletedAt);
     }
@@ -5214,6 +5258,9 @@ class Bill extends DataClass implements Insertable<Bill> {
           ? const Value.absent()
           : Value(generatedFromBillId),
       autoPayEnabled: Value(autoPayEnabled),
+      anchorDay: anchorDay == null && nullToAbsent
+          ? const Value.absent()
+          : Value(anchorDay),
       deletedAt: deletedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(deletedAt),
@@ -5254,6 +5301,7 @@ class Bill extends DataClass implements Insertable<Bill> {
       generatedFromBillId:
           serializer.fromJson<String?>(json['generatedFromBillId']),
       autoPayEnabled: serializer.fromJson<bool>(json['autoPayEnabled']),
+      anchorDay: serializer.fromJson<int?>(json['anchorDay']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
       syncStatus: serializer.fromJson<String>(json['syncStatus']),
@@ -5287,6 +5335,7 @@ class Bill extends DataClass implements Insertable<Bill> {
       'note': serializer.toJson<String>(note),
       'generatedFromBillId': serializer.toJson<String?>(generatedFromBillId),
       'autoPayEnabled': serializer.toJson<bool>(autoPayEnabled),
+      'anchorDay': serializer.toJson<int?>(anchorDay),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
       'isDeleted': serializer.toJson<bool>(isDeleted),
       'syncStatus': serializer.toJson<String>(syncStatus),
@@ -5317,6 +5366,7 @@ class Bill extends DataClass implements Insertable<Bill> {
           String? note,
           Value<String?> generatedFromBillId = const Value.absent(),
           bool? autoPayEnabled,
+          Value<int?> anchorDay = const Value.absent(),
           Value<DateTime?> deletedAt = const Value.absent(),
           bool? isDeleted,
           String? syncStatus,
@@ -5348,6 +5398,7 @@ class Bill extends DataClass implements Insertable<Bill> {
             ? generatedFromBillId.value
             : this.generatedFromBillId,
         autoPayEnabled: autoPayEnabled ?? this.autoPayEnabled,
+        anchorDay: anchorDay.present ? anchorDay.value : this.anchorDay,
         deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
         isDeleted: isDeleted ?? this.isDeleted,
         syncStatus: syncStatus ?? this.syncStatus,
@@ -5391,6 +5442,7 @@ class Bill extends DataClass implements Insertable<Bill> {
       autoPayEnabled: data.autoPayEnabled.present
           ? data.autoPayEnabled.value
           : this.autoPayEnabled,
+      anchorDay: data.anchorDay.present ? data.anchorDay.value : this.anchorDay,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
       isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
       syncStatus:
@@ -5428,6 +5480,7 @@ class Bill extends DataClass implements Insertable<Bill> {
           ..write('note: $note, ')
           ..write('generatedFromBillId: $generatedFromBillId, ')
           ..write('autoPayEnabled: $autoPayEnabled, ')
+          ..write('anchorDay: $anchorDay, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('syncStatus: $syncStatus, ')
@@ -5460,6 +5513,7 @@ class Bill extends DataClass implements Insertable<Bill> {
         note,
         generatedFromBillId,
         autoPayEnabled,
+        anchorDay,
         deletedAt,
         isDeleted,
         syncStatus,
@@ -5491,6 +5545,7 @@ class Bill extends DataClass implements Insertable<Bill> {
           other.note == this.note &&
           other.generatedFromBillId == this.generatedFromBillId &&
           other.autoPayEnabled == this.autoPayEnabled &&
+          other.anchorDay == this.anchorDay &&
           other.deletedAt == this.deletedAt &&
           other.isDeleted == this.isDeleted &&
           other.syncStatus == this.syncStatus &&
@@ -5520,6 +5575,7 @@ class BillsCompanion extends UpdateCompanion<Bill> {
   final Value<String> note;
   final Value<String?> generatedFromBillId;
   final Value<bool> autoPayEnabled;
+  final Value<int?> anchorDay;
   final Value<DateTime?> deletedAt;
   final Value<bool> isDeleted;
   final Value<String> syncStatus;
@@ -5548,6 +5604,7 @@ class BillsCompanion extends UpdateCompanion<Bill> {
     this.note = const Value.absent(),
     this.generatedFromBillId = const Value.absent(),
     this.autoPayEnabled = const Value.absent(),
+    this.anchorDay = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.syncStatus = const Value.absent(),
@@ -5577,6 +5634,7 @@ class BillsCompanion extends UpdateCompanion<Bill> {
     this.note = const Value.absent(),
     this.generatedFromBillId = const Value.absent(),
     this.autoPayEnabled = const Value.absent(),
+    this.anchorDay = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.syncStatus = const Value.absent(),
@@ -5611,6 +5669,7 @@ class BillsCompanion extends UpdateCompanion<Bill> {
     Expression<String>? note,
     Expression<String>? generatedFromBillId,
     Expression<bool>? autoPayEnabled,
+    Expression<int>? anchorDay,
     Expression<DateTime>? deletedAt,
     Expression<bool>? isDeleted,
     Expression<String>? syncStatus,
@@ -5641,6 +5700,7 @@ class BillsCompanion extends UpdateCompanion<Bill> {
       if (generatedFromBillId != null)
         'generated_from_bill_id': generatedFromBillId,
       if (autoPayEnabled != null) 'auto_pay_enabled': autoPayEnabled,
+      if (anchorDay != null) 'anchor_day': anchorDay,
       if (deletedAt != null) 'deleted_at': deletedAt,
       if (isDeleted != null) 'is_deleted': isDeleted,
       if (syncStatus != null) 'sync_status': syncStatus,
@@ -5672,6 +5732,7 @@ class BillsCompanion extends UpdateCompanion<Bill> {
       Value<String>? note,
       Value<String?>? generatedFromBillId,
       Value<bool>? autoPayEnabled,
+      Value<int?>? anchorDay,
       Value<DateTime?>? deletedAt,
       Value<bool>? isDeleted,
       Value<String>? syncStatus,
@@ -5700,6 +5761,7 @@ class BillsCompanion extends UpdateCompanion<Bill> {
       note: note ?? this.note,
       generatedFromBillId: generatedFromBillId ?? this.generatedFromBillId,
       autoPayEnabled: autoPayEnabled ?? this.autoPayEnabled,
+      anchorDay: anchorDay ?? this.anchorDay,
       deletedAt: deletedAt ?? this.deletedAt,
       isDeleted: isDeleted ?? this.isDeleted,
       syncStatus: syncStatus ?? this.syncStatus,
@@ -5772,6 +5834,9 @@ class BillsCompanion extends UpdateCompanion<Bill> {
     if (autoPayEnabled.present) {
       map['auto_pay_enabled'] = Variable<bool>(autoPayEnabled.value);
     }
+    if (anchorDay.present) {
+      map['anchor_day'] = Variable<int>(anchorDay.value);
+    }
     if (deletedAt.present) {
       map['deleted_at'] = Variable<DateTime>(deletedAt.value);
     }
@@ -5821,6 +5886,7 @@ class BillsCompanion extends UpdateCompanion<Bill> {
           ..write('note: $note, ')
           ..write('generatedFromBillId: $generatedFromBillId, ')
           ..write('autoPayEnabled: $autoPayEnabled, ')
+          ..write('anchorDay: $anchorDay, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('syncStatus: $syncStatus, ')
@@ -5917,6 +5983,12 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
   late final GeneratedColumn<DateTime> autoDepositLastRun =
       GeneratedColumn<DateTime>('auto_deposit_last_run', aliasedName, true,
           type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _priorityMeta =
+      const VerificationMeta('priority');
+  @override
+  late final GeneratedColumn<int> priority = GeneratedColumn<int>(
+      'priority', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
   static const VerificationMeta _recurrenceMeta =
       const VerificationMeta('recurrence');
   @override
@@ -6029,6 +6101,7 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
         autoDepositAmount,
         autoDepositWalletId,
         autoDepositLastRun,
+        priority,
         recurrence,
         timeRecurrence,
         icon,
@@ -6129,6 +6202,10 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
           _autoDepositLastRunMeta,
           autoDepositLastRun.isAcceptableOrUnknown(
               data['auto_deposit_last_run']!, _autoDepositLastRunMeta));
+    }
+    if (data.containsKey('priority')) {
+      context.handle(_priorityMeta,
+          priority.isAcceptableOrUnknown(data['priority']!, _priorityMeta));
     }
     if (data.containsKey('recurrence')) {
       context.handle(
@@ -6234,6 +6311,8 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
       autoDepositLastRun: attachedDatabase.typeMapping.read(
           DriftSqlType.dateTime,
           data['${effectivePrefix}auto_deposit_last_run']),
+      priority: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}priority']),
       recurrence: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}recurrence'])!,
       timeRecurrence: attachedDatabase.typeMapping
@@ -6284,12 +6363,22 @@ class Goal extends DataClass implements Insertable<Goal> {
   /// cycleTakeMoney: chu kỳ trích tiền — 'Day'|'Week'|'Month'|'Quarter'|'Year'
   final String? cycleTakeMoney;
 
-  /// timeCycleTakeMoney: thời điểm cụ thể trích tiền trong chu kỳ
+  /// timeCycleTakeMoney: thời điểm cụ thể trích tiền trong chu kỳ — **mốc neo**
+  /// quyết định *nhịp* ("ngày 15 hàng tháng lúc 08:00").
   ///
-  /// ⚠️ Cột này đồng bộ hai chiều nhưng **client chưa bao giờ ghi**. Bộ trích
-  /// tự động cố ý KHÔNG dùng nó làm mốc chạy: nó là cột dùng chung với
-  /// backend/Admin-web, và đổi ý nghĩa một cột dùng chung mà phía kia chưa
-  /// đồng ý là cách hỏng im lặng nhất. Mốc chạy nằm ở [autoDepositLastRun].
+  /// ⚠️ Đừng lẫn với mốc **chạy**: cột này nói kỳ rơi vào lúc nào, còn
+  /// [autoDepositLastRun] nói đã trích tới đâu. Bộ trích cần **cả hai** — chỉ
+  /// có nhịp thì chọn "ngày 1" vào ngày 15 sẽ trích bù cho mùng 1 vừa trôi qua;
+  /// chỉ có mốc chạy thì lựa chọn của người dùng không có tác dụng nào, im
+  /// lặng. Xem `cacKyDenHan`.
+  ///
+  /// Từ 2026-09-08 nó cũng là **mốc gốc** để tính kỳ thứ n (`mocThuN`), thay
+  /// cho việc cộng dồn từ kỳ trước vốn làm nhịp "ngày 31" tụt xuống 28 vĩnh
+  /// viễn sau tháng Hai.
+  ///
+  /// (Chú thích cũ ở đây ghi *"client chưa bao giờ ghi"* — **sai từ lâu**:
+  /// `GoalRepositoryImpl` ghi nó ở cả đường tạo lẫn đường sửa khi bật trích tự
+  /// động.)
   final DateTime? timeCycleTakeMoney;
 
   /// autoDepositAmount: số tiền trích mỗi kỳ. NULL = không bật trích tự động.
@@ -6309,6 +6398,27 @@ class Goal extends DataClass implements Insertable<Goal> {
   /// tiêu làm mốc thay thế là bật công tắc hôm nay rồi bị trích ngược lại sáu
   /// kỳ cùng một lúc.
   final DateTime? autoDepositLastRun;
+
+  /// priority: thứ tự ưu tiên do người dùng **kéo thả**. NULL = chưa sắp.
+  ///
+  /// Số **nhỏ hơn đứng trước**, các giá trị cách nhau **100** (100, 200, 300…).
+  /// Quy ước ấy không đặt ra ở đây — nó chốt từ 2026-09-05 ở
+  /// `docs/superpowers/backend/DA-XONG/2026-09-05-backend-goal-priority.md`
+  /// mục 4, và cột `Priority Int?` phía backend có từ 2026-09-07.
+  ///
+  /// **Vì sao thưa chứ không phải 1, 2, 3:** chèn một mục tiêu vào giữa mà
+  /// đánh số liên tục thì phải ghi lại cả danh sách, tức một thao tác kéo thả
+  /// sinh ra *n* bản ghi `pending` cùng lúc. Với khe 100, chèn giữa hai hàng
+  /// chỉ ghi **một** hàng. Xem `goal_priority.dart`.
+  ///
+  /// ⚠️ **Không đặt UNIQUE lên cột này.** Trùng số là va chạm vô hại — thứ tự
+  /// rơi về `targetDate`, cùng quy tắc phụ mà `chiaMucTieu` đang dùng. Một
+  /// ràng buộc duy nhất ở đây biến va chạm ấy thành một bản ghi kẹt vĩnh viễn
+  /// trong hàng đợi đẩy.
+  ///
+  /// ⚠️ **NULL xếp CUỐI**, không phải đầu: mục tiêu chưa từng được sắp không
+  /// có lý do nhảy lên trên những cái người dùng đã cố ý xếp.
+  final int? priority;
 
   /// recurrence: tự động lặp lại mục tiêu sau khi hoàn thành
   final bool recurrence;
@@ -6342,6 +6452,7 @@ class Goal extends DataClass implements Insertable<Goal> {
       this.autoDepositAmount,
       this.autoDepositWalletId,
       this.autoDepositLastRun,
+      this.priority,
       required this.recurrence,
       this.timeRecurrence,
       required this.icon,
@@ -6384,6 +6495,9 @@ class Goal extends DataClass implements Insertable<Goal> {
     }
     if (!nullToAbsent || autoDepositLastRun != null) {
       map['auto_deposit_last_run'] = Variable<DateTime>(autoDepositLastRun);
+    }
+    if (!nullToAbsent || priority != null) {
+      map['priority'] = Variable<int>(priority);
     }
     map['recurrence'] = Variable<bool>(recurrence);
     if (!nullToAbsent || timeRecurrence != null) {
@@ -6438,6 +6552,9 @@ class Goal extends DataClass implements Insertable<Goal> {
       autoDepositLastRun: autoDepositLastRun == null && nullToAbsent
           ? const Value.absent()
           : Value(autoDepositLastRun),
+      priority: priority == null && nullToAbsent
+          ? const Value.absent()
+          : Value(priority),
       recurrence: Value(recurrence),
       timeRecurrence: timeRecurrence == null && nullToAbsent
           ? const Value.absent()
@@ -6483,6 +6600,7 @@ class Goal extends DataClass implements Insertable<Goal> {
           serializer.fromJson<String?>(json['autoDepositWalletId']),
       autoDepositLastRun:
           serializer.fromJson<DateTime?>(json['autoDepositLastRun']),
+      priority: serializer.fromJson<int?>(json['priority']),
       recurrence: serializer.fromJson<bool>(json['recurrence']),
       timeRecurrence: serializer.fromJson<String?>(json['timeRecurrence']),
       icon: serializer.fromJson<String>(json['icon']),
@@ -6516,6 +6634,7 @@ class Goal extends DataClass implements Insertable<Goal> {
       'autoDepositAmount': serializer.toJson<double?>(autoDepositAmount),
       'autoDepositWalletId': serializer.toJson<String?>(autoDepositWalletId),
       'autoDepositLastRun': serializer.toJson<DateTime?>(autoDepositLastRun),
+      'priority': serializer.toJson<int?>(priority),
       'recurrence': serializer.toJson<bool>(recurrence),
       'timeRecurrence': serializer.toJson<String?>(timeRecurrence),
       'icon': serializer.toJson<String>(icon),
@@ -6546,6 +6665,7 @@ class Goal extends DataClass implements Insertable<Goal> {
           Value<double?> autoDepositAmount = const Value.absent(),
           Value<String?> autoDepositWalletId = const Value.absent(),
           Value<DateTime?> autoDepositLastRun = const Value.absent(),
+          Value<int?> priority = const Value.absent(),
           bool? recurrence,
           Value<String?> timeRecurrence = const Value.absent(),
           String? icon,
@@ -6582,6 +6702,7 @@ class Goal extends DataClass implements Insertable<Goal> {
         autoDepositLastRun: autoDepositLastRun.present
             ? autoDepositLastRun.value
             : this.autoDepositLastRun,
+        priority: priority.present ? priority.value : this.priority,
         recurrence: recurrence ?? this.recurrence,
         timeRecurrence:
             timeRecurrence.present ? timeRecurrence.value : this.timeRecurrence,
@@ -6629,6 +6750,7 @@ class Goal extends DataClass implements Insertable<Goal> {
       autoDepositLastRun: data.autoDepositLastRun.present
           ? data.autoDepositLastRun.value
           : this.autoDepositLastRun,
+      priority: data.priority.present ? data.priority.value : this.priority,
       recurrence:
           data.recurrence.present ? data.recurrence.value : this.recurrence,
       timeRecurrence: data.timeRecurrence.present
@@ -6670,6 +6792,7 @@ class Goal extends DataClass implements Insertable<Goal> {
           ..write('autoDepositAmount: $autoDepositAmount, ')
           ..write('autoDepositWalletId: $autoDepositWalletId, ')
           ..write('autoDepositLastRun: $autoDepositLastRun, ')
+          ..write('priority: $priority, ')
           ..write('recurrence: $recurrence, ')
           ..write('timeRecurrence: $timeRecurrence, ')
           ..write('icon: $icon, ')
@@ -6702,6 +6825,7 @@ class Goal extends DataClass implements Insertable<Goal> {
         autoDepositAmount,
         autoDepositWalletId,
         autoDepositLastRun,
+        priority,
         recurrence,
         timeRecurrence,
         icon,
@@ -6733,6 +6857,7 @@ class Goal extends DataClass implements Insertable<Goal> {
           other.autoDepositAmount == this.autoDepositAmount &&
           other.autoDepositWalletId == this.autoDepositWalletId &&
           other.autoDepositLastRun == this.autoDepositLastRun &&
+          other.priority == this.priority &&
           other.recurrence == this.recurrence &&
           other.timeRecurrence == this.timeRecurrence &&
           other.icon == this.icon &&
@@ -6762,6 +6887,7 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
   final Value<double?> autoDepositAmount;
   final Value<String?> autoDepositWalletId;
   final Value<DateTime?> autoDepositLastRun;
+  final Value<int?> priority;
   final Value<bool> recurrence;
   final Value<String?> timeRecurrence;
   final Value<String> icon;
@@ -6790,6 +6916,7 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     this.autoDepositAmount = const Value.absent(),
     this.autoDepositWalletId = const Value.absent(),
     this.autoDepositLastRun = const Value.absent(),
+    this.priority = const Value.absent(),
     this.recurrence = const Value.absent(),
     this.timeRecurrence = const Value.absent(),
     this.icon = const Value.absent(),
@@ -6819,6 +6946,7 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     this.autoDepositAmount = const Value.absent(),
     this.autoDepositWalletId = const Value.absent(),
     this.autoDepositLastRun = const Value.absent(),
+    this.priority = const Value.absent(),
     this.recurrence = const Value.absent(),
     this.timeRecurrence = const Value.absent(),
     this.icon = const Value.absent(),
@@ -6853,6 +6981,7 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     Expression<double>? autoDepositAmount,
     Expression<String>? autoDepositWalletId,
     Expression<DateTime>? autoDepositLastRun,
+    Expression<int>? priority,
     Expression<bool>? recurrence,
     Expression<String>? timeRecurrence,
     Expression<String>? icon,
@@ -6885,6 +7014,7 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
         'auto_deposit_wallet_id': autoDepositWalletId,
       if (autoDepositLastRun != null)
         'auto_deposit_last_run': autoDepositLastRun,
+      if (priority != null) 'priority': priority,
       if (recurrence != null) 'recurrence': recurrence,
       if (timeRecurrence != null) 'time_recurrence': timeRecurrence,
       if (icon != null) 'icon': icon,
@@ -6916,6 +7046,7 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
       Value<double?>? autoDepositAmount,
       Value<String?>? autoDepositWalletId,
       Value<DateTime?>? autoDepositLastRun,
+      Value<int?>? priority,
       Value<bool>? recurrence,
       Value<String?>? timeRecurrence,
       Value<String>? icon,
@@ -6944,6 +7075,7 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
       autoDepositAmount: autoDepositAmount ?? this.autoDepositAmount,
       autoDepositWalletId: autoDepositWalletId ?? this.autoDepositWalletId,
       autoDepositLastRun: autoDepositLastRun ?? this.autoDepositLastRun,
+      priority: priority ?? this.priority,
       recurrence: recurrence ?? this.recurrence,
       timeRecurrence: timeRecurrence ?? this.timeRecurrence,
       icon: icon ?? this.icon,
@@ -7006,6 +7138,9 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
       map['auto_deposit_last_run'] =
           Variable<DateTime>(autoDepositLastRun.value);
     }
+    if (priority.present) {
+      map['priority'] = Variable<int>(priority.value);
+    }
     if (recurrence.present) {
       map['recurrence'] = Variable<bool>(recurrence.value);
     }
@@ -7067,6 +7202,7 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
           ..write('autoDepositAmount: $autoDepositAmount, ')
           ..write('autoDepositWalletId: $autoDepositWalletId, ')
           ..write('autoDepositLastRun: $autoDepositLastRun, ')
+          ..write('priority: $priority, ')
           ..write('recurrence: $recurrence, ')
           ..write('timeRecurrence: $timeRecurrence, ')
           ..write('icon: $icon, ')
@@ -7347,8 +7483,13 @@ class AppNotification extends DataClass implements Insertable<AppNotification> {
   /// chính của tài khoản khác hiện ra trên máy dùng chung.
   final int idaccount;
 
+  /// Giá trị `.name` của `NotificationKind` — **14 loại**, xem enum ấy để có
+  /// danh sách chính xác thay vì tin vào chú thích này:
+  ///
   /// `budgetNearLimit` | `budgetOverspent` | `billDueSoon` | `billOverdue`
-  /// | `goalCompleted` | `goalBehind` | `syncFailed` | `walletNegative`
+  /// | `billAutoPaid` | `billAutoPayFailed` | `goalCompleted` |
+  /// `goalCycleReady` | `goalBehind` | `goalAutoDeposited` |
+  /// `goalAutoDepositFailed` | `syncFailed` | `walletNegative`
   final String kind;
 
   /// Khoá chống trùng — **trái tim của bảng này**.
@@ -10099,6 +10240,7 @@ typedef $$BillsTableCreateCompanionBuilder = BillsCompanion Function({
   Value<String> note,
   Value<String?> generatedFromBillId,
   Value<bool> autoPayEnabled,
+  Value<int?> anchorDay,
   Value<DateTime?> deletedAt,
   Value<bool> isDeleted,
   Value<String> syncStatus,
@@ -10128,6 +10270,7 @@ typedef $$BillsTableUpdateCompanionBuilder = BillsCompanion Function({
   Value<String> note,
   Value<String?> generatedFromBillId,
   Value<bool> autoPayEnabled,
+  Value<int?> anchorDay,
   Value<DateTime?> deletedAt,
   Value<bool> isDeleted,
   Value<String> syncStatus,
@@ -10206,6 +10349,9 @@ class $$BillsTableFilterComposer extends Composer<_$AppDatabase, $BillsTable> {
   ColumnFilters<bool> get autoPayEnabled => $composableBuilder(
       column: $table.autoPayEnabled,
       builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get anchorDay => $composableBuilder(
+      column: $table.anchorDay, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get deletedAt => $composableBuilder(
       column: $table.deletedAt, builder: (column) => ColumnFilters(column));
@@ -10302,6 +10448,9 @@ class $$BillsTableOrderingComposer
       column: $table.autoPayEnabled,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get anchorDay => $composableBuilder(
+      column: $table.anchorDay, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
       column: $table.deletedAt, builder: (column) => ColumnOrderings(column));
 
@@ -10392,6 +10541,9 @@ class $$BillsTableAnnotationComposer
   GeneratedColumn<bool> get autoPayEnabled => $composableBuilder(
       column: $table.autoPayEnabled, builder: (column) => column);
 
+  GeneratedColumn<int> get anchorDay =>
+      $composableBuilder(column: $table.anchorDay, builder: (column) => column);
+
   GeneratedColumn<DateTime> get deletedAt =>
       $composableBuilder(column: $table.deletedAt, builder: (column) => column);
 
@@ -10456,6 +10608,7 @@ class $$BillsTableTableManager extends RootTableManager<
             Value<String> note = const Value.absent(),
             Value<String?> generatedFromBillId = const Value.absent(),
             Value<bool> autoPayEnabled = const Value.absent(),
+            Value<int?> anchorDay = const Value.absent(),
             Value<DateTime?> deletedAt = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
             Value<String> syncStatus = const Value.absent(),
@@ -10485,6 +10638,7 @@ class $$BillsTableTableManager extends RootTableManager<
             note: note,
             generatedFromBillId: generatedFromBillId,
             autoPayEnabled: autoPayEnabled,
+            anchorDay: anchorDay,
             deletedAt: deletedAt,
             isDeleted: isDeleted,
             syncStatus: syncStatus,
@@ -10514,6 +10668,7 @@ class $$BillsTableTableManager extends RootTableManager<
             Value<String> note = const Value.absent(),
             Value<String?> generatedFromBillId = const Value.absent(),
             Value<bool> autoPayEnabled = const Value.absent(),
+            Value<int?> anchorDay = const Value.absent(),
             Value<DateTime?> deletedAt = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
             Value<String> syncStatus = const Value.absent(),
@@ -10543,6 +10698,7 @@ class $$BillsTableTableManager extends RootTableManager<
             note: note,
             generatedFromBillId: generatedFromBillId,
             autoPayEnabled: autoPayEnabled,
+            anchorDay: anchorDay,
             deletedAt: deletedAt,
             isDeleted: isDeleted,
             syncStatus: syncStatus,
@@ -10585,6 +10741,7 @@ typedef $$GoalsTableCreateCompanionBuilder = GoalsCompanion Function({
   Value<double?> autoDepositAmount,
   Value<String?> autoDepositWalletId,
   Value<DateTime?> autoDepositLastRun,
+  Value<int?> priority,
   Value<bool> recurrence,
   Value<String?> timeRecurrence,
   Value<String> icon,
@@ -10614,6 +10771,7 @@ typedef $$GoalsTableUpdateCompanionBuilder = GoalsCompanion Function({
   Value<double?> autoDepositAmount,
   Value<String?> autoDepositWalletId,
   Value<DateTime?> autoDepositLastRun,
+  Value<int?> priority,
   Value<bool> recurrence,
   Value<String?> timeRecurrence,
   Value<String> icon,
@@ -10681,6 +10839,9 @@ class $$GoalsTableFilterComposer extends Composer<_$AppDatabase, $GoalsTable> {
   ColumnFilters<DateTime> get autoDepositLastRun => $composableBuilder(
       column: $table.autoDepositLastRun,
       builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get priority => $composableBuilder(
+      column: $table.priority, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<bool> get recurrence => $composableBuilder(
       column: $table.recurrence, builder: (column) => ColumnFilters(column));
@@ -10780,6 +10941,9 @@ class $$GoalsTableOrderingComposer
       column: $table.autoDepositLastRun,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get priority => $composableBuilder(
+      column: $table.priority, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<bool> get recurrence => $composableBuilder(
       column: $table.recurrence, builder: (column) => ColumnOrderings(column));
 
@@ -10871,6 +11035,9 @@ class $$GoalsTableAnnotationComposer
   GeneratedColumn<DateTime> get autoDepositLastRun => $composableBuilder(
       column: $table.autoDepositLastRun, builder: (column) => column);
 
+  GeneratedColumn<int> get priority =>
+      $composableBuilder(column: $table.priority, builder: (column) => column);
+
   GeneratedColumn<bool> get recurrence => $composableBuilder(
       column: $table.recurrence, builder: (column) => column);
 
@@ -10947,6 +11114,7 @@ class $$GoalsTableTableManager extends RootTableManager<
             Value<double?> autoDepositAmount = const Value.absent(),
             Value<String?> autoDepositWalletId = const Value.absent(),
             Value<DateTime?> autoDepositLastRun = const Value.absent(),
+            Value<int?> priority = const Value.absent(),
             Value<bool> recurrence = const Value.absent(),
             Value<String?> timeRecurrence = const Value.absent(),
             Value<String> icon = const Value.absent(),
@@ -10976,6 +11144,7 @@ class $$GoalsTableTableManager extends RootTableManager<
             autoDepositAmount: autoDepositAmount,
             autoDepositWalletId: autoDepositWalletId,
             autoDepositLastRun: autoDepositLastRun,
+            priority: priority,
             recurrence: recurrence,
             timeRecurrence: timeRecurrence,
             icon: icon,
@@ -11005,6 +11174,7 @@ class $$GoalsTableTableManager extends RootTableManager<
             Value<double?> autoDepositAmount = const Value.absent(),
             Value<String?> autoDepositWalletId = const Value.absent(),
             Value<DateTime?> autoDepositLastRun = const Value.absent(),
+            Value<int?> priority = const Value.absent(),
             Value<bool> recurrence = const Value.absent(),
             Value<String?> timeRecurrence = const Value.absent(),
             Value<String> icon = const Value.absent(),
@@ -11034,6 +11204,7 @@ class $$GoalsTableTableManager extends RootTableManager<
             autoDepositAmount: autoDepositAmount,
             autoDepositWalletId: autoDepositWalletId,
             autoDepositLastRun: autoDepositLastRun,
+            priority: priority,
             recurrence: recurrence,
             timeRecurrence: timeRecurrence,
             icon: icon,

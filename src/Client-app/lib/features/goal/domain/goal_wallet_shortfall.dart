@@ -1,7 +1,4 @@
-import 'package:intl/intl.dart';
-
-final NumberFormat _tien =
-    NumberFormat.currency(locale: 'vi_VN', symbol: 'đ', decimalDigits: 0);
+import '../../../core/utils/currency_formatter.dart';
 
 /// Câu nhắc khi ví tích lũy **không còn đủ tiền** cho các mục tiêu trỏ vào nó,
 /// hoặc `null` khi không có gì lệch.
@@ -38,7 +35,7 @@ String? canhBaoViKhongDu({
   if (tongMucTieuDangGiu <= 0) return null;
   if (soDuVi >= tongMucTieuDangGiu) return null;
 
-  return 'Ví "$tenVi" còn ${_tien.format(soDuVi)}, ít hơn '
-      '${_tien.format(tongMucTieuDangGiu)} mà các mục tiêu đang ghi nhận. '
+  return 'Ví "$tenVi" còn ${CurrencyFormatter.format(soDuVi)}, ít hơn '
+      '${CurrencyFormatter.format(tongMucTieuDangGiu)} mà các mục tiêu đang ghi nhận. '
       'Có khoản chi nào đó đã tiêu vào tiền tích lũy.';
 }

@@ -75,40 +75,14 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
     required int accountId,
     required String classify,
   }) {
-    late final StreamSubscription<List<Category>> categorySubscription;
-    late final StreamSubscription<List<CategoryGroupMembership>>
-        membershipSubscription;
-    List<Category>? categoryRows;
-    List<CategoryGroupMembership>? memberships;
-
-    late final StreamController<CategoryTree> controller;
-    controller = StreamController<CategoryTree>(
-      onListen: () {
-        void publish() {
-          if (categoryRows == null || memberships == null) return;
-          controller.add(_treeFromRows(categoryRows!, accountId, memberships!));
-        }
-
-        categorySubscription = db.categoryDao
-            .watchCategoryRows(accountId, classify)
-            .listen((rows) {
-          categoryRows = rows;
-          publish();
-        }, onError: controller.addError);
-        membershipSubscription = (db.select(db.categoryGroupMemberships)
-              ..where((row) => row.idaccount.equals(accountId)))
-            .watch()
-            .listen((rows) {
-          memberships = rows;
-          publish();
-        }, onError: controller.addError);
-      },
-      onCancel: () async {
-        await categorySubscription.cancel();
-        await membershipSubscription.cancel();
-      },
-    );
-    return controller.stream;
+    // Trước 2026-09-07 hàm này ghép HAI dòng dữ liệu: danh mục, và bảng
+    // `CategoryGroupMemberships` — thứ chỉ tồn tại để gán danh mục **mặc định**
+    // (toàn cục) vào nhóm của từng tài khoản. Nay mỗi tài khoản có bản sao
+    // riêng nên việc gán nhóm nằm gọn trong `parentId` của chính hàng danh
+    // mục, và dòng thứ hai không còn ảnh hưởng gì tới cây.
+    return db.categoryDao
+        .watchCategoryRows(accountId, classify)
+        .map((rows) => _treeFromRows(rows, accountId));
   }
 
   @override
@@ -119,7 +93,6 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
       _treeFromRows(
         await db.categoryDao.getCategoryRows(accountId, classify),
         accountId,
-        await db.categoryDao.getGroupMemberships(accountId),
       );
 
   @override
@@ -215,8 +188,6 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
 
       final childIds = draft.childIds.toSet();
       final personalChildren = <Category>[];
-      final defaultChildren = <Category>[];
-      final defaultChildIds = <String>[];
       for (final childId in childIds) {
         final child = await db.categoryDao.getById(childId);
         if (child == null || child.isDeleted || child.isGroup) {
@@ -224,27 +195,17 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
             'Chỉ có thể thêm danh mục con cá nhân hợp lệ vào nhóm.',
           );
         }
-        if (child.isDefault) {
-          if (child.idaccount != 0 || child.classify != draft.classify) {
-            throw const CategoryValidationException(
-              'Chỉ có thể thêm danh mục mặc định hợp lệ cùng loại vào nhóm.',
-            );
-          }
-          defaultChildren.add(child);
-          defaultChildIds.add(child.id);
-        } else {
-          if (child.idaccount != draft.accountId) {
-            throw const CategoryValidationException(
-              'Chỉ có thể thêm danh mục con cá nhân hợp lệ vào nhóm.',
-            );
-          }
-          personalChildren.add(child);
+        // Từ 2026-09-07 danh mục mặc định không còn hiện với người dùng —
+        // mỗi tài khoản có bản sao của riêng mình — nên chúng không thể là
+        // ứng viên con của một nhóm nữa.
+        if (child.isDefault || child.idaccount != draft.accountId) {
+          throw const CategoryValidationException(
+            'Chỉ có thể thêm danh mục con cá nhân hợp lệ vào nhóm.',
+          );
         }
+        personalChildren.add(child);
       }
-      if (_hasDuplicateAssignedChildName([
-        ...personalChildren,
-        ...defaultChildren,
-      ])) {
+      if (_hasDuplicateAssignedChildName(personalChildren)) {
         throw const CategoryValidationException(
           'Tên danh mục đã tồn tại. Mỗi tài khoản không được có hai danh mục trùng tên, kể cả khác loại hay khác nhóm.',
         );
@@ -287,12 +248,11 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
           updatedAt: Value(now),
         ));
       }
-      await db.categoryDao.replaceGroupMemberships(
-        accountId: draft.accountId,
-        groupId: id,
-        categoryIds: defaultChildIds,
-        now: now,
-      );
+      // Không còn ghi `CategoryGroupMemberships`: bảng ấy tồn tại CHỈ vì danh
+      // mục mặc định là toàn cục nên không ghi `parentId` riêng cho từng tài
+      // khoản được. Nay mọi danh mục người dùng thấy đều là của chính họ, và
+      // `parentId` (→ `Idgroup`) đã nằm trong payload đẩy. Bảng và các hàm DAO
+      // giữ nguyên cho tới khi có một migration đáng làm.
     });
     syncEngine?.scheduleSync();
   }
@@ -349,7 +309,6 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
         syncStatus: const Value('pending'),
         updatedAt: Value(now),
       ));
-      await db.categoryDao.removeGroupMemberships(accountId, groupId);
       await (db.update(db.categories)..where((row) => row.id.equals(groupId)))
           .write(CategoriesCompanion(
         isDeleted: const Value(true),
@@ -419,51 +378,35 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
     ];
   }
 
-  CategoryTree _treeFromRows(
-    List<Category> rows,
-    int accountId,
-    List<CategoryGroupMembership> memberships,
-  ) {
+  CategoryTree _treeFromRows(List<Category> rows, int accountId) {
     final groups = rows
         .where((category) =>
             category.idaccount == accountId &&
             category.isGroup &&
             !category.isDefault)
         .toList();
-    final children = rows
-        .where((category) =>
-            !category.isGroup &&
-            (category.idaccount == accountId || category.isDefault))
-        .toList();
+    // Danh mục mặc định KHÔNG còn có mặt ở đây: `rows` đến từ
+    // `watchCategoryRows`/`getCategoryRows`, và từ 2026-09-07 hai hàm ấy chỉ
+    // trả danh mục của chính tài khoản. Mỗi người có bản sao riêng, nên việc
+    // gán nhóm nay biểu diễn được bằng `parentId` — thứ vốn đã đồng bộ lên
+    // backend qua cột `Idgroup`.
+    final children =
+        rows.where((category) => !category.isGroup).toList();
     final groupIds = groups.map((group) => group.id).toSet();
-    final defaultChildIds = children
-        .where((category) => category.isDefault)
-        .map((category) => category.id)
-        .toSet();
-    final membershipGroupByDefaultId = <String, String>{
-      for (final membership in memberships)
-        if (groupIds.contains(membership.groupId) &&
-            defaultChildIds.contains(membership.categoryId))
-          membership.categoryId: membership.groupId,
-    };
     return CategoryTree(
       groups: groups
           .map(
             (group) => CategoryGroupNode(
               group: group,
               children: children
-                  .where((child) =>
-                      (!child.isDefault && child.parentId == group.id) ||
-                      (child.isDefault &&
-                          membershipGroupByDefaultId[child.id] == group.id))
+                  .where((child) => child.parentId == group.id)
                   .toList(),
             ),
           )
           .toList(),
       ungroupedChildren: children
-          .where((child) => child.isDefault
-              ? !membershipGroupByDefaultId.containsKey(child.id)
-              : child.parentId == null || !groupIds.contains(child.parentId))
+          .where((child) =>
+              child.parentId == null || !groupIds.contains(child.parentId))
           .toList(),
       defaultChildren: const [],
     );

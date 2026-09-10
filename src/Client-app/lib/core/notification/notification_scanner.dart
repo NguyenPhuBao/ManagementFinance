@@ -18,9 +18,11 @@ import '../../features/budget/data/models/budget_entity.dart';
 import '../../features/goal/data/models/goal_entity.dart';
 import '../../features/goal/domain/goal_auto_deposit_runner.dart';
 import '../../features/bill/domain/bill_auto_pay_runner.dart';
+import 'badge_updater.dart';
 import 'notification_rules.dart';
 import 'os/os_notifier.dart';
 import 'os/os_scheduled_id.dart';
+import 'tuan_iso.dart';
 import 'prefs/notification_prefs.dart';
 import 'prefs/notification_prefs_store.dart';
 
@@ -35,6 +37,16 @@ typedef BudgetViewsLoader = Future<List<BudgetView>> Function(
 /// Nạp hoá đơn tới hạn trong cửa sổ nhắc. Cùng lý do như trên: closure thay vì
 /// cả một repository.
 typedef BillsLoader = Future<List<Bill>> Function(int idaccount, DateTime now);
+
+/// Khoảng `[from, to)` có giao dịch nào không.
+///
+/// Trả `bool` chứ không phải một bản tổng hợp, cùng kỷ luật thu hẹp phụ thuộc
+/// với các loader khác: câu chữ của Tổng kết tuần không nêu số nào.
+typedef WeekActivityLoader = Future<bool> Function(
+  int idaccount,
+  DateTime from,
+  DateTime to,
+);
 
 /// Nạp mục tiêu của một tài khoản. Cùng lý do closure như trên.
 typedef GoalsLoader = Future<List<GoalEntity>> Function(
@@ -66,6 +78,10 @@ class NotificationScanner {
   final GoalsLoader? loadGoals;
   final WalletsLoader? loadWallets;
 
+  /// Bỏ trống thì Tổng kết tuần **tắt hẳn** — cùng khuôn với `loadGoals` và
+  /// `loadWallets`.
+  final WeekActivityLoader? loadWeekActivity;
+
   /// Tuỳ chọn: bỏ trống thì scanner chỉ đọc, không ghi gì ngoài bảng thông báo.
   final OverdueMarker? markOverdue;
 
@@ -85,6 +101,15 @@ class NotificationScanner {
 
   /// Tuỳ chọn: bỏ trống thì chỉ có trung tâm thông báo trong app (web).
   final OsNotifier? osNotifier;
+
+  /// Giữ badge trên icon app khớp với số chưa đọc. Bỏ trống thì không có badge.
+  ///
+  /// Scanner **sở hữu** vòng đời của nó thay vì để nơi gọi tự lo: `auth_bloc`
+  /// đã có bốn chỗ gọi `start`/`stop`, và một lối song song nghĩa là bốn chỗ
+  /// nữa phải nhớ. Chỗ bị quên sẽ hỏng **âm thầm** — badge của người vừa đăng
+  /// xuất tiếp tục cập nhật bằng dữ liệu người mới. Badge cũng chỉ có nghĩa khi
+  /// vòng thông báo đang chạy, nên hai vòng đời vốn đã là một.
+  final BadgeUpdater? badgeUpdater;
 
   /// Tuỳ chọn: bỏ trống thì chạy như `NotificationPrefs.macDinh` — bật hết.
   /// Thiếu kho tuỳ chọn tuyệt đối không được làm tính năng im lặng.
@@ -148,10 +173,12 @@ class NotificationScanner {
     this.runAutoPays,
     this.loadGoals,
     this.loadWallets,
+    this.loadWeekActivity,
     required this.syncStatus,
     this.appLifecycle,
     this.markOverdue,
     this.osNotifier,
+    this.badgeUpdater,
     this.prefsStore,
     this.resyncLich,
     DateTime Function()? clock,
@@ -174,6 +201,15 @@ class NotificationScanner {
     // trả giá ở mỗi lượt quét. Nuốt lỗi — dọn dẹp thất bại chỉ tốn dung lượng.
     try {
       await dao.purgeOlderThan(clock().subtract(giuThongBao));
+    } catch (_) {
+      // Bỏ qua có chủ ý.
+    }
+
+    // Trước khi nghe: badge phải đúng ngay từ lúc mở app, không chờ lượt quét
+    // đầu. Người dùng đọc hết rồi đóng app thì lần mở sau chấm phải đã tắt.
+    // Nuốt lỗi — `start()` nằm trên đường đăng nhập.
+    try {
+      await badgeUpdater?.start(idaccount);
     } catch (_) {
       // Bỏ qua có chủ ý.
     }
@@ -232,6 +268,12 @@ class NotificationScanner {
     await _subVongDoi?.cancel();
     _subVongDoi = null;
     _idaccount = null;
+    // TRƯỚC `cancelAll()`: updater còn sống mà khay vừa bị dọn sạch thì lượt
+    // đẩy cuối cùng sẽ dựng lại đúng bản tóm tắt vừa gỡ đi — và nó mang tên
+    // app của người vừa đăng xuất.
+    try {
+      await badgeUpdater?.stop();
+    } catch (_) {}
     // Nuốt lỗi: đăng xuất không được phép thất bại vì hệ điều hành trở chứng.
     try {
       await osNotifier?.cancelAll();
@@ -287,6 +329,16 @@ class NotificationScanner {
       final prefs =
           await prefsStore?.read(idaccount) ?? NotificationPrefs.macDinh;
 
+      // Chỉ HỎI khi người dùng đã bật. Công tắc mặc định tắt, nên với phần lớn
+      // bản cài đây là một truy vấn không bao giờ chạy — và bộ luật nhận
+      // `false`, đúng nghĩa "không có căn cứ để báo".
+      var tuanQuaCoGiaoDich = false;
+      final docTuan = loadWeekActivity;
+      if (docTuan != null && prefs.tongKetTuanBat) {
+        final tuan = tuanTruoc(at);
+        tuanQuaCoGiaoDich = await docTuan(idaccount, tuan.from, tuan.to);
+      }
+
       final ungVien = buildNotificationCandidates(
         NotificationRuleInput(
           now: at,
@@ -299,6 +351,8 @@ class NotificationScanner {
           syncFailed: syncFailed ?? _dongBoHong,
           silenceBefore: at.subtract(cuaSoSuKien),
           defaultBillLeadDays: prefs.soNgayNhacHoaDon,
+          lowBalanceThreshold: prefs.nguongSoDuThap,
+          tuanQuaCoGiaoDich: tuanQuaCoGiaoDich,
         ),
         // Lọc ở đây chứ không ở bước bắn: tắt một nhóm nghĩa là không sinh
         // thông báo nhóm ấy CẢ trong app. Chỉ chặn lúc bắn thì trung tâm thông

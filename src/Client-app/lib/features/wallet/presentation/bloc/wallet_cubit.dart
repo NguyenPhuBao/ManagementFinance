@@ -81,7 +81,12 @@ class WalletCubit extends Cubit<WalletState> {
       );
 
       final updated = [...currentWallets, wallet];
-      final newTotal = updated.fold(0.0, (s, w) => s + w.balance);
+      // Hỏi repository chứ không tự cộng lại. `getTotalBalance` là ĐỊNH NGHĨA
+      // duy nhất của "tổng tài sản" — nó lọc `includeInTotal`. Phép `fold` từng
+      // ở đây là bản thứ hai của luật ấy và nó thiếu đúng phép lọc, nên con số
+      // hiện ngay sau khi bấm Lưu cộng cả ví người dùng đã cố ý loại ra, rồi
+      // nhảy về đúng ở lượt tải lại ngay sau đó.
+      final newTotal = await _repository.getTotalBalance(idaccount);
 
       emit(WalletOperationSuccess(
         wallets:      updated,
@@ -122,6 +127,30 @@ class WalletCubit extends Cubit<WalletState> {
         totalBalance: currentTotal,
         message:      'Đã cập nhật ví "${wallet.name}"!',
       ));
+      await loadWallets(idaccount);
+    } catch (e) {
+      emit(WalletError(e.toString()));
+    }
+  }
+
+  // ── Lưu trữ ───────────────────────────────────────────────────────────────
+
+  /// Bật/tắt lưu trữ cho một ví, rồi tải lại danh sách.
+  ///
+  /// KHÔNG tự sửa danh sách trong bộ nhớ như [deleteWallet] làm: ví lưu trữ
+  /// vẫn ở lại màn hình, chỉ đổi mục — và tổng tài sản đổi theo. Hỏi lại
+  /// repository là cách duy nhất để hai thứ ấy không lệch nhau một nhịp, đúng
+  /// bài học của `6fd2ce9`.
+  ///
+  /// Hai chốt chặn ở datasource ném `CacheException`; đưa nó lên `WalletError`
+  /// để màn hình còn nói được vì sao không lưu trữ được.
+  Future<void> setArchived({
+    required String walletId,
+    required bool luuTru,
+    required int idaccount,
+  }) async {
+    try {
+      await _repository.setArchived(walletId, luuTru: luuTru);
       await loadWallets(idaccount);
     } catch (e) {
       emit(WalletError(e.toString()));

@@ -213,4 +213,98 @@ void main() {
               'tiêu nói "đúng tiến độ" trong khi dự báo nói quá hạn.');
     });
   });
+
+  /// Cửa sổ tối thiểu — thêm 2026-09-08 sau khi đo trên máy thật.
+  ///
+  /// Mục tiêu `MuaXe` tạo ngày 05/09, xem ngày 08/09, đã tích 1.101.000 đ,
+  /// chu kỳ tháng. Trang chi tiết hiện **"đang tích 11.010.000 đ mỗi tháng"**
+  /// — gấp mười lần tổng đã tích được cả đời mục tiêu — và dự báo hoàn thành
+  /// ngay **tháng này** cho một mục tiêu hạn 2028.
+  ///
+  /// Số học không sai: `1.101.000 / 3 ngày × 30 = 11.010.000`. Cái sai là
+  /// **ngoại suy**: ba ngày dữ liệu nhân lên thành nhịp tháng thì hệ số phóng
+  /// đại là 10. Phép chặn cũ chỉ có `soNgayDaQua <= 0`, tức nó chỉ chặn đúng
+  /// phép chia cho 0 chứ không chặn việc bịa ra một nhịp.
+  group('cửa sổ tối thiểu — không ngoại suy từ vài ngày', () {
+    test('chu kỳ tháng mà mới 3 ngày thì KHÔNG nói nhịp', () {
+      final g = _mucTieu(
+        target: 2000000,
+        current: 1101000,
+        start: DateTime(2026, 9, 5),
+        han: DateTime(2028, 4, 27),
+        chuKy: 'Month',
+      );
+
+      expect(tocDoThucTe(g, DateTime(2026, 9, 8)), isNull,
+          reason: 'Đây là ca THẬT đo trên máy ảo. Trả một con số ở đây là nói '
+              'với người dùng rằng họ đang tích 11 triệu mỗi tháng trong khi '
+              'tổng cộng mới có 1,1 triệu.');
+      expect(duBaoHoanThanh(g, DateTime(2026, 9, 8)), isNull,
+          reason: 'Cùng phép ngoại suy, cùng hệ số phóng đại — chặn một chỗ mà '
+              'để chỗ kia nói tiếp là hộp dự báo vẫn sai, chỉ sai gọn hơn.');
+    });
+
+    test('đủ NỬA chu kỳ thì bắt đầu nói', () {
+      final g = _mucTieu(
+        target: 2000000,
+        current: 500000,
+        start: DateTime(2026, 9, 1),
+        han: DateTime(2027, 9, 1),
+        chuKy: 'Month',
+      );
+
+      expect(tocDoThucTe(g, DateTime(2026, 9, 16)), isNotNull,
+          reason: 'Nửa chu kỳ là ngưỡng: hệ số phóng đại tối đa còn 2, mức '
+              'sai lệch chấp nhận được cho một câu ước lượng. Đợi trọn một '
+              'chu kỳ thì mục tiêu hàng tháng câm suốt tháng đầu — mà tháng '
+              'đầu mới là lúc người dùng mở ra xem nhiều nhất.');
+    });
+
+    test('chu kỳ NGÀY thì một ngày đã đủ', () {
+      final g = _mucTieu(
+        target: 1000000,
+        current: 50000,
+        start: DateTime(2026, 9, 1),
+        han: DateTime(2026, 12, 1),
+        chuKy: 'Day',
+      );
+
+      expect(tocDoThucTe(g, DateTime(2026, 9, 2)), isNotNull,
+          reason: 'Chu kỳ ngày thì phép nhân là 1 — không có ngoại suy nào để '
+              'chặn. Một ngưỡng cứng tính bằng ngày sẽ bắt nhịp này im lặng '
+              'vô cớ; ngưỡng phải tính THEO chu kỳ.');
+    });
+
+    test('chu kỳ NĂM thì vài tháng vẫn chưa đủ', () {
+      final g = _mucTieu(
+        target: 100000000,
+        current: 5000000,
+        start: DateTime(2026, 1, 1),
+        han: DateTime(2030, 1, 1),
+        chuKy: 'Year',
+      );
+
+      expect(tocDoThucTe(g, DateTime(2026, 3, 1)), isNull,
+          reason: 'Hai tháng nhân lên thành nhịp năm là hệ số 6. Cùng một lỗi '
+              'với ca ba ngày, chỉ khác thang.');
+      expect(tocDoThucTe(g, DateTime(2026, 8, 1)), isNotNull,
+          reason: 'Quá nửa năm thì nói được.');
+    });
+
+    test('chưa nạp đồng nào nhưng đã đủ cửa sổ thì vẫn trả 0', () {
+      final g = _mucTieu(
+        target: 2000000,
+        current: 0,
+        start: DateTime(2026, 9, 1),
+        han: DateTime(2027, 9, 1),
+        chuKy: 'Month',
+      );
+
+      expect(tocDoThucTe(g, DateTime(2026, 9, 20)), 0.0,
+          reason: 'Cửa sổ tối thiểu nói về việc CÓ ĐỦ THỜI GIAN để đo hay '
+              'chưa, không phải về việc có tiền hay không. Gộp hai câu ấy làm '
+              'một là mất đi câu "bạn chưa tích được gì" — thứ đáng nói nhất '
+              'với một mục tiêu đứng yên.');
+    });
+  });
 }

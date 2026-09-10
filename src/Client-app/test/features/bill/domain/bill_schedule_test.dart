@@ -37,8 +37,8 @@ void main() {
 
     test('ngày bắt đầu cuối tháng thì đến hạn cũng cuối tháng', () {
       expect(lich(start: DateTime(2026, 1, 31)).dueDate, DateTime(2026, 2, 28),
-          reason: 'Dùng chung nextBillDueDate nên quy tắc ngày cuối tháng áp ở '
-              'đây luôn — không có phép tính ngày thứ hai trong dự án.');
+          reason: 'Dùng chung nextBillDueDate nên phép kẹp ngày áp ở đây luôn '
+              '— không có phép tính ngày thứ hai trong dự án.');
     });
 
     test('ngày bắt đầu luôn nằm trước ngày đến hạn, mọi chu kỳ', () {
@@ -153,6 +153,126 @@ void main() {
       final s = BillSchedule.fromBill(bill);
       expect(s.repeat, false);
       expect(s.startDate, DateTime(2026, 9, 4));
+    });
+  });
+
+  group('ngày gốc trên form', () {
+    test('bắt đầu 28/02 thì đến hạn 28/03, KHÔNG phải 31/03', () {
+      expect(
+        lich(start: DateTime(2026, 2, 28)).dueDate,
+        DateTime(2026, 3, 28),
+        reason: 'Đây là lỗi người dùng báo 2026-09-08: đăng ký lần đầu vào '
+            'ngày cuối tháng 2 thì hạn bị đẩy tới cuối tháng sau. Ô hạn trên '
+            'form là CHỈ ĐỌC nên họ không có cách nào sửa lại.',
+      );
+    });
+
+    test('không phụ thuộc năm nhuận', () {
+      expect(
+        lich(start: DateTime(2026, 2, 28)).dueDate.day,
+        lich(start: DateTime(2028, 2, 28)).dueDate.day,
+        reason: 'Bản trước cho 28/02/2026 ra 31/03 nhưng 28/02/2028 ra 28/03, '
+            'vì năm nhuận thì 28/02 không phải cuối tháng. Cùng một ngày người '
+            'dùng chọn mà hai kết quả khác nhau là thứ không ai đoán được.',
+      );
+    });
+
+    test('bắt đầu 31/01 vẫn kẹp về 28/02 ở kỳ đầu', () {
+      expect(
+        lich(start: DateTime(2026, 1, 31)).dueDate,
+        DateTime(2026, 2, 28),
+        reason: 'Tháng Hai không có ngày 31; kẹp là đúng. Ngày gốc 31 được giữ '
+            'lại để kỳ SAU quay về 31 — việc đó do chuỗi lo, không phải form.',
+      );
+    });
+
+    test('ngày gốc mặc định lấy theo ngày bắt đầu', () {
+      expect(lich(start: DateTime(2026, 2, 28)).anchorDayHieuLuc, 28);
+      expect(lich(start: DateTime(2026, 1, 31)).anchorDayHieuLuc, 31);
+    });
+
+    test('đổi ngày bắt đầu thì ngày gốc đi theo', () {
+      final s = lich(start: DateTime(2026, 1, 31))
+          .copyWith(startDate: DateTime(2026, 3, 15));
+      expect(
+        s.anchorDayHieuLuc,
+        15,
+        reason: 'Chọn một ngày bắt đầu khác là người dùng vừa nói lại ý định. '
+            'Giữ ngày gốc cũ ở đây là hoá đơn vừa đổi sang ngày 15 vẫn đến hạn '
+            'vào ngày 31.',
+      );
+      expect(s.dueDate, DateTime(2026, 4, 15));
+    });
+  });
+
+  group('form SỬA không được đổi hạn của hoá đơn đang đúng', () {
+    Bill hoaDon({
+      required DateTime start,
+      required DateTime han,
+      int? goc,
+    }) {
+      return Bill(
+        id: 'b1',
+        idaccount: 1,
+        name: 'Tiền nhà',
+        amount: 1000,
+        startDate: start,
+        dueDate: han,
+        payStatus: 'Pending',
+        isPaid: false,
+        isRecurrence: true,
+        timeRecurrence: kBillCycleMonth,
+        recurrence: 'monthly',
+        anchorDay: goc,
+        icon: 'receipt',
+        colour: '#4CAF50',
+        note: '',
+        autoPayEnabled: false,
+        isDeleted: false,
+        syncStatus: 'synced',
+        syncRetryCount: 0,
+        updatedAt: DateTime(2026, 2, 28),
+      );
+    }
+
+    test('kỳ giữa chuỗi ngày 31 mở ra không bị cảnh báo lệch hạn', () {
+      // Kỳ thứ ba của chuỗi bắt đầu 31/01: bắt đầu 28/02, hạn 31/03, gốc 31.
+      final s = BillSchedule.fromBill(
+        hoaDon(start: DateTime(2026, 2, 28), han: DateTime(2026, 3, 31), goc: 31),
+      );
+      expect(
+        s.dueDate,
+        DateTime(2026, 3, 31),
+        reason: 'Suy ngày gốc lại từ ngày bắt đầu (28) sẽ ra 28/03, tức mở '
+            'form rồi lưu là HẠ hoá đơn này xuống ngày 28 — đúng lớp lỗi âm '
+            'thầm mà canhBaoHanCu sinh ra để chặn.',
+      );
+      expect(s.canhBaoHanCu, isNull);
+    });
+
+    test('hoá đơn cũ chưa có ngày gốc thì neo vào ngày bắt đầu', () {
+      final s = BillSchedule.fromBill(
+        hoaDon(start: DateTime(2026, 2, 28), han: DateTime(2026, 3, 28)),
+      );
+      expect(
+        s.dueDate,
+        DateTime(2026, 3, 28),
+        reason: 'Hàng kéo từ server không có cột cục bộ này. Neo vào ngày bắt '
+            'đầu là lựa chọn an toàn nhất khi không biết ý định gốc.',
+      );
+      expect(s.canhBaoHanCu, isNull);
+    });
+
+    test('hạn thật sự lệch chu kỳ thì VẪN phải cảnh báo', () {
+      final s = BillSchedule.fromBill(
+        hoaDon(start: DateTime(2026, 2, 28), han: DateTime(2026, 3, 11), goc: 28),
+      );
+      expect(
+        s.canhBaoHanCu,
+        isNotNull,
+        reason: 'Hoá đơn do Admin-web hoặc bản client cũ tạo có thể mang cửa '
+            'sổ trả bất kỳ. Ngày gốc không được làm tắt lời cảnh báo ấy.',
+      );
     });
   });
 }

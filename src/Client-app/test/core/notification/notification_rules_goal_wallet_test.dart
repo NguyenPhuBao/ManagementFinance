@@ -1,5 +1,5 @@
-/// Bốn luật của lát 6: mục tiêu hoàn thành, mục tiêu trễ tiến độ, đồng bộ
-/// hỏng, ví âm.
+/// Bốn luật của lát 6 — mục tiêu hoàn thành, mục tiêu trễ tiến độ, đồng bộ
+/// hỏng, ví âm — cộng luật **ví sắp cạn** thêm ngày 2026-09-07.
 ///
 /// Điểm chung khiến chúng khó hơn hai nhóm trước: **không có "kỳ" tự nhiên**.
 /// Ngân sách có chu kỳ, hoá đơn có hạn trả — cả hai cho sẵn một mốc để đưa vào
@@ -53,12 +53,13 @@ void main() {
     String ten = 'Tiền mặt',
     double soDu = 100000,
     bool daXoa = false,
+    String loai = 'cash',
   }) {
     return Wallet(
       id: id,
       idaccount: 7,
       name: ten,
-      type: 'cash',
+      type: loai,
       balance: soDu,
       currency: 'VND',
       icon: 'wallet',
@@ -80,6 +81,7 @@ void main() {
     bool dongBoHong = false,
     DateTime? at,
     DateTime? silenceBefore,
+    int nguongSoDuThap = 0,
   }) {
     return buildNotificationCandidates(NotificationRuleInput(
       now: at ?? now,
@@ -88,6 +90,7 @@ void main() {
       autoDeposits: autoDeposits,
       syncFailed: dongBoHong,
       silenceBefore: silenceBefore,
+      lowBalanceThreshold: nguongSoDuThap,
     ));
   }
 
@@ -265,7 +268,7 @@ void main() {
           reason: 'Vẫn trễ sau một tháng là tin đáng nhắc lại.');
     });
 
-    test('đi đúng nhịp thì im lặng', () {
+    test('đi đúng nhịp thì không báo TRỄ', () {
       final ra = chay(goals: [
         mucTieu(
           target: 1000,
@@ -274,7 +277,15 @@ void main() {
           ketThuc: DateTime(2026, 12, 31),
         )
       ]);
-      expect(ra, isEmpty);
+
+      // Trước 2026-09-08 chỗ này là `expect(ra, isEmpty)`, và nó đúng khi
+      // `goalBehind` là luật duy nhất chạm tới mục tiêu chưa xong. Luật cột
+      // mốc ra đời thì 700/1000 = 70% vượt mốc 50 — `isEmpty` thành một phép
+      // canh RỘNG HƠN điều test này muốn nói, và nó sẽ đỏ ở mọi luật mục tiêu
+      // thêm về sau dù luật ấy hoàn toàn đúng.
+      expect(ra.map((c) => c.kind), isNot(contains(NotificationKind.goalBehind)),
+          reason: 'Còn 5 tháng cho 300 đồng cuối là đúng nhịp. Báo trễ ở đây '
+              'là dạy người dùng bỏ qua cảnh báo.');
     });
 
     test('mục tiêu đã xoá thì im lặng', () {
@@ -420,6 +431,136 @@ void main() {
     test('ví đã xoá thì im lặng', () {
       expect(chay(wallets: [vi(soDu: -50000, daXoa: true)]), isEmpty);
     });
+
+    test('KHÔNG còn loại ví nào được miễn trừ cảnh báo âm', () {
+      // ⚠️ Test này từng khẳng định điều NGƯỢC LẠI, và việc nó đảo chiều là có
+      // chủ đích — ghi lại đây để người sau không "sửa" nó về như cũ.
+      //
+      // Từ 2026-09-07 ví loại `debt` mang số dư âm được bỏ qua, vì âm là đúng
+      // bản chất của nó; trước đó nó bị nhắc mỗi ngày cho tới khi trả hết nợ.
+      // Ngày 2026-09-09 loại ví thu về ba (`WalletType`) theo yêu cầu người
+      // dùng, và `debt` biến mất — ví cũ chuyển thành `bank`. Không còn tín
+      // hiệu nào để nhận ra "âm là cố ý", nên chốt kia không còn chỗ bám.
+      //
+      // Hệ quả có thật: ai từng theo dõi thẻ tín dụng bằng ví `debt` nay sẽ
+      // được nhắc "ví âm" mỗi ngày. Muốn chữa thì cần một khái niệm MỚI — "ví
+      // được phép âm" — chứ không phải khôi phục chuỗi `'debt'` đã chết.
+      final ra = chay(wallets: [vi(soDu: -5000000, loai: 'bank')]);
+
+      expect(ra, hasLength(1));
+      expect(ra.single.kind, NotificationKind.walletNegative);
+    });
+  });
+
+  group('ví sắp cạn', () {
+    test('số dư dưới ngưỡng thì cảnh báo, và là cảnh báo chứ không nghiêm trọng',
+        () {
+      final ra = chay(
+        wallets: [vi(soDu: 30000, ten: 'Ví tiêu vặt')],
+        nguongSoDuThap: 100000,
+      ).single;
+
+      expect(ra.kind, NotificationKind.walletLowBalance);
+      expect(ra.severity, NotificationSeverity.warning,
+          reason: 'Ví cạn là chuyện còn kịp xử lý; chỉ ví ÂM mới là dấu hiệu '
+              'có gì đó đã sai. Hai mức nghiêm trọng khác nhau.');
+      expect(ra.body, contains('Ví tiêu vặt'));
+      expect(ra.deeplink, '/wallets');
+    });
+
+    test('số dư ĐÚNG BẰNG ngưỡng vẫn cảnh báo', () {
+      expect(
+        chay(wallets: [vi(soDu: 100000)], nguongSoDuThap: 100000),
+        hasLength(1),
+        reason: 'Biên đóng, cùng quy ước với thang màu ngân sách: chạm mốc là '
+            'báo. Người dùng đặt "báo khi còn dưới 100 nghìn" đọc con số ấy là '
+            'mốc, không phải một giá trị bị loại trừ.',
+      );
+    });
+
+    test('số dư trên ngưỡng thì im', () {
+      expect(
+        chay(wallets: [vi(soDu: 100001)], nguongSoDuThap: 100000),
+        isEmpty,
+      );
+    });
+
+    test('ngưỡng 0 nghĩa là TẮT, không phải "báo khi hết sạch"', () {
+      expect(chay(wallets: [vi(soDu: 0)], nguongSoDuThap: 0), isEmpty,
+          reason: 'Mặc định của tuỳ chọn là 0. Hiểu 0 thành một ngưỡng thật sẽ '
+              'bật tính năng cho MỌI bản đã cài mà người dùng không hề đặt gì.');
+    });
+
+    test('ví âm chỉ ra cảnh báo ÂM, không ra cả hai', () {
+      final ra = chay(wallets: [vi(soDu: -50000)], nguongSoDuThap: 100000);
+
+      expect(ra.map((c) => c.kind), [NotificationKind.walletNegative],
+          reason: 'Số dư âm cũng thoả điều kiện "dưới ngưỡng". Không loại trừ '
+              'thì mỗi ví âm đẻ hai thông báo nói cùng một chuyện.');
+    });
+
+    test('KHÔNG còn loại ví nào được miễn trừ cảnh báo sắp cạn', () {
+      // Cùng lý do như chốt cảnh báo âm ngay trên — xem chú thích ở đó.
+      final ra = chay(
+        wallets: [vi(soDu: 1000, loai: 'bank')],
+        nguongSoDuThap: 100000,
+      );
+
+      expect(ra, hasLength(1));
+      expect(ra.single.kind, NotificationKind.walletLowBalance);
+    });
+
+    test('ví đã xoá thì im lặng', () {
+      expect(
+        chay(
+          wallets: [vi(soDu: 1000, daXoa: true)],
+          nguongSoDuThap: 100000,
+        ),
+        isEmpty,
+      );
+    });
+
+    test('nhắc tối đa một lần mỗi ngày', () {
+      final v = vi(soDu: 1000);
+      final sang = chay(
+        wallets: [v],
+        nguongSoDuThap: 100000,
+        at: DateTime(2026, 9, 15, 8),
+      ).single;
+      final toi = chay(
+        wallets: [v],
+        nguongSoDuThap: 100000,
+        at: DateTime(2026, 9, 15, 22),
+      ).single;
+
+      expect(sang.dedupeKey, toi.dedupeKey,
+          reason: 'Ví ở trạng thái cạn cho tới khi người dùng nạp tiền — cùng '
+              'lý lẽ với ví âm.');
+    });
+
+    test('sang ngày mới thì nhắc lại được', () {
+      final v = vi(soDu: 1000);
+      final homNay =
+          chay(wallets: [v], nguongSoDuThap: 100000).single.dedupeKey;
+      final homSau = chay(
+        wallets: [v],
+        nguongSoDuThap: 100000,
+        at: DateTime(2026, 9, 16),
+      ).single.dedupeKey;
+
+      expect(homNay == homSau, isFalse);
+    });
+
+    test('khoá của hai ví khác nhau thì khác nhau', () {
+      final ra = chay(
+        wallets: [vi(id: 'v1', soDu: 1000), vi(id: 'v2', soDu: 2000)],
+        nguongSoDuThap: 100000,
+      );
+
+      expect(ra.map((c) => c.dedupeKey).toSet(), hasLength(2),
+          reason: 'Quên id ví trong khoá thì ví thứ hai bị coi là trùng và im '
+              'lặng biến mất.');
+    });
   });
 
   group('đồng bộ hỏng', () {
@@ -443,6 +584,125 @@ void main() {
       expect(sang.dedupeKey, toi.dedupeKey,
           reason: 'Mất mạng là hỏng ở MỌI chu kỳ đồng bộ. Không gộp theo ngày '
               'là người dùng nhận hàng chục thông báo giống hệt nhau.');
+    });
+  });
+
+  /// Cột mốc tiến độ — luật thêm ngày 2026-09-08.
+  ///
+  /// Trước luật này app chỉ lên tiếng ở **100%** (`goalCompleted`) và khi
+  /// **chậm tiến độ** (`goalBehind`): người dùng đi ba phần tư chặng đường mà
+  /// không được ghi nhận gì. Xem mục 10.4 `docs/GOAL_FEATURE.md`.
+  group('cột mốc tiến độ', () {
+    test('vượt 25% thì báo cột mốc', () {
+      final ra = chay(goals: [mucTieu(target: 10000, current: 2500)])
+          .where((c) => c.kind == NotificationKind.goalMilestone);
+
+      expect(ra.length, 1);
+      expect(ra.single.body, contains('MacBook'));
+    });
+
+    test('chưa tới 25% thì im lặng', () {
+      final ra = chay(goals: [mucTieu(target: 10000, current: 2499)]);
+
+      expect(ra.map((c) => c.kind),
+          isNot(contains(NotificationKind.goalMilestone)),
+          reason: 'Mốc thấp nhất là 25%. Báo sớm hơn thì lời chúc mừng mất '
+              'nghĩa — gần như mọi mục tiêu vừa nạp lần đầu đã vượt.');
+    });
+
+    test('nạp một phát qua nhiều mốc chỉ báo MỐC CAO NHẤT', () {
+      final ra = chay(goals: [mucTieu(target: 10000, current: 8000)])
+          .where((c) => c.kind == NotificationKind.goalMilestone);
+
+      expect(ra.length, 1,
+          reason: 'Nạp từ 10% lên 80% vượt cả ba mốc 25/50/75 cùng lúc. Bắn '
+              'ba tin cho MỘT thao tác là ồn; chỉ mốc cao nhất mới mang tin '
+              'mới.');
+      expect(ra.single.dedupeKey, endsWith(':75'));
+    });
+
+    test('mỗi mốc là một khoá riêng nên cả ba đều được báo dần', () {
+      String khoa(double current) =>
+          chay(goals: [mucTieu(target: 10000, current: current)])
+              .firstWhere((c) => c.kind == NotificationKind.goalMilestone)
+              .dedupeKey;
+
+      expect({khoa(2500), khoa(5000), khoa(7500)}.length, 3,
+          reason: 'Ba mốc dùng chung một khoá thì người dùng chỉ được báo ở '
+              'mốc đầu tiên rồi im lặng suốt chặng còn lại.');
+    });
+
+    test('khoá gắn MỐC BẮT ĐẦU nên vòng lặp sau được báo lại', () {
+      String khoa(DateTime batDau) => chay(goals: [
+            mucTieu(target: 10000, current: 5000, batDau: batDau),
+          ])
+              .firstWhere((c) => c.kind == NotificationKind.goalMilestone)
+              .dedupeKey;
+
+      expect(khoa(DateTime(2026, 1, 1)), isNot(khoa(DateTime(2026, 6, 1))),
+          reason: 'Cùng cái bẫy đã ghi ở mục 3.17 GOAL_FEATURE.md: khoá '
+              '`goalDone:<id>` CỐ Ý không mang mốc thời gian vì "một mục tiêu '
+              'chỉ hoàn thành một lần trong đời", và mục tiêu lặp lại phá đúng '
+              'giả định ấy. Cột mốc thì mỗi vòng phải báo lại, nên nó theo '
+              'khuôn `goalCycle:` — `batDauVongMoi` đặt lại `startDate`.');
+    });
+
+    test('mục tiêu đã hoàn thành KHÔNG báo kèm cột mốc', () {
+      final ra = chay(goals: [mucTieu(target: 1000, current: 1000)]);
+
+      expect(ra.map((c) => c.kind),
+          isNot(contains(NotificationKind.goalMilestone)),
+          reason: 'Đạt 100% đã có lời chúc mừng riêng. Kèm thêm "bạn đã đi '
+              'được 75%" là hai tin mâu thuẫn nhau trong cùng một khay.');
+    });
+
+    test('mục tiêu 0 đồng không sinh cột mốc', () {
+      final ra = chay(goals: [mucTieu(target: 0, current: 0)]);
+
+      expect(ra.map((c) => c.kind),
+          isNot(contains(NotificationKind.goalMilestone)),
+          reason: '`GoalEntity.progress` trả thẳng 1.0 cho mục tiêu 0 đồng '
+              '(mục 3.6), nên nó là "đã xong" chứ không phải đang ở mốc nào.');
+    });
+
+    test('mục tiêu đã xoá mềm thì không báo', () {
+      final ra = chay(goals: [
+        mucTieu(target: 10000, current: 5000, daXoa: true),
+      ]);
+
+      expect(ra, isEmpty);
+    });
+
+    test('dẫn thẳng tới mục tiêu, và id đọc lại được từ khoá', () {
+      final ra = chay(goals: [mucTieu(target: 10000, current: 5000)])
+          .firstWhere((c) => c.kind == NotificationKind.goalMilestone);
+
+      expect(ra.deeplink, '/goals/mt1');
+      expect(ra.severity, NotificationSeverity.info,
+          reason: 'Tin vui không được dùng màu cảnh báo.');
+      expect(ra.dedupeKey.split(':')[1], 'mt1',
+          reason: '`duongDanTuKhoa` lấy id ở đoạn THỨ HAI của khoá, không phải '
+              'đoạn cuối. Đặt id ở chỗ khác là cú chạm đổ người dùng về trung '
+              'tâm thông báo thay vì mở đúng mục tiêu.');
+    });
+
+    test('vừa ở cột mốc vừa chậm tiến độ thì báo cả hai, khoá không đụng nhau',
+        () {
+      final ra = chay(goals: [
+        mucTieu(
+          target: 10000,
+          current: 5000,
+          batDau: DateTime(2026, 1, 1),
+          ketThuc: DateTime(2026, 9, 20),
+        ),
+      ]);
+
+      expect(ra.map((c) => c.kind).toSet(), {
+        NotificationKind.goalMilestone,
+        NotificationKind.goalBehind,
+      }, reason: 'Hai tin nói hai chuyện khác nhau: một cái ghi nhận quãng đã '
+          'đi, một cái cảnh báo nhịp. Nuốt mất một cái là mất một nửa.');
+      expect(ra.map((c) => c.dedupeKey).toSet().length, ra.length);
     });
   });
 

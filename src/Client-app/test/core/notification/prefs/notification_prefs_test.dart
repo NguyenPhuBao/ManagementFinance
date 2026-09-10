@@ -18,6 +18,7 @@ import 'package:flowmoney/core/notification/notification_rules.dart';
 import 'package:flowmoney/core/notification/prefs/notification_prefs.dart';
 
 void main() {
+  mainTongKetTuan();
   group('mặc định', () {
     test('bật hết mọi nhóm và bật cả thông báo hệ điều hành', () {
       const p = NotificationPrefs.macDinh;
@@ -132,6 +133,90 @@ void main() {
           NotificationPrefs.fromJson(const {'soNgayNhacHoaDon': 0})
               .soNgayNhacHoaDon,
           0);
+    });
+  });
+
+  group('nhắc ghi chép hằng ngày', () {
+    test('mặc định TẮT, và giờ mặc định là 20:00', () {
+      const p = NotificationPrefs.macDinh;
+      expect(p.nhacGhiChepBat, false,
+          reason: 'Bật sẵn nghĩa là mọi bản đã cài bỗng nhiên nhận một thông '
+              'báo mỗi ngày mà không ai báo trước — cùng lý lẽ đã dùng cho giờ '
+              'im lặng và ngưỡng số dư thấp.');
+      expect(p.gioNhacGhiChep, 20,
+          reason: 'Giờ RIÊNG, không dùng chung gioNhac. Giờ nhắc chung mặc '
+              'định 8h sáng vì nó là của hoá đơn; một lời nhắc "hôm nay ghi '
+              'chép chưa" lúc 8h sáng là hỏi trước khi có gì để ghi.');
+      expect(p.phutNhacGhiChep, 0);
+    });
+
+    test('JSON đi một vòng không mất gì', () {
+      const goc = NotificationPrefs(
+        nhacGhiChepBat: true,
+        gioNhacGhiChep: 21,
+        phutNhacGhiChep: 30,
+      );
+      final lai = NotificationPrefs.fromJson(goc.toJson());
+
+      expect(lai.nhacGhiChepBat, true);
+      expect(lai.gioNhacGhiChep, 21);
+      expect(lai.phutNhacGhiChep, 30);
+    });
+
+    test('hai bản chỉ khác ba trường mới thì KHÔNG bằng nhau', () {
+      // ⚠️ `expect(lai, goc)` ở test đi-một-vòng KHÔNG canh được điều này: mọi
+      // trường khác vẫn bằng nhau, nên hai đối tượng so ra bằng ngay cả khi ba
+      // trường mới bị bỏ quên trong `==`. Phải so hai bản chỉ khác đúng chúng.
+      const bat = NotificationPrefs(nhacGhiChepBat: true);
+      const tat = NotificationPrefs(nhacGhiChepBat: false);
+      const khacGio = NotificationPrefs(nhacGhiChepBat: true, gioNhacGhiChep: 21);
+      const khacPhut =
+          NotificationPrefs(nhacGhiChepBat: true, phutNhacGhiChep: 30);
+
+      expect(bat == tat, false,
+          reason: 'Bỏ quên một trường trong == là trang cài đặt tưởng không có '
+              'gì đổi và bỏ qua lần ghi — người dùng gạt công tắc rồi thấy nó '
+              'tự trở về chỗ cũ.');
+      expect(bat == khacGio, false);
+      expect(bat == khacPhut, false);
+      expect(bat.hashCode == tat.hashCode, false,
+          reason: '`Object.hash` là hàm tất định, nên hai đầu vào khác nhau '
+              'phải cho hai mã khác nhau. Bằng nhau ở đây nghĩa là trường ấy '
+              'không được truyền vào hash — == và hashCode lệch nhau.');
+    });
+
+    test('bản ghi cũ thiếu ba trường thì rơi về TẮT', () {
+      final cu = NotificationPrefs.fromJson(const {'osBat': true});
+      expect(cu.nhacGhiChepBat, false,
+          reason: 'Mọi bản ghi đang nằm trên máy người dùng đều thiếu trường '
+              'này. Rơi về bật là đổi hành vi sau một lần cập nhật app.');
+      expect(cu.gioNhacGhiChep, 20);
+    });
+
+    test('giờ và phút ngoài dải quy về mặc định', () {
+      final xau = NotificationPrefs.fromJson(const {
+        'nhacGhiChepBat': true,
+        'gioNhacGhiChep': 24,
+        'phutNhacGhiChep': 60,
+      });
+      expect(xau.gioNhacGhiChep, 20);
+      expect(xau.phutNhacGhiChep, 0);
+      expect(xau.nhacGhiChepBat, true,
+          reason: 'Một trường hỏng chỉ được làm hỏng chính nó, không kéo cả '
+              'bản ghi về mặc định.');
+    });
+
+    test('copyWith giữ nguyên ba trường khi không truyền', () {
+      const goc = NotificationPrefs(
+        nhacGhiChepBat: true,
+        gioNhacGhiChep: 19,
+        phutNhacGhiChep: 15,
+      );
+      final moi = goc.copyWith(osBat: false);
+
+      expect(moi.nhacGhiChepBat, true);
+      expect(moi.gioNhacGhiChep, 19);
+      expect(moi.phutNhacGhiChep, 15);
     });
   });
 
@@ -293,6 +378,63 @@ void main() {
     });
   });
 
+  group('ngưỡng số dư ví thấp', () {
+    test('mặc định là 0, nghĩa là TẮT', () {
+      expect(NotificationPrefs.macDinh.nguongSoDuThap, 0,
+          reason: 'Bật sẵn là lặng lẽ đổi hành vi của mọi bản đã cài — cùng lý '
+              'lẽ với giờ im lặng và với việc lưu nhóm bị TẮT. Người dùng chưa '
+              'từng thấy tuỳ chọn này không được đột nhiên nhận thông báo mới.');
+    });
+
+    test('đi trọn vòng qua JSON', () {
+      const goc = NotificationPrefs(nguongSoDuThap: 250000);
+
+      expect(NotificationPrefs.fromJson(goc.toJson()), goc,
+          reason: 'Quên trường trong toJson/fromJson thì ngưỡng người dùng đặt '
+              'biến mất sau mỗi lần mở app, mà không có lỗi nào báo ra.');
+    });
+
+    test('thiếu trường quy về 0 chứ không ném', () {
+      expect(NotificationPrefs.fromJson(const {}).nguongSoDuThap, 0,
+          reason: 'Mọi bản ghi có sẵn trên máy người dùng đều thiếu trường này.');
+    });
+
+    test('sai kiểu quy về 0', () {
+      expect(
+        NotificationPrefs.fromJson(const {'nguongSoDuThap': '250000'})
+            .nguongSoDuThap,
+        0,
+      );
+    });
+
+    test('số âm quy về 0', () {
+      expect(
+        NotificationPrefs.fromJson(const {'nguongSoDuThap': -1}).nguongSoDuThap,
+        0,
+        reason: 'Ngưỡng âm chỉ có thể đến từ dữ liệu hỏng, và nếu lọt qua thì '
+            'nó bật cảnh báo cho mọi ví có số dư dương.',
+      );
+    });
+
+    test('số vượt trần quy về 0', () {
+      expect(
+        NotificationPrefs.fromJson(
+                const {'nguongSoDuThap': 1000000000000}).nguongSoDuThap,
+        0,
+        reason: 'Một con số vô nghĩa lớn biến cảnh báo thành luôn-bật cho mọi '
+            'ví — cùng kiểu hỏng mà BudgetEntity.warningRatio đã chặn.',
+      );
+    });
+
+    test('copyWith đổi được ngưỡng', () {
+      expect(
+        NotificationPrefs.macDinh.copyWith(nguongSoDuThap: 100000)
+            .nguongSoDuThap,
+        100000,
+      );
+    });
+  });
+
   test('copyWith chỉ đổi thứ được nêu', () {
     const goc = NotificationPrefs.macDinh;
     final moi = goc.copyWith(gioNhac: 20);
@@ -301,5 +443,94 @@ void main() {
     expect(moi.phutNhac, goc.phutNhac);
     expect(moi.osBat, goc.osBat);
     expect(moi.soNgayNhacHoaDon, goc.soNgayNhacHoaDon);
+    expect(moi.nguongSoDuThap, goc.nguongSoDuThap);
+  });
+}
+
+/// Tuỳ chọn giờ **Tổng kết tuần** — thêm 2026-09-09.
+///
+/// Người dùng chốt (a) của spec theo phương án "giờ do người dùng chọn" thay
+/// vì mốc cố định. Lý do nằm ở chỗ lịch đặt trước **không đi qua giờ im lặng**
+/// (mục 5c `NOTIFICATION_FEATURE.md`): thứ khiến nhắc hoá đơn không phiền
+/// không phải giờ của nó, mà là việc giờ ấy do người dùng đặt và đang nhìn
+/// thấy trên màn hình.
+void mainTongKetTuan() {
+  group('NotificationPrefs — giờ tổng kết tuần', () {
+    test('mặc định TẮT', () {
+      expect(
+        NotificationPrefs.macDinh.tongKetTuanBat,
+        isFalse,
+        reason: 'Cùng lý lẽ với nhacGhiChepBat và imLangBat: mọi bản ghi đang '
+            'nằm trên máy người dùng đều thiếu trường này, nên bật sẵn là lặng '
+            'lẽ cho cả tập người dùng hiện tại một thông báo mỗi tuần. Nặng '
+            'hơn một bậc vì loại này nổ khi app đã ĐÓNG và không đi qua giờ im '
+            'lặng.',
+      );
+    });
+
+    test('bản ghi cũ không có trường công tắc thì vẫn TẮT', () {
+      expect(
+        NotificationPrefs.fromJson({'osBat': true}).tongKetTuanBat,
+        isFalse,
+      );
+    });
+
+    test('công tắc khứ hồi được qua JSON và copyWith', () {
+      const p = NotificationPrefs(tongKetTuanBat: true);
+      expect(NotificationPrefs.fromJson(p.toJson()).tongKetTuanBat, isTrue);
+      expect(p.copyWith(tongKetTuanBat: false).tongKetTuanBat, isFalse);
+    });
+
+    test('mặc định là thứ Hai 08:00', () {
+      const p = NotificationPrefs.macDinh;
+      expect(p.thuTongKet, DateTime.monday);
+      expect(p.gioTongKet, 8);
+      expect(p.phutTongKet, 0);
+    });
+
+    test('bản ghi cũ thiếu ba trường vẫn đọc được, về mặc định', () {
+      final p = NotificationPrefs.fromJson({'osBat': true});
+      expect(
+        (p.thuTongKet, p.gioTongKet, p.phutTongKet),
+        (DateTime.monday, 8, 0),
+        reason: 'Mọi bản ghi đang nằm trên máy người dùng đều thiếu ba trường '
+            'này. Ném ở đây là chết cả trung tâm thông báo vì một tuỳ chọn.',
+      );
+    });
+
+    test('thứ ngoài dải 1–7 quy về thứ Hai', () {
+      for (final xau in [0, 8, -3, 99]) {
+        expect(
+          NotificationPrefs.fromJson({'thuTongKet': xau}).thuTongKet,
+          DateTime.monday,
+          reason: 'DateTime.weekday chạy 1–7. Một giá trị 0 hay 8 lọt vào phép '
+              'tính mốc kế tiếp sẽ đẩy lịch lệch hẳn một tuần, im lặng.',
+        );
+      }
+    });
+
+    test('giờ và phút ngoài dải quy về mặc định', () {
+      expect(NotificationPrefs.fromJson({'gioTongKet': 24}).gioTongKet, 8);
+      expect(NotificationPrefs.fromJson({'phutTongKet': 60}).phutTongKet, 0);
+    });
+
+    test('khứ hồi JSON giữ nguyên ba trường', () {
+      const p = NotificationPrefs(
+        thuTongKet: DateTime.friday,
+        gioTongKet: 20,
+        phutTongKet: 30,
+      );
+      final lai = NotificationPrefs.fromJson(p.toJson());
+      expect((lai.thuTongKet, lai.gioTongKet, lai.phutTongKet),
+          (DateTime.friday, 20, 30));
+    });
+
+    test('copyWith đổi được từng trường một', () {
+      const p = NotificationPrefs.macDinh;
+      expect(p.copyWith(thuTongKet: DateTime.sunday).thuTongKet,
+          DateTime.sunday);
+      expect(p.copyWith(gioTongKet: 21).gioTongKet, 21);
+      expect(p.copyWith(phutTongKet: 45).phutTongKet, 45);
+    });
   });
 }

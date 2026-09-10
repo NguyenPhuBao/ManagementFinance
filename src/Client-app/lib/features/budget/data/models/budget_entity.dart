@@ -105,7 +105,17 @@ class BudgetEntity {
 
   final bool isDeleted;
   final String syncStatus;
+
+  /// Lý do lần đẩy gần nhất hỏng, do `SyncEngine` ghi lại; `null` khi chưa
+  /// từng hỏng hoặc đã đẩy được.
+  ///
+  /// Đọc ở tầng giao diện để **không nhốt dữ liệu hỏng** trong tab "Đã hết
+  /// hạn" — xem `domain/budget_locking.dart` và G15.
+  final String? syncError;
   final DateTime updatedAt;
+
+  /// Bản ghi này chưa lên tới server được.
+  bool get hasSyncError => syncError != null && syncError!.isNotEmpty;
 
   const BudgetEntity({
     required this.id,
@@ -124,6 +134,7 @@ class BudgetEntity {
     this.note = '',
     this.isDeleted = false,
     this.syncStatus = 'pending',
+    this.syncError,
     required this.updatedAt,
   });
 
@@ -303,6 +314,7 @@ class BudgetEntity {
       note: d.note,
       isDeleted: d.isDeleted,
       syncStatus: d.syncStatus,
+      syncError: d.syncError,
       updatedAt: d.updatedAt,
     );
   }

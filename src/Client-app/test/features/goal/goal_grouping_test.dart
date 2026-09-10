@@ -17,6 +17,7 @@ void main() {
     bool isCompleted = false,
     bool isDeleted = false,
     DateTime? han,
+    int? uuTien,
   }) {
     return GoalEntity(
       id: id,
@@ -27,6 +28,7 @@ void main() {
       targetDate: han ?? DateTime(2027, 1, 1),
       isCompleted: isCompleted,
       isDeleted: isDeleted,
+      priority: uuTien,
       updatedAt: DateTime(2026, 9, 5),
     );
   }
@@ -97,6 +99,78 @@ void main() {
       final nhom = chiaMucTieu(const []);
       expect(nhom.dangTheoDuoi, isEmpty);
       expect(nhom.daHoanThanh, isEmpty);
+    });
+  });
+
+  /// Thứ tự ưu tiên — thêm 2026-09-08, sau khi backend có cột `Priority`.
+  group('chiaMucTieu · thứ tự ưu tiên', () {
+    test('ưu tiên thắng hạn định ở tab đang theo đuổi', () {
+      final nhom = chiaMucTieu([
+        mucTieu(id: 'gap-nhung-khong-quan-trong', han: DateTime(2026, 1, 1)),
+        mucTieu(id: 'quan-trong', han: DateTime(2030, 1, 1), uuTien: 100),
+      ]);
+
+      expect(nhom.dangTheoDuoi.map((g) => g.id),
+          ['quan-trong', 'gap-nhung-khong-quan-trong'],
+          reason: 'Cả tính năng này sinh ra để người dùng nói được "quỹ khẩn '
+              'cấp quan trọng hơn cái laptop". Để hạn định thắng là nó không '
+              'có tác dụng nào.');
+    });
+
+    test('số NHỎ hơn đứng trước', () {
+      final nhom = chiaMucTieu([
+        mucTieu(id: 'ba', uuTien: 300),
+        mucTieu(id: 'mot', uuTien: 100),
+        mucTieu(id: 'hai', uuTien: 200),
+      ]);
+
+      expect(nhom.dangTheoDuoi.map((g) => g.id), ['mot', 'hai', 'ba']);
+    });
+
+    test('chưa sắp thì xếp CUỐI, không phải đầu', () {
+      final nhom = chiaMucTieu([
+        mucTieu(id: 'chua-sap', han: DateTime(2026, 1, 1)),
+        mucTieu(id: 'da-sap', han: DateTime(2030, 1, 1), uuTien: 900),
+      ]);
+
+      expect(nhom.dangTheoDuoi.map((g) => g.id), ['da-sap', 'chua-sap'],
+          reason: 'Mục tiêu cũ chưa từng được sắp không có lý do gì nhảy lên '
+              'trên những cái người dùng đã cố ý xếp — kể cả khi nó gấp hơn.');
+    });
+
+    test('trùng ưu tiên thì sắp tiếp theo hạn định', () {
+      final nhom = chiaMucTieu([
+        mucTieu(id: 'xa', uuTien: 100, han: DateTime(2030, 1, 1)),
+        mucTieu(id: 'gan', uuTien: 100, han: DateTime(2026, 1, 1)),
+      ]);
+
+      expect(nhom.dangTheoDuoi.map((g) => g.id), ['gan', 'xa'],
+          reason: 'Tài liệu backend mục 4 chốt trùng số là CHẤP NHẬN ĐƯỢC — '
+              'đặt UNIQUE lên cột ấy biến một va chạm vô hại thành một bản ghi '
+              'kẹt vĩnh viễn trong hàng đợi đẩy. Nên phải có quy tắc phụ.');
+    });
+
+    test('tab đã hoàn thành KHÔNG dùng ưu tiên', () {
+      final nhom = chiaMucTieu([
+        mucTieu(
+          id: 'cu',
+          isCompleted: true,
+          uuTien: 100,
+          han: DateTime(2026, 1, 1),
+        ),
+        mucTieu(
+          id: 'moi',
+          isCompleted: true,
+          uuTien: 900,
+          han: DateTime(2026, 6, 1),
+        ),
+      ]);
+
+      expect(nhom.daHoanThanh.map((g) => g.id), ['moi', 'cu'],
+          reason: 'Đã xong rồi thì "quan trọng hơn" không còn nghĩa gì — thứ '
+              'đáng lên đầu vẫn là cái vừa đạt được. Áp ưu tiên cho cả hai tab '
+              'là đẩy mục tiêu vừa hoàn thành xuống đáy chỉ vì nó từng được '
+              'xếp thấp.');
     });
   });
 

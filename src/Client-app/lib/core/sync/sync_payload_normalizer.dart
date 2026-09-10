@@ -1,4 +1,9 @@
+import '../../features/wallet/domain/wallet_type.dart';
+
 /// Chuẩn hóa enum nội bộ của Client trước khi gửi sang Sync API.
+///
+/// ⚠️ Tệp này cố ý **không import Flutter**. `wallet_type.dart` là Dart thuần
+/// đúng vì lý do đó — biểu tượng của loại ví nằm riêng ở tầng hiển thị.
 class SyncPayloadNormalizer {
   const SyncPayloadNormalizer._();
 
@@ -10,7 +15,7 @@ class SyncPayloadNormalizer {
   ///
   /// Tài liệu `New_Database.md` và kế hoạch align schema lại ghi `'Vay/nợ'`
   /// (CÓ dấu) — hai bên đang lệch nhau. Xem
-  /// `docs/superpowers/backend/CAN-LAM/CATEGORY_CLASSIFY_ALIGNMENT.md` để biết cách xử lý.
+  /// `docs/superpowers/backend/DA-XONG/CATEGORY_CLASSIFY_ALIGNMENT.md` để biết cách xử lý.
   ///
   /// Khi backend đã đổi CHECK constraint + seed + dữ liệu sang `'Vay/nợ'`,
   /// chỉ cần đổi hằng số này — phần ĐỌC của client đã chấp nhận cả hai dạng từ
@@ -76,14 +81,19 @@ class SyncPayloadNormalizer {
     final normalized = forPush(payload);
     final colour = normalized.remove('colour');
     if (colour != null) normalized['color'] = colour;
-    normalized['type'] = switch (normalized['type']?.toString().toLowerCase()) {
-      'cash' => 'Cash',
-      'bank' => 'Bank',
-      'saving' => 'Saving',
-      'banking' => 'Banking',
-      final value? => value,
-      null => 'Cash',
-    };
+    // ⚠️ KHÔNG có nhánh "giữ nguyên giá trị lạ" ở đây. `chk_wallet_type` trên
+    // PostgreSQL chỉ nhận đúng bốn chuỗi mà `WalletType.khoaGuiLen` sinh ra;
+    // bản trước để giá trị lạ đi qua nguyên vẹn, nên ví tạo bằng "Ví điện tử"
+    // hay "Thẻ tín dụng" của giao diện cũ vỡ CHECK ở MỌI lần đẩy và kẹt hàng
+    // đợi vĩnh viễn — im lặng, không log, không gì trên màn hình.
+    normalized['type'] =
+        WalletType.tuKhoa(normalized['type']?.toString()).khoaGuiLen;
+    // ⚠️ KHÔNG chuẩn hoá `status` ở đây, vì nó không được phép có mặt trong
+    // payload: cột `Status` của PostgreSQL là varchar(7) còn giá trị cần
+    // gửi là 'Inactive' — 8 ký tự. Xem chú thích dài ở nhánh kéo về ví
+    // trong `sync_engine.dart`. `WalletStatus.khoaGuiLen` vẫn giữ nguyên và
+    // vẫn được test canh, để ngày backend nới cột thì chỉ cần một dòng ở
+    // đây là xong.
     return normalized;
   }
 

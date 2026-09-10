@@ -195,7 +195,7 @@ void main() {
       expect(ra.length, 4);
     });
 
-    test('mốc neo ngày 31 vẫn kẹp về cuối tháng ngắn', () {
+    test('mốc neo ngày 31 kẹp ở tháng ngắn rồi QUAY LẠI ngày 31', () {
       final ra = cacKyDenHan(
         mocNeo: DateTime(2026, 1, 31, 9),
         lanChayGanNhat: DateTime(2026, 1, 1),
@@ -205,10 +205,12 @@ void main() {
       expect(ra, [
         DateTime(2026, 1, 31, 9),
         DateTime(2026, 2, 28, 9),
-        DateTime(2026, 3, 28, 9),
-      ], reason: 'Kẹp về 28/02 rồi bước tiếp từ ĐÓ — nhịp trôi dần chứ không '
-          'quay lại ngày 31. Đây là hệ quả của việc bước từng kỳ một, và nó '
-          'phải được ghi lại rõ chứ không để ai đó phát hiện bằng bất ngờ.');
+        DateTime(2026, 3, 31, 9),
+      ], reason: 'Người dùng chọn "ngày 31 hàng tháng". Tháng Hai kẹp xuống 28 '
+          'là đúng, nhưng tháng Ba phải quay lại 31. Bản trước bước tiếp TỪ 28 '
+          'nên nhịp tụt vĩnh viễn — sửa 2026-09-08 bằng cách neo vào mốc gốc, '
+          'cùng đợt với anchorDay bên hoá đơn. Giờ 09:00 phải giữ nguyên: mốc '
+          'trích là một thời điểm, không phải một ngày.');
     });
 
     test('mốc neo quá xa trong quá khứ thì im lặng bỏ qua', () {
@@ -427,6 +429,131 @@ void main() {
           isNot(khoaKyTrich('g2', DateTime(2026, 9, 5))));
       expect(khoaKyTrich('g1', DateTime(2026, 9, 5)),
           isNot(khoaKyTrich('g1', DateTime(2026, 10, 5))));
+    });
+  });
+
+  group('nhịp KHÔNG được trôi khi đi qua tháng ngắn', () {
+    // Bản trước bước từng kỳ một từ mốc trước đó: ngày 31 bị kẹp về 28/02 rồi
+    // bước tiếp TỪ 28, nên nhịp tụt xuống 28 vĩnh viễn. Cùng loại lỗi đã sửa ở
+    // hoá đơn ngày 2026-09-08 — nay cả hai đều neo vào mốc gốc.
+
+    test('mốc neo ngày 31 quay lại được ngày 31 sau tháng Hai', () {
+      expect(
+        cacKyDenHan(
+          mocNeo: DateTime(2026, 1, 31),
+          lanChayGanNhat: DateTime(2026, 1, 31),
+          chuKy: 'Month',
+          now: DateTime(2026, 6, 30),
+        ),
+        [
+          DateTime(2026, 2, 28),
+          DateTime(2026, 3, 31),
+          DateTime(2026, 4, 30),
+          DateTime(2026, 5, 31),
+          DateTime(2026, 6, 30),
+        ],
+        reason: 'Người dùng chọn "ngày 31 hàng tháng". Cộng dồn từ mốc trước '
+            'cho ra 28/02, 28/03, 28/04… — nhịp tụt xuống 28 và không bao giờ '
+            'quay lại, hoàn toàn im lặng.',
+      );
+    });
+
+    test('mốc neo ngày 30 không bị kéo lên cuối tháng', () {
+      expect(
+        cacKyDenHan(
+          mocNeo: DateTime(2026, 4, 30),
+          lanChayGanNhat: DateTime(2026, 4, 30),
+          chuKy: 'Month',
+          now: DateTime(2026, 7, 30),
+        ),
+        [
+          DateTime(2026, 5, 30),
+          DateTime(2026, 6, 30),
+          DateTime(2026, 7, 30),
+        ],
+        reason: 'Đối xứng với ca trên: ngày 30 phải ở nguyên ngày 30, không '
+            'được suy diễn thành "cuối tháng" rồi nhảy lên 31.',
+      );
+    });
+
+    test('năm nhuận: mốc ngày 31 đi qua 29/02 rồi về 31/03', () {
+      expect(
+        cacKyDenHan(
+          mocNeo: DateTime(2028, 1, 31),
+          lanChayGanNhat: DateTime(2028, 1, 31),
+          chuKy: 'Month',
+          now: DateTime(2028, 3, 31),
+        ),
+        [DateTime(2028, 2, 29), DateTime(2028, 3, 31)],
+        reason: 'Kẹp phải theo lịch thật — 29 ở năm nhuận, không phải hằng số '
+            '28.',
+      );
+    });
+
+    test('chu kỳ quý neo vào mốc gốc', () {
+      expect(
+        cacKyDenHan(
+          mocNeo: DateTime(2026, 5, 31),
+          lanChayGanNhat: DateTime(2026, 5, 31),
+          chuKy: 'Quarter',
+          now: DateTime(2027, 3, 1),
+        ),
+        [
+          DateTime(2026, 8, 31),
+          DateTime(2026, 11, 30),
+          DateTime(2027, 2, 28),
+        ],
+        reason: 'Quý cũng cộng theo tháng nên cùng bệnh: 30/11 rồi 28/02 là '
+            'đúng kẹp, nhưng kỳ sau nữa phải quay về 31 chứ không đứng ở 28.',
+      );
+    });
+
+    test('kyKeTiep dùng chung nhịp, không trôi riêng', () {
+      // Đã trích tới 28/02 (kỳ vừa bị kẹp). Kỳ sắp tới phải là 31/03.
+      expect(
+        kyKeTiep(
+          mocNeo: DateTime(2026, 1, 31),
+          lanChayGanNhat: DateTime(2026, 2, 28),
+          chuKy: 'Month',
+          now: DateTime(2026, 3, 1),
+        ),
+        DateTime(2026, 3, 31),
+        reason: 'Lịch nhắc đặt trước phải trỏ đúng kỳ mà bộ trích sẽ chạy. Hai '
+            'bên trôi khác nhau là điện thoại nhắc một ngày còn tiền bị trừ '
+            'vào ngày khác.',
+      );
+    });
+
+    test('chu kỳ ngày và tuần vốn không trôi, phải giữ nguyên', () {
+      expect(
+        cacKyDenHan(
+          mocNeo: DateTime(2026, 1, 31),
+          lanChayGanNhat: DateTime(2026, 1, 31),
+          chuKy: 'Week',
+          now: DateTime(2026, 2, 21),
+        ),
+        [
+          DateTime(2026, 2, 7),
+          DateTime(2026, 2, 14),
+          DateTime(2026, 2, 21),
+        ],
+        reason: 'Tuần không có khái niệm ngày trong tháng; cộng 7 ngày là đủ '
+            'và phải không đổi.',
+      );
+    });
+
+    test('mục tiêu chưa có mốc neo vẫn chạy như trước', () {
+      expect(
+        cacKyDenHan(
+          mocNeo: null,
+          lanChayGanNhat: DateTime(2026, 1, 15),
+          chuKy: 'Month',
+          now: DateTime(2026, 3, 20),
+        ),
+        [DateTime(2026, 2, 15), DateTime(2026, 3, 15)],
+        reason: 'Mục tiêu bật trước khi có ô chọn mốc neo phải giữ nguyên hành '
+            'vi: nhịp bám vào chính mốc chạy.',
+      );
     });
   });
 }

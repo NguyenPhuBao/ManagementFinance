@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -8,14 +9,17 @@ import '../../../../core/sync/sync_engine.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../widgets/home_action_buttons.dart';
 import '../widgets/home_budget_card.dart';
+import '../widgets/home_goal_card.dart';
 import '../../../budget/data/models/budget_entity.dart';
 import '../../../budget/data/repositories/budget_repository.dart';
+import '../../../goal/data/models/goal_entity.dart';
+import '../../../goal/data/repositories/goal_repository.dart';
 import '../../../../shared/widgets/notification_bell.dart';
-import '../../../notification/presentation/widgets/notification_panel.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../transaction/data/models/transaction_entity.dart';
 import '../../../transaction/domain/transaction_lookup.dart';
 import '../../../transaction/presentation/widgets/transaction_row_content.dart';
+import '../../../wallet/domain/vi_tinh_vao_tong.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -23,8 +27,6 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final db = sl<AppDatabase>();
-    final formatter = NumberFormat('#,###', 'vi_VN');
-
     final authState = context.watch<AuthBloc>().state;
     int? currentUserId;
     if (authState is AuthSuccess && authState.user != null) {
@@ -48,9 +50,18 @@ class HomePage extends StatelessWidget {
               _buildHeroSection(context),
               const SizedBox(height: 32),
 
-              // Panel thông báo — ẩn hoàn toàn khi chưa có mục nào, nên không
-              // cần bọc thêm điều kiện ở đây.
-              NotificationPanel(idaccount: currentUserId),
+              // Khối thông báo đã được GỠ khỏi trang chủ ngày 2026-09-08 theo
+              // yêu cầu người dùng: thông báo chỉ xem khi bấm vào chức năng đó,
+              // tức cái chuông ở `_buildHeader` (dẫn tới `/notifications`).
+              //
+              // ⚠️ Đây là chỗ **đi lệch thiết kế Stitch** màn Home, nơi khối
+              // thông báo nằm ngay đầu trang. Ghi ra để lần sau đối chiếu với
+              // Stitch thì biết đây là lệch có chủ ý, không phải bỏ sót.
+              //
+              // `NotificationPanel` vẫn còn trong mã nguồn dù nay không nơi nào
+              // dựng nó: hai trang thông báo trích dẫn nó làm **mẫu** cho lối
+              // "trang không tự đi hỏi `AuthBloc`", và test của nó canh đúng
+              // lối ấy.
 
               // Reactive Total Asset Balance from SQLite Wallets
               Builder(
@@ -69,14 +80,23 @@ class HomePage extends StatelessWidget {
                     stream: walletStream,
                     builder: (context, snapshot) {
                       final wallets = snapshot.data ?? [];
-                      final totalBalance = wallets.fold<double>(0.0, (sum, w) => sum + w.balance);
+                      // Phép lọc nằm ở `viTinhVaoTong`, định nghĩa DUY NHẤT của
+                      // "ví nào được cộng vào tổng tài sản". Bản trước ở đây là
+                      // `fold` trần trên mọi ví: nó cộng cả ví người dùng đã cố ý
+                      // tắt "Tính vào tổng tài sản", nên con số trang chủ lệch
+                      // với chính con số trên màn Quản lý ví — im lặng, không màn
+                      // nào nói ra. Cùng loại lỗi đã đóng ở `6fd2ce9`.
+                      final totalBalance = wallets
+                          .where((w) => viTinhVaoTong(
+                              includeInTotal: w.includeInTotal, status: w.status))
+                          .fold<double>(0.0, (sum, w) => sum + w.balance);
                       if (snapshot.hasData) {
-                        debugPrint('📊 [SQLite DB Log] Wallets count: ${wallets.length} | Total balance: ${formatter.format(totalBalance)}đ');
+                        debugPrint('📊 [SQLite DB Log] Wallets count: ${wallets.length} | Total balance: ${CurrencyFormatter.formatSoThoi(totalBalance)}đ');
                         for (final w in wallets) {
-                          debugPrint('   • Ví "${w.name}" (Account ${w.idaccount}): ${formatter.format(w.balance)}đ');
+                          debugPrint('   • Ví "${w.name}" (Account ${w.idaccount}): ${CurrencyFormatter.formatSoThoi(w.balance)}đ');
                         }
                       }
-                      return _buildAssetCard(totalBalance, formatter);
+                      return _buildAssetCard(totalBalance);
                     },
                   );
                 },
@@ -116,7 +136,7 @@ class HomePage extends StatelessWidget {
                       if (snapshot.hasData) {
                         debugPrint('💳 [SQLite DB Log] Transactions count: ${transactions.length}');
                         for (final t in transactions.take(5)) {
-                          debugPrint('   • Giao dịch: [${t.type.toUpperCase()}] ${formatter.format(t.amount)}đ | Ghi chú: ${t.note} | Account: ${t.idaccount}');
+                          debugPrint('   • Giao dịch: [${t.type.toUpperCase()}] ${CurrencyFormatter.formatSoThoi(t.amount)}đ | Ghi chú: ${t.note} | Account: ${t.idaccount}');
                         }
                       }
 
@@ -133,7 +153,7 @@ class HomePage extends StatelessWidget {
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildStatsGrid(monthlyIncome, monthlyExpense, formatter),
+                          _buildStatsGrid(monthlyIncome, monthlyExpense),
                           const SizedBox(height: 32),
                           StreamBuilder<List<Wallet>>(
                             stream: walletStream,
@@ -158,6 +178,8 @@ class HomePage extends StatelessWidget {
                 },
               ),
 
+              const SizedBox(height: 32),
+              _buildGoalSection(context, currentUserId),
               const SizedBox(height: 32),
               _buildBudgetSection(context, currentUserId),
               const SizedBox(height: 32),
@@ -349,7 +371,7 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildAssetCard(double totalBalance, NumberFormat formatter) {
+  Widget _buildAssetCard(double totalBalance) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -397,7 +419,7 @@ class HomePage extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            '${formatter.format(totalBalance)}đ',
+            '${CurrencyFormatter.formatSoThoi(totalBalance)}đ',
             style: const TextStyle(
               fontSize: 34,
               fontWeight: FontWeight.bold,
@@ -496,16 +518,16 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildStatsGrid(double income, double expense, NumberFormat formatter) {
+  Widget _buildStatsGrid(double income, double expense) {
     final net = income - expense;
     return Row(
       children: [
-        Expanded(child: _buildStatCard('Thu nhập', '${formatter.format(income)}đ', income > 0 ? 0.8 : 0.0, AppColors.income)),
+        Expanded(child: _buildStatCard('Thu nhập', '${CurrencyFormatter.formatSoThoi(income)}đ', income > 0 ? 0.8 : 0.0, AppColors.income)),
         const SizedBox(width: 12),
-        Expanded(child: _buildStatCard('Chi tiêu', '${formatter.format(expense)}đ', expense > 0 ? 0.4 : 0.0, AppColors.error)),
+        Expanded(child: _buildStatCard('Chi tiêu', '${CurrencyFormatter.formatSoThoi(expense)}đ', expense > 0 ? 0.4 : 0.0, AppColors.error)),
         const SizedBox(width: 12),
         Expanded(
-            child: _buildStatCard('Thu net', '${net >= 0 ? '+' : ''}${formatter.format(net)}đ', net != 0 ? 0.6 : 0.0, const Color(0xFF3B82F6))),
+            child: _buildStatCard('Thu net', '${net >= 0 ? '+' : ''}${CurrencyFormatter.formatSoThoi(net)}đ', net != 0 ? 0.6 : 0.0, const Color(0xFF3B82F6))),
       ],
     );
   }
@@ -681,6 +703,29 @@ class HomePage extends StatelessWidget {
   /// Thẻ ngân sách — dữ liệu thật qua `watchBudgets` (phát lại cả khi có giao
   /// dịch mới), thay placeholder cứng tồn tại tới 2026-09-06. Bấm thẻ nhảy
   /// sang tab Ngân sách bằng `go`: trang chủ và tab ấy cùng nằm trong shell.
+  /// Khối "Mục tiêu tiết kiệm" — cùng khuôn với [_buildBudgetSection].
+  ///
+  /// Trước 2026-09-08 mục tiêu chỉ vào được qua **một dòng trong drawer**,
+  /// trong khi ngân sách đã có hẳn một khối ở đây.
+  ///
+  /// Chạm vào đi tới `/goals` bằng **`push`**, không phải `go`: `/goals` nằm
+  /// NGOÀI `StatefulShellRoute`, và `go` từ trong shell sẽ thay cả stack thay
+  /// vì chồng lên — người dùng mất nút quay lại. Cùng bẫy 7.8
+  /// `NOTIFICATION_FEATURE.md`, chỗ `_buildBudgetSection` dùng `go` vì
+  /// `/budget` thì ngược lại, nó **thuộc** shell.
+  Widget _buildGoalSection(BuildContext context, int? idaccount) {
+    final stream = idaccount != null
+        ? sl<GoalRepository>().watchGoals(idaccount)
+        : Stream<List<GoalEntity>>.value(const []);
+    return StreamBuilder<List<GoalEntity>>(
+      stream: stream,
+      builder: (_, snapshot) => HomeGoalCard(
+        goals: snapshot.data ?? const [],
+        onTap: () => context.push('/goals'),
+      ),
+    );
+  }
+
   Widget _buildBudgetSection(BuildContext context, int? idaccount) {
     final stream = idaccount != null
         ? sl<BudgetRepository>().watchBudgets(idaccount)

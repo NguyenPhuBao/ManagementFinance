@@ -2,9 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
+import '../notification_actions.dart';
 import 'os_notifier.dart';
+import 'os_scheduled_id.dart';
 
 /// **File DUY NHẤT trong dự án được phép import `flutter_local_notifications`.**
 ///
@@ -33,12 +36,28 @@ class LocalOsNotifier implements OsNotifier {
   /// ngân sách. Năm dòng riêng trên màn hình khoá là thứ khiến họ tắt hết.
   static const String khoaNhom = 'flowmoney_alerts_group';
 
+  /// Danh mục iOS mang hai nút hành động của nhắc hoá đơn.
+  ///
+  /// iOS **đăng ký nút một lần ở `initialize()`** rồi mỗi thông báo chỉ trỏ
+  /// tới danh mục bằng `categoryIdentifier` — khác hẳn Android, nơi nút đi
+  /// kèm từng thông báo. Quên bước đăng ký là trên iOS không có nút nào,
+  /// **im lặng**, trong khi Android vẫn đủ hai nút.
+  static const String danhMucHoaDon = 'flowmoney_bill_actions';
+
   /// Id của bản tóm tắt. **Số âm có chủ ý.**
   ///
   /// `osScheduledId()` xoá bit dấu nên luôn trả về 0..2^31-1. Chọn một số âm
   /// là cách DUY NHẤT bảo đảm bản tóm tắt không bao giờ ghi đè một thông báo
   /// thật — và nếu nó đụng thì hỏng hoàn toàn im lặng.
   static const int idTomTat = -1;
+
+  /// Id của thông báo **chỉ để đặt badge trên iOS**. Số âm, cùng lý lẽ với
+  /// [idTomTat].
+  ///
+  /// iOS không có API đặt badge riêng: đường duy nhất là đăng một thông báo
+  /// mang `badgeNumber`. Nó dùng id cố định để mỗi lần đặt lại chỉ ghi đè
+  /// chính nó thay vì chồng thêm một cái mới sau mỗi lần đọc.
+  static const int idBadge = -2;
 
   static const String _kenhNhacTen = 'Nhắc tài chính';
   static const String _kenhNhacMoTa =
@@ -64,9 +83,15 @@ class LocalOsNotifier implements OsNotifier {
       final chiTiet = await _plugin.getNotificationAppLaunchDetails();
       if (chiTiet == null || !chiTiet.didNotificationLaunchApp) return null;
 
-      final payload = chiTiet.notificationResponse?.payload;
+      final phanHoi = chiTiet.notificationResponse;
+      final payload = phanHoi?.payload;
       if (payload == null || payload.isEmpty) return null;
-      return payload;
+
+      // ⚠️ PHẢI tính tới `actionId`. Đây là đường DUY NHẤT khi nút "Trả ngay"
+      // được bấm lúc app đã đóng hẳn — tức ca chính của một lịch đặt trước.
+      // Bỏ qua nó thì nút mở đúng danh sách hoá đơn thay vì hoá đơn ấy, và
+      // không có gì báo là đã đi sai chỗ.
+      return khoaSauChamNut(actionId: phanHoi?.actionId, payload: payload);
     } catch (_) {
       return null;
     }
@@ -82,8 +107,44 @@ class LocalOsNotifier implements OsNotifier {
     // Không payload thì không suy ra được màn nào — im lặng thay vì phát chuỗi
     // rỗng ra cho nơi nhận tự lọc.
     if (payload == null || payload.isEmpty) return;
+
+    // Nút "Hoãn" **không phát gì ra `_cham`**: cả điểm của nó là xong việc mà
+    // không mở màn nào. Phát ra là app bật lên đúng lúc người dùng vừa nói
+    // "để lát nữa".
+    if (response.actionId == hanhDongHoan) {
+      unawaited(_datLichHoan(payload));
+      return;
+    }
+
+    // Nút "Trả ngay" đi qua ĐÚNG đường của một cú chạm, chỉ đổi khoá thành một
+    // khoá trỏ vào chính hoá đơn ấy. Nhờ vậy `payloadDaCham` vẫn là
+    // `Stream<String>` và `NotificationTapRouter` không phải biết nút là gì.
+    // Cùng một hàm với `payloadKhoiDong()` — hai đường vào của một cú bấm
+    // không được phép quyết định khác nhau.
     if (_cham.isClosed) return;
-    _cham.add(payload);
+    _cham.add(khoaSauChamNut(actionId: response.actionId, payload: payload));
+  }
+
+  /// Đặt lại lịch sau một lần "Hoãn", khi app **đang sống**.
+  ///
+  /// Nuốt lỗi: người dùng vừa bấm xong và đã rời đi: một trục trặc của
+  /// AlarmManager không được phép nổi lên thành màn đỏ.
+  Future<void> _datLichHoan(String payload) async {
+    final lich = lichHoan(dedupeKey: payload, now: DateTime.now());
+    if (lich == null) return;
+    try {
+      await zonedSchedule(
+        // GIỮ NGUYÊN khoá, nên cùng id — đó là thứ làm lịch hoãn sống sót qua
+        // `resync()`. Xem chú thích ở `lichHoan()`.
+        id: osScheduledId(lich.khoa),
+        title: lich.title,
+        body: lich.body,
+        when: lich.when,
+        payload: lich.khoa,
+      );
+    } catch (_) {
+      // Bỏ qua có chủ ý — xem chú thích trên.
+    }
   }
 
   @override
@@ -95,11 +156,12 @@ class LocalOsNotifier implements OsNotifier {
     _daKhoiTao = true;
 
     await _plugin.initialize(
-      settings: const InitializationSettings(
+      // KHÔNG `const`: `DarwinNotificationAction.plain` không phải hằng.
+      settings: InitializationSettings(
         // `@mipmap/ic_launcher` là icon app, luôn có sẵn trong mọi dự án
         // Flutter. Dùng nó thay vì một drawable riêng để không phải thêm tài
         // nguyên ở lát này; đổi sang icon đơn sắc là việc của phần mĩ thuật.
-        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+        android: const AndroidInitializationSettings('@mipmap/ic_launcher'),
         // Ba cờ `request*Permission` đều false: quyền được xin **có ngữ cảnh**
         // qua `requestPermission()`, không phải lúc app khởi động. Trên iOS
         // người dùng chỉ được hỏi MỘT lần trong cả vòng đời cài đặt — hỏi lúc
@@ -109,9 +171,30 @@ class LocalOsNotifier implements OsNotifier {
           requestAlertPermission: false,
           requestBadgePermission: false,
           requestSoundPermission: false,
+          // Nút hành động của iOS đăng ký MỘT LẦN ở đây; mỗi thông báo chỉ trỏ
+          // tới danh mục bằng `categoryIdentifier`. Bỏ bước này là iOS không
+          // có nút nào mà không báo gì, trong khi Android vẫn đủ hai nút.
+          notificationCategories: [
+            DarwinNotificationCategory(
+              danhMucHoaDon,
+              actions: [
+                // `foreground` vì việc của nút này ĐÚNG LÀ mở app.
+                DarwinNotificationAction.plain(
+                  hanhDongTraNgay,
+                  'Trả ngay',
+                  options: {DarwinNotificationActionOption.foreground},
+                ),
+                // Không `foreground`: cả điểm của nút Hoãn là làm xong việc mà
+                // không phải mở app.
+                DarwinNotificationAction.plain(hanhDongHoan, 'Hoãn 1 ngày'),
+              ],
+            ),
+          ],
         ),
       ),
       onDidReceiveNotificationResponse: _khiChamVaoThongBao,
+      // Đường DUY NHẤT khi app đã đóng hẳn — ca chính của một lịch đặt trước.
+      onDidReceiveBackgroundNotificationResponse: khiChamNutLucAppDong,
     );
   }
 
@@ -177,6 +260,60 @@ class LocalOsNotifier implements OsNotifier {
     }
   }
 
+  /// Chi tiết thông báo, **kèm nút hành động nếu khoá cho phép**.
+  ///
+  /// Dùng chung cho cả [show] và [zonedSchedule]: hai đường phải cho ra cùng
+  /// một hình dạng thông báo, nếu không cùng một hoá đơn sẽ có nút khi nhắc
+  /// đặt trước mà không có nút khi vòng quét bắn — người dùng đọc thành app
+  /// hỏng ngẫu nhiên.
+  ///
+  /// Nút chỉ gắn cho nhắc hoá đơn (`coHanhDong`). Gắn cho mọi loại là hứa một
+  /// hành vi không tồn tại: "Hoãn" một cảnh báo ví âm thì hoãn cái gì?
+  ///
+  /// ⚠️ `groupKey` phải giữ nguyên ở cả hai nhánh — nhắc hoá đơn đặt trước là
+  /// loại hay dồn lại nhất, bỏ nó ra ngoài nhóm là bỏ đúng chỗ cần gộp.
+  NotificationDetails _chiTiet(String? payload) {
+    final coNut = payload != null && coHanhDong(payload);
+
+    return NotificationDetails(
+      android: AndroidNotificationDetails(
+        kenhNhacId,
+        _kenhNhacTen,
+        channelDescription: _kenhNhacMoTa,
+        // `high` chứ không `max`: thông báo hiện ra và có tiếng, nhưng không
+        // chiếm màn hình kiểu cuộc gọi đến. Tiền bạc thì đáng chú ý, không
+        // đáng cắt ngang.
+        importance: Importance.high,
+        priority: Priority.high,
+        groupKey: khoaNhom,
+        actions: coNut
+            ? const [
+                AndroidNotificationAction(
+                  hanhDongTraNgay,
+                  'Trả ngay',
+                  // Việc của nút này ĐÚNG LÀ mở app, nên phải khai báo — thiếu
+                  // nó thì Android 12+ chặn việc mở màn từ nền.
+                  showsUserInterface: true,
+                  cancelNotification: true,
+                ),
+                AndroidNotificationAction(
+                  hanhDongHoan,
+                  'Hoãn 1 ngày',
+                  // KHÔNG mở app: cả điểm của nút này là xong việc mà không
+                  // phải mở app. Đặt true ở đây là xoá sạch giá trị của nó.
+                  showsUserInterface: false,
+                  cancelNotification: true,
+                ),
+              ]
+            : null,
+      ),
+      iOS: DarwinNotificationDetails(
+        threadIdentifier: khoaNhom,
+        categoryIdentifier: coNut ? danhMucHoaDon : null,
+      ),
+    );
+  }
+
   @override
   Future<void> show({
     required int id,
@@ -190,20 +327,7 @@ class LocalOsNotifier implements OsNotifier {
       title: title,
       body: body,
       payload: payload,
-      notificationDetails: const NotificationDetails(
-        android: AndroidNotificationDetails(
-          kenhNhacId,
-          _kenhNhacTen,
-          channelDescription: _kenhNhacMoTa,
-          // `high` chứ không `max`: thông báo hiện ra và có tiếng, nhưng không
-          // chiếm màn hình kiểu cuộc gọi đến. Tiền bạc thì đáng chú ý, không
-          // đáng cắt ngang.
-          importance: Importance.high,
-          priority: Priority.high,
-          groupKey: khoaNhom,
-        ),
-        iOS: DarwinNotificationDetails(threadIdentifier: khoaNhom),
-      ),
+      notificationDetails: _chiTiet(payload),
     );
 
     // SAU thông báo thật, không phải trước: mọi phép kiểm và mọi người đọc log
@@ -219,7 +343,10 @@ class LocalOsNotifier implements OsNotifier {
   ///
   /// `GroupAlertBehavior.children` để bản tóm tắt **im lặng**: tiếng và rung là
   /// việc của thông báo thật, còn tóm tắt kêu nữa là mỗi sự kiện kêu hai lần.
-  Future<void> _dangBanTomTat() async {
+  /// [soLuong] là con số badge. `null` nghĩa là **giữ nguyên** con số đang có —
+  /// dùng cho đường bắn thông báo, nơi số chưa đọc là việc của `BadgeUpdater`
+  /// chứ không phải của nơi đang bắn.
+  Future<void> _dangBanTomTat({int? soLuong}) async {
     // **Chỉ Android.** iOS gộp theo `threadIdentifier` và không có khái niệm
     // bản tóm tắt; đăng thêm một cái ở đó là một thông báo TRỐNG nằm trên màn
     // hình khoá — và nó không bao giờ lộ ra trong một lần kiểm chạy trên
@@ -230,7 +357,7 @@ class LocalOsNotifier implements OsNotifier {
       id: idTomTat,
       title: _kenhNhacTen,
       body: null,
-      notificationDetails: const NotificationDetails(
+      notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
           kenhNhacId,
           _kenhNhacTen,
@@ -240,6 +367,11 @@ class LocalOsNotifier implements OsNotifier {
           groupKey: khoaNhom,
           setAsGroupSummary: true,
           groupAlertBehavior: GroupAlertBehavior.children,
+          // Con số badge của cả nhóm. Launcher nào không vẽ số thì bỏ qua nó
+          // và chỉ vẽ chấm — chú thích của gói nói thẳng điều đó. Nên đây là
+          // phần **có thể** hiện, còn phần chắc chắn hiện là sự tồn tại của
+          // chính thông báo này.
+          number: soLuong,
         ),
       ),
     );
@@ -265,19 +397,7 @@ class LocalOsNotifier implements OsNotifier {
       scheduledDate: tz.TZDateTime.from(when, tz.local),
       // KHÔNG dùng chế độ chính xác — xem chú thích ở `requestPermission()`.
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      notificationDetails: const NotificationDetails(
-        android: AndroidNotificationDetails(
-          kenhNhacId,
-          _kenhNhacTen,
-          channelDescription: _kenhNhacMoTa,
-          importance: Importance.high,
-          priority: Priority.high,
-          // Nhắc hoá đơn đặt trước là loại hay dồn lại nhất — bỏ nó ra ngoài
-          // nhóm là bỏ đúng chỗ cần gộp.
-          groupKey: khoaNhom,
-        ),
-        iOS: DarwinNotificationDetails(threadIdentifier: khoaNhom),
-      ),
+      notificationDetails: _chiTiet(payload),
     );
   }
 
@@ -286,6 +406,56 @@ class LocalOsNotifier implements OsNotifier {
     await init();
     final cho = await _plugin.pendingNotificationRequests();
     return {for (final r in cho) r.id};
+  }
+
+  @override
+  Future<Set<int>> activeIds() async {
+    await init();
+    final dang = await _plugin.getActiveNotifications();
+    // `id` là `null` cho thông báo **không do gói này đăng** (ví dụ đẩy qua
+    // Firebase). Bỏ chúng đi thay vì đoán: `BadgeUpdater` chỉ huỷ thứ khớp một
+    // hàng trong bảng, và một thông báo lạ thì không khớp gì cả.
+    return {for (final n in dang) if (n.id != null) n.id!};
+  }
+
+  @override
+  Future<void> datBadge(int soLuong) async {
+    await init();
+
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      if (soLuong > 0) {
+        await _dangBanTomTat(soLuong: soLuong);
+        return;
+      }
+
+      // Số 0: dọn nốt bản tóm tắt, nhưng **chỉ khi không còn thông báo con
+      // nào**. Còn con mà gỡ tóm tắt là các thông báo bung ra nằm rời rạc —
+      // đúng thứ `groupKey` sinh ra để tránh. Và "còn con" là chuyện thường:
+      // nhắc ghi chép hằng ngày không có hàng nào trong bảng nên số chưa đọc
+      // bằng 0 trong khi nó vẫn nằm trên khay.
+      final conLai = (await activeIds())..remove(idTomTat);
+      if (conLai.isEmpty) await _plugin.cancel(id: idTomTat);
+      return;
+    }
+
+    // iOS đặt được badge thẳng, nhưng **không có API riêng** cho việc đó —
+    // đường duy nhất là một thông báo mang `badgeNumber`. Tắt hết phần hiển
+    // thị để nó không bao giờ lộ ra: người dùng chỉ thấy con số trên icon.
+    await _plugin.show(
+      id: idBadge,
+      title: null,
+      body: null,
+      notificationDetails: NotificationDetails(
+        iOS: DarwinNotificationDetails(
+          badgeNumber: soLuong,
+          presentAlert: false,
+          presentBanner: false,
+          presentList: false,
+          presentSound: false,
+          presentBadge: true,
+        ),
+      ),
+    );
   }
 
   @override
@@ -298,6 +468,114 @@ class LocalOsNotifier implements OsNotifier {
   Future<void> cancelAll() async {
     await init();
     await _plugin.cancelAll();
+  }
+}
+
+/// Xử lý nút hành động khi app **đã đóng hẳn** — chạy trong một isolate NỀN.
+///
+/// Đây là ca **chính** của nút "Hoãn": lịch nhắc nổ lúc app không còn chạy, và
+/// nếu bấm nút cũng phải mở app thì nút ấy không hơn gì một cú chạm.
+///
+/// ## `@pragma('vm:entry-point')` là BẮT BUỘC
+///
+/// Hàm này không có nơi gọi tĩnh nào trong mã Dart — phía nền tảng gọi nó qua
+/// một cổng riêng. Bản release cắt bỏ mọi thứ không ai gọi, nên thiếu chú thích
+/// này thì **debug chạy tốt còn release im lặng không làm gì**: đúng kiểu hỏng
+/// chỉ lộ ra sau khi phát hành.
+///
+/// ## Isolate này KHÔNG có gì
+///
+/// Không DI container, không CSDL đang mở, và không cả múi giờ của máy —
+/// `tz.local` ở đây rơi về UTC (bẫy 7.3). Vì thế nó chỉ làm đúng một việc
+/// không cần ba thứ đó: đặt lại lịch ở một mốc **tuyệt đối** cách bây giờ đúng
+/// [buocHoan]. Cộng một khoảng thời gian vào `DateTime.now()` cho ra cùng một
+/// khoảnh khắc dù đọc bằng múi giờ nào, nên UTC ở đây vô hại.
+///
+/// Đó cũng là lý do **không có nút "Đã trả"**: trả hoá đơn cần cả CSDL lẫn ví,
+/// tức cần đúng những thứ isolate này không có. Xem `notification_actions.dart`.
+@pragma('vm:entry-point')
+void khiChamNutLucAppDong(NotificationResponse response) {
+  final payload = response.payload;
+  if (payload == null || payload.isEmpty) return;
+
+  // Chỉ "Hoãn" tới được đây. "Trả ngay" khai báo `foreground`/
+  // `showsUserInterface`, nên nền tảng mở app và cú bấm đi qua
+  // `onDidReceiveNotificationResponse` ở isolate chính.
+  if (response.actionId != hanhDongHoan) return;
+
+  final lich = lichHoan(dedupeKey: payload, now: DateTime.now());
+  if (lich == null) return;
+
+  // Một dòng nhật ký, cùng lý do với `NotificationScanner._ghiNhat`: đường này
+  // hỏng HOÀN TOÀN im lặng. Ngày 2026-09-07 nút "Hoãn" không chạy vì thiếu
+  // `ActionBroadcastReceiver` trong manifest, và không có gì phân biệt được
+  // "isolate chưa từng chạy" với "isolate chạy rồi nhưng đặt lịch hỏng". Dòng
+  // này trả lời đúng câu ấy trong `adb logcat`.
+  debugPrint('[Hoãn] isolate nền nhận "$payload", dời tới ${lich.when}');
+
+  unawaited(_datLichHoanTuIsolateNen(lich));
+}
+
+/// Nuốt **mọi** lỗi: không có ai để báo, và một ngoại lệ chưa bắt trong isolate
+/// nền làm tiến trình chết theo cách không lần lại được từ log của người dùng.
+Future<void> _datLichHoanTuIsolateNen(LichHoan lich) async {
+  try {
+    // Dữ liệu múi giờ là Dart thuần, không qua kênh nền tảng nào — gọi được ở
+    // đây. `tz.local` vẫn là UTC, và điều đó không sao: xem chú thích trên.
+    tzdata.initializeTimeZones();
+
+    final plugin = FlutterLocalNotificationsPlugin();
+    // Cần `initialize` để có icon thông báo; **không** gắn callback nào ở đây.
+    await plugin.initialize(
+      settings: const InitializationSettings(
+        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+        iOS: DarwinInitializationSettings(
+          requestAlertPermission: false,
+          requestBadgePermission: false,
+          requestSoundPermission: false,
+        ),
+      ),
+    );
+
+    await plugin.zonedSchedule(
+      id: osScheduledId(lich.khoa),
+      title: lich.title,
+      body: lich.body,
+      payload: lich.khoa,
+      scheduledDate: tz.TZDateTime.from(lich.when, tz.local),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          LocalOsNotifier.kenhNhacId,
+          'Nhắc tài chính',
+          importance: Importance.high,
+          priority: Priority.high,
+          groupKey: LocalOsNotifier.khoaNhom,
+          // Lịch hoãn vẫn phải mang nút, nếu không hoãn được đúng MỘT lần rồi
+          // lần sau chỉ còn cách mở app.
+          actions: [
+            AndroidNotificationAction(
+              hanhDongTraNgay,
+              'Trả ngay',
+              showsUserInterface: true,
+              cancelNotification: true,
+            ),
+            AndroidNotificationAction(
+              hanhDongHoan,
+              'Hoãn 1 ngày',
+              showsUserInterface: false,
+              cancelNotification: true,
+            ),
+          ],
+        ),
+        iOS: DarwinNotificationDetails(
+          threadIdentifier: LocalOsNotifier.khoaNhom,
+          categoryIdentifier: LocalOsNotifier.danhMucHoaDon,
+        ),
+      ),
+    );
+  } catch (_) {
+    // Bỏ qua có chủ ý — xem chú thích trên.
   }
 }
 

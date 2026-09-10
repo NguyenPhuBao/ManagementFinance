@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -10,19 +11,33 @@ import '../../data/models/goal_entity.dart';
 import '../widgets/goal_appearance.dart';
 import '../widgets/goal_progress.dart';
 import '../../domain/goal_grouping.dart';
+import '../../domain/goal_priority.dart';
 import '../bloc/goal_cubit.dart';
 import '../../../../core/auth/current_account.dart';
+import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
 
 class GoalPage extends StatelessWidget {
   const GoalPage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // ĐĂNG KÝ với AuthBloc, không chỉ đọc một phát (G17).
+    //
+    // `currentAccountIdOrNull` dùng `context.read` bên trong, mà `read` không
+    // đăng ký gì cả — cộng với việc `BlocProvider.create` chỉ chạy MỘT lần,
+    // trang được dựng trước khi phiên khôi phục xong sẽ đăng ký
+    // `watchGoals(0)` rồi giữ nguyên đăng ký ấy mãi. Người dùng thấy danh
+    // sách rỗng dù CSDL có dữ liệu, và chỉ thoát ra vào lại mới thấy.
+    // `home_page` và `transaction_page` không mắc lỗi này vì chúng `watch`.
+    context.watch<AuthBloc>();
+    final idaccount = currentAccountIdOrNull(context) ?? 0;
+
     return BlocProvider<GoalCubit>(
-      create: (_) {
-        final idaccount = currentAccountIdOrNull(context) ?? 0;
-        return sl<GoalCubit>()..watchGoals(idaccount);
-      },
+      // Khoá theo mã tài khoản: khi phiên tới, khoá đổi nên provider được dựng
+      // lại và `create` chạy lần nữa với đúng tài khoản. Thiếu khoá này thì
+      // `watch` ở trên chỉ khiến build chạy lại mà cubit vẫn giữ đăng ký cũ.
+      key: ValueKey(idaccount),
+      create: (_) => sl<GoalCubit>()..watchGoals(idaccount),
       child: const _GoalPageContent(),
     );
   }
@@ -33,9 +48,6 @@ class _GoalPageContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currencyFormatter = NumberFormat.currency(
-        locale: 'vi_VN', symbol: 'đ', decimalDigits: 0);
-
     // BlocBuilder bọc NGOÀI `Scaffold` chứ không nằm trong `body`: nhãn tab
     // mang số đếm ("Đang theo đuổi (3)"), mà số ấy chỉ có trong state. Để
     // BlocBuilder ở trong thì `AppBar.bottom` không với tới được.
@@ -104,12 +116,10 @@ class _GoalPageContent extends StatelessWidget {
                   coMucTieuNaoKhong: goals.isNotEmpty,
                   tongDaTich: tongDaTich,
                   tongMucTieu: tongMucTieu,
-                  currencyFormatter: currencyFormatter,
                 ),
                 _tabDaHoanThanh(
                   context,
                   goals: nhom.daHoanThanh,
-                  currencyFormatter: currencyFormatter,
                 ),
               ],
             ),
@@ -170,7 +180,6 @@ class _GoalPageContent extends StatelessWidget {
     required bool coMucTieuNaoKhong,
     required double tongDaTich,
     required double tongMucTieu,
-    required NumberFormat currencyFormatter,
   }) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -192,10 +201,57 @@ class _GoalPageContent extends StatelessWidget {
                       'tài chính của bạn!',
             )
           else
-            ...goals.map((goal) => Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: _theMucTieu(context, goal, currencyFormatter),
-                )),
+            // Kéo thả để sắp thứ tự ưu tiên.
+            //
+            // `shrinkWrap` + `NeverScrollableScrollPhysics` vì nó nằm trong
+            // `SingleChildScrollView` đã có: hai vùng cuộn lồng nhau thì cú
+            // vuốt bị vùng trong nuốt và thẻ tổng kết bên dưới không tới được.
+            //
+            // Danh sách này chỉ dài bằng số mục tiêu đang theo đuổi nên dựng
+            // hết một lượt không tốn gì đáng kể.
+            ReorderableListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              buildDefaultDragHandles: false,
+              itemCount: goals.length,
+              // `ValueKey` theo **id**, không phải theo chỉ số. Khoá theo chỉ
+              // số thì sau mỗi lần thả Flutter coi như không có gì đổi chỗ và
+              // hoạt ảnh nhảy loạn.
+              itemBuilder: (context, i) => Padding(
+                key: ValueKey(goals[i].id),
+                padding: const EdgeInsets.only(bottom: 16),
+                child: ReorderableDragStartListener(
+                  index: i,
+                  // Nghe trên cả thẻ chứ không chỉ một tay nắm nhỏ: thẻ mục
+                  // tiêu cao và không có chỗ nào đặt tay nắm mà không đè lên
+                  // nội dung. Cú CHẠM vẫn mở trang chi tiết như cũ —
+                  // `ReorderableDragStartListener` chỉ bắt thao tác kéo dài.
+                  child: _theMucTieu(context, goals[i]),
+                ),
+              ),
+              onReorder: (cu, moi) {
+                final ra = uuTienSauKhiKeo(
+                  dangHien: goals,
+                  tuViTri: cu,
+                  // ⚠️ Không dùng thẳng `moi`. Xem `viTriThaThucTe`.
+                  toiViTri: viTriThaThucTe(cu: cu, moi: moi),
+                );
+                if (ra.isEmpty) return;
+                context.read<GoalCubit>().sapLaiUuTien(ra);
+              },
+            ),
+          if (goals.length > 1)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                'Nhấn giữ một mục tiêu để kéo đổi thứ tự ưu tiên.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary.withValues(alpha: 0.8),
+                ),
+              ),
+            ),
           const SizedBox(height: 16),
 
           // Thẻ tổng kết.
@@ -236,8 +292,8 @@ class _GoalPageContent extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Đã tích được ${currencyFormatter.format(tongDaTich)} '
-                    'trên tổng ${currencyFormatter.format(tongMucTieu)}.',
+                    'Đã tích được ${CurrencyFormatter.format(tongDaTich)} '
+                    'trên tổng ${CurrencyFormatter.format(tongMucTieu)}.',
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.white.withValues(alpha: 0.8),
@@ -282,7 +338,6 @@ class _GoalPageContent extends StatelessWidget {
   Widget _tabDaHoanThanh(
     BuildContext context, {
     required List<GoalEntity> goals,
-    required NumberFormat currencyFormatter,
   }) {
     if (goals.isEmpty) {
       return SingleChildScrollView(
@@ -306,7 +361,7 @@ class _GoalPageContent extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _theMucTieu(context, goal, currencyFormatter),
+                      _theMucTieu(context, goal),
                       // Lối tắt cho mục tiêu lặp lại. Chỉ là lối tắt: nó mở
                       // trang chi tiết chứ KHÔNG tự đặt lại. Một nút xoá tiến
                       // độ ngay trong danh sách là chỗ dễ bấm nhầm nhất, và
@@ -383,7 +438,6 @@ class _GoalPageContent extends StatelessWidget {
   Widget _theMucTieu(
     BuildContext context,
     GoalEntity goal,
-    NumberFormat currencyFormatter,
   ) {
     return _buildGoalCard(
       goal: goal,
@@ -394,8 +448,8 @@ class _GoalPageContent extends StatelessWidget {
       icon: bieuTuongMucTieu(goal.icon),
       iconColor: mauMucTieu(goal.colour),
       iconBgColor: mauMucTieu(goal.colour).withValues(alpha: 0.1),
-      currentAmount: currencyFormatter.format(goal.currentAmount),
-      targetAmount: '/ ${currencyFormatter.format(goal.targetAmount)}',
+      currentAmount: CurrencyFormatter.format(goal.currentAmount),
+      targetAmount: '/ ${CurrencyFormatter.format(goal.targetAmount)}',
       extraWidget: Row(
         children: [
           const Icon(Icons.event, color: AppColors.textSecondary, size: 18),

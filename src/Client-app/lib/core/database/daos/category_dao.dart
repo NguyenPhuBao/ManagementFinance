@@ -19,7 +19,7 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
   Future<List<Category>> getAll(int idaccount) async {
     final list = await (select(categories)
           ..where((t) =>
-              (t.idaccount.equals(0) | t.idaccount.equals(idaccount)) &
+              t.idaccount.equals(idaccount) &
               t.deletedAt.isNull())
           ..orderBy([
             (t) => OrderingTerm.desc(t.idaccount),
@@ -38,7 +38,7 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
   Stream<List<Category>> watchAll(int idaccount) {
     return (select(categories)
           ..where((t) =>
-              (t.idaccount.equals(0) | t.idaccount.equals(idaccount)) &
+              t.idaccount.equals(idaccount) &
               t.deletedAt.isNull())
           ..orderBy([
             (t) => OrderingTerm.desc(t.idaccount),
@@ -58,7 +58,7 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
   Stream<List<Category>> watchCategoryRows(int accountId, String classify) {
     return (select(categories)
           ..where((t) =>
-              (t.idaccount.equals(0) | t.idaccount.equals(accountId)) &
+              t.idaccount.equals(accountId) &
               t.classify.equals(classify) &
               t.isDeleted.equals(false))
           ..orderBy([
@@ -91,7 +91,7 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
   Future<List<Category>> getCategoryRows(int accountId, String classify) async {
     final list = await (select(categories)
           ..where((t) =>
-              (t.idaccount.equals(0) | t.idaccount.equals(accountId)) &
+              t.idaccount.equals(accountId) &
               t.classify.equals(classify) &
               t.isDeleted.equals(false))
           ..orderBy([
@@ -138,6 +138,38 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
               (t.idaccount.equals(accountId) | t.isDefault.equals(true)) &
               t.isDeleted.equals(false) &
               t.deletedAt.isNull()))
+        .get();
+  }
+
+  /// Bộ danh mục **mặc định** do backend sở hữu, đã pull về máy này.
+  ///
+  /// `sync_engine` quy `is_default = true` thành `idaccount = 0`, nên lọc theo
+  /// cờ chứ không theo tài khoản. Đây là **khuôn** để sao chép cho từng tài
+  /// khoản (`DefaultCategorySeeder`); hàng đã xoá mềm không còn là khuôn của
+  /// ai nữa.
+  Future<List<Category>> getBackendDefaults() {
+    return (select(categories)
+          ..where((t) =>
+              t.isDefault.equals(true) &
+              t.isDeleted.equals(false) &
+              t.deletedAt.isNull())
+          ..orderBy([(t) => OrderingTerm.asc(t.name)]))
+        .get();
+  }
+
+  /// Danh mục **thuộc về** [accountId], **kể cả hàng đã xoá mềm**.
+  ///
+  /// ⚠️ Khác [getNamesInUse] ở đúng hai chỗ, và cả hai đều có chủ đích: hàm này
+  /// **giữ** hàng đã xoá, và **loại** hàng mặc định.
+  ///
+  /// Hàng đã xoá mềm là bằng chứng rằng tài khoản **từng** có bản sao ấy. Bỏ nó
+  /// ra khỏi phép đếm là tái hiện **G16**: danh mục người dùng vừa xoá sẽ mọc
+  /// lại ở mỗi lần mở app, và mỗi lần mọc lại là một thao tác đẩy hỏng vĩnh
+  /// viễn. Đọc G16 trong `docs/CLIENT_APP_KNOWN_GAPS.md` trước khi sửa hàm này.
+  Future<List<Category>> getOwnedIncludingDeleted(int accountId) {
+    return (select(categories)
+          ..where((t) =>
+              t.idaccount.equals(accountId) & t.isDefault.equals(false)))
         .get();
   }
 
@@ -292,7 +324,7 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
   Future<List<Category>> getByClassify(int idaccount, String classify) async {
     final list = await (select(categories)
           ..where((t) =>
-              (t.idaccount.equals(0) | t.idaccount.equals(idaccount)) &
+              t.idaccount.equals(idaccount) &
               t.classify.equals(classify) &
               t.deletedAt.isNull())
           ..orderBy([

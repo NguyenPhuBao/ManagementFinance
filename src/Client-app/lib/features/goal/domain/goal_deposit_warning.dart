@@ -1,9 +1,6 @@
-import 'package:intl/intl.dart';
+import '../../../core/utils/currency_formatter.dart';
 
 import '../data/models/goal_entity.dart';
-
-final NumberFormat _tien =
-    NumberFormat.currency(locale: 'vi_VN', symbol: 'đ', decimalDigits: 0);
 
 /// Câu nhắc khi số tiền định nạp **vượt** phần còn thiếu của mục tiêu, hoặc
 /// `null` khi không có gì để nhắc.
@@ -26,6 +23,6 @@ String? canhBaoNapVuot(GoalEntity mucTieu, double soTienNap) {
   if (soTienNap <= conThieu) return null;
 
   final vuot = soTienNap - conThieu;
-  return 'Khoản này vượt ${_tien.format(vuot)} so với mục tiêu. '
+  return 'Khoản này vượt ${CurrencyFormatter.format(vuot)} so với mục tiêu. '
       'Tiền vẫn được ghi nhận đầy đủ.';
 }

@@ -8,6 +8,7 @@ import 'package:flowmoney/features/goal/data/datasources/goal_local_data_source.
 import 'package:flowmoney/features/goal/data/models/goal_entity.dart';
 import 'package:flowmoney/features/goal/data/repositories/goal_repository.dart';
 import 'package:flowmoney/features/goal/data/repositories/goal_repository_impl.dart';
+import 'package:flowmoney/features/goal/domain/goal_history_direction.dart';
 
 void main() {
   late AppDatabase db;
@@ -87,8 +88,43 @@ void main() {
               'thì nhìn vào hàng không biết được ví nào nhận — và payload đẩy '
               'đã có sẵn `idwallet_transfer` cho nó.');
       expect(tx.amount, 1000000.0);
-      expect(tx.note, 'Tích lũy mục tiêu: Mua Laptop');
+      expect(tx.note, 'Tích lũy mục tiêu: Mua Laptop',
+          reason: 'Nạp tay KHÔNG mang hậu tố "(tự động)". Dán nhãn cho khoản '
+              'người dùng tự bấm là nói dối về việc ai đã chuyển tiền.');
       expect(tx.goalId, 'g1');
+    });
+
+    test('cờ `tuDong` gắn hậu tố "(tự động)" vào ghi chú', () async {
+      await repository.depositToGoal(
+        goalId: 'g1',
+        goalName: 'Mua Laptop',
+        depositAmount: 1000000.0,
+        walletId: 'w1',
+        idaccount: 1,
+        tuDong: true,
+      );
+
+      final tx = (await db.transactionDao.getAll(1)).single;
+      expect(tx.note, 'Tích lũy mục tiêu: Mua Laptop$kHauToTuDong',
+          reason: 'Ghi chú là chỗ DUY NHẤT phân biệt hai loại khoản nạp — mọi '
+              'cột khác của chúng cố ý giống hệt nhau (mục 3.12 '
+              '`GOAL_FEATURE.md`). Sai ở đây thì nhãn không bao giờ hiện, và '
+              'hỏng im lặng vì tiến độ mục tiêu vẫn tăng đúng.');
+      expect(laKhoanTuDong(tx.note), isTrue,
+          reason: 'Nơi ghi và nơi đọc phải khớp nhau. Ghép chuỗi đúng mà phép '
+              'đọc vẫn trả false là ca đã xảy ra thật khi hai bên dùng hai '
+              'biến thể khoảng trắng khác nhau.');
+      expect(
+        laKhoanRutKhoiMucTieu(
+          ghiChu: tx.note,
+          viCuaHang: tx.walletId,
+          viTichLuy: 'w_nhan',
+        ),
+        isFalse,
+        reason: 'Bất biến quan trọng nhất của đợt này: hậu tố KHÔNG được đụng '
+            'tới phép đọc chiều tiền. Hỏng thì mọi khoản trích tự động hiện '
+            'dấu trừ trong khi tiến độ mục tiêu đi lên.',
+      );
     });
 
     test('số dư hai ví và tiến độ mục tiêu đều đổi đúng', () async {
@@ -1483,6 +1519,67 @@ void main() {
           reason: 'Tắt công tắc "tự động trích tiền định kỳ" phải xoá được kế '
               'hoạch cũ. Dùng Value.absent() cho tham số null thì chu kỳ cũ '
               'dính lại mãi và hộp dự báo cứ so với một nhịp người dùng đã bỏ.');
+    });
+  });
+
+  group('capNhatUuTien', () {
+    setUp(() async {
+      await db.goalDao.insert(
+        GoalsCompanion.insert(
+          id: 'g2',
+          idaccount: 1,
+          name: 'Mua Xe',
+          targetAmount: 50000000.0,
+          walletId: const Value('w_nhan'),
+          targetDate: DateTime.now().add(const Duration(days: 200)),
+          syncStatus: const Value('synced'),
+          updatedAt: DateTime.now(),
+        ),
+      );
+      await (db.update(db.goals)..where((t) => t.id.equals('g1')))
+          .write(const GoalsCompanion(syncStatus: Value('synced')));
+    });
+
+    test('ghi đúng giá trị cho từng mục tiêu trong map', () async {
+      await repository.capNhatUuTien({'g1': 200, 'g2': 100});
+
+      expect((await repository.getGoalById('g1'))!.priority, 200);
+      expect((await repository.getGoalById('g2'))!.priority, 100);
+    });
+
+    test('chỉ chạm những mục tiêu CÓ TÊN trong map', () async {
+      await repository.capNhatUuTien({'g2': 100});
+
+      expect((await repository.getGoalById('g1'))!.priority, isNull,
+          reason: 'Đây chính là lý do hàm nhận một map thay vì cả danh sách: '
+              'kéo thả thường chỉ đổi MỘT hàng, và ghi lại những hàng không '
+              'đổi là đẩy rác lên hàng đợi đồng bộ.');
+      expect((await repository.getGoalById('g1'))!.syncStatus, 'synced');
+    });
+
+    test('đánh dấu pending để thứ tự đi được sang máy khác', () async {
+      await repository.capNhatUuTien({'g1': 300});
+
+      final g = await repository.getGoalById('g1');
+      expect(g!.syncStatus, 'pending',
+          reason: 'Thứ tự người dùng sắp tay không suy lại được. Quên đánh '
+              'dấu pending là nó ở lại đúng máy này — đúng bệnh mà G21 đã ghi '
+              'với ba cột auto_deposit_*.');
+    });
+
+    test('map rỗng thì không đụng gì', () async {
+      await repository.capNhatUuTien(const {});
+
+      expect((await repository.getGoalById('g1'))!.syncStatus, 'synced');
+    });
+
+    test('id không tồn tại thì bỏ qua, không ném', () async {
+      await repository.capNhatUuTien({'khong-co-that': 100, 'g1': 100});
+
+      expect((await repository.getGoalById('g1'))!.priority, 100,
+          reason: 'Một id lạ không được kéo theo cả thao tác kéo thả. Danh '
+              'sách có thể đã đổi giữa lúc dựng và lúc thả — ví dụ đồng bộ vừa '
+              'kéo về một cờ xoá.');
     });
   });
 }

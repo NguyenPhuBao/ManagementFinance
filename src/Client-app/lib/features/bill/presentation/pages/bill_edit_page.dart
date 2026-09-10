@@ -75,7 +75,7 @@ class _BillEditPageState extends State<BillEditPage> {
     final accountId = currentAccountIdOrNull(context);
     if (accountId == null) return;
     final db = sl<AppDatabase>();
-    final wallets = await db.walletDao.getAll(accountId);
+    final wallets = await db.walletDao.getActive(accountId);
     final categories = await db.categoryDao.getCategoryRows(accountId, 'chi');
     if (!mounted) return;
     setState(() {
@@ -171,6 +171,8 @@ class _BillEditPageState extends State<BillEditPage> {
       categoryId: category.id,
       isRecurring: _lich.isRecurring,
       timeRecurrence: _lich.storedTimeRecurrence,
+      // Ngày gốc đi cùng ngày bắt đầu — xem `Bills.anchorDay`.
+      anchorDay: _lich.anchorDayHieuLuc,
       timeNotification: _nhacTruoc,
       note: _noteController.text.trim(),
       autoPayEnabled: _tuTra,

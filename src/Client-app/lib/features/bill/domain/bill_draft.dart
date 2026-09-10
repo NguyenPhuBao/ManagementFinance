@@ -42,6 +42,12 @@ class BillDraft {
   /// phải thứ app mặc định làm hộ. Cột cục bộ v17, xem `Bills.autoPayEnabled`.
   final bool autoPayEnabled;
 
+  /// Ngày trong tháng người dùng thật sự chọn — xem `Bills.anchorDay`.
+  ///
+  /// `null` thì suy từ ngày của [startDate]. Hai thứ chỉ khác nhau ở hoá đơn
+  /// thuộc chuỗi, mà chuỗi thì không đi qua form này.
+  final int? anchorDay;
+
   const BillDraft({
     required this.name,
     required this.amount,
@@ -54,7 +60,11 @@ class BillDraft {
     required this.note,
     this.timeNotification,
     this.autoPayEnabled = false,
+    this.anchorDay,
   });
+
+  /// Ngày gốc sẽ ghi xuống. Suy từ [startDate] khi form chưa đặt.
+  int get anchorDayHieuLuc => anchorDay ?? startDate.day;
 
   /// Chuỗi chu kỳ cũ, suy ra từ [isRecurring] + [timeRecurrence].
   ///
@@ -94,6 +104,7 @@ class BillDraft {
       timeNotification: Value(timeNotification),
       note: Value(note),
       autoPayEnabled: Value(autoPayEnabled),
+      anchorDay: Value(anchorDayHieuLuc),
       syncStatus: const Value('pending'),
       updatedAt: now,
     );
@@ -133,6 +144,7 @@ class BillDraft {
       // Có mặt cả khi tắt: vắng mặt là "giữ nguyên", và tắt công tắc mà app
       // vẫn tiếp tục trừ tiền là lỗi tệ nhất ở vùng này.
       autoPayEnabled: Value(autoPayEnabled),
+      anchorDay: Value(anchorDayHieuLuc),
       syncStatus: const Value('pending'),
       updatedAt: Value(now),
     );

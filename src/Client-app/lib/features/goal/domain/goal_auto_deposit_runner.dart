@@ -4,6 +4,7 @@ import '../../../core/database/app_database.dart';
 import '../data/models/goal_entity.dart';
 import '../data/repositories/goal_repository.dart';
 import 'goal_auto_deposit.dart';
+import '../../wallet/domain/wallet_status.dart';
 
 /// Kết quả của **một** kỳ trích, để nơi gọi dựng thông báo.
 ///
@@ -107,8 +108,13 @@ class GoalAutoDepositRunner {
     // `wallet_local_data_source` chỉ nhìn `goals.walletId`), nên ca này xảy ra
     // thật. Và ví nguồn trùng ví tích luỹ thì tiền không đi đâu cả trong khi
     // tiến độ vẫn tăng — mục tiêu tự đầy lên từ hư không.
+    // Ví ĐÃ LƯU TRỮ cũng vào nhánh này: lưu trữ là đóng băng ví, và rút tiền
+    // im lặng khỏi một ví người dùng đã cất đi là cách hỏng tệ nhất ở đây —
+    // họ không nhìn ví ấy nữa nên sẽ không thấy gì cả.
     final viNguon = await db.walletDao.getById(viNguonId);
-    if (viNguon == null || viNguonId == goal.walletId) {
+    if (viNguon == null ||
+        viNguonId == goal.walletId ||
+        !WalletStatus.laHoatDong(viNguon.status)) {
       return [
         GoalAutoDepositEvent(
           goalId: goal.id,
@@ -162,6 +168,10 @@ class GoalAutoDepositRunner {
           // là ba sự việc của ba ngày dồn thành một cột trong thống kê theo
           // ngày — trong khi thông báo, vốn lấy mốc kỳ, hiện đúng ba ngày.
           occurredAt: ky,
+          // Chỗ DUY NHẤT trong app truyền cờ này. Nó chỉ thêm hậu tố vào ghi
+          // chú — không đổi chiều tiền, không đổi cột nào khác — để lịch sử
+          // nói được ai đã chuyển khoản tiền ấy.
+          tuDong: true,
         );
       } catch (e) {
         // `depositToGoal` là một khối nguyên tử — hỏng thì không để lại gì. Nuốt

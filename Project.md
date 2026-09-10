@@ -1981,7 +1981,7 @@ Dự án Flutter Client-app đã triển khai hoàn thiện tầng Core hạ t�
 
 #### 9.2.3 Quy Chuẩn Đặc Tả Đồng Bộ Backend (Backend Sync Spec)
 
-Tài liệu đặc tả đồng bộ dữ liệu hai chiều giữa Client (Drift SQLite) và Backend (PostgreSQL NestJS) đã được khởi tạo tại [`2026-08-10-backend-sync-spec.md`](./docs/superpowers/plans/2026-08-10-backend-sync-spec.md):
+Tài liệu đặc tả đồng bộ dữ liệu hai chiều giữa Client (Drift SQLite) và Backend (PostgreSQL NestJS) đã được khởi tạo tại [`2026-08-10-backend-sync-spec.md`](./docs/superpowers/backend/2026-08-10-backend-sync-spec.md):
 
 - **Database Models Backend**: Định nghĩa 5 Prisma models tương ứng (`Wallet`, `Transaction`, `Budget`, `Bill`, `Goal`) sử dụng UUID Primary Key (`VARCHAR(36)`).
 - **API Push & Pull**:
@@ -2007,7 +2007,7 @@ Hệ thống **SyncEngine** phía Client-app đã hoàn thiện đồng bộ hai
 - **Immediate Sync On Login**: Ngay khi đăng nhập thành công (`AuthSuccess`) hoặc khi màn hình Trang chủ (`HomePage`) mở ra, `SyncEngine.start(idaccount)` tự động kích hoạt quy trình Push & Pull dữ liệu lập tức mà không cần chờ người dùng thực hiện bất kỳ thao tác nào.
 - **Account Data Isolation**: Khôi phục bộ lọc `idaccount` nghiêm ngặt trên tất cả các DAOs local (`WalletDao`, `TransactionDao`, `CategoryDao`, `BudgetDao`, `BillDao`, `GoalDao`). Khi đăng xuất (`LogoutRequested`), `SyncEngine.stop()` tự động xóa checkpoint `_lastPullTime`, đảm bảo dữ liệu giữa các tài khoản người dùng được cô lập tuyệt đối 100%.
 - **Response Unpacking**: Khắc phục triệt để việc bóc tách gói tin kết quả bọc `ResponseHandler` (`topData['data']['results']` và `topData['data']['data']`), báo log chính xác `1/1 synced successfully`.
-- **Tài liệu đặc tả**: Đã tạo và lưu trữ đầy đủ tài liệu chi tiết tại [`docs/sync/SYNC_DOCUMENTATION.md`](./docs/sync/SYNC_DOCUMENTATION.md) và [`docs/bill/BILL_DOCUMENTATION.md`](./docs/bill/BILL_DOCUMENTATION.md).
+- **Tài liệu đặc tả**: Đã tạo và lưu trữ đầy đủ tài liệu chi tiết tại [`docs/sync/SYNC_DOCUMENTATION.md`](./docs/superpowers/sync/SYNC_DOCUMENTATION.md) và [`docs/bill/BILL_DOCUMENTATION.md`](./docs/bill/BILL_DOCUMENTATION.md).
 
 ---
 
@@ -2312,8 +2312,8 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
 
 ### 11.19. Triển Khai Hoàn Tất Chức Năng AI Phân Loại Giao Dịch (3-Tier Hybrid & Chuẩn RAG) (2026-09-02)
 - **Chuẩn hóa Nguồn Sự Thật & Tài Liệu Module AI**:
-  - Tạo tài liệu nguồn sự thật [docs/AI/Standard_RAG.md](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/AI/Standard_RAG.md) định chuẩn 4 giai đoạn RAG (Indexing, Retrieval, Generation, Ragas Evaluation).
-  - Hoàn thiện tài liệu đặc tả [docs/AI/Classify.md](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/AI/Classify.md) và [docs/AI/Casso_Banking/TemplateData.md](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/AI/Casso_Banking/TemplateData.md) bao phủ toàn bộ 4 kênh đầu vào (Receipt OCR, SMS Banking, Casso BankSync, Nhập tay) và cấu trúc DTO đầu ra.
+  - Tạo tài liệu nguồn sự thật [docs/AI/Standard_RAG.md](docs/AI/Standard_RAG.md) định chuẩn 4 giai đoạn RAG (Indexing, Retrieval, Generation, Ragas Evaluation).
+  - Hoàn thiện tài liệu đặc tả [docs/AI/Classify.md](docs/AI/Classify.md) và [docs/AI/Data_Casso_Banking/TemplateData.md](docs/AI/Data_Casso_Banking/TemplateData.md) bao phủ toàn bộ 4 kênh đầu vào (Receipt OCR, SMS Banking, Casso BankSync, Nhập tay) và cấu trúc DTO đầu ra.
 - **Xây dựng Mã Nguồn Backend Module AI**:
   - `classify.preprocess.js`: Chuẩn hóa văn bản tiếng Việt Unicode NFC (`cleanVietnameseText`), loại bỏ ký tự rác/mã hex giao dịch, hỗ trợ `removeVietnameseTones`.
   - `pipeline/keyword.matcher.js`: Thuật toán so khớp Tầng 1 với `Category.Keyword` của user trong CSDL (Tốc độ $0 - 5ms$, Confidence $\ge 0.95$).
@@ -2466,10 +2466,10 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
     2. **Zero Credential Risk:** Người dùng cuối trên Client-app **tuyệt đối không nhập mật khẩu Internet Banking hay mã OTP ngân hàng**. Người dùng chỉ khai báo thông tin công khai: Số tài khoản, Tên ngân hàng, Tên chủ thẻ qua endpoint `POST /api/bank/register-account`.
     3. Backend tự động định tuyến biến động số dư: Tra cứu `accountNumber` từ payload SePay gửi về $\rightarrow$ Tìm ra `idaccount` người dùng $\rightarrow$ Cập nhật số dư lũy kế `accumulated` $\rightarrow$ AI gợi ý danh mục $\rightarrow$ Bắn Socket.io thời gian thực tới điện thoại người dùng.
 - **Cập Nhật Toàn Bộ Bộ Tài Liệu Đặc Tả (`docs/Bank/`)**:
-  - [`docs/Bank/SePay.md`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/Bank/SePay.md): Tổng quan toàn bộ cơ chế SePay Cá Nhân, luồng mapping danh tính không cần mật khẩu, cấu trúc JSON payload thực tế dạng `camelCase` (`accountNumber`, `transferAmount`, `transferType: "in"|"out"`, `referenceCode`, `accumulated`), bảng ánh xạ CSDL PostgreSQL, quy tắc bảo toàn số dư ví `Banking`.
-  - [`docs/Bank/Backend.md`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/Bank/Backend.md): Đặc tả mã nguồn Backend cho SePay Cá Nhân, tối giản biến môi trường (`SEPAY_WEBHOOK_API_KEY`, `SEPAY_API_TOKEN`), xác thực timing-safe, module `sepay.webhook.js` chuẩn hóa payload camelCase, worker `bank.worker.js` mapping user theo STK + chống trùng `@@unique([provider, bank_tran_id])`, hướng dẫn 3 bước kết nối trên Render và `my.sepay.vn`.
-  - [`docs/Bank/Admin-web.md`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/Bank/Admin-web.md): Màn hình quản lý tài khoản ngân hàng người dùng khai báo, giám sát giao dịch BankSync, nhật ký Webhook IPN Logs (kèm cơ chế Retry), Dashboard KPIs & Realtime Socket.io.
-  - [`docs/Bank/Client-app.md`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/Bank/Client-app.md): Loại bỏ hoàn toàn WebView và Hosted Link của Bank Hub; thay bằng màn hình `BankRegisterPage` nhập STK + Tên NH + Tên chủ thẻ; quy tắc khóa sửa số dư ví Banking; lắng nghe Socket.io `bank_transaction.incoming` (rung, chuông, banner nổi); màn hình Bank Inbox duyệt giao dịch (Confirm/Reject).
+  - [`docs/Bank/SePay.md`](docs/Bank/SePay.md): Tổng quan toàn bộ cơ chế SePay Cá Nhân, luồng mapping danh tính không cần mật khẩu, cấu trúc JSON payload thực tế dạng `camelCase` (`accountNumber`, `transferAmount`, `transferType: "in"|"out"`, `referenceCode`, `accumulated`), bảng ánh xạ CSDL PostgreSQL, quy tắc bảo toàn số dư ví `Banking`.
+  - [`docs/Bank/Backend.md`](docs/Bank/Backend.md): Đặc tả mã nguồn Backend cho SePay Cá Nhân, tối giản biến môi trường (`SEPAY_WEBHOOK_API_KEY`, `SEPAY_API_TOKEN`), xác thực timing-safe, module `sepay.webhook.js` chuẩn hóa payload camelCase, worker `bank.worker.js` mapping user theo STK + chống trùng `@@unique([provider, bank_tran_id])`, hướng dẫn 3 bước kết nối trên Render và `my.sepay.vn`.
+  - [`docs/Bank/Admin-web.md`](docs/Bank/Admin-web.md): Màn hình quản lý tài khoản ngân hàng người dùng khai báo, giám sát giao dịch BankSync, nhật ký Webhook IPN Logs (kèm cơ chế Retry), Dashboard KPIs & Realtime Socket.io.
+  - [`docs/Bank/Client-app.md`](docs/Bank/Client-app.md): Loại bỏ hoàn toàn WebView và Hosted Link của Bank Hub; thay bằng màn hình `BankRegisterPage` nhập STK + Tên NH + Tên chủ thẻ; quy tắc khóa sửa số dư ví Banking; lắng nghe Socket.io `bank_transaction.incoming` (rung, chuông, banner nổi); màn hình Bank Inbox duyệt giao dịch (Confirm/Reject).
 - **Mã Nguồn & Kiểm Thử TDD Khép Kín**:
   - Endpoint `POST /api/bank/register-account` đã tích hợp đầy đủ tại Controller, Service, Repository, Routes.
   - Bộ chuẩn hóa `sepay.webhook.js` hỗ trợ song song cả chuẩn camelCase của SePay Cá Nhân lẫn biến thể snake_case.
@@ -2497,7 +2497,7 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - `src/Backend/modules/ai/features/dedup/dedup.repository.js`: Nâng cấp hàm `findFuzzyTransfer` thêm lọc nhà cung cấp `provider: ['BankSync', 'SMS']`, sắp xếp `orderBy: { date_transaction: 'desc' }`, đối soát `counterpartAccount` và `note` để tránh chặn nhầm mã lỗi HTTP 409 giữa các giao dịch cùng số tiền trong ngày.
   - `ocr.controller.js` & `classify.controller.js`: Chặn và loại bỏ các tham số `_mock*` query params khi ứng dụng vận hành trên môi trường Production (`NODE_ENV === 'production'`).
 - **7. Migration CSDL PostgreSQL & Ràng Buộc Nâng Cao**:
-  - Đã thực thi script SQL migration [`src/Backend/database/)2_can_lam_all_migrations.sql`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/database/%292_can_lam_all_migrations.sql):
+  - Đã thực thi script SQL migration [`src/Backend/database/)2_can_lam_all_migrations.sql`](src/Backend/database/%292_can_lam_all_migrations.sql):
     - Dọn dẹp an toàn các danh mục mặc định cũ sinh ngẫu nhiên.
     - Tạo 2 Partial Unique Indexes: `uq_category_owner_name` và `uq_category_default_name` (áp dụng khi `Delete_at IS NULL` kèm chuẩn hóa NFC).
     - Tạo Trigger `trg_category_name_cross_default`: Ngăn chặn tạo danh mục cá nhân trùng tên với danh mục mặc định hệ thống.
@@ -2510,11 +2510,11 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - Cập nhật `src/Backend/modules/sync/sync.repository.js`: Thêm ánh xạ `categoryGroupMembership`, `transaction.idgoal`, `goal.auto_deposit_*`, `goal.priority`; viết các hàm `upsertCategoryGroupMembership`, `getCategoryGroupMembershipsByAccount`, hỗ trợ Soft Delete cho entity mới.
   - Cập nhật `sync.service.js` và `sync.validation.js` đăng ký đầy đủ entity mới với priority 15.
 - **9. Kiểm Thử Toàn Diện & Hồi Quy Đạt Chuẩn 100%**:
-  - [`Test/test_can_lam_fixes.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/Test/test_can_lam_fixes.js): **10/10 tests PASS (100%)**.
-  - [`Test/test_category_unique_rules.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/Test/test_category_unique_rules.js): **PASS 100%**.
-  - [`Test/test_sync_new_schema.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/Test/test_sync_new_schema.js): **PASS 100%**.
-  - [`Test/test_bank_sepay_flow.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/Test/test_bank_sepay_flow.js): **11/11 tests PASS (100%)**.
-  - [`Test/test_ai_dedup_flow.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/Test/test_ai_dedup_flow.js): **10/10 tests PASS (100%)**.
+  - [`Test/test_can_lam_fixes.js`](Test/test_can_lam_fixes.js): **10/10 tests PASS (100%)**.
+  - [`Test/test_category_unique_rules.js`](Test/test_category_unique_rules.js): **PASS 100%**.
+  - [`Test/test_sync_new_schema.js`](Test/test_sync_new_schema.js): **PASS 100%**.
+  - [`Test/test_bank_sepay_flow.js`](Test/test_bank_sepay_flow.js): **11/11 tests PASS (100%)**.
+  - [`Test/test_ai_dedup_flow.js`](Test/test_ai_dedup_flow.js): **10/10 tests PASS (100%)**.
 
 ### 11.30. Hoàn Thiện Mô Hình Danh Mục Template & Cloned, Nâng Cấp Admin-Web & Thống Nhất Thương Hiệu FinanceAdmin (2026-09-07)
 - **1. Chuyển đổi Mô hình Danh mục Mẫu (Template & Cloned Model)**:
@@ -2546,11 +2546,11 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - Sau khi PO chốt áp dụng **Mô hình Template & Cloned Model**, mỗi người dùng sở hữu bộ danh mục cá nhân riêng độc lập. Phân cấp nhóm danh mục được gom trực tiếp bằng quan hệ tự tham chiếu `category.idgroup` (`is_group = true`).
   - Do đó bảng trung gian `category_group_membership` hoàn toàn thừa, không có dữ liệu (0 bản ghi) và không còn giá trị sử dụng.
 - **2. Các công việc đã thực thi**:
-  - **CSDL PostgreSQL / Supabase**: Tạo và thực thi script migration [`src/Backend/database/6_Drop_Category_Group_Membership.sql`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/database/6_Drop_Category_Group_Membership.sql) với lệnh `DROP TABLE IF EXISTS "category_group_membership" CASCADE;`.
+  - **CSDL PostgreSQL / Supabase**: Tạo và thực thi script migration [`src/Backend/database/6_Drop_Category_Group_Membership.sql`](src/Backend/database/6_Drop_Category_Group_Membership.sql) với lệnh `DROP TABLE IF EXISTS "category_group_membership" CASCADE;`.
   - **Prisma Schema**: Gỡ bỏ model `category_group_membership` và các relations liên quan khỏi `account` và `category` trong `src/Backend/prisma/schema.prisma`. Tái sinh Prisma Client thành công (`rtk npx prisma generate`).
   - **Sync Engine**: Gỡ bỏ entity `categoryGroupMembership` / `category_group_membership` khỏi `sync.validation.js` (`VALID_ENTITIES`, `ENTITY_PK_MAP`), `sync.service.js` (`UPSERT_MAP`, `PULL_MAP`, `ENTITY_KEYS`, `ENTITY_PRIORITY`), và `sync.repository.js` (xóa các hàm upsert, query, count và mapping `softDelete`).
-  - **Test Suites**: Cập nhật [`Test/test_can_lam_fixes.js`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/Test/test_can_lam_fixes.js) loại bỏ Test 5 và cleanup liên quan.
-  - **Tài liệu nguồn sự thật**: Cập nhật [`docs/Rule_Project/Rule_project.md`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/Rule_Project/Rule_project.md) mục 1.6, đánh dấu Deprecated & Obsolete cho `docs/superpowers/backend/CAN-LAM/CATEGORY_GROUP_MEMBERSHIP_SYNC.md` và `docs/superpowers/backend/CAN-LAM/README.md`.
+  - **Test Suites**: Cập nhật [`Test/test_can_lam_fixes.js`](Test/test_can_lam_fixes.js) loại bỏ Test 5 và cleanup liên quan.
+  - **Tài liệu nguồn sự thật**: Cập nhật [`docs/Rule_Project/Rule_project.md`](docs/Rule_Project/Rule_project.md) mục 1.6, đánh dấu Deprecated & Obsolete cho `docs/superpowers/backend/DA-XONG/CATEGORY_GROUP_MEMBERSHIP_SYNC.md` và `docs/superpowers/backend/CAN-LAM/README.md`.
 - **3. Kết quả kiểm thử**:
   - `Test/test_can_lam_fixes.js`: **9/9 tests PASS (100%)**.
   - `Test/test_category_template_rules.js`: **8/8 tests PASS (100%)**.

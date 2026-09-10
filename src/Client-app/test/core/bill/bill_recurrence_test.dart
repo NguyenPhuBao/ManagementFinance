@@ -107,15 +107,55 @@ void main() {
     });
   });
 
-  group('quy tắc ngày cuối tháng', () {
-    // Chuỗi hoá đơn giờ nối đuôi nhau (bắt đầu kỳ sau = đến hạn kỳ trước) nên
-    // không còn mốc gốc để neo. Không có quy tắc này thì mốc "ngày 31 hàng
-    // tháng" đi qua tháng Hai một lần là tụt về 28 vĩnh viễn.
-    test('31/01 đi qua tháng Hai rồi quay lại được ngày cuối tháng', () {
+  group('ngày gốc (anchor day) — thay cho quy tắc đoán cuối tháng', () {
+    // Bản trước đoán ý định từ dữ liệu: "mốc đang xét rơi đúng ngày cuối tháng
+    // thì kỳ sau cũng rơi vào ngày cuối tháng". Cú đoán ấy sai với người bắt
+    // đầu đúng vào 28/02 — họ muốn NGÀY 28, và nhận về 31/03.
+    //
+    // Nay ngày gốc là **dữ liệu thật** do người dùng cung cấp, nên hai chuỗi
+    // cùng đi qua 28/02 vẫn tách được nhau. Đây là mô hình `advancePeriodFrom`
+    // bên ngân sách đã dùng từ đầu (neo vào mốc gốc, không cộng dồn).
+
+    test('28/02 + 1 tháng ra 28/03 khi không có ngày gốc nào khác', () {
+      expect(
+        nextBillDueDate(DateTime(2026, 2, 28), kBillCycleMonth),
+        DateTime(2026, 3, 28),
+        reason: 'Người đăng ký lần đầu vào 28/02 muốn NGÀY 28 hàng tháng. Bản '
+            'trước trả về 31/03 vì đoán 28/02 nghĩa là "cuối tháng" — đó là '
+            'lỗi người dùng báo ngày 2026-09-08.',
+      );
+    });
+
+    test('28/02 với ngày gốc 31 thì ra 31/03', () {
+      expect(
+        nextBillDueDate(DateTime(2026, 2, 28), kBillCycleMonth, anchorDay: 31),
+        DateTime(2026, 3, 31),
+        reason: 'Chuỗi bắt đầu từ 31/01 bị kẹp về 28/02 ở tháng ngắn, nhưng '
+            'ngày gốc vẫn là 31 nên kỳ sau phải quay lại 31 — không được tụt '
+            'lại vĩnh viễn ở 28.',
+      );
+    });
+
+    test('CÙNG mốc 28/02, hai ngày gốc khác nhau cho hai kết quả khác nhau',
+        () {
+      final goc28 =
+          nextBillDueDate(DateTime(2026, 2, 28), kBillCycleMonth, anchorDay: 28);
+      final goc31 =
+          nextBillDueDate(DateTime(2026, 2, 28), kBillCycleMonth, anchorDay: 31);
+      expect(
+        [goc28, goc31],
+        [DateTime(2026, 3, 28), DateTime(2026, 3, 31)],
+        reason: 'Đây là cả lý do ngày gốc tồn tại. Nhìn vào một mốc 28/02 đơn '
+            'độc thì KHÔNG có cách nào biết nó từ 31/01 tới hay do người dùng '
+            'tự chọn — bản trước phải đoán, và đoán sai một nửa số ca.',
+      );
+    });
+
+    test('chuỗi ngày gốc 31 giữ được ngày cuối tháng qua nhiều kỳ', () {
       var d = DateTime(2026, 1, 31);
       final chuoi = <DateTime>[];
       for (var i = 0; i < 5; i++) {
-        d = nextBillDueDate(d, kBillCycleMonth);
+        d = nextBillDueDate(d, kBillCycleMonth, anchorDay: 31);
         chuoi.add(d);
       }
       expect(
@@ -127,48 +167,76 @@ void main() {
           DateTime(2026, 5, 31),
           DateTime(2026, 6, 30),
         ],
-        reason: 'Chỉ kẹp ngày mà không có quy tắc cuối tháng thì chuỗi đứng '
-            'im ở 28 kể từ kỳ thứ hai.',
+        reason: 'Tiền nhà "ngày 31 hàng tháng" phải quay lại 31 sau tháng Hai. '
+            'Không giữ ngày gốc thì chuỗi đứng im ở 28 kể từ kỳ thứ hai.',
       );
     });
 
-    test('năm nhuận: 31/01 → 29/02 → 31/03', () {
-      final thangHai = nextBillDueDate(DateTime(2028, 1, 31), kBillCycleMonth);
-      expect(thangHai, DateTime(2028, 2, 29));
-      expect(nextBillDueDate(thangHai, kBillCycleMonth), DateTime(2028, 3, 31));
+    test('chuỗi ngày gốc 28 KHÔNG bị kéo lên cuối tháng', () {
+      var d = DateTime(2026, 2, 28);
+      final chuoi = <DateTime>[];
+      for (var i = 0; i < 4; i++) {
+        d = nextBillDueDate(d, kBillCycleMonth, anchorDay: 28);
+        chuoi.add(d);
+      }
+      expect(
+        chuoi,
+        [
+          DateTime(2026, 3, 28),
+          DateTime(2026, 4, 28),
+          DateTime(2026, 5, 28),
+          DateTime(2026, 6, 28),
+        ],
+        reason: 'Đối xứng với ca trên: giữ ngày gốc 28 thì mọi kỳ đều là 28. '
+            'Bản trước cho ra 31/03, 30/04, 31/05 — trôi theo độ dài tháng.',
+      );
     });
 
-    test('ngày KHÔNG phải cuối tháng thì giữ nguyên số ngày', () {
+    test('ngày gốc 31 kẹp đúng 29 ở tháng Hai năm nhuận', () {
       expect(
-        nextBillDueDate(DateTime(2026, 1, 15), kBillCycleMonth),
-        DateTime(2026, 2, 15),
-        reason: 'Quy tắc cuối tháng chỉ được kích hoạt khi mốc đúng là ngày '
-            'cuối cùng của tháng nó.',
+        nextBillDueDate(DateTime(2028, 1, 31), kBillCycleMonth, anchorDay: 31),
+        DateTime(2028, 2, 29),
+        reason: 'Kẹp phải theo số ngày thật của tháng đích, không phải hằng '
+            'số 28.',
+      );
+    });
+
+    test('ngày gốc lớn hơn mọi tháng vẫn kẹp, không tràn sang tháng sau', () {
+      expect(
+        nextBillDueDate(DateTime(2026, 4, 30), kBillCycleMonth, anchorDay: 31),
+        DateTime(2026, 5, 31),
+        reason: 'DateTime(y, m, 31) tràn im lặng sang tháng sau khi tháng đó '
+            'ngắn hơn — đúng lớp lỗi mà cả file này canh.',
+      );
+    });
+
+    test('chu kỳ quý và năm cũng theo ngày gốc', () {
+      expect(
+        nextBillDueDate(DateTime(2026, 2, 28), kBillCycleQuarter, anchorDay: 31),
+        DateTime(2026, 5, 31),
+        reason: 'Ngày gốc áp cho mọi chu kỳ tính theo tháng, không riêng tháng.',
       );
       expect(
-        nextBillDueDate(DateTime(2026, 3, 30), kBillCycleMonth),
-        DateTime(2026, 4, 30),
-        reason: '30/03 không phải cuối tháng Ba nên đây chỉ là cộng tháng '
-            'bình thường, tình cờ trùng ngày cuối tháng Tư.',
+        nextBillDueDate(DateTime(2026, 2, 28), kBillCycleQuarter),
+        DateTime(2026, 5, 28),
+        reason: 'Không có ngày gốc thì giữ nguyên số ngày của mốc hiện tại.',
       );
     });
 
-    test('áp cho cả chu kỳ quý và năm', () {
-      expect(nextBillDueDate(DateTime(2026, 2, 28), kBillCycleQuarter),
-          DateTime(2026, 5, 31),
-          reason: '28/02 là cuối tháng Hai nên kỳ quý sau phải là cuối tháng Năm.');
-      expect(nextBillDueDate(DateTime(2026, 2, 28), kBillCycleYear),
-          DateTime(2027, 2, 28));
-      expect(nextBillDueDate(DateTime(2028, 2, 29), kBillCycleYear),
-          DateTime(2029, 2, 28),
-          reason: 'Cuối tháng Hai năm nhuận sang cuối tháng Hai năm thường.');
-    });
-
-    test('KHÔNG áp cho chu kỳ tuần', () {
+    test('ngày gốc KHÔNG áp cho chu kỳ tuần', () {
       expect(
-        nextBillDueDate(DateTime(2026, 1, 31), kBillCycleWeek),
+        nextBillDueDate(DateTime(2026, 1, 31), kBillCycleWeek, anchorDay: 31),
         DateTime(2026, 2, 7),
-        reason: 'Tuần không có khái niệm cuối tháng; cộng đúng 7 ngày.',
+        reason: 'Tuần không có khái niệm ngày trong tháng; cộng đúng 7 ngày.',
+      );
+    });
+
+    test('giữ nguyên giờ và phút khi có ngày gốc', () {
+      expect(
+        nextBillDueDate(DateTime(2026, 2, 28, 9, 30), kBillCycleMonth,
+            anchorDay: 31),
+        DateTime(2026, 3, 31, 9, 30),
+        reason: 'Mốc đến hạn là một thời điểm, không phải một ngày.',
       );
     });
   });

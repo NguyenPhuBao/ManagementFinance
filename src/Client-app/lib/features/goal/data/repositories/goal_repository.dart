@@ -167,6 +167,16 @@ abstract class GoalRepository {
     /// Chỉ đổi cột `date`. `updatedAt` vẫn là "bây giờ" vì nó là sổ sách đồng
     /// bộ, không phải ngày của sự việc.
     DateTime? occurredAt,
+
+    /// Khoản này do **app tự chuyển tiền**, không phải do người dùng bấm.
+    ///
+    /// Chỉ gắn thêm hậu tố `kHauToTuDong` vào ghi chú; mọi cột khác giữ nguyên.
+    /// Sự giống nhau ấy là có chủ ý — xem `goal_history_direction.dart`.
+    ///
+    /// Mặc định `false`, và **chỉ `GoalAutoDepositRunner` được truyền `true`**.
+    /// Đường nạp tay bật cờ này lên là dán nhãn sai lên chính thao tác người
+    /// dùng vừa thực hiện.
+    bool tuDong,
   });
   /// Lịch sử tích luỹ của một mục tiêu.
   ///
@@ -202,6 +212,17 @@ abstract class GoalRepository {
   /// trước. Cố ý không có lệnh gỡ về `null` — mục tiêu luôn phải có ví nhận,
   /// nếu không thì lần nạp sau không biết chuyển tiền đi đâu.
   Future<void> changeWallet(String goalId, String walletId);
+
+  /// Ghi lại thứ tự ưu tiên sau một lần kéo thả.
+  ///
+  /// [uuTienMoi] ánh xạ id mục tiêu sang giá trị `priority` mới, và **chỉ
+  /// những mục tiêu có tên trong đó mới bị chạm**. Kéo thả thường chỉ đổi MỘT
+  /// hàng (xem `uuTienSauKhiKeo`), nên nhận cả danh sách rồi ghi lại tất cả là
+  /// đẩy rác lên hàng đợi đồng bộ.
+  ///
+  /// Id không tồn tại thì bỏ qua chứ không ném: danh sách có thể đã đổi giữa
+  /// lúc dựng màn hình và lúc người dùng thả tay.
+  Future<void> capNhatUuTien(Map<String, int> uuTienMoi);
 
   Future<void> deleteGoal(String id);
 }

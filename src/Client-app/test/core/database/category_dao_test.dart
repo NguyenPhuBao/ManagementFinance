@@ -25,6 +25,15 @@ import 'package:flowmoney/core/database/app_database.dart';
 // `database` là sqlite3.Database do NativeDatabase.memory(setup:) truyền vào.
 // Dùng dynamic để khỏi phải thêm `sqlite3` làm phụ thuộc trực tiếp.
 void _createLegacyNonCategoryTables(dynamic database, {int atVersion = 2}) {
+  // `wallets` cũng phải mang đúng những cột mà [atVersion] hẳn đã có, cùng lý
+  // do như `budgets` ngay dưới: ba cột trạng thái thất bại được thêm ở bước
+  // `from < 9`, nên một fixture khai `user_version = 9` mà thiếu chúng là một
+  // trạng thái KHÔNG tồn tại trên máy người dùng. Chuyện đó không lộ ra cho tới
+  // khi v20 chạy `UPDATE wallets SET sync_error = NULL ...`.
+  final walletsSyncFailureCols = atVersion >= 9
+      ? ', sync_retry_count INTEGER NOT NULL DEFAULT 0, sync_error TEXT, '
+          'sync_blocked_until INTEGER'
+      : '';
   database.execute('''
     CREATE TABLE wallets (
       id TEXT NOT NULL PRIMARY KEY,
@@ -37,7 +46,7 @@ void _createLegacyNonCategoryTables(dynamic database, {int atVersion = 2}) {
       colour TEXT NOT NULL DEFAULT '#4CAF50',
       is_default INTEGER NOT NULL DEFAULT 0,
       is_deleted INTEGER NOT NULL DEFAULT 0,
-      sync_status TEXT NOT NULL DEFAULT 'pending',
+      sync_status TEXT NOT NULL DEFAULT 'pending'$walletsSyncFailureCols,
       updated_at INTEGER NOT NULL
     )
   ''');
@@ -333,16 +342,18 @@ void main() {
 
     for (final rows in [watchedRows, fetchedRows]) {
       final ids = rows.map((row) => row.id);
-      // Danh mục mặc định (idaccount = 0) vẫn hiển thị cho người dùng.
-      expect(ids, contains('global-transport'));
+      // Từ 2026-09-07 danh mục mặc định (idaccount = 0) KHÔNG còn hiển thị.
+      // Chúng chỉ là khuôn để `DefaultCategorySeeder` sao chép thành bản riêng
+      // của từng tài khoản; hiện ra là người dùng thấy hai bản trùng tên cho
+      // mỗi danh mục và không đổi tên được bản nào.
+      expect(ids, isNot(contains('global-transport')));
+      expect(ids, isNot(contains('global-food')));
       // Đã xoá mềm và của tài khoản khác thì không hiện.
       expect(ids, isNot(contains('deleted-food')));
       expect(ids, isNot(contains('other-account-food')));
-      // Trùng tên "Food" chỉ còn MỘT — bản của chính người dùng thắng bản mặc
-      // định vì truy vấn sắp xếp theo idaccount giảm dần.
-      expect(rows.where((row) => row.name == 'Food'), hasLength(1));
+      // Bản của chính người dùng vẫn còn, và vẫn chỉ MỘT cho mỗi tên.
       expect(ids, contains('personal-food'));
-      expect(ids, isNot(contains('global-food')));
+      expect(rows.where((row) => row.name == 'Food'), hasLength(1));
     }
   });
 
@@ -1050,6 +1061,102 @@ void main() {
 
       expect(gop, 0);
       expect(await conLai(), hasLength(2));
+    });
+  });
+
+  group('bộ mặc định và danh mục của tài khoản kể cả đã xoá', () {
+    Future<void> cat({
+      required String id,
+      required int idaccount,
+      required String name,
+      String classify = 'chi',
+      bool isDefault = false,
+      bool isDeleted = false,
+    }) {
+      return db.categoryDao.insert(CategoriesCompanion.insert(
+        id: id,
+        idaccount: idaccount,
+        name: name,
+        classify: classify,
+        isDefault: Value(isDefault),
+        isDeleted: Value(isDeleted),
+        updatedAt: DateTime(2026, 9, 7),
+      ));
+    }
+
+    test('getBackendDefaults chỉ trả hàng mặc định còn sống', () async {
+      await cat(id: 'd1', idaccount: 0, name: 'Ăn uống', isDefault: true);
+      await cat(
+          id: 'd2', idaccount: 0, name: 'Đã bỏ', isDefault: true,
+          isDeleted: true);
+      await cat(id: 'u1', idaccount: 7, name: 'Của tôi');
+
+      final ra = (await db.categoryDao.getBackendDefaults()).map((c) => c.id);
+
+      // CSDL mới đã có sẵn 13 danh mục mặc định do seed, nên khẳng định theo
+      // "có / không có" chứ không liệt kê cả danh sách — liệt kê là buộc test
+      // này phải sửa mỗi lần bộ seed đổi, mà nó không canh chừng bộ seed.
+      expect(ra, contains('d1'));
+      expect(ra, isNot(contains('d2')),
+          reason: 'Hàng mặc định đã xoá không còn là khuôn để sao chép.');
+      expect(ra, isNot(contains('u1')),
+          reason: 'Danh mục người dùng không phải khuôn của ai cả.');
+    });
+
+    test('getOwnedIncludingDeleted trả CẢ hàng đã xoá mềm', () async {
+      await cat(id: 'u1', idaccount: 7, name: 'Sống');
+      await cat(id: 'u2', idaccount: 7, name: 'Đã xoá', isDeleted: true);
+      await cat(id: 'd1', idaccount: 0, name: 'Ăn uống', isDefault: true);
+
+      final ra = await db.categoryDao.getOwnedIncludingDeleted(7);
+
+      expect(ra.map((c) => c.id).toSet(), {'u1', 'u2'},
+          reason: 'Hàng đã xoá mềm là BẰNG CHỨNG rằng tài khoản từng có bản '
+              'sao ấy. Bỏ nó ra khỏi phép đếm là tái hiện G16: danh mục người '
+              'dùng xoá sẽ mọc lại ở mỗi lần mở app. Hàng mặc định không '
+              'thuộc tài khoản nào nên không được tính.');
+    });
+
+    test('getOwnedIncludingDeleted không trả hàng của tài khoản khác',
+        () async {
+      await cat(id: 'u1', idaccount: 7, name: 'Của bảy');
+      await cat(id: 'u2', idaccount: 9, name: 'Của chín');
+
+      final ra = await db.categoryDao.getOwnedIncludingDeleted(7);
+
+      expect(ra.map((c) => c.id), ['u1']);
+    });
+
+    test('truy vấn hiển thị KHÔNG còn trả hàng mặc định', () async {
+      await cat(id: 'd1', idaccount: 0, name: 'Khuôn', isDefault: true);
+      await cat(id: 'u1', idaccount: 7, name: 'Của tôi');
+
+      expect((await db.categoryDao.getAll(7)).map((c) => c.id), ['u1'],
+          reason: 'Bản mặc định nay chỉ là khuôn để sao chép. Còn hiện ra là '
+              'người dùng thấy hai bản trùng tên cho mỗi danh mục, và quy tắc '
+              'trùng tên chặn họ đổi tên bất kỳ bản nào.');
+      expect(
+          (await db.categoryDao.getCategoryRows(7, 'chi')).map((c) => c.id),
+          ['u1']);
+      expect((await db.categoryDao.getByClassify(7, 'chi')).map((c) => c.id),
+          ['u1']);
+      expect((await db.categoryDao.watchAll(7).first).map((c) => c.id),
+          ['u1']);
+      expect(
+          (await db.categoryDao.watchCategoryRows(7, 'chi').first)
+              .map((c) => c.id),
+          ['u1']);
+    });
+
+    test('getNamesInUse VẪN đếm hàng mặc định', () async {
+      await cat(id: 'd1', idaccount: 0, name: 'Khuôn', isDefault: true);
+
+      expect((await db.categoryDao.getNamesInUse(7)).map((c) => c.id),
+          contains('d1'),
+          reason: 'Hàm này phục vụ quy tắc TRÙNG TÊN, không phải hiển thị. Bản '
+              'mặc định vẫn chiếm chỗ trong CSDL và trong hai unique index của '
+              'PostgreSQL, nên bỏ nó ra là cho người dùng tạo một danh mục mà '
+              'đẩy lên sẽ hỏng.');
     });
   });
 }

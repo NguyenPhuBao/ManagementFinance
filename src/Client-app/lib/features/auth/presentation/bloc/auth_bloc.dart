@@ -1,12 +1,15 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/api/interceptors/auth_interceptor.dart';
+import '../../../category/data/services/default_category_seeder.dart';
 import '../../../category/data/services/personal_default_categories.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/sync/sync_engine.dart';
 import '../../../../core/notification/notification_scanner.dart';
+import '../../../../core/realtime/realtime_channel.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../../wallet/data/services/default_account_data_initializer.dart';
 import 'auth_event.dart';
@@ -79,6 +82,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     if (sl.isRegistered<NotificationScanner>()) {
       await sl<NotificationScanner>().stop();
     }
+    // Dừng kênh thời gian thực cùng lúc. Socket còn sống sau khi đăng xuất
+    // nghĩa là máy vẫn nằm trong room `account_<id>` của người vừa rời đi —
+    // đây là lỗi bảo mật, không phải lỗi giao diện.
+    if (sl.isRegistered<RealtimeChannel>()) {
+      await sl<RealtimeChannel>().stop();
+    }
     await authRepository.logout();
     emit(AuthUnauthenticated());
   }
@@ -139,12 +148,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         if (sl.isRegistered<NotificationScanner>()) {
           await sl<NotificationScanner>().start(idAcc);
         }
+        // Kênh thời gian thực sống đúng bằng vòng đời của phiên đăng nhập, y
+        // như bộ quét thông báo ngay trên.
+        if (sl.isRegistered<RealtimeChannel>()) {
+          await sl<RealtimeChannel>().start(idaccount: idAcc);
+        }
         unawaited(engine.start(idaccount: idAcc).then((_) async {
           // Pull hỏng (mất mạng, server lỗi) thì CSDL cục bộ chưa đáng tin.
-          // Bản mặc định của backend chưa chắc đã về, mà thiếu nó thì phép gộp
-          // không có đích — bỏ qua, lần mở app sau thử lại.
+          // Bộ mặc định của backend chưa chắc đã về, mà thiếu nó thì không có
+          // khuôn để sao chép — bỏ qua, lần mở app sau thử lại.
           if (!engine.hasCompletedPull) return;
-          await personal?.foldIntoBackendDefaults(idAcc);
+          await _taoBanSaoDanhMuc(idAcc);
         }));
       }
       emit(AuthSuccess(user: user));
@@ -183,13 +197,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         if (sl.isRegistered<NotificationScanner>()) {
           await sl<NotificationScanner>().start(idAcc);
         }
+        // Kênh thời gian thực sống đúng bằng vòng đời của phiên đăng nhập, y
+        // như bộ quét thông báo ngay trên.
+        if (sl.isRegistered<RealtimeChannel>()) {
+          await sl<RealtimeChannel>().start(idaccount: idAcc);
+        }
         await engine.start(idaccount: idAcc);
-        // Gộp bản riêng của 5 danh mục vào bản mặc định của backend, SAU khi đã
-        // pull — bản mặc định chỉ có mặt ở máy này sau khi pull mang nó về.
-        // Không có nó thì hàm không đụng gì, đúng như G14 dạy: đừng quyết định
-        // về danh mục khi CSDL cục bộ chưa đáng tin.
+        // Tạo bản sao riêng của bộ danh mục mặc định, SAU khi đã pull — bộ
+        // mặc định chỉ có mặt ở máy này sau khi pull mang nó về. Chưa có thì
+        // hàm không tạo gì, đúng như G14 dạy: đừng quyết định về danh mục khi
+        // CSDL cục bộ chưa đáng tin.
         if (engine.hasCompletedPull) {
-          await personal?.foldIntoBackendDefaults(idAcc);
+          await _taoBanSaoDanhMuc(idAcc);
         }
         await defaultAccountDataInitializer?.ensureForAccount(idAcc);
       }
@@ -211,6 +230,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     // xuất vẫn quét, và quét bằng idaccount của người vừa rời đi.
     if (sl.isRegistered<NotificationScanner>()) {
       await sl<NotificationScanner>().stop();
+    }
+    // Dừng kênh thời gian thực cùng lúc. Socket còn sống sau khi đăng xuất
+    // nghĩa là máy vẫn nằm trong room `account_<id>` của người vừa rời đi —
+    // đây là lỗi bảo mật, không phải lỗi giao diện.
+    if (sl.isRegistered<RealtimeChannel>()) {
+      await sl<RealtimeChannel>().stop();
     }
     await authRepository.logout();
     emit(AuthUnauthenticated());
@@ -282,6 +307,37 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           registration: registration,
         ),
       );
+    }
+  }
+
+  /// Tạo bản sao riêng của bộ danh mục mặc định cho [idAcc].
+  ///
+  /// ⚠️ **Cố ý KHÔNG bọc `try/catch`.** Bản mặc định toàn cục đã bị ẩn khỏi mọi
+  /// danh sách, nên một lượt seed hỏng trong im lặng nghĩa là người dùng mở app
+  /// ra thấy danh sách danh mục **rỗng** và không ghi nổi một giao dịch, mà
+  /// không ai biết vì sao. Trước đây bộ mặc định toàn cục chính là tấm lưới đỡ
+  /// cho tình huống ấy; nay không còn.
+  ///
+  /// Luật trong `DefaultCategorySeeder` vốn luỹ đẳng nên lần mở app sau tự thử
+  /// lại — đó mới là cơ chế phục hồi, không phải việc nuốt lỗi ở đây.
+  Future<void> _taoBanSaoDanhMuc(int idAcc) async {
+    final seeder = sl.isRegistered<DefaultCategorySeeder>()
+        ? sl<DefaultCategorySeeder>()
+        : null;
+    final daTao = await seeder?.seedForAccount(idAcc) ?? 0;
+    if (daTao > 0) {
+      debugPrint('[Category] Đã tạo $daTao bản sao danh mục mặc định.');
+      // ⚠️ Phải hẹn một chu kỳ đẩy. Bước seed chạy SAU chu kỳ đồng bộ vừa xong
+      // (nó nằm trong `.then()` của `engine.start()`), nên những hàng vừa tạo
+      // không có ai đẩy đi: chúng nằm ở `pending` cho tới lần khởi động nguội
+      // kế tiếp. Đo được trên emulator-5554 ngày 2026-09-07 — 13 bản sao được
+      // tạo, app quay lại tiền cảnh, và không một chu kỳ đồng bộ nào chạy.
+      //
+      // Cùng khuôn với `CategoryManagementRepositoryImpl`: mọi đường ghi danh
+      // mục đều kết thúc bằng `scheduleSync()`.
+      if (sl.isRegistered<SyncEngine>()) {
+        sl<SyncEngine>().scheduleSync();
+      }
     }
   }
 }

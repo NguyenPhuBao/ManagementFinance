@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/auth/current_account.dart';
+import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../data/models/budget_entity.dart';
@@ -14,11 +15,22 @@ class BudgetPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // `null` khi chưa có phiên đăng nhập dùng được. Cubit sẽ báo lỗi thay vì
-    // đoán một mã tài khoản — xem `core/auth/current_account.dart`.
+    // ĐĂNG KÝ với AuthBloc, không chỉ đọc một phát — cùng lỗi với G17 ở trang
+    // Mục tiêu. `currentAccountIdOrNull` dùng `context.read` bên trong, mà
+    // `read` không đăng ký gì; cộng với `BlocProvider.create` chỉ chạy MỘT
+    // lần, trang dựng trước khi phiên khôi phục xong sẽ gọi
+    // `watchBudgets(null)` rồi không bao giờ hỏi lại.
+    context.watch<AuthBloc>();
+
+    // `null` khi chưa có phiên đăng nhập dùng được. Cubit sẽ **không đọc gì**
+    // thay vì đoán một mã tài khoản — xem `core/auth/current_account.dart`.
     final idaccount = currentAccountIdOrNull(context);
 
     return BlocProvider<BudgetCubit>(
+      // Khoá theo mã tài khoản: phiên tới thì khoá đổi, provider được dựng lại
+      // và `create` chạy lần nữa với đúng tài khoản. Thiếu khoá thì `watch` ở
+      // trên chỉ khiến build chạy lại mà cubit vẫn giữ đăng ký cũ.
+      key: ValueKey(idaccount),
       create: (_) => sl<BudgetCubit>()..watchBudgets(idaccount),
       child: const _BudgetPageContent(),
     );

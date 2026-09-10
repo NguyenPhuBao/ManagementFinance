@@ -1,6 +1,7 @@
 import '../../../core/database/app_database.dart';
 import '../data/repositories/bill_repository.dart';
 import 'bill_auto_pay.dart';
+import '../../wallet/domain/wallet_status.dart';
 
 /// Kết quả của **một** kỳ tự trả, để nơi gọi dựng thông báo.
 ///
@@ -99,9 +100,12 @@ class BillAutoPayRunner {
     while (bill != null && ra.length < toiDaMoiLuot) {
       // Ví không có khoá ngoại nên có thể đã bị xoá sau khi tạo hoá đơn. Kiểm
       // ở đây, không tin cột.
+      // Ví ĐÃ LƯU TRỮ đi chung nhánh: lưu trữ là đóng băng ví — không sinh kỳ
+      // mới, không tự rút tiền. Tên ví vẫn gửi kèm khi còn đọc được, để dòng
+      // thông báo nói được ví nào.
       final vi = await db.walletDao.getById(bill.walletId!);
-      if (vi == null) {
-        ra.add(_suKien(bill, LoaiTuTra.khongChayDuoc, 0, null));
+      if (vi == null || !WalletStatus.laHoatDong(vi.status)) {
+        ra.add(_suKien(bill, LoaiTuTra.khongChayDuoc, 0, vi?.name));
         break;
       }
 

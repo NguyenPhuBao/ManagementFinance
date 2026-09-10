@@ -6,6 +6,7 @@ import '../../features/goal/domain/goal_auto_deposit_runner.dart';
 import '../../features/bill/domain/bill_auto_pay.dart';
 import '../../features/bill/domain/bill_auto_pay_runner.dart';
 import '../../features/budget/presentation/widgets/budget_visuals.dart';
+import 'tuan_iso.dart';
 
 /// Loại thông báo. Giá trị `.name` được ghi thẳng vào cột `kind`.
 enum NotificationKind {
@@ -18,10 +19,13 @@ enum NotificationKind {
   goalCompleted,
   goalCycleReady,
   goalBehind,
+  goalMilestone,
   goalAutoDeposited,
   goalAutoDepositFailed,
   syncFailed,
   walletNegative,
+  walletLowBalance,
+  weeklySummary,
 }
 
 enum NotificationSeverity { info, warning, critical }
@@ -101,6 +105,24 @@ class NotificationRuleInput {
   /// dụng mà thật ra không.
   final int defaultBillLeadDays;
 
+  /// Cảnh báo khi số dư một ví xuống tới mức này, đơn vị **đồng**.
+  ///
+  /// `0` = **tắt**, và đó là mặc định. Một con số thay vì một cặp
+  /// công tắc-cộng-số vì cặp ấy biểu diễn được một trạng thái vô nghĩa (bật
+  /// nhưng ngưỡng bằng 0), còn một con số thì không.
+  ///
+  /// Đến từ `NotificationPrefs.nguongSoDuThap`, cùng đường với
+  /// [defaultBillLeadDays].
+  final int lowBalanceThreshold;
+
+  /// Tuần **vừa khép lại** có ít nhất một giao dịch không.
+  ///
+  /// Là `bool` chứ không phải tổng thu/chi, cùng kỷ luật thu hẹp đầu vào với
+  /// [syncFailed]: câu chữ đã chốt **không nêu số nào**, nên bộ luật chỉ cần
+  /// biết có hay không. Đưa vào đây một bản tổng hợp là bắt mọi test dựng dữ
+  /// liệu mà câu thông báo không bao giờ đọc tới.
+  final bool tuanQuaCoGiaoDich;
+
   const NotificationRuleInput({
     required this.now,
     this.budgets = const [],
@@ -112,6 +134,8 @@ class NotificationRuleInput {
     this.syncFailed = false,
     this.silenceBefore,
     this.defaultBillLeadDays = mocNhacMacDinh,
+    this.lowBalanceThreshold = 0,
+    this.tuanQuaCoGiaoDich = false,
   });
 }
 
@@ -130,12 +154,61 @@ List<NotificationCandidate> buildNotificationCandidates(
     ..._autoPayCandidates(input),
     ..._walletCandidates(input),
     ..._syncCandidates(input),
+    ..._weeklySummaryCandidates(input),
   ];
 
   final chan = input.silenceBefore;
   if (chan == null) return ra;
   return ra.where((c) => !c.createdAt.isBefore(chan)).toList();
 }
+
+// ── Tổng kết tuần ────────────────────────────────────────────────────────────
+
+/// Một thông báo cho **tuần vừa khép lại**, nếu tuần ấy có giao dịch.
+///
+/// Chỉ nhìn **một** tuần liền trước, không quét ngược nhiều tuần (chốt (b) của
+/// spec): quét ngược thì cửa sổ `silenceBefore` 30 ngày phải gánh việc chặn lũ,
+/// một việc nó không sinh ra để làm.
+List<NotificationCandidate> _weeklySummaryCandidates(
+  NotificationRuleInput input,
+) {
+  // Tuần trống thì không báo — tổng kết của việc không có gì là nhiễu thuần
+  // tuý, và đây cũng là dữ liệu duy nhất luật này cần đọc.
+  if (!input.tuanQuaCoGiaoDich) return const [];
+
+  final tuan = tuanTruoc(input.now);
+  final ngayCuoi = tuan.to.subtract(const Duration(days: 1));
+
+  return [
+    NotificationCandidate(
+      kind: NotificationKind.weeklySummary,
+      // Đoạn thứ ba là ngày thứ Hai của tuần. Nó tồn tại vì
+      // `deeplinkTuDedupeKey` chạy ở **cold start**: nó không tra được CSDL,
+      // và phép nghịch đảo của số tuần ISO là một hàm dễ sai mà không ai kiểm
+      // lại. Chở sẵn ngày đi thì rẻ hơn và tự nói ra nghĩa của nó.
+      dedupeKey: 'weekly:${khoaTuan(tuan.from)}:${_ngayKhoa(tuan.from)}',
+      title: 'Tổng kết tuần',
+      // Cố ý KHÔNG nêu số. Thông báo là cái cửa, không phải bản báo cáo —
+      // ba phương án có số đã bị loại khi chốt với người dùng.
+      body: 'Tuần qua đã khép lại. Xem lại bạn đã tiêu vào đâu.',
+      severity: NotificationSeverity.info,
+      subjectType: 'week',
+      // `to` là ngày CUỐI CÙNG được tính vào: trang Xuất báo cáo tự cộng thêm
+      // một ngày để ra biên mở, đúng như bộ chọn khoảng ngày vẫn làm. Đưa
+      // thẳng biên mở vào đây là báo cáo nuốt thêm trọn ngày thứ Hai kế tiếp.
+      deeplink: '/export-report?from=${_ngayKhoa(tuan.from)}'
+          '&to=${_ngayKhoa(ngayCuoi)}',
+      // Mốc của **sự kiện** là lúc tuần khép, không phải lúc quét: cửa sổ
+      // `silenceBefore` lọc theo cột này.
+      createdAt: tuan.to,
+    ),
+  ];
+}
+
+/// `yyyy-MM-dd`, dạng duy nhất dùng trong khoá tuần và tham số truy vấn.
+String _ngayKhoa(DateTime d) => '${d.year.toString().padLeft(4, '0')}-'
+    '${d.month.toString().padLeft(2, '0')}-'
+    '${d.day.toString().padLeft(2, '0')}';
 
 // ── Ngân sách ────────────────────────────────────────────────────────────────
 
@@ -305,6 +378,33 @@ List<NotificationCandidate> _billCandidates(NotificationRuleInput input) {
 /// `notification_deeplink_test.dart` canh chỗ đó.
 String goalDeeplink(String goalId) => '/goals/$goalId';
 
+/// Các mốc tiến độ được ghi nhận, phần trăm, **xếp giảm dần**.
+///
+/// Thứ tự giảm dần không phải để cho đẹp: [_mocDaVuot] lấy phần tử **đầu tiên**
+/// khớp, nên đảo thứ tự sẽ luôn trả về 25 và hai mốc còn lại chết lặng.
+///
+/// Cố ý **không có 100**: mốc ấy đã có `goalCompleted` lo, và mục tiêu đạt đủ
+/// tiền còn không đi tới được đoạn mã này (nhánh `daHoanThanh` đã `continue`).
+/// Thêm 100 vào đây là hai lời chúc mừng cho cùng một việc.
+///
+/// Cũng cố ý **không có mốc dưới 25**: gần như mọi mục tiêu đều vượt ngay ở
+/// khoản nạp đầu tiên, và một lời chúc mừng ai cũng nhận được thì không còn là
+/// lời chúc mừng.
+const _mocTienDo = [75, 50, 25];
+
+/// Mốc **cao nhất** mà mục tiêu đã vượt, hoặc `null` nếu chưa tới mốc nào.
+///
+/// Trả về một mốc chứ không phải danh sách, vì một khoản nạp lớn có thể vượt
+/// cả ba cùng lúc — bắn ba tin cho MỘT thao tác là ồn, và chỉ mốc cao nhất
+/// mang tin mới.
+int? _mocDaVuot(GoalEntity g) {
+  final phanTram = g.progress * 100;
+  for (final m in _mocTienDo) {
+    if (phanTram >= m) return m;
+  }
+  return null;
+}
+
 List<NotificationCandidate> _goalCandidates(NotificationRuleInput input) {
   final ra = <NotificationCandidate>[];
 
@@ -355,6 +455,36 @@ List<NotificationCandidate> _goalCandidates(NotificationRuleInput input) {
         createdAt: input.now,
       ));
       continue;
+    }
+
+    // ⚠️ Cột mốc phải đứng TRƯỚC phép kiểm chậm tiến độ ngay dưới. Dòng ấy
+    // `continue` cho mọi mục tiêu đang đúng nhịp, nên đặt cột mốc sau nó thì
+    // chỉ những mục tiêu đang TRỄ mới được ghi nhận quãng đã đi — đúng ngược
+    // với ý định. Hai luật này độc lập và một mục tiêu có thể trúng cả hai.
+    final moc = _mocDaVuot(g);
+    if (moc != null) {
+      ra.add(NotificationCandidate(
+        kind: NotificationKind.goalMilestone,
+        // Khoá theo khuôn `goalCycle:` chứ KHÔNG theo khuôn `goalDone:`.
+        // `goalDone:<id>` cố ý không mang mốc thời gian vì "một mục tiêu chỉ
+        // hoàn thành một lần trong đời"; mục tiêu lặp lại phá đúng giả định
+        // ấy (mục 3.17 `GOAL_FEATURE.md`). Cột mốc thì mỗi vòng phải báo lại,
+        // và `batDauVongMoi` đặt lại `startDate` — nên mốc bắt đầu là thứ
+        // phân biệt hai vòng. Phần `:$moc` ở cuối giữ cho ba mốc không nuốt
+        // nhau: dùng chung một khoá thì người dùng chỉ được báo ở mốc đầu.
+        //
+        // Id nằm ở đoạn THỨ HAI vì `duongDanTuKhoa` đọc `phan[1]`.
+        dedupeKey: 'goalMilestone:${g.id}:'
+            '${g.startDate?.millisecondsSinceEpoch ?? 0}:$moc',
+        title: 'Đã đi được $moc% chặng đường',
+        body: 'Mục tiêu ${g.name} đã tích được ${_tien(g.currentAmount)} '
+            'trên ${_tien(g.targetAmount)}.',
+        severity: NotificationSeverity.info,
+        subjectType: 'goal',
+        subjectId: g.id,
+        deeplink: goalDeeplink(g.id),
+        createdAt: input.now,
+      ));
     }
 
     if (!g.isBehindSchedule(input.now)) continue;
@@ -495,9 +625,48 @@ List<NotificationCandidate> _walletCandidates(NotificationRuleInput input) {
 
   for (final v in input.wallets) {
     if (v.isDeleted) continue;
-    // Số dư 0 là chuyện bình thường; âm mới là dấu hiệu ghi nhầm giao dịch.
-    if (v.balance >= 0) continue;
 
+    // ⚠️ Ở đây từng có một chốt: ví loại `debt` mang số dư âm là ĐÚNG bản chất
+    // của nó, nên không nhắc. Chốt ấy **đã gỡ ngày 2026-09-09** cùng lúc với
+    // việc thu loại ví về ba (`WalletType`) — không còn loại `debt` thì không
+    // còn tín hiệu nào để nhận ra "âm là cố ý".
+    //
+    // Hệ quả có thật, ghi lại để người sau không tưởng là bỏ sót: ai từng theo
+    // dõi thẻ tín dụng bằng ví `debt` nay có ví `bank` mang số dư âm, và sẽ
+    // được nhắc "ví âm" mỗi ngày — đúng loại nhiễu mà bản 2026-09-07 gỡ đi.
+    // Muốn chữa thì cần một khái niệm mới ("ví được phép âm"), không phải khôi
+    // phục chuỗi cũ.
+
+    // Số dư 0 là chuyện bình thường; âm mới là dấu hiệu ghi nhầm giao dịch.
+    if (v.balance >= 0) {
+      final nguong = input.lowBalanceThreshold;
+
+      // `0` là TẮT, không phải "báo khi hết sạch". Đây là mặc định của tuỳ
+      // chọn, nên hiểu nó thành một ngưỡng thật là bật tính năng cho mọi bản
+      // đã cài mà người dùng chưa hề đặt gì.
+      if (nguong <= 0 || v.balance > nguong) continue;
+
+      ra.add(NotificationCandidate(
+        kind: NotificationKind.walletLowBalance,
+        // Gộp theo NGÀY, cùng lý lẽ với ví âm: ví ở trạng thái cạn cho tới khi
+        // người dùng nạp tiền.
+        dedupeKey: 'walletLow:${v.id}:${_ngayGon(_dauNgay(input.now))}',
+        title: 'Số dư ví sắp cạn',
+        body: '${v.name} chỉ còn ${_tien(v.balance)}.',
+        // Cảnh báo, không phải nghiêm trọng: ví cạn là chuyện còn kịp xử lý,
+        // chỉ ví ÂM mới là dấu hiệu có gì đó đã sai.
+        severity: NotificationSeverity.warning,
+        subjectType: 'wallet',
+        subjectId: v.id,
+        deeplink: '/wallets',
+        createdAt: input.now,
+      ));
+      continue;
+    }
+
+    // Số dư âm cũng thoả điều kiện "dưới ngưỡng". `continue` ở nhánh trên là
+    // thứ giữ cho mỗi ví chỉ ra MỘT thông báo — không có nó thì mỗi ví âm đẻ
+    // hai thông báo nói cùng một chuyện.
     ra.add(NotificationCandidate(
       kind: NotificationKind.walletNegative,
       // Gộp theo NGÀY: ví ở trạng thái âm cho tới khi người dùng nạp tiền.

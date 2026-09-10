@@ -33,6 +33,59 @@ void _createV16Bills(dynamic database) {
   ''');
 }
 
+/// Bảng `goals` của một CSDL v17 — dựng ở đây chỉ để chuỗi migration chạy
+/// tới cuối.
+///
+/// Tệp này canh phần **hoá đơn**, nhưng migration v19 thêm cột
+/// `goals.priority`, và `ALTER TABLE` trên một bảng không tồn tại thì cả
+/// chuỗi dừng ngay ở đó. Một CSDL v17 thật luôn có bảng này — thiếu nó ở
+/// đây là thiếu ở phía **bản dựng thử**, không phải ở phía mã nguồn.
+void _createV17Goals(dynamic database) {
+  database.execute('''
+    CREATE TABLE goals (
+      id TEXT NOT NULL PRIMARY KEY, idaccount INTEGER NOT NULL,
+      name TEXT NOT NULL, target_amount REAL NOT NULL,
+      current_amount REAL NOT NULL DEFAULT 0, start_date INTEGER,
+      target_date INTEGER NOT NULL, wallet_id TEXT,
+      cycle_take_money TEXT, time_cycle_take_money INTEGER,
+      auto_deposit_amount REAL, auto_deposit_wallet_id TEXT,
+      auto_deposit_last_run INTEGER,
+      recurrence INTEGER NOT NULL DEFAULT 0, time_recurrence TEXT,
+      icon TEXT NOT NULL DEFAULT 'flag', colour TEXT NOT NULL DEFAULT '#4CAF50',
+      note TEXT NOT NULL DEFAULT '',
+      is_completed INTEGER NOT NULL DEFAULT 0, deleted_at INTEGER,
+      is_deleted INTEGER NOT NULL DEFAULT 0,
+      sync_status TEXT NOT NULL DEFAULT 'pending',
+      sync_retry_count INTEGER NOT NULL DEFAULT 0, sync_error TEXT,
+      sync_blocked_until INTEGER, updated_at INTEGER NOT NULL
+    )
+  ''');
+}
+
+/// Bảng `wallets` của một CSDL đã qua v9 — dựng ở đây chỉ để chuỗi migration
+/// chạy tới cuối.
+///
+/// Tệp này canh phần **hoá đơn**, nhưng migration v20 chạy `UPDATE wallets` để
+/// thu loại ví về ba, và một câu lệnh trên bảng không tồn tại thì cả chuỗi dừng
+/// ngay ở đó. Một CSDL thật luôn có bảng này — thiếu nó ở đây là thiếu ở phía
+/// **bản dựng thử**, không phải ở phía mã nguồn.
+void _createWallets(dynamic database) {
+  database.execute('''
+    CREATE TABLE wallets (
+      id TEXT NOT NULL PRIMARY KEY, idaccount INTEGER NOT NULL,
+      name TEXT NOT NULL, type TEXT NOT NULL DEFAULT 'cash',
+      balance REAL NOT NULL DEFAULT 0, currency TEXT NOT NULL DEFAULT 'VND',
+      icon TEXT NOT NULL DEFAULT 'wallet', colour TEXT NOT NULL DEFAULT '#4CAF50',
+      is_default INTEGER NOT NULL DEFAULT 0, is_deleted INTEGER NOT NULL DEFAULT 0,
+      include_in_total INTEGER NOT NULL DEFAULT 1, bank_casso_id TEXT,
+      status TEXT NOT NULL DEFAULT 'active',
+      sync_status TEXT NOT NULL DEFAULT 'pending',
+      sync_retry_count INTEGER NOT NULL DEFAULT 0, sync_error TEXT,
+      sync_blocked_until INTEGER, updated_at INTEGER NOT NULL, deleted_at INTEGER
+    )
+  ''');
+}
+
 void main() {
   const startSec = 1780315200; // 2026-06-01 12:00 UTC
   const dueSec = 1789000000;
@@ -44,6 +97,7 @@ void main() {
     db = AppDatabase.forTesting(NativeDatabase.memory(
       setup: (database) {
         _createV16Bills(database);
+        _createV17Goals(database);
         database.execute('''
           INSERT INTO bills (
             id, idaccount, wallet_id, category_id, name, amount,
@@ -54,6 +108,7 @@ void main() {
             $startSec, $dueSec, 1, 'Month', 'synced', $updatedSec
           )
         ''');
+        _createWallets(database);
         database.execute('PRAGMA user_version = 16');
       },
     ));

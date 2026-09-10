@@ -192,7 +192,7 @@ Toàn bộ quy trình xử lý, lưu trữ, truyền tải dữ liệu bắt bu�
 Khi kết thúc một nhiệm vụ kỹ thuật, AI **bắt buộc** phải hoàn thành 2 công việc cuối cùng trước khi báo cáo hoàn tất cho PO:
 
 1. **Cập nhật Nguồn Sự Thật (Documentation Update):**
-   * Đọc và cập nhật lại file [`Project.md`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/Project.md) và các tài liệu liên quan để phản ánh đúng hiện trạng sau thay đổi.
+   * Đọc và cập nhật lại file [`Project.md`](../../Project.md) và các tài liệu liên quan để phản ánh đúng hiện trạng sau thay đổi.
 2. **Cập nhật CodeGraph:**
    * Chạy lệnh cập nhật đồ thị mã nguồn dự án:  
      ```bash
@@ -291,17 +291,30 @@ Phần này đặc tả chi tiết toàn bộ các quy tắc ràng buộc, chố
 * Mỗi tài khoản (`idaccount`) chỉ có **duy nhất 1 ví mặc định** (`is_default = true`) tại một thời điểm.
 * Khi người dùng chỉ định một ví mới làm ví mặc định, hệ thống tự động gỡ cờ mặc định (`is_default = false`) của tất cả các ví còn lại thuộc tài khoản đó.
 
+> ⚠️ **Luật này chỉ được thi hành đầy đủ từ 2026-09-09.** Trước đó chỉ đường **thêm** ví gỡ cờ của ví cũ; đường **sửa** ghi thẳng, nên sửa một ví thứ hai thành mặc định là có hai hàng cùng cờ. Không unique index nào chặn ở **cả hai đầu** (đo `pg_constraint` 2026-09-09), nên luật chỉ do mã giữ. Nay chốt nằm ở `WalletLocalDataSourceImpl` — chỗ cả hai đường đều đi qua — dựa trên `WalletDao.clearDefaultExcept`. Vế đọc cũng phải chịu được trạng thái hai hàng, vì nó **đến được từ server** qua `upsertAll`.
+
 ### 2.2. Tính toán tổng tài sản (`include_in_total`)
 * Cờ boolean xác định số dư của ví có được tính vào Tổng tài sản (Net Worth) hiển thị trên màn hình tổng quan hay không:
   * `true`: Cộng số dư vào tổng tài sản (ví tiền mặt, thẻ ngân hàng chi tiêu chính).
   * `false`: Tách biệt khỏi tổng tài sản (ví tiết kiệm mục tiêu riêng biệt, tài khoản quỹ nhóm...).
 
 ### 2.3. Loại ví (`Type` Enum)
-* Hệ thống hỗ trợ 4 phân loại ví cơ bản:
+
+> ⚠️ **Sửa 2026-09-09 — bốn loại ở bản trước KHÔNG khớp CSDL.** `'E-wallet'` và
+> `'Credit'` chưa bao giờ hợp lệ: ràng buộc `chk_wallet_type` của PostgreSQL chỉ
+> nhận `Cash | Bank | Saving | Banking`, nên ví tạo bằng hai loại ấy vỡ CHECK ở
+> mỗi lần đẩy và kẹt hàng đợi đồng bộ vĩnh viễn, im lặng.
+
+* Người dùng chọn được **ba** loại:
   * `'Cash'`: Tiền mặt trong ví/két.
-  * `'Bank'`: Tài khoản ngân hàng (có thể liên kết qua `id_bank_casso` / SePay).
-  * `'E-wallet'`: Ví điện tử (MoMo, ZaloPay, ViettelPay...).
-  * `'Credit'`: Thẻ tín dụng (theo dõi hạn mức và dư nợ âm).
+  * `'Bank'`: Tài khoản ngân hàng.
+  * `'Saving'`: Tài khoản/sổ tiết kiệm.
+* Loại thứ tư, `'Banking'`, **do hệ thống tạo** qua luồng liên kết ngân hàng
+  (SePay) và không nằm trong ô chọn: ràng buộc `chk_wallet_banking_link` đòi nó
+  đi kèm `Id_bank_casso`.
+* Định nghĩa duy nhất phía client: `lib/features/wallet/domain/wallet_type.dart`.
+* Ví điện tử (MoMo, ZaloPay…) nay khai bằng `'Bank'`; thẻ tín dụng chưa có loại
+  riêng — xem **G27** `docs/CLIENT_APP_KNOWN_GAPS.md`.
 
 ### 2.4. Xóa ví (Soft Delete)
 * Xóa ví là xóa mềm qua trường `delete_at`.

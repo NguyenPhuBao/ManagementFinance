@@ -1,6 +1,34 @@
 # Kế Hoạch & Tiến Độ Client-App (Flutter Mobile App)
 
-Tài liệu này tổng hợp toàn bộ các nhiệm vụ, hạng mục kỹ thuật và chức năng mà **Client-app** cần triển khai hoặc điều chỉnh để đồng bộ hoàn toàn với Backend và đặc tả CSDL mới ([New_Database.md](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/Rule_Project/New_Database.md)).
+Tài liệu này tổng hợp toàn bộ các nhiệm vụ, hạng mục kỹ thuật và chức năng mà **Client-app** cần triển khai hoặc điều chỉnh để đồng bộ hoàn toàn với Backend và đặc tả CSDL mới ([New_Database.md](../Rule_Project/New_Database.md)).
+
+> ## ⚠️ Đây là KẾ HOẠCH, không phải bảng trạng thái — soát 2026-09-08
+>
+> Tài liệu này liệt kê *việc cần làm* và **không mang dấu hoàn thành nào**, nên
+> đọc lướt rất dễ tưởng mọi mục còn dang dở. Trạng thái thật nằm ở **mục 14
+> `docs/PROJECT_CONTEXT.md`** và `docs/CLIENT_APP_KNOWN_GAPS.md`.
+>
+> Ba chỗ đã đối chiếu bằng mã trong đợt soát này:
+>
+> 1. **Mục 4 và 8 (Socket.io) — ĐÃ LÀM XONG ngày 2026-09-09.** Client nay có
+>    `socket_io_client`, giữ một kết nối xác thực bằng JWT
+>    (`lib/core/realtime/`), tự nối lại theo giãn cách, và mọi sự kiện nhận
+>    được đều đánh thức đồng bộ ngay cộng hiện một toast. Đã kiểm trên máy ảo:
+>    bắt tay thành công với `account_10`. **Phạm vi thật hẹp hơn tài liệu này
+>    mô tả** — không có màn "Giao dịch chờ duyệt", không có badge đếm; xem
+>    `docs/superpowers/specs/2026-09-09-socket-io-realtime-channel-design.md`
+>    và mục "Giao dịch chờ duyệt" trong `docs/CLIENT_APP_KNOWN_GAPS.md`.
+> 2. **Mục 7 bước 2 SAI:** không có endpoint `GET /api/sync/default-categories`
+>    (`src/Backend/api/` không có `category.routes.js`, và mục B6 đã **bãi bỏ**
+>    — xem `PROGRESS-BACKEND.md`). Việc *tạo bản sao danh mục mặc định cho từng
+>    tài khoản* **đã làm xong** ngày 2026-09-07, nhưng đi đường khác: danh mục
+>    mẫu về theo `/sync/pull` rồi `DefaultCategorySeeder` nhân bản sau lần pull
+>    đầu. Thiết kế thật:
+>    `docs/superpowers/specs/2026-09-07-per-account-default-categories-design.md`
+>    và quy tắc 8 `CLAUDE.md`.
+> 3. **Bảng ở mục 1 liệt kê `status` và `provider` của `transaction`** — hai cột
+>    ấy có thật trong lược đồ nhưng **KHÔNG nằm trong hợp đồng đồng bộ theo
+>    chiều nào cả** (quy tắc 4 `CLAUDE.md`). Có cột không có nghĩa là có đồng bộ.
 
 ---
 
@@ -51,6 +79,17 @@ Client-app cần xây dựng các màn hình và luồng giao dịch ngân hàng
 ---
 
 ## 4. Tích Hợp Realtime Socket.io & Notification Client
+
+> ⚠️ **Mục này MÂU THUẪN với mục 8 và với mã đang chạy — đọc mục 8.**
+> `join_account` **đã bị backend gỡ hẳn** ngày 2026-09-07: room lấy từ
+> `socket.data.idaccount` mà middleware bắt tay tự gắn từ JWT, nên client emit
+> sự kiện ấy là vô nghĩa (và trước đó là một lỗ hổng — ai cũng khai được số
+> nào). Bản client làm ngày 2026-09-09 **không** emit gì cả.
+>
+> Hai chi tiết khác trong mục này cũng **chưa làm và cố ý chưa làm**: câu thông
+> báo nêu số tiền và tên ngân hàng (client cố ý dùng câu chung chung, không đọc
+> payload), và badge đếm giao dịch chờ duyệt (cần màn duyệt — G26
+> `docs/CLIENT_APP_KNOWN_GAPS.md`).
 
 * **Khởi tạo kết nối Socket.io Client:**
   * Kết nối tới server Backend qua WebSocket / Polling.
@@ -241,9 +280,19 @@ Client-app duy trì kết nối Socket.io liên tục với Backend để nhận
   | Tên Sự Kiện | Payload Nhận Về | Hành Động Phía Client-App |
   |---|---|---|
   | **`bank_transaction.incoming`** | `{ idaccount, amount, bank_name, description }` | Hiển thị Banner/Push giao dịch ngân hàng mới về, tăng Badge đếm tại Tab Giao dịch chờ duyệt. |
-  | **`notification.new`** | `{ idaccount, title, content, type }` | Hiển thị thông báo chung hệ thống / cập nhật chuông thông báo. |
   | **`ocr.completed`** | `{ idaccount, status, total_amount, ... }` | Nhận thông báo tiến trình bóc tách OCR ngầm đã xong $\rightarrow$ Hiển thị thông báo hoàn tất bóc tách. |
   | **`ocr.duplicate`** | `{ idaccount, error, existing_transaction }` | Nhận cảnh báo realtime phát hiện hóa đơn/biên lai đã tồn tại. |
+
+> ⚠️ **`notification.new` KHÔNG TỒN TẠI** — đã đo bằng mã ngày 2026-09-09.
+> Bảng này trước đó liệt kê nó như một sự kiện có thật, nhưng không dòng nào
+> trong `src/Backend` phát nó. Backend chỉ phát **ba** sự kiện tới người dùng
+> thường, đúng ba dòng còn lại ở trên, cộng `audit_activity` chỉ gửi tới
+> `admin_room` (dành cho Admin-web, không phải app).
+>
+> ⚠️ **Hình dạng payload trong bảng này chỉ đúng một nửa.**
+> `bank_transaction.incoming` được phát từ hai chỗ với hai bộ tên trường khác
+> nhau — xem `docs/superpowers/backend/CAN-LAM/SOCKET_BANK_EVENT_PAYLOAD.md`.
+> Chính vì thế client **cố ý không đọc trường nào**; nó chỉ dùng tên sự kiện.
 
 ---
 

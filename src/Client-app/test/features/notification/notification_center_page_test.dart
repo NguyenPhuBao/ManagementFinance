@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/core/notification/prefs/notification_prefs.dart';
 import 'package:flowmoney/features/notification/presentation/pages/notification_center_page.dart';
 
 void main() {
@@ -35,6 +36,31 @@ void main() {
   });
 
   tearDown(() async => db.close());
+
+  /// Thêm một hàng nữa vào feed của cùng tài khoản.
+  ///
+  /// `kind` quyết định hàng thuộc nhóm nào khi lọc — xem `nhomCua()`.
+  Future<void> them({
+    required String id,
+    required String kind,
+    required String title,
+    bool daDoc = false,
+    DateTime? createdAt,
+  }) async {
+    await db.notificationDao.insertIfAbsent(
+      AppNotificationsCompanion.insert(
+        id: id,
+        idaccount: accountId,
+        kind: kind,
+        dedupeKey: 'k-$id',
+        title: title,
+        body: 'Nội dung $id',
+        severity: 'warning',
+        createdAt: createdAt ?? DateTime(2026, 9, 14, 10),
+      ),
+    );
+    if (daDoc) await db.notificationDao.markRead(id);
+  }
 
   /// ⚠️ **Không dùng `pumpAndSettle` ở file này.**
   ///
@@ -73,6 +99,34 @@ void main() {
     ));
     await nhip(tester);
   }
+
+  group('dải chip lọc', () {
+    testWidgets('mỗi nhóm thông báo có ĐÚNG một chip', (tester) async {
+      await moTrang(tester);
+
+      expect(
+        find.byType(ChoiceChip),
+        // Hai chip không lọc theo nhóm: "Tất cả" và "Chưa đọc".
+        findsNWidgets(NotificationGroup.values.length + 2),
+        reason: 'Chú thích của `_Loc.kinds` hứa rằng thêm một loại mà quên xếp '
+            'nhóm sẽ thành lỗi biên dịch — nhưng lưới ấy canh `nhomCua`, KHÔNG '
+            'canh việc nhóm mới có chip. Nhóm `summary` thêm ngày 2026-09-09 '
+            'đã lọt qua đúng khe ấy: thông báo Tổng kết tuần chỉ hiện ở "Tất '
+            'cả", không lọc theo nhóm được. Đếm chip theo '
+            '`NotificationGroup.values` là phép canh còn thiếu.',
+      );
+      // ⚠️ BẮT BUỘC — xem chú thích ở `dongTrang`. Thiếu nó là drift đặt timer
+      // 0 giây sau khi khung kiểm đã chốt, và **cả tệp kẹt lại từ đó**. Lượt
+      // chạy đầu không lộ ra vì `expect` ném sớm nên chưa tới chỗ này.
+      await dongTrang(tester);
+    });
+
+    testWidgets('có chip Tổng kết', (tester) async {
+      await moTrang(tester);
+      expect(find.widgetWithText(ChoiceChip, 'Tổng kết'), findsOneWidget);
+      await dongTrang(tester);
+    });
+  });
 
   /// Vuốt phải sang trái — đúng chiều `DismissDirection.endToStart`.
   Future<void> vuotXoa(WidgetTester tester) async {
@@ -137,6 +191,168 @@ void main() {
     expect(find.text('Số dư ví đang âm'), findsNothing,
         reason: 'idaccount CHỈ đến từ phiên đăng nhập. Không có thì hiển thị '
             'rỗng, tuyệt đối không mặc định về một tài khoản nào.');
+    await dongTrang(tester);
+  });
+
+  group('lọc', () {
+    testWidgets('chip nhóm thu hẹp danh sách', (tester) async {
+      await them(id: 'n2', kind: 'billDueSoon', title: 'Tiền điện sắp tới hạn');
+      await moTrang(tester);
+      expect(find.text('Số dư ví đang âm'), findsOneWidget);
+      expect(find.text('Tiền điện sắp tới hạn'), findsOneWidget);
+
+      await tester.tap(find.text('Hoá đơn'));
+      await nhip(tester);
+
+      expect(find.text('Tiền điện sắp tới hạn'), findsOneWidget);
+      expect(find.text('Số dư ví đang âm'), findsNothing,
+          reason: 'walletNegative thuộc nhóm system. Phép quy đổi nhóm → kind '
+              'phải đi qua nhomCua(): thêm một loại mới mà quên xếp nhóm sẽ '
+              'thành lỗi biên dịch, còn đoán theo tiền tố chuỗi thì im lặng.');
+      await dongTrang(tester);
+    });
+
+    testWidgets('chip Chưa đọc bỏ mục đã đọc', (tester) async {
+      await them(
+          id: 'n2',
+          kind: 'billDueSoon',
+          title: 'Tiền điện sắp tới hạn',
+          daDoc: true);
+      await moTrang(tester);
+
+      await tester.tap(find.text('Chưa đọc'));
+      await nhip(tester);
+
+      expect(find.text('Số dư ví đang âm'), findsOneWidget);
+      expect(find.text('Tiền điện sắp tới hạn'), findsNothing);
+      await dongTrang(tester);
+    });
+
+    testWidgets('quay lại Tất cả thì danh sách đầy đủ trở lại', (tester) async {
+      await them(id: 'n2', kind: 'billDueSoon', title: 'Tiền điện sắp tới hạn');
+      await moTrang(tester);
+
+      await tester.tap(find.text('Hoá đơn'));
+      await nhip(tester);
+      await tester.tap(find.text('Tất cả'));
+      await nhip(tester);
+
+      expect(find.text('Số dư ví đang âm'), findsOneWidget,
+          reason: 'null nghĩa là KHÔNG lọc. Nếu "Tất cả" gửi xuống một danh '
+              'sách kind rỗng thì màn hình trắng và không có lối quay lại.');
+      await dongTrang(tester);
+    });
+  });
+
+  group('phân trang', () {
+    /// Kéo danh sách xuống đáy — nút "Tải thêm" là phần tử CUỐI của `ListView`
+    /// nên nó chưa được dựng cho tới khi cuộn tới gần nó.
+    Future<void> cuonXuongDay(WidgetTester tester) async {
+      await tester.drag(find.byType(ListView), const Offset(0, -5000));
+      await nhip(tester);
+    }
+
+    Future<void> themTruyenHang(int soLuong) async {
+      for (var i = 0; i < soLuong; i++) {
+        await them(
+          id: 'x$i',
+          kind: 'billDueSoon',
+          title: 'Mục $i',
+          createdAt: DateTime(2026, 9, 10, 0, i),
+        );
+      }
+    }
+
+    testWidgets('còn hàng chưa tải thì hiện nút Tải thêm', (tester) async {
+      await themTruyenHang(25);
+      await moTrang(tester);
+      await cuonXuongDay(tester);
+
+      expect(find.text('Tải thêm'), findsOneWidget,
+          reason: 'Trang đầu chỉ tải 20 hàng. Không có lối tải tiếp thì thông '
+              'báo thứ 21 trở đi không xem lại được, trong khi bảng giữ dữ '
+              'liệu 90 ngày.');
+      await dongTrang(tester);
+    });
+
+    testWidgets('bấm Tải thêm rồi thì hết nút vì không còn hàng',
+        (tester) async {
+      await themTruyenHang(25);
+      await moTrang(tester);
+      await cuonXuongDay(tester);
+
+      await tester.tap(find.text('Tải thêm'));
+      await nhip(tester);
+      await cuonXuongDay(tester);
+
+      expect(find.text('Tải thêm'), findsNothing,
+          reason: '26 hàng nằm gọn trong trang thứ hai (40). Nút còn ở đó là '
+              'người dùng bấm mãi mà danh sách không dài thêm.');
+      await dongTrang(tester);
+    });
+
+    testWidgets('ít hàng thì không có nút Tải thêm', (tester) async {
+      await moTrang(tester);
+      await cuonXuongDay(tester);
+
+      expect(find.text('Tải thêm'), findsNothing);
+      await dongTrang(tester);
+    });
+  });
+
+  group('đánh dấu chưa đọc', () {
+    testWidgets('nhấn giữ một mục đã đọc thì nó thành chưa đọc',
+        (tester) async {
+      await db.notificationDao.markRead('n1');
+      await moTrang(tester);
+
+      await tester.longPress(find.text('Số dư ví đang âm'));
+      await nhip(tester);
+
+      expect((await db.notificationDao.getAll(accountId)).single.readAt, isNull,
+          reason: '"Đọc tất cả" đọc hộ CẢ những mục người dùng chưa kịp xem. '
+              'Không có đường quay lại thì một cú bấm nhầm xoá sạch dấu vết '
+              'những gì còn phải xử lý.');
+      await dongTrang(tester);
+    });
+
+    testWidgets('nhấn giữ một mục chưa đọc thì nó thành đã đọc',
+        (tester) async {
+      await moTrang(tester);
+
+      await tester.longPress(find.text('Số dư ví đang âm'));
+      await nhip(tester);
+
+      expect((await db.notificationDao.getAll(accountId)).single.readAt,
+          isNotNull,
+          reason: 'Cùng một cử chỉ phải đảo được cả hai chiều — một chiều thôi '
+              'là người dùng không đoán được nó làm gì.');
+      // ⚠️ Phép kiểm readAt ở trên MỘT MÌNH nó không đủ, và đã tự chứng minh
+      // điều đó: nó xanh ngay cả khi `InkWell` chưa có `onLongPress` nào. Lý
+      // do là không có recognizer nào tranh chấp thì nhấn giữ vẫn kích hoạt
+      // `onTap`, mà `onTap` cũng gọi `markRead` — hai đường khác hẳn nhau cho
+      // ra cùng một trạng thái CSDL. Dải báo là thứ duy nhất chỉ đường nhấn
+      // giữ mới sinh ra.
+      expect(find.text('Đã đánh dấu đã đọc'), findsOneWidget,
+          reason: 'Nhấn giữ là cử chỉ khó phát hiện, nên dải báo là chỗ duy '
+              'nhất nói cho người dùng biết vừa xảy ra chuyện gì.');
+      await dongTrang(tester);
+    });
+  });
+
+  testWidgets('hàng chip lọc không tràn ở bề rộng 411dp', (tester) async {
+    tester.view.physicalSize = const Size(411, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await moTrang(tester);
+
+    expect(tester.takeException(), isNull,
+        reason: 'Sáu chip không vừa 411dp — bề rộng điện thoại thật, bằng nửa '
+            'khung test mặc định 800px. Flutter báo tràn qua '
+            'FlutterError.reportError chứ KHÔNG ném ra chỗ gọi, nên một test '
+            'chỉ pumpWidget rồi find sẽ xanh ngay cả khi màn hình đầy sọc vàng.');
     await dongTrang(tester);
   });
 }

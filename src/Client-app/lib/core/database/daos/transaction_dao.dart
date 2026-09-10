@@ -20,6 +20,29 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
         .get();
   }
 
+  /// Mốc của giao dịch **gần nhất**, `null` khi tài khoản chưa có giao dịch nào.
+  ///
+  /// Đầu vào duy nhất của lời nhắc ghi chép hằng ngày trong `ReminderScheduler`
+  /// — loại nhắc duy nhất trong app suy từ việc **không có** dữ liệu. `null`
+  /// phải đọc thành *cần nhắc*: người mới cài app chính là người cần nhắc nhất.
+  ///
+  /// Dùng `MAX` chứ không `getAll().first`: hàm kia nạp cả bảng về Dart chỉ để
+  /// đọc một mốc, và trang này chạy ở mỗi lượt `resync()`.
+  ///
+  /// ⚠️ Đếm **mọi** hàng, kể cả giao dịch do bộ tự trả hoá đơn và bộ trích mục
+  /// tiêu sinh ra. Nghĩa là có hôm app tự tạo giao dịch và lời nhắc bị bỏ qua
+  /// oan. Chấp nhận có chủ ý: lọc theo `billId`/`goalId` sai theo chiều tệ hơn
+  /// vì trả hoá đơn **bằng tay** cũng đặt `billId`, và đây là một lời nhắc chứ
+  /// không phải một phép kiểm toán.
+  Future<DateTime?> getLastTransactionDate(int idaccount) async {
+    final moc = transactions.date.max();
+    final q = selectOnly(transactions)
+      ..addColumns([moc])
+      ..where(transactions.idaccount.equals(idaccount) &
+          transactions.deletedAt.isNull());
+    return (await q.getSingle()).read(moc);
+  }
+
   /// Stream theo dõi realtime theo idaccount
   Stream<List<Transaction>> watchAll(int idaccount) {
     return (select(transactions)
@@ -119,6 +142,33 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
               t.date.isSmallerOrEqualValue(to))
           ..orderBy([(t) => OrderingTerm.desc(t.date)]))
         .watch();
+  }
+
+  /// Khoảng `[from, to)` có giao dịch nào không.
+  ///
+  /// Trả **bool** chứ không phải tổng: thông báo Tổng kết tuần cố ý không nêu
+  /// số nào, nên nó chỉ cần biết có hay không. Viết sẵn một hàm tính tổng khi
+  /// chưa ai dùng đến là thêm một thứ phải giữ đúng mà không ai kiểm.
+  ///
+  /// Biên `to` **mở**, cùng quy ước với `tuanTruoc` và `tongThuChi`: lấy biên
+  /// đóng thì một khoản ghi đúng nửa đêm bị đếm vào hai tuần.
+  ///
+  /// `limit(1)` chứ không `count()`: câu hỏi là "có hay không", và một tuần
+  /// bận rộn không đáng phải đếm hết.
+  Future<bool> coGiaoDichTrongKhoang(
+    int idaccount,
+    DateTime from,
+    DateTime to,
+  ) async {
+    final hang = await (select(transactions)
+          ..where((t) =>
+              t.idaccount.equals(idaccount) &
+              t.deletedAt.isNull() &
+              t.date.isBiggerOrEqualValue(from) &
+              t.date.isSmallerThanValue(to))
+          ..limit(1))
+        .getSingleOrNull();
+    return hang != null;
   }
 
   /// Tổng thu/chi theo tháng

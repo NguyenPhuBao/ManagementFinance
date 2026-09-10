@@ -19,9 +19,9 @@ Bốn thay đổi, mỗi cái do một lỗi **có thật** buộc phải làm �
 | Quy tắc trùng tên: bỏ `classify` và nhóm cha khỏi khoá, tính cả danh mục mặc định | Bốn đường tạo được danh mục trùng tên; ba trong số đó client cho tạo còn PostgreSQL chặn, nên thao tác đẩy **thất bại im lặng** |
 | Gom mọi phép so tên về **một định nghĩa duy nhất**, thêm bước gộp Unicode NFC | Ba biến thể so tên cùng tồn tại và đã lệch nhau; một trong số đó nằm trên đường đồng bộ và **không chuẩn hoá gì cả** |
 | Bộ danh mục mặc định khớp đúng 13 mục của backend; 5 mục thừa thành danh mục cá nhân | Hai phía chỉ khớp **10/18** tên, khiến giao dịch dùng 8 mục còn lại **không bao giờ đẩy lên được** |
-| *(chưa làm — chờ backend)* ID cố định cho danh mục mặc định | Nguyên nhân gốc của cả bốn lỗi 11.3–11.6 |
+| ✅ *(backend làm xong 2026-09-07)* ID cố định cho danh mục mặc định | Nguyên nhân gốc của cả bốn lỗi 11.3–11.6 |
 
-Kết quả: `flutter test` từ **144 → 180 test**, `flutter analyze` **29 issue, không error**.
+Kết quả **đo ngay sau đợt ấy** (2026-09-03): `flutter test` từ **144 → 180 test**, `flutter analyze` **29 issue, không error**. Đây là con số *lịch sử của đợt này*, không phải mức nền hôm nay — mức nền hiện tại nằm ở `CLAUDE.md`.
 
 ---
 
@@ -151,13 +151,63 @@ Giữ id dạng slug thì giao dịch kẹt y như cũ, chỉ đổi nguyên nh�
 
 ---
 
-## 5. Thay đổi 4 — ID cố định (chưa làm, chờ backend)
+## 5. Thay đổi 4 — ID cố định (✅ backend đã làm, 2026-09-07)
 
-`prisma/seed.js` sinh ID bằng `crypto.randomUUID()`, nên **seed lại là ra bộ khác hoàn toàn**. Đây là lý do tên bị dùng làm khoá nối ngay từ đầu, và là nguyên nhân gốc của bốn lỗi 11.3–11.6 cùng cả lớp mã vá víu quanh chúng.
+> ✅ **Đã xong 2026-09-07.** `seed.js` nay đóng băng **13 stable UUID**, hết
+> `crypto.randomUUID()` cho danh mục; backend còn cấp thêm
+> `GET /api/sync/default-categories`. Phần dưới giữ làm hồ sơ vì nó ghi *vì sao*
+> tên danh mục từng bị dùng làm khoá nối.
+
+`prisma/seed.js` **từng** sinh ID bằng `crypto.randomUUID()`, nên seed lại là ra bộ khác hoàn toàn. Đây là lý do tên bị dùng làm khoá nối ngay từ đầu, và là nguyên nhân gốc của bốn lỗi 11.3–11.6 cùng cả lớp mã vá víu quanh chúng.
 
 Sau thay đổi 3 thì ánh xạ **đang chạy đúng** (13/13 khớp tên), nên việc này không còn gấp. Nhưng nó vẫn là thứ duy nhất khiến không phải làm lại lần nữa: chỉ cần ai đó sửa một nhãn cho đẹp hơn là ánh xạ đứt, **không test hay lỗi nào bắt được**; và reset CSDL vẫn phá mọi thứ.
 
-Đề xuất chi tiết: `docs/superpowers/backend/CAN-LAM/CATEGORY_STABLE_IDS.md`.
+Đề xuất chi tiết: `docs/superpowers/backend/DA-XONG/CATEGORY_STABLE_IDS.md`.
+
+---
+
+## 5b. Thay đổi 5 — bản sao riêng cho từng tài khoản (2026-09-07)
+
+**Đảo lại thay đổi 3.** Thay đổi 3 đẩy năm danh mục *ra khỏi* bộ riêng để chúng
+thành mặc định toàn cục; thay đổi 5 làm ngược: **toàn bộ** bộ mặc định được sao
+chép *vào* từng tài khoản, còn hàng toàn cục lui về làm **khuôn** và không hiện
+ra ở đâu nữa.
+
+### Vì sao đổi hướng
+
+Danh mục mặc định là hàng dùng chung, nên người dùng **không sửa, không đổi tên,
+không xoá** được — mọi thao tác ấy sẽ đụng vào dữ liệu của mọi người. Bản sao
+riêng gỡ được điều đó, và kéo theo hai thứ miễn phí:
+
+- **`CategoryGroupMemberships` hết việc.** Bảng phụ ấy tồn tại chỉ vì không ghi
+  `Idgroup` riêng cho từng tài khoản lên một hàng dùng chung được. Bản sao thì
+  ghi thẳng vào `parentId` — cột đã có và đã đồng bộ. **G10 đóng mà backend
+  không phải làm gì.**
+- **Lỗ hổng phân quyền của `appendCategoryKeyword()` hẹp bán kính lại**: phản
+  hồi phân loại không còn ghi vào hàng mọi người cùng đọc. Nó **chưa được vá** —
+  xem `CATEGORY_KEYWORD_SYNC.md`.
+
+### Chỗ dễ làm hỏng nhất
+
+Luật tạo bản sao đếm **cả hàng đã xoá mềm**. Ba chữ ấy là khác biệt **duy nhất**
+với `ensureMissing()` — thứ đã sinh ra G16. Bỏ chúng đi là danh mục người dùng
+vừa xoá mọc lại ở mỗi lần mở app, và mỗi lần mọc lại là một thao tác đẩy hỏng
+vĩnh viễn.
+
+### Hai giới hạn đã biết
+
+- **Bản sao chỉ đầy đủ khi bộ mặc định cục bộ đầy đủ.** Pull tăng dần theo
+  `since`, nên một máy có thể chỉ biết một phần bộ mặc định của server. Đo được
+  2026-09-07 (sáng): server có 18 hàng, máy kiểm thử tạo được 13 bản sao.
+  ⚠️ **Chiều cùng ngày con số đổi:** đợt migration của backend thu bộ khuôn về
+  đúng 13 stable UUID, **xoá mềm** 5 hàng `Chi khác`, `Thu khác`, `Làm thêm`,
+  `Trả nợ`, `Thu nợ`. Server nay có **13 hàng sống + 5 hàng đã xoá mềm**; máy
+  nào đã pull 5 hàng ấy sẽ nhận cờ xoá ở lượt pull sau.
+- **Màu không theo được.** Bảng `category` không có cột màu, nên màu của bản sao
+  chỉ sống trên máy đã tạo. Tài liệu xin: `CATEGORY_COLOUR_COLUMN.md`.
+
+Thiết kế đầy đủ:
+`docs/superpowers/specs/2026-09-07-per-account-default-categories-design.md`.
 
 ---
 
@@ -167,6 +217,9 @@ Ghi lại để người sau không mất công đề xuất lại:
 
 | Phương án | Vì sao loại |
 |---|---|
+| Giữ bản mặc định hiện **song song** với bản sao (2026-09-07) | Người dùng thấy 36 dòng với 18 cặp trùng tên, và quy tắc trùng tên chặn họ đổi tên bất kỳ bản nào |
+| Đếm bản sao **theo tài khoản** thay vì theo từng danh mục (2026-09-07) | Tài khoản đã có sẵn danh mục riêng sẽ bị từ chối seed, trong khi bản mặc định của nó đã bị ẩn — nó còn lại đúng vài danh mục |
+| Đếm bản sao **bỏ qua hàng đã xoá mềm** (2026-09-07) | Chính là `ensureMissing()` cũ, tức tái hiện nguyên vẹn G16 |
 | Xoá hẳn 5 mục backend không có | Tái hiện lỗi 11.6 hàng loạt; mất cả hai mục "Khác" và một nửa nghiệp vụ vay nợ; giao dịch cũ không có đích để chuyển sang |
 | Chuyển 5 mục tại chỗ, giữ id `cat_*` | `_resolveCategoryId` từ chối danh mục người dùng có id không phải UUID → giao dịch vẫn kẹt |
 | Giữ mỗi nhóm là một không gian tên riêng | PostgreSQL không có `Idgroup` trong unique index nên vẫn chặn — client cho tạo rồi đẩy lên mới vỡ |
@@ -211,6 +264,6 @@ flutter test test/features/category/ test/core/category/ test/core/database/cate
 flutter analyze
 ```
 
-Mức nền sau đợt thay đổi: **180/180 test pass**, **29 issue, không error**.
+Mức nền **tại thời điểm đóng đợt** (2026-09-03): **180/180 test pass**, **29 issue, không error**. Toàn dự án đã đi xa khỏi con số ấy — xem `CLAUDE.md` để biết mức nền hôm nay.
 
-Riêng phần danh mục có **74 test** trải trên 5 file, trong đó nhiều test ghi rõ trong `reason:` là nó đang canh chừng lỗi nào — vì lớp lỗi này không tự lộ ra khi dùng tay.
+Riêng phần danh mục nay có **125 test** trên 10 file (đo lại 2026-09-08 bằng chính lệnh trên; con số cũ ghi ở đây là 74 test/5 file). Nhiều test ghi rõ trong `reason:` là nó đang canh chừng lỗi nào — vì lớp lỗi này không tự lộ ra khi dùng tay.

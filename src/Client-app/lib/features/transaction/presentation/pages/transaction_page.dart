@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -292,8 +293,6 @@ class _TransactionPageState extends State<TransactionPage> {
     required double totalExpense,
   }) {
     final net = totalIncome - totalExpense;
-    final formatter = NumberFormat('#,###', 'vi_VN');
-
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(16),
@@ -311,13 +310,13 @@ class _TransactionPageState extends State<TransactionPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildSummaryColumn('Thu nhập', '+${formatter.format(totalIncome)}đ', AppColors.income),
+          _buildSummaryColumn('Thu nhập', '+${CurrencyFormatter.formatSoThoi(totalIncome)}đ', AppColors.income),
           Container(width: 1, height: 36, color: AppColors.outlineVariant.withValues(alpha: 0.4)),
-          _buildSummaryColumn('Chi tiêu', '-${formatter.format(totalExpense)}đ', AppColors.error),
+          _buildSummaryColumn('Chi tiêu', '-${CurrencyFormatter.formatSoThoi(totalExpense)}đ', AppColors.error),
           Container(width: 1, height: 36, color: AppColors.outlineVariant.withValues(alpha: 0.4)),
           _buildSummaryColumn(
             'Thu net',
-            '${net >= 0 ? '+' : ''}${formatter.format(net)}đ',
+            '${net >= 0 ? '+' : ''}${CurrencyFormatter.formatSoThoi(net)}đ',
             net >= 0 ? AppColors.income : AppColors.error,
           ),
         ],
@@ -406,8 +405,6 @@ class _TransactionPageState extends State<TransactionPage> {
     }
 
     final sortedDates = grouped.keys.toList()..sort((a, b) => b.compareTo(a));
-    final formatter = NumberFormat('#,###', 'vi_VN');
-
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       itemCount: sortedDates.length,
@@ -458,7 +455,7 @@ class _TransactionPageState extends State<TransactionPage> {
                       ),
                     ),
                     Text(
-                      '${dayNet >= 0 ? '+' : ''}${formatter.format(dayNet)}đ',
+                      '${dayNet >= 0 ? '+' : ''}${CurrencyFormatter.formatSoThoi(dayNet)}đ',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.bold,

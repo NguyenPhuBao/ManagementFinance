@@ -22,7 +22,9 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/notification/notification_deeplink.dart';
+import 'package:flowmoney/core/notification/notification_actions.dart';
 import 'package:flowmoney/core/notification/notification_rules.dart';
+import 'package:flowmoney/core/notification/reminder_scheduler.dart';
 import 'package:flowmoney/features/bill/domain/bill_auto_pay.dart';
 import 'package:flowmoney/features/bill/domain/bill_auto_pay_runner.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
@@ -157,12 +159,12 @@ void main() {
           updatedAt: DateTime(2026, 9, 1),
         );
 
-    Wallet viAm() => Wallet(
-          id: 'vi1',
+    Wallet vi({required String id, required double soDu}) => Wallet(
+          id: id,
           idaccount: 7,
           name: 'Tiền mặt',
           type: 'cash',
-          balance: -50000,
+          balance: soDu,
           currency: 'VND',
           icon: 'wallet',
           colour: '#4CAF50',
@@ -175,7 +177,7 @@ void main() {
           updatedAt: DateTime(2026, 9, 1),
         );
 
-    /// Một đầu vào cố tình dựng đủ rộng để bộ luật sinh ra **cả 13 loại**.
+    /// Một đầu vào cố tình dựng đủ rộng để bộ luật sinh ra **cả 15 loại**.
     List<NotificationCandidate> tatCaUngVien() =>
         buildNotificationCandidates(NotificationRuleInput(
           now: now,
@@ -189,9 +191,17 @@ void main() {
           ],
           goals: [
             mucTieu(id: 'mt-xong', current: 10000000, lapLai: true),
+            // 20% — dưới mốc 25 nên hàng này CHỈ sinh `goalBehind`. Nâng nó
+            // lên cho tiện là mất luôn ca "trễ mà chưa tới mốc nào".
             mucTieu(id: 'mt-tre', current: 2000000),
+            // 50% — hàng duy nhất sinh `goalMilestone`.
+            mucTieu(id: 'mt-moc', current: 5000000),
           ],
-          wallets: [viAm()],
+          wallets: [
+            vi(id: 'vi-am', soDu: -50000),
+            vi(id: 'vi-can', soDu: 1000),
+          ],
+          lowBalanceThreshold: 100000,
           autoDeposits: [
             GoalAutoDepositEvent(
               goalId: 'mt-trich',
@@ -229,14 +239,15 @@ void main() {
             ),
           ],
           syncFailed: true,
+          tuanQuaCoGiaoDich: true,
         ));
 
-    test('đầu vào của phép canh phủ đủ cả 13 loại thông báo', () {
+    test('đầu vào của phép canh phủ đủ cả 16 loại thông báo', () {
       final phu = tatCaUngVien().map((c) => c.kind).toSet();
 
       expect(phu, containsAll(NotificationKind.values),
           reason: 'Phép canh bên dưới chỉ có giá trị khi nó thật sự chạy qua '
-              'mọi loại. Thêm loại thứ 14 mà quên dựng đầu vào cho nó thì '
+              'mọi loại. Thêm loại thứ 17 mà quên dựng đầu vào cho nó thì '
               'chính test này đỏ, chứ không phải im lặng bỏ sót.');
     });
 
@@ -274,6 +285,50 @@ void main() {
 
       expect(khoa.split(':').length, greaterThan(3));
       expect(deeplinkTuDedupeKey(khoa), '/goals/mt-abc');
+    });
+
+    test('lời nhắc ghi chép dẫn thẳng tới trang thêm giao dịch', () {
+      final khoa = ghiChepDedupeKey(DateTime(2026, 9, 15));
+
+      expect(khoa, 'ghiChep:2026-09-15',
+          reason: 'Ngày phải nằm trong khoá và phải đệm 0: đó là thứ làm '
+              'resync luỹ đẳng, và cũng là thứ deeplink cắt bằng chữ.');
+      expect(deeplinkTuDedupeKey(khoa), '/add',
+          reason: 'Đây là loại nhắc DUY NHẤT bảo người dùng đi làm một việc cụ '
+              'thể. Đổ họ về /notifications là bắt tự tìm đường tới chỗ ghi — '
+              'và lời nhắc mất gần hết tác dụng.');
+      expect(thuocThanhTab('/add'), false,
+          reason: '/add nằm NGOÀI StatefulShellRoute nên phải `push`. Nếu ai '
+              'đó kéo nó vào một nhánh tab mà quên cập nhật nhanhThanhTab thì '
+              'chạm vào lời nhắc sẽ làm app chết màn đỏ — bẫy 7.8.');
+    });
+
+    test('nút "Trả ngay" mở ĐÚNG hoá đơn ấy, không phải danh sách', () {
+      final payload = payloadTraNgay('billDue:hd1:2026-09-20:3');
+
+      expect(payload, 'billOpen:hd1');
+      expect(deeplinkTuDedupeKey(payload!), '/bills/hd1',
+          reason: 'Cú CHẠM thường vẫn mở /bills — đó là cột deeplink bộ luật '
+              'đặt và có phép canh cả 15 loại. Nhưng cái NÚT đã biết chính xác '
+              'hoá đơn nào, nên đổ về danh sách là vứt đi thông tin đang cầm.');
+      expect(thuocThanhTab('/bills/hd1'), false,
+          reason: '/bills/<id> nằm ngoài StatefulShellRoute nên phải `push`. '
+              'Kéo nó vào một nhánh tab mà quên cập nhật nhanhThanhTab thì bấm '
+              'nút sẽ làm app chết màn đỏ — bẫy 7.8.');
+    });
+
+    test('billOpen thiếu id rơi về danh sách hoá đơn', () {
+      expect(deeplinkTuDedupeKey('billOpen'), '/bills');
+      expect(deeplinkTuDedupeKey('billOpen:'), '/bills',
+          reason: 'Không bao giờ được dựng "/bills/" — route ấy không khớp gì '
+              'và người dùng rơi vào màn trống.');
+    });
+
+    test('khoá ghi chép của bản app cũ không làm gì hỏng', () {
+      // Lịch đã đặt vẫn nằm trong AlarmManager sau khi nâng cấp app, nên hàm
+      // này phải chịu được cả những khoá nó không còn hiểu.
+      expect(deeplinkTuDedupeKey('ghiChep'), '/add');
+      expect(deeplinkTuDedupeKey('ghiChep:'), '/add');
     });
   });
 }

@@ -71,6 +71,14 @@ class _OsGia implements OsNotifier {
   @override
   Future<Set<int>> pendingIds() async => const {};
 
+  // Hai thành viên của badge — bản giả này không canh badge, xem
+  // badge_updater_test.dart.
+  @override
+  Future<Set<int>> activeIds() async => const {};
+
+  @override
+  Future<void> datBadge(int soLuong) async {}
+
   @override
   Future<void> cancel(int id) async {}
   @override
@@ -279,6 +287,57 @@ void main() {
     });
   });
 
+  group('ngưỡng số dư ví thấp', () {
+    testWidgets('mặc định hiện là TẮT', (tester) async {
+      await moTrang(tester);
+
+      expect(find.text('Cảnh báo số dư thấp'), findsOneWidget);
+      expect(
+        tester
+            .widget<DropdownButton<int>>(
+                find.byKey(NotificationSettingsPage.khoaNguongSoDu))
+            .value,
+        0,
+        reason: 'Mặc định của tuỳ chọn là 0 = tắt. Hiện một số tiền nào đó khi '
+            'người dùng chưa đặt gì là nói dối về trạng thái thật.',
+      );
+    });
+
+    testWidgets('ngưỡng đã lưu được hiện lại', (tester) async {
+      await store.write(
+          accountId, const NotificationPrefs(nguongSoDuThap: 200000));
+
+      await moTrang(tester);
+
+      expect(
+        tester
+            .widget<DropdownButton<int>>(
+                find.byKey(NotificationSettingsPage.khoaNguongSoDu))
+            .value,
+        200000,
+      );
+    });
+
+    testWidgets('đổi ngưỡng thì ghi ngay vào kho', (tester) async {
+      await moTrang(tester);
+
+      // Thẻ này nằm cuối một trang cuộn được, nên ở 800px của môi trường test
+      // nó nằm dưới mép màn hình và `tap` sẽ trượt ra nền.
+      await tester
+          .ensureVisible(find.byKey(NotificationSettingsPage.khoaNguongSoDu));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(NotificationSettingsPage.khoaNguongSoDu));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('100.000 đ').last);
+      await tester.pumpAndSettle();
+
+      expect((await store.read(accountId)).nguongSoDuThap, 100000,
+          reason: 'Ghi ngay chứ không đợi nút Lưu — trang này không có nút nào '
+              'như vậy, đúng khuôn của mọi mục còn lại.');
+    });
+  });
+
   group('xin quyền', () {
     testWidgets('BẬT công tắc tổng thì xin quyền hệ điều hành', (tester) async {
       await store.write(accountId, const NotificationPrefs(osBat: false));
@@ -320,6 +379,68 @@ void main() {
               'dùng: họ tưởng đã bật và sẽ không bao giờ đi tìm lý do vì sao '
               'chẳng nhận được gì.');
       expect((await store.read(accountId)).osBat, isFalse);
+    });
+  });
+
+  group('nhắc ghi chép hằng ngày', () {
+    /// ⚠️ Thẻ này nằm **cuối** trang cuộn. Ở khung test 800×600 nó rơi dưới mép
+    /// màn hình, và `tap()` vào một widget ngoài khung chỉ in một dòng cảnh báo
+    /// rồi đi tiếp — test sẽ đỏ ở phép kiểm phía sau, không ở dòng `tap()`.
+    Future<void> keoToi(WidgetTester tester, Finder f) async {
+      await tester.ensureVisible(f);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('công tắc tắt sẵn', (tester) async {
+      await moTrang(tester);
+
+      final f = find.byKey(NotificationSettingsPage.khoaCongTacGhiChep);
+      await keoToi(tester, f);
+
+      expect(tester.widget<Switch>(f).value, isFalse,
+          reason: 'Bật sẵn là mọi bản đã cài bỗng nhiên nhận một thông báo mỗi '
+              'ngày mà không ai báo trước.');
+    });
+
+    testWidgets('bật công tắc thì ghi ngay, không cần nút Lưu', (tester) async {
+      await moTrang(tester);
+      final f = find.byKey(NotificationSettingsPage.khoaCongTacGhiChep);
+      await keoToi(tester, f);
+
+      await tester.tap(f);
+      await tester.pumpAndSettle();
+
+      expect((await store.read(accountId)).nhacGhiChepBat, isTrue);
+    });
+
+    testWidgets('hàng chọn giờ chỉ hiện khi công tắc BẬT', (tester) async {
+      await moTrang(tester);
+      expect(find.byKey(NotificationSettingsPage.khoaGioGhiChep), findsNothing,
+          reason: 'Mời người dùng chỉnh một thứ không có tác dụng là cách '
+              'nhanh nhất để họ mất tin vào trang cài đặt — cùng lý lẽ đã dùng '
+              'cho hai mốc giờ im lặng.');
+
+      final f = find.byKey(NotificationSettingsPage.khoaCongTacGhiChep);
+      await keoToi(tester, f);
+      await tester.tap(f);
+      await tester.pumpAndSettle();
+
+      expect(
+          find.byKey(NotificationSettingsPage.khoaGioGhiChep), findsOneWidget);
+    });
+
+    testWidgets('giờ hiện đúng mặc định 20:00', (tester) async {
+      await store.write(accountId, const NotificationPrefs(nhacGhiChepBat: true));
+      await moTrang(tester);
+
+      final f = find.byKey(NotificationSettingsPage.khoaGioGhiChep);
+      await keoToi(tester, f);
+
+      expect(find.descendant(of: f, matching: find.text('20:00')),
+          findsOneWidget,
+          reason: 'Giờ RIÊNG, không phải gioNhac (mặc định 08:00). Hiện nhầm '
+              'giờ hoá đơn ở đây là người dùng tưởng đã đặt xong buổi tối '
+              'trong khi lời nhắc nổ lúc sáng sớm.');
     });
   });
 

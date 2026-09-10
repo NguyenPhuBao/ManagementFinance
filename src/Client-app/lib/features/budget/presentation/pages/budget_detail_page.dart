@@ -13,6 +13,7 @@ import '../../../transaction/presentation/bloc/transaction_event.dart';
 import '../../../transaction/presentation/pages/add_transaction_page.dart';
 import '../../../transaction/presentation/widgets/transaction_detail_sheet.dart';
 import '../bloc/budget_detail_cubit.dart';
+import '../../domain/budget_locking.dart';
 import 'budget_detail_view.dart';
 
 /// Trang chi tiết một ngân sách — `/budget/detail/:id`.
@@ -56,7 +57,9 @@ class _BudgetDetailContent extends StatelessWidget {
       builder: (context, state) => switch (state) {
         BudgetDetailLoaded() => BudgetDetailView(
             state: state,
-            onEdit: state.expired
+            // Cùng quy tắc với tab "Đã hết hạn" — và cùng ngoại lệ G15.
+            onEdit: budgetActionsLocked(
+                    expired: state.expired, budget: state.view.budget)
                 ? null
                 : () => context.push('/budget/rules?id=$budgetId'),
             onTapTransaction: (tx) => _showTransaction(context, tx, state.lookup),

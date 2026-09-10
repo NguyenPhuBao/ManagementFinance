@@ -1,3 +1,4 @@
+import '../../domain/wallet_type.dart';
 import 'package:equatable/equatable.dart';
 
 /// Domain entity Wallet — dùng trong toàn bộ business logic.
@@ -11,7 +12,7 @@ class WalletEntity extends Equatable {
   final int idaccount;
   final String name;
   final String
-      type; // 'cash' | 'saving' | 'bank' | 'ewallet' | 'investment' | 'debt'
+      type; // Khoá của `WalletType` — 'cash' | 'bank' | 'saving' | 'banking'
   final double balance;
   final String currency;
   final String icon;
@@ -19,6 +20,13 @@ class WalletEntity extends Equatable {
   final bool isDefault;
   final bool isDeleted;
   final bool includeInTotal;
+
+  /// Trạng thái ví — khoá của `WalletStatus`: 'active' | 'inactive'.
+  ///
+  /// `'inactive'` là ví **đã lưu trữ**: đóng băng, không phải xoá. Đọc trạng
+  /// thái này qua `WalletStatus.laHoatDong` chứ đừng so chuỗi tại chỗ — hàng
+  /// kéo về từ server mang chữ hoa cho tới khi nhánh pull chuẩn hoá.
+  final String status;
   final String syncStatus;
   final DateTime updatedAt;
 
@@ -34,19 +42,13 @@ class WalletEntity extends Equatable {
     this.isDefault = false,
     this.isDeleted = false,
     this.includeInTotal = true,
+    this.status = 'active',
     this.syncStatus = 'pending',
     required this.updatedAt,
   });
 
-  /// Label hiển thị loại ví
-  String get typeLabel => switch (type) {
-        'bank' => 'Ngân hàng',
-        'saving' => 'Tiết kiệm',
-        'ewallet' => 'Ví điện tử',
-        'investment' => 'Đầu tư',
-        'debt' => 'Thẻ tín dụng',
-        _ => 'Tiền mặt',
-      };
+  /// Label hiển thị loại ví. Nhãn nằm ở `WalletType`, đây chỉ là lối tắt.
+  String get typeLabel => WalletType.tuKhoa(type).nhan;
 
   WalletEntity copyWith({
     String? id,
@@ -60,6 +62,7 @@ class WalletEntity extends Equatable {
     bool? isDefault,
     bool? isDeleted,
     bool? includeInTotal,
+    String? status,
     String? syncStatus,
     DateTime? updatedAt,
   }) {
@@ -75,6 +78,7 @@ class WalletEntity extends Equatable {
       isDefault: isDefault ?? this.isDefault,
       isDeleted: isDeleted ?? this.isDeleted,
       includeInTotal: includeInTotal ?? this.includeInTotal,
+      status: status ?? this.status,
       syncStatus: syncStatus ?? this.syncStatus,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -93,6 +97,7 @@ class WalletEntity extends Equatable {
         isDefault,
         isDeleted,
         includeInTotal,
+        status,
         syncStatus,
         updatedAt
       ];

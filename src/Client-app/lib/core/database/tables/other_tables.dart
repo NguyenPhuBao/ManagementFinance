@@ -173,6 +173,29 @@ class Bills extends Table {
   /// lần. Kỳ kế tiếp kế thừa cờ này khi được sinh ra lúc trả kỳ trước.
   BoolColumn get autoPayEnabled => boolean().withDefault(const Constant(false))();
 
+  /// anchorDay: **ngày trong tháng mà người dùng thật sự chọn** khi tạo hoá
+  /// đơn — 1..31 (DB v18, 2026-09-08).
+  ///
+  /// Vì sao cần: chuỗi hoá đơn nối đuôi nhau (ngày bắt đầu kỳ sau = ngày đến
+  /// hạn kỳ trước) nên số ngày gốc **biến mất** sau kỳ thứ hai. Nhìn vào một
+  /// mốc 28/02 đơn độc thì không biết nó từ 31/01 kẹp xuống hay do người dùng
+  /// tự chọn — hai ý định khác hẳn nhau, và bản trước phải **đoán** bằng "quy
+  /// tắc ngày cuối tháng". Cú đoán ấy sai với người đăng ký lần đầu vào 28/02:
+  /// họ muốn ngày 28 hàng tháng và nhận về 31/03. Người dùng báo 2026-09-08.
+  ///
+  /// Lưu ngày gốc là thay một phép đoán bằng một sự kiện. Xem
+  /// `core/bill/bill_recurrence.dart`.
+  ///
+  /// ⚠️ **Cột CỤC BỘ — không nằm trong hợp đồng đồng bộ**, cùng khuôn với
+  /// `autoPayEnabled` và `generatedFromBillId`. Hàng kéo từ server luôn để
+  /// trống, và khi trống thì `nextBillDueDate` neo vào ngày của chính mốc hiện
+  /// tại — tức chuỗi tạo trên máy khác vẫn có thể tụt dần. Tài liệu xin cột
+  /// phía backend: `docs/superpowers/backend/CAN-LAM/BILL_ANCHOR_DAY.md`.
+  ///
+  /// NULL với mọi hoá đơn tạo trước v18; migration suy nó từ ngày đến hạn đang
+  /// lưu để **không đổi hạn** của hoá đơn cũ.
+  IntColumn get anchorDay => integer().nullable()();
+
   // ── Soft delete (DB v2) ───────────────────────────────────────────────────
   /// deletedAt: NULL = đang dùng, có giá trị = đã xóa mềm
   DateTimeColumn get deletedAt => dateTime().nullable()();
@@ -215,26 +238,40 @@ class Goals extends Table {
   /// cycleTakeMoney: chu kỳ trích tiền — 'Day'|'Week'|'Month'|'Quarter'|'Year'
   TextColumn get cycleTakeMoney => text().nullable()();
 
-  /// timeCycleTakeMoney: thời điểm cụ thể trích tiền trong chu kỳ
+  /// timeCycleTakeMoney: thời điểm cụ thể trích tiền trong chu kỳ — **mốc neo**
+  /// quyết định *nhịp* ("ngày 15 hàng tháng lúc 08:00").
   ///
-  /// ⚠️ Cột này đồng bộ hai chiều nhưng **client chưa bao giờ ghi**. Bộ trích
-  /// tự động cố ý KHÔNG dùng nó làm mốc chạy: nó là cột dùng chung với
-  /// backend/Admin-web, và đổi ý nghĩa một cột dùng chung mà phía kia chưa
-  /// đồng ý là cách hỏng im lặng nhất. Mốc chạy nằm ở [autoDepositLastRun].
+  /// ⚠️ Đừng lẫn với mốc **chạy**: cột này nói kỳ rơi vào lúc nào, còn
+  /// [autoDepositLastRun] nói đã trích tới đâu. Bộ trích cần **cả hai** — chỉ
+  /// có nhịp thì chọn "ngày 1" vào ngày 15 sẽ trích bù cho mùng 1 vừa trôi qua;
+  /// chỉ có mốc chạy thì lựa chọn của người dùng không có tác dụng nào, im
+  /// lặng. Xem `cacKyDenHan`.
+  ///
+  /// Từ 2026-09-08 nó cũng là **mốc gốc** để tính kỳ thứ n (`mocThuN`), thay
+  /// cho việc cộng dồn từ kỳ trước vốn làm nhịp "ngày 31" tụt xuống 28 vĩnh
+  /// viễn sau tháng Hai.
+  ///
+  /// (Chú thích cũ ở đây ghi *"client chưa bao giờ ghi"* — **sai từ lâu**:
+  /// `GoalRepositoryImpl` ghi nó ở cả đường tạo lẫn đường sửa khi bật trích tự
+  /// động.)
   DateTimeColumn get timeCycleTakeMoney => dateTime().nullable()();
 
   // ── Trích tiền tự động (DB v15) ───────────────────────────────────────────
   //
-  // ⚠️ BA CỘT DƯỚI ĐÂY LÀ **CỤC BỘ**, cố ý không nằm trong hợp đồng đồng bộ.
-  // Bảng `goal` phía backend không có chúng, và thêm trường vào payload đẩy đòi
-  // backend sửa trước (quy tắc 4 trong `CLAUDE.md`).
-  // `sync_payload_contract_test.dart` khoá đúng bộ khoá của payload mục tiêu
-  // nên nó bắt được ngay nếu một trong ba cột này lọt vào.
+  // ✅ Ba cột dưới đây ĐÃ ĐỒNG BỘ từ 2026-09-07, khi backend thêm
+  // `auto_deposit_amount` / `auto_deposit_wallet_id` / `auto_deposit_last_run`
+  // vào bảng `goal`. Trước đó chúng là cục bộ và G21 ghi lại hệ quả: bật trích
+  // ở máy này thì máy kia không trích gì cả.
   //
-  // Hệ quả phải chấp nhận: cấu hình trích tự động **không theo người dùng sang
-  // máy khác**. Chu kỳ (`cycleTakeMoney`) thì có — nó vốn đã đồng bộ — nên trên
-  // máy mới mục tiêu vẫn hiện đúng nhịp kế hoạch, chỉ là không tự trích. Thà
-  // vậy còn hơn hai máy cùng trích một kỳ.
+  // ⚠️ **Ba cột phải đi cùng nhau trong payload.** `autoDepositLastRun` là cột
+  // chặn trích hai lần; đẩy hai cột đầu mà bỏ nó thì mỗi máy giữ một mốc riêng
+  // và **cả hai cùng chuyển tiền** khi tới kỳ — hỏng nặng hơn hẳn hiện trạng
+  // cũ. `sync_payload_contract_test.dart` khoá đúng bộ khoá của payload mục
+  // tiêu nên nó bắt được ngay nếu một cột rơi ra.
+  //
+  // Khe hở còn lại, chấp nhận được: hai máy cùng mở, cùng tới kỳ, cùng chưa kịp
+  // kéo `last_run` của nhau thì vẫn trích hai lần. Vá triệt để cần một khoá
+  // phía máy chủ trên `(Idgoal, kỳ trích)`.
 
   /// autoDepositAmount: số tiền trích mỗi kỳ. NULL = không bật trích tự động.
   RealColumn get autoDepositAmount => real().nullable()();
@@ -253,6 +290,29 @@ class Goals extends Table {
   /// tiêu làm mốc thay thế là bật công tắc hôm nay rồi bị trích ngược lại sáu
   /// kỳ cùng một lúc.
   DateTimeColumn get autoDepositLastRun => dateTime().nullable()();
+
+  // ── Thứ tự ưu tiên (DB v19) ───────────────────────────────────────────────
+
+  /// priority: thứ tự ưu tiên do người dùng **kéo thả**. NULL = chưa sắp.
+  ///
+  /// Số **nhỏ hơn đứng trước**, các giá trị cách nhau **100** (100, 200, 300…).
+  /// Quy ước ấy không đặt ra ở đây — nó chốt từ 2026-09-05 ở
+  /// `docs/superpowers/backend/DA-XONG/2026-09-05-backend-goal-priority.md`
+  /// mục 4, và cột `Priority Int?` phía backend có từ 2026-09-07.
+  ///
+  /// **Vì sao thưa chứ không phải 1, 2, 3:** chèn một mục tiêu vào giữa mà
+  /// đánh số liên tục thì phải ghi lại cả danh sách, tức một thao tác kéo thả
+  /// sinh ra *n* bản ghi `pending` cùng lúc. Với khe 100, chèn giữa hai hàng
+  /// chỉ ghi **một** hàng. Xem `goal_priority.dart`.
+  ///
+  /// ⚠️ **Không đặt UNIQUE lên cột này.** Trùng số là va chạm vô hại — thứ tự
+  /// rơi về `targetDate`, cùng quy tắc phụ mà `chiaMucTieu` đang dùng. Một
+  /// ràng buộc duy nhất ở đây biến va chạm ấy thành một bản ghi kẹt vĩnh viễn
+  /// trong hàng đợi đẩy.
+  ///
+  /// ⚠️ **NULL xếp CUỐI**, không phải đầu: mục tiêu chưa từng được sắp không
+  /// có lý do nhảy lên trên những cái người dùng đã cố ý xếp.
+  IntColumn get priority => integer().nullable()();
 
   /// recurrence: tự động lặp lại mục tiêu sau khi hoàn thành
   BoolColumn get recurrence => boolean().withDefault(const Constant(false))();

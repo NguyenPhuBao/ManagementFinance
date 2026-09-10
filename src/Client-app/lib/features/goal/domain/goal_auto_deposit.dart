@@ -38,6 +38,32 @@ DateTime mocKeTiep(DateTime moc, String? chuKy) {
   }
 }
 
+/// Mốc của kỳ thứ [n] tính từ **mốc gốc** [goc] — `n = 0` trả về chính [goc].
+///
+/// Khác [mocKeTiep] ở chỗ nó **không cộng dồn**. Bước từng kỳ một thì một mốc
+/// rơi vào ngày 31 bị kẹp về 28/02 rồi bước tiếp *từ 28*, nên nhịp tụt xuống 28
+/// vĩnh viễn và không có gì báo. Neo vào gốc thì ngày 31 quay lại được ngay ở
+/// tháng đủ dài kế tiếp.
+///
+/// Đây đúng khuôn `advancePeriodFrom(anchor, steps)` bên ngân sách và
+/// `anchorDay` bên hoá đơn (sửa 2026-09-08), nên ba vùng ngày tháng của app nói
+/// cùng một thứ tiếng.
+DateTime mocThuN(DateTime goc, String? chuKy, int n) {
+  switch (chuKy) {
+    case 'Day':
+      return goc.add(Duration(days: n));
+    case 'Week':
+      return goc.add(Duration(days: 7 * n));
+    case 'Quarter':
+      return _congThang(goc, 3 * n);
+    case 'Year':
+      return _congThang(goc, 12 * n);
+    case 'Month':
+    default:
+      return _congThang(goc, n);
+  }
+}
+
 DateTime _congThang(DateTime moc, int soThang) {
   final tongThang = moc.month - 1 + soThang;
   final nam = moc.year + tongThang ~/ 12;
@@ -76,10 +102,10 @@ const int _tranDoMoc = 1000;
 /// cho ngày 1 vừa trôi qua — quãng thời gian người dùng chưa hề đồng ý. Chỉ có
 /// sàn thì lựa chọn của họ không có tác dụng nào, im lặng.
 ///
-/// ⚠️ Nhịp bước **từng kỳ một** từ mốc neo, nên một mốc rơi vào ngày 31 sẽ bị
-/// kẹp về 28/02 rồi bước tiếp **từ đó** — tức nhịp trôi dần chứ không quay lại
-/// ngày 31. Đây là hệ quả có chủ ý của việc dùng chung `mocKeTiep` với phần dự
-/// báo; ghi ra đây để không ai phát hiện nó bằng bất ngờ.
+/// Mọi mốc tính từ **mốc gốc** qua [mocThuN], không cộng dồn từ kỳ trước. Bản
+/// trước bước từng kỳ một, nên một mốc rơi vào ngày 31 bị kẹp về 28/02 rồi bước
+/// tiếp *từ 28* — nhịp tụt xuống 28 vĩnh viễn, hoàn toàn im lặng. Sửa
+/// 2026-09-08, cùng đợt với `anchorDay` bên hoá đơn.
 ///
 /// [toiDa] là **trần số kỳ mỗi lượt chạy**. Máy để lâu không mở với chu kỳ ngày
 /// là hàng nghìn kỳ; trích hết trong một lượt sẽ rút cạn ví nguồn ngay khi
@@ -94,8 +120,11 @@ List<DateTime> cacKyDenHan({
 }) {
   if (lanChayGanNhat == null) return const [];
 
-  // Không có mốc neo thì nhịp bám vào chính mốc chạy, y như bản trước.
-  var moc = mocNeo ?? mocKeTiep(lanChayGanNhat, chuKy);
+  // Mọi mốc tính từ GỐC, không cộng dồn — xem [mocThuN]. Không có mốc neo thì
+  // nhịp bám vào chính mốc chạy, y như bản trước.
+  final goc = mocNeo ?? lanChayGanNhat;
+  var n = mocNeo == null ? 1 : 0;
+  var moc = mocThuN(goc, chuKy, n);
 
   // Dò tới kỳ đầu tiên nằm SAU sàn. Mốc neo có thể ở trước sàn (chọn "ngày 1"
   // trong khi hôm nay là ngày 5) hoặc sau sàn (chọn "ngày 15") — cả hai đều
@@ -103,7 +132,7 @@ List<DateTime> cacKyDenHan({
   var soVong = 0;
   while (!moc.isAfter(lanChayGanNhat)) {
     if (++soVong > _tranDoMoc) return const [];
-    moc = mocKeTiep(moc, chuKy);
+    moc = mocThuN(goc, chuKy, ++n);
   }
 
   final ra = <DateTime>[];
@@ -112,7 +141,7 @@ List<DateTime> cacKyDenHan({
   // thích được.
   while (!moc.isAfter(now) && ra.length < toiDa) {
     ra.add(moc);
-    moc = mocKeTiep(moc, chuKy);
+    moc = mocThuN(goc, chuKy, ++n);
   }
 
   return ra;
@@ -139,13 +168,18 @@ DateTime? kyKeTiep({
 }) {
   if (lanChayGanNhat == null) return null;
 
-  var moc = mocNeo ?? mocKeTiep(lanChayGanNhat, chuKy);
+  // Cùng phép dựng mốc với `cacKyDenHan` — neo vào gốc, không cộng dồn. Hai
+  // bên trôi khác nhau là điện thoại nhắc một ngày còn tiền bị trừ vào ngày
+  // khác.
+  final goc = mocNeo ?? lanChayGanNhat;
+  var n = mocNeo == null ? 1 : 0;
+  var moc = mocThuN(goc, chuKy, n);
   final sau = lanChayGanNhat.isAfter(now) ? lanChayGanNhat : now;
 
   var soVong = 0;
   while (!moc.isAfter(sau)) {
     if (++soVong > _tranDoMoc) return null;
-    moc = mocKeTiep(moc, chuKy);
+    moc = mocThuN(goc, chuKy, ++n);
   }
   return moc;
 }
