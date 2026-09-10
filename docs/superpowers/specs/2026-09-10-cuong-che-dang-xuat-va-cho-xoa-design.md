@@ -12,7 +12,7 @@
 
 ## 1. Vì sao làm — một lỗi đang chạy, không chỉ tính năng còn thiếu
 
-### 1.1. Client đang hứa một điều backend không làm
+### 1.1. Client đang hứa một điều backend không làm — G33
 
 Có **hai** đặc tả nói ngược nhau về giai đoạn chờ xoá:
 

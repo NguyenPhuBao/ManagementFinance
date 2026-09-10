@@ -1,4 +1,4 @@
-# CSDL dev chưa áp các tệp `database/7`–`11`, trong khi mã backend đã phụ thuộc vào chúng
+# CSDL dev chưa áp các tệp `database/7`–`11`, trong khi mã backend đã phụ thuộc vào chúng — ✅ đã áp 2026-09-10, còn mục 4.2 và 4.3
 
 **Ngày:** 2026-09-10 · **Xin từ:** client (`src/Client-app`) · **Cỡ việc:** áp năm
 tệp SQL **đã có sẵn** theo đúng thứ tự rồi `prisma generate`, cộng một chỗ sửa nhỏ

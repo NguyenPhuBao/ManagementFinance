@@ -157,6 +157,9 @@ cả đợt migration). Phần còn lại, xếp theo mức thiệt hại:
    nới đúng cột ấy. Việc còn lại chỉ là **áp tệp 7**, nên mục này **không đếm
    riêng nữa** — nó nằm trong mục 11.
 
+   ✅ **Tối 2026-09-10:** tệp 7 đã áp lên CSDL dev — cột nay `varchar(20)`. Client
+   mở lại ba chỗ khi người dùng hỏi (G28).
+
 10. **Thu hẹp bộ lọc ghi chú của `/sync/push`**
     ([SYNC_NOTE_FILTER_REWRITE.md](./SYNC_NOTE_FILTER_REWRITE.md), thêm
     2026-09-10) — sửa hai biểu thức chính quy trong `utils/content-filter.util.js`,

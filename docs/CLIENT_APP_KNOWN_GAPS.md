@@ -38,6 +38,7 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > | **G30** | ⏸️ **Chặn tạm, chờ backend bỏ index** — server có `uq_wallet_saving_active` (một ví Tiết kiệm mỗi tài khoản), luật chỉ tồn tại ở SQL; client khoá ô "Tiết kiệm" và chốt ở datasource từ 2026-09-10 cho tới khi backend `DROP INDEX`. Chốt **trùng tên ví** cùng ngày thì vĩnh viễn |
 > | **G31** | ⛔ **Chặn ở backend** — tên mục tiêu hoặc hoá đơn dài hơn 100 ký tự, tên danh mục dài hơn 200, vỡ `P2000` trên server và rơi xuống `DB_ERROR`, nên bản ghi bị **gửi lại mãi**. ✅ Bảy ô tên của client giới hạn theo code point từ 2026-09-10; còn mở vì bản client cũ, Admin-web và mọi nguồn ghi khác vẫn chờ backend ánh xạ lỗi |
 > | **G32** | ⛔ **Chặn ở backend** — `Number(null)` ở `mapEntityFields('goal')` ghi mục tiêu **chưa sắp** thành `Priority = 0`, nên sau một vòng đồng bộ nó nhảy lên **đầu** danh sách; tái hiện đầu-cuối trên máy ảo (2026-09-10). ✅ Client đọc `<= 0` là chưa sắp từ cùng ngày; còn mở vì giá trị sai vẫn nằm trên server và bản client cũ vẫn thấy lỗi |
+> | **G33** | 🔴 **Lỗi đang chạy, client sửa được** — trang Xoá tài khoản hứa *"đăng nhập lại trong 30 ngày là tự khôi phục"*, nhưng backend không làm vậy (`pendingDeleteCancelled` luôn `false`), nên người tin lời hứa **mất tài khoản sau 30 ngày** mà không được báo (2026-09-10). Cách sửa đã chốt, nằm trong spec cưỡng chế đăng xuất — **chờ duyệt** |
 >
 > **G20 đã đóng ngày 2026-09-05** — `depositToGoal` nhận `occurredAt` chặn hai
 > đầu; đã kiểm cả bằng test lẫn trên máy ảo Android.
@@ -934,6 +935,39 @@ kiểm.
 
 ---
 
+### G33 — Trang Xoá tài khoản hứa "đăng nhập lại là tự khôi phục", backend không làm vậy · 🔴 LỖI ĐANG CHẠY, CLIENT SỬA ĐƯỢC (2026-09-10)
+
+Có **hai** đặc tả nói ngược nhau về giai đoạn chờ xoá. Bản 2026-08-17
+(`docs/superpowers/auth/2026-08-17-auth-account-design.md`, thư mục gitignore)
+cho đăng nhập lại trong 30 ngày là **tự khôi phục**; bản
+`docs/progress/Client-app.md` mục 12 cho người dùng **dùng tiếp** trong 30 ngày và
+huỷ bằng một nút. Backend chạy theo **bản mục 12**: `auth.service.js:309` khai
+`pendingDeleteCancelled = false` và không chỗ nào gán lại, còn nhánh
+`PendingDelete` của `login` chỉ ghi log rồi cấp token. Client vẫn chạy theo bản cũ:
+
+- `delete_account_page.dart` gửi yêu cầu xong thì đăng xuất, và nói *"hãy đăng
+  nhập lại trong vòng 30 ngày — hệ thống sẽ tự động khôi phục tài khoản cho
+  bạn"*;
+- `login_page.dart` chờ cờ `pendingDeleteCancelled` để hiện "Tài khoản đã được
+  khôi phục" — cờ ấy không bao giờ bật.
+
+**Hệ quả:** người dùng tin lời hứa, đăng nhập lại, thấy app chạy bình thường.
+Tài khoản vẫn `PendingDelete`, và hết 30 ngày thì bộ đếm ngược của backend ẩn
+danh hoá dữ liệu rồi xoá mềm tài khoản. Không một chữ nào báo trước.
+
+**Vì sao chưa sửa:** phát hiện ngày 2026-09-10 trong lúc thiết kế hạng mục cưỡng
+chế đăng xuất. Cách sửa — dùng tiếp 30 ngày, thẻ nhắc đóng được trên Trang chủ,
+nút huỷ ở Cài đặt, trang Xoá tài khoản thôi đăng xuất và thôi hứa — đã chốt với
+người dùng, nằm ở mục 4–5 của
+`docs/superpowers/specs/2026-09-10-cuong-che-dang-xuat-va-cho-xoa-design.md`,
+**đang chờ duyệt**. Trước tối 2026-09-10 đường này còn không chạy nổi trên CSDL dev
+(thiếu cột `Countdown`); nay `database/9` đã áp nên lỗi **xảy ra được thật**.
+
+**Bán kính:** chỉ người đã gửi yêu cầu xoá. CSDL dev hiện không có tài khoản
+`PendingDelete` nào (đo tối 2026-09-10).
+
+---
+
 ## 2. Vấn đề đã biết nhưng thuộc về Backend
 
 Tám gạch đầu dòng đầu tiên dưới đây là **ảnh chụp cũ**: bảy tệp nay nằm ở
@@ -950,7 +984,7 @@ Tám gạch đầu dòng đầu tiên dưới đây là **ảnh chụp cũ**: b�
 - **`CATEGORY_NAME_UNIQUENESS.md`** — hai unique index của `category` đang khác quy tắc nghiệp vụ theo cả hai chiều; client đã thi hành đúng quy tắc, CSDL thì chưa.
 - **`CATEGORY_STABLE_IDS.md`** — ID danh mục mặc định sinh ngẫu nhiên mỗi lần seed, nên tên bị dùng làm khoá nối giữa hai phía; đây là nguyên nhân gốc của các lỗi 11.3–11.6.
 - **`2026-09-04-backend-idempotent-delete.md`** — ba lỗ hổng của `/sync/push`: xoá một bản ghi không tồn tại bị trả về là lỗi (làm client đẩy lại vĩnh viễn); `message` là nguyên văn stack trace Prisma kèm đường dẫn máy chủ; và `budget.time_recurrence = null` bị ép về `'Month'`, **chặn hẳn** lựa chọn ngân sách "Ngày cụ thể".
-- **`CAN-LAM/AUTH_401_BODY_CODE.md`** (2026-09-10) — body 401 cho tài khoản bị khoá hoặc xoá không mang `code` / `reason_inactive`, vì tham số thứ ba của `ResponseHandler.unauthorized` rơi mất; client chưa phân biệt được *bị khoá* với *hết phiên*. Không mở G: tính năng cưỡng chế đăng xuất phía client **chưa làm**, nên chưa có gì hỏng — nhưng nhánh HTTP của nó chờ tài liệu này.
+- **`CAN-LAM/AUTH_401_BODY_CODE.md`** (2026-09-10) — body 401 cho tài khoản bị khoá hoặc xoá không mang `code` / `reason_inactive`, vì tham số thứ ba của `ResponseHandler.unauthorized` rơi mất; client chưa phân biệt được *bị khoá* với *hết phiên*. Không mở G riêng cho tài liệu này: cưỡng chế đăng xuất phía client **chưa làm** nên nhánh HTTP chưa có gì để hỏng. ⚠️ Nhưng cùng vùng ấy **có** một lỗi đang chạy, không do backend — **G33**.
 - **`CAN-LAM/RULE_PROJECT_DOC_DRIFT.md`** (2026-09-10) — 31 chỗ `docs/Rule_Project/` và `docs/progress/Backend.md` nói ngược mã và CSDL. Không mở G: không mã client nào hỏng vì nó, nhưng đó là những tài liệu người mới đọc **trước** mã.
 - G31 và G32 ở trên có tài liệu xin riêng: `CAN-LAM/SYNC_PUSH_ERROR_MAPPING.md` và `CAN-LAM/GOAL_PRIORITY_NULL_TO_ZERO.md`.
 
