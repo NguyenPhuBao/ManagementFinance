@@ -235,7 +235,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     final accountId = currentAccountIdOrNull(context);
     final wallets = accountId == null
         ? <Wallet>[]
-        : await sl<AppDatabase>().walletDao.getAll(accountId);
+        : await sl<AppDatabase>().walletDao.getActive(accountId);
     if (!mounted) return;
 
     final messenger = ScaffoldMessenger.of(context);
@@ -336,7 +336,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     final accountId = currentAccountIdOrNull(context);
     final wallets = accountId == null
         ? <Wallet>[]
-        : await db.walletDao.getAll(accountId);
+        : await db.walletDao.getActive(accountId);
     if (!mounted) return;
 
     final messenger = ScaffoldMessenger.of(context);
@@ -546,7 +546,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     final accountId = currentAccountIdOrNull(context);
     final wallets = accountId == null
         ? <Wallet>[]
-        : await db.walletDao.getAll(accountId);
+        : await db.walletDao.getActive(accountId);
 
     if (!mounted) return;
     if (accountId == null || wallets.isEmpty) {

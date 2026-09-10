@@ -19,7 +19,7 @@ Future<void> moBangThanhToanHoaDon(BuildContext context, Bill bill) async {
   // `getAllNonDeleted()` — bày ra ví của tài khoản khác trên cùng máy.
   final accountId = currentAccountIdOrNull(context);
   final wallets =
-      accountId == null ? <Wallet>[] : await db.walletDao.getAll(accountId);
+      accountId == null ? <Wallet>[] : await db.walletDao.getActive(accountId);
   // Tên danh mục cho khối thông tin trên bảng; không có/đã xoá thì bỏ trống.
   final danhMuc = bill.categoryId == null
       ? null

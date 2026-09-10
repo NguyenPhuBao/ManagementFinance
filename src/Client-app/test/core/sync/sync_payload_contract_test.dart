@@ -242,10 +242,42 @@ void main() {
           'id', 'name', 'type', 'balance', 'currency', 'icon',
           'color', // normalizer đổi colour → color
           'is_default', 'is_deleted', 'include_in_total',
+          'status', // lưu trữ ví — chk_wallet_status nhận Active|Inactive
           'update_at', // normalizer đổi updated_at → update_at
           'idaccount',
         },
       );
+    });
+
+    test('ví lưu trữ đẩy lên đúng chữ mà chk_wallet_status cho phép', () async {
+      // Ví thứ hai, cố ý mang trạng thái lưu trữ: ví trong `setUp` đang hoạt
+      // động, nên nếu chỉ có nó thì một bản gửi thẳng khoá cục bộ ('active')
+      // vẫn trượt qua — hai chuỗi chỉ khác nhau ở chữ hoa đầu.
+      const viLuuTru = '22222222-2222-4222-8222-222222222222';
+      await db.walletDao.insert(WalletsCompanion(
+        id: const Value(viLuuTru),
+        idaccount: const Value(accountId),
+        name: const Value('Ví thẻ cũ'),
+        type: const Value('bank'),
+        balance: const Value(0),
+        status: const Value('inactive'),
+        syncStatus: const Value('pending'),
+        updatedAt: Value(DateTime.now()),
+      ));
+      await runSync();
+
+      final payloads = client.adapter.pushed
+          .where((op) => op['entity'] == 'wallet')
+          .map((op) => op['payload'] as Map<String, dynamic>)
+          .toList();
+      final p = payloads.firstWhere((p) => p['id'] == viLuuTru);
+
+      expect(p['status'], 'Inactive',
+          reason: 'chk_wallet_status chỉ nhận Active|Inactive. Gửi khoá cục bộ '
+              "'inactive' là vỡ CHECK, và bản ghi kẹt hàng đợi đẩy vĩnh viễn — "
+              'im lặng, đúng như ewallet/debt của loại ví trước đây.');
+      expect(payloads.firstWhere((p) => p['id'] == walletId)['status'], 'Active',
+          reason: 'Ví đang hoạt động cũng phải đi qua đúng phép ánh xạ ấy.');
     });
 
     test('category — phải có isGroup/parentId để backend dựng lại cây nhóm', () {
@@ -499,6 +531,7 @@ void main() {
             'balance': 5000,
             'color': '#123456',
             'include_in_total': false,
+            'status': 'Inactive',
             'update_at': '2026-09-01T10:00:00.000Z',
           },
         ],
@@ -563,6 +596,12 @@ void main() {
           reason: 'Nửa còn lại của cờ này: nó NẰM trong payload đẩy lên nhưng '
               'nhánh kéo về không đọc, nên máy thứ hai KHÔNG BAO GIỜ biết '
               'ví nào bị loại khỏi tổng tài sản. Hỏng im lặng, quy tắc 4.');
+      expect(wallet?.status, 'inactive',
+          reason: 'Backend gửi chữ HOA (chk_wallet_status nhận '
+              'Active|Inactive) còn SQLite lưu chữ thường. Không chuẩn '
+              "hoá ở nhánh kéo về thì mọi phép so `status == 'inactive'` "
+              'trong app trượt hết — im lặng, và ví lưu trữ hiện lại ở '
+              'mọi bộ chọn trên máy thứ hai.');
 
       final category = await db.categoryDao.getById(categoryId);
       expect(category?.name, 'Ăn uống', reason: 'backend dùng "name_category"');
@@ -650,6 +689,43 @@ void main() {
           reason: 'Server im lặng về idgoal nghĩa là CHUA BIET, không phải '
               'HAY XOA. Ghi đè null vào đây là mất liên kết mà không có lỗi '
               'nào báo ra.');
+    });
+    test('hàng server KHÔNG có status thì trạng thái lưu trữ phải còn nguyên',
+        () async {
+      // Trạng thái THẬT của mọi hàng ví đã nằm sẵn trên server: chúng được đẩy
+      // lên từ trước khi client biết gửi trường này, nên `Status` của chúng là
+      // giá trị mặc định chứ không phải ý định của người dùng. Đọc thẳng
+      // `w['status']` là ví vừa lưu trữ ở máy này lặng lẽ sống lại ở đúng chu
+      // kỳ đồng bộ tiếp theo.
+      await db.walletDao.insert(WalletsCompanion(
+        id: const Value(walletId),
+        idaccount: const Value(accountId),
+        name: const Value('Ví thẻ cũ'),
+        type: const Value('bank'),
+        balance: const Value(1000),
+        status: const Value('inactive'),
+        syncStatus: const Value('synced'),
+        updatedAt: Value(DateTime(2026, 9, 1)),
+      ));
+
+      client.adapter.pullData = {
+        'wallets': [
+          {
+            'idwallet': walletId,
+            'idaccount': accountId,
+            'name': 'Ví thẻ cũ',
+            'balance': 1000,
+            // KHÔNG có khoá 'status' — đúng như hàng cũ trên server.
+            'update_at': '2026-09-02T10:00:00.000Z',
+          },
+        ],
+      };
+
+      await runSync();
+
+      expect((await db.walletDao.getById(walletId))?.status, 'inactive',
+          reason: 'Server im lặng về cột này nghĩa là CHƯA BIẾT, không phải '
+              'HÃY KÍCH HOẠT LẠI. Cùng bài học với include_in_total và idgoal.');
     });
     test('hàng server KHÔNG có include_in_total thì cờ cục bộ phải còn nguyên',
         () async {

@@ -180,7 +180,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     final userIdAccount = int.tryParse(user?.id ?? '') ?? widget.idaccount;
 
     final db = sl<AppDatabase>();
-    final list = await db.walletDao.getAll(userIdAccount);
+    final list = await db.walletDao.getActive(userIdAccount);
 
     if (mounted) {
       setState(() {

@@ -19,6 +19,7 @@ import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../transaction/data/models/transaction_entity.dart';
 import '../../../transaction/domain/transaction_lookup.dart';
 import '../../../transaction/presentation/widgets/transaction_row_content.dart';
+import '../../../wallet/domain/vi_tinh_vao_tong.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -79,7 +80,16 @@ class HomePage extends StatelessWidget {
                     stream: walletStream,
                     builder: (context, snapshot) {
                       final wallets = snapshot.data ?? [];
-                      final totalBalance = wallets.fold<double>(0.0, (sum, w) => sum + w.balance);
+                      // Phép lọc nằm ở `viTinhVaoTong`, định nghĩa DUY NHẤT của
+                      // "ví nào được cộng vào tổng tài sản". Bản trước ở đây là
+                      // `fold` trần trên mọi ví: nó cộng cả ví người dùng đã cố ý
+                      // tắt "Tính vào tổng tài sản", nên con số trang chủ lệch
+                      // với chính con số trên màn Quản lý ví — im lặng, không màn
+                      // nào nói ra. Cùng loại lỗi đã đóng ở `6fd2ce9`.
+                      final totalBalance = wallets
+                          .where((w) => viTinhVaoTong(
+                              includeInTotal: w.includeInTotal, status: w.status))
+                          .fold<double>(0.0, (sum, w) => sum + w.balance);
                       if (snapshot.hasData) {
                         debugPrint('📊 [SQLite DB Log] Wallets count: ${wallets.length} | Total balance: ${CurrencyFormatter.formatSoThoi(totalBalance)}đ');
                         for (final w in wallets) {

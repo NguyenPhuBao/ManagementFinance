@@ -260,6 +260,21 @@ void main() {
       expect(await db.transactionDao.getAll(1), isEmpty);
     });
 
+    test('ví nguồn ĐÃ LƯU TRỮ thì dừng, không rút tiền', () async {
+      await themMucTieu();
+      await db.walletDao.setStatus('w_nguon', luuTru: true);
+
+      final events = await runner.chay(1, now: DateTime(2025, 10, 6));
+
+      expect(events.single.loai, LoaiTrich.khongChayDuoc,
+          reason: 'Lưu trữ ví là ĐÓNG BĂNG nó. Rút tiền im lặng khỏi một ví mà '
+              'người dùng đã cất đi là đúng cách hỏng tệ nhất ở đây: họ không '
+              'nhìn ví ấy nữa nên sẽ không thấy gì cả.');
+      expect(await db.transactionDao.getAll(1), isEmpty);
+      expect((await db.walletDao.getById('w_nguon'))!.balance, 5000000.0);
+      expect((await db.goalDao.getAll(1)).single.currentAmount, 0);
+    });
+
     test('ví nguồn trùng ví tích luỹ thì báo, không chuyển tiền', () async {
       await themMucTieu(viNguon: 'w_nhan');
 

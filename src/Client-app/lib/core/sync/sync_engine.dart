@@ -7,6 +7,7 @@ import 'package:drift/drift.dart';
 import '../api/dio_client.dart';
 import '../bill/bill_recurrence.dart';
 import '../database/app_database.dart';
+import '../../features/wallet/domain/wallet_status.dart';
 import 'backend_bool.dart';
 import 'sync_models.dart';
 import 'category_icon_registry.dart';
@@ -486,6 +487,18 @@ class SyncEngine {
                 // tiên gặp một payload thiếu khoá — cùng bài học với `idgoal`.
                 includeInTotal: w['include_in_total'] != null
                     ? Value(doiSangBool(w['include_in_total']))
+                    : const Value.absent(),
+                // Cùng lý do, và cùng bài học: mọi hàng ví đã nằm sẵn trên
+                // server đều mang `Status` mặc định chứ không phải ý định
+                // của người dùng, vì chúng được đẩy lên từ trước khi client
+                // biết gửi trường này. Đọc thẳng là ví vừa lưu trữ ở máy
+                // này lặng lẽ sống lại ở chu kỳ đồng bộ tiếp theo.
+                //
+                // Backend gửi chữ HOA (`chk_wallet_status` nhận
+                // Active|Inactive) còn SQLite lưu chữ thường, nên phải đi
+                // qua `WalletStatus` chứ không chép nguyên chuỗi.
+                status: w['status'] != null
+                    ? Value(WalletStatus.tuKhoa(w['status'].toString()).khoa)
                     : const Value.absent(),
                 isDeleted: Value(w['delete_at'] != null),
                 deletedAt: Value(_deletedAtFrom(w['delete_at'])),
@@ -1037,6 +1050,7 @@ class SyncEngine {
           'is_default': w.isDefault,
           'is_deleted': w.isDeleted,
           'include_in_total': w.includeInTotal,
+          'status': w.status,
           'updated_at': w.updatedAt.toUtc().toIso8601String(),
           'idaccount': w.idaccount > 0 ? w.idaccount : idaccount,
         },

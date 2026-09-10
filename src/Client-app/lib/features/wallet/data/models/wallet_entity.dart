@@ -20,6 +20,13 @@ class WalletEntity extends Equatable {
   final bool isDefault;
   final bool isDeleted;
   final bool includeInTotal;
+
+  /// Trạng thái ví — khoá của `WalletStatus`: 'active' | 'inactive'.
+  ///
+  /// `'inactive'` là ví **đã lưu trữ**: đóng băng, không phải xoá. Đọc trạng
+  /// thái này qua `WalletStatus.laHoatDong` chứ đừng so chuỗi tại chỗ — hàng
+  /// kéo về từ server mang chữ hoa cho tới khi nhánh pull chuẩn hoá.
+  final String status;
   final String syncStatus;
   final DateTime updatedAt;
 
@@ -35,6 +42,7 @@ class WalletEntity extends Equatable {
     this.isDefault = false,
     this.isDeleted = false,
     this.includeInTotal = true,
+    this.status = 'active',
     this.syncStatus = 'pending',
     required this.updatedAt,
   });
@@ -54,6 +62,7 @@ class WalletEntity extends Equatable {
     bool? isDefault,
     bool? isDeleted,
     bool? includeInTotal,
+    String? status,
     String? syncStatus,
     DateTime? updatedAt,
   }) {
@@ -69,6 +78,7 @@ class WalletEntity extends Equatable {
       isDefault: isDefault ?? this.isDefault,
       isDeleted: isDeleted ?? this.isDeleted,
       includeInTotal: includeInTotal ?? this.includeInTotal,
+      status: status ?? this.status,
       syncStatus: syncStatus ?? this.syncStatus,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -87,6 +97,7 @@ class WalletEntity extends Equatable {
         isDefault,
         isDeleted,
         includeInTotal,
+        status,
         syncStatus,
         updatedAt
       ];

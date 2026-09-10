@@ -75,7 +75,7 @@ class _BillEditPageState extends State<BillEditPage> {
     final accountId = currentAccountIdOrNull(context);
     if (accountId == null) return;
     final db = sl<AppDatabase>();
-    final wallets = await db.walletDao.getAll(accountId);
+    final wallets = await db.walletDao.getActive(accountId);
     final categories = await db.categoryDao.getCategoryRows(accountId, 'chi');
     if (!mounted) return;
     setState(() {

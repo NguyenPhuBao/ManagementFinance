@@ -65,7 +65,7 @@ class _BillAddPageState extends State<BillAddPage> {
     // một ví không thuộc về mình.
     final wallets = accountId == null
         ? <Wallet>[]
-        : await db.walletDao.getAll(accountId);
+        : await db.walletDao.getActive(accountId);
     // Hoá đơn luôn là khoản chi nên chỉ lấy danh mục 'chi', giống trang ngân
     // sách. `getCategoryRows` gồm cả danh mục mặc định (idaccount = 0).
     final categories = accountId == null

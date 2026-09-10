@@ -200,6 +200,45 @@ void main() {
       expect(bc.dongTien!.dauKy, 15700000);
     });
 
+    test('ví ĐÃ LƯU TRỮ không tính vào số dư hiện tại', () async {
+      await db.walletDao.insert(WalletsCompanion.insert(
+        id: 'w2',
+        idaccount: 1,
+        name: 'Thẻ cũ',
+        balance: const Value(9000000.0),
+        updatedAt: now,
+      ));
+      await db.walletDao.setStatus('w2', luuTru: true);
+
+      final bc = await repo.layBaoCao(1, loc: locThang9);
+
+      expect(bc.dongTien!.cuoiKy, 10000000,
+          reason: 'Lưu trữ ví là đóng băng nó, và nửa quan trọng nhất của việc '
+              'ấy là số dư thôi phình tổng tài sản. Báo cáo phải khớp với con '
+              'số người dùng thấy ở trang chủ và màn Quản lý ví.');
+    });
+
+    test('ví tắt "Tính vào tổng tài sản" không tính vào số dư hiện tại',
+        () async {
+      // Lỗi có thật trước bản này: `getTotalBalance` lọc cờ ấy đúng, nhưng
+      // trang chủ và báo cáo cộng `fold` trần trên mọi ví — nên cùng một app
+      // hiện HAI con số khác nhau cho cùng một thứ, không màn nào nói ra.
+      await db.walletDao.insert(WalletsCompanion.insert(
+        id: 'w2',
+        idaccount: 1,
+        name: 'Ví chung của nhóm',
+        balance: const Value(9000000.0),
+        includeInTotal: const Value(false),
+        updatedAt: now,
+      ));
+
+      final bc = await repo.layBaoCao(1, loc: locThang9);
+
+      expect(bc.dongTien!.cuoiKy, 10000000,
+          reason: 'Người dùng đã cố ý loại ví này khỏi tổng tài sản. Cộng nó '
+              'vào "số dư cuối kỳ" là tờ báo cáo nói ngược màn Quản lý ví.');
+    });
+
     test('ví đã xoá mềm không tính vào số dư hiện tại', () async {
       await db.walletDao.insert(WalletsCompanion.insert(
         id: 'w2',

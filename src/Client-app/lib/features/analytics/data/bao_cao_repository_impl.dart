@@ -2,6 +2,7 @@ import '../../../core/database/app_database.dart';
 import '../../budget/data/models/budget_entity.dart';
 import '../../budget/data/repositories/budget_repository.dart';
 import '../domain/bao_cao_xuat.dart';
+import '../../wallet/domain/vi_tinh_vao_tong.dart';
 import 'bao_cao_repository.dart';
 
 /// Đọc giao dịch, ví và danh mục của một tài khoản rồi giao cho [dungBaoCao].
@@ -69,10 +70,16 @@ class BaoCaoRepositoryImpl implements BaoCaoRepository {
         }(),
     ];
 
-    // Tổng số dư **ví còn sống** — cùng phép cộng với trang chủ, để con số
-    // "số dư cuối kỳ" khớp với số tiền người dùng nhìn thấy ở nơi khác.
+    // Tổng số dư ví — **cùng một luật** với trang chủ và màn Quản lý ví, để
+    // con số "số dư cuối kỳ" khớp với số tiền người dùng nhìn thấy ở nơi
+    // khác. Luật ấy có đúng một định nghĩa (`viTinhVaoTong`): bản chép tay
+    // trước ở đây cộng `fold` trần trên mọi ví, nên nó thừa cả ví người dùng
+    // đã tắt "Tính vào tổng tài sản" lẫn ví đã lưu trữ.
     final viSong = await db.walletDao.getAll(idaccount);
-    final soDu = viSong.fold<double>(0, (s, v) => s + v.balance);
+    final soDu = viSong
+        .where((v) =>
+            viTinhVaoTong(includeInTotal: v.includeInTotal, status: v.status))
+        .fold<double>(0, (s, v) => s + v.balance);
 
     return dungBaoCao(
       ds,

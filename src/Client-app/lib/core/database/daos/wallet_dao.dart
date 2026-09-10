@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import '../../../features/wallet/domain/wallet_status.dart';
 import '../app_database.dart';
 import '../tables/wallets_table.dart';
 
@@ -36,6 +37,28 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
           ..where((t) => t.idaccount.equals(idaccount) & t.deletedAt.isNull())
           ..orderBy(_thuTuHienThi))
         .get();
+  }
+
+  /// Ví **đang hoạt động** — thứ mà mọi bộ chọn ví phải gọi.
+  ///
+  /// Tách khỏi [getAll] chứ không lọc luôn ở đó: ví lưu trữ vẫn phải đọc được
+  /// ở màn Quản lý ví, ở bảng tra tên ví của sổ giao dịch và báo cáo, và ở
+  /// đường đồng bộ. Lọc luôn ở [getAll] là dòng giao dịch cũ thuộc ví lưu trữ
+  /// hiện "Ví đã xoá".
+  ///
+  /// Phép so đi qua [WalletStatus.laHoatDong] ở tầng Dart chứ không viết thẳng
+  /// `status.equals('active')` vào câu SQL: hàng kéo về từ server mang chữ hoa
+  /// `'Active'` cho tới khi nhánh pull chuẩn hoá, và một câu `WHERE` phân biệt
+  /// hoa thường sẽ lặng lẽ giấu đúng những ví ấy.
+  Future<List<Wallet>> getActive(int idaccount) async {
+    final rows = await getAll(idaccount);
+    return rows.where((w) => WalletStatus.laHoatDong(w.status)).toList();
+  }
+
+  /// Bản stream của [getActive] — cùng phép lọc, cùng thứ tự.
+  Stream<List<Wallet>> watchActive(int idaccount) {
+    return watchAll(idaccount).map(
+        (rows) => rows.where((w) => WalletStatus.laHoatDong(w.status)).toList());
   }
 
   Future<List<Wallet>> getAllNonDeleted() {
@@ -134,6 +157,24 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
         deletedAt: Value(now),
         syncStatus: const Value('pending'),
         updatedAt: Value(now),
+      ),
+    );
+  }
+
+  /// Bật/tắt lưu trữ cho một ví.
+  ///
+  /// Đánh `pending` là **bắt buộc**, không phải cho gọn: trạng thái này đi
+  /// được ra máy khác qua `/sync/push` (cột `Status` đã có ở PostgreSQL và
+  /// `upsertWallet` đã xử lý). Không vào hàng đợi đẩy thì máy này thấy ví đã
+  /// lưu trữ còn máy kia vẫn thấy nó trong mọi bộ chọn, vĩnh viễn — cùng bài
+  /// học với [clearDefaultExcept].
+  Future<void> setStatus(String id, {required bool luuTru}) async {
+    final status = luuTru ? WalletStatus.luuTru : WalletStatus.hoatDong;
+    await (update(wallets)..where((t) => t.id.equals(id))).write(
+      WalletsCompanion(
+        status: Value(status.khoa),
+        syncStatus: const Value('pending'),
+        updatedAt: Value(DateTime.now()),
       ),
     );
   }
