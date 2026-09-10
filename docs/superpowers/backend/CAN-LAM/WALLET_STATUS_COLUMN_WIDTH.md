@@ -97,7 +97,7 @@ nhiêu** — dùng `grep` theo dấu hiệu của từng dòng, hoặc in ra t�
 
 ---
 
-## 3b. ⚠️ Đọc trước khi chạy: CSDL dev trên máy này ĐÃ bị đổi
+## 3b. ✅ CSDL dev trên máy này từng bị đổi ngoài quy trình — đã hoàn tác
 
 Ngày 2026-09-10, trong lúc làm tính năng, tôi đã hiểu nhầm một câu duyệt của
 người dùng thành cho phép sửa backend, và đã:
@@ -106,31 +106,31 @@ người dùng thành cho phép sửa backend, và đã:
 - đổi `schema.prisma` sang `@db.VarChar(16)`,
 - chạy `npx prisma migrate deploy` — tức **áp thật vào PostgreSQL**.
 
-Người dùng nhắc lại rằng backend **không được phép thay đổi**. Hai tệp đã được
-trả về nguyên trạng (`git status src/Backend` sạch), nhưng **CSDL thì chưa**:
-chốt an toàn của môi trường chặn mọi lệnh đổi lược đồ, kể cả lệnh hoàn tác.
-
-Nên **tính tới lúc viết dòng này**, CSDL dev trên máy ấy đang ở trạng thái:
-
-```
-wallet."Status"      => character varying(16)   ← đã đổi, ngoài quy trình
-_prisma_migrations   => có thừa dòng '20260910100000_widen_wallet_status'
-```
-
-**Đừng tin con số `7` ở mục 2 mà không đo lại.** Mục 2 ghi phép đo *trước* khi
-chuyện này xảy ra, và nó vẫn là mô tả đúng của lược đồ **chuẩn** — thứ mọi môi
-trường khác đang chạy. Máy dev kia là ngoại lệ.
-
-Hai lệnh trả nó về nguyên trạng, nếu muốn làm sạch trước khi áp migration
-chính thức:
+Người dùng nhắc lại rằng backend **không được phép thay đổi**. Hai tệp được trả
+về nguyên trạng ngay (`git status src/Backend` sạch). CSDL thì lúc ấy chưa trả
+được vì môi trường chặn lệnh đổi lược đồ; cùng ngày, người dùng yêu cầu **đích
+danh** chạy hai lệnh hoàn tác:
 
 ```sql
 ALTER TABLE wallet ALTER COLUMN "Status" TYPE varchar(7);
 DELETE FROM _prisma_migrations WHERE migration_name = '20260910100000_widen_wallet_status';
 ```
 
-Không mất dữ liệu theo chiều nào: đo 2026-09-10, cột chỉ chứa `'Active'` (6 ký
-tự), và số hàng không đổi (`wallet=5`, `transaction=42`, `goal=2`).
+Chạy trong **một giao tác**, đo trước và sau:
+
+```
+                     TRƯỚC                       SAU
+wallet."Status"      varchar(16)                 varchar(7)
+_prisma_migrations   4 dòng (thừa 1)             3 dòng
+chk_wallet_*         đủ 4                        đủ 4
+giá trị Status       'Active' × 5 (6 ký tự)      không đổi
+số hàng              wallet 5, transaction 43,   không đổi
+                     goal 2
+```
+
+**Máy dev ấy nay khớp lược đồ chuẩn**, nên mục 2 lại là mô tả đúng cho mọi môi
+trường, và đẩy `'Inactive'` lên lại vỡ như cũ. Mục này giữ lại làm dấu vết, không
+còn là cảnh báo.
 
 ---
 
@@ -213,9 +213,9 @@ npx prisma migrate deploy   # áp migration còn treo
 npx prisma generate         # Prisma Client khớp lại với schema
 ```
 
-⚠️ Nếu máy đích là **máy dev đã bị đổi ngoài quy trình** ở mục 3b thì làm sạch
-trước (hai lệnh ở mục ấy), rồi mới chạy ba bước này — nếu không `migrate deploy`
-sẽ gặp một dòng lịch sử trỏ tới thư mục migration không còn tồn tại.
+Không cần bước làm sạch nào trước: máy dev từng bị đổi ngoài quy trình (mục 3b)
+đã được hoàn tác, lịch sử migration còn đúng 3 dòng. Vẫn nên chạy câu kiểm độ
+rộng cột ở dưới **trước** khi áp, để chắc máy đích đang ở `varchar(7)`.
 
 **Kiểm sau khi chạy** — cả ba dòng phải đúng:
 
