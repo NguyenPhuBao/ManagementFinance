@@ -33,6 +33,7 @@ import '../../features/budget/presentation/bloc/budget_cubit.dart';
 import '../../features/budget/presentation/bloc/budget_detail_cubit.dart';
 import '../../features/wallet/data/datasources/wallet_local_data_source.dart';
 import '../../features/wallet/data/repositories/wallet_repository.dart';
+import '../../features/wallet/data/services/dieu_chinh_so_du_service.dart';
 import '../../features/wallet/data/repositories/wallet_repository_impl.dart';
 import '../../features/wallet/data/services/default_account_data_initializer.dart';
 import '../../features/wallet/presentation/bloc/wallet_cubit.dart';
@@ -166,6 +167,12 @@ Future<void> setupDependencies() async {
       walletDao: sl<AppDatabase>().walletDao,
       syncEngine: sl(),
     ),
+  );
+  // Điều chỉnh số dư ví (đối soát). Đăng ký SAU TransactionRepository vì nó
+  // ghi khoản bù qua đó — cố ý, để phép cộng trừ số dư và phép hoàn lại khi
+  // xoá đều dùng lại `_applyBalances` thay vì ghi thẳng `updateBalance`.
+  sl.registerLazySingleton<DieuChinhSoDuService>(
+    () => DieuChinhSoDuService(db: sl(), transactionRepository: sl()),
   );
   sl.registerFactory<TransactionBloc>(
     () => TransactionBloc(

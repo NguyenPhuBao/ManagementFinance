@@ -200,6 +200,29 @@ void main() {
       expect(bc.dongTien!.dauKy, 15700000);
     });
 
+    test('khoản ĐIỀU CHỈNH SỐ DƯ không vào thu/chi của báo cáo', () async {
+      // Khoản bù là phép SỬA SỔ, không phải thu nhập. Nếu repository không
+      // điền `ghiChu` xuống tầng thuần thì luật loại trừ **không có gì để đọc**
+      // — và tháng nào người dùng đối soát ví cũng thấy thu nhập tăng vọt.
+      await giaoDich(
+        id: 't_dc',
+        ngay: DateTime(2026, 9, 10),
+        soTien: 500000,
+        loai: 'thu',
+        ghiChu: 'Điều chỉnh số dư: đếm lại ví',
+        danhMuc: null,
+      );
+
+      final bc = await repo.layBaoCao(1, loc: locThang9);
+
+      expect(bc.tong.thu, 0,
+          reason: 'Khoản điều chỉnh lọt vào tổng thu.');
+      expect(bc.soGiaoDich, 0,
+          reason: 'Cùng lối với khoản chuyển: bị loại khỏi CẢ danh sách, không '
+              'chỉ khỏi tổng — để nó lại thì người dùng cộng tay các dòng sẽ ra '
+              'một số khác con số app hiện.');
+    });
+
     test('ví ĐÃ LƯU TRỮ không tính vào số dư hiện tại', () async {
       await db.walletDao.insert(WalletsCompanion.insert(
         id: 'w2',

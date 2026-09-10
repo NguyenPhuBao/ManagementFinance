@@ -66,6 +66,11 @@ class BaoCaoRepositoryImpl implements BaoCaoRepository {
             // Ghi chú rỗng là **mặc định của cột**, không phải "người dùng để
             // trống có chủ ý" — dòng báo cáo khi ấy lấy tên danh mục.
             tieuDe: t.note.trim().isEmpty ? tenDanhMuc : t.note,
+            // Ghi chú THÔ, tách khỏi `tieuDe`: phép nhận dạng khoản điều
+            // chỉnh số dư đọc đúng chuỗi này, còn `tieuDe` rơi về tên danh
+            // mục khi ghi chú rỗng nên nó không nói lên được hàng có ghi chú
+            // hay không. Thiếu dòng này thì luật loại trừ KHÔNG CÓ GÌ để đọc.
+            ghiChu: t.note,
           );
         }(),
     ];

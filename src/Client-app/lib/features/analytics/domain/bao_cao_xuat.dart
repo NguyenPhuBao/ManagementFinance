@@ -13,6 +13,7 @@
 library;
 
 import 'thong_ke_thang.dart';
+import 'khoan_vao_thong_ke.dart';
 
 export 'thong_ke_thang.dart' show TongThuChi, rutGon;
 
@@ -220,6 +221,14 @@ class DongGiaoDich {
   /// Dòng chữ chính của giao dịch: ghi chú, hoặc tên danh mục khi không ghi chú.
   final String tieuDe;
 
+  /// Ghi chú **thô** của hàng, chưa qua phép thay thế của [tieuDe].
+  ///
+  /// Cần riêng vì phép nhận dạng khoản điều chỉnh số dư đọc đúng chuỗi này;
+  /// [tieuDe] rơi về tên danh mục khi ghi chú rỗng, nên nó không nói lên được
+  /// hàng có ghi chú hay không. Để `null` là "nơi gọi chưa điền" — mặc định
+  /// an toàn, vì khi ấy hàng được TÍNH vào thống kê.
+  final String? ghiChu;
+
   const DongGiaoDich({
     required this.id,
     required this.ngay,
@@ -232,6 +241,7 @@ class DongGiaoDich {
     required this.walletId,
     required this.tenVi,
     required this.tieuDe,
+    this.ghiChu,
   });
 }
 
@@ -350,7 +360,11 @@ BaoCao dungBaoCao(
 
   final loc0 = <DongGiaoDich>[
     for (final d in ds)
-      if (d.loai != 'transfer' &&
+      if (khoanVaoThongKe(
+            loai: d.loai,
+            categoryId: d.categoryId,
+            ghiChu: d.ghiChu,
+          ) &&
           !d.ngay.isBefore(loc.from) &&
           d.ngay.isBefore(loc.to) &&
           hopLoc(d))
@@ -416,7 +430,11 @@ BaoCao dungBaoCao(
   final kt = khoangKyTruoc(from: loc.from, to: loc.to);
   final khoanTruoc = [
     for (final d in ds)
-      if (d.loai != 'transfer' &&
+      if (khoanVaoThongKe(
+            loai: d.loai,
+            categoryId: d.categoryId,
+            ghiChu: d.ghiChu,
+          ) &&
           !d.ngay.isBefore(kt.from) &&
           d.ngay.isBefore(kt.to) &&
           hopLoc(d))
@@ -492,7 +510,12 @@ BaoCao dungBaoCao(
     // số dư ví chịu ảnh hưởng của mọi khoản, không riêng danh mục đang xem).
     final sau = [
       for (final d in ds)
-        if (d.loai != 'transfer' && !d.ngay.isBefore(loc.to))
+        if (khoanVaoThongKe(
+              loai: d.loai,
+              categoryId: d.categoryId,
+              ghiChu: d.ghiChu,
+            ) &&
+            !d.ngay.isBefore(loc.to))
           KhoanThuChi(
             ngay: d.ngay,
             soTien: d.soTien,
@@ -504,7 +527,11 @@ BaoCao dungBaoCao(
         tongThuChi(sau, from: loc.to, to: DateTime(9999, 12, 31));
     final trongKy = [
       for (final d in ds)
-        if (d.loai != 'transfer' &&
+        if (khoanVaoThongKe(
+              loai: d.loai,
+              categoryId: d.categoryId,
+              ghiChu: d.ghiChu,
+            ) &&
             !d.ngay.isBefore(loc.from) &&
             d.ngay.isBefore(loc.to))
           KhoanThuChi(

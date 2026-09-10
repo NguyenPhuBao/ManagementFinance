@@ -8,6 +8,8 @@
 /// không cần CSDL.
 library;
 
+import 'khoan_vao_thong_ke.dart';
+
 /// Một giao dịch rút gọn khỏi hàng Drift: chỉ bốn thứ phép thống kê cần.
 class KhoanThuChi {
   final DateTime ngay;
@@ -21,11 +23,17 @@ class KhoanThuChi {
   /// hơn tổng chi trên thẻ.
   final String? categoryId;
 
+  /// Ghi chú thô — chỉ dùng để nhận ra khoản **điều chỉnh số dư**, thứ phải
+  /// nằm ngoài thống kê. Để `null` là "nơi gọi chưa điền", và khi ấy hàng
+  /// được TÍNH: mặc định an toàn, vì giấu nhầm một khoản chi thật tệ hơn.
+  final String? ghiChu;
+
   const KhoanThuChi({
     required this.ngay,
     required this.soTien,
     required this.loai,
     required this.categoryId,
+    this.ghiChu,
   });
 }
 
@@ -66,8 +74,15 @@ TongThuChi tongThuChi(
   var chi = 0.0;
   for (final k in ds) {
     if (!_trongKhoang(k.ngay, from, to)) continue;
-    // Chỉ hai loại. `'transfer'` cố ý rơi qua: tiền đổi chỗ không phải chi
-    // tiêu — đếm nó là mỗi kỳ trích tự động vào mục tiêu làm "Tổng chi" tăng.
+    // Phép lọc có ĐÚNG MỘT định nghĩa ở `khoan_vao_thong_ke.dart`: nó loại cả
+    // khoản chuyển (tiền đổi chỗ) lẫn khoản điều chỉnh số dư (phép sửa sổ).
+    if (!khoanVaoThongKe(
+      loai: k.loai,
+      categoryId: k.categoryId,
+      ghiChu: k.ghiChu,
+    )) {
+      continue;
+    }
     if (k.loai == 'thu') thu += k.soTien;
     if (k.loai == 'chi') chi += k.soTien;
   }

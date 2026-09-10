@@ -3,6 +3,7 @@ import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../data/services/dieu_chinh_so_du_service.dart';
 import '../../domain/wallet_status.dart';
 import '../../domain/wallet_type.dart';
 import '../../../../core/di/injection_container.dart';
@@ -142,7 +143,10 @@ class _WalletEditPageState extends State<WalletEditPage> {
         type:           _loaiCoDinh
             ? (_wallet?.type ?? WalletType.cash.khoa)
             : WalletType.chonDuoc[_selectedTypeIndex].khoa,
-        balance:        balance,
+        // Số dư giữ NGUYÊN ở đây. Nó đi đường riêng ngay dưới — đường duy
+        // nhất sinh ra một khoản trong sổ giao dịch, để lịch sử và số dư
+        // không trôi khỏi nhau.
+        balance:        _wallet!.balance,
         icon:           iconKey,
         colour:         colour,
         isDefault:      _isDefault,
@@ -161,6 +165,21 @@ class _WalletEditPageState extends State<WalletEditPage> {
       if (_dangHoatDong != WalletStatus.laHoatDong(_wallet!.status)) {
         await sl<WalletRepository>()
             .setArchived(widget.id, luuTru: !_dangHoatDong);
+      }
+
+      // Ô số dư là đường ĐỐI SOÁT, không phải ô ghi đè. Trước bản này nó
+      // ghi thẳng vào cột `balance`, nên số dư ví trôi khỏi lịch sử giao
+      // dịch mà không dòng nào giải thích — và "số dư cuối kỳ" của báo cáo,
+      // vốn suy ngược từ số dư hiện tại, không đối chiếu được với gì cả.
+      //
+      // Dịch vụ tự bỏ qua khi hai số bằng nhau, nên không cần so ở đây;
+      // nhưng vẫn so, để sửa mỗi tên ví không kéo theo một lượt đọc CSDL.
+      if (balance != _wallet!.balance) {
+        await sl<DieuChinhSoDuService>().dieuChinh(
+          walletId: widget.id,
+          soDuThucTe: balance,
+          lyDo: '',
+        );
       }
 
       if (mounted) context.pop(true);
@@ -352,6 +371,8 @@ class _WalletEditPageState extends State<WalletEditPage> {
           const SizedBox(height: 24.0),
           _buildFormSection(
             title: 'SỐ DƯ VÍ HIỆN TẠI',
+            chuThich: 'Sửa số dư sẽ tạo một khoản điều chỉnh trong sổ giao '
+                'dịch, để lịch sử khớp với số thực tế.',
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               decoration: BoxDecoration(
@@ -466,7 +487,11 @@ class _WalletEditPageState extends State<WalletEditPage> {
     );
   }
 
-  Widget _buildFormSection({required String title, required Widget child}) {
+  Widget _buildFormSection({
+    required String title,
+    required Widget child,
+    String? chuThich,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -479,6 +504,16 @@ class _WalletEditPageState extends State<WalletEditPage> {
             color: AppColors.onSurfaceVariant,
           ),
         ),
+        if (chuThich != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            chuThich,
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
         const SizedBox(height: 12.0),
         child,
       ],

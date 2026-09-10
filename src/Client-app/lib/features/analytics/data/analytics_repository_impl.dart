@@ -115,6 +115,9 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
           soTien: t.amount,
           loai: t.type,
           categoryId: t.categoryId,
+          // Cần cho phép loại khoản điều chỉnh số dư khỏi thống kê; thiếu
+          // nó thì luật ấy không có gì để đọc và khoản bù thành thu nhập.
+          ghiChu: t.note,
         ),
     ];
 
