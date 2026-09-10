@@ -718,6 +718,16 @@ lên trên `MuaDT` (hạn 05/09/2027) → danh sách đổi ngay, thứ tự **s
 động nguội**, và truy vấn thẳng PostgreSQL thấy `Priority` 100 / 200 — tức lần
 kéo đầu đánh số lại cả danh sách và **cả hai hàng đã lên tới server**.
 
+⚠️ **Vòng kiểm ấy chỉ đi qua hàng ĐÃ sắp** (2026-09-10). Hàng **chưa sắp** thì
+khác: client gửi `priority: null`, `mapEntityFields('goal')` phía backend gọi
+`Number(null)` và lưu `0`, lượt kéo về mang `0` về máy, và `0` đứng trước mọi số
+đã sắp. Tái hiện đầu-cuối trên máy ảo: mục tiêu mới đứng cuối lúc lưu, nhảy lên
+**đầu** sau 16 giây. Không lỗi, không log. **G32**
+`docs/CLIENT_APP_KNOWN_GAPS.md`; tài liệu xin
+`docs/superpowers/backend/CAN-LAM/GOAL_PRIORITY_NULL_TO_ZERO.md`. Quy ước
+"`priority` luôn dương" ở trên là lý do client đọc được mọi giá trị `<= 0` kéo
+về như chưa sắp mà không đoán nhầm.
+
 **Khe hở còn lại, chấp nhận được:** hai máy cùng sắp lại khi ngoại tuyến thì
 LWW phân xử **theo từng hàng**, không theo cả danh sách, nên kết quả có thể là
 một thứ tự trộn giữa hai lần sắp. Không hàng nào sai, nhưng tổng thể không
@@ -1174,7 +1184,7 @@ gộp chung một đợt migration — đúng như đề nghị.
 |---|---|---|
 | `2026-09-05-backend-transaction-goal-id.md` | `transaction.Idgoal` | ✅ **Xong 2026-09-07** — cột đã có, client đẩy `idgoal` và đọc lại. Nhánh so **tên** vẫn giữ cho hàng cũ trên server (đều `NULL`), teo dần — **G18** |
 | `2026-09-05-backend-goal-auto-deposit.md` | Ba cột `auto_deposit_*` | ✅ **Xong 2026-09-07** — backend có cột, client đẩy và kéo cả ba. **G21 đóng** |
-| `2026-09-05-backend-goal-priority.md` | `goal.Priority` | ✅ **Đóng trọn 2026-09-08.** Cột có từ 2026-09-07, client nhận ở schema v19 và đẩy/kéo `priority`. Quy ước giá trị ở mục 4 của tài liệu ấy vẫn là nguồn duy nhất — mục **3.22** chỉ nhắc lại |
+| `2026-09-05-backend-goal-priority.md` | `goal.Priority` | ✅ **Đóng trọn 2026-09-08.** Cột có từ 2026-09-07, client nhận ở schema v19 và đẩy/kéo `priority`. Quy ước giá trị ở mục 4 của tài liệu ấy vẫn là nguồn duy nhất — mục **3.22** chỉ nhắc lại. ⚠️ **2026-09-10:** backend ép `null` thành `0` trên đường đồng bộ nên mục tiêu chưa sắp nhảy lên đầu — **G32**, xin sửa ở `CAN-LAM/GOAL_PRIORITY_NULL_TO_ZERO.md` |
 
 Hai tài liệu đầu **không chặn gì hôm nay**; cái đầu chặn hướng bỏ bộ đếm
 `current_amount` để suy tiến độ từ chính giao dịch.

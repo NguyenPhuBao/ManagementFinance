@@ -36,6 +36,8 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > | **G28** | ⛔ **Chặn ở CSDL, không còn ở mã backend** — cột `wallet."Status"` trên CSDL dev vẫn là `varchar(7)` trong khi chính `chk_wallet_status` cho phép `'Inactive'` (8 ký tự), nên **lưu trữ ví chỉ sống trên máy đã bấm** (2026-09-10). ⚠️ Cập nhật cùng ngày sau khi gộp `main`: backend **đã** đổi `schema.prisma` sang `VarChar(20)` và viết `database/7_…sql` từ 2026-09-09 (`7523c8c`) — tệp ấy chỉ **chưa được áp**. Người dùng chốt **để sau** |
 > | **G29** | ⛔ **Chặn ở backend** — `/sync/push` lọc `Note` bằng biểu thức bắt nhầm (số tài khoản, "mật khẩu wifi", hậu tố `(tự động)`), và bản đã lọc **đè lên máy** ngay chu kỳ đồng bộ ấy — tái hiện đầu-cuối trên máy ảo 2026-09-10. Chưa hỏng dữ liệu thật nào |
 > | **G30** | ⏸️ **Chặn tạm, chờ backend bỏ index** — server có `uq_wallet_saving_active` (một ví Tiết kiệm mỗi tài khoản), luật chỉ tồn tại ở SQL; client khoá ô "Tiết kiệm" và chốt ở datasource từ 2026-09-10 cho tới khi backend `DROP INDEX`. Chốt **trùng tên ví** cùng ngày thì vĩnh viễn |
+> | **G31** | ⛔ **Chặn ở backend** — tên mục tiêu hoặc hoá đơn dài hơn 100 ký tự, tên danh mục dài hơn 200, vỡ `P2000` trên server và rơi xuống `DB_ERROR`, nên client **gửi lại mãi**; form client chưa giới hạn độ dài (2026-09-10) |
+> | **G32** | ⛔ **Chặn ở backend** — `Number(null)` ở `mapEntityFields('goal')` ghi mục tiêu **chưa sắp** thành `Priority = 0`, nên sau một vòng đồng bộ nó nhảy lên **đầu** danh sách; tái hiện đầu-cuối trên máy ảo (2026-09-10) |
 >
 > **G20 đã đóng ngày 2026-09-05** — `depositToGoal` nhận `occurredAt` chặn hai
 > đầu; đã kiểm cả bằng test lẫn trên máy ảo Android.
@@ -851,11 +853,58 @@ tệp) canh `uq_wallet_account_name_active` — luật hợp lý, có trong
 **Bài học đo:** phép đo 2026-09-09 "không unique index nào ở server" dùng
 `pg_constraint`, nơi partial unique index **không hiện**. Đo `pg_indexes`.
 
+### G31 — Tên dài hơn độ rộng cột kẹt hàng đợi đẩy, vì server gọi đó là lỗi tạm thời · ⛔ CHẶN Ở BACKEND (2026-09-10)
+
+Trên PostgreSQL, `wallet.Name`, `goal.Name`, `bill.Name` rộng **100** ký tự và
+`category.NameCategory` rộng **200** (đo `information_schema.columns`). Form
+client không giới hạn độ dài: quét `lib/` ngày 2026-09-10 được 3 chỗ `maxLength`
+/ `LengthLimitingTextInputFormatter`, **không** chỗ nào ở bốn form ấy.
+
+`upsertGoal`, `upsertBill`, `upsertCategory` không cắt chuỗi. Tên dài hơn → Prisma
+`P2000` → `sync.service.js` không có nhánh cho mã ấy → `DB_ERROR` → client xếp
+**tạm thời** (`_classifyFailure`, `sync_engine.dart:1716`) → gửi lại ở mọi chu
+kỳ, và giãn cách luỹ tiến áp lên **cả** hàng đợi. Không lỗi nào hiện ra.
+
+Riêng ví thì không kẹt mà **bị cắt âm thầm**: `upsertWallet` lưu 100 ký tự đầu,
+và lượt kéo về mang bản đã cắt về máy (suy từ mã, chưa đo trên máy ảo).
+
+**Cách xử lý:** client giới hạn độ dài ở form, vì client là nơi duy nhất báo được
+cho người dùng lúc họ đang gõ; và xin backend ánh xạ `22001` / `P2000` về
+`CONSTRAINT_VIOLATION` để bản client cũ cùng mọi nguồn ghi khác không lặp vô hạn —
+`docs/superpowers/backend/CAN-LAM/SYNC_PUSH_ERROR_MAPPING.md`.
+
+### G32 — Mục tiêu chưa sắp nhảy lên đầu danh sách sau một vòng đồng bộ · ⛔ CHẶN Ở BACKEND (2026-09-10)
+
+Client gửi `priority: null` cho mục tiêu chưa sắp. `mapEntityFields('goal')` ở
+backend gọi `Number(m.priority)`, mà `Number(null) === 0`, nên server lưu `0`.
+Lượt kéo về đọc `int.tryParse('0')` thành `0`, và `_soSanhUuTien`
+(`goal_grouping.dart:70-73`) xếp `0` **trước** mọi số đã sắp.
+
+**Tái hiện đầu-cuối trên `emulator-5554` ngày 2026-09-10:** tạo mục tiêu
+"ThuUuTien" bên cạnh hai mục tiêu đã sắp (100 và 200). Một giây sau khi lưu nó
+đứng cuối; 16 giây sau, qua một chu kỳ đẩy rồi kéo, nó đứng **đầu**, và server
+mang `Priority = 0`. Không lỗi, không log.
+
+Client không bao giờ tự sinh `priority <= 0` (`goal_priority.dart:101-104`), nên
+mọi giá trị ấy kéo về đều là một `null` bị ép.
+
+**Cách xử lý:** xin backend giữ `null`
+(`docs/superpowers/backend/CAN-LAM/GOAL_PRIORITY_NULL_TO_ZERO.md`); client đọc
+`<= 0` như chưa sắp. Phía client chỉ sửa được **hiển thị** trên máy đã cập nhật —
+giá trị trên server và bản client cũ vẫn chờ backend.
+
+⚠️ Mục tiêu thử "ThuUuTien" (`f7482924-2326-4105-bc33-abc1d993a4cb`) đang còn
+trên tài khoản 10, giữ lại để kiểm bản vá client; xoá mềm qua giao diện sau đó.
+
 ---
 
 ## 2. Vấn đề đã biết nhưng thuộc về Backend
 
-Xem hai tài liệu riêng trong `docs/superpowers/backend/`:
+Tám gạch đầu dòng đầu tiên dưới đây là **ảnh chụp cũ**: bảy tệp nay nằm ở
+`docs/superpowers/backend/DA-XONG/` (đã đóng), riêng
+`2026-09-04-backend-idempotent-delete.md` còn ở `CAN-LAM/`. Dòng này từng ghi
+"hai tài liệu" trong khi liệt kê tám — sửa 2026-09-10. Việc backend còn mở đọc ở
+`docs/superpowers/backend/CAN-LAM/README.md` mục 2:
 
 - **`SESSION_VALIDITY_FINDINGS.md`** — token của tài khoản đã xoá vẫn dùng được; `/auth/me` không chạm CSDL; `/sync/push` luôn trả HTTP 200.
 - **`CATEGORY_CLASSIFY_ALIGNMENT.md`** — giá trị `Vay/nợ` (tài liệu) lệch với `Vay/no` (CSDL, seed, client).
@@ -865,8 +914,11 @@ Xem hai tài liệu riêng trong `docs/superpowers/backend/`:
 - **`CATEGORY_NAME_UNIQUENESS.md`** — hai unique index của `category` đang khác quy tắc nghiệp vụ theo cả hai chiều; client đã thi hành đúng quy tắc, CSDL thì chưa.
 - **`CATEGORY_STABLE_IDS.md`** — ID danh mục mặc định sinh ngẫu nhiên mỗi lần seed, nên tên bị dùng làm khoá nối giữa hai phía; đây là nguyên nhân gốc của các lỗi 11.3–11.6.
 - **`2026-09-04-backend-idempotent-delete.md`** — ba lỗ hổng của `/sync/push`: xoá một bản ghi không tồn tại bị trả về là lỗi (làm client đẩy lại vĩnh viễn); `message` là nguyên văn stack trace Prisma kèm đường dẫn máy chủ; và `budget.time_recurrence = null` bị ép về `'Month'`, **chặn hẳn** lựa chọn ngân sách "Ngày cụ thể".
+- **`CAN-LAM/AUTH_401_BODY_CODE.md`** (2026-09-10) — body 401 cho tài khoản bị khoá hoặc xoá không mang `code` / `reason_inactive`, vì tham số thứ ba của `ResponseHandler.unauthorized` rơi mất; client chưa phân biệt được *bị khoá* với *hết phiên*. Không mở G: tính năng cưỡng chế đăng xuất phía client **chưa làm**, nên chưa có gì hỏng — nhưng nhánh HTTP của nó chờ tài liệu này.
+- **`CAN-LAM/RULE_PROJECT_DOC_DRIFT.md`** (2026-09-10) — 31 chỗ `docs/Rule_Project/` và `docs/progress/Backend.md` nói ngược mã và CSDL. Không mở G: không mã client nào hỏng vì nó, nhưng đó là những tài liệu người mới đọc **trước** mã.
+- G31 và G32 ở trên có tài liệu xin riêng: `CAN-LAM/SYNC_PUSH_ERROR_MAPPING.md` và `CAN-LAM/GOAL_PRIORITY_NULL_TO_ZERO.md`.
 
-Client **không** phụ thuộc vào việc backend có sửa hay không.
+Với tám tài liệu cũ, client **không** phụ thuộc vào việc backend có sửa hay không. Với các mục ghi *chặn ở backend* hoặc *chờ backend* ở bảng tóm tắt đầu tài liệu thì có.
 
 ---
 
@@ -874,7 +926,7 @@ Client **không** phụ thuộc vào việc backend có sửa hay không.
 
 Trạng thái hiện tại (đã chạy thật, không phải đếm tay, đo 2026-09-08): `flutter test` toàn bộ **1529/1529 pass** trong ~75 giây, trên **144 file test / 33.892 dòng**. Trước phiên 2026-09-02 là 56 pass / 9 fail và mất hơn 10 phút (một test treo tới timeout); mốc 180 pass / 27 file ghi ở đây trước đó là con số **cuối phiên 2026-09-03** và đã lạc hậu năm ngày.
 
-> ⚠️ **`.gitignore` dòng 77 có `test/`** — luật này khớp mọi thư mục tên `test` ở mọi cấp, và **đã tồn tại từ trước** phiên 2026-09-02 (kiểm chứng: `git diff .gitignore` chỉ thêm đúng một dòng `src/Backend/scripts/seed_roles.js`).
+> ⚠️ **`.gitignore` có `test/`** (dòng 78, đo 2026-09-10 — từng ghi 77) — luật này khớp mọi thư mục tên `test` ở mọi cấp, và **đã tồn tại từ trước** phiên 2026-09-02 (kiểm chứng: `git diff .gitignore` chỉ thêm đúng một dòng `src/Backend/scripts/seed_roles.js`).
 >
 > Hệ quả đã đo được **tại thời điểm phát hiện** (2026-09-02): 16/23 file test đang được git theo dõi (commit trước khi luật có hiệu lực), 7/23 file thì không. Bảy file đó chứa 45 test:
 >
