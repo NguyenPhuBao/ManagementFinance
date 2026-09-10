@@ -13,8 +13,9 @@ import 'package:flutter_test/flutter_test.dart';
 ///
 /// - `getAll`/`watchAll` — mọi ví chưa xoá, **kể cả lưu trữ**. Đổi nghĩa hai
 ///   hàm này là dòng giao dịch cũ thuộc ví lưu trữ hiện "Ví đã xoá".
-/// - `getActive`/`watchActive` — chỉ ví đang hoạt động. Đây là thứ mà các bộ
-///   chọn ví phải gọi.
+/// - `getActive` — chỉ ví đang hoạt động. Đây là thứ mà các bộ chọn ví phải
+///   gọi. Cố ý **không** có bản `watchActive`: không bộ chọn nào cần stream,
+///   và ba chỗ dùng `watchAll` đều là bảng tra tên, phải thấy cả ví lưu trữ.
 ///
 /// Cột `status` **đã có sẵn** trong SQLite từ trước (mặc định `'active'`), nên
 /// tính năng này KHÔNG cần migration — schema vẫn v20.
@@ -103,26 +104,8 @@ void main() {
     expect(await tenHoatDong(), ['Cua toi']);
   });
 
-  test('watchActive phát lại khi một ví bị lưu trữ', () async {
-    await them('Tien mat');
-    await them('The cu');
-
-    final phat = db.watchActiveNames(idaccount);
-
-    expect(
-      phat,
-      emitsInOrder([
-        ['The cu', 'Tien mat'],
-        ['Tien mat'],
-      ]),
-    );
-
-    // Cho stream phát lần đầu trước khi đổi dữ liệu.
-    await Future<void>.delayed(Duration.zero);
-    await db.walletDao.setStatus('w_The cu', luuTru: true);
-  });
-
-  test('setStatus đánh dấu pending để trạng thái đi ra được máy khác', () async {
+  test('setStatus vẫn đánh dấu pending, dù status không đi qua đồng bộ',
+      () async {
     await them('The cu');
     await db.walletDao.markSynced('w_The cu');
 
@@ -131,9 +114,10 @@ void main() {
     final w = await db.walletDao.getById('w_The cu');
     expect(w!.status, 'inactive');
     expect(w.syncStatus, 'pending',
-        reason: 'Không vào hàng đợi đẩy thì máy này thấy ví đã lưu trữ còn máy '
-            'kia vẫn thấy nó trong mọi bộ chọn, vĩnh viễn — cùng bài học với '
-            'clearDefaultExcept.');
+        reason: 'Cột `status` không đi qua đồng bộ (G28), nhưng `setStatus` có '
+            'đổi `updatedAt` — và mốc ấy PHẢI tới được server như mọi thay đổi '
+            'khác. Bỏ pending ở đây là hàng vừa bị chạm nằm ngoài hàng đợi cho '
+            'tới lần sửa sau.');
   });
 
   test('setStatus bỏ lưu trữ đưa ví về lại danh sách hoạt động', () async {
@@ -144,12 +128,4 @@ void main() {
     expect(await tenHoatDong(), ['The cu']);
     expect((await db.walletDao.getById('w_The cu'))!.status, 'active');
   });
-}
-
-extension on AppDatabase {
-  /// Lối tắt cho ca stream — giữ phần `expect` đọc được.
-  Stream<List<String>> watchActiveNames(int idaccount) =>
-      walletDao.watchActive(idaccount).map((rows) => [
-            for (final w in rows) w.name,
-          ]);
 }

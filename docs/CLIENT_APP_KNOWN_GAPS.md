@@ -1,6 +1,6 @@
 # Client-app — Việc còn dang dở & rủi ro đã biết
 
-**Cập nhật:** 2026-09-08
+**Cập nhật:** 2026-09-10
 **Mục đích:** ghi lại những hạng mục đã được **cân nhắc và cố ý hoãn**, kèm lý do và bán kính ảnh hưởng. Không có tài liệu này thì người tiếp theo sẽ hoặc bỏ sót, hoặc làm lại từ đầu việc phân tích rủi ro.
 
 Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nhất.
@@ -10,10 +10,10 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > nguyên (kể cả phần *vì sao hoãn*) vì nó ghi lại bối cảnh và bán kính ảnh
 > hưởng — thứ vẫn cần khi ai đó đọc lại đoạn mã tương ứng.
 >
-> **Đang mở tính tới 2026-09-08.** Mục đã đóng vẫn nằm lại trong bảng, gạch
+> **Đang mở tính tới 2026-09-10.** Mục đã đóng vẫn nằm lại trong bảng, gạch
 > ngang tên — xoá đi thì người sau lại mở ra làm lần nữa.
 >
-> ⚠️ **Bảng này trôi khỏi thân tài liệu ba lần rồi** (G16, G17, G21 — cả ba đều
+> ⚠️ **Bảng này trôi khỏi thân tài liệu năm lần rồi** (G16, G17, G21, G18, G15 — cả năm đều
 > ghi *còn mở* trong khi mục tương ứng bên dưới ghi *đã đóng*). Sửa một mục ở
 > thân thì **phải sửa dòng của nó ở đây cùng lúc**; đây là bảng người đọc nhìn
 > trước tiên nên nó sai là cả tài liệu sai.
@@ -21,7 +21,7 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > | Mục | Vì sao còn mở |
 > |---|---|
 > | ~~**G10**~~ | ✅ **Đóng 2026-09-07** — mỗi tài khoản nay có bản sao riêng, việc gán nhóm nằm trong `Idgroup` của chính hàng ấy |
-> | **G15** | Hoãn có chủ ý — bản ghi vừa hết hạn vừa hỏng đồng bộ |
+> | ~~**G15**~~ | ✅ **Đóng 2026-09-07** — tab "Đã hết hạn" nay phân biệt "đã chốt sổ" với "hỏng, chưa bao giờ lên tới server". ⚠️ Dòng cũ ở đây ghi *hoãn có chủ ý*, mâu thuẫn với chính mục G15 bên dưới — **lần trôi thứ năm**; sửa 2026-09-10 |
 > | ~~**G16**~~ | ✅ **Đóng trọn 2026-09-07.** Nguồn tự sinh đóng 2026-09-05; **vế lệch ràng buộc với CSDL cũng đã đóng** — hai partial unique index mới đều có `WHERE "Delete_at" IS NULL`. ⚠️ Dòng cũ ở đây ghi vế ấy *vẫn còn*, mâu thuẫn với chính mục G16 bên dưới; sửa 2026-09-08. Lớp cầm máu `_uniqueConstraintPattern` **vẫn giữ, đừng gỡ** |
 > | ~~**G17**~~ | ✅ **Đóng 2026-09-07** — `context.watch<AuthBloc>()` + `key: ValueKey(idaccount)` trên `GoalPage`, có test canh. ⚠️ Dòng cũ ở đây ghi mục này còn mở, mâu thuẫn với chính mục G17 bên dưới; sửa 2026-09-08 |
 > | **G18** | ⏸️ **THU HẸP DẦN, không còn chặn ở backend.** Cột `transaction.Idgoal` đã có từ 2026-09-07 và client đẩy/đọc nó; thứ còn lại chỉ là **hàng cũ trên server mang `Idgoal = NULL`**, chúng nhận ID khi được đẩy lại. ⚠️ Dòng cũ ở đây ghi *chặn ở backend*, mâu thuẫn với chính mục G18 bên dưới — **lần trôi thứ tư**; sửa 2026-09-08 |
@@ -33,6 +33,7 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > | **G25** | **Không phải lỗi** — hai máy cùng sắp lại thứ tự ưu tiên khi ngoại tuyến thì được một thứ tự trộn (2026-09-08) |
 > | **G26** | Hoãn có chủ ý — chưa có màn **duyệt giao dịch ngân hàng** cho sự kiện realtime trỏ tới; đây là một tính năng riêng, không phải phần còn thiếu của việc nối socket (2026-09-09) |
 > | **G27** | Hoãn có chủ ý — không còn cách nói "ví này **được phép âm**" sau khi loại `debt` bị bỏ; cần một cột mới ở cả hai đầu cho một tình huống CSDL hiện không có hàng nào (2026-09-09) |
+> | **G28** | ⛔ **Chặn ở backend** — cột `wallet."Status"` là `varchar(7)` trong khi chính `chk_wallet_status` cho phép `'Inactive'` (8 ký tự), nên **lưu trữ ví chỉ sống trên máy đã bấm** (2026-09-10) |
 >
 > **G20 đã đóng ngày 2026-09-05** — `depositToGoal` nhận `occurredAt` chặn hai
 > đầu; đã kiểm cả bằng test lẫn trên máy ảo Android.
@@ -714,6 +715,56 @@ có ví `Cash` (3) và `Saving` (2).
 hai nhánh loại trừ trong `_walletCandidates`. Hai test ở
 `notification_rules_goal_wallet_test.dart` đã ghi lại chiều cũ lẫn chiều mới —
 đọc chúng trước khi làm.
+
+---
+
+### G28 — Lưu trữ ví chỉ sống trên máy đã bấm · ⛔ CHẶN Ở BACKEND (2026-09-10)
+
+Tính năng **lưu trữ ví** (2026-09-10) ghi trạng thái vào cột `wallets.status`
+của SQLite. Cột cùng tên đã có sẵn ở PostgreSQL và `upsertWallet` phía backend
+đã xử lý nó ở cả nhánh tạo lẫn nhánh cập nhật — nên nhìn qua thì đây là thứ đẩy
+lên được ngay. Nó không.
+
+Lược đồ **tự mâu thuẫn ở đúng cột ấy**, hai phép đo trên cùng một cột:
+
+```
+chk_wallet_status => CHECK (("Status")::text = ANY (ARRAY['Active','Inactive']))
+Status            => character varying(7)
+```
+
+CHECK tuyên bố `'Inactive'` hợp lệ; kiểu cột không chứa nổi nó — chuỗi ấy dài
+**8 ký tự**. Không giá trị nào vừa **cả hai** ngoài `'Active'`, nên trên thực tế
+cột này là một **hằng số** chứ không phải một trạng thái.
+
+Bản đầu của client có đẩy `status` lên, và trên máy ảo nó **kẹt hàng đợi đẩy**:
+backend trả lỗi ràng buộc, bản ghi quay lại hàng đợi và thử lại ở mọi chu kỳ,
+kéo chậm cả hàng đợi. Đây là điều `flutter test` **không** bắt được — hợp đồng
+đồng bộ được canh bằng adapter giả, không bằng CSDL thật.
+
+**Vì sao không vá ở client:** không có chỗ ghi thì không có cách ghi. Cột được
+gỡ khỏi **cả hai** chiều của đồng bộ, cùng diện với `bills.autoPayEnabled` và
+`bills.anchorDay`. Chiều **kéo về** phải im lặng cùng lúc chứ không chỉ chiều
+đẩy: server luôn trả `'Active'` cho mọi ví — nó chưa bao giờ nhận được giá trị
+nào khác — nên một bản chỉ gỡ chiều đẩy sẽ khiến ví vừa lưu trữ **tự bỏ lưu
+trữ** sau đúng một chu kỳ đồng bộ, im lặng. Có test riêng canh ca ấy, và nó gửi
+`'status': 'Active'` chứ không gửi payload thiếu khoá, vì dạng thiếu khoá không
+phân biệt được hai cách cài đặt.
+
+**Hệ quả:** hai máy cùng một tài khoản thấy khác nhau, và người dùng không được
+báo gì. Cùng hạng với `bill.Auto_pay` nhưng **nhẹ hơn**: lưu trữ ví không tự
+tiêu tiền của ai, chỉ làm một ví hiện lại ở máy chưa bấm.
+
+**Bán kính khi backend nới cột:** một dòng `ALTER TABLE` (không cần đụng CHECK —
+nó đã cho phép đúng hai giá trị cần thiết), rồi client mở lại **ba chỗ** — nhánh
+đẩy và nhánh kéo về của `sync_engine.dart`, cộng `walletForPush` trong
+`sync_payload_normalizer.dart` — và cập nhật `sync_payload_contract_test.dart`
+cùng lúc (payload đẩy ví **12 → 13** trường). Cả ba chỗ đều còn nguyên chú thích
+chỉ ngược về tài liệu xin:
+`docs/superpowers/backend/CAN-LAM/WALLET_STATUS_COLUMN_WIDTH.md`.
+
+`WalletStatus.khoaGuiLen` (`'Active'`/`'Inactive'`) vẫn ở lại và vẫn được
+`wallet_status_test.dart` canh, đúng để ngày nối lại chỉ tốn một dòng — **đừng
+đọc nó là mã chết bỏ quên**.
 
 ---
 

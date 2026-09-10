@@ -10,7 +10,7 @@ abstract class WalletLocalDataSource {
   Future<List<WalletEntity>> getAll(int idaccount);
   Stream<List<WalletEntity>> watchAll(int idaccount);
   Future<List<WalletEntity>> getActive(int idaccount);
-  Stream<List<WalletEntity>> watchActive(int idaccount);
+
   Future<WalletEntity?> getById(String id);
   Future<WalletEntity?> getDefault(int idaccount);
   Future<void> insert(WalletEntity wallet);
@@ -92,12 +92,6 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
     }
   }
 
-  @override
-  Stream<List<WalletEntity>> watchActive(int idaccount) {
-    return _db.walletDao
-        .watchActive(idaccount)
-        .map((rows) => rows.map(_toEntity).toList());
-  }
 
   @override
   Future<WalletEntity?> getById(String id) async {

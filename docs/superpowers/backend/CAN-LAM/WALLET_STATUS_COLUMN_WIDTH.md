@@ -62,7 +62,8 @@ Status            => character varying(7)
 
 CHECK tuyên bố `'Inactive'` hợp lệ; kiểu cột thì không cho nó vào. Không giá
 trị nào vừa cả hai ngoài `'Active'`, nên trên thực tế cột này là **một hằng số**
-chứ không phải một trạng thái. Ba cột cùng bảng thì không có vấn đề ấy:
+chứ không phải một trạng thái. **Hai** cột còn lại của bảng có CHECK kèm chuỗi
+thì không vướng:
 `Type` là `varchar(7)` và chuỗi dài nhất CHECK cho phép là `'Banking'` — vừa
 khít 7; `Currency` là `varchar(3)` với `'VND'`/`'USD'`.
 

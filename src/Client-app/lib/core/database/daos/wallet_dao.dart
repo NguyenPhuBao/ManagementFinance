@@ -55,12 +55,6 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
     return rows.where((w) => WalletStatus.laHoatDong(w.status)).toList();
   }
 
-  /// Bản stream của [getActive] — cùng phép lọc, cùng thứ tự.
-  Stream<List<Wallet>> watchActive(int idaccount) {
-    return watchAll(idaccount).map(
-        (rows) => rows.where((w) => WalletStatus.laHoatDong(w.status)).toList());
-  }
-
   Future<List<Wallet>> getAllNonDeleted() {
     return (select(wallets)
           ..where((t) => t.deletedAt.isNull())
@@ -163,11 +157,15 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
 
   /// Bật/tắt lưu trữ cho một ví.
   ///
-  /// Đánh `pending` là **bắt buộc**, không phải cho gọn: trạng thái này đi
-  /// được ra máy khác qua `/sync/push` (cột `Status` đã có ở PostgreSQL và
-  /// `upsertWallet` đã xử lý). Không vào hàng đợi đẩy thì máy này thấy ví đã
-  /// lưu trữ còn máy kia vẫn thấy nó trong mọi bộ chọn, vĩnh viễn — cùng bài
-  /// học với [clearDefaultExcept].
+  /// ⚠️ Cột `status` **không** đi qua đồng bộ (G28): `chk_wallet_status` của
+  /// PostgreSQL cho phép `'Inactive'` nhưng kiểu cột là `varchar(7)`, mà chuỗi
+  /// ấy dài 8 ký tự — đẩy lên là ví kẹt hàng đợi đẩy. Nên lưu trữ ví chỉ sống
+  /// trên máy đã bấm cho tới khi backend nới cột.
+  ///
+  /// Vẫn đánh `pending`, và **có chủ ý**: `updatedAt` đổi thì hàng này phải
+  /// được đẩy lên như mọi thay đổi khác — chỉ riêng cột `status` là không đi
+  /// kèm. Bỏ `pending` ở đây là ví vừa bị chạm nằm ngoài hàng đợi cho tới lần
+  /// sửa sau, tức `updatedAt` mới không bao giờ tới server.
   Future<void> setStatus(String id, {required bool luuTru}) async {
     final status = luuTru ? WalletStatus.luuTru : WalletStatus.hoatDong;
     await (update(wallets)..where((t) => t.id.equals(id))).write(
