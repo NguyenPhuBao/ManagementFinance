@@ -492,8 +492,10 @@ class SyncEngine {
                 // `bills.autoPayEnabled` và `bills.anchorDay`.
                 //
                 // Lý do là một con số, đo thẳng trên PostgreSQL ngày
-                // 2026-09-10: cột `Status` là **varchar(7)**, còn giá trị
-                // cần gửi lên là `'Inactive'` — **8 ký tự**. Đẩy lên là
+                // 2026-09-10: `chk_wallet_status` CHO PHÉP `'Inactive'`,
+                // nhưng kiểu cột `Status` là **varchar(7)** còn chuỗi ấy
+                // dài **8 ký tự** — lược đồ tự mâu thuẫn, và không giá trị
+                // nào vừa cả hai ngoài `'Active'`. Đẩy lên là
                 // hàng ví vỡ ở tầng CSDL và kẹt hàng đợi đẩy, thử lại ở
                 // MỌI chu kỳ, kéo chậm cả hàng đợi. Đã vấp thật trên máy
                 // ảo, và đó là cách phát hiện ra con số ấy.

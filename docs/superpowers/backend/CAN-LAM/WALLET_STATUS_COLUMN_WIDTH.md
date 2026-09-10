@@ -7,9 +7,12 @@ dòng `ALTER TABLE`, không đụng mã ứng dụng.
 
 ## 1. Tóm tắt
 
-Cột `wallet."Status"` hiện là `character varying(7)`. Giá trị mà client cần ghi
-vào đó là `'Inactive'` — **8 ký tự**. Nó không vừa, nên tính năng **lưu trữ ví**
-của client hiện phải sống hoàn toàn cục bộ.
+Cột `wallet."Status"` là `character varying(7)`, nhưng ràng buộc
+`chk_wallet_status` trên chính cột ấy lại **cho phép `'Inactive'` — 8 ký tự**.
+Tức lược đồ tự mâu thuẫn: CHECK nói giá trị ấy hợp lệ, còn kiểu cột thì không
+chứa nổi nó. Ghi vào là lỗi ở tầng CSDL.
+
+Hệ quả: tính năng **lưu trữ ví** của client hiện phải sống hoàn toàn cục bộ.
 
 Xin đổi thành `varchar(16)`. Không cần sửa `upsertWallet`, không cần sửa
 `mapEntityFields`: **cả hai đã xử lý `status` đúng từ trước**.
@@ -47,43 +50,49 @@ Và đây là điều xảy ra trên máy ảo khi client thử đẩy `'Inactiv
 
 Bản ghi **không** bị bỏ đi — nó quay lại hàng đợi và thử lại ở mọi chu kỳ, kéo
 chậm cả hàng đợi. Đúng dạng hỏng mà `chk_wallet_type` từng gây ra với
-`ewallet`/`debt`, chỉ khác là lần này nguyên nhân là **độ rộng cột** chứ không
-phải CHECK constraint.
+`ewallet`/`debt` (đóng 2026-09-09), chỉ khác là lần này nguyên nhân là **độ
+rộng cột** chứ không phải CHECK.
+
+Và đây là chỗ lược đồ tự mâu thuẫn — hai phép đo trên **cùng một cột**:
+
+```
+chk_wallet_status => CHECK (("Status")::text = ANY (ARRAY['Active','Inactive']))
+Status            => character varying(7)
+```
+
+CHECK tuyên bố `'Inactive'` hợp lệ; kiểu cột thì không cho nó vào. Không giá
+trị nào vừa cả hai ngoài `'Active'`, nên trên thực tế cột này là **một hằng số**
+chứ không phải một trạng thái. Ba cột cùng bảng thì không có vấn đề ấy:
+`Type` là `varchar(7)` và chuỗi dài nhất CHECK cho phép là `'Banking'` — vừa
+khít 7; `Currency` là `varchar(3)` với `'VND'`/`'USD'`.
 
 ---
 
-## 3. ⚠️ Hai điều tài liệu nội bộ đang ghi SAI
+## 3. ⚠️ Một kết luận cũ đã sai, và một phép đo của tôi cũng đã sai
 
-Ghi lại ở đây vì chúng đã dẫn tới một vòng làm việc thừa, và cả hai đều nằm
-trong `CLAUDE.md` lẫn bàn giao phiên trước.
+**Kết luận cũ sai:** *"lưu trữ ví làm được mà không cần một dòng backend nào"*
+(bàn giao 2026-09-09). Nó đến từ việc đọc `upsertWallet` — đúng, hàm ấy xử lý
+`status` ở cả nhánh tạo lẫn nhánh cập nhật — mà **không đo độ rộng cột**. Phần
+ứng dụng đã sẵn sàng thật; phần lược đồ thì chưa.
 
-**Thứ nhất — bảng `wallet` KHÔNG có CHECK constraint nào.** Đo cùng ngày:
+**Phép đo của tôi cũng sai, ghi lại để không ai lặp:** lượt đo đầu ngày
+2026-09-10 kết luận bảng `wallet` *"không có CHECK constraint nào"* và tôi đã sửa
+`CLAUDE.md` theo. Sai. Câu truy vấn `pg_constraint` đúng, nhưng kết quả bị cắt vì
+tôi lọc output qua `tail -25` — bốn dòng CHECK nằm ở **đầu** danh sách và bị cắt
+mất, chỉ còn bốn dòng cuối. Đo lại đầy đủ: bảng có **18** ràng buộc, trong đó có
+cả bốn CHECK mà tài liệu vẫn ghi:
 
 ```
-SELECT conname, pg_get_constraintdef(oid)
-FROM pg_constraint WHERE conrelid = 'wallet'::regclass;
+chk_wallet_type         => "Type" = ANY (ARRAY['Cash','Bank','Saving','Banking'])
+chk_wallet_status       => "Status" = ANY (ARRAY['Active','Inactive'])
+chk_wallet_currency     => "Currency" = ANY (ARRAY['VND','USD'])
+chk_wallet_banking_link => (Type='Banking' AND Id_bank_casso IS NOT NULL)
+                        OR (Type<>'Banking' AND Id_bank_casso IS NULL)
 ```
 
-trả về **đúng bốn** dòng, và không dòng nào là CHECK:
-
-```
-wallet_Update_at_not_null  => NOT NULL "Update_at"
-wallet_pkey                => PRIMARY KEY ("Idwallet")
-fk_wallet_account          => FOREIGN KEY ("Idaccount") REFERENCES account(…)
-fk_wallet_bank             => FOREIGN KEY ("Id_bank_casso") REFERENCES bank_account(…)
-```
-
-Tức `chk_wallet_type`, `chk_wallet_status`, `chk_wallet_currency` và
-`chk_wallet_banking_link` **không tồn tại** trên CSDL này. Thứ thật sự giới hạn
-giá trị là **độ rộng `varchar`**, và nó giới hạn một cách khác hẳn: `varchar(7)`
-nhận `'Cash'`, `'Bank'`, `'Saving'`, `'Banking'` và cũng nhận cả `'ewallet'`
-(7 ký tự) lẫn bất kỳ chuỗi rác nào ≤ 7 ký tự. Client vẫn giữ nguyên phép ánh xạ
-chặt ở `wallet_type.dart` — nó vẫn đúng và vẫn đáng giữ — nhưng lý do ghi trong
-đó ("CHECK constraint sẽ từ chối") không phải lý do thật.
-
-**Thứ hai — "lưu trữ ví không cần một dòng backend nào" là sai.** Kết luận ấy
-đến từ việc đọc `upsertWallet` (đúng: nó xử lý `status` ở cả hai nhánh) mà
-không đo độ rộng cột. Phần ứng dụng đã sẵn sàng; phần lược đồ thì chưa.
+`CLAUDE.md` và `PROJECT_CONTEXT.md` đã được trả lại đúng. Bài học đáng giữ:
+**đừng lọc output của một phép đo qua `head`/`tail` khi chưa biết nó dài bao
+nhiêu** — dùng `grep` theo dấu hiệu của từng dòng, hoặc in ra tệp rồi đọc.
 
 ---
 
@@ -101,15 +110,23 @@ status String @default("Active") @db.VarChar(16) @map("Status")
 
 **Vì sao 16 chứ không phải 8:** 8 vừa khít `'Inactive'` và không còn chỗ cho
 trạng thái thứ ba nào. Cột `Icon` và `Color` cạnh đó đã là `varchar(20)`, nên
-16 không lệch khỏi nếp của bảng. Nếu muốn siết giá trị thì thêm
+16 không lệch khỏi nếp của bảng.
+
+**Không cần đụng `chk_wallet_status`** — nó đã cho phép đúng hai giá trị cần
+thiết. Đây thuần tuý là việc nới kiểu cột cho khớp với ràng buộc đã có; sau khi
+nới, hai thứ nói cùng một điều lần đầu tiên.
+
+Nếu bảng còn cột nào khác cùng cảnh thì đáng quét một lượt:
 
 ```sql
-ALTER TABLE wallet ADD CONSTRAINT chk_wallet_status
-  CHECK ("Status" IN ('Active', 'Inactive'));
+SELECT c.relname, a.attname, format_type(a.atttypid, a.atttypmod)
+FROM pg_constraint k
+JOIN pg_class c ON c.oid = k.conrelid
+JOIN pg_attribute a ON a.attrelid = k.conrelid AND a.attnum = ANY (k.conkey)
+WHERE k.contype = 'c';
 ```
 
-— nhưng **hãy đo lại dữ liệu hiện có trước**, vì bảng chưa từng có ràng buộc này
-và không ai biết chắc trong đó chỉ có hai giá trị ấy.
+rồi đối chiếu tay độ dài chuỗi trong từng CHECK với `atttypmod`.
 
 **Không cần làm gì thêm.** `mapEntityFields('wallet')` cho khoá lạ đi qua nguyên
 vẹn, nên `status` trong payload tới thẳng `mapped.status`; `upsertWallet` đã ghi
@@ -120,14 +137,20 @@ nó ở cả nhánh `create` (`sync.repository.js:212`) lẫn nhánh `update` (`
 ## 5. Client sẽ làm gì khi cột được nới
 
 Hiện tại `status` là cột **cục bộ**, cố ý không đi theo chiều nào của đồng bộ —
-cùng diện với `bills.autoPayEnabled` và `bills.anchorDay`. Hai chỗ giữ điều đó,
-và cả hai đều có test canh:
+cùng diện với `bills.autoPayEnabled` và `bills.anchorDay` (đo lại 2026-09-10:
+cả hai đều vắng mặt trong payload đẩy hoá đơn). **Ba chỗ** giữ điều đó:
 
-- `sync_engine.dart` — payload đẩy ví có **12 trường**, không có `status`; nhánh
-  kéo về **không đọc** `w['status']`.
-- `sync_payload_normalizer.dart` — `walletForPush` không chạm tới `status`,
-  nhưng `WalletStatus.khoaGuiLen` (`'Active'`/`'Inactive'`) vẫn còn nguyên và
-  vẫn được test canh.
+1. `sync_engine.dart`, nhánh **đẩy** — payload đẩy ví có **12 trường** (đếm
+   bằng máy), không có `status`.
+2. `sync_engine.dart`, nhánh **kéo về** — không đọc `w['status']`, không có
+   dòng `status:` nào trong companion dựng từ payload.
+3. `sync_payload_normalizer.dart` — `walletForPush` không chạm tới `status`.
+   `WalletStatus.khoaGuiLen` (`'Active'`/`'Inactive'`) vẫn còn nguyên và vẫn
+   được `wallet_status_test.dart` canh, để ngày mở lại chỉ là một phép nối.
+
+Cả ba đều được `sync_payload_contract_test.dart` canh: nếu bất kỳ chỗ nào
+thêm `status` vào payload thì ca *"ví lưu trữ KHÔNG được mang `status` lên
+server"* đỏ.
 
 Nhánh **kéo về** phải im lặng cùng lúc với nhánh đẩy, không chỉ nhánh đẩy: chừng
 nào client chưa gửi cột này lên thì server luôn trả `'Active'` cho mọi ví, nên
@@ -136,8 +159,9 @@ kỳ đồng bộ — im lặng. Có test riêng canh đúng ca ấy, và nó g�
 `'status': 'Active'` chứ không gửi payload thiếu khoá, vì dạng thiếu khoá không
 phân biệt được hai cách cài đặt.
 
-Khi cột được nới, client mở lại **ba dòng** và cập nhật
-`sync_payload_contract_test.dart` cùng lúc.
+Khi cột được nới, client mở lại đúng **ba chỗ ấy** và cập nhật
+`sync_payload_contract_test.dart` cùng lúc — payload đẩy ví thành **13**
+trường. Cả ba đều còn nguyên chú thích chỉ ngược về tài liệu này.
 
 ## 6. Hệ quả trong lúc chờ
 

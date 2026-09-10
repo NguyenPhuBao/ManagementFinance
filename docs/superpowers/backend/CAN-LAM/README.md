@@ -136,13 +136,13 @@ cả đợt migration). Phần còn lại, xếp theo mức thiệt hại:
    2026-09-10) — một dòng `ALTER TABLE`, không đụng mã ứng dụng. Cột là
    `varchar(7)` còn giá trị cần ghi là `'Inactive'` — **8 ký tự**. Client đã
    làm xong tính năng **lưu trữ ví** nhưng phải để cột `status` **cục bộ**,
-   nên lưu trữ chỉ có hiệu lực trên máy đã bấm. ⚠️ Tài liệu ấy còn ghi lại
-   **hai điều `CLAUDE.md` đang nói sai**: bảng `wallet` **không có CHECK
-   constraint nào** (`chk_wallet_type`, `chk_wallet_status`,
-   `chk_wallet_currency`, `chk_wallet_banking_link` đều không tồn tại — đo
-   `pg_constraint` ngày 2026-09-10), và "lưu trữ ví không cần một dòng
-   backend nào" là kết luận sai vì nó đọc `upsertWallet` mà không đo độ rộng
-   cột.
+   nên lưu trữ chỉ có hiệu lực trên máy đã bấm. ⚠️ Điểm đáng chú ý: **lược đồ
+   tự mâu thuẫn ở đúng cột này** — `chk_wallet_status` cho phép `'Inactive'`
+   nhưng kiểu cột không chứa nổi nó, nên không giá trị nào vừa cả hai ngoài
+   `'Active'`. Không cần đụng CHECK, chỉ nới kiểu cột cho khớp ràng buộc đã
+   có. Tài liệu ấy cũng ghi lại **một phép đo sai của chính phiên 2026-09-10**
+   (kết luận nhầm rằng bảng không có CHECK nào, do lọc output qua `tail`) —
+   giữ lại vì bài học về cách đo, không phải vì kết luận.
 
 > ⚠️ **Trước khi chạy migration ở môi trường mới:** lấy bản vá xoá mềm ở
 > nhánh `patch2`. Bản `)2_can_lam_all_migrations.sql` trên `main` sẽ roll back

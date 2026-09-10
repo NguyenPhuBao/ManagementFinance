@@ -11,16 +11,24 @@
 /// chk_wallet_status CHECK (Status = ANY (ARRAY['Active','Inactive']))
 /// ```
 ///
-/// Đây đúng cái bẫy mà [WalletType] sinh ra để đóng: giá trị không nằm trong
-/// CHECK đẩy lên là bản ghi **kẹt hàng đợi đẩy vĩnh viễn, im lặng** — không
-/// log, không gì trên màn hình. Nên ba phép ánh xạ ở đây phải khớp nhau, và
-/// `sync_payload_normalizer.dart` phải đi qua đúng tệp này.
+/// ⚠️ **Nhưng [khoaGuiLen] hiện KHÔNG được dùng ở đâu ngoài test.** Lược đồ
+/// PostgreSQL tự mâu thuẫn ở đúng cột này: CHECK cho phép `'Inactive'` trong
+/// khi kiểu cột là `varchar(7)` — chuỗi ấy dài **8 ký tự**. Không giá trị nào
+/// vừa cả hai ngoài `'Active'`, nên ví lưu trữ đẩy lên là **kẹt hàng đợi đẩy**,
+/// đo được trên máy ảo ngày 2026-09-10. Vì thế `status` là cột **cục bộ**:
+/// `sync_payload_normalizer.dart` **không** đi qua tệp này, và nhánh kéo về
+/// cũng không đọc cột ấy.
+///
+/// [khoaGuiLen] vẫn ở lại và vẫn được test canh, để ngày backend nới cột thì
+/// việc nối lại chỉ là một dòng. Xin nới cột:
+/// `docs/superpowers/backend/CAN-LAM/WALLET_STATUS_COLUMN_WIDTH.md`.
 ///
 /// ## Vì sao tệp này KHÔNG import Flutter
 ///
-/// Cùng lý do với `wallet_type.dart`: `sync_payload_normalizer.dart` — tầng
-/// hợp đồng giữa client và server — không import gì cả, và đó là tính chất
-/// đáng giữ.
+/// Cùng lý do với `wallet_type.dart`: nó được `wallet_dao.dart` và tầng đồng
+/// bộ dùng tới, và khi cột được nới thì `sync_payload_normalizer.dart` — tầng
+/// hợp đồng giữa client và server, không import gì cả — sẽ dùng nó. Giữ Dart
+/// thuần là giữ khả năng ấy.
 ///
 /// ## Lưu trữ nghĩa là gì
 ///
