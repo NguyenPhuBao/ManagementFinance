@@ -1,6 +1,6 @@
 # Backend — CHỈ ĐỌC THƯ MỤC NÀY
 
-**Cập nhật:** 2026-09-10 tối (mục 11: phần **áp** `database/7`–`11` đã xong trên CSDL dev — còn lại ghi quy trình và tách nhánh cho qua. Trước đó cùng ngày: thêm mục 13–16 sau lượt rà soát CSDL mới — `AUTH_401_BODY_CODE.md`, `GOAL_PRIORITY_NULL_TO_ZERO.md`, `SYNC_PUSH_ERROR_MAPPING.md`, `RULE_PROJECT_DOC_DRIFT.md`. Trước đó cùng ngày: mục 10 `SYNC_NOTE_FILTER_REWRITE.md`, mục 11 `DEV_DB_MIGRATIONS_7_11.md` sau khi gộp `main`, và mục 12 `WALLET_SAVING_INDEX.md` sau lượt rà soát ví; mục 9 gộp vào mục 11. Lần trước: 2026-09-09, thêm mục 7 và 8 — hai tệp `SOCKET_*`. Banner đợt 2026-09-07 bên dưới giữ nguyên vì nó nói về đợt ấy)
+**Cập nhật:** 2026-09-10 tối (mục 16 viết lại thành hướng dẫn sửa theo dòng — 56 chỗ tài liệu, ba việc mã; mục 11: phần **áp** `database/7`–`11` đã xong trên CSDL dev — còn lại ghi quy trình và tách nhánh cho qua. Trước đó cùng ngày: thêm mục 13–16 sau lượt rà soát CSDL mới — `AUTH_401_BODY_CODE.md`, `GOAL_PRIORITY_NULL_TO_ZERO.md`, `SYNC_PUSH_ERROR_MAPPING.md`, `RULE_PROJECT_DOC_DRIFT.md`. Trước đó cùng ngày: mục 10 `SYNC_NOTE_FILTER_REWRITE.md`, mục 11 `DEV_DB_MIGRATIONS_7_11.md` sau khi gộp `main`, và mục 12 `WALLET_SAVING_INDEX.md` sau lượt rà soát ví; mục 9 gộp vào mục 11. Lần trước: 2026-09-09, thêm mục 7 và 8 — hai tệp `SOCKET_*`. Banner đợt 2026-09-07 bên dưới giữ nguyên vì nó nói về đợt ấy)
 
 > ## ✅ Đợt backend 2026-09-07 — client đã kiểm chứng bằng mã, không tin báo cáo
 >
@@ -231,9 +231,9 @@ lại trên CSDL dev. Đều **không cần migration**.
     mục 5: thêm `'Skipped'` vào CHECK mà quên lớp kiểm tra là tắc cả hàng đợi.
 16. **Sửa `docs/Rule_Project/` và `docs/progress/Backend.md` cho khớp mã và
     CSDL** ([RULE_PROJECT_DOC_DRIFT.md](./RULE_PROJECT_DOC_DRIFT.md)) — chỉ sửa
-    tài liệu. **31** chỗ lệch, chia bốn nhóm theo *sửa ở đâu*: 23 chỗ tài liệu
-    sai, 3 chỗ đúng với tệp SQL chưa áp (đừng sửa — nay đã khớp trên CSDL dev vì mục 11 đã áp), 3 chỗ mô tả tính năng chưa
-    có như đã có, 2 chỗ tài liệu đúng mà mã sai. `New_Database.md` tự nhận
+    tài liệu, cộng ba việc mã. Đo lại tối 2026-09-10 sau khi áp CSDL: **56** chỗ sửa theo dòng ở bốn tệp —
+    25 mục cũ nhóm A/C cộng 13 chỗ mới; nhóm B cũ (3 chỗ) đã tự khớp khi áp mục 11; ba việc mã là body 401, bộ lọc ghi chú,
+    và `Provider` `'ORC'`/`'OCR'` tự mâu thuẫn. `New_Database.md` tự nhận
     "Source of Truth" nhưng thiếu năm cột client đang đồng bộ và ghi sai unique
     index của cả `category`, `wallet` lẫn `transaction`. ⚠️ Và mục 9 của
     `docs/progress/Backend.md` — danh sách "cần làm để khớp Client-App" — **không
