@@ -1,6 +1,6 @@
 # Backend — CHỈ ĐỌC THƯ MỤC NÀY
 
-**Cập nhật:** 2026-09-09 (thêm mục 7 và 8 — hai tệp `SOCKET_*`; banner đợt 2026-09-07 bên dưới giữ nguyên vì nó nói về đợt ấy)
+**Cập nhật:** 2026-09-10 (thêm mục 10 `SYNC_NOTE_FILTER_REWRITE.md` và mục 11 `DEV_DB_MIGRATIONS_7_11.md` sau khi gộp `main`; mục 9 gộp vào mục 11. Lần trước: 2026-09-09, thêm mục 7 và 8 — hai tệp `SOCKET_*`. Banner đợt 2026-09-07 bên dưới giữ nguyên vì nó nói về đợt ấy)
 
 > ## ✅ Đợt backend 2026-09-07 — client đã kiểm chứng bằng mã, không tin báo cáo
 >
@@ -35,8 +35,9 @@
 > dòng cũ ở đây ghi "20 tài liệu" và đã lạc hậu từ lúc dọn sang `DA-XONG/`).
 > Thư mục này giữ **cả tài liệu còn việc lẫn tài liệu vừa đóng** — giữ cả hai để
 > đội backend thấy được cái gì đã xong mà không phải dò lại. Sau đợt 2026-09-07
-> chỉ còn **chín** mục thật sự phải làm (đếm lại 2026-09-10 sau khi client làm
-lưu trữ ví); danh sách ngắn ấy ở **mục 2**, đọc nó
+> chỉ còn **mười** mục thật sự phải làm (đếm lại 2026-09-10 lần hai, sau khi gộp
+> `main`: thêm mục 10 và 11, còn mục 9 gộp vào mục 11 — con số "chín" ghi ở đây
+> trước đó đúng cho tới lúc ấy); danh sách ngắn ấy ở **mục 2**, đọc nó
 > trước bảng phân nhóm bên dưới. Không cần mở gì ở thư mục cha ngoài ba tệp bối
 > cảnh liệt kê ở mục 4 — **bốn** tệp, đúng như dòng đầu khối này nói.
 
@@ -146,6 +147,32 @@ cả đợt migration). Phần còn lại, xếp theo mức thiệt hại:
    cũng ghi lại **một phép đo sai của chính phiên ấy** (kết luận nhầm rằng bảng
    không có CHECK nào, do lọc output qua `tail`) — giữ lại vì bài học về cách
    đo, không phải vì kết luận.
+
+   ⚠️ **Cập nhật sau khi gộp `main` (2026-09-10):** phần **mã** của mục này
+   backend **đã làm** từ 2026-09-09 — `7523c8c` đổi `schema.prisma` sang
+   `VarChar(20)` và bước 4 của `database/7_Update_Account_User_Delete_Rules.sql`
+   nới đúng cột ấy. Việc còn lại chỉ là **áp tệp 7**, nên mục này **không đếm
+   riêng nữa** — nó nằm trong mục 11.
+
+10. **Thu hẹp bộ lọc ghi chú của `/sync/push`**
+    ([SYNC_NOTE_FILTER_REWRITE.md](./SYNC_NOTE_FILTER_REWRITE.md), thêm
+    2026-09-10) — sửa hai biểu thức chính quy trong `utils/content-filter.util.js`,
+    không migration. Bộ lọc của đợt 2026-09-10 bắt nhầm số tài khoản, cặp "số điện
+    thoại + số tiền", "mật khẩu wifi", và cả hậu tố `(tự động)` do app sinh; bản
+    đã lọc **đè lên máy người dùng** ngay chu kỳ đồng bộ ấy — tái hiện đầu-cuối
+    trên máy ảo. **Chưa hỏng dữ liệu thật**, nhưng nổ ở lần ghi kế tiếp. Tài liệu
+    kèm bảng test 15 ca (phác thảo đề xuất đã chạy đúng 15/15) và ba điểm cùng
+    gốc: khoá mã hoá đang là mặc định viết cứng, `dedup.repository.js` so khớp trên
+    chuỗi đã mã hoá, `bank.worker.js` ghi ghi chú dạng rõ.
+11. **Áp các tệp `database/7`–`11`, và sửa fail-open ở `middleware/auth.js`**
+    ([DEV_DB_MIGRATIONS_7_11.md](./DEV_DB_MIGRATIONS_7_11.md), thêm 2026-09-10) —
+    không viết mã mới, chỉ áp năm tệp đã có theo đúng thứ tự rồi `prisma
+    generate`. Đo trên CSDL dev: 5 và 6 đã áp, **7–11 chưa áp bước nào**, còn
+    Prisma Client trong `node_modules` sinh từ 2026-09-07. Hệ quả: phép kiểm tài
+    khoản vỡ ở **mọi** request và **cho qua** — tài khoản bị khoá vẫn gọi được
+    API; đường xoá / huỷ xoá tài khoản mà client gọi thì hỏng. ⚠️ **Đừng `prisma
+    generate` trước khi áp 8 và 9** — làm thế là tắt luôn đăng nhập. Và đặt khoá
+    mã hoá thật **trước** tệp 11.
 
 > ⚠️ **Trước khi chạy migration ở môi trường mới:** lấy bản vá xoá mềm ở
 > nhánh `patch2`. Bản `)2_can_lam_all_migrations.sql` trên `main` sẽ roll back

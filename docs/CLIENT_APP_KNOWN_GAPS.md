@@ -33,7 +33,8 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > | **G25** | **Không phải lỗi** — hai máy cùng sắp lại thứ tự ưu tiên khi ngoại tuyến thì được một thứ tự trộn (2026-09-08) |
 > | **G26** | Hoãn có chủ ý — chưa có màn **duyệt giao dịch ngân hàng** cho sự kiện realtime trỏ tới; đây là một tính năng riêng, không phải phần còn thiếu của việc nối socket (2026-09-09) |
 > | **G27** | Hoãn có chủ ý — không còn cách nói "ví này **được phép âm**" sau khi loại `debt` bị bỏ; cần một cột mới ở cả hai đầu cho một tình huống CSDL hiện không có hàng nào (2026-09-09) |
-> | **G28** | ⛔ **Chặn ở backend** — cột `wallet."Status"` là `varchar(7)` trong khi chính `chk_wallet_status` cho phép `'Inactive'` (8 ký tự), nên **lưu trữ ví chỉ sống trên máy đã bấm** (2026-09-10) |
+> | **G28** | ⛔ **Chặn ở CSDL, không còn ở mã backend** — cột `wallet."Status"` trên CSDL dev vẫn là `varchar(7)` trong khi chính `chk_wallet_status` cho phép `'Inactive'` (8 ký tự), nên **lưu trữ ví chỉ sống trên máy đã bấm** (2026-09-10). ⚠️ Cập nhật cùng ngày sau khi gộp `main`: backend **đã** đổi `schema.prisma` sang `VarChar(20)` và viết `database/7_…sql` từ 2026-09-09 (`7523c8c`) — tệp ấy chỉ **chưa được áp**. Người dùng chốt **để sau** |
+> | **G29** | ⛔ **Chặn ở backend** — `/sync/push` lọc `Note` bằng biểu thức bắt nhầm (số tài khoản, "mật khẩu wifi", hậu tố `(tự động)`), và bản đã lọc **đè lên máy** ngay chu kỳ đồng bộ ấy — tái hiện đầu-cuối trên máy ảo 2026-09-10. Chưa hỏng dữ liệu thật nào |
 >
 > **G20 đã đóng ngày 2026-09-05** — `depositToGoal` nhận `occurredAt` chặn hai
 > đầu; đã kiểm cả bằng test lẫn trên máy ảo Android.
@@ -718,7 +719,7 @@ hai nhánh loại trừ trong `_walletCandidates`. Hai test ở
 
 ---
 
-### G28 — Lưu trữ ví chỉ sống trên máy đã bấm · ⛔ CHẶN Ở BACKEND (2026-09-10)
+### G28 — Lưu trữ ví chỉ sống trên máy đã bấm · ⛔ CHẶN Ở CSDL — tệp `database/7` chưa áp (2026-09-10; tiêu đề cũ ghi "chặn ở backend", đổi cùng ngày sau khi gộp `main`)
 
 Tính năng **lưu trữ ví** (2026-09-10) ghi trạng thái vào cột `wallets.status`
 của SQLite. Cột cùng tên đã có sẵn ở PostgreSQL và `upsertWallet` phía backend
@@ -770,8 +771,55 @@ chỉ ngược về tài liệu xin:
 ngày cột ấy từng bị đổi sang `varchar(16)` **ngoài quy trình**, rồi được hoàn
 tác theo yêu cầu **đích danh** của người dùng — đo lại: `varchar(7)`, lịch sử
 migration 3 dòng, bốn CHECK đủ, số hàng không đổi. Nên trên máy ấy đẩy
-`'Inactive'` lên **lại vỡ như mọi môi trường khác** — G28 vẫn đúng. Diễn biến
+`'Inactive'` lên **lại vỡ** — G28 vẫn đúng trên máy ấy. Diễn biến
 đầy đủ ở mục **3b** của `CAN-LAM/WALLET_STATUS_COLUMN_WIDTH.md`.
+
+⚠️ **Cập nhật cùng ngày, sau khi gộp `main` (`bef37d3`) — chỗ chặn đã dời từ mã
+sang CSDL.** Backend **đã** làm phần của mình từ 2026-09-09 (`7523c8c`, NPBao):
+`schema.prisma` khai `wallet.status` là `VarChar(20)`, và bước 4 của
+`src/Backend/database/7_Update_Account_User_Delete_Rules.sql` nới đúng cột ấy. Lúc
+mục này được viết, commit ấy chỉ nằm trên `main`. Đo lại sau khi gộp: CSDL dev vẫn
+`varchar(7)` vì **tệp 7 chưa được áp** — cùng với 8, 9, 10, 11
+(`docs/superpowers/backend/CAN-LAM/DEV_DB_MIGRATIONS_7_11.md`). Nên câu "lược đồ tự
+mâu thuẫn" ở trên đúng với **CSDL**, không còn đúng với **mã nguồn** backend. Bán
+kính phía client không đổi: vẫn đúng ba chỗ ở đoạn trên. Người dùng chốt **để
+sau** — đừng mở lại khi chưa được hỏi.
+
+---
+
+### G29 — `/sync/push` viết lại ghi chú, và bản đã lọc đè lên máy · ⛔ CHẶN Ở BACKEND (2026-09-10)
+
+Đợt `main` ngày 2026-09-10 cho `/sync/push` chạy mọi `note` (giao dịch, ngân sách,
+hoá đơn, mục tiêu) qua `filterSensitiveNote()` rồi mới mã hoá. Mục đích đúng — NĐ
+13/2023, PCI-DSS. Nhưng hai biểu thức của bộ lọc **bắt nhầm**: phần số thẻ cộng
+gộp các số rời nhau và không kiểm Luhn (`0912345678 2500000` thành "số thẻ"; số tài
+khoản từ 13 chữ số cũng vậy), còn từ khoá mật khẩu không đòi dấu `:` nên nuốt từ
+đứng sau (`mật khẩu wifi` mất `wifi`; `Két mật khẩu (tự động)` mất `(tự`).
+
+**Tái hiện đầu-cuối trên máy ảo:** thêm một khoản qua giao diện với ghi chú
+`KiemThuDongBo STK 1903 4567 8901 23 mat khau wifi`. Server lưu bản đã lọc (mã
+hoá), và **trong cùng giây** lượt kéo về đè lên SQLite: hàng mang `synced`, màn Sổ
+giao dịch hiện `… STK [THÔNG TIN THẺ ĐÃ ĐƯỢC LƯỢC BỎ] Mật khẩu: [ĐÃ LƯỢC BỎ]`. Không
+lỗi, không log phía client. Khoản thử đã xoá mềm sau khi đo.
+
+**Vì sao không vá ở client:** đường đè là **chủ ý** của backend —
+`docs/progress/Client-app.md` mục 13.9 ghi client "lưu thẳng" `note` kéo về, để bản
+sao trên máy cũng được làm sạch khi đó thật là số thẻ. Giữ bản gốc ở client là vô
+hiệu bộ lọc đúng chỗ nó có ích; và client cũng không có cách nào biết một chuỗi
+kéo về đã bị lọc **nhầm**. Chỗ sửa là độ chính xác của bộ lọc.
+
+**Bán kính:** mất nội dung không đảo ngược ở cả hai đầu; và vỡ quy ước ghi chú do
+app sinh — hậu tố `(tự động)` mất thì khoản trích tự động đọc thành nạp tay
+(`goal_history_direction.dart`). Tiền tố `Điều chỉnh số dư` và hai tiền tố mục tiêu
+sống sót ở mọi ca đã đo. **Chưa hỏng dữ liệu thật:** chạy bộ lọc trên mọi ghi chú
+đang có (26 hàng không rỗng, đo 2026-09-10) thì chỉ đúng khoản thử bị viết lại.
+
+⚠️ **Khi làm mục 13.3 của `Client-app.md`** (cảnh báo trước khi lưu): **đừng** dán
+mã mẫu `SensitiveNoteValidator` ở 13.10.2 — đo 2026-09-10 nó chặn nhầm **5/10**
+ghi chú hợp lệ, gồm cả `Thay pin: 350000` ("pin" là pin điện thoại). Theo quy tắc đã
+sửa trong tài liệu xin, và chừa chuỗi do app sinh.
+
+Tài liệu xin: `docs/superpowers/backend/CAN-LAM/SYNC_NOTE_FILTER_REWRITE.md`.
 
 ---
 

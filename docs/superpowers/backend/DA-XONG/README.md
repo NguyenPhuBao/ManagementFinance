@@ -8,7 +8,9 @@
 > đây chứ không ở chỗ nào khác.
 >
 > Điều duy nhất đã hết là **việc phải làm**. Việc còn lại nằm ở
-> [`../CAN-LAM/README.md`](../CAN-LAM/README.md) — bốn mục, không hơn.
+> [`../CAN-LAM/README.md`](../CAN-LAM/README.md) — đếm số mục ở **mục 2** của
+> chính README ấy. Dòng này từng ghi "bốn mục, không hơn" và đã lạc hậu từ
+> 2026-09-08 mà không ai thấy (soát lại 2026-09-10); đừng chép con số sang đây.
 
 ---
 
