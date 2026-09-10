@@ -172,6 +172,65 @@ nó ở cả nhánh `create` (`sync.repository.js:212`) lẫn nhánh `update` (`
 
 ---
 
+## 4b. Cách áp — repo này dùng `prisma migrate`, không chạy SQL tay
+
+⚠️ **Đừng chạy câu `ALTER` ở mục 4 trực tiếp vào CSDL.** Repo có thư mục
+`src/Backend/prisma/migrations/` và bảng `_prisma_migrations` đã ghi nhận đủ ba
+migration trước (`..._init`, `..._align_new_database`, `..._fix_schema_align` —
+đo 2026-09-10, cả ba đều `finished`). Áp SQL tay thì lược đồ đi trước lịch sử,
+và lần `migrate` sau sẽ thấy một sai lệch không giải thích được.
+
+Ba bước, chạy từ `src/Backend`:
+
+**1. Tạo tệp migration** — đúng khuôn hai migration đã có:
+
+```
+prisma/migrations/<YYYYMMDDHHMMSS>_widen_wallet_status/migration.sql
+```
+
+```sql
+-- Migration: widen_wallet_status
+-- Xin từ client-app: docs/superpowers/backend/CAN-LAM/WALLET_STATUS_COLUMN_WIDTH.md
+--
+-- chk_wallet_status cho phép 'Inactive' (8 ký tự) nhưng kiểu cột là varchar(7),
+-- nên không giá trị nào vừa cả hai ngoài 'Active'. Nới kiểu cột cho khớp ràng
+-- buộc đã có; KHÔNG đụng CHECK.
+
+-- AlterTable
+ALTER TABLE "wallet" ALTER COLUMN "Status" TYPE VARCHAR(16);
+```
+
+**2. Sửa `prisma/schema.prisma`** (dòng 163 tính tới 2026-09-10):
+
+```prisma
+status String @default("Active") @db.VarChar(16) @map("Status")
+```
+
+**3. Áp và sinh lại client:**
+
+```bash
+npx prisma migrate deploy   # áp migration còn treo
+npx prisma generate         # Prisma Client khớp lại với schema
+```
+
+⚠️ Nếu máy đích là **máy dev đã bị đổi ngoài quy trình** ở mục 3b thì làm sạch
+trước (hai lệnh ở mục ấy), rồi mới chạy ba bước này — nếu không `migrate deploy`
+sẽ gặp một dòng lịch sử trỏ tới thư mục migration không còn tồn tại.
+
+**Kiểm sau khi chạy** — cả ba dòng phải đúng:
+
+```sql
+SELECT character_maximum_length FROM information_schema.columns
+  WHERE table_name='wallet' AND column_name='Status';        -- phải là 16
+
+SELECT conname FROM pg_constraint
+  WHERE conrelid='wallet'::regclass AND contype='c';          -- vẫn đủ 4 CHECK
+
+SELECT count(*) FROM wallet;                                  -- không đổi
+```
+
+---
+
 ## 5. Client sẽ làm gì khi cột được nới
 
 Hiện tại `status` là cột **cục bộ**, cố ý không đi theo chiều nào của đồng bộ —
