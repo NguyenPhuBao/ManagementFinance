@@ -1,6 +1,7 @@
 const { prisma } = require('../../config/db');
 const { encrypt, decrypt } = require('../../utils/crypto.util');
 const { filterSensitiveNote } = require('../../utils/content-filter.util');
+const { cleanStorageKey, getPresignedReceiptUrl } = require('../../utils/storage.util');
 
 function prepareSafeNote(note, defaultVal = null) {
   if (note === undefined) return undefined;
@@ -283,7 +284,7 @@ const syncRepository = {
           status: mapped.status || (mapped.provider && ['BankSync', 'Casso', 'SMS', 'ORC', 'OCR'].includes(mapped.provider) ? 'Pending' : 'Confirmed'),
           provider: mapped.provider || 'Manual',
           note: prepareSafeNote(mapped.note, ''),
-          images: mapped.images || null,
+          images: cleanStorageKey(mapped.images) || null,
           date_transaction: mapped.date_transaction || new Date(),
           update_at: mapped.update_at || new Date(),
           deleted_at: mapped.deleted_at || null,
@@ -304,7 +305,7 @@ const syncRepository = {
           status: mapped.status ?? existing.status,
           provider: mapped.provider ?? existing.provider,
           note: mapped.note !== undefined ? prepareSafeNote(mapped.note, '') : existing.note,
-          images: mapped.images !== undefined ? mapped.images : existing.images,
+          images: mapped.images !== undefined ? (cleanStorageKey(mapped.images) || null) : existing.images,
           date_transaction: mapped.date_transaction ?? existing.date_transaction,
           deleted_at: mapped.deleted_at !== undefined ? mapped.deleted_at : existing.deleted_at,
           update_at: mapped.update_at || new Date(),
@@ -322,7 +323,11 @@ const syncRepository = {
       },
       orderBy: { update_at: 'asc' },
     });
-    return list.map((item) => ({ ...item, note: restoreSafeNote(item.note) }));
+    return list.map((item) => ({
+      ...item,
+      note: restoreSafeNote(item.note),
+      images: item.images ? getPresignedReceiptUrl(item.images) : null,
+    }));
   },
 
   // ── Budget ──────────────────────────────────────────────

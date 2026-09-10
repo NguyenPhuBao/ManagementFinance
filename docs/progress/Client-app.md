@@ -512,3 +512,150 @@ Trường `Note` của Giao dịch (`transaction`), Ngân sách (`budget`), Hóa
 * **Dữ liệu giao dịch lịch sử**: Duy trì lưu trữ trên SQLite tối thiểu 5 năm phục vụ tra cứu sổ cái tài chính cá nhân ngoại tuyến (khớp với Điều 41 Luật Kế toán 2015).
 * **Dọn dẹp khi đăng xuất / đổi tài khoản**:
   * Khi người dùng đăng xuất (`Logout`) hoặc tài khoản hết hạn 30 ngày xóa mềm (`ACCOUNT_DELETED`): Xóa sạch toàn bộ token trong `FlutterSecureStorage`, xóa toàn bộ cache ảnh chứng từ tạm thời.
+
+---
+
+### 13.9. Ma Trận Tương Tác API Phía Client-App & Quy Cách Truyền Nhận Dữ Liệu Bảo Mật
+
+Bảng dưới đây quy định chi tiết cách **Client-app** gửi và nhận dữ liệu với từng API Backend nhằm tuân thủ 100% các chốt chặn an ninh 2 đầu:
+
+| Nhóm Màn Hình | Endpoint & Method | Quy Cách Client-App Gửi Lên | Quy Cách Backend Trả Về & Client-App Xử Lý |
+|---|---|---|---|
+| **Đăng ký** | `POST /api/auth/register/send-otp` | Body: `{ "email": "..." }` | Nhận thông báo gửi OTP thành công (mã OTP được hash SHA-256 trên server). |
+| **Đăng ký** | `POST /api/auth/register/verify-otp` | Body: `{ "email", "otp", "username", "password", "phone", "country_code", "fullname", "address" }` | Backend tự động mã hóa `Phone` và `Address` AES-256 trước khi lưu CSDL (nếu gửi SĐT thô trực tiếp vào DB sẽ bị Trigger PostgreSQL chặn đứng). |
+| **Đăng nhập** | `POST /api/auth/login` | Body: `{ "username", "password" }` | Nhận `{ "access_token", "refresh_token", "account", "user" }`. Lưu token vào `FlutterSecureStorage`. Nếu nhận `status: 'PendingDelete'`, hiển thị Banner đếm ngược. |
+| **Hồ sơ cá nhân** | `GET /api/auth/profile` hoặc `/me` | Header: `Bearer <token>` | Backend tự động decrypt `Phone` và `Address` trả về cho chính chủ. Client-app lưu cache SQLite để offline dùng. |
+| **Cập nhật hồ sơ** | `PUT /api/auth/profile` | Body: `{ "fullname", "phone", "address" }` | Backend mã hóa At-Rest trước khi lưu DB. Trigger CSDL kiểm tra tính hợp lệ của chuỗi mã hóa. |
+| **Yêu cầu xóa TK** | `DELETE /api/auth/account` | Body: `{ "password" }` | Backend chuyển tài khoản sang `PendingDelete`, `countdown = 30`. Client hiển thị Banner đếm ngược. |
+| **Hủy xóa TK** | `POST /api/auth/cancel-delete` | Body: `{}` | Backend khôi phục `Active`, `countdown = null`. Client ẩn Banner. |
+| **Đồng bộ Sync Push** | `POST /api/sync/push` | Body batch `operations` (create, update, delete):<br>• `note`: Đã validate khử sạch thẻ/CVV/mật khẩu.<br>• `images`: **Chỉ gửi Storage Key sạch** (ví dụ `receipts/img_123.jpg`), không gửi kèm query param HMAC. | Backend tự động lọc và mã hóa At-Rest `note` bằng AES-256. `images` được bóc tách và lưu trữ key sạch. |
+| **Đồng bộ Sync Pull** | `GET /api/sync/pull?since=...` | Header: `Bearer <token>` | • `note`: Backend đã giải mã sẵn AES-256 $\rightarrow$ Client lưu thẳng vào SQLite.<br>• `images`: Backend trả về Pre-Signed URL có chữ ký HMAC (TTL 30 phút) $\rightarrow$ Client dùng để hiển thị/tải ảnh, không lưu URL hết hạn này vào DB. |
+| **Tải ảnh chứng từ** | `GET /api/v1/storage/private/:key` | Kèm query chữ ký: `?expires=...&sig=...` | Backend xác thực chữ ký HMAC và thời hạn 30 phút. Trả về tệp ảnh nhị phân. Chặn đứng truy cập public không chữ ký. |
+| **Giao dịch ngân hàng** | `GET /api/bank/accounts` & `/pending-transactions` | Header: `Bearer <token>` | Backend trả về số tài khoản đã che mờ `**** **** **** 1234`. Client hiển thị an toàn trên UI. |
+| **Duyệt GD ngân hàng** | `POST /api/bank/confirm-transaction` | Body: `{ "idtran", "idcategory", "note" }` | Backend lọc nhạy cảm và mã hóa At-Rest trường `note`. Đổi trạng thái sang `Confirmed`. |
+
+---
+
+### 13.10. Thư Viện Tiện Ích Code Mẫu Dart / Flutter (Reference Implementation)
+
+Để đội ngũ phát triển Client-app có thể tích hợp nhanh chóng và chính xác, dưới đây là các đoạn mã nguồn mẫu chuẩn hóa:
+
+#### 13.10.1. Tiện Ích Che Mờ Dữ Liệu (`DataMaskingHelper`)
+```dart
+class DataMaskingHelper {
+  /// Che mờ email: phan***@gmail.com -> ph***@gmail.com
+  static String maskEmail(String? email) {
+    if (email == null || email.trim().isEmpty) return '';
+    final parts = email.trim().split('@');
+    if (parts.length != 2) return email;
+    final name = parts[0];
+    final domain = parts[1];
+    if (name.length <= 2) {
+      return '${name[0]}***@$domain';
+    }
+    return '${name.substring(0, 2)}***@$domain';
+  }
+
+  /// Che mờ số điện thoại: 0987654321 -> 098****321
+  static String maskPhone(String? phone) {
+    if (phone == null || phone.trim().isEmpty) return '';
+    final cleaned = phone.replaceAll(RegExp(r'\D'), '');
+    if (cleaned.length < 8) return phone;
+    final start = cleaned.substring(0, 3);
+    final end = cleaned.substring(cleaned.length - 3);
+    return '$start****$end';
+  }
+
+  /// Che mờ số tài khoản: 1234567890 -> **** **** **** 7890
+  static String maskAccountNumber(String? accountNumber) {
+    if (accountNumber == null || accountNumber.trim().isEmpty) return '';
+    final cleaned = accountNumber.replaceAll(RegExp(r'\s+'), '');
+    if (cleaned.length < 4) return accountNumber;
+    final last4 = cleaned.substring(cleaned.length - 4);
+    return '**** **** **** $last4';
+  }
+
+  /// Che mờ tên đầy đủ khi xuất báo cáo: Nguyễn Phú Bảo -> Nguyễn P. B.
+  static String maskFullname(String? fullname) {
+    if (fullname == null || fullname.trim().isEmpty) return '';
+    final words = fullname.trim().split(RegExp(r'\s+'));
+    if (words.length <= 1) return fullname;
+    final first = words.first;
+    final initials = words.sublist(1).map((w) => '${w[0].toUpperCase()}.').join(' ');
+    return '$first $initials';
+  }
+}
+```
+
+#### 13.10.2. Bộ Lọc Kiểm Tra Nội Dung Nhạy Cảm Trường Note (`SensitiveNoteValidator`)
+```dart
+class SensitiveNoteValidator {
+  // Regex phát hiện số thẻ tín dụng Visa/MasterCard/Amex (13-19 chữ số)
+  static final RegExp _creditCardRegex = RegExp(r'\b(?:\d[ -]*?){13,19}\b');
+  
+  // Regex phát hiện từ khóa nhạy cảm
+  static final RegExp _sensitiveKeywordsRegex = RegExp(
+    r'\b(cvv|cvc|pin|mat\s*khau|password|passcode)\b',
+    caseSensitive: false,
+  );
+
+  /// Trả về null nếu hợp lệ, trả về chuỗi thông báo lỗi nếu vi phạm
+  static String? validateNote(String? note) {
+    if (note == null || note.trim().isEmpty) return null;
+    
+    // Kiểm tra số thẻ tín dụng
+    if (_creditCardRegex.hasMatch(note)) {
+      return 'Ghi chú không được chứa số thẻ tín dụng/ngân hàng.';
+    }
+    
+    // Kiểm tra từ khóa nhạy cảm
+    if (_sensitiveKeywordsRegex.hasMatch(note)) {
+      return 'Ghi chú không được chứa mã PIN, CVV hoặc mật khẩu.';
+    }
+    
+    return null;
+  }
+}
+```
+
+#### 13.10.3. Xử Lý Token & Cưỡng Chế Đăng Xuất Trong Dio Interceptor
+```dart
+import 'package:dio/dio.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
+class AuthInterceptor extends Interceptor {
+  final FlutterSecureStorage secureStorage;
+  final Function(String message) onForceLogout;
+
+  AuthInterceptor({required this.secureStorage, required this.onForceLogout});
+
+  @override
+  Future<void> onError(DioException err, ErrorInterceptorHandler handler) async {
+    if (err.response?.statusCode == 401) {
+      final data = err.response?.data;
+      if (data is Map) {
+        final code = data['code'];
+        // Xử lý tài khoản đã bị xóa hoặc hết hạn đếm ngược 30 ngày
+        if (code == 'ACCOUNT_DELETED') {
+          await _clearSession();
+          onForceLogout(data['message'] ?? 'Tài khoản của bạn đã bị xóa khỏi hệ thống.');
+          return handler.reject(err);
+        }
+        // Xử lý tài khoản bị vô hiệu hóa kèm lý do
+        if (code == 'ACCOUNT_INACTIVE') {
+          await _clearSession();
+          final reason = data['reason_inactive'] ?? 'Không có lý do cụ thể.';
+          onForceLogout('Tài khoản đã bị vô hiệu hóa. Lý do: $reason');
+          return handler.reject(err);
+        }
+      }
+    }
+    return super.onError(err, handler);
+  }
+
+  Future<void> _clearSession() async {
+    await secureStorage.delete(key: 'access_token');
+    await secureStorage.delete(key: 'refresh_token');
+  }
+}
+```
