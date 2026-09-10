@@ -223,7 +223,7 @@ Hệ thống đã hoàn tất triển khai và kiểm thử 100% các biện ph�
 * **Hàng rào thép cấp CSDL (PostgreSQL Trigger Layer):** 
   * Trigger `trg_check_phone_encrypted`: Chặn đứng lệnh INSERT/UPDATE nếu SĐT có dạng chuỗi số rõ.
   * Trigger `trg_check_bank_account_encrypted`: Chặn đứng lệnh INSERT/UPDATE nếu STK có dạng chuỗi số rõ.
-  * Trigger `trg_protect_transaction` & `trg_protect_audit_log`: Chặn đứng lệnh `DELETE` vật lý dưới 5 năm đối với giao dịch và dưới 12 tháng đối với audit log.
+  * Trigger `trg_protect_transaction` & `trg_protect_auditlog`: Chặn đứng lệnh `DELETE` vật lý dưới 5 năm đối với giao dịch và dưới 12 tháng đối với audit log.
 
 ### 10.2. Blind Indexing cho Tra Soát Ngân Hàng O(1)
 * Bảng `bank_account` bổ sung cột `Account_number_hash` `VARCHAR(64)` có Index B-Tree.
@@ -239,7 +239,7 @@ Hệ thống đã hoàn tất triển khai và kiểm thử 100% các biện ph�
 
 ### 10.4. Kiểm Soát Nội Dung Không Được Chứa PII hay Xúc Phạm
 * `Reason_Inactive` (Lý do khóa tài khoản): Tiện ích `content-filter.util.js` quét phát hiện SĐT, Email, CCCD, Thẻ ngân hàng, từ ngữ thô tục/xúc phạm. Nếu vi phạm, trả về lỗi `400 Bad Request`.
-* `Note` (Ghi chú giao dịch/ngân sách/hóa đơn/mục tiêu): Tự động khử số thẻ tín dụng, mã CVV, mật khẩu trước khi mã hóa At-Rest AES-256-GCM.
+* `Note` (Ghi chú giao dịch/ngân sách/hóa đơn/mục tiêu): Áp dụng chuẩn kiểm tra kết hợp **Hình dạng số thẻ (CARD_SHAPE)** và **Thuật toán Luhn (Luhn checksum)** để chỉ lọc số thẻ tín dụng thật sự mà không bắt nhầm số điện thoại, mã đơn hàng hay chuỗi do ứng dụng sinh. Nhận diện mật khẩu tường minh theo dấu phân tách `[:=]`, không nuốt từ "pin" trong ngữ cảnh thường ngày (như "thay pin"). Tự động khử số thẻ tín dụng, mã CVV, mật khẩu trước khi mã hóa At-Rest AES-256-GCM.
 
 ### 10.5. Bảo Mật Biên Lai Chứng Từ (Pre-signed URL)
 * Ảnh chứng từ (`transaction.images`) được lưu trong Private Bucket, không cấp quyền public truy cập trực tiếp.

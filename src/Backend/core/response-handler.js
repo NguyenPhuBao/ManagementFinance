@@ -29,12 +29,28 @@ class ResponseHandler {
     return this.error(res, message, 400, errors);
   }
 
-  static unauthorized(res, message = 'Unauthorized') {
-    return this.error(res, message, 401);
+  static unauthorized(res, message = 'Unauthorized', extra = null) {
+    if (!extra) return this.error(res, message, 401);
+    if (res.locals) res.locals.errorMessage = message;
+    return res.status(401).json({
+      success: false,
+      message,
+      ...extra,
+      errors: null,
+      timestamp: new Date().toISOString(),
+    });
   }
 
-  static forbidden(res, message = 'Forbidden') {
-    return this.error(res, message, 403);
+  static forbidden(res, message = 'Forbidden', extra = null) {
+    if (!extra) return this.error(res, message, 403);
+    if (res.locals) res.locals.errorMessage = message;
+    return res.status(403).json({
+      success: false,
+      message,
+      ...extra,
+      errors: null,
+      timestamp: new Date().toISOString(),
+    });
   }
 
   static notFound(res, message = 'Not Found') {

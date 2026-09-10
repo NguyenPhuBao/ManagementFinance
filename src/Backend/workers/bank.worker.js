@@ -11,8 +11,9 @@ const logger = require('../core/logger');
 const { prisma: defaultPrisma } = require('../config/db');
 const eventBus = require('../core/event-bus');
 const socketService = require('../core/socket');
-const { hashBlindIndex } = require('../utils/crypto.util');
+const { hashBlindIndex, encrypt } = require('../utils/crypto.util');
 const { maskAccountNumber } = require('../utils/masking.util');
+const { filterSensitiveNote } = require('../utils/content-filter.util');
 
 const Redis = require('ioredis');
 const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
@@ -176,10 +177,12 @@ async function processSepayTransaction({
     }
   }
 
-  // 5. Tạo bản ghi giao dịch với status = 'Pending'
+  // 5. Làm sạch ghi chú PII/Card/Password & Tạo bản ghi giao dịch với status = 'Pending'
   const txDate = date_transaction instanceof Date && !isNaN(date_transaction.getTime())
     ? date_transaction
     : new Date();
+
+  const safeNote = filterSensitiveNote(note || 'Giao dịch ngân hàng SePay');
 
   const newTx = await prismaClient.transaction.create({
     data: {
@@ -192,7 +195,7 @@ async function processSepayTransaction({
       provider: 'BankSync',
       bank_tran_id: String(bank_tran_id),
       idcategory: predictedCategoryId,
-      note: note || 'Giao dịch ngân hàng SePay',
+      note: encrypt(safeNote),
       date_transaction: txDate,
       update_at: new Date(),
     },
@@ -215,7 +218,8 @@ async function processSepayTransaction({
     amount: newTx.amount,
     type: newTx.type,
     status: newTx.status,
-    note: newTx.note,
+    transaction_status: newTx.status,
+    note: safeNote,
     gateway: bankAcc.bank_name || gateway,
     account_number: bankAcc.account_number,
     date_transaction: newTx.date_transaction,
@@ -224,7 +228,9 @@ async function processSepayTransaction({
   };
 
   if (customSocket) {
-    if (typeof customSocket.emitToUser === 'function') {
+    if (typeof customSocket.emitBankTransaction === 'function') {
+      customSocket.emitBankTransaction(idaccount, socketPayload);
+    } else if (typeof customSocket.emitToUser === 'function') {
       customSocket.emitToUser(idaccount, 'bank_transaction.incoming', socketPayload);
     }
     if (typeof customSocket.emitToAdmin === 'function') {
@@ -240,7 +246,7 @@ async function processSepayTransaction({
       amount: newTx.amount,
       bankName: bankAcc.bank_name,
       accountNumber: bankAcc.account_number,
-      description: newTx.note,
+      description: safeNote,
       date: newTx.date_transaction,
     });
     await eventBus.publish('transaction.created', { transactionId: newTx.idtran, idaccount });
@@ -252,7 +258,7 @@ async function processSepayTransaction({
     newBalance,
   });
 
-  return { status: 'created', transaction: newTx, newBalance };
+  return { status: 'created', transaction: { ...newTx, note: safeNote }, newBalance };
 }
 
 // BullMQ Worker instance

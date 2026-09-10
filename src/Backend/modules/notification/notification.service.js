@@ -1,5 +1,5 @@
 const eventBus = require('../../core/event-bus');
-const { emitBankTransaction, emitOcrCompleted, emitOcrDuplicate } = require('../../core/socket');
+const { emitBankTransaction, emitOcrCompleted, emitOcrDuplicate, emitSyncCompleted } = require('../../core/socket');
 const logger = require('../../core/logger');
 
 
@@ -72,6 +72,20 @@ const notificationService = {
             type: 'OcrDuplicate',
             data: data,
             createdAt: new Date().toISOString(),
+          });
+        });
+
+        // 4. Lắng nghe sự kiện hoàn tất đồng bộ dữ liệu (Sync Engine)
+        await eventBus.subscribe('sync.completed', async (data) => {
+          logger.info('[Notification Module] Received sync.completed event', {
+            idaccount: data.idaccount,
+            summary: data.summary,
+          });
+
+          // Phát sự kiện Realtime Socket.io sync.completed tới room của user
+          emitSyncCompleted(data.idaccount, {
+            summary: data.summary,
+            timestamp: data.timestamp || new Date().toISOString(),
           });
         });
 

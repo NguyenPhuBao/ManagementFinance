@@ -115,8 +115,34 @@ function validateReasonInactive(reason) {
 }
 
 /**
- * Lọc và làm sạch nội dung ghi chú (Note) do người dùng tự nhập
- * Tự động loại bỏ số thẻ ngân hàng, CVV hoặc mật khẩu để bảo vệ người dùng
+ * Thuật toán Luhn kiểm tra số thẻ ngân hàng (Mod 10 check)
+ * @param {string} digits 
+ * @returns {boolean}
+ */
+function luhnOk(digits) {
+  if (typeof digits !== 'string') return false;
+  const clean = digits.replace(/\D/g, '');
+  if (clean.length < 13 || clean.length > 19) return false;
+  let sum = 0;
+  let alternate = false;
+  for (let i = clean.length - 1; i >= 0; i--) {
+    let n = parseInt(clean.charAt(i), 10);
+    if (alternate) {
+      n *= 2;
+      if (n > 9) n -= 9;
+    }
+    sum += n;
+    alternate = !alternate;
+  }
+  return sum % 10 === 0;
+}
+
+const CARD_SHAPE = /\b(?:\d{13,19}|\d{4}(?:[ -]\d{4}){3}(?:[ -]\d{3})?|\d{4}[ -]\d{6}[ -]\d{5})\b/g;
+
+/**
+ * Lọc và làm sạch nội dung ghi chú (Note) do người dùng tự nhập hoặc OCR/Bank sync
+ * Tự động loại bỏ số thẻ ngân hàng (vượt qua Luhn check), CVV hoặc mật khẩu để bảo vệ người dùng.
+ * Không lọc nhầm từ 'pin' (vd: thay pin, pin sạc) và các mã giao dịch thông thường.
  * @param {string|null} note 
  * @returns {string|null}
  */
@@ -124,21 +150,21 @@ function filterSensitiveNote(note) {
   if (!note || typeof note !== 'string') return note;
   let cleaned = note;
 
-  // 1. Loại bỏ số thẻ tín dụng (13-19 chữ số)
-  const cardRegex = /\b(?:\d[ -]*?){13,19}\b/g;
-  cleaned = cleaned.replace(cardRegex, (match) => {
+  // 1. Loại bỏ số thẻ tín dụng/ghi nợ (13-19 chữ số thỏa mãn thuật toán Luhn)
+  cleaned = cleaned.replace(CARD_SHAPE, (match) => {
     const digitsOnly = match.replace(/[\s-]/g, '');
-    if (digitsOnly.length >= 13 && digitsOnly.length <= 19) {
+    if (digitsOnly.length >= 13 && digitsOnly.length <= 19 && luhnOk(digitsOnly)) {
       return '[THÔNG TIN THẺ ĐÃ ĐƯỢC LƯỢC BỎ]';
     }
     return match;
   });
 
   // 2. Loại bỏ mã bảo mật CVV/CVC
-  cleaned = cleaned.replace(/(?:cvv|cvc)[\s:]*(\d{3,4})\b/gi, 'CVV: [ĐÃ LƯỢC BỎ]');
+  cleaned = cleaned.replace(/(?:cvv|cvc)\s*[:=]?\s*(\d{3,4})\b/giu, 'CVV: [ĐÃ LƯỢC BỎ]');
 
-  // 3. Loại bỏ mật khẩu dạng rõ nếu người dùng vô tình ghi vào note
-  cleaned = cleaned.replace(/(?:mật khẩu|mat khau|password|pwd)[\s:]*([^\s,;]+)/gi, 'Mật khẩu: [ĐÃ LƯỢC BỎ]');
+  // 3. Loại bỏ mật khẩu dạng rõ nếu ghi vào note (bắt buộc có dấu phân cách : hoặc =)
+  // Tuyệt đối không dùng từ khóa 'pin' đơn lẻ để tránh bắt nhầm "Thay pin: 350000"
+  cleaned = cleaned.replace(/(?:mật khẩu|mat khau|password|passcode|pwd)\s*[:=]\s*([^\s,;]+)/giu, 'Mật khẩu: [ĐÃ LƯỢC BỎ]');
 
   return cleaned;
 }
@@ -148,4 +174,6 @@ module.exports = {
   checkProfanity,
   validateReasonInactive,
   filterSensitiveNote,
+  luhnOk,
 };
+

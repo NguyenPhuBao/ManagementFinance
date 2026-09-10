@@ -416,7 +416,7 @@ const classifyService = {
       const baseBankTranId = extraction.invoice_no || null;
       const groups = Array.from(groupMap.values()).map((grp, idx) => ({
         ...grp,
-        provider: 'ORC',
+        provider: 'OCR',
         bank_tran_id: baseBankTranId ? `${baseBankTranId}_grp_${idx + 1}` : null,
       }));
 
@@ -468,7 +468,7 @@ const classifyService = {
     return {
       document_type: extraction.document_type || 'RECEIPT',
       detected_type: 'Transaction',
-      provider: 'ORC',
+      provider: 'OCR',
       bank_tran_id: extraction.invoice_no || null,
       transfer_details: null,
       transaction_info: null,
