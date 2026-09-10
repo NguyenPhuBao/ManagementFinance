@@ -1,6 +1,6 @@
 # Backend — CHỈ ĐỌC THƯ MỤC NÀY
 
-**Cập nhật:** 2026-09-10 (thêm mục 10 `SYNC_NOTE_FILTER_REWRITE.md` và mục 11 `DEV_DB_MIGRATIONS_7_11.md` sau khi gộp `main`; mục 9 gộp vào mục 11. Lần trước: 2026-09-09, thêm mục 7 và 8 — hai tệp `SOCKET_*`. Banner đợt 2026-09-07 bên dưới giữ nguyên vì nó nói về đợt ấy)
+**Cập nhật:** 2026-09-10 (thêm mục 10 `SYNC_NOTE_FILTER_REWRITE.md`, mục 11 `DEV_DB_MIGRATIONS_7_11.md` sau khi gộp `main`, và mục 12 `WALLET_SAVING_INDEX.md` sau lượt rà soát ví; mục 9 gộp vào mục 11. Lần trước: 2026-09-09, thêm mục 7 và 8 — hai tệp `SOCKET_*`. Banner đợt 2026-09-07 bên dưới giữ nguyên vì nó nói về đợt ấy)
 
 > ## ✅ Đợt backend 2026-09-07 — client đã kiểm chứng bằng mã, không tin báo cáo
 >
@@ -35,9 +35,10 @@
 > dòng cũ ở đây ghi "20 tài liệu" và đã lạc hậu từ lúc dọn sang `DA-XONG/`).
 > Thư mục này giữ **cả tài liệu còn việc lẫn tài liệu vừa đóng** — giữ cả hai để
 > đội backend thấy được cái gì đã xong mà không phải dò lại. Sau đợt 2026-09-07
-> chỉ còn **mười** mục thật sự phải làm (đếm lại 2026-09-10 lần hai, sau khi gộp
-> `main`: thêm mục 10 và 11, còn mục 9 gộp vào mục 11 — con số "chín" ghi ở đây
-> trước đó đúng cho tới lúc ấy); danh sách ngắn ấy ở **mục 2**, đọc nó
+> chỉ còn **mười một** mục thật sự phải làm (đếm lại 2026-09-10 lần ba: thêm mục
+> 10, 11 sau khi gộp `main`, rồi mục 12 sau lượt rà soát ví; mục 9 gộp vào mục
+> 11 — các con số "chín", "mười" ghi ở đây trước đó đúng cho tới lúc ấy); danh
+> sách ngắn ấy ở **mục 2**, đọc nó
 > trước bảng phân nhóm bên dưới. Không cần mở gì ở thư mục cha ngoài ba tệp bối
 > cảnh liệt kê ở mục 4 — **bốn** tệp, đúng như dòng đầu khối này nói.
 
@@ -173,6 +174,17 @@ cả đợt migration). Phần còn lại, xếp theo mức thiệt hại:
     API; đường xoá / huỷ xoá tài khoản mà client gọi thì hỏng. ⚠️ **Đừng `prisma
     generate` trước khi áp 8 và 9** — làm thế là tắt luôn đăng nhập. Và đặt khoá
     mã hoá thật **trước** tệp 11.
+12. **Bỏ `uq_wallet_saving_active`, và mã lỗi có cấu trúc cho 23505 trên `wallet`**
+    ([WALLET_SAVING_INDEX.md](./WALLET_SAVING_INDEX.md), thêm 2026-09-10) — một
+    dòng `DROP INDEX`. Luật "một ví Tiết kiệm mỗi tài khoản" chỉ tồn tại ở SQL
+    (bản 2026-08-26), không có trong `Rule_project.md`; client tạo sẵn ví Tiết
+    kiệm cho tài khoản mới nên ví Tiết kiệm thứ hai của người dùng **kẹt hàng
+    đợi đẩy vĩnh viễn, im lặng**. Client đã chặn tạm ở cả datasource lẫn màn
+    Thêm ví (2026-09-10) và sẽ gỡ khi backend xác nhận. Kèm xin
+    `WALLET_NAME_DUPLICATE` / `WALLET_DEFAULT_DUPLICATE` theo khuôn
+    `CATEGORY_NAME_DUPLICATE`. ⚠️ Cùng lượt đo phát hiện bảng `wallet` có **bốn**
+    partial unique index mà tài liệu client từng ghi là "không có" — phép đo cũ
+    dùng `pg_constraint`, nơi chúng không hiện.
 
 > ⚠️ **Trước khi chạy migration ở môi trường mới:** lấy bản vá xoá mềm ở
 > nhánh `patch2`. Bản `)2_can_lam_all_migrations.sql` trên `main` sẽ roll back

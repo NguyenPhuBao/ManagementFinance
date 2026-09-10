@@ -4,6 +4,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../data/models/wallet_entity.dart';
+import '../../data/repositories/wallet_repository.dart';
+import '../../domain/rang_buoc_vi.dart';
 import '../../domain/wallet_type.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
@@ -62,6 +65,37 @@ class _WalletAddFormState extends State<_WalletAddForm> {
   bool _isDefault = true;
   bool _includeInTotal = true;
 
+  /// Ví đang có của tài khoản, để báo sớm hai ràng buộc của server (xem
+  /// `domain/rang_buoc_vi.dart`). Chốt chặn thật nằm ở datasource; ở đây chỉ
+  /// để người dùng không phải điền xong rồi mới biết.
+  List<WalletEntity> _viHienCo = const [];
+
+  bool get _daCoViTietKiem => viTietKiemDaCo(_viHienCo) != null;
+
+  @override
+  void initState() {
+    super.initState();
+    _napViHienCo();
+  }
+
+  Future<void> _napViHienCo() async {
+    try {
+      final vi = await sl<WalletRepository>().getAll(widget.idaccount);
+      if (mounted) setState(() => _viHienCo = vi);
+    } catch (_) {
+      // Không nạp được thì vẫn cho dùng form: datasource là chốt chặn thật.
+    }
+  }
+
+  void _baoLoi(String thongBao) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(thongBao),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
 
   @override
   void dispose() {
@@ -73,10 +107,11 @@ class _WalletAddFormState extends State<_WalletAddForm> {
   Future<void> _saveWallet() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập tên ví'),
-          backgroundColor: AppColors.error, behavior: SnackBarBehavior.floating),
-      );
+      _baoLoi('Vui lòng nhập tên ví');
+      return;
+    }
+    if (viTrungTen(_viHienCo, name) != null) {
+      _baoLoi(thongBaoTrungTen(name));
       return;
     }
 
@@ -89,7 +124,8 @@ class _WalletAddFormState extends State<_WalletAddForm> {
 
     setState(() => _isSaving = true);
     try {
-      await context.read<WalletCubit>().addWallet(
+      final cubit = context.read<WalletCubit>();
+      await cubit.addWallet(
         idaccount: widget.idaccount,
         name:      name,
         type:      WalletType.chonDuoc[_selectedTypeIndex].khoa,
@@ -99,7 +135,19 @@ class _WalletAddFormState extends State<_WalletAddForm> {
         isDefault: _isDefault,
         includeInTotal: _includeInTotal,
       );
-      if (mounted) context.pop(true); // true = có thay đổi
+      if (!mounted) return;
+      // Cubit của trang này là bản RIÊNG (`BlocProvider` ở trên), không ai
+      // nghe `WalletError` của nó. Không đọc lại state ở đây thì mọi lỗi ở
+      // datasource khi thêm ví — kể cả hai ràng buộc của server — đều im
+      // lặng: trang pop, ví không có, và không dòng nào giải thích.
+      final state = cubit.state;
+      if (state is WalletError) {
+        _baoLoi(state.message
+            .replaceAll('CacheException: ', '')
+            .replaceAll('Exception: ', ''));
+        return;
+      }
+      context.pop(true); // true = có thay đổi
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -274,38 +322,64 @@ class _WalletAddFormState extends State<_WalletAddForm> {
           const SizedBox(height: 24.0),
           _buildFormSection(
             title: 'LOẠI VÍ',
-            child: GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 8.0,
-                mainAxisSpacing: 8.0,
-                childAspectRatio: 3.5,
-              ),
-              itemCount: WalletType.chonDuoc.length,
-              itemBuilder: (context, index) {
-                final isSelected = index == _selectedTypeIndex;
-                return GestureDetector(
-                  onTap: () => setState(() => _selectedTypeIndex = index),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: isSelected ? AppColors.primaryContainer : AppColors.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      WalletType.chonDuoc[index].nhan,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: isSelected ? Colors.white : AppColors.onSurfaceVariant,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 8.0,
+                    mainAxisSpacing: 8.0,
+                    childAspectRatio: 3.5,
+                  ),
+                  itemCount: WalletType.chonDuoc.length,
+                  itemBuilder: (context, index) {
+                    final isSelected = index == _selectedTypeIndex;
+                    // Ô "Tiết kiệm" khoá lại khi đã có một ví Tiết kiệm —
+                    // server chỉ nhận một (`uq_wallet_saving_active`). Vẫn
+                    // hiện chứ không giấu: giấu đi là người dùng tưởng app
+                    // thiếu loại ví. Luật TẠM, xem `rang_buoc_vi.dart`.
+                    final biKhoa = WalletType.chonDuoc[index] == WalletType.saving &&
+                        _daCoViTietKiem;
+                    return GestureDetector(
+                      onTap: biKhoa
+                          ? null
+                          : () => setState(() => _selectedTypeIndex = index),
+                      child: Opacity(
+                        opacity: biKhoa ? 0.4 : 1,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: isSelected ? AppColors.primaryContainer : AppColors.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            WalletType.chonDuoc[index].nhan,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: isSelected ? Colors.white : AppColors.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
                       ),
+                    );
+                  },
+                ),
+                if (_daCoViTietKiem) ...[
+                  const SizedBox(height: 8.0),
+                  const Text(
+                    thongBaoMotViTietKiem,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.onSurfaceVariant,
                     ),
                   ),
-                );
-              },
+                ],
+              ],
             ),
           ),
           const SizedBox(height: 24.0),

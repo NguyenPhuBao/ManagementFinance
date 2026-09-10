@@ -34,6 +34,7 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > | **G26** | Hoãn có chủ ý — chưa có màn **duyệt giao dịch ngân hàng** cho sự kiện realtime trỏ tới; đây là một tính năng riêng, không phải phần còn thiếu của việc nối socket (2026-09-09) |
 > | **G27** | Hoãn có chủ ý — không còn cách nói "ví này **được phép âm**" sau khi loại `debt` bị bỏ; cần một cột mới ở cả hai đầu cho một tình huống CSDL hiện không có hàng nào (2026-09-09) |
 > | **G28** | ⛔ **Chặn ở CSDL, không còn ở mã backend** — cột `wallet."Status"` trên CSDL dev vẫn là `varchar(7)` trong khi chính `chk_wallet_status` cho phép `'Inactive'` (8 ký tự), nên **lưu trữ ví chỉ sống trên máy đã bấm** (2026-09-10). ⚠️ Cập nhật cùng ngày sau khi gộp `main`: backend **đã** đổi `schema.prisma` sang `VarChar(20)` và viết `database/7_…sql` từ 2026-09-09 (`7523c8c`) — tệp ấy chỉ **chưa được áp**. Người dùng chốt **để sau** |
+> | **G30** | ⏸️ **Chặn tạm, chờ backend bỏ index** — server có `uq_wallet_saving_active` (một ví Tiết kiệm mỗi tài khoản), luật chỉ tồn tại ở SQL; client khoá ô "Tiết kiệm" và chốt ở datasource từ 2026-09-10 cho tới khi backend `DROP INDEX`. Chốt **trùng tên ví** cùng ngày thì vĩnh viễn |
 > | **G29** | ⛔ **Chặn ở backend** — `/sync/push` lọc `Note` bằng biểu thức bắt nhầm (số tài khoản, "mật khẩu wifi", hậu tố `(tự động)`), và bản đã lọc **đè lên máy** ngay chu kỳ đồng bộ ấy — tái hiện đầu-cuối trên máy ảo 2026-09-10. Chưa hỏng dữ liệu thật nào |
 >
 > **G20 đã đóng ngày 2026-09-05** — `depositToGoal` nhận `occurredAt` chặn hai
@@ -820,6 +821,35 @@ ghi chú hợp lệ, gồm cả `Thay pin: 350000` ("pin" là pin điện thoạ
 sửa trong tài liệu xin, và chừa chuỗi do app sinh.
 
 Tài liệu xin: `docs/superpowers/backend/CAN-LAM/SYNC_NOTE_FILTER_REWRITE.md`.
+
+---
+
+### G30 — Chỉ một ví Tiết kiệm mỗi tài khoản, vì một index không ai ghi thành luật · ⏸️ CHẶN TẠM, CHỜ BACKEND (2026-09-10)
+
+PostgreSQL có `uq_wallet_saving_active ("Idaccount") WHERE "Type" = 'Saving' AND
+"Delete_at" IS NULL` từ migration 2026-09-01. Luật ấy **không có** trong
+`Rule_project.md` mục 2 lẫn `New_Database.md` 3.2.8 — chỉ có trong SQL, từ bản
+`New_Database.sql` 2026-08-26 khi Tiết kiệm còn được coi là "một ví cứng".
+
+Client tạo sẵn ví "Tiết kiệm" (`saving`) cho mọi tài khoản mới, rồi vẫn cho
+chọn "Tiết kiệm" khi thêm ví. Ví thứ hai: SQLite ghi bình thường → server trả
+23505 → `UNIQUE_VIOLATION` → xếp **vĩnh viễn** → ví không bao giờ lên server;
+giao dịch trong ví vỡ `fk_transaction_wallet` → coi là tạm thời → thử lại mãi.
+Im lặng, cùng lớp với `ewallet`/`debt`.
+
+**Cách xử lý (người dùng chốt 2026-09-10):** xin backend bỏ index
+(`CAN-LAM/WALLET_SAVING_INDEX.md`) **và** chặn tạm trong lúc chờ —
+`wallet/domain/rang_buoc_vi.dart` (`viTietKiemDaCo`), chốt ở
+`WalletLocalDataSourceImpl._kiemRangBuocServer`, và màn Thêm ví khoá ô "Tiết
+kiệm" kèm dòng giải thích. Khi backend xác nhận đã bỏ: gỡ `viTietKiemDaCo`, hai
+chỗ gọi nó, nhóm test "một ví Tiết kiệm" ở hai tệp test, và dòng này.
+
+**Không phải gap:** chốt **trùng tên ví** thêm cùng ngày (`viTrungTen`, cùng
+tệp) canh `uq_wallet_account_name_active` — luật hợp lý, có trong
+`New_Database.md`, ở lại vĩnh viễn.
+
+**Bài học đo:** phép đo 2026-09-09 "không unique index nào ở server" dùng
+`pg_constraint`, nơi partial unique index **không hiện**. Đo `pg_indexes`.
 
 ---
 
