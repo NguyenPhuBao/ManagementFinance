@@ -32,9 +32,10 @@ người sau tự đối chiếu thay vì tin bảng này.
 | **B7** | ForgotPassword endpoint | ✅ HOÀN THÀNH | `api/auth.routes.js:37-39` — `/forgot-password`, `/verify-otp`, `/reset-password` |
 
 > **Việc backend còn lại KHÔNG nằm ở tài liệu này.** Cửa vào duy nhất là
-> [`CAN-LAM/README.md`](./CAN-LAM/README.md) mục 2 — hiện **tám** mục (đếm
-> bằng máy 2026-09-09, sau khi thêm hai mục Socket.io), không mục nào thuộc
-> B1→B7.
+> [`CAN-LAM/README.md`](./CAN-LAM/README.md) mục 2 — hiện **mười một** mục
+> (đếm bằng máy 2026-09-10 sau lượt rà soát CSDL; dòng này từng ghi "tám" và
+> đã lạc hậu qua ba lần thêm mục mà không ai sửa — đừng chép con số, đếm ở
+> README ấy), không mục nào thuộc B1→B7.
 
 ---
 
