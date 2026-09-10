@@ -18,6 +18,11 @@ dòng `ALTER TABLE`, không đụng mã ứng dụng.
 > **áp tệp 7** — gộp vào [`DEV_DB_MIGRATIONS_7_11.md`](./DEV_DB_MIGRATIONS_7_11.md).
 > **Đừng** tạo migration `varchar(16)` theo mục 4b nữa: nó sẽ đè lên `varchar(20)`
 > của backend. Mục 5 (client mở lại ba chỗ khi cột đủ rộng) vẫn đúng nguyên văn.
+>
+> ✅ **Tối 2026-09-10:** tệp 7 **đã áp** lên CSDL dev (cùng 8–11, theo yêu cầu đích
+> danh của người dùng) — đo lại `wallet."Status"` là `character varying(20)`. Việc
+> phía server xong trên máy này; mục 5 (client mở lại ba chỗ) người dùng vẫn chốt
+> **để sau**.
 
 ---
 

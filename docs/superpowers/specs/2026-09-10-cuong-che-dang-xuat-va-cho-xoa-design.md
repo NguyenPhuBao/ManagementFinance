@@ -60,6 +60,11 @@ backend dẫn tới sự kiện này đều vỡ: `DELETE /auth/account`, `POST
 nào được phát ra; `middleware/auth.js:47-50` cho mọi request đi qua. Cách kiểm
 chứng thay thế: mục 7.3.
 
+✅ **Cập nhật tối 2026-09-10:** người dùng yêu cầu áp `database/7`–`11`; đã áp,
+sinh lại Prisma Client và chạy lại backend (banner đầu
+`CAN-LAM/DEV_DB_MIGRATIONS_7_11.md`). Mọi đường kể trên nay **chạy được** trên
+backend thật — trừ body 401 vẫn thiếu mã (CAN-LAM 13). Mục 7.3 đã sửa theo.
+
 ---
 
 ## 2. Quyết định đã chốt với người dùng (2026-09-10)
@@ -70,7 +75,7 @@ chứng thay thế: mục 7.3.
 | Q2 | Dữ liệu SQLite khi bị đẩy ra | **Bị khoá thì giữ, bị xoá thì dọn** | Admin có thể mở khoá, thay đổi chưa đồng bộ còn đẩy lên được. Tài khoản đã xoá thì server đã ẩn danh hoá (xoá `note`, `images`) mà máy vẫn giữ bản rõ. Loại mục 12.5 "đánh dấu ví Inactive, ngân hàng Disconnected": người dùng đã bị đăng xuất nên không ai thấy cờ ấy, `wallet.status` là cột cục bộ (G28), và client **không có** bảng ngân hàng cục bộ |
 | Q3 | Hình thức báo lý do | **Hộp thoại phải bấm "Đã hiểu"** | Theo mục 11.2/11.3. Người dùng chọn thay cho thẻ cảnh báo trên form mà tôi đề xuất |
 | Q4 | Chỗ đặt lời nhắc chờ xoá | **Thẻ trên Trang chủ, đóng được** (+ trạng thái cố định ở Cài đặt) | Hành động không hoàn tác nên lời nhắc phải tới được Trang chủ; đóng được vì người dùng đã gỡ khối thông báo khỏi Trang chủ ngày 2026-09-08 (`home_page.dart:53-55`) |
-| Q5 | Kiến trúc | **Hướng A — một kiểu thông báo chung, một cửa vào `AuthBloc`** | Loại B (dùng lại `SessionInvalidated`: bước hỏi lại `/auth/profile` luôn trả hợp lệ trên CSDL dev nên không bao giờ đăng xuất, và lý do mất giữa đường). Loại C (cubit riêng: hai bloc phải phối hợp thứ tự dừng — loại lỗi `flutter test` không bắt được) |
+| Q5 | Kiến trúc | **Hướng A — một kiểu thông báo chung, một cửa vào `AuthBloc`** | Loại B (dùng lại `SessionInvalidated`: lý do mất giữa đường, và bước hỏi lại `/auth/profile` phụ thuộc vào việc middleware không cho qua — lúc chốt thì CSDL dev đang cho qua ở mọi request; nay đã áp mục 11 nhưng nhánh cho qua khi lỗi lược đồ vẫn còn trong mã, CAN-LAM 11 mục 4.3). Loại C (cubit riêng: hai bloc phải phối hợp thứ tự dừng — loại lỗi `flutter test` không bắt được) |
 
 **Đối chiếu thị trường** (2026-09-10): Facebook đăng nhập lại trong 30 ngày thì
 hiện nút *Cancel deletion*
@@ -131,8 +136,9 @@ riêng** khỏi `events`:
 `/auth/refresh`, phát `Stream<ThongBaoBuocDangXuat> taiKhoanBiTuChoi`, rồi
 `handler.next(err)`. Interceptor **không** tự xoá token — việc ấy của `AuthBloc`.
 
-Nhánh này **nằm im** cho tới CAN-LAM 13 (body 401 hiện không có `code`) và
-CAN-LAM 11. Không cần đổi gì khi backend sửa xong.
+Nhánh này **nằm im** cho tới CAN-LAM 13 (body 401 hiện không có `code`). CAN-LAM
+11 đã áp tối 2026-09-10 nên tài khoản bị khoá nay **có** nhận 401 — chỉ là body
+chưa mang mã. Không cần đổi gì khi backend sửa xong.
 
 ### 3.4. Cố ý bỏ qua lỗi bắt tay socket
 
@@ -366,23 +372,21 @@ Kèm cập nhật `README.md` mục 2 và mọi con số đếm mục CAN-LAM tr
 
 ### 7.3. Kiểm chứng ngoài bộ test
 
-CSDL dev không dựng được tình huống nào (mục 1.3), và máy ảo đang giữ phiên tài
-khoản **10 không có mật khẩu** — cưỡng chế đăng xuất trên đó là mất phiên ấy.
-Đề xuất:
+Sau khi áp `database/7`–`11` (tối 2026-09-10, mục 1.3), backend thật dựng được mọi
+tình huống **trừ** body 401 có mã (CAN-LAM 13). Đề xuất, theo thứ tự:
 
-- Một **backend giả** viết trong scratchpad (Node, dùng `express`/`socket.io`
-  trong `src/Backend/node_modules`, **không** sửa tệp nào của backend) trả
-  `/auth/login` với `PendingDelete`, `/auth/profile`, `/auth/cancel-delete`, và
-  một đường kích hoạt phát `account.force_logout`.
-- `baseUrl` viết cứng `:3000` (`app_constants.dart:6-21`), nên cần **tạm dừng
-  backend thật** (nodemon PID 15640) trong lúc kiểm — **hỏi người dùng trước**.
-- Chạy bằng **Chrome** (skill `chay-app`, khung 411px) thay vì máy ảo, để kho
-  token và SQLite của máy ảo không bị đụng tới.
-- Kiểm: thẻ Trang chủ và Cài đặt hiện đúng số; Huỷ xoá làm thẻ biến mất; phát sự
-  kiện `biKhoa` → về Đăng nhập, hộp thoại đúng câu, SQLite còn dữ liệu; `daXoa`
-  → SQLite của tài khoản giả trống; không sọc vàng tràn bố cục.
-- Sau khi CAN-LAM 11 và 13 xong: kiểm lại đầu-cuối bằng Admin-web theo mục 5
-  của `AUTH_401_BODY_CODE.md`.
+- **Backend thật, tài khoản thử riêng.** Máy ảo đang giữ phiên tài khoản **10
+  không có mật khẩu** — cưỡng chế đăng xuất trên đó là mất phiên ấy. Cần một tài
+  khoản thử có mật khẩu (hỏi người dùng cách tạo), rồi: gửi yêu cầu xoá → thẻ Trang
+  chủ và Cài đặt hiện đúng số; huỷ → thẻ biến mất; khoá qua Admin-web → về Đăng
+  nhập, hộp thoại đúng câu, SQLite còn dữ liệu; mở khoá rồi đăng nhập lại được.
+- **Ca *đã xoá* không làm trên backend thật** — admin xoá mềm tài khoản là không
+  hoàn tác được bằng giao diện. Ca này kiểm bằng test (mục 7.2); nếu cần nhìn tận
+  mắt thì dùng một backend giả trong scratchpad phát `account.force_logout` với
+  `ACCOUNT_DELETED` — cần tạm dừng backend thật, **hỏi người dùng trước**.
+- **Nhánh HTTP 401** chỉ kiểm được sau CAN-LAM 13, theo mục 5 của
+  `AUTH_401_BODY_CODE.md`.
+- Không sọc vàng tràn bố cục ở 411dp.
 
 `flutter test` và `flutter analyze` đối chiếu mức nền 2026/2026 và 25 issue.
 

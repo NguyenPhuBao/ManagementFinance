@@ -19,7 +19,7 @@ gộp `main` (`bef37d3`), thấy **31** chỗ lệch, chia bốn nhóm theo *c�
 | Nhóm | Nghĩa là | Việc | Số chỗ |
 |---|---|---|---|
 | **A** | Tài liệu sai hoặc lạc hậu so với **cả** mã lẫn CSDL | Sửa tài liệu | 23 |
-| **B** | Tài liệu đúng với tệp `database/7`–`11`, chỉ là CSDL dev chưa áp | **Không** sửa tài liệu — tự khớp khi xong mục 11 `README.md` | 3 |
+| **B** | Tài liệu đúng với tệp `database/7`–`11`, chỉ là CSDL dev chưa áp | **Không** sửa tài liệu — ✅ đã tự khớp trên CSDL dev khi áp mục 11 `README.md` (tối 2026-09-10) | 3 |
 | **C** | Tài liệu mô tả tính năng **chưa có** như thể đã có | Ghi rõ "chưa có", trỏ về mục `CAN-LAM` | 3 |
 | **D** | Tài liệu đúng ý đồ, **mã** chưa làm đúng | Sửa mã — đã có tài liệu xin riêng | 2 |
 
@@ -84,6 +84,11 @@ nhóm D (D2).
 ## 3. Nhóm B — đúng với tệp `database/7`–`11`, CSDL dev chưa áp
 
 **Không sửa tài liệu.** Ghi ra đây để không ai "sửa" tài liệu cho khớp CSDL dev.
+
+✅ **Tối 2026-09-10:** CSDL dev đã áp `database/7`–`11`; đo lại, cả ba dấu hiệu B1–B3
+nay **khớp** tài liệu (cột 256 và `Account_number_hash` 64, bốn trigger, email
+partial cùng `idx_account_username`). Cột "CSDL dev" trong bảng là ảnh chụp trước
+khi áp.
 
 | # | Tài liệu | Nói | CSDL dev | Tệp mang thay đổi |
 |---|---|---|---|---|

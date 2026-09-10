@@ -4,6 +4,39 @@
 tệp SQL **đã có sẵn** theo đúng thứ tự rồi `prisma generate`, cộng một chỗ sửa nhỏ
 ở `middleware/auth.js`. Không cần viết migration mới.
 
+> ✅ **Cập nhật tối 2026-09-10 — phần ÁP đã xong trên CSDL dev.** Người dùng yêu
+> cầu đích danh *"đối với csdl thì bạn hãy chạy để áp dụng csdl mới"*, nên client
+> chạy đúng quy trình mục 4.1 — **không sửa tệp nào** của `src/Backend`
+> (`git status -- src/Backend` rỗng sau khi làm):
+>
+> 1. Tệp 7, 8, 9, 10 chạy bằng gói `pg` từ `src/Backend`, **mỗi tệp một giao tác**
+>    (`BEGIN` … `COMMIT`), dừng ở tệp đầu tiên hỏng — cả bốn qua.
+> 2. Tệp 11: `node scripts/apply_migration_11.js` — nới cột, **mã hoá 1 số điện
+>    thoại** đang ở dạng rõ, dựng trigger. ⚠️ Bước 0 **không** làm: người dùng
+>    chọn dùng **khoá mặc định** trong `utils/crypto.util.js`, vì đây là CSDL dev
+>    và backend đang chạy vốn đã mã hoá mọi lần ghi bằng đúng khoá ấy. Khi đội
+>    backend đặt `DATA_ENCRYPTION_KEY` thật, hàng ấy — và mọi hàng ghi từ trước —
+>    phải được mã hoá lại.
+> 3. Tắt **cả cây** `npm run dev` → `cmd` → `nodemon` → `node index.js` (trên
+>    Windows tệp engine của Prisma bị khoá khi backend chạy), `npx prisma generate`
+>    (v6.19.3), rồi `npm run dev` lại.
+>
+> Đo lại bằng câu truy vấn mục 5 — đủ mọi dấu hiệu: `Reason_Inactive` `text`,
+> `Countdown` `integer`, `wallet.Status` `varchar(20)`, `Phone` và
+> `Account_number` 256, `Account_number_hash` 64, hai index email có
+> `WHERE ("Delete_at" IS NULL)`, không còn `account_Username_key`, có
+> `idx_account_username`, đủ bốn trigger, DMMF có `reason_inactive` và `countdown`.
+> Không còn số điện thoại dạng rõ; vẫn 3 tài khoản.
+>
+> Phép thử sống: `getAccountValidity(10)` trả hàng thật (có khoá `countdown`, mà
+> nhánh cho qua thì không có) và không in `WARN`; kênh socket trên máy ảo nối lại
+> sau khi backend khởi động — bắt tay đi qua cùng phép kiểm ấy. ⚠️ **Chưa** soát
+> log console của backend thật: chạy nền bằng công cụ Bash thì log không ra tệp.
+>
+> **Còn lại trong tài liệu này:** mục **4.2** (chọn và ghi quy trình migration) và
+> mục **4.3** (tách lỗi lược đồ khỏi lỗi tạm thời ở `middleware/auth.js`) — đều là
+> việc của backend. Mục 2 và 3 dưới đây là ảnh chụp **trước** khi áp.
+
 ---
 
 ## 1. Tóm tắt

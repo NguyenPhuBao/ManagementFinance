@@ -102,6 +102,11 @@ trong `node_modules` sinh trước khi có hai cột ấy, nên phép truy vấn
 phát cho tài khoản bị khoá. Đó là mục 11 của `README.md`
 (`DEV_DB_MIGRATIONS_7_11.md` mục 3.1 và 4.3).
 
+✅ **Tối 2026-09-10:** mục 11 đã áp và Prisma Client đã sinh lại —
+`getAccountValidity` nay đọc được `reason_inactive` và `countdown`, nên tài khoản bị
+khoá **sẽ** tới dòng `middleware/auth.js:89` và nhận 401. Body ấy vẫn thiếu mã cho
+tới khi sửa mục 4.1. Chưa đo bằng request thật vì chưa có tài khoản thử bị khoá.
+
 **Thứ tự đúng:** làm mục 11 trước, rồi mới kiểm được tài liệu này đầu-cuối. Sửa
 tài liệu này trước cũng không hại gì — chỉ là chưa đo được bằng request thật.
 

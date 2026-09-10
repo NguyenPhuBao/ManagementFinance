@@ -33,7 +33,7 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > | **G25** | **Không phải lỗi** — hai máy cùng sắp lại thứ tự ưu tiên khi ngoại tuyến thì được một thứ tự trộn (2026-09-08) |
 > | **G26** | Hoãn có chủ ý — chưa có màn **duyệt giao dịch ngân hàng** cho sự kiện realtime trỏ tới; đây là một tính năng riêng, không phải phần còn thiếu của việc nối socket (2026-09-09) |
 > | **G27** | Hoãn có chủ ý — không còn cách nói "ví này **được phép âm**" sau khi loại `debt` bị bỏ; cần một cột mới ở cả hai đầu cho một tình huống CSDL hiện không có hàng nào (2026-09-09) |
-> | **G28** | ⛔ **Chặn ở CSDL, không còn ở mã backend** — cột `wallet."Status"` trên CSDL dev vẫn là `varchar(7)` trong khi chính `chk_wallet_status` cho phép `'Inactive'` (8 ký tự), nên **lưu trữ ví chỉ sống trên máy đã bấm** (2026-09-10). ⚠️ Cập nhật cùng ngày sau khi gộp `main`: backend **đã** đổi `schema.prisma` sang `VarChar(20)` và viết `database/7_…sql` từ 2026-09-09 (`7523c8c`) — tệp ấy chỉ **chưa được áp**. Người dùng chốt **để sau** |
+> | **G28** | ⏸️ **Hết chặn phía server, chờ client mở lại** — CSDL dev đã áp `database/7` tối 2026-09-10 nên `wallet."Status"` nay `varchar(20)`, chứa được `'Inactive'`. Client vẫn để cột cục bộ, nên **lưu trữ ví chỉ sống trên máy đã bấm** cho tới khi mở lại ba chỗ. Người dùng chốt **để sau** |
 > | **G29** | ⛔ **Chặn ở backend** — `/sync/push` lọc `Note` bằng biểu thức bắt nhầm (số tài khoản, "mật khẩu wifi", hậu tố `(tự động)`), và bản đã lọc **đè lên máy** ngay chu kỳ đồng bộ ấy — tái hiện đầu-cuối trên máy ảo 2026-09-10. Chưa hỏng dữ liệu thật nào |
 > | **G30** | ⏸️ **Chặn tạm, chờ backend bỏ index** — server có `uq_wallet_saving_active` (một ví Tiết kiệm mỗi tài khoản), luật chỉ tồn tại ở SQL; client khoá ô "Tiết kiệm" và chốt ở datasource từ 2026-09-10 cho tới khi backend `DROP INDEX`. Chốt **trùng tên ví** cùng ngày thì vĩnh viễn |
 > | **G31** | ⛔ **Chặn ở backend** — tên mục tiêu hoặc hoá đơn dài hơn 100 ký tự, tên danh mục dài hơn 200, vỡ `P2000` trên server và rơi xuống `DB_ERROR`, nên bản ghi bị **gửi lại mãi**. ✅ Bảy ô tên của client giới hạn theo code point từ 2026-09-10; còn mở vì bản client cũ, Admin-web và mọi nguồn ghi khác vẫn chờ backend ánh xạ lỗi |
@@ -722,7 +722,7 @@ hai nhánh loại trừ trong `_walletCandidates`. Hai test ở
 
 ---
 
-### G28 — Lưu trữ ví chỉ sống trên máy đã bấm · ⛔ CHẶN Ở CSDL — tệp `database/7` chưa áp (2026-09-10; tiêu đề cũ ghi "chặn ở backend", đổi cùng ngày sau khi gộp `main`)
+### G28 — Lưu trữ ví chỉ sống trên máy đã bấm · ⏸️ HẾT CHẶN PHÍA SERVER, CHỜ CLIENT MỞ LẠI (2026-09-10; tiêu đề trước ghi "chặn ở CSDL — tệp `database/7` chưa áp", trước nữa "chặn ở backend")
 
 Tính năng **lưu trữ ví** (2026-09-10) ghi trạng thái vào cột `wallets.status`
 của SQLite. Cột cùng tên đã có sẵn ở PostgreSQL và `upsertWallet` phía backend
@@ -787,6 +787,12 @@ mục này được viết, commit ấy chỉ nằm trên `main`. Đo lại sau 
 mâu thuẫn" ở trên đúng với **CSDL**, không còn đúng với **mã nguồn** backend. Bán
 kính phía client không đổi: vẫn đúng ba chỗ ở đoạn trên. Người dùng chốt **để
 sau** — đừng mở lại khi chưa được hỏi.
+
+✅ **Cập nhật tối 2026-09-10 — tệp 7 đã áp lên CSDL dev.** Người dùng yêu cầu
+**đích danh** áp `database/7`–`11`; đo lại: `wallet."Status"` là
+`character varying(20)`. Chỗ chặn phía server của G28 **đã hết** trên máy này.
+Client **chưa** mở lại ba chỗ — vẫn theo lời chốt *để sau*. ⚠️ Chưa đo môi trường
+nào khác (CSDL cloud), đừng suy ra từ máy này.
 
 ---
 
