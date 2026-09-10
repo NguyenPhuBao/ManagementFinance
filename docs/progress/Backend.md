@@ -460,15 +460,63 @@ Dưới đây là ma trận kiểm toán toàn bộ các API Backend theo 4 hàn
      - **Purge Token:** Xóa sạch refresh token thu hồi/hết hạn quá 30 ngày (`update_at < now - 30d`).
      - **Countdown 30 ngày & Ẩn danh hóa triệt để (PII Anonymization):** Khi tài khoản hết hạn 30 ngày, tự động ẩn danh hóa Họ tên, SĐT, Địa chỉ, Email, vô hiệu hóa mật khẩu, xóa ảnh chứng từ và ghi chú, bảo toàn số tiền giao dịch 5 năm theo Luật Kế toán.
 3. **Chốt Chặn Bất Biến Tại CSDL (Supabase PostgreSQL 17.6 Engine Triggers):**
-   - `trg_protect_auditlog`: Cấm `UPDATE` (Append-only), cấm `DELETE` dưới 12 tháng (Nghị định 53/2022/NĐ-CP).
+  * `trg_protect_auditlog`: Cấm `UPDATE` (Append-only), cấm `DELETE` dưới 12 tháng (Nghị định 53/2022/NĐ-CP).
    - `trg_protect_transaction`: Cấm `DELETE` vật lý dưới 5 năm (Luật Kế toán 2015).
    - `trg_check_phone_encrypted`: Chặn đứng lưu số điện thoại dạng rõ (8-15 chữ số).
    - `trg_check_bank_account_encrypted`: Chặn đứng lưu số tài khoản dạng rõ (6-25 chữ số).
 4. **Kết Luận Đánh Giá Tuân Thủ:**
-   - **100% API Backend** xử lý dữ liệu (Ghi nhận, Lấy, Hiển thị, Sửa) đã được tái cấu trúc, tích hợp đầy đủ các chốt chặn mã hóa At-Rest, che mờ, lọc nội dung và cách ly người dùng.
-   - Toàn bộ các bộ kiểm thử tự động (TDD) đã chạy trên CSDL thật Supabase và đạt kết quả **PASS 100%**.
+    - **100% API Backend** xử lý dữ liệu (Ghi nhận, Lấy, Hiển thị, Sửa) đã được tái cấu trúc, tích hợp đầy đủ các chốt chặn mã hóa At-Rest, che mờ, lọc nội dung và cách ly người dùng.
+    - Toàn bộ các bộ kiểm thử tự động (TDD) đã chạy trên CSDL thật Supabase và đạt kết quả **PASS 100%**.
 
+---
 
+## 16. Hoàn Tất 100% Bản Vá Kỹ Thuật Theo Thư Mục CAN-LAM & Migration 12 (2026-09-10)
 
+Toàn bộ các yêu cầu kỹ thuật và sửa lỗi được chỉ rõ tại 16 tài liệu trong `docs/superpowers/backend/CAN-LAM` đã được triển khai, kiểm thử và đồng bộ thành công:
 
+1. **Chuẩn Hóa Lược Đồ CSDL & Migration 12 (`database/12_Can_Lam_Align_Schema_Fixes.sql`):**
+   - **`category`**: Bổ sung cột `Color VARCHAR(9)` (mã màu hex đại diện cho danh mục).
+   - **`transaction`**: Bổ sung cột `Idbill VARCHAR(36)` kèm khóa ngoại liên kết `bill(Idbill) ON DELETE SET NULL`.
+   - **`bill`**: Bổ sung cột `Previous_bill_id VARCHAR(36)` (chuỗi hóa đơn định kỳ), `Period_end DATE`, `Auto_pay BOOLEAN DEFAULT FALSE`, `Anchor_day SMALLINT (1..31)`.
+   - **`bill`**: Ràng buộc `Pay_status` mở rộng thêm giá trị `'Skipped'` bên cạnh `Pending`, `Payed`, `Overdue`.
+   - **`wallet`**: Đã `DROP INDEX IF EXISTS "uq_wallet_saving_active"` (cho phép người dùng mở nhiều ví Tiết kiệm linh hoạt).
+   - **`goal`**: Ràng buộc `Priority` bảo toàn `NULL` hoặc số nguyên dương (không ép về 0).
+   - **`budget`**: `Threshold_Warning_Percent` cho phép `NULL` (không ép default 0).
+   - Đã cập nhật `schema.prisma` và sinh lại `PrismaClient`.
 
+2. **Chuẩn Hóa Phản Hồi Xác Thực 401/403 (`AUTH_401_BODY_CODE.md`):**
+   - Mở rộng `ResponseHandler.unauthorized` và `forbidden` hỗ trợ tham số `extra` trải phẳng ra cấp gốc JSON: `{ success: false, message, code: 'ACCOUNT_DELETED' | 'ACCOUNT_INACTIVE', idaccount, reason_inactive, errors: null, timestamp }`.
+   - Cập nhật `middleware/auth.js`: Export `getAccountValidity` và `accountRejection` để tái sử dụng thống nhất giữa HTTP Middleware và Socket.IO Handshake. Trả mã 503 nếu gặp lỗi schema cấu hình.
+   - Cập nhật `modules/auth/auth.service.js` và `auth.controller.js`: Kiểm tra trạng thái tài khoản khi Đăng nhập và Làm mới token (`/auth/refresh`), trả về mã `ACCOUNT_DELETED` hoặc `ACCOUNT_INACTIVE` kèm lý do.
+
+3. **Bảo Vệ Socket.IO & Cách Ly Phòng Cá Nhân (`SOCKET_BANK_EVENT_PAYLOAD.md`, `SOCKET_SYNC_COMPLETED.md`):**
+   - Bổ sung xác thực Handshake Socket.IO bằng JWT Token thông qua `getAccountValidity`, từ chối kết nối ngay nếu tài khoản bị khóa/xóa.
+   - Cách ly sự kiện theo phòng riêng `account_${idaccount}`.
+   - Thống nhất payload sự kiện ngân hàng: trả về đầy đủ cả `status` và `transaction_status` để khớp hoàn toàn với Client-app.
+   - Bổ sung phát sự kiện `sync.completed` qua EventBus và Socket.IO khi background worker xử lý xong giao dịch để kích hoạt Client tự động pull.
+
+4. **Tái Cấu Trúc Bộ Lọc Ghi Chú Nhạy Cảm (`SYNC_NOTE_FILTER_REWRITE.md`):**
+   - Thay thế biểu thức chính quy số thẻ cũ bằng **`CARD_SHAPE`** kết hợp **Thuật toán Luhn (`luhnOk`)** để chỉ lọc số thẻ tín dụng thực sự (13-19 số thỏa mãn Luhn), chấm dứt hiện tượng bắt nhầm số điện thoại, mã đơn hàng hay chuỗi sinh tự động.
+   - Thay thế biểu thức mật khẩu: Bắt buộc có dấu phân cách tường minh `[:=]` (`mật khẩu:`, `password=`), không bắt nhầm cụm từ đời thường ("mật khẩu wifi").
+   - Loại bỏ từ "pin" khỏi regex mật khẩu để bảo vệ ghi chú thường gặp ("Thay pin: 350000").
+   - Khử CVV/CVC, bảo toàn các chuỗi đã lọc trước đó.
+
+5. **Giải Mã Note Khi So Khớp Fuzzy Matching Trong AI Dedup:**
+   - Cập nhật `dedup.repository.js`: Thực hiện giải mã `decrypt(note)` trước khi đưa vào thuật toán so khớp mờ hóa đơn (`findFuzzyInvoice`) và giao dịch chuyển khoản (`findFuzzyTransfer`).
+
+6. **Tối Ưu Sync Engine & Xử Lý Lỗi Từng Thao Tác (`SYNC_PUSH_ERROR_MAPPING.md`, `2026-09-04-backend-idempotent-delete.md`):**
+   - Triển khai **Idempotent Delete**: Thao tác xóa bản ghi không tồn tại trả về `synced: 1` thành công, không báo lỗi.
+   - Tách biệt kiểm tra lỗi toàn lô (`validateBatch` trả HTTP 400) và kiểm tra từng thao tác (`validateOperation` trả mã `CONSTRAINT_VIOLATION` trong `results[i]`).
+   - Hỗ trợ thao tác xóa (`operation: 'delete'`) chỉ cần `entity` và `id`.
+   - Chuẩn hóa loại giao dịch (`Expense`, `Income`, `Debt`, `Loan` $\rightarrow$ `Transaction`) trước khi validate và ghi CSDL.
+   - Bắt và ánh xạ chi tiết các mã lỗi PostgreSQL `22001` (quá độ dài), `23502` (thiếu trường), `BILL_ALREADY_PAID` (hóa đơn đã trả), `WALLET_NAME_DUPLICATE` sang mã lỗi chuẩn `CONSTRAINT_VIOLATION`.
+
+7. **Chuẩn Hóa Provider Nhận Dạng OCR:**
+   - Thống nhất giá trị `'OCR'` trên toàn bộ codebase (thay thế triệt để `'ORC'`).
+
+8. **Kết Quả Kiểm Thử Toàn Diện:**
+   - `Test/test_can_lam_fixes.js`: **PASS 100% (9/9 tests tích hợp)**.
+   - `Test/test_sensitive_note_filter.js`: **PASS 100% (15/15 unit test cases)**.
+   - `Test/test_category_unique_rules.js`: **PASS 100%**.
+   - `Test/test_data_security_encryption_and_masking.js`: **PASS 100% (13/13 tests bảo mật)**.
+   - `Test/test_sync_new_schema.js`: **PASS 100%**.

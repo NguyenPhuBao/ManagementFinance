@@ -314,19 +314,23 @@ const authService = {
         // Hết 30 ngày → từ chối đăng nhập
         throw Object.assign(
           new Error("Tài khoản đã hết thời gian khôi phục (30 ngày). Vui lòng liên hệ hỗ trợ."),
-          { statusCode: 403 }
+          { statusCode: 403, code: 'ACCOUNT_DELETED' }
         );
       }
       // Vẫn trong thời hạn 30 ngày → Cho phép đăng nhập và sử dụng tiếp
       logger.info("PendingDelete account logged in during grace period", { username: account.username, countdown: account.countdown });
     } else if (account.status === 'Deleted' || account.delete_at !== null) {
-      throw Object.assign(new Error("Tài khoản đã bị xóa khỏi hệ thống"), { statusCode: 403 });
+      throw Object.assign(new Error("Tài khoản đã bị xóa khỏi hệ thống"), {
+        statusCode: 403,
+        code: 'ACCOUNT_DELETED',
+      });
     } else if (account.status !== 'Active') {
       const msg = account.reason_inactive
         ? `Tài khoản đã bị vô hiệu hóa. Lý do: ${account.reason_inactive}`
         : "Tai khoan da bi vo hieu hoa";
       throw Object.assign(new Error(msg), {
         statusCode: 403,
+        code: 'ACCOUNT_INACTIVE',
         reason_inactive: account.reason_inactive || null,
       });
     }
@@ -397,6 +401,20 @@ const authService = {
     } catch (err) {
       await prisma.refreshtoken.update({ where: { idtoken: storedToken.idtoken }, data: { status: true } });
       throw Object.assign(new Error("Refresh token khong hop le"), { statusCode: 401 });
+    }
+
+    // Kiểm tra tính hợp lệ của tài khoản (xóa mềm, inactive, quá hạn 30 ngày)
+    const { getAccountValidity, accountRejection } = require('../../middleware/auth');
+    const accountInfo = await getAccountValidity(payload.idaccount);
+    const rejection = accountRejection(accountInfo, payload.idaccount);
+    if (rejection) {
+      await prisma.refreshtoken.update({ where: { idtoken: storedToken.idtoken }, data: { status: true } });
+      throw Object.assign(new Error(rejection.message), {
+        statusCode: 401,
+        code: rejection.code,
+        idaccount: Number(payload.idaccount),
+        reason_inactive: rejection.reason_inactive || null,
+      });
     }
 
     // Thu hồi token cũ

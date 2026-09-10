@@ -36,6 +36,11 @@ function mapEntityFields(entity, data) {
       if (m.wallet_transfer !== undefined) { m.idwallet_transfer = m.wallet_transfer; delete m.wallet_transfer; }
       if (m.goalId !== undefined) { m.idgoal = m.goalId; delete m.goalId; }
       if (m.goal_id !== undefined) { m.idgoal = m.goal_id; delete m.goal_id; }
+      if (m.billId !== undefined) { m.idbill = m.billId; delete m.billId; }
+      if (m.bill_id !== undefined) { m.idbill = m.bill_id; delete m.bill_id; }
+      if (m.type !== undefined && ['Expense', 'Income', 'Debt', 'Loan'].includes(m.type)) {
+        m.type = 'Transaction';
+      }
       if (m.bankTranId !== undefined) { m.bank_tran_id = m.bankTranId; delete m.bankTranId; }
       if (m.dateTransaction !== undefined) { m.date_transaction = new Date(m.dateTransaction); delete m.dateTransaction; }
       else if (m.createdAt !== undefined) { m.date_transaction = new Date(m.createdAt); delete m.createdAt; }
@@ -51,7 +56,13 @@ function mapEntityFields(entity, data) {
       if (m.categoryId !== undefined) { m.idcategory = m.categoryId; delete m.categoryId; }
       if (m.totalAmount !== undefined) { m.total_amount = m.totalAmount; delete m.totalAmount; }
       if (m.thresholdWarningAmount !== undefined) { m.threshold_warning_amount = m.thresholdWarningAmount; delete m.thresholdWarningAmount; }
-      if (m.thresholdWarningPercent !== undefined) { m.threshold_warning_percent = m.thresholdWarningPercent; delete m.thresholdWarningPercent; }
+      if (m.thresholdWarningPercent !== undefined) {
+        m.threshold_warning_percent = m.thresholdWarningPercent !== null ? Number(m.thresholdWarningPercent) : null;
+        delete m.thresholdWarningPercent;
+      }
+      if (m.threshold_warning_percent !== undefined) {
+        m.threshold_warning_percent = m.threshold_warning_percent !== null ? Number(m.threshold_warning_percent) : null;
+      }
       if (m.overSpending !== undefined) { m.over_spending = m.overSpending; delete m.overSpending; }
       if (m.overAmount !== undefined) { m.over_amount = m.overAmount; delete m.overAmount; }
       if (m.timeRecurrence !== undefined) { m.time_recurrence = m.timeRecurrence; delete m.timeRecurrence; }
@@ -85,6 +96,14 @@ function mapEntityFields(entity, data) {
       }
       if (m.timeRecurrence !== undefined) { m.time_recurrence = m.timeRecurrence; delete m.timeRecurrence; }
       if (m.timeNotification !== undefined) { m.time_notification = String(m.timeNotification); delete m.timeNotification; }
+      if (m.previousBillId !== undefined) { m.previous_bill_id = m.previousBillId; delete m.previousBillId; }
+      if (m.previous_bill_id !== undefined) { m.previous_bill_id = m.previous_bill_id; }
+      if (m.periodEnd !== undefined) { m.period_end = m.periodEnd ? new Date(m.periodEnd) : null; delete m.periodEnd; }
+      if (m.period_end !== undefined) { m.period_end = m.period_end ? new Date(m.period_end) : null; }
+      if (m.autoPay !== undefined) { m.auto_pay = Boolean(m.autoPay); delete m.autoPay; }
+      if (m.auto_pay !== undefined) { m.auto_pay = Boolean(m.auto_pay); }
+      if (m.anchorDay !== undefined) { m.anchor_day = m.anchorDay !== null ? Number(m.anchorDay) : null; delete m.anchorDay; }
+      if (m.anchor_day !== undefined) { m.anchor_day = m.anchor_day !== null ? Number(m.anchor_day) : null; }
       if (m.updatedAt !== undefined) { m.update_at = new Date(m.updatedAt); delete m.updatedAt; }
       if (m.isDeleted !== undefined) { m.delete_at = m.isDeleted ? new Date() : null; delete m.isDeleted; }
       if (m.deletedAt !== undefined) { m.delete_at = m.deletedAt ? new Date(m.deletedAt) : null; delete m.deletedAt; }
@@ -102,7 +121,7 @@ function mapEntityFields(entity, data) {
       if (m.autoDepositAmount !== undefined) { m.auto_deposit_amount = m.autoDepositAmount; delete m.autoDepositAmount; }
       if (m.autoDepositWalletId !== undefined) { m.auto_deposit_wallet_id = m.autoDepositWalletId; delete m.autoDepositWalletId; }
       if (m.autoDepositLastRun !== undefined) { m.auto_deposit_last_run = m.autoDepositLastRun ? new Date(m.autoDepositLastRun) : null; delete m.autoDepositLastRun; }
-      if (m.priority !== undefined) { m.priority = Number(m.priority); }
+      if (m.priority !== undefined) { m.priority = m.priority === null ? null : Number(m.priority); }
       if (m.statusComplete !== undefined) {
         if (typeof m.statusComplete === 'boolean') {
           m.status_complete = m.statusComplete ? 'True' : 'False';
@@ -127,6 +146,7 @@ function mapEntityFields(entity, data) {
       if (m.isGroup !== undefined) { m.is_group = m.isGroup; delete m.isGroup; }
       if (m.isDefault !== undefined) { m.is_default = m.isDefault; delete m.isDefault; }
       if (m.parentId !== undefined) { m.idgroup = m.parentId; delete m.parentId; }
+      if (m.color !== undefined) { m.color = m.color; }
       if (m.updatedAt !== undefined) { m.update_at = new Date(m.updatedAt); delete m.updatedAt; }
       if (m.isDeleted !== undefined) { m.delete_at = m.isDeleted ? new Date() : null; delete m.isDeleted; }
       if (m.deletedAt !== undefined) { m.delete_at = m.deletedAt ? new Date(m.deletedAt) : null; delete m.deletedAt; }
@@ -152,6 +172,7 @@ const syncRepository = {
           idgroup: mapped.idgroup || null,
           keyword: mapped.keyword || null,
           icon: mapped.icon || null,
+          color: mapped.color || null,
           update_at: mapped.update_at || new Date(),
         },
       });
@@ -172,6 +193,7 @@ const syncRepository = {
           idgroup: mapped.idgroup !== undefined ? mapped.idgroup : existing.idgroup,
           keyword: mapped.keyword !== undefined ? mapped.keyword : existing.keyword,
           icon: mapped.icon !== undefined ? mapped.icon : existing.icon,
+          color: mapped.color !== undefined ? mapped.color : existing.color,
           delete_at: mapped.delete_at !== undefined ? mapped.delete_at : existing.delete_at,
           update_at: mapped.update_at || new Date(),
         },
@@ -203,6 +225,7 @@ const syncRepository = {
         idgroup: true,
         keyword: true,
         icon: true,
+        color: true,
         delete_at: true,
         update_at: true,
       },
@@ -219,7 +242,7 @@ const syncRepository = {
         data: {
           idwallet: mapped.idwallet,
           idaccount: mapped.idaccount,
-          name: (mapped.name || 'Ví mới').substring(0, 100),
+          name: typeof mapped.name === 'string' && mapped.name.trim() !== '' ? mapped.name.trim().substring(0, 100) : 'Ví mới',
           type: mapped.type || 'Cash',
           balance: mapped.balance ?? 0,
           currency: mapped.currency || 'VND',
@@ -237,7 +260,7 @@ const syncRepository = {
       return prisma.wallet.update({
         where: { idwallet: existing.idwallet },
         data: {
-          name: mapped.name !== undefined ? mapped.name.substring(0, 100) : existing.name,
+          name: typeof mapped.name === 'string' && mapped.name.trim() !== '' ? mapped.name.trim().substring(0, 100) : existing.name,
           type: mapped.type ?? existing.type,
           balance: mapped.balance ?? existing.balance,
           currency: mapped.currency ?? existing.currency,
@@ -278,6 +301,7 @@ const syncRepository = {
           idcategory: mapped.idcategory || null,
           idwallet_transfer: mapped.idwallet_transfer || null,
           idgoal: mapped.idgoal || null,
+          idbill: mapped.idbill || null,
           bank_tran_id: mapped.bank_tran_id || null,
           amount: mapped.amount ?? 0,
           type: mapped.type || 'Transaction',
@@ -299,6 +323,7 @@ const syncRepository = {
           idcategory: mapped.idcategory !== undefined ? mapped.idcategory : existing.idcategory,
           idwallet_transfer: mapped.idwallet_transfer !== undefined ? mapped.idwallet_transfer : existing.idwallet_transfer,
           idgoal: mapped.idgoal !== undefined ? mapped.idgoal : existing.idgoal,
+          idbill: mapped.idbill !== undefined ? mapped.idbill : existing.idbill,
           bank_tran_id: mapped.bank_tran_id !== undefined ? mapped.bank_tran_id : existing.bank_tran_id,
           amount: mapped.amount ?? existing.amount,
           type: mapped.type ?? existing.type,
@@ -343,7 +368,7 @@ const syncRepository = {
           total_amount: mapped.total_amount ?? 0,
           spent: mapped.spent ?? 0,
           threshold_warning_amount: mapped.threshold_warning_amount ?? null,
-          threshold_warning_percent: mapped.threshold_warning_percent ?? 0,
+          threshold_warning_percent: (mapped.threshold_warning_percent !== undefined && mapped.threshold_warning_percent !== null) ? Number(mapped.threshold_warning_percent) : null,
           over_spending: mapped.over_spending || 'Over',
           over_amount: mapped.over_amount ?? null,
           start: mapped.start || new Date(),
@@ -414,11 +439,20 @@ const syncRepository = {
           icon: mapped.icon || 'receipt',
           color: mapped.color || '#4CAF50',
           note: prepareSafeNote(mapped.note, null),
+          previous_bill_id: mapped.previous_bill_id || null,
+          period_end: mapped.period_end || null,
+          auto_pay: mapped.auto_pay ?? false,
+          anchor_day: mapped.anchor_day ?? null,
           update_at: mapped.update_at || new Date(),
         },
       });
     }
     if (new Date(mapped.update_at) > new Date(existing.update_at)) {
+      if (existing.pay_status === 'Payed' && mapped.pay_status && mapped.pay_status !== 'Payed') {
+        throw Object.assign(new Error('Hóa đơn đã được thanh toán, không thể thay đổi trạng thái'), {
+          code: 'BILL_ALREADY_PAID',
+        });
+      }
       return prisma.bill.update({
         where: { idbill: existing.idbill },
         data: {
@@ -434,6 +468,10 @@ const syncRepository = {
           time_notification: mapped.time_notification ?? existing.time_notification,
           icon: mapped.icon ?? existing.icon,
           color: mapped.color ?? existing.color,
+          previous_bill_id: mapped.previous_bill_id !== undefined ? mapped.previous_bill_id : existing.previous_bill_id,
+          period_end: mapped.period_end !== undefined ? mapped.period_end : existing.period_end,
+          auto_pay: mapped.auto_pay !== undefined ? mapped.auto_pay : existing.auto_pay,
+          anchor_day: mapped.anchor_day !== undefined ? mapped.anchor_day : existing.anchor_day,
           note: mapped.note !== undefined ? prepareSafeNote(mapped.note, null) : existing.note,
           delete_at: mapped.delete_at !== undefined ? mapped.delete_at : existing.delete_at,
           update_at: mapped.update_at || new Date(),
@@ -474,7 +512,7 @@ const syncRepository = {
           auto_deposit_amount: mapped.auto_deposit_amount !== undefined ? mapped.auto_deposit_amount : null,
           auto_deposit_wallet_id: mapped.auto_deposit_wallet_id || null,
           auto_deposit_last_run: mapped.auto_deposit_last_run || null,
-          priority: mapped.priority !== undefined ? mapped.priority : 1,
+          priority: mapped.priority !== undefined ? mapped.priority : null,
           status_complete: mapped.status_complete || 'False',
           recurrence: mapped.recurrence ?? false,
           time_recurrence: mapped.time_recurrence || null,

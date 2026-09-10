@@ -6,6 +6,7 @@
 const { prisma } = require('../../../../config/db');
 const logger = require('../../../../core/logger');
 const { removeVietnameseTones } = require('../classify/classify.preprocess');
+const { decrypt } = require('../../../../utils/crypto.util');
 
 const dedupRepository = {
   /**
@@ -74,7 +75,8 @@ const dedupRepository = {
           txD.getDate() === targetDate.getDate();
         if (!sameDay) return false;
 
-        const normalizedNote = removeVietnameseTones(tx.note || '');
+        const plainNote = decrypt(tx.note) || '';
+        const normalizedNote = removeVietnameseTones(plainNote);
         return normalizedNote.includes(normalizedMerchant) || normalizedMerchant.includes(normalizedNote);
       }) || null;
     }
@@ -112,9 +114,10 @@ const dedupRepository = {
 
       if (!candidates || candidates.length === 0) return null;
 
-      // So khớp tên cửa hàng trong note
+      // So khớp tên cửa hàng trong note (giải mã note nếu đã mã hóa)
       const matched = candidates.find((c) => {
-        const normNote = removeVietnameseTones(c.note || '');
+        const plainNote = decrypt(c.note) || '';
+        const normNote = removeVietnameseTones(plainNote);
         return normNote.includes(normalizedMerchant) || normalizedMerchant.includes(normNote);
       });
 
@@ -147,9 +150,9 @@ const dedupRepository = {
         if (!sameDay) return false;
 
         if (cleanCounterpart || cleanNote) {
-          const txNote = (tx.note || '').toLowerCase();
-          if (cleanCounterpart && txNote.includes(cleanCounterpart)) return true;
-          if (cleanNote && txNote && (txNote.includes(cleanNote) || cleanNote.includes(txNote))) return true;
+          const plainNote = (decrypt(tx.note) || '').toLowerCase();
+          if (cleanCounterpart && plainNote.includes(cleanCounterpart)) return true;
+          if (cleanNote && plainNote && (plainNote.includes(cleanNote) || cleanNote.includes(plainNote))) return true;
           return false;
         }
 
@@ -191,12 +194,12 @@ const dedupRepository = {
 
       if (!candidates || candidates.length === 0) return null;
 
-      // Hậu lọc: Đối soát số tài khoản hoặc nội dung chuyển tiền, tránh chặn nhầm giao dịch cùng số tiền trong ngày
+      // Hậu lọc: Đối soát số tài khoản hoặc nội dung chuyển tiền (giải mã note nếu đã mã hóa)
       if (cleanCounterpart || cleanNote) {
         const matched = candidates.find((c) => {
-          const cNote = (c.note || '').toLowerCase();
-          if (cleanCounterpart && cNote.includes(cleanCounterpart)) return true;
-          if (cleanNote && cNote && (cNote.includes(cleanNote) || cleanNote.includes(cNote))) return true;
+          const plainNote = (decrypt(c.note) || '').toLowerCase();
+          if (cleanCounterpart && plainNote.includes(cleanCounterpart)) return true;
+          if (cleanNote && plainNote && (plainNote.includes(cleanNote) || cleanNote.includes(plainNote))) return true;
           return false;
         });
         return matched || null;

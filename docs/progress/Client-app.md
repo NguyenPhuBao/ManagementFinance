@@ -279,20 +279,10 @@ Client-app duy trì kết nối Socket.io liên tục với Backend để nhận
 * **Danh sách các sự kiện Realtime cần lắng nghe:**
   | Tên Sự Kiện | Payload Nhận Về | Hành Động Phía Client-App |
   |---|---|---|
-  | **`bank_transaction.incoming`** | `{ idaccount, amount, bank_name, description }` | Hiển thị Banner/Push giao dịch ngân hàng mới về, tăng Badge đếm tại Tab Giao dịch chờ duyệt. |
+  | **`bank_transaction.incoming`** | `{ idaccount, amount, bank_name, description, status, transaction_status }` | Hiển thị Banner/Push giao dịch ngân hàng mới về, tăng Badge đếm tại Tab Giao dịch chờ duyệt. Backend đã thống nhất trả đầy đủ cả hai trường `status` và `transaction_status`. |
   | **`ocr.completed`** | `{ idaccount, status, total_amount, ... }` | Nhận thông báo tiến trình bóc tách OCR ngầm đã xong $\rightarrow$ Hiển thị thông báo hoàn tất bóc tách. |
   | **`ocr.duplicate`** | `{ idaccount, error, existing_transaction }` | Nhận cảnh báo realtime phát hiện hóa đơn/biên lai đã tồn tại. |
-
-> ⚠️ **`notification.new` KHÔNG TỒN TẠI** — đã đo bằng mã ngày 2026-09-09.
-> Bảng này trước đó liệt kê nó như một sự kiện có thật, nhưng không dòng nào
-> trong `src/Backend` phát nó. Backend chỉ phát **ba** sự kiện tới người dùng
-> thường, đúng ba dòng còn lại ở trên, cộng `audit_activity` chỉ gửi tới
-> `admin_room` (dành cho Admin-web, không phải app).
->
-> ⚠️ **Hình dạng payload trong bảng này chỉ đúng một nửa.**
-> `bank_transaction.incoming` được phát từ hai chỗ với hai bộ tên trường khác
-> nhau — xem `docs/superpowers/backend/CAN-LAM/SOCKET_BANK_EVENT_PAYLOAD.md`.
-> Chính vì thế client **cố ý không đọc trường nào**; nó chỉ dùng tên sự kiện.
+  | **`sync.completed`** | `{ idaccount, timestamp }` | Nhận thông báo khi worker phía backend xử lý xong giao dịch tự động $\rightarrow$ Kích hoạt `SyncEngine.pull()` để kéo dữ liệu mới nhất về SQLite. |
 
 ---
 
@@ -708,3 +698,33 @@ class AuthInterceptor extends Interceptor {
   }
 }
 ```
+
+---
+
+## 14. Các Cập Nhật Lược Đồ CSDL & Giao Tiếp Cần Lưu Ý Sau Migration 12 (2026-09-10)
+
+Để đồng bộ hoàn hảo với Backend và CSDL PostgreSQL sau Migration 12, Client-app lưu ý các điểm sau:
+
+1. **Bổ Sung Cột `Color` Cho Bảng `category`:**
+   - Kiểu `VARCHAR(9)` (mã hex `#RRGGBB` hoặc `#RRGGBBAA`).
+   - Client-app ánh xạ vào `category.color` trong SQLite và hiển thị màu sắc tùy chỉnh của danh mục.
+
+2. **Bổ Sung Cột `Idbill` Cho Bảng `transaction`:**
+   - Kiểu `VARCHAR(36)` nullable. Khi thanh toán một hóa đơn định kỳ, Client-app gắn ID của hóa đơn đó vào `transaction.idbill` để hệ thống tự động liên kết hóa đơn với giao dịch chi tiêu tương ứng.
+
+3. **Cập Nhật Toàn Diện Bảng `bill`:**
+   - **`previous_bill_id` (`VARCHAR(36)`):** Lưu liên kết hóa đơn kỳ trước cho chuỗi hóa đơn định kỳ lặp lại.
+   - **`period_end` (`DATE`):** Ngày kết thúc kỳ tính cước hóa đơn.
+   - **`auto_pay` (`BOOLEAN`):** Cờ đánh dấu hóa đơn thanh toán tự động khi đến hạn.
+   - **`anchor_day` (`SMALLINT`):** Ngày neo cố định hàng tháng (1 đến 31) cho hóa đơn lặp lại.
+   - **Trạng thái `pay_status`:** Đã hỗ trợ giá trị `'Skipped'` (bỏ qua kỳ) bên cạnh `'Pending'`, `'Payed'`, `'Overdue'`.
+   - **Chốt chặn thanh toán hai lần:** Khi hóa đơn đã ở trạng thái `'Payed'`, Sync Engine sẽ từ chối các thao tác cố ý sửa trạng thái hoặc thanh toán lặp lại với mã `BILL_ALREADY_PAID` (trả về lỗi `CONSTRAINT_VIOLATION`).
+
+4. **Cho Phép Mở Nhiều Ví Tiết Kiệm (`wallet.type = 'Saving'`):**
+   - Backend đã gỡ bỏ index `uq_wallet_saving_active`. Người dùng trên Client-app được tự do tạo nhiều ví tiết kiệm độc lập (ví dụ: "Tiết kiệm mua nhà", "Tiết kiệm du lịch").
+
+5. **Giữ Nguyên `priority` Nullable Cho Bảng `goal`:**
+   - Cột `priority` là `INT` nullable, thể hiện thứ tự ưu tiên thưa (100, 200, 300...). Khi không sắp thứ tự, giữ nguyên giá trị `null` (Sync Engine không tự động ép về 0).
+
+6. **Lắng Nghe Sự Kiện `sync.completed`:**
+   - Khi nhận sự kiện Socket `sync.completed` từ Backend, Client-app tự động kích hoạt `SyncEngine.pull()` để đồng bộ các giao dịch mới nhất mà Worker ngầm vừa xử lý.

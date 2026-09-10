@@ -126,6 +126,7 @@ Bảng danh mục thu chi (hỗ trợ phân cấp cha/con 2 cấp).
 | `Idgroup` | varchar(36) | NULL, FK Category | Thuộc nhóm cha nào | ✅ Cho phép. Plaintext | Theo tài khoản |
 | `Keyword` | Text | NULL | Từ khóa gợi ý nhận diện | ✅ Cho phép. Plaintext | Theo tài khoản |
 | `Icon` | varchar(20) | NULL | Tên icon giao diện | ✅ Cho phép. Plaintext | Theo tài khoản |
+| `Color` | varchar(9) | NULL | Mã màu hex danh mục (`#RRGGBB` hoặc `#RRGGBBAA`) | ✅ Cho phép. Plaintext | Theo tài khoản |
 | `Create_at` | Timestamp | Default Now() | Thời điểm tạo | ✅ Cho phép. Plaintext | Theo tài khoản |
 | `Update_at` | Timestamp | Default Now() | Thời điểm cập nhật | ✅ Cho phép. Plaintext | Theo tài khoản |
 | `Delete_at` | Timestamp | NULL | Thời điểm xóa mềm | ✅ Cho phép. Plaintext | Không xóa vật lý nếu đã có giao dịch liên kết |
@@ -166,7 +167,7 @@ Bảng ví tiền của người dùng (Tiền mặt, Ngân hàng, Tiết kiệm
 | `Type` | varchar(7) | Check in (`Cash`, `Bank`, `Saving`, `Banking`) | Phân loại nguồn ví | ✅ Cho phép. Plaintext | Theo ví |
 | `Balance` | decimal(15,2) | Default 0 | Số dư hiện tại của ví | ✅ Cho phép. **Dữ liệu tài chính nhạy cảm**; Phân quyền chặt chẽ | Tối thiểu 5 năm sau khi xóa mềm (Luật Kế toán) |
 | `Currency` | Varchar(3) | Check in (`VND`, `USD`) | Đơn vị tiền tệ | ✅ Cho phép. Plaintext | Theo ví |
-| `Status` | Varchar(7) | Check in (`Active`, `Inactive`) | Trạng thái ví | ✅ Cho phép. Plaintext | Theo ví |
+| `Status` | Varchar(8) | Check in (`Active`, `Inactive`) | Trạng thái ví (Active/Inactive) | ✅ Cho phép. Plaintext | Theo ví |
 | `IncludeInTotal` | Boolean | Default TRUE | Có tính vào tổng tài sản | ✅ Cho phép. Plaintext | Theo ví |
 | `Is_default` | Boolean | Default False | Ví mặc định | ✅ Cho phép. Plaintext | Theo ví |
 | `Icon` | Varchar(20) | NULL | Icon hiển thị | ✅ Cho phép. Plaintext | Theo ví |
@@ -188,7 +189,7 @@ Bảng hạn mức ngân sách chi tiêu.
 | `TotalAmount` | Decimal(15, 2) | Check (> 0) | Tổng hạn mức ngân sách | ✅ Cho phép. Phân quyền `Idaccount` | Tối thiểu 3 - 5 năm |
 | `Spent` | Decimal(15, 2) | Default 0 | Số tiền thực tế đã chi | ✅ Cho phép. Phân quyền `Idaccount` | Tối thiểu 3 - 5 năm |
 | `Threshold_Warning_Amount` | Decimal(15, 2) | NULL | Số tiền chạm ngưỡng báo động | ✅ Cho phép. Plaintext | Theo ngân sách |
-| `Threshold_Warning_Percent` | Decimal(15, 2) | NULL, Default 0 (0-100) | Tỷ lệ % chạm ngưỡng báo | ✅ Cho phép. Plaintext | Theo ngân sách |
+| `Threshold_Warning_Percent` | Decimal(15, 2) | NULL (0-100) | Tỷ lệ % chạm ngưỡng báo (NULL nếu không dùng) | ✅ Cho phép. Plaintext | Theo ngân sách |
 | `OverSpending` | Varchar(7) | Check in (`Stop`, `Over`) | Hành vi khi vượt hạn mức | ✅ Cho phép. Plaintext | Theo ngân sách |
 | `OverAmount` | Decimal(15, 2) | NULL | Số tiền cho phép vượt tối đa | ✅ Cho phép. Plaintext | Theo ngân sách |
 | `Start` | Timestamp | | Thời điểm bắt đầu | ✅ Cho phép. Plaintext | Theo ngân sách |
@@ -216,10 +217,14 @@ Bảng quản lý hóa đơn định kỳ phải trả (Tiền điện, nước,
 | `Amount` | Decimal(15,2) | Check (> 0) | Số tiền hóa đơn | ✅ Cho phép. Phân quyền `Idaccount` | Tối thiểu 5 năm |
 | `Start_date` | Timestamp | Default Now() | Ngày bắt đầu tính | ✅ Cho phép. Plaintext | Theo hóa đơn |
 | `Due_date` | Timestamp | | Hạn thanh toán | ✅ Cho phép. Plaintext | Theo hóa đơn |
-| `Pay_status` | varchar(7) | Check in (`Pending`, `Payed`, `Overdue`) | Trạng thái thanh toán | ✅ Cho phép. Plaintext | Tối thiểu 5 năm |
+| `Pay_status` | varchar(7) | Check in (`Pending`, `Payed`, `Overdue`, `Skipped`) | Trạng thái thanh toán (bổ sung Skipped khi bỏ qua kỳ) | ✅ Cho phép. Plaintext | Tối thiểu 5 năm |
 | `Recurrence` | Boolean | Default False | Lặp lại định kỳ | ✅ Cho phép. Plaintext | Theo hóa đơn |
 | `Time_recurrence` | varchar(7) | Check in (`Day`, `Week`, `Month`, `Quarter`, `Year`), NULL | Chu kỳ lặp lại | ✅ Cho phép. Plaintext | Theo hóa đơn |
 | `Time_notification` | varchar(7) | Check in (`1`, `3`, `5`, `7`), NULL | Số ngày nhắc nhở trước hạn | ✅ Cho phép. Plaintext | Theo hóa đơn |
+| `Previous_bill_id` | varchar(36) | NULL, FK Bill(`Idbill`) | Liên kết hóa đơn chuỗi kỳ trước | ✅ Cho phép. Plaintext | Theo chuỗi hóa đơn |
+| `Period_end` | Date | NULL | Ngày kết thúc kỳ tính cước hóa đơn | ✅ Cho phép. Plaintext | Theo hóa đơn |
+| `Auto_pay` | Boolean | Default False | Tự động thanh toán hóa đơn khi tới hạn | ✅ Cho phép. Plaintext | Theo hóa đơn |
+| `Anchor_day` | Smallint | NULL, Check (1-31) | Ngày neo chu kỳ thanh toán hàng tháng | ✅ Cho phép. Plaintext | Theo hóa đơn |
 | `Icon` | varchar(20) | NULL | Icon hiển thị | ✅ Cho phép. Plaintext | Theo hóa đơn |
 | `Color` | varchar(20) | NULL | Mã màu hiển thị | ✅ Cho phép. Plaintext | Theo hóa đơn |
 | `Note` | Text | NULL | Ghi chú thêm | ✅ Cho phép. Plaintext | Theo hóa đơn |
@@ -247,6 +252,10 @@ Bảng mục tiêu tích lũy và tiết kiệm tiền.
 | `Status_complete` | varchar(20) | Check in (`True`, `False`) | Đã hoàn thành hay chưa | ✅ Cho phép. Plaintext | Theo mục tiêu |
 | `Recurrence` | Boolean | Default False | Lặp lại sau khi đạt | ✅ Cho phép. Plaintext | Theo mục tiêu |
 | `Time_recurrence` | varchar(7) | Check in (`Day`, `Week`, `Month`, `Quarter`, `Year`), NULL | Chu kỳ lặp lại | ✅ Cho phép. Plaintext | Theo mục tiêu |
+| `auto_deposit_amount` | Decimal(15,2) | NULL, Check (> 0) | Số tiền trích tự động mỗi kỳ | ✅ Cho phép. Plaintext | Theo mục tiêu |
+| `auto_deposit_wallet_id` | varchar(36) | NULL, FK Wallet | Ví nguồn trích tiền tự động | ✅ Cho phép. Plaintext | Theo mục tiêu |
+| `auto_deposit_last_run` | Date | NULL | Ngày trích tiền tự động gần nhất | ✅ Cho phép. Plaintext | Theo mục tiêu |
+| `Priority` | Smallint | NULL, Check (> 0) | Thứ tự ưu tiên trích tích lũy (NULL nếu không đặt) | ✅ Cho phép. Plaintext | Theo mục tiêu |
 | `Icon` | varchar(20) | NULL | Icon hiển thị | ✅ Cho phép. Plaintext | Theo mục tiêu |
 | `Color` | varchar(20) | NULL | Màu sắc | ✅ Cho phép. Plaintext | Theo mục tiêu |
 | `Note` | Text | NULL | Ghi chú | ✅ Cho phép. Plaintext | Theo mục tiêu |
@@ -266,11 +275,13 @@ Bảng lưu trữ mọi giao dịch thu, chi, chuyển khoản, đồng bộ ng�
 | `Idwallet` | varchar(36) | FK - Wallet (`Idwallet`) | Ví thực hiện giao dịch | ✅ Cho phép. Plaintext | Tối thiểu 5 năm |
 | `Idcategory` | varchar(36) | FK - Category, NULL | Danh mục chi tiêu/thu | ✅ Cho phép. Plaintext | Tối thiểu 5 năm |
 | `Idwallet_transfer` | varchar(36) | FK - Wallet, NULL | Ví nhận tiền (khi Transfer) | ✅ Cho phép. Plaintext | Tối thiểu 5 năm |
+| `Idgoal` | varchar(36) | FK - Goal, NULL | Liên kết mục tiêu tích lũy/rút tiền | ✅ Cho phép. Plaintext | Tối thiểu 5 năm |
+| `Idbill` | varchar(36) | FK - Bill, NULL | Liên kết hóa đơn thanh toán | ✅ Cho phép. Plaintext | Tối thiểu 5 năm |
 | `Bank_tran_id` | varchar(100) | NULL | Mã giao dịch phía ngân hàng | ✅ Cho phép. Dùng chống trùng lặp | Tối thiểu 5 năm |
 | `Amount` | Decimal(15,2) | Check (!= 0) | Số tiền giao dịch (±) | ✅ Cho phép. **Dữ liệu tài chính cốt lõi**; Phân quyền chặt chẽ; Audit log | Tối thiểu 5 năm (không xóa vật lý) |
 | `Type` | Varchar(20) | Check in (`Transaction`, `Transfer`) | Loại giao dịch | ✅ Cho phép. Plaintext | Tối thiểu 5 năm |
 | `Status` | Varchar(10) | Check in (`Pending`, `Confirmed`, `Rejected`, `Fail`) | Trạng thái giao dịch | ✅ Cho phép. Plaintext | Tối thiểu 5 năm |
-| `Provider` | Varchar(40) | Check in (`Manual`, `BankSync`, `SMS`, `ORC`, `Bill`) | Nguồn tạo giao dịch | ✅ Cho phép. Plaintext | Tối thiểu 5 năm |
+| `Provider` | Varchar(40) | Check in (`Manual`, `BankSync`, `SMS`, `OCR`, `Bill`) | Nguồn tạo giao dịch | ✅ Cho phép. Plaintext | Tối thiểu 5 năm |
 | `Note` | Text | NULL | Ghi chú giao dịch | ✅ Cho phép. **ĐÃ MÃ HÓA AT-REST (AES-256-GCM)** & **Lọc sạch thẻ/CVV/pwd trước khi lưu** | Tối thiểu 5 năm; Xóa khi người dùng xóa tài khoản |
 | `Images` | Text | NULL | Đường dẫn ảnh biên lai/chứng từ | ✅ Cho phép. **ĐÃ DÙNG PRE-SIGNED URL (15-30 phút)**; Private Bucket; Xóa ảnh vật lý khi tài khoản bị xóa | Tối thiểu 5 năm theo chứng từ kế toán |
 | `DateTransaction` | Timestamp | Default Now() | Thời điểm phát sinh giao dịch | ✅ Cho phép. Plaintext | Tối thiểu 5 năm |
@@ -339,9 +350,10 @@ Bảng lưu trữ Refresh Token đã cấp cho các phiên đăng nhập.
 ### 3.2.6. Category
 - **PK**: `Idcategory` (varchar(36) UUID)
 - **FK**: `Create_by` $\rightarrow$ `Account(Idaccount)` (`ON DELETE CASCADE`); `Idgroup` $\rightarrow$ `Category(Idcategory)` (`ON DELETE SET NULL`)
+- **Cột mới**: `Color` (varchar(9) NULL - mã màu hex)
 - **Check**: `Classify IN ('Thu', 'Chi', 'Vay/no')`
 - **Default**: `Is_default = FALSE`, `Is_group = FALSE`, `Create_at = Now()`, `Update_at = Now()`
-- **Unique**: `(Create_by, NameCategory, Classify)` — Không trùng tên danh mục trong cùng phân loại của 1 tài khoản
+- **Unique**: `(Create_by, lower(regexp_replace(btrim(NORMALIZE(NameCategory, NFC)), '\s+', ' ', 'g')))` — Cấm trùng lặp trên cùng tài khoản. Áp dụng mô hình **Template & Cloned Model** (Người dùng được phép tạo danh mục cá nhân trùng tên với danh mục mặc định của hệ thống).
 - **Check Phân cấp**: Nhóm (`Is_group = TRUE`): `Idgroup IS NULL`. Danh mục con (`Is_group = FALSE`): có thể có `Idgroup` hoặc `NULL` (không cho phép lồng quá 2 cấp).
 - **Index**: `Idcategory`, `Idgroup`, `Create_by`
 
@@ -359,39 +371,42 @@ Bảng lưu trữ Refresh Token đã cấp cho các phiên đăng nhập.
 - **FK**: `Idaccount` $\rightarrow$ `Account(Idaccount)` (`ON DELETE CASCADE`); `Id_bank_casso` $\rightarrow$ `Bank_account(Id_bank_account)` (`ON DELETE SET NULL`)
 - **Check**: `Type IN ('Cash', 'Bank', 'Saving', 'Banking')`; `Currency IN ('VND', 'USD')`; `Status IN ('Active', 'Inactive')`
 - **Default**: `Type = 'Cash'`, `Balance = 0`, `Currency = 'VND'`, `Status = 'Active'`, `IncludeInTotal = TRUE`, `Is_default = FALSE`
-- **Unique**: `(Idaccount, Name)` — Không trùng tên ví trong cùng 1 tài khoản; `Id_bank_casso` **WHERE NOT NULL** — 1 tài khoản ngân hàng chỉ tạo tối đa 1 ví Banking
+- **Unique**: `(Idaccount, Name)` — Không trùng tên ví trong cùng 1 tài khoản; `Id_bank_casso` **WHERE NOT NULL** — 1 tài khoản ngân hàng chỉ tạo tối đa 1 ví Banking. **Đã gỡ bỏ** index `uq_wallet_saving_active` (cho phép người dùng mở nhiều ví Tiết kiệm linh hoạt).
 - **Index**: `Idaccount`, `Id_bank_casso`, `Update_at`
 
 ### 3.2.9. Budget
 - **PK**: `Idbudget` (varchar(36) UUID)
 - **FK**: `Idaccount` $\rightarrow$ `Account(Idaccount)` (`ON DELETE CASCADE`); `Idcategory` $\rightarrow$ `Category(Idcategory)` (`ON DELETE SET NULL`, NULL = Ngân sách tổng)
 - **Check**: `TotalAmount > 0`; `Spent >= 0`; `Threshold_Warning_Percent >= 0 AND Threshold_Warning_Percent <= 100`; `OverSpending IN ('Stop', 'Over')`; `Time_recurrence IN ('Day', 'Week', 'Month', 'Quarter', 'Year')`
-- **Default**: `Spent = 0`, `Threshold_Warning_Percent = 0`, `OverSpending = 'Over'`, `Recurrence = FALSE`
+- **Default**: `Spent = 0`, `OverSpending = 'Over'`, `Recurrence = FALSE` (Lưu ý: `Threshold_Warning_Percent` cho phép `NULL`, không ép buộc default 0)
 - **Index**: `Idaccount`, `Idcategory`
 
 ### 3.2.10. Bill
 - **PK**: `Idbill` (varchar(36) UUID)
-- **FK**: `Idaccount` $\rightarrow$ `Account(Idaccount)` (`ON DELETE CASCADE`); `Idwallet` $\rightarrow$ `Wallet(Idwallet)`; `Idcategory` $\rightarrow$ `Category(Idcategory)`
-- **Check**: `Amount > 0`; `Pay_status IN ('Pending', 'Payed', 'Overdue')`; `Time_recurrence IN ('Day', 'Week', 'Month', 'Quarter', 'Year')`; `Time_notification IN ('1', '3', '5', '7')`
-- **Default**: `Pay_status = 'Pending'`, `Recurrence = FALSE`, `Time_notification = '3'`
-- **Index**: `Idaccount`, `Idwallet`, `Idcategory`
+- **FK**: `Idaccount` $\rightarrow$ `Account(Idaccount)` (`ON DELETE CASCADE`); `Idwallet` $\rightarrow$ `Wallet(Idwallet)`; `Idcategory` $\rightarrow$ `Category(Idcategory)`; `Previous_bill_id` $\rightarrow$ `Bill(Idbill)` (`ON DELETE SET NULL`)
+- **Cột mới**: `Previous_bill_id` (varchar(36)), `Period_end` (Date), `Auto_pay` (Boolean default FALSE), `Anchor_day` (Smallint 1..31)
+- **Check**: `Amount > 0`; `Pay_status IN ('Pending', 'Payed', 'Overdue', 'Skipped')`; `Time_recurrence IN ('Day', 'Week', 'Month', 'Quarter', 'Year')`; `Time_notification IN ('1', '3', '5', '7')`; `Anchor_day IS NULL OR (Anchor_day BETWEEN 1 AND 31)`
+- **Default**: `Pay_status = 'Pending'`, `Auto_pay = FALSE`, `Recurrence = FALSE`, `Time_notification = '3'`
+- **Index**: `Idaccount`, `Idwallet`, `Idcategory`, `Previous_bill_id`
 
 ### 3.2.11. Goal
 - **PK**: `Idgoal` (varchar(36) UUID)
-- **FK**: `Idaccount` $\rightarrow$ `Account(Idaccount)` (`ON DELETE CASCADE`); `Idwallet` $\rightarrow$ `Wallet(Idwallet)` (`ON DELETE SET NULL`)
-- **Check**: `Target_amount > 0`; `Current_amount >= 0`; `Status_complete IN ('True', 'False')`; `Cycle_take_money IN ('Day', 'Week', 'Month', 'Quarter', 'Year')`
+- **FK**: `Idaccount` $\rightarrow$ `Account(Idaccount)` (`ON DELETE CASCADE`); `Idwallet` $\rightarrow$ `Wallet(Idwallet)` (`ON DELETE SET NULL`); `auto_deposit_wallet_id` $\rightarrow$ `Wallet(Idwallet)` (`ON DELETE SET NULL`)
+- **Cột mới**: `Priority` (Smallint check > 0, NULL nếu không đặt), `auto_deposit_amount` (Decimal), `auto_deposit_wallet_id` (varchar(36)), `auto_deposit_last_run` (Date)
+- **Check**: `Target_amount > 0`; `Current_amount >= 0`; `Status_complete IN ('True', 'False')`; `Cycle_take_money IN ('Day', 'Week', 'Month', 'Quarter', 'Year')`; `Priority IS NULL OR Priority > 0`
 - **Default**: `Current_amount = 0`, `Status_complete = 'False'`, `Recurrence = FALSE`
 - **Index**: `Idaccount`, `Idwallet`
 
 ### 3.2.12. Transaction
 - **PK**: `Idtran` (varchar(36) UUID)
-- **FK**: `Idaccount` $\rightarrow$ `Account(Idaccount)` (`ON DELETE CASCADE`); `Idwallet` $\rightarrow$ `Wallet(Idwallet)` (`ON DELETE CASCADE`); `Idcategory` $\rightarrow$ `Category(Idcategory)` (`ON DELETE SET NULL`); `Idwallet_transfer` $\rightarrow$ `Wallet(Idwallet)` (`ON DELETE SET NULL`)
-- **Check**: `Type IN ('Transaction', 'Transfer')`; `Status IN ('Pending', 'Confirmed', 'Rejected', 'Fail')`; `Provider IN ('Manual', 'BankSync', 'SMS', 'ORC', 'Bill')`; `Amount != 0`
+- **FK**: `Idaccount` $\rightarrow$ `Account(Idaccount)` (`ON DELETE CASCADE`); `Idwallet` $\rightarrow$ `Wallet(Idwallet)` (`ON DELETE CASCADE`); `Idcategory` $\rightarrow$ `Category(Idcategory)` (`ON DELETE SET NULL`); `Idwallet_transfer` $\rightarrow$ `Wallet(Idwallet)` (`ON DELETE SET NULL`); `Idgoal` $\rightarrow$ `Goal(Idgoal)` (`ON DELETE SET NULL`); `Idbill` $\rightarrow$ `Bill(Idbill)` (`ON DELETE SET NULL`)
+- **Cột mới**: `Idgoal` (varchar(36)), `Idbill` (varchar(36))
+- **Check**: `Type IN ('Transaction', 'Transfer')`; `Status IN ('Pending', 'Confirmed', 'Rejected', 'Fail')`; `Provider IN ('Manual', 'BankSync', 'SMS', 'OCR', 'Bill')`; `Amount != 0`
 - **Default**: `Type = 'Transaction'`, `Status = 'Confirmed'`, `Provider = 'Manual'`, `DateTransaction = Now()`
-- **Unique**: `(Provider, Bank_tran_id)` **WHERE Bank_tran_id IS NOT NULL**
+- **Unique**: `(Idaccount, Bank_tran_id)` **WHERE Bank_tran_id IS NOT NULL** (Cách ly mã giao dịch theo từng tài khoản người dùng)
 - **Bảo vệ CSDL (Trigger)**: Chặn `DELETE` vật lý giao dịch dưới 5 năm theo Luật Kế toán 2015.
-- **Mã hóa & Bảo mật**: `Note` mã hóa AES-256-GCM & lọc thẻ/CVV/pwd; `Images` dùng Pre-Signed URL ngắn hạn (15-30 phút).
-- **Index**: `Idaccount`, `Idwallet`, `Idcategory`, `Status`, `Provider`, `DateTransaction`, `Update_at`
+- **Mã hóa & Bảo mật**: `Note` mã hóa AES-256-GCM & lọc thẻ/CVV/pwd (chuẩn thuật toán Luhn); `Images` dùng Pre-Signed URL ngắn hạn (15-30 phút).
+- **Index**: `Idaccount`, `Idwallet`, `Idcategory`, `Status`, `Provider`, `DateTransaction`, `Update_at`, `Idbill`, `Idgoal`
 
 ### 3.2.13. RefreshToken
 - **PK**: `Idtoken` (int auto-increment)
