@@ -290,6 +290,36 @@ void main() {
               'là ở lại máy này.');
     });
 
+    test('mục tiêu mang priority 0 cũ thì đẩy lên null — G32', () async {
+      // Backend gọi `Number(null)` nên mục tiêu CHƯA SẮP kéo về máy mang 0.
+      // Client không bao giờ tự sinh priority <= 0 (`goal_priority.dart`), nên
+      // 0 là một null bị ép. Đẩy lại 0 là giữ cái sai ấy trên server mãi; đẩy
+      // null thì khi backend sửa `mapEntityFields`, hàng tự lành ở lần sửa kế.
+      const mucTieuCu = '77777777-7777-4777-8777-777777777777';
+      await db.goalDao.insert(GoalsCompanion(
+        id: const Value(mucTieuCu),
+        idaccount: const Value(accountId),
+        name: const Value('Quỹ khẩn cấp'),
+        targetAmount: const Value(10000000),
+        targetDate: Value(DateTime.now()),
+        priority: const Value(0),
+        syncStatus: const Value('pending'),
+        updatedAt: Value(DateTime.now()),
+      ));
+      await runSync();
+
+      final p = client.adapter.pushed
+          .where((op) => op['entity'] == 'goal')
+          .map((op) => op['payload'] as Map<String, dynamic>)
+          .firstWhere((p) => p['id'] == mucTieuCu);
+      expect(p.containsKey('priority'), isTrue,
+          reason: 'Khoá vẫn phải có mặt — tập khoá của payload mục tiêu được '
+              'khoá ở ca "goal" bên dưới.');
+      expect(p['priority'], isNull,
+          reason: 'Đẩy 0 lên là server giữ 0 mãi, và mọi máy khác kéo về một '
+              'mục tiêu "đứng đầu" mà người dùng chưa từng sắp.');
+    });
+
     test('category — phải có isGroup/parentId để backend dựng lại cây nhóm', () {
       expect(
         payloadOf('category').keys.toSet(),

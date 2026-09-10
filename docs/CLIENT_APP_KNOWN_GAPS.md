@@ -37,7 +37,7 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > | **G29** | ⛔ **Chặn ở backend** — `/sync/push` lọc `Note` bằng biểu thức bắt nhầm (số tài khoản, "mật khẩu wifi", hậu tố `(tự động)`), và bản đã lọc **đè lên máy** ngay chu kỳ đồng bộ ấy — tái hiện đầu-cuối trên máy ảo 2026-09-10. Chưa hỏng dữ liệu thật nào |
 > | **G30** | ⏸️ **Chặn tạm, chờ backend bỏ index** — server có `uq_wallet_saving_active` (một ví Tiết kiệm mỗi tài khoản), luật chỉ tồn tại ở SQL; client khoá ô "Tiết kiệm" và chốt ở datasource từ 2026-09-10 cho tới khi backend `DROP INDEX`. Chốt **trùng tên ví** cùng ngày thì vĩnh viễn |
 > | **G31** | ⛔ **Chặn ở backend** — tên mục tiêu hoặc hoá đơn dài hơn 100 ký tự, tên danh mục dài hơn 200, vỡ `P2000` trên server và rơi xuống `DB_ERROR`, nên bản ghi bị **gửi lại mãi**. ✅ Bảy ô tên của client giới hạn theo code point từ 2026-09-10; còn mở vì bản client cũ, Admin-web và mọi nguồn ghi khác vẫn chờ backend ánh xạ lỗi |
-> | **G32** | ⛔ **Chặn ở backend** — `Number(null)` ở `mapEntityFields('goal')` ghi mục tiêu **chưa sắp** thành `Priority = 0`, nên sau một vòng đồng bộ nó nhảy lên **đầu** danh sách; tái hiện đầu-cuối trên máy ảo (2026-09-10) |
+> | **G32** | ⛔ **Chặn ở backend** — `Number(null)` ở `mapEntityFields('goal')` ghi mục tiêu **chưa sắp** thành `Priority = 0`, nên sau một vòng đồng bộ nó nhảy lên **đầu** danh sách; tái hiện đầu-cuối trên máy ảo (2026-09-10). ✅ Client đọc `<= 0` là chưa sắp từ cùng ngày; còn mở vì giá trị sai vẫn nằm trên server và bản client cũ vẫn thấy lỗi |
 >
 > **G20 đã đóng ngày 2026-09-05** — `depositToGoal` nhận `occurredAt` chặn hai
 > đầu; đã kiểm cả bằng test lẫn trên máy ảo Android.
@@ -910,8 +910,21 @@ mọi giá trị ấy kéo về đều là một `null` bị ép.
 `<= 0` như chưa sắp. Phía client chỉ sửa được **hiển thị** trên máy đã cập nhật —
 giá trị trên server và bản client cũ vẫn chờ backend.
 
-⚠️ Mục tiêu thử "ThuUuTien" (`f7482924-2326-4105-bc33-abc1d993a4cb`) đang còn
-trên tài khoản 10, giữ lại để kiểm bản vá client; xoá mềm qua giao diện sau đó.
+✅ **Phía client xong cùng ngày.** Một định nghĩa,
+`goal/domain/uu_tien_hop_le.dart`, áp ở ba ranh giới: `GoalEntity.fromDrift`
+(mọi đường đọc mục tiêu, nên hàng `0` kéo về từ trước bản vá cũng về đúng
+chỗ), nhánh kéo về của `SyncEngine` (SQLite lưu `NULL` thay vì `0`), và payload
+đẩy lên (gửi `null` thay vì đẩy lại `0`, để hàng tự lành khi backend sửa). Áp ở
+cả ba chứ không chỉ chỗ sắp xếp: `_mocChenDuoc` coi `0` là một số thật, nên kéo
+thả sẽ tính khe từ nó trong khi danh sách lại xếp nó như chưa sắp. Test: 4 ca
+thuần, 1 ca repository, 1 ca payload đẩy, 1 tệp kéo về. Kiểm trên
+`emulator-5554`: cài bản vá, "ThuUuTien" — kéo về từ trước bản vá và đang đứng
+đầu — về **cuối** danh sách ngay khi mở trang, không cần đồng bộ lại.
+
+**Còn mở:** phía server — giá trị `0` vẫn nằm trên server, và bản client đã cài
+trước đó vẫn thấy mục tiêu nhảy lên đầu. Mục tiêu thử "ThuUuTien"
+(`f7482924-2326-4105-bc33-abc1d993a4cb`) đã được xoá mềm qua giao diện sau khi
+kiểm.
 
 ---
 

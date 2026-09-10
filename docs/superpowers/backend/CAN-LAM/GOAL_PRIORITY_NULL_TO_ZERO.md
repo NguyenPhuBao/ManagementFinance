@@ -119,7 +119,8 @@ nhận `conflict` và **mất** sửa đổi của người dùng. Không đổi
 cũ chưa thấy giá trị sửa, nhưng client đã cứng hoá (mục 7) vốn đọc `0` như chưa
 sắp, còn máy cài mới kéo toàn bộ thì nhận `NULL`.
 
-Đo 2026-09-10: **1** hàng — chính mục tiêu thử ở mục 2.
+Đo 2026-09-10: **1** hàng — chính mục tiêu thử ở mục 2, đã được xoá mềm qua
+giao diện sau khi kiểm bản vá client.
 
 ---
 
@@ -140,7 +141,8 @@ Rồi báo lại ở đây.
 
 ## 7. Liên quan tới client
 
-Client đọc `priority <= 0` kéo về như `null` (chưa sắp) — việc trong cùng đợt,
-xem G32 `docs/CLIENT_APP_KNOWN_GAPS.md`. Làm thế sửa được **hiển thị** trên máy
+✅ Client đọc `priority <= 0` như `null` (chưa sắp) từ 2026-09-10, ở cả ba ranh
+giới đọc, lưu kéo về và đẩy lên (`lib/features/goal/domain/uu_tien_hop_le.dart`)
+— xem G32 `docs/CLIENT_APP_KNOWN_GAPS.md`. Làm thế sửa được **hiển thị** trên máy
 đã cập nhật, nhưng không sửa giá trị trên server, và bản client cũ vẫn thấy mục
 tiêu nhảy lên đầu. Nên 5.1 vẫn cần.

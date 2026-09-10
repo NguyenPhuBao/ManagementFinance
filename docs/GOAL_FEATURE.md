@@ -726,7 +726,8 @@ khác: client gửi `priority: null`, `mapEntityFields('goal')` phía backend g�
 `docs/CLIENT_APP_KNOWN_GAPS.md`; tài liệu xin
 `docs/superpowers/backend/CAN-LAM/GOAL_PRIORITY_NULL_TO_ZERO.md`. Quy ước
 "`priority` luôn dương" ở trên là lý do client đọc được mọi giá trị `<= 0` kéo
-về như chưa sắp mà không đoán nhầm.
+về như chưa sắp mà không đoán nhầm — và từ cùng ngày client **làm đúng thế**, ở
+cả ba ranh giới đọc, lưu kéo về, đẩy lên: `goal/domain/uu_tien_hop_le.dart`.
 
 **Khe hở còn lại, chấp nhận được:** hai máy cùng sắp lại khi ngoại tuyến thì
 LWW phân xử **theo từng hàng**, không theo cả danh sách, nên kết quả có thể là

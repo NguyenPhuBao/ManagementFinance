@@ -12,6 +12,7 @@ import 'sync_models.dart';
 import 'category_icon_registry.dart';
 import 'sync_checkpoint_store.dart';
 import 'sync_payload_normalizer.dart';
+import '../../features/goal/domain/uu_tien_hop_le.dart';
 
 /// SyncEngine — bộ máy đồng bộ offline-first.
 ///
@@ -888,8 +889,10 @@ class SyncEngine {
                 // nhưng JSON đi qua nhiều tầng và một giá trị `"200"` phải
                 // đọc được. Giá trị rác về `null` — tức "chưa sắp", xếp cuối —
                 // thay vì làm hỏng cả hàng.
-                priority: Value(
-                    int.tryParse(g['priority']?.toString() ?? '')),
+                // `<= 0` là `null` bị backend ép (G32): lưu nguyên thì mục tiêu
+                // chưa sắp đứng đầu danh sách — xem `uu_tien_hop_le.dart`.
+                priority: Value(uuTienHopLe(
+                    int.tryParse(g['priority']?.toString() ?? ''))),
                 icon: Value(g['icon']?.toString() ?? 'flag'),
                 colour: Value(g['color']?.toString() ?? '#4CAF50'),
                 note: Value(g['note']?.toString() ?? ''),
@@ -1160,7 +1163,9 @@ class SyncEngine {
           // thả — công sức bỏ ra, KHÔNG suy lại được, và không có mặc định
           // đúng nào — nên nó phải đi qua đường đồng bộ chứ không được làm
           // cột cục bộ như `auto_deposit_*` từng làm (G21).
-          'priority': g.priority,
+          // `<= 0` về máy từ `Number(null)` của backend (G32). Đẩy lại là giữ
+          // cái sai ấy trên server; gửi `null` để hàng tự lành khi backend sửa.
+          'priority': uuTienHopLe(g.priority),
           'status_complete': g.isCompleted ? 'True' : 'False',
           'recurrence': g.recurrence,
           'time_recurrence': g.timeRecurrence,

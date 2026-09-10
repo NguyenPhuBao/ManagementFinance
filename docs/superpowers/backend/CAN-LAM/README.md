@@ -209,8 +209,9 @@ lại trên CSDL dev. Đều **không cần migration**.
     ([GOAL_PRIORITY_NULL_TO_ZERO.md](./GOAL_PRIORITY_NULL_TO_ZERO.md)) — một
     dòng ở `mapEntityFields('goal')`. `Number(null) === 0`, nên mục tiêu **chưa
     sắp** (NULL, xếp cuối — thoả thuận 2026-09-05) được lưu là `0`, và kéo về máy
-    thành mục tiêu **đứng đầu** danh sách. Client cứng hoá phía mình trong cùng
-    đợt, nhưng giá trị sai vẫn nằm trên server cho mọi máy khác. Kèm: nhánh tạo
+    thành mục tiêu **đứng đầu** danh sách. Client đã cứng hoá phía mình cùng ngày
+    (đọc `<= 0` là chưa sắp), nhưng giá trị sai vẫn nằm trên server, và bản
+    client cũ vẫn thấy mục tiêu nhảy lên đầu. Kèm: nhánh tạo
     mặc định `1` thay vì `null`.
 15. **Ánh xạ lỗi `/sync/push` thiếu `22001`/`P2000` và `23502`; lớp kiểm tra
     lệch CHECK** ([SYNC_PUSH_ERROR_MAPPING.md](./SYNC_PUSH_ERROR_MAPPING.md)) —
