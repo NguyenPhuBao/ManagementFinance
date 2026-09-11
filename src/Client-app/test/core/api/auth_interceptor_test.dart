@@ -23,6 +23,11 @@ class _FakeSecureStorage implements FlutterSecureStorage {
 
   final Map<String, String> _store;
 
+  /// Nếu đặt, `read` ném lỗi khi đọc đúng khoá này — mô phỏng
+  /// `PlatformException` thật của keystore (keystore hỏng, huỷ sinh trắc
+  /// học, khôi phục OS…), thứ không phải `DioException`.
+  String? khoaNemLoiKhiDoc;
+
   @override
   Future<String?> read({
     required String key,
@@ -32,8 +37,12 @@ class _FakeSecureStorage implements FlutterSecureStorage {
     WebOptions? webOptions,
     MacOsOptions? mOptions,
     WindowsOptions? wOptions,
-  }) async =>
-      _store[key];
+  }) async {
+    if (key == khoaNemLoiKhiDoc) {
+      throw StateError('kho token hỏng');
+    }
+    return _store[key];
+  }
 
   @override
   Future<void> delete({
@@ -509,6 +518,32 @@ void main() {
               'chỉ thử lại bằng token trong kho, không tốn thêm một lượt '
               '/auth/refresh (mỗi lượt thu hồi refresh token cũ)');
       expect(server.bearerDaThay.last, 'Bearer access-moi');
+    });
+
+    test('kho token ném lỗi khi đọc refresh token → mọi request chờ đều nhận lỗi tạm thời, không treo, giữ token', () async {
+      final storage = _khoCoPhien()..khoaNemLoiKhiDoc = AppConstants.refreshTokenKey;
+      final server = _MayChuGia();
+      final (:dio, :interceptor) = _dungVoiMayChu(storage, server);
+      addTearDown(interceptor.dispose);
+      var emissions = 0;
+      final sub = interceptor.sessionExpiredStream.listen((_) => emissions++);
+      addTearDown(sub.cancel);
+
+      final a = dio.get<dynamic>('/sync/pull');
+      final b = dio.get<dynamic>('/auth/profile');
+      for (final f in [a, b]) {
+        await expectLater(
+          f.timeout(const Duration(seconds: 3)),
+          throwsA(isA<DioException>().having((e) => e.type, 'type', DioExceptionType.unknown)),
+          reason: 'Lỗi kho token không nói gì về phiên; future dùng chung không được '
+              'ném lỗi thô ra cho N request đang chờ.',
+        );
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(emissions, 0);
+      expect(await storage.read(key: AppConstants.accessTokenKey), 'token-cu');
+      expect(server.refreshCalls, 0, reason: 'chưa đọc được refresh token thì không gọi /auth/refresh');
     });
   });
 }

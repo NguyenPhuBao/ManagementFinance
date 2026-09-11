@@ -73,10 +73,16 @@ class AuthInterceptor extends Interceptor {
     }
 
     // Token của request này đã bị một lượt làm mới khác thay rồi → chỉ cần
-    // thử lại bằng token hiện có, không gọi /auth/refresh lần nữa.
+    // thử lại bằng token hiện có, không gọi /auth/refresh lần nữa. Đọc hỏng
+    // (kho token lỗi) thì bỏ chốt này và đi tiếp _lamMoiChung() — nơi
+    // _lamMoi() sẽ bắt lỗi ấy và trả LamMoiTamThoi.
     final bearerCu = err.requestOptions.headers['Authorization'];
-    final tokenHienCo =
-        await secureStorage.read(key: AppConstants.accessTokenKey);
+    String? tokenHienCo;
+    try {
+      tokenHienCo = await secureStorage.read(key: AppConstants.accessTokenKey);
+    } catch (_) {
+      tokenHienCo = null;
+    }
     if (bearerCu is String &&
         tokenHienCo != null &&
         tokenHienCo.isNotEmpty &&
@@ -120,55 +126,76 @@ class AuthInterceptor extends Interceptor {
   /// token và phát tín hiệu NGAY TẠI ĐÂY, một lần cho một lượt làm mới —
   /// không để từng request chờ tự xoá, vì `_clearTokens` đọc kho rồi mới xoá
   /// và N request đan xen sẽ phát tín hiệu N lần.
+  ///
+  /// Toàn bộ thân hàm nằm trong `try/catch (Object)`: vì `_lamMoiChung()`
+  /// dùng chung một Future cho mọi request đang chờ (§3.8 điểm 2), bất kỳ
+  /// lỗi nào thoát ra khỏi đây — kể cả lỗi không phải `DioException`, như
+  /// `PlatformException` thật của keystore khi đọc/ghi kho token (keystore
+  /// hỏng, huỷ sinh trắc học, khôi phục OS…) — sẽ tới MỌI request đang chờ.
+  /// Lỗi kho token không nói gì về phiên: giữ token, không phát tín hiệu,
+  /// nơi gọi nhận lỗi tạm thời chứ không phải bị treo.
   Future<KetQuaLamMoi> _lamMoi() async {
-    final refreshToken = await secureStorage.read(
-      key: AppConstants.refreshTokenKey,
-    );
-    if (refreshToken == null || refreshToken.isEmpty) {
-      await _clearTokens();
-      return const LamMoiPhienChet();
-    }
-
-    final Response<dynamic> response;
     try {
-      response = await _refreshDio.post(
-        '/auth/refresh',
-        data: {'refreshToken': refreshToken},
+      final refreshToken = await secureStorage.read(
+        key: AppConstants.refreshTokenKey,
       );
-    } on DioException catch (e) {
-      final ketQua = ketQuaTuLoiLamMoi(e);
-      if (ketQua is LamMoiPhienChet) await _clearTokens();
-      return ketQua;
-    }
+      if (refreshToken == null || refreshToken.isEmpty) {
+        await _clearTokens();
+        return const LamMoiPhienChet();
+      }
 
-    final body = response.data;
-    final data = body is Map && body['success'] == true ? body['data'] : null;
-    final accessToken = data is Map ? data['accessToken'] : null;
-    if (accessToken is! String || accessToken.isEmpty) {
-      // 200 mà không đọc được token: không kết luận gì về phiên.
+      final Response<dynamic> response;
+      try {
+        response = await _refreshDio.post(
+          '/auth/refresh',
+          data: {'refreshToken': refreshToken},
+        );
+      } on DioException catch (e) {
+        final ketQua = ketQuaTuLoiLamMoi(e);
+        if (ketQua is LamMoiPhienChet) await _clearTokens();
+        return ketQua;
+      }
+
+      final body = response.data;
+      final data =
+          body is Map && body['success'] == true ? body['data'] : null;
+      final accessToken = data is Map ? data['accessToken'] : null;
+      if (accessToken is! String || accessToken.isEmpty) {
+        // 200 mà không đọc được token: không kết luận gì về phiên.
+        return LamMoiTamThoi(
+          DioException(
+            requestOptions: response.requestOptions,
+            response: response,
+            type: DioExceptionType.unknown,
+            message: 'Phản hồi /auth/refresh không có accessToken',
+          ),
+        );
+      }
+
+      // Lưu refresh token mới nếu server trả về (token rotation)
+      final newRefreshToken = data['refreshToken'];
+      if (newRefreshToken is String && newRefreshToken.isNotEmpty) {
+        await secureStorage.write(
+          key: AppConstants.refreshTokenKey,
+          value: newRefreshToken,
+        );
+      }
+      await secureStorage.write(
+        key: AppConstants.accessTokenKey,
+        value: accessToken,
+      );
+      return LamMoiThanhCong(accessToken);
+    } catch (e, st) {
       return LamMoiTamThoi(
         DioException(
-          requestOptions: response.requestOptions,
-          response: response,
+          requestOptions: RequestOptions(path: '/auth/refresh'),
           type: DioExceptionType.unknown,
-          message: 'Phản hồi /auth/refresh không có accessToken',
+          error: e,
+          stackTrace: st,
+          message: 'Lỗi ngoài HTTP khi làm mới token: $e',
         ),
       );
     }
-
-    // Lưu refresh token mới nếu server trả về (token rotation)
-    final newRefreshToken = data['refreshToken'];
-    if (newRefreshToken is String && newRefreshToken.isNotEmpty) {
-      await secureStorage.write(
-        key: AppConstants.refreshTokenKey,
-        value: newRefreshToken,
-      );
-    }
-    await secureStorage.write(
-      key: AppConstants.accessTokenKey,
-      value: accessToken,
-    );
-    return LamMoiThanhCong(accessToken);
   }
 
   /// Lỗi của lượt làm mới, gắn lên request gốc để nơi gọi nhận đúng bản chất
