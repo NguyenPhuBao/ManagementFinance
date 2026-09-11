@@ -4,6 +4,7 @@ library;
 import 'package:flowmoney/features/auth/data/repositories/auth_repository.dart';
 import 'package:flowmoney/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:flowmoney/features/profile/presentation/pages/delete_account_page.dart';
+import 'package:flowmoney/shared/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -39,8 +40,10 @@ void main() {
   tearDown(() => bloc.close());
 
   Future<void> moTrang(WidgetTester tester) async {
-    // Nút gửi nằm dưới mép khung 800×600 mặc định của bộ test.
-    tester.view.physicalSize = const Size(1080, 2400);
+    // Khổ điện thoại (411dp) và theme thật của app: theme ép mọi ElevatedButton
+    // rộng vô hạn (bẫy 4.11 `docs/ANALYTICS_FEATURE.md`), mà trang có
+    // ElevatedButton trong hộp thoại — dựng thiếu theme thì test không canh được.
+    tester.view.physicalSize = const Size(411, 900);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -57,8 +60,18 @@ void main() {
     );
     await tester.pumpWidget(BlocProvider<AuthBloc>.value(
       value: bloc,
-      child: MaterialApp.router(routerConfig: router),
+      child: MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router),
     ));
+    await tester.pumpAndSettle();
+  }
+
+  /// Nút gửi nằm dưới mép màn 411×900 — cuộn tới rồi mới bấm, nếu không cú bấm
+  /// rơi ra ngoài màn và không trúng gì.
+  Future<void> bamNutGui(WidgetTester tester) async {
+    final nut = find.text('Gửi yêu cầu xóa tài khoản');
+    await tester.ensureVisible(nut);
+    await tester.pumpAndSettle();
+    await tester.tap(nut);
     await tester.pumpAndSettle();
   }
 
@@ -67,21 +80,24 @@ void main() {
     expect(find.textContaining('đăng nhập lại'), findsNothing,
         reason: 'G33: backend không khôi phục khi đăng nhập lại; người tin lời hứa mất tài khoản sau 30 ngày.');
     expect(find.textContaining('đăng xuất khỏi tất cả thiết bị'), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('không còn nút huỷ yêu cầu ở cuối trang', (tester) async {
     await moTrang(tester);
     expect(find.text('Hủy yêu cầu xóa tài khoản'), findsNothing,
         reason: 'Huỷ nằm ở Trang chủ và Cài đặt; nút này từng hiện cả khi tài khoản Active.');
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('gửi yêu cầu xong: KHÔNG đăng xuất, đọc lại trạng thái, về Trang chủ', (tester) async {
     await moTrang(tester);
     await tester.enterText(find.byType(TextFormField), 'mat-khau-thu');
-    await tester.tap(find.text('Gửi yêu cầu xóa tài khoản'));
-    await tester.pumpAndSettle();
+    await bamNutGui(tester);
     expect(find.textContaining('đăng nhập lại'), findsNothing,
         reason: 'Hộp thoại xác nhận cũ cũng hứa khôi phục bằng đăng nhập lại.');
+    expect(tester.takeException(), isNull,
+        reason: 'Hộp thoại xác nhận có ElevatedButton trong `actions` — canh bẫy rộng vô hạn.');
 
     await tester.tap(find.text('Gửi yêu cầu'));
     await tester.pumpAndSettle();
@@ -89,6 +105,8 @@ void main() {
     expect(
         find.text('Bạn vẫn dùng app bình thường trong 30 ngày, và huỷ được bất cứ lúc nào ở Trang chủ hoặc Cài đặt.'),
         findsOneWidget);
+    expect(tester.takeException(), isNull,
+        reason: 'Hộp thoại thành công có ElevatedButton trong `actions` — canh bẫy rộng vô hạn.');
 
     await tester.tap(find.text('Đã hiểu'));
     await tester.pumpAndSettle();
@@ -96,5 +114,6 @@ void main() {
         reason: 'G33: gửi yêu cầu xoá không đăng xuất.');
     expect(bloc.suKien.whereType<ThongTinTaiKhoanThayDoi>(), hasLength(1));
     expect(find.text('Trang chủ giả'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }
