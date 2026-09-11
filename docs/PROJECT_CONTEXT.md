@@ -984,7 +984,21 @@ Viết lại ngày **2026-09-07 (cuối phiên)**, sau khi gộp đợt backend 
 G15, G17, G21. Bản trước của mục này ghi ngày 04/09 và **sai bốn trong sáu
 điểm** — giữ nguyên là chỉ đường cho người sau đi vào việc đã xong.
 
-**Không còn lỗi client nào sửa được mà không phải chờ ai.** Việc tiếp theo là
+> ⚠️ **2026-09-11 — câu in đậm ngay dưới không còn đúng.** Lượt rà soát CSDL mới
+> (2026-09-10) tìm ra **G33** (✅ đóng 2026-09-11 — khối "Sửa G33 — tài khoản chờ
+> xoá dùng tiếp 30 ngày" ở trên) và **hai lỗi làm mới token có sẵn** (spec cưỡng chế
+> đăng xuất §3.8 — đã duyệt, **chưa sửa**). Thứ tự người dùng duyệt 2026-09-11, đã
+> qua năm bước đầu (gửi CAN-LAM 17/18, duyệt spec, push, nhãn loại ví ở bảng chọn ví,
+> G33); còn lại: **6** §3.8 hai lỗi làm mới token → **7** Phần 1 cưỡng chế đăng xuất
+> (spec mục 3 và §5.1) → **8** client gửi/đọc bốn cột hoá đơn server đã có (`Idbill`,
+> `Previous_bill_id`, `Period_end`, `Anchor_day`) → **9** "Bỏ qua kỳ"
+> (`Pay_status = 'Skipped'`; dựng màn Stitch và đối chiếu app thị trường trước) →
+> *sau khi backend sửa CAN-LAM 17:* **10** gộp `main` (chỉ khi người dùng cho phép
+> đích danh) → **11** nghe `sync.completed` (G34; người dùng chốt toast hay im lặng)
+> → **12** đồng bộ `Auto_pay` chỉ sau 17 B → **13** G28 (người dùng chốt để sau).
+
+**Không còn lỗi client nào sửa được mà không phải chờ ai** (đúng tới 2026-09-10,
+xem ghi chú trên)**.** Việc tiếp theo là
 một lựa chọn, không phải một hàng đợi.
 
 **Thứ tự đã duyệt tối 2026-09-08 — NAY ĐÃ XONG HẾT** (mục cuối, Socket.io,
