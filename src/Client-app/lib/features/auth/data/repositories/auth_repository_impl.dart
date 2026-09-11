@@ -151,9 +151,12 @@ class AuthRepositoryImpl implements AuthRepository {
   // backend chạy theo `docs/progress/Client-app.md` mục 12 (G33).
   @override
   Future<void> deleteAccount(String password) async {
+    // Giữ người gửi TRƯỚC request: trong lúc chờ server (tới 30 giây) người dùng
+    // đăng xuất rồi đăng nhập tài khoản khác được — xem [_cungTaiKhoan].
+    final nguoiGui = await getCurrentUser();
     final data = await remoteDataSource.deleteAccount(password);
     final user = await getCurrentUser();
-    if (user == null) return;
+    if (user == null || !_cungTaiKhoan(nguoiGui, user)) return;
     final countdown = data['countdown'];
     await _ghiNguoiDung(user.voiTrangThai(
       status: data['status'] as String? ?? 'PendingDelete',
@@ -165,9 +168,15 @@ class AuthRepositoryImpl implements AuthRepository {
   // ─── Huỷ yêu cầu xoá tài khoản (POST /auth/cancel-delete) ────────────────
   @override
   Future<void> cancelDelete() async {
+    final nguoiHuy = await getCurrentUser(); // cùng lý do với [deleteAccount]
     try {
       await remoteDataSource.cancelDelete();
     } catch (_) {
+      // Phiên đã đổi trong lúc chờ: lỗi là của tài khoản cũ. Hỏi lại server lúc
+      // này là hỏi cho phiên mới, và "tài khoản mới không chờ xoá" không có nghĩa
+      // tài khoản cũ đã huỷ được — ném lỗi, không đụng bộ nhớ đệm.
+      final hienTai = await getCurrentUser();
+      if (hienTai == null || !_cungTaiKhoan(nguoiHuy, hienTai)) rethrow;
       // Không nhận diện lỗi bằng mã hay câu chữ: datasource ném `Exception(msg)`
       // làm mất mã HTTP, và backend dùng 400 cả cho lỗi kiểm tra đầu vào. Hỏi
       // lại server — đã `Active` (huỷ ở máy khác) thì coi như xong.
@@ -177,7 +186,7 @@ class AuthRepositoryImpl implements AuthRepository {
       rethrow;
     }
     final user = await getCurrentUser();
-    if (user == null) return;
+    if (user == null || !_cungTaiKhoan(nguoiHuy, user)) return;
     await _ghiNguoiDung(user.voiTrangThai(status: 'Active'));
   }
 
@@ -280,6 +289,14 @@ class AuthRepositoryImpl implements AuthRepository {
     await secureStorage.write(
         key: AppConstants.offlineUserDataKey, value: jsonEncode(user.toJson()));
   }
+
+  /// Bộ nhớ đệm lúc này còn là của tài khoản đã gửi yêu cầu — so `id` (idaccount
+  /// của phiên đăng nhập). Yêu cầu xoá/huỷ chờ server tới 30 giây; đăng xuất rồi
+  /// đăng nhập tài khoản khác giữa chừng thì kết quả của tài khoản cũ không được
+  /// ghi vào tài khoản mới. [truoc] `null`: lúc gửi chưa có người dùng nào, nên
+  /// người dùng lúc này thuộc một phiên khác.
+  bool _cungTaiKhoan(UserModel? truoc, UserModel sau) =>
+      truoc != null && truoc.id == sau.id;
 
   /// `status` theo server là nguồn sự thật; `countdown` chỉ đến lúc đăng nhập
   /// hoặc gửi yêu cầu xoá. Khớp nhau thì giữ nguyên số ngày đang có.
