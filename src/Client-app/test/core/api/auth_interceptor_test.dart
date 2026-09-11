@@ -75,16 +75,12 @@ class _FakeSecureStorage implements FlutterSecureStorage {
 /// Máy chủ giả: route theo đường dẫn, không chạm mạng thật. Dùng chung cho Dio
 /// chính (đi qua interceptor) và Dio làm mới (không đi qua interceptor).
 class _MayChuGia implements HttpClientAdapter {
-  // Không ca nào trong Step 1 đổi giá trị mặc định, nhưng để tham số hoá cho
-  // các test sau này cần token khác.
-  // ignore: unused_element_parameter
-  _MayChuGia({this.tokenMoi = 'access-moi', this.refreshMoi = 'refresh-moi'});
-
-  final String tokenMoi;
-  final String refreshMoi;
+  static const String tokenMoi = 'access-moi';
+  static const String refreshMoi = 'refresh-moi';
 
   /// Kịch bản cho `/auth/refresh`, lấy theo thứ tự gọi; hết kịch bản thì 200.
-  /// `int` = trả mã ấy; `DioExceptionType` = ném lỗi không có phản hồi.
+  /// `int` = trả mã ấy; `DioExceptionType` = ném lỗi không có phản hồi;
+  /// `String` = body JSON thô, trả 200.
   final List<Object> kichBanRefresh = [];
   int refreshCalls = 0;
 
@@ -111,6 +107,9 @@ class _MayChuGia implements HttpClientAdapter {
       final kb = kichBanRefresh.isEmpty ? 200 : kichBanRefresh.removeAt(0);
       if (kb is DioExceptionType) {
         throw DioException(requestOptions: options, type: kb, message: 'giả: ${kb.name}');
+      }
+      if (kb is String) {
+        return _json(kb, 200);
       }
       if (kb == 200) {
         return _json(
@@ -404,6 +403,32 @@ void main() {
           reason: 'Lỗi thứ ba tìm ra khi sửa §3.8: token vừa được cấp, thử lại '
               'hỏng không nói gì về phiên — trước đây `catch (_)` xoá cả hai token.');
       expect(await storage.read(key: AppConstants.refreshTokenKey), 'refresh-moi');
+    });
+
+    test('làm mới trả 200 nhưng body không có accessToken → giữ hai token, không tín hiệu, nơi gọi nhận lỗi tạm thời',
+        () async {
+      final storage = _khoCoPhien();
+      final server = _MayChuGia()..kichBanRefresh.add('{"success":true,"data":{}}');
+      final (:dio, :interceptor) = _dungVoiMayChu(storage, server);
+      addTearDown(interceptor.dispose);
+      var emissions = 0;
+      final sub = interceptor.sessionExpiredStream.listen((_) => emissions++);
+      addTearDown(sub.cancel);
+
+      await expectLater(
+        dio.get<dynamic>('/sync/pull'),
+        throwsA(isA<DioException>()
+            .having((e) => e.type, 'type', DioExceptionType.unknown)
+            .having((e) => e.response?.statusCode, 'statusCode', isNot(401))),
+        reason: '200 mà không đọc được token thì không kết luận gì về phiên; '
+            'mã cũ coi null là làm mới thất bại và xoá token.',
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(emissions, 0);
+      expect(await storage.read(key: AppConstants.accessTokenKey), 'token-cu');
+      expect(await storage.read(key: AppConstants.refreshTokenKey), 'refresh-cu');
+      expect(server.refreshCalls, 1);
     });
   });
 }
