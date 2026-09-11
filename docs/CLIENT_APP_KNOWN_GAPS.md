@@ -1,6 +1,6 @@
 # Client-app — Việc còn dang dở & rủi ro đã biết
 
-**Cập nhật:** 2026-09-11 (sau khi nhánh gộp `main` @ `cc65f4f` và CSDL dev áp `database/12`: đóng G29, G31, G32; G24 thành lỗi phía client rồi đóng cùng ngày; thêm G34; G35 mở rồi đóng cùng ngày)
+**Cập nhật:** 2026-09-11 (sau khi nhánh gộp `main` @ `cc65f4f` và CSDL dev áp `database/12`: đóng G29, G31, G32; G24 thành lỗi phía client rồi đóng cùng ngày; thêm G34; G35 mở rồi đóng cùng ngày; đóng G30)
 **Mục đích:** ghi lại những hạng mục đã được **cân nhắc và cố ý hoãn**, kèm lý do và bán kính ảnh hưởng. Không có tài liệu này thì người tiếp theo sẽ hoặc bỏ sót, hoặc làm lại từ đầu việc phân tích rủi ro.
 
 Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nhất.
@@ -35,7 +35,7 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > | **G27** | Hoãn có chủ ý — không còn cách nói "ví này **được phép âm**" sau khi loại `debt` bị bỏ; cần một cột mới ở cả hai đầu cho một tình huống CSDL hiện không có hàng nào (2026-09-09) |
 > | **G28** | ⏸️ **Hết chặn phía server, chờ client mở lại** — CSDL dev đã áp `database/7` tối 2026-09-10 nên `wallet."Status"` nay `varchar(20)`, chứa được `'Inactive'`. Client vẫn để cột cục bộ, nên **lưu trữ ví chỉ sống trên máy đã bấm** cho tới khi mở lại ba chỗ. Người dùng chốt **để sau** |
 > | ~~**G29**~~ | ✅ **Đóng 2026-09-11** — bộ lọc ghi chú mới của `7675b35` (Luhn + hình dạng số thẻ; mật khẩu phải có `:`/`=`; bỏ "pin") chạy đúng **15/15** ca của tài liệu xin, đo bằng chính hàm `filterSensitiveNote` — **chưa** đo đầu-cuối. Còn một hở nhỏ chấp nhận được và một việc cùng gốc ở backend (khoá mã hoá, mục 18 §2.6), không giữ mục này mở. Dòng cũ ghi *chặn ở backend* — đúng tới trước khi gộp `main` |
-> | **G30** | ⏸️ **Chặn tạm — backend đã bỏ index, chờ client gỡ chốt** — `uq_wallet_saving_active` (một ví Tiết kiệm mỗi tài khoản) chỉ tồn tại ở SQL; `database/12` đã `DROP INDEX` và CSDL dev áp ngày 2026-09-11, nhưng client vẫn khoá ô "Tiết kiệm" và chốt ở datasource từ 2026-09-10. Chốt **trùng tên ví** cùng ngày thì vĩnh viễn |
+> | ~~**G30**~~ | ✅ **Đóng 2026-09-11** — `database/12` bỏ `uq_wallet_saving_active` và client gỡ chốt tạm: màn Thêm ví cho chọn "Tiết kiệm" dù đã có một ví Tiết kiệm, datasource không còn từ chối. ⚠️ Máy chủ nào chưa áp tệp 12 vẫn từ chối ví Tiết kiệm thứ hai. Chốt **trùng tên ví** ở lại vĩnh viễn |
 > | ~~**G31**~~ | ✅ **Đóng 2026-09-11** — backend nay ánh xạ `22001`/`P2000` (dài quá cột) và `23502` về `CONSTRAINT_VIOLATION`, mã client đã xếp **vĩnh viễn**, nên bản ghi bị chặn theo thời gian thay vì gửi lại mãi; và một thao tác hỏng không còn làm **cả lô** 400. Bộ lọc bảy ô tên của client (2026-09-10) **vẫn giữ** — nó chặn trước để bản ghi không kẹt ngay từ đầu. Đo trên mã HEAD, chưa chạy đầu-cuối. Dòng cũ ghi *chặn ở backend* — đúng tới trước khi gộp `main` |
 > | ~~**G32**~~ | ✅ **Đóng 2026-09-11** — backend giữ `priority: null` khi đẩy (hết `Number(null)` → `0`), nhánh tạo mặc định `null`, và `database/12` đã đưa các hàng `<= 0` về `NULL` trên CSDL dev. Lớp đọc `<= 0` là chưa sắp phía client **vẫn giữ** cho dữ liệu cũ và bản backend/client cũ. Dòng cũ ghi *chặn ở backend* — đúng tới trước khi gộp `main` |
 > | **G33** | 🔴 **Lỗi đang chạy, client sửa được** — trang Xoá tài khoản hứa *"đăng nhập lại trong 30 ngày là tự khôi phục"*, nhưng backend không làm vậy (`pendingDeleteCancelled` luôn `false`), nên người tin lời hứa **mất tài khoản sau 30 ngày** mà không được báo (2026-09-10). Cách sửa đã chốt, nằm trong spec cưỡng chế đăng xuất — **chờ duyệt** |
@@ -930,12 +930,22 @@ Tài liệu xin: `docs/superpowers/backend/DA-XONG/SYNC_NOTE_FILTER_REWRITE.md`.
 
 ---
 
-### G30 — Chỉ một ví Tiết kiệm mỗi tài khoản, vì một index không ai ghi thành luật · ⏸️ CHẶN TẠM — BACKEND ĐÃ BỎ INDEX, CHỜ CLIENT GỠ (2026-09-10, cập nhật 2026-09-11)
+### ~~G30 — Chỉ một ví Tiết kiệm mỗi tài khoản, vì một index không ai ghi thành luật~~ · ✅ ĐÓNG (2026-09-11; mở 2026-09-10)
+
+> ✅ **Đã gỡ 2026-09-11 (TDD).** `viTietKiemDaCo`, `thongBaoMotViTietKiem`, khối chặn ở
+> `WalletLocalDataSourceImpl._kiemRangBuocServer`, và khoá ô "Tiết kiệm" cùng dòng giải thích ở màn Thêm ví đều đã gỡ;
+> luật trùng tên ở lại. Test: nhóm "nhiều ví Tiết kiệm — G30" ở `wallet_unique_constraints_test.dart` (thêm ví saving thứ
+> hai được, đổi loại sang saving được — đỏ đúng lý do trước khi gỡ; hai ví saving trùng tên vẫn bị từ chối) và ca "đã có
+> ví Tiết kiệm vẫn chọn được ô Tiết kiệm" ở `wallet_add_guard_ui_test.dart`; nhóm test của hàm đã xoá ở
+> `rang_buoc_vi_test.dart` bỏ theo. **Kiểm trên máy ảo:** tài khoản có ví Tiết kiệm mặc định, màn Thêm ví hiện ô "Tiết
+> kiệm" đậm như các ô khác, chạm vào thì được chọn, không còn dòng giải thích (rời màn không lưu).
+>
+> ⚠️ **Máy chủ nào chưa áp `database/12` vẫn còn index** — ví Tiết kiệm thứ hai tạo trên app sẽ bị từ chối
+> (`UNIQUE_VIOLATION`, vĩnh viễn) và kẹt hàng đợi đẩy. Đoạn dưới là ảnh chụp trước khi gỡ.
 
 > ✅ **2026-09-11:** `database/12` (`7675b35`, gộp về nhánh cùng ngày) chạy `DROP INDEX IF EXISTS
 > "uq_wallet_saving_active"`, và CSDL dev đã áp — đo `pg_indexes` sau khi áp: index không còn.
-> Đoạn dưới là ảnh chụp trước đó. Chốt tạm phía client **vẫn còn nguyên**; gỡ theo chú thích
-> đầu `rang_buoc_vi.dart` là một hạng mục riêng.
+> Đoạn dưới là ảnh chụp trước đó. Chốt tạm phía client gỡ cùng ngày — banner ngay trên.
 
 PostgreSQL có `uq_wallet_saving_active ("Idaccount") WHERE "Type" = 'Saving' AND
 "Delete_at" IS NULL` từ migration 2026-09-01. Luật ấy **không có** trong
@@ -953,7 +963,7 @@ Im lặng, cùng lớp với `ewallet`/`debt`.
 `wallet/domain/rang_buoc_vi.dart` (`viTietKiemDaCo`), chốt ở
 `WalletLocalDataSourceImpl._kiemRangBuocServer`, và màn Thêm ví khoá ô "Tiết
 kiệm" kèm dòng giải thích. Khi backend xác nhận đã bỏ: gỡ `viTietKiemDaCo`, hai
-chỗ gọi nó, nhóm test "một ví Tiết kiệm" ở hai tệp test, và dòng này.
+chỗ gọi nó, nhóm test "một ví Tiết kiệm" ở hai tệp test, và dòng này — ✅ đã làm 2026-09-11.
 
 **Không phải gap:** chốt **trùng tên ví** thêm cùng ngày (`viTrungTen`, cùng
 tệp) canh `uq_wallet_account_name_active` — luật hợp lý, có trong
@@ -1231,7 +1241,7 @@ Với tám tài liệu cũ, client **không** phụ thuộc vào việc backend 
 
 ## 3. Lưu ý về kiểm thử
 
-Trạng thái hiện tại (đã chạy thật, không phải đếm tay, đo 2026-09-11): `flutter test` toàn bộ **2035/2035 pass** trong ~155 giây, trên **192 file test / 44.054 dòng** (đếm bằng script mọi tệp `.dart` dưới `test/`, sau G24 và G35). Mốc 1529/1529 · 144 file · 33.892 dòng là của 2026-09-08. Trước phiên 2026-09-02 là 56 pass / 9 fail và mất hơn 10 phút (một test treo tới timeout); mốc 180 pass / 27 file ghi ở đây trước đó là con số **cuối phiên 2026-09-03** và đã lạc hậu năm ngày.
+Trạng thái hiện tại (đã chạy thật, không phải đếm tay, đo 2026-09-11): `flutter test` toàn bộ **2028/2028 pass**, trên **192 file test / 44.010 dòng** (đếm bằng script mọi tệp `.dart` dưới `test/`, sau G24, G35 và G30). Mốc 1529/1529 · 144 file · 33.892 dòng là của 2026-09-08. Trước phiên 2026-09-02 là 56 pass / 9 fail và mất hơn 10 phút (một test treo tới timeout); mốc 180 pass / 27 file ghi ở đây trước đó là con số **cuối phiên 2026-09-03** và đã lạc hậu năm ngày.
 
 > ⚠️ **`.gitignore` có `test/`** (dòng 78, đo 2026-09-10 — từng ghi 77) — luật này khớp mọi thư mục tên `test` ở mọi cấp, và **đã tồn tại từ trước** phiên 2026-09-02 (kiểm chứng: `git diff .gitignore` chỉ thêm đúng một dòng `src/Backend/scripts/seed_roles.js`).
 >

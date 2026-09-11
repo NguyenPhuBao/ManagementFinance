@@ -270,7 +270,7 @@ HTTP, hỏng ở socket/refresh (17 A); **5.3** (`'ORC'`) còn sót (2.8).
 - **Client không bị chặn bởi việc nào ở mục 2**, trừ hai hồi quy của mục 17 (kênh thời
   gian thực và làm mới token).
 - Việc phía client phát sinh từ lượt soát này: sửa khoá màu danh mục (2.3 — ✅ làm
-  2026-09-11); chờ người dùng quyết: gỡ chốt tạm "một ví Tiết kiệm" (G30 — index đã bỏ); mở đồng bộ các cột hoá đơn
+  2026-09-11); gỡ chốt tạm "một ví Tiết kiệm" (G30 — ✅ làm cùng ngày); chờ người dùng quyết: mở đồng bộ các cột hoá đơn
   đang cục bộ. Khi mở cột hoá đơn, lưu ý hai điểm phía backend đo được: `Boolean("false")`
   thành `true` ở `sync.repository.js:103-104` nếu lỡ gửi chuỗi; và hai kỳ cùng chuỗi trong
   một lô có cùng trọng số sắp xếp, kỳ sau đứng trước thì vỡ `fk_bill_previous_bill` và chỉ

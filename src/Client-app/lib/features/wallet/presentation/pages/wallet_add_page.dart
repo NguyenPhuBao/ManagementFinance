@@ -66,12 +66,10 @@ class _WalletAddFormState extends State<_WalletAddForm> {
   bool _isDefault = true;
   bool _includeInTotal = true;
 
-  /// Ví đang có của tài khoản, để báo sớm hai ràng buộc của server (xem
+  /// Ví đang có của tài khoản, để báo sớm ràng buộc trùng tên của server (xem
   /// `domain/rang_buoc_vi.dart`). Chốt chặn thật nằm ở datasource; ở đây chỉ
   /// để người dùng không phải điền xong rồi mới biết.
   List<WalletEntity> _viHienCo = const [];
-
-  bool get _daCoViTietKiem => viTietKiemDaCo(_viHienCo) != null;
 
   @override
   void initState() {
@@ -339,49 +337,27 @@ class _WalletAddFormState extends State<_WalletAddForm> {
                   itemCount: WalletType.chonDuoc.length,
                   itemBuilder: (context, index) {
                     final isSelected = index == _selectedTypeIndex;
-                    // Ô "Tiết kiệm" khoá lại khi đã có một ví Tiết kiệm —
-                    // server từng chỉ nhận một (`uq_wallet_saving_active`, bỏ ở
-                    // CSDL 2026-09-11, chốt chờ gỡ — G30). Vẫn
-                    // hiện chứ không giấu: giấu đi là người dùng tưởng app
-                    // thiếu loại ví. Luật TẠM, xem `rang_buoc_vi.dart`.
-                    final biKhoa = WalletType.chonDuoc[index] == WalletType.saving &&
-                        _daCoViTietKiem;
                     return GestureDetector(
-                      onTap: biKhoa
-                          ? null
-                          : () => setState(() => _selectedTypeIndex = index),
-                      child: Opacity(
-                        opacity: biKhoa ? 0.4 : 1,
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: isSelected ? AppColors.primaryContainer : AppColors.surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            WalletType.chonDuoc[index].nhan,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: isSelected ? Colors.white : AppColors.onSurfaceVariant,
-                            ),
+                      onTap: () => setState(() => _selectedTypeIndex = index),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: isSelected ? AppColors.primaryContainer : AppColors.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          WalletType.chonDuoc[index].nhan,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: isSelected ? Colors.white : AppColors.onSurfaceVariant,
                           ),
                         ),
                       ),
                     );
                   },
                 ),
-                if (_daCoViTietKiem) ...[
-                  const SizedBox(height: 8.0),
-                  const Text(
-                    thongBaoMotViTietKiem,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.onSurfaceVariant,
-                    ),
-                  ),
-                ],
               ],
             ),
           ),
