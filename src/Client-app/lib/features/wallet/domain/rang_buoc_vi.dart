@@ -1,6 +1,6 @@
-/// Hai ràng buộc mà PostgreSQL đang thi hành trên bảng `wallet` — **định
-/// nghĩa duy nhất** phía client, dùng chung cho datasource (chốt chặn) và màn
-/// Thêm ví (báo sớm).
+/// Hai ràng buộc PostgreSQL thi hành trên bảng `wallet` — luật thứ hai đã bỏ ở
+/// CSDL ngày 2026-09-11, xem ⚠️ cuối khối — **định nghĩa duy nhất** phía
+/// client, dùng chung cho datasource (chốt chặn) và màn Thêm ví (báo sớm).
 ///
 /// Đo `pg_indexes` ngày 2026-09-10 (chúng là *partial unique index*, KHÔNG hiện
 /// ở `pg_constraint` — nên phép đo 2026-09-09 từng kết luận sai là "không có
@@ -26,10 +26,11 @@
 ///
 /// ⚠️ Luật "một ví Tiết kiệm" là luật **tạm**: nó chỉ tồn tại ở SQL (bản
 /// 2026-08-26), không có trong `Rule_project.md`, và app thị trường cho nhiều
-/// ví tiết kiệm. Client đã xin backend bỏ index ấy —
-/// `docs/superpowers/backend/CAN-LAM/WALLET_SAVING_INDEX.md`. Khi backend xác
-/// nhận đã bỏ, gỡ [viTietKiemDaCo] cùng hai chỗ gọi nó và test tương ứng;
-/// luật trùng tên thì **ở lại**.
+/// ví tiết kiệm. Client đã xin backend bỏ index ấy
+/// (`docs/superpowers/backend/DA-XONG/WALLET_SAVING_INDEX.md`), và backend đã bỏ
+/// ở `database/12` — CSDL dev áp ngày 2026-09-11, đo `pg_indexes`: index không
+/// còn. Việc còn lại phía client (G30): gỡ [viTietKiemDaCo] cùng hai chỗ gọi nó
+/// và test tương ứng; luật trùng tên thì **ở lại**.
 library;
 
 import '../../../core/category/category_name.dart';

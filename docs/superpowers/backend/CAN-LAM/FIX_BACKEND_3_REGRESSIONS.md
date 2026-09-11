@@ -425,11 +425,11 @@ Làm cùng lượt với `RULE_PROJECT_DOC_DRIFT.md`.
 
 ## 5. Liên quan tới client
 
-- **Client đã gộp `7675b35`** (2026-09-11, sau khi viết tài liệu này), nhưng CSDL dev
-  trên máy client **chưa áp**
-  `database/12`. Đo 2026-09-11 bằng truy vấn chỉ đọc: không có cột nào của tệp 12
-  (`category.Color`, `transaction.Idbill`, bốn cột mới của `bill`),
-  `uq_wallet_saving_active` vẫn còn, `chk_bill_pay_status` chưa có `'Skipped'`.
+- **Client đã gộp `7675b35`** (2026-09-11, sau khi viết tài liệu này), và CSDL dev
+  trên máy client **đã áp** `database/12` cùng ngày. Trước khi áp, đo bằng truy vấn chỉ
+  đọc: không có cột nào của tệp 12 (`category.Color`, `transaction.Idbill`, bốn cột mới
+  của `bill`), `uq_wallet_saving_active` còn, `chk_bill_pay_status` chưa có `'Skipped'`;
+  sau khi áp cả ba đã đổi. Ba hồi quy ở tài liệu này nằm ở mã, không ở CSDL, nên vẫn nguyên.
 - **Phía client có hai việc:**
   1. ✅ **Đã làm 2026-09-11:** thêm `WALLET_NAME_DUPLICATE`, `WALLET_DEFAULT_DUPLICATE`
      và cả `BILL_ALREADY_PAID` vào `_permanentCodes` (`sync_engine.dart:1631-1648`),

@@ -6,7 +6,7 @@
 > lúc với thiết kế Stitch ở mục 5.
 >
 > **Soát lại 2026-09-11 theo `origin/main` @ `7675b35`** (lúc soát chưa gộp; ✅ gộp
-> về nhánh này cùng ngày, `main` @ `cc65f4f` — CSDL dev chưa áp `database/12`):
+> về nhánh này cùng ngày, `main` @ `cc65f4f` — CSDL dev áp `database/12` cùng ngày):
 > sửa §1.3, §2 (Q5), §3.1, §3.3, §3.4, §3.5, §6, §7.2, §7.3, §8, §9; thêm **§3.6b —
 > đề xuất mới, chờ duyệt**. Việc cho backend phát sinh từ lượt soát ấy nằm ở
 > `CAN-LAM/FIX_BACKEND_3_REGRESSIONS.md` (mục 17). Số dòng phía backend trong spec
@@ -466,8 +466,8 @@ socket, vì bắt tay ở đó còn dùng `isAccountValid`. ⚠️ Câu vừa r�
 **trước khi gộp**. Nhánh đã gộp `main` @ `cc65f4f` ngày 2026-09-11 theo yêu cầu người
 dùng, trong khi CAN-LAM 17 mục A chưa sửa — nên hệ quả mà đoạn này từng cảnh báo nay
 là thật: bắt tay socket trên backend của nhánh từ chối mọi tài khoản, và nhánh
-socket **không kiểm đầu-cuối được** cho tới khi backend sửa mục A. Đồng bộ thì vỡ cho
-tới khi áp `database/12`. Đề xuất, theo thứ tự:
+socket **không kiểm đầu-cuối được** cho tới khi backend sửa mục A. CSDL dev đã áp
+`database/12` cùng ngày. Đề xuất, theo thứ tự:
 
 - **Backend thật, tài khoản thử riêng.** Máy ảo đang giữ phiên tài khoản **10
   không có mật khẩu** — cưỡng chế đăng xuất trên đó là mất phiên ấy. Cần một tài
@@ -478,8 +478,8 @@ tới khi áp `database/12`. Đề xuất, theo thứ tự:
   hoàn tác được bằng giao diện. Ca này kiểm bằng test (mục 7.2); nếu cần nhìn tận
   mắt thì dùng một backend giả trong scratchpad phát `account.force_logout` với
   `ACCOUNT_DELETED` — cần tạm dừng backend thật, **hỏi người dùng trước**.
-- **Nhánh HTTP 401** kiểm được khi áp `database/12` lên CSDL dev (nhánh đã gộp
-  `main` 2026-09-11; áp tệp 12 thì người dùng phải gọi tên đúng việc) — theo mục 5
+- **Nhánh HTTP 401** kiểm được trên backend của nhánh — đã gộp `main` và áp
+  `database/12` ngày 2026-09-11 — theo mục 5
   `AUTH_401_BODY_CODE.md`. **Nhánh làm mới** (§3.3 chỗ 2) chờ thêm CAN-LAM 17 mục A,
   theo mục 2.7 `FIX_BACKEND_3_REGRESSIONS.md`.
 - Không sọc vàng tràn bố cục ở 411dp.

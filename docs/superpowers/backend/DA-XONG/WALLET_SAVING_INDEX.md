@@ -6,13 +6,14 @@ thêm mã lỗi có cấu trúc cho 23505 trên `wallet`.
 
 > ⚠️ **2026-09-11:** `main` @ `7675b35` đã viết lệnh bỏ index này (trong
 > `database/12_Can_Lam_Align_Schema_Fixes.sql` — gộp về nhánh client 2026-09-11
-> nhưng **chưa áp** lên CSDL dev của client, đo cùng ngày) và đã trả `WALLET_NAME_DUPLICATE` / `WALLET_DEFAULT_DUPLICATE`
+> và ✅ áp lên CSDL dev của client cùng ngày — đo `pg_indexes` sau khi áp: index không còn) và đã trả `WALLET_NAME_DUPLICATE` / `WALLET_DEFAULT_DUPLICATE`
 > như mục 4.2 xin. ✅ Client đã thêm hai mã ấy vào danh sách mã vĩnh viễn ngày
 > 2026-09-11 (`sync_engine.dart:1631-1648`) — trước đó mã lạ rơi xuống `transient`
 > và bị gửi lại mãi — nên câu *"cả ba vẫn là lỗi vĩnh viễn phía client"* ở 4.2 nay
 > đúng với mã; mã thứ ba `WALLET_SAVING_LIMIT` không cần, vì backend chọn bỏ
 > index thay vì giữ nó. Chốt tạm
-> "một ví Tiết kiệm" ở mục 3 vẫn giữ cho tới khi tệp 12 được áp. Xem
+> "một ví Tiết kiệm" ở mục 3 **vẫn còn trong mã** dù tệp 12 đã áp — gỡ là một hạng mục
+> client riêng (G30). Xem
 > [`FIX_BACKEND_3_REGRESSIONS.md`](../CAN-LAM/FIX_BACKEND_3_REGRESSIONS.md) mục 4 và 5.
 
 ---

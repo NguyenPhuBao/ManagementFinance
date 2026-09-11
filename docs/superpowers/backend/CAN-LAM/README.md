@@ -1,6 +1,6 @@
 # Backend — TOÀN BỘ 15 MỤC ĐÃ HOÀN TẤT 100%
 
-**Cập nhật:** 2026-09-11 (gộp `main` @ `cc65f4f` về nhánh `TranQuangDat`: giữ **nguyên văn** tiêu đề và khối 🎉 của backend (`f8ab027`), thay banner "`main` đã đi trước nhánh client" bằng banner "đã gộp" ngay dưới khối ấy, và trỏ liên kết của mục 1–2 sang `../DA-XONG/` theo chỗ tệp nằm hôm nay. Trước đó cùng ngày: thêm mục 17 `FIX_BACKEND_3_REGRESSIONS.md` — ba hồi quy của `7675b35` trên `main`). Trước đó: 2026-09-10 tối (mục 16 viết lại thành hướng dẫn sửa theo dòng — 56 chỗ tài liệu, ba việc mã; mục 11: phần **áp** `database/7`–`11` đã xong trên CSDL dev — còn lại ghi quy trình và tách nhánh cho qua. Trước đó cùng ngày: thêm mục 13–16 sau lượt rà soát CSDL mới — `AUTH_401_BODY_CODE.md`, `GOAL_PRIORITY_NULL_TO_ZERO.md`, `SYNC_PUSH_ERROR_MAPPING.md`, `RULE_PROJECT_DOC_DRIFT.md`. Trước đó cùng ngày: mục 10 `SYNC_NOTE_FILTER_REWRITE.md`, mục 11 `DEV_DB_MIGRATIONS_7_11.md` sau khi gộp `main`, và mục 12 `WALLET_SAVING_INDEX.md` sau lượt rà soát ví; mục 9 gộp vào mục 11. Lần trước: 2026-09-09, thêm mục 7 và 8 — hai tệp `SOCKET_*`. Banner đợt 2026-09-07 bên dưới giữ nguyên vì nó nói về đợt ấy)
+**Cập nhật:** 2026-09-11 (áp `database/12` lên CSDL dev — sửa gạch thứ ba của banner "đã gộp". Trước đó cùng ngày: gộp `main` @ `cc65f4f` về nhánh `TranQuangDat`: giữ **nguyên văn** tiêu đề và khối 🎉 của backend (`f8ab027`), thay banner "`main` đã đi trước nhánh client" bằng banner "đã gộp" ngay dưới khối ấy, và trỏ liên kết của mục 1–2 sang `../DA-XONG/` theo chỗ tệp nằm hôm nay. Trước đó cùng ngày: thêm mục 17 `FIX_BACKEND_3_REGRESSIONS.md` — ba hồi quy của `7675b35` trên `main`). Trước đó: 2026-09-10 tối (mục 16 viết lại thành hướng dẫn sửa theo dòng — 56 chỗ tài liệu, ba việc mã; mục 11: phần **áp** `database/7`–`11` đã xong trên CSDL dev — còn lại ghi quy trình và tách nhánh cho qua. Trước đó cùng ngày: thêm mục 13–16 sau lượt rà soát CSDL mới — `AUTH_401_BODY_CODE.md`, `GOAL_PRIORITY_NULL_TO_ZERO.md`, `SYNC_PUSH_ERROR_MAPPING.md`, `RULE_PROJECT_DOC_DRIFT.md`. Trước đó cùng ngày: mục 10 `SYNC_NOTE_FILTER_REWRITE.md`, mục 11 `DEV_DB_MIGRATIONS_7_11.md` sau khi gộp `main`, và mục 12 `WALLET_SAVING_INDEX.md` sau lượt rà soát ví; mục 9 gộp vào mục 11. Lần trước: 2026-09-09, thêm mục 7 và 8 — hai tệp `SOCKET_*`. Banner đợt 2026-09-07 bên dưới giữ nguyên vì nó nói về đợt ấy)
 
 > 🎉 **CẬP NHẬT 2026-09-11:**
 > Toàn bộ **15/15 mục kỹ thuật** trong thư mục này đã được Backend triển khai trọn vẹn, áp dụng Migration 12 thành công lên PostgreSQL Supabase, kiểm thử tự động đạt 100% PASS (`test_can_lam_fixes.js`, `test_sensitive_note_filter.js`, `test_category_unique_rules.js`, `test_data_security_encryption_and_masking.js`, `test_sync_new_schema.js`), và toàn bộ 15 tài liệu kỹ thuật đã được di chuyển sang thư mục [`docs/superpowers/backend/DA-XONG/`](../DA-XONG/).
@@ -23,11 +23,10 @@
 >   mục này ngoài mục lục, và nên sửa **trước** khi triển khai `main` ở bất cứ đâu
 >   có người dùng.
 > - *"Áp dụng Migration 12 thành công lên PostgreSQL Supabase"* nói về CSDL phía
->   backend. **CSDL dev trên máy client chưa áp** `database/12` (đo 2026-09-11) và
->   Prisma Client ở `node_modules` chưa sinh lại theo `schema.prisma` mới. Mã đã gộp
->   đọc và ghi `category.Color`, bốn cột mới của `bill` và `transaction.Idbill`, nên
->   backend chạy từ nhánh này trên máy client **vỡ đồng bộ** cho tới khi áp tệp 12
->   rồi `prisma generate` — việc cần một câu cho phép gọi tên đúng việc.
+>   backend. **CSDL dev trên máy client** đã áp `database/12` ngày 2026-09-11 theo yêu
+>   cầu đích danh của người dùng, và Prisma Client đã sinh lại. ⚠️ Đo sau khi áp:
+>   `budget.Threshold_Warning_Percent` **vẫn mặc định `0`** — `Project.md` 11.36 ghi đợt
+>   này bỏ mặc định ấy, nhưng tệp 12 không có bước nào cho `budget`.
 
 > ## ✅ Đợt backend 2026-09-07 — client đã kiểm chứng bằng mã, không tin báo cáo
 >

@@ -301,8 +301,8 @@ model bill {
 > trên — kèm một bẫy thứ tự trong lô, và một chỗ sửa cho câu "không dùng unique
 > index": [`FIX_BACKEND_3_REGRESSIONS.md`](../CAN-LAM/FIX_BACKEND_3_REGRESSIONS.md) mục 3. Các
 > cột `Idbill`, `Previous_bill_id`, `Auto_pay`, `Anchor_day` đã có trong
-> `database/12` trên `main` — gộp về nhánh client 2026-09-11 nhưng **chưa áp** lên
-> CSDL dev của client.
+> `database/12` trên `main` — gộp về nhánh client và áp lên CSDL dev của client cùng
+> ngày 2026-09-11.
 
 ### 6.4. Cách kiểm chứng
 

@@ -340,7 +340,8 @@ class _WalletAddFormState extends State<_WalletAddForm> {
                   itemBuilder: (context, index) {
                     final isSelected = index == _selectedTypeIndex;
                     // Ô "Tiết kiệm" khoá lại khi đã có một ví Tiết kiệm —
-                    // server chỉ nhận một (`uq_wallet_saving_active`). Vẫn
+                    // server từng chỉ nhận một (`uq_wallet_saving_active`, bỏ ở
+                    // CSDL 2026-09-11, chốt chờ gỡ — G30). Vẫn
                     // hiện chứ không giấu: giấu đi là người dùng tưởng app
                     // thiếu loại ví. Luật TẠM, xem `rang_buoc_vi.dart`.
                     final biKhoa = WalletType.chonDuoc[index] == WalletType.saving &&
