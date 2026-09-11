@@ -1,9 +1,11 @@
 /// Đọc `priority` của mục tiêu cho đúng nghĩa — G32.
 ///
-/// Vì sao cần: client gửi `priority: null` cho mục tiêu CHƯA sắp, nhưng
-/// `mapEntityFields('goal')` phía backend gọi `Number(null)` và lưu `0`. Lượt kéo
-/// về mang `0` về máy, và `0` đứng trước mọi số đã sắp — mục tiêu chưa sắp nhảy
-/// lên ĐẦU danh sách. Đã tái hiện đầu-cuối trên máy ảo ngày 2026-09-10.
+/// Vì sao cần: client gửi `priority: null` cho mục tiêu CHƯA sắp, nhưng trước
+/// `7675b35` `mapEntityFields('goal')` phía backend gọi `Number(null)` và lưu `0`.
+/// Lượt kéo về mang `0` về máy, và `0` đứng trước mọi số đã sắp — mục tiêu chưa
+/// sắp nhảy lên ĐẦU danh sách. Đã tái hiện đầu-cuối trên máy ảo ngày 2026-09-10.
+/// Backend nay giữ `null` (đo 2026-09-11); phép đọc vẫn giữ cho giá trị `0` cũ
+/// còn nằm trên server hoặc trên máy.
 ///
 /// Đọc `<= 0` như `null` là an toàn vì client KHÔNG BAO GIỜ tự sinh số ấy: mọi
 /// nhánh của `uuTienSauKhiKeo` cho ra số `>= 1` (`goal_priority.dart`).
@@ -20,7 +22,8 @@ void main() {
 
   test('0 là một null bị ép, đọc thành chưa sắp', () {
     expect(uuTienHopLe(0), isNull,
-        reason: 'Backend lưu 0 cho mục tiêu chưa sắp (`Number(null)`). Đọc là '
+        reason: 'Backend trước `7675b35` lưu 0 cho mục tiêu chưa sắp '
+            '(`Number(null)`), và hàng cũ còn mang 0. Đọc là '
             'số thì 0 đứng trước 100, 200, và mục tiêu chưa sắp nhảy lên đầu '
             'danh sách.');
   });

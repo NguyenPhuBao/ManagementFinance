@@ -2,12 +2,14 @@ import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 import 'package:flowmoney/features/wallet/domain/rang_buoc_vi.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Hai ràng buộc mà PostgreSQL đang thi hành trên bảng `wallet` bằng partial
+/// Hai ràng buộc PostgreSQL thi hành trên bảng `wallet` bằng partial
 /// unique index (đo `pg_indexes` 2026-09-10 — chúng KHÔNG hiện ở
 /// `pg_constraint`, nên phép đo 2026-09-09 kết luận sai là "không có"):
 ///
 /// - `uq_wallet_account_name_active (Idaccount, Name) WHERE Delete_at IS NULL`
 /// - `uq_wallet_saving_active (Idaccount) WHERE Type = 'Saving' AND Delete_at IS NULL`
+///   (đã bỏ ở CSDL ngày 2026-09-11 bằng `database/12`; test còn tới khi gỡ chốt
+///   tạm, G30)
 ///
 /// Client vi phạm là server trả 23505 → `UNIQUE_VIOLATION` → bản ghi bị xếp
 /// **vĩnh viễn**, ví không bao giờ lên server, và mọi giao dịch trong ví ấy vỡ

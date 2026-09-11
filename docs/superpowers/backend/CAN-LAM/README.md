@@ -1,209 +1,103 @@
 # Backend — TOÀN BỘ 15 MỤC ĐÃ HOÀN TẤT 100%
 
+**Cập nhật:** 2026-09-11 tối (soát từng tài liệu `7675b35` với mã HEAD và CSDL dev — thêm mục 18 `VERIFY_7675B35_REMAINING.md`; viết lại banner ⚠️, mục 1 và mục 2 theo kết quả đo. Bảng phân nhóm và danh sách mười sáu mục trước khi gộp nay chỉ còn trong lịch sử git. Trước đó cùng ngày: áp `database/12` lên CSDL dev — sửa gạch thứ ba của banner "đã gộp". Trước đó cùng ngày: gộp `main` @ `cc65f4f` về nhánh `TranQuangDat`: giữ **nguyên văn** tiêu đề và khối 🎉 của backend (`f8ab027`), thay banner "`main` đã đi trước nhánh client" bằng banner "đã gộp" ngay dưới khối ấy, và trỏ liên kết của mục 1–2 sang `../DA-XONG/` theo chỗ tệp nằm hôm nay. Trước đó cùng ngày: thêm mục 17 `FIX_BACKEND_3_REGRESSIONS.md` — ba hồi quy của `7675b35` trên `main`). Trước đó: 2026-09-10 tối (mục 16 viết lại thành hướng dẫn sửa theo dòng — 56 chỗ tài liệu, ba việc mã; mục 11: phần **áp** `database/7`–`11` đã xong trên CSDL dev — còn lại ghi quy trình và tách nhánh cho qua. Trước đó cùng ngày: thêm mục 13–16 sau lượt rà soát CSDL mới — `AUTH_401_BODY_CODE.md`, `GOAL_PRIORITY_NULL_TO_ZERO.md`, `SYNC_PUSH_ERROR_MAPPING.md`, `RULE_PROJECT_DOC_DRIFT.md`. Trước đó cùng ngày: mục 10 `SYNC_NOTE_FILTER_REWRITE.md`, mục 11 `DEV_DB_MIGRATIONS_7_11.md` sau khi gộp `main`, và mục 12 `WALLET_SAVING_INDEX.md` sau lượt rà soát ví; mục 9 gộp vào mục 11. Lần trước: 2026-09-09, thêm mục 7 và 8 — hai tệp `SOCKET_*`. Banner đợt 2026-09-07 bên dưới giữ nguyên vì nó nói về đợt ấy)
+
 > 🎉 **CẬP NHẬT 2026-09-11:**
 > Toàn bộ **15/15 mục kỹ thuật** trong thư mục này đã được Backend triển khai trọn vẹn, áp dụng Migration 12 thành công lên PostgreSQL Supabase, kiểm thử tự động đạt 100% PASS (`test_can_lam_fixes.js`, `test_sensitive_note_filter.js`, `test_category_unique_rules.js`, `test_data_security_encryption_and_masking.js`, `test_sync_new_schema.js`), và toàn bộ 15 tài liệu kỹ thuật đã được di chuyển sang thư mục [`docs/superpowers/backend/DA-XONG/`](../DA-XONG/).
 > Hiện tại thư mục `CAN-LAM/` **không còn hạng mục nào tồn đọng**.
 
----
+> ## ⚠️ 2026-09-11 — client đã soát từng mục: sáu xong trọn, bảy còn một phần, hai chưa
+>
+> Tiêu đề và khối 🎉 ngay trên là **báo cáo của backend** (`f8ab027`, NPBao), giữ
+> nguyên văn. Nhánh `TranQuangDat` đã gộp `main` @ `cc65f4f` và CSDL dev đã áp
+> `database/12` cùng ngày; client đối chiếu từng tài liệu với mã HEAD và CSDL — như đã
+> làm với đợt 2026-09-07 ngay dưới — thay vì tin báo cáo. Trạng thái từng tài liệu ở
+> **mục 2**, việc còn lại ở **mục 17 và 18**. Ba điều đáng biết nhất:
+>
+> - Hồi quy **A** và **B** của mục 17 vẫn nguyên — bắt tay socket và `/auth/refresh` từ
+>   chối mọi tài khoản, chốt trả hai lần chặn hoàn tác. Nên sửa **trước** khi triển khai
+>   `main` ở bất cứ đâu có người dùng.
+> - "Thống nhất payload `bank_transaction.incoming`" chưa đúng, và từ `7675b35` mỗi giao
+>   dịch ngân hàng còn phát **hai lần** (mục 18 §2.5).
+> - "Áp dụng Migration 12 thành công" nói về CSDL phía backend. Trên CSDL dev tệp 12 đã
+>   áp, nhưng `budget.Threshold_Warning_Percent` vẫn `DEFAULT 0` vì tệp không có bước ấy
+>   (mục 18 §2.2).
+
+> ## ✅ Đợt backend 2026-09-07 — client đã kiểm chứng bằng mã, không tin báo cáo
+>
+> `main` mang về một đợt sửa lớn. Client đọc mã nguồn và truy vấn thẳng
+> PostgreSQL để đối chiếu từng tuyên bố, thay vì đọc bảng trạng thái của
+> backend. Kết quả: **mục 1, 3, 4, 5, 7 xong; mục 6 bãi bỏ; mục 8, 9 và cả
+> `goal.Priority` lẫn `Idaccount` cho `uq_transaction_external` xong**.
+> Còn lại trong nhóm 1: **(D)** của mục 2, và **7b** (cột màu).
+>
+> ⚠️ **Đợt migration ban đầu KHÔNG chạy được.** `)2_can_lam_all_migrations.sql`
+> có một câu `DELETE FROM "category"` xoá cứng 5 danh mục mặc định ngoài bộ
+> 13 stable UUID. Trên CSDL thật, `fk_bill_category` là **RESTRICT** và có 6
+> hoá đơn trỏ tới, nên câu ấy ném 23503 và **toàn bộ tệp roll back** — đó là
+> lý do CSDL chưa từng có cột nào của đợt này. Ngoài ra `fk_transaction_category`
+> là **SET NULL**: nếu gỡ vướng cho DELETE chạy lọt thì 7 giao dịch mất danh
+> mục mà không báo lỗi. Client đã đổi thành xoá mềm (`UPDATE ... SET
+> "Delete_at" = NOW()`) trên nhánh `patch2`, chạy thử trong giao dịch rồi
+> `ROLLBACK` để kiểm, sau đó áp dụng thật. **Xin nhận bản vá ấy trước khi
+> chạy migration ở bất kỳ môi trường nào khác.**
+>
+> ✅ **Đã bàn giao 2026-09-08:** người dùng đã thông báo cho người phụ trách
+> backend. Việc sửa tệp thuộc về phía backend; nhánh `patch2` giữ nguyên tại
+> chỗ làm bản tham chiếu.
+>
+> ⚠️ Bản vá **(B)** tuy đúng thứ client xin nhưng làm hỏng một chỗ phía
+> client mà không ai lường: `message` không còn mang mã SQLSTATE nên mọi
+> regex phân loại lỗi mất khả năng khớp, và lỗi vĩnh viễn im lặng tụt xuống
+> nhánh `transient`. Client đã tự vá (`_permanentCodes`) — **không cần
+> backend làm gì**, ghi lại để lần sau đổi hợp đồng lỗi thì báo trước.
+
+> Thư mục này nay giữ `README.md` và **2** tài liệu còn việc (mục 17, 18 —
+> đếm bằng máy 2026-09-11). Mười lăm tài liệu còn lại đã sang
+> [`../DA-XONG/`](../DA-XONG/README.md) theo báo cáo của backend; **chín** trong số đó
+> còn việc dang dở — ghi ở mục 2 và gom vào mục 18, thay vì chuyển ngược tệp lại đây.
+> Thư mục cha có ba tệp bối cảnh (mục 4).
 
 ---
 
-## 1. Câu hỏi quan trọng nhất: việc nào chặn tính năng đã có?
+## 1. Còn phải làm
 
-Client-app **đã phát hành** một số tính năng mà backend chưa theo kịp. Những
-việc ấy khác hẳn về mức khẩn so với những việc phục vụ một tính năng client
-**chưa hề bắt đầu**.
+| # | Tài liệu | Nội dung | Mức |
+|---|---|---|---|
+| **17** | [FIX_BACKEND_3_REGRESSIONS.md](./FIX_BACKEND_3_REGRESSIONS.md) | Ba hồi quy của `7675b35`: **A** bắt tay socket và `/auth/refresh` từ chối mọi tài khoản; **B** chốt trả hai lần ở `upsertBill` chặn hoàn tác thanh toán; **C** tài liệu backend ghi sai ba mã lỗi | 🔴 A, B |
+| **18** | [VERIFY_7675B35_REMAINING.md](./VERIFY_7675B35_REMAINING.md) | Chín việc mã/CSDL còn lại của mười lăm tài liệu đã sang `DA-XONG/` — giao dịch SePay vỡ `chk_transaction_type` (suy từ mã), sự kiện ngân hàng phát hai lần, khoá mã hoá mặc định, tệp `)2` còn xoá cứng, `DEFAULT 0` của ngân sách, … — cộng 45 chỗ sửa tài liệu backend. Thứ tự đề xuất ở §1 của tài liệu ấy | 🟠 → ⚪ |
 
-Bảng dưới chia đúng theo ranh giới đó.
-
-### 🔴 Nhóm 1 — client ĐÃ CÓ, backend đang chặn hoặc gây hại
-
-Làm nhóm này trước. Mỗi mục ở đây tương ứng với một thứ người dùng **có thể
-chạm vào hôm nay**.
-
-| # | Tài liệu | Client đã có gì | Backend thiếu gì | Chi phí |
-|---|---|---|---|---|
-| **1** | [2026-09-04-backend-idempotent-delete.md](./2026-09-04-backend-idempotent-delete.md) | Toàn bộ đồng bộ offline-first, và ngân sách **"Ngày cụ thể"** | **(A)** ✅ xoá luỹ đẳng — trả `synced` + `'Already absent'`. **(B)** ✅ mã lỗi có cấu trúc — `code` + `constraint` + thông báo tiếng Việt. **(C)** ✅ `time_recurrence === undefined ? 'Month' : ...`, `null` sống sót → ngân sách "Ngày cụ thể" thông. **(D)** ⛔ **CÒN** — nhánh tạo của `upsertBudget` vẫn `threshold_warning_percent ?? 0`, và schema vẫn `@default(0)` | **(D)** vài dòng |
-| **2** | [CATEGORY_COLOUR_COLUMN.md](./CATEGORY_COLOUR_COLUMN.md) | Chọn màu cho danh mục — client **vẫn gửi `colour` lên ở mỗi lần đẩy** | ⛔ **CÒN** — bảng `category` vẫn 12 cột, không cột nào cho màu, nên trường ấy bị bỏ qua **im lặng**. ⚠️ Tài liệu này **chưa từng lên origin** tính tới 2026-09-07, nên backend chưa hề thấy nó — đợt migration bỏ sót là vì vậy, không phải vì từ chối. Lưu ý bảng `bill` **đã có** cột `Color`, nên đây là chuyện nhất quán chứ không phải kiểu dữ liệu mới | một cột + hai dòng |
-
-> 📁 **Mọi mục đã đóng của thư mục này nay nằm ở [`../DA-XONG/`](../DA-XONG/README.md)**
-> — **16 tài liệu** (đếm lại 2026-09-08; dòng cũ ghi "tám"), kèm ghi chú *đóng
-> bằng cách nào*. Giữ lại vì lý lẽ trong đó
-> vẫn là thứ giải thích **vì sao** lược đồ hôm nay có hình dạng như vậy; chỉ là
-> không còn việc để làm.
-
-### 🟡 Nhóm 2 — client ĐÃ CÓ nhưng không có gì hỏng; đây là *mở khoá*
-
-Không ai mất dữ liệu và không có gì sai số nếu chưa làm. Nhưng tính năng ấy
-**không theo người dùng sang máy thứ hai**.
-
-| # | Tài liệu | Client đã có gì | Backend thiếu gì | Chi phí |
-|---|---|---|---|---|
-| **3** | [2026-09-06-bill-chuoi-ky-va-an-han.md](./2026-09-06-bill-chuoi-ky-va-an-han.md) — **việc A và B** | **Hoàn tác thanh toán hoá đơn** (schema v16) | Hai cột nullable `transaction.Idbill` và `bill.Previous_bill_id` — hai đầu của sợi dây từ hoá đơn về khoản chi và về kỳ kế tiếp. Thiếu chúng, hoàn tác chỉ chạy trên đúng cái máy đã trả; máy khác từ chối có thông báo. Cột B còn mở luôn **lịch sử theo hoá đơn** ("sáu tháng qua tiền điện hết bao nhiêu") | hai cột |
-| **4** | [2026-09-06-bill-chuoi-ky-va-an-han.md](./2026-09-06-bill-chuoi-ky-va-an-han.md) — **việc D** | **Tự động thanh toán hoá đơn** (schema v17) | Cột `bill.Auto_pay` để cấu hình theo người dùng sang máy khác, và **chốt chặn trả hai lần** ở `/sync/push` (từ chối `transaction` thứ hai cùng `Idbill` chưa xoá mềm — phụ thuộc việc A). Thiếu chốt, hai máy cùng bật và cùng offline qua ngày đến hạn là hai khoản chi; client chỉ nhắc được "chỉ nên bật trên một thiết bị" | một cột + một phép kiểm |
-
-> ⚠️ Mục 9 có một cái bẫy: **ba cột phải lên cùng một lúc.** Đưa hai cột đầu mà
-> bỏ `auto_deposit_last_run` là mỗi máy giữ một mốc riêng và **cả hai cùng
-> chuyển tiền** — hỏng nặng hơn hiện trạng. Đọc mục 2 của tài liệu ấy trước.
-
-### ⚪ Nhóm 3 — client CHƯA làm; để sau cũng được
-
-| Tài liệu | Vì sao chưa gấp |
-|---|---|
-| [2026-09-06-bill-chuoi-ky-va-an-han.md](./2026-09-06-bill-chuoi-ky-va-an-han.md) — **việc C** | Client **chưa làm** ân hạn hoá đơn, và cố ý chưa làm cho tới khi có cột — cùng lối với `goal.Priority`. Bảng `bill` chỉ có `Start_date` và `Due_date`, hai đầu của CÙNG một kỳ, nên hoá đơn điện "kỳ 01–30/09 nhưng hạn trả 15/10" không diễn đạt được. Người dùng hôm nay vẫn dùng được bằng cách đặt hạn trả là mốc kết thúc kỳ |
-| [2026-09-06-bill-chuoi-ky-va-an-han.md](./2026-09-06-bill-chuoi-ky-va-an-han.md) — **việc E** | Client **chưa làm** "bỏ qua kỳ này" cho hoá đơn lặp, và cố ý chưa làm cho tới khi backend xác nhận nhận giá trị `Pay_status = 'Skipped'` — hàng bị từ chối ở `/sync/push` là kẹt hàng đợi đẩy vĩnh viễn | **Không thêm cột** (`VarChar(7)` vừa khít); chỉ rà whitelist/validator và chỗ tính nợ. Có thể chỉ là một câu xác nhận |
-| [2026-09-04-ocr-classify-review.md](./2026-09-04-ocr-classify-review.md) — **phần OCR/Classify** (mục 2–8 của tài liệu) | Client-app **chưa có tính năng quét hoá đơn**: không có màn hình, không có repository, không có endpoint nào được gọi. `classifyBatch` sai kiểu tham số, `GEMINI_API_KEY` thiếu (`.env` trên máy này **không có biến ấy**), dedup Quy tắc 3 chặn nhầm, cửa hậu `_mock*` — tất cả đều thật, nhưng **không ai chạm tới được từ app**. ✅ Riêng `uq_transaction_external` nay **đã có `Idaccount`** (`UNIQUE ("Idaccount", "Provider", "Bank_tran_id")`, đo 2026-09-07), nên điều kiện chặn client nối luồng OCR đã được gỡ. ⚠️ Backend cũng đã đổi nhà cung cấp ngân hàng **Casso → SePay**; client vẫn còn cột `bank_casso_id` và giá trị provider `'Casso'` — không gãy đồng bộ vì hai trường ấy không nằm trong hợp đồng, nhưng là món nợ tên gọi |
+Mục **19** (`AUTH_PROFILE_COUNTDOWN.md`) sẽ viết khi spec cưỡng chế đăng xuất
+(`docs/superpowers/specs/2026-09-10-cuong-che-dang-xuat-va-cho-xoa-design.md` §6) được
+duyệt.
 
 ---
 
-## 2. Còn lại phải làm gì
+## 2. Trạng thái mười lăm tài liệu backend báo đã xong (đo 2026-09-11)
 
-Năm bước đầu của kế hoạch cũ **đã xong** trong đợt 2026-09-07 (Socket.io,
-(A) và (C) của `/sync/push`, `validClassify`, lỗ hổng phân quyền từ khoá, và
-cả đợt migration). Phần còn lại, xếp theo mức thiệt hại:
+Cột **#** là số mục cũ của README này — tài liệu client khác dẫn "CAN-LAM 13", "mục 11"…
+theo đúng số ấy. Đo trên mã HEAD `src/Backend` (trùng `main` @ `cc65f4f`) và CSDL dev đã áp
+tệp 12; cách đo ở đầu mục 18.
 
-1. **(D) của `/sync/push`** (nhóm 1 mục 2) — vài dòng. Bỏ `?? 0` ở nhánh tạo
-   của `upsertBudget` **và** `@default(0)` trong `schema.prisma`. Cùng khuôn
-   với (C) đã sửa. Đây là mục duy nhất còn lại của một tài liệu mà backend
-   đã làm ba phần tư.
-2. **Cột màu danh mục** (nhóm 1 mục 7b) — một cột. ⚠️ Tài liệu ấy chưa từng
-   lên origin nên backend chưa hề thấy; đây không phải mục bị từ chối.
-3. **Hai cột hoá đơn** (nhóm 2 mục 10): `transaction.Idbill` và
-   `bill.Previous_bill_id`. Đo 2026-09-07: bảng `bill` có 18 cột, không có
-   cột nào trong hai cột ấy; `transaction` cũng chưa có `Idbill`.
-4. **`bill.Auto_pay` + chốt chặn trả hai lần** (nhóm 2 mục 10b) — làm **sau**
-   bước 3 vì phép kiểm đọc `transaction.Idbill`. Là mã kiểm ở tầng ứng dụng,
-   không phải unique index (hoàn tác rồi trả lại là hợp lệ).
-5. **`Pay_status = 'Skipped'`** (việc E của tài liệu hoá đơn) — không cần
-   migration; client chờ **một câu xác nhận** rồi mới mở tính năng "bỏ qua
-   kỳ này".
-6. **`bill.Anchor_day`** (`BILL_ANCHOR_DAY.md`, thêm 2026-09-08) — một cột
-   `SMALLINT` nullable. Client đã làm xong phần của mình ở DB v18 nhưng cột
-   đang là **cục bộ**, nên hoá đơn đi qua đường đồng bộ mất ngày gốc và chuỗi
-   tạo trên máy khác vẫn có thể tụt dần. ⚠️ Ràng buộc **duy nhất**: server
-   không bao giờ được tự tính lại cột này từ `Due_date` — nó là *ý định của
-   người dùng*, không phải giá trị suy ra được.
+| # | Tài liệu | Kết luận | Còn gì |
+|---|---|---|---|
+| 1 | [2026-09-04-backend-idempotent-delete.md](../DA-XONG/2026-09-04-backend-idempotent-delete.md) | ⚠️ (A)(B)(C) ✅; (D) mã ✅, CSDL còn `DEFAULT 0` | 18 §2.2 |
+| 2 | [CATEGORY_COLOUR_COLUMN.md](../DA-XONG/CATEGORY_COLOUR_COLUMN.md) | ✅ phía backend — cột `Color`, push nhận và pull trả khoá `color` | Khoá lệch ở **client** (`colour`) — 18 §2.3 |
+| 3, 4, 5 | [2026-09-06-bill-chuoi-ky-va-an-han.md](../DA-XONG/2026-09-06-bill-chuoi-ky-va-an-han.md) | ⚠️ việc A, B, C, E ✅ (cột, push, pull, `'Skipped'`); việc D: cột `Auto_pay` ✅, chốt trả hai lần đặt sai chỗ | 17 B |
+| 6 | [BILL_ANCHOR_DAY.md](../DA-XONG/BILL_ANCHOR_DAY.md) | ✅ cột, push, pull; không chỗ nào tự tính lại từ `Due_date` | — |
+| 7 | [SOCKET_SYNC_COMPLETED.md](../DA-XONG/SOCKET_SYNC_COMPLETED.md) | ✅ phát sau `/sync/push` tới phòng tài khoản — nhưng chưa tới được client vì 17 A | — |
+| 8 | [SOCKET_BANK_EVENT_PAYLOAD.md](../DA-XONG/SOCKET_BANK_EVENT_PAYLOAD.md) | ⛔ vẫn hai hình dạng, `type` hai nghĩa; nay phát hai lần | 18 §2.5 |
+| 9 | [WALLET_STATUS_COLUMN_WIDTH.md](../DA-XONG/WALLET_STATUS_COLUMN_WIDTH.md) | ✅ `varchar(20)`, push ghi thẳng `status` | — |
+| 10 | [SYNC_NOTE_FILTER_REWRITE.md](../DA-XONG/SYNC_NOTE_FILTER_REWRITE.md) | ⚠️ bảng 15 ca đúng 15/15, 8.2 và 8.3 ✅; 8.1 khoá mã hoá chưa | 18 §2.6 |
+| 11 | [DEV_DB_MIGRATIONS_7_11.md](../DA-XONG/DEV_DB_MIGRATIONS_7_11.md) | ⚠️ 4.3 ✅ ở HTTP; 4.2 một phần; tệp `)2` còn xoá cứng | 18 §2.4 |
+| 12 | [WALLET_SAVING_INDEX.md](../DA-XONG/WALLET_SAVING_INDEX.md) | ⚠️ index đã bỏ ✅; `WALLET_*_DUPLICATE` có trong mã, cần một phép thử khi chạy | 18 §2.7 |
+| 13 | [AUTH_401_BODY_CODE.md](../DA-XONG/AUTH_401_BODY_CODE.md) | ⚠️ body 401 HTTP có `code` ✅; bắt tay socket và `/auth/refresh` hỏng | 17 A, 18 §2.1 |
+| 14 | [GOAL_PRIORITY_NULL_TO_ZERO.md](../DA-XONG/GOAL_PRIORITY_NULL_TO_ZERO.md) | ✅ giữ `null` khi đẩy, nhánh tạo mặc định `null`, tệp 12 dọn `<= 0` | — |
+| 15 | [SYNC_PUSH_ERROR_MAPPING.md](../DA-XONG/SYNC_PUSH_ERROR_MAPPING.md) | ✅ `22001`/`23502` → `CONSTRAINT_VIOLATION`; lớp kiểm tra không còn làm cả lô 400 | — |
+| 16 | [RULE_PROJECT_DOC_DRIFT.md](../DA-XONG/RULE_PROJECT_DOC_DRIFT.md) | ⛔ 11/56 chỗ đã sửa đúng | 18 §3 |
+| — | [2026-09-04-ocr-classify-review.md](../DA-XONG/2026-09-04-ocr-classify-review.md) | ⚠️ `classifyBatch`, dedup ✅; cửa hậu `_mock*` chỉ đóng ở `production`, `'ORC'` còn sót | 18 §2.8 |
 
-7. **Bắc `sync.completed` ra socket** ([SOCKET_SYNC_COMPLETED.md](./SOCKET_SYNC_COMPLETED.md),
-   thêm 2026-09-09) — một listener cộng một hàm phát, không migration. Sự kiện
-   **đã được publish** vào EventBus ở `sync.service.js:194` nhưng không ai bắc
-   ra socket. Đây là mục duy nhất trong danh sách này biến một hạng mục đã xong
-   về hạ tầng thành thứ người dùng cảm nhận được: chênh lệch giữa **15 phút** và
-   **tức thì** cho thay đổi từ máy khác.
-8. **Thống nhất payload `bank_transaction.incoming`**
-   ([SOCKET_BANK_EVENT_PAYLOAD.md](./SOCKET_BANK_EVENT_PAYLOAD.md), thêm
-   2026-09-09) — sự kiện này phát ra **hai hình dạng khác nhau** tuỳ đường
-   (`bank.worker.js` snake_case, `notification.service.js` camelCase), và
-   trường `type` mang **hai nghĩa** khác nhau. Không chặn client hôm nay vì
-   client cố ý không đọc trường nào, nhưng nó sẽ hỏng **im lặng** với bất kỳ ai
-   bắt đầu đọc payload.
-9. **Nới cột `wallet.Status`**
-   ([WALLET_STATUS_COLUMN_WIDTH.md](./WALLET_STATUS_COLUMN_WIDTH.md), thêm
-   2026-09-10) — một dòng `ALTER TABLE`, không đụng mã ứng dụng. Cột là
-   `varchar(7)` còn giá trị cần ghi là `'Inactive'` — **8 ký tự**. Client đã
-   làm xong tính năng **lưu trữ ví** nhưng phải để cột `status` **cục bộ**,
-   nên lưu trữ chỉ có hiệu lực trên máy đã bấm. ⚠️ Điểm đáng chú ý: **lược đồ
-   tự mâu thuẫn ở đúng cột này** — `chk_wallet_status` cho phép `'Inactive'`
-   nhưng kiểu cột không chứa nổi nó, nên không giá trị nào vừa cả hai ngoài
-   `'Active'`. Không cần đụng CHECK, chỉ nới kiểu cột cho khớp ràng buộc đã
-   có. CSDL dev trên máy người dùng từng bị đổi sang `varchar(16)` **ngoài quy
-   trình** ngày 2026-09-10 và **đã hoàn tác cùng ngày** — mục 3b của tài liệu ấy
-   ghi diễn biến và phép đo sau hoàn tác. Tài liệu
-   cũng ghi lại **một phép đo sai của chính phiên ấy** (kết luận nhầm rằng bảng
-   không có CHECK nào, do lọc output qua `tail`) — giữ lại vì bài học về cách
-   đo, không phải vì kết luận.
-
-   ⚠️ **Cập nhật sau khi gộp `main` (2026-09-10):** phần **mã** của mục này
-   backend **đã làm** từ 2026-09-09 — `7523c8c` đổi `schema.prisma` sang
-   `VarChar(20)` và bước 4 của `database/7_Update_Account_User_Delete_Rules.sql`
-   nới đúng cột ấy. Việc còn lại chỉ là **áp tệp 7**, nên mục này **không đếm
-   riêng nữa** — nó nằm trong mục 11.
-
-   ✅ **Tối 2026-09-10:** tệp 7 đã áp lên CSDL dev — cột nay `varchar(20)`. Client
-   mở lại ba chỗ khi người dùng hỏi (G28).
-
-10. **Thu hẹp bộ lọc ghi chú của `/sync/push`**
-    ([SYNC_NOTE_FILTER_REWRITE.md](./SYNC_NOTE_FILTER_REWRITE.md), thêm
-    2026-09-10) — sửa hai biểu thức chính quy trong `utils/content-filter.util.js`,
-    không migration. Bộ lọc của đợt 2026-09-10 bắt nhầm số tài khoản, cặp "số điện
-    thoại + số tiền", "mật khẩu wifi", và cả hậu tố `(tự động)` do app sinh; bản
-    đã lọc **đè lên máy người dùng** ngay chu kỳ đồng bộ ấy — tái hiện đầu-cuối
-    trên máy ảo. **Chưa hỏng dữ liệu thật**, nhưng nổ ở lần ghi kế tiếp. Tài liệu
-    kèm bảng test 15 ca (phác thảo đề xuất đã chạy đúng 15/15) và ba điểm cùng
-    gốc: khoá mã hoá đang là mặc định viết cứng, `dedup.repository.js` so khớp trên
-    chuỗi đã mã hoá, `bank.worker.js` ghi ghi chú dạng rõ.
-11. **Áp các tệp `database/7`–`11`, và sửa fail-open ở `middleware/auth.js`**
-    ([DEV_DB_MIGRATIONS_7_11.md](./DEV_DB_MIGRATIONS_7_11.md), thêm 2026-09-10) —
-    không viết mã mới, chỉ áp năm tệp đã có theo đúng thứ tự rồi `prisma
-    generate`. Đo trên CSDL dev: 5 và 6 đã áp, **7–11 chưa áp bước nào**, còn
-    Prisma Client trong `node_modules` sinh từ 2026-09-07. Hệ quả: phép kiểm tài
-    khoản vỡ ở **mọi** request và **cho qua** — tài khoản bị khoá vẫn gọi được
-    API; đường xoá / huỷ xoá tài khoản mà client gọi thì hỏng. ⚠️ **Đừng `prisma
-    generate` trước khi áp 8 và 9** — làm thế là tắt luôn đăng nhập. Và đặt khoá
-    mã hoá thật **trước** tệp 11.
-
-    ✅ **Phần áp đã xong trên CSDL dev tối 2026-09-10** — người dùng yêu cầu đích
-    danh; khoá mã hoá **mặc định** (người dùng chọn); tắt backend → `generate` →
-    chạy lại; đo lại đủ mục 5. Đoạn trên là ảnh chụp trước khi áp. **Còn lại:**
-    mục 4.2 (ghi quy trình migration) và 4.3 (nhánh cho qua ở `middleware/auth.js`).
-12. **Bỏ `uq_wallet_saving_active`, và mã lỗi có cấu trúc cho 23505 trên `wallet`**
-    ([WALLET_SAVING_INDEX.md](./WALLET_SAVING_INDEX.md), thêm 2026-09-10) — một
-    dòng `DROP INDEX`. Luật "một ví Tiết kiệm mỗi tài khoản" chỉ tồn tại ở SQL
-    (bản 2026-08-26), không có trong `Rule_project.md`; client tạo sẵn ví Tiết
-    kiệm cho tài khoản mới nên ví Tiết kiệm thứ hai của người dùng **kẹt hàng
-    đợi đẩy vĩnh viễn, im lặng**. Client đã chặn tạm ở cả datasource lẫn màn
-    Thêm ví (2026-09-10) và sẽ gỡ khi backend xác nhận. Kèm xin
-    `WALLET_NAME_DUPLICATE` / `WALLET_DEFAULT_DUPLICATE` theo khuôn
-    `CATEGORY_NAME_DUPLICATE`. ⚠️ Cùng lượt đo phát hiện bảng `wallet` có **bốn**
-    partial unique index mà tài liệu client từng ghi là "không có" — phép đo cũ
-    dùng `pg_constraint`, nơi chúng không hiện.
-
-Bốn mục dưới đây thêm 2026-09-10 sau lượt **rà soát CSDL mới** — đọc toàn bộ
-`docs/Rule_Project/`, `schema.prisma`, `database/*.sql` và module đồng bộ, đo
-lại trên CSDL dev. Đều **không cần migration**.
-
-13. **Body 401 phải mang `code` / `reason_inactive`**
-    ([AUTH_401_BODY_CODE.md](./AUTH_401_BODY_CODE.md)) — vài dòng ở
-    `core/response-handler.js`. `unauthorized(res, message)` chỉ nhận **hai**
-    tham số nên đối số thứ ba mà `middleware/auth.js:89` truyền vào **rơi mất**:
-    body 401 thật không có `code`, `idaccount` lẫn `reason_inactive` — đo bằng
-    cách chạy `ResponseHandler` với một `res` giả. JSON mẫu ở `Rule_project.md`
-    11.3, `docs/progress/Client-app.md` 10.3/11.3 và `docs/progress/Backend.md`
-    12.1/12.4 chưa từng được sinh ra. Client vì thế không phân biệt được *tài
-    khoản bị khoá* với *token hết hạn*, nên nhánh HTTP của cưỡng chế đăng xuất
-    chưa có gì để đọc; nhánh socket thì không phụ thuộc mục này. Kèm: handshake
-    socket gắn `ACCOUNT_DELETED` cho **cả** tài khoản bị khoá. ⚠️ Chỉ kiểm
-    đầu-cuối được **sau** mục 11 — tối 2026-09-10 mục 11 **đã áp** nên nhánh ấy đã tới được — body vẫn thiếu mã cho tới khi sửa dòng
-    ấy.
-14. **`goal.Priority`: `null` thành `0` sau một vòng đồng bộ**
-    ([GOAL_PRIORITY_NULL_TO_ZERO.md](./GOAL_PRIORITY_NULL_TO_ZERO.md)) — một
-    dòng ở `mapEntityFields('goal')`. `Number(null) === 0`, nên mục tiêu **chưa
-    sắp** (NULL, xếp cuối — thoả thuận 2026-09-05) được lưu là `0`, và kéo về máy
-    thành mục tiêu **đứng đầu** danh sách. Client đã cứng hoá phía mình cùng ngày
-    (đọc `<= 0` là chưa sắp), nhưng giá trị sai vẫn nằm trên server, và bản
-    client cũ vẫn thấy mục tiêu nhảy lên đầu. Kèm: nhánh tạo
-    mặc định `1` thay vì `null`.
-15. **Ánh xạ lỗi `/sync/push` thiếu `22001`/`P2000` và `23502`; lớp kiểm tra
-    lệch CHECK** ([SYNC_PUSH_ERROR_MAPPING.md](./SYNC_PUSH_ERROR_MAPPING.md)) —
-    hai nhánh `else if`. Tên mục tiêu hoặc hoá đơn dài hơn 100 ký tự, tên danh mục
-    dài hơn 200, rơi xuống `DB_ERROR`; client coi mã ấy là tạm thời và **gửi lại
-    mãi**. Xin ánh xạ về `CONSTRAINT_VIOLATION` — client đã xếp mã ấy vĩnh viễn
-    nên không phải đổi gì. Kèm: một giá trị bị `sync.validation.js` từ chối làm
-    **cả lô** trả 400, và client giữ lại **mọi** thao tác đang chờ. ⚠️ Liên quan
-    mục 5: thêm `'Skipped'` vào CHECK mà quên lớp kiểm tra là tắc cả hàng đợi.
-16. **Sửa `docs/Rule_Project/` và `docs/progress/Backend.md` cho khớp mã và
-    CSDL** ([RULE_PROJECT_DOC_DRIFT.md](./RULE_PROJECT_DOC_DRIFT.md)) — chỉ sửa
-    tài liệu, cộng ba việc mã. Đo lại tối 2026-09-10 sau khi áp CSDL: **56** chỗ sửa theo dòng ở bốn tệp —
-    25 mục cũ nhóm A/C cộng 13 chỗ mới; nhóm B cũ (3 chỗ) đã tự khớp khi áp mục 11; ba việc mã là body 401, bộ lọc ghi chú,
-    và `Provider` `'ORC'`/`'OCR'` tự mâu thuẫn. `New_Database.md` tự nhận
-    "Source of Truth" nhưng thiếu năm cột client đang đồng bộ và ghi sai unique
-    index của cả `category`, `wallet` lẫn `transaction`. ⚠️ Và mục 9 của
-    `docs/progress/Backend.md` — danh sách "cần làm để khớp Client-App" — **không
-    nhắc mục nào** của thư mục này, nên đội backend có thể chưa thấy chúng.
-
-> ⚠️ **Trước khi chạy migration ở môi trường mới:** lấy bản vá xoá mềm ở
-> nhánh `patch2`. Bản `)2_can_lam_all_migrations.sql` trên `main` sẽ roll back
-> toàn bộ khi gặp dữ liệu thật — xem banner đầu tài liệu này.
+Đếm: ✅ sáu (2, 6, 7, 9, 14, 15), ⚠️ bảy (1, 3–5, 10, 11, 12, 13, OCR), ⛔ hai (8, 16).
 
 ---
 

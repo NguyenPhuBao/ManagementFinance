@@ -263,7 +263,7 @@ void main() {
       // chốt để sau; mở lại thì test này đổi sang canh chiều ngược lại. Cùng
       // diện với `bills.autoPayEnabled` và `bills.anchorDay`. Xem G28
       // `docs/CLIENT_APP_KNOWN_GAPS.md` và
-      // `docs/superpowers/backend/CAN-LAM/WALLET_STATUS_COLUMN_WIDTH.md`.
+      // `docs/superpowers/backend/DA-XONG/WALLET_STATUS_COLUMN_WIDTH.md`.
       const viLuuTru = '22222222-2222-4222-8222-222222222222';
       await db.walletDao.insert(WalletsCompanion(
         id: const Value(viLuuTru),
@@ -296,10 +296,11 @@ void main() {
     });
 
     test('mục tiêu mang priority 0 cũ thì đẩy lên null — G32', () async {
-      // Backend gọi `Number(null)` nên mục tiêu CHƯA SẮP kéo về máy mang 0.
-      // Client không bao giờ tự sinh priority <= 0 (`goal_priority.dart`), nên
-      // 0 là một null bị ép. Đẩy lại 0 là giữ cái sai ấy trên server mãi; đẩy
-      // null thì khi backend sửa `mapEntityFields`, hàng tự lành ở lần sửa kế.
+      // Backend trước `7675b35` gọi `Number(null)` nên mục tiêu CHƯA SẮP kéo về
+      // máy mang 0, và hàng cục bộ lưu từ hồi ấy vẫn có thể giữ 0. Client không
+      // bao giờ tự sinh priority <= 0 (`goal_priority.dart`), nên 0 là một null
+      // bị ép. Đẩy lại 0 là giữ cái sai ấy trên server mãi; đẩy null thì hàng
+      // tự lành ở lần sửa kế — `mapEntityFields` nay giữ `null` (đo 2026-09-11).
       const mucTieuCu = '77777777-7777-4777-8777-777777777777';
       await db.goalDao.insert(GoalsCompanion(
         id: const Value(mucTieuCu),

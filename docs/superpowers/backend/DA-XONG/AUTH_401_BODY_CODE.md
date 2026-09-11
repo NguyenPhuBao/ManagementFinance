@@ -4,6 +4,17 @@
 dòng ở `core/response-handler.js`, cộng một hàm dựng lý do từ chối dùng chung
 cho HTTP và socket. Không migration.
 
+> ⚠️ **2026-09-11 — đọc [`FIX_BACKEND_3_REGRESSIONS.md`](../CAN-LAM/FIX_BACKEND_3_REGRESSIONS.md)
+> mục 2 trước khi làm theo mục 4.2 dưới đây.** `main` @ `7675b35` đã làm 4.1–4.3 và
+> chép hàm `accountRejection` của 4.2 gần nguyên văn. Hàm ấy — **cả bản đề xuất ở
+> đây** — không bao giờ trả `null`, và đoạn hướng dẫn cho `core/socket.js` không ghi
+> rõ phải bọc trong `if (!info.valid)`. Hai chỗ gọi mới viết `if (rejection)`, nên
+> bắt tay socket và `/auth/refresh` từ chối **mọi** tài khoản. Trạng thái của tài
+> liệu này tính theo nhánh client **trước khi gộp**; `7675b35` gộp về nhánh ấy ngày
+> 2026-09-11 (tệp này sang `DA-XONG/` theo báo cáo của backend), và client soát lại
+> cùng ngày: 4.1 và nhánh HTTP của 4.2 xong, 4.3 xong trừ `/auth/refresh` (17 A); bắt tay
+> socket còn đọc sai chỗ mã — `CAN-LAM/VERIFY_7675B35_REMAINING.md` §2.1.
+
 ---
 
 ## 1. Tóm tắt

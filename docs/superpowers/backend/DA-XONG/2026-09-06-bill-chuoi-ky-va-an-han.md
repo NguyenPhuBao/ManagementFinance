@@ -294,6 +294,16 @@ model bill {
   sinh hai hàng cùng `Idbill`, một đã xoá mềm. Kiểm ở tầng ứng dụng với điều
   kiện `Deleted_at IS NULL` mới đúng nghĩa.
 
+> ⚠️ **2026-09-11 — `main` @ `7675b35` đặt chốt này ở chỗ khác:** `upsertBill` từ
+> chối mọi lần đổi `Pay_status` từ `'Payed'` sang giá trị khác. Như thế **chặn hoàn
+> tác** (hoàn tác gửi `'Pending'`) mà **không** chặn được hai khoản chi (máy đẩy sau
+> gửi `'Payed'` lên hàng đã `'Payed'`). Xin dời về `upsertTransaction` đúng như đoạn
+> trên — kèm một bẫy thứ tự trong lô, và một chỗ sửa cho câu "không dùng unique
+> index": [`FIX_BACKEND_3_REGRESSIONS.md`](../CAN-LAM/FIX_BACKEND_3_REGRESSIONS.md) mục 3. Các
+> cột `Idbill`, `Previous_bill_id`, `Auto_pay`, `Anchor_day` đã có trong
+> `database/12` trên `main` — gộp về nhánh client và áp lên CSDL dev của client cùng
+> ngày 2026-09-11.
+
 ### 6.4. Cách kiểm chứng
 
 Hai client cùng tài khoản, cùng hoá đơn bật tự trả, cùng offline qua ngày đến

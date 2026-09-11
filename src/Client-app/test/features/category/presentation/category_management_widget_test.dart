@@ -157,7 +157,8 @@ void main() {
 
     expect(boDieuKhien.text.length, DoRongCot.tenDanhMuc,
         reason: '`category.NameCategory` là varchar(200). Tên dài hơn vỡ P2000 '
-            'ở /sync/push và danh mục bị gửi lại ở mọi chu kỳ đồng bộ.');
+            'ở /sync/push, và danh mục thành lỗi vĩnh viễn '
+            '(CONSTRAINT_VIOLATION — trước 7675b35 là gửi lại ở mọi chu kỳ).');
   });
 
   testWidgets('tên nhóm danh mục cũng dừng ở độ rộng cột — G31',

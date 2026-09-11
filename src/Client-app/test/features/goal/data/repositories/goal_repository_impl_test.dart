@@ -1023,8 +1023,8 @@ void main() {
     });
 
     test('hàng cũ không có goalId vẫn tra được bằng ghi chú', () async {
-      // Giao dịch tích luỹ tạo bởi bản app trước, hoặc kéo về từ server (cột
-      // goalId là cục bộ nên hàng từ server luôn để trống).
+      // Giao dịch tích luỹ tạo bởi bản app trước, hoặc hàng cũ kéo về từ server
+      // (goalId đồng bộ từ 2026-09-07, nhưng hàng tạo trước đó vẫn trống — G18).
       await db.transactionDao.insert(
         TransactionsCompanion.insert(
           id: 'tx_cu',

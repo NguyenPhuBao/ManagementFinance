@@ -30,12 +30,15 @@ class Transactions extends Table {
   TextColumn get status => text().withDefault(const Constant('Confirmed'))();
 
   /// provider: nguồn tạo giao dịch
-  /// Backend values: 'Manual' | 'BankSync' | 'SMS' | 'ORC' | 'Bill'
+  /// Backend values: 'Manual' | 'BankSync' | 'Casso' | 'SMS' | 'OCR' | 'Bill'
+  ///   (danh sách trắng của `sync.validation.js`, nhận `'ORC'` cũ rồi đổi thành
+  ///   `'OCR'`; CSDL dev không có CHECK nào trên cột này — đo 2026-09-11)
   /// Client legacy:  'Manual' | 'Casso'   | 'SMS' | 'OCR'
   ///
   /// ⚠️ **Cột này KHÔNG đi qua đồng bộ theo chiều nào cả**, và **không có mapper
   /// chuẩn hoá nào**. Payload đẩy (`sync_engine.dart`, `_collectPendingOps`)
-  /// gồm 11 trường và không có `provider`; nhánh kéo về cũng không đọc nó. Nên
+  /// gồm 12 trường (đếm bằng máy từ `sync_payload_contract_test.dart`,
+  /// 2026-09-11) và không có `provider`; nhánh kéo về cũng không đọc nó. Nên
   /// mọi hàng client đẩy lên đều nằm trên server với `Provider = 'Manual'`, kể
   /// cả giao dịch do ngân hàng tạo rồi kéo về máy này.
   ///
@@ -43,9 +46,11 @@ class Transactions extends Table {
   /// OCR→ORC". **Hành vi đó chưa bao giờ tồn tại** — đã kiểm ngày 2026-09-04.
   ///
   /// Trước khi thêm cột này vào payload đẩy, đọc `docs/superpowers/backend/
-  /// 2026-09-04-ocr-classify-review.md` mục 7: backend đang có
-  /// `@@unique([provider, bank_tran_id])` **không tách theo tài khoản**, và
-  /// ràng buộc đó hiện chỉ trơ vì client gửi lên toàn NULL.
+  /// DA-XONG/2026-09-04-ocr-classify-review.md` mục 7. Điều kiện chặn ghi ở đó —
+  /// `@@unique([provider, bank_tran_id])` **không tách theo tài khoản**, chỉ trơ
+  /// vì client gửi lên toàn NULL — đã gỡ từ 2026-09-07: `uq_transaction_external`
+  /// nay là `UNIQUE ("Idaccount", "Provider", "Bank_tran_id")` (đo lại
+  /// 2026-09-11). Thêm thì vẫn phải cập nhật `sync_payload_contract_test.dart`.
   TextColumn get provider => text().withDefault(const Constant('Manual'))();
 
   TextColumn   get note    => text().withDefault(const Constant(''))();
@@ -80,7 +85,11 @@ class Transactions extends Table {
   /// billId: hoá đơn mà giao dịch này là khoản trả cho. NULL với mọi giao dịch
   /// thường.
   ///
-  /// ⚠️ **Cột CỤC BỘ — cùng lý do và cùng ràng buộc với [goalId] ở trên.**
+  /// ⚠️ **Cột CỤC BỘ** (đo 2026-09-11). Khác [goalId] ở trên — cột ấy đồng bộ
+  /// từ 2026-09-07 — `billId` chưa đi qua đồng bộ: server đã có
+  /// `transaction.Idbill` (`database/12`, push nhận khoá `idbill`) nhưng client
+  /// chưa gửi và chưa đọc. Khi mở, theo đúng khuôn của [goalId]: tên payload
+  /// `idbill`, nhánh kéo về dùng `Value.absent()` khi server không gửi.
   ///
   /// Vì sao cần: trước đây khoản trả hoá đơn chỉ nhận ra được bằng **tiền tố
   /// ghi chú** (`kGhiChuTraHoaDon`), nên (1) người dùng gõ trùng tiền tố thì bị
@@ -101,8 +110,9 @@ class Transactions extends Table {
   ///
   /// ⚠️ **Bảng này KHÔNG khai `uniqueKeys`**, nên `(provider, bankTranId)`
   /// **không** duy nhất ở SQLite — chú thích cũ hứa như vậy là sai. Phía
-  /// PostgreSQL thì có `uq_transaction_external`, nhưng nó ràng buộc trên
-  /// **toàn bảng** chứ không theo từng tài khoản.
+  /// PostgreSQL thì có `uq_transaction_external`, ràng buộc **theo từng tài
+  /// khoản**: `("Idaccount", "Provider", "Bank_tran_id")` — từ 2026-09-07, đo
+  /// lại 2026-09-11 (trước đó nó ràng buộc trên toàn bảng).
   ///
   /// ⚠️ Cột này cũng **không đi qua đồng bộ theo chiều nào**, giống `provider`.
   /// Hiện chưa nơi nào trong app gán giá trị cho nó, nên nó luôn NULL.

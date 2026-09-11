@@ -108,8 +108,9 @@ void main() {
 
     expect(boDieuKhien.text.length, DoRongCot.tenHoaDon,
         reason: '`bill.Name` là varchar(100). Tên dài hơn vỡ P2000 ở '
-            '/sync/push, backend trả DB_ERROR, và hoá đơn bị gửi lại ở mọi chu '
-            'kỳ đồng bộ mà không một lỗi nào hiện ra.');
+            '/sync/push; backend trả CONSTRAINT_VIOLATION (trước 7675b35 là '
+            'DB_ERROR, gửi lại mãi), nên hoá đơn thành lỗi vĩnh viễn và không '
+            'bao giờ lên server.');
   });
 
   testWidgets('không tràn bố cục ở 411dp', (tester) async {

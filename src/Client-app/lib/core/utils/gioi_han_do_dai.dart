@@ -4,14 +4,18 @@
 ///
 /// `wallet.Name`, `goal.Name`, `bill.Name` là `varchar(100)` và
 /// `category.NameCategory` là `varchar(200)` (đo 2026-09-10 bằng
-/// `information_schema.columns`). Tên dài hơn vỡ `P2000` ở `/sync/push`. Backend
-/// chưa ánh xạ mã ấy nên trả `DB_ERROR`, và `SyncEngine` xếp `DB_ERROR` là lỗi
-/// tạm thời: bản ghi bị gửi lại ở mọi chu kỳ, không lỗi nào hiện ra. Riêng ví
-/// thì server cắt âm thầm còn 100 ký tự rồi kéo bản đã cắt về máy.
+/// `information_schema.columns`). Tên dài hơn vỡ `P2000` ở `/sync/push`. Trước
+/// `7675b35` backend không ánh xạ mã ấy nên trả `DB_ERROR`, mà `SyncEngine` xếp
+/// `DB_ERROR` là lỗi tạm thời: bản ghi bị gửi lại ở mọi chu kỳ, không lỗi nào
+/// hiện ra. Nay `sync.service.js` đưa `22001`/`P2000` về `CONSTRAINT_VIOLATION`
+/// (đọc mã 2026-09-11), mã client xếp **vĩnh viễn**: hết vòng gửi lại, nhưng bản
+/// ghi đứng lỗi hẳn và không bao giờ lên server. Riêng ví thì server cắt âm thầm
+/// còn 100 ký tự rồi kéo bản đã cắt về máy.
 ///
-/// Phía server đã có tài liệu xin
-/// (`docs/superpowers/backend/CAN-LAM/SYNC_PUSH_ERROR_MAPPING.md`). Client vẫn
-/// chặn ở ô nhập, vì đó là chỗ duy nhất người dùng thấy giới hạn lúc đang gõ.
+/// Tài liệu xin phía server (đã đóng):
+/// `docs/superpowers/backend/DA-XONG/SYNC_PUSH_ERROR_MAPPING.md`. Client vẫn
+/// chặn ở ô nhập: đó là chỗ duy nhất người dùng thấy giới hạn lúc đang gõ, và
+/// là cách duy nhất để một tên dài không biến bản ghi thành lỗi vĩnh viễn.
 ///
 /// ## Vì sao không dùng `maxLength`
 ///

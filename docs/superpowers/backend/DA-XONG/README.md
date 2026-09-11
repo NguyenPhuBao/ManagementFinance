@@ -1,6 +1,7 @@
 # DA-XONG — tài liệu backend không còn việc
 
-**Gom lại ngày 2026-09-07.**
+**Gom lại ngày 2026-09-07.** Mục 3 thêm ngày 2026-09-11 (backend viết); mục 1, 2
+và 4 client soát lại cùng ngày.
 
 > Thư mục này **không phải thùng rác**. Mỗi tệp ở đây là lý lẽ đứng sau một
 > quyết định đã đi vào lược đồ hoặc vào mã đang chạy. Khi ai đó hỏi *"vì sao cột
@@ -8,8 +9,8 @@
 > đây chứ không ở chỗ nào khác.
 >
 > Điều duy nhất đã hết là **việc phải làm**. Việc còn lại nằm ở
-> [`../CAN-LAM/README.md`](../CAN-LAM/README.md) — đếm số mục ở **mục 2** của
-> chính README ấy. Dòng này từng ghi "bốn mục, không hơn" và đã lạc hậu từ
+> [`../CAN-LAM/README.md`](../CAN-LAM/README.md) — đếm số mục ở **mục 1** của
+> chính README ấy (từ 2026-09-11; trước đó là mục 2). Dòng này từng ghi "bốn mục, không hơn" và đã lạc hậu từ
 > 2026-09-08 mà không ai thấy (soát lại 2026-09-10); đừng chép con số sang đây.
 
 ---
@@ -28,12 +29,13 @@ Tám tài liệu này chuyển từ `CAN-LAM/` sang đây sau khi client đối 
 | [CATEGORY_GROUP_MEMBERSHIP_SYNC.md](./CATEGORY_GROUP_MEMBERSHIP_SYNC.md) | ❌ **Bãi bỏ, không phải hoàn thành.** Yêu cầu tồn tại chỉ vì danh mục mặc định từng là hàng toàn cục; nay mỗi tài khoản có bản sao riêng nên `Idgroup` là đủ. Bảng đã DROP ở cả hai phía |
 | [2026-09-05-backend-transaction-goal-id.md](./2026-09-05-backend-transaction-goal-id.md) | Cột `transaction.Idgoal` + `fk_transaction_goal` (SET NULL) + `idx_transaction_goal` |
 | [2026-09-05-backend-goal-auto-deposit.md](./2026-09-05-backend-goal-auto-deposit.md) | Cả **ba** cột `auto_deposit_*` lên cùng một lúc, đúng như cảnh báo trong tài liệu |
-| [2026-09-05-backend-goal-priority.md](./2026-09-05-backend-goal-priority.md) | Cột `goal.Priority` đã có. Client **chưa làm** tính năng ưu tiên mục tiêu (tính tới ngày đo 2026-09-07; client làm xong ngày 2026-09-08, schema v19) — nhưng backend không còn gì phải làm, và lối "xin cột trước khi viết mã" đã chứng minh rẻ hơn hai lần "làm trước xin sau". ⚠️ **2026-09-10:** cột thì đúng, nhưng đường đồng bộ ép `null` thành `0` (`Number(null)`), nên mục tiêu chưa sắp nhảy lên đầu — xin sửa ở [`../CAN-LAM/GOAL_PRIORITY_NULL_TO_ZERO.md`](../CAN-LAM/GOAL_PRIORITY_NULL_TO_ZERO.md) |
+| [2026-09-05-backend-goal-priority.md](./2026-09-05-backend-goal-priority.md) | Cột `goal.Priority` đã có. Client **chưa làm** tính năng ưu tiên mục tiêu (tính tới ngày đo 2026-09-07; client làm xong ngày 2026-09-08, schema v19) — nhưng backend không còn gì phải làm, và lối "xin cột trước khi viết mã" đã chứng minh rẻ hơn hai lần "làm trước xin sau". ⚠️ **2026-09-10:** cột thì đúng, nhưng đường đồng bộ ép `null` thành `0` (`Number(null)`), nên mục tiêu chưa sắp nhảy lên đầu — xin sửa ở [`GOAL_PRIORITY_NULL_TO_ZERO.md`](./GOAL_PRIORITY_NULL_TO_ZERO.md). ✅ **2026-09-11:** đã sửa — đẩy lên giữ `null`, `database/12` dọn hàng `<= 0` (hàng 14 mục 2 [`../CAN-LAM/README.md`](../CAN-LAM/README.md)) |
 
 ## 2. Đã xong từ trước, hoặc chỉ để tham khảo lịch sử
 
-Tám tài liệu này vốn nằm ở thư mục cha; gom về đây để thư mục cha chỉ còn bốn
-tệp bối cảnh và hai mục lục.
+Tám tài liệu này vốn nằm ở thư mục cha; gom về đây để thư mục cha chỉ còn tệp
+bối cảnh và mục lục — hôm nay **ba** tệp bối cảnh và **một** mục lục (`README.md`),
+đếm bằng máy 2026-09-11. Dòng này từng ghi "bốn tệp bối cảnh và hai mục lục".
 
 | Tài liệu | Trạng thái |
 |---|---|
@@ -47,6 +49,11 @@ tệp bối cảnh và hai mục lục.
 | [REGISTER_OTP_SPEC.md](./REGISTER_OTP_SPEC.md) | Spec đăng ký có xác thực OTP qua email |
 
 ## 3. Đóng trong đợt backend 2026-09-10 (Hoàn thành 100% 15 tài liệu từ CAN-LAM)
+
+> ⚠️ **Soát 2026-09-11 (client):** tiêu đề và bảng dưới là báo cáo của backend, giữ nguyên
+> văn. Đối chiếu với mã HEAD và CSDL dev: sáu tài liệu xong trọn, bảy còn một phần, hai chưa —
+> trạng thái từng tài liệu ở mục 2 [`../CAN-LAM/README.md`](../CAN-LAM/README.md), việc còn lại
+> ở [`../CAN-LAM/VERIFY_7675B35_REMAINING.md`](../CAN-LAM/VERIFY_7675B35_REMAINING.md).
 
 Mười lăm tài liệu này đã được thực thi hoàn tất, vượt qua 100% các bộ kiểm thử tích hợp (`test_can_lam_fixes.js`, `test_sensitive_note_filter.js`, `test_category_unique_rules.js`, `test_data_security_encryption_and_masking.js`, `test_sync_new_schema.js`) và chuyển từ `CAN-LAM/` sang `DA-XONG/`:
 
@@ -70,14 +77,20 @@ Mười lăm tài liệu này đã được thực thi hoàn tất, vượt qua 
 
 ---
 
-## 3. Hai chỗ dễ đọc nhầm
+## 4. Hai chỗ dễ đọc nhầm
 
-- **"Đã xong" nói về phía backend, không phải phía client.** `goal.Priority` có
-  cột nhưng client chưa dựng màn ưu tiên; `transaction.Idgoal` có cột nhưng
-  client vẫn còn nhánh so **tên** chưa gỡ. Muốn biết client còn nợ gì thì đọc
-  `docs/CLIENT_APP_KNOWN_GAPS.md`, không phải thư mục này.
+- **"Đã xong" nói về phía backend, không phải phía client.** Ví dụ đang mở (đo
+  2026-09-11): server đã có `transaction.Idbill` và bốn cột hoá đơn
+  `Previous_bill_id`, `Period_end`, `Auto_pay`, `Anchor_day`, nhưng các cột tương
+  ứng phía client vẫn **cục bộ**; `category.Color` có nhưng client gửi và đọc
+  sai khoá (`colour` — G24); `transaction.Idgoal` có cột nhưng client vẫn còn
+  nhánh so **tên** chưa gỡ (G18). Dòng này từng lấy `goal.Priority` làm ví dụ —
+  client đã làm xong màn ưu tiên ngày 2026-09-08. Muốn biết client còn nợ gì thì
+  đọc `docs/CLIENT_APP_KNOWN_GAPS.md`, không phải thư mục này.
 
-- **Tài liệu là ảnh chụp tại thời điểm viết.** Trạng thái ở đây đo ngày
-  2026-09-07 trên `localhost:5432/PersonFinance`. Trước khi dựa vào bất kỳ dòng
-  nào, mở `schema.prisma` hoặc truy vấn thẳng CSDL để đối chiếu — đúng nguyên
-  tắc mà `CLAUDE.md` đặt ra cho cả kho này.
+- **Tài liệu là ảnh chụp tại thời điểm viết.** Mục 1 đo ngày 2026-09-07 trên
+  `localhost:5432/PersonFinance`; bảng ở mục 3 là **báo cáo của backend**, client
+  đo lại ngày 2026-09-11 và ghi kết quả ở mục 2 `../CAN-LAM/README.md` — không
+  phải cả mười lăm tài liệu ấy đều hết việc. Trước khi dựa vào bất kỳ dòng nào,
+  mở `schema.prisma` hoặc truy vấn thẳng CSDL để đối chiếu — đúng nguyên tắc mà
+  `CLAUDE.md` đặt ra cho cả kho này.

@@ -1,5 +1,9 @@
 # Rà soát mô-đun OCR & Classify vừa gộp vào `main`
 
+> ⚠️ **2026-09-11 — soát lại sau `7675b35`:** `classifyBatch` và dedup Quy tắc 3 đã sửa;
+> `'ORC'` còn sót ở `sync.repository.js:308` và chú thích; cửa hậu `_mock*` chỉ đóng khi
+> `NODE_ENV=production`. `CAN-LAM/VERIFY_7675B35_REMAINING.md` §2.8.
+
 > ## ✅ Phần Socket.io ĐÃ XONG — 2026-09-07, client đo bằng mã
 >
 > Đây là phần **duy nhất** của tài liệu này từng gây hại thật, và nó đã được

@@ -4,6 +4,11 @@
 hai biểu thức chính quy trong `utils/content-filter.util.js` và thêm bộ test cho
 chúng. **Không migration, không đổi hợp đồng đồng bộ.**
 
+> ✅ **2026-09-11 — soát lại sau `7675b35`:** mục 6.1–6.3 xong — bảng 15 ca chạy đúng 15/15
+> bằng `filterSensitiveNote` thật, kể cả hậu tố `(tự động)` và `Thay pin: 350000`; 8.2 và 8.3
+> xong. Nên phía server của G29 đã hết. **Còn 8.1** (khoá mã hoá rơi về chuỗi viết cứng):
+> `CAN-LAM/VERIFY_7675B35_REMAINING.md` §2.6.
+
 ---
 
 ## 1. Tóm tắt

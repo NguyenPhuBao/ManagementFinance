@@ -1,10 +1,14 @@
 /// Kéo về mục tiêu mang `Priority = 0` thì lưu là chưa sắp — G32.
 ///
-/// Vì sao cần: backend gọi `Number(null)` nên mục tiêu CHƯA sắp được lưu là `0`.
-/// Kéo về y nguyên thì SQLite giữ `0`, và `0` đứng trước mọi số đã sắp — mục
-/// tiêu chưa sắp nhảy lên đầu danh sách trên mọi máy. Đã tái hiện đầu-cuối trên
-/// máy ảo ngày 2026-09-10
-/// (`docs/superpowers/backend/CAN-LAM/GOAL_PRIORITY_NULL_TO_ZERO.md`).
+/// Vì sao cần: backend trước `7675b35` gọi `Number(null)` nên mục tiêu CHƯA sắp
+/// được lưu là `0`. Kéo về y nguyên thì SQLite giữ `0`, và `0` đứng trước mọi số
+/// đã sắp — mục tiêu chưa sắp nhảy lên đầu danh sách trên mọi máy. Đã tái hiện
+/// đầu-cuối trên máy ảo ngày 2026-09-10
+/// (`docs/superpowers/backend/DA-XONG/GOAL_PRIORITY_NULL_TO_ZERO.md`).
+///
+/// Backend đã sửa, và `database/12` dọn các hàng `<= 0` trên CSDL dev (đo
+/// 2026-09-11). Ca này vẫn canh: server chưa áp tệp 12 còn `0`, và bản client
+/// cũ đang giữ `0` cục bộ vẫn có thể đẩy nó lên lại.
 ///
 /// Canh ở tầng LƯU chứ không chỉ ở tầng đọc (`GoalEntity.fromDrift`): SQLite là
 /// thứ được đẩy lại lên server, và là thứ mọi truy vấn trần đọc thẳng.
@@ -131,7 +135,8 @@ void main() {
         reason: 'Cả ba mục tiêu phải được kéo về — thiếu hàng nào là ca test '
             'đang canh sai chỗ.');
     expect(uuTienTheoId[chuaSapBiEp], isNull,
-        reason: 'Server lưu 0 cho mục tiêu chưa sắp vì `Number(null)`. Lưu 0 '
+        reason: 'Server từng lưu 0 cho mục tiêu chưa sắp vì `Number(null)` '
+            '(backend sửa ở `7675b35`, nhưng hàng cũ còn có thể mang 0). Lưu 0 '
             'xuống SQLite là mục tiêu ấy đứng ĐẦU danh sách, và lần sửa kế tiếp '
             'đẩy lại 0 lên server.');
     expect(uuTienTheoId[daSap], 150,

@@ -1,6 +1,7 @@
 # Backend Progress — FlowMoney (Express + Prisma)
 
-> **Bảng trạng thái cập nhật 2026-09-08.** Phần *thân* tài liệu bên dưới vẫn là
+> **Bảng trạng thái cập nhật 2026-09-08** (khối "Việc backend còn lại" cập nhật
+> 2026-09-11). Phần *thân* tài liệu bên dưới vẫn là
 > bản kế hoạch gốc ngày **2026-08-10** và cố ý giữ nguyên: nó là đặc tả B1→B7
 > mà backend đã làm theo, đọc để biết *ý định ban đầu*.
 > Người phụ trách: _(tên thành viên backend)_ ·
@@ -32,10 +33,14 @@ người sau tự đối chiếu thay vì tin bảng này.
 | **B7** | ForgotPassword endpoint | ✅ HOÀN THÀNH | `api/auth.routes.js:37-39` — `/forgot-password`, `/verify-otp`, `/reset-password` |
 
 > **Việc backend còn lại KHÔNG nằm ở tài liệu này.** Cửa vào duy nhất là
-> [`CAN-LAM/README.md`](./CAN-LAM/README.md) mục 2 — hiện **mười lăm** mục
-> (đếm bằng máy 2026-09-10 sau khi thêm mục 13–16 của lượt rà soát CSDL mới;
-> dòng này từng ghi "tám" rồi "mười một", và đã lạc hậu qua ba lần thêm mục mà
-> không ai sửa — đừng chép con số, đếm ở README ấy), không mục nào thuộc B1→B7.
+> [`CAN-LAM/README.md`](./CAN-LAM/README.md) — việc còn phải làm ở **mục 1** của
+> README ấy: hôm nay **hai** tài liệu, mục 17 và 18 (đếm bằng máy 2026-09-11, sau
+> khi gộp `main` @ `cc65f4f`; mười lăm tài liệu cũ đã sang `DA-XONG/`, trạng thái
+> từng cái ở mục 2). Dòng này từng ghi "tám", "mười một" rồi "mười lăm", và đã lạc
+> hậu qua nhiều lần đổi mà không ai sửa — đừng chép con số, đếm ở README ấy.
+> ⚠️ Hai hồi quy của mục 17 chạm vào hạng mục đã xong ở bảng dưới: **A** làm
+> `POST /auth/refresh` (B0) từ chối mọi tài khoản, **B** làm `/sync/push` (B2) từ
+> chối hoàn tác thanh toán hoá đơn.
 
 ---
 

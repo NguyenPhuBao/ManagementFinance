@@ -1,5 +1,10 @@
 # Màu danh mục: client gửi lên mỗi lần đồng bộ, backend không có chỗ để nhận
 
+> ⚠️ **2026-09-11 — cột đã có, màu vẫn chưa đi.** Tệp `database/12` thêm `category.Color`;
+> backend nhận và trả khoá `color`. Client thì gửi và đọc **`colour`** cho danh mục —
+> `categoryForPush` không đổi khoá như `walletForPush` — nên màu không đi theo chiều nào.
+> Lỗi phía client, client tự sửa: `CAN-LAM/VERIFY_7675B35_REMAINING.md` §2.3.
+
 > **Xin đúng một cột.** Không đổi API, không đổi hợp đồng đồng bộ, không cần
 > client sửa gì. Chi phí: một migration cộng hai dòng.
 

@@ -513,7 +513,7 @@ class SyncEngine {
                 // Mở lại cả hai chiều cùng lúc, kèm cập nhật
                 // `sync_payload_contract_test.dart` — G28 ở
                 // `docs/CLIENT_APP_KNOWN_GAPS.md`, và
-                // `docs/superpowers/backend/CAN-LAM/WALLET_STATUS_COLUMN_WIDTH.md`.
+                // `docs/superpowers/backend/DA-XONG/WALLET_STATUS_COLUMN_WIDTH.md`.
                 isDeleted: Value(w['delete_at'] != null),
                 deletedAt: Value(_deletedAtFrom(w['delete_at'])),
                 syncStatus: const Value('synced'),
@@ -895,7 +895,8 @@ class SyncEngine {
                 // nhưng JSON đi qua nhiều tầng và một giá trị `"200"` phải
                 // đọc được. Giá trị rác về `null` — tức "chưa sắp", xếp cuối —
                 // thay vì làm hỏng cả hàng.
-                // `<= 0` là `null` bị backend ép (G32): lưu nguyên thì mục tiêu
+                // `<= 0` là `null` bị backend ép (G32 — backend sửa ở `7675b35`,
+                // nhưng hàng cũ còn có thể mang `0`): lưu nguyên thì mục tiêu
                 // chưa sắp đứng đầu danh sách — xem `uu_tien_hop_le.dart`.
                 priority: Value(uuTienHopLe(
                     int.tryParse(g['priority']?.toString() ?? ''))),
@@ -1169,8 +1170,9 @@ class SyncEngine {
           // thả — công sức bỏ ra, KHÔNG suy lại được, và không có mặc định
           // đúng nào — nên nó phải đi qua đường đồng bộ chứ không được làm
           // cột cục bộ như `auto_deposit_*` từng làm (G21).
-          // `<= 0` về máy từ `Number(null)` của backend (G32). Đẩy lại là giữ
-          // cái sai ấy trên server; gửi `null` để hàng tự lành khi backend sửa.
+          // `<= 0` về máy từ `Number(null)` của backend trước `7675b35` (G32).
+          // Đẩy lại là giữ cái sai ấy trên server; gửi `null` để hàng tự lành —
+          // backend nay giữ `null` khi đẩy (đo 2026-09-11).
           'priority': uuTienHopLe(g.priority),
           'status_complete': g.isCompleted ? 'True' : 'False',
           'recurrence': g.recurrence,
@@ -1633,6 +1635,18 @@ class SyncEngine {
     'CATEGORY_NAME_DUPLICATE',
     'CONSTRAINT_VIOLATION',
     'FORBIDDEN_SYSTEM_DEFAULT',
+    // Ba mã dưới đây đến cùng `7675b35` của backend (2026-09-10). Tập này là
+    // danh sách trắng, nên mã chưa có tên ở đây bị gửi lại mãi — xem
+    // `FIX_BACKEND_3_REGRESSIONS.md` mục 4.
+    //
+    // 23505 trên hai partial unique index của `wallet`; chính client xin tách
+    // thành mã riêng (`WALLET_SAVING_INDEX.md` mục 4.2).
+    'WALLET_NAME_DUPLICATE',
+    'WALLET_DEFAULT_DUPLICATE',
+    // Chốt trả hai lần. Xếp vĩnh viễn chỉ ngăn việc gửi lại vô ích; nó không
+    // làm thao tác bị từ chối chạy được. Chốt từ chối nhầm — như bản `7675b35`
+    // chặn cả hoàn tác thanh toán — thì việc sửa thuộc backend.
+    'BILL_ALREADY_PAID',
   };
 
   /// Khoá ngoại trỏ tới bảng `account` bị vỡ nghĩa là `idaccount` đang dùng

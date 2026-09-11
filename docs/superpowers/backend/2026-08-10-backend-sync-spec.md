@@ -1,7 +1,8 @@
 # Backend Sync Specification — FlowMoney
 
 > Tạo: 2026-08-10  
-> Trạng thái: **📋 CHƯA IMPLEMENT — Xem `PROGRESS-BACKEND.md` để theo dõi tiến độ**
+> Trạng thái: **✅ ĐÃ IMPLEMENT** (đo 2026-09-11 bằng mã `src/Backend`; dòng này ghi "📋 CHƯA IMPLEMENT" tới hôm ấy, lạc hậu gần một tháng). Backend là **Express 4 + Prisma**, không phải NestJS như sơ đồ dưới: `POST /api/sync/push`, `GET /api/sync/pull`, `GET /api/sync/status` (`api/sync.routes.js` → `modules/sync/`), thêm `GET /api/sync/default-categories` ngoài spec. Bảng B1→B7: `PROGRESS-BACKEND.md`.
+> ⚠️ Thân tài liệu là **kế hoạch gốc**: tên bảng/cột SQL ở mục 2 và 6 **không** phải lược đồ đang chạy — lược đồ chuẩn là `docs/Rule_Project/New_Database.md` và `src/Backend/prisma/schema.prisma`; tên trường giữa hai phía chỉ tin `src/Client-app/test/core/sync/sync_payload_contract_test.dart`.
 
 ---
 

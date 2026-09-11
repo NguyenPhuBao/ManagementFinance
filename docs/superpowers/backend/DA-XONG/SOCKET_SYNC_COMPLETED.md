@@ -1,5 +1,10 @@
 # `sync.completed` đã có trên EventBus nhưng chưa ai bắc ra socket
 
+> ✅ **2026-09-11 — đã bắc:** `sync.service.js:223` → `notification.service.js:79-90` →
+> `core/socket.js:203-215`, phòng `account_<id>`, payload `{summary, timestamp}`. Nhưng chưa tới
+> được client: bắt tay socket từ chối mọi tài khoản (`CAN-LAM/FIX_BACKEND_3_REGRESSIONS.md`
+> mục A). Worker ngân hàng **không** phát sự kiện này.
+
 > **Xin thêm một listener.** Không đổi API, không đổi lược đồ, không đổi hợp
 > đồng đồng bộ, không cần migration. Chi phí: một khối `eventBus.subscribe`
 > theo đúng khuôn ba khối đang có, cộng một hàm `emit` bốn dòng.

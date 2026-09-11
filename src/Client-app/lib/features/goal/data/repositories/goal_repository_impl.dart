@@ -42,8 +42,9 @@ class GoalRepositoryImpl implements GoalRepository {
   /// Không phải để cho gọn danh sách. `TransactionDao.watchByGoal` nối lịch sử
   /// tích luỹ bằng `goalId` cho hàng mới, nhưng vẫn giữ **nhánh dự phòng** tra
   /// bằng `LIKE` trên ghi chú `"Tích lũy mục tiêu: <tên>"` — nhánh ấy là thứ
-  /// duy nhất tìm lại được hàng do bản app cũ tạo và hàng kéo về từ server
-  /// (cột `goalId` là cục bộ nên server không bao giờ trả nó về). Hai mục tiêu
+  /// duy nhất tìm lại được hàng do bản app cũ tạo và hàng cũ kéo về từ server
+  /// (`goalId` đồng bộ từ 2026-09-07, nhưng hàng tạo trước đó trên server vẫn
+  /// mang `Idgoal = NULL` — G18). Hai mục tiêu
   /// trùng tên thì cả hai cùng nhận vơ đúng những hàng ấy.
   ///
   /// ## Ba lựa chọn đã chốt, giống hệt danh mục
