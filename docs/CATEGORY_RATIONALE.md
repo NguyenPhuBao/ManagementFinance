@@ -6,7 +6,7 @@
 > **bằng chứng đo được**, và **những phương án đã cân nhắc rồi loại bỏ** — đó là
 > phần dễ mất nhất khi người khác đọc lại đoạn mã sau này.
 
-**Ngày:** 2026-09-03 · **Phạm vi:** `src/Client-app` · **Commit:** `6b93ee8`, `0f8a820`, `d2cea8c`, `e7c7a44`, `103d381` · **Cập nhật:** 2026-09-07 (thay đổi 5), 2026-09-10 (thay đổi 6)
+**Ngày:** 2026-09-03 · **Phạm vi:** `src/Client-app` · **Commit:** `6b93ee8`, `0f8a820`, `d2cea8c`, `e7c7a44`, `103d381` · **Cập nhật:** 2026-09-07 (thay đổi 5), 2026-09-10 (thay đổi 6), 2026-09-11 (trạng thái G24, G31 và mục 8 sau khi gộp `main` @ `cc65f4f`)
 
 ---
 
@@ -21,7 +21,7 @@ Sáu thay đổi, mỗi cái do một lỗi **có thật** buộc phải làm �
 | Bộ danh mục mặc định khớp đúng 13 mục của backend; 5 mục thừa thành danh mục cá nhân | Hai phía chỉ khớp **10/18** tên, khiến giao dịch dùng 8 mục còn lại **không bao giờ đẩy lên được** |
 | ✅ *(backend làm xong 2026-09-07)* ID cố định cho danh mục mặc định | Nguyên nhân gốc của cả bốn lỗi 11.3–11.6 |
 | Bản sao riêng của bộ mặc định cho từng tài khoản; hàng toàn cục lui về làm khuôn (2026-09-07) | Hàng mặc định dùng chung nên người dùng không sửa, đổi tên hay xoá được; bảng phụ `CategoryGroupMemberships` tồn tại chỉ vì thế (G10) |
-| Tên danh mục dừng ở 200 code point (2026-09-10) | `NameCategory` là `varchar(200)`; tên dài hơn vỡ `P2000`, rơi xuống `DB_ERROR`, và bị gửi lại ở mọi chu kỳ đồng bộ (G31) |
+| Tên danh mục dừng ở 200 code point (2026-09-10) | `NameCategory` là `varchar(200)`; tên dài hơn vỡ `P2000`, rơi xuống `DB_ERROR`, và bị gửi lại ở mọi chu kỳ đồng bộ (G31). ✅ 2026-09-11: backend nay trả `CONSTRAINT_VIOLATION` nên hết gửi lại mãi, nhưng bản ghi kẹt vĩnh viễn — giới hạn ô nhập vẫn cần |
 
 Kết quả **đo ngay sau đợt ấy** (2026-09-03): `flutter test` từ **144 → 180 test**, `flutter analyze` **29 issue, không error**. Đây là con số *lịch sử của đợt này*, không phải mức nền hôm nay — mức nền hiện tại nằm ở `CLAUDE.md`.
 
@@ -187,7 +187,9 @@ riêng gỡ được điều đó, và kéo theo hai thứ miễn phí:
   không phải làm gì.**
 - **Lỗ hổng phân quyền của `appendCategoryKeyword()` hẹp bán kính lại**: phản
   hồi phân loại không còn ghi vào hàng mọi người cùng đọc. Nó **chưa được vá** —
-  xem `CATEGORY_KEYWORD_SYNC.md`.
+  xem `CATEGORY_KEYWORD_SYNC.md`. ✅ *Đo lại 2026-09-11:* đã vá trong đợt backend
+  2026-09-07 — kiểm `is_default` + `create_by`, trả 403
+  (`classify.repository.js:75-76`).
 
 ### Chỗ dễ làm hỏng nhất
 
@@ -205,8 +207,17 @@ vĩnh viễn.
   đúng 13 stable UUID, **xoá mềm** 5 hàng `Chi khác`, `Thu khác`, `Làm thêm`,
   `Trả nợ`, `Thu nợ`. Server nay có **13 hàng sống + 5 hàng đã xoá mềm**; máy
   nào đã pull 5 hàng ấy sẽ nhận cờ xoá ở lượt pull sau.
-- **Màu không theo được.** Bảng `category` không có cột màu, nên màu của bản sao
-  chỉ sống trên máy đã tạo. Tài liệu xin: `CATEGORY_COLOUR_COLUMN.md`.
+- **Màu không theo được.** Ngày 2026-09-07 bảng `category` không có cột màu, nên
+  màu của bản sao chỉ sống trên máy đã tạo. Tài liệu xin:
+  `DA-XONG/CATEGORY_COLOUR_COLUMN.md`.
+  ⚠️ **2026-09-11 — lý do đã đổi, hậu quả thì chưa.** Sau khi gộp `main` @
+  `cc65f4f` server **có** cột `category.Color` (`varchar(9)`), `/sync/push` nhận
+  và `/sync/pull` trả khoá **`color`**. Nhưng client đẩy danh mục bằng khoá
+  **`colour`** (`categoryForPush` không đổi tên khoá — chỉ `walletForPush` đổi) và
+  nhánh kéo về đọc `c['colour']`, nên màu **vẫn không đi theo chiều nào**, im
+  lặng. Nay là lỗi **phía client**, sửa được, chưa sửa — **G24**
+  `docs/CLIENT_APP_KNOWN_GAPS.md`; chi tiết mục 2.3
+  `docs/superpowers/backend/CAN-LAM/VERIFY_7675B35_REMAINING.md`.
 
 Thiết kế đầy đủ:
 `docs/superpowers/specs/2026-09-07-per-account-default-categories-design.md`.
@@ -224,6 +235,12 @@ hạn gì, còn `upsertCategory` phía backend không cắt chuỗi. Tên dài h
 `DB_ERROR` là lỗi tạm thời — danh mục bị gửi lại ở mọi chu kỳ đồng bộ, không lỗi
 nào hiện ra. Nhóm danh mục cũng là một hàng `category`, nên màn Nhóm là đường
 ghi thứ hai vào đúng cột ấy. **G31** `docs/CLIENT_APP_KNOWN_GAPS.md`.
+
+✅ **2026-09-11 — vế server đã đóng.** Sau khi gộp `main` @ `cc65f4f`,
+`sync.service.js` ánh xạ `22001`/`P2000` về `CONSTRAINT_VIOLATION` — mã client xếp
+vĩnh viễn — nên danh mục tên quá dài không còn bị gửi lại mãi. Bộ lọc ô nhập
+**vẫn cần**: không có nó, bản ghi ấy kẹt vĩnh viễn và không bao giờ lên server.
+Đoạn trên giữ nguyên làm hồ sơ của lý do.
 
 ### Vì sao đếm code point, không dùng `maxLength`
 
@@ -273,6 +290,15 @@ Cũng trong đợt này, ba lần test đỏ hoá ra là **fixture sai chứ kh�
 ---
 
 ## 8. Cái gì còn phụ thuộc backend
+
+> ✅ **Cả bốn tài liệu dưới đây đã đóng ngày 2026-09-07** và nay nằm ở
+> `docs/superpowers/backend/DA-XONG/` (ghi chú *đóng bằng cách nào* ở mục 1 README
+> của thư mục ấy): hai partial unique index `uq_category_owner_name` /
+> `uq_category_default_name` thi hành đúng quy tắc của client và có `WHERE
+> "Delete_at" IS NULL`, nên "xoá rồi tạo lại cùng tên" không còn bị từ chối; 13
+> UUID cố định; lỗ hổng từ khoá bịt bằng 403; bảng nhóm bãi bỏ. Đoạn và bảng dưới
+> là ảnh chụp ngày 2026-09-03. Đo lại 2026-09-11: vùng danh mục **không còn việc
+> nào chờ backend** — màu danh mục là lỗi phía client (G24, mục 5b).
 
 Quy tắc hiện **chỉ được client thi hành**. Admin-web và mọi đường ghi khác vẫn tạo được dữ liệu vi phạm, và trường hợp "xoá rồi tạo lại cùng tên" vẫn bị CSDL từ chối khi đẩy lên — **hỏng âm thầm**.
 

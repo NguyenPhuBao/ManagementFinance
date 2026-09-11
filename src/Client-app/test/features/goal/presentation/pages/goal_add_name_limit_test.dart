@@ -186,8 +186,9 @@ void main() {
 
       expect(boDieuKhien.text.length, DoRongCot.tenMucTieu,
           reason: '`goal.Name` là varchar(100) và `upsertGoal` không cắt chuỗi. '
-              'Tên dài hơn vỡ P2000 ở /sync/push, backend trả DB_ERROR, và mục '
-              'tiêu bị gửi lại ở mọi chu kỳ đồng bộ mà không lỗi nào hiện ra.');
+              'Tên dài hơn vỡ P2000 ở /sync/push; backend trả '
+              'CONSTRAINT_VIOLATION (trước 7675b35 là DB_ERROR, gửi lại mãi), '
+              'nên mục tiêu thành lỗi vĩnh viễn và không bao giờ lên server.');
     } finally {
       debugNetworkImageHttpClientProvider = null;
     }

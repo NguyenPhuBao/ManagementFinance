@@ -37,7 +37,8 @@ void main() {
 
     test('hàng kéo từ server không có goalId thì nhận theo tiền tố ghi chú',
         () {
-      // `goal_id` là cột cục bộ, không đi qua đồng bộ — máy khác chỉ còn ghi chú.
+      // Hàng cũ trên server mang `Idgoal = NULL` (goal_id đồng bộ từ 2026-09-07,
+      // hàng tạo trước đó thì chưa) — máy khác chỉ còn ghi chú.
       expect(transactionOwnerOf(tx(note: 'Tích lũy mục tiêu: MuaXe')),
           TransactionOwner.goal);
       expect(transactionOwnerOf(tx(note: 'Rút từ mục tiêu: MuaXe')),

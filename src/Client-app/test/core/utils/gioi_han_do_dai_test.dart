@@ -1,10 +1,13 @@
 /// Giới hạn độ dài tên cho khớp độ rộng cột trên PostgreSQL — G31.
 ///
 /// Vì sao cần: `wallet.Name`, `goal.Name`, `bill.Name` là `varchar(100)` và
-/// `category.NameCategory` là `varchar(200)`. Form client không giới hạn gì,
-/// nên một tên dài hơn vỡ `P2000` ở `/sync/push`, backend trả `DB_ERROR`, và
-/// `SyncEngine` xếp mã ấy là lỗi TẠM THỜI — gửi lại bản ghi ở mọi chu kỳ, kéo
-/// giãn cách luỹ tiến lên cả hàng đợi, không một lỗi nào hiện ra.
+/// `category.NameCategory` là `varchar(200)`. Trước bộ lọc này form client không
+/// giới hạn gì, nên một tên dài hơn vỡ `P2000` ở `/sync/push`; backend khi ấy
+/// trả `DB_ERROR`, và `SyncEngine` xếp mã ấy là lỗi TẠM THỜI — gửi lại bản ghi ở
+/// mọi chu kỳ, kéo giãn cách luỹ tiến lên cả hàng đợi, không một lỗi nào hiện
+/// ra. Từ `7675b35` backend trả `CONSTRAINT_VIOLATION` (đọc mã 2026-09-11): hết
+/// gửi lại, nhưng bản ghi thành lỗi vĩnh viễn và không lên server — nên vẫn
+/// phải chặn ở ô nhập.
 ///
 /// Vì sao đếm theo CODE POINT chứ không theo ký tự nhìn thấy: PostgreSQL đếm
 /// `varchar(n)` theo code point, còn `maxLength` của Flutter đếm theo cụm

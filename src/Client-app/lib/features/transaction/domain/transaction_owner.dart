@@ -20,7 +20,8 @@ const String kGhiChuNapMucTieuCu = 'Tích lũy nhận từ ';
 
 TransactionOwner transactionOwnerOf(TransactionEntity transaction) {
   if (transaction.goalId != null) return TransactionOwner.goal;
-  // `goal_id` là cột cục bộ: hàng kéo từ server chỉ còn ghi chú để nhận ra.
+  // `goal_id` đồng bộ từ 2026-09-07, nhưng hàng cũ trên server vẫn mang NULL
+  // (G18) — với chúng, ghi chú là dấu hiệu duy nhất để nhận ra.
   // So TIỀN TỐ, không so "chứa", để ghi chú người dùng gõ không bị nhận nhầm.
   final note = transaction.note;
   if (note.startsWith(kGhiChuNapMucTieu) ||

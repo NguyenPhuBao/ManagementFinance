@@ -1,8 +1,9 @@
 # Mục tiêu tiết kiệm — thiết kế, lý do, và những cái bẫy
 
-**Cập nhật:** 2026-09-09
+**Cập nhật:** 2026-09-11 (mục 3.22 và mục 8 — G32 đóng sau khi gộp `main` @ `cc65f4f`)
 **Trạng thái:** hoạt động đầy đủ trên client. **Không còn việc nào chờ backend**
-(cập nhật 2026-09-07 — xem mục 8).
+(đo lại 2026-09-11 — xem mục 8; từ 2026-09-10 tới lúc ấy câu này mâu thuẫn với
+G32 ghi ở chính mục 8).
 
 Mục **10** là đối chiếu với app khác trên thị trường: cái gì FlowMoney đã mạnh
 hơn (và không nên "sửa"), cái gì còn thiếu, xếp hạng kèm lý do.
@@ -729,6 +730,14 @@ khác: client gửi `priority: null`, `mapEntityFields('goal')` phía backend g�
 về như chưa sắp mà không đoán nhầm — và từ cùng ngày client **làm đúng thế**, ở
 cả ba ranh giới đọc, lưu kéo về, đẩy lên: `goal/domain/uu_tien_hop_le.dart`.
 
+✅ **2026-09-11 — G32 đóng phía server.** Sau khi gộp `main` @ `cc65f4f`, nhánh
+đẩy giữ `null` (`sync.repository.js:124`) và nhánh tạo mặc định `null` (`:515`);
+`database/12` đã đưa các hàng `<= 0` trên CSDL dev về `NULL`. Lớp chặn ở
+`uu_tien_hop_le.dart` **giữ nguyên** làm phòng thủ cho dữ liệu cũ và bản client
+cài trước ngày ấy. Và vì PostgreSQL **không có CHECK nào** cho `Priority` (tài
+liệu backend ghi có là sai), server vẫn nhận `0` và số âm nếu có ai gửi lên —
+quy ước "`priority` luôn dương" ở trên chỉ được thi hành ở client.
+
 **Khe hở còn lại, chấp nhận được:** hai máy cùng sắp lại khi ngoại tuyến thì
 LWW phân xử **theo từng hàng**, không theo cả danh sách, nên kết quả có thể là
 một thứ tự trộn giữa hai lần sắp. Không hàng nào sai, nhưng tổng thể không
@@ -1185,7 +1194,7 @@ gộp chung một đợt migration — đúng như đề nghị.
 |---|---|---|
 | `2026-09-05-backend-transaction-goal-id.md` | `transaction.Idgoal` | ✅ **Xong 2026-09-07** — cột đã có, client đẩy `idgoal` và đọc lại. Nhánh so **tên** vẫn giữ cho hàng cũ trên server (đều `NULL`), teo dần — **G18** |
 | `2026-09-05-backend-goal-auto-deposit.md` | Ba cột `auto_deposit_*` | ✅ **Xong 2026-09-07** — backend có cột, client đẩy và kéo cả ba. **G21 đóng** |
-| `2026-09-05-backend-goal-priority.md` | `goal.Priority` | ✅ **Đóng trọn 2026-09-08.** Cột có từ 2026-09-07, client nhận ở schema v19 và đẩy/kéo `priority`. Quy ước giá trị ở mục 4 của tài liệu ấy vẫn là nguồn duy nhất — mục **3.22** chỉ nhắc lại. ⚠️ **2026-09-10:** backend ép `null` thành `0` trên đường đồng bộ nên mục tiêu chưa sắp nhảy lên đầu — **G32**, xin sửa ở `DA-XONG/GOAL_PRIORITY_NULL_TO_ZERO.md` |
+| `2026-09-05-backend-goal-priority.md` | `goal.Priority` | ✅ **Đóng trọn 2026-09-08.** Cột có từ 2026-09-07, client nhận ở schema v19 và đẩy/kéo `priority`. Quy ước giá trị ở mục 4 của tài liệu ấy vẫn là nguồn duy nhất — mục **3.22** chỉ nhắc lại. ⚠️ **2026-09-10:** backend ép `null` thành `0` trên đường đồng bộ nên mục tiêu chưa sắp nhảy lên đầu — **G32**, xin sửa ở `DA-XONG/GOAL_PRIORITY_NULL_TO_ZERO.md`. ✅ **2026-09-11:** backend giữ `null` sau khi gộp `main` @ `cc65f4f` và CSDL dev đã dọn hàng `<= 0` — **G32 đóng** (mục 3.22) |
 
 Hai tài liệu đầu **không chặn gì hôm nay**; cái đầu chặn hướng bỏ bộ đếm
 `current_amount` để suy tiến độ từ chính giao dịch.

@@ -895,7 +895,8 @@ class SyncEngine {
                 // nhưng JSON đi qua nhiều tầng và một giá trị `"200"` phải
                 // đọc được. Giá trị rác về `null` — tức "chưa sắp", xếp cuối —
                 // thay vì làm hỏng cả hàng.
-                // `<= 0` là `null` bị backend ép (G32): lưu nguyên thì mục tiêu
+                // `<= 0` là `null` bị backend ép (G32 — backend sửa ở `7675b35`,
+                // nhưng hàng cũ còn có thể mang `0`): lưu nguyên thì mục tiêu
                 // chưa sắp đứng đầu danh sách — xem `uu_tien_hop_le.dart`.
                 priority: Value(uuTienHopLe(
                     int.tryParse(g['priority']?.toString() ?? ''))),
@@ -1169,8 +1170,9 @@ class SyncEngine {
           // thả — công sức bỏ ra, KHÔNG suy lại được, và không có mặc định
           // đúng nào — nên nó phải đi qua đường đồng bộ chứ không được làm
           // cột cục bộ như `auto_deposit_*` từng làm (G21).
-          // `<= 0` về máy từ `Number(null)` của backend (G32). Đẩy lại là giữ
-          // cái sai ấy trên server; gửi `null` để hàng tự lành khi backend sửa.
+          // `<= 0` về máy từ `Number(null)` của backend trước `7675b35` (G32).
+          // Đẩy lại là giữ cái sai ấy trên server; gửi `null` để hàng tự lành —
+          // backend nay giữ `null` khi đẩy (đo 2026-09-11).
           'priority': uuTienHopLe(g.priority),
           'status_complete': g.isCompleted ? 'True' : 'False',
           'recurrence': g.recurrence,

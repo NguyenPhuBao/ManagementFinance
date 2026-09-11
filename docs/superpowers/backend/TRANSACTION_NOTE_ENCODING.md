@@ -1,6 +1,6 @@
 # Client mã hoá ý nghĩa vào `transaction.Note` — đừng vô tình phá
 
-**Thêm 2026-09-08.** Đây **không phải một việc cần backend làm.** Không xin cột
+**Thêm 2026-09-08; cập nhật 2026-09-11 (mục 3).** Đây **không phải một việc cần backend làm.** Không xin cột
 mới, không xin migration, không xin đổi endpoint. Tài liệu này tồn tại vì phía
 client đang gửi lên một quy ước mà nhìn vào lược đồ **không thấy được**, và
 người đọc dữ liệu ở đầu bên kia — Admin-web, truy vấn báo cáo, một lần dọn dữ
@@ -58,6 +58,16 @@ sai. Đó là lý do quy ước này chấp nhận được — không phải v�
 > bộ ấy. Tái hiện đầu-cuối và việc xin sửa:
 > [`DA-XONG/SYNC_NOTE_FILTER_REWRITE.md`](./DA-XONG/SYNC_NOTE_FILTER_REWRITE.md).
 > Tài liệu này vẫn "không xin gì" — việc xin nằm ở tệp kia.
+>
+> ✅ **2026-09-11 — vi phạm ấy đã hết, theo mã.** Sau khi gộp `main` @ `cc65f4f`,
+> bộ lọc viết lại (Luhn + khuôn số thẻ, "mật khẩu"/"password" chỉ khớp khi có
+> `:`/`=`, bỏ "pin" — `utils/content-filter.util.js`) chạy đúng cả 15 ca của tài
+> liệu kia khi thử bằng chính hàm ấy, kể cả chuỗi `(tự động)` ở trên. Chưa kiểm
+> đầu-cuối. Còn hai chỗ nên biết: tên mục tiêu **tự gõ** có dạng `password: …` vẫn
+> bị lọc (chấp nhận được); và `Note` nay được **mã hoá** khi ghi, mà `decrypt()`
+> hỏng thì trả nguyên chuỗi `enc:…` — đổi khoá mã hoá mà không mã hoá lại dữ liệu
+> cũ thì tiền tố/hậu tố ở mục 1 không còn đọc được ở lượt kéo về (mục 2.6
+> [`CAN-LAM/VERIFY_7675B35_REMAINING.md`](./CAN-LAM/VERIFY_7675B35_REMAINING.md)).
 
 **Ba điều, tất cả đều là "đừng làm", không phải "hãy làm":**
 

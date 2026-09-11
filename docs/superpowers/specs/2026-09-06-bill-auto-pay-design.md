@@ -1,11 +1,14 @@
 # Thiết kế: tự động thanh toán hoá đơn (client, schema v17)
 
-> **Trạng thái: ĐÃ THI CÔNG** (soát lại 2026-09-08) —
+> **Trạng thái: ĐÃ THI CÔNG** (soát lại 2026-09-08; phía server đo lại 2026-09-11) —
 > `lib/features/bill/domain/bill_auto_pay.dart` +
 > `bill_auto_pay_runner.dart`, cột `autoPayEnabled` ở
 > `lib/core/database/tables/other_tables.dart:174`.
-> ⚠️ Cột ấy vẫn là **cục bộ**: hai máy cùng bật là hai khoản chi. Việc backend
-> tương ứng nằm ở `CAN-LAM/README.md` mục 2.
+> ⚠️ Cột ấy vẫn là **cục bộ**: hai máy cùng bật là hai khoản chi. Phía server
+> (đo 2026-09-11, sau khi gộp `main` @ `cc65f4f`): cột `bill.Auto_pay` **đã có**
+> và `/sync/push`, `/sync/pull` mang khoá `auto_pay`, nhưng client chưa gửi/đọc;
+> còn chốt chống trả hai lần đặt **sai chỗ** — nó chặn hoàn tác mà không chặn
+> được khoản chi thứ hai (mục 17 B, `docs/superpowers/backend/CAN-LAM/README.md`).
 
 **Ngày:** 2026-09-06 · **Phạm vi:** `src/Client-app` · **Tiền lệ:** trích tiền
 tự động của mục tiêu (mục 3.12–3.14 `docs/GOAL_FEATURE.md`, schema v15).
@@ -112,6 +115,10 @@ thân câu cho hoá đơn bật tự trả: "*tên* đến hạn hôm nay. Mở 
   — cột `bill.Auto_pay` (bool) để cấu hình đồng bộ, và chốt chặn ở
   `/sync/push`: từ chối giao dịch thứ hai mang cùng `Idbill` khi cột đó có
   (phụ thuộc việc A).
+  ⚠️ *2026-09-11:* cột `bill.Auto_pay` và `transaction.Idbill` (việc A) đã có ở
+  server, nhưng chốt lại nằm ở `upsertBill` (từ chối `'Payed'` → trạng thái khác)
+  thay vì ở giao dịch mang cùng `Idbill` — nên hai khoản chi **vẫn** lọt, và hoàn
+  tác một lần trả đã đồng bộ bị từ chối (`BILL_ALREADY_PAID`). CAN-LAM 17 B.
 
 ## 8. Kiểm thử (viết trước)
 

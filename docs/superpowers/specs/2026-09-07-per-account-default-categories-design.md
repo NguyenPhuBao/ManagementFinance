@@ -266,7 +266,9 @@ khi client thật sự có thay đổi, hay hợp nhất hai danh sách trước
 (lỗ hổng ở mục 4 `CATEGORY_KEYWORD_SYNC.md`), nên phản hồi trên một danh mục
 **mặc định** hiện ghi vào hàng **mọi người cùng đọc**. Sau thay đổi này người
 dùng không còn dùng hàng mặc định nữa, nên bán kính của lỗ hổng ấy **hẹp lại** —
-nhưng nó **chưa được vá**, và tài liệu backend vẫn phải làm.
+nhưng nó **chưa được vá**, và tài liệu backend vẫn phải làm. ✅ *Đo lại
+2026-09-11:* đã vá trong đợt backend 2026-09-07 — kiểm `is_default` + `create_by`,
+trả 403 (`classify.repository.js:75-76`).
 
 `_gieoTuKhoaKhiTrong` chỉ gieo khi danh mục **chưa có** từ khoá nào, nên nó
 không đè lên thứ người dùng đã tự sửa. Đường chép ở bước seed phải giữ đúng tính
@@ -288,6 +290,16 @@ gỡ được ở client** vì không có cột để ghi vào.
 phạm vi spec. Ghi lại vì nó sẽ lộ ra ngay khi ai đó kiểm "bản sao có giống bản
 mặc định không" trên máy thứ hai. Muốn sửa thì cần một tài liệu xin backend thêm
 cột — chưa viết.
+
+> ⚠️ **2026-09-11 — hai vế của đoạn trên đã đổi, hậu quả thì chưa.** Tài liệu xin
+> cột đã viết (`docs/superpowers/backend/DA-XONG/CATEGORY_COLOUR_COLUMN.md`), và
+> sau khi gộp `main` @ `cc65f4f` server **có** cột `category.Color`
+> (`varchar(9)`); `/sync/push` nhận và `/sync/pull` trả khoá **`color`**. Nhưng
+> client vẫn đẩy `colour` và kéo về đọc `c['colour']`, nên màu danh mục **vẫn không
+> đi theo chiều nào**. Câu "không gỡ được ở client" nay sai: đổi khoá ở
+> `categoryForPush`, đọc `color` ở nhánh kéo về và cập nhật
+> `sync_payload_contract_test.dart` cùng lúc là đủ — **G24**, lỗi phía client, sửa
+> được, chưa sửa.
 
 ## 11. Danh mục mặc định thêm về sau
 

@@ -122,10 +122,12 @@ class _BudgetFormState extends State<BudgetForm> {
         text: b == null ? '' : b.amount.round().toString());
     _thresholdController = TextEditingController(
         text: b?.thresholdWarningAmount?.round().toString() ?? '');
-    // 0 không phải ngưỡng người dùng đặt: backend điền `0` cho ô để trống
+    // 0 không phải ngưỡng người dùng đặt: backend từng điền `0` cho ô để trống
     // (`@default(0)` + `?? 0` ở nhánh tạo của `upsertBudget`) và pull mang
-    // nó về. Điền "0" vào ô thì validator 1–100 khoá luôn form — không sửa
-    // được gì ở ngân sách ấy nữa. Cùng cách hiểu với `BudgetEntity.warningRatio`.
+    // nó về. Mã backend bỏ cả hai ở `7675b35`, nhưng CSDL dev vẫn `DEFAULT 0`
+    // và hàng cũ còn 0 (đo 2026-09-11). Điền "0" vào ô thì validator 1–100 khoá
+    // luôn form — không sửa được gì ở ngân sách ấy nữa. Cùng cách hiểu với
+    // `BudgetEntity.warningRatio`.
     final percent = b?.thresholdWarningPercent;
     _thresholdPercentController = TextEditingController(
         text: percent == null || percent <= 0 ? '' : percent.round().toString());

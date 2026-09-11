@@ -148,8 +148,10 @@ class Bills extends Table {
   /// generatedFromBillId: hoá đơn kỳ TRƯỚC, khi hàng này được sinh ra lúc trả
   /// hoá đơn ấy. NULL với mọi hoá đơn do người dùng tự tạo.
   ///
-  /// ⚠️ **Cột CỤC BỘ — không nằm trong hợp đồng đồng bộ**, cùng lý do với
-  /// `transactions.goalId`/`transactions.billId`.
+  /// ⚠️ **Cột CỤC BỘ — không nằm trong hợp đồng đồng bộ**, như
+  /// `transactions.billId` (còn `transactions.goalId` thì đồng bộ từ 2026-09-07).
+  /// Server đã có `bill.Previous_bill_id` (khoá `previous_bill_id`, đọc mã
+  /// 2026-09-11); client chưa gửi và chưa đọc.
   ///
   /// Vì sao cần: **hoàn tác thanh toán** phải gỡ luôn kỳ kế tiếp mà lần trả đã
   /// sinh ra, nếu không người dùng còn lại hai kỳ cùng mở và trả lại lần nữa
@@ -161,12 +163,18 @@ class Bills extends Table {
   /// từ chính [walletId] của nó (DB v17, 2026-09-06).
   ///
   /// ⚠️ **Cột CỤC BỘ — không nằm trong hợp đồng đồng bộ**, cùng khuôn với
-  /// `generatedFromBillId` và ba cột trích tự động của `Goals`. Hệ quả chấp
+  /// `generatedFromBillId` (ba cột trích tự động của `Goals` từng cùng khuôn,
+  /// nhưng đã đồng bộ từ 2026-09-07 — G21). Hệ quả chấp
   /// nhận có chủ ý: cấu hình không theo người dùng sang máy khác — và đó cũng
   /// là lý do KHÔNG mượn một cột đang có: hai máy cùng bật, cùng offline, cùng
   /// trả một kỳ là hai khoản chi trừ hai ví, cờ đã trả đồng bộ theo LWW không
-  /// chặn được. Xin cột phía backend ở việc D của
-  /// `2026-09-06-bill-chuoi-ky-va-an-han.md`.
+  /// chặn được. Tài liệu xin cột (việc D, đã đóng):
+  /// `docs/superpowers/backend/DA-XONG/2026-09-06-bill-chuoi-ky-va-an-han.md`.
+  /// Server nay có `bill.Auto_pay` (khoá `auto_pay`, cả push lẫn pull — đọc mã
+  /// 2026-09-11), nhưng client chưa gửi/đọc nên cột này vẫn cục bộ. Chốt chống
+  /// trả hai lần phía server chưa dùng được: bản `7675b35` đặt nó ở `upsertBill`
+  /// và chặn cả hoàn tác, còn `upsertTransaction` không kiểm `Idbill` (CAN-LAM
+  /// mục 17 B).
   ///
   /// Không có cột "lần chạy cuối" như mục tiêu: mỗi kỳ hoá đơn là **một hàng
   /// riêng**, nên cờ đã trả (`isPaid`/`payStatus`) chính là chốt chống trả hai
@@ -190,7 +198,9 @@ class Bills extends Table {
   /// `autoPayEnabled` và `generatedFromBillId`. Hàng kéo từ server luôn để
   /// trống, và khi trống thì `nextBillDueDate` neo vào ngày của chính mốc hiện
   /// tại — tức chuỗi tạo trên máy khác vẫn có thể tụt dần. Tài liệu xin cột
-  /// phía backend: `docs/superpowers/backend/DA-XONG/BILL_ANCHOR_DAY.md`.
+  /// phía backend (đã đóng): `docs/superpowers/backend/DA-XONG/BILL_ANCHOR_DAY.md`
+  /// — server nay có `bill.Anchor_day` (khoá `anchor_day`, đọc mã 2026-09-11);
+  /// việc còn lại là client gửi và đọc nó.
   ///
   /// NULL với mọi hoá đơn tạo trước v18; migration suy nó từ ngày đến hạn đang
   /// lưu để **không đổi hạn** của hoá đơn cũ.

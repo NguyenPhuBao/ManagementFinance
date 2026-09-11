@@ -1257,12 +1257,15 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   final String status;
 
   /// provider: nguồn tạo giao dịch
-  /// Backend values: 'Manual' | 'BankSync' | 'SMS' | 'ORC' | 'Bill'
+  /// Backend values: 'Manual' | 'BankSync' | 'Casso' | 'SMS' | 'OCR' | 'Bill'
+  ///   (danh sách trắng của `sync.validation.js`, nhận `'ORC'` cũ rồi đổi thành
+  ///   `'OCR'`; CSDL dev không có CHECK nào trên cột này — đo 2026-09-11)
   /// Client legacy:  'Manual' | 'Casso'   | 'SMS' | 'OCR'
   ///
   /// ⚠️ **Cột này KHÔNG đi qua đồng bộ theo chiều nào cả**, và **không có mapper
   /// chuẩn hoá nào**. Payload đẩy (`sync_engine.dart`, `_collectPendingOps`)
-  /// gồm 11 trường và không có `provider`; nhánh kéo về cũng không đọc nó. Nên
+  /// gồm 12 trường (đếm bằng máy từ `sync_payload_contract_test.dart`,
+  /// 2026-09-11) và không có `provider`; nhánh kéo về cũng không đọc nó. Nên
   /// mọi hàng client đẩy lên đều nằm trên server với `Provider = 'Manual'`, kể
   /// cả giao dịch do ngân hàng tạo rồi kéo về máy này.
   ///
@@ -1270,9 +1273,11 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   /// OCR→ORC". **Hành vi đó chưa bao giờ tồn tại** — đã kiểm ngày 2026-09-04.
   ///
   /// Trước khi thêm cột này vào payload đẩy, đọc `docs/superpowers/backend/
-  /// 2026-09-04-ocr-classify-review.md` mục 7: backend đang có
-  /// `@@unique([provider, bank_tran_id])` **không tách theo tài khoản**, và
-  /// ràng buộc đó hiện chỉ trơ vì client gửi lên toàn NULL.
+  /// DA-XONG/2026-09-04-ocr-classify-review.md` mục 7. Điều kiện chặn ghi ở đó —
+  /// `@@unique([provider, bank_tran_id])` **không tách theo tài khoản**, chỉ trơ
+  /// vì client gửi lên toàn NULL — đã gỡ từ 2026-09-07: `uq_transaction_external`
+  /// nay là `UNIQUE ("Idaccount", "Provider", "Bank_tran_id")` (đo lại
+  /// 2026-09-11). Thêm thì vẫn phải cập nhật `sync_payload_contract_test.dart`.
   final String provider;
   final String note;
   final DateTime date;
@@ -1305,7 +1310,11 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   /// billId: hoá đơn mà giao dịch này là khoản trả cho. NULL với mọi giao dịch
   /// thường.
   ///
-  /// ⚠️ **Cột CỤC BỘ — cùng lý do và cùng ràng buộc với [goalId] ở trên.**
+  /// ⚠️ **Cột CỤC BỘ** (đo 2026-09-11). Khác [goalId] ở trên — cột ấy đồng bộ
+  /// từ 2026-09-07 — `billId` chưa đi qua đồng bộ: server đã có
+  /// `transaction.Idbill` (`database/12`, push nhận khoá `idbill`) nhưng client
+  /// chưa gửi và chưa đọc. Khi mở, theo đúng khuôn của [goalId]: tên payload
+  /// `idbill`, nhánh kéo về dùng `Value.absent()` khi server không gửi.
   ///
   /// Vì sao cần: trước đây khoản trả hoá đơn chỉ nhận ra được bằng **tiền tố
   /// ghi chú** (`kGhiChuTraHoaDon`), nên (1) người dùng gõ trùng tiền tố thì bị
@@ -1325,8 +1334,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   ///
   /// ⚠️ **Bảng này KHÔNG khai `uniqueKeys`**, nên `(provider, bankTranId)`
   /// **không** duy nhất ở SQLite — chú thích cũ hứa như vậy là sai. Phía
-  /// PostgreSQL thì có `uq_transaction_external`, nhưng nó ràng buộc trên
-  /// **toàn bảng** chứ không theo từng tài khoản.
+  /// PostgreSQL thì có `uq_transaction_external`, ràng buộc **theo từng tài
+  /// khoản**: `("Idaccount", "Provider", "Bank_tran_id")` — từ 2026-09-07, đo
+  /// lại 2026-09-11 (trước đó nó ràng buộc trên toàn bảng).
   ///
   /// ⚠️ Cột này cũng **không đi qua đồng bộ theo chiều nào**, giống `provider`.
   /// Hiện chưa nơi nào trong app gán giá trị cho nó, nên nó luôn NULL.
@@ -5092,8 +5102,10 @@ class Bill extends DataClass implements Insertable<Bill> {
   /// generatedFromBillId: hoá đơn kỳ TRƯỚC, khi hàng này được sinh ra lúc trả
   /// hoá đơn ấy. NULL với mọi hoá đơn do người dùng tự tạo.
   ///
-  /// ⚠️ **Cột CỤC BỘ — không nằm trong hợp đồng đồng bộ**, cùng lý do với
-  /// `transactions.goalId`/`transactions.billId`.
+  /// ⚠️ **Cột CỤC BỘ — không nằm trong hợp đồng đồng bộ**, như
+  /// `transactions.billId` (còn `transactions.goalId` thì đồng bộ từ 2026-09-07).
+  /// Server đã có `bill.Previous_bill_id` (khoá `previous_bill_id`, đọc mã
+  /// 2026-09-11); client chưa gửi và chưa đọc.
   ///
   /// Vì sao cần: **hoàn tác thanh toán** phải gỡ luôn kỳ kế tiếp mà lần trả đã
   /// sinh ra, nếu không người dùng còn lại hai kỳ cùng mở và trả lại lần nữa
@@ -5105,12 +5117,18 @@ class Bill extends DataClass implements Insertable<Bill> {
   /// từ chính [walletId] của nó (DB v17, 2026-09-06).
   ///
   /// ⚠️ **Cột CỤC BỘ — không nằm trong hợp đồng đồng bộ**, cùng khuôn với
-  /// `generatedFromBillId` và ba cột trích tự động của `Goals`. Hệ quả chấp
+  /// `generatedFromBillId` (ba cột trích tự động của `Goals` từng cùng khuôn,
+  /// nhưng đã đồng bộ từ 2026-09-07 — G21). Hệ quả chấp
   /// nhận có chủ ý: cấu hình không theo người dùng sang máy khác — và đó cũng
   /// là lý do KHÔNG mượn một cột đang có: hai máy cùng bật, cùng offline, cùng
   /// trả một kỳ là hai khoản chi trừ hai ví, cờ đã trả đồng bộ theo LWW không
-  /// chặn được. Xin cột phía backend ở việc D của
-  /// `2026-09-06-bill-chuoi-ky-va-an-han.md`.
+  /// chặn được. Tài liệu xin cột (việc D, đã đóng):
+  /// `docs/superpowers/backend/DA-XONG/2026-09-06-bill-chuoi-ky-va-an-han.md`.
+  /// Server nay có `bill.Auto_pay` (khoá `auto_pay`, cả push lẫn pull — đọc mã
+  /// 2026-09-11), nhưng client chưa gửi/đọc nên cột này vẫn cục bộ. Chốt chống
+  /// trả hai lần phía server chưa dùng được: bản `7675b35` đặt nó ở `upsertBill`
+  /// và chặn cả hoàn tác, còn `upsertTransaction` không kiểm `Idbill` (CAN-LAM
+  /// mục 17 B).
   ///
   /// Không có cột "lần chạy cuối" như mục tiêu: mỗi kỳ hoá đơn là **một hàng
   /// riêng**, nên cờ đã trả (`isPaid`/`payStatus`) chính là chốt chống trả hai
@@ -5134,7 +5152,9 @@ class Bill extends DataClass implements Insertable<Bill> {
   /// `autoPayEnabled` và `generatedFromBillId`. Hàng kéo từ server luôn để
   /// trống, và khi trống thì `nextBillDueDate` neo vào ngày của chính mốc hiện
   /// tại — tức chuỗi tạo trên máy khác vẫn có thể tụt dần. Tài liệu xin cột
-  /// phía backend: `docs/superpowers/backend/DA-XONG/BILL_ANCHOR_DAY.md`.
+  /// phía backend (đã đóng): `docs/superpowers/backend/DA-XONG/BILL_ANCHOR_DAY.md`
+  /// — server nay có `bill.Anchor_day` (khoá `anchor_day`, đọc mã 2026-09-11);
+  /// việc còn lại là client gửi và đọc nó.
   ///
   /// NULL với mọi hoá đơn tạo trước v18; migration suy nó từ ngày đến hạn đang
   /// lưu để **không đổi hạn** của hoá đơn cũ.

@@ -1,7 +1,10 @@
 /// Form ngân sách: ngưỡng phần trăm bằng 0 đến từ backend không được khoá form.
 ///
-/// Vì sao cần: backend đặt `@default(0)` cho `Threshold_Warning_Percent`, nên
-/// mọi ngân sách tạo với ô phần trăm để trống đều quay về máy với giá trị 0.
+/// Vì sao cần: backend từng đặt `@default(0)` cho `Threshold_Warning_Percent`
+/// (kèm `?? 0` ở nhánh tạo của `upsertBudget`), nên mọi ngân sách tạo với ô phần
+/// trăm để trống đều quay về máy với giá trị 0. Mã backend bỏ cả hai ở
+/// `7675b35`, nhưng cột trên CSDL dev vẫn `DEFAULT 0` và hàng cũ vẫn mang 0 (đo
+/// 2026-09-11) — nên form vẫn phải chịu được 0.
 /// Form trước đây điền "0" vào ô rồi tự từ chối lưu vì đòi 1–100 — người dùng
 /// không sửa được gì ở ngân sách ấy nữa, kể cả hạn mức. Thấy trên máy ảo
 /// 2026-09-06 với một ngân sách vừa tạo sáng hôm đó.
