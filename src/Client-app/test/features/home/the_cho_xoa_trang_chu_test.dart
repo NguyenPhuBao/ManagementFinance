@@ -87,6 +87,16 @@ void main() {
     await dung(tester, _choXoa());
     expect(find.text('Tài khoản đang chờ xoá'), findsOneWidget);
     expect(find.textContaining('Còn 28 ngày', findRichText: true), findsOneWidget);
+
+    // Khoảng 24 tách thẻ khỏi header nằm TRONG widget, phía trên thẻ — Trang chủ
+    // không tự đặt khoảng cách nào cho thẻ nữa.
+    final vung = find.byType(TheChoXoaTrangChu);
+    final the = find.byKey(const Key('the-cho-xoa-trang-chu'));
+    expect(tester.getTopLeft(the).dy - tester.getTopLeft(vung).dy, 24,
+        reason: 'Bản trước đặt SizedBox(height: 24) ở home_page.dart, ngoài thẻ: bấm "Để sau" '
+            'thì thẻ ẩn mà khoảng trống 24dp ở lại suốt phiên (soát cuối G33).');
+    expect(tester.getBottomLeft(vung).dy, tester.getBottomLeft(the).dy,
+        reason: 'Phía dưới thẻ không có khoảng nào — Trang chủ tự đặt 32 trước khối hero.');
     expect(tester.takeException(), isNull);
   });
 
@@ -103,6 +113,7 @@ void main() {
     await dung(tester,
         UserModel(id: '11', username: 'dat', name: 'Đạt', email: 'dat@example.com'));
     expect(find.byKey(const Key('the-cho-xoa-trang-chu')), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('"Để sau" ẩn thẻ và bật cờ trong bộ nhớ', (tester) async {
@@ -111,6 +122,9 @@ void main() {
     await tester.pump();
     expect(anThe.value, isTrue);
     expect(find.byKey(const Key('the-cho-xoa-trang-chu')), findsNothing);
+    expect(tester.getSize(find.byType(TheChoXoaTrangChu)).height, 0,
+        reason: 'Thẻ đã ẩn thì không để lại khoảng trống nào trên Trang chủ.');
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('"Huỷ xoá" thành công: gọi huỷ, đọc lại trạng thái, không SnackBar', (tester) async {
@@ -121,6 +135,7 @@ void main() {
     expect(bloc.suKien.whereType<ThongTinTaiKhoanThayDoi>(), hasLength(1));
     expect(find.byType(SnackBar), findsNothing,
         reason: 'Thẻ biến mất chính là phản hồi (spec §5.2).');
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('"Huỷ xoá" lỗi: SnackBar mang lời lỗi, vẫn đọc lại trạng thái', (tester) async {
@@ -130,5 +145,6 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Không có kết nối mạng'), findsOneWidget);
     expect(bloc.suKien.whereType<ThongTinTaiKhoanThayDoi>(), hasLength(1));
+    expect(tester.takeException(), isNull);
   });
 }

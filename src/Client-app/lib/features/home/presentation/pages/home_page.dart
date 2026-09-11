@@ -48,12 +48,12 @@ class HomePage extends StatelessWidget {
             children: [
               _buildHeader(context, currentUserId),
               // Thẻ nhắc tài khoản đang chờ xoá (G33) — spec cưỡng chế đăng xuất §5.2.
+              // Khoảng 24 phía trên nằm trong thẻ: "Để sau" ẩn thẻ thì không còn
+              // khoảng trống.
               if (authState is AuthSuccess &&
                   authState.user != null &&
-                  authState.user!.dangChoXoa) ...[
-                const SizedBox(height: 24),
+                  authState.user!.dangChoXoa)
                 TheChoXoaTrangChu(user: authState.user!),
-              ],
               const SizedBox(height: 32),
               _buildHeroSection(context),
               const SizedBox(height: 32),
