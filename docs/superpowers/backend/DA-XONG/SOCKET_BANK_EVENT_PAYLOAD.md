@@ -1,5 +1,11 @@
 # `bank_transaction.incoming` phát ra hai hình dạng payload khác nhau
 
+> ⛔ **2026-09-11 — soát lại sau `7675b35`:** chưa thống nhất — worker chỉ thêm
+> `transaction_status`, `notification.service.js` vẫn phát hình dạng thứ hai, `type` vẫn hai
+> nghĩa. Và nay tệ hơn: worker gọi thẳng `emitBankTransaction` **rồi** publish
+> `bank_transaction.pending`, nên **mỗi giao dịch phát hai lần**. Câu "chưa làm hỏng gì" dưới
+> đây là ảnh chụp 2026-09-09. `CAN-LAM/VERIFY_7675B35_REMAINING.md` §2.5.
+
 > **Xin thống nhất một hình dạng.** Không đổi lược đồ, không cần migration,
 > không cần client sửa gì *hôm nay*. Chi phí: sửa một trong hai chỗ phát cho
 > khớp chỗ kia. Đây là việc **phòng ngừa** — nó chưa làm hỏng gì, và đó chính

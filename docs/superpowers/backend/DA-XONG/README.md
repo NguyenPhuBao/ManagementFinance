@@ -8,8 +8,8 @@
 > đây chứ không ở chỗ nào khác.
 >
 > Điều duy nhất đã hết là **việc phải làm**. Việc còn lại nằm ở
-> [`../CAN-LAM/README.md`](../CAN-LAM/README.md) — đếm số mục ở **mục 2** của
-> chính README ấy. Dòng này từng ghi "bốn mục, không hơn" và đã lạc hậu từ
+> [`../CAN-LAM/README.md`](../CAN-LAM/README.md) — đếm số mục ở **mục 1** của
+> chính README ấy (từ 2026-09-11; trước đó là mục 2). Dòng này từng ghi "bốn mục, không hơn" và đã lạc hậu từ
 > 2026-09-08 mà không ai thấy (soát lại 2026-09-10); đừng chép con số sang đây.
 
 ---
@@ -48,6 +48,11 @@ tệp bối cảnh và hai mục lục.
 
 ## 3. Đóng trong đợt backend 2026-09-10 (Hoàn thành 100% 15 tài liệu từ CAN-LAM)
 
+> ⚠️ **Soát 2026-09-11 (client):** tiêu đề và bảng dưới là báo cáo của backend, giữ nguyên
+> văn. Đối chiếu với mã HEAD và CSDL dev: sáu tài liệu xong trọn, bảy còn một phần, hai chưa —
+> trạng thái từng tài liệu ở mục 2 [`../CAN-LAM/README.md`](../CAN-LAM/README.md), việc còn lại
+> ở [`../CAN-LAM/VERIFY_7675B35_REMAINING.md`](../CAN-LAM/VERIFY_7675B35_REMAINING.md).
+
 Mười lăm tài liệu này đã được thực thi hoàn tất, vượt qua 100% các bộ kiểm thử tích hợp (`test_can_lam_fixes.js`, `test_sensitive_note_filter.js`, `test_category_unique_rules.js`, `test_data_security_encryption_and_masking.js`, `test_sync_new_schema.js`) và chuyển từ `CAN-LAM/` sang `DA-XONG/`:
 
 | Tài liệu | Đóng bằng cách nào |
@@ -70,7 +75,7 @@ Mười lăm tài liệu này đã được thực thi hoàn tất, vượt qua 
 
 ---
 
-## 3. Hai chỗ dễ đọc nhầm
+## 4. Hai chỗ dễ đọc nhầm
 
 - **"Đã xong" nói về phía backend, không phải phía client.** `goal.Priority` có
   cột nhưng client chưa dựng màn ưu tiên; `transaction.Idgoal` có cột nhưng

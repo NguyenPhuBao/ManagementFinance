@@ -4,6 +4,12 @@
 tệp SQL **đã có sẵn** theo đúng thứ tự rồi `prisma generate`, cộng một chỗ sửa nhỏ
 ở `middleware/auth.js`. Không cần viết migration mới.
 
+> ⚠️ **2026-09-11 — soát lại sau `7675b35`:** 4.3 xong ở HTTP (`middleware/auth.js:47-56`
+> tách lỗi lược đồ thành 503, lỗi tạm thời vẫn cho qua); 4.2 mới một phần — có câu quy ước
+> ở `Rule_project.md:69`, chưa có sổ ghi tệp đã áp; `database/)2_can_lam_all_migrations.sql:22`
+> vẫn xoá cứng. Tệp 12 đã áp lên CSDL dev cùng ngày. Việc còn lại:
+> `CAN-LAM/VERIFY_7675B35_REMAINING.md` §2.4.
+
 > ✅ **Cập nhật tối 2026-09-10 — phần ÁP đã xong trên CSDL dev.** Người dùng yêu
 > cầu đích danh *"đối với csdl thì bạn hãy chạy để áp dụng csdl mới"*, nên client
 > chạy đúng quy trình mục 4.1 — **không sửa tệp nào** của `src/Backend`

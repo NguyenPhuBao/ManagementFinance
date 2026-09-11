@@ -18,8 +18,8 @@ câu tài liệu. Không migration.
 
 Theo diff, `7675b35` làm một lượt nhiều mục của thư mục này: body 401 mang mã,
 ánh xạ `22001`/`23502`, `goal.Priority` giữ `null`, bộ lọc ghi chú mới,
-`sync.completed` ra socket, và tệp `database/12`. Client **chưa soát từng mục**
-(banner đầu `README.md`). Tài liệu này chỉ nói về **ba chỗ làm hỏng thứ đang
+`sync.completed` ra socket, và tệp `database/12`. Phần còn lại client soát
+sau, cùng ngày — `VERIFY_7675B35_REMAINING.md` (mục 18). Tài liệu này chỉ nói về **ba chỗ làm hỏng thứ đang
 chạy**, tìm ra khi soát riêng vùng xác thực và hoá đơn — hạng mục cưỡng chế đăng
 xuất của client phụ thuộc vào hai vùng ấy.
 

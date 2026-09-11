@@ -392,11 +392,11 @@ sửa này, khác "Kinetic Finance" (`assets/e8b7d56e…`) của dự án. Khi d
 
 ## 6. Phần 4 — Việc cho backend
 
-Viết **`CAN-LAM/AUTH_PROFILE_COUNTDOWN.md`** (mục **18** của `README.md` — mục 17
-đã dùng ngày 2026-09-11 cho `FIX_BACKEND_3_REGRESSIONS.md`), không đụng
+Viết **`CAN-LAM/AUTH_PROFILE_COUNTDOWN.md`** (mục **19** của `README.md` — mục 17 và 18
+đã dùng ngày 2026-09-11 cho `FIX_BACKEND_3_REGRESSIONS.md` và `VERIFY_7675B35_REMAINING.md`), không đụng
 `src/Backend`:
 
-1. `getProfile` (`auth.service.js:537-547`; `:552` trên `main`) trả thêm
+1. `getProfile` (`auth.service.js:552-565` — nhánh đã gộp `main`) trả thêm
    `countdown` — một dòng. Để máy không gửi yêu cầu xoá vẫn hiện được số ngày (mục
    4.3 dòng hai). Đo 2026-09-11: `main` @ `7675b35` **chưa** làm.
 2. `pendingDeleteCancelled` luôn `false` (`auth.service.js:309`, cả nhánh lẫn

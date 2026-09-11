@@ -4,6 +4,11 @@
 · **Xin từ:** client (`src/Client-app`) · **Cỡ việc:** 56 chỗ sửa tài liệu ở bốn tệp,
 cộng ba việc sửa mã (hai việc đã có tài liệu xin riêng).
 
+> ⛔ **2026-09-11 — soát lại sau `7675b35` / `f9d13c9`:** trong 56 chỗ, **11** đã sửa đúng,
+> **31** chưa sửa, **12** sửa nhưng vẫn sai, **2** không còn áp dụng. Danh sách theo số dòng
+> HEAD, cùng các khẳng định mới sai: `CAN-LAM/VERIFY_7675B35_REMAINING.md` mục 3. Số dòng trong tài liệu này là số
+> dòng trước khi backend sửa.
+
 > **Client không sửa tài liệu của backend.** `docs/Rule_Project/New_Database.md`,
 > `Rule_project.md`, `Data_Security.md` và `docs/progress/Backend.md` do đội backend
 > tạo, nên chỗ sai được ghi ở đây để backend tự sửa. Mục 8 liệt kê các dòng client

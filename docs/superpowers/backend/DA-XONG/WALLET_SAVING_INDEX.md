@@ -15,6 +15,7 @@ thêm mã lỗi có cấu trúc cho 23505 trên `wallet`.
 > "một ví Tiết kiệm" ở mục 3 **vẫn còn trong mã** dù tệp 12 đã áp — gỡ là một hạng mục
 > client riêng (G30). Xem
 > [`FIX_BACKEND_3_REGRESSIONS.md`](../CAN-LAM/FIX_BACKEND_3_REGRESSIONS.md) mục 4 và 5.
+> Mã `WALLET_NAME_DUPLICATE` cần một phép thử khi chạy: `CAN-LAM/VERIFY_7675B35_REMAINING.md` §2.7.
 
 ---
 

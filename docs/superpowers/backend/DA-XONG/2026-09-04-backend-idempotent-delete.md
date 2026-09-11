@@ -4,6 +4,11 @@
 **Phạm vi:** Backend (`modules/sync/sync.service.js`, `modules/sync/sync.repository.js`)
 **Từ:** Frontend Team
 
+> ⚠️ **2026-09-11 — soát lại sau `7675b35`:** (A)(B)(C) vẫn đúng. (D) phần **mã** đã xong
+> (`sync.repository.js:371,392`, `schema.prisma:199` bỏ `@default(0)`), phần **CSDL** chưa —
+> cột vẫn `DEFAULT 0`. Việc còn lại: `CAN-LAM/VERIFY_7675B35_REMAINING.md` §2.2. Dòng (D) trong bảng dưới là ảnh
+> chụp 2026-09-07.
+
 | # | Việc | Ưu tiên | Trạng thái |
 |---|---|---|---|
 | **A** (mục 2–7) | Xoá một bản ghi không tồn tại phải là **thành công** | 🔴 Cao — đang làm **kẹt vĩnh viễn** hàng đợi đồng bộ | ✅ **XONG 2026-09-07** — trả `status: 'synced'`, `message: 'Already absent'` |

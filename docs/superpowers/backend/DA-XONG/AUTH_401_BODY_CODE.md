@@ -11,8 +11,9 @@ cho HTTP và socket. Không migration.
 > rõ phải bọc trong `if (!info.valid)`. Hai chỗ gọi mới viết `if (rejection)`, nên
 > bắt tay socket và `/auth/refresh` từ chối **mọi** tài khoản. Trạng thái của tài
 > liệu này tính theo nhánh client **trước khi gộp**; `7675b35` gộp về nhánh ấy ngày
-> 2026-09-11 (tệp này sang `DA-XONG/` theo báo cáo của backend), nhưng client chưa
-> soát lại 4.1–4.3 trên mã đã gộp.
+> 2026-09-11 (tệp này sang `DA-XONG/` theo báo cáo của backend), và client soát lại
+> cùng ngày: 4.1 và nhánh HTTP của 4.2 xong, 4.3 xong trừ `/auth/refresh` (17 A); bắt tay
+> socket còn đọc sai chỗ mã — `CAN-LAM/VERIFY_7675B35_REMAINING.md` §2.1.
 
 ---
 
