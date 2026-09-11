@@ -56,7 +56,7 @@ sai. Đó là lý do quy ước này chấp nhận được — không phải v�
 > `… Két Mật khẩu: [ĐÃ LƯỢC BỎ] động)` — mất hậu tố, nên khoản trích tự động đọc
 > thành khoản nạp tay. Bản đã lọc còn **đè lên máy người dùng** ở ngay chu kỳ đồng
 > bộ ấy. Tái hiện đầu-cuối và việc xin sửa:
-> [`CAN-LAM/SYNC_NOTE_FILTER_REWRITE.md`](./CAN-LAM/SYNC_NOTE_FILTER_REWRITE.md).
+> [`DA-XONG/SYNC_NOTE_FILTER_REWRITE.md`](./DA-XONG/SYNC_NOTE_FILTER_REWRITE.md).
 > Tài liệu này vẫn "không xin gì" — việc xin nằm ở tệp kia.
 
 **Ba điều, tất cả đều là "đừng làm", không phải "hãy làm":**

@@ -7,8 +7,10 @@ câu tài liệu. Không migration.
 
 > **Đo trên `origin/main` @ `907294b`** — merge PR #72, chứa `7675b35` của NPBao
 > (2026-09-10 23:15) — bằng `git show origin/main:<tệp>`. Nhánh client
-> `TranQuangDat` @ `d352809` **chưa gộp** commit ấy: số dòng phía backend dưới đây
-> là số dòng **trên `main`**, còn số dòng phía client là của `TranQuangDat`.
+> `TranQuangDat` @ `d352809` **chưa gộp** commit ấy lúc viết: số dòng phía backend
+> dưới đây là số dòng **trên `main`**, còn số dòng phía client là của `TranQuangDat`.
+> ✅ Nhánh client gộp `main` @ `cc65f4f` ngày 2026-09-11, nên số dòng backend nay
+> cũng đúng trên `TranQuangDat` — ba hồi quy vẫn nguyên, vì gộp không sửa gì.
 
 ---
 
@@ -423,7 +425,8 @@ Làm cùng lượt với `RULE_PROJECT_DOC_DRIFT.md`.
 
 ## 5. Liên quan tới client
 
-- **Client chưa gộp `7675b35`**, và CSDL dev trên máy client **chưa áp**
+- **Client đã gộp `7675b35`** (2026-09-11, sau khi viết tài liệu này), nhưng CSDL dev
+  trên máy client **chưa áp**
   `database/12`. Đo 2026-09-11 bằng truy vấn chỉ đọc: không có cột nào của tệp 12
   (`category.Color`, `transaction.Idbill`, bốn cột mới của `bill`),
   `uq_wallet_saving_active` vẫn còn, `chk_bill_pay_status` chưa có `'Skipped'`.

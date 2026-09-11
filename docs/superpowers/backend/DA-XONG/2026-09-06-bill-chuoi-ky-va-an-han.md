@@ -299,9 +299,10 @@ model bill {
 > tác** (hoàn tác gửi `'Pending'`) mà **không** chặn được hai khoản chi (máy đẩy sau
 > gửi `'Payed'` lên hàng đã `'Payed'`). Xin dời về `upsertTransaction` đúng như đoạn
 > trên — kèm một bẫy thứ tự trong lô, và một chỗ sửa cho câu "không dùng unique
-> index": [`FIX_BACKEND_3_REGRESSIONS.md`](./FIX_BACKEND_3_REGRESSIONS.md) mục 3. Các
+> index": [`FIX_BACKEND_3_REGRESSIONS.md`](../CAN-LAM/FIX_BACKEND_3_REGRESSIONS.md) mục 3. Các
 > cột `Idbill`, `Previous_bill_id`, `Auto_pay`, `Anchor_day` đã có trong
-> `database/12` trên `main`, **chưa áp** lên CSDL dev của client.
+> `database/12` trên `main` — gộp về nhánh client 2026-09-11 nhưng **chưa áp** lên
+> CSDL dev của client.
 
 ### 6.4. Cách kiểm chứng
 

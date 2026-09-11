@@ -10,7 +10,7 @@
 > gọi `Number(m.priority)`, mà `Number(null) === 0`, nên mục tiêu chưa sắp được
 > lưu là `0` và nhảy lên đầu danh sách sau một vòng đồng bộ — đã tái hiện
 > đầu-cuối trên máy ảo. Xin sửa ở
-> [`../CAN-LAM/GOAL_PRIORITY_NULL_TO_ZERO.md`](../CAN-LAM/GOAL_PRIORITY_NULL_TO_ZERO.md).
+> [`GOAL_PRIORITY_NULL_TO_ZERO.md`](./GOAL_PRIORITY_NULL_TO_ZERO.md).
 
 ---
 

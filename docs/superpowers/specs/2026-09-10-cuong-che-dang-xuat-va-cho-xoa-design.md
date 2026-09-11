@@ -5,11 +5,13 @@
 > Phần 2–4 viết thẳng vào đây theo yêu cầu "làm đi" của người dùng, duyệt cùng
 > lúc với thiết kế Stitch ở mục 5.
 >
-> **Soát lại 2026-09-11 theo `origin/main` @ `7675b35`** (chưa gộp về nhánh này):
+> **Soát lại 2026-09-11 theo `origin/main` @ `7675b35`** (lúc soát chưa gộp; ✅ gộp
+> về nhánh này cùng ngày, `main` @ `cc65f4f` — CSDL dev chưa áp `database/12`):
 > sửa §1.3, §2 (Q5), §3.1, §3.3, §3.4, §3.5, §6, §7.2, §7.3, §8, §9; thêm **§3.6b —
 > đề xuất mới, chờ duyệt**. Việc cho backend phát sinh từ lượt soát ấy nằm ở
 > `CAN-LAM/FIX_BACKEND_3_REGRESSIONS.md` (mục 17). Số dòng phía backend trong spec
-> là của nhánh `TranQuangDat` @ `d352809`, trừ chỗ ghi rõ `main`.
+> là của nhánh `TranQuangDat` @ `d352809`, trừ chỗ ghi rõ `main` — sau khi gộp, số
+> dòng ghi `main` mới là số dòng đúng trên nhánh.
 >
 > Yêu cầu gốc: `docs/progress/Client-app.md` mục 10–12. Hạng mục 5 của kế hoạch
 > cá nhân `docs/superpowers/plans/2026-09-10-ra-soat-csdl-moi.md` (gitignore).
@@ -71,7 +73,7 @@ sinh lại Prisma Client và chạy lại backend (banner đầu
 `CAN-LAM/DEV_DB_MIGRATIONS_7_11.md`). Mọi đường kể trên nay **chạy được** trên
 backend thật — trừ body 401 vẫn thiếu mã (CAN-LAM 13). Mục 7.3 đã sửa theo.
 
-⚠️ **2026-09-11:** `origin/main` có thêm `7675b35` (chưa gộp): body 401 nay mang
+⚠️ **2026-09-11:** `origin/main` có thêm `7675b35` (gộp về nhánh này cùng ngày): body 401 nay mang
 mã và nhánh cho qua khi lỗi lược đồ đã thành 503 — nhưng bắt tay socket và
 `/auth/refresh` từ chối **mọi** tài khoản (CAN-LAM 17 mục A). Ảnh hưởng tới spec
 nằm ở các đoạn gắn ngày 2026-09-11 bên dưới.
@@ -171,9 +173,9 @@ máy thì request kế tiếp lại làm mới bằng nó, vấp *Token Reuse De
 request sau thấy kho rỗng, và `_clearTokens` sẵn có tự im vì `hadSession` là
 `false`. `AuthBloc` vẫn gọi `xoaPhienTrenMay()` ở §3.5 — gọi lần hai vô hại.
 
-Trên nhánh hiện tại cả hai chỗ **nằm im**: body 401 chưa mang mã (CAN-LAM 13), và
-`/auth/refresh` chưa kiểm trạng thái tài khoản. Gộp `main` @ `7675b35` là chỗ 1
-chạy ngay. Chỗ 2 chạy khi backend sửa CAN-LAM 17 mục A — hôm nay nó trả 401 kèm
+Trước khi gộp `main`, cả hai chỗ **nằm im**: body 401 chưa mang mã (CAN-LAM 13), và
+`/auth/refresh` chưa kiểm trạng thái tài khoản. Nhánh đã gộp `main` @ `cc65f4f`
+(2026-09-11), nên mã backend cho chỗ 1 đã có trên nhánh. Chỗ 2 chạy khi backend sửa CAN-LAM 17 mục A — hôm nay nó trả 401 kèm
 `idaccount` nhưng **không** `code`, nên `tuBody401` trả `null` và rơi về đường cũ.
 Không cần đổi gì phía client khi backend sửa.
 
@@ -460,9 +462,12 @@ Kèm cập nhật `README.md` mục 2 và mọi con số đếm mục CAN-LAM tr
 
 Sau khi áp `database/7`–`11` (tối 2026-09-10, mục 1.3), backend **của chính nhánh
 này** dựng được mọi tình huống **trừ** body 401 có mã (CAN-LAM 13) — kể cả nhánh
-socket, vì bắt tay ở đó còn dùng `isAccountValid`. ⚠️ Đừng gộp `main` @ `7675b35`
-chỉ để kiểm nhánh HTTP khi CAN-LAM 17 mục A chưa sửa: bắt tay socket sẽ chết, tức
-mất luôn nhánh đang kiểm được. Đề xuất, theo thứ tự:
+socket, vì bắt tay ở đó còn dùng `isAccountValid`. ⚠️ Câu vừa rồi nói về backend
+**trước khi gộp**. Nhánh đã gộp `main` @ `cc65f4f` ngày 2026-09-11 theo yêu cầu người
+dùng, trong khi CAN-LAM 17 mục A chưa sửa — nên hệ quả mà đoạn này từng cảnh báo nay
+là thật: bắt tay socket trên backend của nhánh từ chối mọi tài khoản, và nhánh
+socket **không kiểm đầu-cuối được** cho tới khi backend sửa mục A. Đồng bộ thì vỡ cho
+tới khi áp `database/12`. Đề xuất, theo thứ tự:
 
 - **Backend thật, tài khoản thử riêng.** Máy ảo đang giữ phiên tài khoản **10
   không có mật khẩu** — cưỡng chế đăng xuất trên đó là mất phiên ấy. Cần một tài
@@ -473,8 +478,8 @@ mất luôn nhánh đang kiểm được. Đề xuất, theo thứ tự:
   hoàn tác được bằng giao diện. Ca này kiểm bằng test (mục 7.2); nếu cần nhìn tận
   mắt thì dùng một backend giả trong scratchpad phát `account.force_logout` với
   `ACCOUNT_DELETED` — cần tạm dừng backend thật, **hỏi người dùng trước**.
-- **Nhánh HTTP 401** kiểm được sau khi nhánh client gộp `main` — việc ấy kéo theo
-  áp `database/12` lên CSDL dev, người dùng phải gọi tên đúng việc — theo mục 5
+- **Nhánh HTTP 401** kiểm được khi áp `database/12` lên CSDL dev (nhánh đã gộp
+  `main` 2026-09-11; áp tệp 12 thì người dùng phải gọi tên đúng việc) — theo mục 5
   `AUTH_401_BODY_CODE.md`. **Nhánh làm mới** (§3.3 chỗ 2) chờ thêm CAN-LAM 17 mục A,
   theo mục 2.7 `FIX_BACKEND_3_REGRESSIONS.md`.
 - Không sọc vàng tràn bố cục ở 411dp.
@@ -491,7 +496,7 @@ và 25 issue tính tới 2026-09-11.
   Chỉ sửa chữ và luồng; dựng lại theo Stitch là việc riêng nếu người dùng muốn.
 - Mã lỗi của handshake socket, `/auth/refresh` không kiểm trạng thái tài khoản,
   403 đăng nhập không có `code` — đã xin ở `AUTH_401_BODY_CODE.md` 4.2, 4.3. ✅ Cả
-  ba **đã làm trên `main` @ `7675b35`** (chưa gộp): 403 đăng nhập nay mang `code`
+  ba **đã làm trên `main` @ `7675b35`** (gộp về nhánh 2026-09-11): 403 đăng nhập nay mang `code`
   nhưng màn Đăng nhập vẫn dùng `SnackBar` như dòng đầu mục này; `/auth/refresh` có
   mã được xử lý ở §3.3; mã bắt tay vẫn bị bỏ qua (§3.4).
 - **Làm mới thất bại vì 5xx hoặc mất mạng cũng đăng xuất.** `_tryRefreshToken` trả
