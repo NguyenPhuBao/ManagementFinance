@@ -100,6 +100,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     if (state is! AuthSuccess) return;
     final user = await authRepository.getCurrentUser();
+    // Kiểm lại: các handler của Bloc chạy đồng thời theo loại sự kiện (mặc định
+    // của flutter_bloc), nên trong lúc await ở trên đang chờ, đăng xuất hoặc
+    // phiên chết có thể đã phát AuthUnauthenticated — không được emit đè lên.
+    if (state is! AuthSuccess) return;
     if (user == null) return;
     emit(AuthSuccess(user: user));
   }

@@ -1,6 +1,8 @@
 /// `AuthBloc` và trạng thái chờ xoá — spec cưỡng chế đăng xuất §4.3, §5.2.
 library;
 
+import 'dart:async';
+
 import 'package:flowmoney/core/di/injection_container.dart';
 import 'package:flowmoney/features/auth/data/models/user_model.dart';
 import 'package:flowmoney/features/auth/data/repositories/auth_repository.dart';
@@ -26,12 +28,17 @@ class _RepoGia implements AuthRepository {
   /// Mô phỏng `verifySession` đồng bộ `status` từ `/auth/profile` vào bộ nhớ đệm.
   UserModel? sauKhiXacMinh;
 
+  /// Chặn `getCurrentUser()` lại giữa chừng để dựng race với một handler khác
+  /// (đăng xuất) đang chạy đồng thời — khác `null` thì đợi tới khi được `complete()`.
+  Completer<void>? chanDoc;
+
   @override
   Future<bool> checkAuthStatus() async => true;
 
   @override
   Future<UserModel?> getCurrentUser() async {
     getCurrentUserCalls++;
+    if (chanDoc != null) await chanDoc!.future;
     return cached;
   }
 
@@ -43,6 +50,11 @@ class _RepoGia implements AuthRepository {
 
   @override
   Future<UserModel> login(String username, String password) async => cached!;
+
+  /// `_onLogoutRequested` gọi hàm này trước `emit(AuthUnauthenticated())`; không
+  /// override thì rơi vào `noSuchMethod` và ném lỗi, chặn luôn state ấy.
+  @override
+  Future<void> logout() async {}
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -100,5 +112,31 @@ void main() {
     await xong.timeout(const Duration(seconds: 5));
     expect(anThe.value, isFalse,
         reason: 'Người đăng nhập sau không được thừa hưởng lựa chọn "Để sau" của người trước.');
+  });
+
+  test(
+      'đăng xuất trong lúc ThongTinTaiKhoanThayDoi đang đọc bộ nhớ đệm → '
+      'không được quay lại AuthSuccess cũ', () async {
+    final repo = _RepoGia(_user());
+    final bloc = await moApp(repo);
+
+    // Chặn getCurrentUser() của ThongTinTaiKhoanThayDoi giữa chừng, rồi cho
+    // đăng xuất chạy và phát AuthUnauthenticated TRƯỚC khi lượt đọc kia xong.
+    repo.chanDoc = Completer<void>();
+    bloc.add(ThongTinTaiKhoanThayDoi());
+    await Future<void>.delayed(Duration.zero);
+
+    final dangXuat = bloc.stream.firstWhere((s) => s is AuthUnauthenticated);
+    bloc.add(LogoutRequested());
+    await dangXuat.timeout(const Duration(seconds: 5));
+
+    // Giờ mở khoá: getCurrentUser() trả về, ThongTinTaiKhoanThayDoi được đi tiếp.
+    repo.chanDoc!.complete();
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+
+    expect(bloc.state, isA<AuthUnauthenticated>(),
+        reason: 'Handler của hai loại sự kiện chạy đồng thời (mặc định của '
+            'flutter_bloc) — ThongTinTaiKhoanThayDoi đọc xong SAU khi đăng xuất '
+            'không được phát AuthSuccess cũ đè lên AuthUnauthenticated.');
   });
 }
