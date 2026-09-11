@@ -2,7 +2,7 @@ const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
 const config = require('../config');
 const logger = require('./logger');
-const { isAccountValid } = require('../middleware/auth');
+const { getAccountValidity, accountRejection } = require('../middleware/auth');
 
 let io = null;
 
@@ -36,10 +36,15 @@ function initSocket(httpServer) {
         return next(new Error(`Authentication error: ${err.name === 'TokenExpiredError' ? 'Token expired' : 'Invalid token'}`));
       }
 
-      const valid = await isAccountValid(decoded.idaccount);
-      if (!valid) {
-        return next(Object.assign(new Error('Authentication error: Account no longer exists, inactive, or deleted'), {
-          data: { code: 'ACCOUNT_DELETED', idaccount: Number(decoded.idaccount) },
+      const accountInfo = await getAccountValidity(decoded.idaccount);
+      const rejection = accountRejection(accountInfo, decoded.idaccount);
+      if (rejection) {
+        return next(Object.assign(new Error(`Authentication error: ${rejection.message}`), {
+          data: {
+            code: rejection.code,
+            idaccount: Number(decoded.idaccount),
+            reason_inactive: rejection.reason_inactive || null,
+          },
         }));
       }
 
@@ -190,6 +195,25 @@ function emitForceLogout(idaccount, reason = 'ACCOUNT_DELETED', message = 'Tài 
   }
 }
 
+/**
+ * Phát thông báo hoàn tất đồng bộ tới Client-app của user
+ * @param {number} idaccount 
+ * @param {Object} data 
+ */
+function emitSyncCompleted(idaccount, data) {
+  if (!io) {
+    logger.warn('[Socket] Attempted to emit sync completed before Socket.io initialized');
+    return;
+  }
+  try {
+    const room = `account_${idaccount}`;
+    io.to(room).emit('sync.completed', data);
+    logger.info(`[Socket] Emitted sync.completed to room ${room}`);
+  } catch (error) {
+    logger.error('[Socket] Failed to emit sync completed', { error: error.message });
+  }
+}
+
 module.exports = {
   initSocket,
   getIO,
@@ -198,6 +222,7 @@ module.exports = {
   emitOcrCompleted,
   emitOcrDuplicate,
   emitForceLogout,
+  emitSyncCompleted,
 };
 
 

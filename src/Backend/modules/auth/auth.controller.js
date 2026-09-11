@@ -58,6 +58,12 @@ const authController = {
     } catch (error) {
       const statusCode = error.statusCode || 500;
       logger.warn('Login failed', { username: req.body.username, error: error.message });
+      const extra = {};
+      if (error.code) extra.code = error.code;
+      if (error.reason_inactive) extra.reason_inactive = error.reason_inactive;
+      if (statusCode === 403 && Object.keys(extra).length > 0) {
+        return ResponseHandler.forbidden(res, error.message, extra);
+      }
       return ResponseHandler.error(res, error.message, statusCode);
     }
   },
@@ -70,6 +76,13 @@ const authController = {
     } catch (error) {
       const statusCode = error.statusCode || 500;
       logger.warn('Refresh failed', { error: error.message });
+      const extra = {};
+      if (error.code) extra.code = error.code;
+      if (error.idaccount) extra.idaccount = error.idaccount;
+      if (error.reason_inactive) extra.reason_inactive = error.reason_inactive;
+      if (statusCode === 401 && Object.keys(extra).length > 0) {
+        return ResponseHandler.unauthorized(res, error.message, extra);
+      }
       return ResponseHandler.error(res, error.message, statusCode);
     }
   },

@@ -64,7 +64,7 @@ const ocrService = {
 
     // 3. Phân loại Nguồn Tài Liệu & Gán Nhãn Provider, Bank_tran_id
     const docType = extraction.document_type || 'RECEIPT';
-    let provider = 'ORC';
+    let provider = 'OCR';
     let bankTranId = null;
 
     if (docType === 'BANK_TRANSFER') {
@@ -74,7 +74,7 @@ const ocrService = {
       provider = 'SMS';
       bankTranId = extraction.transaction_code || null;
     } else {
-      provider = 'ORC';
+      provider = 'OCR';
       bankTranId = extraction.invoice_no || null;
     }
 

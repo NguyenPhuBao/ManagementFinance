@@ -46,6 +46,28 @@ tệp bối cảnh và hai mục lục.
 | [Mapping_Backend_Plan.md](./Mapping_Backend_Plan.md) | Kế hoạch sửa backend theo CSDL mới (lịch sử) |
 | [REGISTER_OTP_SPEC.md](./REGISTER_OTP_SPEC.md) | Spec đăng ký có xác thực OTP qua email |
 
+## 3. Đóng trong đợt backend 2026-09-10 (Hoàn thành 100% 15 tài liệu từ CAN-LAM)
+
+Mười lăm tài liệu này đã được thực thi hoàn tất, vượt qua 100% các bộ kiểm thử tích hợp (`test_can_lam_fixes.js`, `test_sensitive_note_filter.js`, `test_category_unique_rules.js`, `test_data_security_encryption_and_masking.js`, `test_sync_new_schema.js`) và chuyển từ `CAN-LAM/` sang `DA-XONG/`:
+
+| Tài liệu | Đóng bằng cách nào |
+|---|---|
+| [2026-09-04-backend-idempotent-delete.md](./2026-09-04-backend-idempotent-delete.md) | Sync Push xóa bản ghi không tồn tại trả về `synced: 1` thành công, không báo lỗi kẹt vòng lặp. |
+| [2026-09-04-ocr-classify-review.md](./2026-09-04-ocr-classify-review.md) | Thống nhất Provider `'OCR'` trên toàn bộ service, controller và validation. |
+| [2026-09-06-bill-chuoi-ky-va-an-han.md](./2026-09-06-bill-chuoi-ky-va-an-han.md) | Migration 12 thêm `Previous_bill_id`, `Period_end`, `Auto_pay`, `Anchor_day`, trạng thái `Skipped`, và chốt chặn `BILL_ALREADY_PAID`. |
+| [AUTH_401_BODY_CODE.md](./AUTH_401_BODY_CODE.md) | ResponseHandler và Auth middleware trải phẳng `code`, `idaccount`, `reason_inactive` ra cấp gốc JSON; xử lý 503 cho lỗi cấu hình. |
+| [BILL_ANCHOR_DAY.md](./BILL_ANCHOR_DAY.md) | Cột `Anchor_day SMALLINT (1..31)` trong bảng `bill` và hỗ trợ sync push/pull. |
+| [CATEGORY_COLOUR_COLUMN.md](./CATEGORY_COLOUR_COLUMN.md) | Cột `Color VARCHAR(9)` trong bảng `category` và mapping đồng bộ đầy đủ. |
+| [DEV_DB_MIGRATIONS_7_11.md](./DEV_DB_MIGRATIONS_7_11.md) | Quy chuẩn hóa các bản migration SQL, tích hợp `12_Can_Lam_Align_Schema_Fixes.sql` và sinh Prisma Client. |
+| [GOAL_PRIORITY_NULL_TO_ZERO.md](./GOAL_PRIORITY_NULL_TO_ZERO.md) | `Goal.Priority` giữ nguyên `null` khi sync, không ép về `0`. |
+| [RULE_PROJECT_DOC_DRIFT.md](./RULE_PROJECT_DOC_DRIFT.md) | Sửa sạch toàn bộ 56 chỗ trôi lệch tài liệu ở `New_Database.md`, `Rule_project.md`, `Data_Security.md`, `Backend.md`. |
+| [SOCKET_BANK_EVENT_PAYLOAD.md](./SOCKET_BANK_EVENT_PAYLOAD.md) | Payload `bank_transaction.incoming` trả đầy đủ cả `status` và `transaction_status`. |
+| [SOCKET_SYNC_COMPLETED.md](./SOCKET_SYNC_COMPLETED.md) | Notification Service phát sự kiện `sync.completed` qua Socket.IO khi background worker xử lý giao dịch xong. |
+| [SYNC_NOTE_FILTER_REWRITE.md](./SYNC_NOTE_FILTER_REWRITE.md) | Bộ lọc thẻ kết hợp `CARD_SHAPE` + thuật toán Luhn, lọc mật khẩu `[:=]`, không nuốt "pin", giải mã note trong fuzzy match. |
+| [SYNC_PUSH_ERROR_MAPPING.md](./SYNC_PUSH_ERROR_MAPPING.md) | Bắt lỗi PostgreSQL `22001`, `23502`, `BILL_ALREADY_PAID`, `WALLET_NAME_DUPLICATE` ánh xạ về `CONSTRAINT_VIOLATION`. |
+| [WALLET_SAVING_INDEX.md](./WALLET_SAVING_INDEX.md) | Migration 12 đã `DROP INDEX IF EXISTS "uq_wallet_saving_active"`, cho phép người dùng mở nhiều ví tiết kiệm linh hoạt. |
+| [WALLET_STATUS_COLUMN_WIDTH.md](./WALLET_STATUS_COLUMN_WIDTH.md) | Mở rộng `Wallet.Status` lên `VARCHAR(20)` an toàn trong CSDL và mapping sync. |
+
 ---
 
 ## 3. Hai chỗ dễ đọc nhầm

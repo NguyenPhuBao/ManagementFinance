@@ -45,9 +45,32 @@ async function getAccountValidity(idaccount) {
     accountCache.set(numId, result);
     return result;
   } catch (error) {
-    logger.warn('isAccountValid DB check failed, defaulting to optimistic pass', { idaccount, error: error.message });
+    const isSchemaError = error?.name === 'PrismaClientValidationError' ||
+      error?.code === 'P2022' ||
+      String(error?.message || '').includes('42703');
+    if (isSchemaError) {
+      logger.error('isAccountValid DB check failed due to schema/configuration error', { idaccount, error: error.message });
+      return { valid: false, status: 'Error', errorType: 'SCHEMA_ERROR', reason_inactive: null, timestamp: now };
+    }
+    logger.warn('isAccountValid DB check failed, defaulting to optimistic pass for transient error', { idaccount, error: error.message });
     return { valid: true, status: 'Active', reason_inactive: null, timestamp: now };
   }
+}
+
+function accountRejection(info, idaccount) {
+  const inactive = info?.status?.toLowerCase() === 'inactive';
+  return {
+    message: inactive
+      ? (info?.reason_inactive
+          ? `Tài khoản đã bị vô hiệu hóa. Lý do: ${info.reason_inactive}`
+          : 'Tài khoản đã bị vô hiệu hóa')
+      : 'Account no longer exists or has been deleted',
+    data: {
+      code: inactive ? 'ACCOUNT_INACTIVE' : 'ACCOUNT_DELETED',
+      idaccount: Number(idaccount),
+      reason_inactive: info?.reason_inactive || null,
+    },
+  };
 }
 
 async function isAccountValid(idaccount) {
@@ -80,17 +103,12 @@ async function authenticate(req, res, next) {
   }
 
   const accountInfo = await getAccountValidity(decoded.idaccount);
+  if (accountInfo.errorType === 'SCHEMA_ERROR') {
+    return ResponseHandler.error(res, 'Dịch vụ xác thực tạm thời gián đoạn do cấu hình hệ thống', 503);
+  }
   if (!accountInfo.valid) {
-    const isInactive = accountInfo.status?.toLowerCase() === 'inactive';
-    const errorMsg = isInactive
-      ? (accountInfo.reason_inactive ? `Tài khoản đã bị vô hiệu hóa. Lý do: ${accountInfo.reason_inactive}` : 'Tài khoản đã bị vô hiệu hóa')
-      : 'Account no longer exists or has been deleted';
-
-    return ResponseHandler.unauthorized(res, errorMsg, {
-      code: isInactive ? 'ACCOUNT_INACTIVE' : 'ACCOUNT_DELETED',
-      idaccount: Number(decoded.idaccount),
-      reason_inactive: accountInfo.reason_inactive || null,
-    });
+    const r = accountRejection(accountInfo, decoded.idaccount);
+    return ResponseHandler.unauthorized(res, r.message, r.data);
   }
 
   req.user = decoded;
@@ -114,4 +132,4 @@ function authenticateOptional(req, res, next) {
   next();
 }
 
-module.exports = { authenticate, authenticateOptional, invalidateAccountCache, isAccountValid, getAccountValidity };
+module.exports = { authenticate, authenticateOptional, invalidateAccountCache, isAccountValid, getAccountValidity, accountRejection };

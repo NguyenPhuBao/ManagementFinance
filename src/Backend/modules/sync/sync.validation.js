@@ -1,3 +1,5 @@
+// GHI CHÚ QUAN TRỌNG: Đổi CHECK nào trên CSDL thì đổi tập giá trị tương ứng ở đây trong cùng commit.
+
 const VALID_ENTITIES = [
   'wallet',
   'transaction',
@@ -33,9 +35,10 @@ const ENTITY_PK_MAP = {
 };
 
 /**
- * Validate POST /api/sync/push body
+ * Validate POST /api/sync/push body ở mức CẢ LÔ (Batch-level)
+ * Giữ 400 cho lỗi cấu trúc toàn lô khiến server không thể xử lý từng thao tác
  */
-function validatePush(body) {
+function validateBatch(body) {
   const errors = [];
 
   if (!body || typeof body !== 'object') {
@@ -62,99 +65,129 @@ function validatePush(body) {
   } else if (body.operations.length > 1000) {
     errors.push('operations limit exceeded (max 1000 per batch)');
   } else {
-    body.operations.forEach((op, i) => {
-      const prefix = `operations[${i}]`;
-
-      if (!op.localId || typeof op.localId !== 'string') {
-        errors.push(`${prefix}.localId is required (string)`);
+    for (let i = 0; i < body.operations.length; i++) {
+      const op = body.operations[i];
+      if (!op || typeof op !== 'object' || !op.localId || typeof op.localId !== 'string') {
+        errors.push(`operations[${i}].localId is required (string)`);
       }
-
-      if (!op.entity || !VALID_ENTITIES.includes(op.entity)) {
-        errors.push(`${prefix}.entity must be one of: ${VALID_ENTITIES.join(', ')}`);
-      }
-
-      if (!op.operation || !VALID_OPERATIONS.includes(op.operation)) {
-        errors.push(`${prefix}.operation must be one of: ${VALID_OPERATIONS.join(', ')}`);
-      }
-
-      if (!op.payload || typeof op.payload !== 'object') {
-        errors.push(`${prefix}.payload is required (object)`);
-      } else {
-        // Resolve entity ID from payload.id or exact entity PK field
-        const pkField = ENTITY_PK_MAP[op.entity];
-        const entityId = op.payload.id || (pkField && op.payload[pkField]);
-
-        if (!entityId || !isValidUUID(entityId)) {
-          errors.push(`${prefix}.payload.id (or ${pkField || 'PK'}) must be a valid UUID`);
-        } else {
-          op.payload.id = entityId; // Normalize to payload.id
-        }
-
-        // Validate idaccount exists and is a valid number/numeric string
-        if (op.payload.idaccount === undefined || op.payload.idaccount === null) {
-          errors.push(`${prefix}.payload.idaccount is required`);
-        } else if (isNaN(Number(op.payload.idaccount))) {
-          errors.push(`${prefix}.payload.idaccount must be a valid number`);
-        }
-
-        // Validate update_at for LWW
-        const updateAtVal = op.payload.update_at || op.payload.updatedAt;
-        if (!updateAtVal) {
-          errors.push(`${prefix}.payload.update_at is required`);
-        } else if (!isValidISO(updateAtVal)) {
-          errors.push(`${prefix}.payload.update_at must be a valid ISO 8601 datetime`);
-        }
-
-        // For category: validate classify if provided (Thu, Chi, Vay/no)
-        if (op.entity === 'category' && op.payload.classify) {
-          const validClassify = ['Thu', 'Chi', 'Vay/no'];
-          if (!validClassify.includes(op.payload.classify)) {
-            errors.push(`${prefix}.payload.classify must be Thu, Chi, or Vay/no`);
-          }
-        }
-
-        // For transaction: validate type + provider if provided
-        if (op.entity === 'transaction') {
-          if (op.payload.type) {
-            const validTypes = ['Transaction', 'Transfer', 'Expense', 'Income', 'Debt', 'Loan'];
-            if (!validTypes.includes(op.payload.type)) {
-              errors.push(`${prefix}.payload.type must be Transaction/Transfer/Expense/Income`);
-            }
-          }
-          if (op.payload.provider) {
-            const validProviders = ['Manual', 'BankSync', 'Casso', 'SMS', 'ORC', 'OCR', 'Bill'];
-            if (!validProviders.includes(op.payload.provider)) {
-              errors.push(`${prefix}.payload.provider must be Manual/BankSync/Casso/SMS/ORC/Bill`);
-            }
-          }
-          if (op.payload.status) {
-            const validTxStatuses = ['Pending', 'Confirmed', 'Rejected', 'Fail'];
-            if (!validTxStatuses.includes(op.payload.status)) {
-              errors.push(`${prefix}.payload.status must be Pending/Confirmed/Rejected/Fail`);
-            }
-          }
-        }
-
-        // For bill: validate pay_status if provided
-        if (op.entity === 'bill' && op.payload.pay_status !== undefined && typeof op.payload.pay_status === 'string') {
-          const validStatuses = ['Pending', 'Payed', 'Overdue'];
-          if (!validStatuses.includes(op.payload.pay_status)) {
-            errors.push(`${prefix}.payload.pay_status must be Pending, Payed, or Overdue`);
-          }
-        }
-
-        // For budget: validate over_spending if provided
-        if (op.entity === 'budget' && op.payload.over_spending) {
-          const validOver = ['Stop', 'Over'];
-          if (!validOver.includes(op.payload.over_spending)) {
-            errors.push(`${prefix}.payload.over_spending must be Stop or Over`);
-          }
-        }
-      }
-    });
+    }
   }
 
   return { valid: errors.length === 0, errors };
+}
+
+/**
+ * Validate một thao tác riêng lẻ (Operation-level)
+ * Lỗi ở mức thao tác được ghi nhận vào results[i] với CONSTRAINT_VIOLATION thay vì trả 400 cả lô
+ */
+function validateOperation(op) {
+  const errors = [];
+
+  if (!op || typeof op !== 'object') {
+    return { valid: false, errors: ['Operation must be an object'] };
+  }
+
+  if (!op.entity || !VALID_ENTITIES.includes(op.entity)) {
+    errors.push(`entity must be one of: ${VALID_ENTITIES.join(', ')}`);
+  }
+
+  if (!op.operation || !VALID_OPERATIONS.includes(op.operation)) {
+    errors.push(`operation must be one of: ${VALID_OPERATIONS.join(', ')}`);
+  }
+
+  if (!op.payload || typeof op.payload !== 'object') {
+    errors.push('payload is required (object)');
+    return { valid: false, errors };
+  }
+
+  // Resolve entity ID from payload.id or exact entity PK field
+  const pkField = ENTITY_PK_MAP[op.entity];
+  const entityId = op.payload.id || (pkField && op.payload[pkField]);
+
+  if (!entityId || !isValidUUID(entityId)) {
+    errors.push(`payload.id (or ${pkField || 'PK'}) must be a valid UUID`);
+  } else {
+    op.payload.id = entityId; // Normalize to payload.id
+  }
+
+  // Đối với thao tác xoá (delete), chỉ cần entity và id hợp lệ
+  if (op.operation === 'delete') {
+    return { valid: errors.length === 0, errors };
+  }
+
+  // Validate idaccount nếu có gửi; nếu thiếu sync.service sẽ tự gán idaccount từ JWT
+  if (op.payload.idaccount !== undefined && op.payload.idaccount !== null && isNaN(Number(op.payload.idaccount))) {
+    errors.push('payload.idaccount must be a valid number');
+  }
+
+  // Validate update_at for LWW nếu có; nếu thiếu repository sẽ tự gán new Date()
+  const updateAtVal = op.payload.update_at || op.payload.updatedAt;
+  if (updateAtVal && !isValidISO(updateAtVal)) {
+    errors.push('payload.update_at must be a valid ISO 8601 datetime');
+  }
+
+  // For category: validate classify if provided (Thu, Chi, Vay/no)
+  if (op.entity === 'category' && op.payload.classify) {
+    const c = String(op.payload.classify).trim();
+    if (['Vay/nợ', 'Vay', 'no', 'vay_no', 'vay_nợ', 'Vay/ng'].includes(c)) {
+      op.payload.classify = 'Vay/no';
+    }
+    const validClassify = ['Thu', 'Chi', 'Vay/no'];
+    if (!validClassify.includes(op.payload.classify)) {
+      errors.push('payload.classify must be Thu, Chi, or Vay/no');
+    }
+  }
+
+  // For transaction: validate type + provider if provided
+  if (op.entity === 'transaction') {
+    if (op.payload.type) {
+      if (['Expense', 'Income', 'Debt', 'Loan'].includes(op.payload.type)) {
+        op.payload.type = 'Transaction';
+      }
+      const validTypes = ['Transaction', 'Transfer'];
+      if (!validTypes.includes(op.payload.type)) {
+        errors.push('payload.type must be Transaction or Transfer');
+      }
+    }
+    if (op.payload.provider) {
+      if (op.payload.provider === 'ORC') op.payload.provider = 'OCR';
+      const validProviders = ['Manual', 'BankSync', 'Casso', 'SMS', 'OCR', 'Bill'];
+      if (!validProviders.includes(op.payload.provider)) {
+        errors.push('payload.provider must be Manual/BankSync/Casso/SMS/OCR/Bill');
+      }
+    }
+    if (op.payload.status) {
+      const validTxStatuses = ['Pending', 'Confirmed', 'Rejected', 'Fail'];
+      if (!validTxStatuses.includes(op.payload.status)) {
+        errors.push('payload.status must be Pending/Confirmed/Rejected/Fail');
+      }
+    }
+  }
+
+  // For bill: validate pay_status if provided (Hỗ trợ Skipped theo Migration 12)
+  if (op.entity === 'bill' && op.payload.pay_status !== undefined && typeof op.payload.pay_status === 'string') {
+    const validStatuses = ['Pending', 'Payed', 'Overdue', 'Skipped'];
+    if (!validStatuses.includes(op.payload.pay_status)) {
+      errors.push('payload.pay_status must be Pending, Payed, Overdue, or Skipped');
+    }
+  }
+
+  // For budget: validate over_spending if provided
+  if (op.entity === 'budget' && op.payload.over_spending) {
+    const validOver = ['Stop', 'Over'];
+    if (!validOver.includes(op.payload.over_spending)) {
+      errors.push('payload.over_spending must be Stop or Over');
+    }
+  }
+
+  return { valid: errors.length === 0, errors };
+}
+
+/**
+ * Validate POST /api/sync/push body (Batch check)
+ */
+function validatePush(body) {
+  return validateBatch(body);
 }
 
 /**
@@ -180,4 +213,12 @@ function validatePull(query) {
   return { valid: errors.length === 0, errors };
 }
 
-module.exports = { validatePush, validatePull, isValidUUID, VALID_ENTITIES };
+module.exports = {
+  validatePush,
+  validateBatch,
+  validateOperation,
+  validatePull,
+  isValidUUID,
+  VALID_ENTITIES,
+};
+

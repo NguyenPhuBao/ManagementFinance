@@ -66,7 +66,7 @@ Khi có bất kỳ thay đổi nào về CSDL PostgreSQL:
 
 1. **Bản tường minh SQL:** Bắt buộc tạo file script `.sql` trong thư mục `database/` để làm bản sao lưu và phục vụ khôi phục thảm họa.
 2. **Khai báo Prisma:** Cập nhật chính xác `src/Backend/prisma/schema.prisma`.
-3. **Migration:** Thực thi qua lệnh chuẩn hóa của Prisma để cập nhật lược đồ CSDL.
+3. **Migration:** CSDL được quản lý đồng bộ qua tệp script `database/N_*.sql` (đến migration 12) kết hợp cập nhật `schema.prisma` và lệnh `prisma generate` để đồng bộ Client ORM.
 4. **BẮT BUỘC ĐỒNG BỘ MODULE SYNC:**  
    Mọi thay đổi cột, bảng hoặc quan hệ trong CSDL đều **bắt buộc phải cập nhật Module Sync** (`sync.service.js`, `sync.repository.js`, `sync.validation.js`) theo đúng khuôn mẫu hiện tại để đảm bảo Client-app có thể đẩy/kéo các trường mới.
 5. **An toàn dữ liệu (Data Safety):**
@@ -81,12 +81,12 @@ Khi có bất kỳ thay đổi nào về CSDL PostgreSQL:
   * Yêu cầu xóa một bản ghi không tồn tại trên server (hoặc đã được xóa trước đó) phải được xem là thành công (`synced`, message `Already absent`). Tuyệt đối không trả mã lỗi `400/500` làm kẹt vòng lặp đẩy lại vĩnh viễn trên thiết bị di động.
 * **Thứ tự ưu tiên thực thể (`ENTITY_PRIORITY`):**
   * Đồng bộ phải tuân theo thứ tự phụ thuộc dữ liệu:  
-    `Account` $\rightarrow$ `Wallet` $\rightarrow$ `Category` $\rightarrow$ `CategoryGroup` $\rightarrow$ `CategoryGroupMembership` $\rightarrow$ `Goal` $\rightarrow$ `Bill` $\rightarrow$ `Budget` $\rightarrow$ `Transaction`.
+    `category` (10) $\rightarrow$ `wallet` (20) $\rightarrow$ `budget`, `bill`, `goal` (30) $\rightarrow$ `transaction` (40). Thao tác **xoá** chạy ngược lại: `transaction` (60) $\rightarrow$ `budget`/`bill`/`goal` (70) $\rightarrow$ `wallet` (80) $\rightarrow$ `category` (90) — `sync.service.js:46-63`.
 * **UUID Danh mục Mặc định Ổn Định (Stable UUIDs):**
   * Các danh mục hệ thống mặc định phải dùng tập UUID cố định đóng băng (trong `seed.js`), không được sinh UUID ngẫu nhiên mỗi lần seed lại để tránh lệch dữ liệu với SQLite client.
 * **Toàn vẹn tên danh mục:**
   * Chống trùng tên danh mục giữa các bản ghi đang hoạt động (Partial Unique Index lọc `Delete_at IS NULL`).
-  * Sử dụng Database Trigger để ngăn người dùng tạo danh mục cá nhân trùng tên với danh mục mặc định của hệ thống.
+  * Người dùng **được phép** tạo danh mục cá nhân trùng tên với danh mục mẫu hệ thống (mô hình Template & Cloned Model) — trigger chéo cũ đã gỡ (database/5), xem mục 1.2.
 
 ---
 
@@ -320,6 +320,12 @@ Phần này đặc tả chi tiết toàn bộ các quy tắc ràng buộc, chố
 * Xóa ví là xóa mềm qua trường `delete_at`.
 * Các giao dịch thuộc ví bị xóa vẫn được bảo toàn lịch sử thu chi để không làm sai lệch báo cáo tài chính quá khứ.
 
+### 2.5. Tên ví duy nhất trong một tài khoản
+* Hai ví **đang hoạt động** (`Delete_at IS NULL`) của cùng một tài khoản không được trùng `Name` — thi hành bằng partial unique index `uq_wallet_account_name_active ("Idaccount", "Name")`. So khớp **chính xác** (phân biệt hoa thường).
+* Ví đã xoá mềm không giữ chỗ tên.
+* Vi phạm trả SQLSTATE `23505`; `/sync/push` ánh xạ thành mã lỗi `CONSTRAINT_VIOLATION` (với detail `WALLET_NAME_DUPLICATE`).
+* Quy tắc "một ví Tiết kiệm mỗi tài khoản" (`uq_wallet_saving_active`) **đã được loại bỏ** trong Migration 12 để cho phép người dùng mở nhiều sổ tiết kiệm linh hoạt.
+
 ---
 
 ## 💳 3. QUY TẮC VỀ GIAO DỊCH (TRANSACTION RULES)
@@ -330,28 +336,25 @@ Phần này đặc tả chi tiết toàn bộ các quy tắc ràng buộc, chố
   * **Ý nghĩa:** Đảm bảo mỗi mã giao dịch (`bank_tran_id`) từ một nguồn bên ngoài (`Provider`) chỉ xuất hiện 1 lần duy nhất trên mỗi tài khoản người dùng (`Idaccount`).
   * **Multi-tenant Safe:** Hai người dùng khác nhau có thể có mã giao dịch ngân hàng trùng nhau mà không gây xung đột hệ thống.
 
-### 3.2. Cơ chế tác động số dư ví (Balance Mutation)
-Mỗi loại giao dịch (`Type`) kích hoạt một logic toán học chính xác trên số dư ví:
-* **Chi tiêu (`Expense` / `Chi`):**
-  * Trừ số dư ví: `wallet.balance = wallet.balance - amount`
-* **Thu nhập (`Income` / `Thu`):**
-  * Cộng số dư ví: `wallet.balance = wallet.balance + amount`
-* **Chuyển khoản nội bộ (`Transfer` / `ChuyenKhoan`):**
-  * Bắt buộc có đủ cả hai ID ví: `Idwallet` (ví nguồn) và `Idwallet_transfer` (ví đích).
-  * Trừ ví nguồn: `source_wallet.balance = source_wallet.balance - amount`
-  * Cộng ví đích: `target_wallet.balance = target_wallet.balance + amount`
-* **Vay / Nợ (`Debt` / `Loan`):**
-  * Theo dõi công nợ, phân định rõ số tiền đã thu hồi / đã hoàn trả.
+### 3.2. Loại giao dịch và số dư ví
+Cột `Type` chỉ nhận **hai** giá trị (`chk_transaction_type`):
+* **`Transaction`** — thu hoặc chi, phân biệt bằng **dấu của `Amount`**: dương là thu, âm là chi (`chk_transaction_nonzero_amount` cấm `0`).
+* **`Transfer`** — chuyển giữa hai ví: bắt buộc có `Idwallet` (ví nguồn) và `Idwallet_transfer` (ví đích).
+* Không có loại riêng cho vay/nợ trong CSDL.
+
+Số dư ví **không** do `/sync/push` cộng trừ: client tính số dư và đẩy lên qua `wallet.balance` như một trường thường (`sync.repository.js:224, 242`).
+Lưu ý: Nếu client gửi `Expense`, `Income`, `Debt`, `Loan`, Sync Engine sẽ chuẩn hóa về `Transaction` trước khi kiểm tra và ghi nhận vào CSDL.
 
 ### 3.3. Liên kết mục tiêu tiết kiệm (`Idgoal`)
 * Cột `Idgoal` (UUID, nullable) lưu dấu vết khoản giao dịch được trích cho mục tiêu nào.
 * **Khóa ngoại an toàn (`fk_transaction_goal`):** Cài đặt `ON DELETE SET NULL`. Khi người dùng xóa mục tiêu, toàn bộ giao dịch liên quan KHÔNG bị xóa mà chỉ đưa `Idgoal` về `NULL`, bảo vệ 100% số dư ví và báo cáo dòng tiền.
 
 ### 3.4. Nhà cung cấp giao dịch (`Provider`)
-* `'Manual'`: Người dùng tự tạo bằng tay trên ứng dụng.
-* `'BankSync'`: Giao dịch tự động ghi nhận từ Webhook ngân hàng (SePay / Casso).
-* `'SMS'`: Giao dịch trích xuất tự động từ tin nhắn ngân hàng (xử lý offline trên client).
-* `'OCR'`: Giao dịch trích xuất từ hóa đơn bằng AI OCR.
+* `'Manual'`: Người dùng tự tạo trên ứng dụng — mặc định khi không gửi `provider` (`sync.repository.js:285`).
+* `'BankSync'`: Webhook ngân hàng (SePay / Casso) — `workers/bank.worker.js:192`.
+* `'OCR'`: Trích từ hoá đơn bằng AI OCR — `modules/ai/features/classify/classify.service.js` (đã thống nhất `'OCR'`, loại bỏ `'ORC'`).
+* `'SMS'`, `'Casso'`, `'Bill'`: Lớp kiểm tra `sync.validation.js:125` nhận để tương thích mở rộng.
+* Cột **không** có CHECK trong CSDL.
 
 ---
 
@@ -392,7 +395,7 @@ Mỗi loại giao dịch (`Type`) kích hoạt một logic toán học chính x�
 
 ### 5.3. Thứ tự ưu tiên thưa (`Priority`)
 * Cột `Priority` (INT, nullable) lưu giá trị số nguyên xác định độ ưu tiên của mục tiêu.
-* Sử dụng đánh số thứ tự thưa (10, 20, 30...) để người dùng có thể dễ dàng chèn một mục tiêu mới vào giữa danh sách mà không cần cập nhật lại toàn bộ các bản ghi khác.
+* Đánh số thưa **cách nhau 100** (100, 200, 300…): chèn giữa hai mục tiêu chỉ ghi một hàng (150). **NULL = chưa sắp, xếp cuối.** Trùng số được phép — không đặt UNIQUE. Server phải giữ nguyên NULL khi đồng bộ (`CAN-LAM/GOAL_PRIORITY_NULL_TO_ZERO.md`).
 
 ---
 
@@ -403,18 +406,21 @@ Mỗi loại giao dịch (`Type`) kích hoạt một logic toán học chính x�
 
 ### 6.2. Trạng thái thanh toán (`pay_status` Enum)
 * `'Pending'`: Chờ đến hạn thanh toán.
-* `'Paid'`: Đã thanh toán (đã sinh ra khoản chi tương ứng).
+* `'Payed'`: Đã thanh toán (đã sinh ra khoản chi tương ứng).
 * `'Overdue'`: Đã quá hạn thanh toán (`current_date > due_date` và chưa thanh toán).
-* `'Skipped'`: Người dùng chủ động bỏ qua kỳ hóa đơn này (không thanh toán và không tính nợ).
+* `'Skipped'`: Người dùng chủ động bỏ qua kỳ hóa đơn này (không thanh toán và không tính nợ). Đã được hỗ trợ tại CSDL và Sync Engine từ Migration 12.
 
 ### 6.3. Chuỗi kỳ hóa đơn & Lịch sử
 * `start_date` và `due_date`: Mốc bắt đầu kỳ và hạn chót thanh toán của kỳ hóa đơn đó.
-* `previous_bill_id`: Cột liên kết ID tới hóa đơn của kỳ liền trước. Dùng để:
+* `previous_bill_id`: Cột liên kết ID tới hóa đơn của kỳ liền trước (đã bổ sung từ Migration 12). Dùng để:
   * Truy vết lịch sử biến động chi phí qua các kỳ (ví dụ: tiền điện 6 tháng qua).
   * Hỗ trợ hoàn tác (undo) thanh toán hóa đơn về trạng thái chưa trả.
+* `period_end`: Mốc kết thúc kỳ tính cước hóa đơn.
+* `auto_pay`: Cờ tự động thanh toán hóa đơn khi đến hạn.
+* `anchor_day`: Ngày neo chu kỳ thanh toán hàng tháng (1..31).
 
 ### 6.4. Chốt chặn thanh toán hai lần (Double-Payment Guard)
-* Khi tiếp nhận yêu cầu thanh toán hóa đơn hoặc đẩy giao dịch có gắn `Idbill`, Sync Engine kiểm tra hóa đơn tương ứng trong kỳ đó đã ở trạng thái `'Paid'` hay chưa, ngăn chặn việc 2 thiết bị cùng thanh toán 1 hóa đơn khi chuyển từ trạng thái offline sang online.
+* Khi tiếp nhận yêu cầu thanh toán hóa đơn hoặc đẩy giao dịch có gắn `Idbill`, Sync Engine kiểm tra hóa đơn tương ứng trong kỳ đó đã ở trạng thái `'Payed'` hay chưa. Nếu đã trả mà cố tình sửa trạng thái hoặc thanh toán trùng, hệ thống chặn lại và trả lỗi `BILL_ALREADY_PAID` (ánh xạ thành `CONSTRAINT_VIOLATION`), ngăn chặn việc 2 thiết bị cùng thanh toán 1 hóa đơn khi chuyển từ offline sang online.
 
 ---
 
@@ -530,14 +536,17 @@ Khi xóa một người dùng (`DELETE /api/admin/deleteuser/:id` hoặc `DELETE
 * **Hàng đợi 24/24 (Khi người dùng mất mạng / Offline)**:
   * Trạng thái xóa mềm được lưu cố định và vĩnh viễn (24/24) tại CSDL (`account.delete_at IS NOT NULL`).
   * Nhận diện khi Client-app có kết nối internet trở lại (thông qua `ConnectionMonitor` / `Connectivity` trên Client-app kích hoạt kết nối lại):
-    * **Qua Socket.io Handshake**: Middleware bắt tay từ chối kết nối kèm mã lỗi `ACCOUNT_DELETED`.
+    * **Qua Socket.io Handshake**: Middleware bắt tay từ chối kết nối kèm mã lỗi `ACCOUNT_DELETED` hoặc `ACCOUNT_INACTIVE` (kèm `reason_inactive`).
     * **Qua HTTP API (`authenticate` middleware)**: Mọi yêu cầu HTTP (như sync, lấy thông tin tài khoản) đều bị từ chối với mã HTTP 401 Unauthorized kèm body chuẩn hóa:
       ```json
       {
         "success": false,
-        "statusCode": 401,
+        "message": "Account no longer exists or has been deleted",
         "code": "ACCOUNT_DELETED",
-        "message": "Tài khoản của bạn đã bị ngừng hoạt động hoặc xóa bởi quản trị viên."
+        "idaccount": 10,
+        "reason_inactive": null,
+        "errors": null,
+        "timestamp": "2026-09-10T15:58:09.000Z"
       }
       ```
   * **Trách nhiệm của Client-app**:
@@ -638,7 +647,7 @@ Tất cả các thành phần hệ thống (`src/Backend`, `src/Admin-web`, `src
 1. **User-scoped Isolation:** Mọi query đọc/ghi vào CSDL bắt buộc có điều kiện lọc theo `idaccount` / `userId` từ JWT token đã xác thực; cấm truy vấn dữ liệu không kèm ràng buộc người sở hữu.
 2. **Không ghi log dữ liệu nhạy cảm (Zero Sensitive Logging):** Cấm tuyệt đối lệnh `console.log`, `logger.info`, `logger.error` in ra mật khẩu, OTP plaintext, token plaintext, CVV hoặc nội dung giao dịch chi tiết. Winston Logger tích hợp format tự động che giấu các trường nhạy cảm (`balance`, `password`, `token`, `otp`, `code_hash`, `cvv`, `refreshtoken`).
 3. **Mã hóa đa tầng:** Mã hóa in-transit (TLS 1.3 / HTTPS) cho toàn bộ kết nối và mã hóa at-rest (AES-256-GCM) cho dữ liệu nhạy cảm.
-4. **Xác thực & Thu hồi phiên:** Token rotation, reuse detection, thu hồi toàn bộ token khi đổi mật khẩu hoặc xóa tài khoản.
+4. **Xác thực & Thu hồi phiên:** Token rotation, reuse detection. Thu hồi toàn bộ token khi đổi mật khẩu, đặt lại mật khẩu, đăng xuất, và khi tài khoản bị xoá hẳn (hết 30 ngày chờ xoá). Gửi yêu cầu xoá **không** thu hồi token — người dùng dùng tiếp trong 30 ngày (mục 11.6).
 5. **Rate Limiting & Chống Brute-force:** Áp dụng rate limiter nghiêm ngặt trên các route nhạy cảm (login, otp, register, forgot-password).
 6. **Socket.io Privacy:** Mọi sự kiện thời gian thực chỉ được gửi vào room riêng `account_${idaccount}`, cấm broadcast toàn cục các sự kiện chứa PII hoặc dữ liệu tài chính.
 

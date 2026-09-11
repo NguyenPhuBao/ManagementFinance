@@ -1,5 +1,5 @@
 const syncRepository = require('./sync.repository');
-const { VALID_ENTITIES } = require('./sync.validation');
+const { VALID_ENTITIES, validateOperation } = require('./sync.validation');
 const eventBus = require('../../core/event-bus');
 const logger = require('../../core/logger');
 
@@ -80,6 +80,19 @@ const syncService = {
       try {
         const { localId, entity, operation, payload } = op;
 
+        // 1. Kiểm tra tính hợp lệ của từng thao tác (Operation-level validation)
+        const opValidation = validateOperation(op);
+        if (!opValidation.valid) {
+          results[idx] = {
+            localId: op.localId || 'unknown',
+            status: 'error',
+            code: 'CONSTRAINT_VIOLATION',
+            message: opValidation.errors.join('; '),
+          };
+          errors++;
+          continue;
+        }
+
         // Ownership check (type-safe comparison)
         if (payload.idaccount !== undefined && payload.idaccount !== null && Number(payload.idaccount) !== Number(idaccount)) {
           results[idx] = {
@@ -155,7 +168,10 @@ const syncService = {
         let code = 'DB_ERROR';
         let friendlyMessage = 'Dữ liệu không hợp lệ hoặc vi phạm ràng buộc cơ sở dữ liệu';
 
-        if (/fk_\w+_account/i.test(rawMsg) || /Foreign key.*account/i.test(rawMsg)) {
+        if (err.code === 'BILL_ALREADY_PAID' || /BILL_ALREADY_PAID/i.test(rawMsg)) {
+          code = 'BILL_ALREADY_PAID';
+          friendlyMessage = err.message || 'Hóa đơn đã được thanh toán, không thể thay đổi trạng thái';
+        } else if (/fk_\w+_account/i.test(rawMsg) || /Foreign key.*account/i.test(rawMsg)) {
           code = 'ACCOUNT_NOT_FOUND';
           friendlyMessage = 'Tài khoản không tồn tại trong hệ thống';
         } else if (sqlState === '23505' || prismaCode === 'P2002') {
@@ -163,6 +179,12 @@ const syncService = {
           if (/uq_category|category.*name/i.test(rawMsg) || /category/i.test(constraintMatch || '')) {
             code = 'CATEGORY_NAME_DUPLICATE';
             friendlyMessage = 'Tên danh mục đã tồn tại trong tài khoản này';
+          } else if (/uq_wallet_name|wallet.*name/i.test(rawMsg) || /uq_wallet_name_user/i.test(constraintMatch || '')) {
+            code = 'WALLET_NAME_DUPLICATE';
+            friendlyMessage = 'Tên ví đã tồn tại trong tài khoản này';
+          } else if (/uq_wallet_default|wallet.*default/i.test(rawMsg)) {
+            code = 'WALLET_DEFAULT_DUPLICATE';
+            friendlyMessage = 'Tài khoản đã có một ví mặc định';
           } else {
             friendlyMessage = 'Dữ liệu bị trùng lặp khóa duy nhất';
           }
@@ -172,6 +194,13 @@ const syncService = {
         } else if (sqlState === '23514') {
           code = 'CONSTRAINT_VIOLATION';
           friendlyMessage = 'Dữ liệu vi phạm ràng buộc kiểm tra của cơ sở dữ liệu';
+        } else if (sqlState === '22001' || prismaCode === 'P2000' || /value too long for type/i.test(rawMsg)) {
+          code = 'CONSTRAINT_VIOLATION';
+          friendlyMessage = 'Dữ liệu dài hơn độ rộng cho phép của cơ sở dữ liệu';
+        } else if (sqlState === '23502' || prismaCode === 'P2011' || prismaCode === 'P2012'
+                   || err?.name === 'PrismaClientValidationError') {
+          code = 'CONSTRAINT_VIOLATION';
+          friendlyMessage = 'Dữ liệu thiếu trường bắt buộc hoặc sai kiểu';
         } else if (/cannot delete system default category/i.test(rawMsg)) {
           code = 'FORBIDDEN_SYSTEM_DEFAULT';
           friendlyMessage = 'Không thể xóa danh mục mặc định của hệ thống';
@@ -181,7 +210,7 @@ const syncService = {
           localId: op.localId,
           status: 'error',
           code,
-          constraint: constraintMatch || undefined,
+          constraint: constraintMatch || err?.meta?.column_name || undefined,
           message: friendlyMessage,
         };
         errors++;
