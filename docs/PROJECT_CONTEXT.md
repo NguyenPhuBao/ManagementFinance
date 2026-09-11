@@ -1113,8 +1113,8 @@ phía client vẫn cục bộ, và chốt ở `upsertBill` đặt sai chỗ (CAN
    mười lăm tài liệu backend báo xong (giao dịch SePay vỡ `chk_transaction_type`
    theo mã, `bank_transaction.incoming` phát hai lần, khoá mã hoá viết cứng,
    `DEFAULT 0` của ngân sách trên CSDL, …) cộng 45 chỗ sửa tài liệu backend. Mục
-   **19** — `GET /auth/profile` trả thêm `countdown` (máy không gửi yêu cầu xoá
-   mới biết số ngày còn lại) và gỡ `pendingDeleteCancelled` luôn `false` khỏi
+   **19** — `GET /auth/profile` trả thêm `countdown` (máy đã giữ phiên từ trước khi máy khác gửi yêu cầu xoá, và bộ nhớ đệm do bản client cũ ghi,
+   mới biết số ngày còn lại — đăng nhập máy khác hay cài lại app thì đã có số, vì response đăng nhập mang `countdown`) và gỡ `pendingDeleteCancelled` luôn `false` khỏi
    response đăng nhập.
    Việc **phía client** phát sinh từ lượt đối chiếu, chờ người dùng quyết:
    mở đồng bộ các cột hoá

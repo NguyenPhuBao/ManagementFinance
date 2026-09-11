@@ -14,7 +14,7 @@ việc 2 — hai dòng ở `auth.service.js`. Không migration, không đổi CS
 
 | | Xin gì | Vì sao | Mức |
 |---|---|---|---|
-| **1** | `GET /auth/profile` trả thêm `countdown` | Máy **không** gửi yêu cầu xoá (đăng nhập máy khác, cài lại app) không biết số ngày còn lại — thẻ nhắc chỉ hiện câu chung | 🟡 |
+| **1** | `GET /auth/profile` trả thêm `countdown` | Máy **đã giữ phiên** từ trước khi máy khác gửi yêu cầu xoá chỉ thấy `status` qua `/auth/profile`, không biết số ngày còn lại — thẻ nhắc chỉ hiện câu chung (§2.1). Cùng triệu chứng: bộ nhớ đệm do bản client cũ ghi, thiếu mốc nhận (§2.4). Đăng nhập máy khác hay cài lại app thì **có** số: response đăng nhập mang `countdown` | 🟡 |
 | **2** | Gỡ `pendingDeleteCancelled` khỏi response `POST /auth/login` | Luôn `false` — di sản của đặc tả "đăng nhập lại là tự khôi phục" đã bỏ; client đã gỡ phía đọc | ⚪ |
 
 ## 2. Việc 1 — `countdown` ở `/auth/profile`
@@ -62,7 +62,9 @@ UTC+7 (khớp `scheduler.service.js` trừ 1 lúc 00:00 giờ Việt Nam) — nh
 
 `AuthRepositoryImpl._dongBoTrangThai` (client) hiện đặt `countdown = null` khi server báo
 `PendingDelete` mà máy chưa biết. Có trường này thì client đọc `profile['countdown']` và
-ghi kèm mốc nhận — việc phía client, backend không phải làm thêm.
+ghi kèm mốc nhận — kể cả khi trạng thái khớp mà máy chưa có mốc nhận: bộ nhớ đệm do bản
+client cũ ghi có `countdown` nhưng thiếu `countdown_nhan_luc`, nên thẻ nhắc hôm nay chỉ
+hiện câu chung. Cả hai là việc phía client, backend không phải làm thêm.
 
 ## 3. Việc 2 — `pendingDeleteCancelled`
 

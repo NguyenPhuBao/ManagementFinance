@@ -1,6 +1,7 @@
 # Cưỡng chế đăng xuất và tài khoản chờ xoá — thiết kế
 
-> **Trạng thái: G33 — Phần 2–3 (trừ §5.1) và việc backend mục 6 — ĐÃ XONG (2026-09-11).
+> **Trạng thái: G33 — Phần 2–3 (trừ §5.1) ĐÃ XONG (2026-09-11). Mục 6 (việc cho backend):
+> tài liệu xin ĐÃ VIẾT (CAN-LAM 19), backend CHƯA LÀM — `getProfile` chưa trả `countdown`.
 > Phần 1 (mục 3, kể cả §3.8) và §5.1 CHƯA LÀM.** Mọi quyết định sản phẩm ở mục 2
 > đã chốt qua hỏi–đáp ngày 2026-09-10; Phần 1 (mục 3) được duyệt riêng trong phiên
 > ấy. Phần 2–4 viết thẳng vào đây theo yêu cầu "làm đi" của người dùng. Ngày
@@ -445,8 +446,11 @@ Viết **`CAN-LAM/AUTH_PROFILE_COUNTDOWN.md`** (mục **19** của `README.md` �
 `src/Backend`:
 
 1. `getProfile` (`auth.service.js:552-565` — nhánh đã gộp `main`) trả thêm
-   `countdown` — một dòng. Để máy không gửi yêu cầu xoá vẫn hiện được số ngày (mục
-   4.3 dòng hai). Đo 2026-09-11: `main` @ `7675b35` **chưa** làm.
+   `countdown` — một dòng. Để hai ca hôm nay chỉ hiện câu chung cũng có số ngày: máy
+   **đã giữ phiên** từ trước khi máy khác gửi yêu cầu xoá (mục 4.3 dòng hai), và bộ nhớ
+   đệm do bản client cũ ghi, thiếu `countdown_nhan_luc` — ca này còn cần client ghi số cả
+   khi trạng thái khớp. Đăng nhập máy khác hay cài lại app thì đã có số: response đăng
+   nhập mang `countdown` (mục 4.3 dòng một). Đo 2026-09-11: `main` @ `7675b35` **chưa** làm.
 2. `pendingDeleteCancelled` luôn `false` (`auth.service.js:309`, cả nhánh lẫn
    `main`): xin gỡ trường khỏi response hoặc ghi rõ là đã bỏ. ⚠️ Lý do bản trước
    ghi — *"vì `Rule_project.md`/đặc tả 2026-08-18 còn mô tả nó"* — sai một nửa: đo
