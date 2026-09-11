@@ -859,7 +859,7 @@ src/Backend/
 - **Duyệt spec cưỡng chế đăng xuất và tài khoản chờ xoá** (2026-09-11, **không đổi mã**, schema không đổi). Người dùng duyệt bốn điểm còn treo của `docs/superpowers/specs/2026-09-10-cuong-che-dang-xuat-va-cho-xoa-design.md`: **§3.3** (401 có mã, kể cả 401 của `/auth/refresh`, thì interceptor tự xoá token và không phát `sessionExpiredStream`); **§3.6b** (`daXoa` đến từ nhánh làm mới vẫn đăng xuất nhưng **không** dọn SQLite — `ThongBaoBuocDangXuat` thêm trường `nguon`); **ba màn Stitch** ở §5, dựng theo chữ và màu ghi trong spec; và đưa **hai lỗi làm mới token có sẵn** (mất mạng hoặc 5xx lúc làm mới cũng đăng xuất; hai 401 cùng lúc làm mới hai lần và vấp *Token Reuse Detection*) từ "Ngoài phạm vi" vào phạm vi — nay **§3.8**, làm trước Phần 1 vì cùng `auth_interceptor.dart`. Tài khoản thử: **tài khoản 11**, người dùng cho dùng — thông tin đăng nhập **không** ghi vào repo; kiểm trên Chrome để không dọn dữ liệu tài khoản 10 trên máy ảo (⚠️ chiều cùng ngày máy ảo đã ở phiên tài khoản 11 — khối "Nhãn loại ví ở bảng chọn ví" ngay dưới).
   > **Đối chiếu trước khi trình (chỉ đọc):** `auth_interceptor.dart` vẫn kế thừa `Interceptor`, gặp 401 nào cũng làm mới và `_tryRefreshToken` nuốt mọi lỗi thành `null` (`:88-119`); `auth.service.js` thu hồi refresh token trước khi ném 401 có mã (`:411`) và gặp token đã thu hồi thì thu hồi mọi token của tài khoản (`:380-389`); `auth.controller.js:77` đưa lỗi không mang `statusCode` về 500; `accountRejection` (`middleware/auth.js:60-74`) không bao giờ trả `null`, và đường làm mới không tách lỗi lược đồ như `authenticate` (`:105-108`). Spec còn khớp mã. Ba màn Stitch (`get_screen`) khớp §5; màn Trang chủ có thêm biểu tượng đồng hồ cạnh tiêu đề thẻ — ghi bổ sung vào §5.2.
   > **Sửa kèm trong spec:** §7.3 ghi tài khoản 10 "không có mật khẩu" — sai: đo bảng `account` (chỉ đọc) thì cả ba tài khoản (1 admin, 10, 11) đều `Active` và có mật khẩu. §8 bỏ hai mục vừa đưa vào phạm vi; §3.5 bước 3 và §7.2 bỏ chữ "nếu được duyệt"; §7.2 thêm các ca của §3.8.
-  > **Chưa làm:** CAN-LAM **19** (`AUTH_PROFILE_COUNTDOWN.md`, nội dung ở §6 spec) viết khi bắt đầu G33; kế hoạch thực thi đặt ở `docs/superpowers/plans/` (gitignore).
+  > **Chưa làm:** CAN-LAM **19** (`AUTH_PROFILE_COUNTDOWN.md`, nội dung ở §6 spec) viết khi bắt đầu G33 (✅ viết cùng ngày); kế hoạch thực thi đặt ở `docs/superpowers/plans/` (gitignore).
 
 - **Nhãn loại ví ở bảng chọn ví màn Thêm giao dịch** (2026-09-11, **schema không đổi**). Lỗi hiển thị tìm ra ở lượt kiểm đầu-cuối cùng ngày: dòng dưới tên ví trong bảng "Chọn ví thanh toán" / "Chọn ví đích" in thẳng `wallet.type`, nên hiện khoá lưu `saving`/`cash`. Nay đi qua `WalletType.tuKhoa(wallet.type).nhan` (`add_transaction_page.dart`) — nhãn loại ví có một nguồn duy nhất ở `wallet/domain/wallet_type.dart`. Quét `presentation/` của `lib/`: không còn chỗ nào khác in `wallet.type` ra màn hình.
   > **TDD:** ca mới ở `test/features/transaction/presentation/add_transaction_page_test.dart` mở bảng chọn với ba ví `cash`/`bank`/`saving` — đỏ đúng lý do (tìm thấy chữ "cash"); chữ cần so lấy từ `WalletType.nhan` chứ không gõ tay, và neo bằng biểu tượng của hàng ví chứ không bằng chữ tiếng Việt. `flutter test` **2029/2029** (5 phút 24 giây, chạy song song với build APK), `flutter analyze` **25 issue** = 20 info + 5 warning + 0 error — khớp mức nền, không issue nào ở hai tệp vừa sửa. Test: 192 tệp `_test.dart` (193 tệp `.dart` kể cả `category_test_fakes.dart`) / 44.041 dòng.
@@ -877,7 +877,7 @@ Xem đầy đủ tại **`docs/CLIENT_APP_KNOWN_GAPS.md`**. Phiên 2026-09-03 đ
 > Hệ quả ít ai biết: **công cụ Grep tôn trọng `.gitignore` nên không nhìn thấy thư mục `test/`**. Muốn dò xem còn ai gọi một hàm sắp xoá thì phải dùng `grep` qua shell, nếu không sẽ thấy thiếu file và xoá nhầm.
 
 Vấn đề thuộc backend. Thư mục `docs/superpowers/backend/` được **chia ba** ngày
-2026-09-07: **`CAN-LAM/`** giữ đúng phần **còn việc** — nay **2** tài liệu (đếm bằng máy 2026-09-11, sau khi gộp `main` @ `cc65f4f` và áp `database/12`): mục **17** `FIX_BACKEND_3_REGRESSIONS.md` (ba hồi quy của `7675b35` — bắt tay socket và `/auth/refresh` từ chối mọi tài khoản, chốt trả hai lần chặn hoàn tác hoá đơn, tài liệu backend ghi sai ba mã lỗi) và mục **18** `VERIFY_7675B35_REMAINING.md` (chín việc mã/CSDL còn dang dở của mười lăm tài liệu backend báo xong, cộng 45 chỗ sửa tài liệu backend); mục **19** (`AUTH_PROFILE_COUNTDOWN.md`) chưa viết — spec cưỡng chế đăng xuất đã duyệt 2026-09-11, tài liệu viết khi bắt đầu làm G33. Trước khi gộp, thư mục có **mười sáu** mục — dòng này từng ghi "bốn", "sáu", "tám", "mười", "mười một", "mười lăm" rồi "mười sáu". README
+2026-09-07: **`CAN-LAM/`** giữ đúng phần **còn việc** — nay **3** tài liệu (đếm bằng máy 2026-09-11, sau khi gộp `main` @ `cc65f4f`, áp `database/12` và viết mục 19): mục **17** `FIX_BACKEND_3_REGRESSIONS.md` (ba hồi quy của `7675b35` — bắt tay socket và `/auth/refresh` từ chối mọi tài khoản, chốt trả hai lần chặn hoàn tác hoá đơn, tài liệu backend ghi sai ba mã lỗi), mục **18** `VERIFY_7675B35_REMAINING.md` (chín việc mã/CSDL còn dang dở của mười lăm tài liệu backend báo xong, cộng 45 chỗ sửa tài liệu backend) và mục **19** `AUTH_PROFILE_COUNTDOWN.md` (`GET /auth/profile` trả thêm `countdown`, gỡ `pendingDeleteCancelled` luôn `false` khỏi response đăng nhập). Trước khi gộp, thư mục có **mười sáu** mục — dòng này từng ghi "bốn", "sáu", "tám", "mười", "mười một", "mười lăm" rồi "mười sáu". README
 trong đó là **cửa vào duy nhất** (mục 1: việc còn lại; mục 2: trạng thái mười lăm tài liệu vừa chuyển đi); **`DA-XONG/`** giữ 31 tài liệu **đã đóng** (đếm bằng máy 2026-09-11 sau khi gộp; trước đó 16 — chín trong mười lăm tài liệu mới chuyển còn phần dang dở, gom vào mục 18 chứ không chuyển ngược lại), mở khi
 cần biết *vì sao* lược đồ có hình dạng hôm nay chứ không phải khi tìm việc; thư mục
 cha chỉ còn mục lục và **ba** tệp bối cảnh (`2026-08-10-backend-sync-spec.md`,
@@ -1096,9 +1096,9 @@ phía client vẫn cục bộ, và chốt ở `upsertBill` đặt sai chỗ (CAN
    Từ 2026-09-09 có **một chỗ vẽ thứ hai**: biểu đồ trong tệp PDF dùng
    `pw.Chart` của chính gói `pdf`, vì `fl_chart` vẽ ra widget chứ không ra
    trang giấy. Hai chỗ ấy **cố ý tách**, không phải quên gộp.
-2. **Việc còn lại của backend: hai tài liệu** ở `docs/superpowers/backend/CAN-LAM/`
-   (đếm bằng máy 2026-09-11, sau khi gộp `main` @ `cc65f4f` và áp `database/12` —
-   dòng này từng ghi "năm" rồi "sáu"). Mục **17** — ba hồi quy của `7675b35`:
+2. **Việc còn lại của backend: ba tài liệu** ở `docs/superpowers/backend/CAN-LAM/`
+   (đếm bằng máy 2026-09-11, sau khi viết mục 19 — dòng này từng ghi "năm",
+   "sáu" rồi "hai"). Mục **17** — ba hồi quy của `7675b35`:
    **A** bắt tay socket và `/auth/refresh` từ chối mọi tài khoản (kênh thời gian
    thực không nối được, người dùng bị đăng xuất khi token hết hạn), **B** chốt trả
    hai lần ở `upsertBill` chặn hoàn tác thanh toán hoá đơn đã đồng bộ, **C** tài
@@ -1106,8 +1106,9 @@ phía client vẫn cục bộ, và chốt ở `upsertBill` đặt sai chỗ (CAN
    mười lăm tài liệu backend báo xong (giao dịch SePay vỡ `chk_transaction_type`
    theo mã, `bank_transaction.incoming` phát hai lần, khoá mã hoá viết cứng,
    `DEFAULT 0` của ngân sách trên CSDL, …) cộng 45 chỗ sửa tài liệu backend. Mục
-   **19** (`AUTH_PROFILE_COUNTDOWN.md`) chưa viết — spec cưỡng chế đăng xuất đã duyệt
-   2026-09-11; tài liệu viết khi bắt đầu làm G33.
+   **19** — `GET /auth/profile` trả thêm `countdown` (máy không gửi yêu cầu xoá
+   mới biết số ngày còn lại) và gỡ `pendingDeleteCancelled` luôn `false` khỏi
+   response đăng nhập.
    Việc **phía client** phát sinh từ lượt đối chiếu, chờ người dùng quyết:
    mở đồng bộ các cột hoá
    đơn đang cục bộ, nghe `sync.completed` (G34), và tính năng "bỏ qua kỳ này".
