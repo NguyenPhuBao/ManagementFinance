@@ -1,6 +1,6 @@
 # Client-app — Việc còn dang dở & rủi ro đã biết
 
-**Cập nhật:** 2026-09-11 (sau khi nhánh gộp `main` @ `cc65f4f` và CSDL dev áp `database/12`: đóng G29, G31, G32; G24 thành lỗi phía client rồi đóng cùng ngày; thêm G34, G35)
+**Cập nhật:** 2026-09-11 (sau khi nhánh gộp `main` @ `cc65f4f` và CSDL dev áp `database/12`: đóng G29, G31, G32; G24 thành lỗi phía client rồi đóng cùng ngày; thêm G34; G35 mở rồi đóng cùng ngày)
 **Mục đích:** ghi lại những hạng mục đã được **cân nhắc và cố ý hoãn**, kèm lý do và bán kính ảnh hưởng. Không có tài liệu này thì người tiếp theo sẽ hoặc bỏ sót, hoặc làm lại từ đầu việc phân tích rủi ro.
 
 Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nhất.
@@ -40,7 +40,7 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > | ~~**G32**~~ | ✅ **Đóng 2026-09-11** — backend giữ `priority: null` khi đẩy (hết `Number(null)` → `0`), nhánh tạo mặc định `null`, và `database/12` đã đưa các hàng `<= 0` về `NULL` trên CSDL dev. Lớp đọc `<= 0` là chưa sắp phía client **vẫn giữ** cho dữ liệu cũ và bản backend/client cũ. Dòng cũ ghi *chặn ở backend* — đúng tới trước khi gộp `main` |
 > | **G33** | 🔴 **Lỗi đang chạy, client sửa được** — trang Xoá tài khoản hứa *"đăng nhập lại trong 30 ngày là tự khôi phục"*, nhưng backend không làm vậy (`pendingDeleteCancelled` luôn `false`), nên người tin lời hứa **mất tài khoản sau 30 ngày** mà không được báo (2026-09-10). Cách sửa đã chốt, nằm trong spec cưỡng chế đăng xuất — **chờ duyệt** |
 > | **G34** | ⏸️ **Chưa làm — việc phía client, chờ người dùng** — backend đã phát `sync.completed` tới phòng `account_<id>` sau mỗi `/sync/push`, nhưng client chỉ nhận ba tên sự kiện nên **bỏ qua** nó; thay đổi từ máy khác vẫn chờ chu kỳ đồng bộ định kỳ (15 phút) hoặc kích hoạt khác. Hôm nay sự kiện cũng chưa tới được client vì bắt tay socket từ chối mọi tài khoản (CAN-LAM 17 A) (2026-09-11) |
-> | **G35** | 🔴 **Lỗi đang chạy, client sửa được — chưa sửa (2026-09-11)** — ba màn quản lý danh mục (`category_page.dart:42`, `category_group_page.dart:57`, `category_add_page.dart:85`) lấy tài khoản bằng `int.tryParse(…) ?? 1` khi phiên không có id. `1` là tài khoản **admin thật** — vi phạm quy tắc 2 `CLAUDE.md`. Các dòng từng ghi "không còn `?? 1` ở bất kỳ đâu" là sai |
+> | ~~**G35**~~ | ✅ **Đóng 2026-09-11** — ba màn quản lý danh mục nay lấy tài khoản qua `currentAccountIdOrNull`: chưa có phiên thì không đọc gì (kể cả tài khoản 0 — bộ khuôn toàn cục), và nút lưu/xoá báo "Chưa xác định được tài khoản đăng nhập". Test quét `lib/` cấm `?? 1` nhiều dòng. ⚠️ Dòng này từng ghi *lỗi đang chạy, chưa sửa* — đúng tới trước bản sửa |
 >
 > **G20 đã đóng ngày 2026-09-05** — `depositToGoal` nhận `occurredAt` chặn hai
 > đầu; đã kiểm cả bằng test lẫn trên máy ảo Android.
@@ -1157,7 +1157,17 @@ kiểm được bằng test nhưng **không** kiểm được đầu-cuối. Ch�
 
 ---
 
-### G35 — Ba màn quản lý danh mục lấy tài khoản với dự phòng `?? 1` · 🔴 LỖI ĐANG CHẠY, CLIENT SỬA ĐƯỢC — CHƯA SỬA (2026-09-11)
+### ~~G35 — Ba màn quản lý danh mục lấy tài khoản với dự phòng `?? 1`~~ · ✅ ĐÓNG (2026-09-11; trước đó cùng ngày ghi "lỗi đang chạy, client sửa được — chưa sửa")
+
+> ✅ **Đã sửa 2026-09-11 (TDD), theo khuôn G4.** Getter của cả ba màn thành
+> `int? get _accountId => widget.accountId ?? currentAccountIdOrNull(context)`. Chưa có phiên thì
+> `CategoryPage` không mở luồng đọc nào và hiện câu báo; `CategoryAddPage`/`CategoryGroupPage` dừng lượt
+> nạp, còn lưu và xoá chặn kèm SnackBar "Chưa xác định được tài khoản đăng nhập". Đường đọc **không** dùng
+> `?? 0` như trang ví: `idaccount = 0` là bộ khuôn danh mục mặc định toàn cục (quy tắc 8), đọc nó là hiện bộ
+> khuôn ra màn hình. Test: `test/core/auth/khong_du_phong_admin_test.dart` quét `lib/` bằng regex nhiều dòng
+> (đỏ đúng ba vị trí trước khi sửa), và `test/features/category/presentation/category_no_session_test.dart` —
+> ba màn dựng dưới `AuthInitial` không đọc, không ghi. Kiểm trên máy ảo: có phiên thì màn Quản lý danh mục vẫn
+> hiện đủ. Đoạn dưới là ảnh chụp trước bản sửa.
 
 **Tìm ra lúc sửa G24** (đọc `category_add_page.dart` để biết màn sửa có giữ màu cũ không). Cả ba màn dùng chung
 một khuôn getter:
@@ -1221,7 +1231,7 @@ Với tám tài liệu cũ, client **không** phụ thuộc vào việc backend 
 
 ## 3. Lưu ý về kiểm thử
 
-Trạng thái hiện tại (đã chạy thật, không phải đếm tay, đo 2026-09-11): `flutter test` toàn bộ **2029/2029 pass** trong ~131 giây, trên **190 file test / 43.819 dòng** (đếm bằng script mọi tệp `.dart` dưới `test/`). Mốc 1529/1529 · 144 file · 33.892 dòng là của 2026-09-08. Trước phiên 2026-09-02 là 56 pass / 9 fail và mất hơn 10 phút (một test treo tới timeout); mốc 180 pass / 27 file ghi ở đây trước đó là con số **cuối phiên 2026-09-03** và đã lạc hậu năm ngày.
+Trạng thái hiện tại (đã chạy thật, không phải đếm tay, đo 2026-09-11): `flutter test` toàn bộ **2035/2035 pass** trong ~155 giây, trên **192 file test / 44.054 dòng** (đếm bằng script mọi tệp `.dart` dưới `test/`, sau G24 và G35). Mốc 1529/1529 · 144 file · 33.892 dòng là của 2026-09-08. Trước phiên 2026-09-02 là 56 pass / 9 fail và mất hơn 10 phút (một test treo tới timeout); mốc 180 pass / 27 file ghi ở đây trước đó là con số **cuối phiên 2026-09-03** và đã lạc hậu năm ngày.
 
 > ⚠️ **`.gitignore` có `test/`** (dòng 78, đo 2026-09-10 — từng ghi 77) — luật này khớp mọi thư mục tên `test` ở mọi cấp, và **đã tồn tại từ trước** phiên 2026-09-02 (kiểm chứng: `git diff .gitignore` chỉ thêm đúng một dòng `src/Backend/scripts/seed_roles.js`).
 >
@@ -1258,4 +1268,4 @@ Ghi lại vì chúng đã lặp đi lặp lại trong dự án này:
 
 3. **Đừng bao giờ suy ra danh tính người dùng từ dữ liệu cục bộ.** `idaccount` chỉ được đến từ phiên đăng nhập.
 
-4. **`idaccount = 1` là tài khoản admin THẬT**, không phải giá trị "chưa biết". Các fallback `?? 1` ở khâu đồng bộ (G8) và bốn trang bill/goal (G4) đã bị gỡ; ⚠️ đo 2026-09-11 còn **ba** chỗ ở màn quản lý danh mục — **G35**.
+4. **`idaccount = 1` là tài khoản admin THẬT**, không phải giá trị "chưa biết". Các fallback `?? 1` ở khâu đồng bộ (G8), bốn trang bill/goal (G4) và ba màn quản lý danh mục (G35, gỡ nốt 2026-09-11) đã bị gỡ; `test/core/auth/khong_du_phong_admin_test.dart` quét `lib/` bằng regex nhiều dòng để không còn chỗ nào lọt.

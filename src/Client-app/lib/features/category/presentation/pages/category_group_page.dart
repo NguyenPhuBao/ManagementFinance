@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/auth/current_account.dart';
 import '../../../../core/category/category_classify.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
-import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../data/models/category_tree.dart';
 import '../../data/repositories/category_management_repository.dart';
 import '../../../../core/utils/gioi_han_do_dai.dart';
@@ -51,18 +50,23 @@ class _CategoryGroupPageState extends State<CategoryGroupPage> {
     super.dispose();
   }
 
-  int get _accountId {
-    if (widget.accountId != null) return widget.accountId!;
-    final state = context.read<AuthBloc>().state;
-    return int.tryParse((state is AuthSuccess ? state.user?.id : null) ?? '') ??
-        1;
-  }
+  /// Mã tài khoản của phiên đăng nhập, hoặc `null` khi chưa có phiên dùng
+  /// được. KHÔNG rơi về 1 — đó là tài khoản admin thật (G35, quy tắc 2
+  /// `CLAUDE.md`). Cũng không rơi về 0: 0 là bộ khuôn danh mục mặc định toàn
+  /// cục, đọc nó là hiện bộ khuôn ra màn hình.
+  int? get _accountId => widget.accountId ?? currentAccountIdOrNull(context);
 
   Future<void> _load() async {
+    final accountId = _accountId;
+    if (accountId == null) {
+      // Chưa có phiên thì không đọc gì (G35); nút lưu sẽ nói lý do.
+      if (mounted) setState(() => _loading = false);
+      return;
+    }
     if (widget.groupId != null) {
       final trees = await Future.wait(kCategoryClassifies.map(
         (classify) =>
-            _repository.loadTree(accountId: _accountId, classify: classify),
+            _repository.loadTree(accountId: accountId, classify: classify),
       ));
       for (final tree in trees) {
         for (final node in tree.groups) {
@@ -81,8 +85,10 @@ class _CategoryGroupPageState extends State<CategoryGroupPage> {
   }
 
   Future<void> _loadChildren() async {
+    final accountId = _accountId;
+    if (accountId == null) return;
     final children = await _repository.selectableChildren(
-      accountId: _accountId,
+      accountId: accountId,
       classify: _classify,
     );
     if (!mounted) return;
@@ -94,11 +100,17 @@ class _CategoryGroupPageState extends State<CategoryGroupPage> {
 
   Future<void> _save() async {
     if (_saving) return;
+    final accountId = _accountId;
+    if (accountId == null) {
+      _message('Chưa xác định được tài khoản đăng nhập. '
+          'Vui lòng đăng nhập lại trước khi lưu nhóm danh mục.');
+      return;
+    }
     setState(() => _saving = true);
     try {
       await _repository.saveGroup(CategoryGroupDraft(
         id: widget.groupId,
-        accountId: _accountId,
+        accountId: accountId,
         name: _nameController.text,
         classify: _classify,
         icon: _icon,
@@ -116,6 +128,12 @@ class _CategoryGroupPageState extends State<CategoryGroupPage> {
   }
 
   Future<void> _delete() async {
+    final accountId = _accountId;
+    if (accountId == null) {
+      _message('Chưa xác định được tài khoản đăng nhập. '
+          'Vui lòng đăng nhập lại trước khi xoá nhóm danh mục.');
+      return;
+    }
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -136,7 +154,7 @@ class _CategoryGroupPageState extends State<CategoryGroupPage> {
     if (confirmed != true) return;
     try {
       await _repository.deleteGroup(
-          accountId: _accountId, groupId: widget.groupId!);
+          accountId: accountId, groupId: widget.groupId!);
       if (mounted && context.canPop()) context.pop();
     } on CategoryValidationException catch (error) {
       if (mounted) _message(error.message);
