@@ -2,11 +2,15 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../constants/app_constants.dart';
+import 'ket_qua_lam_moi.dart';
 
 /// AuthInterceptor tự động:
 /// 1. Gắn `Authorization: Bearer <accessToken>` vào mỗi request
-/// 2. Khi nhận 401 → gọi `/auth/refresh` lấy token mới → retry request gốc
-/// 3. Nếu refresh cũng thất bại → xóa token → ném lỗi để app redirect /login
+/// 2. Khi nhận 401 → gọi `/auth/refresh` lấy token mới → thử lại request gốc
+/// 3. Chỉ khi server TRẢ LỜI `/auth/refresh` bằng 400/401 (hoặc máy không còn
+///    refresh token) mới là phiên chết: xoá token, phát [sessionExpiredStream].
+///    Không có phản hồi, hết giờ hay 5xx thì giữ token và trả lỗi ấy cho nơi
+///    gọi — lần gọi API sau tự làm mới lại (spec cưỡng chế đăng xuất §3.8).
 class AuthInterceptor extends Interceptor {
   final FlutterSecureStorage secureStorage;
 
@@ -22,18 +26,19 @@ class AuthInterceptor extends Interceptor {
 
   Stream<void> get sessionExpiredStream => _sessionExpiredController.stream;
 
-  // Tạo Dio riêng cho refresh call (không đi qua interceptor này — tránh vòng lặp)
-  late final Dio _refreshDio;
+  /// Dio riêng cho `/auth/refresh` và cho lượt thử lại — không đi qua
+  /// interceptor này (tránh vòng lặp). Test tiêm một Dio có adapter giả.
+  final Dio _refreshDio;
 
-  AuthInterceptor({required this.secureStorage}) {
-    _refreshDio = Dio(
-      BaseOptions(
-        baseUrl: AppConstants.baseUrl,
-        connectTimeout: AppConstants.connectionTimeout,
-        receiveTimeout: AppConstants.receiveTimeout,
-      ),
-    );
-  }
+  AuthInterceptor({required this.secureStorage, Dio? dioLamMoi})
+      : _refreshDio = dioLamMoi ??
+            Dio(
+              BaseOptions(
+                baseUrl: AppConstants.baseUrl,
+                connectTimeout: AppConstants.connectionTimeout,
+                receiveTimeout: AppConstants.receiveTimeout,
+              ),
+            );
 
   // ─── Bước 1: Gắn Bearer token vào mỗi request ──────────────────────────
   @override
@@ -48,7 +53,7 @@ class AuthInterceptor extends Interceptor {
     handler.next(options);
   }
 
-  // ─── Bước 2: Xử lý 401 → thử refresh token ─────────────────────────────
+  // ─── Bước 2: Xử lý 401 → làm mới token ─────────────────────────────────
   @override
   Future<void> onError(
     DioException err,
@@ -59,66 +64,107 @@ class AuthInterceptor extends Interceptor {
       return handler.next(err);
     }
 
-    try {
-      final newAccessToken = await _tryRefreshToken();
-
-      if (newAccessToken == null) {
-        // Refresh thất bại → xóa token → force logout
-        await _clearTokens();
+    final ketQua = await _lamMoi();
+    switch (ketQua) {
+      case LamMoiPhienChet():
+        // Token đã bị xoá và tín hiệu đã phát trong _lamMoi.
         return handler.next(err);
-      }
-
-      // Lưu token mới
-      await secureStorage.write(
-        key: AppConstants.accessTokenKey,
-        value: newAccessToken,
-      );
-
-      // Retry request gốc với token mới
-      final retryResponse = await _retryRequest(err.requestOptions, newAccessToken);
-      return handler.resolve(retryResponse);
-    } catch (_) {
-      // Nếu refresh exception → xóa token
-      await _clearTokens();
-      return handler.next(err);
+      case LamMoiTamThoi(:final loi):
+        // Giữ hai token, không phát tín hiệu. Trả lỗi của chính lượt làm mới
+        // (mất mạng / 5xx) chứ KHÔNG trả 401 gốc: verifySession coi 401 là
+        // phiên chết và AuthBloc sẽ đăng xuất — đúng cái lỗi §3.8 muốn đóng.
+        return handler.next(_loiTamThoiChoRequest(err.requestOptions, loi));
+      case LamMoiThanhCong(:final accessToken):
+        return _thuLai(err.requestOptions, accessToken, handler);
     }
   }
 
-  // ─── Gọi /auth/refresh để lấy access token mới ──────────────────────────
-  Future<String?> _tryRefreshToken() async {
+  /// Thử lại request gốc bằng [accessToken]. Thử lại hỏng thì trả lỗi ấy và
+  /// GIỮ token: token vừa được cấp, lỗi này không nói gì về phiên (trước đây
+  /// nhánh này xoá cả hai token — lỗi thứ ba tìm ra khi sửa §3.8).
+  Future<void> _thuLai(
+    RequestOptions goc,
+    String accessToken,
+    ErrorInterceptorHandler handler,
+  ) async {
+    try {
+      final retryResponse = await _retryRequest(goc, accessToken);
+      return handler.resolve(retryResponse);
+    } on DioException catch (loiThuLai) {
+      return handler.next(loiThuLai);
+    }
+  }
+
+  // ─── Gọi /auth/refresh ──────────────────────────────────────────────────
+  /// Phiên chết (không còn refresh token, hoặc server trả 400/401) thì xoá
+  /// token và phát tín hiệu NGAY TẠI ĐÂY, một lần cho một lượt làm mới —
+  /// không để từng request chờ tự xoá, vì `_clearTokens` đọc kho rồi mới xoá
+  /// và N request đan xen sẽ phát tín hiệu N lần.
+  Future<KetQuaLamMoi> _lamMoi() async {
     final refreshToken = await secureStorage.read(
       key: AppConstants.refreshTokenKey,
     );
+    if (refreshToken == null || refreshToken.isEmpty) {
+      await _clearTokens();
+      return const LamMoiPhienChet();
+    }
 
-    if (refreshToken == null || refreshToken.isEmpty) return null;
-
+    final Response<dynamic> response;
     try {
-      final response = await _refreshDio.post(
+      response = await _refreshDio.post(
         '/auth/refresh',
         data: {'refreshToken': refreshToken},
       );
-
-      if (response.statusCode == 200 && response.data['success'] == true) {
-        final data = response.data['data'] as Map<String, dynamic>;
-
-        // Lưu refresh token mới nếu server trả về (token rotation)
-        final newRefreshToken = data['refreshToken'] as String?;
-        if (newRefreshToken != null && newRefreshToken.isNotEmpty) {
-          await secureStorage.write(
-            key: AppConstants.refreshTokenKey,
-            value: newRefreshToken,
-          );
-        }
-
-        return data['accessToken'] as String?;
-      }
-      return null;
-    } on DioException {
-      return null;
+    } on DioException catch (e) {
+      final ketQua = ketQuaTuLoiLamMoi(e);
+      if (ketQua is LamMoiPhienChet) await _clearTokens();
+      return ketQua;
     }
+
+    final body = response.data;
+    final data = body is Map && body['success'] == true ? body['data'] : null;
+    final accessToken = data is Map ? data['accessToken'] : null;
+    if (accessToken is! String || accessToken.isEmpty) {
+      // 200 mà không đọc được token: không kết luận gì về phiên.
+      return LamMoiTamThoi(
+        DioException(
+          requestOptions: response.requestOptions,
+          response: response,
+          type: DioExceptionType.unknown,
+          message: 'Phản hồi /auth/refresh không có accessToken',
+        ),
+      );
+    }
+
+    // Lưu refresh token mới nếu server trả về (token rotation)
+    final newRefreshToken = data['refreshToken'];
+    if (newRefreshToken is String && newRefreshToken.isNotEmpty) {
+      await secureStorage.write(
+        key: AppConstants.refreshTokenKey,
+        value: newRefreshToken,
+      );
+    }
+    await secureStorage.write(
+      key: AppConstants.accessTokenKey,
+      value: accessToken,
+    );
+    return LamMoiThanhCong(accessToken);
   }
 
-  // ─── Retry request gốc với token mới ────────────────────────────────────
+  /// Lỗi của lượt làm mới, gắn lên request gốc để nơi gọi nhận đúng bản chất
+  /// (mất mạng → `NetworkException`, 5xx → `ServerException(5xx)` ở
+  /// `auth_remote_data_source.dart`) thay vì một 401 nhìn như phiên chết.
+  DioException _loiTamThoiChoRequest(RequestOptions goc, DioException loiLamMoi) =>
+      DioException(
+        requestOptions: goc,
+        type: loiLamMoi.type,
+        response: loiLamMoi.response,
+        error: loiLamMoi.error,
+        message: 'Làm mới token không thành công tạm thời: '
+            '${loiLamMoi.message ?? loiLamMoi.type.name}',
+      );
+
+  // ─── Thử lại request gốc với token mới ──────────────────────────────────
   Future<Response<dynamic>> _retryRequest(
     RequestOptions requestOptions,
     String newToken,
@@ -139,7 +185,7 @@ class AuthInterceptor extends Interceptor {
     );
   }
 
-  // ─── Xóa toàn bộ tokens khi không thể refresh ───────────────────────────
+  // ─── Xóa toàn bộ tokens khi phiên chết ──────────────────────────────────
   Future<void> _clearTokens() async {
     // Chỉ coi là "phiên vừa chết" khi thật sự có token để mất. Sau lần xoá đầu
     // tiên, mọi request tiếp theo vẫn nhận 401 và vẫn chạy qua đây; phát tín
