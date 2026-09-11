@@ -1241,7 +1241,7 @@ Với tám tài liệu cũ, client **không** phụ thuộc vào việc backend 
 
 ## 3. Lưu ý về kiểm thử
 
-Trạng thái hiện tại (đã chạy thật, không phải đếm tay, đo 2026-09-11): `flutter test` toàn bộ **2028/2028 pass**, trên **192 file test / 44.010 dòng** (đếm bằng script mọi tệp `.dart` dưới `test/`, sau G24, G35 và G30). Mốc 1529/1529 · 144 file · 33.892 dòng là của 2026-09-08. Trước phiên 2026-09-02 là 56 pass / 9 fail và mất hơn 10 phút (một test treo tới timeout); mốc 180 pass / 27 file ghi ở đây trước đó là con số **cuối phiên 2026-09-03** và đã lạc hậu năm ngày.
+Trạng thái hiện tại (đã chạy thật, không phải đếm tay, đo 2026-09-11): `flutter test` toàn bộ **2029/2029 pass**, trên **192 file test / 44.041 dòng** (192 tệp `_test.dart`; số dòng đếm bằng script trên cả 193 tệp `.dart` dưới `test/`, kể cả `category_test_fakes.dart` — sau G24, G35, G30 và nhãn loại ví ở bảng chọn ví). Mốc 1529/1529 · 144 file · 33.892 dòng là của 2026-09-08. Trước phiên 2026-09-02 là 56 pass / 9 fail và mất hơn 10 phút (một test treo tới timeout); mốc 180 pass / 27 file ghi ở đây trước đó là con số **cuối phiên 2026-09-03** và đã lạc hậu năm ngày.
 
 > ⚠️ **`.gitignore` có `test/`** (dòng 78, đo 2026-09-10 — từng ghi 77) — luật này khớp mọi thư mục tên `test` ở mọi cấp, và **đã tồn tại từ trước** phiên 2026-09-02 (kiểm chứng: `git diff .gitignore` chỉ thêm đúng một dòng `src/Backend/scripts/seed_roles.js`).
 >

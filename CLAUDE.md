@@ -87,7 +87,7 @@
 ## Lệnh hay dùng
 
 ```bash
-# Test (chạy từ src/Client-app) — hiện 2028/2028 pass, khoảng 2,5–4 phút (đo 2026-09-11, sau G24, G35 và G30; chậm hơn khi chạy song song với build APK)
+# Test (chạy từ src/Client-app) — hiện 2029/2029 pass, khoảng 2,5–4 phút (đo 2026-09-11, sau G24, G35, G30 và nhãn loại ví ở bảng chọn ví; chạy song song với build APK thì tới 5,5 phút)
 flutter test
 flutter analyze          # mức nền: 25 issue, KHÔNG có error
 

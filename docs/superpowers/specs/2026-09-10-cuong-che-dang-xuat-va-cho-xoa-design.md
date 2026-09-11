@@ -513,13 +513,15 @@ là thật: bắt tay socket trên backend của nhánh từ chối mọi tài k
 socket **không kiểm đầu-cuối được** cho tới khi backend sửa mục A. CSDL dev đã áp
 `database/12` cùng ngày. Đề xuất, theo thứ tự:
 
-- **Backend thật, tài khoản thử riêng.** Máy ảo đang giữ phiên tài khoản **10** —
-  cưỡng chế đăng xuất trên đó là mất phiên ấy. (Bản trước ghi tài khoản 10 "không có
+- **Backend thật, tài khoản thử riêng.** Lúc duyệt, máy ảo được ghi là giữ phiên tài
+  khoản **10** — cưỡng chế đăng xuất trên đó là mất phiên ấy. ⚠️ Chiều cùng ngày, lúc kiểm
+  nhãn loại ví, log của app cho thấy máy ảo **đã ở phiên tài khoản 11** (Claude không đăng
+  nhập) — trước khi kiểm, xem máy ảo đang ở phiên nào rồi mới chọn nơi kiểm. (Bản trước ghi tài khoản 10 "không có
   mật khẩu" — sai: đo bảng `account` chỉ đọc ngày 2026-09-11, cả ba tài khoản của CSDL
   dev đều `Active` và có mật khẩu.) **Tài khoản thử: tài khoản 11**, người dùng cho
   dùng ngày 2026-09-11 — thông tin đăng nhập đưa trong phiên, **không** ghi vào repo.
-  Kiểm trên **Chrome**: đăng nhập tài khoản 11 trên máy ảo sẽ chạy
-  `purgeDataForOtherAccounts` và dọn dữ liệu cục bộ của tài khoản 10. Rồi: gửi yêu cầu
+  Máy ảo đang ở phiên tài khoản khác thì kiểm trên **Chrome**: đăng nhập tài khoản 11 trên
+  máy ảo sẽ chạy `purgeDataForOtherAccounts` và dọn dữ liệu cục bộ của phiên ấy. Rồi: gửi yêu cầu
   xoá → thẻ Trang chủ và Cài đặt hiện đúng số; huỷ → thẻ biến mất; khoá qua Admin-web
   → về Đăng nhập, hộp thoại đúng câu, SQLite còn dữ liệu; mở khoá rồi đăng nhập lại
   được.
