@@ -73,6 +73,9 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
 
     if (confirm != true || !mounted) return;
 
+    // Lấy Bloc TRƯỚC await: nút quay lại bấm được cả lúc đang gửi, nên khi server
+    // trả lời trang có thể đã rời cây — lúc ấy không còn `context` để đọc.
+    final authBloc = context.read<AuthBloc>();
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -80,6 +83,12 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
 
     try {
       await _authRepository.deleteAccount(_passwordController.text);
+      // Repository đã ghi PendingDelete vào bộ nhớ đệm: báo Bloc NGAY, dù trang
+      // còn hay đã rời cây. Chờ tới sau hộp thoại (bản trước) thì rời trang giữa
+      // chừng là AuthSuccess vẫn Active — Trang chủ không có thẻ nhắc, Cài đặt vẫn
+      // mời gửi yêu cầu (soát cuối G33). Chỉ setState, hộp thoại và điều hướng
+      // mới cần trang còn gắn.
+      authBloc.add(ThongTinTaiKhoanThayDoi());
       if (!mounted) return;
       setState(() => _isLoading = false);
 
@@ -117,8 +126,6 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
       );
 
       if (!mounted) return;
-      // Đọc lại bộ nhớ đệm để thẻ nhắc ở Trang chủ hiện ngay khi về tới đó.
-      context.read<AuthBloc>().add(ThongTinTaiKhoanThayDoi());
       context.go('/home');
     } catch (e) {
       if (!mounted) return;

@@ -1,6 +1,8 @@
 /// Trang Xoá tài khoản sau G33 — spec cưỡng chế đăng xuất §5.4.
 library;
 
+import 'dart:async';
+
 import 'package:flowmoney/features/auth/data/repositories/auth_repository.dart';
 import 'package:flowmoney/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:flowmoney/features/profile/presentation/pages/delete_account_page.dart';
@@ -13,8 +15,15 @@ import 'package:go_router/go_router.dart';
 class _RepoGia implements AuthRepository {
   final matKhauDaGui = <String>[];
 
+  /// Khác `null` thì yêu cầu treo tới khi `complete()` — dựng cảnh rời trang
+  /// giữa lúc chờ server.
+  Completer<void>? treo;
+
   @override
-  Future<void> deleteAccount(String password) async => matKhauDaGui.add(password);
+  Future<void> deleteAccount(String password) async {
+    matKhauDaGui.add(password);
+    if (treo != null) await treo!.future;
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -48,7 +57,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     final router = GoRouter(
-      initialLocation: '/settings/delete-account',
+      initialLocation: '/home',
       routes: [
         GoRoute(path: '/home', builder: (_, __) => const Scaffold(body: Text('Trang chủ giả'))),
         GoRoute(path: '/login', builder: (_, __) => const Scaffold(body: Text('Đăng nhập giả'))),
@@ -62,6 +71,10 @@ void main() {
       value: bloc,
       child: MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router),
     ));
+    await tester.pumpAndSettle();
+    // Vào trang bằng `push` như ngoài đời (Cài đặt → Xoá tài khoản), để nút quay
+    // lại có trang để về.
+    unawaited(router.push<void>('/settings/delete-account'));
     await tester.pumpAndSettle();
   }
 
@@ -113,6 +126,36 @@ void main() {
     expect(bloc.suKien.whereType<LogoutRequested>(), isEmpty,
         reason: 'G33: gửi yêu cầu xoá không đăng xuất.');
     expect(bloc.suKien.whereType<ThongTinTaiKhoanThayDoi>(), hasLength(1));
+    expect(find.text('Trang chủ giả'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('quay lại khi yêu cầu còn treo: vẫn báo AuthBloc đọc lại trạng thái', (tester) async {
+    repo.treo = Completer<void>();
+    await moTrang(tester);
+    await tester.enterText(find.byType(TextFormField), 'mat-khau-thu');
+    await bamNutGui(tester);
+    await tester.tap(find.text('Gửi yêu cầu'));
+    // Không `pumpAndSettle`: vòng quay tải chạy mãi trong lúc yêu cầu còn treo.
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(repo.matKhauDaGui, ['mat-khau-thu']);
+
+    // Nút quay lại bấm được cả lúc đang gửi — rời trang trước khi server trả lời.
+    await tester.tap(find.byIcon(Icons.arrow_back));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pump();
+    expect(find.byType(DeleteAccountPage, skipOffstage: false), findsNothing,
+        reason: 'Trang phải đã rời cây trước khi server trả lời.');
+
+    repo.treo!.complete();
+    await tester.pump();
+
+    expect(bloc.suKien.whereType<ThongTinTaiKhoanThayDoi>(), hasLength(1),
+        reason: 'Server và bộ nhớ đệm đã PendingDelete; không báo Bloc thì AuthSuccess vẫn '
+            'Active — Trang chủ không có thẻ, Cài đặt vẫn mời gửi yêu cầu, người dùng dễ tin '
+            'yêu cầu không đi (soát cuối G33).');
     expect(find.text('Trang chủ giả'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

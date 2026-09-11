@@ -1,6 +1,8 @@
 /// Thẻ "Vùng nguy hiểm" ở Cài đặt, hai trạng thái — spec cưỡng chế đăng xuất §5.3.
 library;
 
+import 'dart:async';
+
 import 'package:flowmoney/features/auth/data/models/user_model.dart';
 import 'package:flowmoney/features/auth/data/repositories/auth_repository.dart';
 import 'package:flowmoney/features/auth/presentation/bloc/auth_bloc.dart';
@@ -14,9 +16,14 @@ class _RepoGia implements AuthRepository {
   int huyCalls = 0;
   Object? loiHuy;
 
+  /// Khác `null` thì yêu cầu huỷ treo tới khi `complete()` — dựng cảnh rời Cài
+  /// đặt giữa lúc chờ server.
+  Completer<void>? treo;
+
   @override
   Future<void> cancelDelete() async {
     huyCalls++;
+    if (treo != null) await treo!.future;
     if (loiHuy != null) throw loiHuy!;
   }
 
@@ -123,6 +130,32 @@ void main() {
     await tester.tap(find.text('Huỷ yêu cầu xoá'));
     await tester.pumpAndSettle();
     expect(find.text('Không có kết nối mạng'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('rời Cài đặt khi đang huỷ: vẫn báo AuthBloc đọc lại trạng thái', (tester) async {
+    repo.treo = Completer<void>();
+    await dung(tester, _user(status: 'PendingDelete', countdown: 30));
+    await tester.tap(find.text('Huỷ yêu cầu xoá'));
+    await tester.pump();
+    expect(repo.huyCalls, 1);
+
+    // Gỡ thẻ khỏi cây trước khi server trả lời — như bấm quay lại khỏi Cài đặt.
+    await tester.pumpWidget(BlocProvider<AuthBloc>.value(
+      value: bloc,
+      child: MaterialApp(
+        theme: AppTheme.lightTheme,
+        home: const Scaffold(body: Text('Trang khác')),
+      ),
+    ));
+    expect(find.byType(VungNguyHiemCard), findsNothing);
+
+    repo.treo!.complete();
+    await tester.pump();
+
+    expect(bloc.suKien.whereType<ThongTinTaiKhoanThayDoi>(), hasLength(1),
+        reason: 'Huỷ đã đưa bộ nhớ đệm về Active; không báo Bloc thì AuthSuccess vẫn mang '
+            'trạng thái chờ xoá, thẻ ở Trang chủ hiện thừa tới lần mở app sau (soát cuối G33).');
     expect(tester.takeException(), isNull);
   });
 }
