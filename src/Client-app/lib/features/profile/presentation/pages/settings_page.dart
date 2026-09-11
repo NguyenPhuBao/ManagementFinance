@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../widgets/vung_nguy_hiem_card.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -40,7 +41,11 @@ class SettingsPage extends StatelessWidget {
             const SizedBox(height: 24),
             _buildSecurityPreferencesCard(context),
             const SizedBox(height: 24),
-            _buildDangerZoneCard(context),
+            BlocBuilder<AuthBloc, AuthState>(
+              builder: (context, state) => VungNguyHiemCard(
+                user: state is AuthSuccess ? state.user : null,
+              ),
+            ),
           ],
         ),
       ),
@@ -242,72 +247,6 @@ class SettingsPage extends StatelessWidget {
             trailing,
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildDangerZoneCard(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFDAD6).withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFBA1A1A).withValues(alpha: 0.2), width: 2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.warning_amber_rounded, color: Color(0xFFBA1A1A)),
-              SizedBox(width: 8),
-              Text(
-                'Vùng nguy hiểm (Danger Zone)',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFFBA1A1A),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Khi gửi yêu cầu xóa tài khoản, tất cả lịch sử giao dịch, ví tiền và mục tiêu sẽ bị đóng vĩnh viễn sau 30 ngày khôi phục.',
-            style: TextStyle(
-              fontSize: 14,
-              color: AppColors.textSecondary,
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 16),
-          OutlinedButton(
-            onPressed: () => context.push('/settings/delete-account'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFFF1453B),
-              side: const BorderSide(color: Color(0xFFF1453B), width: 2),
-              minimumSize: const Size(double.infinity, 50),
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: const Text(
-              'Yêu cầu xóa tài khoản',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
