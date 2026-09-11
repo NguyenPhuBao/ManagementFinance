@@ -1,6 +1,23 @@
 # Backend — CHỈ ĐỌC THƯ MỤC NÀY
 
-**Cập nhật:** 2026-09-10 tối (mục 16 viết lại thành hướng dẫn sửa theo dòng — 56 chỗ tài liệu, ba việc mã; mục 11: phần **áp** `database/7`–`11` đã xong trên CSDL dev — còn lại ghi quy trình và tách nhánh cho qua. Trước đó cùng ngày: thêm mục 13–16 sau lượt rà soát CSDL mới — `AUTH_401_BODY_CODE.md`, `GOAL_PRIORITY_NULL_TO_ZERO.md`, `SYNC_PUSH_ERROR_MAPPING.md`, `RULE_PROJECT_DOC_DRIFT.md`. Trước đó cùng ngày: mục 10 `SYNC_NOTE_FILTER_REWRITE.md`, mục 11 `DEV_DB_MIGRATIONS_7_11.md` sau khi gộp `main`, và mục 12 `WALLET_SAVING_INDEX.md` sau lượt rà soát ví; mục 9 gộp vào mục 11. Lần trước: 2026-09-09, thêm mục 7 và 8 — hai tệp `SOCKET_*`. Banner đợt 2026-09-07 bên dưới giữ nguyên vì nó nói về đợt ấy)
+**Cập nhật:** 2026-09-11 (thêm mục 17 `FIX_BACKEND_3_REGRESSIONS.md` — ba hồi quy của `7675b35` trên `main` — và banner "`main` đã đi trước nhánh client" ngay dưới). Trước đó: 2026-09-10 tối (mục 16 viết lại thành hướng dẫn sửa theo dòng — 56 chỗ tài liệu, ba việc mã; mục 11: phần **áp** `database/7`–`11` đã xong trên CSDL dev — còn lại ghi quy trình và tách nhánh cho qua. Trước đó cùng ngày: thêm mục 13–16 sau lượt rà soát CSDL mới — `AUTH_401_BODY_CODE.md`, `GOAL_PRIORITY_NULL_TO_ZERO.md`, `SYNC_PUSH_ERROR_MAPPING.md`, `RULE_PROJECT_DOC_DRIFT.md`. Trước đó cùng ngày: mục 10 `SYNC_NOTE_FILTER_REWRITE.md`, mục 11 `DEV_DB_MIGRATIONS_7_11.md` sau khi gộp `main`, và mục 12 `WALLET_SAVING_INDEX.md` sau lượt rà soát ví; mục 9 gộp vào mục 11. Lần trước: 2026-09-09, thêm mục 7 và 8 — hai tệp `SOCKET_*`. Banner đợt 2026-09-07 bên dưới giữ nguyên vì nó nói về đợt ấy)
+
+> ## ⚠️ 2026-09-11 — `main` đã đi trước nhánh client
+>
+> Commit `7675b35` (NPBao, 2026-09-10 23:15, gộp vào `main` qua PR #72) tự nhận đã
+> triển khai *"toàn bộ các yêu cầu kỹ thuật và sửa lỗi được chỉ rõ tại 16 tài liệu
+> trong `docs/superpowers/backend/CAN-LAM`"* (`docs/progress/Backend.md` mục 16 trên
+> `main`), kèm `database/12_Can_Lam_Align_Schema_Fixes.sql`. Nhánh `TranQuangDat`
+> **chưa gộp** commit ấy, CSDL dev trên máy client **chưa áp** tệp 12 (đo
+> 2026-09-11), và client **chưa soát từng mục** — nên trạng thái ở mục 1–2 dưới đây
+> vẫn là trạng thái của mã đang chạy trên máy client. Soát từng mục khi gộp, theo
+> đúng cách đã làm với đợt 2026-09-07 ngay dưới.
+>
+> Riêng vùng **xác thực** và **hoá đơn** đã soát trước, vì hạng mục cưỡng chế đăng
+> xuất phụ thuộc vào đó: commit ấy có **ba hồi quy** — bắt tay socket và
+> `/auth/refresh` từ chối mọi tài khoản, chốt trả hai lần chặn hoàn tác, và mã lỗi
+> lệch tài liệu. Đó là **mục 17**, và nên sửa **trước** khi triển khai `main` ở bất
+> cứ đâu có người dùng.
 
 > ## ✅ Đợt backend 2026-09-07 — client đã kiểm chứng bằng mã, không tin báo cáo
 >
@@ -35,7 +52,7 @@
 > dòng cũ ở đây ghi "20 tài liệu" và đã lạc hậu từ lúc dọn sang `DA-XONG/`).
 > Thư mục này giữ **cả tài liệu còn việc lẫn tài liệu vừa đóng** — giữ cả hai để
 > đội backend thấy được cái gì đã xong mà không phải dò lại. Sau đợt 2026-09-07
-> chỉ còn **mười lăm** mục thật sự phải làm (đếm lại 2026-09-10 lần bốn: thêm mục
+> chỉ còn **mười sáu** mục thật sự phải làm (đếm lại 2026-09-11 lần năm: thêm mục 17 sau khi soát `7675b35` trên `main` — con số "mười lăm" ghi ở đây trước đó đúng tới lúc ấy; lần bốn: thêm mục
 > 13–16 sau lượt rà soát CSDL mới; lần ba thêm mục 10, 11 sau khi gộp `main`, rồi
 > mục 12 sau lượt rà soát ví; mục 9 gộp vào mục 11 — các con số "chín", "mười",
 > "mười một" ghi ở đây trước đó đúng cho tới lúc ấy); danh
@@ -238,6 +255,22 @@ lại trên CSDL dev. Đều **không cần migration**.
     index của cả `category`, `wallet` lẫn `transaction`. ⚠️ Và mục 9 của
     `docs/progress/Backend.md` — danh sách "cần làm để khớp Client-App" — **không
     nhắc mục nào** của thư mục này, nên đội backend có thể chưa thấy chúng.
+
+17. **Ba hồi quy của `7675b35` ("fix backend 3") trên `main`**
+    ([FIX_BACKEND_3_REGRESSIONS.md](./FIX_BACKEND_3_REGRESSIONS.md), thêm
+    2026-09-11) — không migration. **A:** `accountRejection` không bao giờ trả
+    `null`, nên bắt tay Socket.io và `/auth/refresh` từ chối **mọi** tài khoản —
+    kênh thời gian thực không nối được, người dùng app bị đăng xuất khi token 7
+    ngày hết hạn, admin bị đăng xuất sau mỗi 15 phút. Đo bằng cách chạy đúng hàm ấy
+    lấy từ `origin/main`; một phần do chính đề xuất ở `AUTH_401_BODY_CODE.md` mục
+    4.2. Kèm một ca phải đi riêng: lỗi lược đồ lọt vào hàm ấy là thành
+    `ACCOUNT_DELETED`, tức lý do để client dọn dữ liệu trên máy. **B:** chốt "trả
+    hai lần" đặt ở `upsertBill` từ chối `'Payed'` → `'Pending'` nên **chặn hoàn tác
+    thanh toán**, mà vẫn không chặn được hai khoản chi — xin dời về
+    `upsertTransaction` như việc D đã xin, kèm một bẫy thứ tự trong lô. **C:**
+    `Rule_project.md` và `Backend.md` ghi ba mã mới "ánh xạ thành
+    `CONSTRAINT_VIOLATION`" trong khi mã trả mã riêng. ⚠️ A và bước 1 của B phải
+    xong **trước** khi triển khai `main` ở bất cứ đâu có người dùng.
 
 > ⚠️ **Trước khi chạy migration ở môi trường mới:** lấy bản vá xoá mềm ở
 > nhánh `patch2`. Bản `)2_can_lam_all_migrations.sql` trên `main` sẽ roll back
