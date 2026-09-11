@@ -129,8 +129,8 @@ hồi token rồi ném 401. `auth.controller.js:79-85` trả 401 kèm `idaccount
 
 - **App:** máy dev của client đặt `JWT_USER_ACCESS_EXPIRES=7d`. Hết 7 ngày,
   request đầu tiên nhận 401 *"Token expired"* (`middleware/auth.js:99-100`) →
-  `auth_interceptor.dart:62-84` gọi `/auth/refresh` → 401 → xoá token → màn đăng
-  nhập. Người dùng bị đăng xuất mỗi 7 ngày thay vì dùng hết refresh token 90 ngày.
+  `auth_interceptor.dart` (`onError` gọi `_lamMoi()`) gọi `/auth/refresh` → 401 →
+  xoá token → màn đăng nhập. Người dùng bị đăng xuất mỗi 7 ngày thay vì dùng hết refresh token 90 ngày.
 - **Admin-web:** `JWT_ADMIN_ACCESS_EXPIRES=15m`. `src/Admin-web/src/api/axios-client.js:83-107`
   gặp 401 thì làm mới qua `/auth/refresh`; làm mới hỏng thì `handleLogoutRedirect()`
   xoá phiên và về `/login`. Admin bị đăng xuất sau mỗi 15 phút.
@@ -441,8 +441,10 @@ Làm cùng lượt với `RULE_PROJECT_DOC_DRIFT.md`.
      `idbill`. Chưa làm.
 - **Làm mới hỏng vì 5xx cũng làm app đăng xuất.** `_tryRefreshToken` trả `null` cho
   mọi phản hồi khác 200 và mọi `DioException` (`auth_interceptor.dart:88-119`), rồi
-  `onError` xoá token. Đề xuất 503 ở 2.6 vẫn đúng phía backend; cách app đón nó là
-  việc của client — ✅ người dùng duyệt sửa ngày 2026-09-11, cùng lỗi hai lượt làm mới
-  đồng thời (spec cưỡng chế đăng xuất §3.8); chưa làm.
+  `onError` xoá token — mô tả mã **trước** 2026-09-11, giữ làm lịch sử vì sao có đề
+  xuất này. Cách app đón 503 ở 2.6 là việc của client — ✅ **đã sửa 2026-09-11**
+  (`4903c97`, `1edeb49`): chỉ 400/401 do server **trả lời** `/auth/refresh` mới là
+  phiên chết, 5xx/mất mạng giữ token; nhiều 401 cùng lúc chờ chung một lượt làm mới
+  (spec cưỡng chế đăng xuất §3.8). Đề xuất 503 ở 2.6 vẫn đứng.
 - **Cưỡng chế đăng xuất** (spec dẫn ở 2.5) phụ thuộc A: nhánh socket cần bắt tay
   chạy được, và nhánh làm mới cần 2.5.

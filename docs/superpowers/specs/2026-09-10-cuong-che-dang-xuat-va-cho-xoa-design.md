@@ -2,7 +2,7 @@
 
 > **Trạng thái: G33 — Phần 2–3 (trừ §5.1) ĐÃ XONG (2026-09-11). Mục 6 (việc cho backend):
 > tài liệu xin ĐÃ VIẾT (CAN-LAM 19), backend CHƯA LÀM — `getProfile` chưa trả `countdown`.
-> Phần 1 (mục 3, kể cả §3.8) và §5.1 CHƯA LÀM.** Mọi quyết định sản phẩm ở mục 2
+> §3.8 ĐÃ LÀM (2026-09-11). Phần 1 còn lại (§3.1–§3.7) và §5.1 CHƯA LÀM.** Mọi quyết định sản phẩm ở mục 2
 > đã chốt qua hỏi–đáp ngày 2026-09-10; Phần 1 (mục 3) được duyệt riêng trong phiên
 > ấy. Phần 2–4 viết thẳng vào đây theo yêu cầu "làm đi" của người dùng. Ngày
 > 2026-09-11 người dùng duyệt nốt: §3.3 và §3.6b (hai điểm soát lại theo `main`),
@@ -168,9 +168,10 @@ Hai chỗ trong `AuthInterceptor` có thể nhận body 401 mang mã:
    `/auth/refresh` kiểm trạng thái tài khoản và trả 401 cùng hình dạng body
    (`auth.controller.js:79-85`). Ca xảy ra thật: token truy cập hết hạn — 401
    *"Token expired"*, không mã — đúng lúc tài khoản đã bị khoá hoặc xoá, nên
-   interceptor làm mới và nhận 401 **có** mã. `_tryRefreshToken` hiện nuốt mọi lỗi
-   thành `null` (`auth_interceptor.dart:88-119`), nên phải đổi để trả được body lỗi
-   về cho `onError`.
+   interceptor làm mới và nhận 401 **có** mã. Hàm nay là `_lamMoi()` (✅ sửa
+   2026-09-11, spec §3.8): trả `KetQuaLamMoi`, và `LamMoiPhienChet.loi` đã giữ
+   nguyên `DioException` (có body 401) — Phần 1 chỉ còn đọc `loi.response?.data`
+   ở đây, không cần đổi gì thêm để lấy body lỗi.
 
 Cả hai chỗ làm cùng một việc: phát `Stream<ThongBaoBuocDangXuat> taiKhoanBiTuChoi`,
 xoá token **không phát** `sessionExpiredStream`, rồi `handler.next(err)`.
@@ -300,6 +301,61 @@ cả hai, **trước** Phần 1, vì §3.3 sửa đúng `onError` và `_tryRefre
 
 Điểm 1 **không** cứu được ca đang xảy ra trên nhánh đã gộp `main`: `/auth/refresh` trả
 401 cho mọi tài khoản (CAN-LAM 17 mục A), mà 401 là phiên chết. Ca ấy chờ backend sửa.
+
+### ✅ Làm 2026-09-11
+
+Năm commit trên `TranQuangDat`, theo thứ tự: `952058c` (kiểu `KetQuaLamMoi` —
+phân loại lỗi `/auth/refresh` thành `LamMoiThanhCong` / `LamMoiPhienChet` /
+`LamMoiTamThoi`, chỉ 400/401 do server **trả lời** là phiên chết), `4903c97`
+(điểm 1 + lỗi thứ ba), `3e84d49` (test canh nhánh 200 thiếu `accessToken`,
+thêm sau soát Task 2), `1edeb49` (điểm 2), `7cbd849` (chốt phòng thủ, xem
+dưới, thêm sau soát Task 3).
+
+**Cơ chế.** `onError` vẫn `extends Interceptor` (không đổi sang
+`QueuedInterceptor` — lớp con trong `session_validation_test.dart` kế thừa
+`AuthInterceptor`, và `QueuedInterceptor` xếp hàng cả `onRequest`, rộng hơn
+cái cần). Chốt "token cũ" đứng trước: 401 mang `Authorization` khác token
+đang có trong kho (đã bị một lượt làm mới khác thay) thì **chỉ thử lại**,
+không gọi `/auth/refresh` lần nữa. Còn lại thì gọi `_lamMoiChung()`, hàm giữ
+một future dùng chung (`_lamMoiDangChay`) cho mọi 401 tới trong lúc một lượt
+làm mới đang chạy — `/auth/refresh` chỉ gọi **đúng một lần** cho dù bao
+nhiêu request cùng nhận 401.
+
+**Quyết định:**
+- Lỗi trả ra khi làm mới hỏng tạm thời là lỗi của **chính lượt làm mới**
+  (dựng lại trên `RequestOptions` gốc), **không** phải 401 gốc — vì
+  `AuthRepositoryImpl.verifySession` coi 401 là phiên chết (`invalid`) và sẽ
+  đăng xuất, đúng cái lỗi §3.8 cần đóng.
+- **Lỗi thứ ba** (tìm được khi đọc mã, sửa cùng điểm 1): trước đây thử lại
+  request gốc hỏng sau khi làm mới **đã thành công** vẫn xoá cả hai token
+  bất kể exception đến từ đâu. Token vừa được cấp — lỗi thử lại không nói gì
+  về phiên — nay **giữ** token.
+- Xoá token và phát `sessionExpiredStream` nằm trong `_lamMoi()` — **một
+  lần cho một lượt làm mới chung**, không để từng request chờ tự xoá (N
+  request đan xen đọc/xoá sẽ phát tín hiệu N lần).
+- `LamMoiPhienChet.loi` giữ nguyên `DioException` (có body 401) để §3.3
+  (Phần 1) đọc mã lỗi từ đó — không cần đổi gì thêm.
+- **`7cbd849` là một chốt phòng thủ, không phải một lỗi đã có.** Lỗi không
+  phải `DioException` trong `_lamMoi()` (ví dụ `PlatformException` thật của
+  kho token) và ở lượt đọc kho của chốt "token cũ" nay được bắt riêng, trả
+  `LamMoiTamThoi` (giữ token, không phát tín hiệu) thay vì thoát ra ngoài.
+  Lo ngại ban đầu — lỗi thoát khỏi future dùng chung sẽ treo mọi request
+  đang chờ — **không tái hiện được**: `dio 5.11.0` đã tự bắt lỗi thoát khỏi
+  `onError` async và đổi thành `DioException(type: unknown)` cho từng
+  request riêng (`assureDioException`, `dio_mixin.dart`), nên ca test mới
+  xanh ngay cả trước khi sửa `lib/`. Giữ chỗ sửa để không phụ thuộc hành vi
+  bọc ấy ở phiên bản Dio sau, và để lỗi mang thông điệp rõ ("Lỗi ngoài HTTP
+  khi làm mới token").
+
+**Không kiểm được trên máy ảo:** không đổi giao diện; không ép được token
+truy cập hết hạn; và CAN-LAM 17 mục A làm `/auth/refresh` trả 401 cho mọi
+tài khoản, nên nhánh làm mới không dựng được đầu-cuối trên backend đã gộp
+(lý do đầy đủ ở Global Constraints của kế hoạch thực thi,
+`.superpowers/sdd/2026-09-11-lam-moi-token/`).
+
+Ca test: `test/core/api/ket_qua_lam_moi_test.dart` (13 ca) và
+`test/core/api/auth_interceptor_test.dart` (16 ca, 13 ca mới cho §3.8) — số
+liệu đầy đủ ở §7.2.
 
 ---
 
@@ -495,11 +551,14 @@ Kèm cập nhật `README.md` mục 2 và mọi con số đếm mục CAN-LAM tr
   hiệu, và request kế tiếp **không** gọi làm mới lần hai; làm mới trả 401 **không**
   `code` (hình dạng `main` hôm nay) → đường cũ; 401 không `code` → đường cũ (test
   sẵn có vẫn xanh).
-- `AuthInterceptor`, §3.8: làm mới gặp lỗi kết nối hoặc hết giờ → giữ hai token,
+- ✅ `AuthInterceptor`, §3.8 (làm 2026-09-11): làm mới gặp lỗi kết nối hoặc hết giờ → giữ hai token,
   **không** phát `sessionExpiredStream`, request gốc nhận lại lỗi gốc; làm mới trả 503 →
   như vậy; làm mới trả 400 hoặc 401 không mã → xoá token và phát tín hiệu như cũ; hai
   request cùng nhận 401 → Dio làm mới giả đếm **1** và cả hai được thử lại bằng token
-  mới; lượt làm mới chung ấy trả 401 → cả hai nhận lỗi, tín hiệu phát **một** lần.
+  mới; lượt làm mới chung ấy trả 401 → cả hai nhận lỗi, tín hiệu phát **một** lần. Ca
+  thật (đếm bằng máy 2026-09-11): `auth_interceptor_test.dart` **13** ca mới cho §3.8
+  (8 điểm 1 + 1 "200 không có `accessToken`" + 3 điểm 2 + 1 "kho token ném lỗi",
+  cộng 3 ca cũ = **16** ca cả tệp) và `ket_qua_lam_moi_test.dart` **13** ca.
 - `RealtimeChannel` (socket giả sẵn có): `account.force_logout` khớp id → phát
   `buocDangXuat`, **không** phát vào `events`; lệch id → im; sau `stop()` → im.
 - `AuthBloc` (khuôn `session_validation_test.dart`): `biKhoa` → dừng ba thành
@@ -566,7 +625,7 @@ và 25 issue tính tới 2026-09-11.
   mã được xử lý ở §3.3; mã bắt tay vẫn bị bỏ qua (§3.4).
 - ~~Hai lỗi làm mới token có sẵn~~ (làm mới hỏng vì 5xx hoặc mất mạng cũng đăng xuất;
   hai lần làm mới đồng thời vấp *Token Reuse Detection*) — **đưa vào phạm vi ngày
-  2026-09-11**, nay ở §3.8.
+  2026-09-11**, nay ở §3.8 — **✅ sửa 2026-09-11**.
 - Thông báo cấp hệ điều hành khi sắp hết hạn chờ xoá.
 
 ## 9. Bẫy đã thấy trước
@@ -598,3 +657,6 @@ và 25 issue tính tới 2026-09-11.
   đăng xuất luôn tài khoản vừa đăng nhập. Cửa sổ hẹp — một request, tới 30 giây. Phần 1
   (§3.5) làm lại đúng đường này; `46ad023` chỉ chốt `deleteAccount`/`cancelDelete` bằng
   cách giữ định danh tài khoản trước `await`.
+- **`_clearTokens` phải chạy trong lượt làm mới chung** — N request chờ cùng gọi nó
+  thì đan xen đọc/xoá và phát tín hiệu N lần (✅ chốt trong `_lamMoi()`, spec §3.8,
+  2026-09-11).
