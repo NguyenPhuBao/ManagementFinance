@@ -19,11 +19,15 @@ class AuthRepositoryImpl implements AuthRepository {
   final AuthLocalDataSource localDataSource;
   final FlutterSecureStorage secureStorage;
 
+  /// Đồng hồ ghi mốc nhận `countdown`; test tiêm thẳng.
+  final DateTime Function() _now;
+
   AuthRepositoryImpl({
     required this.remoteDataSource,
     required this.localDataSource,
     required this.secureStorage,
-  });
+    DateTime Function()? now,
+  }) : _now = now ?? DateTime.now;
 
   // ─── Login online → lưu token + cache offline credential ──────────────────────────
   @override
@@ -35,9 +39,15 @@ class AuthRepositoryImpl implements AuthRepository {
       refreshToken: data['refreshToken'] as String,
     );
 
-    final userJson = data['user'] as Map<String, dynamic>;
-    final user = UserModel.fromJson(userJson);
-    await _cacheOfflineCredentials(username, password, userJson);
+    // `countdown` là số ngày chờ xoá còn lại LÚC NHẬN; ghi kèm mốc nhận để máy tự
+    // đếm tiếp — không endpoint nào trả số mới (spec cưỡng chế đăng xuất §4.2).
+    final goc = UserModel.fromJson(data['user'] as Map<String, dynamic>);
+    final user = goc.voiTrangThai(
+      status: goc.status,
+      countdown: goc.countdown,
+      countdownNhanLuc: _now(),
+    );
+    await _cacheOfflineCredentials(username, password, user);
     return user;
   }
 
@@ -70,9 +80,9 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<SessionStatus> verifySession() async {
     final token = await localDataSource.getAccessToken();
     if (token == null || token.isEmpty) return SessionStatus.invalid;
+    final Map<String, dynamic> profile;
     try {
-      await remoteDataSource.getProfile();
-      return SessionStatus.valid;
+      profile = await remoteDataSource.getProfile();
     } on ServerException catch (e) {
       // 401 = token không được chấp nhận; 404 = không còn hồ sơ người dùng
       // (fk_user_account có onDelete: Cascade nên xoá account là mất luôn user).
@@ -84,6 +94,13 @@ class AuthRepositoryImpl implements AuthRepository {
       // và mọi lỗi không phân loại được → KHÔNG đăng xuất người dùng offline.
       return SessionStatus.unknown;
     }
+    try {
+      await _dongBoTrangThai(profile['status']);
+    } catch (_) {
+      // Đồng bộ trạng thái chờ xoá là việc phụ: lỗi ghi bộ nhớ đệm không được
+      // biến một phiên hợp lệ thành "không rõ", hay làm AuthBloc đăng xuất.
+    }
+    return SessionStatus.valid;
   }
 
   @override
@@ -128,17 +145,40 @@ class AuthRepositoryImpl implements AuthRepository {
     await remoteDataSource.resetPassword(resetToken, newPassword);
   }
 
-  // ─── Xóa tài khoản (gửi yêu cầu ân hạn 30 ngày: DELETE /auth/account) ───────────
+  // ─── Gửi yêu cầu xoá tài khoản (DELETE /auth/account) ────────────────────
+  // Tài khoản sang `PendingDelete` và người dùng DÙNG TIẾP 30 ngày: không xoá
+  // token, không đăng xuất. Bản trước xoá sạch phiên theo đặc tả 2026-08-17 —
+  // backend chạy theo `docs/progress/Client-app.md` mục 12 (G33).
   @override
   Future<void> deleteAccount(String password) async {
-    await remoteDataSource.deleteAccount(password);
-    await _clearLocalData();
+    final data = await remoteDataSource.deleteAccount(password);
+    final user = await getCurrentUser();
+    if (user == null) return;
+    final countdown = data['countdown'];
+    await _ghiNguoiDung(user.voiTrangThai(
+      status: data['status'] as String? ?? 'PendingDelete',
+      countdown: countdown is num ? countdown.toInt() : null,
+      countdownNhanLuc: _now(),
+    ));
   }
 
-  // ─── Hủy yêu cầu xóa tài khoản (POST /auth/cancel-delete) ─────────────────────
+  // ─── Huỷ yêu cầu xoá tài khoản (POST /auth/cancel-delete) ────────────────
   @override
   Future<void> cancelDelete() async {
-    await remoteDataSource.cancelDelete();
+    try {
+      await remoteDataSource.cancelDelete();
+    } catch (_) {
+      // Không nhận diện lỗi bằng mã hay câu chữ: datasource ném `Exception(msg)`
+      // làm mất mã HTTP, và backend dùng 400 cả cho lỗi kiểm tra đầu vào. Hỏi
+      // lại server — đã `Active` (huỷ ở máy khác) thì coi như xong.
+      await verifySession();
+      final user = await getCurrentUser();
+      if (user != null && !user.dangChoXoa) return;
+      rethrow;
+    }
+    final user = await getCurrentUser();
+    if (user == null) return;
+    await _ghiNguoiDung(user.voiTrangThai(status: 'Active'));
   }
 
   // ─── Lấy thông tin profile (cần Backend: GET /auth/profile) ─────────────
@@ -224,15 +264,34 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<void> _cacheOfflineCredentials(
     String username,
     String password,
-    Map<String, dynamic> userJson,
+    UserModel user,
   ) async {
     await secureStorage.write(
         key: AppConstants.offlineUsernameKey, value: username);
     await secureStorage.write(
         key: AppConstants.offlinePasswordHashKey,
         value: _hashPassword(password));
+    await _ghiNguoiDung(user);
+  }
+
+  /// Ghi `user.toJson()` chứ không ghi JSON thô của server: `countdown_nhan_luc`
+  /// là trường cục bộ, JSON thô không có. `offlineUserDataKey` chỉ tệp này đọc.
+  Future<void> _ghiNguoiDung(UserModel user) async {
     await secureStorage.write(
-        key: AppConstants.offlineUserDataKey, value: jsonEncode(userJson));
+        key: AppConstants.offlineUserDataKey, value: jsonEncode(user.toJson()));
+  }
+
+  /// `status` theo server là nguồn sự thật; `countdown` chỉ đến lúc đăng nhập
+  /// hoặc gửi yêu cầu xoá. Khớp nhau thì giữ nguyên số ngày đang có.
+  Future<void> _dongBoTrangThai(Object? statusServer) async {
+    if (statusServer is! String || statusServer.isEmpty) return;
+    final user = await getCurrentUser();
+    if (user == null) return;
+    final serverChoXoa = statusServer.toLowerCase() == 'pendingdelete';
+    if (serverChoXoa == user.dangChoXoa) return;
+    // Lệch: huỷ ở máy khác (server Active), hoặc yêu cầu gửi từ máy khác (server
+    // PendingDelete) — máy này không có số ngày đúng, nên bỏ countdown.
+    await _ghiNguoiDung(user.voiTrangThai(status: statusServer));
   }
 
   String _hashPassword(String password) {
