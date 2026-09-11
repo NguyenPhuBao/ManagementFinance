@@ -14,7 +14,7 @@ việc 2 — hai dòng ở `auth.service.js`. Không migration, không đổi CS
 
 | | Xin gì | Vì sao | Mức |
 |---|---|---|---|
-| **1** | `GET /auth/profile` trả thêm `countdown` | Máy **đã giữ phiên** từ trước khi máy khác gửi yêu cầu xoá chỉ thấy `status` qua `/auth/profile`, không biết số ngày còn lại — thẻ nhắc chỉ hiện câu chung (§2.1). Cùng triệu chứng: bộ nhớ đệm do bản client cũ ghi, thiếu mốc nhận (§2.4). Đăng nhập máy khác hay cài lại app thì **có** số: response đăng nhập mang `countdown` | 🟡 |
+| **1** | `GET /auth/profile` trả thêm `countdown` | Máy **đã giữ phiên** từ trước khi máy khác gửi yêu cầu xoá chỉ thấy `status` qua `/auth/profile`, không biết số ngày còn lại — thẻ nhắc chỉ hiện câu chung (§2.1). Cùng triệu chứng: bộ nhớ đệm do bản client cũ ghi, thiếu mốc nhận; còn máy giữ số của một lần chờ xoá trước thì hiện số cũ sai (§2.4). Đăng nhập máy khác hay cài lại app thì **có** số: response đăng nhập mang `countdown` | 🟡 |
 | **2** | Gỡ `pendingDeleteCancelled` khỏi response `POST /auth/login` | Luôn `false` — di sản của đặc tả "đăng nhập lại là tự khôi phục" đã bỏ; client đã gỡ phía đọc | ⚪ |
 
 ## 2. Việc 1 — `countdown` ở `/auth/profile`
@@ -61,10 +61,17 @@ UTC+7 (khớp `scheduler.service.js` trừ 1 lúc 00:00 giờ Việt Nam) — nh
 ### 2.4. Client làm gì sau đó
 
 `AuthRepositoryImpl._dongBoTrangThai` (client) hiện đặt `countdown = null` khi server báo
-`PendingDelete` mà máy chưa biết. Có trường này thì client đọc `profile['countdown']` và
-ghi kèm mốc nhận — kể cả khi trạng thái khớp mà máy chưa có mốc nhận: bộ nhớ đệm do bản
-client cũ ghi có `countdown` nhưng thiếu `countdown_nhan_luc`, nên thẻ nhắc hôm nay chỉ
-hiện câu chung. Cả hai là việc phía client, backend không phải làm thêm.
+`PendingDelete` mà máy chưa biết, và **giữ nguyên** số đang có khi trạng thái khớp. Có
+trường này thì mỗi lần `/auth/profile` trả `countdown`, client ghi lại **số và mốc nhận,
+kể cả khi trạng thái khớp**. Việc ấy cứu cả ba ca thẻ nhắc hôm nay thiếu số hoặc sai số:
+
+- máy đã giữ phiên từ trước khi máy khác gửi yêu cầu xoá — không có số (§2.1);
+- bộ nhớ đệm do bản client cũ ghi — có `countdown` nhưng thiếu `countdown_nhan_luc`, nên
+  thẻ chỉ hiện câu chung;
+- **số cũ sai** — máy giữ số của một lần chờ xoá trước; máy khác huỷ rồi gửi lại yêu cầu;
+  lần mở app sau `status` vẫn khớp nên máy giữ số cũ và hiện **ít** ngày hơn thật.
+
+Vẫn là việc phía client — backend không phải làm thêm.
 
 ## 3. Việc 2 — `pendingDeleteCancelled`
 

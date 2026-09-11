@@ -448,8 +448,10 @@ Viết **`CAN-LAM/AUTH_PROFILE_COUNTDOWN.md`** (mục **19** của `README.md` �
 1. `getProfile` (`auth.service.js:552-565` — nhánh đã gộp `main`) trả thêm
    `countdown` — một dòng. Để hai ca hôm nay chỉ hiện câu chung cũng có số ngày: máy
    **đã giữ phiên** từ trước khi máy khác gửi yêu cầu xoá (mục 4.3 dòng hai), và bộ nhớ
-   đệm do bản client cũ ghi, thiếu `countdown_nhan_luc` — ca này còn cần client ghi số cả
-   khi trạng thái khớp. Đăng nhập máy khác hay cài lại app thì đã có số: response đăng
+   đệm do bản client cũ ghi, thiếu `countdown_nhan_luc`. Có trường ấy, client ghi lại số và
+   mốc nhận mỗi lần `/auth/profile` trả `countdown`, kể cả khi trạng thái khớp — cứu cả ca
+   bộ nhớ đệm cũ lẫn ca **số cũ sai** (máy giữ số của một lần chờ xoá trước; máy khác huỷ
+   rồi gửi lại yêu cầu — CAN-LAM 19 §2.4). Đăng nhập máy khác hay cài lại app thì đã có số: response đăng
    nhập mang `countdown` (mục 4.3 dòng một). Đo 2026-09-11: `main` @ `7675b35` **chưa** làm.
 2. `pendingDeleteCancelled` luôn `false` (`auth.service.js:309`, cả nhánh lẫn
    `main`): xin gỡ trường khỏi response hoặc ghi rõ là đã bỏ. ⚠️ Lý do bản trước
@@ -589,3 +591,10 @@ và 25 issue tính tới 2026-09-11.
   ngay đầu handler (hoặc transformer `droppable`), đừng dựa vào state.
 - **Lỗi lược đồ đội lốt `ACCOUNT_DELETED` ở nhánh làm mới** — CAN-LAM 17 mục 2.5;
   phía client xem §3.6b.
+- **Đổi tài khoản trong lúc một lượt `/auth/profile` còn treo — hai race cùng họ với
+  `46ad023`, CHƯA sửa.** (1) `verifySession` → `_dongBoTrangThai` đọc bộ nhớ đệm **sau**
+  `getProfile`, nên có thể ghi trạng thái của phiên cũ vào tài khoản vừa đăng nhập.
+  (2) `_onSessionInvalidated` (có từ trước G33) gặp 401 của phiên cũ sẽ gọi `logout()`,
+  đăng xuất luôn tài khoản vừa đăng nhập. Cửa sổ hẹp — một request, tới 30 giây. Phần 1
+  (§3.5) làm lại đúng đường này; `46ad023` chỉ chốt `deleteAccount`/`cancelDelete` bằng
+  cách giữ định danh tài khoản trước `await`.
