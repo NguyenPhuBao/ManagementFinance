@@ -7,7 +7,10 @@ import '../../../auth/data/repositories/auth_repository.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 
 class DeleteAccountPage extends StatefulWidget {
-  const DeleteAccountPage({super.key});
+  const DeleteAccountPage({super.key, this.authRepository});
+
+  /// `null` = lấy từ `sl`; test tiêm thẳng.
+  final AuthRepository? authRepository;
 
   @override
   State<DeleteAccountPage> createState() => _DeleteAccountPageState();
@@ -17,10 +20,10 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
   final _formKey = GlobalKey<FormState>();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
-  bool _isCancelLoading = false;
   String? _errorMessage;
 
-  final AuthRepository _authRepository = sl<AuthRepository>();
+  late final AuthRepository _authRepository =
+      widget.authRepository ?? sl<AuthRepository>();
 
   @override
   void dispose() {
@@ -47,7 +50,6 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
         ),
         content: const Text(
           'Tài khoản của bạn sẽ được đặt vào trạng thái chờ xóa trong 30 ngày.\n\n'
-          'Trong thời gian này, bạn có thể đăng nhập lại để hủy yêu cầu và khôi phục tài khoản.\n\n'
           'Sau 30 ngày, tài khoản sẽ bị xóa vĩnh viễn.',
           style: TextStyle(height: 1.5),
         ),
@@ -79,8 +81,9 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
     try {
       await _authRepository.deleteAccount(_passwordController.text);
       if (!mounted) return;
+      setState(() => _isLoading = false);
 
-      // Hiện dialog thông báo thành công trước khi logout
+      // Báo đã ghi nhận. KHÔNG đăng xuất — backend cho dùng tiếp 30 ngày (G33).
       await showDialog<void>(
         context: context,
         barrierDismissible: false,
@@ -96,8 +99,7 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
             ],
           ),
           content: const Text(
-            'Tài khoản của bạn sẽ bị xóa sau 30 ngày.\n\n'
-            'Để hủy yêu cầu, hãy đăng nhập lại trong vòng 30 ngày — hệ thống sẽ tự động khôi phục tài khoản cho bạn.',
+            'Bạn vẫn dùng app bình thường trong 30 ngày, và huỷ được bất cứ lúc nào ở Trang chủ hoặc Cài đặt.',
             style: TextStyle(height: 1.5),
           ),
           actions: [
@@ -115,37 +117,13 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
       );
 
       if (!mounted) return;
-      context.read<AuthBloc>().add(LogoutRequested());
-      context.go('/login');
+      // Đọc lại bộ nhớ đệm để thẻ nhắc ở Trang chủ hiện ngay khi về tới đó.
+      context.read<AuthBloc>().add(ThongTinTaiKhoanThayDoi());
+      context.go('/home');
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _errorMessage = e.toString().replaceAll('Exception: ', '');
-      });
-    }
-  }
-
-  /// Hủy yêu cầu xóa tài khoản (nếu tài khoản đang ở PendingDelete)
-  void _handleCancelDelete() async {
-    setState(() {
-      _isCancelLoading = true;
-      _errorMessage = null;
-    });
-    try {
-      await _authRepository.cancelDelete();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Yêu cầu xóa tài khoản đã được hủy thành công.'),
-          backgroundColor: Color(0xFF006E1C),
-        ),
-      );
-      context.pop();
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _isCancelLoading = false;
         _errorMessage = e.toString().replaceAll('Exception: ', '');
       });
     }
@@ -205,7 +183,7 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
                         ),
                         SizedBox(height: 8),
                         Text(
-                          'Tài khoản sẽ không bị xóa ngay lập tức. Bạn có 30 ngày để đổi ý và khôi phục tài khoản bằng cách đăng nhập lại.',
+                          'Tài khoản sẽ không bị xoá ngay lập tức. Bạn có 30 ngày để đổi ý — huỷ yêu cầu ở Trang chủ hoặc Cài đặt.',
                           style: TextStyle(
                             fontSize: 14,
                             color: Color(0xFF5D4037),
@@ -352,34 +330,6 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
-
-                  // --- Nút hủy yêu cầu xóa ---
-                  OutlinedButton.icon(
-                    onPressed: _isCancelLoading ? null : _handleCancelDelete,
-                    icon: _isCancelLoading
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.undo, size: 18),
-                    label: const Text('Hủy yêu cầu xóa tài khoản'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.primary,
-                      side: const BorderSide(color: AppColors.primary),
-                      minimumSize: const Size(double.infinity, 48),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Nếu bạn đã gửi yêu cầu xóa trước đó, hãy nhấn vào đây để hủy ngay.',
-                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                    textAlign: TextAlign.center,
-                  ),
                 ],
               ),
             ),
@@ -416,18 +366,18 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
           ),
           const SizedBox(height: 16),
           _timelineStep(
-            icon: Icons.logout,
+            icon: Icons.hourglass_top,
             color: const Color(0xFFBA1A1A),
             title: 'Ngay lập tức',
-            desc: 'Bạn sẽ bị đăng xuất khỏi tất cả thiết bị.',
+            desc:
+                'Tài khoản chuyển sang chờ xoá, bạn vẫn dùng app bình thường.',
           ),
           _timelineDivider(),
           _timelineStep(
             icon: Icons.restore,
             color: const Color(0xFF0066CC),
             title: 'Trong 30 ngày',
-            desc:
-                'Đăng nhập lại để hủy yêu cầu — tài khoản được khôi phục tự động.',
+            desc: 'Huỷ yêu cầu ở Trang chủ hoặc Cài đặt.',
           ),
           _timelineDivider(),
           _timelineStep(
