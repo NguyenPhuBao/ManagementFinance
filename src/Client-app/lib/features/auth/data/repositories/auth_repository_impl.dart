@@ -38,11 +38,7 @@ class AuthRepositoryImpl implements AuthRepository {
     final userJson = data['user'] as Map<String, dynamic>;
     final user = UserModel.fromJson(userJson);
     await _cacheOfflineCredentials(username, password, userJson);
-
-    // Đính kèm pendingDeleteCancelled vào user trường hợp tài khoản vừa được khôi phục
-    final pendingDeleteCancelled =
-        data['pendingDeleteCancelled'] as bool? ?? false;
-    return user.copyWith(pendingDeleteCancelled: pendingDeleteCancelled);
+    return user;
   }
 
   // ─── Logout: gọi API revoke token + xóa tất cả local data ───────────────

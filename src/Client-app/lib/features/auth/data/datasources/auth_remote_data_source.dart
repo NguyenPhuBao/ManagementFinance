@@ -63,9 +63,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         data: {'username': username, 'password': password},
       );
       if (response.data['success'] == true) {
-        final data = response.data['data'] as Map<String, dynamic>;
-        // Đính kèm pendingDeleteCancelled từ data nếu backend trả về
-        return data;
+        return response.data['data'] as Map<String, dynamic>;
       }
       throw Exception(response.data['message'] ?? 'Đăng nhập thất bại');
     } on DioException catch (e) {
