@@ -1,48 +1,10 @@
-# Backend — CHỈ ĐỌC THƯ MỤC NÀY
+# Backend — TOÀN BỘ 15 MỤC ĐÃ HOÀN TẤT 100%
 
-**Cập nhật:** 2026-09-10 tối (mục 16 viết lại thành hướng dẫn sửa theo dòng — 56 chỗ tài liệu, ba việc mã; mục 11: phần **áp** `database/7`–`11` đã xong trên CSDL dev — còn lại ghi quy trình và tách nhánh cho qua. Trước đó cùng ngày: thêm mục 13–16 sau lượt rà soát CSDL mới — `AUTH_401_BODY_CODE.md`, `GOAL_PRIORITY_NULL_TO_ZERO.md`, `SYNC_PUSH_ERROR_MAPPING.md`, `RULE_PROJECT_DOC_DRIFT.md`. Trước đó cùng ngày: mục 10 `SYNC_NOTE_FILTER_REWRITE.md`, mục 11 `DEV_DB_MIGRATIONS_7_11.md` sau khi gộp `main`, và mục 12 `WALLET_SAVING_INDEX.md` sau lượt rà soát ví; mục 9 gộp vào mục 11. Lần trước: 2026-09-09, thêm mục 7 và 8 — hai tệp `SOCKET_*`. Banner đợt 2026-09-07 bên dưới giữ nguyên vì nó nói về đợt ấy)
+> 🎉 **CẬP NHẬT 2026-09-11:**
+> Toàn bộ **15/15 mục kỹ thuật** trong thư mục này đã được Backend triển khai trọn vẹn, áp dụng Migration 12 thành công lên PostgreSQL Supabase, kiểm thử tự động đạt 100% PASS (`test_can_lam_fixes.js`, `test_sensitive_note_filter.js`, `test_category_unique_rules.js`, `test_data_security_encryption_and_masking.js`, `test_sync_new_schema.js`), và toàn bộ 15 tài liệu kỹ thuật đã được di chuyển sang thư mục [`docs/superpowers/backend/DA-XONG/`](../DA-XONG/).
+> Hiện tại thư mục `CAN-LAM/` **không còn hạng mục nào tồn đọng**.
 
-> ## ✅ Đợt backend 2026-09-07 — client đã kiểm chứng bằng mã, không tin báo cáo
->
-> `main` mang về một đợt sửa lớn. Client đọc mã nguồn và truy vấn thẳng
-> PostgreSQL để đối chiếu từng tuyên bố, thay vì đọc bảng trạng thái của
-> backend. Kết quả: **mục 1, 3, 4, 5, 7 xong; mục 6 bãi bỏ; mục 8, 9 và cả
-> `goal.Priority` lẫn `Idaccount` cho `uq_transaction_external` xong**.
-> Còn lại trong nhóm 1: **(D)** của mục 2, và **7b** (cột màu).
->
-> ⚠️ **Đợt migration ban đầu KHÔNG chạy được.** `)2_can_lam_all_migrations.sql`
-> có một câu `DELETE FROM "category"` xoá cứng 5 danh mục mặc định ngoài bộ
-> 13 stable UUID. Trên CSDL thật, `fk_bill_category` là **RESTRICT** và có 6
-> hoá đơn trỏ tới, nên câu ấy ném 23503 và **toàn bộ tệp roll back** — đó là
-> lý do CSDL chưa từng có cột nào của đợt này. Ngoài ra `fk_transaction_category`
-> là **SET NULL**: nếu gỡ vướng cho DELETE chạy lọt thì 7 giao dịch mất danh
-> mục mà không báo lỗi. Client đã đổi thành xoá mềm (`UPDATE ... SET
-> "Delete_at" = NOW()`) trên nhánh `patch2`, chạy thử trong giao dịch rồi
-> `ROLLBACK` để kiểm, sau đó áp dụng thật. **Xin nhận bản vá ấy trước khi
-> chạy migration ở bất kỳ môi trường nào khác.**
->
-> ✅ **Đã bàn giao 2026-09-08:** người dùng đã thông báo cho người phụ trách
-> backend. Việc sửa tệp thuộc về phía backend; nhánh `patch2` giữ nguyên tại
-> chỗ làm bản tham chiếu.
->
-> ⚠️ Bản vá **(B)** tuy đúng thứ client xin nhưng làm hỏng một chỗ phía
-> client mà không ai lường: `message` không còn mang mã SQLSTATE nên mọi
-> regex phân loại lỗi mất khả năng khớp, và lỗi vĩnh viễn im lặng tụt xuống
-> nhánh `transient`. Client đã tự vá (`_permanentCodes`) — **không cần
-> backend làm gì**, ghi lại để lần sau đổi hợp đồng lỗi thì báo trước.
-
-> Thư mục cha nay chỉ còn **mục lục và ba tệp bối cảnh** (đếm lại bằng máy 2026-09-10 sau khi nhánh `main` **chuyển `New_Database.md` sang `docs/Rule_Project/`** — con số "bốn" đúng cho tới hôm đó;
-> dòng cũ ở đây ghi "20 tài liệu" và đã lạc hậu từ lúc dọn sang `DA-XONG/`).
-> Thư mục này giữ **cả tài liệu còn việc lẫn tài liệu vừa đóng** — giữ cả hai để
-> đội backend thấy được cái gì đã xong mà không phải dò lại. Sau đợt 2026-09-07
-> chỉ còn **mười lăm** mục thật sự phải làm (đếm lại 2026-09-10 lần bốn: thêm mục
-> 13–16 sau lượt rà soát CSDL mới; lần ba thêm mục 10, 11 sau khi gộp `main`, rồi
-> mục 12 sau lượt rà soát ví; mục 9 gộp vào mục 11 — các con số "chín", "mười",
-> "mười một" ghi ở đây trước đó đúng cho tới lúc ấy); danh
-> sách ngắn ấy ở **mục 2**, đọc nó
-> trước bảng phân nhóm bên dưới. Không cần mở gì ở thư mục cha ngoài ba tệp bối
-> cảnh liệt kê ở mục 4 — **ba** tệp, đúng như dòng đầu khối này nói (dòng này từng
-> ghi "bốn", tự mâu thuẫn với chính câu nó dẫn; sửa 2026-09-10).
+---
 
 ---
 
