@@ -391,7 +391,7 @@ xoá"* (dựng từ `6c692ef11f2d4f40aee3666449b4988d` với ngăn kéo đóng).
 
 - Vị trí: ngay dưới `_buildHeader`, trên `_buildHeroSection`.
 - Thẻ thu gọn theo nội dung (không phải dải kín ngang): nền `#FFDAD6`, bo 8px,
-  đệm 16px. Tiêu đề "Tài khoản đang chờ xoá" kèm biểu tượng đồng hồ cùng màu (có trên Stitch); thân *"Còn **N ngày** nữa tài
+  đệm 16px; viền `error` 20% và bóng nhẹ (có trên Stitch). Tiêu đề "Tài khoản đang chờ xoá" kèm biểu tượng đồng hồ màu `error` trong vòng tròn nền trắng mờ (có trên Stitch); thân *"Còn **N ngày** nữa tài
   khoản và toàn bộ dữ liệu sẽ bị xoá vĩnh viễn."*; `countdown == null` thì
   *"Tài khoản và toàn bộ dữ liệu sẽ bị xoá vĩnh viễn khi hết thời hạn chờ."*
 - Nút **Để sau** (ghost) và **Huỷ xoá** (chính, có trạng thái đang tải).

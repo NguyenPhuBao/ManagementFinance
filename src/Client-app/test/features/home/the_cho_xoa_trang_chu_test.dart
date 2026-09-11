@@ -6,6 +6,7 @@ import 'package:flowmoney/features/auth/data/repositories/auth_repository.dart';
 import 'package:flowmoney/features/auth/presentation/an_the_cho_xoa.dart';
 import 'package:flowmoney/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:flowmoney/features/home/presentation/widgets/the_cho_xoa_trang_chu.dart';
+import 'package:flowmoney/shared/theme/app_colors.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -97,6 +98,26 @@ void main() {
             'thì thẻ ẩn mà khoảng trống 24dp ở lại suốt phiên (soát cuối G33).');
     expect(tester.getBottomLeft(vung).dy, tester.getBottomLeft(the).dy,
         reason: 'Phía dưới thẻ không có khoảng nào — Trang chủ tự đặt 32 trước khối hero.');
+
+    // Stitch 657d29a8 (thiết kế người dùng đã duyệt cho khối này): viền
+    // `border-error/20`, bóng `custom-shadow`, đồng hồ màu `error` trong vòng tròn
+    // nền `bg-white/60`. Bản dựng đầu không có cả ba (soát cuối G33).
+    final trangTri = tester.widget<Container>(the).decoration! as BoxDecoration;
+    expect(trangTri.border, isNotNull, reason: 'Stitch: viền border-error/20.');
+    expect(trangTri.boxShadow ?? const <BoxShadow>[], isNotEmpty,
+        reason: 'Stitch: custom-shadow 0 4px 12px rgba(0,0,0,.05).');
+    expect(tester.widget<Icon>(find.byIcon(Icons.schedule)).color, AppColors.error,
+        reason: 'Stitch: biểu tượng schedule mang text-error.');
+    expect(
+        find.ancestor(
+          of: find.byIcon(Icons.schedule),
+          matching: find.byWidgetPredicate((w) =>
+              w is Container &&
+              w.decoration is BoxDecoration &&
+              (w.decoration! as BoxDecoration).shape == BoxShape.circle),
+        ),
+        findsOneWidget,
+        reason: 'Stitch: vòng tròn bg-white/60 quanh đồng hồ.');
     expect(tester.takeException(), isNull);
   });
 
