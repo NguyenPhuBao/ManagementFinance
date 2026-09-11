@@ -67,9 +67,9 @@
 | **17** | [FIX_BACKEND_3_REGRESSIONS.md](./FIX_BACKEND_3_REGRESSIONS.md) | Ba hồi quy của `7675b35`: **A** bắt tay socket và `/auth/refresh` từ chối mọi tài khoản; **B** chốt trả hai lần ở `upsertBill` chặn hoàn tác thanh toán; **C** tài liệu backend ghi sai ba mã lỗi | 🔴 A, B |
 | **18** | [VERIFY_7675B35_REMAINING.md](./VERIFY_7675B35_REMAINING.md) | Chín việc mã/CSDL còn lại của mười lăm tài liệu đã sang `DA-XONG/` — giao dịch SePay vỡ `chk_transaction_type` (suy từ mã), sự kiện ngân hàng phát hai lần, khoá mã hoá mặc định, tệp `)2` còn xoá cứng, `DEFAULT 0` của ngân sách, … — cộng 45 chỗ sửa tài liệu backend. Thứ tự đề xuất ở §1 của tài liệu ấy | 🟠 → ⚪ |
 
-Mục **19** (`AUTH_PROFILE_COUNTDOWN.md`) sẽ viết khi spec cưỡng chế đăng xuất
-(`docs/superpowers/specs/2026-09-10-cuong-che-dang-xuat-va-cho-xoa-design.md` §6) được
-duyệt.
+Mục **19** (`AUTH_PROFILE_COUNTDOWN.md`) chưa viết. Spec cưỡng chế đăng xuất
+(`docs/superpowers/specs/2026-09-10-cuong-che-dang-xuat-va-cho-xoa-design.md` §6) đã
+duyệt ngày 2026-09-11; tài liệu viết khi client bắt đầu làm G33.
 
 ---
 

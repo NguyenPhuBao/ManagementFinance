@@ -38,7 +38,7 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > | ~~**G30**~~ | ✅ **Đóng 2026-09-11** — `database/12` bỏ `uq_wallet_saving_active` và client gỡ chốt tạm: màn Thêm ví cho chọn "Tiết kiệm" dù đã có một ví Tiết kiệm, datasource không còn từ chối. ⚠️ Máy chủ nào chưa áp tệp 12 vẫn từ chối ví Tiết kiệm thứ hai. Chốt **trùng tên ví** ở lại vĩnh viễn |
 > | ~~**G31**~~ | ✅ **Đóng 2026-09-11** — backend nay ánh xạ `22001`/`P2000` (dài quá cột) và `23502` về `CONSTRAINT_VIOLATION`, mã client đã xếp **vĩnh viễn**, nên bản ghi bị chặn theo thời gian thay vì gửi lại mãi; và một thao tác hỏng không còn làm **cả lô** 400. Bộ lọc bảy ô tên của client (2026-09-10) **vẫn giữ** — nó chặn trước để bản ghi không kẹt ngay từ đầu. Đo trên mã HEAD, chưa chạy đầu-cuối. Dòng cũ ghi *chặn ở backend* — đúng tới trước khi gộp `main` |
 > | ~~**G32**~~ | ✅ **Đóng 2026-09-11** — backend giữ `priority: null` khi đẩy (hết `Number(null)` → `0`), nhánh tạo mặc định `null`, và `database/12` đã đưa các hàng `<= 0` về `NULL` trên CSDL dev. Lớp đọc `<= 0` là chưa sắp phía client **vẫn giữ** cho dữ liệu cũ và bản backend/client cũ. Dòng cũ ghi *chặn ở backend* — đúng tới trước khi gộp `main` |
-> | **G33** | 🔴 **Lỗi đang chạy, client sửa được** — trang Xoá tài khoản hứa *"đăng nhập lại trong 30 ngày là tự khôi phục"*, nhưng backend không làm vậy (`pendingDeleteCancelled` luôn `false`), nên người tin lời hứa **mất tài khoản sau 30 ngày** mà không được báo (2026-09-10). Cách sửa đã chốt, nằm trong spec cưỡng chế đăng xuất — **chờ duyệt** |
+> | **G33** | 🔴 **Lỗi đang chạy, client sửa được** — trang Xoá tài khoản hứa *"đăng nhập lại trong 30 ngày là tự khôi phục"*, nhưng backend không làm vậy (`pendingDeleteCancelled` luôn `false`), nên người tin lời hứa **mất tài khoản sau 30 ngày** mà không được báo (2026-09-10). Cách sửa nằm trong spec cưỡng chế đăng xuất — **đã duyệt 2026-09-11, chưa sửa** |
 > | **G34** | ⏸️ **Chưa làm — việc phía client, chờ người dùng** — backend đã phát `sync.completed` tới phòng `account_<id>` sau mỗi `/sync/push`, nhưng client chỉ nhận ba tên sự kiện nên **bỏ qua** nó; thay đổi từ máy khác vẫn chờ chu kỳ đồng bộ định kỳ (15 phút) hoặc kích hoạt khác. Hôm nay sự kiện cũng chưa tới được client vì bắt tay socket từ chối mọi tài khoản (CAN-LAM 17 A) (2026-09-11) |
 > | ~~**G35**~~ | ✅ **Đóng 2026-09-11** — ba màn quản lý danh mục nay lấy tài khoản qua `currentAccountIdOrNull`: chưa có phiên thì không đọc gì (kể cả tài khoản 0 — bộ khuôn toàn cục), và nút lưu/xoá báo "Chưa xác định được tài khoản đăng nhập". Test quét `lib/` cấm `?? 1` nhiều dòng. ⚠️ Dòng này từng ghi *lỗi đang chạy, chưa sửa* — đúng tới trước bản sửa |
 >
@@ -1110,7 +1110,7 @@ chế đăng xuất. Cách sửa — dùng tiếp 30 ngày, thẻ nhắc đóng 
 nút huỷ ở Cài đặt, trang Xoá tài khoản thôi đăng xuất và thôi hứa — đã chốt với
 người dùng, nằm ở mục 4–5 của
 `docs/superpowers/specs/2026-09-10-cuong-che-dang-xuat-va-cho-xoa-design.md`,
-**đang chờ duyệt**. Trước tối 2026-09-10 đường này còn không chạy nổi trên CSDL dev
+**đã duyệt ngày 2026-09-11**, chưa sửa. Trước tối 2026-09-10 đường này còn không chạy nổi trên CSDL dev
 (thiếu cột `Countdown`); nay `database/9` đã áp nên lỗi **xảy ra được thật**.
 
 **Bán kính:** chỉ người đã gửi yêu cầu xoá. CSDL dev hiện không có tài khoản
