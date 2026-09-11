@@ -600,7 +600,9 @@ class SyncEngine {
                   (c['name_category'] ?? c['namecategory'] ?? c['name'] ?? '')
                       .toString();
               final rawIcon = c['icon']?.toString();
-              final rawColor = c['colour']?.toString();
+              // Backend trả `color` (G24). `null` nghĩa là server CHƯA có màu —
+              // nhánh dưới rơi về màu cục bộ chứ không xoá nó.
+              final rawColor = c['color']?.toString();
 
               final existingLocal = await _db.categoryDao.getById(catUuid);
               if (existingLocal?.isLocalOnly == true) {

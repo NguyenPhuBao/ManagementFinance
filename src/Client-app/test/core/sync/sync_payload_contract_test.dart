@@ -330,7 +330,11 @@ void main() {
       expect(
         payloadOf('category').keys.toSet(),
         {
-          'id', 'name', 'namecategory', 'classify', 'icon', 'colour',
+          'id', 'name', 'namecategory', 'classify', 'icon',
+          // normalizer đổi colour → color, như ví. Trước 2026-09-11 dòng
+          // này khoá `'colour'` — tức canh đúng bản sai: backend không có
+          // nhánh nào đọc `colour`, nên màu danh mục bị bỏ qua im lặng (G24).
+          'color',
           'is_default', 'is_deleted',
           'isGroup', // mapEntityFields: isGroup → Is_group
           'parentId', // mapEntityFields: parentId → Idgroup
@@ -587,6 +591,7 @@ void main() {
             'classify': 'Chi',
             'is_group': true,
             'create_by': accountId,
+            'color': '#ABCDEF',
             'update_at': '2026-09-01T10:00:00.000Z',
           },
         ],
@@ -645,6 +650,9 @@ void main() {
       final category = await db.categoryDao.getById(categoryId);
       expect(category?.name, 'Ăn uống', reason: 'backend dùng "name_category"');
       expect(category?.isGroup, true, reason: 'backend dùng "is_group"');
+      expect(category?.colour, '#ABCDEF',
+          reason: 'backend trả "color" (`sync.repository.js:228`), không phải '
+              '"colour" — đọc nhầm khoá là mọi máy khác thấy màu mặc định (G24).');
 
       final budgets = await db.budgetDao.getAll(accountId);
       expect(budgets.single.amount, 750000,
@@ -674,6 +682,44 @@ void main() {
           DateTime.utc(2026, 9, 1, 3),
           reason: 'Mốc kỳ gần nhất phải về được máy thứ hai, nếu không nó sẽ '
               'trích lại đúng kỳ mà máy thứ nhất vừa trích xong.');
+    });
+
+    test('server chưa có màu danh mục thì màu cục bộ phải còn nguyên — G24',
+        () async {
+      // Trạng thái THẬT ngay sau khi client đổi sang khoá `color`: danh mục đã
+      // `synced` từ trước vẫn nằm trên server với `Color = NULL`, vì màu chỉ lên
+      // server khi danh mục được đẩy lại với `update_at` MỚI HƠN (cùng mốc thì
+      // server trả xung đột và giữ bản của nó — đo trên máy ảo 2026-09-11). Nhánh
+      // kéo về mà ghi đè thẳng thì mỗi chu kỳ đồng bộ xoá màu người dùng đã chọn.
+      await db.categoryDao.insert(CategoriesCompanion.insert(
+        id: categoryId,
+        idaccount: accountId,
+        name: 'Ăn uống',
+        classify: 'chi',
+        colour: const Value('#FF5722'),
+        syncStatus: const Value('synced'),
+        updatedAt: DateTime(2026, 9, 1),
+      ));
+
+      client.adapter.pullData = {
+        'categories': [
+          {
+            'idcategory': categoryId,
+            'name_category': 'Ăn uống',
+            'classify': 'Chi',
+            'create_by': accountId,
+            'color': null, // hàng cũ trên server: cột có, giá trị chưa có
+            'update_at': '2026-09-02T10:00:00.000Z',
+          },
+        ],
+      };
+
+      await runSync();
+
+      final category = await db.categoryDao.getById(categoryId);
+      expect(category?.colour, '#FF5722',
+          reason: 'Server trả `color: null` nghĩa là CHƯA BIẾT, không phải "xoá '
+              'màu" — cùng bài học với `idgoal` ở ca ngay dưới.');
     });
 
     test('hàng server KHÔNG có idgoal thì liên kết cục bộ phải còn nguyên',

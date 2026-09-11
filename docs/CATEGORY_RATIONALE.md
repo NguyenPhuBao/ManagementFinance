@@ -6,7 +6,7 @@
 > **bằng chứng đo được**, và **những phương án đã cân nhắc rồi loại bỏ** — đó là
 > phần dễ mất nhất khi người khác đọc lại đoạn mã sau này.
 
-**Ngày:** 2026-09-03 · **Phạm vi:** `src/Client-app` · **Commit:** `6b93ee8`, `0f8a820`, `d2cea8c`, `e7c7a44`, `103d381` · **Cập nhật:** 2026-09-07 (thay đổi 5), 2026-09-10 (thay đổi 6), 2026-09-11 (trạng thái G24, G31 và mục 8 sau khi gộp `main` @ `cc65f4f`)
+**Ngày:** 2026-09-03 · **Phạm vi:** `src/Client-app` · **Commit:** `6b93ee8`, `0f8a820`, `d2cea8c`, `e7c7a44`, `103d381` · **Cập nhật:** 2026-09-07 (thay đổi 5), 2026-09-10 (thay đổi 6), 2026-09-11 (trạng thái G24, G31 và mục 8 sau khi gộp `main` @ `cc65f4f`; G24 đóng cùng ngày)
 
 ---
 
@@ -215,7 +215,7 @@ vĩnh viễn.
   và `/sync/pull` trả khoá **`color`**. Nhưng client đẩy danh mục bằng khoá
   **`colour`** (`categoryForPush` không đổi tên khoá — chỉ `walletForPush` đổi) và
   nhánh kéo về đọc `c['colour']`, nên màu **vẫn không đi theo chiều nào**, im
-  lặng. Nay là lỗi **phía client**, sửa được, chưa sửa — **G24**
+  lặng. Nay là lỗi **phía client** — **G24**, ✅ đã sửa cùng ngày (khoá `color` ở cả hai chiều; kiểm trên máy ảo)
   `docs/CLIENT_APP_KNOWN_GAPS.md`; chi tiết mục 2.3
   `docs/superpowers/backend/CAN-LAM/VERIFY_7675B35_REMAINING.md`.
 
@@ -298,7 +298,7 @@ Cũng trong đợt này, ba lần test đỏ hoá ra là **fixture sai chứ kh�
 > "Delete_at" IS NULL`, nên "xoá rồi tạo lại cùng tên" không còn bị từ chối; 13
 > UUID cố định; lỗ hổng từ khoá bịt bằng 403; bảng nhóm bãi bỏ. Đoạn và bảng dưới
 > là ảnh chụp ngày 2026-09-03. Đo lại 2026-09-11: vùng danh mục **không còn việc
-> nào chờ backend** — màu danh mục là lỗi phía client (G24, mục 5b).
+> nào chờ backend** — màu danh mục là lỗi phía client (G24, mục 5b), ✅ đã sửa cùng ngày.
 
 Quy tắc hiện **chỉ được client thi hành**. Admin-web và mọi đường ghi khác vẫn tạo được dữ liệu vi phạm, và trường hợp "xoá rồi tạo lại cùng tên" vẫn bị CSDL từ chối khi đẩy lên — **hỏng âm thầm**.
 

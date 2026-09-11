@@ -75,6 +75,24 @@ void main() {
     );
   });
 
+  test('màu danh mục đẩy lên bằng khoá `color` — khoá duy nhất backend đọc (G24)',
+      () {
+    // Backend nhận `color` (`sync.repository.js:149`) và không có nhánh nào đọc
+    // `colour`. Gửi `colour` thì màu bị bỏ qua IM LẶNG — quy tắc 4 `CLAUDE.md`.
+    // `walletForPush` đổi khoá này từ lâu; `categoryForPush` thì chưa, nên màu
+    // danh mục chưa bao giờ lên được server dù cột `category.Color` đã có từ
+    // `database/12`.
+    final payload = SyncPayloadNormalizer.categoryForPush({
+      'classify': 'chi',
+      'colour': '#FF5722',
+    });
+
+    expect(payload['color'], '#FF5722',
+        reason: 'Màu phải đi dưới khoá `color` thì backend mới ghi vào cột.');
+    expect(payload.containsKey('colour'), isFalse,
+        reason: 'Còn sót `colour` là dấu hiệu phép đổi khoá chỉ làm một nửa.');
+  });
+
   test('converts local expense to a signed canonical transaction', () {
     final payload = SyncPayloadNormalizer.transactionForPush({
       'type': 'chi',

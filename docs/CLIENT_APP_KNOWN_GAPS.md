@@ -1,6 +1,6 @@
 # Client-app — Việc còn dang dở & rủi ro đã biết
 
-**Cập nhật:** 2026-09-11 (sau khi nhánh gộp `main` @ `cc65f4f` và CSDL dev áp `database/12`: đóng G29, G31, G32; G24 thành lỗi phía client; thêm G34)
+**Cập nhật:** 2026-09-11 (sau khi nhánh gộp `main` @ `cc65f4f` và CSDL dev áp `database/12`: đóng G29, G31, G32; G24 thành lỗi phía client rồi đóng cùng ngày; thêm G34, G35)
 **Mục đích:** ghi lại những hạng mục đã được **cân nhắc và cố ý hoãn**, kèm lý do và bán kính ảnh hưởng. Không có tài liệu này thì người tiếp theo sẽ hoặc bỏ sót, hoặc làm lại từ đầu việc phân tích rủi ro.
 
 Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nhất.
@@ -27,7 +27,7 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > | **G18** | ⏸️ **THU HẸP DẦN, không còn chặn ở backend.** Cột `transaction.Idgoal` đã có từ 2026-09-07 và client đẩy/đọc nó; thứ còn lại chỉ là **hàng cũ trên server mang `Idgoal = NULL`**, chúng nhận ID khi được đẩy lại. ⚠️ Dòng cũ ở đây ghi *chặn ở backend*, mâu thuẫn với chính mục G18 bên dưới — **lần trôi thứ tư**; sửa 2026-09-08 |
 > | **G19** | **Không phải lỗi** — ghi lại để người sau không "sửa" nhầm |
 > | **G23** | Bản sao danh mục chỉ đầy đủ khi bộ mặc định **cục bộ** đầy đủ — pull tăng dần, tự khỏi ở lượt sau |
-> | **G24** | 🔴 **Lỗi phía client, sửa được, chưa sửa (2026-09-11)** — server nay **có** cột `category.Color` và `/sync/push` lẫn `/sync/pull` dùng khoá `color`, nhưng client gửi và đọc `colour` cho danh mục, nên màu danh mục **không đi theo chiều nào**, im lặng. Cách sửa ở thân mục — **chờ người dùng duyệt**. ⚠️ Dòng cũ ở đây ghi *không có cột, chặn ở backend* — đúng tới trước khi gộp `main` |
+> | ~~**G24**~~ | ✅ **Đóng 2026-09-11** — client đổi `colour` → `color` ở `categoryForPush` và đọc `c['color']` khi kéo về; server nhận màu (kiểm trên máy ảo: `category.Color = #FF5722`). Danh mục đã `synced` từ trước chỉ lên màu khi được **lưu lại**. ⚠️ Dòng này từng ghi *không có cột, chặn ở backend*, rồi *lỗi phía client, chưa sửa* — đúng tới trước khi gộp `main` và trước bản sửa |
 > | ~~**G21**~~ | ✅ **Đóng 2026-09-07** — backend đã có ba cột `auto_deposit_*`, client đẩy và kéo cả ba. ⚠️ Dòng cũ ở đây ghi *chặn ở backend*, mâu thuẫn với chính mục G21 bên dưới; sửa 2026-09-08. Còn đúng một khe hở hẹp: hai máy cùng mở đúng lúc tới kỳ |
 > | **G22** | **Không phải lỗi** — giờ trong mốc neo chỉ giữ được một chiều |
 > | **G25** | **Không phải lỗi** — hai máy cùng sắp lại thứ tự ưu tiên khi ngoại tuyến thì được một thứ tự trộn (2026-09-08) |
@@ -40,6 +40,7 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > | ~~**G32**~~ | ✅ **Đóng 2026-09-11** — backend giữ `priority: null` khi đẩy (hết `Number(null)` → `0`), nhánh tạo mặc định `null`, và `database/12` đã đưa các hàng `<= 0` về `NULL` trên CSDL dev. Lớp đọc `<= 0` là chưa sắp phía client **vẫn giữ** cho dữ liệu cũ và bản backend/client cũ. Dòng cũ ghi *chặn ở backend* — đúng tới trước khi gộp `main` |
 > | **G33** | 🔴 **Lỗi đang chạy, client sửa được** — trang Xoá tài khoản hứa *"đăng nhập lại trong 30 ngày là tự khôi phục"*, nhưng backend không làm vậy (`pendingDeleteCancelled` luôn `false`), nên người tin lời hứa **mất tài khoản sau 30 ngày** mà không được báo (2026-09-10). Cách sửa đã chốt, nằm trong spec cưỡng chế đăng xuất — **chờ duyệt** |
 > | **G34** | ⏸️ **Chưa làm — việc phía client, chờ người dùng** — backend đã phát `sync.completed` tới phòng `account_<id>` sau mỗi `/sync/push`, nhưng client chỉ nhận ba tên sự kiện nên **bỏ qua** nó; thay đổi từ máy khác vẫn chờ chu kỳ đồng bộ định kỳ (15 phút) hoặc kích hoạt khác. Hôm nay sự kiện cũng chưa tới được client vì bắt tay socket từ chối mọi tài khoản (CAN-LAM 17 A) (2026-09-11) |
+> | **G35** | 🔴 **Lỗi đang chạy, client sửa được — chưa sửa (2026-09-11)** — ba màn quản lý danh mục (`category_page.dart:42`, `category_group_page.dart:57`, `category_add_page.dart:85`) lấy tài khoản bằng `int.tryParse(…) ?? 1` khi phiên không có id. `1` là tài khoản **admin thật** — vi phạm quy tắc 2 `CLAUDE.md`. Các dòng từng ghi "không còn `?? 1` ở bất kỳ đâu" là sai |
 >
 > **G20 đã đóng ngày 2026-09-05** — `depositToGoal` nhận `occurredAt` chặn hai
 > đầu; đã kiểm cả bằng test lẫn trên máy ảo Android.
@@ -613,7 +614,20 @@ không phải ở bước seed — đừng vá bằng cách cho seeder gọi m�
 
 ---
 
-### G24 — Màu danh mục không đi qua đồng bộ, vì client dùng sai tên khoá · 🔴 LỖI PHÍA CLIENT, SỬA ĐƯỢC, CHƯA SỬA (2026-09-11; tiêu đề trước ghi "không có chỗ trên server · ⛔ chặn ở backend", 2026-09-07)
+### ~~G24 — Màu danh mục không đi qua đồng bộ, vì client dùng sai tên khoá~~ · ✅ ĐÓNG (2026-09-11; trước đó cùng ngày ghi "lỗi phía client, sửa được, chưa sửa", và 2026-09-07 ghi "không có chỗ trên server · ⛔ chặn ở backend")
+
+> ✅ **Đã sửa 2026-09-11 (TDD).** `SyncPayloadNormalizer.categoryForPush` đổi `colour` → `color` — một chỗ phủ cả thao tác
+> danh mục đang chờ lẫn danh mục mà bước 1b gửi kèm, vì cả hai đi qua normalizer ở bước POST; nhánh kéo về đọc
+> `c['color']` (`null` thì rơi về màu cục bộ như cũ). Test: một ca ở `sync_payload_normalizer_test.dart`; trong
+> `sync_payload_contract_test.dart` tập khoá danh mục nay khoá `'color'`, ca kéo về đọc `color`, và ca mới "server chưa
+> có màu thì màu cục bộ còn nguyên" — ba ca đầu đỏ đúng lý do trước khi sửa. **Kiểm trên máy ảo:** mở "Ăn uống" ở màn
+> Quản lý danh mục, lưu lại không đổi gì → đẩy `1/1`, không xung đột → `category.Color` từ `NULL` thành `#FF5722`, kéo về
+> vẫn `#FF5722`.
+>
+> ⚠️ **Danh mục đã `synced` từ trước vẫn mang `Color = NULL` trên server cho tới khi được lưu lại.** Đẩy cùng mốc
+> `update_at` thì server trả xung đột "bản server mới hơn" và giữ bản của nó — nên bước 1b (gửi kèm danh mục khi đẩy
+> giao dịch) **không** tự bổ sung màu. Chưa bổ sung hàng loạt: đổi `updatedAt` của mọi danh mục để đẩy lại là thay đổi
+> dữ liệu, chờ người dùng quyết. Đoạn dưới là ảnh chụp trước bản sửa.
 
 **Hiện trạng (đo 2026-09-11, sau khi gộp `main` @ `cc65f4f` và CSDL dev áp `database/12`).**
 Server **đã có** chỗ: cột `category."Color"` (`varchar(9)`), `/sync/push` nhận khoá
@@ -643,7 +657,7 @@ mặc định. Mỗi lần đẩy một giao dịch có danh mục, bước 1b g
 xung đột "bản server mới hơn" (hai bên cùng `Update_at`) — vô hại, không ghi đè gì, nhưng là
 lý do log đồng bộ báo `1 conflicts` ở những lần ấy.
 
-**Cách sửa (thuần client, CHƯA làm — chờ người dùng duyệt):**
+**Cách sửa (thuần client) — ✅ đã làm 2026-09-11 theo đúng ba bước dưới:**
 
 1. **Đẩy:** đổi `colour` → `color` trong `categoryForPush`, theo đúng khuôn
    `walletForPush`. Chọn **một** chỗ đổi (normalizer hoặc hai chỗ dựng payload),
@@ -1143,6 +1157,40 @@ kiểm được bằng test nhưng **không** kiểm được đầu-cuối. Ch�
 
 ---
 
+### G35 — Ba màn quản lý danh mục lấy tài khoản với dự phòng `?? 1` · 🔴 LỖI ĐANG CHẠY, CLIENT SỬA ĐƯỢC — CHƯA SỬA (2026-09-11)
+
+**Tìm ra lúc sửa G24** (đọc `category_add_page.dart` để biết màn sửa có giữ màu cũ không). Cả ba màn dùng chung
+một khuôn getter:
+
+```dart
+int get _accountId {
+  if (widget.accountId != null) return widget.accountId!;
+  final state = context.read<AuthBloc>().state;
+  return int.tryParse((state is AuthSuccess ? state.user?.id : null) ?? '') ??
+      1;
+}
+```
+
+- `lib/features/category/presentation/pages/category_page.dart:42`
+- `lib/features/category/presentation/pages/category_group_page.dart:57`
+- `lib/features/category/presentation/pages/category_add_page.dart:85`
+
+Đếm bằng script quét toàn `lib/` với regex **nhiều dòng**, 2026-09-11: đúng ba chỗ. Dạng `?? ⏎ 1;` lọt qua mọi
+lượt `grep` một dòng trước đây — đó là lý do G4 và G8 đóng mà ba chỗ này vẫn còn.
+
+`1` là tài khoản **admin thật**, không phải giá trị "chưa biết" — quy tắc 2 `CLAUDE.md`. Khi phiên đăng nhập không
+cho ra id, ba màn đọc cây danh mục và ghi danh mục (`saveChild`, `saveGroup`) dưới `idaccount = 1` thay vì từ chối.
+Chưa thấy xảy ra trên máy thật; mức nguy hiểm là **ghi dưới danh nghĩa admin**, đúng lớp lỗi G4/G8 đã đóng.
+
+**Tài liệu từng nói ngược:** hai dòng "Không còn `?? 1` ở bất kỳ đâu" trong `docs/PROJECT_CONTEXT.md` và mục 3 của
+tệp này — đã gắn dấu cùng ngày.
+
+**Cách sửa (chưa làm, chờ người dùng):** theo khuôn G4 — dùng `core/auth/current_account.dart` trả `int?`; đường
+đọc trả rỗng khi `null`, đường ghi chặn kèm thông báo. Test theo khuôn `test/core/auth/current_account_test.dart`,
+cộng một test quét `lib/` cấm mẫu `?? 1` nhiều dòng — hai test quét `lib/` sẵn có là tiền lệ.
+
+---
+
 ## 2. Vấn đề đã biết nhưng thuộc về Backend
 
 Tám gạch đầu dòng đầu tiên dưới đây là **ảnh chụp cũ**: cả tám tệp nay nằm ở
@@ -1164,8 +1212,8 @@ backend báo đã xong, đo 2026-09-11):
 - **`DA-XONG/AUTH_401_BODY_CODE.md`** (2026-09-10) — *ảnh chụp 2026-09-10:* body 401 cho tài khoản bị khoá hoặc xoá không mang `code` / `reason_inactive`, vì tham số thứ ba của `ResponseHandler.unauthorized` rơi mất. ✅ **Nhánh HTTP đã sửa (đo 2026-09-11):** body 401 mang `code`, `idaccount`, `reason_inactive` ở cấp gốc (`core/response-handler.js:32-54`), và lỗi lược đồ ở `authenticate` nay trả 503 thay vì cho qua. ⛔ Nhưng bắt tay socket và `/auth/refresh` từ chối **mọi** tài khoản (hồi quy A, gạch dưới); lời từ chối ở socket không mang mã (§2.1 mục 18), còn `/auth/refresh` trả 401 chỉ có `idaccount`. Không mở G riêng: cưỡng chế đăng xuất phía client **chưa làm** nên client chưa đọc mã nào. ⚠️ Nhưng cùng vùng ấy **có** một lỗi đang chạy, không do backend — **G33**.
 - **`CAN-LAM/FIX_BACKEND_3_REGRESSIONS.md`** (2026-09-11) — ba hồi quy của `7675b35` trên `main`, **đã gộp** về nhánh client 2026-09-11 (`main` @ `cc65f4f`): bắt tay socket và `/auth/refresh` từ chối mọi tài khoản; chốt trả hai lần đặt ở `upsertBill` chặn hoàn tác thanh toán; tài liệu backend ghi sai ba mã lỗi. Chưa mở G riêng vì backend trên máy client chưa chạy lại từ mã đã gộp (CSDL dev đã áp `database/12` ngày 2026-09-11). ⚠️ Khi chạy lại, hoàn tác một hoá đơn đã đồng bộ **không lên được server** cho tới khi backend sửa hồi quy B, và bắt tay socket cùng `/auth/refresh` từ chối mọi tài khoản cho tới khi sửa hồi quy A. ✅ Chỗ phía client — ba mã mới (`WALLET_NAME_DUPLICATE`, `WALLET_DEFAULT_DUPLICATE` do client tự xin, và `BILL_ALREADY_PAID`) chưa có trong `_permanentCodes` nên sẽ bị gửi lại mãi — đã đóng 2026-09-11: nay chúng bị chặn theo thời gian, không kéo chậm cả hàng đợi.
 - **`DA-XONG/RULE_PROJECT_DOC_DRIFT.md`** (2026-09-10) — tài liệu backend (`docs/Rule_Project/`, `docs/progress/Backend.md`) nói ngược mã và CSDL: tài liệu xin 56 chỗ sửa theo dòng cộng ba việc sửa mã. Backend báo đã sửa (`f8ab027`); client soát lại 2026-09-11: **45/56** chỗ vẫn chưa đúng — 31 chưa sửa, 12 sửa nhưng vẫn sai, 2 không còn áp dụng; chỉ 11 chỗ sửa đúng — cộng tám khẳng định mới sai của `7675b35` (`CAN-LAM/VERIFY_7675B35_REMAINING.md` §3). Ba việc mã: bộ lọc ghi chú xong (G29), body 401 xong ở HTTP nhưng hỏng ở socket và `/auth/refresh`, `'ORC'` còn sót. Không mở G: không mã client nào hỏng vì nó, nhưng đó là những tài liệu người mới đọc **trước** mã.
-- **`CAN-LAM/VERIFY_7675B35_REMAINING.md`** (mục 18, 2026-09-11) — client soát từng tài liệu trong mười lăm tài liệu backend báo đã xong, với mã HEAD và CSDL dev: chín việc mã/CSDL còn lại, gồm giao dịch SePay vỡ `chk_transaction_type` (suy từ mã), `bank_transaction.incoming` nay phát **hai lần** và vẫn hai hình dạng, khoá mã hoá mặc định viết cứng, tệp `database/)2_can_lam_all_migrations.sql` còn `DELETE FROM "category"`, `budget."Threshold_Warning_Percent"` còn `DEFAULT 0`, cửa hậu `_mock*` mở ngoài `production`, và `WALLET_NAME_DUPLICATE` cần một phép thử khi chạy; cộng 45 chỗ tài liệu ở gạch trên. Không mở G: theo §4 của tài liệu ấy, client không bị chặn bởi việc nào trong đó ngoài hai hồi quy của mục 17. Phần phát sinh phía client — khoá màu danh mục — là **G24**.
-- G31 và G32 ở trên có tài liệu xin riêng: `DA-XONG/SYNC_PUSH_ERROR_MAPPING.md` và `DA-XONG/GOAL_PRIORITY_NULL_TO_ZERO.md` — ✅ backend đã làm cả hai, client đo 2026-09-11, **hai mục đã đóng**. G24 có `DA-XONG/CATEGORY_COLOUR_COLUMN.md` — phần backend xong, phần còn lại là việc của client. G34 có `DA-XONG/SOCKET_SYNC_COMPLETED.md` — phần backend xong, chưa tới được client vì hồi quy A.
+- **`CAN-LAM/VERIFY_7675B35_REMAINING.md`** (mục 18, 2026-09-11) — client soát từng tài liệu trong mười lăm tài liệu backend báo đã xong, với mã HEAD và CSDL dev: chín việc mã/CSDL còn lại, gồm giao dịch SePay vỡ `chk_transaction_type` (suy từ mã), `bank_transaction.incoming` nay phát **hai lần** và vẫn hai hình dạng, khoá mã hoá mặc định viết cứng, tệp `database/)2_can_lam_all_migrations.sql` còn `DELETE FROM "category"`, `budget."Threshold_Warning_Percent"` còn `DEFAULT 0`, cửa hậu `_mock*` mở ngoài `production`, và `WALLET_NAME_DUPLICATE` cần một phép thử khi chạy; cộng 45 chỗ tài liệu ở gạch trên. Không mở G: theo §4 của tài liệu ấy, client không bị chặn bởi việc nào trong đó ngoài hai hồi quy của mục 17. Phần phát sinh phía client — khoá màu danh mục — là **G24**, ✅ đã sửa 2026-09-11.
+- G31 và G32 ở trên có tài liệu xin riêng: `DA-XONG/SYNC_PUSH_ERROR_MAPPING.md` và `DA-XONG/GOAL_PRIORITY_NULL_TO_ZERO.md` — ✅ backend đã làm cả hai, client đo 2026-09-11, **hai mục đã đóng**. G24 có `DA-XONG/CATEGORY_COLOUR_COLUMN.md` — phần backend xong, phần client ✅ sửa 2026-09-11. G34 có `DA-XONG/SOCKET_SYNC_COMPLETED.md` — phần backend xong, chưa tới được client vì hồi quy A.
 
 Với tám tài liệu cũ, client **không** phụ thuộc vào việc backend có sửa hay không. Với các mục ghi *chặn ở backend* hoặc *chờ backend* ở bảng tóm tắt đầu tài liệu thì có — tính tới 2026-09-11 không mục G nào còn mở ghi như thế; gần nhất là **G34**, muốn kiểm đầu-cuối cần backend sửa hồi quy A trước.
 
@@ -1210,4 +1258,4 @@ Ghi lại vì chúng đã lặp đi lặp lại trong dự án này:
 
 3. **Đừng bao giờ suy ra danh tính người dùng từ dữ liệu cục bộ.** `idaccount` chỉ được đến từ phiên đăng nhập.
 
-4. **`idaccount = 1` là tài khoản admin THẬT**, không phải giá trị "chưa biết". Mọi fallback `?? 1` đều đã bị gỡ bỏ.
+4. **`idaccount = 1` là tài khoản admin THẬT**, không phải giá trị "chưa biết". Các fallback `?? 1` ở khâu đồng bộ (G8) và bốn trang bill/goal (G4) đã bị gỡ; ⚠️ đo 2026-09-11 còn **ba** chỗ ở màn quản lý danh mục — **G35**.
