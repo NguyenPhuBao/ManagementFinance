@@ -24,6 +24,10 @@ class LoginSubmitted extends AuthEvent {
 }
 
 class LogoutRequested extends AuthEvent {}
+
+/// Bộ nhớ đệm người dùng vừa đổi — gửi hoặc huỷ yêu cầu xoá tài khoản. Bloc đọc
+/// lại `getCurrentUser()` và phát `AuthSuccess` mới để thẻ nhắc hiện/ẩn ngay.
+class ThongTinTaiKhoanThayDoi extends AuthEvent {}
 // ─── OTP Register Events ─────────────────────────────────────────────────────
 
 /// Bước 1: Gửi OTP đăng ký về email

@@ -11,6 +11,7 @@ import '../../../../core/sync/sync_engine.dart';
 import '../../../../core/notification/notification_scanner.dart';
 import '../../../../core/realtime/realtime_channel.dart';
 import '../../data/repositories/auth_repository.dart';
+import '../an_the_cho_xoa.dart';
 import '../../../wallet/data/services/default_account_data_initializer.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
@@ -33,6 +34,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<LoginSubmitted>(_onLoginSubmitted);
     on<LogoutRequested>(_onLogoutRequested);
     on<SessionInvalidated>(_onSessionInvalidated);
+    on<ThongTinTaiKhoanThayDoi>(_onThongTinTaiKhoanThayDoi);
     on<RegisterSendOtpRequested>(_onRegisterSendOtpRequested);
     on<RegisterVerifyOtpSubmitted>(_onRegisterVerifyOtpSubmitted);
 
@@ -92,6 +94,16 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(AuthUnauthenticated());
   }
 
+  Future<void> _onThongTinTaiKhoanThayDoi(
+    ThongTinTaiKhoanThayDoi event,
+    Emitter<AuthState> emit,
+  ) async {
+    if (state is! AuthSuccess) return;
+    final user = await authRepository.getCurrentUser();
+    if (user == null) return;
+    emit(AuthSuccess(user: user));
+  }
+
   Future<void> _onAuthCheckRequested(
     AuthCheckRequested event,
     Emitter<AuthState> emit,
@@ -103,8 +115,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         emit(AuthUnauthenticated());
         return;
       }
-
-      final user = await authRepository.getCurrentUser();
 
       // Hỏi server xem phiên còn trỏ tới tài khoản CÓ THẬT không.
       // Trước đây bước này không tồn tại: client chỉ thấy "có chuỗi token" là
@@ -118,6 +128,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         return; // KHÔNG khởi động SyncEngine với phiên đã chết
       }
       // valid hoặc unknown (mất mạng / lỗi 5xx) → giữ phiên, đúng offline-first.
+
+      // Đọc người dùng SAU khi xác minh: `verifySession` đồng bộ `status` chờ xoá
+      // từ `/auth/profile` vào bộ nhớ đệm (spec cưỡng chế đăng xuất §4.3).
+      final user = await authRepository.getCurrentUser();
 
       // Không còn fallback `?? 1`: id hỏng mà mặc định thành 1 nghĩa là ghi dữ
       // liệu dưới danh nghĩa tài khoản admin.
@@ -211,6 +225,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           await _taoBanSaoDanhMuc(idAcc);
         }
         await defaultAccountDataInitializer?.ensureForAccount(idAcc);
+      }
+      // Lựa chọn "Để sau" của thẻ chờ xoá chỉ sống trong một phiên app; người
+      // đăng nhập kế tiếp không được thừa hưởng nó (spec §5.2).
+      if (sl.isRegistered<AnTheChoXoa>()) {
+        sl<AnTheChoXoa>().value = false;
       }
       emit(AuthSuccess(user: user));
     } catch (e) {

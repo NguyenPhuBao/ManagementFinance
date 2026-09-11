@@ -19,6 +19,7 @@ import '../../features/auth/data/datasources/auth_remote_data_source.dart';
 import '../../features/auth/data/repositories/auth_repository.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
+import '../../features/auth/presentation/an_the_cho_xoa.dart';
 import '../../features/goal/data/datasources/goal_local_data_source.dart';
 import '../../features/goal/data/models/goal_entity.dart';
 import '../../features/goal/data/repositories/goal_repository.dart';
@@ -109,6 +110,9 @@ Future<void> setupDependencies() async {
       secureStorage: sl(),
     ),
   );
+
+  // Cờ "Để sau" của thẻ nhắc tài khoản chờ xoá — trong bộ nhớ, sống theo phiên app.
+  sl.registerLazySingleton<AnTheChoXoa>(AnTheChoXoa.new);
 
   // BLoC (factory → tạo mới mỗi lần gọi sl<AuthBloc>())
   sl.registerFactory<AuthBloc>(
