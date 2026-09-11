@@ -12,7 +12,8 @@
 > nguyên văn. Nhánh `TranQuangDat` đã gộp `main` @ `cc65f4f` và CSDL dev đã áp
 > `database/12` cùng ngày; client đối chiếu từng tài liệu với mã HEAD và CSDL — như đã
 > làm với đợt 2026-09-07 ngay dưới — thay vì tin báo cáo. Trạng thái từng tài liệu ở
-> **mục 2**, việc còn lại ở **mục 17 và 18**. Ba điều đáng biết nhất:
+> **mục 2**, việc còn lại ở **mục 17 và 18** (cộng mục **19**, viết cùng ngày
+> cho G33 — không thuộc lượt soát này). Ba điều đáng biết nhất:
 >
 > - Hồi quy **A** và **B** của mục 17 vẫn nguyên — bắt tay socket và `/auth/refresh` từ
 >   chối mọi tài khoản, chốt trả hai lần chặn hoàn tác. Nên sửa **trước** khi triển khai

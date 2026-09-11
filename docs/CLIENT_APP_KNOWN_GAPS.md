@@ -1218,7 +1218,7 @@ Tám gạch đầu dòng đầu tiên dưới đây là **ảnh chụp cũ**: c�
 liệt kê tám — sửa 2026-09-10; và từng ghi `2026-09-04-backend-idempotent-delete.md`
 "còn ở `CAN-LAM/`" — sai từ khi backend chuyển tệp ấy sang `DA-XONG/` (`f8ab027`),
 sửa 2026-09-11. Việc backend còn mở đọc ở `docs/superpowers/backend/CAN-LAM/README.md`
-— mục 1 (hai tài liệu còn việc: mục 17 và 18) và mục 2 (trạng thái mười lăm tài liệu
+— mục 1 (ba tài liệu còn việc: mục 17, 18 và 19) và mục 2 (trạng thái mười lăm tài liệu
 backend báo đã xong, đo 2026-09-11):
 
 - **`SESSION_VALIDITY_FINDINGS.md`** — token của tài khoản đã xoá vẫn dùng được; `/auth/me` không chạm CSDL; `/sync/push` luôn trả HTTP 200.
