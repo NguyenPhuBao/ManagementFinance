@@ -1,6 +1,7 @@
 # Cưỡng chế đăng xuất và tài khoản chờ xoá — thiết kế
 
-> **Trạng thái: ĐÃ DUYỆT (2026-09-11), CHƯA LÀM.** Mọi quyết định sản phẩm ở mục 2
+> **Trạng thái: G33 — Phần 2–3 (trừ §5.1) và việc backend mục 6 — ĐÃ XONG (2026-09-11).
+> Phần 1 (mục 3, kể cả §3.8) và §5.1 CHƯA LÀM.** Mọi quyết định sản phẩm ở mục 2
 > đã chốt qua hỏi–đáp ngày 2026-09-10; Phần 1 (mục 3) được duyệt riêng trong phiên
 > ấy. Phần 2–4 viết thẳng vào đây theo yêu cầu "làm đi" của người dùng. Ngày
 > 2026-09-11 người dùng duyệt nốt: §3.3 và §3.6b (hai điểm soát lại theo `main`),
@@ -410,7 +411,10 @@ Stitch: `13a6c1f6adac41ce8ed89e6f248f511f` — *"Cài đặt - Tài khoản đan
   "ngày còn lại" và dòng *"Tài khoản và toàn bộ dữ liệu sẽ bị xoá vĩnh viễn vào
   dd/MM/yyyy."*; dòng *"Trong thời gian này bạn vẫn dùng app bình thường. Huỷ
   yêu cầu để giữ lại tài khoản."*; nút chính **Huỷ yêu cầu xoá** thay nút viền đỏ.
-  `countdown == null` thì bỏ hộp đếm, giữ hai dòng chữ.
+  `soNgay`/`ngayXoa` null (tức `countdown` hoặc mốc nhận null) thì bỏ **cả** hộp
+  đếm lẫn dòng có ngày, thay bằng câu chung *"Tài khoản và toàn bộ dữ liệu sẽ bị
+  xoá vĩnh viễn khi hết thời hạn chờ."* — cùng câu với thẻ Trang chủ (mục 5.2);
+  dòng *"Trong thời gian này…"* giữ nguyên.
 
 ⚠️ Stitch tự áp design system "Kinetic Clarity" (`assets/1f1ef0da…`) cho màn
 sửa này, khác "Kinetic Finance" (`assets/e8b7d56e…`) của dự án. Khi dựng, lấy
@@ -418,6 +422,10 @@ sửa này, khác "Kinetic Finance" (`assets/e8b7d56e…`) của dự án. Khi d
 
 ### 5.4. Trang Xoá tài khoản — chỉ sửa chữ và luồng
 
+- Banner đầu trang: *"Tài khoản sẽ không bị xóa ngay lập tức. Bạn có 30 ngày để
+  đổi ý và khôi phục tài khoản bằng cách đăng nhập lại."* → *"Tài khoản sẽ
+  không bị xoá ngay lập tức. Bạn có 30 ngày để đổi ý — huỷ yêu cầu ở Trang chủ
+  hoặc Cài đặt."*
 - Hộp thoại xác nhận: bỏ câu *"bạn có thể đăng nhập lại để hủy yêu cầu"*.
 - Thành công: hộp thoại *"Yêu cầu đã được ghi nhận. Bạn vẫn dùng app bình thường
   trong 30 ngày, và huỷ được bất cứ lúc nào ở Trang chủ hoặc Cài đặt."* → về

@@ -1,6 +1,6 @@
 # Client-app — Việc còn dang dở & rủi ro đã biết
 
-**Cập nhật:** 2026-09-11 (sau khi nhánh gộp `main` @ `cc65f4f` và CSDL dev áp `database/12`: đóng G29, G31, G32; G24 thành lỗi phía client rồi đóng cùng ngày; thêm G34; G35 mở rồi đóng cùng ngày; đóng G30)
+**Cập nhật:** 2026-09-11 (sau khi nhánh gộp `main` @ `cc65f4f` và CSDL dev áp `database/12`: đóng G29, G31, G32; G24 thành lỗi phía client rồi đóng cùng ngày; thêm G34; G35 mở rồi đóng cùng ngày; đóng G30; đóng G33)
 **Mục đích:** ghi lại những hạng mục đã được **cân nhắc và cố ý hoãn**, kèm lý do và bán kính ảnh hưởng. Không có tài liệu này thì người tiếp theo sẽ hoặc bỏ sót, hoặc làm lại từ đầu việc phân tích rủi ro.
 
 Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nhất.
@@ -38,7 +38,7 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > | ~~**G30**~~ | ✅ **Đóng 2026-09-11** — `database/12` bỏ `uq_wallet_saving_active` và client gỡ chốt tạm: màn Thêm ví cho chọn "Tiết kiệm" dù đã có một ví Tiết kiệm, datasource không còn từ chối. ⚠️ Máy chủ nào chưa áp tệp 12 vẫn từ chối ví Tiết kiệm thứ hai. Chốt **trùng tên ví** ở lại vĩnh viễn |
 > | ~~**G31**~~ | ✅ **Đóng 2026-09-11** — backend nay ánh xạ `22001`/`P2000` (dài quá cột) và `23502` về `CONSTRAINT_VIOLATION`, mã client đã xếp **vĩnh viễn**, nên bản ghi bị chặn theo thời gian thay vì gửi lại mãi; và một thao tác hỏng không còn làm **cả lô** 400. Bộ lọc bảy ô tên của client (2026-09-10) **vẫn giữ** — nó chặn trước để bản ghi không kẹt ngay từ đầu. Đo trên mã HEAD, chưa chạy đầu-cuối. Dòng cũ ghi *chặn ở backend* — đúng tới trước khi gộp `main` |
 > | ~~**G32**~~ | ✅ **Đóng 2026-09-11** — backend giữ `priority: null` khi đẩy (hết `Number(null)` → `0`), nhánh tạo mặc định `null`, và `database/12` đã đưa các hàng `<= 0` về `NULL` trên CSDL dev. Lớp đọc `<= 0` là chưa sắp phía client **vẫn giữ** cho dữ liệu cũ và bản backend/client cũ. Dòng cũ ghi *chặn ở backend* — đúng tới trước khi gộp `main` |
-> | **G33** | 🔴 **Lỗi đang chạy, client sửa được** — trang Xoá tài khoản hứa *"đăng nhập lại trong 30 ngày là tự khôi phục"*, nhưng backend không làm vậy (`pendingDeleteCancelled` luôn `false`), nên người tin lời hứa **mất tài khoản sau 30 ngày** mà không được báo (2026-09-10). Cách sửa nằm trong spec cưỡng chế đăng xuất — **đã duyệt 2026-09-11, chưa sửa** |
+> | ~~**G33**~~ | ✅ **Đóng 2026-09-11** — tài khoản chờ xoá nay dùng tiếp app trong 30 ngày thay vì bị đăng xuất ngay: `UserModel` mang `status`/`countdown`, trang Xoá tài khoản thôi hứa *"đăng nhập lại là tự khôi phục"*, hai thẻ (Trang chủ, "Vùng nguy hiểm" ở Cài đặt) hiện số ngày còn lại và nút huỷ. Kiểm trên máy ảo với tài khoản 11. Dòng cũ ghi *lỗi đang chạy, chưa sửa* — đúng tới trước bản sửa |
 > | **G34** | ⏸️ **Chưa làm — việc phía client, chờ người dùng** — backend đã phát `sync.completed` tới phòng `account_<id>` sau mỗi `/sync/push`, nhưng client chỉ nhận ba tên sự kiện nên **bỏ qua** nó; thay đổi từ máy khác vẫn chờ chu kỳ đồng bộ định kỳ (15 phút) hoặc kích hoạt khác. Hôm nay sự kiện cũng chưa tới được client vì bắt tay socket từ chối mọi tài khoản (CAN-LAM 17 A) (2026-09-11) |
 > | ~~**G35**~~ | ✅ **Đóng 2026-09-11** — ba màn quản lý danh mục nay lấy tài khoản qua `currentAccountIdOrNull`: chưa có phiên thì không đọc gì (kể cả tài khoản 0 — bộ khuôn toàn cục), và nút lưu/xoá báo "Chưa xác định được tài khoản đăng nhập". Test quét `lib/` cấm `?? 1` nhiều dòng. ⚠️ Dòng này từng ghi *lỗi đang chạy, chưa sửa* — đúng tới trước bản sửa |
 >
@@ -1085,7 +1085,17 @@ kiểm.
 
 ---
 
-### G33 — Trang Xoá tài khoản hứa "đăng nhập lại là tự khôi phục", backend không làm vậy · 🔴 LỖI ĐANG CHẠY, CLIENT SỬA ĐƯỢC (2026-09-10)
+### ~~G33 — Trang Xoá tài khoản hứa "đăng nhập lại là tự khôi phục", backend không làm vậy~~ · ✅ ĐÓNG (2026-09-11; mở 2026-09-10)
+
+> ✅ **Đóng 2026-09-11 (TDD).** Bốn phần: (1) `UserModel` mang `status`/`countdown`/`countdownNhanLuc`/`dangChoXoa`, gỡ `pendingDeleteCancelled` (`48b01c5`); (2) `AuthRepositoryImpl.deleteAccount` ghi `PendingDelete` và **không** xoá token/phiên (`d1791dd`); (3) hai thẻ đọc trạng thái ấy — Trang chủ (nút "Để sau"/"Huỷ xoá", `292af8d`) và "Vùng nguy hiểm" ở Cài đặt (hộp đếm N ngày, nút "Huỷ yêu cầu xoá", `f7a02aa` + `ff54c6b`); (4) trang Xoá tài khoản thôi đăng xuất và thôi hứa "đăng nhập lại là tự khôi phục" (`866b870`). `AuthBloc` đọc lại thông tin tài khoản qua sự kiện mới `ThongTinTaiKhoanThayDoi` (`361f898` + `eee607e`); hàm đếm ngày thuần ở `ca44dd8`. Máy khác (đăng nhập lại, cài lại app) chưa biết số ngày còn lại nếu chưa tự gửi yêu cầu xoá — xin backend qua CAN-LAM **19** (`AUTH_PROFILE_COUNTDOWN.md`, `GET /auth/profile` trả thêm `countdown`).
+>
+> `flutter test` **2073/2073 pass**; 44 test mới ở bảy tệp: `dem_nguoc_xoa_test` (13), `user_model_cho_xoa_test` (5), `auth_repository_cho_xoa_test` (8), `auth_bloc_cho_xoa_test` (5), `the_cho_xoa_trang_chu_test` (6), `vung_nguy_hiem_card_test` (4), `delete_account_page_test` (3). `flutter analyze` **25 issue** — khớp mức nền, không issue nào ở tệp G33.
+>
+> **Kiểm trên `emulator-5554` (tài khoản 11):** gửi yêu cầu xoá → **không** bị đăng xuất, về Trang chủ, thẻ "Tài khoản đang chờ xoá — Còn 30 ngày…" hiện ra; CSDL: `PendingDelete`, `Countdown = 30`. Huỷ ở Cài đặt → CSDL về `Active`, `Countdown = null`, `Delete_at = null` — tài khoản thử về nguyên trạng. Pixel vàng (tràn bố cục): **0** trên **15** ảnh chụp.
+>
+> ⚠️ **Chưa sửa:** khoảng trống 24dp sau "Để sau" ở Trang chủ khi thẻ đã ẩn (để lượt soát cuối của cả nhánh quyết). **Phần 1** của spec (cưỡng chế đăng xuất, mục 3 kể cả §3.8) và **§5.1** (hộp thoại bị đẩy ra ở màn Đăng nhập) **chưa làm**.
+>
+> Phần dưới là **ảnh chụp 2026-09-10** — mô tả đúng bối cảnh phát hiện lỗi lúc đó, giữ nguyên làm lịch sử.
 
 Có **hai** đặc tả nói ngược nhau về giai đoạn chờ xoá. Bản 2026-08-17
 (`docs/superpowers/auth/2026-08-17-auth-account-design.md`, thư mục gitignore)
@@ -1110,7 +1120,7 @@ chế đăng xuất. Cách sửa — dùng tiếp 30 ngày, thẻ nhắc đóng 
 nút huỷ ở Cài đặt, trang Xoá tài khoản thôi đăng xuất và thôi hứa — đã chốt với
 người dùng, nằm ở mục 4–5 của
 `docs/superpowers/specs/2026-09-10-cuong-che-dang-xuat-va-cho-xoa-design.md`,
-**đã duyệt ngày 2026-09-11**, chưa sửa. Trước tối 2026-09-10 đường này còn không chạy nổi trên CSDL dev
+**đã duyệt ngày 2026-09-11**, ~~chưa sửa~~ — ✅ **đã sửa cùng ngày**, xem banner đầu mục. Trước tối 2026-09-10 đường này còn không chạy nổi trên CSDL dev
 (thiếu cột `Countdown`); nay `database/9` đã áp nên lỗi **xảy ra được thật**.
 
 **Bán kính:** chỉ người đã gửi yêu cầu xoá. CSDL dev hiện không có tài khoản
@@ -1229,7 +1239,7 @@ backend báo đã xong, đo 2026-09-11):
 - **`CATEGORY_NAME_UNIQUENESS.md`** — hai unique index của `category` đang khác quy tắc nghiệp vụ theo cả hai chiều; client đã thi hành đúng quy tắc, CSDL thì chưa.
 - **`CATEGORY_STABLE_IDS.md`** — ID danh mục mặc định sinh ngẫu nhiên mỗi lần seed, nên tên bị dùng làm khoá nối giữa hai phía; đây là nguyên nhân gốc của các lỗi 11.3–11.6.
 - **`2026-09-04-backend-idempotent-delete.md`** — ba lỗ hổng của `/sync/push`: xoá một bản ghi không tồn tại bị trả về là lỗi (làm client đẩy lại vĩnh viễn); `message` là nguyên văn stack trace Prisma kèm đường dẫn máy chủ; và `budget.time_recurrence = null` bị ép về `'Month'`, **chặn hẳn** lựa chọn ngân sách "Ngày cụ thể". ✅ Đo 2026-09-11: (A)(B)(C) của tài liệu đã xong; (D) — `threshold_warning_percent` bị ép `0` — xong ở mã và `schema.prisma`, nhưng CSDL dev vẫn `DEFAULT 0` (`CAN-LAM/VERIFY_7675B35_REMAINING.md` §2.2). Đường `/sync/push` luôn gửi giá trị tường minh nên client không còn dính.
-- **`DA-XONG/AUTH_401_BODY_CODE.md`** (2026-09-10) — *ảnh chụp 2026-09-10:* body 401 cho tài khoản bị khoá hoặc xoá không mang `code` / `reason_inactive`, vì tham số thứ ba của `ResponseHandler.unauthorized` rơi mất. ✅ **Nhánh HTTP đã sửa (đo 2026-09-11):** body 401 mang `code`, `idaccount`, `reason_inactive` ở cấp gốc (`core/response-handler.js:32-54`), và lỗi lược đồ ở `authenticate` nay trả 503 thay vì cho qua. ⛔ Nhưng bắt tay socket và `/auth/refresh` từ chối **mọi** tài khoản (hồi quy A, gạch dưới); lời từ chối ở socket không mang mã (§2.1 mục 18), còn `/auth/refresh` trả 401 chỉ có `idaccount`. Không mở G riêng: cưỡng chế đăng xuất phía client **chưa làm** nên client chưa đọc mã nào. ⚠️ Nhưng cùng vùng ấy **có** một lỗi đang chạy, không do backend — **G33**.
+- **`DA-XONG/AUTH_401_BODY_CODE.md`** (2026-09-10) — *ảnh chụp 2026-09-10:* body 401 cho tài khoản bị khoá hoặc xoá không mang `code` / `reason_inactive`, vì tham số thứ ba của `ResponseHandler.unauthorized` rơi mất. ✅ **Nhánh HTTP đã sửa (đo 2026-09-11):** body 401 mang `code`, `idaccount`, `reason_inactive` ở cấp gốc (`core/response-handler.js:32-54`), và lỗi lược đồ ở `authenticate` nay trả 503 thay vì cho qua. ⛔ Nhưng bắt tay socket và `/auth/refresh` từ chối **mọi** tài khoản (hồi quy A, gạch dưới); lời từ chối ở socket không mang mã (§2.1 mục 18), còn `/auth/refresh` trả 401 chỉ có `idaccount`. Không mở G riêng: cưỡng chế đăng xuất phía client **chưa làm** nên client chưa đọc mã nào. ⚠️ Nhưng cùng vùng ấy **có** một lỗi đang chạy, không do backend — **G33** (✅ đóng 2026-09-11, xem mục G33 ở trên).
 - **`CAN-LAM/FIX_BACKEND_3_REGRESSIONS.md`** (2026-09-11) — ba hồi quy của `7675b35` trên `main`, **đã gộp** về nhánh client 2026-09-11 (`main` @ `cc65f4f`): bắt tay socket và `/auth/refresh` từ chối mọi tài khoản; chốt trả hai lần đặt ở `upsertBill` chặn hoàn tác thanh toán; tài liệu backend ghi sai ba mã lỗi. Chưa mở G riêng vì backend trên máy client chưa chạy lại từ mã đã gộp (CSDL dev đã áp `database/12` ngày 2026-09-11). ⚠️ Khi chạy lại, hoàn tác một hoá đơn đã đồng bộ **không lên được server** cho tới khi backend sửa hồi quy B, và bắt tay socket cùng `/auth/refresh` từ chối mọi tài khoản cho tới khi sửa hồi quy A. ✅ Chỗ phía client — ba mã mới (`WALLET_NAME_DUPLICATE`, `WALLET_DEFAULT_DUPLICATE` do client tự xin, và `BILL_ALREADY_PAID`) chưa có trong `_permanentCodes` nên sẽ bị gửi lại mãi — đã đóng 2026-09-11: nay chúng bị chặn theo thời gian, không kéo chậm cả hàng đợi.
 - **`DA-XONG/RULE_PROJECT_DOC_DRIFT.md`** (2026-09-10) — tài liệu backend (`docs/Rule_Project/`, `docs/progress/Backend.md`) nói ngược mã và CSDL: tài liệu xin 56 chỗ sửa theo dòng cộng ba việc sửa mã. Backend báo đã sửa (`f8ab027`); client soát lại 2026-09-11: **45/56** chỗ vẫn chưa đúng — 31 chưa sửa, 12 sửa nhưng vẫn sai, 2 không còn áp dụng; chỉ 11 chỗ sửa đúng — cộng tám khẳng định mới sai của `7675b35` (`CAN-LAM/VERIFY_7675B35_REMAINING.md` §3). Ba việc mã: bộ lọc ghi chú xong (G29), body 401 xong ở HTTP nhưng hỏng ở socket và `/auth/refresh`, `'ORC'` còn sót. Không mở G: không mã client nào hỏng vì nó, nhưng đó là những tài liệu người mới đọc **trước** mã.
 - **`CAN-LAM/VERIFY_7675B35_REMAINING.md`** (mục 18, 2026-09-11) — client soát từng tài liệu trong mười lăm tài liệu backend báo đã xong, với mã HEAD và CSDL dev: chín việc mã/CSDL còn lại, gồm giao dịch SePay vỡ `chk_transaction_type` (suy từ mã), `bank_transaction.incoming` nay phát **hai lần** và vẫn hai hình dạng, khoá mã hoá mặc định viết cứng, tệp `database/)2_can_lam_all_migrations.sql` còn `DELETE FROM "category"`, `budget."Threshold_Warning_Percent"` còn `DEFAULT 0`, cửa hậu `_mock*` mở ngoài `production`, và `WALLET_NAME_DUPLICATE` cần một phép thử khi chạy; cộng 45 chỗ tài liệu ở gạch trên. Không mở G: theo §4 của tài liệu ấy, client không bị chặn bởi việc nào trong đó ngoài hai hồi quy của mục 17. Phần phát sinh phía client — khoá màu danh mục — là **G24**, ✅ đã sửa 2026-09-11.
@@ -1241,7 +1251,7 @@ Với tám tài liệu cũ, client **không** phụ thuộc vào việc backend 
 
 ## 3. Lưu ý về kiểm thử
 
-Trạng thái hiện tại (đã chạy thật, không phải đếm tay, đo 2026-09-11): `flutter test` toàn bộ **2029/2029 pass**, trên **192 file test / 44.041 dòng** (192 tệp `_test.dart`; số dòng đếm bằng script trên cả 193 tệp `.dart` dưới `test/`, kể cả `category_test_fakes.dart` — sau G24, G35, G30 và nhãn loại ví ở bảng chọn ví). Mốc 1529/1529 · 144 file · 33.892 dòng là của 2026-09-08. Trước phiên 2026-09-02 là 56 pass / 9 fail và mất hơn 10 phút (một test treo tới timeout); mốc 180 pass / 27 file ghi ở đây trước đó là con số **cuối phiên 2026-09-03** và đã lạc hậu năm ngày.
+Trạng thái hiện tại (đã chạy thật, không phải đếm tay, đo 2026-09-11): `flutter test` toàn bộ **2073/2073 pass** (3 phút 4 giây), trên **199 file test / 44.905 dòng** (199 tệp `_test.dart`; số dòng đếm bằng script trên cả 200 tệp `.dart` dưới `test/`, kể cả `category_test_fakes.dart` — sau G24, G35, G30, nhãn loại ví ở bảng chọn ví và **G33**, 44 test mới ở 7 tệp). Mốc 2029/2029 · 192 file · 44.041 dòng là của 2026-09-11 (trước G33). Mốc 1529/1529 · 144 file · 33.892 dòng là của 2026-09-08. Trước phiên 2026-09-02 là 56 pass / 9 fail và mất hơn 10 phút (một test treo tới timeout); mốc 180 pass / 27 file ghi ở đây trước đó là con số **cuối phiên 2026-09-03** và đã lạc hậu năm ngày.
 
 > ⚠️ **`.gitignore` có `test/`** (dòng 78, đo 2026-09-10 — từng ghi 77) — luật này khớp mọi thư mục tên `test` ở mọi cấp, và **đã tồn tại từ trước** phiên 2026-09-02 (kiểm chứng: `git diff .gitignore` chỉ thêm đúng một dòng `src/Backend/scripts/seed_roles.js`).
 >
@@ -1264,7 +1274,7 @@ Trạng thái hiện tại (đã chạy thật, không phải đếm tay, đo 20
 ### Vùng chưa có test nào
 
 - ~~`lib/core/api/interceptors/auth_interceptor.dart`~~ — nay đã có `test/core/api/auth_interceptor_test.dart` (3 test, phiên 2026-09-03).
-- ~~3 feature không có test~~ → nay còn **hai**: **profile**, **ai_chat** (đo lại 2026-09-08 bằng `find`/`flutter test`, con số cũ ở đây đã lạc hậu nhiều đợt). **analytics** có 4 tệp / **61** test từ 2026-09-08 (lát 2a **và 2b** — `docs/ANALYTICS_FEATURE.md`); **budget** 24 tệp; **home** 2 tệp; **notification** 20 tệp trong `test/core/notification/` + `test/features/notification/` (cộng 3 tệp liên quan nằm chỗ khác).
+- ~~3 feature không có test~~ → ~~nay còn hai: profile, ai_chat~~ (đo lại 2026-09-08 bằng `find`/`flutter test`) → nay còn **một**: **ai_chat** (G33 thêm `test/features/profile/` — **2** tệp / **7** test, 2026-09-11). **analytics** có 4 tệp / **61** test từ 2026-09-08 (lát 2a **và 2b** — `docs/ANALYTICS_FEATURE.md`); **budget** 24 tệp; **home** 2 tệp; **notification** 20 tệp trong `test/core/notification/` + `test/features/notification/` (cộng 3 tệp liên quan nằm chỗ khác).
 
 ---
 
