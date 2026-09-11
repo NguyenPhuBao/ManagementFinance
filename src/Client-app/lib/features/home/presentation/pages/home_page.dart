@@ -10,6 +10,7 @@ import '../../../../shared/theme/app_colors.dart';
 import '../widgets/home_action_buttons.dart';
 import '../widgets/home_budget_card.dart';
 import '../widgets/home_goal_card.dart';
+import '../widgets/the_cho_xoa_trang_chu.dart';
 import '../../../budget/data/models/budget_entity.dart';
 import '../../../budget/data/repositories/budget_repository.dart';
 import '../../../goal/data/models/goal_entity.dart';
@@ -46,6 +47,13 @@ class HomePage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildHeader(context, currentUserId),
+              // Thẻ nhắc tài khoản đang chờ xoá (G33) — spec cưỡng chế đăng xuất §5.2.
+              if (authState is AuthSuccess &&
+                  authState.user != null &&
+                  authState.user!.dangChoXoa) ...[
+                const SizedBox(height: 24),
+                TheChoXoaTrangChu(user: authState.user!),
+              ],
               const SizedBox(height: 32),
               _buildHeroSection(context),
               const SizedBox(height: 32),
