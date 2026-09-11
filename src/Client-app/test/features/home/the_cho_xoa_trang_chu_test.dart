@@ -118,6 +118,12 @@ void main() {
         ),
         findsOneWidget,
         reason: 'Stitch: vòng tròn bg-white/60 quanh đồng hồ.');
+    final chuDeSau = tester.widget<RichText>(find.descendant(
+        of: find.widgetWithText(TextButton, 'Để sau'), matching: find.byType(RichText)));
+    expect(chuDeSau.text.style?.color, const Color(0xFF454743),
+        reason: 'Stitch `on-surface-variant` #454743: chữ 13px trên nền #FFDAD6 đạt 7,27:1. '
+            'AppColors.onSurfaceVariant là bí danh textSecondary (#767872) — chỉ 3,46:1, '
+            'dưới ngưỡng WCAG AA 4,5:1.');
     expect(tester.takeException(), isNull);
   });
 

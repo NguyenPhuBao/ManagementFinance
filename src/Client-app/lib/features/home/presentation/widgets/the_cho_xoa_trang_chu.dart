@@ -13,9 +13,10 @@ import '../../../auth/presentation/huy_yeu_cau_xoa.dart';
 /// Chữ và hành vi ở §5.2 spec
 /// `docs/superpowers/specs/2026-09-10-cuong-che-dang-xuat-va-cho-xoa-design.md`;
 /// hình theo HTML của màn Stitch `657d29a8f89e4750ae6f878d096aa94e` — tên lớp
-/// Tailwind ghi cạnh từng chỗ để lần sau đối chiếu. Màu lấy hằng `AppColors`
-/// tương ứng khi có. Không hiện gì — kể cả khoảng cách phía trên thẻ — khi tài
-/// khoản không chờ xoá hoặc đã bấm "Để sau" trong lần mở app này.
+/// Tailwind ghi cạnh từng chỗ để lần sau đối chiếu. Màu: hằng `AppColors` khi
+/// trùng giá trị token Stitch, còn lại là hằng private ghi tên token. Không hiện
+/// gì — kể cả khoảng cách phía trên thẻ — khi tài khoản không chờ xoá hoặc đã
+/// bấm "Để sau" trong lần mở app này.
 class TheChoXoaTrangChu extends StatefulWidget {
   const TheChoXoaTrangChu({
     super.key,
@@ -40,6 +41,12 @@ class _TheChoXoaTrangChuState extends State<TheChoXoaTrangChu> {
   /// Stitch `text-tertiary-container` (hệ Kinetic Finance của dự án) —
   /// `AppColors` chưa có hằng tương ứng.
   static const _mauThan = Color(0xFF410005);
+
+  /// Stitch `text-on-surface-variant` (#454743) cho chữ "Để sau": tương phản
+  /// 7,27:1 trên nền #FFDAD6. KHÔNG dùng `AppColors.onSurfaceVariant` — hằng ấy
+  /// là bí danh `textSecondary` (#767872), chỉ 3,46:1, dưới ngưỡng WCAG AA 4,5:1
+  /// cho chữ 13px.
+  static const _mauDeSau = Color(0xFF454743);
 
   bool _dangHuy = false;
 
@@ -146,7 +153,7 @@ class _TheChoXoaTrangChuState extends State<TheChoXoaTrangChu> {
                       onPressed: _dangHuy ? null : () => _anThe.value = true,
                       // `text-on-surface-variant font-medium text-[13px] px-3 py-1.5`
                       style: TextButton.styleFrom(
-                        foregroundColor: AppColors.onSurfaceVariant,
+                        foregroundColor: _mauDeSau,
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
                       ),
@@ -157,7 +164,9 @@ class _TheChoXoaTrangChuState extends State<TheChoXoaTrangChu> {
                     // ElevatedButton rộng vô hạn — nằm trong Row là trắng cả trang.
                     FilledButton(
                       onPressed: _dangHuy ? null : _huyXoa,
-                      // `bg-primary text-white font-semibold text-[13px] rounded-lg h-[36px] px-4`
+                      // `bg-primary text-white font-semibold text-[13px] rounded-lg h-[36px] px-4`.
+                      // Nền `AppColors.primary` #1A1A19 — màu nút chính ở mục Buttons của
+                      // hệ Kinetic Finance; Tailwind của màn ghi `primary` #000000.
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
