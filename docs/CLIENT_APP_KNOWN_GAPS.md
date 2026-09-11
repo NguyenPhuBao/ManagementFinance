@@ -622,17 +622,26 @@ Server **đã có** chỗ: cột `category."Color"` (`varchar(9)`), `/sync/push`
 
 Client thì vẫn nói **`colour`** cho danh mục, ở cả hai chiều:
 
-- payload danh mục dựng tay mang `'colour'` (`sync_engine.dart:1024` và `:1108`);
+- payload danh mục dựng tay mang `'colour'` ở **hai** chỗ: `sync_engine.dart:1025` (thao tác
+  danh mục đang chờ) và `:1109` (bước 1b — kèm danh mục người dùng mà một giao dịch chờ trỏ
+  tới, nên chỗ này gửi `colour` ở **mọi** lần đẩy một giao dịch có danh mục);
 - `SyncPayloadNormalizer.categoryForPush` (`sync_payload_normalizer.dart:101-116`)
   **không** đổi khoá — khác `walletForPush` ngay trên nó (`:82-83`), vốn đổi
   `colour` → `color`;
 - nhánh kéo về đọc `c['colour']` (`sync_engine.dart:603`), nên luôn nhận `null`;
-- và `sync_payload_contract_test.dart:332` khoá `'colour'` trong tập khoá danh mục
+- và `sync_payload_contract_test.dart:333` khoá `'colour'` trong tập khoá danh mục
   — tức **chính bộ test đang canh bản sai**.
 
 Hệ quả không đổi so với ảnh chụp bên dưới — màu chỉ sống trên máy đã chọn — nhưng
 **nguyên nhân đã đổi**: không còn là thiếu cột mà là lệch tên khoá. Đúng kiểu hỏng
 im lặng của quy tắc 4 `CLAUDE.md`, và nay nằm hẳn ở phía client.
+
+**Kiểm đầu-cuối 2026-09-11** (máy ảo, tài khoản 10, backend của nhánh đã gộp): danh mục
+"Ăn uống" (`70b7e251-…`) mang `colour = '#FF5722'` trong SQLite nhưng `category."Color"`
+vẫn `NULL` trên PostgreSQL sau hai lần đẩy, và bộ chọn danh mục hiện mọi danh mục bằng màu
+mặc định. Mỗi lần đẩy một giao dịch có danh mục, bước 1b gửi kèm danh mục ấy và server trả
+xung đột "bản server mới hơn" (hai bên cùng `Update_at`) — vô hại, không ghi đè gì, nhưng là
+lý do log đồng bộ báo `1 conflicts` ở những lần ấy.
 
 **Cách sửa (thuần client, CHƯA làm — chờ người dùng duyệt):**
 
@@ -643,7 +652,7 @@ im lặng của quy tắc 4 `CLAUDE.md`, và nay nằm hẳn ở phía client.
    đã rơi về màu cục bộ khi server trả rỗng (`sync_engine.dart:629-640`), nên hàng
    server còn `Color = NULL` **không** xoá màu đang có trên máy.
 3. **Cập nhật `sync_payload_contract_test.dart` cùng lúc:** tập khoá danh mục
-   `'colour'` → `'color'`, và thêm một ca kéo về như ca ví ở `:638`.
+   `'colour'` → `'color'`, và thêm một ca kéo về như ca ví ở `:639`.
 
 ⚠️ Sửa xong thì màu chỉ lên server khi danh mục được **đẩy lại** — hàng đã
 `synced` từ trước vẫn mang `Color = NULL` cho tới lần sửa kế tiếp, cùng dạng
