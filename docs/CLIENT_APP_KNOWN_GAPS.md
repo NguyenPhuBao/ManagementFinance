@@ -625,7 +625,7 @@ kính vừa rộng ra hẳn: trước đây người dùng gần như không đ�
 mặc định là toàn cục và bị chặn sửa; nay họ sở hữu cả bộ và sửa được từng cái.
 
 **Client không sửa được** — không có cột thì không có chỗ ghi. Tài liệu xin:
-`docs/superpowers/backend/CAN-LAM/CATEGORY_COLOUR_COLUMN.md`.
+`docs/superpowers/backend/DA-XONG/CATEGORY_COLOUR_COLUMN.md`.
 
 ---
 
@@ -765,7 +765,7 @@ nó đã cho phép đúng hai giá trị cần thiết), rồi client mở lại
 `sync_payload_normalizer.dart` — và cập nhật `sync_payload_contract_test.dart`
 cùng lúc (payload đẩy ví **12 → 13** trường). Cả ba chỗ đều còn nguyên chú thích
 chỉ ngược về tài liệu xin:
-`docs/superpowers/backend/CAN-LAM/WALLET_STATUS_COLUMN_WIDTH.md`.
+`docs/superpowers/backend/DA-XONG/WALLET_STATUS_COLUMN_WIDTH.md`.
 
 `WalletStatus.khoaGuiLen` (`'Active'`/`'Inactive'`) vẫn ở lại và vẫn được
 `wallet_status_test.dart` canh, đúng để ngày nối lại chỉ tốn một dòng — **đừng
@@ -776,7 +776,7 @@ ngày cột ấy từng bị đổi sang `varchar(16)` **ngoài quy trình**, r�
 tác theo yêu cầu **đích danh** của người dùng — đo lại: `varchar(7)`, lịch sử
 migration 3 dòng, bốn CHECK đủ, số hàng không đổi. Nên trên máy ấy đẩy
 `'Inactive'` lên **lại vỡ** — G28 vẫn đúng trên máy ấy. Diễn biến
-đầy đủ ở mục **3b** của `CAN-LAM/WALLET_STATUS_COLUMN_WIDTH.md`.
+đầy đủ ở mục **3b** của `DA-XONG/WALLET_STATUS_COLUMN_WIDTH.md`.
 
 ⚠️ **Cập nhật cùng ngày, sau khi gộp `main` (`bef37d3`) — chỗ chặn đã dời từ mã
 sang CSDL.** Backend **đã** làm phần của mình từ 2026-09-09 (`7523c8c`, NPBao):
@@ -784,7 +784,7 @@ sang CSDL.** Backend **đã** làm phần của mình từ 2026-09-09 (`7523c8c`
 `src/Backend/database/7_Update_Account_User_Delete_Rules.sql` nới đúng cột ấy. Lúc
 mục này được viết, commit ấy chỉ nằm trên `main`. Đo lại sau khi gộp: CSDL dev vẫn
 `varchar(7)` vì **tệp 7 chưa được áp** — cùng với 8, 9, 10, 11
-(`docs/superpowers/backend/CAN-LAM/DEV_DB_MIGRATIONS_7_11.md`). Nên câu "lược đồ tự
+(`docs/superpowers/backend/DA-XONG/DEV_DB_MIGRATIONS_7_11.md`). Nên câu "lược đồ tự
 mâu thuẫn" ở trên đúng với **CSDL**, không còn đúng với **mã nguồn** backend. Bán
 kính phía client không đổi: vẫn đúng ba chỗ ở đoạn trên. Người dùng chốt **để
 sau** — đừng mở lại khi chưa được hỏi.
@@ -829,7 +829,7 @@ mã mẫu `SensitiveNoteValidator` ở 13.10.2 — đo 2026-09-10 nó chặn nh�
 ghi chú hợp lệ, gồm cả `Thay pin: 350000` ("pin" là pin điện thoại). Theo quy tắc đã
 sửa trong tài liệu xin, và chừa chuỗi do app sinh.
 
-Tài liệu xin: `docs/superpowers/backend/CAN-LAM/SYNC_NOTE_FILTER_REWRITE.md`.
+Tài liệu xin: `docs/superpowers/backend/DA-XONG/SYNC_NOTE_FILTER_REWRITE.md`.
 
 ---
 
@@ -852,7 +852,7 @@ giao dịch trong ví vỡ `fk_transaction_wallet` → coi là tạm thời → 
 Im lặng, cùng lớp với `ewallet`/`debt`.
 
 **Cách xử lý (người dùng chốt 2026-09-10):** xin backend bỏ index
-(`CAN-LAM/WALLET_SAVING_INDEX.md`) **và** chặn tạm trong lúc chờ —
+(`DA-XONG/WALLET_SAVING_INDEX.md`) **và** chặn tạm trong lúc chờ —
 `wallet/domain/rang_buoc_vi.dart` (`viTietKiemDaCo`), chốt ở
 `WalletLocalDataSourceImpl._kiemRangBuocServer`, và màn Thêm ví khoá ô "Tiết
 kiệm" kèm dòng giải thích. Khi backend xác nhận đã bỏ: gỡ `viTietKiemDaCo`, hai
@@ -883,7 +883,7 @@ và lượt kéo về mang bản đã cắt về máy (suy từ mã, chưa đo t
 **Cách xử lý:** client giới hạn độ dài ở form, vì client là nơi duy nhất báo được
 cho người dùng lúc họ đang gõ; và xin backend ánh xạ `22001` / `P2000` về
 `CONSTRAINT_VIOLATION` để bản client cũ cùng mọi nguồn ghi khác không lặp vô hạn —
-`docs/superpowers/backend/CAN-LAM/SYNC_PUSH_ERROR_MAPPING.md`.
+`docs/superpowers/backend/DA-XONG/SYNC_PUSH_ERROR_MAPPING.md`.
 
 ✅ **Phía client xong cùng ngày.** Bảy ô tên — Thêm ví, Sửa ví, Thêm/Sửa mục
 tiêu, Thêm hoá đơn, Sửa hoá đơn, Thêm/Sửa danh mục, Nhóm danh mục — đi qua
@@ -918,7 +918,7 @@ Client không bao giờ tự sinh `priority <= 0` (`goal_priority.dart:101-104`)
 mọi giá trị ấy kéo về đều là một `null` bị ép.
 
 **Cách xử lý:** xin backend giữ `null`
-(`docs/superpowers/backend/CAN-LAM/GOAL_PRIORITY_NULL_TO_ZERO.md`); client đọc
+(`docs/superpowers/backend/DA-XONG/GOAL_PRIORITY_NULL_TO_ZERO.md`); client đọc
 `<= 0` như chưa sắp. Phía client chỉ sửa được **hiển thị** trên máy đã cập nhật —
 giá trị trên server và bản client cũ vẫn chờ backend.
 
@@ -989,10 +989,10 @@ Tám gạch đầu dòng đầu tiên dưới đây là **ảnh chụp cũ**: b�
 - **`CATEGORY_NAME_UNIQUENESS.md`** — hai unique index của `category` đang khác quy tắc nghiệp vụ theo cả hai chiều; client đã thi hành đúng quy tắc, CSDL thì chưa.
 - **`CATEGORY_STABLE_IDS.md`** — ID danh mục mặc định sinh ngẫu nhiên mỗi lần seed, nên tên bị dùng làm khoá nối giữa hai phía; đây là nguyên nhân gốc của các lỗi 11.3–11.6.
 - **`2026-09-04-backend-idempotent-delete.md`** — ba lỗ hổng của `/sync/push`: xoá một bản ghi không tồn tại bị trả về là lỗi (làm client đẩy lại vĩnh viễn); `message` là nguyên văn stack trace Prisma kèm đường dẫn máy chủ; và `budget.time_recurrence = null` bị ép về `'Month'`, **chặn hẳn** lựa chọn ngân sách "Ngày cụ thể".
-- **`CAN-LAM/AUTH_401_BODY_CODE.md`** (2026-09-10) — body 401 cho tài khoản bị khoá hoặc xoá không mang `code` / `reason_inactive`, vì tham số thứ ba của `ResponseHandler.unauthorized` rơi mất; client chưa phân biệt được *bị khoá* với *hết phiên*. Không mở G riêng cho tài liệu này: cưỡng chế đăng xuất phía client **chưa làm** nên nhánh HTTP chưa có gì để hỏng. ⚠️ Nhưng cùng vùng ấy **có** một lỗi đang chạy, không do backend — **G33**.
+- **`DA-XONG/AUTH_401_BODY_CODE.md`** (2026-09-10) — body 401 cho tài khoản bị khoá hoặc xoá không mang `code` / `reason_inactive`, vì tham số thứ ba của `ResponseHandler.unauthorized` rơi mất; client chưa phân biệt được *bị khoá* với *hết phiên*. Không mở G riêng cho tài liệu này: cưỡng chế đăng xuất phía client **chưa làm** nên nhánh HTTP chưa có gì để hỏng. ⚠️ Nhưng cùng vùng ấy **có** một lỗi đang chạy, không do backend — **G33**.
 - **`CAN-LAM/FIX_BACKEND_3_REGRESSIONS.md`** (2026-09-11) — ba hồi quy của `7675b35` trên `main`, **đã gộp** về nhánh client 2026-09-11 (`main` @ `cc65f4f`): bắt tay socket và `/auth/refresh` từ chối mọi tài khoản; chốt trả hai lần đặt ở `upsertBill` chặn hoàn tác thanh toán; tài liệu backend ghi sai ba mã lỗi. Chưa mở G riêng vì backend trên máy client chưa chạy lại từ mã đã gộp (CSDL dev đã áp `database/12` ngày 2026-09-11). ⚠️ Khi chạy lại, hoàn tác một hoá đơn đã đồng bộ **không lên được server** cho tới khi backend sửa hồi quy B, và bắt tay socket cùng `/auth/refresh` từ chối mọi tài khoản cho tới khi sửa hồi quy A. ✅ Chỗ phía client — ba mã mới (`WALLET_NAME_DUPLICATE`, `WALLET_DEFAULT_DUPLICATE` do client tự xin, và `BILL_ALREADY_PAID`) chưa có trong `_permanentCodes` nên sẽ bị gửi lại mãi — đã đóng 2026-09-11: nay chúng bị chặn theo thời gian, không kéo chậm cả hàng đợi.
-- **`CAN-LAM/RULE_PROJECT_DOC_DRIFT.md`** (2026-09-10) — tài liệu backend (`docs/Rule_Project/`, `docs/progress/Backend.md`) nói ngược mã và CSDL: 56 chỗ sửa theo dòng cộng ba việc sửa mã (đo lại tối 2026-09-10). Không mở G: không mã client nào hỏng vì nó, nhưng đó là những tài liệu người mới đọc **trước** mã.
-- G31 và G32 ở trên có tài liệu xin riêng: `CAN-LAM/SYNC_PUSH_ERROR_MAPPING.md` và `CAN-LAM/GOAL_PRIORITY_NULL_TO_ZERO.md`.
+- **`DA-XONG/RULE_PROJECT_DOC_DRIFT.md`** (2026-09-10) — tài liệu backend (`docs/Rule_Project/`, `docs/progress/Backend.md`) nói ngược mã và CSDL: 56 chỗ sửa theo dòng cộng ba việc sửa mã (đo lại tối 2026-09-10). Không mở G: không mã client nào hỏng vì nó, nhưng đó là những tài liệu người mới đọc **trước** mã.
+- G31 và G32 ở trên có tài liệu xin riêng: `DA-XONG/SYNC_PUSH_ERROR_MAPPING.md` và `DA-XONG/GOAL_PRIORITY_NULL_TO_ZERO.md`.
 
 Với tám tài liệu cũ, client **không** phụ thuộc vào việc backend có sửa hay không. Với các mục ghi *chặn ở backend* hoặc *chờ backend* ở bảng tóm tắt đầu tài liệu thì có.
 

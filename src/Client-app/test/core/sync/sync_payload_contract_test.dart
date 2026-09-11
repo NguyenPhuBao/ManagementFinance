@@ -263,7 +263,7 @@ void main() {
       // chốt để sau; mở lại thì test này đổi sang canh chiều ngược lại. Cùng
       // diện với `bills.autoPayEnabled` và `bills.anchorDay`. Xem G28
       // `docs/CLIENT_APP_KNOWN_GAPS.md` và
-      // `docs/superpowers/backend/CAN-LAM/WALLET_STATUS_COLUMN_WIDTH.md`.
+      // `docs/superpowers/backend/DA-XONG/WALLET_STATUS_COLUMN_WIDTH.md`.
       const viLuuTru = '22222222-2222-4222-8222-222222222222';
       await db.walletDao.insert(WalletsCompanion(
         id: const Value(viLuuTru),

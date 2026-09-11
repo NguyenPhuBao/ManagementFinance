@@ -21,7 +21,7 @@
 /// **cục bộ** cho tới khi mở lại G28 (người dùng chốt để sau), và phép ánh xạ
 /// ở đây được giữ sống bằng test để ngày nối lại chỉ tốn một dòng.
 /// Xem G28 `docs/CLIENT_APP_KNOWN_GAPS.md` và
-/// `docs/superpowers/backend/CAN-LAM/WALLET_STATUS_COLUMN_WIDTH.md`.
+/// `docs/superpowers/backend/DA-XONG/WALLET_STATUS_COLUMN_WIDTH.md`.
 library;
 
 import 'package:flutter_test/flutter_test.dart';

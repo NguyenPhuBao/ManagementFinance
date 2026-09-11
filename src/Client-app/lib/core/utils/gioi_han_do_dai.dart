@@ -10,7 +10,7 @@
 /// thì server cắt âm thầm còn 100 ký tự rồi kéo bản đã cắt về máy.
 ///
 /// Phía server đã có tài liệu xin
-/// (`docs/superpowers/backend/CAN-LAM/SYNC_PUSH_ERROR_MAPPING.md`). Client vẫn
+/// (`docs/superpowers/backend/DA-XONG/SYNC_PUSH_ERROR_MAPPING.md`). Client vẫn
 /// chặn ở ô nhập, vì đó là chỗ duy nhất người dùng thấy giới hạn lúc đang gõ.
 ///
 /// ## Vì sao không dùng `maxLength`

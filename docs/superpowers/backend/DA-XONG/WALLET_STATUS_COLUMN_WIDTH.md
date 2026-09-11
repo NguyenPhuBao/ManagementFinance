@@ -211,7 +211,7 @@ prisma/migrations/<YYYYMMDDHHMMSS>_widen_wallet_status/migration.sql
 
 ```sql
 -- Migration: widen_wallet_status
--- Xin từ client-app: docs/superpowers/backend/CAN-LAM/WALLET_STATUS_COLUMN_WIDTH.md
+-- Xin từ client-app: docs/superpowers/backend/DA-XONG/WALLET_STATUS_COLUMN_WIDTH.md
 --
 -- chk_wallet_status cho phép 'Inactive' (8 ký tự) nhưng kiểu cột là varchar(7),
 -- nên không giá trị nào vừa cả hai ngoài 'Active'. Nới kiểu cột cho khớp ràng

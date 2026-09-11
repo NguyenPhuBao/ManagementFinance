@@ -4,7 +4,7 @@
 /// Kéo về y nguyên thì SQLite giữ `0`, và `0` đứng trước mọi số đã sắp — mục
 /// tiêu chưa sắp nhảy lên đầu danh sách trên mọi máy. Đã tái hiện đầu-cuối trên
 /// máy ảo ngày 2026-09-10
-/// (`docs/superpowers/backend/CAN-LAM/GOAL_PRIORITY_NULL_TO_ZERO.md`).
+/// (`docs/superpowers/backend/DA-XONG/GOAL_PRIORITY_NULL_TO_ZERO.md`).
 ///
 /// Canh ở tầng LƯU chứ không chỉ ở tầng đọc (`GoalEntity.fromDrift`): SQLite là
 /// thứ được đẩy lại lên server, và là thứ mọi truy vấn trần đọc thẳng.

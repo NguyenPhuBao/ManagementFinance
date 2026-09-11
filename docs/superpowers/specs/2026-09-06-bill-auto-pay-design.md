@@ -108,7 +108,7 @@ thân câu cho hoá đơn bật tự trả: "*tên* đến hạn hôm nay. Mở 
 - ⚠️ Hai máy cùng bật, cùng offline, cùng trả một kỳ ⇒ **hai** khoản chi và
   trừ hai ví; cờ đã trả đồng bộ theo LWW không chặn được. Ghi trong tài liệu
   và trong dòng phụ trên form. Đóng hẳn cần backend: việc **D** thêm vào
-  `docs/superpowers/backend/CAN-LAM/2026-09-06-bill-chuoi-ky-va-an-han.md`
+  `docs/superpowers/backend/DA-XONG/2026-09-06-bill-chuoi-ky-va-an-han.md`
   — cột `bill.Auto_pay` (bool) để cấu hình đồng bộ, và chốt chặn ở
   `/sync/push`: từ chối giao dịch thứ hai mang cùng `Idbill` khi cột đó có
   (phụ thuộc việc A).

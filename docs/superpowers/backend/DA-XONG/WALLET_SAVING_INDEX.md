@@ -94,7 +94,7 @@ Repo dùng **hai** quy ước migration cùng lúc (`prisma/migrations/` và
 quy ước đội backend chọn; nội dung SQL như nhau:
 
 ```sql
--- Xin từ client-app: docs/superpowers/backend/CAN-LAM/WALLET_SAVING_INDEX.md
+-- Xin từ client-app: docs/superpowers/backend/DA-XONG/WALLET_SAVING_INDEX.md
 -- Luật "một ví Saving mỗi tài khoản" không có trong Rule_project.md và
 -- chặn người dùng tạo ví tiết kiệm thứ hai (kẹt hàng đợi đẩy, im lặng).
 DROP INDEX IF EXISTS "uq_wallet_saving_active";

@@ -142,7 +142,7 @@ mới** cùng loại mà bản chiều bỏ sót — đánh dấu *mới* trong 
 **ND31** — thay cả dòng 362:
 
 ```
-- **Unique** (bốn partial index, đều kèm `"Delete_at" IS NULL`): `uq_wallet_account_name_active ("Idaccount", "Name")` — không trùng tên ví trong một tài khoản; `uq_wallet_bank_active ("Id_bank_casso") WHERE "Id_bank_casso" IS NOT NULL` — một tài khoản ngân hàng chỉ tạo một ví Banking; `uq_wallet_default_active ("Idaccount") WHERE "Is_default" = true` — một ví mặc định mỗi tài khoản; `uq_wallet_saving_active ("Idaccount") WHERE "Type" = 'Saving'` — một ví Tiết kiệm mỗi tài khoản (đang xin bỏ: `CAN-LAM/WALLET_SAVING_INDEX.md`).
+- **Unique** (bốn partial index, đều kèm `"Delete_at" IS NULL`): `uq_wallet_account_name_active ("Idaccount", "Name")` — không trùng tên ví trong một tài khoản; `uq_wallet_bank_active ("Id_bank_casso") WHERE "Id_bank_casso" IS NOT NULL` — một tài khoản ngân hàng chỉ tạo một ví Banking; `uq_wallet_default_active ("Idaccount") WHERE "Is_default" = true` — một ví mặc định mỗi tài khoản; `uq_wallet_saving_active ("Idaccount") WHERE "Type" = 'Saving'` — một ví Tiết kiệm mỗi tài khoản (đang xin bỏ: `DA-XONG/WALLET_SAVING_INDEX.md`).
 ```
 
 ---
@@ -151,18 +151,18 @@ mới** cùng loại mà bản chiều bỏ sót — đánh dấu *mới* trong 
 
 | # | Dòng | Thay | Bằng | Căn cứ đo | Mục cũ |
 |---|---|---|---|---|---|
-| RP01 | 69 | `3. **Migration:** Thực thi qua lệnh chuẩn hóa của Prisma để cập nhật lược đồ CSDL.` | Ghi quy trình **thật**: hiện có hai đường — `prisma/migrations/` (3 migration, ghi trong `_prisma_migrations`) và `database/N_*.sql` áp tay (tệp 5–11, không bảng nào ghi tệp nào đã áp). Backend chọn một quy ước rồi viết thứ tự áp tại đây — `CAN-LAM/DEV_DB_MIGRATIONS_7_11.md` mục 4.2 | `_prisma_migrations`: 3 dòng, dừng ở `20260901191107_fix_schema_align` | A19 |
+| RP01 | 69 | `3. **Migration:** Thực thi qua lệnh chuẩn hóa của Prisma để cập nhật lược đồ CSDL.` | Ghi quy trình **thật**: hiện có hai đường — `prisma/migrations/` (3 migration, ghi trong `_prisma_migrations`) và `database/N_*.sql` áp tay (tệp 5–11, không bảng nào ghi tệp nào đã áp). Backend chọn một quy ước rồi viết thứ tự áp tại đây — `DA-XONG/DEV_DB_MIGRATIONS_7_11.md` mục 4.2 | `_prisma_migrations`: 3 dòng, dừng ở `20260901191107_fix_schema_align` | A19 |
 | RP02 | 84 | `` `Account` $\rightarrow$ `Wallet` $\rightarrow$ `Category` $\rightarrow$ `CategoryGroup` $\rightarrow$ `CategoryGroupMembership` $\rightarrow$ `Goal` $\rightarrow$ `Bill` $\rightarrow$ `Budget` $\rightarrow$ `Transaction`. `` | `` `category` (10) $\rightarrow$ `wallet` (20) $\rightarrow$ `budget`, `bill`, `goal` (30) $\rightarrow$ `transaction` (40). Thao tác **xoá** chạy ngược lại: `transaction` (60) $\rightarrow$ `budget`/`bill`/`goal` (70) $\rightarrow$ `wallet` (80) $\rightarrow$ `category` (90) — `sync.service.js:46-63`. `` | `ENTITY_PRIORITY` và `getOperationWeight`; hai bảng nhóm đã DROP (`database/6`); mục 1.6 cùng tệp nói "không có bảng trung gian" | A17 |
 | RP03 | 89 | `  * Sử dụng Database Trigger để ngăn người dùng tạo danh mục cá nhân trùng tên với danh mục mặc định của hệ thống.` | `  * Người dùng **được phép** tạo danh mục cá nhân trùng tên với danh mục mẫu hệ thống — trigger chéo cũ đã gỡ (database/5), xem mục 1.2.` | mục 1.2 cùng tệp (dòng 256); CSDL dev chỉ có 4 trigger, không cái nào trên `category` | A18 |
 | RP04 | chèn **sau** 321 (hết mục 2.4) | — | khối ở 3.1 bên dưới | `uq_wallet_account_name_active` | A20 |
 | RP05 | 334–344 (mục 3.2) | toàn bộ các gạch đầu dòng `Expense`/`Income`/`Transfer`/`Debt`/`Loan` | khối ở 3.2 bên dưới | `chk_transaction_type` chỉ nhận `Transaction`, `Transfer`; client đổi `thu` → `Transaction` + số dương, `chi` → `Transaction` + số âm (`sync_payload_normalizer.dart:65-72`); `/sync/push` không cộng trừ số dư — `wallet.balance` do client đẩy (`sync.repository.js:224, 242`) | mới |
 | RP06 | 350–354 (mục 3.4) | danh sách `Provider` | khối ở 3.3 bên dưới — **sau** mục 5.3 | mục 5.3 | mới |
-| RP07 | 395 | `* Sử dụng đánh số thứ tự thưa (10, 20, 30...) để người dùng có thể dễ dàng chèn một mục tiêu mới vào giữa danh sách mà không cần cập nhật lại toàn bộ các bản ghi khác.` | `* Đánh số thưa **cách nhau 100** (100, 200, 300…): chèn giữa hai mục tiêu chỉ ghi một hàng (150). **NULL = chưa sắp, xếp cuối.** Trùng số được phép — không đặt UNIQUE. Server phải giữ nguyên NULL khi đồng bộ (CAN-LAM/GOAL_PRIORITY_NULL_TO_ZERO.md).` | `DA-XONG/2026-09-05-backend-goal-priority.md` mục 4 — quy ước client đang ghi | mới |
+| RP07 | 395 | `* Sử dụng đánh số thứ tự thưa (10, 20, 30...) để người dùng có thể dễ dàng chèn một mục tiêu mới vào giữa danh sách mà không cần cập nhật lại toàn bộ các bản ghi khác.` | `* Đánh số thưa **cách nhau 100** (100, 200, 300…): chèn giữa hai mục tiêu chỉ ghi một hàng (150). **NULL = chưa sắp, xếp cuối.** Trùng số được phép — không đặt UNIQUE. Server phải giữ nguyên NULL khi đồng bộ (DA-XONG/GOAL_PRIORITY_NULL_TO_ZERO.md).` | `DA-XONG/2026-09-05-backend-goal-priority.md` mục 4 — quy ước client đang ghi | mới |
 | RP08 | 406 | `` * `'Paid'`: Đã thanh toán (đã sinh ra khoản chi tương ứng). `` | `` * `'Payed'`: Đã thanh toán (đã sinh ra khoản chi tương ứng). `` | `chk_bill_pay_status`; `sync.validation.js:140` | C1 |
 | RP09 | 408 | `` * `'Skipped'`: Người dùng chủ động bỏ qua kỳ hóa đơn này (không thanh toán và không tính nợ). `` | `` * `'Skipped'`: **chưa có** — CHECK và `sync.validation.js:140` chỉ nhận `Pending`, `Payed`, `Overdue` (xin ở `CAN-LAM/README.md` mục 5). `` | như RP08 | C1 |
 | RP10 | 412 | `` * `previous_bill_id`: Cột liên kết ID tới hóa đơn của kỳ liền trước. Dùng để: `` | `` * `previous_bill_id`: **chưa có** ở CSDL lẫn `schema.prisma` (xin ở `CAN-LAM/README.md` mục 3). Mục đích dự kiến: `` | `information_schema.columns`: bảng `bill` không có cột này | C2 |
 | RP11 | 417 | `` * Khi tiếp nhận yêu cầu thanh toán hóa đơn hoặc đẩy giao dịch có gắn `Idbill`, Sync Engine kiểm tra … `'Paid'` … `` | `` * **Chưa có.** `transaction` chưa có cột `Idbill`, và `upsertTransaction` (`sync.repository.js:269-316`) không kiểm hoá đơn đã trả (xin ở `CAN-LAM/README.md` mục 3 và 4). Khi làm: từ chối khoản thanh toán thứ hai nếu hoá đơn kỳ đó đã `'Payed'`. `` | `transaction` không có `Idbill` | C3 |
-| RP12 | 533–542 (11.3) | câu handshake ở 533 và khối JSON 535–542 | **Sau** mục 5.1: câu 533 thành "…từ chối kết nối kèm mã `ACCOUNT_DELETED` hoặc `ACCOUNT_INACTIVE` (kèm `reason_inactive`)"; khối JSON thay bằng hình dạng ở `CAN-LAM/AUTH_401_BODY_CODE.md` mục 4.1 — bỏ `"statusCode"`, thêm `"idaccount"`, `"reason_inactive"`, `"errors": null`, `"timestamp"` | `AUTH_401_BODY_CODE.md` mục 2.1, 2.3 | D1 |
+| RP12 | 533–542 (11.3) | câu handshake ở 533 và khối JSON 535–542 | **Sau** mục 5.1: câu 533 thành "…từ chối kết nối kèm mã `ACCOUNT_DELETED` hoặc `ACCOUNT_INACTIVE` (kèm `reason_inactive`)"; khối JSON thay bằng hình dạng ở `DA-XONG/AUTH_401_BODY_CODE.md` mục 4.1 — bỏ `"statusCode"`, thêm `"idaccount"`, `"reason_inactive"`, `"errors": null`, `"timestamp"` | `AUTH_401_BODY_CODE.md` mục 2.1, 2.3 | D1 |
 | RP13 | 641 | `4. **Xác thực & Thu hồi phiên:** Token rotation, reuse detection, thu hồi toàn bộ token khi đổi mật khẩu hoặc xóa tài khoản.` | `4. **Xác thực & Thu hồi phiên:** Token rotation, reuse detection. Thu hồi toàn bộ token khi đổi mật khẩu, đặt lại mật khẩu, đăng xuất, và khi tài khoản bị xoá hẳn (hết 30 ngày chờ xoá). Gửi yêu cầu xoá **không** thu hồi token — người dùng dùng tiếp trong 30 ngày (mục 11.6).` | `revokeAllTokens` ở `auth.service.js:435` (đổi mật khẩu), `:489` (đặt lại), `auth.controller.js:90` (đăng xuất), `scheduler.service.js:89-96` (xoá hẳn); `deleteAccount` (`auth.service.js:494-511`) không gọi | mới |
 
 ### 3.1. RP04 — khối chèn sau dòng 321
@@ -171,7 +171,7 @@ mới** cùng loại mà bản chiều bỏ sót — đánh dấu *mới* trong 
 ### 2.5. Tên ví duy nhất trong một tài khoản
 * Hai ví **đang hoạt động** (`Delete_at IS NULL`) của cùng một tài khoản không được trùng `Name` — thi hành bằng partial unique index `uq_wallet_account_name_active ("Idaccount", "Name")`. So khớp **chính xác** (phân biệt hoa thường).
 * Ví đã xoá mềm không giữ chỗ tên.
-* Vi phạm trả SQLSTATE `23505`; `/sync/push` hiện ánh xạ thành `UNIQUE_VIOLATION` (xin mã riêng `WALLET_NAME_DUPLICATE`: `CAN-LAM/WALLET_SAVING_INDEX.md`).
+* Vi phạm trả SQLSTATE `23505`; `/sync/push` hiện ánh xạ thành `UNIQUE_VIOLATION` (xin mã riêng `WALLET_NAME_DUPLICATE`: `DA-XONG/WALLET_SAVING_INDEX.md`).
 * Luật "một ví Tiết kiệm mỗi tài khoản" (`uq_wallet_saving_active`) **chưa** ghi thành luật ở đây — đang chờ quyết định giữ hay bỏ (`CAN-LAM/README.md` mục 12).
 ```
 
@@ -187,7 +187,7 @@ Số dư ví **không** do `/sync/push` cộng trừ: client tính số dư và 
 ```
 
 ⚠️ `sync.validation.js:119` còn nhận `Expense`, `Income`, `Debt`, `Loan` — bốn giá trị
-vượt qua lớp kiểm tra rồi vỡ CHECK. Đã xin sửa ở `CAN-LAM/SYNC_PUSH_ERROR_MAPPING.md`.
+vượt qua lớp kiểm tra rồi vỡ CHECK. Đã xin sửa ở `DA-XONG/SYNC_PUSH_ERROR_MAPPING.md`.
 
 ### 3.3. RP06 — khối thay dòng 350–354 (mục 3.4)
 

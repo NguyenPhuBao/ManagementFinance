@@ -60,7 +60,7 @@ Tài khoản vẫn `PendingDelete`; 30 ngày sau `scheduler.service.js:processFu
 
 ### 1.3. Vì sao chưa kiểm được đầu-cuối trên CSDL dev
 
-CSDL dev chưa áp `database/8`, `9` (`CAN-LAM/DEV_DB_MIGRATIONS_7_11.md`), Prisma
+CSDL dev chưa áp `database/8`, `9` (`DA-XONG/DEV_DB_MIGRATIONS_7_11.md`), Prisma
 Client cũ không biết `reason_inactive`/`countdown`. Nên hôm nay **mọi** đường
 backend dẫn tới sự kiện này đều vỡ: `DELETE /auth/account`, `POST
 /auth/cancel-delete`, admin khoá (`admin.service.js:134`), admin xoá
@@ -70,7 +70,7 @@ chứng thay thế: mục 7.3.
 
 ✅ **Cập nhật tối 2026-09-10:** người dùng yêu cầu áp `database/7`–`11`; đã áp,
 sinh lại Prisma Client và chạy lại backend (banner đầu
-`CAN-LAM/DEV_DB_MIGRATIONS_7_11.md`). Mọi đường kể trên nay **chạy được** trên
+`DA-XONG/DEV_DB_MIGRATIONS_7_11.md`). Mọi đường kể trên nay **chạy được** trên
 backend thật — trừ body 401 vẫn thiếu mã (CAN-LAM 13). Mục 7.3 đã sửa theo.
 
 ⚠️ **2026-09-11:** `origin/main` có thêm `7675b35` (gộp về nhánh này cùng ngày): body 401 nay mang
@@ -124,7 +124,7 @@ ThongBaoBuocDangXuat? tuBody401(Object? body);            // body HTTP 401
   liệu; đọc nhầm thành "đã xoá" là xoá mất dữ liệu.
 - `idaccount` đọc được cả `int` lẫn chuỗi số.
 - `tuBody401` chỉ nhận `code` ở **cấp gốc** (hình dạng mục 4.1
-  `CAN-LAM/AUTH_401_BODY_CODE.md`). `code` nằm dưới `errors` thì **không** nhận:
+  `DA-XONG/AUTH_401_BODY_CODE.md`). `code` nằm dưới `errors` thì **không** nhận:
   đó là hình dạng của lối tắt `ResponseHandler.error(...)` mà tài liệu ấy đã bác.
   Body không có `code` → `null` → interceptor đi đường làm mới token như cũ.
   ✅ 2026-09-11: hình dạng ấy có thật trên `main` @ `7675b35`

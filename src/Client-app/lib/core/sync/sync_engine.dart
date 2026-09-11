@@ -513,7 +513,7 @@ class SyncEngine {
                 // Mở lại cả hai chiều cùng lúc, kèm cập nhật
                 // `sync_payload_contract_test.dart` — G28 ở
                 // `docs/CLIENT_APP_KNOWN_GAPS.md`, và
-                // `docs/superpowers/backend/CAN-LAM/WALLET_STATUS_COLUMN_WIDTH.md`.
+                // `docs/superpowers/backend/DA-XONG/WALLET_STATUS_COLUMN_WIDTH.md`.
                 isDeleted: Value(w['delete_at'] != null),
                 deletedAt: Value(_deletedAtFrom(w['delete_at'])),
                 syncStatus: const Value('synced'),

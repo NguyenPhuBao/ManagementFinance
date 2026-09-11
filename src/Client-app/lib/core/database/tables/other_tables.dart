@@ -190,7 +190,7 @@ class Bills extends Table {
   /// `autoPayEnabled` và `generatedFromBillId`. Hàng kéo từ server luôn để
   /// trống, và khi trống thì `nextBillDueDate` neo vào ngày của chính mốc hiện
   /// tại — tức chuỗi tạo trên máy khác vẫn có thể tụt dần. Tài liệu xin cột
-  /// phía backend: `docs/superpowers/backend/CAN-LAM/BILL_ANCHOR_DAY.md`.
+  /// phía backend: `docs/superpowers/backend/DA-XONG/BILL_ANCHOR_DAY.md`.
   ///
   /// NULL với mọi hoá đơn tạo trước v18; migration suy nó từ ngày đến hạn đang
   /// lưu để **không đổi hạn** của hoá đơn cũ.

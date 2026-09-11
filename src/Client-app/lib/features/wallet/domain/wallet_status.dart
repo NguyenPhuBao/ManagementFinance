@@ -23,7 +23,7 @@
 /// chỗ chặn phía server đã hết; `status` vẫn cục bộ vì việc nối lại (G28)
 /// người dùng chốt để sau. [khoaGuiLen] vẫn ở lại và vẫn được test canh, để
 /// ngày nối lại chỉ là một dòng. Xem G28 `docs/CLIENT_APP_KNOWN_GAPS.md` và
-/// `docs/superpowers/backend/CAN-LAM/WALLET_STATUS_COLUMN_WIDTH.md`.
+/// `docs/superpowers/backend/DA-XONG/WALLET_STATUS_COLUMN_WIDTH.md`.
 ///
 /// ## Vì sao tệp này KHÔNG import Flutter
 ///
