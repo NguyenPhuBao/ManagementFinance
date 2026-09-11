@@ -7,131 +7,135 @@
 > *Căn cứ pháp lý & tiêu chuẩn:* Nghị định 13/2023/NĐ-CP về bảo vệ dữ liệu cá nhân, chuẩn bảo mật dữ liệu thẻ PCI-DSS, khuyến nghị bảo mật OWASP.
 
 ---
+# Phân loại dữ liệu trong hệ thống tài chính
+### (Theo Luật Bảo vệ dữ liệu cá nhân 2025 – Luật số 91/2025/QH15 – và các chuẩn quốc tế)
 
-## 1. Dữ Liệu Nhạy Cảm Của Người Dùng Chung Trong Tài Chính
-
-Bảng phân loại chi tiết các nhóm dữ liệu người dùng, mức độ nhạy cảm và nguyên tắc kỹ thuật xử lý/bảo mật tương ứng:
-
-| STT | Nhóm dữ liệu | Dữ liệu cụ thể | Mức độ nhạy cảm | Ghi chú xử lý / bảo mật |
-|:---:|---|---|:---:|---|
-| **1** | Thông tin xác thực & bảo mật | Mật khẩu, mã PIN, OTP, mã khôi phục | **Rất cao** | Hash mật khẩu bằng Argon2id / bcrypt; không lưu OTP lâu dài; không ghi log |
-| **2** | Thông tin xác thực & bảo mật | Token đăng nhập, refresh token, khóa 2FA | **Rất cao** | Mã hóa, lưu server-side, xoay vòng, thu hồi khi cần |
-| **3** | Thông tin xác thực & bảo mật | Câu hỏi bảo mật, secret key | **Rất cao** | Không lưu dạng plaintext; dùng KMS/HSM nếu có |
-| **4** | Thông tin định danh cá nhân | Họ tên, ngày sinh, giới tính | **Cao** | Mã hóa khi lưu trữ; hạn chế truy cập |
-| **5** | Thông tin định danh cá nhân | Số CMND/CCCD, hộ chiếu, mã số thuế, số BHXH | **Rất cao** | Mã hóa at-rest; audit log mọi truy cập |
-| **6** | Thông tin định danh cá nhân | Địa chỉ, số điện thoại, email | **Cao** | Che một phần khi hiển thị; có sự đồng ý khi chia sẻ |
-| **7** | Thông tin định danh cá nhân | Ảnh chân dung, chữ ký (nếu có) | **Rất cao** | Lưu trữ riêng, mã hóa; không public URL |
-| **8** | Thông tin tài chính – ngân hàng | Số tài khoản, số thẻ, CVV, ngày hết hạn thẻ | **Rất cao** | Không lưu CVV; token hóa số thẻ; tuân thủ PCI-DSS nếu có |
-| **9** | Thông tin tài chính – ngân hàng | Số dư, hạn mức tín dụng, thu nhập, tài sản, khoản nợ | **Rất cao** | Mã hóa; phân quyền theo `userId`; không log chi tiết |
-| **10** | Thông tin tài chính – ngân hàng | Lịch sử tín dụng, điểm tín dụng | **Rất cao** | Chỉ lưu khi có đồng ý; mã hóa; hạn chế chia sẻ |
-| **11** | Thông tin tài chính – ngân hàng | Thông tin ví điện tử, tài khoản đầu tư | **Rất cao** | Token hóa; mã hóa; kiểm soát truy cập chặt |
-| **12** | Dữ liệu giao dịch | Lịch sử thu/chi, số tiền, thời gian, địa điểm | **Rất cao** | Mã hóa at-rest/in-transit; audit log |
-| **13** | Dữ liệu giao dịch | Người nhận/người gửi, nội dung giao dịch, phương thức thanh toán | **Rất cao** | Ẩn danh khi thống kê; không chia sẻ bên thứ ba |
-| **14** | Dữ liệu giao dịch | Hóa đơn, biên lai, danh mục chi tiêu | **Cao** | Lưu trữ an toàn; có thể mã hóa tệp đính kèm |
-| **15** | Dữ liệu hành vi & thói quen | Thói quen chi tiêu, ngân sách, mục tiêu tiết kiệm | **Cao** | Dùng cho cá nhân hóa; có opt-in; không bán dữ liệu |
-| **16** | Dữ liệu hành vi & thói quen | Tần suất giao dịch, sản phẩm/dịch vụ quan tâm | **Cao** | Ẩn danh hóa khi phân tích tổng hợp |
-| **17** | Dữ liệu hành vi & thói quen | Lịch sử tìm kiếm, phản hồi, đánh giá | **Trung bình – Cao** | Có thể xóa theo yêu cầu; hạn chế lưu lâu dài |
-| **18** | Dữ liệu thiết bị & phiên | Địa chỉ IP, device ID, vị trí | **Trung bình – Cao** | Chỉ thu thập khi cần; mã hóa; thông báo rõ trong chính sách |
-| **19** | Dữ liệu thiết bị & phiên | Log đăng nhập, cookies, dấu vân tay thiết bị | **Cao** | Bảo vệ chống chiếm đoạt tài khoản; có thời hạn lưu |
-| **20** | Dữ liệu thiết bị & phiên | Lịch sử hoạt động trên hệ thống | **Trung bình** | Dùng cho audit; không tiết lộ cho người dùng khác |
-| **21** | Dữ liệu sinh trắc học | Vân tay, khuôn mặt, giọng nói (nếu dùng để xác thực) | **Rất cao** | Ưu tiên xử lý cục bộ trên thiết bị; không lưu server nếu không cần |
-| **22** | Dữ liệu suy diễn / derived | Điểm rủi ro, xếp hạng tín dụng, phân khúc khách hàng | **Cao** | Minh bạch cách tính; không gây phân biệt đối xử |
-| **23** | Dữ liệu suy diễn / derived | Dự đoán hành vi, đề xuất tài chính cá nhân hóa | **Cao** | Có thể tắt; giải thích lý do đề xuất; bảo vệ dữ liệu đầu vào |
+> **Cập nhật pháp lý quan trọng:** Việt Nam đã ban hành **Luật Bảo vệ dữ liệu cá nhân 2025 (Luật số 91/2025/QH15)**, Quốc hội thông qua ngày 26/6/2025, **có hiệu lực từ 01/01/2026**, thay thế cơ chế cũ chỉ dựa trên Nghị định 13/2023/NĐ-CP. Kèm theo là **Nghị định 356/2025/NĐ-CP** (31/12/2025) quy định chi tiết thi hành. Luật chia dữ liệu cá nhân thành 2 nhóm: **dữ liệu cá nhân cơ bản** và **dữ liệu cá nhân nhạy cảm**, đồng thời có **Điều 27** quy định riêng trách nhiệm của tổ chức hoạt động trong lĩnh vực tài chính, ngân hàng, thông tin tín dụng — trong đó nêu rõ **phần lớn dữ liệu khách hàng ngân hàng thuộc nhóm dữ liệu nhạy cảm**.
+>
+> Nếu hệ thống của bạn đang xây dựng chính sách dữ liệu, nên đối chiếu lại với văn bản luật gốc và Nghị định 356/2025/NĐ-CP vì đây là văn bản mới, các hướng dẫn chi tiết (thông tư chuyên ngành ngân hàng) có thể tiếp tục được ban hành thêm trong 2026.
 
 ---
 
-## 2. Những Dữ Liệu Nào Là Dữ Liệu Nhạy Cảm Của Khách Hàng
+## 1. Các chức năng & nhóm dữ liệu nhạy cảm phổ biến trong hệ thống tài chính
 
-Theo **Nghị định 13/2023/NĐ-CP**, dữ liệu cá nhân nhạy cảm là dữ liệu gắn liền với quyền riêng tư, khi bị xâm phạm sẽ ảnh hưởng trực tiếp đến quyền và lợi ích hợp pháp của cá nhân. Trong lĩnh vực tài chính cá nhân, bao gồm:
-
-| Nhóm dữ liệu | Ví dụ cụ thể |
+| Chức năng nghiệp vụ | Dữ liệu nhạy cảm liên quan |
 |---|---|
-| **Dữ liệu tài chính cốt lõi** | Số tài khoản ngân hàng, số dư, lịch sử giao dịch, thu nhập, tài sản, khoản nợ |
-| **Dữ liệu định danh** | Số CMND/CCCD, số hộ chiếu, mã số thuế cá nhân, số bảo hiểm xã hội |
-| **Dữ liệu sinh trắc học** | Ảnh khuôn mặt, vân tay (nếu dùng để xác thực) |
-| **Dữ liệu hành vi** | Lịch sử chi tiêu, thói quen mua sắm, vị trí giao dịch |
-| **Dữ liệu quan hệ** | Thông tin về mối quan hệ gia đình, người thụ hưởng |
-
-> [!NOTE]
-> **Lưu ý:** Ngay cả thông tin như *"số tài khoản số của cá nhân"* cũng được xếp vào dữ liệu cá nhân cơ bản theo Nghị định 13, nhưng khi kết hợp với lịch sử giao dịch và số dư, nó trở thành **dữ liệu tài chính nhạy cảm** cần mức bảo vệ cao hơn.
-
----
-
-## 3. Dữ Liệu Nào Là Công Khai Và Được Phép Quản Lý
-
-Đây là những dữ liệu không gắn liền với cá nhân cụ thể hoặc đã được ẩn danh hóa hoàn toàn:
-
-* **Tỷ giá ngoại tệ, lãi suất ngân hàng công bố**.
-* **Danh mục chi tiêu chuẩn** (ví dụ: Ăn uống, Di chuyển, Giải trí) — không gắn với bất kỳ người dùng nào.
-* **Biểu phí dịch vụ** của hệ thống (nếu có thu phí).
-* **Hướng dẫn sử dụng, chính sách bảo mật, điều khoản dịch vụ**.
-* **Dữ liệu thống kê tổng hợp đã ẩn danh** (ví dụ: *"Người dùng trung bình chi 30% thu nhập cho Ăn uống"*) — chỉ được dùng nếu không thể tái nhận dạng cá nhân.
-
-> [!IMPORTANT]
-> **Nguyên tắc:** Bất kỳ dữ liệu nào có thể kết hợp để nhận dạng một cá nhân cụ thể đều **không được coi là công khai**, dù ban đầu trông vô hại.
+| Định danh khách hàng (KYC/eKYC) | CCCD/CMND/hộ chiếu, ảnh chân dung, video xác thực sống (liveness), vân tay, khuôn mặt |
+| Mở & quản lý tài khoản | Số tài khoản, số dư, lịch sử giao dịch, hạn mức |
+| Thanh toán / ví điện tử | Số thẻ (PAN), CVV, mã OTP, token thanh toán, lịch sử giao dịch |
+| Tín dụng / cho vay | Thu nhập, lịch sử tín dụng (CIC), tài sản đảm bảo, điểm tín dụng (credit score), hồ sơ vay |
+| Đầu tư / chứng khoán | Danh mục đầu tư, giá trị tài sản ròng, lệnh giao dịch |
+| Bảo hiểm | Tình trạng sức khỏe, bệnh sử, thông tin người thụ hưởng |
+| Chống gian lận / AML-CFT | Thiết bị (device ID), IP, vị trí địa lý, hành vi giao dịch bất thường, danh sách đen |
+| Chấm điểm tín dụng bằng AI | Dữ liệu hành vi, dữ liệu thay thế (alternative data), mô hình scoring |
 
 ---
 
-## 4. Dữ Liệu Nào Được Phép Thu Thập Từ Khách Hàng & Đưa Lên Server
+## 2. Dữ liệu nhạy cảm theo quy định Việt Nam + chuẩn quốc tế
 
-Hệ thống chỉ được thu thập dữ liệu khi có **sự đồng ý rõ ràng** của người dùng và vì **mục đích cụ thể**.
+### Theo Luật Bảo vệ dữ liệu cá nhân 2025 (VN)
+Dữ liệu cá nhân nhạy cảm là dữ liệu gắn liền với quyền riêng tư, khi bị xâm phạm sẽ ảnh hưởng trực tiếp tới quyền và lợi ích hợp pháp của chủ thể, bao gồm (nhóm chính thường được nêu):
+- Dữ liệu về **sức khỏe, đời sống riêng tư, tôn giáo, tín ngưỡng, chủng tộc/dân tộc, quan điểm chính trị**
+- **Dữ liệu sinh trắc học** (vân tay, khuôn mặt, giọng nói, mống mắt...)
+- **Dữ liệu tài chính** — tài khoản ngân hàng, số dư, lịch sử giao dịch, **thông tin tín dụng** (đây là nhóm áp dụng trực tiếp cho ngành tài chính – ngân hàng, quy định riêng tại Điều 27)
+- **Vị trí địa lý** của cá nhân
+- Dữ liệu về **tội phạm, vi phạm pháp luật**
+- Dữ liệu cá nhân **là bí mật nhà nước** — phải mã hóa/giải mã theo pháp luật về bảo vệ bí mật nhà nước và cơ yếu
 
-### ✅ Được phép thu thập (khi có sự đồng ý):
-* **Thông tin tài khoản cơ bản:** Email, tên hiển thị, mật khẩu (đã được hash an toàn).
-* **Dữ liệu giao dịch do người dùng tự nhập:** Số tiền, ngày thực hiện, danh mục, ghi chú.
-* **Số dư tài khoản do người dùng tự khai báo:** Số dư ví thủ công (không kết nối trực tiếp tài khoản ngân hàng).
-* **Cài đặt cá nhân:** Đơn vị tiền tệ, ngân sách định mức, mục tiêu tiết kiệm.
-* **Dữ liệu ẩn danh cho mục đích cải thiện hệ thống:** Chỉ thu thập khi có cơ chế opt-in rõ ràng từ người dùng.
+Riêng với lĩnh vực tài chính – ngân hàng – thông tin tín dụng, Điều 27 quy định thêm:
+- Không được dùng thông tin tín dụng để **chấm điểm/xếp hạng tín dụng** khi chưa có sự đồng ý của chủ thể dữ liệu
+- Chỉ thu thập dữ liệu **cần thiết** cho hoạt động thông tin tín dụng, từ nguồn hợp pháp
+- Phải **thông báo cho khách hàng** khi xảy ra sự cố lộ/mất dữ liệu tài khoản ngân hàng, tài chính, tín dụng
+- Xử lý dữ liệu bằng AI phải **phân loại theo mức độ rủi ro**
 
-### ❌ Không nên thu thập (trừ khi thực sự cần & có biện pháp bảo vệ đặc biệt):
-* **Thông tin đăng nhập ngân hàng:** Tên đăng nhập (username) / mật khẩu (password) internet banking.
-* **Số thẻ tín dụng đầy đủ:** Số thẻ + mã CVV/CVC + ngày hết hạn thẻ.
-* **Dữ liệu vị trí GPS liên tục**.
-* **Danh bạ điện thoại, tin nhắn SMS cá nhân** (ngoài phạm vi các tin nhắn biến động số dư được người dùng cho phép xử lý cục bộ trên máy).
-* **Dữ liệu sinh trắc học:** Tuyệt đối không đẩy lên server (chỉ xử lý xác thực cục bộ trên thiết bị qua Local Authentication / Biometrics API).
+*(Lưu ý: đây là tổng hợp từ các nguồn báo chí/pháp lý công bố về luật mới — nên đối chiếu với văn bản luật gốc Điều 2 và Nghị định 356/2025/NĐ-CP để có định nghĩa chính xác từng khoản khi áp dụng vào hệ thống thực tế.)*
 
-> [!CAUTION]
-> **Nguyên tắc vàng — Data Minimization (Tối thiểu hóa dữ liệu):** Chỉ thu thập những gì thực sự cần thiết cho chức năng cốt lõi. Nếu không có dữ liệu đó mà hệ thống vẫn vận hành bình thường, **tuyệt đối không thu thập**.
+### Theo chuẩn quốc tế (tham chiếu song song)
 
----
+| Chuẩn / Quy định | Phạm vi | Dữ liệu coi là nhạy cảm |
+|---|---|---|
+| **GDPR (EU)** – Điều 9 | Bảo vệ dữ liệu cá nhân chung | Chủng tộc, dân tộc, tôn giáo, sức khỏe, xu hướng/đời sống tình dục, sinh trắc học, công đoàn, quan điểm chính trị |
+| **PCI-DSS** | Dữ liệu thẻ thanh toán | Số thẻ đầy đủ (PAN), CVV/CVC, dữ liệu dải từ/chip, PIN |
+| **GLBA (Mỹ)** | Tổ chức tài chính | "Nonpublic Personal Information" – thu nhập, số dư, lịch sử giao dịch, điểm tín dụng |
+| **ISO/IEC 27701** | Hệ thống quản lý bảo mật thông tin cá nhân | PII nhạy cảm, gắn với ISO 27001 |
+| **Basel / quy định NHNN** | Quản trị rủi ro ngân hàng | Dữ liệu định danh khách hàng, dữ liệu giao dịch, dữ liệu rủi ro tín dụng |
 
-## 5. Dữ Liệu Nào Server Cung Cấp Công Khai Và Mặc Định
-
-Đây là dữ liệu server chủ động trả về cho mọi người dùng (hoặc người dùng chưa đăng nhập) mà hoàn toàn không tiết lộ thông tin cá nhân:
-
-* **Cấu hình hệ thống mặc định:** Đơn vị tiền tệ mặc định (`VND`), định dạng ngày tháng hiển thị, ngôn ngữ giao diện.
-* **Danh mục mặc định:** Danh sách các loại chi tiêu / thu nhập gợi ý sẵn do hệ thống định nghĩa (`Ăn uống`, `Di chuyển`, `Lương`, `Thưởng`...).
-* **Dữ liệu tham chiếu:** Tỷ giá ngoại tệ, lãi suất ngân hàng tham khảo (nếu tích hợp API công khai bên ngoài).
-* **Thông báo hệ thống:** Thông tin bảo trì, nâng cấp phiên bản, điều khoản và chính sách mới.
-* **Tài liệu API công khai** (nếu có cung cấp cho nhà phát triển bên ngoài).
-* **Dữ liệu tổng hợp ẩn danh:** Chỉ cung cấp khi đã đảm bảo hoàn toàn không thể đảo ngược hoặc tái nhận dạng cá nhân.
-
-> [!WARNING]
-> **Tuyệt đối không trả về:** Danh sách người dùng, email, số điện thoại, số dư, lịch sử giao dịch của bất kỳ ai qua các endpoint công khai (public endpoints).
+**Điểm chung VN + quốc tế:** dữ liệu tài chính – tín dụng – sinh trắc học – sức khỏe đều được xếp vào nhóm cần **bảo vệ đặc biệt**, đòi hỏi sự đồng ý rõ ràng, tách biệt, và biện pháp bảo mật cao hơn dữ liệu cơ bản.
 
 ---
 
-## 6. Dữ Liệu Nào Đặc Thù Riêng & Cần Bảo Mật Cho Hệ Thống
+## 3. Dữ liệu công khai và được phép quản lý tự do
 
-Đây là những dữ liệu chỉ tồn tại bên trong hệ thống, mang tính độc quyền, sống còn và nếu rò rỉ sẽ gây thiệt hại trực tiếp cho người dùng cùng uy tín vận hành của toàn bộ hệ thống:
+Đây là dữ liệu không thuộc phạm vi bảo vệ nghiêm ngặt, có thể công bố/quản lý bình thường:
 
-| Loại dữ liệu | Mức độ bảo mật cần thiết |
-|---|---|
-| **Khóa mã hóa (Encryption keys)** | **Tuyệt đối** — Dùng KMS/HSM hoặc Secret Manager an toàn; tuyệt đối không hardcode trong mã nguồn. |
-| **Mật khẩu đã hash** | Dùng Argon2id hoặc bcrypt (work factor $\ge$ 12). |
-| **JWT secret / Refresh token** | Lưu trữ trong biến môi trường an toàn; xoay vòng khóa định kỳ; hash token lưu trong DB. |
-| **Dữ liệu giao dịch thô** | Mã hóa at-rest (AES-256) và mã hóa in-transit (TLS 1.3). |
-| **Lịch sử đăng nhập, IP, thiết bị** | Bảo vệ nghiêm ngặt để chống chiếm đoạt tài khoản và điều tra gian lận. |
-| **Audit log** | Ghi nhận mọi truy cập vào dữ liệu nhạy cảm; đảm bảo tính toàn vẹn (Append-only, không thể chỉnh sửa hoặc xóa). |
-| **Dữ liệu sao lưu (Backup)** | Mã hóa toàn bộ tệp sao lưu, lưu trữ tách biệt môi trường chính và kiểm soát truy cập nghiêm ngặt. |
+- Tên, mã số thuế, thông tin đăng ký kinh doanh của **pháp nhân/doanh nghiệp**
+- Báo cáo tài chính đã công bố của công ty đại chúng/niêm yết
+- Tỷ giá hối đoái, lãi suất huy động/cho vay đã công bố công khai
+- Biểu phí dịch vụ, danh mục sản phẩm
+- Địa chỉ chi nhánh, phòng giao dịch, ATM, giờ làm việc
+- Mã ngân hàng (BIN), mã SWIFT/BIC
+- Số tổng đài, kênh liên hệ chăm sóc khách hàng
 
-### 🔒 Biện Pháp Bảo Vệ Khuyến Nghị Áp Dụng:
-1. **Mã hóa End-to-End (E2EE):** Áp dụng cho dữ liệu tài chính nếu có thể giữa client và backend.
-2. **Xác thực hai yếu tố (2FA):** Bắt buộc hoặc khuyến khích tối đa cho mọi tài khoản người dùng và quản trị viên.
-3. **Rate Limiting:** Thiết lập giới hạn tần suất gọi API nghiêm ngặt để chống brute-force mật khẩu, OTP và token.
-4. **Phân quyền theo người dùng (User-scoped Isolation):** Mọi truy vấn đọc/ghi dữ liệu vào database bắt buộc phải lọc theo `userId` (hoặc `idaccount`) từ JWT token đã xác thực; cấm dùng query không kèm ràng buộc người sở hữu.
-5. **Tuân thủ chuẩn bảo mật thẻ (PCI-DSS):** Không lưu trữ thông tin thẻ ngân hàng nếu không thực sự cần thiết; nếu cần thanh toán trực tuyến, bắt buộc sử dụng cổng thanh toán đối tác đã đạt chuẩn PCI-DSS (Stripe, VNPay, MoMo...).
-6. **Ghi log & Giám sát liên tục:** Ghi nhận audit log và theo dõi mọi hành vi truy cập bất thường để kịp thời ngăn chặn tấn công hoặc rò rỉ dữ liệu.
+---
+
+## 4. Dữ liệu được phép thu thập từ khách hàng & gửi lên server
+
+Điều kiện tiên quyết theo luật mới: phải có **sự đồng ý** rõ ràng, tách biệt (đặc biệt với dữ liệu nhạy cảm), thông báo mục đích – phạm vi – thời hạn lưu trữ, và **chỉ thu thập trong phạm vi cần thiết**.
+
+Nhóm dữ liệu thường được phép thu thập khi có đồng ý hợp lệ:
+- **Định danh cơ bản:** họ tên, ngày sinh, giới tính, quốc tịch, số CCCD/hộ chiếu (cần mã hóa khi lưu trữ/truyền tải)
+- **Liên hệ:** số điện thoại, email, địa chỉ
+- **Dữ liệu eKYC:** ảnh giấy tờ, ảnh chân dung, dữ liệu sinh trắc học phục vụ xác thực (cần đồng ý riêng, mục đích rõ ràng)
+- **Dữ liệu giao dịch nghiệp vụ:** số tài khoản, lịch sử giao dịch phục vụ đúng mục đích đã thông báo
+- **Dữ liệu thiết bị/phiên:** device ID, IP, user-agent — phục vụ bảo mật, chống gian lận
+- **Dữ liệu tín dụng:** chỉ thu thập từ nguồn hợp pháp, phục vụ đúng mục đích thông tin tín dụng
+
+---
+
+## 5. Dữ liệu server cung cấp công khai & mặc định
+
+Đây là dữ liệu hệ thống có thể trả về qua API công khai, không cần xác thực định danh cá nhân:
+
+- Tỷ giá hối đoái tham khảo theo thời gian thực
+- Lãi suất tiết kiệm/vay đã niêm yết
+- Biểu phí dịch vụ
+- Danh sách chi nhánh/ATM và trạng thái hoạt động
+- Mã QR thanh toán công khai của điểm bán (merchant)
+- Trạng thái vận hành hệ thống (uptime/maintenance)
+- Danh mục sản phẩm/dịch vụ
+
+---
+
+## 6. Dữ liệu đặc thù riêng, cần bảo mật đặc biệt cho hệ thống
+
+Nhóm này không chỉ nhạy cảm với khách hàng mà còn **quyết định an toàn của toàn hệ thống** — cần kiểm soát truy cập chặt nhất (mã hóa, HSM, phân quyền tối thiểu, audit log):
+
+- **Khóa mã hóa / bí mật hệ thống:** encryption keys, HSM keys, API secrets, private key ví điện tử/blockchain
+- **Dữ liệu xác thực:** mật khẩu (hash), mã OTP seed, PIN, CVV — theo PCI-DSS **tuyệt đối không lưu CVV** sau khi xác thực xong
+- **Dữ liệu sinh trắc học gốc** (biometric templates) — không lưu dạng thô, chỉ lưu vector đã mã hóa/hash
+- **Core banking data & nhật ký giao dịch nội bộ**
+- **Mô hình/thuật toán chấm điểm tín dụng, mô hình AI** — thuộc bí mật kinh doanh
+- **Danh sách đen AML/CFT, dữ liệu phòng chống rửa tiền** — thường có yêu cầu bảo mật ở mức cao, hạn chế truy cập
+- **Dữ liệu cá nhân là bí mật nhà nước** (nếu có) — bắt buộc mã hóa/giải mã theo quy định về bảo vệ bí mật nhà nước và cơ yếu
+- **Kiến trúc bảo mật hệ thống, source code, cấu hình hạ tầng**
+
+---
+
+## Ghi chú áp dụng thực tế
+
+1. Với **dữ liệu nhạy cảm**, luật mới yêu cầu **sự đồng ý riêng biệt** (không gộp chung với đồng ý dữ liệu cơ bản) và phải chứng minh được căn cứ pháp lý khi bị kiểm tra.
+2. Sự cố lộ/mất dữ liệu tài khoản ngân hàng/tài chính/tín dụng phải được **thông báo cho khách hàng** — nên có quy trình phản ứng sự cố (incident response) rõ ràng, kèm mốc thời gian báo cáo cơ quan quản lý (một số nguồn nhắc tới mốc 72 giờ theo tinh thần tương tự GDPR).
+3. Nên rà soát lại toàn bộ chính sách bảo mật/quy trình nội bộ đang dựa trên Nghị định 13/2023/NĐ-CP cũ để cập nhật theo Luật 91/2025/QH15 và Nghị định 356/2025/NĐ-CP, có hiệu lực từ 01/01/2026.
+4. Nên đối chiếu song song với PCI-DSS (nếu xử lý dữ liệu thẻ) và tiêu chuẩn quốc tế phù hợp (ISO 27001/27701) nếu hệ thống phục vụ khách hàng nước ngoài hoặc có đối tác quốc tế.
+
+---
+
+### Nguồn tham khảo
+- [Luật Bảo vệ dữ liệu cá nhân 2025, số 91/2025/QH15 – LuatVietnam](https://luatvietnam.vn/dan-su/luat-bao-ve-du-lieu-ca-nhan-2025-so-91-2025-qh15-405135-d1.html)
+- [Luật Bảo vệ dữ liệu cá nhân chính thức có hiệu lực – Cổng TTĐT Chính phủ](https://baochinhphu.vn/luat-bao-ve-du-lieu-ca-nhan-chinh-thuc-co-hieu-luc-tu-ngay-mai-1-1-2026-102251231155609721.htm)
+- [Quy định bảo vệ dữ liệu cá nhân trong hoạt động tài chính, ngân hàng – Chinhphu.vn](https://xaydungchinhsach.chinhphu.vn/quy-dinh-bao-ve-du-lieu-ca-nhan-trong-hoat-dong-tai-chinh-ngan-hang-119250725172823942.htm)
+- [Bảo vệ dữ liệu cá nhân trong lĩnh vực ngân hàng – Tạp chí Ngân hàng](https://tapchinganhang.gov.vn/bao-ve-du-lieu-ca-nhan-trong-linh-vuc-ngan-hang-tu-yeu-cau-phap-ly-den-thuc-tien-quan-tri-17223.html)
+- [Luật số 91/2025/QH15 – An toàn thông tin](https://antoanthongtin.vn/tin/luat-so-91-2025-qh15-luat-bao-ve-du-lieu-ca-nhan-2025)
 
 ---
 
