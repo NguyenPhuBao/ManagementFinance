@@ -431,6 +431,86 @@ void main() {
       expect(server.refreshCalls, 1);
     });
   });
+
+  group('§3.8 điểm 2 — nhiều 401 cùng lúc chỉ làm mới một lần', () {
+    test('hai request cùng nhận 401 → /auth/refresh gọi đúng một lần, cả hai thử lại bằng token mới',
+        () async {
+      final storage = _khoCoPhien();
+      final server = _MayChuGia()..khoaRefresh = Completer<void>();
+      final (:dio, :interceptor) = _dungVoiMayChu(storage, server);
+      addTearDown(interceptor.dispose);
+
+      final a = dio.get<dynamic>('/sync/pull');
+      final b = dio.get<dynamic>('/auth/profile');
+      // Cả hai 401 đã vào onError và đang chờ lượt làm mới.
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      server.khoaRefresh!.complete();
+      final ketQua = await Future.wait([a, b]);
+
+      expect(ketQua.map((r) => r.statusCode), [200, 200]);
+      expect(server.refreshCalls, 1,
+          reason: 'Lượt thứ hai gửi đúng refresh token đã bị thu hồi ở lượt đầu '
+              '→ Token Reuse Detection (auth.service.js:380-389) thu hồi MỌI '
+              'token của tài khoản, kể cả cặp vừa cấp, và app đăng xuất.');
+      expect(server.bearerDaThay.where((h) => h == 'Bearer access-moi').length, 2,
+          reason: 'cả hai request được thử lại bằng token mới');
+      expect(await storage.read(key: AppConstants.accessTokenKey), 'access-moi');
+    });
+
+    test('lượt làm mới chung trả 401 → cả hai nhận lỗi, tín hiệu phát đúng một lần', () async {
+      final storage = _khoCoPhien();
+      final server = _MayChuGia()
+        ..khoaRefresh = Completer<void>()
+        ..kichBanRefresh.addAll([401, 401]);
+      final (:dio, :interceptor) = _dungVoiMayChu(storage, server);
+      addTearDown(interceptor.dispose);
+      var emissions = 0;
+      final sub = interceptor.sessionExpiredStream.listen((_) => emissions++);
+      addTearDown(sub.cancel);
+
+      final a = dio.get<dynamic>('/sync/pull');
+      final b = dio.get<dynamic>('/auth/profile');
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      server.khoaRefresh!.complete();
+
+      await expectLater(a, throwsA(isA<DioException>()));
+      await expectLater(b, throwsA(isA<DioException>()));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(server.refreshCalls, 1);
+      expect(emissions, 1,
+          reason: 'xoá token và phát tín hiệu nằm trong lượt làm mới chung; '
+              'để từng request chờ tự xoá thì N request phát N lần');
+      expect(storage.isEmpty, isTrue);
+    });
+
+    test('401 tới sau khi lượt làm mới đã xong (request gửi bằng token cũ) → không gọi refresh, thử lại bằng token hiện có',
+        () async {
+      final storage = _khoCoPhien();
+      final server = _MayChuGia()
+        ..duongDanBiKhoa = '/goals'
+        ..khoaDuongDan = Completer<void>();
+      final (:dio, :interceptor) = _dungVoiMayChu(storage, server);
+      addTearDown(interceptor.dispose);
+
+      // /goals đi ra với token cũ và bị máy chủ giả giữ lại...
+      final muon = dio.get<dynamic>('/goals');
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      // ...trong lúc đó /sync/pull nhận 401, làm mới xong, kho đã có token mới.
+      await dio.get<dynamic>('/sync/pull');
+      expect(server.refreshCalls, 1);
+      // Giờ /goals mới được trả lời: 401 vì nó mang token cũ.
+      server.khoaDuongDan!.complete();
+      final res = await muon;
+
+      expect(res.statusCode, 200);
+      expect(server.refreshCalls, 1,
+          reason: 'token của request này đã bị lượt làm mới trước thay rồi — '
+              'chỉ thử lại bằng token trong kho, không tốn thêm một lượt '
+              '/auth/refresh (mỗi lượt thu hồi refresh token cũ)');
+      expect(server.bearerDaThay.last, 'Bearer access-moi');
+    });
+  });
 }
 
 class _StatusAdapter implements HttpClientAdapter {

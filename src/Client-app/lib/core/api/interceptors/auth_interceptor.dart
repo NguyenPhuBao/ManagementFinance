@@ -40,6 +40,14 @@ class AuthInterceptor extends Interceptor {
               ),
             );
 
+  /// Lượt làm mới đang chạy — mọi 401 tới trong lúc ấy chờ chung lượt này
+  /// (§3.8 điểm 2): hai lượt song song gửi cùng một refresh token, lượt sau
+  /// vấp Token Reuse Detection và server thu hồi cả cặp token vừa cấp.
+  Future<KetQuaLamMoi>? _lamMoiDangChay;
+
+  Future<KetQuaLamMoi> _lamMoiChung() =>
+      _lamMoiDangChay ??= _lamMoi().whenComplete(() => _lamMoiDangChay = null);
+
   // ─── Bước 1: Gắn Bearer token vào mỗi request ──────────────────────────
   @override
   Future<void> onRequest(
@@ -64,7 +72,19 @@ class AuthInterceptor extends Interceptor {
       return handler.next(err);
     }
 
-    final ketQua = await _lamMoi();
+    // Token của request này đã bị một lượt làm mới khác thay rồi → chỉ cần
+    // thử lại bằng token hiện có, không gọi /auth/refresh lần nữa.
+    final bearerCu = err.requestOptions.headers['Authorization'];
+    final tokenHienCo =
+        await secureStorage.read(key: AppConstants.accessTokenKey);
+    if (bearerCu is String &&
+        tokenHienCo != null &&
+        tokenHienCo.isNotEmpty &&
+        bearerCu != 'Bearer $tokenHienCo') {
+      return _thuLai(err.requestOptions, tokenHienCo, handler);
+    }
+
+    final ketQua = await _lamMoiChung();
     switch (ketQua) {
       case LamMoiPhienChet():
         // Token đã bị xoá và tín hiệu đã phát trong _lamMoi.
