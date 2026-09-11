@@ -479,7 +479,8 @@ mất luôn nhánh đang kiểm được. Đề xuất, theo thứ tự:
   theo mục 2.7 `FIX_BACKEND_3_REGRESSIONS.md`.
 - Không sọc vàng tràn bố cục ở 411dp.
 
-`flutter test` và `flutter analyze` đối chiếu mức nền 2026/2026 và 25 issue.
+`flutter test` và `flutter analyze` đối chiếu mức nền ghi trong `CLAUDE.md` — 2029/2029
+và 25 issue tính tới 2026-09-11.
 
 ---
 

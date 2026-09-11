@@ -663,6 +663,71 @@ void main() {
       );
     });
 
+    // ── Ba mã mới của `7675b35` trên `main` (backend, 2026-09-10) ─────────
+    // Tập mã vĩnh viễn là DANH SÁCH TRẮNG: mã nào backend thêm mà client chưa
+    // biết thì rơi xuống `transient` và bị gửi lại ở mọi chu kỳ. Ba mã dưới
+    // đây có trên `main` trước khi nhánh client gộp — thêm trước để ngày gộp
+    // không mở lại đúng vòng lặp ấy (`FIX_BACKEND_3_REGRESSIONS.md` mục 4, 5).
+
+    test('Mã WALLET_NAME_DUPLICATE là lỗi vĩnh viễn', () async {
+      await seedPendingCategory();
+
+      await runOnce(_CodedFailureAdapter(
+        code: 'WALLET_NAME_DUPLICATE',
+        message: 'Tên ví đã tồn tại trong tài khoản này',
+      ));
+
+      final row = await db.categoryDao.getById(catId);
+      expect(
+        row?.syncBlockedUntil,
+        clock.add(const Duration(seconds: 30)),
+        reason: 'Mã này do chính client xin (WALLET_SAVING_INDEX.md mục 4.2) '
+            'cho 23505 trên uq_wallet_account_name_active. Trùng tên thì đẩy '
+            'lại bao nhiêu lần cũng hỏng y như vậy; để nó rơi xuống transient '
+            'là gửi lại ở mọi chu kỳ, và giãn cách luỹ tiến (G2) kéo chậm cả '
+            'hàng đợi.',
+      );
+    });
+
+    test('Mã WALLET_DEFAULT_DUPLICATE là lỗi vĩnh viễn', () async {
+      await seedPendingCategory();
+
+      await runOnce(_CodedFailureAdapter(
+        code: 'WALLET_DEFAULT_DUPLICATE',
+        message: 'Tài khoản đã có một ví mặc định',
+      ));
+
+      final row = await db.categoryDao.getById(catId);
+      expect(
+        row?.syncBlockedUntil,
+        clock.add(const Duration(seconds: 30)),
+        reason: 'Hai máy cùng đặt ví mặc định khi ngoại tuyến thì máy đẩy sau '
+            'đụng uq_wallet_default_active. Thử lại y nguyên không đổi được '
+            'kết quả — phải có người đổi cờ mặc định — nên đây là lỗi vĩnh '
+            'viễn, cùng loại với UNIQUE_VIOLATION.',
+      );
+    });
+
+    test('Mã BILL_ALREADY_PAID là lỗi vĩnh viễn', () async {
+      await seedPendingCategory();
+
+      await runOnce(_CodedFailureAdapter(
+        code: 'BILL_ALREADY_PAID',
+        message: 'Hóa đơn đã được thanh toán, không thể thay đổi trạng thái',
+      ));
+
+      final row = await db.categoryDao.getById(catId);
+      expect(
+        row?.syncBlockedUntil,
+        clock.add(const Duration(seconds: 30)),
+        reason: 'Trên main, chốt trả hai lần từ chối cả lần hoàn tác thanh '
+            'toán (hồi quy B, CAN-LAM 17). Xếp vĩnh viễn KHÔNG sửa được việc '
+            'hoàn tác — đó là việc của backend — nhưng giữ bản ghi ấy lại một '
+            'chỗ. Để ở transient thì một hoá đơn kẹt kích hoạt giãn cách luỹ '
+            'tiến và kéo chậm mọi thay đổi khác của người dùng.',
+      );
+    });
+
     test('Mã FOREIGN_KEY_VIOLATION vẫn là lỗi tạm thời', () async {
       await seedPendingCategory();
 

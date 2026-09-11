@@ -265,11 +265,14 @@ tiền vào ví, xoá mềm khoản chi, xoá mềm kỳ kế tiếp, và đưa 
 Trên `main`, hàng ấy đang là `'Payed'` và `'Pending' !== 'Payed'`, nên bị từ chối.
 Hệ quả, suy từ mã:
 
-- **Máy đã hoàn tác.** `BILL_ALREADY_PAID` không có trong danh sách mã vĩnh viễn
-  của client (`sync_engine.dart:1631-1636`); `message` là câu tiếng Việt nên không
-  regex dự phòng nào khớp; hàm phân loại rơi xuống `transient` (`:1727`). Hoá đơn
-  bị gửi lại **ở mọi chu kỳ**, và mỗi chu kỳ kết thúc bằng lỗi nên giãn cách luỹ
-  tiến áp lên **cả** hàng đợi.
+- **Máy đã hoàn tác.** Trên bản client trước 2026-09-11, `BILL_ALREADY_PAID` không
+  có trong danh sách mã vĩnh viễn; `message` là câu tiếng Việt nên không regex dự
+  phòng nào khớp, và hàm phân loại rơi xuống `transient`. Hoá đơn bị gửi lại **ở
+  mọi chu kỳ**, và mỗi chu kỳ kết thúc bằng lỗi nên giãn cách luỹ tiến áp lên
+  **cả** hàng đợi. ✅ Từ 2026-09-11 client xếp mã ấy vĩnh viễn
+  (`sync_engine.dart:1631-1648`): bản ghi bị chặn theo thời gian thay vì kéo chậm
+  cả hàng đợi — nhưng hoá đơn vẫn không lên được server, nên hoàn tác vẫn hỏng cho
+  tới khi sửa B. Bản client cài trước ngày ấy thì vẫn gửi lại mãi.
 - **Server.** Mỗi thao tác trong lô có `try/catch` riêng (`sync.service.js:79-217`),
   nên các thao tác còn lại **đi lọt**: khoản chi bị xoá mềm, kỳ kế tiếp bị xoá mềm,
   số dư ví đã hoàn. Chỉ hoá đơn vẫn `'Payed'`. Máy thứ hai của cùng người dùng thấy
@@ -400,7 +403,8 @@ Xoá mềm các hàng thử sau khi kiểm — không xoá vật lý.
 **Vì sao đáng sửa.** Danh sách mã vĩnh viễn của client là **danh sách trắng**
 (`SYNC_PUSH_ERROR_MAPPING.md` mục 3.1). Ai đọc ba câu trên sẽ kết luận client không
 phải đổi gì, vì `CONSTRAINT_VIOLATION` đã có trong danh sách. Thật ra ba mã mới đều
-rơi xuống `transient` và bị gửi lại mãi, cho tới khi client thêm chúng.
+rơi xuống `transient` và bị gửi lại mãi, cho tới khi client thêm chúng. Client đã thêm
+cả ba ngày 2026-09-11, nhưng bản client cài trước ngày ấy thì vẫn thế.
 
 **Xin giữ mã riêng** — client đã xin chúng — và sửa câu cho khớp mã:
 
@@ -423,13 +427,15 @@ Làm cùng lượt với `RULE_PROJECT_DOC_DRIFT.md`.
   `database/12`. Đo 2026-09-11 bằng truy vấn chỉ đọc: không có cột nào của tệp 12
   (`category.Color`, `transaction.Idbill`, bốn cột mới của `bill`),
   `uq_wallet_saving_active` vẫn còn, `chk_bill_pay_status` chưa có `'Skipped'`.
-- **Phía client còn hai việc, chưa làm:**
-  1. Thêm `WALLET_NAME_DUPLICATE` và `WALLET_DEFAULT_DUPLICATE` vào
-     `_permanentCodes` (`sync_engine.dart:1631-1636`), **trước** khi gộp `main`.
-     Hai mã này do client xin (`WALLET_SAVING_INDEX.md` mục 4.2); câu *"cả ba vẫn là
-     lỗi vĩnh viễn phía client"* ở đó là ý định, chưa thành mã.
-  2. Đón `BILL_ALREADY_PAID` — chỉ có nghĩa sau khi chốt ở mục 3 nằm đúng chỗ
-     **và** client bắt đầu gửi `idbill`.
+- **Phía client có hai việc:**
+  1. ✅ **Đã làm 2026-09-11:** thêm `WALLET_NAME_DUPLICATE`, `WALLET_DEFAULT_DUPLICATE`
+     và cả `BILL_ALREADY_PAID` vào `_permanentCodes` (`sync_engine.dart:1631-1648`),
+     canh bởi ba test ở `sync_failure_handling_test.dart`. Hai mã ví do client xin
+     (`WALLET_SAVING_INDEX.md` mục 4.2). Xếp `BILL_ALREADY_PAID` vĩnh viễn chỉ ngăn
+     việc gửi lại vô ích — không làm hoàn tác bị chặn ở mục 3 chạy được.
+  2. Đón `BILL_ALREADY_PAID` theo đúng nghĩa của chốt ở mục 3.4 — tự hoàn tác khoản
+     trả cục bộ — chỉ có nghĩa sau khi chốt nằm đúng chỗ **và** client bắt đầu gửi
+     `idbill`. Chưa làm.
 - **Làm mới hỏng vì 5xx cũng làm app đăng xuất.** `_tryRefreshToken` trả `null` cho
   mọi phản hồi khác 200 và mọi `DioException` (`auth_interceptor.dart:88-119`), rồi
   `onError` xoá token. Đề xuất 503 ở 2.6 vẫn đúng phía backend; cách app đón nó là

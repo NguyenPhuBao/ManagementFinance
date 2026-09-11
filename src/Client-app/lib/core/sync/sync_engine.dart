@@ -1633,6 +1633,18 @@ class SyncEngine {
     'CATEGORY_NAME_DUPLICATE',
     'CONSTRAINT_VIOLATION',
     'FORBIDDEN_SYSTEM_DEFAULT',
+    // Ba mã dưới đây đến cùng `7675b35` của backend (2026-09-10). Tập này là
+    // danh sách trắng, nên mã chưa có tên ở đây bị gửi lại mãi — xem
+    // `FIX_BACKEND_3_REGRESSIONS.md` mục 4.
+    //
+    // 23505 trên hai partial unique index của `wallet`; chính client xin tách
+    // thành mã riêng (`WALLET_SAVING_INDEX.md` mục 4.2).
+    'WALLET_NAME_DUPLICATE',
+    'WALLET_DEFAULT_DUPLICATE',
+    // Chốt trả hai lần. Xếp vĩnh viễn chỉ ngăn việc gửi lại vô ích; nó không
+    // làm thao tác bị từ chối chạy được. Chốt từ chối nhầm — như bản `7675b35`
+    // chặn cả hoàn tác thanh toán — thì việc sửa thuộc backend.
+    'BILL_ALREADY_PAID',
   };
 
   /// Khoá ngoại trỏ tới bảng `account` bị vỡ nghĩa là `idaccount` đang dùng
