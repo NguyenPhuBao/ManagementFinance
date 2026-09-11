@@ -107,6 +107,7 @@ void main() {
         find.text('Tài khoản và toàn bộ dữ liệu sẽ bị xoá vĩnh viễn khi hết thời hạn chờ.'),
         findsOneWidget);
     expect(find.text('Huỷ yêu cầu xoá'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('"Huỷ yêu cầu xoá": gọi huỷ và đọc lại trạng thái; lỗi thì SnackBar', (tester) async {
@@ -116,10 +117,12 @@ void main() {
     expect(repo.huyCalls, 1);
     expect(bloc.suKien.whereType<ThongTinTaiKhoanThayDoi>(), hasLength(1));
     expect(find.byType(SnackBar), findsNothing);
+    expect(tester.takeException(), isNull);
 
     repo.loiHuy = Exception('Không có kết nối mạng');
     await tester.tap(find.text('Huỷ yêu cầu xoá'));
     await tester.pumpAndSettle();
     expect(find.text('Không có kết nối mạng'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }
