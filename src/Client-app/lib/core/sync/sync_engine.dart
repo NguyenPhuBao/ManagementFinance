@@ -34,6 +34,14 @@ import '../../features/goal/domain/uu_tien_hop_le.dart';
 /// // Trigger manual (sau khi ghi local):
 /// sl<SyncEngine>().scheduleSync();
 /// ```
+/// Nửa đêm UTC của ngày CỤC BỘ của [d] — cho cột `@db.Date` trên server.
+///
+/// `d.toUtc()` của 03:00 giờ +07 là 20:00 UTC hôm trước; PostgreSQL cắt giờ
+/// và giữ lại ngày sai. Chỉ dùng cho cột ngày-không-giờ (hiện là
+/// `bill.Period_end`); cột timestamp vẫn gửi `toUtc()` như cũ.
+String? _ngayCucBoUtcIso(DateTime? d) =>
+    d == null ? null : DateTime.utc(d.year, d.month, d.day).toIso8601String();
+
 class SyncEngine {
   // ignore: unused_field — sẽ dùng ở Plan 6 khi backend có sync API
   final DioClient _dioClient;
@@ -1260,8 +1268,11 @@ class SyncEngine {
           'previous_bill_id': bill.generatedFromBillId,
           'anchor_day': bill.anchorDay,
           // Ân hạn hoá đơn (2026-09-12, schema v21): ngày kết thúc kỳ tách
-          // khỏi hạn trả. Cột server là @db.Date — gửi mốc UTC như `due_date`.
-          'period_end': bill.periodEnd?.toUtc().toIso8601String(),
+          // khỏi hạn trả. Cột server là @db.Date (KHÔNG giờ), khác
+          // `due_date` (@db.Timestamp): gửi `toUtc()` thô của một mốc 03:00
+          // giờ +07 là 20:00 UTC hôm TRƯỚC và server lưu lùi một ngày — im
+          // lặng. Nên gửi nửa đêm UTC của NGÀY CỤC BỘ. Đo thật 2026-09-12.
+          'period_end': _ngayCucBoUtcIso(bill.periodEnd),
           'is_deleted': bill.isDeleted,
           'updated_at': bill.updatedAt.toUtc().toIso8601String(),
           'idaccount':
