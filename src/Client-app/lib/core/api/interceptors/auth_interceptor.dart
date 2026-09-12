@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../../auth/buoc_dang_xuat.dart';
 import '../../constants/app_constants.dart';
 import 'ket_qua_lam_moi.dart';
 
@@ -25,6 +26,25 @@ class AuthInterceptor extends Interceptor {
   final _sessionExpiredController = StreamController<void>.broadcast();
 
   Stream<void> get sessionExpiredStream => _sessionExpiredController.stream;
+
+  /// Server nói thẳng rằng tài khoản này không được dùng nữa — 401 mang `code`
+  /// ở cấp gốc (spec cưỡng chế đăng xuất §3.3).
+  ///
+  /// Khác hẳn [sessionExpiredStream]: luồng kia nói *phiên hỏng, hỏi lại server
+  /// đi* và `AuthBloc` sẽ gọi `verifySession()` trước khi quyết định. Luồng này
+  /// mang sẵn **lý do**, nên không còn gì để hỏi — đưa người dùng ra kèm câu
+  /// giải thích.
+  final _taiKhoanBiTuChoiController =
+      StreamController<ThongBaoBuocDangXuat>.broadcast();
+
+  Stream<ThongBaoBuocDangXuat> get taiKhoanBiTuChoi =>
+      _taiKhoanBiTuChoiController.stream;
+
+  void _phatBiTuChoi(ThongBaoBuocDangXuat thongBao) {
+    if (!_taiKhoanBiTuChoiController.isClosed) {
+      _taiKhoanBiTuChoiController.add(thongBao);
+    }
+  }
 
   /// Dio riêng cho `/auth/refresh` và cho lượt thử lại — không đi qua
   /// interceptor này (tránh vòng lặp). Test tiêm một Dio có adapter giả.
@@ -69,6 +89,22 @@ class AuthInterceptor extends Interceptor {
   ) async {
     // Chỉ xử lý 401, bỏ qua mọi lỗi khác
     if (err.response?.statusCode != 401) {
+      return handler.next(err);
+    }
+
+    // §3.3 chỗ 1 — 401 của một request thường mang mã trạng thái tài khoản.
+    // Làm mới token lúc này là vô ích (server đã thu hồi refresh token ở
+    // `auth.service.js:411`) và còn có hại: lượt làm mới ấy vấp Token Reuse
+    // Detection, nhận về một 401 KHÔNG mã, rồi phát `sessionExpiredStream` —
+    // một lượt đăng xuất trơn chạy đua với hộp thoại có lý do.
+    //
+    // Chốt "token cũ" bên dưới cố ý đứng SAU: mã này nói về *tài khoản*, không
+    // nói về *token*, nên token có cũ hay không cũng không đổi kết luận.
+    final thongBaoHttp =
+        tuBody401(err.response?.data, nguon: NguonBuocDangXuat.http);
+    if (thongBaoHttp != null) {
+      _phatBiTuChoi(thongBaoHttp);
+      await _clearTokens(phatTinHieu: false);
       return handler.next(err);
     }
 
@@ -164,7 +200,26 @@ class AuthInterceptor extends Interceptor {
         final ketQua = ketQuaTuLoiLamMoi(e);
         if (ketQua is LamMoiPhienChet) {
           phanQuyet = ketQua;
-          await _clearTokens();
+          // §3.3 chỗ 2 — `/auth/refresh` cũng kiểm trạng thái tài khoản và trả
+          // 401 cùng hình dạng body (`auth.controller.js:79-85`). Phép quyết
+          // định nằm ở ĐÂY chứ không ở `onError`: `_clearTokens()` chạy trong
+          // này, nên để `onError` tự đọc `LamMoiPhienChet.loi` thì tín hiệu
+          // `sessionExpiredStream` đã phát mất rồi (spec §3.8 ghi sẵn điểm
+          // vướng này cho Phần 1).
+          //
+          // ⚠️ Chỉ đọc `code` ở **401**. `/auth/refresh` còn trả 400, mà body
+          // 400 của repo này cũng mang `code` (ví dụ `VALIDATION_ERROR`) — đọc
+          // nó là hiện hộp thoại "Tài khoản đã bị vô hiệu hoá" cho một lỗi nhập
+          // liệu.
+          final thongBao = e.response?.statusCode == 401
+              ? tuBody401(e.response?.data, nguon: NguonBuocDangXuat.lamMoi)
+              : null;
+          if (thongBao != null) {
+            _phatBiTuChoi(thongBao);
+            await _clearTokens(phatTinHieu: false);
+          } else {
+            await _clearTokens();
+          }
         }
         return ketQua;
       }
@@ -263,7 +318,11 @@ class AuthInterceptor extends Interceptor {
   }
 
   // ─── Xóa toàn bộ tokens khi phiên chết ──────────────────────────────────
-  Future<void> _clearTokens() async {
+  /// [phatTinHieu] đặt `false` khi đã có một lời từ chối **mang lý do** đi ra
+  /// bằng [taiKhoanBiTuChoi]: `AuthBloc` sắp đăng xuất kèm hộp thoại, và một
+  /// lượt `sessionExpiredStream` song song chỉ tạo ra một lượt đăng xuất trơn
+  /// chạy đua với nó (spec §3.3).
+  Future<void> _clearTokens({bool phatTinHieu = true}) async {
     // Chỉ coi là "phiên vừa chết" khi thật sự có token để mất. Sau lần xoá đầu
     // tiên, mọi request tiếp theo vẫn nhận 401 và vẫn chạy qua đây; phát tín
     // hiệu mỗi lần sẽ dội sự kiện vào AuthBloc — mà chính lời gọi
@@ -286,7 +345,7 @@ class AuthInterceptor extends Interceptor {
       await secureStorage.delete(key: AppConstants.accessTokenKey);
       await secureStorage.delete(key: AppConstants.refreshTokenKey);
     } finally {
-      if (hadSession && !_sessionExpiredController.isClosed) {
+      if (phatTinHieu && hadSession && !_sessionExpiredController.isClosed) {
         _sessionExpiredController.add(null);
       }
     }
@@ -296,5 +355,6 @@ class AuthInterceptor extends Interceptor {
   /// khi gọi tới, nhưng test thì cần để không rò StreamController.
   void dispose() {
     _sessionExpiredController.close();
+    _taiKhoanBiTuChoiController.close();
   }
 }
