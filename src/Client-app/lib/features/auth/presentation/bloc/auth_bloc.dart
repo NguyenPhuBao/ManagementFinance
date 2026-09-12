@@ -168,8 +168,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     // Dọn bản sao cục bộ CHỈ khi tài khoản thật sự đã bị xoá, và chỉ khi lời ấy
     // không đến từ nhánh làm mới token — ở đó một lỗi lược đồ phía server từng
     // đội lốt được `ACCOUNT_DELETED` (CAN-LAM 17 §2.5, spec §3.6b). Backend đã
-    // sửa (gộp 2026-09-12) nhưng nhánh ấy chưa đo đầu-cuối; bỏ ngoại lệ `lamMoi`
-    // sau khi đo — xem `LyDoBuocDangXuat.lamMoi`.
+    // sửa (gộp 2026-09-12); nhánh ấy đã đo ca hợp lệ và ca bị khoá, còn ca
+    // `ACCOUNT_DELETED`/`SCHEMA_ERROR` thì chưa — giữ ngoại lệ `lamMoi`, gỡ là
+    // quyết định của người dùng — xem `LyDoBuocDangXuat.lamMoi`.
     if (thongBao.lyDo == LyDoBuocDangXuat.daXoa &&
         thongBao.nguon != NguonBuocDangXuat.lamMoi) {
       // `idaccount` chỉ đến từ chính lời server nói, hoặc từ phiên đăng nhập —

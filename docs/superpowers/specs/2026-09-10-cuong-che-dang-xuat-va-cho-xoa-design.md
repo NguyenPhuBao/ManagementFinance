@@ -5,9 +5,9 @@
 > `countdown`; client đọc từ cùng ngày (`_dongBoTrangThai`, xem mục 6.1 và §4.3).
 > §3.8 ĐÃ LÀM (2026-09-11). **Phần 1 (§3.1–§3.7) và §5.1 ĐÃ LÀM 2026-09-12** — bảy commit
 > `693de3b` → `fc82a94`, cộng `ac08ed6` và `40a553d` (hai lỗi tìm ra khi kiểm máy ảo).
-> Nhánh HTTP 401 **đã kiểm đầu-cuối trên máy thật**, xem §7.3. CAN-LAM 17 A đã đóng
-> 2026-09-12 (bắt tay socket nối được trên máy ảo) nên nhánh socket và nhánh làm mới
-> **dựng được** nhưng **chưa chạy**; ngoại lệ §3.6b giữ tới khi đo nhánh làm mới.** Mọi quyết định sản phẩm ở mục 2
+> **Cả ba nhánh đã kiểm đầu-cuối trên máy thật** — HTTP 401 sáng 2026-09-12; socket và làm mới
+> chiều cùng ngày, khoá tài khoản thử qua API admin (§7.3). Ngoại lệ §3.6b **vẫn giữ**: ca
+> `daXoa` qua nhánh làm mới và ca `SCHEMA_ERROR → 503` chưa đo được (cần xoá tài khoản / phá lược đồ).** Mọi quyết định sản phẩm ở mục 2
 > đã chốt qua hỏi–đáp ngày 2026-09-10; Phần 1 (mục 3) được duyệt riêng trong phiên
 > ấy. Phần 2–4 viết thẳng vào đây theo yêu cầu "làm đi" của người dùng. Ngày
 > 2026-09-11 người dùng duyệt nốt: §3.3 và §3.6b (hai điểm soát lại theo `main`),
@@ -193,7 +193,8 @@ request sau thấy kho rỗng, và `_clearTokens` sẵn có tự im vì `hadSess
 Trước khi gộp `main`, cả hai chỗ **nằm im**: body 401 chưa mang mã (CAN-LAM 13), và
 `/auth/refresh` chưa kiểm trạng thái tài khoản. Nhánh đã gộp `main` @ `cc65f4f`
 (2026-09-11), nên mã backend cho chỗ 1 đã có trên nhánh. Chỗ 2 chạy khi backend sửa CAN-LAM 17 mục A — ✅ đã sửa, gộp `cbbeeb4` 2026-09-12 (`...rejection.data`
-lên lỗi, controller đọc đúng ba tên; chưa đo đầu-cuối); trước đó nó trả 401 kèm
+lên lỗi, controller đọc đúng ba tên; ✅ đo đầu-cuối chiều 2026-09-12 — khoá tài khoản thử rồi gọi
+`/auth/refresh`: 401 với `code`, `idaccount`, `reason_inactive` ở cấp gốc); trước đó nó trả 401 kèm
 `idaccount` nhưng **không** `code`, nên `tuBody401` trả `null` và rơi về đường cũ.
 Không cần đổi gì phía client khi backend sửa.
 
@@ -284,7 +285,7 @@ người dùng trên server (quy tắc 5).
 `/auth/refresh`** là chỗ **đã biết** một sự cố phía server đội lốt được
 `ACCOUNT_DELETED`: trên `main` @ `7675b35`, `authenticate` tách lỗi lược đồ thành
 503, còn `/auth/refresh` thì chưa (CAN-LAM 17 mục 2.5; ✅ mã backend sửa, gộp `cbbeeb4` 2026-09-12 —
-trả 503 khi `SCHEMA_ERROR` — nhưng **chưa đo đầu-cuối**). Client không tự phân biệt
+trả 503 khi `SCHEMA_ERROR` — chỉ đọc mã, ca này không dựng được trên CSDL dev lành). Client không tự phân biệt
 được.
 
 `ThongBaoBuocDangXuat` mang thêm nguồn — `socket`, `http` hoặc `lamMoi` (trường
@@ -298,8 +299,10 @@ Nguồn `lamMoi` vẫn đăng xuất và vẫn hiện hộp thoại "Tài khoả
 - **Được gì:** nếu là báo động giả, người dùng đăng nhập lại và dữ liệu còn nguyên
   — cùng tinh thần *"đọc nhầm thành bị khoá chỉ giữ lại dữ liệu"* ở §3.1.
 - Khi CAN-LAM 17 mục 2.5 xong **và đo được nhánh làm mới chạy đúng** thì bỏ ngoại lệ này; chú
-  thích trong mã trỏ về đây. (2026-09-12: mã backend đã xong, chưa đo — giữ ngoại lệ, vì bỏ
-  nhầm là xoá dữ liệu người dùng trên máy.)
+  thích trong mã trỏ về đây. (2026-09-12: mã backend đã xong; nhánh làm mới **đã đo** chiều cùng
+  ngày với tài khoản hợp lệ (200) và tài khoản bị khoá (401 + `ACCOUNT_INACTIVE`), nhưng ca
+  `ACCOUNT_DELETED` qua nhánh này và ca `SCHEMA_ERROR` chưa đo — **giữ** ngoại lệ, vì bỏ nhầm
+  là xoá dữ liệu người dùng trên máy; gỡ là quyết định của người dùng.)
 
 ### 3.7. Màn Đăng nhập
 
@@ -337,7 +340,8 @@ cả hai, **trước** Phần 1, vì §3.3 sửa đúng `onError` và `_tryRefre
 
 Điểm 1 **không** cứu được ca đang xảy ra trên nhánh đã gộp `main`: `/auth/refresh` trả
 401 cho mọi tài khoản (CAN-LAM 17 mục A), mà 401 là phiên chết. ✅ Backend sửa, gộp `cbbeeb4`
-2026-09-12; chưa đo đầu-cuối.
+2026-09-12; đo đầu-cuối chiều cùng ngày — `/auth/refresh` với refresh token thật trả 200 kèm cặp
+token mới (token cũ bị thu hồi đúng: gọi lại → 401 không mã).
 
 ### ✅ Làm 2026-09-11
 
@@ -399,13 +403,14 @@ nhiêu request cùng nhận 401.
 **Không kiểm được trên máy ảo:** không đổi giao diện; không ép được token
 truy cập hết hạn; và CAN-LAM 17 mục A làm `/auth/refresh` trả 401 cho mọi
 tài khoản, nên nhánh làm mới không dựng được đầu-cuối trên backend đã gộp (✅ hết từ
-2026-09-12 — nay dựng được, chưa chạy; lý do đầy đủ ở Global Constraints của kế hoạch thực thi,
+2026-09-12 — đo bằng `curl` chiều cùng ngày: 200 khi hợp lệ, 401 + `code` khi bị khoá; lý do đầy đủ ở Global Constraints của kế hoạch thực thi,
 `.superpowers/sdd/2026-09-11-lam-moi-token/`).
 
 ⚠️ **Rủi ro còn lại, nói thành lời (2026-09-12):** toàn bộ lời hứa §3.8 hiện
 **chỉ được canh bằng máy chủ giả** — chính hành vi "mất mạng thì giữ token"
 chưa một lần nào chạy trên máy thật. **Việc còn nợ:** khi backend đóng
-CAN-LAM 17 mục A (✅ đóng 2026-09-12) thì kiểm một lượt trên máy ảo — đăng nhập, bật chế độ máy bay
+CAN-LAM 17 mục A (✅ đóng 2026-09-12; backend đo bằng `curl` chiều cùng ngày trả 200/401 đúng —
+còn **interceptor của app** ép 401 rồi tự làm mới thì chưa chạy trên máy) thì kiểm một lượt trên máy ảo — đăng nhập, bật chế độ máy bay
 (hoặc hạ `JWT_USER_ACCESS_EXPIRES` trên backend dev để ép 401), xác nhận
 **không** bị đăng xuất và hai token còn nguyên trong kho.
 
@@ -732,6 +737,30 @@ Kèm cập nhật `README.md` mục 2 và mọi con số đếm mục CAN-LAM tr
 
 ### 7.3. Kiểm chứng ngoài bộ test
 
+> ✅ **Chiều 2026-09-12 — nhánh socket và nhánh làm mới đã chạy thật** (backend của nhánh sau gộp
+> `cbbeeb4`, máy ảo `emulator-5554` giữ phiên `quangdat` = tài khoản 11, `Iduser` 11). Cách đo:
+> đăng nhập `admin` lấy token → `PATCH /api/admin/updatestatus/11` `{"status":"Inactive",
+> "reason_inactive":"Kiem thu cuong che dang xuat 2026-09-12"}` → chờ 10 giây → đo → `{"status":"Active"}`.
+> Tài khoản đã trả về `Active`, `Reason_Inactive` `NULL` (đo CSDL chỉ đọc). Kết quả:
+>
+> - **Nhánh socket:** `[RealtimeChannel] Bị buộc đăng xuất: biKhoa` lúc 16:30:40.687 — **trước**
+>   cả khi API khoá trả lời (`.774`); hộp thoại "Tài khoản đã bị vô hiệu hoá" hiện trên màn Đăng
+>   nhập, thân là **đúng câu server gửi** kèm lý do; SQLite **giữ nguyên** (log 16:30:41 vẫn đếm
+>   2 ví của tài khoản 11 sau khi đã về màn Đăng nhập). Server ngắt socket ngay sau sự kiện
+>   (`io server disconnect`) nên kênh kịp hẹn "nối lại sau 2s" — nhưng lần ấy **không bao giờ
+>   chạy**: `RealtimeChannel.stop()` huỷ `_henNoiLai` trước mọi thứ khác, và
+>   `_dungMoiThuCuaPhien` gọi nó trong vòng 2 giây ấy. Đúng như §3.4 mô tả.
+> - **Nhánh làm mới (backend):** trước khoá, `/auth/refresh` trả **200** kèm cặp token mới (token cũ
+>   gọi lại → 401 không mã — thu hồi đúng). Sau khoá, `/auth/refresh` **và** `/auth/profile` đều trả
+>   **401** với `code: ACCOUNT_INACTIVE`, `idaccount: 11`, `reason_inactive` ở **cấp gốc** — đúng
+>   hình dạng §3.3 chỗ 2 đọc. **Chưa đo:** interceptor của app tự ép 401 rồi làm mới (§3.8 —
+>   cần hạ `JWT_USER_ACCESS_EXPIRES` phía backend), và ca `ACCOUNT_DELETED` qua nhánh này.
+> - **CAN-LAM 19 đầu-cuối:** response đăng nhập không còn `pendingDeleteCancelled`; `/auth/profile`
+>   có khoá `countdown` (`null` khi `Active`).
+>
+> Sau đó đăng nhập lại `quangdat` trên máy ảo: đường đăng nhập cũng đúng **một** `Starting full
+> sync` (kiểm kèm cho bản sửa `HomePage.build()` cùng ngày).
+
 Sau khi áp `database/7`–`11` (tối 2026-09-10, mục 1.3), backend **của chính nhánh
 này** dựng được mọi tình huống **trừ** body 401 có mã (CAN-LAM 13) — kể cả nhánh
 socket, vì bắt tay ở đó còn dùng `isAccountValid`. ⚠️ Câu vừa rồi nói về backend
@@ -774,8 +803,9 @@ socket **không kiểm đầu-cuối được** cho tới khi backend sửa mụ
   Cùng lượt ấy còn đo được: bắt tay socket từ chối **mọi** tài khoản kể cả khi
   `Active`, với đúng câu `Account no longer exists or has been deleted` và lời từ
   chối **không** mang `code` ở cấp gốc (`{message, data:{idaccount,
-  reason_inactive}}`) — CAN-LAM 17 A và 18 §2.1 tái hiện được trên máy thật. **Nhánh làm mới** (§3.3 chỗ 2) chờ thêm CAN-LAM 17 mục A (✅ đóng 2026-09-12 — nay đo được
-  theo mục 2.7 `DA-XONG/FIX_BACKEND_3_REGRESSIONS.md`; chưa chạy).
+  reason_inactive}}`) — CAN-LAM 17 A và 18 §2.1 tái hiện được trên máy thật. **Nhánh làm mới** (§3.3 chỗ 2) chờ thêm CAN-LAM 17 mục A (✅ đóng 2026-09-12 — đo chiều cùng ngày
+  theo mục 2.7 `DA-XONG/FIX_BACKEND_3_REGRESSIONS.md`: 200 khi hợp lệ; 401 + `code: ACCOUNT_INACTIVE`
+  + `reason_inactive` ở cấp gốc khi bị khoá — xem khối ✅ đầu §7.3).
 - Không sọc vàng tràn bố cục ở 411dp.
 
 `flutter test` và `flutter analyze` đối chiếu mức nền ghi trong `CLAUDE.md` — **2105/2105**
@@ -831,7 +861,8 @@ kể từ G33 và §3.8).
   `flutter test` không bắt được, đúng như `CLAUDE.md` cảnh báo: *thứ tự thực tế
   giữa hai luồng bất đồng bộ*.
 - **Lỗi lược đồ đội lốt `ACCOUNT_DELETED` ở nhánh làm mới** — CAN-LAM 17 mục 2.5;
-  phía client xem §3.6b. ✅ Mã backend sửa 2026-09-12, chưa đo; ngoại lệ client giữ.
+  phía client xem §3.6b. ✅ Mã backend sửa 2026-09-12; nhánh làm mới đã đo ca hợp lệ và ca bị
+  khoá, ca `ACCOUNT_DELETED`/`SCHEMA_ERROR` chưa; ngoại lệ client giữ.
 - **Đổi tài khoản trong lúc một lượt `/auth/profile` còn treo — hai race cùng họ với
   `46ad023`, CHƯA sửa.** (1) `verifySession` → `_dongBoTrangThai` đọc bộ nhớ đệm **sau**
   `getProfile`, nên có thể ghi trạng thái của phiên cũ vào tài khoản vừa đăng nhập.

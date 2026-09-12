@@ -1,7 +1,7 @@
 # Ba hồi quy của `7675b35` ("fix backend 3") — xác thực từ chối mọi tài khoản, chốt trả hai lần chặn hoàn tác, mã lỗi lệch tài liệu
 
 > ⚠️ **2026-09-12 — backend sửa ở `cbbeeb4` (gộp về nhánh cùng ngày): A ✅ đã chạy thật** (bắt tay
-> socket nối được trên máy ảo sau 51 lần bị từ chối; `/auth/refresh` mã đúng, chưa đo), **C ✅**,
+> socket nối được trên máy ảo sau 51 lần bị từ chối; `/auth/refresh` đo chiều cùng ngày: 200 hợp lệ, 401 + `code` ở cấp gốc khi khoá), **C ✅**,
 > **B chỉ nửa đầu** — bước 1 (bỏ chốt ở `upsertBill`) xong và đo thật (hàng `3c90acfa…` lên
 > `Pending`), bước 2 (chốt ở `upsertTransaction`, mục 3.6) **chưa làm**: `BILL_ALREADY_PAID` nay
 > không ai ném, server không chặn khoản chi thứ hai ở đâu cả. Bảng ở banner `../CAN-LAM/README.md`;
