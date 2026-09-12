@@ -577,6 +577,19 @@ vẽ".
   được ghi trong toàn bộ `lib/`. **Có điều kiện `payStatus = 'Pending'`**: xem
   bẫy 7.4.
 
+⚠️ **Cập nhật 2026-09-12 — trạng thái thứ tư `'Skipped'` (bỏ qua kỳ).** Ba chỗ
+của phần thông báo phải **không** đụng tới kỳ đã bỏ qua, và cả ba nay đi qua
+**một** vị từ `conPhaiTra()` ở `features/bill/domain/bill_pay_status.dart` thay
+vì chép tay `isPaid || payStatus == 'Payed'`:
+
+| Chỗ | Hỏng gì nếu để lọt |
+|---|---|
+| `BillDao.getUpcoming` (SQL, thêm `payStatus != 'Skipped'`) | nuôi cả bộ quét lẫn bộ đặt lịch — lọt một chỗ là hỏng cả hai |
+| `notification_rules.dart` `_billCandidates` | nhắc trả một kỳ người dùng vừa chủ động bỏ |
+| `reminder_scheduler.dart` | đặt lịch **AlarmManager**: thông báo nổ trên màn hình khoá, và lịch ấy **không nằm trong SQLite** nên dọn dữ liệu không gỡ được |
+
+Mỗi chỗ một ca test; xem mục **6.7** `docs/bill/BILL_DOCUMENTATION.md`.
+
 ---
 
 ## 5b. Chạm vào thông báo hệ điều hành (2026-09-06)
@@ -1005,6 +1018,12 @@ nào báo ra**. Người dùng đổi múi giờ thì lịch cũ neo múi giờ 
 `payStatus = 'Pending'`. Quét chạy sau **mọi** lần đồng bộ, nên ghi lại vô điều
 kiện là bản ghi luôn ở trạng thái `pending` — đẩy lên rồi lại `pending` — một
 vòng lặp đẩy vô tận không có lỗi nào báo ra.
+
+⚠️ Từ 2026-09-12 điều kiện ấy còn gánh thêm một việc: nó là thứ giữ kỳ
+**`'Skipped'`** nằm ngoài **cả hai** chiều của `markOverdue` (chiều đi chỉ nhận
+`'Pending'`, chiều về chỉ nhận `'Overdue'`). Một kỳ bỏ qua không phải nợ nên
+không thể quá hạn, mà cũng không được kéo về `'Pending'`. Có ca test canh cả
+hai chiều, và canh luôn `syncStatus` **không** bị đặt lại.
 
 **7.5 Giới hạn 64 lịch chờ trên iOS.** Vượt thì iOS **âm thầm** giữ 64 cái gần
 nhất và bỏ phần còn lại — không lỗi, không log.

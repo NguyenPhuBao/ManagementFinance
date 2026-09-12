@@ -1,6 +1,19 @@
 # Bỏ qua kỳ hoá đơn (`Pay_status = 'Skipped'`) — thiết kế
 
-**Ngày:** 2026-09-12 · **Phạm vi:** `src/Client-app` · **Trạng thái:** chờ duyệt
+**Ngày:** 2026-09-12 · **Phạm vi:** `src/Client-app` · **Trạng thái:** ✅ **đã
+duyệt và đã làm xong 2026-09-12**
+
+> **Đã thực hiện:** tám hạng mục, chín commit từ `1e87876` trên `TranQuangDat`,
+> cộng một lượt soát tài liệu rộng ngay sau. `flutter test` **2211/2211**, `flutter analyze` **25 issue /
+> 0 error** (mức nền). Kế hoạch thực thi:
+> `docs/superpowers/plans/2026-09-12-bo-qua-ky-hoa-don.md`; bàn giao chi tiết ở
+> mục **6.7** `docs/bill/BILL_DOCUMENTATION.md`.
+>
+> ⚠️ **Một chỗ spec này KHÔNG lường trước**, chỉ máy ảo lộ ra: mục 5 chỉ nói tới
+> trang chi tiết, nên **dòng trên tab Lịch sử của trang danh sách** vẫn suy *hai*
+> trạng thái và bày nút "Thanh toán" cho kỳ `Skipped` — bấm vào là bị repository
+> từ chối. Vá ở `e2d7fd0` bằng nhánh thứ ba `daBoQua`. Bài học: "nút chỉ đặt ở
+> trang chi tiết" **không** kéo theo "trang danh sách không phải đổi gì".
 
 Bước **9** trong thứ tự người dùng đã duyệt (mục "🚀 Bắt đầu từ đâu ở phiên
 sau", `docs/PROJECT_CONTEXT.md`). Backend **đã xong phần của mình** từ
@@ -105,9 +118,12 @@ Flutter, để `core/` import được:
   `kBillSkipped`. Hằng là **bắt buộc**, không phải trang trí: `getUpcoming` và
   `markOverdue` là **truy vấn SQL**, không gọi được vị từ Dart — chúng chỉ dùng
   được hằng.
-- **Hai vị từ** `conPhaiTra(Bill)` và `daCoKhoanChi(Bill)`, mỗi cái đọc **cả
-  hai** cột `isPaid`/`payStatus` đúng như 10 chỗ hiện nay, vì hàng do bản client
-  cũ ghi hoặc kéo về từ backend có thể lệch hai cột.
+- **Ba vị từ** — `daCoKhoanChi(Bill)` (đọc **cả hai** cột `isPaid`/`payStatus`,
+  vì hàng do bản client cũ ghi hoặc kéo về từ backend có thể lệch hai cột),
+  `daBoQua(Bill)`, và `conPhaiTra(Bill)` = `!daCoKhoanChi && !daBoQua`.
+  > Bản đầu của mục này ghi "**hai** vị từ" và bỏ sót `daBoQua`. Mã đã viết có
+  > **ba** — `daBoQua` cần đứng riêng vì `billDisplayStatusOf` và `undoSkip` hỏi
+  > đúng câu ấy, không hỏi "còn phải trả không".
 
 Giá trị lạ (không thuộc bốn) đọc là **còn phải trả** — an toàn hơn im lặng bỏ
 qua một khoản nợ thật.
@@ -170,10 +186,13 @@ loại lỗi mà thanh hằng số `0.66` ngày trước đã gây ra, chỉ tin
   đã đóng.`
 - `splitBills` đẩy kỳ `Skipped` vào nhóm thứ hai, xếp theo hạn mới nhất lên đầu
   như hiện nay. Phép chia đổi từ `_daTra(b)` sang `!conPhaiTra(b)`.
-- **Đổi tên trường `BillSections.paid` → `daDong`** (và `unpaid` → `conPhaiTra`
-  cho cân). Cùng lý do với việc đổi tên tab: nhóm ấy không còn chỉ chứa kỳ đã
-  trả, nên cái tên nói sai. Chỉ có **một** nơi đọc hai trường này
-  (`bill_page.dart:150`), nên đây là phép đổi tên rẻ — để nguyên mới là nợ.
+- **Đổi tên trường `BillSections.paid` → `daDong`, `unpaid` → `chuaDong`.**
+  Cùng lý do với việc đổi tên tab: nhóm ấy không còn chỉ chứa kỳ đã trả, nên cái
+  tên nói sai. Chỉ có **một** nơi đọc hai trường này (`bill_page.dart:150`), nên
+  đây là phép đổi tên rẻ — để nguyên mới là nợ.
+  > Bản đầu của mục này đề nghị `unpaid` → `conPhaiTra`; **không dùng** vì tên ấy
+  > trùng với vị từ cấp thư viện `conPhaiTra(Bill)` và che nó trong thân lớp.
+  > Mã đã viết dùng `chuaDong`.
 
 ### 5.2. Nhãn trạng thái `bill_status_visuals.dart`
 
@@ -263,7 +282,7 @@ trong `reason:` nó canh chừng điều gì.
 
 | Tệp | Canh chừng |
 |---|---|
-| `test/features/bill/domain/bill_pay_status_test.dart` *(mới)* | Hai vị từ trên cả bốn giá trị; hàng lệch cột (`Payed` mà `isPaid` false, và ngược lại); giá trị lạ đọc là còn phải trả |
+| `test/features/bill/domain/bill_pay_status_test.dart` *(mới)* | **Ba** vị từ trên cả bốn giá trị; hàng lệch cột (`Payed` mà `isPaid` false, và ngược lại); giá trị lạ đọc là còn phải trả **và không** đọc là bỏ qua. **7** ca (bản đầu của mục này đoán 8) |
 | `test/features/bill/domain/bill_status_test.dart` | Trạng thái thứ năm; kỳ `Skipped` **đã quá ngày hạn** vẫn đọc ra `skipped`; `splitBills` đẩy vào nhóm thứ hai; `summarizeBills` không tính vào **cả hai** vế |
 | `test/features/bill/data/repositories/bill_skip_test.dart` *(mới)* | `skipBill` sinh kỳ sau, **không** đụng số dư ví, **không** sinh giao dịch nào; `undoSkip` xoá mềm kỳ sau và đưa về `Pending`; `payBill` từ chối kỳ `Skipped`; `skipBill` từ chối kỳ `Payed` và kỳ `Skipped`; hoá đơn **không lặp** thì không sinh kỳ nào |
 | `test/core/database/bill_overdue_test.dart` | `markOverdue` **không đụng** `Skipped` ở **cả hai** chiều; chạy hai lần không đổi gì (chống vòng lặp đẩy) |

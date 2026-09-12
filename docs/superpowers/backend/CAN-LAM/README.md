@@ -81,7 +81,7 @@ tệp 12; cách đo ở đầu mục 18.
 |---|---|---|---|
 | 1 | [2026-09-04-backend-idempotent-delete.md](../DA-XONG/2026-09-04-backend-idempotent-delete.md) | ⚠️ (A)(B)(C) ✅; (D) mã ✅, CSDL còn `DEFAULT 0` | 18 §2.2 |
 | 2 | [CATEGORY_COLOUR_COLUMN.md](../DA-XONG/CATEGORY_COLOUR_COLUMN.md) | ✅ phía backend — cột `Color`, push nhận và pull trả khoá `color` | ✅ client sửa khoá 2026-09-11 — 18 §2.3 |
-| 3, 4, 5 | [2026-09-06-bill-chuoi-ky-va-an-han.md](../DA-XONG/2026-09-06-bill-chuoi-ky-va-an-han.md) | ⚠️ việc A, B, C, E ✅ (cột, push, pull, `'Skipped'`); việc D: cột `Auto_pay` ✅, chốt trả hai lần đặt sai chỗ | 17 B |
+| 3, 4, 5 | [2026-09-06-bill-chuoi-ky-va-an-han.md](../DA-XONG/2026-09-06-bill-chuoi-ky-va-an-han.md) | ⚠️ việc A, B, C, E ✅ (cột, push, pull, `'Skipped'` — **client dùng thật từ 2026-09-12**, đã kiểm đầu-cuối); việc D: cột `Auto_pay` ✅, chốt trả hai lần đặt sai chỗ | 17 B |
 | 6 | [BILL_ANCHOR_DAY.md](../DA-XONG/BILL_ANCHOR_DAY.md) | ✅ cột, push, pull; không chỗ nào tự tính lại từ `Due_date` | — |
 | 7 | [SOCKET_SYNC_COMPLETED.md](../DA-XONG/SOCKET_SYNC_COMPLETED.md) | ✅ phát sau `/sync/push` tới phòng tài khoản — nhưng chưa tới được client vì 17 A | — |
 | 8 | [SOCKET_BANK_EVENT_PAYLOAD.md](../DA-XONG/SOCKET_BANK_EVENT_PAYLOAD.md) | ⛔ vẫn hai hình dạng, `type` hai nghĩa; nay phát hai lần | 18 §2.5 |
