@@ -14,6 +14,7 @@ void main() {
     DateTime? startDate,
     DateTime? due,
     String? nhacTruoc = '3',
+    DateTime? periodEnd,
   }) {
     return BillDraft(
       name: 'Tiền điện',
@@ -21,6 +22,7 @@ void main() {
       timeNotification: nhacTruoc,
       startDate: startDate ?? DateTime(2026, 9, 5),
       dueDate: due ?? dueDate,
+      periodEnd: periodEnd,
       walletId: walletId,
       categoryId: categoryId,
       isRecurring: isRecurring,
@@ -177,6 +179,32 @@ void main() {
           reason: 'updateFields chỉ ghi những cột CÓ MẶT. Vắng mặt nghĩa là '
               '"giữ nguyên", nên tắt nhắc nhở sẽ không có tác dụng gì.');
       expect(c.timeNotification.value, isNull);
+    });
+  });
+  group('periodEnd — NULL chỉ một nghĩa', () {
+    test('ân hạn 0: vẫn GHI periodEnd bằng dueDate, không để trống', () {
+      final c = draft().toInsertCompanion(id: 'b1', idaccount: 7, now: now);
+      expect(c.periodEnd.present, isTrue,
+          reason: 'NULL phải chỉ còn nghĩa "hàng cũ, chưa biết". Hàng mới để '
+              'trống là nhánh kéo về (Value.absent khi server null) không phân '
+              'biệt được "chưa đẩy" với "ân hạn 0".');
+      expect(c.periodEnd.value, dueDate);
+    });
+
+    test('ân hạn 15: ghi đúng ngày kết thúc kỳ', () {
+      final c = draft(periodEnd: DateTime(2026, 9, 20))
+          .toInsertCompanion(id: 'b1', idaccount: 7, now: now);
+      expect(c.periodEnd.value, DateTime(2026, 9, 20));
+      expect(c.dueDate.value, dueDate);
+    });
+
+    test('đường Sửa cũng ghi periodEnd', () {
+      final c = draft(periodEnd: DateTime(2026, 9, 20))
+          .toUpdateCompanion(id: 'b1', idaccount: 7, now: now);
+      expect(c.periodEnd.present, isTrue,
+          reason: 'updateFields chỉ ghi cột CÓ MẶT — vắng mặt là giữ nguyên, '
+              'nên hạ ân hạn về 0 sẽ không có tác dụng gì.');
+      expect(c.periodEnd.value, DateTime(2026, 9, 20));
     });
   });
 }

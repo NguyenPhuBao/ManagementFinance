@@ -17,6 +17,10 @@ class BillDraft {
 
   final DateTime dueDate;
 
+  /// Ngày kết thúc kỳ tính tiền. `null` (test/đường cũ) = trùng [dueDate].
+  /// Giá trị GHI XUỐNG thì không bao giờ vắng — xem [periodEndHieuLuc].
+  final DateTime? periodEnd;
+
   /// Ví thanh toán. `bill.Idwallet` là NOT NULL phía backend.
   final String walletId;
 
@@ -53,6 +57,7 @@ class BillDraft {
     required this.amount,
     required this.startDate,
     required this.dueDate,
+    this.periodEnd,
     required this.walletId,
     required this.categoryId,
     required this.isRecurring,
@@ -65,6 +70,10 @@ class BillDraft {
 
   /// Ngày gốc sẽ ghi xuống. Suy từ [startDate] khi form chưa đặt.
   int get anchorDayHieuLuc => anchorDay ?? startDate.day;
+
+  /// Luôn có giá trị: NULL trong bảng phải chỉ còn nghĩa "hàng cũ, chưa biết"
+  /// (xem `Bills.periodEnd`). Ân hạn 0 thì bằng [dueDate].
+  DateTime get periodEndHieuLuc => periodEnd ?? dueDate;
 
   /// Chuỗi chu kỳ cũ, suy ra từ [isRecurring] + [timeRecurrence].
   ///
@@ -95,6 +104,7 @@ class BillDraft {
       name: name,
       amount: amount,
       startDate: Value(startDate),
+      periodEnd: Value(periodEndHieuLuc),
       dueDate: dueDate,
       payStatus: const Value('Pending'),
       isPaid: const Value(false),
@@ -133,6 +143,7 @@ class BillDraft {
       name: Value(name),
       amount: Value(amount),
       startDate: Value(startDate),
+      periodEnd: Value(periodEndHieuLuc),
       dueDate: Value(dueDate),
       isRecurrence: Value(isRecurring),
       timeRecurrence: Value(timeRecurrence),
