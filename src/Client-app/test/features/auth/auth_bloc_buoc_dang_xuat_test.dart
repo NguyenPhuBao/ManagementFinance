@@ -133,6 +133,12 @@ class _RepoGia implements AuthRepository {
   int logoutCalls = 0;
   int xoaPhienCalls = 0;
 
+  /// Khác `null` thì `verifySession()` trả `invalid` và **phát thông báo** ngay
+  /// trước khi trả lời — đúng thứ tự thật lúc mở app với tài khoản đã bị khoá:
+  /// `GET /auth/profile` nhận 401 mang mã, interceptor phát `taiKhoanBiTuChoi`,
+  /// rồi repository mới xếp lỗi ấy là `invalid`.
+  void Function()? khiVerifySession;
+
   /// Khác `null` thì `xoaPhienTrenMay()` treo tới khi test `complete()` — dựng
   /// cảnh thông báo thứ hai tới trong lúc lượt đầu CÒN ĐANG CHẠY.
   Completer<void>? treoXoaPhien;
@@ -145,7 +151,13 @@ class _RepoGia implements AuthRepository {
   Future<UserModel?> getCurrentUser() async => user;
 
   @override
-  Future<SessionStatus> verifySession() async => SessionStatus.valid;
+  Future<SessionStatus> verifySession() async {
+    if (khiVerifySession != null) {
+      khiVerifySession!();
+      return SessionStatus.invalid;
+    }
+    return SessionStatus.valid;
+  }
 
   @override
   Future<void> logout() async => logoutCalls++;
@@ -423,6 +435,69 @@ void main() {
         reason: 'id 0 là "không biết", không phải "tài khoản 0" — và 1 là '
             'admin thật');
     expect(state, isA<AuthUnauthenticated>());
+  });
+
+  test('MỞ APP với tài khoản đã bị khoá → state cuối vẫn mang thongBao', () async {
+    // Đo được trên `emulator-5554` ngày 2026-09-12: app bị đăng xuất nhưng
+    // KHÔNG hiện hộp thoại. Hai handler chạy đồng thời và
+    // `_onAuthCheckRequested` phát `AuthUnauthenticated()` **trơn** sau cùng,
+    // đè mất state mang lý do. §3.5 đoán thứ tự ngược lại ("lần phát sau vẫn là
+    // state mới") — trên máy thật thứ tự là ngược.
+    await themVi(11);
+    final repo = _RepoGia(user: _user('11'));
+    final bloc = AuthBloc(authRepository: repo);
+    addTearDown(bloc.close);
+    repo.khiVerifySession = () => interceptor.ban(const ThongBaoBuocDangXuat(
+          lyDo: LyDoBuocDangXuat.biKhoa,
+          nguon: NguonBuocDangXuat.http,
+          loiNhan: 'Tài khoản của bạn đã bị vô hiệu hóa. Lý do: Vi phạm điều khoản.',
+          idaccount: 11,
+        ));
+
+    final cho = choDangXuat(bloc);
+    bloc.add(AuthCheckRequested());
+    await cho;
+    // Để mọi handler đang chạy kịp phát nốt state của nó.
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+
+    expect(bloc.state, isA<AuthUnauthenticated>());
+    expect((bloc.state as AuthUnauthenticated).thongBao, isNotNull,
+        reason: 'state cuối cùng là thứ màn Đăng nhập đọc ở initState — mất '
+            'thongBao ở đây là người dùng bị đá ra mà không biết vì sao');
+    expect((bloc.state as AuthUnauthenticated).thongBao!.lyDo,
+        LyDoBuocDangXuat.biKhoa);
+    expect(await soVi(11), 1, reason: 'bị khoá thì giữ nguyên dữ liệu');
+  });
+
+  test('thông báo tới SAU khi phiên chết đã phát AuthUnauthenticated trơn → '
+      'state cuối vẫn phải mang thongBao', () async {
+    // Chiều ngược của ca trên. Hai handler chạy đồng thời nên KHÔNG đoán được
+    // cái nào phát sau; app phải đúng ở cả hai chiều. Đây là chiều mà máy ảo
+    // rơi vào ngày 2026-09-12: bị đăng xuất, không hộp thoại.
+    await themVi(11);
+    final repo = _RepoGia(user: _user('11'))
+      ..khiVerifySession = () {}; // invalid, nhưng chưa phát thông báo
+    final bloc = AuthBloc(authRepository: repo);
+    addTearDown(bloc.close);
+
+    final cho = choDangXuat(bloc);
+    bloc.add(AuthCheckRequested());
+    await cho;
+    expect((bloc.state as AuthUnauthenticated).thongBao, isNull,
+        reason: 'mốc bắt đầu: state trơn, đúng như `_onAuthCheckRequested` phát');
+
+    // Lời từ chối của server tới muộn một nhịp.
+    interceptor.ban(const ThongBaoBuocDangXuat(
+      lyDo: LyDoBuocDangXuat.biKhoa,
+      nguon: NguonBuocDangXuat.http,
+      loiNhan: 'Tài khoản của bạn đã bị vô hiệu hóa. Lý do: Vi phạm điều khoản.',
+      idaccount: 11,
+    ));
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+
+    expect((bloc.state as AuthUnauthenticated).thongBao, isNotNull,
+        reason: 'chốt `state is! AuthSuccess && state is! AuthChecking` chặn mất '
+            'lời từ chối tới muộn — người dùng bị đá ra mà không biết vì sao');
   });
 
   test('đăng nhập lại rồi bị buộc đăng xuất lần nữa → vẫn xử lý', () async {

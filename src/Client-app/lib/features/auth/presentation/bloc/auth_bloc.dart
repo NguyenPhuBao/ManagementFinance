@@ -120,7 +120,23 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     if (_dangBuocDangXuat) return;
-    if (state is! AuthSuccess && state is! AuthChecking) return;
+
+    // ⚠️ Phải nhận cả khi state ĐÃ là `AuthUnauthenticated`.
+    //
+    // Đo trên `emulator-5554` ngày 2026-09-12: mở app với tài khoản vừa bị
+    // khoá thì app bị đăng xuất **mà không có hộp thoại**. Lý do: `verifySession()`
+    // xếp 401 ấy là phiên chết, nên `_onAuthCheckRequested` phát
+    // `AuthUnauthenticated()` **trơn** — và lời từ chối của interceptor tới sau
+    // đó một nhịp. Hai handler chạy đồng thời nên thứ tự **không đoán được**;
+    // spec §3.5 đoán một chiều, máy thật rơi vào chiều kia.
+    //
+    // Ở đây chỉ bỏ qua những state mà xen vào là phá chuyện khác: `AuthInitial`
+    // (chưa ai đăng nhập), `AuthLoading` (một lượt đăng nhập MỚI đang chạy —
+    // lời từ chối của phiên cũ không được giết nó), `AuthError`, và các state
+    // của luồng đăng ký.
+    final dangCoPhien = state is AuthSuccess || state is AuthChecking;
+    final vuaBiDayRa = state is AuthUnauthenticated;
+    if (!dangCoPhien && !vuaBiDayRa) return;
     _dangBuocDangXuat = true;
 
     final thongBao = event.thongBao;
