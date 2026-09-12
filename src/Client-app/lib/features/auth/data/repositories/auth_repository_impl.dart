@@ -65,6 +65,13 @@ class AuthRepositoryImpl implements AuthRepository {
     await _clearLocalData();
   }
 
+  // ─── Xoá phiên trên máy, KHÔNG gọi /auth/logout ─────────────────────────
+  // Xem chú thích ở `auth_repository.dart`: route ấy đi qua `authenticate` nên
+  // với tài khoản đã bị khoá/xoá nó trả 401 mang mã và quay vòng qua
+  // `AuthInterceptor` (spec cưỡng chế đăng xuất §3.5 bước 4).
+  @override
+  Future<void> xoaPhienTrenMay() => _clearLocalData();
+
   // ─── Kiểm tra có token không (offline-safe) ─────────────────────────────
   @override
   Future<bool> checkAuthStatus() async {

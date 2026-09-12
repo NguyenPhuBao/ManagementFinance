@@ -31,6 +31,22 @@ abstract class AuthRepository {
   /// dễ import nhầm file và catch không bao giờ khớp.
   Future<SessionStatus> verifySession();
 
+  /// Xoá phiên **trên máy này** — token và bộ nhớ đệm người dùng — mà **không**
+  /// gọi `/auth/logout`.
+  ///
+  /// Dùng khi server đã nói thẳng rằng tài khoản không dùng được nữa. Route
+  /// `/auth/logout` đi qua `authenticate` (`auth.routes.js:33`), nên gọi nó lúc
+  /// ấy chỉ sinh thêm một 401 **mang mã** quay vòng qua `AuthInterceptor` — tức
+  /// một thông báo cưỡng chế đăng xuất nữa, ngay giữa lúc đang đăng xuất vì
+  /// thông báo thứ nhất (spec cưỡng chế đăng xuất §3.5 bước 4).
+  ///
+  /// Gọi nhiều lần vô hại: interceptor có thể đã xoá token trước (§3.3), nhưng
+  /// bộ nhớ đệm người dùng thì vẫn phải xoá ở đây.
+  ///
+  /// Người dùng tự bấm Đăng xuất thì vẫn dùng [logout] — ở đó server **phải**
+  /// thu hồi token.
+  Future<void> xoaPhienTrenMay();
+
   // Các method mới (cần Backend)
   Future<void> changePassword(String currentPassword, String newPassword);
   Future<void> forgotPassword(String email);
