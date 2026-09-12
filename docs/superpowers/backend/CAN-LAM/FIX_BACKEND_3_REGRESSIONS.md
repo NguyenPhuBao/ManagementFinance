@@ -386,10 +386,13 @@ với partial unique index thì T2 vỡ 23505.
    dịch** của lô **trước** các thao tác ghi giao dịch — xoá mềm chỉ là một phép
    `UPDATE`, không vỡ khoá ngoại nào — rồi ánh xạ 23505 trên index ấy về
    `BILL_ALREADY_PAID` ở `sync.service.js`.
-3. **Về dữ liệu, bước 2 chưa gấp:** client **chưa gửi `idbill`** — payload đẩy giao
-   dịch có 12 trường, không có nó (`sync_payload_contract_test.dart`) — nên hôm nay
-   chốt ấy chưa có gì để chặn. Nhưng bước 1 phải đi **cùng lượt triển khai** với A,
-   vì hoàn tác hỏng ngay khi `main` chạy.
+3. ⚠️ **Bước 2 NAY ĐÃ GẤP — đổi so với bản trước.** Câu cũ ở đây ("client chưa gửi
+   `idbill`, nên chốt ấy chưa có gì để chặn") đúng tới 2026-09-12; từ ngày ấy client
+   **đã gửi** `idbill` trong payload đẩy giao dịch (nay **13 trường**,
+   `sync_payload_contract_test.dart` khoá lại), và đã đo thấy nó tới server đúng giá
+   trị. Nên chốt ở bước 2 nay có dữ liệu thật để chặn, và bước 1 vẫn phải đi **cùng
+   lượt triển khai** với A vì hoàn tác đang hỏng thật — xem bằng chứng đo được ở đầu
+   mục 3.
 
 ### 3.7. Kiểm lại sau khi sửa
 
