@@ -2697,6 +2697,7 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
      - Start Command: `npm start` (tuyệt đối không dùng `npm run dev` để tránh lỗi `nodemon: not found` exit 127).
   3. **Danh mục biến môi trường đầy đủ:** Cung cấp mẫu cấu hình hoàn chỉnh cho Render (Database pooling port 6543, Direct port 5432, JWT, SMTP, AI Gemini, Encryption keys).
   4. **Hướng dẫn khắc phục sự cố (Troubleshooting):** Xử lý 5 lỗi thường gặp (Nodemon not found, thiếu Encryption Key, lỗi kết nối Supabase, lệch partial index do prisma migrate dev).
+  5. **Quy định chiến lược của PO (Giai đoạn hiện tại):** Toàn bộ các môi trường (kể cả Render Cloud) thống nhất triển khai theo chế độ `DEVELOPMENT` (`NODE_ENV=development`) để thuận tiện debug, test liên thông và theo dõi log. Chỉ chuyển đổi sang `PRODUCTION` sau khi hoàn thiện toàn bộ dự án và có yêu cầu/phê duyệt bằng văn bản từ PO.
 
 
 

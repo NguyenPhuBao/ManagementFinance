@@ -2,6 +2,12 @@
 
 Tài liệu này là **Nguồn sự thật (Source of Truth)** hướng dẫn chi tiết quy trình triển khai hệ thống **ManagementFinance** lên môi trường điện toán đám mây (Cloud - Render, Supabase), đồng thời phân định ranh giới kỹ thuật, cấu hình và cơ chế bảo mật giữa 2 môi trường **Development** và **Production**.
 
+> [!IMPORTANT]
+> **QUY ĐỊNH CHIẾN LƯỢC CỦA PRODUCT OWNER (PO) — GIAI ĐOẠN HIỆN TẠI:**  
+> **Hiện tại MỌI MÔI TRƯỜNG (kể cả triển khai trên Render / Cloud) ĐỀU THỐNG NHẤT CHẠY THEO CHẾ ĐỘ `DEVELOPMENT` (`NODE_ENV=development`).**  
+> - **Mục đích:** Hỗ trợ việc phát triển, kiểm thử liên thông giữa Backend, Admin-web và Client-app diễn ra thuận lợi, theo dõi log chi tiết và chẩn đoán lỗi nhanh chóng.  
+> - **Nguyên tắc chuyển đổi:** Chỉ sau khi hoàn thiện toàn bộ dự án và **CÓ YÊU CẦU/PHÊ DUYỆT TỪ PO**, hệ thống mới được kích hoạt chuyển đổi sang môi trường **`PRODUCTION`** (`NODE_ENV=production`). Mọi hành vi tự ý chuyển đổi khi chưa có lệnh từ PO đều bị nghiêm cấm.
+
 ---
 
 ## 📌 1. SO SÁNH CHI TIẾT GIỮA DEVELOPMENT VÀ PRODUCTION
@@ -33,7 +39,7 @@ Khi tạo hoặc cấu hình dịch vụ **Web Service** trên nền tảng Rend
 | **Root Directory** | `src/Backend` | **Bắt buộc:** Trỏ thẳng vào thư mục chứa `package.json` của Backend. |
 | **Runtime** | `Node` | Môi trường thực thi Node.js. |
 | **Build Command** | `npm install` | Đã có hook `"postinstall": "prisma generate"` trong `package.json`, Prisma Client sẽ tự sinh sau khi cài gói. |
-| **Start Command** | **`npm start`** | **Tuyệt đối KHÔNG dùng `npm run dev`** (vì production không cài `nodemon`, sẽ gây lỗi `status 127`). |
+| **Start Command** | **`npm start`**<br>*(hoặc `node index.js`)* | **Khuyến nghị dùng `npm start`** cho cả 2 môi trường. (Nếu chạy `npm run dev` thì bắt buộc `NODE_ENV=development` để nodemon được cài đặt, tuy nhiên `npm start` chạy nhẹ hơn và ổn định hơn). |
 
 ---
 
@@ -43,9 +49,13 @@ Vào mục **Environment** trên Render Web Service và cấu hình đầy đủ
 
 ```env
 # ==============================================================================
-# 1. CẤU HÌNH CHẾ ĐỘ CHẠY (BẮT BUỘC)
+# 1. CẤU HÌNH CHẾ ĐỘ CHẠY
 # ==============================================================================
-NODE_ENV=production
+# GIAI ĐOẠN HIỆN TẠI: Sử dụng development theo chỉ đạo của PO
+NODE_ENV=development
+# KHI NÀO DỰ ÁN HOÀN THIỆN 100% VÀ CÓ YÊU CẦU TỪ PO MỚI ĐỔI THÀNH:
+# NODE_ENV=production
+
 PORT=10000
 
 # ==============================================================================
