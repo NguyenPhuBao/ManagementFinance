@@ -4,6 +4,7 @@ import '../../features/goal/data/models/goal_entity.dart';
 import '../../features/goal/domain/goal_auto_deposit.dart';
 import '../../features/goal/domain/goal_auto_deposit_runner.dart';
 import '../../features/bill/domain/bill_auto_pay.dart';
+import '../../features/bill/domain/bill_pay_status.dart';
 import '../../features/bill/domain/bill_auto_pay_runner.dart';
 import '../../features/budget/presentation/widgets/budget_visuals.dart';
 import 'tuan_iso.dart';
@@ -307,9 +308,11 @@ List<NotificationCandidate> _billCandidates(NotificationRuleInput input) {
   for (final b in input.bills) {
     if (b.isDeleted) continue;
 
-    // Lọc theo CẢ HAI cột trạng thái: hàng kéo về từ backend có thể mang
-    // `payStatus = 'Payed'` trong khi `isPaid` còn false, và ngược lại.
-    if (b.isPaid || b.payStatus == 'Payed') continue;
+    // Một câu hỏi, một định nghĩa: `conPhaiTra` đọc cả hai cột trạng thái
+    // (hàng kéo về từ backend có thể mang `payStatus = 'Payed'` trong khi
+    // `isPaid` còn false, và ngược lại) và loại luôn kỳ đã bỏ qua. Trước
+    // 2026-09-12 chỗ này chép tay biểu thức ấy.
+    if (!conPhaiTra(b)) continue;
 
     final hanTra = _dauNgay(b.dueDate);
 

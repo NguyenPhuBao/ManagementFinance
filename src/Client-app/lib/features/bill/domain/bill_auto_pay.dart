@@ -19,6 +19,7 @@
 library;
 
 import '../../../core/database/app_database.dart';
+import 'bill_pay_status.dart';
 
 /// Dòng phụ hiện dưới công tắc khi bật, dùng chung cho form Thêm và Sửa.
 ///
@@ -55,7 +56,7 @@ DateTime _dauNgay(DateTime t) => DateTime(t.year, t.month, t.day);
 bool denLuotTuTra(Bill bill, DateTime now) {
   if (!bill.autoPayEnabled) return false;
   if (bill.isDeleted) return false;
-  if (bill.isPaid || bill.payStatus == 'Payed') return false;
+  if (!conPhaiTra(bill)) return false;
   if (bill.walletId == null || bill.categoryId == null) return false;
   return !_dauNgay(bill.dueDate).isAfter(_dauNgay(now));
 }

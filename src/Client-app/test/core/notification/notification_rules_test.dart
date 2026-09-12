@@ -277,6 +277,17 @@ void main() {
                 'isPaid còn false.');
       });
 
+      test('kỳ đã Skipped thì KHÔNG nhắc', () {
+        expect(
+            chayHD([
+              hoaDon(denHan: DateTime(2026, 9, 18), payStatus: 'Skipped')
+            ]),
+            isEmpty,
+            reason: 'Bỏ qua kỳ rồi mà vẫn bị nhắc là tính năng nói một đằng, '
+                'app làm một nẻo — và người dùng tắt thông báo rồi không bao '
+                'giờ bật lại.');
+      });
+
       test('nhắc nêu tên hoá đơn', () {
         final ra = chayHD([
           hoaDon(denHan: DateTime(2026, 9, 18), ten: 'Tiền điện')

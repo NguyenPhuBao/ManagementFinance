@@ -1,3 +1,4 @@
+import '../../features/bill/domain/bill_pay_status.dart';
 import '../../features/goal/domain/goal_auto_deposit.dart';
 import 'notification_rules.dart';
 import 'notification_scanner.dart' show BillsLoader, GoalsLoader;
@@ -122,10 +123,10 @@ class ReminderScheduler {
 
       for (final b in bills) {
         if (b.isDeleted) continue;
-        // Lọc theo CẢ HAI cột trạng thái, cùng lý do như trong bộ luật: hàng
-        // kéo về từ backend có thể mang `payStatus = 'Payed'` trong khi
-        // `isPaid` còn false, và ngược lại.
-        if (b.isPaid || b.payStatus == 'Payed') continue;
+        // Cùng một định nghĩa với bộ luật: đọc cả hai cột trạng thái, và
+        // loại luôn kỳ đã bỏ qua. Lịch nằm trong AlarmManager chứ không trong
+        // SQLite, nên đặt nhầm thì thông báo vẫn nổ trên màn hình khoá.
+        if (!conPhaiTra(b)) continue;
 
         final leadDays = billLeadDays(b, fallback: prefs.soNgayNhacHoaDon);
         final hanTra = DateTime(b.dueDate.year, b.dueDate.month, b.dueDate.day);

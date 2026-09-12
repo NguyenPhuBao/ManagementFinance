@@ -7,6 +7,7 @@ import 'package:drift/drift.dart';
 import '../api/dio_client.dart';
 import '../bill/bill_recurrence.dart';
 import '../database/app_database.dart';
+import '../../features/bill/domain/bill_pay_status.dart';
 import 'backend_bool.dart';
 import 'sync_models.dart';
 import 'category_icon_registry.dart';
@@ -829,7 +830,7 @@ class SyncEngine {
                     DateTime.tryParse(bill['due_date']?.toString() ?? '') ??
                         DateTime.now()),
                 payStatus: Value(payStatus),
-                isPaid: Value(payStatus == 'Payed'),
+                isPaid: Value(payStatus == kBillPayed),
                 timeNotification: Value(bill['time_notification']?.toString()),
                 isRecurrence: Value(isRecurrence),
                 timeRecurrence: Value(timeRecurrence),

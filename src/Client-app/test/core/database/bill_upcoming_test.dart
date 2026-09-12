@@ -89,6 +89,19 @@ void main() {
     expect(await sapDenHan(), isEmpty);
   });
 
+  test('BỎ QUA kỳ đã Skipped', () async {
+    await seed(
+      id: 'bo-qua',
+      dueDate: DateTime(2026, 9, 18),
+      payStatus: 'Skipped',
+    );
+
+    expect(await sapDenHan(), isEmpty,
+        reason: 'getUpcoming nuôi cả bộ quét thông báo lẫn bộ đặt lịch cấp hệ '
+            'điều hành. Để lọt kỳ bỏ qua là giục người dùng trả một khoản họ '
+            'vừa chủ động nói là không phải trả.');
+  });
+
   test('GỒM cả hoá đơn đã quá hạn', () async {
     await seed(id: 'qua-han', dueDate: DateTime(2026, 9, 1));
 

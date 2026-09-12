@@ -57,6 +57,13 @@ void main() {
               'app — hỏng ngẫu nhiên.');
     });
 
+    test('KHÔNG tự trả kỳ đã Skipped dù công tắc bật và đã tới ngày', () {
+      expect(denLuotTuTra(_hoaDon(payStatus: 'Skipped'), sangNgayHan), isFalse,
+          reason: 'Đây là một trong hai chỗ app tự chuyển tiền khi người dùng '
+              'vắng mặt. Trừ ví cho một kỳ họ đã chủ động bỏ là mất tiền thật, '
+              'và không có gì trên màn hình báo cho họ biết.');
+    });
+
     test('chưa tới ngày đến hạn thì KHÔNG trả sớm', () {
       expect(denLuotTuTra(_hoaDon(), DateTime(2025, 9, 4, 23, 59)), isFalse,
           reason: 'Trả sớm một ngày là rút tiền trước khi người dùng kịp nạp '
