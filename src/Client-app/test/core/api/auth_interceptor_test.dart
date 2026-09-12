@@ -28,6 +28,10 @@ class _FakeSecureStorage implements FlutterSecureStorage {
   /// học, khôi phục OS…), thứ không phải `DioException`.
   String? khoaNemLoiKhiDoc;
 
+  /// Nếu bật, `delete` ném lỗi — mô phỏng kho token hỏng đúng lúc phải xoá
+  /// token của một phiên đã xác định là chết.
+  bool nemLoiKhiXoa = false;
+
   @override
   Future<String?> read({
     required String key,
@@ -54,6 +58,9 @@ class _FakeSecureStorage implements FlutterSecureStorage {
     MacOsOptions? mOptions,
     WindowsOptions? wOptions,
   }) async {
+    if (nemLoiKhiXoa) {
+      throw StateError('kho token hỏng khi xoá');
+    }
     _store.remove(key);
   }
 
@@ -428,15 +435,40 @@ void main() {
         dio.get<dynamic>('/sync/pull'),
         throwsA(isA<DioException>()
             .having((e) => e.type, 'type', DioExceptionType.unknown)
-            .having((e) => e.response?.statusCode, 'statusCode', isNot(401))),
+            .having((e) => e.response, 'response', isNull)),
         reason: '200 mà không đọc được token thì không kết luận gì về phiên; '
-            'mã cũ coi null là làm mới thất bại và xoá token.',
+            'mã cũ coi null là làm mới thất bại và xoá token. `response` phải '
+            'là null: SyncEngine in `e.response?.data` bằng debugPrint (không '
+            'bị lược ở bản release), nên gắn phản hồi của /auth/refresh vào '
+            'lỗi của request khác là đưa body ấy — có thể còn refreshToken nếu '
+            'backend đổi tên khoá — thẳng ra logcat.',
       );
       await Future<void>.delayed(const Duration(milliseconds: 50));
 
       expect(emissions, 0);
       expect(await storage.read(key: AppConstants.accessTokenKey), 'token-cu');
       expect(await storage.read(key: AppConstants.refreshTokenKey), 'refresh-cu');
+      expect(server.refreshCalls, 1);
+    });
+
+    test('kho token hỏng lúc xoá ở phiên chết → vẫn phát tín hiệu một lần, nơi gọi vẫn nhận 401', () async {
+      final storage = _khoCoPhien()..nemLoiKhiXoa = true;
+      final server = _MayChuGia()..kichBanRefresh.add(401);
+      final (:dio, :interceptor) = _dungVoiMayChu(storage, server);
+      addTearDown(interceptor.dispose);
+      var emissions = 0;
+      final sub = interceptor.sessionExpiredStream.listen((_) => emissions++);
+      addTearDown(sub.cancel);
+
+      await expectLater(
+        dio.get<dynamic>('/sync/pull'),
+        throwsA(isA<DioException>().having((e) => e.response?.statusCode, 'statusCode', 401)),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(emissions, 1,
+          reason: 'Kho hỏng không xoá được thì AuthBloc càng cần biết — im lặng ở đây '
+              'là đúng hình dạng G12: app quay vòng 401 → refresh → 401.');
       expect(server.refreshCalls, 1);
     });
   });
@@ -453,6 +485,9 @@ void main() {
       final b = dio.get<dynamic>('/auth/profile');
       // Cả hai 401 đã vào onError và đang chờ lượt làm mới.
       await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(server.bearerDaThay, ['Bearer token-cu', 'Bearer token-cu'],
+          reason: 'cả hai đã 401 và đang chờ chung một lượt làm mới — không '
+              'phải một cái đi qua chốt token cũ');
       server.khoaRefresh!.complete();
       final ketQua = await Future.wait([a, b]);
 
@@ -480,6 +515,9 @@ void main() {
       final a = dio.get<dynamic>('/sync/pull');
       final b = dio.get<dynamic>('/auth/profile');
       await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(server.bearerDaThay, ['Bearer token-cu', 'Bearer token-cu'],
+          reason: 'cả hai đã 401 và đang chờ chung một lượt làm mới — không '
+              'phải một cái đi qua chốt token cũ');
       server.khoaRefresh!.complete();
 
       await expectLater(a, throwsA(isA<DioException>()));
@@ -518,6 +556,10 @@ void main() {
               'chỉ thử lại bằng token trong kho, không tốn thêm một lượt '
               '/auth/refresh (mỗi lượt thu hồi refresh token cũ)');
       expect(server.bearerDaThay.last, 'Bearer access-moi');
+      expect(server.bearerDaThay.where((b) => b == 'Bearer token-cu').length, 2,
+          reason: 'chứng minh /goals thật sự đi ra bằng token cũ rồi mới bị '
+              'chốt token cũ bắt — nếu nó chưa kịp tới adapter trong 10 ms thì '
+              'nó đi ra với access-moi và nhận 200 thẳng, chốt không hề chạy');
     });
 
     test('kho token ném lỗi khi đọc refresh token → mọi request chờ đều nhận lỗi tạm thời, không treo, giữ token', () async {

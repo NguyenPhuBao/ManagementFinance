@@ -134,14 +134,24 @@ class AuthInterceptor extends Interceptor {
   /// hỏng, huỷ sinh trắc học, khôi phục OS…) — sẽ tới MỌI request đang chờ.
   /// Lỗi kho token không nói gì về phiên: giữ token, không phát tín hiệu,
   /// nơi gọi nhận lỗi tạm thời chứ không phải bị treo.
+  ///
+  /// NGOẠI LỆ duy nhất là `phanQuyet`: khi đã xác định được phiên chết thì
+  /// `catch (Object)` không được hạ cấp phán quyết ấy — xem chú thích tại chỗ.
   Future<KetQuaLamMoi> _lamMoi() async {
+    // Phán quyết "phiên chết" ghi lại TRƯỚC khi gọi `_clearTokens()`, vì lệnh
+    // xoá có thể ném (kho token hỏng) và `catch (Object)` bên dưới sẽ biến một
+    // phiên đã xác định là chết thành `LamMoiTamThoi`: token xoá dở, không
+    // phát tín hiệu, app quay vòng 401 → refresh → 401 trong im lặng — đúng
+    // hình dạng G12 mà `sessionExpiredStream` sinh ra để chặn.
+    KetQuaLamMoi? phanQuyet;
     try {
       final refreshToken = await secureStorage.read(
         key: AppConstants.refreshTokenKey,
       );
       if (refreshToken == null || refreshToken.isEmpty) {
+        phanQuyet = const LamMoiPhienChet();
         await _clearTokens();
-        return const LamMoiPhienChet();
+        return phanQuyet;
       }
 
       final Response<dynamic> response;
@@ -152,7 +162,10 @@ class AuthInterceptor extends Interceptor {
         );
       } on DioException catch (e) {
         final ketQua = ketQuaTuLoiLamMoi(e);
-        if (ketQua is LamMoiPhienChet) await _clearTokens();
+        if (ketQua is LamMoiPhienChet) {
+          phanQuyet = ketQua;
+          await _clearTokens();
+        }
         return ketQua;
       }
 
@@ -162,10 +175,16 @@ class AuthInterceptor extends Interceptor {
       final accessToken = data is Map ? data['accessToken'] : null;
       if (accessToken is! String || accessToken.isEmpty) {
         // 200 mà không đọc được token: không kết luận gì về phiên.
+        //
+        // KHÔNG gắn `response` vào đây: lỗi này được `_loiTamThoiChoRequest`
+        // chép sang lỗi của request gốc, và `SyncEngine` in `e.response?.data`
+        // bằng `debugPrint` (không bị lược ở bản release). Hôm nay nhánh này
+        // chỉ chạy khi body thiếu `accessToken`, nhưng nếu backend đổi tên
+        // khoá (`access_token`, hay bọc thêm một lớp) thì body ấy VẪN mang
+        // refreshToken và nó sẽ ra logcat qua lỗi của một request khác.
         return LamMoiTamThoi(
           DioException(
             requestOptions: response.requestOptions,
-            response: response,
             type: DioExceptionType.unknown,
             message: 'Phản hồi /auth/refresh không có accessToken',
           ),
@@ -186,6 +205,9 @@ class AuthInterceptor extends Interceptor {
       );
       return LamMoiThanhCong(accessToken);
     } catch (e, st) {
+      // Phiên chết đã xác định thì giữ nguyên phán quyết: lỗi ở đây chỉ có thể
+      // là lỗi của chính lượt xoá token, và nó không làm phiên sống lại.
+      if (phanQuyet != null) return phanQuyet;
       return LamMoiTamThoi(
         DioException(
           requestOptions: RequestOptions(path: '/auth/refresh'),
@@ -207,11 +229,19 @@ class AuthInterceptor extends Interceptor {
         type: loiLamMoi.type,
         response: loiLamMoi.response,
         error: loiLamMoi.error,
+        stackTrace: loiLamMoi.stackTrace,
         message: 'Làm mới token không thành công tạm thời: '
             '${loiLamMoi.message ?? loiLamMoi.type.name}',
       );
 
   // ─── Thử lại request gốc với token mới ──────────────────────────────────
+  /// ⚠️ `Options` dựng lại ở đây chỉ mang `method` + `headers`, nên lượt thử
+  /// lại MẤT `responseType`, `contentType`, `sendTimeout`, `validateStatus`,
+  /// `extra`, `cancelToken`, `onSendProgress`/`onReceiveProgress` của request
+  /// gốc. Hôm nay vô hại — quét cả `lib/` không có chỗ nào dùng `ResponseType`,
+  /// `FormData`, `CancelToken`, `validateStatus` hay `on*Progress`. Nhưng chốt
+  /// "token cũ" ở `onError` vừa thêm **đường phát lại thứ hai** vào đây, nên ai
+  /// thêm tải/gửi tệp về sau phải chép đủ `Options` từ `requestOptions`.
   Future<Response<dynamic>> _retryRequest(
     RequestOptions requestOptions,
     String newToken,
@@ -246,11 +276,19 @@ class AuthInterceptor extends Interceptor {
                 ?.isNotEmpty ==
             true;
 
-    await secureStorage.delete(key: AppConstants.accessTokenKey);
-    await secureStorage.delete(key: AppConstants.refreshTokenKey);
-
-    if (hadSession && !_sessionExpiredController.isClosed) {
-      _sessionExpiredController.add(null);
+    // `finally`: kho token hỏng thì lệnh xoá ném, nhưng tín hiệu VẪN phải phát.
+    // Không xoá được token càng là lúc `AuthBloc` cần biết — nó không đăng xuất
+    // ngay mà hỏi lại server bằng `verifySession()`, nên phát ở đây không tự nó
+    // đăng xuất ai; im lặng thì mới đúng hình dạng G12 (app quay vòng
+    // 401 → refresh → 401). Lỗi xoá vẫn thoát ra cho `_lamMoi()`, nơi phán
+    // quyết "phiên chết" đã được giữ lại trước khi gọi vào đây.
+    try {
+      await secureStorage.delete(key: AppConstants.accessTokenKey);
+      await secureStorage.delete(key: AppConstants.refreshTokenKey);
+    } finally {
+      if (hadSession && !_sessionExpiredController.isClosed) {
+        _sessionExpiredController.add(null);
+      }
     }
   }
 
