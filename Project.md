@@ -2184,6 +2184,12 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
 - **Bảo vệ chống trùng lặp 2 lớp (Frontend Guard & Backend Validation)**:
   - **Frontend**: Khóa hàm submit ngay khi phát hiện `processing.isProcessing = true`.
   - **Backend**: Trong `admin.service.js`, chỉ kiểm tra trùng lặp tên + phân loại danh mục (`insensitive mode`) đối với các danh mục mặc định hệ thống (`is_default: true`). Đối với danh mục tùy chỉnh của người dùng (`is_default: false`), hệ thống cho phép trùng tên để người dùng khác nhau có thể tạo danh mục tự do theo nhu cầu cá nhân.
+- **Bảo Vệ Quyền Riêng Tư & Cách Ly Tuyệt Đối Danh Mục Người Dùng (Nghị định 13/2023 & Luật PDP 2025)**:
+  - **Phạm vi quản trị của Admin**: Trang quản lý danh mục (`/categories`) và API Admin (`/api/admin/categories`, `/api/admin/getcategory`) chỉ quản trị danh mục mặc định của hệ thống (`is_default: true, delete_at: null`). Gỡ bỏ hoàn toàn việc truy vấn, lọc hoặc hiển thị danh mục cá nhân của người dùng.
+  - **Cơ chế Phòng vệ Chiều sâu (Defense-in-Depth)**:
+    - *Masking dữ liệu cá nhân*: Nếu có danh mục người dùng (`is_default = false`) lọt vào Admin API, toàn bộ thông tin nhận diện (`name`, `keyword`, `created_by`, `created_by_name`) bắt buộc bị che mờ bằng `***` và cắm cờ `is_user_category: true`. Frontend hiển thị nhãn `[Dữ liệu riêng tư - Đã ẩn danh]` và khóa các thao tác Sửa/Xóa.
+    - *Chặn đứng can thiệp trái phép*: Cấm tuyệt đối Admin sửa (`updateCategory`) hoặc xóa (`deleteCategory`) danh mục người dùng $\rightarrow$ Backend ném lỗi **HTTP 403 Forbidden**.
+    - *Bảo vệ danh mục hệ thống*: Cấm xóa danh mục mặc định hệ thống $\rightarrow$ Backend ném lỗi **HTTP 400 Bad Request**.
 
 ### 11.9. Chuẩn Hóa Thanh Phân Trang Toàn Hệ Thống (Unified Pagination Component)
 - **Component dùng chung (`src/Admin-web/src/components/common/Pagination.jsx`)**:

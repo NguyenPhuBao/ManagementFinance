@@ -209,21 +209,27 @@ const adminService = {
 
   async getCategories(filters = {}) {
     const cats = await adminRepository.getAllCategories(filters);
-    return cats.map((c) => ({
-      id: c.idcategory,
-      name: c.name_category,
-      classify: c.classify,
-      is_default: c.is_default,
-      is_group: c.is_group,
-      idgroup: c.idgroup,
-      keyword: c.keyword,
-      icon: c.icon,
-      created_by_id: c.create_by,
-      created_by: c.account ? c.account.username : null,
-      created_by_name: c.account?.User?.fullname || null,
-      created_at: c.create_at,
-      updated_at: c.update_at,
-    }));
+    return cats.map((c) => {
+      // Cơ chế phòng vệ chiều sâu (Defense-in-Depth):
+      // Nếu vì bất kỳ lý do nào danh mục người dùng lọt vào, mặt nạ hóa 100% bằng ***
+      const isUserCat = c.is_default === false;
+      return {
+        id: c.idcategory,
+        name: isUserCat ? '***' : c.name_category,
+        classify: c.classify,
+        is_default: c.is_default,
+        is_group: c.is_group,
+        idgroup: c.idgroup,
+        keyword: isUserCat ? '***' : c.keyword,
+        icon: isUserCat ? null : c.icon,
+        created_by_id: isUserCat ? null : c.create_by,
+        created_by: isUserCat ? '***' : (c.is_default ? 'Hệ thống' : 'Người dùng'),
+        created_by_name: isUserCat ? '***' : (c.is_default ? 'Hệ thống' : (c.account?.User?.fullname || null)),
+        is_user_category: isUserCat,
+        created_at: c.create_at,
+        updated_at: c.update_at,
+      };
+    });
   },
 
   async addCategory(data, idaccount) {
@@ -231,7 +237,7 @@ const adminService = {
     if (!trimmedName) {
       throw Object.assign(new Error('Tên danh mục không được để trống'), { statusCode: 400 });
     }
-    const isDefault = data.is_default === true || data.is_default === 'true';
+    // Admin chỉ được phép tạo danh mục mặc định của hệ thống
     const validClassifies = ['Thu', 'Chi', 'Vay/nợ', 'Vay/no', 'Vay', 'no'];
     if (!validClassifies.includes(data.classify)) {
       throw Object.assign(new Error(`Loại danh mục '${data.classify}' không hợp lệ. Phải là Thu, Chi, hoặc Vay/no`), { statusCode: 400 });
@@ -244,39 +250,25 @@ const adminService = {
 
     const { prisma } = require('../../config/db');
 
-    // 1. Nhóm 2: Check unique [Is_default & namecategory] (không được phép có 2 category hệ thống giống nhau)
-    if (isDefault) {
-      const existingDefault = await prisma.category.findFirst({
-        where: {
-          name_category: { equals: trimmedName, mode: 'insensitive' },
-          is_default: true,
-          delete_at: null,
-        },
-      });
-      if (existingDefault) {
-        throw Object.assign(new Error(`Danh mục hệ thống "${trimmedName}" đã tồn tại trong hệ thống. Không được phép tạo trùng tên.`), { statusCode: 400 });
-      }
-    } else if (idaccount) {
-      // 2. Nhóm 1: Check unique [Idaccount & namecategory] (1 tài khoản không được có >1 category giống nhau)
-      const existingUserCat = await prisma.category.findFirst({
-        where: {
-          create_by: Number(idaccount),
-          name_category: { equals: trimmedName, mode: 'insensitive' },
-          delete_at: null,
-        },
-      });
-      if (existingUserCat) {
-        throw Object.assign(new Error(`Tài khoản đã có danh mục "${trimmedName}". Không được phép tạo danh mục trùng tên.`), { statusCode: 400 });
-      }
+    // Check unique [Is_default & namecategory] (không được phép có 2 category hệ thống giống nhau)
+    const existingDefault = await prisma.category.findFirst({
+      where: {
+        name_category: { equals: trimmedName, mode: 'insensitive' },
+        is_default: true,
+        delete_at: null,
+      },
+    });
+    if (existingDefault) {
+      throw Object.assign(new Error(`Danh mục hệ thống "${trimmedName}" đã tồn tại trong hệ thống. Không được phép tạo trùng tên.`), { statusCode: 400 });
     }
 
     const result = await adminRepository.createCategory({
       name: trimmedName,
       classify: canonicalClassify,
-      is_default: isDefault,
+      is_default: true,
       keyword: data.keyword ? data.keyword.trim() : null,
       icon: data.icon,
-      created_by: idaccount,
+      created_by: idaccount ? Number(idaccount) : 1,
     });
     return { id: result.idcategory, name: result.name_category, classify: result.classify, keyword: result.keyword };
   },
@@ -286,7 +278,6 @@ const adminService = {
     if (!trimmedName) {
       throw Object.assign(new Error('Tên danh mục không được để trống'), { statusCode: 400 });
     }
-    const isDefault = data.is_default === true || data.is_default === 'true';
     const validClassifies = ['Thu', 'Chi', 'Vay/nợ', 'Vay/no', 'Vay', 'no'];
     if (data.classify && !validClassifies.includes(data.classify)) {
       throw Object.assign(new Error(`Loại danh mục '${data.classify}' không hợp lệ. Phải là Thu, Chi, hoặc Vay/no`), { statusCode: 400 });
@@ -307,46 +298,28 @@ const adminService = {
       throw Object.assign(new Error('Không tìm thấy danh mục hoặc danh mục đã bị xóa'), { statusCode: 404 });
     }
 
-    // Ràng buộc: Không cho phép chuyển đổi danh mục người dùng thành danh mục hệ thống
-    if (!currentCat.is_default && isDefault) {
-      throw Object.assign(new Error('Không cho phép chuyển đổi danh mục người dùng thành danh mục hệ thống. Chỉ có thể tạo mới danh mục hệ thống.'), { statusCode: 400 });
+    // Bảo vệ quyền riêng tư người dùng: Admin TUYỆT ĐỐI KHÔNG ĐƯỢC PHÉP sửa danh mục của người dùng
+    if (!currentCat.is_default) {
+      throw Object.assign(new Error('Vi phạm quyền riêng tư: Tuyệt đối cấm chỉnh sửa danh mục của người dùng.'), { statusCode: 403 });
     }
 
-    const targetIsDefault = data.is_default !== undefined ? isDefault : currentCat.is_default;
-    const targetAccount = currentCat.create_by || (idaccount ? Number(idaccount) : null);
-
-    // 1. Nhóm 2: Check unique [Is_default & namecategory] khi sửa (loại trừ chính idcategory đang sửa)
-    if (targetIsDefault) {
-      const existingDefault = await prisma.category.findFirst({
-        where: {
-          idcategory: { not: idcategory },
-          name_category: { equals: trimmedName, mode: 'insensitive' },
-          is_default: true,
-          delete_at: null,
-        },
-      });
-      if (existingDefault) {
-        throw Object.assign(new Error(`Danh mục hệ thống "${trimmedName}" đã tồn tại trong hệ thống. Không được phép đổi tên trùng.`), { statusCode: 400 });
-      }
-    } else if (targetAccount) {
-      // 2. Nhóm 1: Check unique [Idaccount & namecategory] khi sửa (loại trừ chính idcategory đang sửa)
-      const existingUserCat = await prisma.category.findFirst({
-        where: {
-          idcategory: { not: idcategory },
-          create_by: targetAccount,
-          name_category: { equals: trimmedName, mode: 'insensitive' },
-          delete_at: null,
-        },
-      });
-      if (existingUserCat) {
-        throw Object.assign(new Error(`Tài khoản đã có danh mục "${trimmedName}". Không được phép đổi tên trùng với danh mục đã có.`), { statusCode: 400 });
-      }
+    // Check unique [Is_default & namecategory] khi sửa (loại trừ chính idcategory đang sửa)
+    const existingDefault = await prisma.category.findFirst({
+      where: {
+        idcategory: { not: idcategory },
+        name_category: { equals: trimmedName, mode: 'insensitive' },
+        is_default: true,
+        delete_at: null,
+      },
+    });
+    if (existingDefault) {
+      throw Object.assign(new Error(`Danh mục hệ thống "${trimmedName}" đã tồn tại trong hệ thống. Không được phép đổi tên trùng.`), { statusCode: 400 });
     }
 
     const result = await adminRepository.updateCategory(idcategory, {
       name: trimmedName,
       classify: canonicalClassify,
-      is_default: targetIsDefault,
+      is_default: true,
       keyword: data.keyword !== undefined ? (data.keyword ? data.keyword.trim() : null) : undefined,
       icon: data.icon,
     });
@@ -359,6 +332,11 @@ const adminService = {
     if (!cat || cat.delete_at) {
       throw Object.assign(new Error('Không tìm thấy danh mục hoặc danh mục đã bị xóa'), { statusCode: 404 });
     }
+    // Bảo vệ quyền riêng tư người dùng: Admin TUYỆT ĐỐI KHÔNG ĐƯỢC PHÉP xóa danh mục của người dùng
+    if (!cat.is_default) {
+      throw Object.assign(new Error('Vi phạm quyền riêng tư: Tuyệt đối cấm xóa danh mục của người dùng.'), { statusCode: 403 });
+    }
+    // Bảo vệ danh mục hệ thống theo Rule_project.md 1.3: Danh mục hệ thống không thể bị xóa
     if (cat.is_default) {
       throw Object.assign(new Error('Không được phép xóa danh mục mặc định của hệ thống.'), { statusCode: 400 });
     }
