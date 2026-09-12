@@ -496,6 +496,23 @@ void main() {
       expect(find.textContaining('Lịch sử (1)'), findsOneWidget);
     });
 
+    testWidgets('dòng kỳ bỏ qua KHÔNG bày nút Thanh toán', (tester) async {
+      await dungTrang(tester, [
+        _bill(id: 'b', dueDate: DateTime(2026, 9, 10), payStatus: 'Skipped'),
+      ]);
+
+      await tester.tap(find.textContaining('Lịch sử ('));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Thanh toán'), findsNothing,
+          reason: 'payBill từ chối kỳ đã bỏ qua, nên nút này chỉ dẫn người '
+              'dùng tới một thông báo lỗi. Chỉ bộ test ở 411dp trên MÁY THẬT '
+              'mới lộ ra chỗ này — trang chi tiết đã đúng từ đầu, dòng danh '
+              'sách thì không.');
+      expect(find.byKey(const ValueKey('bill-undo-skip-b')), findsOneWidget,
+          reason: 'Thay bằng lối hoàn tác, đối xứng với dòng đã trả.');
+    });
+
     testWidgets('kỳ bỏ qua KHÔNG cộng vào tổng tiền cần thanh toán',
         (tester) async {
       await dungTrang(tester, [

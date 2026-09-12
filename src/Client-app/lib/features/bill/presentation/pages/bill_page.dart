@@ -298,6 +298,11 @@ class _BillPageState extends State<BillPage> {
             statusBg: mauNenTrangThaiHoaDon(status),
             accentColor: mauVachTrangThaiHoaDon(status),
             isPaid: status == BillDisplayStatus.paid,
+            // Kỳ bỏ qua là nhánh THỨ BA: không phải đã trả (không có
+            // khoản chi để hoàn), cũng không phải còn nợ (payBill từ
+            // chối nó). Bày nút Thanh toán cho nó là dẫn người dùng
+            // thẳng tới một thông báo lỗi.
+            daBoQua: status == BillDisplayStatus.skipped,
           ),
         );
       },
@@ -396,6 +401,7 @@ class _BillPageState extends State<BillPage> {
     required Color statusBg,
     required Color accentColor,
     bool isPaid = false,
+    bool daBoQua = false,
     String? meta,
     IconData? icon,
     Color? iconColor,
@@ -512,7 +518,24 @@ class _BillPageState extends State<BillPage> {
                                 minimumSize: const Size(0, 36),
                               ),
                             ),
-                          if (!isPaid)
+                          if (daBoQua)
+                            TextButton.icon(
+                              key: ValueKey('bill-undo-skip-${bill.id}'),
+                              onPressed: () =>
+                                  hoiHoanTacBoQua(context, bill),
+                              icon: const Icon(Icons.undo, size: 16),
+                              label: const FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text('Hoàn tác'),
+                              ),
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppColors.textSecondary,
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 12),
+                                minimumSize: const Size(0, 36),
+                              ),
+                            ),
+                          if (!isPaid && !daBoQua)
                             ElevatedButton(
                               onPressed: () =>
                                   moBangThanhToanHoaDon(context, bill),
