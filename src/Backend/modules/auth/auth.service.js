@@ -306,7 +306,6 @@ const authService = {
     }
 
     const account = matchedAccount;
-    let pendingDeleteCancelled = false;
 
     if (account.status === 'PendingDelete') {
       const isExpired = (account.countdown !== null && account.countdown <= 0) || (account.delete_at && account.delete_at <= new Date());
@@ -353,7 +352,6 @@ const authService = {
     return {
       accessToken,
       refreshToken,
-      pendingDeleteCancelled,
       user: {
         idaccount: account.idaccount,
         username: account.username,
@@ -406,14 +404,18 @@ const authService = {
     // Kiểm tra tính hợp lệ của tài khoản (xóa mềm, inactive, quá hạn 30 ngày)
     const { getAccountValidity, accountRejection } = require('../../middleware/auth');
     const accountInfo = await getAccountValidity(payload.idaccount);
+    if (accountInfo.errorType === 'SCHEMA_ERROR') {
+      throw Object.assign(
+        new Error('Dịch vụ xác thực tạm thời gián đoạn do cấu hình hệ thống'),
+        { statusCode: 503 },
+      );
+    }
     const rejection = accountRejection(accountInfo, payload.idaccount);
     if (rejection) {
       await prisma.refreshtoken.update({ where: { idtoken: storedToken.idtoken }, data: { status: true } });
       throw Object.assign(new Error(rejection.message), {
         statusCode: 401,
-        code: rejection.code,
-        idaccount: Number(payload.idaccount),
-        reason_inactive: rejection.reason_inactive || null,
+        ...rejection.data, // đưa code, idaccount, reason_inactive lên lỗi
       });
     }
 
@@ -562,6 +564,7 @@ const authService = {
       status: user.account?.status || 'Active',
       username: user.account?.username,
       rolename: user.account?.role?.rolename || 'user',
+      countdown: user.account?.countdown ?? null,
     };
   },
 

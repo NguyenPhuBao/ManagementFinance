@@ -190,23 +190,18 @@ const adminRepository = {
   },
 
   async getAllCategories(filters = {}) {
-    const where = { delete_at: null };
-
-    if (filters.created_by && filters.created_by !== 'all') {
-      const createdByNum = Number(filters.created_by);
-      if (!isNaN(createdByNum) && String(filters.created_by).trim() !== '') {
-        where.create_by = createdByNum;
-      } else {
-        where.account = { username: { equals: String(filters.created_by).trim(), mode: 'insensitive' } };
-      }
-    }
+    // Nguyên tắc bảo mật: Admin chỉ quản lý danh mục mặc định của hệ thống (is_default = true)
+    // Tuyệt đối không query hoặc trả về danh mục riêng tư của người dùng
+    const where = {
+      is_default: true,
+      delete_at: null,
+    };
 
     if (filters.keyword && typeof filters.keyword === 'string' && filters.keyword.trim()) {
-      where.keyword = { contains: filters.keyword.trim(), mode: 'insensitive' };
-    }
-
-    if (filters.is_default !== undefined && filters.is_default !== 'all' && filters.is_default !== '') {
-      where.is_default = filters.is_default === 'yes' || filters.is_default === 'true' || filters.is_default === true;
+      where.OR = [
+        { name_category: { contains: filters.keyword.trim(), mode: 'insensitive' } },
+        { keyword: { contains: filters.keyword.trim(), mode: 'insensitive' } },
+      ];
     }
 
     if (filters.classify && filters.classify !== 'all' && filters.classify !== '') {

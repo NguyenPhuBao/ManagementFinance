@@ -220,7 +220,7 @@ flowchart TD
 
 ## 10. Các Giải Pháp Kỹ Thuật Bảo Mật Đã Triển Khai Thực Tế
 
-Hệ thống đã hoàn tất triển khai và kiểm thử 100% các biện pháp kỹ thuật bảo mật sau:
+Các biện pháp dưới đây đã có trong mã; bốn trigger ở 10.1 có trên CSDL dev từ 2026-09-10 (áp database/10, 11). Chưa có bộ test tự động riêng trong repo cho các biện pháp này:
 
 ### 10.1. Cơ chế Bảo vệ 2 Đầu (Client/Backend + CSDL Trigger)
 * **Xác thực và mã hóa cấp ứng dụng (Backend Application Layer):** Mọi trường PII (`User.phone`, `User.address`, `bank_account.account_number`) được mã hóa AES-256-GCM trước khi lưu vào CSDL.
@@ -251,4 +251,18 @@ Hệ thống đã hoàn tất triển khai và kiểm thử 100% các biện ph�
 
 ### 10.6. Làm Sạch Nhật Ký Hệ Thống (Logger Redaction)
 * Winston Logger tích hợp format tự động phát hiện và che giấu các trường nhạy cảm (`balance`, `password`, `token`, `otp`, `code_hash`, `cvv`, `refreshtoken`).
+
+### 10.7. Bảo Vệ Tuyệt Đối Quyền Riêng Tư Danh Mục Chi Tiêu Của Người Dùng (User Category Privacy & Isolation)
+* **Cơ sở pháp lý:** Điều 9, Điều 13, Điều 26 Nghị định 13/2023/NĐ-CP và Luật Bảo vệ dữ liệu cá nhân 2025 (Luật số 91/2025/QH15 - Điều 27). Danh mục chi tiêu tùy chỉnh của cá nhân chứa đựng trực tiếp thói quen sinh hoạt, đời sống riêng tư, mức chi trả và lối sống của người dùng, thuộc nhóm dữ liệu cá nhân nhạy cảm cần được bảo vệ đặc biệt.
+* **Nguyên tắc phân quyền cách ly (User-scoped Isolation):**
+  * Quản trị viên (Admin) chỉ quản lý các danh mục mẫu mặc định của hệ thống (`is_default = true`).
+  * Danh mục người dùng (`is_default = false`) thuộc quyền sở hữu riêng tư tuyệt đối của tài khoản tạo lập (`create_by = idaccount`).
+  * Backend API (`/api/admin/categories`) và giao diện Admin-web (`/categories`) bị ép cứng lọc theo `is_default = true, delete_at = null`, gỡ bỏ hoàn toàn logic truy vấn danh mục cá nhân của người dùng.
+* **Cơ chế Phòng vệ Chiều sâu (Defense-in-Depth):**
+  * **Ẩn danh hóa bắt buộc (Data Masking):** Nếu bất kỳ danh mục người dùng nào vô tình lọt vào API hoặc giao diện Admin, toàn bộ trường thông tin cá nhân (`name`, `keyword`, `created_by`, `created_by_name`) bắt buộc bị thay thế 100% bằng `***` và cắm cờ `is_user_category: true`. Giao diện hiển thị nhãn cảnh báo `[Dữ liệu riêng tư - Đã ẩn danh]` và khóa toàn bộ nút Sửa / Xóa.
+  * **Chặn đứng can thiệp (403 Forbidden):** Mọi hành vi sửa (`updateCategory`) hoặc xóa (`deleteCategory`) danh mục của người dùng từ phía Admin đều bị Backend từ chối ngay lập tức với mã lỗi `403 Forbidden` ("Vi phạm quyền riêng tư: Tuyệt đối cấm chỉnh sửa/xóa danh mục của người dùng.").
+* **Xử lý danh mục khi người dùng yêu cầu xóa tài khoản:**
+  * Khi tài khoản người dùng ở trạng thái `PendingDelete` (thời hạn ân hạn 30 ngày), danh mục cá nhân vẫn được bảo lưu cục bộ để người dùng có thể khôi phục nếu hủy yêu cầu.
+  * Khi hết 30 ngày và chuyển sang trạng thái `Deleted` (quy trình thanh lọc triệt để): Các danh mục cá nhân liên kết với tài khoản sẽ được xóa mềm (`Delete_at = NOW()`) hoặc ẩn danh hóa hoàn toàn, đảm bảo cắt đứt mọi liên kết định danh cá nhân mà vẫn bảo toàn tính toàn vẹn tham chiếu của các giao dịch lịch sử theo Luật Kế toán.
+
 

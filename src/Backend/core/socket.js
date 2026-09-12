@@ -37,14 +37,14 @@ function initSocket(httpServer) {
       }
 
       const accountInfo = await getAccountValidity(decoded.idaccount);
+      if (accountInfo.errorType === 'SCHEMA_ERROR') {
+        // Không kèm data.code: đây không phải lý do của tài khoản
+        return next(new Error('Authentication error: Service temporarily unavailable'));
+      }
       const rejection = accountRejection(accountInfo, decoded.idaccount);
       if (rejection) {
         return next(Object.assign(new Error(`Authentication error: ${rejection.message}`), {
-          data: {
-            code: rejection.code,
-            idaccount: Number(decoded.idaccount),
-            reason_inactive: rejection.reason_inactive || null,
-          },
+          data: rejection.data, // { code, idaccount, reason_inactive }
         }));
       }
 

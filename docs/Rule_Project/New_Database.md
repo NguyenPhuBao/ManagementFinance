@@ -1,7 +1,7 @@
 # 🛡️ CƠ SỞ DỮ LIỆU CHUẨN (NEW_DATABASE) — MANAGEMENTFINANCE
 > **Source of Truth** về Lược đồ CSDL PostgreSQL, Quy chuẩn Ràng buộc, Đánh giá Tuân thủ Pháp luật & Quy định Thời hạn Lưu trữ Dữ liệu.
 >
-> *Ngày cập nhật:* 2026-09-10  
+> *Ngày cập nhật:* 2026-09-12  
 > *Phạm vi áp dụng:* Toàn bộ hệ thống (`src/Backend`, `src/Admin-web`, `src/Client-app`).  
 > *Căn cứ pháp lý:* Nghị định 13/2023/NĐ-CP (PDPD), Nghị định 53/2022/NĐ-CP (An ninh mạng), Luật Kế toán 2015 (Luật số 88/2015/QH13), Chuẩn PCI-DSS v4.0, Khuyến nghị OWASP Top 10.
 
@@ -48,11 +48,13 @@ Bảng tài khoản đăng nhập hệ thống.
 |---|---|---|---|---|---|
 | `Idaccount` | int | PK - Auto increment | Mã tài khoản nội bộ | ✅ Cho phép. Plaintext | Suốt vòng đời tài khoản |
 | `Idrole` | int | FK - Role (`Idrole`) | Quyền/Vai trò tài khoản | ✅ Cho phép. Plaintext | Suốt vòng đời tài khoản |
-| `Email` | varchar(100) | Unique | Email đăng nhập | ✅ Cho phép. **Masking khi trả về API** (`ph***@gmail.com`). Ẩn danh hóa khi tài khoản bị xóa | Suốt thời gian Active; xóa/ẩn danh sau 30 ngày `PendingDelete` |
-| `Username` | varchar(255) | Unique | Tên đăng nhập | ✅ Cho phép. Masking trên public log | Suốt thời gian Active |
+| `Email` | varchar(100) | Unique khi Delete_at IS NULL (partial index `account_Email_key`) | Email đăng nhập | ✅ Cho phép. **Masking khi trả về API** (`ph***@gmail.com`). Ẩn danh hóa khi tài khoản bị xóa | Suốt thời gian Active; xóa/ẩn danh sau 30 ngày `PendingDelete` |
+| `Username` | varchar(255) | Index `idx_account_username` — không unique (trùng Username hợp lệ nếu khác mật khẩu, Rule_project.md 11.4) | Tên đăng nhập | ✅ Cho phép. Masking trên public log | Suốt thời gian Active |
 | `Password` | varchar(255) | Hash | Mật khẩu xác thực | ✅ Cho phép. **BẮT BUỘC HASH 1 CHIỀU** (Argon2id/bcrypt $\ge$ 12). Cấm lưu plaintext, cấm log | Suốt thời gian Active; xóa khi tài khoản bị xóa triệt để |
-| `Status` | varchar(20) | Check in (`Active`, `Inactive`, `PendingDelete`, `Deleted`) | Trạng thái tài khoản | ✅ Cho phép. Plaintext | Suốt vòng đời hệ thống |
-| `Type` | varchar(7) | Check in (`Basic`, `Premium`) | Loại gói tài khoản | ✅ Cho phép. Plaintext | Suốt thời gian Active |
+| `Status` | varchar(20) | Default 'Active'. Không có CHECK trong CSDL (quy ước: `Active`, `Inactive`, `PendingDelete`, `Deleted`) | Trạng thái tài khoản | ✅ Cho phép. Plaintext | Suốt vòng đời hệ thống |
+| `Type` | varchar(7) | Default 'Basic'. Không có CHECK trong CSDL | Loại gói tài khoản | ✅ Cho phép. Plaintext | Suốt thời gian Active |
+| `Reason_Inactive` | text | NULL | Lý do Admin vô hiệu hoá tài khoản | ✅ Cho phép. Kiểm duyệt SĐT/Email/CCCD/thẻ/từ ngữ thô tục qua `validateReasonInactive` (`utils/content-filter.util.js`) | Xoá về NULL khi kích hoạt lại |
+| `Countdown` | int | NULL | Số ngày còn lại của thời hạn chờ xoá (30 → 1); `0` sau khi xoá hẳn; NULL khi không chờ xoá | ✅ Cho phép. Plaintext | Theo trạng thái `PendingDelete` |
 | `Create_at` | Timestamp | Default Now() | Thời điểm tạo | ✅ Cho phép. Plaintext | Vĩnh viễn theo tài khoản |
 | `Update_at` | Timestamp | Default Now() | Thời điểm cập nhật | ✅ Cho phép. Plaintext | Vĩnh viễn theo tài khoản |
 | `Delete_at` | Timestamp | NULL | Thời điểm yêu cầu xóa | ✅ Cho phép. Plaintext | Sau 30 ngày kích hoạt Purge/Anonymize |
@@ -67,7 +69,7 @@ Bảng lưu thông tin cá nhân của người dùng (quan hệ 1-1 với Accou
 | `Iduser` | int | PK - Auto increment | Mã thông tin người dùng | ✅ Cho phép. Plaintext | Suốt vòng đời tài khoản |
 | `Idaccount` | int | FK - Account(`Idaccount`), UNIQUE | Mã tài khoản liên kết | ✅ Cho phép. Plaintext | Suốt vòng đời tài khoản |
 | `Fullname` | nvarchar(100) | | Họ và tên người dùng | ✅ Cho phép. Masking khi hiển thị công khai; Ẩn danh hóa khi tài khoản bị xóa | Suốt thời gian Active; Xóa/Anonymize sau 30 ngày `PendingDelete` |
-| `Email` | varchar(100) | Unique | Email người dùng | ✅ Cho phép (đồng bộ với Account). Masking khi xuất | Đồng bộ theo Account |
+| `Email` | varchar(100) | Unique khi Delete_at IS NULL (partial index `user_Email_key`) | Email người dùng | ✅ Cho phép (đồng bộ với Account). Masking khi xuất | Đồng bộ theo Account |
 | `Phone` | varchar(256) | NULL | Số điện thoại | ✅ Cho phép. **ĐÃ MÃ HÓA AT-REST (AES-256-GCM)**; **Trigger CSDL chặn Plaintext**; Masking khi hiển thị (`098****321`) | Suốt thời gian Active; Xóa hoàn toàn khi hủy tài khoản |
 | `Address` | Text | NULL | Địa chỉ cư trú | ✅ Cho phép. **ĐÃ MÃ HÓA AT-REST (AES-256-GCM)**; Masking khi hiển thị trên Admin-web | Suốt thời gian Active; Xóa hoàn toàn khi hủy tài khoản |
 | `Country_code` | char(4) | NULL | Mã vùng điện thoại (`+84`) | ✅ Cho phép. Plaintext | Suốt thời gian Active |
@@ -85,7 +87,7 @@ Bảng nhật ký kiểm toán theo dõi các request gửi về backend phục 
 | `Idlog` | int | PK - Auto increment | Mã log | ✅ Cho phép. Plaintext | Tối thiểu **12 tháng** (Nghị định 53/2022/NĐ-CP) |
 | `Idaccount` | int | FK - Account (`Idaccount`) | Tài khoản gửi request | ✅ Cho phép. Plaintext | Tối thiểu 12 tháng |
 | `Request` | Varchar(200) | | Tên hành động / API endpoint | ✅ Cho phép. **CẤM CHỨA THÔNG TIN NHẠY CẢM** (Password, Token, OTP, CVV) | Tối thiểu 12 tháng |
-| `Req_status` | Varchar(12) | Check in (`Accepted`, `Rejected`, `Interrupted`, `Pending`, `Processing`, `Pass`, `Fail`) | Trạng thái xử lý | ✅ Cho phép. Plaintext | Tối thiểu 12 tháng |
+| `Req_status` | Varchar(12) | Default 'Pass'. Không có CHECK trong CSDL (quy ước: `Accepted`, `Rejected`, `Interrupted`, `Pending`, `Processing`, `Pass`, `Fail`) | Trạng thái xử lý | ✅ Cho phép. Plaintext | Tối thiểu 12 tháng |
 | `Reason` | Varchar(200) | NULL | Lý do chặn / lỗi | ✅ Cho phép. Plaintext (cấm ghi thông tin nhạy cảm vào lý do) | Tối thiểu 12 tháng |
 | `TimeReq` | Timestamp | Default Now() | Thời gian nhận request | ✅ Cho phép. Plaintext | Tối thiểu 12 tháng |
 | `TimeRes` | Timestamp | Default Now() | Thời gian phản hồi xong | ✅ Cho phép. Plaintext | Tối thiểu 12 tháng |
@@ -103,7 +105,7 @@ Bảng mã OTP phục vụ xác thực email, đổi mật khẩu, đổi email.
 | `Idaccount` | int | FK - Account (`Idaccount`), NULL | Tài khoản yêu cầu | ✅ Cho phép. Plaintext | Tối đa 24 giờ |
 | `Email` | varchar(100) | | Email nhận OTP | ✅ Cho phép. Masking trên log | Tối đa 24 giờ |
 | `code_hash` | varchar(255) | | Chuỗi mã OTP đã băm | ✅ Cho phép. **BẮT BUỘC BĂM SHA-256**, tuyệt đối cấm lưu OTP dạng rõ | Tối đa 24 giờ (hiệu lực mã 10 phút) |
-| `purpose` | varchar(20) | Check in (`Register`, `Reset_password`, `Change_email`) | Mục đích gửi OTP | ✅ Cho phép. Plaintext | Tối đa 24 giờ |
+| `purpose` | varchar(20) | Không có CHECK trong CSDL (quy ước: `Register`, `Reset_password`, `Change_email`) | Mục đích gửi OTP | ✅ Cho phép. Plaintext | Tối đa 24 giờ |
 | `is_used` | Boolean | Default False | Trạng thái đã sử dụng | ✅ Cho phép. Plaintext | Tối đa 24 giờ |
 | `expires_at` | Timestamp | Default Now() + 10m | Thời điểm hết hạn | ✅ Cho phép. Plaintext (hiệu lực tối đa 10 phút) | Tối đa 24 giờ |
 | `created_at` | Timestamp | Default Now() | Thời điểm tạo mã | ✅ Cho phép. Plaintext | Tối đa 24 giờ |
@@ -167,7 +169,7 @@ Bảng ví tiền của người dùng (Tiền mặt, Ngân hàng, Tiết kiệm
 | `Type` | varchar(7) | Check in (`Cash`, `Bank`, `Saving`, `Banking`) | Phân loại nguồn ví | ✅ Cho phép. Plaintext | Theo ví |
 | `Balance` | decimal(15,2) | Default 0 | Số dư hiện tại của ví | ✅ Cho phép. **Dữ liệu tài chính nhạy cảm**; Phân quyền chặt chẽ | Tối thiểu 5 năm sau khi xóa mềm (Luật Kế toán) |
 | `Currency` | Varchar(3) | Check in (`VND`, `USD`) | Đơn vị tiền tệ | ✅ Cho phép. Plaintext | Theo ví |
-| `Status` | Varchar(8) | Check in (`Active`, `Inactive`) | Trạng thái ví (Active/Inactive) | ✅ Cho phép. Plaintext | Theo ví |
+| `Status` | Varchar(20) | Default 'Active'. Không có CHECK trong CSDL | Trạng thái ví (Active/Inactive) | ✅ Cho phép. Plaintext | Theo ví |
 | `IncludeInTotal` | Boolean | Default TRUE | Có tính vào tổng tài sản | ✅ Cho phép. Plaintext | Theo ví |
 | `Is_default` | Boolean | Default False | Ví mặc định | ✅ Cho phép. Plaintext | Theo ví |
 | `Icon` | Varchar(20) | NULL | Icon hiển thị | ✅ Cho phép. Plaintext | Theo ví |
@@ -190,14 +192,14 @@ Bảng hạn mức ngân sách chi tiêu.
 | `Spent` | Decimal(15, 2) | Default 0 | Số tiền thực tế đã chi | ✅ Cho phép. Phân quyền `Idaccount` | Tối thiểu 3 - 5 năm |
 | `Threshold_Warning_Amount` | Decimal(15, 2) | NULL | Số tiền chạm ngưỡng báo động | ✅ Cho phép. Plaintext | Theo ngân sách |
 | `Threshold_Warning_Percent` | Decimal(15, 2) | NULL (0-100) | Tỷ lệ % chạm ngưỡng báo (NULL nếu không dùng) | ✅ Cho phép. Plaintext | Theo ngân sách |
-| `OverSpending` | Varchar(7) | Check in (`Stop`, `Over`) | Hành vi khi vượt hạn mức | ✅ Cho phép. Plaintext | Theo ngân sách |
+| `OverSpending` | Varchar(7) | Default 'Over'. Không có CHECK trong CSDL; `sync.validation.js:148` chỉ nhận `Stop`, `Over` | Hành vi khi vượt hạn mức | ✅ Cho phép. Plaintext | Theo ngân sách |
 | `OverAmount` | Decimal(15, 2) | NULL | Số tiền cho phép vượt tối đa | ✅ Cho phép. Plaintext | Theo ngân sách |
 | `Start` | Timestamp | | Thời điểm bắt đầu | ✅ Cho phép. Plaintext | Theo ngân sách |
 | `End` | Timestamp | NULL | Thời điểm kết thúc | ✅ Cho phép. Plaintext | Theo ngân sách |
 | `Recurrence` | Boolean | Default FALSE | Tự động lặp lại chu kỳ | ✅ Cho phép. Plaintext | Theo ngân sách |
-| `Time_recurrence` | varchar(7) | Check in (`Day`, `Week`, `Month`, `Quarter`, `Year`), NULL | Chu kỳ lặp lại | ✅ Cho phép. Plaintext | Theo ngân sách |
+| `Time_recurrence` | varchar(7) | Check in (`Week`, `Month`, `Quarter`, `Year`), NULL | Chu kỳ lặp lại | ✅ Cho phép. Plaintext | Theo ngân sách |
 | `Nexttime_recurrence` | Timestamp | NULL | Thời điểm chu kỳ tiếp theo | ✅ Cho phép. Plaintext | Theo ngân sách |
-| `Note` | text | NULL | Ghi chú ngân sách | ✅ Cho phép. Plaintext | Theo ngân sách |
+| `Note` | text | NULL | Ghi chú ngân sách | ✅ Cho phép. **ĐÃ MÃ HÓA AT-REST (AES-256-GCM)** & **Lọc sạch thẻ/CVV/pwd trước khi lưu** | Theo ngân sách |
 | `Create_at` | Timestamp | Default Now() | Thời điểm tạo | ✅ Cho phép. Plaintext | Theo ngân sách |
 | `Update_at` | Timestamp | Default Now() | Thời điểm cập nhật | ✅ Cho phép. Plaintext | Theo ngân sách |
 | `Delete_at` | Timestamp | NULL | Thời điểm xóa mềm | ✅ Cho phép. Plaintext | Cho phép xóa mềm hoặc dọn dẹp sau 5 năm |
@@ -219,15 +221,15 @@ Bảng quản lý hóa đơn định kỳ phải trả (Tiền điện, nước,
 | `Due_date` | Timestamp | | Hạn thanh toán | ✅ Cho phép. Plaintext | Theo hóa đơn |
 | `Pay_status` | varchar(7) | Check in (`Pending`, `Payed`, `Overdue`, `Skipped`) | Trạng thái thanh toán (bổ sung Skipped khi bỏ qua kỳ) | ✅ Cho phép. Plaintext | Tối thiểu 5 năm |
 | `Recurrence` | Boolean | Default False | Lặp lại định kỳ | ✅ Cho phép. Plaintext | Theo hóa đơn |
-| `Time_recurrence` | varchar(7) | Check in (`Day`, `Week`, `Month`, `Quarter`, `Year`), NULL | Chu kỳ lặp lại | ✅ Cho phép. Plaintext | Theo hóa đơn |
-| `Time_notification` | varchar(7) | Check in (`1`, `3`, `5`, `7`), NULL | Số ngày nhắc nhở trước hạn | ✅ Cho phép. Plaintext | Theo hóa đơn |
+| `Time_recurrence` | varchar(7) | Check in (`Week`, `Month`, `Quarter`, `Year`), NULL | Chu kỳ lặp lại | ✅ Cho phép. Plaintext | Theo hóa đơn |
+| `Time_notification` | varchar(7) | Default '3', NULL. Không có CHECK trong CSDL (quy ước: `1`, `3`, `5`, `7`) | Số ngày nhắc nhở trước hạn | ✅ Cho phép. Plaintext | Theo hóa đơn |
 | `Previous_bill_id` | varchar(36) | NULL, FK Bill(`Idbill`) | Liên kết hóa đơn chuỗi kỳ trước | ✅ Cho phép. Plaintext | Theo chuỗi hóa đơn |
 | `Period_end` | Date | NULL | Ngày kết thúc kỳ tính cước hóa đơn | ✅ Cho phép. Plaintext | Theo hóa đơn |
 | `Auto_pay` | Boolean | Default False | Tự động thanh toán hóa đơn khi tới hạn | ✅ Cho phép. Plaintext | Theo hóa đơn |
 | `Anchor_day` | Smallint | NULL, Check (1-31) | Ngày neo chu kỳ thanh toán hàng tháng | ✅ Cho phép. Plaintext | Theo hóa đơn |
 | `Icon` | varchar(20) | NULL | Icon hiển thị | ✅ Cho phép. Plaintext | Theo hóa đơn |
 | `Color` | varchar(20) | NULL | Mã màu hiển thị | ✅ Cho phép. Plaintext | Theo hóa đơn |
-| `Note` | Text | NULL | Ghi chú thêm | ✅ Cho phép. Plaintext | Theo hóa đơn |
+| `Note` | Text | NULL | Ghi chú thêm | ✅ Cho phép. **ĐÃ MÃ HÓA AT-REST (AES-256-GCM)** & **Lọc sạch thẻ/CVV/pwd trước khi lưu** | Theo hóa đơn |
 | `Create_at` | Timestamp | Default Now() | Thời điểm tạo | ✅ Cho phép. Plaintext | Theo hóa đơn |
 | `Update_at` | Timestamp | Default Now() | Thời điểm cập nhật | ✅ Cho phép. Plaintext | Theo hóa đơn |
 | `Delete_at` | Timestamp | NULL | Thời điểm xóa mềm | ✅ Cho phép. Plaintext | Không xóa vật lý hóa đơn đã thanh toán |
@@ -247,18 +249,18 @@ Bảng mục tiêu tích lũy và tiết kiệm tiền.
 | `Current_amount` | Decimal(15,2) | Default 0, Check (>= 0) | Số tiền hiện đã tích lũy | ✅ Cho phép. Phân quyền `Idaccount` | Tối thiểu 3 - 5 năm |
 | `Start_date` | Timestamp | Default Now() | Ngày bắt đầu tích lũy | ✅ Cho phép. Plaintext | Theo mục tiêu |
 | `Target_date` | Timestamp | | Hạn hoàn thành mục tiêu | ✅ Cho phép. Plaintext | Theo mục tiêu |
-| `Cycle_take_money` | varchar(7) | Check in (`Day`, `Week`, `Month`, `Quarter`, `Year`), NULL | Chu kỳ trích tiền | ✅ Cho phép. Plaintext | Theo mục tiêu |
+| `Cycle_take_money` | varchar(7) | NULL. Không có CHECK trong CSDL | Chu kỳ trích tiền | ✅ Cho phép. Plaintext | Theo mục tiêu |
 | `Time_cycle_take_money` | Timestamp | NULL | Thời điểm trích cụ thể | ✅ Cho phép. Plaintext | Theo mục tiêu |
-| `Status_complete` | varchar(20) | Check in (`True`, `False`) | Đã hoàn thành hay chưa | ✅ Cho phép. Plaintext | Theo mục tiêu |
+| `Status_complete` | varchar(20) | Default 'False'. Không có CHECK trong CSDL (quy ước: `True`, `False`) | Đã hoàn thành hay chưa | ✅ Cho phép. Plaintext | Theo mục tiêu |
 | `Recurrence` | Boolean | Default False | Lặp lại sau khi đạt | ✅ Cho phép. Plaintext | Theo mục tiêu |
-| `Time_recurrence` | varchar(7) | Check in (`Day`, `Week`, `Month`, `Quarter`, `Year`), NULL | Chu kỳ lặp lại | ✅ Cho phép. Plaintext | Theo mục tiêu |
-| `auto_deposit_amount` | Decimal(15,2) | NULL, Check (> 0) | Số tiền trích tự động mỗi kỳ | ✅ Cho phép. Plaintext | Theo mục tiêu |
-| `auto_deposit_wallet_id` | varchar(36) | NULL, FK Wallet | Ví nguồn trích tiền tự động | ✅ Cho phép. Plaintext | Theo mục tiêu |
-| `auto_deposit_last_run` | Date | NULL | Ngày trích tiền tự động gần nhất | ✅ Cho phép. Plaintext | Theo mục tiêu |
-| `Priority` | Smallint | NULL, Check (> 0) | Thứ tự ưu tiên trích tích lũy (NULL nếu không đặt) | ✅ Cho phép. Plaintext | Theo mục tiêu |
+| `Time_recurrence` | varchar(7) | NULL. Không có CHECK trong CSDL | Chu kỳ lặp lại | ✅ Cho phép. Plaintext | Theo mục tiêu |
+| `auto_deposit_amount` | decimal(18,2) | NULL | Số tiền trích tự động mỗi kỳ | ✅ Cho phép. Phân quyền `Idaccount` | Theo mục tiêu |
+| `auto_deposit_wallet_id` | varchar(36) | NULL — **không có FK** | Ví nguồn bị trích tự động | ✅ Cho phép. Plaintext | Theo mục tiêu |
+| `auto_deposit_last_run` | Timestamp | NULL | Lần trích tự động thành công gần nhất | ✅ Cho phép. Plaintext | Theo mục tiêu |
+| `Priority` | int | NULL | Thứ tự ưu tiên hiển thị: số thưa cách nhau 100; **NULL = chưa sắp, xếp cuối**; trùng số được phép | ✅ Cho phép. Plaintext | Theo mục tiêu |
 | `Icon` | varchar(20) | NULL | Icon hiển thị | ✅ Cho phép. Plaintext | Theo mục tiêu |
 | `Color` | varchar(20) | NULL | Màu sắc | ✅ Cho phép. Plaintext | Theo mục tiêu |
-| `Note` | Text | NULL | Ghi chú | ✅ Cho phép. Plaintext | Theo mục tiêu |
+| `Note` | Text | NULL | Ghi chú | ✅ Cho phép. **ĐÃ MÃ HÓA AT-REST (AES-256-GCM)** & **Lọc sạch thẻ/CVV/pwd trước khi lưu** | Theo mục tiêu |
 | `Create_at` | Timestamp | Default Now() | Thời điểm tạo | ✅ Cho phép. Plaintext | Theo mục tiêu |
 | `Update_at` | Timestamp | Default Now() | Thời điểm cập nhật | ✅ Cho phép. Plaintext | Theo mục tiêu |
 | `Delete_at` | Timestamp | NULL | Thời điểm xóa mềm | ✅ Cho phép. Plaintext | Cho phép xóa mềm hoặc lưu trữ báo cáo |
@@ -275,13 +277,13 @@ Bảng lưu trữ mọi giao dịch thu, chi, chuyển khoản, đồng bộ ng�
 | `Idwallet` | varchar(36) | FK - Wallet (`Idwallet`) | Ví thực hiện giao dịch | ✅ Cho phép. Plaintext | Tối thiểu 5 năm |
 | `Idcategory` | varchar(36) | FK - Category, NULL | Danh mục chi tiêu/thu | ✅ Cho phép. Plaintext | Tối thiểu 5 năm |
 | `Idwallet_transfer` | varchar(36) | FK - Wallet, NULL | Ví nhận tiền (khi Transfer) | ✅ Cho phép. Plaintext | Tối thiểu 5 năm |
-| `Idgoal` | varchar(36) | FK - Goal, NULL | Liên kết mục tiêu tích lũy/rút tiền | ✅ Cho phép. Plaintext | Tối thiểu 5 năm |
+| `Idgoal` | varchar(36) | FK - Goal (`Idgoal`), NULL, `ON DELETE SET NULL` | Liên kết mục tiêu tích lũy/rút tiền | ✅ Cho phép. Plaintext | Tối thiểu 5 năm |
 | `Idbill` | varchar(36) | FK - Bill, NULL | Liên kết hóa đơn thanh toán | ✅ Cho phép. Plaintext | Tối thiểu 5 năm |
 | `Bank_tran_id` | varchar(100) | NULL | Mã giao dịch phía ngân hàng | ✅ Cho phép. Dùng chống trùng lặp | Tối thiểu 5 năm |
 | `Amount` | Decimal(15,2) | Check (!= 0) | Số tiền giao dịch (±) | ✅ Cho phép. **Dữ liệu tài chính cốt lõi**; Phân quyền chặt chẽ; Audit log | Tối thiểu 5 năm (không xóa vật lý) |
 | `Type` | Varchar(20) | Check in (`Transaction`, `Transfer`) | Loại giao dịch | ✅ Cho phép. Plaintext | Tối thiểu 5 năm |
-| `Status` | Varchar(10) | Check in (`Pending`, `Confirmed`, `Rejected`, `Fail`) | Trạng thái giao dịch | ✅ Cho phép. Plaintext | Tối thiểu 5 năm |
-| `Provider` | Varchar(40) | Check in (`Manual`, `BankSync`, `SMS`, `OCR`, `Bill`) | Nguồn tạo giao dịch | ✅ Cho phép. Plaintext | Tối thiểu 5 năm |
+| `Status` | Varchar(10) | Default 'Confirmed'. Không có CHECK trong CSDL; `sync.validation.js:131` chỉ nhận `Pending`, `Confirmed`, `Rejected`, `Fail` | Trạng thái giao dịch | ✅ Cho phép. Plaintext | Tối thiểu 5 năm |
+| `Provider` | Varchar(40) | Default 'Manual'. Không có CHECK trong CSDL; `sync.validation.js:125` nhận `Manual`, `BankSync`, `Casso`, `SMS`, `OCR`, `Bill` | Nguồn tạo giao dịch | ✅ Cho phép. Plaintext | Tối thiểu 5 năm |
 | `Note` | Text | NULL | Ghi chú giao dịch | ✅ Cho phép. **ĐÃ MÃ HÓA AT-REST (AES-256-GCM)** & **Lọc sạch thẻ/CVV/pwd trước khi lưu** | Tối thiểu 5 năm; Xóa khi người dùng xóa tài khoản |
 | `Images` | Text | NULL | Đường dẫn ảnh biên lai/chứng từ | ✅ Cho phép. **ĐÃ DÙNG PRE-SIGNED URL (15-30 phút)**; Private Bucket; Xóa ảnh vật lý khi tài khoản bị xóa | Tối thiểu 5 năm theo chứng từ kế toán |
 | `DateTransaction` | Timestamp | Default Now() | Thời điểm phát sinh giao dịch | ✅ Cho phép. Plaintext | Tối thiểu 5 năm |
@@ -326,24 +328,24 @@ Bảng lưu trữ Refresh Token đã cấp cho các phiên đăng nhập.
 
 ### 3.2.2. Account
 - **PK**: `Idaccount` (int auto-increment) | **FK**: `Idrole` $\rightarrow$ `Role(Idrole)`
-- **Unique**: `Email`, `Username`
-- **Check**: `Status IN ('Active', 'Inactive', 'PendingDelete', 'Deleted')`; `Type IN ('Basic', 'Premium')`
+- **Unique**: `Email` khi `Delete_at IS NULL` (partial index `account_Email_key`) | **Index**: `Username` (`idx_account_username`, **không** unique — `Rule_project.md` 11.4)
+- **Check**: không có (giá trị Status, Type do tầng ứng dụng giữ)
 - **Default**: `Status = 'Active'`, `Type = 'Basic'`, `Create_at = Now()`, `Update_at = Now()`
 
 ### 3.2.3. User
 - **PK**: `Iduser` (int auto-increment) | **FK**: `Idaccount` $\rightarrow$ `Account(Idaccount)` (`ON DELETE CASCADE`)
-- **Unique**: `Idaccount` (1 User ↔ 1 Account), `Email`
+- **Unique**: `Idaccount` (1 User ↔ 1 Account), `Email` khi `Delete_at IS NULL` (partial index `user_Email_key`)
 - **Đồng bộ**: `User.Email` luôn đồng bộ với `Account.Email`.
 
 ### 3.2.4. Audit_log
 - **PK**: `Idlog` (int auto-increment) | **FK**: `Idaccount` $\rightarrow$ `Account(Idaccount)` (`ON DELETE CASCADE`)
-- **Check**: `Req_status IN ('Accepted', 'Rejected', 'Interrupted', 'Pending', 'Processing', 'Pass', 'Fail')`
+- **Check**: không có
 - **Default**: `Req_status = 'Pass'`, `TimeReq = Now()`, `TimeRes = Now()`
 - **Index**: `Idaccount`, `TimeReq`
 
 ### 3.2.5. OTP_code
 - **PK**: `Id_otp` (int auto-increment) | **FK**: `Idaccount` $\rightarrow$ `Account(Idaccount)` (`ON DELETE SET NULL`)
-- **Check**: `purpose IN ('Register', 'Reset_password', 'Change_email')`; `expires_at > created_at`
+- **Check**: không có
 - **Default**: `is_used = FALSE`, `created_at = Now()`, `expires_at = Now() + INTERVAL '10 minutes'`
 - **Index**: `(Idaccount, purpose)`, `(Email, purpose)`, `expires_at`
 
@@ -353,7 +355,7 @@ Bảng lưu trữ Refresh Token đã cấp cho các phiên đăng nhập.
 - **Cột mới**: `Color` (varchar(9) NULL - mã màu hex)
 - **Check**: `Classify IN ('Thu', 'Chi', 'Vay/no')`
 - **Default**: `Is_default = FALSE`, `Is_group = FALSE`, `Create_at = Now()`, `Update_at = Now()`
-- **Unique**: `(Create_by, lower(regexp_replace(btrim(NORMALIZE(NameCategory, NFC)), '\s+', ' ', 'g')))` — Cấm trùng lặp trên cùng tài khoản. Áp dụng mô hình **Template & Cloned Model** (Người dùng được phép tạo danh mục cá nhân trùng tên với danh mục mặc định của hệ thống).
+- **Unique**: (hai partial index, **không** có `Classify`): `uq_category_owner_name ("Create_by", lower(regexp_replace(btrim(NORMALIZE("NameCategory", NFC)), '\s+', ' ', 'g'))) WHERE "Is_default" = false AND "Delete_at" IS NULL` — tên danh mục người dùng không trùng trong một tài khoản; `uq_category_default_name` cùng biểu thức, `WHERE "Is_default" = true AND "Delete_at" IS NULL` — danh mục mẫu không trùng nhau. Người dùng **được** trùng tên với danh mục mẫu (`Rule_project.md` 1.2).
 - **Check Phân cấp**: Nhóm (`Is_group = TRUE`): `Idgroup IS NULL`. Danh mục con (`Is_group = FALSE`): có thể có `Idgroup` hoặc `NULL` (không cho phép lồng quá 2 cấp).
 - **Index**: `Idcategory`, `Idgroup`, `Create_by`
 
@@ -369,15 +371,15 @@ Bảng lưu trữ Refresh Token đã cấp cho các phiên đăng nhập.
 ### 3.2.8. Wallet
 - **PK**: `Idwallet` (varchar(36) UUID)
 - **FK**: `Idaccount` $\rightarrow$ `Account(Idaccount)` (`ON DELETE CASCADE`); `Id_bank_casso` $\rightarrow$ `Bank_account(Id_bank_account)` (`ON DELETE SET NULL`)
-- **Check**: `Type IN ('Cash', 'Bank', 'Saving', 'Banking')`; `Currency IN ('VND', 'USD')`; `Status IN ('Active', 'Inactive')`
+- **Check**: `Type IN ('Cash', 'Bank', 'Saving', 'Banking')`; `Currency IN ('VND', 'USD')`; `(Type = 'Banking' AND Id_bank_casso IS NOT NULL) OR (Type <> 'Banking' AND Id_bank_casso IS NULL)` (`chk_wallet_banking_link`). (**Không** có CHECK cho `Status`)
 - **Default**: `Type = 'Cash'`, `Balance = 0`, `Currency = 'VND'`, `Status = 'Active'`, `IncludeInTotal = TRUE`, `Is_default = FALSE`
-- **Unique**: `(Idaccount, Name)` — Không trùng tên ví trong cùng 1 tài khoản; `Id_bank_casso` **WHERE NOT NULL** — 1 tài khoản ngân hàng chỉ tạo tối đa 1 ví Banking. **Đã gỡ bỏ** index `uq_wallet_saving_active` (cho phép người dùng mở nhiều ví Tiết kiệm linh hoạt).
+- **Unique**: (ba partial index, đều kèm `"Delete_at" IS NULL`): `uq_wallet_account_name_active ("Idaccount", "Name")` — không trùng tên ví trong một tài khoản; `uq_wallet_bank_active ("Id_bank_casso") WHERE "Id_bank_casso" IS NOT NULL` — một tài khoản ngân hàng chỉ tạo một ví Banking; `uq_wallet_default_active ("Idaccount") WHERE "Is_default" = true` — một ví mặc định mỗi tài khoản. Đã gỡ bỏ `uq_wallet_saving_active`.
 - **Index**: `Idaccount`, `Id_bank_casso`, `Update_at`
 
 ### 3.2.9. Budget
 - **PK**: `Idbudget` (varchar(36) UUID)
 - **FK**: `Idaccount` $\rightarrow$ `Account(Idaccount)` (`ON DELETE CASCADE`); `Idcategory` $\rightarrow$ `Category(Idcategory)` (`ON DELETE SET NULL`, NULL = Ngân sách tổng)
-- **Check**: `TotalAmount > 0`; `Spent >= 0`; `Threshold_Warning_Percent >= 0 AND Threshold_Warning_Percent <= 100`; `OverSpending IN ('Stop', 'Over')`; `Time_recurrence IN ('Day', 'Week', 'Month', 'Quarter', 'Year')`
+- **Check**: `TotalAmount > 0`; `Threshold_Warning_Percent IS NULL OR (Threshold_Warning_Percent >= 0 AND Threshold_Warning_Percent <= 100)`; `Time_recurrence IS NULL OR Time_recurrence IN ('Week', 'Month', 'Quarter', 'Year')`; `End IS NULL OR End > Start`. (**Không** có CHECK cho `Spent`, `OverSpending`)
 - **Default**: `Spent = 0`, `OverSpending = 'Over'`, `Recurrence = FALSE` (Lưu ý: `Threshold_Warning_Percent` cho phép `NULL`, không ép buộc default 0)
 - **Index**: `Idaccount`, `Idcategory`
 
@@ -385,15 +387,15 @@ Bảng lưu trữ Refresh Token đã cấp cho các phiên đăng nhập.
 - **PK**: `Idbill` (varchar(36) UUID)
 - **FK**: `Idaccount` $\rightarrow$ `Account(Idaccount)` (`ON DELETE CASCADE`); `Idwallet` $\rightarrow$ `Wallet(Idwallet)`; `Idcategory` $\rightarrow$ `Category(Idcategory)`; `Previous_bill_id` $\rightarrow$ `Bill(Idbill)` (`ON DELETE SET NULL`)
 - **Cột mới**: `Previous_bill_id` (varchar(36)), `Period_end` (Date), `Auto_pay` (Boolean default FALSE), `Anchor_day` (Smallint 1..31)
-- **Check**: `Amount > 0`; `Pay_status IN ('Pending', 'Payed', 'Overdue', 'Skipped')`; `Time_recurrence IN ('Day', 'Week', 'Month', 'Quarter', 'Year')`; `Time_notification IN ('1', '3', '5', '7')`; `Anchor_day IS NULL OR (Anchor_day BETWEEN 1 AND 31)`
+- **Check**: `Amount > 0`; `Pay_status IN ('Pending', 'Payed', 'Overdue', 'Skipped')`; `Time_recurrence IS NULL OR Time_recurrence IN ('Week', 'Month', 'Quarter', 'Year')`; `Anchor_day IS NULL OR (Anchor_day BETWEEN 1 AND 31)`. (**Không** có CHECK cho `Time_notification`)
 - **Default**: `Pay_status = 'Pending'`, `Auto_pay = FALSE`, `Recurrence = FALSE`, `Time_notification = '3'`
 - **Index**: `Idaccount`, `Idwallet`, `Idcategory`, `Previous_bill_id`
 
 ### 3.2.11. Goal
 - **PK**: `Idgoal` (varchar(36) UUID)
 - **FK**: `Idaccount` $\rightarrow$ `Account(Idaccount)` (`ON DELETE CASCADE`); `Idwallet` $\rightarrow$ `Wallet(Idwallet)` (`ON DELETE SET NULL`); `auto_deposit_wallet_id` $\rightarrow$ `Wallet(Idwallet)` (`ON DELETE SET NULL`)
-- **Cột mới**: `Priority` (Smallint check > 0, NULL nếu không đặt), `auto_deposit_amount` (Decimal), `auto_deposit_wallet_id` (varchar(36)), `auto_deposit_last_run` (Date)
-- **Check**: `Target_amount > 0`; `Current_amount >= 0`; `Status_complete IN ('True', 'False')`; `Cycle_take_money IN ('Day', 'Week', 'Month', 'Quarter', 'Year')`; `Priority IS NULL OR Priority > 0`
+- **Cột mới**: `Priority` (int, NULL nếu không đặt), `auto_deposit_amount` (numeric(18,2)), `auto_deposit_wallet_id` (varchar(36) không có FK), `auto_deposit_last_run` (timestamp)
+- **Check**: `Target_amount > 0`; `Current_amount >= 0`. (**Không** có CHECK cho `Status_complete`, `Cycle_take_money`, `Time_recurrence`, `Priority`)
 - **Default**: `Current_amount = 0`, `Status_complete = 'False'`, `Recurrence = FALSE`
 - **Index**: `Idaccount`, `Idwallet`
 
@@ -401,9 +403,9 @@ Bảng lưu trữ Refresh Token đã cấp cho các phiên đăng nhập.
 - **PK**: `Idtran` (varchar(36) UUID)
 - **FK**: `Idaccount` $\rightarrow$ `Account(Idaccount)` (`ON DELETE CASCADE`); `Idwallet` $\rightarrow$ `Wallet(Idwallet)` (`ON DELETE CASCADE`); `Idcategory` $\rightarrow$ `Category(Idcategory)` (`ON DELETE SET NULL`); `Idwallet_transfer` $\rightarrow$ `Wallet(Idwallet)` (`ON DELETE SET NULL`); `Idgoal` $\rightarrow$ `Goal(Idgoal)` (`ON DELETE SET NULL`); `Idbill` $\rightarrow$ `Bill(Idbill)` (`ON DELETE SET NULL`)
 - **Cột mới**: `Idgoal` (varchar(36)), `Idbill` (varchar(36))
-- **Check**: `Type IN ('Transaction', 'Transfer')`; `Status IN ('Pending', 'Confirmed', 'Rejected', 'Fail')`; `Provider IN ('Manual', 'BankSync', 'SMS', 'OCR', 'Bill')`; `Amount != 0`
+- **Check**: `Type IN ('Transaction', 'Transfer')`; `Amount != 0`. (**Không** có CHECK cho `Status`, `Provider`)
 - **Default**: `Type = 'Transaction'`, `Status = 'Confirmed'`, `Provider = 'Manual'`, `DateTransaction = Now()`
-- **Unique**: `(Idaccount, Bank_tran_id)` **WHERE Bank_tran_id IS NOT NULL** (Cách ly mã giao dịch theo từng tài khoản người dùng)
+- **Unique**: `uq_transaction_external ("Idaccount", "Provider", "Bank_tran_id")` — **không** có mệnh đề `WHERE` (hàng có `Bank_tran_id IS NULL` không va nhau vì PostgreSQL coi các NULL là khác nhau)
 - **Bảo vệ CSDL (Trigger)**: Chặn `DELETE` vật lý giao dịch dưới 5 năm theo Luật Kế toán 2015.
 - **Mã hóa & Bảo mật**: `Note` mã hóa AES-256-GCM & lọc thẻ/CVV/pwd (chuẩn thuật toán Luhn); `Images` dùng Pre-Signed URL ngắn hạn (15-30 phút).
 - **Index**: `Idaccount`, `Idwallet`, `Idcategory`, `Status`, `Provider`, `DateTransaction`, `Update_at`, `Idbill`, `Idgoal`
@@ -412,7 +414,7 @@ Bảng lưu trữ Refresh Token đã cấp cho các phiên đăng nhập.
 - **PK**: `Idtoken` (int auto-increment)
 - **FK**: `Idaccount` $\rightarrow$ `Account(Idaccount)` (`ON DELETE CASCADE`); `Idrole` $\rightarrow$ `Role(Idrole)`
 - **Unique**: `Token_hash`
-- **Check**: `Expired > Create_at`
+- **Check**: không có
 - **Default**: `Idrole = 2`, `Status = FALSE`, `Create_at = Now()`, `Update_at = Now()`
 - **Index**: `Idaccount`, `Expired`, `Status`, `Token_hash`
 
@@ -420,7 +422,7 @@ Bảng lưu trữ Refresh Token đã cấp cho các phiên đăng nhập.
 
 # 4. Đánh Giá Tổng Thể Tuân Thủ Pháp Luật & Trạng Thái Hoàn Tất
 
-Toàn bộ 13 bảng (149 cột) trong CSDL đã được tối ưu và triển khai đầy đủ các cơ chế bảo mật kỹ thuật để tuân thủ 100% các quy định pháp luật:
+Toàn bộ 13 bảng (171 cột — đếm bằng câu truy vấn thông tin schema CSDL dev, 2026-09-12) trong CSDL đã được tối ưu và triển khai đầy đủ các cơ chế bảo mật kỹ thuật để tuân thủ 100% các quy định pháp luật:
 - **Nghị định 13/2023/NĐ-CP** (Bảo vệ dữ liệu cá nhân & Quyền xóa dữ liệu)
 - **Nghị định 53/2022/NĐ-CP** (Thời hạn lưu trữ nhật ký an ninh mạng tối thiểu 12 tháng)
 - **Luật Kế toán 2015 (Điều 41) & Nghị định 174/2016/NĐ-CP** (Thời hạn lưu trữ dữ liệu tài chính kế toán tối thiểu 5 năm)

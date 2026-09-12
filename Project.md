@@ -2184,6 +2184,12 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
 - **Bảo vệ chống trùng lặp 2 lớp (Frontend Guard & Backend Validation)**:
   - **Frontend**: Khóa hàm submit ngay khi phát hiện `processing.isProcessing = true`.
   - **Backend**: Trong `admin.service.js`, chỉ kiểm tra trùng lặp tên + phân loại danh mục (`insensitive mode`) đối với các danh mục mặc định hệ thống (`is_default: true`). Đối với danh mục tùy chỉnh của người dùng (`is_default: false`), hệ thống cho phép trùng tên để người dùng khác nhau có thể tạo danh mục tự do theo nhu cầu cá nhân.
+- **Bảo Vệ Quyền Riêng Tư & Cách Ly Tuyệt Đối Danh Mục Người Dùng (Nghị định 13/2023 & Luật PDP 2025)**:
+  - **Phạm vi quản trị của Admin**: Trang quản lý danh mục (`/categories`) và API Admin (`/api/admin/categories`, `/api/admin/getcategory`) chỉ quản trị danh mục mặc định của hệ thống (`is_default: true, delete_at: null`). Gỡ bỏ hoàn toàn việc truy vấn, lọc hoặc hiển thị danh mục cá nhân của người dùng.
+  - **Cơ chế Phòng vệ Chiều sâu (Defense-in-Depth)**:
+    - *Masking dữ liệu cá nhân*: Nếu có danh mục người dùng (`is_default = false`) lọt vào Admin API, toàn bộ thông tin nhận diện (`name`, `keyword`, `created_by`, `created_by_name`) bắt buộc bị che mờ bằng `***` và cắm cờ `is_user_category: true`. Frontend hiển thị nhãn `[Dữ liệu riêng tư - Đã ẩn danh]` và khóa các thao tác Sửa/Xóa.
+    - *Chặn đứng can thiệp trái phép*: Cấm tuyệt đối Admin sửa (`updateCategory`) hoặc xóa (`deleteCategory`) danh mục người dùng $\rightarrow$ Backend ném lỗi **HTTP 403 Forbidden**.
+    - *Bảo vệ danh mục hệ thống*: Cấm xóa danh mục mặc định hệ thống $\rightarrow$ Backend ném lỗi **HTTP 400 Bad Request**.
 
 ### 11.9. Chuẩn Hóa Thanh Phân Trang Toàn Hệ Thống (Unified Pagination Component)
 - **Component dùng chung (`src/Admin-web/src/components/common/Pagination.jsx`)**:
@@ -2628,28 +2634,28 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
     - `category`: Bổ sung cột `Color VARCHAR(9)` (mã màu hex đại diện cho danh mục).
     - `transaction`: Bổ sung cột `Idbill VARCHAR(36)` kèm khóa ngoại liên kết `bill(Idbill) ON DELETE SET NULL`.
     - `bill`: Bổ sung cột `Previous_bill_id VARCHAR(36)` (chuỗi hóa đơn định kỳ), `Period_end DATE`, `Auto_pay BOOLEAN DEFAULT FALSE`, `Anchor_day SMALLINT (1..31)`; ràng buộc `chk_bill_pay_status` mở rộng nhận thêm `'Skipped'`.
-    - `wallet`: `DROP INDEX IF EXISTS "uq_wallet_saving_active"` (cho phép người dùng tạo nhiều ví tiết kiệm linh hoạt).
-    - `goal`: Ràng buộc `Priority` bảo toàn `NULL` hoặc số nguyên dương (không ép về 0).
-    - `budget`: `Threshold_Warning_Percent` cho phép `NULL` (không ép default 0).
+    - `wallet`: `DROP INDEX IF EXISTS "uq_wallet_saving_active"` (cho phép người dùng tạo nhiều ví tiết kiệm linh hoạt). Bổ sung `uq_wallet_account_name_active` và `uq_wallet_default_active`.
+    - `goal`: Giá trị `Priority` chuẩn hóa giữ nguyên `NULL` hoặc số nguyên dương theo quy ước đánh số thưa (CSDL không có ràng buộc CHECK).
+    - `budget`: `Threshold_Warning_Percent` cho phép `NULL` (không ép default 0, đã áp Migration 13).
   - Đồng bộ `src/Backend/prisma/schema.prisma` và sinh lại `PrismaClient` bằng `rtk npx prisma generate`.
 - **2. Hoàn thiện các bản vá mã nguồn Backend theo 15 tài liệu CAN-LAM**:
-  - **Auth & Error Handling**: Mở rộng `ResponseHandler.unauthorized`/`forbidden` trải phẳng `code`, `idaccount`, `reason_inactive` ra cấp gốc JSON; xử lý phân biệt lỗi cấu hình hệ thống (503) và lỗi tài khoản không hợp lệ; `auth.service.js` kiểm tra trạng thái tài khoản khi đăng nhập và refresh token.
-  - **Realtime Socket.io**: Handshake JWT token xác thực tài khoản và ngắt kết nối ngay khi tài khoản bị vô hiệu/xóa; cách ly phòng `account_${idaccount}`; thống nhất payload `bank_transaction.incoming` trả cả `status` và `transaction_status`; phát sự kiện `sync.completed` khi background worker hoàn tất xử lý giao dịch để kích hoạt Client pull.
+  - **Auth & Error Handling**: Mở rộng `ResponseHandler.unauthorized`/`forbidden` trải phẳng `code`, `idaccount`, `reason_inactive` ra cấp gốc JSON; xử lý phân biệt lỗi cấu hình hệ thống (503) và lỗi tài khoản không hợp lệ; `auth.service.js` kiểm tra trạng thái tài khoản khi đăng nhập và refresh token; `getProfile` trả `countdown`.
+  - **Realtime Socket.io**: Handshake JWT token xác thực tài khoản và ngắt kết nối ngay khi tài khoản bị vô hiệu/xóa; cách ly phòng `account_${idaccount}`; phát sự kiện ngân hàng duy nhất qua EventBus (`bank_transaction.pending`) tới Socket.io (`emitBankTransaction`), loại bỏ phát lặp 2 lần; phát sự kiện `sync.completed` sau khi đồng bộ dữ liệu.
   - **Sensitive Note Filter (Luhn & Password)**: Áp dụng chuẩn `CARD_SHAPE` kết hợp thuật toán Luhn (`luhnOk`) chỉ lọc số thẻ tín dụng thực sự (13–19 số), chấm dứt bắt nhầm số điện thoại, mã đơn hàng hay chuỗi sinh tự động; lọc mật khẩu tường minh `[:=]`, không bắt nhầm cụm từ đời thường ("mật khẩu wifi") và loại bỏ từ "pin" để bảo vệ ghi chú thường gặp ("Thay pin: 350000").
   - **AI Dedup Fuzzy Match**: Giải mã `decrypt(note)` trước khi so khớp mờ cho `findFuzzyInvoice` và `findFuzzyTransfer`.
-  - **Sync Engine**: Triển khai Idempotent Delete (xóa bản ghi không tồn tại trả `synced: 1` thành công); tách biệt `validateBatch` (400) và `validateOperation` (`CONSTRAINT_VIOLATION`); chuẩn hóa loại giao dịch `Expense`, `Income`, `Debt`, `Loan` về `Transaction`; bắt các lỗi SQLSTATE `22001`, `23502`, `BILL_ALREADY_PAID`, `WALLET_NAME_DUPLICATE` ánh xạ về `CONSTRAINT_VIOLATION`.
+  - **Sync Engine**: Triển khai Idempotent Delete (xóa bản ghi không tồn tại trả `synced: 1` thành công); tách biệt `validateBatch` (400) và `validateOperation` (`CONSTRAINT_VIOLATION`); chuẩn hóa loại giao dịch `Expense`, `Income`, `Debt`, `Loan` về `Transaction`; bắt lỗi `22001`, `23502` sang `CONSTRAINT_VIOLATION`; ba mã riêng `BILL_ALREADY_PAID`, `WALLET_NAME_DUPLICATE`, `WALLET_DEFAULT_DUPLICATE` trả mã riêng biệt.
   - **Chuẩn hóa Provider**: Thống nhất `'OCR'` trên toàn bộ codebase (thay thế triệt để `'ORC'`).
 - **3. Di chuyển tài liệu hoàn tất**:
-  - Toàn bộ 15 tài liệu kỹ thuật từ `docs/superpowers/backend/CAN-LAM/` đã được chuyển sang `docs/superpowers/backend/DA-XONG/`.
+  - Toàn bộ tài liệu kỹ thuật hoàn thành từ `docs/superpowers/backend/CAN-LAM/` đã được chuyển sang `docs/superpowers/backend/DA-XONG/`.
   - Cập nhật mục lục `DA-XONG/README.md` và thông báo `CAN-LAM/README.md`.
-- **4. Kiểm thử & Nghiệm thu chất lượng**:
-  - `Test/test_can_lam_fixes.js`: **9/9 tests PASS (100%)**.
+- **4. Kiểm thử & Nghiệm thu chất lượng (Local Test Suites)**:
+  - `Test/test_can_lam_fixes.js`: **tests PASS (100%)** trên môi trường phát triển cục bộ.
   - `Test/test_sensitive_note_filter.js`: **15/15 tests PASS (100%)**.
   - `Test/test_category_unique_rules.js`: **PASS 100%**.
   - `Test/test_data_security_encryption_and_masking.js`: **13/13 tests PASS (100%)**.
   - `Test/test_sync_new_schema.js`: **PASS 100%**.
 - **5. Đồng bộ tài liệu nguồn sự thật**:
-  - `docs/Rule_Project/New_Database.md`: Đồng bộ 39 điểm (ND01-ND39) theo Migration 12 và CSDL thực tế.
+  - `docs/Rule_Project/New_Database.md`: Đồng bộ toàn diện 39 điểm (ND01-ND39) theo Migration 12, 13 và CSDL thực tế (13 bảng, 171 cột).
   - `docs/Rule_Project/Rule_project.md`: Đồng bộ 13 điểm (RP01-RP13) về quy trình sync, lỗi, xác thực và ràng buộc.
   - `docs/Rule_Project/Data_Security.md`: Ghi nhận giải thuật Luhn và trigger `trg_protect_auditlog`.
   - `docs/progress/Backend.md` & `docs/progress/Client-app.md`: Ghi nhận chi tiết các API, Schema và Socket event mới.
