@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
-import '../../../../core/sync/sync_engine.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../widgets/home_action_buttons.dart';
 import '../widgets/home_budget_card.dart';
@@ -29,12 +28,13 @@ class HomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final db = sl<AppDatabase>();
     final authState = context.watch<AuthBloc>().state;
+    // Chỉ đọc mã tài khoản để lọc dữ liệu. KHÔNG khởi động SyncEngine ở đây:
+    // build() chạy lại ở mỗi AuthSuccess re-emit và mỗi lần quay về tab, mà
+    // start() xoá giãn cách lùi và chạy một chu kỳ đồng bộ mới. AuthBloc đã
+    // start() đúng một lần khi mở phiên (test quét: sync_engine_start_owner_test).
     int? currentUserId;
     if (authState is AuthSuccess && authState.user != null) {
       currentUserId = int.tryParse(authState.user!.id);
-      if (currentUserId != null && sl.isRegistered<SyncEngine>()) {
-        sl<SyncEngine>().start(idaccount: currentUserId);
-      }
     }
 
     return Scaffold(
