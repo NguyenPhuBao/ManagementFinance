@@ -34,9 +34,11 @@ enum NguonBuocDangXuat {
   /// Body 401 của chính `/auth/refresh`.
   ///
   /// ⚠️ Nguồn này **không** được dùng để dọn SQLite: trên `main` @ `7675b35`,
-  /// `authenticate` đã tách lỗi lược đồ thành 503 còn `/auth/refresh` thì chưa,
-  /// nên một sự cố phía server vẫn đội lốt được `ACCOUNT_DELETED`
-  /// (CAN-LAM 17 §2.5). Bỏ ngoại lệ này khi backend sửa xong — spec §3.6b.
+  /// Lý do có ngoại lệ (CAN-LAM 17 §2.5): tới 2026-09-12 `/auth/refresh` chưa
+  /// tách lỗi lược đồ thành 503, nên một sự cố phía server đội lốt được
+  /// `ACCOUNT_DELETED`. Backend đã sửa trong `main` @ `cbbeeb4` (mã đọc đúng,
+  /// gộp 2026-09-12) nhưng nhánh làm mới **chưa đo đầu-cuối** — giữ ngoại lệ tới
+  /// khi đo được, vì bỏ nhầm là xoá dữ liệu người dùng trên máy — spec §3.6b.
   lamMoi,
 }
 
