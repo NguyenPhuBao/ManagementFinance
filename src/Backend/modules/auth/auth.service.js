@@ -383,6 +383,19 @@ const authService = {
           data: { status: true },
         });
         logger.warn("Reused revoked refresh token - all tokens revoked", { idaccount: storedToken.idaccount });
+
+        // Kiểm tra xem tài khoản có bị khoá hoặc xoá mềm không trước khi báo lỗi token (Khắc phục G36)
+        const { getAccountValidity, accountRejection } = require('../../middleware/auth');
+        const accountInfo = await getAccountValidity(storedToken.idaccount);
+        if (accountInfo.errorType !== 'SCHEMA_ERROR') {
+          const rejection = accountRejection(accountInfo, storedToken.idaccount);
+          if (rejection) {
+            throw Object.assign(new Error(rejection.message), {
+              statusCode: 401,
+              ...rejection.data,
+            });
+          }
+        }
       }
       throw Object.assign(new Error("Refresh token khong hop le"), { statusCode: 401 });
     }

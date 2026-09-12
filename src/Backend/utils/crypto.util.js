@@ -22,6 +22,16 @@ if (!_rawKey) {
   }
 }
 
+if (!_rawBlindSecret) {
+  if (_isProduction) {
+    // Crash sớm: không để blind index production dùng secret mặc định đoán được
+    logger.error('[SECURITY] BLIND_INDEX_SECRET không được đặt ở môi trường production. Từ chối khởi động.');
+    process.exit(1);
+  } else {
+    logger.warn('[SECURITY] BLIND_INDEX_SECRET chưa đặt — dùng secret mặc định CHỈ cho môi trường dev/test.');
+  }
+}
+
 const RAW_KEY = _rawKey || '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
 const RAW_BLIND_SECRET = _rawBlindSecret || 'blind-index-default-secret-salt-2026';
 

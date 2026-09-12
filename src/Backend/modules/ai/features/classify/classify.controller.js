@@ -105,7 +105,7 @@ const classifyController = {
         return res.status(401).json({ success: false, message: 'Chua xac thuc nguoi dung' });
       }
 
-      const isTestEnv = process.env.NODE_ENV !== 'production';
+      const isTestEnv = process.env.NODE_ENV !== 'production' && process.env.ALLOW_MOCK_INPUT === 'true';
       const payload = { ...req.body };
       if (!isTestEnv) {
         delete payload._mockUser;

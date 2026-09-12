@@ -60,13 +60,10 @@
 
 ---
 
-## 0. Còn phải làm (client xin, 2026-09-12)
+## 0. Còn phải làm (Hiện tại: 0 mục tồn đọng — Đã hoàn thành 100%)
 
-| # | Tài liệu | Nội dung | Mức |
-|---|---|---|---|
-| **20** | [CON_LAI_SAU_CBBEEB4.md](./CON_LAI_SAU_CBBEEB4.md) | Chốt chống trả hai lần ở `upsertTransaction` (17 B bước 2 — `BILL_ALREADY_PAID` nay không ai ném; **chặn client mở đồng bộ `Auto_pay`**); `BLIND_INDEX_SECRET` không chốt; `_mock*`; `'ORC'` 3 chỗ; ca thử `WALLET_NAME_DUPLICATE`; **§2.7 (thêm chiều 2026-09-12, đo thật):** `/auth/refresh` với refresh token **đã thu hồi** của tài khoản đã xoá/khoá trả 401 **không mã** vì kiểm token trước tài khoản (`auth.service.js:375-387`) — app ngoại tuyến lúc bị xoá rồi mở lại khi token hết hạn bị đăng xuất **không hộp thoại** (client G36); xin kiểm `getAccountValidity(storedToken.idaccount)` trước khi ném, ~8 dòng; sổ ghi migration 5–13 (bảng mẫu có sẵn) + ghi chú partial index; **tám** câu tài liệu kèm câu thay — hai lỗi mới của `New_Database.md` (CHECK `Status` của ví, FK `auto_deposit_wallet_id`). *Ngoài phạm vi:* `deleteCategory` ném lỗi ở mọi nhánh | 🔴 §2.1 · 🟡 §2.2, §3, §4.1–4.3 · ⚪ còn lại |
-
-Mục 1–2 dưới là **báo cáo của backend**, giữ nguyên văn.
+> 🎉 **Tất cả các tài liệu từ mục 1 đến 20 đều đã hoàn tất 100%**.  
+> Không còn công việc tồn đọng trong thư mục `CAN-LAM/`. Tài liệu mục 20 đã được nghiệm thu và chuyển sang [`docs/superpowers/backend/DA-XONG/CON_LAI_SAU_CBBEEB4.md`](../DA-XONG/CON_LAI_SAU_CBBEEB4.md).
 
 ---
 
@@ -77,6 +74,7 @@ Mục 1–2 dưới là **báo cáo của backend**, giữ nguyên văn.
 | **17** | [FIX_BACKEND_3_REGRESSIONS.md](../DA-XONG/FIX_BACKEND_3_REGRESSIONS.md) | **A:** Sửa `accountRejection` trả null khi tài khoản hợp lệ, socket bóc đúng `rejection.data`.<br>**B:** Bỏ chốt `BILL_ALREADY_PAID` tại `sync.repository.js:450` để cho phép hoàn tác.<br>**C:** Sửa 3 mã lỗi lệch trong tài liệu. | ✅ Đã xong 100% |
 | **18** | [VERIFY_7675B35_REMAINING.md](../DA-XONG/VERIFY_7675B35_REMAINING.md) | Xử lý 9 điểm kỹ thuật (§2) và 39 điểm lệch tài liệu (§3 ND01–ND39), gồm sửa `bank.worker.js`, áp dụng migration 13, bắt `WALLET_NAME_DUPLICATE`, và đồng bộ `New_Database.md`. | ✅ Đã xong 100% |
 | **19** | [AUTH_PROFILE_COUNTDOWN.md](../DA-XONG/AUTH_PROFILE_COUNTDOWN.md) | `GET /auth/profile` đã select và trả `countdown`; gỡ bỏ `pendingDeleteCancelled` khỏi response đăng nhập. | ✅ Đã xong 100% |
+| **20** | [CON_LAI_SAU_CBBEEB4.md](../DA-XONG/CON_LAI_SAU_CBBEEB4.md) | Triển khai chốt `chanTraHaiLan` ném `BILL_ALREADY_PAID` ở `upsertTransaction` (khử bẫy thứ tự `dangXoaTrongLo`); chốt khởi động `BLIND_INDEX_SECRET`; cờ `ALLOW_MOCK_INPUT`; loại bỏ triệt để 3 chỗ `'ORC'`; bổ sung ca thử `WALLET_NAME_DUPLICATE`; sửa `/auth/refresh` trả 401 kèm `ACCOUNT_DELETED`/`ACCOUNT_INACTIVE` khi token thu hồi (vá lỗi G36); thêm sổ ghi migration 5-13 và cảnh báo partial index vào `Rule_project.md`; sửa 8 điểm lệch tài liệu. | ✅ Đã xong 100% (Pass test suite `test_con_lai_fixes.js`) |
 
 ---
 

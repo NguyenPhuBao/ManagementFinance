@@ -10,7 +10,7 @@ Backend đã hoàn thành đồng bộ **13 bảng CSDL** theo đặc tả chu�
 
 * **`Transaction`**:
   * `Status` (`Varchar(10)`): Ràng buộc Check `Status IN ('Pending', 'Confirmed', 'Rejected', 'Fail') - Default 'Confirmed'`.
-  * `Provider` (`Varchar(40)`): `Manual` (tạo thủ công), `BankSync` (từ ngân hàng Casso), `SMS`, `ORC` (OCR hình ảnh), `Bill`.
+  * `Provider` (`Varchar(40)`): `Manual` (tạo thủ công), `BankSync` (từ ngân hàng Casso), `SMS`, `OCR` (hoá đơn/biên lai quét ảnh), `Bill`.
   * `DateTransaction` (`Timestamp`): Thời điểm giao dịch thực tế.
   * `Amount`: Số tiền giữ nguyên dấu $\pm$ (dương = tiền vào, âm = tiền ra).
   * `Deleted_at`: Xóa mềm riêng biệt của bảng giao dịch.
@@ -154,7 +154,7 @@ Backend đã hoàn thành đồng bộ **13 bảng CSDL** theo đặc tả chu�
 * **Giải Pháp Chống Xung Đột Ràng Buộc Unique CSDL (`_grp_${idx+1}`):**
   * Bảng `transaction` trên Supabase PostgreSQL có ràng buộc `@@unique([provider, bank_tran_id])` để ngăn chặn trùng lặp giao dịch bên thứ ba.
   * Khi người dùng chọn lưu theo nhóm danh mục (`option_grouped`), nếu nhiều giao dịch con cùng mang một mã `bank_tran_id = invoice_no` sẽ gây lỗi vi phạm ràng buộc Unique.
-  * **Giải pháp đã triển khai:** Module Classify tự động sinh mã phân nhóm riêng biệt cho từng giao dịch con: `bank_tran_id = ${baseBankTranId}_grp_${idx + 1}` kèm `provider = 'ORC'`, bảo đảm an toàn dữ liệu 100% khi ghi nhận vào CSDL.
+  * **Giải pháp đã triển khai:** Module Classify tự động sinh mã phân nhóm riêng biệt cho từng giao dịch con: `bank_tran_id = ${baseBankTranId}_grp_${idx + 1}` kèm `provider = 'OCR'`, bảo đảm an toàn dữ liệu 100% khi ghi nhận vào CSDL.
 * **Tích Hợp Module AI Classify 2 Cấp Độ:**
   * OCR đẩy dữ liệu sang `classifyService.classifyExtractedReceipt`.
   * Khi là `Transfer`: bỏ qua hoàn toàn danh mục (`category_id = null`, `Idcategory = NULL`).
@@ -183,14 +183,16 @@ Backend đã hoàn thành đồng bộ **13 bảng CSDL** theo đặc tả chu�
 
 ---
 
-## 10. Trạng Thái Kiểm Thử Backend (Local Test Suites)
+## 10. Trạng Thái Kiểm Thử Backend (Local Test Suites Trên Máy Dev)
 
-* Các test suite tích hợp phát triển cục bộ (chạy trên môi trường dev qua thư mục `Test/` được `.gitignore`):
+* Các bài kiểm thử tích hợp và nghiệm thu tính năng được chạy trực tiếp trên máy dev của backend thông qua thư mục nội bộ `Test/` (được `.gitignore`, không nằm trong git repo dự án):
   * `Test/test_ai_dedup_flow.js`: **PASS 10/10 (100%)** - Kiểm thử toàn diện Bộ Khử Trùng Lặp Dữ Liệu 3 cấp độ, kiểm tra tiền tố `_grp_` và Chặn đứng HTTP 409
   * `Test/test_ai_ocr_full_flow.js`: **PASS 18/18 (100%)** - Kiểm thử toàn diện OCR 3 loại chứng từ, Self-Healing, HTTP 422, và Realtime Notification
   * `Test/test_ai_classify_2level.js`: **PASS 23/23 (100%)** - Kiểm thử toàn diện kiến trúc 2 cấp độ và 3 cơ sở đối soát CSDL
   * `Test/test_category_template_rules.js`: **PASS 8/8 (100%)** - Kiểm thử toàn diện Mô hình Template & Cloned, gỡ bỏ trigger chéo, bảo vệ danh mục hệ thống
-  * `Test/test_can_lam_fixes.js`: **PASS 10/10 (100%)** - Toàn bộ các bản vá theo CAN-LAM
+  * `Test/test_can_lam_fixes.js`: **PASS 10/10 (100%)** - Toàn bộ các bản vá theo 19 tài liệu CAN-LAM đợt 1 & 2
+  * `Test/test_admin_category_privacy.js`: **PASS 5/5 (100%)** - Kiểm thử bảo vệ dữ liệu nhạy cảm danh mục người dùng và cách ly Admin-web
+  * `Test/test_con_lai_fixes.js`: **PASS 5/5 (100%)** - Kiểm thử đợt hoàn thiện CAN-LAM 20 (chặn trả hai lần `BILL_ALREADY_PAID`, thứ tự dangXoaTrongLo, refresh token G36, `WALLET_NAME_DUPLICATE`)
 
 ---
 
@@ -471,7 +473,7 @@ Dưới đây là ma trận kiểm toán toàn bộ các API Backend theo 4 hàn
 
 ## 16. Hoàn Tất 100% Bản Vá Kỹ Thuật Theo Thư Mục CAN-LAM & Migration 12 (2026-09-10)
 
-Toàn bộ các yêu cầu kỹ thuật và sửa lỗi được chỉ rõ tại 16 tài liệu trong `docs/superpowers/backend/CAN-LAM` đã được triển khai, kiểm thử và đồng bộ thành công:
+Toàn bộ các yêu cầu kỹ thuật và sửa lỗi được chỉ rõ tại 19 tài liệu (15 đợt 2026-09-10, thêm 17–19 đợt 2026-09-12) trong `docs/superpowers/backend/CAN-LAM` đã được triển khai, kiểm thử và đồng bộ thành công:
 
 1. **Chuẩn Hóa Lược Đồ CSDL & Migration 12 (`database/12_Can_Lam_Align_Schema_Fixes.sql`):**
    - **`category`**: Bổ sung cột `Color VARCHAR(9)` (mã màu hex đại diện cho danh mục).
@@ -492,7 +494,7 @@ Toàn bộ các yêu cầu kỹ thuật và sửa lỗi được chỉ rõ tại
    - Bổ sung xác thực Handshake Socket.IO bằng JWT Token thông qua `getAccountValidity`, từ chối kết nối ngay nếu tài khoản bị khóa/xóa.
    - Cách ly sự kiện theo phòng riêng `account_${idaccount}`.
    - Thống nhất payload sự kiện ngân hàng: chỉ phát duy nhất qua EventBus (`bank_transaction.pending`) để `notification.service` gửi `emitBankTransaction`, loại bỏ phát lặp 2 lần.
-   - Bổ sung phát sự kiện `sync.completed` qua EventBus và Socket.IO khi background worker xử lý xong giao dịch để kích hoạt Client tự động pull.
+   - Bổ sung phát sự kiện `sync.completed` qua EventBus $\rightarrow$ Socket.IO tới phòng `account_<id>` **sau mỗi `/sync/push`** (worker ngân hàng không phát sự kiện này) để kích hoạt Client tự động pull.
 
 4. **Tái Cấu Trúc Bộ Lọc Ghi Chú Nhạy Cảm (`SYNC_NOTE_FILTER_REWRITE.md`):**
    - Thay thế biểu thức chính quy số thẻ cũ bằng **`CARD_SHAPE`** kết hợp **Thuật toán Luhn (`luhnOk`)** để chỉ lọc số thẻ tín dụng thực sự (13-19 số thỏa mãn Luhn), chấm dứt hiện tượng bắt nhầm số điện thoại, mã đơn hàng hay chuỗi sinh tự động.
@@ -567,4 +569,43 @@ Toàn bộ các yêu cầu kỹ thuật và sửa lỗi được chỉ rõ tại
 * **`Test/test_can_lam_fixes.js`:** **PASS 100% (9/9 tests tích hợp hồi quy)**.
 * **CodeGraph:** Đã cập nhật lại toàn bộ (`rtk npx codegraph build`: 6625 nodes, 7141 edges, 404 files).
 * **Git Commit:** `4796f94` trên nhánh `NguyenPhuBao`.
+
+---
+
+## 18. Hoàn Tất Đợt Yêu Cầu Kỹ Thuật Đa Tầng Theo CAN-LAM 20 (`CON_LAI_SAU_CBBEEB4.md`) (2026-09-12)
+
+Toàn bộ 7 nội dung kỹ thuật (T1.1 $\rightarrow$ T1.7) cùng phân tích tác động đa tầng (T1 $\rightarrow$ T2 $\rightarrow$ T3) theo yêu cầu từ phía Client-app đã được triển khai, kiểm thử và nghiệm thu hoàn chỉnh:
+
+### 18.1. Các Thay Đổi Kỹ Thuật Chi Tiết
+1. **Chốt Chặn Thanh Toán Hai Lần Cho Hóa Đơn (`BILL_ALREADY_PAID`):**
+   - Triển khai hàm `chanTraHaiLan({ idtran, idbill, deleted_at }, dangXoaTrongLo)` trong `sync.repository.js`.
+   - Chặn đứng mọi thao tác tạo/sửa giao dịch liên kết với `idbill` nếu hóa đơn đó đã có một giao dịch chi tiêu còn hiệu lực (`Deleted_at IS NULL`).
+   - Khử bẫy thứ tự trong cùng lô (`dangXoaTrongLo`): Người dùng hoàn tác (xóa giao dịch T1) rồi trả lại (tạo giao dịch T2) trong cùng 1 đợt push sẽ không bị chặn nhầm.
+2. **Chốt Khởi Động An Toàn Cho `BLIND_INDEX_SECRET` (`crypto.util.js`):**
+   - Đồng bộ cơ chế phòng thủ như `DATA_ENCRYPTION_KEY`: ném Exception và dừng server ngay lập tức trên môi trường Production nếu thiếu `BLIND_INDEX_SECRET`. Cảnh báo `[SECURITY]` trên môi trường dev.
+3. **Chuẩn Hóa Mã Phản Hồi 401 Khi Refresh Token Bị Thu Hồi Cho Tài Khoản Bị Khóa/Xóa (`auth.service.js`):**
+   - Khắc phục triệt để lỗ hổng trải nghiệm **G36**: Khi ứng dụng ngoại tuyến bị xóa/khóa tài khoản rồi kết nối lại sau khi access token hết hạn, gọi `/auth/refresh` với refresh token cũ sẽ được kiểm tra `getAccountValidity`.
+   - Trả về mã HTTP 401 kèm `code: 'ACCOUNT_DELETED'` hoặc `'ACCOUNT_INACTIVE'`, `idaccount`, `reason_inactive`, giúp Client-app hiển thị đúng popup thông báo lý do đẩy ra thay vì đăng xuất âm thầm.
+4. **Cờ Tường Minh Mock Input (`ALLOW_MOCK_INPUT=true`):**
+   - Siết chặt các endpoint tiếp nhận mock (`ocr.controller.js` và `classify.controller.js`): Bắt buộc kiểm tra `ALLOW_MOCK_INPUT === 'true'` thay vì chỉ dựa vào `NODE_ENV !== 'production'`.
+   - Cập nhật `.env` và `.env.example` với cờ cấu hình mới.
+5. **Dọn Dẹp Triệt Để Ký Hiệu 'ORC':**
+   - Loại bỏ provider `'ORC'` còn sót tại dòng 308 của `sync.repository.js`.
+   - Sửa comment JSDoc tại `ocr.service.js` và `dedup.service.js` thành `'OCR'`.
+6. **Bổ Sung Sổ Ghi Migration & Cảnh Báo Partial Index:**
+   - Cập nhật Sổ ghi Migration 5–13 vào `Rule_project.md` §3.2.
+   - Bổ sung cảnh báo nghiêm cấm chạy `prisma migrate dev` / `prisma db push` làm mất mệnh đề `WHERE` của 5 partial index.
+   - Hiệu chỉnh 8 điểm lệch tài liệu trong `New_Database.md`, `Rule_project.md`, `Backend.md`, `Project.md`.
+7. **Làm Rõ Lý Do Xử Lý Danh Mục Admin (`admin.service.js`):**
+   - Giữ vững kiến trúc phòng thủ: `is_default === true` $\rightarrow$ ném 400 Bad Request (bảo vệ danh mục hệ thống không thể xóa); `is_default === false` $\rightarrow$ ném 403 Forbidden (bảo vệ danh mục người dùng khỏi sự can thiệp của Admin).
+
+### 18.2. Kết Quả Kiểm Thử (Local Test Suites Trên Máy Dev)
+* `Test/test_con_lai_fixes.js`: **PASS 5/5 (100%)**
+  - Case 1: Chặn trả hai lần ném đúng `BILL_ALREADY_PAID` khi hóa đơn đã được thanh toán $\rightarrow$ **PASS**.
+  - Case 2: Xử lý thứ tự `dangXoaTrongLo` (hoàn tác và trả lại trong cùng lô) $\rightarrow$ **PASS**.
+  - Case 3: Cập nhật thông tin giao dịch hiện tại không bị chặn nhầm $\rightarrow$ **PASS**.
+  - Case 4: Nhận diện lỗi trùng tên ví trả về đúng mã `WALLET_NAME_DUPLICATE` $\rightarrow$ **PASS**.
+  - Case 5: Refresh token đã thu hồi của tài khoản đã xóa/khóa trả HTTP 401 kèm `ACCOUNT_DELETED` / `ACCOUNT_INACTIVE` $\rightarrow$ **PASS**.
+* `Test/test_can_lam_fixes.js`: **PASS 9/9 (100%)** test suite hồi quy tổng hợp.
+* `Test/test_admin_category_privacy.js`: **PASS 5/5 (100%)** test suite bảo mật dữ liệu nhạy cảm.
 
