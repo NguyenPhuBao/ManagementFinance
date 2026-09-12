@@ -490,7 +490,8 @@ class SyncEngine {
                     : const Value.absent(),
                 // ⚠️ `status` (lưu trữ ví) là cột CỤC BỘ, cố ý không đi
                 // theo chiều nào của đồng bộ — cùng diện với
-                // `bills.autoPayEnabled` và `bills.anchorDay`.
+                // `bills.autoPayEnabled`. (`bills.anchorDay` từng cùng diện
+                // nhưng đã mở đường đồng bộ ngày 2026-09-12.)
                 //
                 // Lý do ban đầu là một con số, đo thẳng trên PostgreSQL ngày
                 // 2026-09-10: `chk_wallet_status` CHO PHÉP `'Inactive'`,
