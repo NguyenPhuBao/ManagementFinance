@@ -173,7 +173,7 @@ Backend đã hoàn thành đồng bộ **13 bảng CSDL** theo đặc tả chu�
 
 ## 9. Các Hạng Mục Backend Cần Làm Tiếp Theo Để Khớp Client-App
 
-Để hỗ trợ đầy đủ các màn hình và chức năng trên **Client-app**, Backend tiếp tục triển khai các tính năng AI bổ trợ:
+Để hỗ trợ đầy đủ Client-app, danh mục tài liệu công việc được theo dõi tập trung tại [`docs/superpowers/backend/CAN-LAM/`](../superpowers/backend/CAN-LAM/) và [`docs/superpowers/backend/DA-XONG/`](../superpowers/backend/DA-XONG/). Ngoài ra là các tính năng AI bổ trợ theo lộ trình:
 
 | STT | Tính Năng Backend Cần Làm | Mô Tả Kỹ Thuật & Mục Đích Phục Vụ Client | Trạng Thái |
 |:---:|---|---|:---:|
@@ -183,15 +183,14 @@ Backend đã hoàn thành đồng bộ **13 bảng CSDL** theo đặc tả chu�
 
 ---
 
-## 10. Trạng Thái Kiểm Thử Backend (100% PASS)
+## 10. Trạng Thái Kiểm Thử Backend (Local Test Suites)
 
-* Tất cả các test suite tích hợp đã đạt **100% PASS**:
+* Các test suite tích hợp phát triển cục bộ (chạy trên môi trường dev qua thư mục `Test/` được `.gitignore`):
   * `Test/test_ai_dedup_flow.js`: **PASS 10/10 (100%)** - Kiểm thử toàn diện Bộ Khử Trùng Lặp Dữ Liệu 3 cấp độ, kiểm tra tiền tố `_grp_` và Chặn đứng HTTP 409
   * `Test/test_ai_ocr_full_flow.js`: **PASS 18/18 (100%)** - Kiểm thử toàn diện OCR 3 loại chứng từ, Self-Healing, HTTP 422, và Realtime Notification
   * `Test/test_ai_classify_2level.js`: **PASS 23/23 (100%)** - Kiểm thử toàn diện kiến trúc 2 cấp độ và 3 cơ sở đối soát CSDL
-
   * `Test/test_category_template_rules.js`: **PASS 8/8 (100%)** - Kiểm thử toàn diện Mô hình Template & Cloned, gỡ bỏ trigger chéo, bảo vệ danh mục hệ thống
-  * `Test/test_can_lam_fixes.js`: **PASS 10/10 (100%)** - Toàn bộ 11 bản vá theo CAN-LAM
+  * `Test/test_can_lam_fixes.js`: **PASS 10/10 (100%)** - Toàn bộ các bản vá theo CAN-LAM
 
 ---
 
@@ -480,8 +479,8 @@ Toàn bộ các yêu cầu kỹ thuật và sửa lỗi được chỉ rõ tại
    - **`bill`**: Bổ sung cột `Previous_bill_id VARCHAR(36)` (chuỗi hóa đơn định kỳ), `Period_end DATE`, `Auto_pay BOOLEAN DEFAULT FALSE`, `Anchor_day SMALLINT (1..31)`.
    - **`bill`**: Ràng buộc `Pay_status` mở rộng thêm giá trị `'Skipped'` bên cạnh `Pending`, `Payed`, `Overdue`.
    - **`wallet`**: Đã `DROP INDEX IF EXISTS "uq_wallet_saving_active"` (cho phép người dùng mở nhiều ví Tiết kiệm linh hoạt).
-   - **`goal`**: Ràng buộc `Priority` bảo toàn `NULL` hoặc số nguyên dương (không ép về 0).
-   - **`budget`**: `Threshold_Warning_Percent` cho phép `NULL` (không ép default 0).
+   - **`goal`**: Giá trị `Priority` được chuẩn hóa theo quy ước đánh số thưa, bảo toàn `NULL` hoặc số nguyên dương (CSDL không có ràng buộc CHECK).
+   - **`budget`**: `Threshold_Warning_Percent` cho phép `NULL` (không ép default 0, đã áp Migration 13).
    - Đã cập nhật `schema.prisma` và sinh lại `PrismaClient`.
 
 2. **Chuẩn Hóa Phản Hồi Xác Thực 401/403 (`AUTH_401_BODY_CODE.md`):**
@@ -492,7 +491,7 @@ Toàn bộ các yêu cầu kỹ thuật và sửa lỗi được chỉ rõ tại
 3. **Bảo Vệ Socket.IO & Cách Ly Phòng Cá Nhân (`SOCKET_BANK_EVENT_PAYLOAD.md`, `SOCKET_SYNC_COMPLETED.md`):**
    - Bổ sung xác thực Handshake Socket.IO bằng JWT Token thông qua `getAccountValidity`, từ chối kết nối ngay nếu tài khoản bị khóa/xóa.
    - Cách ly sự kiện theo phòng riêng `account_${idaccount}`.
-   - Thống nhất payload sự kiện ngân hàng: trả về đầy đủ cả `status` và `transaction_status` để khớp hoàn toàn với Client-app.
+   - Thống nhất payload sự kiện ngân hàng: chỉ phát duy nhất qua EventBus (`bank_transaction.pending`) để `notification.service` gửi `emitBankTransaction`, loại bỏ phát lặp 2 lần.
    - Bổ sung phát sự kiện `sync.completed` qua EventBus và Socket.IO khi background worker xử lý xong giao dịch để kích hoạt Client tự động pull.
 
 4. **Tái Cấu Trúc Bộ Lọc Ghi Chú Nhạy Cảm (`SYNC_NOTE_FILTER_REWRITE.md`):**
@@ -509,12 +508,12 @@ Toàn bộ các yêu cầu kỹ thuật và sửa lỗi được chỉ rõ tại
    - Tách biệt kiểm tra lỗi toàn lô (`validateBatch` trả HTTP 400) và kiểm tra từng thao tác (`validateOperation` trả mã `CONSTRAINT_VIOLATION` trong `results[i]`).
    - Hỗ trợ thao tác xóa (`operation: 'delete'`) chỉ cần `entity` và `id`.
    - Chuẩn hóa loại giao dịch (`Expense`, `Income`, `Debt`, `Loan` $\rightarrow$ `Transaction`) trước khi validate và ghi CSDL.
-   - Bắt và ánh xạ chi tiết các mã lỗi PostgreSQL `22001` (quá độ dài), `23502` (thiếu trường), `BILL_ALREADY_PAID` (hóa đơn đã trả), `WALLET_NAME_DUPLICATE` sang mã lỗi chuẩn `CONSTRAINT_VIOLATION`.
+   - Bắt và ánh xạ mã lỗi PostgreSQL: `22001`/`P2000` và `23502`/`P2011`/`P2012` sang `CONSTRAINT_VIOLATION`; ba mã riêng `BILL_ALREADY_PAID` (giao dịch thứ hai cùng `Idbill`), `WALLET_NAME_DUPLICATE` (tên ví trùng), `WALLET_DEFAULT_DUPLICATE` (hai ví mặc định) trả đúng tên mã — không ánh xạ thành `CONSTRAINT_VIOLATION`.
 
 7. **Chuẩn Hóa Provider Nhận Dạng OCR:**
    - Thống nhất giá trị `'OCR'` trên toàn bộ codebase (thay thế triệt để `'ORC'`).
 
-8. **Kết Quả Kiểm Thử Toàn Diện:**
+8. **Kết Quả Kiểm Thử (Local Test Suites):**
    - `Test/test_can_lam_fixes.js`: **PASS 100% (9/9 tests tích hợp)**.
    - `Test/test_sensitive_note_filter.js`: **PASS 100% (15/15 unit test cases)**.
    - `Test/test_category_unique_rules.js`: **PASS 100%**.

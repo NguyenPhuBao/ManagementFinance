@@ -323,7 +323,7 @@ Phần này đặc tả chi tiết toàn bộ các quy tắc ràng buộc, chố
 ### 2.5. Tên ví duy nhất trong một tài khoản
 * Hai ví **đang hoạt động** (`Delete_at IS NULL`) của cùng một tài khoản không được trùng `Name` — thi hành bằng partial unique index `uq_wallet_account_name_active ("Idaccount", "Name")`. So khớp **chính xác** (phân biệt hoa thường).
 * Ví đã xoá mềm không giữ chỗ tên.
-* Vi phạm trả SQLSTATE `23505`; `/sync/push` ánh xạ thành mã lỗi `CONSTRAINT_VIOLATION` (với detail `WALLET_NAME_DUPLICATE`).
+* Vi phạm trả SQLSTATE `23505`; `/sync/push` trả `code: 'WALLET_NAME_DUPLICATE'` (không phải `CONSTRAINT_VIOLATION`).
 * Quy tắc "một ví Tiết kiệm mỗi tài khoản" (`uq_wallet_saving_active`) **đã được loại bỏ** trong Migration 12 để cho phép người dùng mở nhiều sổ tiết kiệm linh hoạt.
 
 ---
@@ -420,7 +420,7 @@ Lưu ý: Nếu client gửi `Expense`, `Income`, `Debt`, `Loan`, Sync Engine s�
 * `anchor_day`: Ngày neo chu kỳ thanh toán hàng tháng (1..31).
 
 ### 6.4. Chốt chặn thanh toán hai lần (Double-Payment Guard)
-* Khi tiếp nhận yêu cầu thanh toán hóa đơn hoặc đẩy giao dịch có gắn `Idbill`, Sync Engine kiểm tra hóa đơn tương ứng trong kỳ đó đã ở trạng thái `'Payed'` hay chưa. Nếu đã trả mà cố tình sửa trạng thái hoặc thanh toán trùng, hệ thống chặn lại và trả lỗi `BILL_ALREADY_PAID` (ánh xạ thành `CONSTRAINT_VIOLATION`), ngăn chặn việc 2 thiết bị cùng thanh toán 1 hóa đơn khi chuyển từ offline sang online.
+* `/sync/push` từ chối giao dịch thứ hai có cùng `Idbill` chưa xóa mềm với `code: 'BILL_ALREADY_PAID'`. Hoàn tác về `Pending` (thay đổi `Pay_status` của hóa đơn) không bị chặn. Mã này không ánh xạ thành `CONSTRAINT_VIOLATION` — client hắt nó vĩnh viễn.
 
 ---
 
@@ -582,7 +582,7 @@ Khi xóa một người dùng (`DELETE /api/admin/deleteuser/:id` hoặc `DELETE
 * **Quy tắc Vô hiệu hóa tài khoản (`Reason_Inactive`):**
   * Bảng `account` có cột `"Reason_Inactive" TEXT NULL`.
   * Khi Admin chuyển tài khoản sang `Inactive`: Bắt buộc cung cấp lý do vô hiệu hóa (HTTP 400 nếu rỗng).
-  * Backend lưu `Reason_Inactive`, xóa cache xác thực và phát sự kiện Socket `account.force_logout` với `code = 'ACCOUNT_INACTIVE'` kèm lý do.
+  * Backend lưu `Reason_Inactive`, xóa cache xác thực và phát sự kiện Socket `account.force_logout` với `reason = 'ACCOUNT_INACTIVE'` kèm lý do.
   * Khi kích hoạt lại `Active`: Hệ thống tự động xóa sạch `Reason_Inactive = null`.
 
 ### 11.6. Quy tắc Cơ Chế Chờ Xóa Tài Khoản (PendingDelete) & Countdown 30 Ngày

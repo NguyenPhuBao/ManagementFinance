@@ -176,13 +176,22 @@ const syncService = {
           friendlyMessage = 'Tài khoản không tồn tại trong hệ thống';
         } else if (sqlState === '23505' || prismaCode === 'P2002') {
           code = 'UNIQUE_VIOLATION';
+          const isWallet = op.entity === 'wallet' || err?.meta?.modelName === 'wallet';
           if (/uq_category|category.*name/i.test(rawMsg) || /category/i.test(constraintMatch || '')) {
             code = 'CATEGORY_NAME_DUPLICATE';
             friendlyMessage = 'Tên danh mục đã tồn tại trong tài khoản này';
-          } else if (/uq_wallet_name|wallet.*name/i.test(rawMsg) || /uq_wallet_name_user/i.test(constraintMatch || '')) {
+          } else if (
+            /uq_wallet_name|uq_wallet_account_name|wallet.*name/i.test(rawMsg) ||
+            /uq_wallet_name|uq_wallet_account_name/i.test(constraintMatch || '') ||
+            (isWallet && (err?.meta?.target?.includes('Name') || /name/i.test(rawMsg)))
+          ) {
             code = 'WALLET_NAME_DUPLICATE';
             friendlyMessage = 'Tên ví đã tồn tại trong tài khoản này';
-          } else if (/uq_wallet_default|wallet.*default/i.test(rawMsg)) {
+          } else if (
+            /uq_wallet_default|wallet.*default/i.test(rawMsg) ||
+            /uq_wallet_default/i.test(constraintMatch || '') ||
+            (isWallet && (err?.meta?.target?.includes('Is_default') || /default/i.test(rawMsg)))
+          ) {
             code = 'WALLET_DEFAULT_DUPLICATE';
             friendlyMessage = 'Tài khoản đã có một ví mặc định';
           } else {

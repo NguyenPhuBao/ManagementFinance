@@ -448,11 +448,6 @@ const syncRepository = {
       });
     }
     if (new Date(mapped.update_at) > new Date(existing.update_at)) {
-      if (existing.pay_status === 'Payed' && mapped.pay_status && mapped.pay_status !== 'Payed') {
-        throw Object.assign(new Error('Hóa đơn đã được thanh toán, không thể thay đổi trạng thái'), {
-          code: 'BILL_ALREADY_PAID',
-        });
-      }
       return prisma.bill.update({
         where: { idbill: existing.idbill },
         data: {

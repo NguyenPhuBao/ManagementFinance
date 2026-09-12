@@ -224,6 +224,7 @@ const authRepository = {
           select: {
             username: true,
             status: true,
+            countdown: true,
             type: true,
             idrole: true,
             role: { select: { rolename: true } },
