@@ -71,6 +71,7 @@ void main() {
     DateTime due, {
     String? tu,
     bool paid = false,
+    bool boQua = false,
     bool tuTra = false,
     String note = '',
   }) =>
@@ -84,7 +85,8 @@ void main() {
         amount: 250000,
         startDate: drift.Value(due.subtract(const Duration(days: 30))),
         dueDate: due,
-        payStatus: drift.Value(paid ? 'Payed' : 'Pending'),
+        payStatus:
+            drift.Value(boQua ? 'Skipped' : (paid ? 'Payed' : 'Pending')),
         isPaid: drift.Value(paid),
         autoPayEnabled: drift.Value(tuTra),
         timeNotification: const drift.Value('3'),
@@ -222,5 +224,72 @@ void main() {
     await dungTrang(tester, 'khong-co');
     expect(find.text('Không tìm thấy hoá đơn'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  group('bỏ qua kỳ', () {
+    testWidgets('kỳ chưa trả: có CẢ Thanh toán lẫn Bỏ qua kỳ này',
+        (tester) async {
+      await hoaDon('k1', DateTime(2026, 9, 20));
+      await dungTrang(tester, 'k1');
+
+      expect(find.byKey(const ValueKey('bill-detail-pay')), findsOneWidget);
+      expect(find.byKey(const ValueKey('bill-detail-skip')), findsOneWidget,
+          reason: 'Đây là lối vào DUY NHẤT của tính năng bỏ qua kỳ.');
+      expect(tester.takeException(), isNull,
+          reason: 'Nút thứ hai làm khối thao tác cao thêm 60px. Ở 411dp — chứ '
+              'không phải 1280px của Chrome — đây là chỗ dễ tràn nhất của cả '
+              'hạng mục này, và Flutter báo tràn qua FlutterError.reportError '
+              'chứ không ném ra chỗ gọi.');
+    });
+
+    testWidgets('kỳ bỏ qua: chỉ có nút Hoàn tác bỏ qua', (tester) async {
+      await hoaDon('k1', DateTime(2026, 9, 20), boQua: true);
+      await dungTrang(tester, 'k1');
+
+      expect(
+          find.byKey(const ValueKey('bill-detail-undo-skip')), findsOneWidget,
+          reason: 'Đây là đường duy nhất quay lại từ một lần bỏ qua.');
+      expect(find.byKey(const ValueKey('bill-detail-pay')), findsNothing,
+          reason: 'Trả trên kỳ đã bỏ qua là sinh kỳ trùng — repository từ chối, '
+              'nên giao diện đừng mời người dùng bấm vào chỗ sẽ báo lỗi.');
+      expect(find.byKey(const ValueKey('bill-detail-undo')), findsNothing,
+          reason: 'Không có khoản chi nào để hoàn tác thanh toán.');
+      expect(find.byKey(const ValueKey('bill-detail-skip')), findsNothing);
+      expect(find.text('BỎ QUA'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('kỳ đã trả: không có nút Bỏ qua', (tester) async {
+      await hoaDon('k1', DateTime(2026, 9, 20), paid: true);
+      await dungTrang(tester, 'k1');
+
+      expect(find.byKey(const ValueKey('bill-detail-skip')), findsNothing,
+          reason: 'Tiền đã ra khỏi ví; bỏ qua lúc này là nói dối sổ sách.');
+      expect(find.byKey(const ValueKey('bill-detail-undo')), findsOneWidget);
+    });
+
+    testWidgets('lịch sử các kỳ ghi "Bỏ qua" cho kỳ ấy', (tester) async {
+      await hoaDon('k1', DateTime(2026, 8, 20), boQua: true);
+      await hoaDon('k2', DateTime(2026, 9, 20), tu: 'k1');
+      await dungTrang(tester, 'k2');
+
+      expect(find.text('Bỏ qua'), findsOneWidget,
+          reason: 'Chữ thường ở dòng lịch sử, khác nhãn IN HOA ở thẻ đầu — hai '
+              'thứ khác nhau, không được lẫn.');
+    });
+
+    testWidgets('hộp thoại xác nhận nói rõ BA hệ quả', (tester) async {
+      await hoaDon('k1', DateTime(2026, 9, 20));
+      await dungTrang(tester, 'k1');
+
+      await tester.tap(find.byKey(const ValueKey('bill-detail-skip')));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('không trừ tiền ví'), findsOneWidget);
+      expect(find.textContaining('không ghi khoản chi'), findsOneWidget);
+      expect(find.textContaining('kỳ kế tiếp vẫn được tạo'), findsOneWidget,
+          reason: 'Hoá đơn này CÓ lặp. Không nói ra thì người dùng tưởng bỏ '
+              'qua là kết thúc chuỗi, đúng nỗi sợ khiến họ chọn xoá kỳ.');
+    });
   });
 }

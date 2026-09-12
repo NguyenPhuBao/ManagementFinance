@@ -432,25 +432,63 @@ class _BillDetailPageState extends State<BillDetailPage> {
         onPressed: () => hoiHoanTacHoaDon(context, b),
         icon: const Icon(Icons.undo, size: 18),
         label: const Text('Hoàn tác thanh toán'),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.primary,
-          side: const BorderSide(color: AppColors.primary),
-          minimumSize: const Size.fromHeight(48),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
+        style: _vien,
       );
     }
-    return ElevatedButton.icon(
-      key: const ValueKey('bill-detail-pay'),
-      onPressed: () => moBangThanhToanHoaDon(context, b),
-      icon: const Icon(Icons.payments_outlined, size: 18),
-      label: const Text('Thanh toán'),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        minimumSize: const Size.fromHeight(48),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
+
+    if (status == BillDisplayStatus.skipped) {
+      // Cố ý KHÔNG bày nút Thanh toán: kỳ này đã sinh kỳ kế tiếp, nên
+      // `payBill` từ chối nó. Mời người dùng bấm vào chỗ chắc chắn báo lỗi là
+      // một giao diện nói dối.
+      return OutlinedButton.icon(
+        key: const ValueKey('bill-detail-undo-skip'),
+        onPressed: () => hoiHoanTacBoQua(context, b),
+        icon: const Icon(Icons.undo, size: 18),
+        label: const Text('Hoàn tác bỏ qua'),
+        style: _vien,
+      );
+    }
+
+    // Hai nút XẾP DỌC, không đặt trong `Row`: theme của app ép mọi
+    // `ElevatedButton` rộng vô hạn, nên một nút trần trong `Row` làm trắng cả
+    // trang mà không một dòng log nào (bẫy 4.11, `ANALYTICS_FEATURE.md`).
+    return Column(
+      children: [
+        ElevatedButton.icon(
+          key: const ValueKey('bill-detail-pay'),
+          onPressed: () => moBangThanhToanHoaDon(context, b),
+          icon: const Icon(Icons.payments_outlined, size: 18),
+          label: const Text('Thanh toán'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+            minimumSize: const Size.fromHeight(48),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          key: const ValueKey('bill-detail-skip'),
+          onPressed: () => hoiBoQuaKyHoaDon(context, b),
+          icon: const Icon(Icons.redo_outlined, size: 18),
+          label: const Text('Bỏ qua kỳ này'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.textSecondary,
+            side: const BorderSide(color: AppColors.outline),
+            minimumSize: const Size.fromHeight(48),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        ),
+      ],
     );
   }
+
+  ButtonStyle get _vien => OutlinedButton.styleFrom(
+        foregroundColor: AppColors.primary,
+        side: const BorderSide(color: AppColors.primary),
+        minimumSize: const Size.fromHeight(48),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      );
 }

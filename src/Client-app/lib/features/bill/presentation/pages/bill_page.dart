@@ -172,7 +172,10 @@ class _BillPageState extends State<BillPage> {
                           Tab(
                               text:
                                   'Cần thanh toán (${sections.chuaDong.length})'),
-                          Tab(text: 'Đã thanh toán (${sections.daDong.length})'),
+                          // "Lịch sử" chứ không phải "Đã thanh toán": từ
+                          // 2026-09-12 tab này chứa cả kỳ bỏ qua, thứ
+                          // chưa hề được trả đồng nào.
+                          Tab(text: 'Lịch sử (${sections.daDong.length})'),
                         ],
                       ),
                       Expanded(
@@ -191,7 +194,7 @@ class _BillPageState extends State<BillPage> {
                               sections.daDong,
                               now: now,
                                                             dateFormatter: dateFormatter,
-                              khiTrong: 'Chưa có hoá đơn nào được thanh toán.',
+                              khiTrong: 'Chưa có kỳ nào đã đóng.',
                               payments: state.payments,
                             ),
                           ],
