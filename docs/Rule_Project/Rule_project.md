@@ -582,7 +582,7 @@ Khi xóa một người dùng (`DELETE /api/admin/deleteuser/:id` hoặc `DELETE
 * **Quy tắc Vô hiệu hóa tài khoản (`Reason_Inactive`):**
   * Bảng `account` có cột `"Reason_Inactive" TEXT NULL`.
   * Khi Admin chuyển tài khoản sang `Inactive`: Bắt buộc cung cấp lý do vô hiệu hóa (HTTP 400 nếu rỗng).
-  * Backend lưu `Reason_Inactive`, xóa cache xác thực và phát sự kiện Socket `account.force_logout` với `code = 'ACCOUNT_INACTIVE'` kèm lý do.
+  * Backend lưu `Reason_Inactive`, xóa cache xác thực và phát sự kiện Socket `account.force_logout` với `reason = 'ACCOUNT_INACTIVE'` kèm lý do.
   * Khi kích hoạt lại `Active`: Hệ thống tự động xóa sạch `Reason_Inactive = null`.
 
 ### 11.6. Quy tắc Cơ Chế Chờ Xóa Tài Khoản (PendingDelete) & Countdown 30 Ngày

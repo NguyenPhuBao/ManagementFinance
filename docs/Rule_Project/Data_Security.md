@@ -220,7 +220,7 @@ flowchart TD
 
 ## 10. Các Giải Pháp Kỹ Thuật Bảo Mật Đã Triển Khai Thực Tế
 
-Hệ thống đã hoàn tất triển khai và kiểm thử 100% các biện pháp kỹ thuật bảo mật sau:
+Các biện pháp dưới đây đã có trong mã; bốn trigger ở 10.1 có trên CSDL dev từ 2026-09-10 (áp database/10, 11). Chưa có bộ test tự động riêng trong repo cho các biện pháp này:
 
 ### 10.1. Cơ chế Bảo vệ 2 Đầu (Client/Backend + CSDL Trigger)
 * **Xác thực và mã hóa cấp ứng dụng (Backend Application Layer):** Mọi trường PII (`User.phone`, `User.address`, `bank_account.account_number`) được mã hóa AES-256-GCM trước khi lưu vào CSDL.
