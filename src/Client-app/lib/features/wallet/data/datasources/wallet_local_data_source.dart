@@ -124,7 +124,7 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
     );
   }
 
-  /// Hai ràng buộc mà PostgreSQL thi hành bằng partial unique index — xem
+  /// Ràng buộc trùng tên mà PostgreSQL thi hành bằng partial unique index — xem
   /// `domain/rang_buoc_vi.dart`. Gọi **TRƯỚC** khi ghi: ghi rồi mới ném là
   /// hàng đã nằm trong SQLite và vẫn bị đẩy lên, tức đúng lỗi cần chặn.
   ///
@@ -136,10 +136,6 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
         (await _db.walletDao.getAll(wallet.idaccount)).map(_toEntity);
     if (viTrungTen(viHienCo, wallet.name, boQuaId: wallet.id) != null) {
       throw CacheException(thongBaoTrungTen(wallet.name));
-    }
-    if (wallet.type == 'saving' &&
-        viTietKiemDaCo(viHienCo, boQuaId: wallet.id) != null) {
-      throw const CacheException(thongBaoMotViTietKiem);
     }
   }
 

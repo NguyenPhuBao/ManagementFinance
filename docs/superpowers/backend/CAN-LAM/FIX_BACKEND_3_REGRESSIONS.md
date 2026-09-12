@@ -442,6 +442,7 @@ Làm cùng lượt với `RULE_PROJECT_DOC_DRIFT.md`.
 - **Làm mới hỏng vì 5xx cũng làm app đăng xuất.** `_tryRefreshToken` trả `null` cho
   mọi phản hồi khác 200 và mọi `DioException` (`auth_interceptor.dart:88-119`), rồi
   `onError` xoá token. Đề xuất 503 ở 2.6 vẫn đúng phía backend; cách app đón nó là
-  việc của client.
+  việc của client — ✅ người dùng duyệt sửa ngày 2026-09-11, cùng lỗi hai lượt làm mới
+  đồng thời (spec cưỡng chế đăng xuất §3.8); chưa làm.
 - **Cưỡng chế đăng xuất** (spec dẫn ở 2.5) phụ thuộc A: nhánh socket cần bắt tay
   chạy được, và nhánh làm mới cần 2.5.

@@ -1,4 +1,3 @@
-import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/errors/app_exceptions.dart';
@@ -7,7 +6,7 @@ import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 import 'package:flowmoney/features/wallet/domain/rang_buoc_vi.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Hai ràng buộc của PostgreSQL trên `wallet`, thi hành ở tầng datasource —
+/// Ràng buộc của PostgreSQL trên `wallet`, thi hành ở tầng datasource —
 /// nơi CẢ đường thêm lẫn đường sửa đều đi qua (cùng chỗ với chốt "một ví mặc
 /// định"). Xem `rang_buoc_vi_test.dart` cho luật thuần; tệp này canh rằng
 /// datasource THẬT SỰ gọi luật ấy trước khi ghi.
@@ -85,63 +84,47 @@ void main() {
     });
   });
 
-  group('một ví Tiết kiệm', () {
-    test('thêm ví saving thứ hai bị từ chối', () async {
+  group('nhiều ví Tiết kiệm — G30', () {
+    // Server từng có `uq_wallet_saving_active` (một ví Tiết kiệm mỗi tài khoản),
+    // luật chỉ tồn tại ở SQL. `database/12` đã bỏ index ấy (CSDL dev áp
+    // 2026-09-11), nên chốt tạm phía client — từ chối ví Tiết kiệm thứ hai — nay
+    // là từ chối thứ server cho phép.
+
+    test('thêm ví saving thứ hai được', () async {
       await dataSource.insert(vi('a', name: 'Tiết kiệm', type: 'saving'));
 
-      await expectLater(
-        dataSource.insert(vi('b', name: 'Quỹ dự phòng', type: 'saving')),
-        throwsA(isA<CacheException>()
-            .having((e) => e.message, 'message', thongBaoMotViTietKiem)),
-      );
-      expect((await db.walletDao.getAll(idaccount)).length, 1);
+      await dataSource.insert(vi('b', name: 'Quỹ dự phòng', type: 'saving'));
+
+      final saving = (await db.walletDao.getAll(idaccount))
+          .where((w) => w.type == 'saving')
+          .map((w) => w.id)
+          .toSet();
+      expect(saving, {'a', 'b'},
+          reason: 'App thị trường cho nhiều ví tiết kiệm, và server không còn '
+              'chặn. Chặn ở đây là người dùng phải tạo quỹ thứ hai dưới loại '
+              'Ngân hàng — sai nghĩa.');
     });
 
-    test('đổi loại ví khác sang saving khi đã có một ví saving bị từ chối',
-        () async {
+    test('đổi loại ví khác sang saving khi đã có một ví saving được', () async {
       await dataSource.insert(vi('a', name: 'Tiết kiệm', type: 'saving'));
       await dataSource.insert(vi('b', name: 'VCB', type: 'bank'));
 
-      await expectLater(
-        dataSource.update(vi('b', name: 'VCB', type: 'saving')),
-        throwsA(isA<CacheException>()),
-      );
-      expect((await db.walletDao.getById('b'))!.type, 'bank');
-    });
-
-    test('sửa chính ví saving thì được', () async {
-      await dataSource.insert(vi('a', name: 'Tiết kiệm', type: 'saving'));
-
-      await dataSource.update(
-          vi('a', name: 'Tiết kiệm dài hạn', type: 'saving'));
-
-      expect((await db.walletDao.getById('a'))!.name, 'Tiết kiệm dài hạn');
-    });
-
-    test('ví saving đã xoá mềm không chặn ví saving mới', () async {
-      await dataSource.insert(vi('a', name: 'Tiết kiệm', type: 'saving'));
-      await db.walletDao.softDelete('a');
-
-      await dataSource.insert(vi('b', name: 'Tiết kiệm mới', type: 'saving'));
+      await dataSource.update(vi('b', name: 'VCB', type: 'saving'));
 
       expect((await db.walletDao.getById('b'))!.type, 'saving');
     });
 
-    test('ví của TÀI KHOẢN KHÁC không tính', () async {
-      await db.walletDao.insert(WalletsCompanion.insert(
-        id: 'x',
-        idaccount: 99,
-        name: 'Tiết kiệm',
-        type: const Value('saving'),
-        updatedAt: DateTime(2026, 9, 10),
-      ));
+    test('hai ví saving trùng tên vẫn bị từ chối', () async {
+      await dataSource.insert(vi('a', name: 'Tiết kiệm', type: 'saving'));
 
-      await dataSource.insert(vi('b', name: 'Tiết kiệm', type: 'saving'));
-
-      expect((await db.walletDao.getById('b'))!.type, 'saving',
-          reason: 'Cả hai index đều có `Idaccount` ở vế đầu; chặn chéo tài '
-              'khoản là từ chối thứ server cho phép — và dữ liệu tài khoản '
-              'khác trên cùng máy chỉ tồn tại tới lần dọn kế tiếp.');
+      await expectLater(
+        dataSource.insert(vi('b', name: 'tiết kiệm', type: 'saving')),
+        throwsA(isA<CacheException>().having(
+            (e) => e.message, 'message', thongBaoTrungTen('tiết kiệm'))),
+        reason: 'Gỡ luật "một ví Tiết kiệm" KHÔNG được gỡ theo luật trùng tên — '
+            '`uq_wallet_account_name_active` vẫn còn trên server.',
+      );
+      expect((await db.walletDao.getAll(idaccount)).length, 1);
     });
   });
 }

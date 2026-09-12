@@ -101,18 +101,26 @@ class FakeCategoryRepository implements CategoryManagementRepository {
   int soLanDocDanhMuc = 0;
   int soLanDocTuKhoa = 0;
 
+  /// Mã tài khoản của MỌI lời gọi đọc, theo thứ tự. Canh G35: khi chưa có
+  /// phiên đăng nhập, màn danh mục không được đọc gì — kể cả tài khoản 0,
+  /// vì 0 là bộ khuôn danh mục mặc định toàn cục (quy tắc 8).
+  final List<int> accountIdsDoc = [];
+
   @override
   Stream<CategoryTree> watchTree({
     required int accountId,
     required String classify,
-  }) =>
-      Stream.value(_trees[classify] ?? _emptyTree);
+  }) {
+    accountIdsDoc.add(accountId);
+    return Stream.value(_trees[classify] ?? _emptyTree);
+  }
 
   @override
   Future<CategoryTree> loadTree({
     required int accountId,
     required String classify,
   }) async {
+    accountIdsDoc.add(accountId);
     loadedClassifies.add(classify);
     return _trees[classify] ?? _emptyTree;
   }
@@ -131,6 +139,7 @@ class FakeCategoryRepository implements CategoryManagementRepository {
     required int accountId,
     required String categoryId,
   }) async {
+    accountIdsDoc.add(accountId);
     soLanDocTuKhoa++;
     return _keywords[categoryId] ?? const [];
   }
@@ -139,6 +148,7 @@ class FakeCategoryRepository implements CategoryManagementRepository {
   Future<Map<String, List<String>>> loadAllKeywords({
     required int accountId,
   }) async {
+    accountIdsDoc.add(accountId);
     soLanDocTuKhoa++;
     return _keywords;
   }
@@ -170,6 +180,7 @@ class FakeCategoryRepository implements CategoryManagementRepository {
     required int accountId,
     required String classify,
   }) {
+    accountIdsDoc.add(accountId);
     soLanDocDanhMuc++;
     return _selectableLoader?.call(accountId, classify) ??
         Future.value(
@@ -182,6 +193,7 @@ class FakeCategoryRepository implements CategoryManagementRepository {
   @override
   Future<List<Category>> selectableChildrenAll({required int accountId}) async {
     // Một lượt gợi ý = MỘT lần đếm, dù bên dưới hỏi từng classify.
+    accountIdsDoc.add(accountId);
     soLanDocDanhMuc++;
     final loader = _selectableLoader;
     if (loader == null) return List.of(_selectable);

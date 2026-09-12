@@ -100,6 +100,11 @@ class SyncPayloadNormalizer {
 
   static Map<String, dynamic> categoryForPush(Map<String, dynamic> payload) {
     final normalized = forPush(payload);
+    // Backend chỉ đọc `color` — thiếu phép đổi này thì màu danh mục bị bỏ qua
+    // im lặng (G24). Cùng khuôn `walletForPush`, và phủ cả thao tác danh mục
+    // đang chờ lẫn danh mục mà bước 1b của `_collectPendingOps` gửi kèm.
+    final colour = normalized.remove('colour');
+    if (colour != null) normalized['color'] = colour;
     final raw = normalized['classify']?.toString();
     normalized['classify'] = switch (
       raw == null ? null : _canonicalClassifyKey(raw)

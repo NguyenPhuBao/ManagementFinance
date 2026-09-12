@@ -1,11 +1,11 @@
-/// Màn Thêm ví trước hai ràng buộc của server (xem `rang_buoc_vi_test.dart`).
+/// Màn Thêm ví trước ràng buộc của server (xem `rang_buoc_vi_test.dart`).
 ///
-/// Chốt chặn thật nằm ở datasource; màn hình chỉ làm hai việc để người dùng
-/// không phải đi tới tận đó rồi nhận lỗi:
+/// Chốt chặn thật nằm ở datasource; màn hình báo trùng tên ngay lúc bấm Lưu,
+/// trước khi gọi cubit, để người dùng không phải đi tới tận đó rồi nhận lỗi.
 ///
-/// 1. Khoá ô "Tiết kiệm" khi tài khoản đã có một ví Tiết kiệm, kèm một dòng
-///    nói vì sao. Ô vẫn hiện — giấu đi là người dùng tưởng app thiếu loại ví.
-/// 2. Báo trùng tên ngay lúc bấm Lưu, trước khi gọi cubit.
+/// Ô "Tiết kiệm" từng bị khoá khi tài khoản đã có một ví Tiết kiệm, vì server
+/// có `uq_wallet_saving_active`. `database/12` đã bỏ index ấy, nên từ
+/// 2026-09-11 ô ấy chọn được như mọi loại khác (G30).
 ///
 /// Và một lỗ có sẵn mà tệp này bịt luôn: `WalletAddPage` dựng **cubit riêng**
 /// (`sl<WalletCubit>()` trong `BlocProvider`), không ai nghe `WalletError`
@@ -179,19 +179,19 @@ Future<void> _dienTenVaLuu(WidgetTester tester, String ten) async {
 
 void main() {
   group('ô "Tiết kiệm"', () {
-    testWidgets('đã có ví Tiết kiệm thì ô bị khoá và có dòng giải thích',
+    testWidgets('đã có ví Tiết kiệm vẫn chọn được ô Tiết kiệm — G30',
         (tester) async {
       final repo = _RepoGia([_vi('a', name: 'Tiết kiệm', type: 'saving')]);
       await _moTrang(tester, repo);
 
-      expect(find.text(thongBaoMotViTietKiem), findsOneWidget,
-          reason: 'Một ô không bấm được mà không nói gì trông như app hỏng.');
+      expect(find.textContaining('chỉ có một ví Tiết kiệm'), findsNothing,
+          reason: 'Server đã bỏ luật ấy; dòng giải thích cũ nay nói sai.');
 
       await _chamSauKhiCuon(tester, find.text('Tiết kiệm'));
-      await _dienTenVaLuu(tester, 'Ví mới');
+      await _dienTenVaLuu(tester, 'Quỹ dự phòng');
 
-      expect(repo.luoiGoiThem.single.type, isNot('saving'),
-          reason: 'Chạm vào ô bị khoá không được đổi loại ví đang chọn.');
+      expect(repo.luoiGoiThem.single.type, 'saving',
+          reason: 'Ô Tiết kiệm phải chọn được như mọi loại khác.');
     });
 
     testWidgets('chưa có ví Tiết kiệm thì chọn được như thường',
@@ -199,7 +199,7 @@ void main() {
       final repo = _RepoGia([_vi('a', name: 'Tiền mặt')]);
       await _moTrang(tester, repo);
 
-      expect(find.text(thongBaoMotViTietKiem), findsNothing);
+      expect(find.textContaining('chỉ có một ví Tiết kiệm'), findsNothing);
 
       await _chamSauKhiCuon(tester, find.text('Tiết kiệm'));
       await _dienTenVaLuu(tester, 'Quỹ dự phòng');

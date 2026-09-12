@@ -4,6 +4,7 @@ import 'package:flowmoney/features/transaction/data/models/transaction_entity.da
 import 'package:flowmoney/features/transaction/presentation/bloc/transaction_bloc.dart';
 import 'package:flowmoney/features/transaction/presentation/pages/add_transaction_page.dart';
 import 'package:flowmoney/features/transaction/presentation/pages/choose_category_page.dart';
+import 'package:flowmoney/features/wallet/domain/wallet_type.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -271,6 +272,36 @@ void main() {
     expect(saved.transaction.walletTransfer, 'bank',
         reason: 'Ví đích phải nằm trên entity để xuống SQLite và lên server.');
     expect(saved.destinationWalletId, 'bank');
+  });
+
+  testWidgets('bảng chọn ví hiện nhãn loại ví, không hiện khoá lưu thô',
+      (tester) async {
+    await tester.pumpWidget(app(
+      categoryRepository: categories(),
+      transactionRepository: FakeTransactionRepository(),
+      wallets: [
+        makeWallet(id: 'cash', name: 'Ví chính'),
+        makeWallet(id: 'vcb', name: 'VCB').copyWith(type: 'bank'),
+        makeWallet(id: 'quy', name: 'Quỹ dự phòng').copyWith(type: 'saving'),
+      ],
+    ));
+    await tester.pumpAndSettle();
+
+    // Neo bằng biểu tượng của hàng "Ví thanh toán": ở chế độ Giao dịch chỉ
+    // hàng ấy dùng nó.
+    await tester.tap(find.byIcon(Icons.account_balance_wallet_outlined));
+    await tester.pumpAndSettle();
+    expect(find.byType(BottomSheet), findsOneWidget);
+
+    for (final khoa in ['cash', 'bank', 'saving']) {
+      expect(find.text(khoa), findsNothing,
+          reason: 'Khoá lưu SQLite không phải chữ cho người đọc: dòng dưới tên '
+              'ví từng in thẳng wallet.type nên hiện "$khoa".');
+    }
+    for (final loai in [WalletType.cash, WalletType.bank, WalletType.saving]) {
+      expect(find.text(loai.nhan), findsOneWidget,
+          reason: 'Nhãn loại ví có một nguồn duy nhất: WalletType.nhan.');
+    }
   });
 
   testWidgets('gợi ý theo ghi chú tìm trên cả ba phân loại', (tester) async {

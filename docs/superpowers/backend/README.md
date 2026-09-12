@@ -11,7 +11,7 @@ vì trước đó cùng một bảng trạng thái tồn tại ở hai nơi và 
 | Bạn cần gì | Mở cái này |
 |---|---|
 | **Việc backend còn phải làm** | 👉 [`CAN-LAM/README.md`](./CAN-LAM/README.md) — **cửa vào duy nhất**. Đếm theo **mục 2** của chính tệp ấy, đừng đếm ở đây: bảng này từng ghi "bốn" trong khi mục 2 đã có sáu |
-| Lý lẽ đằng sau một quyết định đã đi vào lược đồ | [`DA-XONG/README.md`](./DA-XONG/README.md) — 16 tài liệu đã đóng, kèm ghi chú *đóng bằng cách nào* |
+| Lý lẽ đằng sau một quyết định đã đi vào lược đồ | [`DA-XONG/README.md`](./DA-XONG/README.md) — **31** tài liệu đã đóng (đếm bằng máy 2026-09-11; dòng này từng ghi "16" từ trước khi backend chuyển mười lăm tệp sang), kèm ghi chú *đóng bằng cách nào* |
 | Client-app còn nợ gì | `docs/CLIENT_APP_KNOWN_GAPS.md` |
 | Bức tranh toàn cục | Mục 14 `docs/PROJECT_CONTEXT.md` |
 

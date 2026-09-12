@@ -1,6 +1,6 @@
 # Backend — TOÀN BỘ 15 MỤC ĐÃ HOÀN TẤT 100%
 
-**Cập nhật:** 2026-09-11 tối (soát từng tài liệu `7675b35` với mã HEAD và CSDL dev — thêm mục 18 `VERIFY_7675B35_REMAINING.md`; viết lại banner ⚠️, mục 1 và mục 2 theo kết quả đo. Bảng phân nhóm và danh sách mười sáu mục trước khi gộp nay chỉ còn trong lịch sử git. Trước đó cùng ngày: áp `database/12` lên CSDL dev — sửa gạch thứ ba của banner "đã gộp". Trước đó cùng ngày: gộp `main` @ `cc65f4f` về nhánh `TranQuangDat`: giữ **nguyên văn** tiêu đề và khối 🎉 của backend (`f8ab027`), thay banner "`main` đã đi trước nhánh client" bằng banner "đã gộp" ngay dưới khối ấy, và trỏ liên kết của mục 1–2 sang `../DA-XONG/` theo chỗ tệp nằm hôm nay. Trước đó cùng ngày: thêm mục 17 `FIX_BACKEND_3_REGRESSIONS.md` — ba hồi quy của `7675b35` trên `main`). Trước đó: 2026-09-10 tối (mục 16 viết lại thành hướng dẫn sửa theo dòng — 56 chỗ tài liệu, ba việc mã; mục 11: phần **áp** `database/7`–`11` đã xong trên CSDL dev — còn lại ghi quy trình và tách nhánh cho qua. Trước đó cùng ngày: thêm mục 13–16 sau lượt rà soát CSDL mới — `AUTH_401_BODY_CODE.md`, `GOAL_PRIORITY_NULL_TO_ZERO.md`, `SYNC_PUSH_ERROR_MAPPING.md`, `RULE_PROJECT_DOC_DRIFT.md`. Trước đó cùng ngày: mục 10 `SYNC_NOTE_FILTER_REWRITE.md`, mục 11 `DEV_DB_MIGRATIONS_7_11.md` sau khi gộp `main`, và mục 12 `WALLET_SAVING_INDEX.md` sau lượt rà soát ví; mục 9 gộp vào mục 11. Lần trước: 2026-09-09, thêm mục 7 và 8 — hai tệp `SOCKET_*`. Banner đợt 2026-09-07 bên dưới giữ nguyên vì nó nói về đợt ấy)
+**Cập nhật:** 2026-09-11 tối muộn (thêm mục **19** `AUTH_PROFILE_COUNTDOWN.md` cùng lúc client sửa G33 — dòng bảng mục 1, banner ⚠️ và số "3 tài liệu còn việc" ghi theo; sau lượt soát cuối G33, bảng §1 và §2.4 của mục 19 viết lại cho đúng ca "máy không có số ngày". Trước đó cùng tối: soát từng tài liệu `7675b35` với mã HEAD và CSDL dev — thêm mục 18 `VERIFY_7675B35_REMAINING.md`; viết lại banner ⚠️, mục 1 và mục 2 theo kết quả đo. Bảng phân nhóm và danh sách mười sáu mục trước khi gộp nay chỉ còn trong lịch sử git. Trước đó cùng ngày: áp `database/12` lên CSDL dev — sửa gạch thứ ba của banner "đã gộp". Trước đó cùng ngày: gộp `main` @ `cc65f4f` về nhánh `TranQuangDat`: giữ **nguyên văn** tiêu đề và khối 🎉 của backend (`f8ab027`), thay banner "`main` đã đi trước nhánh client" bằng banner "đã gộp" ngay dưới khối ấy, và trỏ liên kết của mục 1–2 sang `../DA-XONG/` theo chỗ tệp nằm hôm nay. Trước đó cùng ngày: thêm mục 17 `FIX_BACKEND_3_REGRESSIONS.md` — ba hồi quy của `7675b35` trên `main`). Trước đó: 2026-09-10 tối (mục 16 viết lại thành hướng dẫn sửa theo dòng — 56 chỗ tài liệu, ba việc mã; mục 11: phần **áp** `database/7`–`11` đã xong trên CSDL dev — còn lại ghi quy trình và tách nhánh cho qua. Trước đó cùng ngày: thêm mục 13–16 sau lượt rà soát CSDL mới — `AUTH_401_BODY_CODE.md`, `GOAL_PRIORITY_NULL_TO_ZERO.md`, `SYNC_PUSH_ERROR_MAPPING.md`, `RULE_PROJECT_DOC_DRIFT.md`. Trước đó cùng ngày: mục 10 `SYNC_NOTE_FILTER_REWRITE.md`, mục 11 `DEV_DB_MIGRATIONS_7_11.md` sau khi gộp `main`, và mục 12 `WALLET_SAVING_INDEX.md` sau lượt rà soát ví; mục 9 gộp vào mục 11. Lần trước: 2026-09-09, thêm mục 7 và 8 — hai tệp `SOCKET_*`. Banner đợt 2026-09-07 bên dưới giữ nguyên vì nó nói về đợt ấy)
 
 > 🎉 **CẬP NHẬT 2026-09-11:**
 > Toàn bộ **15/15 mục kỹ thuật** trong thư mục này đã được Backend triển khai trọn vẹn, áp dụng Migration 12 thành công lên PostgreSQL Supabase, kiểm thử tự động đạt 100% PASS (`test_can_lam_fixes.js`, `test_sensitive_note_filter.js`, `test_category_unique_rules.js`, `test_data_security_encryption_and_masking.js`, `test_sync_new_schema.js`), và toàn bộ 15 tài liệu kỹ thuật đã được di chuyển sang thư mục [`docs/superpowers/backend/DA-XONG/`](../DA-XONG/).
@@ -12,7 +12,8 @@
 > nguyên văn. Nhánh `TranQuangDat` đã gộp `main` @ `cc65f4f` và CSDL dev đã áp
 > `database/12` cùng ngày; client đối chiếu từng tài liệu với mã HEAD và CSDL — như đã
 > làm với đợt 2026-09-07 ngay dưới — thay vì tin báo cáo. Trạng thái từng tài liệu ở
-> **mục 2**, việc còn lại ở **mục 17 và 18**. Ba điều đáng biết nhất:
+> **mục 2**, việc còn lại ở **mục 17 và 18** (cộng mục **19**, viết cùng ngày
+> cho G33 — không thuộc lượt soát này). Ba điều đáng biết nhất:
 >
 > - Hồi quy **A** và **B** của mục 17 vẫn nguyên — bắt tay socket và `/auth/refresh` từ
 >   chối mọi tài khoản, chốt trả hai lần chặn hoàn tác. Nên sửa **trước** khi triển khai
@@ -52,7 +53,7 @@
 > nhánh `transient`. Client đã tự vá (`_permanentCodes`) — **không cần
 > backend làm gì**, ghi lại để lần sau đổi hợp đồng lỗi thì báo trước.
 
-> Thư mục này nay giữ `README.md` và **2** tài liệu còn việc (mục 17, 18 —
+> Thư mục này nay giữ `README.md` và **3** tài liệu còn việc (mục 17, 18, 19 —
 > đếm bằng máy 2026-09-11). Mười lăm tài liệu còn lại đã sang
 > [`../DA-XONG/`](../DA-XONG/README.md) theo báo cáo của backend; **chín** trong số đó
 > còn việc dang dở — ghi ở mục 2 và gom vào mục 18, thay vì chuyển ngược tệp lại đây.
@@ -66,10 +67,7 @@
 |---|---|---|---|
 | **17** | [FIX_BACKEND_3_REGRESSIONS.md](./FIX_BACKEND_3_REGRESSIONS.md) | Ba hồi quy của `7675b35`: **A** bắt tay socket và `/auth/refresh` từ chối mọi tài khoản; **B** chốt trả hai lần ở `upsertBill` chặn hoàn tác thanh toán; **C** tài liệu backend ghi sai ba mã lỗi | 🔴 A, B |
 | **18** | [VERIFY_7675B35_REMAINING.md](./VERIFY_7675B35_REMAINING.md) | Chín việc mã/CSDL còn lại của mười lăm tài liệu đã sang `DA-XONG/` — giao dịch SePay vỡ `chk_transaction_type` (suy từ mã), sự kiện ngân hàng phát hai lần, khoá mã hoá mặc định, tệp `)2` còn xoá cứng, `DEFAULT 0` của ngân sách, … — cộng 45 chỗ sửa tài liệu backend. Thứ tự đề xuất ở §1 của tài liệu ấy | 🟠 → ⚪ |
-
-Mục **19** (`AUTH_PROFILE_COUNTDOWN.md`) sẽ viết khi spec cưỡng chế đăng xuất
-(`docs/superpowers/specs/2026-09-10-cuong-che-dang-xuat-va-cho-xoa-design.md` §6) được
-duyệt.
+| **19** | [AUTH_PROFILE_COUNTDOWN.md](./AUTH_PROFILE_COUNTDOWN.md) | `GET /auth/profile` trả thêm `countdown` (máy đã giữ phiên từ trước khi máy khác gửi yêu cầu xoá, bộ nhớ đệm do bản client cũ ghi, và máy còn giữ số ngày của một lần chờ xoá trước mới biết đúng số ngày còn lại — đăng nhập máy khác hay cài lại app thì response đăng nhập đã mang số); gỡ `pendingDeleteCancelled` luôn `false` khỏi response đăng nhập | 🟡 → ⚪ |
 
 ---
 
@@ -82,7 +80,7 @@ tệp 12; cách đo ở đầu mục 18.
 | # | Tài liệu | Kết luận | Còn gì |
 |---|---|---|---|
 | 1 | [2026-09-04-backend-idempotent-delete.md](../DA-XONG/2026-09-04-backend-idempotent-delete.md) | ⚠️ (A)(B)(C) ✅; (D) mã ✅, CSDL còn `DEFAULT 0` | 18 §2.2 |
-| 2 | [CATEGORY_COLOUR_COLUMN.md](../DA-XONG/CATEGORY_COLOUR_COLUMN.md) | ✅ phía backend — cột `Color`, push nhận và pull trả khoá `color` | Khoá lệch ở **client** (`colour`) — 18 §2.3 |
+| 2 | [CATEGORY_COLOUR_COLUMN.md](../DA-XONG/CATEGORY_COLOUR_COLUMN.md) | ✅ phía backend — cột `Color`, push nhận và pull trả khoá `color` | ✅ client sửa khoá 2026-09-11 — 18 §2.3 |
 | 3, 4, 5 | [2026-09-06-bill-chuoi-ky-va-an-han.md](../DA-XONG/2026-09-06-bill-chuoi-ky-va-an-han.md) | ⚠️ việc A, B, C, E ✅ (cột, push, pull, `'Skipped'`); việc D: cột `Auto_pay` ✅, chốt trả hai lần đặt sai chỗ | 17 B |
 | 6 | [BILL_ANCHOR_DAY.md](../DA-XONG/BILL_ANCHOR_DAY.md) | ✅ cột, push, pull; không chỗ nào tự tính lại từ `Due_date` | — |
 | 7 | [SOCKET_SYNC_COMPLETED.md](../DA-XONG/SOCKET_SYNC_COMPLETED.md) | ✅ phát sau `/sync/push` tới phòng tài khoản — nhưng chưa tới được client vì 17 A | — |

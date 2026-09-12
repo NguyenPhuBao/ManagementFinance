@@ -4,6 +4,7 @@
 > backend nhận và trả khoá `color`. Client thì gửi và đọc **`colour`** cho danh mục —
 > `categoryForPush` không đổi khoá như `walletForPush` — nên màu không đi theo chiều nào.
 > Lỗi phía client, client tự sửa: `CAN-LAM/VERIFY_7675B35_REMAINING.md` §2.3.
+> ✅ **Sửa cùng ngày:** client đổi khoá sang `color` ở cả hai chiều; kiểm trên máy ảo, `category.Color` nhận `#FF5722`.
 
 > **Xin đúng một cột.** Không đổi API, không đổi hợp đồng đồng bộ, không cần
 > client sửa gì. Chi phí: một migration cộng hai dòng.

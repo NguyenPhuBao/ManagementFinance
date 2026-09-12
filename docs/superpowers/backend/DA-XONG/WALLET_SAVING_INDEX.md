@@ -12,8 +12,8 @@ thêm mã lỗi có cấu trúc cho 23505 trên `wallet`.
 > và bị gửi lại mãi — nên câu *"cả ba vẫn là lỗi vĩnh viễn phía client"* ở 4.2 nay
 > đúng với mã; mã thứ ba `WALLET_SAVING_LIMIT` không cần, vì backend chọn bỏ
 > index thay vì giữ nó. Chốt tạm
-> "một ví Tiết kiệm" ở mục 3 **vẫn còn trong mã** dù tệp 12 đã áp — gỡ là một hạng mục
-> client riêng (G30). Xem
+> "một ví Tiết kiệm" ở mục 3 đã **gỡ khỏi mã** ngày 2026-09-11 (G30) — client nay cho
+> nhiều ví Tiết kiệm. Xem
 > [`FIX_BACKEND_3_REGRESSIONS.md`](../CAN-LAM/FIX_BACKEND_3_REGRESSIONS.md) mục 4 và 5.
 > Mã `WALLET_NAME_DUPLICATE` cần một phép thử khi chạy: `CAN-LAM/VERIFY_7675B35_REMAINING.md` §2.7.
 

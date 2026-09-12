@@ -33,7 +33,7 @@ trước.
 | 9 | `WALLET_NAME_DUPLICATE` — cần một phép thử khi chạy | ⚪ | **2.7** |
 | 10 | Tài liệu backend: 45/56 chỗ chưa đúng, ba câu mã lỗi của 17 C, tám khẳng định mới sai | ⚪ | 17 C + **3** |
 
-Màu danh mục (**2.3**) là việc của **client**, backend không cần làm gì.
+Màu danh mục (**2.3**) là việc của **client**, backend không cần làm gì — ✅ client đã sửa 2026-09-11.
 
 ---
 
@@ -67,6 +67,9 @@ mềm, một hàng sống `399a9b54-…`). Server không phân biệt được `
 với `0` bị ép trước bản vá, nên đổi thành `NULL` là đoán.
 
 ### 2.3. Màu danh mục — cột và đường đồng bộ đã xong, khoá lệch ở phía client
+
+> ✅ **2026-09-11 — client đã sửa:** `categoryForPush` đổi `colour` → `color`, nhánh kéo về đọc `color`; kiểm trên máy ảo,
+> `category.Color` nhận `#FF5722`. Hai việc tuỳ chọn ở đoạn cuối mục này vẫn là tuỳ chọn. Đoạn dưới là ảnh chụp trước bản sửa.
 
 Backend nhận `color` (`sync.repository.js:149`, ghi ở `:175,196`) và trả `color` ở pull
 (`:228`). Client gửi và đọc **`colour`** cho danh mục: `categoryForPush`
@@ -266,8 +269,8 @@ HTTP, hỏng ở socket/refresh (17 A); **5.3** (`'ORC'`) còn sót (2.8).
 
 - **Client không bị chặn bởi việc nào ở mục 2**, trừ hai hồi quy của mục 17 (kênh thời
   gian thực và làm mới token).
-- Việc phía client phát sinh từ lượt soát này, chờ người dùng quyết: sửa khoá màu danh mục
-  (2.3); gỡ chốt tạm "một ví Tiết kiệm" (G30 — index đã bỏ); mở đồng bộ các cột hoá đơn
+- Việc phía client phát sinh từ lượt soát này: sửa khoá màu danh mục (2.3 — ✅ làm
+  2026-09-11); gỡ chốt tạm "một ví Tiết kiệm" (G30 — ✅ làm cùng ngày); chờ người dùng quyết: mở đồng bộ các cột hoá đơn
   đang cục bộ. Khi mở cột hoá đơn, lưu ý hai điểm phía backend đo được: `Boolean("false")`
   thành `true` ở `sync.repository.js:103-104` nếu lỡ gửi chuỗi; và hai kỳ cùng chuỗi trong
   một lô có cùng trọng số sắp xếp, kỳ sau đứng trước thì vỡ `fk_bill_previous_bill` và chỉ

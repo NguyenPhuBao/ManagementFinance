@@ -13,6 +13,7 @@ import '../../../../core/di/injection_container.dart';
 import '../../../budget/data/models/budget_entity.dart';
 import '../../../budget/data/repositories/budget_repository.dart';
 import '../../../budget/domain/budget_impact.dart';
+import '../../../wallet/domain/wallet_type.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../../../features/category/data/models/category_suggestion.dart';
 import '../../../../features/category/data/repositories/category_management_repository.dart';
@@ -389,7 +390,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  wallet.type,
+                                  WalletType.tuKhoa(wallet.type).nhan,
                                   style: const TextStyle(
                                     fontSize: 12,
                                     color: AppColors.textSecondary,

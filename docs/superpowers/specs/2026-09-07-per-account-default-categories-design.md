@@ -298,8 +298,8 @@ cột — chưa viết.
 > client vẫn đẩy `colour` và kéo về đọc `c['colour']`, nên màu danh mục **vẫn không
 > đi theo chiều nào**. Câu "không gỡ được ở client" nay sai: đổi khoá ở
 > `categoryForPush`, đọc `color` ở nhánh kéo về và cập nhật
-> `sync_payload_contract_test.dart` cùng lúc là đủ — **G24**, lỗi phía client, sửa
-> được, chưa sửa.
+> `sync_payload_contract_test.dart` cùng lúc là đủ — **G24**, lỗi phía client,
+> ✅ đã sửa cùng ngày (kiểm trên máy ảo: `category.Color` nhận `#FF5722`).
 
 ## 11. Danh mục mặc định thêm về sau
 
