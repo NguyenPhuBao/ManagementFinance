@@ -37,6 +37,24 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   /// SQLite thêm một lần nữa (spec cưỡng chế đăng xuất §9).
   bool _dangBuocDangXuat = false;
 
+  /// Lý do của lượt cưỡng chế đăng xuất đang chạy, giữ lại để **mọi** đường
+  /// đăng xuất khác không đè mất nó.
+  ///
+  /// ⚠️ Vì sao cần: `verifySession()` xếp chính cái 401 mang mã ấy là phiên
+  /// chết, nên `_onAuthCheckRequested` cũng đăng xuất — và nó gọi `logout()`,
+  /// một lời gọi **mạng**, nên về **sau** handler cưỡng chế đăng xuất (chỉ đụng
+  /// bộ nhớ và kho token). Lượt phát trơn về sau ấy đè mất lý do, mà màn Đăng
+  /// nhập đọc state ở `initState` — người dùng bị đá ra không kèm hộp thoại.
+  /// Đo trên `emulator-5554` ngày 2026-09-12.
+  ThongBaoBuocDangXuat? _thongBaoBuocDangXuat;
+
+  /// Phát `AuthUnauthenticated`, **kèm lý do nếu phiên này bị đẩy ra**.
+  ///
+  /// Dùng ở mọi đường *phiên chết*. Đường người dùng **tự** bấm Đăng xuất thì
+  /// không đi qua đây — ở đó không có gì để giải thích.
+  void _phatChuaDangNhap(Emitter<AuthState> emit) =>
+      emit(AuthUnauthenticated(thongBao: _thongBaoBuocDangXuat));
+
   AuthBloc({
     required this.authRepository,
     this.defaultAccountDataInitializer,
@@ -140,6 +158,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     _dangBuocDangXuat = true;
 
     final thongBao = event.thongBao;
+    // Ghi nhớ NGAY, trước mọi `await`: đường "phiên chết" chạy song song cũng
+    // đang trên đường phát `AuthUnauthenticated`, và nó phải mang theo lý do
+    // này dù về trước hay về sau.
+    _thongBaoBuocDangXuat = thongBao;
+
     await _dungMoiThuCuaPhien();
 
     // Dọn bản sao cục bộ CHỈ khi tài khoản thật sự đã bị xoá, và chỉ khi lời ấy
@@ -181,7 +204,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
     await _dungMoiThuCuaPhien();
     await authRepository.logout();
-    emit(const AuthUnauthenticated());
+    _phatChuaDangNhap(emit);
   }
 
   Future<void> _onThongTinTaiKhoanThayDoi(
@@ -206,7 +229,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     try {
       final isLoggedIn = await authRepository.checkAuthStatus();
       if (!isLoggedIn) {
-        emit(const AuthUnauthenticated());
+        _phatChuaDangNhap(emit);
         return;
       }
 
@@ -218,7 +241,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final session = await authRepository.verifySession();
       if (session == SessionStatus.invalid) {
         await authRepository.logout();
-        emit(const AuthUnauthenticated());
+        _phatChuaDangNhap(emit);
         return; // KHÔNG khởi động SyncEngine với phiên đã chết
       }
       // valid hoặc unknown (mất mạng / lỗi 5xx) → giữ phiên, đúng offline-first.
@@ -232,7 +255,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final idAcc = int.tryParse(user?.id ?? '');
       if (idAcc == null || idAcc <= 0) {
         await authRepository.logout();
-        emit(const AuthUnauthenticated());
+        _phatChuaDangNhap(emit);
         return;
       }
 
@@ -271,7 +294,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       }
       emit(AuthSuccess(user: user));
     } catch (e) {
-      emit(const AuthUnauthenticated());
+      _phatChuaDangNhap(emit);
     }
   }
 
@@ -283,6 +306,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     // thì lần bị đẩy ra thứ hai trong cùng một lần chạy app sẽ im lặng — app
     // kẹt ở `AuthSuccess` với một tài khoản server đã từ chối.
     _dangBuocDangXuat = false;
+    _thongBaoBuocDangXuat = null;
     emit(AuthLoading());
     try {
       final user = await authRepository.login(event.email, event.password);

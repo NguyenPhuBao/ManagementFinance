@@ -159,8 +159,16 @@ class _RepoGia implements AuthRepository {
     return SessionStatus.valid;
   }
 
+  /// Khác `null` thì `logout()` treo tới khi test thả — dựng cảnh THẬT: `logout()`
+  /// gọi `/auth/logout` qua mạng nên nó luôn về **sau** handler cưỡng chế đăng
+  /// xuất (chỉ đụng bộ nhớ và kho token cục bộ).
+  Completer<void>? treoLogout;
+
   @override
-  Future<void> logout() async => logoutCalls++;
+  Future<void> logout() async {
+    logoutCalls++;
+    if (treoLogout != null) await treoLogout!.future;
+  }
 
   @override
   Future<void> xoaPhienTrenMay() async {
@@ -467,6 +475,38 @@ void main() {
     expect((bloc.state as AuthUnauthenticated).thongBao!.lyDo,
         LyDoBuocDangXuat.biKhoa);
     expect(await soVi(11), 1, reason: 'bị khoá thì giữ nguyên dữ liệu');
+  });
+
+  test('phiên chết phát AuthUnauthenticated trơn SAU handler → không được đè '
+      'mất lý do', () async {
+    // Thứ tự THẬT trên máy ảo 2026-09-12: `_onAuthCheckRequested` gọi
+    // `logout()` — một lời gọi MẠNG — nên nó về sau handler cưỡng chế đăng xuất
+    // vốn chỉ đụng bộ nhớ và kho token. State trơn phát sau cùng và đè mất lý
+    // do; màn Đăng nhập đọc state ở `initState` nên không còn gì để hiện.
+    await themVi(11);
+    final repo = _RepoGia(user: _user('11'))..treoLogout = Completer<void>();
+    final bloc = AuthBloc(authRepository: repo);
+    addTearDown(bloc.close);
+    repo.khiVerifySession = () => interceptor.ban(const ThongBaoBuocDangXuat(
+          lyDo: LyDoBuocDangXuat.biKhoa,
+          nguon: NguonBuocDangXuat.http,
+          loiNhan: 'Tài khoản của bạn đã bị vô hiệu hóa. Lý do: Vi phạm điều khoản.',
+          idaccount: 11,
+        ));
+
+    bloc.add(AuthCheckRequested());
+    // Chờ handler cưỡng chế đăng xuất phát xong, TRONG LÚC `logout()` còn treo.
+    await bloc.stream
+        .where((s) => s is AuthUnauthenticated && s.thongBao != null)
+        .first
+        .timeout(const Duration(seconds: 5));
+
+    repo.treoLogout!.complete();
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+
+    expect((bloc.state as AuthUnauthenticated).thongBao, isNotNull,
+        reason: 'lượt đăng xuất trơn về sau không được xoá mất lý do — người '
+            'dùng bị đá ra mà không biết vì sao');
   });
 
   test('thông báo tới SAU khi phiên chết đã phát AuthUnauthenticated trơn → '
