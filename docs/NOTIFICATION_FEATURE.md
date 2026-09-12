@@ -147,7 +147,9 @@ kiện còn `io.emit` toàn cục.
 `io.emit` nào (backend đã đổi nhà cung cấp **Casso → SePay**).
 
 ✅ **Client đã nối 2026-09-09.** Ba sự kiện ấy nay **tới nơi** và hiện thành
-toast, và mỗi sự kiện đều đánh thức đồng bộ. Nhưng chúng **không** đi vào bảng
+toast, và mỗi sự kiện đều đánh thức đồng bộ *(trừ `ocr.duplicate`)*. Sự kiện thứ
+**tư**, `sync.completed` (client nghe từ 2026-09-12, G34), đánh thức đồng bộ nhưng
+**không** toast — máy vừa đẩy cũng nhận lại nó, nên toast sẽ nói sai; xem §4 spec socket. Nhưng chúng **không** đi vào bảng
 `AppNotifications` — đó là quyết định có chủ ý, không phải việc còn sót: thông
 báo trong bảng ấy là dữ liệu **suy ra được** từ ngân sách/hoá đơn/mục tiêu trên
 từng máy, còn tin từ server thì không. Chi tiết ở mục 2 của

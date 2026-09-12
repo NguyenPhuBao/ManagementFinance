@@ -74,7 +74,7 @@ Mười lăm tài liệu này đã được thực thi hoàn tất, vượt qua 
 | [GOAL_PRIORITY_NULL_TO_ZERO.md](./GOAL_PRIORITY_NULL_TO_ZERO.md) | `Goal.Priority` giữ nguyên `null` khi sync, không ép về `0`. |
 | [RULE_PROJECT_DOC_DRIFT.md](./RULE_PROJECT_DOC_DRIFT.md) | Sửa sạch toàn bộ 56 chỗ trôi lệch tài liệu ở `New_Database.md`, `Rule_project.md`, `Data_Security.md`, `Backend.md`. |
 | [SOCKET_BANK_EVENT_PAYLOAD.md](./SOCKET_BANK_EVENT_PAYLOAD.md) | Payload `bank_transaction.incoming` trả đầy đủ cả `status` và `transaction_status`. |
-| [SOCKET_SYNC_COMPLETED.md](./SOCKET_SYNC_COMPLETED.md) | Notification Service phát sự kiện `sync.completed` qua Socket.IO khi background worker xử lý giao dịch xong. |
+| [SOCKET_SYNC_COMPLETED.md](./SOCKET_SYNC_COMPLETED.md) | Notification Service phát sự kiện `sync.completed` qua Socket.IO tới phòng `account_<id>` **sau mỗi `/sync/push`** (⚠️ không phải "khi background worker xử lý xong" — worker không publish sự kiện này; câu cũ ở đây chép từ `Backend.md:495`, CAN-LAM 20 §4.6). Client nghe từ 2026-09-12 tối (G34 đóng, im lặng). |
 | [SYNC_NOTE_FILTER_REWRITE.md](./SYNC_NOTE_FILTER_REWRITE.md) | Bộ lọc thẻ kết hợp `CARD_SHAPE` + thuật toán Luhn, lọc mật khẩu `[:=]`, không nuốt "pin", giải mã note trong fuzzy match. |
 | [SYNC_PUSH_ERROR_MAPPING.md](./SYNC_PUSH_ERROR_MAPPING.md) | Bắt lỗi PostgreSQL `22001`, `23502`, `BILL_ALREADY_PAID`, `WALLET_NAME_DUPLICATE` ánh xạ về `CONSTRAINT_VIOLATION`. |
 | [WALLET_SAVING_INDEX.md](./WALLET_SAVING_INDEX.md) | Migration 12 đã `DROP INDEX IF EXISTS "uq_wallet_saving_active"`, cho phép người dùng mở nhiều ví tiết kiệm linh hoạt. |

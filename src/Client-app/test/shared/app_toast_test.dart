@@ -262,6 +262,19 @@ void main() {
           find.text('Hoá đơn này đã được ghi nhận trước đó'), findsOneWidget);
     });
 
+    testWidgets('đồng bộ xong ở máy khác KHÔNG hiện toast nào', (tester) async {
+      await dung(tester);
+      realtime.add(RealtimeEvent.dongBoXong);
+      await nhip(tester);
+
+      expect(find.byType(Icon), findsNothing,
+          reason: 'sync.completed chỉ kéo dữ liệu về, im lặng. Máy vừa đẩy '
+              'cũng nhận lại sự kiện này nên toast "máy khác vừa đổi" sẽ hiện '
+              'sai trên chính máy vừa ghi, sau MỖI lần ghi. Mọi toast của '
+              'widget này đều có icon, nên không icon = không toast.');
+      expect(find.text('nội dung màn hình'), findsOneWidget);
+    });
+
     testWidgets('toast realtime cũng tự ẩn', (tester) async {
       await dung(tester);
       realtime.add(RealtimeEvent.ocrXong);

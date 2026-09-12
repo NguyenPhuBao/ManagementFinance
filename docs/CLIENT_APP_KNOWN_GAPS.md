@@ -1,6 +1,6 @@
 # Client-app — Việc còn dang dở & rủi ro đã biết
 
-**Cập nhật:** 2026-09-11 (sau khi nhánh gộp `main` @ `cc65f4f` và CSDL dev áp `database/12`: đóng G29, G31, G32; G24 thành lỗi phía client rồi đóng cùng ngày; thêm G34; G35 mở rồi đóng cùng ngày; đóng G30; đóng G33); 2026-09-12: gộp `main` @ `cbbeeb4` — CAN-LAM 17 A đóng, kênh thời gian thực nối được trên máy ảo, G34 hết bị chặn (vẫn chờ người dùng chốt toast hay im lặng); chiều muộn thêm **G36** — chờ backend
+**Cập nhật:** 2026-09-11 (sau khi nhánh gộp `main` @ `cc65f4f` và CSDL dev áp `database/12`: đóng G29, G31, G32; G24 thành lỗi phía client rồi đóng cùng ngày; thêm G34; G35 mở rồi đóng cùng ngày; đóng G30; đóng G33); 2026-09-12: gộp `main` @ `cbbeeb4` — CAN-LAM 17 A đóng, kênh thời gian thực nối được trên máy ảo, G34 hết bị chặn rồi **đóng tối cùng ngày** (client nghe `sync.completed`, im lặng, kiểm máy ảo hai máy); chiều muộn thêm **G36** — chờ backend
 **Mục đích:** ghi lại những hạng mục đã được **cân nhắc và cố ý hoãn**, kèm lý do và bán kính ảnh hưởng. Không có tài liệu này thì người tiếp theo sẽ hoặc bỏ sót, hoặc làm lại từ đầu việc phân tích rủi ro.
 
 Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nhất.
@@ -39,7 +39,7 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > | ~~**G31**~~ | ✅ **Đóng 2026-09-11** — backend nay ánh xạ `22001`/`P2000` (dài quá cột) và `23502` về `CONSTRAINT_VIOLATION`, mã client đã xếp **vĩnh viễn**, nên bản ghi bị chặn theo thời gian thay vì gửi lại mãi; và một thao tác hỏng không còn làm **cả lô** 400. Bộ lọc bảy ô tên của client (2026-09-10) **vẫn giữ** — nó chặn trước để bản ghi không kẹt ngay từ đầu. Đo trên mã HEAD, chưa chạy đầu-cuối. Dòng cũ ghi *chặn ở backend* — đúng tới trước khi gộp `main` |
 > | ~~**G32**~~ | ✅ **Đóng 2026-09-11** — backend giữ `priority: null` khi đẩy (hết `Number(null)` → `0`), nhánh tạo mặc định `null`, và `database/12` đã đưa các hàng `<= 0` về `NULL` trên CSDL dev. Lớp đọc `<= 0` là chưa sắp phía client **vẫn giữ** cho dữ liệu cũ và bản backend/client cũ. Dòng cũ ghi *chặn ở backend* — đúng tới trước khi gộp `main` |
 > | ~~**G33**~~ | ✅ **Đóng 2026-09-11** — tài khoản chờ xoá nay dùng tiếp app trong 30 ngày thay vì bị đăng xuất ngay: `UserModel` mang `status`/`countdown`, trang Xoá tài khoản thôi hứa *"đăng nhập lại là tự khôi phục"*, hai thẻ (Trang chủ, "Vùng nguy hiểm" ở Cài đặt) hiện số ngày còn lại và nút huỷ. Kiểm trên máy ảo với tài khoản 11. Dòng cũ ghi *lỗi đang chạy, chưa sửa* — đúng tới trước bản sửa |
-> | **G34** | ⏸️ **Chưa làm — việc phía client, chờ người dùng** — backend đã phát `sync.completed` tới phòng `account_<id>` sau mỗi `/sync/push`, nhưng client chỉ nhận ba tên sự kiện nên **bỏ qua** nó; thay đổi từ máy khác vẫn chờ chu kỳ đồng bộ định kỳ (15 phút) hoặc kích hoạt khác. Từng bị chặn thêm vì bắt tay socket từ chối mọi tài khoản (CAN-LAM 17 A, 2026-09-11) — ✅ hết 2026-09-12 sau gộp `cbbeeb4`, kênh nối được trên máy ảo; nay chỉ còn chờ người dùng chốt |
+> | ~~**G34**~~ | ✅ **ĐÓNG 2026-09-12 tối** — client dịch `sync.completed` → `RealtimeEvent.dongBoXong`, đánh thức `syncNow()`, **im lặng** (không toast: máy vừa đẩy cũng nhận lại sự kiện của mình và payload là hộp đen nên toast sẽ nói sai). Kiểm máy ảo hai máy cùng tài khoản: máy kia kéo về **cùng giây** backend phát. Trước đó: mở 2026-09-11, chặn bởi 17 A tới sáng 2026-09-12 |
 > | **G36** | ⏸️ **Chờ backend (CAN-LAM 20 §2.7)** — tài khoản bị xoá qua admin trong lúc app giữ token hết hạn và không có socket → `/auth/refresh` trả 401 **không mã** (token đã bị thu hồi, kiểm trước tài khoản) → app đăng xuất **trơn, không hộp thoại**; người dùng chỉ biết lý do khi đăng nhập lại. Đo thật 2026-09-12 chiều |
 > | ~~**G35**~~ | ✅ **Đóng 2026-09-11** — ba màn quản lý danh mục nay lấy tài khoản qua `currentAccountIdOrNull`: chưa có phiên thì không đọc gì (kể cả tài khoản 0 — bộ khuôn toàn cục), và nút lưu/xoá báo "Chưa xác định được tài khoản đăng nhập". Test quét `lib/` cấm `?? 1` nhiều dòng. ⚠️ Dòng này từng ghi *lỗi đang chạy, chưa sửa* — đúng tới trước bản sửa |
 >
@@ -1129,9 +1129,28 @@ người dùng, nằm ở mục 4–5 của
 
 ---
 
-### G34 — Client không nghe `sync.completed`, nên thay đổi từ máy khác vẫn chờ chu kỳ đồng bộ · ⏸️ CHƯA LÀM — VIỆC PHÍA CLIENT, CHỜ NGƯỜI DÙNG (2026-09-11)
+### ~~G34 — Client không nghe `sync.completed`, nên thay đổi từ máy khác vẫn chờ chu kỳ đồng bộ~~ · ✅ ĐÓNG (2026-09-12 tối; mở 2026-09-11)
 
-> ✅ **2026-09-12:** không còn gì chặn ngoài quyết định sản phẩm — sau gộp `main` @ `cbbeeb4`, bắt tay socket nối được (đo máy ảo), nên sự kiện **tới được** client và bị `_khiCoSuKien` bỏ qua đúng như mô tả dưới.
+> ✅ **ĐÓNG 2026-09-12 tối (TDD, kiểm máy ảo hai máy cùng tài khoản).** Phương án chọn: **im lặng** — chỉ
+> kéo về, **không toast**. Đây không còn là lựa chọn thẩm mỹ: máy vừa đẩy cũng nằm trong phòng `account_<id>`
+> nên nhận lại chính sự kiện của mình, mà payload là hộp đen (§4 spec socket) nên **không phân biệt được máy
+> gửi** — một toast "máy khác vừa đổi dữ liệu" sẽ nói **sai** trên đúng máy vừa ghi, sau **mỗi** lần ghi. Kết
+> quả đồng bộ đã có dải riêng ở bậc cao nhất (§6.3). Mã: `RealtimeEvent.dongBoXong` ↔ `sync.completed`;
+> `canDongBoLai = true`; `loiNhan` đổi kiểu thành `String?` và **`null` là định nghĩa duy nhất của "im
+> lặng"** — `AppToast._khiCoRealtime` chỉ đọc getter ấy, không tự liệt kê sự kiện. **Không** đổi
+> `noiRealtimeVaoDongBo` hay `SyncEngine`. Test: 4 tệp, **2 ca mới** (`realtime_wakeup_test`, `app_toast_test`),
+> hai ca cũ đổi tên/nới; toàn bộ **2218/2218**. **Đo trên máy ảo** với tài khoản thử **13** (`kiemthu_g34`, tạo
+> qua OTP mock) — máy A là máy ảo, máy B là `POST /api/sync/push` bằng token thật: ba lần đẩy một ví 12.345đ,
+> cả ba lần log backend ghi `Emitted sync.completed to room account_13` và lượt `Pull` của máy A **trong cùng
+> giây** (20:20:03, 20:25:16, 20:25:50 theo đồng hồ backend); Trang chủ đổi 24.690đ → 37.035đ, ảnh chụp 2 giây
+> sau lần đẩy thứ ba **không có toast**. Hai điều biết mà **chưa** xử lý, cả hai có sẵn từ trước cho mọi sự kiện
+> realtime: (1) sự kiện tới đúng lúc `_runSync` của máy nhận đang chạy dở thì `syncNow()` bị bỏ qua không log
+> (`sync_engine.dart` chốt `_status == syncing`) — nếu lượt pull đang chạy đã đi qua trước khi máy kia ghi xong
+> thì thay đổi ấy chờ kích hoạt kế tiếp; cửa sổ vài trăm mili-giây, không mở G; (2) máy vừa đẩy nhận lại sự kiện
+> của mình — thường rơi đúng cửa sổ (1) nên bị bỏ qua miễn phí, nếu không thì thêm một chu kỳ chỉ kéo về, không
+> đẩy lại (không thành vòng lặp). Đoạn dưới là ảnh chụp trước bản sửa.
+
+> ✅ **2026-09-12 sáng:** không còn gì chặn ngoài quyết định sản phẩm — sau gộp `main` @ `cbbeeb4`, bắt tay socket nối được (đo máy ảo), nên sự kiện **tới được** client và bị `_khiCoSuKien` bỏ qua đúng như mô tả dưới.
 
 **Phía backend đã xong** (đo trên mã HEAD sau khi gộp `main` @ `cc65f4f`): sau mỗi
 `/sync/push`, `sync.service.js:223` publish `sync.completed` vào EventBus →
@@ -1272,9 +1291,9 @@ backend báo đã xong, đo 2026-09-11):
 - **`CAN-LAM/FIX_BACKEND_3_REGRESSIONS.md`** (2026-09-11) — ba hồi quy của `7675b35` trên `main`, **đã gộp** về nhánh client 2026-09-11 (`main` @ `cc65f4f`): bắt tay socket và `/auth/refresh` từ chối mọi tài khoản; chốt trả hai lần đặt ở `upsertBill` chặn hoàn tác thanh toán; tài liệu backend ghi sai ba mã lỗi. Chưa mở G riêng vì backend trên máy client chưa chạy lại từ mã đã gộp (CSDL dev đã áp `database/12` ngày 2026-09-11). ⚠️ Khi chạy lại, hoàn tác một hoá đơn đã đồng bộ **không lên được server** cho tới khi backend sửa hồi quy B, và bắt tay socket cùng `/auth/refresh` từ chối mọi tài khoản cho tới khi sửa hồi quy A. ✅ Chỗ phía client — ba mã mới (`WALLET_NAME_DUPLICATE`, `WALLET_DEFAULT_DUPLICATE` do client tự xin, và `BILL_ALREADY_PAID`) chưa có trong `_permanentCodes` nên sẽ bị gửi lại mãi — đã đóng 2026-09-11: nay chúng bị chặn theo thời gian, không kéo chậm cả hàng đợi.
 - **`DA-XONG/RULE_PROJECT_DOC_DRIFT.md`** (2026-09-10) — tài liệu backend (`docs/Rule_Project/`, `docs/progress/Backend.md`) nói ngược mã và CSDL: tài liệu xin 56 chỗ sửa theo dòng cộng ba việc sửa mã. Backend báo đã sửa (`f8ab027`); client soát lại 2026-09-11: **45/56** chỗ vẫn chưa đúng — 31 chưa sửa, 12 sửa nhưng vẫn sai, 2 không còn áp dụng; chỉ 11 chỗ sửa đúng — cộng tám khẳng định mới sai của `7675b35` (`CAN-LAM/VERIFY_7675B35_REMAINING.md` §3). Ba việc mã: bộ lọc ghi chú xong (G29), body 401 xong ở HTTP nhưng hỏng ở socket và `/auth/refresh`, `'ORC'` còn sót. Không mở G: không mã client nào hỏng vì nó, nhưng đó là những tài liệu người mới đọc **trước** mã.
 - **`CAN-LAM/VERIFY_7675B35_REMAINING.md`** (mục 18, 2026-09-11) — client soát từng tài liệu trong mười lăm tài liệu backend báo đã xong, với mã HEAD và CSDL dev: chín việc mã/CSDL còn lại, gồm giao dịch SePay vỡ `chk_transaction_type` (suy từ mã), `bank_transaction.incoming` nay phát **hai lần** và vẫn hai hình dạng, khoá mã hoá mặc định viết cứng, tệp `database/)2_can_lam_all_migrations.sql` còn `DELETE FROM "category"`, `budget."Threshold_Warning_Percent"` còn `DEFAULT 0`, cửa hậu `_mock*` mở ngoài `production`, và `WALLET_NAME_DUPLICATE` cần một phép thử khi chạy; cộng 45 chỗ tài liệu ở gạch trên. Không mở G: theo §4 của tài liệu ấy, client không bị chặn bởi việc nào trong đó ngoài hai hồi quy của mục 17. Phần phát sinh phía client — khoá màu danh mục — là **G24**, ✅ đã sửa 2026-09-11.
-- G31 và G32 ở trên có tài liệu xin riêng: `DA-XONG/SYNC_PUSH_ERROR_MAPPING.md` và `DA-XONG/GOAL_PRIORITY_NULL_TO_ZERO.md` — ✅ backend đã làm cả hai, client đo 2026-09-11, **hai mục đã đóng**. G24 có `DA-XONG/CATEGORY_COLOUR_COLUMN.md` — phần backend xong, phần client ✅ sửa 2026-09-11. G34 có `DA-XONG/SOCKET_SYNC_COMPLETED.md` — phần backend xong, chưa tới được client vì hồi quy A.
+- G31 và G32 ở trên có tài liệu xin riêng: `DA-XONG/SYNC_PUSH_ERROR_MAPPING.md` và `DA-XONG/GOAL_PRIORITY_NULL_TO_ZERO.md` — ✅ backend đã làm cả hai, client đo 2026-09-11, **hai mục đã đóng**. G24 có `DA-XONG/CATEGORY_COLOUR_COLUMN.md` — phần backend xong, phần client ✅ sửa 2026-09-11. G34 có `DA-XONG/SOCKET_SYNC_COMPLETED.md` — phần backend xong, phần client ✅ 2026-09-12 tối (im lặng, kiểm máy ảo) — **đã đóng**.
 
-Với tám tài liệu cũ, client **không** phụ thuộc vào việc backend có sửa hay không. Với các mục ghi *chặn ở backend* hoặc *chờ backend* ở bảng tóm tắt đầu tài liệu thì có — tính tới 2026-09-11 không mục G nào còn mở ghi như thế; gần nhất là **G34**, muốn kiểm đầu-cuối cần backend sửa hồi quy A trước.
+Với tám tài liệu cũ, client **không** phụ thuộc vào việc backend có sửa hay không. Với các mục ghi *chặn ở backend* hoặc *chờ backend* ở bảng tóm tắt đầu tài liệu thì có — tính tới 2026-09-11 không mục G nào còn mở ghi như thế; gần nhất là **G34**, kiểm đầu-cuối được sau khi backend sửa hồi quy A (`cbbeeb4`) — ✅ đóng 2026-09-12 tối.
 
 ---
 

@@ -56,7 +56,7 @@
 >
 > **Việc còn lại phía backend, gom lại thành mục 20** — [`CON_LAI_SAU_CBBEEB4.md`](./CON_LAI_SAU_CBBEEB4.md) (viết 2026-09-12 theo yêu cầu người dùng): 17 B bước 2 (**việc duy nhất chặn client**); 18 §2.4 (sổ ghi migration + ghi chú partial index); §2.6 (`BLIND_INDEX_SECRET`); §2.7 (một ca thử); §2.8 (`_mock*`, `'ORC'`); **G36** — `/auth/refresh` với token đã thu hồi trả 401 không mã (mục 20 §2.7, đo chiều cùng ngày); và tám chỗ tài liệu trên, mỗi chỗ kèm câu thay.
 >
-> **Hệ quả cho client** (tài liệu client đã sửa theo — `216775c`, 81 dòng / 15 tệp; mã client đọc `countdown` từ `/auth/profile` — `7fd5b13`): kênh thời gian thực **đã nối được** — mở khoá G34 (`sync.completed`), kiểm máy ảo nhánh socket và nhánh làm mới của cưỡng chế đăng xuất; hoàn tác thanh toán hoá đơn **đã lên server**; đồng bộ `Auto_pay` vẫn nên chờ 17 B bước 2 vì chốt chống trả hai lần **chưa có ở đâu cả**.
+> **Hệ quả cho client** (tài liệu client đã sửa theo — `216775c`, 81 dòng / 15 tệp; mã client đọc `countdown` từ `/auth/profile` — `7fd5b13`): kênh thời gian thực **đã nối được** — mở khoá G34 (`sync.completed` — ✅ client làm tối cùng ngày, im lặng, kiểm máy ảo), kiểm máy ảo nhánh socket và nhánh làm mới của cưỡng chế đăng xuất; hoàn tác thanh toán hoá đơn **đã lên server**; đồng bộ `Auto_pay` vẫn nên chờ 17 B bước 2 vì chốt chống trả hai lần **chưa có ở đâu cả**.
 
 ---
 
