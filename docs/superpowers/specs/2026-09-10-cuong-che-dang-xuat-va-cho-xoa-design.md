@@ -3,7 +3,9 @@
 > **Trạng thái: G33 — Phần 2–3 (trừ §5.1) ĐÃ XONG (2026-09-11). Mục 6 (việc cho backend):
 > tài liệu xin ĐÃ VIẾT (CAN-LAM 19), backend CHƯA LÀM — `getProfile` chưa trả `countdown`.
 > §3.8 ĐÃ LÀM (2026-09-11). **Phần 1 (§3.1–§3.7) và §5.1 ĐÃ LÀM 2026-09-12** — bảy commit
-> `693de3b` → `fc82a94`; còn nợ lượt kiểm trên máy ảo, xem §7.3.** Mọi quyết định sản phẩm ở mục 2
+> `693de3b` → `fc82a94`, cộng `ac08ed6` và `40a553d` (hai lỗi tìm ra khi kiểm máy ảo).
+> Nhánh HTTP 401 **đã kiểm đầu-cuối trên máy thật**, xem §7.3. Nhánh socket và nhánh
+> làm mới vẫn chờ CAN-LAM 17 A.** Mọi quyết định sản phẩm ở mục 2
 > đã chốt qua hỏi–đáp ngày 2026-09-10; Phần 1 (mục 3) được duyệt riêng trong phiên
 > ấy. Phần 2–4 viết thẳng vào đây theo yêu cầu "làm đi" của người dùng. Ngày
 > 2026-09-11 người dùng duyệt nốt: §3.3 và §3.6b (hai điểm soát lại theo `main`),
@@ -212,10 +214,30 @@ tiếp, qua `authenticate` — chỗ duy nhất trên `main` đã tách riêng c
 Event mới `TaiKhoanBiBuocDangXuat(ThongBaoBuocDangXuat)`, nguồn là cả hai luồng
 trên (nối trong constructor, cùng khuôn với `sessionExpiredStream`).
 
-1. Chỉ xử lý khi state là `AuthSuccess` hoặc `AuthChecking`. Khác thì bỏ qua —
-   lần nhận thứ hai (socket rồi HTTP) tới **sau** khi lần đầu xong thì không làm
-   gì; tới **trong lúc** lần đầu còn chạy thì state vẫn là `AuthSuccess`, nên phải
-   chặn bằng cờ (§9, thêm 2026-09-11).
+1. ⚠️ **Sửa 2026-09-12 sau khi kiểm trên máy ảo — bản dưới đây là mã đang chạy;
+   câu cũ ("chỉ xử lý khi state là `AuthSuccess` hoặc `AuthChecking`") đã sai và
+   chính nó là cái lỗi.** Handler nhận cả khi state đã là `AuthUnauthenticated`,
+   và chỉ bỏ qua `AuthInitial` (chưa ai đăng nhập), `AuthLoading` (một lượt đăng
+   nhập **mới** đang chạy — lời từ chối của phiên cũ không được giết nó),
+   `AuthError` và các state của luồng đăng ký.
+
+   Vì sao: `verifySession()` xếp **chính** cái 401 mang mã ấy là phiên chết, nên
+   `_onAuthCheckRequested` phát `AuthUnauthenticated()` **trơn**, và lời từ chối
+   của interceptor tới **sau** đó một nhịp. Hai handler chạy đồng thời nên thứ tự
+   **không đoán được**; bản trước của mục này đoán một chiều (xem gạch cuối §3.5),
+   máy thật rơi vào chiều kia và người dùng bị đá ra **không kèm hộp thoại nào**.
+   Có test cho **cả hai** chiều.
+
+   Lần nhận thứ hai (socket rồi HTTP) vẫn chặn bằng **cờ** đặt ngay đầu handler,
+   không bằng state (§9).
+
+   ⚠️ **Chốt này một mình KHÔNG đủ.** Đường kiểm phiên chạy song song cũng đăng
+   xuất, và vì `logout()` của nó là lời gọi **mạng**, nó thường phát
+   `AuthUnauthenticated()` **sau** handler — đè mất lý do. Vì thế lý do được nhớ
+   ở `_thongBaoBuocDangXuat` (đặt trước mọi `await` của handler) và **năm** chỗ
+   phát `AuthUnauthenticated` của các đường *phiên chết* đi qua
+   `_phatChuaDangNhap(emit)`. Chỗ thứ sáu — `_onLogoutRequested`, người dùng tự
+   bấm Đăng xuất — giữ bản trơn: ở đó không có gì để giải thích.
 2. Dừng `SyncEngine`, `NotificationScanner` (đã `cancelAll`), `RealtimeChannel`
    qua **một** hàm `_dungMoiThuCuaPhien()` — chuỗi này đang chép ở
    `_onSessionInvalidated` và `_onLogoutRequested`; lần này là lần thứ ba.
@@ -232,6 +254,13 @@ trên (nối trong constructor, cùng khuôn với `sessionExpiredStream`).
 thể phát `AuthUnauthenticated()` trơn trước khi event này chạy xong. Vì vậy
 `thongBao` **phải** nằm trong `props`: lần phát sau vẫn là state mới, hộp thoại
 vẫn hiện.
+
+⚠️ **Câu trên đúng nhưng KHÔNG đủ — đo trên máy ảo 2026-09-12.** Nó ngầm giả
+định rằng handler này phát **sau**. Trên máy thật thứ tự là ngược: `AuthChecking`
+→ `AuthUnauthenticated()` trơn (từ `_onAuthCheckRequested`) → rồi mới tới lời từ
+chối. `props` không cứu được ca ấy, vì handler bị **chốt state** chặn từ đầu và
+không bao giờ phát gì. Cả hai thứ đều cần: `thongBao` trong `props` **và** chốt
+state ở bước 1 phải nhận `AuthUnauthenticated`.
 
 `idaccount` để dọn lấy từ thông báo; thiếu thì từ `getCurrentUser()`. Không suy
 từ SQLite, không mặc định (quy tắc 2 `CLAUDE.md`). Không có id hợp lệ → **không
@@ -426,7 +455,7 @@ Phép lọc theo `idaccount` vẫn ở `RealtimeChannel` như §3.2 mô tả, ch
 `thongBao.idaccount` thay vì tự bới payload. `tuBody401` **giữ** nullable: ở đó
 `null` có nghĩa thật và hay gặp.
 
-**Ba thứ tìm ra khi làm, không có trong spec:**
+**Bốn thứ tìm ra khi làm, không có trong spec** — cái cuối chỉ lộ trên máy thật:
 
 1. **Chỉ được đọc `code` khi `statusCode == 401`.** `/auth/refresh` còn trả
    **400**, và body 400 của repo này cũng mang `code` ở cấp gốc (ví dụ
@@ -446,15 +475,31 @@ Phép lọc theo `idaccount` vẫn ở `RealtimeChannel` như §3.2 mô tả, ch
    `barrierDismissible` lại là `false` — người dùng không đóng nổi hộp thoại.
    Phần thân nay cuộn được, nút nằm **ngoài** vùng cuộn. Tìm ra bằng chính ca
    test §7.2 dựng trong `SizedBox(width: 411)` + `tester.takeException()`.
+4. ⚠️ **Cuộc đua với `_onAuthCheckRequested` cần HAI chốt, không phải một** —
+   tìm ra ngày 2026-09-12 khi kiểm nhánh HTTP trên `emulator-5554` với tài khoản
+   11 bị khoá thật: app đăng xuất đúng nhưng **không hiện hộp thoại nào**, trong
+   khi cả 63 ca test đều xanh. `verifySession()` xếp chính cái 401 mang mã ấy là
+   phiên chết, nên đường kiểm phiên **cũng** đăng xuất, song song với handler.
+   - (a) **Chốt vào:** handler phải nhận cả khi state đã là `AuthUnauthenticated`
+     (lời từ chối tới muộn) — `ac08ed6`, §3.5 bước 1.
+   - (b) **Đường ra:** mọi lượt phát `AuthUnauthenticated` của các đường *phiên
+     chết* phải mang theo lý do đã nhớ ở `_thongBaoBuocDangXuat`, qua
+     `_phatChuaDangNhap(emit)`. `logout()` là lời gọi **mạng** nên đường trơn
+     thường về **sau** handler và đè mất lý do — `40a553d`.
+
+   ⚠️ **(a) một mình không đủ**: kiểm lại trên máy sau `ac08ed6` vẫn không có hộp
+   thoại. Ai gỡ một trong hai chốt sẽ thấy bộ test vẫn xanh và tính năng vẫn hỏng.
+   Ba ca test canh, mỗi ca một chiều của cuộc đua.
 
 **Số ca test** (đếm bằng máy 2026-09-12): `test/core/auth/buoc_dang_xuat_test.dart`
 **19**; `test/core/realtime/realtime_buoc_dang_xuat_test.dart` **7**;
 `test/core/api/auth_interceptor_buoc_dang_xuat_test.dart` **9**;
 `test/core/database/purge_data_for_account_test.dart` **4**;
 `test/features/auth/xoa_phien_tren_may_test.dart` **3**;
-`test/features/auth/auth_bloc_buoc_dang_xuat_test.dart` **10**;
-`test/features/auth/hop_thoai_bi_day_ra_test.dart` **11** — tổng **63**. Sau lượt
-này `flutter test` **2168/2168**, `flutter analyze` **25** issue (mức nền).
+`test/features/auth/auth_bloc_buoc_dang_xuat_test.dart` **13**;
+`test/features/auth/hop_thoai_bi_day_ra_test.dart` **11** — tổng **66**. Sau lượt
+này `flutter test` **2171/2171**, `flutter analyze` **25** issue (mức nền). Mốc
+63 ca / 2168 là trước **hai** lượt sửa sau khi kiểm máy ảo (gạch dưới).
 
 ---
 
@@ -705,7 +750,21 @@ socket **không kiểm đầu-cuối được** cho tới khi backend sửa mụ
   `ACCOUNT_DELETED` — cần tạm dừng backend thật, **hỏi người dùng trước**.
 - **Nhánh HTTP 401** kiểm được trên backend của nhánh — đã gộp `main` và áp
   `database/12` ngày 2026-09-11 — theo mục 5
-  `AUTH_401_BODY_CODE.md`. **Nhánh làm mới** (§3.3 chỗ 2) chờ thêm CAN-LAM 17 mục A,
+  `AUTH_401_BODY_CODE.md`. ✅ **Đã chạy thật 2026-09-12** trên `emulator-5554`,
+  phiên tài khoản **11**: khoá tài khoản trên CSDL dev (người dùng yêu cầu đích
+  danh *"bạn có thể khóa dùm tôi không"*), chờ 60 giây cho `accountCache` của
+  `middleware/auth.js` hết hạn, mở lại app → `GET /auth/profile` trả 401 mang mã
+  → **app đăng xuất nhưng KHÔNG hiện hộp thoại**. Đó là lỗi ở §3.5 bước 1, sửa ở
+  `ac08ed6`. Tài khoản đã trả về `Active` / `reason_inactive = null` ngay sau đó
+  (đo lại để chắc). ✅ **Đã xem tận mắt sau bản sửa** (`40a553d`): đăng nhập lại tài khoản 11,
+  khoá, chờ 60 giây, mở lại app → hộp thoại hiện đúng tiêu đề *"Tài khoản đã bị
+  vô hiệu hoá"*, thân là **câu server gửi kèm lý do admin gõ**, nút "Đã hiểu",
+  **không sọc tràn** ở 411dp; kéo `flowmoney.db` ra đếm thì còn nguyên **2 ví và
+  18 danh mục** của tài khoản 11. Tài khoản đã trả về `Active`.
+  Cùng lượt ấy còn đo được: bắt tay socket từ chối **mọi** tài khoản kể cả khi
+  `Active`, với đúng câu `Account no longer exists or has been deleted` và lời từ
+  chối **không** mang `code` ở cấp gốc (`{message, data:{idaccount,
+  reason_inactive}}`) — CAN-LAM 17 A và 18 §2.1 tái hiện được trên máy thật. **Nhánh làm mới** (§3.3 chỗ 2) chờ thêm CAN-LAM 17 mục A,
   theo mục 2.7 `FIX_BACKEND_3_REGRESSIONS.md`.
 - Không sọc vàng tràn bố cục ở 411dp.
 
@@ -750,6 +809,17 @@ kể từ G33 và §3.8).
 - **Nhiều request cùng nhận 401 có mã.** State chỉ đổi ở bước 5 của §3.5, nên lần
   nhận thứ hai tới khi lần đầu còn chạy vẫn thấy `AuthSuccess`. Chặn bằng cờ đặt
   ngay đầu handler (hoặc transformer `droppable`), đừng dựa vào state.
+- ⚠️ **Lời từ chối tới SAU khi phiên đã chết — vấp thật trên máy ảo 2026-09-12.**
+  `verifySession()` xếp chính cái 401 mang mã ấy là phiên chết, nên
+  `_onAuthCheckRequested` phát `AuthUnauthenticated()` **trơn** trước; lời từ
+  chối tới sau một nhịp và bị chốt state nuốt mất → app đăng xuất **không kèm
+  hộp thoại**, tức người dùng bị đá ra mà không biết vì sao. Cả 63 ca test lúc ấy
+  đều xanh. Cần **hai** chốt, không phải một: chốt state phải nhận cả
+  `AuthUnauthenticated` (§3.5 bước 1 vế đầu), **và** lượt phát trơn về sau phải
+  mang theo lý do đã nhớ (vế sau). Sửa vế đầu rồi kiểm lại trên máy **vẫn** không
+  có hộp thoại — đó là cách vế sau lộ ra. Đây là **loại lỗi thứ ba** mà
+  `flutter test` không bắt được, đúng như `CLAUDE.md` cảnh báo: *thứ tự thực tế
+  giữa hai luồng bất đồng bộ*.
 - **Lỗi lược đồ đội lốt `ACCOUNT_DELETED` ở nhánh làm mới** — CAN-LAM 17 mục 2.5;
   phía client xem §3.6b.
 - **Đổi tài khoản trong lúc một lượt `/auth/profile` còn treo — hai race cùng họ với
