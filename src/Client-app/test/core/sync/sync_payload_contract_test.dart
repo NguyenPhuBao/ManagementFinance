@@ -228,6 +228,12 @@ void main() {
         // nhầm tên".
         generatedFromBillId: const Value(kyTruocId),
         anchorDay: const Value(28),
+        // Cố ý dùng giá trị thứ tư 'Skipped' (2026-09-12) chứ không phải
+        // 'Pending' mặc định: đây là giá trị DUY NHẤT trong bộ mà việc chuẩn
+        // hoá nhầm sẽ hỏng im lặng — client ghi nó rồi server lưu 'Pending'
+        // thì quyết định bỏ qua kỳ của người dùng chết ngay tại máy này, và
+        // không có lỗi nào báo ra. Ba giá trị kia backend đã nhận từ lâu.
+        payStatus: const Value('Skipped'),
         syncStatus: const Value('pending'),
         updatedAt: Value(now),
       ));
@@ -581,6 +587,19 @@ void main() {
           reason: 'Ngày gốc phải đi cùng. Thiếu nó, máy khác suy ngày đến hạn '
               'từ chính ngày đến hạn hiện tại — tức tái sinh quy tắc "đoán cuối '
               'tháng" đã bỏ ngày 2026-09-08, và hoá đơn ngày 28 trôi dần.');
+    });
+
+    test("payload hoá đơn mang NGUYÊN VĂN chuỗi 'Skipped'", () {
+      expect(
+        payloadOf('bill')['pay_status'],
+        'Skipped',
+        reason: 'PostgreSQL nhận đúng bốn chuỗi (chk_bill_pay_status, đo '
+            '2026-09-12) và Skipped là một trong đó; cột Pay_status là '
+            'varchar(7), vừa khít 7 ký tự. Chuẩn hoá nhầm về Pending ở bất kỳ '
+            'khâu nào — client dựng payload, SyncPayloadNormalizer, hay '
+            'mapEntityFields phía backend — đều làm quyết định bỏ qua kỳ chết '
+            'tại máy này mà không lỗi nào báo ra (quy tắc 4, CLAUDE.md).',
+      );
     });
 
     test('goal', () {
@@ -1018,6 +1037,7 @@ void main() {
             'name': 'Tiền mạng',
             'amount': 250000,
             'due_date': '2026-10-01T00:00:00.000Z',
+            'pay_status': 'Skipped',
             // chuỗi viết hoa chữ đầu, dạng `Status_complete` của mục tiêu
             'recurrence': 'True',
             'time_recurrence': 'Month',
@@ -1045,6 +1065,15 @@ void main() {
       expect(bill.isRecurrence, true,
           reason: 'Hoá đơn còn nặng hơn: `recurrence` (cột chuỗi cũ) được SUY '
               'RA từ cờ này, nên đọc sai một chỗ làm hỏng luôn cột thứ hai.');
+      expect(bill.payStatus, 'Skipped',
+          reason: 'Kéo về phải giữ nguyên giá trị thứ tư. Rơi về Pending là kỳ '
+              'người dùng đã bỏ qua trên máy khác lại hiện ra như một khoản '
+              'nợ, và bộ quét thông báo bắt đầu giục trả nó.');
+      expect(bill.isPaid, false,
+          reason: '`isPaid` là cột CỤC BỘ, suy ra từ pay_status. Suy thành '
+              'true là kỳ bỏ qua đeo nhãn "ĐÃ THANH TOÁN" trên mọi máy khác, '
+              'và trang chi tiết bày nút Hoàn tác thanh toán cho một khoản chi '
+              'không tồn tại.');
     });
   });
 
