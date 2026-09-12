@@ -257,7 +257,7 @@ màu ngoài bảng của design system.
 `pay_status` **đã** nằm trong payload đẩy (`sync_engine.dart:1241`) và đã bị
 khoá trong `sync_payload_contract_test.dart`. `SyncPayloadNormalizer` không đụng
 tới nó. Nhánh kéo về đã đúng sẵn: `isPaid: Value(payStatus == 'Payed')` cho
-`Skipped` ra `false`. **Payload hoá đơn vẫn 19 trường** (đếm 2026-09-12).
+`Skipped` ra `false`. **Payload hoá đơn vẫn 19 trường** (đếm 2026-09-12; tối cùng ngày lên **20** với `period_end` — ân hạn).
 
 **Đo thật hai đầu ngày 2026-09-12** (chỉ đọc, không ghi):
 
@@ -313,7 +313,7 @@ trong `reason:` nó canh chừng điều gì.
 ## 10. Ngoài phạm vi, cố ý
 
 - **`Period_end`** (ân hạn, kỳ tính tiền tách khỏi hạn trả) — bước **14** riêng,
-  cần schema **v21**.
+  cần schema **v21**. ✅ Xong tối 2026-09-12: spec `2026-09-12-bill-an-han-period-end-design.md`.
 - **`Auto_pay` qua đồng bộ** — bước **12**, chờ backend đặt chốt chống trả hai lần ở
   `upsertTransaction` (CAN-LAM 17 B bước 2; bước 1 — bỏ chốt sai chỗ — xong 2026-09-12).
 - **Menu bỏ qua ngay trên dòng danh sách** — người dùng chốt chỉ trang chi tiết.

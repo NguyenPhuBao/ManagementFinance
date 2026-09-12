@@ -8,7 +8,7 @@
 |---|---|---|---|
 | **A** (mục 2) | Cột nullable `transaction.Idbill` | 🟡 Mở khoá — client đã làm xong (schema v16), cột đang là **cục bộ** | ⛔ Chưa |
 | **B** (mục 3) | Cột nullable `bill.Previous_bill_id` | 🟡 Mở khoá — cùng đợt với A, hai cột là hai đầu của một sợi dây | ⛔ Chưa |
-| **C** (mục 4) | Tách **kỳ tính tiền** khỏi **hạn trả** (ân hạn) | ⚪ Mở đường — client **chưa làm**, cố ý chờ cột | ⛔ Chưa |
+| **C** (mục 4) | Tách **kỳ tính tiền** khỏi **hạn trả** (ân hạn) | ✅ Client **đã làm 2026-09-12 tối** (schema v21; xem banner mục 4) | ✅ `database/12` (2026-09-11) |
 | **D** (mục 6) | Cột `bill.Auto_pay` + chốt chặn trả hai lần ở `/sync/push` | 🟡 Mở khoá — client đã làm xong (schema v17), cột đang là **cục bộ**; chốt chặn phụ thuộc việc A | ⚠️ Nửa (2026-09-12): chốt sai chỗ ở `upsertBill` đã bỏ; chốt ở giao dịch chưa có |
 
 **A và B nên đi cùng nhau.** Chúng phục vụ đúng một tính năng (hoàn tác thanh

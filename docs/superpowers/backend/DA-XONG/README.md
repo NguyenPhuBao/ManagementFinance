@@ -87,10 +87,11 @@ Mười lăm tài liệu này đã được thực thi hoàn tất, vượt qua 
 - **"Đã xong" nói về phía backend, không phải phía client.** Ví dụ đang mở (đo
   2026-09-11): server đã có `transaction.Idbill` và bốn cột hoá đơn
   `Previous_bill_id`, `Period_end`, `Auto_pay`, `Anchor_day`. ⚠️ **Cập nhật
-  2026-09-12:** client đã mở đường đồng bộ cho **ba** trong số ấy — `Idbill`,
-  `Previous_bill_id`, `Anchor_day` (đo trên backend thật). Còn `Auto_pay` chờ
-  CAN-LAM 17 B bước 2 (chốt ở `upsertTransaction`; chốt sai chỗ đã bỏ 2026-09-12), và `Period_end` là **tính năng** phía client chứ không phải trường
-  đồng bộ nên chưa có cột cục bộ; `category.Color` có và client đồng bộ màu từ
+  2026-09-12:** client đã mở đường đồng bộ cho **bốn** trong số ấy — `Idbill`,
+  `Previous_bill_id`, `Anchor_day` (đo trên backend thật) và, tối cùng ngày,
+  `Period_end` (ân hạn hoá đơn, schema v21 — tính năng trọn vẹn chứ không chỉ
+  trường đồng bộ). Còn `Auto_pay` chờ
+  CAN-LAM 17 B bước 2 (chốt ở `upsertTransaction`; chốt sai chỗ đã bỏ 2026-09-12); `category.Color` có và client đồng bộ màu từ
   2026-09-11 (G24 đóng — danh mục cũ lên màu khi được lưu lại); `transaction.Idgoal` có cột nhưng client vẫn còn
   nhánh so **tên** chưa gỡ (G18). Dòng này từng lấy `goal.Priority` làm ví dụ —
   client đã làm xong màn ưu tiên ngày 2026-09-08. Muốn biết client còn nợ gì thì

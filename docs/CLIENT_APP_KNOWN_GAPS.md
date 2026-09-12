@@ -820,8 +820,8 @@ kéo chậm cả hàng đợi. Đây là điều `flutter test` **không** bắt
 đồng bộ được canh bằng adapter giả, không bằng CSDL thật.
 
 **Vì sao không vá ở client:** không có chỗ ghi thì không có cách ghi. Cột được
-gỡ khỏi **cả hai** chiều của đồng bộ, cùng diện với `bills.autoPayEnabled` và
-`bills.anchorDay`. Chiều **kéo về** phải im lặng cùng lúc chứ không chỉ chiều
+gỡ khỏi **cả hai** chiều của đồng bộ, cùng diện với `bills.autoPayEnabled` (và
+`bills.anchorDay` cho tới 2026-09-12 — nay cột ấy đã đi qua đồng bộ). Chiều **kéo về** phải im lặng cùng lúc chứ không chỉ chiều
 đẩy: client không đẩy cột này nên server giữ `'Active'` cho mọi ví của tài khoản còn dùng (chỉ ví của tài khoản đã bị xoá hẳn mới bị `scheduler.service.js` đặt `'Inactive'`)
 — nên một bản chỉ gỡ chiều đẩy sẽ khiến ví vừa lưu trữ **tự bỏ lưu
 trữ** sau đúng một chu kỳ đồng bộ, im lặng. Có test riêng canh ca ấy, và nó gửi
