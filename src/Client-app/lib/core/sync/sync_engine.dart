@@ -564,6 +564,15 @@ class SyncEngine {
                 goalId: (t['idgoal'] ?? t['goal_id']) != null
                     ? Value((t['idgoal'] ?? t['goal_id']).toString())
                     : const Value.absent(),
+                // Cùng luật với `idgoal` ngay trên, và cùng lý do: cột
+                // `transaction.Idbill` chỉ đi qua đồng bộ từ 2026-09-12, nên
+                // hàng đã nằm sẵn trên server mang NULL cho tới khi client đẩy
+                // lại từng hàng. Gán thẳng `Value(null)` là xoá liên kết cục bộ
+                // ngay chu kỳ pull đầu tiên, và hoàn tác thanh toán mất đường
+                // lần về khoản chi.
+                billId: (t['idbill'] ?? t['bill_id']) != null
+                    ? Value((t['idbill'] ?? t['bill_id']).toString())
+                    : const Value.absent(),
                 date: Value(DateTime.tryParse(
                         (t['date_transaction'] ?? t['date'])?.toString() ?? '') ??
                     DateTime.now()),
@@ -1285,6 +1294,12 @@ class SyncEngine {
           'idwallet_transfer':
               t.walletTransfer != null ? _toValidUuid(t.walletTransfer!) : null,
           'idgoal': t.goalId != null ? _toValidUuid(t.goalId!) : null,
+          // Khoá nối tới hoá đơn — mở đường đồng bộ 2026-09-12, cùng khuôn
+          // `idgoal` ngay trên. Không có nó thì máy khác không lần được từ hoá
+          // đơn ngược về đúng khoản chi nó sinh ra, và hoàn tác thanh toán phải
+          // từ chối. Hoá đơn được đẩy ở mục 4, TRƯỚC đây, vì cột này có khoá
+          // ngoại `fk_transaction_bill`.
+          'idbill': t.billId != null ? _toValidUuid(t.billId!) : null,
           'amount': t.amount,
           'type': t.type,
           'note': t.note,

@@ -87,6 +87,9 @@ void main() {
   /// ⚠️ Cố ý KHÁC mọi id giao dịch trong fixture: `77777777-…` đã là một khoản
   /// chuyển của bản app cũ.
   const kyTruocId = '88888888-8888-4888-8888-888888888888';
+  /// Hoá đơn mà khoản chi trong fixture là khoản trả cho — cùng id với
+  /// hàng `bills` dựng bên dưới.
+  const billId = '55555555-5555-4555-8555-555555555555';
 
   late AppDatabase db;
   late _Client client;
@@ -150,6 +153,10 @@ void main() {
         // nhánh so TÊN — nhánh mang đúng khuyết điểm mà cột này sinh ra để
         // chữa ("Mua" nuốt lịch sử của "Mua xe").
         goalId: const Value(goalId),
+        // Khoản trả hoá đơn: nối tới hoá đơn bằng ID. Trước 2026-09-12 cột này
+        // là cục bộ nên hàng kéo về từ server luôn trống, và `undoPayment`
+        // phải TỪ CHỐI thay vì đoán.
+        billId: const Value(billId),
         syncStatus: const Value('pending'),
         updatedAt: Value(now),
       ));
@@ -373,8 +380,27 @@ void main() {
           // cấm rò rỉ bên dưới. Hai cái tên khác nhau ở đúng một chỗ này, và
           // gửi nhầm tên thì backend bỏ qua trong im lặng.
           'idgoal',
+          // Khoá nối tới hoá đơn, mở 2026-09-12. Tên payload là `idbill` —
+          // giống `idgoal` ngay trên, KHÔNG phải `bill_id` (tên cột Drift cục
+          // bộ, vẫn nằm trong danh sách cấm rò rỉ bên dưới).
+          //
+          // Đã đọc `sync.repository.js` để chắc: nhánh giao dịch đổi tên
+          // `billId`/`bill_id` → `idbill` (dòng 39-40), rồi `create`/`update`
+          // CHỌN TRƯỜNG TƯỜNG MINH bằng `mapped.idbill` (dòng 304, 326). Nên
+          // gửi thẳng `idbill` cũng tới nơi, vì nó đã đúng tên đích.
+          'idbill',
         },
       );
+    });
+
+    test('payload giao dịch mang idbill của khoản trả hoá đơn', () {
+      final p = payloadOf('transaction');
+
+      expect(p['idbill'], billId,
+          reason: 'Thiếu giá trị này thì hàng lên server mang Idbill = NULL, và '
+              'máy khác không lần được từ hoá đơn ngược về đúng khoản chi nó '
+              'sinh ra — tức HOÀN TÁC thanh toán phải từ chối, đúng giới hạn mà '
+              'cột này sinh ra để gỡ.');
     });
 
     test('mục tiêu phải được đẩy TRƯỚC giao dịch nạp vào nó', () {
