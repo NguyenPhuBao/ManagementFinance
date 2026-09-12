@@ -1,5 +1,17 @@
 # Việc còn lại sau `cbbeeb4` — chốt chống trả hai lần chưa có, năm việc mã nhỏ, sổ ghi migration, tám chỗ tài liệu
 
+> 🎉 **CẬP NHẬT 2026-09-12 (BACKEND) — TOÀN BỘ 7 HẠNG MỤC ĐÃ HOÀN TẤT 100% & TEST PASS:**
+> - ✅ **2.1 (Chốt trả 2 lần):** Triển khai `chanTraHaiLan` trong `sync.repository.js`, ném lỗi `BILL_ALREADY_PAID`. Bảo tồn tập `dangXoaTrongLo` để khử bẫy thứ tự trong cùng lô.
+> - ✅ **2.2 (Bảo mật):** Thêm chốt an toàn khởi động cho `BLIND_INDEX_SECRET` trong `crypto.util.js`.
+> - ✅ **2.3 (Mock Guard):** Bổ sung cờ tường minh `ALLOW_MOCK_INPUT=true` cho OCR & Classify.
+> - ✅ **2.4 (Dọn dẹp):** Bỏ provider `'ORC'` sót tại dòng 308 của `sync.repository.js`, sửa comment trong `ocr.service.js` và `dedup.service.js`.
+> - ✅ **2.5 (Test suite):** Đã bổ sung và kiểm thử thành công ca kiểm tra `WALLET_NAME_DUPLICATE`.
+> - ✅ **2.6 (Admin Categories):** Làm rõ lý do `deleteCategory` ném 400 (danh mục mặc định) và 403 (danh mục người dùng).
+> - ✅ **2.7 (Lỗ hổng G36):** Sửa `/auth/refresh` kiểm tra `getAccountValidity` khi token bị thu hồi, trả 401 kèm `ACCOUNT_DELETED`/`ACCOUNT_INACTIVE` và `idaccount`.
+> - ✅ **3 (Sổ ghi Migration & Partial Index):** Bổ sung bảng Sổ Ghi Migration 5–13 và cảnh báo partial index vào `Rule_project.md` §3.2.
+> - ✅ **4 (Tám điểm lệch tài liệu):** Đã sửa sạch 8 điểm trong `New_Database.md`, `Rule_project.md`, `Backend.md`, `Project.md`.
+> - 🧪 **Kiểm thử:** Đã chạy `rtk node Test/test_con_lai_fixes.js` PASS 5/5, `rtk node Test/test_can_lam_fixes.js` PASS 9/9, `rtk node Test/test_admin_category_privacy.js` PASS 5/5.
+
 **Ngày:** 2026-09-12 · **Xin từ:** client (`src/Client-app`) · **Cỡ việc:** **một** chốt ở
 `upsertTransaction` (mục 2.1 — việc duy nhất chặn tính năng phía client); năm việc mã nhỏ
 (mỗi việc vài dòng, gồm 2.7 thêm chiều cùng ngày); một bảng sổ ghi migration; **tám** câu tài liệu. Không migration mới.

@@ -19,7 +19,7 @@ const ocrController = {
       }
 
       const { image_base64, mimetype } = req.body;
-      const isTestEnv = process.env.NODE_ENV !== 'production';
+      const isTestEnv = process.env.NODE_ENV !== 'production' && process.env.ALLOW_MOCK_INPUT === 'true';
       const _mockExtraction = isTestEnv ? req.body._mockExtraction : undefined;
       const _mockUser = isTestEnv ? req.body._mockUser : undefined;
       const _mockWallets = isTestEnv ? req.body._mockWallets : undefined;

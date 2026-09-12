@@ -5,7 +5,7 @@
  * 1. Nhận diện hình ảnh và trích xuất dữ liệu qua VisionExtractor (Gemini Multimodal).
  * 2. Tự phục hồi dữ liệu thị giác (Self-Healing Logic): cộng dồn tiền món khi thiếu tổng tiền, fallback ngày giờ.
  * 3. Bắt lỗi HTTP 422 Unprocessable Entity khi ảnh mờ hoặc không đọc được.
- * 4. Gán nhãn Provider: 'ORC' (Hóa đơn), 'BankSync' (Biên lai ngân hàng), 'SMS' (Tin nhắn).
+ * 4. Gán nhãn Provider: 'OCR' (Hóa đơn), 'BankSync' (Biên lai ngân hàng), 'SMS' (Tin nhắn).
  * 5. Trích xuất mã giao dịch Bank_tran_id chống trùng.
  * 6. Chuyển giao dữ liệu sang Module AI Classify để phân loại 2 cấp độ.
  * 7. Phát sự kiện Realtime Notification (EventBus & Socket.io) và trả DTO chuẩn hóa cho Client-app.

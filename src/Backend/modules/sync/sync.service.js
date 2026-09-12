@@ -72,6 +72,14 @@ const syncService = {
     let conflicts = 0;
     let errors = 0;
 
+    // Thu thập các giao dịch đang bị xoá trong cùng lô để không tự chặn chốt trả hai lần (Bẫy thứ tự trong lô)
+    const dangXoaTrongLo = new Set(
+      operations
+        .filter((o) => o?.entity === 'transaction' && o?.operation === 'delete')
+        .map((o) => o.payload?.id || o.payload?.idtran)
+        .filter(Boolean),
+    );
+
     // Sắp xếp operations theo thứ tự phụ thuộc (FK dependency)
     const indexedOps = operations.map((op, idx) => ({ op, idx }));
     indexedOps.sort((a, b) => getOperationWeight(a.op) - getOperationWeight(b.op));
@@ -141,7 +149,9 @@ const syncService = {
           continue;
         }
 
-        const result = await upsertFn(payload);
+        const result = entity === 'transaction'
+          ? await syncRepository.upsertTransaction(payload, dangXoaTrongLo)
+          : await upsertFn(payload);
 
         if (result === null) {
           // Conflict — server version mới hơn
