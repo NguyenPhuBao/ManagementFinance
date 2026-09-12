@@ -53,7 +53,12 @@ bối cảnh và mục lục — hôm nay **ba** tệp bối cảnh và **một*
 > ⚠️ **Soát 2026-09-11 (client):** tiêu đề và bảng dưới là báo cáo của backend, giữ nguyên
 > văn. Đối chiếu với mã HEAD và CSDL dev: sáu tài liệu xong trọn, bảy còn một phần, hai chưa —
 > trạng thái từng tài liệu ở mục 2 [`../CAN-LAM/README.md`](../CAN-LAM/README.md), việc còn lại
-> ở [`../CAN-LAM/VERIFY_7675B35_REMAINING.md`](../CAN-LAM/VERIFY_7675B35_REMAINING.md).
+> ở [`VERIFY_7675B35_REMAINING.md`](./VERIFY_7675B35_REMAINING.md) (chuyển về đây 2026-09-12).
+>
+> ⚠️ **2026-09-12:** backend chuyển thêm **ba** tệp — `FIX_BACKEND_3_REGRESSIONS.md` (17),
+> `VERIFY_7675B35_REMAINING.md` (18), `AUTH_PROFILE_COUNTDOWN.md` (19) — và báo 19/19. Client soát
+> lại cùng ngày: 17 A và 19 xong thật, 17 B một nửa, 18 còn năm việc mã và tám chỗ tài liệu —
+> bảng ở banner `../CAN-LAM/README.md`; mỗi tệp có banner riêng ở đầu.
 
 Mười lăm tài liệu này đã được thực thi hoàn tất, vượt qua 100% các bộ kiểm thử tích hợp (`test_can_lam_fixes.js`, `test_sensitive_note_filter.js`, `test_category_unique_rules.js`, `test_data_security_encryption_and_masking.js`, `test_sync_new_schema.js`) và chuyển từ `CAN-LAM/` sang `DA-XONG/`:
 
@@ -84,7 +89,7 @@ Mười lăm tài liệu này đã được thực thi hoàn tất, vượt qua 
   `Previous_bill_id`, `Period_end`, `Auto_pay`, `Anchor_day`. ⚠️ **Cập nhật
   2026-09-12:** client đã mở đường đồng bộ cho **ba** trong số ấy — `Idbill`,
   `Previous_bill_id`, `Anchor_day` (đo trên backend thật). Còn `Auto_pay` chờ
-  CAN-LAM 17 B, và `Period_end` là **tính năng** phía client chứ không phải trường
+  CAN-LAM 17 B bước 2 (chốt ở `upsertTransaction`; chốt sai chỗ đã bỏ 2026-09-12), và `Period_end` là **tính năng** phía client chứ không phải trường
   đồng bộ nên chưa có cột cục bộ; `category.Color` có và client đồng bộ màu từ
   2026-09-11 (G24 đóng — danh mục cũ lên màu khi được lưu lại); `transaction.Idgoal` có cột nhưng client vẫn còn
   nhánh so **tên** chưa gỡ (G18). Dòng này từng lấy `goal.Priority` làm ví dụ —

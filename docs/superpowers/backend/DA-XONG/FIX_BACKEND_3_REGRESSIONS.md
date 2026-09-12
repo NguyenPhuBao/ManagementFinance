@@ -1,5 +1,11 @@
 # Ba hồi quy của `7675b35` ("fix backend 3") — xác thực từ chối mọi tài khoản, chốt trả hai lần chặn hoàn tác, mã lỗi lệch tài liệu
 
+> ⚠️ **2026-09-12 — backend sửa ở `cbbeeb4` (gộp về nhánh cùng ngày): A ✅ đã chạy thật** (bắt tay
+> socket nối được trên máy ảo sau 51 lần bị từ chối; `/auth/refresh` mã đúng, chưa đo), **C ✅**,
+> **B chỉ nửa đầu** — bước 1 (bỏ chốt ở `upsertBill`) xong và đo thật (hàng `3c90acfa…` lên
+> `Pending`), bước 2 (chốt ở `upsertTransaction`, mục 3.6) **chưa làm**: `BILL_ALREADY_PAID` nay
+> không ai ném, server không chặn khoản chi thứ hai ở đâu cả. Bảng ở banner `../CAN-LAM/README.md`.
+
 **Ngày:** 2026-09-11 · **Xin từ:** client (`src/Client-app`) · **Cỡ việc:** **A** —
 ba chỗ nhỏ ở `middleware/auth.js`, `core/socket.js`, `modules/auth/auth.service.js`;
 **B** — dời một phép kiểm từ `upsertBill` sang `upsertTransaction`; **C** — sửa ba

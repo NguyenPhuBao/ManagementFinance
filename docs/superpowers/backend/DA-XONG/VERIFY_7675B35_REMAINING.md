@@ -1,5 +1,10 @@
 # Soát `7675b35` từng mục — việc còn lại sau báo cáo "15/15 hoàn tất"
 
+> ⚠️ **2026-09-12 — soát lại sau `cbbeeb4`:** §2.1, 2.2 (mã; CSDL dev máy client áp `database/13`
+> cùng ngày), 2.5, 2.9 ✅; 2.4 một nửa (tệp `)2` xoá mềm ✅, sổ ghi migration ❌); 2.6 một nửa
+> (`DATA_ENCRYPTION_KEY` ✅, `BLIND_INDEX_SECRET` ❌); 2.7 mã ✅ chưa thử; 2.8 ❌ nguyên. §3: phần lớn
+> đã sửa đúng, còn **tám** chỗ — danh sách ở banner `../CAN-LAM/README.md`.
+
 **Ngày:** 2026-09-11 · **Xin từ:** client (`src/Client-app`) · **Cỡ việc:** chín việc
 mã/CSDL nhỏ (một `ALTER`, gỡ một lần phát sự kiện, một chốt khởi động, một tệp SQL cần
 gỡ câu xoá cứng, …) cộng **45** chỗ sửa tài liệu backend. Không việc nào cần client làm

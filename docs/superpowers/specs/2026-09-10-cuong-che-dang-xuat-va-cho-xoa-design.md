@@ -1,11 +1,13 @@
 # Cưỡng chế đăng xuất và tài khoản chờ xoá — thiết kế
 
 > **Trạng thái: G33 — Phần 2–3 (trừ §5.1) ĐÃ XONG (2026-09-11). Mục 6 (việc cho backend):
-> tài liệu xin ĐÃ VIẾT (CAN-LAM 19), backend CHƯA LÀM — `getProfile` chưa trả `countdown`.
+> CAN-LAM 19 ✅ backend làm xong (gộp `main` @ `cbbeeb4` 2026-09-12) — `getProfile` trả
+> `countdown`; client đọc từ cùng ngày (`_dongBoTrangThai`, xem mục 6.1 và §4.3).
 > §3.8 ĐÃ LÀM (2026-09-11). **Phần 1 (§3.1–§3.7) và §5.1 ĐÃ LÀM 2026-09-12** — bảy commit
 > `693de3b` → `fc82a94`, cộng `ac08ed6` và `40a553d` (hai lỗi tìm ra khi kiểm máy ảo).
-> Nhánh HTTP 401 **đã kiểm đầu-cuối trên máy thật**, xem §7.3. Nhánh socket và nhánh
-> làm mới vẫn chờ CAN-LAM 17 A.** Mọi quyết định sản phẩm ở mục 2
+> Nhánh HTTP 401 **đã kiểm đầu-cuối trên máy thật**, xem §7.3. CAN-LAM 17 A đã đóng
+> 2026-09-12 (bắt tay socket nối được trên máy ảo) nên nhánh socket và nhánh làm mới
+> **dựng được** nhưng **chưa chạy**; ngoại lệ §3.6b giữ tới khi đo nhánh làm mới.** Mọi quyết định sản phẩm ở mục 2
 > đã chốt qua hỏi–đáp ngày 2026-09-10; Phần 1 (mục 3) được duyệt riêng trong phiên
 > ấy. Phần 2–4 viết thẳng vào đây theo yêu cầu "làm đi" của người dùng. Ngày
 > 2026-09-11 người dùng duyệt nốt: §3.3 và §3.6b (hai điểm soát lại theo `main`),
@@ -83,7 +85,7 @@ backend thật — trừ body 401 vẫn thiếu mã (CAN-LAM 13). Mục 7.3 đã
 
 ⚠️ **2026-09-11:** `origin/main` có thêm `7675b35` (gộp về nhánh này cùng ngày): body 401 nay mang
 mã và nhánh cho qua khi lỗi lược đồ đã thành 503 — nhưng bắt tay socket và
-`/auth/refresh` từ chối **mọi** tài khoản (CAN-LAM 17 mục A). Ảnh hưởng tới spec
+`/auth/refresh` từ chối **mọi** tài khoản (CAN-LAM 17 mục A — ✅ đóng 2026-09-12, gộp `cbbeeb4`). Ảnh hưởng tới spec
 nằm ở các đoạn gắn ngày 2026-09-11 bên dưới.
 
 ---
@@ -190,7 +192,8 @@ request sau thấy kho rỗng, và `_clearTokens` sẵn có tự im vì `hadSess
 
 Trước khi gộp `main`, cả hai chỗ **nằm im**: body 401 chưa mang mã (CAN-LAM 13), và
 `/auth/refresh` chưa kiểm trạng thái tài khoản. Nhánh đã gộp `main` @ `cc65f4f`
-(2026-09-11), nên mã backend cho chỗ 1 đã có trên nhánh. Chỗ 2 chạy khi backend sửa CAN-LAM 17 mục A — hôm nay nó trả 401 kèm
+(2026-09-11), nên mã backend cho chỗ 1 đã có trên nhánh. Chỗ 2 chạy khi backend sửa CAN-LAM 17 mục A — ✅ đã sửa, gộp `cbbeeb4` 2026-09-12 (`...rejection.data`
+lên lỗi, controller đọc đúng ba tên; chưa đo đầu-cuối); trước đó nó trả 401 kèm
 `idaccount` nhưng **không** `code`, nên `tuBody401` trả `null` và rơi về đường cũ.
 Không cần đổi gì phía client khi backend sửa.
 
@@ -203,7 +206,8 @@ qua nhánh HTTP (khi backend sửa) hoặc qua `verifySession` như hôm nay.
 
 ⚠️ **2026-09-11 — trên `main` @ `7675b35` lý do này đổi dạng, quyết định giữ
 nguyên.** Bắt tay nay tách `ACCOUNT_INACTIVE` / `ACCOUNT_DELETED`, nhưng hàm dựng
-mã đang từ chối **mọi** tài khoản (CAN-LAM 17 mục A), và nếu sửa nửa vời thì lỗi
+mã khi ấy từ chối **mọi** tài khoản (CAN-LAM 17 mục A — ✅ đóng 2026-09-12; bắt tay nay xử lý
+`SCHEMA_ERROR` trước, không kèm mã), và nếu sửa nửa vời thì lỗi
 lược đồ đi ra thành `ACCOUNT_DELETED` (CAN-LAM 17 mục 2.5). Bắt tay bị từ chối chỉ
 khiến kênh hẹn nối lại; người bị khoá hoặc xoá vẫn bị đẩy ra ở request HTTP kế
 tiếp, qua `authenticate` — chỗ duy nhất trên `main` đã tách riêng ca lỗi lược đồ
@@ -279,7 +283,8 @@ người dùng trên server (quy tắc 5).
 §3.5 bước 3 dọn SQLite cho **mọi** `daXoa`. Trong các nguồn, **401 của
 `/auth/refresh`** là chỗ **đã biết** một sự cố phía server đội lốt được
 `ACCOUNT_DELETED`: trên `main` @ `7675b35`, `authenticate` tách lỗi lược đồ thành
-503, còn `/auth/refresh` thì chưa (CAN-LAM 17 mục 2.5). Client không tự phân biệt
+503, còn `/auth/refresh` thì chưa (CAN-LAM 17 mục 2.5; ✅ mã backend sửa, gộp `cbbeeb4` 2026-09-12 —
+trả 503 khi `SCHEMA_ERROR` — nhưng **chưa đo đầu-cuối**). Client không tự phân biệt
 được.
 
 `ThongBaoBuocDangXuat` mang thêm nguồn — `socket`, `http` hoặc `lamMoi` (trường
@@ -292,8 +297,9 @@ Nguồn `lamMoi` vẫn đăng xuất và vẫn hiện hộp thoại "Tài khoả
   đó). Đó đúng là ca Q2 muốn dọn.
 - **Được gì:** nếu là báo động giả, người dùng đăng nhập lại và dữ liệu còn nguyên
   — cùng tinh thần *"đọc nhầm thành bị khoá chỉ giữ lại dữ liệu"* ở §3.1.
-- Khi CAN-LAM 17 mục 2.5 xong thì bỏ được ngoại lệ này; chú thích trong mã trỏ về
-  đây.
+- Khi CAN-LAM 17 mục 2.5 xong **và đo được nhánh làm mới chạy đúng** thì bỏ ngoại lệ này; chú
+  thích trong mã trỏ về đây. (2026-09-12: mã backend đã xong, chưa đo — giữ ngoại lệ, vì bỏ
+  nhầm là xoá dữ liệu người dùng trên máy.)
 
 ### 3.7. Màn Đăng nhập
 
@@ -330,7 +336,8 @@ cả hai, **trước** Phần 1, vì §3.3 sửa đúng `onError` và `_tryRefre
    kết quả, theo luật ở điểm 1. Cơ chế cụ thể chốt ở kế hoạch.
 
 Điểm 1 **không** cứu được ca đang xảy ra trên nhánh đã gộp `main`: `/auth/refresh` trả
-401 cho mọi tài khoản (CAN-LAM 17 mục A), mà 401 là phiên chết. Ca ấy chờ backend sửa.
+401 cho mọi tài khoản (CAN-LAM 17 mục A), mà 401 là phiên chết. ✅ Backend sửa, gộp `cbbeeb4`
+2026-09-12; chưa đo đầu-cuối.
 
 ### ✅ Làm 2026-09-11
 
@@ -391,14 +398,14 @@ nhiêu request cùng nhận 401.
 
 **Không kiểm được trên máy ảo:** không đổi giao diện; không ép được token
 truy cập hết hạn; và CAN-LAM 17 mục A làm `/auth/refresh` trả 401 cho mọi
-tài khoản, nên nhánh làm mới không dựng được đầu-cuối trên backend đã gộp
-(lý do đầy đủ ở Global Constraints của kế hoạch thực thi,
+tài khoản, nên nhánh làm mới không dựng được đầu-cuối trên backend đã gộp (✅ hết từ
+2026-09-12 — nay dựng được, chưa chạy; lý do đầy đủ ở Global Constraints của kế hoạch thực thi,
 `.superpowers/sdd/2026-09-11-lam-moi-token/`).
 
 ⚠️ **Rủi ro còn lại, nói thành lời (2026-09-12):** toàn bộ lời hứa §3.8 hiện
 **chỉ được canh bằng máy chủ giả** — chính hành vi "mất mạng thì giữ token"
 chưa một lần nào chạy trên máy thật. **Việc còn nợ:** khi backend đóng
-CAN-LAM 17 mục A thì kiểm một lượt trên máy ảo — đăng nhập, bật chế độ máy bay
+CAN-LAM 17 mục A (✅ đóng 2026-09-12) thì kiểm một lượt trên máy ảo — đăng nhập, bật chế độ máy bay
 (hoặc hạ `JWT_USER_ACCESS_EXPIRES` trên backend dev để ép 401), xác nhận
 **không** bị đăng xuất và hai token còn nguyên trong kho.
 
@@ -652,7 +659,8 @@ Viết **`CAN-LAM/AUTH_PROFILE_COUNTDOWN.md`** (mục **19** của `README.md` �
    mốc nhận mỗi lần `/auth/profile` trả `countdown`, kể cả khi trạng thái khớp — cứu cả ca
    bộ nhớ đệm cũ lẫn ca **số cũ sai** (máy giữ số của một lần chờ xoá trước; máy khác huỷ
    rồi gửi lại yêu cầu — CAN-LAM 19 §2.4). Đăng nhập máy khác hay cài lại app thì đã có số: response đăng
-   nhập mang `countdown` (mục 4.3 dòng một). Đo 2026-09-11: `main` @ `7675b35` **chưa** làm.
+   nhập mang `countdown` (mục 4.3 dòng một). Đo 2026-09-11: `main` @ `7675b35` **chưa** làm. ✅ 2026-09-12: backend làm ở `cbbeeb4`, client đọc cùng ngày
+   (`AuthRepositoryImpl._dongBoTrangThai`, 4 ca test mới ở `auth_repository_cho_xoa_test.dart`).
 2. `pendingDeleteCancelled` luôn `false` (`auth.service.js:309`, cả nhánh lẫn
    `main`): xin gỡ trường khỏi response hoặc ghi rõ là đã bỏ. ⚠️ Lý do bản trước
    ghi — *"vì `Rule_project.md`/đặc tả 2026-08-18 còn mô tả nó"* — sai một nửa: đo
@@ -665,7 +673,8 @@ Viết **`CAN-LAM/AUTH_PROFILE_COUNTDOWN.md`** (mục **19** của `README.md` �
    trích câu ấy làm căn cứ.
 
 **CAN-LAM 17 (đã viết) là điều kiện** để nhánh socket (bắt tay) và nhánh làm mới
-(§3.3 chỗ 2) chạy được trên `main`.
+(§3.3 chỗ 2) chạy được trên `main`. ✅ 17 A đóng 2026-09-12 — điều kiện đã có; bắt tay đo
+được trên máy ảo, nhánh làm mới chưa.
 
 Kèm cập nhật `README.md` mục 2 và mọi con số đếm mục CAN-LAM trong
 `CLAUDE.md`/`PROJECT_CONTEXT.md` (đếm bằng script).
@@ -729,7 +738,8 @@ socket, vì bắt tay ở đó còn dùng `isAccountValid`. ⚠️ Câu vừa r�
 **trước khi gộp**. Nhánh đã gộp `main` @ `cc65f4f` ngày 2026-09-11 theo yêu cầu người
 dùng, trong khi CAN-LAM 17 mục A chưa sửa — nên hệ quả mà đoạn này từng cảnh báo nay
 là thật: bắt tay socket trên backend của nhánh từ chối mọi tài khoản, và nhánh
-socket **không kiểm đầu-cuối được** cho tới khi backend sửa mục A. CSDL dev đã áp
+socket **không kiểm đầu-cuối được** cho tới khi backend sửa mục A — ✅ sửa rồi, gộp `cbbeeb4`
+2026-09-12, bắt tay nối được trên máy ảo. CSDL dev đã áp
 `database/12` cùng ngày. Đề xuất, theo thứ tự:
 
 - **Backend thật, tài khoản thử riêng.** Lúc duyệt, máy ảo được ghi là giữ phiên tài
@@ -764,8 +774,8 @@ socket **không kiểm đầu-cuối được** cho tới khi backend sửa mụ
   Cùng lượt ấy còn đo được: bắt tay socket từ chối **mọi** tài khoản kể cả khi
   `Active`, với đúng câu `Account no longer exists or has been deleted` và lời từ
   chối **không** mang `code` ở cấp gốc (`{message, data:{idaccount,
-  reason_inactive}}`) — CAN-LAM 17 A và 18 §2.1 tái hiện được trên máy thật. **Nhánh làm mới** (§3.3 chỗ 2) chờ thêm CAN-LAM 17 mục A,
-  theo mục 2.7 `FIX_BACKEND_3_REGRESSIONS.md`.
+  reason_inactive}}`) — CAN-LAM 17 A và 18 §2.1 tái hiện được trên máy thật. **Nhánh làm mới** (§3.3 chỗ 2) chờ thêm CAN-LAM 17 mục A (✅ đóng 2026-09-12 — nay đo được
+  theo mục 2.7 `DA-XONG/FIX_BACKEND_3_REGRESSIONS.md`; chưa chạy).
 - Không sọc vàng tràn bố cục ở 411dp.
 
 `flutter test` và `flutter analyze` đối chiếu mức nền ghi trong `CLAUDE.md` — **2105/2105**
@@ -821,7 +831,7 @@ kể từ G33 và §3.8).
   `flutter test` không bắt được, đúng như `CLAUDE.md` cảnh báo: *thứ tự thực tế
   giữa hai luồng bất đồng bộ*.
 - **Lỗi lược đồ đội lốt `ACCOUNT_DELETED` ở nhánh làm mới** — CAN-LAM 17 mục 2.5;
-  phía client xem §3.6b.
+  phía client xem §3.6b. ✅ Mã backend sửa 2026-09-12, chưa đo; ngoại lệ client giữ.
 - **Đổi tài khoản trong lúc một lượt `/auth/profile` còn treo — hai race cùng họ với
   `46ad023`, CHƯA sửa.** (1) `verifySession` → `_dongBoTrangThai` đọc bộ nhớ đệm **sau**
   `getProfile`, nên có thể ghi trạng thái của phiên cũ vào tài khoản vừa đăng nhập.

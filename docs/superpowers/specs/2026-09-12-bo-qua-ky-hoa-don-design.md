@@ -314,7 +314,8 @@ trong `reason:` nó canh chừng điều gì.
 
 - **`Period_end`** (ân hạn, kỳ tính tiền tách khỏi hạn trả) — bước **14** riêng,
   cần schema **v21**.
-- **`Auto_pay` qua đồng bộ** — bước **12**, chờ backend sửa CAN-LAM 17 B.
+- **`Auto_pay` qua đồng bộ** — bước **12**, chờ backend đặt chốt chống trả hai lần ở
+  `upsertTransaction` (CAN-LAM 17 B bước 2; bước 1 — bỏ chốt sai chỗ — xong 2026-09-12).
 - **Menu bỏ qua ngay trên dòng danh sách** — người dùng chốt chỉ trang chi tiết.
 - **Đếm số kỳ đã bỏ qua** ở đâu đó trong Phân tích — chưa ai xin, không tự thêm.
 
