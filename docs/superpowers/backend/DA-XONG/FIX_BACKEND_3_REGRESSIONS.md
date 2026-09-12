@@ -4,7 +4,8 @@
 > socket nối được trên máy ảo sau 51 lần bị từ chối; `/auth/refresh` mã đúng, chưa đo), **C ✅**,
 > **B chỉ nửa đầu** — bước 1 (bỏ chốt ở `upsertBill`) xong và đo thật (hàng `3c90acfa…` lên
 > `Pending`), bước 2 (chốt ở `upsertTransaction`, mục 3.6) **chưa làm**: `BILL_ALREADY_PAID` nay
-> không ai ném, server không chặn khoản chi thứ hai ở đâu cả. Bảng ở banner `../CAN-LAM/README.md`.
+> không ai ném, server không chặn khoản chi thứ hai ở đâu cả. Bảng ở banner `../CAN-LAM/README.md`;
+> việc còn lại xin ở `../CAN-LAM/CON_LAI_SAU_CBBEEB4.md` §2.1 (mục 20).
 
 **Ngày:** 2026-09-11 · **Xin từ:** client (`src/Client-app`) · **Cỡ việc:** **A** —
 ba chỗ nhỏ ở `middleware/auth.js`, `core/socket.js`, `modules/auth/auth.service.js`;

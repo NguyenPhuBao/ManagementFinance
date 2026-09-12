@@ -54,9 +54,19 @@
 >
 > **Ngoài phạm vi xin, thấy khi đọc diff:** `admin.service.js:336-342` — `deleteCategory` ném lỗi ở **mọi** nhánh (403 nếu không mặc định, 400 nếu mặc định), endpoint xoá danh mục của Admin-web không còn đường nào chạy tới `adminRepository.deleteCategory`. Không ảnh hưởng client.
 >
-> **Việc còn lại phía backend, gom lại:** 17 B bước 2; 18 §2.4 (sổ ghi + ghi chú partial index); §2.6 (`BLIND_INDEX_SECRET`); §2.7 (một ca thử); §2.8 (`_mock*`, `'ORC'`); và tám chỗ tài liệu trên. Chưa viết thành tài liệu mục 20 — chờ người dùng quyết.
+> **Việc còn lại phía backend, gom lại thành mục 20** — [`CON_LAI_SAU_CBBEEB4.md`](./CON_LAI_SAU_CBBEEB4.md) (viết 2026-09-12 theo yêu cầu người dùng): 17 B bước 2 (**việc duy nhất chặn client**); 18 §2.4 (sổ ghi migration + ghi chú partial index); §2.6 (`BLIND_INDEX_SECRET`); §2.7 (một ca thử); §2.8 (`_mock*`, `'ORC'`); và tám chỗ tài liệu trên, mỗi chỗ kèm câu thay.
 >
-> **Hệ quả cho client** (chưa sửa tài liệu client — `CLAUDE.md`, `PROJECT_CONTEXT.md`, `CLIENT_APP_KNOWN_GAPS.md` và 12 tệp khác còn **76** dòng nói 17 A/B, 19 chưa xong, đếm bằng `grep` 15:08): kênh thời gian thực **đã nối được** — mở khoá G34 (`sync.completed`), kiểm máy ảo nhánh socket và nhánh làm mới của cưỡng chế đăng xuất; hoàn tác thanh toán hoá đơn **đã lên server**; đồng bộ `Auto_pay` vẫn nên chờ 17 B bước 2 vì chốt chống trả hai lần **chưa có ở đâu cả**.
+> **Hệ quả cho client** (tài liệu client đã sửa theo — `216775c`, 81 dòng / 15 tệp; mã client đọc `countdown` từ `/auth/profile` — `7fd5b13`): kênh thời gian thực **đã nối được** — mở khoá G34 (`sync.completed`), kiểm máy ảo nhánh socket và nhánh làm mới của cưỡng chế đăng xuất; hoàn tác thanh toán hoá đơn **đã lên server**; đồng bộ `Auto_pay` vẫn nên chờ 17 B bước 2 vì chốt chống trả hai lần **chưa có ở đâu cả**.
+
+---
+
+## 0. Còn phải làm (client xin, 2026-09-12)
+
+| # | Tài liệu | Nội dung | Mức |
+|---|---|---|---|
+| **20** | [CON_LAI_SAU_CBBEEB4.md](./CON_LAI_SAU_CBBEEB4.md) | Chốt chống trả hai lần ở `upsertTransaction` (17 B bước 2 — `BILL_ALREADY_PAID` nay không ai ném; **chặn client mở đồng bộ `Auto_pay`**); `BLIND_INDEX_SECRET` không chốt; `_mock*`; `'ORC'` 3 chỗ; ca thử `WALLET_NAME_DUPLICATE`; sổ ghi migration 5–13 (bảng mẫu có sẵn) + ghi chú partial index; **tám** câu tài liệu kèm câu thay — hai lỗi mới của `New_Database.md` (CHECK `Status` của ví, FK `auto_deposit_wallet_id`). *Ngoài phạm vi:* `deleteCategory` ném lỗi ở mọi nhánh | 🔴 §2.1 · 🟡 §2.2, §3, §4.1–4.3 · ⚪ còn lại |
+
+Mục 1–2 dưới là **báo cáo của backend**, giữ nguyên văn.
 
 ---
 
