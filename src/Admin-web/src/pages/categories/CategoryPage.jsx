@@ -299,7 +299,7 @@ const CategoryPage = () => {
 
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-stack-lg gap-4">
               <div>
-                  <h2 className="font-headline-md text-headline-md text-on-surface m-0">Quản lý danh mục mặc định</h2>
+                  <h2 className="font-headline-md text-headline-md text-on-surface m-0">Quản lý danh mục hệ thống</h2>
               </div>
               <div className="flex flex-wrap items-center gap-3">
                   <div className="relative w-full md:w-64">
