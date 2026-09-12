@@ -329,6 +329,14 @@ class _BillDetailPageState extends State<BillDetailPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _tieuDe('THÔNG TIN'),
+          // Kỳ tính tiền — khác hạn trả khi có ân hạn (v21). Hàng cũ
+          // (periodEnd NULL) thì kết thúc kỳ trùng hạn trả; hàng kéo về có
+          // thể thiếu ngày bắt đầu — khi ấy bỏ dòng này.
+          if (b.startDate != null)
+            _dong(
+                'Kỳ',
+                '${_ngay.format(b.startDate!)} → '
+                '${_ngay.format(b.periodEnd ?? b.dueDate)}'),
           _dong('Đến hạn', _ngay.format(b.dueDate)),
           _dong('Chu kỳ',
               b.isRecurrence ? tenChuKyHoaDon(b.timeRecurrence) : 'Không lặp'),

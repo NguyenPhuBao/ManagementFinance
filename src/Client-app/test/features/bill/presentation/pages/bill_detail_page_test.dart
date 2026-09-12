@@ -74,6 +74,7 @@ void main() {
     bool boQua = false,
     bool tuTra = false,
     String note = '',
+    DateTime? periodEnd,
   }) =>
       db.billDao.insert(BillsCompanion.insert(
         id: id,
@@ -84,6 +85,7 @@ void main() {
         name: 'Tiền điện',
         amount: 250000,
         startDate: drift.Value(due.subtract(const Duration(days: 30))),
+        periodEnd: drift.Value(periodEnd),
         dueDate: due,
         payStatus:
             drift.Value(boQua ? 'Skipped' : (paid ? 'Payed' : 'Pending')),
@@ -291,5 +293,15 @@ void main() {
           reason: 'Hoá đơn này CÓ lặp. Không nói ra thì người dùng tưởng bỏ '
               'qua là kết thúc chuỗi, đúng nỗi sợ khiến họ chọn xoá kỳ.');
     });
+  });
+  testWidgets('có ân hạn → dòng "Kỳ" hiện kỳ tính tiền, "Đến hạn" là hạn trả',
+      (tester) async {
+    await hoaDon('b1', DateTime(2026, 10, 16), periodEnd: DateTime(2026, 10, 1));
+    await dungTrang(tester, 'b1');
+    expect(find.text('Kỳ'), findsOneWidget);
+    // helper `hoaDon` đặt startDate = due − 30 ngày = 16/09/2026.
+    expect(find.text('16/09/2026 → 01/10/2026'), findsOneWidget,
+        reason: 'Kỳ tính tiền kết thúc ở periodEnd, không phải hạn trả.');
+    expect(find.text('16/10/2026'), findsOneWidget);
   });
 }

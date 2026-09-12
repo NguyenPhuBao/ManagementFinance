@@ -34,6 +34,7 @@ void main() {
     DateTime? dueDate,
     String note = '',
     bool tuTra = false,
+    DateTime? periodEnd,
   }) =>
       Bill(
         id: 'a',
@@ -44,6 +45,7 @@ void main() {
         amount: 200000,
         startDate: (dueDate ?? DateTime(2026, 9, 8))
             .subtract(const Duration(days: 31)),
+        periodEnd: periodEnd,
         dueDate: dueDate ?? DateTime(2026, 9, 8),
         payStatus: 'Pending',
         isPaid: false,
@@ -263,5 +265,17 @@ void main() {
     expect(find.text('06/09/2026 (hôm nay)'), findsOneWidget,
         reason:
             'So theo NGÀY, không theo giờ: hạn 23h hôm nay vẫn là hôm nay.');
+  });
+  testWidgets('dòng Kỳ dùng ngày kết thúc kỳ khi có ân hạn', (tester) async {
+    // helper `hoaDon` đặt startDate = dueDate − 31 ngày; với due 16/10 là 15/09.
+    await moBang(
+      tester,
+      onConfirmed: (_, __, ___, ____) {},
+      bill: hoaDon(
+          dueDate: DateTime(2026, 10, 16), periodEnd: DateTime(2026, 10, 1)),
+    );
+    expect(find.text('15/09/2026 → 01/10/2026'), findsOneWidget,
+        reason: 'Kỳ tính tiền kết thúc ở periodEnd, không phải hạn trả.');
+    expect(find.textContaining('16/10/2026'), findsOneWidget);
   });
 }
