@@ -386,6 +386,26 @@ void main() {
             'trước transactions.',
       );
     });
+    test('hoá đơn phải được đẩy TRƯỚC giao dịch trả cho nó', () {
+      final thuTu = client.adapter.pushed
+          .map((op) => op['entity'].toString())
+          .toList();
+      final viTriBill = thuTu.indexOf('bill');
+      final viTriTran = thuTu.indexOf('transaction');
+      expect(viTriBill, isNonNegative);
+      expect(viTriTran, isNonNegative);
+      expect(
+        viTriBill,
+        lessThan(viTriTran),
+        reason: 'Từ 2026-09-12 payload giao dịch mang khoá nối tới hoá đơn, và '
+            'phía server cột ấy có khoá ngoại `fk_transaction_bill`. Đẩy giao '
+            'dịch trước hoá đơn thì khoản trả bị từ chối vì hoá đơn chưa tồn '
+            'tại, rồi KẸT hàng đợi đẩy và thử lại mãi — im lặng. Đúng ca người '
+            'dùng tạo hoá đơn rồi trả luôn trong lúc offline, cả hai cùng nằm '
+            'chờ trong một lô. Cùng lý do đã khiến mục tiêu phải đứng trước '
+            'giao dịch hồi 2026-09-07.',
+      );
+    });
     test('payload giao dịch mang idgoal của khoản nạp mục tiêu', () {
       final p = payloadOf('transaction');
       expect(p['idgoal'], goalId,

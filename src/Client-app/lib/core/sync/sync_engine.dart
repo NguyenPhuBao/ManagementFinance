@@ -1190,7 +1190,49 @@ class SyncEngine {
       ));
     }
 
-    // ── 4. Transactions (sau category + wallet + goal vì FK → cả 3) ──────────
+    // ── 4. Bills (sau category + wallet, và phải đứng TRƯỚC transactions) ────
+    // idwallet/idcategory là NOT NULL trên backend — bắt buộc phải gửi kèm.
+    // Lưu ý: form tạo/sửa bill hiện tại (bill_edit_page.dart) chưa cho chọn
+    // ví/danh mục nên các giá trị này có thể vẫn null cho tới khi UI đó được
+    // bổ sung — đây là việc ngoài phạm vi sync engine.
+    for (final bill in await _db.billDao.getPending(idaccount)) {
+      if (_isSyncBlocked(bill.syncBlockedUntil)) continue;
+      final validId = _toValidUuid(bill.id);
+      final validWalletId =
+          bill.walletId != null ? _toValidUuid(bill.walletId!) : null;
+      final validCategoryId =
+          bill.categoryId != null ? _toValidUuid(bill.categoryId!) : null;
+      ops.add(SyncOperation(
+        localId: bill.id,
+        entity: SyncEntityType.bill,
+        operation: bill.isDeleted
+            ? SyncOperationType.delete
+            : SyncOperationType.update,
+        payload: {
+          'id': validId,
+          'idwallet': validWalletId,
+          'idcategory': validCategoryId,
+          'name': bill.name,
+          'amount': bill.amount,
+          'start_date': bill.startDate?.toUtc().toIso8601String(),
+          'due_date': bill.dueDate.toUtc().toIso8601String(),
+          'pay_status': bill.payStatus,
+          'recurrence': bill.isRecurrence,
+          'time_recurrence': bill.timeRecurrence,
+          'time_notification': bill.timeNotification,
+          'icon': bill.icon,
+          'color': bill.colour,
+          'note': bill.note,
+          'is_deleted': bill.isDeleted,
+          'updated_at': bill.updatedAt.toUtc().toIso8601String(),
+          'idaccount':
+              bill.idaccount > 0 ? bill.idaccount : idaccount,
+        },
+        createdAt: now,
+      ));
+    }
+
+    // ── 5. Transactions (sau category + wallet + goal + bill vì FK → cả 4) ───
     final pendingTx = await _db.transactionDao.getPending(idaccount);
     for (final t in pendingTx) {
       if (_isSyncBlocked(t.syncBlockedUntil)) continue;
@@ -1237,7 +1279,7 @@ class SyncEngine {
       ));
     }
 
-    // ── 5. Budgets (sau category + wallet) ────────────────────────────────────
+    // ── 6. Budgets (sau category + wallet) ────────────────────────────────────
     // Payload dùng đúng tên field Prisma của backend (idcategory, total_amount,
     // start, over_spending, ...) vì backend mapEntityFields() chỉ nhận diện
     // các key camelCase cụ thể (totalAmount, categoryId, ...) — gửi sẵn tên
@@ -1276,47 +1318,6 @@ class SyncEngine {
       ));
     }
 
-    // ── 6. Bills (sau category + wallet) ──────────────────────────────────────
-    // idwallet/idcategory là NOT NULL trên backend — bắt buộc phải gửi kèm.
-    // Lưu ý: form tạo/sửa bill hiện tại (bill_edit_page.dart) chưa cho chọn
-    // ví/danh mục nên các giá trị này có thể vẫn null cho tới khi UI đó được
-    // bổ sung — đây là việc ngoài phạm vi sync engine.
-    for (final bill in await _db.billDao.getPending(idaccount)) {
-      if (_isSyncBlocked(bill.syncBlockedUntil)) continue;
-      final validId = _toValidUuid(bill.id);
-      final validWalletId =
-          bill.walletId != null ? _toValidUuid(bill.walletId!) : null;
-      final validCategoryId =
-          bill.categoryId != null ? _toValidUuid(bill.categoryId!) : null;
-      ops.add(SyncOperation(
-        localId: bill.id,
-        entity: SyncEntityType.bill,
-        operation: bill.isDeleted
-            ? SyncOperationType.delete
-            : SyncOperationType.update,
-        payload: {
-          'id': validId,
-          'idwallet': validWalletId,
-          'idcategory': validCategoryId,
-          'name': bill.name,
-          'amount': bill.amount,
-          'start_date': bill.startDate?.toUtc().toIso8601String(),
-          'due_date': bill.dueDate.toUtc().toIso8601String(),
-          'pay_status': bill.payStatus,
-          'recurrence': bill.isRecurrence,
-          'time_recurrence': bill.timeRecurrence,
-          'time_notification': bill.timeNotification,
-          'icon': bill.icon,
-          'color': bill.colour,
-          'note': bill.note,
-          'is_deleted': bill.isDeleted,
-          'updated_at': bill.updatedAt.toUtc().toIso8601String(),
-          'idaccount':
-              bill.idaccount > 0 ? bill.idaccount : idaccount,
-        },
-        createdAt: now,
-      ));
-    }
 
 
     return ops;
