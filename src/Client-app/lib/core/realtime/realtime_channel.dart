@@ -4,10 +4,16 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../auth/buoc_dang_xuat.dart';
 import '../constants/app_constants.dart';
 import 'realtime_event.dart';
 import 'realtime_socket.dart';
 import 'socket_base_url.dart';
+
+/// Tên sự kiện cưỡng chế đăng xuất, đúng chuỗi backend phát ở
+/// `core/socket.js:184`. Cố ý KHÔNG nằm trong `realtimeEventFromName`: nó
+/// không phải tin "server vừa có dữ liệu mới" và không được đánh thức đồng bộ.
+const _tenBuocDangXuat = 'account.force_logout';
 
 /// Bảng giãn cách giữa các lần nối lại.
 ///
@@ -63,6 +69,19 @@ class RealtimeChannel {
 
   /// Sự kiện đã dịch sang enum. Không mang theo dữ liệu nào của payload.
   Stream<RealtimeEvent> get events => _controller.stream;
+
+  /// Sự kiện cưỡng chế đăng xuất — **luồng riêng**, cố ý không trộn vào [events].
+  ///
+  /// [events] mang cam kết "client không đọc trường nào của payload", vì
+  /// `bank_transaction.incoming` được backend phát từ hai chỗ với hai hình dạng.
+  /// `account.force_logout` thì chỉ phát từ MỘT hàm (`core/socket.js:175-191`),
+  /// nên đọc payload ở đây an toàn — và để cam kết kia không bị nới theo, nó đi
+  /// cửa riêng (spec cưỡng chế đăng xuất §3.2).
+  final _buocDangXuatController =
+      StreamController<ThongBaoBuocDangXuat>.broadcast();
+
+  Stream<ThongBaoBuocDangXuat> get buocDangXuat =>
+      _buocDangXuatController.stream;
 
   RealtimeSocket? _socket;
   int? _idaccount;
@@ -185,10 +204,33 @@ class RealtimeChannel {
     });
   }
 
-  void _khiCoSuKien(String ten, dynamic _) {
-    // Tham số thứ hai cố ý bỏ tên: payload KHÔNG được đọc. Xem chú thích đầu
-    // `realtime_event.dart`.
-    if (_daDung || _controller.isClosed) return;
+  void _khiCoSuKien(String ten, dynamic payload) {
+    if (_daDung) return;
+
+    // Bắt TRƯỚC `realtimeEventFromName`: sự kiện này không nằm trong
+    // `RealtimeEvent`, không đánh thức đồng bộ, và là chỗ DUY NHẤT trong lớp
+    // này được đọc payload (§3.2).
+    if (ten == _tenBuocDangXuat) {
+      final thongBao = tuSuKienSocket(payload);
+      // Gói tin của tài khoản khác: không xảy ra khi room đúng, nhưng nếu xảy
+      // ra thì nó đá nhầm người đang đăng nhập ra kèm một lượt dọn SQLite.
+      // Thiếu id thì vẫn nhận — socket này đã xác thực bằng JWT của chính phiên
+      // đang chạy, nên room do server chọn mới là chốt thật.
+      if (thongBao.idaccount != null && thongBao.idaccount != _idaccount) {
+        debugPrint('[RealtimeChannel] Bỏ qua force_logout của tài khoản khác: '
+            '${thongBao.idaccount}');
+        return;
+      }
+      debugPrint('[RealtimeChannel] Bị buộc đăng xuất: ${thongBao.lyDo.name}');
+      if (!_buocDangXuatController.isClosed) {
+        _buocDangXuatController.add(thongBao);
+      }
+      return;
+    }
+
+    // Từ đây trở xuống payload KHÔNG được đọc — chỉ dùng *tên* sự kiện. Xem
+    // chú thích đầu `realtime_event.dart`.
+    if (_controller.isClosed) return;
     final suKien = realtimeEventFromName(ten);
     if (suKien == null) {
       debugPrint('[RealtimeChannel] Bỏ qua sự kiện lạ: $ten');
