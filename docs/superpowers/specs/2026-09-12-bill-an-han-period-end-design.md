@@ -1,6 +1,6 @@
 # Hoá đơn: ân hạn — tách kỳ tính tiền khỏi hạn trả (`Period_end`)
 
-**Ngày:** 2026-09-12 · **Trạng thái:** đã duyệt thiết kế trong chat (bảy phần), chờ người dùng soát tệp này
+**Ngày:** 2026-09-12 · **Trạng thái:** ✅ **đã làm xong tối cùng ngày** (spec duyệt hai lần; kế hoạch 13 task thực thi inline — mười commit mã `18db941` → `aa2a6fc`, xem khối mục 14 `docs/PROJECT_CONTEXT.md`)
 · **Bước:** 4 trong thứ tự người dùng duyệt chiều 2026-09-12 (sau G34) · **Schema:** v20 → **v21**
 
 Tài liệu liên quan, đọc trước khi sửa: `docs/bill/BILL_DOCUMENTATION.md` (mục 2b "Lịch hoá đơn", mục 5
@@ -111,8 +111,10 @@ dueDate   = hanTraTu(ketThucKy, anHanNgay)
 
 ### 4.3. `BillDraft`
 
-Thêm `periodEnd` (bắt buộc, không nullable — form luôn biết). `toCompanion`/`toUpdateCompanion` ghi
-`periodEnd: Value(periodEnd)` **mọi lần** (§3). `dateError` của draft gọi cùng `loiAnHan`.
+Thêm `periodEnd` — tham số **tuỳ chọn** (`DateTime?`) với getter `periodEndHieuLuc => periodEnd ?? dueDate`,
+để các test và đường gọi cũ không phải đổi; nhưng `toInsertCompanion`/`toUpdateCompanion` ghi
+`periodEnd: Value(periodEndHieuLuc)` **mọi lần** (§3) — giá trị ghi xuống không bao giờ vắng. Hai form truyền
+`periodEnd: _lich.ketThucKy`. *(Khi làm đổi từ "bắt buộc" sang tuỳ chọn có dự phòng; bất biến §3 giữ nguyên.)*
 
 ### 4.4. Sinh kỳ kế tiếp — `BillRepositoryImpl._nextPeriodOf`
 
@@ -194,9 +196,9 @@ Bố cục kiểm trên máy ảo **411dp** (bẫy loại 1 của `CLAUDE.md`); 
 | Domain | `test/features/bill/domain/bill_an_han_test.dart` (mới) | `anHanCua` NULL → 0; 15 ngày; lệch giờ trong ngày vẫn ra số nguyên; `hanTraTu` qua cuối tháng, qua 31/12, năm nhuận 29/02 + n; `loiAnHan` ba luật, biên đúng bằng kỳ kế tiếp bị từ chối, tuần tối đa 6 |
 | Domain | `test/features/bill/domain/bill_schedule_test.dart`, `bill_draft_test.dart` (có sẵn, thêm ca) | ân hạn 0 ⇒ `dueDate` **y hệt** bản trước; ân hạn 15 với gốc 31 qua tháng Hai (28/02 + 15 = 15/03; năm nhuận 29/02 + 15 = 15/03); `fromBill` hàng cũ ra 0 không cảnh báo; `toCompanion` ghi `periodEnd` kể cả khi 0 |
 | CSDL | `test/core/database/bill_schema_v21_test.dart` (mới) | nâng từ v20 giữ nguyên số hàng, `periodEnd` NULL |
-| Repository | `test/features/bill/data/repositories/bill_payment_test.dart`, `bill_skip_test.dart`, `bill_anchor_day_test.dart` (có sẵn, thêm ca) | trả kỳ có ân hạn 15 → kỳ sau `startDate = periodEnd cũ`, `periodEnd` mới = +1 chu kỳ, `dueDate` = +15; chuỗi **ba** kỳ giữ nguyên 15; hàng cũ NULL → kết quả bằng mã trước v21; bỏ qua kỳ cùng luật; hoàn tác không đụng ngày |
-| Đồng bộ | `sync_payload_contract_test.dart` | khoá `period_end` có mặt, đếm lại số trường |
-| Widget | `test/features/bill/presentation/pages/bill_add_page_test.dart`, `bill_edit_page_test.dart`, `bill_detail_page_test.dart`, `widgets/bill_payment_sheet_test.dart` (đều có sẵn, thêm ca) | chọn 15 → hai ô khoá đổi đúng; "Khác" nhận 20, từ chối 400 và 45-cho-tuần kèm câu báo; hẹp 360dp không tràn; chi tiết có dòng "Kỳ" |
+| Repository | `test/features/bill/data/repositories/bill_an_han_ky_sau_test.dart` (**mới**, 4 ca — thay vì thêm vào ba tệp cũ) | trả kỳ có ân hạn 15 → kỳ sau `startDate = periodEnd cũ`, `periodEnd` mới = +1 chu kỳ, `dueDate` = +15; chuỗi **ba** kỳ giữ nguyên 15; hàng cũ NULL → kết quả bằng mã trước v21; bỏ qua kỳ cùng luật; hoàn tác không đụng ngày |
+| Đồng bộ | `sync_payload_contract_test.dart`, `sync_pull_bill_period_end_test.dart` (**mới**, 3 ca) | khoá `period_end` có mặt, đếm lại số trường (20); kéo về giữ nguyên khi server im lặng |
+| Widget | `widgets/bill_grace_selector_test.dart` (**mới**, 6 ca); `test/features/bill/presentation/pages/bill_add_page_test.dart`, `bill_edit_page_test.dart`, `bill_detail_page_test.dart`, `widgets/bill_payment_sheet_test.dart` (có sẵn, thêm ca) | chọn 15 → hai ô khoá đổi đúng; "Khác" nhận 20, từ chối 400 và 45-cho-tuần kèm câu báo; hẹp 360dp không tràn; chi tiết có dòng "Kỳ" |
 | Máy ảo | — | tạo hoá đơn tháng, ân hạn 15, trả → kỳ sau đúng ba mốc; đẩy lên và đọc `bill."Period_end"` trên PostgreSQL; kéo về máy khác (tài khoản 13 đang có sẵn trên máy ảo) không xoá `periodEnd` |
 
 Ba loại lỗi `flutter test` không bắt được (tràn bố cục, điều hướng shell, thứ tự luồng) — chỉ loại 1 áp dụng

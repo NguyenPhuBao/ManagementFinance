@@ -171,6 +171,10 @@ là ghi lại để đợt thiết kế sau không phải nghĩ lại.
 
 ## 4. Việc C: tách kỳ tính tiền khỏi hạn trả (ân hạn)
 
+> ✅ **Client đã làm 2026-09-12 tối (schema v21)** — đúng hai việc đi cùng nhau ở §4.4: cột `periodEnd`
+> đồng bộ lên `Period_end`, và kỳ kế tiếp nối từ `periodEnd`. Spec:
+> `docs/superpowers/specs/2026-09-12-bill-an-han-period-end-design.md`. Phần dưới là hiện trạng lúc xin.
+
 ### 4.1. Hiện trạng: không diễn đạt được hoá đơn điện nước thật
 
 Bảng `bill` chỉ có hai mốc: `Start_date` và `Due_date`. Client hiểu chúng là

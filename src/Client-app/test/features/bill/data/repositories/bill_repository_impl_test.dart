@@ -231,7 +231,8 @@ void main() {
       expect(next.icon, 'bolt');
       expect(next.colour, '#FF0000');
       expect(next.startDate, DateTime(2026, 1, 31),
-          reason: 'Kỳ sau bắt đầu ĐÚNG tại ngày đến hạn của kỳ trước, nên các '
+          reason: 'Kỳ sau bắt đầu ĐÚNG tại ngày kết thúc kỳ trước (hàng cũ chưa có '
+              'periodEnd thì là ngày đến hạn — v21), nên các '
               'kỳ nối đuôi nhau không hở. Giữ nguyên startDate của kỳ cũ sẽ '
               'làm mọi kỳ trông như cùng bắt đầu một chỗ.');
       expect(next.startDate!.isBefore(next.dueDate), true,
