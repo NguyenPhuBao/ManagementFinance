@@ -171,8 +171,8 @@ class _BillPageState extends State<BillPage> {
                         tabs: [
                           Tab(
                               text:
-                                  'Cần thanh toán (${sections.unpaid.length})'),
-                          Tab(text: 'Đã thanh toán (${sections.paid.length})'),
+                                  'Cần thanh toán (${sections.chuaDong.length})'),
+                          Tab(text: 'Đã thanh toán (${sections.daDong.length})'),
                         ],
                       ),
                       Expanded(
@@ -180,7 +180,7 @@ class _BillPageState extends State<BillPage> {
                           children: [
                             _danhSach(
                               context,
-                              sections.unpaid,
+                              sections.chuaDong,
                               now: now,
                                                             dateFormatter: dateFormatter,
                               khiTrong: 'Không còn hoá đơn nào phải trả.',
@@ -188,7 +188,7 @@ class _BillPageState extends State<BillPage> {
                             ),
                             _danhSach(
                               context,
-                              sections.paid,
+                              sections.daDong,
                               now: now,
                                                             dateFormatter: dateFormatter,
                               khiTrong: 'Chưa có hoá đơn nào được thanh toán.',

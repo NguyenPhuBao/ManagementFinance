@@ -373,6 +373,7 @@ class _BillDetailPageState extends State<BillDetailPage> {
     final phu = switch (status) {
       BillDisplayStatus.paid =>
         tra == null ? 'Đã trả' : 'Trả ${_ngay.format(tra.date)}',
+      BillDisplayStatus.skipped => 'Bỏ qua',
       BillDisplayStatus.overdue => 'Quá hạn',
       BillDisplayStatus.dueSoon => 'Sắp đến hạn',
       BillDisplayStatus.pending => 'Chưa trả',

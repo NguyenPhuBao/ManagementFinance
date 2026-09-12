@@ -128,9 +128,9 @@ void main() {
             payStatus: 'Payed'),
       ]);
 
-      expect(s.unpaid.map((b) => b.id), ['chua']);
+      expect(s.chuaDong.map((b) => b.id), ['chua']);
       expect(
-        s.paid.map((b) => b.id),
+        s.daDong.map((b) => b.id),
         ['roi'],
         reason: 'Mỗi kỳ của hoá đơn lặp là MỘT hàng mới, nên danh sách phẳng '
             'lẫn cả lịch sử đã trả vào giữa những hoá đơn đang chờ. Hoá đơn '
@@ -145,7 +145,7 @@ void main() {
         _bill(id: 'gan', dueDate: DateTime(2026, 9, 8)),
       ]);
 
-      expect(s.unpaid.map((b) => b.id), ['quahan', 'gan', 'xa'],
+      expect(s.chuaDong.map((b) => b.id), ['quahan', 'gan', 'xa'],
           reason: 'Quá hạn là thứ gấp nhất, phải nằm trên cùng.');
     });
 
@@ -163,7 +163,7 @@ void main() {
             payStatus: 'Payed'),
       ]);
 
-      expect(s.paid.map((b) => b.id), ['moi', 'cu'],
+      expect(s.daDong.map((b) => b.id), ['moi', 'cu'],
           reason: 'Lịch sử đọc ngược: kỳ vừa trả xong là thứ người dùng tìm.');
     });
 
@@ -172,8 +172,8 @@ void main() {
         _bill(id: 'a', dueDate: DateTime(2026, 9, 20), payStatus: 'Payed'),
       ]);
 
-      expect(s.paid.map((b) => b.id), ['a']);
-      expect(s.unpaid, isEmpty);
+      expect(s.daDong.map((b) => b.id), ['a']);
+      expect(s.chuaDong, isEmpty);
     });
 
     test('không đụng danh sách gốc', () {
@@ -277,6 +277,66 @@ void main() {
       ], DateTime(2028, 2, 6));
 
       expect(s.unpaidAmount, 40000);
+    });
+  });
+
+  group('kỳ bị bỏ qua', () {
+    test('đọc ra skipped, KHÔNG phải overdue, kể cả khi đã trễ hạn', () {
+      final s = billDisplayStatusOf(
+        _bill(dueDate: DateTime(2026, 8, 1), payStatus: 'Skipped'),
+        now,
+      );
+
+      expect(s, BillDisplayStatus.skipped,
+          reason: 'Nhánh bỏ qua phải đứng TRƯỚC mọi phép so ngày. Đặt sau thì '
+              'một kỳ người dùng đã chủ động bỏ lại hiện nhãn đỏ "QUÁ HẠN".');
+    });
+
+    test('không phải "đã thanh toán"', () {
+      final s = billDisplayStatusOf(
+        _bill(dueDate: DateTime(2026, 9, 20), payStatus: 'Skipped'),
+        now,
+      );
+
+      expect(s, isNot(BillDisplayStatus.paid),
+          reason: 'Không có khoản chi nào được ghi, nên trang chi tiết không '
+              'được bày nút Hoàn tác thanh toán cho nó.');
+    });
+
+    test('nằm ở nhóm "đã đóng", không nằm ở nhóm "chưa đóng"', () {
+      final s = splitBills([
+        _bill(id: 'chua', dueDate: DateTime(2026, 9, 20)),
+        _bill(id: 'boqua', dueDate: DateTime(2026, 9, 10), payStatus: 'Skipped'),
+      ]);
+
+      expect(s.chuaDong.map((b) => b.id), ['chua'],
+          reason: 'Kỳ bỏ qua không còn là việc phải làm; để nó ở tab thứ nhất '
+              'là bắt người dùng nhìn lại một quyết định họ đã ra.');
+      expect(s.daDong.map((b) => b.id), ['boqua'],
+          reason: 'Tab thứ hai là LỊCH SỬ: mọi kỳ đã đóng sổ, dù bằng cách trả '
+              'hay bằng cách bỏ qua.');
+    });
+
+    test('không vào CẢ HAI vế của thẻ tổng', () {
+      final s = summarizeBills([
+        _bill(id: 'no', dueDate: DateTime(2026, 9, 20), amount: 100000),
+        _bill(
+            id: 'boqua',
+            dueDate: DateTime(2026, 9, 10),
+            amount: 900000,
+            payStatus: 'Skipped'),
+      ], now);
+
+      expect(s.unpaidAmount, 100000,
+          reason: 'Kỳ bỏ qua không phải nợ — cộng vào là thẻ đầu trang báo một '
+              'con số người dùng không nợ ai.');
+      expect(s.unpaidCount, 1, reason: 'Cùng lý do, cho số đếm.');
+      expect(s.paidAmount, 0,
+          reason: 'Cũng KHÔNG phải tiền đã trả. Cộng vào paidAmount là thổi '
+              'phồng thanh tiến độ bằng 900.000 đ chưa bao giờ chi ra — cùng '
+              'loại lỗi với thanh hằng số 0,66 ngày trước, chỉ tinh vi hơn.');
+      expect(s.progress, 0,
+          reason: 'Chưa trả đồng nào thì tiến độ là 0, không phải 90%.');
     });
   });
 }
