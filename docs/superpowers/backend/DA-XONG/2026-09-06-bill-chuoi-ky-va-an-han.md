@@ -9,7 +9,7 @@
 | **A** (mục 2) | Cột nullable `transaction.Idbill` | 🟡 Mở khoá — client đã làm xong (schema v16), cột đang là **cục bộ** | ⛔ Chưa |
 | **B** (mục 3) | Cột nullable `bill.Previous_bill_id` | 🟡 Mở khoá — cùng đợt với A, hai cột là hai đầu của một sợi dây | ⛔ Chưa |
 | **C** (mục 4) | Tách **kỳ tính tiền** khỏi **hạn trả** (ân hạn) | ⚪ Mở đường — client **chưa làm**, cố ý chờ cột | ⛔ Chưa |
-| **D** (mục 6) | Cột `bill.Auto_pay` + chốt chặn trả hai lần ở `/sync/push` | 🟡 Mở khoá — client đã làm xong (schema v17), cột đang là **cục bộ**; chốt chặn phụ thuộc việc A | ⛔ Chưa |
+| **D** (mục 6) | Cột `bill.Auto_pay` + chốt chặn trả hai lần ở `/sync/push` | 🟡 Mở khoá — client đã làm xong (schema v17), cột đang là **cục bộ**; chốt chặn phụ thuộc việc A | ⚠️ Nửa (2026-09-12): chốt sai chỗ ở `upsertBill` đã bỏ; chốt ở giao dịch chưa có |
 
 **A và B nên đi cùng nhau.** Chúng phục vụ đúng một tính năng (hoàn tác thanh
 toán) và cùng là cột nullable, không đụng dữ liệu cũ. Gộp vào đợt migration
@@ -347,6 +347,21 @@ qua kỳ này"** cho kỳ chưa trả:
 Client **cố ý chưa làm** cho tới khi backend xác nhận: hàng `Skipped` đẩy lên
 `/sync/push` mà backend từ chối (hoặc âm thầm ép về `Pending`) thì hoá đơn
 kẹt vĩnh viễn trong hàng đợi đẩy — đúng vòng lặp đã gặp ngày 2026-09-04.
+
+> ✅ **Đã xong cả hai đầu.** Backend nhận `'Skipped'` từ 2026-09-11
+> (`chk_bill_pay_status` + `sync.validation.js:169`). **Client làm ngày
+> 2026-09-12** và đã kiểm đầu-cuối trên máy ảo kèm truy vấn PostgreSQL: hàng
+> `Skipped` lên server đúng nguyên văn, kỳ kế tiếp mang `Previous_bill_id` trỏ
+> về nó, hoàn tác thì server về `Pending` và kỳ kế tiếp được đặt `Delete_at`.
+> Bàn giao: mục **6.7** `docs/bill/BILL_DOCUMENTATION.md`; spec:
+> `docs/superpowers/specs/2026-09-12-bo-qua-ky-hoa-don-design.md`.
+>
+> ⚠️ Mô tả ở 7.2 trên **lệch một chi tiết** so với bản đã làm: nó viết
+> "`_autoPayCandidates` và `markOverdue` chỉ nhìn `Pending`" như thể không phải
+> đụng gì. Thực tế `denLuotTuTra` đọc `isPaid || payStatus == 'Payed'` chứ
+> không đọc `Pending`, nên **nó vẫn tự trừ tiền ví** cho kỳ bỏ qua cho tới khi
+> được sửa. `markOverdue` thì đúng là an toàn sẵn — nhưng do may, không do
+> thiết kế.
 
 ### 7.3. Đề xuất
 

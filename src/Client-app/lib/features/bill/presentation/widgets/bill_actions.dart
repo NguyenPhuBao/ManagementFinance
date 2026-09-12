@@ -89,6 +89,66 @@ void hoiHoanTacHoaDon(BuildContext context, Bill bill) {
   );
 }
 
+/// Hỏi trước khi bỏ qua: thao tác này đóng kỳ mà không trả đồng nào, và với
+/// hoá đơn lặp thì còn tạo kỳ kế tiếp — nói rõ cả ba trước khi làm.
+///
+/// Câu chữ đi theo `isRecurrence`: nói "kỳ kế tiếp vẫn được tạo" cho một hoá
+/// đơn không lặp là hứa một thứ không xảy ra.
+void hoiBoQuaKyHoaDon(BuildContext context, Bill bill) {
+  showDialog(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Bỏ qua kỳ này'),
+      content: Text(
+        'Kỳ đến hạn của "${bill.name}" sẽ được đánh dấu là bỏ qua: '
+        'không trừ tiền ví, không ghi khoản chi nào'
+        '${bill.isRecurrence ? ', và kỳ kế tiếp vẫn được tạo' : ''}.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: const Text('Huỷ'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            Navigator.pop(ctx);
+            context.read<BillBloc>().add(SkipBillEvent(billId: bill.id));
+          },
+          child: const Text('Bỏ qua'),
+        ),
+      ],
+    ),
+  );
+}
+
+/// Hỏi trước khi hoàn tác việc bỏ qua. Không có bước hoàn tiền nào để nói —
+/// lần bỏ qua chưa từng trừ tiền.
+void hoiHoanTacBoQua(BuildContext context, Bill bill) {
+  showDialog(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Hoàn tác bỏ qua'),
+      content: Text(
+        'Hoá đơn "${bill.name}" quay lại trạng thái chưa thanh toán'
+        '${bill.isRecurrence ? ', và kỳ kế tiếp đã tạo sẽ bị gỡ' : ''}.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: const Text('Huỷ'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            Navigator.pop(ctx);
+            context.read<BillBloc>().add(UndoSkipEvent(billId: bill.id));
+          },
+          child: const Text('Hoàn tác'),
+        ),
+      ],
+    ),
+  );
+}
+
 void hoiXoaHoaDon(BuildContext context, String billId) {
   showDialog(
     context: context,

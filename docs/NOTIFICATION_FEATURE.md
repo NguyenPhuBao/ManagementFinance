@@ -289,8 +289,8 @@ không phải danh sách ứng viên) là thứ được đẩy sang `OsNotifier
 
 `start()` **huỷ cả hai subscription cũ trước khi tạo mới**, và `stop()` cắt cả
 hai. Được gọi ở `auth_bloc.dart` cạnh `SyncEngine.start()`; `stop()` ở hai chỗ
-đăng xuất / phiên chết. **Cố ý KHÔNG gắn ở `home_page.dart`** — chỗ đó gọi
-`SyncEngine.start()` ngay trong `build()`.
+đăng xuất / phiên chết. **Cố ý KHÔNG gắn ở `home_page.dart`** — chỗ đó từng gọi
+`SyncEngine.start()` ngay trong `build()` (✅ gỡ 2026-09-12, bẫy 7.6).
 
 ⚠️ Lượt quét mở màn được **`await`** bên trong `start()`, và `auth_bloc.dart`
 await `start()`. Nghĩa là **hai bộ tự chuyển tiền nay chạy ngay khi đăng nhập**
@@ -576,6 +576,19 @@ vẽ".
 - **`BillDao.markOverdue`** ghi `payStatus = 'Overdue'` — giá trị chưa bao giờ
   được ghi trong toàn bộ `lib/`. **Có điều kiện `payStatus = 'Pending'`**: xem
   bẫy 7.4.
+
+⚠️ **Cập nhật 2026-09-12 — trạng thái thứ tư `'Skipped'` (bỏ qua kỳ).** Ba chỗ
+của phần thông báo phải **không** đụng tới kỳ đã bỏ qua, và cả ba nay đi qua
+**một** vị từ `conPhaiTra()` ở `features/bill/domain/bill_pay_status.dart` thay
+vì chép tay `isPaid || payStatus == 'Payed'`:
+
+| Chỗ | Hỏng gì nếu để lọt |
+|---|---|
+| `BillDao.getUpcoming` (SQL, thêm `payStatus != 'Skipped'`) | nuôi cả bộ quét lẫn bộ đặt lịch — lọt một chỗ là hỏng cả hai |
+| `notification_rules.dart` `_billCandidates` | nhắc trả một kỳ người dùng vừa chủ động bỏ |
+| `reminder_scheduler.dart` | đặt lịch **AlarmManager**: thông báo nổ trên màn hình khoá, và lịch ấy **không nằm trong SQLite** nên dọn dữ liệu không gỡ được |
+
+Mỗi chỗ một ca test; xem mục **6.7** `docs/bill/BILL_DOCUMENTATION.md`.
 
 ---
 
@@ -1006,14 +1019,24 @@ nào báo ra**. Người dùng đổi múi giờ thì lịch cũ neo múi giờ 
 kiện là bản ghi luôn ở trạng thái `pending` — đẩy lên rồi lại `pending` — một
 vòng lặp đẩy vô tận không có lỗi nào báo ra.
 
+⚠️ Từ 2026-09-12 điều kiện ấy còn gánh thêm một việc: nó là thứ giữ kỳ
+**`'Skipped'`** nằm ngoài **cả hai** chiều của `markOverdue` (chiều đi chỉ nhận
+`'Pending'`, chiều về chỉ nhận `'Overdue'`). Một kỳ bỏ qua không phải nợ nên
+không thể quá hạn, mà cũng không được kéo về `'Pending'`. Có ca test canh cả
+hai chiều, và canh luôn `syncStatus` **không** bị đặt lại.
+
 **7.5 Giới hạn 64 lịch chờ trên iOS.** Vượt thì iOS **âm thầm** giữ 64 cái gần
 nhất và bỏ phần còn lại — không lỗi, không log.
 
-**7.6 `home_page.dart` gọi `SyncEngine.start()` trong `build()`.**
-`SyncEngine` chịu được vì `start()` gần như luỹ đẳng. Chép mẫu đó cho
-`NotificationScanner` thì mỗi lần Home rebuild là thêm một listener → n thông
-báo cho một sự kiện. Đã chặn hai lớp, nhưng đây là chỗ người bảo trì sau sẽ vô
-tình phá.
+**7.6 `home_page.dart` gọi `SyncEngine.start()` trong `build()`** — ✅ **gỡ
+2026-09-12.** Câu cũ ở đây ("`SyncEngine` chịu được vì `start()` gần như luỹ
+đẳng") **sai**: `start()` xoá giãn cách lùi (`_resetBackoff`), huỷ rồi dựng lại bộ
+nghe kết nối và timer định kỳ, và chạy ngay một `syncNow()` — mỗi lần Home
+rebuild (mỗi `AuthSuccess` re-emit, mỗi lần quay về tab) là một chu kỳ đồng bộ
+thừa và bản ghi kẹt lỗi vĩnh viễn được gửi lại ngay. `AuthBloc` đã `start()` đúng
+một lần khi mở phiên, nên lời gọi ở Home là bản trùng thuần tuý. Nay
+`test/core/sync/sync_engine_start_owner_test.dart` quét `lib/`: chỉ `auth_bloc.dart`
+được gọi `.start(idaccount:)` — chép mẫu cũ cho bất kỳ dịch vụ nào là test đỏ.
 
 **7.7 Import `flutter_local_notifications` lọt ra ngoài
 `os_notifier_native.dart`** → gãy `flutter build web`, và **`flutter test` vẫn

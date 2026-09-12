@@ -9,21 +9,19 @@ library;
 
 import '../../../core/database/app_database.dart';
 import '../../../core/notification/notification_rules.dart';
+import 'bill_pay_status.dart';
 
-/// Bốn trạng thái một hoá đơn có thể mang trên danh sách.
+/// Năm trạng thái một hoá đơn có thể mang trên danh sách.
 ///
-/// Bản dựng hình Stitch chỉ vẽ ba (*Sắp đến hạn* / *Chưa thanh toán* / *ĐÃ
-/// THANH TOÁN*) vì lúc ấy chưa có trạng thái quá hạn ở đâu. Cột `payStatus`
-/// thì có `'Overdue'` từ 2026-09-04, nên nhãn thứ tư là để nói đúng nó.
-enum BillDisplayStatus { paid, overdue, dueSoon, pending }
-
-/// Đã thanh toán chưa — đọc **cả hai** cột.
+/// Bản dựng hình Stitch ban đầu chỉ vẽ ba (*Sắp đến hạn* / *Chưa thanh toán* /
+/// *ĐÃ THANH TOÁN*) vì lúc ấy chưa có trạng thái quá hạn ở đâu. Nhãn thứ tư là
+/// `overdue`, để nói đúng `payStatus = 'Overdue'` có từ 2026-09-04. Nhãn thứ
+/// năm là `skipped` (2026-09-12) — kỳ người dùng chủ động bỏ qua: không trả
+/// tiền, và **không phải nợ**.
 ///
-/// `markPaid()` đặt cả hai, nhưng hàng do bản client cũ ghi có thể lệch:
-/// mang `payStatus = 'Payed'` trong khi `isPaid` còn false. `getUpcoming` đã
-/// lọc cả hai từ 2026-09-04; danh sách thì tới 06/09 mới theo kịp, nên trước
-/// đó nó bày nút "Thanh toán" cho hoá đơn đã trả và cộng luôn vào tổng nợ.
-bool _daTra(Bill bill) => bill.isPaid || bill.payStatus == 'Payed';
+/// Phép đọc "đã trả chưa" nay nằm ở `bill_pay_status.dart`, một chỗ duy nhất
+/// cho cả app; hàm `_daTra` cũ của tệp này là một trong mười bản chép tay.
+enum BillDisplayStatus { paid, skipped, overdue, dueSoon, pending }
 
 DateTime _dauNgay(DateTime t) => DateTime(t.year, t.month, t.day);
 
@@ -36,7 +34,11 @@ DateTime _dauNgay(DateTime t) => DateTime(t.year, t.month, t.day);
 /// luật thông báo. Hai mốc riêng thì dải nhắc và nhãn trên danh sách nói hai
 /// chuyện khác nhau về cùng một hoá đơn.
 BillDisplayStatus billDisplayStatusOf(Bill bill, DateTime now) {
-  if (_daTra(bill)) return BillDisplayStatus.paid;
+  if (daCoKhoanChi(bill)) return BillDisplayStatus.paid;
+  // TRƯỚC mọi phép so ngày: một kỳ bỏ qua đã trễ hạn vẫn là kỳ bỏ qua, không
+  // phải kỳ quá hạn. Đặt nhánh này sau là hiện nhãn đỏ "QUÁ HẠN" cho một
+  // quyết định người dùng đã chủ động ra.
+  if (daBoQua(bill)) return BillDisplayStatus.skipped;
 
   final homNay = _dauNgay(now);
   final han = _dauNgay(bill.dueDate);
@@ -55,12 +57,16 @@ BillDisplayStatus billDisplayStatusOf(Bill bill, DateTime now) {
 /// Hai nhóm của danh sách hoá đơn, tương ứng hai tab.
 class BillSections {
   /// Còn phải trả — hạn gần nhất lên đầu, nên hoá đơn quá hạn nằm trên cùng.
-  final List<Bill> unpaid;
+  final List<Bill> chuaDong;
 
-  /// Lịch sử đã trả — kỳ mới nhất lên đầu.
-  final List<Bill> paid;
+  /// Đã đóng sổ: kỳ đã trả **và** kỳ đã bỏ qua. Kỳ mới nhất lên đầu.
+  ///
+  /// Tên trường cố ý **không** phải `paid`: từ 2026-09-12 nhóm này chứa cả kỳ
+  /// chưa hề được trả đồng nào. Tab hiển thị nó cũng đổi tên theo, từ "Đã
+  /// thanh toán" sang "Lịch sử", vì cùng lý do.
+  final List<Bill> daDong;
 
-  const BillSections({this.unpaid = const [], this.paid = const []});
+  const BillSections({this.chuaDong = const [], this.daDong = const []});
 }
 
 /// Chia [bills] thành hai nhóm cho hai tab.
@@ -73,14 +79,14 @@ class BillSections {
 /// **Không sắp xếp tại chỗ**: danh sách đến từ stream của bloc và nhiều nơi
 /// khác đang đọc chung nó.
 BillSections splitBills(List<Bill> bills) {
-  final unpaid = <Bill>[];
-  final paid = <Bill>[];
+  final chuaDong = <Bill>[];
+  final daDong = <Bill>[];
   for (final b in bills) {
-    (_daTra(b) ? paid : unpaid).add(b);
+    (conPhaiTra(b) ? chuaDong : daDong).add(b);
   }
-  unpaid.sort((a, b) => a.dueDate.compareTo(b.dueDate));
-  paid.sort((a, b) => b.dueDate.compareTo(a.dueDate));
-  return BillSections(unpaid: unpaid, paid: paid);
+  chuaDong.sort((a, b) => a.dueDate.compareTo(b.dueDate));
+  daDong.sort((a, b) => b.dueDate.compareTo(a.dueDate));
+  return BillSections(chuaDong: chuaDong, daDong: daDong);
 }
 
 /// Số liệu thẻ tổng đầu trang hoá đơn, tính cho **kỳ này**.
@@ -133,7 +139,11 @@ BillSummary summarizeBills(List<Bill> bills, DateTime now) {
 
   for (final b in bills) {
     if (!b.dueDate.isBefore(cuoiKy)) continue;
-    if (_daTra(b)) {
+    // Kỳ bỏ qua không vào vế nào: không phải nợ, cũng không phải tiền đã chi.
+    // Cộng vào `paidAmount` là thổi phồng thanh tiến độ bằng tiền chưa từng
+    // chi ra — cùng loại lỗi với thanh hằng số 0,66, chỉ tinh vi hơn.
+    if (daBoQua(b)) continue;
+    if (daCoKhoanChi(b)) {
       paidAmount += b.amount;
       paidCount++;
     } else {

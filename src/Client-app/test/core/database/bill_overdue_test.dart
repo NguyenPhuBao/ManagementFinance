@@ -136,4 +136,25 @@ void main() {
     expect(await trangThai('a'), 'Pending');
     expect(await trangThai('b'), 'Overdue');
   });
+
+  test('KHÔNG đụng kỳ đã Skipped, ở CẢ HAI chiều', () async {
+    await themHoaDon(
+        id: 'bo-qua-tre', dueDate: DateTime(2026, 9, 1), payStatus: 'Skipped');
+    await themHoaDon(
+        id: 'bo-qua-som', dueDate: DateTime(2026, 9, 30), payStatus: 'Skipped');
+
+    final doi = await db.billDao.markOverdue(10, now);
+
+    expect(doi, 0,
+        reason: 'Chiều đi chỉ nhận Pending, chiều về chỉ nhận Overdue — kỳ bỏ '
+            'qua nằm ngoài cả hai. Một kỳ không phải nợ thì không thể quá hạn.');
+    for (final id in ['bo-qua-tre', 'bo-qua-som']) {
+      expect(await trangThai(id), 'Skipped',
+          reason: 'Đổi trạng thái ở đây là xoá mất quyết định của người dùng, '
+              'và vì cột này CÓ đi đồng bộ nên nó lan sang mọi máy.');
+      expect((await db.billDao.getById(id))!.syncStatus, 'synced',
+          reason: 'Đặt lại pending vô cớ là vòng lặp đẩy vô tận — đẩy lên rồi '
+              'lại pending — mà không lỗi nào báo ra.');
+    }
+  });
 }

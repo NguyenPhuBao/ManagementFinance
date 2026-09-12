@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/auth/buoc_dang_xuat.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../bloc/auth_bloc.dart';
+import '../widgets/hop_thoai_bi_day_ra.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -16,6 +18,36 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
+
+  /// Hộp thoại "bị đẩy ra" đã hiện trong lần dựng trang này chưa (§5.1).
+  bool _daHienHopThoai = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // ⚠️ `BlocListener` bên dưới là KHÔNG ĐỦ. `AppRouter` dùng
+    // `refreshListenable: GoRouterRefreshStream(authBloc.stream)`, nên thứ tự
+    // thật là: bloc `emit` → router chuyển về `/login` → trang này MỚI được
+    // dựng. Lần đổi state mang `thongBao` đã trôi qua trước khi listener kịp
+    // đăng ký, và nó chỉ nghe những lần đổi SAU đó.
+    //
+    // Đọc thẳng state hiện có, sau khung hình đầu tiên (trước đó chưa có
+    // Navigator để mở hộp thoại lên).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final state = context.read<AuthBloc>().state;
+      if (state is AuthUnauthenticated && state.thongBao != null) {
+        _hienHopThoai(state.thongBao!);
+      }
+    });
+  }
+
+  /// Giữ `BlocListener` cho ca người dùng đang đứng sẵn ở màn Đăng nhập khi
+  /// thông báo tới (mở app lên đã ở đây, hoặc vừa đăng xuất xong).
+  void _hienHopThoai(ThongBaoBuocDangXuat thongBao) {
+    if (_daHienHopThoai || !mounted) return;
+    _daHienHopThoai = true;
+    hienHopThoaiBiDayRa(context, thongBao);
+  }
 
   void _handleLogin() {
     final username = _usernameController.text.trim();
@@ -41,6 +73,9 @@ class _LoginPageState extends State<LoginPage> {
               backgroundColor: Colors.red.shade700,
             ),
           );
+        }
+        if (state is AuthUnauthenticated && state.thongBao != null) {
+          _hienHopThoai(state.thongBao!);
         }
         if (mounted) {
           setState(() => _isLoading = state is AuthLoading);

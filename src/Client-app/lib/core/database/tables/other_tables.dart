@@ -148,10 +148,11 @@ class Bills extends Table {
   /// generatedFromBillId: hoá đơn kỳ TRƯỚC, khi hàng này được sinh ra lúc trả
   /// hoá đơn ấy. NULL với mọi hoá đơn do người dùng tự tạo.
   ///
-  /// ⚠️ **Cột CỤC BỘ — không nằm trong hợp đồng đồng bộ**, như
-  /// `transactions.billId` (còn `transactions.goalId` thì đồng bộ từ 2026-09-07).
-  /// Server đã có `bill.Previous_bill_id` (khoá `previous_bill_id`, đọc mã
-  /// 2026-09-11); client chưa gửi và chưa đọc.
+  /// ✅ **Đi qua đồng bộ từ 2026-09-12** — khoá payload `previous_bill_id`,
+  /// ánh xạ tới `bill.Previous_bill_id`. Cùng đợt với `anchorDay` và
+  /// `transactions.billId`. Nhánh kéo về dùng `Value.absent()` khi server im
+  /// lặng: hàng đã nằm sẵn trên server mang NULL cho tới khi client đẩy lại
+  /// từng hàng, nên đọc thẳng sẽ cắt đứt chuỗi kỳ ngay chu kỳ pull đầu tiên.
   ///
   /// Vì sao cần: **hoàn tác thanh toán** phải gỡ luôn kỳ kế tiếp mà lần trả đã
   /// sinh ra, nếu không người dùng còn lại hai kỳ cùng mở và trả lại lần nữa
@@ -162,8 +163,13 @@ class Bills extends Table {
   /// autoPayEnabled: app tự thanh toán hoá đơn này khi tới ngày đến hạn, trừ
   /// từ chính [walletId] của nó (DB v17, 2026-09-06).
   ///
-  /// ⚠️ **Cột CỤC BỘ — không nằm trong hợp đồng đồng bộ**, cùng khuôn với
-  /// `generatedFromBillId` (ba cột trích tự động của `Goals` từng cùng khuôn,
+  /// ⚠️ **Cột CỤC BỘ — không nằm trong hợp đồng đồng bộ.** Từ 2026-09-12 nó là
+  /// cột cục bộ **duy nhất** còn lại của bảng này: `generatedFromBillId` và
+  /// `anchorDay` đã mở, còn cột này chờ backend đặt chốt chống trả hai lần ở
+  /// `upsertTransaction` (CAN-LAM 17 B bước 2). Bản `main` @ `cbbeeb4` (gộp
+  /// 2026-09-12) đã **bỏ** chốt đặt nhầm ở `upsertBill` nên hoàn tác lên server
+  /// được, nhưng chưa đặt chốt mới — server hiện **không** chặn khoản chi thứ hai
+  /// cùng `Idbill` ở đâu cả. (Ba cột trích tự động của `Goals` từng cùng khuôn,
   /// nhưng đã đồng bộ từ 2026-09-07 — G21). Hệ quả chấp
   /// nhận có chủ ý: cấu hình không theo người dùng sang máy khác — và đó cũng
   /// là lý do KHÔNG mượn một cột đang có: hai máy cùng bật, cùng offline, cùng
@@ -172,9 +178,9 @@ class Bills extends Table {
   /// `docs/superpowers/backend/DA-XONG/2026-09-06-bill-chuoi-ky-va-an-han.md`.
   /// Server nay có `bill.Auto_pay` (khoá `auto_pay`, cả push lẫn pull — đọc mã
   /// 2026-09-11), nhưng client chưa gửi/đọc nên cột này vẫn cục bộ. Chốt chống
-  /// trả hai lần phía server chưa dùng được: bản `7675b35` đặt nó ở `upsertBill`
-  /// và chặn cả hoàn tác, còn `upsertTransaction` không kiểm `Idbill` (CAN-LAM
-  /// mục 17 B).
+  /// trả hai lần phía server **chưa có**: bản `7675b35` đặt nó ở `upsertBill` và
+  /// chặn cả hoàn tác; bản `cbbeeb4` (2026-09-12) bỏ chốt ấy đi mà chưa đặt lại ở
+  /// `upsertTransaction` — nơi kiểm `Idbill` (CAN-LAM mục 17 B bước 2).
   ///
   /// Không có cột "lần chạy cuối" như mục tiêu: mỗi kỳ hoá đơn là **một hàng
   /// riêng**, nên cờ đã trả (`isPaid`/`payStatus`) chính là chốt chống trả hai
@@ -194,13 +200,15 @@ class Bills extends Table {
   /// Lưu ngày gốc là thay một phép đoán bằng một sự kiện. Xem
   /// `core/bill/bill_recurrence.dart`.
   ///
-  /// ⚠️ **Cột CỤC BỘ — không nằm trong hợp đồng đồng bộ**, cùng khuôn với
-  /// `autoPayEnabled` và `generatedFromBillId`. Hàng kéo từ server luôn để
-  /// trống, và khi trống thì `nextBillDueDate` neo vào ngày của chính mốc hiện
-  /// tại — tức chuỗi tạo trên máy khác vẫn có thể tụt dần. Tài liệu xin cột
-  /// phía backend (đã đóng): `docs/superpowers/backend/DA-XONG/BILL_ANCHOR_DAY.md`
-  /// — server nay có `bill.Anchor_day` (khoá `anchor_day`, đọc mã 2026-09-11);
-  /// việc còn lại là client gửi và đọc nó.
+  /// ✅ **Đi qua đồng bộ từ 2026-09-12** — khoá payload `anchor_day`, ánh xạ
+  /// tới `bill.Anchor_day`. Trước đó hàng kéo từ server luôn để trống, và khi
+  /// trống thì `nextBillDueDate` neo vào ngày của chính mốc hiện tại — tức
+  /// chuỗi tạo trên máy khác tụt dần. Tài liệu xin cột phía backend (đã đóng):
+  /// `docs/superpowers/backend/DA-XONG/BILL_ANCHOR_DAY.md`.
+  ///
+  /// ⚠️ `autoPayEnabled` thì **vẫn** là cột cục bộ — nó chờ backend đặt chốt
+  /// chống trả hai lần ở `upsertTransaction` (CAN-LAM 17 B bước 2), không đi
+  /// cùng đợt này.
   ///
   /// NULL với mọi hoá đơn tạo trước v18; migration suy nó từ ngày đến hạn đang
   /// lưu để **không đổi hạn** của hoá đơn cũ.

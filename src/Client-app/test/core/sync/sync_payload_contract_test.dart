@@ -83,6 +83,13 @@ void main() {
   const walletId = '11111111-1111-4111-8111-111111111111';
   const categoryId = '22222222-2222-4222-8222-222222222222';
   const goalId = '66666666-6666-4666-8666-666666666666';
+  /// Kỳ TRƯỚC của hoá đơn lặp — `bills.generatedFromBillId` trỏ về đây.
+  /// ⚠️ Cố ý KHÁC mọi id giao dịch trong fixture: `77777777-…` đã là một khoản
+  /// chuyển của bản app cũ.
+  const kyTruocId = '88888888-8888-4888-8888-888888888888';
+  /// Hoá đơn mà khoản chi trong fixture là khoản trả cho — cùng id với
+  /// hàng `bills` dựng bên dưới.
+  const billId = '55555555-5555-4555-8555-555555555555';
 
   late AppDatabase db;
   late _Client client;
@@ -146,6 +153,10 @@ void main() {
         // nhánh so TÊN — nhánh mang đúng khuyết điểm mà cột này sinh ra để
         // chữa ("Mua" nuốt lịch sử của "Mua xe").
         goalId: const Value(goalId),
+        // Khoản trả hoá đơn: nối tới hoá đơn bằng ID. Trước 2026-09-12 cột này
+        // là cục bộ nên hàng kéo về từ server luôn trống, và `undoPayment`
+        // phải TỪ CHỐI thay vì đoán.
+        billId: const Value(billId),
         syncStatus: const Value('pending'),
         updatedAt: Value(now),
       ));
@@ -211,6 +222,18 @@ void main() {
         name: const Value('Tiền điện'),
         amount: const Value(300000),
         dueDate: Value(now),
+        // Kỳ thứ hai của một hoá đơn lặp: trỏ về kỳ trước và giữ ngày gốc.
+        // Cùng lý do như `autoDepositAmount` của mục tiêu ngay dưới — phải là
+        // giá trị THẬT, nếu không test không phân biệt được "có gửi" với "gửi
+        // nhầm tên".
+        generatedFromBillId: const Value(kyTruocId),
+        anchorDay: const Value(28),
+        // Cố ý dùng giá trị thứ tư 'Skipped' (2026-09-12) chứ không phải
+        // 'Pending' mặc định: đây là giá trị DUY NHẤT trong bộ mà việc chuẩn
+        // hoá nhầm sẽ hỏng im lặng — client ghi nó rồi server lưu 'Pending'
+        // thì quyết định bỏ qua kỳ của người dùng chết ngay tại máy này, và
+        // không có lỗi nào báo ra. Ba giá trị kia backend đã nhận từ lâu.
+        payStatus: const Value('Skipped'),
         syncStatus: const Value('pending'),
         updatedAt: Value(now),
       ));
@@ -363,8 +386,27 @@ void main() {
           // cấm rò rỉ bên dưới. Hai cái tên khác nhau ở đúng một chỗ này, và
           // gửi nhầm tên thì backend bỏ qua trong im lặng.
           'idgoal',
+          // Khoá nối tới hoá đơn, mở 2026-09-12. Tên payload là `idbill` —
+          // giống `idgoal` ngay trên, KHÔNG phải `bill_id` (tên cột Drift cục
+          // bộ, vẫn nằm trong danh sách cấm rò rỉ bên dưới).
+          //
+          // Đã đọc `sync.repository.js` để chắc: nhánh giao dịch đổi tên
+          // `billId`/`bill_id` → `idbill` (dòng 39-40), rồi `create`/`update`
+          // CHỌN TRƯỜNG TƯỜNG MINH bằng `mapped.idbill` (dòng 304, 326). Nên
+          // gửi thẳng `idbill` cũng tới nơi, vì nó đã đúng tên đích.
+          'idbill',
         },
       );
+    });
+
+    test('payload giao dịch mang idbill của khoản trả hoá đơn', () {
+      final p = payloadOf('transaction');
+
+      expect(p['idbill'], billId,
+          reason: 'Thiếu giá trị này thì hàng lên server mang Idbill = NULL, và '
+              'máy khác không lần được từ hoá đơn ngược về đúng khoản chi nó '
+              'sinh ra — tức HOÀN TÁC thanh toán phải từ chối, đúng giới hạn mà '
+              'cột này sinh ra để gỡ.');
     });
 
     test('mục tiêu phải được đẩy TRƯỚC giao dịch nạp vào nó', () {
@@ -384,6 +426,26 @@ void main() {
             'người dùng tạo mục tiêu rồi nạp tiền trong lúc offline, cả hai '
             'cùng nằm chờ trong một lô. Cùng lý do khiến categories phải đứng '
             'trước transactions.',
+      );
+    });
+    test('hoá đơn phải được đẩy TRƯỚC giao dịch trả cho nó', () {
+      final thuTu = client.adapter.pushed
+          .map((op) => op['entity'].toString())
+          .toList();
+      final viTriBill = thuTu.indexOf('bill');
+      final viTriTran = thuTu.indexOf('transaction');
+      expect(viTriBill, isNonNegative);
+      expect(viTriTran, isNonNegative);
+      expect(
+        viTriBill,
+        lessThan(viTriTran),
+        reason: 'Từ 2026-09-12 payload giao dịch mang khoá nối tới hoá đơn, và '
+            'phía server cột ấy có khoá ngoại `fk_transaction_bill`. Đẩy giao '
+            'dịch trước hoá đơn thì khoản trả bị từ chối vì hoá đơn chưa tồn '
+            'tại, rồi KẸT hàng đợi đẩy và thử lại mãi — im lặng. Đúng ca người '
+            'dùng tạo hoá đơn rồi trả luôn trong lúc offline, cả hai cùng nằm '
+            'chờ trong một lô. Cùng lý do đã khiến mục tiêu phải đứng trước '
+            'giao dịch hồi 2026-09-07.',
       );
     });
     test('payload giao dịch mang idgoal của khoản nạp mục tiêu', () {
@@ -502,7 +564,41 @@ void main() {
           'due_date', 'pay_status', 'recurrence', 'time_recurrence',
           'time_notification', 'icon', 'color', 'note', 'is_deleted',
           'update_at', 'idaccount',
+          // Mở 2026-09-12. Backend nhận `previousBillId`/`previous_bill_id` và
+          // `anchorDay`/`anchor_day` (`sync.repository.js:99-106`); client gửi
+          // dạng snake_case cho khớp phần còn lại của payload này.
+          //
+          // ⚠️ `auto_pay` CHƯA mở — chờ backend sửa CAN-LAM 17 B (chốt chống
+          // trả hai lần đặt nhầm ở `upsertBill`), và `period_end` thì không
+          // phải trường đồng bộ mà là một tính năng riêng (cột cục bộ mới, ô
+          // nhập, và đổi phép tính kỳ kế tiếp).
+          'previous_bill_id', 'anchor_day',
         },
+      );
+    });
+
+    test('hoá đơn lặp đẩy đúng hoá đơn cha và ngày gốc', () {
+      final p = payloadOf('bill');
+
+      expect(p['previous_bill_id'], kyTruocId,
+          reason: 'Thiếu giá trị này thì máy khác nhận một kỳ mồ côi: không lần '
+              'ngược được về kỳ trước, nên chuỗi kỳ đứt ở ranh giới một máy.');
+      expect(p['anchor_day'], 28,
+          reason: 'Ngày gốc phải đi cùng. Thiếu nó, máy khác suy ngày đến hạn '
+              'từ chính ngày đến hạn hiện tại — tức tái sinh quy tắc "đoán cuối '
+              'tháng" đã bỏ ngày 2026-09-08, và hoá đơn ngày 28 trôi dần.');
+    });
+
+    test("payload hoá đơn mang NGUYÊN VĂN chuỗi 'Skipped'", () {
+      expect(
+        payloadOf('bill')['pay_status'],
+        'Skipped',
+        reason: 'PostgreSQL nhận đúng bốn chuỗi (chk_bill_pay_status, đo '
+            '2026-09-12) và Skipped là một trong đó; cột Pay_status là '
+            'varchar(7), vừa khít 7 ký tự. Chuẩn hoá nhầm về Pending ở bất kỳ '
+            'khâu nào — client dựng payload, SyncPayloadNormalizer, hay '
+            'mapEntityFields phía backend — đều làm quyết định bỏ qua kỳ chết '
+            'tại máy này mà không lỗi nào báo ra (quy tắc 4, CLAUDE.md).',
       );
     });
 
@@ -941,6 +1037,7 @@ void main() {
             'name': 'Tiền mạng',
             'amount': 250000,
             'due_date': '2026-10-01T00:00:00.000Z',
+            'pay_status': 'Skipped',
             // chuỗi viết hoa chữ đầu, dạng `Status_complete` của mục tiêu
             'recurrence': 'True',
             'time_recurrence': 'Month',
@@ -968,6 +1065,15 @@ void main() {
       expect(bill.isRecurrence, true,
           reason: 'Hoá đơn còn nặng hơn: `recurrence` (cột chuỗi cũ) được SUY '
               'RA từ cờ này, nên đọc sai một chỗ làm hỏng luôn cột thứ hai.');
+      expect(bill.payStatus, 'Skipped',
+          reason: 'Kéo về phải giữ nguyên giá trị thứ tư. Rơi về Pending là kỳ '
+              'người dùng đã bỏ qua trên máy khác lại hiện ra như một khoản '
+              'nợ, và bộ quét thông báo bắt đầu giục trả nó.');
+      expect(bill.isPaid, false,
+          reason: '`isPaid` là cột CỤC BỘ, suy ra từ pay_status. Suy thành '
+              'true là kỳ bỏ qua đeo nhãn "ĐÃ THANH TOÁN" trên mọi máy khác, '
+              'và trang chi tiết bày nút Hoàn tác thanh toán cho một khoản chi '
+              'không tồn tại.');
     });
   });
 

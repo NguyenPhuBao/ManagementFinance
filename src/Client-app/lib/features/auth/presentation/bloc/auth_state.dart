@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../../../core/auth/buoc_dang_xuat.dart';
 import '../../data/models/user_model.dart';
 
 abstract class AuthState extends Equatable {
@@ -30,7 +31,21 @@ class AuthError extends AuthState {
   List<Object?> get props => [message];
 }
 
-class AuthUnauthenticated extends AuthState {}
+class AuthUnauthenticated extends AuthState {
+  const AuthUnauthenticated({this.thongBao});
+
+  /// Khác `null` khi người dùng bị **đẩy ra** chứ không tự đăng xuất — màn Đăng
+  /// nhập dựng hộp thoại từ đây (spec cưỡng chế đăng xuất §3.7).
+  ///
+  /// ⚠️ Phải nằm trong [props]: handler của Bloc chạy đồng thời, nên
+  /// `_onAuthCheckRequested` có thể đã phát một `AuthUnauthenticated()` trơn
+  /// trước. Không có nó trong props thì hai state bằng nhau, Bloc bỏ lần phát
+  /// sau, và hộp thoại không bao giờ hiện.
+  final ThongBaoBuocDangXuat? thongBao;
+
+  @override
+  List<Object?> get props => [thongBao];
+}
 
 // ─── OTP Register State ───────────────────────────────────────────────────────
 

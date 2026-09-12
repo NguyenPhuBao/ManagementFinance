@@ -125,7 +125,7 @@ Lớp kiểm tra so với CHECK trên CSDL dev:
 | `transaction.type` (dòng 119) | `Transaction, Transfer, Expense, Income, Debt, Loan` | `chk_transaction_type`: `Transaction, Transfer` | Lỏng hơn: vỡ `23514` → `CONSTRAINT_VIOLATION` từng thao tác. Vô hại, nhưng thông báo ở dòng 121 liệt kê cả giá trị CSDL từ chối |
 | `transaction.provider` (dòng 125) | `Manual, BankSync, Casso, SMS, ORC, OCR, Bill` | Không CHECK. Migration `20260901090000_align_new_database` dòng 64 đổi dữ liệu `'ORC'` thành `'OCR'` | `ORC` nên bỏ |
 | `category.classify` (dòng 110) | `Thu, Chi, Vay/no` | `chk_category_classify`: như vậy | Khớp. **Nhưng** `sync.service.js:104-109` chuẩn hoá `Vay/nợ`, `Vay`, `vay_no`… về `Vay/no` **sau** bước kiểm tra — lớp kiểm tra đã trả 400 cả lô trước khi phép chuẩn hoá kịp chạy. Đoạn ấy là mã chết |
-| `bill.pay_status` (dòng 140) | `Pending, Payed, Overdue` | `chk_bill_pay_status`: như vậy | Khớp hôm nay. ⚠️ Khi thêm `'Skipped'` (mục 5 `README.md`) mà quên dòng này thì **mọi** lô có một hoá đơn bỏ qua kỳ đều 400 |
+| `bill.pay_status` (dòng 140) | `Pending, Payed, Overdue` | `chk_bill_pay_status`: như vậy | Khớp **lúc đo 2026-09-10**. ⚠️ **Không còn đúng:** backend đã thêm `'Skipped'` vào **cả hai** nơi ngày 2026-09-11 (nay `sync.validation.js:169`), và client **thật sự gửi** giá trị ấy từ 2026-09-12 — đúng cái nguy cơ dòng này cảnh báo, nhưng đã được đóng đúng cách |
 
 Client hôm nay không gửi giá trị nào bị từ chối: `SyncPayloadNormalizer` đưa loại
 giao dịch về `Transaction` / `Transfer` và phân loại danh mục về `Vay/no`. Mục này

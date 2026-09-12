@@ -7,6 +7,7 @@ import 'package:drift/drift.dart';
 import '../api/dio_client.dart';
 import '../bill/bill_recurrence.dart';
 import '../database/app_database.dart';
+import '../../features/bill/domain/bill_pay_status.dart';
 import 'backend_bool.dart';
 import 'sync_models.dart';
 import 'category_icon_registry.dart';
@@ -490,7 +491,8 @@ class SyncEngine {
                     : const Value.absent(),
                 // ⚠️ `status` (lưu trữ ví) là cột CỤC BỘ, cố ý không đi
                 // theo chiều nào của đồng bộ — cùng diện với
-                // `bills.autoPayEnabled` và `bills.anchorDay`.
+                // `bills.autoPayEnabled`. (`bills.anchorDay` từng cùng diện
+                // nhưng đã mở đường đồng bộ ngày 2026-09-12.)
                 //
                 // Lý do ban đầu là một con số, đo thẳng trên PostgreSQL ngày
                 // 2026-09-10: `chk_wallet_status` CHO PHÉP `'Inactive'`,
@@ -563,6 +565,15 @@ class SyncEngine {
                 // kết theo chiều này — chấp nhận được, vì chỉ client đặt nó.
                 goalId: (t['idgoal'] ?? t['goal_id']) != null
                     ? Value((t['idgoal'] ?? t['goal_id']).toString())
+                    : const Value.absent(),
+                // Cùng luật với `idgoal` ngay trên, và cùng lý do: cột
+                // `transaction.Idbill` chỉ đi qua đồng bộ từ 2026-09-12, nên
+                // hàng đã nằm sẵn trên server mang NULL cho tới khi client đẩy
+                // lại từng hàng. Gán thẳng `Value(null)` là xoá liên kết cục bộ
+                // ngay chu kỳ pull đầu tiên, và hoàn tác thanh toán mất đường
+                // lần về khoản chi.
+                billId: (t['idbill'] ?? t['bill_id']) != null
+                    ? Value((t['idbill'] ?? t['bill_id']).toString())
                     : const Value.absent(),
                 date: Value(DateTime.tryParse(
                         (t['date_transaction'] ?? t['date'])?.toString() ?? '') ??
@@ -819,7 +830,7 @@ class SyncEngine {
                     DateTime.tryParse(bill['due_date']?.toString() ?? '') ??
                         DateTime.now()),
                 payStatus: Value(payStatus),
-                isPaid: Value(payStatus == 'Payed'),
+                isPaid: Value(payStatus == kBillPayed),
                 timeNotification: Value(bill['time_notification']?.toString()),
                 isRecurrence: Value(isRecurrence),
                 timeRecurrence: Value(timeRecurrence),
@@ -833,6 +844,18 @@ class SyncEngine {
                 icon: Value(bill['icon']?.toString() ?? 'receipt'),
                 colour: Value(bill['color']?.toString() ?? '#4CAF50'),
                 note: Value(bill['note']?.toString() ?? ''),
+                // Server im lặng nghĩa là **chưa biết**, không phải **hãy
+                // xoá**: hai cột này chỉ đi qua đồng bộ từ 2026-09-12, nên mọi
+                // hàng đã nằm sẵn trên server mang NULL cho tới khi client đẩy
+                // lại từng hàng. Gán thẳng `Value(null)` là cắt đứt chuỗi kỳ và
+                // xoá ngày gốc ngay chu kỳ pull đầu tiên — cùng bài học với
+                // `idgoal`, và mất ngày gốc thì ngày đến hạn quay về bị ĐOÁN.
+                generatedFromBillId: bill['previous_bill_id'] != null
+                    ? Value(bill['previous_bill_id'].toString())
+                    : const Value.absent(),
+                anchorDay: bill['anchor_day'] != null
+                    ? Value(int.tryParse(bill['anchor_day'].toString()))
+                    : const Value.absent(),
                 isDeleted: Value(bill['delete_at'] != null),
                 deletedAt: Value(_deletedAtFrom(bill['delete_at'])),
                 syncStatus: const Value('synced'),
@@ -1190,7 +1213,55 @@ class SyncEngine {
       ));
     }
 
-    // ── 4. Transactions (sau category + wallet + goal vì FK → cả 3) ──────────
+    // ── 4. Bills (sau category + wallet, và phải đứng TRƯỚC transactions) ────
+    // idwallet/idcategory là NOT NULL trên backend — bắt buộc phải gửi kèm.
+    // Lưu ý: form tạo/sửa bill hiện tại (bill_edit_page.dart) chưa cho chọn
+    // ví/danh mục nên các giá trị này có thể vẫn null cho tới khi UI đó được
+    // bổ sung — đây là việc ngoài phạm vi sync engine.
+    for (final bill in await _db.billDao.getPending(idaccount)) {
+      if (_isSyncBlocked(bill.syncBlockedUntil)) continue;
+      final validId = _toValidUuid(bill.id);
+      final validWalletId =
+          bill.walletId != null ? _toValidUuid(bill.walletId!) : null;
+      final validCategoryId =
+          bill.categoryId != null ? _toValidUuid(bill.categoryId!) : null;
+      ops.add(SyncOperation(
+        localId: bill.id,
+        entity: SyncEntityType.bill,
+        operation: bill.isDeleted
+            ? SyncOperationType.delete
+            : SyncOperationType.update,
+        payload: {
+          'id': validId,
+          'idwallet': validWalletId,
+          'idcategory': validCategoryId,
+          'name': bill.name,
+          'amount': bill.amount,
+          'start_date': bill.startDate?.toUtc().toIso8601String(),
+          'due_date': bill.dueDate.toUtc().toIso8601String(),
+          'pay_status': bill.payStatus,
+          'recurrence': bill.isRecurrence,
+          'time_recurrence': bill.timeRecurrence,
+          'time_notification': bill.timeNotification,
+          'icon': bill.icon,
+          'color': bill.colour,
+          'note': bill.note,
+          // Chuỗi kỳ và ngày gốc — mở đường đồng bộ 2026-09-12. Hai cột này
+          // client đã có từ v16/v18 nhưng chưa gửi, nên chuỗi kỳ của hoá đơn
+          // lặp chết ở ranh giới một máy: máy khác nhận từng kỳ như một hoá
+          // đơn mồ côi và phải suy ngày đến hạn bằng cách đoán.
+          'previous_bill_id': bill.generatedFromBillId,
+          'anchor_day': bill.anchorDay,
+          'is_deleted': bill.isDeleted,
+          'updated_at': bill.updatedAt.toUtc().toIso8601String(),
+          'idaccount':
+              bill.idaccount > 0 ? bill.idaccount : idaccount,
+        },
+        createdAt: now,
+      ));
+    }
+
+    // ── 5. Transactions (sau category + wallet + goal + bill vì FK → cả 4) ───
     final pendingTx = await _db.transactionDao.getPending(idaccount);
     for (final t in pendingTx) {
       if (_isSyncBlocked(t.syncBlockedUntil)) continue;
@@ -1225,6 +1296,12 @@ class SyncEngine {
           'idwallet_transfer':
               t.walletTransfer != null ? _toValidUuid(t.walletTransfer!) : null,
           'idgoal': t.goalId != null ? _toValidUuid(t.goalId!) : null,
+          // Khoá nối tới hoá đơn — mở đường đồng bộ 2026-09-12, cùng khuôn
+          // `idgoal` ngay trên. Không có nó thì máy khác không lần được từ hoá
+          // đơn ngược về đúng khoản chi nó sinh ra, và hoàn tác thanh toán phải
+          // từ chối. Hoá đơn được đẩy ở mục 4, TRƯỚC đây, vì cột này có khoá
+          // ngoại `fk_transaction_bill`.
+          'idbill': t.billId != null ? _toValidUuid(t.billId!) : null,
           'amount': t.amount,
           'type': t.type,
           'note': t.note,
@@ -1237,7 +1314,7 @@ class SyncEngine {
       ));
     }
 
-    // ── 5. Budgets (sau category + wallet) ────────────────────────────────────
+    // ── 6. Budgets (sau category + wallet) ────────────────────────────────────
     // Payload dùng đúng tên field Prisma của backend (idcategory, total_amount,
     // start, over_spending, ...) vì backend mapEntityFields() chỉ nhận diện
     // các key camelCase cụ thể (totalAmount, categoryId, ...) — gửi sẵn tên
@@ -1276,47 +1353,6 @@ class SyncEngine {
       ));
     }
 
-    // ── 6. Bills (sau category + wallet) ──────────────────────────────────────
-    // idwallet/idcategory là NOT NULL trên backend — bắt buộc phải gửi kèm.
-    // Lưu ý: form tạo/sửa bill hiện tại (bill_edit_page.dart) chưa cho chọn
-    // ví/danh mục nên các giá trị này có thể vẫn null cho tới khi UI đó được
-    // bổ sung — đây là việc ngoài phạm vi sync engine.
-    for (final bill in await _db.billDao.getPending(idaccount)) {
-      if (_isSyncBlocked(bill.syncBlockedUntil)) continue;
-      final validId = _toValidUuid(bill.id);
-      final validWalletId =
-          bill.walletId != null ? _toValidUuid(bill.walletId!) : null;
-      final validCategoryId =
-          bill.categoryId != null ? _toValidUuid(bill.categoryId!) : null;
-      ops.add(SyncOperation(
-        localId: bill.id,
-        entity: SyncEntityType.bill,
-        operation: bill.isDeleted
-            ? SyncOperationType.delete
-            : SyncOperationType.update,
-        payload: {
-          'id': validId,
-          'idwallet': validWalletId,
-          'idcategory': validCategoryId,
-          'name': bill.name,
-          'amount': bill.amount,
-          'start_date': bill.startDate?.toUtc().toIso8601String(),
-          'due_date': bill.dueDate.toUtc().toIso8601String(),
-          'pay_status': bill.payStatus,
-          'recurrence': bill.isRecurrence,
-          'time_recurrence': bill.timeRecurrence,
-          'time_notification': bill.timeNotification,
-          'icon': bill.icon,
-          'color': bill.colour,
-          'note': bill.note,
-          'is_deleted': bill.isDeleted,
-          'updated_at': bill.updatedAt.toUtc().toIso8601String(),
-          'idaccount':
-              bill.idaccount > 0 ? bill.idaccount : idaccount,
-        },
-        createdAt: now,
-      ));
-    }
 
 
     return ops;

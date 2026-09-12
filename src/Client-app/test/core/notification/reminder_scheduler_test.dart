@@ -121,6 +121,7 @@ void main() {
     String? nhacTruoc = '3',
     bool daTra = false,
     bool daXoa = false,
+    bool boQua = false,
   }) {
     return Bill(
       id: id,
@@ -128,7 +129,7 @@ void main() {
       name: ten,
       amount: 300000,
       dueDate: denHan,
-      payStatus: daTra ? 'Payed' : 'Pending',
+      payStatus: boQua ? 'Skipped' : (daTra ? 'Payed' : 'Pending'),
       isPaid: daTra,
       autoPayEnabled: false,
       timeNotification: nhacTruoc,
@@ -161,6 +162,17 @@ void main() {
 
       expect(soLich, 1);
       expect(os.lich.length, 1);
+    });
+
+    test('KHÔNG đặt lịch cho kỳ đã Skipped', () async {
+      final soLich = await dung([hoaDon(denHan: DateTime(2026, 9, 20), boQua: true)])
+          .resync(accountId);
+
+      expect(soLich, 0,
+          reason: 'Lịch nằm trong AlarmManager chứ không trong SQLite. Đặt '
+              'nhầm là thông báo nổ trên màn hình khoá cho một kỳ người dùng '
+              'đã bỏ, và không có cách nào gỡ ngoài việc quét lại.');
+      expect(os.lich, isEmpty);
     });
 
     test('lịch nổ vào GIỜ NHẮC của người dùng, không phải nửa đêm', () async {

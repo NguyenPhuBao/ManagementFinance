@@ -1,6 +1,6 @@
 # Client-app — Việc còn dang dở & rủi ro đã biết
 
-**Cập nhật:** 2026-09-11 (sau khi nhánh gộp `main` @ `cc65f4f` và CSDL dev áp `database/12`: đóng G29, G31, G32; G24 thành lỗi phía client rồi đóng cùng ngày; thêm G34; G35 mở rồi đóng cùng ngày; đóng G30; đóng G33)
+**Cập nhật:** 2026-09-11 (sau khi nhánh gộp `main` @ `cc65f4f` và CSDL dev áp `database/12`: đóng G29, G31, G32; G24 thành lỗi phía client rồi đóng cùng ngày; thêm G34; G35 mở rồi đóng cùng ngày; đóng G30; đóng G33); 2026-09-12: gộp `main` @ `cbbeeb4` — CAN-LAM 17 A đóng, kênh thời gian thực nối được trên máy ảo, G34 hết bị chặn (vẫn chờ người dùng chốt toast hay im lặng); chiều muộn thêm **G36** — chờ backend
 **Mục đích:** ghi lại những hạng mục đã được **cân nhắc và cố ý hoãn**, kèm lý do và bán kính ảnh hưởng. Không có tài liệu này thì người tiếp theo sẽ hoặc bỏ sót, hoặc làm lại từ đầu việc phân tích rủi ro.
 
 Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nhất.
@@ -39,7 +39,8 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > | ~~**G31**~~ | ✅ **Đóng 2026-09-11** — backend nay ánh xạ `22001`/`P2000` (dài quá cột) và `23502` về `CONSTRAINT_VIOLATION`, mã client đã xếp **vĩnh viễn**, nên bản ghi bị chặn theo thời gian thay vì gửi lại mãi; và một thao tác hỏng không còn làm **cả lô** 400. Bộ lọc bảy ô tên của client (2026-09-10) **vẫn giữ** — nó chặn trước để bản ghi không kẹt ngay từ đầu. Đo trên mã HEAD, chưa chạy đầu-cuối. Dòng cũ ghi *chặn ở backend* — đúng tới trước khi gộp `main` |
 > | ~~**G32**~~ | ✅ **Đóng 2026-09-11** — backend giữ `priority: null` khi đẩy (hết `Number(null)` → `0`), nhánh tạo mặc định `null`, và `database/12` đã đưa các hàng `<= 0` về `NULL` trên CSDL dev. Lớp đọc `<= 0` là chưa sắp phía client **vẫn giữ** cho dữ liệu cũ và bản backend/client cũ. Dòng cũ ghi *chặn ở backend* — đúng tới trước khi gộp `main` |
 > | ~~**G33**~~ | ✅ **Đóng 2026-09-11** — tài khoản chờ xoá nay dùng tiếp app trong 30 ngày thay vì bị đăng xuất ngay: `UserModel` mang `status`/`countdown`, trang Xoá tài khoản thôi hứa *"đăng nhập lại là tự khôi phục"*, hai thẻ (Trang chủ, "Vùng nguy hiểm" ở Cài đặt) hiện số ngày còn lại và nút huỷ. Kiểm trên máy ảo với tài khoản 11. Dòng cũ ghi *lỗi đang chạy, chưa sửa* — đúng tới trước bản sửa |
-> | **G34** | ⏸️ **Chưa làm — việc phía client, chờ người dùng** — backend đã phát `sync.completed` tới phòng `account_<id>` sau mỗi `/sync/push`, nhưng client chỉ nhận ba tên sự kiện nên **bỏ qua** nó; thay đổi từ máy khác vẫn chờ chu kỳ đồng bộ định kỳ (15 phút) hoặc kích hoạt khác. Hôm nay sự kiện cũng chưa tới được client vì bắt tay socket từ chối mọi tài khoản (CAN-LAM 17 A) (2026-09-11) |
+> | **G34** | ⏸️ **Chưa làm — việc phía client, chờ người dùng** — backend đã phát `sync.completed` tới phòng `account_<id>` sau mỗi `/sync/push`, nhưng client chỉ nhận ba tên sự kiện nên **bỏ qua** nó; thay đổi từ máy khác vẫn chờ chu kỳ đồng bộ định kỳ (15 phút) hoặc kích hoạt khác. Từng bị chặn thêm vì bắt tay socket từ chối mọi tài khoản (CAN-LAM 17 A, 2026-09-11) — ✅ hết 2026-09-12 sau gộp `cbbeeb4`, kênh nối được trên máy ảo; nay chỉ còn chờ người dùng chốt |
+> | **G36** | ⏸️ **Chờ backend (CAN-LAM 20 §2.7)** — tài khoản bị xoá qua admin trong lúc app giữ token hết hạn và không có socket → `/auth/refresh` trả 401 **không mã** (token đã bị thu hồi, kiểm trước tài khoản) → app đăng xuất **trơn, không hộp thoại**; người dùng chỉ biết lý do khi đăng nhập lại. Đo thật 2026-09-12 chiều |
 > | ~~**G35**~~ | ✅ **Đóng 2026-09-11** — ba màn quản lý danh mục nay lấy tài khoản qua `currentAccountIdOrNull`: chưa có phiên thì không đọc gì (kể cả tài khoản 0 — bộ khuôn toàn cục), và nút lưu/xoá báo "Chưa xác định được tài khoản đăng nhập". Test quét `lib/` cấm `?? 1` nhiều dòng. ⚠️ Dòng này từng ghi *lỗi đang chạy, chưa sửa* — đúng tới trước bản sửa |
 >
 > **G20 đã đóng ngày 2026-09-05** — `depositToGoal` nhận `occurredAt` chặn hai
@@ -1093,7 +1094,7 @@ kiểm.
 >
 > **Kiểm trên `emulator-5554` (tài khoản 11):** gửi yêu cầu xoá → **không** bị đăng xuất, về Trang chủ, thẻ "Tài khoản đang chờ xoá — Còn 30 ngày…" hiện ra; CSDL: `PendingDelete`, `Countdown = 30`. Huỷ ở Cài đặt → CSDL về `Active`, `Countdown = null`, `Delete_at = null` — tài khoản thử về nguyên trạng. Pixel vàng (tràn bố cục): **0** trên **15** ảnh chụp.
 >
-> ✅ **Đã sửa ở lượt sửa sau soát cuối cả nhánh (`bf34de2`):** khoảng trống 24dp sau "Để sau" ở Trang chủ khi thẻ đã ẩn — khoảng cách nay nằm trong thẻ. Kiểm trên `emulator-5554` (APK từ `0591887`): bấm "Để sau" thì tiêu đề hero về đúng y=315 px như lúc tài khoản `Active`. ⚠️ **Phần 1** của spec (cưỡng chế đăng xuất, mục 3 kể cả §3.8) và **§5.1** (hộp thoại bị đẩy ra ở màn Đăng nhập) **chưa làm**.
+> ✅ **Đã sửa ở lượt sửa sau soát cuối cả nhánh (`bf34de2`):** khoảng trống 24dp sau "Để sau" ở Trang chủ khi thẻ đã ẩn — khoảng cách nay nằm trong thẻ. Kiểm trên `emulator-5554` (APK từ `0591887`): bấm "Để sau" thì tiêu đề hero về đúng y=315 px như lúc tài khoản `Active`. **§3.8** ✅ sửa cùng ngày (chi tiết ở `docs/PROJECT_CONTEXT.md` mục 14, khối "Sửa hai lỗi làm mới token — spec §3.8"). ✅ **Phần 1** (§3.1–§3.7) và **§5.1** (hộp thoại bị đẩy ra ở màn Đăng nhập) **làm 2026-09-12** — bảy commit `693de3b` → `fc82a94`; khối "Phần 1 cưỡng chế đăng xuất" mục 14 `docs/PROJECT_CONTEXT.md`. Nhánh **HTTP 401 đã kiểm đầu-cuối trên máy thật** ngày 2026-09-12 — hộp thoại hiện đúng, SQLite giữ nguyên 2 ví và 18 danh mục. Chính lượt kiểm ấy tìm ra **hai** lỗi mà cả 63 ca test không bắt được, cùng một triệu chứng (đăng xuất **không kèm hộp thoại**) nhưng khác nguyên nhân: chốt vào của handler nuốt lời từ chối tới muộn (`ac08ed6`), và lượt đăng xuất trơn về sau đè mất lý do (`40a553d`). Nhánh socket và nhánh làm mới vẫn chờ CAN-LAM 17 A.
 >
 > Phần dưới là **ảnh chụp 2026-09-10** — mô tả đúng bối cảnh phát hiện lỗi lúc đó, giữ nguyên làm lịch sử.
 
@@ -1129,6 +1130,8 @@ người dùng, nằm ở mục 4–5 của
 ---
 
 ### G34 — Client không nghe `sync.completed`, nên thay đổi từ máy khác vẫn chờ chu kỳ đồng bộ · ⏸️ CHƯA LÀM — VIỆC PHÍA CLIENT, CHỜ NGƯỜI DÙNG (2026-09-11)
+
+> ✅ **2026-09-12:** không còn gì chặn ngoài quyết định sản phẩm — sau gộp `main` @ `cbbeeb4`, bắt tay socket nối được (đo máy ảo), nên sự kiện **tới được** client và bị `_khiCoSuKien` bỏ qua đúng như mô tả dưới.
 
 **Phía backend đã xong** (đo trên mã HEAD sau khi gộp `main` @ `cc65f4f`): sau mỗi
 `/sync/push`, `sync.service.js:223` publish `sync.completed` vào EventBus →
@@ -1221,6 +1224,32 @@ cộng một test quét `lib/` cấm mẫu `?? 1` nhiều dòng — hai test qu�
 
 ---
 
+### G36 — Tài khoản bị xoá lúc app giữ token hết hạn: đăng xuất không hộp thoại · ⏸️ CHỜ BACKEND (2026-09-12)
+
+**Đo thật** (spec cưỡng chế đăng xuất, khối ✅ thứ hai đầu §7.3): tạo tài khoản thử `kiemthu_xoa`
+(idaccount 12), đăng nhập giữ refresh token, admin `DELETE /api/admin/deleteuser/12`, rồi gọi
+`/auth/refresh` bằng token ấy → **401 "Refresh token khong hop le", không `code`**. Nguyên nhân: xoá
+mềm **thu hồi toàn bộ refresh token** của tài khoản (5/5 `Status = true`), và `auth.service.js:375-387`
+kiểm token **trước** khi kiểm trạng thái tài khoản. `/auth/profile` cùng lúc trả đúng 401 +
+`code: ACCOUNT_DELETED`.
+
+**Hệ quả phía client.** Ba nguồn của cưỡng chế đăng xuất (§3.5) đều cần *mã*. Khi app **đang có
+socket**, sự kiện `account.force_logout` tới trước và mọi thứ đúng (đo thật: hộp thoại "Tài khoản
+đã bị xoá", SQLite dọn). Nhưng khi app **ngoại tuyến lúc bị xoá** rồi mở lại sau khi access token đã
+hết hạn: request đầu → 401 "Token expired" (không mã) → interceptor gọi `/auth/refresh` → 401 không
+mã → `LamMoiPhienChet` **không lý do** → `AuthUnauthenticated()` trơn → màn Đăng nhập, **không hộp
+thoại**. Người dùng chỉ biết vì sao khi đăng nhập lại (login trả câu đúng). Không mất dữ liệu; chỉ
+thiếu lời giải thích.
+
+**Client không tự sửa được**: lúc ấy mọi token đều chết, không endpoint nào trả lời được "vì sao".
+Xin backend (CAN-LAM 20 §2.7): ở nhánh token đã thu hồi, backend **có** `storedToken.idaccount` — kiểm
+`getAccountValidity` trước khi ném, và nếu tài khoản `Inactive`/`Deleted` thì trả 401 kèm `code` như
+`authenticate`. Client khi ấy không phải đổi gì: `tuBody401(nguon: lamMoi)` đã đọc đúng hình dạng.
+
+**Liên quan §3.6b:** vì đường này không mang `daXoa`, ngoại lệ *không dọn SQLite khi `daXoa` đến từ
+nhánh làm mới* hiện gần như vô nghĩa với xoá qua admin — giữ lại chỉ để che ca lỗi lược đồ (backend
+đã trả 503, chưa đo) và ca xoá theo lịch hết hạn (chưa đo có thu hồi token không).
+
 ## 2. Vấn đề đã biết nhưng thuộc về Backend
 
 Tám gạch đầu dòng đầu tiên dưới đây là **ảnh chụp cũ**: cả tám tệp nay nằm ở
@@ -1251,7 +1280,7 @@ Với tám tài liệu cũ, client **không** phụ thuộc vào việc backend 
 
 ## 3. Lưu ý về kiểm thử
 
-Trạng thái hiện tại (đã chạy thật, không phải đếm tay, đo 2026-09-11): `flutter test` toàn bộ **2078/2078 pass** (3 phút 23 giây), trên **199 file test / 45.147 dòng** (199 tệp `_test.dart`; số dòng đếm bằng script trên cả 200 tệp `.dart` dưới `test/`, kể cả `category_test_fakes.dart` — sau G24, G35, G30, nhãn loại ví ở bảng chọn ví, **G33** và lượt sửa sau soát cuối cả nhánh G33, 49 test mới ở 7 tệp). Mốc 2073/2073 · 199 file · 44.905 dòng là của G33 trước lượt sửa ấy. Mốc 2029/2029 · 192 file · 44.041 dòng là của 2026-09-11 (trước G33). Mốc 1529/1529 · 144 file · 33.892 dòng là của 2026-09-08. Trước phiên 2026-09-02 là 56 pass / 9 fail và mất hơn 10 phút (một test treo tới timeout); mốc 180 pass / 27 file ghi ở đây trước đó là con số **cuối phiên 2026-09-03** và đã lạc hậu năm ngày.
+Trạng thái hiện tại (đã chạy thật, không phải đếm tay, đo 2026-09-12): `flutter test` toàn bộ **2105/2105 pass** (1 phút 7 giây), trên **200 file test / 45.599 dòng** (200 tệp `_test.dart`; số dòng đếm bằng script trên cả 201 tệp `.dart` dưới `test/`, kể cả `category_test_fakes.dart` — sau lượt sửa sau soát cuối cả nhánh spec §3.8: 27 test mới ở `core/api/`, 2 tệp / 30 test). Mốc 2104/2104 · 200 file · 45.557 dòng là của 2026-09-11 (đóng spec §3.8, trước lượt sửa sau soát cuối cả nhánh). Mốc 2078/2078 · 199 file · 45.147 dòng là của 2026-09-11 (sau G24, G35, G30, nhãn loại ví ở bảng chọn ví, **G33** và lượt sửa sau soát cuối cả nhánh G33, trước khi đóng §3.8). Mốc 2073/2073 · 199 file · 44.905 dòng là của G33 trước lượt sửa ấy. Mốc 2029/2029 · 192 file · 44.041 dòng là của 2026-09-11 (trước G33). Mốc 1529/1529 · 144 file · 33.892 dòng là của 2026-09-08. Trước phiên 2026-09-02 là 56 pass / 9 fail và mất hơn 10 phút (một test treo tới timeout); mốc 180 pass / 27 file ghi ở đây trước đó là con số **cuối phiên 2026-09-03** và đã lạc hậu năm ngày.
 
 > ⚠️ **`.gitignore` có `test/`** (dòng 78, đo 2026-09-10 — từng ghi 77) — luật này khớp mọi thư mục tên `test` ở mọi cấp, và **đã tồn tại từ trước** phiên 2026-09-02 (kiểm chứng: `git diff .gitignore` chỉ thêm đúng một dòng `src/Backend/scripts/seed_roles.js`).
 >

@@ -85,11 +85,13 @@ class Transactions extends Table {
   /// billId: hoá đơn mà giao dịch này là khoản trả cho. NULL với mọi giao dịch
   /// thường.
   ///
-  /// ⚠️ **Cột CỤC BỘ** (đo 2026-09-11). Khác [goalId] ở trên — cột ấy đồng bộ
-  /// từ 2026-09-07 — `billId` chưa đi qua đồng bộ: server đã có
-  /// `transaction.Idbill` (`database/12`, push nhận khoá `idbill`) nhưng client
-  /// chưa gửi và chưa đọc. Khi mở, theo đúng khuôn của [goalId]: tên payload
-  /// `idbill`, nhánh kéo về dùng `Value.absent()` khi server không gửi.
+  /// ✅ **Đi qua đồng bộ từ 2026-09-12**, đúng khuôn [goalId] ở trên: tên
+  /// payload `idbill` → `transaction.Idbill`, nhánh kéo về dùng
+  /// `Value.absent()` khi server không gửi.
+  ///
+  /// ⚠️ Cột này có khoá ngoại `fk_transaction_bill`, nên hoá đơn **phải** được
+  /// đẩy TRƯỚC giao dịch — mục 4 của `_collectPendingOps` đứng trước mục 5 vì
+  /// lý do ấy, và có ca test canh thứ tự.
   ///
   /// Vì sao cần: trước đây khoản trả hoá đơn chỉ nhận ra được bằng **tiền tố
   /// ghi chú** (`kGhiChuTraHoaDon`), nên (1) người dùng gõ trùng tiền tố thì bị

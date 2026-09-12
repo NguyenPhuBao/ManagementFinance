@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/database/app_database.dart';
+import '../../domain/bill_pay_status.dart';
 import '../../../../core/sync/sync_engine.dart';
 import '../../../../core/bill/bill_recurrence.dart';
 import '../../domain/bill_note.dart';
@@ -68,8 +69,13 @@ class BillRepositoryImpl implements BillRepository {
     if (current == null) {
       throw StateError('Không tìm thấy hoá đơn ${bill.id}');
     }
-    if (current.isPaid || current.payStatus == 'Payed') {
+    if (daCoKhoanChi(current)) {
       throw BillAlreadyPaidException(bill.id);
+    }
+    // Kỳ bỏ qua ĐÃ sinh kỳ kế tiếp; trả tiếp trên nó là sinh kỳ thứ hai trùng
+    // hạn. Người dùng phải hoàn tác việc bỏ qua trước.
+    if (daBoQua(current)) {
+      throw BillSkippedCannotPayException(bill.id);
     }
 
     // Số tiền THẬT của kỳ này. Kiểm trước khi mở transaction: ô nhập nằm
@@ -155,7 +161,7 @@ class BillRepositoryImpl implements BillRepository {
     if (current == null) {
       throw StateError('Không tìm thấy hoá đơn $billId');
     }
-    if (!current.isPaid && current.payStatus != 'Payed') {
+    if (!daCoKhoanChi(current)) {
       throw BillNotPaidException(billId);
     }
 
@@ -196,6 +202,91 @@ class BillRepositoryImpl implements BillRepository {
         id: Value(billId),
         isPaid: const Value(false),
         payStatus: const Value('Pending'),
+        syncStatus: const Value('pending'),
+        updatedAt: Value(now),
+      ));
+    });
+
+    syncEngine?.scheduleSync();
+  }
+
+  @override
+  Future<void> skipBill({required String billId}) async {
+    // Đọc lại từ CSDL, cùng lý do với `payBill`: UI giữ một ảnh chụp có thể đã
+    // cũ, và bấm nút hai lần thì lần thứ hai vẫn mang trạng thái cũ.
+    final current = await dataSource.getBillById(billId);
+    if (current == null) {
+      throw StateError('Không tìm thấy hoá đơn $billId');
+    }
+    if (daCoKhoanChi(current)) {
+      throw BillAlreadyPaidException(billId);
+    }
+    if (daBoQua(current)) {
+      throw BillAlreadySkippedException(billId);
+    }
+
+    final now = DateTime.now();
+
+    // Hai bước phải nguyên tử: hỏng giữa chừng mà giữ lại phần đã ghi thì kỳ
+    // này đã đóng nhưng chuỗi không có kỳ sau, hoặc ngược lại — hai kỳ mở.
+    await db.transaction(() async {
+      await dataSource.updateBill(BillsCompanion(
+        id: Value(billId),
+        payStatus: const Value(kBillSkipped),
+        // Không có khoản chi nào, nên isPaid phải false. Đặt true là mọi chỗ
+        // hỏi "đã trả chưa" trả lời sai, và nhánh pull cũng suy ngược lại từ
+        // `pay_status`.
+        isPaid: const Value(false),
+        syncStatus: const Value('pending'),
+        updatedAt: Value(now),
+      ));
+
+      // Cùng luật với `payBill`: nguồn sự thật là `isRecurrence`, KHÔNG phải
+      // cột chuỗi `recurrence` — hàng kéo về từ backend luôn mang mặc định
+      // 'monthly' của bảng.
+      if (current.isRecurrence) {
+        // Số tiền kế thừa số ghi trên hoá đơn: không có lần trả nào để lấy số
+        // thật, và bịa một con số khác thì tệ hơn.
+        await dataSource.insertBill(
+          _nextPeriodOf(current, now, current.amount),
+        );
+      }
+    });
+
+    syncEngine?.scheduleSync();
+  }
+
+  @override
+  Future<void> undoSkip({required String billId}) async {
+    final current = await dataSource.getBillById(billId);
+    if (current == null) {
+      throw StateError('Không tìm thấy hoá đơn $billId');
+    }
+    // Chặn cả kỳ đã TRẢ: hoàn tác lần trả phải đi qua `undoPayment`, thứ có
+    // bước hoàn tiền. Đi nhầm đường này là hoá đơn về `Pending` mà tiền vẫn
+    // nằm ngoài ví và khoản chi vẫn còn trong sổ.
+    if (!daBoQua(current)) {
+      throw BillNotSkippedException(billId);
+    }
+
+    final now = DateTime.now();
+
+    await db.transaction(() async {
+      // Gỡ kỳ kế tiếp mà lần bỏ qua đã sinh ra — cùng lý do với `undoPayment`:
+      // để lại thì người dùng có hai kỳ cùng mở, và bỏ qua lần nữa sẽ đẻ thêm
+      // một kỳ trùng.
+      final kySau = await db.billDao.getGeneratedFrom(billId);
+      if (kySau != null) {
+        await dataSource.softDeleteBill(kySau.id);
+      }
+
+      // Về `Pending` chứ không `Overdue`: `markOverdue` chạy sau mỗi lần đồng
+      // bộ và tự gắn lại cờ nếu kỳ đã trễ. Đoán ở đây là dựng bản thứ hai của
+      // luật ấy.
+      await dataSource.updateBill(BillsCompanion(
+        id: Value(billId),
+        payStatus: const Value(kBillPending),
+        isPaid: const Value(false),
         syncStatus: const Value('pending'),
         updatedAt: Value(now),
       ));

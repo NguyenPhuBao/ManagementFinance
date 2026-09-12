@@ -1,5 +1,10 @@
 # `/auth/profile` trả `countdown`, và gỡ `pendingDeleteCancelled` khỏi response đăng nhập
 
+> ✅ **2026-09-12 — backend làm xong (gộp `main` @ `cbbeeb4`):** `auth.repository.js:227` select
+> `countdown`, `auth.service.js:567` trả `countdown ?? null`; `pendingDeleteCancelled` gỡ sạch (`grep`
+> 0 chỗ). Client làm phần §2.4 cùng ngày: `AuthRepositoryImpl._dongBoTrangThai` ghi số và mốc nhận
+> kể cả khi trạng thái khớp (4 ca test mới). ✅ Đo đầu-cuối chiều 2026-09-12 với token thật: `/auth/profile` có `countdown`, đăng nhập không còn `pendingDeleteCancelled`.
+
 **Ngày:** 2026-09-11 · **Xin từ:** client (`src/Client-app`) · **Cỡ việc:** việc 1 —
 một dòng ở `modules/auth/auth.repository.js` và một dòng ở `modules/auth/auth.service.js`;
 việc 2 — hai dòng ở `auth.service.js`. Không migration, không đổi CSDL.

@@ -1,11 +1,13 @@
 /// Số ngày chờ xoá tài khoản còn lại — hàm thuần, không import gì.
 ///
-/// Vì sao client tự tính (spec cưỡng chế đăng xuất §4.2): không endpoint nào trả
-/// `countdown` mới — `/auth/profile` không có trường này, còn JWT mang
-/// `countdown` **lúc cấp** và `/auth/refresh` cấp lại đúng payload cũ. Backend
-/// trừ `Countdown` đi 1 lúc 00:00 giờ Việt Nam mỗi ngày (`scheduler.service.js`),
-/// nên phép tính đếm theo **ngày lịch UTC+7**. Xin backend trả `countdown` ở
-/// `/auth/profile`: CAN-LAM 19 (`docs/superpowers/backend/CAN-LAM/AUTH_PROFILE_COUNTDOWN.md`).
+/// Vì sao client tự tính (spec cưỡng chế đăng xuất §4.2): giữa hai lần hỏi server
+/// không có số mới — JWT mang `countdown` **lúc cấp** và `/auth/refresh` cấp lại
+/// đúng payload cũ. Backend trừ `Countdown` đi 1 lúc 00:00 giờ Việt Nam mỗi ngày
+/// (`scheduler.service.js`), nên phép tính đếm theo **ngày lịch UTC+7**. Từ
+/// 2026-09-12 `/auth/profile` **có** trả `countdown` (CAN-LAM 19,
+/// `docs/superpowers/backend/DA-XONG/AUTH_PROFILE_COUNTDOWN.md`) và
+/// `AuthRepositoryImpl._dongBoTrangThai` ghi lại số cùng mốc nhận mỗi lần mở app;
+/// hàm này vẫn cần cho những ngày ở giữa và cho lúc ngoại tuyến.
 library;
 
 /// Ngày lịch ở UTC+7 cố định (Việt Nam không đổi giờ), dạng `DateTime.utc(y, m, d)`

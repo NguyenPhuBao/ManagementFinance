@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import '../../../features/bill/domain/bill_pay_status.dart';
 import '../app_database.dart';
 import '../tables/other_tables.dart';
 
@@ -146,7 +147,10 @@ class BillDao extends DatabaseAccessor<AppDatabase> with _$BillDaoMixin {
               t.idaccount.equals(idaccount) &
               t.deletedAt.isNull() &
               t.isPaid.equals(false) &
-              t.payStatus.equals('Payed').not() &
+              t.payStatus.equals(kBillPayed).not() &
+              // Kỳ bỏ qua không phải nợ. Thiếu dòng này thì bộ quét thông báo
+              // và bộ đặt lịch cấp hệ điều hành đều lôi nó ra nhắc.
+              t.payStatus.equals(kBillSkipped).not() &
               t.dueDate.isSmallerOrEqualValue(limit)))
         .get();
   }
@@ -210,6 +214,9 @@ class BillDao extends DatabaseAccessor<AppDatabase> with _$BillDaoMixin {
   ///
   /// Hai lệnh không giẫm lên nhau: hàng vừa nhận `'Overdue'` ở lệnh đầu có
   /// `dueDate < dauNgay` nên không lọt vào bộ lọc của lệnh sau.
+  ///
+  /// Kỳ `'Skipped'` nằm ngoài **cả hai** chiều, và đó là chủ ý: nó không phải
+  /// nợ nên không thể quá hạn, mà cũng không được kéo về `'Pending'`.
   Future<int> markOverdue(int idaccount, DateTime now) async {
     final dauNgay = DateTime(now.year, now.month, now.day);
 
@@ -218,7 +225,7 @@ class BillDao extends DatabaseAccessor<AppDatabase> with _$BillDaoMixin {
               t.idaccount.equals(idaccount) &
               t.deletedAt.isNull() &
               t.isPaid.equals(false) &
-              t.payStatus.equals('Pending') &
+              t.payStatus.equals(kBillPending) &
               t.dueDate.isSmallerThanValue(dauNgay)))
         .write(BillsCompanion(
       payStatus: const Value('Overdue'),
@@ -231,7 +238,7 @@ class BillDao extends DatabaseAccessor<AppDatabase> with _$BillDaoMixin {
               t.idaccount.equals(idaccount) &
               t.deletedAt.isNull() &
               t.isPaid.equals(false) &
-              t.payStatus.equals('Overdue') &
+              t.payStatus.equals(kBillOverdue) &
               t.dueDate.isBiggerOrEqualValue(dauNgay)))
         .write(BillsCompanion(
       payStatus: const Value('Pending'),

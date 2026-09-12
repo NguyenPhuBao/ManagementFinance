@@ -1,4 +1,4 @@
-/// Tab "Đã thanh toán": dòng ghi NGÀY TRẢ và chạm vào mở đúng khoản chi.
+/// Tab "Lịch sử": dòng đã trả ghi NGÀY TRẢ và chạm vào mở đúng khoản chi.
 ///
 /// Vì sao cần: trước đây dòng đã trả chỉ nói "Hạn dd/mm" — người dùng hỏi
 /// "tôi trả hôm nào, bao nhiêu" thì phải sang sổ giao dịch tự tìm, dù khoản
@@ -160,8 +160,8 @@ void main() {
     ));
     bloc.add(LoadBillsEvent(idaccount: 10));
     await tester.pumpAndSettle();
-    // Sang tab "Đã thanh toán".
-    await tester.tap(find.textContaining('Đã thanh toán ('));
+    // Sang tab "Lịch sử" (đổi tên 2026-09-12, vì nó chứa cả kỳ bỏ qua).
+    await tester.tap(find.textContaining('Lịch sử ('));
     await tester.pumpAndSettle();
   }
 

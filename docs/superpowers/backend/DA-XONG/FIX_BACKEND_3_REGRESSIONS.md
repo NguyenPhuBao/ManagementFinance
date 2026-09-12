@@ -1,5 +1,12 @@
 # Ba hồi quy của `7675b35` ("fix backend 3") — xác thực từ chối mọi tài khoản, chốt trả hai lần chặn hoàn tác, mã lỗi lệch tài liệu
 
+> ⚠️ **2026-09-12 — backend sửa ở `cbbeeb4` (gộp về nhánh cùng ngày): A ✅ đã chạy thật** (bắt tay
+> socket nối được trên máy ảo sau 51 lần bị từ chối; `/auth/refresh` đo chiều cùng ngày: 200 hợp lệ, 401 + `code` ở cấp gốc khi khoá), **C ✅**,
+> **B chỉ nửa đầu** — bước 1 (bỏ chốt ở `upsertBill`) xong và đo thật (hàng `3c90acfa…` lên
+> `Pending`), bước 2 (chốt ở `upsertTransaction`, mục 3.6) **chưa làm**: `BILL_ALREADY_PAID` nay
+> không ai ném, server không chặn khoản chi thứ hai ở đâu cả. Bảng ở banner `../CAN-LAM/README.md`;
+> việc còn lại xin ở `../CAN-LAM/CON_LAI_SAU_CBBEEB4.md` §2.1 (mục 20).
+
 **Ngày:** 2026-09-11 · **Xin từ:** client (`src/Client-app`) · **Cỡ việc:** **A** —
 ba chỗ nhỏ ở `middleware/auth.js`, `core/socket.js`, `modules/auth/auth.service.js`;
 **B** — dời một phép kiểm từ `upsertBill` sang `upsertTransaction`; **C** — sửa ba
@@ -129,8 +136,8 @@ hồi token rồi ném 401. `auth.controller.js:79-85` trả 401 kèm `idaccount
 
 - **App:** máy dev của client đặt `JWT_USER_ACCESS_EXPIRES=7d`. Hết 7 ngày,
   request đầu tiên nhận 401 *"Token expired"* (`middleware/auth.js:99-100`) →
-  `auth_interceptor.dart:62-84` gọi `/auth/refresh` → 401 → xoá token → màn đăng
-  nhập. Người dùng bị đăng xuất mỗi 7 ngày thay vì dùng hết refresh token 90 ngày.
+  `auth_interceptor.dart` (`onError` gọi `_lamMoiChung()` → `_lamMoi()`) gọi `/auth/refresh` → 401 →
+  xoá token → màn đăng nhập. Người dùng bị đăng xuất mỗi 7 ngày thay vì dùng hết refresh token 90 ngày.
 - **Admin-web:** `JWT_ADMIN_ACCESS_EXPIRES=15m`. `src/Admin-web/src/api/axios-client.js:83-107`
   gặp 401 thì làm mới qua `/auth/refresh`; làm mới hỏng thì `handleLogoutRedirect()`
   xoá phiên và về `/login`. Admin bị đăng xuất sau mỗi 15 phút.
@@ -240,6 +247,37 @@ Dùng tài khoản thử, đừng dùng tài khoản thật.
 ---
 
 ## 3. B — Chốt "trả hai lần" chặn hoàn tác, mà không chặn được trả hai lần
+
+> ✅ **Tái hiện được trên backend thật, 2026-09-12** — không còn là suy luận từ
+> đọc mã. Máy ảo `emulator-5554`, tài khoản 11, backend dev của chính nhánh này.
+>
+> Kịch bản: tạo hoá đơn lặp hàng tháng "Kiem" 50.000 đ → **Thanh toán** → đồng bộ
+> → **Hoàn tác**. Đo thẳng PostgreSQL sau đó:
+>
+> | | Máy (SQLite) | Server (PostgreSQL) |
+> |---|---|---|
+> | Kỳ 1 `3c90acfa…` `Pay_status` | `Pending` | **`Payed`** ← lệch |
+> | Kỳ 2 `19b45be5…` `Delete_at` | có | có ✓ |
+> | Khoản chi `8cafb448…` `Deleted_at` | có | có ✓ |
+>
+> Log của client, nguyên văn:
+>
+> ```
+> [SyncEngine] Push failed [permanent]: entity=bill, localId=3c90acfa-…,
+> reason=Hóa đơn đã được thanh toán, không thể thay đổi trạng thái
+> ```
+>
+> Tức: **hai trong ba việc của hoàn tác lên được server, việc thứ ba thì không.**
+> Kỳ kế tiếp bị gỡ và khoản chi bị xoá mềm ở cả hai nơi, nhưng hoá đơn gốc kẹt ở
+> `Payed` trên server và `Pending` trên máy — lệch **vĩnh viễn**, vì client (đúng)
+> xếp `BILL_ALREADY_PAID` là lỗi vĩnh viễn nên không thử lại.
+>
+> Hệ quả cho người dùng: máy khác kéo về thấy hoá đơn **đã trả** và **không có kỳ
+> kế tiếp** — tức kỳ ấy biến mất khỏi chuỗi, không ai nhắc nữa.
+>
+> ⚠️ Lượt đo này chạy sau khi client mở đường đồng bộ cho `Previous_bill_id`,
+> `Anchor_day`, `Idbill` (2026-09-12) — ba cột ấy **đã tới server đúng giá trị**,
+> nên đây thuần tuý là hồi quy B, không dính gì tới thay đổi của client.
 
 ### 3.1. Mã
 
@@ -355,10 +393,13 @@ với partial unique index thì T2 vỡ 23505.
    dịch** của lô **trước** các thao tác ghi giao dịch — xoá mềm chỉ là một phép
    `UPDATE`, không vỡ khoá ngoại nào — rồi ánh xạ 23505 trên index ấy về
    `BILL_ALREADY_PAID` ở `sync.service.js`.
-3. **Về dữ liệu, bước 2 chưa gấp:** client **chưa gửi `idbill`** — payload đẩy giao
-   dịch có 12 trường, không có nó (`sync_payload_contract_test.dart`) — nên hôm nay
-   chốt ấy chưa có gì để chặn. Nhưng bước 1 phải đi **cùng lượt triển khai** với A,
-   vì hoàn tác hỏng ngay khi `main` chạy.
+3. ⚠️ **Bước 2 NAY ĐÃ GẤP — đổi so với bản trước.** Câu cũ ở đây ("client chưa gửi
+   `idbill`, nên chốt ấy chưa có gì để chặn") đúng tới 2026-09-12; từ ngày ấy client
+   **đã gửi** `idbill` trong payload đẩy giao dịch (nay **13 trường**,
+   `sync_payload_contract_test.dart` khoá lại), và đã đo thấy nó tới server đúng giá
+   trị. Nên chốt ở bước 2 nay có dữ liệu thật để chặn, và bước 1 vẫn phải đi **cùng
+   lượt triển khai** với A vì hoàn tác đang hỏng thật — xem bằng chứng đo được ở đầu
+   mục 3.
 
 ### 3.7. Kiểm lại sau khi sửa
 
@@ -441,8 +482,10 @@ Làm cùng lượt với `RULE_PROJECT_DOC_DRIFT.md`.
      `idbill`. Chưa làm.
 - **Làm mới hỏng vì 5xx cũng làm app đăng xuất.** `_tryRefreshToken` trả `null` cho
   mọi phản hồi khác 200 và mọi `DioException` (`auth_interceptor.dart:88-119`), rồi
-  `onError` xoá token. Đề xuất 503 ở 2.6 vẫn đúng phía backend; cách app đón nó là
-  việc của client — ✅ người dùng duyệt sửa ngày 2026-09-11, cùng lỗi hai lượt làm mới
-  đồng thời (spec cưỡng chế đăng xuất §3.8); chưa làm.
+  `onError` xoá token — mô tả mã **trước** 2026-09-11, giữ làm lịch sử vì sao có đề
+  xuất này. Cách app đón 503 ở 2.6 là việc của client — ✅ **đã sửa 2026-09-11**
+  (`4903c97`, `1edeb49`): chỉ 400/401 do server **trả lời** `/auth/refresh` mới là
+  phiên chết, 5xx/mất mạng giữ token; nhiều 401 cùng lúc chờ chung một lượt làm mới
+  (spec cưỡng chế đăng xuất §3.8). Đề xuất 503 ở 2.6 vẫn đứng.
 - **Cưỡng chế đăng xuất** (spec dẫn ở 2.5) phụ thuộc A: nhánh socket cần bắt tay
   chạy được, và nhánh làm mới cần 2.5.

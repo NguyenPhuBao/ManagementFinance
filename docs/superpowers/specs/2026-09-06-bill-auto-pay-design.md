@@ -7,8 +7,9 @@
 > ⚠️ Cột ấy vẫn là **cục bộ**: hai máy cùng bật là hai khoản chi. Phía server
 > (đo 2026-09-11, sau khi gộp `main` @ `cc65f4f`): cột `bill.Auto_pay` **đã có**
 > và `/sync/push`, `/sync/pull` mang khoá `auto_pay`, nhưng client chưa gửi/đọc;
-> còn chốt chống trả hai lần đặt **sai chỗ** — nó chặn hoàn tác mà không chặn
-> được khoản chi thứ hai (mục 17 B, `docs/superpowers/backend/CAN-LAM/README.md`).
+> còn chốt chống trả hai lần thì **không có**: bản `7675b35` đặt sai chỗ (chặn hoàn tác mà
+> không chặn được khoản chi thứ hai), bản `cbbeeb4` (2026-09-12) bỏ nó mà chưa đặt lại ở
+> `upsertTransaction` (mục 17 B bước 2, banner `docs/superpowers/backend/CAN-LAM/README.md`).
 
 **Ngày:** 2026-09-06 · **Phạm vi:** `src/Client-app` · **Tiền lệ:** trích tiền
 tự động của mục tiêu (mục 3.12–3.14 `docs/GOAL_FEATURE.md`, schema v15).
@@ -118,7 +119,9 @@ thân câu cho hoá đơn bật tự trả: "*tên* đến hạn hôm nay. Mở 
   ⚠️ *2026-09-11:* cột `bill.Auto_pay` và `transaction.Idbill` (việc A) đã có ở
   server, nhưng chốt lại nằm ở `upsertBill` (từ chối `'Payed'` → trạng thái khác)
   thay vì ở giao dịch mang cùng `Idbill` — nên hai khoản chi **vẫn** lọt, và hoàn
-  tác một lần trả đã đồng bộ bị từ chối (`BILL_ALREADY_PAID`). CAN-LAM 17 B.
+  tác một lần trả đã đồng bộ bị từ chối (`BILL_ALREADY_PAID`). CAN-LAM 17 B — ✅ 2026-09-12
+  backend bỏ chốt ấy (hoàn tác chạy) nhưng chưa đặt chốt ở giao dịch: server không chặn
+  trả hai lần ở đâu cả.
 
 ## 8. Kiểm thử (viết trước)
 

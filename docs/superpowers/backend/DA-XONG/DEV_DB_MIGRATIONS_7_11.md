@@ -10,6 +10,10 @@ tệp SQL **đã có sẵn** theo đúng thứ tự rồi `prisma generate`, c�
 > vẫn xoá cứng. Tệp 12 đã áp lên CSDL dev cùng ngày. Việc còn lại:
 > `CAN-LAM/VERIFY_7675B35_REMAINING.md` §2.4.
 
+> ✅ **2026-09-12:** tệp `database/13` (`DROP DEFAULT` của `budget."Threshold_Warning_Percent"` + hai
+> index ví `IF NOT EXISTS`, đã có sẵn) áp lên CSDL dev theo yêu cầu đích danh, một giao tác `pg`,
+> `column_default` `0 → null`; không cần `prisma generate`. Sổ ghi migration (4.2) backend vẫn chưa có.
+
 > ✅ **Cập nhật tối 2026-09-10 — phần ÁP đã xong trên CSDL dev.** Người dùng yêu
 > cầu đích danh *"đối với csdl thì bạn hãy chạy để áp dụng csdl mới"*, nên client
 > chạy đúng quy trình mục 4.1 — **không sửa tệp nào** của `src/Backend`

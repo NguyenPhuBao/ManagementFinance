@@ -73,7 +73,7 @@ void main() {
   });
 
   testWidgets('Đã đăng xuất → null', (tester) async {
-    expect(await _readIdWith(tester, AuthUnauthenticated()), isNull);
+    expect(await _readIdWith(tester, const AuthUnauthenticated()), isNull);
   });
 
   testWidgets('id không phân giải được → null, KHÔNG phải 1', (tester) async {

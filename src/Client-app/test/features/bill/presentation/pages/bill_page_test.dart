@@ -228,7 +228,7 @@ void main() {
     expect(find.text('Cần thanh toán (0)'), findsOneWidget);
     expect(find.text('Thanh toán'), findsNothing);
 
-    await tester.tap(find.text('Đã thanh toán (1)'));
+    await tester.tap(find.text('Lịch sử (1)'));
     await tester.pumpAndSettle();
 
     expect(find.text('ĐÃ THANH TOÁN'), findsOneWidget);
@@ -288,7 +288,7 @@ void main() {
           'đúng giữa hai hoá đơn chưa trả.',
     );
 
-    await tester.tap(find.textContaining('Đã thanh toán'));
+    await tester.tap(find.textContaining('Lịch sử'));
     await tester.pumpAndSettle();
 
     expect(find.text('Da tra roi'), findsOneWidget);
@@ -396,7 +396,7 @@ void main() {
     expect(find.byKey(const ValueKey('bill-undo-a')), findsNothing,
         reason: 'Hoá đơn chưa trả thì không có gì để hoàn tác.');
 
-    await tester.tap(find.text('Đã thanh toán (1)'));
+    await tester.tap(find.text('Lịch sử (1)'));
     await tester.pumpAndSettle();
 
     expect(
@@ -416,7 +416,7 @@ void main() {
           isPaid: true,
           payStatus: 'Payed'),
     ]);
-    await tester.tap(find.text('Đã thanh toán (1)'));
+    await tester.tap(find.text('Lịch sử (1)'));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const ValueKey('bill-undo-b')));
@@ -437,7 +437,7 @@ void main() {
           isPaid: true,
           payStatus: 'Payed'),
     ]);
-    await tester.tap(find.text('Đã thanh toán (1)'));
+    await tester.tap(find.text('Lịch sử (1)'));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const ValueKey('bill-undo-b')));
@@ -468,5 +468,67 @@ void main() {
     ]);
 
     expect(tester.takeException(), isNull);
+  });
+
+  group('kỳ bỏ qua', () {
+    testWidgets('tab thứ hai tên là "Lịch sử", không phải "Đã thanh toán"',
+        (tester) async {
+      await dungTrang(tester, [
+        _bill(id: 'a', dueDate: DateTime(2026, 9, 20)),
+        _bill(id: 'b', dueDate: DateTime(2026, 9, 10), payStatus: 'Skipped'),
+      ]);
+
+      expect(find.textContaining('Lịch sử ('), findsOneWidget,
+          reason: 'Tên cũ "Đã thanh toán" nói sai về một kỳ chưa hề được trả '
+              'đồng nào.');
+      expect(find.textContaining('Đã thanh toán ('), findsNothing);
+    });
+
+    testWidgets('kỳ bỏ qua đếm vào tab Lịch sử, không vào tab cần trả',
+        (tester) async {
+      await dungTrang(tester, [
+        _bill(id: 'a', dueDate: DateTime(2026, 9, 20)),
+        _bill(id: 'b', dueDate: DateTime(2026, 9, 10), payStatus: 'Skipped'),
+      ]);
+
+      expect(find.textContaining('Cần thanh toán (1)'), findsOneWidget,
+          reason: 'Kỳ bỏ qua không còn là việc phải làm.');
+      expect(find.textContaining('Lịch sử (1)'), findsOneWidget);
+    });
+
+    testWidgets('dòng kỳ bỏ qua KHÔNG bày nút Thanh toán', (tester) async {
+      await dungTrang(tester, [
+        _bill(id: 'b', dueDate: DateTime(2026, 9, 10), payStatus: 'Skipped'),
+      ]);
+
+      await tester.tap(find.textContaining('Lịch sử ('));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Thanh toán'), findsNothing,
+          reason: 'payBill từ chối kỳ đã bỏ qua, nên nút này chỉ dẫn người '
+              'dùng tới một thông báo lỗi. Chỉ bộ test ở 411dp trên MÁY THẬT '
+              'mới lộ ra chỗ này — trang chi tiết đã đúng từ đầu, dòng danh '
+              'sách thì không.');
+      expect(find.byKey(const ValueKey('bill-undo-skip-b')), findsOneWidget,
+          reason: 'Thay bằng lối hoàn tác, đối xứng với dòng đã trả.');
+    });
+
+    testWidgets('kỳ bỏ qua KHÔNG cộng vào tổng tiền cần thanh toán',
+        (tester) async {
+      await dungTrang(tester, [
+        _bill(id: 'a', dueDate: DateTime(2026, 9, 11), amount: 50000),
+        _bill(
+            id: 'b',
+            dueDate: DateTime(2026, 9, 12),
+            amount: 900000,
+            payStatus: 'Skipped'),
+      ]);
+
+      expect(find.textContaining('950.000'), findsNothing,
+          reason: 'Cộng kỳ bỏ qua vào là thẻ đầu trang báo 950.000 đ trong khi '
+              'người dùng chỉ nợ 50.000 đ.');
+      expect(find.textContaining('1 hóa đơn chưa thanh toán'), findsOneWidget,
+          reason: 'Số đếm cũng chỉ tính kỳ còn phải trả.');
+    });
   });
 }

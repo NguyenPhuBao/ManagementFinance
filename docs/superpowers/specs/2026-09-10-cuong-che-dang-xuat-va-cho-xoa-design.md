@@ -1,8 +1,15 @@
 # Cưỡng chế đăng xuất và tài khoản chờ xoá — thiết kế
 
 > **Trạng thái: G33 — Phần 2–3 (trừ §5.1) ĐÃ XONG (2026-09-11). Mục 6 (việc cho backend):
-> tài liệu xin ĐÃ VIẾT (CAN-LAM 19), backend CHƯA LÀM — `getProfile` chưa trả `countdown`.
-> Phần 1 (mục 3, kể cả §3.8) và §5.1 CHƯA LÀM.** Mọi quyết định sản phẩm ở mục 2
+> CAN-LAM 19 ✅ backend làm xong (gộp `main` @ `cbbeeb4` 2026-09-12) — `getProfile` trả
+> `countdown`; client đọc từ cùng ngày (`_dongBoTrangThai`, xem mục 6.1 và §4.3).
+> §3.8 ĐÃ LÀM (2026-09-11). **Phần 1 (§3.1–§3.7) và §5.1 ĐÃ LÀM 2026-09-12** — bảy commit
+> `693de3b` → `fc82a94`, cộng `ac08ed6` và `40a553d` (hai lỗi tìm ra khi kiểm máy ảo).
+> **Cả ba nhánh đã kiểm đầu-cuối trên máy thật** — HTTP 401 sáng 2026-09-12; socket và làm mới
+> chiều cùng ngày, khoá tài khoản thử qua API admin; interceptor tự làm mới với token 1 phút; xoá
+> tài khoản thử → hộp thoại "đã xoá" + dọn SQLite qua socket (§7.3). Ngoại lệ §3.6b **vẫn giữ** —
+> đo được rằng xoá qua admin **thu hồi refresh token** nên nhánh làm mới không bao giờ nói được
+> "đã xoá" (CAN-LAM 20 §2.7); ca `SCHEMA_ERROR → 503` chưa đo.** Mọi quyết định sản phẩm ở mục 2
 > đã chốt qua hỏi–đáp ngày 2026-09-10; Phần 1 (mục 3) được duyệt riêng trong phiên
 > ấy. Phần 2–4 viết thẳng vào đây theo yêu cầu "làm đi" của người dùng. Ngày
 > 2026-09-11 người dùng duyệt nốt: §3.3 và §3.6b (hai điểm soát lại theo `main`),
@@ -80,7 +87,7 @@ backend thật — trừ body 401 vẫn thiếu mã (CAN-LAM 13). Mục 7.3 đã
 
 ⚠️ **2026-09-11:** `origin/main` có thêm `7675b35` (gộp về nhánh này cùng ngày): body 401 nay mang
 mã và nhánh cho qua khi lỗi lược đồ đã thành 503 — nhưng bắt tay socket và
-`/auth/refresh` từ chối **mọi** tài khoản (CAN-LAM 17 mục A). Ảnh hưởng tới spec
+`/auth/refresh` từ chối **mọi** tài khoản (CAN-LAM 17 mục A — ✅ đóng 2026-09-12, gộp `cbbeeb4`). Ảnh hưởng tới spec
 nằm ở các đoạn gắn ngày 2026-09-11 bên dưới.
 
 ---
@@ -168,9 +175,10 @@ Hai chỗ trong `AuthInterceptor` có thể nhận body 401 mang mã:
    `/auth/refresh` kiểm trạng thái tài khoản và trả 401 cùng hình dạng body
    (`auth.controller.js:79-85`). Ca xảy ra thật: token truy cập hết hạn — 401
    *"Token expired"*, không mã — đúng lúc tài khoản đã bị khoá hoặc xoá, nên
-   interceptor làm mới và nhận 401 **có** mã. `_tryRefreshToken` hiện nuốt mọi lỗi
-   thành `null` (`auth_interceptor.dart:88-119`), nên phải đổi để trả được body lỗi
-   về cho `onError`.
+   interceptor làm mới và nhận 401 **có** mã. Hàm nay là `_lamMoi()` (✅ sửa
+   2026-09-11, spec §3.8): trả `KetQuaLamMoi`, và `LamMoiPhienChet.loi` đã giữ
+   nguyên `DioException` (có body 401) — Phần 1 chỉ còn đọc `loi.response?.data`
+   ở đây, không cần đổi gì thêm để lấy body lỗi.
 
 Cả hai chỗ làm cùng một việc: phát `Stream<ThongBaoBuocDangXuat> taiKhoanBiTuChoi`,
 xoá token **không phát** `sessionExpiredStream`, rồi `handler.next(err)`.
@@ -186,7 +194,9 @@ request sau thấy kho rỗng, và `_clearTokens` sẵn có tự im vì `hadSess
 
 Trước khi gộp `main`, cả hai chỗ **nằm im**: body 401 chưa mang mã (CAN-LAM 13), và
 `/auth/refresh` chưa kiểm trạng thái tài khoản. Nhánh đã gộp `main` @ `cc65f4f`
-(2026-09-11), nên mã backend cho chỗ 1 đã có trên nhánh. Chỗ 2 chạy khi backend sửa CAN-LAM 17 mục A — hôm nay nó trả 401 kèm
+(2026-09-11), nên mã backend cho chỗ 1 đã có trên nhánh. Chỗ 2 chạy khi backend sửa CAN-LAM 17 mục A — ✅ đã sửa, gộp `cbbeeb4` 2026-09-12 (`...rejection.data`
+lên lỗi, controller đọc đúng ba tên; ✅ đo đầu-cuối chiều 2026-09-12 — khoá tài khoản thử rồi gọi
+`/auth/refresh`: 401 với `code`, `idaccount`, `reason_inactive` ở cấp gốc); trước đó nó trả 401 kèm
 `idaccount` nhưng **không** `code`, nên `tuBody401` trả `null` và rơi về đường cũ.
 Không cần đổi gì phía client khi backend sửa.
 
@@ -199,7 +209,8 @@ qua nhánh HTTP (khi backend sửa) hoặc qua `verifySession` như hôm nay.
 
 ⚠️ **2026-09-11 — trên `main` @ `7675b35` lý do này đổi dạng, quyết định giữ
 nguyên.** Bắt tay nay tách `ACCOUNT_INACTIVE` / `ACCOUNT_DELETED`, nhưng hàm dựng
-mã đang từ chối **mọi** tài khoản (CAN-LAM 17 mục A), và nếu sửa nửa vời thì lỗi
+mã khi ấy từ chối **mọi** tài khoản (CAN-LAM 17 mục A — ✅ đóng 2026-09-12; bắt tay nay xử lý
+`SCHEMA_ERROR` trước, không kèm mã), và nếu sửa nửa vời thì lỗi
 lược đồ đi ra thành `ACCOUNT_DELETED` (CAN-LAM 17 mục 2.5). Bắt tay bị từ chối chỉ
 khiến kênh hẹn nối lại; người bị khoá hoặc xoá vẫn bị đẩy ra ở request HTTP kế
 tiếp, qua `authenticate` — chỗ duy nhất trên `main` đã tách riêng ca lỗi lược đồ
@@ -210,10 +221,30 @@ tiếp, qua `authenticate` — chỗ duy nhất trên `main` đã tách riêng c
 Event mới `TaiKhoanBiBuocDangXuat(ThongBaoBuocDangXuat)`, nguồn là cả hai luồng
 trên (nối trong constructor, cùng khuôn với `sessionExpiredStream`).
 
-1. Chỉ xử lý khi state là `AuthSuccess` hoặc `AuthChecking`. Khác thì bỏ qua —
-   lần nhận thứ hai (socket rồi HTTP) tới **sau** khi lần đầu xong thì không làm
-   gì; tới **trong lúc** lần đầu còn chạy thì state vẫn là `AuthSuccess`, nên phải
-   chặn bằng cờ (§9, thêm 2026-09-11).
+1. ⚠️ **Sửa 2026-09-12 sau khi kiểm trên máy ảo — bản dưới đây là mã đang chạy;
+   câu cũ ("chỉ xử lý khi state là `AuthSuccess` hoặc `AuthChecking`") đã sai và
+   chính nó là cái lỗi.** Handler nhận cả khi state đã là `AuthUnauthenticated`,
+   và chỉ bỏ qua `AuthInitial` (chưa ai đăng nhập), `AuthLoading` (một lượt đăng
+   nhập **mới** đang chạy — lời từ chối của phiên cũ không được giết nó),
+   `AuthError` và các state của luồng đăng ký.
+
+   Vì sao: `verifySession()` xếp **chính** cái 401 mang mã ấy là phiên chết, nên
+   `_onAuthCheckRequested` phát `AuthUnauthenticated()` **trơn**, và lời từ chối
+   của interceptor tới **sau** đó một nhịp. Hai handler chạy đồng thời nên thứ tự
+   **không đoán được**; bản trước của mục này đoán một chiều (xem gạch cuối §3.5),
+   máy thật rơi vào chiều kia và người dùng bị đá ra **không kèm hộp thoại nào**.
+   Có test cho **cả hai** chiều.
+
+   Lần nhận thứ hai (socket rồi HTTP) vẫn chặn bằng **cờ** đặt ngay đầu handler,
+   không bằng state (§9).
+
+   ⚠️ **Chốt này một mình KHÔNG đủ.** Đường kiểm phiên chạy song song cũng đăng
+   xuất, và vì `logout()` của nó là lời gọi **mạng**, nó thường phát
+   `AuthUnauthenticated()` **sau** handler — đè mất lý do. Vì thế lý do được nhớ
+   ở `_thongBaoBuocDangXuat` (đặt trước mọi `await` của handler) và **năm** chỗ
+   phát `AuthUnauthenticated` của các đường *phiên chết* đi qua
+   `_phatChuaDangNhap(emit)`. Chỗ thứ sáu — `_onLogoutRequested`, người dùng tự
+   bấm Đăng xuất — giữ bản trơn: ở đó không có gì để giải thích.
 2. Dừng `SyncEngine`, `NotificationScanner` (đã `cancelAll`), `RealtimeChannel`
    qua **một** hàm `_dungMoiThuCuaPhien()` — chuỗi này đang chép ở
    `_onSessionInvalidated` và `_onLogoutRequested`; lần này là lần thứ ba.
@@ -230,6 +261,13 @@ trên (nối trong constructor, cùng khuôn với `sessionExpiredStream`).
 thể phát `AuthUnauthenticated()` trơn trước khi event này chạy xong. Vì vậy
 `thongBao` **phải** nằm trong `props`: lần phát sau vẫn là state mới, hộp thoại
 vẫn hiện.
+
+⚠️ **Câu trên đúng nhưng KHÔNG đủ — đo trên máy ảo 2026-09-12.** Nó ngầm giả
+định rằng handler này phát **sau**. Trên máy thật thứ tự là ngược: `AuthChecking`
+→ `AuthUnauthenticated()` trơn (từ `_onAuthCheckRequested`) → rồi mới tới lời từ
+chối. `props` không cứu được ca ấy, vì handler bị **chốt state** chặn từ đầu và
+không bao giờ phát gì. Cả hai thứ đều cần: `thongBao` trong `props` **và** chốt
+state ở bước 1 phải nhận `AuthUnauthenticated`.
 
 `idaccount` để dọn lấy từ thông báo; thiếu thì từ `getCurrentUser()`. Không suy
 từ SQLite, không mặc định (quy tắc 2 `CLAUDE.md`). Không có id hợp lệ → **không
@@ -248,7 +286,8 @@ người dùng trên server (quy tắc 5).
 §3.5 bước 3 dọn SQLite cho **mọi** `daXoa`. Trong các nguồn, **401 của
 `/auth/refresh`** là chỗ **đã biết** một sự cố phía server đội lốt được
 `ACCOUNT_DELETED`: trên `main` @ `7675b35`, `authenticate` tách lỗi lược đồ thành
-503, còn `/auth/refresh` thì chưa (CAN-LAM 17 mục 2.5). Client không tự phân biệt
+503, còn `/auth/refresh` thì chưa (CAN-LAM 17 mục 2.5; ✅ mã backend sửa, gộp `cbbeeb4` 2026-09-12 —
+trả 503 khi `SCHEMA_ERROR` — chỉ đọc mã, ca này không dựng được trên CSDL dev lành). Client không tự phân biệt
 được.
 
 `ThongBaoBuocDangXuat` mang thêm nguồn — `socket`, `http` hoặc `lamMoi` (trường
@@ -261,8 +300,15 @@ Nguồn `lamMoi` vẫn đăng xuất và vẫn hiện hộp thoại "Tài khoả
   đó). Đó đúng là ca Q2 muốn dọn.
 - **Được gì:** nếu là báo động giả, người dùng đăng nhập lại và dữ liệu còn nguyên
   — cùng tinh thần *"đọc nhầm thành bị khoá chỉ giữ lại dữ liệu"* ở §3.1.
-- Khi CAN-LAM 17 mục 2.5 xong thì bỏ được ngoại lệ này; chú thích trong mã trỏ về
-  đây.
+- Khi CAN-LAM 17 mục 2.5 xong **và đo được nhánh làm mới chạy đúng** thì bỏ ngoại lệ này; chú
+  thích trong mã trỏ về đây. (2026-09-12: mã backend đã xong; nhánh làm mới **đã đo** chiều cùng
+  ngày ở ca hợp lệ (200), ca bị khoá (401 + `ACCOUNT_INACTIVE`) **và ca đã xoá** — ca cuối cho
+  kết quả bất ngờ: xoá qua admin **thu hồi toàn bộ refresh token**, nên `/auth/refresh` trả 401
+  *"Refresh token khong hop le"* **không mã**, trước cả khi kiểm trạng thái tài khoản. Tức đường
+  `lamMoi` + `daXoa` **không xảy ra được** với xoá qua admin — ngoại lệ này chỉ còn che ca lỗi
+  lược đồ (backend đã trả 503, chưa đo) và ca xoá theo lịch hết hạn (chưa đo). **Giữ** — vô hại,
+  vì dọn SQLite đã chạy đúng qua socket/HTTP; gỡ là quyết định của người dùng. Việc backend nên
+  làm để client hiện được hộp thoại trong ca này: CAN-LAM 20 §2.7.)
 
 ### 3.7. Màn Đăng nhập
 
@@ -299,7 +345,184 @@ cả hai, **trước** Phần 1, vì §3.3 sửa đúng `onError` và `_tryRefre
    kết quả, theo luật ở điểm 1. Cơ chế cụ thể chốt ở kế hoạch.
 
 Điểm 1 **không** cứu được ca đang xảy ra trên nhánh đã gộp `main`: `/auth/refresh` trả
-401 cho mọi tài khoản (CAN-LAM 17 mục A), mà 401 là phiên chết. Ca ấy chờ backend sửa.
+401 cho mọi tài khoản (CAN-LAM 17 mục A), mà 401 là phiên chết. ✅ Backend sửa, gộp `cbbeeb4`
+2026-09-12; đo đầu-cuối chiều cùng ngày — `/auth/refresh` với refresh token thật trả 200 kèm cặp
+token mới (token cũ bị thu hồi đúng: gọi lại → 401 không mã).
+
+### ✅ Làm 2026-09-11
+
+Năm commit trên `TranQuangDat`, theo thứ tự: `952058c` (kiểu `KetQuaLamMoi` —
+phân loại lỗi `/auth/refresh` thành `LamMoiThanhCong` / `LamMoiPhienChet` /
+`LamMoiTamThoi`, chỉ 400/401 do server **trả lời** là phiên chết), `4903c97`
+(điểm 1 + lỗi thứ ba), `3e84d49` (test canh nhánh 200 thiếu `accessToken`,
+thêm sau soát Task 2), `1edeb49` (điểm 2), `7cbd849` (chốt phòng thủ, xem
+dưới, thêm sau soát Task 3).
+
+**Cơ chế.** `onError` vẫn `extends Interceptor` (không đổi sang
+`QueuedInterceptor` — lớp con trong `session_validation_test.dart` kế thừa
+`AuthInterceptor`, và `QueuedInterceptor` xếp hàng cả `onRequest`, rộng hơn
+cái cần). Chốt "token cũ" đứng trước: 401 mang `Authorization` khác token
+đang có trong kho (đã bị một lượt làm mới khác thay) thì **chỉ thử lại**,
+không gọi `/auth/refresh` lần nữa. Còn lại thì gọi `_lamMoiChung()`, hàm giữ
+một future dùng chung (`_lamMoiDangChay`) cho mọi 401 tới trong lúc một lượt
+làm mới đang chạy — `/auth/refresh` chỉ gọi **đúng một lần** cho dù bao
+nhiêu request cùng nhận 401.
+
+**Quyết định:**
+- Lỗi trả ra khi làm mới hỏng tạm thời là lỗi của **chính lượt làm mới**
+  (dựng lại trên `RequestOptions` gốc), **không** phải 401 gốc — vì
+  `AuthRepositoryImpl.verifySession` coi 401 là phiên chết (`invalid`) và sẽ
+  đăng xuất, đúng cái lỗi §3.8 cần đóng.
+- **Lỗi thứ ba** (tìm được khi đọc mã, sửa cùng điểm 1): trước đây thử lại
+  request gốc hỏng sau khi làm mới **đã thành công** vẫn xoá cả hai token
+  bất kể exception đến từ đâu. Token vừa được cấp — lỗi thử lại không nói gì
+  về phiên — nay **giữ** token.
+- Xoá token và phát `sessionExpiredStream` nằm trong `_lamMoi()` — **một
+  lần cho một lượt làm mới chung**, không để từng request chờ tự xoá (N
+  request đan xen đọc/xoá sẽ phát tín hiệu N lần).
+- `LamMoiPhienChet.loi` giữ nguyên `DioException` (có body 401) để §3.3
+  (Phần 1) đọc mã lỗi từ đó — không cần đổi gì thêm **để lấy body lỗi**.
+  ⚠️ Phạm vi ấy hẹp hơn nó nghe: §3.3 còn đòi *xoá token **không phát**
+  `sessionExpiredStream`* cho 401 **có mã**, mà hôm nay `_clearTokens()` phát
+  tín hiệu **bên trong** `_lamMoi()` — tức **trước** khi `onError` kịp nhìn
+  `LamMoiPhienChet.loi`. ✅ **Gỡ 2026-09-12** (Phần 1, `ed0fd47`): phép quyết
+  định chuyển hẳn vào `_lamMoi()` — nơi `_clearTokens()` vốn đã chạy — và
+  `_clearTokens` nhận cờ `phatTinHieu`. Quyết định "xoá token + phát tín hiệu
+  nằm trong `_lamMoi()`, một lần cho một lượt làm mới chung" giữ nguyên.
+- **`7cbd849` là một chốt phòng thủ, không phải một lỗi đã có.** Lỗi không
+  phải `DioException` (ví dụ `PlatformException` thật của kho token) nay được
+  bắt riêng thay vì thoát ra ngoài — nhưng ở **hai** chỗ và theo **hai** cách
+  khác nhau: trong `_lamMoi()` thì trả `LamMoiTamThoi` (giữ token, không phát
+  tín hiệu); còn ở lượt đọc kho của chốt "token cũ" thì khối `catch` chỉ gán
+  `tokenHienCo = null` — coi như *không có token cũ để so* — rồi **đi tiếp**
+  `_lamMoiChung()`, nên kết quả cuối tuỳ lượt làm mới ấy và hoàn toàn có thể
+  là `LamMoiThanhCong`. (Bản trước của gạch này viết cả hai chỗ đều trả
+  `LamMoiTamThoi` — sai, sửa 2026-09-12 sau soát cuối cả nhánh.)
+  Lo ngại ban đầu — lỗi thoát khỏi future dùng chung sẽ treo mọi request
+  đang chờ — **không tái hiện được**: `dio 5.11.0` đã tự bắt lỗi thoát khỏi
+  `onError` async và đổi thành `DioException(type: unknown)` cho từng
+  request riêng (`assureDioException`, `dio_mixin.dart`), nên ca test mới
+  xanh ngay cả trước khi sửa `lib/`. Giữ chỗ sửa để không phụ thuộc hành vi
+  bọc ấy ở phiên bản Dio sau, và để lỗi mang thông điệp rõ ("Lỗi ngoài HTTP
+  khi làm mới token").
+
+**Không kiểm được trên máy ảo:** không đổi giao diện; không ép được token
+truy cập hết hạn; và CAN-LAM 17 mục A làm `/auth/refresh` trả 401 cho mọi
+tài khoản, nên nhánh làm mới không dựng được đầu-cuối trên backend đã gộp (✅ hết từ
+2026-09-12 — đo bằng `curl` chiều cùng ngày: 200 khi hợp lệ, 401 + `code` khi bị khoá; lý do đầy đủ ở Global Constraints của kế hoạch thực thi,
+`.superpowers/sdd/2026-09-11-lam-moi-token/`).
+
+⚠️ **Rủi ro còn lại, nói thành lời (2026-09-12):** toàn bộ lời hứa §3.8 hiện
+**chỉ được canh bằng máy chủ giả** — chính hành vi "mất mạng thì giữ token"
+chưa một lần nào chạy trên máy thật. ✅ **Chiều 2026-09-12 đã chạy nửa đầu trên máy ảo:** hạ
+`JWT_USER_ACCESS_EXPIRES` xuống `1m` (trả lại `7d` ngay sau), đăng nhập lại, chờ 75 giây, kích đồng
+bộ — app kéo với token hết hạn → interceptor gọi `/auth/refresh` → server **xoay token** (bảng
+`refreshtoken`: cùng số hàng sống, mốc mới nhất nhảy 09:47:46 → 09:49:21Z, không ai gọi API lúc ấy)
+→ socket nối lại bằng token mới, app **vẫn ở Trang chủ**. Nửa sau — *mất mạng giữa 401 và lượt làm
+mới* — **không dựng được** trên máy ảo: cần mạng đứt đúng giữa hai request liên tiếp. Vẫn chỉ canh
+bằng máy chủ giả. **Việc còn nợ (cũ):** khi backend đóng
+CAN-LAM 17 mục A (✅ đóng 2026-09-12) thì kiểm một lượt trên máy ảo — đăng nhập, bật chế độ máy bay
+(hoặc hạ `JWT_USER_ACCESS_EXPIRES` trên backend dev để ép 401), xác nhận
+**không** bị đăng xuất và hai token còn nguyên trong kho.
+
+Ca test: `test/core/api/ket_qua_lam_moi_test.dart` (13 ca) và
+`test/core/api/auth_interceptor_test.dart` (**17** ca, **14** ca mới cho §3.8;
+16 / 13 tính tới 2026-09-11, trước lượt sửa dưới) — số liệu đầy đủ ở §7.2.
+
+### ✅ Lượt sửa sau soát cuối cả nhánh (2026-09-12)
+
+Soát cuối `16bd5b3..8ad4b2f` xếp **With fixes** — 0 Critical, 0 Important, 8
+Minor — và cả tám được làm trong một lượt, hai commit:
+
+- **Mã và test** (`fe5a9fc`). (1) `catch (Object)` của `_lamMoi()` không còn
+  hạ cấp một phiên **đã xác định** là chết: `_clearTokens()` phát tín hiệu
+  trong `finally` (kho token hỏng đúng lúc xoá thì `AuthBloc` càng cần biết —
+  nó hỏi lại server bằng `verifySession()` rồi mới đăng xuất), và `_lamMoi()`
+  giữ phán quyết ở biến `phanQuyet` đặt **trước** lời gọi ấy. Trước khi sửa,
+  kho hỏng lúc xoá làm nơi gọi nhận `LamMoiTamThoi` và **không** phát tín hiệu
+  nào — đúng hình dạng G12. (2) Nhánh "200 không có `accessToken`" thôi gắn
+  `response` của `/auth/refresh` vào lỗi trả cho request gốc: `SyncEngine` in
+  `e.response?.data` bằng `debugPrint`, thứ **không** bị lược ở bản release,
+  nên backend đổi tên khoá là body còn refreshToken đi thẳng ra logcat qua lỗi
+  của một request khác. (3) Ba ca đồng thời thêm chốt canh để không xanh vì lý
+  do khác. (4) Chú thích giới hạn của `_retryRequest` (`Options` dựng lại chỉ
+  mang `method` + `headers`, mà chốt "token cũ" vừa thêm đường phát lại thứ
+  hai). (5) `_loiTamThoiChoRequest` chép `stackTrace`.
+- **Tài liệu** (commit ngay sau `fe5a9fc`). Gạch "chốt phòng thủ" ở trên (hai
+  khối `catch` **không** giống nhau), gạch `LamMoiPhienChet.loi` (phạm vi
+  "để lấy body lỗi" + điểm vướng cho Phần 1), `FIX_BACKEND_3_REGRESSIONS.md`
+  (`onError` gọi `_lamMoiChung()` → `_lamMoi()`), rủi ro máy ảo ở trên, và số
+  đo mới.
+
+Sau lượt này: `flutter test` **2105/2105** (1 phút 7 giây), `flutter analyze`
+**25 issue = 20 info + 5 warning + 0 error** — mức nền, không issue nào ở
+`core/api/`.
+
+---
+
+### ✅ Phần 1 và §5.1 — làm 2026-09-12
+
+Bảy commit trên `TranQuangDat`, một task một commit: `693de3b` (§3.1 kiểu
+`ThongBaoBuocDangXuat` + hai hàm đọc), `2b2d563` (§3.2 luồng socket),
+`ed0fd47` (§3.3 hai chỗ HTTP), `aef03af` (§3.6 `purgeDataForAccount`),
+`eddf8a6` (§3.5 bước 4 `xoaPhienTrenMay`), `b1ee121` (§3.5 + §3.6b `AuthBloc`),
+`fc82a94` (§3.7 + §5.1 hộp thoại). Kế hoạch thực thi:
+`docs/superpowers/plans/2026-09-12-cuong-che-dang-xuat-phan-1.md` (gitignore).
+
+**Lệch spec một chỗ, người dùng duyệt trước khi làm.** `tuSuKienSocket` trả kiểu
+**không** nullable, khác chữ ký ở §3.1. Sự kiện `account.force_logout` tự nó đã
+là lời đẩy người dùng ra; trả `null` cho một payload dị dạng nghĩa là **bỏ qua**
+lời ấy và để người dùng ngồi lại trong app — đúng cái hỏng im lặng mục này sinh
+ra để chặn. Payload không phải `Map` → thông báo `biKhoa`, câu rỗng, id `null`.
+Phép lọc theo `idaccount` vẫn ở `RealtimeChannel` như §3.2 mô tả, chỉ là nó đọc
+`thongBao.idaccount` thay vì tự bới payload. `tuBody401` **giữ** nullable: ở đó
+`null` có nghĩa thật và hay gặp.
+
+**Bốn thứ tìm ra khi làm, không có trong spec** — cái cuối chỉ lộ trên máy thật:
+
+1. **Chỉ được đọc `code` khi `statusCode == 401`.** `/auth/refresh` còn trả
+   **400**, và body 400 của repo này cũng mang `code` ở cấp gốc (ví dụ
+   `VALIDATION_ERROR`) — đọc nó là hiện hộp thoại *"Tài khoản đã bị vô hiệu
+   hoá"* cho một lỗi nhập liệu. Có ca test canh đúng ca ấy. (401 "Token expired"
+   thật thì đi qua `ResponseHandler.error(res, msg, 401)` nên **không** có `code`
+   — đo lại trên `middleware/auth.js:60-111` ngày 2026-09-12.)
+2. **`BlocListener` ở màn Đăng nhập là không đủ** — §3.7 chỉ nói tới nó.
+   `AppRouter` dùng `refreshListenable: GoRouterRefreshStream(authBloc.stream)`
+   (`app_router.dart:89`), nên thứ tự thật là *bloc emit → router chuyển về
+   `/login` → trang mới được dựng*: lần đổi state mang `thongBao` đã trôi qua
+   trước khi listener kịp đăng ký. Trang phải đọc **thêm** state sẵn có ở
+   `initState` (sau khung hình đầu tiên), và một cờ chặn hiện hai lần.
+3. **Hộp thoại tràn 158px ở 411dp** khi `loiNhan` dài — câu ấy do admin gõ
+   (`admin.service.js:140` nối thẳng `reason_inactive` vào), client không kiểm
+   được độ dài. Tràn thì nút "Đã hiểu" ra ngoài màn hình mà
+   `barrierDismissible` lại là `false` — người dùng không đóng nổi hộp thoại.
+   Phần thân nay cuộn được, nút nằm **ngoài** vùng cuộn. Tìm ra bằng chính ca
+   test §7.2 dựng trong `SizedBox(width: 411)` + `tester.takeException()`.
+4. ⚠️ **Cuộc đua với `_onAuthCheckRequested` cần HAI chốt, không phải một** —
+   tìm ra ngày 2026-09-12 khi kiểm nhánh HTTP trên `emulator-5554` với tài khoản
+   11 bị khoá thật: app đăng xuất đúng nhưng **không hiện hộp thoại nào**, trong
+   khi cả 63 ca test đều xanh. `verifySession()` xếp chính cái 401 mang mã ấy là
+   phiên chết, nên đường kiểm phiên **cũng** đăng xuất, song song với handler.
+   - (a) **Chốt vào:** handler phải nhận cả khi state đã là `AuthUnauthenticated`
+     (lời từ chối tới muộn) — `ac08ed6`, §3.5 bước 1.
+   - (b) **Đường ra:** mọi lượt phát `AuthUnauthenticated` của các đường *phiên
+     chết* phải mang theo lý do đã nhớ ở `_thongBaoBuocDangXuat`, qua
+     `_phatChuaDangNhap(emit)`. `logout()` là lời gọi **mạng** nên đường trơn
+     thường về **sau** handler và đè mất lý do — `40a553d`.
+
+   ⚠️ **(a) một mình không đủ**: kiểm lại trên máy sau `ac08ed6` vẫn không có hộp
+   thoại. Ai gỡ một trong hai chốt sẽ thấy bộ test vẫn xanh và tính năng vẫn hỏng.
+   Ba ca test canh, mỗi ca một chiều của cuộc đua.
+
+**Số ca test** (đếm bằng máy 2026-09-12): `test/core/auth/buoc_dang_xuat_test.dart`
+**19**; `test/core/realtime/realtime_buoc_dang_xuat_test.dart` **7**;
+`test/core/api/auth_interceptor_buoc_dang_xuat_test.dart` **9**;
+`test/core/database/purge_data_for_account_test.dart` **4**;
+`test/features/auth/xoa_phien_tren_may_test.dart` **3**;
+`test/features/auth/auth_bloc_buoc_dang_xuat_test.dart` **13**;
+`test/features/auth/hop_thoai_bi_day_ra_test.dart` **11** — tổng **66**. Sau lượt
+này `flutter test` **2171/2171**, `flutter analyze` **25** issue (mức nền). Mốc
+63 ca / 2168 là trước **hai** lượt sửa sau khi kiểm máy ảo (gạch dưới).
 
 ---
 
@@ -452,7 +675,8 @@ Viết **`CAN-LAM/AUTH_PROFILE_COUNTDOWN.md`** (mục **19** của `README.md` �
    mốc nhận mỗi lần `/auth/profile` trả `countdown`, kể cả khi trạng thái khớp — cứu cả ca
    bộ nhớ đệm cũ lẫn ca **số cũ sai** (máy giữ số của một lần chờ xoá trước; máy khác huỷ
    rồi gửi lại yêu cầu — CAN-LAM 19 §2.4). Đăng nhập máy khác hay cài lại app thì đã có số: response đăng
-   nhập mang `countdown` (mục 4.3 dòng một). Đo 2026-09-11: `main` @ `7675b35` **chưa** làm.
+   nhập mang `countdown` (mục 4.3 dòng một). Đo 2026-09-11: `main` @ `7675b35` **chưa** làm. ✅ 2026-09-12: backend làm ở `cbbeeb4`, client đọc cùng ngày
+   (`AuthRepositoryImpl._dongBoTrangThai`, 4 ca test mới ở `auth_repository_cho_xoa_test.dart`).
 2. `pendingDeleteCancelled` luôn `false` (`auth.service.js:309`, cả nhánh lẫn
    `main`): xin gỡ trường khỏi response hoặc ghi rõ là đã bỏ. ⚠️ Lý do bản trước
    ghi — *"vì `Rule_project.md`/đặc tả 2026-08-18 còn mô tả nó"* — sai một nửa: đo
@@ -465,7 +689,8 @@ Viết **`CAN-LAM/AUTH_PROFILE_COUNTDOWN.md`** (mục **19** của `README.md` �
    trích câu ấy làm căn cứ.
 
 **CAN-LAM 17 (đã viết) là điều kiện** để nhánh socket (bắt tay) và nhánh làm mới
-(§3.3 chỗ 2) chạy được trên `main`.
+(§3.3 chỗ 2) chạy được trên `main`. ✅ 17 A đóng 2026-09-12 — điều kiện đã có; bắt tay đo
+được trên máy ảo, nhánh làm mới chưa.
 
 Kèm cập nhật `README.md` mục 2 và mọi con số đếm mục CAN-LAM trong
 `CLAUDE.md`/`PROJECT_CONTEXT.md` (đếm bằng script).
@@ -495,11 +720,16 @@ Kèm cập nhật `README.md` mục 2 và mọi con số đếm mục CAN-LAM tr
   hiệu, và request kế tiếp **không** gọi làm mới lần hai; làm mới trả 401 **không**
   `code` (hình dạng `main` hôm nay) → đường cũ; 401 không `code` → đường cũ (test
   sẵn có vẫn xanh).
-- `AuthInterceptor`, §3.8: làm mới gặp lỗi kết nối hoặc hết giờ → giữ hai token,
+- ✅ `AuthInterceptor`, §3.8 (làm 2026-09-11): làm mới gặp lỗi kết nối hoặc hết giờ → giữ hai token,
   **không** phát `sessionExpiredStream`, request gốc nhận lại lỗi gốc; làm mới trả 503 →
   như vậy; làm mới trả 400 hoặc 401 không mã → xoá token và phát tín hiệu như cũ; hai
   request cùng nhận 401 → Dio làm mới giả đếm **1** và cả hai được thử lại bằng token
-  mới; lượt làm mới chung ấy trả 401 → cả hai nhận lỗi, tín hiệu phát **một** lần.
+  mới; lượt làm mới chung ấy trả 401 → cả hai nhận lỗi, tín hiệu phát **một** lần. Ca
+  thật (đếm bằng máy 2026-09-12, sau lượt sửa sau soát cuối cả nhánh):
+  `auth_interceptor_test.dart` **14** ca mới cho §3.8 (8 điểm 1 + 1 "200 không có
+  `accessToken`" + 1 "kho token hỏng lúc xoá" + 3 điểm 2 + 1 "kho token ném lỗi",
+  cộng 3 ca cũ = **17** ca cả tệp) và `ket_qua_lam_moi_test.dart` **13** ca. Mốc
+  13 ca mới / 16 ca cả tệp là của 2026-09-11, trước lượt sửa ấy.
 - `RealtimeChannel` (socket giả sẵn có): `account.force_logout` khớp id → phát
   `buocDangXuat`, **không** phát vào `events`; lệch id → im; sau `stop()` → im.
 - `AuthBloc` (khuôn `session_validation_test.dart`): `biKhoa` → dừng ba thành
@@ -518,13 +748,65 @@ Kèm cập nhật `README.md` mục 2 và mọi con số đếm mục CAN-LAM tr
 
 ### 7.3. Kiểm chứng ngoài bộ test
 
+> ✅ **Chiều 2026-09-12 — nhánh socket và nhánh làm mới đã chạy thật** (backend của nhánh sau gộp
+> `cbbeeb4`, máy ảo `emulator-5554` giữ phiên `quangdat` = tài khoản 11, `Iduser` 11). Cách đo:
+> đăng nhập `admin` lấy token → `PATCH /api/admin/updatestatus/11` `{"status":"Inactive",
+> "reason_inactive":"Kiem thu cuong che dang xuat 2026-09-12"}` → chờ 10 giây → đo → `{"status":"Active"}`.
+> Tài khoản đã trả về `Active`, `Reason_Inactive` `NULL` (đo CSDL chỉ đọc). Kết quả:
+>
+> - **Nhánh socket:** `[RealtimeChannel] Bị buộc đăng xuất: biKhoa` lúc 16:30:40.687 — **trước**
+>   cả khi API khoá trả lời (`.774`); hộp thoại "Tài khoản đã bị vô hiệu hoá" hiện trên màn Đăng
+>   nhập, thân là **đúng câu server gửi** kèm lý do; SQLite **giữ nguyên** (log 16:30:41 vẫn đếm
+>   2 ví của tài khoản 11 sau khi đã về màn Đăng nhập). Server ngắt socket ngay sau sự kiện
+>   (`io server disconnect`) nên kênh kịp hẹn "nối lại sau 2s" — nhưng lần ấy **không bao giờ
+>   chạy**: `RealtimeChannel.stop()` huỷ `_henNoiLai` trước mọi thứ khác, và
+>   `_dungMoiThuCuaPhien` gọi nó trong vòng 2 giây ấy. Đúng như §3.4 mô tả.
+> - **Nhánh làm mới (backend):** trước khoá, `/auth/refresh` trả **200** kèm cặp token mới (token cũ
+>   gọi lại → 401 không mã — thu hồi đúng). Sau khoá, `/auth/refresh` **và** `/auth/profile` đều trả
+>   **401** với `code: ACCOUNT_INACTIVE`, `idaccount: 11`, `reason_inactive` ở **cấp gốc** — đúng
+>   hình dạng §3.3 chỗ 2 đọc. **Chưa đo:** interceptor của app tự ép 401 rồi làm mới (§3.8 —
+>   cần hạ `JWT_USER_ACCESS_EXPIRES` phía backend), và ca `ACCOUNT_DELETED` qua nhánh này.
+> - **CAN-LAM 19 đầu-cuối:** response đăng nhập không còn `pendingDeleteCancelled`; `/auth/profile`
+>   có khoá `countdown` (`null` khi `Active`).
+>
+> Sau đó đăng nhập lại `quangdat` trên máy ảo: đường đăng nhập cũng đúng **một** `Starting full
+> sync` (kiểm kèm cho bản sửa `HomePage.build()` cùng ngày).
+
+> ✅ **Chiều 2026-09-12 (muộn) — interceptor tự làm mới, và ca "đã xoá".** Người dùng cho phép
+> đích danh hạ `JWT_USER_ACCESS_EXPIRES=1m` ở `.env` backend dev (trả lại `7d` sau khi đo, backend
+> khởi động lại hai lần) và tạo tài khoản thử bỏ đi được `kiemthu_xoa` (idaccount **12**) qua OTP
+> đăng ký — `email.service.js` không có SMTP nên ghi OTP ra log backend (`[MOCK EMAIL]`), lần này
+> backend chạy với stdout chuyển hướng ra tệp nên đọc được.
+>
+> - **Interceptor (§3.8 nửa đầu):** `quangdat` đăng nhập lại với token 1 phút → chờ 75 giây → kích
+>   đồng bộ → kéo với token hết hạn → `/auth/refresh` → xoay token (đo bảng `refreshtoken`) → socket
+>   nối lại bằng token mới → app vẫn ở Trang chủ. **Không đăng xuất, không hộp thoại** — đúng.
+> - **Ca đã xoá — mức API:** đăng nhập `kiemthu_xoa` giữ refresh token → admin `DELETE
+>   /api/admin/deleteuser/12` (200) → `/auth/refresh` bằng token ấy: **401 "Refresh token khong hop
+>   le", KHÔNG có `code`** — xoá mềm đã thu hồi cả 5 refresh token của tài khoản (`Status = true`),
+>   và `auth.service.js:375-387` kiểm token **trước** khi kiểm tài khoản. `/auth/profile` cùng lúc:
+>   401 + `code: ACCOUNT_DELETED` ở cấp gốc. Hệ quả: **nhánh làm mới không bao giờ mang `daXoa`**
+>   khi xoá qua admin — app đang giữ token hết hạn mà không có socket sẽ bị đăng xuất **trơn, không
+>   hộp thoại** (G36; xin backend ở CAN-LAM 20 §2.7).
+> - **Ca đã xoá — trên máy ảo:** `kiemthu_xoa` đăng nhập, chờ token hết hạn, "tắt Wi‑Fi" rồi xoá qua
+>   admin. ⚠️ Máy ảo có **dữ liệu di động** (`mobile_data = 1`, mạng mặc định `MOBILE[NR]`) nên
+>   `svc wifi disable` **không cắt mạng** — socket vẫn sống, nhận `force_logout: daXoa`, hộp thoại
+>   "Tài khoản đã bị xoá" với đúng câu server, và **SQLite được dọn** (`Wallets count: 0`). Đó là
+>   đường socket `daXoa` chạy đúng §3.5 — không phải đường `lamMoi` định đo; muốn cắt mạng thật
+>   phải `svc data disable` cùng lúc. Mọi lượt "tắt Wi‑Fi" hôm nay chỉ đổi đường mạng, nên dòng
+>   `Network restored` trong log là đổi đường, không phải mất mạng.
+>
+> Tài khoản 12 ở lại CSDL dưới dạng xoá mềm (`Status = 'Deleted'`, `Delete_at` có) — không xoá
+> cứng. Máy ảo trả về phiên `quangdat`.
+
 Sau khi áp `database/7`–`11` (tối 2026-09-10, mục 1.3), backend **của chính nhánh
 này** dựng được mọi tình huống **trừ** body 401 có mã (CAN-LAM 13) — kể cả nhánh
 socket, vì bắt tay ở đó còn dùng `isAccountValid`. ⚠️ Câu vừa rồi nói về backend
 **trước khi gộp**. Nhánh đã gộp `main` @ `cc65f4f` ngày 2026-09-11 theo yêu cầu người
 dùng, trong khi CAN-LAM 17 mục A chưa sửa — nên hệ quả mà đoạn này từng cảnh báo nay
 là thật: bắt tay socket trên backend của nhánh từ chối mọi tài khoản, và nhánh
-socket **không kiểm đầu-cuối được** cho tới khi backend sửa mục A. CSDL dev đã áp
+socket **không kiểm đầu-cuối được** cho tới khi backend sửa mục A — ✅ sửa rồi, gộp `cbbeeb4`
+2026-09-12, bắt tay nối được trên máy ảo. CSDL dev đã áp
 `database/12` cùng ngày. Đề xuất, theo thứ tự:
 
 - **Backend thật, tài khoản thử riêng.** Lúc duyệt, máy ảo được ghi là giữ phiên tài
@@ -545,12 +827,28 @@ socket **không kiểm đầu-cuối được** cho tới khi backend sửa mụ
   `ACCOUNT_DELETED` — cần tạm dừng backend thật, **hỏi người dùng trước**.
 - **Nhánh HTTP 401** kiểm được trên backend của nhánh — đã gộp `main` và áp
   `database/12` ngày 2026-09-11 — theo mục 5
-  `AUTH_401_BODY_CODE.md`. **Nhánh làm mới** (§3.3 chỗ 2) chờ thêm CAN-LAM 17 mục A,
-  theo mục 2.7 `FIX_BACKEND_3_REGRESSIONS.md`.
+  `AUTH_401_BODY_CODE.md`. ✅ **Đã chạy thật 2026-09-12** trên `emulator-5554`,
+  phiên tài khoản **11**: khoá tài khoản trên CSDL dev (người dùng yêu cầu đích
+  danh *"bạn có thể khóa dùm tôi không"*), chờ 60 giây cho `accountCache` của
+  `middleware/auth.js` hết hạn, mở lại app → `GET /auth/profile` trả 401 mang mã
+  → **app đăng xuất nhưng KHÔNG hiện hộp thoại**. Đó là lỗi ở §3.5 bước 1, sửa ở
+  `ac08ed6`. Tài khoản đã trả về `Active` / `reason_inactive = null` ngay sau đó
+  (đo lại để chắc). ✅ **Đã xem tận mắt sau bản sửa** (`40a553d`): đăng nhập lại tài khoản 11,
+  khoá, chờ 60 giây, mở lại app → hộp thoại hiện đúng tiêu đề *"Tài khoản đã bị
+  vô hiệu hoá"*, thân là **câu server gửi kèm lý do admin gõ**, nút "Đã hiểu",
+  **không sọc tràn** ở 411dp; kéo `flowmoney.db` ra đếm thì còn nguyên **2 ví và
+  18 danh mục** của tài khoản 11. Tài khoản đã trả về `Active`.
+  Cùng lượt ấy còn đo được: bắt tay socket từ chối **mọi** tài khoản kể cả khi
+  `Active`, với đúng câu `Account no longer exists or has been deleted` và lời từ
+  chối **không** mang `code` ở cấp gốc (`{message, data:{idaccount,
+  reason_inactive}}`) — CAN-LAM 17 A và 18 §2.1 tái hiện được trên máy thật. **Nhánh làm mới** (§3.3 chỗ 2) chờ thêm CAN-LAM 17 mục A (✅ đóng 2026-09-12 — đo chiều cùng ngày
+  theo mục 2.7 `DA-XONG/FIX_BACKEND_3_REGRESSIONS.md`: 200 khi hợp lệ; 401 + `code: ACCOUNT_INACTIVE`
+  + `reason_inactive` ở cấp gốc khi bị khoá — xem khối ✅ đầu §7.3).
 - Không sọc vàng tràn bố cục ở 411dp.
 
-`flutter test` và `flutter analyze` đối chiếu mức nền ghi trong `CLAUDE.md` — 2029/2029
-và 25 issue tính tới 2026-09-11.
+`flutter test` và `flutter analyze` đối chiếu mức nền ghi trong `CLAUDE.md` — **2105/2105**
+và **25** issue tính tới 2026-09-12 (dòng này ghi 2029/2029 tới 2026-09-11, đã lạc hậu
+kể từ G33 và §3.8).
 
 ---
 
@@ -566,7 +864,7 @@ và 25 issue tính tới 2026-09-11.
   mã được xử lý ở §3.3; mã bắt tay vẫn bị bỏ qua (§3.4).
 - ~~Hai lỗi làm mới token có sẵn~~ (làm mới hỏng vì 5xx hoặc mất mạng cũng đăng xuất;
   hai lần làm mới đồng thời vấp *Token Reuse Detection*) — **đưa vào phạm vi ngày
-  2026-09-11**, nay ở §3.8.
+  2026-09-11**, nay ở §3.8 — **✅ sửa 2026-09-11**.
 - Thông báo cấp hệ điều hành khi sắp hết hạn chờ xoá.
 
 ## 9. Bẫy đã thấy trước
@@ -589,8 +887,20 @@ và 25 issue tính tới 2026-09-11.
 - **Nhiều request cùng nhận 401 có mã.** State chỉ đổi ở bước 5 của §3.5, nên lần
   nhận thứ hai tới khi lần đầu còn chạy vẫn thấy `AuthSuccess`. Chặn bằng cờ đặt
   ngay đầu handler (hoặc transformer `droppable`), đừng dựa vào state.
+- ⚠️ **Lời từ chối tới SAU khi phiên đã chết — vấp thật trên máy ảo 2026-09-12.**
+  `verifySession()` xếp chính cái 401 mang mã ấy là phiên chết, nên
+  `_onAuthCheckRequested` phát `AuthUnauthenticated()` **trơn** trước; lời từ
+  chối tới sau một nhịp và bị chốt state nuốt mất → app đăng xuất **không kèm
+  hộp thoại**, tức người dùng bị đá ra mà không biết vì sao. Cả 63 ca test lúc ấy
+  đều xanh. Cần **hai** chốt, không phải một: chốt state phải nhận cả
+  `AuthUnauthenticated` (§3.5 bước 1 vế đầu), **và** lượt phát trơn về sau phải
+  mang theo lý do đã nhớ (vế sau). Sửa vế đầu rồi kiểm lại trên máy **vẫn** không
+  có hộp thoại — đó là cách vế sau lộ ra. Đây là **loại lỗi thứ ba** mà
+  `flutter test` không bắt được, đúng như `CLAUDE.md` cảnh báo: *thứ tự thực tế
+  giữa hai luồng bất đồng bộ*.
 - **Lỗi lược đồ đội lốt `ACCOUNT_DELETED` ở nhánh làm mới** — CAN-LAM 17 mục 2.5;
-  phía client xem §3.6b.
+  phía client xem §3.6b. ✅ Mã backend sửa 2026-09-12; nhánh làm mới đã đo ca hợp lệ và ca bị
+  khoá, ca `ACCOUNT_DELETED`/`SCHEMA_ERROR` chưa; ngoại lệ client giữ.
 - **Đổi tài khoản trong lúc một lượt `/auth/profile` còn treo — hai race cùng họ với
   `46ad023`, CHƯA sửa.** (1) `verifySession` → `_dongBoTrangThai` đọc bộ nhớ đệm **sau**
   `getProfile`, nên có thể ghi trạng thái của phiên cũ vào tài khoản vừa đăng nhập.
@@ -598,3 +908,6 @@ và 25 issue tính tới 2026-09-11.
   đăng xuất luôn tài khoản vừa đăng nhập. Cửa sổ hẹp — một request, tới 30 giây. Phần 1
   (§3.5) làm lại đúng đường này; `46ad023` chỉ chốt `deleteAccount`/`cancelDelete` bằng
   cách giữ định danh tài khoản trước `await`.
+- **`_clearTokens` phải chạy trong lượt làm mới chung** — N request chờ cùng gọi nó
+  thì đan xen đọc/xoá và phát tín hiệu N lần (✅ chốt trong `_lamMoi()`, spec §3.8,
+  2026-09-11).

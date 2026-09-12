@@ -1,5 +1,8 @@
 # `sync.completed` đã có trên EventBus nhưng chưa ai bắc ra socket
 
+> ✅ **2026-09-12:** kênh nối được sau gộp `cbbeeb4` (17 A đóng) — sự kiện **tới được** client;
+> client vẫn chưa nghe (G34, chờ người dùng chốt toast hay im lặng).
+
 > ✅ **2026-09-11 — đã bắc:** `sync.service.js:223` → `notification.service.js:79-90` →
 > `core/socket.js:203-215`, phòng `account_<id>`, payload `{summary, timestamp}`. Nhưng chưa tới
 > được client: bắt tay socket từ chối mọi tài khoản (`CAN-LAM/FIX_BACKEND_3_REGRESSIONS.md`

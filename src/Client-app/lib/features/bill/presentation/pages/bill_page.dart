@@ -171,8 +171,11 @@ class _BillPageState extends State<BillPage> {
                         tabs: [
                           Tab(
                               text:
-                                  'Cần thanh toán (${sections.unpaid.length})'),
-                          Tab(text: 'Đã thanh toán (${sections.paid.length})'),
+                                  'Cần thanh toán (${sections.chuaDong.length})'),
+                          // "Lịch sử" chứ không phải "Đã thanh toán": từ
+                          // 2026-09-12 tab này chứa cả kỳ bỏ qua, thứ
+                          // chưa hề được trả đồng nào.
+                          Tab(text: 'Lịch sử (${sections.daDong.length})'),
                         ],
                       ),
                       Expanded(
@@ -180,7 +183,7 @@ class _BillPageState extends State<BillPage> {
                           children: [
                             _danhSach(
                               context,
-                              sections.unpaid,
+                              sections.chuaDong,
                               now: now,
                                                             dateFormatter: dateFormatter,
                               khiTrong: 'Không còn hoá đơn nào phải trả.',
@@ -188,10 +191,10 @@ class _BillPageState extends State<BillPage> {
                             ),
                             _danhSach(
                               context,
-                              sections.paid,
+                              sections.daDong,
                               now: now,
                                                             dateFormatter: dateFormatter,
-                              khiTrong: 'Chưa có hoá đơn nào được thanh toán.',
+                              khiTrong: 'Chưa có kỳ nào đã đóng.',
                               payments: state.payments,
                             ),
                           ],
@@ -295,6 +298,11 @@ class _BillPageState extends State<BillPage> {
             statusBg: mauNenTrangThaiHoaDon(status),
             accentColor: mauVachTrangThaiHoaDon(status),
             isPaid: status == BillDisplayStatus.paid,
+            // Kỳ bỏ qua là nhánh THỨ BA: không phải đã trả (không có
+            // khoản chi để hoàn), cũng không phải còn nợ (payBill từ
+            // chối nó). Bày nút Thanh toán cho nó là dẫn người dùng
+            // thẳng tới một thông báo lỗi.
+            daBoQua: status == BillDisplayStatus.skipped,
           ),
         );
       },
@@ -393,6 +401,7 @@ class _BillPageState extends State<BillPage> {
     required Color statusBg,
     required Color accentColor,
     bool isPaid = false,
+    bool daBoQua = false,
     String? meta,
     IconData? icon,
     Color? iconColor,
@@ -509,7 +518,24 @@ class _BillPageState extends State<BillPage> {
                                 minimumSize: const Size(0, 36),
                               ),
                             ),
-                          if (!isPaid)
+                          if (daBoQua)
+                            TextButton.icon(
+                              key: ValueKey('bill-undo-skip-${bill.id}'),
+                              onPressed: () =>
+                                  hoiHoanTacBoQua(context, bill),
+                              icon: const Icon(Icons.undo, size: 16),
+                              label: const FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text('Hoàn tác'),
+                              ),
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppColors.textSecondary,
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 12),
+                                minimumSize: const Size(0, 36),
+                              ),
+                            ),
+                          if (!isPaid && !daBoQua)
                             ElevatedButton(
                               onPressed: () =>
                                   moBangThanhToanHoaDon(context, bill),

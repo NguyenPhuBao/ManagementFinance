@@ -21,6 +21,8 @@ class BillBloc extends Bloc<BillEvent, BillState> {
     on<DeleteBillEvent>(_onDeleteBill);
     on<PayBillEvent>(_onPayBill);
     on<UndoPaymentEvent>(_onUndoPayment);
+    on<SkipBillEvent>(_onSkipBill);
+    on<UndoSkipEvent>(_onUndoSkip);
   }
 
   Future<void> _onLoadBills(
@@ -129,6 +131,10 @@ class BillBloc extends Bloc<BillEvent, BillState> {
       // Không phải sự cố kỹ thuật — chỉ là người dùng bấm nút hai lần, hoặc
       // hoá đơn đã được trả trên máy khác rồi đồng bộ về.
       emit(BillError('Hóa đơn này đã được thanh toán rồi.'));
+    } on BillSkippedCannotPayException {
+      // Kỳ bỏ qua đã sinh kỳ kế tiếp; trả tiếp là sinh kỳ thứ hai trùng hạn.
+      emit(BillError(
+          'Kỳ này đang được bỏ qua. Hãy hoàn tác trước khi thanh toán.'));
     } on BillInvalidAmountException {
       emit(BillError('Số tiền thanh toán phải lớn hơn 0.'));
     } catch (e) {
@@ -151,6 +157,32 @@ class BillBloc extends Bloc<BillEvent, BillState> {
       emit(BillError(
           'Không hoàn tác được: khoản chi của lần thanh toán này được ghi '
           'bằng bản ứng dụng cũ. Hãy xoá nó thủ công ở sổ giao dịch.'));
+    } catch (e) {
+      emit(BillError('Hoàn tác thất bại: $e'));
+    }
+  }
+
+  Future<void> _onSkipBill(SkipBillEvent event, Emitter<BillState> emit) async {
+    try {
+      await repository.skipBill(billId: event.billId);
+      // ⚠️ Câu này KHÔNG được bắt đầu bằng "Xóa": `bill_detail_page.dart` dùng
+      // `message.startsWith('Xóa')` để quyết định đóng trang.
+      emit(BillOperationSuccess('Đã bỏ qua kỳ này'));
+    } on BillAlreadyPaidException {
+      emit(BillError('Hóa đơn này đã được thanh toán rồi.'));
+    } on BillAlreadySkippedException {
+      emit(BillError('Kỳ này đã được bỏ qua rồi.'));
+    } catch (e) {
+      emit(BillError('Bỏ qua kỳ thất bại: $e'));
+    }
+  }
+
+  Future<void> _onUndoSkip(UndoSkipEvent event, Emitter<BillState> emit) async {
+    try {
+      await repository.undoSkip(billId: event.billId);
+      emit(BillOperationSuccess('Đã hoàn tác việc bỏ qua'));
+    } on BillNotSkippedException {
+      emit(BillError('Kỳ này không ở trạng thái bỏ qua.'));
     } catch (e) {
       emit(BillError('Hoàn tác thất bại: $e'));
     }

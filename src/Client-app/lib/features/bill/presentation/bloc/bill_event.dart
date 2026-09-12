@@ -51,3 +51,17 @@ class UndoPaymentEvent extends BillEvent {
   final String billId;
   UndoPaymentEvent({required this.billId});
 }
+
+/// Bỏ qua kỳ này: đánh dấu `Skipped`, không trừ ví, không ghi khoản chi, nhưng
+/// vẫn sinh kỳ kế tiếp nếu hoá đơn có lặp.
+class SkipBillEvent extends BillEvent {
+  final String billId;
+  SkipBillEvent({required this.billId});
+}
+
+/// Hoàn tác việc bỏ qua: về `Pending`, gỡ kỳ kế tiếp đã sinh. Không hoàn tiền
+/// — chưa từng trừ tiền.
+class UndoSkipEvent extends BillEvent {
+  final String billId;
+  UndoSkipEvent({required this.billId});
+}

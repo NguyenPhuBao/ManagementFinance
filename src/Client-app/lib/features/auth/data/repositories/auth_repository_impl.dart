@@ -40,7 +40,8 @@ class AuthRepositoryImpl implements AuthRepository {
     );
 
     // `countdown` là số ngày chờ xoá còn lại LÚC NHẬN; ghi kèm mốc nhận để máy tự
-    // đếm tiếp — không endpoint nào trả số mới (spec cưỡng chế đăng xuất §4.2).
+    // đếm tiếp giữa hai lần hỏi server (spec cưỡng chế đăng xuất §4.2). Từ
+    // 2026-09-12 `/auth/profile` cũng trả số mới — xem [_dongBoTrangThai].
     final goc = UserModel.fromJson(data['user'] as Map<String, dynamic>);
     final user = goc.voiTrangThai(
       status: goc.status,
@@ -64,6 +65,13 @@ class AuthRepositoryImpl implements AuthRepository {
     }
     await _clearLocalData();
   }
+
+  // ─── Xoá phiên trên máy, KHÔNG gọi /auth/logout ─────────────────────────
+  // Xem chú thích ở `auth_repository.dart`: route ấy đi qua `authenticate` nên
+  // với tài khoản đã bị khoá/xoá nó trả 401 mang mã và quay vòng qua
+  // `AuthInterceptor` (spec cưỡng chế đăng xuất §3.5 bước 4).
+  @override
+  Future<void> xoaPhienTrenMay() => _clearLocalData();
 
   // ─── Kiểm tra có token không (offline-safe) ─────────────────────────────
   @override
@@ -95,7 +103,7 @@ class AuthRepositoryImpl implements AuthRepository {
       return SessionStatus.unknown;
     }
     try {
-      await _dongBoTrangThai(profile['status']);
+      await _dongBoTrangThai(profile);
     } catch (_) {
       // Đồng bộ trạng thái chờ xoá là việc phụ: lỗi ghi bộ nhớ đệm không được
       // biến một phiên hợp lệ thành "không rõ", hay làm AuthBloc đăng xuất.
@@ -298,16 +306,31 @@ class AuthRepositoryImpl implements AuthRepository {
   bool _cungTaiKhoan(UserModel? truoc, UserModel sau) =>
       truoc != null && truoc.id == sau.id;
 
-  /// `status` theo server là nguồn sự thật; `countdown` chỉ đến lúc đăng nhập
-  /// hoặc gửi yêu cầu xoá. Khớp nhau thì giữ nguyên số ngày đang có.
-  Future<void> _dongBoTrangThai(Object? statusServer) async {
+  /// `status` theo server là nguồn sự thật. `countdown` thì `/auth/profile` trả
+  /// từ 2026-09-12 (CAN-LAM 19, `DA-XONG/AUTH_PROFILE_COUNTDOWN.md`): server đang
+  /// chờ xoá và có số → ghi lại **số và mốc nhận, kể cả khi trạng thái khớp** —
+  /// số đang giữ có thể là của một lần chờ xoá *trước* (máy khác huỷ rồi gửi
+  /// lại), và bộ nhớ đệm của bản client cũ có số mà thiếu mốc (§2.4 tài liệu ấy).
+  /// Server không trả `countdown` (backend cũ) hoặc trả rác → như trước: khớp thì
+  /// giữ nguyên số đang có, lệch thì bỏ số vì máy này không có số đúng.
+  Future<void> _dongBoTrangThai(Map<String, dynamic> profile) async {
+    final statusServer = profile['status'];
     if (statusServer is! String || statusServer.isEmpty) return;
     final user = await getCurrentUser();
     if (user == null) return;
     final serverChoXoa = statusServer.toLowerCase() == 'pendingdelete';
+    final countdownServer = profile['countdown'];
+    if (serverChoXoa && countdownServer is num) {
+      await _ghiNguoiDung(user.voiTrangThai(
+        status: statusServer,
+        countdown: countdownServer.toInt(),
+        countdownNhanLuc: _now(),
+      ));
+      return;
+    }
     if (serverChoXoa == user.dangChoXoa) return;
     // Lệch: huỷ ở máy khác (server Active), hoặc yêu cầu gửi từ máy khác (server
-    // PendingDelete) — máy này không có số ngày đúng, nên bỏ countdown.
+    // PendingDelete) mà server không nói số — máy này không có số ngày đúng.
     await _ghiNguoiDung(user.voiTrangThai(status: statusServer));
   }
 

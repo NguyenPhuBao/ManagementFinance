@@ -1,5 +1,10 @@
 # `bank_transaction.incoming` phát ra hai hình dạng payload khác nhau
 
+> ✅ **2026-09-12 — xong ở `cbbeeb4`:** `bank.worker.js` bỏ emit trực tiếp, chỉ còn publish
+> `bank_transaction.pending`; một chỗ phát duy nhất `notification.service.js:23`
+> (`type: 'BankTransactionPending'`). Hết phát hai lần, hết hai hình dạng. `admin.bank_transaction_created`
+> bị bỏ hẳn (trước đó cũng chưa từng phát). Client vẫn coi payload là hộp đen.
+
 > ⛔ **2026-09-11 — soát lại sau `7675b35`:** chưa thống nhất — worker chỉ thêm
 > `transaction_status`, `notification.service.js` vẫn phát hình dạng thứ hai, `type` vẫn hai
 > nghĩa. Và nay tệ hơn: worker gọi thẳng `emitBankTransaction` **rồi** publish

@@ -76,6 +76,8 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   final nhanLuc = DateTime.utc(2026, 9, 11, 3);
+  /// Đồng hồ tiêm vào repository; test đổi nó để phân biệt mốc nhận cũ và mới.
+  late DateTime bayGio;
   late _RemoteGia remote;
   late AuthLocalDataSourceImpl local;
   late AuthRepositoryImpl repo;
@@ -83,13 +85,14 @@ void main() {
   setUp(() {
     FlutterSecureStorage.setMockInitialValues({});
     const storage = FlutterSecureStorage();
+    bayGio = nhanLuc;
     remote = _RemoteGia();
     local = AuthLocalDataSourceImpl(secureStorage: storage);
     repo = AuthRepositoryImpl(
       remoteDataSource: remote,
       localDataSource: local,
       secureStorage: storage,
-      now: () => nhanLuc,
+      now: () => bayGio,
     );
   });
 
@@ -164,14 +167,67 @@ void main() {
     expect(user.countdown, 30);
   });
 
-  test('mở app: server PendingDelete mà máy không biết → chờ xoá, không số', () async {
+  test('mở app: server PendingDelete KHÔNG kèm countdown (backend cũ) → chờ xoá, không số', () async {
     await repo.login('dat', 'mat-khau-thu');
     remote.profile = {'status': 'PendingDelete'};
     expect(await repo.verifySession(), SessionStatus.valid);
     final user = await repo.getCurrentUser();
     expect(user!.dangChoXoa, isTrue);
     expect(user.countdown, isNull,
-        reason: 'Yêu cầu gửi từ máy khác: máy này không có số đúng (CAN-LAM 19).');
+        reason: 'Yêu cầu gửi từ máy khác và server không nói số ngày: máy này không '
+            'có số đúng, hiện câu chung còn hơn hiện số đoán.');
+  });
+
+  // ─── `/auth/profile` trả `countdown` từ 2026-09-12 (CAN-LAM 19) ────────────
+  // Ba ca thẻ nhắc từng thiếu số hoặc sai số (AUTH_PROFILE_COUNTDOWN.md §2.4):
+  // máy giữ phiên từ trước khi máy khác gửi yêu cầu xoá; bộ nhớ đệm của bản
+  // client cũ thiếu mốc nhận; và máy còn giữ số của một lần chờ xoá TRƯỚC.
+
+  test('mở app: server PendingDelete kèm countdown mà máy không biết → có số và mốc nhận', () async {
+    await repo.login('dat', 'mat-khau-thu');
+    remote.profile = {'status': 'PendingDelete', 'countdown': 17};
+    expect(await repo.verifySession(), SessionStatus.valid);
+    final user = await repo.getCurrentUser();
+    expect(user!.dangChoXoa, isTrue);
+    expect(user.countdown, 17,
+        reason: 'Máy giữ phiên từ trước khi máy khác gửi yêu cầu xoá chỉ thấy '
+            'PendingDelete qua /auth/profile — có countdown ở đó là có số để hiện.');
+    expect(user.countdownNhanLuc, nhanLuc,
+        reason: 'Số là số LÚC NHẬN; không có mốc thì không đếm lùi được.');
+  });
+
+  test('mở app: trạng thái khớp nhưng server trả countdown khác → ghi lại số VÀ mốc nhận', () async {
+    await dangNhapChoXoa(countdown: 30);
+    remote.profile = {'status': 'PendingDelete', 'countdown': 9};
+    bayGio = nhanLuc.add(const Duration(days: 2));
+    await repo.verifySession();
+    final user = await repo.getCurrentUser();
+    expect(user!.countdown, 9,
+        reason: 'Máy giữ số của một lần chờ xoá trước; máy khác huỷ rồi gửi lại. '
+            'Trạng thái khớp nên bản cũ giữ số cũ và hiện ÍT ngày hơn thật.');
+    expect(user.countdownNhanLuc, bayGio,
+        reason: 'Mốc nhận phải đi cùng số mới — giữ mốc cũ là đếm lùi từ sai chỗ.');
+  });
+
+  test('mở app: server trả countdown rác (không phải số) → như không có, giữ số cũ', () async {
+    await dangNhapChoXoa(countdown: 30);
+    remote.profile = {'status': 'PendingDelete', 'countdown': 'ba'};
+    bayGio = nhanLuc.add(const Duration(days: 2));
+    await repo.verifySession();
+    final user = await repo.getCurrentUser();
+    expect(user!.countdown, 30);
+    expect(user.countdownNhanLuc, nhanLuc,
+        reason: 'Giá trị lạ không được đổi mốc nhận: mốc mới với số cũ là số ngày '
+            'đứng yên thêm hai ngày.');
+  });
+
+  test('mở app: server Active kèm countdown null mà máy đang chờ xoá → Active, bỏ số', () async {
+    await dangNhapChoXoa();
+    remote.profile = {'status': 'Active', 'countdown': null};
+    await repo.verifySession();
+    final user = await repo.getCurrentUser();
+    expect(user!.dangChoXoa, isFalse);
+    expect(user.countdown, isNull);
   });
 
   test('mở app: server Active mà máy đang chờ xoá → Active', () async {
