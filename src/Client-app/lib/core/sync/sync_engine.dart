@@ -856,6 +856,13 @@ class SyncEngine {
                 anchorDay: bill['anchor_day'] != null
                     ? Value(int.tryParse(bill['anchor_day'].toString()))
                     : const Value.absent(),
+                // Cùng luật với hai cột trên: server im lặng = CHƯA BIẾT. Hàng
+                // cũ trên server mang NULL cho tới khi client đẩy lại; gán
+                // thẳng là xoá ngày kết thúc kỳ và kỳ sau lại nối từ hạn trả
+                // (ân hạn, v21 — 2026-09-12).
+                periodEnd: bill['period_end'] != null
+                    ? Value(DateTime.tryParse(bill['period_end'].toString()))
+                    : const Value.absent(),
                 isDeleted: Value(bill['delete_at'] != null),
                 deletedAt: Value(_deletedAtFrom(bill['delete_at'])),
                 syncStatus: const Value('synced'),
@@ -1252,6 +1259,9 @@ class SyncEngine {
           // đơn mồ côi và phải suy ngày đến hạn bằng cách đoán.
           'previous_bill_id': bill.generatedFromBillId,
           'anchor_day': bill.anchorDay,
+          // Ân hạn hoá đơn (2026-09-12, schema v21): ngày kết thúc kỳ tách
+          // khỏi hạn trả. Cột server là @db.Date — gửi mốc UTC như `due_date`.
+          'period_end': bill.periodEnd?.toUtc().toIso8601String(),
           'is_deleted': bill.isDeleted,
           'updated_at': bill.updatedAt.toUtc().toIso8601String(),
           'idaccount':

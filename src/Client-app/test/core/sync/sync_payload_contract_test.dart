@@ -228,6 +228,9 @@ void main() {
         // nhầm tên".
         generatedFromBillId: const Value(kyTruocId),
         anchorDay: const Value(28),
+        // Ân hạn (v21): ngày kết thúc kỳ tách khỏi hạn trả — giá trị THẬT để
+        // test phân biệt "có gửi" với "gửi nhầm tên".
+        periodEnd: Value(DateTime.utc(2026, 9, 25)),
         // Cố ý dùng giá trị thứ tư 'Skipped' (2026-09-12) chứ không phải
         // 'Pending' mặc định: đây là giá trị DUY NHẤT trong bộ mà việc chuẩn
         // hoá nhầm sẽ hỏng im lặng — client ghi nó rồi server lưu 'Pending'
@@ -569,12 +572,20 @@ void main() {
           // dạng snake_case cho khớp phần còn lại của payload này.
           //
           // ⚠️ `auto_pay` CHƯA mở — chờ backend sửa CAN-LAM 17 B (chốt chống
-          // trả hai lần đặt nhầm ở `upsertBill`), và `period_end` thì không
-          // phải trường đồng bộ mà là một tính năng riêng (cột cục bộ mới, ô
-          // nhập, và đổi phép tính kỳ kế tiếp).
+          // trả hai lần đặt nhầm ở `upsertBill`).
           'previous_bill_id', 'anchor_day',
+          // `period_end` mở 2026-09-12 cùng tính năng ân hạn (schema v21) —
+          // ngày kết thúc kỳ tính tiền, tách khỏi hạn trả.
+          'period_end',
         },
       );
+    });
+
+    test('hoá đơn đẩy ngày kết thúc kỳ dưới khoá period_end', () {
+      expect(payloadOf('bill')['period_end'], '2026-09-25T00:00:00.000Z',
+          reason: 'Thiếu nó, máy khác kéo về một hoá đơn có hạn trả nhưng '
+              'không có ngày kết thúc kỳ, và sinh kỳ sau nối từ hạn trả — hở '
+              'đúng số ngày ân hạn, mỗi kỳ trôi thêm (§4.4 tài liệu xin).');
     });
 
     test('hoá đơn lặp đẩy đúng hoá đơn cha và ngày gốc', () {
