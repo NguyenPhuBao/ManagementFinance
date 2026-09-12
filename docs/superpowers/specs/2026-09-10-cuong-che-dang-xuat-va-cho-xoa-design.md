@@ -2,7 +2,8 @@
 
 > **Trạng thái: G33 — Phần 2–3 (trừ §5.1) ĐÃ XONG (2026-09-11). Mục 6 (việc cho backend):
 > tài liệu xin ĐÃ VIẾT (CAN-LAM 19), backend CHƯA LÀM — `getProfile` chưa trả `countdown`.
-> §3.8 ĐÃ LÀM (2026-09-11). Phần 1 còn lại (§3.1–§3.7) và §5.1 CHƯA LÀM.** Mọi quyết định sản phẩm ở mục 2
+> §3.8 ĐÃ LÀM (2026-09-11). **Phần 1 (§3.1–§3.7) và §5.1 ĐÃ LÀM 2026-09-12** — bảy commit
+> `693de3b` → `fc82a94`; còn nợ lượt kiểm trên máy ảo, xem §7.3.** Mọi quyết định sản phẩm ở mục 2
 > đã chốt qua hỏi–đáp ngày 2026-09-10; Phần 1 (mục 3) được duyệt riêng trong phiên
 > ấy. Phần 2–4 viết thẳng vào đây theo yêu cầu "làm đi" của người dùng. Ngày
 > 2026-09-11 người dùng duyệt nốt: §3.3 và §3.6b (hai điểm soát lại theo `main`),
@@ -338,9 +339,10 @@ nhiêu request cùng nhận 401.
   ⚠️ Phạm vi ấy hẹp hơn nó nghe: §3.3 còn đòi *xoá token **không phát**
   `sessionExpiredStream`* cho 401 **có mã**, mà hôm nay `_clearTokens()` phát
   tín hiệu **bên trong** `_lamMoi()` — tức **trước** khi `onError` kịp nhìn
-  `LamMoiPhienChet.loi`. Phần 1 sẽ phải chuyển phép quyết định ấy vào
-  `_lamMoi()` (hoặc truyền một cờ cho `_clearTokens`); riêng hook đọc body thì
-  vẫn dùng được như trên.
+  `LamMoiPhienChet.loi`. ✅ **Gỡ 2026-09-12** (Phần 1, `ed0fd47`): phép quyết
+  định chuyển hẳn vào `_lamMoi()` — nơi `_clearTokens()` vốn đã chạy — và
+  `_clearTokens` nhận cờ `phatTinHieu`. Quyết định "xoá token + phát tín hiệu
+  nằm trong `_lamMoi()`, một lần cho một lượt làm mới chung" giữ nguyên.
 - **`7cbd849` là một chốt phòng thủ, không phải một lỗi đã có.** Lỗi không
   phải `DioException` (ví dụ `PlatformException` thật của kho token) nay được
   bắt riêng thay vì thoát ra ngoài — nhưng ở **hai** chỗ và theo **hai** cách
@@ -403,6 +405,56 @@ Minor — và cả tám được làm trong một lượt, hai commit:
 Sau lượt này: `flutter test` **2105/2105** (1 phút 7 giây), `flutter analyze`
 **25 issue = 20 info + 5 warning + 0 error** — mức nền, không issue nào ở
 `core/api/`.
+
+---
+
+### ✅ Phần 1 và §5.1 — làm 2026-09-12
+
+Bảy commit trên `TranQuangDat`, một task một commit: `693de3b` (§3.1 kiểu
+`ThongBaoBuocDangXuat` + hai hàm đọc), `2b2d563` (§3.2 luồng socket),
+`ed0fd47` (§3.3 hai chỗ HTTP), `aef03af` (§3.6 `purgeDataForAccount`),
+`eddf8a6` (§3.5 bước 4 `xoaPhienTrenMay`), `b1ee121` (§3.5 + §3.6b `AuthBloc`),
+`fc82a94` (§3.7 + §5.1 hộp thoại). Kế hoạch thực thi:
+`docs/superpowers/plans/2026-09-12-cuong-che-dang-xuat-phan-1.md` (gitignore).
+
+**Lệch spec một chỗ, người dùng duyệt trước khi làm.** `tuSuKienSocket` trả kiểu
+**không** nullable, khác chữ ký ở §3.1. Sự kiện `account.force_logout` tự nó đã
+là lời đẩy người dùng ra; trả `null` cho một payload dị dạng nghĩa là **bỏ qua**
+lời ấy và để người dùng ngồi lại trong app — đúng cái hỏng im lặng mục này sinh
+ra để chặn. Payload không phải `Map` → thông báo `biKhoa`, câu rỗng, id `null`.
+Phép lọc theo `idaccount` vẫn ở `RealtimeChannel` như §3.2 mô tả, chỉ là nó đọc
+`thongBao.idaccount` thay vì tự bới payload. `tuBody401` **giữ** nullable: ở đó
+`null` có nghĩa thật và hay gặp.
+
+**Ba thứ tìm ra khi làm, không có trong spec:**
+
+1. **Chỉ được đọc `code` khi `statusCode == 401`.** `/auth/refresh` còn trả
+   **400**, và body 400 của repo này cũng mang `code` ở cấp gốc (ví dụ
+   `VALIDATION_ERROR`) — đọc nó là hiện hộp thoại *"Tài khoản đã bị vô hiệu
+   hoá"* cho một lỗi nhập liệu. Có ca test canh đúng ca ấy. (401 "Token expired"
+   thật thì đi qua `ResponseHandler.error(res, msg, 401)` nên **không** có `code`
+   — đo lại trên `middleware/auth.js:60-111` ngày 2026-09-12.)
+2. **`BlocListener` ở màn Đăng nhập là không đủ** — §3.7 chỉ nói tới nó.
+   `AppRouter` dùng `refreshListenable: GoRouterRefreshStream(authBloc.stream)`
+   (`app_router.dart:89`), nên thứ tự thật là *bloc emit → router chuyển về
+   `/login` → trang mới được dựng*: lần đổi state mang `thongBao` đã trôi qua
+   trước khi listener kịp đăng ký. Trang phải đọc **thêm** state sẵn có ở
+   `initState` (sau khung hình đầu tiên), và một cờ chặn hiện hai lần.
+3. **Hộp thoại tràn 158px ở 411dp** khi `loiNhan` dài — câu ấy do admin gõ
+   (`admin.service.js:140` nối thẳng `reason_inactive` vào), client không kiểm
+   được độ dài. Tràn thì nút "Đã hiểu" ra ngoài màn hình mà
+   `barrierDismissible` lại là `false` — người dùng không đóng nổi hộp thoại.
+   Phần thân nay cuộn được, nút nằm **ngoài** vùng cuộn. Tìm ra bằng chính ca
+   test §7.2 dựng trong `SizedBox(width: 411)` + `tester.takeException()`.
+
+**Số ca test** (đếm bằng máy 2026-09-12): `test/core/auth/buoc_dang_xuat_test.dart`
+**19**; `test/core/realtime/realtime_buoc_dang_xuat_test.dart` **7**;
+`test/core/api/auth_interceptor_buoc_dang_xuat_test.dart` **9**;
+`test/core/database/purge_data_for_account_test.dart` **4**;
+`test/features/auth/xoa_phien_tren_may_test.dart` **3**;
+`test/features/auth/auth_bloc_buoc_dang_xuat_test.dart` **10**;
+`test/features/auth/hop_thoai_bi_day_ra_test.dart` **11** — tổng **63**. Sau lượt
+này `flutter test` **2168/2168**, `flutter analyze` **25** issue (mức nền).
 
 ---
 
