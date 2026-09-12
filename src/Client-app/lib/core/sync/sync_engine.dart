@@ -833,6 +833,18 @@ class SyncEngine {
                 icon: Value(bill['icon']?.toString() ?? 'receipt'),
                 colour: Value(bill['color']?.toString() ?? '#4CAF50'),
                 note: Value(bill['note']?.toString() ?? ''),
+                // Server im lặng nghĩa là **chưa biết**, không phải **hãy
+                // xoá**: hai cột này chỉ đi qua đồng bộ từ 2026-09-12, nên mọi
+                // hàng đã nằm sẵn trên server mang NULL cho tới khi client đẩy
+                // lại từng hàng. Gán thẳng `Value(null)` là cắt đứt chuỗi kỳ và
+                // xoá ngày gốc ngay chu kỳ pull đầu tiên — cùng bài học với
+                // `idgoal`, và mất ngày gốc thì ngày đến hạn quay về bị ĐOÁN.
+                generatedFromBillId: bill['previous_bill_id'] != null
+                    ? Value(bill['previous_bill_id'].toString())
+                    : const Value.absent(),
+                anchorDay: bill['anchor_day'] != null
+                    ? Value(int.tryParse(bill['anchor_day'].toString()))
+                    : const Value.absent(),
                 isDeleted: Value(bill['delete_at'] != null),
                 deletedAt: Value(_deletedAtFrom(bill['delete_at'])),
                 syncStatus: const Value('synced'),
@@ -1223,6 +1235,12 @@ class SyncEngine {
           'icon': bill.icon,
           'color': bill.colour,
           'note': bill.note,
+          // Chuỗi kỳ và ngày gốc — mở đường đồng bộ 2026-09-12. Hai cột này
+          // client đã có từ v16/v18 nhưng chưa gửi, nên chuỗi kỳ của hoá đơn
+          // lặp chết ở ranh giới một máy: máy khác nhận từng kỳ như một hoá
+          // đơn mồ côi và phải suy ngày đến hạn bằng cách đoán.
+          'previous_bill_id': bill.generatedFromBillId,
+          'anchor_day': bill.anchorDay,
           'is_deleted': bill.isDeleted,
           'updated_at': bill.updatedAt.toUtc().toIso8601String(),
           'idaccount':

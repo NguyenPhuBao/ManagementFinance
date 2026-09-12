@@ -83,6 +83,10 @@ void main() {
   const walletId = '11111111-1111-4111-8111-111111111111';
   const categoryId = '22222222-2222-4222-8222-222222222222';
   const goalId = '66666666-6666-4666-8666-666666666666';
+  /// Kỳ TRƯỚC của hoá đơn lặp — `bills.generatedFromBillId` trỏ về đây.
+  /// ⚠️ Cố ý KHÁC mọi id giao dịch trong fixture: `77777777-…` đã là một khoản
+  /// chuyển của bản app cũ.
+  const kyTruocId = '88888888-8888-4888-8888-888888888888';
 
   late AppDatabase db;
   late _Client client;
@@ -211,6 +215,12 @@ void main() {
         name: const Value('Tiền điện'),
         amount: const Value(300000),
         dueDate: Value(now),
+        // Kỳ thứ hai của một hoá đơn lặp: trỏ về kỳ trước và giữ ngày gốc.
+        // Cùng lý do như `autoDepositAmount` của mục tiêu ngay dưới — phải là
+        // giá trị THẬT, nếu không test không phân biệt được "có gửi" với "gửi
+        // nhầm tên".
+        generatedFromBillId: const Value(kyTruocId),
+        anchorDay: const Value(28),
         syncStatus: const Value('pending'),
         updatedAt: Value(now),
       ));
@@ -522,8 +532,29 @@ void main() {
           'due_date', 'pay_status', 'recurrence', 'time_recurrence',
           'time_notification', 'icon', 'color', 'note', 'is_deleted',
           'update_at', 'idaccount',
+          // Mở 2026-09-12. Backend nhận `previousBillId`/`previous_bill_id` và
+          // `anchorDay`/`anchor_day` (`sync.repository.js:99-106`); client gửi
+          // dạng snake_case cho khớp phần còn lại của payload này.
+          //
+          // ⚠️ `auto_pay` CHƯA mở — chờ backend sửa CAN-LAM 17 B (chốt chống
+          // trả hai lần đặt nhầm ở `upsertBill`), và `period_end` thì không
+          // phải trường đồng bộ mà là một tính năng riêng (cột cục bộ mới, ô
+          // nhập, và đổi phép tính kỳ kế tiếp).
+          'previous_bill_id', 'anchor_day',
         },
       );
+    });
+
+    test('hoá đơn lặp đẩy đúng hoá đơn cha và ngày gốc', () {
+      final p = payloadOf('bill');
+
+      expect(p['previous_bill_id'], kyTruocId,
+          reason: 'Thiếu giá trị này thì máy khác nhận một kỳ mồ côi: không lần '
+              'ngược được về kỳ trước, nên chuỗi kỳ đứt ở ranh giới một máy.');
+      expect(p['anchor_day'], 28,
+          reason: 'Ngày gốc phải đi cùng. Thiếu nó, máy khác suy ngày đến hạn '
+              'từ chính ngày đến hạn hiện tại — tức tái sinh quy tắc "đoán cuối '
+              'tháng" đã bỏ ngày 2026-09-08, và hoá đơn ngày 28 trôi dần.');
     });
 
     test('goal', () {
