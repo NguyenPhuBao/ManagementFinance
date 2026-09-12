@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../../../core/auth/buoc_dang_xuat.dart';
 
 abstract class AuthEvent extends Equatable {
   const AuthEvent();
@@ -24,6 +25,21 @@ class LoginSubmitted extends AuthEvent {
 }
 
 class LogoutRequested extends AuthEvent {}
+
+/// Server nói tài khoản này không được dùng nữa.
+///
+/// Một cửa vào duy nhất cho cả ba nguồn — sự kiện socket `account.force_logout`,
+/// body 401 của một request thường, và body 401 của `/auth/refresh` — nên chỉ có
+/// một chỗ trong app quyết định *dừng cái gì, dọn cái gì, hiện câu nào* (spec
+/// cưỡng chế đăng xuất §3.5, Hướng A).
+class TaiKhoanBiBuocDangXuat extends AuthEvent {
+  const TaiKhoanBiBuocDangXuat(this.thongBao);
+
+  final ThongBaoBuocDangXuat thongBao;
+
+  @override
+  List<Object?> get props => [thongBao];
+}
 
 /// Bộ nhớ đệm người dùng vừa đổi — gửi hoặc huỷ yêu cầu xoá tài khoản. Bloc đọc
 /// lại `getCurrentUser()` và phát `AuthSuccess` mới để thẻ nhắc hiện/ẩn ngay.

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/api/interceptors/auth_interceptor.dart';
+import '../../../../core/auth/buoc_dang_xuat.dart';
 import '../../../category/data/services/default_category_seeder.dart';
 import '../../../category/data/services/personal_default_categories.dart';
 import '../../../../core/database/app_database.dart';
@@ -25,6 +26,16 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   StreamSubscription<void>? _sessionInvalidSub;
   StreamSubscription<void>? _tokenClearedSub;
+  StreamSubscription<ThongBaoBuocDangXuat>? _buocDangXuatSocketSub;
+  StreamSubscription<ThongBaoBuocDangXuat>? _buocDangXuatHttpSub;
+
+  /// Một lượt cưỡng chế đăng xuất đang chạy.
+  ///
+  /// ⚠️ Không dùng `state` để chặn: state chỉ đổi ở bước cuối, mà handler của
+  /// Bloc chạy **đồng thời** — thông báo thứ hai (socket rồi HTTP, hoặc ngược
+  /// lại) tới lúc lượt đầu còn đang `await` vẫn thấy `AuthSuccess` và sẽ dọn
+  /// SQLite thêm một lần nữa (spec cưỡng chế đăng xuất §9).
+  bool _dangBuocDangXuat = false;
 
   AuthBloc({
     required this.authRepository,
@@ -37,6 +48,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<ThongTinTaiKhoanThayDoi>(_onThongTinTaiKhoanThayDoi);
     on<RegisterSendOtpRequested>(_onRegisterSendOtpRequested);
     on<RegisterVerifyOtpSubmitted>(_onRegisterVerifyOtpSubmitted);
+    on<TaiKhoanBiBuocDangXuat>(_onTaiKhoanBiBuocDangXuat);
 
     // SyncEngine phát tín hiệu khi phát hiện phiên trỏ tới tài khoản không còn
     // tồn tại, để không phải chờ tới lần mở app kế tiếp mới xử lý.
@@ -55,13 +67,88 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           .sessionExpiredStream
           .listen((_) => add(SessionInvalidated()));
     }
+
+    // Ba nguồn, một cửa vào (§3.5). Cùng khuôn với `sessionExpiredStream` ngay
+    // trên — khác ở chỗ luồng này mang theo LÝ DO, nên không hỏi lại server:
+    // server vừa nói xong, không còn gì để hỏi.
+    if (sl.isRegistered<RealtimeChannel>()) {
+      _buocDangXuatSocketSub = sl<RealtimeChannel>()
+          .buocDangXuat
+          .listen((tb) => add(TaiKhoanBiBuocDangXuat(tb)));
+    }
+    if (sl.isRegistered<AuthInterceptor>()) {
+      _buocDangXuatHttpSub = sl<AuthInterceptor>()
+          .taiKhoanBiTuChoi
+          .listen((tb) => add(TaiKhoanBiBuocDangXuat(tb)));
+    }
   }
 
   @override
   Future<void> close() async {
     await _sessionInvalidSub?.cancel();
     await _tokenClearedSub?.cancel();
+    await _buocDangXuatSocketSub?.cancel();
+    await _buocDangXuatHttpSub?.cancel();
     return super.close();
+  }
+
+  /// Dừng mọi thứ sống theo vòng đời của phiên đăng nhập.
+  ///
+  /// Socket còn sống sau khi đăng xuất nghĩa là máy vẫn nằm trong room
+  /// `account_<id>` của người vừa rời đi — lỗi bảo mật, không phải lỗi giao
+  /// diện. Bộ quét thông báo còn sống thì nhắc hoá đơn của người trước nổ trên
+  /// màn hình khoá của người sau (`NotificationScanner.stop()` gọi `cancelAll`
+  /// bên trong, vì lịch nằm trong AlarmManager chứ không trong SQLite).
+  ///
+  /// Chuỗi này từng được chép ở `_onSessionInvalidated` và `_onLogoutRequested`;
+  /// lần thứ ba là lúc gom về một chỗ.
+  Future<void> _dungMoiThuCuaPhien() async {
+    if (sl.isRegistered<SyncEngine>()) {
+      sl<SyncEngine>().stop();
+    }
+    if (sl.isRegistered<NotificationScanner>()) {
+      await sl<NotificationScanner>().stop();
+    }
+    if (sl.isRegistered<RealtimeChannel>()) {
+      await sl<RealtimeChannel>().stop();
+    }
+  }
+
+  /// Server nói tài khoản này không được dùng nữa — spec §3.5.
+  Future<void> _onTaiKhoanBiBuocDangXuat(
+    TaiKhoanBiBuocDangXuat event,
+    Emitter<AuthState> emit,
+  ) async {
+    if (_dangBuocDangXuat) return;
+    if (state is! AuthSuccess && state is! AuthChecking) return;
+    _dangBuocDangXuat = true;
+
+    final thongBao = event.thongBao;
+    await _dungMoiThuCuaPhien();
+
+    // Dọn bản sao cục bộ CHỈ khi tài khoản thật sự đã bị xoá, và chỉ khi lời ấy
+    // không đến từ nhánh làm mới token — ở đó một lỗi lược đồ phía server còn
+    // đội lốt được `ACCOUNT_DELETED` (CAN-LAM 17 §2.5, spec §3.6b). Bỏ ngoại lệ
+    // `lamMoi` khi backend sửa xong.
+    if (thongBao.lyDo == LyDoBuocDangXuat.daXoa &&
+        thongBao.nguon != NguonBuocDangXuat.lamMoi) {
+      // `idaccount` chỉ đến từ chính lời server nói, hoặc từ phiên đăng nhập —
+      // không suy từ SQLite, không mặc định về 1 (quy tắc 2 `CLAUDE.md`).
+      final idTuThongBao = thongBao.idaccount;
+      final idTuPhien =
+          int.tryParse((await authRepository.getCurrentUser())?.id ?? '');
+      final id = idTuThongBao ?? idTuPhien;
+      if (id != null && id > 0 && sl.isRegistered<AppDatabase>()) {
+        await sl<AppDatabase>().purgeDataForAccount(id);
+      }
+    }
+
+    // KHÔNG gọi `logout()`: route `/auth/logout` đi qua `authenticate` và sẽ
+    // trả 401 mang mã rồi quay vòng qua interceptor (§3.5 bước 4). Interceptor
+    // có thể đã xoá token trước (§3.3) — gọi lại vô hại, bộ nhớ đệm người dùng
+    // vẫn phải xoá ở đây.
+    await authRepository.xoaPhienTrenMay();
+    emit(AuthUnauthenticated(thongBao: thongBao));
   }
 
   Future<void> _onSessionInvalidated(
@@ -76,22 +163,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     final session = await authRepository.verifySession();
     if (session != SessionStatus.invalid) return;
 
-    if (sl.isRegistered<SyncEngine>()) {
-      sl<SyncEngine>().stop();
-    }
-    // Dừng quét cùng lúc với đồng bộ. Còn sót subscription là sau khi đăng
-    // xuất vẫn quét, và quét bằng idaccount của người vừa rời đi.
-    if (sl.isRegistered<NotificationScanner>()) {
-      await sl<NotificationScanner>().stop();
-    }
-    // Dừng kênh thời gian thực cùng lúc. Socket còn sống sau khi đăng xuất
-    // nghĩa là máy vẫn nằm trong room `account_<id>` của người vừa rời đi —
-    // đây là lỗi bảo mật, không phải lỗi giao diện.
-    if (sl.isRegistered<RealtimeChannel>()) {
-      await sl<RealtimeChannel>().stop();
-    }
+    await _dungMoiThuCuaPhien();
     await authRepository.logout();
-    emit(AuthUnauthenticated());
+    emit(const AuthUnauthenticated());
   }
 
   Future<void> _onThongTinTaiKhoanThayDoi(
@@ -116,7 +190,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     try {
       final isLoggedIn = await authRepository.checkAuthStatus();
       if (!isLoggedIn) {
-        emit(AuthUnauthenticated());
+        emit(const AuthUnauthenticated());
         return;
       }
 
@@ -128,7 +202,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final session = await authRepository.verifySession();
       if (session == SessionStatus.invalid) {
         await authRepository.logout();
-        emit(AuthUnauthenticated());
+        emit(const AuthUnauthenticated());
         return; // KHÔNG khởi động SyncEngine với phiên đã chết
       }
       // valid hoặc unknown (mất mạng / lỗi 5xx) → giữ phiên, đúng offline-first.
@@ -142,7 +216,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final idAcc = int.tryParse(user?.id ?? '');
       if (idAcc == null || idAcc <= 0) {
         await authRepository.logout();
-        emit(AuthUnauthenticated());
+        emit(const AuthUnauthenticated());
         return;
       }
 
@@ -181,7 +255,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       }
       emit(AuthSuccess(user: user));
     } catch (e) {
-      emit(AuthUnauthenticated());
+      emit(const AuthUnauthenticated());
     }
   }
 
@@ -189,6 +263,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     LoginSubmitted event,
     Emitter<AuthState> emit,
   ) async {
+    // Phiên mới thì lời từ chối của phiên cũ hết hiệu lực. Không thả cờ ở đây
+    // thì lần bị đẩy ra thứ hai trong cùng một lần chạy app sẽ im lặng — app
+    // kẹt ở `AuthSuccess` với một tài khoản server đã từ chối.
+    _dangBuocDangXuat = false;
     emit(AuthLoading());
     try {
       final user = await authRepository.login(event.email, event.password);
@@ -246,22 +324,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     emit(AuthLoading());
-    if (sl.isRegistered<SyncEngine>()) {
-      sl<SyncEngine>().stop();
-    }
-    // Dừng quét cùng lúc với đồng bộ. Còn sót subscription là sau khi đăng
-    // xuất vẫn quét, và quét bằng idaccount của người vừa rời đi.
-    if (sl.isRegistered<NotificationScanner>()) {
-      await sl<NotificationScanner>().stop();
-    }
-    // Dừng kênh thời gian thực cùng lúc. Socket còn sống sau khi đăng xuất
-    // nghĩa là máy vẫn nằm trong room `account_<id>` của người vừa rời đi —
-    // đây là lỗi bảo mật, không phải lỗi giao diện.
-    if (sl.isRegistered<RealtimeChannel>()) {
-      await sl<RealtimeChannel>().stop();
-    }
+    await _dungMoiThuCuaPhien();
     await authRepository.logout();
-    emit(AuthUnauthenticated());
+    emit(const AuthUnauthenticated());
   }
 
   // ─── OTP Register Handlers ──────────────────────────────────────────────
