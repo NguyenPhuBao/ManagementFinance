@@ -22,6 +22,39 @@ void main() {
     );
   }
 
+
+  // Không đặt tên gạch dưới đầu cho hàm cục bộ: lint
+  // `no_leading_underscores_for_local_identifiers` sẽ đội số issue của analyze.
+  Bill hoaDonMau({
+    required DateTime start,
+    required DateTime due,
+    DateTime? periodEnd,
+    int? anchorDay,
+  }) =>
+      Bill(
+        id: 'b',
+        idaccount: 7,
+        name: 'Tiền điện',
+        amount: 1,
+        startDate: start,
+        periodEnd: periodEnd,
+        dueDate: due,
+        anchorDay: anchorDay,
+        payStatus: 'Pending',
+        isPaid: false,
+        autoPayEnabled: false,
+        isRecurrence: true,
+        timeRecurrence: kBillCycleMonth,
+        recurrence: 'monthly',
+        icon: 'receipt',
+        colour: '#4CAF50',
+        note: '',
+        isDeleted: false,
+        syncStatus: 'synced',
+        syncRetryCount: 0,
+        updatedAt: DateTime(2026, 9, 1),
+      );
+
   group('ngày đến hạn luôn do chu kỳ quyết định', () {
     test('hàng tháng: đến hạn là một tháng sau ngày bắt đầu', () {
       expect(lich().dueDate, DateTime(2026, 10, 1),
@@ -273,6 +306,66 @@ void main() {
         reason: 'Hoá đơn do Admin-web hoặc bản client cũ tạo có thể mang cửa '
             'sổ trả bất kỳ. Ngày gốc không được làm tắt lời cảnh báo ấy.',
       );
+    });
+  });
+  group('ân hạn — hạn trả muộn hơn ngày kết thúc kỳ', () {
+    test('mặc định 0: kết thúc kỳ TRÙNG hạn trả, y hệt trước v21', () {
+      final s = lich();
+      expect(s.anHanNgay, 0);
+      expect(s.ketThucKy, DateTime(2026, 10, 1));
+      expect(s.dueDate, DateTime(2026, 10, 1));
+    });
+
+    test('15 ngày: kết thúc 01/10, hạn 16/10', () {
+      final s = lich().copyWith(anHanNgay: 15);
+      expect(s.ketThucKy, DateTime(2026, 10, 1),
+          reason: 'Ân hạn KHÔNG đổi kỳ tính tiền, chỉ đổi hạn trả.');
+      expect(s.dueDate, DateTime(2026, 10, 16));
+      expect(s.dateError, isNull);
+    });
+
+    test('gốc 31 qua tháng Hai: kết thúc 28/02, hạn 15/03', () {
+      final s = lich(start: DateTime(2026, 1, 31)).copyWith(anHanNgay: 15);
+      expect(s.ketThucKy, DateTime(2026, 2, 28));
+      expect(s.dueDate, DateTime(2026, 3, 15));
+    });
+
+    test('đổi ân hạn KHÔNG đụng ngày gốc', () {
+      final s = lich(start: DateTime(2026, 1, 31)).copyWith(anHanNgay: 7);
+      expect(s.anchorDayHieuLuc, 31,
+          reason: 'Ngày gốc chỉ đi theo ngày bắt đầu. Đổi số ngày ân hạn mà '
+              'ngày gốc đổi theo là hoá đơn "ngày 31" tụt xuống 28.');
+    });
+
+    test('ân hạn chồng kỳ kế tiếp thì dateError báo, không im lặng', () {
+      final s = lich().copyWith(anHanNgay: 31);
+      expect(s.dateError, 'Hạn trả phải trước ngày kết thúc kỳ kế tiếp (01/11)');
+    });
+
+    test('chu kỳ tuần: 7 ngày ân hạn bị từ chối, 6 thì không', () {
+      expect(lich(chuKy: kBillCycleWeek).copyWith(anHanNgay: 7).dateError,
+          isNotNull);
+      expect(lich(chuKy: kBillCycleWeek).copyWith(anHanNgay: 6).dateError,
+          isNull);
+    });
+
+    test('fromBill: hàng cũ (periodEnd NULL) ra ân hạn 0, không cảnh báo', () {
+      final b = hoaDonMau(start: DateTime(2026, 9, 1), due: DateTime(2026, 10, 1));
+      final s = BillSchedule.fromBill(b);
+      expect(s.anHanNgay, 0);
+      expect(s.canhBaoHanCu, isNull,
+          reason: 'Mở form Sửa rồi lưu KHÔNG được đổi hạn của hoá đơn cũ.');
+    });
+
+    test('fromBill: hàng có ân hạn 15 ra đúng 15, hạn khớp, không cảnh báo', () {
+      final b = hoaDonMau(
+          start: DateTime(2026, 9, 1),
+          periodEnd: DateTime(2026, 10, 1),
+          due: DateTime(2026, 10, 16));
+      final s = BillSchedule.fromBill(b);
+      expect(s.anHanNgay, 15);
+      expect(s.dueDate, DateTime(2026, 10, 16));
+      expect(s.canhBaoHanCu, isNull);
     });
   });
 }
