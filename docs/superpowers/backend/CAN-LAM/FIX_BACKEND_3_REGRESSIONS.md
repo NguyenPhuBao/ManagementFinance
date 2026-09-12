@@ -129,7 +129,7 @@ hồi token rồi ném 401. `auth.controller.js:79-85` trả 401 kèm `idaccount
 
 - **App:** máy dev của client đặt `JWT_USER_ACCESS_EXPIRES=7d`. Hết 7 ngày,
   request đầu tiên nhận 401 *"Token expired"* (`middleware/auth.js:99-100`) →
-  `auth_interceptor.dart` (`onError` gọi `_lamMoi()`) gọi `/auth/refresh` → 401 →
+  `auth_interceptor.dart` (`onError` gọi `_lamMoiChung()` → `_lamMoi()`) gọi `/auth/refresh` → 401 →
   xoá token → màn đăng nhập. Người dùng bị đăng xuất mỗi 7 ngày thay vì dùng hết refresh token 90 ngày.
 - **Admin-web:** `JWT_ADMIN_ACCESS_EXPIRES=15m`. `src/Admin-web/src/api/axios-client.js:83-107`
   gặp 401 thì làm mới qua `/auth/refresh`; làm mới hỏng thì `handleLogoutRedirect()`

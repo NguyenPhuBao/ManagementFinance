@@ -334,11 +334,22 @@ nhiêu request cùng nhận 401.
   lần cho một lượt làm mới chung**, không để từng request chờ tự xoá (N
   request đan xen đọc/xoá sẽ phát tín hiệu N lần).
 - `LamMoiPhienChet.loi` giữ nguyên `DioException` (có body 401) để §3.3
-  (Phần 1) đọc mã lỗi từ đó — không cần đổi gì thêm.
+  (Phần 1) đọc mã lỗi từ đó — không cần đổi gì thêm **để lấy body lỗi**.
+  ⚠️ Phạm vi ấy hẹp hơn nó nghe: §3.3 còn đòi *xoá token **không phát**
+  `sessionExpiredStream`* cho 401 **có mã**, mà hôm nay `_clearTokens()` phát
+  tín hiệu **bên trong** `_lamMoi()` — tức **trước** khi `onError` kịp nhìn
+  `LamMoiPhienChet.loi`. Phần 1 sẽ phải chuyển phép quyết định ấy vào
+  `_lamMoi()` (hoặc truyền một cờ cho `_clearTokens`); riêng hook đọc body thì
+  vẫn dùng được như trên.
 - **`7cbd849` là một chốt phòng thủ, không phải một lỗi đã có.** Lỗi không
-  phải `DioException` trong `_lamMoi()` (ví dụ `PlatformException` thật của
-  kho token) và ở lượt đọc kho của chốt "token cũ" nay được bắt riêng, trả
-  `LamMoiTamThoi` (giữ token, không phát tín hiệu) thay vì thoát ra ngoài.
+  phải `DioException` (ví dụ `PlatformException` thật của kho token) nay được
+  bắt riêng thay vì thoát ra ngoài — nhưng ở **hai** chỗ và theo **hai** cách
+  khác nhau: trong `_lamMoi()` thì trả `LamMoiTamThoi` (giữ token, không phát
+  tín hiệu); còn ở lượt đọc kho của chốt "token cũ" thì khối `catch` chỉ gán
+  `tokenHienCo = null` — coi như *không có token cũ để so* — rồi **đi tiếp**
+  `_lamMoiChung()`, nên kết quả cuối tuỳ lượt làm mới ấy và hoàn toàn có thể
+  là `LamMoiThanhCong`. (Bản trước của gạch này viết cả hai chỗ đều trả
+  `LamMoiTamThoi` — sai, sửa 2026-09-12 sau soát cuối cả nhánh.)
   Lo ngại ban đầu — lỗi thoát khỏi future dùng chung sẽ treo mọi request
   đang chờ — **không tái hiện được**: `dio 5.11.0` đã tự bắt lỗi thoát khỏi
   `onError` async và đổi thành `DioException(type: unknown)` cho từng
@@ -353,9 +364,45 @@ tài khoản, nên nhánh làm mới không dựng được đầu-cuối trên 
 (lý do đầy đủ ở Global Constraints của kế hoạch thực thi,
 `.superpowers/sdd/2026-09-11-lam-moi-token/`).
 
+⚠️ **Rủi ro còn lại, nói thành lời (2026-09-12):** toàn bộ lời hứa §3.8 hiện
+**chỉ được canh bằng máy chủ giả** — chính hành vi "mất mạng thì giữ token"
+chưa một lần nào chạy trên máy thật. **Việc còn nợ:** khi backend đóng
+CAN-LAM 17 mục A thì kiểm một lượt trên máy ảo — đăng nhập, bật chế độ máy bay
+(hoặc hạ `JWT_USER_ACCESS_EXPIRES` trên backend dev để ép 401), xác nhận
+**không** bị đăng xuất và hai token còn nguyên trong kho.
+
 Ca test: `test/core/api/ket_qua_lam_moi_test.dart` (13 ca) và
-`test/core/api/auth_interceptor_test.dart` (16 ca, 13 ca mới cho §3.8) — số
-liệu đầy đủ ở §7.2.
+`test/core/api/auth_interceptor_test.dart` (**17** ca, **14** ca mới cho §3.8;
+16 / 13 tính tới 2026-09-11, trước lượt sửa dưới) — số liệu đầy đủ ở §7.2.
+
+### ✅ Lượt sửa sau soát cuối cả nhánh (2026-09-12)
+
+Soát cuối `16bd5b3..8ad4b2f` xếp **With fixes** — 0 Critical, 0 Important, 8
+Minor — và cả tám được làm trong một lượt, hai commit:
+
+- **Mã và test** (`fe5a9fc`). (1) `catch (Object)` của `_lamMoi()` không còn
+  hạ cấp một phiên **đã xác định** là chết: `_clearTokens()` phát tín hiệu
+  trong `finally` (kho token hỏng đúng lúc xoá thì `AuthBloc` càng cần biết —
+  nó hỏi lại server bằng `verifySession()` rồi mới đăng xuất), và `_lamMoi()`
+  giữ phán quyết ở biến `phanQuyet` đặt **trước** lời gọi ấy. Trước khi sửa,
+  kho hỏng lúc xoá làm nơi gọi nhận `LamMoiTamThoi` và **không** phát tín hiệu
+  nào — đúng hình dạng G12. (2) Nhánh "200 không có `accessToken`" thôi gắn
+  `response` của `/auth/refresh` vào lỗi trả cho request gốc: `SyncEngine` in
+  `e.response?.data` bằng `debugPrint`, thứ **không** bị lược ở bản release,
+  nên backend đổi tên khoá là body còn refreshToken đi thẳng ra logcat qua lỗi
+  của một request khác. (3) Ba ca đồng thời thêm chốt canh để không xanh vì lý
+  do khác. (4) Chú thích giới hạn của `_retryRequest` (`Options` dựng lại chỉ
+  mang `method` + `headers`, mà chốt "token cũ" vừa thêm đường phát lại thứ
+  hai). (5) `_loiTamThoiChoRequest` chép `stackTrace`.
+- **Tài liệu** (commit ngay sau `fe5a9fc`). Gạch "chốt phòng thủ" ở trên (hai
+  khối `catch` **không** giống nhau), gạch `LamMoiPhienChet.loi` (phạm vi
+  "để lấy body lỗi" + điểm vướng cho Phần 1), `FIX_BACKEND_3_REGRESSIONS.md`
+  (`onError` gọi `_lamMoiChung()` → `_lamMoi()`), rủi ro máy ảo ở trên, và số
+  đo mới.
+
+Sau lượt này: `flutter test` **2105/2105** (1 phút 7 giây), `flutter analyze`
+**25 issue = 20 info + 5 warning + 0 error** — mức nền, không issue nào ở
+`core/api/`.
 
 ---
 
@@ -556,9 +603,11 @@ Kèm cập nhật `README.md` mục 2 và mọi con số đếm mục CAN-LAM tr
   như vậy; làm mới trả 400 hoặc 401 không mã → xoá token và phát tín hiệu như cũ; hai
   request cùng nhận 401 → Dio làm mới giả đếm **1** và cả hai được thử lại bằng token
   mới; lượt làm mới chung ấy trả 401 → cả hai nhận lỗi, tín hiệu phát **một** lần. Ca
-  thật (đếm bằng máy 2026-09-11): `auth_interceptor_test.dart` **13** ca mới cho §3.8
-  (8 điểm 1 + 1 "200 không có `accessToken`" + 3 điểm 2 + 1 "kho token ném lỗi",
-  cộng 3 ca cũ = **16** ca cả tệp) và `ket_qua_lam_moi_test.dart` **13** ca.
+  thật (đếm bằng máy 2026-09-12, sau lượt sửa sau soát cuối cả nhánh):
+  `auth_interceptor_test.dart` **14** ca mới cho §3.8 (8 điểm 1 + 1 "200 không có
+  `accessToken`" + 1 "kho token hỏng lúc xoá" + 3 điểm 2 + 1 "kho token ném lỗi",
+  cộng 3 ca cũ = **17** ca cả tệp) và `ket_qua_lam_moi_test.dart` **13** ca. Mốc
+  13 ca mới / 16 ca cả tệp là của 2026-09-11, trước lượt sửa ấy.
 - `RealtimeChannel` (socket giả sẵn có): `account.force_logout` khớp id → phát
   `buocDangXuat`, **không** phát vào `events`; lệch id → im; sau `stop()` → im.
 - `AuthBloc` (khuôn `session_validation_test.dart`): `biKhoa` → dừng ba thành
@@ -608,8 +657,9 @@ socket **không kiểm đầu-cuối được** cho tới khi backend sửa mụ
   theo mục 2.7 `FIX_BACKEND_3_REGRESSIONS.md`.
 - Không sọc vàng tràn bố cục ở 411dp.
 
-`flutter test` và `flutter analyze` đối chiếu mức nền ghi trong `CLAUDE.md` — 2029/2029
-và 25 issue tính tới 2026-09-11.
+`flutter test` và `flutter analyze` đối chiếu mức nền ghi trong `CLAUDE.md` — **2105/2105**
+và **25** issue tính tới 2026-09-12 (dòng này ghi 2029/2029 tới 2026-09-11, đã lạc hậu
+kể từ G33 và §3.8).
 
 ---
 
