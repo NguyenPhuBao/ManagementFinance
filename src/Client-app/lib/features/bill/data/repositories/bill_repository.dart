@@ -52,6 +52,46 @@ class BillUndoUnavailableException implements Exception {
       'bản ứng dụng cũ nên không lần lại được.';
 }
 
+/// Ném ra khi bỏ qua một kỳ mà CSDL đã ghi nhận là bỏ qua rồi.
+///
+/// Cần ngoại lệ riêng vì hệ quả của lần chạy thứ hai không vô hại: mỗi lần bỏ
+/// qua sinh một kỳ kế tiếp, nên chạy hai lần là hai hoá đơn cùng hạn và người
+/// dùng không hiểu cái thứ hai ở đâu ra.
+class BillAlreadySkippedException implements Exception {
+  final String billId;
+  const BillAlreadySkippedException(this.billId);
+
+  @override
+  String toString() => 'Hoá đơn $billId đã được bỏ qua trước đó.';
+}
+
+/// Ném ra khi hoàn tác việc bỏ qua trên một kỳ không hề bị bỏ qua.
+///
+/// Đặc biệt chặn cả kỳ **đã trả**: hoàn tác một lần trả phải đi qua
+/// [BillRepository.undoPayment], thứ có bước hoàn tiền. Đi nhầm đường này là
+/// hoá đơn về `Pending` mà tiền vẫn nằm ngoài ví và khoản chi vẫn còn trong sổ.
+class BillNotSkippedException implements Exception {
+  final String billId;
+  const BillNotSkippedException(this.billId);
+
+  @override
+  String toString() => 'Hoá đơn $billId không ở trạng thái bỏ qua.';
+}
+
+/// Ném ra khi thanh toán một kỳ đã bị bỏ qua.
+///
+/// Kỳ `Skipped` **đã sinh kỳ kế tiếp**. Cho [BillRepository.payBill] chạy tiếp
+/// trên nó là sinh kỳ thứ hai trùng hạn. Người dùng phải hoàn tác việc bỏ qua
+/// trước — giao diện cũng chỉ bày nút "Hoàn tác bỏ qua" cho kỳ này.
+class BillSkippedCannotPayException implements Exception {
+  final String billId;
+  const BillSkippedCannotPayException(this.billId);
+
+  @override
+  String toString() =>
+      'Hoá đơn $billId đang ở trạng thái bỏ qua; hãy hoàn tác trước khi trả.';
+}
+
 abstract class BillRepository {
   Stream<List<Bill>> watchBills(int idaccount);
   Future<List<Bill>> getBills(int idaccount);
@@ -95,4 +135,17 @@ abstract class BillRepository {
   /// xoá mềm khoản chi và trả tiền lại đúng ví đã trừ, xoá mềm kỳ kế tiếp đã
   /// sinh ra.
   Future<void> undoPayment({required String billId});
+
+  /// Bỏ qua kỳ [billId]: đánh dấu `Skipped`, **không** sinh khoản chi và
+  /// **không** trừ ví, nhưng vẫn sinh kỳ kế tiếp như [payBill] để chuỗi hoá
+  /// đơn lặp không đứt.
+  ///
+  /// Dành cho kỳ thật sự không phải trả: đi vắng cả tháng nên không có tiền
+  /// điện, chủ nhà miễn một tháng, gói dịch vụ tặng kỳ. Khác xoá ở chỗ kỳ ấy
+  /// vẫn nằm trong lịch sử, và mắt xích `generatedFromBillId` không đứt.
+  Future<void> skipBill({required String billId});
+
+  /// Hoàn tác việc bỏ qua kỳ [billId]: về `Pending`, xoá mềm kỳ kế tiếp đã
+  /// sinh. **Không** có bước hoàn tiền — chưa từng trừ tiền.
+  Future<void> undoSkip({required String billId});
 }
