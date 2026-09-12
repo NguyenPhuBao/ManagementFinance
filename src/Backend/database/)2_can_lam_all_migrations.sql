@@ -19,8 +19,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS "uq_category_owner_name"
   WHERE "Is_default" = FALSE AND "Delete_at" IS NULL;
 
 -- Dọn dẹp các danh mục mặc định cũ (sinh ngẫu nhiên trước khi đóng băng 13 stable UUIDs)
-DELETE FROM "category" 
-WHERE "Is_default" = TRUE 
+-- Xoá mềm thay vì xoá vật lý để tránh vi phạm fk_bill_category (RESTRICT)
+UPDATE "category"
+SET "Delete_at" = NOW()
+WHERE "Is_default" = TRUE
+  AND "Delete_at" IS NULL
   AND "Idcategory" NOT IN (
     'f92ee650-47d7-42c3-a9cd-75fe2e5daa84',
     'bfc1ef8d-d9af-4f8d-80bb-a7fac310891f',

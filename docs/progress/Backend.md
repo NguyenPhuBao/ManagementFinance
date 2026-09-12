@@ -509,7 +509,7 @@ Toàn bộ các yêu cầu kỹ thuật và sửa lỗi được chỉ rõ tại
    - Tách biệt kiểm tra lỗi toàn lô (`validateBatch` trả HTTP 400) và kiểm tra từng thao tác (`validateOperation` trả mã `CONSTRAINT_VIOLATION` trong `results[i]`).
    - Hỗ trợ thao tác xóa (`operation: 'delete'`) chỉ cần `entity` và `id`.
    - Chuẩn hóa loại giao dịch (`Expense`, `Income`, `Debt`, `Loan` $\rightarrow$ `Transaction`) trước khi validate và ghi CSDL.
-   - Bắt và ánh xạ chi tiết các mã lỗi PostgreSQL `22001` (quá độ dài), `23502` (thiếu trường), `BILL_ALREADY_PAID` (hóa đơn đã trả), `WALLET_NAME_DUPLICATE` sang mã lỗi chuẩn `CONSTRAINT_VIOLATION`.
+   - Bắt và ánh xạ mã lỗi PostgreSQL: `22001`/`P2000` và `23502`/`P2011`/`P2012` sang `CONSTRAINT_VIOLATION`; ba mã riêng `BILL_ALREADY_PAID` (giao dịch thứ hai cùng `Idbill`), `WALLET_NAME_DUPLICATE` (tên ví trùng), `WALLET_DEFAULT_DUPLICATE` (hai ví mặc định) trả đúng tên mã — không ánh xạ thành `CONSTRAINT_VIOLATION`.
 
 7. **Chuẩn Hóa Provider Nhận Dạng OCR:**
    - Thống nhất giá trị `'OCR'` trên toàn bộ codebase (thay thế triệt để `'ORC'`).

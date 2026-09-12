@@ -189,8 +189,10 @@ async function processSepayTransaction({
       idtran: randomUUID(),
       idaccount,
       idwallet: wallet.idwallet,
-      amount: Math.abs(amount),
-      type: type || (transfer_type === 'debit' ? 'Chi' : 'Thu'),
+      // Dùng 'Transaction' theo chk_transaction_type (CSDL không chấp nhận 'Chi'/'Thu')
+      // amount âm = chi tiêu, amount dương = thu nhập theo quy ước
+      amount: transfer_type === 'debit' ? -Math.abs(amount) : Math.abs(amount),
+      type: 'Transaction',
       status: 'Pending',
       provider: 'BankSync',
       bank_tran_id: String(bank_tran_id),
@@ -212,31 +214,8 @@ async function processSepayTransaction({
     data: { balance: newBalance, update_at: new Date() },
   });
 
-  // 7. Phát sự kiện thời gian thực qua Socket.io
-  const socketPayload = {
-    idtran: newTx.idtran,
-    amount: newTx.amount,
-    type: newTx.type,
-    status: newTx.status,
-    transaction_status: newTx.status,
-    note: safeNote,
-    gateway: bankAcc.bank_name || gateway,
-    account_number: bankAcc.account_number,
-    date_transaction: newTx.date_transaction,
-    suggested_category: predictedCategoryName,
-    confidence: aiConfidence,
-  };
-
-  if (customSocket) {
-    if (typeof customSocket.emitBankTransaction === 'function') {
-      customSocket.emitBankTransaction(idaccount, socketPayload);
-    } else if (typeof customSocket.emitToUser === 'function') {
-      customSocket.emitToUser(idaccount, 'bank_transaction.incoming', socketPayload);
-    }
-    if (typeof customSocket.emitToAdmin === 'function') {
-      customSocket.emitToAdmin('admin.bank_transaction_created', socketPayload);
-    }
-  }
+  // 7. Socket realtime được phát qua EventBus (bước 8) — notification.service lắng nghe
+  // và gọi emitBankTransaction. Không emit trực tiếp ở đây để tránh phát hai lần.
 
   // 8. Publish EventBus nội bộ
   if (eventBus && typeof eventBus.publish === 'function') {

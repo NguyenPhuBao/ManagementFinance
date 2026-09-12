@@ -58,6 +58,9 @@ async function getAccountValidity(idaccount) {
 }
 
 function accountRejection(info, idaccount) {
+  // Tài khoản hợp lệ thì không có lý do từ chối. Nơi gọi phải xử lý
+  // `errorType === 'SCHEMA_ERROR'` TRƯỚC khi gọi hàm này — xem authenticate.
+  if (info?.valid) return null;
   const inactive = info?.status?.toLowerCase() === 'inactive';
   return {
     message: inactive

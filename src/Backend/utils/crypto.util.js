@@ -7,8 +7,23 @@ const crypto = require('crypto');
 const logger = require('../core/logger');
 
 // Khóa mã hóa 32 bytes (256-bit) lấy từ biến môi trường
-const RAW_KEY = process.env.DATA_ENCRYPTION_KEY || '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
-const RAW_BLIND_SECRET = process.env.BLIND_INDEX_SECRET || 'blind-index-default-secret-salt-2026';
+const _rawKey = process.env.DATA_ENCRYPTION_KEY;
+const _rawBlindSecret = process.env.BLIND_INDEX_SECRET;
+
+// Cảnh báo rõ ràng khi thiếu khoá — không chấp nhận khoá mặc định ở production
+const _isProduction = process.env.NODE_ENV === 'production';
+if (!_rawKey) {
+  if (_isProduction) {
+    // Crash sớm: không để dữ liệu production mã hoá bằng khoá hardcoded
+    logger.error('[SECURITY] DATA_ENCRYPTION_KEY không được đặt ở môi trường production. Từ chối khởi động.');
+    process.exit(1);
+  } else {
+    logger.warn('[SECURITY] DATA_ENCRYPTION_KEY chưa đặt — dùng khoá mặc định CHỈ cho môi trường dev/test.');
+  }
+}
+
+const RAW_KEY = _rawKey || '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+const RAW_BLIND_SECRET = _rawBlindSecret || 'blind-index-default-secret-salt-2026';
 
 let ENCRYPTION_KEY;
 try {
