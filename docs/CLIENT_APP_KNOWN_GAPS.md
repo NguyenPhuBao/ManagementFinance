@@ -1,6 +1,6 @@
 # Client-app — Việc còn dang dở & rủi ro đã biết
 
-**Cập nhật:** 2026-09-11 (sau khi nhánh gộp `main` @ `cc65f4f` và CSDL dev áp `database/12`: đóng G29, G31, G32; G24 thành lỗi phía client rồi đóng cùng ngày; thêm G34; G35 mở rồi đóng cùng ngày; đóng G30; đóng G33); 2026-09-12: gộp `main` @ `cbbeeb4` — CAN-LAM 17 A đóng, kênh thời gian thực nối được trên máy ảo, G34 hết bị chặn (vẫn chờ người dùng chốt toast hay im lặng)
+**Cập nhật:** 2026-09-11 (sau khi nhánh gộp `main` @ `cc65f4f` và CSDL dev áp `database/12`: đóng G29, G31, G32; G24 thành lỗi phía client rồi đóng cùng ngày; thêm G34; G35 mở rồi đóng cùng ngày; đóng G30; đóng G33); 2026-09-12: gộp `main` @ `cbbeeb4` — CAN-LAM 17 A đóng, kênh thời gian thực nối được trên máy ảo, G34 hết bị chặn (vẫn chờ người dùng chốt toast hay im lặng); chiều muộn thêm **G36** — chờ backend
 **Mục đích:** ghi lại những hạng mục đã được **cân nhắc và cố ý hoãn**, kèm lý do và bán kính ảnh hưởng. Không có tài liệu này thì người tiếp theo sẽ hoặc bỏ sót, hoặc làm lại từ đầu việc phân tích rủi ro.
 
 Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nhất.
@@ -40,6 +40,7 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > | ~~**G32**~~ | ✅ **Đóng 2026-09-11** — backend giữ `priority: null` khi đẩy (hết `Number(null)` → `0`), nhánh tạo mặc định `null`, và `database/12` đã đưa các hàng `<= 0` về `NULL` trên CSDL dev. Lớp đọc `<= 0` là chưa sắp phía client **vẫn giữ** cho dữ liệu cũ và bản backend/client cũ. Dòng cũ ghi *chặn ở backend* — đúng tới trước khi gộp `main` |
 > | ~~**G33**~~ | ✅ **Đóng 2026-09-11** — tài khoản chờ xoá nay dùng tiếp app trong 30 ngày thay vì bị đăng xuất ngay: `UserModel` mang `status`/`countdown`, trang Xoá tài khoản thôi hứa *"đăng nhập lại là tự khôi phục"*, hai thẻ (Trang chủ, "Vùng nguy hiểm" ở Cài đặt) hiện số ngày còn lại và nút huỷ. Kiểm trên máy ảo với tài khoản 11. Dòng cũ ghi *lỗi đang chạy, chưa sửa* — đúng tới trước bản sửa |
 > | **G34** | ⏸️ **Chưa làm — việc phía client, chờ người dùng** — backend đã phát `sync.completed` tới phòng `account_<id>` sau mỗi `/sync/push`, nhưng client chỉ nhận ba tên sự kiện nên **bỏ qua** nó; thay đổi từ máy khác vẫn chờ chu kỳ đồng bộ định kỳ (15 phút) hoặc kích hoạt khác. Từng bị chặn thêm vì bắt tay socket từ chối mọi tài khoản (CAN-LAM 17 A, 2026-09-11) — ✅ hết 2026-09-12 sau gộp `cbbeeb4`, kênh nối được trên máy ảo; nay chỉ còn chờ người dùng chốt |
+> | **G36** | ⏸️ **Chờ backend (CAN-LAM 20 §2.7)** — tài khoản bị xoá qua admin trong lúc app giữ token hết hạn và không có socket → `/auth/refresh` trả 401 **không mã** (token đã bị thu hồi, kiểm trước tài khoản) → app đăng xuất **trơn, không hộp thoại**; người dùng chỉ biết lý do khi đăng nhập lại. Đo thật 2026-09-12 chiều |
 > | ~~**G35**~~ | ✅ **Đóng 2026-09-11** — ba màn quản lý danh mục nay lấy tài khoản qua `currentAccountIdOrNull`: chưa có phiên thì không đọc gì (kể cả tài khoản 0 — bộ khuôn toàn cục), và nút lưu/xoá báo "Chưa xác định được tài khoản đăng nhập". Test quét `lib/` cấm `?? 1` nhiều dòng. ⚠️ Dòng này từng ghi *lỗi đang chạy, chưa sửa* — đúng tới trước bản sửa |
 >
 > **G20 đã đóng ngày 2026-09-05** — `depositToGoal` nhận `occurredAt` chặn hai
@@ -1222,6 +1223,32 @@ tệp này — đã gắn dấu cùng ngày.
 cộng một test quét `lib/` cấm mẫu `?? 1` nhiều dòng — hai test quét `lib/` sẵn có là tiền lệ.
 
 ---
+
+### G36 — Tài khoản bị xoá lúc app giữ token hết hạn: đăng xuất không hộp thoại · ⏸️ CHỜ BACKEND (2026-09-12)
+
+**Đo thật** (spec cưỡng chế đăng xuất, khối ✅ thứ hai đầu §7.3): tạo tài khoản thử `kiemthu_xoa`
+(idaccount 12), đăng nhập giữ refresh token, admin `DELETE /api/admin/deleteuser/12`, rồi gọi
+`/auth/refresh` bằng token ấy → **401 "Refresh token khong hop le", không `code`**. Nguyên nhân: xoá
+mềm **thu hồi toàn bộ refresh token** của tài khoản (5/5 `Status = true`), và `auth.service.js:375-387`
+kiểm token **trước** khi kiểm trạng thái tài khoản. `/auth/profile` cùng lúc trả đúng 401 +
+`code: ACCOUNT_DELETED`.
+
+**Hệ quả phía client.** Ba nguồn của cưỡng chế đăng xuất (§3.5) đều cần *mã*. Khi app **đang có
+socket**, sự kiện `account.force_logout` tới trước và mọi thứ đúng (đo thật: hộp thoại "Tài khoản
+đã bị xoá", SQLite dọn). Nhưng khi app **ngoại tuyến lúc bị xoá** rồi mở lại sau khi access token đã
+hết hạn: request đầu → 401 "Token expired" (không mã) → interceptor gọi `/auth/refresh` → 401 không
+mã → `LamMoiPhienChet` **không lý do** → `AuthUnauthenticated()` trơn → màn Đăng nhập, **không hộp
+thoại**. Người dùng chỉ biết vì sao khi đăng nhập lại (login trả câu đúng). Không mất dữ liệu; chỉ
+thiếu lời giải thích.
+
+**Client không tự sửa được**: lúc ấy mọi token đều chết, không endpoint nào trả lời được "vì sao".
+Xin backend (CAN-LAM 20 §2.7): ở nhánh token đã thu hồi, backend **có** `storedToken.idaccount` — kiểm
+`getAccountValidity` trước khi ném, và nếu tài khoản `Inactive`/`Deleted` thì trả 401 kèm `code` như
+`authenticate`. Client khi ấy không phải đổi gì: `tuBody401(nguon: lamMoi)` đã đọc đúng hình dạng.
+
+**Liên quan §3.6b:** vì đường này không mang `daXoa`, ngoại lệ *không dọn SQLite khi `daXoa` đến từ
+nhánh làm mới* hiện gần như vô nghĩa với xoá qua admin — giữ lại chỉ để che ca lỗi lược đồ (backend
+đã trả 503, chưa đo) và ca xoá theo lịch hết hạn (chưa đo có thu hồi token không).
 
 ## 2. Vấn đề đã biết nhưng thuộc về Backend
 

@@ -6,8 +6,10 @@
 > §3.8 ĐÃ LÀM (2026-09-11). **Phần 1 (§3.1–§3.7) và §5.1 ĐÃ LÀM 2026-09-12** — bảy commit
 > `693de3b` → `fc82a94`, cộng `ac08ed6` và `40a553d` (hai lỗi tìm ra khi kiểm máy ảo).
 > **Cả ba nhánh đã kiểm đầu-cuối trên máy thật** — HTTP 401 sáng 2026-09-12; socket và làm mới
-> chiều cùng ngày, khoá tài khoản thử qua API admin (§7.3). Ngoại lệ §3.6b **vẫn giữ**: ca
-> `daXoa` qua nhánh làm mới và ca `SCHEMA_ERROR → 503` chưa đo được (cần xoá tài khoản / phá lược đồ).** Mọi quyết định sản phẩm ở mục 2
+> chiều cùng ngày, khoá tài khoản thử qua API admin; interceptor tự làm mới với token 1 phút; xoá
+> tài khoản thử → hộp thoại "đã xoá" + dọn SQLite qua socket (§7.3). Ngoại lệ §3.6b **vẫn giữ** —
+> đo được rằng xoá qua admin **thu hồi refresh token** nên nhánh làm mới không bao giờ nói được
+> "đã xoá" (CAN-LAM 20 §2.7); ca `SCHEMA_ERROR → 503` chưa đo.** Mọi quyết định sản phẩm ở mục 2
 > đã chốt qua hỏi–đáp ngày 2026-09-10; Phần 1 (mục 3) được duyệt riêng trong phiên
 > ấy. Phần 2–4 viết thẳng vào đây theo yêu cầu "làm đi" của người dùng. Ngày
 > 2026-09-11 người dùng duyệt nốt: §3.3 và §3.6b (hai điểm soát lại theo `main`),
@@ -300,9 +302,13 @@ Nguồn `lamMoi` vẫn đăng xuất và vẫn hiện hộp thoại "Tài khoả
   — cùng tinh thần *"đọc nhầm thành bị khoá chỉ giữ lại dữ liệu"* ở §3.1.
 - Khi CAN-LAM 17 mục 2.5 xong **và đo được nhánh làm mới chạy đúng** thì bỏ ngoại lệ này; chú
   thích trong mã trỏ về đây. (2026-09-12: mã backend đã xong; nhánh làm mới **đã đo** chiều cùng
-  ngày với tài khoản hợp lệ (200) và tài khoản bị khoá (401 + `ACCOUNT_INACTIVE`), nhưng ca
-  `ACCOUNT_DELETED` qua nhánh này và ca `SCHEMA_ERROR` chưa đo — **giữ** ngoại lệ, vì bỏ nhầm
-  là xoá dữ liệu người dùng trên máy; gỡ là quyết định của người dùng.)
+  ngày ở ca hợp lệ (200), ca bị khoá (401 + `ACCOUNT_INACTIVE`) **và ca đã xoá** — ca cuối cho
+  kết quả bất ngờ: xoá qua admin **thu hồi toàn bộ refresh token**, nên `/auth/refresh` trả 401
+  *"Refresh token khong hop le"* **không mã**, trước cả khi kiểm trạng thái tài khoản. Tức đường
+  `lamMoi` + `daXoa` **không xảy ra được** với xoá qua admin — ngoại lệ này chỉ còn che ca lỗi
+  lược đồ (backend đã trả 503, chưa đo) và ca xoá theo lịch hết hạn (chưa đo). **Giữ** — vô hại,
+  vì dọn SQLite đã chạy đúng qua socket/HTTP; gỡ là quyết định của người dùng. Việc backend nên
+  làm để client hiện được hộp thoại trong ca này: CAN-LAM 20 §2.7.)
 
 ### 3.7. Màn Đăng nhập
 
@@ -408,9 +414,14 @@ tài khoản, nên nhánh làm mới không dựng được đầu-cuối trên 
 
 ⚠️ **Rủi ro còn lại, nói thành lời (2026-09-12):** toàn bộ lời hứa §3.8 hiện
 **chỉ được canh bằng máy chủ giả** — chính hành vi "mất mạng thì giữ token"
-chưa một lần nào chạy trên máy thật. **Việc còn nợ:** khi backend đóng
-CAN-LAM 17 mục A (✅ đóng 2026-09-12; backend đo bằng `curl` chiều cùng ngày trả 200/401 đúng —
-còn **interceptor của app** ép 401 rồi tự làm mới thì chưa chạy trên máy) thì kiểm một lượt trên máy ảo — đăng nhập, bật chế độ máy bay
+chưa một lần nào chạy trên máy thật. ✅ **Chiều 2026-09-12 đã chạy nửa đầu trên máy ảo:** hạ
+`JWT_USER_ACCESS_EXPIRES` xuống `1m` (trả lại `7d` ngay sau), đăng nhập lại, chờ 75 giây, kích đồng
+bộ — app kéo với token hết hạn → interceptor gọi `/auth/refresh` → server **xoay token** (bảng
+`refreshtoken`: cùng số hàng sống, mốc mới nhất nhảy 09:47:46 → 09:49:21Z, không ai gọi API lúc ấy)
+→ socket nối lại bằng token mới, app **vẫn ở Trang chủ**. Nửa sau — *mất mạng giữa 401 và lượt làm
+mới* — **không dựng được** trên máy ảo: cần mạng đứt đúng giữa hai request liên tiếp. Vẫn chỉ canh
+bằng máy chủ giả. **Việc còn nợ (cũ):** khi backend đóng
+CAN-LAM 17 mục A (✅ đóng 2026-09-12) thì kiểm một lượt trên máy ảo — đăng nhập, bật chế độ máy bay
 (hoặc hạ `JWT_USER_ACCESS_EXPIRES` trên backend dev để ép 401), xác nhận
 **không** bị đăng xuất và hai token còn nguyên trong kho.
 
@@ -760,6 +771,33 @@ Kèm cập nhật `README.md` mục 2 và mọi con số đếm mục CAN-LAM tr
 >
 > Sau đó đăng nhập lại `quangdat` trên máy ảo: đường đăng nhập cũng đúng **một** `Starting full
 > sync` (kiểm kèm cho bản sửa `HomePage.build()` cùng ngày).
+
+> ✅ **Chiều 2026-09-12 (muộn) — interceptor tự làm mới, và ca "đã xoá".** Người dùng cho phép
+> đích danh hạ `JWT_USER_ACCESS_EXPIRES=1m` ở `.env` backend dev (trả lại `7d` sau khi đo, backend
+> khởi động lại hai lần) và tạo tài khoản thử bỏ đi được `kiemthu_xoa` (idaccount **12**) qua OTP
+> đăng ký — `email.service.js` không có SMTP nên ghi OTP ra log backend (`[MOCK EMAIL]`), lần này
+> backend chạy với stdout chuyển hướng ra tệp nên đọc được.
+>
+> - **Interceptor (§3.8 nửa đầu):** `quangdat` đăng nhập lại với token 1 phút → chờ 75 giây → kích
+>   đồng bộ → kéo với token hết hạn → `/auth/refresh` → xoay token (đo bảng `refreshtoken`) → socket
+>   nối lại bằng token mới → app vẫn ở Trang chủ. **Không đăng xuất, không hộp thoại** — đúng.
+> - **Ca đã xoá — mức API:** đăng nhập `kiemthu_xoa` giữ refresh token → admin `DELETE
+>   /api/admin/deleteuser/12` (200) → `/auth/refresh` bằng token ấy: **401 "Refresh token khong hop
+>   le", KHÔNG có `code`** — xoá mềm đã thu hồi cả 5 refresh token của tài khoản (`Status = true`),
+>   và `auth.service.js:375-387` kiểm token **trước** khi kiểm tài khoản. `/auth/profile` cùng lúc:
+>   401 + `code: ACCOUNT_DELETED` ở cấp gốc. Hệ quả: **nhánh làm mới không bao giờ mang `daXoa`**
+>   khi xoá qua admin — app đang giữ token hết hạn mà không có socket sẽ bị đăng xuất **trơn, không
+>   hộp thoại** (G36; xin backend ở CAN-LAM 20 §2.7).
+> - **Ca đã xoá — trên máy ảo:** `kiemthu_xoa` đăng nhập, chờ token hết hạn, "tắt Wi‑Fi" rồi xoá qua
+>   admin. ⚠️ Máy ảo có **dữ liệu di động** (`mobile_data = 1`, mạng mặc định `MOBILE[NR]`) nên
+>   `svc wifi disable` **không cắt mạng** — socket vẫn sống, nhận `force_logout: daXoa`, hộp thoại
+>   "Tài khoản đã bị xoá" với đúng câu server, và **SQLite được dọn** (`Wallets count: 0`). Đó là
+>   đường socket `daXoa` chạy đúng §3.5 — không phải đường `lamMoi` định đo; muốn cắt mạng thật
+>   phải `svc data disable` cùng lúc. Mọi lượt "tắt Wi‑Fi" hôm nay chỉ đổi đường mạng, nên dòng
+>   `Network restored` trong log là đổi đường, không phải mất mạng.
+>
+> Tài khoản 12 ở lại CSDL dưới dạng xoá mềm (`Status = 'Deleted'`, `Delete_at` có) — không xoá
+> cứng. Máy ảo trả về phiên `quangdat`.
 
 Sau khi áp `database/7`–`11` (tối 2026-09-10, mục 1.3), backend **của chính nhánh
 này** dựng được mọi tình huống **trừ** body 401 có mã (CAN-LAM 13) — kể cả nhánh

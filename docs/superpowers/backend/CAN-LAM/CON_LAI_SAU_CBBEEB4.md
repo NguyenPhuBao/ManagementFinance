@@ -1,8 +1,8 @@
 # Việc còn lại sau `cbbeeb4` — chốt chống trả hai lần chưa có, năm việc mã nhỏ, sổ ghi migration, tám chỗ tài liệu
 
 **Ngày:** 2026-09-12 · **Xin từ:** client (`src/Client-app`) · **Cỡ việc:** **một** chốt ở
-`upsertTransaction` (mục 2.1 — việc duy nhất chặn tính năng phía client); bốn việc mã nhỏ
-(mỗi việc vài dòng); một bảng sổ ghi migration; **tám** câu tài liệu. Không migration mới.
+`upsertTransaction` (mục 2.1 — việc duy nhất chặn tính năng phía client); năm việc mã nhỏ
+(mỗi việc vài dòng, gồm 2.7 thêm chiều cùng ngày); một bảng sổ ghi migration; **tám** câu tài liệu. Không migration mới.
 
 > **Đo trên `TranQuangDat` @ `216775c`** — mã `src/Backend` trùng `origin/main` @ `b7024f9`
 > (= `cbbeeb4`, PR #79; `git diff cbbeeb4 b7024f9` rỗng) — và trên **CSDL dev đã áp
@@ -25,6 +25,7 @@
 | 5 | Hai lỗi **mới** trong `New_Database.md`: ví "không có CHECK `Status`" (có), `goal` "có FK `auto_deposit_wallet_id`" (không) | 🟡 | **4.1**, **4.2** |
 | 6 | `_mock*` ở OCR/Classify vẫn mở ở mọi môi trường không phải `production`; `'ORC'` còn 3 chỗ | ⚪ | **2.3**, **2.4** |
 | 7 | Một ca thử khi chạy cho `WALLET_NAME_DUPLICATE` | ⚪ | **2.5** |
+| 7b | `/auth/refresh` với token **đã thu hồi** của tài khoản `Deleted`/`Inactive` trả 401 **không mã** → app đăng xuất không hộp thoại (G36 client) | 🟡 | **2.7** |
 | 8 | Bốn chỗ tài liệu còn lại (`ORC`, `sync.completed`, "16 tài liệu", "PASS 100%") | ⚪ | **4.4–4.7** |
 | — | *Ngoài phạm vi xin:* `deleteCategory` ném lỗi ở mọi nhánh | ⚪ | **2.6** |
 
@@ -149,6 +150,57 @@ rồi ngay dưới `if (cat.is_default) throw 400`. Một danh mục hoặc mặ
 chủ ý ("danh mục hệ thống không xoá được", `Rule_project.md` 1.3) thì xin gỡ endpoint hoặc
 ghi rõ; nếu không thì bỏ nhánh 400. Không ảnh hưởng client — ghi vì thấy khi đọc diff.
 
+### 2.7. `/auth/refresh` với token đã thu hồi của tài khoản đã xoá — trả kèm mã tài khoản (mới, đo 2026-09-12 chiều)
+
+**Đo được.** Tạo tài khoản thử `kiemthu_xoa` (idaccount 12), đăng nhập giữ refresh token, admin
+`DELETE /api/admin/deleteuser/12` (200), rồi `POST /auth/refresh` bằng token ấy:
+
+```
+401 {"success":false,"message":"Refresh token khong hop le","errors":null}
+```
+
+Không `code`, không `idaccount`. Cùng lúc `GET /auth/profile` (token truy cập cũ) trả đúng
+`401 {"code":"ACCOUNT_DELETED","idaccount":12,"reason_inactive":null,...}`. Nguyên nhân: xoá mềm thu
+hồi **cả 5** refresh token của tài khoản (`refreshtoken.Status = true`), và `auth.service.js:375-387`
+kiểm `storedToken.status === true` rồi ném ngay — **trước** đoạn `getAccountValidity` /
+`accountRejection` ở `:404-418` (chính đoạn 17 A vừa sửa).
+
+**Vì sao đáng sửa.** Client hiện hộp thoại "vì sao bị đẩy ra" từ `code` của ba nguồn (spec cưỡng chế
+đăng xuất §3.5). App **đang mở** thì socket `account.force_logout` tới trước, mọi thứ đúng (đo thật cùng
+ngày). Nhưng app **ngoại tuyến lúc bị xoá/khoá** rồi mở lại sau khi access token hết hạn: request đầu
+→ 401 "Token expired" → `/auth/refresh` → 401 không mã → app đăng xuất **trơn, không hộp thoại**;
+người dùng chỉ biết lý do khi thử đăng nhập lại. Client không tự sửa được: lúc ấy không token nào còn
+sống để hỏi. (Ghi ở `docs/CLIENT_APP_KNOWN_GAPS.md` G36.)
+
+**Sửa** — `auth.service.js`, nhánh `if (!storedToken || storedToken.status === true)` (`:378`): khi
+`storedToken` **có** (chỉ là đã thu hồi), kiểm tài khoản trước khi ném lỗi token:
+
+```js
+if (storedToken && storedToken.status === true) {
+  // ... giữ nguyên phần thu hồi toàn bộ token của tài khoản (:379-386)
+  const accountInfo = await getAccountValidity(storedToken.idaccount);
+  if (accountInfo.errorType !== 'SCHEMA_ERROR') {
+    const rejection = accountRejection(accountInfo, storedToken.idaccount);
+    if (rejection) {
+      // Tài khoản không còn dùng được: nói lý do ấy, không nói "token sai".
+      throw Object.assign(new Error(rejection.message), { statusCode: 401, ...rejection.data });
+    }
+  }
+}
+throw Object.assign(new Error("Refresh token khong hop le"), { statusCode: 401 });
+```
+
+Token thu hồi của tài khoản **còn sống** vẫn trả câu cũ, không mã — đúng như hôm nay. Không đổi
+`accountRejection`, không đổi controller (đã đọc `code`/`idaccount`/`reason_inactive`).
+
+**Kiểm lại.** Lặp đúng phép đo ở trên với một tài khoản thử mới (đăng ký qua OTP mock — `.env` dev
+không có SMTP nên `email.service.js` ghi OTP ra log): sau `DELETE /admin/deleteuser/<iduser>`,
+`/auth/refresh` bằng token cũ phải trả 401 **kèm** `"code":"ACCOUNT_DELETED"` và `"idaccount"` ở cấp
+gốc. Lặp với `PATCH /admin/updatestatus/<iduser>` `Inactive`: nếu khoá **không** thu hồi token thì
+kết quả đã đúng từ 17 A (đo cùng ngày: 401 + `ACCOUNT_INACTIVE`); nếu có thu hồi thì phải ra
+`ACCOUNT_INACTIVE` + `reason_inactive`. Tài khoản 12 (`kiemthu_xoa`) đang xoá mềm trên CSDL dev —
+để nguyên, không xoá cứng (quy tắc 5).
+
 ---
 
 ## 3. Sổ ghi migration và ghi chú partial index (18 §2.4)
@@ -250,6 +302,7 @@ sửa câu thành *"chạy trên máy dev của backend, script không nằm tro
 - **Việc duy nhất chặn client là 2.1.** Có chốt ấy, client mở đồng bộ `bill.Auto_pay` (bước 12
   hàng đợi `PROJECT_CONTEXT.md`) và đón `BILL_ALREADY_PAID` theo đúng nghĩa mới — tự hoàn tác
   khoản trả cục bộ khi server báo hoá đơn đã có khoản chi khác.
+- **2.7** không chặn tính năng nhưng là lỗ hổng trải nghiệm đang chạy (G36); client **không đổi mã** khi backend sửa — `tuBody401(nguon: lamMoi)` đã đọc đúng hình dạng.
 - Mọi việc khác ở đây **không** chặn gì phía client; client không cần đổi mã cho chúng.
 - Khi backend sửa xong 2.1, xin **báo** — client sẽ đo lại bằng ba ca ở 2.1 trước khi mở
   `Auto_pay`, giống cách đã đo hoàn tác ngày 2026-09-12.
