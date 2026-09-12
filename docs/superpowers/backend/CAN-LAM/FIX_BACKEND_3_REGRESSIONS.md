@@ -241,6 +241,37 @@ Dùng tài khoản thử, đừng dùng tài khoản thật.
 
 ## 3. B — Chốt "trả hai lần" chặn hoàn tác, mà không chặn được trả hai lần
 
+> ✅ **Tái hiện được trên backend thật, 2026-09-12** — không còn là suy luận từ
+> đọc mã. Máy ảo `emulator-5554`, tài khoản 11, backend dev của chính nhánh này.
+>
+> Kịch bản: tạo hoá đơn lặp hàng tháng "Kiem" 50.000 đ → **Thanh toán** → đồng bộ
+> → **Hoàn tác**. Đo thẳng PostgreSQL sau đó:
+>
+> | | Máy (SQLite) | Server (PostgreSQL) |
+> |---|---|---|
+> | Kỳ 1 `3c90acfa…` `Pay_status` | `Pending` | **`Payed`** ← lệch |
+> | Kỳ 2 `19b45be5…` `Delete_at` | có | có ✓ |
+> | Khoản chi `8cafb448…` `Deleted_at` | có | có ✓ |
+>
+> Log của client, nguyên văn:
+>
+> ```
+> [SyncEngine] Push failed [permanent]: entity=bill, localId=3c90acfa-…,
+> reason=Hóa đơn đã được thanh toán, không thể thay đổi trạng thái
+> ```
+>
+> Tức: **hai trong ba việc của hoàn tác lên được server, việc thứ ba thì không.**
+> Kỳ kế tiếp bị gỡ và khoản chi bị xoá mềm ở cả hai nơi, nhưng hoá đơn gốc kẹt ở
+> `Payed` trên server và `Pending` trên máy — lệch **vĩnh viễn**, vì client (đúng)
+> xếp `BILL_ALREADY_PAID` là lỗi vĩnh viễn nên không thử lại.
+>
+> Hệ quả cho người dùng: máy khác kéo về thấy hoá đơn **đã trả** và **không có kỳ
+> kế tiếp** — tức kỳ ấy biến mất khỏi chuỗi, không ai nhắc nữa.
+>
+> ⚠️ Lượt đo này chạy sau khi client mở đường đồng bộ cho `Previous_bill_id`,
+> `Anchor_day`, `Idbill` (2026-09-12) — ba cột ấy **đã tới server đúng giá trị**,
+> nên đây thuần tuý là hồi quy B, không dính gì tới thay đổi của client.
+
 ### 3.1. Mã
 
 `modules/sync/sync.repository.js:450-455`, nhánh cập nhật của `upsertBill`:
