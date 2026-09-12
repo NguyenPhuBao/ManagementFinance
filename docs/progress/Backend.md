@@ -519,3 +519,52 @@ Toàn bộ các yêu cầu kỹ thuật và sửa lỗi được chỉ rõ tại
    - `Test/test_category_unique_rules.js`: **PASS 100%**.
    - `Test/test_data_security_encryption_and_masking.js`: **PASS 100% (13/13 tests bảo mật)**.
    - `Test/test_sync_new_schema.js`: **PASS 100%**.
+
+---
+
+## 17. Khắc Phục Vi Phạm Bảo Mật Dữ Liệu Cá Nhân Danh Mục Người Dùng (Admin API & Web) — Tuân Thủ Nghị Định 13/2023 & Luật PDP 2025 (2026-09-12)
+
+Đã hoàn thành toàn bộ các yêu cầu bảo vệ dữ liệu nhạy cảm cá nhân và tuân thủ pháp luật (Nghị định 13/2023/NĐ-CP & Luật Bảo vệ dữ liệu cá nhân 2025 số 91/2025/QH15 - Điều 27) đối với quản lý danh mục trên cả **Backend API** và **Admin-web**:
+
+### 17.1. Bối Cảnh & Nguyên Tắc Bảo Vệ Dữ Liệu
+* **Vấn đề phát hiện:** Trước đây giao diện Quản lý danh mục trên Admin-web và API Backend vô tình hiển thị, cho phép tìm kiếm và lọc các danh mục tùy chỉnh của người dùng (như tài khoản "Dat").
+* **Căn cứ pháp lý:** Danh mục chi tiêu cá nhân là dữ liệu tài chính nhạy cảm phản ánh thói quen sống, lối sinh hoạt và chi tiêu riêng tư của người dùng. Admin hệ thống tuyệt đối không có thẩm quyền truy cập hay can thiệp vào các danh mục này.
+* **Nguyên tắc phân quyền cách ly (User-scoped Isolation):** Quản trị viên chỉ quản lý các **danh mục mẫu mặc định của hệ thống** (`is_default = true`). Toàn bộ danh mục người dùng (`is_default = false`) bị cách ly 100% khỏi giao diện và API của Admin.
+
+### 17.2. Các Giải Pháp Kỹ Thuật Đã Triển Khai Tại Backend
+1. **Cách ly truy vấn tại Repository (`src/Backend/modules/admin/admin.repository.js`):**
+   - Hàm `getAllCategories`: Ép cứng bộ lọc CSDL `where = { is_default: true, delete_at: null }`.
+   - Gỡ bỏ hoàn toàn logic query theo `create_by` (người dùng) khỏi repository của Admin.
+2. **Cơ chế Phòng vệ Chiều sâu (Defense-in-Depth) tại Service (`src/Backend/modules/admin/admin.service.js`):**
+   - `getCategories`: Duyệt qua kết quả trả về, nếu có bất kỳ danh mục người dùng nào (`is_default === false`), toàn bộ thông tin nhạy cảm (`name`, `keyword`, `created_by`, `created_by_name`) sẽ bị mặt nạ hóa 100% bằng `***` và cắm cờ `is_user_category: true`.
+   - `addCategory`: Ép cứng `is_default: true` cho mọi danh mục do Admin tạo; cấm Admin tạo danh mục `is_default = false`.
+   - `updateCategory`: Kiểm tra quyền sở hữu danh mục. Nếu `!currentCat.is_default` (danh mục của người dùng) $\rightarrow$ lập tức ném lỗi **HTTP 403 Forbidden** (*"Vi phạm quyền riêng tư: Tuyệt đối cấm chỉnh sửa danh mục của người dùng."*).
+   - `deleteCategory`:
+     - Nếu `!cat.is_default` (danh mục của người dùng) $\rightarrow$ lập tức ném lỗi **HTTP 403 Forbidden** (*"Vi phạm quyền riêng tư: Tuyệt đối cấm xóa danh mục của người dùng."*).
+     - Nếu `cat.is_default === true` (danh mục mặc định hệ thống) $\rightarrow$ từ chối với **HTTP 400 Bad Request** bảo vệ danh mục mẫu hệ thống không thể xóa.
+
+### 17.3. Đồng Bộ Trên Giao Diện Admin-Web (`src/Admin-web/src/pages/categories/CategoryPage.jsx`)
+1. **Chuẩn hóa API request:** Ép cứng `params = { is_default: true }` khi gọi API backend.
+2. **Tối giản bảng dữ liệu:** Gỡ bỏ cột "Phân loại" và "Người tạo" (vì 100% là danh mục mặc định hệ thống).
+3. **Phòng vệ UI:** Nếu gặp bản ghi danh mục người dùng bị lọt qua, hiển thị `***` kèm nhãn cảnh báo `[Dữ liệu riêng tư - Đã ẩn danh]` và khóa hoàn toàn các nút Sửa / Xóa (`disabled`, `opacity-40 pointer-events-none`).
+4. **Làm sạch Modal Lọc & Thêm/Sửa:**
+   - Gỡ bỏ dropdown chọn "Mặc định (Yes/No)" và dropdown "Người tạo" khỏi Modal Lọc.
+   - Gỡ bỏ dropdown chọn "Mặc định (Yes/No)" khỏi Modal Thêm/Sửa; tự động gán `is_default: true`.
+5. **Biên dịch Frontend:** Đã sửa cấu trúc thẻ JSX, biên dịch Vite thành công 100% (`npm run build` hoàn tất không lỗi/cảnh báo).
+
+### 17.4. Cập Nhật Nguồn Sự Thật & Quy Tắc Dự Án (Source of Truth)
+* **`docs/Rule_Project/Data_Security.md`:** Bổ sung **Mục 10.7** đặc tả quy định bảo vệ quyền riêng tư danh mục người dùng và quy trình xử lý danh mục khi tài khoản bị xóa (30 ngày ân hạn $\rightarrow$ ẩn danh hóa / xóa mềm khi `Deleted`).
+* **`docs/Rule_Project/Rule_project.md`:** Cập nhật **Mục 1.3** quy định phạm vi thẩm quyền của Admin và cơ chế chặn 403 Forbidden.
+* **`Project.md`:** Cập nhật **Mục 11.8** ghi nhận đặc tả bảo vệ quyền riêng tư và cách ly danh mục người dùng.
+
+### 17.5. Kết Quả Kiểm Thử (Verification)
+* **`Test/test_admin_category_privacy.js`:** **PASS 100% (5/5 tests bảo mật)**:
+  - Case 1: Repository & Service chỉ trả về danh mục hệ thống `is_default = true` $\rightarrow$ **PASS**.
+  - Case 2: Danh mục người dùng lọt vào Admin API bị che `***` 100% $\rightarrow$ **PASS**.
+  - Case 3: Chặn sửa danh mục user với HTTP 403 Forbidden $\rightarrow$ **PASS**.
+  - Case 4: Chặn xóa danh mục user với HTTP 403 Forbidden $\rightarrow$ **PASS**.
+  - Case 5: Bảo vệ danh mục hệ thống chống xóa với HTTP 400 Bad Request $\rightarrow$ **PASS**.
+* **`Test/test_can_lam_fixes.js`:** **PASS 100% (9/9 tests tích hợp hồi quy)**.
+* **CodeGraph:** Đã cập nhật lại toàn bộ (`rtk npx codegraph build`: 6625 nodes, 7141 edges, 404 files).
+* **Git Commit:** `4796f94` trên nhánh `NguyenPhuBao`.
+

@@ -256,12 +256,19 @@ Phần này đặc tả chi tiết toàn bộ các quy tắc ràng buộc, chố
   * Trigger kiểm tra trùng chéo cũ (`trg_category_name_cross_default`) đã chính thức được gỡ bỏ khỏi CSDL.
   * Admin cũng được phép tạo mới danh mục hệ thống trùng tên với danh mục người dùng đã tồn tại từ trước.
 
-### 1.3. Bảo vệ & Ràng buộc quản trị Danh mục Hệ thống (System Category Protection)
-* **Quyền tạo danh mục hệ thống:** Chỉ duy nhất tài khoản có vai trò Admin (`idrole = 1`) mới có quyền tạo danh mục hệ thống (`is_default = true`).
+### 1.3. Bảo vệ & Ràng buộc quản trị Danh mục Hệ thống (System Category Protection & Privacy Isolation)
+* **Phạm vi thẩm quyền của Admin:** Quản trị viên (Admin) chỉ có thẩm quyền quản lý các **danh mục mẫu mặc định của hệ thống** (`is_default = true`). Giao diện Admin-web (`/categories`) và Backend API Admin (`/api/admin/categories`) bắt buộc áp dụng bộ lọc cứng `is_default = true, delete_at = null`, gỡ bỏ mọi quyền truy cập/xem danh mục cá nhân của người dùng.
+* **Bảo vệ quyền riêng tư người dùng (User Privacy & Anti-Tampering):**
+  * Danh mục tùy chỉnh do người dùng tạo (`is_default = false`) phản ánh trực tiếp thói quen sinh hoạt và thông tin tài chính cá nhân, là dữ liệu cá nhân nhạy cảm được bảo vệ theo Nghị định 13/2023/NĐ-CP và Luật Bảo vệ dữ liệu cá nhân 2025.
+  * Tuyệt đối **CẤM Admin xem, chỉnh sửa hoặc xóa danh mục của người dùng**.
+  * **Cơ chế phòng vệ chiều sâu (Defense-in-Depth):**
+    * *Ẩn danh hóa (Masking):* Nếu vì bất kỳ lý do nào danh mục người dùng lọt vào API hoặc giao diện Admin, toàn bộ trường nhạy cảm (`name`, `keyword`, `created_by`, `created_by_name`) bắt buộc bị thay thế 100% bằng `***` và cắm cờ `is_user_category: true`. Giao diện hiển thị nhãn cảnh báo `[Dữ liệu riêng tư - Đã ẩn danh]` và khóa chức năng thao tác.
+    * *Chặn đứng hành vi sửa/xóa:* Backend API ném mã lỗi **HTTP 403 Forbidden** ngay lập tức nếu Admin cố tình sửa (`updateCategory`) hoặc xóa (`deleteCategory`) danh mục của người dùng (`is_default = false`).
+* **Quyền tạo danh mục hệ thống:** Chỉ duy nhất tài khoản có vai trò Admin (`idrole = 1`) mới có quyền tạo danh mục hệ thống (`is_default = true`). Mọi thao tác thêm mới từ Admin tự động gán `is_default = true`.
 * **Cấm chuyển đổi (No Conversion):** Tuyệt đối không cho phép chuyển đổi danh mục người dùng (`is_default = false`) thành danh mục hệ thống (`is_default = true`), kể cả khi thực hiện bởi Admin. Nếu cần thêm danh mục hệ thống, Admin phải tạo mới một bản ghi danh mục hệ thống riêng biệt.
-* **Bảo vệ chống xóa (Delete Protection):** Danh mục hệ thống **không thể bị xóa**.
+* **Bảo vệ chống xóa danh mục hệ thống (Delete Protection):** Danh mục hệ thống **không thể bị xóa**.
   * Trên giao diện Admin-web: Nút Xóa danh mục bị vô hiệu hóa với danh mục hệ thống kèm chú thích rõ ràng.
-  * Trên Backend API: `admin.service.deleteCategory` kiểm tra và từ chối ngay lập tức với mã lỗi HTTP 400 Bad Request nếu danh mục có `is_default === true`.
+  * Trên Backend API: `admin.service.deleteCategory` kiểm tra và từ chối ngay lập tức với mã lỗi **HTTP 400 Bad Request** nếu danh mục có `is_default === true`.
 
 ### 1.4. Bộ giá trị phân loại (`Classify` Enum)
 * Giá trị của cột `classify` bắt buộc phải thuộc tập 3 giá trị chuẩn:

@@ -23,8 +23,7 @@ const CategoryPage = () => {
   const [editingCategory, setEditingCategory] = useState(null);
   const [processing, setProcessing] = useState({ isProcessing: false, text: '' });
   const [form, setForm] = useState({ name: '', isDefault: 'yes', type: 'expense', keyword: '' });
-  const [filter, setFilter] = useState({ isDefault: 'all', type: 'all', createdBy: 'all', keyword: '' });
-  const [users, setUsers] = useState([]);
+  const [filter, setFilter] = useState({ type: 'all', keyword: '' });
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -35,15 +34,10 @@ const CategoryPage = () => {
     const matchSearch = !searchNorm ||
       normalizeVietnameseUnaccent(c.name).includes(searchNorm) ||
       c.name.toLowerCase().includes(search.toLowerCase());
-    const matchDefault = (filter.isDefault === 'all' || (filter.isDefault === 'yes' ? c.isDefault : !c.isDefault));
     const matchType = (filter.type === 'all' || c.type === filter.type);
-    const matchCreatedBy = filter.createdBy === 'all' ||
-      (filter.createdBy === '1' && (c.created_by_id === 1 || c.isDefault)) ||
-      String(c.created_by_id) === String(filter.createdBy) ||
-      c.created_by_username === filter.createdBy;
     const matchKeyword = !filter.keyword || !filter.keyword.trim() ||
       (c.keyword && c.keyword.toLowerCase().includes(filter.keyword.trim().toLowerCase()));
-    return matchSearch && matchDefault && matchType && matchCreatedBy && matchKeyword;
+    return matchSearch && matchType && matchKeyword;
   });
 
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;
@@ -58,33 +52,30 @@ const CategoryPage = () => {
   const fetchCategories = async (filterOverride = filter) => {
     try {
       setLoading(true);
-      const params = {};
-      if (filterOverride.isDefault && filterOverride.isDefault !== 'all') {
-        params.is_default = filterOverride.isDefault === 'yes';
-      }
+      // Luôn ép cứng is_default = true để bảo vệ dữ liệu người dùng
+      const params = { is_default: true };
       if (filterOverride.type && filterOverride.type !== 'all') {
         params.classify = TYPE_TO_CLASSIFY[filterOverride.type];
-      }
-      if (filterOverride.createdBy && filterOverride.createdBy !== 'all') {
-        params.created_by = filterOverride.createdBy;
       }
       if (filterOverride.keyword && filterOverride.keyword.trim()) {
         params.keyword = filterOverride.keyword.trim();
       }
 
       const res = await adminApi.getCategories(params);
-      const mapped = res.data.map((c) => ({
-        id: c.id,
-        name: c.name,
-        type: CLASSIFY_MAP[c.classify] || 'expense',
-        classify: c.classify,
-        isDefault: c.is_default,
-        keyword: c.keyword || '',
-        created_by_id: c.created_by_id,
-        created_by_username: c.created_by,
-        created_by: c.created_by_name || c.created_by || (c.is_default ? 'Hệ thống' : 'Người dùng'),
-        created_at: c.create_at,
-      }));
+      const mapped = (res.data || []).map((c) => {
+        const isUserCat = c.is_user_category || c.is_default === false;
+        return {
+          id: c.id,
+          name: isUserCat ? '***' : c.name,
+          type: CLASSIFY_MAP[c.classify] || 'expense',
+          classify: c.classify,
+          isDefault: !isUserCat,
+          isUserCategory: isUserCat,
+          keyword: isUserCat ? '***' : (c.keyword || ''),
+          created_by: isUserCat ? '***' : 'Hệ thống',
+          created_at: c.create_at,
+        };
+      });
       setCategories(mapped);
     } catch (err) {
       console.error('Lỗi tải danh mục:', err);
@@ -95,9 +86,6 @@ const CategoryPage = () => {
 
   useEffect(() => {
     fetchCategories();
-    adminApi.getUsers().then(res => {
-      setUsers(res.data || []);
-    }).catch(err => console.error('Lỗi tải danh sách người dùng:', err));
   }, []);
 
   const toggleModal = (modalName, isOpen) => {
@@ -115,26 +103,22 @@ const CategoryPage = () => {
       return;
     }
 
-    const isDefaultBool = form.isDefault === 'yes';
-
-    // Chặn chuyển đổi danh mục người dùng thành danh mục hệ thống
-    if (editingCategory && !editingCategory.isDefault && isDefaultBool) {
-      alert('Không được phép chuyển đổi danh mục người dùng thành danh mục hệ thống!');
+    // Chặn sửa danh mục người dùng (Bảo vệ quyền riêng tư người dùng)
+    if (editingCategory && (editingCategory.isUserCategory || !editingCategory.isDefault)) {
+      alert('Vi phạm quyền riêng tư: Tuyệt đối cấm chỉnh sửa danh mục của người dùng!');
       return;
     }
 
     // 1. Pre-validation Nhóm 2: Is_default & namecategory (Client-side instant feedback)
-    if (isDefaultBool) {
-      const dupDefault = categories.find((c) =>
-        c.isDefault &&
-        c.name &&
-        normalizeCategoryName(c.name) === normName &&
-        (!editingCategory || c.id !== editingCategory.id)
-      );
-      if (dupDefault) {
-        alert(`Danh mục hệ thống "${dupDefault.name}" đã tồn tại trong hệ thống. Không được phép tạo/đổi trùng tên!`);
-        return;
-      }
+    const dupDefault = categories.find((c) =>
+      c.isDefault &&
+      c.name &&
+      normalizeCategoryName(c.name) === normName &&
+      (!editingCategory || c.id !== editingCategory.id)
+    );
+    if (dupDefault) {
+      alert(`Danh mục hệ thống "${dupDefault.name}" đã tồn tại trong hệ thống. Không được phép tạo/đổi trùng tên!`);
+      return;
     }
 
     const actionText = editingCategory ? 'Đang cập nhật danh mục...' : 'Đang tạo danh mục mới...';
@@ -144,7 +128,7 @@ const CategoryPage = () => {
       const payload = {
         name: trimmedName,
         classify: TYPE_TO_CLASSIFY[form.type] || 'Chi',
-        is_default: isDefaultBool,
+        is_default: true,
         keyword: form.keyword ? form.keyword.trim() : null,
       };
       if (editingCategory) {
@@ -167,35 +151,34 @@ const CategoryPage = () => {
 
   const confirmDelete = async () => {
     if (!categoryToDelete || processing.isProcessing) return; // Chặn bấm xóa nhiều lần
-    setProcessing({ isProcessing: true, text: 'Đang xóa danh mục...' });
-    try {
-      await adminApi.deleteCategory(categoryToDelete.id || categoryToDelete);
-      setCategoryToDelete(null);
+    if (categoryToDelete.isUserCategory || !categoryToDelete.isDefault) {
+      alert('Vi phạm quyền riêng tư: Tuyệt đối cấm xóa danh mục của người dùng!');
       toggleModal('deleteAlert', false);
-      await fetchCategories();
-    } catch (err) {
-      console.error('Lỗi xóa danh mục:', err);
-      alert(err.response?.data?.message || err.message || 'Lỗi xóa danh mục');
-    } finally {
-      setProcessing({ isProcessing: false, text: '' });
+      setCategoryToDelete(null);
+      return;
     }
+    alert('Danh mục mặc định của hệ thống không thể xóa!');
+    toggleModal('deleteAlert', false);
+    setCategoryToDelete(null);
   };
 
   const handleDeleteClick = (cat) => {
-    if (cat.isDefault) {
-      alert('Không thể xóa danh mục mặc định của hệ thống!');
+    if (cat.isUserCategory || !cat.isDefault) {
+      alert('Vi phạm quyền riêng tư: Tuyệt đối cấm xóa danh mục của người dùng!');
       return;
     }
-    setCategoryToDelete(cat);
-    toggleModal('deleteAlert', true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    alert('Không thể xóa danh mục mặc định của hệ thống!');
   };
 
   const openEditModal = (cat) => {
+    if (cat.isUserCategory || !cat.isDefault) {
+      alert('Vi phạm quyền riêng tư: Tuyệt đối cấm chỉnh sửa danh mục của người dùng!');
+      return;
+    }
     setEditingCategory(cat);
     setForm({
       name: cat.name,
-      isDefault: cat.isDefault ? 'yes' : 'no',
+      isDefault: 'yes',
       type: cat.type,
       keyword: cat.keyword || '',
     });
@@ -334,7 +317,7 @@ const CategoryPage = () => {
                       onClick={() => toggleModal('filter', true)}
                   >
                       <span className="material-symbols-outlined text-[18px]">filter_alt</span>Lọc
-                      {(filter.isDefault !== 'all' || filter.type !== 'all' || filter.createdBy !== 'all' || (filter.keyword && filter.keyword.trim())) && (
+                      {(filter.type !== 'all' || (filter.keyword && filter.keyword.trim())) && (
                         <span className="w-2 h-2 rounded-full bg-primary absolute top-2 right-2"></span>
                       )}
                   </button>
@@ -356,8 +339,6 @@ const CategoryPage = () => {
                           <tr className="bg-surface-container-low border-b border-outline-variant">
                               <th className="px-6 py-4 font-label-md text-label-md text-on-surface uppercase">Tên danh mục</th>
                               <th className="px-6 py-4 font-label-md text-label-md text-on-surface uppercase">Loại</th>
-                              <th className="px-6 py-4 font-label-md text-label-md text-on-surface uppercase">Phân loại</th>
-                              <th className="px-6 py-4 font-label-md text-label-md text-on-surface uppercase">Người tạo</th>
                               <th className="px-6 py-4 font-label-md text-label-md text-on-surface uppercase">Từ khóa (Keyword)</th>
                               <th className="px-6 py-4 font-label-md text-label-md text-on-surface uppercase text-right">Hành động</th>
                           </tr>
@@ -374,7 +355,14 @@ const CategoryPage = () => {
                                                 <div className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-primary">
                                                     <span className="material-symbols-outlined text-[18px]">category</span>
                                                 </div>
-                                                <span className="font-semibold">{item.name}</span>
+                                                {item.isUserCategory ? (
+                                                  <div className="flex flex-col">
+                                                    <span className="font-semibold text-error">***</span>
+                                                    <span className="text-[11px] text-error font-medium italic">[Dữ liệu riêng tư - Đã ẩn danh]</span>
+                                                  </div>
+                                                ) : (
+                                                  <span className="font-semibold">{item.name}</span>
+                                                )}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
@@ -382,16 +370,10 @@ const CategoryPage = () => {
                                               {TRANSACTION_TYPE_LABELS[item.type] || item.type}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 text-on-surface-variant">
-                                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs ${item.isDefault ? 'bg-primary/10 text-primary font-medium' : 'bg-surface-container text-on-surface-variant'}`}>
-                                            {item.isDefault ? 'Hệ thống' : 'Tùy chỉnh'}
-                                          </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-on-surface-variant text-sm">
-                                          {item.created_by}
-                                        </td>
-                                        <td className="px-6 py-4 w-72 max-w-[280px] md:max-w-[340px]">
-                                          {item.keyword ? (
+                                        <td className="px-6 py-4 w-96 max-w-[400px]">
+                                          {item.isUserCategory ? (
+                                            <span className="text-outline italic text-xs">***</span>
+                                          ) : item.keyword ? (
                                             <div 
                                               className="w-full bg-[#f8fafc] border border-outline-variant rounded px-2.5 pt-1.5 pb-1 text-xs text-black font-medium font-mono whitespace-nowrap overflow-x-scroll keyword-scrollbar select-all cursor-text shadow-xs"
                                               title={item.keyword}
@@ -403,32 +385,30 @@ const CategoryPage = () => {
                                           )}
                                         </td>
                                         <td className="px-6 py-4 text-right">
-                                            <button className="p-1 text-secondary hover:text-primary transition-colors border border-transparent hover:border-on-background rounded cursor-pointer" onClick={() => openEditModal(item)} title="Sửa">
-                                                <span className="material-symbols-outlined text-[20px]">edit</span>
-                                            </button>
-                                            {item.isDefault ? (
+                                          {item.isUserCategory ? (
+                                            <span className="text-xs text-error font-medium italic bg-error/10 px-2.5 py-1 rounded">
+                                              Cấm sửa / xóa
+                                            </span>
+                                          ) : (
+                                            <>
+                                              <button className="p-1 text-secondary hover:text-primary transition-colors border border-transparent hover:border-on-background rounded cursor-pointer" onClick={() => openEditModal(item)} title="Sửa">
+                                                  <span className="material-symbols-outlined text-[20px]">edit</span>
+                                              </button>
                                               <span 
                                                 className="p-1 text-outline/40 cursor-not-allowed ml-2 inline-flex items-center align-middle" 
                                                 title="Danh mục hệ thống không thể xóa"
                                               >
                                                 <span className="material-symbols-outlined text-[20px]">delete</span>
                                               </span>
-                                            ) : (
-                                              <button 
-                                                className="p-1 text-secondary hover:text-error transition-colors ml-2 border border-transparent hover:border-on-background rounded cursor-pointer" 
-                                                onClick={() => handleDeleteClick(item)} 
-                                                title="Xóa"
-                                              >
-                                                <span className="material-symbols-outlined text-[20px]">delete</span>
-                                              </button>
-                                            )}
+                                            </>
+                                          )}
                                         </td>
                                     </tr>
                                 );
                             })
                           ) : (
                             <tr>
-                              <td colSpan="6" className="px-6 py-8 text-center text-on-surface-variant">
+                              <td colSpan="4" className="px-6 py-8 text-center text-on-surface-variant">
                                 Không tìm thấy danh mục nào.
                               </td>
                             </tr>
@@ -504,37 +484,18 @@ const CategoryPage = () => {
                               Nhập các từ khóa phân cách bởi dấu phẩy (,). Giúp bộ máy AI tự động nhận diện danh mục khi phân loại giao dịch.
                             </p>
                         </div>
-                        <div className="grid grid-cols-2 gap-4 items-start">
-                            <div>
-                                <label className="block font-label-md text-on-surface mb-1">Mặc định (Hệ thống)</label>
-                                <select 
-                                  disabled={processing.isProcessing || (editingCategory && !editingCategory.isDefault)}
-                                  value={form.isDefault} 
-                                  onChange={e => setForm({...form, isDefault: e.target.value})} 
-                                  className="w-full px-3 py-2 border border-outline-variant rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md bg-white h-[40px] cursor-pointer disabled:bg-surface-container-low disabled:cursor-not-allowed"
-                                >
-                                    <option value="yes" disabled={editingCategory && !editingCategory.isDefault}>Yes (Hệ thống)</option>
-                                    <option value="no">No (Tùy chỉnh)</option>
-                                </select>
-                                {editingCategory && !editingCategory.isDefault && (
-                                  <p className="text-[11px] text-on-surface-variant mt-1">
-                                    Không thể chuyển đổi danh mục người dùng thành danh mục hệ thống.
-                                  </p>
-                                )}
-                            </div>
-                            <div>
-                                <label className="block font-label-md text-on-surface mb-1">Phân loại</label>
-                                <select 
-                                  disabled={processing.isProcessing}
-                                  value={form.type} 
-                                  onChange={e => setForm({...form, type: e.target.value})} 
-                                  className="w-full px-3 py-2 border border-outline-variant rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md bg-white h-[40px] cursor-pointer disabled:bg-surface-container-low disabled:cursor-not-allowed"
-                                >
-                                    {Object.keys(TRANSACTION_TYPE_LABELS).map(key => (
-                                      <option key={key} value={key}>{TRANSACTION_TYPE_LABELS[key]}</option>
-                                    ))}
-                                </select>
-                            </div>
+                        <div>
+                            <label className="block font-label-md text-on-surface mb-1">Loại danh mục</label>
+                            <select 
+                              disabled={processing.isProcessing}
+                              value={form.type} 
+                              onChange={e => setForm({...form, type: e.target.value})} 
+                              className="w-full px-3 py-2 border border-outline-variant rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md bg-white h-[40px] cursor-pointer disabled:bg-surface-container-low disabled:cursor-not-allowed"
+                            >
+                                {Object.keys(TRANSACTION_TYPE_LABELS).map(key => (
+                                  <option key={key} value={key}>{TRANSACTION_TYPE_LABELS[key]}</option>
+                                ))}
+                            </select>
                         </div>
                     </div>
                     <div className="px-6 py-4 bg-surface-bright border-t border-outline-variant flex justify-end gap-3">
@@ -565,74 +526,42 @@ const CategoryPage = () => {
           <div className="fixed inset-0 bg-on-background/50 flex items-center justify-center z-50 p-4">
               <div className="bg-white rounded-lg w-full max-w-md shadow-xl overflow-hidden animate-in fade-in zoom-in duration-200">
                   <div className="px-6 py-4 border-b border-outline-variant flex items-center justify-between">
-                      <h3 className="font-headline-sm text-on-surface m-0">Lọc danh mục</h3>
+                      <h3 className="font-headline-sm text-on-surface m-0">Lọc danh mục mặc định</h3>
                       <button className="text-on-surface-variant hover:text-on-surface cursor-pointer" onClick={() => toggleModal('filter', false)}>
                           <span className="material-symbols-outlined">close</span>
                       </button>
                   </div>
                   <div className="p-6 space-y-4">
-                      <div className="grid grid-cols-2 gap-4 items-start">
-                          <div>
-                              <label className="block font-label-md text-on-surface mb-1">Mặc định</label>
-                              <select 
-                                  value={filter.isDefault} 
-                                  onChange={e => setFilter(prev => ({...prev, isDefault: e.target.value}))} 
-                                  className="w-full px-3 py-2 border border-outline-variant rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md bg-white h-[40px] cursor-pointer"
-                              >
-                                  <option value="all">Tất cả</option>
-                                  <option value="yes">Yes</option>
-                                  <option value="no">No</option>
-                              </select>
-                          </div>
-                          <div>
-                              <label className="block font-label-md text-on-surface mb-1">Loại danh mục</label>
-                              <select 
-                                  value={filter.type} 
-                                  onChange={e => setFilter(prev => ({...prev, type: e.target.value}))} 
-                                  className="w-full px-3 py-2 border border-outline-variant rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md bg-white h-[40px] cursor-pointer"
-                              >
-                                  <option value="all">Tất cả</option>
-                                  {Object.keys(TRANSACTION_TYPE_LABELS).map(key => (
-                                      <option key={key} value={key}>{TRANSACTION_TYPE_LABELS[key]}</option>
-                                  ))}
-                              </select>
-                          </div>
+                      <div>
+                          <label className="block font-label-md text-on-surface mb-1">Loại danh mục</label>
+                          <select 
+                              value={filter.type} 
+                              onChange={e => setFilter(prev => ({...prev, type: e.target.value}))} 
+                              className="w-full px-3 py-2 border border-outline-variant rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md bg-white h-[40px] cursor-pointer"
+                          >
+                              <option value="all">Tất cả</option>
+                              {Object.keys(TRANSACTION_TYPE_LABELS).map(key => (
+                                  <option key={key} value={key}>{TRANSACTION_TYPE_LABELS[key]}</option>
+                              ))}
+                          </select>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4 items-start">
-                          <div>
-                              <label className="block font-label-md text-on-surface mb-1">Người tạo</label>
-                              <select 
-                                  value={filter.createdBy} 
-                                  onChange={e => setFilter(prev => ({...prev, createdBy: e.target.value}))} 
-                                  className="w-full px-3 py-2 border border-outline-variant rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md bg-white h-[40px] cursor-pointer text-ellipsis overflow-hidden"
-                              >
-                                  <option value="all">Tất cả</option>
-                                  <option value="1">Hệ thống (Admin)</option>
-                                  {users.map(u => (
-                                      <option key={u.id || u.idaccount} value={u.idaccount || u.username}>
-                                          {u.fullname ? `${u.fullname} (@${u.username})` : u.username}
-                                      </option>
-                                  ))}
-                              </select>
-                          </div>
-                          <div>
-                              <label className="block font-label-md text-on-surface mb-1">Từ khóa (Keyword)</label>
-                              <input 
-                                  type="text" 
-                                  placeholder="Nhập từ khóa..."
-                                  value={filter.keyword} 
-                                  onChange={e => setFilter(prev => ({...prev, keyword: e.target.value}))} 
-                                  className="w-full px-3 py-2 border border-outline-variant rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md bg-white h-[40px]"
-                              />
-                          </div>
+                      <div>
+                          <label className="block font-label-md text-on-surface mb-1">Từ khóa (Keyword)</label>
+                          <input 
+                              type="text" 
+                              placeholder="Nhập từ khóa..."
+                              value={filter.keyword} 
+                              onChange={e => setFilter(prev => ({...prev, keyword: e.target.value}))} 
+                              className="w-full px-3 py-2 border border-outline-variant rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md h-[40px]"
+                          />
                       </div>
                   </div>
                   <div className="px-6 py-4 bg-surface-bright border-t border-outline-variant flex justify-end gap-3">
                       <button 
                           className="px-4 py-2 border border-outline rounded text-on-surface font-label-md hover:bg-surface-container-low transition-colors cursor-pointer" 
                           onClick={() => { 
-                              const reset = { isDefault: 'all', type: 'all', createdBy: 'all', keyword: '' };
+                              const reset = { type: 'all', keyword: '' };
                               setFilter(reset); 
                               toggleModal('filter', false);
                               fetchCategories(reset);
@@ -654,8 +583,8 @@ const CategoryPage = () => {
           </div>
       )}
     </div>
-    </>
-  );
+  </>
+);
 };
 
 export default CategoryPage;
