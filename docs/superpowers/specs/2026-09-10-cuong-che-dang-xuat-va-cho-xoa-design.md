@@ -9,7 +9,8 @@
 > chiều cùng ngày, khoá tài khoản thử qua API admin; interceptor tự làm mới với token 1 phút; xoá
 > tài khoản thử → hộp thoại "đã xoá" + dọn SQLite qua socket (§7.3). Ngoại lệ §3.6b **vẫn giữ** —
 > đo được rằng xoá qua admin **thu hồi refresh token** nên nhánh làm mới không bao giờ nói được
-> "đã xoá" (CAN-LAM 20 §2.7); ca `SCHEMA_ERROR → 503` chưa đo.** Mọi quyết định sản phẩm ở mục 2
+> "đã xoá" (CAN-LAM 20 §2.7 — ✅ backend sửa, gộp `7779999` tối muộn 2026-09-12; ca khoá/xoá qua nhánh này
+> **chưa đo đầu-cuối**, cần API admin); ca `SCHEMA_ERROR → 503` chưa đo.** Mọi quyết định sản phẩm ở mục 2
 > đã chốt qua hỏi–đáp ngày 2026-09-10; Phần 1 (mục 3) được duyệt riêng trong phiên
 > ấy. Phần 2–4 viết thẳng vào đây theo yêu cầu "làm đi" của người dùng. Ngày
 > 2026-09-11 người dùng duyệt nốt: §3.3 và §3.6b (hai điểm soát lại theo `main`),
@@ -308,7 +309,8 @@ Nguồn `lamMoi` vẫn đăng xuất và vẫn hiện hộp thoại "Tài khoả
   `lamMoi` + `daXoa` **không xảy ra được** với xoá qua admin — ngoại lệ này chỉ còn che ca lỗi
   lược đồ (backend đã trả 503, chưa đo) và ca xoá theo lịch hết hạn (chưa đo). **Giữ** — vô hại,
   vì dọn SQLite đã chạy đúng qua socket/HTTP; gỡ là quyết định của người dùng. Việc backend nên
-  làm để client hiện được hộp thoại trong ca này: CAN-LAM 20 §2.7.)
+  làm để client hiện được hộp thoại trong ca này: CAN-LAM 20 §2.7 — ✅ đã làm, gộp `7779999` tối muộn
+  2026-09-12; chưa đo đầu-cuối ca khoá/xoá.)
 
 ### 3.7. Màn Đăng nhập
 
@@ -787,7 +789,7 @@ Kèm cập nhật `README.md` mục 2 và mọi con số đếm mục CAN-LAM tr
 >   và `auth.service.js:375-387` kiểm token **trước** khi kiểm tài khoản. `/auth/profile` cùng lúc:
 >   401 + `code: ACCOUNT_DELETED` ở cấp gốc. Hệ quả: **nhánh làm mới không bao giờ mang `daXoa`**
 >   khi xoá qua admin — app đang giữ token hết hạn mà không có socket sẽ bị đăng xuất **trơn, không
->   hộp thoại** (G36; xin backend ở CAN-LAM 20 §2.7).
+>   hộp thoại** (G36; xin backend ở CAN-LAM 20 §2.7 — ✅ sửa ở `7779999` tối muộn cùng ngày, chưa đo đầu-cuối).
 > - **Ca đã xoá — trên máy ảo:** `kiemthu_xoa` đăng nhập, chờ token hết hạn, "tắt Wi‑Fi" rồi xoá qua
 >   admin. ⚠️ Máy ảo có **dữ liệu di động** (`mobile_data = 1`, mạng mặc định `MOBILE[NR]`) nên
 >   `svc wifi disable` **không cắt mạng** — socket vẫn sống, nhận `force_logout: daXoa`, hộp thoại

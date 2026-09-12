@@ -214,13 +214,13 @@ Ba loại lỗi `flutter test` không bắt được (tràn bố cục, điều 
 | Ân hạn dài chồng kỳ | Luật (c) §4.1 từ chối ngay trên form; kỳ sinh tự động thừa kế ân hạn hợp lệ nên không tự vi phạm |
 | `@db.Date` lùi một ngày khi đổi múi giờ | Gửi nửa đêm UTC của ngày cục bộ như `due_date`; đo thật trên PostgreSQL |
 | Người dùng đổi chu kỳ trên form Sửa của hoá đơn đã có ân hạn | `ketThucKy` tính lại theo chu kỳ mới, `dueDate` = kết thúc mới + ân hạn cũ; `canhBaoHanCu` báo nếu khác hạn đã lưu — hành vi đã có, chỉ cộng thêm ân hạn |
-| Backend chưa có chốt chống trả hai lần (CAN-LAM 17 B bước 2) | Không liên quan tới đợt này; ghi để người sau không tưởng ân hạn làm tệ hơn — hai máy cùng trả vẫn hai khoản như trước |
+| Backend chưa có chốt chống trả hai lần (CAN-LAM 17 B bước 2; ✅ có từ `7779999` tối muộn cùng ngày) | Không liên quan tới đợt này; ghi để người sau không tưởng ân hạn làm tệ hơn — hai máy cùng trả vẫn hai khoản như trước |
 
 ---
 
 ## 9. Ngoài phạm vi
 
-- `bill.Auto_pay` qua đồng bộ (bước 12, chờ backend CAN-LAM 20 §2.1).
+- `bill.Auto_pay` qua đồng bộ (bước 12; CAN-LAM 20 §2.1 ✅ backend xong, gộp `7779999` tối muộn 2026-09-12 — nay chỉ còn việc client).
 - "Ngày cố định trong tháng" và "ngày 31 hay cuối tháng" (mục "Điều ngày gốc KHÔNG giải quyết" của
   `BILL_DOCUMENTATION.md`) — không đụng.
 - Đổi cách hiển thị dòng danh sách hoá đơn.

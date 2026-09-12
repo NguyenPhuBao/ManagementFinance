@@ -91,8 +91,9 @@ Mười lăm tài liệu này đã được thực thi hoàn tất, vượt qua 
   2026-09-12:** client đã mở đường đồng bộ cho **bốn** trong số ấy — `Idbill`,
   `Previous_bill_id`, `Anchor_day` (đo trên backend thật) và, tối cùng ngày,
   `Period_end` (ân hạn hoá đơn, schema v21 — tính năng trọn vẹn chứ không chỉ
-  trường đồng bộ). Còn `Auto_pay` chờ
-  CAN-LAM 17 B bước 2 (chốt ở `upsertTransaction`; chốt sai chỗ đã bỏ 2026-09-12); `category.Color` có và client đồng bộ màu từ
+  trường đồng bộ). Còn `Auto_pay` **client chưa mở** —
+  chốt ở `upsertTransaction` backend đã đặt (CAN-LAM 20 §2.1, gộp `7779999` tối muộn 2026-09-12,
+  đo thật 4 ca), nên không còn chờ ai; `category.Color` có và client đồng bộ màu từ
   2026-09-11 (G24 đóng — danh mục cũ lên màu khi được lưu lại); `transaction.Idgoal` có cột nhưng client vẫn còn
   nhánh so **tên** chưa gỡ (G18). Dòng này từng lấy `goal.Priority` làm ví dụ —
   client đã làm xong màn ưu tiên ngày 2026-09-08. Muốn biết client còn nợ gì thì

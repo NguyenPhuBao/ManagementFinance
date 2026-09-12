@@ -573,8 +573,9 @@ void main() {
           // `anchorDay`/`anchor_day` (`sync.repository.js:99-106`); client gửi
           // dạng snake_case cho khớp phần còn lại của payload này.
           //
-          // ⚠️ `auto_pay` CHƯA mở — chờ backend sửa CAN-LAM 17 B (chốt chống
-          // trả hai lần đặt nhầm ở `upsertBill`).
+          // ⚠️ `auto_pay` CHƯA mở — việc phía client (bước 12). Backend đã đặt
+          // chốt chống trả hai lần ở `upsertTransaction` từ `7779999`
+          // (2026-09-12 tối muộn, CAN-LAM 20 §2.1), nên không còn chờ ai.
           'previous_bill_id', 'anchor_day',
           // `period_end` mở 2026-09-12 cùng tính năng ân hạn (schema v21) —
           // ngày kết thúc kỳ tính tiền, tách khỏi hạn trả.
