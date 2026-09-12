@@ -289,10 +289,30 @@ const syncRepository = {
   },
 
   // ── Transaction ─────────────────────────────────────────
-  async upsertTransaction(data) {
+  async upsertTransaction(data, dangXoaTrongLo = new Set()) {
     const mapped = mapEntityFields('transaction', data);
     const existing = await prisma.transaction.findUnique({ where: { idtran: mapped.idtran } });
+
+    // Chốt chống thanh toán hai lần (BILL_ALREADY_PAID)
+    const chanTraHaiLan = async ({ idtran, idbill, deleted_at }) => {
+      if (!idbill || deleted_at) return;
+      const khac = await prisma.transaction.findFirst({
+        where: {
+          idbill,
+          deleted_at: null,
+          idtran: { notIn: [idtran, ...dangXoaTrongLo] },
+        },
+        select: { idtran: true },
+      });
+      if (khac) {
+        throw Object.assign(new Error('Hóa đơn đã được thanh toán bằng một giao dịch khác'), {
+          code: 'BILL_ALREADY_PAID',
+        });
+      }
+    };
+
     if (!existing) {
+      await chanTraHaiLan({ idtran: mapped.idtran, idbill: mapped.idbill, deleted_at: mapped.deleted_at });
       return prisma.transaction.create({
         data: {
           idtran: mapped.idtran,
@@ -305,7 +325,7 @@ const syncRepository = {
           bank_tran_id: mapped.bank_tran_id || null,
           amount: mapped.amount ?? 0,
           type: mapped.type || 'Transaction',
-          status: mapped.status || (mapped.provider && ['BankSync', 'Casso', 'SMS', 'ORC', 'OCR'].includes(mapped.provider) ? 'Pending' : 'Confirmed'),
+          status: mapped.status || (mapped.provider && ['BankSync', 'Casso', 'SMS', 'OCR'].includes(mapped.provider) ? 'Pending' : 'Confirmed'),
           provider: mapped.provider || 'Manual',
           note: prepareSafeNote(mapped.note, ''),
           images: cleanStorageKey(mapped.images) || null,
@@ -316,6 +336,10 @@ const syncRepository = {
       });
     }
     if (new Date(mapped.update_at) > new Date(existing.update_at)) {
+      const targetIdbill = mapped.idbill !== undefined ? mapped.idbill : existing.idbill;
+      const targetDeletedAt = mapped.deleted_at !== undefined ? mapped.deleted_at : existing.deleted_at;
+      await chanTraHaiLan({ idtran: existing.idtran, idbill: targetIdbill, deleted_at: targetDeletedAt });
+
       return prisma.transaction.update({
         where: { idtran: existing.idtran },
         data: {

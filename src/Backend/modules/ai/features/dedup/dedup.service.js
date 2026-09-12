@@ -11,7 +11,7 @@ const dedupService = {
    * Kiểm tra trùng lặp dữ liệu giao dịch dựa trên 3 cấp độ quy tắc
    * @param {number|string} idaccount
    * @param {object} extraction - Kết quả bóc tách từ OCR
-   * @param {string} provider - 'ORC' | 'BankSync' | 'SMS'
+   * @param {string} provider - 'OCR' | 'BankSync' | 'SMS'
    * @param {string|null} bankTranId - Mã giao dịch chống trùng
    * @param {object} [options] - Tuỳ chọn (vd mock data trong test)
    * @returns {Promise<{ is_duplicate: boolean, reason?: string, existing_transaction?: object }>}

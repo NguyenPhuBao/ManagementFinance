@@ -66,12 +66,32 @@ Khi có bất kỳ thay đổi nào về CSDL PostgreSQL:
 
 1. **Bản tường minh SQL:** Bắt buộc tạo file script `.sql` trong thư mục `database/` để làm bản sao lưu và phục vụ khôi phục thảm họa.
 2. **Khai báo Prisma:** Cập nhật chính xác `src/Backend/prisma/schema.prisma`.
-3. **Migration:** CSDL được quản lý đồng bộ qua tệp script `database/N_*.sql` (đến migration 12) kết hợp cập nhật `schema.prisma` và lệnh `prisma generate` để đồng bộ Client ORM.
+3. **Migration:** CSDL được quản lý đồng bộ qua tệp script `database/N_*.sql` (đến migration **13**; sổ ghi tệp đã áp ở bảng dưới) kết hợp cập nhật `schema.prisma` và lệnh `prisma generate` để đồng bộ Client ORM.
 4. **BẮT BUỘC ĐỒNG BỘ MODULE SYNC:**  
    Mọi thay đổi cột, bảng hoặc quan hệ trong CSDL đều **bắt buộc phải cập nhật Module Sync** (`sync.service.js`, `sync.repository.js`, `sync.validation.js`) theo đúng khuôn mẫu hiện tại để đảm bảo Client-app có thể đẩy/kéo các trường mới.
 5. **An toàn dữ liệu (Data Safety):**
    * Các cột mới bổ sung phải luôn có giá trị mặc định (`DEFAULT`) hoặc chấp nhận `NULL` để không làm đứt gãy dữ liệu lịch sử.
    * Ràng buộc xóa đối với dữ liệu liên kết giao dịch phải dùng `ON DELETE SET NULL` hoặc `RESTRICT` có kiểm soát, tuyệt đối không xóa dây chuyền làm mất giao dịch tài chính của người dùng.
+
+#### Sổ ghi Migration & Hiện trạng triển khai (Database Migration Ledger)
+
+| N | Nội dung | Câu kiểm (ra ≥ 1 hàng là đã áp) | Dev Client | Supabase |
+|---|---|---|---|---|
+| 5 | Gỡ trigger cấm trùng chéo danh mục người dùng ↔ mặc định | `SELECT tgname FROM pg_trigger WHERE tgrelid='category'::regclass AND NOT tgisinternal` → **không** còn trigger chéo | ✅ | ✅ |
+| 6 | Bỏ bảng `category_group_membership` | `SELECT 1 FROM information_schema.tables WHERE table_name='category_group_membership'` → **0 hàng** | ✅ | ✅ |
+| 7 | Email partial unique (`account_Email_key`, `user_Email_key` `WHERE "Delete_at" IS NULL`); `idx_account_username` thường; `wallet.Status` → `varchar(20)` | `SELECT indexdef FROM pg_indexes WHERE indexname='account_Email_key'` có `WHERE`; `SELECT character_maximum_length FROM information_schema.columns WHERE table_name='wallet' AND column_name='Status'` = 20 | ✅ | ✅ |
+| 8 | `account.Reason_Inactive` | `… WHERE table_name='account' AND column_name='Reason_Inactive'` | ✅ | ✅ |
+| 9 | `account.Countdown` | `… column_name='Countdown'` | ✅ | ✅ |
+| 10 | Trigger bảo vệ dữ liệu (`trg_check_phone_encrypted`, `trg_protect_auditlog`, …) | `SELECT tgname FROM pg_trigger WHERE tgname LIKE 'trg_%'` | ✅ | ✅ |
+| 11 | `Phone`/`Account_number` → `varchar(256)`; `bank_account.Account_number_hash` + index | `… table_name='bank_account' AND column_name='Account_number_hash'` | ✅ | ✅ |
+| 12 | `category.Color`; `transaction.Idbill` + `fk_transaction_bill`; `bill.Previous_bill_id`/`Period_end`/`Auto_pay`/`Anchor_day`; `chk_bill_pay_status` có `'Skipped'`; bỏ `uq_wallet_saving_active` | `SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname='chk_bill_pay_status'` có `Skipped` | ✅ | ✅ |
+| 13 | Bỏ `DEFAULT 0` của `budget.Threshold_Warning_Percent`; hai index ví `IF NOT EXISTS` | `SELECT column_default FROM information_schema.columns WHERE table_name='budget' AND column_name='Threshold_Warning_Percent'` → `NULL` | ✅ | ✅ |
+
+> [!CAUTION]
+> **CẢNH BÁO QUAN TRỌNG VỀ PARTIAL UNIQUE INDEX:**  
+> `schema.prisma` hiện tại không thể diễn đạt được mệnh đề `WHERE` của PostgreSQL Partial Index. Do đó, trên CSDL đã áp đủ các script migration, lệnh `prisma migrate diff` sẽ **luôn báo lệch 5 index** (`account_Email_key`, `user_Email_key`, `idx_bill_previous_bill`, `idx_transaction_bill`, `idx_transaction_goal`).  
+> **TUYỆT ĐỐI KHÔNG** chạy `prisma migrate dev` hoặc `prisma db push` trên CSDL này vì Prisma sẽ tự động xóa và tạo lại 5 index này thành index thông thường (mất mệnh đề `WHERE "Delete_at" IS NULL`), làm phá vỡ toàn bộ cơ chế xóa mềm (soft-delete) của hệ thống.  
+> **Quy trình chuẩn:** Khi cập nhật schema: chạy migration script `.sql` thủ công $\rightarrow$ cập nhật `schema.prisma` tương ứng $\rightarrow$ chỉ chạy `npx prisma generate` để sinh mã Client ORM.
 
 ---
 

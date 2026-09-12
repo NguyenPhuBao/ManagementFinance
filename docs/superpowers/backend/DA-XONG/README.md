@@ -79,6 +79,7 @@ Mười lăm tài liệu này đã được thực thi hoàn tất, vượt qua 
 | [SYNC_PUSH_ERROR_MAPPING.md](./SYNC_PUSH_ERROR_MAPPING.md) | Bắt lỗi PostgreSQL `22001`, `23502`, `BILL_ALREADY_PAID`, `WALLET_NAME_DUPLICATE` ánh xạ về `CONSTRAINT_VIOLATION`. |
 | [WALLET_SAVING_INDEX.md](./WALLET_SAVING_INDEX.md) | Migration 12 đã `DROP INDEX IF EXISTS "uq_wallet_saving_active"`, cho phép người dùng mở nhiều ví tiết kiệm linh hoạt. |
 | [WALLET_STATUS_COLUMN_WIDTH.md](./WALLET_STATUS_COLUMN_WIDTH.md) | Mở rộng `Wallet.Status` lên `VARCHAR(20)` an toàn trong CSDL và mapping sync. |
+| [CON_LAI_SAU_CBBEEB4.md](./CON_LAI_SAU_CBBEEB4.md) | Chốt chặn thanh toán hai lần `chanTraHaiLan` (`BILL_ALREADY_PAID`), bẫy `dangXoaTrongLo`, `BLIND_INDEX_SECRET`, cờ `ALLOW_MOCK_INPUT`, loại bỏ `'ORC'`, giải quyết lỗ hổng G36 (/auth/refresh), sổ ghi migration 5–13 và cảnh báo partial index. |
 
 ---
 

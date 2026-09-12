@@ -169,7 +169,7 @@ Bảng ví tiền của người dùng (Tiền mặt, Ngân hàng, Tiết kiệm
 | `Type` | varchar(7) | Check in (`Cash`, `Bank`, `Saving`, `Banking`) | Phân loại nguồn ví | ✅ Cho phép. Plaintext | Theo ví |
 | `Balance` | decimal(15,2) | Default 0 | Số dư hiện tại của ví | ✅ Cho phép. **Dữ liệu tài chính nhạy cảm**; Phân quyền chặt chẽ | Tối thiểu 5 năm sau khi xóa mềm (Luật Kế toán) |
 | `Currency` | Varchar(3) | Check in (`VND`, `USD`) | Đơn vị tiền tệ | ✅ Cho phép. Plaintext | Theo ví |
-| `Status` | Varchar(20) | Default 'Active'. Không có CHECK trong CSDL | Trạng thái ví (Active/Inactive) | ✅ Cho phép. Plaintext | Theo ví |
+| `Status` | Varchar(20) | Default 'Active'. Check in (`Active`, `Inactive`) — `chk_wallet_status` | Trạng thái ví | ✅ Cho phép. Plaintext | Theo ví |
 | `IncludeInTotal` | Boolean | Default TRUE | Có tính vào tổng tài sản | ✅ Cho phép. Plaintext | Theo ví |
 | `Is_default` | Boolean | Default False | Ví mặc định | ✅ Cho phép. Plaintext | Theo ví |
 | `Icon` | Varchar(20) | NULL | Icon hiển thị | ✅ Cho phép. Plaintext | Theo ví |
@@ -371,7 +371,7 @@ Bảng lưu trữ Refresh Token đã cấp cho các phiên đăng nhập.
 ### 3.2.8. Wallet
 - **PK**: `Idwallet` (varchar(36) UUID)
 - **FK**: `Idaccount` $\rightarrow$ `Account(Idaccount)` (`ON DELETE CASCADE`); `Id_bank_casso` $\rightarrow$ `Bank_account(Id_bank_account)` (`ON DELETE SET NULL`)
-- **Check**: `Type IN ('Cash', 'Bank', 'Saving', 'Banking')`; `Currency IN ('VND', 'USD')`; `(Type = 'Banking' AND Id_bank_casso IS NOT NULL) OR (Type <> 'Banking' AND Id_bank_casso IS NULL)` (`chk_wallet_banking_link`). (**Không** có CHECK cho `Status`)
+- **Check**: `Type IN ('Cash', 'Bank', 'Saving', 'Banking')`; `Currency IN ('VND', 'USD')`; `Status IN ('Active', 'Inactive')` (`chk_wallet_status`); `(Type = 'Banking' AND Id_bank_casso IS NOT NULL) OR (Type <> 'Banking' AND Id_bank_casso IS NULL)` (`chk_wallet_banking_link`).
 - **Default**: `Type = 'Cash'`, `Balance = 0`, `Currency = 'VND'`, `Status = 'Active'`, `IncludeInTotal = TRUE`, `Is_default = FALSE`
 - **Unique**: (ba partial index, đều kèm `"Delete_at" IS NULL`): `uq_wallet_account_name_active ("Idaccount", "Name")` — không trùng tên ví trong một tài khoản; `uq_wallet_bank_active ("Id_bank_casso") WHERE "Id_bank_casso" IS NOT NULL` — một tài khoản ngân hàng chỉ tạo một ví Banking; `uq_wallet_default_active ("Idaccount") WHERE "Is_default" = true` — một ví mặc định mỗi tài khoản. Đã gỡ bỏ `uq_wallet_saving_active`.
 - **Index**: `Idaccount`, `Id_bank_casso`, `Update_at`
@@ -393,7 +393,7 @@ Bảng lưu trữ Refresh Token đã cấp cho các phiên đăng nhập.
 
 ### 3.2.11. Goal
 - **PK**: `Idgoal` (varchar(36) UUID)
-- **FK**: `Idaccount` $\rightarrow$ `Account(Idaccount)` (`ON DELETE CASCADE`); `Idwallet` $\rightarrow$ `Wallet(Idwallet)` (`ON DELETE SET NULL`); `auto_deposit_wallet_id` $\rightarrow$ `Wallet(Idwallet)` (`ON DELETE SET NULL`)
+- **FK**: `Idaccount` $\rightarrow$ `Account(Idaccount)` (`ON DELETE CASCADE`); `Idwallet` $\rightarrow$ `Wallet(Idwallet)` (`ON DELETE SET NULL`)
 - **Cột mới**: `Priority` (int, NULL nếu không đặt), `auto_deposit_amount` (numeric(18,2)), `auto_deposit_wallet_id` (varchar(36) không có FK), `auto_deposit_last_run` (timestamp)
 - **Check**: `Target_amount > 0`; `Current_amount >= 0`. (**Không** có CHECK cho `Status_complete`, `Cycle_take_money`, `Time_recurrence`, `Priority`)
 - **Default**: `Current_amount = 0`, `Status_complete = 'False'`, `Recurrence = FALSE`

@@ -2648,8 +2648,9 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
 - **3. Di chuyển tài liệu hoàn tất**:
   - Toàn bộ tài liệu kỹ thuật hoàn thành từ `docs/superpowers/backend/CAN-LAM/` đã được chuyển sang `docs/superpowers/backend/DA-XONG/`.
   - Cập nhật mục lục `DA-XONG/README.md` và thông báo `CAN-LAM/README.md`.
-- **4. Kiểm thử & Nghiệm thu chất lượng (Local Test Suites)**:
-  - `Test/test_can_lam_fixes.js`: **tests PASS (100%)** trên môi trường phát triển cục bộ.
+- **4. Kiểm thử & Nghiệm thu chất lượng (Local Test Suites Trên Máy Dev)**:
+  - Các script kiểm thử chạy trên máy dev của backend thông qua thư mục nội bộ `Test/` (được `.gitignore`, không nằm trong git repo dự án):
+  - `Test/test_can_lam_fixes.js`: **9/9 tests PASS (100%)** trên môi trường phát triển cục bộ.
   - `Test/test_sensitive_note_filter.js`: **15/15 tests PASS (100%)**.
   - `Test/test_category_unique_rules.js`: **PASS 100%**.
   - `Test/test_data_security_encryption_and_masking.js`: **13/13 tests PASS (100%)**.
@@ -2659,6 +2660,45 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - `docs/Rule_Project/Rule_project.md`: Đồng bộ 13 điểm (RP01-RP13) về quy trình sync, lỗi, xác thực và ràng buộc.
   - `docs/Rule_Project/Data_Security.md`: Ghi nhận giải thuật Luhn và trigger `trg_protect_auditlog`.
   - `docs/progress/Backend.md` & `docs/progress/Client-app.md`: Ghi nhận chi tiết các API, Schema và Socket event mới.
+
+### 11.37. Hoàn Tất Đợt Yêu Cầu Kỹ Thuật Đa Tầng Theo CAN-LAM 20 (CON_LAI_SAU_CBBEEB4.md) (2026-09-12)
+- **1. Chốt chặn thanh toán hai lần cho hóa đơn (`chanTraHaiLan` & `BILL_ALREADY_PAID`)**:
+  - Tại `src/Backend/modules/sync/sync.repository.js`: Bổ sung kiểm tra `chanTraHaiLan` trước khi `create` và `update` giao dịch. Nếu giao dịch liên kết `idbill` mà hóa đơn đó đã có một giao dịch chi tiêu chưa xóa mềm (`Deleted_at IS NULL`) thì lập tức ném lỗi `BILL_ALREADY_PAID`.
+  - Xử lý triệt để bẫy thứ tự trong cùng lô (`dangXoaTrongLo`): Người dùng hoàn tác khoản trả (xóa T1) rồi trả lại (ghi T2) trong cùng 1 đợt push sẽ không bị chặn nhầm.
+- **2. Chốt khởi động an toàn cho `BLIND_INDEX_SECRET`**:
+  - Tại `src/Backend/utils/crypto.util.js`: Kiểm tra `BLIND_INDEX_SECRET`, ném Exception và dừng server ngay lập tức ở môi trường Production nếu thiếu secret; đưa ra cảnh báo `[SECURITY]` ở môi trường dev.
+- **3. Chuẩn hóa mã phản hồi 401 khi Refresh Token bị thu hồi cho tài khoản bị khóa/xóa (Lỗ hổng G36)**:
+  - Tại `src/Backend/modules/auth/auth.service.js`: Nhánh `storedToken.status === true` gọi `getAccountValidity` và `accountRejection`. Trả về mã HTTP 401 kèm `code: 'ACCOUNT_DELETED'` hoặc `'ACCOUNT_INACTIVE'`, `idaccount`, `reason_inactive`. Khắc phục triệt để lỗi đăng xuất âm thầm không có hộp thoại báo lý do trên Client-app khi ngoại tuyến.
+- **4. Khóa bảo vệ Mock Input (`ALLOW_MOCK_INPUT=true`)**:
+  - Tại `ocr.controller.js` và `classify.controller.js`: Bắt buộc kiểm tra `ALLOW_MOCK_INPUT === 'true'` mới nhận dữ liệu mock từ request body. Cập nhật file cấu hình môi trường `.env` và `.env.example`.
+- **5. Loại bỏ triệt để ký hiệu 'ORC'**:
+  - Loại bỏ provider `'ORC'` khỏi dòng 308 của `sync.repository.js`. Sửa các chú thích JSDoc tại `ocr.service.js` và `dedup.service.js` thành `'OCR'`.
+- **6. Cập nhật Sổ Ghi Migration & Cảnh Báo Partial Index**:
+  - Cập nhật Sổ ghi Migration 5–13 trong `Rule_project.md` §3.2.
+  - Bổ sung cảnh báo nghiêm cấm chạy `prisma migrate dev` / `prisma db push` làm mất mệnh đề `WHERE` của 5 partial unique index.
+  - Sửa 8 điểm lệch tài liệu trong `New_Database.md`, `Rule_project.md`, `Backend.md`.
+- **7. Kiểm thử & Nghiệm thu (Local Test Suites Trên Máy Dev)**:
+  - `Test/test_con_lai_fixes.js`: **PASS 5/5 (100%)** (chặn trả hai lần, bẫy thứ tự `dangXoaTrongLo`, cập nhật cùng giao dịch, `WALLET_NAME_DUPLICATE`, refresh token G36).
+  - `Test/test_can_lam_fixes.js`: **PASS 9/9 (100%)** kiểm thử tích hợp hồi quy.
+  - `Test/test_admin_category_privacy.js`: **PASS 5/5 (100%)** kiểm thử bảo mật dữ liệu nhạy cảm danh mục người dùng.
+
+### 11.38. Thiết Lập Tài Liệu Chuẩn Triển Khai Cloud & Đặc Tả Môi Trường Development vs Production (2026-09-12)
+- **Tài liệu nguồn sự thật:** [`docs/Deploy/CloudDeploy.md`](docs/Deploy/CloudDeploy.md).
+- **Nội dung chuẩn hóa:**
+  1. **Phân định cơ chế Development vs Production:**
+     - Chốt khóa mã hóa AES-256 (`DATA_ENCRYPTION_KEY`) & Blind Index (`BLIND_INDEX_SECRET`): nghiêm ngặt trên production, dừng server ngay nếu thiếu hoặc sai định dạng.
+     - Che giấu chi tiết lỗi (Error Obfuscation): ẩn toàn bộ stack trace/lỗi CSDL 500 trên production.
+     - Ghi log CSDL Prisma: chỉ log `['error']` trên production; log toàn bộ `['query', 'error', 'warn']` trên development.
+     - Cửa hậu Mock Input: khóa 100% trên production, bắt buộc qua AI xử lý thật.
+     - Cơ chế runtime & npm: production bỏ qua `devDependencies`, chạy trực tiếp `node index.js` thay vì `nodemon`.
+  2. **Cấu hình chuẩn trên Render Web Service:**
+     - Root Directory: `src/Backend`
+     - Build Command: `npm install` (kèm `postinstall: prisma generate`)
+     - Start Command: `npm start` (tuyệt đối không dùng `npm run dev` để tránh lỗi `nodemon: not found` exit 127).
+  3. **Danh mục biến môi trường đầy đủ:** Cung cấp mẫu cấu hình hoàn chỉnh cho Render (Database pooling port 6543, Direct port 5432, JWT, SMTP, AI Gemini, Encryption keys).
+  4. **Hướng dẫn khắc phục sự cố (Troubleshooting):** Xử lý 5 lỗi thường gặp (Nodemon not found, thiếu Encryption Key, lỗi kết nối Supabase, lệch partial index do prisma migrate dev).
+  5. **Quy định chiến lược của PO (Giai đoạn hiện tại):** Toàn bộ các môi trường (kể cả Render Cloud) thống nhất triển khai theo chế độ `DEVELOPMENT` (`NODE_ENV=development`) để thuận tiện debug, test liên thông và theo dõi log. Chỉ chuyển đổi sang `PRODUCTION` sau khi hoàn thiện toàn bộ dự án và có yêu cầu/phê duyệt bằng văn bản từ PO.
+
 
 
 
