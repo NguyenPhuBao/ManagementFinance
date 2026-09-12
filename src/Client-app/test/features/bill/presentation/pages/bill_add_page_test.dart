@@ -16,6 +16,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/intl.dart';
 
 import 'package:flowmoney/core/bill/bill_recurrence.dart';
 import 'package:flowmoney/core/database/app_database.dart';
@@ -187,5 +188,47 @@ void main() {
     expect(find.byType(Switch, skipOffstage: false), findsWidgets,
         reason: 'Công tắc bật/tắt nhắc và công tắc lặp lại theo chu kỳ đều '
             'lưu thật, phải giữ nguyên.');
+  });
+  group('ân hạn — khối ngày mới (v21)', () {
+    testWidgets('kết thúc kỳ 🔒, thanh ân hạn, hạn thanh toán 🔒, không tràn',
+        (tester) async {
+      await dungTrangThem(tester);
+      expect(find.text('NGÀY KẾT THÚC KỲ'), findsOneWidget,
+          reason: 'Ô khoá cũ "NGÀY ĐẾN HẠN THANH TOÁN" nay là ngày kết thúc kỳ.');
+      expect(find.text('HẠN TRẢ SAU KHI KẾT THÚC KỲ'), findsOneWidget);
+      expect(find.text('HẠN THANH TOÁN'), findsOneWidget);
+      expect(find.byKey(const ValueKey('bill-grace-0')), findsOneWidget);
+      expect(tester.takeException(), isNull, reason: 'Không tràn ở 411dp.');
+    });
+
+    testWidgets('chọn 15 ngày → hạn thanh toán lùi 15 ngày sau kết thúc kỳ',
+        (tester) async {
+      await dungTrangThem(tester);
+      final f = DateFormat('dd/MM/yyyy');
+      String chu(String key) =>
+          tester.widget<Text>(find.byKey(ValueKey(key))).data!;
+      final ketThuc = chu('bill-period-end-text');
+      await tester.tap(find.byKey(const ValueKey('bill-grace-15')));
+      await tester.pumpAndSettle();
+      final han = chu('bill-due-date-text');
+      final kt = f.parse(ketThuc.replaceFirst('Ngày ', ''));
+      final hd = f.parse(han.replaceFirst('Ngày ', ''));
+      expect(hd.difference(kt).inDays, 15);
+      expect(chu('bill-period-end-text'), ketThuc,
+          reason: 'Ân hạn không đổi ngày kết thúc kỳ.');
+    });
+
+    testWidgets('ân hạn chồng kỳ kế tiếp → câu báo đỏ hiện ngay',
+        (tester) async {
+      await dungTrangThem(tester);
+      await tester.tap(find.byKey(const ValueKey('bill-grace-null')));
+      await tester.pump();
+      await tester.enterText(
+          find.byKey(const ValueKey('bill-grace-custom')), '45');
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('bill-grace-error')), findsOneWidget,
+          reason: 'Ân hạn 45 ngày cho chu kỳ tháng là hai kỳ cùng mở. Chờ tới '
+              'lúc bấm Lưu mới báo là bắt người dùng đoán.');
+    });
   });
 }

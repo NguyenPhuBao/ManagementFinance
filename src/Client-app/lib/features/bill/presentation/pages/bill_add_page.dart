@@ -14,6 +14,7 @@ import '../../domain/bill_auto_pay.dart' show kBillAutoPayHint;
 import '../../domain/bill_draft.dart';
 import '../../domain/bill_schedule.dart';
 import '../bloc/bill_bloc.dart';
+import '../widgets/bill_grace_selector.dart';
 import '../bloc/bill_event.dart';
 import '../../../../core/utils/gioi_han_do_dai.dart';
 
@@ -156,6 +157,7 @@ class _BillAddPageState extends State<BillAddPage> {
       name: name,
       amount: amount,
       startDate: _lich.startDate,
+      periodEnd: _lich.ketThucKy,
       dueDate: _lich.dueDate,
       walletId: wallet.id,
       categoryId: category.id,
@@ -305,13 +307,38 @@ class _BillAddPageState extends State<BillAddPage> {
           ),
           const SizedBox(height: 16),
 
-          _buildInputLabel('NGÀY ĐẾN HẠN THANH TOÁN'),
+          // Ba mốc của kỳ (v21): kết thúc kỳ suy từ chu kỳ, ân hạn người
+          // dùng chọn theo số ngày, hạn thanh toán = kết thúc + ân hạn. Hai ô
+          // ngày đều khoá — xem `BillSchedule` và `bill_an_han.dart`.
+          _buildInputLabel('NGÀY KẾT THÚC KỲ'),
+          const SizedBox(height: 8),
+          _buildDateField(
+            value: _lich.ketThucKy,
+            onTap: null,
+            formatter: dateFormatter,
+            khoa: true,
+            textKey: const ValueKey('bill-period-end-text'),
+          ),
+          const SizedBox(height: 16),
+
+          _buildInputLabel('HẠN TRẢ SAU KHI KẾT THÚC KỲ'),
+          const SizedBox(height: 8),
+          BoChonAnHan(
+            giaTri: _lich.anHanNgay,
+            loi: _lich.dateError,
+            onChanged: (n) =>
+                setState(() => _lich = _lich.copyWith(anHanNgay: n)),
+          ),
+          const SizedBox(height: 16),
+
+          _buildInputLabel('HẠN THANH TOÁN'),
           const SizedBox(height: 8),
           _buildDateField(
             value: _lich.dueDate,
             onTap: null,
             formatter: dateFormatter,
             khoa: true,
+            textKey: const ValueKey('bill-due-date-text'),
           ),
           const SizedBox(height: 16),
 
@@ -616,6 +643,7 @@ class _BillAddPageState extends State<BillAddPage> {
     required VoidCallback? onTap,
     required DateFormat formatter,
     bool khoa = false,
+    Key? textKey,
   }) {
     return Opacity(
       opacity: khoa ? 0.6 : 1,
@@ -635,6 +663,7 @@ class _BillAddPageState extends State<BillAddPage> {
               const SizedBox(width: 12),
               Text(
                 value == null ? 'Chưa chọn' : 'Ngày ${formatter.format(value)}',
+                key: textKey,
                 style: const TextStyle(fontSize: 16, color: AppColors.primary),
               ),
               const Spacer(),
