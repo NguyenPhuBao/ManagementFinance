@@ -160,6 +160,19 @@ class Bills extends Table {
   /// đúng lối so bằng tên mà cột `goalId` sinh ra để thay thế.
   TextColumn get generatedFromBillId => text().nullable()();
 
+  /// periodEnd: ngày KẾT THÚC KỲ TÍNH TIỀN. Hạn trả [dueDate] có thể muộn hơn
+  /// (ân hạn) — hoá đơn điện tính cho 01–30/09 nhưng hạn trả 15/10.
+  ///
+  /// NULL = hàng cũ, chưa biết — đọc là "kết thúc kỳ trùng hạn trả" (hành vi
+  /// trước v21). Hàng ghi MỚI luôn có giá trị, kể cả khi ân hạn 0 (khi ấy bằng
+  /// [dueDate]), để NULL chỉ còn MỘT nghĩa và nhánh kéo về dùng được
+  /// `Value.absent()` khi server im lặng. Số ngày ân hạn KHÔNG lưu — suy ở
+  /// `features/bill/domain/bill_an_han.dart`, chỗ duy nhất.
+  ///
+  /// Đi qua đồng bộ: khoá `period_end` ↔ `bill.Period_end` (@db.Date).
+  /// Spec: docs/superpowers/specs/2026-09-12-bill-an-han-period-end-design.md
+  DateTimeColumn get periodEnd => dateTime().nullable()();
+
   /// autoPayEnabled: app tự thanh toán hoá đơn này khi tới ngày đến hạn, trừ
   /// từ chính [walletId] của nó (DB v17, 2026-09-06).
   ///

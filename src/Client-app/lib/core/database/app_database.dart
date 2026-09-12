@@ -56,7 +56,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 20;
+  int get schemaVersion => 21;
 
   @override
   MigrationStrategy get migration {
@@ -406,6 +406,12 @@ class AppDatabase extends _$AppDatabase {
             "UPDATE wallets SET sync_error = NULL, sync_blocked_until = NULL, "
             "sync_retry_count = 0 WHERE sync_status = 'pending'",
           );
+        }
+        if (from < 21) {
+          // Ân hạn hoá đơn: ngày kết thúc kỳ tách khỏi hạn trả. KHÔNG điền dữ
+          // liệu cho hàng cũ — NULL nghĩa là "kết thúc kỳ trùng hạn trả", đúng
+          // hành vi trước đó. Xem chú thích `Bills.periodEnd`.
+          await m.addColumn(bills, bills.periodEnd);
         }
       },
       beforeOpen: (details) async {

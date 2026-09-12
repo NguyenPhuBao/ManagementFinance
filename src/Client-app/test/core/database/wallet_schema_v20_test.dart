@@ -36,6 +36,34 @@ void _createV19Wallets(dynamic database) {
   ''');
 }
 
+/// Bảng `bills` của một CSDL v19 — dựng ở đây chỉ để chuỗi migration chạy
+/// tới cuối.
+///
+/// Tệp này canh phần **ví**, nhưng migration v21 chạy `ALTER TABLE bills ADD
+/// COLUMN period_end`, và một câu lệnh trên bảng không tồn tại thì cả chuỗi
+/// dừng ngay ở đó. Một CSDL thật luôn có bảng này — thiếu nó ở đây là thiếu ở
+/// phía **bản dựng thử**, không phải ở phía mã nguồn.
+void _createV19Bills(dynamic database) {
+  database.execute('''
+    CREATE TABLE bills (
+      id TEXT NOT NULL PRIMARY KEY, idaccount INTEGER NOT NULL, wallet_id TEXT,
+      category_id TEXT, name TEXT NOT NULL, amount REAL NOT NULL,
+      start_date INTEGER, due_date INTEGER NOT NULL,
+      pay_status TEXT NOT NULL DEFAULT 'Pending', is_paid INTEGER NOT NULL DEFAULT 0,
+      time_notification TEXT, is_recurrence INTEGER NOT NULL DEFAULT 0,
+      time_recurrence TEXT NOT NULL DEFAULT 'Month',
+      recurrence TEXT NOT NULL DEFAULT 'monthly',
+      icon TEXT NOT NULL DEFAULT 'receipt', colour TEXT NOT NULL DEFAULT '#4CAF50',
+      note TEXT NOT NULL DEFAULT '', generated_from_bill_id TEXT,
+      auto_pay_enabled INTEGER NOT NULL DEFAULT 0, anchor_day INTEGER,
+      deleted_at INTEGER, is_deleted INTEGER NOT NULL DEFAULT 0,
+      sync_status TEXT NOT NULL DEFAULT 'pending',
+      sync_retry_count INTEGER NOT NULL DEFAULT 0, sync_error TEXT,
+      sync_blocked_until INTEGER, updated_at INTEGER NOT NULL
+    )
+  ''');
+}
+
 Future<String> _loai(AppDatabase db, String id) async {
   final rows = await db
       .customSelect('SELECT type FROM wallets WHERE id = ?',
@@ -51,6 +79,7 @@ void main() {
     db = AppDatabase.forTesting(NativeDatabase.memory(
       setup: (database) {
         _createV19Wallets(database);
+        _createV19Bills(database);
 
         // Ví điện tử đang KẸT: đã hỏng đẩy nhiều lần và đang bị chặn theo thời
         // gian. Đây là hàng mà migration phải cứu.

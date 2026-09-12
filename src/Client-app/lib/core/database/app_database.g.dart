@@ -4745,6 +4745,12 @@ class $BillsTable extends Bills with TableInfo<$BillsTable, Bill> {
   late final GeneratedColumn<String> generatedFromBillId =
       GeneratedColumn<String>('generated_from_bill_id', aliasedName, true,
           type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _periodEndMeta =
+      const VerificationMeta('periodEnd');
+  @override
+  late final GeneratedColumn<DateTime> periodEnd = GeneratedColumn<DateTime>(
+      'period_end', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
   static const VerificationMeta _autoPayEnabledMeta =
       const VerificationMeta('autoPayEnabled');
   @override
@@ -4831,6 +4837,7 @@ class $BillsTable extends Bills with TableInfo<$BillsTable, Bill> {
         colour,
         note,
         generatedFromBillId,
+        periodEnd,
         autoPayEnabled,
         anchorDay,
         deletedAt,
@@ -4944,6 +4951,10 @@ class $BillsTable extends Bills with TableInfo<$BillsTable, Bill> {
           generatedFromBillId.isAcceptableOrUnknown(
               data['generated_from_bill_id']!, _generatedFromBillIdMeta));
     }
+    if (data.containsKey('period_end')) {
+      context.handle(_periodEndMeta,
+          periodEnd.isAcceptableOrUnknown(data['period_end']!, _periodEndMeta));
+    }
     if (data.containsKey('auto_pay_enabled')) {
       context.handle(
           _autoPayEnabledMeta,
@@ -5036,6 +5047,8 @@ class $BillsTable extends Bills with TableInfo<$BillsTable, Bill> {
       generatedFromBillId: attachedDatabase.typeMapping.read(
           DriftSqlType.string,
           data['${effectivePrefix}generated_from_bill_id']),
+      periodEnd: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}period_end']),
       autoPayEnabled: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}auto_pay_enabled'])!,
       anchorDay: attachedDatabase.typeMapping
@@ -5115,6 +5128,19 @@ class Bill extends DataClass implements Insertable<Bill> {
   /// sẽ đẻ thêm một kỳ trùng. Tìm kỳ ấy bằng cách so tên và ngày là quay lại
   /// đúng lối so bằng tên mà cột `goalId` sinh ra để thay thế.
   final String? generatedFromBillId;
+
+  /// periodEnd: ngày KẾT THÚC KỲ TÍNH TIỀN. Hạn trả [dueDate] có thể muộn hơn
+  /// (ân hạn) — hoá đơn điện tính cho 01–30/09 nhưng hạn trả 15/10.
+  ///
+  /// NULL = hàng cũ, chưa biết — đọc là "kết thúc kỳ trùng hạn trả" (hành vi
+  /// trước v21). Hàng ghi MỚI luôn có giá trị, kể cả khi ân hạn 0 (khi ấy bằng
+  /// [dueDate]), để NULL chỉ còn MỘT nghĩa và nhánh kéo về dùng được
+  /// `Value.absent()` khi server im lặng. Số ngày ân hạn KHÔNG lưu — suy ở
+  /// `features/bill/domain/bill_an_han.dart`, chỗ duy nhất.
+  ///
+  /// Đi qua đồng bộ: khoá `period_end` ↔ `bill.Period_end` (@db.Date).
+  /// Spec: docs/superpowers/specs/2026-09-12-bill-an-han-period-end-design.md
+  final DateTime? periodEnd;
 
   /// autoPayEnabled: app tự thanh toán hoá đơn này khi tới ngày đến hạn, trừ
   /// từ chính [walletId] của nó (DB v17, 2026-09-06).
@@ -5197,6 +5223,7 @@ class Bill extends DataClass implements Insertable<Bill> {
       required this.colour,
       required this.note,
       this.generatedFromBillId,
+      this.periodEnd,
       required this.autoPayEnabled,
       this.anchorDay,
       this.deletedAt,
@@ -5236,6 +5263,9 @@ class Bill extends DataClass implements Insertable<Bill> {
     map['note'] = Variable<String>(note);
     if (!nullToAbsent || generatedFromBillId != null) {
       map['generated_from_bill_id'] = Variable<String>(generatedFromBillId);
+    }
+    if (!nullToAbsent || periodEnd != null) {
+      map['period_end'] = Variable<DateTime>(periodEnd);
     }
     map['auto_pay_enabled'] = Variable<bool>(autoPayEnabled);
     if (!nullToAbsent || anchorDay != null) {
@@ -5287,6 +5317,9 @@ class Bill extends DataClass implements Insertable<Bill> {
       generatedFromBillId: generatedFromBillId == null && nullToAbsent
           ? const Value.absent()
           : Value(generatedFromBillId),
+      periodEnd: periodEnd == null && nullToAbsent
+          ? const Value.absent()
+          : Value(periodEnd),
       autoPayEnabled: Value(autoPayEnabled),
       anchorDay: anchorDay == null && nullToAbsent
           ? const Value.absent()
@@ -5330,6 +5363,7 @@ class Bill extends DataClass implements Insertable<Bill> {
       note: serializer.fromJson<String>(json['note']),
       generatedFromBillId:
           serializer.fromJson<String?>(json['generatedFromBillId']),
+      periodEnd: serializer.fromJson<DateTime?>(json['periodEnd']),
       autoPayEnabled: serializer.fromJson<bool>(json['autoPayEnabled']),
       anchorDay: serializer.fromJson<int?>(json['anchorDay']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
@@ -5364,6 +5398,7 @@ class Bill extends DataClass implements Insertable<Bill> {
       'colour': serializer.toJson<String>(colour),
       'note': serializer.toJson<String>(note),
       'generatedFromBillId': serializer.toJson<String?>(generatedFromBillId),
+      'periodEnd': serializer.toJson<DateTime?>(periodEnd),
       'autoPayEnabled': serializer.toJson<bool>(autoPayEnabled),
       'anchorDay': serializer.toJson<int?>(anchorDay),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
@@ -5395,6 +5430,7 @@ class Bill extends DataClass implements Insertable<Bill> {
           String? colour,
           String? note,
           Value<String?> generatedFromBillId = const Value.absent(),
+          Value<DateTime?> periodEnd = const Value.absent(),
           bool? autoPayEnabled,
           Value<int?> anchorDay = const Value.absent(),
           Value<DateTime?> deletedAt = const Value.absent(),
@@ -5427,6 +5463,7 @@ class Bill extends DataClass implements Insertable<Bill> {
         generatedFromBillId: generatedFromBillId.present
             ? generatedFromBillId.value
             : this.generatedFromBillId,
+        periodEnd: periodEnd.present ? periodEnd.value : this.periodEnd,
         autoPayEnabled: autoPayEnabled ?? this.autoPayEnabled,
         anchorDay: anchorDay.present ? anchorDay.value : this.anchorDay,
         deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
@@ -5469,6 +5506,7 @@ class Bill extends DataClass implements Insertable<Bill> {
       generatedFromBillId: data.generatedFromBillId.present
           ? data.generatedFromBillId.value
           : this.generatedFromBillId,
+      periodEnd: data.periodEnd.present ? data.periodEnd.value : this.periodEnd,
       autoPayEnabled: data.autoPayEnabled.present
           ? data.autoPayEnabled.value
           : this.autoPayEnabled,
@@ -5509,6 +5547,7 @@ class Bill extends DataClass implements Insertable<Bill> {
           ..write('colour: $colour, ')
           ..write('note: $note, ')
           ..write('generatedFromBillId: $generatedFromBillId, ')
+          ..write('periodEnd: $periodEnd, ')
           ..write('autoPayEnabled: $autoPayEnabled, ')
           ..write('anchorDay: $anchorDay, ')
           ..write('deletedAt: $deletedAt, ')
@@ -5542,6 +5581,7 @@ class Bill extends DataClass implements Insertable<Bill> {
         colour,
         note,
         generatedFromBillId,
+        periodEnd,
         autoPayEnabled,
         anchorDay,
         deletedAt,
@@ -5574,6 +5614,7 @@ class Bill extends DataClass implements Insertable<Bill> {
           other.colour == this.colour &&
           other.note == this.note &&
           other.generatedFromBillId == this.generatedFromBillId &&
+          other.periodEnd == this.periodEnd &&
           other.autoPayEnabled == this.autoPayEnabled &&
           other.anchorDay == this.anchorDay &&
           other.deletedAt == this.deletedAt &&
@@ -5604,6 +5645,7 @@ class BillsCompanion extends UpdateCompanion<Bill> {
   final Value<String> colour;
   final Value<String> note;
   final Value<String?> generatedFromBillId;
+  final Value<DateTime?> periodEnd;
   final Value<bool> autoPayEnabled;
   final Value<int?> anchorDay;
   final Value<DateTime?> deletedAt;
@@ -5633,6 +5675,7 @@ class BillsCompanion extends UpdateCompanion<Bill> {
     this.colour = const Value.absent(),
     this.note = const Value.absent(),
     this.generatedFromBillId = const Value.absent(),
+    this.periodEnd = const Value.absent(),
     this.autoPayEnabled = const Value.absent(),
     this.anchorDay = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -5663,6 +5706,7 @@ class BillsCompanion extends UpdateCompanion<Bill> {
     this.colour = const Value.absent(),
     this.note = const Value.absent(),
     this.generatedFromBillId = const Value.absent(),
+    this.periodEnd = const Value.absent(),
     this.autoPayEnabled = const Value.absent(),
     this.anchorDay = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -5698,6 +5742,7 @@ class BillsCompanion extends UpdateCompanion<Bill> {
     Expression<String>? colour,
     Expression<String>? note,
     Expression<String>? generatedFromBillId,
+    Expression<DateTime>? periodEnd,
     Expression<bool>? autoPayEnabled,
     Expression<int>? anchorDay,
     Expression<DateTime>? deletedAt,
@@ -5729,6 +5774,7 @@ class BillsCompanion extends UpdateCompanion<Bill> {
       if (note != null) 'note': note,
       if (generatedFromBillId != null)
         'generated_from_bill_id': generatedFromBillId,
+      if (periodEnd != null) 'period_end': periodEnd,
       if (autoPayEnabled != null) 'auto_pay_enabled': autoPayEnabled,
       if (anchorDay != null) 'anchor_day': anchorDay,
       if (deletedAt != null) 'deleted_at': deletedAt,
@@ -5761,6 +5807,7 @@ class BillsCompanion extends UpdateCompanion<Bill> {
       Value<String>? colour,
       Value<String>? note,
       Value<String?>? generatedFromBillId,
+      Value<DateTime?>? periodEnd,
       Value<bool>? autoPayEnabled,
       Value<int?>? anchorDay,
       Value<DateTime?>? deletedAt,
@@ -5790,6 +5837,7 @@ class BillsCompanion extends UpdateCompanion<Bill> {
       colour: colour ?? this.colour,
       note: note ?? this.note,
       generatedFromBillId: generatedFromBillId ?? this.generatedFromBillId,
+      periodEnd: periodEnd ?? this.periodEnd,
       autoPayEnabled: autoPayEnabled ?? this.autoPayEnabled,
       anchorDay: anchorDay ?? this.anchorDay,
       deletedAt: deletedAt ?? this.deletedAt,
@@ -5861,6 +5909,9 @@ class BillsCompanion extends UpdateCompanion<Bill> {
       map['generated_from_bill_id'] =
           Variable<String>(generatedFromBillId.value);
     }
+    if (periodEnd.present) {
+      map['period_end'] = Variable<DateTime>(periodEnd.value);
+    }
     if (autoPayEnabled.present) {
       map['auto_pay_enabled'] = Variable<bool>(autoPayEnabled.value);
     }
@@ -5915,6 +5966,7 @@ class BillsCompanion extends UpdateCompanion<Bill> {
           ..write('colour: $colour, ')
           ..write('note: $note, ')
           ..write('generatedFromBillId: $generatedFromBillId, ')
+          ..write('periodEnd: $periodEnd, ')
           ..write('autoPayEnabled: $autoPayEnabled, ')
           ..write('anchorDay: $anchorDay, ')
           ..write('deletedAt: $deletedAt, ')
@@ -10270,6 +10322,7 @@ typedef $$BillsTableCreateCompanionBuilder = BillsCompanion Function({
   Value<String> colour,
   Value<String> note,
   Value<String?> generatedFromBillId,
+  Value<DateTime?> periodEnd,
   Value<bool> autoPayEnabled,
   Value<int?> anchorDay,
   Value<DateTime?> deletedAt,
@@ -10300,6 +10353,7 @@ typedef $$BillsTableUpdateCompanionBuilder = BillsCompanion Function({
   Value<String> colour,
   Value<String> note,
   Value<String?> generatedFromBillId,
+  Value<DateTime?> periodEnd,
   Value<bool> autoPayEnabled,
   Value<int?> anchorDay,
   Value<DateTime?> deletedAt,
@@ -10376,6 +10430,9 @@ class $$BillsTableFilterComposer extends Composer<_$AppDatabase, $BillsTable> {
   ColumnFilters<String> get generatedFromBillId => $composableBuilder(
       column: $table.generatedFromBillId,
       builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get periodEnd => $composableBuilder(
+      column: $table.periodEnd, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<bool> get autoPayEnabled => $composableBuilder(
       column: $table.autoPayEnabled,
@@ -10475,6 +10532,9 @@ class $$BillsTableOrderingComposer
       column: $table.generatedFromBillId,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<DateTime> get periodEnd => $composableBuilder(
+      column: $table.periodEnd, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<bool> get autoPayEnabled => $composableBuilder(
       column: $table.autoPayEnabled,
       builder: (column) => ColumnOrderings(column));
@@ -10569,6 +10629,9 @@ class $$BillsTableAnnotationComposer
   GeneratedColumn<String> get generatedFromBillId => $composableBuilder(
       column: $table.generatedFromBillId, builder: (column) => column);
 
+  GeneratedColumn<DateTime> get periodEnd =>
+      $composableBuilder(column: $table.periodEnd, builder: (column) => column);
+
   GeneratedColumn<bool> get autoPayEnabled => $composableBuilder(
       column: $table.autoPayEnabled, builder: (column) => column);
 
@@ -10638,6 +10701,7 @@ class $$BillsTableTableManager extends RootTableManager<
             Value<String> colour = const Value.absent(),
             Value<String> note = const Value.absent(),
             Value<String?> generatedFromBillId = const Value.absent(),
+            Value<DateTime?> periodEnd = const Value.absent(),
             Value<bool> autoPayEnabled = const Value.absent(),
             Value<int?> anchorDay = const Value.absent(),
             Value<DateTime?> deletedAt = const Value.absent(),
@@ -10668,6 +10732,7 @@ class $$BillsTableTableManager extends RootTableManager<
             colour: colour,
             note: note,
             generatedFromBillId: generatedFromBillId,
+            periodEnd: periodEnd,
             autoPayEnabled: autoPayEnabled,
             anchorDay: anchorDay,
             deletedAt: deletedAt,
@@ -10698,6 +10763,7 @@ class $$BillsTableTableManager extends RootTableManager<
             Value<String> colour = const Value.absent(),
             Value<String> note = const Value.absent(),
             Value<String?> generatedFromBillId = const Value.absent(),
+            Value<DateTime?> periodEnd = const Value.absent(),
             Value<bool> autoPayEnabled = const Value.absent(),
             Value<int?> anchorDay = const Value.absent(),
             Value<DateTime?> deletedAt = const Value.absent(),
@@ -10728,6 +10794,7 @@ class $$BillsTableTableManager extends RootTableManager<
             colour: colour,
             note: note,
             generatedFromBillId: generatedFromBillId,
+            periodEnd: periodEnd,
             autoPayEnabled: autoPayEnabled,
             anchorDay: anchorDay,
             deletedAt: deletedAt,
