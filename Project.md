@@ -2682,6 +2682,23 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - `Test/test_can_lam_fixes.js`: **PASS 9/9 (100%)** kiểm thử tích hợp hồi quy.
   - `Test/test_admin_category_privacy.js`: **PASS 5/5 (100%)** kiểm thử bảo mật dữ liệu nhạy cảm danh mục người dùng.
 
+### 11.38. Thiết Lập Tài Liệu Chuẩn Triển Khai Cloud & Đặc Tả Môi Trường Development vs Production (2026-09-12)
+- **Tài liệu nguồn sự thật:** [`docs/Deploy/CloudDeploy.md`](docs/Deploy/CloudDeploy.md).
+- **Nội dung chuẩn hóa:**
+  1. **Phân định cơ chế Development vs Production:**
+     - Chốt khóa mã hóa AES-256 (`DATA_ENCRYPTION_KEY`) & Blind Index (`BLIND_INDEX_SECRET`): nghiêm ngặt trên production, dừng server ngay nếu thiếu hoặc sai định dạng.
+     - Che giấu chi tiết lỗi (Error Obfuscation): ẩn toàn bộ stack trace/lỗi CSDL 500 trên production.
+     - Ghi log CSDL Prisma: chỉ log `['error']` trên production; log toàn bộ `['query', 'error', 'warn']` trên development.
+     - Cửa hậu Mock Input: khóa 100% trên production, bắt buộc qua AI xử lý thật.
+     - Cơ chế runtime & npm: production bỏ qua `devDependencies`, chạy trực tiếp `node index.js` thay vì `nodemon`.
+  2. **Cấu hình chuẩn trên Render Web Service:**
+     - Root Directory: `src/Backend`
+     - Build Command: `npm install` (kèm `postinstall: prisma generate`)
+     - Start Command: `npm start` (tuyệt đối không dùng `npm run dev` để tránh lỗi `nodemon: not found` exit 127).
+  3. **Danh mục biến môi trường đầy đủ:** Cung cấp mẫu cấu hình hoàn chỉnh cho Render (Database pooling port 6543, Direct port 5432, JWT, SMTP, AI Gemini, Encryption keys).
+  4. **Hướng dẫn khắc phục sự cố (Troubleshooting):** Xử lý 5 lỗi thường gặp (Nodemon not found, thiếu Encryption Key, lỗi kết nối Supabase, lệch partial index do prisma migrate dev).
+
+
 
 
 
