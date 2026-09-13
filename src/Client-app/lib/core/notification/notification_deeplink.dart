@@ -86,6 +86,12 @@ String deeplinkTuDedupeKey(String key) {
     case 'billOverdue':
     case 'billAuto':
     case 'billAutoFail':
+    // `billConflict:<billId>` — `BillPaymentConflictResolver` ghi khi hoá đơn
+    // đã được trả trên máy khác. Loại này **không** do `NotificationScanner`
+    // sinh, nên nó không có mặt trong phép canh "đủ 16 loại" ngay dưới; nhưng
+    // nó vẫn bắn ra hệ điều hành (nằm trong `luonBao`), nên cú chạm vẫn phải
+    // suy ra đúng route — thiếu nhánh này là rơi về trung tâm thông báo.
+    case 'billConflict':
       return '/bills';
 
     case 'goalDone':

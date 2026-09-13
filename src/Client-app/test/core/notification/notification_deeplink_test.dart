@@ -242,13 +242,39 @@ void main() {
           tuanQuaCoGiaoDich: true,
         ));
 
-    test('đầu vào của phép canh phủ đủ cả 16 loại thông báo', () {
-      final phu = tatCaUngVien().map((c) => c.kind).toSet();
+    /// Loại **không** do `NotificationScanner` sinh ra, nên không thể có mặt
+    /// trong `tatCaUngVien()` — phép canh dưới đây chạy trên đầu vào của bộ
+    /// quét.
+    ///
+    /// ⚠️ Danh sách này phải giữ **ngắn** và mỗi mục phải có lý do: nó là lỗ
+    /// hổng duy nhất của phép canh, nên nhét bừa một loại vào đây là tự bịt mắt
+    /// mình.
+    const ngoaiBoQuet = {
+      // `BillPaymentConflictResolver` ghi thẳng lúc đồng bộ nền — thời điểm duy
+      // nhất biết được server vừa từ chối khoản trả nào. Deeplink của nó được
+      // canh riêng ở ca ngay dưới.
+      NotificationKind.billPaidOnOtherDevice,
+    };
 
-      expect(phu, containsAll(NotificationKind.values),
+    test('đầu vào của phép canh phủ đủ mọi loại thông báo bộ quét sinh ra', () {
+      final phu = tatCaUngVien().map((c) => c.kind).toSet();
+      final canPhu =
+          NotificationKind.values.where((k) => !ngoaiBoQuet.contains(k));
+
+      expect(phu, containsAll(canPhu),
           reason: 'Phép canh bên dưới chỉ có giá trị khi nó thật sự chạy qua '
-              'mọi loại. Thêm loại thứ 17 mà quên dựng đầu vào cho nó thì '
-              'chính test này đỏ, chứ không phải im lặng bỏ sót.');
+              'mọi loại bộ quét sinh ra. Thêm một loại mà quên dựng đầu vào cho '
+              'nó thì chính test này đỏ, chứ không phải im lặng bỏ sót.');
+    });
+
+    test('loại ngoài bộ quét vẫn suy ra ĐÚNG deeplink', () {
+      // Loại này bắn ra hệ điều hành (nằm trong `luonBao`), nên cú chạm ở cold
+      // start chỉ có `payload = dedupeKey` để lần ra màn cần mở. Thiếu nhánh
+      // trong `deeplinkTuDedupeKey` là rơi về trung tâm thông báo — không sai
+      // hẳn, nhưng mất đúng một cú chạm và không gì báo lỗi.
+      expect(deeplinkTuDedupeKey('billConflict:bill-1'), '/bills',
+          reason: 'Khoá do BillPaymentConflictResolver sinh phải mở danh sách '
+              'hoá đơn, giống mọi thông báo hoá đơn khác.');
     });
 
     test('mọi loại: suy từ khoá ra ĐÚNG deeplink mà bộ luật đã đặt', () {

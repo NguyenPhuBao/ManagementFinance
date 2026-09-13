@@ -202,4 +202,58 @@ void main() {
         reason: 'Vẫn phải thoát hàng đợi, nếu không nó bị đẩy lại mãi và lần '
             'nào cũng bị từ chối y như vậy.');
   });
+
+  group('thông báo', () {
+    Future<List<AppNotification>> doc() =>
+        db.notificationDao.getAll(accountId);
+
+    test('hoàn tác xong thì sinh MỘT thông báo nhóm bill', () async {
+      await themKhoanChi();
+      await phat(ketQuaVoi(code: 'BILL_ALREADY_PAID'));
+
+      final ds = await doc();
+      expect(ds, hasLength(1),
+          reason: 'Việc này xảy ra lúc đồng bộ nền, có thể khi app đóng, nên '
+              'toast sẽ trôi mất — mà số dư ví thì vừa đổi hai lần.');
+      expect(ds.single.kind, 'billPaidOnOtherDevice');
+      expect(ds.single.subjectType, 'bill');
+      expect(ds.single.subjectId, idBill);
+    });
+
+    test('thông báo KHÔNG nêu số tiền', () async {
+      await themKhoanChi();
+      await phat(ketQuaVoi(code: 'BILL_ALREADY_PAID'));
+
+      final n = (await doc()).single;
+      expect('${n.title} ${n.body}', isNot(contains('350')),
+          reason: 'Nếp thông báo tối giản của dự án: không nêu số liệu. Số tiền '
+              'còn nằm ở khoản chi và ở ví, người dùng mở ra xem được.');
+    });
+
+    test('hai lần hoàn tác cùng một hoá đơn chỉ sinh MỘT thông báo', () async {
+      await themKhoanChi();
+      await phat(ketQuaVoi(code: 'BILL_ALREADY_PAID'));
+      await phat(ketQuaVoi(code: 'BILL_ALREADY_PAID'));
+
+      expect(await doc(), hasLength(1),
+          reason: 'Một chu kỳ đồng bộ hỏng rồi thử lại là hai lượt phát cùng '
+              'một thất bại; `dedupeKey` phải nuốt lượt sau.');
+    });
+
+    test('KHÔNG sinh thông báo khi không có gì để gỡ', () async {
+      await themKhoanChi();
+      bills.nemRa = const BillNotPaidException(idBill);
+      await phat(ketQuaVoi(code: 'BILL_ALREADY_PAID'));
+
+      expect(await doc(), isEmpty,
+          reason: 'Hoá đơn vốn đã ở trạng thái chưa trả — không có gì đổi trên '
+              'máy này, nên báo là làm phiền vô cớ.');
+    });
+
+    test('KHÔNG sinh thông báo cho thất bại mang mã khác', () async {
+      await themKhoanChi();
+      await phat(ketQuaVoi(code: 'WALLET_NAME_DUPLICATE'));
+      expect(await doc(), isEmpty);
+    });
+  });
 }

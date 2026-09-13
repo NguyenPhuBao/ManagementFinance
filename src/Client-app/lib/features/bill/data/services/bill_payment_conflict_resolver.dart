@@ -1,8 +1,11 @@
 import 'dart:async';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/foundation.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../../core/database/app_database.dart';
+import '../../../../core/notification/notification_rules.dart';
 import '../../../../core/sync/sync_models.dart';
 import '../repositories/bill_repository.dart';
 
@@ -77,6 +80,9 @@ class BillPaymentConflictResolver {
       await _bills.undoPayment(billId: billId);
       debugPrint('[BillConflict] Đã gỡ khoản trả hoá đơn $billId vì máy khác '
           'đã trả trước');
+      // Chỉ báo khi THẬT SỰ có gì đổi trên máy này. Hai nhánh `catch` bên dưới
+      // nghĩa là không còn gì để gỡ, nên báo là làm phiền vô cớ.
+      await _baoNguoiDung(idaccount: khoanChi!.idaccount, billId: billId);
     } on BillNotPaidException {
       // Hoá đơn đã được kéo về chưa trả bởi một chu kỳ pull trước — không còn
       // gì để gỡ. Không phải lỗi.
@@ -99,5 +105,40 @@ class BillPaymentConflictResolver {
     //     xoá đúng kết quả vừa được server chấp nhận. Trạng thái thật phải đến
     //     từ nhánh kéo về ở chu kỳ sau.
     await _db.billDao.markSynced(billId);
+  }
+
+  /// Ghi một thông báo vào trung tâm thông báo.
+  ///
+  /// Vì sao không dùng toast: việc này xảy ra lúc đồng bộ **nền**, có thể khi
+  /// app đang đóng — toast sẽ trôi mất, mà số dư ví thì vừa đổi hai lần (bị trừ
+  /// lúc trả, được hoàn lúc gỡ).
+  ///
+  /// Khoá chống trùng chỉ cần `billId`: mỗi kỳ của hoá đơn lặp là **một hàng
+  /// riêng**, nên id hoá đơn đã định danh đúng kỳ. Một chu kỳ đồng bộ hỏng rồi
+  /// thử lại là hai lượt phát cùng một thất bại — `insertIfAbsent` nuốt lượt
+  /// sau.
+  ///
+  /// **Không nêu số tiền** — nếp thông báo tối giản của dự án; số tiền còn nằm
+  /// ở khoản chi và ở ví, người dùng mở ra xem được.
+  Future<void> _baoNguoiDung({
+    required int idaccount,
+    required String billId,
+  }) async {
+    final bill = await _db.billDao.getById(billId);
+    final ten = bill?.name ?? 'Hoá đơn';
+
+    await _db.notificationDao.insertIfAbsent(AppNotificationsCompanion.insert(
+      id: const Uuid().v4(),
+      idaccount: idaccount,
+      kind: NotificationKind.billPaidOnOtherDevice.name,
+      dedupeKey: 'billConflict:$billId',
+      title: 'Hoá đơn đã được trả trên thiết bị khác',
+      body: 'Khoản trả $ten trên máy này đã được gỡ và tiền đã hoàn về ví.',
+      severity: NotificationSeverity.info.name,
+      subjectType: const Value('bill'),
+      subjectId: Value(billId),
+      deeplink: const Value('/bills'),
+      createdAt: DateTime.now(),
+    ));
   }
 }
