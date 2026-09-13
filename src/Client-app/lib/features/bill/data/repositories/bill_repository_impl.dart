@@ -157,7 +157,10 @@ class BillRepositoryImpl implements BillRepository {
   }
 
   @override
-  Future<void> undoPayment({required String billId}) async {
+  Future<void> undoPayment({
+    required String billId,
+    String? transactionId,
+  }) async {
     final current = await dataSource.getBillById(billId);
     if (current == null) {
       throw StateError('Không tìm thấy hoá đơn $billId');
@@ -168,7 +171,14 @@ class BillRepositoryImpl implements BillRepository {
 
     // Khoản chi mà lần trả đã sinh ra. Không tìm thấy thì DỪNG — xem
     // `BillUndoUnavailableException`.
-    final khoanChi = await db.transactionDao.getByBill(billId);
+    //
+    // Nơi gọi biết đích danh khoản nào thì đừng để hàm đoán: `getByBill` là
+    // `LIMIT 1` không `ORDER BY`, nên khi máy có hai khoản chi sống cùng
+    // `billId` — chuyện thường trên máy thua một cuộc đua `BILL_ALREADY_PAID`
+    // — nó chọn một cách không xác định.
+    final khoanChi = transactionId != null
+        ? await _khoanChiConSong(transactionId)
+        : await db.transactionDao.getByBill(billId);
     if (khoanChi == null) {
       throw BillUndoUnavailableException(billId);
     }
@@ -209,6 +219,19 @@ class BillRepositoryImpl implements BillRepository {
     });
 
     syncEngine?.scheduleSync();
+  }
+
+  /// Khoản chi [id] nếu nó **còn sống**.
+  ///
+  /// ⚠️ `TransactionDao.getById` **cố ý** đọc cả hàng đã xoá mềm — resolver cần
+  /// thế để lần ra `billId` của một khoản đã gỡ ở chu kỳ trước. Ở đây thì
+  /// ngược lại: gỡ một khoản đã gỡ là **hoàn tiền lần thứ hai**, tức tặng tiền
+  /// cho ví mỗi lượt phát lại. Lọc ở đây giữ đúng lớp chắn mà `getByBill`
+  /// (vốn lọc sẵn `deletedAt`) vẫn cho nhánh không truyền id.
+  Future<Transaction?> _khoanChiConSong(String id) async {
+    final t = await db.transactionDao.getById(id);
+    if (t == null || t.deletedAt != null) return null;
+    return t;
   }
 
   @override

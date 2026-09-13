@@ -77,7 +77,16 @@ class BillPaymentConflictResolver {
     }
 
     try {
-      await _bills.undoPayment(billId: billId);
+      // ⚠️ **Truyền `transactionId` là bắt buộc, không phải tuỳ chọn cho gọn.**
+      // Tới lúc đây, SQLite của máy này có **hai** khoản chi sống mang cùng
+      // `billId`: của chính nó (chính cái vừa bị từ chối) và của máy thắng (đã
+      // pull về — `transactions.billId` đi qua đồng bộ từ 2026-09-12). Bỏ tham
+      // số này là giao việc chọn cho `getByBill`, một `LIMIT 1` không
+      // `ORDER BY`: nó gỡ nhầm khoản của máy **thắng** — khoản server đã chấp
+      // nhận — rồi cờ xoá ấy được đẩy lên. Kết quả đo trên PostgreSQL ngày
+      // 2026-09-13: hoá đơn còn `Payed` mà không còn khoản chi nào sống, hai
+      // máy lệch sổ **im lặng**.
+      await _bills.undoPayment(billId: billId, transactionId: idKhoanChi);
       debugPrint('[BillConflict] Đã gỡ khoản trả hoá đơn $billId vì máy khác '
           'đã trả trước');
       // Chỉ báo khi THẬT SỰ có gì đổi trên máy này. Hai nhánh `catch` bên dưới
@@ -91,6 +100,20 @@ class BillPaymentConflictResolver {
       // Khoản chi không lần ngược được về hoá đơn. Như trên.
       debugPrint('[BillConflict] Không lần được khoản chi của hoá đơn $billId');
     }
+
+    // ⚠️ **Đánh dấu hoá đơn ĐÃ TRẢ — bắt buộc, và phải làm trước
+    // `markSynced`.** `undoPayment` kéo hoá đơn về `Pending`: đúng cho ca người
+    // dùng tự bấm hoàn tác (khi ấy hoá đơn thật sự chưa trả), nhưng **sai ở
+    // đây**. `BILL_ALREADY_PAID` mang đúng một nghĩa — server ĐÃ có khoản chi
+    // cho hoá đơn này — nên sự thật là nó **đã được trả**, chỉ bởi máy khác.
+    //
+    // Để nó ở `Pending` thì bộ tự động trả tin theo và trả lại ở chu kỳ sau:
+    // tạo khoản chi mới → bị từ chối → gỡ → hoàn tiền → lặp. Đo thật trên hai
+    // máy ảo ngày 2026-09-13: **sáu vòng trong vài phút**, ví phình thêm
+    // 350.000 mỗi vòng. Và `markSynced` ngay dưới chặn luôn đường tự sửa —
+    // hoá đơn trên server không đổi nữa nên chu kỳ pull sau không mang `Payed`
+    // về.
+    await _db.billDao.danhDauDaTra(billId);
 
     // NGOÀI `try`: phải chạy cả khi `undoPayment` ném, vì hai bản ghi vẫn cần
     // thoát hàng đợi đẩy. Thiếu một trong hai là một lỗi im lặng **khác nhau**:

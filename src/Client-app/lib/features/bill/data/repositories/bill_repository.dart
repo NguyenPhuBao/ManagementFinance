@@ -134,7 +134,18 @@ abstract class BillRepository {
   /// Hoàn trọn ba hệ quả mà [payBill] đã tạo ra: đưa hoá đơn về `Pending`,
   /// xoá mềm khoản chi và trả tiền lại đúng ví đã trừ, xoá mềm kỳ kế tiếp đã
   /// sinh ra.
-  Future<void> undoPayment({required String billId});
+  ///
+  /// [transactionId] nói **đích danh** khoản chi phải gỡ. Bỏ trống thì hàm tự
+  /// tìm khoản chi của hoá đơn — đúng cho người dùng bấm nút hoàn tác, vì khi
+  /// ấy máy chỉ có một khoản chi cho kỳ này.
+  ///
+  /// ⚠️ `BillPaymentConflictResolver` **bắt buộc** phải truyền nó. Trên máy
+  /// thua một cuộc đua `BILL_ALREADY_PAID`, SQLite có **hai** khoản chi sống
+  /// cùng `billId`: của chính nó (vừa bị từ chối) và của máy thắng (đã pull
+  /// về). Để hàm tự tìm là giao việc cho một `LIMIT 1` không `ORDER BY` — đã
+  /// gỡ nhầm khoản của máy thắng và đẩy cờ xoá ấy lên server, đo được trên
+  /// PostgreSQL ngày 2026-09-13.
+  Future<void> undoPayment({required String billId, String? transactionId});
 
   /// Bỏ qua kỳ [billId]: đánh dấu `Skipped`, **không** sinh khoản chi và
   /// **không** trừ ví, nhưng vẫn sinh kỳ kế tiếp như [payBill] để chuỗi hoá

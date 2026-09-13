@@ -266,6 +266,19 @@ class BillDao extends DatabaseAccessor<AppDatabase> with _$BillDaoMixin {
   /// Dùng cột **cục bộ** `generatedFromBillId` (v16) chứ không so tên và ngày:
   /// so tên là đúng phép so mà cột này sinh ra để thay thế. Trả `null` khi hoá
   /// đơn không lặp, hoặc kỳ ấy đã bị xoá.
+  ///
+  /// ⚠️ `LIMIT 1` **không `ORDER BY`**, và trên máy thua một cuộc đua
+  /// `BILL_ALREADY_PAID` thì **có thể có hai** kỳ kế tiếp cùng
+  /// `generatedFromBillId`: kỳ do chính máy này sinh ra và kỳ của máy thắng
+  /// (đã pull về). Phép chọn giữa chúng là **không xác định** — biết rồi và
+  /// cố ý để nguyên, vì hậu quả trung tính: hai kỳ ấy giống nhau về mọi mặt
+  /// người dùng thấy, gỡ kỳ nào thì vẫn còn đúng một kỳ sống, không mất tiền
+  /// và không lệch sổ.
+  ///
+  /// Khác hẳn `TransactionDao.getByBill`, nơi cùng khuôn truy vấn này đã gây
+  /// mất dữ liệu thật ngày 2026-09-13 (gỡ nhầm khoản chi của máy thắng rồi đẩy
+  /// cờ xoá lên server) — ở đó nơi gọi phải truyền id đích danh, xem
+  /// `BillRepository.undoPayment`.
   Future<Bill?> getGeneratedFrom(String billId) {
     return (select(bills)
           ..where((t) =>
@@ -285,6 +298,26 @@ class BillDao extends DatabaseAccessor<AppDatabase> with _$BillDaoMixin {
               t.syncStatus.equals('pending') &
               (idaccount == null ? const Constant(true) : t.idaccount.equals(idaccount))))
         .get();
+  }
+
+  /// Đánh dấu kỳ [id] là **đã có khoản chi**, không đụng tới ví hay giao dịch.
+  ///
+  /// Khác [BillRepository.payBill] ở chỗ nó **chỉ ghi trạng thái**: dùng khi
+  /// khoản chi đã tồn tại ở nơi khác và máy này chỉ cần thôi tin rằng kỳ ấy còn
+  /// nợ. Nơi gọi duy nhất hôm nay là `BillPaymentConflictResolver`, sau khi
+  /// server từ chối khoản trả bằng `BILL_ALREADY_PAID` — nghĩa là hoá đơn **đã
+  /// được trả trên máy khác**.
+  ///
+  /// ⚠️ Ghi **cả hai** cột: `payStatus` là cột chính thức, `isPaid` là cột
+  /// chuỗi cũ được suy ra (xem mục "Đụng vào hoá đơn" `CLAUDE.md`). Ghi thiếu
+  /// một cột thì `daCoKhoanChi` vẫn đúng nhưng các đường đọc khác lệch nhau.
+  Future<void> danhDauDaTra(String id) async {
+    await (update(bills)..where((t) => t.id.equals(id))).write(
+      const BillsCompanion(
+        payStatus: Value('Payed'),
+        isPaid: Value(true),
+      ),
+    );
   }
 
   Future<void> markSynced(String id) async {

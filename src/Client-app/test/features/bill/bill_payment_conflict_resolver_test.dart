@@ -15,6 +15,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/sync/sync_models.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository.dart';
+import 'package:flowmoney/features/bill/domain/bill_pay_status.dart';
 import 'package:flowmoney/features/bill/data/services/bill_payment_conflict_resolver.dart';
 
 /// Chỉ ghi lại lời gọi và ném thứ được dặn — đủ để đo hành vi của resolver mà
@@ -24,7 +25,10 @@ class _FakeBills implements BillRepository {
   Object? nemRa;
 
   @override
-  Future<void> undoPayment({required String billId}) async {
+  Future<void> undoPayment({
+    required String billId,
+    String? transactionId,
+  }) async {
     daGoiUndo.add(billId);
     if (nemRa != null) throw nemRa!;
   }
@@ -201,6 +205,24 @@ void main() {
     expect((await db.transactionDao.getById(idKhoanChi))!.syncStatus, 'synced',
         reason: 'Vẫn phải thoát hàng đợi, nếu không nó bị đẩy lại mãi và lần '
             'nào cũng bị từ chối y như vậy.');
+  });
+
+  test('sau hoàn tác, hoá đơn phải ở trạng thái ĐÃ TRẢ — không được về '
+      'Pending', () async {
+    await themKhoanChi();
+    await phat(ketQuaVoi(code: 'BILL_ALREADY_PAID'));
+
+    final b = (await db.billDao.getById(idBill))!;
+    expect(daCoKhoanChi(b), isTrue,
+        reason: 'VÒNG LẶP ĐÃ VẤP THẬT trên hai máy ảo ngày 2026-09-13: '
+            '`undoPayment` kéo hoá đơn về `Pending` — đúng cho ca người dùng tự '
+            'bấm hoàn tác, nhưng SAI ở đây, vì `BILL_ALREADY_PAID` nghĩa là '
+            'server ĐÃ có khoản chi cho hoá đơn này. Để nó ở `Pending` thì bộ '
+            'tự động trả tin theo và trả lại ở chu kỳ sau: tạo khoản chi mới → '
+            'bị từ chối → gỡ → hoàn tiền → lặp. Đo được SÁU vòng trong vài '
+            'phút, ví phình thêm 350.000 mỗi vòng.\n'
+            'Và `markSynced` (ca dưới) chặn luôn đường tự sửa: hoá đơn trên '
+            'server không đổi nữa nên chu kỳ pull sau không mang `Payed` về.');
   });
 
   group('thông báo', () {

@@ -52,7 +52,10 @@ class _FixedBillRepository implements BillRepository {
 
   /// Luôn hỏng — để dựng được trạng thái `BillError` mà không cần CSDL.
   @override
-  Future<void> undoPayment({required String billId}) async =>
+  Future<void> undoPayment({
+    required String billId,
+    String? transactionId,
+  }) async =>
       throw const BillUndoUnavailableException('b');
 
   @override
