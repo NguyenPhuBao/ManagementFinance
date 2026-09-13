@@ -1329,9 +1329,9 @@ class SyncEngine {
           // lặng. Nên gửi nửa đêm UTC của NGÀY CỤC BỘ. Đo thật 2026-09-12.
           'period_end': _ngayCucBoUtcIso(bill.periodEnd),
           // Công tắc tự động trả — mở đường đồng bộ 2026-09-13 (bước 12). Cột
-          // `bills.autoPayEnabled` có từ v17 nhưng tới nay vẫn CỤC BỘ: bật
-          // trên máy A thì máy B không biết, và người dùng phải tự nhớ bật lại
-          // ở từng máy.
+          // `bills.autoPayEnabled` có từ v17 và tới 2026-09-13 vẫn là cột
+          // CỤC BỘ: bật trên máy A thì máy B không biết, và người dùng phải tự
+          // nhớ bật lại ở từng máy.
           //
           // Mở được vì backend đã đặt chốt chống trả hai lần ở
           // `upsertTransaction` (`chanTraHaiLan`, CAN-LAM 20 §2.1, có từ

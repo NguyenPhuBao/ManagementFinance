@@ -1249,6 +1249,24 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   final String walletId;
   final int idaccount;
   final String? categoryId;
+
+  /// amount: **độ lớn, LUÔN DƯƠNG**. Chiều tiền suy từ [type], không từ dấu.
+  ///
+  /// Cả hai đường ghi đều giữ bất biến này:
+  /// - ghi tay — `TransactionRepository._applyBalances` trừ ví bằng
+  ///   `_adjust(walletId, -amount)` cho `'chi'` và cộng `amount` cho `'thu'`;
+  /// - kéo về — `sync_engine.dart` ghi `.abs()` rồi suy `type` qua
+  ///   `SyncPayloadNormalizer.transactionTypeFromBackend`, nên số âm của server
+  ///   không bao giờ lọt xuống SQLite.
+  ///
+  /// Dấu chỉ được áp ở bước **đẩy lên**, trong
+  /// `SyncPayloadNormalizer.transactionForPush`: `'thu'` → `amount.abs()`,
+  /// `'chi'` → `-amount.abs()`.
+  ///
+  /// ⚠️ Chú thích cũ ở đây ("± dương = tiền vào, âm = tiền ra") mô tả quy ước
+  /// của PostgreSQL chứ không phải của bảng này — sửa 2026-09-13. Mọi luật
+  /// thống kê đọc thẳng SQLite mà lọc `amount < 0` sẽ **không khớp hàng nào**,
+  /// im lặng, không lỗi.
   final double amount;
   final String type;
 
@@ -5145,24 +5163,27 @@ class Bill extends DataClass implements Insertable<Bill> {
   /// autoPayEnabled: app tự thanh toán hoá đơn này khi tới ngày đến hạn, trừ
   /// từ chính [walletId] của nó (DB v17, 2026-09-06).
   ///
-  /// ⚠️ **Cột CỤC BỘ — không nằm trong hợp đồng đồng bộ.** Từ 2026-09-12 nó là
-  /// cột cục bộ **duy nhất** còn lại của bảng này: `generatedFromBillId` và
-  /// `anchorDay` đã mở, còn cột này chờ backend đặt chốt chống trả hai lần ở
-  /// `upsertTransaction` (CAN-LAM 17 B bước 2). Bản `main` @ `cbbeeb4` (gộp
-  /// 2026-09-12) đã **bỏ** chốt đặt nhầm ở `upsertBill` nên hoàn tác lên server
-  /// được, nhưng chưa đặt chốt mới — server hiện **không** chặn khoản chi thứ hai
-  /// cùng `Idbill` ở đâu cả. (Ba cột trích tự động của `Goals` từng cùng khuôn,
-  /// nhưng đã đồng bộ từ 2026-09-07 — G21). Hệ quả chấp
-  /// nhận có chủ ý: cấu hình không theo người dùng sang máy khác — và đó cũng
-  /// là lý do KHÔNG mượn một cột đang có: hai máy cùng bật, cùng offline, cùng
-  /// trả một kỳ là hai khoản chi trừ hai ví, cờ đã trả đồng bộ theo LWW không
-  /// chặn được. Tài liệu xin cột (việc D, đã đóng):
+  /// ✅ **ĐI QUA ĐỒNG BỘ từ 2026-09-13** (khoá payload `auto_pay`, cả hai chiều;
+  /// payload hoá đơn 21 trường). Trước đó nó là cột **cục bộ**, và hệ quả là
+  /// một rủi ro có thật: hai máy cùng bật, cùng offline, cùng trả một kỳ là
+  /// **hai** khoản chi trừ hai ví, mà cờ đã trả đồng bộ theo LWW không chặn
+  /// được.
+  ///
+  /// Rủi ro ấy đóng bằng **ba mảnh khớp nhau, thiếu mảnh nào cũng vô hiệu cả
+  /// ba**: cột này đi qua đồng bộ (nên công tắc là thuộc tính của *hoá đơn*,
+  /// không phải của *máy*); `chanTraHaiLan` ở `upsertTransaction` phía server
+  /// từ chối khoản chi thứ hai cùng `Idbill` bằng `BILL_ALREADY_PAID`; và
+  /// `BillPaymentConflictResolver` phía client gỡ khoản trả bị từ chối rồi hoàn
+  /// tiền. Bốn chốt dễ phá quanh mảnh thứ ba: mục **6.8**
+  /// `docs/bill/BILL_DOCUMENTATION.md` — đọc trước khi sửa nó.
+  ///
+  /// Nhánh kéo về dùng `Value.absent()` khi server im lặng về khoá này, cùng
+  /// khuôn với `anchor_day` và `period_end`: hàng đã nằm sẵn trên server mang
+  /// `NULL`/mặc định cho tới khi client đẩy lại từng hàng, nên đọc thẳng là tắt
+  /// công tắc của người dùng ngay chu kỳ pull đầu tiên.
+  ///
+  /// Tài liệu xin cột (việc D, đã đóng):
   /// `docs/superpowers/backend/DA-XONG/2026-09-06-bill-chuoi-ky-va-an-han.md`.
-  /// Server nay có `bill.Auto_pay` (khoá `auto_pay`, cả push lẫn pull — đọc mã
-  /// 2026-09-11), nhưng client chưa gửi/đọc nên cột này vẫn cục bộ. Chốt chống
-  /// trả hai lần phía server **chưa có**: bản `7675b35` đặt nó ở `upsertBill` và
-  /// chặn cả hoàn tác; bản `cbbeeb4` (2026-09-12) bỏ chốt ấy đi mà chưa đặt lại ở
-  /// `upsertTransaction` — nơi kiểm `Idbill` (CAN-LAM mục 17 B bước 2).
   ///
   /// Không có cột "lần chạy cuối" như mục tiêu: mỗi kỳ hoá đơn là **một hàng
   /// riêng**, nên cờ đã trả (`isPaid`/`payStatus`) chính là chốt chống trả hai

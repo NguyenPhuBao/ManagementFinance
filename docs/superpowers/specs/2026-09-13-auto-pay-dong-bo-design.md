@@ -1,7 +1,12 @@
 # Đồng bộ `Auto_pay` và hoàn tác khi server báo hoá đơn đã trả
 
-**Ngày:** 2026-09-13 · **Trạng thái:** chờ người dùng duyệt · **Phạm vi:** chỉ `src/Client-app`;
-**không xin backend gì** — mọi thứ cần đã có trên server.
+**Ngày:** 2026-09-13 · **Trạng thái:** ✅ **ĐÃ THI CÔNG VÀ NGHIỆM THU** (hai máy ảo, cùng ngày) ·
+**Phạm vi:** chỉ `src/Client-app`; **không xin backend gì** — mọi thứ cần đã có trên server.
+
+> ⚠️ **Đọc §4.3 trước khi tin phần còn lại.** Nghiệm thu trên hai máy ảo đã **bác bỏ hai giả định**
+> của chính bản thiết kế này, và bản sửa theo số đo mới là thứ đang chạy. Những chỗ ấy được đánh
+> dấu tại chỗ chứ không xoá đi — chúng ghi lại *vì sao* mã có hình dạng hôm nay. Trạng thái sau
+> cùng, đã đo: `docs/bill/BILL_DOCUMENTATION.md` mục **6.8**.
 
 > Đây là **bước 12** trong hàng đợi ở mục 14 `docs/PROJECT_CONTEXT.md`, việc lớn cuối cùng còn
 > lại sau khi backend đóng CAN-LAM 20. Nó gồm hai nửa tách nhau được nhưng chỉ có nghĩa khi đi
@@ -94,6 +99,18 @@ thuẫn gì với việc hoàn tác; hai chuyện độc lập.
 
 ### 4.2. Dùng lại `undoPayment`, không viết đường ghi thứ hai
 
+> ⚠️ **ĐÚNG MỘT NỬA — sửa 2026-09-13 sau nghiệm thu.** Dùng lại `undoPayment` là đúng, nhưng để nó
+> **tự đi tìm** khoản chi thì sai: `getByBill` là `LIMIT 1` **không `ORDER BY`**, mà trên máy thua
+> thì *chắc chắn* có hai khoản chi sống cùng `billId` — của chính nó và của máy thắng, đã pull về
+> từ 2026-09-12. Nó đã gỡ nhầm khoản của **máy thắng** rồi đẩy cờ xoá lên server (đo trên
+> PostgreSQL: hoá đơn `d2332790` còn `Payed` mà khoản chi duy nhất của nó mang `Deleted_at`).
+> `undoPayment` nay nhận thêm `transactionId`, và resolver **bắt buộc** truyền `localId`.
+>
+> Và ngoại lệ `BillNotPaidException` ở dưới **không** phải "không còn gì để gỡ": trong cùng một chu
+> kỳ, pull kéo hoá đơn về `Pending` **trước** khi resolver chạy, nên chốt `daCoKhoanChi` bắn ra
+> trong khi khoản chi thừa vẫn còn nguyên và ví chưa được hoàn. Chốt ấy nay chỉ áp dụng khi nơi gọi
+> **không** truyền `transactionId`.
+
 `BillRepositoryImpl.undoPayment` đã làm đúng ba việc cần, trong **một** `db.transaction`: hoàn tiền
 vào **đúng ví đã bị trừ** (đọc từ khoản chi, không từ hoá đơn), xoá mềm khoản chi, kéo hoá đơn về
 chưa trả. Viết một đường gỡ thứ hai song song với nó là tự tạo hai định nghĩa của cùng một việc.
@@ -115,7 +132,16 @@ một bản ghi không tồn tại là đúng vòng lặp `Record not found` mà
 → Sau khi `undoPayment` xong, gọi `transactionDao.markSynced(localId)` cho khoản chi ấy để nó
 thoát hàng đợi. Cơ chế đã có sẵn (`_markSyncedById`, `sync_engine.dart:1664`).
 
-**(b) Hoá đơn bị kéo về `Pending` rồi đẩy lên đè trạng thái đúng.** `undoPayment` đặt hoá đơn về
+**(b) Hoá đơn bị kéo về `Pending` rồi đẩy lên đè trạng thái đúng.**
+
+> ⚠️ **SAI — bác bỏ bằng số đo 2026-09-13.** Server **không hề có** trạng thái đúng để mà đè: bản
+> `Payed` của *máy thắng* cũng bị LWW đánh bại, vì mỗi máy bị pull ghi đè về `Pending` rồi đẩy
+> chính bản cũ hơn ấy lên. Hoá đơn ở lại `Pending` **vĩnh viễn** (đo: `d0f455fe`,
+> `Update_at 11:21:18.938`), bộ tự trả trả lại sau mỗi lần pull, và server kết thúc với **ba** kỳ
+> kế tiếp. `markSynced` cho hoá đơn chặn đúng con đường duy nhất dạy server sự thật — nay đã bỏ;
+> `danhDauDaTra` ghi `Payed` **kèm `syncStatus = 'pending'`** để hàng ấy được đẩy lên. Lý lẽ cũ dựa
+> trên việc máy thua đẩy `Pending`; sau bản sửa vòng lặp, máy thua giữ `Payed` — tức đúng sự thật —
+> nên đẩy lên là **hội tụ**. Vế `markSynced` cho **khoản chi** thì vẫn đúng nguyên văn. `undoPayment` đặt hoá đơn về
 chưa trả với `updatedAt = now`; hàng ấy mới hơn bản `Payed` mà máy thắng vừa ghi, nên LWW sẽ cho
 **máy thua thắng** — nó xoá đúng kết quả vừa được chấp nhận.
 → Hoá đơn sau khi hoàn tác cũng phải `markSynced`, để trạng thái thật đến từ **nhánh kéo về** chứ
