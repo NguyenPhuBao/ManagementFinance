@@ -331,6 +331,20 @@ class SyncEngine {
 
   DateTime? _lastPullTime;
 
+  /// Có một yêu cầu đồng bộ bị từ chối vì chu kỳ khác đang chạy, và đang **nợ**
+  /// người gọi một lần chạy.
+  ///
+  /// Cùng lý lẽ với `_scheduleBackoffRetry` ở nhánh giãn cách: từ chối một yêu
+  /// cầu mà không hẹn lại thì thay đổi vừa ghi nằm chờ một nguồn kích hoạt khác
+  /// — timer 15 phút, đổi mạng, hoặc lần mở app sau. Nguồn hay rơi đúng vào cửa
+  /// sổ này lại là hai nguồn dày nhất: `scheduleSync()` sau mỗi lần ghi, và sự
+  /// kiện `sync.completed` của socket (G34) khi máy khác vừa đẩy xong.
+  ///
+  /// Là `bool` chứ không phải bộ đếm: nhiều yêu cầu dồn vào một cửa sổ vẫn chỉ
+  /// đáng **một** lần chạy bù, vì `_collectPendingOps` gom toàn bộ bản ghi còn
+  /// `pending` chứ không xử theo từng yêu cầu.
+  bool _noMotLanChay = false;
+
   Future<void> _runSync() async {
     // Danh tính CHỈ đến từ phiên đăng nhập, không bao giờ suy ra từ dữ liệu
     // trong SQLite. Trước đây khi `_currentIdaccount` là null hoặc 1, engine
@@ -345,7 +359,11 @@ class SyncEngine {
       _setStatus(SyncStatus.idle);
       return;
     }
-    if (_status == SyncStatus.syncing) return; // Tránh concurrent sync
+    // Không chạy chồng — nhưng ghi nợ để chạy bù, đừng nuốt yêu cầu.
+    if (_status == SyncStatus.syncing) {
+      _noMotLanChay = true;
+      return;
+    }
 
     // Giãn dần sau các chu kỳ hỏng liên tiếp. Trước đây thao tác `transient`
     // được thử lại ở MỌI chu kỳ kế tiếp mà không giãn ra, trong khi nguồn kích
@@ -440,6 +458,15 @@ class SyncEngine {
     } catch (e) {
       debugPrint('[SyncEngine] Sync error: $e');
       _setStatus(SyncStatus.error);
+    } finally {
+      // Trả món nợ ghi ở đầu hàm. Đặt trong `finally` để chu kỳ bù vẫn chạy khi
+      // chu kỳ này kết thúc bằng lỗi — yêu cầu bị từ chối không liên quan gì
+      // tới việc chu kỳ đang chạy thành hay bại.
+      if (_noMotLanChay && !_disposed) {
+        _noMotLanChay = false;
+        debugPrint('[SyncEngine] Chạy bù cho yêu cầu đến giữa chu kỳ trước');
+        unawaited(_runSync());
+      }
     }
   }
 

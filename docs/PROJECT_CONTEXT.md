@@ -267,6 +267,9 @@ Response:
 SyncEngine._runSync()
 ├── Chốt vào: _disposed? / _currentIdaccount null hoặc <= 0 → BỎ QUA
 │   (danh tính CHỈ đến từ phiên đăng nhập — không bao giờ suy ra từ SQLite)
+├── Đang có chu kỳ chạy? → GHI NỢ (_noMotLanChay = true) rồi return
+│   (không chạy chồng, nhưng KHÔNG nuốt yêu cầu — xem `finally` ở cuối)
+├── Trong giãn cách sau các chu kỳ hỏng? → _scheduleBackoffRetry + return
 ├── PUSH
 │   ├── _collectPendingOps(accountId)
 │   │   ├── 1.  Categories pending — getSyncableCategories() (loại isLocalOnly)
@@ -285,8 +288,20 @@ SyncEngine._runSync()
 │   ├── repairPendingTransactionsCategoryId()  ← PHẢI chạy TRƯỚC dedup
 │   ├── removeDuplicateLocalSeedCategories()   ← xoá cat_food khi đã có bản UUID
 │   └── Lưu mốc mới = update_at LỚN NHẤT nhận được (không dùng giờ client)
-└── Retry MỘT lần — chỉ khi có thất bại loại transient
+├── Retry MỘT lần — chỉ khi có thất bại loại transient
+└── finally: nếu đang nợ một lần chạy → chạy bù NGAY (dù chu kỳ này hỏng)
 ```
+
+⚠️ **Hai chốt "không chạy bây giờ" đều phải HẸN LẠI, không được chỉ `return`.**
+Nhánh giãn cách vốn đã đúng; nhánh "đang chạy" thì **chỉ `return`** cho tới
+2026-09-13 — yêu cầu đến giữa chu kỳ **biến mất**, và thay đổi vừa ghi nằm chờ
+timer 15 phút, đổi mạng, hoặc lần mở app sau. Cửa sổ ấy không hiếm: hai nguồn
+dày nhất (`scheduleSync()` sau mỗi lần ghi, và `sync.completed` của socket đánh
+thức `syncNow()`) đều hay rơi đúng vào lúc một chu kỳ đang chạy. Hỏng **im
+lặng** — không lỗi, không log. Nay ghi nợ bằng `_noMotLanChay` và trả nợ trong
+`finally`; là `bool` chứ không phải bộ đếm vì `_collectPendingOps` gom toàn bộ
+bản ghi `pending`, nên nhiều yêu cầu dồn lại vẫn chỉ đáng **một** lần chạy bù.
+Có test canh cả hai vế: `test/core/sync/sync_yeu_cau_giua_chu_ky_test.dart`.
 
 ### Phân loại lỗi đẩy dữ liệu
 
@@ -885,6 +900,13 @@ src/Backend/
   > ⚠️ **Hàng `3c90acfa…` của hoá đơn `Kiem` KHÔNG dùng để kiểm được**: nó đã lệch sẵn (server `Payed`, máy `Pending`) và mọi lần đẩy đều nhận *"Hóa đơn đã được thanh toán, không thể thay đổi trạng thái"* — bằng chứng **CAN-LAM 17 B**, không phải lỗi của hạng mục này. Sau lượt kiểm, hàng ấy đã được trả về đúng trạng thái bằng chứng cũ. ✅ Từ 15:10 ngày 2026-09-12 (sau gộp `cbbeeb4`) hàng ấy đã `synced`, server `Pending` — bằng chứng không còn, và hàng dùng lại để kiểm được.
   > **Mức nền sau hạng mục:** `flutter test` **2211/2211** (2 phút 39 giây; 37 ca mới so với mốc 2174), `flutter analyze` **25 issue = 0 error** — khớp mức nền. Cụm `test/features/bill/` có **219** ca (đếm bằng máy 2026-09-12).
 
+- **Sửa lỗi: yêu cầu đồng bộ đến giữa chu kỳ đang chạy bị NUỐT** (2026-09-13, **schema không đổi**; 2 ca test mới). Việc nhỏ thứ ba trong danh sách. `_runSync` từ chối chạy chồng bằng `if (_status == SyncStatus.syncing) return;` — không chạy chồng là **đúng**, nhưng chỉ `return` thì yêu cầu ấy **mất hẳn**: thay đổi vừa ghi phải chờ một nguồn kích hoạt khác (timer 15 phút, đổi mạng, hoặc lần mở app sau). Hỏng **im lặng** — không lỗi, không log, không test đỏ.
+  > **Vì sao đáng sửa chứ không phải "thiết kế có chủ ý":** nhánh **giãn cách** ngay bên dưới trong **cùng hàm** xử lý đúng tình huống song sinh và ghi rõ lý lẽ — *"Từ chối một yêu cầu đồng bộ nghĩa là NỢ người gọi một lần chạy. Chỉ `return` ở đây thì thay đổi vừa ghi nằm chờ một nguồn kích hoạt khác"* — rồi gọi `_scheduleBackoffRetry`. Hai chốt cùng nghĩa, hai cách xử lý khác nhau; nhánh `syncing` là nhánh bị bỏ quên.
+  > **Cửa sổ này không hiếm:** hai nguồn kích hoạt **dày nhất** lại là hai nguồn hay rơi đúng lúc đang chạy — `scheduleSync()` sau mỗi lần ghi (debounce 2 giây, gọi từ 19 vị trí) và sự kiện `sync.completed` của socket (G34) đánh thức `syncNow()` khi **máy khác vừa đẩy xong**. Mất một lượt ở đây là hai máy lệch nhau tới tận chu kỳ sau.
+  > **Sửa:** cờ `_noMotLanChay` đặt ở chốt, trả nợ trong `finally` của `_runSync`. Đặt trong `finally` để chu kỳ bù vẫn chạy khi chu kỳ hiện tại **kết thúc bằng lỗi** — yêu cầu bị từ chối không liên quan gì tới việc chu kỳ đang chạy thành hay bại. Là `bool` chứ không phải bộ đếm: `_collectPendingOps` gom **toàn bộ** bản ghi còn `pending` chứ không xử theo từng yêu cầu, nên nhiều yêu cầu dồn vào một cửa sổ vẫn chỉ đáng **một** lần chạy bù.
+  > **TDD:** hai ca ở `test/core/sync/sync_yeu_cau_giua_chu_ky_test.dart` (adapter giữ lượt `/sync/pull` đầu treo bằng `Completer` để đứng hẳn bên trong cửa sổ). Đỏ trước với đúng câu *"Hết 5 giây chờ: chu kỳ thứ hai chạy bù"*. ⚠️ Lượt viết test đầu đỏ **sai lý do** — `await engine.start(...)` treo tới timeout 90 giây, vì `start()` kết thúc bằng `await syncNow()`; phải `unawaited` nó thì mới đứng được trong cửa sổ cần đo. Ca thứ hai canh vế ngược lại: ba `syncNow()` dồn vào một cửa sổ vẫn chỉ đẻ **một** chu kỳ bù.
+  > **Mức nền sau hạng mục:** `flutter test` **2266/2266**, `flutter analyze` **25 issue = 0 error**.
+
 - **Đóng G36 — đo đầu-cuối ba ca `/auth/refresh` qua API admin** (2026-09-13, **không đổi mã chạy**; schema không đổi; chỉ một chú thích sửa). Việc đầu tiên trong danh sách năm bước còn tồn. Backend dev chạy mã `7779999`, tài khoản thử **tự đăng ký** qua `/auth/register` (`kiemthu_g36_…`, idaccount 16 — nên không cần mật khẩu tài khoản thử cũ), PostgreSQL **chỉ đọc**, mọi thay đổi trạng thái đi qua API admin đúng đường người dùng thật. Mật khẩu admin do người dùng đưa lại trong phiên — **không ghi vào tài liệu hay commit**.
   > **Ba ca, cả ba đúng:** **A** `Active` → **200** *"Token đã được làm mới"*, không mã (đối chứng). **B** `Inactive` (`PATCH /admin/updatestatus/16`) → **401 + `code: ACCOUNT_INACTIVE`**, kèm `idaccount: 16` và `reason_inactive` ở **cấp gốc**, `message` mang nguyên câu lý do admin nhập. **C** `Deleted` (`DELETE /admin/deleteuser/16`, xoá **mềm**) → **401 + `code: ACCOUNT_DELETED`** kèm `idaccount: 16`, **dù cả 4/4 refresh token đã bị thu hồi** — đây chính là ca gốc của G36 và là thứ CAN-LAM 20 §2.7 sửa (nhánh token thu hồi gọi `getAccountValidity` trước khi ném).
   > **Một bẫy khi đo:** `PATCH /admin/updatestatus/:id` nhận **`iduser`**, không phải `idaccount`, và body **bắt buộc** có `reason_inactive` (hoặc `reason`) khi đặt `Inactive` — thiếu là 400 *"Vui lòng cung cấp lý do vô hiệu hóa tài khoản!"*, mà lỗi ấy **im lặng làm hỏng phép đo**: trạng thái vẫn `Active` nên `/auth/refresh` trả 200 và trông như backend sai. Lượt đo đầu tiên đã vấp đúng chỗ này.
@@ -1094,8 +1116,10 @@ G15, G17, G21. Bản trước của mục này ghi ngày 04/09 và **sai bốn t
 > qua API admin — khối "Đóng G36…" đầu mục này). Danh sách còn tồn nay **bốn** việc, không phải
 > năm: **bước 2** — chốt ngoại lệ `lamMoi` §3.6b (⚠️ lý lẽ cũ đã bị phép đo G36 lật, xem khối
 > "Đóng G36…"); **bước 12** — đồng bộ `Auto_pay` (lớn nhất, hết bị chặn); **bước 13** — G28
-> `wallet.status`; và ba việc nhỏ (hai màn Stitch "Chi tiết hoá đơn" Desktop thiếu dòng "Kỳ";
-> cửa sổ `syncNow()` bị bỏ khi `_runSync` đang chạy; `git add -f` spec socket).
+> `wallet.status`; và ba việc nhỏ — ✅ **hai trong ba xong 2026-09-13**: `git add -f` spec socket
+> (9 chỗ dẫn chiếu mà chưa có trong repo) và cửa sổ `syncNow()` bị nuốt khi `_runSync` đang
+> chạy (khối "Sửa lỗi: yêu cầu đồng bộ…" đầu mục này). Còn **một**: hai màn Stitch
+> "Chi tiết hoá đơn" Desktop thiếu dòng "Kỳ".
 
 **Không còn lỗi client nào sửa được mà không phải chờ ai** (đúng tới 2026-09-10,
 xem ghi chú trên)**.** Việc tiếp theo là
