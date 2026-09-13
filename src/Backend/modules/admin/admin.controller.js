@@ -136,7 +136,8 @@ const adminController = {
       return ResponseHandler.success(res, result, 'Xóa danh mục thành công');
     } catch (error) {
       logger.error('deleteCategory failed', { error: error.message });
-      return ResponseHandler.error(res, error.message);
+      const statusCode = error.statusCode || 500;
+      return ResponseHandler.error(res, error.message, statusCode);
     }
   },
 

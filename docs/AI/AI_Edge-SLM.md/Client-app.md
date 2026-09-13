@@ -59,6 +59,8 @@ Raw Transactions (SQLite/local DB)
       Người dùng
 ```
 
+> ⚠️ **Quy ước dấu:** `transaction.Amount` trên PostgreSQL giữ dấu $\pm$ (âm = tiền ra), nhưng **SQLite của client thì không** — `amount` luôn dương, chiều tiền đọc ở `type` (`'chi' | 'thu' | 'transfer'`). Tầng 1 đọc SQLite nên mọi công thức dưới đây dùng `type`, không dùng dấu.
+
 Nguyên tắc xuyên suốt: **số liệu luôn đến từ Tầng 1-2 (deterministic, audit được), SLM ở Tầng 3 không bao giờ tự tính toán số học** — chỉ diễn giải và hội thoại trên số liệu đã đúng.
 
 ---
@@ -77,6 +79,8 @@ Transaction = {
   merchant/note (optional, dùng để clustering nếu category chưa gán)
 }
 ```
+
+> ⚠️ `is_recurring_hint`, `is_outlier` (A1) và `is_one_time` (A2) **chưa tồn tại** trong bảng `Transactions` của client (đo 2026-09-13). Ba cột này phải được thêm bằng một migration Drift (schema hiện tại **v21**) trước khi nhóm A chạy được; `is_outlier` là giá trị **suy ra** nên có thể đặt ở bảng cache `local_category_features` thay vì bảng giao dịch, còn `is_one_time` là cờ **do người dùng bấm** nên bắt buộc nằm ở hàng giao dịch.
 
 #### 1.3. Đặc trưng tính cho mỗi danh mục (category-level features)
 
@@ -115,6 +119,8 @@ Transaction = {
   ]
 }
 ```
+
+> ⚠️ **Mô hình ngân sách thật của client rộng hơn giả định trên** (đo 2026-09-13): `budgets.categoryId` **nullable** — có ngân sách **tổng** không gắn danh mục; và kỳ ngân sách chạy theo `startDate`/`endDate` tuỳ ý cộng `timeRecurrence`, **không** bắt buộc là tháng dương lịch, lại có trạng thái hết hạn (`isExpired`). Vì vậy trước khi hiện thực Tầng 1 phải chốt: (a) ngân sách tổng là `budget_limit` cấp tài khoản hay bị loại khỏi bài toán; (b) ngân sách kỳ không phải tháng quy về `month` bằng cách nào; (c) ngân sách hết hạn **bị loại** khỏi `slack` — theo đúng tiền lệ "% ngân sách" ở trang Phân tích.
 
 ---
 
@@ -191,6 +197,8 @@ if Σ new_budget[j] > total_allowed:
         cut[j] = excess * ( (1-essentiality[j]) / Σ(1-essentiality[k]) )   # cắt tỷ lệ theo mức "không thiết yếu"
         new_budget[j] -= cut[j]
 ```
+
+> ⚠️ `saving_goal_ratio` **chưa tồn tại** ở client (đo 2026-09-13): mục tiêu tiết kiệm là **số tiền đích kèm hạn** (`Goals.targetDate`, `autoDepositAmount`), và một tài khoản có nhiều mục tiêu song song. Trước khi D3/D5 chạy được, phải chốt một trong hai: (a) thêm một thiết lập "tỷ lệ tiết kiệm mục tiêu" ở cấp tài khoản, hoặc (b) suy `saving_goal_ratio` cho tháng hiện tại từ tổng số tiền các mục tiêu **còn hạn** cần tích luỹ trong tháng chia cho `income`. Phương án (b) không cần schema mới.
 
 #### 2.5. Conflict Handling — học từ chỉnh tay của người dùng
 
@@ -278,11 +286,13 @@ Khuyến nghị: bắt đầu với **MediaPipe LLM Inference + Gemma nhỏ (2B,
 3. **V3**: Conflict handling (mục 2.5) đưa vào, essentiality trở nên thực sự cá nhân hóa theo thời gian sử dụng.
 4. **V4** (tùy chọn): Nâng Tầng 2 từ greedy algorithm lên linear programming thực sự nếu cần độ chính xác tối ưu toàn cục cao hơn.
 
+> 💡 *Tận dụng giao diện có sẵn:* Màn hình chat `lib/features/ai_chat/presentation/pages/ai_chat_page.dart` (436 dòng) đã tồn tại sẵn trên client và chưa nối API nào. Tầng 3 nên tích hợp trực tiếp vào màn hình này thay vì dựng mới.
+
 ---
 
 ## 📜 PHẦN III: HỆ THỐNG QUY TẮC NGHIỆP VỤ & ĐẶC TẢ VẬN HÀNH CHI TIẾT (BUSINESS RULES)
 
-Phần này chốt lại toàn bộ các quy tắc nghiệp vụ thực chiến — kết hợp chặt chẽ giữa **7 nhóm quy tắc kinh doanh (A-G)** và **4 giải pháp khắc phục góc khuất kỹ thuật/toán học**. Đây là luật bất biến để hệ thống vận hành nhất quán, chính xác về toán và hợp lý về trải nghiệm người dùng.
+Phần này chốt lại toàn bộ các quy tắc nghiệp vụ thực chiến — kết hợp chặt chẽ giữa **8 nhóm quy tắc kinh doanh (A–H)** và **4 giải pháp khắc phục góc khuất kỹ thuật/toán học**. Đây là luật bất biến để hệ thống vận hành nhất quán, chính xác về toán và hợp lý về trải nghiệm người dùng.
 
 ---
 
@@ -292,7 +302,7 @@ Phần này chốt lại toàn bộ các quy tắc nghiệp vụ thực chiến 
 |:---:|---|---|---|
 | **A1** | **Xử lý Outlier Chi Tiêu Đột Biến** | Nếu một giao dịch có giá trị: `amount > 3 * avg_spend` của danh mục đó (hoặc vượt ngưỡng tuyệt đối do người dùng cấu hình), giao dịch sẽ được gắn cờ `is_outlier = true`.<br>• Giao dịch bị **loại trừ hoàn toàn** khỏi phép tính `avg_spend_3m`, `avg_spend_6m`, `CV`, `trend_slope`.<br>• Giao dịch **vẫn được tính 100%** vào `current_spend` và `projected_spend` của tháng hiện tại. | Tránh trường hợp 1 giao dịch mua xe máy hay đồ điện tử đắt tiền trong mục "Mua sắm" làm méo mó baseline dài hạn, nhưng vẫn phải phản ánh đúng nguy cơ thủng ngân sách trong tháng hiện tại. |
 | **A2** | **Loại Trừ Giao Dịch Một Lần (One-Time Event)** | Giao dịch được người dùng gắn cờ thủ công `is_one_time = true` (viện phí, tai nạn, sửa nhà, mua đồ công nghệ) luôn bị loại khỏi tính toán `regularity` và `essentiality`. | Tránh việc hệ thống học nhầm các sự kiện hy hữu mang tính bất khả kháng thành nhu cầu lặp lại định kỳ. |
-| **A3** | **Xử Lý Hoàn Tiền (Refund / Reversal)** | Khi phát sinh giao dịch hoàn tiền (`amount < 0` trong danh mục Chi tiêu), số tiền hoàn được cộng bù trực tiếp vào `current_spend` của **tháng ghi nhận refund** (`current_spend += amount`). Tuyệt đối không trừ lùi vào tháng gốc trong quá khứ. | Bảo toàn nguyên tắc thiết kế: Giữ tính đơn giản, không phải kích hoạt recompute lại lịch sử các tháng trước. |
+| **A3** | **Xử Lý Hoàn Tiền (Refund / Reversal)** | Khi phát sinh giao dịch hoàn tiền — ở SQLite cục bộ là một hàng `type = 'thu'` gắn danh mục chi tiêu, **không phải** `amount < 0`, vì `amount` ở SQLite luôn dương và chiều tiền nằm ở `type` — số tiền hoàn được **trừ** khỏi `current_spend` của **tháng ghi nhận refund**. Tuyệt đối không trừ lùi vào tháng gốc trong quá khứ. | Bảo toàn nguyên tắc thiết kế: Giữ tính đơn giản, không phải kích hoạt recompute lại lịch sử các tháng trước. |
 | **A4** | **Chặn Giao Dịch Chưa Phân Loại (Uncategorized Guard)** | Các giao dịch chưa được gán danh mục (`category_id IS NULL`) tuyệt đối không được đưa vào Tầng 2 để tính tái phân bổ ngân sách (Reallocation) cho đến khi được gán danh mục hợp lệ (tự động qua Keyword/Merchant matching hoặc người dùng tự chọn). | Tránh đưa ra đề xuất tái phân bổ sai lệch do thiếu ngữ cảnh phân loại. |
 | **A5** | **Bảo Vệ Outlier Trên Danh Mục Baseline Nhỏ** | Ngưỡng xác định `outlier` ở quy tắc A1 áp dụng hệ số $3\times$, nhưng nếu danh mục có `avg_spend < 100.000đ`, hệ thống chuyển sang dùng ngưỡng tuyệt đối tối thiểu (mặc định: `> 500.000đ`) mới tính là outlier. | Tránh tình trạng dương tính giả (False Positive) trên số nhỏ (Ví dụ: Danh mục gửi xe tháng trước chi 20.000đ, tháng này phát sinh 80.000đ là gấp 4 lần nhưng không phải outlier bất thường). |
 | **A6** *(Góc khuất 2)* | **Phân Tách Chi Phí Một Lần (Lump-sum) vs Liên Tục (Continuous)** | Hệ thống phân loại bản chất danh mục dựa trên tần suất:<br>• **Khoản chi một lần / Cố định (Lump-sum Fixed):** Danh mục có `txn_frequency <= 2` và `regularity >= 0.8` (Tiền nhà, tiền điện, tiền mạng, học phí).<br>• **Khoản chi liên tục (Continuous):** Danh mục có `txn_frequency > 5` (Ăn uống, cafe, đi chợ, đổ xăng). | Khoản chi một lần phát sinh tập trung vào 1 ngày duy nhất trong tháng, không thể nhân tỷ lệ theo ngày trôi qua vì sẽ làm sai lệch dự phóng. |
@@ -330,7 +340,7 @@ Phần này chốt lại toàn bộ các quy tắc nghiệp vụ thực chiến 
 
 | Mã Quy Tắc | Tên Quy Tắc | Nội Dung Chi Tiết & Quy Chuẩn Áp Dụng | Lý Do Kỹ Thuật & Nghiệp Vụ |
 |:---:|---|---|---|
-| **D1** | **Xử Lý Thu Nhập Không Cố Định (Freelance / Kinh Doanh)** | Với người dùng có thu nhập biến động, giá trị `income` đưa vào Tầng 2 để tính toán là **Trung bình trượt 3 tháng gần nhất** (`avg_income_3m`), không dùng số thu nhập thực nhận của tháng hiện tại. | Tránh tính sai margin và mục tiêu khi tháng hiện tại tiền lương/doanh thu chưa về đủ tài khoản. |
+| **D1** | **Xử Lý Thu Nhập Không Cố Định (Freelance / Kinh Doanh)** | Với người dùng có thu nhập biến động, giá trị `income` đưa vào Tầng 2 để tính toán là **Trung bình trượt 3 tháng gần nhất** (`avg_income_3m`), không dùng số thu nhập thực nhận của tháng hiện tại.<br><br>⚠️ *Lưu ý dữ liệu client:* Client **không lưu** thu nhập ở đâu cả (đo 2026-09-13) — con số ở Trang chủ được cộng tại chỗ cho tháng hiện tại rồi bỏ. `avg_income_3m` phải do Tầng 1 tự tính bằng cách cộng các giao dịch `type = 'thu'` theo tháng và lưu vào `local_category_features` (hoặc một bảng `local_income_stats` riêng), chứ không đọc được từ trường nào có sẵn. | Tránh tính sai margin và mục tiêu khi tháng hiện tại tiền lương/doanh thu chưa về đủ tài khoản. |
 | **D2** | **Chế Độ Thận Trọng Tức Thì (Precautionary Mode)** | Khi phát hiện thu nhập thực tế của tháng hiện tại bị sụt giảm $> 30\%$ so với mức trung bình 3 tháng $\rightarrow$ Hệ thống lập tức kích hoạt Chế độ Thận trọng: Tự động hạ toàn bộ `budget_limit` của các danh mục linh hoạt theo tỷ lệ tương ứng trước khi tính thâm hụt. | Chủ động phòng ngừa rủi ro tài chính sớm thay vì chờ thâm hụt xảy ra rồi mới đi tìm nguồn bù. |
 | **D3** | **Bất Khả Xâm Phạm Mục Tiêu Tiết Kiệm (Goal Sovereign)** | Tỷ lệ mục tiêu tiết kiệm (`saving_goal_ratio`) do người dùng toàn quyền thiết lập. AI **tuyệt đối không tự ý tăng giảm mục tiêu này** mà chỉ đưa ra khuyến nghị phân tích để người dùng tự xác nhận. | Mục tiêu tiết kiệm là quyết định tài chính cá nhân mang tính chiến lược, AI không được phép áp đặt. |
 | **D4** | **Cảnh Báo Thâm Hụt Cấu Trúc Dài Hạn** | Nếu tình trạng mục tiêu tiết kiệm rơi vào trạng thái nguy cấp (`goal_status = 'at_risk'`) trong **3 tháng liên tiếp** $\rightarrow$ Hệ thống chuyển đổi chiến lược: Ngừng đề xuất tái phân bổ vụn vặt hàng tuần, chuyển sang khuyến nghị xem xét lại cơ cấu mục tiêu hoặc kế hoạch tài chính vĩ mô. | Khi vấn đề mang tính cơ cấu (thu không đủ bù chi dài hạn), việc tái phân bổ vi mô giữa các danh mục không còn giải quyết được tận gốc vấn đề. |
@@ -350,25 +360,12 @@ Phần này chốt lại toàn bộ các quy tắc nghiệp vụ thực chiến 
 
 ---
 
-### ⚡ NHÓM H: Quy Tắc Hiệu Năng Mobile, Luồng Xử Lý & Bộ Nhớ Cục Bộ
-
-*(Tích hợp giải pháp từ Góc khuất 3)*
-
-| Mã Quy Tắc | Tên Quy Tắc | Nội Dung Chi Tiết & Giải Pháp Kiến Trúc | Lý Do Kỹ Thuật & Nghiệp Vụ |
-|:---:|---|---|---|
-| **H1** | **Cách Ly Tiến Trình Nền (Background Isolate Separation)** | Toàn bộ các tác vụ tính toán Tầng 1 (Full recompute), Tầng 2 (Tối ưu hóa phân bổ) và Tầng 3 (Chạy suy luận SLM + Regex Validator) **BẮT BUỘC PHẢI CHẠY TRONG DART ISOLATE / `compute()`**. Tuyệt đối không chạy trên Main UI Thread. | Đảm bảo giao diện người dùng trên Flutter luôn duy trì mượt mà 60 FPS / 120 FPS, không bị giật lag hay đơ màn hình khi AI đang suy luận. |
-| **H2** | **Quản Lý Mức Pin & Nhiệt Độ (Thermal & Battery Throttling)** | Nếu pin thiết bị $< 15\%$ hoặc hệ điều hành báo trạng thái thiết bị quá nhiệt (Thermal Throttling):<br>• Tạm hoãn việc khởi chạy mô hình SLM Tầng 3.<br>• Tự động chuyển sang sử dụng bộ sinh câu mẫu **Template String** ở Tầng 3. | Bảo vệ phần cứng điện thoại, tiết kiệm pin tối đa và phòng ngừa ứng dụng bị hệ điều hành tắt ngang. |
-| **H3** | **Cơ Chế Suy Thoái Mềm (Graceful Degradation Fallback)** | Với các thiết bị đời cũ có RAM khả dụng $< 1.0\text{GB}$, hoặc khi thư viện suy luận SLM gặp lỗi khởi tạo runtime $\rightarrow$ Tầng 1 và Tầng 2 vẫn chạy 100% bình thường, Tầng 3 chuyển 100% sang Template String Engine mà không hiển thị thông báo lỗi kỹ thuật nào ra UI. | Đảm bảo trải nghiệm người dùng không bao giờ bị đứt gãy hay crash app trên mọi dòng máy từ yếu đến mạnh. |
-| **H4** | **Cấu Trúc Bảng Dữ Liệu SQLite Cục Bộ Của AI Điên** | Thiết lập 2 bảng SQLite nội bộ trên Client-app để lưu trữ trạng thái hoạt động (không đồng bộ lên Backend để bảo đảm tốc độ và quyền riêng tư):<br>1. `local_category_features`: Lưu các chỉ số đặc trưng đã tính toán (Tầng 1 cache).<br>2. `local_rebalancing_feedback`: Lưu trữ nhật ký phản hồi ngầm phục vụ vòng lặp học tập của Tầng 2. | Đạt tốc độ truy vấn tức thì $O(1)$, không phụ thuộc vào kết nối mạng hay server. |
-
----
-
 ### 🛡️ NHÓM F: Quy Tắc Bảo Mật & Quyền Riêng Tư Cục Bộ (100% On-Device Privacy)
 
 | Mã Quy Tắc | Tên Quy Tắc | Nội Dung Chi Tiết & Ràng Buộc Kỹ Thuật | Căn Cứ Pháp Lý & An Toàn |
 |:---:|---|---|---|
 | **F1** | **Bảo Mật Cục Bộ Tuyệt Đối (Air-Gapped Processing)** | Toàn bộ dữ liệu giao dịch thô, bảng đặc trưng Feature JSON (Tầng 1) và kế hoạch tái phân bổ Reallocation JSON (Tầng 2) **hoàn toàn không được phép rời khỏi thiết bị di động**. Không gửi dữ liệu này lên bất kỳ API phân tích nào của bên thứ ba. | Tuân thủ 100% Nghị định 13/2023/NĐ-CP, Luật Bảo vệ dữ liệu cá nhân 2025 và chuẩn PCI-DSS. |
-| **F2** | **Mã Hóa Đồng Bộ Đầu Cuối (E2E Backup Protection)** | Trong trường hợp người dùng kích hoạt tính năng đồng bộ đám mây (Cloud Sync) của hệ thống: Toàn bộ ghi chú giao dịch, thông tin nhạy cảm đã được mã hóa AES-256 theo chuẩn `Data_Security.md`. Hệ thống AI Điên chỉ đọc và giải mã cục bộ trên máy để tính toán đặc trưng. | Đảm bảo dữ liệu an toàn ở cả 2 trạng thái: At-rest và In-transit. |
+| **F2** | **Ranh Giới Mã Hóa (Encryption Boundaries)** | Ghi chú giao dịch nằm **dạng thô** trong SQLite của client và đi qua `/sync/push` / `/sync/pull` cũng ở dạng thô (`sync_engine.dart:1222`, `:562`); client **không** mã hoá và **không** giải mã trường này. Việc mã hoá AES-256 theo `Data_Security.md` là lớp **at-rest phía server**, không thay đổi gì trên máy người dùng. Vì vậy quyền riêng tư của Tầng 1–2 dựa hoàn toàn vào F1 (dữ liệu không rời thiết bị) và F3 (SLM không có mạng), chứ không dựa vào mã hoá. Nếu sau này cần mã hoá dữ liệu cục bộ, đó là một hạng mục riêng chưa có trong lộ trình. | Minh bạch ranh giới bảo mật: Tránh giả định sai về lớp mã hoá cục bộ trên client. |
 | **F3** | **Cô Lập Mạng Cho SLM On-Device (Zero Network Access)** | Thư viện suy luận mô hình SLM (MediaPipe / llama.cpp) được cấu hình chạy ở chế độ Offline 100%, không cấp quyền mở Socket hay HTTP Request ra Internet. Nếu trong tương lai có tùy chọn fallback sang Cloud LLM cho các câu hỏi phức tạp, bắt buộc phải có màn hình xin phép đồng ý rõ ràng (Consent Dialog) từ người dùng. | Triệt tiêu hoàn toàn nguy cơ lộ lọt dữ liệu thói quen chi tiêu cá nhân qua các truy vấn AI. |
 
 ---
@@ -385,9 +382,24 @@ Phần này chốt lại toàn bộ các quy tắc nghiệp vụ thực chiến 
 
 ---
 
+### ⚡ NHÓM H: Quy Tắc Hiệu Năng Mobile, Luồng Xử Lý & Bộ Nhớ Cục Bộ
+
+*(Tích hợp giải pháp từ Góc khuất 3)*
+
+| Mã Quy Tắc | Tên Quy Tắc | Nội Dung Chi Tiết & Giải Pháp Kiến Trúc | Lý Do Kỹ Thuật & Nghiệp Vụ |
+|:---:|---|---|---|
+| **H1** | **Cách Ly Tiến Trình Nền (Background Isolate Separation)** | Toàn bộ các tác vụ tính toán Tầng 1 (Full recompute), Tầng 2 (Tối ưu hóa phân bổ) và Tầng 3 (Chạy suy luận SLM + Regex Validator) **BẮT BUỘC PHẢI CHẠY TRONG DART ISOLATE / `compute()`**. Tuyệt đối không chạy trên Main UI Thread. | Đảm bảo giao diện người dùng trên Flutter luôn duy trì mượt mà 60 FPS / 120 FPS, không bị giật lag hay đơ màn hình khi AI đang suy luận. |
+| **H2** | **Quản Lý Mức Pin & Nhiệt Độ (Thermal & Battery Throttling)** | Nếu pin thiết bị $< 15\%$ hoặc hệ điều hành báo trạng thái thiết bị quá nhiệt (Thermal Throttling):<br>• Tạm hoãn việc khởi chạy mô hình SLM Tầng 3.<br>• Tự động chuyển sang sử dụng bộ sinh câu mẫu **Template String** ở Tầng 3. | Bảo vệ phần cứng điện thoại, tiết kiệm pin tối đa và phòng ngừa ứng dụng bị hệ điều hành tắt ngang. |
+| **H3** | **Cơ Chế Suy Thoái Mềm (Graceful Degradation Fallback)** | Với các thiết bị đời cũ có RAM khả dụng $< 1.0\text{GB}$, hoặc khi thư viện suy luận SLM gặp lỗi khởi tạo runtime $\rightarrow$ Tầng 1 và Tầng 2 vẫn chạy 100% bình thường, Tầng 3 chuyển 100% sang Template String Engine mà không hiển thị thông báo lỗi kỹ thuật nào ra UI. | Đảm bảo trải nghiệm người dùng không bao giờ bị đứt gãy hay crash app trên mọi dòng máy từ yếu đến mạnh. |
+| **H4** | **Cấu Trúc Bảng Dữ Liệu SQLite Cục Bộ Của AI Điên** | Thiết lập 3 bảng SQLite nội bộ trên Client-app để lưu trữ trạng thái hoạt động (không đồng bộ lên Backend để bảo đảm tốc độ và quyền riêng tư):<br>1. `local_category_features`: Lưu các chỉ số đặc trưng đã tính toán (Tầng 1 cache).<br>2. `local_rebalancing_feedback`: Lưu trữ nhật ký phản hồi ngầm phục vụ vòng lặp học tập của Tầng 2.<br>3. `local_ai_alert_history`: Lưu trữ nhật ký cảnh báo phục vụ điều tiết tần suất (Quy tắc B3 & B6). | Đạt tốc độ truy vấn tức thì $O(1)$, không phụ thuộc vào kết nối mạng hay server. |
+
+---
+
 ## 🏗️ PHẦN IV: CẤU TRÚC BẢNG DỮ LIỆU SQLITE CỤC BỘ CHO CLIENT-APP
 
-Để hiện thực hóa toàn bộ các quy tắc trên mà không làm ảnh hưởng đến cấu trúc CSDL đồng bộ với Backend, Client-app sẽ tạo thêm 2 bảng nội bộ trên SQLite cục bộ (`local_only`):
+Để hiện thực hóa toàn bộ các quy tắc trên mà không làm ảnh hưởng đến cấu trúc CSDL đồng bộ với Backend, Client-app sẽ tạo thêm 3 bảng nội bộ trên SQLite cục bộ (`local_only`):
+
+> 💡 *Lưu ý triển khai Drift:* Client không chạy SQL raw thủ công mà định nghĩa bảng qua Dart trong `lib/core/database/tables/`, sinh mã bằng `dart run build_runner build --delete-conflicting-outputs` và mỗi lần đổi phải tăng `schemaVersion` (hiện tại v21) kèm migration tương ứng. Ba bảng dưới đây là đặc tả cấu trúc cột dữ liệu.
 
 ```sql
 -- 1. Bảng lưu trữ đặc trưng danh mục đã tính toán (Tầng 1 Cache)

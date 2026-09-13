@@ -250,7 +250,7 @@ const adminService = {
 
     const { prisma } = require('../../config/db');
 
-    // Check unique [Is_default & namecategory] (không được phép có 2 category hệ thống giống nhau)
+    // Check unique [Is_default & namecategory] (không được phép có 2 category hệ thống giống nhau đang active)
     const existingDefault = await prisma.category.findFirst({
       where: {
         name_category: { equals: trimmedName, mode: 'insensitive' },
@@ -260,6 +260,29 @@ const adminService = {
     });
     if (existingDefault) {
       throw Object.assign(new Error(`Danh mục hệ thống "${trimmedName}" đã tồn tại trong hệ thống. Không được phép tạo trùng tên.`), { statusCode: 400 });
+    }
+
+    // Nếu đã có danh mục hệ thống cùng tên bị xóa mềm: tự động khôi phục (restore) và cập nhật thông tin mới
+    const softDeleted = await prisma.category.findFirst({
+      where: {
+        name_category: { equals: trimmedName, mode: 'insensitive' },
+        is_default: true,
+        delete_at: { not: null },
+      },
+    });
+    if (softDeleted) {
+      const restored = await prisma.category.update({
+        where: { idcategory: softDeleted.idcategory },
+        data: {
+          name_category: trimmedName,
+          classify: canonicalClassify,
+          keyword: data.keyword ? data.keyword.trim() : null,
+          icon: data.icon || softDeleted.icon,
+          delete_at: null,
+          update_at: new Date(),
+        },
+      });
+      return { id: restored.idcategory, name: restored.name_category, classify: restored.classify, keyword: restored.keyword };
     }
 
     const result = await adminRepository.createCategory({
@@ -336,10 +359,7 @@ const adminService = {
     if (!cat.is_default) {
       throw Object.assign(new Error('Vi phạm quyền riêng tư: Tuyệt đối cấm xóa danh mục của người dùng.'), { statusCode: 403 });
     }
-    // Bảo vệ danh mục hệ thống theo Rule_project.md 1.3: Danh mục hệ thống không thể bị xóa
-    if (cat.is_default) {
-      throw Object.assign(new Error('Không được phép xóa danh mục mặc định của hệ thống.'), { statusCode: 400 });
-    }
+    // Cho phép Admin xóa mềm danh mục hệ thống (Soft-delete: set delete_at = now())
     await adminRepository.deleteCategory(idcategory);
     return { id: idcategory };
   },
