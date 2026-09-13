@@ -2704,6 +2704,15 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   2. **Tầng 2 (Reasoning & Optimization Engine - Thuật toán cân đối có trọng số):** Tính Essentiality score (học theo hành vi), đo độ co giãn elasticity, tự động phát hiện thâm hụt và chọn nguồn bù từ các donor có độ linh hoạt cao; cơ chế học ngầm (implicit feedback) từ phản hồi người dùng; ràng buộc mục tiêu tiết kiệm.
   3. **Tầng 3 (On-Device SLM - Diễn giải & Hội thoại):** Mô hình ngôn ngữ nhỏ (Gemma Nano, MediaPipe LLM Inference) nhận JSON từ Tầng 2 làm grounding context để diễn giải tự nhiên và trả lời câu hỏi; thiết lập cơ chế Guardrails chống hallucination số học bằng validator đối soát và fallback 2 lớp an toàn.
 - **Roadmap triển khai:** MVP (Tầng 1 + Tầng 2 + Template string) $\rightarrow$ V2 (Tích hợp On-device SLM + Guardrail) $\rightarrow$ V3 (Conflict handling học ngầm) $\rightarrow$ V4 (Tối ưu hóa tuyến tính Linear Programming).
+- **Hệ thống quy tắc nghiệp vụ toàn diện (Business Rules A-H):**
+  - *Nhóm A (Làm sạch & Nhận diện):* A1 (lọc outlier $> 3\times$), A2 (loại trừ một lần), A3 (hoàn tiền không trừ lùi), A4 (chặn uncategorized), A5 (bảo vệ baseline nhỏ), A6 (phân tách Lump-sum vs Continuous).
+  - *Nhóm B (Cảnh báo & Dự phóng):* B1 ($\ge 2$ tháng dữ liệu), B2 (ngưỡng thâm hụt kép $\ge 10\%$ và $\ge 50.000đ$), B3 (cooldown 48h chống spam), B4-B5 (chống bẫy đầu tháng, dự phóng Bayesian nội suy), B6 (tối đa 1 đề xuất chủ động/tuần chống AI fatigue).
+  - *Nhóm C (Nguồn bù & Giới hạn):* C1 (essentiality $\ge 0.75 \rightarrow$ Protected cấm cắt), C2 (manual override tối cao), C3 (max cut ratio $25\% \rightarrow 15\%$), C4 (vùng đệm donor $\ge 100.000đ$, min transfer), C5 (trạng thái `insufficient_slack` trung thực), C6 (xếp hạng donor theo slack $\times (1 - \text{essentiality})$).
+  - *Nhóm D (Mục tiêu & Thu nhập biến động):* D1 (thu nhập trượt 3 tháng), D2 (chế độ thận trọng khi thu nhập giảm $> 30\%$), D3 (không tự ý nâng saving goal), D4 (chuyển đổi tư vấn khi thâm hụt cơ cấu 3 tháng).
+  - *Nhóm E (Tương tác & Học ngầm):* E1 (trạng thái pending bắt buộc, người dùng quyết định 100%), E2 (chấp nhận từng phần), E3 (ghi nhận `user_final_change`), E4 (học ngầm giảm elasticity qua EMA $\alpha=0.25$), E5 (phân biệt trực quan resolved vs insufficient slack).
+  - *Nhóm H (Hiệu năng mobile):* H1 (chạy 100% trong Dart Background Isolate giữ 60/120 FPS), H2 (quản lý pin & nhiệt độ), H3 (graceful degradation fallback), H4 (2 bảng SQLite cục bộ `local_category_features`, `local_rebalancing_feedback`).
+  - *Nhóm F (Bảo mật on-device):* F1 (không đưa dữ liệu thô/feature ra ngoài thiết bị), F2 (mã hóa đầu cuối), F3 (cô lập mạng zero network access).
+  - *Nhóm G (Định dạng & Làm tròn):* G1 (làm tròn tiền đến bội số 10.000đ), G2 (làm tròn % 1 chữ số thập phân), G3 (luôn hiển thị Data Card số liệu thô song song).
 
 
 
