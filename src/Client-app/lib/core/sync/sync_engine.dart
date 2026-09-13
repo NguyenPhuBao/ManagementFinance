@@ -7,6 +7,7 @@ import 'package:drift/drift.dart';
 import '../api/dio_client.dart';
 import '../bill/bill_recurrence.dart';
 import '../database/app_database.dart';
+import '../../features/wallet/data/services/so_du_vi_service.dart';
 import '../../features/bill/domain/bill_pay_status.dart';
 import 'backend_bool.dart';
 import 'sync_models.dart';
@@ -45,6 +46,9 @@ String? _ngayCucBoUtcIso(DateTime? d) =>
 class SyncEngine {
   // ignore: unused_field — sẽ dùng ở Plan 6 khi backend có sync API
   final DioClient _dioClient;
+
+  /// Nơi duy nhất ghi `wallets.balance`. Dùng ở cuối mỗi lần kéo về.
+  final SoDuViService _soDuVi;
   final AppDatabase _db;
   final Connectivity _connectivity;
 
@@ -238,7 +242,9 @@ class SyncEngine {
     Connectivity? connectivity,
     SyncCheckpointStore? checkpointStore,
     DateTime Function()? now,
-  })  : _dioClient = dioClient,
+    SoDuViService? soDuVi,
+  })  : _soDuVi = soDuVi ?? SoDuViService(db: db),
+        _dioClient = dioClient,
         _db = db,
         _checkpointStore = checkpointStore,
         _now = now ?? DateTime.now,
@@ -529,8 +535,22 @@ class SyncEngine {
                 name: Value(w['name'].toString()),
                 type: Value(SyncPayloadNormalizer.walletTypeFromBackend(
                     w['type']?.toString() ?? 'Cash')),
-                balance: Value(
-                    (num.tryParse(w['balance'].toString()) ?? 0.0).toDouble()),
+                // ⚠️ **KHÔNG đọc số dư của server.**
+                //
+                // `balance` nay là **cache của tổng sổ giao dịch**
+                // (`SoDuViService`), và sổ thì đã đồng bộ đúng. Con số của
+                // server chỉ là ảnh chụp cũ, nên đọc nó về là nuốt mọi thay đổi
+                // cục bộ chưa kịp đẩy — đúng cơ chế của **G37**, đo thật trên
+                // hai máy ảo ngày 2026-09-13: ví bị trừ còn 1.650.000 → push ví
+                // xung đột → pull ghi đè về 2.000.000 → lần trừ biến mất, mà
+                // hàng vừa bị `_markSyncedById` nên cũng không còn gì để đẩy
+                // lại.
+                //
+                // Ví MỚI về từ máy khác không cần cột này để đúng: lần INSERT
+                // đầu lấy mặc định `0`, nhưng **neo là một giao dịch** nên nó
+                // cũng được pull về cùng lượt, và bước tính lại cuối hàm này
+                // cho ra đúng số.
+                balance: const Value.absent(),
                 currency: Value(w['currency']?.toString() ?? 'VND'),
                 icon: Value(w['icon']?.toString() ?? 'wallet'),
                 colour: Value(
@@ -1027,6 +1047,32 @@ class SyncEngine {
           if (newest != null) {
             _lastPullTime = newest;
             await _checkpointStore?.write(accountId, newest);
+          }
+
+          // Tính lại số dư cho ví có giao dịch vừa về — **mốc đóng G37**.
+          //
+          // Nhánh pull chỉ ghi giao dịch vào bảng, **không đụng `balance`**
+          // (trước bản này là 0 dòng), nên giao dịch của máy khác về tới nơi mà
+          // số dư máy này không đổi. Số dư khi ấy chỉ đúng nhờ đồng bộ chính cột
+          // `balance` theo LWW — đúng thứ nhánh ví ở trên vừa thôi đọc.
+          //
+          // Gồm cả ví MỚI về: neo của chúng cũng là một giao dịch, cũng vừa
+          // được kéo về, nên tổng sổ ra đúng số dù cột `balance` khởi tạo bằng 0.
+          final viCanTinhLai = <String>{
+            for (final t in transactions)
+              if (t is Map && t['idwallet'] != null) t['idwallet'].toString(),
+            for (final w in wallets)
+              if (w is Map && (w['idwallet'] ?? w['id']) != null)
+                (w['idwallet'] ?? w['id']).toString(),
+          };
+          if (viCanTinhLai.isNotEmpty) {
+            // Vá neo cho ví chưa có — ví tạo bằng bản app trước 2026-09-13.
+            // Luỹ đẳng, và **an toàn với ví vừa kéo về**: id khoản mở sổ suy
+            // tất định từ `walletId`, nên neo mà máy khác đã tạo cũng vừa được
+            // pull về dưới đúng id ấy và bước này thấy là bỏ qua. Không có tính
+            // tất định ấy thì mỗi máy vá một neo riêng và số dư nhân đôi.
+            await _soDuVi.datNeoNhieuVi(viCanTinhLai);
+            await _soDuVi.tinhLaiNhieuVi(viCanTinhLai);
           }
           // Cờ RIÊNG, không suy ra từ `_lastPullTime`: mốc đó chỉ được đặt khi
           // có dữ liệu trả về, nên một tài khoản mới toanh (chưa có gì trên

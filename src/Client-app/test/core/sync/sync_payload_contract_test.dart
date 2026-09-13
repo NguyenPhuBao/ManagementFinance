@@ -767,7 +767,12 @@ void main() {
       await runSync();
 
       final wallet = await db.walletDao.getById(walletId);
-      expect(wallet?.balance, 5000, reason: 'đọc "balance"');
+      expect(wallet?.balance, isNot(5000),
+          reason: 'Nhánh kéo về **KHÔNG** đọc `balance` của server nữa (đổi '
+              '2026-09-13, đóng G37). Số dư nay là cache của tổng sổ giao dịch '
+              '— con số server chỉ là ảnh chụp cũ, và đọc nó về là nuốt mọi '
+              'thay đổi cục bộ chưa kịp đẩy. Nhánh ĐẨY vẫn gửi `balance` như '
+              'cũ, nên payload ví vẫn 12 trường: hợp đồng một chiều, cố ý.');
       expect(wallet?.colour, '#123456', reason: 'backend dùng "color"');
       expect(wallet?.includeInTotal, false,
           reason: 'Nửa còn lại của cờ này: nó NẰM trong payload đẩy lên nhưng '
