@@ -47,6 +47,16 @@ void main() {
     expect(soLanDongBo, 1);
   });
 
+  test('đồng bộ xong ở máy khác đánh thức đồng bộ', () async {
+    noi();
+    nguon.add(RealtimeEvent.dongBoXong);
+    await Future<void>.delayed(Duration.zero);
+    expect(soLanDongBo, 1,
+        reason: 'Đây là toàn bộ giá trị của G34: máy này kéo về ngay thay vì '
+            'chờ chu kỳ 15 phút. Máy vừa đẩy cũng nhận sự kiện này, nhưng lúc '
+            'ấy _runSync của nó thường đang chạy dở nên syncNow() tự bỏ qua.');
+  });
+
   test('OCR trùng KHÔNG đánh thức đồng bộ', () async {
     noi();
     nguon.add(RealtimeEvent.ocrTrung);

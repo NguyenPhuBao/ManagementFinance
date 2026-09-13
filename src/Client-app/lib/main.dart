@@ -18,6 +18,7 @@ import 'core/notification/os/os_notifier.dart';
 import 'core/realtime/realtime_channel.dart';
 import 'core/realtime/realtime_wakeup.dart';
 import 'core/sync/sync_engine.dart';
+import 'features/bill/data/services/bill_payment_conflict_resolver.dart';
 import 'shared/widgets/app_toast.dart';
 import 'shared/theme/app_theme.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
@@ -41,6 +42,14 @@ void main() async {
     events: sl<RealtimeChannel>().events,
     dongBoNgay: () => sl<SyncEngine>().syncNow(),
   );
+
+  // Gỡ khoản trả mà server từ chối bằng `BILL_ALREADY_PAID` (máy khác đã trả
+  // hoá đơn ấy trước). Cũng đăng ký MỘT lần cho cả vòng đời app, cùng lý do với
+  // khối trên: `pushResultStream` là broadcast và singleton, nên nối lại ở mỗi
+  // lần đăng nhập chỉ tạo subscription trùng — tức hoàn tác chạy hai lượt cho
+  // cùng một khoản chi.
+  sl<BillPaymentConflictResolver>()
+      .batDauNghe(sl<SyncEngine>().pushResultStream);
 
   // Kiểm tra token trước khi khởi động UI
   // → Có token  = đã đăng nhập → vào /home trực tiếp (offline OK)

@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/database/app_database.dart';
+import '../../domain/bill_an_han.dart';
 import '../../domain/bill_pay_status.dart';
 import '../../../../core/sync/sync_engine.dart';
 import '../../../../core/bill/bill_recurrence.dart';
@@ -156,18 +157,38 @@ class BillRepositoryImpl implements BillRepository {
   }
 
   @override
-  Future<void> undoPayment({required String billId}) async {
+  Future<void> undoPayment({
+    required String billId,
+    String? transactionId,
+  }) async {
     final current = await dataSource.getBillById(billId);
     if (current == null) {
       throw StateError('Không tìm thấy hoá đơn $billId');
     }
-    if (!daCoKhoanChi(current)) {
+    // Chốt này bảo vệ **nút bấm tay**, nơi hàm phải tự đi tìm khoản chi: hoá
+    // đơn chưa trả thì không có gì để gỡ, và đoán bừa là hoàn tiền cho một
+    // khoản chi chẳng liên quan.
+    //
+    // Nơi gọi đã truyền đích danh `transactionId` thì nó biết chắc chắn hơn
+    // hoá đơn, nên chốt phải nhường. ⚠️ ĐÃ VẤP THẬT ngày 2026-09-13: trong
+    // cùng một chu kỳ đồng bộ, push bị từ chối rồi **pull kéo hoá đơn về
+    // `Pending`** trước khi resolver kịp chạy. Chốt bắn ra, khoản chi thừa ở
+    // lại và ví không được hoàn — đo được máy B giữ ví 2.000.000 mà sổ có hai
+    // khoản chi 350.000.
+    if (transactionId == null && !daCoKhoanChi(current)) {
       throw BillNotPaidException(billId);
     }
 
     // Khoản chi mà lần trả đã sinh ra. Không tìm thấy thì DỪNG — xem
     // `BillUndoUnavailableException`.
-    final khoanChi = await db.transactionDao.getByBill(billId);
+    //
+    // Nơi gọi biết đích danh khoản nào thì đừng để hàm đoán: `getByBill` là
+    // `LIMIT 1` không `ORDER BY`, nên khi máy có hai khoản chi sống cùng
+    // `billId` — chuyện thường trên máy thua một cuộc đua `BILL_ALREADY_PAID`
+    // — nó chọn một cách không xác định.
+    final khoanChi = transactionId != null
+        ? await _khoanChiConSong(transactionId)
+        : await db.transactionDao.getByBill(billId);
     if (khoanChi == null) {
       throw BillUndoUnavailableException(billId);
     }
@@ -208,6 +229,19 @@ class BillRepositoryImpl implements BillRepository {
     });
 
     syncEngine?.scheduleSync();
+  }
+
+  /// Khoản chi [id] nếu nó **còn sống**.
+  ///
+  /// ⚠️ `TransactionDao.getById` **cố ý** đọc cả hàng đã xoá mềm — resolver cần
+  /// thế để lần ra `billId` của một khoản đã gỡ ở chu kỳ trước. Ở đây thì
+  /// ngược lại: gỡ một khoản đã gỡ là **hoàn tiền lần thứ hai**, tức tặng tiền
+  /// cho ví mỗi lượt phát lại. Lọc ở đây giữ đúng lớp chắn mà `getByBill`
+  /// (vốn lọc sẵn `deletedAt`) vẫn cho nhánh không truyền id.
+  Future<Transaction?> _khoanChiConSong(String id) async {
+    final t = await db.transactionDao.getById(id);
+    if (t == null || t.deletedAt != null) return null;
+    return t;
   }
 
   @override
@@ -301,12 +335,29 @@ class BillRepositoryImpl implements BillRepository {
   /// đẩy: hai cột đó NOT NULL phía backend. Bỏ sót `isRecurrence` thì chuỗi
   /// hoá đơn định kỳ dừng lại sau đúng một kỳ.
   ///
-  /// Kỳ sau bắt đầu **đúng tại ngày đến hạn của kỳ trước**, nên các kỳ nối
-  /// đuôi nhau không hở và luôn giữ được `startDate < dueDate`. Vì chuỗi mất
-  /// mốc gốc theo cách ấy, `anchorDay` được **chép sang từng kỳ** để mốc không
-  /// tụt dần — xem `core/bill/bill_recurrence.dart`. Quên chép là hoá đơn
-  /// "ngày 31 hàng tháng" tụt về 28 vĩnh viễn ngay sau tháng Hai đầu tiên.
+  /// Kỳ sau bắt đầu **đúng tại ngày kết thúc kỳ trước** (`periodEnd`; hàng cũ
+  /// chưa có cột thì là ngày đến hạn), nên các kỳ nối đuôi nhau không hở và
+  /// luôn giữ được `startDate < dueDate`. Vì chuỗi mất mốc gốc theo cách ấy,
+  /// `anchorDay` được **chép sang từng kỳ** để mốc không tụt dần — xem
+  /// `core/bill/bill_recurrence.dart`. Quên chép là hoá đơn "ngày 31 hàng
+  /// tháng" tụt về 28 vĩnh viễn ngay sau tháng Hai đầu tiên.
   BillsCompanion _nextPeriodOf(Bill current, DateTime now, double soTien) {
+    // Kỳ sau bắt đầu tại NGÀY KẾT THÚC KỲ, không phải hạn trả: với hoá đơn có
+    // ân hạn (kỳ 01–30/09, hạn 15/10) nối từ hạn trả là hở nửa tháng và mỗi kỳ
+    // trôi thêm — bẫy §4.4 tài liệu xin backend. Hàng cũ (periodEnd NULL) thì
+    // hai mốc trùng nhau, kết quả y hệt trước v21.
+    final batDauSau = current.periodEnd ?? current.dueDate;
+    // Ngày gốc đi theo cả chuỗi — đây là chỗ duy nhất giữ được nó. Kỳ cũ chưa
+    // có (hoá đơn tạo trước v18, hoặc kéo từ server) thì neo vào mốc hiện tại,
+    // tức giữ nguyên hành vi cũ thay vì đoán.
+    final goc = current.anchorDay ?? batDauSau.day;
+    final ketThucSau = nextBillDueDate(
+      batDauSau,
+      current.timeRecurrence,
+      anchorDay: goc,
+    );
+    // Ân hạn đi theo chuỗi mà không cần cột riêng: suy từ kỳ hiện tại.
+    final anHan = anHanCua(current);
     return BillsCompanion.insert(
       id: const Uuid().v4(),
       idaccount: current.idaccount,
@@ -318,16 +369,11 @@ class BillRepositoryImpl implements BillRepository {
       // Kỳ sau bắt đầu từ số VỪA TRẢ, không phải số cũ: một quy tắc duy nhất,
       // không có "số mẫu" ẩn, và số vừa trả là ước lượng sát hơn.
       amount: soTien,
-      startDate: Value(current.dueDate),
-      // Ngày gốc đi theo cả chuỗi — đây là chỗ duy nhất giữ được nó. Kỳ cũ
-      // chưa có (hoá đơn tạo trước v18, hoặc kéo từ server) thì neo vào ngày
-      // đến hạn hiện tại, tức giữ nguyên hành vi cũ thay vì đoán.
-      anchorDay: Value(current.anchorDay ?? current.dueDate.day),
-      dueDate: nextBillDueDate(
-        current.dueDate,
-        current.timeRecurrence,
-        anchorDay: current.anchorDay ?? current.dueDate.day,
-      ),
+      startDate: Value(batDauSau),
+      // LUÔN ghi — NULL chỉ dành cho hàng cũ (xem `Bills.periodEnd`).
+      periodEnd: Value(ketThucSau),
+      anchorDay: Value(goc),
+      dueDate: hanTraTu(ketThucSau, anHan),
       payStatus: const Value('Pending'),
       isPaid: const Value(false),
       timeNotification: Value(current.timeNotification),

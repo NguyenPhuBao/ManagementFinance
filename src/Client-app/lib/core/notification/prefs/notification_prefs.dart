@@ -18,6 +18,7 @@ NotificationGroup nhomCua(NotificationKind kind) {
     case NotificationKind.billOverdue:
     case NotificationKind.billAutoPaid:
     case NotificationKind.billAutoPayFailed:
+    case NotificationKind.billPaidOnOtherDevice:
       return NotificationGroup.bill;
     case NotificationKind.budgetNearLimit:
     case NotificationKind.budgetOverspent:
@@ -68,6 +69,15 @@ bool luonBao(NotificationKind kind) {
     case NotificationKind.billAutoPayFailed:
     case NotificationKind.goalAutoDeposited:
     case NotificationKind.goalAutoDepositFailed:
+    // Cùng họ với bốn loại trên, chỉ ngược chiều tiền: máy tự **gỡ** một khoản
+    // trả và **hoàn** tiền về ví trong lúc người dùng vắng mặt (đồng bộ nền,
+    // có thể khi app đóng). Im lặng ở đây là người dùng mở app ra thấy ví nhiều
+    // tiền hơn và một khoản chi biến mất mà không hiểu vì sao — khó chịu hơn cả
+    // ca bị trừ tiền, vì không có gì để lần ra manh mối.
+    //
+    // Nó cũng hiếm: chỉ xảy ra khi hai máy cùng trả một kỳ hoá đơn, nên không
+    // có nguy cơ làm phiền đều đặn như nhắc hạn.
+    case NotificationKind.billPaidOnOtherDevice:
       return true;
     case NotificationKind.billDueSoon:
     case NotificationKind.billOverdue:

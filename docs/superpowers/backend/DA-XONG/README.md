@@ -74,7 +74,7 @@ Mười lăm tài liệu này đã được thực thi hoàn tất, vượt qua 
 | [GOAL_PRIORITY_NULL_TO_ZERO.md](./GOAL_PRIORITY_NULL_TO_ZERO.md) | `Goal.Priority` giữ nguyên `null` khi sync, không ép về `0`. |
 | [RULE_PROJECT_DOC_DRIFT.md](./RULE_PROJECT_DOC_DRIFT.md) | Sửa sạch toàn bộ 56 chỗ trôi lệch tài liệu ở `New_Database.md`, `Rule_project.md`, `Data_Security.md`, `Backend.md`. |
 | [SOCKET_BANK_EVENT_PAYLOAD.md](./SOCKET_BANK_EVENT_PAYLOAD.md) | Payload `bank_transaction.incoming` trả đầy đủ cả `status` và `transaction_status`. |
-| [SOCKET_SYNC_COMPLETED.md](./SOCKET_SYNC_COMPLETED.md) | Notification Service phát sự kiện `sync.completed` qua Socket.IO khi background worker xử lý giao dịch xong. |
+| [SOCKET_SYNC_COMPLETED.md](./SOCKET_SYNC_COMPLETED.md) | Notification Service phát sự kiện `sync.completed` qua Socket.IO tới phòng `account_<id>` **sau mỗi `/sync/push`** (⚠️ không phải "khi background worker xử lý xong" — worker không publish sự kiện này; câu cũ ở đây chép từ `Backend.md:495`, CAN-LAM 20 §4.6). Client nghe từ 2026-09-12 tối (G34 đóng, im lặng). |
 | [SYNC_NOTE_FILTER_REWRITE.md](./SYNC_NOTE_FILTER_REWRITE.md) | Bộ lọc thẻ kết hợp `CARD_SHAPE` + thuật toán Luhn, lọc mật khẩu `[:=]`, không nuốt "pin", giải mã note trong fuzzy match. |
 | [SYNC_PUSH_ERROR_MAPPING.md](./SYNC_PUSH_ERROR_MAPPING.md) | Bắt lỗi PostgreSQL `22001`, `23502`, `BILL_ALREADY_PAID`, `WALLET_NAME_DUPLICATE` ánh xạ về `CONSTRAINT_VIOLATION`. |
 | [WALLET_SAVING_INDEX.md](./WALLET_SAVING_INDEX.md) | Migration 12 đã `DROP INDEX IF EXISTS "uq_wallet_saving_active"`, cho phép người dùng mở nhiều ví tiết kiệm linh hoạt. |
@@ -88,10 +88,12 @@ Mười lăm tài liệu này đã được thực thi hoàn tất, vượt qua 
 - **"Đã xong" nói về phía backend, không phải phía client.** Ví dụ đang mở (đo
   2026-09-11): server đã có `transaction.Idbill` và bốn cột hoá đơn
   `Previous_bill_id`, `Period_end`, `Auto_pay`, `Anchor_day`. ⚠️ **Cập nhật
-  2026-09-12:** client đã mở đường đồng bộ cho **ba** trong số ấy — `Idbill`,
-  `Previous_bill_id`, `Anchor_day` (đo trên backend thật). Còn `Auto_pay` chờ
-  CAN-LAM 17 B bước 2 (chốt ở `upsertTransaction`; chốt sai chỗ đã bỏ 2026-09-12), và `Period_end` là **tính năng** phía client chứ không phải trường
-  đồng bộ nên chưa có cột cục bộ; `category.Color` có và client đồng bộ màu từ
+  2026-09-12:** client đã mở đường đồng bộ cho **bốn** trong số ấy — `Idbill`,
+  `Previous_bill_id`, `Anchor_day` (đo trên backend thật) và, tối cùng ngày,
+  `Period_end` (ân hạn hoá đơn, schema v21 — tính năng trọn vẹn chứ không chỉ
+  trường đồng bộ). Còn `Auto_pay` **client chưa mở** —
+  chốt ở `upsertTransaction` backend đã đặt (CAN-LAM 20 §2.1, gộp `7779999` tối muộn 2026-09-12,
+  đo thật 4 ca), nên không còn chờ ai; `category.Color` có và client đồng bộ màu từ
   2026-09-11 (G24 đóng — danh mục cũ lên màu khi được lưu lại); `transaction.Idgoal` có cột nhưng client vẫn còn
   nhánh so **tên** chưa gỡ (G18). Dòng này từng lấy `goal.Priority` làm ví dụ —
   client đã làm xong màn ưu tiên ngày 2026-09-08. Muốn biết client còn nợ gì thì

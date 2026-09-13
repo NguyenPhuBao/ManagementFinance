@@ -228,6 +228,11 @@ void main() {
         // nhầm tên".
         generatedFromBillId: const Value(kyTruocId),
         anchorDay: const Value(28),
+        // Ân hạn (v21): ngày kết thúc kỳ tách khỏi hạn trả — giá trị THẬT để
+        // test phân biệt "có gửi" với "gửi nhầm tên". Cố ý là 03:00 GIỜ MÁY:
+        // ở múi +07 mốc này là 20:00 UTC hôm TRƯỚC, nên gửi `toUtc()` thô là
+        // server (@db.Date) lưu 24/09 — kỳ kết thúc lùi một ngày, im lặng.
+        periodEnd: Value(DateTime(2026, 9, 25, 3, 0)),
         // Cố ý dùng giá trị thứ tư 'Skipped' (2026-09-12) chứ không phải
         // 'Pending' mặc định: đây là giá trị DUY NHẤT trong bộ mà việc chuẩn
         // hoá nhầm sẽ hỏng im lặng — client ghi nó rồi server lưu 'Pending'
@@ -567,14 +572,40 @@ void main() {
           // Mở 2026-09-12. Backend nhận `previousBillId`/`previous_bill_id` và
           // `anchorDay`/`anchor_day` (`sync.repository.js:99-106`); client gửi
           // dạng snake_case cho khớp phần còn lại của payload này.
-          //
-          // ⚠️ `auto_pay` CHƯA mở — chờ backend sửa CAN-LAM 17 B (chốt chống
-          // trả hai lần đặt nhầm ở `upsertBill`), và `period_end` thì không
-          // phải trường đồng bộ mà là một tính năng riêng (cột cục bộ mới, ô
-          // nhập, và đổi phép tính kỳ kế tiếp).
           'previous_bill_id', 'anchor_day',
+          // `period_end` mở 2026-09-12 cùng tính năng ân hạn (schema v21) —
+          // ngày kết thúc kỳ tính tiền, tách khỏi hạn trả.
+          'period_end',
+          // `auto_pay` mở 2026-09-13 (bước 12). Cột `bills.autoPayEnabled` có
+          // từ v17 nhưng tới lúc ấy vẫn CỤC BỘ: bật trên máy A thì máy B không
+          // biết. Mở được vì backend đã đặt chốt chống trả hai lần ở
+          // `upsertTransaction` từ `7779999` (CAN-LAM 20 §2.1).
+          'auto_pay',
         },
       );
+    });
+
+    test('hoá đơn đẩy công tắc tự động trả dưới khoá auto_pay, kiểu bool thật',
+        () {
+      final p = payloadOf('bill');
+      expect(p.containsKey('auto_pay'), isTrue,
+          reason: 'Thiếu khoá này thì công tắc tự động trả không bao giờ rời '
+              'khỏi máy: bật trên máy A, máy B vẫn tắt, và KHÔNG GÌ báo lỗi — '
+              'đúng quy tắc 4 `CLAUDE.md`.');
+      expect(p['auto_pay'], isA<bool>(),
+          reason: 'Gửi chuỗi "true" thay vì bool thì backend đọc thành NULL và '
+              'bỏ qua trong im lặng, giống hệt ca gửi sai tên trường.');
+    });
+
+    test('hoá đơn đẩy ngày kết thúc kỳ dưới khoá period_end — nửa đêm UTC '
+        'của NGÀY CỤC BỘ', () {
+      expect(payloadOf('bill')['period_end'], '2026-09-25T00:00:00.000Z',
+          reason: 'Thiếu nó, máy khác kéo về một hoá đơn có hạn trả nhưng '
+              'không có ngày kết thúc kỳ, và sinh kỳ sau nối từ hạn trả — hở '
+              'đúng số ngày ân hạn (§4.4 tài liệu xin). Và phải là ngày CỤC '
+              'BỘ: cột server là @db.Date, gửi toUtc() thô của 03:00 +07 là '
+              'server lưu hôm trước — đo thật 2026-09-12, hoá đơn tạo 21:38 '
+              'gửi …T14:38:52Z còn đúng ngày, tạo trước 07:00 thì không.');
     });
 
     test('hoá đơn lặp đẩy đúng hoá đơn cha và ngày gốc', () {

@@ -1,6 +1,7 @@
 /// Ngày gốc của chuỗi hoá đơn (`Bills.anchorDay`, DB v18).
 ///
-/// Chuỗi hoá đơn nối đuôi nhau — ngày bắt đầu kỳ sau là ngày đến hạn kỳ trước —
+/// Chuỗi hoá đơn nối đuôi nhau — ngày bắt đầu kỳ sau là ngày kết thúc kỳ trước
+/// (trước v21: ngày đến hạn) —
 /// nên số ngày người dùng chọn ban đầu **biến mất** sau kỳ thứ hai. Nhìn vào
 /// một mốc 28/02 đơn độc thì không biết nó từ 31/01 kẹp xuống hay do người dùng
 /// tự chọn, mà hai thứ ấy phải cho ra hai kết quả khác nhau.

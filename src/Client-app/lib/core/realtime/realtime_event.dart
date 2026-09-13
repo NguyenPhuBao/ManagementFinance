@@ -1,4 +1,4 @@
-/// Ba sự kiện thời gian thực backend phát tới room `account_<idaccount>`.
+/// Bốn sự kiện thời gian thực backend phát tới room `account_<idaccount>`.
 ///
 /// ## Vì sao chỉ có tên, không có dữ liệu
 ///
@@ -21,6 +21,17 @@ enum RealtimeEvent {
 
   /// `ocr.duplicate`
   ocrTrung,
+
+  /// `sync.completed` — backend phát sau mỗi `/sync/push` thành công
+  /// (`core/socket.js` `emitSyncCompleted`, phòng `account_<id>`).
+  ///
+  /// Giá trị của nó là kéo thay đổi từ **máy khác** về ngay thay vì chờ chu kỳ
+  /// 15 phút (G34). Nó **im lặng** — không toast — vì máy vừa đẩy cũng nằm
+  /// trong phòng ấy nên nhận lại chính sự kiện của mình, mà payload là hộp đen
+  /// nên không phân biệt được máy gửi: một toast "máy khác vừa đổi dữ liệu" sẽ
+  /// nói sai trên đúng máy vừa ghi, sau mỗi lần ghi. Kết quả đồng bộ đã có dải
+  /// riêng ở bậc cao nhất (spec socket §6.3).
+  dongBoXong,
 }
 
 /// Dịch tên sự kiện của backend sang enum. Tên lạ trả `null` — backend thêm sự
@@ -33,6 +44,8 @@ RealtimeEvent? realtimeEventFromName(String name) {
       return RealtimeEvent.ocrXong;
     case 'ocr.duplicate':
       return RealtimeEvent.ocrTrung;
+    case 'sync.completed':
+      return RealtimeEvent.dongBoXong;
     default:
       return null;
   }
@@ -46,7 +59,10 @@ extension RealtimeEventX on RealtimeEvent {
   bool get canDongBoLai => this != RealtimeEvent.ocrTrung;
 
   /// Câu hiện trên toast. Hằng số, cố ý không nêu số liệu.
-  String get loiNhan {
+  ///
+  /// `null` nghĩa là **không hiện toast** — đây là định nghĩa duy nhất của
+  /// "sự kiện im lặng"; `AppToast` chỉ đọc getter này, không tự liệt kê.
+  String? get loiNhan {
     switch (this) {
       case RealtimeEvent.giaoDichNganHang:
         return 'Vừa có giao dịch mới từ ngân hàng';
@@ -54,6 +70,8 @@ extension RealtimeEventX on RealtimeEvent {
         return 'Đã bóc tách xong hoá đơn';
       case RealtimeEvent.ocrTrung:
         return 'Hoá đơn này đã được ghi nhận trước đó';
+      case RealtimeEvent.dongBoXong:
+        return null;
     }
   }
 }

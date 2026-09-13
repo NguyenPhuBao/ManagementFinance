@@ -37,11 +37,26 @@ enum NguonBuocDangXuat {
   /// Lý do có ngoại lệ (CAN-LAM 17 §2.5): tới 2026-09-12 `/auth/refresh` chưa
   /// tách lỗi lược đồ thành 503, nên một sự cố phía server đội lốt được
   /// `ACCOUNT_DELETED`. Backend đã sửa trong `main` @ `cbbeeb4` (gộp 2026-09-12).
-  /// Đo chiều cùng ngày: ca hợp lệ 200, ca bị khoá 401 + `ACCOUNT_INACTIVE`; còn ca
-  /// **đã xoá** thì xoá qua admin **thu hồi refresh token**, nên `/auth/refresh` trả
-  /// 401 **không mã** — đường này không bao giờ mang `daXoa` (G36, CAN-LAM 20 §2.7).
-  /// Ngoại lệ vì thế gần như vô nghĩa nhưng vô hại; **giữ** để che ca lỗi lược đồ
-  /// (backend đã trả 503, chưa đo) — gỡ là quyết định của người dùng — spec §3.6b.
+  ///
+  /// ✅ **Đo đầu-cuối 2026-09-13, ba ca qua API admin — đường này CÓ mang
+  /// `daXoa`** (G36 đóng): tài khoản `Active` → 200; admin khoá
+  /// (`PATCH /admin/updatestatus`, kèm `reason_inactive` bắt buộc) → **401 +
+  /// `ACCOUNT_INACTIVE`** kèm `idaccount` và `reason_inactive` ở cấp gốc; admin
+  /// xoá mềm (`DELETE /admin/deleteuser`) → **401 + `ACCOUNT_DELETED`** kèm
+  /// `idaccount`, **dù cả 4/4 refresh token của tài khoản đã bị thu hồi**. Đó
+  /// chính là thứ CAN-LAM 20 §2.7 sửa: nhánh token thu hồi nay gọi
+  /// `getAccountValidity` trước khi ném.
+  ///
+  /// Câu cũ ở đây — *"xoá qua admin thu hồi refresh token nên `/auth/refresh`
+  /// trả 401 không mã, đường này không bao giờ mang `daXoa`"* — đúng cho tới
+  /// bản `7779999` và **sai từ đó**; sửa 2026-09-13. Hệ quả: ngoại lệ §3.6b
+  /// *không* còn vô nghĩa — nó nay chặn đúng ca thật (tài khoản bị xoá, phát
+  /// hiện qua nhánh làm mới) chứ không chỉ che ca lỗi lược đồ.
+  ///
+  /// ✅ **Người dùng chốt 2026-09-13: GIỮ ngoại lệ** (spec §3.6b). Dữ liệu trong
+  /// SQLite là bản duy nhất trên máy, nên báo động giả mà dọn là mất thật; còn
+  /// nếu xoá là đúng thì `purgeDataForOtherAccounts` vẫn dọn khi tài khoản khác
+  /// đăng nhập — chỉ **hoãn** chứ không bỏ. Đừng "dọn dẹp" nhánh này.
   lamMoi,
 }
 

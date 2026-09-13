@@ -1,6 +1,6 @@
 # Hệ thống thông báo — tài liệu bàn giao
 
-> **Cập nhật:** 2026-09-08 · **Nhánh:** `TranQuangDat`
+> **Cập nhật:** 2026-09-13 (loại thứ **17** `billPaidOnOtherDevice` — mục 5e; loại đầu tiên KHÔNG do bộ quét sinh ra) · bản trước 2026-09-08 · **Nhánh:** `TranQuangDat`
 > **Trạng thái:** cả bảy lát đã xong, **đã kiểm trên máy ảo Android**, có thêm
 > **dải báo kết nối** (mục 9), **mốc kích hoạt quét đã được sửa lại cho
 > offline-first** (mục 4.5), **cú chạm vào thông báo hệ điều hành nay điều
@@ -147,7 +147,9 @@ kiện còn `io.emit` toàn cục.
 `io.emit` nào (backend đã đổi nhà cung cấp **Casso → SePay**).
 
 ✅ **Client đã nối 2026-09-09.** Ba sự kiện ấy nay **tới nơi** và hiện thành
-toast, và mỗi sự kiện đều đánh thức đồng bộ. Nhưng chúng **không** đi vào bảng
+toast, và mỗi sự kiện đều đánh thức đồng bộ *(trừ `ocr.duplicate`)*. Sự kiện thứ
+**tư**, `sync.completed` (client nghe từ 2026-09-12, G34), đánh thức đồng bộ nhưng
+**không** toast — máy vừa đẩy cũng nhận lại nó, nên toast sẽ nói sai; xem §4 spec socket. Nhưng chúng **không** đi vào bảng
 `AppNotifications` — đó là quyết định có chủ ý, không phải việc còn sót: thông
 báo trong bảng ấy là dữ liệu **suy ra được** từ ngân sách/hoá đơn/mục tiêu trên
 từng máy, còn tin từ server thì không. Chi tiết ở mục 2 của
@@ -223,6 +225,7 @@ bắn lại thông báo cũ.
 | `budgetOverspent` | `budgetOver:<id>:<đầu kỳ>` | 1 lần/kỳ |
 | `billDueSoon` | `billDue:<id>:<hạn>:<số ngày nhắc>` | 1 lần/hạn |
 | `billOverdue` | `billOverdue:<id>:<hạn>` | 1 lần/hạn |
+| `billPaidOnOtherDevice` | `billConflict:<id>` | 1 lần/kỳ hoá đơn |
 
 - `<đầu kỳ>` lấy từ **`BudgetEntity.currentPeriod(now).from`** — hàm đã xử lý
   ngân sách hết hạn, ngân sách không chu kỳ, và chống trôi ngày 31 → 28.
@@ -611,9 +614,15 @@ ca *chính* của lịch đặt trước — hàng tương ứng còn chưa tồ
 vòng quét mới sinh ra nó *sau khi* app khởi động xong. Tra cột `deeplink` ở đó
 là một cuộc đua, và thua cuộc đua ấy nghĩa là cú chạm không đi đâu cả.
 
-Bản sao ấy được canh bằng một test duyệt **cả 16 loại**: nó dựng ứng viên thật
-từ bộ luật rồi khẳng định hàm suy ra đúng cột `deeplink`. Thêm loại thứ 14 mà
-quên ánh xạ là test đỏ ngay.
+Bản sao ấy được canh bằng một test duyệt **cả 17 loại** (đếm bằng máy từ chính
+`enum NotificationKind`, 2026-09-13): nó dựng ứng viên thật từ bộ luật rồi khẳng
+định hàm suy ra đúng cột `deeplink`. Thêm một loại mà quên ánh xạ là test đỏ ngay.
+
+⚠️ **Kể cả loại KHÔNG do bộ quét sinh ra.** `billPaidOnOtherDevice` (loại thứ 17)
+được `BillPaymentConflictResolver` ghi thẳng vào SQLite giữa một chu kỳ đồng bộ,
+chứ không đi qua `NotificationScanner` — nhưng nó **vẫn bắn ra hệ điều hành**, nên
+vẫn cần nhánh suy route cho tiền tố `billConflict:`. Chính test này bắt được chỗ
+thiếu ấy ngày 2026-09-13.
 
 **Hai đường vào, một lối ra.** `payloadDaCham` (app đang sống) và
 `payloadKhoiDong()` (app mở lên *vì* cú chạm) cùng đổ vào `NotificationTapRouter`.
@@ -768,6 +777,31 @@ qua `extra`, vì `extra` không sống qua một tiến trình mới. Trang tự
 > không báo" vẫn giữ ở tầng bộ luật. Chờ tới lúc biết chắc thì cửa sổ giữa "tuần
 > khép" và "mốc nổ" chỉ vài giờ, và đúng những người cần được kéo lại là những
 > người không mở app trong vài giờ ấy.
+
+---
+
+## 5e. Hoá đơn đã được trả trên thiết bị khác (2026-09-13)
+
+Loại thông báo **thứ 17**, nhóm `bill` (nhóm đã có, không thêm nhóm mới). Nó khác
+mọi loại trước ở **nơi sinh ra**: không phải `NotificationScanner`, mà
+`BillPaymentConflictResolver` ghi thẳng vào SQLite khi server từ chối một khoản
+trả bằng `BILL_ALREADY_PAID` — xem mục **6.8** `docs/bill/BILL_DOCUMENTATION.md`.
+
+Ba quyết định, mỗi cái một lý do:
+
+- **Không dùng toast.** Việc này xảy ra lúc đồng bộ **nền**, có thể khi app đang
+  đóng — toast sẽ trôi mất, mà số dư ví thì vừa đổi hai lần (bị trừ lúc trả, được
+  hoàn lúc gỡ). Người dùng phải đọc được nó *sau đó*.
+- **Khoá chống trùng chỉ cần `billId`** (`billConflict:<id>`): mỗi kỳ của hoá đơn
+  lặp là **một hàng riêng**, nên id hoá đơn đã định danh đúng kỳ. Một chu kỳ đồng
+  bộ hỏng rồi thử lại là hai lượt phát cùng một thất bại — `insertIfAbsent` nuốt
+  lượt sau.
+- **Không nêu số tiền** — nếp thông báo tối giản của dự án; số tiền còn nằm ở
+  khoản chi và ở ví, người dùng mở ra xem được.
+
+⚠️ Chỉ ghi thông báo khi **thật sự có gì đổi** trên máy này. Hai nhánh `catch` của
+resolver (`BillNotPaidException`, `BillUndoUnavailableException`) nghĩa là không
+còn gì để gỡ, nên báo là làm phiền vô cớ.
 
 ---
 

@@ -12,6 +12,7 @@ import '../../domain/bill_auto_pay.dart' show kBillAutoPayHint;
 import '../../domain/bill_draft.dart';
 import '../../domain/bill_schedule.dart';
 import '../bloc/bill_bloc.dart';
+import '../widgets/bill_grace_selector.dart';
 import '../bloc/bill_event.dart';
 import '../../../../core/utils/gioi_han_do_dai.dart';
 
@@ -167,6 +168,7 @@ class _BillEditPageState extends State<BillEditPage> {
       name: name,
       amount: amount,
       startDate: _lich.startDate,
+      periodEnd: _lich.ketThucKy,
       dueDate: _lich.dueDate,
       walletId: wallet.id,
       categoryId: category.id,
@@ -304,10 +306,32 @@ class _BillEditPageState extends State<BillEditPage> {
                         color: AppColors.primary),
                     onTap: _pickStartDate,
                   ),
+                  // Ba mốc của kỳ (v21) — cùng khối với form Thêm: kết thúc
+                  // kỳ suy từ chu kỳ, ân hạn theo số ngày, hạn = kết thúc +
+                  // ân hạn. Xem `BillSchedule` và `bill_an_han.dart`.
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     enabled: false,
-                    title: const Text('Ngày đến hạn thanh toán'),
+                    title: const Text('Ngày kết thúc kỳ'),
+                    subtitle: Text(dateFormatter.format(_lich.ketThucKy)),
+                    trailing: const Icon(Icons.lock_outline,
+                        color: AppColors.primary),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text('Hạn trả sau khi kết thúc kỳ',
+                      style: TextStyle(
+                          fontSize: 12, color: AppColors.textSecondary)),
+                  const SizedBox(height: 6),
+                  BoChonAnHan(
+                    giaTri: _lich.anHanNgay,
+                    loi: _lich.dateError,
+                    onChanged: (n) => setState(
+                        () => _lich = _lich.copyWith(anHanNgay: n)),
+                  ),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    enabled: false,
+                    title: const Text('Hạn thanh toán'),
                     subtitle: Text(dateFormatter.format(_lich.dueDate)),
                     trailing: const Icon(Icons.lock_outline,
                         color: AppColors.primary),

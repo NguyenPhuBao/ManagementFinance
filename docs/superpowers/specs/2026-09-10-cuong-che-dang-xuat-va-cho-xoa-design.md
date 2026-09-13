@@ -7,9 +7,13 @@
 > `693de3b` → `fc82a94`, cộng `ac08ed6` và `40a553d` (hai lỗi tìm ra khi kiểm máy ảo).
 > **Cả ba nhánh đã kiểm đầu-cuối trên máy thật** — HTTP 401 sáng 2026-09-12; socket và làm mới
 > chiều cùng ngày, khoá tài khoản thử qua API admin; interceptor tự làm mới với token 1 phút; xoá
-> tài khoản thử → hộp thoại "đã xoá" + dọn SQLite qua socket (§7.3). Ngoại lệ §3.6b **vẫn giữ** —
-> đo được rằng xoá qua admin **thu hồi refresh token** nên nhánh làm mới không bao giờ nói được
-> "đã xoá" (CAN-LAM 20 §2.7); ca `SCHEMA_ERROR → 503` chưa đo.** Mọi quyết định sản phẩm ở mục 2
+> tài khoản thử → hộp thoại "đã xoá" + dọn SQLite qua socket (§7.3). Ngoại lệ §3.6b **vẫn giữ**.
+> ✅ **Nhánh làm mới đã đo đầu-cuối ba ca ngày 2026-09-13** (G36 đóng): `Active` → 200; admin khoá →
+> 401 + `ACCOUNT_INACTIVE` kèm `idaccount` và `reason_inactive`; admin xoá mềm → 401 +
+> `ACCOUNT_DELETED` kèm `idaccount`, **dù 4/4 refresh token đã bị thu hồi**. Tức **lý lẽ cũ của §3.6b
+> đã bị lật**: nhánh làm mới **CÓ** nói được "đã xoá" từ bản `7779999` (CAN-LAM 20 §2.7). Ngoại lệ
+> nay chặn một ca thật chứ không chỉ ca lỗi lược đồ — ✅ người dùng chốt **GIỮ** ngày 2026-09-13 (§3.6b);
+> ca `SCHEMA_ERROR → 503` vẫn chưa đo.** Mọi quyết định sản phẩm ở mục 2
 > đã chốt qua hỏi–đáp ngày 2026-09-10; Phần 1 (mục 3) được duyệt riêng trong phiên
 > ấy. Phần 2–4 viết thẳng vào đây theo yêu cầu "làm đi" của người dùng. Ngày
 > 2026-09-11 người dùng duyệt nốt: §3.3 và §3.6b (hai điểm soát lại theo `main`),
@@ -308,7 +312,30 @@ Nguồn `lamMoi` vẫn đăng xuất và vẫn hiện hộp thoại "Tài khoả
   `lamMoi` + `daXoa` **không xảy ra được** với xoá qua admin — ngoại lệ này chỉ còn che ca lỗi
   lược đồ (backend đã trả 503, chưa đo) và ca xoá theo lịch hết hạn (chưa đo). **Giữ** — vô hại,
   vì dọn SQLite đã chạy đúng qua socket/HTTP; gỡ là quyết định của người dùng. Việc backend nên
-  làm để client hiện được hộp thoại trong ca này: CAN-LAM 20 §2.7.)
+  làm để client hiện được hộp thoại trong ca này: CAN-LAM 20 §2.7 — ✅ đã làm, gộp `7779999` tối muộn
+  2026-09-12; chưa đo đầu-cuối ca khoá/xoá.)
+
+  ⚠️ **2026-09-13 — đoạn trong ngoặc ngay trên đã bị phép đo lật, đọc tiếp trước khi quyết định.**
+  Đo lại ba ca trên mã `7779999` (G36 đóng, chi tiết ở §7.3 và `CLIENT_APP_KNOWN_GAPS.md` mục G36):
+  `Active` → 200; khoá → 401 + `ACCOUNT_INACTIVE`; **xoá mềm → 401 + `ACCOUNT_DELETED` kèm
+  `idaccount`, dù 4/4 refresh token đã bị thu hồi.** Nghĩa là đường `lamMoi` + `daXoa` **xảy ra
+  được** — chính là ca CAN-LAM 20 §2.7 sửa. Hai hệ quả:
+
+  1. **Điều kiện bỏ ngoại lệ ở gạch đầu dòng trên nay đã thoả**: CAN-LAM 17 §2.5 xong, và nhánh
+     làm mới đã đo chạy đúng cả ba ca. Theo đúng chữ của spec thì đây là lúc cân nhắc bỏ.
+  2. **Nhưng lý lẽ *giữ* cũng mạnh hơn trước**: ngoại lệ nay chặn một ca **thật** (tài khoản bị xoá,
+     máy biết tin qua nhánh làm mới) chứ không chỉ ca lỗi lược đồ giả định. Bỏ ngoại lệ = máy ấy
+     dọn sạch SQLite ngay; giữ = dữ liệu còn tới khi tài khoản khác đăng nhập vào máy
+     (`purgeDataForOtherAccounts`). Đánh đổi đúng như hai gạch **Mất gì / Được gì** ở trên, chỉ khác
+     là nay nó có thật.
+
+  ✅ **CHỐT 2026-09-13: GIỮ ngoại lệ.** Người dùng quyết định sau khi đọc dữ kiện mới ở trên. Lý do:
+  dữ liệu trong SQLite là **bản duy nhất** trên máy ấy (kiến trúc offline-first), nên nếu còn bất kỳ
+  báo động giả nào chưa biết thì mất nó là mất thật; còn nếu việc xoá là đúng, dữ liệu vẫn được dọn
+  khi một tài khoản khác đăng nhập vào máy (`purgeDataForOtherAccounts`) — tức chỉ **hoãn** việc dọn
+  chứ không bỏ. Đổi lại, máy giữ bản rõ lâu hơn Q2 mong muốn; chấp nhận đánh đổi ấy.
+  **Không đổi mã** — hành vi hiện tại đã đúng quyết định này; chỉ chú thích ở
+  `lib/core/auth/buoc_dang_xuat.dart` và `auth_bloc.dart` được cập nhật cho khớp.
 
 ### 3.7. Màn Đăng nhập
 
@@ -785,9 +812,20 @@ Kèm cập nhật `README.md` mục 2 và mọi con số đếm mục CAN-LAM tr
 >   /api/admin/deleteuser/12` (200) → `/auth/refresh` bằng token ấy: **401 "Refresh token khong hop
 >   le", KHÔNG có `code`** — xoá mềm đã thu hồi cả 5 refresh token của tài khoản (`Status = true`),
 >   và `auth.service.js:375-387` kiểm token **trước** khi kiểm tài khoản. `/auth/profile` cùng lúc:
->   401 + `code: ACCOUNT_DELETED` ở cấp gốc. Hệ quả: **nhánh làm mới không bao giờ mang `daXoa`**
->   khi xoá qua admin — app đang giữ token hết hạn mà không có socket sẽ bị đăng xuất **trơn, không
->   hộp thoại** (G36; xin backend ở CAN-LAM 20 §2.7).
+>   401 + `code: ACCOUNT_DELETED` ở cấp gốc. Hệ quả **lúc ấy**: nhánh làm mới không mang `daXoa` khi
+>   xoá qua admin — app đang giữ token hết hạn mà không có socket sẽ bị đăng xuất **trơn, không hộp
+>   thoại** (G36; xin backend ở CAN-LAM 20 §2.7).
+> - ✅ **Ca khoá và ca đã xoá — mức API, đo lại 2026-09-13 trên mã `7779999`: G36 ĐÓNG.** Tài khoản
+>   thử tự đăng ký (`kiemthu_g36_…`, idaccount 16). **Đối chứng:** `Active` → `/auth/refresh` **200**.
+>   **Khoá** (`PATCH /api/admin/updatestatus/16`, body **bắt buộc** có `reason_inactive` — thiếu là 400
+>   *"Vui lòng cung cấp lý do vô hiệu hóa tài khoản!"*) → **401 + `code: ACCOUNT_INACTIVE`**, kèm
+>   `idaccount: 16` và `reason_inactive` ở **cấp gốc**, `message` mang nguyên câu lý do admin nhập.
+>   **Xoá mềm** (`DELETE /api/admin/deleteuser/16`) → **401 + `code: ACCOUNT_DELETED`** kèm
+>   `idaccount: 16`, **dù cả 4/4 refresh token đã bị thu hồi** (`COUNT(*) FILTER (WHERE "Status" =
+>   true)` = 4/4). Tức câu gạch trên — *"nhánh làm mới không bao giờ mang `daXoa`"* — **đúng tới
+>   `cbbeeb4` và sai từ `7779999`**. Client không đổi mã: `tuBody401` đã đọc đúng ba trường ấy, và ca
+>   `lamMoi` + `ACCOUNT_DELETED` có test từ trước (`auth_interceptor_buoc_dang_xuat_test.dart:267-289`).
+>   PostgreSQL chỉ **đọc**; tài khoản thử để lại ở trạng thái xoá **mềm**.
 > - **Ca đã xoá — trên máy ảo:** `kiemthu_xoa` đăng nhập, chờ token hết hạn, "tắt Wi‑Fi" rồi xoá qua
 >   admin. ⚠️ Máy ảo có **dữ liệu di động** (`mobile_data = 1`, mạng mặc định `MOBILE[NR]`) nên
 >   `svc wifi disable` **không cắt mạng** — socket vẫn sống, nhận `force_logout: daXoa`, hộp thoại
@@ -899,8 +937,10 @@ kể từ G33 và §3.8).
   `flutter test` không bắt được, đúng như `CLAUDE.md` cảnh báo: *thứ tự thực tế
   giữa hai luồng bất đồng bộ*.
 - **Lỗi lược đồ đội lốt `ACCOUNT_DELETED` ở nhánh làm mới** — CAN-LAM 17 mục 2.5;
-  phía client xem §3.6b. ✅ Mã backend sửa 2026-09-12; nhánh làm mới đã đo ca hợp lệ và ca bị
-  khoá, ca `ACCOUNT_DELETED`/`SCHEMA_ERROR` chưa; ngoại lệ client giữ.
+  phía client xem §3.6b. ✅ Mã backend sửa 2026-09-12; nhánh làm mới đã đo **cả ba** ca ngày
+  2026-09-13 — hợp lệ (200), bị khoá (401 + `ACCOUNT_INACTIVE`) và **đã xoá (401 +
+  `ACCOUNT_DELETED`, dù token đã thu hồi)**; riêng ca `SCHEMA_ERROR → 503` vẫn chưa dựng được trên
+  CSDL dev lành. Ngoại lệ client **vẫn giữ**, nhưng lý lẽ của nó đã đổi — §3.6b.
 - **Đổi tài khoản trong lúc một lượt `/auth/profile` còn treo — hai race cùng họ với
   `46ad023`, CHƯA sửa.** (1) `verifySession` → `_dongBoTrangThai` đọc bộ nhớ đệm **sau**
   `getProfile`, nên có thể ghi trạng thái của phiên cũ vào tài khoản vừa đăng nhập.

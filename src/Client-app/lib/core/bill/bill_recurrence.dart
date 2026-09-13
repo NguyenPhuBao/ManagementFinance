@@ -56,7 +56,8 @@ int _daysInMonth(int year, int month) => DateTime(year, month + 1, 0).day;
 ///
 /// Bản trước **đoán** ý định từ dữ liệu: nếu [from] rơi đúng ngày cuối tháng
 /// thì kỳ sau cũng là ngày cuối tháng. Cú đoán ấy cần thiết vì chuỗi hoá đơn
-/// nối đuôi nhau (ngày bắt đầu kỳ sau = ngày đến hạn kỳ trước) nên số ngày gốc
+/// nối đuôi nhau (ngày bắt đầu kỳ sau = ngày kết thúc kỳ trước — trước v21 là
+/// ngày đến hạn) nên số ngày gốc
 /// biến mất sau kỳ thứ hai — nhìn vào một mốc 28/02 đơn độc thì không biết nó
 /// từ 31/01 tới hay do người dùng tự chọn.
 ///

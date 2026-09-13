@@ -5,7 +5,9 @@
 > **B chỉ nửa đầu** — bước 1 (bỏ chốt ở `upsertBill`) xong và đo thật (hàng `3c90acfa…` lên
 > `Pending`), bước 2 (chốt ở `upsertTransaction`, mục 3.6) **chưa làm**: `BILL_ALREADY_PAID` nay
 > không ai ném, server không chặn khoản chi thứ hai ở đâu cả. Bảng ở banner `../CAN-LAM/README.md`;
-> việc còn lại xin ở `../CAN-LAM/CON_LAI_SAU_CBBEEB4.md` §2.1 (mục 20).
+> việc còn lại xin ở `./CON_LAI_SAU_CBBEEB4.md` §2.1 (mục 20 — nay cùng thư mục).
+> ✅ **Tối muộn cùng ngày, `7779999` làm nốt bước 2** (`chanTraHaiLan` ở `upsertTransaction`, CAN-LAM 20
+> §2.1) — client đo thật 4 ca qua `/sync/push`; B đóng trọn.
 
 **Ngày:** 2026-09-11 · **Xin từ:** client (`src/Client-app`) · **Cỡ việc:** **A** —
 ba chỗ nhỏ ở `middleware/auth.js`, `core/socket.js`, `modules/auth/auth.service.js`;

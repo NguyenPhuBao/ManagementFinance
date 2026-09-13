@@ -192,7 +192,7 @@ void main() {
     await kenh.stop();
   });
 
-  test('ba sự kiện có thật được phát ra thành RealtimeEvent', () async {
+  test('bốn sự kiện có thật được phát ra thành RealtimeEvent', () async {
     final kenh = dungKenh();
     final thay = <RealtimeEvent>[];
     final sub = kenh.events.listen(thay.add);
@@ -201,13 +201,20 @@ void main() {
     daTao.single
       ..banSuKien('bank_transaction.incoming', {'amount': 500000})
       ..banSuKien('ocr.completed', {'total_amount': 1})
-      ..banSuKien('ocr.duplicate', {'error': 'trùng'});
+      ..banSuKien('ocr.duplicate', {'error': 'trùng'})
+      // Hình dạng thật của backend (`core/socket.js` emitSyncCompleted):
+      // client vẫn không đọc trường nào trong đó.
+      ..banSuKien('sync.completed', {
+        'summary': {'pushed': 1},
+        'timestamp': '2026-09-12T10:00:00.000Z',
+      });
     await Future<void>.delayed(Duration.zero);
 
     expect(thay, [
       RealtimeEvent.giaoDichNganHang,
       RealtimeEvent.ocrXong,
       RealtimeEvent.ocrTrung,
+      RealtimeEvent.dongBoXong,
     ]);
 
     await sub.cancel();

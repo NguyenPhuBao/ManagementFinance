@@ -59,15 +59,28 @@ class SyncOpFailure {
   final String message;
   final SyncFailureKind kind;
 
+  /// Mã lỗi có cấu trúc backend gắn cho thao tác này (`sync.service.js`, hợp
+  /// đồng 2026-09-07). `null` với backend cũ hoặc lỗi không có mã.
+  ///
+  /// Vì sao cần, khi đã có [kind]: `kind` chỉ nói **vĩnh viễn hay tạm thời** —
+  /// đủ để engine quyết có gửi lại hay không, nhưng không đủ cho người nghe
+  /// `pushResultStream` phân biệt `BILL_ALREADY_PAID` (đáng hoàn tác khoản trả)
+  /// với `WALLET_NAME_DUPLICATE` (đừng đụng vào). Thiếu nó thì lớp nghe buộc
+  /// phải dò `message`, mà câu chữ đổi được còn mã thì không.
+  final String? code;
+
   const SyncOpFailure({
     required this.localId,
     required this.entity,
     required this.message,
     required this.kind,
+    this.code,
   });
 
   @override
-  String toString() => '${entity.name}/$localId [${kind.name}]: $message';
+  String toString() =>
+      '${entity.name}/$localId [${kind.name}${code == null ? '' : '/$code'}]: '
+      '$message';
 }
 
 /// Kết quả sau khi sync một batch

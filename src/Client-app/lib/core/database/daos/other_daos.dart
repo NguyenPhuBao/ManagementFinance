@@ -266,6 +266,23 @@ class BillDao extends DatabaseAccessor<AppDatabase> with _$BillDaoMixin {
   /// Dùng cột **cục bộ** `generatedFromBillId` (v16) chứ không so tên và ngày:
   /// so tên là đúng phép so mà cột này sinh ra để thay thế. Trả `null` khi hoá
   /// đơn không lặp, hoặc kỳ ấy đã bị xoá.
+  ///
+  /// ⚠️ `LIMIT 1` **không `ORDER BY`**, và trên máy thua một cuộc đua
+  /// `BILL_ALREADY_PAID` thì **có thể có nhiều** kỳ kế tiếp cùng
+  /// `generatedFromBillId`: mỗi lượt tự trả sinh một kỳ, ở cả hai máy. Phép
+  /// chọn giữa chúng là **không xác định**, và nó gỡ đúng **một** kỳ mỗi lượt.
+  ///
+  /// ⚠️ Câu trước ở đây từng nói hậu quả là "trung tính — gỡ kỳ nào thì vẫn
+  /// còn đúng một kỳ sống". **Đo thật ngày 2026-09-13 bác bỏ**: sau một cuộc
+  /// đua trên hai máy ảo, server còn **hai** kỳ kế tiếp sống cho cùng một hoá
+  /// đơn (và hai kỳ nữa đã xoá) — bốn kỳ được sinh ra vì vòng lặp tự trả chạy
+  /// vài vòng trước khi trạng thái `Payed` kịp tới server. Người dùng thấy hai
+  /// hoá đơn trùng cho tháng sau. Đây là **khoảng trống đã biết**, chưa sửa.
+  ///
+  /// Cùng khuôn truy vấn này ở `TransactionDao.getByBill` đã gây mất dữ liệu
+  /// thật cùng ngày (gỡ nhầm khoản chi của máy thắng rồi đẩy cờ xoá lên
+  /// server); ở đó nơi gọi nay phải truyền id đích danh — xem
+  /// `BillRepository.undoPayment`.
   Future<Bill?> getGeneratedFrom(String billId) {
     return (select(bills)
           ..where((t) =>
@@ -285,6 +302,37 @@ class BillDao extends DatabaseAccessor<AppDatabase> with _$BillDaoMixin {
               t.syncStatus.equals('pending') &
               (idaccount == null ? const Constant(true) : t.idaccount.equals(idaccount))))
         .get();
+  }
+
+  /// Đánh dấu kỳ [id] là **đã có khoản chi**, không đụng tới ví hay giao dịch.
+  ///
+  /// Khác [BillRepository.payBill] ở chỗ nó **chỉ ghi trạng thái**: dùng khi
+  /// khoản chi đã tồn tại ở nơi khác và máy này chỉ cần thôi tin rằng kỳ ấy còn
+  /// nợ. Nơi gọi duy nhất hôm nay là `BillPaymentConflictResolver`, sau khi
+  /// server từ chối khoản trả bằng `BILL_ALREADY_PAID` — nghĩa là hoá đơn **đã
+  /// được trả trên máy khác**.
+  ///
+  /// ⚠️ Ghi **cả hai** cột: `payStatus` là cột chính thức, `isPaid` là cột
+  /// chuỗi cũ được suy ra (xem mục "Đụng vào hoá đơn" `CLAUDE.md`). Ghi thiếu
+  /// một cột thì `daCoKhoanChi` vẫn đúng nhưng các đường đọc khác lệch nhau.
+  ///
+  /// ⚠️ Và ghi **`syncStatus = 'pending'`**, tức hàng này PHẢI được đẩy lên.
+  /// Bản đầu cố ý không đẩy — spec §4.3b sợ hàng của máy thua giẫm lên trạng
+  /// thái đúng mà server vừa nhận. ĐO THẬT ngày 2026-09-13 cho thấy nỗi sợ ấy
+  /// đặt nhầm chỗ: bản `Payed` của **máy thắng** cũng bị LWW đánh bại (mỗi máy
+  /// bị pull ghi đè rồi đẩy bản cũ hơn lên), nên server giữ `Pending` vĩnh
+  /// viễn, không máy nào dạy được nó sự thật, và bộ tự trả cứ trả lại sau mỗi
+  /// lần pull. Từ bản sửa lỗi vòng lặp, máy thua giữ đúng `Payed` — đẩy nó lên
+  /// là **hội tụ**, không phải giẫm đạp.
+  Future<void> danhDauDaTra(String id) async {
+    await (update(bills)..where((t) => t.id.equals(id))).write(
+      BillsCompanion(
+        payStatus: const Value('Payed'),
+        isPaid: const Value(true),
+        syncStatus: const Value('pending'),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
   }
 
   Future<void> markSynced(String id) async {

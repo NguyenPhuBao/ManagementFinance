@@ -4,12 +4,15 @@
 > `lib/features/bill/domain/bill_auto_pay.dart` +
 > `bill_auto_pay_runner.dart`, cột `autoPayEnabled` ở
 > `lib/core/database/tables/other_tables.dart:174`.
-> ⚠️ Cột ấy vẫn là **cục bộ**: hai máy cùng bật là hai khoản chi. Phía server
-> (đo 2026-09-11, sau khi gộp `main` @ `cc65f4f`): cột `bill.Auto_pay` **đã có**
-> và `/sync/push`, `/sync/pull` mang khoá `auto_pay`, nhưng client chưa gửi/đọc;
-> còn chốt chống trả hai lần thì **không có**: bản `7675b35` đặt sai chỗ (chặn hoàn tác mà
-> không chặn được khoản chi thứ hai), bản `cbbeeb4` (2026-09-12) bỏ nó mà chưa đặt lại ở
-> `upsertTransaction` (mục 17 B bước 2, banner `docs/superpowers/backend/CAN-LAM/README.md`).
+> ✅ **Cột ấy ĐI QUA ĐỒNG BỘ từ 2026-09-13** (bước 12), nên câu "hai máy cùng bật
+> là hai khoản chi" ở đây **không còn đúng**. Rủi ro ấy đóng bằng ba mảnh khớp
+> nhau: `auto_pay` đồng bộ + `chanTraHaiLan` ở `upsertTransaction` phía server
+> (`7779999`, client đo thật 4 ca) + `BillPaymentConflictResolver` phía client.
+> Thiết kế của bước 12: `2026-09-13-auto-pay-dong-bo-design.md`; chi tiết và
+> **bốn chốt dễ phá** ở mục **6.8** `docs/bill/BILL_DOCUMENTATION.md`.
+> *Lịch sử chốt phía server, giữ vì nó giải thích hình dạng hôm nay:* `7675b35`
+> đặt sai chỗ (chặn hoàn tác mà không chặn được khoản chi thứ hai), `cbbeeb4` bỏ
+> nó mà chưa đặt lại, `7779999` đặt đúng chỗ.
 
 **Ngày:** 2026-09-06 · **Phạm vi:** `src/Client-app` · **Tiền lệ:** trích tiền
 tự động của mục tiêu (mục 3.12–3.14 `docs/GOAL_FEATURE.md`, schema v15).
@@ -121,7 +124,7 @@ thân câu cho hoá đơn bật tự trả: "*tên* đến hạn hôm nay. Mở 
   thay vì ở giao dịch mang cùng `Idbill` — nên hai khoản chi **vẫn** lọt, và hoàn
   tác một lần trả đã đồng bộ bị từ chối (`BILL_ALREADY_PAID`). CAN-LAM 17 B — ✅ 2026-09-12
   backend bỏ chốt ấy (hoàn tác chạy) nhưng chưa đặt chốt ở giao dịch: server không chặn
-  trả hai lần ở đâu cả.
+  trả hai lần ở đâu cả. ✅ Tối muộn cùng ngày `7779999` đặt chốt ở giao dịch (CAN-LAM 20 §2.1).
 
 ## 8. Kiểm thử (viết trước)
 

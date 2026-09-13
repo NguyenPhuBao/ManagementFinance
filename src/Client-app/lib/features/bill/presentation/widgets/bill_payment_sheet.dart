@@ -324,11 +324,12 @@ class _BillPaymentSheetState extends State<BillPaymentSheet> {
           const SizedBox(height: 6),
           _dongThongTin('Đến hạn', _denHan(b.dueDate)),
           // Hàng kéo về từ server có thể thiếu ngày bắt đầu — bỏ hàng này.
+          // Kỳ kết thúc ở periodEnd (v21); hàng cũ NULL thì trùng hạn trả.
           if (b.startDate != null)
             _dongThongTin(
                 'Kỳ',
                 '${_dinhDangNgay.format(b.startDate!)} → '
-                    '${_dinhDangNgay.format(b.dueDate)}'),
+                    '${_dinhDangNgay.format(b.periodEnd ?? b.dueDate)}'),
           _dongThongTin('Chu kỳ',
               b.isRecurrence ? tenChuKyHoaDon(b.timeRecurrence) : 'Không lặp'),
           _dongThongTin(

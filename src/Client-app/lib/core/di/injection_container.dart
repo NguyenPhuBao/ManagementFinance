@@ -43,6 +43,7 @@ import '../../features/transaction/data/repositories/transaction_repository.dart
 import '../../features/transaction/presentation/bloc/transaction_bloc.dart';
 import '../../features/bill/data/datasources/bill_local_datasource.dart';
 import '../../features/bill/data/repositories/bill_repository.dart';
+import '../../features/bill/data/services/bill_payment_conflict_resolver.dart';
 import '../../features/bill/data/repositories/bill_repository_impl.dart';
 import '../../features/bill/presentation/bloc/bill_bloc.dart';
 import '../../features/category/data/repositories/category_management_repository.dart';
@@ -193,6 +194,15 @@ Future<void> setupDependencies() async {
       dataSource: sl<BillLocalDataSource>(),
       db: sl<AppDatabase>(),
       syncEngine: sl<SyncEngine>(),
+    ),
+  );
+  // Gỡ khoản trả mà server từ chối bằng `BILL_ALREADY_PAID` — máy khác đã trả
+  // hoá đơn ấy trước. Chỉ ĐĂNG KÝ ở đây; `batDauNghe` được gọi một lần lúc app
+  // khởi động (`main.dart`), vì lớp phải sống suốt vòng đời chứ không theo màn.
+  sl.registerLazySingleton<BillPaymentConflictResolver>(
+    () => BillPaymentConflictResolver(
+      db: sl<AppDatabase>(),
+      bills: sl<BillRepository>(),
     ),
   );
   sl.registerFactory<BillBloc>(

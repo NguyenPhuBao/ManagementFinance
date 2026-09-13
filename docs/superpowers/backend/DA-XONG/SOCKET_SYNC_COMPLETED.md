@@ -1,7 +1,12 @@
 # `sync.completed` đã có trên EventBus nhưng chưa ai bắc ra socket
 
-> ✅ **2026-09-12:** kênh nối được sau gộp `cbbeeb4` (17 A đóng) — sự kiện **tới được** client;
-> client vẫn chưa nghe (G34, chờ người dùng chốt toast hay im lặng).
+> ✅ **2026-09-12 tối — ĐÓNG TRỌN:** client nghe `sync.completed` (`RealtimeEvent.dongBoXong`, G34 đóng),
+> **im lặng** — chỉ gọi `syncNow()`, không toast, vì máy vừa đẩy cũng nhận lại sự kiện của mình (ràng buộc ở
+> mục 3 dưới) và payload là hộp đen. Đo máy ảo hai máy cùng tài khoản: ba lần đẩy, máy kia kéo về **cùng giây**
+> backend ghi `Emitted sync.completed`. Mục 4 dưới nay đúng nguyên văn.
+
+> ✅ **2026-09-12 sáng:** kênh nối được sau gộp `cbbeeb4` (17 A đóng) — sự kiện **tới được** client;
+> client khi ấy chưa nghe (G34).
 
 > ✅ **2026-09-11 — đã bắc:** `sync.service.js:223` → `notification.service.js:79-90` →
 > `core/socket.js:203-215`, phòng `account_<id>`, payload `{summary, timestamp}`. Nhưng chưa tới

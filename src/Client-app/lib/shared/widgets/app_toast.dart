@@ -174,10 +174,14 @@ class _AppToastState extends State<AppToast> {
   /// Sự kiện từ máy chủ. Chữ và màu suy từ chính enum — payload không được đọc,
   /// xem chú thích đầu `realtime_event.dart`.
   void _khiCoRealtime(RealtimeEvent e) {
+    // Sự kiện im lặng (`sync.completed`): chỉ đánh thức đồng bộ, không hiện gì.
+    // Lý do ở chú thích của `RealtimeEvent.dongBoXong`.
+    final chu = e.loiNhan;
+    if (chu == null) return;
     final laCanhBao = e == RealtimeEvent.ocrTrung;
     _hien(
       _NoiDungToast(
-        chu: e.loiNhan,
+        chu: chu,
         mau: laCanhBao ? AppColors.warning : AppColors.income,
         icon: laCanhBao
             ? Icons.info_outline

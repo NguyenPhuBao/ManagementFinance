@@ -45,7 +45,7 @@ class _StubBillRepository implements BillRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-Bill _hoaDon({DateTime? dueDate}) => Bill(
+Bill _hoaDon({DateTime? dueDate, DateTime? periodEnd}) => Bill(
       id: 'b1',
       idaccount: 10,
       walletId: 'w1',
@@ -53,6 +53,7 @@ Bill _hoaDon({DateTime? dueDate}) => Bill(
       name: 'Tiền điện tháng này',
       amount: 350000,
       startDate: DateTime(2026, 9, 4),
+      periodEnd: periodEnd,
       dueDate: dueDate ?? DateTime(2026, 10, 4),
       payStatus: 'Pending',
       isPaid: false,
@@ -192,8 +193,34 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('bill-cycle-$kBillCycleQuarter')));
     await tester.pumpAndSettle();
 
-    expect(find.text('04/12/2026'), findsOneWidget,
+    // Hai ô: "Ngày kết thúc kỳ" và "Hạn thanh toán" — trùng nhau khi ân hạn 0
+    // (v21, cố ý hiện đủ hai ô để bố cục không nhảy khi đổi số ngày).
+    expect(find.text('04/12/2026'), findsNWidgets(2),
         reason: 'Ngày đến hạn luôn suy từ ngày bắt đầu + chu kỳ; đổi chu kỳ '
             'mà hạn không đổi là lựa chọn chưa ăn vào `BillSchedule`.');
+  });
+  group('ân hạn — form Sửa (v21)', () {
+    testWidgets('mở hoá đơn có ân hạn 15 → hai ô khoá đúng, không cảnh báo',
+        (tester) async {
+      await dungTrangSua(tester,
+          bill: _hoaDon(
+              periodEnd: DateTime(2026, 10, 4),
+              dueDate: DateTime(2026, 10, 19)));
+      expect(find.text('Ngày kết thúc kỳ'), findsOneWidget);
+      expect(find.text('04/10/2026'), findsOneWidget);
+      expect(find.text('Hạn thanh toán'), findsOneWidget);
+      expect(find.text('19/10/2026'), findsOneWidget);
+      expect(find.byKey(const ValueKey('bill-due-date-warning')), findsNothing,
+          reason: 'Hạn đã lưu khớp kết thúc kỳ + 15 nên không được cảnh báo.');
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('hoá đơn cũ (periodEnd NULL) mở ra là 0 ngày, không cảnh báo',
+        (tester) async {
+      await dungTrangSua(tester);
+      expect(find.byKey(const ValueKey('bill-due-date-warning')), findsNothing);
+      expect(find.text('04/10/2026'), findsNWidgets(2),
+          reason: 'Kết thúc kỳ và hạn thanh toán trùng nhau khi ân hạn 0.');
+    });
   });
 }

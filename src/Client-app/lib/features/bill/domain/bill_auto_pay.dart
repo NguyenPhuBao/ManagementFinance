@@ -24,12 +24,24 @@ import 'bill_pay_status.dart';
 /// Dòng phụ hiện dưới công tắc khi bật, dùng chung cho form Thêm và Sửa.
 ///
 /// Ba điều người dùng cần biết trước khi uỷ quyền: trừ ví nào, lúc nào (bộ
-/// chạy chỉ chạy khi app mở), và vì sao chỉ nên bật trên một thiết bị (cột
-/// cục bộ — hai máy cùng bật, cùng offline, cùng trả một kỳ là hai khoản chi).
+/// chạy chỉ chạy khi app mở), và chuyện gì xảy ra khi họ dùng nhiều máy.
+///
+/// ⚠️ Câu cuối đổi ngày **2026-09-13** (bước 12). Bản trước dặn *"Chỉ nên bật
+/// trên một thiết bị"* vì hai lý do nay đã hết:
+/// - cột `autoPayEnabled` khi ấy **cục bộ**, nên bật ở máy này máy kia không
+///   biết — nay nó **đi qua đồng bộ**, người dùng không còn tắt riêng từng máy
+///   được nữa, nên lời khuyên ấy vừa sai vừa không làm theo được;
+/// - và khi ấy chưa có gì chặn hai khoản chi cho cùng một kỳ — nay server từ
+///   chối khoản thứ hai (`BILL_ALREADY_PAID`, CAN-LAM 20 §2.1) và
+///   `BillPaymentConflictResolver` gỡ khoản trả thừa ở máy thua.
+///
+/// Điều người dùng thật sự cần biết nay là **chuyện gì xảy ra** khi hai máy
+/// cùng trả, chứ không phải một lời dặn họ không thi hành được.
 const String kBillAutoPayHint =
     'Khi bạn mở app vào ngày đến hạn, hoá đơn được trả từ ví thanh toán ở '
     'trên và ghi thành một khoản chi. Kỳ bỏ lỡ được trả bù, tối đa 3 kỳ mỗi '
-    'lần. Chỉ nên bật trên một thiết bị.';
+    'lần. Cài đặt này áp cho hoá đơn trên mọi thiết bị; nếu hai máy cùng trả '
+    'một kỳ thì chỉ một khoản chi được giữ lại.';
 
 /// Trần số kỳ trả cho **mỗi hoá đơn** trong một lượt chạy.
 ///

@@ -17,6 +17,15 @@ enum NotificationKind {
   billOverdue,
   billAutoPaid,
   billAutoPayFailed,
+
+  /// Hoá đơn đã được trả trên **thiết bị khác**, nên khoản trả ghi trên máy này
+  /// vừa bị gỡ và tiền đã hoàn về ví.
+  ///
+  /// Khác mọi loại còn lại trong enum này ở một điểm: nó **không** do
+  /// `NotificationScanner` sinh ra theo lịch quét, mà do
+  /// `BillPaymentConflictResolver` ghi thẳng ngay lúc đồng bộ nền — thời điểm
+  /// duy nhất biết được server đã từ chối khoản trả nào.
+  billPaidOnOtherDevice,
   goalCompleted,
   goalCycleReady,
   goalBehind,

@@ -14,6 +14,7 @@ import '../../domain/bill_auto_pay.dart' show kBillAutoPayHint;
 import '../../domain/bill_draft.dart';
 import '../../domain/bill_schedule.dart';
 import '../bloc/bill_bloc.dart';
+import '../widgets/bill_grace_selector.dart';
 import '../bloc/bill_event.dart';
 import '../../../../core/utils/gioi_han_do_dai.dart';
 
@@ -156,6 +157,7 @@ class _BillAddPageState extends State<BillAddPage> {
       name: name,
       amount: amount,
       startDate: _lich.startDate,
+      periodEnd: _lich.ketThucKy,
       dueDate: _lich.dueDate,
       walletId: wallet.id,
       categoryId: category.id,
@@ -305,13 +307,38 @@ class _BillAddPageState extends State<BillAddPage> {
           ),
           const SizedBox(height: 16),
 
-          _buildInputLabel('NGÀY ĐẾN HẠN THANH TOÁN'),
+          // Ba mốc của kỳ (v21): kết thúc kỳ suy từ chu kỳ, ân hạn người
+          // dùng chọn theo số ngày, hạn thanh toán = kết thúc + ân hạn. Hai ô
+          // ngày đều khoá — xem `BillSchedule` và `bill_an_han.dart`.
+          _buildInputLabel('NGÀY KẾT THÚC KỲ'),
+          const SizedBox(height: 8),
+          _buildDateField(
+            value: _lich.ketThucKy,
+            onTap: null,
+            formatter: dateFormatter,
+            khoa: true,
+            textKey: const ValueKey('bill-period-end-text'),
+          ),
+          const SizedBox(height: 16),
+
+          _buildInputLabel('HẠN TRẢ SAU KHI KẾT THÚC KỲ'),
+          const SizedBox(height: 8),
+          BoChonAnHan(
+            giaTri: _lich.anHanNgay,
+            loi: _lich.dateError,
+            onChanged: (n) =>
+                setState(() => _lich = _lich.copyWith(anHanNgay: n)),
+          ),
+          const SizedBox(height: 16),
+
+          _buildInputLabel('HẠN THANH TOÁN'),
           const SizedBox(height: 8),
           _buildDateField(
             value: _lich.dueDate,
             onTap: null,
             formatter: dateFormatter,
             khoa: true,
+            textKey: const ValueKey('bill-due-date-text'),
           ),
           const SizedBox(height: 16),
 
@@ -423,11 +450,14 @@ class _BillAddPageState extends State<BillAddPage> {
     );
   }
 
-  /// Khối theo Stitch "Thêm Hóa Đơn Định Kỳ" (biểu tượng `smart_toy`, dưới
-  /// các chip nhắc, sau vạch mỏng) — nhưng công tắc TẮT sẵn, và có dòng phụ
-  /// nói rõ ba điều người dùng cần biết trước khi uỷ quyền: trừ ví nào, lúc
-  /// nào, và vì sao chỉ nên bật trên một thiết bị (cột cục bộ, hai máy cùng
-  /// bật là hai khoản chi).
+  /// Khối **không có** trên màn Stitch "Thêm Hóa Đơn Định Kỳ" — tính năng tự
+  /// động trả được thêm sau, và bản thiết kế chưa có công tắc nào (đo lại
+  /// 2026-09-13: cả màn Thêm lẫn màn Sửa đều không có chữ "thiết bị"). Đặt
+  /// dưới các chip nhắc, sau vạch mỏng, biểu tượng `smart_toy`.
+  ///
+  /// Công tắc **TẮT sẵn**, và có dòng phụ nói rõ ba điều người dùng cần biết
+  /// trước khi uỷ quyền: trừ ví nào, lúc nào, và chuyện gì xảy ra khi họ dùng
+  /// nhiều máy — xem [kBillAutoPayHint].
   Widget _buildAutoPaySwitch() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -616,6 +646,7 @@ class _BillAddPageState extends State<BillAddPage> {
     required VoidCallback? onTap,
     required DateFormat formatter,
     bool khoa = false,
+    Key? textKey,
   }) {
     return Opacity(
       opacity: khoa ? 0.6 : 1,
@@ -635,6 +666,7 @@ class _BillAddPageState extends State<BillAddPage> {
               const SizedBox(width: 12),
               Text(
                 value == null ? 'Chưa chọn' : 'Ngày ${formatter.format(value)}',
+                key: textKey,
                 style: const TextStyle(fontSize: 16, color: AppColors.primary),
               ),
               const Spacer(),

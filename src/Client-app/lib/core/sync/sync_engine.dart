@@ -34,6 +34,14 @@ import '../../features/goal/domain/uu_tien_hop_le.dart';
 /// // Trigger manual (sau khi ghi local):
 /// sl<SyncEngine>().scheduleSync();
 /// ```
+/// Nửa đêm UTC của ngày CỤC BỘ của [d] — cho cột `@db.Date` trên server.
+///
+/// `d.toUtc()` của 03:00 giờ +07 là 20:00 UTC hôm trước; PostgreSQL cắt giờ
+/// và giữ lại ngày sai. Chỉ dùng cho cột ngày-không-giờ (hiện là
+/// `bill.Period_end`); cột timestamp vẫn gửi `toUtc()` như cũ.
+String? _ngayCucBoUtcIso(DateTime? d) =>
+    d == null ? null : DateTime.utc(d.year, d.month, d.day).toIso8601String();
+
 class SyncEngine {
   // ignore: unused_field — sẽ dùng ở Plan 6 khi backend có sync API
   final DioClient _dioClient;
@@ -323,6 +331,20 @@ class SyncEngine {
 
   DateTime? _lastPullTime;
 
+  /// Có một yêu cầu đồng bộ bị từ chối vì chu kỳ khác đang chạy, và đang **nợ**
+  /// người gọi một lần chạy.
+  ///
+  /// Cùng lý lẽ với `_scheduleBackoffRetry` ở nhánh giãn cách: từ chối một yêu
+  /// cầu mà không hẹn lại thì thay đổi vừa ghi nằm chờ một nguồn kích hoạt khác
+  /// — timer 15 phút, đổi mạng, hoặc lần mở app sau. Nguồn hay rơi đúng vào cửa
+  /// sổ này lại là hai nguồn dày nhất: `scheduleSync()` sau mỗi lần ghi, và sự
+  /// kiện `sync.completed` của socket (G34) khi máy khác vừa đẩy xong.
+  ///
+  /// Là `bool` chứ không phải bộ đếm: nhiều yêu cầu dồn vào một cửa sổ vẫn chỉ
+  /// đáng **một** lần chạy bù, vì `_collectPendingOps` gom toàn bộ bản ghi còn
+  /// `pending` chứ không xử theo từng yêu cầu.
+  bool _noMotLanChay = false;
+
   Future<void> _runSync() async {
     // Danh tính CHỈ đến từ phiên đăng nhập, không bao giờ suy ra từ dữ liệu
     // trong SQLite. Trước đây khi `_currentIdaccount` là null hoặc 1, engine
@@ -337,7 +359,11 @@ class SyncEngine {
       _setStatus(SyncStatus.idle);
       return;
     }
-    if (_status == SyncStatus.syncing) return; // Tránh concurrent sync
+    // Không chạy chồng — nhưng ghi nợ để chạy bù, đừng nuốt yêu cầu.
+    if (_status == SyncStatus.syncing) {
+      _noMotLanChay = true;
+      return;
+    }
 
     // Giãn dần sau các chu kỳ hỏng liên tiếp. Trước đây thao tác `transient`
     // được thử lại ở MỌI chu kỳ kế tiếp mà không giãn ra, trong khi nguồn kích
@@ -390,6 +416,20 @@ class SyncEngine {
         return;
       }
 
+      // Phát kết quả đẩy **TRƯỚC** bước Pull — thứ tự này là một cam kết.
+      //
+      // Người nghe phản ứng với THẤT BẠI của lần đẩy, và phản ứng ấy thường
+      // phải bù lại một thay đổi cục bộ mà chính máy này vừa ghi. Pull ở giữa
+      // có thể đã thay đúng hàng ấy bằng bản của server, nên phép bù cộng vào
+      // một con số **không hề chứa** thay đổi cần bù.
+      //
+      // ⚠️ ĐÃ VẤP THẬT ngày 2026-09-13, và 2303 ca test đều xanh — đúng loại
+      // lỗi thứ ba ở mục "Ba loại lỗi `flutter test` KHÔNG bắt được". Hoá đơn
+      // tự trả trên hai máy: ví bị trừ còn 1.650.000 → push ví xung đột, server
+      // giữ 2.000.000 → **pull ghi đè, lần trừ biến mất** → resolver hoàn
+      // 350.000 → ví thành **2.350.000**. Phình thêm đúng một lần trả, im lặng.
+      if (pushResult != null) _emitPushResult(pushResult);
+
       // 2. Pull all updated data from Backend PostgreSQL to SQLite local
       await _pullFromBackend(accountId);
 
@@ -427,11 +467,25 @@ class SyncEngine {
       } else {
         _resetBackoff();
       }
-      if (lastPush != null) _emitPushResult(lastPush);
+      // Lần đẩy đầu đã được phát TRƯỚC bước Pull (xem chú thích ở đó). Ở đây
+      // chỉ còn kết quả của lần THỬ LẠI, và nó buộc phải nằm sau Pull vì chính
+      // Pull là thứ làm nó đáng thử lại. Người nghe phải chịu được hai lượt
+      // phát cho cùng một thất bại — `BillPaymentConflictResolver` chịu được,
+      // vì khoản chi đã gỡ thì không còn tìm thấy ở lượt sau.
+      if (retryResult != null) _emitPushResult(retryResult);
       _setStatus(stillFailing ? SyncStatus.error : SyncStatus.idle);
     } catch (e) {
       debugPrint('[SyncEngine] Sync error: $e');
       _setStatus(SyncStatus.error);
+    } finally {
+      // Trả món nợ ghi ở đầu hàm. Đặt trong `finally` để chu kỳ bù vẫn chạy khi
+      // chu kỳ này kết thúc bằng lỗi — yêu cầu bị từ chối không liên quan gì
+      // tới việc chu kỳ đang chạy thành hay bại.
+      if (_noMotLanChay && !_disposed) {
+        _noMotLanChay = false;
+        debugPrint('[SyncEngine] Chạy bù cho yêu cầu đến giữa chu kỳ trước');
+        unawaited(_runSync());
+      }
     }
   }
 
@@ -856,6 +910,22 @@ class SyncEngine {
                 anchorDay: bill['anchor_day'] != null
                     ? Value(int.tryParse(bill['anchor_day'].toString()))
                     : const Value.absent(),
+                // Cùng luật với hai cột trên: server im lặng = CHƯA BIẾT. Hàng
+                // cũ trên server mang NULL cho tới khi client đẩy lại; gán
+                // thẳng là xoá ngày kết thúc kỳ và kỳ sau lại nối từ hạn trả
+                // (ân hạn, v21 — 2026-09-12).
+                periodEnd: bill['period_end'] != null
+                    ? Value(DateTime.tryParse(bill['period_end'].toString()))
+                    : const Value.absent(),
+                // Cùng luật nốt: cột này chỉ đi qua đồng bộ từ 2026-09-13 (bước
+                // 12), nên hàng đã nằm sẵn trên server mang NULL cho tới khi
+                // client đẩy lại từng hàng. Gán thẳng `Value(false)` là TẮT tự
+                // động trả của mọi hoá đơn ngay chu kỳ pull đầu tiên — người
+                // dùng không được báo gì và chỉ phát hiện ra khi một hoá đơn
+                // đến hạn mà không ai trả.
+                autoPayEnabled: bill['auto_pay'] != null
+                    ? Value(bill['auto_pay'] == true)
+                    : const Value.absent(),
                 isDeleted: Value(bill['delete_at'] != null),
                 deletedAt: Value(_deletedAtFrom(bill['delete_at'])),
                 syncStatus: const Value('synced'),
@@ -1252,6 +1322,26 @@ class SyncEngine {
           // đơn mồ côi và phải suy ngày đến hạn bằng cách đoán.
           'previous_bill_id': bill.generatedFromBillId,
           'anchor_day': bill.anchorDay,
+          // Ân hạn hoá đơn (2026-09-12, schema v21): ngày kết thúc kỳ tách
+          // khỏi hạn trả. Cột server là @db.Date (KHÔNG giờ), khác
+          // `due_date` (@db.Timestamp): gửi `toUtc()` thô của một mốc 03:00
+          // giờ +07 là 20:00 UTC hôm TRƯỚC và server lưu lùi một ngày — im
+          // lặng. Nên gửi nửa đêm UTC của NGÀY CỤC BỘ. Đo thật 2026-09-12.
+          'period_end': _ngayCucBoUtcIso(bill.periodEnd),
+          // Công tắc tự động trả — mở đường đồng bộ 2026-09-13 (bước 12). Cột
+          // `bills.autoPayEnabled` có từ v17 và tới 2026-09-13 vẫn là cột
+          // CỤC BỘ: bật trên máy A thì máy B không biết, và người dùng phải tự
+          // nhớ bật lại ở từng máy.
+          //
+          // Mở được vì backend đã đặt chốt chống trả hai lần ở
+          // `upsertTransaction` (`chanTraHaiLan`, CAN-LAM 20 §2.1, có từ
+          // `7779999`): hai máy cùng bật thì chỉ khoản chi đầu tiên được nhận,
+          // khoản thứ hai bị từ chối bằng `BILL_ALREADY_PAID` và
+          // `BillPaymentConflictResolver` gỡ nó ở máy thua.
+          //
+          // Phải là `bool` THẬT: gửi chuỗi `'true'` thì backend đọc thành NULL
+          // và bỏ qua trong im lặng — quy tắc 4 `CLAUDE.md`.
+          'auto_pay': bill.autoPayEnabled,
           'is_deleted': bill.isDeleted,
           'updated_at': bill.updatedAt.toUtc().toIso8601String(),
           'idaccount':
@@ -1506,15 +1596,18 @@ class SyncEngine {
                 failed++;
                 final message = item['message']?.toString() ?? 'Unknown error';
                 errorMessages.add(message);
-                final kind = _classifyFailure(
-                  message,
-                  code: item['code'] as String?,
-                );
+                final code = item['code'] as String?;
+                final kind = _classifyFailure(message, code: code);
                 failures.add(SyncOpFailure(
                   localId: op.localId,
                   entity: op.entity,
                   message: message,
                   kind: kind,
+                  // Chuyển nguyên mã ra ngoài: `kind` chỉ nói vĩnh viễn hay
+                  // tạm thời, còn người nghe `pushResultStream` cần biết CHÍNH
+                  // lỗi nào để phản ứng khác nhau — `BILL_ALREADY_PAID` thì
+                  // hoàn tác khoản trả, các mã khác thì không đụng vào.
+                  code: code,
                 ));
                 if (kind == SyncFailureKind.permanent) {
                   // Lỗi vĩnh viễn: dữ liệu hiện tại đẩy bao nhiêu lần cũng

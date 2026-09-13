@@ -160,8 +160,8 @@ void main() {
       expect(find.textContaining('Tự động thanh toán'), findsOneWidget);
     });
 
-    testWidgets('bật lên thì nói rõ trừ ví nào, lúc nào, và một thiết bị',
-        (tester) async {
+    testWidgets('bật lên thì nói rõ trừ ví nào, lúc nào, và cài đặt theo hoá '
+        'đơn chứ không theo máy', (tester) async {
       await dung(tester, const BillAddPage(),
           bloc: BillBloc(repository: _GhiLaiRepository()));
 
@@ -170,11 +170,20 @@ void main() {
 
       expect(find.textContaining('ví thanh toán', skipOffstage: false),
           findsWidgets);
-      expect(find.textContaining('một thiết bị', skipOffstage: false),
+      expect(find.textContaining('mọi thiết bị', skipOffstage: false),
           findsOneWidget,
-          reason: 'Cột là cục bộ: hai máy cùng bật, cùng offline, cùng trả một '
-              'kỳ là hai khoản chi. Phải nói trước, không để người dùng tự '
-              'phát hiện qua số dư.');
+          reason: 'Từ 2026-09-13 cột `autoPayEnabled` ĐI QUA ĐỒNG BỘ (bước 12): '
+              'bật ở một máy là bật ở mọi máy. Câu cũ dặn "chỉ nên bật trên một '
+              'thiết bị" nay vừa sai vừa vô nghĩa — người dùng không còn tắt '
+              'riêng từng máy được nữa.');
+      expect(find.textContaining('một khoản chi được giữ', skipOffstage: false),
+          findsOneWidget,
+          reason: 'Điều người dùng thật sự cần biết nay là chuyện gì xảy ra khi '
+              'hai máy cùng trả: server chỉ nhận một, máy kia tự gỡ khoản trả '
+              'của nó. Không nói thì họ thấy khoản chi biến mất mà không hiểu.');
+      expect(find.textContaining('một thiết bị', skipOffstage: false),
+          findsNothing,
+          reason: 'Câu cũ phải biến mất hẳn, không chỉ bị câu mới che đi.');
       expect(tester.takeException(), isNull,
           reason: 'Dòng phụ dài không được làm tràn ở 411dp.');
     });
