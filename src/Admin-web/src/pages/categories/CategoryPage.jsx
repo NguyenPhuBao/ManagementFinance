@@ -21,6 +21,7 @@ const CategoryPage = () => {
       syncAlert: false,
   });
   const [editingCategory, setEditingCategory] = useState(null);
+  const [categoryToDelete, setCategoryToDelete] = useState(null);
   const [processing, setProcessing] = useState({ isProcessing: false, text: '' });
   const [form, setForm] = useState({ name: '', isDefault: 'yes', type: 'expense', keyword: '' });
   const [filter, setFilter] = useState({ type: 'all', keyword: '' });
@@ -149,6 +150,15 @@ const CategoryPage = () => {
     }
   };
 
+  const openDeleteModal = (cat) => {
+    if (cat.isUserCategory || !cat.isDefault) {
+      alert('Vi phạm quyền riêng tư: Tuyệt đối cấm xóa danh mục của người dùng!');
+      return;
+    }
+    setCategoryToDelete(cat);
+    toggleModal('deleteAlert', true);
+  };
+
   const confirmDelete = async () => {
     if (!categoryToDelete || processing.isProcessing) return; // Chặn bấm xóa nhiều lần
     if (categoryToDelete.isUserCategory || !categoryToDelete.isDefault) {
@@ -157,17 +167,19 @@ const CategoryPage = () => {
       setCategoryToDelete(null);
       return;
     }
-    alert('Danh mục mặc định của hệ thống không thể xóa!');
-    toggleModal('deleteAlert', false);
-    setCategoryToDelete(null);
-  };
 
-  const handleDeleteClick = (cat) => {
-    if (cat.isUserCategory || !cat.isDefault) {
-      alert('Vi phạm quyền riêng tư: Tuyệt đối cấm xóa danh mục của người dùng!');
-      return;
+    setProcessing({ isProcessing: true, text: 'Đang xóa danh mục...' });
+    try {
+      await adminApi.deleteCategory(categoryToDelete.id);
+      toggleModal('deleteAlert', false);
+      setCategoryToDelete(null);
+      await fetchCategories();
+    } catch (err) {
+      console.error('Lỗi xóa danh mục:', err);
+      alert(err.response?.data?.message || err.message || 'Lỗi khi xóa danh mục hệ thống');
+    } finally {
+      setProcessing({ isProcessing: false, text: '' });
     }
-    alert('Không thể xóa danh mục mặc định của hệ thống!');
   };
 
   const openEditModal = (cat) => {
@@ -394,12 +406,13 @@ const CategoryPage = () => {
                                               <button className="p-1 text-secondary hover:text-primary transition-colors border border-transparent hover:border-on-background rounded cursor-pointer" onClick={() => openEditModal(item)} title="Sửa">
                                                   <span className="material-symbols-outlined text-[20px]">edit</span>
                                               </button>
-                                              <span 
-                                                className="p-1 text-outline/40 cursor-not-allowed ml-2 inline-flex items-center align-middle" 
-                                                title="Danh mục hệ thống không thể xóa"
-                                              >
-                                                <span className="material-symbols-outlined text-[20px]">delete</span>
-                                              </span>
+                                                <button 
+                                                  className="p-1 text-outline hover:text-error transition-colors border border-transparent hover:border-error/20 rounded cursor-pointer ml-2 inline-flex items-center align-middle" 
+                                                  onClick={() => openDeleteModal(item)}
+                                                  title="Xóa danh mục hệ thống"
+                                                >
+                                                  <span className="material-symbols-outlined text-[20px]">delete</span>
+                                                </button>
                                             </>
                                           )}
                                         </td>
@@ -577,6 +590,68 @@ const CategoryPage = () => {
                           }}
                       >
                           Áp dụng
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {modals.deleteAlert && categoryToDelete && (
+          <div className="fixed inset-0 bg-on-background/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-lg w-full max-w-md shadow-xl overflow-hidden animate-in fade-in zoom-in duration-200">
+                  <div className="px-6 py-4 border-b border-outline-variant flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-error">
+                          <span className="material-symbols-outlined">warning</span>
+                          <h3 className="font-headline-sm text-on-surface m-0">Xác nhận xóa danh mục</h3>
+                      </div>
+                      <button 
+                        disabled={processing.isProcessing}
+                        className="text-on-surface-variant hover:text-on-surface cursor-pointer disabled:opacity-50" 
+                        onClick={() => {
+                          toggleModal('deleteAlert', false);
+                          setCategoryToDelete(null);
+                        }}
+                      >
+                          <span className="material-symbols-outlined">close</span>
+                      </button>
+                  </div>
+                  <div className="p-6 space-y-4">
+                      <p className="text-body-md text-on-surface m-0">
+                          Bạn có chắc chắn muốn xóa danh mục hệ thống <strong className="text-primary font-semibold font-headline-sm">"{categoryToDelete.name}"</strong>?
+                      </p>
+                      <div className="bg-surface-container-low p-3.5 rounded border border-outline-variant text-xs text-on-surface-variant space-y-1.5">
+                          <div className="flex items-start gap-1.5 text-error font-medium">
+                              <span className="material-symbols-outlined text-[16px] shrink-0 mt-0.5">info</span>
+                              <span>Hệ thống sẽ thực hiện <strong>Xóa Mềm (Soft Delete)</strong>:</span>
+                          </div>
+                          <ul className="list-disc pl-5 space-y-1 text-on-surface-variant">
+                              <li>Danh mục này sẽ bị ẩn và không còn được áp dụng cho người dùng mới đăng ký sau thời điểm này.</li>
+                              <li>Dữ liệu và các giao dịch tài chính của những người dùng đã tạo trước đây <strong>hoàn toàn không bị ảnh hưởng</strong>.</li>
+                              <li>Bạn có thể tạo lại danh mục cùng tên này bất kỳ lúc nào nếu muốn sử dụng lại.</li>
+                          </ul>
+                      </div>
+                  </div>
+                  <div className="px-6 py-4 bg-surface-bright border-t border-outline-variant flex justify-end gap-3">
+                      <button 
+                        type="button" 
+                        disabled={processing.isProcessing}
+                        className="px-4 py-2 border border-outline rounded text-on-surface font-label-md hover:bg-surface-container-low transition-colors cursor-pointer disabled:opacity-50" 
+                        onClick={() => {
+                          toggleModal('deleteAlert', false);
+                          setCategoryToDelete(null);
+                        }}
+                      >
+                        Hủy
+                      </button>
+                      <button 
+                        type="button" 
+                        disabled={processing.isProcessing}
+                        className="px-4 py-2 bg-error text-white rounded font-label-md hover:bg-error/90 transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                        onClick={confirmDelete}
+                      >
+                        {processing.isProcessing && <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>}
+                        Xác nhận xóa
                       </button>
                   </div>
               </div>

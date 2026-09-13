@@ -2189,7 +2189,7 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - **Cơ chế Phòng vệ Chiều sâu (Defense-in-Depth)**:
     - *Masking dữ liệu cá nhân*: Nếu có danh mục người dùng (`is_default = false`) lọt vào Admin API, toàn bộ thông tin nhận diện (`name`, `keyword`, `created_by`, `created_by_name`) bắt buộc bị che mờ bằng `***` và cắm cờ `is_user_category: true`. Frontend hiển thị nhãn `[Dữ liệu riêng tư - Đã ẩn danh]` và khóa các thao tác Sửa/Xóa.
     - *Chặn đứng can thiệp trái phép*: Cấm tuyệt đối Admin sửa (`updateCategory`) hoặc xóa (`deleteCategory`) danh mục người dùng $\rightarrow$ Backend ném lỗi **HTTP 403 Forbidden**.
-    - *Bảo vệ danh mục hệ thống*: Cấm xóa danh mục mặc định hệ thống $\rightarrow$ Backend ném lỗi **HTTP 400 Bad Request**.
+    - *Quản lý Xóa mềm & Tạo lại Danh mục Hệ thống*: Cho phép Admin xóa mềm danh mục hệ thống (`Delete_at = NOW()`). Khi xóa mềm, danh mục mẫu sẽ bị ẩn khỏi các API quản trị và API đồng bộ mẫu (`GET /api/sync/default-categories`) cho người dùng mới. Toàn bộ người dùng và giao dịch cũ đã nhân bản trước đó không bị ảnh hưởng. Danh mục đã xóa mềm hoàn toàn có thể tạo lại (hệ thống tự động restore `Delete_at = null`, cập nhật dữ liệu mới và bảo toàn UUID gốc). Trên giao diện Admin-web, nút Xóa được kích hoạt kèm Modal xác nhận cảnh báo an toàn.
 
 ### 11.9. Chuẩn Hóa Thanh Phân Trang Toàn Hệ Thống (Unified Pagination Component)
 - **Component dùng chung (`src/Admin-web/src/components/common/Pagination.jsx`)**:
@@ -2707,12 +2707,12 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
 - **Hệ thống quy tắc nghiệp vụ toàn diện (Business Rules A-H):**
   - *Nhóm A (Làm sạch & Nhận diện):* A1 (lọc outlier $> 3\times$), A2 (loại trừ một lần), A3 (hoàn tiền không trừ lùi), A4 (chặn uncategorized), A5 (bảo vệ baseline nhỏ), A6 (phân tách Lump-sum vs Continuous).
   - *Nhóm B (Cảnh báo & Dự phóng):* B1 ($\ge 2$ tháng dữ liệu), B2 (ngưỡng thâm hụt kép $\ge 10\%$ và $\ge 50.000đ$), B3 (cooldown 48h chống spam), B4-B5 (chống bẫy đầu tháng, dự phóng Bayesian nội suy), B6 (tối đa 1 đề xuất chủ động/tuần chống AI fatigue).
-  - *Nhóm C (Nguồn bù & Giới hạn):* C1 (essentiality $\ge 0.75 \rightarrow$ Protected cấm cắt), C2 (manual override tối cao), C3 (max cut ratio $25\% \rightarrow 15\%$), C4 (vùng đệm donor $\ge 100.000đ$, min transfer), C5 (trạng thái `insufficient_slack` trung thực), C6 (xếp hạng donor theo slack $\times (1 - \text{essentiality})$).
-  - *Nhóm D (Mục tiêu & Thu nhập biến động):* D1 (thu nhập trượt 3 tháng), D2 (chế độ thận trọng khi thu nhập giảm $> 30\%$), D3 (không tự ý nâng saving goal), D4 (chuyển đổi tư vấn khi thâm hụt cơ cấu 3 tháng).
+  - *Nhóm C (Nguồn bù & Giới hạn):* C1 (essentiality $\ge 0.75 \rightarrow$ Protected cấm cắt), C2 (manual override tối cao), C3 (max cut ratio $25\% \rightarrow 15\%$), C4 (vùng đệm donor $\ge 100.000đ$), C5 (ngưỡng điều chuyển có ý nghĩa), C6 (xếp hạng donor theo slack $\times (1 - \text{essentiality})$), C7 (xử lý cạn kiệt nguồn bù `insufficient_slack`).
+  - *Nhóm D (Mục tiêu & Thu nhập biến động):* D1 (thu nhập trượt 3 tháng), D2 (chế độ thận trọng khi thu nhập giảm $> 30\%$), D3 (không tự ý nâng saving goal), D4 (chuyển đổi tư vấn khi thâm hụt cơ cấu 3 tháng), D5 (ràng buộc trần ngân sách tuyệt đối).
   - *Nhóm E (Tương tác & Học ngầm):* E1 (trạng thái pending bắt buộc, người dùng quyết định 100%), E2 (chấp nhận từng phần), E3 (ghi nhận `user_final_change`), E4 (học ngầm giảm elasticity qua EMA $\alpha=0.25$), E5 (phân biệt trực quan resolved vs insufficient slack).
-  - *Nhóm H (Hiệu năng mobile):* H1 (chạy 100% trong Dart Background Isolate giữ 60/120 FPS), H2 (quản lý pin & nhiệt độ), H3 (graceful degradation fallback), H4 (2 bảng SQLite cục bộ `local_category_features`, `local_rebalancing_feedback`).
-  - *Nhóm F (Bảo mật on-device):* F1 (không đưa dữ liệu thô/feature ra ngoài thiết bị), F2 (mã hóa đầu cuối), F3 (cô lập mạng zero network access).
+  - *Nhóm F (Bảo mật on-device):* F1 (không đưa dữ liệu thô/feature ra ngoài thiết bị), F2 (ranh giới mã hóa: ghi chú thô trên client, bảo vệ at-rest phía server), F3 (cô lập mạng zero network access).
   - *Nhóm G (Định dạng & Làm tròn):* G1 (làm tròn tiền đến bội số 10.000đ), G2 (làm tròn % 1 chữ số thập phân), G3 (luôn hiển thị Data Card số liệu thô song song).
+  - *Nhóm H (Hiệu năng mobile):* H1 (chạy 100% trong Dart Background Isolate giữ 60/120 FPS), H2 (quản lý pin & nhiệt độ), H3 (graceful degradation fallback), H4 (3 bảng SQLite cục bộ `local_category_features`, `local_rebalancing_feedback`, `local_ai_alert_history`).
 
 
 

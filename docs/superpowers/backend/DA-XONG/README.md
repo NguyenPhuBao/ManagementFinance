@@ -80,6 +80,7 @@ Mười lăm tài liệu này đã được thực thi hoàn tất, vượt qua 
 | [WALLET_SAVING_INDEX.md](./WALLET_SAVING_INDEX.md) | Migration 12 đã `DROP INDEX IF EXISTS "uq_wallet_saving_active"`, cho phép người dùng mở nhiều ví tiết kiệm linh hoạt. |
 | [WALLET_STATUS_COLUMN_WIDTH.md](./WALLET_STATUS_COLUMN_WIDTH.md) | Mở rộng `Wallet.Status` lên `VARCHAR(20)` an toàn trong CSDL và mapping sync. |
 | [CON_LAI_SAU_CBBEEB4.md](./CON_LAI_SAU_CBBEEB4.md) | Chốt chặn thanh toán hai lần `chanTraHaiLan` (`BILL_ALREADY_PAID`), bẫy `dangXoaTrongLo`, `BLIND_INDEX_SECRET`, cờ `ALLOW_MOCK_INPUT`, loại bỏ `'ORC'`, giải quyết lỗ hổng G36 (/auth/refresh), sổ ghi migration 5–13 và cảnh báo partial index. |
+| [AI_EDGE_SLM_CLIENT_MISMATCH.md](./AI_EDGE_SLM_CLIENT_MISMATCH.md) | Khắc phục 6 điểm lệch mã client (A3 hoàn tiền qua `type = 'thu'`, cảnh báo 3 cột thiếu, ghi rõ `saving_goal_ratio`/`income` không lưu, mô hình ngân sách rộng hơn, F2 ranh giới mã hóa server) và 4 điểm tự mâu thuẫn (8 nhóm A–H, H4 3 bảng SQLite, Drift v21, bổ sung C7 & D5 vào `Project.md`). |
 
 ---
 
