@@ -1315,10 +1315,24 @@ dư từ giao dịch. Chuỗi:
 3. pull ghi đè `balance` bằng con số server — **lần trừ biến mất không dấu vết**, và vì hàng vừa
    bị đánh dấu `synced` nên không còn gì để đẩy lại.
 
-**Vì sao hoãn.** Sửa tận gốc là đổi *cách số dư ví được quyết định giữa hai phía* — hoặc server
-tính lại `Balance` từ giao dịch, hoặc client thôi coi `balance` là dữ liệu đồng bộ mà suy nó ra.
-Cả hai đều là thiết kế riêng, và lối thứ nhất cần backend. Bán kính ảnh hưởng rộng hơn hẳn bước
-12: **mọi** đường ghi ví đều đi qua chỗ này, không riêng hoá đơn.
+**Vì sao hoãn.** Sửa tận gốc là đổi *cách số dư ví được quyết định giữa hai phía*. Bán kính ảnh
+hưởng rộng hơn hẳn bước 12: **mọi** đường ghi ví đều đi qua chỗ này, không riêng hoá đơn.
+
+**✅ Hướng đóng đã chốt 2026-09-13: LÀM Ở CLIENT, không xin backend.** Hai lối đã cân nhắc:
+
+| Lối | Ai làm | Vì sao chọn / loại |
+|---|---|---|
+| Server tính lại `Balance` từ giao dịch | backend | **Loại.** Client tự đóng được, nên xin là đẩy việc của mình sang người khác. Vẫn phải chốt lại hợp đồng cột này ở cả hai đầu |
+| Client thôi coi `balance` là dữ liệu đồng bộ, **suy từ giao dịch** | client | **Chọn.** Không phụ thuộc ai; vướng duy nhất là **số dư ban đầu** lúc tạo ví — nay nằm thẳng trong `balance` mà không có giao dịch tương ứng, nên lối này đòi mỗi ví mới sinh một khoản "số dư ban đầu" |
+
+**Hai dữ kiện đo trên backend 2026-09-13** (chỉ đọc), cần cho bất kỳ ai làm tiếp:
+
+- `modules/sync/sync.repository.js:259` — điều kiện LWW là
+  `new Date(mapped.update_at) > new Date(existing.update_at)`, và client thua thì **cả hàng ví**
+  bị bỏ qua, không riêng `balance`. Không chỗ nào trong `/sync` tính lại số dư từ giao dịch.
+- `workers/bank.worker.js:213` — **đã có tiền lệ server tự ghi `wallet.balance`**, cho ví ngân
+  hàng (giá trị lấy từ `bank_account`). Nên hai loại ví hiện ngầm theo **hai** hợp đồng khác nhau:
+  ví ngân hàng do server ghi, ví thường do client ghi. Ai làm tiếp phải giữ nguyên vế đầu.
 
 **Không lẫn với lỗi đã sửa cùng ngày.** Ví **phình thêm** 350.000 sau xung đột là chuyện khác và
 **đã đóng**: `SyncEngine` nay phát kết quả đẩy **trước** bước Pull, nên phép hoàn tiền của
