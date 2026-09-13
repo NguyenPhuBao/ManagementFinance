@@ -110,18 +110,20 @@ trong file bàn giao tạm giữa các phiên nên chết đi sống lại nhi�
 cuối thêm ngày 2026-09-10, sau một phiên mà **lượt soát tìm ra lỗi trong chính
 công việc vừa làm nhiều hơn trong tài liệu cũ**.
 
-- ⚠️ **`mcp__stitch__edit_screens` báo thành công mà KHÔNG ghi gì** (đo
-  2026-09-13, dự án `FlowMoney`). Gọi **năm** lần trên bốn màn *Chi tiết hóa
-  đơn*; lần nào cũng trả mô tả cụ thể và **đúng** — selector trỏ đúng dòng cần
-  chèn, `verified_html_context` trích đúng HTML thật. Nhưng đo lại: HTML tải về
-  **giống bản gốc từng byte**, `htmlCode.name` không đổi, **`screenshot.name`
-  cũng không đổi** (điểm quyết định — màn render lại thì ảnh chụp buộc phải
-  khác), và người dùng tải lại trang Stitch xác nhận **không có** thay đổi. Nên:
-  **đừng tin lời báo của nó** — nghiệm thu bằng cách tải `htmlCode.downloadUrl`
-  về đọc, hoặc so `screenshot.name` trước/sau; và đừng gọi lại nhiều lượt khi
-  lượt đầu đã "thành công". Sửa màn Stitch hiện phải nhờ người dùng làm tay trên
-  UI. Một lượt còn **timeout** — tài liệu công cụ dặn *"DO NOT RETRY"* vì thao
-  tác có thể vẫn thành công, nhưng **kiểm trước rồi mới thử lại** là đúng.
+- ⚠️ **`mcp__stitch__edit_screens` ghi thật, nhưng có ĐỘ TRỄ DÀI — "chưa đổi"
+  nghĩa là *chưa biết*, không phải *thất bại*** (2026-09-13, dự án `FlowMoney`).
+  Thay đổi có thể mất **hàng chục phút** mới hiện ở API (`get_screen` trả
+  `htmlCode.name` và `screenshot.name` mới) lẫn ở giao diện Stitch. Suốt khoảng
+  trễ ấy mọi dấu hiệu đều nói "không có gì thay đổi": HTML tải về **giống bản
+  gốc từng byte**, cả hai ID đều y nguyên. Tôi đã dựa đúng vào những dấu hiệu đó
+  để kết luận công cụ hỏng, viết vào ba tài liệu rồi commit — người dùng kiểm
+  lại sau đó và thấy màn **đã** sửa xong; phải gỡ lại toàn bộ. Nên: gọi xong thì
+  **chờ và làm việc khác**, kiểm lại sau, và khi nghi ngờ thì **hỏi người dùng
+  nhìn giúp trên Stitch** thay vì tự chốt. Chỉ ghi kết luận vào tài liệu khi nó
+  đã ổn định qua nhiều lượt đo cách nhau. Cách nghiệm thu vẫn đúng: tải
+  `htmlCode.downloadUrl` về đọc, và so `screenshot.name` trước/sau. Một lượt còn
+  **timeout** — tài liệu công cụ dặn *"DO NOT RETRY"*; ở đây kiểm trước rồi mới
+  thử lại là đúng, nhưng nhớ rằng phép kiểm ấy cũng chịu cùng độ trễ.
 - ⚠️ **Đọc màn Stitch thì phải đọc đúng KHỐI, đừng `grep` một từ.** Cùng lượt
   trên, cả bốn màn đều **có** chữ "Kỳ" — nhưng ở phần `LỊCH SỬ CÁC KỲ`, không
   phải dòng "Kỳ" của khối `THÔNG TIN` đang thiếu. `grep` một chữ rồi kết luận
