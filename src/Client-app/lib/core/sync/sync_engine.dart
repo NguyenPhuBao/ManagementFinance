@@ -416,6 +416,20 @@ class SyncEngine {
         return;
       }
 
+      // Phát kết quả đẩy **TRƯỚC** bước Pull — thứ tự này là một cam kết.
+      //
+      // Người nghe phản ứng với THẤT BẠI của lần đẩy, và phản ứng ấy thường
+      // phải bù lại một thay đổi cục bộ mà chính máy này vừa ghi. Pull ở giữa
+      // có thể đã thay đúng hàng ấy bằng bản của server, nên phép bù cộng vào
+      // một con số **không hề chứa** thay đổi cần bù.
+      //
+      // ⚠️ ĐÃ VẤP THẬT ngày 2026-09-13, và 2303 ca test đều xanh — đúng loại
+      // lỗi thứ ba ở mục "Ba loại lỗi `flutter test` KHÔNG bắt được". Hoá đơn
+      // tự trả trên hai máy: ví bị trừ còn 1.650.000 → push ví xung đột, server
+      // giữ 2.000.000 → **pull ghi đè, lần trừ biến mất** → resolver hoàn
+      // 350.000 → ví thành **2.350.000**. Phình thêm đúng một lần trả, im lặng.
+      if (pushResult != null) _emitPushResult(pushResult);
+
       // 2. Pull all updated data from Backend PostgreSQL to SQLite local
       await _pullFromBackend(accountId);
 
@@ -453,7 +467,12 @@ class SyncEngine {
       } else {
         _resetBackoff();
       }
-      if (lastPush != null) _emitPushResult(lastPush);
+      // Lần đẩy đầu đã được phát TRƯỚC bước Pull (xem chú thích ở đó). Ở đây
+      // chỉ còn kết quả của lần THỬ LẠI, và nó buộc phải nằm sau Pull vì chính
+      // Pull là thứ làm nó đáng thử lại. Người nghe phải chịu được hai lượt
+      // phát cho cùng một thất bại — `BillPaymentConflictResolver` chịu được,
+      // vì khoản chi đã gỡ thì không còn tìm thấy ở lượt sau.
+      if (retryResult != null) _emitPushResult(retryResult);
       _setStatus(stillFailing ? SyncStatus.error : SyncStatus.idle);
     } catch (e) {
       debugPrint('[SyncEngine] Sync error: $e');
