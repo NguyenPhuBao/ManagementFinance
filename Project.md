@@ -2697,6 +2697,15 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - Cửa hậu Mock Input: khóa 100% trên production, bắt buộc qua AI xử lý thật.
 - **Quy định chiến lược của PO (Giai đoạn hiện tại):** Toàn bộ các môi trường (kể cả Render Cloud) thống nhất triển khai theo chế độ `DEVELOPMENT` (`NODE_ENV=development`) để thuận tiện debug, test liên thông và theo dõi log. Chỉ chuyển đổi sang `PRODUCTION` sau khi hoàn thiện toàn bộ dự án và có yêu cầu/phê duyệt bằng văn bản từ PO.
 
+### 11.39. Nghiên Cứu & Thiết Kế Kiến Trúc Edge SLM Cân Đối Ngân Sách Trên Mobile App (Client-app) (2026-09-13)
+- **Tài liệu nguồn sự thật:** [`docs/AI/AI_Edge-SLM.md/Client-app.md`](docs/AI/AI_Edge-SLM.md/Client-app.md).
+- **Mô hình kiến trúc 3 tầng (On-device Edge AI / SLM):**
+  1. **Tầng 1 (Feature Engineering - Thống kê định kỳ & chạy nền):** Biến đổi raw transactions từ SQLite cục bộ thành các đặc trưng toán học (tỷ trọng chi tiêu, hệ số biến thiên $CV$, tính chu kỳ regularity, độ dốc xu hướng, tần suất). Ứng dụng thuật toán Welford $O(1)$ cho thống kê online.
+  2. **Tầng 2 (Reasoning & Optimization Engine - Thuật toán cân đối có trọng số):** Tính Essentiality score (học theo hành vi), đo độ co giãn elasticity, tự động phát hiện thâm hụt và chọn nguồn bù từ các donor có độ linh hoạt cao; cơ chế học ngầm (implicit feedback) từ phản hồi người dùng; ràng buộc mục tiêu tiết kiệm.
+  3. **Tầng 3 (On-Device SLM - Diễn giải & Hội thoại):** Mô hình ngôn ngữ nhỏ (Gemma Nano, MediaPipe LLM Inference) nhận JSON từ Tầng 2 làm grounding context để diễn giải tự nhiên và trả lời câu hỏi; thiết lập cơ chế Guardrails chống hallucination số học bằng validator đối soát và fallback 2 lớp an toàn.
+- **Roadmap triển khai:** MVP (Tầng 1 + Tầng 2 + Template string) $\rightarrow$ V2 (Tích hợp On-device SLM + Guardrail) $\rightarrow$ V3 (Conflict handling học ngầm) $\rightarrow$ V4 (Tối ưu hóa tuyến tính Linear Programming).
+
+
 
 
 
