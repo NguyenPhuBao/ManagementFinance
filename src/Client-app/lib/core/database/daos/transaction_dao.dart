@@ -245,6 +245,49 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     return {for (final t in rows) t.billId!: t};
   }
 
+  /// Tổng mọi giao dịch còn sống của ví [walletId] — **công thức số dư**.
+  ///
+  /// ```
+  /// balance(w) = Σ thu(w) − Σ chi(w) − Σ transfer TỪ w + Σ transfer ĐẾN w
+  /// ```
+  ///
+  /// Luật lấy **nguyên văn** từ `TransactionRepository._applyBalances`, kể cả
+  /// ngoại lệ của nó: khoản `transfer` **không có ví đích** thì không tính bên
+  /// nào — *"đừng trừ một nửa"*. Lệch khỏi luật ấy là số dư tính lại khác số dư
+  /// từng cộng dồn, và không gì báo ra.
+  ///
+  /// Khoản **mở sổ** nằm trong tổng này như một giao dịch bình thường — đó
+  /// chính là vai trò của nó; xem `wallet/domain/so_du_mo_so.dart`.
+  ///
+  /// Vì sao gom trong Dart chứ không `SUM` bằng SQL: ba vế trên có ba điều kiện
+  /// khác nhau trên cùng một hàng (`walletId` với `thu`/`chi`, cả `walletId` lẫn
+  /// `walletTransfer` với `transfer`), nên một câu `SUM` phải là ba câu con cộng
+  /// lại — dài hơn, và chỗ nào sai thì im lặng. Cỡ dữ liệu của app này là vài
+  /// chục tới vài nghìn hàng mỗi ví.
+  Future<double> tongTheoVi(String walletId) async {
+    final rows = await (select(transactions)
+          ..where((t) =>
+              t.deletedAt.isNull() &
+              (t.walletId.equals(walletId) |
+                  t.walletTransfer.equals(walletId))))
+        .get();
+
+    var tong = 0.0;
+    for (final t in rows) {
+      switch (t.type) {
+        case 'thu':
+          if (t.walletId == walletId) tong += t.amount;
+        case 'chi':
+          if (t.walletId == walletId) tong -= t.amount;
+        case 'transfer':
+          if (t.walletTransfer == null) continue;
+          if (t.walletId == walletId) tong -= t.amount;
+          if (t.walletTransfer == walletId) tong += t.amount;
+      }
+    }
+    return tong;
+  }
+
   Future<void> insert(TransactionsCompanion entry) async {
     await into(transactions).insert(entry, mode: InsertMode.insertOrReplace);
   }
