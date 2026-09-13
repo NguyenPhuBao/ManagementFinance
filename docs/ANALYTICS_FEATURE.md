@@ -1,6 +1,6 @@
 # Trang Phân tích — thiết kế, lý do, và những cái bẫy
 
-**Cập nhật:** 2026-09-09
+**Cập nhật:** 2026-09-13 (mục 3.2 — luật loại khỏi thống kê nay có **ba** vế, thêm khoản mở sổ của G37) · bản trước 2026-09-09
 **Trạng thái:** **mảng Phân tích đã xong cả 2a, 2b, 2c** (2026-09-09). Lát **2a** xong — mọi con số trên trang là số thật từ SQLite —
 lát **2b** xong (khối "Xu hướng 6 tháng" vẽ bằng `fl_chart`), lát **2c‑1** xong
 (trang Xuất báo cáo đọc ví/danh mục/thời gian thật rồi mở màn **Xem trước báo
@@ -74,6 +74,20 @@ Ba luật mượn nguyên từ ngân sách, **đừng viết lại**:
 - **`'transfer'` không phải thu, không phải chi.** Nạp mục tiêu và chuyển giữa
   hai ví là tiền đổi chỗ. Đếm nó là mỗi kỳ trích tự động vào mục tiêu làm
   "Tổng chi" tăng — đúng lỗi mục 3.2 `GOAL_FEATURE.md` đã sửa ở thống kê cũ.
+
+  ⚠️ Luật ấy nay có **một định nghĩa duy nhất** ở
+  `analytics/domain/khoan_vao_thong_ke.dart`, và nó loại **ba** thứ vì **ba** lý
+  do khác nhau — trước đó câu `!= 'transfer'` bị chép tay ở **năm** chỗ:
+
+  | Bị loại | Vì sao |
+  |---|---|
+  | `'transfer'` | tiền **đổi chỗ**, không rời tài sản người dùng |
+  | khoản **điều chỉnh số dư** (2026-09-10) | phép **sửa sổ**; đếm nó là tháng nào đối soát ví cũng thấy thu nhập tăng vọt |
+  | khoản **mở sổ** — `Số dư ban đầu` (2026-09-13) | **điểm neo** để số dư ví suy được từ sổ; đếm nó là mỗi ví người dùng tạo ra lại làm thu nhập tháng ấy tăng đúng bằng số dư ban đầu |
+
+  Hai loại sau nhận dạng bằng **cặp** điều kiện (không danh mục **và** tiền tố
+  ghi chú), không chỉ ghi chú: `transaction.Note` sửa được, và mất dấu hiệu là
+  chúng lặng lẽ thành thu nhập thật — sai một **con số**, không chỉ một nhãn.
 - **Nghe stream rồi tính lại**, không cache: trang chủ nhúc nhích ngay khi ghi
   một khoản, trang này cũng phải vậy.
 

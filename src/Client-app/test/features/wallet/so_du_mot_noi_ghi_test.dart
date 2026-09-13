@@ -1,4 +1,4 @@
-/// Chỉ `SoDuViService` được ghi `wallets.balance` — test quét `lib/` thứ **năm**.
+/// Chỉ `SoDuViService` được ghi `wallets.balance` — test quét `lib/` thứ **sáu**.
 ///
 /// ## Vì sao cần một test quét
 ///
@@ -7,8 +7,9 @@
 /// mà không ai lần được từ đâu. Trước bản này có **bảy** chỗ cộng dồn riêng
 /// (`bill` 2, `goal` 4, `transaction` 1) — mỗi chỗ một cơ hội lệch.
 ///
-/// Bốn test quét `lib/` đã có: `currency_formatter_test`, `wallet_picker_sources_test`,
-/// `khong_du_phong_admin_test`, `sync_engine_start_owner_test`.
+/// Năm test quét `lib/` đã có (đếm bằng máy 2026-09-13): `currency_formatter_test`,
+/// `wallet_picker_sources_test`, `khong_du_phong_admin_test`,
+/// `sync_engine_start_owner_test`, `bill_conflict_resolver_wiring_test`.
 library;
 
 import 'dart:io';
