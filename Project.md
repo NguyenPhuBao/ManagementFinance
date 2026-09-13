@@ -2682,22 +2682,39 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - `Test/test_can_lam_fixes.js`: **PASS 9/9 (100%)** kiểm thử tích hợp hồi quy.
   - `Test/test_admin_category_privacy.js`: **PASS 5/5 (100%)** kiểm thử bảo mật dữ liệu nhạy cảm danh mục người dùng.
 
-### 11.38. Thiết Lập Tài Liệu Chuẩn Triển Khai Cloud & Đặc Tả Môi Trường Development vs Production (2026-09-12)
+### 11.38. Thiết Lập Tài Liệu Chuẩn Triển Khai Cloud & Tự Động Hóa CI/CD (GitHub + Render + Vercel + Supabase + Upstash) (2026-09-12)
 - **Tài liệu nguồn sự thật:** [`docs/Deploy/CloudDeploy.md`](docs/Deploy/CloudDeploy.md).
-- **Nội dung chuẩn hóa:**
-  1. **Phân định cơ chế Development vs Production:**
-     - Chốt khóa mã hóa AES-256 (`DATA_ENCRYPTION_KEY`) & Blind Index (`BLIND_INDEX_SECRET`): nghiêm ngặt trên production, dừng server ngay nếu thiếu hoặc sai định dạng.
-     - Che giấu chi tiết lỗi (Error Obfuscation): ẩn toàn bộ stack trace/lỗi CSDL 500 trên production.
-     - Ghi log CSDL Prisma: chỉ log `['error']` trên production; log toàn bộ `['query', 'error', 'warn']` trên development.
-     - Cửa hậu Mock Input: khóa 100% trên production, bắt buộc qua AI xử lý thật.
-     - Cơ chế runtime & npm: production bỏ qua `devDependencies`, chạy trực tiếp `node index.js` thay vì `nodemon`.
-  2. **Cấu hình chuẩn trên Render Web Service:**
-     - Root Directory: `src/Backend`
-     - Build Command: `npm install` (kèm `postinstall: prisma generate`)
-     - Start Command: `npm start` (tuyệt đối không dùng `npm run dev` để tránh lỗi `nodemon: not found` exit 127).
-  3. **Danh mục biến môi trường đầy đủ:** Cung cấp mẫu cấu hình hoàn chỉnh cho Render (Database pooling port 6543, Direct port 5432, JWT, SMTP, AI Gemini, Encryption keys).
-  4. **Hướng dẫn khắc phục sự cố (Troubleshooting):** Xử lý 5 lỗi thường gặp (Nodemon not found, thiếu Encryption Key, lỗi kết nối Supabase, lệch partial index do prisma migrate dev).
-  5. **Quy định chiến lược của PO (Giai đoạn hiện tại):** Toàn bộ các môi trường (kể cả Render Cloud) thống nhất triển khai theo chế độ `DEVELOPMENT` (`NODE_ENV=development`) để thuận tiện debug, test liên thông và theo dõi log. Chỉ chuyển đổi sang `PRODUCTION` sau khi hoàn thiện toàn bộ dự án và có yêu cầu/phê duyệt bằng văn bản từ PO.
+- **Kiến trúc hạ tầng Cloud đa nền tảng:**
+  1. **GitHub (SCM & CI/CD Trigger):** Trung tâm quản lý phiên bản, kích hoạt tự động hóa triển khai đồng thời lên Render và Vercel mỗi khi có commit mới vào branch.
+  2. **Render (Backend API & WebSocket):** Triển khai `src/Backend`, Root Directory `src/Backend`, Build `npm install`, Start `npm start`, tự động kết nối Supabase và Upstash Redis.
+  3. **Vercel (Admin-web Frontend):** Triển khai `src/Admin-web` (React + Vite), cấu hình SPA routing và Reverse Proxy qua `vercel.json`, tự động phân phối trên Edge CDN toàn cầu.
+  4. **Supabase (PostgreSQL Cloud):** CSDL quan hệ chính 13 bảng, cung cấp cổng Connection Pooling `6543` và cổng Direct `5432`.
+  5. **Upstash (Serverless Redis):** Đảm nhận hàng đợi BullMQ (xử lý nền AI/OCR), Redis Pub/Sub (EventBus), Socket.IO Adapter qua chuỗi TLS `rediss://`.
+- **Phân định cơ chế Development vs Production:**
+  - Chốt khóa mã hóa AES-256 (`DATA_ENCRYPTION_KEY`) & Blind Index (`BLIND_INDEX_SECRET`): nghiêm ngặt trên production, dừng server ngay nếu thiếu hoặc sai định dạng.
+  - Che giấu chi tiết lỗi (Error Obfuscation): ẩn toàn bộ stack trace/lỗi CSDL 500 trên production.
+  - Ghi log CSDL Prisma: chỉ log `['error']` trên production; log toàn bộ `['query', 'error', 'warn']` trên development.
+  - Cửa hậu Mock Input: khóa 100% trên production, bắt buộc qua AI xử lý thật.
+- **Quy định chiến lược của PO (Giai đoạn hiện tại):** Toàn bộ các môi trường (kể cả Render Cloud) thống nhất triển khai theo chế độ `DEVELOPMENT` (`NODE_ENV=development`) để thuận tiện debug, test liên thông và theo dõi log. Chỉ chuyển đổi sang `PRODUCTION` sau khi hoàn thiện toàn bộ dự án và có yêu cầu/phê duyệt bằng văn bản từ PO.
+
+### 11.39. Nghiên Cứu & Thiết Kế Kiến Trúc Edge SLM Cân Đối Ngân Sách Trên Mobile App (Client-app) (2026-09-13)
+- **Tài liệu nguồn sự thật:** [`docs/AI/AI_Edge-SLM.md/Client-app.md`](docs/AI/AI_Edge-SLM.md/Client-app.md).
+- **Mô hình kiến trúc 3 tầng (On-device Edge AI / SLM):**
+  1. **Tầng 1 (Feature Engineering - Thống kê định kỳ & chạy nền):** Biến đổi raw transactions từ SQLite cục bộ thành các đặc trưng toán học (tỷ trọng chi tiêu, hệ số biến thiên $CV$, tính chu kỳ regularity, độ dốc xu hướng, tần suất). Ứng dụng thuật toán Welford $O(1)$ cho thống kê online.
+  2. **Tầng 2 (Reasoning & Optimization Engine - Thuật toán cân đối có trọng số):** Tính Essentiality score (học theo hành vi), đo độ co giãn elasticity, tự động phát hiện thâm hụt và chọn nguồn bù từ các donor có độ linh hoạt cao; cơ chế học ngầm (implicit feedback) từ phản hồi người dùng; ràng buộc mục tiêu tiết kiệm.
+  3. **Tầng 3 (On-Device SLM - Diễn giải & Hội thoại):** Mô hình ngôn ngữ nhỏ (Gemma Nano, MediaPipe LLM Inference) nhận JSON từ Tầng 2 làm grounding context để diễn giải tự nhiên và trả lời câu hỏi; thiết lập cơ chế Guardrails chống hallucination số học bằng validator đối soát và fallback 2 lớp an toàn.
+- **Roadmap triển khai:** MVP (Tầng 1 + Tầng 2 + Template string) $\rightarrow$ V2 (Tích hợp On-device SLM + Guardrail) $\rightarrow$ V3 (Conflict handling học ngầm) $\rightarrow$ V4 (Tối ưu hóa tuyến tính Linear Programming).
+- **Hệ thống quy tắc nghiệp vụ toàn diện (Business Rules A-H):**
+  - *Nhóm A (Làm sạch & Nhận diện):* A1 (lọc outlier $> 3\times$), A2 (loại trừ một lần), A3 (hoàn tiền không trừ lùi), A4 (chặn uncategorized), A5 (bảo vệ baseline nhỏ), A6 (phân tách Lump-sum vs Continuous).
+  - *Nhóm B (Cảnh báo & Dự phóng):* B1 ($\ge 2$ tháng dữ liệu), B2 (ngưỡng thâm hụt kép $\ge 10\%$ và $\ge 50.000đ$), B3 (cooldown 48h chống spam), B4-B5 (chống bẫy đầu tháng, dự phóng Bayesian nội suy), B6 (tối đa 1 đề xuất chủ động/tuần chống AI fatigue).
+  - *Nhóm C (Nguồn bù & Giới hạn):* C1 (essentiality $\ge 0.75 \rightarrow$ Protected cấm cắt), C2 (manual override tối cao), C3 (max cut ratio $25\% \rightarrow 15\%$), C4 (vùng đệm donor $\ge 100.000đ$, min transfer), C5 (trạng thái `insufficient_slack` trung thực), C6 (xếp hạng donor theo slack $\times (1 - \text{essentiality})$).
+  - *Nhóm D (Mục tiêu & Thu nhập biến động):* D1 (thu nhập trượt 3 tháng), D2 (chế độ thận trọng khi thu nhập giảm $> 30\%$), D3 (không tự ý nâng saving goal), D4 (chuyển đổi tư vấn khi thâm hụt cơ cấu 3 tháng).
+  - *Nhóm E (Tương tác & Học ngầm):* E1 (trạng thái pending bắt buộc, người dùng quyết định 100%), E2 (chấp nhận từng phần), E3 (ghi nhận `user_final_change`), E4 (học ngầm giảm elasticity qua EMA $\alpha=0.25$), E5 (phân biệt trực quan resolved vs insufficient slack).
+  - *Nhóm H (Hiệu năng mobile):* H1 (chạy 100% trong Dart Background Isolate giữ 60/120 FPS), H2 (quản lý pin & nhiệt độ), H3 (graceful degradation fallback), H4 (2 bảng SQLite cục bộ `local_category_features`, `local_rebalancing_feedback`).
+  - *Nhóm F (Bảo mật on-device):* F1 (không đưa dữ liệu thô/feature ra ngoài thiết bị), F2 (mã hóa đầu cuối), F3 (cô lập mạng zero network access).
+  - *Nhóm G (Định dạng & Làm tròn):* G1 (làm tròn tiền đến bội số 10.000đ), G2 (làm tròn % 1 chữ số thập phân), G3 (luôn hiển thị Data Card số liệu thô song song).
+
+
 
 
 
