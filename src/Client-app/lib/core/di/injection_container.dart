@@ -129,7 +129,8 @@ Future<void> setupDependencies() async {
     () => WalletLocalDataSourceImpl(db: sl()),
   );
   sl.registerLazySingleton<WalletRepository>(
-    () => WalletRepositoryImpl(localDataSource: sl(), syncEngine: sl()),
+    () => WalletRepositoryImpl(
+        localDataSource: sl(), syncEngine: sl(), soDuVi: sl()),
   );
   // Năm danh mục mà bộ mặc định của backend không có được tạo riêng cho từng
   // tài khoản (xem PersonalDefaultCategories) — danh mục người dùng thì đồng bộ
