@@ -450,11 +450,14 @@ class _BillAddPageState extends State<BillAddPage> {
     );
   }
 
-  /// Khối theo Stitch "Thêm Hóa Đơn Định Kỳ" (biểu tượng `smart_toy`, dưới
-  /// các chip nhắc, sau vạch mỏng) — nhưng công tắc TẮT sẵn, và có dòng phụ
-  /// nói rõ ba điều người dùng cần biết trước khi uỷ quyền: trừ ví nào, lúc
-  /// nào, và vì sao chỉ nên bật trên một thiết bị (cột cục bộ, hai máy cùng
-  /// bật là hai khoản chi).
+  /// Khối **không có** trên màn Stitch "Thêm Hóa Đơn Định Kỳ" — tính năng tự
+  /// động trả được thêm sau, và bản thiết kế chưa có công tắc nào (đo lại
+  /// 2026-09-13: cả màn Thêm lẫn màn Sửa đều không có chữ "thiết bị"). Đặt
+  /// dưới các chip nhắc, sau vạch mỏng, biểu tượng `smart_toy`.
+  ///
+  /// Công tắc **TẮT sẵn**, và có dòng phụ nói rõ ba điều người dùng cần biết
+  /// trước khi uỷ quyền: trừ ví nào, lúc nào, và chuyện gì xảy ra khi họ dùng
+  /// nhiều máy — xem [kBillAutoPayHint].
   Widget _buildAutoPaySwitch() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
