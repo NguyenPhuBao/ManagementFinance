@@ -215,6 +215,21 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
         .getSingleOrNull();
   }
 
+  /// Tra giao dịch theo id, **kể cả hàng đã xoá mềm**.
+  ///
+  /// Ngược chiều với [getByBill]: nơi gọi cầm id **khoản chi** và muốn tìm hoá
+  /// đơn của nó. `BillPaymentConflictResolver` cần đúng chiều này — server trả
+  /// về `localId` của thao tác bị từ chối, chứ không trả `billId`.
+  ///
+  /// ⚠️ Cố ý **không** lọc `deletedAt` như [getByBill]: tới lúc resolver chạy,
+  /// một chu kỳ đồng bộ trước đó có thể đã gỡ khoản chi rồi. Lọc sẵn là trả
+  /// `null`, resolver coi như "không có gì để làm" và **bỏ qua im lặng** một ca
+  /// đáng xử — trong khi hai bản ghi vẫn còn kẹt hàng đợi đẩy.
+  Future<Transaction?> getById(String id) {
+    return (select(transactions)..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+  }
+
   /// Mọi khoản trả hoá đơn còn sống của [idaccount], theo `billId`.
   ///
   /// Một truy vấn cho cả trang hoá đơn thay vì gọi [getByBill] cho từng dòng.
