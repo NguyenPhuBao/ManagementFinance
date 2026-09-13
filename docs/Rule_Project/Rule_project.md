@@ -286,9 +286,12 @@ Phần này đặc tả chi tiết toàn bộ các quy tắc ràng buộc, chố
     * *Chặn đứng hành vi sửa/xóa:* Backend API ném mã lỗi **HTTP 403 Forbidden** ngay lập tức nếu Admin cố tình sửa (`updateCategory`) hoặc xóa (`deleteCategory`) danh mục của người dùng (`is_default = false`).
 * **Quyền tạo danh mục hệ thống:** Chỉ duy nhất tài khoản có vai trò Admin (`idrole = 1`) mới có quyền tạo danh mục hệ thống (`is_default = true`). Mọi thao tác thêm mới từ Admin tự động gán `is_default = true`.
 * **Cấm chuyển đổi (No Conversion):** Tuyệt đối không cho phép chuyển đổi danh mục người dùng (`is_default = false`) thành danh mục hệ thống (`is_default = true`), kể cả khi thực hiện bởi Admin. Nếu cần thêm danh mục hệ thống, Admin phải tạo mới một bản ghi danh mục hệ thống riêng biệt.
-* **Bảo vệ chống xóa danh mục hệ thống (Delete Protection):** Danh mục hệ thống **không thể bị xóa**.
-  * Trên giao diện Admin-web: Nút Xóa danh mục bị vô hiệu hóa với danh mục hệ thống kèm chú thích rõ ràng.
-  * Trên Backend API: `admin.service.deleteCategory` kiểm tra và từ chối ngay lập tức với mã lỗi **HTTP 400 Bad Request** nếu danh mục có `is_default === true`.
+* **Quản trị Xóa mềm & Tạo lại Danh mục Hệ thống (Soft-delete & Re-creation):**
+  * Danh mục hệ thống được phép **xóa mềm (`Delete_at = NOW()`)**.
+  * **Tác động:** Khi bị xóa mềm, danh mục mẫu sẽ bị ẩn khỏi các API quản trị và API đồng bộ mẫu (`GET /api/sync/default-categories`), do đó người dùng mới đăng ký sau thời điểm xóa sẽ không còn nhận danh mục mẫu này. Toàn bộ tài khoản và các giao dịch tài chính của người dùng đã nhân bản trước đó hoàn toàn độc lập và không bị ảnh hưởng.
+  * **Tạo lại danh mục đã xóa mềm (Re-creation / Restore):** Khi Admin tạo mới một danh mục có tên trùng với danh mục hệ thống đã bị xóa mềm, hệ thống sẽ tự động khôi phục (restore `Delete_at = NULL`), cập nhật thông tin mới (classify, keyword, icon) và **bảo toàn UUID gốc** (đặc biệt quan trọng đối với 13 UUID hạt nhân ổn định).
+  * Trên giao diện Admin-web: Nút Xóa danh mục được kích hoạt, khi bấm sẽ mở Modal xác nhận cảnh báo an toàn rõ ràng trước khi gửi yêu cầu xóa tới Backend.
+  * **Bảo vệ quyền riêng tư người dùng:** Admin vẫn **TUYỆT ĐỐI BỊ CẤM xóa hoặc sửa danh mục của người dùng (`is_default = false`)** (Backend ném mã lỗi **HTTP 403 Forbidden**).
 
 ### 1.4. Bộ giá trị phân loại (`Classify` Enum)
 * Giá trị của cột `classify` bắt buộc phải thuộc tập 3 giá trị chuẩn:
