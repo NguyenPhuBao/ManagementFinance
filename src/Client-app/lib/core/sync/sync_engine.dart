@@ -1577,15 +1577,18 @@ class SyncEngine {
                 failed++;
                 final message = item['message']?.toString() ?? 'Unknown error';
                 errorMessages.add(message);
-                final kind = _classifyFailure(
-                  message,
-                  code: item['code'] as String?,
-                );
+                final code = item['code'] as String?;
+                final kind = _classifyFailure(message, code: code);
                 failures.add(SyncOpFailure(
                   localId: op.localId,
                   entity: op.entity,
                   message: message,
                   kind: kind,
+                  // Chuyển nguyên mã ra ngoài: `kind` chỉ nói vĩnh viễn hay
+                  // tạm thời, còn người nghe `pushResultStream` cần biết CHÍNH
+                  // lỗi nào để phản ứng khác nhau — `BILL_ALREADY_PAID` thì
+                  // hoàn tác khoản trả, các mã khác thì không đụng vào.
+                  code: code,
                 ));
                 if (kind == SyncFailureKind.permanent) {
                   // Lỗi vĩnh viễn: dữ liệu hiện tại đẩy bao nhiêu lần cũng
