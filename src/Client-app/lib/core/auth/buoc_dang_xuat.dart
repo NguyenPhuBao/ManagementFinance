@@ -51,8 +51,12 @@ enum NguonBuocDangXuat {
   /// trả 401 không mã, đường này không bao giờ mang `daXoa`"* — đúng cho tới
   /// bản `7779999` và **sai từ đó**; sửa 2026-09-13. Hệ quả: ngoại lệ §3.6b
   /// *không* còn vô nghĩa — nó nay chặn đúng ca thật (tài khoản bị xoá, phát
-  /// hiện qua nhánh làm mới) chứ không chỉ che ca lỗi lược đồ. Giữ hay gỡ vẫn
-  /// là quyết định của người dùng — spec §3.6b.
+  /// hiện qua nhánh làm mới) chứ không chỉ che ca lỗi lược đồ.
+  ///
+  /// ✅ **Người dùng chốt 2026-09-13: GIỮ ngoại lệ** (spec §3.6b). Dữ liệu trong
+  /// SQLite là bản duy nhất trên máy, nên báo động giả mà dọn là mất thật; còn
+  /// nếu xoá là đúng thì `purgeDataForOtherAccounts` vẫn dọn khi tài khoản khác
+  /// đăng nhập — chỉ **hoãn** chứ không bỏ. Đừng "dọn dẹp" nhánh này.
   lamMoi,
 }
 

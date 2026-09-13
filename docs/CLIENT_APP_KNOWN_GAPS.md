@@ -1294,8 +1294,10 @@ admin thu hồi refresh token nên `/auth/refresh` trả 401 không mã, đườ
 `daXoa`"*, và vì thế ngoại lệ *không dọn SQLite khi `daXoa` đến từ nhánh làm mới* là **gần như vô
 nghĩa**. Câu ấy đúng cho tới bản `7779999` và **sai từ đó**: ca C vừa đo cho thấy đường `lamMoi` **có**
 mang `daXoa`. Ngoại lệ §3.6b nay chặn đúng một ca thật — tài khoản bị xoá, phát hiện qua nhánh làm mới —
-chứ không chỉ che ca lỗi lược đồ. **Giữ hay gỡ vẫn là quyết định chưa chốt của người dùng**, nhưng nay
-phải cân nhắc trên dữ kiện mới này chứ không trên câu cũ.
+chứ không chỉ che ca lỗi lược đồ. ✅ **Người dùng chốt 2026-09-13: GIỮ ngoại lệ.** SQLite là bản duy nhất trên máy nên dọn nhầm
+là mất thật; còn nếu xoá là đúng thì `purgeDataForOtherAccounts` vẫn dọn khi tài khoản khác
+đăng nhập vào máy — tức chỉ **hoãn** việc dọn chứ không bỏ. Không đổi mã: hành vi hiện tại đã
+đúng quyết định ấy, chỉ hai chú thích Dart được ghi lại cho khớp.
 
 ## 2. Vấn đề đã biết nhưng thuộc về Backend
 

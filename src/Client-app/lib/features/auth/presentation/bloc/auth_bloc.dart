@@ -176,8 +176,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     // qua admin trả **401 + `ACCOUNT_DELETED`** dù 4/4 refresh token đã bị thu
     // hồi (G36 đóng). Nên nhánh này **có** chạy thật, và ngoại lệ dưới đây đang
     // giữ lại SQLite cho một ca có thật — không còn là lớp che ca giả định.
-    // Giữ hay gỡ là quyết định chưa chốt của người dùng — xem
-    // `LyDoBuocDangXuat.lamMoi` và spec §3.6b.
+    //
+    // ✅ Người dùng chốt 2026-09-13: **GIỮ** ngoại lệ (spec §3.6b). SQLite là
+    // bản duy nhất trên máy, nên dọn nhầm là mất thật; nếu xoá là đúng thì
+    // `purgeDataForOtherAccounts` vẫn dọn khi tài khoản khác đăng nhập — chỉ
+    // hoãn chứ không bỏ. Đừng gỡ điều kiện `nguon != lamMoi` dưới đây.
     if (thongBao.lyDo == LyDoBuocDangXuat.daXoa &&
         thongBao.nguon != NguonBuocDangXuat.lamMoi) {
       // `idaccount` chỉ đến từ chính lời server nói, hoặc từ phiên đăng nhập —

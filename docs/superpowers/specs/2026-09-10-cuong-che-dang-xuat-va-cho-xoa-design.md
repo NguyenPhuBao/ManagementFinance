@@ -12,7 +12,7 @@
 > 401 + `ACCOUNT_INACTIVE` kèm `idaccount` và `reason_inactive`; admin xoá mềm → 401 +
 > `ACCOUNT_DELETED` kèm `idaccount`, **dù 4/4 refresh token đã bị thu hồi**. Tức **lý lẽ cũ của §3.6b
 > đã bị lật**: nhánh làm mới **CÓ** nói được "đã xoá" từ bản `7779999` (CAN-LAM 20 §2.7). Ngoại lệ
-> nay chặn một ca thật chứ không chỉ ca lỗi lược đồ — giữ hay gỡ là quyết định **chưa chốt**;
+> nay chặn một ca thật chứ không chỉ ca lỗi lược đồ — ✅ người dùng chốt **GIỮ** ngày 2026-09-13 (§3.6b);
 > ca `SCHEMA_ERROR → 503` vẫn chưa đo.** Mọi quyết định sản phẩm ở mục 2
 > đã chốt qua hỏi–đáp ngày 2026-09-10; Phần 1 (mục 3) được duyệt riêng trong phiên
 > ấy. Phần 2–4 viết thẳng vào đây theo yêu cầu "làm đi" của người dùng. Ngày
@@ -329,7 +329,13 @@ Nguồn `lamMoi` vẫn đăng xuất và vẫn hiện hộp thoại "Tài khoả
      (`purgeDataForOtherAccounts`). Đánh đổi đúng như hai gạch **Mất gì / Được gì** ở trên, chỉ khác
      là nay nó có thật.
 
-  **Quyết định vẫn thuộc về người dùng và CHƯA chốt.** Không đổi mã theo hướng nào cho tới lúc đó.
+  ✅ **CHỐT 2026-09-13: GIỮ ngoại lệ.** Người dùng quyết định sau khi đọc dữ kiện mới ở trên. Lý do:
+  dữ liệu trong SQLite là **bản duy nhất** trên máy ấy (kiến trúc offline-first), nên nếu còn bất kỳ
+  báo động giả nào chưa biết thì mất nó là mất thật; còn nếu việc xoá là đúng, dữ liệu vẫn được dọn
+  khi một tài khoản khác đăng nhập vào máy (`purgeDataForOtherAccounts`) — tức chỉ **hoãn** việc dọn
+  chứ không bỏ. Đổi lại, máy giữ bản rõ lâu hơn Q2 mong muốn; chấp nhận đánh đổi ấy.
+  **Không đổi mã** — hành vi hiện tại đã đúng quyết định này; chỉ chú thích ở
+  `lib/core/auth/buoc_dang_xuat.dart` và `auth_bloc.dart` được cập nhật cho khớp.
 
 ### 3.7. Màn Đăng nhập
 
