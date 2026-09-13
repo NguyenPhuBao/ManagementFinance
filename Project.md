@@ -2682,22 +2682,21 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - `Test/test_can_lam_fixes.js`: **PASS 9/9 (100%)** kiểm thử tích hợp hồi quy.
   - `Test/test_admin_category_privacy.js`: **PASS 5/5 (100%)** kiểm thử bảo mật dữ liệu nhạy cảm danh mục người dùng.
 
-### 11.38. Thiết Lập Tài Liệu Chuẩn Triển Khai Cloud & Đặc Tả Môi Trường Development vs Production (2026-09-12)
+### 11.38. Thiết Lập Tài Liệu Chuẩn Triển Khai Cloud & Tự Động Hóa CI/CD (GitHub + Render + Vercel + Supabase + Upstash) (2026-09-12)
 - **Tài liệu nguồn sự thật:** [`docs/Deploy/CloudDeploy.md`](docs/Deploy/CloudDeploy.md).
-- **Nội dung chuẩn hóa:**
-  1. **Phân định cơ chế Development vs Production:**
-     - Chốt khóa mã hóa AES-256 (`DATA_ENCRYPTION_KEY`) & Blind Index (`BLIND_INDEX_SECRET`): nghiêm ngặt trên production, dừng server ngay nếu thiếu hoặc sai định dạng.
-     - Che giấu chi tiết lỗi (Error Obfuscation): ẩn toàn bộ stack trace/lỗi CSDL 500 trên production.
-     - Ghi log CSDL Prisma: chỉ log `['error']` trên production; log toàn bộ `['query', 'error', 'warn']` trên development.
-     - Cửa hậu Mock Input: khóa 100% trên production, bắt buộc qua AI xử lý thật.
-     - Cơ chế runtime & npm: production bỏ qua `devDependencies`, chạy trực tiếp `node index.js` thay vì `nodemon`.
-  2. **Cấu hình chuẩn trên Render Web Service:**
-     - Root Directory: `src/Backend`
-     - Build Command: `npm install` (kèm `postinstall: prisma generate`)
-     - Start Command: `npm start` (tuyệt đối không dùng `npm run dev` để tránh lỗi `nodemon: not found` exit 127).
-  3. **Danh mục biến môi trường đầy đủ:** Cung cấp mẫu cấu hình hoàn chỉnh cho Render (Database pooling port 6543, Direct port 5432, JWT, SMTP, AI Gemini, Encryption keys).
-  4. **Hướng dẫn khắc phục sự cố (Troubleshooting):** Xử lý 5 lỗi thường gặp (Nodemon not found, thiếu Encryption Key, lỗi kết nối Supabase, lệch partial index do prisma migrate dev).
-  5. **Quy định chiến lược của PO (Giai đoạn hiện tại):** Toàn bộ các môi trường (kể cả Render Cloud) thống nhất triển khai theo chế độ `DEVELOPMENT` (`NODE_ENV=development`) để thuận tiện debug, test liên thông và theo dõi log. Chỉ chuyển đổi sang `PRODUCTION` sau khi hoàn thiện toàn bộ dự án và có yêu cầu/phê duyệt bằng văn bản từ PO.
+- **Kiến trúc hạ tầng Cloud đa nền tảng:**
+  1. **GitHub (SCM & CI/CD Trigger):** Trung tâm quản lý phiên bản, kích hoạt tự động hóa triển khai đồng thời lên Render và Vercel mỗi khi có commit mới vào branch.
+  2. **Render (Backend API & WebSocket):** Triển khai `src/Backend`, Root Directory `src/Backend`, Build `npm install`, Start `npm start`, tự động kết nối Supabase và Upstash Redis.
+  3. **Vercel (Admin-web Frontend):** Triển khai `src/Admin-web` (React + Vite), cấu hình SPA routing và Reverse Proxy qua `vercel.json`, tự động phân phối trên Edge CDN toàn cầu.
+  4. **Supabase (PostgreSQL Cloud):** CSDL quan hệ chính 13 bảng, cung cấp cổng Connection Pooling `6543` và cổng Direct `5432`.
+  5. **Upstash (Serverless Redis):** Đảm nhận hàng đợi BullMQ (xử lý nền AI/OCR), Redis Pub/Sub (EventBus), Socket.IO Adapter qua chuỗi TLS `rediss://`.
+- **Phân định cơ chế Development vs Production:**
+  - Chốt khóa mã hóa AES-256 (`DATA_ENCRYPTION_KEY`) & Blind Index (`BLIND_INDEX_SECRET`): nghiêm ngặt trên production, dừng server ngay nếu thiếu hoặc sai định dạng.
+  - Che giấu chi tiết lỗi (Error Obfuscation): ẩn toàn bộ stack trace/lỗi CSDL 500 trên production.
+  - Ghi log CSDL Prisma: chỉ log `['error']` trên production; log toàn bộ `['query', 'error', 'warn']` trên development.
+  - Cửa hậu Mock Input: khóa 100% trên production, bắt buộc qua AI xử lý thật.
+- **Quy định chiến lược của PO (Giai đoạn hiện tại):** Toàn bộ các môi trường (kể cả Render Cloud) thống nhất triển khai theo chế độ `DEVELOPMENT` (`NODE_ENV=development`) để thuận tiện debug, test liên thông và theo dõi log. Chỉ chuyển đổi sang `PRODUCTION` sau khi hoàn thiện toàn bộ dự án và có yêu cầu/phê duyệt bằng văn bản từ PO.
+
 
 
 
