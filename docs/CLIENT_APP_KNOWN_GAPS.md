@@ -1,6 +1,6 @@
 # Client-app — Việc còn dang dở & rủi ro đã biết
 
-**Cập nhật:** 2026-09-13 (mở **G37** — số dư ví không phản ánh giao dịch sau một lần đẩy bị xung đột; đóng G36) · trước đó 2026-09-11 (sau khi nhánh gộp `main` @ `cc65f4f` và CSDL dev áp `database/12`: đóng G29, G31, G32; G24 thành lỗi phía client rồi đóng cùng ngày; thêm G34; G35 mở rồi đóng cùng ngày; đóng G30; đóng G33); 2026-09-12: gộp `main` @ `cbbeeb4` — CAN-LAM 17 A đóng, kênh thời gian thực nối được trên máy ảo, G34 hết bị chặn rồi **đóng tối cùng ngày** (client nghe `sync.completed`, im lặng, kiểm máy ảo hai máy); chiều muộn thêm **G36** — chờ backend; tối muộn gộp `main` @ `7779999` — backend làm xong CAN-LAM 20 (chốt trả hai lần ở `upsertTransaction`, client đo thật 4 ca; G36 sửa ở mã, **chưa đo đầu-cuối** ca khoá/xoá vì cần API admin — chờ đo rồi đóng); **2026-09-13: đo đầu-cuối ba ca G36 qua API admin — cả ba đúng, G36 ✅ ĐÓNG** (kéo theo: đường `lamMoi` **có** mang `daXoa`, nên ngoại lệ §3.6b không còn vô nghĩa — người dùng chốt **giữ** cùng ngày); cùng ngày, nghiệm thu bước 12 trên hai máy ảo đóng bốn lỗi im lặng của luồng tự động trả hoá đơn và mở **G37** — số dư ví không phản ánh giao dịch sau một lần đẩy bị xung đột
+**Cập nhật:** 2026-09-13 (mở rồi **đóng G37** ngay trong ngày — số dư ví nay suy từ sổ giao dịch; đóng G36) · trước đó 2026-09-11 (sau khi nhánh gộp `main` @ `cc65f4f` và CSDL dev áp `database/12`: đóng G29, G31, G32; G24 thành lỗi phía client rồi đóng cùng ngày; thêm G34; G35 mở rồi đóng cùng ngày; đóng G30; đóng G33); 2026-09-12: gộp `main` @ `cbbeeb4` — CAN-LAM 17 A đóng, kênh thời gian thực nối được trên máy ảo, G34 hết bị chặn rồi **đóng tối cùng ngày** (client nghe `sync.completed`, im lặng, kiểm máy ảo hai máy); chiều muộn thêm **G36** — chờ backend; tối muộn gộp `main` @ `7779999` — backend làm xong CAN-LAM 20 (chốt trả hai lần ở `upsertTransaction`, client đo thật 4 ca; G36 sửa ở mã, **chưa đo đầu-cuối** ca khoá/xoá vì cần API admin — chờ đo rồi đóng); **2026-09-13: đo đầu-cuối ba ca G36 qua API admin — cả ba đúng, G36 ✅ ĐÓNG** (kéo theo: đường `lamMoi` **có** mang `daXoa`, nên ngoại lệ §3.6b không còn vô nghĩa — người dùng chốt **giữ** cùng ngày); cùng ngày, nghiệm thu bước 12 trên hai máy ảo đóng bốn lỗi im lặng của luồng tự động trả hoá đơn và mở **G37** — số dư ví không phản ánh giao dịch sau một lần đẩy bị xung đột
 **Mục đích:** ghi lại những hạng mục đã được **cân nhắc và cố ý hoãn**, kèm lý do và bán kính ảnh hưởng. Không có tài liệu này thì người tiếp theo sẽ hoặc bỏ sót, hoặc làm lại từ đầu việc phân tích rủi ro.
 
 Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nhất.
@@ -42,7 +42,7 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > | ~~**G34**~~ | ✅ **ĐÓNG 2026-09-12 tối** — client dịch `sync.completed` → `RealtimeEvent.dongBoXong`, đánh thức `syncNow()`, **im lặng** (không toast: máy vừa đẩy cũng nhận lại sự kiện của mình và payload là hộp đen nên toast sẽ nói sai). Kiểm máy ảo hai máy cùng tài khoản: máy kia kéo về **cùng giây** backend phát. Trước đó: mở 2026-09-11, chặn bởi 17 A tới sáng 2026-09-12 |
 > | **G36** | ✅ **ĐÓNG 2026-09-13 — đo đầu-cuối ba ca qua API admin, cả ba đúng; client không đổi mã.** `Active` → 200; admin khoá → **401 + `ACCOUNT_INACTIVE`** kèm `idaccount` + `reason_inactive` ở cấp gốc; admin xoá mềm → **401 + `ACCOUNT_DELETED`** kèm `idaccount`, **dù 4/4 refresh token đã bị thu hồi** — đúng thứ CAN-LAM 20 §2.7 sửa (nhánh token thu hồi gọi `getAccountValidity` trước khi ném). Mô tả gốc: tài khoản bị xoá qua admin trong lúc app giữ token hết hạn và không có socket → `/auth/refresh` trả 401 **không mã** → app đăng xuất **trơn, không hộp thoại** (đo thật 2026-09-12 chiều). ⚠️ Kéo theo: đường `lamMoi` **CÓ** mang `daXoa`, nên ngoại lệ §3.6b không còn vô nghĩa — xem mục G36 |
 > | ~~**G35**~~ | ✅ **Đóng 2026-09-11** — ba màn quản lý danh mục nay lấy tài khoản qua `currentAccountIdOrNull`: chưa có phiên thì không đọc gì (kể cả tài khoản 0 — bộ khuôn toàn cục), và nút lưu/xoá báo "Chưa xác định được tài khoản đăng nhập". Test quét `lib/` cấm `?? 1` nhiều dòng. ⚠️ Dòng này từng ghi *lỗi đang chạy, chưa sửa* — đúng tới trước bản sửa |
-> | **G37** | ⏸️ **Mới 2026-09-13, hoãn có chủ ý.** Sau một lần đẩy bị xung đột, số dư ví trên máy **thắng** không phản ánh khoản chi của chính nó: pull ghi đè `wallets.balance` bằng con số server, mà server **không** tính số dư từ giao dịch. Đo thật trên hai máy ảo — máy thắng giữ khoản chi 350.000 nhưng ví vẫn 2.000.000. Không riêng hoá đơn: **mọi** thay đổi số dư cục bộ thua một lần xung đột đều biến mất như vậy |
+> | ~~**G37**~~ | ✅ **ĐÓNG 2026-09-13** — số dư ví nay là **cache của tổng sổ giao dịch**, không còn là giá trị tuyệt đối đồng bộ theo LWW. Điểm neo là một giao dịch "Số dư ban đầu" (id suy **tất định** từ `walletId` nên hai máy sinh ra một hàng), `SoDuViService` là nơi duy nhất ghi `balance`, nhánh kéo về thôi đọc cột ấy và tính lại sau mỗi lần pull. Nghiệm thu hai máy ảo: sau một cuộc đua tự trả, **hai máy đều 1.650.000 và bằng tổng sổ** — trước đó máy thắng giữ 2.000.000. Spec: `2026-09-13-so-du-vi-suy-tu-so-giao-dich-design.md` |
 >
 > **G20 đã đóng ngày 2026-09-05** — `depositToGoal` nhận `occurredAt` chặn hai
 > đầu; đã kiểm cả bằng test lẫn trên máy ảo Android.
@@ -1300,7 +1300,7 @@ là mất thật; còn nếu xoá là đúng thì `purgeDataForOtherAccounts` v�
 đăng nhập vào máy — tức chỉ **hoãn** việc dọn chứ không bỏ. Không đổi mã: hành vi hiện tại đã
 đúng quyết định ấy, chỉ hai chú thích Dart được ghi lại cho khớp.
 
-### G37 — Số dư ví không phản ánh giao dịch sau một lần đẩy bị xung đột · ⏸️ MỞ (2026-09-13)
+### G37 — Số dư ví không phản ánh giao dịch sau một lần đẩy bị xung đột · ✅ ĐÓNG 2026-09-13
 
 **Triệu chứng đo được**, hai máy ảo cùng tài khoản, hoá đơn tự động trả (nghiệm thu bước 12):
 máy **thắng** giữ khoản chi hợp lệ −350.000 mà ví vẫn là **2.000.000** thay vì 1.650.000. Máy
@@ -1315,8 +1315,28 @@ dư từ giao dịch. Chuỗi:
 3. pull ghi đè `balance` bằng con số server — **lần trừ biến mất không dấu vết**, và vì hàng vừa
    bị đánh dấu `synced` nên không còn gì để đẩy lại.
 
-**Vì sao hoãn.** Sửa tận gốc là đổi *cách số dư ví được quyết định giữa hai phía*. Bán kính ảnh
-hưởng rộng hơn hẳn bước 12: **mọi** đường ghi ví đều đi qua chỗ này, không riêng hoá đơn.
+**Đã đóng cùng ngày.** Sửa tận gốc là đổi *cách số dư ví được quyết định*: `wallets.balance` thôi là
+dữ liệu gốc và trở thành **cache của tổng sổ giao dịch**. Vì sổ đã đồng bộ đúng, hai máy có cùng tập
+giao dịch tính ra cùng một số — xung đột LWW không phá được nữa, vì không còn gì để mất.
+
+**Nghiệm thu hai máy ảo, tài khoản thử sạch 24:** máy A tự trả hoá đơn (2.000.000 → 1.650.000), máy
+B nhận `BILL_ALREADY_PAID` rồi gỡ (→ 1.650.000). **Hai máy bằng nhau và bằng tổng sổ.** Server: hoá
+đơn `Payed`, đúng một khoản chi sống, một kỳ kế tiếp.
+
+**⚠️ Ba cái bẫy của cùng một sai lầm, cả ba chỉ lộ ra khi chạy thật** — ai sửa tiếp vùng này phải
+biết: neo tính bằng `balance − Σ sổ`, nên **thời điểm** đặt nó quyết định đúng sai.
+
+1. **Đặt neo SAU khi ghi sổ** → neo hấp thụ luôn giao dịch vừa ghi; ví 1.000.000 trả hoá đơn 350.000
+   có neo 1.350.000 và số dư đứng im. 53 ca test đỏ vì điều này.
+2. **"Lưới đỡ" tự đặt neo trong `tinhLaiSoDu`** → ví số dư 0 nhận 1.000.000 thì neo thành
+   `0 − 1.000.000`, một khoản **chi** triệt tiêu đúng khoản vừa nhận.
+3. **Đặt neo cho ví vừa kéo về** → nó mang `balance = 0` (nhánh pull thôi đọc cột ấy) trong khi sổ
+   đã đầy đủ; neo âm bằng cả tổng sổ. Đo thật: ví 2.000.000 hiện `0đ`.
+
+Chốt rút ra: **số dư 0 nghĩa là "chưa biết", không phải "ví rỗng"**.
+
+**Bán kính** rộng hơn hẳn bước 12 — **mọi** đường ghi ví đi qua đây, không riêng hoá đơn — nên có
+test quét `lib/` (thứ **năm** của dự án) cấm mọi nơi khác gọi `updateBalance`.
 
 **✅ Hướng đóng đã chốt 2026-09-13: LÀM Ở CLIENT, không xin backend.** Hai lối đã cân nhắc:
 
@@ -1334,15 +1354,20 @@ hưởng rộng hơn hẳn bước 12: **mọi** đường ghi ví đều đi qu
   hàng (giá trị lấy từ `bank_account`). Nên hai loại ví hiện ngầm theo **hai** hợp đồng khác nhau:
   ví ngân hàng do server ghi, ví thường do client ghi. Ai làm tiếp phải giữ nguyên vế đầu.
 
-**Không lẫn với lỗi đã sửa cùng ngày.** Ví **phình thêm** 350.000 sau xung đột là chuyện khác và
+**Không lẫn với lỗi đã sửa trước đó cùng ngày.** Ví **phình thêm** 350.000 sau xung đột là chuyện khác và
 **đã đóng**: `SyncEngine` nay phát kết quả đẩy **trước** bước Pull, nên phép hoàn tiền của
 `BillPaymentConflictResolver` không còn cộng vào một con số đã bị server đè lên (ca test
 `test/core/sync/sync_push_result_truoc_pull_test.dart`). G37 là phần **còn lại** của cùng một gốc,
 ở nhánh mà client không bù được.
 
-**Trong lúc chờ.** Người dùng đối soát được bằng ô số dư ở màn Sửa ví — nó sinh một khoản bù qua
-`wallet/data/services/dieu_chinh_so_du_service.dart` chứ không ghi đè, nên sổ và ví khớp lại mà
-không mất lịch sử.
+**Ô đối soát số dư ở màn Sửa ví vẫn giữ nguyên vai trò** — nó sinh một khoản bù qua
+`wallet/data/services/dieu_chinh_so_du_service.dart` chứ không ghi đè. Nay nó càng đúng khuôn: mọi
+thứ ảnh hưởng số dư đều là một hàng trong sổ.
+
+**Giới hạn còn lại, chấp nhận có chủ ý:** máy chưa pull đủ giao dịch sẽ thấy số dư tạm thấp cho tới
+khi pull xong — khác hẳn trước đây, nơi sai là *vĩnh viễn*. Và ví loại `banking` **bị loại khỏi mọi
+phép tính lại**: server tự ghi số dư ví ngân hàng từ SePay (`workers/bank.worker.js:213`), và số dư
+ngân hàng thật có thể khác tổng sổ (phí, lãi, giao dịch chưa về).
 
 ## 2. Vấn đề đã biết nhưng thuộc về Backend
 

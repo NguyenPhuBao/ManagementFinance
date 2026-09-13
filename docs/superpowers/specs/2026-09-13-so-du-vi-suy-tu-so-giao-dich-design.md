@@ -123,6 +123,14 @@ kẹt hàng đợi đẩy, im lặng.
 
 Một hàm, đọc thẳng từ SQLite theo công thức §3.1, rồi ghi kết quả vào `wallets.balance`.
 
+⚠️ **Nó tự đặt neo nếu ví chưa có** (`datNeoNeuThieu`, luỹ đẳng), TRƯỚC khi tính. Không có bước ấy
+thì công thức thiếu đúng phần neo và trả về một số sai hẳn — ví dựng với số dư 1.000.000 rồi trả
+một hoá đơn 350.000 sẽ ra **−350.000** thay vì 650.000. Đây không phải trường hợp hiếm: **mọi** ví
+trong bộ test hiện có đều được dựng thẳng qua `walletDao.insert`, không đi qua đường tạo ví, nên
+không ví nào có neo. Một hàm tên là "tính lại" mà lại ghi thêm một hàng là điều cần nói rõ — nó
+được chấp nhận vì bước ấy luỹ đẳng và là **điều kiện tiên quyết** của phép tính, không phải tác
+dụng phụ.
+
 Nó **thay** cả **7** lời gọi `updateBalance` hiện có (đếm bằng script 2026-09-13): `bill` 2,
 `goal` 4, `transaction` 1. Sau bản này, `WalletDao.updateBalance` chỉ còn **một** nơi gọi là chính
 hàm này — và có test quét `lib/` canh điều đó, cùng khuôn bốn test quét đã có.
@@ -144,9 +152,19 @@ hàm này — và có test quét `lib/` canh điều đó, cùng khuôn bốn te
 - **Nhánh đẩy:** giữ nguyên. Payload ví vẫn **12 trường**, `sync_payload_contract_test.dart` không
   đổi.
 
-### 3.6. Ví đã có — `WalletOpeningBalanceSeeder`
+### 3.6. Ví đã có — vá neo sau mỗi lần pull
 
-Đúng khuôn `DefaultCategorySeeder`: chạy sau **mọi** lần pull, **luỹ đẳng**.
+Mượn **tinh thần** `DefaultCategorySeeder` (luỹ đẳng, chạy lại được, không hỏi "đã chạy lần nào
+chưa") nhưng **không** mượn chỗ đặt của nó: lớp ấy thực ra chạy trong `.then()` của `engine.start()`
+ở hai đường vào phiên (`auth_bloc.dart:304,359`), tức **một lần mỗi phiên**, chứ không phải sau mọi
+lần pull như chú thích của nó nói. Neo số dư cần chặt hơn thế, vì ví có thể được kéo về ở bất kỳ
+chu kỳ nào — nên nó nằm trong chính `SyncEngine`, cuối `_pullFromBackend`, cùng chỗ với bước tính
+lại số dư ở §3.4.
+
+⚠️ **Ví kéo về từ máy khác không cần `balance` của server để đúng.** `Value.absent()` ở nhánh pull
+nghĩa là lần INSERT đầu tiên cột lấy mặc định `0`; nhưng neo là **một giao dịch**, nên nó cũng được
+pull về cùng lượt — tổng sổ ra đúng số. Đây là lý do chọn "neo là giao dịch" thay vì "neo là một
+cột": cột thì phải đồng bộ riêng, giao dịch thì đã đồng bộ sẵn.
 
 Với mỗi ví chưa có khoản mở sổ: sinh một khoản với giá trị
 
