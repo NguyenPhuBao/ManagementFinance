@@ -898,6 +898,15 @@ class SyncEngine {
                 periodEnd: bill['period_end'] != null
                     ? Value(DateTime.tryParse(bill['period_end'].toString()))
                     : const Value.absent(),
+                // Cùng luật nốt: cột này chỉ đi qua đồng bộ từ 2026-09-13 (bước
+                // 12), nên hàng đã nằm sẵn trên server mang NULL cho tới khi
+                // client đẩy lại từng hàng. Gán thẳng `Value(false)` là TẮT tự
+                // động trả của mọi hoá đơn ngay chu kỳ pull đầu tiên — người
+                // dùng không được báo gì và chỉ phát hiện ra khi một hoá đơn
+                // đến hạn mà không ai trả.
+                autoPayEnabled: bill['auto_pay'] != null
+                    ? Value(bill['auto_pay'] == true)
+                    : const Value.absent(),
                 isDeleted: Value(bill['delete_at'] != null),
                 deletedAt: Value(_deletedAtFrom(bill['delete_at'])),
                 syncStatus: const Value('synced'),
