@@ -123,11 +123,23 @@ class BillPaymentConflictResolver {
     //     một bản ghi không tồn tại là vòng lặp `Record not found` ở mọi chu
     //     kỳ, đúng cái đã vấp ngày 2026-09-04.
     await _db.transactionDao.markSynced(idKhoanChi);
-    // (b) `undoPayment` kéo hoá đơn về chưa trả với `updatedAt` mới hơn bản
-    //     `Payed` mà máy thắng vừa ghi. Đẩy lên là LWW cho MÁY THUA thắng — nó
-    //     xoá đúng kết quả vừa được server chấp nhận. Trạng thái thật phải đến
-    //     từ nhánh kéo về ở chu kỳ sau.
-    await _db.billDao.markSynced(billId);
+
+    // (b) HOÁ ĐƠN thì **không** `markSynced` — nó phải được đẩy lên.
+    //
+    // Bản đầu có `billDao.markSynced(billId)` ở đây, theo spec §4.3b: sợ hàng
+    // của máy thua giẫm lên trạng thái đúng mà server vừa nhận, và tin rằng
+    // "trạng thái thật sẽ đến từ nhánh kéo về ở chu kỳ sau".
+    //
+    // ĐO THẬT ngày 2026-09-13 bác bỏ cả hai vế. Server **không hề có** trạng
+    // thái đúng để mà giẫm: bản `Payed` của máy thắng cũng bị LWW đánh bại,
+    // vì mỗi máy bị pull ghi đè về `Pending` rồi đẩy chính bản cũ hơn ấy lên.
+    // Hoá đơn d0f455fe ở lại `Pending` với `Update_at 11:21:18.938` trong khi
+    // hai máy thay nhau trả nó, mỗi lần một khoản chi mới và một kỳ kế tiếp
+    // mới — server kết thúc với BA kỳ kế tiếp cho cùng một hoá đơn.
+    //
+    // Sau bản sửa vòng lặp, `danhDauDaTra` ngay trên đã đưa hoá đơn về đúng
+    // sự thật (`Payed`), nên đẩy nó lên là **hội tụ**: máy nào đẩy sau cũng
+    // mang cùng một câu trả lời.
   }
 
   /// Ghi một thông báo vào trung tâm thông báo.

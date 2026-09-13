@@ -164,27 +164,36 @@ void main() {
             'found` ở mọi chu kỳ, đúng cái đã vấp 2026-09-04.');
   });
 
-  test('sau hoàn tác, HOÁ ĐƠN được markSynced', () async {
+  test('sau hoàn tác, HOÁ ĐƠN ở lại hàng đợi đẩy', () async {
     await themKhoanChi();
     await phat(ketQuaVoi(code: 'BILL_ALREADY_PAID'));
     final b = await db.billDao.getById(idBill);
-    expect(b!.syncStatus, 'synced',
-        reason: '`undoPayment` kéo hoá đơn về chưa trả với `updatedAt` mới hơn '
-            'bản `Payed` mà máy thắng vừa ghi. Đẩy lên là LWW cho MÁY THUA '
-            'thắng — nó xoá đúng kết quả vừa được server chấp nhận. Trạng thái '
-            'thật phải đến từ nhánh kéo về.');
+    expect(b!.syncStatus, 'pending',
+        reason: 'Ca này từng đòi `synced`, theo spec §4.3b: sợ hàng của máy '
+            'thua giẫm lên trạng thái đúng mà server vừa nhận, và tin rằng '
+            'trạng thái thật sẽ đến từ nhánh kéo về. ĐO THẬT trên hai máy ảo '
+            'ngày 2026-09-13 bác bỏ cả hai vế — server KHÔNG HỀ có trạng thái '
+            'đúng để mà giẫm: bản `Payed` của máy thắng cũng bị LWW đánh bại, '
+            'vì mỗi máy bị pull ghi đè về `Pending` rồi đẩy chính bản cũ hơn ấy '
+            'lên. Hoá đơn ở lại `Pending` vĩnh viễn trong khi hai máy thay nhau '
+            'trả nó; server kết thúc với BA kỳ kế tiếp cho cùng một hoá đơn.\n'
+            '`danhDauDaTra` đã đưa hàng này về đúng sự thật (`Payed`) trước đó, '
+            'nên đẩy lên là HỘI TỤ: máy nào đẩy sau cũng mang cùng câu trả lời.');
   });
 
-  test('BillNotPaidException không làm vỡ chu kỳ, và hai bản ghi vẫn thoát '
-      'hàng đợi', () async {
+  test('BillNotPaidException không làm vỡ chu kỳ; khoản chi thoát hàng đợi, '
+      'hoá đơn thì KHÔNG', () async {
     await themKhoanChi();
     bills.nemRa = const BillNotPaidException(idBill);
     await phat(ketQuaVoi(code: 'BILL_ALREADY_PAID'));
-    expect((await db.transactionDao.getById(idKhoanChi))!.syncStatus, 'synced');
-    expect((await db.billDao.getById(idBill))!.syncStatus, 'synced',
-        reason: 'Ngoại lệ ở đây nghĩa là "không còn gì để gỡ" — một chu kỳ pull '
-            'trước đã kéo hoá đơn về chưa trả. Không phải lỗi, và không được '
-            'để hai bản ghi kẹt lại hàng đợi.');
+    expect((await db.transactionDao.getById(idKhoanChi))!.syncStatus, 'synced',
+        reason: 'Khoản chi CHƯA BAO GIỜ lên được server, nên để nó mang cờ xoá '
+            'vào hàng đợi là vòng lặp `Record not found` ở mọi chu kỳ.');
+    expect((await db.billDao.getById(idBill))!.syncStatus, 'pending',
+        reason: 'Hoá đơn thì ngược lại: `danhDauDaTra` vừa ghi `Payed` vào nó, '
+            'và server đang giữ `Pending` — chính cái đã làm bộ tự trả trả lại '
+            'ở mỗi chu kỳ. Chặn nó khỏi hàng đợi là chặn luôn đường duy nhất '
+            'dạy server sự thật.');
   });
 
   test('BillUndoUnavailableException cũng vậy', () async {
@@ -192,7 +201,7 @@ void main() {
     bills.nemRa = const BillUndoUnavailableException(idBill);
     await phat(ketQuaVoi(code: 'BILL_ALREADY_PAID'));
     expect((await db.transactionDao.getById(idKhoanChi))!.syncStatus, 'synced');
-    expect((await db.billDao.getById(idBill))!.syncStatus, 'synced');
+    expect((await db.billDao.getById(idBill))!.syncStatus, 'pending');
   });
 
   test('khoản chi không mang billId (bản app cũ) thì không gọi undoPayment, '

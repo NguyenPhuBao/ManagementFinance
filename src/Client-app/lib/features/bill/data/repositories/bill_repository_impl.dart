@@ -165,7 +165,17 @@ class BillRepositoryImpl implements BillRepository {
     if (current == null) {
       throw StateError('Không tìm thấy hoá đơn $billId');
     }
-    if (!daCoKhoanChi(current)) {
+    // Chốt này bảo vệ **nút bấm tay**, nơi hàm phải tự đi tìm khoản chi: hoá
+    // đơn chưa trả thì không có gì để gỡ, và đoán bừa là hoàn tiền cho một
+    // khoản chi chẳng liên quan.
+    //
+    // Nơi gọi đã truyền đích danh `transactionId` thì nó biết chắc chắn hơn
+    // hoá đơn, nên chốt phải nhường. ⚠️ ĐÃ VẤP THẬT ngày 2026-09-13: trong
+    // cùng một chu kỳ đồng bộ, push bị từ chối rồi **pull kéo hoá đơn về
+    // `Pending`** trước khi resolver kịp chạy. Chốt bắn ra, khoản chi thừa ở
+    // lại và ví không được hoàn — đo được máy B giữ ví 2.000.000 mà sổ có hai
+    // khoản chi 350.000.
+    if (transactionId == null && !daCoKhoanChi(current)) {
       throw BillNotPaidException(billId);
     }
 

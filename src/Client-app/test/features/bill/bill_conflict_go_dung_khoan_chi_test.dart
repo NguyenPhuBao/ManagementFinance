@@ -181,6 +181,60 @@ void main() {
             'thẳng bằng nó rồi hoàn tiền là TẶNG TIỀN cho ví mỗi lượt phát lại.');
   });
 
+  /// Kéo hoá đơn về `Pending` — đúng những gì một chu kỳ **pull** làm khi
+  /// server còn giữ trạng thái ấy.
+  Future<void> pullKeoVePending() =>
+      db.billDao.updateFields(const BillsCompanion(
+        id: Value(idBill),
+        isPaid: Value(false),
+        payStatus: Value('Pending'),
+      ));
+
+  test('vẫn gỡ và hoàn tiền khi chu kỳ pull đã kéo hoá đơn về Pending',
+      () async {
+    await themKhoanChi(idKhoanCuaMayThang);
+    await themKhoanChi(idKhoanBiTuChoi);
+    await pullKeoVePending();
+
+    await phatTuChoi();
+
+    expect(await conSong(idKhoanBiTuChoi), isFalse,
+        reason: 'ĐÃ VẤP THẬT trên hai máy ảo ngày 2026-09-13: trong CÙNG một '
+            'chu kỳ, push bị từ chối rồi pull kéo hoá đơn về `Pending` TRƯỚC '
+            'khi resolver kịp chạy. `undoPayment` thấy hoá đơn chưa trả nên ném '
+            '`BillNotPaidException` và không gỡ gì — khoản chi thừa ở lại, ví '
+            'không được hoàn. Đo được: máy B giữ ví 2.000.000 mà sổ có hai '
+            'khoản chi 350.000, lệch 700.000 và im lặng.\n'
+            'Chốt `daCoKhoanChi` chỉ để bảo vệ NÚT BẤM TAY, nơi hàm phải tự tìm '
+            'khoản chi. Khi nơi gọi đã truyền đích danh `transactionId` thì nó '
+            'biết chắc chắn hơn hoá đơn.');
+    expect((await db.walletDao.getById(idViNay))!.balance, 1000000.0,
+        reason: 'Tiền phải quay về ví, dù hoá đơn đang mang trạng thái nào.');
+    expect(await conSong(idKhoanCuaMayThang), isTrue);
+  });
+
+  test('hoá đơn Ở LẠI hàng đợi đẩy, để "đã trả" tới được server', () async {
+    await themKhoanChi(idKhoanCuaMayThang);
+    await themKhoanChi(idKhoanBiTuChoi);
+    await pullKeoVePending();
+
+    await phatTuChoi();
+
+    final b = (await db.billDao.getById(idBill))!;
+    expect(b.payStatus, 'Payed');
+    expect(b.syncStatus, 'pending',
+        reason: 'Spec §4.3b từng cho hoá đơn `markSynced` với lý lẽ "trạng thái '
+            'thật sẽ đến từ nhánh kéo về ở chu kỳ sau". ĐO THẬT ngày 2026-09-13 '
+            'cho thấy giả định ấy SAI: bản `Payed` của máy thắng cũng bị LWW '
+            'đánh bại — mỗi máy bị pull ghi đè rồi đẩy bản cũ hơn lên — nên '
+            'server giữ `Pending` vĩnh viễn (đo: bill d0f455fe, '
+            'Update_at 11:21:18.938). Không máy nào dạy được server sự thật, và '
+            'bộ tự trả cứ thế trả lại sau mỗi lần pull.\n'
+            'Lý lẽ cũ dựa trên việc máy thua đẩy `Pending` lên — nhưng từ bản '
+            'sửa lỗi 1, máy thua giữ `Payed`, tức ĐÚNG sự thật. Đẩy nó lên là '
+            'hội tụ, không phải giẫm đạp.');
+  });
+
   test('hoàn tiền vào ĐÚNG ví của khoản bị từ chối', () async {
     // Hai máy trả cùng một hoá đơn bằng hai ví khác nhau — chuyện thường, vì ví
     // mặc định của mỗi máy do người dùng chọn riêng.

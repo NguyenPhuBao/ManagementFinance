@@ -268,16 +268,20 @@ class BillDao extends DatabaseAccessor<AppDatabase> with _$BillDaoMixin {
   /// đơn không lặp, hoặc kỳ ấy đã bị xoá.
   ///
   /// ⚠️ `LIMIT 1` **không `ORDER BY`**, và trên máy thua một cuộc đua
-  /// `BILL_ALREADY_PAID` thì **có thể có hai** kỳ kế tiếp cùng
-  /// `generatedFromBillId`: kỳ do chính máy này sinh ra và kỳ của máy thắng
-  /// (đã pull về). Phép chọn giữa chúng là **không xác định** — biết rồi và
-  /// cố ý để nguyên, vì hậu quả trung tính: hai kỳ ấy giống nhau về mọi mặt
-  /// người dùng thấy, gỡ kỳ nào thì vẫn còn đúng một kỳ sống, không mất tiền
-  /// và không lệch sổ.
+  /// `BILL_ALREADY_PAID` thì **có thể có nhiều** kỳ kế tiếp cùng
+  /// `generatedFromBillId`: mỗi lượt tự trả sinh một kỳ, ở cả hai máy. Phép
+  /// chọn giữa chúng là **không xác định**, và nó gỡ đúng **một** kỳ mỗi lượt.
   ///
-  /// Khác hẳn `TransactionDao.getByBill`, nơi cùng khuôn truy vấn này đã gây
-  /// mất dữ liệu thật ngày 2026-09-13 (gỡ nhầm khoản chi của máy thắng rồi đẩy
-  /// cờ xoá lên server) — ở đó nơi gọi phải truyền id đích danh, xem
+  /// ⚠️ Câu trước ở đây từng nói hậu quả là "trung tính — gỡ kỳ nào thì vẫn
+  /// còn đúng một kỳ sống". **Đo thật ngày 2026-09-13 bác bỏ**: sau một cuộc
+  /// đua trên hai máy ảo, server còn **hai** kỳ kế tiếp sống cho cùng một hoá
+  /// đơn (và hai kỳ nữa đã xoá) — bốn kỳ được sinh ra vì vòng lặp tự trả chạy
+  /// vài vòng trước khi trạng thái `Payed` kịp tới server. Người dùng thấy hai
+  /// hoá đơn trùng cho tháng sau. Đây là **khoảng trống đã biết**, chưa sửa.
+  ///
+  /// Cùng khuôn truy vấn này ở `TransactionDao.getByBill` đã gây mất dữ liệu
+  /// thật cùng ngày (gỡ nhầm khoản chi của máy thắng rồi đẩy cờ xoá lên
+  /// server); ở đó nơi gọi nay phải truyền id đích danh — xem
   /// `BillRepository.undoPayment`.
   Future<Bill?> getGeneratedFrom(String billId) {
     return (select(bills)
@@ -311,11 +315,22 @@ class BillDao extends DatabaseAccessor<AppDatabase> with _$BillDaoMixin {
   /// ⚠️ Ghi **cả hai** cột: `payStatus` là cột chính thức, `isPaid` là cột
   /// chuỗi cũ được suy ra (xem mục "Đụng vào hoá đơn" `CLAUDE.md`). Ghi thiếu
   /// một cột thì `daCoKhoanChi` vẫn đúng nhưng các đường đọc khác lệch nhau.
+  ///
+  /// ⚠️ Và ghi **`syncStatus = 'pending'`**, tức hàng này PHẢI được đẩy lên.
+  /// Bản đầu cố ý không đẩy — spec §4.3b sợ hàng của máy thua giẫm lên trạng
+  /// thái đúng mà server vừa nhận. ĐO THẬT ngày 2026-09-13 cho thấy nỗi sợ ấy
+  /// đặt nhầm chỗ: bản `Payed` của **máy thắng** cũng bị LWW đánh bại (mỗi máy
+  /// bị pull ghi đè rồi đẩy bản cũ hơn lên), nên server giữ `Pending` vĩnh
+  /// viễn, không máy nào dạy được nó sự thật, và bộ tự trả cứ trả lại sau mỗi
+  /// lần pull. Từ bản sửa lỗi vòng lặp, máy thua giữ đúng `Payed` — đẩy nó lên
+  /// là **hội tụ**, không phải giẫm đạp.
   Future<void> danhDauDaTra(String id) async {
     await (update(bills)..where((t) => t.id.equals(id))).write(
-      const BillsCompanion(
-        payStatus: Value('Payed'),
-        isPaid: Value(true),
+      BillsCompanion(
+        payStatus: const Value('Payed'),
+        isPaid: const Value(true),
+        syncStatus: const Value('pending'),
+        updatedAt: Value(DateTime.now()),
       ),
     );
   }
