@@ -1300,6 +1300,20 @@ class SyncEngine {
           // giờ +07 là 20:00 UTC hôm TRƯỚC và server lưu lùi một ngày — im
           // lặng. Nên gửi nửa đêm UTC của NGÀY CỤC BỘ. Đo thật 2026-09-12.
           'period_end': _ngayCucBoUtcIso(bill.periodEnd),
+          // Công tắc tự động trả — mở đường đồng bộ 2026-09-13 (bước 12). Cột
+          // `bills.autoPayEnabled` có từ v17 nhưng tới nay vẫn CỤC BỘ: bật
+          // trên máy A thì máy B không biết, và người dùng phải tự nhớ bật lại
+          // ở từng máy.
+          //
+          // Mở được vì backend đã đặt chốt chống trả hai lần ở
+          // `upsertTransaction` (`chanTraHaiLan`, CAN-LAM 20 §2.1, có từ
+          // `7779999`): hai máy cùng bật thì chỉ khoản chi đầu tiên được nhận,
+          // khoản thứ hai bị từ chối bằng `BILL_ALREADY_PAID` và
+          // `BillPaymentConflictResolver` gỡ nó ở máy thua.
+          //
+          // Phải là `bool` THẬT: gửi chuỗi `'true'` thì backend đọc thành NULL
+          // và bỏ qua trong im lặng — quy tắc 4 `CLAUDE.md`.
+          'auto_pay': bill.autoPayEnabled,
           'is_deleted': bill.isDeleted,
           'updated_at': bill.updatedAt.toUtc().toIso8601String(),
           'idaccount':

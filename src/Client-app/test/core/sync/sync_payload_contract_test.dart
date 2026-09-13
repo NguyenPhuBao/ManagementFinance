@@ -572,16 +572,29 @@ void main() {
           // Mở 2026-09-12. Backend nhận `previousBillId`/`previous_bill_id` và
           // `anchorDay`/`anchor_day` (`sync.repository.js:99-106`); client gửi
           // dạng snake_case cho khớp phần còn lại của payload này.
-          //
-          // ⚠️ `auto_pay` CHƯA mở — việc phía client (bước 12). Backend đã đặt
-          // chốt chống trả hai lần ở `upsertTransaction` từ `7779999`
-          // (2026-09-12 tối muộn, CAN-LAM 20 §2.1), nên không còn chờ ai.
           'previous_bill_id', 'anchor_day',
           // `period_end` mở 2026-09-12 cùng tính năng ân hạn (schema v21) —
           // ngày kết thúc kỳ tính tiền, tách khỏi hạn trả.
           'period_end',
+          // `auto_pay` mở 2026-09-13 (bước 12). Cột `bills.autoPayEnabled` có
+          // từ v17 nhưng tới lúc ấy vẫn CỤC BỘ: bật trên máy A thì máy B không
+          // biết. Mở được vì backend đã đặt chốt chống trả hai lần ở
+          // `upsertTransaction` từ `7779999` (CAN-LAM 20 §2.1).
+          'auto_pay',
         },
       );
+    });
+
+    test('hoá đơn đẩy công tắc tự động trả dưới khoá auto_pay, kiểu bool thật',
+        () {
+      final p = payloadOf('bill');
+      expect(p.containsKey('auto_pay'), isTrue,
+          reason: 'Thiếu khoá này thì công tắc tự động trả không bao giờ rời '
+              'khỏi máy: bật trên máy A, máy B vẫn tắt, và KHÔNG GÌ báo lỗi — '
+              'đúng quy tắc 4 `CLAUDE.md`.');
+      expect(p['auto_pay'], isA<bool>(),
+          reason: 'Gửi chuỗi "true" thay vì bool thì backend đọc thành NULL và '
+              'bỏ qua trong im lặng, giống hệt ca gửi sai tên trường.');
     });
 
     test('hoá đơn đẩy ngày kết thúc kỳ dưới khoá period_end — nửa đêm UTC '
