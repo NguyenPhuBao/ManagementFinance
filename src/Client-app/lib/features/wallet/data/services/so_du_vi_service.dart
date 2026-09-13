@@ -29,15 +29,18 @@ class SoDuViService {
 
   /// Tính lại số dư của [walletId] từ sổ và ghi vào `wallets.balance`.
   ///
-  /// ⚠️ **Tự đặt neo nếu ví chưa có**, TRƯỚC khi tính. Không có bước ấy thì công
-  /// thức thiếu đúng phần neo và trả về một số sai hẳn — ví dựng với số dư
-  /// 1.000.000 rồi trả một hoá đơn 350.000 sẽ ra **−350.000** thay vì 650.000.
-  /// Đây không phải trường hợp hiếm: **mọi** ví trong bộ test đều dựng thẳng qua
-  /// `walletDao.insert`, không đi qua đường tạo ví, nên không ví nào có neo sẵn.
+  /// ⚠️ **KHÔNG đặt neo ở đây — cố ý.** Bản đầu có gọi [_datNeoNeuThieu] ngay
+  /// trước phép tính, như một "lưới đỡ" cho ví chưa ai chạm tới. Lưới đỡ ấy
+  /// chính là cái bẫy, và nó **triệt tiêu đúng khoản vừa ghi**:
   ///
-  /// Một hàm tên là "tính lại" mà lại ghi thêm một hàng là điều cần nói rõ: nó
-  /// được chấp nhận vì bước ấy **luỹ đẳng** và là **điều kiện tiên quyết** của
-  /// phép tính, không phải tác dụng phụ.
+  /// Nạp 1.000.000 từ ví A sang ví tiết kiệm đang có số dư **0**. Lúc đặt neo
+  /// trước khi ghi, ví tiết kiệm có `balance − Σ sổ = 0` nên không sinh neo nào
+  /// — đúng. Ghi xong hàng `transfer`, hàm này chạy, thấy ví vẫn chưa có neo và
+  /// tự đặt: `balance(0) − Σ sổ(1.000.000) = −1.000.000`, tức một khoản **chi**
+  /// 1.000.000. Tổng thành **0** và tiền vừa nạp biến mất. Đo thật khi chạy bộ
+  /// test: ví đích đứng im ở 0 trong khi ví nguồn đã bị trừ đủ.
+  ///
+  /// Neo chỉ được đặt bởi [datNeoNhieuVi], và **luôn trước khi ghi sổ**.
   Future<void> tinhLaiSoDu(String walletId) async {
     final vi = await _db.walletDao.getById(walletId);
     if (vi == null) return;
@@ -46,8 +49,6 @@ class SoDuViService {
     // và số dư ngân hàng thật có thể khác tổng sổ — phí, lãi, giao dịch chưa về.
     // Tính lại rồi ghi đè là xoá đúng con số server vừa ghi.
     if (WalletType.tuKhoa(vi.type) == WalletType.banking) return;
-
-    await _datNeoNeuThieu(vi);
 
     final tong = await _db.transactionDao.tongTheoVi(walletId);
     if ((tong - vi.balance).abs() < _nguongBangNhau) return;
@@ -58,6 +59,23 @@ class SoDuViService {
   Future<void> tinhLaiNhieuVi(Iterable<String> walletIds) async {
     for (final id in walletIds.toSet()) {
       await tinhLaiSoDu(id);
+    }
+  }
+
+  /// Đặt neo cho các ví sắp bị một giao dịch chạm tới — **gọi TRƯỚC khi ghi sổ**.
+  ///
+  /// ⚠️ Thứ tự ở đây là bắt buộc, và sai thì hỏng **im lặng**. Neo được tính
+  /// bằng `balance − Σ sổ`, tức nó hấp thụ mọi chênh lệch đang có. Gọi nó SAU
+  /// khi đã ghi giao dịch thì chính giao dịch ấy bị hấp thụ vào neo: ví
+  /// 1.000.000 ghi một khoản chi 350.000 sẽ có neo **1.350.000** và số dư đứng
+  /// im ở 1.000.000 — khoản chi coi như chưa từng xảy ra. Đã vấp thật: **53 ca
+  /// test đỏ** khi `tinhLaiSoDu` là nơi duy nhất đặt neo.
+  Future<void> datNeoNhieuVi(Iterable<String> walletIds) async {
+    for (final id in walletIds.toSet()) {
+      final vi = await _db.walletDao.getById(id);
+      if (vi == null) continue;
+      if (WalletType.tuKhoa(vi.type) == WalletType.banking) continue;
+      await _datNeoNeuThieu(vi);
     }
   }
 

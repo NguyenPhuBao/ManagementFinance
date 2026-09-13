@@ -35,6 +35,7 @@ import '../../features/budget/presentation/bloc/budget_detail_cubit.dart';
 import '../../features/wallet/data/datasources/wallet_local_data_source.dart';
 import '../../features/wallet/data/repositories/wallet_repository.dart';
 import '../../features/wallet/data/services/dieu_chinh_so_du_service.dart';
+import '../../features/wallet/data/services/so_du_vi_service.dart';
 import '../../features/wallet/data/repositories/wallet_repository_impl.dart';
 import '../../features/wallet/data/services/default_account_data_initializer.dart';
 import '../../features/wallet/presentation/bloc/wallet_cubit.dart';
@@ -133,6 +134,9 @@ Future<void> setupDependencies() async {
   // Năm danh mục mà bộ mặc định của backend không có được tạo riêng cho từng
   // tài khoản (xem PersonalDefaultCategories) — danh mục người dùng thì đồng bộ
   // được, còn danh mục mặc định thì không.
+  // Nơi DUY NHẤT ghi `wallets.balance`: số dư nay là cache của tổng sổ giao
+  // dịch, không còn là giá trị tuyệt đối đồng bộ theo LWW (G37).
+  sl.registerLazySingleton<SoDuViService>(() => SoDuViService(db: sl()));
   sl.registerLazySingleton<DefaultCategorySeeder>(
     () => DefaultCategorySeeder(db: sl()),
   );
@@ -171,6 +175,7 @@ Future<void> setupDependencies() async {
       localDataSource: sl(),
       walletDao: sl<AppDatabase>().walletDao,
       syncEngine: sl(),
+      soDuVi: sl(),
     ),
   );
   // Điều chỉnh số dư ví (đối soát). Đăng ký SAU TransactionRepository vì nó

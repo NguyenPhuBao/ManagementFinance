@@ -18,6 +18,7 @@ import 'package:flowmoney/core/bill/bill_recurrence.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/bill/data/datasources/bill_local_datasource.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository_impl.dart';
+import 'package:flowmoney/features/wallet/domain/so_du_mo_so.dart';
 
 void main() {
   late AppDatabase db;
@@ -67,7 +68,7 @@ void main() {
   }
 
   Future<Transaction> khoanChi() async =>
-      (await db.transactionDao.getAll(accountId)).single;
+      (await giaoDichThat(db, accountId)).single;
 
   test('kỳ kế tiếp kế thừa cờ tự động thanh toán', () async {
     final bill = await seedBill(autoPay: true);
@@ -134,9 +135,21 @@ void main() {
       ),
       throwsA(isA<ArgumentError>()),
     );
-    expect(await db.transactionDao.getAll(accountId), isEmpty,
+    expect(await giaoDichThat(db, accountId), isEmpty,
         reason: 'Đây là tầng ghi tiền; một tham số ngày để ngỏ là cửa sau. '
             'Khoản chi không thể mang dấu thời gian chưa tới.');
     expect((await db.billDao.getById('bill-1'))!.isPaid, isFalse);
   });
 }
+
+/// Giao dịch thật của tài khoản — **bỏ khoản mở sổ**.
+///
+/// Từ 2026-09-13 số dư ví suy từ sổ, nên mỗi ví có thêm một khoản "Số dư ban
+/// đầu" làm điểm neo (`wallet/domain/so_du_mo_so.dart`). Nó là hàng thật trong
+/// bảng nhưng không phải thu chi nào — đếm nó vào đây là mọi phép `single`
+/// thành "Too many elements".
+Future<List<Transaction>> giaoDichThat(AppDatabase db, int idaccount) async =>
+    (await db.transactionDao.getAll(idaccount))
+        .where((t) => !laKhoanMoSo(
+            loai: t.type, categoryId: t.categoryId, ghiChu: t.note))
+        .toList();

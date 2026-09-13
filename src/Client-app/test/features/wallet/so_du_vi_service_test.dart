@@ -50,8 +50,9 @@ void main() {
   Future<double> soDu([String id = idVi]) async =>
       (await db.walletDao.getById(id))!.balance;
 
-  test('ví chưa có neo thì TỰ ĐẶT, và số dư KHÔNG đổi ở lần đầu', () async {
+  test('đặt neo rồi tính lại thì số dư KHÔNG đổi', () async {
     await themVi(soDu: 1000000);
+    await service.datNeoNhieuVi({idVi});
     await service.tinhLaiSoDu(idVi);
 
     expect(await soDu(), 1000000,
@@ -76,7 +77,8 @@ void main() {
   test('đặt neo LUỸ ĐẲNG — chạy hai lần chỉ một neo, số dư không nhân đôi',
       () async {
     await themVi(soDu: 1000000);
-    await service.tinhLaiSoDu(idVi);
+    await service.datNeoNhieuVi({idVi});
+    await service.datNeoNhieuVi({idVi});
     await service.tinhLaiSoDu(idVi);
 
     expect(await soDu(), 1000000,
@@ -87,7 +89,7 @@ void main() {
 
   test('sau khi có neo, số dư = neo + giao dịch', () async {
     await themVi(soDu: 1000000);
-    await service.tinhLaiSoDu(idVi);
+    await service.datNeoNhieuVi({idVi});
     await themChi('t1', 350000);
     await service.tinhLaiSoDu(idVi);
 
@@ -96,6 +98,7 @@ void main() {
 
   test('số dư ban đầu ÂM thì neo là khoản CHI', () async {
     await themVi(soDu: -50000);
+    await service.datNeoNhieuVi({idVi});
     await service.tinhLaiSoDu(idVi);
 
     final neo = await db.transactionDao.getById(idKhoanMoSo(idVi));
@@ -108,6 +111,7 @@ void main() {
 
   test('số dư ban đầu 0 thì KHÔNG sinh neo', () async {
     await themVi(soDu: 0);
+    await service.datNeoNhieuVi({idVi});
     await service.tinhLaiSoDu(idVi);
 
     expect(await db.transactionDao.getById(idKhoanMoSo(idVi)), isNull,
@@ -119,6 +123,7 @@ void main() {
 
   test('chênh dưới NỬA ĐỒNG thì không ghi lại', () async {
     await themVi(soDu: 1000000);
+    await service.datNeoNhieuVi({idVi});
     await service.tinhLaiSoDu(idVi);
     final truoc = (await db.walletDao.getById(idVi))!.updatedAt;
 
@@ -134,6 +139,7 @@ void main() {
 
   test('ví BANKING bị BỎ QUA hoàn toàn', () async {
     await themVi(soDu: 1000000, loai: 'banking', id: 'w-bank');
+    await service.datNeoNhieuVi({'w-bank'});
     await service.tinhLaiSoDu('w-bank');
 
     expect(await soDu('w-bank'), 1000000);
@@ -150,8 +156,36 @@ void main() {
 
   test('tinhLaiNhieuVi chạy mỗi ví đúng một lần, id trùng không sao', () async {
     await themVi(soDu: 1000000);
+    await service.datNeoNhieuVi({idVi});
     await service.tinhLaiNhieuVi([idVi, idVi, idVi]);
 
     expect(await soDu(), 1000000);
+  });
+
+  test('tinhLaiSoDu KHÔNG được tự đặt neo — nếu không nó triệt tiêu khoản vừa ghi',
+      () async {
+    // Ví tiết kiệm số dư 0, chưa có neo (đúng: 0 thì không sinh neo nào).
+    await themVi(soDu: 0);
+    await service.datNeoNhieuVi({idVi});
+
+    // Nhận 1.000.000 vào sổ.
+    await db.transactionDao.insert(TransactionsCompanion.insert(
+      id: 'nhan-1',
+      walletId: idVi,
+      idaccount: acc,
+      amount: 1000000,
+      type: 'thu',
+      categoryId: const Value('cat-1'),
+      date: DateTime(2026, 9, 10),
+      updatedAt: DateTime(2026, 9, 10),
+    ));
+    await service.tinhLaiSoDu(idVi);
+
+    expect(await soDu(), 1000000,
+        reason: 'ĐÃ VẤP THẬT khi chạy bộ test: bản đầu cho `tinhLaiSoDu` tự đặt '
+            'neo như một "lưới đỡ". Ví này chưa có neo (số dư 0 nên không sinh), '
+            'nên sau khi nhận tiền, lưới đỡ ấy tính neo = balance(0) − Σ '
+            'sổ(1.000.000) = −1.000.000 và sinh một khoản CHI triệt tiêu đúng '
+            'khoản vừa nhận. Ví đứng im ở 0 và tiền biến mất.');
   });
 }

@@ -1,5 +1,6 @@
 import '../../../../core/database/daos/wallet_dao.dart';
 import '../../../../core/sync/sync_engine.dart';
+import '../../../wallet/data/services/so_du_vi_service.dart';
 import '../datasources/transaction_local_data_source.dart';
 import '../models/transaction_entity.dart';
 
@@ -31,10 +32,14 @@ class TransactionRepositoryImpl implements TransactionRepository {
   final WalletDao walletDao;
   final SyncEngine syncEngine;
 
+  /// Nơi duy nhất ghi số dư. Xem `SoDuViService`.
+  final SoDuViService soDuVi;
+
   TransactionRepositoryImpl({
     required this.localDataSource,
     required this.walletDao,
     required this.syncEngine,
+    required this.soDuVi,
   });
 
   @override
@@ -51,8 +56,27 @@ class TransactionRepositoryImpl implements TransactionRepository {
     TransactionEntity transaction, {
     String? destinationWalletId,
   }) async {
-    await localDataSource.addTransaction(transaction);
-    await _applyBalances(transaction, destinationWalletId: destinationWalletId);
+    // ⚠️ Ví đích phải được GHI VÀO HÀNG, không chỉ truyền qua tham số.
+    //
+    // Bản cũ cộng dồn số dư nên `destinationWalletId` truyền riêng là đủ: nó
+    // trừ/cộng ngay rồi quên. Nay số dư **suy từ sổ**, nên thứ gì không nằm
+    // trong hàng thì không tồn tại — một khoản chuyển thiếu `walletTransfer`
+    // trở thành "chuyển đi đâu không rõ" và không ví nào đổi. Ghi vào hàng cũng
+    // là điều đúng sẵn: đó là chỗ DUY NHẤT lưu tiền đã đi đâu, và máy khác chỉ
+    // biết được qua nó.
+    final banGhi = transaction.walletTransfer == null &&
+            destinationWalletId != null &&
+            transaction.type == 'transfer'
+        ? transaction.copyWith(walletTransfer: destinationWalletId)
+        : transaction;
+
+    final vi = _viBiAnhHuong(banGhi, destinationWalletId: destinationWalletId);
+    // ⚠️ Đặt neo TRƯỚC khi ghi sổ — xem `SoDuViService.datNeoNhieuVi`: neo được
+    // tính bằng `balance − Σ sổ`, nên đặt sau là nó hấp thụ luôn giao dịch vừa
+    // ghi và số dư đứng im.
+    await soDuVi.datNeoNhieuVi(vi);
+    await localDataSource.addTransaction(banGhi);
+    await soDuVi.tinhLaiNhieuVi(vi);
     syncEngine.scheduleSync();
   }
 
@@ -61,12 +85,10 @@ class TransactionRepositoryImpl implements TransactionRepository {
     TransactionEntity transaction, {
     String? destinationWalletId,
   }) async {
+    final vi = _viBiAnhHuong(transaction, destinationWalletId: destinationWalletId);
+    await soDuVi.datNeoNhieuVi(vi);
     await localDataSource.deleteTransaction(transaction.id);
-    await _applyBalances(
-      transaction,
-      sign: -1,
-      destinationWalletId: destinationWalletId,
-    );
+    await soDuVi.tinhLaiNhieuVi(vi);
     syncEngine.scheduleSync();
   }
 
@@ -75,45 +97,45 @@ class TransactionRepositoryImpl implements TransactionRepository {
     TransactionEntity before,
     TransactionEntity after,
   ) async {
-    // Hoàn trọn hệ quả cũ rồi áp trọn hệ quả mới, thay vì tính phần chênh:
-    // đổi ví, đổi chiều, đổi ví đích đều rơi vào cùng một đường, không có
-    // nhánh riêng nào để quên.
-    await _applyBalances(before, sign: -1);
-    await _applyBalances(after);
+    // ⚠️ Ghi sổ TRƯỚC rồi mới tính lại số dư. Bản cũ áp hệ quả lên ví trước
+    // rồi mới ghi hàng, vì khi ấy số dư là phép cộng dồn nên thứ tự không quan
+    // trọng. Nay số dư **suy từ sổ**: tính lại khi hàng cũ còn nguyên là đọc
+    // đúng trạng thái trước khi sửa, tức không có gì đổi cả.
+    final vi = <String>{..._viBiAnhHuong(before), ..._viBiAnhHuong(after)};
+    await soDuVi.datNeoNhieuVi(vi);
     await localDataSource.updateTransaction(after.copyWith(
       // Phía server so `update_at` (LWW): giữ mốc cũ là bản sửa bị bỏ qua.
       syncStatus: 'pending',
       updatedAt: DateTime.now(),
     ));
+    // Hợp hai tập: đổi ví hay đổi ví đích thì ví CŨ cũng phải được tính lại,
+    // nếu không nó giữ mãi phần tiền của một giao dịch không còn thuộc về nó.
+    await soDuVi.tinhLaiNhieuVi(vi);
     syncEngine.scheduleSync();
   }
 
-  Future<void> _adjust(String walletId, double delta) async {
-    final w = await walletDao.getById(walletId);
-    if (w != null) await walletDao.updateBalance(w.id, w.balance + delta);
-  }
-
-  /// Áp hệ quả của [t] lên số dư ví; [sign] = -1 để hoàn lại y hệt.
+  /// Những ví mà [t] chạm tới — để biết **ví nào cần tính lại** sau khi sổ đổi.
   ///
-  /// Ví đích nằm trên chính entity (`walletTransfer`); [destinationWalletId]
-  /// chỉ còn là đường cũ cho nơi gọi chưa điền cột đó. Khoản chuyển không có
-  /// ví đích thì KHÔNG động vào ví nào — giữ hành vi cũ, đừng trừ một nửa.
-  Future<void> _applyBalances(
+  /// Đây là phần còn lại của `_applyBalances` cũ. Phép cộng trừ đã chuyển sang
+  /// `TransactionDao.tongTheoVi`; ở đây chỉ còn câu hỏi *ví nào bị chạm*.
+  ///
+  /// Giữ **nguyên văn** ngoại lệ của bản cũ: khoản `transfer` không có ví đích
+  /// thì **không** chạm ví nào — *"đừng trừ một nửa"*. Ví đích nằm trên chính
+  /// entity (`walletTransfer`); [destinationWalletId] chỉ còn là đường cũ cho
+  /// nơi gọi chưa điền cột đó.
+  Set<String> _viBiAnhHuong(
     TransactionEntity t, {
-    int sign = 1,
     String? destinationWalletId,
-  }) async {
-    final amount = t.amount * sign;
+  }) {
     switch (t.type) {
       case 'chi':
-        await _adjust(t.walletId, -amount);
       case 'thu':
-        await _adjust(t.walletId, amount);
+        return {t.walletId};
       case 'transfer':
         final destination = t.walletTransfer ?? destinationWalletId;
-        if (destination == null) return;
-        await _adjust(t.walletId, -amount);
-        await _adjust(destination, amount);
+        if (destination == null) return const {};
+        return {t.walletId, destination};
     }
+    return const {};
   }
 }

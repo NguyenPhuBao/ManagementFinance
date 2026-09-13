@@ -9,6 +9,7 @@ import 'package:flowmoney/features/goal/data/models/goal_entity.dart';
 import 'package:flowmoney/features/goal/data/repositories/goal_repository.dart';
 import 'package:flowmoney/features/goal/data/repositories/goal_repository_impl.dart';
 import 'package:flowmoney/features/goal/domain/goal_history_direction.dart';
+import 'package:flowmoney/features/wallet/domain/so_du_mo_so.dart';
 
 void main() {
   late AppDatabase db;
@@ -71,7 +72,7 @@ void main() {
         idaccount: 1,
       );
 
-      final txs = await db.transactionDao.getAll(1);
+      final txs = await giaoDichThat(db, 1);
       expect(txs.length, 1,
           reason: 'Trước đây một lần nạp đẻ HAI hàng rời ("chi" ở ví nguồn và '
               '"thu" ở ví đích) cho một việc duy nhất là chuyển tiền giữa hai '
@@ -104,7 +105,7 @@ void main() {
         tuDong: true,
       );
 
-      final tx = (await db.transactionDao.getAll(1)).single;
+      final tx = (await giaoDichThat(db, 1)).single;
       expect(tx.note, 'Tích lũy mục tiêu: Mua Laptop$kHauToTuDong',
           reason: 'Ghi chú là chỗ DUY NHẤT phân biệt hai loại khoản nạp — mọi '
               'cột khác của chúng cố ý giống hệt nhau (mục 3.12 '
@@ -179,7 +180,7 @@ void main() {
 
       expect((await db.walletDao.getById('w1'))?.balance, 5000000.0);
       expect((await repository.getGoalById('g1'))?.currentAmount, 2000000.0);
-      expect(await db.transactionDao.getAll(1), isEmpty);
+      expect(await giaoDichThat(db, 1), isEmpty);
     });
 
     test('ví nguồn trùng ví nhận thì TỪ CHỐI', () async {
@@ -217,7 +218,7 @@ void main() {
 
       expect((await db.walletDao.getById('w1'))?.balance, 5000000.0);
       expect((await repository.getGoalById('g1'))?.currentAmount, 2000000.0);
-      expect(await db.transactionDao.getAll(1), isEmpty);
+      expect(await giaoDichThat(db, 1), isEmpty);
     });
 
     test('số tiền ÂM thì TỪ CHỐI', () async {
@@ -237,7 +238,7 @@ void main() {
 
       expect((await db.walletDao.getById('w1'))?.balance, 5000000.0);
       expect((await repository.getGoalById('g1'))?.currentAmount, 2000000.0);
-      expect(await db.transactionDao.getAll(1), isEmpty);
+      expect(await giaoDichThat(db, 1), isEmpty);
     });
 
     test('nạp quá số dư ví nguồn thì TỪ CHỐI, không đưa ví xuống âm', () async {
@@ -257,7 +258,7 @@ void main() {
 
       expect((await db.walletDao.getById('w1'))?.balance, 5000000.0);
       expect((await db.walletDao.getById('w_nhan'))?.balance, 0.0);
-      expect(await db.transactionDao.getAll(1), isEmpty);
+      expect(await giaoDichThat(db, 1), isEmpty);
     });
 
     test('nạp ĐÚNG BẰNG số dư ví nguồn thì cho qua', () async {
@@ -290,7 +291,7 @@ void main() {
       );
       final sau = DateTime.now().add(const Duration(seconds: 1));
 
-      final tx = (await db.transactionDao.getAll(1)).single;
+      final tx = (await giaoDichThat(db, 1)).single;
       expect(tx.date.isAfter(truoc) && tx.date.isBefore(sau), isTrue,
           reason: 'Khoản nạp TAY vẫn mang thời điểm bấm nút. Tham số '
               '`occurredAt` chỉ dành cho bộ trích bù; để nó rò sang đường nạp '
@@ -313,7 +314,7 @@ void main() {
             'ít đáng nới lỏng nhất — thành nơi bịa được ngày.',
       );
 
-      expect(await db.transactionDao.getAll(1), isEmpty);
+      expect(await giaoDichThat(db, 1), isEmpty);
       expect((await db.walletDao.getById('w1'))?.balance, 5000000.0);
       expect((await repository.getGoalById('g1'))?.currentAmount, 2000000.0);
     });
@@ -337,7 +338,7 @@ void main() {
             'đáy lịch sử tích luỹ ở một chỗ mục tiêu còn chưa ra đời.',
       );
 
-      expect(await db.transactionDao.getAll(1), isEmpty);
+      expect(await giaoDichThat(db, 1), isEmpty);
     });
 
     test('thời điểm hợp lệ trong quá khứ được ghi thẳng vào cột ngày', () async {
@@ -354,7 +355,7 @@ void main() {
         occurredAt: ky,
       );
 
-      final tx = (await db.transactionDao.getAll(1)).single;
+      final tx = (await giaoDichThat(db, 1)).single;
       expect(tx.date, ky);
       expect(tx.updatedAt.isAfter(DateTime(2026, 9, 1)), isTrue,
           reason: '`updatedAt` là sổ sách ĐỒNG BỘ, không phải ngày của sự '
@@ -513,7 +514,7 @@ void main() {
           reason: 'Tiền của vòng cũ vẫn nằm trong ví tích luỹ — người dùng tự '
               'rút khi muốn tiêu. Đây là chỗ app tuyệt đối không được tự '
               'chuyển tiền: họ mới chỉ bấm "bắt đầu vòng mới".');
-      expect(await db.transactionDao.getAll(1), isEmpty,
+      expect(await giaoDichThat(db, 1), isEmpty,
           reason: 'Không sinh giao dịch nào — không có đồng nào đi đâu cả.');
     });
 
@@ -627,7 +628,7 @@ void main() {
         idaccount: 1,
       );
 
-      final tx = (await db.transactionDao.getAll(1)).single;
+      final tx = (await giaoDichThat(db, 1)).single;
       expect(tx.type, 'transfer');
       expect(tx.walletId, 'w_nhan',
           reason: 'Rút thì ví tích luỹ là NGUỒN. Chiều tiền đọc được từ vị trí '
@@ -783,7 +784,7 @@ void main() {
 
       expect((await repository.getGoalById('g1'))?.currentAmount, 2000000.0);
       expect((await db.walletDao.getById('w_nhan'))?.balance, 2000000.0);
-      expect(await db.transactionDao.getAll(1), isEmpty);
+      expect(await giaoDichThat(db, 1), isEmpty);
     });
   });
 
@@ -807,7 +808,7 @@ void main() {
           reason: 'Tiến độ tăng mà tiền chưa rời ví nào là mục tiêu tự đầy lên '
               'từ hư không — hỏng lặng lẽ, không exception nào tới màn hình.');
       expect((await db.walletDao.getById('w_nhan'))?.balance, 0.0);
-      expect(await db.transactionDao.getAll(1), isEmpty);
+      expect(await giaoDichThat(db, 1), isEmpty);
     });
   });
 
@@ -1598,3 +1599,15 @@ void main() {
     });
   });
 }
+
+/// Giao dịch thật của tài khoản — **bỏ khoản mở sổ**.
+///
+/// Từ 2026-09-13 số dư ví suy từ sổ, nên mỗi ví có thêm một khoản "Số dư ban
+/// đầu" làm điểm neo (`wallet/domain/so_du_mo_so.dart`). Nó là hàng thật trong
+/// bảng nhưng không phải thu chi nào — đếm nó vào đây là mọi phép `single`
+/// thành "Too many elements".
+Future<List<Transaction>> giaoDichThat(AppDatabase db, int idaccount) async =>
+    (await db.transactionDao.getAll(idaccount))
+        .where((t) => !laKhoanMoSo(
+            loai: t.type, categoryId: t.categoryId, ghiChu: t.note))
+        .toList();

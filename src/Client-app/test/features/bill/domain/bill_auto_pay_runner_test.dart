@@ -22,6 +22,8 @@ import 'package:flowmoney/features/bill/data/datasources/bill_local_datasource.d
 import 'package:flowmoney/features/bill/data/repositories/bill_repository_impl.dart';
 import 'package:flowmoney/features/bill/domain/bill_auto_pay.dart';
 import 'package:flowmoney/features/bill/domain/bill_auto_pay_runner.dart';
+import 'package:flowmoney/features/wallet/domain/so_du_mo_so.dart';
+import 'package:flowmoney/features/wallet/data/services/so_du_vi_service.dart';
 
 void main() {
   late AppDatabase db;
@@ -83,9 +85,17 @@ void main() {
   Future<List<Bill>> hoaDon() async =>
       (await db.billDao.getAll(accountId)).where((b) => !b.isDeleted).toList();
 
+  /// Khoản **chi** còn sống — đúng nghĩa tên hàm.
+  ///
+  /// Lọc `type == 'chi'` chứ không lấy mọi giao dịch: từ 2026-09-13 sổ còn mang
+  /// khoản mở sổ (`Số dư ban đầu`) và mọi khoản nạp tiền vào ví, mà không ca nào
+  /// ở đây nói về chúng.
   Future<List<Transaction>> khoanChi() async =>
       (await db.transactionDao.getAll(accountId))
           .where((t) => !t.isDeleted)
+          .where((t) => t.type == 'chi')
+          .where((t) => !laKhoanMoSo(
+              loai: t.type, categoryId: t.categoryId, ghiChu: t.note))
           .toList()
         ..sort((a, b) => a.date.compareTo(b.date));
 
@@ -199,7 +209,21 @@ void main() {
       await seedBill(due: DateTime(2025, 3, 20));
       await runner.chay(accountId, now: DateTime(2025, 9, 1));
       // Lượt đầu tiêu 600.000; nạp thêm để lượt hai đủ cho ba kỳ nữa.
-      await db.walletDao.updateBalance(walletId, 2000000);
+      //
+      // ⚠️ Nạp bằng một GIAO DỊCH, không `updateBalance` thẳng. Từ 2026-09-13
+      // số dư ví suy từ sổ, nên một con số ghi thẳng vào cột sẽ bị lần tính lại
+      // kế tiếp xoá mất — đúng như trong app thật, nơi tiền chỉ vào ví qua sổ.
+      await db.transactionDao.insert(TransactionsCompanion.insert(
+        id: 'nap-them',
+        walletId: walletId,
+        idaccount: accountId,
+        amount: 1600000,
+        type: 'thu',
+        categoryId: const Value('c1'),
+        date: DateTime(2025, 9, 1),
+        updatedAt: DateTime(2025, 9, 1),
+      ));
+      await SoDuViService(db: db).tinhLaiSoDu(walletId);
 
       final ra = await runner.chay(accountId, now: DateTime(2025, 9, 1));
 

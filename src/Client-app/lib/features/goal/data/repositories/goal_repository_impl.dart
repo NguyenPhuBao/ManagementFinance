@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/category/category_name.dart';
 import '../../../../core/database/app_database.dart';
+import '../../../wallet/data/services/so_du_vi_service.dart';
 import '../../../../core/sync/sync_engine.dart';
 import '../datasources/goal_local_data_source.dart';
 import '../../domain/goal_history_direction.dart';
@@ -353,6 +354,10 @@ class GoalRepositoryImpl implements GoalRepository {
     // nào tới được màn hình. Cả khối phải cùng sống hoặc cùng chết.
     final now = DateTime.now();
 
+    // Ví nào bị chạm — thu trong khối, dùng sau khối. Khai báo ở đây vì
+    // `tinhLaiSoDu` phải chạy NGOÀI transaction: nó đọc lại chính bảng vừa ghi.
+    final viCanTinhLai = <String>{};
+
     Future<void> ghiCaKhoi() async {
       // Phép kiểm số tiền ở TẦNG NÀY, không chỉ ở ô nhập. Trang chi tiết đã
       // chặn, nhưng phép kiểm nằm một mình trên giao diện thì mọi đường gọi
@@ -451,15 +456,14 @@ class GoalRepositoryImpl implements GoalRepository {
 
       if (db == null) return;
 
-      if (viNguon != null) {
-        await db!.walletDao
-            .updateBalance(walletId, viNguon.balance - depositAmount);
-      }
-      final viDich = await db!.walletDao.getById(viNhan);
-      if (viDich != null) {
-        await db!.walletDao
-            .updateBalance(viNhan, viDich.balance + depositAmount);
-      }
+      // Số dư hai ví KHÔNG ghi ở đây: nó suy từ sổ, nên chính hàng `transfer`
+      // bên dưới đã là phép chuyển tiền. Chỉ ghi nhớ ví nào bị chạm; tính lại
+      // sau khối nguyên tử.
+      viCanTinhLai.addAll({walletId, viNhan});
+      // ⚠️ Đặt neo TRƯỚC khi ghi hàng `transfer` bên dưới — cho CẢ HAI ví. Neo
+      // tính bằng `balance − Σ sổ`, nên đặt sau là nó hấp thụ luôn khoản vừa
+      // chuyển. Ví ĐÍCH chỉ biết được ở đây, nên chỗ đặt neo phải ở đây.
+      await SoDuViService(db: db!).datNeoNhieuVi(viCanTinhLai);
 
       // MỘT hàng duy nhất, kiểu 'transfer' — cùng quy ước với chuyển khoản của
       // tính năng giao dịch thường. Trước đây chỗ này ghi hai hàng rời ('chi' ở
@@ -506,6 +510,12 @@ class GoalRepositoryImpl implements GoalRepository {
       await ghiCaKhoi();
     }
 
+    // ⚠️ NGOÀI khối nguyên tử: `tinhLaiSoDu` đọc lại chính bảng vừa ghi, và gọi
+    // nó bên trong transaction của Drift là đọc trạng thái chưa commit.
+    if (db != null) {
+      await SoDuViService(db: db!).tinhLaiNhieuVi(viCanTinhLai);
+    }
+
     syncEngine?.scheduleSync();
   }
 
@@ -517,6 +527,10 @@ class GoalRepositoryImpl implements GoalRepository {
     required String walletId,
     required int idaccount,
   }) async {
+    // Ví nào bị chạm — thu trong khối, dùng sau khối. Khai báo ở đây vì
+    // `tinhLaiSoDu` phải chạy NGOÀI transaction: nó đọc lại chính bảng vừa ghi.
+    final viCanTinhLai = <String>{};
+
     Future<void> ghiCaKhoi() async {
       final goal = await localDataSource.getGoalById(goalId);
       if (goal == null) {
@@ -591,8 +605,10 @@ class GoalRepositoryImpl implements GoalRepository {
         throw StateError('Không tìm thấy ví đích $walletId.');
       }
 
-      await db!.walletDao.updateBalance(viTichLuy, viNguon.balance - amount);
-      await db!.walletDao.updateBalance(walletId, viDich.balance + amount);
+      // Số dư hai ví suy từ sổ — hàng `transfer` bên dưới chính là phép chuyển.
+      viCanTinhLai.addAll({viTichLuy, walletId});
+      // ⚠️ Đặt neo trước khi ghi, cho cả hai ví — cùng lý do với nhánh nạp.
+      await SoDuViService(db: db!).datNeoNhieuVi(viCanTinhLai);
 
       await db!.transactionDao.insert(
         TransactionsCompanion.insert(
@@ -616,6 +632,11 @@ class GoalRepositoryImpl implements GoalRepository {
       await db!.transaction(ghiCaKhoi);
     } else {
       await ghiCaKhoi();
+    }
+
+    // ⚠️ Ngoài khối nguyên tử, cùng lý do với nhánh nạp tiền.
+    if (db != null) {
+      await SoDuViService(db: db!).tinhLaiNhieuVi(viCanTinhLai);
     }
 
     syncEngine?.scheduleSync();

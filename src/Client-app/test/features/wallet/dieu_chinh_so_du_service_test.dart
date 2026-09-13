@@ -12,12 +12,14 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/wallet/data/services/so_du_vi_service.dart';
 import 'package:flowmoney/core/errors/app_exceptions.dart';
 import 'package:flowmoney/core/sync/sync_engine.dart';
 import 'package:flowmoney/features/transaction/data/datasources/transaction_local_data_source.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/transaction/data/repositories/transaction_repository.dart';
 import 'package:flowmoney/features/wallet/data/services/dieu_chinh_so_du_service.dart';
+import 'package:flowmoney/features/wallet/domain/so_du_mo_so.dart';
 
 class _SyncEngineGia implements SyncEngine {
   @override
@@ -39,6 +41,7 @@ void main() {
       localDataSource: TransactionLocalDataSourceImpl(db),
       walletDao: db.walletDao,
       syncEngine: _SyncEngineGia(),
+      soDuVi: SoDuViService(db: db),
     );
     service = DieuChinhSoDuService(db: db, transactionRepository: txRepo);
 
@@ -53,7 +56,16 @@ void main() {
 
   tearDown(() async => db.close());
 
-  Future<List<Transaction>> giaoDich() => db.transactionDao.getAll(idaccount);
+  Future<List<Transaction>> giaoDich() async {
+    final rows = await db.transactionDao.getAll(idaccount);
+    // Bỏ khoản mở sổ: nó là hàng thật trong bảng nhưng không phải thu chi nào
+    // (`wallet/domain/so_du_mo_so.dart`), nên đếm nó vào đây là mọi phép
+    // `single` bên dưới thành "Too many elements".
+    return rows
+        .where((t) => !laKhoanMoSo(
+            loai: t.type, categoryId: t.categoryId, ghiChu: t.note))
+        .toList();
+  }
 
   test('số dư thực LỚN HƠN: ghi một khoản thu, ví về đúng số thực', () async {
     await service.dieuChinh(walletId: 'w1', soDuThucTe: 1250000, lyDo: '');
