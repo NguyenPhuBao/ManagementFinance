@@ -17,7 +17,7 @@
 
 ## 1. Vì sao cần
 
-Hôm nay `bills.autoPayEnabled` là **cột cục bộ**: bật tự động trả trên máy A thì máy B không biết.
+Trước bước này, `bills.autoPayEnabled` là **cột cục bộ**: bật tự động trả trên máy A thì máy B không biết.
 Server đã có sẵn `bill.Auto_pay` từ lâu, client chỉ chưa gửi và chưa đọc.
 
 Chốt chống trả hai lần ở server **đã có từ `7779999`** (CAN-LAM 20 §2.1, client đo thật 4 ca ngày
@@ -149,6 +149,18 @@ không bị đẩy ngược. Chu kỳ pull kế tiếp sẽ mang `Payed` của m
 
 ⚠️ Thứ tự bắt buộc: `undoPayment` → `markSynced` cho **cả hai** bản ghi. Thiếu một trong hai là một
 trong hai lỗi trên, và cả hai đều **không có triệu chứng** ngoài dữ liệu sai.
+
+> ⚠️ **Câu trên chỉ còn đúng MỘT NỬA (sửa 2026-09-13).** Thứ tự thật đang chạy:
+> `undoPayment(billId:, transactionId:)` → `billDao.danhDauDaTra(billId)` →
+> `transactionDao.markSynced(localId)`, và **KHÔNG** `markSynced` cho hoá đơn —
+> `danhDauDaTra` cố ý để nó ở `pending` để bản `Payed` đi ra được server. Xem hai khối cảnh báo ở
+> §4.2 và ngay trên. Vế `markSynced` cho **khoản chi** thì vẫn đúng nguyên văn, và vẫn bắt buộc.
+>
+> Còn một thứ tự thứ hai mà bản thiết kế này **không lường được**, phải sửa ở `SyncEngine`:
+> kết quả đẩy phải được phát **TRƯỚC** bước Pull. Resolver bù lại một thay đổi cục bộ (hoàn tiền
+> vào ví), mà Pull ở giữa đã thay số dư ấy bằng bản của server — phép bù cộng vào con số **không
+> chứa** lần trừ cần bù, ví phình thêm đúng một lần trả. Ca test canh:
+> `test/core/sync/sync_push_result_truoc_pull_test.dart`.
 
 ### 4.4. Thông báo
 

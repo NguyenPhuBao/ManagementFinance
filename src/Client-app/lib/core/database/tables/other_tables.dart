@@ -222,9 +222,10 @@ class Bills extends Table {
   /// chuỗi tạo trên máy khác tụt dần. Tài liệu xin cột phía backend (đã đóng):
   /// `docs/superpowers/backend/DA-XONG/BILL_ANCHOR_DAY.md`.
   ///
-  /// ⚠️ `autoPayEnabled` thì **vẫn** là cột cục bộ — nó chờ backend đặt chốt
-  /// chống trả hai lần ở `upsertTransaction` (CAN-LAM 17 B bước 2), không đi
-  /// cùng đợt này.
+  /// `autoPayEnabled` khi ấy **chưa** đi cùng đợt này — nó còn chờ backend đặt
+  /// chốt chống trả hai lần ở `upsertTransaction` (CAN-LAM 17 B bước 2). ✅ Chốt
+  /// ấy có từ `7779999`, và cột này mở đường đồng bộ ngày **2026-09-13**, nên
+  /// bảng `Bills` nay **không còn cột cục bộ nào**.
   ///
   /// NULL với mọi hoá đơn tạo trước v18; migration suy nó từ ngày đến hạn đang
   /// lưu để **không đổi hạn** của hoá đơn cũ.

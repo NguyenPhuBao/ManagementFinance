@@ -43,7 +43,9 @@ class BillDraft {
   /// App tự trả hoá đơn này vào ngày đến hạn, trừ từ [walletId].
   ///
   /// Mặc định **tắt**: tự chuyển tiền là quyết định người dùng phải bật, không
-  /// phải thứ app mặc định làm hộ. Cột cục bộ v17, xem `Bills.autoPayEnabled`.
+  /// phải thứ app mặc định làm hộ. Cột v17; ✅ **đi qua đồng bộ từ 2026-09-13**
+  /// (khoá `auto_pay`) nên công tắc theo *hoá đơn* chứ không theo *máy* — xem
+  /// `Bills.autoPayEnabled`.
   final bool autoPayEnabled;
 
   /// Ngày trong tháng người dùng thật sự chọn — xem `Bills.anchorDay`.
