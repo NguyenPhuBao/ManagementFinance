@@ -526,6 +526,12 @@ class SyncEngine {
           final wallets = (payloadData['wallets'] ?? payloadData['wallet'])
                   as List<dynamic>? ??
               [];
+
+          // Ví đã có TRƯỚC lượt kéo về này. Chỉ chúng mới được vá neo ở cuối
+          // hàm — xem lý do ở đó.
+          final viDaCoTruocPull = {
+            for (final w in await _db.walletDao.getAll(accountId)) w.id,
+          };
           if (wallets.isNotEmpty) {
             final companions = wallets.map((w) {
               return WalletsCompanion(
@@ -1066,12 +1072,20 @@ class SyncEngine {
                 (w['idwallet'] ?? w['id']).toString(),
           };
           if (viCanTinhLai.isNotEmpty) {
-            // Vá neo cho ví chưa có — ví tạo bằng bản app trước 2026-09-13.
-            // Luỹ đẳng, và **an toàn với ví vừa kéo về**: id khoản mở sổ suy
-            // tất định từ `walletId`, nên neo mà máy khác đã tạo cũng vừa được
-            // pull về dưới đúng id ấy và bước này thấy là bỏ qua. Không có tính
-            // tất định ấy thì mỗi máy vá một neo riêng và số dư nhân đôi.
-            await _soDuVi.datNeoNhieuVi(viCanTinhLai);
+            // Vá neo cho ví tạo bằng bản app trước 2026-09-13 — và **chỉ**
+            // cho ví đã có trên máy này TRƯỚC lượt kéo về.
+            //
+            // ⚠️ Ví VỪA về không được vá, và đây là chốt chặn bắt buộc. Neo
+            // tính bằng `balance − Σ sổ`, mà ví vừa INSERT mang `balance = 0`
+            // (nhánh trên thôi đọc cột ấy) trong khi sổ của nó đã đầy đủ. Vá
+            // nó là sinh một khoản **chi** đúng bằng cả tổng sổ, và số dư về
+            // 0. Đo thật trên hai máy ảo ngày 2026-09-13: ví 2.000.000 hiện
+            // thành `Total balance: 0đ` ngay sau lần pull đầu.
+            //
+            // Ví vừa về **không cần vá**: neo của nó là một giao dịch, do máy
+            // tạo ví sinh ra, nên nó cũng vừa được kéo về cùng lượt.
+            await _soDuVi
+                .datNeoNhieuVi(viCanTinhLai.intersection(viDaCoTruocPull));
             await _soDuVi.tinhLaiNhieuVi(viCanTinhLai);
           }
           // Cờ RIÊNG, không suy ra từ `_lastPullTime`: mốc đó chỉ được đặt khi

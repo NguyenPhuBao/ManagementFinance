@@ -75,6 +75,20 @@ class SoDuViService {
       final vi = await _db.walletDao.getById(id);
       if (vi == null) continue;
       if (WalletType.tuKhoa(vi.type) == WalletType.banking) continue;
+
+      // ⚠️ **Số dư 0 nghĩa là CHƯA BIẾT, không phải "ví rỗng".**
+      //
+      // Từ khi nhánh kéo về thôi đọc `balance`, một ví về từ máy khác mang giá
+      // trị mặc định `0` của cột cho tới lần tính lại đầu tiên — trong khi sổ
+      // của nó đã đầy đủ. Đặt neo dựa trên con số ấy là sinh một khoản **chi**
+      // đúng bằng cả tổng sổ, và số dư về 0. Đo thật ba lần trên hai máy ảo
+      // ngày 2026-09-13, mỗi lần ở một chỗ khác nhau: ví 2.000.000 hiện thành
+      // `Total balance: 0đ`.
+      //
+      // Bỏ qua ví số dư 0 không mất gì: ví rỗng thật thì chẳng có số dư ban đầu
+      // nào để neo, còn ví "chưa biết" thì tổng sổ của nó vốn đã đúng.
+      if (vi.balance.abs() < _nguongBangNhau) continue;
+
       await _datNeoNeuThieu(vi);
     }
   }

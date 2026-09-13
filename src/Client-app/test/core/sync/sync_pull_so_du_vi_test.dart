@@ -185,4 +185,97 @@ void main() {
         reason: 'Neo là một giao dịch bình thường; một chu kỳ đồng bộ không '
             'được làm gì nó. Mất neo là số dư tụt đúng bằng số dư ban đầu.');
   });
+
+  test('ví MỚI về từ máy khác KHÔNG bị vá neo — nếu không số dư về 0', () async {
+    // Ví này chưa có trên máy: nó đến cùng lượt pull, kèm cả sổ của nó.
+    const idViMoi = '22222222-2222-4222-8222-222222222222';
+    final adapter = _AdapterViMoi(idViMoi);
+
+    await chayMotChuKy2(db, adapter);
+
+    expect((await db.walletDao.getById(idViMoi))!.balance, 2000000.0,
+        reason: 'ĐÃ VẤP THẬT trên hai máy ảo ngày 2026-09-13: ví vừa INSERT '
+            'mang `balance = 0` (nhánh pull thôi đọc cột ấy) trong khi sổ của '
+            'nó đã đầy đủ. Vá neo cho nó là sinh một khoản CHI đúng bằng cả '
+            'tổng sổ — ví 2.000.000 hiện thành 0đ ngay sau lần pull đầu.');
+  });
+}
+
+/// Server trả về một ví CHƯA có trên máy, kèm khoản mở sổ của chính nó.
+class _AdapterViMoi implements HttpClientAdapter {
+  _AdapterViMoi(this.idViMoi);
+  final String idViMoi;
+
+  @override
+  Future<ResponseBody> fetch(
+      RequestOptions o, Stream<List<int>>? s, Future<void>? c) async {
+    if (o.path.contains('/sync/pull')) {
+      return ResponseBody.fromString(
+        jsonEncode({
+          'data': {
+            'wallets': [
+              {
+                'idwallet': idViMoi,
+                'idaccount': accountId,
+                'name': 'Ví từ máy khác',
+                'type': 'Cash',
+                'balance': 2000000,
+                'update_at': DateTime.now().toIso8601String(),
+              }
+            ],
+            'transactions': [
+              {
+                'idtran': idKhoanMoSo(idViMoi),
+                'idaccount': accountId,
+                'idwallet': idViMoi,
+                'amount': 2000000,
+                'type': 'Transaction',
+                'note': tienToMoSo,
+                'DateTransaction': DateTime(2026, 9, 13).toIso8601String(),
+                'update_at': DateTime.now().toIso8601String(),
+              }
+            ],
+          }
+        }),
+        200,
+        headers: {
+          Headers.contentTypeHeader: ['application/json']
+        },
+      );
+    }
+    return ResponseBody.fromString(
+      jsonEncode({'status': 'success', 'results': []}),
+      200,
+      headers: {
+        Headers.contentTypeHeader: ['application/json']
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+/// Chạy một chu kỳ với adapter bất kỳ.
+Future<void> chayMotChuKy2(AppDatabase db, HttpClientAdapter adapter) async {
+  final client = _ClientChung(adapter);
+  final engine = SyncEngine(
+    dioClient: client,
+    db: db,
+    connectivity: _Online(),
+    soDuVi: SoDuViService(db: db),
+  );
+  final xong = engine.statusStream.where((s) => s.isTerminal).first;
+  engine.start(idaccount: accountId);
+  await xong.timeout(const Duration(seconds: 5));
+  await Future<void>.delayed(const Duration(milliseconds: 50));
+  engine.dispose();
+}
+
+class _ClientChung implements DioClient {
+  _ClientChung(HttpClientAdapter adapter) {
+    dio.httpClientAdapter = adapter;
+  }
+  @override
+  final Dio dio = Dio();
 }
