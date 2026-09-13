@@ -168,9 +168,16 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     // Dọn bản sao cục bộ CHỈ khi tài khoản thật sự đã bị xoá, và chỉ khi lời ấy
     // không đến từ nhánh làm mới token — ở đó một lỗi lược đồ phía server từng
     // đội lốt được `ACCOUNT_DELETED` (CAN-LAM 17 §2.5, spec §3.6b). Backend đã
-    // sửa (gộp 2026-09-12). Đo cùng ngày: xoá qua admin thu hồi refresh token nên
-    // nhánh làm mới trả 401 không mã — `daXoa` không tới được đây (G36); ngoại lệ
-    // vô hại, giữ để che ca lỗi lược đồ — xem `LyDoBuocDangXuat.lamMoi`.
+    // sửa (gộp 2026-09-12).
+    //
+    // ⚠️ Chú thích cũ ở đây nói *"xoá qua admin thu hồi refresh token nên nhánh
+    // làm mới trả 401 không mã — `daXoa` không tới được đây"*. Đúng tới bản
+    // `cbbeeb4`, **sai từ `7779999`**: đo đầu-cuối 2026-09-13 cho thấy xoá mềm
+    // qua admin trả **401 + `ACCOUNT_DELETED`** dù 4/4 refresh token đã bị thu
+    // hồi (G36 đóng). Nên nhánh này **có** chạy thật, và ngoại lệ dưới đây đang
+    // giữ lại SQLite cho một ca có thật — không còn là lớp che ca giả định.
+    // Giữ hay gỡ là quyết định chưa chốt của người dùng — xem
+    // `LyDoBuocDangXuat.lamMoi` và spec §3.6b.
     if (thongBao.lyDo == LyDoBuocDangXuat.daXoa &&
         thongBao.nguon != NguonBuocDangXuat.lamMoi) {
       // `idaccount` chỉ đến từ chính lời server nói, hoặc từ phiên đăng nhập —
