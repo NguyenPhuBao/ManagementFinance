@@ -74,16 +74,48 @@
 > | **3** sổ ghi migration | ✅ | `Rule_project.md` §3.2: bảng 5–13 với câu kiểm, cột Dev Client/Supabase, cảnh báo partial index (`prisma migrate diff` báo lệch 5 index; cấm `migrate dev`/`db push`). Kiểm 5, 6, 13 bằng chính câu kiểm: trigger `category` không còn; `category_group_membership` 0 hàng; `budget.Threshold_Warning_Percent` default `NULL` |
 > | **4** tám chỗ tài liệu | ✅ 8/8 | 4.1 `New_Database.md:172` `chk_wallet_status`; 4.2 `:258`/`:397` "không có FK"; 4.3 `Rule_project.md:450`/`Backend.md:513` nay đúng vì chốt có thật; 4.4 "đến migration 13"; 4.5 `Backend.md` hết `ORC`; 4.6 `sync.completed` "sau mỗi `/sync/push`"; 4.7 "19 tài liệu"; 4.8 mục 10 nói rõ `Test/` không trong repo |
 >
-> **Hệ quả cho client:** **bước 12 — `Auto_pay` qua đồng bộ — không còn bị chặn**; là việc phía client (gửi/đọc `auto_pay` **và** hoàn tác khoản trả cục bộ khi nhận `BILL_ALREADY_PAID`, §5 tài liệu 20), chưa làm. **G36** → ⚠️ chờ đo đầu-cuối rồi đóng. Không mục nào của 20 cần client đổi mã. Thư mục `CAN-LAM/` nay **0** tài liệu xin (mục 0 dưới).
+> **Hệ quả cho client:** **bước 12 — `Auto_pay` qua đồng bộ — không còn bị chặn**; là việc phía client (gửi/đọc `auto_pay` **và** hoàn tác khoản trả cục bộ khi nhận `BILL_ALREADY_PAID`, §5 tài liệu 20), chưa làm. **G36** → ⚠️ chờ đo đầu-cuối rồi đóng. Không mục nào của 20 cần client đổi mã. Thư mục `CAN-LAM/` nay **0** tài liệu xin (mục 0 dưới) — ⚠️ đúng tới **2026-09-13**, khi tài liệu Edge SLM mới của backend làm sinh ra **mục 21** (banner ⚠️ ngay dưới).
 >
 > **Ba bẫy khi đo bằng HTTP thẳng:** body `/sync/push` bắt buộc `clientId` + `pushedAt`; `/sync/pull` trả ở `data.data.*`; server **không seed ví** cho tài khoản mới (client seed) — đẩy ví trước hoá đơn.
 
+> ## ⚠️ 2026-09-13 — mục **21** mới: `AI_Edge-SLM.md/Client-app.md` lệch mã client **sáu** chỗ, tự mâu thuẫn **bốn** chỗ
+>
+> Gộp `main` @ `eb071bb` (`04d1352`) mang về ba commit tài liệu của NPBao, trong đó có tệp mới
+> [`docs/AI/AI_Edge-SLM.md/Client-app.md`](../../../AI/AI_Edge-SLM.md/Client-app.md) (436 dòng) —
+> đặc tả AI điều phối ngân sách on-device cho **Client-app**, tự xưng *"Nguồn sự thật"*, cộng mục
+> 11.39 của `Project.md`. Client soát bằng mã (`grep` toàn `lib/`, đọc bảng Drift, đếm bằng script),
+> **không** đo chạy thật vì tính năng chưa được hiện thực ở đâu cả.
+>
+> Kết quả: [**mục 21** `AI_EDGE_SLM_CLIENT_MISMATCH.md`](AI_EDGE_SLM_CLIENT_MISMATCH.md). **Chỉ xin
+> sửa chữ — không đổi mã backend, không migration.** Nặng nhất là **A3** (dòng 295): luật định nghĩa
+> hoàn tiền là `amount < 0`, nhưng SQLite của client lưu `amount` **luôn dương** và chiều tiền nằm ở
+> `type` — áp nguyên văn thì luật **không khớp hàng nào**, im lặng. Năm chỗ còn lại: ba cột
+> `is_outlier`/`is_one_time`/`is_recurring_hint` chưa tồn tại (`grep` 0 chỗ); `saving_goal_ratio`
+> chưa tồn tại (mục tiêu client là **số tiền đích**, nhiều mục tiêu song song); `income` không được
+> lưu ở đâu; mô hình ngân sách rộng hơn giả định (`categoryId` **nullable**, kỳ không bắt buộc theo
+> tháng, có `isExpired`); và **F2** hứa một lớp mã hoá client không có (`note` đi qua đồng bộ ở dạng
+> thô). Bốn chỗ tự mâu thuẫn: "7 nhóm (A-G)" nhưng có **8**; H4 nói 2 bảng nhưng khai **3**;
+> `Project.md` thiếu **C7**, **D5** và gán nhầm nhãn C5/C6.
+>
+> **Client đã sửa phía mình cùng lượt:** hai chú thích ở `transactions_table.dart` (docstring bảng và
+> cột `amount`) vẫn nói *"Amount giữ dấu ±"* — mô tả cột PostgreSQL chứ không phải cột Drift, và
+> nhiều khả năng chính là nguồn gốc của A3.
+>
+> **Không mục nào của 21 chặn client**: tính năng Edge SLM chưa được lên lịch làm.
+
 ---
 
-## 0. Còn phải làm (Hiện tại: 0 mục tồn đọng — Đã hoàn thành 100%)
+## 0. Còn phải làm (Hiện tại: **1** mục — mục 21, thêm 2026-09-13)
 
 > 🎉 **Tất cả các tài liệu từ mục 1 đến 20 đều đã hoàn tất 100%**.  
 > Không còn công việc tồn đọng trong thư mục `CAN-LAM/`. Tài liệu mục 20 đã được nghiệm thu và chuyển sang [`docs/superpowers/backend/DA-XONG/CON_LAI_SAU_CBBEEB4.md`](../DA-XONG/CON_LAI_SAU_CBBEEB4.md).
+
+> ⚠️ **Khối 🎉 ngay trên là báo cáo của backend cho mục 1–20, giữ nguyên văn — và vẫn đúng cho 1–20.**
+> Nhưng từ **2026-09-13** thư mục này có **một** mục mới, do tài liệu mới của chính backend sinh ra:
+>
+> | # | Tài liệu | Xin gì | Cỡ |
+> |---|---|---|---|
+> | **21** | [`AI_EDGE_SLM_CLIENT_MISMATCH.md`](AI_EDGE_SLM_CLIENT_MISMATCH.md) | Sửa **6** chỗ `docs/AI/AI_Edge-SLM.md/Client-app.md` lệch mã client (A3 dấu tiền 🔴; ba cột chưa có; `saving_goal_ratio`; `income`; mô hình ngân sách; F2 mã hoá) và **4** chỗ tự mâu thuẫn (số nhóm, số bảng, `Project.md` thiếu C7/D5 và nhầm nhãn C5/C6). Mỗi chỗ kèm số dòng, bằng chứng đo được và **câu thay** | Chỉ sửa chữ — không mã, không migration |
 
 ---
 

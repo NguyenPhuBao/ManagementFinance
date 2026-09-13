@@ -3,7 +3,10 @@ import 'wallets_table.dart';
 
 /// Bảng Giao Dịch (Transaction)
 ///
-/// Amount giữ dấu ±: dương (+) = tiền vào, âm (-) = tiền ra.
+/// ⚠️ **`amount` ở bảng NÀY luôn DƯƠNG** — chiều tiền nằm ở [type], không ở
+/// dấu. Quy ước "dương = tiền vào, âm = tiền ra" là của **PostgreSQL và
+/// payload đồng bộ**, không phải của SQLite cục bộ; xem chú thích ở cột
+/// [amount].
 /// Provider: Manual / Casso / SMS / OCR.
 class Transactions extends Table {
   // ── Primary key ──────────────────────────────────────────────────────────
@@ -16,8 +19,24 @@ class Transactions extends Table {
   // nullable: giao dịch có thể chưa chọn category (transfer, webhook Casso)
 
   // ── Business fields ──────────────────────────────────────────────────────
+  /// amount: **độ lớn, LUÔN DƯƠNG**. Chiều tiền suy từ [type], không từ dấu.
+  ///
+  /// Cả hai đường ghi đều giữ bất biến này:
+  /// - ghi tay — `TransactionRepository._applyBalances` trừ ví bằng
+  ///   `_adjust(walletId, -amount)` cho `'chi'` và cộng `amount` cho `'thu'`;
+  /// - kéo về — `sync_engine.dart` ghi `.abs()` rồi suy `type` qua
+  ///   `SyncPayloadNormalizer.transactionTypeFromBackend`, nên số âm của server
+  ///   không bao giờ lọt xuống SQLite.
+  ///
+  /// Dấu chỉ được áp ở bước **đẩy lên**, trong
+  /// `SyncPayloadNormalizer.transactionForPush`: `'thu'` → `amount.abs()`,
+  /// `'chi'` → `-amount.abs()`.
+  ///
+  /// ⚠️ Chú thích cũ ở đây ("± dương = tiền vào, âm = tiền ra") mô tả quy ước
+  /// của PostgreSQL chứ không phải của bảng này — sửa 2026-09-13. Mọi luật
+  /// thống kê đọc thẳng SQLite mà lọc `amount < 0` sẽ **không khớp hàng nào**,
+  /// im lặng, không lỗi.
   RealColumn   get amount  => real()();
-  // ± dương = tiền vào, âm = tiền ra
 
   TextColumn   get type    => text()();
   // 'chi' | 'thu' | 'transfer' — bộ giá trị NỘI BỘ của client, KHÔNG phải
