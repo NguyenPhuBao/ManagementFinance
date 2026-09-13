@@ -900,6 +900,13 @@ src/Backend/
   > ⚠️ **Hàng `3c90acfa…` của hoá đơn `Kiem` KHÔNG dùng để kiểm được**: nó đã lệch sẵn (server `Payed`, máy `Pending`) và mọi lần đẩy đều nhận *"Hóa đơn đã được thanh toán, không thể thay đổi trạng thái"* — bằng chứng **CAN-LAM 17 B**, không phải lỗi của hạng mục này. Sau lượt kiểm, hàng ấy đã được trả về đúng trạng thái bằng chứng cũ. ✅ Từ 15:10 ngày 2026-09-12 (sau gộp `cbbeeb4`) hàng ấy đã `synced`, server `Pending` — bằng chứng không còn, và hàng dùng lại để kiểm được.
   > **Mức nền sau hạng mục:** `flutter test` **2211/2211** (2 phút 39 giây; 37 ca mới so với mốc 2174), `flutter analyze` **25 issue = 0 error** — khớp mức nền. Cụm `test/features/bill/` có **219** ca (đếm bằng máy 2026-09-12).
 
+- **⚠️ `mcp__stitch__edit_screens` BÁO THÀNH CÔNG NHƯNG KHÔNG GHI — đo 2026-09-13, đừng lặp lại lượt này.** Việc nhỏ còn lại trong danh sách ("hai màn Stitch *Chi tiết hóa đơn* Desktop thiếu dòng **Kỳ**") **chưa làm được**, và lý do không nằm ở phía client.
+  > **Đo trước khi sửa cho thấy bàn giao đếm thiếu: BỐN màn thiếu dòng "Kỳ", không phải hai.** Tải HTML của từng màn về rồi bóc thẻ ra đọc: cả `0eecd62f…` (Desktop), `e7f48af7…` (Desktop), `b4aaff9b…` (*Chi tiết hóa đơn - Mobile*) và `fe9ae28a…` (*Modal Bỏ qua kỳ này*) đều mở khối `THÔNG TIN` thẳng bằng "Đến hạn". Chữ "Kỳ" **có** xuất hiện trong cả bốn màn nhưng chỉ ở phần `LỊCH SỬ CÁC KỲ` ("Kỳ 20/09/2026 (đang xem)") — `grep` một chữ "Kỳ" mà kết luận "đã có" là **sai**; phải đọc đúng khối `THÔNG TIN`.
+  > **Năm lần gọi `edit_screens`, không lần nào ghi.** Mỗi lần đều trả mô tả rất cụ thể và **đúng**: selector trỏ đúng dòng "Đến hạn", `verified_html_context` trích đúng đoạn HTML thật, nội dung chèn hợp lệ. Nhưng đo lại thì: HTML tải về **giống bản gốc từng byte** (7415 / 9200 / 8635 / 10012 bytes, `cmp` khớp), `htmlCode.name` (file ID) **không đổi**, và **`screenshot.name` cũng không đổi** — điểm quyết định, vì màn được render lại thì ảnh chụp buộc phải khác. Người dùng mở Stitch, tải lại trang và xác nhận: **không có** dòng "Kỳ". Tức đây **không phải cache API**.
+  > **Bài học cho phiên sau:** lời báo "đã sửa xong" của `edit_screens` **không đáng tin** — phải nghiệm thu bằng cách tải `htmlCode.downloadUrl` về và đọc, hoặc so `screenshot.name` trước/sau. Một lượt gọi còn **timeout**; tài liệu công cụ dặn *"DO NOT RETRY"* vì thao tác có thể vẫn thành công, nhưng ở đây **kiểm trước rồi mới thử lại** là đúng: phép đo cho thấy nó thất bại thật.
+  > **Việc còn mở, chuyển sang người dùng làm trên Stitch UI.** HTML cần dán ngay TRƯỚC dòng "Đến hạn" trong khối THÔNG TIN — Desktop dùng nhãn rộng cố định `w-[110px] shrink-0`, màu nhãn `#6B6D68`; Mobile và Modal dùng `justify-between`, màu nhãn `#767872`; giá trị cả bốn là `21/08/2026 → 20/09/2026`. **Cố ý cho kỳ kết thúc TRÙNG hạn trả (ân hạn 0)**, vì lịch sử kỳ trên chính màn ấy đang cách đều một tháng (20/07, 20/08, 20/09) — đặt ân hạn khác 0 là làm màn tự mâu thuẫn.
+  > **Lệch này không ảnh hưởng người dùng cuối:** app đã có dòng "Kỳ" từ 2026-09-12 (`bill_detail_page.dart:336-339`, schema v21); chỉ bản thiết kế Stitch đang cũ hơn mã.
+
 - **Sửa lỗi: yêu cầu đồng bộ đến giữa chu kỳ đang chạy bị NUỐT** (2026-09-13, **schema không đổi**; 2 ca test mới). Việc nhỏ thứ ba trong danh sách. `_runSync` từ chối chạy chồng bằng `if (_status == SyncStatus.syncing) return;` — không chạy chồng là **đúng**, nhưng chỉ `return` thì yêu cầu ấy **mất hẳn**: thay đổi vừa ghi phải chờ một nguồn kích hoạt khác (timer 15 phút, đổi mạng, hoặc lần mở app sau). Hỏng **im lặng** — không lỗi, không log, không test đỏ.
   > **Vì sao đáng sửa chứ không phải "thiết kế có chủ ý":** nhánh **giãn cách** ngay bên dưới trong **cùng hàm** xử lý đúng tình huống song sinh và ghi rõ lý lẽ — *"Từ chối một yêu cầu đồng bộ nghĩa là NỢ người gọi một lần chạy. Chỉ `return` ở đây thì thay đổi vừa ghi nằm chờ một nguồn kích hoạt khác"* — rồi gọi `_scheduleBackoffRetry`. Hai chốt cùng nghĩa, hai cách xử lý khác nhau; nhánh `syncing` là nhánh bị bỏ quên.
   > **Cửa sổ này không hiếm:** hai nguồn kích hoạt **dày nhất** lại là hai nguồn hay rơi đúng lúc đang chạy — `scheduleSync()` sau mỗi lần ghi (debounce 2 giây, gọi từ 19 vị trí) và sự kiện `sync.completed` của socket (G34) đánh thức `syncNow()` khi **máy khác vừa đẩy xong**. Mất một lượt ở đây là hai máy lệch nhau tới tận chu kỳ sau.
@@ -1118,8 +1125,10 @@ G15, G17, G21. Bản trước của mục này ghi ngày 04/09 và **sai bốn t
 > "Đóng G36…"); **bước 12** — đồng bộ `Auto_pay` (lớn nhất, hết bị chặn); **bước 13** — G28
 > `wallet.status`; và ba việc nhỏ — ✅ **hai trong ba xong 2026-09-13**: `git add -f` spec socket
 > (9 chỗ dẫn chiếu mà chưa có trong repo) và cửa sổ `syncNow()` bị nuốt khi `_runSync` đang
-> chạy (khối "Sửa lỗi: yêu cầu đồng bộ…" đầu mục này). Còn **một**: hai màn Stitch
-> "Chi tiết hoá đơn" Desktop thiếu dòng "Kỳ".
+> chạy (khối "Sửa lỗi: yêu cầu đồng bộ…" đầu mục này). Việc thứ ba — dòng "Kỳ" trên màn Stitch
+> *Chi tiết hóa đơn* — **chưa làm được vì công cụ**: `edit_screens` báo thành công năm lần mà
+> không ghi gì (khối ⚠️ đầu mục này); và đo lại thì thiếu ở **bốn** màn chứ không phải hai.
+> Chuyển sang người dùng dán tay trên Stitch UI.
 
 **Không còn lỗi client nào sửa được mà không phải chờ ai** (đúng tới 2026-09-10,
 xem ghi chú trên)**.** Việc tiếp theo là
