@@ -21,11 +21,13 @@ import '../widgets/transaction_list_row.dart';
 import 'add_transaction_page.dart';
 
 class TransactionPage extends StatefulWidget {
-  final int idaccount;
+  /// Mã tài khoản **tiêm vào** — chỉ widget test dùng. Đường chạy thật để
+  /// `null`: route dựng `const TransactionPage()` và trang tự suy từ phiên.
+  final int? idaccount;
 
   const TransactionPage({
     super.key,
-    this.idaccount = 1,
+    this.idaccount,
   });
 
   @override
@@ -79,15 +81,36 @@ class _TransactionPageState extends State<TransactionPage> {
   @override
   Widget build(BuildContext context) {
     final authState = context.watch<AuthBloc>().state;
-    int currentUserId = widget.idaccount;
+    // ⚠️ Trước 2026-09-14 khối này rơi về `widget.idaccount`, vốn mặc định `1`
+    // — **tài khoản admin thật**. Route dựng `const TransactionPage()` nên giá
+    // trị thật sự dùng khi phiên chưa sẵn sàng chính là 1, và trang mở stream
+    // đọc ví + danh mục của admin. Đúng lỗ hổng G4/G35, lọt lưới quét `?? 1`
+    // vì biểu thức viết là `?? widget.idaccount`.
+    int? currentUserId = widget.idaccount;
     if (authState is AuthSuccess && authState.user != null) {
-      currentUserId = int.tryParse(authState.user!.id) ?? widget.idaccount;
+      final parsed = int.tryParse(authState.user!.id);
+      if (parsed != null && parsed > 0) currentUserId = parsed;
     }
-    _ensureLookupStreams(currentUserId);
+
+    if (currentUserId == null) {
+      // Chưa có phiên dùng được: không mở stream, không nạp gì. Trang này chỉ
+      // tới được từ trong shell đã đăng nhập, nên đây là trạng thái thoáng qua
+      // — nó tự đầy ngay khi `AuthBloc` phát `AuthSuccess`.
+      return const Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(
+          child: Text('Chưa xác định được tài khoản đăng nhập'),
+        ),
+      );
+    }
+    // Biến `final` riêng: phép thu hẹp `int?` → `int` ở nhánh trên KHÔNG theo
+    // được vào closure `create:` bên dưới.
+    final int accountId = currentUserId;
+    _ensureLookupStreams(accountId);
 
     return BlocProvider<TransactionBloc>(
       create: (context) => sl<TransactionBloc>()
-        ..add(LoadTransactionsEvent(idaccount: currentUserId)),
+        ..add(LoadTransactionsEvent(idaccount: accountId)),
       child: Builder(
         builder: (blocContext) {
           return Scaffold(

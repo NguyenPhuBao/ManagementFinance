@@ -42,7 +42,9 @@ class EditTransactionArgs {
 }
 
 class AddTransactionPage extends StatefulWidget {
-  final int idaccount;
+  /// Mã tài khoản **tiêm vào** — chỉ widget test dùng. Đường chạy thật để
+  /// `null` và suy từ phiên đăng nhập; xem [_AddTransactionPageState._accountId].
+  final int? idaccount;
   final CategoryManagementRepository? categoryRepository;
   final List<Wallet>? wallets;
   final CategorySuggestionEngine suggestionEngine;
@@ -59,7 +61,7 @@ class AddTransactionPage extends StatefulWidget {
 
   const AddTransactionPage({
     super.key,
-    this.idaccount = 1,
+    this.idaccount,
     this.categoryRepository,
     this.wallets,
     this.suggestionEngine = const CategorySuggestionEngine(),
@@ -176,9 +178,14 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       });
       return;
     }
-    final authState = context.read<AuthBloc>().state;
-    final user = (authState is AuthSuccess) ? authState.user : null;
-    final userIdAccount = int.tryParse(user?.id ?? '') ?? widget.idaccount;
+    final userIdAccount = _accountId();
+    if (userIdAccount == null) {
+      // Chưa có phiên: không đọc ví của ai cả. Danh sách rỗng làm chốt
+      // "Vui lòng chọn ví thanh toán" chặn lưu, nên không có đường nào ghi
+      // giao dịch dưới danh nghĩa admin qua ngả này.
+      if (mounted) setState(() => _isLoadingWallets = false);
+      return;
+    }
 
     final db = sl<AppDatabase>();
     final list = await db.walletDao.getActive(userIdAccount);
@@ -193,14 +200,23 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     }
   }
 
-  int _accountId() {
+  /// Mã tài khoản của phiên, hoặc `null` khi CHƯA có phiên dùng được.
+  ///
+  /// ⚠️ Trước 2026-09-14 hàm này rơi về `widget.idaccount`, vốn mặc định `1` —
+  /// **tài khoản admin thật**. Đây là đường **GHI** giao dịch, nên hậu quả
+  /// nặng nhất trong ba trang cùng lỗi: giao dịch ghi dưới danh nghĩa admin
+  /// rồi đẩy lên và vỡ "Ownership mismatch" — đúng kịch bản mà docstring
+  /// `core/auth/current_account.dart` mô tả khi G4 được đóng. Nó lọt lưới quét
+  /// `?? 1` vì biểu thức viết là `?? widget.idaccount`.
+  int? _accountId() {
     try {
       final authState = context.read<AuthBloc>().state;
       if (authState is AuthSuccess) {
-        return int.tryParse(authState.user?.id ?? '') ?? widget.idaccount;
+        final parsed = int.tryParse(authState.user?.id ?? '');
+        if (parsed != null && parsed > 0) return parsed;
       }
     } catch (_) {
-      // The isolated picker test does not provide an auth bloc.
+      // Ca test bộ chọn ví chạy riêng không dựng AuthBloc.
     }
     return widget.idaccount;
   }
@@ -261,17 +277,21 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   }
 
   Future<void> _loadSuggestion(String note) async {
+    final accountId = _accountId();
+    // Chưa có phiên thì không gợi ý gì — đọc danh mục bằng mã admin là gợi ý
+    // danh mục của người khác.
+    if (accountId == null) return;
     final requestedSegment = _selectedSegment;
     // Không còn segment chi/thu để khoanh vùng, nên tìm trên cả ba phân loại:
     // chiều tiền suy từ danh mục được chọn, không phải ngược lại.
     final categories = await _categoryRepository.selectableChildrenAll(
-      accountId: _accountId(),
+      accountId: accountId,
     );
     // MỘT truy vấn cho cả tài khoản. Trước đây chỗ này gọi `loadKeywords` một
     // lần cho mỗi danh mục, nên tài khoản có 20 danh mục là 20 truy vấn — nhân
     // với mỗi lần ghi chú thay đổi.
     final keywordsByCategory = await _categoryRepository.loadAllKeywords(
-      accountId: _accountId(),
+      accountId: accountId,
     );
     final candidates = <CategoryKeywordCandidate>[];
     for (final category in categories) {
@@ -513,6 +533,20 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       );
       return;
     }
+    // ⚠️ Chốt cuối, và là chốt quan trọng nhất trong chuỗi này: KHÔNG ghi
+    // giao dịch khi chưa biết nó thuộc về ai. Trước 2026-09-14 nhánh này rơi
+    // về mã `1` — tài khoản admin thật — nên giao dịch ghi trong lúc phiên
+    // chưa sẵn sàng sẽ mang chủ sở hữu sai, rồi đẩy lên và vỡ "Ownership
+    // mismatch" mà không ai lần được từ đâu. Sửa giao dịch cũ thì `editing`
+    // đã mang sẵn chủ sở hữu, nên đường ấy không cần chốt.
+    final accountId = _editing?.idaccount ?? _accountId();
+    if (accountId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Chưa xác định được tài khoản đăng nhập')),
+      );
+      return;
+    }
 
     final editing = _editing;
     final tx = TransactionEntity(
@@ -520,7 +554,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       // là nhân đôi giao dịch.
       id: editing?.id ?? const Uuid().v4(),
       walletId: _selectedWallet!.id,
-      idaccount: editing?.idaccount ?? _accountId(),
+      idaccount: accountId,
       // Khoản chuyển KHÔNG có danh mục. Trước đây chỗ này gán 'cat_transfer' —
       // một id chưa từng được seed — và SyncEngine hoãn đẩy hàng ấy vĩnh viễn
       // vì không phân giải được danh mục.
