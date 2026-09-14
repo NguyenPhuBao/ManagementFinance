@@ -3,6 +3,7 @@ import 'dart:async';
 import '../../../core/database/app_database.dart';
 import '../../budget/data/models/budget_entity.dart';
 import '../../budget/data/repositories/budget_repository.dart';
+import '../domain/phan_loai_dong_tien.dart';
 import '../domain/thong_ke_thang.dart';
 import 'analytics_repository.dart';
 
@@ -108,6 +109,11 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
   }) {
     // `amount` lưu dương ở client (nhánh pull gọi `.abs()`), cộng thẳng —
     // cùng luật với `BudgetLocalDataSourceImpl.sumExpenses`.
+    //
+    // `cats` gồm CẢ hàng đã xoá mềm (xem chỗ đăng ký `subCat`), nên giao dịch
+    // cũ trỏ vào danh mục đã xoá vẫn tra được `classify`. Thiếu bảng tra này
+    // thì mọi khoản Trả nợ rơi về lát "chi" và vòng tròn nói sai tỷ trọng.
+    final classifyTheoId = {for (final c in cats) c.id: c.classify};
     final khoan = [
       for (final t in txs)
         KhoanThuChi(
@@ -115,6 +121,8 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
           soTien: t.amount,
           loai: t.type,
           categoryId: t.categoryId,
+          classify:
+              t.categoryId == null ? null : classifyTheoId[t.categoryId],
           // Cần cho phép loại khoản điều chỉnh số dư khỏi thống kê; thiếu
           // nó thì luật ấy không có gì để đọc và khoản bù thành thu nhập.
           ghiChu: t.note,
@@ -164,6 +172,47 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
         }(),
     ];
 
+    // ── Ba lát và danh mục bên trong từng lát ───────────────────────────────
+    // Dựng cho CẢ ba phân loại chứ không chỉ lát đang xem: lựa chọn nằm ở tầng
+    // state, và stream này phát lại sau mọi chu kỳ đồng bộ — tính sẵn ở đây rẻ
+    // hơn là bắt giao diện hỏi lại repository mỗi lần chạm.
+    final lat = theoPhanLoai(khoan, from: from, to: to);
+    final theoLat = <String, List<DongDanhMuc>>{};
+    for (final l in lat) {
+      final ds = danhMucTheoPhanLoai(
+        khoan,
+        from: from,
+        to: to,
+        phanLoai: l.phanLoai,
+      );
+      theoLat[l.phanLoai] = [
+        for (final c in ds)
+          () {
+            final cat =
+                c.categoryId == null ? null : danhMucTheoId[c.categoryId];
+            final ten = c.categoryId == null
+                ? 'Chưa phân loại'
+                : (cat?.name ?? 'Danh mục đã xoá');
+            // Ngân sách chỉ có nghĩa cho chi tiêu: `BudgetRepository` không có
+            // khái niệm ngân sách thu. Gắn nó vào lát thu là hiện một hạn mức
+            // không tồn tại.
+            final ns = (l.phanLoai == 'chi' && c.categoryId != null)
+                ? nganSachTheoDanhMuc[c.categoryId]
+                : null;
+            return DongDanhMuc(
+              categoryId: c.categoryId,
+              ten: ten,
+              icon: cat?.icon,
+              mauHex: cat?.colour,
+              soTien: c.soTien,
+              tiLeTongChi: c.tiLe,
+              nganSachHanMuc: ns?.amount,
+              nganSachDaChi: ns?.spent,
+            );
+          }(),
+      ];
+    }
+
     return ThongKeThang(
       nam: nam,
       thang: thang,
@@ -174,6 +223,11 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
       // Dựng từ `khoan` — TOÀN BỘ giao dịch của tài khoản, chưa lọc tháng.
       // Chuỗi nhìn xa sáu tháng, xa hơn `tong`/`tongTruoc` nhiều.
       chuoi: chuoiTheoThang(khoan, nam: nam, thang: thang),
+      latPhanLoai: lat,
+      danhMucTheoLat: theoLat,
+      // Cùng lý do với `chuoi`: dựng từ toàn bộ giao dịch, không phải từ tháng
+      // đang xem.
+      chuoiDanhMuc: chuoiTheoDanhMuc(khoan, nam: nam, thang: thang),
     );
   }
 }

@@ -593,7 +593,59 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-13)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-14)
+
+### 📊 A8 #3, #7 — cơ cấu theo danh mục và xu hướng nhiều danh mục (2026-09-14)
+
+Hai mục của bảng **A8. Analytics & Reporting** (`Project.md:1028-1041`) đã đóng.
+Spec `docs/superpowers/specs/2026-09-14-thong-ke-phan-loai-va-xu-huong-danh-muc-design.md`
+(đọc kèm banner đầu tệp), chi tiết ở mục **3.19** `docs/ANALYTICS_FEATURE.md`.
+
+⚠️ Đây là **bản thi công lần hai**. Bản đầu đóng **ba** mục (#2, #3, #7) và đã
+bị revert cùng ngày — người dùng xem xong rồi chốt lại phạm vi: **bỏ #2**, và
+đổi hình dạng cả #3 lẫn #7. Tài liệu cũ hơn bản này nói về "mức gốc ba lát",
+"drill-down", "dropdown chọn một danh mục" là tả **bản đầu**.
+
+- **#3** — khối **"Cơ cấu theo danh mục"**: ba chip *Chi · Thu · Vay-nợ* chọn
+  nhóm, vòng tròn vẽ danh mục **bên trong** nhóm ấy. Nhóm Chi **mở sẵn**. Chip
+  chỉ hiện cho nhóm có phát sinh, thứ tự cố định theo `kCategoryClassifies`
+  (không theo số tiền — chip đổi chỗ khi số đổi là người dùng bấm nhầm nhóm).
+  Danh sách danh mục cuối trang **đi theo** cùng chip.
+- **#7** — khối "Xu hướng 6 tháng" có **hàng chip cuộn ngang, chọn nhiều**: tập
+  rỗng là hai đường Thu/Chi, bật tới **5** danh mục thì mỗi cái một đường mang
+  màu và tên của nó. Đủ trần thì chip chưa bật bị **khoá nhìn thấy được**; chốt
+  thật ở cubit, khoá ở widget chỉ để nhìn thấy.
+
+**Luật phân loại có một định nghĩa duy nhất** ở
+`analytics/domain/phan_loai_dong_tien.dart`. ⚠️ App có **hai** thứ dễ nhầm là
+một: `transaction.type` là **chiều tiền**, `category.classify` là **phân loại
+danh mục** — khoản *Trả nợ* mang `type='chi'` nhưng `classify='vay_no'`. Luật
+lấy `classify`, **rơi về `type`** khi không tra được danh mục (đo 2026-09-10:
+server có 17 hàng giao dịch trống danh mục thật). `theoPhanLoai()` **giữ lại**
+dù vòng tròn ba lát đã bỏ — nó là nguồn duy nhất cho biết nhóm nào có phát
+sinh, tức khối hiện chip nào.
+
+⚠️ **Hệ quả cố ý:** nhóm "Chi" **không bằng** "Tổng chi" ở thẻ đầu trang — ba
+nhóm phải rời nhau thì tỷ trọng mới có nghĩa. Đừng "sửa" cho khớp.
+
+**Bốn mục A8 còn lại bị chặn bởi mô hình dữ liệu, không phải bởi biểu đồ.** Đếm
+bằng máy 2026-09-14: client có **9** bảng Drift, backend có **13** model
+Prisma, **không đầu nào có bảng khoản vay**. Không có dư nợ gốc, lãi suất, kỳ
+hạn, hay liên kết giữa một khoản vay với các lần trả nợ. Mục **#4** (Cho vay +
+Thu nợ), **#5** (Đi vay + Trả nợ), **#8** (dòng tiền tự do), **#9** (biến động
+khoản vay + lãi vay) đều cần ít nhất một trong những thứ ấy → cần mô hình mới ở
+**cả hai đầu**, tức phải xin backend. Mục **#10** (thác nước) và **#11**
+(Sankey) làm được với thu/chi nhưng để đợt sau.
+
+**Không đụng schema** (v22 giữ nguyên), **không đụng đường đồng bộ**.
+`flutter test` **2408/2408** · `flutter analyze` **25 issue, 0 error**.
+⚠️ **Chưa nghiệm thu máy ảo và chưa nghiệm thu Stitch** cho bản lần hai.
+
+**Thiết kế Stitch:** màn `c2a2b615c9514ca180b28d189b2ea197` — *"Thống kê - Xu
+hướng 6 tháng & Cơ cấu dòng tiền"* (tên màn giữ nguyên dù khối đã đổi tên).
+⚠️ Màn cũ `a228fa69…` *"FlowMoney Analytics Dashboard"* **vẫn còn trong dự án
+Stitch nhưng đã lỗi thời**: `edit_screens` **tạo màn mới** chứ không sửa màn
+được chọn, nên nghiệm thu Stitch phải dùng `list_screens` tìm màn mới.
 
 ### 🔐 Xác thực phiên đăng nhập
 

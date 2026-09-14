@@ -12,10 +12,18 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/features/analytics/data/analytics_repository.dart';
+import 'package:flowmoney/features/analytics/domain/phan_loai_dong_tien.dart';
 import 'package:flowmoney/features/analytics/domain/thong_ke_thang.dart';
 import 'package:flowmoney/features/analytics/presentation/bloc/analytics_cubit.dart';
 
-ThongKeThang _tk(int nam, int thang, {double chi = 0}) => ThongKeThang(
+ThongKeThang _tk(
+  int nam,
+  int thang, {
+  double chi = 0,
+  List<LatPhanLoai> lat = const [],
+  Map<String?, List<DiemThoiGian>> chuoiDm = const {},
+}) =>
+    ThongKeThang(
       nam: nam,
       thang: thang,
       tong: TongThuChi(thu: 0, chi: chi),
@@ -23,7 +31,14 @@ ThongKeThang _tk(int nam, int thang, {double chi = 0}) => ThongKeThang(
       chiTheoDanhMuc: const [],
       danhMuc: const [],
       chuoi: const [],
+      latPhanLoai: lat,
+      chuoiDanhMuc: chuoiDm,
     );
+
+const _latChiThu = [
+  LatPhanLoai(phanLoai: 'chi', soTien: 300, tiLe: 0.6),
+  LatPhanLoai(phanLoai: 'thu', soTien: 200, tiLe: 0.4),
+];
 
 class _RepoGia implements AnalyticsRepository {
   final goi = <({int idaccount, int nam, int thang, DateTime? now})>[];
@@ -132,5 +147,147 @@ void main() {
     repo.moiNhat.addError(StateError('hỏng'));
     await Future<void>.delayed(Duration.zero);
     expect(cubit.state, isA<AnalyticsError>());
+  });
+
+  group('hai lựa chọn của người dùng', () {
+    Future<void> phat(ThongKeThang tk) async {
+      repo.moiNhat.add(tk);
+      await Future<void>.delayed(Duration.zero);
+    }
+
+    test('mặc định là nhóm Chi và không danh mục nào', () async {
+      cubit.xem(10);
+      await phat(_tk(2026, 9, lat: _latChiThu));
+
+      final s = cubit.state as AnalyticsLoaded;
+      expect(s.phanLoaiDangXem, 'chi',
+          reason: 'Chi là nhóm người dùng hỏi nhiều nhất — donut cũ chỉ vẽ Chi');
+      expect(s.danhMucXuHuong, isEmpty,
+          reason: 'Tập rỗng = hai đường Thu/Chi như trước');
+    });
+
+    test('BẪY 1: stream phát lại KHÔNG làm mất lựa chọn', () async {
+      cubit.xem(10);
+      await phat(_tk(2026, 9,
+          lat: _latChiThu, chuoiDm: {'an': const [], 'di': const []}));
+
+      cubit.chonPhanLoai('thu');
+      cubit.batTatDanhMucXuHuong('an');
+      cubit.batTatDanhMucXuHuong('di');
+
+      // Đồng bộ nền kéo về một thay đổi bất kỳ → repository phát lại.
+      await phat(_tk(2026, 9,
+          chi: 99, lat: _latChiThu, chuoiDm: {'an': const [], 'di': const []}));
+
+      final s = cubit.state as AnalyticsLoaded;
+      expect(s.thongKe.tong.chi, 99, reason: 'Số liệu mới phải tới nơi');
+      expect(s.phanLoaiDangXem, 'thu',
+          reason: 'Quên chép lựa chọn sang state mới thì cứ mỗi chu kỳ đồng bộ '
+              'là chip nhảy về Chi TRONG KHI người dùng đang xem — không '
+              'exception, không log');
+      expect(s.danhMucXuHuong, {'an', 'di'});
+    });
+
+    test('BẪY 2: nhóm đang chọn biến mất thì rơi về Chi', () async {
+      cubit.xem(10);
+      await phat(_tk(2026, 9, lat: const [
+        LatPhanLoai(phanLoai: 'chi', soTien: 50, tiLe: 0.5),
+        LatPhanLoai(phanLoai: 'vay_no', soTien: 50, tiLe: 0.5),
+      ]));
+      cubit.chonPhanLoai('vay_no');
+
+      // Tháng mới không có khoản vay/nợ nào.
+      await phat(_tk(2026, 9, lat: _latChiThu));
+
+      expect((cubit.state as AnalyticsLoaded).phanLoaiDangXem, 'chi',
+          reason: 'Giữ lựa chọn trỏ vào nhóm không tồn tại là vẽ một vòng tròn '
+              'trống dưới một chip đã biến mất');
+    });
+
+    test('BẪY 2b: Chi cũng rỗng thì rơi về nhóm đầu còn phát sinh', () async {
+      cubit.xem(10);
+      await phat(_tk(2026, 9, lat: const [
+        LatPhanLoai(phanLoai: 'thu', soTien: 100, tiLe: 1),
+      ]));
+
+      expect((cubit.state as AnalyticsLoaded).phanLoaiDangXem, 'thu',
+          reason: 'Tháng chỉ có thu mà vẫn chọn sẵn Chi là donut trống dù có '
+              'dữ liệu để vẽ');
+    });
+
+    test('BẪY 3: danh mục biến mất thì bị LOẠI khỏi tập, phần còn lại giữ',
+        () async {
+      cubit.xem(10);
+      await phat(_tk(2026, 9,
+          lat: _latChiThu, chuoiDm: {'an': const [], 'di': const []}));
+      cubit.batTatDanhMucXuHuong('an');
+      cubit.batTatDanhMucXuHuong('di');
+
+      await phat(_tk(2026, 9, lat: _latChiThu, chuoiDm: {'di': const []}));
+
+      expect((cubit.state as AnalyticsLoaded).danhMucXuHuong, {'di'},
+          reason: 'Danh mục bị xoá hay đổi tháng thì khoá không còn — đọc '
+              'chuoiDanhMuc[id]! khi ấy là nổ. Nhưng chỉ loại đúng khoá ấy: '
+              'xoá cả tập là người dùng mất luôn những đường còn hợp lệ');
+    });
+
+    test('bật rồi tắt cùng một danh mục', () async {
+      cubit.xem(10);
+      await phat(_tk(2026, 9, lat: _latChiThu, chuoiDm: {'an': const []}));
+
+      cubit.batTatDanhMucXuHuong('an');
+      expect((cubit.state as AnalyticsLoaded).danhMucXuHuong, {'an'});
+
+      cubit.batTatDanhMucXuHuong('an');
+      expect((cubit.state as AnalyticsLoaded).danhMucXuHuong, isEmpty,
+          reason: 'Bỏ chọn hết là về hai đường Thu/Chi');
+    });
+
+    test('TRẦN: danh mục thứ sáu KHÔNG được bật, tắt một cái thì bật được',
+        () async {
+      cubit.xem(10);
+      await phat(_tk(2026, 9, lat: _latChiThu, chuoiDm: {
+        for (final k in ['a', 'b', 'c', 'd', 'e', 'f']) k: const <DiemThoiGian>[],
+      }));
+      for (final k in ['a', 'b', 'c', 'd', 'e']) {
+        cubit.batTatDanhMucXuHuong(k);
+      }
+      expect((cubit.state as AnalyticsLoaded).danhMucXuHuong.length,
+          kToiDaDuongXuHuong);
+
+      cubit.batTatDanhMucXuHuong('f');
+      final s = cubit.state as AnalyticsLoaded;
+      expect(s.danhMucXuHuong, isNot(contains('f')),
+          reason: 'Quá $kToiDaDuongXuHuong đường ở 411dp là một búi chỉ không '
+              'đọc được; chip thứ sáu phải bị khoá chứ không âm thầm đè lên');
+
+      cubit.batTatDanhMucXuHuong('a');
+      cubit.batTatDanhMucXuHuong('f');
+      expect((cubit.state as AnalyticsLoaded).danhMucXuHuong,
+          {'b', 'c', 'd', 'e', 'f'});
+    });
+
+    test('đổi tháng thì nhóm về Chi, danh mục xu hướng GIỮ', () async {
+      cubit.xem(10);
+      await phat(_tk(2026, 9, lat: _latChiThu, chuoiDm: {'an': const []}));
+      cubit.chonPhanLoai('thu');
+      cubit.batTatDanhMucXuHuong('an');
+
+      cubit.chonThang(2026, 8);
+      await phat(_tk(2026, 8, lat: _latChiThu, chuoiDm: {'an': const []}));
+
+      final s = cubit.state as AnalyticsLoaded;
+      expect(s.phanLoaiDangXem, 'chi',
+          reason: 'Đổi tháng là đổi câu hỏi — bắt đầu lại từ Chi');
+      expect(s.danhMucXuHuong, {'an'},
+          reason: 'Chuỗi xu hướng nhìn xa sáu tháng nên vẫn có nghĩa ở tháng '
+              'khác — giữ lựa chọn');
+    });
+
+    test('chonPhanLoai / batTat không làm gì khi chưa có dữ liệu', () {
+      cubit.chonPhanLoai('chi');
+      cubit.batTatDanhMucXuHuong('an');
+      expect(cubit.state, isA<AnalyticsInitial>());
+    });
   });
 }
