@@ -271,17 +271,41 @@ tài liệu).
 
 ## 8. Thiết kế Stitch
 
-Người dùng chốt: **cập nhật Stitch trước khi dựng Flutter**.
+Người dùng chốt: **cập nhật Stitch trước khi dựng Flutter**. Đã làm xong ngày
+2026-09-14 và **đã nghiệm thu**.
 
-Màn **"FlowMoney Analytics Dashboard"** (`a228fa69a22442e9a577ac8f5d2d0cea`,
-MOBILE) đã được gọi `edit_screens` ngày 2026-09-14 với hai thay đổi: thêm thẻ
-"Xu hướng 6 tháng" có dropdown và biểu đồ đường, và đổi thẻ donut thành "Cơ cấu
-dòng tiền" ba lát.
+**Màn phải dựng theo:** `c2a2b615c9514ca180b28d189b2ea197` — *"Thống kê - Xu
+hướng 6 tháng & Cơ cấu dòng tiền"*, MOBILE 780×3204.
 
-⚠️ Công cụ ghi **có độ trễ dài** — "chưa đổi" nghĩa là *chưa biết*, không phải
-*thất bại*. Mốc trước khi sửa, để so lại: `htmlCode` =
-`files/15981662859376236551`, `screenshot` = `files/8520192458163495776`.
-Nghiệm thu bằng cách tải `htmlCode.downloadUrl` về đọc và so `screenshot.name`.
+⚠️ **`edit_screens` tạo một màn MỚI, không sửa màn được chọn.** Gọi nó với
+`selectedScreenIds` là màn cũ `a228fa69a22442e9a577ac8f5d2d0cea` (*"FlowMoney
+Analytics Dashboard"*), nhưng màn ấy **không đổi một byte nào** — `htmlCode`
+vẫn `files/15981662859376236551`, `screenshot` vẫn `files/8520192458163495776`,
+chiều cao vẫn 2432. Thay đổi nằm ở màn mới. Nên nghiệm thu bằng
+**`list_screens` tìm màn mới**, đừng `get_screen` màn cũ rồi kết luận thất bại.
+
+Màn cũ **vẫn còn** trong dự án và nay là bản lỗi thời. Ai đọc thiết kế cho lát
+này phải mở đúng `c2a2b615…`.
+
+**Đã kiểm bằng cách tải HTML về đọc** (20.723 byte, so với 16.579 của bản cũ):
+
+| Kiểm | Kết quả |
+|---|---|
+| Bốn `<section>` đúng thứ tự | ba thẻ tổng → Xu hướng → Cơ cấu dòng tiền → Chi tiết danh mục |
+| Dropdown | `<button>` "Tất cả danh mục" + `expand_more`, cao 44px, viền `#e0e0db` |
+| Biểu đồ đường | hai `<path>`, `#006e1c` và `#ba1a1a`; trục 0/5M/10M/15M và T4–T9 |
+| Donut | `conic-gradient` **ba** lát: `#006e1c` 60%, `#ba1a1a` 30%, `#f57c00` 10% |
+| Tâm donut | "Tổng dòng tiền" / "33.5M" |
+| Chú giải | đúng ba mục: Thu · Chi · Vay / nợ |
+| Dòng gợi ý | "Chạm một lát để xem danh mục bên trong" |
+
+Stitch dùng **màu của design system** (`#006e1c` secondary, `#ba1a1a` error)
+chứ không phải màu tôi mô tả trong prompt — giữ theo Stitch, đúng "Kinetic
+Finance". Màu lát vay/nợ là `#f57c00`.
+
+ⓘ Một vết nhỏ, vô hại: class CSS cũ `.chart-donut` (conic-gradient **5** lát)
+còn nằm trong `<style>` nhưng **không chỗ nào trong thân trang dùng** — donut
+mới đặt gradient inline. Không cần sửa Stitch vì nó không ảnh hưởng hiển thị.
 
 Khối "Xu hướng 6 tháng" vốn **lệch Stitch có chủ ý** từ 2026-09-08 (mục 3.12
 `ANALYTICS_FEATURE.md`: tra cả 35 màn, không màn nào có biểu đồ đường hay cột).
