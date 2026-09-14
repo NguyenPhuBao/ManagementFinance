@@ -536,4 +536,88 @@ void main() {
               'hình đầy sọc vàng');
     });
   });
+
+  group('bộ chọn danh mục của khối Xu hướng', () {
+    List<DiemThoiGian> chuoiMau() =>
+        chuoiTheoThang(const [], nam: 2026, thang: 9);
+
+    testWidgets('mặc định là "Tất cả danh mục" với hai đường Thu/Chi',
+        (tester) async {
+      await moTrang(tester);
+      await phat(
+        tester,
+        _tk(
+          danhMuc: [_dm('c_an', 'Ăn uống', 300000, 1.0)],
+          chuoiDm: {'c_an': chuoiMau()},
+        ),
+      );
+
+      expect(find.text('Tất cả danh mục'), findsOneWidget);
+      expect(find.text('Thu'), findsWidgets);
+      expect(find.text('Chi'), findsWidgets);
+    });
+
+    testWidgets('chọn một danh mục thì chú giải đổi thành tên nó',
+        (tester) async {
+      await moTrang(tester);
+      await phat(
+        tester,
+        _tk(
+          danhMuc: [_dm('c_an', 'Ăn uống', 300000, 1.0)],
+          chuoiDm: {'c_an': chuoiMau()},
+        ),
+      );
+
+      await tester.tap(find.text('Tất cả danh mục'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Ăn uống').last);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ăn uống'), findsWidgets);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('chỉ liệt kê danh mục CÓ phát sinh trong 6 tháng',
+        (tester) async {
+      await moTrang(tester);
+      await phat(
+        tester,
+        _tk(
+          danhMuc: [
+            _dm('c_an', 'Ăn uống', 300000, 0.7),
+            _dm('c_di', 'Đi lại', 100000, 0.3),
+          ],
+          // Chỉ 'c_an' có chuỗi — 'c_di' phát sinh ngoài 6 tháng.
+          chuoiDm: {'c_an': chuoiMau()},
+        ),
+      );
+
+      await tester.tap(find.text('Tất cả danh mục'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Đi lại'), findsOneWidget,
+          reason: 'Chỉ còn dòng ở bảng chi tiết, KHÔNG có trong dropdown — '
+              'liệt kê mọi danh mục là bắt người dùng cuộn qua hàng chục dòng '
+              'để tìm ra một đường phẳng bằng 0');
+    });
+
+    testWidgets('tên danh mục dài không tràn dropdown ở 411dp', (tester) async {
+      tester.view.physicalSize = const Size(411 * 3, 900 * 3);
+      tester.view.devicePixelRatio = 3.0;
+      addTearDown(tester.view.reset);
+
+      await moTrang(tester);
+      await phat(
+        tester,
+        _tk(
+          danhMuc: [
+            _dm('c_an', 'Ăn uống nhà hàng và cà phê cuối tuần dài', 300000, 1.0),
+          ],
+          chuoiDm: {'c_an': chuoiMau()},
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+    });
+  });
 }

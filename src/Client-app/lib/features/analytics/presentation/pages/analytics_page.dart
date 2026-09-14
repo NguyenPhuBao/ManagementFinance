@@ -90,7 +90,11 @@ class _NoiDung extends StatelessWidget {
 
   List<Widget> _than(BuildContext context, AnalyticsState state) {
     switch (state) {
-      case AnalyticsLoaded(:final thongKe, :final phanLoaiDangXem):
+      case AnalyticsLoaded(
+          :final thongKe,
+          :final phanLoaiDangXem,
+          :final danhMucXuHuong
+        ):
         if (thongKe.rong) {
           return [_Rong(nam: thongKe.nam, thang: thongKe.thang)];
         }
@@ -98,7 +102,7 @@ class _NoiDung extends StatelessWidget {
           _KhoiTong(tk: thongKe),
           const SizedBox(height: 24),
           // Thứ tự câu hỏi: bao nhiêu → xu hướng ra sao → tiền đi đâu.
-          _KhoiXuHuong(chuoi: thongKe.chuoi),
+          _KhoiXuHuong(tk: thongKe, danhMucXuHuong: danhMucXuHuong),
           const SizedBox(height: 24),
           _KhoiDonut(tk: thongKe, phanLoaiDangXem: phanLoaiDangXem),
           const SizedBox(height: 24),
@@ -467,24 +471,50 @@ class _TheConLai extends StatelessWidget {
 /// trang trả lời. Khối này nằm giữa khối tổng và donut vì đó là thứ tự câu
 /// hỏi: bao nhiêu → xu hướng ra sao → đi vào đâu. Đừng "sửa lại cho khớp
 /// Stitch".
+/// Biểu đồ đường sáu tháng — A8 #6 (hai đường Thu/Chi) và A8 #7 (một đường cho
+/// một danh mục, chọn bằng dropdown).
+///
+/// ⓘ Khối này từng **lệch Stitch có chủ ý** (mục 3.12 `ANALYTICS_FEATURE.md`):
+/// tra cả 35 màn ngày 2026-09-08, không màn nào có biểu đồ đường. Từ 2026-09-14
+/// nó **đã có** trên Stitch — màn `c2a2b615c9514ca180b28d189b2ea197` — nên lý
+/// do lệch đã hết hiệu lực.
 class _KhoiXuHuong extends StatelessWidget {
-  final List<DiemThoiGian> chuoi;
-  const _KhoiXuHuong({required this.chuoi});
+  final ThongKeThang tk;
+
+  /// `null` là hai đường Thu/Chi.
+  final String? danhMucXuHuong;
+  const _KhoiXuHuong({required this.tk, required this.danhMucXuHuong});
 
   @override
   Widget build(BuildContext context) {
+    final dm = danhMucXuHuong;
+    // Danh mục đã chọn có thể vừa biến mất; cubit đã dọn nhưng khung dựng lại
+    // có thể tới trước — rơi về hai đường thay vì nổ.
+    final chuoi = dm == null ? tk.chuoi : (tk.chuoiDanhMuc[dm] ?? tk.chuoi);
     // Không điểm nào thì không có thang đo — bỏ khối, đừng chia cho 0.
     if (chuoi.isEmpty) return const SizedBox.shrink();
 
+    // Một danh mục thường chỉ đi một chiều tiền, nên đường đơn vẽ tổng thu +
+    // chi của nó. Riêng danh mục vay/nợ có cả hai chiều: cộng lại là "tổng tiền
+    // đi qua danh mục", đúng câu hỏi "nó đang lớn lên hay nhỏ đi".
+    double giaTri(DiemThoiGian d) => d.tong.thu + d.tong.chi;
+
     var dinh = 0.0;
     for (final d in chuoi) {
-      if (d.tong.thu > dinh) dinh = d.tong.thu;
-      if (d.tong.chi > dinh) dinh = d.tong.chi;
+      if (dm == null) {
+        if (d.tong.thu > dinh) dinh = d.tong.thu;
+        if (d.tong.chi > dinh) dinh = d.tong.chi;
+      } else if (giaTri(d) > dinh) {
+        dinh = giaTri(d);
+      }
     }
     // Trần cao hơn đỉnh để đường không dính mép trên. Sáu tháng rỗng sạch thì
     // `dinh` bằng 0 và mọi phép chia thang đo sau đây sẽ hỏng, nên đặt 1.
     final maxY = dinh <= 0 ? 1.0 : dinh * 1.15;
     final buoc = maxY / 3;
+    final dong = dm == null ? null : tk.dongCua(dm);
+    final mauDon = _mauCua(dong);
+    final tenDon = dong?.ten ?? 'Danh mục';
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -507,13 +537,17 @@ class _KhoiXuHuong extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          const Wrap(
+          _ChonDanhMucXuHuong(tk: tk, dangChon: dm),
+          const SizedBox(height: 12),
+          Wrap(
             spacing: 20,
             runSpacing: 8,
-            children: [
-              _ChuGiaiDuong(mau: AppColors.income, ten: 'Thu'),
-              _ChuGiaiDuong(mau: AppColors.expense, ten: 'Chi'),
-            ],
+            children: dm == null
+                ? const [
+                    _ChuGiaiDuong(mau: AppColors.income, ten: 'Thu'),
+                    _ChuGiaiDuong(mau: AppColors.expense, ten: 'Chi'),
+                  ]
+                : [_ChuGiaiDuong(mau: mauDon, ten: tenDon)],
           ),
           const SizedBox(height: 20),
           SizedBox(
@@ -608,7 +642,9 @@ class _KhoiXuHuong extends StatelessWidget {
                     getTooltipItems: (spots) => [
                       for (final s in spots)
                         LineTooltipItem(
-                          '${s.barIndex == 0 ? 'Thu' : 'Chi'} ${rutGon(s.y)}',
+                          dm == null
+                              ? '${s.barIndex == 0 ? 'Thu' : 'Chi'} ${rutGon(s.y)}'
+                              : '$tenDon ${rutGon(s.y)}',
                           const TextStyle(
                             color: Colors.white,
                             fontSize: 12,
@@ -618,22 +654,37 @@ class _KhoiXuHuong extends StatelessWidget {
                     ],
                   ),
                 ),
-                lineBarsData: [
-                  _duong(
-                    [
-                      for (var i = 0; i < chuoi.length; i++)
-                        FlSpot(i.toDouble(), chuoi[i].tong.thu),
-                    ],
-                    AppColors.income,
-                  ),
-                  _duong(
-                    [
-                      for (var i = 0; i < chuoi.length; i++)
-                        FlSpot(i.toDouble(), chuoi[i].tong.chi),
-                    ],
-                    AppColors.expense,
-                  ),
-                ],
+                // Điểm ngoài dải vẫn được VẼ nếu không cắt — mặc định của
+                // fl_chart là `FlClipData.none()` và đường tràn khỏi thẻ
+                // (bẫy 4.17 `ANALYTICS_FEATURE.md`, chỉ lộ trên máy thật).
+                // Đường đơn có dải hẹp hơn nên dễ vấp hơn bản hai đường.
+                clipData: const FlClipData.all(),
+                lineBarsData: dm == null
+                    ? [
+                        _duong(
+                          [
+                            for (var i = 0; i < chuoi.length; i++)
+                              FlSpot(i.toDouble(), chuoi[i].tong.thu),
+                          ],
+                          AppColors.income,
+                        ),
+                        _duong(
+                          [
+                            for (var i = 0; i < chuoi.length; i++)
+                              FlSpot(i.toDouble(), chuoi[i].tong.chi),
+                          ],
+                          AppColors.expense,
+                        ),
+                      ]
+                    : [
+                        _duong(
+                          [
+                            for (var i = 0; i < chuoi.length; i++)
+                              FlSpot(i.toDouble(), giaTri(chuoi[i])),
+                          ],
+                          mauDon,
+                        ),
+                      ],
               ),
             ),
           ),
@@ -676,6 +727,79 @@ class _KhoiXuHuong extends StatelessWidget {
           ),
         ),
       );
+}
+
+/// Bộ chọn danh mục của khối xu hướng — A8 #7.
+///
+/// Chỉ liệt kê danh mục **có phát sinh trong sáu tháng** đang vẽ: liệt kê tất
+/// cả là bắt người dùng cuộn qua hàng chục dòng để tìm ra một đường phẳng
+/// bằng 0.
+///
+/// Là dropdown tại chỗ chứ không phải màn mới hay bottom sheet — cố ý. Trang
+/// này nằm trong `StatefulShellRoute`, và `push` một route trong shell từ chỗ
+/// khác đã từng làm app chết màn đỏ (bẫy 7.8 `NOTIFICATION_FEATURE.md`).
+class _ChonDanhMucXuHuong extends StatelessWidget {
+  final ThongKeThang tk;
+  final String? dangChon;
+  const _ChonDanhMucXuHuong({required this.tk, required this.dangChon});
+
+  @override
+  Widget build(BuildContext context) {
+    // Tên tra từ cả `danhMuc` (chi) lẫn các lát (thu, vay/nợ) — nếu không thì
+    // danh mục thu có chuỗi mà không có tên, và dropdown bỏ sót nó.
+    final ten = <String, String>{};
+    for (final d in tk.danhMuc) {
+      if (d.categoryId != null) ten[d.categoryId!] = d.ten;
+    }
+    for (final ds in tk.danhMucTheoLat.values) {
+      for (final d in ds) {
+        if (d.categoryId != null) ten[d.categoryId!] = d.ten;
+      }
+    }
+    final id = [
+      for (final k in tk.chuoiDanhMuc.keys)
+        if (k != null && ten.containsKey(k)) k,
+    ]..sort((a, b) => ten[a]!.toLowerCase().compareTo(ten[b]!.toLowerCase()));
+
+    if (id.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      height: 44,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.outlineVariant),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String?>(
+          value: dangChon,
+          isExpanded: true,
+          icon: const Icon(Icons.expand_more, color: AppColors.textSecondary),
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: AppColors.primary,
+          ),
+          items: [
+            const DropdownMenuItem<String?>(
+              value: null,
+              child: Text('Tất cả danh mục', overflow: TextOverflow.ellipsis),
+            ),
+            for (final k in id)
+              DropdownMenuItem<String?>(
+                value: k,
+                // Tên danh mục dài tới 200 ký tự (`DoRongCot`), phải cắt được
+                // ở 411dp.
+                child: Text(ten[k]!, overflow: TextOverflow.ellipsis),
+              ),
+          ],
+          onChanged: (v) =>
+              context.read<AnalyticsCubit>().chonDanhMucXuHuong(v),
+        ),
+      ),
+    );
+  }
 }
 
 class _ChuGiaiDuong extends StatelessWidget {
