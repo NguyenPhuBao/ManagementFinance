@@ -494,9 +494,35 @@ giữa lượt), nên không ai xem được "đỏ tự nhiên" cho phần widg
 | Danh sách cuối trang đọc `danhMuc` thay vì nhóm đang chọn | 3 |
 | Tâm donut lấy tổng chi toàn tháng làm mẫu số | 1 |
 
-⚠️ **Chưa nghiệm thu trên máy ảo, và chưa nghiệm thu Stitch** cho bản lần hai.
-Bẫy **4.17** (`FlClipData`) và **4.18** (nhãn trục chồng nhau) chỉ lộ trên máy
-thật — bản đầu đã chạy `emulator-5554` nhưng đó là hình dạng khác.
+**Nghiệm thu máy ảo** `emulator-5554` (1080×2400, tức 411dp), tài khoản có dữ
+liệu thật, 2026-09-14 — đủ bảy điểm:
+
+1. Vào trang là **nhóm Chi mở sẵn**, tâm "TỔNG CHI 1M", chú giải top 4 + "Khác".
+2. Chỉ **hai** chip *Chi · Thu* — tài khoản này không có phát sinh vay/nợ, nên
+   chip thứ ba không hiện. Đúng luật.
+3. Chạm chip *Thu*: donut đổi sang danh mục thu, tâm "TỔNG THU 14.6M", danh sách
+   cuối trang đổi theo, mẫu số đổi thành "% tổng thu". Cộng bốn dòng
+   (14.050.000 + 500.000 + 50.000 + 25.000) ra **đúng** 14.625.000 của tâm.
+4. Hàng chip xu hướng **cuộn ngang được** — hai chip đầu tên dài ("Danh mục đã
+   xoá") che mất phần còn lại ở lần nhìn đầu, vuốt ra thấy đủ.
+5. Bật một chip: chú giải đổi từ *Thu/Chi* thành tên danh mục, đường đổi màu, và
+   **trục tung tự co** từ dải 16.8M xuống 51.7K.
+6. Bật ba chip: ba đường, chú giải ba mục, thứ tự khớp.
+7. **Đủ trần 5**: chú giải năm mục, và ba chip chưa bật ("Lương", "Mua sắm",
+   "Thưởng") chuyển sang trạng thái **mờ** thấy rõ so với chính chúng lúc chưa
+   đủ trần — tức `onSelected == null` có hình dạng nhìn thấy được, đúng ý đồ.
+
+⚠️ Lượt nghiệm thu ấy **tìm ra một lỗi**: nhãn trục tung in đè lên nhau ở một số
+dải giá trị — **G39** `CLIENT_APP_KNOWN_GAPS.md`. Nó **không** do lát này: khối
+"Xu hướng 6 tháng" mang sẵn hình dạng ấy từ lát 2b (2026-09-08), lát này chỉ làm
+nó dễ gặp hơn vì mỗi tổ hợp chip là một dải `maxY` khác. Chưa sửa.
+
+⚠️ **Chưa nghiệm thu Stitch.** `edit_screens` đã gọi lúc 21:35 ngày 2026-09-14 và
+**trả về thành công** kèm `dom_operations` sửa **tại chỗ** trên chính màn
+`c2a2b615…` (không tạo màn mới — khác với lần gọi hôm trước). Nhưng hai lượt
+`get_screen` sau đó vẫn trả **cùng** `htmlCode` và `screenshot` cũ. Đó là đặc
+tính độ trễ đã biết của công cụ: *"chưa đổi" nghĩa là "chưa biết"*, không phải
+"thất bại" — đừng gọi lại, hãy kiểm lại sau.
 
 ## 4. Bẫy
 

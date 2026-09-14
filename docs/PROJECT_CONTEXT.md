@@ -639,7 +639,11 @@ khoản vay + lãi vay) đều cần ít nhất một trong những thứ ấy �
 
 **Không đụng schema** (v22 giữ nguyên), **không đụng đường đồng bộ**.
 `flutter test` **2408/2408** · `flutter analyze` **25 issue, 0 error**.
-⚠️ **Chưa nghiệm thu máy ảo và chưa nghiệm thu Stitch** cho bản lần hai.
+**Đã nghiệm thu trên `emulator-5554`** (411dp) đủ bảy điểm — mục 3.19
+`ANALYTICS_FEATURE.md` liệt kê từng điểm. ⚠️ Lượt ấy tìm ra **G39**: nhãn trục
+tung của khối Xu hướng in đè lên nhau ở một số dải giá trị — lỗi **có sẵn từ lát
+2b**, chưa sửa. ⚠️ **Chưa nghiệm thu Stitch**: `edit_screens` báo thành công và
+sửa tại chỗ, nhưng `get_screen` còn trả bản cũ — độ trễ đã biết, kiểm lại sau.
 
 **Thiết kế Stitch:** màn `c2a2b615c9514ca180b28d189b2ea197` — *"Thống kê - Xu
 hướng 6 tháng & Cơ cấu dòng tiền"* (tên màn giữ nguyên dù khối đã đổi tên).

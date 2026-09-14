@@ -1,6 +1,6 @@
 # Client-app — Việc còn dang dở & rủi ro đã biết
 
-**Cập nhật:** 2026-09-14 (mở rồi **đóng G38** ngay trong ngày — ba trang giao dịch rơi về tài khoản admin; **đóng G28** — `wallet.status` đi qua đồng bộ hai chiều, schema v22) · trước đó 2026-09-13 (mở rồi **đóng G37** ngay trong ngày — số dư ví nay suy từ sổ giao dịch; đóng G36) · trước đó 2026-09-11 (sau khi nhánh gộp `main` @ `cc65f4f` và CSDL dev áp `database/12`: đóng G29, G31, G32; G24 thành lỗi phía client rồi đóng cùng ngày; thêm G34; G35 mở rồi đóng cùng ngày; đóng G30; đóng G33); 2026-09-12: gộp `main` @ `cbbeeb4` — CAN-LAM 17 A đóng, kênh thời gian thực nối được trên máy ảo, G34 hết bị chặn rồi **đóng tối cùng ngày** (client nghe `sync.completed`, im lặng, kiểm máy ảo hai máy); chiều muộn thêm **G36** — chờ backend; tối muộn gộp `main` @ `7779999` — backend làm xong CAN-LAM 20 (chốt trả hai lần ở `upsertTransaction`, client đo thật 4 ca; G36 sửa ở mã, **chưa đo đầu-cuối** ca khoá/xoá vì cần API admin — chờ đo rồi đóng); **2026-09-13: đo đầu-cuối ba ca G36 qua API admin — cả ba đúng, G36 ✅ ĐÓNG** (kéo theo: đường `lamMoi` **có** mang `daXoa`, nên ngoại lệ §3.6b không còn vô nghĩa — người dùng chốt **giữ** cùng ngày); cùng ngày, nghiệm thu bước 12 trên hai máy ảo đóng bốn lỗi im lặng của luồng tự động trả hoá đơn và mở **G37** — số dư ví không phản ánh giao dịch sau một lần đẩy bị xung đột
+**Cập nhật:** 2026-09-14 (thêm **G39** — nhãn trục tung khối "Xu hướng 6 tháng" in đè lên nhau, tìm được khi nghiệm thu máy ảo lát A8 #3/#7, **chưa sửa**; mở rồi **đóng G38** ngay trong ngày — ba trang giao dịch rơi về tài khoản admin; **đóng G28** — `wallet.status` đi qua đồng bộ hai chiều, schema v22) · trước đó 2026-09-13 (mở rồi **đóng G37** ngay trong ngày — số dư ví nay suy từ sổ giao dịch; đóng G36) · trước đó 2026-09-11 (sau khi nhánh gộp `main` @ `cc65f4f` và CSDL dev áp `database/12`: đóng G29, G31, G32; G24 thành lỗi phía client rồi đóng cùng ngày; thêm G34; G35 mở rồi đóng cùng ngày; đóng G30; đóng G33); 2026-09-12: gộp `main` @ `cbbeeb4` — CAN-LAM 17 A đóng, kênh thời gian thực nối được trên máy ảo, G34 hết bị chặn rồi **đóng tối cùng ngày** (client nghe `sync.completed`, im lặng, kiểm máy ảo hai máy); chiều muộn thêm **G36** — chờ backend; tối muộn gộp `main` @ `7779999` — backend làm xong CAN-LAM 20 (chốt trả hai lần ở `upsertTransaction`, client đo thật 4 ca; G36 sửa ở mã, **chưa đo đầu-cuối** ca khoá/xoá vì cần API admin — chờ đo rồi đóng); **2026-09-13: đo đầu-cuối ba ca G36 qua API admin — cả ba đúng, G36 ✅ ĐÓNG** (kéo theo: đường `lamMoi` **có** mang `daXoa`, nên ngoại lệ §3.6b không còn vô nghĩa — người dùng chốt **giữ** cùng ngày); cùng ngày, nghiệm thu bước 12 trên hai máy ảo đóng bốn lỗi im lặng của luồng tự động trả hoá đơn và mở **G37** — số dư ví không phản ánh giao dịch sau một lần đẩy bị xung đột
 **Mục đích:** ghi lại những hạng mục đã được **cân nhắc và cố ý hoãn**, kèm lý do và bán kính ảnh hưởng. Không có tài liệu này thì người tiếp theo sẽ hoặc bỏ sót, hoặc làm lại từ đầu việc phân tích rủi ro.
 
 Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nhất.
@@ -43,6 +43,7 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > | ~~**G36**~~ | ✅ **ĐÓNG 2026-09-13 — đo đầu-cuối ba ca qua API admin, cả ba đúng; client không đổi mã.** `Active` → 200; admin khoá → **401 + `ACCOUNT_INACTIVE`** kèm `idaccount` + `reason_inactive` ở cấp gốc; admin xoá mềm → **401 + `ACCOUNT_DELETED`** kèm `idaccount`, **dù 4/4 refresh token đã bị thu hồi** — đúng thứ CAN-LAM 20 §2.7 sửa (nhánh token thu hồi gọi `getAccountValidity` trước khi ném). Mô tả gốc: tài khoản bị xoá qua admin trong lúc app giữ token hết hạn và không có socket → `/auth/refresh` trả 401 **không mã** → app đăng xuất **trơn, không hộp thoại** (đo thật 2026-09-12 chiều). ⚠️ Kéo theo: đường `lamMoi` **CÓ** mang `daXoa`, nên ngoại lệ §3.6b không còn vô nghĩa — xem mục G36 |
 > | ~~**G35**~~ | ✅ **Đóng 2026-09-11** — ba màn quản lý danh mục nay lấy tài khoản qua `currentAccountIdOrNull`: chưa có phiên thì không đọc gì (kể cả tài khoản 0 — bộ khuôn toàn cục), và nút lưu/xoá báo "Chưa xác định được tài khoản đăng nhập". Test quét `lib/` cấm `?? 1` nhiều dòng. ⚠️ Dòng này từng ghi *lỗi đang chạy, chưa sửa* — đúng tới trước bản sửa |
 > | ~~**G38**~~ | ✅ **Mở rồi ĐÓNG 2026-09-14** — ba trang giao dịch (`transaction_page`, `choose_category_page`, `add_transaction_page`) khai `this.idaccount = 1` rồi dùng `?? widget.idaccount`, nên khi phiên chưa sẵn sàng chúng **đọc** ví/danh mục của admin và — nặng nhất — **GHI** giao dịch dưới danh nghĩa admin. Cùng họ G4/G35 nhưng khác hình dạng nên lọt cả hai lượt đóng ấy. Nay dùng `int?` không mặc định + `null` thì chặn; lưới quét `khong_du_phong_admin_test.dart` thêm ca thứ hai bắt đúng dạng này. Nghiệm thu máy ảo: giao dịch ghi vào `Idaccount = 25`, tài khoản 1 không có hàng nào |
+> | **G39** | ⚠️ **Lỗi đang chạy, chưa sửa (2026-09-14)** — nhãn trục tung của khối "Xu hướng 6 tháng" in **đè lên nhau** ở một số dải giá trị: đo trên máy ảo thấy "63.2K" và "63.3K" chồng khít. Gốc rễ là `3 * (maxY / 3) != maxY` trong dấu phẩy động rơi đúng ranh giới làm tròn của `rutGon`, nên **cùng một vị trí** ra hai chuỗi. **Có sẵn từ lát 2b (2026-09-08)**, lát A8 #3/#7 chỉ làm dễ gặp hơn. Không hỏng dữ liệu, chỉ khó đọc một nhãn |
 > | ~~**G37**~~ | ✅ **ĐÓNG 2026-09-13** — số dư ví nay là **cache của tổng sổ giao dịch**, không còn là giá trị tuyệt đối đồng bộ theo LWW. Điểm neo là một giao dịch "Số dư ban đầu" (id suy **tất định** từ `walletId` nên hai máy sinh ra một hàng), `SoDuViService` là nơi duy nhất ghi `balance`, nhánh kéo về thôi đọc cột ấy và tính lại sau mỗi lần pull. Nghiệm thu hai máy ảo: sau một cuộc đua tự trả, **hai máy đều 1.650.000 và bằng tổng sổ** — trước đó máy thắng giữ 2.000.000. Spec: `2026-09-13-so-du-vi-suy-tu-so-giao-dich-design.md` |
 >
 > **G20 đã đóng ngày 2026-09-05** — `depositToGoal` nhận `occurredAt` chặn hai
@@ -1361,6 +1362,43 @@ canh đường ghi, và chúng ghi thẳng một điều bản đầu của chí
 trong luồng thường, thiếu phiên thì màn chọn danh mục **cũng rỗng** nên chốt
 "Vui lòng chọn danh mục" chặn trước — chốt tài khoản là **lớp phòng thủ thứ
 hai**, và phải tiêm lệch mới dựng lại được trạng thái ấy trong widget test.
+
+---
+
+### G39 — Nhãn trục tung của "Xu hướng 6 tháng" in đè lên nhau · ⚠️ LỖI ĐANG CHẠY (2026-09-14, chưa sửa)
+
+**Triệu chứng đo được** trên `emulator-5554` ngày 2026-09-14, tài khoản có dữ
+liệu thật: bật **ba** danh mục ở khối "Xu hướng 6 tháng" thì nhãn trên cùng của
+trục tung là **hai chuỗi đè lên nhau** — "63.2K" và "63.3K" chồng khít, chữ số
+thứ ba thành một vệt không đọc được. Phóng to ảnh chụp mới thấy; ở cỡ thật nó
+trông như một nhãn in lỗi font.
+
+**Gốc rễ.** `_KhoiXuHuong` tính `maxY` rồi `buoc = maxY / 3`, và `leftTitles`
+dùng `interval: buoc`. `fl_chart` vẽ nhãn cho các mốc theo `interval` **và** cho
+biên trên. Hai thứ ấy ở **cùng một vị trí** — nhưng `3 * (maxY / 3)` không bằng
+`maxY` trong dấu phẩy động, và khi giá trị rơi đúng ranh giới làm tròn của
+`toStringAsFixed(1)` (đuôi `…x5`), `rutGon` trả **hai chuỗi khác nhau** cho hai
+số chênh nhau chừng `1e-14`. Hai nhãn ấy vẽ chồng.
+
+**Không phải lỗi của lát A8 #3/#7.** Khối "Xu hướng 6 tháng" có từ lát **2b**
+(2026-09-08) và đã mang sẵn hình dạng này. Lát A8 chỉ làm nó **dễ gặp hơn**:
+trước đây `maxY` chỉ nhận đúng một dải (Thu/Chi toàn tháng), nay mỗi tổ hợp chip
+được bật là một dải khác. Đo cùng ngày, ba dải **không** lỗi — 16.8M (hai đường
+Thu/Chi), 51.7K (một danh mục), 350.8K (năm danh mục) — chỉ dải 63.2K lỗi.
+
+**Vì sao chưa sửa.** Nằm ngoài phạm vi lát đang làm, và người dùng chưa chốt.
+
+**Sửa thế nào khi tới lượt.** Dự án đã có **một định nghĩa duy nhất** của luật
+lọc nhãn trục — `hienNhanTruc` ở `goal/domain/goal_progress_series.dart`, kèm
+test riêng — nhưng nó giải bài toán *mốc nằm gần biên*, còn đây là *hai mốc
+trùng vị trí mà khác chuỗi*, nên nó **không** cứu được ca này: cả hai mốc đều là
+biên nên nó giữ cả hai. Cách rẻ nhất mà đúng gốc rễ là đặt `maxY: buoc * 3` thay
+vì `maxY`, để biên trên **chính xác** bằng mốc cuối của `interval`. Đừng viết
+luật lọc thứ hai — bẫy **4.18** `ANALYTICS_FEATURE.md` đã ghi vì sao.
+
+**Mức độ:** không hỏng dữ liệu, không hỏng im lặng ở chỗ khác — chỉ một nhãn khó
+đọc. Nhưng nó **có test bắt được**: dựng khối với dải rơi vào ranh giới ấy rồi
+đếm số nhãn phân biệt ở biên trên.
 
 ---
 
