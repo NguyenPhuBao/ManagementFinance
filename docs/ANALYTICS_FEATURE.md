@@ -295,11 +295,17 @@ hiện tại của các ví"*:
    trí ví — đúng cái bẫy đã ghi ở mục 3.2 `GOAL_FEATURE.md` (đổi ví tích luỹ một
    lần là mọi khoản nạp cũ đọc thành khoản rút). Thà không hiện còn hơn hiện một
    con số có thể sai.
-2. **Ví tạo giữa kỳ làm số dư đầu kỳ lệch.** Số dư ban đầu của một ví **không
-   phải là giao dịch** (đã kiểm: `lib/features/wallet` không sinh giao dịch nào
-   khi tạo ví), nên nó bị quy hết về "trước kỳ". Money Lover tránh việc này bằng
-   cách ghi số dư ban đầu thành một giao dịch — sửa được, nhưng đó là đổi cách
-   ghi dữ liệu chứ không phải sửa báo cáo.
+2. **Ví tạo giữa kỳ làm số dư đầu kỳ lệch.** ⚠️ Giới hạn này **vẫn còn**, nhưng
+   **lý do của nó đã đổi từ 2026-09-13** (G37, số dư ví suy từ sổ giao dịch):
+   trước đó số dư ban đầu của một ví *không phải là giao dịch* nào cả; nay ví
+   mới **có** sinh một khoản "Số dư ban đầu" thật
+   (`wallet/domain/so_du_mo_so.dart`, id suy tất định từ `walletId`). Nhưng
+   khoản ấy bị `khoanVaoThongKe()` **cố ý loại** — nó là **điểm neo**, không
+   phải thu nhập; đếm nó là mỗi ví người dùng tạo ra lại làm thu nhập tháng ấy
+   tăng vọt đúng bằng số dư ban đầu. Nên với báo cáo, số dư ban đầu vẫn bị quy
+   hết về "trước kỳ" như cũ. Money Lover tránh việc này bằng cách **đếm** khoản
+   mở sổ như một giao dịch thường — đổi được, nhưng đó là đánh đổi với đúng cái
+   méo vừa nói, chứ không phải sửa báo cáo.
 
 ⚠️ Trên tài khoản thử (id 10), số dư đầu kỳ ra **âm**. Đó là số thật của dữ liệu
 ấy, không phải lỗi: tháng 9 thu nhiều hơn chi 13,58 triệu trong khi tổng số dư
