@@ -428,8 +428,29 @@ class AppDatabase extends _$AppDatabase {
           //
           // Chỉ đụng ví đang lưu trữ và chưa xoá — quét cả bảng là ép đẩy lại
           // mọi ví ở lần mở app kế tiếp, cùng lập luận với v20.
+          //
+          // ⚠️ **Phải đẩy cả `updated_at` lên mốc hiện tại**, không chỉ
+          // `sync_status`. Ví lưu trữ cũ ĐÃ từng được đẩy lên (chỉ thiếu cột
+          // `status`), nên mốc của nó **bằng đúng** mốc trên server; mà
+          // `upsertWallet` phía server chỉ ghi khi
+          // `new Date(mapped.update_at) > new Date(existing.update_at)`. Đẩy
+          // lại nguyên mốc cũ là **không lớn hơn** → server trả `conflict`,
+          // giữ bản của nó, và client `markSynced` để thoát vòng lặp (luật
+          // G9). Bước cứu khi ấy tự hỏng theo đúng cách nó sinh ra để ngăn,
+          // và **im lặng**.
+          //
+          // Đo thật trên máy ảo 2026-09-14, bản migration đầu tiên:
+          // `Sending batch 1 operations` → `Push conflict (bản server mới hơn,
+          // lấy theo server)` → `0/1 synced`. Không ca test nào trong 12 ca của
+          // hạng mục thấy điều này, vì hợp đồng payload dựng hàng với
+          // `DateTime.now()` (luôn mới hơn) còn ca migration chỉ đọc cột
+          // `sync_status`.
+          //
+          // `strftime('%s','now')` vì Drift lưu `DateTime` theo **giây** Unix,
+          // không phải mili-giây.
           await customStatement(
-            "UPDATE wallets SET sync_status = 'pending' "
+            "UPDATE wallets SET sync_status = 'pending', "
+            "updated_at = CAST(strftime('%s','now') AS INTEGER) "
             "WHERE status = 'inactive' AND is_deleted = 0",
           );
         }

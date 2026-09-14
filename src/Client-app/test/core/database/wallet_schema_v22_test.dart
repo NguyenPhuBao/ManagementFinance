@@ -26,7 +26,10 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/database/app_database.dart';
 
-int _ms(int y, int m, int d) => DateTime(y, m, d).millisecondsSinceEpoch;
+/// Drift ghi `DateTime` theo **giây** Unix (không phải mili-giây) — chèn
+/// mili-giây vào fixture là đọc lại ra năm 58687.
+int _giay(int y, int m, int d) =>
+    DateTime(y, m, d).millisecondsSinceEpoch ~/ 1000;
 
 /// Bảng `wallets` của một CSDL v21 — lược đồ ví không đổi từ v20.
 ///
@@ -50,6 +53,14 @@ void _createV21Wallets(dynamic database) {
   ''');
 }
 
+Future<int> _mocCapNhat(AppDatabase db, String id) async {
+  final rows = await db
+      .customSelect('SELECT updated_at FROM wallets WHERE id = ?',
+          variables: [Variable<String>(id)])
+      .get();
+  return rows.single.data['updated_at'] as int;
+}
+
 Future<String> _trangThaiDongBo(AppDatabase db, String id) async {
   final rows = await db
       .customSelect('SELECT sync_status FROM wallets WHERE id = ?',
@@ -70,25 +81,25 @@ void main() {
         // đang giữ 'Active' cho nó, và không ai đẩy lại nữa.
         database.execute('''
           INSERT INTO wallets (id, idaccount, name, status, sync_status, is_deleted, updated_at)
-          VALUES ('vi-luu-tru', 7, 'The cu', 'inactive', 'synced', 0, ${_ms(2026, 9, 1)})
+          VALUES ('vi-luu-tru', 7, 'The cu', 'inactive', 'synced', 0, ${_giay(2026, 9, 1)})
         ''');
 
         // Ví đang dùng — KHÔNG được đụng tới.
         database.execute('''
           INSERT INTO wallets (id, idaccount, name, status, sync_status, is_deleted, updated_at)
-          VALUES ('vi-hoat-dong', 7, 'Tien mat', 'active', 'synced', 0, ${_ms(2026, 9, 1)})
+          VALUES ('vi-hoat-dong', 7, 'Tien mat', 'active', 'synced', 0, ${_giay(2026, 9, 1)})
         ''');
 
         // Ví lưu trữ nhưng ĐÃ XOÁ mềm — trạng thái lưu trữ của nó vô nghĩa.
         database.execute('''
           INSERT INTO wallets (id, idaccount, name, status, sync_status, is_deleted, updated_at)
-          VALUES ('vi-da-xoa', 7, 'Da xoa', 'inactive', 'synced', 1, ${_ms(2026, 9, 1)})
+          VALUES ('vi-da-xoa', 7, 'Da xoa', 'inactive', 'synced', 1, ${_giay(2026, 9, 1)})
         ''');
 
         // Ví lưu trữ vốn đã chờ đẩy — migration không được đổi gì (luỹ đẳng).
         database.execute('''
           INSERT INTO wallets (id, idaccount, name, status, sync_status, is_deleted, updated_at)
-          VALUES ('vi-dang-cho', 7, 'Cho day', 'inactive', 'pending', 0, ${_ms(2026, 9, 1)})
+          VALUES ('vi-dang-cho', 7, 'Cho day', 'inactive', 'pending', 0, ${_giay(2026, 9, 1)})
         ''');
 
         // Drift đọc phiên bản CSDL từ `PRAGMA user_version`; đặt 21 để chuỗi
@@ -109,6 +120,33 @@ void main() {
             'này thì lượt pull ĐẦU TIÊN sau khi cập nhật app tự bỏ lưu trữ '
             'chúng — im lặng. Push chạy trước Pull trong cùng chu kỳ nên phép '
             'đánh dấu này kịp.');
+  });
+
+  test('ví được đánh dấu cũng nhận mốc cập nhật MỚI', () async {
+    // ⚠️ Ca này sinh ra từ lượt nghiệm thu máy thật 2026-09-14, sau khi bản
+    // migration đầu tiên — chỉ đổi `sync_status` — **hỏng im lặng**.
+    //
+    // `upsertWallet` phía server chỉ ghi khi
+    // `new Date(mapped.update_at) > new Date(existing.update_at)`. Ví lưu trữ
+    // cũ ĐÃ từng được đẩy lên (chỉ thiếu cột `status`), nên mốc của nó bằng
+    // đúng mốc trên server. Đẩy lại nguyên mốc ấy là **không lớn hơn** → server
+    // trả `conflict`, giữ bản của nó, và client `markSynced` để thoát vòng lặp
+    // (luật G9). Kết quả: ví lưu trữ cũ KHÔNG BAO GIỜ lên được server, tức
+    // bước cứu tự nó hỏng theo đúng cách nó sinh ra để ngăn.
+    //
+    // Đo thật trên máy ảo: `Sending batch 1 operations` rồi
+    // `Push conflict (bản server mới hơn, lấy theo server)` → `0/1 synced`.
+    final moc = await _mocCapNhat(db, 'vi-luu-tru');
+    expect(moc, greaterThan(_giay(2026, 9, 1)),
+        reason: 'Migration phải đẩy `updated_at` lên mốc hiện tại, không giữ '
+            'nguyên mốc cũ — nếu không thì LWW của server từ chối hàng ấy và '
+            'trạng thái lưu trữ không bao giờ rời khỏi máy này.');
+  });
+
+  test('ví KHÔNG được đánh dấu thì giữ nguyên mốc cập nhật', () async {
+    expect(await _mocCapNhat(db, 'vi-hoat-dong'), _giay(2026, 9, 1),
+        reason: 'Đổi mốc của hàng không cần đẩy là tự tạo một cuộc đua LWW: '
+            'máy này sẽ đè lên bản mới hơn của máy khác mà không có lý do gì.');
   });
 
   test('ví đang hoạt động KHÔNG bị đụng tới', () async {
