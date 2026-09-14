@@ -1,6 +1,6 @@
 # Trang Phân tích — thiết kế, lý do, và những cái bẫy
 
-**Cập nhật:** 2026-09-14 (mục **3.19** — A8 #2, #3, #7: cơ cấu dòng tiền có drill-down và xu hướng một danh mục) · bản trước 2026-09-13
+**Cập nhật:** 2026-09-13 (mục 3.2 — luật loại khỏi thống kê nay có **ba** vế, thêm khoản mở sổ của G37) · bản trước 2026-09-09
 **Trạng thái:** **mảng Phân tích đã xong cả 2a, 2b, 2c** (2026-09-09). Lát **2a** xong — mọi con số trên trang là số thật từ SQLite —
 lát **2b** xong (khối "Xu hướng 6 tháng" vẽ bằng `fl_chart`), lát **2c‑1** xong
 (trang Xuất báo cáo đọc ví/danh mục/thời gian thật rồi mở màn **Xem trước báo
@@ -21,8 +21,8 @@ thẳng vào thư mục Tải về** của máy. Xem mục 7.
 | Bất cứ việc gì | Mục 3 (quyết định) và mục 4 (bẫy) |
 | Sửa phép tính | `domain/thong_ke_thang.dart` và test của nó — **không** có CSDL, kiểm bằng danh sách |
 | Sửa cách gộp dữ liệu | Mục 3.3 (mốc tra ngân sách) trước, rồi `data/analytics_repository_impl.dart` |
-| Đụng giao diện | Màn Stitch **`c2a2b615…`** *"Thống kê - Xu hướng 6 tháng & Cơ cấu dòng tiền"* (2026-09-14) — ⚠️ **không** phải màn cũ "FlowMoney Analytics Dashboard" (`a228fa69…`), nay đã lỗi thời; và mục 4.4 về font của bộ test |
-| Đụng biểu đồ | Mục **3.11** (vì sao `fl_chart`, vì sao ghim phiên bản), **3.12** (khối xu hướng từng lệch Stitch, nay hết), **3.19** (đường một danh mục), và bẫy **4.9** (tooltip tràn — thứ duy nhất phải kiểm bằng mắt) |
+| Đụng giao diện | Màn Stitch **"FlowMoney Analytics Dashboard"** — bố cục lấy nguyên từ đó **trừ khối xu hướng**, xem **3.12**; và mục 4.4 về font của bộ test |
+| Đụng biểu đồ | Mục **3.11** (vì sao `fl_chart`, vì sao ghim phiên bản), **3.12** (vì sao lệch Stitch), và bẫy **4.9** (tooltip tràn — thứ duy nhất phải kiểm bằng mắt) |
 | Sinh tệp PDF/CSV | Mục **3.17** (vì sao nhúng font, vì sao `MediaStore` chứ không phải quyền ghi bộ nhớ), **3.18** (ba luật của CSV cho Excel tiếng Việt), bẫy **4.15**–**4.16** |
 | Đụng trang Xuất báo cáo / màn Xem trước | Mục **3.13** (vì sao xem trước rồi mới tải), **3.14** (ảnh chụp, không phải luồng sống; và màn Stitch mới), **3.15** (mười khối lấy chuẩn từ app thị trường), **3.16** (dòng tiền là số suy ngược, hai giới hạn), bẫy **4.11**–**4.14** |
 | Làm tiếp 2c‑2 (sinh tệp) | Mục 7 |
@@ -50,10 +50,6 @@ Màn Stitch "Analytics Dashboard" có đúng những khối trang cũ đã chép
 chọn tháng → Tổng thu / Tổng chi (kèm % so tháng trước) → "Số dư còn lại" →
 donut "Chi tiêu theo hạng mục" với **bốn** ô chú giải → "Chi tiết danh mục" với
 "% ngân sách". Việc của 2a là **thay số**, không phải thay hình.
-
-> ⓘ Đoạn trên mô tả bố cục **năm 2026-09-08**. Khối donut nay tên *"Cơ cấu dòng
-> tiền"* và có hai mức — mục **3.19**; tên cũ giữ ở đây vì nó là lịch sử của
-> quyết định, không phải mô tả hiện trạng.
 
 Donut hiện có là `SweepGradient` tự vẽ, nên 2a **không cần thư viện biểu đồ**;
 quyết định chọn thư viện lùi sang 2b và đã chốt ở đó — `fl_chart`, xem mục
@@ -203,7 +199,7 @@ nét vẽ. Widget test chỉ còn canh ba thứ mà nó canh được thật: kh
 **nhãn trục lấy từ dữ liệu** (bản sai có chủ ý đổi nhãn thành `T${i + 1}` đã
 làm đúng test ấy đỏ), và 411dp không tràn.
 
-### 3.12 Khối xu hướng từng **lệch Stitch có chủ ý** — nay đã hết
+### 3.12 Khối xu hướng **lệch Stitch có chủ ý**
 
 Đã tra cả 35 màn Stitch ngày 2026-09-08: màn "Analytics Dashboard" chỉ có
 `conic-gradient` (donut) và màn "Chi tiết mục tiêu" chỉ có một `<svg>` vòng
@@ -211,12 +207,8 @@ tiến độ. **Không màn nào có biểu đồ đường hay cột.** Nghĩa 
 lời được *tiền đi đâu* nhưng không chỗ nào trả lời *đang tăng hay đang giảm*.
 
 Khối nằm **giữa** khối tổng và donut, theo thứ tự câu hỏi: bao nhiêu → xu hướng
-ra sao → đi vào đâu.
-
-✅ **Lý do lệch đã hết hiệu lực từ 2026-09-14** (mục **3.19**): khối này nay
-**có** trên Stitch — màn `c2a2b615c9514ca180b28d189b2ea197`, *"Thống kê - Xu
-hướng 6 tháng & Cơ cấu dòng tiền"*. Ghi chú ở `_KhoiXuHuong` đã được cập nhật
-chứ không xoá, vì nó ghi lại *vì sao* khối từng đứng ngoài thiết kế.
+ra sao → đi vào đâu. Đây là chỗ đi lệch thiết kế, đã ghi tại chỗ trong
+`_KhoiXuHuong` — **đừng "sửa lại cho khớp Stitch"**.
 
 Sáu tháng chứ không mười hai: ở 411dp, mười hai mốc trục là nhãn chồng lên
 nhau. Chuỗi vẫn nhận `soThang` bất kỳ nên đổi được, nhưng phải xem lại trục.
@@ -303,16 +295,11 @@ hiện tại của các ví"*:
    trí ví — đúng cái bẫy đã ghi ở mục 3.2 `GOAL_FEATURE.md` (đổi ví tích luỹ một
    lần là mọi khoản nạp cũ đọc thành khoản rút). Thà không hiện còn hơn hiện một
    con số có thể sai.
-2. **Ví tạo giữa kỳ làm số dư đầu kỳ lệch.** ⚠️ **Lý do đã đổi từ 2026-09-13,
-   giới hạn thì vẫn còn.** Câu cũ ở đây — *"Số dư ban đầu của một ví không phải
-   là giao dịch (đã kiểm: `lib/features/wallet` không sinh giao dịch nào khi
-   tạo ví)"* — đúng khi viết (2026-09-09) và **sai từ G37**: ví mới nay sinh
-   một khoản "Số dư ban đầu" thật (`8c9aea8`), đúng như cách Money Lover làm.
-   Nhưng khoản ấy bị `khoanVaoThongKe()` **cố ý loại** khỏi mọi thống kê (nó là
-   điểm neo để suy số dư, không phải thu nhập), nên với báo cáo nó vẫn vô hình
-   và số dư đầu kỳ vẫn bị quy hết về "trước kỳ". Muốn sửa thì phải cho khối
-   dòng tiền đọc riêng khoản mở sổ — đổi một luật đang có một định nghĩa duy
-   nhất, nên chưa làm.
+2. **Ví tạo giữa kỳ làm số dư đầu kỳ lệch.** Số dư ban đầu của một ví **không
+   phải là giao dịch** (đã kiểm: `lib/features/wallet` không sinh giao dịch nào
+   khi tạo ví), nên nó bị quy hết về "trước kỳ". Money Lover tránh việc này bằng
+   cách ghi số dư ban đầu thành một giao dịch — sửa được, nhưng đó là đổi cách
+   ghi dữ liệu chứ không phải sửa báo cáo.
 
 ⚠️ Trên tài khoản thử (id 10), số dư đầu kỳ ra **âm**. Đó là số thật của dữ liệu
 ấy, không phải lỗi: tháng 9 thu nhiều hơn chi 13,58 triệu trong khi tổng số dư
@@ -369,94 +356,6 @@ Ngược lại, **PDF là tài liệu để ĐỌC** nên số ở đó có phâ
 tiền. Hai định dạng cố ý khác nhau ở điểm này.
 
 
-### 3.19 Cơ cấu dòng tiền và xu hướng một danh mục — A8 #2, #3, #7
-
-**Xong 2026-09-14.** Spec `docs/superpowers/specs/2026-09-14-thong-ke-phan-loai-va-xu-huong-danh-muc-design.md`,
-kế hoạch `docs/superpowers/plans/2026-09-14-thong-ke-phan-loai-va-xu-huong-danh-muc.md`.
-
-Bảng **A8** của `Project.md` (dòng 1028–1041) có 11 mục; lát này đóng ba mục mà
-client tự làm được với dữ liệu đang có. Bốn mục còn lại — **#4** Cho vay + Thu
-nợ, **#5** Đi vay + Trả nợ, **#8** dòng tiền tự do, **#9** biến động khoản vay —
-bị chặn bởi **mô hình dữ liệu**, không phải bởi biểu đồ: đếm bằng máy 2026-09-14
-thì client có 9 bảng Drift và backend có 13 model Prisma, **không đầu nào có
-bảng khoản vay**. Không có dư nợ gốc, lãi suất, kỳ hạn, hay liên kết giữa một
-khoản vay với các lần trả nợ của nó. Hai mục **#10** (thác nước) và **#11**
-(Sankey) làm được với thu/chi nhưng để đợt sau.
-
-⚠️ **`suggestDebtDirection()` không thay được mô hình ấy.** Nó đoán chiều tiền
-bằng cách so tên danh mục với bốn chuỗi (`đi vay`, `thu nợ`, `cho vay`,
-`trả nợ`) — một **gợi ý lúc nhập liệu**, nơi đoán sai chỉ tốn một cú chạm để
-sửa. Dựng thống kê trên phép đoán theo tên là báo cáo sai mà không ai biết.
-
-#### Luật phân loại — một định nghĩa duy nhất
-
-App có **hai** thứ dễ nhầm là một: `transaction.type` (`thu`/`chi`/`transfer` —
-**chiều tiền**) và `category.classify` (`thu`/`chi`/`vay_no` — **phân loại danh
-mục**). Một khoản *Trả nợ* mang `type = 'chi'` nhưng `classify = 'vay_no'`; A8
-#2 hỏi theo **classify**.
-
-`phanLoaiCua()` ở `domain/phan_loai_dong_tien.dart` là chỗ duy nhất định nghĩa:
-lấy `classify` của danh mục, **rơi về `type`** khi không tra được. Nhánh rơi về
-là bắt buộc — đo trên CSDL 2026-09-10 có 17 hàng giao dịch trống danh mục thật.
-
-⚠️ **`chiTheoDanhMuc()` giữ nguyên, không đụng.** Nó gom theo *chiều tiền* để
-phục vụ hai bảng "Thu/Chi theo danh mục" của trang Xuất báo cáo, dùng ở **10**
-chỗ `lib/` và **7** chỗ `test/` (đếm 2026-09-14). Hàm mới gom theo *phân loại
-danh mục*. Hai câu hỏi khác nhau; gộp lại "cho gọn" sẽ làm bảng của báo cáo đổi
-nghĩa mà không test nào ở đó đỏ.
-
-#### Hệ quả cố ý: lát "Chi" ≠ "Tổng chi"
-
-Ba lát phải **rời nhau** thì tỷ trọng mới có nghĩa, nên lát *Chi* của vòng tròn
-không bằng con số *Tổng chi* ở thẻ đầu trang — nó thiếu đúng phần chi gắn danh
-mục vay/nợ. Ba thẻ tổng **giữ nguyên** định nghĩa theo `type` vì chúng trả lời
-câu hỏi khác. Với tài khoản không dùng danh mục vay/nợ thì hai số bằng nhau.
-
-#### Hình dạng
-
-Một khối donut **hai mức** thay cho khối "Chi tiêu theo hạng mục" cũ: mức gốc
-ba lát theo phân loại, chạm một lát thì xuống danh mục bên trong (vẫn `topVaKhac`
-— top 4 + "Khác"). **Danh sách danh mục cuối trang đi theo cùng lựa chọn**, nên
-hai khối luôn nói cùng một con số. Nhãn mẫu số đổi theo lát (`nhanTongCua`), và
-thanh ngân sách chỉ còn ở lát chi — `BudgetRepository` không có khái niệm ngân
-sách thu.
-
-Khối "Xu hướng 6 tháng" nhận một dropdown: mặc định hai đường Thu/Chi, chọn một
-danh mục thì còn một đường mang màu và tên của nó. Dropdown **chỉ liệt kê danh
-mục có phát sinh trong sáu tháng** đang vẽ. Là dropdown tại chỗ chứ không màn
-mới — trang nằm trong `StatefulShellRoute` (bẫy 7.8 `NOTIFICATION_FEATURE.md`).
-
-#### Bốn cái bẫy im lặng, cả bốn đều có test canh
-
-1. **Stream phát lại làm mất lựa chọn.** `watchThang` phát lại mỗi khi giao
-   dịch, danh mục **hoặc** ngân sách đổi — kể cả khi đồng bộ nền kéo về. Quên
-   chép hai lựa chọn sang state mới thì cứ mỗi chu kỳ đồng bộ là donut tự nhảy
-   về mức gốc **trong khi người dùng đang xem**. Chốt ở `AnalyticsCubit._dungLoaded`.
-2. **Lát biến mất.** Tháng không có khoản vay/nợ nào thì lát ấy không tồn tại;
-   giữ lựa chọn trỏ vào nó là vẽ một vòng tròn trống không nút nào thoát ra.
-3. **Danh mục biến mất.** Đổi tháng hay danh mục bị xoá thì khoá không còn —
-   đọc `chuoiDanhMuc[id]!` khi ấy là nổ.
-4. **`FlClipData` mặc định là `none()`** (bẫy **4.17**) — đường đơn có dải hẹp
-   hơn bản hai đường nên dễ tràn khỏi thẻ hơn. Đã đặt `FlClipData.all()`.
-
-#### Một lượt duyệt cho `chuoiTheoDanhMuc`
-
-Gọi `chuoiTheoThang` một lần cho mỗi danh mục là `số danh mục × soThang` lượt
-quét toàn bộ giao dịch — với 30 danh mục và 5.000 giao dịch là 900.000 phép so
-ngày **mỗi lần stream phát**. Hàm mới duyệt một lần, phân thẳng vào ô
-`(categoryId, tháng)`, và có test đối chiếu thẳng với bản lọc tay: nó chỉ được
-nhanh hơn, không được khác.
-
-#### Nghiệm thu
-
-`flutter test` **2383/2383** · `flutter analyze` **25 issue, 0 error** (2026-09-14).
-Analytics có **12** tệp test / **224** test (đếm bằng máy cùng ngày; mốc 10 tệp /
-170 test là của 2026-09-09). Đã chạy thật trên máy ảo `emulator-5554`: ba lát
-(tài khoản thử không có vay/nợ nên lát ấy bị bỏ — đúng luật), tâm "TỔNG DÒNG
-TIỀN 2.4M", drill-down vào lát Chi ra "TỔNG CHI 350K" khớp danh sách dưới, nút
-quay lại chạy, dropdown chỉ liệt kê danh mục có phát sinh, và đường đơn có trục
-tung tự co theo dải của danh mục (0 → 402.5K) mà không tràn.
-
 ## 4. Bẫy
 
 **4.1 Tài khoản.** `AnalyticsPage` phải `context.watch<AuthBloc>()` + `ValueKey(idaccount)`
@@ -485,8 +384,7 @@ test không thay được bước này.
 
 **4.4 Font của bộ test rộng gấp đôi ngoài đời.** `flutter test` vẽ bằng font
 "Ahem": mỗi ký tự là một ô vuông rộng bằng cỡ chữ. *"Tháng này (T9 2026)"* 14px
-thành 266px, *"Chi tiêu theo hạng mục"* 18px thành 396px (tiêu đề ấy nay là
-*"Cơ cấu dòng tiền"*, ngắn hơn — nhưng phép đo vẫn minh hoạ đúng vấn đề). Hai chỗ ấy tràn 30px
+thành 266px, *"Chi tiêu theo hạng mục"* 18px thành 396px. Hai chỗ ấy tràn 30px
 và 71px **chỉ trong test** — nhưng vẫn phải sửa cho co được, vì đó là thứ duy
 nhất bảo đảm tên tiếng Việt dài hay máy đặt cỡ chữ lớn không tràn thật. Hệ quả
 cho người viết test: assertion về chữ vẫn đúng khi Text bị ellipsis (`find.text`
@@ -694,10 +592,6 @@ không (`preventCurveOverShooting`). Cả ba chỉ kiểm được bằng mắt 
   đồ trong PDF vẽ bằng `pw.Chart` của chính gói `pdf` chứ **không** chụp widget:
   chụp đòi widget đang nằm trong khung nhìn, mà `ListView` thì tháo widget ngoài
   màn hình.
-- ✅ ~~**A8 #2, #3, #7 — cơ cấu dòng tiền và xu hướng một danh mục.**~~ **Xong
-  2026-09-14**, mục **3.19**. Bốn mục A8 còn lại (#4, #5, #8, #9) bị chặn bởi mô
-  hình dữ liệu vay/nợ mà cả hai đầu đều không có; **#10** (thác nước) và **#11**
-  (Sankey) làm được với thu/chi nhưng để đợt sau.
 - **Mảng Phân tích đến đây là xong.** Việc tiếp theo trong thứ tự đã duyệt là
   **biểu đồ tiến độ mục tiêu** (hạng 1 mục 10.5 `GOAL_FEATURE.md`), nay rẻ hẳn
   vì khuôn biểu đồ đã có ở cả màn hình lẫn PDF.

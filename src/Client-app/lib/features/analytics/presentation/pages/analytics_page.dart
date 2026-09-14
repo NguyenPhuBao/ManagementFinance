@@ -5,22 +5,15 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/auth/current_account.dart';
-import '../../../../core/category/category_classify.dart';
 import '../../../../core/category/category_visuals.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../data/analytics_repository.dart';
-import '../../domain/phan_loai_dong_tien.dart';
 import '../../domain/thong_ke_thang.dart';
 import '../bloc/analytics_cubit.dart';
 
-/// Trang Phân tích — bố cục theo màn Stitch `c2a2b615c9514ca180b28d189b2ea197`
-/// *"Thống kê - Xu hướng 6 tháng & Cơ cấu dòng tiền"* (2026-09-14).
-///
-/// ⚠️ **Không** phải màn cũ `a228fa69…` *"FlowMoney Analytics Dashboard"*: nó
-/// vẫn còn trong dự án Stitch nhưng đã lỗi thời, vì `edit_screens` **tạo màn
-/// mới** chứ không sửa màn được chọn.
+/// Trang Phân tích — bố cục theo màn Stitch "Analytics Dashboard".
 ///
 /// Trước 2026-09-08 trang này là **số cứng**: mọi con số là hằng số, kể cả
 /// tháng đang hiện ("T6 2026" khi đang là tháng 9). Nay mọi thứ đi qua
@@ -95,11 +88,7 @@ class _NoiDung extends StatelessWidget {
 
   List<Widget> _than(BuildContext context, AnalyticsState state) {
     switch (state) {
-      case AnalyticsLoaded(
-          :final thongKe,
-          :final phanLoaiDangXem,
-          :final danhMucXuHuong
-        ):
+      case AnalyticsLoaded(:final thongKe):
         if (thongKe.rong) {
           return [_Rong(nam: thongKe.nam, thang: thongKe.thang)];
         }
@@ -107,11 +96,11 @@ class _NoiDung extends StatelessWidget {
           _KhoiTong(tk: thongKe),
           const SizedBox(height: 24),
           // Thứ tự câu hỏi: bao nhiêu → xu hướng ra sao → tiền đi đâu.
-          _KhoiXuHuong(tk: thongKe, danhMucXuHuong: danhMucXuHuong),
+          _KhoiXuHuong(chuoi: thongKe.chuoi),
           const SizedBox(height: 24),
-          _KhoiDonut(tk: thongKe, phanLoaiDangXem: phanLoaiDangXem),
+          _KhoiDonut(tk: thongKe),
           const SizedBox(height: 24),
-          _DanhSachDanhMuc(tk: thongKe, phanLoai: phanLoaiDangXem),
+          _DanhSachDanhMuc(tk: thongKe),
         ];
       case AnalyticsError(:final message):
         return [
@@ -476,50 +465,24 @@ class _TheConLai extends StatelessWidget {
 /// trang trả lời. Khối này nằm giữa khối tổng và donut vì đó là thứ tự câu
 /// hỏi: bao nhiêu → xu hướng ra sao → đi vào đâu. Đừng "sửa lại cho khớp
 /// Stitch".
-/// Biểu đồ đường sáu tháng — A8 #6 (hai đường Thu/Chi) và A8 #7 (một đường cho
-/// một danh mục, chọn bằng dropdown).
-///
-/// ⓘ Khối này từng **lệch Stitch có chủ ý** (mục 3.12 `ANALYTICS_FEATURE.md`):
-/// tra cả 35 màn ngày 2026-09-08, không màn nào có biểu đồ đường. Từ 2026-09-14
-/// nó **đã có** trên Stitch — màn `c2a2b615c9514ca180b28d189b2ea197` — nên lý
-/// do lệch đã hết hiệu lực.
 class _KhoiXuHuong extends StatelessWidget {
-  final ThongKeThang tk;
-
-  /// `null` là hai đường Thu/Chi.
-  final String? danhMucXuHuong;
-  const _KhoiXuHuong({required this.tk, required this.danhMucXuHuong});
+  final List<DiemThoiGian> chuoi;
+  const _KhoiXuHuong({required this.chuoi});
 
   @override
   Widget build(BuildContext context) {
-    final dm = danhMucXuHuong;
-    // Danh mục đã chọn có thể vừa biến mất; cubit đã dọn nhưng khung dựng lại
-    // có thể tới trước — rơi về hai đường thay vì nổ.
-    final chuoi = dm == null ? tk.chuoi : (tk.chuoiDanhMuc[dm] ?? tk.chuoi);
     // Không điểm nào thì không có thang đo — bỏ khối, đừng chia cho 0.
     if (chuoi.isEmpty) return const SizedBox.shrink();
 
-    // Một danh mục thường chỉ đi một chiều tiền, nên đường đơn vẽ tổng thu +
-    // chi của nó. Riêng danh mục vay/nợ có cả hai chiều: cộng lại là "tổng tiền
-    // đi qua danh mục", đúng câu hỏi "nó đang lớn lên hay nhỏ đi".
-    double giaTri(DiemThoiGian d) => d.tong.thu + d.tong.chi;
-
     var dinh = 0.0;
     for (final d in chuoi) {
-      if (dm == null) {
-        if (d.tong.thu > dinh) dinh = d.tong.thu;
-        if (d.tong.chi > dinh) dinh = d.tong.chi;
-      } else if (giaTri(d) > dinh) {
-        dinh = giaTri(d);
-      }
+      if (d.tong.thu > dinh) dinh = d.tong.thu;
+      if (d.tong.chi > dinh) dinh = d.tong.chi;
     }
     // Trần cao hơn đỉnh để đường không dính mép trên. Sáu tháng rỗng sạch thì
     // `dinh` bằng 0 và mọi phép chia thang đo sau đây sẽ hỏng, nên đặt 1.
     final maxY = dinh <= 0 ? 1.0 : dinh * 1.15;
     final buoc = maxY / 3;
-    final dong = dm == null ? null : tk.dongCua(dm);
-    final mauDon = _mauCua(dong);
-    final tenDon = dong?.ten ?? 'Danh mục';
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -542,17 +505,13 @@ class _KhoiXuHuong extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          _ChonDanhMucXuHuong(tk: tk, dangChon: dm),
-          const SizedBox(height: 12),
-          Wrap(
+          const Wrap(
             spacing: 20,
             runSpacing: 8,
-            children: dm == null
-                ? const [
-                    _ChuGiaiDuong(mau: AppColors.income, ten: 'Thu'),
-                    _ChuGiaiDuong(mau: AppColors.expense, ten: 'Chi'),
-                  ]
-                : [_ChuGiaiDuong(mau: mauDon, ten: tenDon)],
+            children: [
+              _ChuGiaiDuong(mau: AppColors.income, ten: 'Thu'),
+              _ChuGiaiDuong(mau: AppColors.expense, ten: 'Chi'),
+            ],
           ),
           const SizedBox(height: 20),
           SizedBox(
@@ -647,9 +606,7 @@ class _KhoiXuHuong extends StatelessWidget {
                     getTooltipItems: (spots) => [
                       for (final s in spots)
                         LineTooltipItem(
-                          dm == null
-                              ? '${s.barIndex == 0 ? 'Thu' : 'Chi'} ${rutGon(s.y)}'
-                              : '$tenDon ${rutGon(s.y)}',
+                          '${s.barIndex == 0 ? 'Thu' : 'Chi'} ${rutGon(s.y)}',
                           const TextStyle(
                             color: Colors.white,
                             fontSize: 12,
@@ -659,37 +616,22 @@ class _KhoiXuHuong extends StatelessWidget {
                     ],
                   ),
                 ),
-                // Điểm ngoài dải vẫn được VẼ nếu không cắt — mặc định của
-                // fl_chart là `FlClipData.none()` và đường tràn khỏi thẻ
-                // (bẫy 4.17 `ANALYTICS_FEATURE.md`, chỉ lộ trên máy thật).
-                // Đường đơn có dải hẹp hơn nên dễ vấp hơn bản hai đường.
-                clipData: const FlClipData.all(),
-                lineBarsData: dm == null
-                    ? [
-                        _duong(
-                          [
-                            for (var i = 0; i < chuoi.length; i++)
-                              FlSpot(i.toDouble(), chuoi[i].tong.thu),
-                          ],
-                          AppColors.income,
-                        ),
-                        _duong(
-                          [
-                            for (var i = 0; i < chuoi.length; i++)
-                              FlSpot(i.toDouble(), chuoi[i].tong.chi),
-                          ],
-                          AppColors.expense,
-                        ),
-                      ]
-                    : [
-                        _duong(
-                          [
-                            for (var i = 0; i < chuoi.length; i++)
-                              FlSpot(i.toDouble(), giaTri(chuoi[i])),
-                          ],
-                          mauDon,
-                        ),
-                      ],
+                lineBarsData: [
+                  _duong(
+                    [
+                      for (var i = 0; i < chuoi.length; i++)
+                        FlSpot(i.toDouble(), chuoi[i].tong.thu),
+                    ],
+                    AppColors.income,
+                  ),
+                  _duong(
+                    [
+                      for (var i = 0; i < chuoi.length; i++)
+                        FlSpot(i.toDouble(), chuoi[i].tong.chi),
+                    ],
+                    AppColors.expense,
+                  ),
+                ],
               ),
             ),
           ),
@@ -734,79 +676,6 @@ class _KhoiXuHuong extends StatelessWidget {
       );
 }
 
-/// Bộ chọn danh mục của khối xu hướng — A8 #7.
-///
-/// Chỉ liệt kê danh mục **có phát sinh trong sáu tháng** đang vẽ: liệt kê tất
-/// cả là bắt người dùng cuộn qua hàng chục dòng để tìm ra một đường phẳng
-/// bằng 0.
-///
-/// Là dropdown tại chỗ chứ không phải màn mới hay bottom sheet — cố ý. Trang
-/// này nằm trong `StatefulShellRoute`, và `push` một route trong shell từ chỗ
-/// khác đã từng làm app chết màn đỏ (bẫy 7.8 `NOTIFICATION_FEATURE.md`).
-class _ChonDanhMucXuHuong extends StatelessWidget {
-  final ThongKeThang tk;
-  final String? dangChon;
-  const _ChonDanhMucXuHuong({required this.tk, required this.dangChon});
-
-  @override
-  Widget build(BuildContext context) {
-    // Tên tra từ cả `danhMuc` (chi) lẫn các lát (thu, vay/nợ) — nếu không thì
-    // danh mục thu có chuỗi mà không có tên, và dropdown bỏ sót nó.
-    final ten = <String, String>{};
-    for (final d in tk.danhMuc) {
-      if (d.categoryId != null) ten[d.categoryId!] = d.ten;
-    }
-    for (final ds in tk.danhMucTheoLat.values) {
-      for (final d in ds) {
-        if (d.categoryId != null) ten[d.categoryId!] = d.ten;
-      }
-    }
-    final id = [
-      for (final k in tk.chuoiDanhMuc.keys)
-        if (k != null && ten.containsKey(k)) k,
-    ]..sort((a, b) => ten[a]!.toLowerCase().compareTo(ten[b]!.toLowerCase()));
-
-    if (id.isEmpty) return const SizedBox.shrink();
-
-    return Container(
-      height: 44,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.outlineVariant),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String?>(
-          value: dangChon,
-          isExpanded: true,
-          icon: const Icon(Icons.expand_more, color: AppColors.textSecondary),
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: AppColors.primary,
-          ),
-          items: [
-            const DropdownMenuItem<String?>(
-              value: null,
-              child: Text('Tất cả danh mục', overflow: TextOverflow.ellipsis),
-            ),
-            for (final k in id)
-              DropdownMenuItem<String?>(
-                value: k,
-                // Tên danh mục dài tới 200 ký tự (`DoRongCot`), phải cắt được
-                // ở 411dp.
-                child: Text(ten[k]!, overflow: TextOverflow.ellipsis),
-              ),
-          ],
-          onChanged: (v) =>
-              context.read<AnalyticsCubit>().chonDanhMucXuHuong(v),
-        ),
-      ),
-    );
-  }
-}
-
 class _ChuGiaiDuong extends StatelessWidget {
   final Color mau;
   final String ten;
@@ -837,60 +706,43 @@ class _ChuGiaiDuong extends StatelessWidget {
 
 // ── Donut ─────────────────────────────────────────────────────────────────
 
-/// Vòng tròn "Cơ cấu dòng tiền", **hai mức**.
-///
-/// - Mức gốc: ba lát theo `category.classify` — trả lời A8 #2.
-/// - Chạm một lát: các danh mục bên trong lát ấy — trả lời A8 #3.
-///
-/// ⚠️ Lát "Chi" ở đây **không bằng** con số "Tổng chi" của thẻ đầu trang: phần
-/// chi gắn danh mục vay/nợ đã sang lát Vay/nợ. Ba lát phải rời nhau thì tỷ
-/// trọng mới có nghĩa — xem §2.1 spec
-/// `2026-09-14-thong-ke-phan-loai-va-xu-huong-danh-muc-design.md`.
 class _KhoiDonut extends StatelessWidget {
   final ThongKeThang tk;
-  final String? phanLoaiDangXem;
-  const _KhoiDonut({required this.tk, required this.phanLoaiDangXem});
+  const _KhoiDonut({required this.tk});
 
   @override
   Widget build(BuildContext context) {
-    if (tk.latPhanLoai.isEmpty) return const SizedBox.shrink();
-    final pl = phanLoaiDangXem;
-    final v = pl == null ? _mucGoc() : _mucDanhMuc(pl);
+    if (tk.chiTheoDanhMuc.isEmpty) return const SizedBox.shrink();
+    final lat = topVaKhac(tk.chiTheoDanhMuc);
+
+    final mau = [
+      for (final l in lat)
+        l.laKhac ? _mauKhac : _mauCua(tk.dongCua(l.categoryId)),
+    ];
+    final ten = [
+      for (final l in lat)
+        l.laKhac ? 'Khác' : (tk.dongCua(l.categoryId)?.ten ?? 'Chưa phân loại'),
+    ];
 
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: _theTrang(),
       child: Column(
         children: [
-          Row(
-            children: [
-              if (pl != null)
-                IconButton(
-                  icon: const Icon(Icons.arrow_back,
-                      size: 20, color: AppColors.primary),
-                  tooltip: 'Về cơ cấu dòng tiền',
-                  padding: EdgeInsets.zero,
-                  visualDensity: VisualDensity.compact,
-                  constraints:
-                      const BoxConstraints(minWidth: 32, minHeight: 32),
-                  onPressed: () =>
-                      context.read<AnalyticsCubit>().chonPhanLoai(null),
-                ),
-              // Một Text đứng trong Row không co được: bọc Expanded, nếu không
-              // tên lát dài tràn (test 411dp bắt được).
-              Expanded(
-                child: Text(
-                  v.tieuDe,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
-                  ),
-                ),
+          // Không bọc trong Row: một Text đứng trong Row không co được, và ở
+          // font đơn cách của bộ test nó tràn 71px (test 411dp bắt được).
+          const SizedBox(
+            width: double.infinity,
+            child: Text(
+              'Chi tiêu theo hạng mục',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.primary,
               ),
-            ],
+            ),
           ),
           const SizedBox(height: 32),
           SizedBox(
@@ -901,126 +753,33 @@ class _KhoiDonut extends StatelessWidget {
               spacing: 32,
               runSpacing: 24,
               children: [
-                _Donut(
-                  lat: v.lat,
-                  mau: v.mau,
-                  nhan: v.nhanTam,
-                  tong: v.tongTam,
-                ),
+                _Donut(lat: lat, mau: mau, tongChi: tk.tong.chi),
                 SizedBox(
                   width: 180,
                   child: Wrap(
                     spacing: 16,
                     runSpacing: 12,
                     children: [
-                      for (var i = 0; i < v.lat.length; i++)
-                        _ChuGiai(
-                          mau: v.mau[i],
-                          nhan: v.ten[i],
-                          // Chỉ mức gốc mới chạm được: mức danh mục không có
-                          // tầng thứ ba để đi xuống.
-                          onTap: pl == null
-                              ? () => context
-                                  .read<AnalyticsCubit>()
-                                  .chonPhanLoai(tk.latPhanLoai[i].phanLoai)
-                              : null,
-                        ),
+                      for (var i = 0; i < lat.length; i++)
+                        _ChuGiai(mau: mau[i], nhan: ten[i]),
                     ],
                   ),
                 ),
               ],
             ),
           ),
-          if (pl == null) ...[
-            const SizedBox(height: 16),
-            const Text(
-              'Chạm một lát để xem danh mục bên trong',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-            ),
-          ],
         ],
       ),
     );
   }
-
-  /// Ba lát theo phân loại.
-  _NoiDungDonut _mucGoc() => (
-        lat: [
-          for (final l in tk.latPhanLoai)
-            ChiTheoDanhMuc(
-                categoryId: l.phanLoai, soTien: l.soTien, tiLe: l.tiLe),
-        ],
-        mau: [for (final l in tk.latPhanLoai) _mauLat(l.phanLoai)],
-        ten: [for (final l in tk.latPhanLoai) tenLat(l.phanLoai)],
-        tieuDe: 'Cơ cấu dòng tiền',
-        nhanTam: 'TỔNG DÒNG TIỀN',
-        tongTam: tk.latPhanLoai.fold<double>(0, (s, l) => s + l.soTien),
-      );
-
-  /// Danh mục bên trong một lát, vẫn top 4 + "Khác".
-  _NoiDungDonut _mucDanhMuc(String pl) {
-    final dong = tk.danhMucCua(pl);
-    final tong = dong.fold<double>(0, (s, d) => s + d.soTien);
-    final lat = topVaKhac([
-      for (final d in dong)
-        ChiTheoDanhMuc(
-          categoryId: d.categoryId,
-          soTien: d.soTien,
-          tiLe: tong <= 0 ? 0 : d.soTien / tong,
-        ),
-    ]);
-    final tra = {for (final d in dong) d.categoryId: d};
-    return (
-      lat: lat,
-      mau: [
-        for (final l in lat) l.laKhac ? _mauKhac : _mauCua(tra[l.categoryId]),
-      ],
-      ten: [
-        for (final l in lat)
-          l.laKhac ? 'Khác' : (tra[l.categoryId]?.ten ?? 'Chưa phân loại'),
-      ],
-      tieuDe: tenLat(pl),
-      nhanTam: nhanTongCua(pl).toUpperCase(),
-      tongTam: tong,
-    );
-  }
 }
-
-/// Mọi thứ khối donut cần vẽ ở một mức — gom lại để hai nhánh mức gốc và mức
-/// danh mục trả về cùng một hình dạng.
-typedef _NoiDungDonut = ({
-  List<ChiTheoDanhMuc> lat,
-  List<Color> mau,
-  List<String> ten,
-  String tieuDe,
-  String nhanTam,
-  double tongTam,
-});
-
-/// Màu của một lát phân loại. Ba màu phải khác nhau rõ — donut không có nhãn
-/// trên lát, chỉ có chú giải bên cạnh.
-Color _mauLat(String phanLoai) => switch (phanLoai) {
-      'thu' => AppColors.income,
-      kDebtClassify => AppColors.warning,
-      _ => AppColors.expense,
-    };
 
 class _Donut extends StatelessWidget {
   final List<ChiTheoDanhMuc> lat;
   final List<Color> mau;
+  final double tongChi;
 
-  /// Nhãn nhỏ ở tâm — "TỔNG DÒNG TIỀN" ở mức gốc, "TỔNG CHI"/"TỔNG THU"/
-  /// "VAY/NỢ" khi đã mở một lát.
-  final String nhan;
-  final double tong;
-
-  const _Donut({
-    required this.lat,
-    required this.mau,
-    required this.nhan,
-    required this.tong,
-  });
+  const _Donut({required this.lat, required this.mau, required this.tongChi});
 
   @override
   Widget build(BuildContext context) {
@@ -1070,10 +829,9 @@ class _Donut extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  nhan,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
+                const Text(
+                  'TỔNG CHI',
+                  style: TextStyle(
                     fontSize: 10,
                     letterSpacing: 1.2,
                     color: AppColors.textSecondary,
@@ -1081,7 +839,7 @@ class _Donut extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  rutGon(tong),
+                  rutGon(tongChi),
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -1100,14 +858,11 @@ class _Donut extends StatelessWidget {
 class _ChuGiai extends StatelessWidget {
   final Color mau;
   final String nhan;
-
-  /// `null` là không chạm được — mức danh mục không có tầng thứ ba để đi xuống.
-  final VoidCallback? onTap;
-  const _ChuGiai({required this.mau, required this.nhan, this.onTap});
+  const _ChuGiai({required this.mau, required this.nhan});
 
   @override
   Widget build(BuildContext context) {
-    final noiDung = Row(
+    return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
@@ -1133,12 +888,6 @@ class _ChuGiai extends StatelessWidget {
         ),
       ],
     );
-    if (onTap == null) return noiDung;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(4),
-      child: Padding(padding: const EdgeInsets.all(2), child: noiDung),
-    );
   }
 }
 
@@ -1146,24 +895,12 @@ class _ChuGiai extends StatelessWidget {
 
 class _DanhSachDanhMuc extends StatelessWidget {
   final ThongKeThang tk;
-
-  /// Lát đang mở; `null` là mức gốc (chi theo chiều tiền, như trước).
-  final String? phanLoai;
-  const _DanhSachDanhMuc({required this.tk, required this.phanLoai});
-
-  /// Nguồn dòng: **đi theo donut** để hai khối luôn nói cùng một con số. Hai
-  /// chỗ đọc hai nguồn khác nhau là donut nói 8.2M mà danh sách cộng ra 8.5M.
-  List<DongDanhMuc> get _dong =>
-      phanLoai == null ? tk.danhMuc : tk.danhMucCua(phanLoai!);
-
-  /// Mẫu số của nhãn "% …" trong từng dòng.
-  String get _nhomTiLe => phanLoai ?? 'chi';
+  const _DanhSachDanhMuc({required this.tk});
 
   @override
   Widget build(BuildContext context) {
-    final dong = _dong;
-    if (dong.isEmpty) return const SizedBox.shrink();
-    final hien = dong.take(_soDongToiDa).toList();
+    if (tk.danhMuc.isEmpty) return const SizedBox.shrink();
+    final hien = tk.danhMuc.take(_soDongToiDa).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1180,7 +917,7 @@ class _DanhSachDanhMuc extends StatelessWidget {
                 color: AppColors.textSecondary,
               ),
             ),
-            if (dong.length > _soDongToiDa)
+            if (tk.danhMuc.length > _soDongToiDa)
               TextButton(
                 onPressed: () => _moBang(context),
                 child: const Text(
@@ -1195,7 +932,7 @@ class _DanhSachDanhMuc extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 8),
-        for (final d in hien) _DongDanhMuc(d: d, phanLoai: _nhomTiLe),
+        for (final d in hien) _DongDanhMuc(d: d),
       ],
     );
   }
@@ -1228,8 +965,7 @@ class _DanhSachDanhMuc extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            for (final d in _dong)
-              _DongDanhMuc(d: d, phanLoai: _nhomTiLe),
+            for (final d in tk.danhMuc) _DongDanhMuc(d: d),
           ],
         ),
       ),
@@ -1239,11 +975,7 @@ class _DanhSachDanhMuc extends StatelessWidget {
 
 class _DongDanhMuc extends StatelessWidget {
   final DongDanhMuc d;
-
-  /// Lát chứa dòng này; quyết định mẫu số của nhãn "% …". Mặc định `'chi'` cho
-  /// mức gốc, nơi danh sách vẫn là chi tiêu theo chiều tiền.
-  final String phanLoai;
-  const _DongDanhMuc({required this.d, this.phanLoai = 'chi'});
+  const _DongDanhMuc({required this.d});
 
   @override
   Widget build(BuildContext context) {
@@ -1253,7 +985,7 @@ class _DongDanhMuc extends StatelessWidget {
     final tiLe = d.coNganSach ? d.tiLeNganSach! : d.tiLeTongChi;
     final nhan = d.coNganSach
         ? '${(tiLe * 100).round()}% ngân sách'
-        : '${(tiLe * 100).round()}% ${nhanTongCua(phanLoai)}';
+        : '${(tiLe * 100).round()}% tổng chi';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),

@@ -593,48 +593,7 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-14)
-
-### 📊 A8 #2, #3, #7 — cơ cấu dòng tiền và xu hướng một danh mục (2026-09-14)
-
-Ba mục của bảng **A8. Analytics & Reporting** (`Project.md:1028-1041`) đã đóng.
-Spec `docs/superpowers/specs/2026-09-14-thong-ke-phan-loai-va-xu-huong-danh-muc-design.md`,
-chi tiết ở mục **3.19** `docs/ANALYTICS_FEATURE.md`.
-
-- **#2 + #3** — khối donut trang Phân tích nay **hai mức**: mức gốc ba lát theo
-  `category.classify` (Thu / Chi / Vay-nợ), chạm một lát thì xuống danh mục bên
-  trong. Danh sách danh mục cuối trang **đi theo** cùng lựa chọn.
-- **#7** — khối "Xu hướng 6 tháng" có dropdown: mặc định hai đường Thu/Chi,
-  chọn một danh mục thì còn một đường mang màu và tên của nó.
-
-**Luật phân loại có một định nghĩa duy nhất** ở
-`analytics/domain/phan_loai_dong_tien.dart`. ⚠️ App có **hai** thứ dễ nhầm là
-một: `transaction.type` là **chiều tiền**, `category.classify` là **phân loại
-danh mục** — khoản *Trả nợ* mang `type='chi'` nhưng `classify='vay_no'`. Luật
-lấy `classify`, **rơi về `type`** khi không tra được danh mục (đo 2026-09-10:
-server có 17 hàng giao dịch trống danh mục thật).
-
-⚠️ **Hệ quả cố ý:** lát "Chi" **không bằng** "Tổng chi" ở thẻ đầu trang — ba lát
-phải rời nhau thì tỷ trọng mới có nghĩa. Đừng "sửa" cho khớp.
-
-**Bốn mục A8 còn lại bị chặn bởi mô hình dữ liệu, không phải bởi biểu đồ.** Đếm
-bằng máy 2026-09-14: client có **9** bảng Drift, backend có **13** model
-Prisma, **không đầu nào có bảng khoản vay**. Không có dư nợ gốc, lãi suất, kỳ
-hạn, hay liên kết giữa một khoản vay với các lần trả nợ. Mục **#4** (Cho vay +
-Thu nợ), **#5** (Đi vay + Trả nợ), **#8** (dòng tiền tự do), **#9** (biến động
-khoản vay + lãi vay) đều cần ít nhất một trong những thứ ấy → cần mô hình mới ở
-**cả hai đầu**, tức phải xin backend. Mục **#10** (thác nước) và **#11**
-(Sankey) làm được với thu/chi nhưng để đợt sau.
-
-**Không đụng schema** (v21 giữ nguyên), **không đụng đường đồng bộ**.
-`flutter test` **2383/2383** · `flutter analyze` **25 issue, 0 error**. Đã
-nghiệm thu trên `emulator-5554`.
-
-**Thiết kế Stitch:** màn `c2a2b615c9514ca180b28d189b2ea197` — *"Thống kê - Xu
-hướng 6 tháng & Cơ cấu dòng tiền"*. ⚠️ Màn cũ `a228fa69…` *"FlowMoney Analytics
-Dashboard"* **vẫn còn trong dự án Stitch nhưng đã lỗi thời**: `edit_screens`
-**tạo màn mới** chứ không sửa màn được chọn, nên nghiệm thu Stitch phải dùng
-`list_screens` tìm màn mới.
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-13)
 
 ### 🔐 Xác thực phiên đăng nhập
 

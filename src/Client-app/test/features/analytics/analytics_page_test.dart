@@ -15,7 +15,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/di/injection_container.dart';
 import 'package:flowmoney/features/analytics/data/analytics_repository.dart';
-import 'package:flowmoney/features/analytics/domain/phan_loai_dong_tien.dart';
 import 'package:flowmoney/features/analytics/domain/thong_ke_thang.dart';
 import 'package:flowmoney/features/analytics/presentation/bloc/analytics_cubit.dart';
 import 'package:flowmoney/features/analytics/presentation/pages/analytics_page.dart';
@@ -91,9 +90,6 @@ ThongKeThang _tk({
   double chiTruoc = 1000000,
   List<DongDanhMuc> danhMuc = const [],
   List<DiemThoiGian>? chuoi,
-  List<LatPhanLoai> lat = const [],
-  Map<String, List<DongDanhMuc>> theoLat = const {},
-  Map<String?, List<DiemThoiGian>> chuoiDm = const {},
 }) =>
     ThongKeThang(
       nam: nam,
@@ -113,17 +109,7 @@ ThongKeThang _tk({
       // nào không nói gì về biểu đồ vẫn đi qua nhánh thường thay vì nhánh
       // "chưa có chuỗi".
       chuoi: chuoi ?? chuoiTheoThang(const [], nam: nam, thang: thang),
-      latPhanLoai: lat,
-      danhMucTheoLat: theoLat,
-      chuoiDanhMuc: chuoiDm,
     );
-
-/// Ba lát mẫu, dùng chung cho nhóm test "Cơ cấu dòng tiền".
-const _baLat = [
-  LatPhanLoai(phanLoai: 'thu', soTien: 600000, tiLe: 0.6),
-  LatPhanLoai(phanLoai: 'chi', soTien: 300000, tiLe: 0.3),
-  LatPhanLoai(phanLoai: 'vay_no', soTien: 100000, tiLe: 0.1),
-];
 
 void main() {
   late _RepoGia repo;
@@ -223,33 +209,20 @@ void main() {
     expect(find.text('800.000đ'), findsOneWidget);
   });
 
-  testWidgets('mức danh mục: 4 lát đầu + "Khác", tâm hiện tổng của lát',
+  testWidgets('donut: 4 lát đầu + "Khác", tâm hiện tổng chi rút gọn',
       (tester) async {
-    // Từ 2026-09-14 phép "top 4 + Khác" nằm ở MỨC DRILL-DOWN của donut, không
-    // còn ở mức gốc: mức gốc nay là ba lát theo phân loại (A8 #2).
-    final chiTietChi = [
-      _dm('a', 'Ăn uống', 2100000, 0.323),
-      _dm('b', 'Mua sắm', 1500000, 0.231),
-      _dm('c', 'Di chuyển', 900000, 0.138),
-      _dm('d', 'Giải trí', 600000, 0.092),
-      _dm('e', 'Y tế', 800000, 0.123),
-      _dm('f', 'Khác nữa', 600000, 0.092),
-    ];
     await moTrang(tester);
     await phat(
       tester,
-      _tk(
-        chi: 6500000,
-        danhMuc: chiTietChi,
-        lat: const [LatPhanLoai(phanLoai: 'chi', soTien: 6500000, tiLe: 1.0)],
-        theoLat: {'chi': chiTietChi},
-      ),
+      _tk(chi: 6500000, danhMuc: [
+        _dm('a', 'Ăn uống', 2100000, 0.323),
+        _dm('b', 'Mua sắm', 1500000, 0.231),
+        _dm('c', 'Di chuyển', 900000, 0.138),
+        _dm('d', 'Giải trí', 600000, 0.092),
+        _dm('e', 'Y tế', 800000, 0.123),
+        _dm('f', 'Khác nữa', 600000, 0.092),
+      ]),
     );
-
-    await tester.ensureVisible(find.widgetWithText(InkWell, 'Chi'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(InkWell, 'Chi'));
-    await tester.pumpAndSettle();
 
     expect(find.text('6.5M'), findsOneWidget);
     expect(find.text('Khác'), findsOneWidget,
@@ -421,203 +394,6 @@ void main() {
           reason: 'Nhãn trục trái mang số tiền rút gọn; số hàng trăm triệu là '
               'chuỗi dài nhất có thể, và font của bộ test rộng gấp đôi ngoài '
               'đời nên đây là ca chật nhất.');
-    });
-  });
-
-  group('Cơ cấu dòng tiền', () {
-    testWidgets('mức gốc hiện ba lát và dòng gợi ý', (tester) async {
-      await moTrang(tester);
-      await phat(tester, _tk(lat: _baLat));
-
-      expect(find.text('Cơ cấu dòng tiền'), findsOneWidget);
-      expect(find.text('Thu'), findsWidgets);
-      expect(find.text('Chi'), findsWidgets);
-      expect(find.text('Vay / nợ'), findsOneWidget);
-      expect(
-          find.text('Chạm một lát để xem danh mục bên trong'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    });
-
-    testWidgets('chạm một lát thì cả donut lẫn danh sách đổi theo',
-        (tester) async {
-      await moTrang(tester);
-      await phat(
-        tester,
-        _tk(
-          lat: _baLat,
-          danhMuc: [_dm('c_an', 'Ăn uống', 300000, 1.0)],
-          theoLat: {
-            'chi': [_dm('c_an', 'Ăn uống', 300000, 1.0)],
-            'thu': [_dm('c_luong', 'Lương', 600000, 1.0)],
-          },
-        ),
-      );
-
-      expect(find.text('Ăn uống'), findsWidgets,
-          reason: 'Mức gốc: danh sách vẫn là chi theo chiều tiền');
-
-      await tester.ensureVisible(find.widgetWithText(InkWell, 'Thu'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(InkWell, 'Thu'));
-      await tester.pumpAndSettle();
-
-      // Hai chỗ: chú giải donut và dòng trong danh sách — đó chính là điều
-      // đang canh, hai khối cùng nói về một danh mục.
-      expect(find.text('Lương'), findsNWidgets(2),
-          reason: 'Danh sách cuối trang phải đi theo lát — §3.2 spec');
-      expect(find.text('Ăn uống'), findsNothing,
-          reason: 'Danh mục của lát khác không được lẫn vào — hai khối lệch '
-              'nhau là donut nói một số, danh sách cộng ra số khác');
-    });
-
-    testWidgets('nút quay lại đưa về mức gốc', (tester) async {
-      await moTrang(tester);
-      await phat(
-        tester,
-        _tk(lat: _baLat, theoLat: {
-          'chi': [_dm('c_an', 'Ăn uống', 300000, 1.0)],
-        }),
-      );
-
-      await tester.ensureVisible(find.widgetWithText(InkWell, 'Chi'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(InkWell, 'Chi'));
-      await tester.pumpAndSettle();
-      expect(find.text('Chạm một lát để xem danh mục bên trong'), findsNothing);
-
-      await tester.ensureVisible(find.byTooltip('Về cơ cấu dòng tiền'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Về cơ cấu dòng tiền'));
-      await tester.pumpAndSettle();
-      expect(
-          find.text('Chạm một lát để xem danh mục bên trong'), findsOneWidget);
-    });
-
-    testWidgets('nhãn mẫu số đổi theo lát', (tester) async {
-      await moTrang(tester);
-      await phat(
-        tester,
-        _tk(lat: _baLat, theoLat: {
-          'thu': [_dm('c_luong', 'Lương', 600000, 1.0)],
-        }),
-      );
-
-      await tester.ensureVisible(find.widgetWithText(InkWell, 'Thu'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(InkWell, 'Thu'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('100% tổng thu'), findsOneWidget,
-          reason: '"% tổng chi" ở lát thu là nói sai mẫu số');
-    });
-
-    testWidgets('tên danh mục dài không tràn ở 411dp', (tester) async {
-      tester.view.physicalSize = const Size(411 * 3, 900 * 3);
-      tester.view.devicePixelRatio = 3.0;
-      addTearDown(tester.view.reset);
-
-      await moTrang(tester);
-      await phat(
-        tester,
-        _tk(lat: _baLat, theoLat: {
-          'chi': [
-            _dm('c_an', 'Ăn uống nhà hàng và cà phê cuối tuần', 300000, 1.0),
-          ],
-        }),
-      );
-      await tester.ensureVisible(find.widgetWithText(InkWell, 'Chi'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(InkWell, 'Chi'));
-      await tester.pumpAndSettle();
-
-      expect(tester.takeException(), isNull,
-          reason: 'Flutter báo tràn qua FlutterError.reportError chứ không ném '
-              'ra chỗ gọi — test chỉ pumpWidget + find sẽ xanh ngay cả khi màn '
-              'hình đầy sọc vàng');
-    });
-  });
-
-  group('bộ chọn danh mục của khối Xu hướng', () {
-    List<DiemThoiGian> chuoiMau() =>
-        chuoiTheoThang(const [], nam: 2026, thang: 9);
-
-    testWidgets('mặc định là "Tất cả danh mục" với hai đường Thu/Chi',
-        (tester) async {
-      await moTrang(tester);
-      await phat(
-        tester,
-        _tk(
-          danhMuc: [_dm('c_an', 'Ăn uống', 300000, 1.0)],
-          chuoiDm: {'c_an': chuoiMau()},
-        ),
-      );
-
-      expect(find.text('Tất cả danh mục'), findsOneWidget);
-      expect(find.text('Thu'), findsWidgets);
-      expect(find.text('Chi'), findsWidgets);
-    });
-
-    testWidgets('chọn một danh mục thì chú giải đổi thành tên nó',
-        (tester) async {
-      await moTrang(tester);
-      await phat(
-        tester,
-        _tk(
-          danhMuc: [_dm('c_an', 'Ăn uống', 300000, 1.0)],
-          chuoiDm: {'c_an': chuoiMau()},
-        ),
-      );
-
-      await tester.tap(find.text('Tất cả danh mục'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Ăn uống').last);
-      await tester.pumpAndSettle();
-
-      expect(find.text('Ăn uống'), findsWidgets);
-      expect(tester.takeException(), isNull);
-    });
-
-    testWidgets('chỉ liệt kê danh mục CÓ phát sinh trong 6 tháng',
-        (tester) async {
-      await moTrang(tester);
-      await phat(
-        tester,
-        _tk(
-          danhMuc: [
-            _dm('c_an', 'Ăn uống', 300000, 0.7),
-            _dm('c_di', 'Đi lại', 100000, 0.3),
-          ],
-          // Chỉ 'c_an' có chuỗi — 'c_di' phát sinh ngoài 6 tháng.
-          chuoiDm: {'c_an': chuoiMau()},
-        ),
-      );
-
-      await tester.tap(find.text('Tất cả danh mục'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Đi lại'), findsOneWidget,
-          reason: 'Chỉ còn dòng ở bảng chi tiết, KHÔNG có trong dropdown — '
-              'liệt kê mọi danh mục là bắt người dùng cuộn qua hàng chục dòng '
-              'để tìm ra một đường phẳng bằng 0');
-    });
-
-    testWidgets('tên danh mục dài không tràn dropdown ở 411dp', (tester) async {
-      tester.view.physicalSize = const Size(411 * 3, 900 * 3);
-      tester.view.devicePixelRatio = 3.0;
-      addTearDown(tester.view.reset);
-
-      await moTrang(tester);
-      await phat(
-        tester,
-        _tk(
-          danhMuc: [
-            _dm('c_an', 'Ăn uống nhà hàng và cà phê cuối tuần dài', 300000, 1.0),
-          ],
-          chuoiDm: {'c_an': chuoiMau()},
-        ),
-      );
-
-      expect(tester.takeException(), isNull);
     });
   });
 }
