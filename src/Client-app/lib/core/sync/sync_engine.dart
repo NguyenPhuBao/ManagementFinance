@@ -8,6 +8,7 @@ import '../api/dio_client.dart';
 import '../bill/bill_recurrence.dart';
 import '../database/app_database.dart';
 import '../../features/wallet/data/services/so_du_vi_service.dart';
+import '../../features/wallet/domain/wallet_status.dart';
 import '../../features/bill/domain/bill_pay_status.dart';
 import 'backend_bool.dart';
 import 'sync_models.dart';
@@ -569,33 +570,28 @@ class SyncEngine {
                 includeInTotal: w['include_in_total'] != null
                     ? Value(doiSangBool(w['include_in_total']))
                     : const Value.absent(),
-                // ⚠️ `status` (lưu trữ ví) là cột CỤC BỘ, cố ý không đi
-                // theo chiều nào của đồng bộ — cùng diện với
-                // `bills.autoPayEnabled`. (`bills.anchorDay` từng cùng diện
-                // nhưng đã mở đường đồng bộ ngày 2026-09-12.)
+                // `status` (lưu trữ ví) đi qua đồng bộ **hai chiều** từ
+                // 2026-09-14 — G28. Trước đó nó là cột cục bộ vì lược đồ
+                // PostgreSQL tự mâu thuẫn ở đúng đây: `chk_wallet_status` cho
+                // phép `'Inactive'` trong khi kiểu cột là `varchar(7)` còn
+                // chuỗi ấy dài 8 ký tự, nên ví lưu trữ đẩy lên là **kẹt hàng
+                // đợi đẩy vĩnh viễn, im lặng** (vấp thật trên máy ảo
+                // 2026-09-10). Đo lại 2026-09-14: `varchar(20)`, `NOT NULL`,
+                // `DEFAULT 'Active'`.
                 //
-                // Lý do ban đầu là một con số, đo thẳng trên PostgreSQL ngày
-                // 2026-09-10: `chk_wallet_status` CHO PHÉP `'Inactive'`,
-                // nhưng kiểu cột `Status` khi ấy là **varchar(7)** còn chuỗi
-                // ấy dài **8 ký tự** — lược đồ tự mâu thuẫn. Đẩy lên là hàng
-                // ví vỡ ở tầng CSDL và kẹt hàng đợi đẩy, thử lại ở MỌI chu
-                // kỳ, kéo chậm cả hàng đợi. Đã vấp thật trên máy ảo, và đó là
-                // cách phát hiện ra con số ấy. Tối cùng ngày CSDL dev đã nới
-                // cột lên `varchar(20)` (áp `database/7`), nhưng cả hai chiều
-                // vẫn **cố ý** tắt cho tới khi mở lại G28 — người dùng chốt
-                // để sau.
+                // Lưu **chữ thường**: cột SQLite mặc định `'active'` và hợp
+                // đồng ghi ở `wallet_entity.dart` là `'active' | 'inactive'`.
+                // Trộn hai cách viết thì mọi câu SQL thô so chuỗi trực tiếp
+                // lọc lệch — `WalletDao.getActive` cố ý lọc ở tầng Dart chính
+                // vì chờ đúng nhánh này.
                 //
-                // Nhánh KÉO VỀ phải im lặng cùng lúc với nhánh đẩy: client
-                // không bao giờ đẩy cột này, nên server giữ `'Active'` cho
-                // mọi ví của tài khoản còn dùng (chỉ ví của tài khoản đã bị
-                // xoá hẳn mới bị `scheduler.service.js` đặt `'Inactive'`).
-                // Đọc cột về là ví vừa lưu trữ lặng lẽ sống lại ở lượt pull
-                // kế tiếp.
-                //
-                // Mở lại cả hai chiều cùng lúc, kèm cập nhật
-                // `sync_payload_contract_test.dart` — G28 ở
-                // `docs/CLIENT_APP_KNOWN_GAPS.md`, và
-                // `docs/superpowers/backend/DA-XONG/WALLET_STATUS_COLUMN_WIDTH.md`.
+                // Thiếu khoá nghĩa là **chưa biết**, không phải "hãy đánh
+                // thức": cột của server hiện `NOT NULL` nên nó luôn trả giá
+                // trị, nhưng `absent` là lớp phòng thủ trước một bản backend
+                // không trả khoá ấy — cùng bài học với `include_in_total`.
+                status: w['status'] != null
+                    ? Value(WalletStatus.tuKhoa(w['status'].toString()).khoa)
+                    : const Value.absent(),
                 isDeleted: Value(w['delete_at'] != null),
                 deletedAt: Value(_deletedAtFrom(w['delete_at'])),
                 syncStatus: const Value('synced'),
@@ -1222,7 +1218,10 @@ class SyncEngine {
           'is_default': w.isDefault,
           'is_deleted': w.isDeleted,
           'include_in_total': w.includeInTotal,
-          // ⚠️ `status` CỐ Ý KHÔNG có mặt — xem chú thích ở nhánh kéo về.
+          // Chuỗi thô của SQLite ('active'/'inactive'); `walletForPush` dịch
+          // sang từ vựng của server. Engine dựng payload thô, normalizer là
+          // tầng hợp đồng — cùng khuôn `type` ngay trên. (G28, 2026-09-14.)
+          'status': w.status,
           'updated_at': w.updatedAt.toUtc().toIso8601String(),
           'idaccount': w.idaccount > 0 ? w.idaccount : idaccount,
         },

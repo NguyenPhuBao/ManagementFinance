@@ -56,7 +56,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 21;
+  int get schemaVersion => 22;
 
   @override
   MigrationStrategy get migration {
@@ -412,6 +412,26 @@ class AppDatabase extends _$AppDatabase {
           // liệu cho hàng cũ — NULL nghĩa là "kết thúc kỳ trùng hạn trả", đúng
           // hành vi trước đó. Xem chú thích `Bills.periodEnd`.
           await m.addColumn(bills, bills.periodEnd);
+        }
+        if (from < 22) {
+          // G28: `status` (lưu trữ ví) bắt đầu đi qua đồng bộ từ 2026-09-14.
+          //
+          // Ví đã lưu trữ TRƯỚC bản này đang ở `synced`, nên nhánh đẩy không
+          // bao giờ gửi lại chúng — trong khi cột `Status` của PostgreSQL là
+          // `NOT NULL DEFAULT 'Active'`, tức server đang giữ `'Active'` cho
+          // đúng những ví ấy. Không có bước này thì lượt pull ĐẦU TIÊN sau khi
+          // cập nhật app lặng lẽ bỏ lưu trữ chúng: ví quay lại mọi bộ chọn,
+          // quay lại tổng tài sản, và hai bộ chạy tự động dùng lại nó.
+          //
+          // Đủ, vì Push chạy TRƯỚC Pull trong cùng chu kỳ (`_sendBatch` rồi
+          // `_pullFromBackend`): ví lên tới server trước khi pull đọc về.
+          //
+          // Chỉ đụng ví đang lưu trữ và chưa xoá — quét cả bảng là ép đẩy lại
+          // mọi ví ở lần mở app kế tiếp, cùng lập luận với v20.
+          await customStatement(
+            "UPDATE wallets SET sync_status = 'pending' "
+            "WHERE status = 'inactive' AND is_deleted = 0",
+          );
         }
       },
       beforeOpen: (details) async {
