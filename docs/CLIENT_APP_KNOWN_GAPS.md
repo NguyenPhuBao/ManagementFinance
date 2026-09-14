@@ -1,6 +1,6 @@
 # Client-app — Việc còn dang dở & rủi ro đã biết
 
-**Cập nhật:** 2026-09-14 (**đóng G28** — `wallet.status` đi qua đồng bộ hai chiều, schema v22) · trước đó 2026-09-13 (mở rồi **đóng G37** ngay trong ngày — số dư ví nay suy từ sổ giao dịch; đóng G36) · trước đó 2026-09-11 (sau khi nhánh gộp `main` @ `cc65f4f` và CSDL dev áp `database/12`: đóng G29, G31, G32; G24 thành lỗi phía client rồi đóng cùng ngày; thêm G34; G35 mở rồi đóng cùng ngày; đóng G30; đóng G33); 2026-09-12: gộp `main` @ `cbbeeb4` — CAN-LAM 17 A đóng, kênh thời gian thực nối được trên máy ảo, G34 hết bị chặn rồi **đóng tối cùng ngày** (client nghe `sync.completed`, im lặng, kiểm máy ảo hai máy); chiều muộn thêm **G36** — chờ backend; tối muộn gộp `main` @ `7779999` — backend làm xong CAN-LAM 20 (chốt trả hai lần ở `upsertTransaction`, client đo thật 4 ca; G36 sửa ở mã, **chưa đo đầu-cuối** ca khoá/xoá vì cần API admin — chờ đo rồi đóng); **2026-09-13: đo đầu-cuối ba ca G36 qua API admin — cả ba đúng, G36 ✅ ĐÓNG** (kéo theo: đường `lamMoi` **có** mang `daXoa`, nên ngoại lệ §3.6b không còn vô nghĩa — người dùng chốt **giữ** cùng ngày); cùng ngày, nghiệm thu bước 12 trên hai máy ảo đóng bốn lỗi im lặng của luồng tự động trả hoá đơn và mở **G37** — số dư ví không phản ánh giao dịch sau một lần đẩy bị xung đột
+**Cập nhật:** 2026-09-14 (mở rồi **đóng G38** ngay trong ngày — ba trang giao dịch rơi về tài khoản admin; **đóng G28** — `wallet.status` đi qua đồng bộ hai chiều, schema v22) · trước đó 2026-09-13 (mở rồi **đóng G37** ngay trong ngày — số dư ví nay suy từ sổ giao dịch; đóng G36) · trước đó 2026-09-11 (sau khi nhánh gộp `main` @ `cc65f4f` và CSDL dev áp `database/12`: đóng G29, G31, G32; G24 thành lỗi phía client rồi đóng cùng ngày; thêm G34; G35 mở rồi đóng cùng ngày; đóng G30; đóng G33); 2026-09-12: gộp `main` @ `cbbeeb4` — CAN-LAM 17 A đóng, kênh thời gian thực nối được trên máy ảo, G34 hết bị chặn rồi **đóng tối cùng ngày** (client nghe `sync.completed`, im lặng, kiểm máy ảo hai máy); chiều muộn thêm **G36** — chờ backend; tối muộn gộp `main` @ `7779999` — backend làm xong CAN-LAM 20 (chốt trả hai lần ở `upsertTransaction`, client đo thật 4 ca; G36 sửa ở mã, **chưa đo đầu-cuối** ca khoá/xoá vì cần API admin — chờ đo rồi đóng); **2026-09-13: đo đầu-cuối ba ca G36 qua API admin — cả ba đúng, G36 ✅ ĐÓNG** (kéo theo: đường `lamMoi` **có** mang `daXoa`, nên ngoại lệ §3.6b không còn vô nghĩa — người dùng chốt **giữ** cùng ngày); cùng ngày, nghiệm thu bước 12 trên hai máy ảo đóng bốn lỗi im lặng của luồng tự động trả hoá đơn và mở **G37** — số dư ví không phản ánh giao dịch sau một lần đẩy bị xung đột
 **Mục đích:** ghi lại những hạng mục đã được **cân nhắc và cố ý hoãn**, kèm lý do và bán kính ảnh hưởng. Không có tài liệu này thì người tiếp theo sẽ hoặc bỏ sót, hoặc làm lại từ đầu việc phân tích rủi ro.
 
 Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nhất.
@@ -42,6 +42,7 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > | ~~**G34**~~ | ✅ **ĐÓNG 2026-09-12 tối** — client dịch `sync.completed` → `RealtimeEvent.dongBoXong`, đánh thức `syncNow()`, **im lặng** (không toast: máy vừa đẩy cũng nhận lại sự kiện của mình và payload là hộp đen nên toast sẽ nói sai). Kiểm máy ảo hai máy cùng tài khoản: máy kia kéo về **cùng giây** backend phát. Trước đó: mở 2026-09-11, chặn bởi 17 A tới sáng 2026-09-12 |
 > | ~~**G36**~~ | ✅ **ĐÓNG 2026-09-13 — đo đầu-cuối ba ca qua API admin, cả ba đúng; client không đổi mã.** `Active` → 200; admin khoá → **401 + `ACCOUNT_INACTIVE`** kèm `idaccount` + `reason_inactive` ở cấp gốc; admin xoá mềm → **401 + `ACCOUNT_DELETED`** kèm `idaccount`, **dù 4/4 refresh token đã bị thu hồi** — đúng thứ CAN-LAM 20 §2.7 sửa (nhánh token thu hồi gọi `getAccountValidity` trước khi ném). Mô tả gốc: tài khoản bị xoá qua admin trong lúc app giữ token hết hạn và không có socket → `/auth/refresh` trả 401 **không mã** → app đăng xuất **trơn, không hộp thoại** (đo thật 2026-09-12 chiều). ⚠️ Kéo theo: đường `lamMoi` **CÓ** mang `daXoa`, nên ngoại lệ §3.6b không còn vô nghĩa — xem mục G36 |
 > | ~~**G35**~~ | ✅ **Đóng 2026-09-11** — ba màn quản lý danh mục nay lấy tài khoản qua `currentAccountIdOrNull`: chưa có phiên thì không đọc gì (kể cả tài khoản 0 — bộ khuôn toàn cục), và nút lưu/xoá báo "Chưa xác định được tài khoản đăng nhập". Test quét `lib/` cấm `?? 1` nhiều dòng. ⚠️ Dòng này từng ghi *lỗi đang chạy, chưa sửa* — đúng tới trước bản sửa |
+> | ~~**G38**~~ | ✅ **Mở rồi ĐÓNG 2026-09-14** — ba trang giao dịch (`transaction_page`, `choose_category_page`, `add_transaction_page`) khai `this.idaccount = 1` rồi dùng `?? widget.idaccount`, nên khi phiên chưa sẵn sàng chúng **đọc** ví/danh mục của admin và — nặng nhất — **GHI** giao dịch dưới danh nghĩa admin. Cùng họ G4/G35 nhưng khác hình dạng nên lọt cả hai lượt đóng ấy. Nay dùng `int?` không mặc định + `null` thì chặn; lưới quét `khong_du_phong_admin_test.dart` thêm ca thứ hai bắt đúng dạng này. Nghiệm thu máy ảo: giao dịch ghi vào `Idaccount = 25`, tài khoản 1 không có hàng nào |
 > | ~~**G37**~~ | ✅ **ĐÓNG 2026-09-13** — số dư ví nay là **cache của tổng sổ giao dịch**, không còn là giá trị tuyệt đối đồng bộ theo LWW. Điểm neo là một giao dịch "Số dư ban đầu" (id suy **tất định** từ `walletId` nên hai máy sinh ra một hàng), `SoDuViService` là nơi duy nhất ghi `balance`, nhánh kéo về thôi đọc cột ấy và tính lại sau mỗi lần pull. Nghiệm thu hai máy ảo: sau một cuộc đua tự trả, **hai máy đều 1.650.000 và bằng tổng sổ** — trước đó máy thắng giữ 2.000.000. Spec: `2026-09-13-so-du-vi-suy-tu-so-giao-dich-design.md` |
 >
 > **G20 đã đóng ngày 2026-09-05** — `depositToGoal` nhận `occurredAt` chặn hai
@@ -1313,6 +1314,55 @@ chứ không chỉ che ca lỗi lược đồ. ✅ **Người dùng chốt 2026-
 là mất thật; còn nếu xoá là đúng thì `purgeDataForOtherAccounts` vẫn dọn khi tài khoản khác
 đăng nhập vào máy — tức chỉ **hoãn** việc dọn chứ không bỏ. Không đổi mã: hành vi hiện tại đã
 đúng quyết định ấy, chỉ hai chú thích Dart được ghi lại cho khớp.
+
+### ~~G38 — Ba trang giao dịch rơi về tài khoản admin khi chưa có phiên~~ · ✅ ĐÓNG (2026-09-14, mở và đóng trong cùng ngày)
+
+> ✅ **Đóng ngay khi tìm ra.** Ghi lại vì **cách nó sống sót** đáng nhớ hơn bản
+> thân lỗi: nó đi qua cả hai lượt đóng cùng chủ đề — G4 (bốn trang bill/goal)
+> và G35 (ba màn quản lý danh mục) — mà không lượt nào thấy.
+
+**Hiện trạng (trước bản sửa).** Ba trang khai tham số mặc định `1`:
+
+```dart
+const TransactionPage({super.key, this.idaccount = 1});
+...
+currentUserId = int.tryParse(authState.user!.id) ?? widget.idaccount;
+```
+
+Vế `??` trỏ tới một **biến**, không tới hằng `1` — nên mọi lượt `grep '?? 1'`
+đều sạch, kể cả lưới quét `khong_du_phong_admin_test.dart` dựng ra sau G35.
+Nhưng route dựng `const TransactionPage()` không truyền gì, nên giá trị thật
+sự dùng vẫn là `1`, tức **tài khoản admin thật** (quy tắc 2 `CLAUDE.md`).
+
+| Trang | `idaccount` dùng làm gì | Hậu quả |
+|---|---|---|
+| `transaction_page.dart` | mở stream ví + danh mục | **đọc** dữ liệu admin |
+| `choose_category_page.dart` | đọc danh mục | **đọc** dữ liệu admin |
+| `add_transaction_page.dart` | `idaccount:` khi **lưu** giao dịch | **ghi** dưới danh nghĩa admin, rồi đẩy lên và vỡ "Ownership mismatch" |
+
+Chỗ thứ ba đúng kịch bản mà docstring `core/auth/current_account.dart` mô tả
+khi G4 được đóng — chỉ khác là nó xảy ra trên đường đi nhiều nhất của app.
+
+**Đã sửa.** Ba trang để tham số `int?` **không mặc định** (widget test vẫn tiêm
+được), suy tài khoản trả `null` khi chưa có phiên, và tự xử lý `null`: đường
+đọc không mở stream, đường ghi chặn lưu kèm thông báo — cùng khuôn G35.
+
+**Lưới quét nới thêm một ca**, bắt đúng hình dạng vừa lọt. ⚠️ Lượt khảo sát tự
+nó suýt kết luận sai: phép `grep -E` đầu tiên dùng `\s`, mà POSIX ERE **không
+có** `\s`, nên nó trả rỗng và suýt chốt "chỉ một chỗ" — thật ra có ba.
+
+**Nghiệm thu máy ảo** (tài khoản thử 25, PostgreSQL chỉ đọc): mốc nền cả tài
+khoản 1 lẫn 25 đều **0 giao dịch**; thêm một khoản chi 55đ qua giao diện →
+`Idtran c045dc60…` với `Idaccount = 25`, `Amount = -55`; tài khoản 1 vẫn **0
+hàng**. Màn chọn danh mục và trang Sổ giao dịch vẫn mở đầy đủ.
+
+**Hai ca hành vi** ở `test/features/transaction/presentation/khong_du_phong_admin_trang_giao_dich_test.dart`
+canh đường ghi, và chúng ghi thẳng một điều bản đầu của chính chúng làm sai:
+trong luồng thường, thiếu phiên thì màn chọn danh mục **cũng rỗng** nên chốt
+"Vui lòng chọn danh mục" chặn trước — chốt tài khoản là **lớp phòng thủ thứ
+hai**, và phải tiêm lệch mới dựng lại được trạng thái ấy trong widget test.
+
+---
 
 ### G37 — Số dư ví không phản ánh giao dịch sau một lần đẩy bị xung đột · ✅ ĐÓNG 2026-09-13
 
