@@ -65,7 +65,10 @@ docs/superpowers/auth/
 docs/superpowers/client-app/
 docs/superpowers/plans/
 docs/superpowers/specs/
-docs/superpowers/sync/
+docs/superpowers/sync/*
+# … trừ tài liệu tổng kết đồng bộ: nó mô tả hợp đồng giữa client và backend nên
+# phải đi theo repo (bỏ chặn 2026-09-14, theo yêu cầu của người dùng).
+!docs/superpowers/sync/SYNC_DOCUMENTATION.md
 src/Backend/prisma/seed_roles.js
 src/Backend/scripts/seed_roles.js
 .superpowers/
