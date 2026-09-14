@@ -253,3 +253,80 @@ List<DiemThoiGian> chuoiTheoThang(
           );
         }(),
     ];
+
+/// Chuỗi [soThang] tháng cho **từng** danh mục có phát sinh, khoá là
+/// `categoryId` (`null` = chưa phân loại). Mỗi chuỗi **cũ nhất trước**, cùng
+/// quy ước với [chuoiTheoThang].
+///
+/// ## Vì sao một lượt duyệt
+///
+/// Gọi [chuoiTheoThang] một lần cho mỗi danh mục là `số danh mục × soThang`
+/// lượt quét toàn bộ giao dịch: với 30 danh mục và 5.000 giao dịch đó là
+/// 900.000 phép so ngày **mỗi lần stream phát**, mà stream này phát lại sau
+/// **mọi** chu kỳ đồng bộ nền. Ở đây chỉ duyệt một lần, phân thẳng vào ô
+/// `(categoryId, tháng)`.
+///
+/// Danh mục **không** có khoản nào trong khoảng thì không có khoá — bộ chọn
+/// trên khối xu hướng chỉ nên liệt kê thứ vẽ ra được một đường có nội dung.
+/// Nhưng danh mục **có** khoản thì chuỗi của nó **đủ** [soThang] điểm, tháng
+/// rỗng mang số 0: bỏ điểm rỗng là trục co lại và hai tháng cách nhau nửa năm
+/// hiện ra như liền kề.
+///
+/// Luật đếm mượn nguyên [tongThuChi] — biên `[from, to)` và
+/// `khoanVaoThongKe()` — nên ở đây không có luật mới nào.
+Map<String?, List<DiemThoiGian>> chuoiTheoDanhMuc(
+  List<KhoanThuChi> ds, {
+  required int nam,
+  required int thang,
+  int soThang = 6,
+}) {
+  // Mốc của từng cột, cũ nhất trước. `thang - i` bằng 0 hay âm tự cuộn về năm
+  // trước nhờ `DateTime`; năm nhuận và tháng ngắn cũng do đó mà đúng.
+  final moc = [
+    for (var i = soThang - 1; i >= 0; i--) DateTime(nam, thang - i, 1),
+  ];
+  final bien = [for (final m in moc) bienThang(m.year, m.month)];
+
+  final thu = <String?, List<double>>{};
+  final chi = <String?, List<double>>{};
+
+  for (final k in ds) {
+    if (!khoanVaoThongKe(
+      loai: k.loai,
+      categoryId: k.categoryId,
+      ghiChu: k.ghiChu,
+    )) {
+      continue;
+    }
+    if (k.loai != 'thu' && k.loai != 'chi') continue;
+    // Tìm cột chứa khoản này. Số cột nhỏ (6) nên quét thẳng rẻ hơn dựng khoá.
+    var i = -1;
+    for (var j = 0; j < bien.length; j++) {
+      if (_trongKhoang(k.ngay, bien[j].from, bien[j].to)) {
+        i = j;
+        break;
+      }
+    }
+    if (i < 0) continue;
+
+    thu.putIfAbsent(k.categoryId, () => List<double>.filled(soThang, 0));
+    chi.putIfAbsent(k.categoryId, () => List<double>.filled(soThang, 0));
+    if (k.loai == 'thu') {
+      thu[k.categoryId]![i] += k.soTien;
+    } else {
+      chi[k.categoryId]![i] += k.soTien;
+    }
+  }
+
+  return {
+    for (final id in thu.keys)
+      id: [
+        for (var i = 0; i < soThang; i++)
+          DiemThoiGian(
+            nam: moc[i].year,
+            thang: moc[i].month,
+            tong: TongThuChi(thu: thu[id]![i], chi: chi[id]![i]),
+          ),
+      ],
+  };
+}
