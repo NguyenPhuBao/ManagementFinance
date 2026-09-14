@@ -1,6 +1,6 @@
 # Client-app — Việc còn dang dở & rủi ro đã biết
 
-**Cập nhật:** 2026-09-13 (mở rồi **đóng G37** ngay trong ngày — số dư ví nay suy từ sổ giao dịch; đóng G36) · trước đó 2026-09-11 (sau khi nhánh gộp `main` @ `cc65f4f` và CSDL dev áp `database/12`: đóng G29, G31, G32; G24 thành lỗi phía client rồi đóng cùng ngày; thêm G34; G35 mở rồi đóng cùng ngày; đóng G30; đóng G33); 2026-09-12: gộp `main` @ `cbbeeb4` — CAN-LAM 17 A đóng, kênh thời gian thực nối được trên máy ảo, G34 hết bị chặn rồi **đóng tối cùng ngày** (client nghe `sync.completed`, im lặng, kiểm máy ảo hai máy); chiều muộn thêm **G36** — chờ backend; tối muộn gộp `main` @ `7779999` — backend làm xong CAN-LAM 20 (chốt trả hai lần ở `upsertTransaction`, client đo thật 4 ca; G36 sửa ở mã, **chưa đo đầu-cuối** ca khoá/xoá vì cần API admin — chờ đo rồi đóng); **2026-09-13: đo đầu-cuối ba ca G36 qua API admin — cả ba đúng, G36 ✅ ĐÓNG** (kéo theo: đường `lamMoi` **có** mang `daXoa`, nên ngoại lệ §3.6b không còn vô nghĩa — người dùng chốt **giữ** cùng ngày); cùng ngày, nghiệm thu bước 12 trên hai máy ảo đóng bốn lỗi im lặng của luồng tự động trả hoá đơn và mở **G37** — số dư ví không phản ánh giao dịch sau một lần đẩy bị xung đột
+**Cập nhật:** 2026-09-14 (**đóng G28** — `wallet.status` đi qua đồng bộ hai chiều, schema v22) · trước đó 2026-09-13 (mở rồi **đóng G37** ngay trong ngày — số dư ví nay suy từ sổ giao dịch; đóng G36) · trước đó 2026-09-11 (sau khi nhánh gộp `main` @ `cc65f4f` và CSDL dev áp `database/12`: đóng G29, G31, G32; G24 thành lỗi phía client rồi đóng cùng ngày; thêm G34; G35 mở rồi đóng cùng ngày; đóng G30; đóng G33); 2026-09-12: gộp `main` @ `cbbeeb4` — CAN-LAM 17 A đóng, kênh thời gian thực nối được trên máy ảo, G34 hết bị chặn rồi **đóng tối cùng ngày** (client nghe `sync.completed`, im lặng, kiểm máy ảo hai máy); chiều muộn thêm **G36** — chờ backend; tối muộn gộp `main` @ `7779999` — backend làm xong CAN-LAM 20 (chốt trả hai lần ở `upsertTransaction`, client đo thật 4 ca; G36 sửa ở mã, **chưa đo đầu-cuối** ca khoá/xoá vì cần API admin — chờ đo rồi đóng); **2026-09-13: đo đầu-cuối ba ca G36 qua API admin — cả ba đúng, G36 ✅ ĐÓNG** (kéo theo: đường `lamMoi` **có** mang `daXoa`, nên ngoại lệ §3.6b không còn vô nghĩa — người dùng chốt **giữ** cùng ngày); cùng ngày, nghiệm thu bước 12 trên hai máy ảo đóng bốn lỗi im lặng của luồng tự động trả hoá đơn và mở **G37** — số dư ví không phản ánh giao dịch sau một lần đẩy bị xung đột
 **Mục đích:** ghi lại những hạng mục đã được **cân nhắc và cố ý hoãn**, kèm lý do và bán kính ảnh hưởng. Không có tài liệu này thì người tiếp theo sẽ hoặc bỏ sót, hoặc làm lại từ đầu việc phân tích rủi ro.
 
 Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nhất.
@@ -10,7 +10,7 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > nguyên (kể cả phần *vì sao hoãn*) vì nó ghi lại bối cảnh và bán kính ảnh
 > hưởng — thứ vẫn cần khi ai đó đọc lại đoạn mã tương ứng.
 >
-> **Đang mở tính tới 2026-09-13.** Mục đã đóng vẫn nằm lại trong bảng, gạch
+> **Đang mở tính tới 2026-09-14.** Mục đã đóng vẫn nằm lại trong bảng, gạch
 > ngang tên — xoá đi thì người sau lại mở ra làm lần nữa.
 >
 > ⚠️ **Bảng này trôi khỏi thân tài liệu năm lần rồi** (G16, G17, G21, G18, G15 — cả năm đều
@@ -33,7 +33,7 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > | **G25** | **Không phải lỗi** — hai máy cùng sắp lại thứ tự ưu tiên khi ngoại tuyến thì được một thứ tự trộn (2026-09-08) |
 > | **G26** | Hoãn có chủ ý — chưa có màn **duyệt giao dịch ngân hàng** cho sự kiện realtime trỏ tới; đây là một tính năng riêng, không phải phần còn thiếu của việc nối socket (2026-09-09) |
 > | **G27** | Hoãn có chủ ý — không còn cách nói "ví này **được phép âm**" sau khi loại `debt` bị bỏ; cần một cột mới ở cả hai đầu cho một tình huống CSDL hiện không có hàng nào (2026-09-09) |
-> | **G28** | ⏸️ **Hết chặn phía server, chờ client mở lại** — CSDL dev đã áp `database/7` tối 2026-09-10 nên `wallet."Status"` nay `varchar(20)`, chứa được `'Inactive'`. Client vẫn để cột cục bộ, nên **lưu trữ ví chỉ sống trên máy đã bấm** cho tới khi mở lại ba chỗ. Người dùng chốt **để sau** |
+> | ~~**G28**~~ | ✅ **ĐÓNG 2026-09-14** — `wallet.status` đi qua đồng bộ **hai chiều**: lưu trữ ví trên máy A nay có hiệu lực trên máy B. Ba mảnh khớp nhau (payload **13 trường**, `walletForPush` dịch sang `'Active'`/`'Inactive'`, nhánh kéo về đọc về chữ thường) cộng **migration v22** đánh dấu ví lưu trữ cũ để đẩy lại — bốn thứ vào **cùng một commit** vì bước cứu chỉ chạy một lần trong đời mỗi máy. ⚠️ Máy chủ chưa áp `database/7` vẫn `varchar(7)` và ví lưu trữ sẽ kẹt hàng đợi đẩy vĩnh viễn, im lặng. Dòng cũ ghi *chờ client mở lại* — đúng tới trước bản này |
 > | ~~**G29**~~ | ✅ **Đóng 2026-09-11** — bộ lọc ghi chú mới của `7675b35` (Luhn + hình dạng số thẻ; mật khẩu phải có `:`/`=`; bỏ "pin") chạy đúng **15/15** ca của tài liệu xin, đo bằng chính hàm `filterSensitiveNote` — **chưa** đo đầu-cuối. Còn một hở nhỏ chấp nhận được và một việc cùng gốc ở backend (khoá mã hoá, mục 18 §2.6), không giữ mục này mở. Dòng cũ ghi *chặn ở backend* — đúng tới trước khi gộp `main` |
 > | ~~**G30**~~ | ✅ **Đóng 2026-09-11** — `database/12` bỏ `uq_wallet_saving_active` và client gỡ chốt tạm: màn Thêm ví cho chọn "Tiết kiệm" dù đã có một ví Tiết kiệm, datasource không còn từ chối. ⚠️ Máy chủ nào chưa áp tệp 12 vẫn từ chối ví Tiết kiệm thứ hai. Chốt **trùng tên ví** ở lại vĩnh viễn |
 > | ~~**G31**~~ | ✅ **Đóng 2026-09-11** — backend nay ánh xạ `22001`/`P2000` (dài quá cột) và `23502` về `CONSTRAINT_VIOLATION`, mã client đã xếp **vĩnh viễn**, nên bản ghi bị chặn theo thời gian thay vì gửi lại mãi; và một thao tác hỏng không còn làm **cả lô** 400. Bộ lọc bảy ô tên của client (2026-09-10) **vẫn giữ** — nó chặn trước để bản ghi không kẹt ngay từ đầu. Đo trên mã HEAD, chưa chạy đầu-cuối. Dòng cũ ghi *chặn ở backend* — đúng tới trước khi gộp `main` |
@@ -790,14 +790,28 @@ hai nhánh loại trừ trong `_walletCandidates`. Hai test ở
 
 ---
 
-### G28 — Lưu trữ ví chỉ sống trên máy đã bấm · ⏸️ HẾT CHẶN PHÍA SERVER, CHỜ CLIENT MỞ LẠI (2026-09-10; tiêu đề trước ghi "chặn ở CSDL — tệp `database/7` chưa áp", trước nữa "chặn ở backend")
+### ~~G28 — Lưu trữ ví chỉ sống trên máy đã bấm~~ · ✅ ĐÓNG (2026-09-14; tiêu đề trước ghi "⏸️ hết chặn phía server, chờ client mở lại" 2026-09-10, trước nữa "chặn ở CSDL — tệp `database/7` chưa áp", trước nữa "chặn ở backend")
 
-> **Trạng thái đúng hôm nay (đo 2026-09-11, sau khi gộp `main` @ `cc65f4f` và áp
-> `database/12`):** `wallet."Status"` là `varchar(20)` trên CSDL dev, và `upsertWallet`
-> ghi thẳng `status` ở cả hai nhánh — phía server **không còn chặn gì**. Client vẫn cố
-> ý không gửi, không đọc cột này (người dùng chốt **để sau**). Đoạn "Lược đồ tự mâu
-> thuẫn…" ngay dưới đúng với CSDL **trước** khi áp tệp 7; ba đoạn cập nhật cuối mục
-> ghi theo thứ tự thời gian.
+> ✅ **Đóng 2026-09-14 — `wallet.status` đi qua đồng bộ hai chiều.** Lưu trữ ví trên
+> máy A nay có hiệu lực trên máy B của cùng tài khoản. Ba mảnh khớp nhau, thiếu mảnh
+> nào cũng vô hiệu cả ba: payload đẩy mang `status` (**13 trường**), `walletForPush`
+> dịch sang `'Active'`/`'Inactive'` qua `WalletStatus.khoaGuiLen`, nhánh kéo về đọc
+> ngược lại về **chữ thường**. Cộng **migration schema v22** đánh dấu ví lưu trữ cũ
+> để đẩy lại — chúng đang ở `synced` nên không ai gửi lại chúng, trong khi cột
+> `Status` của server là `NOT NULL DEFAULT 'Active'`; thiếu bước ấy thì lượt pull
+> **đầu tiên** sau khi cập nhật app lặng lẽ bỏ lưu trữ chúng. Bốn mảnh vào **cùng một
+> commit** (`268eb50`) vì bước cứu chỉ chạy **một lần trong đời** mỗi máy.
+> Spec: `docs/superpowers/specs/2026-09-14-g28-luu-tru-vi-qua-dong-bo-design.md`.
+>
+> ⚠️ **Thứ duy nhất còn có thể làm G28 hỏng, và client không chặn trước được:** máy
+> chủ nào **chưa áp `database/7`** vẫn giữ `Status` ở `varchar(7)` và sẽ từ chối
+> `'Inactive'` (8 ký tự) — ví lưu trữ **kẹt hàng đợi đẩy vĩnh viễn, im lặng**. CSDL
+> dev đã áp (đo 2026-09-14: `varchar(20)`, `NOT NULL`, `DEFAULT 'Active'`); **chưa đo
+> môi trường nào khác**.
+>
+> *Các đoạn dưới giữ nguyên theo thứ tự thời gian — chúng ghi lại vì sao cột này từng
+> là cột cục bộ, không phải trạng thái hôm nay.* Dòng cũ ghi *chờ client mở lại* —
+> đúng tới trước bản này.
 
 Tính năng **lưu trữ ví** (2026-09-10) ghi trạng thái vào cột `wallets.status`
 của SQLite. Cột cùng tên đã có sẵn ở PostgreSQL và `upsertWallet` phía backend

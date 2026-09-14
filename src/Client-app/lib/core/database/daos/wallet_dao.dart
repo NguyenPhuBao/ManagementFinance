@@ -47,9 +47,11 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
   /// hiện "Ví đã xoá".
   ///
   /// Phép so đi qua [WalletStatus.laHoatDong] ở tầng Dart chứ không viết thẳng
-  /// `status.equals('active')` vào câu SQL: hàng kéo về từ server mang chữ hoa
-  /// `'Active'` cho tới khi nhánh pull chuẩn hoá, và một câu `WHERE` phân biệt
-  /// hoa thường sẽ lặng lẽ giấu đúng những ví ấy.
+  /// `status.equals('active')` vào câu SQL. Nhánh pull **đã** chuẩn hoá về chữ
+  /// thường từ 2026-09-14 (G28), nên hàng kéo về không còn mang chữ hoa nữa —
+  /// nhưng phép lọc ở tầng Dart vẫn giữ, vì nó cũng che hàng cũ lưu từ trước
+  /// bản ấy, và vì một câu `WHERE` phân biệt hoa thường thì hỏng **im lặng**:
+  /// nó giấu ví chứ không báo lỗi.
   Future<List<Wallet>> getActive(int idaccount) async {
     final rows = await getAll(idaccount);
     return rows.where((w) => WalletStatus.laHoatDong(w.status)).toList();
@@ -157,17 +159,16 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
 
   /// Bật/tắt lưu trữ cho một ví.
   ///
-  /// ⚠️ Cột `status` **không** đi qua đồng bộ (G28). Lý do ban đầu, đo ngày
-  /// 2026-09-10: `chk_wallet_status` của PostgreSQL cho phép `'Inactive'` nhưng
-  /// kiểu cột là `varchar(7)`, mà chuỗi ấy dài 8 ký tự — đẩy lên là ví kẹt hàng
-  /// đợi đẩy. Tối cùng ngày CSDL dev đã nới cột lên `varchar(20)` (áp
-  /// `database/7`), nhưng client **cố ý chưa** nối lại — đó là G28, người dùng
-  /// chốt để sau. Nên lưu trữ ví vẫn chỉ sống trên máy đã bấm.
+  /// Cột `status` đi qua đồng bộ **hai chiều** từ 2026-09-14 (G28 đóng), nên
+  /// lưu trữ một ví ở đây cũng có hiệu lực trên máy khác của cùng tài khoản.
+  /// Trước đó nó là cột cục bộ vì lược đồ PostgreSQL tự mâu thuẫn ở đúng đây:
+  /// `chk_wallet_status` cho phép `'Inactive'` trong khi kiểu cột là
+  /// `varchar(7)` còn chuỗi ấy dài 8 ký tự — đẩy lên là ví kẹt hàng đợi đẩy.
+  /// Đo lại 2026-09-14: `varchar(20)`, `NOT NULL`, `DEFAULT 'Active'`.
   ///
-  /// Vẫn đánh `pending`, và **có chủ ý**: `updatedAt` đổi thì hàng này phải
-  /// được đẩy lên như mọi thay đổi khác — chỉ riêng cột `status` là không đi
-  /// kèm. Bỏ `pending` ở đây là ví vừa bị chạm nằm ngoài hàng đợi cho tới lần
-  /// sửa sau, tức `updatedAt` mới không bao giờ tới server.
+  /// Đánh `pending` là **bắt buộc**, và nay còn bắt buộc hơn trước: thiếu nó
+  /// thì ví vừa bị chạm nằm ngoài hàng đợi cho tới lần sửa sau, tức chính
+  /// trạng thái lưu trữ vừa đặt không bao giờ tới server.
   Future<void> setStatus(String id, {required bool luuTru}) async {
     final status = luuTru ? WalletStatus.luuTru : WalletStatus.hoatDong;
     await (update(wallets)..where((t) => t.id.equals(id))).write(
