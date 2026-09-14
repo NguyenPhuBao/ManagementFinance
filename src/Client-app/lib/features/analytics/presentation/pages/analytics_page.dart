@@ -15,7 +15,12 @@ import '../../domain/phan_loai_dong_tien.dart';
 import '../../domain/thong_ke_thang.dart';
 import '../bloc/analytics_cubit.dart';
 
-/// Trang Phân tích — bố cục theo màn Stitch "Analytics Dashboard".
+/// Trang Phân tích — bố cục theo màn Stitch `c2a2b615c9514ca180b28d189b2ea197`
+/// *"Thống kê - Xu hướng 6 tháng & Cơ cấu dòng tiền"* (2026-09-14).
+///
+/// ⚠️ **Không** phải màn cũ `a228fa69…` *"FlowMoney Analytics Dashboard"*: nó
+/// vẫn còn trong dự án Stitch nhưng đã lỗi thời, vì `edit_screens` **tạo màn
+/// mới** chứ không sửa màn được chọn.
 ///
 /// Trước 2026-09-08 trang này là **số cứng**: mọi con số là hằng số, kể cả
 /// tháng đang hiện ("T6 2026" khi đang là tháng 9). Nay mọi thứ đi qua
