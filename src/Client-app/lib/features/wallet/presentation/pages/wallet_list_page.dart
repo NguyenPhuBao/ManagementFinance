@@ -251,6 +251,7 @@ class _WalletListView extends StatelessWidget {
               },
               onDelete: () => _confirmDelete(context, w),
               onArchive: () => doiLuuTru(context, w, idaccount),
+              onXemGiaoDich: () => context.push('/transactions?wallet=${w.id}'),
             ),
           );
         }),
@@ -536,6 +537,8 @@ class _MucLuuTruState extends State<_MucLuuTru> {
                   }
                 },
                 onArchive: () => doiLuuTru(context, w, widget.idaccount),
+                onXemGiaoDich: () =>
+                    context.push('/transactions?wallet=${w.id}'),
               ),
             ),
           ),
@@ -551,11 +554,20 @@ class _WalletItem extends StatelessWidget {
   final VoidCallback? onDelete;
   final VoidCallback? onArchive;
 
+  /// Mở sổ giao dịch đã lọc sẵn theo ví này.
+  ///
+  /// Là một mục menu chứ không phải cú tap lên thẻ: tap đã mở màn **Sửa ví**
+  /// từ trước, và đổi ý nghĩa của nó là lấy mất một thao tác người dùng đã
+  /// quen. Truyền cho **cả** ví lưu trữ — đóng băng nói về việc ghi chép mới,
+  /// không phải về quyền đọc lịch sử cũ.
+  final VoidCallback? onXemGiaoDich;
+
   const _WalletItem({
     required this.wallet,
     this.onTap,
     this.onDelete,
     this.onArchive,
+    this.onXemGiaoDich,
   });
 
   bool get _daLuuTru => !WalletStatus.laHoatDong(wallet.status);
@@ -705,11 +717,17 @@ class _WalletItem extends StatelessWidget {
               icon: const Icon(Icons.more_vert,
                   color: AppColors.textSecondary, size: 20),
               onSelected: (value) {
+                if (value == 'transactions') onXemGiaoDich?.call();
                 if (value == 'edit') onTap?.call();
                 if (value == 'delete') onDelete?.call();
                 if (value == 'archive') onArchive?.call();
               },
               itemBuilder: (_) => [
+                // Đứng ĐẦU: xem là việc làm thường xuyên hơn sửa, và hành
+                // động không hoàn tác được ("Xóa ví") vẫn ở cuối cùng.
+                if (onXemGiaoDich != null)
+                  const PopupMenuItem(
+                      value: 'transactions', child: Text('Xem giao dịch')),
                 const PopupMenuItem(
                     value: 'edit', child: Text('Chỉnh sửa')),
                 // Chữ đổi theo trạng thái của CHÍNH ví này. Một nhãn cố

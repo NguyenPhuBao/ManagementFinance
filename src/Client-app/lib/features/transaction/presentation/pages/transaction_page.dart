@@ -25,9 +25,18 @@ class TransactionPage extends StatefulWidget {
   /// `null`: route dựng `const TransactionPage()` và trang tự suy từ phiên.
   final int? idaccount;
 
+  /// Lọc sẵn theo một ví khi mở trang — đường tắt từ màn Quản lý ví.
+  ///
+  /// Bộ lọc theo ví vốn đã có ở `TransactionFilterBar`; đây chỉ là giá trị
+  /// khởi tạo. Chíp "Ví" của thanh lọc đổi nhãn thành tên ví khi nó khác
+  /// `null`, nên bộ lọc đang áp luôn **nhìn thấy được** — một bộ lọc âm thầm
+  /// là người dùng tưởng ví trống.
+  final String? initialWalletId;
+
   const TransactionPage({
     super.key,
     this.idaccount,
+    this.initialWalletId,
   });
 
   @override
@@ -39,7 +48,13 @@ class _TransactionPageState extends State<TransactionPage> {
 
   /// Điều kiện lọc hiện tại; giữ nguyên khi đổi tháng — người dùng đang xem
   /// "chi ở ví Tiết kiệm" thì lật sang tháng trước vẫn muốn xem đúng thứ đó.
-  TransactionFilter _filter = const TransactionFilter();
+  ///
+  /// Khởi tạo từ [TransactionPage.initialWalletId] khi trang được mở bằng
+  /// đường tắt từ màn Quản lý ví. Đặt ở `initState` chứ không ở `build`: gán
+  /// trong `build` là mỗi lần dựng lại sẽ giật bộ lọc về ví ban đầu, nên người
+  /// dùng không bỏ lọc ra được.
+  late TransactionFilter _filter =
+      TransactionFilter(walletId: widget.initialWalletId);
 
   // Hai stream tra tên ví/danh mục cho từng dòng. Tạo MỘT lần cho mỗi tài
   // khoản và giữ lại: tạo trong build là mỗi lần đổi tháng lại đăng ký lại,

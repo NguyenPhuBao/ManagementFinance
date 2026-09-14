@@ -181,7 +181,12 @@ class AppRouter {
           // Transactions
           GoRoute(
             path: '/transactions',
-            builder: (_, __) => const TransactionPage(),
+            // `?wallet=<id>` lọc sẵn theo một ví — đường tắt từ màn Quản lý ví.
+            // Query param chứ không `extra`: `extra` mất khi GoRouter dựng lại
+            // route, còn tham số trên URL thì sống sót.
+            builder: (_, state) => TransactionPage(
+              initialWalletId: state.uri.queryParameters['wallet'],
+            ),
           ),
           GoRoute(
             path: '/add',
