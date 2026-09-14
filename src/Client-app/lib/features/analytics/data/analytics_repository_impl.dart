@@ -108,6 +108,11 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
   }) {
     // `amount` lưu dương ở client (nhánh pull gọi `.abs()`), cộng thẳng —
     // cùng luật với `BudgetLocalDataSourceImpl.sumExpenses`.
+    //
+    // `cats` gồm CẢ hàng đã xoá mềm (xem chỗ đăng ký `subCat`), nên giao dịch
+    // cũ trỏ vào danh mục đã xoá vẫn tra được `classify`. Thiếu bảng tra này
+    // thì mọi khoản Trả nợ rơi về lát "chi" và vòng tròn nói sai tỷ trọng.
+    final classifyTheoId = {for (final c in cats) c.id: c.classify};
     final khoan = [
       for (final t in txs)
         KhoanThuChi(
@@ -115,6 +120,8 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
           soTien: t.amount,
           loai: t.type,
           categoryId: t.categoryId,
+          classify:
+              t.categoryId == null ? null : classifyTheoId[t.categoryId],
           // Cần cho phép loại khoản điều chỉnh số dư khỏi thống kê; thiếu
           // nó thì luật ấy không có gì để đọc và khoản bù thành thu nhập.
           ghiChu: t.note,
