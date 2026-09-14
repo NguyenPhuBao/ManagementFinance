@@ -110,17 +110,18 @@ trong file bàn giao tạm giữa các phiên nên chết đi sống lại nhi�
 cuối thêm ngày 2026-09-10, sau một phiên mà **lượt soát tìm ra lỗi trong chính
 công việc vừa làm nhiều hơn trong tài liệu cũ**.
 
-- ⚠️ **`mcp__stitch__edit_screens` TẠO MÀN MỚI, không sửa màn được chọn —
-  nghiệm thu bắt buộc phải so `list_screens` TRƯỚC và SAU khi gọi.** Đã vấp
-  **hai lần** trong ngày 2026-09-14. Lần thứ hai còn khó chịu hơn: công cụ trả
-  về thành công kèm `dom_operations` liệt kê rõ từng `replace_element` với
-  `screen_id` của **màn được chọn**, tức nó khẳng định đã sửa tại chỗ — vậy mà
-  thay đổi vẫn đáp xuống một màn mới (`c8567243…`). Nên `screen_id` trong kết
-  quả trả về **không phải** nơi thay đổi nằm, và `get_screen` trên màn được chọn
-  **không bao giờ đủ** để kết luận: gọi bao nhiêu lần cũng ra bản cũ, vì màn ấy
-  thật sự không bị đụng tới. Hệ quả: mỗi lần sửa là một màn nữa trong dự án, nên
-  phải nói rõ với người dùng màn nào là bản đang dùng và ghi **ID màn mới** vào
-  tài liệu.
+- ⚠️ **`mcp__stitch__edit_screens` KHÔNG nghiệm thu được bằng API — hỏi người
+  dùng là phép đo duy nhất đáng tin.** Ngày 2026-09-14 nó trả về **thành công**
+  kèm `dom_operations` liệt kê rõ từng `replace_element` với đủ `selector` và
+  `screen_id` của màn được chọn, tức khẳng định đã sửa tại chỗ — mà thực tế
+  **không đổi gì cả**, người dùng mở Stitch xem tận mắt cũng thấy y nguyên. Hai
+  luật rút ra, cả hai đều phải trả giá bằng một lượt sửa tài liệu: (1) kết quả
+  trả về **không** chứng minh công cụ đã làm gì; (2) một màn mới xuất hiện
+  **không** chứng minh lời gọi của mình tạo ra nó — người dùng ngồi trước Stitch
+  và thao tác song song mà mình không thấy (màn `c8567243…` chính là do họ bảo
+  Stitch tạo, sau khi tôi đã kết luận nhầm là của mình). Quy trình vẫn nên là
+  `list_screens` trước và sau để biết danh sách có đổi không, nhưng **đừng viết
+  nguyên nhân vào tài liệu** — chỉ ghi cái đo được, rồi hỏi.
 - ⚠️ **Và nó còn có ĐỘ TRỄ DÀI — "chưa đổi" nghĩa là *chưa biết*, không phải
   *thất bại*** (2026-09-13, dự án `FlowMoney`).
   Thay đổi có thể mất **hàng chục phút** mới hiện ở API (`get_screen` trả

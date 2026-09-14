@@ -650,10 +650,11 @@ cấu danh mục & Xu hướng 6 tháng"*, khớp bản lần hai đang chạy.
 ⚠️ **Hai** màn cũ vẫn còn trong dự án Stitch và đều đã lỗi thời:
 `c2a2b615…` *"Thống kê - Xu hướng 6 tháng & Cơ cấu dòng tiền"* (tả A8 #2 đã bỏ —
 mức gốc ba lát, drill-down, dropdown chọn một) và `a228fa69…` *"FlowMoney
-Analytics Dashboard"*. Chúng còn đó vì `edit_screens` **tạo màn mới** chứ không
-sửa màn được chọn — nên nghiệm thu Stitch phải **so `list_screens` trước/sau**,
-và `get_screen` trên màn được chọn thì trả bản cũ mãi mãi. Đã vấp đúng chỗ này
-hai lần (2026-09-14 sáng và tối).
+Analytics Dashboard"*. ⚠️ **`edit_screens` không nghiệm thu được bằng API.** Lượt gọi ngày
+2026-09-14 trả về thành công kèm `dom_operations` khẳng định đã sửa tại chỗ,
+nhưng **không đổi gì cả**; màn khớp bản lần hai là do **người dùng** bảo Stitch
+tạo. Nên: kết quả trả về không chứng minh công cụ đã làm gì, và một màn mới xuất
+hiện cũng không chứng minh lời gọi của mình tạo ra nó. Hỏi người dùng.
 
 ### 🔐 Xác thực phiên đăng nhập
 

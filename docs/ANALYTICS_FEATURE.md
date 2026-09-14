@@ -519,18 +519,21 @@ Lỗi **không** do lát này (khối "Xu hướng 6 tháng" mang sẵn hình d�
 khác. Sửa bằng `maxY = buoc * 3` — xem bẫy **4.18**.
 
 ✅ **Stitch đã có màn khớp bản lần hai:** `c8567243df704268ac766aa60ffa5036` —
-*"Thống kê - Cơ cấu danh mục & Xu hướng 6 tháng"*, sinh ra từ lượt `edit_screens`
-lúc 21:35 ngày 2026-09-14.
+*"Thống kê - Cơ cấu danh mục & Xu hướng 6 tháng"*. **Người dùng tạo nó** bằng cách
+gõ vào khung chat của Stitch rằng chưa thấy thay đổi, ngày 2026-09-14.
 
-⚠️ **Lượt ấy suýt bị kết luận là thất bại, và câu chuyện đáng đọc trước khi bạn
-gọi `edit_screens` lần sau.** Công cụ trả về thành công kèm `dom_operations`
-khẳng định nó `replace_element` **tại chỗ** trên màn `c2a2b615…`; tôi nghiệm thu
-bằng `get_screen` đúng màn ấy **năm lần** rải suốt phiên, lần nào cũng ra bản cũ,
-rồi kết luận là lượt gọi "không có hiệu lực". Sai: nó đã **tạo một màn mới**.
-`screen_id` trong kết quả trả về **không phải** nơi thay đổi đáp xuống, và
-`get_screen` trên màn được chọn **không bao giờ** là phép nghiệm thu đủ — màn đó
-thật sự không bị đụng tới. Phép đúng là **so `list_screens` trước và sau** khi
-gọi; đây đã là **lần thứ hai** công cụ hành xử như vậy.
+⚠️ **Đừng nghiệm thu `edit_screens` bằng API — không làm được.** Lượt gọi lúc
+21:35 cùng ngày **trả về thành công** kèm `dom_operations` khẳng định nó
+`replace_element` **tại chỗ** trên màn `c2a2b615…`, với đủ `selector` và
+`verified_html_context`. Thực tế nó **không đổi gì**: màn ấy giữ nguyên qua năm
+lượt `get_screen`, và người dùng mở Stitch xem tận mắt cũng thấy y nguyên. Tôi
+còn sai thêm một lần nữa theo chiều ngược lại — thấy màn mới xuất hiện thì kết
+luận lượt gọi đã tạo ra nó, trong khi người tạo là người dùng.
+
+Rút lại thành hai điều, cả hai đều đã phải sửa tài liệu để trả giá: kết quả trả
+về **không** chứng minh công cụ đã làm gì, và một màn mới xuất hiện **không**
+chứng minh lời gọi của mình tạo ra nó — người dùng thao tác song song trên Stitch
+mà mình không thấy. Phép đo duy nhất đáng tin là **hỏi người dùng**.
 
 ## 4. Bẫy
 
