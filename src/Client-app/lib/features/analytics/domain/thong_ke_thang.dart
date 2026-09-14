@@ -28,12 +28,19 @@ class KhoanThuChi {
   /// được TÍNH: mặc định an toàn, vì giấu nhầm một khoản chi thật tệ hơn.
   final String? ghiChu;
 
+  /// `classify` của danh mục mà khoản này gắn: `'thu'`, `'chi'` hoặc
+  /// `'vay_no'`. `null` là "nơi gọi chưa điền" hoặc "không tra được danh mục";
+  /// khi ấy `phanLoaiCua()` rơi về [loai]. Mặc định an toàn, vì đoán bừa một
+  /// phân loại là báo cáo sai mà không ai biết.
+  final String? classify;
+
   const KhoanThuChi({
     required this.ngay,
     required this.soTien,
     required this.loai,
     required this.categoryId,
     this.ghiChu,
+    this.classify,
   });
 }
 
