@@ -531,8 +531,14 @@ class _KhoiXuHuong extends StatelessWidget {
     }
     // Trần cao hơn đỉnh để đường không dính mép trên. Sáu tháng rỗng sạch thì
     // `dinh` bằng 0 và mọi phép chia thang đo sau đây sẽ hỏng, nên đặt 1.
-    final maxY = dinh <= 0 ? 1.0 : dinh * 1.15;
-    final buoc = maxY / 3;
+    final buoc = (dinh <= 0 ? 1.0 : dinh * 1.15) / 3;
+    // ⚠️ Trần phải là ĐÚNG ba lần `buoc`, không phải con số đã đem chia.
+    // fl_chart vẽ nhãn cho cả mốc theo `interval` lẫn biên trên, mà hai thứ ấy
+    // ở cùng một vị trí; `3 * (x / 3)` lệch `x` chừng 1e-14 trong dấu phẩy động,
+    // đủ để `rutGon` trả hai chuỗi khác nhau khi giá trị rơi đúng ranh giới làm
+    // tròn — và hai nhãn in đè khít lên nhau, không ai đọc được (G39, thấy
+    // trên máy ảo 2026-09-14; bẫy 4.18 `ANALYTICS_FEATURE.md`).
+    final maxY = buoc * 3;
 
     return Container(
       padding: const EdgeInsets.all(24),

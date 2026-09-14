@@ -477,7 +477,7 @@ nhanh hơn, không được khác.
 
 #### Nghiệm thu
 
-`flutter test` **2408/2408** (2 phút 15 giây) · `flutter analyze` **25 issue, 0
+`flutter test` **2409/2409** · `flutter analyze` **25 issue, 0
 error** — đếm bằng máy 2026-09-14. Analytics có **12** tệp test / **229** test
 (đếm bằng chính `flutter test test/features/analytics` cùng ngày; mốc 10 tệp /
 170 test là của 2026-09-09, mốc 11 tệp / 180 test là của 2026-09-13).
@@ -512,10 +512,11 @@ liệu thật, 2026-09-14 — đủ bảy điểm:
    "Thưởng") chuyển sang trạng thái **mờ** thấy rõ so với chính chúng lúc chưa
    đủ trần — tức `onSelected == null` có hình dạng nhìn thấy được, đúng ý đồ.
 
-⚠️ Lượt nghiệm thu ấy **tìm ra một lỗi**: nhãn trục tung in đè lên nhau ở một số
-dải giá trị — **G39** `CLIENT_APP_KNOWN_GAPS.md`. Nó **không** do lát này: khối
-"Xu hướng 6 tháng" mang sẵn hình dạng ấy từ lát 2b (2026-09-08), lát này chỉ làm
-nó dễ gặp hơn vì mỗi tổ hợp chip là một dải `maxY` khác. Chưa sửa.
+✅ Lượt nghiệm thu ấy **tìm ra một lỗi, và nó đã được sửa cùng ngày** — **G39**
+`CLIENT_APP_KNOWN_GAPS.md`: nhãn trục tung in đè lên nhau ở một số dải giá trị.
+Lỗi **không** do lát này (khối "Xu hướng 6 tháng" mang sẵn hình dạng ấy từ lát
+2b, 2026-09-08); lát này chỉ làm dễ gặp hơn vì mỗi tổ hợp chip là một dải `maxY`
+khác. Sửa bằng `maxY = buoc * 3` — xem bẫy **4.18**.
 
 ⚠️ **Chưa nghiệm thu Stitch.** `edit_screens` đã gọi lúc 21:35 ngày 2026-09-14 và
 **trả về thành công** kèm `dom_operations` sửa **tại chỗ** trên chính màn
@@ -657,6 +658,20 @@ ngày ở mục tiêu "MuaDT": "08/27" và "09/27" chồng nhau thành một m�
 được. Đặt `interval` bằng `(max - min) / 3` **không** cho ra đúng bốn nhãn như
 tưởng. Luật lọc nằm ở `hienNhanTruc` (`goal_progress_series.dart`) và có test
 riêng — bỏ mốc cách biên dưới 12% dải, giữ nguyên hai nhãn biên.
+
+⚠️ **Cùng cái bẫy ấy có dạng thứ hai, và `hienNhanTruc` KHÔNG cứu được** — G39,
+thấy trên máy ảo 2026-09-14 ở khối "Xu hướng 6 tháng". Ở đây hai nhãn không
+*gần* nhau mà ở **đúng cùng một vị trí**: mốc cuối của `interval` và biên trên.
+Luật lọc giữ cả hai, vì cả hai đều là biên. Sai lầm nằm ở **chuỗi**, không ở vị
+trí: `3 * (maxY / 3)` lệch `maxY` chừng `1e-14`, và khi giá trị rơi đúng ranh
+giới làm tròn của `rutGon` thì hai số ấy cho ra "49.4K" và "49.5K", in đè khít
+lên nhau. Cách sửa là làm cho chúng **bằng nhau**: tính `buoc` trước, rồi đặt
+`maxY = buoc * 3` — đừng chia một con số rồi dùng lại chính nó làm trần. Quét
+bằng máy 2026-09-14 trên dải đỉnh 1.000–300.000 (bước 500): **tám** giá trị rơi
+vào bẫy, tức hiếm nhưng không hề không xảy ra. Ca `nhãn trục tung không in HAI
+chuỗi khác nhau ở cùng một mốc` canh chỗ này, và nó tái hiện được **ngay trong
+widget test** — đây là một trong ít lần bẫy đồ hoạ bắt được mà không cần máy
+thật.
 
 ---
 

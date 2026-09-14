@@ -436,6 +436,40 @@ void main() {
               'chuỗi dài nhất có thể, và font của bộ test rộng gấp đôi ngoài '
               'đời nên đây là ca chật nhất.');
     });
+    testWidgets('nhãn trục tung không in HAI chuỗi khác nhau ở cùng một mốc',
+        (tester) async {
+      // G39. Đỉnh 43.000 là một trong tám giá trị (quét bằng máy 2026-09-14,
+      // dải 1.000–300.000) khiến `maxY` và `3 * (maxY / 3)` rơi về HAI PHÍA
+      // ranh giới làm tròn của `rutGon`: 49449.99999999999 cho "49.4K", còn
+      // ba lần `buoc` cho "49.5K". fl_chart vẽ nhãn cho CẢ mốc theo
+      // `interval` LẪN biên trên — mà hai thứ đó ở cùng một vị trí — nên hai
+      // chuỗi ấy in đè khít lên nhau và đọc ra một vệt.
+      await moTrang(tester);
+      await phat(
+        tester,
+        _tk(chuoi: [
+          for (var i = 0; i < 6; i++)
+            DiemThoiGian(
+              nam: 2026,
+              thang: 4 + i,
+              tong: TongThuChi(thu: i == 5 ? 43000 : 0, chi: 0),
+            ),
+        ]),
+      );
+
+      final coThap = find.text('49.4K').evaluate().isNotEmpty;
+      final coCao = find.text('49.5K').evaluate().isNotEmpty;
+
+      expect(coThap && coCao, isFalse,
+          reason: 'Biên trên và mốc cuối của `interval` là CÙNG một vị trí. '
+              'In hai chuỗi khác nhau ở đó là hai nhãn chồng khít, không ai '
+              'đọc được — thấy thật trên máy ảo ngày 2026-09-14 (G39).');
+      expect(coThap || coCao, isTrue,
+          reason: 'Vẫn phải còn ĐÚNG MỘT nhãn ở biên trên. Chữa bằng cách bỏ '
+              'luôn nhãn ấy là mất mốc cao nhất của thang đo — người đọc hết '
+              'biết đường cao tới đâu.');
+    });
+
   });
 
   group('Cơ cấu theo danh mục', () {
