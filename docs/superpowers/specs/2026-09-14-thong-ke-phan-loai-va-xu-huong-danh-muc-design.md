@@ -25,6 +25,10 @@
 >    thứ sáu bị **khoá nhìn thấy được** (`onSelected` null) thay vì bấm mà
 >    không có gì xảy ra. `danhMucXuHuong` là `Set<String>`, không phải `String?`.
 >
+> 4. **Màn Stitch cũng đổi.** Spec này trỏ `c2a2b615…`, màn của bản đầu. Bản
+>    lần hai có màn riêng: **`c8567243df704268ac766aa60ffa5036`** *"Thống kê -
+>    Cơ cấu danh mục & Xu hướng 6 tháng"*. Mở màn ấy, đừng mở màn spec ghi.
+>
 > Mọi thứ khác của spec — luật phân loại §2, hệ quả "nhóm Chi ≠ Tổng chi",
 > bốn bẫy im lặng §5, một lượt duyệt cho `chuoiTheoDanhMuc` — **vẫn đúng**.
 
@@ -312,8 +316,10 @@ vẫn `files/15981662859376236551`, `screenshot` vẫn `files/852019245816349577
 chiều cao vẫn 2432. Thay đổi nằm ở màn mới. Nên nghiệm thu bằng
 **`list_screens` tìm màn mới**, đừng `get_screen` màn cũ rồi kết luận thất bại.
 
-Màn cũ **vẫn còn** trong dự án và nay là bản lỗi thời. Ai đọc thiết kế cho lát
-này phải mở đúng `c2a2b615…`.
+Màn cũ **vẫn còn** trong dự án và nay là bản lỗi thời. ⚠️ Câu này viết cho bản
+thi công **lần một**: `c2a2b615…` nay **cũng đã lỗi thời** theo. Ai đọc thiết kế
+cho khối đang chạy phải mở **`c8567243df704268ac766aa60ffa5036`** — xem điểm 4
+của banner đầu tệp.
 
 **Đã kiểm bằng cách tải HTML về đọc** (20.723 byte, so với 16.579 của bản cũ):
 

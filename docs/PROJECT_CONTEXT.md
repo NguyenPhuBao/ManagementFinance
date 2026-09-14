@@ -642,14 +642,18 @@ khoản vay + lãi vay) đều cần ít nhất một trong những thứ ấy �
 **Đã nghiệm thu trên `emulator-5554`** (411dp) đủ bảy điểm — mục 3.19
 `ANALYTICS_FEATURE.md` liệt kê từng điểm. ✅ Lượt ấy tìm ra **G39** — nhãn trục tung
 của khối Xu hướng in đè lên nhau ở một số dải giá trị, lỗi **có sẵn từ lát 2b**
-— và **đã sửa cùng ngày** (`maxY = buoc * 3`, có ca test tái hiện). ⚠️ **Chưa nghiệm thu Stitch**: `edit_screens` báo thành công và
-sửa tại chỗ, nhưng `get_screen` còn trả bản cũ — độ trễ đã biết, kiểm lại sau.
+— và **đã sửa cùng ngày** (`maxY = buoc * 3`, có ca test tái hiện). ✅ **Stitch đã có màn khớp**: `c8567243…` (xem ngay dưới).
 
-**Thiết kế Stitch:** màn `c2a2b615c9514ca180b28d189b2ea197` — *"Thống kê - Xu
-hướng 6 tháng & Cơ cấu dòng tiền"* (tên màn giữ nguyên dù khối đã đổi tên).
-⚠️ Màn cũ `a228fa69…` *"FlowMoney Analytics Dashboard"* **vẫn còn trong dự án
-Stitch nhưng đã lỗi thời**: `edit_screens` **tạo màn mới** chứ không sửa màn
-được chọn, nên nghiệm thu Stitch phải dùng `list_screens` tìm màn mới.
+**Thiết kế Stitch:** màn `c8567243df704268ac766aa60ffa5036` — *"Thống kê - Cơ
+cấu danh mục & Xu hướng 6 tháng"*, khớp bản lần hai đang chạy.
+
+⚠️ **Hai** màn cũ vẫn còn trong dự án Stitch và đều đã lỗi thời:
+`c2a2b615…` *"Thống kê - Xu hướng 6 tháng & Cơ cấu dòng tiền"* (tả A8 #2 đã bỏ —
+mức gốc ba lát, drill-down, dropdown chọn một) và `a228fa69…` *"FlowMoney
+Analytics Dashboard"*. Chúng còn đó vì `edit_screens` **tạo màn mới** chứ không
+sửa màn được chọn — nên nghiệm thu Stitch phải **so `list_screens` trước/sau**,
+và `get_screen` trên màn được chọn thì trả bản cũ mãi mãi. Đã vấp đúng chỗ này
+hai lần (2026-09-14 sáng và tối).
 
 ### 🔐 Xác thực phiên đăng nhập
 

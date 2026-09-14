@@ -21,7 +21,7 @@ thẳng vào thư mục Tải về** của máy. Xem mục 7.
 | Bất cứ việc gì | Mục 3 (quyết định) và mục 4 (bẫy) |
 | Sửa phép tính | `domain/thong_ke_thang.dart` và test của nó — **không** có CSDL, kiểm bằng danh sách |
 | Sửa cách gộp dữ liệu | Mục 3.3 (mốc tra ngân sách) trước, rồi `data/analytics_repository_impl.dart` |
-| Đụng giao diện | Màn Stitch **`c2a2b615…`** *"Thống kê - Xu hướng 6 tháng & Cơ cấu dòng tiền"* (2026-09-14) — ⚠️ **không** phải màn cũ "FlowMoney Analytics Dashboard" (`a228fa69…`), nay đã lỗi thời; và mục 4.4 về font của bộ test |
+| Đụng giao diện | Màn Stitch **`c8567243…`** *"Thống kê - Cơ cấu danh mục & Xu hướng 6 tháng"* (2026-09-14, bản lần hai) — ⚠️ **hai** màn cũ đã lỗi thời và vẫn còn trong dự án: `c2a2b615…` (tả A8 #2 đã bỏ: mức gốc ba lát + dropdown) và `a228fa69…` "FlowMoney Analytics Dashboard"; và mục 4.4 về font của bộ test |
 | Đụng biểu đồ | Mục **3.11** (vì sao `fl_chart`, vì sao ghim phiên bản), **3.12** (khối xu hướng từng lệch Stitch, nay hết), **3.19** (đường một danh mục), và bẫy **4.9** (tooltip tràn — thứ duy nhất phải kiểm bằng mắt) |
 | Sinh tệp PDF/CSV | Mục **3.17** (vì sao nhúng font, vì sao `MediaStore` chứ không phải quyền ghi bộ nhớ), **3.18** (ba luật của CSV cho Excel tiếng Việt), bẫy **4.15**–**4.16** |
 | Đụng trang Xuất báo cáo / màn Xem trước | Mục **3.13** (vì sao xem trước rồi mới tải), **3.14** (ảnh chụp, không phải luồng sống; và màn Stitch mới), **3.15** (mười khối lấy chuẩn từ app thị trường), **3.16** (dòng tiền là số suy ngược, hai giới hạn), bẫy **4.11**–**4.14** |
@@ -214,8 +214,8 @@ Khối nằm **giữa** khối tổng và donut, theo thứ tự câu hỏi: bao
 ra sao → đi vào đâu.
 
 ✅ **Lý do lệch đã hết hiệu lực từ 2026-09-14** (mục **3.19**): khối này nay
-**có** trên Stitch — màn `c2a2b615c9514ca180b28d189b2ea197`, *"Thống kê - Xu
-hướng 6 tháng & Cơ cấu dòng tiền"*. Ghi chú ở `_KhoiXuHuong` đã được cập nhật
+**có** trên Stitch — màn `c8567243df704268ac766aa60ffa5036`, *"Thống kê - Cơ cấu
+danh mục & Xu hướng 6 tháng"*. Ghi chú ở `_KhoiXuHuong` đã được cập nhật
 chứ không xoá, vì nó ghi lại *vì sao* khối từng đứng ngoài thiết kế.
 
 Sáu tháng chứ không mười hai: ở 411dp, mười hai mốc trục là nhãn chồng lên
@@ -518,12 +518,19 @@ Lỗi **không** do lát này (khối "Xu hướng 6 tháng" mang sẵn hình d�
 2b, 2026-09-08); lát này chỉ làm dễ gặp hơn vì mỗi tổ hợp chip là một dải `maxY`
 khác. Sửa bằng `maxY = buoc * 3` — xem bẫy **4.18**.
 
-⚠️ **Chưa nghiệm thu Stitch.** `edit_screens` đã gọi lúc 21:35 ngày 2026-09-14 và
-**trả về thành công** kèm `dom_operations` sửa **tại chỗ** trên chính màn
-`c2a2b615…` (không tạo màn mới — khác với lần gọi hôm trước). Nhưng hai lượt
-`get_screen` sau đó vẫn trả **cùng** `htmlCode` và `screenshot` cũ. Đó là đặc
-tính độ trễ đã biết của công cụ: *"chưa đổi" nghĩa là "chưa biết"*, không phải
-"thất bại" — đừng gọi lại, hãy kiểm lại sau.
+✅ **Stitch đã có màn khớp bản lần hai:** `c8567243df704268ac766aa60ffa5036` —
+*"Thống kê - Cơ cấu danh mục & Xu hướng 6 tháng"*, sinh ra từ lượt `edit_screens`
+lúc 21:35 ngày 2026-09-14.
+
+⚠️ **Lượt ấy suýt bị kết luận là thất bại, và câu chuyện đáng đọc trước khi bạn
+gọi `edit_screens` lần sau.** Công cụ trả về thành công kèm `dom_operations`
+khẳng định nó `replace_element` **tại chỗ** trên màn `c2a2b615…`; tôi nghiệm thu
+bằng `get_screen` đúng màn ấy **năm lần** rải suốt phiên, lần nào cũng ra bản cũ,
+rồi kết luận là lượt gọi "không có hiệu lực". Sai: nó đã **tạo một màn mới**.
+`screen_id` trong kết quả trả về **không phải** nơi thay đổi đáp xuống, và
+`get_screen` trên màn được chọn **không bao giờ** là phép nghiệm thu đủ — màn đó
+thật sự không bị đụng tới. Phép đúng là **so `list_screens` trước và sau** khi
+gọi; đây đã là **lần thứ hai** công cụ hành xử như vậy.
 
 ## 4. Bẫy
 
