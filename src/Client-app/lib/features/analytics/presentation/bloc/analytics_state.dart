@@ -30,10 +30,26 @@ class AnalyticsLoaded extends AnalyticsState {
   /// widget, để test được và để "12 tháng" có đúng một chỗ định nghĩa.
   final List<({int nam, int thang})> cacThang;
 
-  const AnalyticsLoaded({required this.thongKe, required this.cacThang});
+  /// Lát đang mở của vòng tròn "Cơ cấu dòng tiền"; `null` là mức gốc (ba lát).
+  ///
+  /// Nằm ở state chứ không ở widget vì **hai** khối phải đọc cùng một lựa
+  /// chọn — donut và danh sách danh mục cuối trang. Hai chỗ giữ hai bản là
+  /// donut nói 8.2M mà danh sách cộng ra 8.5M.
+  final String? phanLoaiDangXem;
+
+  /// Danh mục đang vẽ ở khối xu hướng; `null` là hai đường Thu/Chi.
+  final String? danhMucXuHuong;
+
+  const AnalyticsLoaded({
+    required this.thongKe,
+    required this.cacThang,
+    this.phanLoaiDangXem,
+    this.danhMucXuHuong,
+  });
 
   @override
-  List<Object?> get props => [thongKe, cacThang];
+  List<Object?> get props =>
+      [thongKe, cacThang, phanLoaiDangXem, danhMucXuHuong];
 }
 
 class AnalyticsError extends AnalyticsState {

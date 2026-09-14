@@ -12,10 +12,18 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/features/analytics/data/analytics_repository.dart';
+import 'package:flowmoney/features/analytics/domain/phan_loai_dong_tien.dart';
 import 'package:flowmoney/features/analytics/domain/thong_ke_thang.dart';
 import 'package:flowmoney/features/analytics/presentation/bloc/analytics_cubit.dart';
 
-ThongKeThang _tk(int nam, int thang, {double chi = 0}) => ThongKeThang(
+ThongKeThang _tk(
+  int nam,
+  int thang, {
+  double chi = 0,
+  List<LatPhanLoai> lat = const [],
+  Map<String?, List<DiemThoiGian>> chuoiDm = const {},
+}) =>
+    ThongKeThang(
       nam: nam,
       thang: thang,
       tong: TongThuChi(thu: 0, chi: chi),
@@ -23,7 +31,14 @@ ThongKeThang _tk(int nam, int thang, {double chi = 0}) => ThongKeThang(
       chiTheoDanhMuc: const [],
       danhMuc: const [],
       chuoi: const [],
+      latPhanLoai: lat,
+      chuoiDanhMuc: chuoiDm,
     );
+
+const _latChiThu = [
+  LatPhanLoai(phanLoai: 'chi', soTien: 300, tiLe: 0.6),
+  LatPhanLoai(phanLoai: 'thu', soTien: 200, tiLe: 0.4),
+];
 
 class _RepoGia implements AnalyticsRepository {
   final goi = <({int idaccount, int nam, int thang, DateTime? now})>[];
@@ -132,5 +147,85 @@ void main() {
     repo.moiNhat.addError(StateError('hỏng'));
     await Future<void>.delayed(Duration.zero);
     expect(cubit.state, isA<AnalyticsError>());
+  });
+
+  group('hai lựa chọn của người dùng', () {
+    Future<void> phat(ThongKeThang tk) async {
+      repo.moiNhat.add(tk);
+      await Future<void>.delayed(Duration.zero);
+    }
+
+    test('mặc định là mức gốc và hai đường', () async {
+      cubit.xem(10);
+      await phat(_tk(2026, 9, lat: _latChiThu));
+
+      final s = cubit.state as AnalyticsLoaded;
+      expect(s.phanLoaiDangXem, isNull);
+      expect(s.danhMucXuHuong, isNull);
+    });
+
+    test('BẪY 1: stream phát lại KHÔNG làm mất lựa chọn', () async {
+      cubit.xem(10);
+      await phat(_tk(2026, 9, lat: _latChiThu, chuoiDm: {'an': const []}));
+
+      cubit.chonPhanLoai('chi');
+      cubit.chonDanhMucXuHuong('an');
+
+      // Đồng bộ nền kéo về một thay đổi bất kỳ → repository phát lại.
+      await phat(
+          _tk(2026, 9, chi: 99, lat: _latChiThu, chuoiDm: {'an': const []}));
+
+      final s = cubit.state as AnalyticsLoaded;
+      expect(s.thongKe.tong.chi, 99, reason: 'Số liệu mới phải tới nơi');
+      expect(s.phanLoaiDangXem, 'chi',
+          reason: 'Quên chép lựa chọn sang state mới thì cứ mỗi chu kỳ đồng bộ '
+              'là donut nhảy về mức gốc TRONG KHI người dùng đang xem — không '
+              'exception, không log');
+      expect(s.danhMucXuHuong, 'an');
+    });
+
+    test('BẪY 2: lát biến mất thì rơi về mức gốc', () async {
+      cubit.xem(10);
+      await phat(_tk(2026, 9, lat: const [
+        LatPhanLoai(phanLoai: 'vay_no', soTien: 100, tiLe: 1),
+      ]));
+      cubit.chonPhanLoai('vay_no');
+
+      // Tháng mới không có khoản vay/nợ nào.
+      await phat(_tk(2026, 9, lat: _latChiThu));
+
+      expect((cubit.state as AnalyticsLoaded).phanLoaiDangXem, isNull,
+          reason: 'Giữ lựa chọn trỏ vào lát không tồn tại là vẽ một vòng tròn '
+              'trống mà không nút nào thoát ra được');
+    });
+
+    test('BẪY 3: danh mục biến mất thì rơi về hai đường', () async {
+      cubit.xem(10);
+      await phat(_tk(2026, 9, lat: _latChiThu, chuoiDm: {'an': const []}));
+      cubit.chonDanhMucXuHuong('an');
+
+      await phat(_tk(2026, 9, lat: _latChiThu, chuoiDm: {'di': const []}));
+
+      expect((cubit.state as AnalyticsLoaded).danhMucXuHuong, isNull,
+          reason: 'Danh mục bị xoá hay đổi tháng thì khoá không còn — đọc '
+              'chuoiDanhMuc[id]! khi ấy là nổ');
+    });
+
+    test('đổi tháng thì lựa chọn lát về mức gốc', () async {
+      cubit.xem(10);
+      await phat(_tk(2026, 9, lat: _latChiThu));
+      cubit.chonPhanLoai('chi');
+
+      cubit.chonThang(2026, 8);
+      await phat(_tk(2026, 8, lat: _latChiThu));
+
+      expect((cubit.state as AnalyticsLoaded).phanLoaiDangXem, isNull,
+          reason: 'Đổi tháng là đổi câu hỏi — bắt đầu lại từ mức gốc');
+    });
+
+    test('chonPhanLoai không làm gì khi chưa có dữ liệu', () {
+      cubit.chonPhanLoai('chi');
+      expect(cubit.state, isA<AnalyticsInitial>());
+    });
   });
 }
