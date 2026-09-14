@@ -780,7 +780,9 @@ void main() {
               '2026-09-13, đóng G37). Số dư nay là cache của tổng sổ giao dịch '
               '— con số server chỉ là ảnh chụp cũ, và đọc nó về là nuốt mọi '
               'thay đổi cục bộ chưa kịp đẩy. Nhánh ĐẨY vẫn gửi `balance` như '
-              'cũ, nên payload ví vẫn 12 trường: hợp đồng một chiều, cố ý.');
+              'cũ — hợp đồng một chiều cho riêng cột này, cố ý. (Payload ví là '
+              '13 trường từ 2026-09-14, khi `status` vào — G28; con số ấy '
+              'không liên quan tới luật một chiều của `balance`.)');
       expect(wallet?.colour, '#123456', reason: 'backend dùng "color"');
       expect(wallet?.includeInTotal, false,
           reason: 'Nửa còn lại của cờ này: nó NẰM trong payload đẩy lên nhưng '

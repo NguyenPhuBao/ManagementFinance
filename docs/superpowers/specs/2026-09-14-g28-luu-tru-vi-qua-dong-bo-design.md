@@ -260,6 +260,40 @@ bất đồng bộ — loại lỗi thứ ba). Kịch bản tối thiểu:
 
 `flutter test` **2339/2339** (cộng ca mới) · `flutter analyze` **25 issue, 0 error**.
 
+✅ **Kết quả thực tế (2026-09-14, sau khi làm xong):** `flutter test`
+**2353/2353** — 14 ca mới ở 4 tệp, nhiều hơn dự tính 12 vì lượt nghiệm thu máy
+thật sinh thêm 2 ca (xem mục 6.4) · `flutter analyze` **25 issue, 0 error**.
+
+### 6.4. Một lỗi mà bản spec này KHÔNG lường được
+
+⚠️ Ghi lại ở đây vì nó là phản ví dụ cho chính mục 3.4, và vì spec không nên
+chỉ chứa những gì đã đoán đúng.
+
+Bản migration đầu tiên làm theo đúng mục 3.4 — chỉ đổi `sync_status` — và **hỏng
+im lặng**. Đo trên máy ảo:
+
+```
+[SyncEngine] Sending batch 1 operations to backend...
+[SyncEngine] Push conflict (bản server mới hơn, lấy theo server): entity=wallet
+[SyncEngine] Real Sync Complete: 0/1 synced successfully.
+```
+
+Migration chạy đúng và ví **được** đẩy đi. Nhưng `upsertWallet` chỉ ghi khi
+`new Date(mapped.update_at) > new Date(existing.update_at)` — mà ví lưu trữ cũ
+**đã từng được đẩy lên** (chỉ thiếu cột `status`), nên mốc của nó **bằng đúng**
+mốc trên server. Không lớn hơn → server giữ bản của nó → client `markSynced` để
+thoát vòng lặp (luật G9) → trạng thái lưu trữ không bao giờ rời khỏi máy.
+
+Mục 2.2 của chính spec này đã **trích đúng** dòng `status: mapped.status ??
+existing.status`, nhưng không đọc tiếp điều kiện `if` bao quanh nó. Đó là chỗ
+sai: trích một dòng mà không đọc nhánh chứa nó.
+
+Sửa: migration đẩy cả `updated_at = CAST(strftime('%s','now') AS INTEGER)`
+(**giây** Unix, vì Drift lưu `DateTime` theo giây). Kèm một ca test thứ hai
+quan trọng không kém — ví **không** được đánh dấu thì phải **giữ nguyên** mốc,
+vì đổi mốc của hàng không cần đẩy là tự tạo một cuộc đua LWW đè lên bản mới hơn
+của máy khác.
+
 ---
 
 ## 7. Việc tài liệu đi kèm

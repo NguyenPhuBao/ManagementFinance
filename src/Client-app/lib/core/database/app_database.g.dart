@@ -1282,8 +1282,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   ///
   /// ⚠️ **Cột này KHÔNG đi qua đồng bộ theo chiều nào cả**, và **không có mapper
   /// chuẩn hoá nào**. Payload đẩy (`sync_engine.dart`, `_collectPendingOps`)
-  /// gồm 12 trường (đếm bằng máy từ `sync_payload_contract_test.dart`,
-  /// 2026-09-11) và không có `provider`; nhánh kéo về cũng không đọc nó. Nên
+  /// gồm **13** trường (đếm bằng máy từ `sync_payload_contract_test.dart`,
+  /// 2026-09-14; mốc **12** là của 2026-09-11, trước khi `idbill` vào ngày
+  /// 2026-09-12) và không có `provider`; nhánh kéo về cũng không đọc nó. Nên
   /// mọi hàng client đẩy lên đều nằm trên server với `Provider = 'Manual'`, kể
   /// cả giao dịch do ngân hàng tạo rồi kéo về máy này.
   ///
