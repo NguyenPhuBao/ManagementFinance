@@ -1,3 +1,4 @@
+import '../domain/phan_loai_dong_tien.dart';
 import '../domain/thong_ke_thang.dart';
 
 /// Một dòng trong bảng "Chi tiết danh mục", đã tra tên/biểu tượng/màu và ngân
@@ -18,7 +19,11 @@ class DongDanhMuc {
 
   final double soTien;
 
-  /// Tỉ lệ trên tổng chi của tháng, trong `[0, 1]`.
+  /// Tỉ lệ trên tổng của **nhóm chứa nó**, trong `[0, 1]`: tổng chi của tháng
+  /// khi dòng đến từ [ThongKeThang.danhMuc], tổng của lát khi nó đến từ
+  /// [ThongKeThang.danhMucTheoLat]. Tên trường giữ nguyên vì đổi nó chạm mọi
+  /// nơi đọc, nhưng **mẫu số thì đổi theo nguồn** — nhãn hiển thị lấy từ
+  /// `nhanTongCua()`.
   final double tiLeTongChi;
 
   /// Hạn mức và số đã chi của ngân sách **đang chạy** cho danh mục này tại
@@ -66,6 +71,18 @@ class ThongKeThang {
   /// tháng đang xem.
   final List<DiemThoiGian> chuoi;
 
+  /// Ba lát của vòng tròn "Cơ cấu dòng tiền", giảm dần theo số tiền. Lát rỗng
+  /// đã bị bỏ, nên danh sách có thể ngắn hơn ba.
+  final List<LatPhanLoai> latPhanLoai;
+
+  /// Danh mục **bên trong** từng lát, khoá là `classify`. Nguồn cho mức
+  /// drill-down của donut và cho danh sách cuối trang khi đang xem một lát.
+  final Map<String, List<DongDanhMuc>> danhMucTheoLat;
+
+  /// Chuỗi 6 tháng cho từng danh mục có phát sinh — nguồn cho bộ chọn và đường
+  /// đơn của khối xu hướng. Khoá `null` là khoản chưa phân loại.
+  final Map<String?, List<DiemThoiGian>> chuoiDanhMuc;
+
   const ThongKeThang({
     required this.nam,
     required this.thang,
@@ -74,6 +91,9 @@ class ThongKeThang {
     required this.chiTheoDanhMuc,
     required this.danhMuc,
     required this.chuoi,
+    this.latPhanLoai = const [],
+    this.danhMucTheoLat = const {},
+    this.chuoiDanhMuc = const {},
   });
 
   double? get thuSoVoiTruoc => phanTramSoVoi(tong.thu, tongTruoc.thu);
@@ -86,8 +106,20 @@ class ThongKeThang {
     for (final d in danhMuc) {
       if (d.categoryId == categoryId) return d;
     }
+    // Danh mục thu và vay/nợ không nằm trong `danhMuc` (chỉ có chi), nên phải
+    // tra tiếp trong các lát — nếu không, chú giải đường đơn của khối xu hướng
+    // mất tên và màu khi người dùng chọn một danh mục thu.
+    for (final ds in danhMucTheoLat.values) {
+      for (final d in ds) {
+        if (d.categoryId == categoryId) return d;
+      }
+    }
     return null;
   }
+
+  /// Danh mục của một lát, rỗng khi lát ấy không có gì.
+  List<DongDanhMuc> danhMucCua(String phanLoai) =>
+      danhMucTheoLat[phanLoai] ?? const [];
 }
 
 abstract class AnalyticsRepository {

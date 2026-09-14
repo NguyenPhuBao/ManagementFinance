@@ -267,4 +267,101 @@ void main() {
               'nói hai con số về cùng một tháng.');
     });
   });
+
+  group('phân loại dòng tiền', () {
+    /// Danh mục vay/nợ, mặc định **đã xoá mềm** — đó là ca đáng canh: giao
+    /// dịch cũ vẫn trỏ vào nó, và repository cố ý đọc cả hàng đã xoá mềm.
+    Future<void> danhMucVayNo({bool daXoa = true}) =>
+        db.categoryDao.insert(CategoriesCompanion.insert(
+          id: 'c_no',
+          idaccount: 1,
+          name: 'Trả nợ',
+          classify: 'vay_no',
+          isDeleted: Value(daXoa),
+          deletedAt: daXoa ? Value(DateTime(2026, 9, 1)) : const Value.absent(),
+          updatedAt: now,
+        ));
+
+    test('classify lấy từ danh mục, kể cả danh mục đã xoá mềm', () async {
+      await danhMucVayNo();
+      await giaoDich(
+          id: 't1', ngay: DateTime(2026, 9, 15), soTien: 1000, danhMuc: 'c_no');
+
+      final tk = await lanDau();
+
+      expect(tk.latPhanLoai.single.phanLoai, 'vay_no',
+          reason: 'Giao dịch cũ trỏ vào danh mục đã xoá vẫn phải giữ đúng '
+              'phân loại — cùng lý do repository đọc cả hàng đã xoá mềm để '
+              'giữ TÊN. Rơi về "chi" là vòng tròn nói sai tỷ trọng.');
+    });
+
+    test('lát chi KHÔNG gộp khoản chi gắn danh mục vay/nợ', () async {
+      await danhMucVayNo();
+      await giaoDich(
+          id: 't1', ngay: DateTime(2026, 9, 2), soTien: 300000, danhMuc: 'c_an');
+      await giaoDich(
+          id: 't2', ngay: DateTime(2026, 9, 3), soTien: 100000, danhMuc: 'c_no');
+
+      final tk = await lanDau();
+
+      expect(tk.tong.chi, 400000, reason: 'Thẻ đầu trang vẫn tính theo type');
+      expect(tk.latPhanLoai.firstWhere((l) => l.phanLoai == 'chi').soTien,
+          300000,
+          reason: 'Lát Chi cố ý khác Tổng chi — §2.1 spec');
+      expect(tk.latPhanLoai.firstWhere((l) => l.phanLoai == 'vay_no').soTien,
+          100000);
+    });
+
+    test('danhMucCua trả danh mục của đúng lát, đã tra tên và biểu tượng',
+        () async {
+      await giaoDich(
+          id: 't1', ngay: DateTime(2026, 9, 2), soTien: 300000, danhMuc: 'c_an');
+      await giaoDich(
+          id: 't2',
+          ngay: DateTime(2026, 9, 3),
+          soTien: 900000,
+          loai: 'thu',
+          danhMuc: null);
+
+      final tk = await lanDau();
+
+      expect(tk.danhMucCua('chi').single.ten, 'Ăn uống');
+      expect(tk.danhMucCua('chi').single.icon, 'restaurant');
+      expect(tk.danhMucCua('thu').single.ten, 'Chưa phân loại');
+      expect(tk.danhMucCua('vay_no'), isEmpty);
+    });
+
+    test('ngân sách chỉ gắn vào lát chi', () async {
+      await giaoDich(
+          id: 't1', ngay: DateTime(2026, 9, 2), soTien: 300000, danhMuc: 'c_an');
+      await giaoDich(
+          id: 't2',
+          ngay: DateTime(2026, 9, 3),
+          soTien: 900000,
+          loai: 'thu',
+          danhMuc: null);
+
+      final tk = await lanDau();
+
+      expect(tk.danhMucCua('thu').single.coNganSach, isFalse,
+          reason: 'BudgetRepository không có khái niệm ngân sách thu — gắn vào '
+              'lát thu là hiện một hạn mức không tồn tại');
+    });
+
+    test('chuoiDanhMuc có khoá cho mỗi danh mục phát sinh trong 6 tháng',
+        () async {
+      await giaoDich(
+          id: 't1', ngay: DateTime(2026, 7, 10), soTien: 100000, danhMuc: 'c_an');
+      await giaoDich(
+          id: 't2', ngay: DateTime(2026, 9, 10), soTien: 300000, danhMuc: 'c_an');
+
+      final tk = await lanDau();
+
+      expect(tk.chuoiDanhMuc.keys, contains('c_an'));
+      expect(tk.chuoiDanhMuc['c_an']!.length, 6);
+      expect(tk.chuoiDanhMuc['c_an']!.last.tong.chi, 300000);
+      expect(tk.chuoiDanhMuc.keys, isNot(contains('c_xe')),
+          reason: 'Danh mục không phát sinh thì không vào dropdown');
+    });
+  });
 }
