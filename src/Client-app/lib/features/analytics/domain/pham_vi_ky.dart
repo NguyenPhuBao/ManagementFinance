@@ -108,10 +108,15 @@ class Ky {
   /// Tuần dùng **ngày thứ Hai** chứ không phải `T38`: `T` đang là tiền tố của
   /// tháng ở khắp app, và hai nghĩa cùng một chữ trên cùng một trục là lỗi đọc
   /// nhầm chứ không phải lỗi mã.
+  ///
+  /// ⚠️ Quý **phải mang năm** (`Q3/26`): sáu quý trải qua một năm rưỡi, nên
+  /// `Q3` một mình xuất hiện **hai lần** trên cùng một trục và hai cột khác
+  /// nhau mang đúng một nhãn. Sáu tháng, sáu tuần hay sáu năm thì không lặp.
+  /// Widget test bắt được ca này — cùng họ với G39.
   String get nhanTruc => switch (donVi) {
         DonViKy.tuan => _dm(from),
         DonViKy.thang => 'T${from.month}',
-        DonViKy.quy => 'Q$_quy',
+        DonViKy.quy => 'Q$_quy/${(from.year % 100).toString().padLeft(2, '0')}',
         DonViKy.nam => '${from.year}',
         DonViKy.tuyChon => _dm(from),
       };

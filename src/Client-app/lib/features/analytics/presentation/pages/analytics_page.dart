@@ -15,6 +15,7 @@ import '../../domain/pham_vi_ky.dart';
 import '../../domain/phan_loai_dong_tien.dart';
 import '../../domain/thong_ke_thang.dart';
 import '../bloc/analytics_cubit.dart';
+import '../widgets/chon_pham_vi_sheet.dart';
 
 /// Trang Phân tích — bố cục theo màn Stitch `c2a2b615c9514ca180b28d189b2ea197`
 /// *"Thống kê - Xu hướng 6 tháng & Cơ cấu dòng tiền"* (2026-09-14).
@@ -196,28 +197,34 @@ class _Header extends StatelessWidget {
           visualDensity: VisualDensity.compact,
           constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
         ),
-        Flexible(flex: 3, child: _ChonThang(state: state)),
+        Flexible(flex: 3, child: _ChonPhamVi(state: state)),
       ],
     );
   }
 }
 
-/// Ô chọn tháng. Nhãn "Tháng này (T9 2026)" chỉ khi tháng đang xem là tháng
-/// hiện tại; tháng đã qua thì "T8 2026" — giữ "Tháng này" cho một tháng đã
-/// qua là nói dối về thứ đang hiện.
-class _ChonThang extends StatelessWidget {
+/// Ô chọn phạm vi. Nhãn "Tháng này (T9 2026)" chỉ khi kỳ đang xem chứa hôm nay;
+/// kỳ đã qua thì "T8 2026" — giữ "Tháng này" cho một tháng đã qua là nói dối về
+/// thứ đang hiện. Luật ấy có một chỗ định nghĩa: `nhanOChon`.
+///
+/// Bấm vào mở bottom sheet hai tầng chứ không phải menu một tầng: từ 2026-09-15
+/// có năm đơn vị, và một danh sách phẳng trộn tuần lẫn quý thì không ai đọc
+/// được. Ô này **không đổi kích thước**, nên không đụng lại bài toán tràn 53px
+/// của hàng header.
+class _ChonPhamVi extends StatelessWidget {
   final AnalyticsState state;
-  const _ChonThang({required this.state});
+  const _ChonPhamVi({required this.state});
 
   @override
   Widget build(BuildContext context) {
-    final (nhan, cacKy) = switch (state) {
+    final (nhan, ky, moc) = switch (state) {
       AnalyticsLoaded(:final thongKe, :final moc) => (
           nhanOChon(thongKe.ky, moc),
-          cacKyGanNhat(moc, thongKe.ky.donVi),
+          thongKe.ky,
+          moc,
         ),
-      AnalyticsLoading(:final ky) => (ky.nhanNgan, const <Ky>[]),
-      _ => ('Tháng này', const <Ky>[]),
+      AnalyticsLoading(:final ky) => (ky.nhanNgan, null, null),
+      _ => ('Tháng này', null, null),
     };
 
     final o = Container(
@@ -247,14 +254,25 @@ class _ChonThang extends StatelessWidget {
       ),
     );
 
-    if (cacKy.isEmpty) return o;
-    return PopupMenuButton<Ky>(
-      tooltip: 'Chọn kỳ',
-      onSelected: (k) => context.read<AnalyticsCubit>().chonKy(k),
-      itemBuilder: (_) => [
-        for (final k in cacKy) PopupMenuItem(value: k, child: Text(k.nhan)),
-      ],
-      child: o,
+    // Chưa có dữ liệu thì ô chỉ là một nhãn: mở bộ chọn lúc chưa biết kỳ nào
+    // đang xem sẽ vẽ một sheet không có dấu tích ở đâu cả.
+    if (ky == null || moc == null) return o;
+
+    return Semantics(
+      button: true,
+      label: 'Chọn phạm vi',
+      child: InkWell(
+        onTap: () async {
+          final cubit = context.read<AnalyticsCubit>();
+          final chon = await moChonPhamVi(context, kyHienTai: ky, moc: moc);
+          // Đóng sheet TRƯỚC rồi mới đổi kỳ (`moChonPhamVi` pop rồi mới trả
+          // về): gọi `chonKy` khi sheet còn đứng là nó nháy một khung dữ liệu
+          // mới ngay trước lúc biến mất.
+          if (chon != null) cubit.chonKy(chon);
+        },
+        borderRadius: BorderRadius.circular(8),
+        child: o,
+      ),
     );
   }
 }

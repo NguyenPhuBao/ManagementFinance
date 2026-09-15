@@ -85,6 +85,7 @@ DongDanhMuc _dm(
 ThongKeKy _tk({
   int nam = 2026,
   int thang = 9,
+  Ky? ky,
   double thu = 5000000,
   double chi = 1250000,
   double thuTruoc = 0,
@@ -96,7 +97,7 @@ ThongKeKy _tk({
   Map<String?, List<DiemThoiGian>> chuoiDm = const {},
 }) =>
     ThongKeKy(
-      ky: Ky.thang(nam, thang),
+      ky: ky ?? Ky.thang(nam, thang),
       tong: TongThuChi(thu: thu, chi: chi),
       tongTruoc: TongThuChi(thu: thuTruoc, chi: chiTruoc),
       chiTheoDanhMuc: [
@@ -111,7 +112,7 @@ ThongKeKy _tk({
       // Mặc định là sáu điểm toàn số 0 — đúng cấu trúc chuỗi thật, để test
       // nào không nói gì về biểu đồ vẫn đi qua nhánh thường thay vì nhánh
       // "chưa có chuỗi".
-      chuoi: chuoi ?? chuoiTheoKy(const [], ky: Ky.thang(nam, thang)),
+      chuoi: chuoi ?? chuoiTheoKy(const [], ky: ky ?? Ky.thang(nam, thang)),
       latPhanLoai: lat,
       danhMucTheoLat: theoLat,
       chuoiDanhMuc: chuoiDm,
@@ -271,6 +272,50 @@ void main() {
     expect(find.text('Chi tiêu theo hạng mục'), findsNothing,
         reason: 'Donut của một tháng rỗng là một vòng tròn xám với chữ "0" ở '
             'giữa — trông như lỗi tải dữ liệu.');
+  });
+
+  // ── Phạm vi thời gian — P1, 2026-09-15 ─────────────────────────────────
+  testWidgets('tiêu đề khối xu hướng đổi theo đơn vị đang xem', (tester) async {
+    await moTrang(tester);
+    await phat(tester, _tk(ky: Ky.tuan(DateTime(2026, 9, 17))));
+
+    expect(find.text('Xu hướng 6 tuần'), findsOneWidget,
+        reason: 'xem một tuần mà tiêu đề vẫn nói "6 tháng" thì hai khối trên '
+            'cùng trang đang nói về hai kỳ khác nhau');
+    expect(find.text('Xu hướng 6 tháng'), findsNothing);
+  });
+
+  testWidgets('nhãn trục biểu đồ đổi theo đơn vị', (tester) async {
+    await moTrang(tester);
+    await phat(tester, _tk(ky: Ky.quy(2026, 3)));
+
+    expect(find.text('Q3/26'), findsOneWidget,
+        reason: 'nhãn trục đọc thẳng từ Ky.nhanTruc — trang không tự suy từ '
+            'số tháng nữa');
+    expect(find.text('Q3/25'), findsOneWidget,
+        reason: 'sáu quý trải qua một năm rưỡi nên nhãn phải mang năm, nếu '
+            'không hai cột khác nhau cùng ghi "Q3"');
+  });
+
+  testWidgets('ô header hiện tên kỳ của đơn vị đang xem', (tester) async {
+    await moTrang(tester);
+    await phat(tester, _tk(ky: Ky.nam(2025)));
+
+    expect(find.text('2025'), findsWidgets);
+    expect(find.textContaining('Năm nay'), findsNothing,
+        reason: 'năm 2025 không chứa mốc đồng hồ của test (T9 2026)');
+  });
+
+  testWidgets('mở bộ chọn phạm vi thấy đủ năm chip đơn vị', (tester) async {
+    await moTrang(tester);
+    await phat(tester, _tk());
+
+    await tester.tap(find.text('Tháng này (T9 2026)'));
+    await tester.pumpAndSettle();
+
+    for (final ten in ['Tuần', 'Tháng', 'Quý', 'Năm', 'Tuỳ chọn']) {
+      expect(find.text(ten), findsOneWidget, reason: 'thiếu chip $ten');
+    }
   });
 
   testWidgets('chọn tháng khác thì hỏi lại đúng tháng ấy', (tester) async {

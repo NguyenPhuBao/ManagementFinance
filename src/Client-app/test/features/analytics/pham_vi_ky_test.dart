@@ -94,8 +94,26 @@ void main() {
         '14/09',
         reason: '"T38" đụng nghĩa với "T9" của tháng trên cùng một trục',
       );
-      expect(Ky.quy(2026, 3).nhanTruc, 'Q3');
+      expect(Ky.quy(2026, 3).nhanTruc, 'Q3/26',
+          reason: 'sáu quý trải qua một năm rưỡi — "Q3" một mình xuất hiện HAI '
+              'lần trên cùng một trục');
       expect(Ky.nam(2026).nhanTruc, '2026');
+    });
+
+    test('nhãn trục của sáu kỳ liên tiếp phải ĐÔI MỘT KHÁC NHAU', () {
+      // Hai cột khác nhau mang đúng một nhãn là lỗi đọc nhầm, và nó im lặng.
+      for (final ky in [
+        Ky.tuan(DateTime(2026, 9, 17)),
+        Ky.thang(2026, 9),
+        Ky.quy(2026, 3),
+        Ky.nam(2026),
+      ]) {
+        final nhan = [
+          for (var i = kSoKyXuHuong - 1; i >= 0; i--) lui(ky, i).nhanTruc,
+        ];
+        expect(nhan.toSet().length, kSoKyXuHuong,
+            reason: 'đơn vị ${ky.donVi.name} có nhãn trùng: $nhan');
+      }
     });
 
     test('tenKyNay null cho kỳ tuỳ chọn', () {
