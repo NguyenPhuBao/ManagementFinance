@@ -163,9 +163,9 @@ void main() {
 
     test('danh sách quý lùi đúng ba tháng mỗi bước', () {
       final ds = cacKyGanNhat(DateTime(2026, 9, 17), DonViKy.quy);
-      expect(ds.first.nhanNgan, 'Quý 3 2026');
-      expect(ds[1].nhanNgan, 'Quý 2 2026');
-      expect(ds[3].nhanNgan, 'Quý 4 2025');
+      expect(ds.first.nhanNgan, 'Q3 2026');
+      expect(ds[1].nhanNgan, 'Q2 2026');
+      expect(ds[3].nhanNgan, 'Q4 2025');
     });
 
     test('kỳ tuỳ chọn không có danh sách dựng sẵn', () {
@@ -180,7 +180,7 @@ void main() {
   group('lui', () {
     test('lùi theo đúng đơn vị, kể cả qua mốc năm', () {
       expect(lui(Ky.thang(2026, 2), 3).nhanNgan, 'T11 2025');
-      expect(lui(Ky.quy(2026, 1), 1).nhanNgan, 'Quý 4 2025');
+      expect(lui(Ky.quy(2026, 1), 1).nhanNgan, 'Q4 2025');
       expect(lui(Ky.nam(2026), 2).nhanNgan, '2024');
       expect(lui(Ky.tuan(DateTime(2026, 9, 17)), 1).from, DateTime(2026, 9, 7));
     });
@@ -249,7 +249,29 @@ void main() {
       expect(nhanOChon(Ky.thang(2026, 8), moc), 'T8 2026',
           reason: 'giữ "Tháng này" cho một tháng đã qua là nói dối về thứ '
               'đang hiện trên màn hình');
-      expect(nhanOChon(Ky.quy(2026, 1), moc), 'Quý 1 2026');
+      expect(nhanOChon(Ky.quy(2026, 1), moc), 'Q1 2026');
+    });
+
+    test('⚠️ nhãn quý KHÔNG được dài hơn nhãn tháng', () {
+      // Ô header chỉ vừa đúng chừng ấy chữ. "Tháng này (T9 2026)" là chuỗi dài
+      // nhất từng được kiểm trên máy thật và nó vừa khít — nên nhãn nào dài
+      // hơn nó là **chắc chắn cụt**. "Quý này (Quý 3 2026)" dài hơn đúng MỘT
+      // ký tự, và máy ảo hiện ra "Quý này (Quý 3 20…", mất cả năm.
+      //
+      // Đây là phép canh ở tầng thuần thay cho phép đo bề rộng ở widget test:
+      // font "Ahem" của bộ test rộng gấp đôi ngoài đời (bẫy 4.4
+      // `ANALYTICS_FEATURE.md`) nên ở 411dp chuỗi nào cũng cụt, và một ca test
+      // đo bề rộng sẽ đỏ cả với nhãn tháng vốn không sao.
+      final thang = nhanOChon(Ky.thang(2026, 9), moc);
+      final quy = nhanOChon(Ky.quy(2026, 3), moc);
+
+      expect(quy, 'Quý này (Q3 2026)',
+          reason: '`Q3` là đúng cách viết mà trục biểu đồ đã dùng (`Q3/26`), '
+              'nên rút gọn ở đây không đẻ ra quy ước thứ hai');
+      expect(quy.length, lessThanOrEqualTo(thang.length),
+          reason: 'Nhãn tháng là mốc đã được máy thật chứng minh là vừa. Bất '
+              'kỳ nhãn nào dài hơn nó đều bị cắt, và người dùng mất phần đuôi '
+              '— chính là con số năm.');
     });
 
     test('kỳ tuỳ chọn không bao giờ mang dạng "… này"', () {
@@ -269,7 +291,7 @@ void main() {
     test('kỳ trước rơi sang năm khác thì GIỮ năm', () {
       expect(nhanKyTruoc(Ky.thang(2026, 1)), 'T12 2025',
           reason: 'đang xem T1 2026 mà đọc "so với T12" thì không biết T12 nào');
-      expect(nhanKyTruoc(Ky.quy(2026, 1)), 'Quý 4 2025');
+      expect(nhanKyTruoc(Ky.quy(2026, 1)), 'Q4 2025');
     });
 
     test('kỳ năm luôn giữ số năm', () {

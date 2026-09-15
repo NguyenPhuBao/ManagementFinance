@@ -97,7 +97,13 @@ class Ky {
         // thừa: 31/12/2025 thuộc 2026-W01. Phép chia ngây thơ cho ra tuần 53.
         DonViKy.tuan => 'Tuần ${tuanISO(from).tuan}',
         DonViKy.thang => 'T${from.month} ${from.year}',
-        DonViKy.quy => 'Quý $_quy ${from.year}',
+        // ⚠️ `Q3` chứ không `Quý 3`: dạng đầy đủ làm nhãn ô header dài hơn
+        // "Tháng này (T9 2026)" đúng MỘT ký tự, và máy ảo cắt nó thành
+        // "Quý này (Quý 3 20…" — mất cả con số năm. Nhãn tháng là mốc đã được
+        // máy thật chứng minh là vừa, nên không nhãn nào được dài hơn nó; có
+        // ca test canh đúng bất đẳng thức ấy. `Q3` cũng là cách viết mà trục
+        // biểu đồ đã dùng (`Q3/26`), nên đây không phải quy ước thứ hai.
+        DonViKy.quy => 'Q$_quy ${from.year}',
         DonViKy.nam => '${from.year}',
         DonViKy.tuyChon => '${_dm(from)} – ${_dm(_ngayCuoi)}',
       };

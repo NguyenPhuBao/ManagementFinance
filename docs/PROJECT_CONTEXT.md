@@ -702,6 +702,19 @@ nhầm lẫn: ghi chú 2026-09-08 trong spec Tổng kết tuần nói "còn thi�
 tuần" — đúng **vào ngày ấy**, và khối "✅ Đã đủ" nằm ngay dưới nó. Bài học cũ,
 vấp lại: `grep` một cụm chữ rồi kết luận, thay vì đọc trọn mục.
 
+⚠️ **Nhãn quý sửa lại cùng ngày, sau khi người dùng báo ô header cụt.** Bản đầu
+để `nhanNgan` của quý là `Quý 3 2026`, làm nhãn ô header `"Quý này (Quý 3 2026)"`
+dài hơn `"Tháng này (T9 2026)"` **đúng một ký tự** — và máy ảo cắt nó thành
+`"Quý này (Quý 3 20…"`, mất cả con số năm. Nay là **`Q3 2026`**, trùng cách viết
+mà trục biểu đồ đã dùng (`Q3/26`), nên không đẻ ra quy ước thứ hai.
+
+Bất biến rút ra, nay có ca test canh: **không nhãn nào được dài hơn nhãn tháng**
+— đó là chuỗi duy nhất đã được máy thật chứng minh là vừa. Phép canh đặt ở
+**tầng thuần** (so độ dài chuỗi) chứ không phải widget test đo bề rộng: font
+"Ahem" của bộ test rộng gấp đôi ngoài đời (bẫy 4.4 `ANALYTICS_FEATURE.md`) nên ở
+411dp chuỗi nào cũng cụt, và một ca đo bề rộng sẽ đỏ cả với nhãn tháng vốn không
+sao.
+
 **Hệ quả thật của P1:** trang Phân tích tự nó có phạm vi tuần, và mọi khối thống
 kê thêm về sau không còn thừa hưởng giới hạn "chỉ tháng". Và ⚠️ **ngân sách chỉ
 gắn vào dòng danh mục khi đơn vị là Tháng**:

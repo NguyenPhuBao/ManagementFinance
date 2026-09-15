@@ -561,6 +561,19 @@ tràn 53px một lần), `nhanTruc` cho trục biểu đồ (vài ký tự). C�
 `nhanKyTruoc` (câu "so với …" ở thẻ tổng — bỏ năm khi cùng năm, giữ năm khi kỳ
 trước rơi sang năm khác).
 
+⚠️ **Nhãn quý là `Q3 2026`, không phải `Quý 3 2026`** (sửa 2026-09-15 sau khi
+người dùng báo). Dạng đầy đủ làm nhãn ô header — `"Quý này (Quý 3 2026)"` —
+dài hơn `"Tháng này (T9 2026)"` **đúng một ký tự**, và máy ảo cắt nó thành
+`"Quý này (Quý 3 20…"`, mất cả con số năm. Nhãn tháng là chuỗi dài nhất từng
+được chứng minh là vừa trên máy thật, nên **không nhãn nào được dài hơn nó**;
+`pham_vi_ky_test.dart` canh đúng bất đẳng thức ấy.
+
+Hai điều đi kèm. **`Q3` không phải quy ước thứ hai** — trục biểu đồ đã dùng
+`Q3/26` từ đầu. Và phép canh phải đặt ở **tầng thuần**, không phải widget test
+đo bề rộng: font "Ahem" rộng gấp đôi ngoài đời (bẫy 4.4) nên ở 411dp chuỗi nào
+cũng cụt, và một ca đo bề rộng sẽ đỏ cả với nhãn tháng vốn không sao. So **độ
+dài chuỗi với nhãn tháng** là phép canh không phụ thuộc font.
+
 **Bộ chọn là bottom sheet hai tầng**, không phải chip trên header: header đã
 chật. Chip chọn *đơn vị*, danh sách chọn *kỳ* — và **đổi chip chưa phải một lựa
 chọn**, vì người dùng còn phải nói rõ kỳ nào. Danh sách dựng tại chỗ bằng
