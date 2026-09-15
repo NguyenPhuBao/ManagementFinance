@@ -35,6 +35,16 @@ class KhoanThuChi {
   /// phân loại là báo cáo sai mà không ai biết.
   final String? classify;
 
+  /// **Tên** danh mục mà khoản này gắn. Thêm 2026-09-15 cho hai biểu đồ vay/nợ.
+  ///
+  /// Vì sao tầng thuần lại cần một cái tên: bốn vai *cho vay · thu nợ · đi vay ·
+  /// trả nợ* **không có chỗ nào lưu**, và chiều tiền chỉ tách được hai nhóm —
+  /// thứ duy nhất tách được bốn là tên. Xem `vai_vay_no.dart`.
+  ///
+  /// `null` là "nơi gọi chưa điền"; khi ấy vai rơi về `VaiVayNo.khac`, tức
+  /// khoản vẫn được đếm nhưng không bị xếp bừa vào một vai.
+  final String? tenDanhMuc;
+
   const KhoanThuChi({
     required this.ngay,
     required this.soTien,
@@ -42,6 +52,7 @@ class KhoanThuChi {
     required this.categoryId,
     this.ghiChu,
     this.classify,
+    this.tenDanhMuc,
   });
 }
 

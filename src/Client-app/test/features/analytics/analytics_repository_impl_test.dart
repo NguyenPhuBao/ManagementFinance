@@ -515,4 +515,60 @@ void main() {
           reason: 'ví người dùng đã loại khỏi tổng không được phình con số');
     });
   });
+
+  // ── Hai biểu đồ vay/nợ — A8 #4 và #5 (2026-09-15) ────────────────────────
+  group('chuỗi vay/nợ', () {
+    setUp(() async {
+      await db.categoryDao.insert(CategoriesCompanion.insert(
+        id: 'c_chovay',
+        idaccount: 1,
+        name: 'Cho vay',
+        classify: 'vay_no',
+        updatedAt: now,
+      ));
+      await db.categoryDao.insert(CategoriesCompanion.insert(
+        id: 'c_thuno',
+        idaccount: 1,
+        name: 'Thu nợ',
+        classify: 'vay_no',
+        updatedAt: now,
+      ));
+      await db.categoryDao.insert(CategoriesCompanion.insert(
+        id: 'c_tuydat',
+        idaccount: 1,
+        name: 'Nợ Bảo',
+        classify: 'vay_no',
+        updatedAt: now,
+      ));
+    });
+
+    test('repository tra TÊN danh mục để đọc vai', () async {
+      await giaoDich(id: 'v1', ngay: DateTime(2026, 9, 2), soTien: 500000, danhMuc: 'c_chovay');
+      await giaoDich(id: 'v2', ngay: DateTime(2026, 9, 3), soTien: 200000, loai: 'thu', danhMuc: 'c_thuno');
+
+      final tk = await lanDau();
+
+      expect(tk.chuoiVayNo.length, 6);
+      expect(tk.chuoiVayNo.last.choVay, 500000,
+          reason: 'vai đọc từ tên, mà tên chỉ repository mới tra được');
+      expect(tk.chuoiVayNo.last.thuNo, 200000);
+    });
+
+    test('danh mục tự đặt tên rơi vào "khác", tách theo chiều tiền', () async {
+      await giaoDich(id: 'v1', ngay: DateTime(2026, 9, 2), soTien: 111000, danhMuc: 'c_tuydat');
+
+      final tk = await lanDau();
+
+      expect(tk.chuoiVayNo.last.khacRa, 111000);
+      expect(tk.chuoiVayNo.last.choVay, 0);
+    });
+
+    test('khoản chi thường không lọt vào chuỗi vay/nợ', () async {
+      await giaoDich(id: 't1', ngay: DateTime(2026, 9, 2), soTien: 300000, danhMuc: 'c_an');
+
+      final tk = await lanDau();
+
+      expect(tk.chuoiVayNo.every((d) => d.rong), isTrue);
+    });
+  });
 }

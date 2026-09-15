@@ -18,6 +18,7 @@ import 'package:flowmoney/core/di/injection_container.dart';
 import 'package:flowmoney/features/analytics/data/analytics_repository.dart';
 import 'package:flowmoney/features/analytics/domain/bao_cao_xuat.dart';
 import 'package:flowmoney/features/analytics/domain/pham_vi_ky.dart';
+import 'package:flowmoney/features/analytics/domain/vai_vay_no.dart';
 import 'package:flowmoney/features/analytics/domain/phan_loai_dong_tien.dart';
 import 'package:flowmoney/features/analytics/domain/thong_ke_thang.dart';
 import 'package:flowmoney/features/analytics/presentation/bloc/analytics_cubit.dart';
@@ -98,6 +99,7 @@ ThongKeKy _tk({
   Map<String, List<DongDanhMuc>> theoLat = const {},
   Map<String?, List<DiemThoiGian>> chuoiDm = const {},
   SoLieuNhanh? soLieu,
+  List<DiemVayNo> chuoiVayNo = const [],
   List<DongVi> theoVi = const [],
   List<DongGiaoDich> topChi = const [],
   DongTien? dongTien,
@@ -132,6 +134,7 @@ ThongKeKy _tk({
       theoVi: theoVi,
       topChi: topChi,
       dongTien: dongTien,
+      chuoiVayNo: chuoiVayNo,
     );
 
 /// Ba phân loại mẫu, dùng chung cho nhóm test "Cơ cấu theo danh mục" — đủ cả
@@ -997,6 +1000,90 @@ void main() {
 
       expect(tester.takeException(), isNull,
           reason: 'Flutter báo tràn qua reportError chứ không ném ra chỗ gọi');
+    });
+  });
+
+  // ── Hai biểu đồ vay/nợ — A8 #4 và #5 (2026-09-15) ────────────────────────
+  group('hai biểu đồ vay/nợ', () {
+    List<DiemVayNo> chuoi({
+      double choVay = 0,
+      double thuNo = 0,
+      double diVay = 0,
+      double traNo = 0,
+      double khacRa = 0,
+      double khacVao = 0,
+    }) =>
+        [
+          for (var i = 5; i >= 0; i--)
+            DiemVayNo(
+              ky: Ky.thang(2026, 9 - i),
+              choVay: i == 0 ? choVay : 0,
+              thuNo: i == 0 ? thuNo : 0,
+              diVay: i == 0 ? diVay : 0,
+              traNo: i == 0 ? traNo : 0,
+              khacRa: i == 0 ? khacRa : 0,
+              khacVao: i == 0 ? khacVao : 0,
+            ),
+        ];
+
+    Future<void> moCao(WidgetTester tester) async {
+      tester.view.physicalSize = const Size(411, 4000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await moTrang(tester);
+    }
+
+    testWidgets('có phát sinh thì hiện đủ hai khối', (tester) async {
+      await moCao(tester);
+      await phat(
+        tester,
+        _tk(chuoiVayNo: chuoi(choVay: 500000, thuNo: 200000, diVay: 900000, traNo: 300000)),
+      );
+
+      expect(find.text('Cho vay & Thu nợ'), findsOneWidget);
+      expect(find.text('Đi vay & Trả nợ'), findsOneWidget);
+      expect(find.text('Cho vay'), findsOneWidget, reason: 'chú giải');
+      expect(find.text('Thu nợ'), findsOneWidget);
+      expect(find.text('Đi vay'), findsOneWidget);
+      expect(find.text('Trả nợ'), findsOneWidget);
+    });
+
+    testWidgets('khối nào không có phát sinh thì KHÔNG hiện', (tester) async {
+      await moCao(tester);
+      await phat(tester, _tk(chuoiVayNo: chuoi(choVay: 500000)));
+
+      expect(find.text('Cho vay & Thu nợ'), findsOneWidget);
+      expect(find.text('Đi vay & Trả nợ'), findsNothing,
+          reason: 'vẽ một biểu đồ toàn số 0 trông như lỗi tải dữ liệu');
+    });
+
+    testWidgets('không có vay/nợ nào thì cả hai khối biến mất', (tester) async {
+      await moCao(tester);
+      await phat(tester, _tk());
+
+      expect(find.text('Cho vay & Thu nợ'), findsNothing);
+      expect(find.text('Đi vay & Trả nợ'), findsNothing);
+    });
+
+    testWidgets('khối "chưa xếp được vai" chỉ hiện khi CÓ', (tester) async {
+      await moCao(tester);
+      await phat(tester, _tk(chuoiVayNo: chuoi(choVay: 500000)));
+      expect(find.text('Vay/nợ chưa xếp được vai'), findsNothing);
+
+      await phat(tester, _tk(chuoiVayNo: chuoi(choVay: 500000, khacRa: 111000)));
+      expect(find.text('Vay/nợ chưa xếp được vai'), findsOneWidget,
+          reason: 'khoản không đoán được vai vẫn phải nhìn thấy được — giấu đi '
+              'là im lặng đánh rơi tiền của người dùng');
+    });
+
+    testWidgets('không tràn ở 411dp với số hàng trăm triệu', (tester) async {
+      await moCao(tester);
+      await phat(
+        tester,
+        _tk(chuoiVayNo: chuoi(choVay: 987654321, thuNo: 123456789, diVay: 555555555, traNo: 999999999)),
+      );
+
+      expect(tester.takeException(), isNull);
     });
   });
 }

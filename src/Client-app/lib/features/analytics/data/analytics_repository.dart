@@ -1,5 +1,6 @@
 import '../domain/bao_cao_xuat.dart';
 import '../domain/pham_vi_ky.dart';
+import '../domain/vai_vay_no.dart';
 import '../domain/phan_loai_dong_tien.dart';
 import '../domain/thong_ke_thang.dart';
 
@@ -118,6 +119,13 @@ class ThongKeKy {
   /// `null` khi chưa đọc được số dư ví.
   final DongTien? dongTien;
 
+  /// Sáu kỳ gom theo **vai vay/nợ** — nguồn cho hai biểu đồ "Cho vay & Thu nợ"
+  /// và "Đi vay & Trả nợ" (A8 #4, #5).
+  ///
+  /// Cùng lý do với [chuoi]: dựng từ **toàn bộ** giao dịch chứ không phải từ
+  /// danh sách đã lọc theo kỳ, vì chuỗi nhìn xa sáu kỳ.
+  final List<DiemVayNo> chuoiVayNo;
+
   const ThongKeKy({
     required this.ky,
     required this.tong,
@@ -137,6 +145,7 @@ class ThongKeKy {
     this.theoVi = const [],
     this.topChi = const [],
     this.dongTien,
+    this.chuoiVayNo = const [],
   });
 
   double? get thuSoVoiTruoc => phanTramSoVoi(tong.thu, tongTruoc.thu);

@@ -14,6 +14,7 @@ import '../../data/analytics_repository.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../domain/bao_cao_xuat.dart';
 import '../../domain/pham_vi_ky.dart';
+import '../../domain/vai_vay_no.dart';
 import '../../domain/phan_loai_dong_tien.dart';
 import '../../domain/thong_ke_thang.dart';
 import '../bloc/analytics_cubit.dart';
@@ -132,6 +133,31 @@ class _NoiDung extends StatelessWidget {
           if (thongKe.topChi.isNotEmpty) ...[
             const SizedBox(height: 24),
             _KhoiTopChi(ds: thongKe.topChi),
+          ],
+          // Hai biểu đồ vay/nợ đứng CUỐI: phần lớn người dùng không ghi khoản
+          // vay/nợ nào, và khi ấy chúng không hiện — đặt ở giữa trang thì mỗi
+          // lần cuộn qua là một khoảng trống không giải thích được.
+          if (coVayNo(thongKe.chuoiVayNo, chieuRa: true)) ...[
+            const SizedBox(height: 24),
+            _KhoiVayNo(
+              tieuDe: 'Cho vay & Thu nợ',
+              ds: thongKe.chuoiVayNo,
+              sau: _CotVayNo.choVay,
+              truoc: _CotVayNo.thuNo,
+            ),
+          ],
+          if (coVayNo(thongKe.chuoiVayNo, chieuRa: false)) ...[
+            const SizedBox(height: 24),
+            _KhoiVayNo(
+              tieuDe: 'Đi vay & Trả nợ',
+              ds: thongKe.chuoiVayNo,
+              sau: _CotVayNo.diVay,
+              truoc: _CotVayNo.traNo,
+            ),
+          ],
+          if (thongKe.chuoiVayNo.any((d) => d.khacRa > 0 || d.khacVao > 0)) ...[
+            const SizedBox(height: 24),
+            _KhoiVayNoKhac(ds: thongKe.chuoiVayNo),
           ],
         ];
       case AnalyticsError(:final message):
@@ -1363,6 +1389,283 @@ class _KhoiTopChi extends StatelessWidget {
               ),
           ],
         ),
+      );
+}
+
+// ── Hai biểu đồ vay/nợ — A8 #4 và #5 (2026-09-15) ─────────────────────────
+//
+// Mỗi kỳ một **cặp cột chồng nhau**: cột sau rộng và mờ, cột trước hẹp và đậm
+// vẽ đè lên chính giữa. Người dùng chốt hình dạng này ngày 2026-09-15.
+//
+// ⚠️ **Màu theo CHIỀU TIỀN, không theo vị trí**: xanh luôn là tiền vào, đỏ luôn
+// là tiền ra — cùng quy ước với mọi chỗ khác trong app. Nên khối "Cho vay & Thu
+// nợ" có cột sau đỏ, còn khối "Đi vay & Trả nợ" có cột sau XANH. Đảo lại cho
+// "hai khối trông giống nhau" là dạy người đọc một quy ước thứ hai.
+
+enum _CotVayNo { choVay, thuNo, diVay, traNo }
+
+extension _CotVayNoX on _CotVayNo {
+  String get nhan => switch (this) {
+        _CotVayNo.choVay => 'Cho vay',
+        _CotVayNo.thuNo => 'Thu nợ',
+        _CotVayNo.diVay => 'Đi vay',
+        _CotVayNo.traNo => 'Trả nợ',
+      };
+
+  /// Tiền vào thì xanh, tiền ra thì đỏ — không phụ thuộc cột nằm trước hay sau.
+  Color get mau => switch (this) {
+        _CotVayNo.choVay || _CotVayNo.traNo => AppColors.expense,
+        _CotVayNo.thuNo || _CotVayNo.diVay => AppColors.income,
+      };
+
+  double soTien(DiemVayNo d) => switch (this) {
+        _CotVayNo.choVay => d.choVay,
+        _CotVayNo.thuNo => d.thuNo,
+        _CotVayNo.diVay => d.diVay,
+        _CotVayNo.traNo => d.traNo,
+      };
+}
+
+/// Chuỗi có phát sinh nào ở chiều đang hỏi không.
+///
+/// [chieuRa] `true` hỏi cặp *Cho vay / Thu nợ*, `false` hỏi cặp *Đi vay / Trả
+/// nợ*. Vẽ một biểu đồ toàn số 0 trông như lỗi tải dữ liệu, nên khối nào không
+/// có gì thì không hiện.
+bool coVayNo(List<DiemVayNo> ds, {required bool chieuRa}) => ds.any(
+      (d) => chieuRa ? (d.choVay > 0 || d.thuNo > 0) : (d.diVay > 0 || d.traNo > 0),
+    );
+
+class _KhoiVayNo extends StatelessWidget {
+  final String tieuDe;
+  final List<DiemVayNo> ds;
+
+  /// Cột **rộng, mờ**, vẽ trước nên nằm dưới.
+  final _CotVayNo sau;
+
+  /// Cột **hẹp, đậm**, vẽ sau nên đè lên trên.
+  final _CotVayNo truoc;
+
+  const _KhoiVayNo({
+    required this.tieuDe,
+    required this.ds,
+    required this.sau,
+    required this.truoc,
+  });
+
+  /// Bề rộng hai cột. Cột trước phải hẹp hơn hẳn thì mắt mới thấy nó nằm
+  /// **trong lòng** cột sau chứ không phải một cột thứ hai đứng cạnh.
+  static const double _rongSau = 22;
+  static const double _rongTruoc = 12;
+
+  @override
+  Widget build(BuildContext context) {
+    var dinh = 0.0;
+    for (final d in ds) {
+      final a = sau.soTien(d);
+      final b = truoc.soTien(d);
+      if (a > dinh) dinh = a;
+      if (b > dinh) dinh = b;
+    }
+    // Cùng cách chống nhãn trục tung in đè của G39 (bẫy 4.18): tính `buoc`
+    // trước rồi đặt trần bằng `buoc * 3`, đừng chia một số rồi dùng lại chính
+    // nó làm trần — `3 * (maxY / 3)` lệch `maxY` chừng 1e-14 và `rutGon` cho ra
+    // hai chuỗi khác nhau ở cùng một vị trí.
+    final buoc = (dinh <= 0 ? 1.0 : dinh * 1.15) / 3;
+    final maxY = buoc * 3;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: _theTrang(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _tieuDeKhoi(tieuDe),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 20,
+            runSpacing: 8,
+            children: [
+              _ChuGiai(mau: sau.mau, nhan: sau.nhan),
+              _ChuGiai(mau: truoc.mau, nhan: truoc.nhan),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 170,
+            child: BarChart(
+              BarChartData(
+                maxY: maxY,
+                minY: 0,
+                alignment: BarChartAlignment.spaceAround,
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  horizontalInterval: buoc,
+                  getDrawingHorizontalLine: (_) => const FlLine(
+                      color: AppColors.outlineVariant, strokeWidth: 1),
+                ),
+                borderData: FlBorderData(show: false),
+                // `fitInside*` là hai chốt đã học ở khối Xu hướng (mục 3.11):
+                // không có chúng thì tooltip của cột đầu và cột cuối tràn ra
+                // ngoài thẻ.
+                barTouchData: const BarTouchData(
+                  touchTooltipData: BarTouchTooltipData(
+                    fitInsideHorizontally: true,
+                    fitInsideVertically: true,
+                  ),
+                ),
+                titlesData: FlTitlesData(
+                  topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      interval: buoc,
+                      reservedSize: 46,
+                      getTitlesWidget: (v, meta) => Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: Text(
+                          rutGon(v),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.right,
+                          style: const TextStyle(
+                              fontSize: 10, color: AppColors.textSecondary),
+                        ),
+                      ),
+                    ),
+                  ),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      interval: 1,
+                      reservedSize: 26,
+                      getTitlesWidget: (v, meta) {
+                        final i = v.round();
+                        if (i < 0 || i >= ds.length) {
+                          return const SizedBox.shrink();
+                        }
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            ds[i].ky.nhanTruc,
+                            style: const TextStyle(
+                                fontSize: 10, color: AppColors.textSecondary),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                barGroups: [
+                  for (var i = 0; i < ds.length; i++)
+                    BarChartGroupData(
+                      x: i,
+                      // `barsSpace` ÂM là thứ làm hai cột chồng nhau.
+                      // `-(rộng1 + rộng2) / 2` đặt tâm hai cột trùng khít —
+                      // lệch đi là cột trước trồi ra một bên, trông như lỗi vẽ.
+                      barsSpace: -(_rongSau + _rongTruoc) / 2,
+                      barRods: [
+                        // Thứ tự trong danh sách LÀ thứ tự vẽ: cột sau phải
+                        // đứng trước để cột trước đè lên nó.
+                        BarChartRodData(
+                          toY: sau.soTien(ds[i]),
+                          width: _rongSau,
+                          color: sau.mau.withValues(alpha: 0.35),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        BarChartRodData(
+                          toY: truoc.soTien(ds[i]),
+                          width: _rongTruoc,
+                          color: truoc.mau,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Khoản thuộc nhóm Vay/nợ mà **không đoán được vai** — chỉ hiện khi có.
+///
+/// Vì sao không nhét vào hai khối trên: một khoản tiền ra không rõ tên có thể là
+/// *cho vay* **hoặc** *trả nợ*. Xếp vào một khối là chọn bừa, xếp vào cả hai là
+/// đếm hai lần. Khối riêng là chỗ duy nhất không phải bịa — và giấu nó đi thì
+/// tổng trên hai biểu đồ nhỏ hơn tiền thật mà không ai biết vì sao.
+class _KhoiVayNoKhac extends StatelessWidget {
+  final List<DiemVayNo> ds;
+  const _KhoiVayNoKhac({required this.ds});
+
+  @override
+  Widget build(BuildContext context) {
+    final ra = ds.fold<double>(0, (s, d) => s + d.khacRa);
+    final vao = ds.fold<double>(0, (s, d) => s + d.khacVao);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: _theTrang(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _tieuDeKhoi('Vay/nợ chưa xếp được vai'),
+          const SizedBox(height: 8),
+          const Text(
+            'Danh mục vay/nợ do bạn tự đặt tên — app chỉ biết chiều tiền, '
+            'không biết là cho vay hay trả nợ.',
+            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(child: _o('TIỀN RA', ra, AppColors.expense)),
+              const SizedBox(width: 12),
+              Expanded(child: _o('TIỀN VÀO', vao, AppColors.income)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _o(String nhan, double soTien, Color mau) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            nhan,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textSecondary,
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(height: 4),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              CurrencyFormatter.format(soTien),
+              maxLines: 1,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: mau,
+              ),
+            ),
+          ),
+        ],
       );
 }
 

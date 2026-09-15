@@ -7,6 +7,7 @@ import '../../wallet/domain/vi_tinh_vao_tong.dart';
 import '../domain/bao_cao_xuat.dart';
 import '../domain/khoan_vao_thong_ke.dart';
 import '../domain/pham_vi_ky.dart';
+import '../domain/vai_vay_no.dart';
 import '../domain/phan_loai_dong_tien.dart';
 import '../domain/thong_ke_thang.dart';
 import 'analytics_repository.dart';
@@ -131,6 +132,9 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
     // cũ trỏ vào danh mục đã xoá vẫn tra được `classify`. Thiếu bảng tra này
     // thì mọi khoản Trả nợ rơi về lát "chi" và vòng tròn nói sai tỷ trọng.
     final classifyTheoId = {for (final c in cats) c.id: c.classify};
+    // Bảng tra TÊN, dựng cạnh bảng tra `classify` vì `khoan` cần cả hai và nó
+    // được dựng trước `danhMucTheoId` ở dưới.
+    final tenTheoId = {for (final c in cats) c.id: c.name};
     final khoan = [
       for (final t in txs)
         KhoanThuChi(
@@ -143,6 +147,10 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
           // Cần cho phép loại khoản điều chỉnh số dư khỏi thống kê; thiếu
           // nó thì luật ấy không có gì để đọc và khoản bù thành thu nhập.
           ghiChu: t.note,
+          // TÊN danh mục — hai biểu đồ vay/nợ đọc vai từ đây, vì bốn vai
+          // *cho vay · thu nợ · đi vay · trả nợ* không có chỗ nào lưu.
+          tenDanhMuc:
+              t.categoryId == null ? null : tenTheoId[t.categoryId],
         ),
     ];
 
@@ -314,6 +322,8 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
       // Cùng lý do với `chuoi`: dựng từ toàn bộ giao dịch, không phải từ kỳ
       // đang xem.
       chuoiDanhMuc: chuoiTheoDanhMuc(khoan, ky: ky),
+      // Cùng lý do: dựng từ toàn bộ giao dịch, không phải từ kỳ đang xem.
+      chuoiVayNo: chuoiVayNo(khoan, ky: ky),
     );
   }
 }
