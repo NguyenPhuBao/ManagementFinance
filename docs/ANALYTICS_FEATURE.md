@@ -1,6 +1,6 @@
 # Trang Phân tích — thiết kế, lý do, và những cái bẫy
 
-**Cập nhật:** 2026-09-15 (mục **3.20** — **P1: phạm vi thời gian**, trang nay xem được theo tuần · tháng · quý · năm · khoảng tuỳ chọn) · bản trước 2026-09-14 (mục **3.19** — A8 #3, #7: cơ cấu theo danh mục với ba chip nhóm, và xu hướng tới 5 danh mục cùng lúc; bản thi công **lần hai**, #2 đã bỏ)
+**Cập nhật:** 2026-09-15 (mục **3.20** — **P1: phạm vi thời gian**, trang nay xem được theo tuần · tháng · quý · năm · khoảng tuỳ chọn; mục **3.21** — **P2**: bốn khối mượn từ trang Xuất báo cáo) · bản trước 2026-09-14 (mục **3.19** — A8 #3, #7: cơ cấu theo danh mục với ba chip nhóm, và xu hướng tới 5 danh mục cùng lúc; bản thi công **lần hai**, #2 đã bỏ)
 **Trạng thái:** **mảng Phân tích đã xong cả 2a, 2b, 2c** (2026-09-09). Lát **2a** xong — mọi con số trên trang là số thật từ SQLite —
 lát **2b** xong (khối "Xu hướng 6 tháng" vẽ bằng `fl_chart`), lát **2c‑1** xong
 (trang Xuất báo cáo đọc ví/danh mục/thời gian thật rồi mở màn **Xem trước báo
@@ -592,6 +592,57 @@ thuộc `2026-W01`).
 ngoài một dòng `export`: `khoangKyTruoc` chuyển sang `pham_vi_ky.dart` để hai
 trang dùng chung một định nghĩa, và 25 ca của nó vẫn xanh mà không sửa dòng nào.
 
+### 3.21 Bốn khối mượn từ trang Xuất báo cáo (P2)
+
+**2026-09-15.** Trang Phân tích nghèo hơn trang Báo cáo một cách vô lý: cùng dữ
+liệu, cùng tầng domain, mà không có **dòng tiền**, **số liệu nhanh**, **phân bổ
+theo ví** hay **top 5 khoản chi**. Nay có đủ bốn.
+
+**Thứ tự khối chép đúng trang Báo cáo**, để hai trang kể cùng một câu chuyện
+theo cùng một trình tự — và thứ tự câu hỏi vẫn đọc ra được:
+
+```
+Dòng tiền ▸ 3 thẻ tổng ▸ Xu hướng ▸ Số liệu nhanh ▸ Cơ cấu donut ▸ Chi tiết danh mục ▸ Phân bổ theo ví ▸ Top 5
+tiền ở đâu    bao nhiêu   ra sao      tiêu thế nào     đi vào đâu        chi tiết          từ ví nào    khoản nào
+```
+
+**Một định nghĩa, hai nơi dùng.** Bốn phép tính vốn nằm **inline** trong
+`dungBaoCao`; nay là hàm thuần ở `bao_cao_xuat.dart`: `soLieuNhanhCua`,
+`phanBoTheoVi`, `topKhoanChi`, `dongTienCua`.
+
+⚠️ **Đừng gọi `dungBaoCao` từ trang Phân tích.** Nó tính thêm cả chuỗi biểu đồ,
+bảng danh mục và phép gom theo ngày — thứ trang này đã có hoặc không cần — và
+stream của trang phát lại sau **mọi** chu kỳ đồng bộ nền. Cùng lý lẽ với "một
+lượt duyệt" của `chuoiTheoDanhMuc`.
+
+**Repository nhận nguồn thứ tư: ví.** Ba trong bốn khối cần nó — "phân bổ theo
+ví" cần **tên** ví, "dòng tiền" cần **tổng số dư hiện tại**. Tổng ấy đi qua
+`viTinhVaoTong`, cùng luật với trang chủ, màn Quản lý ví và trang Báo cáo; `fold`
+trần trên mọi ví là bản chép tay đã sai **ba lần** (mục 3.16 và
+`vi_tinh_vao_tong.dart`). Ví lấy **kể cả hàng đã xoá mềm**, cùng luật với danh
+mục: giao dịch cũ vẫn trỏ vào ví đã xoá và tên thật vẫn nằm trong hàng.
+
+**Bốn chỗ dễ vấp:**
+
+1. ⚠️ **Khối dòng tiền LUÔN kèm câu "Suy ngược từ số dư hiện tại của các ví".**
+   App không lưu lịch sử số dư; bê mỗi con số là để người đọc tưởng đây là số
+   đo. Có ca test canh đúng câu ấy. Xem mục **3.16** cho cả danh sách chỗ nó
+   lệch.
+2. ⚠️ **`dongTienCua` nhận TOÀN BỘ giao dịch, không phải phần đã cắt theo kỳ.**
+   Phép suy đi ngược từ hôm nay về cuối kỳ nên nó cần biết phần phát sinh **sau**
+   kỳ. Đưa danh sách đã cắt vào thì đầu kỳ và cuối kỳ bằng nhau — **im lặng**.
+3. ⚠️ **Số 0 không mang dấu.** `-0 đ` ở ví chỉ có thu (và `+0 đ` ở ví chỉ có chi)
+   đọc như một con số âm bằng không. Luật ấy vốn nằm riêng ở
+   `report_preview_page._coDau`, nay là **`CurrencyFormatter.formatCoDau`** dùng
+   chung — đúng nếp mọi luật hiển thị tiền ở một chỗ. Máy ảo bắt được.
+4. ⚠️ **Test của trang phải gọi `initializeDateFormatting`.** Khối Top 5 in ngày
+   qua `DateFormatter`; thiếu dữ liệu locale thì widget ném `LocaleDataException`
+   và **cả cây dừng dựng** — mọi ca trong tệp đỏ với dáng vẻ "khối không hiện",
+   không ai nghĩ tới ngày tháng. App thì không sao (`main.dart:30`).
+
+**Khối rỗng thì không vẽ.** `theoVi` và `topChi` rỗng là ẩn cả thẻ, không vẽ một
+thẻ trắng có mỗi tiêu đề.
+
 ## 4. Bẫy
 
 **4.1 Tài khoản.** `AnalyticsPage` phải `context.watch<AuthBloc>()` + `ValueKey(idaccount)`
@@ -850,9 +901,10 @@ không (`preventCurveOverShooting`). Cả ba chỉ kiểm được bằng mắt 
   đầu đều không có; **#10** (thác nước) và **#11** (Sankey) làm được với thu/chi
   nhưng để đợt sau.
 - ⚠️ Câu *"Mảng Phân tích đến đây là xong"* đứng ở đây từ 2026-09-09 **đã bị gỡ
-  ngày 2026-09-15**: người dùng chốt làm tiếp mảng Phân tích và Báo cáo. Kế
-  hoạch còn lại nằm ở `docs/superpowers/plans/2026-09-15-ke-hoach.md` (gitignore)
-  — P2 đưa bốn khối mạnh của Báo cáo sang trang này, P3 biểu đồ thác nước.
+  ngày 2026-09-15**: người dùng chốt làm tiếp mảng Phân tích và Báo cáo. ✅ **P1
+  (mục 3.20) và P2 (mục 3.21) xong cùng ngày**; còn **P3** — biểu đồ thác nước
+  (A8 #10). Kế hoạch ở `docs/superpowers/plans/2026-09-15-ke-hoach.md`
+  (gitignore).
 - **Tổng kết tuần KHÔNG phải việc còn lại** — nó đã làm xong **2026-09-09**
   (mục **5d** `NOTIFICATION_FEATURE.md`). Điều kiện "một màn hình có phạm vi
   đúng một tuần" của spec `2026-09-07-weekly-summary-notification-design.md`

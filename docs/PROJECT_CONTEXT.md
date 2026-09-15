@@ -595,6 +595,28 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-15)
 
+### 📈 Bốn khối mượn từ trang Báo cáo — P2 (2026-09-15)
+
+Trang Phân tích nay có **dòng tiền · số liệu nhanh · phân bổ theo ví · top 5
+khoản chi**, thứ tự khối chép đúng trang Xuất báo cáo. Chi tiết ở mục **3.21**
+`docs/ANALYTICS_FEATURE.md`.
+
+**Một định nghĩa, hai nơi dùng:** bốn phép tính vốn nằm inline trong
+`dungBaoCao`, nay là hàm thuần ở `bao_cao_xuat.dart`. 44 ca test của trang Báo
+cáo vẫn xanh **không sửa dòng nào** — bằng chứng lượt tách không đổi hành vi.
+Repository Phân tích nhận **nguồn thứ tư là ví**.
+
+⚠️ Hai điều đáng nhớ: khối dòng tiền **luôn** kèm câu "Suy ngược từ số dư hiện
+tại của các ví" (app không lưu lịch sử số dư — mục 3.16), và `dongTienCua` phải
+nhận **toàn bộ** giao dịch chứ không phải phần đã cắt theo kỳ, nếu không đầu kỳ
+bằng cuối kỳ một cách im lặng.
+
+Máy ảo bắt hai lỗi: `-0 đ` ở ví chỉ có thu (luật "số 0 không mang dấu" nay là
+`CurrencyFormatter.formatCoDau` dùng chung), và test của trang thiếu
+`initializeDateFormatting` nên khối Top 5 làm **cả cây dừng dựng**.
+
+Mức nền: **2487/2487** test, analyze **25 issue / 0 error**.
+
 ### 🗓️ Phạm vi thời gian cho trang Phân tích — P1 (2026-09-15)
 
 Trang Phân tích thôi khoá cứng theo tháng: nay xem được theo **tuần · tháng ·
