@@ -1,3 +1,10 @@
+> ⚠️ **Đọc kèm, 2026-09-15 — §1.1 của tệp này đã SAI.** Nó xếp **#4, #5, #8, #9**
+> vào cùng một nhóm "chặn bởi mô hình dữ liệu"; thực tế **chỉ #9** chặn thật.
+> #4, #5 và #8 chỉ vẽ *dòng tiền* nên không cần dư nợ gốc, lãi suất hay kỳ hạn —
+> cả ba **đã làm xong** ngày 2026-09-15 (mục 3.22 và 3.24 `ANALYTICS_FEATURE.md`),
+> cùng với **#10**. Bài học: một mục bị xếp "chặn bởi mô hình dữ liệu" thì phải
+> hỏi *chặn vì thiếu con số nào*, đừng gộp cả nhóm theo cái tên "vay/nợ".
+>
 > ⚠️ **Đọc kèm, 2026-09-15:** P1 đổi tên ba thứ mà tệp này còn gọi theo tên cũ —
 > `ThongKeThang` → **`ThongKeKy`**, `watchThang` → **`watchKy`**,
 > `chuoiTheoThang` → **`chuoiTheoKy`** (và tham số `nam`/`thang` thành một `Ky`).
@@ -55,11 +62,11 @@ Bảng A8 có 11 mục. Lượt soát bằng mã ngày 2026-09-14 cho kết qu�
 | 1 | Tổng hợp kết quả thu chi | ✅ đã có | `_KhoiTong`, `_TheConLai` |
 | 2 | Tròn theo **Phân loại** (thu, chi, vay/nợ) | ❌ | **lát này** |
 | 3 | Tròn theo **Loại danh mục** | ⚠️ chỉ chiều chi | **lát này** |
-| 4 | Cho vay + Thu nợ — cột | ❌ | ngoài phạm vi, xem §1.1 |
-| 5 | Đi vay + Trả nợ — cột | ❌ | ngoài phạm vi, xem §1.1 |
+| 4 | Cho vay + Thu nợ — cột | ✅ **xong 2026-09-15** | mục 3.22 `ANALYTICS_FEATURE.md` |
+| 5 | Đi vay + Trả nợ — cột | ✅ **xong 2026-09-15** | mục 3.22 `ANALYTICS_FEATURE.md` |
 | 6 | Xu hướng theo Phân loại — 2 đường | ✅ đã có | "Xu hướng 6 tháng", 2026-09-08 |
 | 7 | Xu hướng theo **loại danh mục** — 1 đường | ❌ | **lát này** |
-| 8 | Dòng tiền tự do (thu sau khi trả nợ) | ❌ | ngoài phạm vi, xem §1.1 |
+| 8 | Dòng tiền tự do (thu sau khi trả nợ) | ✅ **xong 2026-09-15** | mục 3.24 `ANALYTICS_FEATURE.md` |
 | 9 | Biến động Khoản vay (Đi vay + Lãi vay) | ❌ | ngoài phạm vi, xem §1.1 |
 | 10 | Biểu đồ thác nước | ✅ **xong 2026-09-15** | mục 3.23 `ANALYTICS_FEATURE.md` |
 | 11 | Biểu đồ Sankey | ❌ | làm được, để đợt sau — §10 |

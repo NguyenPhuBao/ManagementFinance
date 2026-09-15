@@ -1433,6 +1433,12 @@ biên trên. Hai thứ ấy ở **cùng một vị trí** — nhưng `3 * (maxY 
 `toStringAsFixed(1)` (đuôi `…x5`), `rutGon` trả **hai chuỗi khác nhau** cho hai
 số chênh nhau chừng `1e-14`. Hai nhãn ấy vẽ chồng.
 
+⚠️ **Cùng họ, khác mặt: bẫy 4.20** (`ANALYTICS_FEATURE.md`, 2026-09-15). Vẫn là
+sai số dấu phẩy động ở nhãn trục do `rutGon`, nhưng lần này biểu đồ có **phần
+âm** nên biên trên là `san + 3 * buoc` và ra chừng `-1e-16` ngay tại vị trí lẽ ra
+là 0 — nhãn in **`-0`**. Đóng G39 (tính `buoc` trước) **không** đóng luôn ca ấy;
+nó phải sửa trong chính `rutGon`. Gặp một trong hai thì nhớ kiểm cái kia.
+
 **Không phải lỗi của lát A8 #3/#7.** Khối "Xu hướng 6 tháng" có từ lát **2b**
 (2026-09-08) và đã mang sẵn hình dạng này. Lát A8 chỉ làm nó **dễ gặp hơn**:
 trước đây `maxY` chỉ nhận đúng một dải (Thu/Chi toàn tháng), nay mỗi tổ hợp chip
