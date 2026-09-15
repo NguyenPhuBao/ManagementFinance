@@ -376,7 +376,7 @@ class ReportPreviewPage extends StatelessWidget {
                           fontSize: 12, color: AppColors.textSecondary),
                     ),
                   ),
-                  Flexible(
+                  Expanded(
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.centerRight,
@@ -713,7 +713,7 @@ class ReportPreviewPage extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Flexible(
+                        Expanded(
                           child: FittedBox(
                             fit: BoxFit.scaleDown,
                             alignment: Alignment.centerRight,
@@ -798,7 +798,7 @@ class ReportPreviewPage extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Flexible(
+                    Expanded(
                       child: FittedBox(
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.centerRight,
@@ -889,7 +889,7 @@ class ReportPreviewPage extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Flexible(
+                    Expanded(
                       child: FittedBox(
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.centerRight,
@@ -943,7 +943,7 @@ class ReportPreviewPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Flexible(
+              Expanded(
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerRight,
@@ -1083,7 +1083,7 @@ class ReportPreviewPage extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          Flexible(
+          Expanded(
             child: FittedBox(
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerRight,

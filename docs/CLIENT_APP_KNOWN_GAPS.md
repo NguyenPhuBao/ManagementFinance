@@ -1,6 +1,6 @@
 # Client-app — Việc còn dang dở & rủi ro đã biết
 
-**Cập nhật:** 2026-09-15 (**mở G40** — trang Xem trước báo cáo nhiều khả năng lệch cột số tiền, cùng khuôn `Flexible` vừa gây lỗi ở trang Phân tích; **chưa nhìn tận mắt** nên chưa sửa. Cùng ngày: P1 phạm vi thời gian và P2 bốn khối mượn từ trang Báo cáo — **không mở lỗ hổng nào**, schema giữ v22) · trước đó 2026-09-14 (mở rồi **đóng G39** ngay trong ngày — nhãn trục tung khối "Xu hướng 6 tháng" in đè lên nhau, tìm được khi nghiệm thu máy ảo lát A8 #3/#7; mở rồi **đóng G38** ngay trong ngày — ba trang giao dịch rơi về tài khoản admin; **đóng G28** — `wallet.status` đi qua đồng bộ hai chiều, schema v22) · trước đó 2026-09-13 (mở rồi **đóng G37** ngay trong ngày — số dư ví nay suy từ sổ giao dịch; đóng G36) · trước đó 2026-09-11 (sau khi nhánh gộp `main` @ `cc65f4f` và CSDL dev áp `database/12`: đóng G29, G31, G32; G24 thành lỗi phía client rồi đóng cùng ngày; thêm G34; G35 mở rồi đóng cùng ngày; đóng G30; đóng G33); 2026-09-12: gộp `main` @ `cbbeeb4` — CAN-LAM 17 A đóng, kênh thời gian thực nối được trên máy ảo, G34 hết bị chặn rồi **đóng tối cùng ngày** (client nghe `sync.completed`, im lặng, kiểm máy ảo hai máy); chiều muộn thêm **G36** — chờ backend; tối muộn gộp `main` @ `7779999` — backend làm xong CAN-LAM 20 (chốt trả hai lần ở `upsertTransaction`, client đo thật 4 ca; G36 sửa ở mã, **chưa đo đầu-cuối** ca khoá/xoá vì cần API admin — chờ đo rồi đóng); **2026-09-13: đo đầu-cuối ba ca G36 qua API admin — cả ba đúng, G36 ✅ ĐÓNG** (kéo theo: đường `lamMoi` **có** mang `daXoa`, nên ngoại lệ §3.6b không còn vô nghĩa — người dùng chốt **giữ** cùng ngày); cùng ngày, nghiệm thu bước 12 trên hai máy ảo đóng bốn lỗi im lặng của luồng tự động trả hoá đơn và mở **G37** — số dư ví không phản ánh giao dịch sau một lần đẩy bị xung đột
+**Cập nhật:** 2026-09-15 (mở rồi **đóng G40** trong cùng ngày — trang Xem trước báo cáo lệch cột số tiền thật, và lệch **93px**, nặng hơn chỗ đã sửa ở trang Phân tích; không phải hai khối mà **sáu**. Cùng ngày: P1 phạm vi thời gian và P2 bốn khối mượn từ trang Báo cáo — **không mở lỗ hổng nào**, schema giữ v22) · trước đó 2026-09-14 (mở rồi **đóng G39** ngay trong ngày — nhãn trục tung khối "Xu hướng 6 tháng" in đè lên nhau, tìm được khi nghiệm thu máy ảo lát A8 #3/#7; mở rồi **đóng G38** ngay trong ngày — ba trang giao dịch rơi về tài khoản admin; **đóng G28** — `wallet.status` đi qua đồng bộ hai chiều, schema v22) · trước đó 2026-09-13 (mở rồi **đóng G37** ngay trong ngày — số dư ví nay suy từ sổ giao dịch; đóng G36) · trước đó 2026-09-11 (sau khi nhánh gộp `main` @ `cc65f4f` và CSDL dev áp `database/12`: đóng G29, G31, G32; G24 thành lỗi phía client rồi đóng cùng ngày; thêm G34; G35 mở rồi đóng cùng ngày; đóng G30; đóng G33); 2026-09-12: gộp `main` @ `cbbeeb4` — CAN-LAM 17 A đóng, kênh thời gian thực nối được trên máy ảo, G34 hết bị chặn rồi **đóng tối cùng ngày** (client nghe `sync.completed`, im lặng, kiểm máy ảo hai máy); chiều muộn thêm **G36** — chờ backend; tối muộn gộp `main` @ `7779999` — backend làm xong CAN-LAM 20 (chốt trả hai lần ở `upsertTransaction`, client đo thật 4 ca; G36 sửa ở mã, **chưa đo đầu-cuối** ca khoá/xoá vì cần API admin — chờ đo rồi đóng); **2026-09-13: đo đầu-cuối ba ca G36 qua API admin — cả ba đúng, G36 ✅ ĐÓNG** (kéo theo: đường `lamMoi` **có** mang `daXoa`, nên ngoại lệ §3.6b không còn vô nghĩa — người dùng chốt **giữ** cùng ngày); cùng ngày, nghiệm thu bước 12 trên hai máy ảo đóng bốn lỗi im lặng của luồng tự động trả hoá đơn và mở **G37** — số dư ví không phản ánh giao dịch sau một lần đẩy bị xung đột
 **Mục đích:** ghi lại những hạng mục đã được **cân nhắc và cố ý hoãn**, kèm lý do và bán kính ảnh hưởng. Không có tài liệu này thì người tiếp theo sẽ hoặc bỏ sót, hoặc làm lại từ đầu việc phân tích rủi ro.
 
 Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nhất.
@@ -45,7 +45,7 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > | ~~**G38**~~ | ✅ **Mở rồi ĐÓNG 2026-09-14** — ba trang giao dịch (`transaction_page`, `choose_category_page`, `add_transaction_page`) khai `this.idaccount = 1` rồi dùng `?? widget.idaccount`, nên khi phiên chưa sẵn sàng chúng **đọc** ví/danh mục của admin và — nặng nhất — **GHI** giao dịch dưới danh nghĩa admin. Cùng họ G4/G35 nhưng khác hình dạng nên lọt cả hai lượt đóng ấy. Nay dùng `int?` không mặc định + `null` thì chặn; lưới quét `khong_du_phong_admin_test.dart` thêm ca thứ hai bắt đúng dạng này. Nghiệm thu máy ảo: giao dịch ghi vào `Idaccount = 25`, tài khoản 1 không có hàng nào |
 > | ~~**G39**~~ | ✅ **Mở rồi ĐÓNG 2026-09-14** — nhãn trục tung của khối "Xu hướng 6 tháng" in **đè lên nhau** ở một số dải giá trị: đo trên máy ảo thấy "63.2K" và "63.3K" chồng khít. Gốc rễ là `3 * (maxY / 3) != maxY` trong dấu phẩy động rơi đúng ranh giới làm tròn của `rutGon`, nên **cùng một vị trí** ra hai chuỗi. Sửa: tính `buoc` trước rồi đặt `maxY = buoc * 3`. **Có sẵn từ lát 2b (2026-09-08)**; lát A8 #3/#7 chỉ làm dễ gặp hơn. Ca test tái hiện được **ngay trong widget test**, không cần máy thật |
 > | ~~**G37**~~ | ✅ **ĐÓNG 2026-09-13** — số dư ví nay là **cache của tổng sổ giao dịch**, không còn là giá trị tuyệt đối đồng bộ theo LWW. Điểm neo là một giao dịch "Số dư ban đầu" (id suy **tất định** từ `walletId` nên hai máy sinh ra một hàng), `SoDuViService` là nơi duy nhất ghi `balance`, nhánh kéo về thôi đọc cột ấy và tính lại sau mỗi lần pull. Nghiệm thu hai máy ảo: sau một cuộc đua tự trả, **hai máy đều 1.650.000 và bằng tổng sổ** — trước đó máy thắng giữ 2.000.000. Spec: `2026-09-13-so-du-vi-suy-tu-so-giao-dich-design.md` |
-> | **G40** | ⏳ **Mở 2026-09-15** — trang **Xem trước báo cáo** nhiều khả năng có **cột số tiền lệch mép phải** ở hai khối "Phân bổ theo ví" và "Top 5 khoản chi": nó mang **đúng cùng khuôn `Flexible`** vừa gây lỗi ở trang Phân tích (bẫy 4.19 `ANALYTICS_FEATURE.md`, đo được lệch 26,5px). **Chưa nhìn tận mắt** nên chưa sửa — người dùng báo về trang Phân tích, và đổi bố cục một trang chưa xem là sửa mù |
+> | ~~**G40**~~ | ✅ **ĐÓNG 2026-09-15** — trang **Xem trước báo cáo** lệch cột số tiền thật, và **nặng hơn** chỗ đã sửa ở trang Phân tích: đo trên máy ảo thấy khối "Chi theo danh mục" lệch **93px** (trang Phân tích chỉ 26,5px). Và không phải **hai** khối như dòng này từng đoán mà **sáu** — thêm ngân sách, thu/chi theo danh mục, danh sách giao dịch, và hàng "Thay đổi trong kỳ" của khối dòng tiền. Sáu `Flexible` đổi thành `Expanded`; đo lại trên máy ảo: lệch **0px** ở mọi khối. Sáu ca test mới, và chúng chỉ canh được gì khi chạy ở **khổ gấp đôi** — xem bẫy 4.19 |
 >
 > **G20 đã đóng ngày 2026-09-05** — `depositToGoal` nhận `occurredAt` chặn hai
 > đầu; đã kiểm cả bằng test lẫn trên máy ảo Android.
@@ -1366,7 +1366,7 @@ hai**, và phải tiêm lệch mới dựng lại được trạng thái ấy tr
 
 ---
 
-### G40 — Trang Xem trước báo cáo nhiều khả năng lệch cột số tiền · ⏳ MỞ (2026-09-15)
+### ~~G40 — Trang Xem trước báo cáo lệch cột số tiền~~ · ✅ ĐÓNG (2026-09-15, mở và đóng trong cùng ngày)
 
 **Vì sao nghi.** Ngày 2026-09-15, người dùng bắt được trên máy ảo rằng cột số
 tiền ở hai khối mới của trang Phân tích — "Phân bổ theo ví" và "Top 5 khoản chi"
@@ -1378,23 +1378,40 @@ nhưng `Flexible` để con giữ **bề rộng tự nhiên** và `MainAxisAlign
 `ANALYTICS_FEATURE.md`.
 
 Hai khối ấy của trang Phân tích **chép khuôn từ `report_preview_page.dart`**, và
-tệp gốc vẫn còn nguyên `Flexible(child: FittedBox(…))` ở cả `_khoiTheoVi` lẫn
-`_khoiTopChi`. Cùng khuôn, cùng dạng dữ liệu (số tiền dài ngắn khác nhau theo
-hàng), nên nhiều khả năng cùng lệch.
+tệp gốc vẫn còn nguyên `Flexible(child: FittedBox(…))`. Cùng khuôn, cùng dạng dữ
+liệu (số tiền dài ngắn khác nhau theo hàng), nên nhiều khả năng cùng lệch.
 
-**Vì sao chưa sửa.** Hai lý do, cả hai đều là cố ý:
+Hạng mục ấy **không sửa ngay**, vì hai lý do cố ý: chưa nhìn tận mắt (suy từ mã
+sang kết luận "chắc chắn lệch" là đúng loại sai lầm phiên 12 đã trả giá với
+Stitch), và người dùng báo về trang Phân tích chứ không phải trang này.
 
-1. **Chưa nhìn tận mắt.** Suy từ mã sang kết luận "chắc chắn lệch" là đúng loại
-   sai lầm phiên 12 đã trả giá với Stitch. Trang Xem trước báo cáo cần mở trên
-   máy ảo với dữ liệu thật rồi mới nói.
-2. **Người dùng báo về trang Phân tích.** Đổi bố cục một trang họ chưa xem, chỉ
-   vì mã trông giống, là mở rộng phạm vi mà không ai yêu cầu.
+**Đo được gì khi mở lại.** Mở trang trên máy ảo `emulator-5554` với dữ liệu thật
+ngày 2026-09-15, rồi đếm pixel chữ trên từng hàng. Lỗi có thật, và **nặng hơn**
+chỗ đã sửa:
 
-**Cần làm gì khi mở lại.** Mở màn Xem trước báo cáo trên máy ảo, chụp hai khối
-ấy, so mép phải. Nếu lệch thì đổi hai `Flexible` thành `Expanded` — **không mất
-chỗ nào của cột trái**, tỉ lệ chia vẫn 1:1 — và thêm một ca test so
-`tester.getRect(...).right` giữa các dòng, cùng khuôn với ca đã có ở
-`analytics_page_test.dart`.
+| Khối | Mép phải chữ (px, ảnh 1080) | Lệch |
+|---|---|---|
+| Chi theo danh mục | 856 … 949 | **93px** |
+| Phân bổ theo ví | 727 … 783 | **56px** |
+| Top 5 khoản chi | 771 … 776 | 5px, nhưng cách mép thẻ hơn 200px |
+
+⚠️ **Và không phải hai khối mà SÁU.** Dòng đầu của lỗ hổng này đoán theo tên hai
+khối mà người dùng báo; đếm bằng máy thì `report_preview_page.dart` mang **sáu**
+chỗ cùng khuôn `Expanded(tên) + Flexible(FittedBox centerRight)` — thêm khối
+ngân sách, thu/chi theo danh mục, danh sách giao dịch, và hàng "Thay đổi trong
+kỳ" của khối dòng tiền. Bài học: khi một lỗ hổng mô tả lỗi bằng **tên khối**
+người dùng nhìn thấy, hãy `grep` khuôn mã trước khi tin vào con số ấy.
+
+**Sửa.** Sáu `Flexible` → `Expanded`. Cột trái **không mất chỗ nào**: tỉ lệ chia
+vẫn 1:1, chỉ khác ai giữ phần thừa. Đo lại trên máy ảo sau khi sửa: **0px** lệch
+ở mọi khối, mọi cột kết thúc ở 979–982 — tức sát mép trong của thẻ.
+
+⚠️ **Sáu ca test mới suýt vô dụng vì font của bộ test.** Viết ở khổ 411dp thì ba
+trong sáu ca **xanh ngay từ đầu** dù máy ảo đo được lệch 93px: font "Ahem" rộng
+gấp đôi ngoài đời (bẫy 4.4) nên mọi chuỗi đều **tràn** suất, `FittedBox` thu nhỏ
+chúng cho vừa, và hộp nào cũng lấp đầy suất của nó — đúng thứ mà `Expanded` lẽ
+ra mới làm được. Lỗi chỉ lộ khi chữ **ngắn hơn** suất. Phải cho khung rộng **gấp
+đôi** (822dp) để trả lại đúng tỷ lệ chữ trên suất của điện thoại thật.
 
 ⚠️ **Đừng dựa vào mẹo đếm pixel vàng** để tìm lỗi này: nó không phải lỗi tràn,
 không có sọc cảnh báo, không exception và không một dòng log nào.

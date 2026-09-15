@@ -658,6 +658,29 @@ kiểu. Bẫy **4.19** `ANALYTICS_FEATURE.md`.
 
 Mức nền: **2488/2488** test, analyze **25 issue / 0 error**.
 
+### 📐 Cột số tiền của trang Xem trước báo cáo — G40 (2026-09-15)
+
+Trang **Xem trước báo cáo** mang đúng khuôn `Flexible` vừa gây lỗi ở trang Phân
+tích. G40 mở ra để ghi mối nghi ấy mà **chưa sửa**, vì chưa nhìn tận mắt. Mở
+trên máy ảo cùng ngày thì lỗi có thật, và **nặng hơn**: khối "Chi theo danh mục"
+lệch **93px**, "Phân bổ theo ví" lệch 56px — trong khi trang Phân tích chỉ
+26,5px.
+
+⚠️ **Và không phải hai khối mà sáu.** G40 đoán theo tên hai khối người dùng báo;
+đếm bằng máy thì tệp ấy có **sáu** chỗ cùng khuôn — thêm ngân sách, thu/chi theo
+danh mục, danh sách giao dịch, và hàng "Thay đổi trong kỳ" của khối dòng tiền.
+Khi một lỗ hổng mô tả lỗi bằng *tên khối*, hãy `grep` khuôn mã trước khi tin con
+số nó ghi.
+
+Sáu `Flexible` → `Expanded`. Đo lại trên máy ảo: **0px** lệch ở mọi khối.
+
+⚠️ **Sáu ca test mới suýt vô dụng**: viết ở khổ 411dp thì ba ca xanh ngay từ đầu
+dù máy ảo đo được 93px — font "Ahem" rộng gấp đôi nên mọi chuỗi đều tràn suất và
+`FittedBox` co chúng lại lấp đầy, che đúng thứ cần đo. Phải chạy ở khổ **gấp
+đôi** (822dp). Chi tiết ở bẫy **4.19** `ANALYTICS_FEATURE.md`.
+
+Mức nền: **2517/2517** test, analyze **25 issue / 0 error**.
+
 ### 🗓️ Phạm vi thời gian cho trang Phân tích — P1 (2026-09-15)
 
 Trang Phân tích thôi khoá cứng theo tháng: nay xem được theo **tuần · tháng ·

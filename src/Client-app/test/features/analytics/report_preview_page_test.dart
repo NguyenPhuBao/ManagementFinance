@@ -421,6 +421,175 @@ void main() {
     });
   });
 
+  // ── G40: cột số tiền phải thẳng mép phải ──────────────────────────────────
+  //
+  // Người dùng bắt được lỗi này ở trang Phân tích ngày 2026-09-15 (bẫy 4.19
+  // `ANALYTICS_FEATURE.md`), và trang Xem trước báo cáo mang **đúng cùng khuôn**
+  // `Flexible(child: FittedBox(alignment: centerRight))` ở sáu chỗ. Đo trên máy
+  // ảo cùng ngày: mép phải chữ dao động **856 → 949px** trong khối "Chi theo
+  // danh mục" — lệch 93px, gấp ba lần con số 26,5px của trang Phân tích.
+  //
+  // `Flexible` và `Expanded` đều mang `flex: 1` nên chia đôi chỗ trống như
+  // nhau; khác biệt là `Flexible` để con giữ **bề rộng tự nhiên**, rồi
+  // `MainAxisAlignment.start` đẩy phần thừa về **cuối hàng**. Hàng có số ngắn
+  // thừa nhiều, hàng có số dài thừa ít, nên `alignment: centerRight` đang canh
+  // phải bên trong một cái hộp đang trôi.
+  //
+  // ⚠️ Phép đo bám **hộp**, không bám chuỗi: mép phải của một `Text` số tiền
+  // không nói lên điều gì ở khối danh mục (sau nó còn ô phần trăm), và cùng một
+  // chuỗi số tiền xuất hiện ở nhiều khối nên `find.text` không khoanh được
+  // vùng. Lấy thẳng `RenderBox` của các `FittedBox` canh phải trong một khối là
+  // đo đúng thứ quyết định chỗ chữ rơi xuống.
+  group('G40 — cột số tiền thẳng mép phải', () {
+    /// Báo cáo có đủ **sáu** khối mang khuôn ấy, và số tiền dài ngắn rất khác
+    /// nhau — điều kiện cần để lỗi lộ ra. Số bằng nhau thì hai hàng thừa như
+    /// nhau và ca test xanh oan dù mã vẫn sai.
+    BaoCao duHinh() => dungBaoCao(
+          [
+            g(
+              ngay: DateTime(2026, 9, 5),
+              vi: 'v1',
+              tenVi: 'Tiền mặt',
+              danhMuc: 'c_an',
+              tenDanhMuc: 'Ăn uống',
+              soTien: 1500000,
+              tieuDe: 'Thuê nhà',
+            ),
+            g(
+              ngay: DateTime(2026, 9, 6),
+              vi: 'v2',
+              tenVi: 'Ngân hàng ACB',
+              danhMuc: 'c_xe',
+              tenDanhMuc: 'Di chuyển',
+              soTien: 60000,
+              tieuDe: 'Xe buýt',
+            ),
+            g(
+              ngay: DateTime(2026, 9, 7),
+              loai: 'thu',
+              vi: 'v1',
+              tenVi: 'Tiền mặt',
+              danhMuc: 'c_luong',
+              tenDanhMuc: 'Lương',
+              soTien: 20000000,
+              tieuDe: 'Lương tháng 9',
+            ),
+          ],
+          loc: LocBaoCao(from: DateTime(2026, 9, 1), to: DateTime(2026, 10, 1)),
+          soDuHienTai: 5000000,
+          nganSach: const [
+            DongNganSach(
+                categoryId: 'c_an',
+                ten: 'Ăn uống',
+                hanMuc: 2000000,
+                daChi: 1500000),
+            DongNganSach(
+                categoryId: 'c_xe',
+                ten: 'Di chuyển',
+                hanMuc: 90000,
+                daChi: 60000),
+          ],
+        );
+
+    /// Khổ **gấp đôi** 411dp, và đó là điều kiện để ca test này canh được gì.
+    ///
+    /// Lỗi chỉ xuất hiện khi chữ **ngắn hơn** suất được chia: khi ấy `Flexible`
+    /// co hộp lại bằng bề rộng chữ và phần thừa rơi về cuối hàng. Nhưng font
+    /// của `flutter test` là "Ahem" — mỗi ký tự rộng bằng cỡ chữ, tức gấp đôi
+    /// ngoài đời (bẫy 4.4) — nên ở 411dp mọi chuỗi đều **tràn** suất, `FittedBox`
+    /// thu nhỏ chúng cho vừa, và hộp nào cũng lấp đầy suất của nó. Ba ca đầu
+    /// tiên viết ở 411dp **xanh ngay từ đầu** vì đúng lý do ấy, trong khi máy
+    /// ảo đo được lệch 93px.
+    ///
+    /// Cho khung rộng gấp đôi là cách trả lại **đúng tỷ lệ chữ trên suất** của
+    /// điện thoại thật. Ca "411dp … không tràn" ở cuối tệp vẫn giữ khổ thật.
+    void khoGapDoi(WidgetTester t) {
+      t.view.physicalSize = const Size(822 * 3, 900 * 3);
+      t.view.devicePixelRatio = 3.0;
+      addTearDown(t.view.reset);
+    }
+
+    /// Mép phải của **hộp** cột tiền ở từng hàng của khối mang nhãn [nhanKhoi].
+    List<double> mepPhaiCotTien(WidgetTester t, String nhanKhoi) {
+      final cot = find.descendant(
+        of: find
+            .ancestor(
+                of: find.text(nhanKhoi), matching: find.byType(Column))
+            .first,
+        matching: find.byWidgetPredicate(
+          (w) => w is FittedBox && w.alignment == Alignment.centerRight,
+          description: 'hộp cột số tiền',
+        ),
+      );
+      return [
+        for (final e in cot.evaluate())
+          (e.renderObject! as RenderBox).localToGlobal(Offset.zero).dx +
+              (e.renderObject! as RenderBox).size.width,
+      ];
+    }
+
+    /// Mọi hàng của một khối phải kết thúc ở **cùng một** mép phải.
+    Future<void> thangCot(WidgetTester t, String nhanKhoi) async {
+      khoGapDoi(t);
+      await t.pumpWidget(duoi(duHinh()));
+      await cuonToi(t, find.text(nhanKhoi));
+
+      final mep = mepPhaiCotTien(t, nhanKhoi);
+      expect(mep.length, greaterThanOrEqualTo(2),
+          reason: 'Khối "$nhanKhoi" phải có ít nhất hai hàng thì phép so mép '
+              'phải mới nói lên điều gì. Một hàng thì ca test này xanh mà '
+              'không canh gì cả.');
+      for (final m in mep.skip(1)) {
+        expect(m, moreOrLessEquals(mep.first, epsilon: 0.5),
+            reason: 'Mọi hàng của "$nhanKhoi" phải kết thúc ở cùng một mép '
+                'phải. Đó là cách người ta đọc một cột tiền — lệch thì mắt bắt '
+                'ngay, trong khi không một dòng log nào báo.');
+      }
+    }
+
+    testWidgets('khối CHI THEO DANH MỤC', (t) async {
+      await thangCot(t, 'CHI THEO DANH MỤC');
+    });
+
+    testWidgets('khối NGÂN SÁCH KỲ NÀY', (t) async {
+      await thangCot(t, 'NGÂN SÁCH KỲ NÀY');
+    });
+
+    testWidgets('khối PHÂN BỔ THEO VÍ', (t) async {
+      await thangCot(t, 'PHÂN BỔ THEO VÍ');
+    });
+
+    testWidgets('khối TOP 5 KHOẢN CHI', (t) async {
+      await thangCot(t, 'TOP 5 KHOẢN CHI');
+    });
+
+    testWidgets('khối DANH SÁCH GIAO DỊCH', (t) async {
+      await thangCot(t, 'DANH SÁCH GIAO DỊCH');
+    });
+
+    testWidgets('hàng "Thay đổi trong kỳ" canh SÁT mép phải của ô', (t) async {
+      // Khối dòng tiền chỉ có **một** hàng, nên phép so giữa các hàng không
+      // dùng được — thay vào đó so với chính cái ô chứa nó. Với `Flexible` thì
+      // con số dừng ở đâu đó giữa ô; với `Expanded` nó sát mép trong.
+      khoGapDoi(t);
+      await t.pumpWidget(duoi(duHinh()));
+      await cuonToi(t, find.text('DÒNG TIỀN TRONG KỲ'));
+
+      final mep = mepPhaiCotTien(t, 'DÒNG TIỀN TRONG KỲ');
+      expect(mep, hasLength(1));
+
+      final o = t.getRect(find
+          .ancestor(
+              of: find.text('Thay đổi trong kỳ'),
+              matching: find.byType(Container))
+          .first);
+      expect(mep.first, moreOrLessEquals(o.right - 12, epsilon: 0.5),
+          reason: 'Ô có đệm ngang 12, nên mép trong của nó là `right - 12`. '
+              'Con số phải chạm đúng đó; dừng sớm hơn là dấu hiệu hộp chứa nó '
+              'đang hẹp hơn suất được chia.');
+    });
+  });
+
   testWidgets('411dp: tên danh mục dài và số hàng trăm triệu không tràn',
       (t) async {
     khoDienThoai(t);

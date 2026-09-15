@@ -1,6 +1,6 @@
 # Trang Phân tích — thiết kế, lý do, và những cái bẫy
 
-**Cập nhật:** 2026-09-15 (mục **3.20** — **P1: phạm vi thời gian**; mục **3.21** — **P2**: bốn khối mượn từ trang Xuất báo cáo; mục **3.22** — **A8 #4 và #5**: hai biểu đồ cột vay/nợ) · bản trước 2026-09-14 (mục **3.19** — A8 #3, #7: cơ cấu theo danh mục với ba chip nhóm, và xu hướng tới 5 danh mục cùng lúc; bản thi công **lần hai**, #2 đã bỏ)
+**Cập nhật:** 2026-09-15 (mục **3.20** — **P1: phạm vi thời gian**; mục **3.21** — **P2**: bốn khối mượn từ trang Xuất báo cáo; mục **3.22** — **A8 #4 và #5**: hai biểu đồ cột vay/nợ; **G40 đóng** — trang Xem trước báo cáo lệch cột số tiền ở **sáu** chỗ, đo được 93px, xem bẫy **4.19**) · bản trước 2026-09-14 (mục **3.19** — A8 #3, #7: cơ cấu theo danh mục với ba chip nhóm, và xu hướng tới 5 danh mục cùng lúc; bản thi công **lần hai**, #2 đã bỏ)
 **Trạng thái:** **mảng Phân tích đã xong cả 2a, 2b, 2c** (2026-09-09). Lát **2a** xong — mọi con số trên trang là số thật từ SQLite —
 lát **2b** xong (khối "Xu hướng 6 tháng" vẽ bằng `fl_chart`), lát **2c‑1** xong
 (trang Xuất báo cáo đọc ví/danh mục/thời gian thật rồi mở màn **Xem trước báo
@@ -943,8 +943,25 @@ có sọc vàng, nên mẹo đếm pixel vàng ở `CLAUDE.md` cũng không th�
 nó bằng máy là so `tester.getRect(...).right` giữa các dòng; đã có ca test làm
 đúng thế.
 
-⚠️ `report_preview_page.dart` mang **đúng cùng khuôn `Flexible`** ở hai khối
-tương ứng — xem **G40** `CLIENT_APP_KNOWN_GAPS.md`.
+✅ **`report_preview_page.dart` cũng đã sửa, cùng ngày** (G40 đóng). Trang ấy
+mang **sáu** chỗ cùng khuôn chứ không phải hai như tên hai khối gợi ra: thêm
+ngân sách, thu/chi theo danh mục, danh sách giao dịch, và hàng "Thay đổi trong
+kỳ" của khối dòng tiền. Đo trên máy ảo trước khi sửa: khối "Chi theo danh mục"
+lệch **93px** — gấp ba chỗ này; sau khi sửa: **0px**.
+
+⚠️ **Ca test cho lỗi này KHÔNG viết được ở khổ 411dp.** Lỗi chỉ xuất hiện khi
+chữ **ngắn hơn** suất được chia — khi ấy `Flexible` mới co hộp lại. Nhưng font
+"Ahem" của bộ test rộng gấp đôi ngoài đời (bẫy 4.4), nên ở 411dp mọi chuỗi đều
+**tràn** suất, `FittedBox` thu nhỏ chúng cho vừa, và hộp nào cũng lấp đầy suất —
+đúng thứ mà `Expanded` lẽ ra mới làm được. Ba trong sáu ca đầu tiên **xanh ngay
+từ đầu** vì thế, trong khi máy ảo đo được lệch 93px. Cho khung rộng **gấp đôi**
+(822dp) là cách trả lại đúng tỷ lệ chữ trên suất của điện thoại thật.
+
+⚠️ Và phép đo phải bám **hộp**, không bám chuỗi: mép phải của một `Text` số tiền
+không nói lên gì ở khối danh mục (sau nó còn ô phần trăm), còn cùng một chuỗi số
+tiền thì xuất hiện ở nhiều khối nên `find.text` không khoanh được vùng. Lấy
+thẳng `RenderBox` của các `FittedBox` canh phải trong một khối
+(`find.byWidgetPredicate`) mới là đo đúng thứ quyết định chỗ chữ rơi xuống.
 
 ---
 
