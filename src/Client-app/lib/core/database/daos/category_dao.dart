@@ -119,19 +119,6 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
       ..sort((a, b) => a.name.compareTo(b.name));
   }
 
-  /// Mọi danh mục đang CHIẾM CHỖ tên trong phạm vi một tài khoản.
-  ///
-  /// Gồm danh mục do chính tài khoản tạo **và** danh mục mặc định (dùng chung,
-  /// `idaccount = 0`): người dùng nhìn thấy cả hai trong cùng một danh sách nên
-  /// hai mục trùng tên là không phân biệt được. Hàng đã xoá mềm không chiếm chỗ.
-  ///
-  /// Quy tắc: tên là duy nhất trong phạm vi này, **bất kể `classify`** và
-  /// **bất kể nằm trong nhóm nào**; nhóm và danh mục con dùng chung không gian
-  /// tên.
-  ///
-  /// Cố ý KHÔNG dùng `getCategoryRows`: hàm đó lọc sẵn theo `classify` và còn
-  /// khử trùng lặp theo tên trước khi trả về — tức chính những hàng cần đối
-  /// chiếu lại bị nó loại đi, khiến phép kiểm tra báo "không trùng" nhầm.
   /// **Bảng tra tên danh mục** cho báo cáo và thống kê — định nghĩa DUY NHẤT.
   ///
   /// Khác mọi phép đọc danh sách khác ở hai chỗ, và cả hai đều có chủ đích:
@@ -163,6 +150,19 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
   Stream<List<Category>> watchBangTraTen(int accountId) =>
       _bangTraTen(accountId).watch();
 
+  /// Mọi danh mục đang CHIẾM CHỖ tên trong phạm vi một tài khoản.
+  ///
+  /// Gồm danh mục do chính tài khoản tạo **và** danh mục mặc định (dùng chung,
+  /// `idaccount = 0`): người dùng nhìn thấy cả hai trong cùng một danh sách nên
+  /// hai mục trùng tên là không phân biệt được. Hàng đã xoá mềm không chiếm chỗ.
+  ///
+  /// Quy tắc: tên là duy nhất trong phạm vi này, **bất kể `classify`** và
+  /// **bất kể nằm trong nhóm nào**; nhóm và danh mục con dùng chung không gian
+  /// tên.
+  ///
+  /// Cố ý KHÔNG dùng `getCategoryRows`: hàm đó lọc sẵn theo `classify` và còn
+  /// khử trùng lặp theo tên trước khi trả về — tức chính những hàng cần đối
+  /// chiếu lại bị nó loại đi, khiến phép kiểm tra báo "không trùng" nhầm.
   Future<List<Category>> getNamesInUse(int accountId) {
     return (select(categories)
           ..where((t) =>

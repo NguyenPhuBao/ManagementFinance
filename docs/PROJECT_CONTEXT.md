@@ -595,6 +595,55 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-15)
 
+### 🏷️ Danh mục mặc định toàn cục mất tên — G41 (2026-09-15)
+
+Máy ảo lộ ra khi nghiệm thu hạng mục khác: khối "Xu hướng 6 tháng" hiện **hai
+chip cùng mang tên "Danh mục đã xoá"**. Truy vấn PostgreSQL cho ra **đúng hai**
+danh mục bất thường ở tài khoản ấy — `Chi khác` và `Làm thêm`, cả hai
+`Create_by = 1`, `is_default = true`, bị backend xoá mềm hôm 2026-09-07.
+
+⚠️ **Gốc rễ:** `sync_engine` quy `is_default = true` thành **`idaccount = 0`**
+(`sync_engine.dart:733`), nên hàng mặc định toàn cục **không mang mã tài khoản
+nào** — nhưng cả hai repository tra danh mục đều lọc
+`t.idaccount.equals(idaccount)`. Hai bản chép tay của cùng một truy vấn, cả hai
+cùng thiếu vế `isDefault`.
+
+Ảnh hưởng **rộng hơn cái chip**: cùng bảng tra ấy nuôi donut, cột thác nước và
+danh sách danh mục cuối trang. Chip chỉ tình cờ là chỗ **hai** cái trùng nhau
+nằm cạnh nhau nên mắt bắt được.
+
+Nay có **một** định nghĩa `CategoryDao.getBangTraTen` / `watchBangTraTen` lọc
+theo **cờ** `isDefault` — cùng khuôn `getNamesInUse` vốn đã đúng từ trước. Chi
+tiết ở **G41** `docs/CLIENT_APP_KNOWN_GAPS.md`.
+
+**Bài học:** hai bản chép tay của một truy vấn là chỗ lỗi sống lâu nhất — sửa
+một bên thì bên kia vẫn sai, và chú thích đúng ở cả hai chỗ khiến không ai nghi.
+Khi một luật có hai nơi thi hành, đưa nó về DAO **trước** rồi mới sửa.
+
+### 💰 Tỉ lệ tiết kiệm (2026-09-15)
+
+Một dòng trong thẻ "Số dư còn lại": *"Để dành 93% thu nhập"*. Mục **#1** của
+lượt khảo sát app thị trường lần hai (mục **3.25** `ANALYTICS_FEATURE.md`);
+người dùng chốt làm nó rồi tới **dự báo dòng tiền**, và **bỏ** hai mục thiếu
+trường đối tác.
+
+⚠️ **Mẫu số là THU NHẬP, không phải `tong.thu`** — cùng bẫy A8 #8 nhưng dễ vấp
+hơn vì công thức sách vở là `(thu − chi)/thu`; lấy `tong.thu` thì tháng nào
+người dùng vay tiền, tỉ lệ tiết kiệm lại **đẹp lên**. Phép tính thu nhập nay
+tách thành **`thuNhapCua()`** và `dongTienTuDo()` gọi chính nó — một định nghĩa
+duy nhất, có ca test canh hai chỗ trả cùng một con số.
+
+**Trả nợ tính là TIÊU** (người dùng chốt) để con số khớp "Số dư còn lại" ngay
+trên nó. Tính là *để dành* thì đúng hơn về kế toán, nhưng hai con số cạnh nhau
+nói hai chuyện khác nhau thì người đọc chỉ kết luận được là một trong hai sai.
+
+`null` khi thu nhập **không dương** thì **ẩn hẳn dòng** — chia cho mẫu số âm ra
+tỉ lệ **đảo dấu**, và thu nhập âm xảy ra thật khi kỳ chỉ có tiền đi vay. Mục
+**3.26** `ANALYTICS_FEATURE.md`.
+
+**Không đụng schema** (v22 giữ nguyên), **không đụng đường đồng bộ**.
+`flutter test` **2573/2573** · `flutter analyze` **25 issue, 0 error**.
+
 ### 💵 Dòng tiền tự do — A8 #8 (2026-09-15)
 
 Một đường, sáu kỳ, đứng ngay sau khối "Xu hướng" và trả lời tiếp đúng câu hỏi
