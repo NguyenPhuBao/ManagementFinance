@@ -850,7 +850,7 @@ void main() {
             DongGiaoDich(
               id: 't1',
               ngay: DateTime(2026, 9, 10),
-              soTien: 900000,
+              soTien: 500000,
               loai: 'chi',
               categoryId: 'c_an',
               tenDanhMuc: 'Ăn uống',
@@ -859,6 +859,19 @@ void main() {
               walletId: 'w1',
               tenVi: 'Tiền mặt',
               tieuDe: 'Sửa xe',
+            ),
+            DongGiaoDich(
+              id: 't2',
+              ngay: DateTime(2026, 9, 4),
+              soTien: 60000,
+              loai: 'chi',
+              categoryId: 'c_mua',
+              tenDanhMuc: 'Mua sắm',
+              mauHex: null,
+              icon: null,
+              walletId: 'w1',
+              tenVi: 'Tiền mặt',
+              tieuDe: 'Mua sắm',
             ),
           ],
           dongTien: const DongTien(dauKy: 10500000, cuoiKy: 10200000),
@@ -932,6 +945,36 @@ void main() {
 
       expect(find.text('Phân bổ theo ví'), findsNothing);
       expect(find.text('Top 5 khoản chi'), findsNothing);
+    });
+
+    testWidgets('⚠️ cột số tiền thẳng mép PHẢI ở mọi hàng', (tester) async {
+      // Người dùng bắt được trên máy ảo 2026-09-15: các con số "bị lệch". Gốc
+      // rễ là `Flexible` mang `flex: 1` mặc định nên được chia MỘT NỬA chỗ
+      // trống, nội dung lại hẹp hơn, và `MainAxisAlignment.start` đẩy phần thừa
+      // về cuối hàng — mỗi hàng thừa một kiểu nên mép phải răng cưa.
+      //
+      // Cột tiền phải thẳng mép phải: đó là cách người ta đọc một cột tiền, và
+      // lệch thì mắt bắt ngay dù không một dòng log nào.
+      await moCao(tester);
+      await phat(tester, tkDayDu());
+
+      double mepPhai(String chu) => tester.getRect(find.text(chu)).right;
+
+      expect(
+        mepPhai('-900.000 đ'),
+        moreOrLessEquals(mepPhai('-120.000 đ'), epsilon: 0.5),
+        reason: 'hai ví khác nhau, cùng một mép phải',
+      );
+      expect(
+        mepPhai('+5.000.000 đ'),
+        moreOrLessEquals(mepPhai('-120.000 đ'), epsilon: 0.5),
+        reason: 'thu và chi của cùng một ví cũng phải thẳng cột',
+      );
+      expect(
+        mepPhai('-500.000 đ'),
+        moreOrLessEquals(mepPhai('-60.000 đ'), epsilon: 0.5),
+        reason: 'hai dòng của Top 5, cùng một mép phải',
+      );
     });
 
     testWidgets('không tràn ở 411dp với tên ví dài', (tester) async {

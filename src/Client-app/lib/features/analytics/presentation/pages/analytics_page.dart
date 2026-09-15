@@ -971,6 +971,17 @@ class _ChuGiaiDuong extends StatelessWidget {
 // `report_preview_page.dart` để hai trang trông như một; riêng tiêu đề thì theo
 // kiểu của trang này (18px đậm) chứ không phải nhãn in hoa của tờ báo cáo.
 
+/// ⚠️ **Cột số tiền phải là `Expanded`, không phải `Flexible`.**
+///
+/// Cả hai đều mang `flex: 1` nên chia đôi chỗ trống như nhau — khác biệt nằm ở
+/// chỗ `Flexible` để con giữ bề rộng tự nhiên, và `MainAxisAlignment.start` đẩy
+/// phần thừa về **cuối hàng**. Mỗi hàng thừa một kiểu, nên mép phải răng cưa:
+/// đo được **26,5px** lệch giữa hai dòng của cùng một khối. `Expanded` cho con
+/// chiếm trọn suất của nó, và khi ấy `alignment: Alignment.centerRight` mới đẩy
+/// được chữ ra sát mép. Không mất chỗ nào của cột trái — tỉ lệ chia vẫn 1:1.
+///
+/// Người dùng bắt được trên máy ảo 2026-09-15; có ca test so mép phải canh.
+
 /// Tiêu đề khối, cùng kiểu với "Xu hướng …" và "Cơ cấu theo danh mục".
 ///
 /// `Text` đứng trong `Row` không co được, nên bọc `SizedBox` rộng vô hạn — cùng
@@ -1036,7 +1047,7 @@ class _KhoiDongTien extends StatelessWidget {
                           fontSize: 12, color: AppColors.textSecondary),
                     ),
                   ),
-                  Flexible(
+                  Expanded(
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.centerRight,
@@ -1233,7 +1244,7 @@ class _KhoiTheoVi extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Flexible(
+                    Expanded(
                       child: FittedBox(
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.centerRight,
@@ -1332,7 +1343,7 @@ class _KhoiTopChi extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Flexible(
+                    Expanded(
                       child: FittedBox(
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.centerRight,
