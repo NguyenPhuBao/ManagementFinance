@@ -1,12 +1,13 @@
 /// Vai của một khoản vay/nợ — A8 #4 và #5 (2026-09-15).
 ///
-/// Bốn vai *cho vay · thu nợ · đi vay · trả nợ* **không có chỗ nào lưu**: giao
-/// dịch chỉ giữ `type` (`thu`/`chi`) và `categoryId`. Chiều tiền tách được **hai**
-/// nhóm, không phải bốn — thứ duy nhất tách được bốn là **tên danh mục**.
+/// Bốn vai *cho vay · thu nợ · đi vay · trả nợ* **không có cột nào lưu**, nhưng
+/// suy ra được: **tên danh mục là QUAN HỆ nợ, `type` là VAI của lần này**. Màn
+/// Thêm giao dịch hiện ô "Chiều tiền" cho đúng mục đích ấy — `Cho vay` + tiền
+/// vào chính là *thu nợ*.
 ///
-/// Vì thế đây là luật đọc **tên**, và nó sai thì sai **im lặng**: tiền rơi sang
-/// nhầm biểu đồ, không exception, không log, và người dùng **không sửa được bằng
-/// một cú chạm** như gợi ý lúc nhập liệu.
+/// Luật này sai thì sai **im lặng**: tiền rơi sang nhầm biểu đồ, không exception,
+/// không log, và người dùng **không sửa được bằng một cú chạm** như gợi ý lúc
+/// nhập liệu.
 library;
 
 import 'package:flutter_test/flutter_test.dart';
@@ -32,13 +33,22 @@ void main() {
       );
     });
 
-    test('⚠️ TÊN NÓI MỘT ĐẰNG, CHIỀU TIỀN MỘT NẺO thì KHÔNG tin tên', () {
-      // Người dùng đổi tên danh mục, hoặc ghi nhầm chiều. Tin tên ở đây là để
-      // một cột xanh mọc lên giữa chuỗi lẽ ra chỉ có tiền ra — và không gì báo.
-      expect(vaiVayNoCua(tenDanhMuc: 'Cho vay', loai: 'thu'), VaiVayNo.khac);
-      expect(vaiVayNoCua(tenDanhMuc: 'Đi vay', loai: 'chi'), VaiVayNo.khac);
-      expect(vaiVayNoCua(tenDanhMuc: 'Thu nợ', loai: 'chi'), VaiVayNo.khac);
-      expect(vaiVayNoCua(tenDanhMuc: 'Trả nợ', loai: 'thu'), VaiVayNo.khac);
+    test('⚠️ CÙNG danh mục, đổi chiều tiền là đổi vai', () {
+      // Đây là chốt quan trọng nhất, và bản đầu hiểu NGƯỢC: nó coi "Cho vay +
+      // tiền vào" là tên nói dối và xếp vào `khac`, nên hai cột Thu nợ và Trả nợ
+      // KHÔNG BAO GIỜ có số. Chạy thử trên máy ảo mới thấy ô "Chiều tiền" của
+      // màn Thêm giao dịch — và thấy rằng hai danh mục mặc định đủ ghi bốn vai.
+      expect(vaiVayNoCua(tenDanhMuc: 'Cho vay', loai: 'chi'), VaiVayNo.choVay);
+      expect(vaiVayNoCua(tenDanhMuc: 'Cho vay', loai: 'thu'), VaiVayNo.thuNo);
+      expect(vaiVayNoCua(tenDanhMuc: 'Đi vay', loai: 'thu'), VaiVayNo.diVay);
+      expect(vaiVayNoCua(tenDanhMuc: 'Đi vay', loai: 'chi'), VaiVayNo.traNo);
+    });
+
+    test('tên nói vai nào cũng chỉ là quan hệ ấy', () {
+      // Danh mục tên "Thu nợ" mà tiền lại đi ra: vẫn là quan hệ *cho vay*, và
+      // lần này là cho vay thêm. Không có ca nào rơi vào `khac` vì chiều tiền.
+      expect(vaiVayNoCua(tenDanhMuc: 'Thu nợ', loai: 'chi'), VaiVayNo.choVay);
+      expect(vaiVayNoCua(tenDanhMuc: 'Trả nợ', loai: 'thu'), VaiVayNo.diVay);
     });
 
     test('tên tự đặt không đoán được thì là khac, KHÔNG dồn về một vai', () {

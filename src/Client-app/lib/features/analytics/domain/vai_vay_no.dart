@@ -1,19 +1,29 @@
 /// Vai của một khoản vay/nợ — **định nghĩa duy nhất** (A8 #4 và #5, 2026-09-15).
 ///
-/// ## Vì sao phải đoán
+/// ## Tên là QUAN HỆ, chiều tiền là VAI
 ///
-/// Bốn vai *cho vay · thu nợ · đi vay · trả nợ* **không có chỗ nào lưu**. Một
-/// giao dịch chỉ giữ `type` (`thu`/`chi`) và `categoryId`; cả hai đầu — client 9
-/// bảng Drift, server 14 bảng — **không đầu nào có bảng khoản vay** (đếm bằng
-/// máy 2026-09-15). Chiều tiền vì thế chỉ tách được **hai** nhóm:
+/// Bốn vai *cho vay · thu nợ · đi vay · trả nợ* **không có cột nào lưu**, và cả
+/// hai đầu — client 9 bảng Drift, server 14 bảng — **không đầu nào có bảng khoản
+/// vay** (đếm bằng máy 2026-09-15). Nhưng chúng **suy ra được**, và không phải
+/// bằng cách đoán mò:
 ///
-/// * tiền ra  → *cho vay* **hoặc** *trả nợ*
-/// * tiền vào → *thu nợ*  **hoặc** *đi vay*
+/// Màn Thêm giao dịch, khi danh mục thuộc nhóm Vay/nợ, hiện thêm một ô **"Chiều
+/// tiền"** (Tiền ra / Tiền vào) — `suggestDebtDirection` chỉ **chọn sẵn** một
+/// bên, người dùng đổi được. Nghĩa là tên danh mục nói **quan hệ nợ nào**, còn
+/// `type` nói **lần này tiền chạy chiều nào**:
 ///
-/// Thứ duy nhất tách được bốn là **tên danh mục**, và bốn danh mục mặc định tên
-/// đúng bằng bốn vai (`Cho vay`, `Đi vay` từ khuôn server; `Trả nợ`, `Thu nợ` từ
-/// `PersonalDefaultCategories`). `suggestDebtDirection` ở màn nhập liệu đã đọc
-/// đúng bộ tên ấy từ trước — đây là cùng một ý tưởng, chặt hơn một bậc.
+/// | Danh mục | Tiền ra | Tiền vào |
+/// |---|---|---|
+/// | `Cho vay` | cho vay | **thu nợ** |
+/// | `Đi vay`  | **trả nợ** | đi vay |
+///
+/// Nhờ vậy **hai** danh mục mặc định đủ để ghi cả **bốn** vai — đúng cách app đã
+/// thiết kế từ trước, và tài khoản thật trên máy ảo chỉ có đúng hai danh mục ấy
+/// (`Cho vay`, `Đi vay`; `Trả nợ`/`Thu nợ` đã bị xoá mềm trên server).
+///
+/// ⚠️ Bản đầu của tệp này hiểu ngược — coi "Cho vay + tiền vào" là **tên nói
+/// dối** và xếp vào `khac`. Chạy thử trên máy ảo mới thấy ô "Chiều tiền" và biết
+/// là sai: luật ấy làm hai cột *Thu nợ* và *Trả nợ* **không bao giờ có số**.
 ///
 /// ## Vì sao KHÔNG bỏ dấu
 ///
@@ -33,35 +43,29 @@ import 'thong_ke_thang.dart';
 
 enum VaiVayNo { choVay, thuNo, diVay, traNo, khac }
 
-/// Vai của một khoản, đọc từ [tenDanhMuc] **và** chiều tiền [loai].
+/// Vai của một khoản: **tên** cho biết quan hệ nợ, **chiều tiền** cho biết vai.
 ///
-/// ⚠️ **Chiều tiền đi trước tên.** Tên nói "cho vay" mà khoản lại là tiền vào
-/// thì cái tên đang nói dối — người dùng đổi tên danh mục, hoặc ghi nhầm chiều.
-/// Khi ấy trả [VaiVayNo.khac] chứ **không tin tên**: tin nó là để một cột xanh
-/// mọc lên giữa chuỗi lẽ ra chỉ có tiền ra, và không gì báo. Phép kiểm ấy nằm
-/// sẵn trong cấu trúc hàm — mỗi chiều chỉ tra hai cụm khoá của chính nó.
-///
-/// Tên chứa **cả hai** cụm của cùng một chiều ("Trả nợ cho vay") thì lấy cụm
-/// gặp trước; hiếm tới mức không đáng thêm luật, và cả hai đều nằm trong biểu
-/// đồ của chiều ấy.
+/// Tên chứa cả cụm của hai quan hệ ("Cho vay & trả nợ") thì lấy quan hệ *cho
+/// vay* — hiếm tới mức không đáng một luật thứ hai, và thứ tự phải **cố định**
+/// để hai lần đọc cùng một hàng không ra hai kết quả.
 VaiVayNo vaiVayNoCua({required String? tenDanhMuc, required String loai}) {
+  // `transfer` là tiền đổi chỗ — không phải vay cũng không phải nợ.
+  if (loai != 'chi' && loai != 'thu') return VaiVayNo.khac;
   if (tenDanhMuc == null) return VaiVayNo.khac;
+
   final ten = normalizeCategoryName(tenDanhMuc);
   if (ten.isEmpty) return VaiVayNo.khac;
+  final tienRa = loai == 'chi';
 
-  switch (loai) {
-    case 'chi':
-      if (ten.contains('cho vay')) return VaiVayNo.choVay;
-      if (ten.contains('trả nợ')) return VaiVayNo.traNo;
-      return VaiVayNo.khac;
-    case 'thu':
-      if (ten.contains('thu nợ')) return VaiVayNo.thuNo;
-      if (ten.contains('đi vay')) return VaiVayNo.diVay;
-      return VaiVayNo.khac;
-    default:
-      // `transfer` là tiền đổi chỗ — không phải vay cũng không phải nợ.
-      return VaiVayNo.khac;
+  // Quan hệ "tôi cho người khác vay": tiền ra là cho vay, tiền về là thu nợ.
+  if (ten.contains('cho vay') || ten.contains('thu nợ')) {
+    return tienRa ? VaiVayNo.choVay : VaiVayNo.thuNo;
   }
+  // Quan hệ "tôi vay của người khác": tiền vào là đi vay, tiền ra là trả nợ.
+  if (ten.contains('đi vay') || ten.contains('trả nợ')) {
+    return tienRa ? VaiVayNo.traNo : VaiVayNo.diVay;
+  }
+  return VaiVayNo.khac;
 }
 
 /// Một điểm trên hai biểu đồ vay/nợ: trọn một kỳ, gom theo vai.
