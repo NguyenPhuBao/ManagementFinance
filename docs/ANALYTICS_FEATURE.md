@@ -1,6 +1,6 @@
 # Trang Phân tích — thiết kế, lý do, và những cái bẫy
 
-**Cập nhật:** 2026-09-15 (mục **3.20** — **P1: phạm vi thời gian**; mục **3.21** — **P2**: bốn khối mượn từ trang Xuất báo cáo; mục **3.22** — **A8 #4 và #5**: hai biểu đồ cột vay/nợ; **G40 đóng** — trang Xem trước báo cáo lệch cột số tiền ở **sáu** chỗ, đo được 93px, xem bẫy **4.19**) · bản trước 2026-09-14 (mục **3.19** — A8 #3, #7: cơ cấu theo danh mục với ba chip nhóm, và xu hướng tới 5 danh mục cùng lúc; bản thi công **lần hai**, #2 đã bỏ)
+**Cập nhật:** 2026-09-15 (mục **3.20** — **P1: phạm vi thời gian**; mục **3.21** — **P2**: bốn khối mượn từ trang Xuất báo cáo; mục **3.22** — **A8 #4 và #5**: hai biểu đồ cột vay/nợ; **G40 đóng** — trang Xem trước báo cáo lệch cột số tiền ở **sáu** chỗ, đo được 93px, xem bẫy **4.19**; **nhãn quý rút thành `Q3 2026`** để ô header thôi cụt, xem mục **3.20**) · bản trước 2026-09-14 (mục **3.19** — A8 #3, #7: cơ cấu theo danh mục với ba chip nhóm, và xu hướng tới 5 danh mục cùng lúc; bản thi công **lần hai**, #2 đã bỏ)
 **Trạng thái:** **mảng Phân tích đã xong cả 2a, 2b, 2c** (2026-09-09). Lát **2a** xong — mọi con số trên trang là số thật từ SQLite —
 lát **2b** xong (khối "Xu hướng 6 tháng" vẽ bằng `fl_chart`), lát **2c‑1** xong
 (trang Xuất báo cáo đọc ví/danh mục/thời gian thật rồi mở màn **Xem trước báo
@@ -21,7 +21,7 @@ thẳng vào thư mục Tải về** của máy. Xem mục 7.
 | Bất cứ việc gì | Mục 3 (quyết định) và mục 4 (bẫy) |
 | Sửa phép tính | `domain/thong_ke_thang.dart` và test của nó — **không** có CSDL, kiểm bằng danh sách |
 | Sửa cách gộp dữ liệu | Mục 3.3 (mốc tra ngân sách) trước, rồi `data/analytics_repository_impl.dart` |
-| Đụng giao diện | **Ba** màn Stitch còn dùng được: `c8567243…` *"Thống kê - Cơ cấu danh mục & Xu hướng 6 tháng"* (2026-09-14) cho thân trang, **`83993fc9f5de4c5f8fba6940480c164a`** *"Thống kê - Chọn phạm vi thời gian"* (2026-09-15) cho bộ chọn phạm vi, và **`6e9007f7653749a893c88e3de535afa5`** *"Thống kê - Biểu đồ Cho vay & Đi vay"* (đo được 2026-09-15) cho hai biểu đồ vay/nợ — ⚠️ màn thứ ba vẽ thêm **hai thẻ tổng** mà bản thi công **cố ý không có**, xem mục 3.22 — ⚠️ **hai** màn cũ đã lỗi thời và vẫn còn trong dự án: `c2a2b615…` (tả A8 #2 đã bỏ: mức gốc ba lát + dropdown) và `a228fa69…` "FlowMoney Analytics Dashboard"; và mục 4.4 về font của bộ test |
+| Đụng giao diện | **Bốn** màn Stitch còn dùng được: `c8567243…` *"Thống kê - Cơ cấu danh mục & Xu hướng 6 tháng"* (2026-09-14) cho thân trang, **`83993fc9f5de4c5f8fba6940480c164a`** *"Thống kê - Chọn phạm vi thời gian"* (2026-09-15) cho bộ chọn phạm vi, **`6e9007f7653749a893c88e3de535afa5`** *"Thống kê - Biểu đồ Cho vay & Đi vay"* (đo được 2026-09-15) cho hai biểu đồ vay/nợ, và **`afe1c3fdee43464c90ddadc508eaa599`** *"Thống kê - 4 Thẻ Dòng Tiền & Kế Toán"* (đo được 2026-09-15) cho bốn khối của P2 — ⚠️ màn thứ tư mang `deviceType: DESKTOP` dù lượt gọi truyền `MOBILE`, xem mục **3.21** — ⚠️ màn thứ ba vẽ thêm **hai thẻ tổng** mà bản thi công **cố ý không có**, xem mục 3.22 — ⚠️ **hai** màn cũ đã lỗi thời và vẫn còn trong dự án: `c2a2b615…` (tả A8 #2 đã bỏ: mức gốc ba lát + dropdown) và `a228fa69…` "FlowMoney Analytics Dashboard"; và mục 4.4 về font của bộ test |
 | Đụng biểu đồ | Mục **3.11** (vì sao `fl_chart`, vì sao ghim phiên bản), **3.12** (khối xu hướng từng lệch Stitch, nay hết), **3.19** (đường một danh mục), và bẫy **4.9** (tooltip tràn — thứ duy nhất phải kiểm bằng mắt) |
 | Sinh tệp PDF/CSV | Mục **3.17** (vì sao nhúng font, vì sao `MediaStore` chứ không phải quyền ghi bộ nhớ), **3.18** (ba luật của CSV cho Excel tiếng Việt), bẫy **4.15**–**4.16** |
 | Đụng trang Xuất báo cáo / màn Xem trước | Mục **3.13** (vì sao xem trước rồi mới tải), **3.14** (ảnh chụp, không phải luồng sống; và màn Stitch mới), **3.15** (mười khối lấy chuẩn từ app thị trường), **3.16** (dòng tiền là số suy ngược, hai giới hạn), bẫy **4.11**–**4.14** |
@@ -684,6 +684,24 @@ bằng máy 2026-09-15. Analytics có **14** tệp test / **301** test (đếm b
 Trên máy ảo, số khớp từng vế: `14.125.000 + 500.000` = Tổng thu, `935.000 +
 110.000` = Tổng chi, và `14.625.000 − 1.045.000` = "Thay đổi trong kỳ" của khối
 dòng tiền.
+
+#### Màn Stitch — sinh sau, ngày 2026-09-15
+
+**`afe1c3fdee43464c90ddadc508eaa599`** — *"Thống kê - 4 Thẻ Dòng Tiền & Kế
+Toán"*. Bốn khối này thi công bằng cách **dùng lại khuôn màn Xuất báo cáo** nên
+lúc làm chưa có thiết kế riêng; màn được sinh sau để tài liệu thiết kế khớp app.
+Tải HTML về đọc thì cả bốn thẻ, từng nhãn và từng con số đều khớp bản thi công,
+và cột tiền canh phải như sau khi đóng G40.
+
+⚠️ **`deviceType: MOBILE` truyền vào KHÔNG có hiệu lực** — màn trả về mang
+`deviceType: DESKTOP`, khung 2560×2258, trong khi dự án FlowMoney là MOBILE và
+ba màn Thống kê trước đều 390px. Nhưng đó chỉ là **khung canvas**: thân trang
+dựng trong `max-w-[430px]` căn giữa, tức bố cục vẫn là một cột điện thoại. Đọc
+màn này thì nhìn phần 430px ấy, đừng suy ra rằng thiết kế đã đổi sang desktop.
+
+⚠️ Và lượt gọi **trả về `timeout`**, `list_screens` ngay sau đó không thấy gì,
+phải tới lượt kiểm thứ ba (chừng mười lăm phút sau) màn mới hiện — đúng như lần
+sinh màn bộ chọn phạm vi. Timeout **không phải** thất bại; đừng gọi lại.
 
 ### 3.22 Hai biểu đồ cột vay/nợ — A8 #4 và #5
 

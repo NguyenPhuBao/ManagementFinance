@@ -656,6 +656,15 @@ nửa chỗ trống như `Expanded`, nhưng để con giữ bề rộng tự nhi
 `MainAxisAlignment.start` đẩy phần thừa về **cuối hàng** — mỗi hàng thừa một
 kiểu. Bẫy **4.19** `ANALYTICS_FEATURE.md`.
 
+**Màn Stitch sinh sau:** `afe1c3fdee43464c90ddadc508eaa599` — *"Thống kê - 4 Thẻ
+Dòng Tiền & Kế Toán"*. Bốn khối này thi công bằng cách dùng lại khuôn màn Xuất
+báo cáo nên lúc làm chưa có thiết kế riêng; màn sinh sau để tài liệu thiết kế
+khớp app. Nội dung khớp từng nhãn và từng con số. ⚠️ Nó mang `deviceType:
+DESKTOP` dù lượt gọi truyền `MOBILE` — nhưng thân trang dựng trong
+`max-w-[430px]` căn giữa, nên bố cục vẫn là một cột điện thoại; đừng suy ra
+thiết kế đã đổi sang desktop. Lượt gọi cũng **trả về timeout** và mãi lượt kiểm
+thứ ba mới thấy màn, đúng như lần sinh màn bộ chọn phạm vi.
+
 Mức nền: **2488/2488** test, analyze **25 issue / 0 error**.
 
 ### 📐 Cột số tiền của trang Xem trước báo cáo — G40 (2026-09-15)
