@@ -140,4 +140,46 @@ void main() {
       expect(t.to, DateTime(2025, 12, 29));
     });
   });
+
+  // ── bienTuan — thêm 2026-09-15 cho bộ chọn phạm vi trang Phân tích ────────
+  //
+  // Phép này vốn nằm ẩn bên trong `tuanTruoc`. Tách ra vì `Ky.tuan` cần đúng nó;
+  // hai bản chép tay sẽ trôi khỏi nhau và lệch một ngày ở đây **im lặng**.
+  group('bienTuan', () {
+    test('trả về thứ Hai 00:00 tới thứ Hai kế của tuần chứa ngày', () {
+      // 17/09/2026 là thứ Năm.
+      final b = bienTuan(DateTime(2026, 9, 17, 23, 59));
+      expect(b.from, DateTime(2026, 9, 14), reason: 'thứ Hai của tuần ấy');
+      expect(b.to, DateTime(2026, 9, 21), reason: 'biên MỞ: thứ Hai kế tiếp');
+    });
+
+    test('đứng đúng thứ Hai thì tuần bắt đầu từ chính ngày đó', () {
+      final b = bienTuan(DateTime(2026, 9, 14, 8));
+      expect(b.from, DateTime(2026, 9, 14));
+    });
+
+    test('đứng Chủ nhật vẫn thuộc tuần đang chạy, không nhảy sang tuần sau', () {
+      final b = bienTuan(DateTime(2026, 9, 20)); // Chủ nhật
+      expect(b.from, DateTime(2026, 9, 14));
+      expect(b.to, DateTime(2026, 9, 21));
+    });
+
+    test('tuần vắt qua giao thừa', () {
+      // 31/12/2025 là thứ Tư, thuộc tuần 29/12/2025 – 04/01/2026.
+      final b = bienTuan(DateTime(2025, 12, 31));
+      expect(b.from, DateTime(2025, 12, 29));
+      expect(b.to, DateTime(2026, 1, 5));
+    });
+
+    test('tuanTruoc dùng CHUNG phép của bienTuan', () {
+      // Canh việc hai hàm không trôi khỏi nhau: tuần trước phải khít với tuần
+      // này, không hở và không chồng lấn một ngày nào.
+      final now = DateTime(2026, 9, 17, 10);
+      expect(
+        tuanTruoc(now).to,
+        bienTuan(now).from,
+        reason: 'tuần trước kết thúc đúng lúc tuần này bắt đầu',
+      );
+    });
+  });
 }
