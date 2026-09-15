@@ -595,6 +595,33 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-15)
 
+### 💸 Hai biểu đồ cột vay/nợ — A8 #4 và #5 (2026-09-15)
+
+"Cho vay & Thu nợ" và "Đi vay & Trả nợ", mỗi kỳ một **cặp cột chồng nhau**: cột
+sau rộng và mờ, cột trước hẹp và đậm vẽ đè lên chính giữa. Chi tiết ở mục
+**3.22** `docs/ANALYTICS_FEATURE.md`.
+
+⚠️ **Câu "A8 #4/#5 bị chặn bởi mô hình dữ liệu" là quá chặt.** Đúng là không đầu
+nào có bảng khoản vay, nhưng hai biểu đồ này chỉ vẽ **dòng tiền** — không cần dư
+nợ gốc, lãi suất hay kỳ hạn. Riêng **#9** (biến động khoản vay) thì vẫn chặn
+thật vì nó cần dư nợ còn lại.
+
+⚠️ **Bài học đắt nhất của hạng mục: tên danh mục là QUAN HỆ nợ, chiều tiền mới
+là VAI.** Màn Thêm giao dịch hiện ô "Chiều tiền" cho danh mục Vay/nợ, nên
+`Cho vay` + tiền vào chính là *thu nợ*. Bản đầu coi đó là "tên nói dối" và xếp
+vào `khac` — hậu quả là hai cột *Thu nợ* và *Trả nợ* **không bao giờ có số**,
+im lặng, vì biểu đồ vẫn vẽ ra và vẫn có cột đỏ. **Chỉ chạy thật trên máy ảo mới
+thấy** — `flutter test` không bắt được loại lỗi "hiểu sai mô hình dữ liệu của
+chính app".
+
+Điều ấy còn nặng hơn vì đo trên CSDL dev thì tài khoản thật **chỉ có hai** danh
+mục Vay/nợ: `Cho vay` và `Đi vay` (13 bản mỗi tên); `Trả nợ` và `Thu nợ` đã bị
+xoá mềm khi backend thu bộ khuôn về 13 UUID. Với luật đúng thì hai danh mục ấy
+đủ ghi cả bốn vai.
+
+Không đổi schema (vẫn **v22**), không thêm trường đồng bộ. Mức nền:
+**2511/2511** test, analyze **25 issue / 0 error**.
+
 ### 📈 Bốn khối mượn từ trang Báo cáo — P2 (2026-09-15)
 
 Trang Phân tích nay có **dòng tiền · số liệu nhanh · phân bổ theo ví · top 5
@@ -696,6 +723,10 @@ sinh, tức khối hiện chip nào.
 
 ⚠️ **Hệ quả cố ý:** nhóm "Chi" **không bằng** "Tổng chi" ở thẻ đầu trang — ba
 nhóm phải rời nhau thì tỷ trọng mới có nghĩa. Đừng "sửa" cho khớp.
+
+> ⚠️ **Đính chính 2026-09-15:** đoạn dưới là kết luận của ngày 2026-09-14.
+> **#4 và #5 KHÔNG bị chặn** — chúng chỉ vẽ *dòng tiền*, và đã làm xong (mục
+> **3.22** `ANALYTICS_FEATURE.md`). **#9** vẫn chặn thật vì cần dư nợ còn lại.
 
 **Bốn mục A8 còn lại bị chặn bởi mô hình dữ liệu, không phải bởi biểu đồ.** Đếm
 bằng máy 2026-09-14: client có **9** bảng Drift, backend có **13** model

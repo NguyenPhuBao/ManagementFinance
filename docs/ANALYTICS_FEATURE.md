@@ -1,6 +1,6 @@
 # Trang Phân tích — thiết kế, lý do, và những cái bẫy
 
-**Cập nhật:** 2026-09-15 (mục **3.20** — **P1: phạm vi thời gian**, trang nay xem được theo tuần · tháng · quý · năm · khoảng tuỳ chọn; mục **3.21** — **P2**: bốn khối mượn từ trang Xuất báo cáo) · bản trước 2026-09-14 (mục **3.19** — A8 #3, #7: cơ cấu theo danh mục với ba chip nhóm, và xu hướng tới 5 danh mục cùng lúc; bản thi công **lần hai**, #2 đã bỏ)
+**Cập nhật:** 2026-09-15 (mục **3.20** — **P1: phạm vi thời gian**; mục **3.21** — **P2**: bốn khối mượn từ trang Xuất báo cáo; mục **3.22** — **A8 #4 và #5**: hai biểu đồ cột vay/nợ) · bản trước 2026-09-14 (mục **3.19** — A8 #3, #7: cơ cấu theo danh mục với ba chip nhóm, và xu hướng tới 5 danh mục cùng lúc; bản thi công **lần hai**, #2 đã bỏ)
 **Trạng thái:** **mảng Phân tích đã xong cả 2a, 2b, 2c** (2026-09-09). Lát **2a** xong — mọi con số trên trang là số thật từ SQLite —
 lát **2b** xong (khối "Xu hướng 6 tháng" vẽ bằng `fl_chart`), lát **2c‑1** xong
 (trang Xuất báo cáo đọc ví/danh mục/thời gian thật rồi mở màn **Xem trước báo
@@ -394,6 +394,11 @@ bằng máy 2026-09-14 thì client có 9 bảng Drift và backend có 13 model P
 liên kết giữa một khoản vay với các lần trả nợ của nó. Hai mục **#10** (thác
 nước) và **#11** (Sankey) làm được với thu/chi nhưng để đợt sau.
 
+> ⚠️ **Đính chính 2026-09-15:** đoạn trên là kết luận của ngày 2026-09-14 và nó
+> **quá chặt cho #4 và #5** — hai mục ấy chỉ vẽ *dòng tiền*, không cần dư nợ gốc
+> hay lãi suất, và đã làm xong (mục **3.22**). **#9** thì vẫn chặn thật. 🛑 **#10
+> người dùng chốt không làm.**
+
 ⚠️ **`suggestDebtDirection()` không thay được mô hình ấy.** Nó đoán chiều tiền
 bằng cách so tên danh mục với bốn chuỗi (`đi vay`, `thu nợ`, `cho vay`,
 `trả nợ`) — một **gợi ý lúc nhập liệu**, nơi đoán sai chỉ tốn một cú chạm để
@@ -666,6 +671,86 @@ bằng máy 2026-09-15. Analytics có **14** tệp test / **301** test (đếm b
 Trên máy ảo, số khớp từng vế: `14.125.000 + 500.000` = Tổng thu, `935.000 +
 110.000` = Tổng chi, và `14.625.000 − 1.045.000` = "Thay đổi trong kỳ" của khối
 dòng tiền.
+
+### 3.22 Hai biểu đồ cột vay/nợ — A8 #4 và #5
+
+**2026-09-15.** "Cho vay & Thu nợ" và "Đi vay & Trả nợ", mỗi kỳ một **cặp cột
+chồng nhau**: cột sau rộng và mờ, cột trước hẹp và đậm vẽ đè lên chính giữa.
+Sáu kỳ, đi theo bộ chọn phạm vi của mục 3.20 nhờ mượn `lui(ky, i)`.
+
+#### ⚠️ Hai mục này KHÔNG bị chặn bởi mô hình dữ liệu
+
+Tài liệu (kể cả `CLAUDE.md`) ghi A8 #4, #5, #8, #9 "bị chặn bởi mô hình dữ liệu:
+không đầu nào có bảng khoản vay". Đo lại ngày 2026-09-15 thì câu ấy **quá chặt
+cho #4 và #5**: đúng là không có bảng khoản vay (client 9 bảng Drift, server 14
+bảng), nhưng hai biểu đồ này chỉ vẽ **dòng tiền** — không cần dư nợ gốc, lãi
+suất hay kỳ hạn. Thứ thật sự thiếu là chỗ lưu **vai**, và vai suy ra được.
+
+**#9** (biến động khoản vay) thì vẫn chặn thật: nó cần dư nợ còn lại.
+
+#### Tên là QUAN HỆ, chiều tiền là VAI
+
+Đây là chỗ bản đầu **hiểu ngược**, và chỉ chạy thật trên máy ảo mới thấy.
+
+Màn Thêm giao dịch, khi danh mục thuộc nhóm Vay/nợ, hiện thêm ô **"Chiều tiền"**
+(Tiền ra / Tiền vào) — `suggestDebtDirection` chỉ **chọn sẵn** một bên, người
+dùng đổi được. Nên tên danh mục nói **quan hệ nợ nào**, còn `type` nói **lần này
+tiền chạy chiều nào**:
+
+| Danh mục | Tiền ra | Tiền vào |
+|---|---|---|
+| `Cho vay` | cho vay | **thu nợ** |
+| `Đi vay` | **trả nợ** | đi vay |
+
+Bản đầu coi "Cho vay + tiền vào" là **tên nói dối** và xếp vào `khac`. Hậu quả:
+hai cột *Thu nợ* và *Trả nợ* **không bao giờ có số** — im lặng, vì biểu đồ vẫn
+vẽ ra và vẫn có cột đỏ. Không exception, không log.
+
+Điều ấy còn nặng hơn vì tài khoản thật chỉ có **hai** danh mục Vay/nợ: `Cho vay`
+và `Đi vay` — `Trả nợ`/`Thu nợ` đã bị **xoá mềm** trên server khi backend thu bộ
+khuôn về 13 UUID (đo bằng máy 2026-09-15: 13 bản `Cho vay`, 13 bản `Đi vay` còn
+sống; 3 bản `Thu nợ` và 3 bản `Trả nợ` đã xoá). Với luật đúng, hai danh mục ấy
+**đủ ghi cả bốn vai**.
+
+#### Bốn chốt
+
+1. **`vaiVayNoCua` là định nghĩa duy nhất** (`domain/vai_vay_no.dart`). Tên chứa
+   `cho vay` *hoặc* `thu nợ` → quan hệ cho vay; chứa `đi vay` *hoặc* `trả nợ` →
+   quan hệ đi vay. Thứ tự tra **cố định**, để hai lần đọc cùng một hàng không ra
+   hai kết quả.
+2. ⚠️ **Không bỏ dấu khi so tên.** `removeVietnameseTones` là phép so mất thông
+   tin, chỉ dành cho gợi ý nơi đoán sai tốn một cú chạm để sửa (quy tắc 7
+   `CLAUDE.md`). Ở đây đoán sai đẩy tiền sang **nhầm biểu đồ**, và người dùng
+   không biết là có gì để sửa.
+3. **"Thuộc nhóm Vay/nợ" mượn `phanLoaiCua`** — cùng hàm mà vòng tròn "Cơ cấu
+   theo danh mục" dùng, nên hai khối không thể nói hai con số cho một tháng.
+4. ⚠️ **Màu theo CHIỀU TIỀN, không theo vị trí.** Xanh luôn là tiền vào, đỏ luôn
+   là tiền ra — nên khối 1 có cột sau **đỏ** còn khối 2 có cột sau **xanh**. Đảo
+   lại cho "hai khối trông giống nhau" là dạy người đọc một quy ước thứ hai.
+
+#### Khoản không đoán được vai có khối riêng
+
+Danh mục người dùng tự đặt tên ("Nợ Bảo") chỉ biết chiều tiền. Xếp nó vào một
+trong hai khối là **chọn bừa** — một khoản tiền ra không rõ tên có thể là *cho
+vay* hoặc *trả nợ*; xếp vào cả hai là **đếm hai lần**. Khối thứ ba "Vay/nợ chưa
+xếp được vai" chỉ hiện khi có, và với hai danh mục mặc định thì không bao giờ
+hiện. Giấu hẳn đi là im lặng đánh rơi tiền của người dùng.
+
+#### Vẽ
+
+`BarChartGroupData.barsSpace` **âm** là thứ làm hai cột chồng nhau;
+`-(rộng1 + rộng2) / 2` đặt tâm hai cột trùng khít — lệch đi là cột trước trồi ra
+một bên, trông như lỗi vẽ. **Thứ tự trong `barRods` là thứ tự vẽ**, nên cột sau
+phải đứng trước để cột trước đè lên nó. Trần trục tính `buoc` trước rồi
+`maxY = buoc * 3`, cùng cách chống nhãn in đè của G39 (bẫy 4.18).
+
+#### Nghiệm thu
+
+Nhập thật trên máy ảo: `Cho vay` 500.000 (tiền ra) và `Cho vay` 200.000 (tiền
+vào) → khối "Cho vay & Thu nợ" hiện một cột đỏ nhạt rộng với một cột xanh hẹp đè
+lên chính giữa; nhãn trục `0 / 191.7K / 383.3K / 575K` không chồng nhau; hai
+khối còn lại vắng mặt. `flutter test` **2511/2511**, `flutter analyze` **25
+issue, 0 error**.
 
 ## 4. Bẫy
 
@@ -950,12 +1035,14 @@ không (`preventCurveOverShooting`). Cả ba chỉ kiểm được bằng mắt 
   cùng ngày: nó bắt thêm một cú chạm mới tới được thứ người dùng thật sự tìm. Bốn
   mục A8 còn lại (#4, #5, #8, #9) bị chặn bởi mô hình dữ liệu vay/nợ mà cả hai
   đầu đều không có; **#10** (thác nước) và **#11** (Sankey) làm được với thu/chi
-  nhưng để đợt sau.
+  nhưng để đợt sau. ⚠️ **Đính chính 2026-09-15:** #4 và #5 **không** bị chặn —
+  xem mục **3.22**; #10 người dùng chốt **không làm**.
 - ⚠️ Câu *"Mảng Phân tích đến đây là xong"* đứng ở đây từ 2026-09-09 **đã bị gỡ
   ngày 2026-09-15**: người dùng chốt làm tiếp mảng Phân tích và Báo cáo. ✅ **P1
-  (mục 3.20) và P2 (mục 3.21) xong cùng ngày**; còn **P3** — biểu đồ thác nước
-  (A8 #10). Kế hoạch ở `docs/superpowers/plans/2026-09-15-ke-hoach.md`
-  (gitignore).
+  (mục 3.20), P2 (mục 3.21) và A8 #4/#5 (mục 3.22) xong cùng ngày.** 🛑 **P3**
+  (thác nước, A8 #10) **không làm** — người dùng chốt. Còn **#11** Sankey và
+  **#8** dòng tiền tự do; **#9** vẫn chặn thật vì cần dư nợ còn lại. Kế hoạch ở
+  `docs/superpowers/plans/2026-09-15-ke-hoach.md` (gitignore).
 - **Tổng kết tuần KHÔNG phải việc còn lại** — nó đã làm xong **2026-09-09**
   (mục **5d** `NOTIFICATION_FEATURE.md`). Điều kiện "một màn hình có phạm vi
   đúng một tuần" của spec `2026-09-07-weekly-summary-notification-design.md`
