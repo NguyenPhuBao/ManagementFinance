@@ -1,6 +1,6 @@
 # Trang Phân tích — thiết kế, lý do, và những cái bẫy
 
-**Cập nhật:** 2026-09-15 (mục **3.20** — **P1: phạm vi thời gian**; mục **3.21** — **P2**: bốn khối mượn từ trang Xuất báo cáo; mục **3.22** — **A8 #4 và #5**: hai biểu đồ cột vay/nợ; **G40 đóng** — trang Xem trước báo cáo lệch cột số tiền ở **sáu** chỗ, đo được 93px, xem bẫy **4.19**; **nhãn quý rút thành `Q3 2026`** để ô header thôi cụt, xem mục **3.20**) · bản trước 2026-09-14 (mục **3.19** — A8 #3, #7: cơ cấu theo danh mục với ba chip nhóm, và xu hướng tới 5 danh mục cùng lúc; bản thi công **lần hai**, #2 đã bỏ)
+**Cập nhật:** 2026-09-15 (mục **3.20** — **P1: phạm vi thời gian**; mục **3.21** — **P2**: bốn khối mượn từ trang Xuất báo cáo; mục **3.22** — **A8 #4 và #5**: hai biểu đồ cột vay/nợ; **G40 đóng** — trang Xem trước báo cáo lệch cột số tiền ở **sáu** chỗ, đo được 93px, xem bẫy **4.19**; **nhãn quý rút thành `Q3 2026`** để ô header thôi cụt, xem mục **3.20**; mục **3.23** — **A8 #10**: thác nước "Tiền đi đâu", kèm vạch trung bình trên từng cột chi) · bản trước 2026-09-14 (mục **3.19** — A8 #3, #7: cơ cấu theo danh mục với ba chip nhóm, và xu hướng tới 5 danh mục cùng lúc; bản thi công **lần hai**, #2 đã bỏ)
 **Trạng thái:** **mảng Phân tích đã xong cả 2a, 2b, 2c** (2026-09-09). Lát **2a** xong — mọi con số trên trang là số thật từ SQLite —
 lát **2b** xong (khối "Xu hướng 6 tháng" vẽ bằng `fl_chart`), lát **2c‑1** xong
 (trang Xuất báo cáo đọc ví/danh mục/thời gian thật rồi mở màn **Xem trước báo
@@ -399,7 +399,9 @@ nước) và **#11** (Sankey) làm được với thu/chi nhưng để đợt sa
 > hay lãi suất, và đã làm xong (mục **3.22**). **#8** (dòng tiền tự do) cũng
 > **không bị chặn**: nó là `Σ thu − Σ khoản mang vai traNo`, mà `VaiVayNo.traNo`
 > có sẵn từ chính lát #4/#5 — **chưa làm**, không phải không làm được. Chỉ **#9**
-> chặn thật, vì nó cần **dư nợ còn lại**. 🛑 **#10 người dùng chốt không làm.**
+> chặn thật, vì nó cần **dư nợ còn lại**. ✅ **#10 (thác nước) đã làm xong**
+> cùng ngày — mục **3.23**; người dùng chốt "không làm" rồi **đổi ý** trong
+> ngày, nên câu ấy ở các tài liệu cũ hơn là ảnh chụp của quyết định đầu.
 >
 > Bài học: một mục bị xếp "chặn bởi mô hình dữ liệu" thì phải hỏi **chặn vì
 > thiếu con số nào**, chứ đừng gộp cả nhóm theo cái tên "vay/nợ" — câu gộp ấy đã
@@ -808,6 +810,82 @@ lên chính giữa; nhãn trục `0 / 191.7K / 383.3K / 575K` không chồng nha
 khối còn lại vắng mặt. `flutter test` **2511/2511**, `flutter analyze` **25
 issue, 0 error**.
 
+### 3.23 Thác nước "Tiền đi đâu" — A8 #10
+
+**2026-09-15.** Số dư đầu kỳ → cộng thu → trừ dần từng nhóm chi → số dư cuối kỳ.
+Mỗi nhóm chi là một khối **nổi**: đáy khối này là đỉnh khối trước, nên cả biểu
+đồ đọc được như một bậc thang. Chín cột: hai cột mốc, một cột thu, sáu nhóm chi.
+
+⚠️ **Mục này người dùng từng chốt KHÔNG LÀM** (ngày 2026-09-15, *"không cần làm
+P3 đâu"*) rồi **đổi ý cùng ngày** và xin thêm một đường trung bình. Mọi câu
+"🛑 #10 không làm" trong tài liệu cũ hơn mục này là ảnh chụp của quyết định đầu.
+
+#### Phép cân là thứ đắt nhất
+
+`đầu kỳ + thu − Σ nhóm chi` phải ra **đúng** `cuối kỳ`. Lệch thì bậc thang hở
+một khe ngay giữa biểu đồ — không exception, không log, chỉ là một hình vẽ sai
+mà người đọc tưởng là thật. Ca test canh đúng điều kiện ấy.
+
+Vì thế `thacNuocCua()` **không tự tính** `cuoiKy`: nó nhận con số mà khối "Dòng
+tiền trong kỳ" đang hiện. Hai khối cùng trang nói hai con số khác nhau cho cùng
+một kỳ là điều dự án cấm, và tự cộng lấy là cách chắc chắn nhất để rơi vào đó
+khi một bên đổi luật lọc. Cùng lý do, nhóm chi mượn **`topVaKhac`** — hàm mà
+vòng tròn cơ cấu đang dùng.
+
+#### ⚠️ Đường trung bình KHÔNG phải một đường ngang
+
+Yêu cầu ban đầu là "một đường trung bình thu chi ở giữa". Dựng tới tầng vẽ mới
+lộ ra rằng đường ngang **không so được gì**: các khối chi nổi ở vùng cao (14,6
+triệu xuống 13,6 triệu) còn mức trung bình là 174 nghìn, một giá trị tuyệt đối
+nằm tít dưới đáy trục — nó không cắt cột nào. Mắt so **độ cao** khối, mà đường
+ngang thì so **vị trí**.
+
+Nên mức trung bình vẽ thành một **vạch trên từng cột chi**: phần nằm trong mức
+trung bình tô nhạt, phần vượt tô đậm, ranh giới ở `tu − tb` (`ranhVuotTrungBinh`
+). Cột nào có phần đậm là nhóm ngốn hơn mức bình thường. Người dùng chốt cách
+này sau khi thấy vấn đề.
+
+Ngưỡng **nửa đồng** khi so "có vượt không": `giaTri` là hiệu của hai số thực nên
+một nhóm bằng đúng mức trung bình vẫn có thể ra lớn hơn chừng `1e-10`, và khi ấy
+cột mọc thêm một vạch đậm cao không tới một phần triệu pixel — người dùng thấy
+một vạch không giải thích được. Cùng ngưỡng mà `dieu_chinh_so_du_service.dart`
+dùng cho đuôi lẻ của `double`.
+
+#### Ba điều đã chốt, đừng "sửa"
+
+1. **`dongTien == null` thì ẩn cả khối** — cùng điều kiện với khối Dòng tiền:
+   lọc theo một ví thì số dư hai đầu không suy ngược được (mục 3.16), và thác
+   nước mất luôn hai cột mốc. Chốt đặt ở **hai lớp** (chỗ gắn trong trang và
+   đầu `build` của khối); bản sai có chủ ý phải phá **cả hai** mới làm ca test
+   đỏ — đó là bằng chứng ca ấy canh đúng thứ cần canh.
+2. **Trục bắt đầu từ 0, giữ đúng tỷ lệ thật.** Với dữ liệu tài khoản thử (thu
+   14,6 triệu dồn một ngày, chi 1 triệu) thì sáu nhóm chi chỉ chiếm ~7% chiều
+   cao và vạch hai sắc độ gần như vô hình. Người dùng xem ảnh máy ảo rồi chốt
+   **giữ nguyên**: chi thật sự chỉ bằng 7% số thu trong kỳ ấy, bóp méo trục cho
+   chúng trông to hơn là vẽ sai sự thật. Hai phương án đã loại: phóng to vùng
+   chi (mất cột "Đầu kỳ", cắt cụt cột Thu và Cuối kỳ) và thêm một dải phóng to
+   riêng (trang vốn đã dài).
+3. **`BarChartData` KHÔNG có `clipData`** — bẫy 4.17 nói về `LineChartData`.
+   Ở đây chống tràn bằng cách khác: `minY`/`maxY` quét cả `tu` lẫn `den` của mọi
+   bậc nên không cột nào rơi ra ngoài dải để mà tràn.
+
+#### Nhãn trục hoành: chín cột là kịch khổ 411dp
+
+Vùng vẽ ngang còn chừng 325dp sau khi trừ trục tung và đệm thẻ, tức mỗi cột được
+~36dp. Bản đầu đặt ô nhãn rộng **46dp** và trên máy ảo chín nhãn dính thành một
+chuỗi không đọc được: *"ChưaDi chuyểnMua sắDanh mụcĂn uống Khác"*. Nay 32dp,
+cỡ chữ 8, hai dòng, ellipsis. ⚠️ `flutter test` **không bắt được** lỗi này vì
+`find.text` so `data` chứ không so thứ vẽ ra (bẫy 4.4) — cùng họ G39, và lại
+một lần nữa chỉ máy ảo mới nói được.
+
+#### Nghiệm thu
+
+Trên `emulator-5554`, kỳ T9 2026: cột "Đầu kỳ" 10.000 sát đáy, cột "+Thu" xanh
+cao, sáu khối đỏ nối tiếp nhau đi xuống, cột "Cuối kỳ" đen dừng đúng ở
+13.590.000 — bậc thang khép kín. Dòng chú thích hiện *"Phần đậm là chỗ vượt mức
+trung bình 174.167 đ/nhóm"*. `flutter test` **2540/2540**, `flutter analyze`
+**25 issue, 0 error**, schema giữ **v22**, không thêm trường đồng bộ.
+
 ## 4. Bẫy
 
 **4.1 Tài khoản.** `AnalyticsPage` phải `context.watch<AuthBloc>()` + `ValueKey(idaccount)`
@@ -1110,11 +1188,12 @@ không (`preventCurveOverShooting`). Cả ba chỉ kiểm được bằng mắt 
   đầu đều không có; **#10** (thác nước) và **#11** (Sankey) làm được với thu/chi
   nhưng để đợt sau. ⚠️ **Đính chính 2026-09-15:** #4 và #5 **không** bị chặn —
   xem mục **3.22**; **#8** cũng không (`Σ thu − Σ traNo`, vai đã có) — nó chỉ
-  **chưa làm**; chỉ **#9** chặn thật; #10 người dùng chốt **không làm**.
+  **chưa làm**; chỉ **#9** chặn thật; **#10 đã làm xong** 2026-09-15 (mục 3.23).
 - ⚠️ Câu *"Mảng Phân tích đến đây là xong"* đứng ở đây từ 2026-09-09 **đã bị gỡ
   ngày 2026-09-15**: người dùng chốt làm tiếp mảng Phân tích và Báo cáo. ✅ **P1
   (mục 3.20), P2 (mục 3.21) và A8 #4/#5 (mục 3.22) xong cùng ngày.** 🛑 **P3**
-  (thác nước, A8 #10) **không làm** — người dùng chốt. Còn **#11** Sankey và
+  (thác nước, A8 #10) từng bị chốt **không làm**, nhưng người dùng **đổi ý**
+  cùng ngày và nó **đã xong** — mục **3.23**. Còn **#11** Sankey và
   **#8** dòng tiền tự do; **#9** vẫn chặn thật vì cần dư nợ còn lại. Kế hoạch ở
   `docs/superpowers/plans/2026-09-15-ke-hoach.md` (gitignore).
 - **Tổng kết tuần KHÔNG phải việc còn lại** — nó đã làm xong **2026-09-09**

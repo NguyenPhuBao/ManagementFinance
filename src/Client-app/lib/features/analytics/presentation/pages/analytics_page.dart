@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:fl_chart/fl_chart.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter/material.dart';
@@ -16,6 +18,7 @@ import '../../domain/bao_cao_xuat.dart';
 import '../../domain/pham_vi_ky.dart';
 import '../../domain/vai_vay_no.dart';
 import '../../domain/phan_loai_dong_tien.dart';
+import '../../domain/thac_nuoc.dart';
 import '../../domain/thong_ke_thang.dart';
 import '../bloc/analytics_cubit.dart';
 import '../widgets/chon_pham_vi_sheet.dart';
@@ -115,6 +118,11 @@ class _NoiDung extends StatelessWidget {
         return [
           if (thongKe.dongTien != null) ...[
             _KhoiDongTien(dt: thongKe.dongTien!),
+            const SizedBox(height: 24),
+            // Thác nước đứng ngay sau khối dòng tiền: nó kể **chi tiết** đúng
+            // hai con số mà khối trên vừa nêu — đầu kỳ và cuối kỳ — nên tách
+            // hai khối ra xa nhau là bắt người đọc nhớ số rồi cuộn đi tìm.
+            _KhoiThacNuoc(tk: thongKe),
             const SizedBox(height: 24),
           ],
           _KhoiTong(tk: thongKe),
@@ -1133,6 +1141,228 @@ class _KhoiDongTien extends StatelessWidget {
           ),
         ],
       );
+}
+
+/// Thác nước: số dư đầu kỳ → cộng thu → trừ dần từng nhóm chi → số dư cuối kỳ.
+///
+/// Phép tính ở `domain/thac_nuoc.dart`; khối này chỉ lo vẽ và tra tên danh mục.
+/// Nhóm chi mượn **`topVaKhac`** — cùng hàm mà vòng tròn cơ cấu dùng, nên hai
+/// khối không thể nói hai con số cho một kỳ.
+class _KhoiThacNuoc extends StatelessWidget {
+  final ThongKeKy tk;
+
+  const _KhoiThacNuoc({required this.tk});
+
+  /// Năm nhóm lớn nhất, phần còn lại gom thành "Khác" — chín cột là đã kịch
+  /// khổ 411dp.
+  static const int _soNhom = 5;
+  static const double _rongCot = 15;
+
+  @override
+  Widget build(BuildContext context) {
+    final dt = tk.dongTien;
+    // Cùng điều kiện với khối "Dòng tiền trong kỳ": lọc theo một ví thì số dư
+    // hai đầu không suy ngược được (mục 3.16), và thác nước mất luôn hai cột
+    // mốc — còn lại một hình không kể được gì.
+    if (dt == null) return const SizedBox.shrink();
+
+    // `danhMuc` cùng thứ tự với `chiTheoDanhMuc` và đã tra sẵn tên.
+    final ten = <String?, String>{};
+    for (final d in tk.danhMuc) {
+      ten[d.categoryId] = d.ten;
+    }
+
+    final lat = topVaKhac(tk.chiTheoDanhMuc, top: _soNhom);
+    final nhomChi = <({String ten, double soTien})>[
+      for (final l in lat)
+        (
+          ten: l.laKhac ? 'Khác' : (ten[l.categoryId] ?? 'Chưa phân loại'),
+          soTien: l.soTien,
+        ),
+    ];
+
+    final buoc = thacNuocCua(
+      dauKy: dt.dauKy,
+      cuoiKy: dt.cuoiKy,
+      thu: tk.tong.thu,
+      nhomChi: nhomChi,
+    );
+    if (buoc.isEmpty) return const SizedBox.shrink();
+
+    final tb = trungBinhNhomChi(nhomChi);
+
+    var lo = 0.0;
+    var hi = 0.0;
+    for (final b in buoc) {
+      lo = math.min(lo, math.min(b.tu, b.den));
+      hi = math.max(hi, math.max(b.tu, b.den));
+    }
+    // Cùng cách chống nhãn trục tung in đè của G39 (bẫy 4.18): tính `buocTruc`
+    // trước rồi đặt trần bằng bội của nó.
+    final dai = hi - lo;
+    final buocTruc = (dai <= 0 ? 1.0 : dai * 1.12) / 3;
+    final maxY = lo + buocTruc * 3;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: _theTrang(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _tieuDeKhoi('Tiền đi đâu'),
+          const SizedBox(height: 12),
+          const Wrap(
+            spacing: 20,
+            runSpacing: 8,
+            children: [
+              _ChuGiai(mau: AppColors.textPrimary, nhan: 'Số dư'),
+              _ChuGiai(mau: AppColors.income, nhan: 'Thu'),
+              _ChuGiai(mau: AppColors.expense, nhan: 'Chi'),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 200,
+            child: BarChart(
+              BarChartData(
+                maxY: maxY,
+                minY: lo,
+                alignment: BarChartAlignment.spaceAround,
+                // ⚠️ `BarChartData` **không có** `clipData` — bẫy 4.17 nói về
+                // `LineChartData`. Ở đây chống tràn bằng cách khác: `minY`/
+                // `maxY` bọc trọn mọi bậc (`lo`/`hi` quét cả `tu` lẫn `den`),
+                // nên không cột nào rơi ra ngoài dải để mà tràn.
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  horizontalInterval: buocTruc,
+                  getDrawingHorizontalLine: (_) => const FlLine(
+                      color: AppColors.outlineVariant, strokeWidth: 1),
+                ),
+                borderData: FlBorderData(show: false),
+                barTouchData: const BarTouchData(
+                  touchTooltipData: BarTouchTooltipData(
+                    fitInsideHorizontally: true,
+                    fitInsideVertically: true,
+                  ),
+                ),
+                titlesData: FlTitlesData(
+                  topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      interval: buocTruc,
+                      reservedSize: 46,
+                      getTitlesWidget: (v, meta) => Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: Text(
+                          rutGon(v),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.right,
+                          style: const TextStyle(
+                              fontSize: 10, color: AppColors.textSecondary),
+                        ),
+                      ),
+                    ),
+                  ),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      interval: 1,
+                      reservedSize: 40,
+                      getTitlesWidget: (v, meta) {
+                        final i = v.round();
+                        if (i < 0 || i >= buoc.length) {
+                          return const SizedBox.shrink();
+                        }
+                        // ⚠️ Chín cột trên 411dp: vùng vẽ ngang còn chừng
+                        // 325dp sau khi trừ trục tung và đệm thẻ, tức mỗi cột
+                        // được ~36dp. Ô nhãn **phải hẹp hơn** con số ấy, nếu
+                        // không hai nhãn cạnh nhau dính thành một chuỗi không
+                        // đọc được ("ChưaDi chuyểnMua sắDanh mục…") — thấy
+                        // trên máy ảo, và `flutter test` không bắt được vì
+                        // `find.text` so `data` chứ không so thứ vẽ ra
+                        // (bẫy 4.4). Cùng họ G39.
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: SizedBox(
+                            width: 32,
+                            child: Text(
+                              buoc[i].nhan,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                  fontSize: 8, color: AppColors.textSecondary),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                barGroups: [
+                  for (var i = 0; i < buoc.length; i++)
+                    BarChartGroupData(
+                      x: i,
+                      barRods: [_cot(buoc[i], tb)],
+                    ),
+                ],
+              ),
+            ),
+          ),
+          if (tb > 0) ...[
+            const SizedBox(height: 12),
+            Text(
+              'Phần đậm là chỗ vượt mức trung bình '
+              '${CurrencyFormatter.format(tb)}/nhóm',
+              style: const TextStyle(
+                  fontSize: 12, color: AppColors.textSecondary),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Một cột của thác nước.
+  ///
+  /// Hai cột mốc mọc từ đáy; cột thu và các cột chi **nổi** — `fromY`/`toY` là
+  /// thứ làm nên bậc thang. `fl_chart` đòi `fromY < toY` nên phải lấy `min`/
+  /// `max`, còn chiều thì đã nằm trong `tu`/`den` của bậc.
+  BarChartRodData _cot(BuocThacNuoc b, double tb) {
+    final day = math.min(b.tu, b.den);
+    final dinh = math.max(b.tu, b.den);
+    final mau = switch (b.loai) {
+      LoaiBuoc.moc => AppColors.textPrimary,
+      LoaiBuoc.thu => AppColors.income,
+      LoaiBuoc.chi => AppColors.expense,
+    };
+    final ranh = ranhVuotTrungBinh(b, tb);
+
+    return BarChartRodData(
+      fromY: day,
+      toY: dinh,
+      width: _rongCot,
+      color: mau,
+      borderRadius: BorderRadius.circular(3),
+      // Nhóm vượt mức trung bình thì cột chia hai sắc độ: phần trong mức nhạt,
+      // phần vượt đậm. Vì sao KHÔNG phải một đường ngang vắt qua biểu đồ —
+      // xem `ranhVuotTrungBinh`.
+      rodStackItems: ranh == null
+          ? const []
+          : [
+              BarChartRodStackItem(day, ranh, mau),
+              BarChartRodStackItem(
+                  ranh, dinh, mau.withValues(alpha: 0.35)),
+            ],
+    );
+  }
 }
 
 /// Ba con số người dùng hỏi ngay, kiểu Money Lover / MISA.

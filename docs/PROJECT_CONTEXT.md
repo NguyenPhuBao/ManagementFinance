@@ -595,6 +595,36 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-15)
 
+### 🪜 Thác nước "Tiền đi đâu" — A8 #10 (2026-09-15)
+
+Số dư đầu kỳ → cộng thu → trừ dần từng nhóm chi → số dư cuối kỳ. Chín cột, mỗi
+nhóm chi là một khối **nổi** nối tiếp nhau như bậc thang. Chi tiết ở mục **3.23**
+`docs/ANALYTICS_FEATURE.md`.
+
+⚠️ **Người dùng từng chốt KHÔNG LÀM mục này rồi đổi ý cùng ngày**, và xin thêm
+một đường trung bình. Mọi câu "🛑 P3 không làm" ở tài liệu cũ hơn — kể cả kế
+hoạch `2026-09-15-ke-hoach.md` — là ảnh chụp của quyết định đầu.
+
+**Phép cân là thứ đắt nhất:** `đầu kỳ + thu − Σ nhóm chi` phải ra đúng `cuối kỳ`,
+lệch thì bậc thang hở một khe im lặng. Nên hàm thuần **không tự tính** `cuoiKy`
+mà nhận con số khối "Dòng tiền trong kỳ" đang hiện, và nhóm chi mượn `topVaKhac`
+— cùng hàm mà vòng tròn cơ cấu dùng.
+
+⚠️ **Đường trung bình không thể là một đường ngang.** Dựng tới tầng vẽ mới lộ ra:
+các khối chi nổi ở vùng 13,6–14,6 triệu còn mức trung bình là 174 nghìn, nên
+đường ngang ở đó không cắt cột nào. Mắt so **độ cao** khối, đường ngang so **vị
+trí**. Nay nó là một **vạch trên từng cột chi** — phần trong mức nhạt, phần vượt
+đậm. Người dùng chốt cách này sau khi thấy vấn đề.
+
+**Hai lỗi máy ảo bắt được:** chín nhãn trục hoành dính thành một chuỗi không đọc
+được (ô nhãn 46dp rộng hơn 36dp mỗi cột — nay 32dp), và các khối chi chỉ chiếm
+~7% chiều cao nên vạch hai sắc độ gần như vô hình. Lỗi thứ hai người dùng xem
+ảnh rồi chốt **giữ nguyên**: chi thật sự chỉ bằng 7% số thu trong kỳ ấy, bóp méo
+trục là vẽ sai sự thật.
+
+Không đổi schema (vẫn **v22**), không thêm trường đồng bộ. Mức nền:
+**2540/2540** test, analyze **25 issue / 0 error**.
+
 ### 💸 Hai biểu đồ cột vay/nợ — A8 #4 và #5 (2026-09-15)
 
 "Cho vay & Thu nợ" và "Đi vay & Trả nợ", mỗi kỳ một **cặp cột chồng nhau**: cột
@@ -797,7 +827,9 @@ hạn, hay liên kết giữa một khoản vay với các lần trả nợ. M�
 Thu nợ), **#5** (Đi vay + Trả nợ), **#8** (dòng tiền tự do), **#9** (biến động
 khoản vay + lãi vay) đều cần ít nhất một trong những thứ ấy → cần mô hình mới ở
 **cả hai đầu**, tức phải xin backend. Mục **#10** (thác nước) và **#11**
-(Sankey) làm được với thu/chi nhưng để đợt sau.
+(Sankey) làm được với thu/chi nhưng để đợt sau. *(Đính chính 2026-09-15: #4, #5
+và #8 **không** cần mô hình mới — xem khối "Bốn mục A8 bị chặn" ở trên; và
+**#10 đã làm xong** cùng ngày.)*
 
 **Không đụng schema** (v22 giữ nguyên), **không đụng đường đồng bộ**.
 `flutter test` **2409/2409** · `flutter analyze` **25 issue, 0 error**.

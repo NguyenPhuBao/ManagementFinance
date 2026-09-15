@@ -1086,4 +1086,76 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   });
+
+  // ── Thác nước "Tiền đi đâu" — A8 #10 (2026-09-15) ────────────────────────
+  //
+  // Phép tính đã test ở `thac_nuoc_test.dart`; ở đây chỉ canh những gì widget
+  // mới sai được: khối có hiện không, và có nói rõ mức trung bình không.
+  group('khối thác nước', () {
+    /// Số thật đọc trên máy ảo: 10.000 + 14.625.000 − 1.045.000 = 13.590.000.
+    /// Sáu danh mục chi để `topVaKhac(top: 5)` còn sinh ra cột "Khác".
+    ThongKeKy tkThacNuoc({DongTien? dongTien = const DongTien(
+      dauKy: 10000,
+      cuoiKy: 13590000,
+    )}) =>
+        _tk(
+          thu: 14625000,
+          chi: 1045000,
+          dongTien: dongTien,
+          danhMuc: [
+            _dm('c1', 'Chưa phân loại', 500000, 0.48),
+            _dm('c2', 'Di chuyển', 305000, 0.29),
+            _dm('c3', 'Mua sắm', 60000, 0.06),
+            _dm('c4', 'Danh mục đã xoá', 55000, 0.05),
+            _dm('c5', 'Ăn uống', 50000, 0.05),
+            _dm('c6', 'Giáo dục', 75000, 0.07),
+          ],
+        );
+
+    Future<void> moCaoVaPhat(WidgetTester tester, ThongKeKy tk) async {
+      tester.view.physicalSize = const Size(411, 4000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await moTrang(tester);
+      await phat(tester, tk);
+    }
+
+    testWidgets('khối hiện với tiêu đề và dải chú giải ba màu', (tester) async {
+      await moCaoVaPhat(tester, tkThacNuoc());
+
+      expect(find.text('Tiền đi đâu'), findsOneWidget);
+      expect(find.text('Số dư'), findsOneWidget);
+      expect(find.text('Thu'), findsWidgets);
+      expect(find.text('Chi'), findsWidgets);
+    });
+
+    testWidgets('⚠️ nói rõ mức trung bình mỗi nhóm, không để người đọc tự đoán',
+        (tester) async {
+      await moCaoVaPhat(tester, tkThacNuoc());
+
+      // 1.045.000 / 6 nhóm = 174.166,67 → làm tròn về đồng chẵn.
+      expect(find.textContaining('174.167 đ'), findsOneWidget,
+          reason: 'Phần đậm trên cột là "chỗ vượt mức trung bình". Không nói '
+              'mức ấy là bao nhiêu thì hai sắc độ chỉ còn là trang trí — '
+              'người đọc không suy ra được ngưỡng từ hình vẽ.');
+    });
+
+    testWidgets('⚠️ lọc theo một ví thì khối BIẾN MẤT, không vẽ hình cụt',
+        (tester) async {
+      // `dongTien` null nghĩa là số dư hai đầu không suy ngược được (mục
+      // 3.16). Thiếu hai cột mốc thì thác nước mất cả điểm đầu lẫn điểm cuối —
+      // còn lại một dãy khối lơ lửng không kể được gì.
+      await moCaoVaPhat(tester, tkThacNuoc(dongTien: null));
+
+      expect(find.text('Tiền đi đâu'), findsNothing);
+    });
+
+    testWidgets('không tràn ở 411dp với sáu nhóm chi', (tester) async {
+      await moCaoVaPhat(tester, tkThacNuoc());
+
+      expect(tester.takeException(), isNull,
+          reason: 'Chín cột trên 411dp là chỗ chật nhất của trang; Flutter báo '
+              'tràn qua reportError chứ không ném ra chỗ gọi.');
+    });
+  });
 }
