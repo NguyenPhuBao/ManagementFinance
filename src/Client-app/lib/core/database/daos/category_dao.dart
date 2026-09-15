@@ -132,6 +132,37 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
   /// Cố ý KHÔNG dùng `getCategoryRows`: hàm đó lọc sẵn theo `classify` và còn
   /// khử trùng lặp theo tên trước khi trả về — tức chính những hàng cần đối
   /// chiếu lại bị nó loại đi, khiến phép kiểm tra báo "không trùng" nhầm.
+  /// **Bảng tra tên danh mục** cho báo cáo và thống kê — định nghĩa DUY NHẤT.
+  ///
+  /// Khác mọi phép đọc danh sách khác ở hai chỗ, và cả hai đều có chủ đích:
+  ///
+  /// 1. **Giữ hàng đã xoá mềm.** Giao dịch cũ vẫn trỏ vào danh mục đã xoá, và
+  ///    tên thật còn nguyên trong hàng: "Chi khác" có ích hơn "Danh mục đã
+  ///    xoá". Vì thế không dùng [watchAll] (hàm ấy lọc `deletedAt`).
+  /// 2. ⚠️ **Lọc theo CỜ `isDefault`, không chỉ theo tài khoản.** `sync_engine`
+  ///    quy `is_default = true` thành **`idaccount = 0`**
+  ///    (`sync_engine.dart:733`), nên hàng mặc định toàn cục không mang mã tài
+  ///    khoản nào. Thiếu vế ấy thì giao dịch trỏ vào chúng **mất tên**.
+  ///
+  /// Vế thứ hai vốn thiếu ở **cả hai** repository cho tới 2026-09-15, mỗi nơi
+  /// một bản chép tay. Đo trên CSDL dev hôm ấy: tài khoản 10 có hai danh mục
+  /// như thế — `Chi khác` và `Làm thêm`, cùng bị backend xoá mềm hôm
+  /// 2026-09-07 khi thu bộ khuôn về 13 UUID — và máy ảo hiện **hai chip cùng
+  /// mang tên "Danh mục đã xoá"**, hai danh mục khác nhau đội một cái tên.
+  ///
+  /// ⓘ Đây là bảng **tra**, không phải danh sách để người dùng chọn: nơi gọi
+  /// chỉ dùng nó để đổi `categoryId` sang tên/biểu tượng/màu. Thêm hàng mặc
+  /// định vào đây **không** làm chúng hiện thêm ở đâu cả.
+  SimpleSelectStatement<$CategoriesTable, Category> _bangTraTen(int accountId) =>
+      select(categories)
+        ..where((t) =>
+            t.idaccount.equals(accountId) | t.isDefault.equals(true));
+
+  Future<List<Category>> getBangTraTen(int accountId) => _bangTraTen(accountId).get();
+
+  Stream<List<Category>> watchBangTraTen(int accountId) =>
+      _bangTraTen(accountId).watch();
+
   Future<List<Category>> getNamesInUse(int accountId) {
     return (select(categories)
           ..where((t) =>

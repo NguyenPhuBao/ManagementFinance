@@ -166,6 +166,36 @@ void main() {
               'lọc `deletedAt` nên repository phải tự truy vấn.');
     });
 
+    test('⚠️ danh mục MẶC ĐỊNH TOÀN CỤC vẫn giữ tên thật', () async {
+      // Hình dạng thật trên máy: `sync_engine` quy `is_default = true` thành
+      // **`idaccount = 0`** (sync_engine.dart:733), nên hàng mặc định toàn cục
+      // KHÔNG mang mã tài khoản của người dùng. Truy vấn lọc đúng một
+      // `idaccount` sẽ bỏ sót chúng, và giao dịch cũ trỏ vào đó mất tên.
+      //
+      // Đo trên CSDL dev 2026-09-15: tài khoản 10 có đúng **hai** danh mục
+      // như thế — `Chi khác` và `Làm thêm`, cả hai `Create_by = 1`,
+      // `is_default = true`, đã xoá mềm hôm 2026-09-07 khi backend thu bộ
+      // khuôn về 13 UUID. Trên máy ảo, khối Xu hướng hiện **hai chip cùng
+      // mang tên "Danh mục đã xoá"** — hai danh mục khác nhau, một cái tên.
+      await db.categoryDao.insert(CategoriesCompanion.insert(
+        id: 'c_global',
+        idaccount: 0,
+        name: 'Chi khác',
+        classify: 'chi',
+        isDefault: const Value(true),
+        deletedAt: Value(now),
+        updatedAt: now,
+      ));
+      await giaoDich(
+          id: 't1', ngay: DateTime(2026, 9, 2), soTien: 100000, danhMuc: 'c_global');
+
+      final tk = await lanDau();
+
+      expect(tk.danhMuc.single.ten, 'Chi khác',
+          reason: 'Lọc theo CỜ `isDefault`, không theo tài khoản — cùng khuôn '
+              'với `categoryDao.getNamesInUse`. Tên thật còn nguyên trong hàng.');
+    });
+
     test('khoản không danh mục thành "Chưa phân loại", danh mục lạ thành "Danh mục đã xoá"',
         () async {
       await giaoDich(id: 't1', ngay: DateTime(2026, 9, 2), soTien: 100000, danhMuc: null);

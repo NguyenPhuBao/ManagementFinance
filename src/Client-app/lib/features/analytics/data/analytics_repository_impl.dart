@@ -76,15 +76,10 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
       txs = rows;
       push();
     }, onError: controller.addError);
-    // KỂ CẢ hàng đã xoá mềm — không dùng `categoryDao.watchAll` (lọc
-    // `deletedAt`). Giao dịch cũ vẫn trỏ vào danh mục đã xoá, và tên vẫn nằm
-    // trong hàng: "Chi khác" có ích hơn "Danh mục đã xoá". Trên máy thật, 5
-    // danh mục mặc định bị xoá mềm hôm 2026-09-07 làm cả một lát donut mang
-    // tên "Danh mục đã xoá" trong khi tên thật còn đó.
-    final subCat = (db.select(db.categories)
-          ..where((t) => t.idaccount.equals(idaccount)))
-        .watch()
-        .listen((rows) {
+    // Bảng **tra tên** — giữ hàng đã xoá mềm VÀ gồm cả hàng mặc định toàn cục
+    // (`idaccount = 0`). Hai luật ấy nay có một định nghĩa duy nhất ở
+    // `categoryDao.watchBangTraTen`; đọc docstring của nó trước khi đổi.
+    final subCat = db.categoryDao.watchBangTraTen(idaccount).listen((rows) {
       cats = rows;
       push();
     }, onError: controller.addError);

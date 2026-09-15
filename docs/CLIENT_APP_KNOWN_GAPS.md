@@ -1,6 +1,6 @@
 # Client-app — Việc còn dang dở & rủi ro đã biết
 
-**Cập nhật:** 2026-09-15 (mở rồi **đóng G40** trong cùng ngày — trang Xem trước báo cáo lệch cột số tiền thật, và lệch **93px**, nặng hơn chỗ đã sửa ở trang Phân tích; không phải hai khối mà **sáu**. Cùng ngày: P1 phạm vi thời gian và P2 bốn khối mượn từ trang Báo cáo — **không mở lỗ hổng nào**, schema giữ v22) · trước đó 2026-09-14 (mở rồi **đóng G39** ngay trong ngày — nhãn trục tung khối "Xu hướng 6 tháng" in đè lên nhau, tìm được khi nghiệm thu máy ảo lát A8 #3/#7; mở rồi **đóng G38** ngay trong ngày — ba trang giao dịch rơi về tài khoản admin; **đóng G28** — `wallet.status` đi qua đồng bộ hai chiều, schema v22) · trước đó 2026-09-13 (mở rồi **đóng G37** ngay trong ngày — số dư ví nay suy từ sổ giao dịch; đóng G36) · trước đó 2026-09-11 (sau khi nhánh gộp `main` @ `cc65f4f` và CSDL dev áp `database/12`: đóng G29, G31, G32; G24 thành lỗi phía client rồi đóng cùng ngày; thêm G34; G35 mở rồi đóng cùng ngày; đóng G30; đóng G33); 2026-09-12: gộp `main` @ `cbbeeb4` — CAN-LAM 17 A đóng, kênh thời gian thực nối được trên máy ảo, G34 hết bị chặn rồi **đóng tối cùng ngày** (client nghe `sync.completed`, im lặng, kiểm máy ảo hai máy); chiều muộn thêm **G36** — chờ backend; tối muộn gộp `main` @ `7779999` — backend làm xong CAN-LAM 20 (chốt trả hai lần ở `upsertTransaction`, client đo thật 4 ca; G36 sửa ở mã, **chưa đo đầu-cuối** ca khoá/xoá vì cần API admin — chờ đo rồi đóng); **2026-09-13: đo đầu-cuối ba ca G36 qua API admin — cả ba đúng, G36 ✅ ĐÓNG** (kéo theo: đường `lamMoi` **có** mang `daXoa`, nên ngoại lệ §3.6b không còn vô nghĩa — người dùng chốt **giữ** cùng ngày); cùng ngày, nghiệm thu bước 12 trên hai máy ảo đóng bốn lỗi im lặng của luồng tự động trả hoá đơn và mở **G37** — số dư ví không phản ánh giao dịch sau một lần đẩy bị xung đột
+**Cập nhật:** 2026-09-15 (mở rồi **đóng G41** trong cùng ngày — giao dịch trỏ vào danh mục mặc định toàn cục mất tên, máy ảo lộ ra bằng **hai chip cùng tên**; cùng ngày: **tỉ lệ tiết kiệm** và **A8 #8 dòng tiền tự do** — không mở lỗ hổng nào. Trước đó cùng ngày: mở rồi **đóng G40** — trang Xem trước báo cáo lệch cột số tiền thật, và lệch **93px**, nặng hơn chỗ đã sửa ở trang Phân tích; không phải hai khối mà **sáu**. Cùng ngày: P1 phạm vi thời gian và P2 bốn khối mượn từ trang Báo cáo — **không mở lỗ hổng nào**, schema giữ v22) · trước đó 2026-09-14 (mở rồi **đóng G39** ngay trong ngày — nhãn trục tung khối "Xu hướng 6 tháng" in đè lên nhau, tìm được khi nghiệm thu máy ảo lát A8 #3/#7; mở rồi **đóng G38** ngay trong ngày — ba trang giao dịch rơi về tài khoản admin; **đóng G28** — `wallet.status` đi qua đồng bộ hai chiều, schema v22) · trước đó 2026-09-13 (mở rồi **đóng G37** ngay trong ngày — số dư ví nay suy từ sổ giao dịch; đóng G36) · trước đó 2026-09-11 (sau khi nhánh gộp `main` @ `cc65f4f` và CSDL dev áp `database/12`: đóng G29, G31, G32; G24 thành lỗi phía client rồi đóng cùng ngày; thêm G34; G35 mở rồi đóng cùng ngày; đóng G30; đóng G33); 2026-09-12: gộp `main` @ `cbbeeb4` — CAN-LAM 17 A đóng, kênh thời gian thực nối được trên máy ảo, G34 hết bị chặn rồi **đóng tối cùng ngày** (client nghe `sync.completed`, im lặng, kiểm máy ảo hai máy); chiều muộn thêm **G36** — chờ backend; tối muộn gộp `main` @ `7779999` — backend làm xong CAN-LAM 20 (chốt trả hai lần ở `upsertTransaction`, client đo thật 4 ca; G36 sửa ở mã, **chưa đo đầu-cuối** ca khoá/xoá vì cần API admin — chờ đo rồi đóng); **2026-09-13: đo đầu-cuối ba ca G36 qua API admin — cả ba đúng, G36 ✅ ĐÓNG** (kéo theo: đường `lamMoi` **có** mang `daXoa`, nên ngoại lệ §3.6b không còn vô nghĩa — người dùng chốt **giữ** cùng ngày); cùng ngày, nghiệm thu bước 12 trên hai máy ảo đóng bốn lỗi im lặng của luồng tự động trả hoá đơn và mở **G37** — số dư ví không phản ánh giao dịch sau một lần đẩy bị xung đột
 **Mục đích:** ghi lại những hạng mục đã được **cân nhắc và cố ý hoãn**, kèm lý do và bán kính ảnh hưởng. Không có tài liệu này thì người tiếp theo sẽ hoặc bỏ sót, hoặc làm lại từ đầu việc phân tích rủi ro.
 
 Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nhất.
@@ -46,6 +46,7 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > | ~~**G39**~~ | ✅ **Mở rồi ĐÓNG 2026-09-14** — nhãn trục tung của khối "Xu hướng 6 tháng" in **đè lên nhau** ở một số dải giá trị: đo trên máy ảo thấy "63.2K" và "63.3K" chồng khít. Gốc rễ là `3 * (maxY / 3) != maxY` trong dấu phẩy động rơi đúng ranh giới làm tròn của `rutGon`, nên **cùng một vị trí** ra hai chuỗi. Sửa: tính `buoc` trước rồi đặt `maxY = buoc * 3`. **Có sẵn từ lát 2b (2026-09-08)**; lát A8 #3/#7 chỉ làm dễ gặp hơn. Ca test tái hiện được **ngay trong widget test**, không cần máy thật |
 > | ~~**G37**~~ | ✅ **ĐÓNG 2026-09-13** — số dư ví nay là **cache của tổng sổ giao dịch**, không còn là giá trị tuyệt đối đồng bộ theo LWW. Điểm neo là một giao dịch "Số dư ban đầu" (id suy **tất định** từ `walletId` nên hai máy sinh ra một hàng), `SoDuViService` là nơi duy nhất ghi `balance`, nhánh kéo về thôi đọc cột ấy và tính lại sau mỗi lần pull. Nghiệm thu hai máy ảo: sau một cuộc đua tự trả, **hai máy đều 1.650.000 và bằng tổng sổ** — trước đó máy thắng giữ 2.000.000. Spec: `2026-09-13-so-du-vi-suy-tu-so-giao-dich-design.md` |
 > | ~~**G40**~~ | ✅ **ĐÓNG 2026-09-15** — trang **Xem trước báo cáo** lệch cột số tiền thật, và **nặng hơn** chỗ đã sửa ở trang Phân tích: đo trên máy ảo thấy khối "Chi theo danh mục" lệch **93px** (trang Phân tích chỉ 26,5px). Và không phải **hai** khối như dòng này từng đoán mà **sáu** — thêm ngân sách, thu/chi theo danh mục, danh sách giao dịch, và hàng "Thay đổi trong kỳ" của khối dòng tiền. Sáu `Flexible` đổi thành `Expanded`; đo lại trên máy ảo: lệch **0px** ở mọi khối. Sáu ca test mới, và chúng chỉ canh được gì khi chạy ở **khổ gấp đôi** — xem bẫy 4.19 |
+> | ~~**G41**~~ | ✅ **Mở rồi ĐÓNG 2026-09-15** — giao dịch trỏ vào **danh mục mặc định toàn cục** mất tên, hiện thành "Danh mục đã xoá". `sync_engine` quy `is_default = true` thành **`idaccount = 0`**, nhưng cả hai repository tra danh mục lọc đúng một `idaccount` — mỗi nơi một bản chép tay của cùng truy vấn. Máy ảo lộ ra vì khối Xu hướng hiện **hai chip cùng một tên**; truy vấn PostgreSQL xác nhận tài khoản 10 có đúng hai danh mục như thế (`Chi khác`, `Làm thêm`, cùng bị backend xoá mềm hôm 2026-09-07). Nay có **một** định nghĩa `categoryDao.getBangTraTen` lọc theo **cờ `isDefault`**, cả hai repository dùng chung. Ảnh hưởng rộng hơn chip: donut, thác nước và danh sách danh mục đều mất tên |
 >
 > **G20 đã đóng ngày 2026-09-05** — `depositToGoal` nhận `occurredAt` chặn hai
 > đầu; đã kiểm cả bằng test lẫn trên máy ảo Android.
@@ -1365,6 +1366,61 @@ trong luồng thường, thiếu phiên thì màn chọn danh mục **cũng rỗ
 hai**, và phải tiêm lệch mới dựng lại được trạng thái ấy trong widget test.
 
 ---
+
+### ~~G41 — Giao dịch trỏ vào danh mục mặc định toàn cục bị mất tên~~ · ✅ ĐÓNG (2026-09-15, mở và đóng trong cùng ngày)
+
+**Vì sao thấy.** Nghiệm thu máy ảo cho hạng mục *tỉ lệ tiết kiệm*, khối "Xu
+hướng 6 tháng" hiện **hai chip cùng mang tên "Danh mục đã xoá"** — hai danh mục
+khác nhau đội một cái tên, không cách nào phân biệt. Lỗi không thuộc hạng mục
+đang làm; nó có sẵn từ trước.
+
+**Bằng chứng trước, không đoán.** Truy vấn PostgreSQL gom giao dịch theo chủ sở
+hữu danh mục cho ra **đúng hai** hàng bất thường ở tài khoản đang đăng nhập:
+
+| Danh mục | `Create_by` | `Is_default` | `Delete_at` | Số giao dịch |
+|---|---|---|---|---|
+| `Chi khác` | **1** | true | đã xoá mềm | 2 |
+| `Làm thêm` | **1** | true | đã xoá mềm | 1 |
+
+Đúng **hai** — khớp số chip trên màn hình. Cả hai là **danh mục mặc định toàn
+cục**, nằm trong nhóm năm hàng backend xoá mềm ngày 2026-09-07 khi thu bộ khuôn
+về 13 stable UUID.
+
+**Gốc rễ.** `sync_engine` quy `is_default = true` thành **`idaccount = 0`**
+(`sync_engine.dart:733`), nên hàng mặc định toàn cục **không mang mã tài khoản
+nào**. Nhưng cả hai repository tra danh mục đều lọc `t.idaccount.equals(idaccount)`:
+
+- `analytics_repository_impl.dart` — trang Thống kê
+- `bao_cao_repository_impl.dart` — trang Xuất báo cáo và màn Xem trước
+
+Hai bản chép tay của cùng một truy vấn, và **cả hai cùng thiếu** vế `isDefault`.
+Giao dịch trỏ vào hàng ấy tra không ra tên → rơi vào nhánh `?? 'Danh mục đã xoá'`.
+
+⚠️ **Ảnh hưởng rộng hơn cái chip đã lộ ra.** Cùng bảng tra ấy nuôi donut "Cơ cấu
+theo danh mục", cột thác nước, và danh sách danh mục cuối trang — tất cả đều mất
+tên. Chip chỉ tình cờ là chỗ **hai** cái trùng nhau nằm cạnh nhau nên mắt bắt
+được; những chỗ kia chỉ hiện *một* nhãn "Danh mục đã xoá" trông hợp lý.
+
+**Vì sao lọt qua mọi lượt trước.** Chú thích ở cả hai chỗ nói rất đúng về vế thứ
+nhất — *"kể cả hàng đã xoá mềm, vì tên thật còn nằm trong hàng"* — và có test
+canh hẳn hoi. Vế thứ hai thì không ai viết ra: hàng mặc định **cũng** không
+thuộc `idaccount` nào. Test cũ dựng danh mục đã xoá mềm với `idaccount: 1`, tức
+một hình dạng **không tồn tại trên máy thật** cho danh mục mặc định.
+
+**Bản sửa.** Một định nghĩa duy nhất ở `CategoryDao.getBangTraTen` /
+`watchBangTraTen`, lọc theo **cờ** `isDefault` bên cạnh tài khoản — cùng khuôn
+với `getNamesInUse` vốn đã làm đúng từ trước. Hai repository nay gọi nó thay vì
+tự viết truy vấn. Hai ca test mới, mỗi repository một ca, dựng đúng hình dạng
+thật (`idaccount: 0`, `isDefault: true`, đã xoá mềm); cả hai đỏ trước khi sửa.
+
+**Nghiệm thu.** Máy ảo, cùng tài khoản: chip nay là **"Chi khác"**, "Di chuyển",
+"Giáo dục" — không còn chip "Danh mục đã xoá" nào; cột thác nước đổi từ
+`Danh mục đ…` sang **"Chi khác"**. `flutter test` **2573/2573**, `flutter
+analyze` **25 issue, 0 error**.
+
+**Bài học.** Hai bản chép tay của một truy vấn là chỗ lỗi sống lâu nhất: sửa một
+bên thì bên kia vẫn sai, và chú thích đúng ở cả hai chỗ khiến không ai nghi. Khi
+một luật có hai nơi thi hành, đưa nó về DAO trước rồi mới sửa.
 
 ### ~~G40 — Trang Xem trước báo cáo lệch cột số tiền~~ · ✅ ĐÓNG (2026-09-15, mở và đóng trong cùng ngày)
 

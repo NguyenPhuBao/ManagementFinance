@@ -35,9 +35,7 @@ class BaoCaoRepositoryImpl implements BaoCaoRepository {
     final vi = await (db.select(db.wallets)
           ..where((t) => t.idaccount.equals(idaccount)))
         .get();
-    final cats = await (db.select(db.categories)
-          ..where((t) => t.idaccount.equals(idaccount)))
-        .get();
+    final cats = await db.categoryDao.getBangTraTen(idaccount);
 
     final viTheoId = {for (final v in vi) v.id: v};
     final catTheoId = {for (final c in cats) c.id: c};
