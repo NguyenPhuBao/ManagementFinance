@@ -206,7 +206,16 @@ String rutGon(double x) {
   if (a >= 1e9) return '$dau${mot(a / 1e9, 'B')}';
   if (a >= 1e6) return '$dau${mot(a / 1e6, 'M')}';
   if (a >= 1e3) return '$dau${mot(a / 1e3, 'K')}';
-  return '$dau${a.round()}';
+  final nguyen = a.round();
+  // ⚠️ Làm tròn ra 0 thì **bỏ dấu**: "-0" là một con số không tồn tại. Cùng
+  // luật với `CurrencyFormatter.formatCoDau`.
+  //
+  // Không phải ca hiếm: biểu đồ nào có phần âm thì biên trên tính bằng
+  // `san + 3 * buoc`, và sai số dấu phẩy động cho ra chừng -1e-16 ngay tại vị
+  // trí lẽ ra là 0 — nhãn trục tung in "-0". Thấy trên máy ảo 2026-09-15 ở
+  // khối "Dòng tiền tự do"; `flutter test` mù hẳn vì nhãn trục vẽ trong canvas
+  // của fl_chart.
+  return nguyen == 0 ? '0' : '$dau$nguyen';
 }
 
 /// Một điểm trên biểu đồ xu hướng: tổng thu và tổng chi của **trọn một kỳ**.

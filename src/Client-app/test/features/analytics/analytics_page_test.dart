@@ -99,7 +99,7 @@ ThongKeKy _tk({
   Map<String, List<DongDanhMuc>> theoLat = const {},
   Map<String?, List<DiemThoiGian>> chuoiDm = const {},
   SoLieuNhanh? soLieu,
-  List<DiemVayNo> chuoiVayNo = const [],
+  List<DiemVayNo>? chuoiVayNo,
   List<DongVi> theoVi = const [],
   List<DongGiaoDich> topChi = const [],
   DongTien? dongTien,
@@ -134,7 +134,17 @@ ThongKeKy _tk({
       theoVi: theoVi,
       topChi: topChi,
       dongTien: dongTien,
-      chuoiVayNo: chuoiVayNo,
+      // ⚠️ Mặc định phải **cùng số kỳ** với `chuoi`, không phải rỗng: hai chuỗi
+      // luôn được repository dựng từ cùng một `ky` và cùng `kSoKyXuHuong`, nên
+      // một `ThongKeKy` có sáu điểm thu/chi mà không điểm vay/nợ nào là trạng
+      // thái **không tồn tại trong đời thực**. Khối "Dòng tiền tự do" ghép hai
+      // chuỗi theo chỉ số và nổ khi chúng lệch — chốt ấy chỉ có nghĩa khi test
+      // dựng dữ liệu hợp lệ.
+      chuoiVayNo: chuoiVayNo ??
+          [
+            for (final d in chuoi ?? chuoiTheoKy(const [], ky: ky ?? Ky.thang(nam, thang)))
+              DiemVayNo(ky: d.ky),
+          ],
     );
 
 /// Ba phân loại mẫu, dùng chung cho nhóm test "Cơ cấu theo danh mục" — đủ cả
@@ -314,10 +324,15 @@ void main() {
     await moTrang(tester);
     await phat(tester, _tk(ky: Ky.quy(2026, 3)));
 
-    expect(find.text('Q3/26'), findsOneWidget,
+    // ⚠️ **Hai** widget mỗi nhãn, không phải một: từ 2026-09-15 trang có hai
+    // biểu đồ đường cùng sáu kỳ — "Xu hướng" và "Dòng tiền tự do" (A8 #8) — và
+    // cả hai đọc trục từ cùng `Ky.nhanTruc`. Con số này cố ý chặt: thêm hay bớt
+    // một biểu đồ trục-sáu-kỳ thì ca này đỏ, và người sửa phải nhìn lại trục
+    // thay vì để nó trôi.
+    expect(find.text('Q3/26'), findsNWidgets(2),
         reason: 'nhãn trục đọc thẳng từ Ky.nhanTruc — trang không tự suy từ '
             'số tháng nữa');
-    expect(find.text('Q3/25'), findsOneWidget,
+    expect(find.text('Q3/25'), findsNWidgets(2),
         reason: 'sáu quý trải qua một năm rưỡi nên nhãn phải mang năm, nếu '
             'không hai cột khác nhau cùng ghi "Q3"');
   });
@@ -1156,6 +1171,100 @@ void main() {
       expect(tester.takeException(), isNull,
           reason: 'Chín cột trên 411dp là chỗ chật nhất của trang; Flutter báo '
               'tràn qua reportError chứ không ném ra chỗ gọi.');
+    });
+  });
+
+  group('Dòng tiền tự do (A8 #8)', () {
+    /// Sáu kỳ; chỉ kỳ **cuối** (kỳ đang xem) mang số, để con số lớn của khối
+    /// đọc ra được bằng `find.text`.
+    ({List<DiemThoiGian> chuoi, List<DiemVayNo> vayNo}) boSoLieu({
+      double thu = 0,
+      double diVay = 0,
+      double thuNo = 0,
+      double khacVao = 0,
+      double traNo = 0,
+    }) {
+      final ky = Ky.thang(2026, 9);
+      final cs = chuoiTheoKy(const [], ky: ky);
+      return (
+        chuoi: [
+          for (var i = 0; i < cs.length; i++)
+            DiemThoiGian(
+              ky: cs[i].ky,
+              tong: TongThuChi(thu: i == cs.length - 1 ? thu : 0, chi: 0),
+            ),
+        ],
+        vayNo: [
+          for (var i = 0; i < cs.length; i++)
+            DiemVayNo(
+              ky: cs[i].ky,
+              diVay: i == cs.length - 1 ? diVay : 0,
+              thuNo: i == cs.length - 1 ? thuNo : 0,
+              khacVao: i == cs.length - 1 ? khacVao : 0,
+              traNo: i == cs.length - 1 ? traNo : 0,
+            ),
+        ],
+      );
+    }
+
+    Future<void> moCaoVaPhat(WidgetTester tester, ThongKeKy tk) async {
+      tester.view.physicalSize = const Size(411, 4000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await moTrang(tester);
+      await phat(tester, tk);
+    }
+
+    testWidgets('hiện cả khi không ai nợ ai — người dùng chốt "luôn hiện"',
+        (tester) async {
+      await moCaoVaPhat(tester, _tk());
+
+      expect(find.text('Dòng tiền tự do 6 tháng'), findsOneWidget);
+      expect(
+        find.text('Thu nhập sau khi trả nợ; không tính tiền đi vay và thu hồi nợ'),
+        findsOneWidget,
+        reason: 'con số này không tự giải thích — bê trần nó ra là để người đọc '
+            'hiểu nhầm, cùng lý do khối Dòng tiền luôn kèm câu "Suy ngược từ…"',
+      );
+    });
+
+    testWidgets('⚠️ tiền ĐI VAY không được tính là thu nhập', (tester) async {
+      // 20tr tiền vào, trong đó 5tr là vay mượn; trả nợ 3tr.
+      final b = boSoLieu(thu: 20000000, diVay: 5000000, traNo: 3000000);
+      await moCaoVaPhat(tester, _tk(chuoi: b.chuoi, chuoiVayNo: b.vayNo));
+
+      expect(find.text('12.000.000đ'), findsOneWidget,
+          reason: '(20tr − 5tr vay) − 3tr trả nợ. Đây là ca lật thiết kế: lấy '
+              'nguyên tong.thu thì tháng đi vay lại trông đẹp lên.');
+      expect(find.text('17.000.000đ'), findsNothing,
+          reason: '17tr là con số của công thức sai — tong.thu − traNo.');
+    });
+
+    testWidgets('⚠️ tiền THU NỢ và khoản vay/nợ vào KHÔNG rõ vai cũng bị trừ',
+        (tester) async {
+      final b = boSoLieu(thu: 20000000, thuNo: 6000000, khacVao: 2000000);
+      await moCaoVaPhat(tester, _tk(chuoi: b.chuoi, chuoiVayNo: b.vayNo));
+
+      expect(find.text('12.000.000đ'), findsOneWidget,
+          reason: 'thu hồi vốn là tiền cũ quay về; khoản vay/nợ tiền vào không '
+              'rõ vai chỉ có thể là đi vay hoặc thu nợ — không lối nào là thu nhập');
+    });
+
+    testWidgets('trả nợ vượt thu nhập thì con số ÂM, không kẹp về 0',
+        (tester) async {
+      final b = boSoLieu(thu: 4000000, traNo: 6500000);
+      await moCaoVaPhat(tester, _tk(chuoi: b.chuoi, chuoiVayNo: b.vayNo));
+
+      expect(find.text('-2.500.000đ'), findsOneWidget,
+          reason: 'kẹp về 0 là giấu đúng kỳ người dùng cần thấy nhất');
+    });
+
+    testWidgets('không tràn ở 411dp', (tester) async {
+      final b = boSoLieu(thu: 20000000, diVay: 5000000, traNo: 3000000);
+      await moCaoVaPhat(tester, _tk(chuoi: b.chuoi, chuoiVayNo: b.vayNo));
+
+      expect(tester.takeException(), isNull,
+          reason: 'Flutter báo tràn qua reportError chứ không ném ra chỗ gọi.');
     });
   });
 }

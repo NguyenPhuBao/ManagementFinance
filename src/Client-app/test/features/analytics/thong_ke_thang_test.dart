@@ -180,6 +180,22 @@ void main() {
       expect(rutGon(0), '0');
       expect(rutGon(999), '999');
     });
+
+    test('⚠️ số làm tròn ra 0 thì KHÔNG mang dấu trừ', () {
+      // Máy ảo bắt được 2026-09-15 ở khối "Dòng tiền tự do": biểu đồ có phần
+      // âm nên biên trên tính bằng `san + 3 * buoc`, và sai số dấu phẩy động
+      // cho ra một số âm cỡ 1e-16 ngay tại vị trí lẽ ra là 0. Nhãn trục in ra
+      // "-0" — một con số không tồn tại.
+      //
+      // Cùng luật với `CurrencyFormatter.formatCoDau`: số 0 không mang dấu.
+      expect(rutGon(-1e-16), '0');
+      expect(rutGon(-0.0), '0');
+      expect(rutGon(-0.4), '0',
+          reason: 'làm tròn ra 0 thì dấu của số gốc không còn nghĩa gì');
+      expect(rutGon(-1), '-1',
+          reason: 'số âm thật vẫn phải giữ dấu — đừng nuốt cả những số này');
+      expect(rutGon(-950000), '-950K');
+    });
   });
 
   group('topVaKhac — lát cho donut', () {

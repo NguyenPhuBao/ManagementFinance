@@ -595,6 +595,44 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-15)
 
+### 💵 Dòng tiền tự do — A8 #8 (2026-09-15)
+
+Một đường, sáu kỳ, đứng ngay sau khối "Xu hướng" và trả lời tiếp đúng câu hỏi
+khối trên vừa đặt: *thu về bấy nhiêu thì thực sự còn lại bao nhiêu*. Chi tiết ở
+mục **3.24** `docs/ANALYTICS_FEATURE.md`.
+
+⚠️ **Hai chữ "thu nhập" KHÔNG phải `tong.thu`** — đây là chỗ đắt nhất, và nó chỉ
+lộ ra khi hỏi trước lúc gõ. `TongThuChi.thu` là **mọi** khoản `type = 'thu'`,
+nên nó đã gồm cả tiền **đi vay** và tiền **thu nợ**; cả hai đều không phải thu
+nhập (một là tiền mượn, một là vốn cũ quay về). Lấy nguyên `tong.thu − traNo`
+thì tháng nào người dùng vay tiền, đường này lại **vọt lên** — đúng tháng tình
+hình của họ xấu đi, và không có exception nào báo. Luật đúng:
+
+> **thu nhập = tổng thu − mọi khoản tiền VÀO thuộc nhóm Vay/nợ**
+> (`diVay`, `thuNo`, **và** `khacVao`), rồi mới trừ `traNo`.
+
+Đo trên máy ảo: thêm một khoản `Đi vay` **+5.000.000** (tiền vào) thì con số của
+khối **không đổi** — vẫn `14.625.000đ`, không nhảy lên 19.625.000đ.
+
+Phép tính nằm trọn ở hàm thuần `dongTienTuDo()` (`analytics/domain/dong_tien_tu_do.dart`),
+ghép `chuoi` và `chuoiVayNo` **theo chỉ số** và **ném `ArgumentError`** khi hai
+chuỗi lệch độ dài hoặc lệch kỳ. Không đụng repository — cả hai chuỗi đã có sẵn
+trong `ThongKeKy` từ lát #4/#5.
+
+⚠️ **Máy ảo bắt được một lỗi `flutter test` mù hẳn:** biểu đồ có phần âm nên
+biên trên tính bằng `san + 3 * buoc`, sai số dấu phẩy động cho ra chừng `-1e-16`
+ngay tại vị trí lẽ ra là 0, và `rutGon` in nhãn trục thành **`-0`**. Đã sửa tại
+`rutGon` chứ không tại khối gọi nó — `-0` không bao giờ là nhãn đúng, và đây
+đúng là luật `CurrencyFormatter.formatCoDau` đã có: **số 0 không mang dấu**. Bẫy
+**4.20** `ANALYTICS_FEATURE.md`.
+
+**Không đụng schema** (v22 giữ nguyên), **không đụng đường đồng bộ**.
+`flutter test` **2559/2559** · `flutter analyze` **25 issue, 0 error**.
+
+Với hạng mục này, bảng A8 còn đúng **một** ô trống — **#9** (biến động khoản
+vay), và nó **không phải việc client**: nó cần dư nợ còn lại, thứ không bảng nào
+ở hai đầu lưu.
+
 ### 🪜 Thác nước "Tiền đi đâu" — A8 #10 (2026-09-15)
 
 Số dư đầu kỳ → cộng thu → trừ dần từng nhóm chi → số dư cuối kỳ. Chín cột, mỗi
@@ -811,10 +849,11 @@ nhóm phải rời nhau thì tỷ trọng mới có nghĩa. Đừng "sửa" cho 
 > ⚠️ **Đính chính 2026-09-15:** đoạn dưới là kết luận của ngày 2026-09-14, và
 > nay **chỉ còn đúng với #9**. **#4 và #5 KHÔNG bị chặn** — chúng chỉ vẽ *dòng
 > tiền*, và đã làm xong (mục **3.22** `ANALYTICS_FEATURE.md`). **#8** (dòng tiền
-> tự do) cũng **không bị chặn**: nó là `Σ thu − Σ khoản mang vai traNo`, mà
-> `VaiVayNo.traNo` đã có sẵn từ chính lát #4/#5 — chưa làm, không phải không làm
-> được. Chỉ **#9** chặn thật, vì nó cần **dư nợ còn lại** và không bảng nào ở hai
-> đầu lưu con số ấy.
+> tự do) cũng **không bị chặn**, và nay **đã làm xong** — mục **3.24**, cùng
+> ngày. ⚠️ Công thức thì **không** phải `Σ thu − Σ traNo` như dòng này từng
+> ghi: `tong.thu` đã gồm cả tiền **đi vay** và tiền **thu nợ**, và cả hai đều
+> không phải thu nhập — đọc mục 3.24 trước khi động vào. Chỉ **#9** chặn thật,
+> vì nó cần **dư nợ còn lại** và không bảng nào ở hai đầu lưu con số ấy.
 >
 > Bài học: một mục bị xếp "chặn bởi mô hình dữ liệu" thì phải hỏi **chặn vì
 > thiếu con số nào**, chứ đừng gộp cả nhóm theo cái tên "vay/nợ". Câu gộp ấy đã
@@ -829,7 +868,7 @@ khoản vay + lãi vay) đều cần ít nhất một trong những thứ ấy �
 **cả hai đầu**, tức phải xin backend. Mục **#10** (thác nước) và **#11**
 (Sankey) làm được với thu/chi nhưng để đợt sau. *(Đính chính 2026-09-15: #4, #5
 và #8 **không** cần mô hình mới — xem khối "Bốn mục A8 bị chặn" ở trên; và
-**#10 đã làm xong** cùng ngày.)*
+**#10 và #8 đều đã làm xong** cùng ngày — mục 3.23 và 3.24.)*
 
 **Không đụng schema** (v22 giữ nguyên), **không đụng đường đồng bộ**.
 `flutter test` **2409/2409** · `flutter analyze` **25 issue, 0 error**.

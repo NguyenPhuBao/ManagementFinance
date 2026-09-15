@@ -1,6 +1,6 @@
 # Trang Phân tích — thiết kế, lý do, và những cái bẫy
 
-**Cập nhật:** 2026-09-15 (mục **3.20** — **P1: phạm vi thời gian**; mục **3.21** — **P2**: bốn khối mượn từ trang Xuất báo cáo; mục **3.22** — **A8 #4 và #5**: hai biểu đồ cột vay/nợ; **G40 đóng** — trang Xem trước báo cáo lệch cột số tiền ở **sáu** chỗ, đo được 93px, xem bẫy **4.19**; **nhãn quý rút thành `Q3 2026`** để ô header thôi cụt, xem mục **3.20**; mục **3.23** — **A8 #10**: thác nước "Tiền đi đâu", kèm vạch trung bình trên từng cột chi) · bản trước 2026-09-14 (mục **3.19** — A8 #3, #7: cơ cấu theo danh mục với ba chip nhóm, và xu hướng tới 5 danh mục cùng lúc; bản thi công **lần hai**, #2 đã bỏ)
+**Cập nhật:** 2026-09-15 (mục **3.20** — **P1: phạm vi thời gian**; mục **3.21** — **P2**: bốn khối mượn từ trang Xuất báo cáo; mục **3.22** — **A8 #4 và #5**: hai biểu đồ cột vay/nợ; **G40 đóng** — trang Xem trước báo cáo lệch cột số tiền ở **sáu** chỗ, đo được 93px, xem bẫy **4.19**; **nhãn quý rút thành `Q3 2026`** để ô header thôi cụt, xem mục **3.20**; mục **3.23** — **A8 #10**: thác nước "Tiền đi đâu", kèm vạch trung bình trên từng cột chi; mục **3.24** — **A8 #8**: dòng tiền tự do, và bẫy **4.20** — `rutGon` từng in `-0` ở nhãn trục) · bản trước 2026-09-14 (mục **3.19** — A8 #3, #7: cơ cấu theo danh mục với ba chip nhóm, và xu hướng tới 5 danh mục cùng lúc; bản thi công **lần hai**, #2 đã bỏ)
 **Trạng thái:** **mảng Phân tích đã xong cả 2a, 2b, 2c** (2026-09-09). Lát **2a** xong — mọi con số trên trang là số thật từ SQLite —
 lát **2b** xong (khối "Xu hướng 6 tháng" vẽ bằng `fl_chart`), lát **2c‑1** xong
 (trang Xuất báo cáo đọc ví/danh mục/thời gian thật rồi mở màn **Xem trước báo
@@ -21,7 +21,7 @@ thẳng vào thư mục Tải về** của máy. Xem mục 7.
 | Bất cứ việc gì | Mục 3 (quyết định) và mục 4 (bẫy) |
 | Sửa phép tính | `domain/thong_ke_thang.dart` và test của nó — **không** có CSDL, kiểm bằng danh sách |
 | Sửa cách gộp dữ liệu | Mục 3.3 (mốc tra ngân sách) trước, rồi `data/analytics_repository_impl.dart` |
-| Đụng giao diện | **Bốn** màn Stitch còn dùng được: `c8567243…` *"Thống kê - Cơ cấu danh mục & Xu hướng 6 tháng"* (2026-09-14) cho thân trang, **`83993fc9f5de4c5f8fba6940480c164a`** *"Thống kê - Chọn phạm vi thời gian"* (2026-09-15) cho bộ chọn phạm vi, **`6e9007f7653749a893c88e3de535afa5`** *"Thống kê - Biểu đồ Cho vay & Đi vay"* (đo được 2026-09-15) cho hai biểu đồ vay/nợ, và **`afe1c3fdee43464c90ddadc508eaa599`** *"Thống kê - 4 Thẻ Dòng Tiền & Kế Toán"* (đo được 2026-09-15) cho bốn khối của P2 — ⚠️ màn thứ tư mang `deviceType: DESKTOP` dù lượt gọi truyền `MOBILE`, xem mục **3.21** — ⚠️ màn thứ ba vẽ thêm **hai thẻ tổng** mà bản thi công **cố ý không có**, xem mục 3.22 — ⚠️ **hai** màn cũ đã lỗi thời và vẫn còn trong dự án: `c2a2b615…` (tả A8 #2 đã bỏ: mức gốc ba lát + dropdown) và `a228fa69…` "FlowMoney Analytics Dashboard"; và mục 4.4 về font của bộ test |
+| Đụng giao diện | **Sáu** màn Stitch còn dùng được (đếm lại 2026-09-15): `c8567243…` *"Thống kê - Cơ cấu danh mục & Xu hướng 6 tháng"* (2026-09-14) cho thân trang, **`83993fc9f5de4c5f8fba6940480c164a`** *"Thống kê - Chọn phạm vi thời gian"* (2026-09-15) cho bộ chọn phạm vi, **`6e9007f7653749a893c88e3de535afa5`** *"Thống kê - Biểu đồ Cho vay & Đi vay"* (đo được 2026-09-15) cho hai biểu đồ vay/nợ, và **`afe1c3fdee43464c90ddadc508eaa599`** *"Thống kê - 4 Thẻ Dòng Tiền & Kế Toán"* (đo được 2026-09-15) cho bốn khối của P2, **`52450ac549df42aea9f31d5ee1347ceb`** *"Thống kê - Biểu đồ thác nước Tiền đi đâu"* (đo được 2026-09-15) cho khối A8 #10, và **`212befc8f9a24d25ab027c7302e2e122`** *"Thống kê - Biểu đồ Dòng tiền tự do"* (đo được 2026-09-15) cho khối A8 #8 — ⚠️ màn thứ tư mang `deviceType: DESKTOP` dù lượt gọi truyền `MOBILE`, xem mục **3.21** — ⚠️ màn thứ ba vẽ thêm **hai thẻ tổng** mà bản thi công **cố ý không có**, xem mục 3.22 — ⚠️ **hai** màn cũ đã lỗi thời và vẫn còn trong dự án: `c2a2b615…` (tả A8 #2 đã bỏ: mức gốc ba lát + dropdown) và `a228fa69…` "FlowMoney Analytics Dashboard"; và mục 4.4 về font của bộ test |
 | Đụng biểu đồ | Mục **3.11** (vì sao `fl_chart`, vì sao ghim phiên bản), **3.12** (khối xu hướng từng lệch Stitch, nay hết), **3.19** (đường một danh mục), và bẫy **4.9** (tooltip tràn — thứ duy nhất phải kiểm bằng mắt) |
 | Sinh tệp PDF/CSV | Mục **3.17** (vì sao nhúng font, vì sao `MediaStore` chứ không phải quyền ghi bộ nhớ), **3.18** (ba luật của CSV cho Excel tiếng Việt), bẫy **4.15**–**4.16** |
 | Đụng trang Xuất báo cáo / màn Xem trước | Mục **3.13** (vì sao xem trước rồi mới tải), **3.14** (ảnh chụp, không phải luồng sống; và màn Stitch mới), **3.15** (mười khối lấy chuẩn từ app thị trường), **3.16** (dòng tiền là số suy ngược, hai giới hạn), bẫy **4.11**–**4.14** |
@@ -397,8 +397,9 @@ nước) và **#11** (Sankey) làm được với thu/chi nhưng để đợt sa
 > ⚠️ **Đính chính 2026-09-15:** đoạn trên là kết luận của ngày 2026-09-14 và nay
 > **chỉ còn đúng với #9**. **#4 và #5** chỉ vẽ *dòng tiền*, không cần dư nợ gốc
 > hay lãi suất, và đã làm xong (mục **3.22**). **#8** (dòng tiền tự do) cũng
-> **không bị chặn**: nó là `Σ thu − Σ khoản mang vai traNo`, mà `VaiVayNo.traNo`
-> có sẵn từ chính lát #4/#5 — **chưa làm**, không phải không làm được. Chỉ **#9**
+> **không bị chặn**, và nay **đã làm xong** cùng ngày — mục **3.24**. ⚠️ Công
+> thức thì **không** phải `Σ thu − Σ traNo` như dòng này từng ghi: `tong.thu` đã
+> gồm cả tiền **đi vay** và **thu nợ**, hai thứ không phải thu nhập. Chỉ **#9**
 > chặn thật, vì nó cần **dư nợ còn lại**. ✅ **#10 (thác nước) đã làm xong**
 > cùng ngày — mục **3.23**; người dùng chốt "không làm" rồi **đổi ý** trong
 > ngày, nên câu ấy ở các tài liệu cũ hơn là ảnh chụp của quyết định đầu.
@@ -878,14 +879,14 @@ cỡ chữ 8, hai dòng, ellipsis. ⚠️ `flutter test` **không bắt được
 `find.text` so `data` chứ không so thứ vẽ ra (bẫy 4.4) — cùng họ G39, và lại
 một lần nữa chỉ máy ảo mới nói được.
 
-#### Màn Stitch: ĐÃ GỌI, CHƯA HIỆN
+#### Màn Stitch
 
-Lượt `generate_screen_from_text` cho khối này trả về **`timeout`**, và bốn lượt
-`list_screens` sau đó vẫn **54 màn, chưa có màn mới** (đo 2026-09-15). Theo bài
-học đã trả giá hai lần: timeout **không phải** thất bại và "chưa đổi" nghĩa là
-*chưa biết* — màn bộ chọn phạm vi hiện sau hơn một tiếng, màn bốn khối P2 hiện
-sau chừng mười lăm phút. **Đừng gọi lại.** Kiểm bằng `list_screens`; khi màn
-hiện thì ghi ID vào bảng đầu tệp này và vào mục này.
+**`52450ac549df42aea9f31d5ee1347ceb`** *"Thống kê - Biểu đồ thác nước Tiền đi
+đâu"* (đo được 2026-09-15). Lượt `generate_screen_from_text` cho khối này trả về
+**`timeout`** và bốn lượt `list_screens` sau đó vẫn **54 màn**; màn hiện ở lượt
+kiểm của phiên sau. Đó là lần thứ ba liên tiếp **timeout không phải thất bại** —
+đừng gọi lại. Chỉ ghi cái đo được: một màn mới xuất hiện không tự nó chứng minh
+lượt gọi nào tạo ra nó.
 
 #### Nghiệm thu
 
@@ -894,6 +895,135 @@ cao, sáu khối đỏ nối tiếp nhau đi xuống, cột "Cuối kỳ" đen d
 13.590.000 — bậc thang khép kín. Dòng chú thích hiện *"Phần đậm là chỗ vượt mức
 trung bình 174.167 đ/nhóm"*. `flutter test` **2540/2540**, `flutter analyze`
 **25 issue, 0 error**, schema giữ **v22**, không thêm trường đồng bộ.
+
+### 3.24 Dòng tiền tự do — A8 #8
+
+**2026-09-15.** Một đường, sáu kỳ, trả lời tiếp đúng câu hỏi mà khối "Xu hướng"
+vừa đặt: *thu về bấy nhiêu thì thực sự còn lại bao nhiêu*. Nguyên văn mục 8 của
+bảng A8 (`Project.md` dòng 1036) là *"Xu hướng của dòng tiền tự do (thu nhập
+sau khi trả nợ)"* — nên dạng biểu đồ đã có sẵn trong đề bài, và khối này mượn
+nguyên khuôn `_KhoiXuHuong`.
+
+#### ⚠️ Hai chữ "thu nhập" KHÔNG phải `tong.thu`
+
+Đây là chỗ đắt nhất của hạng mục, và nó chỉ lộ ra khi hỏi trước lúc gõ.
+
+`TongThuChi.thu` là **mọi** khoản `type = 'thu'`, nên nó **đã gồm cả tiền đi vay
+và tiền thu nợ**. Cả hai đều không phải thu nhập: một là tiền mượn, một là vốn
+cũ quay về. Lấy nguyên `tong.thu − traNo` thì tháng nào người dùng vay tiền,
+đường này lại **vọt lên** — đúng tháng tình hình tài chính của họ xấu đi. Không
+exception, không log.
+
+Luật thật là:
+
+> **thu nhập = tổng thu − mọi khoản tiền VÀO thuộc nhóm Vay/nợ**
+> — tức trừ `diVay`, `thuNo`, **và** `khacVao`.
+
+Ô thứ ba dễ bị bỏ sót vì nó là khoản *không đoán được vai*. Nhưng một khoản
+vay/nợ tiền vào chỉ có thể là **đi vay** hoặc **thu nợ** — không đường nào biến
+nó thành thu nhập. Liệt kê hai vai đọc được tên rồi quên ô thứ ba là chừa đúng
+một lối cho tiền vay lọt vào.
+
+Chiều ngược lại thì **không** đụng tới: `choVay` và `khacRa` là tiền đi ra,
+chúng nằm ở `tong.chi` và không liên quan gì tới vế thu.
+
+Đo trên máy ảo, kỳ T9 2026: thêm một khoản `Đi vay` **+5.000.000** (tiền vào)
+thì con số của khối **vẫn là 14.625.000đ**, không nhảy lên 19.625.000đ. Đó là
+bằng chứng duy nhất cho luật này — hai ca widget test canh đúng cặp số ấy.
+
+#### Ghép hai chuỗi, không dựng chuỗi thứ ba
+
+`dongTienTuDo()` ở `analytics/domain/dong_tien_tu_do.dart` nhận `ThongKeKy.chuoi`
+và `ThongKeKy.chuoiVayNo` rồi ghép **theo chỉ số**. Cả hai đã đi qua
+`khoanVaoThongKe` và đều lùi kỳ bằng `lui`, nên chúng cùng sáu kỳ, cùng thứ tự
+cũ nhất trước. Dựng chuỗi thứ ba từ giao dịch thô là cách chắc chắn nhất để hai
+khối trên cùng một trang nói hai con số cho cùng một tháng.
+
+⚠️ Hàm **ném `ArgumentError`** khi hai chuỗi lệch độ dài **hoặc** lệch `ky` ở bất
+kỳ vị trí nào. Ghép theo chỉ số mà hai nguồn lệch một kỳ là gán số trả nợ của
+tháng này cho thu nhập của tháng khác — biểu đồ vẫn vẽ ra một đường trông hợp
+lý, và không ai biết.
+
+Chốt ấy kéo theo một thay đổi ở **test**: helper `_tk` của
+`analytics_page_test.dart` trước đây để `chuoiVayNo` mặc định **rỗng** trong khi
+`chuoi` mặc định có sáu điểm — một `ThongKeKy` **không tồn tại trong đời thực**,
+vì repository luôn dựng cả hai chuỗi từ cùng một `ky`. Nay mặc định của nó là
+sáu `DiemVayNo` rỗng đúng theo `chuoi`. Cho widget nuốt `ArgumentError` thay vì
+sửa dữ liệu test là biến một lỗi lập trình thành một khối biến mất **im lặng**.
+
+#### Khối luôn hiện, và đường được phép âm
+
+Người dùng chốt **luôn hiện** khi kỳ có giao dịch — kể cả khi không ai nợ ai,
+lúc đó đường này trùng khít đường "Thu" của khối trên. (`thongKe.rong` vẫn chặn
+trang không có giao dịch.)
+
+Đường **được phép xuống dưới 0**, và không kẹp: kẹp về 0 là giấu đúng kỳ người
+dùng cần thấy nhất. Bốn thứ đi kèm để kỳ âm đọc được ngay:
+
+- `minY` nhận số âm — thang đo dựng từ `san = day * 1.15`, trần `san + 3 * buoc`
+  (đúng khuôn chống G39: trần phải là **đúng** ba lần bước, không phải con số đã
+  đem chia);
+- **vạch 0 nét đứt** qua `extraLinesData`, chỉ vẽ khi dải có phần âm — khi mọi
+  kỳ đều dương thì `san` đã bằng 0 và vạch trùng mép dưới;
+- **chấm của kỳ âm đổi sang màu chi** — đổi màu theo từng *điểm* thì chính xác;
+  đổi màu cả đoạn đường phải dựa vào hộp bao của đường, thứ **không** trùng với
+  dải của biểu đồ, nên bản ấy sai ở đúng những ca khó thấy nhất;
+- `belowBarData` và `aboveBarData` đều đặt `applyCutOffY: true, cutOffY: 0`, nên
+  vùng tô xanh chỉ là phần dương và vùng tô đỏ chỉ là phần âm. Thiếu vế thứ hai
+  thì vùng tô đổ suốt xuống đáy và kỳ âm trông y hệt kỳ dương.
+
+Dòng giải nghĩa dưới tiêu đề — *"Thu nhập sau khi trả nợ; không tính tiền đi vay
+và thu hồi nợ"* — là **bắt buộc**, cùng lý do khối Dòng tiền luôn kèm câu "Suy
+ngược từ số dư hiện tại": con số này không tự giải thích, và nó **khác** con số
+"Tổng thu" ở đầu trang. Hai khối kề nhau nói hai con số mà không nói vì sao là
+cách chắc chắn để người đọc tưởng một trong hai bị sai. Có ca test canh đúng câu
+ấy.
+
+Tiêu đề đổi theo đơn vị kỳ (`tieuDeDongTienTuDo`, cùng khuôn `tieuDeXuHuong`):
+6 tuần · 6 tháng · 6 quý · 6 năm; kỳ tuỳ chọn rơi về "tháng" vì chuỗi của nó
+cũng lùi theo tháng.
+
+#### Lỗi mà máy ảo bắt được: nhãn trục in `-0`
+
+Biểu đồ có phần âm nên biên trên tính bằng `san + 3 * buoc`, và sai số dấu phẩy
+động cho ra một số cỡ `-1e-16` ngay tại vị trí lẽ ra là 0. `rutGon` dán dấu trừ
+vào con số làm tròn thành 0, nên nhãn trục tung trên cùng in **`-0`** — một con
+số không tồn tại. `flutter test` mù hẳn: nhãn trục vẽ trong canvas của fl_chart.
+
+Sửa tại **`rutGon`** chứ không tại khối này: `-0` không bao giờ là nhãn đúng ở
+đâu cả, và đây đúng là luật mà `CurrencyFormatter.formatCoDau` đã có — **số 0
+không mang dấu**. Số âm thật vẫn giữ dấu (`-1` → `-1`, `-950000` → `-950K`); chỉ
+khi phần nguyên làm tròn ra 0 thì bỏ dấu. Bẫy **4.20**.
+
+#### Không đổi gì ở tầng dưới
+
+Không đổi schema (vẫn **v22**), không thêm trường đồng bộ, **không đụng
+repository** — cả hai chuỗi đã có sẵn trong `ThongKeKy` từ lát #4/#5.
+
+#### Màn Stitch
+
+**`212befc8f9a24d25ab027c7302e2e122`** *"Thống kê - Biểu đồ Dòng tiền tự do"*
+(đo được 2026-09-15). ⚠️ Lượt `generate_screen_from_text` trả về **`timeout`**,
+và lượt `list_screens` ngay sau đó vẫn 55 màn; màn hiện ở lượt kiểm sau, đúng
+bài học đã trả giá ba lần — **timeout không phải thất bại, đừng gọi lại**. Chỉ
+ghi cái đo được: một màn mới xuất hiện không tự nó chứng minh lượt gọi nào tạo
+ra nó.
+
+#### Nghiệm thu
+
+Trên `emulator-5554`, kỳ T9 2026, ba trạng thái đều chạy thật:
+
+1. **Không vay nợ nào** — khối vẫn hiện, con số `14.625.000đ` khớp tổng thu,
+   đường phẳng ở 0 suốt T4–T8 rồi vọt lên ở T9.
+2. **Thêm `Đi vay` +5.000.000 (tiền vào)** — con số **không đổi**, vẫn
+   `14.625.000đ`. Đây là ca lật thiết kế.
+3. **Thêm trả nợ 20.000.000 (`Đi vay` + tiền ra)** — con số thành
+   **`-5.375.000đ`** màu đỏ, vạch 0 nét đứt hiện, vùng đỏ nằm giữa mốc 0 và
+   đường, chấm cuối đỏ. Nhãn trục tung `0 · -2.1M · -4.1M · -6.2M`, sáu nhãn
+   trục hoành `T4…T9` không dính nhau.
+
+Hai giao dịch thử đã xoá qua giao diện; truy vấn PostgreSQL xác nhận cả hai mang
+`Deleted_at`.
 
 ## 4. Bẫy
 
@@ -1087,6 +1217,19 @@ tiền thì xuất hiện ở nhiều khối nên `find.text` không khoanh đư
 thẳng `RenderBox` của các `FittedBox` canh phải trong một khối
 (`find.byWidgetPredicate`) mới là đo đúng thứ quyết định chỗ chữ rơi xuống.
 
+**4.20 `rutGon` từng in `-0` ở nhãn trục.** Biểu đồ nào có phần âm thì biên trên
+tính bằng `san + 3 * buoc`, và sai số dấu phẩy động cho ra chừng `-1e-16` ngay
+tại vị trí lẽ ra là 0. `rutGon` dán dấu trừ vào con số làm tròn thành 0, nên
+nhãn trục tung trên cùng in **`-0`** — một con số không tồn tại. Thấy trên máy
+ảo 2026-09-15 ở khối "Dòng tiền tự do" (mục 3.24); `flutter test` mù hẳn vì nhãn
+trục vẽ trong canvas của fl_chart.
+
+Đã sửa **tại `rutGon`**, không phải tại khối gọi nó: `-0` không bao giờ là nhãn
+đúng ở đâu cả, và đây đúng là luật `CurrencyFormatter.formatCoDau` đã có — **số
+0 không mang dấu**. ⚠️ Chỉ bỏ dấu khi phần nguyên làm tròn ra 0; số âm thật vẫn
+giữ dấu (`-1` → `-1`, `-950000` → `-950K`). Nuốt cả những số ấy là một lỗi khác,
+nặng hơn.
+
 ---
 
 ## 5. Luồng dữ liệu
@@ -1187,14 +1330,17 @@ phải ghép từ bốn chỗ mới trả lời được câu "mảng Phân tíc
 | 5 | Đi vay + Trả nợ — cột | ✅ 2026-09-15, mục 3.22 |
 | 6 | Xu hướng theo Phân loại — 2 đường | ✅ 2026-09-08 |
 | 7 | Xu hướng theo loại danh mục | ✅ 2026-09-14 (tới 5 đường), mục 3.19 |
-| 8 | **Dòng tiền tự do** (thu sau khi trả nợ) | ❌ **chưa làm** — làm được, xem dưới |
+| 8 | **Dòng tiền tự do** (thu sau khi trả nợ) | ✅ 2026-09-15, mục **3.24** |
 | 9 | Biến động Khoản vay | ❌ **chặn thật** — cần dư nợ còn lại |
 | 10 | Thác nước | ✅ 2026-09-15, mục 3.23 |
 | 11 | Sankey | ❌ **chưa làm** — làm được |
 
-**#8 không bị chặn.** Nó là `Σ thu − Σ khoản mang vai traNo`, và `VaiVayNo.traNo`
-đã có từ lát #4/#5. Câu "#4, #5, #8, #9 bị chặn bởi mô hình dữ liệu" viết ngày
-2026-09-14 nay **chỉ còn đúng với #9** — xem đoạn đính chính ở mục 3.19.
+**#8 đã xong 2026-09-15** (mục **3.24**). ⚠️ Nhưng công thức **không** phải
+`Σ thu − Σ traNo` như dòng này từng ghi: `tong.thu` đã gồm cả tiền **đi vay** và
+tiền **thu nợ**, và cả hai đều không phải thu nhập. Luật đúng là
+`(tổng thu − mọi khoản tiền VÀO thuộc nhóm Vay/nợ) − traNo` — xem mục 3.24.
+Câu "#4, #5, #8, #9 bị chặn bởi mô hình dữ liệu" viết ngày 2026-09-14 nay
+**chỉ còn đúng với #9**.
 
 **#11 (Sankey) làm được nhưng nặng hơn hẳn:** `fl_chart` không có Sankey, phải
 tự vẽ bằng `CustomPainter`, và vùng vẽ không test tự động được (bẫy 4.9).
@@ -1226,14 +1372,16 @@ mười khối, nút Tải xuống sinh PDF/CSV và lưu thẳng vào thư mục
   mục A8 còn lại (#4, #5, #8, #9) bị chặn bởi mô hình dữ liệu vay/nợ mà cả hai
   đầu đều không có; **#10** (thác nước) và **#11** (Sankey) làm được với thu/chi
   nhưng để đợt sau. ⚠️ **Đính chính 2026-09-15:** #4 và #5 **không** bị chặn —
-  xem mục **3.22**; **#8** cũng không (`Σ thu − Σ traNo`, vai đã có) — nó chỉ
-  **chưa làm**; chỉ **#9** chặn thật; **#10 đã làm xong** 2026-09-15 (mục 3.23).
+  xem mục **3.22**; **#8** cũng không — và nó **đã làm xong** 2026-09-15 (mục
+  **3.24**); chỉ **#9** chặn thật; **#10 đã làm xong** 2026-09-15 (mục 3.23).
 - ⚠️ Câu *"Mảng Phân tích đến đây là xong"* đứng ở đây từ 2026-09-09 **đã bị gỡ
   ngày 2026-09-15**: người dùng chốt làm tiếp mảng Phân tích và Báo cáo. ✅ **P1
   (mục 3.20), P2 (mục 3.21) và A8 #4/#5 (mục 3.22) xong cùng ngày.** 🛑 **P3**
   (thác nước, A8 #10) từng bị chốt **không làm**, nhưng người dùng **đổi ý**
-  cùng ngày và nó **đã xong** — mục **3.23**. Còn **#11** Sankey và
-  **#8** dòng tiền tự do; **#9** vẫn chặn thật vì cần dư nợ còn lại. Kế hoạch ở
+  cùng ngày và nó **đã xong** — mục **3.23**. ✅ **#8 (dòng tiền tự do) cũng
+  xong 2026-09-15** — mục **3.24**. Còn lại **#11** Sankey (làm được, chưa làm);
+  **#9** vẫn chặn thật vì cần dư nợ còn lại — đó là **ô trống duy nhất** của
+  bảng A8, và nó không phải việc client. Kế hoạch ở
   `docs/superpowers/plans/2026-09-15-ke-hoach.md` (gitignore).
 - **Tổng kết tuần KHÔNG phải việc còn lại** — nó đã làm xong **2026-09-09**
   (mục **5d** `NOTIFICATION_FEATURE.md`). Điều kiện "một màn hình có phạm vi

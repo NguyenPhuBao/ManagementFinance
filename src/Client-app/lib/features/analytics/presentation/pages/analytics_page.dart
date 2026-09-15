@@ -15,6 +15,7 @@ import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../data/analytics_repository.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../domain/bao_cao_xuat.dart';
+import '../../domain/dong_tien_tu_do.dart';
 import '../../domain/pham_vi_ky.dart';
 import '../../domain/vai_vay_no.dart';
 import '../../domain/phan_loai_dong_tien.dart';
@@ -128,6 +129,11 @@ class _NoiDung extends StatelessWidget {
           _KhoiTong(tk: thongKe),
           const SizedBox(height: 24),
           _KhoiXuHuong(tk: thongKe, danhMucXuHuong: danhMucXuHuong),
+          const SizedBox(height: 24),
+          // Đứng ngay sau khối Xu hướng: cùng dạng đường, cùng sáu kỳ, và nó
+          // trả lời tiếp đúng câu hỏi khối trên vừa đặt — "thu về bấy nhiêu thì
+          // thực sự còn lại bao nhiêu".
+          _KhoiDongTienTuDo(tk: thongKe),
           const SizedBox(height: 24),
           _KhoiSoLieuNhanh(tk: thongKe),
           const SizedBox(height: 24),
@@ -1033,6 +1039,268 @@ Widget _tieuDeKhoi(String chu) => SizedBox(
         ),
       ),
     );
+
+/// Xu hướng **dòng tiền tự do** — A8 #8 (2026-09-15).
+///
+/// Phép tính nằm trọn ở `dongTienTuDo()` (tầng thuần, có test); ở đây chỉ vẽ.
+///
+/// ⚠️ **Dòng giải nghĩa dưới tiêu đề là bắt buộc**, cùng lý do khối Dòng tiền
+/// luôn kèm câu "Suy ngược từ số dư hiện tại": "thu nhập" ở đây **không phải**
+/// tổng thu của khối trên — nó đã trừ tiền đi vay và tiền thu nợ. Hai khối kề
+/// nhau nói hai con số khác nhau mà không nói vì sao là cách chắc chắn để người
+/// đọc tưởng một trong hai bị sai.
+///
+/// Khối **luôn hiện** khi kỳ có giao dịch (người dùng chốt 2026-09-15), kể cả
+/// khi không ai nợ ai — khi ấy đường này trùng khít đường "Thu" của khối trên.
+class _KhoiDongTienTuDo extends StatelessWidget {
+  final ThongKeKy tk;
+  const _KhoiDongTienTuDo({required this.tk});
+
+  @override
+  Widget build(BuildContext context) {
+    final ds = dongTienTuDo(tk.chuoi, tk.chuoiVayNo);
+    // Không điểm nào thì không có thang đo — bỏ khối, đừng chia cho 0.
+    if (ds.isEmpty) return const SizedBox.shrink();
+
+    var dinh = 0.0, day = 0.0;
+    for (final d in ds) {
+      if (d.tuDo > dinh) dinh = d.tuDo;
+      if (d.tuDo < day) day = d.tuDo;
+    }
+    final coAm = day < 0;
+    // Sáu kỳ phẳng bằng 0 thì `dinh` lẫn `day` đều bằng 0 và mọi phép chia
+    // thang đo sau đây sẽ hỏng — đặt trần 1.
+    final tran = dinh > 0 ? dinh * 1.15 : (coAm ? 0.0 : 1.0);
+    final san = coAm ? day * 1.15 : 0.0;
+    final buoc = (tran - san) / 3;
+    // ⚠️ Trần phải là ĐÚNG `san + 3 * buoc`, không phải con số đã đem chia:
+    // fl_chart vẽ nhãn cho cả mốc theo `interval` lẫn biên, và sai số dấu phẩy
+    // động đủ để `rutGon` trả hai chuỗi khác nhau cho cùng một vị trí — hai
+    // nhãn in đè khít lên nhau (G39, bẫy 4.18 `ANALYTICS_FEATURE.md`).
+    final maxY = san + buoc * 3;
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: _theTrang(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Text đứng trong Row không co được — cùng lý do với tiêu đề donut.
+          SizedBox(
+            width: double.infinity,
+            child: Text(
+              tieuDeDongTienTuDo(tk.ky.donVi),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Thu nhập sau khi trả nợ; không tính tiền đi vay và thu hồi nợ',
+            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 16),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              _dong(ds.last.tuDo),
+              maxLines: 1,
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: ds.last.tuDo < 0 ? AppColors.expense : AppColors.income,
+              ),
+            ),
+          ),
+          Text(
+            tk.ky.nhanNgan,
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            height: 180,
+            child: LineChart(
+              LineChartData(
+                minX: 0,
+                maxX: (ds.length - 1).toDouble(),
+                minY: san,
+                maxY: maxY,
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  horizontalInterval: buoc,
+                  getDrawingHorizontalLine: (_) => const FlLine(
+                    color: AppColors.outlineVariant,
+                    strokeWidth: 1,
+                  ),
+                ),
+                // Vạch 0 chỉ có nghĩa khi dải có phần âm; khi mọi kỳ đều dương
+                // thì `san` đã bằng 0 và vạch trùng đúng mép dưới.
+                extraLinesData: ExtraLinesData(
+                  horizontalLines: [
+                    if (coAm)
+                      HorizontalLine(
+                        y: 0,
+                        color: AppColors.textSecondary,
+                        strokeWidth: 1,
+                        dashArray: const [6, 4],
+                      ),
+                  ],
+                ),
+                borderData: FlBorderData(show: false),
+                titlesData: FlTitlesData(
+                  topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      interval: buoc,
+                      // "-123.5M" là chuỗi dài nhất ở đây — dài hơn khối Xu
+                      // hướng đúng một dấu trừ, vì dải này đi xuống dưới 0.
+                      reservedSize: 50,
+                      getTitlesWidget: (v, meta) => Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: Text(
+                          rutGon(v),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.right,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      interval: 1,
+                      reservedSize: 26,
+                      getTitlesWidget: (v, meta) {
+                        final i = v.round();
+                        // fl_chart hỏi cả mốc ngoài dải khi vẽ lưới.
+                        if (i < 0 || i >= ds.length) {
+                          return const SizedBox.shrink();
+                        }
+                        final cuoi = i == ds.length - 1;
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            ds[i].ky.nhanTruc,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight:
+                                  cuoi ? FontWeight.bold : FontWeight.normal,
+                              color: cuoi
+                                  ? AppColors.primary
+                                  : AppColors.textSecondary,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                lineTouchData: LineTouchData(
+                  touchTooltipData: LineTouchTooltipData(
+                    getTooltipColor: (_) => AppColors.primary,
+                    // Bắt buộc: mặc định hộp tooltip tràn ra ngoài màn hình ở
+                    // điểm cuối, sát mép phải — thấy trên máy ảo 411dp.
+                    fitInsideHorizontally: true,
+                    fitInsideVertically: true,
+                    getTooltipItems: (spots) => [
+                      for (final s in spots)
+                        LineTooltipItem(
+                          rutGon(s.y),
+                          const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                // Điểm ngoài dải vẫn được VẼ nếu không cắt — mặc định của
+                // fl_chart là `FlClipData.none()` (bẫy 4.17).
+                clipData: const FlClipData.all(),
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: [
+                      for (var i = 0; i < ds.length; i++)
+                        FlSpot(i.toDouble(), ds[i].tuDo),
+                    ],
+                    isCurved: true,
+                    curveSmoothness: 0.25,
+                    // Đường cong nội suy có thể vọt qua mốc 0 giữa hai điểm,
+                    // vẽ ra một kỳ âm không có thật.
+                    preventCurveOverShooting: true,
+                    color: AppColors.income,
+                    barWidth: 3,
+                    isStrokeCapRound: true,
+                    dotData: FlDotData(
+                      show: true,
+                      // Kỳ âm đổi màu chấm: đó là thứ người đọc phải thấy ngay.
+                      // Đổi màu theo từng ĐIỂM thì chính xác — đổi màu cả đoạn
+                      // đường phải dựa vào hộp bao của đường, thứ không trùng
+                      // với dải của biểu đồ.
+                      getDotPainter: (spot, percent, bar, index) =>
+                          FlDotCirclePainter(
+                        radius: 3.5,
+                        color:
+                            spot.y < 0 ? AppColors.expense : AppColors.income,
+                        strokeWidth: 2,
+                        strokeColor: Colors.white,
+                      ),
+                    ),
+                    // Tô phần DƯƠNG (từ đường xuống mốc 0) …
+                    belowBarData: BarAreaData(
+                      show: true,
+                      applyCutOffY: true,
+                      cutOffY: 0,
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          AppColors.income.withValues(alpha: 0.25),
+                          AppColors.income.withValues(alpha: 0.0),
+                        ],
+                      ),
+                    ),
+                    // … và phần ÂM (từ mốc 0 xuống đường) bằng màu chi. Thiếu
+                    // vế này thì vùng tô đổ suốt xuống đáy biểu đồ và kỳ âm
+                    // trông y hệt kỳ dương.
+                    aboveBarData: BarAreaData(
+                      show: coAm,
+                      applyCutOffY: true,
+                      cutOffY: 0,
+                      color: AppColors.expense.withValues(alpha: 0.18),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 /// Số dư ví ở hai đầu kỳ.
 ///
