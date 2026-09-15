@@ -14,8 +14,15 @@ library;
 
 import 'thong_ke_thang.dart';
 import 'khoan_vao_thong_ke.dart';
+import 'pham_vi_ky.dart';
 
 export 'thong_ke_thang.dart' show TongThuChi, rutGon;
+
+// `khoangKyTruoc` chuyển sang `pham_vi_ky.dart` ngày 2026-09-15 để trang Phân
+// tích dùng chung một định nghĩa với trang này — nó phải đúng cho cả tuần, quý
+// và năm chứ không riêng bốn nút của màn báo cáo. Export lại để mọi chỗ gọi và
+// test của trang Xuất báo cáo không phải đổi.
+export 'pham_vi_ky.dart' show khoangKyTruoc;
 
 /// Phạm vi thời gian trên trang Xuất báo cáo — đúng bốn nút của màn Stitch.
 enum PhamViThoiGian { thangNay, thangTruoc, quyNay, tuyChinh }
@@ -56,32 +63,6 @@ enum PhamViThoiGian { thangNay, thangTruoc, quyNay, tuyChinh }
   }
 }
 
-/// Kỳ liền trước của `[from, to)`, để so sánh "so với kỳ trước".
-///
-/// Khoảng trùng khít một số **tháng dương lịch** thì lùi theo tháng, không phải
-/// trừ số ngày: tháng 9 dài 30 ngày, trừ 30 ngày ra `02/08–01/09` — lệch một
-/// ngày, và con số phần trăm sai mà không ai thấy. Khoảng tuỳ chỉnh thì lùi
-/// đúng bằng độ dài của nó, kết thúc ngay lúc kỳ này bắt đầu.
-({DateTime from, DateTime to}) khoangKyTruoc({
-  required DateTime from,
-  required DateTime to,
-}) {
-  final tronThang = from.day == 1 &&
-      to.day == 1 &&
-      from.hour == 0 &&
-      to.hour == 0 &&
-      from.minute == 0 &&
-      to.minute == 0;
-  if (tronThang) {
-    final soThang =
-        (to.year * 12 + to.month) - (from.year * 12 + from.month);
-    if (soThang > 0) {
-      // `month - soThang` bằng 0 hay âm tự cuộn về năm trước nhờ `DateTime`.
-      return (from: DateTime(from.year, from.month - soThang, 1), to: from);
-    }
-  }
-  return (from: from.subtract(to.difference(from)), to: from);
-}
 
 /// Số dư ví ở hai đầu của kỳ báo cáo.
 ///

@@ -8,6 +8,7 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flowmoney/features/analytics/domain/pham_vi_ky.dart';
 import 'package:flowmoney/features/analytics/domain/thong_ke_thang.dart';
 
 void main() {
@@ -181,25 +182,6 @@ void main() {
     });
   });
 
-  group('cacThangGanNhat — bộ chọn tháng', () {
-    test('12 tháng, mới nhất trước, cuộn qua năm trước', () {
-      final ds = cacThangGanNhat(DateTime(2026, 9, 8));
-      expect(ds.length, 12);
-      expect(ds.first, (nam: 2026, thang: 9));
-      expect(ds[8], (nam: 2026, thang: 1));
-      expect(ds[9], (nam: 2025, thang: 12),
-          reason: 'Lùi từ tháng 1 phải sang tháng 12 năm trước, không phải '
-              'tháng 0 hay tháng -1 — Dart chuẩn hoá được, nhưng có test thì '
-              'mới dám tin.');
-      expect(ds.last, (nam: 2025, thang: 10));
-    });
-
-    test('tháng 1 lùi 11 tháng về tháng 2 năm trước', () {
-      final ds = cacThangGanNhat(DateTime(2027, 1, 15));
-      expect(ds.last, (nam: 2026, thang: 2));
-    });
-  });
-
   group('topVaKhac — lát cho donut', () {
     List<ChiTheoDanhMuc> sau(List<double> soTien) {
       final tong = soTien.fold(0.0, (s, x) => s + x);
@@ -238,31 +220,30 @@ void main() {
     });
   });
 
-  group('chuoiTheoThang — biểu đồ xu hướng theo thời gian', () {
+  group('chuoiTheoKy — biểu đồ xu hướng theo thời gian', () {
     test('đủ số tháng, CŨ NHẤT TRƯỚC, tháng cuối là tháng đang xem', () {
-      final ds = chuoiTheoThang(const [], nam: 2026, thang: 9);
+      final ds = chuoiTheoKy(const [], ky: Ky.thang(2026, 9));
       expect(ds.length, 6);
-      expect((ds.first.nam, ds.first.thang), (2026, 4));
-      expect((ds.last.nam, ds.last.thang), (2026, 9),
+      expect(ds.first.ky, Ky.thang(2026, 4));
+      expect(ds.last.ky, Ky.thang(2026, 9),
           reason: 'Trục thời gian đọc trái sang phải, nên điểm cuối phải là '
-              'tháng đang xem. `cacThangGanNhat` sắp NGƯỢC LẠI (mới nhất '
-              'trước) vì nó phục vụ bộ chọn tháng — dùng nhầm thứ tự ấy là '
-              'biểu đồ chạy lùi mà không có lỗi nào báo.');
+              'kỳ đang xem. `cacKyGanNhat` sắp NGƯỢC LẠI (mới nhất trước) vì '
+              'nó phục vụ bộ chọn — dùng nhầm thứ tự ấy là biểu đồ chạy lùi '
+              'mà không có lỗi nào báo.');
     });
 
     test('cuộn qua năm trước khi tháng đang xem ở đầu năm', () {
-      final ds = chuoiTheoThang(const [], nam: 2026, thang: 2);
-      expect((ds.first.nam, ds.first.thang), (2025, 9));
-      expect((ds[3].nam, ds[3].thang), (2025, 12),
+      final ds = chuoiTheoKy(const [], ky: Ky.thang(2026, 2));
+      expect(ds.first.ky, Ky.thang(2025, 9));
+      expect(ds[3].ky, Ky.thang(2025, 12),
           reason: 'Lùi từ tháng 2 phải đi qua tháng 12 năm trước, không phải '
               'tháng 0. Tự trừ rồi cộng 12 là chỗ đã sinh lỗi ở nhiều app.');
     });
 
     test('khoản ngày 29/02 năm nhuận rơi đúng điểm tháng 2', () {
-      final ds = chuoiTheoThang(
+      final ds = chuoiTheoKy(
         [k(ngay: DateTime(2028, 2, 29, 12), soTien: 700000)],
-        nam: 2028,
-        thang: 2,
+        ky: Ky.thang(2028, 2),
       );
       expect(ds.last.tong.chi, 700000,
           reason: 'Chia trục bằng "mỗi tháng 30 ngày" là đánh rơi ngày 29/02 '
@@ -270,10 +251,9 @@ void main() {
     });
 
     test('tháng không có giao dịch vẫn giữ chỗ với số 0', () {
-      final ds = chuoiTheoThang(
+      final ds = chuoiTheoKy(
         [k(ngay: DateTime(2026, 9, 5), soTien: 300000)],
-        nam: 2026,
-        thang: 9,
+        ky: Ky.thang(2026, 9),
       );
       expect(ds.length, 6);
       expect(ds.take(5).every((d) => d.tong.thu == 0 && d.tong.chi == 0),
@@ -284,10 +264,9 @@ void main() {
     });
 
     test('chuyển ví không vào thu lẫn chi của bất kỳ điểm nào', () {
-      final ds = chuoiTheoThang(
+      final ds = chuoiTheoKy(
         [k(ngay: DateTime(2026, 9, 5), soTien: 500000, loai: 'transfer')],
-        nam: 2026,
-        thang: 9,
+        ky: Ky.thang(2026, 9),
       );
       expect(ds.last.tong.chi, 0);
       expect(ds.last.tong.thu, 0,
@@ -297,10 +276,9 @@ void main() {
     });
 
     test('khoản lúc 00:00 ngày 1 thuộc đúng một điểm, không đếm hai lần', () {
-      final ds = chuoiTheoThang(
+      final ds = chuoiTheoKy(
         [k(ngay: DateTime(2026, 9, 1), soTien: 200000)],
-        nam: 2026,
-        thang: 9,
+        ky: Ky.thang(2026, 9),
       );
       expect(ds.last.tong.chi, 200000);
       expect(ds[4].tong.chi, 0,
@@ -309,6 +287,37 @@ void main() {
       expect(ds.fold(0.0, (s, d) => s + d.tong.chi), 200000,
           reason: 'Tổng mọi điểm phải bằng đúng số tiền đã ghi — các khoảng '
               'không được chồng lên nhau.');
+    });
+
+    // ── Đơn vị khác tháng — thêm 2026-09-15 (P1) ──────────────────────────
+    test('chuỗi theo TUẦN có 6 điểm tuần, cũ nhất trước', () {
+      final ds = chuoiTheoKy(
+        [
+          k(ngay: DateTime(2026, 9, 15), soTien: 100000),
+          k(ngay: DateTime(2026, 9, 8), soTien: 200000),
+        ],
+        ky: Ky.tuan(DateTime(2026, 9, 17)),
+      );
+      expect(ds.length, 6);
+      expect(ds.last.ky.from, DateTime(2026, 9, 14),
+          reason: 'điểm cuối là tuần đang xem');
+      expect(ds.last.tong.chi, 100000);
+      expect(ds[4].tong.chi, 200000, reason: 'tuần liền trước');
+    });
+
+    test('chuỗi theo QUÝ lùi đúng ba tháng mỗi điểm', () {
+      final ds = chuoiTheoKy(const [], ky: Ky.quy(2026, 3));
+      expect(ds.length, 6);
+      expect(ds.last.ky, Ky.quy(2026, 3));
+      expect(ds.first.ky, Ky.quy(2025, 2),
+          reason: 'lùi 5 quý từ Q3/2026 là Q2/2025 — phải đi qua mốc năm');
+    });
+
+    test('mỗi điểm mang đúng Ky của nó, nhãn trục đọc thẳng từ đó', () {
+      final ds = chuoiTheoKy(const [], ky: Ky.thang(2026, 9));
+      expect(ds.map((d) => d.ky.nhanTruc).toList(),
+          ['T4', 'T5', 'T6', 'T7', 'T8', 'T9'],
+          reason: 'trang không phải đoán đơn vị từ hai con số nữa');
     });
   });
 
@@ -321,20 +330,20 @@ void main() {
           categoryId: cat,
         );
 
-    test('mỗi danh mục một chuỗi đủ soThang điểm, cũ nhất trước', () {
+    test('mỗi danh mục một chuỗi đủ soKy điểm, cũ nhất trước', () {
       final ds = [
         kd('an', DateTime(2026, 7, 10), 1000, 'chi'),
         kd('an', DateTime(2026, 9, 10), 3000, 'chi'),
         kd('luong', DateTime(2026, 9, 5), 9000, 'thu'),
       ];
 
-      final m = chuoiTheoDanhMuc(ds, nam: 2026, thang: 9, soThang: 6);
+      final m = chuoiTheoDanhMuc(ds, ky: Ky.thang(2026, 9));
 
       expect(m.keys.toSet(), {'an', 'luong'});
       expect(m['an']!.length, 6);
-      expect(m['an']!.first.thang, 4,
-          reason: 'Cũ nhất trước, như chuoiTheoThang');
-      expect(m['an']!.last.thang, 9);
+      expect(m['an']!.first.ky, Ky.thang(2026, 4),
+          reason: 'Cũ nhất trước, như chuoiTheoKy');
+      expect(m['an']!.last.ky, Ky.thang(2026, 9));
       expect(m['an']![3].tong.chi, 1000, reason: 'T7 là điểm thứ tư');
       expect(m['an']![5].tong.chi, 3000);
     });
@@ -342,7 +351,7 @@ void main() {
     test('tháng rỗng vẫn là một điểm mang số 0', () {
       final ds = [kd('an', DateTime(2026, 9, 10), 3000, 'chi')];
 
-      final m = chuoiTheoDanhMuc(ds, nam: 2026, thang: 9);
+      final m = chuoiTheoDanhMuc(ds, ky: Ky.thang(2026, 9));
 
       expect(m['an']!.length, 6);
       expect(m['an']!.take(5).every((d) => d.tong.chi == 0), isTrue,
@@ -350,18 +359,17 @@ void main() {
               'ra như liền kề — bài học của lát 2b');
     });
 
-    test('cho cùng kết quả với chuoiTheoThang lọc tay từng danh mục', () {
+    test('cho cùng kết quả với chuoiTheoKy lọc tay từng danh mục', () {
       final ds = [
         kd('an', DateTime(2026, 5, 3), 700, 'chi'),
         kd('an', DateTime(2026, 8, 21), 1200, 'chi'),
         kd('di', DateTime(2026, 8, 21), 400, 'chi'),
       ];
 
-      final m = chuoiTheoDanhMuc(ds, nam: 2026, thang: 9);
-      final thuCong = chuoiTheoThang(
+      final m = chuoiTheoDanhMuc(ds, ky: Ky.thang(2026, 9));
+      final thuCong = chuoiTheoKy(
         ds.where((x) => x.categoryId == 'an').toList(),
-        nam: 2026,
-        thang: 9,
+        ky: Ky.thang(2026, 9),
       );
 
       expect(
@@ -375,29 +383,28 @@ void main() {
     test('tháng ngắn: khoản cuối tháng 2 vẫn vào đúng cột', () {
       final ds = [kd('an', DateTime(2026, 2, 28), 500, 'chi')];
 
-      final m = chuoiTheoDanhMuc(ds, nam: 2026, thang: 3, soThang: 3);
+      final m = chuoiTheoDanhMuc(ds, ky: Ky.thang(2026, 3), soKy: 3);
 
-      expect(m['an']!.map((d) => d.thang).toList(), [1, 2, 3]);
+      expect(m['an']!.map((d) => d.ky.nhanTruc).toList(), ['T1', 'T2', 'T3']);
       expect(m['an']![1].tong.chi, 500);
     });
 
     test('năm nhuận: 29/02/2024 nằm đúng tháng 2', () {
       final ds = [kd('an', DateTime(2024, 2, 29), 800, 'chi')];
 
-      final m = chuoiTheoDanhMuc(ds, nam: 2024, thang: 3, soThang: 3);
+      final m = chuoiTheoDanhMuc(ds, ky: Ky.thang(2024, 3), soKy: 3);
 
-      expect(m['an']![1].nam, 2024);
-      expect(m['an']![1].thang, 2);
+      expect(m['an']![1].ky, Ky.thang(2024, 2));
       expect(m['an']![1].tong.chi, 800);
     });
 
     test('cuộn qua năm: tháng 1 lùi về tháng 12 năm trước', () {
       final ds = [kd('an', DateTime(2025, 12, 15), 600, 'chi')];
 
-      final m = chuoiTheoDanhMuc(ds, nam: 2026, thang: 1, soThang: 3);
+      final m = chuoiTheoDanhMuc(ds, ky: Ky.thang(2026, 1), soKy: 3);
 
-      expect(m['an']!.map((d) => (d.nam, d.thang)).toList(),
-          [(2025, 11), (2025, 12), (2026, 1)]);
+      expect(m['an']!.map((d) => d.ky).toList(),
+          [Ky.thang(2025, 11), Ky.thang(2025, 12), Ky.thang(2026, 1)]);
       expect(m['an']![1].tong.chi, 600);
     });
 
@@ -407,7 +414,7 @@ void main() {
         kd('vi', DateTime(2026, 9, 11), 5000, 'transfer'),
       ];
 
-      final m = chuoiTheoDanhMuc(ds, nam: 2026, thang: 9);
+      final m = chuoiTheoDanhMuc(ds, ky: Ky.thang(2026, 9));
 
       expect(m.keys.toSet(), {'an'},
           reason: 'Danh mục chỉ có khoản chuyển thì không đáng có chip');
@@ -416,7 +423,7 @@ void main() {
     test('danh mục chỉ có khoản ngoài 6 tháng thì không có khoá', () {
       final ds = [kd('cu', DateTime(2025, 1, 5), 1000, 'chi')];
 
-      expect(chuoiTheoDanhMuc(ds, nam: 2026, thang: 9), isEmpty,
+      expect(chuoiTheoDanhMuc(ds, ky: Ky.thang(2026, 9)), isEmpty,
           reason: 'Dropdown chỉ liệt kê danh mục CÓ phát sinh trong 6 tháng');
     });
   });
