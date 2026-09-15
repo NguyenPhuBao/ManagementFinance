@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 import '../../data/analytics_repository.dart';
+import '../../domain/pham_vi_ky.dart';
 
 abstract class AnalyticsState extends Equatable {
   const AnalyticsState();
@@ -14,21 +15,28 @@ class AnalyticsInitial extends AnalyticsState {
 }
 
 class AnalyticsLoading extends AnalyticsState {
-  final int nam;
-  final int thang;
+  final Ky ky;
 
-  const AnalyticsLoading({required this.nam, required this.thang});
+  const AnalyticsLoading({required this.ky});
 
   @override
-  List<Object?> get props => [nam, thang];
+  List<Object?> get props => [ky];
 }
 
 class AnalyticsLoaded extends AnalyticsState {
-  final ThongKeThang thongKe;
+  final ThongKeKy thongKe;
 
-  /// Các tháng bộ chọn cho phép, mới nhất trước. Tính ở cubit chứ không ở
-  /// widget, để test được và để "12 tháng" có đúng một chỗ định nghĩa.
-  final List<({int nam, int thang})> cacThang;
+  /// Số đọc của `clock` lúc dựng state.
+  ///
+  /// Bộ chọn phải lướt được danh sách của **đơn vị người dùng đang xem** trước
+  /// khi họ chọn kỳ nào; bắt cubit giữ danh sách ấy nghĩa là mỗi lần chạm một
+  /// chip là một vòng cubit → state → dựng lại cả trang, cho một thao tác chưa
+  /// đổi dữ liệu. Sheet tự gọi `cacKyGanNhat(moc, donVi)` — luật "12 kỳ" vẫn có
+  /// đúng một chỗ định nghĩa ở domain và vẫn được test ở đó.
+  ///
+  /// Lấy từ đây chứ không gọi `DateTime.now()` trong widget, để widget test
+  /// không phụ thuộc đồng hồ máy chạy nó.
+  final DateTime moc;
 
   /// Nhóm đang chọn ở khối "Cơ cấu theo danh mục" — một trong
   /// `kCategoryClassifies`, mặc định `'chi'`. Không null: mức gốc ba lát
@@ -45,14 +53,13 @@ class AnalyticsLoaded extends AnalyticsState {
 
   const AnalyticsLoaded({
     required this.thongKe,
-    required this.cacThang,
+    required this.moc,
     this.phanLoaiDangXem = 'chi',
     this.danhMucXuHuong = const {},
   });
 
   @override
-  List<Object?> get props =>
-      [thongKe, cacThang, phanLoaiDangXem, danhMucXuHuong];
+  List<Object?> get props => [thongKe, moc, phanLoaiDangXem, danhMucXuHuong];
 }
 
 class AnalyticsError extends AnalyticsState {

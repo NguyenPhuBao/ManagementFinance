@@ -14,6 +14,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/analytics/data/analytics_repository.dart';
+import 'package:flowmoney/features/analytics/domain/pham_vi_ky.dart';
 import 'package:flowmoney/features/analytics/data/analytics_repository_impl.dart';
 import 'package:flowmoney/features/budget/data/datasources/budget_local_data_source.dart';
 import 'package:flowmoney/features/budget/data/repositories/budget_repository.dart';
@@ -82,8 +83,12 @@ void main() {
     ));
   }
 
-  Future<ThongKeThang> lanDau({int nam = 2026, int thang = 9}) =>
-      repo.watchThang(1, nam: nam, thang: thang, now: now).first;
+  Future<ThongKeKy> lanDau({int nam = 2026, int thang = 9}) =>
+      repo.watchKy(1, ky: Ky.thang(nam, thang), now: now).first;
+
+  /// Cùng đường với [lanDau] nhưng cho **kỳ bất kỳ** — dùng cho các ca đơn vị
+  /// khác tháng, nơi luật ngân sách đổi (mục 7 spec P1).
+  Future<ThongKeKy> lanDauKy(Ky ky) => repo.watchKy(1, ky: ky, now: now).first;
 
   group('đổi hàng Drift sang thống kê', () {
     test('tổng thu/chi, tháng trước, và phần trăm so sánh', () async {
@@ -94,8 +99,7 @@ void main() {
 
       final tk = await lanDau();
 
-      expect(tk.nam, 2026);
-      expect(tk.thang, 9);
+      expect(tk.ky, Ky.thang(2026, 9));
       expect(tk.tong.thu, 5000000);
       expect(tk.tong.chi, 300000);
       expect(tk.tongTruoc.thu, 4000000);
@@ -202,6 +206,67 @@ void main() {
               'nhãn sang "% tổng chi" khi thấy null.');
     });
 
+    // ⚠️ Luật thêm 2026-09-15 (P1, mục 7 spec). `BudgetView.spent` đếm theo kỳ
+    // của CHÍNH ngân sách ấy, không theo kỳ đang xem. Xem một tuần mà thanh vẽ
+    // mức chi cả tháng là đặt hai kỳ khác nhau lên cùng một tỉ lệ — sai IM
+    // LẶNG, con số trông rất hợp lý.
+    test('kỳ TUẦN thì không gắn ngân sách vào dòng nào', () async {
+      await budgets.addBudget(
+        idaccount: 1,
+        categoryId: 'c_an',
+        amount: 1000000,
+        startDate: DateTime(2026, 9, 1),
+        endDate: null,
+        recurrence: true,
+        timeRecurrence: 'Month',
+      );
+      await giaoDich(id: 't1', ngay: DateTime(2026, 9, 15), soTien: 320000, danhMuc: 'c_an');
+
+      final tk = await lanDauKy(Ky.tuan(DateTime(2026, 9, 17)));
+
+      expect(tk.danhMuc, isNotEmpty, reason: 'tuần này có khoản chi thật');
+      expect(
+        tk.danhMuc.every((d) => d.nganSachHanMuc == null),
+        isTrue,
+        reason: 'hạn mức tháng cạnh số liệu một tuần là so hai kỳ khác nhau; '
+            'dòng phải rơi về nhãn "% tổng chi"',
+      );
+    });
+
+    test('kỳ NĂM cũng không gắn ngân sách', () async {
+      await budgets.addBudget(
+        idaccount: 1,
+        categoryId: 'c_an',
+        amount: 1000000,
+        startDate: DateTime(2026, 1, 1),
+        endDate: null,
+        recurrence: true,
+        timeRecurrence: 'Month',
+      );
+      await giaoDich(id: 't1', ngay: DateTime(2026, 9, 2), soTien: 320000, danhMuc: 'c_an');
+
+      final tk = await lanDauKy(Ky.nam(2026));
+
+      expect(tk.danhMuc.every((d) => d.nganSachHanMuc == null), isTrue);
+    });
+
+    test('kỳ THÁNG vẫn gắn ngân sách như cũ — luật chỉ siết đơn vị khác', () async {
+      await budgets.addBudget(
+        idaccount: 1,
+        categoryId: 'c_an',
+        amount: 1000000,
+        startDate: DateTime(2026, 9, 1),
+        endDate: null,
+        recurrence: true,
+        timeRecurrence: 'Month',
+      );
+      await giaoDich(id: 't1', ngay: DateTime(2026, 9, 2), soTien: 320000, danhMuc: 'c_an');
+
+      final tk = await lanDauKy(Ky.thang(2026, 9));
+
+      expect(tk.danhMuc.single.nganSachHanMuc, 1000000);
+    });
+
     test('ngân sách ĐÃ HẾT HẠN trước tháng đang xem thì không tính', () async {
       await budgets.addBudget(
         idaccount: 1,
@@ -230,8 +295,8 @@ void main() {
       final tk = await lanDau();
 
       expect(tk.chuoi.length, 6);
-      expect((tk.chuoi.first.nam, tk.chuoi.first.thang), (2026, 4));
-      expect((tk.chuoi.last.nam, tk.chuoi.last.thang), (2026, 9));
+      expect(tk.chuoi.first.ky, Ky.thang(2026, 4));
+      expect(tk.chuoi.last.ky, Ky.thang(2026, 9));
       expect(tk.chuoi.first.tong.chi, 800000,
           reason: 'Chuỗi nhìn xa hơn hai tháng mà `tong`/`tongTruoc` cần. Lọc '
               '`txs` theo tháng đang xem trước khi dựng chuỗi là điểm đầu '
@@ -253,8 +318,8 @@ void main() {
 
   group('stream', () {
     test('ghi thêm giao dịch thì phát lại số mới', () async {
-      final ds = <ThongKeThang>[];
-      final sub = repo.watchThang(1, nam: 2026, thang: 9, now: now).listen(ds.add);
+      final ds = <ThongKeKy>[];
+      final sub = repo.watchKy(1, ky: Ky.thang(2026, 9), now: now).listen(ds.add);
       addTearDown(sub.cancel);
 
       await Future<void>.delayed(const Duration(milliseconds: 50));

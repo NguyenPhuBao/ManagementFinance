@@ -3,11 +3,12 @@ import 'dart:async';
 import '../../../core/database/app_database.dart';
 import '../../budget/data/models/budget_entity.dart';
 import '../../budget/data/repositories/budget_repository.dart';
+import '../domain/pham_vi_ky.dart';
 import '../domain/phan_loai_dong_tien.dart';
 import '../domain/thong_ke_thang.dart';
 import 'analytics_repository.dart';
 
-/// Gộp ba nguồn — giao dịch, danh mục, ngân sách — thành một [ThongKeThang].
+/// Gộp ba nguồn — giao dịch, danh mục, ngân sách — thành một [ThongKeKy].
 ///
 /// Cùng khuôn với `BudgetRepositoryImpl.watchBudgets`: một controller, mỗi
 /// nguồn một subscription, phát khi **cả ba** đã có dữ liệu. Không dùng thư
@@ -19,26 +20,25 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
   AnalyticsRepositoryImpl({required this.db, required this.budgetRepository});
 
   @override
-  Stream<ThongKeThang> watchThang(
+  Stream<ThongKeKy> watchKy(
     int idaccount, {
-    required int nam,
-    required int thang,
+    required Ky ky,
     DateTime? now,
   }) {
     final at = now ?? DateTime.now();
-    final bien = bienThang(nam, thang);
-    // `thang - 1` bằng 0 tự cuộn về tháng 12 năm trước nhờ `DateTime`.
-    final bienTruoc = bienThang(nam, thang - 1);
+    // Kỳ liền trước mượn nguyên `khoangKyTruoc` — hàm đã đúng cho cả năm đơn
+    // vị: tuần lùi 7 ngày, tháng/quý/năm lùi theo tháng dương lịch, khoảng tuỳ
+    // chọn lùi đúng độ dài của nó.
+    final truoc = khoangKyTruoc(from: ky.from, to: ky.to);
 
-    // Mốc tra ngân sách. Kỳ ngân sách không trùng tháng dương lịch, nên chọn
-    // một điểm trong tháng: tháng hiện tại thì lấy đúng "bây giờ" để số đã chi
-    // khớp trang Ngân sách; tháng đã qua thì lấy giây cuối của tháng ấy, để
-    // ngân sách nào còn sống tới cuối tháng vẫn được tính.
-    final laThangHienTai = at.year == nam && at.month == thang;
+    // Mốc tra ngân sách. Kỳ ngân sách không trùng kỳ đang xem, nên chọn một
+    // điểm trong kỳ: kỳ đang diễn ra thì lấy đúng "bây giờ" để số đã chi khớp
+    // trang Ngân sách; kỳ đã qua thì lấy giây cuối của kỳ ấy, để ngân sách nào
+    // còn sống tới cuối kỳ vẫn được tính.
     final mocNganSach =
-        laThangHienTai ? at : bien.to.subtract(const Duration(seconds: 1));
+        ky.chua(at) ? at : ky.to.subtract(const Duration(seconds: 1));
 
-    final controller = StreamController<ThongKeThang>.broadcast();
+    final controller = StreamController<ThongKeKy>.broadcast();
     List<Transaction>? txs;
     List<Category>? cats;
     List<BudgetView>? nganSach;
@@ -48,12 +48,9 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
       if (controller.isClosed) return;
       try {
         controller.add(_dung(
-          nam: nam,
-          thang: thang,
-          from: bien.from,
-          to: bien.to,
-          fromTruoc: bienTruoc.from,
-          toTruoc: bienTruoc.to,
+          ky: ky,
+          fromTruoc: truoc.from,
+          toTruoc: truoc.to,
           mocNganSach: mocNganSach,
           txs: txs!,
           cats: cats!,
@@ -95,11 +92,8 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
     return controller.stream;
   }
 
-  ThongKeThang _dung({
-    required int nam,
-    required int thang,
-    required DateTime from,
-    required DateTime to,
+  ThongKeKy _dung({
+    required Ky ky,
     required DateTime fromTruoc,
     required DateTime toTruoc,
     required DateTime mocNganSach,
@@ -129,6 +123,9 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
         ),
     ];
 
+    final from = ky.from;
+    final to = ky.to;
+
     final tong = tongThuChi(khoan, from: from, to: to);
     final tongTruoc = tongThuChi(khoan, from: fromTruoc, to: toTruoc);
     final chi = chiTheoDanhMuc(khoan, from: from, to: to);
@@ -141,6 +138,14 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
     // tab), nên phải lọc ở đây. Bỏ dòng `isExpired` là một ngân sách chết từ
     // tháng 6 vẫn ra "10% ngân sách" ở tháng 9 — bản sai có chủ ý đã chứng
     // minh test bắt được đúng ca này.
+    // ⚠️ Ngân sách chỉ có nghĩa khi kỳ đang xem trùng khít một THÁNG dương
+    // lịch. `BudgetView.spent` đếm theo kỳ của **chính ngân sách ấy**, không
+    // theo kỳ đang xem — vẽ thanh ấy cạnh số liệu một tuần là đặt hai kỳ khác
+    // nhau lên cùng một tỉ lệ, và nó sai **im lặng**: con số trông rất hợp lý.
+    // Khi kỳ khác tháng, dòng danh mục tự rơi về nhãn "% tổng chi" (đường đã có
+    // sẵn cho ca danh mục không có ngân sách).
+    final gapNganSach = ky.donVi == DonViKy.thang;
+
     final nganSachTheoDanhMuc = <String, BudgetEntity>{};
     for (final v in nganSach) {
       final id = v.budget.categoryId;
@@ -157,8 +162,9 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
           final ten = c.categoryId == null
               ? 'Chưa phân loại'
               : (cat?.name ?? 'Danh mục đã xoá');
-          final ns =
-              c.categoryId == null ? null : nganSachTheoDanhMuc[c.categoryId];
+          final ns = (gapNganSach && c.categoryId != null)
+              ? nganSachTheoDanhMuc[c.categoryId]
+              : null;
           return DongDanhMuc(
             categoryId: c.categoryId,
             ten: ten,
@@ -196,9 +202,10 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
             // Ngân sách chỉ có nghĩa cho chi tiêu: `BudgetRepository` không có
             // khái niệm ngân sách thu. Gắn nó vào lát thu là hiện một hạn mức
             // không tồn tại.
-            final ns = (l.phanLoai == 'chi' && c.categoryId != null)
-                ? nganSachTheoDanhMuc[c.categoryId]
-                : null;
+            final ns =
+                (gapNganSach && l.phanLoai == 'chi' && c.categoryId != null)
+                    ? nganSachTheoDanhMuc[c.categoryId]
+                    : null;
             return DongDanhMuc(
               categoryId: c.categoryId,
               ten: ten,
@@ -213,21 +220,20 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
       ];
     }
 
-    return ThongKeThang(
-      nam: nam,
-      thang: thang,
+    return ThongKeKy(
+      ky: ky,
       tong: tong,
       tongTruoc: tongTruoc,
       chiTheoDanhMuc: chi,
       danhMuc: dong,
-      // Dựng từ `khoan` — TOÀN BỘ giao dịch của tài khoản, chưa lọc tháng.
-      // Chuỗi nhìn xa sáu tháng, xa hơn `tong`/`tongTruoc` nhiều.
-      chuoi: chuoiTheoThang(khoan, nam: nam, thang: thang),
+      // Dựng từ `khoan` — TOÀN BỘ giao dịch của tài khoản, chưa lọc kỳ. Chuỗi
+      // nhìn xa sáu kỳ, xa hơn `tong`/`tongTruoc` nhiều.
+      chuoi: chuoiTheoKy(khoan, ky: ky),
       latPhanLoai: lat,
       danhMucTheoLat: theoLat,
-      // Cùng lý do với `chuoi`: dựng từ toàn bộ giao dịch, không phải từ tháng
+      // Cùng lý do với `chuoi`: dựng từ toàn bộ giao dịch, không phải từ kỳ
       // đang xem.
-      chuoiDanhMuc: chuoiTheoDanhMuc(khoan, nam: nam, thang: thang),
+      chuoiDanhMuc: chuoiTheoDanhMuc(khoan, ky: ky),
     );
   }
 }

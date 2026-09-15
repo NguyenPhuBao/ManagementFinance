@@ -12,20 +12,20 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/features/analytics/data/analytics_repository.dart';
+import 'package:flowmoney/features/analytics/domain/pham_vi_ky.dart';
 import 'package:flowmoney/features/analytics/domain/phan_loai_dong_tien.dart';
 import 'package:flowmoney/features/analytics/domain/thong_ke_thang.dart';
 import 'package:flowmoney/features/analytics/presentation/bloc/analytics_cubit.dart';
 
-ThongKeThang _tk(
+ThongKeKy _tk(
   int nam,
   int thang, {
   double chi = 0,
   List<LatPhanLoai> lat = const [],
   Map<String?, List<DiemThoiGian>> chuoiDm = const {},
 }) =>
-    ThongKeThang(
-      nam: nam,
-      thang: thang,
+    ThongKeKy(
+      ky: Ky.thang(nam, thang),
       tong: TongThuChi(thu: 0, chi: chi),
       tongTruoc: const TongThuChi(thu: 0, chi: 0),
       chiTheoDanhMuc: const [],
@@ -41,21 +41,20 @@ const _latChiThu = [
 ];
 
 class _RepoGia implements AnalyticsRepository {
-  final goi = <({int idaccount, int nam, int thang, DateTime? now})>[];
-  final cacController = <StreamController<ThongKeThang>>[];
+  final goi = <({int idaccount, Ky ky, DateTime? now})>[];
+  final cacController = <StreamController<ThongKeKy>>[];
   int soLanHuy = 0;
 
-  StreamController<ThongKeThang> get moiNhat => cacController.last;
+  StreamController<ThongKeKy> get moiNhat => cacController.last;
 
   @override
-  Stream<ThongKeThang> watchThang(
+  Stream<ThongKeKy> watchKy(
     int idaccount, {
-    required int nam,
-    required int thang,
+    required Ky ky,
     DateTime? now,
   }) {
-    goi.add((idaccount: idaccount, nam: nam, thang: thang, now: now));
-    final c = StreamController<ThongKeThang>();
+    goi.add((idaccount: idaccount, ky: ky, now: now));
+    final c = StreamController<ThongKeKy>();
     c.onCancel = () => soLanHuy++;
     cacController.add(c);
     return c.stream;
@@ -95,7 +94,7 @@ void main() {
     cubit.xem(10);
 
     expect(cubit.state, isA<AnalyticsLoading>());
-    expect(repo.goi.single, (idaccount: 10, nam: 2026, thang: 9, now: now),
+    expect(repo.goi.single, (idaccount: 10, ky: Ky.thang(2026, 9), now: now),
         reason: 'Trang cũ hiện "T6 2026" cứng trong khi đang là tháng 9. '
             'Tháng phải lấy từ đồng hồ, và cùng cái `now` ấy phải xuống tới '
             'repository để mốc tra ngân sách khớp.');
@@ -105,31 +104,32 @@ void main() {
 
     final s = cubit.state as AnalyticsLoaded;
     expect(s.thongKe.tong.chi, 5);
-    expect(s.cacThang.length, 12);
-    expect(s.cacThang.first, (nam: 2026, thang: 9));
+    expect(s.moc, now,
+        reason: 'bộ chọn tự dựng danh sách kỳ từ mốc này — luật "12 kỳ" nằm ở '
+            'domain (cacKyGanNhat), không ở state');
   });
 
-  test('chọn tháng khác thì huỷ đăng ký cũ và hỏi lại đúng tháng', () async {
+  test('chọn kỳ khác thì huỷ đăng ký cũ và hỏi lại đúng kỳ', () async {
     cubit.xem(10);
     repo.moiNhat.add(_tk(2026, 9));
     await Future<void>.delayed(Duration.zero);
 
-    cubit.chonThang(2026, 8);
+    cubit.chonKy(Ky.thang(2026, 8));
     await Future<void>.delayed(Duration.zero);
 
     expect(repo.soLanHuy, 1,
         reason: 'Không huỷ là hai stream cùng phát; cái phát sau thắng, và '
             'không có gì bảo đảm đó là tháng người dùng vừa chọn.');
-    expect(repo.goi.last, (idaccount: 10, nam: 2026, thang: 8, now: now));
+    expect(repo.goi.last, (idaccount: 10, ky: Ky.thang(2026, 8), now: now));
     expect(cubit.state, isA<AnalyticsLoading>());
 
     repo.moiNhat.add(_tk(2026, 8, chi: 7));
     await Future<void>.delayed(Duration.zero);
-    expect((cubit.state as AnalyticsLoaded).thongKe.thang, 8);
+    expect((cubit.state as AnalyticsLoaded).thongKe.ky, Ky.thang(2026, 8));
   });
 
   test('chọn tháng khi chưa đăng nhập thì không làm gì', () {
-    cubit.chonThang(2026, 8);
+    cubit.chonKy(Ky.thang(2026, 8));
     expect(repo.goi, isEmpty);
   });
 
@@ -150,7 +150,7 @@ void main() {
   });
 
   group('hai lựa chọn của người dùng', () {
-    Future<void> phat(ThongKeThang tk) async {
+    Future<void> phat(ThongKeKy tk) async {
       repo.moiNhat.add(tk);
       await Future<void>.delayed(Duration.zero);
     }
@@ -273,7 +273,7 @@ void main() {
       cubit.chonPhanLoai('thu');
       cubit.batTatDanhMucXuHuong('an');
 
-      cubit.chonThang(2026, 8);
+      cubit.chonKy(Ky.thang(2026, 8));
       await phat(_tk(2026, 8, lat: _latChiThu, chuoiDm: {'an': const []}));
 
       final s = cubit.state as AnalyticsLoaded;

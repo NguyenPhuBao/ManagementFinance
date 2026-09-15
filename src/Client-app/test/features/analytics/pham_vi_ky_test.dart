@@ -218,15 +218,64 @@ void main() {
     });
   });
 
+  group('nhanOChon — nhãn ô trên header', () {
+    final moc = DateTime(2026, 9, 17);
+
+    test('kỳ chứa hôm nay thì có tiền tố "… này"', () {
+      expect(nhanOChon(Ky.thang(2026, 9), moc), 'Tháng này (T9 2026)');
+      expect(nhanOChon(Ky.tuan(moc), moc), 'Tuần này (Tuần 38)');
+      expect(nhanOChon(Ky.nam(2026), moc), 'Năm nay (2026)');
+    });
+
+    test('kỳ đã qua thì hiện tên trần', () {
+      expect(nhanOChon(Ky.thang(2026, 8), moc), 'T8 2026',
+          reason: 'giữ "Tháng này" cho một tháng đã qua là nói dối về thứ '
+              'đang hiện trên màn hình');
+      expect(nhanOChon(Ky.quy(2026, 1), moc), 'Quý 1 2026');
+    });
+
+    test('kỳ tuỳ chọn không bao giờ mang dạng "… này"', () {
+      final k =
+          Ky.tuyChon(from: DateTime(2026, 9, 3), to: DateTime(2026, 9, 30));
+      expect(k.chua(moc), isTrue, reason: 'khoảng này có chứa hôm nay');
+      expect(nhanOChon(k, moc), '03/09 – 29/09');
+    });
+  });
+
+  group('nhanKyTruoc — câu "so với …" ở thẻ tổng', () {
+    test('cùng năm thì bỏ năm cho thẻ đỡ chật', () {
+      expect(nhanKyTruoc(Ky.thang(2026, 9)), 'T8');
+      expect(nhanKyTruoc(Ky.quy(2026, 3)), 'Quý 2');
+    });
+
+    test('kỳ trước rơi sang năm khác thì GIỮ năm', () {
+      expect(nhanKyTruoc(Ky.thang(2026, 1)), 'T12 2025',
+          reason: 'đang xem T1 2026 mà đọc "so với T12" thì không biết T12 nào');
+      expect(nhanKyTruoc(Ky.quy(2026, 1)), 'Quý 4 2025');
+    });
+
+    test('kỳ năm luôn giữ số năm', () {
+      expect(nhanKyTruoc(Ky.nam(2026)), '2025');
+    });
+
+    test('tuần và khoảng tuỳ chọn dùng nhãn ngắn sẵn có', () {
+      expect(nhanKyTruoc(Ky.tuan(DateTime(2026, 9, 17))), 'Tuần 37');
+      final k =
+          Ky.tuyChon(from: DateTime(2026, 9, 11), to: DateTime(2026, 9, 18));
+      expect(nhanKyTruoc(k), '04/09 – 10/09');
+    });
+  });
+
   group('tieuDeXuHuong', () {
     test('đổi theo đơn vị, kỳ tuỳ chọn rơi về tháng', () {
-      expect(tieuDeXuHuong(DonViKy.tuan), 'XU HƯỚNG 6 TUẦN');
-      expect(tieuDeXuHuong(DonViKy.thang), 'XU HƯỚNG 6 THÁNG');
-      expect(tieuDeXuHuong(DonViKy.quy), 'XU HƯỚNG 6 QUÝ');
-      expect(tieuDeXuHuong(DonViKy.nam), 'XU HƯỚNG 6 NĂM');
+      expect(tieuDeXuHuong(DonViKy.tuan), 'Xu hướng 6 tuần');
+      expect(tieuDeXuHuong(DonViKy.thang), 'Xu hướng 6 tháng',
+          reason: 'đúng chuỗi trang đang hiện — bước 1 không đổi hình thức');
+      expect(tieuDeXuHuong(DonViKy.quy), 'Xu hướng 6 quý');
+      expect(tieuDeXuHuong(DonViKy.nam), 'Xu hướng 6 năm');
       expect(
         tieuDeXuHuong(DonViKy.tuyChon),
-        'XU HƯỚNG 6 THÁNG',
+        'Xu hướng 6 tháng',
         reason: 'khoảng tuỳ ý không có đơn vị tự nhiên để lùi',
       );
     });

@@ -11,6 +11,7 @@ import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../data/analytics_repository.dart';
+import '../../domain/pham_vi_ky.dart';
 import '../../domain/phan_loai_dong_tien.dart';
 import '../../domain/thong_ke_thang.dart';
 import '../bloc/analytics_cubit.dart';
@@ -101,7 +102,7 @@ class _NoiDung extends StatelessWidget {
           :final danhMucXuHuong
         ):
         if (thongKe.rong) {
-          return [_Rong(nam: thongKe.nam, thang: thongKe.thang)];
+          return [_Rong(ky: thongKe.ky)];
         }
         return [
           _KhoiTong(tk: thongKe),
@@ -136,20 +137,19 @@ class _NoiDung extends StatelessWidget {
 
 String _dong(double x) => '${CurrencyFormatter.formatSoThoi(x.round())}đ';
 
-/// `T9 2026` — nhãn ngắn của một tháng.
-String _nhanThang(int nam, int thang) => 'T$thang $nam';
-
-int _thangTruoc(int thang) => thang == 1 ? 12 : thang - 1;
-
-/// "Tăng 25% so với T8" / "Giảm 5% so với T8" / "Không có dữ liệu T8".
+/// "Tăng 25% so với T8" / "Giảm 5% so với Tuần 37" / "Không có dữ liệu 2025".
 ///
-/// `null` là tháng trước bằng 0: không in "tăng ∞%" hay "tăng 100%" — cả hai
-/// đều là số bịa.
-String _soVoiThangTruoc(double? phanTram, int thang) {
-  final t = _thangTruoc(thang);
-  if (phanTram == null) return 'Không có dữ liệu T$t';
+/// Tên kỳ trước lấy từ `lui(ky, 1).nhanNgan` chứ không tự suy từ số tháng: từ
+/// 2026-09-15 kỳ có thể là tuần, quý hay năm, và một nhãn "T8" cứng sẽ nói sai
+/// mà không lỗi nào báo.
+///
+/// [phanTram] `null` là kỳ trước bằng 0: không in "tăng ∞%" hay "tăng 100%" —
+/// cả hai đều là số bịa.
+String _soVoiKyTruoc(double? phanTram, Ky ky) {
+  final t = nhanKyTruoc(ky);
+  if (phanTram == null) return 'Không có dữ liệu $t';
   final tu = phanTram >= 0 ? 'Tăng' : 'Giảm';
-  return '$tu ${phanTram.abs().round()}% so với T$t';
+  return '$tu ${phanTram.abs().round()}% so với $t';
 }
 
 // ── Đầu trang ─────────────────────────────────────────────────────────────
@@ -211,19 +211,13 @@ class _ChonThang extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (nhan, cacThang) = switch (state) {
-      AnalyticsLoaded(:final thongKe, :final cacThang) => (
-          thongKe.nam == cacThang.first.nam &&
-                  thongKe.thang == cacThang.first.thang
-              ? 'Tháng này (${_nhanThang(thongKe.nam, thongKe.thang)})'
-              : _nhanThang(thongKe.nam, thongKe.thang),
-          cacThang,
+    final (nhan, cacKy) = switch (state) {
+      AnalyticsLoaded(:final thongKe, :final moc) => (
+          nhanOChon(thongKe.ky, moc),
+          cacKyGanNhat(moc, thongKe.ky.donVi),
         ),
-      AnalyticsLoading(:final nam, :final thang) => (
-          _nhanThang(nam, thang),
-          const <({int nam, int thang})>[],
-        ),
-      _ => ('Tháng này', const <({int nam, int thang})>[]),
+      AnalyticsLoading(:final ky) => (ky.nhanNgan, const <Ky>[]),
+      _ => ('Tháng này', const <Ky>[]),
     };
 
     final o = Container(
@@ -253,14 +247,12 @@ class _ChonThang extends StatelessWidget {
       ),
     );
 
-    if (cacThang.isEmpty) return o;
-    return PopupMenuButton<({int nam, int thang})>(
-      tooltip: 'Chọn tháng',
-      onSelected: (t) =>
-          context.read<AnalyticsCubit>().chonThang(t.nam, t.thang),
+    if (cacKy.isEmpty) return o;
+    return PopupMenuButton<Ky>(
+      tooltip: 'Chọn kỳ',
+      onSelected: (k) => context.read<AnalyticsCubit>().chonKy(k),
       itemBuilder: (_) => [
-        for (final t in cacThang)
-          PopupMenuItem(value: t, child: Text(_nhanThang(t.nam, t.thang))),
+        for (final k in cacKy) PopupMenuItem(value: k, child: Text(k.nhan)),
       ],
       child: o,
     );
@@ -270,9 +262,8 @@ class _ChonThang extends StatelessWidget {
 // ── Rỗng ──────────────────────────────────────────────────────────────────
 
 class _Rong extends StatelessWidget {
-  final int nam;
-  final int thang;
-  const _Rong({required this.nam, required this.thang});
+  final Ky ky;
+  const _Rong({required this.ky});
 
   @override
   Widget build(BuildContext context) {
@@ -287,7 +278,7 @@ class _Rong extends StatelessWidget {
                 size: 48, color: AppColors.outline),
             const SizedBox(height: 12),
             Text(
-              'Chưa có giao dịch nào trong ${_nhanThang(nam, thang)}.',
+              'Chưa có giao dịch nào trong ${ky.nhanNgan}.',
               textAlign: TextAlign.center,
               style: const TextStyle(color: AppColors.textSecondary),
             ),
@@ -301,7 +292,7 @@ class _Rong extends StatelessWidget {
 // ── Ba thẻ tổng ───────────────────────────────────────────────────────────
 
 class _KhoiTong extends StatelessWidget {
-  final ThongKeThang tk;
+  final ThongKeKy tk;
   const _KhoiTong({required this.tk});
 
   @override
@@ -314,7 +305,7 @@ class _KhoiTong extends StatelessWidget {
               child: _TheTong(
                 title: 'Tổng thu',
                 amount: '+${_dong(tk.tong.thu)}',
-                diff: _soVoiThangTruoc(tk.thuSoVoiTruoc, tk.thang),
+                diff: _soVoiKyTruoc(tk.thuSoVoiTruoc, tk.ky),
                 icon: Icons.arrow_upward,
                 color: AppColors.income,
               ),
@@ -324,7 +315,7 @@ class _KhoiTong extends StatelessWidget {
               child: _TheTong(
                 title: 'Tổng chi',
                 amount: '-${_dong(tk.tong.chi)}',
-                diff: _soVoiThangTruoc(tk.chiSoVoiTruoc, tk.thang),
+                diff: _soVoiKyTruoc(tk.chiSoVoiTruoc, tk.ky),
                 icon: Icons.arrow_downward,
                 color: AppColors.error,
               ),
@@ -400,7 +391,7 @@ class _TheTong extends StatelessWidget {
 }
 
 class _TheConLai extends StatelessWidget {
-  final ThongKeThang tk;
+  final ThongKeKy tk;
   const _TheConLai({required this.tk});
 
   @override
@@ -484,7 +475,7 @@ class _TheConLai extends StatelessWidget {
 /// nó **đã có** trên Stitch — màn `c2a2b615c9514ca180b28d189b2ea197` — nên lý
 /// do lệch đã hết hiệu lực.
 class _KhoiXuHuong extends StatelessWidget {
-  final ThongKeThang tk;
+  final ThongKeKy tk;
 
   /// Rỗng là hai đường Thu/Chi. Tối đa `kToiDaDuongXuHuong` phần tử — cubit
   /// chốt, ở đây chỉ vẽ.
@@ -547,13 +538,13 @@ class _KhoiXuHuong extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Cùng lý do với tiêu đề donut: Text đứng trong Row không co được.
-          const SizedBox(
+          SizedBox(
             width: double.infinity,
             child: Text(
-              'Xu hướng 6 tháng',
+              tieuDeXuHuong(tk.ky.donVi),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: AppColors.primary,
@@ -641,7 +632,7 @@ class _KhoiXuHuong extends StatelessWidget {
                         return Padding(
                           padding: const EdgeInsets.only(top: 8),
                           child: Text(
-                            'T${chuoi[i].thang}',
+                            chuoi[i].ky.nhanTruc,
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight:
@@ -776,7 +767,7 @@ class _KhoiXuHuong extends StatelessWidget {
 /// null) — người dùng thấy được vì sao, thay vì bấm mà không có gì xảy ra.
 /// Chốt thật nằm ở cubit; khoá ở đây chỉ để nhìn thấy.
 class _ChonDanhMucXuHuong extends StatelessWidget {
-  final ThongKeThang tk;
+  final ThongKeKy tk;
   final Set<String> dangChon;
   const _ChonDanhMucXuHuong({required this.tk, required this.dangChon});
 
@@ -937,7 +928,7 @@ class _ChuGiaiDuong extends StatelessWidget {
 /// thì tỷ trọng mới có nghĩa — xem §2.1 spec
 /// `2026-09-14-thong-ke-phan-loai-va-xu-huong-danh-muc-design.md`.
 class _KhoiDonut extends StatelessWidget {
-  final ThongKeThang tk;
+  final ThongKeKy tk;
   final String phanLoaiDangXem;
   const _KhoiDonut({required this.tk, required this.phanLoaiDangXem});
 
@@ -1207,7 +1198,7 @@ class _ChuGiai extends StatelessWidget {
 // ── Chi tiết danh mục ─────────────────────────────────────────────────────
 
 class _DanhSachDanhMuc extends StatelessWidget {
-  final ThongKeThang tk;
+  final ThongKeKy tk;
 
   /// Nhóm đang chọn ở donut — luôn có một nhóm, mức gốc đã bỏ (2026-09-14).
   final String phanLoai;

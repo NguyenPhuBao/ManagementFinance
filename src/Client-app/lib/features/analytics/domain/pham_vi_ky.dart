@@ -177,16 +177,51 @@ Ky lui(Ky ky, int soKy) => switch (ky.donVi) {
         }(),
     };
 
+/// Nhãn của ô chọn kỳ trên header: `"Tháng này (T9 2026)"` khi kỳ chứa [moc],
+/// `"T8 2026"` khi không.
+///
+/// Giữ "Tháng này" cho một tháng đã qua là **nói dối về thứ đang hiện**; đó là
+/// lý do phép kiểm phải là `ky.chua(moc)` chứ không phải "kỳ đầu danh sách".
+/// Kỳ tuỳ chọn không bao giờ mang dạng "… này" — [Ky.tenKyNay] trả `null`.
+String nhanOChon(Ky ky, DateTime moc) {
+  final ten = ky.tenKyNay;
+  if (ten == null || !ky.chua(moc)) return ky.nhanNgan;
+  return '$ten (${ky.nhanNgan})';
+}
+
+/// Tên **kỳ liền trước** của [ky], cho câu "so với …" ở ba thẻ tổng.
+///
+/// Bỏ năm khi kỳ trước cùng năm với kỳ đang xem: thẻ tổng rất hẹp ở 411dp, và
+/// "so với T8 2026" khi đang xem T9 2026 thì chữ "2026" chỉ là nhiễu. Nhưng khi
+/// kỳ trước rơi sang năm khác thì **giữ năm** — đang xem T1 2026 mà đọc "so với
+/// T12" thì người dùng không biết T12 nào, và bản cũ của trang đúng là nói thế.
+///
+/// Kỳ năm luôn giữ số năm, vì bỏ đi thì chẳng còn gì.
+String nhanKyTruoc(Ky ky) {
+  final t = lui(ky, 1);
+  if (t.from.year == ky.from.year) {
+    switch (t.donVi) {
+      case DonViKy.thang:
+        return 'T${t.from.month}';
+      case DonViKy.quy:
+        return 'Quý ${t._quy}';
+      default:
+        break;
+    }
+  }
+  return t.nhanNgan;
+}
+
 /// Tiêu đề khối xu hướng, đổi theo đơn vị đang xem.
 ///
 /// Đặt ở tầng domain để test được — tầng vẽ không test được (bẫy 4.9).
 /// Kỳ tuỳ chọn rơi về "tháng" vì chuỗi của nó cũng lùi theo tháng: "6 khoảng 17
 /// ngày" không phải thứ ai đọc được.
 String tieuDeXuHuong(DonViKy donVi) => switch (donVi) {
-      DonViKy.tuan => 'XU HƯỚNG $kSoKyXuHuong TUẦN',
-      DonViKy.quy => 'XU HƯỚNG $kSoKyXuHuong QUÝ',
-      DonViKy.nam => 'XU HƯỚNG $kSoKyXuHuong NĂM',
-      DonViKy.thang || DonViKy.tuyChon => 'XU HƯỚNG $kSoKyXuHuong THÁNG',
+      DonViKy.tuan => 'Xu hướng $kSoKyXuHuong tuần',
+      DonViKy.quy => 'Xu hướng $kSoKyXuHuong quý',
+      DonViKy.nam => 'Xu hướng $kSoKyXuHuong năm',
+      DonViKy.thang || DonViKy.tuyChon => 'Xu hướng $kSoKyXuHuong tháng',
     };
 
 /// Kỳ liền trước của `[from, to)`, để so sánh "so với kỳ trước".

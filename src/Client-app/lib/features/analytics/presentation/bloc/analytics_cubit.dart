@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../data/analytics_repository.dart';
+import '../../domain/pham_vi_ky.dart';
 import '../../domain/thong_ke_thang.dart';
 import 'analytics_state.dart';
 
@@ -10,8 +11,8 @@ export 'analytics_state.dart';
 
 /// UI → AnalyticsCubit → AnalyticsRepository → Drift + BudgetRepository.
 ///
-/// Cubit là chỗ quyết định **tháng nào** được hỏi và **mã tài khoản nào** đi
-/// xuống. Cả hai đều không được đoán: tháng lấy từ [clock] (trang cũ hiện
+/// Cubit là chỗ quyết định **kỳ nào** được hỏi và **mã tài khoản nào** đi
+/// xuống. Cả hai đều không được đoán: kỳ lấy từ [clock] (trang cũ hiện
 /// "T6 2026" cứng trong khi đang là tháng 9), tài khoản lấy từ phiên đăng nhập
 /// (quy tắc 2 `CLAUDE.md`).
 class AnalyticsCubit extends Cubit<AnalyticsState> {
@@ -20,7 +21,7 @@ class AnalyticsCubit extends Cubit<AnalyticsState> {
   /// Tiêm được để test không phụ thuộc đồng hồ máy chạy nó.
   final DateTime Function() clock;
 
-  StreamSubscription<ThongKeThang>? _sub;
+  StreamSubscription<ThongKeKy>? _sub;
   int? _idaccount;
 
   /// Hai lựa chọn của người dùng, giữ **ngoài** state để chúng sống sót qua
@@ -32,8 +33,9 @@ class AnalyticsCubit extends Cubit<AnalyticsState> {
       : clock = clock ?? DateTime.now,
         super(const AnalyticsInitial());
 
-  /// Xem tháng hiện tại của tài khoản [idaccount]. `null` là chưa đăng nhập —
-  /// báo lỗi chứ không đoán một mã.
+  /// Xem **tháng hiện tại** của tài khoản [idaccount] — mặc định của trang,
+  /// không đổi sau khi tổng quát hoá sang [Ky]. `null` là chưa đăng nhập — báo
+  /// lỗi chứ không đoán một mã.
   void xem(int? idaccount) {
     if (idaccount == null || idaccount <= 0) {
       emit(const AnalyticsError('Chưa đăng nhập — không đọc được thống kê.'));
@@ -41,27 +43,27 @@ class AnalyticsCubit extends Cubit<AnalyticsState> {
     }
     _idaccount = idaccount;
     final now = clock();
-    _dangKy(now.year, now.month);
+    _dangKy(Ky.thang(now.year, now.month));
   }
 
-  /// Đổi tháng đang xem. Không làm gì khi chưa có tài khoản.
-  void chonThang(int nam, int thang) {
+  /// Đổi kỳ đang xem. Không làm gì khi chưa có tài khoản.
+  void chonKy(Ky ky) {
     if (_idaccount == null) return;
-    _dangKy(nam, thang);
+    _dangKy(ky);
   }
 
-  void _dangKy(int nam, int thang) {
+  void _dangKy(Ky ky) {
     final now = clock();
-    // Đổi tháng là đổi câu hỏi — bắt đầu lại từ Chi. Danh mục xu hướng thì
-    // GIỮ: chuỗi của nó nhìn xa sáu tháng nên vẫn có nghĩa ở tháng khác.
+    // Đổi kỳ là đổi câu hỏi — bắt đầu lại từ Chi. Danh mục xu hướng thì GIỮ:
+    // chuỗi của nó nhìn xa sáu kỳ nên vẫn có nghĩa ở kỳ khác.
     _phanLoaiDangXem = 'chi';
-    emit(AnalyticsLoading(nam: nam, thang: thang));
+    emit(AnalyticsLoading(ky: ky));
     // Huỷ đăng ký cũ TRƯỚC. Không huỷ là hai stream cùng phát và cái tới sau
     // thắng — không có gì bảo đảm đó là tháng người dùng vừa chọn. Bản sai có
     // chủ ý bỏ dòng này đã làm đúng test ấy đỏ.
     _sub?.cancel();
     _sub = repository
-        .watchThang(_idaccount!, nam: nam, thang: thang, now: now)
+        .watchKy(_idaccount!, ky: ky, now: now)
         .listen(
           (tk) => emit(_dungLoaded(tk, now)),
           onError: (Object e) => emit(AnalyticsError(e.toString())),
@@ -76,10 +78,10 @@ class AnalyticsCubit extends Cubit<AnalyticsState> {
   /// nền kéo về. Quên chép lựa chọn sang state mới thì cứ mỗi chu kỳ đồng bộ là
   /// donut tự nhảy về nhóm Chi trong khi người dùng đang xem. Không exception,
   /// không log.
-  AnalyticsLoaded _dungLoaded(ThongKeThang tk, DateTime now) {
-    // Nhóm đã chọn có thể biến mất: tháng này không có khoản vay/nợ nào. Giữ
+  AnalyticsLoaded _dungLoaded(ThongKeKy tk, DateTime now) {
+    // Nhóm đã chọn có thể biến mất: kỳ này không có khoản vay/nợ nào. Giữ
     // nguyên là vẽ một vòng tròn trống dưới một chip đã biến mất. Rơi về Chi;
-    // Chi cũng rỗng (tháng chỉ có thu) thì rơi về nhóm đầu còn phát sinh —
+    // Chi cũng rỗng (kỳ chỉ có thu) thì rơi về nhóm đầu còn phát sinh —
     // nếu không donut trống dù có dữ liệu để vẽ.
     final coNhom = tk.latPhanLoai.any((l) => l.phanLoai == _phanLoaiDangXem);
     if (!coNhom) {
@@ -88,13 +90,13 @@ class AnalyticsCubit extends Cubit<AnalyticsState> {
           ? 'chi'
           : (tk.latPhanLoai.isEmpty ? 'chi' : tk.latPhanLoai.first.phanLoai);
     }
-    // Danh mục đã chọn cũng vậy — bị xoá, hoặc tháng khác không có phát sinh.
+    // Danh mục đã chọn cũng vậy — bị xoá, hoặc kỳ khác không có phát sinh.
     // Chỉ loại đúng khoá ấy: xoá cả tập là người dùng mất luôn những đường
     // còn hợp lệ.
     _danhMucXuHuong.removeWhere((id) => !tk.chuoiDanhMuc.containsKey(id));
     return AnalyticsLoaded(
       thongKe: tk,
-      cacThang: cacThangGanNhat(now),
+      moc: now,
       phanLoaiDangXem: _phanLoaiDangXem,
       danhMucXuHuong: Set.unmodifiable(_danhMucXuHuong),
     );
@@ -108,7 +110,7 @@ class AnalyticsCubit extends Cubit<AnalyticsState> {
     _phanLoaiDangXem = phanLoai;
     emit(AnalyticsLoaded(
       thongKe: s.thongKe,
-      cacThang: s.cacThang,
+      moc: s.moc,
       phanLoaiDangXem: phanLoai,
       danhMucXuHuong: s.danhMucXuHuong,
     ));
@@ -131,7 +133,7 @@ class AnalyticsCubit extends Cubit<AnalyticsState> {
     }
     emit(AnalyticsLoaded(
       thongKe: s.thongKe,
-      cacThang: s.cacThang,
+      moc: s.moc,
       phanLoaiDangXem: s.phanLoaiDangXem,
       danhMucXuHuong: Set.unmodifiable(_danhMucXuHuong),
     ));

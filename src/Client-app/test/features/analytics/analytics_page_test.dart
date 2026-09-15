@@ -15,6 +15,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/di/injection_container.dart';
 import 'package:flowmoney/features/analytics/data/analytics_repository.dart';
+import 'package:flowmoney/features/analytics/domain/pham_vi_ky.dart';
 import 'package:flowmoney/features/analytics/domain/phan_loai_dong_tien.dart';
 import 'package:flowmoney/features/analytics/domain/thong_ke_thang.dart';
 import 'package:flowmoney/features/analytics/presentation/bloc/analytics_cubit.dart';
@@ -42,23 +43,22 @@ class _FixedAuthBloc extends AuthBloc {
 }
 
 class _RepoGia implements AnalyticsRepository {
-  final goi = <({int nam, int thang})>[];
-  StreamController<ThongKeThang>? _c;
+  final goi = <Ky>[];
+  StreamController<ThongKeKy>? _c;
 
   @override
-  Stream<ThongKeThang> watchThang(
+  Stream<ThongKeKy> watchKy(
     int idaccount, {
-    required int nam,
-    required int thang,
+    required Ky ky,
     DateTime? now,
   }) {
-    goi.add((nam: nam, thang: thang));
+    goi.add(ky);
     _c?.close();
-    _c = StreamController<ThongKeThang>();
+    _c = StreamController<ThongKeKy>();
     return _c!.stream;
   }
 
-  void phat(ThongKeThang tk) => _c!.add(tk);
+  void phat(ThongKeKy tk) => _c!.add(tk);
 
   Future<void> dong() async => _c?.close();
 }
@@ -82,7 +82,7 @@ DongDanhMuc _dm(
       nganSachDaChi: daChi,
     );
 
-ThongKeThang _tk({
+ThongKeKy _tk({
   int nam = 2026,
   int thang = 9,
   double thu = 5000000,
@@ -95,9 +95,8 @@ ThongKeThang _tk({
   Map<String, List<DongDanhMuc>> theoLat = const {},
   Map<String?, List<DiemThoiGian>> chuoiDm = const {},
 }) =>
-    ThongKeThang(
-      nam: nam,
-      thang: thang,
+    ThongKeKy(
+      ky: Ky.thang(nam, thang),
       tong: TongThuChi(thu: thu, chi: chi),
       tongTruoc: TongThuChi(thu: thuTruoc, chi: chiTruoc),
       chiTheoDanhMuc: [
@@ -112,7 +111,7 @@ ThongKeThang _tk({
       // Mặc định là sáu điểm toàn số 0 — đúng cấu trúc chuỗi thật, để test
       // nào không nói gì về biểu đồ vẫn đi qua nhánh thường thay vì nhánh
       // "chưa có chuỗi".
-      chuoi: chuoi ?? chuoiTheoThang(const [], nam: nam, thang: thang),
+      chuoi: chuoi ?? chuoiTheoKy(const [], ky: Ky.thang(nam, thang)),
       latPhanLoai: lat,
       danhMucTheoLat: theoLat,
       chuoiDanhMuc: chuoiDm,
@@ -159,7 +158,7 @@ void main() {
     await tester.pump();
   }
 
-  Future<void> phat(WidgetTester tester, ThongKeThang tk) async {
+  Future<void> phat(WidgetTester tester, ThongKeKy tk) async {
     repo.phat(tk);
     await tester.pump();
     await tester.pump();
@@ -285,7 +284,7 @@ void main() {
     // nên không bao giờ "lắng" — bản test đầu treo tới timeout ở đây.
     await tester.pump(const Duration(milliseconds: 400));
 
-    expect(repo.goi.last, (nam: 2026, thang: 8));
+    expect(repo.goi.last, Ky.thang(2026, 8));
 
     await phat(tester, _tk(thang: 8, chiTruoc: 0));
     await tester.pump(const Duration(milliseconds: 400));
@@ -367,8 +366,7 @@ void main() {
     List<DiemThoiGian> chuoiMau() => [
           for (var i = 0; i < 6; i++)
             DiemThoiGian(
-              nam: 2026,
-              thang: 4 + i,
+              ky: Ky.thang(2026, 4 + i),
               tong: TongThuChi(
                 thu: 1000000.0 * (i + 1),
                 chi: 500000.0 * (i + 1),
@@ -424,8 +422,7 @@ void main() {
         _tk(chuoi: [
           for (var i = 0; i < 6; i++)
             DiemThoiGian(
-              nam: 2026,
-              thang: 4 + i,
+              ky: Ky.thang(2026, 4 + i),
               tong: const TongThuChi(thu: 987654321.0, chi: 123456789.0),
             ),
         ]),
@@ -450,8 +447,7 @@ void main() {
         _tk(chuoi: [
           for (var i = 0; i < 6; i++)
             DiemThoiGian(
-              nam: 2026,
-              thang: 4 + i,
+              ky: Ky.thang(2026, 4 + i),
               tong: TongThuChi(thu: i == 5 ? 43000 : 0, chi: 0),
             ),
         ]),
@@ -619,7 +615,7 @@ void main() {
 
   group('chip danh mục của khối Xu hướng', () {
     List<DiemThoiGian> chuoiMau() =>
-        chuoiTheoThang(const [], nam: 2026, thang: 9);
+        chuoiTheoKy(const [], ky: Ky.thang(2026, 9));
 
     FilterChip chipXh(WidgetTester tester, String id) =>
         tester.widget<FilterChip>(find.byKey(Key('chip-xu-huong-$id')));
