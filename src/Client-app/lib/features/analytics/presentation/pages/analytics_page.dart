@@ -476,6 +476,17 @@ class _TheConLai extends StatelessWidget {
     final conLai = tk.tong.conLai;
     // Thanh = phần thu còn giữ được. Thu bằng 0 thì không có gì để chia.
     final tiLe = tk.tong.thu > 0 ? (conLai / tk.tong.thu).clamp(0.0, 1.0) : 0.0;
+
+    // Tỉ lệ tiết kiệm (2026-09-15, mục 3.26). Mẫu số là **thu nhập** — đã trừ
+    // tiền đi vay và thu nợ — chứ không phải `tong.thu`; phép tính ở tầng thuần
+    // và dùng chung với khối "Dòng tiền tự do". Chuỗi rỗng thì bỏ qua: không có
+    // gì để suy ra phần vay/nợ của kỳ, và đoán bừa là bịa một con số.
+    final double? tyLe = tk.chuoiVayNo.isEmpty
+        ? null
+        : tyLeTietKiem(
+            thuNhap: thuNhapCua(tong: tk.tong, vayNo: tk.chuoiVayNo.last),
+            chi: tk.tong.chi,
+          );
     // Số ÂM hiện là số âm, không kẹp về 0: người dùng mở trang này chính là
     // để biết tháng này đã âm.
     final chu = conLai < 0 ? '-${_dong(-conLai)}' : _dong(conLai);
@@ -510,6 +521,19 @@ class _TheConLai extends StatelessWidget {
               color: conLai < 0 ? const Color(0xFFFFB3AE) : Colors.white,
             ),
           ),
+          // Dòng này **ẩn hẳn** khi không có thu nhập, không in "0%": xem
+          // `tyLeTietKiem`. Đứng ngay dưới con số vì nó diễn giải chính con số
+          // ấy — cùng tử số, chỉ khác chỗ là mẫu số đã trừ phần vay/nợ.
+          if (tyLe != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Để dành ${(tyLe * 100).round()}% thu nhập',
+              style: TextStyle(
+                fontSize: 12,
+                color: tyLe < 0 ? const Color(0xFFFFB3AE) : Colors.white70,
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           Container(
             height: 6,

@@ -155,6 +155,70 @@ void main() {
     });
   });
 
+  group('thuNhapCua — định nghĩa DUY NHẤT của "thu nhập"', () {
+    test('trừ cả ba khoản tiền vào thuộc nhóm Vay/nợ', () {
+      final x = thuNhapCua(
+        tong: const TongThuChi(thu: 20000000, chi: 0),
+        vayNo: DiemVayNo(
+          ky: t8,
+          diVay: 5000000,
+          thuNo: 2000000,
+          khacVao: 1000000,
+        ),
+      );
+      expect(x, 12000000);
+    });
+
+    test('khoản vay/nợ tiền RA không đụng tới thu nhập', () {
+      final x = thuNhapCua(
+        tong: const TongThuChi(thu: 20000000, chi: 9000000),
+        vayNo: DiemVayNo(ky: t8, choVay: 6000000, khacRa: 1000000),
+      );
+      expect(x, 20000000);
+    });
+
+    test('⚠️ cho ĐÚNG con số mà dongTienTuDo dùng', () {
+      // Ca giữ hai chỗ không lệch: thẻ "Số dư còn lại" và khối "Dòng tiền tự
+      // do" phải nói cùng một khái niệm thu nhập. Hai phép tính song song là
+      // cách chắc chắn nhất để chúng trôi khỏi nhau ở lần sửa đầu tiên.
+      const tong = TongThuChi(thu: 18000000, chi: 4000000);
+      final vayNo = DiemVayNo(ky: t8, diVay: 3000000, traNo: 1000000);
+      final diem = dongTienTuDo([DiemThoiGian(ky: t8, tong: tong)], [vayNo]);
+
+      expect(thuNhapCua(tong: tong, vayNo: vayNo), diem.single.thuNhap);
+    });
+  });
+
+  group('tyLeTietKiem', () {
+    test('để dành một phần thu nhập', () {
+      // 20tr thu nhập, tiêu hết 15tr (đã gồm trả nợ) → để dành 25%.
+      expect(tyLeTietKiem(thuNhap: 20000000, chi: 15000000), 0.25);
+    });
+
+    test('không tiêu gì thì để dành trọn vẹn', () {
+      expect(tyLeTietKiem(thuNhap: 20000000, chi: 0), 1.0);
+    });
+
+    test('chi vượt thu nhập thì tỉ lệ ÂM, không kẹp về 0', () {
+      expect(tyLeTietKiem(thuNhap: 10000000, chi: 13000000), closeTo(-0.3, 1e-9),
+          reason: 'kẹp về 0 là giấu đúng kỳ người dùng cần thấy nhất — cùng lý '
+              'lẽ với đường dòng tiền tự do');
+    });
+
+    test('⚠️ thu nhập bằng 0 thì trả null, KHÔNG chia cho 0', () {
+      expect(tyLeTietKiem(thuNhap: 0, chi: 5000000), isNull,
+          reason: '"tiết kiệm bao nhiêu phần trăm của số không" là câu không có '
+              'nghĩa; giao diện ẩn dòng chứ không in 0% hay ∞');
+    });
+
+    test('thu nhập ÂM cũng trả null', () {
+      // Xảy ra được: kỳ chỉ có tiền đi vay thì tổng thu trừ đi vay ra số âm.
+      expect(tyLeTietKiem(thuNhap: -2000000, chi: 1000000), isNull,
+          reason: 'chia cho một mẫu số âm cho ra tỉ lệ đảo dấu, đọc ngược hẳn ý '
+              'nghĩa mà không lỗi nào báo');
+    });
+  });
+
   group('dongTienTuDo — chốt chặn ghép nhầm kỳ', () {
     test('hai chuỗi lệch độ dài thì NỔ', () {
       expect(

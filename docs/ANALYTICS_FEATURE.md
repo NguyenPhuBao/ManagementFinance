@@ -1,6 +1,6 @@
 # Trang Phân tích — thiết kế, lý do, và những cái bẫy
 
-**Cập nhật:** 2026-09-15 (mục **3.20** — **P1: phạm vi thời gian**; mục **3.21** — **P2**: bốn khối mượn từ trang Xuất báo cáo; mục **3.22** — **A8 #4 và #5**: hai biểu đồ cột vay/nợ; **G40 đóng** — trang Xem trước báo cáo lệch cột số tiền ở **sáu** chỗ, đo được 93px, xem bẫy **4.19**; **nhãn quý rút thành `Q3 2026`** để ô header thôi cụt, xem mục **3.20**; mục **3.23** — **A8 #10**: thác nước "Tiền đi đâu", kèm vạch trung bình trên từng cột chi; mục **3.24** — **A8 #8**: dòng tiền tự do, và bẫy **4.20** — `rutGon` từng in `-0` ở nhãn trục) · bản trước 2026-09-14 (mục **3.19** — A8 #3, #7: cơ cấu theo danh mục với ba chip nhóm, và xu hướng tới 5 danh mục cùng lúc; bản thi công **lần hai**, #2 đã bỏ)
+**Cập nhật:** 2026-09-15 (mục **3.20** — **P1: phạm vi thời gian**; mục **3.21** — **P2**: bốn khối mượn từ trang Xuất báo cáo; mục **3.22** — **A8 #4 và #5**: hai biểu đồ cột vay/nợ; **G40 đóng** — trang Xem trước báo cáo lệch cột số tiền ở **sáu** chỗ, đo được 93px, xem bẫy **4.19**; **nhãn quý rút thành `Q3 2026`** để ô header thôi cụt, xem mục **3.20**; mục **3.23** — **A8 #10**: thác nước "Tiền đi đâu", kèm vạch trung bình trên từng cột chi; mục **3.24** — **A8 #8**: dòng tiền tự do, và bẫy **4.20** — `rutGon` từng in `-0` ở nhãn trục; mục **3.25** — **khảo sát app thị trường lần hai**, chốt làm tỷ lệ tiết kiệm và dự báo dòng tiền, bỏ hai mục thiếu trường đối tác; mục **3.26** — **tỉ lệ tiết kiệm**) · bản trước 2026-09-14 (mục **3.19** — A8 #3, #7: cơ cấu theo danh mục với ba chip nhóm, và xu hướng tới 5 danh mục cùng lúc; bản thi công **lần hai**, #2 đã bỏ)
 **Trạng thái:** **mảng Phân tích đã xong cả 2a, 2b, 2c** (2026-09-09). Lát **2a** xong — mọi con số trên trang là số thật từ SQLite —
 lát **2b** xong (khối "Xu hướng 6 tháng" vẽ bằng `fl_chart`), lát **2c‑1** xong
 (trang Xuất báo cáo đọc ví/danh mục/thời gian thật rồi mở màn **Xem trước báo
@@ -1025,6 +1025,104 @@ Trên `emulator-5554`, kỳ T9 2026, ba trạng thái đều chạy thật:
 Hai giao dịch thử đã xoá qua giao diện; truy vấn PostgreSQL xác nhận cả hai mang
 `Deleted_at`.
 
+### 3.25 Khảo sát app thị trường lần hai — và vì sao chọn hai mục
+
+**2026-09-15.** Lượt khảo sát ở mục 3.15 (2026-09-09) chỉ phục vụ **màn Xem
+trước báo cáo** và chỉ xem bốn app. Lượt này soát cả **trang Thống kê**, và mở
+rộng sang **Monarch Money**, **YNAB**, **Rocket Money** bên cạnh Money Lover,
+MISA MoneyKeeper, Copilot, PocketSmith.
+
+#### FlowMoney đang ở đâu
+
+Đo bằng mã cùng ngày: trang Thống kê **12 khối**, màn Xem trước **10 khối** cộng
+xuất PDF/CSV lưu thẳng vào máy. Ba khối đang **hơn** mặt bằng app Việt — thác
+nước "Tiền đi đâu", dòng tiền tự do, và hai biểu đồ vay/nợ; Money Lover và MISA
+đều không có. Gắn ngân sách vào báo cáo cũng vẫn là chỗ mạnh hơn Money Lover
+(mục 3.15).
+
+#### Chín mục thị trường có mà mình chưa có
+
+| # | Tính năng | Ai có | Dữ liệu FlowMoney | Chốt |
+|---|---|---|---|---|
+| 1 | **Tỷ lệ tiết kiệm** | Monarch (ngay trên Cash Flow) | ✅ có sẵn; `dongTienTuDo()` đã trả `thuNhap` đúng nghĩa | ✅ **làm** |
+| 2 | So cùng kỳ năm trước | Monarch, Copilot | ✅ `lui()` đã lùi theo đơn vị lịch | chưa |
+| 3 | Sankey (A8 #11) | Monarch — *"fan favorite"*, chia sẻ được, ẩn được số tiền | ✅ đủ | chưa |
+| 4 | **Dự báo dòng tiền** | PocketSmith — chiếu số dư tới từng ngày, 30–60 năm | ✅ nguyên liệu hiếm: hoá đơn lặp có `anchorDay`+`recurrence`+`autoPay`, ngân sách có kỳ, mục tiêu có trích tự động | ✅ **làm** |
+| 5 | Tài sản ròng theo thời gian | Monarch, PocketSmith | ⚠️ làm được nhưng lệch có điều kiện — xem dưới | chưa |
+| 6 | Lịch chi tiêu (heatmap) | PocketSmith, Money Lover | ✅ đủ | chưa |
+| 7 | Cảnh báo bất thường | Rocket Money | ✅ đủ, đã có hạ tầng thông báo | chưa |
+| 8 | Phát hiện chi định kỳ tự động | Rocket Money | ⚠️ thiếu trường đối tác → phải đoán | 🛑 **bỏ** |
+| 9 | Chi theo đối tác (merchant) | Monarch, Copilot | ⛔ chặn thật — không có cột `payee` | 🛑 **bỏ** |
+
+Người dùng chốt **#1 rồi #4**, và **bỏ hẳn #8, #9**: #9 cần một cột mà cả hai đầu
+đều không có, còn #8 mà không có đối tác thì phải đoán bằng danh mục + số tiền,
+và đoán sai thì **hỏng im lặng** — không đáng cho đồ án.
+
+#### ⚠️ Mục 5 lật một giả định, và cũng tự đặt ra giới hạn của nó
+
+Nếu chỉ đọc mục 3.16 thì sẽ kết luận "không lưu lịch sử số dư → chịu". Nhưng từ
+**G37** (2026-09-13) `wallets.balance` là **cache của một công thức** trên sổ
+giao dịch, nên số dư tại **mọi thời điểm** suy lại được — mục 5 **không** bị
+chặn bởi mô hình dữ liệu.
+
+Cái chặn nó là chỗ khác, và nhỏ hơn: khoản neo "Số dư ban đầu" được ghi với
+`date: now` (`so_du_vi_service.dart:119`) — tức **ngày vá**, không phải ngày tạo
+ví. Nên đường tài sản ròng **đúng từ 2026-09-13 trở đi**, còn trước mốc ấy thì
+thiếu số dư khởi điểm của những ví có trước G37. Cùng họ giới hạn với mục 3.16,
+và nếu làm thì **phải nói ra trên giao diện** chứ không giấu.
+
+Đây là lần thứ ba bài học ấy trả tiền: **một mục bị xếp "chặn bởi mô hình dữ
+liệu" thì phải hỏi *chặn vì thiếu con số nào*.** Hai lần trước là A8 #4/#5 và
+A8 #8.
+
+### 3.26 Tỉ lệ tiết kiệm — mục #1 của khảo sát lần hai
+
+**2026-09-15.** Một dòng nhỏ trong thẻ "Số dư còn lại": *"Để dành 93% thu
+nhập"*. Monarch đặt con số này ngay trên trang Cash Flow; FlowMoney đặt nó ngay
+dưới con số mà nó diễn giải.
+
+#### Mẫu số là THU NHẬP, không phải `tong.thu`
+
+Cùng cái bẫy của A8 #8, và lần này nó còn dễ vấp hơn vì công thức sách vở là
+`(thu − chi) / thu`. Nếu lấy `tong.thu` thì tháng nào người dùng vay tiền, tỉ lệ
+tiết kiệm lại **đẹp lên** — mẫu số phình ra vì tiền mượn.
+
+Để hai chỗ không thể lệch nhau, phép tính *thu nhập* được **tách thành hàm
+riêng** `thuNhapCua()` trong `dong_tien_tu_do.dart`, và `dongTienTuDo()` nay gọi
+chính nó. Có ca test canh `thuNhapCua` trả **đúng** con số mà `dongTienTuDo`
+dùng — hai phép tính song song cho cùng một khái niệm là cách chắc chắn nhất để
+chúng trôi khỏi nhau ở lần sửa đầu tiên.
+
+#### Trả nợ tính là TIÊU — người dùng chốt
+
+`tyLeTietKiem({thuNhap, chi})` với `chi` là **tổng chi**, tức đã gồm cả trả nợ.
+
+Tính trả nợ là *để dành* thì đúng hơn về kế toán — trả nợ gốc làm tăng tài sản
+ròng — nhưng khi ấy con số này sẽ **khác** "Số dư còn lại" hiện ngay trên nó,
+và hai con số cạnh nhau nói hai chuyện khác nhau thì người đọc chỉ kết luận
+được một điều: một trong hai sai. Người dùng chốt phương án khớp.
+
+#### Ba chốt, cả ba đều hỏng im lặng nếu phá
+
+1. **`null` khi thu nhập không dương** → giao diện **ẩn hẳn dòng**. "Tiết kiệm
+   bao nhiêu phần trăm của số không" là câu không có nghĩa, và chia cho mẫu số
+   **âm** cho ra tỉ lệ **đảo dấu** — đọc ngược hẳn ý nghĩa mà không lỗi nào báo.
+   ⚠️ Thu nhập âm xảy ra được thật: một kỳ chỉ có tiền đi vay thì `tong.thu` trừ
+   `diVay` ra số âm. In `0%` ở đó là bịa một con số. Ca test này **xanh ngay từ
+   đầu** — phải thử bản sai (`tyLe ?? 0`) mới biết nó canh thật.
+2. **Tỉ lệ được phép âm**, không kẹp về 0 — cùng lý lẽ với đường dòng tiền tự
+   do: kẹp là giấu đúng kỳ người dùng cần thấy nhất.
+3. **Chuỗi vay/nợ rỗng thì bỏ qua** thay vì coi như không có vay/nợ: không có gì
+   để suy ra phần vay/nợ của kỳ, và đoán bừa là bịa.
+
+#### Nghiệm thu
+
+`emulator-5554`, kỳ T9 2026: thu 14.625.000, chi 1.045.000, không có khoản
+vay/nợ nào → dòng hiện **"Để dành 93% thu nhập"**, khớp
+`13.580.000 / 14.625.000 = 92,85%`. Không tràn ở 411dp. `flutter test`
+**2571/2571**, `flutter analyze` **25 issue, 0 error**, schema giữ **v22**,
+không thêm trường đồng bộ, không đụng repository.
+
 ## 4. Bẫy
 
 **4.1 Tài khoản.** `AnalyticsPage` phải `context.watch<AuthBloc>()` + `ValueKey(idaccount)`
@@ -1301,7 +1399,7 @@ Test `sáu điểm, cũ nhất trước, mang số thật của cả tháng ở 
 | `phan_loai_dong_tien_test.dart` | **A8 #3/#7 (mục 3.19).** `phanLoaiCua` lấy `classify` của danh mục và **rơi về `type`** khi không tra được hoặc `classify` lạ; `theoPhanLoai` cho ba nhóm **rời nhau**, tổng tỉ lệ bằng 1, ⚠️ **khoản chi gắn danh mục vay/nợ KHÔNG nằm ở lát chi** (hệ quả cố ý), lát rỗng bị bỏ, khoản chuyển ví và khoản mở sổ không lọt vào lát nào |
 | `vai_vay_no_test.dart` | **A8 #4/#5 (mục 3.22).** ⚠️ **Cùng danh mục, đổi chiều tiền là đổi vai** — ca lật cả thiết kế; tên không đoán được thì là `khac` chứ **không dồn về một vai**; **bỏ dấu KHÔNG được coi là khớp** (quy tắc 7); và `chuoiVayNo` sáu kỳ cũ-nhất-trước, **chỉ đếm** khoản thuộc nhóm Vay/nợ, kỳ rỗng vẫn giữ chỗ, đi theo đơn vị của kỳ |
 | `thac_nuoc_test.dart` | **A8 #10 (mục 3.23).** Các bậc và **phép cân** `đầu kỳ + thu − Σ nhóm chi == cuối kỳ`, ca biên, `ranhVuotTrungBinh` (vạch TB trên từng cột chi, ngưỡng **nửa đồng** cho đuôi lẻ `double`), `trungBinhNhomChi` |
-| `dong_tien_tu_do_test.dart` | **A8 #8 (mục 3.24).** ⚠️ **Thu nhập không phải `tong.thu`** — ba ca riêng cho *đi vay*, *thu nợ* và `khacVao` đều bị trừ, còn `choVay`/`khacRa` thì **không** đụng tới; tự do **âm** không kẹp về 0; thứ tự cũ-nhất-trước; và hai chốt chặn ghép nhầm kỳ (**lệch độ dài** hoặc **lệch `ky`** đều phải nổ). Cộng `tieuDeDongTienTuDo` đổi theo đơn vị |
+| `dong_tien_tu_do_test.dart` | **A8 #8 (mục 3.24) và tỉ lệ tiết kiệm (mục 3.26).** ⚠️ **Thu nhập không phải `tong.thu`** — ba ca riêng cho *đi vay*, *thu nợ* và `khacVao` đều bị trừ, còn `choVay`/`khacRa` thì **không** đụng tới; tự do **âm** không kẹp về 0; thứ tự cũ-nhất-trước; và hai chốt chặn ghép nhầm kỳ (**lệch độ dài** hoặc **lệch `ky`** đều phải nổ). Cộng `tieuDeDongTienTuDo` đổi theo đơn vị. Từ mục 3.26 thêm `thuNhapCua` (⚠️ có ca canh nó trả **đúng** con số mà `dongTienTuDo` dùng — ca giữ hai khối trên cùng trang không lệch) và `tyLeTietKiem` (**`null`** khi thu nhập không dương, kể cả **âm**; tỉ lệ được phép âm) |
 | `analytics_page_test.dart` | Tháng từ đồng hồ (không còn "T6 2026"), ba thẻ, "% ngân sách"/"% tổng chi", donut + Khác + tâm rút gọn, rỗng, chọn tháng, "Xem tất cả", **411dp với tên dài**, và khối xu hướng: sáu nhãn tháng lấy từ dữ liệu, chú giải Thu/Chi, chuỗi rỗng không nổ, 411dp với số hàng trăm triệu. Từ 2026-09-14/15 thêm **sáu nhóm ca ở tầng vẽ**: cơ cấu theo danh mục, chip danh mục của khối Xu hướng, bốn khối mượn từ trang Báo cáo, hai biểu đồ vay/nợ, khối thác nước, và **Dòng tiền tự do** (⚠️ nhóm cuối canh đúng cặp số `12.000.000đ` phải có / `17.000.000đ` phải không — đó là ranh giới giữa luật đúng và công thức sai) |
 
 Lát 2b thêm vào `thong_ke_thang_test.dart` sáu ca cho `chuoiTheoKy` (khi ấy còn tên `chuoiTheoThang`): thứ tự

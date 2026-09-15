@@ -1174,6 +1174,65 @@ void main() {
     });
   });
 
+  group('Tỉ lệ tiết kiệm', () {
+    /// Sáu kỳ vay/nợ, chỉ kỳ cuối (kỳ đang xem) mang số.
+    List<DiemVayNo> vayNoKyCuoi({double diVay = 0, double thuNo = 0}) {
+      final cs = chuoiTheoKy(const [], ky: Ky.thang(2026, 9));
+      return [
+        for (var i = 0; i < cs.length; i++)
+          DiemVayNo(
+            ky: cs[i].ky,
+            diVay: i == cs.length - 1 ? diVay : 0,
+            thuNo: i == cs.length - 1 ? thuNo : 0,
+          ),
+      ];
+    }
+
+    testWidgets('hiện phần trăm thu nhập chưa tiêu', (tester) async {
+      await moTrang(tester);
+      // Mặc định: thu 5.000.000, chi 1.250.000 → để dành 75%.
+      await phat(tester, _tk());
+
+      expect(find.text('Để dành 75% thu nhập'), findsOneWidget);
+    });
+
+    testWidgets('⚠️ tiền ĐI VAY không làm tỉ lệ đẹp lên', (tester) async {
+      await moTrang(tester);
+      // 20tr tiền vào, trong đó 5tr là vay mượn; tiêu 10tr.
+      await phat(
+        tester,
+        _tk(thu: 20000000, chi: 10000000, chuoiVayNo: vayNoKyCuoi(diVay: 5000000)),
+      );
+
+      expect(find.text('Để dành 33% thu nhập'), findsOneWidget,
+          reason: '(20tr − 5tr vay − 10tr chi) / 15tr. Dùng nguyên tong.thu sẽ '
+              'ra 50% — tháng đi vay lại trông tiết kiệm hơn thật.');
+      expect(find.text('Để dành 50% thu nhập'), findsNothing);
+    });
+
+    testWidgets('chi vượt thu nhập thì tỉ lệ ÂM, không kẹp về 0',
+        (tester) async {
+      await moTrang(tester);
+      await phat(tester, _tk(thu: 10000000, chi: 13000000));
+
+      expect(find.text('Để dành -30% thu nhập'), findsOneWidget);
+    });
+
+    testWidgets('⚠️ không có thu nhập thì ẨN dòng, không in 0%',
+        (tester) async {
+      await moTrang(tester);
+      // Kỳ chỉ có tiền đi vay: tổng thu 5tr nhưng thu nhập bằng 0.
+      await phat(
+        tester,
+        _tk(thu: 5000000, chi: 1000000, chuoiVayNo: vayNoKyCuoi(diVay: 5000000)),
+      );
+
+      expect(find.textContaining('Để dành'), findsNothing,
+          reason: '"tiết kiệm bao nhiêu phần trăm của số không" là câu không có '
+              'nghĩa — in 0% là bịa một con số');
+    });
+  });
+
   group('Dòng tiền tự do (A8 #8)', () {
     /// Sáu kỳ; chỉ kỳ **cuối** (kỳ đang xem) mang số, để con số lớn của khối
     /// đọc ra được bằng `find.text`.

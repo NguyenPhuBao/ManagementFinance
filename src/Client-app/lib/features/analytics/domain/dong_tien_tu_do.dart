@@ -47,6 +47,37 @@ String tieuDeDongTienTuDo(DonViKy donVi) => switch (donVi) {
       DonViKy.thang || DonViKy.tuyChon => 'Dòng tiền tự do $kSoKyXuHuong tháng',
     };
 
+/// **Thu nhập** của một kỳ — định nghĩa DUY NHẤT, xem phần đầu tệp về vì sao nó
+/// không phải `tong.thu`.
+///
+/// Tách riêng từ 2026-09-15 để thẻ "Số dư còn lại" (tỉ lệ tiết kiệm) và khối
+/// "Dòng tiền tự do" dùng chung **một** phép tính. Hai phép tính song song cho
+/// cùng một khái niệm là cách chắc chắn nhất để hai khối trên cùng trang trôi
+/// khỏi nhau ở lần sửa đầu tiên — có ca test canh đúng điều đó.
+double thuNhapCua({
+  required TongThuChi tong,
+  required DiemVayNo vayNo,
+}) =>
+    tong.thu - vayNo.diVay - vayNo.thuNo - vayNo.khacVao;
+
+/// Tỉ lệ tiết kiệm của một kỳ: phần **thu nhập** chưa tiêu, trong `[-∞, 1]`.
+///
+/// Tiền **trả nợ** tính là *tiêu* (người dùng chốt 2026-09-15): nó đã nằm trong
+/// [chi], và nhờ vậy con số này khớp với thẻ "Số dư còn lại" hiện ngay cạnh nó.
+/// Tính trả nợ là *để dành* thì đúng hơn về kế toán — trả nợ gốc làm tăng tài
+/// sản ròng — nhưng hai con số cạnh nhau sẽ nói hai chuyện khác nhau.
+///
+/// `null` khi [thuNhap] **không dương**: "tiết kiệm bao nhiêu phần trăm của số
+/// không" là câu không có nghĩa, và chia cho một mẫu số âm cho ra tỉ lệ **đảo
+/// dấu** — đọc ngược hẳn ý nghĩa mà không lỗi nào báo. Giao diện **ẩn dòng**
+/// chứ không in `0%`. Thu nhập âm xảy ra được thật: một kỳ chỉ có tiền đi vay
+/// thì `tong.thu` trừ đi `diVay` ra số âm.
+///
+/// Kết quả **được phép âm** khi chi vượt thu nhập — kẹp về 0 là giấu đúng kỳ
+/// người dùng cần thấy nhất, cùng lý lẽ với đường dòng tiền tự do.
+double? tyLeTietKiem({required double thuNhap, required double chi}) =>
+    thuNhap <= 0 ? null : (thuNhap - chi) / thuNhap;
+
 /// Ghép [chuoi] và [chuoiVayNo] **theo chỉ số**, giữ nguyên thứ tự cũ nhất
 /// trước của cả hai.
 ///
@@ -75,7 +106,7 @@ List<DiemTuDo> dongTienTuDo(
             'Hai chuỗi lệch kỳ ở vị trí $i: ${a.ky} vs ${b.ky}',
           );
         }
-        final thuNhap = a.tong.thu - b.diVay - b.thuNo - b.khacVao;
+        final thuNhap = thuNhapCua(tong: a.tong, vayNo: b);
         return (
           ky: a.ky,
           thuNhap: thuNhap,
