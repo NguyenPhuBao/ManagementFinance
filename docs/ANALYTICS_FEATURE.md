@@ -878,6 +878,15 @@ cỡ chữ 8, hai dòng, ellipsis. ⚠️ `flutter test` **không bắt được
 `find.text` so `data` chứ không so thứ vẽ ra (bẫy 4.4) — cùng họ G39, và lại
 một lần nữa chỉ máy ảo mới nói được.
 
+#### Màn Stitch: ĐÃ GỌI, CHƯA HIỆN
+
+Lượt `generate_screen_from_text` cho khối này trả về **`timeout`**, và bốn lượt
+`list_screens` sau đó vẫn **54 màn, chưa có màn mới** (đo 2026-09-15). Theo bài
+học đã trả giá hai lần: timeout **không phải** thất bại và "chưa đổi" nghĩa là
+*chưa biết* — màn bộ chọn phạm vi hiện sau hơn một tiếng, màn bốn khối P2 hiện
+sau chừng mười lăm phút. **Đừng gọi lại.** Kiểm bằng `list_screens`; khi màn
+hiện thì ghi ID vào bảng đầu tệp này và vào mục này.
+
 #### Nghiệm thu
 
 Trên `emulator-5554`, kỳ T9 2026: cột "Đầu kỳ" 10.000 sát đáy, cột "+Thu" xanh
@@ -1163,6 +1172,36 @@ không (`preventCurveOverShooting`). Cả ba chỉ kiểm được bằng mắt 
 ---
 
 ## 7. Còn lại
+
+### 7.1 Bảng A8 — trạng thái từng mục (đếm lại 2026-09-15)
+
+Bảng gốc ở `Project.md` dòng 1028–1041, **11 mục**. Dựng bảng này vì trước đó
+phải ghép từ bốn chỗ mới trả lời được câu "mảng Phân tích xong chưa".
+
+| # | Chức năng | Trạng thái |
+|---|---|---|
+| 1 | Tổng hợp kết quả thu chi | ✅ |
+| 2 | Tròn theo **Phân loại** (thu · chi · vay/nợ) | ⚠️ làm rồi **bỏ** — người dùng chốt 2026-09-14, xem mục 3.19 |
+| 3 | Tròn theo **Loại danh mục** | ✅ 2026-09-14, mục 3.19 |
+| 4 | Cho vay + Thu nợ — cột | ✅ 2026-09-15, mục 3.22 |
+| 5 | Đi vay + Trả nợ — cột | ✅ 2026-09-15, mục 3.22 |
+| 6 | Xu hướng theo Phân loại — 2 đường | ✅ 2026-09-08 |
+| 7 | Xu hướng theo loại danh mục | ✅ 2026-09-14 (tới 5 đường), mục 3.19 |
+| 8 | **Dòng tiền tự do** (thu sau khi trả nợ) | ❌ **chưa làm** — làm được, xem dưới |
+| 9 | Biến động Khoản vay | ❌ **chặn thật** — cần dư nợ còn lại |
+| 10 | Thác nước | ✅ 2026-09-15, mục 3.23 |
+| 11 | Sankey | ❌ **chưa làm** — làm được |
+
+**#8 không bị chặn.** Nó là `Σ thu − Σ khoản mang vai traNo`, và `VaiVayNo.traNo`
+đã có từ lát #4/#5. Câu "#4, #5, #8, #9 bị chặn bởi mô hình dữ liệu" viết ngày
+2026-09-14 nay **chỉ còn đúng với #9** — xem đoạn đính chính ở mục 3.19.
+
+**#11 (Sankey) làm được nhưng nặng hơn hẳn:** `fl_chart` không có Sankey, phải
+tự vẽ bằng `CustomPainter`, và vùng vẽ không test tự động được (bẫy 4.9).
+
+**Mảng Báo cáo thì xong hẳn** — trang Xuất báo cáo đọc số thật, màn Xem trước
+mười khối, nút Tải xuống sinh PDF/CSV và lưu thẳng vào thư mục Tải về.
+
 
 - ✅ ~~**2b — biểu đồ theo thời gian.**~~ **Xong 2026-09-08.** `fl_chart` ghim
   `1.2.0`, khối "Xu hướng 6 tháng" — mục **3.11** và **3.12**. Thư viện nay đã

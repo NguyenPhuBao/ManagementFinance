@@ -61,7 +61,7 @@ Bảng A8 có 11 mục. Lượt soát bằng mã ngày 2026-09-14 cho kết qu�
 | 7 | Xu hướng theo **loại danh mục** — 1 đường | ❌ | **lát này** |
 | 8 | Dòng tiền tự do (thu sau khi trả nợ) | ❌ | ngoài phạm vi, xem §1.1 |
 | 9 | Biến động Khoản vay (Đi vay + Lãi vay) | ❌ | ngoài phạm vi, xem §1.1 |
-| 10 | Biểu đồ thác nước | ❌ | làm được, để đợt sau — §10 |
+| 10 | Biểu đồ thác nước | ✅ **xong 2026-09-15** | mục 3.23 `ANALYTICS_FEATURE.md` |
 | 11 | Biểu đồ Sankey | ❌ | làm được, để đợt sau — §10 |
 
 ### 1.1 Bốn mục bị chặn bởi mô hình dữ liệu, không phải bởi biểu đồ
@@ -369,9 +369,14 @@ Lát này đưa nó **về lại** Stitch, nên ghi chú "đừng sửa cho kh�
 
 ## 10. Để đợt sau
 
-- **Mục 10 (thác nước)** — dựng được bằng `BarChart` với `fromY/toY` của
-  `fl_chart 1.2.0`; số dư đầu kỳ → +thu → −chi → số dư cuối kỳ, hai đầu lấy từ
-  `DongTien` đã có. Chưa có `BarChart` nào trong dự án nên đây là kỹ thuật mới.
+- **Mục 10 (thác nước)** — ✅ **đã làm 2026-09-15**, mục **3.23**
+  `ANALYTICS_FEATURE.md`. Đúng như dự đoán ở đây: `BarChart` với `fromY/toY`,
+  hai đầu lấy từ `DongTien`. Câu "chưa có `BarChart` nào trong dự án" hết đúng
+  từ 2026-09-15 — hai biểu đồ cột vay/nợ (#4, #5) dùng trước nó cùng ngày.
+  ⚠️ Hai thứ spec này **không** lường được, chỉ lộ ra khi thi công: mức trung
+  bình **không vẽ được thành đường ngang** (khối chi nổi ở vùng cao, mức trung
+  bình nằm dưới đáy trục — nay là vạch trên từng cột), và chín nhãn trục hoành
+  **dính vào nhau** ở 411dp.
 - **Mục 11 (Sankey)** — `fl_chart` **không có**; phải tự vẽ `CustomPaint`, và
   vùng vẽ không test tự động được (bẫy 4.9).
 - **Mục 4, 5, 8, 9** — cần mô hình vay/nợ ở cả hai đầu, xem §1.1.
