@@ -71,6 +71,19 @@ class CurrencyFormatter {
   /// Chi tiêu với dấu `-`.
   static String formatExpense(num amount) => '-${format(amount.abs())}';
 
+  /// Tiền mang dấu theo **chiều** đã nói, nhưng **số 0 thì không mang dấu**.
+  ///
+  /// `"-0 đ"` và `"+0 đ"` đọc như một con số âm hoặc dương bằng không — vô
+  /// nghĩa. Ca ấy có thật: bảng "Phân bổ theo ví" có ví chỉ có thu hoặc chỉ có
+  /// chi, nên vế kia luôn bằng 0. Bắt được trên máy ảo 2026-09-15.
+  ///
+  /// [soTien] nhận cả số âm lẫn dương — chiều tiền lấy từ [thu], không từ dấu,
+  /// cùng quy ước với [formatIncome] và [formatExpense].
+  static String formatCoDau(num soTien, {required bool thu}) {
+    if (soTien == 0) return format(0);
+    return thu ? formatIncome(soTien) : formatExpense(soTien);
+  }
+
   /// Số có nhóm nghìn nhưng **không kèm ký hiệu** — cho ô nhập liệu và những
   /// chỗ tự đặt ký hiệu ở vị trí khác.
   ///

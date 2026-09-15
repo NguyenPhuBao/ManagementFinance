@@ -539,4 +539,104 @@ void main() {
       expect(bc.chuoi.fold<double>(0, (s, d) => s + d.chi), 0);
     });
   });
+
+  // ── Bốn hàm tách ra cho trang Phân tích dùng chung (P2, 2026-09-15) ───────
+  //
+  // `soLieuNhanh`, `phanBoTheoVi`, `topKhoanChi`, `dongTienCua` vốn tính INLINE
+  // trong `dungBaoCao`. Trang Phân tích cần đúng bốn con số ấy, nhưng gọi cả
+  // `dungBaoCao` thì mỗi lần stream phát lại — tức sau MỌI chu kỳ đồng bộ — app
+  // tính thừa cả chuỗi biểu đồ, bảng danh mục và phép gom theo ngày.
+  //
+  // Bộ ca này canh việc tách **không đổi kết quả**: hàm rời phải cho đúng thứ
+  // `dungBaoCao` vẫn cho. Lệch ở đây là hai trang nói hai con số cho cùng một
+  // tháng — lỗi khó thấy nhất trong app này.
+  group('bốn hàm thuần dùng chung với trang Phân tích', () {
+    final from = DateTime(2026, 9, 1);
+    final to = DateTime(2026, 10, 1);
+
+    List<DongGiaoDich> mau() => [
+          g(ngay: DateTime(2026, 9, 2), soTien: 300000, tieuDe: 'Chợ'),
+          g(ngay: DateTime(2026, 9, 2), soTien: 120000, vi: 'vi_2', tenVi: 'Ngân hàng', tieuDe: 'Cà phê'),
+          g(ngay: DateTime(2026, 9, 10), soTien: 900000, tieuDe: 'Sửa xe'),
+          g(ngay: DateTime(2026, 9, 11), soTien: 5000000, loai: 'thu', danhMuc: 'luong', tenDanhMuc: 'Lương', tieuDe: 'Lương T9'),
+          // Ngoài kỳ — phải bị loại khỏi ba hàm đầu, nhưng dòng tiền vẫn đọc.
+          g(ngay: DateTime(2026, 10, 3), soTien: 400000, tieuDe: 'Tháng sau'),
+          // Chuyển ví: không phải thu cũng không phải chi.
+          g(ngay: DateTime(2026, 9, 5), soTien: 2000000, loai: 'transfer', danhMuc: null, tieuDe: 'Chuyển'),
+        ];
+
+    /// Khoản nằm trong kỳ và đã qua `khoanVaoThongKe` — đúng thứ `dungBaoCao`
+    /// gọi là `loc0`, tức đầu vào của ba hàm đầu.
+    List<DongGiaoDich> trongKy() => [
+          for (final d in mau())
+            if (!d.ngay.isBefore(from) &&
+                d.ngay.isBefore(to) &&
+                d.loai != 'transfer')
+              d,
+        ];
+
+    test('phanBoTheoVi cho đúng thứ dungBaoCao cho', () {
+      final bc = dungBaoCao(mau(), loc: LocBaoCao(from: from, to: to));
+      final roi = phanBoTheoVi(trongKy());
+
+      expect(roi.length, bc.theoVi.length);
+      for (var i = 0; i < roi.length; i++) {
+        expect(roi[i].walletId, bc.theoVi[i].walletId);
+        expect(roi[i].thu, bc.theoVi[i].thu);
+        expect(roi[i].chi, bc.theoVi[i].chi);
+        expect(roi[i].soGiaoDich, bc.theoVi[i].soGiaoDich);
+      }
+      expect(roi.first.walletId, 'vi_1', reason: 'sắp giảm dần theo chi');
+    });
+
+    test('soLieuNhanhCua cho đúng thứ dungBaoCao cho', () {
+      final bc = dungBaoCao(mau(), loc: LocBaoCao(from: from, to: to));
+      final roi = soLieuNhanhCua(trongKy(), from: from, to: to);
+
+      expect(roi.chiMoiNgay, bc.soLieu.chiMoiNgay);
+      expect(roi.ngayChiNhieuNhat, bc.soLieu.ngayChiNhieuNhat);
+      expect(roi.chiNgayNhieuNhat, bc.soLieu.chiNgayNhieuNhat);
+      expect(roi.khoanChiLonNhat?.id, bc.soLieu.khoanChiLonNhat?.id);
+
+      expect(roi.chiMoiNgay, (300000 + 120000 + 900000) / 30,
+          reason: 'chia cho số ngày CỦA KỲ, không phải số ngày có giao dịch');
+      expect(roi.ngayChiNhieuNhat, DateTime(2026, 9, 10));
+    });
+
+    test('topKhoanChi cho đúng thứ dungBaoCao cho', () {
+      final bc = dungBaoCao(mau(), loc: LocBaoCao(from: from, to: to));
+      final roi = topKhoanChi(trongKy());
+
+      expect(roi.map((d) => d.id).toList(), bc.topChi.map((d) => d.id).toList());
+      expect(roi.first.soTien, 900000, reason: 'giảm dần theo số tiền');
+      expect(roi.every((d) => d.loai == 'chi'), isTrue);
+    });
+
+    test('topKhoanChi cắt đúng 5 khoản', () {
+      final nhieu = [
+        for (var i = 1; i <= 8; i++)
+          g(ngay: DateTime(2026, 9, i), soTien: 1000.0 * i, tieuDe: 'C$i'),
+      ];
+      expect(topKhoanChi(nhieu).length, 5);
+      expect(topKhoanChi(nhieu).first.soTien, 8000);
+    });
+
+    test('dongTienCua cho đúng thứ dungBaoCao cho', () {
+      final bc = dungBaoCao(mau(),
+          loc: LocBaoCao(from: from, to: to), soDuHienTai: 10000000);
+      final roi = dongTienCua(mau(), from: from, to: to, soDuHienTai: 10000000);
+
+      expect(roi!.dauKy, bc.dongTien!.dauKy);
+      expect(roi.cuoiKy, bc.dongTien!.cuoiKy);
+      expect(roi.cuoiKy, 10000000 + 400000,
+          reason: 'trừ ngược phần phát sinh SAU kỳ: một khoản chi 400.000');
+      expect(roi.thayDoi, bc.tong.thu - bc.tong.chi,
+          reason: 'phép cân của tờ báo cáo — lệch là người đọc bắt được ngay');
+    });
+
+    test('dongTienCua trả null khi chưa biết số dư hiện tại', () {
+      expect(dongTienCua(mau(), from: from, to: to, soDuHienTai: null), isNull,
+          reason: 'không bịa một con số khi không suy ngược được');
+    });
+  });
 }

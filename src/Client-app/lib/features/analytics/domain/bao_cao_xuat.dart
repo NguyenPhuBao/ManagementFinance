@@ -329,6 +329,124 @@ class BaoCao {
 ///
 /// [soDuHienTai] là tổng số dư **mọi ví** lúc này. `null` (hoặc có lọc ví) thì
 /// không có khối dòng tiền.
+/// Phân bổ theo ví của **các khoản đã lọc vào kỳ**, sắp giảm dần theo chi.
+///
+/// [trongKy] là danh sách đã cắt theo khoảng và đã qua `khoanVaoThongKe()` —
+/// hàm này không lọc lại gì cả, để nó còn dùng được cho cả trang Phân tích lẫn
+/// trang Xuất báo cáo mà không đẻ hai luật lọc.
+///
+/// Hoà thì sắp theo `walletId` để hai lần dựng không đảo chỗ nhau.
+List<DongVi> phanBoTheoVi(List<DongGiaoDich> trongKy) {
+  final gom = <String, DongVi>{};
+  for (final d in trongKy) {
+    final cu = gom[d.walletId];
+    gom[d.walletId] = DongVi(
+      walletId: d.walletId,
+      ten: d.tenVi,
+      thu: (cu?.thu ?? 0) + (d.loai == 'thu' ? d.soTien : 0),
+      chi: (cu?.chi ?? 0) + (d.loai == 'chi' ? d.soTien : 0),
+      soGiaoDich: (cu?.soGiaoDich ?? 0) + 1,
+    );
+  }
+  return gom.values.toList()
+    ..sort((a, b) {
+      final c = b.chi.compareTo(a.chi);
+      return c != 0 ? c : a.walletId.compareTo(b.walletId);
+    });
+}
+
+/// Vài con số người đọc hỏi ngay, tính trên [trongKy] và khoảng `[from, to)`.
+SoLieuNhanh soLieuNhanhCua(
+  List<DongGiaoDich> trongKy, {
+  required DateTime from,
+  required DateTime to,
+}) {
+  final soNgay = to.difference(from).inDays;
+  final chiTheoNgay = <DateTime, double>{};
+  DongGiaoDich? lonNhat;
+  var tongChi = 0.0;
+  for (final d in trongKy) {
+    if (d.loai != 'chi') continue;
+    tongChi += d.soTien;
+    final ngay = DateTime(d.ngay.year, d.ngay.month, d.ngay.day);
+    chiTheoNgay[ngay] = (chiTheoNgay[ngay] ?? 0) + d.soTien;
+    if (lonNhat == null || d.soTien > lonNhat.soTien) lonNhat = d;
+  }
+  DateTime? ngayDinh;
+  var chiDinh = 0.0;
+  for (final e in chiTheoNgay.entries) {
+    if (e.value > chiDinh) {
+      chiDinh = e.value;
+      ngayDinh = e.key;
+    }
+  }
+  return SoLieuNhanh(
+    // Chia cho số ngày CỦA KỲ, không phải số ngày có giao dịch: "chi trung
+    // bình mỗi ngày" của tháng 9 phải chia cho 30.
+    chiMoiNgay: soNgay <= 0 ? 0 : tongChi / soNgay,
+    ngayChiNhieuNhat: ngayDinh,
+    chiNgayNhieuNhat: chiDinh,
+    khoanChiLonNhat: lonNhat,
+  );
+}
+
+/// [top] khoản chi lớn nhất trong [trongKy], giảm dần.
+List<DongGiaoDich> topKhoanChi(List<DongGiaoDich> trongKy, {int top = 5}) => ([
+      for (final d in trongKy)
+        if (d.loai == 'chi') d,
+    ]..sort((a, b) => b.soTien.compareTo(a.soTien)))
+    .take(top)
+    .toList();
+
+/// Số dư ví ở hai đầu kỳ, **suy ngược** từ [soDuHienTai].
+///
+/// [tatCa] phải là **toàn bộ** giao dịch, không phải phần đã cắt theo kỳ: phép
+/// suy đi ngược từ hôm nay về cuối kỳ, nên nó cần biết phần phát sinh **sau**
+/// kỳ. Đưa vào danh sách đã cắt là hai con số bằng nhau một cách im lặng.
+///
+/// Trả `null` khi chưa biết [soDuHienTai] — không bịa một con số.
+///
+/// ⚠️ Bộ lọc danh mục **không** áp ở đây: số dư ví chịu ảnh hưởng của mọi
+/// khoản, không riêng danh mục đang xem.
+DongTien? dongTienCua(
+  List<DongGiaoDich> tatCa, {
+  required DateTime from,
+  required DateTime to,
+  required double? soDuHienTai,
+}) {
+  if (soDuHienTai == null) return null;
+
+  KhoanThuChi doi(DongGiaoDich d) => KhoanThuChi(
+        ngay: d.ngay,
+        soTien: d.soTien,
+        loai: d.loai,
+        categoryId: d.categoryId,
+      );
+  bool vaoSo(DongGiaoDich d) => khoanVaoThongKe(
+        loai: d.loai,
+        categoryId: d.categoryId,
+        ghiChu: d.ghiChu,
+      );
+
+  final sau = [
+    for (final d in tatCa)
+      if (vaoSo(d) && !d.ngay.isBefore(to)) doi(d),
+  ];
+  final tongSau = tongThuChi(sau, from: to, to: DateTime(9999, 12, 31));
+
+  final trongKy = [
+    for (final d in tatCa)
+      if (vaoSo(d) && !d.ngay.isBefore(from) && d.ngay.isBefore(to)) doi(d),
+  ];
+  final tongTrongKy = tongThuChi(trongKy, from: from, to: to);
+
+  final cuoiKy = soDuHienTai - (tongSau.thu - tongSau.chi);
+  return DongTien(
+    dauKy: cuoiKy - (tongTrongKy.thu - tongTrongKy.chi),
+    cuoiKy: cuoiKy,
+  );
+}
+
 BaoCao dungBaoCao(
   List<DongGiaoDich> ds, {
   required LocBaoCao loc,
@@ -429,106 +547,22 @@ BaoCao dungBaoCao(
   final tongTruoc = tongThuChi(khoanTruoc, from: kt.from, to: kt.to);
 
   // ── Phân bổ theo ví ─────────────────────────────────────────────────────
-  final theoVi = <DongVi>[];
-  if (loc.walletId == null) {
-    final gomVi = <String, DongVi>{};
-    for (final d in loc0) {
-      final cu = gomVi[d.walletId];
-      gomVi[d.walletId] = DongVi(
-        walletId: d.walletId,
-        ten: d.tenVi,
-        thu: (cu?.thu ?? 0) + (d.loai == 'thu' ? d.soTien : 0),
-        chi: (cu?.chi ?? 0) + (d.loai == 'chi' ? d.soTien : 0),
-        soGiaoDich: (cu?.soGiaoDich ?? 0) + 1,
-      );
-    }
-    theoVi.addAll(gomVi.values);
-    // Hoà thì sắp theo id để hai lần dựng không đảo chỗ nhau.
-    theoVi.sort((a, b) {
-      final c = b.chi.compareTo(a.chi);
-      return c != 0 ? c : a.walletId.compareTo(b.walletId);
-    });
-  }
+  // Lọc một ví thì bảng này vô nghĩa: nó chỉ có đúng một dòng, bằng chính tờ
+  // báo cáo. Chốt ấy là **chính sách của trang Báo cáo**, nên nằm ở đây chứ
+  // không trong hàm thuần — trang Phân tích không có bộ lọc ví.
+  final theoVi = loc.walletId == null ? phanBoTheoVi(loc0) : <DongVi>[];
 
-  // ── Số liệu nhanh ───────────────────────────────────────────────────────
-  final soNgay = loc.to.difference(loc.from).inDays;
-  final chiTheoNgay = <DateTime, double>{};
-  DongGiaoDich? lonNhat;
-  for (final d in loc0) {
-    if (d.loai != 'chi') continue;
-    final ngay = DateTime(d.ngay.year, d.ngay.month, d.ngay.day);
-    chiTheoNgay[ngay] = (chiTheoNgay[ngay] ?? 0) + d.soTien;
-    if (lonNhat == null || d.soTien > lonNhat.soTien) lonNhat = d;
-  }
-  DateTime? ngayDinh;
-  var chiDinh = 0.0;
-  for (final e in chiTheoNgay.entries) {
-    if (e.value > chiDinh) {
-      chiDinh = e.value;
-      ngayDinh = e.key;
-    }
-  }
+  // ── Số liệu nhanh và top khoản chi ──────────────────────────────────────
   final tong = tongThuChi(khoan, from: loc.from, to: loc.to);
-  final soLieu = SoLieuNhanh(
-    // Chia cho số ngày CỦA KỲ, không phải số ngày có giao dịch: "chi trung
-    // bình mỗi ngày" của tháng 9 phải chia cho 30.
-    chiMoiNgay: soNgay <= 0 ? 0 : tong.chi / soNgay,
-    ngayChiNhieuNhat: ngayDinh,
-    chiNgayNhieuNhat: chiDinh,
-    khoanChiLonNhat: lonNhat,
-  );
-
-  // ── Top khoản chi ───────────────────────────────────────────────────────
-  final topChi = [
-    for (final d in loc0)
-      if (d.loai == 'chi') d,
-  ]..sort((a, b) => b.soTien.compareTo(a.soTien));
+  final soLieu = soLieuNhanhCua(loc0, from: loc.from, to: loc.to);
+  final topChi = topKhoanChi(loc0);
 
   // ── Dòng tiền ───────────────────────────────────────────────────────────
-  DongTien? dongTien;
-  if (soDuHienTai != null && loc.walletId == null) {
-    // Phần phát sinh SAU kỳ, trên toàn bộ ví (bộ lọc danh mục KHÔNG áp ở đây:
-    // số dư ví chịu ảnh hưởng của mọi khoản, không riêng danh mục đang xem).
-    final sau = [
-      for (final d in ds)
-        if (khoanVaoThongKe(
-              loai: d.loai,
-              categoryId: d.categoryId,
-              ghiChu: d.ghiChu,
-            ) &&
-            !d.ngay.isBefore(loc.to))
-          KhoanThuChi(
-            ngay: d.ngay,
-            soTien: d.soTien,
-            loai: d.loai,
-            categoryId: d.categoryId,
-          ),
-    ];
-    final tongSau =
-        tongThuChi(sau, from: loc.to, to: DateTime(9999, 12, 31));
-    final trongKy = [
-      for (final d in ds)
-        if (khoanVaoThongKe(
-              loai: d.loai,
-              categoryId: d.categoryId,
-              ghiChu: d.ghiChu,
-            ) &&
-            !d.ngay.isBefore(loc.from) &&
-            d.ngay.isBefore(loc.to))
-          KhoanThuChi(
-            ngay: d.ngay,
-            soTien: d.soTien,
-            loai: d.loai,
-            categoryId: d.categoryId,
-          ),
-    ];
-    final tongTrongKy = tongThuChi(trongKy, from: loc.from, to: loc.to);
-    final cuoiKy = soDuHienTai - (tongSau.thu - tongSau.chi);
-    dongTien = DongTien(
-      dauKy: cuoiKy - (tongTrongKy.thu - tongTrongKy.chi),
-      cuoiKy: cuoiKy,
-    );
-  }
+  // Lọc một ví thì không suy ngược được (xem docstring [DongTien]), nên chốt ấy
+  // ở đây — lại là chính sách của trang Báo cáo.
+  final dongTien = loc.walletId == null
+      ? dongTienCua(ds, from: loc.from, to: loc.to, soDuHienTai: soDuHienTai)
+      : null;
 
   return BaoCao(
     from: loc.from,
@@ -540,7 +574,7 @@ BaoCao dungBaoCao(
     tongTruoc: tongTruoc,
     thuTheoDanhMuc: thuTheoDanhMuc,
     theoVi: theoVi,
-    topChi: topChi.take(5).toList(),
+    topChi: topChi,
     chuoi: _chuoiBaoCao(loc0, from: loc.from, to: loc.to),
     soLieu: soLieu,
     dongTien: dongTien,

@@ -70,11 +70,12 @@ void main() {
     String loai = 'chi',
     String? danhMuc = 'c_an',
     int idaccount = 1,
+    String vi = 'w1',
   }) {
     return db.transactionDao.insert(TransactionsCompanion.insert(
       id: id,
       idaccount: idaccount,
-      walletId: 'w1',
+      walletId: vi,
       categoryId: Value(danhMuc),
       amount: soTien,
       type: loai,
@@ -427,6 +428,91 @@ void main() {
       expect(tk.chuoiDanhMuc['c_an']!.last.tong.chi, 300000);
       expect(tk.chuoiDanhMuc.keys, isNot(contains('c_xe')),
           reason: 'Danh mục không phát sinh thì không có chip xu hướng');
+    });
+  });
+
+  // ── Bốn khối mượn từ trang Báo cáo (P2, 2026-09-15) ──────────────────────
+  //
+  // Trang Phân tích vốn nghèo hơn trang Báo cáo một cách vô lý: cùng dữ liệu,
+  // cùng tầng domain, mà không có số liệu nhanh, phân bổ theo ví, top 5 hay
+  // dòng tiền. Bốn phép tính nay là hàm thuần dùng chung ở `bao_cao_xuat.dart`
+  // — bộ ca này canh việc repository **nối đúng** vào chúng.
+  group('bốn khối mượn từ trang Báo cáo', () {
+    test('số liệu nhanh: chi mỗi ngày chia cho số ngày CỦA KỲ', () async {
+      await giaoDich(id: 't1', ngay: DateTime(2026, 9, 2), soTien: 300000, danhMuc: 'c_an');
+      await giaoDich(id: 't2', ngay: DateTime(2026, 9, 10), soTien: 600000, danhMuc: 'c_an');
+
+      final tk = await lanDau();
+
+      expect(tk.soLieu.chiMoiNgay, 900000 / 30,
+          reason: 'tháng 9 có 30 ngày, không phải 2 ngày có giao dịch');
+      expect(tk.soLieu.ngayChiNhieuNhat, DateTime(2026, 9, 10));
+      expect(tk.soLieu.chiNgayNhieuNhat, 600000);
+      expect(tk.soLieu.khoanChiLonNhat?.id, 't2');
+    });
+
+    test('phân bổ theo ví mang tên ví, giảm dần theo chi', () async {
+      await db.walletDao.insert(WalletsCompanion.insert(
+        id: 'w2',
+        idaccount: 1,
+        name: 'Ngân hàng',
+        balance: const Value(5000000.0),
+        updatedAt: now,
+      ));
+      await giaoDich(id: 't1', ngay: DateTime(2026, 9, 2), soTien: 300000, danhMuc: 'c_an');
+      await giaoDich(id: 't2', ngay: DateTime(2026, 9, 3), soTien: 900000, danhMuc: 'c_an', vi: 'w2');
+
+      final tk = await lanDau();
+
+      expect(tk.theoVi.length, 2);
+      expect(tk.theoVi.first.ten, 'Ngân hàng', reason: 'ví chi nhiều đứng trước');
+      expect(tk.theoVi.first.chi, 900000);
+      expect(tk.theoVi.last.ten, 'Tiền mặt');
+      expect(tk.theoVi.last.soGiaoDich, 1);
+    });
+
+    test('top khoản chi cắt 5 và sắp giảm dần', () async {
+      for (var i = 1; i <= 7; i++) {
+        await giaoDich(
+            id: 't$i', ngay: DateTime(2026, 9, i), soTien: 100000.0 * i, danhMuc: 'c_an');
+      }
+
+      final tk = await lanDau();
+
+      expect(tk.topChi.length, 5);
+      expect(tk.topChi.first.soTien, 700000);
+      expect(tk.topChi.first.tenDanhMuc, 'Ăn uống',
+          reason: 'tên danh mục phải được tra sẵn ở repository');
+    });
+
+    test('dòng tiền suy ngược từ tổng số dư ví', () async {
+      await giaoDich(id: 't1', ngay: DateTime(2026, 9, 2), soTien: 300000, danhMuc: 'c_an');
+      await giaoDich(id: 't2', ngay: DateTime(2026, 10, 5), soTien: 200000, danhMuc: 'c_an');
+
+      final tk = await lanDau();
+
+      // Ví w1 có 10.000.000. Sau kỳ có một khoản chi 200.000, nên cuối kỳ
+      // phải là 10.200.000; trong kỳ chi 300.000 nên đầu kỳ là 10.500.000.
+      expect(tk.dongTien!.cuoiKy, 10200000);
+      expect(tk.dongTien!.dauKy, 10500000);
+      expect(tk.dongTien!.thayDoi, -300000);
+    });
+
+    test('ví KHÔNG tính vào tổng thì không vào số dư cuối kỳ', () async {
+      // Cùng luật với trang chủ và trang Báo cáo: `viTinhVaoTong`.
+      await db.walletDao.insert(WalletsCompanion.insert(
+        id: 'w_ngoai',
+        idaccount: 1,
+        name: 'Ví không tính',
+        balance: const Value(7000000.0),
+        includeInTotal: const Value(false),
+        updatedAt: now,
+      ));
+
+      final tk = await lanDau();
+
+      expect(tk.dongTien!.cuoiKy, 10000000,
+          reason: 'ví người dùng đã loại khỏi tổng không được phình con số');
     });
   });
 }

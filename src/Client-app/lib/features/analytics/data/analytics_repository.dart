@@ -1,3 +1,4 @@
+import '../domain/bao_cao_xuat.dart';
 import '../domain/pham_vi_ky.dart';
 import '../domain/phan_loai_dong_tien.dart';
 import '../domain/thong_ke_thang.dart';
@@ -93,6 +94,30 @@ class ThongKeKy {
   /// đơn của khối xu hướng. Khoá `null` là khoản chưa phân loại.
   final Map<String?, List<DiemThoiGian>> chuoiDanhMuc;
 
+  // ── Bốn khối mượn từ trang Xuất báo cáo (P2, 2026-09-15) ────────────────
+  //
+  // Bốn phép tính là **hàm thuần dùng chung** ở `bao_cao_xuat.dart`, không phải
+  // bản chép tay thứ hai: hai trang nói cùng một con số cho cùng một kỳ là điều
+  // kiện, không phải điều mong.
+
+  /// Chi mỗi ngày, ngày chi nhiều nhất, khoản chi lớn nhất.
+  final SoLieuNhanh soLieu;
+
+  /// Thu/chi theo từng ví, giảm dần theo chi. Rỗng khi kỳ không có giao dịch.
+  final List<DongVi> theoVi;
+
+  /// Tối đa 5 khoản chi lớn nhất của kỳ, giảm dần.
+  final List<DongGiaoDich> topChi;
+
+  /// Số dư ví ở hai đầu kỳ.
+  ///
+  /// ⚠️ **Suy ngược** từ tổng số dư hiện tại — app không lưu lịch sử số dư.
+  /// Giao diện **phải** mang theo câu nói rõ điều đó; bê mỗi con số là để người
+  /// đọc tưởng đây là số đo. Lệch khi có ví tạo giữa kỳ (mục 3.16).
+  ///
+  /// `null` khi chưa đọc được số dư ví.
+  final DongTien? dongTien;
+
   const ThongKeKy({
     required this.ky,
     required this.tong,
@@ -103,6 +128,15 @@ class ThongKeKy {
     this.latPhanLoai = const [],
     this.danhMucTheoLat = const {},
     this.chuoiDanhMuc = const {},
+    this.soLieu = const SoLieuNhanh(
+      chiMoiNgay: 0,
+      ngayChiNhieuNhat: null,
+      chiNgayNhieuNhat: 0,
+      khoanChiLonNhat: null,
+    ),
+    this.theoVi = const [],
+    this.topChi = const [],
+    this.dongTien,
   });
 
   double? get thuSoVoiTruoc => phanTramSoVoi(tong.thu, tongTruoc.thu);

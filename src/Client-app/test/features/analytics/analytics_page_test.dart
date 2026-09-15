@@ -12,9 +12,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 import 'package:flowmoney/core/di/injection_container.dart';
 import 'package:flowmoney/features/analytics/data/analytics_repository.dart';
+import 'package:flowmoney/features/analytics/domain/bao_cao_xuat.dart';
 import 'package:flowmoney/features/analytics/domain/pham_vi_ky.dart';
 import 'package:flowmoney/features/analytics/domain/phan_loai_dong_tien.dart';
 import 'package:flowmoney/features/analytics/domain/thong_ke_thang.dart';
@@ -95,6 +97,10 @@ ThongKeKy _tk({
   List<LatPhanLoai> lat = const [],
   Map<String, List<DongDanhMuc>> theoLat = const {},
   Map<String?, List<DiemThoiGian>> chuoiDm = const {},
+  SoLieuNhanh? soLieu,
+  List<DongVi> theoVi = const [],
+  List<DongGiaoDich> topChi = const [],
+  DongTien? dongTien,
 }) =>
     ThongKeKy(
       ky: ky ?? Ky.thang(nam, thang),
@@ -116,6 +122,16 @@ ThongKeKy _tk({
       latPhanLoai: lat,
       danhMucTheoLat: theoLat,
       chuoiDanhMuc: chuoiDm,
+      soLieu: soLieu ??
+          const SoLieuNhanh(
+            chiMoiNgay: 0,
+            ngayChiNhieuNhat: null,
+            chiNgayNhieuNhat: 0,
+            khoanChiLonNhat: null,
+          ),
+      theoVi: theoVi,
+      topChi: topChi,
+      dongTien: dongTien,
     );
 
 /// Ba phân loại mẫu, dùng chung cho nhóm test "Cơ cấu theo danh mục" — đủ cả
@@ -127,6 +143,12 @@ const _baLat = [
 ];
 
 void main() {
+  // Khối "Top 5 khoản chi" in ngày qua `DateFormatter`, thứ cần dữ liệu locale.
+  // App gọi `initializeDateFormatting` ở `main.dart:30`; test thì phải tự gọi,
+  // nếu không widget ném `LocaleDataException` và **cả cây dừng dựng** — mọi ca
+  // trong tệp trông như "khối không hiện".
+  setUpAll(() => initializeDateFormatting('vi_VN', null));
+
   late _RepoGia repo;
   final now = DateTime(2026, 9, 8, 12);
 
@@ -794,6 +816,144 @@ void main() {
           reason: 'Hàng chip cuộn ngang che được tràn NGANG, nhưng nhãn bên '
               'trong chip vẫn phải tự cắt — font của bộ test rộng gấp đôi '
               'ngoài đời nên đây là ca chật nhất.');
+    });
+  });
+
+  // ── Bốn khối mượn từ trang Báo cáo (P2, 2026-09-15) ──────────────────────
+  group('bốn khối mượn từ trang Báo cáo', () {
+    // Trang là một ListView dựng lười: bốn khối này nằm cuối trang nên ở khổ
+    // mặc định 800x600 chúng chưa được dựng, và `find.text` trả rỗng — trông
+    // hệt như "khối không hiện". Cho cả nhóm một khung cao để ca test nói về
+    // NỘI DUNG chứ không về việc cuộn tới đâu; ca canh tràn tự đặt khổ 411dp.
+    ThongKeKy tkDayDu() => _tk(
+          soLieu: const SoLieuNhanh(
+            chiMoiNgay: 41666.67,
+            ngayChiNhieuNhat: null,
+            chiNgayNhieuNhat: 0,
+            khoanChiLonNhat: null,
+          ),
+          theoVi: const [
+            DongVi(
+                walletId: 'w1',
+                ten: 'Tiền mặt',
+                thu: 0,
+                chi: 900000,
+                soGiaoDich: 3),
+            DongVi(
+                walletId: 'w2',
+                ten: 'Ngân hàng',
+                thu: 5000000,
+                chi: 120000,
+                soGiaoDich: 2),
+          ],
+          topChi: [
+            DongGiaoDich(
+              id: 't1',
+              ngay: DateTime(2026, 9, 10),
+              soTien: 900000,
+              loai: 'chi',
+              categoryId: 'c_an',
+              tenDanhMuc: 'Ăn uống',
+              mauHex: null,
+              icon: null,
+              walletId: 'w1',
+              tenVi: 'Tiền mặt',
+              tieuDe: 'Sửa xe',
+            ),
+          ],
+          dongTien: const DongTien(dauKy: 10500000, cuoiKy: 10200000),
+        );
+
+    /// Dựng trang trong một khung cao để mọi khối cùng được dựng.
+    Future<void> moCao(WidgetTester tester) async {
+      tester.view.physicalSize = const Size(411, 4000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await moTrang(tester);
+    }
+
+    testWidgets('bốn khối hiện đủ, đúng tiêu đề', (tester) async {
+      await moCao(tester);
+      await phat(tester, tkDayDu());
+
+      expect(find.text('Dòng tiền trong kỳ'), findsOneWidget);
+      expect(find.text('Số liệu nhanh'), findsOneWidget);
+      expect(find.text('Phân bổ theo ví'), findsOneWidget);
+      expect(find.text('Top 5 khoản chi'), findsOneWidget);
+    });
+
+    testWidgets('⚠️ khối dòng tiền LUÔN kèm câu nói rõ nó là số suy ngược',
+        (tester) async {
+      await moCao(tester);
+      await phat(tester, tkDayDu());
+
+      expect(
+        find.text('Suy ngược từ số dư hiện tại của các ví'),
+        findsOneWidget,
+        reason: 'app không lưu lịch sử số dư — bê mỗi con số là để người đọc '
+            'tưởng đây là số đo. Mục 3.16.',
+      );
+    });
+
+    testWidgets('phân bổ theo ví hiện tên ví và số giao dịch', (tester) async {
+      await moCao(tester);
+      await phat(tester, tkDayDu());
+
+      expect(find.text('Tiền mặt'), findsOneWidget);
+      expect(find.text('3 giao dịch'), findsOneWidget);
+      expect(find.text('Ngân hàng'), findsOneWidget);
+    });
+
+    testWidgets('top khoản chi hiện tiêu đề, danh mục và số thứ tự',
+        (tester) async {
+      await moCao(tester);
+      await phat(tester, tkDayDu());
+
+      expect(find.text('Sửa xe'), findsOneWidget);
+      expect(find.textContaining('Ăn uống'), findsWidgets);
+
+      // Số thứ tự phải nằm TRONG hàng của khoản ấy. Tìm chuỗi '1' trần thì
+      // trúng cả nhãn trục biểu đồ và ngày tháng — ba chỗ, và ca test khi ấy
+      // xanh hay đỏ đều không nói lên điều gì.
+      final hang = find.ancestor(
+        of: find.text('Sửa xe'),
+        matching: find.byType(Row),
+      );
+      expect(
+        find.descendant(of: hang.first, matching: find.text('1')),
+        findsOneWidget,
+        reason: 'số thứ tự của khoản đứng đầu top',
+      );
+    });
+
+    testWidgets('khối rỗng thì KHÔNG hiện, không vẽ thẻ trống', (tester) async {
+      await moCao(tester);
+      await phat(tester, _tk());
+
+      expect(find.text('Phân bổ theo ví'), findsNothing);
+      expect(find.text('Top 5 khoản chi'), findsNothing);
+    });
+
+    testWidgets('không tràn ở 411dp với tên ví dài', (tester) async {
+      tester.view.physicalSize = const Size(411, 3000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await moTrang(tester);
+      await phat(
+        tester,
+        _tk(theoVi: const [
+          DongVi(
+              walletId: 'w1',
+              ten: 'Ví tiền mặt để dành cho chuyến đi Đà Lạt tháng sau',
+              thu: 123456789,
+              chi: 987654321,
+              soGiaoDich: 42),
+        ]),
+      );
+
+      expect(tester.takeException(), isNull,
+          reason: 'Flutter báo tràn qua reportError chứ không ném ra chỗ gọi');
     });
   });
 }

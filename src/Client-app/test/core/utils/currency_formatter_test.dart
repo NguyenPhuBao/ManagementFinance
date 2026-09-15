@@ -152,4 +152,23 @@ void main() {
             'CurrencyFormatter, nên chúng KHÔNG đổi theo khi quy tắc hiển thị '
             'tiền đổi:\n  ${viPham.join('\n  ')}');
   });
+
+  group('formatCoDau — số 0 không mang dấu', () {
+    test('số dương mang dấu theo chiều tiền', () {
+      expect(CurrencyFormatter.formatCoDau(935000, thu: false), '-935.000 đ');
+      expect(CurrencyFormatter.formatCoDau(500000, thu: true), '+500.000 đ');
+    });
+
+    test('số 0 KHÔNG mang dấu', () {
+      // "-0 đ" và "+0 đ" đọc như một con số âm/dương bằng không — vô nghĩa, và
+      // nó xuất hiện thật ở bảng "Phân bổ theo ví" với ví chỉ có thu hoặc chỉ
+      // có chi. Bắt được trên máy ảo 2026-09-15.
+      expect(CurrencyFormatter.formatCoDau(0, thu: false), '0 đ');
+      expect(CurrencyFormatter.formatCoDau(0, thu: true), '0 đ');
+    });
+
+    test('nhận số âm thì vẫn ra đúng chiều đã nói', () {
+      expect(CurrencyFormatter.formatCoDau(-935000, thu: false), '-935.000 đ');
+    });
+  });
 }

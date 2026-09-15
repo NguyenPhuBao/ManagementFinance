@@ -11,6 +11,8 @@ import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../data/analytics_repository.dart';
+import '../../../../core/utils/date_formatter.dart';
+import '../../domain/bao_cao_xuat.dart';
 import '../../domain/pham_vi_ky.dart';
 import '../../domain/phan_loai_dong_tien.dart';
 import '../../domain/thong_ke_thang.dart';
@@ -105,15 +107,32 @@ class _NoiDung extends StatelessWidget {
         if (thongKe.rong) {
           return [_Rong(ky: thongKe.ky)];
         }
+        // Thứ tự khối chép đúng trang Xuất báo cáo (P2, 2026-09-15) — hai
+        // trang cùng dữ liệu thì phải kể cùng một câu chuyện, theo cùng một
+        // trình tự. Thứ tự câu hỏi vẫn đọc ra được: tiền ở đâu → bao nhiêu →
+        // xu hướng ra sao → tiêu thế nào → đi vào đâu → từ ví nào → khoản nào.
         return [
+          if (thongKe.dongTien != null) ...[
+            _KhoiDongTien(dt: thongKe.dongTien!),
+            const SizedBox(height: 24),
+          ],
           _KhoiTong(tk: thongKe),
           const SizedBox(height: 24),
-          // Thứ tự câu hỏi: bao nhiêu → xu hướng ra sao → tiền đi đâu.
           _KhoiXuHuong(tk: thongKe, danhMucXuHuong: danhMucXuHuong),
+          const SizedBox(height: 24),
+          _KhoiSoLieuNhanh(tk: thongKe),
           const SizedBox(height: 24),
           _KhoiDonut(tk: thongKe, phanLoaiDangXem: phanLoaiDangXem),
           const SizedBox(height: 24),
           _DanhSachDanhMuc(tk: thongKe, phanLoai: phanLoaiDangXem),
+          if (thongKe.theoVi.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            _KhoiTheoVi(ds: thongKe.theoVi),
+          ],
+          if (thongKe.topChi.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            _KhoiTopChi(ds: thongKe.topChi),
+          ],
         ];
       case AnalyticsError(:final message):
         return [
@@ -945,6 +964,397 @@ class _ChuGiaiDuong extends StatelessWidget {
 /// phần chi gắn danh mục vay/nợ đã sang nhóm Vay/nợ. Ba nhóm phải rời nhau
 /// thì tỷ trọng mới có nghĩa — xem §2.1 spec
 /// `2026-09-14-thong-ke-phan-loai-va-xu-huong-danh-muc-design.md`.
+// ── Bốn khối mượn từ trang Xuất báo cáo (P2, 2026-09-15) ──────────────────
+//
+// Phép tính nằm trọn ở bốn hàm thuần của `bao_cao_xuat.dart`, dùng chung với
+// trang Báo cáo — ở đây chỉ có việc vẽ. Khuôn thẻ và cách xếp chữ chép từ
+// `report_preview_page.dart` để hai trang trông như một; riêng tiêu đề thì theo
+// kiểu của trang này (18px đậm) chứ không phải nhãn in hoa của tờ báo cáo.
+
+/// Tiêu đề khối, cùng kiểu với "Xu hướng …" và "Cơ cấu theo danh mục".
+///
+/// `Text` đứng trong `Row` không co được, nên bọc `SizedBox` rộng vô hạn — cùng
+/// lý do đã ghi ở hai khối kia.
+Widget _tieuDeKhoi(String chu) => SizedBox(
+      width: double.infinity,
+      child: Text(
+        chu,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: AppColors.primary,
+        ),
+      ),
+    );
+
+/// Số dư ví ở hai đầu kỳ.
+///
+/// ⚠️ **Câu "Suy ngược từ số dư hiện tại của các ví" là bắt buộc.** App không
+/// lưu lịch sử số dư, nên hai con số này suy ngược từ số dư hôm nay; bê mỗi con
+/// số là để người đọc tưởng đây là số đo. Ví tạo giữa kỳ mang theo số dư ban
+/// đầu không phải giao dịch, nên nó rơi vào số dư đầu kỳ — mục 3.16.
+class _KhoiDongTien extends StatelessWidget {
+  final DongTien dt;
+  const _KhoiDongTien({required this.dt});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: _theTrang(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _tieuDeKhoi('Dòng tiền trong kỳ'),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(child: _oSoDu('SỐ DƯ ĐẦU KỲ', dt.dauKy)),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8),
+                  child: Icon(Icons.arrow_forward,
+                      size: 18, color: AppColors.textSecondary),
+                ),
+                Expanded(child: _oSoDu('SỐ DƯ CUỐI KỲ', dt.cuoiKy)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Thay đổi trong kỳ',
+                      style: TextStyle(
+                          fontSize: 12, color: AppColors.textSecondary),
+                    ),
+                  ),
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        dt.thayDoi >= 0
+                            ? CurrencyFormatter.formatIncome(dt.thayDoi)
+                            : CurrencyFormatter.formatExpense(dt.thayDoi),
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: dt.thayDoi >= 0
+                              ? AppColors.income
+                              : AppColors.expense,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Suy ngược từ số dư hiện tại của các ví',
+              style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+            ),
+          ],
+        ),
+      );
+
+  Widget _oSoDu(String nhan, double soTien) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            nhan,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textSecondary,
+              letterSpacing: 0.6,
+            ),
+          ),
+          const SizedBox(height: 4),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              CurrencyFormatter.format(soTien),
+              maxLines: 1,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+        ],
+      );
+}
+
+/// Ba con số người dùng hỏi ngay, kiểu Money Lover / MISA.
+class _KhoiSoLieuNhanh extends StatelessWidget {
+  final ThongKeKy tk;
+  const _KhoiSoLieuNhanh({required this.tk});
+
+  @override
+  Widget build(BuildContext context) {
+    final s = tk.soLieu;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: _theTrang(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _tieuDeKhoi('Số liệu nhanh'),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child:
+                    _o('CHI MỖI NGÀY', CurrencyFormatter.format(s.chiMoiNgay)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _o(
+                  'NGÀY CHI NHIỀU NHẤT',
+                  s.ngayChiNhieuNhat == null
+                      ? '—'
+                      : DateFormatter.formatDate(s.ngayChiNhieuNhat!),
+                  phu: s.ngayChiNhieuNhat == null
+                      ? null
+                      : CurrencyFormatter.format(s.chiNgayNhieuNhat),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          _o(
+            'KHOẢN CHI LỚN NHẤT',
+            s.khoanChiLonNhat?.tieuDe ?? '—',
+            phu: s.khoanChiLonNhat == null
+                ? null
+                : CurrencyFormatter.format(s.khoanChiLonNhat!.soTien),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _o(String nhan, String giaTri, {String? phu}) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            nhan,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textSecondary,
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(height: 4),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              giaTri,
+              maxLines: 1,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+          if (phu != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              phu,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style:
+                  const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+            ),
+          ],
+        ],
+      );
+}
+
+/// Thu/chi theo từng ví, giảm dần theo chi.
+class _KhoiTheoVi extends StatelessWidget {
+  final List<DongVi> ds;
+  const _KhoiTheoVi({required this.ds});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: _theTrang(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _tieuDeKhoi('Phân bổ theo ví'),
+            for (final v in ds)
+              Padding(
+                padding: const EdgeInsets.only(top: 14),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            v.ten,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${v.soGiaoDich} giao dịch',
+                            style: const TextStyle(
+                                fontSize: 12, color: AppColors.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              CurrencyFormatter.formatCoDau(v.thu, thu: true),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.income,
+                              ),
+                            ),
+                            Text(
+                              CurrencyFormatter.formatCoDau(v.chi, thu: false),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.expense,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      );
+}
+
+/// Năm khoản chi lớn nhất của kỳ.
+class _KhoiTopChi extends StatelessWidget {
+  final List<DongGiaoDich> ds;
+  const _KhoiTopChi({required this.ds});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: _theTrang(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _tieuDeKhoi('Top 5 khoản chi'),
+            for (var i = 0; i < ds.length; i++)
+              Padding(
+                padding: const EdgeInsets.only(top: 14),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 22,
+                      height: 22,
+                      alignment: Alignment.center,
+                      decoration: const BoxDecoration(
+                        color: AppColors.surfaceContainerLow,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        '${i + 1}',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            ds[i].tieuDe,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${ds[i].tenDanhMuc} · '
+                            '${DateFormatter.formatDate(ds[i].ngay)}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                fontSize: 12, color: AppColors.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          CurrencyFormatter.formatExpense(-ds[i].soTien),
+                          maxLines: 1,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.expense,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      );
+}
+
 class _KhoiDonut extends StatelessWidget {
   final ThongKeKy tk;
   final String phanLoaiDangXem;
