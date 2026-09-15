@@ -21,7 +21,7 @@ thẳng vào thư mục Tải về** của máy. Xem mục 7.
 | Bất cứ việc gì | Mục 3 (quyết định) và mục 4 (bẫy) |
 | Sửa phép tính | `domain/thong_ke_thang.dart` và test của nó — **không** có CSDL, kiểm bằng danh sách |
 | Sửa cách gộp dữ liệu | Mục 3.3 (mốc tra ngân sách) trước, rồi `data/analytics_repository_impl.dart` |
-| Đụng giao diện | **Hai** màn Stitch còn dùng được: `c8567243…` *"Thống kê - Cơ cấu danh mục & Xu hướng 6 tháng"* (2026-09-14) cho thân trang, và **`83993fc9f5de4c5f8fba6940480c164a`** *"Thống kê - Chọn phạm vi thời gian"* (2026-09-15) cho bộ chọn phạm vi — ⚠️ **hai** màn cũ đã lỗi thời và vẫn còn trong dự án: `c2a2b615…` (tả A8 #2 đã bỏ: mức gốc ba lát + dropdown) và `a228fa69…` "FlowMoney Analytics Dashboard"; và mục 4.4 về font của bộ test |
+| Đụng giao diện | **Ba** màn Stitch còn dùng được: `c8567243…` *"Thống kê - Cơ cấu danh mục & Xu hướng 6 tháng"* (2026-09-14) cho thân trang, **`83993fc9f5de4c5f8fba6940480c164a`** *"Thống kê - Chọn phạm vi thời gian"* (2026-09-15) cho bộ chọn phạm vi, và **`6e9007f7653749a893c88e3de535afa5`** *"Thống kê - Biểu đồ Cho vay & Đi vay"* (đo được 2026-09-15) cho hai biểu đồ vay/nợ — ⚠️ màn thứ ba vẽ thêm **hai thẻ tổng** mà bản thi công **cố ý không có**, xem mục 3.22 — ⚠️ **hai** màn cũ đã lỗi thời và vẫn còn trong dự án: `c2a2b615…` (tả A8 #2 đã bỏ: mức gốc ba lát + dropdown) và `a228fa69…` "FlowMoney Analytics Dashboard"; và mục 4.4 về font của bộ test |
 | Đụng biểu đồ | Mục **3.11** (vì sao `fl_chart`, vì sao ghim phiên bản), **3.12** (khối xu hướng từng lệch Stitch, nay hết), **3.19** (đường một danh mục), và bẫy **4.9** (tooltip tràn — thứ duy nhất phải kiểm bằng mắt) |
 | Sinh tệp PDF/CSV | Mục **3.17** (vì sao nhúng font, vì sao `MediaStore` chứ không phải quyền ghi bộ nhớ), **3.18** (ba luật của CSV cho Excel tiếng Việt), bẫy **4.15**–**4.16** |
 | Đụng trang Xuất báo cáo / màn Xem trước | Mục **3.13** (vì sao xem trước rồi mới tải), **3.14** (ảnh chụp, không phải luồng sống; và màn Stitch mới), **3.15** (mười khối lấy chuẩn từ app thị trường), **3.16** (dòng tiền là số suy ngược, hai giới hạn), bẫy **4.11**–**4.14** |
@@ -743,6 +743,25 @@ hiện. Giấu hẳn đi là im lặng đánh rơi tiền của người dùng.
 một bên, trông như lỗi vẽ. **Thứ tự trong `barRods` là thứ tự vẽ**, nên cột sau
 phải đứng trước để cột trước đè lên nó. Trần trục tính `buoc` trước rồi
 `maxY = buoc * 3`, cùng cách chống nhãn in đè của G39 (bẫy 4.18).
+
+#### Màn Stitch — và hai thẻ tổng **cố ý không chép sang**
+
+**`6e9007f7653749a893c88e3de535afa5`** — *"Thống kê - Biểu đồ Cho vay & Đi vay"*.
+Đo được ngày 2026-09-15; **không ghi ai tạo ra nó**, vì một màn mới xuất hiện
+không chứng minh lượt gọi nào sinh ra nó (mục 3.19, đoạn về `edit_screens`).
+
+Phần khớp bản thi công: hai khối *"Cho vay & Thu nợ"* và *"Đi vay & Trả nợ"*,
+mỗi khối một dải chú giải hai màu, trục sáu kỳ, và bộ chọn phạm vi của mục 3.20
+ở đầu trang.
+
+⚠️ Phần **không** chép sang: Stitch vẽ thêm **hai thẻ tổng** ở đầu — *"Tổng cho
+vay … 6 kỳ hạn • Còn 4 kỳ"* và *"Tổng đi vay … Tiến độ 65%"*. Ba con số ấy —
+**số kỳ hạn**, **số kỳ còn lại**, **phần trăm tiến độ** — đều đòi **dư nợ gốc và
+kỳ hạn**, đúng thứ mà mô hình dữ liệu không có (xem đoạn "#9 thì vẫn chặn thật"
+bên trên). Vẽ chúng bằng số suy đoán là bịa ra một con số mà người dùng sẽ tin,
+nên hai thẻ ấy bị bỏ. Khối thứ ba *"Vay/nợ chưa xếp được vai"* thì ngược lại:
+Stitch **không** có, bản thi công thêm vào, vì giấu nó đi là im lặng đánh rơi
+tiền.
 
 #### Nghiệm thu
 

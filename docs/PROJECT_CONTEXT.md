@@ -619,6 +619,15 @@ mục Vay/nợ: `Cho vay` và `Đi vay` (13 bản mỗi tên); `Trả nợ` và 
 xoá mềm khi backend thu bộ khuôn về 13 UUID. Với luật đúng thì hai danh mục ấy
 đủ ghi cả bốn vai.
 
+**Màn Stitch:** `6e9007f7653749a893c88e3de535afa5` *"Thống kê - Biểu đồ Cho vay
+& Đi vay"* — đo được ngày 2026-09-15; **không ghi ai tạo ra nó**, vì một màn mới
+xuất hiện không chứng minh lượt gọi nào sinh ra nó. Hai khối và trục sáu kỳ khớp
+bản thi công. ⚠️ Stitch vẽ thêm **hai thẻ tổng** (*số kỳ hạn*, *số kỳ còn lại*,
+*% tiến độ*) mà bản thi công **cố ý bỏ**: cả ba đòi dư nợ gốc và kỳ hạn — đúng
+thứ không có — nên vẽ chúng là bịa một con số người dùng sẽ tin. Ngược lại, khối
+thứ ba *"Vay/nợ chưa xếp được vai"* thì Stitch không có mà bản thi công thêm
+vào, vì giấu nó đi là im lặng đánh rơi tiền.
+
 Không đổi schema (vẫn **v22**), không thêm trường đồng bộ. Mức nền:
 **2511/2511** test, analyze **25 issue / 0 error**.
 
