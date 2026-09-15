@@ -593,7 +593,44 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-14)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-15)
+
+### 🗓️ Phạm vi thời gian cho trang Phân tích — P1 (2026-09-15)
+
+Trang Phân tích thôi khoá cứng theo tháng: nay xem được theo **tuần · tháng ·
+quý · năm · khoảng tuỳ chọn**. Spec
+`docs/superpowers/specs/2026-09-15-pham-vi-thoi-gian-trang-phan-tich-design.md`
+(gitignore), chi tiết ở mục **3.20** `docs/ANALYTICS_FEATURE.md`.
+
+**`Ky` là định nghĩa duy nhất** của một kỳ (`analytics/domain/pham_vi_ky.dart`):
+một `DonViKy` cộng biên `[from, to)`. Nó thay `(nam, thang)` ở `ThongKeKy`,
+`watchKy`, `AnalyticsLoading`, `chonKy`. Làm **hai bước**: bước 1 đổi mô hình mà
+hành vi không đổi (bộ chọn vẫn chỉ dựng `Ky.thang`) — app chạy y hệt là bằng
+chứng mô hình đúng; bước 2 mở bộ chọn và cho chuỗi xu hướng đi theo đơn vị.
+
+⚠️ **Một kết luận sai đã phải rút lại ngay trong ngày:** kế hoạch và bản đầu
+của các tài liệu này ghi rằng P1 "gỡ chặn cho thông báo Tổng kết tuần". **Sai**
+— thông báo ấy làm xong từ **2026-09-09** (mục 5d `NOTIFICATION_FEATURE.md`), và
+điều kiện của nó đóng bằng phạm vi tuỳ chỉnh của trang Xuất báo cáo. Nguồn của
+nhầm lẫn: ghi chú 2026-09-08 trong spec Tổng kết tuần nói "còn thiếu màn phạm vi
+tuần" — đúng **vào ngày ấy**, và khối "✅ Đã đủ" nằm ngay dưới nó. Bài học cũ,
+vấp lại: `grep` một cụm chữ rồi kết luận, thay vì đọc trọn mục.
+
+**Hệ quả thật của P1:** trang Phân tích tự nó có phạm vi tuần, và mọi khối thống
+kê thêm về sau không còn thừa hưởng giới hạn "chỉ tháng". Và ⚠️ **ngân sách chỉ
+gắn vào dòng danh mục khi đơn vị là Tháng**:
+`BudgetView.spent` đếm theo kỳ của *chính ngân sách ấy*, nên vẽ thanh "% ngân
+sách" cạnh số liệu một tuần là đặt hai kỳ khác nhau lên cùng một tỉ lệ — sai im
+lặng, con số trông rất hợp lý.
+
+**Hai lỗi bắt được trong lúc làm, cả hai đều thuộc họ đã biết:** widget test bắt
+nhãn trục quý `Q3` xuất hiện **hai lần** trên cùng một trục (sáu quý trải qua
+một năm rưỡi → nhãn thành `Q3/26`, cùng họ G39); và nghiệm thu máy ảo bắt sheet
+**co theo số dòng** nên hàng chip trượt xuống dưới ngón tay khi đổi đơn vị, cú
+chạm kế rơi vào lớp phủ (→ chiều cao cố định, có ca test canh).
+
+Không đổi schema (vẫn **v22**), không thêm trường đồng bộ. Mức nền mới:
+**2467/2467** test, analyze **25 issue / 0 error**.
 
 ### 📊 A8 #3, #7 — cơ cấu theo danh mục và xu hướng nhiều danh mục (2026-09-14)
 
@@ -1569,7 +1606,7 @@ trên route không có `WalletCubit`, màn đỏ do `DropdownButton` có `value`
   có dữ liệu", không "tăng ∞%"; donut top‑4 + "Khác"; tháng rỗng nói rỗng.
 - **Lát 2b (2026-09-08):** khối **"Xu hướng 6 tháng"** — hai đường thu/chi vẽ
   bằng **`fl_chart` ghim `1.2.0`**, đặt giữa khối tổng và donut. Chuỗi do
-  `chuoiTheoThang()` dựng ở tầng thuần, **cũ nhất trước**, tháng rỗng giữ chỗ
+  `chuoiTheoKy()` — tên cũ `chuoiTheoThang` tới 2026-09-15 — dựng ở tầng thuần, **cũ nhất trước**, kỳ rỗng giữ chỗ
   với số 0. Donut **vẫn** là `SweepGradient`, không viết lại. Khối này **lệch
   bản Stitch có chủ ý** — không màn nào trong 35 màn có biểu đồ đường/cột.
 - 4 tệp test, **61 test**; **sáu** bản sai có chủ ý (biên đóng, bỏ lọc hết hạn,

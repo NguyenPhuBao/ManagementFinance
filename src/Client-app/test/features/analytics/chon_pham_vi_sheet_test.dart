@@ -122,6 +122,32 @@ void main() {
     }
   });
 
+  testWidgets('chiều cao KHÔNG đổi khi đổi đơn vị', (tester) async {
+    // Sheet neo ở đáy màn hình. Nếu nó co theo số dòng (12 tuần · 8 quý · 5
+    // năm) thì hàng chip trượt xuống dưới ngón tay ngay sau cú chạm, và cú
+    // chạm tiếp theo rơi vào lớp phủ rồi đóng sheet. Vấp thật trên máy ảo
+    // 2026-09-15 — khung cao cố định của harness cũ che mất.
+    Widget tuDo(Ky ky) => MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: Scaffold(
+            body: Align(
+              alignment: Alignment.bottomCenter,
+              child: ChonPhamViSheet(kyHienTai: ky, moc: moc, onChon: (_) {}),
+            ),
+          ),
+        );
+
+    await tester.pumpWidget(tuDo(Ky.tuan(moc)));
+    final caoTuan = tester.getSize(find.byType(ChonPhamViSheet)).height;
+
+    await tester.tap(find.text('Năm'));
+    await tester.pumpAndSettle();
+    final caoNam = tester.getSize(find.byType(ChonPhamViSheet)).height;
+
+    expect(caoNam, caoTuan,
+        reason: '5 năm và 12 tuần phải cho cùng một chiều cao sheet');
+  });
+
   testWidgets('không tràn ở 411dp, kể cả khi danh sách dài nhất', (tester) async {
     await tester.pumpWidget(dung(Ky.tuan(moc)));
     await tester.pumpAndSettle();

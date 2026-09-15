@@ -1,3 +1,8 @@
+> ⚠️ **Đọc kèm, 2026-09-15:** P1 đổi tên ba thứ mà tệp này còn gọi theo tên cũ —
+> `ThongKeThang` → **`ThongKeKy`**, `watchThang` → **`watchKy`**,
+> `chuoiTheoThang` → **`chuoiTheoKy`** (và tham số `nam`/`thang` thành một `Ky`).
+> Mọi lý lẽ trong tệp vẫn đúng; chỉ tên gọi là ảnh chụp của ngày 2026-09-14.
+
 # Thống kê theo phân loại danh mục và xu hướng một danh mục — thiết kế
 
 **Ngày:** 2026-09-14 · **Nhánh:** `TranQuangDat` · **Trạng thái:** đã thi công,

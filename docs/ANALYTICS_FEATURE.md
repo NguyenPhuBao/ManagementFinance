@@ -1,6 +1,6 @@
 # Trang Phân tích — thiết kế, lý do, và những cái bẫy
 
-**Cập nhật:** 2026-09-14 (mục **3.19** — A8 #3, #7: cơ cấu theo danh mục với ba chip nhóm, và xu hướng tới 5 danh mục cùng lúc; bản thi công **lần hai**, #2 đã bỏ) · bản trước 2026-09-13
+**Cập nhật:** 2026-09-15 (mục **3.20** — **P1: phạm vi thời gian**, trang nay xem được theo tuần · tháng · quý · năm · khoảng tuỳ chọn) · bản trước 2026-09-14 (mục **3.19** — A8 #3, #7: cơ cấu theo danh mục với ba chip nhóm, và xu hướng tới 5 danh mục cùng lúc; bản thi công **lần hai**, #2 đã bỏ)
 **Trạng thái:** **mảng Phân tích đã xong cả 2a, 2b, 2c** (2026-09-09). Lát **2a** xong — mọi con số trên trang là số thật từ SQLite —
 lát **2b** xong (khối "Xu hướng 6 tháng" vẽ bằng `fl_chart`), lát **2c‑1** xong
 (trang Xuất báo cáo đọc ví/danh mục/thời gian thật rồi mở màn **Xem trước báo
@@ -197,7 +197,7 @@ khác trong `pubspec.yaml`. Cố ý: `fl_chart` đổi API giữa các bản, v�
 hỏng thì **hỏng lặng lẽ** — vẽ ra hình khác chứ không ném lỗi, nên một bản nâng
 âm thầm sẽ không có gì bắt được. Nới ra thì phải xem lại biểu đồ trên máy thật.
 
-Phần test không mất gì: **phép tính nằm trọn ở `chuoiTheoThang()` tầng domain**
+Phần test không mất gì: **phép tính nằm trọn ở `chuoiTheoKy()` tầng domain**
 và được kiểm bằng danh sách ở đó. Lỗi âm thầm nằm trong con số chứ không trong
 nét vẽ. Widget test chỉ còn canh ba thứ mà nó canh được thật: khối có mặt,
 **nhãn trục lấy từ dữ liệu** (bản sai có chủ ý đổi nhãn thành `T${i + 1}` đã
@@ -248,7 +248,7 @@ thêm một thư viện nữa mà `.csv` đã phục vụ đúng nhu cầu "phù
 ### 3.14 Màn Xem trước là **ảnh chụp**, không phải luồng sống
 
 `BaoCaoRepository.layBaoCao` trả `Future`, không `Stream` — ngược với
-`AnalyticsRepository.watchThang`. Tờ báo cáo là của một khoảng đã chốt; để nó
+`AnalyticsRepository.watchKy` (tên cũ `watchThang` tới 2026-09-15). Tờ báo cáo là của một khoảng đã chốt; để nó
 tự đổi dưới tay người dùng khi đồng bộ kéo về một giao dịch mới là thứ không ai
 muốn ở một thứ sắp mang đi nộp. Trang Xem trước vì thế **không đọc CSDL**:
 trang Xuất dựng xong rồi đẩy `BaoCao` sang, nên nó kiểm được bằng widget test
@@ -452,7 +452,7 @@ khác dropdown, không có mục nào tự nói lên trạng thái rỗng.
 
 #### Bốn cái bẫy im lặng, cả bốn đều có test canh
 
-1. **Stream phát lại làm mất lựa chọn.** `watchThang` phát lại mỗi khi giao
+1. **Stream phát lại làm mất lựa chọn.** `watchKy` phát lại mỗi khi giao
    dịch, danh mục **hoặc** ngân sách đổi — kể cả khi đồng bộ nền kéo về. Quên
    chép hai lựa chọn sang state mới thì cứ mỗi chu kỳ đồng bộ là donut tự nhảy
    về nhóm Chi và mọi đường xu hướng biến mất **trong khi người dùng đang
@@ -469,7 +469,7 @@ khác dropdown, không có mục nào tự nói lên trạng thái rỗng.
 
 #### Một lượt duyệt cho `chuoiTheoDanhMuc`
 
-Gọi `chuoiTheoThang` một lần cho mỗi danh mục là `số danh mục × soThang` lượt
+Gọi `chuoiTheoKy` một lần cho mỗi danh mục là `số danh mục × soKy` lượt
 quét toàn bộ giao dịch — với 30 danh mục và 5.000 giao dịch là 900.000 phép so
 ngày **mỗi lần stream phát**. Hàm mới duyệt một lần, phân thẳng vào ô
 `(categoryId, tháng)`, và có test đối chiếu thẳng với bản lọc tay: nó chỉ được
@@ -534,6 +534,63 @@ Rút lại thành hai điều, cả hai đều đã phải sửa tài liệu đ�
 về **không** chứng minh công cụ đã làm gì, và một màn mới xuất hiện **không**
 chứng minh lời gọi của mình tạo ra nó — người dùng thao tác song song trên Stitch
 mà mình không thấy. Phép đo duy nhất đáng tin là **hỏi người dùng**.
+
+### 3.20 Phạm vi thời gian — tuần · tháng · quý · năm · khoảng tuỳ chọn (P1)
+
+**2026-09-15.** Trước hôm nay trang chỉ xem được **theo tháng**: bộ chọn dựng từ
+`cacThangGanNhat(now)` và cả năm tầng khoá cứng theo cặp `(nam, thang)`. Trang
+Xuất báo cáo — cùng dữ liệu, cùng tầng domain — đã làm được quý và khoảng tuỳ ý
+từ 2026-09-09; trang Phân tích thì không.
+
+Spec: `docs/superpowers/specs/2026-09-15-pham-vi-thoi-gian-trang-phan-tich-design.md`
+(gitignore). Kế hoạch thi công: `docs/superpowers/plans/2026-09-15-p1-pham-vi-thoi-gian-phan-tich.md`.
+
+**`Ky` là định nghĩa duy nhất** (`analytics/domain/pham_vi_ky.dart`): một
+`DonViKy` cộng biên `[from, to)`. Nó thay `(nam, thang)` ở `ThongKeKy`,
+`watchKy`, `AnalyticsLoading`, `chonKy`, và ở mọi nhãn trên trang.
+
+**Ba dạng nhãn cho ba chỗ**, không phải thừa: `nhan` cho danh sách trong bộ chọn
+(có chỗ, nên tuần hiện cả khoảng ngày), `nhanNgan` cho ô trên header (hàng ấy đã
+tràn 53px một lần), `nhanTruc` cho trục biểu đồ (vài ký tự). Cộng hai hàm nhãn:
+`nhanOChon` (nếp "Tháng này (T9 2026)" chỉ khi kỳ **chứa hôm nay**) và
+`nhanKyTruoc` (câu "so với …" ở thẻ tổng — bỏ năm khi cùng năm, giữ năm khi kỳ
+trước rơi sang năm khác).
+
+**Bộ chọn là bottom sheet hai tầng**, không phải chip trên header: header đã
+chật. Chip chọn *đơn vị*, danh sách chọn *kỳ* — và **đổi chip chưa phải một lựa
+chọn**, vì người dùng còn phải nói rõ kỳ nào. Danh sách dựng tại chỗ bằng
+`cacKyGanNhat(moc, donVi)`; `AnalyticsLoaded` mang `moc` thay cho `cacThang` để
+lướt qua bốn đơn vị không phải đi một vòng cubit.
+
+**Năm cái bẫy, cả năm đều hỏng im lặng:**
+
+1. ⚠️ **Ngân sách chỉ gắn khi đơn vị là Tháng.** `BudgetView.spent` đếm theo kỳ
+   của **chính ngân sách ấy**, không theo kỳ đang xem. Vẽ thanh "% ngân sách"
+   cạnh số liệu một tuần là đặt hai kỳ khác nhau lên cùng một tỉ lệ, và con số
+   trông rất hợp lý. Chốt ở `_dung()`; dòng tự rơi về nhãn "% tổng chi".
+2. ⚠️ **Nhãn trục của sáu kỳ liên tiếp phải đôi một khác nhau.** Sáu quý trải
+   qua **một năm rưỡi**, nên `Q3` một mình xuất hiện hai lần — hai cột khác nhau
+   mang đúng một nhãn. Nhãn quý là `Q3/26`. Sáu tháng, sáu tuần, sáu năm thì
+   không lặp. Có một ca quét cả bốn đơn vị canh việc này; cùng họ với **G39**.
+3. ⚠️ **Nhãn trục tuần là ngày thứ Hai, không phải `T38`.** `T` đang là tiền tố
+   của tháng ở khắp app; hai nghĩa cùng một chữ trên cùng một trục là lỗi đọc
+   nhầm chứ không phải lỗi mã.
+4. ⚠️ **Thoát bộ chọn ngày thì giữ nguyên kỳ đang xem.** Rơi về tháng này là tự
+   đổi thứ người dùng đang xem chỉ vì họ bấm nhầm rồi thoát ra. Khác
+   `khoangCuaPhamVi` của trang Báo cáo, nơi `null` buộc phải có một chỗ rơi vì
+   nó là hàm thuần.
+5. ⚠️ **Lùi kỳ theo đơn vị lịch, không trừ số ngày.** `lui` là chỗ duy nhất làm
+   việc ấy; bản sai có chủ ý dùng `subtract(Duration(days: 30))` cho ra
+   `2026-01-01` thay vì `2026-02-01`.
+
+**Biên tuần dùng chung với thông báo Tổng kết tuần**: `bienTuan` tách khỏi thân
+`tuanTruoc` ở `core/notification/tuan_iso.dart`, và có một ca canh hai hàm không
+trôi khỏi nhau. Nhờ đó số tuần đúng ở ca tuần vắt qua giao thừa (31/12/2025
+thuộc `2026-W01`).
+
+**Không đổi schema, không thêm trường đồng bộ.** Trang Xuất báo cáo không đổi gì
+ngoài một dòng `export`: `khoangKyTruoc` chuyển sang `pham_vi_ky.dart` để hai
+trang dùng chung một định nghĩa, và 25 ca của nó vẫn xanh mà không sửa dòng nào.
 
 ## 4. Bẫy
 
@@ -690,14 +747,14 @@ thật.
 ```
 AnalyticsPage ──watch AuthBloc──▶ idaccount
    └─ BlocProvider(key: ValueKey(idaccount)) ─▶ AnalyticsCubit.xem(idaccount)
-         └─ AnalyticsRepository.watchThang(idaccount, nam, thang, now)
+         └─ AnalyticsRepository.watchKy(idaccount, ky, now)
                ├─ transactionDao.watchAll ─┐
-               ├─ categoryDao.watchAll ────┼─▶ _dung() ─▶ ThongKeThang
+               ├─ categoryDao.watchAll ────┼─▶ _dung() ─▶ ThongKeKy
                └─ BudgetRepository.watchBudgets(now: mốc) ┘
                      (đã có spent theo kỳ; lọc isExpired ở đây)
 ```
 
-`ThongKeThang` mang: tổng tháng này, tổng tháng trước, chi theo danh mục (thô,
+`ThongKeKy` mang: tổng kỳ này, tổng kỳ trước, chi theo danh mục (thô,
 cho donut), cùng danh sách ấy đã tra tên/biểu tượng/màu/ngân sách (cho bảng),
 và **`chuoi`** — sáu điểm `DiemThoiGian` cho biểu đồ xu hướng. Widget **không
 cộng gì cả**.
@@ -724,7 +781,7 @@ tháng. Ví và danh mục tra tên **kể cả hàng đã xoá mềm** — cùn
 ⚠️ Repository truyền **toàn bộ** giao dịch của tài khoản chứ không lọc sẵn theo
 kỳ: kỳ trước (mục 3.15) và dòng tiền (mục 3.16) đều nhìn ra ngoài khoảng đang
 xem. Ai "tối ưu" bằng cách lọc trước khi gọi sẽ làm hai khối ấy sai mà không lỗi
-nào báo — cùng bẫy với `chuoi` của `ThongKeThang`. Riêng **tổng số dư** thì lấy
+nào báo — cùng bẫy với `chuoi` của `ThongKeKy`. Riêng **tổng số dư** thì lấy
 từ ví **còn sống** (`walletDao.getAll`), để khớp con số trang chủ hiện.
 
 ⚠️ `chuoi` nhìn **xa hơn** `tongTruoc` nhiều, nên nó phải được dựng từ **toàn
@@ -739,7 +796,7 @@ Test `sáu điểm, cũ nhất trước, mang số thật của cả tháng ở 
 
 | Tệp | Canh gì |
 |---|---|
-| `thong_ke_thang_test.dart` | Biên tháng (tháng 12, **năm nhuận**, tháng 2 thường), biên `to` mở, loại `transfer`, % với tháng trước = 0, gom danh mục và sắp ổn định khi hoà, top‑4 + Khác (kể cả đúng 5), `rutGon` (làm tròn, bỏ `.0`), 12 tháng gần nhất cuộn qua năm trước |
+| `thong_ke_thang_test.dart` | Biên tháng (tháng 12, **năm nhuận**, tháng 2 thường), biên `to` mở, loại `transfer`, % với tháng trước = 0, gom danh mục và sắp ổn định khi hoà, top‑4 + Khác (kể cả đúng 5), `rutGon` (làm tròn, bỏ `.0`) — luật "12 kỳ gần nhất" chuyển sang `pham_vi_ky_test.dart` ngày 2026-09-15 |
 | `analytics_repository_impl_test.dart` | Đổi hàng Drift → thuần, cách ly `idaccount`, ba chữ cho ba ca danh mục **kể cả xoá mềm giữ tên thật**, "% ngân sách" bám ngân sách đang chạy và **bỏ ngân sách hết hạn**, stream phát lại khi ghi thêm |
 | `analytics_cubit_test.dart` | `null` không đoán tài khoản; tháng lấy từ `clock` và `now` đi xuống repository; đổi tháng huỷ đăng ký cũ; lỗi stream không nổ |
 | `bao_cao_xuat_test.dart` | Tầng thuần của lát 2c: bốn phạm vi thời gian (**tháng 1 lùi sang năm trước**, quý IV, tuỳ chỉnh cộng một ngày, năm nhuận), lọc theo ví/danh mục, `'transfer'` bị loại khỏi **cả** tổng lẫn danh sách, gom danh mục, nhóm theo ngày mới-nhất-trước, báo cáo rỗng. Lát 2c‑1b thêm: `khoangKyTruoc` (**tháng lùi theo tháng, không trừ N ngày**; quý; tuỳ chỉnh), dòng tiền (trừ phần sau kỳ, `transfer` không làm lệch, lọc ví thì `null`), thu theo danh mục, phân bổ theo ví, số liệu nhanh (**chia cho số ngày CỦA KỲ**), top 5, và độ chia của biểu đồ đổi theo độ dài kỳ |
@@ -750,7 +807,7 @@ Test `sáu điểm, cũ nhất trước, mang số thật của cả tháng ở 
 | `export_report_page_test.dart` | Ví lấy từ CSDL (không còn "Techcombank"), không còn lịch sử xuất bịa, bộ lọc đi **nguyên vẹn** xuống repository (khoảng theo đồng hồ, id ví, id danh mục), mở đúng màn Xem trước, 411dp |
 | `analytics_page_test.dart` | Tháng từ đồng hồ (không còn "T6 2026"), ba thẻ, "% ngân sách"/"% tổng chi", donut + Khác + tâm rút gọn, rỗng, chọn tháng, "Xem tất cả", **411dp với tên dài**, và khối xu hướng: sáu nhãn tháng lấy từ dữ liệu, chú giải Thu/Chi, chuỗi rỗng không nổ, 411dp với số hàng trăm triệu |
 
-Lát 2b thêm vào `thong_ke_thang_test.dart` sáu ca cho `chuoiTheoThang`: thứ tự
+Lát 2b thêm vào `thong_ke_thang_test.dart` sáu ca cho `chuoiTheoKy` (khi ấy còn tên `chuoiTheoThang`): thứ tự
 **cũ nhất trước**, cuộn qua năm trước, **năm nhuận**, tháng rỗng giữ chỗ,
 `transfer` bị bỏ, và tổng các điểm bằng đúng số đã ghi (các khoảng không chồng
 nhau).
@@ -792,11 +849,17 @@ không (`preventCurveOverShooting`). Cả ba chỉ kiểm được bằng mắt 
   mục A8 còn lại (#4, #5, #8, #9) bị chặn bởi mô hình dữ liệu vay/nợ mà cả hai
   đầu đều không có; **#10** (thác nước) và **#11** (Sankey) làm được với thu/chi
   nhưng để đợt sau.
-- **Mảng Phân tích đến đây là xong.** Việc tiếp theo trong thứ tự đã duyệt là
-  **biểu đồ tiến độ mục tiêu** (hạng 1 mục 10.5 `GOAL_FEATURE.md`), nay rẻ hẳn
-  vì khuôn biểu đồ đã có ở cả màn hình lẫn PDF.
-- **Tổng kết tuần** — spec `2026-09-07-weekly-summary-notification-design.md`
-  chờ một **màn phạm vi tuần**. Tầng tổng hợp đã có (`tongThuChi` nhận biên bất
-  kỳ); còn thiếu giao diện — có thể là một chế độ "tuần" của chính trang này.
+- ⚠️ Câu *"Mảng Phân tích đến đây là xong"* đứng ở đây từ 2026-09-09 **đã bị gỡ
+  ngày 2026-09-15**: người dùng chốt làm tiếp mảng Phân tích và Báo cáo. Kế
+  hoạch còn lại nằm ở `docs/superpowers/plans/2026-09-15-ke-hoach.md` (gitignore)
+  — P2 đưa bốn khối mạnh của Báo cáo sang trang này, P3 biểu đồ thác nước.
+- **Tổng kết tuần KHÔNG phải việc còn lại** — nó đã làm xong **2026-09-09**
+  (mục **5d** `NOTIFICATION_FEATURE.md`). Điều kiện "một màn hình có phạm vi
+  đúng một tuần" của spec `2026-09-07-weekly-summary-notification-design.md`
+  đóng bằng **phạm vi tuỳ chỉnh của trang Xuất báo cáo**, không phải bằng P1.
+  Ghi chú 2026-09-08 trong spec ấy nói "còn thiếu màn phạm vi tuần" là **ảnh
+  chụp của một ngày trước đó**; đọc tiếp xuống là thấy khối "✅ Đã đủ". P1 vẫn
+  có giá trị riêng — nó cho **chính trang Phân tích** một phạm vi tuần — nhưng
+  đừng ghi nó là thứ gỡ chặn cho Tổng kết tuần.
 - Tiêu đề trang là "Thống kê", tab dưới là "Phân tích" — hai tên cho một chỗ,
   lấy từ Stitch. Chưa đổi vì chưa ai nói tên nào đúng.

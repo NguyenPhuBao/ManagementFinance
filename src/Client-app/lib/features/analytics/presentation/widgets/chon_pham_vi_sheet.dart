@@ -161,7 +161,14 @@ class _ChonPhamViSheetState extends State<ChonPhamViSheet> {
         ),
         const SizedBox(height: 12),
         const Divider(height: 1, color: AppColors.outlineVariant),
-        Flexible(
+        // ⚠️ Chiều cao CỐ ĐỊNH, không co theo số dòng. Mỗi đơn vị có số kỳ khác
+        // nhau (12 tuần, 8 quý, 5 năm), nên để danh sách tự co là sheet nhảy
+        // chiều cao mỗi lần đổi chip — và vì sheet neo ở đáy, **hàng chip trượt
+        // xuống dưới ngón tay**: cú chạm tiếp theo rơi vào lớp phủ và đóng
+        // sheet. Vấp thật trên máy ảo 2026-09-15, trong khi widget test xanh vì
+        // ở đó sheet bị bọc trong một khung cao cố định sẵn.
+        SizedBox(
+          height: MediaQuery.sizeOf(context).height * 0.45,
           child: ds.isEmpty
               ? const Padding(
                   padding: EdgeInsets.all(24),
