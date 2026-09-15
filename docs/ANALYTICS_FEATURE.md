@@ -21,7 +21,7 @@ thẳng vào thư mục Tải về** của máy. Xem mục 7.
 | Bất cứ việc gì | Mục 3 (quyết định) và mục 4 (bẫy) |
 | Sửa phép tính | `domain/thong_ke_thang.dart` và test của nó — **không** có CSDL, kiểm bằng danh sách |
 | Sửa cách gộp dữ liệu | Mục 3.3 (mốc tra ngân sách) trước, rồi `data/analytics_repository_impl.dart` |
-| Đụng giao diện | Màn Stitch **`c8567243…`** *"Thống kê - Cơ cấu danh mục & Xu hướng 6 tháng"* (2026-09-14, bản lần hai) — ⚠️ **hai** màn cũ đã lỗi thời và vẫn còn trong dự án: `c2a2b615…` (tả A8 #2 đã bỏ: mức gốc ba lát + dropdown) và `a228fa69…` "FlowMoney Analytics Dashboard"; và mục 4.4 về font của bộ test |
+| Đụng giao diện | **Hai** màn Stitch còn dùng được: `c8567243…` *"Thống kê - Cơ cấu danh mục & Xu hướng 6 tháng"* (2026-09-14) cho thân trang, và **`83993fc9f5de4c5f8fba6940480c164a`** *"Thống kê - Chọn phạm vi thời gian"* (2026-09-15) cho bộ chọn phạm vi — ⚠️ **hai** màn cũ đã lỗi thời và vẫn còn trong dự án: `c2a2b615…` (tả A8 #2 đã bỏ: mức gốc ba lát + dropdown) và `a228fa69…` "FlowMoney Analytics Dashboard"; và mục 4.4 về font của bộ test |
 | Đụng biểu đồ | Mục **3.11** (vì sao `fl_chart`, vì sao ghim phiên bản), **3.12** (khối xu hướng từng lệch Stitch, nay hết), **3.19** (đường một danh mục), và bẫy **4.9** (tooltip tràn — thứ duy nhất phải kiểm bằng mắt) |
 | Sinh tệp PDF/CSV | Mục **3.17** (vì sao nhúng font, vì sao `MediaStore` chứ không phải quyền ghi bộ nhớ), **3.18** (ba luật của CSV cho Excel tiếng Việt), bẫy **4.15**–**4.16** |
 | Đụng trang Xuất báo cáo / màn Xem trước | Mục **3.13** (vì sao xem trước rồi mới tải), **3.14** (ảnh chụp, không phải luồng sống; và màn Stitch mới), **3.15** (mười khối lấy chuẩn từ app thị trường), **3.16** (dòng tiền là số suy ngược, hai giới hạn), bẫy **4.11**–**4.14** |
@@ -591,6 +591,17 @@ thuộc `2026-W01`).
 **Không đổi schema, không thêm trường đồng bộ.** Trang Xuất báo cáo không đổi gì
 ngoài một dòng `export`: `khoangKyTruoc` chuyển sang `pham_vi_ky.dart` để hai
 trang dùng chung một định nghĩa, và 25 ca của nó vẫn xanh mà không sửa dòng nào.
+
+**Màn Stitch: `83993fc9f5de4c5f8fba6940480c164a`** — *"Thống kê - Chọn phạm vi
+thời gian"*, MOBILE. Người dùng xác nhận ngày 2026-09-15 rằng màn ấy do lượt gọi
+`generate_screen_from_text` của phiên này tạo ra. Nó vẽ đúng hình dạng đã dựng:
+nhãn `CHỌN PHẠM VI`, năm chip theo thứ tự *Tuần · Tháng · Quý · Năm · Tuỳ chọn*
+với "Tháng" đang bật, và danh sách kỳ có dấu tích ở *"Tháng này (T9 2026)"*.
+
+⚠️ **Lượt gọi ấy trả về `timeout`, và `list_screens` ngay sau đó không thấy màn
+nào mới** — hơn một tiếng sau nó mới hiện. Tức **timeout không phải thất bại**;
+đừng gọi lại (tài liệu công cụ dặn *"DO NOT RETRY"*), gọi lại sớm thì dự án lãnh
+thêm một màn trùng. Xem mục ghi chú vận hành `CLAUDE.md`.
 
 ### 3.21 Bốn khối mượn từ trang Xuất báo cáo (P2)
 

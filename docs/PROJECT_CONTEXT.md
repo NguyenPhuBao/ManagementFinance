@@ -651,8 +651,13 @@ một năm rưỡi → nhãn thành `Q3/26`, cùng họ G39); và nghiệm thu m
 **co theo số dòng** nên hàng chip trượt xuống dưới ngón tay khi đổi đơn vị, cú
 chạm kế rơi vào lớp phủ (→ chiều cao cố định, có ca test canh).
 
-Không đổi schema (vẫn **v22**), không thêm trường đồng bộ. Mức nền mới:
-**2467/2467** test, analyze **25 issue / 0 error**.
+Không đổi schema (vẫn **v22**), không thêm trường đồng bộ.
+
+**Thiết kế Stitch của bộ chọn:** màn `83993fc9f5de4c5f8fba6940480c164a` —
+*"Thống kê - Chọn phạm vi thời gian"*, do lượt gọi `generate_screen_from_text`
+của phiên này tạo (người dùng xác nhận 2026-09-15). ⚠️ Lượt gọi ấy **trả về
+timeout** và `list_screens` ngay sau đó không thấy gì; hơn một tiếng sau màn mới
+hiện. Timeout **không phải** thất bại — đừng gọi lại.
 
 ### 📊 A8 #3, #7 — cơ cấu theo danh mục và xu hướng nhiều danh mục (2026-09-14)
 
