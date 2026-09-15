@@ -763,6 +763,12 @@ một trong số chúng.
 của chính tuần ấy** nên năm ISO đúng ở cả hai chiều: 31/12/2025 là `2026-W01`,
 01/01/2021 là `2020-W53`.
 
+⚠️ **Từ 2026-09-15 tệp ấy có HAI chủ.** Bộ chọn phạm vi của trang Phân tích
+(`Ky.tuan`) mượn đúng phép "thứ Hai của tuần chứa ngày này", nên phép ấy đã được
+tách khỏi thân `tuanTruoc` thành `bienTuan` và `tuanTruoc` gọi lại nó. Sửa gì ở
+đây thì **đổi cả hai tính năng**; có một ca test canh việc hai hàm không trôi
+khỏi nhau (`tuanTruoc(now).to == bienTuan(now).from`).
+
 **Khoá `weekly:<nam>-W<tuan>:<thứ Hai>`.** Đoạn thứ ba tồn tại vì
 `deeplinkTuDedupeKey` chạy ở **cold start**: nó không tra được CSDL, và phép
 nghịch đảo của số tuần ISO là hàm dễ sai mà không ai kiểm lại.

@@ -439,7 +439,7 @@ cùng chip**, nên hai khối luôn nói cùng một con số. Nhãn mẫu số 
 (`nhanTongCua`), và thanh ngân sách chỉ còn ở nhóm chi — `BudgetRepository`
 không có khái niệm ngân sách thu.
 
-Khối "Xu hướng 6 tháng" nhận một **hàng chip cuộn ngang, chọn nhiều**: tập rỗng
+Khối "Xu hướng …" nhận một **hàng chip cuộn ngang, chọn nhiều**: tập rỗng
 là hai đường Thu/Chi như trước, bật một hay nhiều danh mục thì mỗi cái một
 đường mang màu và tên của nó. Trần **`kToiDaDuongXuHuong` = 5 đường** — đủ trần
 thì chip chưa bật bị **khoá nhìn thấy được** (`onSelected` null) chứ không phải
@@ -654,6 +654,19 @@ mục: giao dịch cũ vẫn trỏ vào ví đã xoá và tên thật vẫn nằ
 **Khối rỗng thì không vẽ.** `theoVi` và `topChi` rỗng là ẩn cả thẻ, không vẽ một
 thẻ trắng có mỗi tiêu đề.
 
+⚠️ **Cột số tiền của hai khối bảng phải là `Expanded`, không phải `Flexible`** —
+bẫy **4.19**. Người dùng bắt được ngay sau khi hạng mục này lên máy ảo.
+
+#### Nghiệm thu
+
+`flutter test` **2488/2488** · `flutter analyze` **25 issue, 0 error** — đếm
+bằng máy 2026-09-15. Analytics có **14** tệp test / **301** test (đếm bằng chính
+`flutter test test/features/analytics` cùng ngày).
+
+Trên máy ảo, số khớp từng vế: `14.125.000 + 500.000` = Tổng thu, `935.000 +
+110.000` = Tổng chi, và `14.625.000 − 1.045.000` = "Thay đổi trong kỳ" của khối
+dòng tiền.
+
 ## 4. Bẫy
 
 **4.1 Tài khoản.** `AnalyticsPage` phải `context.watch<AuthBloc>()` + `ValueKey(idaccount)`
@@ -801,6 +814,33 @@ vào bẫy, tức hiếm nhưng không hề không xảy ra. Ca `nhãn trục tu
 chuỗi khác nhau ở cùng một mốc` canh chỗ này, và nó tái hiện được **ngay trong
 widget test** — đây là một trong ít lần bẫy đồ hoạ bắt được mà không cần máy
 thật.
+
+**4.19 `Flexible` không canh phải được — phải là `Expanded`.** Cột số tiền của
+"Phân bổ theo ví" và "Top 5 khoản chi" **lệch nhau tới 26,5px**; người dùng bắt
+được trên máy ảo 2026-09-15.
+
+`Flexible` và `Expanded` đều mang `flex: 1` nên **chia đôi chỗ trống như nhau** —
+khác biệt nằm ở chỗ `Flexible` để con giữ **bề rộng tự nhiên**, rồi
+`MainAxisAlignment.start` đẩy phần thừa về **cuối hàng**. Hàng có số ngắn thừa
+nhiều, hàng có số dài thừa ít, nên `alignment: Alignment.centerRight` của
+`FittedBox` đang canh phải bên trong một cái hộp đang trôi.
+
+```dart
+// SAI — hộp hẹp hơn suất của nó, phần thừa rơi về cuối hàng
+Row(children: [Expanded(child: ten), Flexible(child: FittedBox(…))])
+
+// ĐÚNG — con chiếm trọn suất, centerRight mới có mốc. Cột trái KHÔNG mất chỗ:
+// tỉ lệ chia vẫn 1:1, chỉ khác ai giữ phần thừa.
+Row(children: [Expanded(child: ten), Expanded(child: FittedBox(…))])
+```
+
+⚠️ Lỗi này **không ném exception, không in log, và không phải lỗi tràn** — không
+có sọc vàng, nên mẹo đếm pixel vàng ở `CLAUDE.md` cũng không thấy. Thứ bắt được
+nó bằng máy là so `tester.getRect(...).right` giữa các dòng; đã có ca test làm
+đúng thế.
+
+⚠️ `report_preview_page.dart` mang **đúng cùng khuôn `Flexible`** ở hai khối
+tương ứng — xem **G40** `CLIENT_APP_KNOWN_GAPS.md`.
 
 ---
 

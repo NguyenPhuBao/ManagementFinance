@@ -611,11 +611,16 @@ tại của các ví" (app không lưu lịch sử số dư — mục 3.16), và
 nhận **toàn bộ** giao dịch chứ không phải phần đã cắt theo kỳ, nếu không đầu kỳ
 bằng cuối kỳ một cách im lặng.
 
-Máy ảo bắt hai lỗi: `-0 đ` ở ví chỉ có thu (luật "số 0 không mang dấu" nay là
-`CurrencyFormatter.formatCoDau` dùng chung), và test của trang thiếu
-`initializeDateFormatting` nên khối Top 5 làm **cả cây dừng dựng**.
+Máy ảo bắt **ba** lỗi: `-0 đ` ở ví chỉ có thu (luật "số 0 không mang dấu" nay là
+`CurrencyFormatter.formatCoDau` dùng chung); test của trang thiếu
+`initializeDateFormatting` nên khối Top 5 làm **cả cây dừng dựng**; và ⚠️ **cột
+số tiền không thẳng mép phải** — người dùng bắt được, đo trong widget test thấy
+lệch **26,5px**. Gốc rễ: `Flexible` mang `flex: 1` mặc định nên được chia một
+nửa chỗ trống như `Expanded`, nhưng để con giữ bề rộng tự nhiên, và
+`MainAxisAlignment.start` đẩy phần thừa về **cuối hàng** — mỗi hàng thừa một
+kiểu. Bẫy **4.19** `ANALYTICS_FEATURE.md`.
 
-Mức nền: **2487/2487** test, analyze **25 issue / 0 error**.
+Mức nền: **2488/2488** test, analyze **25 issue / 0 error**.
 
 ### 🗓️ Phạm vi thời gian cho trang Phân tích — P1 (2026-09-15)
 
@@ -675,7 +680,7 @@ bị revert cùng ngày — người dùng xem xong rồi chốt lại phạm vi
   chỉ hiện cho nhóm có phát sinh, thứ tự cố định theo `kCategoryClassifies`
   (không theo số tiền — chip đổi chỗ khi số đổi là người dùng bấm nhầm nhóm).
   Danh sách danh mục cuối trang **đi theo** cùng chip.
-- **#7** — khối "Xu hướng 6 tháng" có **hàng chip cuộn ngang, chọn nhiều**: tập
+- **#7** — khối "Xu hướng …" có **hàng chip cuộn ngang, chọn nhiều**: tập
   rỗng là hai đường Thu/Chi, bật tới **5** danh mục thì mỗi cái một đường mang
   màu và tên của nó. Đủ trần thì chip chưa bật bị **khoá nhìn thấy được**; chốt
   thật ở cubit, khoá ở widget chỉ để nhìn thấy.
