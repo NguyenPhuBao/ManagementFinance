@@ -394,10 +394,16 @@ bằng máy 2026-09-14 thì client có 9 bảng Drift và backend có 13 model P
 liên kết giữa một khoản vay với các lần trả nợ của nó. Hai mục **#10** (thác
 nước) và **#11** (Sankey) làm được với thu/chi nhưng để đợt sau.
 
-> ⚠️ **Đính chính 2026-09-15:** đoạn trên là kết luận của ngày 2026-09-14 và nó
-> **quá chặt cho #4 và #5** — hai mục ấy chỉ vẽ *dòng tiền*, không cần dư nợ gốc
-> hay lãi suất, và đã làm xong (mục **3.22**). **#9** thì vẫn chặn thật. 🛑 **#10
-> người dùng chốt không làm.**
+> ⚠️ **Đính chính 2026-09-15:** đoạn trên là kết luận của ngày 2026-09-14 và nay
+> **chỉ còn đúng với #9**. **#4 và #5** chỉ vẽ *dòng tiền*, không cần dư nợ gốc
+> hay lãi suất, và đã làm xong (mục **3.22**). **#8** (dòng tiền tự do) cũng
+> **không bị chặn**: nó là `Σ thu − Σ khoản mang vai traNo`, mà `VaiVayNo.traNo`
+> có sẵn từ chính lát #4/#5 — **chưa làm**, không phải không làm được. Chỉ **#9**
+> chặn thật, vì nó cần **dư nợ còn lại**. 🛑 **#10 người dùng chốt không làm.**
+>
+> Bài học: một mục bị xếp "chặn bởi mô hình dữ liệu" thì phải hỏi **chặn vì
+> thiếu con số nào**, chứ đừng gộp cả nhóm theo cái tên "vay/nợ" — câu gộp ấy đã
+> giữ #4 và #5 nằm ngoài phạm vi suốt một ngày, và suýt giữ cả #8.
 
 ⚠️ **`suggestDebtDirection()` không thay được mô hình ấy.** Nó đoán chiều tiền
 bằng cách so tên danh mục với bốn chuỗi (`đi vay`, `thu nợ`, `cho vay`,
@@ -1103,7 +1109,8 @@ không (`preventCurveOverShooting`). Cả ba chỉ kiểm được bằng mắt 
   mục A8 còn lại (#4, #5, #8, #9) bị chặn bởi mô hình dữ liệu vay/nợ mà cả hai
   đầu đều không có; **#10** (thác nước) và **#11** (Sankey) làm được với thu/chi
   nhưng để đợt sau. ⚠️ **Đính chính 2026-09-15:** #4 và #5 **không** bị chặn —
-  xem mục **3.22**; #10 người dùng chốt **không làm**.
+  xem mục **3.22**; **#8** cũng không (`Σ thu − Σ traNo`, vai đã có) — nó chỉ
+  **chưa làm**; chỉ **#9** chặn thật; #10 người dùng chốt **không làm**.
 - ⚠️ Câu *"Mảng Phân tích đến đây là xong"* đứng ở đây từ 2026-09-09 **đã bị gỡ
   ngày 2026-09-15**: người dùng chốt làm tiếp mảng Phân tích và Báo cáo. ✅ **P1
   (mục 3.20), P2 (mục 3.21) và A8 #4/#5 (mục 3.22) xong cùng ngày.** 🛑 **P3**

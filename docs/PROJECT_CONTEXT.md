@@ -778,9 +778,17 @@ sinh, tức khối hiện chip nào.
 ⚠️ **Hệ quả cố ý:** nhóm "Chi" **không bằng** "Tổng chi" ở thẻ đầu trang — ba
 nhóm phải rời nhau thì tỷ trọng mới có nghĩa. Đừng "sửa" cho khớp.
 
-> ⚠️ **Đính chính 2026-09-15:** đoạn dưới là kết luận của ngày 2026-09-14.
-> **#4 và #5 KHÔNG bị chặn** — chúng chỉ vẽ *dòng tiền*, và đã làm xong (mục
-> **3.22** `ANALYTICS_FEATURE.md`). **#9** vẫn chặn thật vì cần dư nợ còn lại.
+> ⚠️ **Đính chính 2026-09-15:** đoạn dưới là kết luận của ngày 2026-09-14, và
+> nay **chỉ còn đúng với #9**. **#4 và #5 KHÔNG bị chặn** — chúng chỉ vẽ *dòng
+> tiền*, và đã làm xong (mục **3.22** `ANALYTICS_FEATURE.md`). **#8** (dòng tiền
+> tự do) cũng **không bị chặn**: nó là `Σ thu − Σ khoản mang vai traNo`, mà
+> `VaiVayNo.traNo` đã có sẵn từ chính lát #4/#5 — chưa làm, không phải không làm
+> được. Chỉ **#9** chặn thật, vì nó cần **dư nợ còn lại** và không bảng nào ở hai
+> đầu lưu con số ấy.
+>
+> Bài học: một mục bị xếp "chặn bởi mô hình dữ liệu" thì phải hỏi **chặn vì
+> thiếu con số nào**, chứ đừng gộp cả nhóm theo cái tên "vay/nợ". Câu gộp ấy đã
+> giữ #4, #5 nằm ngoài phạm vi suốt một ngày, và suýt giữ cả #8.
 
 **Bốn mục A8 còn lại bị chặn bởi mô hình dữ liệu, không phải bởi biểu đồ.** Đếm
 bằng máy 2026-09-14: client có **9** bảng Drift, backend có **13** model
