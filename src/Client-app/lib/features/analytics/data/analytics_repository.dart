@@ -1,5 +1,6 @@
 import '../domain/bao_cao_xuat.dart';
 import '../domain/du_bao_dong_tien.dart';
+import '../domain/lich_chi_tieu.dart';
 import '../domain/pham_vi_ky.dart';
 import '../domain/vai_vay_no.dart';
 import '../domain/phan_loai_dong_tien.dart';
@@ -120,6 +121,15 @@ class ThongKeKy {
   /// Tối đa 5 khoản chi lớn nhất của kỳ, giảm dần.
   final List<DongGiaoDich> topChi;
 
+  /// Chi tiêu gom theo **ngày** — nguồn cho khối "Lịch chi tiêu" (#6 khảo sát,
+  /// 2026-09-16). Ngày không có khoản chi nào **không có khoá**: ô trống và ô
+  /// "0 đồng" là hai thứ khác nhau trên lưới.
+  ///
+  /// Cùng phép gom với `soLieu.ngayChiNhieuNhat` — cả hai đi qua
+  /// `lichChiTieuCua`, nên ô đậm nhất của lịch và "ngày chi nhiều nhất" của
+  /// khối Số liệu nhanh không thể nói hai ngày khác nhau.
+  final Map<DateTime, NgayChiTieu> lichChiTieu;
+
   /// Số dư ví ở hai đầu kỳ.
   ///
   /// ⚠️ **Suy ngược** từ tổng số dư hiện tại — app không lưu lịch sử số dư.
@@ -167,6 +177,7 @@ class ThongKeKy {
     ),
     this.theoVi = const [],
     this.topChi = const [],
+    this.lichChiTieu = const {},
     this.dongTien,
     this.chuoiVayNo = const [],
     this.duBao,

@@ -8,6 +8,7 @@ import '../../goal/data/models/goal_entity.dart';
 import '../domain/bao_cao_xuat.dart';
 import '../domain/du_bao_dong_tien.dart';
 import '../domain/khoan_vao_thong_ke.dart';
+import '../domain/lich_chi_tieu.dart';
 import '../domain/pham_vi_ky.dart';
 import '../domain/vai_vay_no.dart';
 import '../domain/phan_loai_dong_tien.dart';
@@ -376,6 +377,8 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
       soLieu: soLieuNhanhCua(trongKy, from: from, to: to),
       theoVi: phanBoTheoVi(trongKy),
       topChi: topKhoanChi(trongKy),
+      // Cùng danh sách `trongKy` với ba khối trên — không nguồn stream mới.
+      lichChiTieu: lichChiTieuCua(trongKy),
       // `dongGd` chứ không phải `trongKy`: phép suy ngược cần biết phần phát sinh
       // SAU kỳ. Đưa danh sách đã cắt vào là hai con số bằng nhau, im lặng.
       dongTien: dongTienCua(dongGd, from: from, to: to, soDuHienTai: soDu),

@@ -21,7 +21,7 @@ thẳng vào thư mục Tải về** của máy. Xem mục 7.
 | Bất cứ việc gì | Mục 3 (quyết định) và mục 4 (bẫy) |
 | Sửa phép tính | `domain/thong_ke_thang.dart` và test của nó — **không** có CSDL, kiểm bằng danh sách |
 | Sửa cách gộp dữ liệu | Mục 3.3 (mốc tra ngân sách) trước, rồi `data/analytics_repository_impl.dart` |
-| Đụng giao diện | **Bảy** màn Stitch còn dùng được (đếm lại 2026-09-16, sau khi thêm **`6333b8e24aab4f92bd73b1282c56b17c`** *"Thống kê - Mốc so sánh kỳ"* cho hàng chip của mục **3.28** — ⚠️ màn ấy cũng mang `deviceType: DESKTOP` dù lượt gọi truyền `MOBILE`, và lượt gọi **không** timeout; mốc "Sáu" là của 2026-09-15, đừng cộng dồn mà hãy đếm lại): `c8567243…` *"Thống kê - Cơ cấu danh mục & Xu hướng 6 tháng"* (2026-09-14) cho thân trang, **`83993fc9f5de4c5f8fba6940480c164a`** *"Thống kê - Chọn phạm vi thời gian"* (2026-09-15) cho bộ chọn phạm vi, **`6e9007f7653749a893c88e3de535afa5`** *"Thống kê - Biểu đồ Cho vay & Đi vay"* (đo được 2026-09-15) cho hai biểu đồ vay/nợ, và **`afe1c3fdee43464c90ddadc508eaa599`** *"Thống kê - 4 Thẻ Dòng Tiền & Kế Toán"* (đo được 2026-09-15) cho bốn khối của P2, **`52450ac549df42aea9f31d5ee1347ceb`** *"Thống kê - Biểu đồ thác nước Tiền đi đâu"* (đo được 2026-09-15) cho khối A8 #10, và **`212befc8f9a24d25ab027c7302e2e122`** *"Thống kê - Biểu đồ Dòng tiền tự do"* (đo được 2026-09-15) cho khối A8 #8 — ⚠️ màn thứ tư mang `deviceType: DESKTOP` dù lượt gọi truyền `MOBILE`, xem mục **3.21** — ⚠️ màn thứ ba vẽ thêm **hai thẻ tổng** mà bản thi công **cố ý không có**, xem mục 3.22 — ⚠️ **hai** màn cũ đã lỗi thời và vẫn còn trong dự án: `c2a2b615…` (tả A8 #2 đã bỏ: mức gốc ba lát + dropdown) và `a228fa69…` "FlowMoney Analytics Dashboard"; và mục 4.4 về font của bộ test |
+| Đụng giao diện | **Tám** màn Stitch còn dùng được (đếm lại 2026-09-16, sau khi thêm **`9020ff8b5c5d49c4914442dcd02fa540`** *"Thống kê - Lịch chi tiêu Heatmap"* cho mục **3.29** — lượt gọi ấy **trả về `timeout`** mà màn vẫn được tạo, và ⚠️ nó vẽ lưới **xanh lá** trong khi bản thi công dùng **đỏ**; và trước đó **`6333b8e24aab4f92bd73b1282c56b17c`** *"Thống kê - Mốc so sánh kỳ"* cho hàng chip của mục **3.28** — ⚠️ màn ấy cũng mang `deviceType: DESKTOP` dù lượt gọi truyền `MOBILE`, và lượt gọi **không** timeout; mốc "Sáu" là của 2026-09-15, đừng cộng dồn mà hãy đếm lại): `c8567243…` *"Thống kê - Cơ cấu danh mục & Xu hướng 6 tháng"* (2026-09-14) cho thân trang, **`83993fc9f5de4c5f8fba6940480c164a`** *"Thống kê - Chọn phạm vi thời gian"* (2026-09-15) cho bộ chọn phạm vi, **`6e9007f7653749a893c88e3de535afa5`** *"Thống kê - Biểu đồ Cho vay & Đi vay"* (đo được 2026-09-15) cho hai biểu đồ vay/nợ, và **`afe1c3fdee43464c90ddadc508eaa599`** *"Thống kê - 4 Thẻ Dòng Tiền & Kế Toán"* (đo được 2026-09-15) cho bốn khối của P2, **`52450ac549df42aea9f31d5ee1347ceb`** *"Thống kê - Biểu đồ thác nước Tiền đi đâu"* (đo được 2026-09-15) cho khối A8 #10, và **`212befc8f9a24d25ab027c7302e2e122`** *"Thống kê - Biểu đồ Dòng tiền tự do"* (đo được 2026-09-15) cho khối A8 #8 — ⚠️ màn thứ tư mang `deviceType: DESKTOP` dù lượt gọi truyền `MOBILE`, xem mục **3.21** — ⚠️ màn thứ ba vẽ thêm **hai thẻ tổng** mà bản thi công **cố ý không có**, xem mục 3.22 — ⚠️ **hai** màn cũ đã lỗi thời và vẫn còn trong dự án: `c2a2b615…` (tả A8 #2 đã bỏ: mức gốc ba lát + dropdown) và `a228fa69…` "FlowMoney Analytics Dashboard"; và mục 4.4 về font của bộ test |
 | Đụng biểu đồ | Mục **3.11** (vì sao `fl_chart`, vì sao ghim phiên bản), **3.12** (khối xu hướng từng lệch Stitch, nay hết), **3.19** (đường một danh mục), và bẫy **4.9** (tooltip tràn — thứ duy nhất phải kiểm bằng mắt) |
 | Sinh tệp PDF/CSV | Mục **3.17** (vì sao nhúng font, vì sao `MediaStore` chứ không phải quyền ghi bộ nhớ), **3.18** (ba luật của CSV cho Excel tiếng Việt), bẫy **4.15**–**4.16** |
 | Đụng trang Xuất báo cáo / màn Xem trước | Mục **3.13** (vì sao xem trước rồi mới tải), **3.14** (ảnh chụp, không phải luồng sống; và màn Stitch mới), **3.15** (mười khối lấy chuẩn từ app thị trường), **3.16** (dòng tiền là số suy ngược, hai giới hạn), bẫy **4.11**–**4.14** |
@@ -1061,7 +1061,7 @@ nước "Tiền đi đâu", dòng tiền tự do, và hai biểu đồ vay/nợ;
 | 3 | Sankey (A8 #11) | Monarch — *"fan favorite"*, chia sẻ được, ẩn được số tiền | ✅ đủ | 🛑 **bỏ** 2026-09-16 |
 | 4 | **Dự báo dòng tiền** | PocketSmith — chiếu số dư tới từng ngày, 30–60 năm | ✅ nguyên liệu hiếm: hoá đơn lặp có `anchorDay`+`recurrence`+`autoPay`, ngân sách có kỳ, mục tiêu có trích tự động | ✅ **XONG 2026-09-16**, mục **3.27** |
 | 5 | Tài sản ròng theo thời gian | Monarch, PocketSmith | ⚠️ làm được nhưng lệch có điều kiện — xem dưới | chưa |
-| 6 | Lịch chi tiêu (heatmap) | PocketSmith, Money Lover | ✅ đủ | chưa |
+| 6 | Lịch chi tiêu (heatmap) | PocketSmith, Money Lover | ✅ đủ | ✅ **XONG 2026-09-16**, mục **3.29** |
 | 7 | Cảnh báo bất thường | Rocket Money | ✅ đủ, đã có hạ tầng thông báo | chưa |
 | 8 | Phát hiện chi định kỳ tự động | Rocket Money | ⚠️ thiếu trường đối tác → phải đoán | 🛑 **bỏ** |
 | 9 | Chi theo đối tác (merchant) | Monarch, Copilot | ⛔ chặn thật — không có cột `payee` | 🛑 **bỏ** |
@@ -1337,6 +1337,95 @@ truyền `MOBILE`, đúng hiện tượng đã ghi cho `afe1c3fd…`.
 ⚠️ Lượt nghiệm thu này còn lộ ra một lỗi **có sẵn, không thuộc lát này**: nút
 **"Tuỳ chọn"** của bộ chọn phạm vi ném assertion và không làm gì, hoàn toàn im
 lặng — **G43** `docs/CLIENT_APP_KNOWN_GAPS.md`.
+
+
+### 3.29 Lịch chi tiêu — mục #6 của khảo sát lần hai
+
+**2026-09-16.** Một lưới lịch tháng, ô đậm nhạt theo **tổng chi của ngày**; chạm
+một ô thì thẻ tóm tắt hiện ngay dưới lưới. Khối **chỉ hiện khi đơn vị đang xem
+là Tháng**.
+
+#### Lịch tháng, không phải dải kiểu GitHub
+
+PocketSmith và Money Lover đều vẽ thứ này dưới dạng **lịch**. Một dải 7×N cho
+mọi đơn vị thì gọn hơn về mã, nhưng ô ngày mất chỗ in số — người dùng phải chạm
+mới biết đó là ngày nào. Kỳ khác tháng thì **ẩn hẳn khối** (một lưới 91 ô ở
+411dp không đọc được), cùng lối với thanh ngân sách ở bẫy #1 mục 3.20.
+
+Chốt ấy đặt ở **hai lớp** — `if` trong `_than()` và guard đầu `build`. Đo bằng
+bản sai: phá **lớp 1** thì ca test vẫn xanh (lớp 2 đỡ); phá **cả hai** mới đỏ.
+
+#### Không nguồn dữ liệu mới — và một phép gom được gộp lại
+
+`soLieuNhanhCua` **đã dựng sẵn** một map `chiTheoNgay` bên trong nhưng không lộ
+ra. Nên việc chính không phải viết phép gom mới mà là **tách nó thành hàm dùng
+chung**: `lichChiTieuCua` ở `analytics/domain/lich_chi_tieu.dart`, và
+`soLieuNhanhCua` gọi lại nó. Cùng khuôn `thuNhapCua` / `dongTienTuDo`.
+
+Lợi ích cụ thể, có ca test canh: **"ngày chi nhiều nhất" của khối Số liệu nhanh
+và ô đậm nhất của lịch không thể nói hai ngày khác nhau.** Hai vòng lặp song
+song cho cùng một khái niệm là cách chắc chắn nhất để chúng trôi khỏi nhau ở lần
+sửa đầu tiên.
+
+Repository chỉ thêm **một dòng** — `trongKy` đã có sẵn trong `_dung` cho ba khối
+mượn từ trang Báo cáo. Không schema, không trường đồng bộ.
+
+#### ⚠️ Thang màu neo vào TRUNG BÌNH, không vào ngày lớn nhất
+
+Đây là chốt dễ hỏng **im lặng** nhất của khối. Neo vào max thì **một ngày mua
+sắm lớn làm phẳng cả tháng**: 29 ngày còn lại rơi hết về bậc nhạt nhất và lưới
+trông như tháng không tiêu gì. Trung bình thì chịu được một điểm ngoại lai — ca
+test dựng đúng hình ấy (ba mức chi quanh trung bình cộng một ngày gấp 30 lần) và
+đòi bốn mức khác nhau ra **bốn bậc khác nhau**.
+
+Mượn `soLieu.chiMoiNgay` đã có — nó chia cho **số ngày của kỳ**, không phải số
+ngày có giao dịch. Bậc: `0` không chi · `1` ≤ 0,5× · `2` ≤ 1× · `3` ≤ 2× ·
+`4` > 2×. `trungBinh` bằng 0 thì phép chia ra `Infinity`, vẫn so sánh được, và
+mọi ngày *có* chi rơi về bậc cao nhất — đúng nghĩa.
+
+#### Ba chốt còn lại
+
+1. **Ngày không chi có bậc 0 RIÊNG.** Một đồng vẫn là có tiêu; gộp vào bậc 0 là
+   để "tháng không tiêu gì" trông y hệt "tháng tiêu ít".
+2. **Lưới bắt đầu thứ Hai** (quy ước VN), số ô trống là `weekday - 1`. Chủ nhật
+   đứng cuối và cho **sáu** ô trống. Lệch một ô là **cả tháng lệch một cột**, mà
+   lưới nhìn vẫn rất hợp lý — máy ảo xác nhận 01/09/2026 rơi đúng cột T3.
+3. **`nhanNgayLich` tự viết tên thứ** thay vì `DateFormat('EEEE', 'vi')`: hàm
+   thuần thì widget test nào quên `initializeDateFormatting` cũng không làm *cả
+   cây dừng dựng* (đã vấp ở khối Top 5). ⚠️ Chủ nhật **không** phải "Thứ Tám" —
+   `DateTime.sunday == 7`, nên công thức `'Thứ ${weekday + 1}'` đúng sáu ngày
+   rồi sai ngày thứ bảy.
+
+#### Hai thứ chỉ máy ảo và bản sai mới lộ ra
+
+- ⚠️ **`_tieuDeKhoi` là `SizedBox(width: double.infinity)`** — nó dành cho
+  `Column`. Đặt trần vào `Row` để thêm nhãn kỳ bên phải là ép bề rộng vô hạn và
+  **cả cây dừng dựng**: **66/74** ca test của trang đỏ cùng lúc, kể cả những ca
+  không liên quan gì tới lịch. Bọc `Expanded` là xong.
+- ⚠️ **Ca "chưa chạm thì chưa có thẻ tóm tắt" ban đầu KHÔNG canh được gì.** Nó
+  chỉ cấm chữ *"khoản"*; bản sai hiện sẵn thẻ cho ngày đầu tháng — ngày ấy không
+  có chi nên thẻ nói *"Không chi"* — và ca vẫn xanh. Nay nó cấm **cả ba** mặt
+  của thẻ. Cùng bài học với G43: **ca test cho một nút phải đòi kết quả, không
+  chỉ đòi "không có thứ tôi nghĩ tới".**
+
+#### Nghiệm thu máy ảo
+
+Lưới 30 ô, ngày 1 ở cột T3; chạm ngày 5 → *"Thứ Bảy 05/09 · 1 khoản ·
+-500.000đ"*, khớp khít *"NGÀY CHI NHIỀU NHẤT 05/09/2026"* của khối trên; chạm
+ngày 10 → *"Không chi"*; đổi sang kỳ Quý → khối **biến mất**; `logcat` **0**
+dòng `Unhandled Exception`.
+
+⚠️ Máy ảo còn bắt một chỗ nhỏ: trong **cùng một thẻ** có hai định dạng tiền —
+`-500.000đ` (`_dong`) và `500.000 đ` (`CurrencyFormatter.format`), khác nhau ở
+khoảng trắng trước chữ `đ`. Dòng "Lớn nhất" nay dùng `_dong`. Ngoài thẻ ấy thì
+cả hai vẫn cùng tồn tại trên trang, đúng như trước.
+
+Màn Stitch: **`9020ff8b5c5d49c4914442dcd02fa540`** *"Thống kê - Lịch chi tiêu
+Heatmap"*. ⚠️ Lượt gọi **trả về `timeout`** và màn vẫn được tạo — lần thứ hai
+xác nhận *timeout không phải thất bại, đừng gọi lại*. ⚠️ Màn ấy vẽ lưới màu
+**xanh lá** vì prompt viết thế; bản thi công dùng **đỏ** (`AppColors.expense`)
+— cả app dùng đỏ cho khoản chi, và một lưới xanh cho "tiêu nhiều" đọc như một
+lời khen.
 
 
 ## 4. Bẫy

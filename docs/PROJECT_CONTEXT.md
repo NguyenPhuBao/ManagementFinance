@@ -595,6 +595,30 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-16)
 
+### 📅 Lịch chi tiêu (2026-09-16)
+
+Mục **#6** của khảo sát app thị trường lần hai. Lưới **lịch tháng** trên trang
+Phân tích, ô đậm nhạt theo tổng chi của ngày; chạm một ô thì thẻ tóm tắt hiện
+ngay dưới lưới (ngày, số khoản, tổng chi, khoản lớn nhất). Khối **chỉ hiện khi
+đơn vị đang xem là Tháng** — chốt đặt ở **hai lớp**. Bàn giao ở mục **3.29**
+`docs/ANALYTICS_FEATURE.md`; màn Stitch `9020ff8b5c5d49c4914442dcd02fa540`.
+
+**Không đổi schema** (v22), **không thêm trường đồng bộ**, **không có nguồn
+stream mới**: `soLieuNhanhCua` đã dựng sẵn một map theo ngày bên trong nhưng
+không lộ ra, nên việc chính là **tách nó thành hàm dùng chung** `lichChiTieuCua`
+và cho hàm cũ gọi lại. `flutter test` **2702/2702** · `flutter analyze` **25
+issue, 0 error** (đếm bằng máy).
+
+⚠️ **Thang màu neo vào TRUNG BÌNH, không vào ngày lớn nhất** — neo vào max thì
+một ngày mua sắm lớn làm phẳng cả tháng và lưới trông như tháng không tiêu gì.
+
+⚠️ **Hai thứ bộ test không thấy được nếu không thử bản sai:** `_tieuDeKhoi` là
+`SizedBox(width: double.infinity)` nên đặt trần vào `Row` làm **66/74** ca của
+trang đỏ cùng lúc; và ca "chưa chạm thì chưa có thẻ tóm tắt" **ban đầu không
+canh được gì** — nó chỉ cấm chữ "khoản", trong khi bản sai hiện thẻ cho một ngày
+không chi nên thẻ nói "Không chi". Cùng bài học với G43: ca test phải đòi **kết
+quả**, không chỉ đòi vắng mặt thứ mình nghĩ tới.
+
 ### 🛠️ G43 — nút "Tuỳ chọn" chết im lặng (2026-09-16)
 
 Lỗi **có sẵn từ P1** (2026-09-15), tìm được khi nghiệm thu máy ảo cho mục #2.

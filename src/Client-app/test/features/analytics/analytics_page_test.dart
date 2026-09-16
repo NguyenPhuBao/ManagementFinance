@@ -19,6 +19,7 @@ import 'package:flowmoney/core/di/injection_container.dart';
 import 'package:flowmoney/features/analytics/data/analytics_repository.dart';
 import 'package:flowmoney/features/analytics/domain/bao_cao_xuat.dart';
 import 'package:flowmoney/features/analytics/domain/du_bao_dong_tien.dart';
+import 'package:flowmoney/features/analytics/domain/lich_chi_tieu.dart';
 import 'package:flowmoney/features/analytics/domain/pham_vi_ky.dart';
 import 'package:flowmoney/features/analytics/domain/vai_vay_no.dart';
 import 'package:flowmoney/features/analytics/domain/phan_loai_dong_tien.dart';
@@ -108,6 +109,7 @@ ThongKeKy _tk({
   List<DongGiaoDich> topChi = const [],
   DongTien? dongTien,
   DuBaoDongTien? duBao,
+  Map<DateTime, NgayChiTieu> lich = const {},
 }) =>
     ThongKeKy(
       ky: ky ?? Ky.thang(nam, thang),
@@ -139,6 +141,7 @@ ThongKeKy _tk({
           ),
       theoVi: theoVi,
       topChi: topChi,
+      lichChiTieu: lich,
       dongTien: dongTien,
       duBao: duBao,
       // ⚠️ Mặc định phải **cùng số kỳ** với `chuoi`, không phải rỗng: hai chuỗi
@@ -592,6 +595,132 @@ void main() {
             'FlutterError.reportError chứ không ném ra chỗ gọi, nên test chỉ '
             'pumpWidget sẽ xanh dù màn hình đầy sọc vàng (bẫy 1 của mục test)',
       );
+    });
+  });
+
+  // ── Lịch chi tiêu — heatmap theo ngày (#6 khảo sát, 2026-09-16) ──────────
+  group('khối Lịch chi tiêu', () {
+    NgayChiTieu ngay(double tien, {int soKhoan = 1, String ten = 'Ăn uống'}) =>
+        NgayChiTieu(
+          tongChi: tien,
+          soKhoan: soKhoan,
+          lonNhat: DongGiaoDich(
+            id: 'x',
+            ngay: DateTime(2026, 9, 11),
+            soTien: tien,
+            loai: 'chi',
+            categoryId: 'c1',
+            tenDanhMuc: ten,
+            mauHex: null,
+            icon: null,
+            walletId: 'w1',
+            tenVi: 'Tiền mặt',
+            tieuDe: ten,
+          ),
+        );
+
+    final lichMau = {
+      DateTime(2026, 9, 3): ngay(120000),
+      DateTime(2026, 9, 11): ngay(350000, soKhoan: 3, ten: 'Mua sắm'),
+      DateTime(2026, 9, 20): ngay(50000),
+    };
+
+    testWidgets('hiện lưới có tiêu đề thứ và đủ số ô ngày của tháng',
+        (tester) async {
+      await moTrang(tester);
+      await phat(tester, _tk(lich: lichMau));
+
+      expect(find.text('Lịch chi tiêu'), findsOneWidget);
+      for (final t in ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']) {
+        expect(find.text(t), findsWidgets, reason: 'thiếu cột $t');
+      }
+      // Tháng 9/2026 có 30 ngày; mỗi ô mang số ngày.
+      expect(find.text('30'), findsWidgets);
+      expect(
+        find.text('31'),
+        findsNothing,
+        reason: 'tháng 9 không có ngày 31 — lưới phải theo số ngày THẬT',
+      );
+    });
+
+    testWidgets('⚠️ kỳ KHÁC tháng thì ẩn hẳn khối — chốt ở hai lớp',
+        (tester) async {
+      await moTrang(tester);
+      await phat(tester, _tk(ky: Ky.quy(2026, 3), lich: lichMau));
+
+      expect(
+        find.text('Lịch chi tiêu'),
+        findsNothing,
+        reason: 'một lưới 91 ô ở 411dp không đọc được, và PocketSmith/Money '
+            'Lover đều chỉ vẽ lịch THÁNG',
+      );
+    });
+
+    testWidgets('chưa chạm ô nào thì chưa có thẻ tóm tắt', (tester) async {
+      await moTrang(tester);
+      await phat(tester, _tk(lich: lichMau));
+      // ⚠️ Chỉ tìm chữ "khoản" là KHÔNG ĐỦ: một bản sai hiện sẵn thẻ cho ngày
+      // đầu tháng — ngày ấy không có chi nên thẻ nói "Không chi", và ca test
+      // vẫn xanh. Phải cấm CẢ HAI mặt của thẻ.
+      expect(find.textContaining('khoản'), findsNothing);
+      expect(find.textContaining('Không chi'), findsNothing);
+      expect(
+        find.textContaining('Thứ '),
+        findsNothing,
+        reason: 'nhãn ngày của thẻ tóm tắt luôn bắt đầu bằng tên thứ',
+      );
+    });
+
+    testWidgets('chạm một ô có chi thì hiện tóm tắt của ĐÚNG ngày ấy',
+        (tester) async {
+      await moTrang(tester);
+      await phat(tester, _tk(lich: lichMau));
+
+      await tester.ensureVisible(find.text('Lịch chi tiêu'));
+      await tester.tap(find.text('11'));
+      await tester.pump();
+
+      expect(find.textContaining('11/09'), findsWidgets);
+      expect(find.textContaining('3 khoản'), findsOneWidget);
+      expect(find.textContaining('350.000'), findsWidgets);
+      expect(
+        find.textContaining('Mua sắm'),
+        findsWidgets,
+        reason: 'khoản lớn nhất phải là của NGÀY ấy, không phải của cả tháng',
+      );
+    });
+
+    testWidgets('chạm một ô KHÔNG chi vẫn nói rõ là không chi', (tester) async {
+      await moTrang(tester);
+      await phat(tester, _tk(lich: lichMau));
+
+      await tester.ensureVisible(find.text('Lịch chi tiêu'));
+      await tester.tap(find.text('5'));
+      await tester.pump();
+
+      expect(
+        find.textContaining('Không chi'),
+        findsOneWidget,
+        reason: 'im lặng ở đây làm người dùng tưởng cú chạm không ăn',
+      );
+    });
+
+    testWidgets('không tràn ở 411dp với số tiền lớn', (tester) async {
+      tester.view.physicalSize = const Size(411, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await moTrang(tester);
+      await phat(tester, _tk(lich: {
+        for (var i = 1; i <= 30; i++)
+          DateTime(2026, 9, i): ngay(123456789, soKhoan: 12),
+      }));
+      await tester.ensureVisible(find.text('Lịch chi tiêu'));
+      await tester.tap(find.text('11'));
+      await tester.pump();
+
+      expect(tester.takeException(), isNull,
+          reason: 'bảy cột trên 411dp chỉ được ~50dp mỗi ô');
     });
   });
 

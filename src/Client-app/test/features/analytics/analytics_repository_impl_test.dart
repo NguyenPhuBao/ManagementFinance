@@ -152,6 +152,48 @@ void main() {
       );
     });
 
+    // Lịch chi tiêu (#6 khảo sát, 2026-09-16). Cũng không có nguồn stream mới:
+    // `trongKy` đã có sẵn trong `_dung` cho ba khối mượn từ trang Báo cáo.
+    test('lịch chi tiêu gom đúng theo ngày và chỉ đếm khoản chi', () async {
+      await giaoDich(id: 't1', ngay: DateTime(2026, 9, 11, 8), soTien: 100000);
+      await giaoDich(id: 't2', ngay: DateTime(2026, 9, 11, 20), soTien: 250000);
+      await giaoDich(id: 't3', ngay: DateTime(2026, 9, 12), soTien: 70000);
+      await giaoDich(id: 't4', ngay: DateTime(2026, 9, 12), soTien: 900000, loai: 'thu', danhMuc: null);
+      // Ngoài kỳ — bắt lỗi lệch biên.
+      await giaoDich(id: 't5', ngay: DateTime(2026, 8, 31), soTien: 500000);
+
+      final tk = await lanDau();
+
+      expect(tk.lichChiTieu.keys.toSet(),
+          {DateTime(2026, 9, 11), DateTime(2026, 9, 12)});
+      expect(tk.lichChiTieu[DateTime(2026, 9, 11)]!.tongChi, 350000);
+      expect(tk.lichChiTieu[DateTime(2026, 9, 11)]!.soKhoan, 2);
+      expect(
+        tk.lichChiTieu[DateTime(2026, 9, 12)]!.soKhoan,
+        1,
+        reason: 'khoản THU cùng ngày không được lên lịch chi tiêu',
+      );
+    });
+
+    test('ngày chi nhiều nhất của Số liệu nhanh KHỚP ô đậm nhất của lịch',
+        () async {
+      await giaoDich(id: 't1', ngay: DateTime(2026, 9, 3), soTien: 100000);
+      await giaoDich(id: 't2', ngay: DateTime(2026, 9, 7, 9), soTien: 400000);
+      await giaoDich(id: 't3', ngay: DateTime(2026, 9, 7, 18), soTien: 300000);
+
+      final tk = await lanDau();
+
+      final dinh = tk.lichChiTieu.entries
+          .reduce((a, b) => a.value.tongChi >= b.value.tongChi ? a : b);
+      expect(
+        tk.soLieu.ngayChiNhieuNhat,
+        dinh.key,
+        reason: 'hai khối đọc chung một phép gom; hai vòng lặp song song cho '
+            'cùng khái niệm là cách chắc nhất để chúng trôi khỏi nhau',
+      );
+      expect(tk.soLieu.chiNgayNhieuNhat, dinh.value.tongChi);
+    });
+
     test('transfer không vào thu lẫn chi, kể cả khi mang danh mục', () async {
       await giaoDich(id: 't1', ngay: DateTime(2026, 9, 2), soTien: 900000, loai: 'transfer');
       final tk = await lanDau();

@@ -12,6 +12,7 @@
 /// mà ra hai con số là lỗi khó thấy nhất trong app này.
 library;
 
+import 'lich_chi_tieu.dart';
 import 'thong_ke_thang.dart';
 import 'khoan_vao_thong_ke.dart';
 import 'pham_vi_ky.dart';
@@ -362,22 +363,24 @@ SoLieuNhanh soLieuNhanhCua(
   required DateTime to,
 }) {
   final soNgay = to.difference(from).inDays;
-  final chiTheoNgay = <DateTime, double>{};
+  // Phép gom theo ngày có **một** định nghĩa, ở `lich_chi_tieu.dart` — khối
+  // Lịch chi tiêu (#6, 2026-09-16) đọc đúng map này. Giữ một vòng lặp thứ hai ở
+  // đây là để "ngày chi nhiều nhất" của khối Số liệu nhanh và ô đậm nhất của
+  // lịch trôi khỏi nhau ở lần sửa đầu tiên.
+  final lich = lichChiTieuCua(trongKy);
   DongGiaoDich? lonNhat;
   var tongChi = 0.0;
-  for (final d in trongKy) {
-    if (d.loai != 'chi') continue;
-    tongChi += d.soTien;
-    final ngay = DateTime(d.ngay.year, d.ngay.month, d.ngay.day);
-    chiTheoNgay[ngay] = (chiTheoNgay[ngay] ?? 0) + d.soTien;
-    if (lonNhat == null || d.soTien > lonNhat.soTien) lonNhat = d;
-  }
   DateTime? ngayDinh;
   var chiDinh = 0.0;
-  for (final e in chiTheoNgay.entries) {
-    if (e.value > chiDinh) {
-      chiDinh = e.value;
+  for (final e in lich.entries) {
+    tongChi += e.value.tongChi;
+    if (e.value.tongChi > chiDinh) {
+      chiDinh = e.value.tongChi;
       ngayDinh = e.key;
+    }
+    final k = e.value.lonNhat;
+    if (k != null && (lonNhat == null || k.soTien > lonNhat.soTien)) {
+      lonNhat = k;
     }
   }
   return SoLieuNhanh(
