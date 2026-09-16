@@ -617,15 +617,24 @@ kỳ tương lai bằng đúng luật trả tiền. `watchKy` nay gộp **bảy*
 **Nghiệm thu máy ảo lật hai thứ mà 2633 ca test đều mù**, cả hai về trục biểu
 đồ: trục từ 0 làm đường nằm phẳng (cam kết chỉ bằng 2,8% số dư), và bước lẻ làm
 hai nhãn "13.6M" in đè nhau. Sửa bằng trục **co theo dữ liệu** + bước **tròn**
-(bẫy **4.21**). `flutter test` **2640/2640**, `flutter analyze` **25 issue, 0
+(bẫy **4.21**). `flutter test` **2643/2643**, `flutter analyze` **25 issue, 0
 error**, schema giữ **v22**, **không thêm trường đồng bộ**.
 
-⚠️ **Phát hiện bên lề, chưa sửa, chờ người dùng chốt:**
-`analytics_repository_impl.dart` đăng ký ví **không lọc `deletedAt`** rồi cộng
-`balance` qua `viTinhVaoTong` (hàm ấy không kiểm `isDeleted`), trong khi trang
-chủ đi qua `walletDao.watchAll` có lọc. Nên **"số dư cuối kỳ" của khối Dòng tiền
-và thác nước đang cộng cả ví đã xoá mềm còn số dư**; `bao_cao_repository_impl.dart:84`
-mang cùng khuôn, cần soát. `duBaoCua` tự lọc nên không kế thừa lỗi ấy.
+### 🧹 Ví đã xoá mềm phình "số dư cuối kỳ" — G42 (2026-09-16, mở và đóng cùng ngày)
+
+Lượt soát tài liệu của hạng mục trên lộ ra một lỗi **có sẵn**:
+`analytics_repository_impl.dart` đọc ví bằng truy vấn thẳng **không lọc
+`deletedAt`** — cố ý, vì bảng tra tên ví cần hàng đã xoá — rồi cộng `balance`
+qua `viTinhVaoTong`, hàm khi ấy chỉ hỏi `includeInTotal` và trạng thái lưu trữ.
+Nên **"số dư cuối kỳ" của khối Dòng tiền và thác nước cộng cả ví người dùng đã
+xoá**; ca tái hiện đo **17.000.000 thay vì 10.000.000**.
+
+⚠️ Hẹp hơn lần báo đầu: `bao_cao_repository_impl.dart:84` và
+`wallet_repository_impl.dart:115` **không sai** — cả hai đi qua
+`walletDao.getAll`, hàm ấy có lọc. Sửa bằng cách đưa vế `isDeleted` **vào chính
+`viTinhVaoTong`** (mặc định `false`) chứ không vá ở chỗ gọi: tệp test của hàm ấy
+mở đầu bằng *"tồn tại để không có bản thứ năm"*, và đây đúng là bản thứ năm.
+`flutter test` **2643/2643**.
 
 ### 🏷️ Danh mục mặc định toàn cục mất tên — G41 (2026-09-15)
 

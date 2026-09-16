@@ -698,6 +698,34 @@ void main() {
               'tại `now`.');
     });
 
+    test(
+        '⚠️ ví ĐÃ XOÁ MỀM không phình "số dư cuối kỳ" — nhưng tên nó vẫn tra được',
+        () async {
+      // Repository đọc ví bằng truy vấn thẳng KHÔNG lọc `deletedAt`, có chủ ý:
+      // giao dịch cũ vẫn trỏ vào ví đã xoá và bảng tra tên cần hàng ấy. Nhưng
+      // `balance` của nó thì KHÔNG phải tiền của người dùng nữa.
+      await db.walletDao.insert(WalletsCompanion.insert(
+        id: 'w_xoa',
+        idaccount: 1,
+        name: 'Ví đã xoá',
+        balance: const Value(7000000.0),
+        updatedAt: now,
+      ));
+      await giaoDich(
+          id: 't_cu', ngay: DateTime(2026, 9, 3), soTien: 100000, vi: 'w_xoa');
+      await db.walletDao.softDelete('w_xoa');
+
+      final tk = await lanDau();
+
+      expect(tk.duBao!.soDuHienTai, 10000000,
+          reason: 'chỉ ví w1; 7.000.000 của ví đã xoá không được cộng');
+      expect(tk.dongTien!.cuoiKy, 10000000,
+          reason: 'Khối Dòng tiền và thác nước cùng đọc con số này. Cộng cả ví '
+              'đã xoá là "số dư cuối kỳ" nói một con số người dùng không có.');
+      expect(tk.theoVi.map((v) => v.ten), contains('Ví đã xoá'),
+          reason: 'Tên vẫn phải tra được — đó là lý do truy vấn không lọc.');
+    });
+
     test('không có ví thì duBao null', () async {
       await db.walletDao.softDelete('w1');
       final tk = await lanDau();

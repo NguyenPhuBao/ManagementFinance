@@ -1216,17 +1216,26 @@ thay thế, và hỏng theo chiều tệ hơn: một hoá đơn **thật** biế
 Sau khi sửa: nhãn trục **13M · 13.2M · 13.4M · 13.6M**, bậc thang rơi đúng ngày
 cam kết.
 
-`flutter test` **2640/2640**, `flutter analyze` **25 issue, 0 error**, schema
-giữ **v22**, **không thêm trường đồng bộ**.
+`flutter test` **2643/2643** (gồm 3 ca của G42), `flutter analyze` **25 issue,
+0 error**, schema giữ **v22**, **không thêm trường đồng bộ**.
 
-#### ⚠️ Phát hiện bên lề, KHÔNG thuộc hạng mục này
+#### Phát hiện bên lề → ✅ **G42, đóng cùng ngày**
 
+Lượt soát tài liệu của chính mục này lộ ra một lỗi **có sẵn**:
 `analytics_repository_impl.dart` đăng ký ví bằng `db.select(db.wallets)` **không
-lọc `deletedAt`**, rồi cộng `balance` qua `viTinhVaoTong` — hàm ấy không kiểm
-`isDeleted`. Trang chủ thì đi qua `walletDao.watchAll` (có lọc). Nên **"số dư
-cuối kỳ" của khối Dòng tiền và thác nước đang cộng cả ví đã xoá mềm còn số
-dư**; `bao_cao_repository_impl.dart:84` cần soát cùng. `duBaoCua` tự lọc
-`isDeleted` nên không kế thừa lỗi ấy. Chưa sửa — chờ người dùng chốt.
+lọc `deletedAt`** (cố ý — bảng tra tên cần hàng đã xoá), rồi cộng `balance` qua
+`viTinhVaoTong`, hàm khi ấy chỉ hỏi hai vế. Nên **"số dư cuối kỳ" của khối Dòng
+tiền và thác nước cộng cả ví người dùng đã xoá** — ca tái hiện đo 17.000.000 thay
+vì 10.000.000.
+
+⚠️ **Hẹp hơn lần báo đầu:** `bao_cao_repository_impl.dart:84` và
+`wallet_repository_impl.dart:115` **không sai** — cả hai đi qua
+`walletDao.getAll`, và hàm ấy **có** lọc `deletedAt`. Chỉ một chỗ hỏng.
+
+Sửa bằng cách đưa vế `isDeleted` **vào chính `viTinhVaoTong`** (mặc định
+`false`) chứ không vá ở chỗ gọi — `vi_tinh_vao_tong_test.dart` vốn sinh ra để
+chặn "bản chép tay thứ năm" của luật này, và đây đúng là bản thứ năm. Chi tiết:
+**G42** `docs/CLIENT_APP_KNOWN_GAPS.md`.
 
 ## 4. Bẫy
 

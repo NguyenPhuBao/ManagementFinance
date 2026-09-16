@@ -340,9 +340,17 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
     // Tổng số dư — **cùng một luật** với trang chủ, màn Quản lý ví và trang Báo
     // cáo (`viTinhVaoTong`), để "số dư cuối kỳ" khớp con số người dùng thấy ở
     // nơi khác. `fold` trần trên mọi ví là bản chép tay đã sai ba lần.
+    //
+    // ⚠️ `isDeleted` BẮT BUỘC ở đây và chỉ ở đây: `vi` đến từ một truy vấn
+    // thẳng **không lọc `deletedAt`** (cố ý — bảng tra tên cần hàng đã xoá),
+    // khác mọi chỗ gọi khác vốn đọc qua `walletDao`. Thiếu nó thì số dư ví
+    // người dùng đã xoá vẫn phình "số dư cuối kỳ" — G42, đo được 7.000.000.
     final soDu = vi
-        .where((v) =>
-            viTinhVaoTong(includeInTotal: v.includeInTotal, status: v.status))
+        .where((v) => viTinhVaoTong(
+              includeInTotal: v.includeInTotal,
+              status: v.status,
+              isDeleted: v.isDeleted,
+            ))
         .fold<double>(0, (s, v) => s + v.balance);
 
     // Dự báo LUÔN tính từ `now`, không theo kỳ đang xem — và ngân sách của nó

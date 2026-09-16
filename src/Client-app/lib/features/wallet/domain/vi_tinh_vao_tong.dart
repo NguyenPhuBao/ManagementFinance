@@ -23,5 +23,27 @@ import 'wallet_status.dart';
 /// Lưu trữ một ví **không chạm** cờ `includeInTotal`; nó chỉ thêm một vế vào
 /// phép hỏi ở đây. Nhờ vậy bỏ lưu trữ là mọi con số cũ tự quay lại đúng như
 /// trước, kể cả với ví vốn đã bị người dùng loại khỏi tổng từ lâu.
-bool viTinhVaoTong({required bool includeInTotal, String? status}) =>
-    includeInTotal && WalletStatus.laHoatDong(status);
+///
+/// ## Vế thứ ba: ví đã XOÁ MỀM (thêm 2026-09-16, G42)
+///
+/// Phần lớn chỗ gọi đọc ví qua `walletDao.getAll`/`watchAll`, và hai hàm ấy
+/// đã lọc `deletedAt` — nên vế này thường thừa. Nhưng **không phải mọi chỗ**:
+/// `AnalyticsRepositoryImpl` truy vấn thẳng `db.select(db.wallets)` và **cố ý
+/// giữ hàng đã xoá**, vì giao dịch cũ vẫn trỏ vào ví ấy và bảng tra tên cần
+/// nó. Hàng ấy rồi được cộng `balance` qua đúng hàm này, nên "số dư cuối kỳ"
+/// của khối Dòng tiền và thác nước phình lên đúng số dư của ví người dùng đã
+/// xoá — im lặng, đo được 7.000.000 trên một tài khoản thử.
+///
+/// Đặt vế này **trong hàm** chứ không ở chỗ gọi là có chủ ý: tệp test đi kèm
+/// sinh ra để chặn "bản chép tay thứ năm" của luật này, và sự cố trên đúng là
+/// bản thứ năm — chỉ khác ở chỗ nó quên một vế khác. Chỗ gọi thứ sáu không
+/// được phép quên lần nữa.
+///
+/// [isDeleted] mặc định `false` để những chỗ đã lọc sẵn ở tầng truy vấn không
+/// phải sửa gì.
+bool viTinhVaoTong({
+  required bool includeInTotal,
+  String? status,
+  bool isDeleted = false,
+}) =>
+    !isDeleted && includeInTotal && WalletStatus.laHoatDong(status);

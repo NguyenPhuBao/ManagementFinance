@@ -25,6 +25,24 @@ void main() {
     expect(viTinhVaoTong(includeInTotal: false, status: 'active'), isFalse);
   });
 
+  test('⚠️ ví ĐÃ XOÁ MỀM không được cộng, dù hai cờ kia đều thuận', () {
+    expect(
+      viTinhVaoTong(includeInTotal: true, status: 'active', isDeleted: true),
+      isFalse,
+      reason: 'Đây là **bản chép tay thứ năm** mà tệp này sinh ra để chặn — '
+          'chỉ khác vế: `analytics_repository_impl` đọc ví bằng một truy vấn '
+          'thẳng KHÔNG lọc `deletedAt` (nó cần hàng đã xoá để tra tên ví của '
+          'giao dịch cũ), rồi cộng `balance` qua hàm này. Ví người dùng đã '
+          'xoá vẫn phình "số dư cuối kỳ" của khối Dòng tiền và thác nước. '
+          'Vế thứ ba nằm TRONG hàm chứ không ở chỗ gọi, để chỗ gọi thứ sáu '
+          'không thể quên nó.',
+    );
+  });
+
+  test('mặc định isDeleted là false — chỗ gọi đã lọc sẵn không phải sửa', () {
+    expect(viTinhVaoTong(includeInTotal: true, status: 'active'), isTrue);
+  });
+
   test('ví lưu trữ không được cộng, dù cờ tính vào tổng còn bật', () {
     expect(viTinhVaoTong(includeInTotal: true, status: 'inactive'), isFalse,
         reason: 'Lưu trữ là đóng băng: số dư ví cũ không được phình tổng tài '

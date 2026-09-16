@@ -199,8 +199,14 @@ DuBaoDongTien? duBaoCua({
 
   bool tinhVaoTong(String? id) {
     final v = id == null ? null : viTheoId[id];
-    if (v == null || v.isDeleted) return false;
-    return viTinhVaoTong(includeInTotal: v.includeInTotal, status: v.status);
+    if (v == null) return false;
+    // Ba vế — kể cả `isDeleted` — nằm trong `viTinhVaoTong`; đừng kiểm lại ở
+    // đây, đó đúng là kiểu bản chép tay đã sinh ra G42.
+    return viTinhVaoTong(
+      includeInTotal: v.includeInTotal,
+      status: v.status,
+      isDeleted: v.isDeleted,
+    );
   }
 
   final camKet = <CamKet>[
