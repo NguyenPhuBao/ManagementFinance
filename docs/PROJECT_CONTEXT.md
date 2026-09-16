@@ -593,7 +593,39 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-15)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-16)
+
+### 🔮 Dự báo dòng tiền 30 ngày tới (2026-09-16)
+
+Mục **#4** của khảo sát app thị trường lần hai, người dùng chốt làm trước
+Sankey. Khối mới trên trang Phân tích, **ngay sau thẻ tổng**: ba con số (số dư
+hiện tại → **còn tiêu được** → *nếu tiêu đúng ngân sách*), cảnh báo ví thiếu,
+biểu đồ **bậc thang** 31 điểm, danh sách cam kết thu gọn 5 dòng. Spec
+`docs/superpowers/specs/2026-09-16-du-bao-dong-tien-design.md`, bàn giao ở mục
+**3.27** `docs/ANALYTICS_FEATURE.md`, màn Stitch
+`732587777370466098aa98d17bd0cbd4`.
+
+⚠️ **Cố ý không có thu nhập trong dự báo** — app không lưu nó ở đâu cả, và suy
+từ lịch sử là một con số **đoán** ngồi cạnh những con số thật. Chỉ chiếu thứ đã
+có luật chạy thật: hoá đơn lặp, trích tự động, ngân sách.
+
+Đi kèm một lượt **tách hàm thuần**: phép tính ngày của kỳ kế tiếp hoá đơn rời
+`BillRepositoryImpl._nextPeriodOf` thành **`kyKeTiepCua(Bill)`** ở
+`bill/domain/bill_ky_ke_tiep.dart`, và `_nextPeriodOf` gọi lại nó — dự báo chiếu
+kỳ tương lai bằng đúng luật trả tiền. `watchKy` nay gộp **bảy** nguồn.
+
+**Nghiệm thu máy ảo lật hai thứ mà 2633 ca test đều mù**, cả hai về trục biểu
+đồ: trục từ 0 làm đường nằm phẳng (cam kết chỉ bằng 2,8% số dư), và bước lẻ làm
+hai nhãn "13.6M" in đè nhau. Sửa bằng trục **co theo dữ liệu** + bước **tròn**
+(bẫy **4.21**). `flutter test` **2640/2640**, `flutter analyze` **25 issue, 0
+error**, schema giữ **v22**, **không thêm trường đồng bộ**.
+
+⚠️ **Phát hiện bên lề, chưa sửa, chờ người dùng chốt:**
+`analytics_repository_impl.dart` đăng ký ví **không lọc `deletedAt`** rồi cộng
+`balance` qua `viTinhVaoTong` (hàm ấy không kiểm `isDeleted`), trong khi trang
+chủ đi qua `walletDao.watchAll` có lọc. Nên **"số dư cuối kỳ" của khối Dòng tiền
+và thác nước đang cộng cả ví đã xoá mềm còn số dư**; `bao_cao_repository_impl.dart:84`
+mang cùng khuôn, cần soát. `duBaoCua` tự lọc nên không kế thừa lỗi ấy.
 
 ### 🏷️ Danh mục mặc định toàn cục mất tên — G41 (2026-09-15)
 
