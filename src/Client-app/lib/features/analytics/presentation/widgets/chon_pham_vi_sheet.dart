@@ -78,16 +78,25 @@ class _ChonPhamViSheetState extends State<ChonPhamViSheet> {
 
   Future<void> _chonKhoangTuyY() async {
     final nay = widget.moc;
+    final somNhat = DateTime(nay.year - 5);
+    // ⚠️ Khoảng khởi tạo phải NẰM TRỌN trong `[somNhat, nay]`, kẻo
+    // `showDateRangePicker` ném assertion — và ở đây nó là một exception bất
+    // đồng bộ không ai bắt, nên nút chỉ đơn giản là **không làm gì** (G43).
+    // Ca vấp thật là trạng thái mặc định của trang: "Tháng này" kết thúc ngày
+    // cuối tháng, tức sau hôm nay. Phép kẹp là hàm thuần, có test riêng.
+    final khoi = khoangKhoiTaoBoChonNgay(
+      ky: widget.kyHienTai,
+      somNhat: somNhat,
+      muonNhat: nay,
+    );
     final chon = await showDateRangePicker(
       context: context,
-      firstDate: DateTime(nay.year - 5),
+      firstDate: somNhat,
       lastDate: nay,
       currentDate: nay,
-      initialDateRange: DateTimeRange(
-        start: widget.kyHienTai.from,
-        // Bộ chọn nhận biên ĐÓNG, còn `Ky` giữ biên MỞ — lệch đúng một ngày.
-        end: widget.kyHienTai.to.subtract(const Duration(days: 1)),
-      ),
+      initialDateRange: khoi == null
+          ? null
+          : DateTimeRange(start: khoi.from, end: khoi.den),
     );
     if (chon == null) {
       // Thoát bộ chọn ngày mà không chọn gì: **giữ nguyên** đơn vị cũ. Rơi về

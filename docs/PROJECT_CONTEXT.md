@@ -595,6 +595,28 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-16)
 
+### 🛠️ G43 — nút "Tuỳ chọn" chết im lặng (2026-09-16)
+
+Lỗi **có sẵn từ P1** (2026-09-15), tìm được khi nghiệm thu máy ảo cho mục #2.
+Chạm "Tuỳ chọn" trong bộ chọn phạm vi thì **không có gì xảy ra**:
+`showDateRangePicker` ném assertion vì `initialDateRange` thò ra ngoài
+`[firstDate, lastDate]` — kỳ "Tháng này" kết thúc 30/09 trong khi `lastDate` là
+hôm nay 16/09. Đó là exception **bất đồng bộ không ai bắt**, nên không toast,
+không màn đỏ, chỉ một dòng logcat người dùng không bao giờ thấy. Nó nổ ở đúng
+**trạng thái mặc định** của trang (Tuần này · Tháng này · Quý này · Năm nay).
+
+Phép kẹp nay là hàm thuần `khoangKhoiTaoBoChonNgay` (`analytics/domain/
+pham_vi_ky.dart`), trả `null` khi kỳ không giao với dải cho phép. Bốn ca widget
+mới chạm **thật** vào nút và đòi `DateRangePickerDialog` hiện ra — "không ném"
+một mình vẫn xanh với một nút chết. Chi tiết: **G43**
+`docs/CLIENT_APP_KNOWN_GAPS.md`.
+
+⚠️ **Vì sao bộ test mù suốt một ngày:** `chon_pham_vi_sheet_test.dart` có 9 ca
+nhưng **không ca nào chạm vào chip ấy**. Lỗi nằm sau một cú chạm không ai thực
+hiện — cùng họ với bài học "test xanh không chứng minh đường đi được chạy".
+
+`flutter test` **2679/2679** · `flutter analyze` **25 issue, 0 error**.
+
 ### 🔁 So cùng kỳ năm trước (2026-09-16)
 
 Mục **#2** của khảo sát app thị trường lần hai. Hai thẻ tổng trang Phân tích nay

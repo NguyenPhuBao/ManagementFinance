@@ -321,3 +321,31 @@ String nhanCungKyNamTruoc(Ky ky) {
     DonViKy.tuyChon => '${t.nhanNgan} ${t.from.year}',
   };
 }
+
+/// Khoảng khởi tạo **hợp lệ** cho `showDateRangePicker` khi đang xem [ky]
+/// (G43, 2026-09-16).
+///
+/// Trả biên **ĐÓNG** (`den` là ngày cuối cùng nằm trong kỳ) vì bộ chọn ngày
+/// nhận biên đóng, còn [Ky] giữ biên mở — lệch đúng một ngày.
+///
+/// ⚠️ **Vì sao phải có hàm này:** `showDateRangePicker` **ném assertion** khi
+/// `initialDateRange` thò ra ngoài `[firstDate, lastDate]`, và ở đây nó là một
+/// exception bất đồng bộ **không ai bắt** — nút không làm gì, không toast,
+/// không màn đỏ, chỉ một dòng trong logcat. Ca vấp thật là trạng thái **mặc
+/// định** của trang: "Tháng này" kết thúc ngày cuối tháng, tức **sau hôm nay**,
+/// trong khi `lastDate` là hôm nay.
+///
+/// `null` khi kỳ **không giao** với dải cho phép — chỗ gọi mở bộ chọn mà không
+/// đặt khoảng sẵn. Trả một khoảng đảo đầu-cuối chỉ là đổi sang một assertion
+/// khác.
+({DateTime from, DateTime den})? khoangKhoiTaoBoChonNgay({
+  required Ky ky,
+  required DateTime somNhat,
+  required DateTime muonNhat,
+}) {
+  final dau = ky.from.isBefore(somNhat) ? somNhat : ky.from;
+  final cuoi = ky.to.subtract(const Duration(days: 1));
+  final den = cuoi.isAfter(muonNhat) ? muonNhat : cuoi;
+  if (den.isBefore(dau)) return null;
+  return (from: dau, den: den);
+}

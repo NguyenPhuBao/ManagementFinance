@@ -1563,6 +1563,29 @@ cam kết 50.000 trên nền 13.590.000 cho cả bốn nhãn là "13.6M" (bản 
 nới chỉ ra **2** nhãn khác nhau trên 4). Đi kèm: `belowBarData` thôi cắt ở mốc 0
 khi 0 **nằm ngoài** dải, nếu không nó tô đặc cả biểu đồ.
 
+**4.22 Exception trong hàm `async` của một `onTap` không nổi lên đâu cả.**
+`showDateRangePicker` ném assertion khi `initialDateRange` thò ra ngoài
+`[firstDate, lastDate]`, và vì không ai `await` kèm `catch`, Flutter chỉ in ra
+console. Người dùng thấy một **nút chết**: không toast, không màn đỏ, không gì
+cả. G43 sống được qua cả một lượt nghiệm thu máy ảo vì nó chỉ nổ ở đúng trạng
+thái mặc định (*Tháng này* kết thúc sau hôm nay), và bộ test có 9 ca cho bộ chọn
+phạm vi mà **không ca nào chạm vào chip ấy** — lỗi nằm sau một cú chạm không ai
+thực hiện.
+
+Hai luật rút ra:
+
+1. **Mọi mốc truyền vào một bộ chọn ngày phải kẹp vào dải cho phép trước**, và
+   phép kẹp nên là hàm thuần có test riêng. `khoangKhoiTaoBoChonNgay` trả `null`
+   khi kỳ không giao với dải — trả một khoảng đảo đầu-cuối chỉ đổi sang một
+   assertion khác.
+2. **Ca test cho một nút phải đòi kết quả, không chỉ đòi "không ném".**
+   `expect(tester.takeException(), isNull)` một mình vẫn **xanh** với một nút
+   chết; phải kèm `expect(find.byType(DateRangePickerDialog), findsOneWidget)`.
+
+⚠️ Và khi một hàng nút chỉ có **một** nút hỏng thì rất dễ đổ cho toạ độ chạm
+của chính mình. Cách rẻ để phân biệt: bấm một nút **khác trong cùng hàng** —
+ăn thì toạ độ đúng, và vấn đề nằm trong mã.
+
 ---
 
 ## 5. Luồng dữ liệu

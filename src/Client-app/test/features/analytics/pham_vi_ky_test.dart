@@ -444,4 +444,89 @@ void main() {
       expect(nhanCungKyNamTruoc(k), '05/09 – 17/09 2025');
     });
   });
+
+  // ── G43: khoảng khởi tạo của bộ chọn ngày (2026-09-16) ───────────────────
+  //
+  // `showDateRangePicker` **ném assertion** khi `initialDateRange` thò ra ngoài
+  // `[firstDate, lastDate]`. Lỗi ấy là một exception bất đồng bộ **không ai
+  // bắt**: nút không làm gì, không toast, không màn đỏ — chỉ có một dòng trong
+  // logcat mà người dùng không bao giờ thấy.
+  //
+  // Và nó xảy ra ở đúng trạng thái MẶC ĐỊNH của trang: "Tháng này" kết thúc
+  // ngày cuối tháng, tức sau hôm nay.
+  group('khoangKhoiTaoBoChonNgay', () {
+    final homNay = DateTime(2026, 9, 16, 8, 27);
+    final somNhat = DateTime(2021, 1, 1);
+
+    test('kỳ kết thúc SAU hôm nay thì kẹp mốc cuối về hôm nay', () {
+      final k = khoangKhoiTaoBoChonNgay(
+        ky: Ky.thang(2026, 9),
+        somNhat: somNhat,
+        muonNhat: homNay,
+      );
+      expect(k, isNotNull);
+      expect(k!.from, DateTime(2026, 9, 1));
+      expect(
+        k.den,
+        homNay,
+        reason: 'không kẹp thì showDateRangePicker ném assertion và nút "Tuỳ '
+            'chọn" chết im lặng — đúng ca mặc định "Tháng này"',
+      );
+    });
+
+    test('kỳ đã qua hẳn thì giữ nguyên hai mốc', () {
+      final k = khoangKhoiTaoBoChonNgay(
+        ky: Ky.thang(2026, 7),
+        somNhat: somNhat,
+        muonNhat: homNay,
+      );
+      expect(k!.from, DateTime(2026, 7, 1));
+      expect(
+        k.den,
+        DateTime(2026, 7, 31),
+        reason: 'bộ chọn nhận biên ĐÓNG còn Ky giữ biên MỞ — lệch đúng một ngày',
+      );
+    });
+
+    test('kỳ bắt đầu TRƯỚC mốc sớm nhất thì kẹp mốc đầu', () {
+      final k = khoangKhoiTaoBoChonNgay(
+        ky: Ky.nam(2020),
+        somNhat: somNhat,
+        muonNhat: homNay,
+      );
+      expect(k, isNull, reason: 'cả kỳ nằm ngoài dải — không có khoảng nào hợp lệ');
+
+      final k2 = khoangKhoiTaoBoChonNgay(
+        ky: Ky.tuyChon(from: DateTime(2020, 6, 1), to: DateTime(2021, 6, 1)),
+        somNhat: somNhat,
+        muonNhat: homNay,
+      );
+      expect(k2!.from, somNhat);
+      expect(k2.den, DateTime(2021, 5, 31));
+    });
+
+    test('kỳ nằm hoàn toàn sau mốc muộn nhất thì KHÔNG có khoảng khởi tạo', () {
+      final k = khoangKhoiTaoBoChonNgay(
+        ky: Ky.thang(2026, 12),
+        somNhat: somNhat,
+        muonNhat: homNay,
+      );
+      expect(
+        k,
+        isNull,
+        reason: 'trả một khoảng đảo đầu-cuối cũng là một assertion khác; null '
+            'để chỗ gọi mở bộ chọn mà không đặt khoảng sẵn',
+      );
+    });
+
+    test('tuần chứa hôm nay cũng phải kẹp — ngày Chủ nhật còn ở tương lai', () {
+      final k = khoangKhoiTaoBoChonNgay(
+        ky: Ky.tuan(homNay),
+        somNhat: somNhat,
+        muonNhat: homNay,
+      );
+      expect(k!.from, DateTime(2026, 9, 14));
+      expect(k.den, homNay);
+    });
+  });
 }

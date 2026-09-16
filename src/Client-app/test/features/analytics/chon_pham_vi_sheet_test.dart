@@ -170,4 +170,85 @@ void main() {
     expect(find.textContaining('này'), findsNothing,
         reason: 'một khoảng tuỳ ý không phải "kỳ này" của đơn vị nào');
   });
+
+  // ── G43 (2026-09-16) ─────────────────────────────────────────────────────
+  //
+  // `showDateRangePicker` ném assertion khi `initialDateRange` thò ra ngoài
+  // `[firstDate, lastDate]`. Đó là exception **bất đồng bộ không ai bắt**, nên
+  // nút chỉ đơn giản không làm gì: không toast, không màn đỏ, chỉ một dòng
+  // logcat mà người dùng không bao giờ thấy. Máy ảo tìm ra, bộ test cũ mù hoàn
+  // toàn vì không ca nào CHẠM vào nút ấy.
+  group('G43 — nút "Tuỳ chọn" mở được bộ chọn ngày', () {
+    testWidgets('từ kỳ MẶC ĐỊNH (tháng này, kết thúc sau hôm nay)',
+        (tester) async {
+      await tester.pumpWidget(dung(Ky.thang(2026, 9)));
+      // ⚠️ Font của bộ test rộng gấp đôi ngoài đời (bẫy 4.4) nên năm chip
+      // KHÔNG vừa 411dp ở đây, dù trên máy ảo thì vừa. Hàng chip cuộn ngang
+      // được, nên kéo nó vào tầm nhìn thay vì nới khổ — nới khổ là bỏ luôn
+      // phép đo chặt mà tệp này cố ý giữ.
+      await tester.ensureVisible(find.text('Tuỳ chọn'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Tuỳ chọn'));
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.takeException(),
+        isNull,
+        reason: 'kỳ "Tháng này" kết thúc 30/09 còn lastDate là 17/09 — không '
+            'kẹp thì assertion nổ và nút chết im lặng',
+      );
+      expect(
+        find.byType(DateRangePickerDialog),
+        findsOneWidget,
+        reason: 'không đủ nếu chỉ "không ném": nút phải thật sự mở bộ chọn',
+      );
+    });
+
+    testWidgets('từ kỳ đã qua hẳn vẫn mở bình thường', (tester) async {
+      await tester.pumpWidget(dung(Ky.thang(2026, 7)));
+      // ⚠️ Font của bộ test rộng gấp đôi ngoài đời (bẫy 4.4) nên năm chip
+      // KHÔNG vừa 411dp ở đây, dù trên máy ảo thì vừa. Hàng chip cuộn ngang
+      // được, nên kéo nó vào tầm nhìn thay vì nới khổ — nới khổ là bỏ luôn
+      // phép đo chặt mà tệp này cố ý giữ.
+      await tester.ensureVisible(find.text('Tuỳ chọn'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Tuỳ chọn'));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      expect(find.byType(DateRangePickerDialog), findsOneWidget);
+    });
+
+    testWidgets('từ kỳ TUẦN chứa hôm nay — ngày Chủ nhật còn ở tương lai',
+        (tester) async {
+      await tester.pumpWidget(dung(Ky.tuan(moc)));
+      // ⚠️ Font của bộ test rộng gấp đôi ngoài đời (bẫy 4.4) nên năm chip
+      // KHÔNG vừa 411dp ở đây, dù trên máy ảo thì vừa. Hàng chip cuộn ngang
+      // được, nên kéo nó vào tầm nhìn thay vì nới khổ — nới khổ là bỏ luôn
+      // phép đo chặt mà tệp này cố ý giữ.
+      await tester.ensureVisible(find.text('Tuỳ chọn'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Tuỳ chọn'));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      expect(find.byType(DateRangePickerDialog), findsOneWidget);
+    });
+
+    testWidgets('từ kỳ NĂM NAY — mốc cuối xa hôm nay hơn ba tháng',
+        (tester) async {
+      await tester.pumpWidget(dung(Ky.nam(2026)));
+      // ⚠️ Font của bộ test rộng gấp đôi ngoài đời (bẫy 4.4) nên năm chip
+      // KHÔNG vừa 411dp ở đây, dù trên máy ảo thì vừa. Hàng chip cuộn ngang
+      // được, nên kéo nó vào tầm nhìn thay vì nới khổ — nới khổ là bỏ luôn
+      // phép đo chặt mà tệp này cố ý giữ.
+      await tester.ensureVisible(find.text('Tuỳ chọn'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Tuỳ chọn'));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      expect(find.byType(DateRangePickerDialog), findsOneWidget);
+    });
+  });
 }
