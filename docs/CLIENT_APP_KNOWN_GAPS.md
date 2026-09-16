@@ -1408,8 +1408,8 @@ nổ.
 hàm `async` mà **không ai `await` có `catch`**, nên Flutter chỉ in ra console.
 Trên bản release người dùng còn không có console. Nút trông như một nút chết.
 
-**Vì sao bộ test mù.** `chon_pham_vi_sheet_test.dart` có 9 ca, nhưng **không ca
-nào chạm vào chip "Tuỳ chọn"** — chúng kiểm nhãn, kiểm đổi chip đổi danh sách,
+**Vì sao bộ test mù.** `chon_pham_vi_sheet_test.dart` có **10** ca, nhưng **không
+ca nào chạm vào chip "Tuỳ chọn"** — chúng kiểm nhãn, kiểm đổi chip đổi danh sách,
 kiểm khổ 411dp. Lỗi nằm sau một cú chạm mà không ai thực hiện. Có sẵn từ **P1
 (2026-09-15)**, qua cả lượt nghiệm thu máy ảo hôm ấy.
 

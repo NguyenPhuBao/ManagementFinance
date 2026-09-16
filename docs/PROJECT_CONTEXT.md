@@ -611,7 +611,7 @@ mới chạm **thật** vào nút và đòi `DateRangePickerDialog` hiện ra �
 một mình vẫn xanh với một nút chết. Chi tiết: **G43**
 `docs/CLIENT_APP_KNOWN_GAPS.md`.
 
-⚠️ **Vì sao bộ test mù suốt một ngày:** `chon_pham_vi_sheet_test.dart` có 9 ca
+⚠️ **Vì sao bộ test mù suốt một ngày:** `chon_pham_vi_sheet_test.dart` có **10** ca
 nhưng **không ca nào chạm vào chip ấy**. Lỗi nằm sau một cú chạm không ai thực
 hiện — cùng họ với bài học "test xanh không chứng minh đường đi được chạy".
 

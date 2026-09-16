@@ -591,7 +591,8 @@ chọn**, vì người dùng còn phải nói rõ kỳ nào. Danh sách dựng t
 `cacKyGanNhat(moc, donVi)`; `AnalyticsLoaded` mang `moc` thay cho `cacThang` để
 lướt qua bốn đơn vị không phải đi một vòng cubit.
 
-**Năm cái bẫy, cả năm đều hỏng im lặng:**
+**Sáu cái bẫy, cả sáu đều hỏng im lặng** (cái thứ sáu thêm 2026-09-16, sau khi
+đóng **G43** — nó là một lỗi **của chính lát P1 này**):
 
 1. ⚠️ **Ngân sách chỉ gắn khi đơn vị là Tháng.** `BudgetView.spent` đếm theo kỳ
    của **chính ngân sách ấy**, không theo kỳ đang xem. Vẽ thanh "% ngân sách"
@@ -611,6 +612,15 @@ lướt qua bốn đơn vị không phải đi một vòng cubit.
 5. ⚠️ **Lùi kỳ theo đơn vị lịch, không trừ số ngày.** `lui` là chỗ duy nhất làm
    việc ấy; bản sai có chủ ý dùng `subtract(Duration(days: 30))` cho ra
    `2026-01-01` thay vì `2026-02-01`.
+6. ⚠️ **Khoảng khởi tạo của `showDateRangePicker` phải KẸP vào
+   `[firstDate, lastDate]`** — **G43**, tìm được 2026-09-16. Bản đầu truyền
+   thẳng kỳ đang xem, trong khi `lastDate` là **hôm nay**; nên bất cứ khi nào kỳ
+   chứa hôm nay — *Tuần này · Tháng này · Quý này · Năm nay*, tức **trạng thái
+   mặc định** — mốc cuối nằm ở tương lai và assertion nổ. Và vì nó là exception
+   trong một hàm `async` **không ai bắt**, nút "Tuỳ chọn" chỉ đơn giản là
+   **không làm gì**: không toast, không màn đỏ, chỉ một dòng logcat. Phép kẹp
+   nay là hàm thuần `khoangKhoiTaoBoChonNgay`, trả `null` khi kỳ không giao với
+   dải. Xem thêm bẫy **4.22**.
 
 **Biên tuần dùng chung với thông báo Tổng kết tuần**: `bienTuan` tách khỏi thân
 `tuanTruoc` ở `core/notification/tuan_iso.dart`, và có một ca canh hai hàm không
@@ -1568,8 +1578,8 @@ khi 0 **nằm ngoài** dải, nếu không nó tô đặc cả biểu đồ.
 `[firstDate, lastDate]`, và vì không ai `await` kèm `catch`, Flutter chỉ in ra
 console. Người dùng thấy một **nút chết**: không toast, không màn đỏ, không gì
 cả. G43 sống được qua cả một lượt nghiệm thu máy ảo vì nó chỉ nổ ở đúng trạng
-thái mặc định (*Tháng này* kết thúc sau hôm nay), và bộ test có 9 ca cho bộ chọn
-phạm vi mà **không ca nào chạm vào chip ấy** — lỗi nằm sau một cú chạm không ai
+thái mặc định (*Tháng này* kết thúc sau hôm nay), và bộ test có **10** ca cho bộ
+chọn phạm vi mà **không ca nào chạm vào chip ấy** — lỗi nằm sau một cú chạm không ai
 thực hiện.
 
 Hai luật rút ra:
