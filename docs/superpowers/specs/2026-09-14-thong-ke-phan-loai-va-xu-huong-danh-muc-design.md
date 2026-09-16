@@ -1,3 +1,9 @@
+> 🛑 **Đọc kèm, 2026-09-16 — bảng A8 ở §1 nay ĐÓNG.** Người dùng chốt **bỏ
+> hẳn** hai ô cuối **#9** (biến động khoản vay) và **#11** (Sankey): *"bỏ biến
+> động khoản vay với Sankey đi không cần thiết nữa"*. §1.1 và §10 của tệp này
+> vẫn đúng về **lý lẽ kỹ thuật**, nhưng không còn mô tả việc nào phải làm —
+> đừng đọc chúng như một hàng đợi.
+>
 > ⚠️ **Đọc kèm, 2026-09-15 — §1.1 của tệp này đã SAI.** Nó xếp **#4, #5, #8, #9**
 > vào cùng một nhóm "chặn bởi mô hình dữ liệu"; thực tế **chỉ #9** chặn thật.
 > #4, #5 và #8 chỉ vẽ *dòng tiền* nên không cần dư nợ gốc, lãi suất hay kỳ hạn —
@@ -67,9 +73,9 @@ Bảng A8 có 11 mục. Lượt soát bằng mã ngày 2026-09-14 cho kết qu�
 | 6 | Xu hướng theo Phân loại — 2 đường | ✅ đã có | "Xu hướng 6 tháng", 2026-09-08 |
 | 7 | Xu hướng theo **loại danh mục** — 1 đường | ❌ | **lát này** |
 | 8 | Dòng tiền tự do (thu sau khi trả nợ) | ✅ **xong 2026-09-15** | mục 3.24 `ANALYTICS_FEATURE.md` |
-| 9 | Biến động Khoản vay (Đi vay + Lãi vay) | ❌ | ngoài phạm vi, xem §1.1 |
+| 9 | Biến động Khoản vay (Đi vay + Lãi vay) | 🛑 **bỏ hẳn 2026-09-16** | người dùng chốt, xem banner đầu tệp |
 | 10 | Biểu đồ thác nước | ✅ **xong 2026-09-15** | mục 3.23 `ANALYTICS_FEATURE.md` |
-| 11 | Biểu đồ Sankey | ❌ | làm được, để đợt sau — §10 |
+| 11 | Biểu đồ Sankey | 🛑 **bỏ hẳn 2026-09-16** | người dùng chốt, xem banner đầu tệp |
 
 ### 1.1 Bốn mục bị chặn bởi mô hình dữ liệu, không phải bởi biểu đồ
 

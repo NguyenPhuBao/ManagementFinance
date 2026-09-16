@@ -400,7 +400,9 @@ nước) và **#11** (Sankey) làm được với thu/chi nhưng để đợt sa
 > **không bị chặn**, và nay **đã làm xong** cùng ngày — mục **3.24**. ⚠️ Công
 > thức thì **không** phải `Σ thu − Σ traNo` như dòng này từng ghi: `tong.thu` đã
 > gồm cả tiền **đi vay** và **thu nợ**, hai thứ không phải thu nhập. Chỉ **#9**
-> chặn thật, vì nó cần **dư nợ còn lại**. ✅ **#10 (thác nước) đã làm xong**
+> chặn thật, vì nó cần **dư nợ còn lại** — 🛑 **nhưng từ 2026-09-16 nó không
+> còn là việc**: người dùng chốt bỏ hẳn **#9** và **#11**, xem banner mục 7.1.
+> ✅ **#10 (thác nước) đã làm xong**
 > cùng ngày — mục **3.23**; người dùng chốt "không làm" rồi **đổi ý** trong
 > ngày, nên câu ấy ở các tài liệu cũ hơn là ảnh chụp của quyết định đầu.
 >
@@ -1046,7 +1048,7 @@ nước "Tiền đi đâu", dòng tiền tự do, và hai biểu đồ vay/nợ;
 |---|---|---|---|---|
 | 1 | **Tỷ lệ tiết kiệm** | Monarch (ngay trên Cash Flow) | ✅ có sẵn; `dongTienTuDo()` đã trả `thuNhap` đúng nghĩa | ✅ **làm** |
 | 2 | So cùng kỳ năm trước | Monarch, Copilot | ✅ `lui()` đã lùi theo đơn vị lịch | chưa |
-| 3 | Sankey (A8 #11) | Monarch — *"fan favorite"*, chia sẻ được, ẩn được số tiền | ✅ đủ | chưa |
+| 3 | Sankey (A8 #11) | Monarch — *"fan favorite"*, chia sẻ được, ẩn được số tiền | ✅ đủ | 🛑 **bỏ** 2026-09-16 |
 | 4 | **Dự báo dòng tiền** | PocketSmith — chiếu số dư tới từng ngày, 30–60 năm | ✅ nguyên liệu hiếm: hoá đơn lặp có `anchorDay`+`recurrence`+`autoPay`, ngân sách có kỳ, mục tiêu có trích tự động | ✅ **XONG 2026-09-16**, mục **3.27** |
 | 5 | Tài sản ròng theo thời gian | Monarch, PocketSmith | ⚠️ làm được nhưng lệch có điều kiện — xem dưới | chưa |
 | 6 | Lịch chi tiêu (heatmap) | PocketSmith, Money Lover | ✅ đủ | chưa |
@@ -1057,6 +1059,12 @@ nước "Tiền đi đâu", dòng tiền tự do, và hai biểu đồ vay/nợ;
 Người dùng chốt **#1 rồi #4** — cả hai **đã xong**: #1 ở mục 3.26 (2026-09-15), #4 ở mục **3.27** (2026-09-16). Và **bỏ hẳn #8, #9**: #9 cần một cột mà cả hai đầu
 đều không có, còn #8 mà không có đối tác thì phải đoán bằng danh mục + số tiền,
 và đoán sai thì **hỏng im lặng** — không đáng cho đồ án.
+
+🛑 **Thêm ngày 2026-09-16: #3 (Sankey) cũng bỏ hẳn** — cùng lượt người dùng đóng
+A8 #9 và #11, nguyên văn *"bỏ biến động khoản vay với Sankey đi không cần thiết
+nữa"*. Bốn mục còn **chưa** (#2 so cùng kỳ năm trước, #5 tài sản ròng, #6 lịch
+chi tiêu heatmap, #7 cảnh báo bất thường) **chưa bị bỏ** — chúng vẫn là ô trống
+thật, chỉ là chưa ai chốt làm.
 
 #### ⚠️ Mục 5 lật một giả định, và cũng tự đặt ra giới hạn của nó
 
@@ -1587,9 +1595,9 @@ phải ghép từ bốn chỗ mới trả lời được câu "mảng Phân tíc
 | 6 | Xu hướng theo Phân loại — 2 đường | ✅ 2026-09-08 |
 | 7 | Xu hướng theo loại danh mục | ✅ 2026-09-14 (tới 5 đường), mục 3.19 |
 | 8 | **Dòng tiền tự do** (thu sau khi trả nợ) | ✅ 2026-09-15, mục **3.24** |
-| 9 | Biến động Khoản vay | ❌ **chặn thật** — cần dư nợ còn lại |
+| 9 | Biến động Khoản vay | 🛑 **bỏ hẳn** — người dùng chốt 2026-09-16 |
 | 10 | Thác nước | ✅ 2026-09-15, mục 3.23 |
-| 11 | Sankey | ❌ **chưa làm** — làm được |
+| 11 | Sankey | 🛑 **bỏ hẳn** — người dùng chốt 2026-09-16 |
 
 **#8 đã xong 2026-09-15** (mục **3.24**). ⚠️ Nhưng công thức **không** phải
 `Σ thu − Σ traNo` như dòng này từng ghi: `tong.thu` đã gồm cả tiền **đi vay** và
@@ -1598,8 +1606,24 @@ tiền **thu nợ**, và cả hai đều không phải thu nhập. Luật đúng
 Câu "#4, #5, #8, #9 bị chặn bởi mô hình dữ liệu" viết ngày 2026-09-14 nay
 **chỉ còn đúng với #9**.
 
-**#11 (Sankey) làm được nhưng nặng hơn hẳn:** `fl_chart` không có Sankey, phải
-tự vẽ bằng `CustomPainter`, và vùng vẽ không test tự động được (bẫy 4.9).
+> 🛑 **Bảng A8 ĐÓNG từ 2026-09-16.** Người dùng chốt **bỏ hẳn** hai ô cuối —
+> nguyên văn: *"bỏ biến động khoản vay với Sankey đi không cần thiết nữa"*. Đây
+> là quyết định về **phạm vi sản phẩm**, không phải hoãn lại: đừng lên kế hoạch
+> cho hai mục ấy nữa, và **đừng mở lại hàng đợi
+> `docs/superpowers/backend/CAN-LAM/`** (đang rỗng) để xin dư nợ gốc / lãi suất
+> / kỳ hạn — mục duy nhất cần những cột ấy đã bị bỏ. Lý lẽ kỹ thuật của hai ô
+> vẫn ghi lại bên dưới vì nó giải thích *vì sao bỏ là hợp lý*, không phải vì
+> còn việc.
+>
+> Bài học chung: **một ô trống trong bảng theo dõi không đồng nghĩa với một
+> việc phải làm.** Khi chỉ còn những mục khó hoặc bị chặn bởi mô hình dữ liệu,
+> hỏi người dùng có còn cần không trước khi lên kế hoạch, thay vì mặc định phải
+> lấp cho đầy bảng.
+
+**#9 chặn thật** — nó cần dư nợ còn lại, mà không đầu nào lưu dư nợ gốc, lãi
+suất hay kỳ hạn. **#11 (Sankey) làm được nhưng nặng hơn hẳn:** `fl_chart` không
+có Sankey, phải tự vẽ bằng `CustomPainter`, và vùng vẽ không test tự động được
+(bẫy 4.9).
 
 **Mảng Báo cáo thì xong hẳn** — trang Xuất báo cáo đọc số thật, màn Xem trước
 mười khối, nút Tải xuống sinh PDF/CSV và lưu thẳng vào thư mục Tải về.
@@ -1630,14 +1654,16 @@ mười khối, nút Tải xuống sinh PDF/CSV và lưu thẳng vào thư mục
   nhưng để đợt sau. ⚠️ **Đính chính 2026-09-15:** #4 và #5 **không** bị chặn —
   xem mục **3.22**; **#8** cũng không — và nó **đã làm xong** 2026-09-15 (mục
   **3.24**); chỉ **#9** chặn thật; **#10 đã làm xong** 2026-09-15 (mục 3.23).
+  🛑 **Đính chính 2026-09-16:** **#9 và #11 bỏ hẳn** — người dùng chốt; bảng A8
+  không còn ô nào là việc.
 - ⚠️ Câu *"Mảng Phân tích đến đây là xong"* đứng ở đây từ 2026-09-09 **đã bị gỡ
   ngày 2026-09-15**: người dùng chốt làm tiếp mảng Phân tích và Báo cáo. ✅ **P1
   (mục 3.20), P2 (mục 3.21) và A8 #4/#5 (mục 3.22) xong cùng ngày.** 🛑 **P3**
   (thác nước, A8 #10) từng bị chốt **không làm**, nhưng người dùng **đổi ý**
   cùng ngày và nó **đã xong** — mục **3.23**. ✅ **#8 (dòng tiền tự do) cũng
-  xong 2026-09-15** — mục **3.24**. Còn lại **#11** Sankey (làm được, chưa làm);
-  **#9** vẫn chặn thật vì cần dư nợ còn lại — đó là **ô trống duy nhất** của
-  bảng A8, và nó không phải việc client. Kế hoạch ở
+  xong 2026-09-15** — mục **3.24**. 🛑 **Hai ô còn lại — #9 (biến động khoản
+  vay) và #11 (Sankey) — người dùng chốt BỎ HẲN ngày 2026-09-16**, nên bảng A8
+  nay không còn việc nào; xem banner ở mục **7.1**. Kế hoạch ở
   `docs/superpowers/plans/2026-09-15-ke-hoach.md` (gitignore).
 - **Tổng kết tuần KHÔNG phải việc còn lại** — nó đã làm xong **2026-09-09**
   (mục **5d** `NOTIFICATION_FEATURE.md`). Điều kiện "một màn hình có phạm vi

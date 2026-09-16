@@ -595,6 +595,36 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-16)
 
+### 🛑 Bảng A8 ĐÓNG — bỏ hẳn #9 và #11 (2026-09-16)
+
+Người dùng chốt **bỏ hẳn** hai ô cuối của bảng A8 (mục **7.1**
+`docs/ANALYTICS_FEATURE.md`): **#9** (biến động khoản vay) và **#11** (Sankey).
+Nguyên văn: *"bỏ biến động khoản vay với Sankey đi không cần thiết nữa"*. Cùng
+lượt, mục **#3** của bảng khảo sát thị trường lần hai (mục 3.25 — chính là
+Sankey) cũng bỏ.
+
+Đây là quyết định về **phạm vi sản phẩm**, không phải hoãn. Hệ quả cần nhớ:
+
+- **Đừng lên kế hoạch cho hai mục ấy nữa**, kể cả khi thấy bảng A8 còn ô trống.
+- **Đừng mở lại hàng đợi `docs/superpowers/backend/CAN-LAM/`** (đang rỗng) để
+  xin dư nợ gốc / lãi suất / kỳ hạn — mục duy nhất cần những cột ấy đã bị bỏ.
+- Kế hoạch `docs/superpowers/plans/2026-09-15-con-lai-mang-phan-tich.md` và
+  `2026-09-15-ke-hoach.md` (cả hai gitignore) nay **không còn hạng mục nào**.
+
+Bài học chung: **một ô trống trong bảng theo dõi không đồng nghĩa với một việc
+phải làm.** Khi chỉ còn những mục khó hoặc bị chặn bởi mô hình dữ liệu, hỏi
+người dùng có còn cần không trước khi lên kế hoạch, thay vì mặc định phải lấp
+cho đầy bảng.
+
+⚠️ Mảng Phân tích đóng không có nghĩa **mảng Báo cáo** cũng vậy: đo ngày
+2026-09-16, **tệp PDF/CSV tải về thiếu ba khối** mà chính màn Xem trước ngay
+trên nút "Tải xuống" đang hiện — % so với kỳ trước (`tongTruoc`), số liệu nhanh
+(`soLieu`), và top 5 khoản chi (`topChi`). Cả ba trường **đã nằm sẵn** trong
+`BaoCao` nhưng `analytics/domain/xuat_tep.dart` không đọc (grep ba tên trường
+trong tệp ấy: **0** kết quả). Và **14 khối** của trang Phân tích thì không có
+đường xuất tệp nào — `pdfBaoCao`/`csvBaoCao` chỉ có **một** chỗ gọi, ở
+`report_preview_page.dart`. Chưa ai chốt làm gì với hai khoảng lệch ấy.
+
 ### 🔮 Dự báo dòng tiền 30 ngày tới (2026-09-16)
 
 Mục **#4** của khảo sát app thị trường lần hai, người dùng chốt làm trước
@@ -721,7 +751,8 @@ ngay tại vị trí lẽ ra là 0, và `rutGon` in nhãn trục thành **`-0`**
 
 Với hạng mục này, bảng A8 còn đúng **một** ô trống — **#9** (biến động khoản
 vay), và nó **không phải việc client**: nó cần dư nợ còn lại, thứ không bảng nào
-ở hai đầu lưu.
+ở hai đầu lưu. *(🛑 Ảnh chụp 2026-09-15: ô ấy **không còn là việc** — người dùng
+chốt bỏ hẳn #9 và #11 ngày 2026-09-16, xem khối đầu mục 14.)*
 
 ### 🪜 Thác nước "Tiền đi đâu" — A8 #10 (2026-09-15)
 
@@ -958,7 +989,9 @@ khoản vay + lãi vay) đều cần ít nhất một trong những thứ ấy �
 **cả hai đầu**, tức phải xin backend. Mục **#10** (thác nước) và **#11**
 (Sankey) làm được với thu/chi nhưng để đợt sau. *(Đính chính 2026-09-15: #4, #5
 và #8 **không** cần mô hình mới — xem khối "Bốn mục A8 bị chặn" ở trên; và
-**#10 và #8 đều đã làm xong** cùng ngày — mục 3.23 và 3.24.)*
+**#10 và #8 đều đã làm xong** cùng ngày — mục 3.23 và 3.24. 🛑 **Đính chính
+2026-09-16: #9 và #11 bỏ hẳn** — người dùng chốt; bảng A8 không còn ô nào là
+việc, xem khối đầu mục 14.)*
 
 **Không đụng schema** (v22 giữ nguyên), **không đụng đường đồng bộ**.
 `flutter test` **2409/2409** · `flutter analyze` **25 issue, 0 error**.
