@@ -1634,21 +1634,21 @@ class _BieuDoDuBao extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ds = d.chuoi;
-    var dinh = 0.0, day = 0.0;
-    for (final p in ds) {
-      for (final y in [p.chacChan, if (d.coNganSach) p.theoNganSach]) {
-        if (y > dinh) dinh = y;
-        if (y < day) day = y;
-      }
-    }
-    final coAm = day < 0;
-    final tran = dinh > 0 ? dinh * 1.1 : (coAm ? 0.0 : 1.0);
-    final san = coAm ? day * 1.1 : 0.0;
-    final buoc = (tran - san) / 3;
+    // Dải trục CO theo dữ liệu — phép tính và lý lẽ ở `daiTrucDuBao`, nơi nó
+    // được test (kể cả ca dải hẹp làm bốn nhãn in ra cùng một chuỗi).
+    final (:san, :buoc) = daiTrucDuBao([
+      for (final p in ds) ...[
+        p.chacChan,
+        if (d.coNganSach) p.theoNganSach,
+      ],
+    ]);
     // Trần phải là ĐÚNG `san + 3 * buoc`, không phải con số đã đem chia: sai
     // số dấu phẩy động đủ để `rutGon` trả hai chuỗi khác nhau cho cùng một vị
     // trí, và hai nhãn in đè khít lên nhau (G39, bẫy 4.18).
     final maxY = san + buoc * 3;
+    // Vạch 0 và vùng tô phần âm chỉ có nghĩa khi mốc 0 NẰM TRONG dải. Trục co
+    // nên số dư dương lớn cho ra một khung hoàn toàn trên 0.
+    final coAm = san < 0;
 
     return LineChart(
       LineChartData(
@@ -1762,7 +1762,9 @@ class _BieuDoDuBao extends StatelessWidget {
             dotData: const FlDotData(show: false),
             belowBarData: BarAreaData(
               show: true,
-              applyCutOffY: true,
+              // Chỉ cắt ở mốc 0 khi 0 nằm trong dải; trục co thì nó thường
+              // không, và cắt ở một mốc ngoài khung là tô đặc cả biểu đồ.
+              applyCutOffY: coAm,
               cutOffY: 0,
               gradient: LinearGradient(
                 begin: Alignment.topCenter,

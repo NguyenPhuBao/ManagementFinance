@@ -14,6 +14,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flowmoney/core/bill/bill_recurrence.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/analytics/domain/du_bao_dong_tien.dart';
+import 'package:flowmoney/features/analytics/domain/thong_ke_thang.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
 import 'package:flowmoney/features/goal/data/models/goal_entity.dart';
 
@@ -822,6 +823,77 @@ void main() {
       );
       expect(d.conTieuDuoc, -300000);
       expect(d.chuoi.last.chacChan, -300000);
+    });
+
+    test('⚠️ dải trục CO theo dữ liệu, và bốn nhãn phải ĐÔI MỘT KHÁC NHAU', () {
+      // Ca thật đo trên máy ảo 2026-09-16: số dư 13.590.000, cả 30 ngày chỉ
+      // trừ 388.000 (2,8%). Trục từ 0 thì đường nằm phẳng sát đỉnh, không
+      // thấy bậc nào — người dùng chốt co trục.
+      final (:san, :buoc) = daiTrucDuBao(const [13590000, 13202000]);
+
+      expect(san, greaterThan(13000000),
+          reason: 'co theo dải, không chạy từ 0');
+      expect(san, lessThan(13202000), reason: 'đáy chuỗi phải nằm trong dải');
+      expect(san + buoc * 3, greaterThan(13590000),
+          reason: 'đỉnh chuỗi phải nằm trong dải');
+    });
+
+    test('⚠️ dải RẤT hẹp vẫn cho bốn nhãn khác nhau — họ G39', () {
+      // Cam kết 50.000 trên số dư 13.590.000: dải 1,3× là 65.000, bước 21.667
+      // → `rutGon` một chữ số lẻ in ra "13.6M" BỐN LẦN. Dải phải tự nới.
+      final (:san, :buoc) = daiTrucDuBao(const [13590000, 13540000]);
+      final nhan = [for (var k = 0; k < 4; k++) rutGon(san + buoc * k)];
+
+      expect(nhan.toSet().length, 4,
+          reason: 'Bốn nhãn in đè lên nhau là đúng họ G39 — chỉ khác ở chỗ '
+              'lần này nguyên nhân là dải quá hẹp so với độ lớn con số.');
+    });
+
+    test('⚠️ bước là số TRÒN và sàn là bội của bước — bẫy 4.18 trên máy thật',
+        () {
+      // Máy ảo 2026-09-16: với bước lẻ (168.333) fl_chart vẽ nhãn ở CẢ HAI
+      // biên cộng mốc theo `interval`, và biên trên lệch mốc cuối vài phần tỉ
+      // → hai chuỗi "13.6M" in đè nhau. Bước tròn thì mọi mốc rơi đúng vị trí
+      // và phép cộng không sinh sai số.
+      final (:san, :buoc) = daiTrucDuBao(const [13590000, 13202000]);
+
+      expect(buoc, 200000, reason: 'số tròn gần nhất ≥ dải/2');
+      expect(san % buoc, 0, reason: 'sàn là bội của bước → mốc rơi tròn');
+      expect(san, lessThanOrEqualTo(13202000));
+      expect(san + buoc * 3, greaterThanOrEqualTo(13590000));
+    });
+
+    test('bước tròn chọn trong họ 1 · 2 · 2,5 · 5 × 10^k', () {
+      for (final ca in [
+        (const [1000.0, 0.0], 500.0),
+        (const [10000.0, 0.0], 5000.0),
+        (const [3000.0, 0.0], 2000.0),
+        (const [45000.0, 0.0], 25000.0),
+      ]) {
+        final (:san, :buoc) = daiTrucDuBao(ca.$1);
+        expect(buoc, ca.$2, reason: 'dải ${ca.$1}');
+        expect(san + buoc * 3, greaterThanOrEqualTo(ca.$1.first));
+      }
+    });
+
+    test('mọi điểm bằng nhau (không cam kết) vẫn ra dải hợp lệ, không chia 0',
+        () {
+      final (:san, :buoc) = daiTrucDuBao(const [10000000, 10000000]);
+      expect(buoc, greaterThan(0));
+      expect(san, lessThanOrEqualTo(10000000));
+      expect(san + buoc * 3, greaterThanOrEqualTo(10000000));
+    });
+
+    test('dải có phần âm thì sàn âm — vạch 0 nằm trong khung', () {
+      final (:san, :buoc) = daiTrucDuBao(const [500000, -300000]);
+      expect(san, lessThan(0));
+      expect(san + buoc * 3, greaterThan(500000));
+    });
+
+    test('danh sách rỗng trả dải mặc định thay vì nổ', () {
+      final (:san, :buoc) = daiTrucDuBao(const []);
+      expect(buoc, greaterThan(0));
+      expect(san, 0);
     });
 
     test('chuoiDuBao công khai cho widget test dựng dữ liệu', () {

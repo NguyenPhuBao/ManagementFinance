@@ -37,6 +37,7 @@ import '../../goal/data/models/goal_entity.dart';
 import '../../goal/domain/goal_auto_deposit.dart';
 import '../../wallet/domain/vi_tinh_vao_tong.dart';
 import '../../wallet/domain/wallet_status.dart';
+import 'thong_ke_thang.dart';
 
 /// Tầm nhìn: hôm nay + 30 ngày, tức chuỗi có 31 điểm. Cố định, không bộ chọn
 /// — tầng ngân sách đếm theo kỳ của chính ngân sách (thường tháng), tầm nhìn
@@ -518,6 +519,92 @@ List<ViThieu> _viThieu(List<CamKet> camKet, Map<String, Wallet> viTheoId) {
   }
   ra.sort((a, b) => a.ngay.compareTo(b.ngay));
   return ra;
+}
+
+// ── Dải trục tung ─────────────────────────────────────────────────────────
+
+/// Sàn và bước của trục tung biểu đồ dự báo; trần là `san + 3 × buoc`.
+///
+/// ## Vì sao trục CO theo dữ liệu, không chạy từ 0
+///
+/// Khác thác nước và hai biểu đồ vay/nợ — ở đó mắt **so độ cao giữa các cột**
+/// nên trục buộc phải từ 0, và người dùng đã chốt đúng điều ấy ngày
+/// 2026-09-15. Đường số dư thì không so độ cao; nó cho thấy **hình dạng thay
+/// đổi**, tức các bậc rơi vào ngày nào và sâu bao nhiêu.
+///
+/// Đo trên máy ảo 2026-09-16: số dư 13.590.000, cả 30 ngày chỉ trừ 388.000
+/// (2,8%) — trục từ 0 cho ra một đường nằm phẳng sát đỉnh, không thấy bậc
+/// nào. Người dùng chốt co trục cùng ngày. Nhãn trục vẫn in số thật nên
+/// không ai đọc nhầm thành "về 0"; đây cũng là quy ước PocketSmith và Monarch
+/// dùng cho đường số dư.
+///
+/// ## ⚠️ Vì sao phải nới dải
+///
+/// `rutGon` chỉ giữ **một chữ số lẻ**, nên một dải hẹp so với độ lớn con số
+/// làm cả bốn nhãn in ra cùng một chuỗi: cam kết 50.000 trên nền 13.590.000
+/// cho bước 21.667 và bốn nhãn đều là `13.6M`. Đó đúng là họ **G39** (hai
+/// nhãn đè nhau ở khối Xu hướng), chỉ khác nguyên nhân. Ở đây dải được nới
+/// dần cho tới khi bốn nhãn **đôi một khác nhau** — kiểm bằng chính `rutGon`,
+/// nên luật hiển thị và luật dựng dải không thể lệch nhau.
+({double san, double buoc}) daiTrucDuBao(List<double> giaTri) {
+  if (giaTri.isEmpty) return (san: 0, buoc: 1);
+
+  var dinh = giaTri.first;
+  var day = giaTri.first;
+  for (final y in giaTri) {
+    if (y > dinh) dinh = y;
+    if (y < day) day = y;
+  }
+
+  // Mọi điểm bằng nhau (không cam kết nào): dựng một dải quanh giá trị ấy
+  // thay vì chia cho 0.
+  var dai = dinh - day;
+  if (dai <= 0) dai = dinh.abs() * 0.02;
+  if (dai <= 0) dai = 1;
+
+  // Bước phải **≥ dải/2**: sàn bị kéo xuống bội gần nhất của bước nên khoảng
+  // phải phủ được `dải + bước`, tức `3 × bước ≥ dải + bước`.
+  var buoc = _buocTron(dai / 2);
+  var san = (day / buoc).floorToDouble() * buoc;
+
+  // Nới cho tới khi bốn nhãn khác nhau — `rutGon` chỉ giữ một chữ số lẻ. Trần
+  // 30 vòng: một vòng `while` không trần trong hàm được widget gọi là cách
+  // treo app mà không để lại dòng log nào.
+  for (var i = 0; i < 30; i++) {
+    final nhan = <String>{
+      for (var k = 0; k < 4; k++) rutGon(san + buoc * k),
+    };
+    if (nhan.length == 4) break;
+    buoc = _buocTron(buoc * 1.5);
+    san = (day / buoc).floorToDouble() * buoc;
+  }
+
+  return (san: san, buoc: buoc);
+}
+
+/// Số "tròn" nhỏ nhất **không nhỏ hơn** [x], lấy trong họ 1 · 2 · 2,5 · 5
+/// nhân luỹ thừa của 10.
+///
+/// ⚠️ Vì sao bước phải tròn, chứ không phải `dải / 3` cho gọn: fl_chart vẽ
+/// nhãn ở **cả hai biên** cộng các mốc theo `interval`, và với bước lẻ thì
+/// biên trên lệch mốc cuối vài phần tỉ — hai nhãn cùng nội dung in đè khít
+/// lên nhau. Đo được trên máy ảo 2026-09-16: bước 168.333 cho ra "13.6M" hai
+/// lần ở đỉnh trục. Cùng họ bẫy **4.18 / G39**; bước tròn làm mọi mốc rơi
+/// đúng vị trí và phép cộng không sinh sai số.
+double _buocTron(double x) {
+  if (x <= 0) return 1;
+  var bac = 1.0;
+  while (bac * 10 <= x) {
+    bac *= 10;
+  }
+  while (bac > x) {
+    bac /= 10;
+  }
+  for (final he in [1.0, 2.0, 2.5, 5.0, 10.0]) {
+    final ung = bac * he;
+    if (ung >= x) return ung;
+  }
+  return bac * 10;
 }
 
 // ── Chuỗi 31 điểm ─────────────────────────────────────────────────────────
