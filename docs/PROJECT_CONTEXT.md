@@ -691,7 +691,7 @@ cho đầy bảng.
 trên nút "Tải xuống" đang hiện — % so với kỳ trước (`tongTruoc`), số liệu nhanh
 (`soLieu`), và top 5 khoản chi (`topChi`). Cả ba trường **đã nằm sẵn** trong
 `BaoCao` nhưng `analytics/domain/xuat_tep.dart` không đọc (grep ba tên trường
-trong tệp ấy: **0** kết quả). Và **14 khối** của trang Phân tích thì không có
+trong tệp ấy: **0** kết quả). Và **15 khối** của trang Phân tích *(đếm lại bằng máy cuối ngày 2026-09-16, sau khi thêm Lịch chi tiêu; con số **14** viết sáng cùng ngày là ảnh chụp trước đó — `_KhoiDuBao` xuất hiện hai lần trong mã nhưng là **một** khối người dùng thấy, còn `_KhoiVayNo` hai lần là **hai** khối thật)* thì không có
 đường xuất tệp nào — `pdfBaoCao`/`csvBaoCao` chỉ có **một** chỗ gọi, ở
 `report_preview_page.dart`. Chưa ai chốt làm gì với hai khoảng lệch ấy.
 

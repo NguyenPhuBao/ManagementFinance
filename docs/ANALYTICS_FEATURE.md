@@ -1072,9 +1072,14 @@ và đoán sai thì **hỏng im lặng** — không đáng cho đồ án.
 
 🛑 **Thêm ngày 2026-09-16: #3 (Sankey) cũng bỏ hẳn** — cùng lượt người dùng đóng
 A8 #9 và #11, nguyên văn *"bỏ biến động khoản vay với Sankey đi không cần thiết
-nữa"*. Bốn mục còn **chưa** (#2 so cùng kỳ năm trước, #5 tài sản ròng, #6 lịch
-chi tiêu heatmap, #7 cảnh báo bất thường) **chưa bị bỏ** — chúng vẫn là ô trống
-thật, chỉ là chưa ai chốt làm.
+nữa"*.
+
+*(Ảnh chụp sáng 2026-09-16, nay đã lỗi thời: "Bốn mục còn **chưa** — #2, #5, #6,
+#7". Cùng ngày **#2 xong** (mục 3.28) và **#6 xong** (mục 3.29).)* Còn lại **hai**
+ô trống thật, cả hai **chưa bị bỏ**, chỉ là chưa ai chốt làm: **#5** tài sản ròng
+theo thời gian và **#7** cảnh báo bất thường. ⚠️ **#7 không nằm ở trang Phân
+tích** — nó là loại thông báo thứ **17**, đụng `docs/NOTIFICATION_FEATURE.md` và
+mười ba cái bẫy của tệp ấy.
 
 #### ⚠️ Mục 5 lật một giả định, và cũng tự đặt ra giới hạn của nó
 
