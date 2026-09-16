@@ -1,0 +1,408 @@
+/// Dự báo dòng tiền 30 ngày tới — tầng thuần. Không Drift query, không
+/// Flutter, không đồng hồ hệ thống.
+///
+/// Spec: `docs/superpowers/specs/2026-09-16-du-bao-dong-tien-design.md`.
+///
+/// ## Trả lời câu gì
+///
+/// *"Còn tiêu được bao nhiêu sau khi trừ những thứ CHẮC CHẮN phải trả trong 30
+/// ngày tới?"* — hoá đơn tới hạn (kể cả kỳ tương lai chiếu từ hoá đơn lặp) và
+/// trích tự động vào mục tiêu. Tầng thứ hai, tách riêng: phần **còn lại** của
+/// ngân sách kỳ hiện tại, nếu người dùng tiêu đúng kế hoạch.
+///
+/// ## Điều cố ý KHÔNG làm
+///
+/// Không thu nhập (app không lưu ở đâu; suy từ lịch sử là một con số đoán ngồi
+/// cạnh những con số thật), không chi tuỳ ý, không kỳ ngân sách sau. Người dùng
+/// chốt 2026-09-16. Hệ quả: mọi con số ở đây **được phép âm** và không kẹp —
+/// kẹp về 0 là giấu đúng cảnh báo.
+///
+/// ## Luật chuyển ví (§4.5 spec)
+///
+/// Hoá đơn trừ ví trả. Trích tự động trừ ví nguồn và **cộng** ví đích, nên tác
+/// động lên TỔNG tài sản thường bằng 0 — trừ khi ví đích không tính vào tổng
+/// (ví Tiết kiệm bị loại, hoặc mục tiêu chưa gán ví). "Tính vào tổng" là
+/// `viTinhVaoTong`, cùng luật Trang chủ. Theo TỪNG VÍ thì tiền rời ví là thật
+/// dù tổng không đổi — đó là thứ [ViThieu] đo.
+library;
+
+import 'package:drift/drift.dart' show Value;
+
+import '../../../core/database/app_database.dart';
+import '../../bill/domain/bill_ky_ke_tiep.dart';
+import '../../bill/domain/bill_pay_status.dart';
+import '../../budget/data/models/budget_entity.dart';
+import '../../goal/data/models/goal_entity.dart';
+import '../../wallet/domain/vi_tinh_vao_tong.dart';
+import '../../wallet/domain/wallet_status.dart';
+
+/// Tầm nhìn: hôm nay + 30 ngày, tức chuỗi có 31 điểm. Cố định, không bộ chọn
+/// — tầng ngân sách đếm theo kỳ của chính ngân sách (thường tháng), tầm nhìn
+/// lệch xa 30 là hai tầng nói hai khoảng khác nhau.
+const int kSoNgayDuBao = 30;
+
+/// Trần số kỳ chiếu cho MỖI hoá đơn / mục tiêu. Chu kỳ tuần trong 30 ngày là
+/// ≤ 5 kỳ; 12 là dư. Vượt trần thì dừng im lặng, cùng lối `_tranDoMoc` của
+/// `goal_auto_deposit.dart`.
+const int _tranKyChieu = 12;
+
+enum LoaiCamKet { hoaDon, trichTuDong }
+
+/// Một khoản tiền CHẮC CHẮN sẽ rời một ví trong 30 ngày tới.
+class CamKet {
+  /// Đầu ngày. Cam kết quá hạn / đã tới hạn dồn về hôm nay.
+  final DateTime ngay;
+  final String ten;
+  final LoaiCamKet loai;
+
+  /// Ví BỊ TRỪ: hoá đơn là ví trả, trích là ví nguồn.
+  final String walletId;
+
+  /// Ví NHẬN — chỉ trích tự động (ví đích của mục tiêu). `null` với hoá đơn,
+  /// và với mục tiêu chưa gán ví.
+  final String? viNhanId;
+
+  /// Tên ví bị trừ; `null` khi ví không còn hàng nào.
+  final String? tenVi;
+
+  /// Luôn dương.
+  final double soTien;
+
+  /// Hoá đơn: danh mục, để tầng ngân sách khử đếm đôi. Trích: `null`.
+  final String? categoryId;
+
+  /// Hạn đã qua mà chưa trả (chỉ hoá đơn).
+  final bool quaHan;
+
+  /// Kỳ TƯƠNG LAI suy ra, chưa là hàng thật. Mọi khoản trích đều là chiếu.
+  final bool laKyChieu;
+
+  /// Ảnh hưởng lên TỔNG tài sản, có dấu — xem luật chuyển ví ở đầu tệp.
+  final double tacDongTong;
+
+  const CamKet({
+    required this.ngay,
+    required this.ten,
+    required this.loai,
+    required this.walletId,
+    this.viNhanId,
+    required this.tenVi,
+    required this.soTien,
+    required this.categoryId,
+    required this.quaHan,
+    required this.laKyChieu,
+    required this.tacDongTong,
+  });
+}
+
+/// Một ví không đủ trả cam kết của chính nó.
+class ViThieu {
+  final String walletId;
+  final String ten;
+
+  /// Số dương: còn thiếu bao nhiêu ở điểm thấp nhất.
+  final double thieu;
+
+  /// Ngày đầu tiên số dư ví xuống dưới 0.
+  final DateTime ngay;
+
+  const ViThieu({
+    required this.walletId,
+    required this.ten,
+    required this.thieu,
+    required this.ngay,
+  });
+}
+
+/// Một điểm của chuỗi 31 ngày.
+class DiemDuBao {
+  final DateTime ngay;
+
+  /// Tầng 1 tích luỹ tới hết ngày này.
+  final double chacChan;
+
+  /// [chacChan] trừ ngân sách rải đều theo ngày: `− nganSachConLai × i / 30`.
+  final double theoNganSach;
+
+  const DiemDuBao({
+    required this.ngay,
+    required this.chacChan,
+    required this.theoNganSach,
+  });
+}
+
+class DuBaoDongTien {
+  /// Hôm nay, đầu ngày.
+  final DateTime tu;
+
+  /// Σ `balance` của ví qua `viTinhVaoTong`, bỏ ví đã xoá mềm.
+  final double soDuHienTai;
+
+  /// Sắp theo ngày rồi theo tên.
+  final List<CamKet> camKet;
+
+  /// Σ (−tacDongTong) — dương khi tiền ra.
+  final double tongCamKet;
+
+  /// Tầng 2, ≥ 0.
+  final double nganSachConLai;
+  final List<ViThieu> viThieu;
+
+  /// ĐÚNG 31 điểm.
+  final List<DiemDuBao> chuoi;
+
+  const DuBaoDongTien({
+    required this.tu,
+    required this.soDuHienTai,
+    required this.camKet,
+    required this.tongCamKet,
+    required this.nganSachConLai,
+    required this.viThieu,
+    required this.chuoi,
+  });
+
+  double get conTieuDuoc => soDuHienTai - tongCamKet;
+  double get conTieuDuocTheoNganSach => conTieuDuoc - nganSachConLai;
+  bool get coNganSach => nganSachConLai > 0;
+}
+
+DateTime _dauNgay(DateTime t) => DateTime(t.year, t.month, t.day);
+
+/// Dự báo từ [now]. `null` khi không có ví sống nào — không có thang đo,
+/// cùng chốt `dongTien == null` của thác nước.
+///
+/// [nganSach] phải là kết quả của `watchBudgets(now: now)` — KHÔNG phải của
+/// mốc kỳ đang xem (`mocNganSach`), xem §5.1 spec: mốc ấy lùi về cuối kỳ khi
+/// người dùng xem kỳ cũ, và `spent` sẽ là của kỳ khác. [vi] nhận cả hàng đã
+/// xoá mềm để tra tên; số dư và cảnh báo tự lọc.
+DuBaoDongTien? duBaoCua({
+  required DateTime now,
+  required List<Bill> hoaDon,
+  required List<GoalEntity> mucTieu,
+  required List<BudgetView> nganSach,
+  required List<Wallet> vi,
+}) {
+  final viSong = [
+    for (final v in vi)
+      if (!v.isDeleted) v
+  ];
+  if (viSong.isEmpty) return null;
+
+  final homNay = _dauNgay(now);
+  // Ngày cuối CÒN TÍNH (biên đóng): hôm nay + 30. `DateTime(d + 30)` tự cuộn
+  // tháng, không cộng Duration để khỏi lệ thuộc giờ.
+  final cuoi = DateTime(homNay.year, homNay.month, homNay.day + kSoNgayDuBao);
+  final viTheoId = {for (final v in vi) v.id: v};
+
+  bool tinhVaoTong(String? id) {
+    final v = id == null ? null : viTheoId[id];
+    if (v == null || v.isDeleted) return false;
+    return viTinhVaoTong(includeInTotal: v.includeInTotal, status: v.status);
+  }
+
+  final camKet = <CamKet>[
+    ..._camKetHoaDon(hoaDon,
+        homNay: homNay,
+        cuoi: cuoi,
+        viTheoId: viTheoId,
+        tinhVaoTong: tinhVaoTong),
+    ..._camKetMucTieu(mucTieu,
+        now: now,
+        homNay: homNay,
+        cuoi: cuoi,
+        viTheoId: viTheoId,
+        tinhVaoTong: tinhVaoTong),
+  ]..sort((a, b) {
+      final c = a.ngay.compareTo(b.ngay);
+      return c != 0 ? c : a.ten.compareTo(b.ten);
+    });
+
+  // Đọc `balance` — cache của một công thức (G37) nhưng mọi màn khác đều đọc
+  // cache ấy; tính lại ở đây là hai con số trên cùng màn hình (bẫy 8).
+  final soDu = viSong
+      .where((v) => tinhVaoTong(v.id))
+      .fold<double>(0, (s, v) => s + v.balance);
+  final tongCamKet = camKet.fold<double>(0, (s, c) => s - c.tacDongTong);
+  final nganSachConLai = _nganSachConLai(nganSach,
+      now: now, homNay: homNay, cuoi: cuoi, camKet: camKet);
+
+  return DuBaoDongTien(
+    tu: homNay,
+    soDuHienTai: soDu,
+    camKet: camKet,
+    tongCamKet: tongCamKet,
+    nganSachConLai: nganSachConLai,
+    viThieu: _viThieu(camKet, viTheoId),
+    chuoi: chuoiDuBao(
+        homNay: homNay,
+        soDu: soDu,
+        camKet: camKet,
+        nganSachConLai: nganSachConLai),
+  );
+}
+
+// ── Hoá đơn ───────────────────────────────────────────────────────────────
+
+List<CamKet> _camKetHoaDon(
+  List<Bill> hoaDon, {
+  required DateTime homNay,
+  required DateTime cuoi,
+  required Map<String, Wallet> viTheoId,
+  required bool Function(String?) tinhVaoTong,
+}) {
+  // Hàng đã sinh kỳ sau thì kỳ sau tự có mặt trong danh sách — chỉ chiếu từ
+  // HÀNG CUỐI CHUỖI. ⚠️ Không bắt được hàng người dùng tự tạo tay cho kỳ sau
+  // (bẫy 11 spec, cố ý không vá bằng so tên).
+  final daSinhKySau = <String>{
+    for (final b in hoaDon)
+      if (b.generatedFromBillId != null) b.generatedFromBillId!,
+  };
+
+  final ra = <CamKet>[];
+  for (final b in hoaDon) {
+    // `conPhaiTra` là định nghĩa duy nhất: đã trả, đã bỏ qua đều không phải nợ.
+    if (b.isDeleted || !conPhaiTra(b) || b.amount <= 0) continue;
+    final viId = b.walletId;
+    if (viId == null) continue; // bộ tự trả cũng từ chối hàng này
+    if (_dauNgay(b.dueDate).isAfter(cuoi)) continue;
+
+    CamKet camKetTu(DateTime hanTra, {required bool laKyChieu}) {
+      final ngayHan = _dauNgay(hanTra);
+      final quaHan = ngayHan.isBefore(homNay);
+      return CamKet(
+        ngay: quaHan ? homNay : ngayHan,
+        ten: b.name,
+        loai: LoaiCamKet.hoaDon,
+        walletId: viId,
+        tenVi: viTheoId[viId]?.name,
+        soTien: b.amount,
+        categoryId: b.categoryId,
+        quaHan: quaHan,
+        laKyChieu: laKyChieu,
+        tacDongTong: tinhVaoTong(viId) ? -b.amount : 0,
+      );
+    }
+
+    ra.add(camKetTu(b.dueDate, laKyChieu: false));
+    if (!b.isRecurrence || daSinhKySau.contains(b.id)) continue;
+
+    // Chiếu kỳ tương lai bằng ĐÚNG luật của payBill (`kyKeTiepCua`). Mỗi vòng
+    // dựng lại một Bill từ kỳ vừa chiếu để anchorDay đi theo chuỗi — cộng dồn
+    // từ kỳ trước là "ngày 31" tụt về 28 vĩnh viễn (bẫy 3).
+    var hienTai = b;
+    for (var n = 0; n < _tranKyChieu; n++) {
+      final ky = kyKeTiepCua(hienTai);
+      // Chu kỳ lạ: `nextBillDueDate` trả nguyên mốc → hạn không tiến → dừng,
+      // không lặp vô hạn.
+      if (!ky.hanTra.isAfter(hienTai.dueDate)) break;
+      if (_dauNgay(ky.hanTra).isAfter(cuoi)) break;
+      ra.add(camKetTu(ky.hanTra, laKyChieu: true));
+      hienTai = hienTai.copyWith(
+        startDate: Value(ky.batDau),
+        periodEnd: Value(ky.ketThuc),
+        dueDate: ky.hanTra,
+        anchorDay: Value(ky.anchorDay),
+      );
+    }
+  }
+  return ra;
+}
+
+// ── Mục tiêu (thân hàm ở Task 3) ──────────────────────────────────────────
+
+List<CamKet> _camKetMucTieu(
+  List<GoalEntity> mucTieu, {
+  required DateTime now,
+  required DateTime homNay,
+  required DateTime cuoi,
+  required Map<String, Wallet> viTheoId,
+  required bool Function(String?) tinhVaoTong,
+}) =>
+    const [];
+
+// ── Ngân sách (thân hàm ở Task 4) ─────────────────────────────────────────
+
+double _nganSachConLai(
+  List<BudgetView> nganSach, {
+  required DateTime now,
+  required DateTime homNay,
+  required DateTime cuoi,
+  required List<CamKet> camKet,
+}) =>
+    0;
+
+// ── Ví thiếu ──────────────────────────────────────────────────────────────
+
+/// Ngày đầu tiên một ví HOẠT ĐỘNG xuống dưới 0 khi trừ dần cam kết của nó.
+///
+/// Trừ `soTien` đủ (không phải `tacDongTong`): theo ví thì tiền rời ví là
+/// thật dù tổng không đổi. Khoản trích cộng vào ví nhận. Cùng ngày thì trừ
+/// TRƯỚC cộng sau — bảo thủ, thà báo thừa một ngày còn hơn giấu.
+List<ViThieu> _viThieu(List<CamKet> camKet, Map<String, Wallet> viTheoId) {
+  final bienDong = <String, List<(DateTime, double)>>{};
+  void ghi(String viId, DateTime ngay, double delta) =>
+      bienDong.putIfAbsent(viId, () => []).add((ngay, delta));
+  for (final c in camKet) {
+    ghi(c.walletId, c.ngay, -c.soTien);
+    final nhan = c.viNhanId;
+    if (nhan != null) ghi(nhan, c.ngay, c.soTien);
+  }
+
+  final ra = <ViThieu>[];
+  for (final e in bienDong.entries) {
+    final v = viTheoId[e.key];
+    // Ví lưu trữ: người dùng đã cất đi, báo thiếu là ồn vô ích (bẫy 9).
+    if (v == null || v.isDeleted || !WalletStatus.laHoatDong(v.status)) {
+      continue;
+    }
+    final ds = e.value
+      ..sort((a, b) {
+        final c = a.$1.compareTo(b.$1);
+        return c != 0 ? c : a.$2.compareTo(b.$2); // âm (trừ) đứng trước
+      });
+    var conLai = v.balance;
+    var thieuNhat = 0.0;
+    DateTime? ngayDau;
+    for (final (ngay, delta) in ds) {
+      conLai += delta;
+      // Ngưỡng nửa đồng cho đuôi lẻ của double — cùng luật đối soát số dư.
+      if (conLai < -0.5) {
+        ngayDau ??= ngay;
+        if (-conLai > thieuNhat) thieuNhat = -conLai;
+      }
+    }
+    if (ngayDau != null) {
+      ra.add(ViThieu(
+          walletId: v.id, ten: v.name, thieu: thieuNhat, ngay: ngayDau));
+    }
+  }
+  ra.sort((a, b) => a.ngay.compareTo(b.ngay));
+  return ra;
+}
+
+// ── Chuỗi 31 điểm ─────────────────────────────────────────────────────────
+
+/// Bậc thang tầng 1 và đường "theo ngân sách". Công khai để widget test dựng
+/// dữ liệu đúng cấu trúc thay vì tự bịa 31 điểm.
+List<DiemDuBao> chuoiDuBao({
+  required DateTime homNay,
+  required double soDu,
+  required List<CamKet> camKet,
+  required double nganSachConLai,
+}) =>
+    [
+      for (var i = 0; i <= kSoNgayDuBao; i++)
+        () {
+          final ngay = DateTime(homNay.year, homNay.month, homNay.day + i);
+          var chac = soDu;
+          for (final c in camKet) {
+            // `!isAfter`: cam kết HÔM NAY phải nằm ở điểm 0 (bẫy 7).
+            if (!c.ngay.isAfter(ngay)) chac += c.tacDongTong;
+          }
+          return DiemDuBao(
+            ngay: ngay,
+            chacChan: chac,
+            theoNganSach: chac - nganSachConLai * i / kSoNgayDuBao,
+          );
+        }(),
+    ];
