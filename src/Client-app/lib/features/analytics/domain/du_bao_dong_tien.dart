@@ -33,6 +33,7 @@ import '../../bill/domain/bill_ky_ke_tiep.dart';
 import '../../bill/domain/bill_pay_status.dart';
 import '../../budget/data/models/budget_entity.dart';
 import '../../goal/data/models/goal_entity.dart';
+import '../../goal/domain/goal_auto_deposit.dart';
 import '../../wallet/domain/vi_tinh_vao_tong.dart';
 import '../../wallet/domain/wallet_status.dart';
 
@@ -308,8 +309,19 @@ List<CamKet> _camKetHoaDon(
   return ra;
 }
 
-// ── Mục tiêu (thân hàm ở Task 3) ──────────────────────────────────────────
+// ── Mục tiêu ──────────────────────────────────────────────────────────────
 
+/// Trần vòng dò từ mốc neo tới sàn — mốc neo qua đồng bộ có thể là rác từ
+/// năm 1990, và bước từng ngày từ đó là hàng chục nghìn vòng lặp ngay trong
+/// một lần dựng trang. Cùng con số và cùng lối với `goal_auto_deposit.dart`.
+const int _tranDoMoc = 1000;
+
+/// Các kỳ trích tự động rơi vào 30 ngày tới.
+///
+/// Ba chốt bỏ qua mượn nguyên `GoalAutoDepositRunner._chayMotMucTieu`: bật đủ
+/// ba mảnh cấu hình, chưa xong, và ví nguồn tồn tại + hoạt động + khác ví
+/// đích. Phép dò mốc mượn `mocThuN` — neo mốc gốc, **không cộng dồn** — nên
+/// nhịp "ngày 31" không tụt dần như bản cộng dồn từng kỳ.
 List<CamKet> _camKetMucTieu(
   List<GoalEntity> mucTieu, {
   required DateTime now,
@@ -317,8 +329,87 @@ List<CamKet> _camKetMucTieu(
   required DateTime cuoi,
   required Map<String, Wallet> viTheoId,
   required bool Function(String?) tinhVaoTong,
-}) =>
-    const [];
+}) {
+  final ra = <CamKet>[];
+  // Biên MỞ sau ngày cuối: mốc trích mang GIỜ, nên so thời điểm với `cuoi`
+  // (00:00) sẽ cắt mất mốc 08/10 20:00 — một kỳ biến mất, im lặng.
+  final sauCuoi = DateTime(cuoi.year, cuoi.month, cuoi.day + 1);
+
+  for (final g in mucTieu) {
+    if (g.isDeleted ||
+        !g.autoDepositEnabled ||
+        g.daHoanThanh ||
+        g.remainingAmount <= 0) {
+      continue;
+    }
+    final nguonId = g.autoDepositWalletId!;
+    final nguon = viTheoId[nguonId];
+    // Ví nguồn trùng ví tích luỹ thì tiền không đi đâu cả; ví lưu trữ thì
+    // người dùng đã cất đi. Cả hai đều là ca `khongChayDuoc` của bộ trích.
+    if (nguon == null ||
+        nguon.isDeleted ||
+        nguonId == g.walletId ||
+        !WalletStatus.laHoatDong(nguon.status)) {
+      continue;
+    }
+
+    // Cùng vòng dò với `cacKyDenHan`/`kyKeTiep`: nhịp bám MỐC NEO, sàn là lần
+    // chạy gần nhất. Không mốc neo thì nhịp rơi vào chính mốc chạy — hành vi
+    // của bản trước, giữ cho mục tiêu bật trước khi có ô chọn ấy.
+    final san = g.autoDepositLastRun!;
+    final chuKy = g.cycleTakeMoney;
+    final goc = g.timeCycleTakeMoney ?? san;
+    var n = g.timeCycleTakeMoney == null ? 1 : 0;
+    var moc = mocThuN(goc, chuKy, n);
+    var soVong = 0;
+    var rac = false;
+    while (!moc.isAfter(san)) {
+      if (++soVong > _tranDoMoc) {
+        rac = true;
+        break;
+      }
+      moc = mocThuN(goc, chuKy, ++n);
+    }
+    if (rac) continue;
+
+    var conThieu = g.remainingAmount;
+    var daThem = 0;
+    while (moc.isBefore(sauCuoi) && daThem < _tranKyChieu) {
+      // Kẹp ở phần còn thiếu, giảm dần qua từng kỳ chiếu — cùng luật
+      // `quyetDinhTrich`. Ví nguồn truyền vô cực: dự báo không đoán ví có đủ
+      // hay không, đó là việc của `_viThieu`.
+      final qd = quyetDinhTrich(
+        soTienCai: g.autoDepositAmount!,
+        conThieu: conThieu,
+        soDuViNguon: double.infinity,
+      );
+      if (qd.soTien <= 0) break;
+      // Kỳ đã tới hạn mà chưa trích → lượt quét kế tiếp sẽ trừ → dồn về hôm
+      // nay, cùng cách xử lý hoá đơn quá hạn.
+      final ngay = !moc.isAfter(now) ? homNay : _dauNgay(moc);
+      ra.add(CamKet(
+        ngay: ngay,
+        ten: g.name,
+        loai: LoaiCamKet.trichTuDong,
+        walletId: nguonId,
+        viNhanId: g.walletId,
+        tenVi: nguon.name,
+        soTien: qd.soTien,
+        categoryId: null,
+        quaHan: false,
+        laKyChieu: true,
+        // Trừ nguồn nếu nguồn tính vào tổng, CỘNG đích nếu đích tính vào
+        // tổng. Đích `null` (chưa gán ví) → coi như không tính → trừ thật.
+        tacDongTong: (tinhVaoTong(nguonId) ? -qd.soTien : 0) +
+            (tinhVaoTong(g.walletId) ? qd.soTien : 0),
+      ));
+      conThieu -= qd.soTien;
+      daThem++;
+      moc = mocThuN(goc, chuKy, ++n);
+    }
+  }
+  return ra;
+}
 
 // ── Ngân sách (thân hàm ở Task 4) ─────────────────────────────────────────
 

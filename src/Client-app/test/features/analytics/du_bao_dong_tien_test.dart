@@ -399,6 +399,224 @@ void main() {
     });
   });
 
+  group('mục tiêu trích tự động → cam kết', () {
+    // Ví đích w_tk tính vào tổng → tác động lên tổng = 0.
+    final haiVi = [vi_('w1', 'Tiền mặt'), vi_('w_tk', 'Tiết kiệm', soDu: 0)];
+
+    test(
+        'kỳ tương lai trong 30 ngày là cam kết: trừ ví nguồn, cộng ví đích, tổng không đổi',
+        () {
+      final d = duBao(
+        vi: haiVi,
+        mucTieu: [
+          mucTieu('g1',
+              soTienTrich: 500000,
+              mocNeo: DateTime(2026, 9, 15, 8),
+              lanChay: DateTime(2026, 9, 1))
+        ],
+      );
+      expect(d.camKet.length, 1, reason: '15/09 trong; 15/10 ngoài 08/10');
+      final c = d.camKet.single;
+      expect(c.ngay, DateTime(2026, 9, 15));
+      expect(c.ten, 'Mua xe');
+      expect(c.loai, LoaiCamKet.trichTuDong);
+      expect(c.walletId, 'w1');
+      expect(c.viNhanId, 'w_tk');
+      expect(c.soTien, 500000);
+      expect(c.categoryId, isNull);
+      expect(c.laKyChieu, isTrue);
+      expect(c.quaHan, isFalse);
+      expect(c.tacDongTong, 0,
+          reason: 'Bẫy 5: đích tính vào tổng → 0 ròng');
+      expect(d.conTieuDuoc, 10000000);
+    });
+
+    test('⚠️ ví đích KHÔNG tính vào tổng thì khoản trích trừ thật', () {
+      final d = duBao(
+        vi: [
+          vi_('w1', 'Tiền mặt'),
+          vi('w_tk', 'Tiết kiệm', soDu: 0, tinhVaoTong: false)
+        ],
+        mucTieu: [
+          mucTieu('g1',
+              soTienTrich: 500000,
+              mocNeo: DateTime(2026, 9, 15, 8),
+              lanChay: DateTime(2026, 9, 1))
+        ],
+      );
+      expect(d.camKet.single.tacDongTong, -500000);
+      expect(d.conTieuDuoc, 9500000,
+          reason: 'Bẫy 5: quên nhánh này là mọi khoản trích ra 0 ròng');
+    });
+
+    test('mục tiêu chưa gán ví đích: trừ thật ở nguồn, không ví nhận', () {
+      final d = duBao(
+        mucTieu: [
+          mucTieu('g1',
+              soTienTrich: 500000,
+              viDich: null,
+              mocNeo: DateTime(2026, 9, 15, 8))
+        ],
+      );
+      expect(d.camKet.single.viNhanId, isNull);
+      expect(d.camKet.single.tacDongTong, -500000);
+    });
+
+    test('kỳ đã tới hạn chưa trích dồn về HÔM NAY, kỳ tương lai giữ ngày', () {
+      // Mốc neo ngày 5 08:00, sàn 01/08 → 05/08 và 05/09 đã tới hạn (hôm nay
+      // 08/09), 05/10 tương lai.
+      final d = duBao(
+        vi: haiVi,
+        mucTieu: [
+          mucTieu('g1',
+              soTienTrich: 500000,
+              mocNeo: DateTime(2026, 8, 5, 8),
+              lanChay: DateTime(2026, 8, 1))
+        ],
+      );
+      expect(d.camKet.map((c) => c.ngay).toList(), [
+        DateTime(2026, 9, 8),
+        DateTime(2026, 9, 8),
+        DateTime(2026, 10, 5),
+      ]);
+    });
+
+    test(
+        'mốc rơi vào chiều nay (sau `now`) vẫn là hôm nay; và mốc MANG GIỜ ở ngày cuối không bị cắt',
+        () {
+      final d = duBao(
+        vi: haiVi,
+        mucTieu: [
+          mucTieu('g1',
+              soTienTrich: 500000,
+              mocNeo: DateTime(2026, 9, 8, 20),
+              lanChay: DateTime(2026, 9, 1))
+        ],
+      );
+      expect(d.camKet.map((c) => c.ngay).toList(), [
+        DateTime(2026, 9, 8),
+        DateTime(2026, 10, 8),
+      ],
+          reason: 'Kỳ 08/10 20:00 nằm trong ngày cuối của tầm nhìn. So thời '
+              'điểm với mốc 08/10 00:00 sẽ cắt mất nó — một kỳ biến mất, im '
+              'lặng; vì thế biên là `sauCuoi` (mở, 09/10 00:00).');
+    });
+
+    test('kẹp ở phần còn thiếu và DỪNG khi mục tiêu đầy', () {
+      // Còn thiếu 700k, trích 500k mỗi tuần → 500k rồi 200k rồi dừng.
+      final d = duBao(
+        vi: haiVi,
+        mucTieu: [
+          mucTieu('g1',
+              soTienTrich: 500000,
+              chuKy: 'Week',
+              target: 1000000,
+              current: 300000,
+              mocNeo: DateTime(2026, 9, 10, 8),
+              lanChay: DateTime(2026, 9, 1))
+        ],
+      );
+      expect(d.camKet.map((c) => c.soTien).toList(), [500000, 200000]);
+    });
+
+    test(
+        'không bật, đã xong, ví nguồn lưu trữ / không tồn tại / trùng ví đích — đều bỏ',
+        () {
+      final d = duBao(
+        vi: [
+          vi_('w1', 'Tiền mặt'),
+          vi_('w_tk', 'Tiết kiệm', soDu: 0),
+          vi('w_cu', 'Cũ', status: 'inactive')
+        ],
+        mucTieu: [
+          // Chưa bật: `autoDepositLastRun` null. Dựng thẳng vì `copyWith`
+          // dùng `??` nên không đặt được null.
+          GoalEntity(
+            id: 'g1',
+            idaccount: 1,
+            name: 'Chưa bật',
+            targetAmount: 1000000,
+            targetDate: DateTime(2028, 1, 1),
+            walletId: 'w_tk',
+            cycleTakeMoney: 'Month',
+            timeCycleTakeMoney: DateTime(2026, 9, 15, 8),
+            autoDepositAmount: 500000,
+            autoDepositWalletId: 'w1',
+            autoDepositLastRun: null,
+            updatedAt: DateTime(2026, 1, 1),
+          ),
+          mucTieu('g2',
+              soTienTrich: 500000,
+              mocNeo: DateTime(2026, 9, 15, 8),
+              current: 50000000),
+          mucTieu('g3',
+              soTienTrich: 500000,
+              mocNeo: DateTime(2026, 9, 15, 8),
+              viNguon: 'w_cu'),
+          mucTieu('g4',
+              soTienTrich: 500000,
+              mocNeo: DateTime(2026, 9, 15, 8),
+              viNguon: 'w_khong_co'),
+          mucTieu('g5',
+              soTienTrich: 500000,
+              mocNeo: DateTime(2026, 9, 15, 8),
+              viNguon: 'w_tk'),
+        ],
+      );
+      expect(d.camKet, isEmpty);
+    });
+
+    test('không mốc neo thì nhịp bám vào lần chạy gần nhất — hành vi bản cũ',
+        () {
+      final d = duBao(
+        vi: haiVi,
+        mucTieu: [
+          mucTieu('g1',
+              soTienTrich: 500000,
+              mocNeo: null,
+              lanChay: DateTime(2026, 8, 20, 9))
+        ],
+      );
+      expect(d.camKet.single.ngay, DateTime(2026, 9, 20));
+    });
+
+    test('mốc neo rác (năm 1990, chu kỳ ngày) không treo — bỏ mục tiêu ấy', () {
+      final d = duBao(
+        vi: haiVi,
+        mucTieu: [
+          mucTieu('g1',
+              soTienTrich: 500000,
+              chuKy: 'Day',
+              mocNeo: DateTime(1990, 1, 1),
+              lanChay: DateTime(2026, 9, 1))
+        ],
+      );
+      expect(d.camKet, isEmpty);
+    });
+
+    test('ví thiếu tính cả tiền VÀO từ trích tự động', () {
+      // w_tk có 0, nhận 500k ngày 15/09, rồi hoá đơn 400k từ w_tk ngày 20/09
+      // → không thiếu.
+      final d = duBao(
+        vi: haiVi,
+        mucTieu: [
+          mucTieu('g1',
+              soTienTrich: 500000,
+              mocNeo: DateTime(2026, 9, 15, 8),
+              lanChay: DateTime(2026, 9, 1))
+        ],
+        hoaDon: [
+          hoaDon('b1',
+              han: DateTime(2026, 9, 20),
+              soTien: 400000,
+              vi: 'w_tk',
+              lap: false)
+        ],
+      );
+      expect(d.viThieu, isEmpty);
+    });
+  });
+
   group('ví thiếu', () {
     test(
         'ví không đủ trả cam kết của chính nó: ngày đầu tiên âm và số thiếu lớn nhất',
