@@ -10,7 +10,7 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > nguyên (kể cả phần *vì sao hoãn*) vì nó ghi lại bối cảnh và bán kính ảnh
 > hưởng — thứ vẫn cần khi ai đó đọc lại đoạn mã tương ứng.
 >
-> **Đang mở tính tới 2026-09-14.** Mục đã đóng vẫn nằm lại trong bảng, gạch
+> **Đang mở tính tới 2026-09-16.** Mục đã đóng vẫn nằm lại trong bảng, gạch
 > ngang tên — xoá đi thì người sau lại mở ra làm lần nữa.
 >
 > ⚠️ **Bảng này trôi khỏi thân tài liệu năm lần rồi** (G16, G17, G21, G18, G15 — cả năm đều

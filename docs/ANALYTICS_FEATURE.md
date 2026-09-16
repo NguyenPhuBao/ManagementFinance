@@ -653,7 +653,7 @@ bảng danh mục và phép gom theo ngày — thứ trang này đã có hoặc 
 stream của trang phát lại sau **mọi** chu kỳ đồng bộ nền. Cùng lý lẽ với "một
 lượt duyệt" của `chuoiTheoDanhMuc`.
 
-**Repository nhận nguồn thứ tư: ví.** Ba trong bốn khối cần nó — "phân bổ theo
+**Repository nhận nguồn thứ tư: ví.** (⚠️ Con số ấy đúng **tại 2026-09-15**; từ 2026-09-16 `watchKy` gộp **bảy** nguồn — xem mục 3.27.) Ba trong bốn khối cần nó — "phân bổ theo
 ví" cần **tên** ví, "dòng tiền" cần **tổng số dư hiện tại**. Tổng ấy đi qua
 `viTinhVaoTong`, cùng luật với trang chủ, màn Quản lý ví và trang Báo cáo; `fold`
 trần trên mọi ví là bản chép tay đã sai **ba lần** (mục 3.16 và
@@ -1034,7 +1034,7 @@ MISA MoneyKeeper, Copilot, PocketSmith.
 
 #### FlowMoney đang ở đâu
 
-Đo bằng mã cùng ngày: trang Thống kê **12 khối**, màn Xem trước **10 khối** cộng
+Đo bằng mã cùng ngày: trang Thống kê **12 khối** (⚠️ **13 từ 2026-09-16**, khi khối *Dự báo 30 ngày tới* vào — mục 3.27), màn Xem trước **10 khối** cộng
 xuất PDF/CSV lưu thẳng vào máy. Ba khối đang **hơn** mặt bằng app Việt — thác
 nước "Tiền đi đâu", dòng tiền tự do, và hai biểu đồ vay/nợ; Money Lover và MISA
 đều không có. Gắn ngân sách vào báo cáo cũng vẫn là chỗ mạnh hơn Money Lover

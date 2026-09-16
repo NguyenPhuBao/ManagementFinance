@@ -1,6 +1,9 @@
 # Số dư ví suy từ sổ giao dịch (đóng G37)
 
-**Ngày:** 2026-09-13 · **Trạng thái:** đã duyệt, chưa thi công · **Phạm vi:** chỉ `src/Client-app`;
+**Ngày:** 2026-09-13 · **Trạng thái:** ✅ **ĐÃ THI CÔNG XONG** cùng ngày — G37 đóng,
+34 ca test mới ở 5 tệp, `SoDuViService` là nơi duy nhất ghi `balance` (test quét `lib/`
+thứ sáu canh). *(Dòng này ghi "chưa thi công" tới 2026-09-16 — sửa ở lượt soát rộng
+hôm ấy; xem `CLIENT_APP_KNOWN_GAPS.md` mục G37 để biết nó đóng bằng cách nào.)* · **Phạm vi:** chỉ `src/Client-app`;
 **không xin backend gì** — không cột mới, không trường đồng bộ mới, **không đổi schema Drift**.
 
 > Đóng **G37** trong `docs/CLIENT_APP_KNOWN_GAPS.md`. G37 lộ ra ở lượt nghiệm thu bước 12 ngày

@@ -798,7 +798,7 @@ khoản chi**, thứ tự khối chép đúng trang Xuất báo cáo. Chi tiết
 **Một định nghĩa, hai nơi dùng:** bốn phép tính vốn nằm inline trong
 `dungBaoCao`, nay là hàm thuần ở `bao_cao_xuat.dart`. 44 ca test của trang Báo
 cáo vẫn xanh **không sửa dòng nào** — bằng chứng lượt tách không đổi hành vi.
-Repository Phân tích nhận **nguồn thứ tư là ví**.
+Repository Phân tích nhận **nguồn thứ tư là ví** (⚠️ đúng tại 2026-09-15; từ 2026-09-16 là **bảy** nguồn — xem khối dự báo dòng tiền ở đầu mục này).
 
 ⚠️ Hai điều đáng nhớ: khối dòng tiền **luôn** kèm câu "Suy ngược từ số dư hiện
 tại của các ví" (app không lưu lịch sử số dư — mục 3.16), và `dongTienCua` phải
