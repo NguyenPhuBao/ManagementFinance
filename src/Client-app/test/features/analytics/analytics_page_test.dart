@@ -9,6 +9,7 @@ library;
 
 import 'dart:async';
 
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -17,6 +18,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:flowmoney/core/di/injection_container.dart';
 import 'package:flowmoney/features/analytics/data/analytics_repository.dart';
 import 'package:flowmoney/features/analytics/domain/bao_cao_xuat.dart';
+import 'package:flowmoney/features/analytics/domain/du_bao_dong_tien.dart';
 import 'package:flowmoney/features/analytics/domain/pham_vi_ky.dart';
 import 'package:flowmoney/features/analytics/domain/vai_vay_no.dart';
 import 'package:flowmoney/features/analytics/domain/phan_loai_dong_tien.dart';
@@ -103,6 +105,7 @@ ThongKeKy _tk({
   List<DongVi> theoVi = const [],
   List<DongGiaoDich> topChi = const [],
   DongTien? dongTien,
+  DuBaoDongTien? duBao,
 }) =>
     ThongKeKy(
       ky: ky ?? Ky.thang(nam, thang),
@@ -134,6 +137,7 @@ ThongKeKy _tk({
       theoVi: theoVi,
       topChi: topChi,
       dongTien: dongTien,
+      duBao: duBao,
       // ⚠️ Mặc định phải **cùng số kỳ** với `chuoi`, không phải rỗng: hai chuỗi
       // luôn được repository dựng từ cùng một `ky` và cùng `kSoKyXuHuong`, nên
       // một `ThongKeKy` có sáu điểm thu/chi mà không điểm vay/nợ nào là trạng
@@ -146,6 +150,53 @@ ThongKeKy _tk({
               DiemVayNo(ky: d.ky),
           ],
     );
+
+CamKet _camKet(
+  String ten,
+  DateTime ngay,
+  double soTien, {
+  LoaiCamKet loai = LoaiCamKet.hoaDon,
+  bool quaHan = false,
+  bool laKyChieu = false,
+}) =>
+    CamKet(
+      ngay: ngay,
+      ten: ten,
+      loai: loai,
+      walletId: 'w1',
+      tenVi: 'Tiền mặt',
+      soTien: soTien,
+      categoryId: null,
+      quaHan: quaHan,
+      laKyChieu: laKyChieu,
+      tacDongTong: -soTien,
+    );
+
+/// Dựng một [DuBaoDongTien] đúng cấu trúc thật — chuỗi 31 điểm lấy từ chính
+/// `chuoiDuBao` của tầng thuần, không bịa tay.
+DuBaoDongTien _duBao({
+  double soDu = 10000000,
+  List<CamKet> camKet = const [],
+  double nganSachConLai = 0,
+  List<ViThieu> viThieu = const [],
+}) {
+  final homNay = DateTime(2026, 9, 8);
+  final tong = camKet.fold<double>(0, (s, c) => s - c.tacDongTong);
+  return DuBaoDongTien(
+    tu: homNay,
+    soDuHienTai: soDu,
+    camKet: camKet,
+    tongCamKet: tong,
+    nganSachConLai: nganSachConLai,
+    viThieu: viThieu,
+    chuoi: chuoiDuBao(
+      homNay: homNay,
+      soDu: soDu,
+      camKet: camKet,
+      nganSachConLai: nganSachConLai,
+    ),
+  );
+}
 
 /// Ba phân loại mẫu, dùng chung cho nhóm test "Cơ cấu theo danh mục" — đủ cả
 /// ba thì trang hiện đủ ba chip.
@@ -1322,6 +1373,134 @@ void main() {
       final b = boSoLieu(thu: 20000000, diVay: 5000000, traNo: 3000000);
       await moCaoVaPhat(tester, _tk(chuoi: b.chuoi, chuoiVayNo: b.vayNo));
 
+      expect(tester.takeException(), isNull,
+          reason: 'Flutter báo tràn qua reportError chứ không ném ra chỗ gọi.');
+    });
+  });
+
+  // ── Dự báo 30 ngày tới (2026-09-16) ──────────────────────────────────────
+  //
+  // Phép tính đã test ở `du_bao_dong_tien_test.dart`; ở đây chỉ canh những gì
+  // widget mới sai được: hiện/ẩn, ba con số, dòng ví thiếu, "Xem thêm", câu
+  // rỗng, và không tràn ở 411dp.
+  group('khối dự báo 30 ngày', () {
+    Future<void> moCaoVaPhat(WidgetTester tester, ThongKeKy tk) async {
+      tester.view.physicalSize = const Size(411, 4000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await moTrang(tester);
+      await phat(tester, tk);
+    }
+
+    final sauCamKet = [
+      _camKet('Tiền điện', DateTime(2026, 9, 8), 800000, quaHan: true),
+      _camKet('Internet', DateTime(2026, 9, 12), 250000),
+      _camKet('Mua xe', DateTime(2026, 9, 15), 500000,
+          loai: LoaiCamKet.trichTuDong, laKyChieu: true),
+      _camKet('Tiền nước', DateTime(2026, 9, 20), 120000),
+      _camKet('Gym', DateTime(2026, 10, 1), 400000),
+      _camKet('Tiền điện', DateTime(2026, 10, 8), 800000, laKyChieu: true),
+    ];
+
+    testWidgets('khối hiện tiêu đề, ba con số và có LineChart', (tester) async {
+      await moCaoVaPhat(
+          tester, _tk(duBao: _duBao(camKet: sauCamKet, nganSachConLai: 1200000)));
+
+      expect(find.text('Dự báo 30 ngày tới'), findsOneWidget);
+      expect(find.text('Còn tiêu được'), findsOneWidget);
+      // 10.000.000 − (800 + 250 + 500 + 120 + 400 + 800)k = 7.130.000
+      expect(find.text('7.130.000đ'), findsOneWidget);
+      expect(find.text('Số dư hiện tại'), findsOneWidget);
+      expect(find.text('10.000.000đ'), findsOneWidget);
+      expect(find.text('Nếu tiêu đúng ngân sách'), findsOneWidget);
+      expect(find.text('5.930.000đ'), findsOneWidget);
+      expect(find.byType(LineChart), findsWidgets);
+    });
+
+    testWidgets('không có ngân sách thì KHÔNG hiện dòng "Nếu tiêu đúng ngân sách"',
+        (tester) async {
+      await moCaoVaPhat(tester, _tk(duBao: _duBao(camKet: sauCamKet)));
+      expect(find.text('Nếu tiêu đúng ngân sách'), findsNothing);
+    });
+
+    testWidgets('⚠️ duBao null thì ẩn CẢ KHỐI — chốt ở hai lớp', (tester) async {
+      await moCaoVaPhat(tester, _tk(duBao: null));
+      expect(find.text('Dự báo 30 ngày tới'), findsNothing,
+          reason: 'Không có ví thì không có thang đo. Bản sai phải phá cả `if` '
+              'ở trang lẫn guard trong widget mới làm ca này đỏ.');
+    });
+
+    testWidgets('dòng ví thiếu nói rõ ví nào, thiếu bao nhiêu, tới ngày nào',
+        (tester) async {
+      await moCaoVaPhat(
+          tester,
+          _tk(
+              duBao: _duBao(camKet: sauCamKet, viThieu: [
+            ViThieu(
+                walletId: 'w1',
+                ten: 'Tiền mặt',
+                thieu: 1500000,
+                ngay: DateTime(2026, 9, 25))
+          ])));
+      expect(
+          find.text('Ví Tiền mặt thiếu 1.500.000đ để trả cam kết ngày 25/09'),
+          findsOneWidget);
+    });
+
+    testWidgets(
+        'danh sách thu gọn 5 dòng, "Xem thêm (1)" mở hết; huy hiệu Quá hạn / Dự kiến',
+        (tester) async {
+      await moCaoVaPhat(tester, _tk(duBao: _duBao(camKet: sauCamKet)));
+
+      expect(find.text('Gym'), findsOneWidget, reason: 'dòng thứ 5 theo ngày');
+      expect(find.text('Quá hạn'), findsOneWidget);
+      expect(find.text('Dự kiến'), findsOneWidget,
+          reason: 'Mua xe; "Tiền điện 08/10" là dòng thứ 6, đang bị thu gọn');
+      expect(find.text('Xem thêm (1)'), findsOneWidget);
+
+      await tester.tap(find.text('Xem thêm (1)'));
+      await tester.pump();
+
+      expect(find.text('Xem thêm (1)'), findsNothing);
+      expect(find.text('Dự kiến'), findsNWidgets(2));
+    });
+
+    testWidgets(
+        'không cam kết: ba con số vẫn hiện, thân thay bằng một câu',
+        (tester) async {
+      await moCaoVaPhat(tester, _tk(duBao: _duBao()));
+      expect(find.text('Dự báo 30 ngày tới'), findsOneWidget);
+      expect(
+          find.text('Không có hoá đơn hay trích tự động nào trong 30 ngày tới'),
+          findsOneWidget);
+      expect(find.text('10.000.000đ'), findsWidgets);
+    });
+
+    testWidgets('kỳ đang xem RỖNG vẫn hiện dự báo — nó không nói về kỳ',
+        (tester) async {
+      await moCaoVaPhat(
+          tester, _tk(thu: 0, chi: 0, duBao: _duBao(camKet: sauCamKet)));
+      expect(find.text('Dự báo 30 ngày tới'), findsOneWidget);
+    });
+
+    testWidgets('không tràn ở 411dp với tên dài và số lớn', (tester) async {
+      await moCaoVaPhat(
+          tester,
+          _tk(
+              duBao: _duBao(
+            soDu: 1234567890,
+            camKet: [
+              _camKet('Một hoá đơn có tên rất dài để thử tràn bố cục ngang',
+                  DateTime(2026, 9, 9), 987654321)
+            ],
+            viThieu: [
+              ViThieu(
+                  walletId: 'w1',
+                  ten: 'Ví có tên cũng rất dài',
+                  thieu: 987654321,
+                  ngay: DateTime(2026, 9, 9))
+            ],
+          )));
       expect(tester.takeException(), isNull,
           reason: 'Flutter báo tràn qua reportError chứ không ném ra chỗ gọi.');
     });

@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -16,6 +17,7 @@ import '../../data/analytics_repository.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../domain/bao_cao_xuat.dart';
 import '../../domain/dong_tien_tu_do.dart';
+import '../../domain/du_bao_dong_tien.dart';
 import '../../domain/pham_vi_ky.dart';
 import '../../domain/vai_vay_no.dart';
 import '../../domain/phan_loai_dong_tien.dart';
@@ -110,7 +112,16 @@ class _NoiDung extends StatelessWidget {
           :final danhMucXuHuong
         ):
         if (thongKe.rong) {
-          return [_Rong(ky: thongKe.ky)];
+          return [
+            _Rong(ky: thongKe.ky),
+            // Dự báo KHÔNG nói về kỳ đang xem. Kỳ rỗng — ngày đầu tháng, hay
+            // một tháng cũ không có giao dịch — vẫn là lúc người dùng cần
+            // biết 30 ngày tới có gì phải trả.
+            if (thongKe.duBao != null) ...[
+              const SizedBox(height: 24),
+              _KhoiDuBao(duBao: thongKe.duBao),
+            ],
+          ];
         }
         // Thứ tự khối chép đúng trang Xuất báo cáo (P2, 2026-09-15) — hai
         // trang cùng dữ liệu thì phải kể cùng một câu chuyện, theo cùng một
@@ -128,6 +139,13 @@ class _NoiDung extends StatelessWidget {
           ],
           _KhoiTong(tk: thongKe),
           const SizedBox(height: 24),
+          // Ngay sau thẻ tổng: "còn tiêu được 30 ngày tới" đứng cạnh "số dư
+          // còn lại" của kỳ — hiện tại rồi tới tương lai, mắt đọc liền mạch.
+          // Chốt hai lớp: `if` ở đây và guard `null` trong widget.
+          if (thongKe.duBao != null) ...[
+            _KhoiDuBao(duBao: thongKe.duBao),
+            const SizedBox(height: 24),
+          ],
           _KhoiXuHuong(tk: thongKe, danhMucXuHuong: danhMucXuHuong),
           const SizedBox(height: 24),
           // Đứng ngay sau khối Xu hướng: cùng dạng đường, cùng sáu kỳ, và nó
@@ -1321,6 +1339,560 @@ class _KhoiDongTienTuDo extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Dự báo 30 ngày tới ────────────────────────────────────────────────────
+
+/// Khối "Dự báo 30 ngày tới" — spec
+/// `docs/superpowers/specs/2026-09-16-du-bao-dong-tien-design.md` §5.3; màn
+/// Stitch `732587777370466098aa98d17bd0cbd4` *"Thống kê - Dự báo 30 ngày
+/// tới"* (2026-09-16).
+///
+/// Phép tính nằm trọn ở `du_bao_dong_tien.dart`; ở đây chỉ vẽ.
+/// `StatefulWidget` **chỉ** để giữ cờ "đã mở hết" của danh sách — state cục
+/// bộ, không qua cubit, vì nó không phải một lựa chọn cần sống sót qua lần
+/// repository phát lại (khác `phanLoaiDangXem` và `danhMucXuHuong`).
+///
+/// `null` → `SizedBox.shrink()`: lớp **thứ hai** của chốt "không có ví thì ẩn
+/// cả khối"; lớp thứ nhất là `if` ở `_than`. Cùng cách thác nước.
+class _KhoiDuBao extends StatefulWidget {
+  final DuBaoDongTien? duBao;
+  const _KhoiDuBao({required this.duBao});
+
+  @override
+  State<_KhoiDuBao> createState() => _KhoiDuBaoState();
+}
+
+/// Số dòng cam kết khi chưa bấm "Xem thêm".
+const int _soDongCamKetThuGon = 5;
+
+String _ddMM(DateTime d) => DateFormat('dd/MM').format(d);
+
+class _KhoiDuBaoState extends State<_KhoiDuBao> {
+  bool _moHet = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final d = widget.duBao;
+    if (d == null) return const SizedBox.shrink();
+
+    final hien =
+        _moHet ? d.camKet : d.camKet.take(_soDongCamKetThuGon).toList();
+    final conLai = d.camKet.length - hien.length;
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: _theTrang(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Dự báo 30 ngày tới',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Từ hôm nay, không theo kỳ đang xem — chỉ tính hoá đơn và trích tự '
+            'động đã đặt',
+            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 16),
+          _BaConSoDuBao(d: d),
+          for (final v in d.viThieu) ...[
+            const SizedBox(height: 12),
+            _DongViThieu(v: v),
+          ],
+          const SizedBox(height: 20),
+          if (d.camKet.isEmpty)
+            const Text(
+              'Không có hoá đơn hay trích tự động nào trong 30 ngày tới',
+              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            )
+          else ...[
+            SizedBox(height: 180, child: _BieuDoDuBao(d: d)),
+            const SizedBox(height: 8),
+            _ChuGiaiDuBao(coNganSach: d.coNganSach),
+            const SizedBox(height: 12),
+            for (final c in hien) _DongCamKet(c: c),
+            if (conLai > 0)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton(
+                  onPressed: () => setState(() => _moHet = true),
+                  child: Text('Xem thêm ($conLai)'),
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _BaConSoDuBao extends StatelessWidget {
+  final DuBaoDongTien d;
+  const _BaConSoDuBao({required this.d});
+
+  @override
+  Widget build(BuildContext context) {
+    final am = d.conTieuDuoc < 0;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Còn tiêu được',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 4),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            _dong(d.conTieuDuoc),
+            maxLines: 1,
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: am ? AppColors.expense : AppColors.income,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        _DongSo(nhan: 'Số dư hiện tại', giaTri: _dong(d.soDuHienTai)),
+        if (d.coNganSach) ...[
+          const SizedBox(height: 4),
+          _DongSo(
+            nhan: 'Nếu tiêu đúng ngân sách',
+            giaTri: _dong(d.conTieuDuocTheoNganSach),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _DongSo extends StatelessWidget {
+  final String nhan;
+  final String giaTri;
+  const _DongSo({required this.nhan, required this.giaTri});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            nhan,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style:
+                const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          giaTri,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DongViThieu extends StatelessWidget {
+  final ViThieu v;
+  const _DongViThieu({required this.v});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.warning.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.warning_amber_rounded,
+              size: 18, color: AppColors.warning),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Ví ${v.ten} thiếu ${_dong(v.thieu)} để trả cam kết ngày '
+              '${_ddMM(v.ngay)}',
+              style: const TextStyle(fontSize: 12, color: AppColors.warning),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Chú giải hai đường. Có trong màn Stitch và **cần thật**: nét đứt đi chéo
+/// xuống mà không có nhãn thì người đọc không đoán được nó là kế hoạch tiêu
+/// hay một dự báo thứ hai.
+class _ChuGiaiDuBao extends StatelessWidget {
+  final bool coNganSach;
+  const _ChuGiaiDuBao({required this.coNganSach});
+
+  @override
+  Widget build(BuildContext context) {
+    // `Wrap`, không phải `Row`: hai mục chú giải cạnh nhau tràn 55px ở 411dp
+    // (bắt được bằng widget test ở đúng khổ ấy). Font của bộ test rộng gấp đôi
+    // ngoài đời nên trên máy thật nó vừa — nhưng một hàng không co được là
+    // đúng bẫy 4.4, và xuống dòng thì đọc vẫn tự nhiên.
+    return Wrap(
+      spacing: 16,
+      runSpacing: 4,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        const _MucChuGiai(
+            mau: AppColors.primary, netDut: false, chu: 'Thực tế cam kết'),
+        if (coNganSach)
+          const _MucChuGiai(
+              mau: AppColors.warning, netDut: true, chu: 'Theo ngân sách'),
+      ],
+    );
+  }
+}
+
+class _MucChuGiai extends StatelessWidget {
+  final Color mau;
+  final bool netDut;
+  final String chu;
+  const _MucChuGiai(
+      {required this.mau, required this.netDut, required this.chu});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _NetChuGiai(mau: mau, netDut: netDut),
+        const SizedBox(width: 6),
+        Text(chu,
+            style: const TextStyle(
+                fontSize: 11, color: AppColors.textSecondary)),
+      ],
+    );
+  }
+}
+
+class _NetChuGiai extends StatelessWidget {
+  final Color mau;
+  final bool netDut;
+  const _NetChuGiai({required this.mau, required this.netDut});
+
+  @override
+  Widget build(BuildContext context) {
+    if (!netDut) {
+      return Container(width: 16, height: 3, color: mau);
+    }
+    return SizedBox(
+      width: 16,
+      height: 3,
+      child: Row(
+        children: [
+          Container(width: 6, height: 3, color: mau),
+          const SizedBox(width: 4),
+          Container(width: 6, height: 3, color: mau),
+        ],
+      ),
+    );
+  }
+}
+
+/// Biểu đồ bậc thang tầng 1 + nét đứt "theo ngân sách".
+///
+/// Khối `fl_chart` thứ **tám** của app và là chỗ **đầu tiên** dùng
+/// `isStepLineChart` — số dư không giảm dần đều, nó đứng yên rồi tụt một bậc
+/// đúng ngày phải trả; vẽ đường cong là nói dối về hình dạng của tiền.
+///
+/// Tầng vẽ không test tự động được (bẫy 4.9): bậc thang, nét đứt, nhãn trục
+/// và vùng tô chỉ kiểm được bằng mắt trên máy ảo 411dp.
+class _BieuDoDuBao extends StatelessWidget {
+  final DuBaoDongTien d;
+  const _BieuDoDuBao({required this.d});
+
+  @override
+  Widget build(BuildContext context) {
+    final ds = d.chuoi;
+    var dinh = 0.0, day = 0.0;
+    for (final p in ds) {
+      for (final y in [p.chacChan, if (d.coNganSach) p.theoNganSach]) {
+        if (y > dinh) dinh = y;
+        if (y < day) day = y;
+      }
+    }
+    final coAm = day < 0;
+    final tran = dinh > 0 ? dinh * 1.1 : (coAm ? 0.0 : 1.0);
+    final san = coAm ? day * 1.1 : 0.0;
+    final buoc = (tran - san) / 3;
+    // Trần phải là ĐÚNG `san + 3 * buoc`, không phải con số đã đem chia: sai
+    // số dấu phẩy động đủ để `rutGon` trả hai chuỗi khác nhau cho cùng một vị
+    // trí, và hai nhãn in đè khít lên nhau (G39, bẫy 4.18).
+    final maxY = san + buoc * 3;
+
+    return LineChart(
+      LineChartData(
+        minX: 0,
+        maxX: kSoNgayDuBao.toDouble(),
+        minY: san,
+        maxY: maxY,
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          horizontalInterval: buoc,
+          getDrawingHorizontalLine: (_) => const FlLine(
+            color: AppColors.outlineVariant,
+            strokeWidth: 1,
+          ),
+        ),
+        // Vạch 0 chỉ có nghĩa khi dải có phần âm; khi mọi điểm đều dương thì
+        // `san` đã bằng 0 và vạch trùng đúng mép dưới.
+        extraLinesData: ExtraLinesData(
+          horizontalLines: [
+            if (coAm)
+              HorizontalLine(
+                y: 0,
+                color: AppColors.textSecondary,
+                strokeWidth: 1,
+                dashArray: const [6, 4],
+              ),
+          ],
+        ),
+        borderData: FlBorderData(show: false),
+        titlesData: FlTitlesData(
+          topTitles:
+              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles:
+              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              interval: buoc,
+              reservedSize: 50,
+              getTitlesWidget: (v, meta) => Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: Text(
+                  rutGon(v),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                      fontSize: 10, color: AppColors.textSecondary),
+                ),
+              ),
+            ),
+          ),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              interval: 10,
+              reservedSize: 26,
+              getTitlesWidget: (v, meta) {
+                final i = v.round();
+                // Bốn nhãn: 0 · 10 · 20 · 30. Hai biên trùng đúng mốc
+                // `interval` nên không sinh nhãn thứ năm in đè (bẫy 4.18).
+                if (i < 0 || i > kSoNgayDuBao || i % 10 != 0) {
+                  return const SizedBox.shrink();
+                }
+                return Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    _ddMM(ds[i].ngay),
+                    style: const TextStyle(
+                        fontSize: 11, color: AppColors.textSecondary),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+        lineTouchData: LineTouchData(
+          touchTooltipData: LineTouchTooltipData(
+            getTooltipColor: (_) => AppColors.primary,
+            // Bắt buộc: mặc định hộp tooltip tràn ra ngoài màn hình ở điểm
+            // cuối, sát mép phải — thấy trên máy ảo 411dp.
+            fitInsideHorizontally: true,
+            fitInsideVertically: true,
+            getTooltipItems: (spots) => [
+              for (final s in spots)
+                LineTooltipItem(
+                  rutGon(s.y),
+                  const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+            ],
+          ),
+        ),
+        // Điểm ngoài dải vẫn được VẼ nếu không cắt — mặc định của fl_chart là
+        // `FlClipData.none()` (bẫy 4.17).
+        clipData: const FlClipData.all(),
+        lineBarsData: [
+          LineChartBarData(
+            spots: [
+              for (var i = 0; i < ds.length; i++)
+                FlSpot(i.toDouble(), ds[i].chacChan),
+            ],
+            isStepLineChart: true,
+            isCurved: false,
+            color: AppColors.primary,
+            barWidth: 2.5,
+            dotData: const FlDotData(show: false),
+            belowBarData: BarAreaData(
+              show: true,
+              applyCutOffY: true,
+              cutOffY: 0,
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  AppColors.primary.withValues(alpha: 0.12),
+                  AppColors.primary.withValues(alpha: 0.0),
+                ],
+              ),
+            ),
+            // Phần ÂM tô màu chi. Thiếu vế này thì vùng tô đổ suốt xuống đáy
+            // và một ngày âm trông y hệt một ngày dương.
+            aboveBarData: BarAreaData(
+              show: coAm,
+              applyCutOffY: true,
+              cutOffY: 0,
+              color: AppColors.expense.withValues(alpha: 0.18),
+            ),
+          ),
+          if (d.coNganSach)
+            LineChartBarData(
+              spots: [
+                for (var i = 0; i < ds.length; i++)
+                  FlSpot(i.toDouble(), ds[i].theoNganSach),
+              ],
+              isCurved: false,
+              color: AppColors.warning,
+              barWidth: 2,
+              dashArray: const [6, 4],
+              dotData: const FlDotData(show: false),
+              belowBarData: BarAreaData(show: false),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DongCamKet extends StatelessWidget {
+  final CamKet c;
+  const _DongCamKet({required this.c});
+
+  @override
+  Widget build(BuildContext context) {
+    final laHoaDon = c.loai == LoaiCamKet.hoaDon;
+    final mau = laHoaDon ? AppColors.expense : AppColors.income;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: mau.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              laHoaDon ? Icons.receipt_long : Icons.savings,
+              size: 18,
+              color: mau,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  c.ten,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${_ddMM(c.ngay)} · ${c.tenVi ?? 'Ví đã xoá'}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontSize: 12, color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '-${_dong(c.soTien)}',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.expense,
+                ),
+              ),
+              if (c.quaHan)
+                const _NhanNho(chu: 'Quá hạn', mau: AppColors.expense)
+              else if (c.laKyChieu)
+                const _NhanNho(chu: 'Dự kiến', mau: AppColors.textSecondary),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NhanNho extends StatelessWidget {
+  final String chu;
+  final Color mau;
+  const _NhanNho({required this.chu, required this.mau});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(top: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: mau.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        chu,
+        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: mau),
       ),
     );
   }
