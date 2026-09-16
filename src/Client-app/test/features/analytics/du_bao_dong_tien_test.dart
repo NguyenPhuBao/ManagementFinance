@@ -666,6 +666,138 @@ void main() {
     });
   });
 
+  group('ngân sách → tầng 2', () {
+    // Ngân sách tháng 9 (01/09 → 01/10). Hôm nay 08/09 12:00 → daysLeft = 23
+    // (< 30) → tính trọn phần còn lại.
+
+    test('phần còn lại của ngân sách danh mục là tầng 2; tầng 1 không đổi', () {
+      final d = duBao(nganSach: [nganSach('ns1', hanMuc: 3000000, daChi: 1000000)]);
+      expect(d.tongCamKet, 0);
+      expect(d.nganSachConLai, 2000000);
+      expect(d.coNganSach, isTrue);
+      expect(d.conTieuDuocTheoNganSach, 8000000);
+      expect(d.chuoi.last.theoNganSach, 8000000);
+      expect(d.chuoi.first.theoNganSach, 10000000,
+          reason: 'rải đều: điểm 0 chưa trừ gì');
+    });
+
+    test(
+        '⚠️ KHÔNG ĐẾM ĐÔI: hoá đơn cùng danh mục trừ khỏi phần còn lại của ngân sách',
+        () {
+      final d = duBao(
+        hoaDon: [
+          hoaDon('b1',
+              han: DateTime(2026, 9, 20),
+              soTien: 800000,
+              danhMuc: 'c_dien',
+              lap: false)
+        ],
+        nganSach: [
+          nganSach('ns1', hanMuc: 3000000, daChi: 1000000, danhMuc: 'c_dien')
+        ],
+      );
+      expect(d.tongCamKet, 800000);
+      expect(d.nganSachConLai, 1200000,
+          reason: 'Bẫy 4: 800k tiền điện nằm ở tầng 1 VÀ trong "còn lại" của '
+              'ngân sách Điện nước.');
+      expect(d.conTieuDuocTheoNganSach, 8000000);
+    });
+
+    test('hoá đơn KHÁC danh mục không trừ', () {
+      final d = duBao(
+        hoaDon: [
+          hoaDon('b1',
+              han: DateTime(2026, 9, 20),
+              soTien: 800000,
+              danhMuc: 'c_nuoc',
+              lap: false)
+        ],
+        nganSach: [
+          nganSach('ns1', hanMuc: 3000000, daChi: 1000000, danhMuc: 'c_dien')
+        ],
+      );
+      expect(d.nganSachConLai, 2000000);
+    });
+
+    test('hoá đơn vượt phần còn lại thì kẹp về 0, không âm', () {
+      final d = duBao(
+        hoaDon: [
+          hoaDon('b1',
+              han: DateTime(2026, 9, 20), soTien: 5000000, lap: false)
+        ],
+        nganSach: [nganSach('ns1', hanMuc: 3000000, daChi: 1000000)],
+      );
+      expect(d.nganSachConLai, 0);
+      expect(d.coNganSach, isFalse);
+    });
+
+    test('ngân sách TỔNG (categoryId null) đè ngân sách danh mục, trừ MỌI hoá đơn',
+        () {
+      final d = duBao(
+        hoaDon: [
+          hoaDon('b1',
+              han: DateTime(2026, 9, 20),
+              soTien: 800000,
+              danhMuc: 'c_nuoc',
+              lap: false)
+        ],
+        nganSach: [
+          nganSach('tong', hanMuc: 10000000, daChi: 4000000, danhMuc: null),
+          nganSach('ns1', hanMuc: 3000000, daChi: 1000000, danhMuc: 'c_dien'),
+        ],
+      );
+      expect(d.nganSachConLai, 5200000,
+          reason: '6.000.000 − 800.000; ngân sách Điện không cộng thêm');
+    });
+
+    test('ngân sách QUÝ còn 60 ngày chỉ tính nửa — giả định tiêu đều', () {
+      // Quý 08/08 → 08/11; hôm nay 08/09 12:00 → còn ~60 ngày.
+      final d = duBao(nganSach: [
+        nganSach('q',
+            hanMuc: 6000000,
+            daChi: 0,
+            batDau: DateTime(2026, 8, 8),
+            chuKy: BudgetRecurrence.quarter),
+      ]);
+      expect(d.nganSachConLai, closeTo(3000000, 60000),
+          reason: '6.000.000 × 30/60 — mượn suggestedPerDay của budgetPaceOf');
+    });
+
+    test('ngân sách đã tiêu vượt đóng góp 0', () {
+      final d = duBao(nganSach: [nganSach('ns1', hanMuc: 1000000, daChi: 1500000)]);
+      expect(d.nganSachConLai, 0);
+    });
+
+    test('ngân sách hết hạn, chưa bắt đầu, hoặc kỳ không chứa hôm nay — bỏ', () {
+      final d = duBao(nganSach: [
+        nganSach('het',
+            hanMuc: 3000000,
+            daChi: 0,
+            batDau: DateTime(2026, 6, 1),
+            ketThuc: DateTime(2026, 7, 1)),
+        nganSach('sau',
+            hanMuc: 3000000, daChi: 0, batDau: DateTime(2026, 10, 1)),
+      ]);
+      expect(d.nganSachConLai, 0);
+    });
+
+    test('trích tự động KHÔNG trừ khỏi ngân sách — nó là transfer', () {
+      final d = duBao(
+        vi: [vi_('w1', 'Tiền mặt'), vi_('w_tk', 'Tiết kiệm', soDu: 0)],
+        mucTieu: [
+          mucTieu('g1',
+              soTienTrich: 500000,
+              mocNeo: DateTime(2026, 9, 15, 8),
+              lanChay: DateTime(2026, 9, 1))
+        ],
+        nganSach: [
+          nganSach('tong', hanMuc: 3000000, daChi: 1000000, danhMuc: null)
+        ],
+      );
+      expect(d.nganSachConLai, 2000000);
+    });
+  });
+
   group('chuỗi 31 điểm', () {
     test('bậc thang: trừ mỗi cam kết ĐÚNG MỘT LẦN tại ngày của nó', () {
       final d = duBao(hoaDon: [

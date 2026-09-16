@@ -32,6 +32,7 @@ import '../../../core/database/app_database.dart';
 import '../../bill/domain/bill_ky_ke_tiep.dart';
 import '../../bill/domain/bill_pay_status.dart';
 import '../../budget/data/models/budget_entity.dart';
+import '../../budget/domain/budget_pace.dart';
 import '../../goal/data/models/goal_entity.dart';
 import '../../goal/domain/goal_auto_deposit.dart';
 import '../../wallet/domain/vi_tinh_vao_tong.dart';
@@ -411,16 +412,64 @@ List<CamKet> _camKetMucTieu(
   return ra;
 }
 
-// ── Ngân sách (thân hàm ở Task 4) ─────────────────────────────────────────
+// ── Ngân sách ─────────────────────────────────────────────────────────────
 
+/// Tầng 2: phần còn lại của ngân sách KỲ HIỆN TẠI, quy về tiêu đều.
+///
+/// - Chỉ ngân sách chưa hết hạn và kỳ hiện tại **chứa** [now].
+/// - Có ngân sách TỔNG đang chạy → chỉ nó. Cộng cả tổng lẫn danh mục là đếm
+///   đôi chính tiền của mình: ngân sách tổng đã bao trùm mọi danh mục.
+/// - Mỗi ngân sách đóng góp `suggestedPerDay × min(daysLeft, 30)` của
+///   `budgetPaceOf` — tức `remaining × min(1, 30/daysLeft)`. Ngân sách quý
+///   còn 60 ngày chỉ tính nửa phần còn lại, vì tầm nhìn chỉ 30 ngày.
+/// - **Trừ hoá đơn tầng 1 cùng danh mục** (ngân sách tổng trừ mọi hoá đơn)
+///   nằm trong kỳ ấy, kẹp ≥ 0. Không trừ là ĐẾM ĐÔI (bẫy 4): tiền điện 800k
+///   vừa nằm ở tầng 1 vừa nằm trong "còn lại" của ngân sách Điện nước.
+/// - Trích tự động là `transfer`, **không** chạm ngân sách.
 double _nganSachConLai(
   List<BudgetView> nganSach, {
   required DateTime now,
   required DateTime homNay,
   required DateTime cuoi,
   required List<CamKet> camKet,
-}) =>
-    0;
+}) {
+  final sauCuoi = DateTime(cuoi.year, cuoi.month, cuoi.day + 1);
+
+  final dangChay = <BudgetEntity>[];
+  for (final v in nganSach) {
+    final b = v.budget;
+    if (b.isDeleted || b.isExpired(now)) continue;
+    final ky = b.currentPeriod(now);
+    if (now.isBefore(ky.from) || !now.isBefore(ky.to)) continue;
+    dangChay.add(b);
+  }
+  final tong = [
+    for (final b in dangChay)
+      if (b.categoryId == null) b
+  ];
+  final chon = tong.isNotEmpty ? tong : dangChay;
+
+  var ra = 0.0;
+  for (final b in chon) {
+    final pace = budgetPaceOf(b, now);
+    if (pace.daysLeft <= 0) continue;
+    final soNgay =
+        pace.daysLeft < kSoNgayDuBao ? pace.daysLeft : kSoNgayDuBao;
+    final duKien = pace.suggestedPerDay * soNgay;
+
+    final ky = b.currentPeriod(now);
+    final bien = ky.to.isBefore(sauCuoi) ? ky.to : sauCuoi;
+    var truHoaDon = 0.0;
+    for (final c in camKet) {
+      if (c.loai != LoaiCamKet.hoaDon || !c.ngay.isBefore(bien)) continue;
+      if (b.categoryId != null && c.categoryId != b.categoryId) continue;
+      truHoaDon += c.soTien;
+    }
+    final dongGop = duKien - truHoaDon;
+    if (dongGop > 0) ra += dongGop;
+  }
+  return ra;
+}
 
 // ── Ví thiếu ──────────────────────────────────────────────────────────────
 
