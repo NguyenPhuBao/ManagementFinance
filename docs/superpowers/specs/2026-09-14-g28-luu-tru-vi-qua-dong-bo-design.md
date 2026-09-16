@@ -1,6 +1,9 @@
 # G28 — mở `wallet.status` (lưu trữ ví) qua đồng bộ hai chiều
 
-**Ngày:** 2026-09-14 · **Nhánh:** `TranQuangDat` · **Trạng thái:** đã duyệt, chờ kế hoạch triển khai
+**Ngày:** 2026-09-14 · **Nhánh:** `TranQuangDat` · **Trạng thái:** ✅ **ĐÃ THI CÔNG XONG**
+cùng ngày — **G28 đóng**, schema **v22**, payload ví **13 trường**, 14 ca test mới ở 4 tệp
+(2 ca cuối do nghiệm thu máy thật sinh ra). *(Dòng này ghi "chờ kế hoạch triển khai" tới
+2026-09-16 — sửa ở lượt soát rộng hôm ấy.)*
 
 > Mọi con số trong tài liệu này **đo bằng máy ngày 2026-09-14** trên CSDL dev
 > và trên mã nguồn tại HEAD `a399592`, không chép lại từ tài liệu cũ.
