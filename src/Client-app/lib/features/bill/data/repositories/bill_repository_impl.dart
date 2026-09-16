@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/database/app_database.dart';
-import '../../domain/bill_an_han.dart';
+import '../../domain/bill_ky_ke_tiep.dart';
 import '../../domain/bill_pay_status.dart';
 import '../../../../core/sync/sync_engine.dart';
 import '../../../../core/bill/bill_recurrence.dart';
@@ -349,29 +349,13 @@ class BillRepositoryImpl implements BillRepository {
   /// đẩy: hai cột đó NOT NULL phía backend. Bỏ sót `isRecurrence` thì chuỗi
   /// hoá đơn định kỳ dừng lại sau đúng một kỳ.
   ///
-  /// Kỳ sau bắt đầu **đúng tại ngày kết thúc kỳ trước** (`periodEnd`; hàng cũ
-  /// chưa có cột thì là ngày đến hạn), nên các kỳ nối đuôi nhau không hở và
-  /// luôn giữ được `startDate < dueDate`. Vì chuỗi mất mốc gốc theo cách ấy,
-  /// `anchorDay` được **chép sang từng kỳ** để mốc không tụt dần — xem
-  /// `core/bill/bill_recurrence.dart`. Quên chép là hoá đơn "ngày 31 hàng
-  /// tháng" tụt về 28 vĩnh viễn ngay sau tháng Hai đầu tiên.
+  /// Phép tính NGÀY (kỳ sau nối từ `periodEnd`, giữ `anchorDay`, cộng ân hạn)
+  /// có **một định nghĩa duy nhất** ở `bill_ky_ke_tiep.dart` — dự báo 30 ngày
+  /// của trang Phân tích chiếu kỳ tương lai bằng đúng hàm ấy, nên hàng thật
+  /// sinh ra ở đây không bao giờ lệch với kỳ đã dự báo. Đọc docstring của tệp
+  /// ấy để biết hai bẫy nó giữ.
   BillsCompanion _nextPeriodOf(Bill current, DateTime now, double soTien) {
-    // Kỳ sau bắt đầu tại NGÀY KẾT THÚC KỲ, không phải hạn trả: với hoá đơn có
-    // ân hạn (kỳ 01–30/09, hạn 15/10) nối từ hạn trả là hở nửa tháng và mỗi kỳ
-    // trôi thêm — bẫy §4.4 tài liệu xin backend. Hàng cũ (periodEnd NULL) thì
-    // hai mốc trùng nhau, kết quả y hệt trước v21.
-    final batDauSau = current.periodEnd ?? current.dueDate;
-    // Ngày gốc đi theo cả chuỗi — đây là chỗ duy nhất giữ được nó. Kỳ cũ chưa
-    // có (hoá đơn tạo trước v18, hoặc kéo từ server) thì neo vào mốc hiện tại,
-    // tức giữ nguyên hành vi cũ thay vì đoán.
-    final goc = current.anchorDay ?? batDauSau.day;
-    final ketThucSau = nextBillDueDate(
-      batDauSau,
-      current.timeRecurrence,
-      anchorDay: goc,
-    );
-    // Ân hạn đi theo chuỗi mà không cần cột riêng: suy từ kỳ hiện tại.
-    final anHan = anHanCua(current);
+    final ky = kyKeTiepCua(current);
     return BillsCompanion.insert(
       id: const Uuid().v4(),
       idaccount: current.idaccount,
@@ -383,11 +367,11 @@ class BillRepositoryImpl implements BillRepository {
       // Kỳ sau bắt đầu từ số VỪA TRẢ, không phải số cũ: một quy tắc duy nhất,
       // không có "số mẫu" ẩn, và số vừa trả là ước lượng sát hơn.
       amount: soTien,
-      startDate: Value(batDauSau),
+      startDate: Value(ky.batDau),
       // LUÔN ghi — NULL chỉ dành cho hàng cũ (xem `Bills.periodEnd`).
-      periodEnd: Value(ketThucSau),
-      anchorDay: Value(goc),
-      dueDate: hanTraTu(ketThucSau, anHan),
+      periodEnd: Value(ky.ketThuc),
+      anchorDay: Value(ky.anchorDay),
+      dueDate: ky.hanTra,
       payStatus: const Value('Pending'),
       isPaid: const Value(false),
       timeNotification: Value(current.timeNotification),
