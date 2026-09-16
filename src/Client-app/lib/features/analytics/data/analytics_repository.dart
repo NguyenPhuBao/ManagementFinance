@@ -1,4 +1,5 @@
 import '../domain/bao_cao_xuat.dart';
+import '../domain/du_bao_dong_tien.dart';
 import '../domain/pham_vi_ky.dart';
 import '../domain/vai_vay_no.dart';
 import '../domain/phan_loai_dong_tien.dart';
@@ -126,6 +127,18 @@ class ThongKeKy {
   /// danh sách đã lọc theo kỳ, vì chuỗi nhìn xa sáu kỳ.
   final List<DiemVayNo> chuoiVayNo;
 
+  /// Dự báo 30 ngày tới (2026-09-16) — **luôn tính từ `now`**, không theo
+  /// [ky]. Người dùng đang xem tháng 6 vẫn thấy dự báo của 30 ngày kể từ hôm
+  /// nay; khối trên giao diện nói rõ điều đó.
+  ///
+  /// `null` khi tài khoản không có ví sống nào — không có thang đo, cùng chốt
+  /// `dongTien == null` của thác nước.
+  ///
+  /// ⚠️ Nguồn ngân sách của nó là `watchBudgets(now: at)` **riêng**, không
+  /// dùng chung nguồn `mocNganSach` của kỳ đang xem — xem chú thích ở
+  /// `AnalyticsRepositoryImpl.watchKy`.
+  final DuBaoDongTien? duBao;
+
   const ThongKeKy({
     required this.ky,
     required this.tong,
@@ -146,6 +159,7 @@ class ThongKeKy {
     this.topChi = const [],
     this.dongTien,
     this.chuoiVayNo = const [],
+    this.duBao,
   });
 
   double? get thuSoVoiTruoc => phanTramSoVoi(tong.thu, tongTruoc.thu);

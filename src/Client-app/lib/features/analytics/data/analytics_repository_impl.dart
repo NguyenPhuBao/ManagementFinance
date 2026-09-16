@@ -4,7 +4,9 @@ import '../../../core/database/app_database.dart';
 import '../../budget/data/models/budget_entity.dart';
 import '../../budget/data/repositories/budget_repository.dart';
 import '../../wallet/domain/vi_tinh_vao_tong.dart';
+import '../../goal/data/models/goal_entity.dart';
 import '../domain/bao_cao_xuat.dart';
+import '../domain/du_bao_dong_tien.dart';
 import '../domain/khoan_vao_thong_ke.dart';
 import '../domain/pham_vi_ky.dart';
 import '../domain/vai_vay_no.dart';
@@ -12,16 +14,20 @@ import '../domain/phan_loai_dong_tien.dart';
 import '../domain/thong_ke_thang.dart';
 import 'analytics_repository.dart';
 
-/// Gộp **bốn** nguồn — giao dịch, danh mục, ngân sách, ví — thành một
-/// [ThongKeKy].
+/// Gộp **bảy** nguồn thành một [ThongKeKy] — giao dịch, danh mục, ngân sách
+/// (mốc kỳ đang xem), ví, hoá đơn, mục tiêu, và ngân sách (mốc hôm nay).
 ///
 /// Ví là nguồn thứ tư, thêm 2026-09-15 (P2): ba trong bốn khối mượn từ trang
 /// Xuất báo cáo cần nó — "phân bổ theo ví" cần **tên** ví, "dòng tiền" cần
 /// **tổng số dư** hiện tại.
 ///
+/// Ba nguồn cuối thêm 2026-09-16 cho khối **Dự báo 30 ngày tới**. Nguồn thứ
+/// bảy là ngân sách tra tại `now` — ⚠️ **không dùng chung** nguồn thứ ba, xem
+/// chú thích trong [watchKy].
+///
 /// Cùng khuôn với `BudgetRepositoryImpl.watchBudgets`: một controller, mỗi
-/// nguồn một subscription, phát khi **cả ba** đã có dữ liệu. Không dùng thư
-/// viện rx; dự án không có và ba stream không đáng kéo thêm một phụ thuộc.
+/// nguồn một subscription, phát khi **cả bảy** đã có dữ liệu. Không dùng thư
+/// viện rx; dự án không có và bảy stream không đáng kéo thêm một phụ thuộc.
 class AnalyticsRepositoryImpl implements AnalyticsRepository {
   final AppDatabase db;
   final BudgetRepository budgetRepository;
@@ -52,13 +58,30 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
     List<Category>? cats;
     List<BudgetView>? nganSach;
     List<Wallet>? vi;
+    List<Bill>? hoaDon;
+    List<Goal>? mucTieu;
+    // Nguồn ngân sách THỨ HAI, tra tại `at` chứ không tại `mocNganSach`. Mốc
+    // kia **lùi về giây cuối kỳ** khi người dùng xem kỳ đã qua, nên `spent` sẽ
+    // là của kỳ ngân sách chứa cuối tháng 6 khi họ xem tháng 6. Dùng chung thì
+    // dự báo đúng khi xem tháng này và SAI khi xem tháng khác — không lỗi nào
+    // báo (bẫy 1 spec dự báo).
+    List<BudgetView>? nganSachHomNay;
 
     void push() {
-      if (txs == null || cats == null || nganSach == null || vi == null) return;
+      if (txs == null ||
+          cats == null ||
+          nganSach == null ||
+          vi == null ||
+          hoaDon == null ||
+          mucTieu == null ||
+          nganSachHomNay == null) {
+        return;
+      }
       if (controller.isClosed) return;
       try {
         controller.add(_dung(
           ky: ky,
+          now: at,
           fromTruoc: truoc.from,
           toTruoc: truoc.to,
           mocNganSach: mocNganSach,
@@ -66,6 +89,9 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
           cats: cats!,
           nganSach: nganSach!,
           vi: vi!,
+          hoaDon: hoaDon!,
+          mucTieu: mucTieu!,
+          nganSachHomNay: nganSachHomNay!,
         ));
       } catch (e, s) {
         if (!controller.isClosed) controller.addError(e, s);
@@ -101,17 +127,36 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
       push();
     }, onError: controller.addError);
 
+    // Ba nguồn của khối Dự báo 30 ngày (2026-09-16).
+    final subHoaDon = db.billDao.watchAll(idaccount).listen((rows) {
+      hoaDon = rows;
+      push();
+    }, onError: controller.addError);
+    final subMucTieu = db.goalDao.watchAll(idaccount).listen((rows) {
+      mucTieu = rows;
+      push();
+    }, onError: controller.addError);
+    final subNsHomNay =
+        budgetRepository.watchBudgets(idaccount, now: at).listen((rows) {
+      nganSachHomNay = rows;
+      push();
+    }, onError: controller.addError);
+
     controller.onCancel = () async {
       await subVi.cancel();
       await subTx.cancel();
       await subCat.cancel();
       await subNs.cancel();
+      await subHoaDon.cancel();
+      await subMucTieu.cancel();
+      await subNsHomNay.cancel();
     };
     return controller.stream;
   }
 
   ThongKeKy _dung({
     required Ky ky,
+    required DateTime now,
     required DateTime fromTruoc,
     required DateTime toTruoc,
     required DateTime mocNganSach,
@@ -119,6 +164,9 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
     required List<Category> cats,
     required List<BudgetView> nganSach,
     required List<Wallet> vi,
+    required List<Bill> hoaDon,
+    required List<Goal> mucTieu,
+    required List<BudgetView> nganSachHomNay,
   }) {
     // `amount` lưu dương ở client (nhánh pull gọi `.abs()`), cộng thẳng —
     // cùng luật với `BudgetLocalDataSourceImpl.sumExpenses`.
@@ -297,8 +345,21 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
             viTinhVaoTong(includeInTotal: v.includeInTotal, status: v.status))
         .fold<double>(0, (s, v) => s + v.balance);
 
+    // Dự báo LUÔN tính từ `now`, không theo kỳ đang xem — và ngân sách của nó
+    // là nguồn tra tại `now`, không phải `nganSach` của `mocNganSach`. `vi`
+    // truyền NGUYÊN (kể cả hàng đã xoá mềm) để tra được tên ví của giao dịch
+    // cũ; hàm tự lọc khi cộng số dư và khi cảnh báo ví thiếu.
+    final duBao = duBaoCua(
+      now: now,
+      hoaDon: hoaDon,
+      mucTieu: [for (final g in mucTieu) GoalEntity.fromDrift(g)],
+      nganSach: nganSachHomNay,
+      vi: vi,
+    );
+
     return ThongKeKy(
       ky: ky,
+      duBao: duBao,
       soLieu: soLieuNhanhCua(trongKy, from: from, to: to),
       theoVi: phanBoTheoVi(trongKy),
       topChi: topKhoanChi(trongKy),

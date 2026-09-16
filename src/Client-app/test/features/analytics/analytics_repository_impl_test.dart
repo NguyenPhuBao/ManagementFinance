@@ -601,4 +601,120 @@ void main() {
       expect(tk.chuoiVayNo.every((d) => d.rong), isTrue);
     });
   });
+
+  // ── Dự báo 30 ngày (2026-09-16) ──────────────────────────────────────────
+  //
+  // Phép tính đã test ở `du_bao_dong_tien_test.dart`; ở đây chỉ kiểm phần
+  // NỐI: ba nguồn mới có được đăng ký không, tên ví có tra được không, và
+  // nguồn ngân sách có đúng là nguồn tra tại `now` chứ không phải tại mốc kỳ
+  // đang xem không.
+  group('dự báo 30 ngày', () {
+    Future<void> hoaDon({
+      String id = 'b1',
+      required DateTime han,
+      double soTien = 800000,
+      String? danhMuc = 'c_an',
+    }) =>
+        db.billDao.insert(BillsCompanion.insert(
+          id: id,
+          idaccount: 1,
+          walletId: const Value('w1'),
+          categoryId: Value(danhMuc),
+          name: 'Tiền điện',
+          amount: soTien,
+          startDate: Value(DateTime(han.year, han.month - 1, han.day)),
+          periodEnd: Value(han),
+          dueDate: han,
+          isRecurrence: const Value(true),
+          timeRecurrence: const Value('Month'),
+          recurrence: const Value('monthly'),
+          anchorDay: Value(han.day),
+          syncStatus: const Value('synced'),
+          updatedAt: now,
+        ));
+
+    test('hoá đơn, mục tiêu và ví nối vào duBaoCua; số dư là tổng ví hiện tại',
+        () async {
+      await hoaDon(han: DateTime(2026, 9, 20));
+      await db.walletDao.insert(WalletsCompanion.insert(
+        id: 'w_tk',
+        idaccount: 1,
+        name: 'Tiết kiệm',
+        type: const Value('saving'),
+        balance: const Value(0.0),
+        updatedAt: now,
+      ));
+      await db.goalDao.insert(GoalsCompanion.insert(
+        id: 'g1',
+        idaccount: 1,
+        name: 'Mua xe',
+        targetAmount: 50000000,
+        targetDate: DateTime(2028, 1, 1),
+        walletId: const Value('w_tk'),
+        cycleTakeMoney: const Value('Month'),
+        timeCycleTakeMoney: Value(DateTime(2026, 9, 15, 8)),
+        autoDepositAmount: const Value(500000.0),
+        autoDepositWalletId: const Value('w1'),
+        autoDepositLastRun: Value(DateTime(2026, 9, 1)),
+        updatedAt: now,
+      ));
+
+      final d = (await lanDau()).duBao!;
+
+      expect(d.soDuHienTai, 10000000);
+      expect(d.camKet.map((c) => c.ten).toList(), ['Mua xe', 'Tiền điện']);
+      expect(d.camKet.first.ngay, DateTime(2026, 9, 15));
+      expect(d.camKet.first.tenVi, 'Tiền mặt', reason: 'tên ví tra được');
+      expect(d.conTieuDuoc, 9200000,
+          reason: 'trích vào ví tính vào tổng → 0 ròng; hoá đơn trừ 800k');
+    });
+
+    test('⚠️ xem THÁNG CŨ: dự báo vẫn từ hôm nay, ngân sách lấy số đã chi HIỆN TẠI',
+        () async {
+      await hoaDon(han: DateTime(2026, 9, 20));
+      await db.budgetDao.insert(BudgetsCompanion.insert(
+        id: 'ns1',
+        idaccount: 1,
+        categoryId: const Value('c_an'),
+        amount: 3000000,
+        startDate: DateTime(2026, 9, 1),
+        recurrence: const Value(true),
+        timeRecurrence: const Value('Month'),
+        updatedAt: now,
+      ));
+      await giaoDich(id: 't1', ngay: DateTime(2026, 9, 5), soTien: 1000000);
+
+      final thangNay = (await lanDau()).duBao!;
+      final thangCu = (await lanDauKy(Ky.thang(2026, 6))).duBao!;
+
+      expect(thangNay.nganSachConLai, 1200000,
+          reason:
+              '3.000.000 − đã chi 1.000.000 − hoá đơn 800.000 cùng danh mục');
+      expect(thangCu.camKet.map((c) => c.ten).toList(),
+          thangNay.camKet.map((c) => c.ten).toList());
+      expect(thangCu.nganSachConLai, thangNay.nganSachConLai,
+          reason: 'Bẫy 1 spec: nguồn ngân sách của kỳ đang xem tra `spent` tại '
+              'cuối tháng 6 → 0 đã chi → 2.200.000. Dự báo phải có nguồn riêng '
+              'tại `now`.');
+    });
+
+    test('không có ví thì duBao null', () async {
+      await db.walletDao.softDelete('w1');
+      final tk = await lanDau();
+      expect(tk.duBao, isNull);
+    });
+
+    test('ghi thêm hoá đơn thì stream phát lại với cam kết mới', () async {
+      final ds = <int>[];
+      final sub = repo
+          .watchKy(1, ky: Ky.thang(2026, 9), now: now)
+          .listen((tk) => ds.add(tk.duBao?.camKet.length ?? -1));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await hoaDon(han: DateTime(2026, 9, 20));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await sub.cancel();
+      expect(ds.first, 0);
+      expect(ds.last, 1);
+    });
+  });
 }
