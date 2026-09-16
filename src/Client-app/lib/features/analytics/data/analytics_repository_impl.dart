@@ -202,6 +202,11 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
 
     final tong = tongThuChi(khoan, from: from, to: to);
     final tongTruoc = tongThuChi(khoan, from: fromTruoc, to: toTruoc);
+    // Mốc so sánh thứ hai (#2 khảo sát, 2026-09-16). **Không** cần nguồn stream
+    // thứ tám: `khoan` là TOÀN BỘ giao dịch của tài khoản (xem chỗ đăng ký
+    // `subTx`), nên kỳ năm trước chỉ là một lời gọi nữa trên đúng danh sách ấy.
+    final nt = cungKyNamTruoc(ky);
+    final tongNamTruoc = tongThuChi(khoan, from: nt.from, to: nt.to);
     final chi = chiTheoDanhMuc(khoan, from: from, to: to);
 
     final danhMucTheoId = {for (final c in cats) c.id: c};
@@ -376,6 +381,7 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
       dongTien: dongTienCua(dongGd, from: from, to: to, soDuHienTai: soDu),
       tong: tong,
       tongTruoc: tongTruoc,
+      tongNamTruoc: tongNamTruoc,
       chiTheoDanhMuc: chi,
       danhMuc: dong,
       // Dựng từ `khoan` — TOÀN BỘ giao dịch của tài khoản, chưa lọc kỳ. Chuỗi

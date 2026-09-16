@@ -1,3 +1,4 @@
+import '../../domain/moc_so_sanh.dart';
 import 'package:equatable/equatable.dart';
 
 import '../../data/analytics_repository.dart';
@@ -51,15 +52,21 @@ class AnalyticsLoaded extends AnalyticsState {
   /// `kToiDaDuongXuHuong` phần tử — cubit chốt, trang chỉ phản ánh.
   final Set<String> danhMucXuHuong;
 
+  /// Mốc mà hai thẻ tổng so vào (#2 khảo sát, 2026-09-16). Mặc định
+  /// [MocSoSanh.kyTruoc] — đúng hành vi của trang trước lát này.
+  final MocSoSanh mocSoSanh;
+
   const AnalyticsLoaded({
     required this.thongKe,
     required this.moc,
     this.phanLoaiDangXem = 'chi',
     this.danhMucXuHuong = const {},
+    this.mocSoSanh = MocSoSanh.kyTruoc,
   });
 
   @override
-  List<Object?> get props => [thongKe, moc, phanLoaiDangXem, danhMucXuHuong];
+  List<Object?> get props =>
+      [thongKe, moc, phanLoaiDangXem, danhMucXuHuong, mocSoSanh];
 }
 
 class AnalyticsError extends AnalyticsState {

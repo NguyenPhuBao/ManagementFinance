@@ -1047,7 +1047,7 @@ nước "Tiền đi đâu", dòng tiền tự do, và hai biểu đồ vay/nợ;
 | # | Tính năng | Ai có | Dữ liệu FlowMoney | Chốt |
 |---|---|---|---|---|
 | 1 | **Tỷ lệ tiết kiệm** | Monarch (ngay trên Cash Flow) | ✅ có sẵn; `dongTienTuDo()` đã trả `thuNhap` đúng nghĩa | ✅ **làm** |
-| 2 | So cùng kỳ năm trước | Monarch, Copilot | ✅ `lui()` đã lùi theo đơn vị lịch | chưa |
+| 2 | So cùng kỳ năm trước | Monarch, Copilot | ✅ `lui()` đã lùi theo đơn vị lịch | ✅ **XONG 2026-09-16**, mục **3.28** |
 | 3 | Sankey (A8 #11) | Monarch — *"fan favorite"*, chia sẻ được, ẩn được số tiền | ✅ đủ | 🛑 **bỏ** 2026-09-16 |
 | 4 | **Dự báo dòng tiền** | PocketSmith — chiếu số dư tới từng ngày, 30–60 năm | ✅ nguyên liệu hiếm: hoá đơn lặp có `anchorDay`+`recurrence`+`autoPay`, ngân sách có kỳ, mục tiêu có trích tự động | ✅ **XONG 2026-09-16**, mục **3.27** |
 | 5 | Tài sản ròng theo thời gian | Monarch, PocketSmith | ⚠️ làm được nhưng lệch có điều kiện — xem dưới | chưa |
@@ -1244,6 +1244,90 @@ Sửa bằng cách đưa vế `isDeleted` **vào chính `viTinhVaoTong`** (mặc
 `false`) chứ không vá ở chỗ gọi — `vi_tinh_vao_tong_test.dart` vốn sinh ra để
 chặn "bản chép tay thứ năm" của luật này, và đây đúng là bản thứ năm. Chi tiết:
 **G42** `docs/CLIENT_APP_KNOWN_GAPS.md`.
+
+### 3.28 So cùng kỳ năm trước — mục #2 của khảo sát lần hai
+
+**2026-09-16.** Hai thẻ tổng vốn chỉ so với **kỳ liền trước**. Nay có một hàng
+**hai chip** ngay trên chúng — *"So với kỳ trước"* · *"Cùng kỳ năm trước"* — và
+dòng "so với …" đang có đổi theo chip. Monarch và Copilot đều đặt con số này
+ngay cạnh số của kỳ.
+
+Chip trái bật sẵn, tức **người dùng cũ mở trang lên không thấy gì đổi**.
+
+#### Không có nguồn dữ liệu thứ tám
+
+`watchKy` đã nạp **toàn bộ** giao dịch của tài khoản (`transactionDao.watchAll`)
+chứ không phải phần đã cắt theo kỳ — chuỗi xu hướng nhìn xa sáu kỳ nên nó buộc
+phải thế. Vì vậy kỳ năm trước chỉ là **một lời gọi `tongThuChi` nữa** trên đúng
+danh sách ấy: không stream mới, không truy vấn mới, không schema, không trường
+đồng bộ.
+
+#### ⚠️ Tuần lùi 52 kỳ — phép đo lật ngược trực giác
+
+Đây là chỗ đắt nhất của lát này, và **bản thiết kế đã duyệt ghi sai**. Thiết kế
+nói "tuần neo vào **ngày dương lịch** năm trước, **không** lùi 52 tuần vì 52
+tuần là 364 ngày nên nó trôi một ngày mỗi năm". Cài xong thì một ca test đỏ, và
+thay vì sửa test cho xanh thì đo:
+
+| Lối | Lệch `lui(ky, 52)` | Số ngày **chồng lấp ít nhất** với 7 ngày cùng lịch năm trước |
+|---|---|---|
+| Neo vào thứ Hai (thiết kế đề xuất) | 3131/3131 | **1** |
+| Neo vào **thứ Năm** — ngày định danh tuần ISO | **0**/3131 | **5** |
+
+Đếm bằng máy 2026-09-16 trên **3131 tuần của 60 năm** (2000–2060). Lý do: `from`
+của một tuần luôn là **thứ Hai**, mà thứ Hai ấy năm ngoái thường rơi vào **Chủ
+nhật**, tức thuộc tuần *trước đó* — nên kỳ so sánh gần như không chồng lấp kỳ
+cần so. Cái "trôi một ngày" mà thiết kế chê lại chính là thứ giữ cho phép lùi
+bám đúng tuần.
+
+Kết luận: `DonViKy.tuan => lui(ky, 52)`. Bài học chung — **một ca test đỏ có thể
+đang tố cáo bản thiết kế chứ không phải bản thi công**; đo trước, đừng sửa bên
+nào cho xanh.
+
+⚠️ Cũng **không** dùng "cùng số tuần ISO": tuần 53 chỉ tồn tại ở một số năm, nên
+lối ấy có lúc trỏ vào một kỳ không có thật.
+
+#### Ba chốt còn lại, cả ba hỏng im lặng
+
+1. **Khoảng tuỳ chọn giữ NGUYÊN độ dài** — `to' = from' + (to − from)`. Dời riêng
+   từng mốc thì kỳ bắt đầu 29/2 (Dart chuẩn hoá thành 1/3) dài hơn hoặc ngắn hơn
+   một ngày, và phần trăm so hai kỳ **lệch độ dài** trông vẫn rất hợp lý. Ngược
+   lại, tháng/quý/năm thì độ dài **được phép** khác nhau (2/2028 có 29 ngày,
+   2/2027 có 28) — một tháng là một tháng.
+2. **Nhãn tuần lấy năm ISO, không lấy `from.year`.** Tuần bắt đầu 30/12/2024 là
+   tuần **1 của 2025**; in "Tuần 1 2024" là sai hẳn một năm. Ca ấy xảy ra thật
+   với tuần cuối tháng 12 — bản sai có chủ ý in đúng "Tuần 1 2024".
+3. **Cặp *số* và *nhãn* phải lấy cùng một chỗ.** `nenSoSanh` ở
+   `domain/moc_so_sanh.dart` trả cả hai cùng lúc. Lấy số của năm trước mà in
+   nhãn kỳ trước — hoặc ngược lại — cho ra một câu **hoàn toàn hợp lý và hoàn
+   toàn sai**; bản sai có chủ ý chứng minh ca test bắt được đúng chỗ đó.
+
+Và cái bẫy cũ của mục 3.19 lặp lại nguyên vẹn: **stream phát lại sau mỗi chu kỳ
+đồng bộ**, nên cubit phải chép `_mocSoSanh` sang **mọi** state mới. Quên là chip
+nhảy về "kỳ trước" giữa lúc người dùng đang đọc con số năm ngoái, và hai thẻ đổi
+nghĩa mà không báo gì. Khác `phanLoaiDangXem`, mốc so sánh **được giữ khi đổi
+kỳ**: nó là một cách *nhìn*, không phải câu hỏi của riêng một kỳ.
+
+#### ⚠️ Nền bằng 0 là ca THƯỜNG, không phải ca hiếm
+
+Mọi tài khoản chưa đủ một năm tuổi đều không có nền năm trước ở **mọi** kỳ — kể
+cả tài khoản thử đang dùng để nghiệm thu. `phanTramSoVoi` trả `null`, và thẻ nói
+*"Không có dữ liệu T9 2025"* thay vì bịa "tăng 100%". Người dùng chốt lối này
+(thay vì khoá chip hoặc giấu cả hàng) để tính năng vẫn nhìn thấy được khi bảo vệ
+đồ án.
+
+#### Nghiệm thu máy ảo
+
+Chạm chip đổi được cả nhãn lẫn số; nhãn theo đúng đơn vị (`T9 2025`, `Q3 2025`);
+lựa chọn **giữ nguyên khi đổi kỳ**; không tràn ở 411dp. Màn Stitch:
+**`6333b8e24aab4f92bd73b1282c56b17c`** *"Thống kê - Mốc so sánh kỳ"* — lượt gọi
+này **không** timeout, trả về ngay; ⚠️ nó vẫn mang `deviceType: DESKTOP` dù
+truyền `MOBILE`, đúng hiện tượng đã ghi cho `afe1c3fd…`.
+
+⚠️ Lượt nghiệm thu này còn lộ ra một lỗi **có sẵn, không thuộc lát này**: nút
+**"Tuỳ chọn"** của bộ chọn phạm vi ném assertion và không làm gì, hoàn toàn im
+lặng — **G43** `docs/CLIENT_APP_KNOWN_GAPS.md`.
+
 
 ## 4. Bẫy
 

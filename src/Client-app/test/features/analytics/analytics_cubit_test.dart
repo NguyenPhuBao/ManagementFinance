@@ -12,6 +12,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/features/analytics/data/analytics_repository.dart';
+import 'package:flowmoney/features/analytics/domain/moc_so_sanh.dart';
 import 'package:flowmoney/features/analytics/domain/pham_vi_ky.dart';
 import 'package:flowmoney/features/analytics/domain/phan_loai_dong_tien.dart';
 import 'package:flowmoney/features/analytics/domain/thong_ke_thang.dart';
@@ -186,6 +187,54 @@ void main() {
               'là chip nhảy về Chi TRONG KHI người dùng đang xem — không '
               'exception, không log');
       expect(s.danhMucXuHuong, {'an', 'di'});
+    });
+
+    test('mốc so sánh mặc định là kỳ trước — người dùng cũ không thấy gì đổi',
+        () async {
+      cubit.xem(10);
+      await phat(_tk(2026, 9, lat: _latChiThu));
+      expect((cubit.state as AnalyticsLoaded).mocSoSanh, MocSoSanh.kyTruoc);
+    });
+
+    test('BẪY 1 (mốc so sánh): stream phát lại KHÔNG làm mất chip', () async {
+      cubit.xem(10);
+      await phat(_tk(2026, 9, lat: _latChiThu));
+
+      cubit.chonMocSoSanh(MocSoSanh.cungKyNamTruoc);
+
+      // Đồng bộ nền kéo về một thay đổi bất kỳ → repository phát lại.
+      await phat(_tk(2026, 9, chi: 99, lat: _latChiThu));
+
+      final s = cubit.state as AnalyticsLoaded;
+      expect(s.thongKe.tong.chi, 99, reason: 'Số liệu mới phải tới nơi');
+      expect(
+        s.mocSoSanh,
+        MocSoSanh.cungKyNamTruoc,
+        reason: 'cùng cái bẫy của phanLoaiDangXem: quên chép sang state mới thì '
+            'chip nhảy về "kỳ trước" giữa lúc người dùng đang đọc con số năm '
+            'ngoái, và hai thẻ đổi nghĩa mà không báo gì',
+      );
+    });
+
+    test('đổi kỳ thì GIỮ mốc so sánh', () async {
+      cubit.xem(10);
+      await phat(_tk(2026, 9, lat: _latChiThu));
+      cubit.chonMocSoSanh(MocSoSanh.cungKyNamTruoc);
+
+      cubit.chonKy(Ky.thang(2026, 8));
+      await phat(_tk(2026, 8, lat: _latChiThu));
+
+      expect(
+        (cubit.state as AnalyticsLoaded).mocSoSanh,
+        MocSoSanh.cungKyNamTruoc,
+        reason: '"so với năm ngoái" là một cách NHÌN người dùng chọn, còn có '
+            'nghĩa ở mọi kỳ — khác phanLoaiDangXem vốn là câu hỏi của riêng kỳ',
+      );
+    });
+
+    test('chonMocSoSanh không làm gì khi chưa có dữ liệu', () {
+      cubit.chonMocSoSanh(MocSoSanh.cungKyNamTruoc);
+      expect(cubit.state, isNot(isA<AnalyticsLoaded>()));
     });
 
     test('BẪY 2: nhóm đang chọn biến mất thì rơi về Chi', () async {

@@ -95,6 +95,8 @@ ThongKeKy _tk({
   double chi = 1250000,
   double thuTruoc = 0,
   double chiTruoc = 1000000,
+  double thuNamTruoc = 0,
+  double chiNamTruoc = 0,
   List<DongDanhMuc> danhMuc = const [],
   List<DiemThoiGian>? chuoi,
   List<LatPhanLoai> lat = const [],
@@ -111,6 +113,7 @@ ThongKeKy _tk({
       ky: ky ?? Ky.thang(nam, thang),
       tong: TongThuChi(thu: thu, chi: chi),
       tongTruoc: TongThuChi(thu: thuTruoc, chi: chiTruoc),
+      tongNamTruoc: TongThuChi(thu: thuNamTruoc, chi: chiNamTruoc),
       chiTheoDanhMuc: [
         for (final d in danhMuc)
           ChiTheoDanhMuc(
@@ -496,6 +499,100 @@ void main() {
             'rộng, nên tên dài tràn qua cột số tiền. Flutter báo tràn qua '
             'FlutterError.reportError chứ không ném ra chỗ gọi — test chỉ '
             'pumpWidget sẽ xanh dù màn hình đầy sọc vàng.');
+  });
+
+  // ── Mốc so sánh: chip "kỳ trước" / "cùng kỳ năm trước" (2026-09-16) ──────
+  group('chip mốc so sánh', () {
+    testWidgets('mặc định là kỳ trước — người dùng cũ không thấy gì đổi',
+        (tester) async {
+      await moTrang(tester);
+      await phat(tester, _tk(chiTruoc: 1000000, chiNamTruoc: 500000));
+
+      expect(find.text('So với kỳ trước'), findsOneWidget);
+      expect(find.text('Cùng kỳ năm trước'), findsOneWidget);
+      expect(find.textContaining('so với T8'), findsWidgets);
+      expect(find.textContaining('so với T9 2025'), findsNothing);
+    });
+
+    testWidgets('chạm chip thứ hai thì thẻ đổi CẢ số lẫn nhãn', (tester) async {
+      await moTrang(tester);
+      // Chi 1.250.000: so kỳ trước (1.000.000) là +25%, so năm trước
+      // (500.000) là +150% — hai con số khác hẳn nhau nên không thể nhầm.
+      await phat(tester, _tk(chiTruoc: 1000000, chiNamTruoc: 500000));
+      expect(find.textContaining('Tăng 25% so với T8'), findsOneWidget);
+
+      await tester.tap(find.text('Cùng kỳ năm trước'));
+      await tester.pump();
+
+      expect(
+        find.textContaining('Tăng 150% so với T9 2025'),
+        findsOneWidget,
+        reason: 'lấy số của năm trước mà in nhãn kỳ trước — hoặc ngược lại — '
+            'cho ra một câu hoàn toàn hợp lý và hoàn toàn sai',
+      );
+      expect(find.textContaining('so với T8'), findsNothing);
+    });
+
+    testWidgets('chưa có dữ liệu năm trước thì NÓI THẲNG, không bịa phần trăm',
+        (tester) async {
+      await moTrang(tester);
+      // Ca THƯỜNG của mọi tài khoản chưa đủ một năm tuổi.
+      await phat(tester, _tk(chiTruoc: 1000000, thuNamTruoc: 0, chiNamTruoc: 0));
+
+      await tester.tap(find.text('Cùng kỳ năm trước'));
+      await tester.pump();
+
+      expect(find.textContaining('Không có dữ liệu T9 2025'), findsWidgets);
+      expect(
+        find.textContaining('Tăng 100%'),
+        findsNothing,
+        reason: 'nền bằng 0 thì mọi phần trăm đều là số bịa',
+      );
+    });
+
+    testWidgets('nhãn kỳ đổi theo ĐƠN VỊ đang xem, không cứng là tháng',
+        (tester) async {
+      await moTrang(tester);
+      await phat(
+        tester,
+        _tk(ky: Ky.quy(2026, 3), chiTruoc: 1000000, chiNamTruoc: 500000),
+      );
+
+      await tester.tap(find.text('Cùng kỳ năm trước'));
+      await tester.pump();
+
+      expect(find.textContaining('so với Q3 2025'), findsOneWidget);
+    });
+
+    testWidgets('hàng chip và hai thẻ KHÔNG tràn ở khổ 411dp', (tester) async {
+      tester.view.physicalSize = const Size(411, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await moTrang(tester);
+      // Nhãn dài nhất: kỳ tuỳ chọn ở mốc năm trước — "05/09 – 17/09 2025".
+      await phat(
+        tester,
+        _tk(
+          ky: Ky.tuyChon(from: DateTime(2026, 9, 5), to: DateTime(2026, 9, 18)),
+          thu: 123456789,
+          chi: 98765432,
+          chiTruoc: 1000000,
+          thuNamTruoc: 1,
+          chiNamTruoc: 1,
+        ),
+      );
+      await tester.tap(find.text('Cùng kỳ năm trước'));
+      await tester.pump();
+
+      expect(
+        tester.takeException(),
+        isNull,
+        reason: 'hai thẻ chỉ rộng chừng 180dp; Flutter báo tràn qua '
+            'FlutterError.reportError chứ không ném ra chỗ gọi, nên test chỉ '
+            'pumpWidget sẽ xanh dù màn hình đầy sọc vàng (bẫy 1 của mục test)',
+      );
+    });
   });
 
   group('biểu đồ xu hướng', () {

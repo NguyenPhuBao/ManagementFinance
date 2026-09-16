@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../data/analytics_repository.dart';
+import '../../domain/moc_so_sanh.dart';
 import '../../domain/pham_vi_ky.dart';
 import '../../domain/thong_ke_thang.dart';
 import 'analytics_state.dart';
@@ -28,6 +29,9 @@ class AnalyticsCubit extends Cubit<AnalyticsState> {
   /// mỗi lần repository phát lại. Xem [_dungLoaded].
   String _phanLoaiDangXem = 'chi';
   final Set<String> _danhMucXuHuong = {};
+
+  /// Lựa chọn thứ ba, cùng lý do đứng ngoài state như hai cái trên.
+  MocSoSanh _mocSoSanh = MocSoSanh.kyTruoc;
 
   AnalyticsCubit({required this.repository, DateTime Function()? clock})
       : clock = clock ?? DateTime.now,
@@ -55,7 +59,9 @@ class AnalyticsCubit extends Cubit<AnalyticsState> {
   void _dangKy(Ky ky) {
     final now = clock();
     // Đổi kỳ là đổi câu hỏi — bắt đầu lại từ Chi. Danh mục xu hướng thì GIỮ:
-    // chuỗi của nó nhìn xa sáu kỳ nên vẫn có nghĩa ở kỳ khác.
+    // chuỗi của nó nhìn xa sáu kỳ nên vẫn có nghĩa ở kỳ khác. Mốc so sánh cũng
+    // GIỮ: "so với năm ngoái" là một cách NHÌN, không phải câu hỏi của riêng
+    // một kỳ.
     _phanLoaiDangXem = 'chi';
     emit(AnalyticsLoading(ky: ky));
     // Huỷ đăng ký cũ TRƯỚC. Không huỷ là hai stream cùng phát và cái tới sau
@@ -99,7 +105,22 @@ class AnalyticsCubit extends Cubit<AnalyticsState> {
       moc: now,
       phanLoaiDangXem: _phanLoaiDangXem,
       danhMucXuHuong: Set.unmodifiable(_danhMucXuHuong),
+      mocSoSanh: _mocSoSanh,
     );
+  }
+
+  /// Đổi mốc so sánh của hai thẻ tổng.
+  void chonMocSoSanh(MocSoSanh moc) {
+    final s = state;
+    if (s is! AnalyticsLoaded) return;
+    _mocSoSanh = moc;
+    emit(AnalyticsLoaded(
+      thongKe: s.thongKe,
+      moc: s.moc,
+      phanLoaiDangXem: s.phanLoaiDangXem,
+      danhMucXuHuong: s.danhMucXuHuong,
+      mocSoSanh: moc,
+    ));
   }
 
   /// Chọn nhóm cho khối "Cơ cấu theo danh mục" — một trong
@@ -113,6 +134,7 @@ class AnalyticsCubit extends Cubit<AnalyticsState> {
       moc: s.moc,
       phanLoaiDangXem: phanLoai,
       danhMucXuHuong: s.danhMucXuHuong,
+      mocSoSanh: s.mocSoSanh,
     ));
   }
 
@@ -136,6 +158,7 @@ class AnalyticsCubit extends Cubit<AnalyticsState> {
       moc: s.moc,
       phanLoaiDangXem: s.phanLoaiDangXem,
       danhMucXuHuong: Set.unmodifiable(_danhMucXuHuong),
+      mocSoSanh: s.mocSoSanh,
     ));
   }
 

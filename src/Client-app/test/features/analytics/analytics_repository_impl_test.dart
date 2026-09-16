@@ -109,6 +109,49 @@ void main() {
       expect(tk.chiSoVoiTruoc, closeTo(50, 0.001));
     });
 
+    // Mốc so sánh thứ hai (#2 khảo sát, 2026-09-16). Không có nguồn stream mới:
+    // `watchKy` vốn nạp TOÀN BỘ giao dịch của tài khoản, nên kỳ năm trước chỉ
+    // là một lời gọi `tongThuChi` nữa trên đúng danh sách ấy.
+    test('tổng cùng kỳ năm trước lấy đúng tháng 9 của năm ngoái', () async {
+      await giaoDich(id: 't1', ngay: DateTime(2026, 9, 2), soTien: 5000000, loai: 'thu', danhMuc: null);
+      await giaoDich(id: 't2', ngay: DateTime(2026, 9, 3), soTien: 300000);
+      // Tháng 8 năm ngoái và tháng 10 năm ngoái — hai hàng xóm của kỳ nền, ở
+      // đây để bắt lỗi lệch biên một tháng.
+      await giaoDich(id: 't3', ngay: DateTime(2025, 8, 31), soTien: 111);
+      await giaoDich(id: 't4', ngay: DateTime(2025, 10, 1), soTien: 222);
+      await giaoDich(id: 't5', ngay: DateTime(2025, 9, 1), soTien: 2000000, loai: 'thu', danhMuc: null);
+      await giaoDich(id: 't6', ngay: DateTime(2025, 9, 30), soTien: 150000);
+
+      final tk = await lanDau();
+
+      expect(tk.tongNamTruoc.thu, 2000000);
+      expect(
+        tk.tongNamTruoc.chi,
+        150000,
+        reason: 'chỉ tháng 9/2025; 31/08 và 01/10 nằm ngoài biên [from, to)',
+      );
+      expect(tk.thuSoVoiNamTruoc, closeTo(150, 0.001));
+      expect(tk.chiSoVoiNamTruoc, closeTo(100, 0.001));
+      expect(
+        tk.tongTruoc.thu,
+        0,
+        reason: 'kỳ liền trước là tháng 8/2026 — vẫn là một con số RIÊNG, '
+            'không được cùng chỗ với kỳ năm trước',
+      );
+    });
+
+    test('tài khoản chưa có dữ liệu năm trước thì không có phần trăm', () async {
+      await giaoDich(id: 't1', ngay: DateTime(2026, 9, 2), soTien: 5000000, loai: 'thu', danhMuc: null);
+      final tk = await lanDau();
+      expect(tk.tongNamTruoc.thu, 0);
+      expect(
+        tk.thuSoVoiNamTruoc,
+        isNull,
+        reason: 'đây là ca THƯỜNG của mọi tài khoản chưa đủ một năm tuổi; in '
+            '"tăng 100%" ở đó là bịa một con số',
+      );
+    });
+
     test('transfer không vào thu lẫn chi, kể cả khi mang danh mục', () async {
       await giaoDich(id: 't1', ngay: DateTime(2026, 9, 2), soTien: 900000, loai: 'transfer');
       final tk = await lanDau();

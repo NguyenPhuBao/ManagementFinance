@@ -595,6 +595,30 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-16)
 
+### 🔁 So cùng kỳ năm trước (2026-09-16)
+
+Mục **#2** của khảo sát app thị trường lần hai. Hai thẻ tổng trang Phân tích nay
+có **hàng hai chip** — *"So với kỳ trước"* · *"Cùng kỳ năm trước"* — và dòng
+"so với …" đổi theo chip. Chip trái bật sẵn nên người dùng cũ không thấy gì đổi.
+Bàn giao ở mục **3.28** `docs/ANALYTICS_FEATURE.md`; màn Stitch
+`6333b8e24aab4f92bd73b1282c56b17c`.
+
+**Không đổi schema** (v22 giữ nguyên), **không thêm trường đồng bộ**, **không có
+nguồn stream thứ tám** — `watchKy` vốn nạp toàn bộ giao dịch của tài khoản nên
+kỳ năm trước chỉ là một lời gọi `tongThuChi` nữa. `flutter test` **2670/2670** ·
+`flutter analyze` **25 issue, 0 error** (đếm bằng máy 2026-09-16).
+
+⚠️ **Phép đo lật ngược bản thiết kế đã duyệt.** Thiết kế nói tuần phải neo vào
+*ngày dương lịch* năm trước chứ đừng lùi 52 kỳ. Đo trên **3131 tuần của 60 năm**:
+lối neo thứ Hai cho kỳ so sánh chồng lấp ít nhất **1 ngày**, còn `lui(ky, 52)`
+cho **5 ngày** và trùng khít lối neo vào **thứ Năm** (ngày định danh tuần ISO) ở
+**cả 3131 tuần**. Bài học: một ca test đỏ có thể đang tố cáo **bản thiết kế**
+chứ không phải bản thi công — đo trước, đừng sửa bên nào cho xanh.
+
+⚠️ Lượt nghiệm thu máy ảo của lát này lộ ra **G43** — một lỗi **có sẵn**, không
+thuộc lát này: nút "Tuỳ chọn" của bộ chọn phạm vi ném assertion và không làm gì,
+hoàn toàn im lặng.
+
 ### 🛑 Bảng A8 ĐÓNG — bỏ hẳn #9 và #11 (2026-09-16)
 
 Người dùng chốt **bỏ hẳn** hai ô cuối của bảng A8 (mục **7.1**

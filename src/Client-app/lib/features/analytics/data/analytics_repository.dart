@@ -67,6 +67,15 @@ class ThongKeKy {
   /// Kỳ liền trước cùng độ dài, để hiện "so với kỳ trước".
   final TongThuChi tongTruoc;
 
+  /// **Cùng kỳ năm trước** — mốc so sánh thứ hai của hai thẻ tổng (#2 khảo sát,
+  /// 2026-09-16). Chip trên trang quyết định lấy trường này hay [tongTruoc];
+  /// luật chọn nằm ở `nenSoSanh` của `domain/moc_so_sanh.dart`.
+  ///
+  /// Mặc định `0/0` — và đó **là** giá trị đúng cho mọi tài khoản chưa đủ một
+  /// năm tuổi, vì `phanTramSoVoi` trả `null` khi nền bằng 0 nên giao diện tự nói
+  /// "Không có dữ liệu …" thay vì bịa một phần trăm.
+  final TongThuChi tongNamTruoc;
+
   /// Chi theo danh mục, giảm dần — nguồn cho donut qua `topVaKhac`.
   final List<ChiTheoDanhMuc> chiTheoDanhMuc;
 
@@ -143,6 +152,7 @@ class ThongKeKy {
     required this.ky,
     required this.tong,
     required this.tongTruoc,
+    this.tongNamTruoc = const TongThuChi(thu: 0, chi: 0),
     required this.chiTheoDanhMuc,
     required this.danhMuc,
     required this.chuoi,
@@ -164,6 +174,9 @@ class ThongKeKy {
 
   double? get thuSoVoiTruoc => phanTramSoVoi(tong.thu, tongTruoc.thu);
   double? get chiSoVoiTruoc => phanTramSoVoi(tong.chi, tongTruoc.chi);
+
+  double? get thuSoVoiNamTruoc => phanTramSoVoi(tong.thu, tongNamTruoc.thu);
+  double? get chiSoVoiNamTruoc => phanTramSoVoi(tong.chi, tongNamTruoc.chi);
 
   /// Kỳ không có thu lẫn chi. Giao diện nói rỗng thay vì vẽ toàn số 0.
   bool get rong => tong.thu == 0 && tong.chi == 0;

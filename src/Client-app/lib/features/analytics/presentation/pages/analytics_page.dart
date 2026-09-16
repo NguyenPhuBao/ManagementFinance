@@ -18,6 +18,7 @@ import '../../../../core/utils/date_formatter.dart';
 import '../../domain/bao_cao_xuat.dart';
 import '../../domain/dong_tien_tu_do.dart';
 import '../../domain/du_bao_dong_tien.dart';
+import '../../domain/moc_so_sanh.dart';
 import '../../domain/pham_vi_ky.dart';
 import '../../domain/vai_vay_no.dart';
 import '../../domain/phan_loai_dong_tien.dart';
@@ -109,7 +110,8 @@ class _NoiDung extends StatelessWidget {
       case AnalyticsLoaded(
           :final thongKe,
           :final phanLoaiDangXem,
-          :final danhMucXuHuong
+          :final danhMucXuHuong,
+          :final mocSoSanh
         ):
         if (thongKe.rong) {
           return [
@@ -137,7 +139,7 @@ class _NoiDung extends StatelessWidget {
             _KhoiThacNuoc(tk: thongKe),
             const SizedBox(height: 24),
           ],
-          _KhoiTong(tk: thongKe),
+          _KhoiTong(tk: thongKe, mocSoSanh: mocSoSanh),
           const SizedBox(height: 24),
           // Ngay sau thẻ tổng: "còn tiêu được 30 ngày tới" đứng cạnh "số dư
           // còn lại" của kỳ — hiện tại rồi tới tương lai, mắt đọc liền mạch.
@@ -215,19 +217,19 @@ class _NoiDung extends StatelessWidget {
 
 String _dong(double x) => '${CurrencyFormatter.formatSoThoi(x.round())}đ';
 
-/// "Tăng 25% so với T8" / "Giảm 5% so với Tuần 37" / "Không có dữ liệu 2025".
+/// "Tăng 25% so với T8" / "Giảm 5% so với Tuần 37" / "Không có dữ liệu T9 2025".
 ///
-/// Tên kỳ trước lấy từ `lui(ky, 1).nhanNgan` chứ không tự suy từ số tháng: từ
-/// 2026-09-15 kỳ có thể là tuần, quý hay năm, và một nhãn "T8" cứng sẽ nói sai
-/// mà không lỗi nào báo.
+/// [nhan] là **tên kỳ nền**, do `nenSoSanh` cấp cùng lúc với con số của nó — từ
+/// 2026-09-16 nền có thể là kỳ liền trước **hoặc** cùng kỳ năm trước, và một
+/// hàm tự suy tên từ `ky` sẽ nói sai ngay khi người dùng chạm chip thứ hai.
 ///
-/// [phanTram] `null` là kỳ trước bằng 0: không in "tăng ∞%" hay "tăng 100%" —
-/// cả hai đều là số bịa.
-String _soVoiKyTruoc(double? phanTram, Ky ky) {
-  final t = nhanKyTruoc(ky);
-  if (phanTram == null) return 'Không có dữ liệu $t';
+/// [phanTram] `null` là nền bằng 0: không in "tăng ∞%" hay "tăng 100%" — cả hai
+/// đều là số bịa. ⚠️ Với mốc năm trước thì đây là ca **thường**, không phải ca
+/// hiếm: mọi tài khoản chưa đủ một năm tuổi đều rơi vào đó ở mọi kỳ.
+String _soVoiNen(double? phanTram, String nhan) {
+  if (phanTram == null) return 'Không có dữ liệu $nhan';
   final tu = phanTram >= 0 ? 'Tăng' : 'Giảm';
-  return '$tu ${phanTram.abs().round()}% so với $t';
+  return '$tu ${phanTram.abs().round()}% so với $nhan';
 }
 
 // ── Đầu trang ─────────────────────────────────────────────────────────────
@@ -388,19 +390,32 @@ class _Rong extends StatelessWidget {
 
 class _KhoiTong extends StatelessWidget {
   final ThongKeKy tk;
-  const _KhoiTong({required this.tk});
+  final MocSoSanh mocSoSanh;
+  const _KhoiTong({required this.tk, required this.mocSoSanh});
 
   @override
   Widget build(BuildContext context) {
+    // Nền so sánh và TÊN của nó lấy cùng một chỗ — `nenSoSanh` là định nghĩa
+    // duy nhất. Lấy số một nơi và nhãn một nơi thì thẻ nói một câu hoàn toàn
+    // hợp lý và hoàn toàn sai.
+    final nen = nenSoSanh(
+      moc: mocSoSanh,
+      ky: tk.ky,
+      kyTruoc: tk.tongTruoc,
+      namTruoc: tk.tongNamTruoc,
+    );
     return Column(
       children: [
+        const _HangChipSoSanh(),
+        const SizedBox(height: 12),
         Row(
           children: [
             Expanded(
               child: _TheTong(
                 title: 'Tổng thu',
                 amount: '+${_dong(tk.tong.thu)}',
-                diff: _soVoiKyTruoc(tk.thuSoVoiTruoc, tk.ky),
+                diff: _soVoiNen(
+                    phanTramSoVoi(tk.tong.thu, nen.nen.thu), nen.nhan),
                 icon: Icons.arrow_upward,
                 color: AppColors.income,
               ),
@@ -410,7 +425,8 @@ class _KhoiTong extends StatelessWidget {
               child: _TheTong(
                 title: 'Tổng chi',
                 amount: '-${_dong(tk.tong.chi)}',
-                diff: _soVoiKyTruoc(tk.chiSoVoiTruoc, tk.ky),
+                diff: _soVoiNen(
+                    phanTramSoVoi(tk.tong.chi, nen.nen.chi), nen.nhan),
                 icon: Icons.arrow_downward,
                 color: AppColors.error,
               ),
@@ -420,6 +436,50 @@ class _KhoiTong extends StatelessWidget {
         const SizedBox(height: 16),
         _TheConLai(tk: tk),
       ],
+    );
+  }
+}
+
+/// Hai chip chọn mốc so sánh của hai thẻ tổng (#2 khảo sát, 2026-09-16).
+///
+/// Đứng **trên** hai thẻ chứ không thêm dòng vào trong chúng: thẻ chỉ rộng
+/// chừng 180dp ở khổ 411dp, và chỗ này từng tràn 53px một lần rồi.
+class _HangChipSoSanh extends StatelessWidget {
+  const _HangChipSoSanh();
+
+  @override
+  Widget build(BuildContext context) {
+    final moc = context.select<AnalyticsCubit, MocSoSanh?>((c) {
+      final s = c.state;
+      return s is AnalyticsLoaded ? s.mocSoSanh : null;
+    });
+    if (moc == null) return const SizedBox.shrink();
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (final m in MocSoSanh.values)
+            ChoiceChip(
+              label: Text(m.nhanChip),
+              labelStyle: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: m == moc ? Colors.white : AppColors.textPrimary,
+              ),
+              selected: m == moc,
+              showCheckmark: false,
+              selectedColor: AppColors.textPrimary,
+              backgroundColor: Colors.white,
+              side: const BorderSide(color: AppColors.outlineVariant),
+              visualDensity: VisualDensity.compact,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              onSelected: (_) =>
+                  context.read<AnalyticsCubit>().chonMocSoSanh(m),
+            ),
+        ],
+      ),
     );
   }
 }

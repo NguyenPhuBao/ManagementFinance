@@ -264,3 +264,60 @@ String tieuDeXuHuong(DonViKy donVi) => switch (donVi) {
   }
   return (from: from.subtract(to.difference(from)), to: from);
 }
+
+/// **Cùng kỳ năm trước** của [ky] — mốc so sánh thứ hai của trang Phân tích
+/// (#2 khảo sát lần hai, 2026-09-16).
+///
+/// Lùi đúng **một năm**, giữ nguyên đơn vị. Khác [lui] ở chỗ nó không đếm số kỳ
+/// người dùng đã xem: "cùng kỳ năm trước" là một khái niệm của **lịch**.
+///
+/// Ba chỗ dễ vấp, cả ba hỏng **im lặng**:
+///
+///  1. **Tuần lùi 52 kỳ, KHÔNG neo vào ngày dương lịch.** Đây là chỗ phản trực
+///     giác nhất, và bản đầu của hàm này đã làm sai. 52 tuần là 364 ngày nên nó
+///     *có* trôi một ngày mỗi năm — nhưng chính nhờ thế nó luôn rơi vào tuần
+///     phủ gần trọn 7 ngày cùng lịch năm trước. Neo vào ngày dương lịch của
+///     `from` (thứ Hai) thì thứ Hai ấy năm ngoái thường là Chủ nhật, tức thuộc
+///     tuần **trước đó**, và kỳ so sánh chỉ còn chồng lấp đúng một ngày.
+///     Đo bằng máy 2026-09-16 trên 3131 tuần của 60 năm (2000–2060): lùi 52 kỳ
+///     cho số ngày chồng lấp ít nhất là **5**, neo thứ Hai chỉ **1**; và lùi 52
+///     kỳ trùng khít với lối neo vào **thứ Năm** — ngày định danh tuần ISO — ở
+///     cả 3131 tuần.
+///     ⚠️ Cũng **không** dùng "cùng số tuần ISO": tuần 53 chỉ tồn tại ở một số
+///     năm, nên lối ấy có lúc trỏ vào một kỳ không có thật.
+///  2. **Khoảng tuỳ chọn giữ nguyên độ dài.** Dời riêng từng mốc thì kỳ bắt đầu
+///     29/2 (Dart chuẩn hoá thành 1/3) hoá ra dài hơn hoặc ngắn hơn một ngày, và
+///     phần trăm so hai kỳ lệch độ dài trông vẫn rất hợp lý.
+///  3. **Tháng/quý/năm thì độ dài ĐƯỢC PHÉP khác nhau** — tháng 2/2028 có 29
+///     ngày còn 2/2027 có 28. Một tháng là một tháng; ép chúng bằng nhau số
+///     ngày là so sai đơn vị.
+Ky cungKyNamTruoc(Ky ky) => switch (ky.donVi) {
+      // Bốn đơn vị đầu đếm được "một năm" bằng số kỳ, nên mượn lại `lui` để
+      // không đẻ phép lùi lịch thứ hai.
+      DonViKy.tuan => lui(ky, 52),
+      DonViKy.thang => lui(ky, 12),
+      DonViKy.quy => lui(ky, 4),
+      DonViKy.nam => lui(ky, 1),
+      DonViKy.tuyChon => () {
+          final dau = DateTime(ky.from.year - 1, ky.from.month, ky.from.day);
+          return Ky.tuyChon(from: dau, to: dau.add(ky.to.difference(ky.from)));
+        }(),
+    };
+
+/// Tên **cùng kỳ năm trước** cho câu "so với …" ở hai thẻ tổng.
+///
+/// Khác [nhanKyTruoc], nhãn này **luôn mang số năm**: cả câu nói về năm ngoái,
+/// nên bỏ năm đi là bỏ mất chính thông tin người đọc cần.
+///
+/// ⚠️ Tuần lấy **năm ISO** chứ không lấy `from.year`. Tuần bắt đầu 30/12/2024 là
+/// tuần **1 của 2025**; in "Tuần 1 2024" thì sai hẳn một năm và không lỗi nào
+/// báo — ca ấy xảy ra thật với tuần cuối tháng 12.
+String nhanCungKyNamTruoc(Ky ky) {
+  final t = cungKyNamTruoc(ky);
+  return switch (t.donVi) {
+    // `nhanNgan` của ba đơn vị này đã có sẵn năm.
+    DonViKy.thang || DonViKy.quy || DonViKy.nam => t.nhanNgan,
+    DonViKy.tuan => '${t.nhanNgan} ${tuanISO(t.from).nam}',
+    DonViKy.tuyChon => '${t.nhanNgan} ${t.from.year}',
+  };
+}

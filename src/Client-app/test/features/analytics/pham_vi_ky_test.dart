@@ -338,4 +338,110 @@ void main() {
       );
     });
   });
+
+  // ── Mốc so sánh thứ hai: cùng kỳ năm trước (#2 khảo sát, 2026-09-16) ──────
+  //
+  // Trang Phân tích vốn chỉ so với **kỳ liền trước**. Mốc thứ hai lùi đúng một
+  // năm dương lịch. Ba cái bẫy ở đây, cả ba hỏng im lặng:
+  //  1. Tuần **không** lùi 52 kỳ — 52 tuần là 364 ngày nên nó trôi một ngày
+  //     mỗi năm, và sau vài năm "tuần này năm ngoái" rơi hẳn sang tuần khác.
+  //  2. Khoảng tuỳ chọn phải **giữ nguyên độ dài**. Dời riêng từng mốc thì kỳ
+  //     bắt đầu 29/2 hoá ra dài hơn hoặc ngắn hơn một ngày, và phần trăm so hai
+  //     kỳ lệch độ dài trông vẫn rất hợp lý.
+  //  3. Nhãn tuần phải lấy **năm ISO**, không lấy `from.year`: tuần bắt đầu
+  //     30/12/2024 là tuần 1 của **2025**.
+  group('cungKyNamTruoc', () {
+    test('tháng, quý, năm lùi đúng một năm và giữ nguyên đơn vị', () {
+      expect(cungKyNamTruoc(Ky.thang(2026, 9)), Ky.thang(2025, 9));
+      expect(cungKyNamTruoc(Ky.quy(2026, 3)), Ky.quy(2025, 3));
+      expect(cungKyNamTruoc(Ky.nam(2026)), Ky.nam(2025));
+    });
+
+    test('tháng 2 năm nhuận so với tháng 2 năm thường — độ dài KHÁC nhau', () {
+      final t = cungKyNamTruoc(Ky.thang(2028, 2));
+      expect(t, Ky.thang(2027, 2));
+      expect(
+        t.to.difference(t.from).inDays,
+        28,
+        reason: 'một tháng là một tháng; ép hai kỳ bằng nhau số ngày là so sai '
+            'đơn vị, và 29/2 sẽ biến mất khỏi phép so',
+      );
+    });
+
+    test('tuần lùi 52 kỳ, KHÔNG neo vào ngày dương lịch của thứ Hai', () {
+      // Tuần bắt đầu thứ Hai 14/09/2026. Neo vào cùng ngày dương lịch ra
+      // 14/09/2025 — một Chủ nhật, tức thuộc tuần TRƯỚC (08–14/09), chồng lấp
+      // đúng MỘT ngày với 7 ngày cần so. Lùi 52 kỳ ra tuần 15–21/09/2025,
+      // chồng lấp sáu ngày.
+      final k = Ky.tuan(DateTime(2026, 9, 16));
+      expect(
+        cungKyNamTruoc(k),
+        lui(k, 52),
+        reason: 'đo 3131 tuần của 60 năm: lùi 52 kỳ trùng khít lối neo thứ Năm '
+            '(ngày định danh tuần ISO) ở mọi tuần',
+      );
+      expect(
+        cungKyNamTruoc(k).from,
+        DateTime(2025, 9, 15),
+        reason: 'neo vào thứ Hai năm trước sẽ ra 08/09/2025 — lệch hẳn một tuần',
+      );
+    });
+
+    test('tuần vẫn là một tuần trọn vẹn và chứa đúng ngày năm trước', () {
+      final t = cungKyNamTruoc(Ky.tuan(DateTime(2026, 9, 16)));
+      expect(t.donVi, DonViKy.tuan);
+      expect(t.to.difference(t.from).inDays, 7);
+      expect(t.chua(DateTime(2025, 9, 16)), isTrue);
+    });
+
+    test('khoảng tuỳ chọn giữ nguyên độ dài', () {
+      final k = Ky.tuyChon(from: DateTime(2026, 9, 5), to: DateTime(2026, 9, 18));
+      final t = cungKyNamTruoc(k);
+      expect(t.from, DateTime(2025, 9, 5));
+      expect(t.to, DateTime(2025, 9, 18));
+      expect(t.to.difference(t.from), k.to.difference(k.from));
+    });
+
+    test('khoảng tuỳ chọn bắt đầu 29/2 vẫn giữ nguyên độ dài', () {
+      final k =
+          Ky.tuyChon(from: DateTime(2028, 2, 29), to: DateTime(2028, 3, 10));
+      final t = cungKyNamTruoc(k);
+      expect(
+        t.from,
+        DateTime(2027, 3, 1),
+        reason: 'Dart chuẩn hoá 29/2/2027 thành 1/3/2027 — 2027 không nhuận',
+      );
+      expect(
+        t.to.difference(t.from),
+        k.to.difference(k.from),
+        reason: 'dời riêng từng mốc thì kỳ so sánh lệch một ngày và phần trăm '
+            'sai mà không lỗi nào báo',
+      );
+    });
+  });
+
+  group('nhanCungKyNamTruoc', () {
+    test('tháng, quý, năm mượn nguyên nhanNgan vì nó đã có năm', () {
+      expect(nhanCungKyNamTruoc(Ky.thang(2026, 9)), 'T9 2025');
+      expect(nhanCungKyNamTruoc(Ky.quy(2026, 3)), 'Q3 2025');
+      expect(nhanCungKyNamTruoc(Ky.nam(2026)), '2025');
+    });
+
+    test('tuần được thêm năm ISO, không phải năm của ngày thứ Hai', () {
+      expect(nhanCungKyNamTruoc(Ky.tuan(DateTime(2026, 9, 16))), 'Tuần 38 2025');
+      // Tuần chứa 31/12/2025 bắt đầu thứ Hai 29/12/2025; lùi 52 kỳ ra tuần bắt
+      // đầu 30/12/2024 — nằm trong tháng 12 năm 2024 nhưng là tuần **1 của
+      // 2025** theo ISO.
+      expect(
+        nhanCungKyNamTruoc(Ky.tuan(DateTime(2025, 12, 31))),
+        'Tuần 1 2025',
+        reason: 'lấy from.year sẽ in "Tuần 1 2024" — sai hẳn một năm, im lặng',
+      );
+    });
+
+    test('khoảng tuỳ chọn được thêm năm vì nhanNgan chỉ có ngày/tháng', () {
+      final k = Ky.tuyChon(from: DateTime(2026, 9, 5), to: DateTime(2026, 9, 18));
+      expect(nhanCungKyNamTruoc(k), '05/09 – 17/09 2025');
+    });
+  });
 }
