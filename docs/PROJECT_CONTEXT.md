@@ -593,7 +593,47 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-16)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-17)
+
+### 💰 Tổng tài sản theo thời gian (2026-09-17)
+
+Mục **#5** của khảo sát app thị trường lần hai — đường thứ **ba** của bộ sáu kỳ
+trên trang Phân tích, đứng ngay sau *Dòng tiền tự do*: một con số lớn (tổng tài
+sản hiện tại), một đường sáu điểm, và khi cần thì một câu nói thẳng rằng đoạn
+đầu đường chưa có gì để dựa vào. Bàn giao ở mục **3.30**
+`docs/ANALYTICS_FEATURE.md`; màn Stitch `b0a3344924d246f9b6322fb75a3309e4`.
+
+⚠️ **Tên đổi khỏi "tài sản ròng"** mà bảng khảo sát mượn của Monarch: app không
+có mô hình công nợ (A8 #9 đã bỏ hẳn), nên tiền **đi vay** nằm trong ví sẽ làm
+"tài sản ròng" **tăng lên** đúng lúc người dùng mắc nợ thêm. Người dùng chốt đo
+đúng thứ tính được — tổng số dư các ví được tính vào tổng.
+
+**Suy ngược được là nhờ G37**: từ 2026-09-13 `wallets.balance` là **cache của
+một công thức** trên sổ giao dịch, nên số dư tại mọi thời điểm suy lại được.
+Mục 3.16 nói "không lưu lịch sử số dư → chịu" là ảnh chụp trước G37. Đây là lần
+thứ **tư** bài học *"chặn vì thiếu con số nào?"* trả tiền, sau A8 #4, #5 và #8.
+
+⚠️ **Phép đo lật giả định của mục 3.25**: vách do khoản neo *"Số dư ban đầu"*
+ghi ngày vá **không tồn tại** trên dữ liệu thật (đo 2026-09-17: cả bốn ví có
+`Balance` khớp đúng tổng sổ, không khoản neo nào). Giới hạn thật — lớn hơn — là
+mọi mốc **trước giao dịch đầu tiên** cho một con số vô nghĩa; khối nói ra điều
+ấy bằng một câu dưới biểu đồ, và **ẩn** dòng thay đổi thay vì in một khoản tăng
+bịa.
+
+🔑 **Một phát hiện để dành, cố ý không thi công**: server có
+`wallet.Create_at` (`schema.prisma`, `@default(now())`) và đường pull **đã trả
+nó về rồi** — `getWalletsByAccount` là `findMany` **không `select`**. Client chỉ
+là chưa đọc. Nó cho biết ngày tạo ví thật, nhưng thứ nó vá là một vách đo được
+là không tồn tại.
+
+Cùng lượt, **`daiTrucDuBao` bị siết lại**: `dải/2` là một phép **trừ hao** làm
+trần rộng gấp đôi mức cần với dải bắt đầu từ 0 (13,59M → trần 30M, đường dí sát
+đáy máy ảo), nay là `dải/3` cộng phép kiểm đúng. Khối Dự báo **không đổi** —
+dải hẹp quanh số lớn cho cùng một bước ở cả hai công thức. Vế **thứ ba** của
+bẫy **4.21**.
+
+Không đổi schema (vẫn **v22**), không thêm trường đồng bộ, không nguồn stream
+mới. `flutter test` **2743/2743**, `flutter analyze` **25 issue, 0 error**.
 
 ### 📅 Lịch chi tiêu (2026-09-16)
 
@@ -691,7 +731,7 @@ cho đầy bảng.
 trên nút "Tải xuống" đang hiện — % so với kỳ trước (`tongTruoc`), số liệu nhanh
 (`soLieu`), và top 5 khoản chi (`topChi`). Cả ba trường **đã nằm sẵn** trong
 `BaoCao` nhưng `analytics/domain/xuat_tep.dart` không đọc (grep ba tên trường
-trong tệp ấy: **0** kết quả). Và **15 khối** của trang Phân tích *(đếm lại bằng máy cuối ngày 2026-09-16, sau khi thêm Lịch chi tiêu; con số **14** viết sáng cùng ngày là ảnh chụp trước đó — `_KhoiDuBao` xuất hiện hai lần trong mã nhưng là **một** khối người dùng thấy, còn `_KhoiVayNo` hai lần là **hai** khối thật)* thì không có
+trong tệp ấy: **0** kết quả). Và **16 khối** của trang Phân tích *(đếm lại bằng máy 2026-09-17, sau khi thêm Tổng tài sản theo thời gian; mốc **15** là của cuối ngày 2026-09-16, sau khi thêm Lịch chi tiêu; con số **14** viết sáng cùng ngày là ảnh chụp trước đó — `_KhoiDuBao` xuất hiện hai lần trong mã nhưng là **một** khối người dùng thấy, còn `_KhoiVayNo` hai lần là **hai** khối thật)* thì không có
 đường xuất tệp nào — `pdfBaoCao`/`csvBaoCao` chỉ có **một** chỗ gọi, ở
 `report_preview_page.dart`. Chưa ai chốt làm gì với hai khoảng lệch ấy.
 

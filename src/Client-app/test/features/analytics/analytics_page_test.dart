@@ -24,6 +24,7 @@ import 'package:flowmoney/features/analytics/domain/pham_vi_ky.dart';
 import 'package:flowmoney/features/analytics/domain/vai_vay_no.dart';
 import 'package:flowmoney/features/analytics/domain/phan_loai_dong_tien.dart';
 import 'package:flowmoney/features/analytics/domain/thong_ke_thang.dart';
+import 'package:flowmoney/features/analytics/domain/tong_tai_san.dart';
 import 'package:flowmoney/features/analytics/presentation/bloc/analytics_cubit.dart';
 import 'package:flowmoney/features/analytics/presentation/pages/analytics_page.dart';
 import 'package:flowmoney/features/auth/data/models/user_model.dart';
@@ -110,6 +111,8 @@ ThongKeKy _tk({
   DongTien? dongTien,
   DuBaoDongTien? duBao,
   Map<DateTime, NgayChiTieu> lich = const {},
+  List<DiemTaiSan>? taiSan,
+  DateTime? giaoDichDauTien,
 }) =>
     ThongKeKy(
       ky: ky ?? Ky.thang(nam, thang),
@@ -144,6 +147,17 @@ ThongKeKy _tk({
       lichChiTieu: lich,
       dongTien: dongTien,
       duBao: duBao,
+      // Mặc định là sáu điểm phẳng — đúng cấu trúc thật, để MỌI ca của trang
+      // đi qua nhánh có khối tài sản thay vì nhánh "chưa có chuỗi"; đó là cách
+      // các ca cũ bắt được tràn bố cục do khối mới gây ra.
+      taiSan: taiSan ??
+          tongTaiSanCua(
+            const [],
+            const [],
+            ky: ky ?? Ky.thang(nam, thang),
+            now: DateTime(nam, thang, 8, 12),
+          ),
+      giaoDichDauTien: giaoDichDauTien,
       // ⚠️ Mặc định phải **cùng số kỳ** với `chuoi`, không phải rỗng: hai chuỗi
       // luôn được repository dựng từ cùng một `ky` và cùng `kSoKyXuHuong`, nên
       // một `ThongKeKy` có sáu điểm thu/chi mà không điểm vay/nợ nào là trạng
@@ -381,15 +395,16 @@ void main() {
     await moTrang(tester);
     await phat(tester, _tk(ky: Ky.quy(2026, 3)));
 
-    // ⚠️ **Hai** widget mỗi nhãn, không phải một: từ 2026-09-15 trang có hai
-    // biểu đồ đường cùng sáu kỳ — "Xu hướng" và "Dòng tiền tự do" (A8 #8) — và
-    // cả hai đọc trục từ cùng `Ky.nhanTruc`. Con số này cố ý chặt: thêm hay bớt
-    // một biểu đồ trục-sáu-kỳ thì ca này đỏ, và người sửa phải nhìn lại trục
-    // thay vì để nó trôi.
-    expect(find.text('Q3/26'), findsNWidgets(2),
+    // ⚠️ **Ba** widget mỗi nhãn, không phải một: trang có ba biểu đồ đường
+    // cùng sáu kỳ — "Xu hướng" (2026-09-14), "Dòng tiền tự do" (A8 #8,
+    // 2026-09-15) và "Tổng tài sản" (#5, 2026-09-17) — và cả ba đọc trục từ
+    // cùng `Ky.nhanTruc`. Con số này cố ý chặt: thêm hay bớt một biểu đồ
+    // trục-sáu-kỳ thì ca này đỏ, và người sửa phải nhìn lại trục thay vì để nó
+    // trôi. Nó đã làm đúng việc ấy khi đường thứ ba vào.
+    expect(find.text('Q3/26'), findsNWidgets(3),
         reason: 'nhãn trục đọc thẳng từ Ky.nhanTruc — trang không tự suy từ '
             'số tháng nữa');
-    expect(find.text('Q3/25'), findsNWidgets(2),
+    expect(find.text('Q3/25'), findsNWidgets(3),
         reason: 'sáu quý trải qua một năm rưỡi nên nhãn phải mang năm, nếu '
             'không hai cột khác nhau cùng ghi "Q3"');
   });
@@ -1729,6 +1744,96 @@ void main() {
           )));
       expect(tester.takeException(), isNull,
           reason: 'Flutter báo tràn qua reportError chứ không ném ra chỗ gọi.');
+    });
+  });
+
+  group('Tổng tài sản theo thời gian (#5)', () {
+    /// Sáu điểm tăng dần, điểm cuối 13.590.000 — con số đo được trên tài khoản
+    /// thật ngày 2026-09-17.
+    List<DiemTaiSan> chuoiTaiSan() {
+      final ky = Ky.thang(2026, 9);
+      const moc = [11240000.0, 11600000.0, 12100000.0, 11900000.0, 12750000.0, 13590000.0];
+      return [
+        for (var i = 0; i < kSoKyXuHuong; i++)
+          (
+            ky: lui(ky, kSoKyXuHuong - 1 - i),
+            moc: lui(ky, kSoKyXuHuong - 1 - i).to,
+            tong: moc[i],
+          ),
+      ];
+    }
+
+    testWidgets('hiện tiêu đề và số tổng tài sản hiện tại', (tester) async {
+      await moTrang(tester);
+      await phat(tester, _tk(taiSan: chuoiTaiSan()));
+
+      expect(find.text('Tổng tài sản 6 tháng gần đây'), findsOneWidget);
+      expect(find.text('13.590.000 đ'), findsOneWidget,
+          reason: 'Số lớn là ĐIỂM CUỐI của đường, và nó phải bằng con số '
+              'Trang chủ — mốc để người dùng tin cả biểu đồ.');
+    });
+
+    testWidgets('tiêu đề đổi theo đơn vị đang xem', (tester) async {
+      await moTrang(tester);
+      await phat(tester, _tk(ky: Ky.quy(2026, 3), taiSan: chuoiTaiSan()));
+
+      expect(find.text('Tổng tài sản 6 quý gần đây'), findsOneWidget);
+    });
+
+    testWidgets('dòng thay đổi hiện khi cả chuỗi đứng vững', (tester) async {
+      await moTrang(tester);
+      await phat(tester, _tk(
+        taiSan: chuoiTaiSan(),
+        giaoDichDauTien: DateTime(2024, 1, 1),
+      ));
+
+      expect(find.text('+2.350.000 đ trong 6 tháng'), findsOneWidget);
+    });
+
+    testWidgets('⚠️ dòng thay đổi ẨN khi chuỗi chạm vùng chưa có dữ liệu',
+        (tester) async {
+      // Điểm đầu khi ấy là số 0 "chưa biết". In hiệu với nó là nói người dùng
+      // vừa kiếm được nguyên cả tài sản trong sáu tháng — hợp lý và sai hẳn.
+      await moTrang(tester);
+      await phat(tester, _tk(
+        taiSan: chuoiTaiSan(),
+        giaoDichDauTien: DateTime(2026, 9, 2),
+      ));
+
+      expect(find.textContaining('trong 6 tháng'), findsNothing);
+    });
+
+    testWidgets('câu cảnh báo hiện đúng ngày khi đoạn đầu đường chưa có dữ liệu',
+        (tester) async {
+      await moTrang(tester);
+      await phat(tester, _tk(
+        taiSan: chuoiTaiSan(),
+        giaoDichDauTien: DateTime(2026, 9, 2),
+      ));
+
+      expect(
+          find.text('Trước 02/09/2026 chưa có giao dịch nào để suy ra số dư.'),
+          findsOneWidget);
+    });
+
+    testWidgets('không cảnh báo khi cả chuỗi nằm sau giao dịch đầu tiên',
+        (tester) async {
+      await moTrang(tester);
+      await phat(tester, _tk(
+        taiSan: chuoiTaiSan(),
+        giaoDichDauTien: DateTime(2024, 1, 1),
+      ));
+
+      expect(find.textContaining('chưa có giao dịch nào'), findsNothing);
+    });
+
+    testWidgets('chuỗi rỗng thì ẩn hẳn khối', (tester) async {
+      await moTrang(tester);
+      await phat(tester, _tk(taiSan: const []));
+
+      expect(find.textContaining('Tổng tài sản'), findsNothing,
+          reason: 'Không điểm nào thì không có thang đo — bỏ khối, đừng vẽ '
+              'một khung rỗng.');
     });
   });
 }

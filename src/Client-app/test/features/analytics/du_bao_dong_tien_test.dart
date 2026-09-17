@@ -857,23 +857,43 @@ void main() {
       // và phép cộng không sinh sai số.
       final (:san, :buoc) = daiTrucDuBao(const [13590000, 13202000]);
 
-      expect(buoc, 200000, reason: 'số tròn gần nhất ≥ dải/2');
+      expect(buoc, 200000, reason: 'số tròn gần nhất ≥ dải/3');
       expect(san % buoc, 0, reason: 'sàn là bội của bước → mốc rơi tròn');
       expect(san, lessThanOrEqualTo(13202000));
       expect(san + buoc * 3, greaterThanOrEqualTo(13590000));
     });
 
     test('bước tròn chọn trong họ 1 · 2 · 2,5 · 5 × 10^k', () {
+      // ⚠️ Hai ca cuối đổi số ngày 2026-09-17 khi phép trừ hao `dải/2` được
+      // thay bằng phép kiểm đúng: 3000 nay ra bước 1000 (trần 3000, khít đỉnh)
+      // thay vì 2000 (trần 6000), và 45000 ra 20000 thay vì 25000. Tính chất
+      // được canh vẫn nguyên — bước tròn, sàn ≤ đáy, trần ≥ đỉnh — chỉ là dải
+      // thôi rộng gấp đôi mức cần.
       for (final ca in [
         (const [1000.0, 0.0], 500.0),
         (const [10000.0, 0.0], 5000.0),
-        (const [3000.0, 0.0], 2000.0),
-        (const [45000.0, 0.0], 25000.0),
+        (const [3000.0, 0.0], 1000.0),
+        (const [45000.0, 0.0], 20000.0),
       ]) {
         final (:san, :buoc) = daiTrucDuBao(ca.$1);
         expect(buoc, ca.$2, reason: 'dải ${ca.$1}');
         expect(san + buoc * 3, greaterThanOrEqualTo(ca.$1.first));
       }
+    });
+
+    test('⚠️ dải RỘNG từ 0 không được nới trần lên hơn gấp đôi đỉnh', () {
+      // Máy ảo 2026-09-17, khối "Tổng tài sản": năm kỳ đầu là 0 (quãng chưa có
+      // giao dịch) và kỳ cuối 13.590.000. Luật cũ `dải/2` cho bước 10.000.000
+      // → trần 30.000.000, và đường thật bị ép xuống 45% dưới của khung. Không
+      // test nào đỏ vì mọi tính chất đều vẫn đúng — chỉ mắt mới thấy.
+      final (:san, :buoc) = daiTrucDuBao(const [0, 0, 0, 0, 0, 13590000]);
+
+      expect(san, 0);
+      expect(san + buoc * 3, greaterThanOrEqualTo(13590000),
+          reason: 'trần vẫn phải phủ đỉnh');
+      expect(san + buoc * 3, lessThan(13590000 * 1.5),
+          reason: 'và không được rộng quá mức: trần gấp hơn hai lần đỉnh là '
+              'nửa khung trống, đường dí sát đáy.');
     });
 
     test('mọi điểm bằng nhau (không cam kết) vẫn ra dải hợp lệ, không chia 0',

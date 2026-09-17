@@ -5,6 +5,7 @@ import '../domain/pham_vi_ky.dart';
 import '../domain/vai_vay_no.dart';
 import '../domain/phan_loai_dong_tien.dart';
 import '../domain/thong_ke_thang.dart';
+import '../domain/tong_tai_san.dart';
 
 /// Một dòng trong bảng "Chi tiết danh mục", đã tra tên/biểu tượng/màu và ngân
 /// sách đang chạy (nếu có) của danh mục ấy.
@@ -158,6 +159,19 @@ class ThongKeKy {
   /// `AnalyticsRepositoryImpl.watchKy`.
   final DuBaoDongTien? duBao;
 
+  /// Đường **tổng tài sản** sáu kỳ, cũ nhất trước (#5 khảo sát, 2026-09-17).
+  ///
+  /// Suy ngược từ số dư ví hiện tại qua sổ giao dịch — xem `tong_tai_san.dart`
+  /// về vì sao phép ấy **không** đi qua `khoanVaoThongKe` như khối Dòng tiền.
+  final List<DiemTaiSan> taiSan;
+
+  /// Ngày của giao dịch **cũ nhất** còn sống, `null` khi sổ rỗng.
+  ///
+  /// Chỉ phục vụ [taiSan]: suy ngược cho mốc trước ngày này cho ra số 0 **"chưa
+  /// biết"**, và giao diện phải nói ra điều đó thay vì vẽ một đường đi lên từ
+  /// con số không. Xem `mocThieuDuLieu` và `thayDoiTaiSan`.
+  final DateTime? giaoDichDauTien;
+
   const ThongKeKy({
     required this.ky,
     required this.tong,
@@ -181,6 +195,8 @@ class ThongKeKy {
     this.dongTien,
     this.chuoiVayNo = const [],
     this.duBao,
+    this.taiSan = const [],
+    this.giaoDichDauTien,
   });
 
   double? get thuSoVoiTruoc => phanTramSoVoi(tong.thu, tongTruoc.thu);

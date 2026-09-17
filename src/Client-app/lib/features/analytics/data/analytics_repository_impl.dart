@@ -13,6 +13,7 @@ import '../domain/pham_vi_ky.dart';
 import '../domain/vai_vay_no.dart';
 import '../domain/phan_loai_dong_tien.dart';
 import '../domain/thong_ke_thang.dart';
+import '../domain/tong_tai_san.dart';
 import 'analytics_repository.dart';
 
 /// Gộp **bảy** nguồn thành một [ThongKeKy] — giao dịch, danh mục, ngân sách
@@ -371,8 +372,54 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
       vi: vi,
     );
 
+    // ── Tổng tài sản theo thời gian (#5, 2026-09-17) ───────────────────────
+    // `txs` là TOÀN BỘ sổ còn sống của tài khoản (`watchAll` đã lọc
+    // `deletedAt`), và nó được đưa vào NGUYÊN VẸN — **không** đi qua
+    // `khoanVaoThongKe` như `trongKy` ở trên. Khoản chuyển, khoản điều chỉnh số
+    // dư và khoản mở sổ đều làm đổi số dư ví thật, nên đường tài sản phải thấy
+    // cả ba; lọc chúng là đường lệch đúng bằng tổng của chúng, im lặng.
+    //
+    // `vi` cũng truyền NGUYÊN (kể cả hàng đã xoá mềm): vế lọc nằm trong
+    // `viTinhVaoTong` mà `tongTaiSanCua` tự gọi — đúng chốt G42.
+    final taiSan = tongTaiSanCua(
+      [
+        for (final t in txs)
+          (
+            ngay: t.date,
+            soTien: t.amount,
+            loai: t.type,
+            viNguon: t.walletId,
+            viDich: t.walletTransfer,
+          ),
+      ],
+      [
+        for (final v in vi)
+          (
+            id: v.id,
+            soDu: v.balance,
+            includeInTotal: v.includeInTotal,
+            status: v.status,
+            isDeleted: v.isDeleted,
+          ),
+      ],
+      ky: ky,
+      now: now,
+    );
+
+    // Mốc cũ nhất của sổ — giao diện cần nó để biết đoạn đầu đường có đứng
+    // vững không. `txs` sắp xếp mới nhất trước, nhưng đừng dựa vào thứ tự ấy:
+    // nó là chi tiết của một câu `orderBy` ở DAO.
+    DateTime? giaoDichDauTien;
+    for (final t in txs) {
+      if (giaoDichDauTien == null || t.date.isBefore(giaoDichDauTien)) {
+        giaoDichDauTien = t.date;
+      }
+    }
+
     return ThongKeKy(
       ky: ky,
+      taiSan: taiSan,
+      giaoDichDauTien: giaoDichDauTien,
       duBao: duBao,
       soLieu: soLieuNhanhCua(trongKy, from: from, to: to),
       theoVi: phanBoTheoVi(trongKy),

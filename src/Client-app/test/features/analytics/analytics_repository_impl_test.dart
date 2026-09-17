@@ -830,4 +830,105 @@ void main() {
       expect(ds.last, 1);
     });
   });
+
+  group('Tổng tài sản theo thời gian (#5)', () {
+    test('sáu điểm, điểm cuối bằng đúng tổng số dư ví', () async {
+      final tk = await lanDau();
+
+      expect(tk.taiSan.length, kSoKyXuHuong);
+      expect(tk.taiSan.last.tong, 10000000.0,
+          reason: 'Điểm cuối phải khớp con số Trang chủ — đó là mốc để người '
+              'dùng tin cả đường.');
+    });
+
+    test('suy ngược: khoản thu trong kỳ hạ điểm của kỳ trước', () async {
+      await giaoDich(
+          id: 't1',
+          ngay: DateTime(2026, 9, 5),
+          soTien: 300000,
+          loai: 'thu',
+          danhMuc: 'c_an');
+      final tk = await lanDau();
+
+      expect(tk.taiSan.last.tong, 10000000.0);
+      expect(tk.taiSan[kSoKyXuHuong - 2].tong, 9700000.0);
+    });
+
+    test('⚠️ khoản CHUYỂN vẫn vào đường dù khoanVaoThongKe loại nó', () async {
+      // Ví đích nằm NGOÀI tổng, nên khoản chuyển làm tài sản giảm thật. Bản
+      // sai dựng đường từ `trongKy` (đã lọc qua `khoanVaoThongKe`) sẽ bỏ qua
+      // nó và vẽ một đường phẳng — im lặng.
+      await db.walletDao.insert(WalletsCompanion.insert(
+        id: 'wNgoai',
+        idaccount: 1,
+        name: 'Ví ngoài tổng',
+        balance: const Value(400000.0),
+        includeInTotal: const Value(false),
+        updatedAt: now,
+      ));
+      await db.transactionDao.insert(TransactionsCompanion.insert(
+        id: 'tChuyen',
+        idaccount: 1,
+        walletId: 'w1',
+        walletTransfer: const Value('wNgoai'),
+        amount: 400000,
+        type: 'transfer',
+        date: DateTime(2026, 9, 5),
+        updatedAt: now,
+      ));
+      final tk = await lanDau();
+
+      expect(tk.taiSan.last.tong, 10000000.0);
+      expect(tk.taiSan[kSoKyXuHuong - 2].tong, 10400000.0,
+          reason: 'Trước khi chuyển ra ví ngoài tổng, 400.000 ấy vẫn nằm '
+              'trong tài sản.');
+    });
+
+    test('⚠️ khoản ĐIỀU CHỈNH SỐ DƯ vẫn vào đường', () async {
+      // `khoanVaoThongKe` loại nó khỏi thu/chi vì nó là phép sửa sổ — nhưng nó
+      // làm đổi số dư ví thật, nên đường tài sản phải thấy nó.
+      await db.transactionDao.insert(TransactionsCompanion.insert(
+        id: 'tDieuChinh',
+        idaccount: 1,
+        walletId: 'w1',
+        amount: 250000,
+        type: 'thu',
+        note: const Value('Điều chỉnh số dư'),
+        date: DateTime(2026, 9, 5),
+        updatedAt: now,
+      ));
+      final tk = await lanDau();
+
+      expect(tk.taiSan[kSoKyXuHuong - 2].tong, 9750000.0);
+    });
+
+    test('ví đã xoá mềm không cộng vào đường', () async {
+      await db.walletDao.insert(WalletsCompanion.insert(
+        id: 'wXoa',
+        idaccount: 1,
+        name: 'Ví đã xoá',
+        balance: const Value(7000000.0),
+        updatedAt: now,
+      ));
+      await db.walletDao.softDelete('wXoa');
+      final tk = await lanDau();
+
+      expect(tk.taiSan.last.tong, 10000000.0,
+          reason: 'Truy vấn ví của repository cố ý KHÔNG lọc `deletedAt` — '
+              'đúng cái bẫy G42. Vế lọc nằm trong `viTinhVaoTong`.');
+    });
+
+    test('giaoDichDauTien là ngày của giao dịch cũ nhất', () async {
+      await giaoDich(id: 't1', ngay: DateTime(2026, 9, 5), soTien: 1000);
+      await giaoDich(id: 't2', ngay: DateTime(2026, 7, 2), soTien: 1000);
+      final tk = await lanDau();
+
+      expect(tk.giaoDichDauTien, DateTime(2026, 7, 2));
+    });
+
+    test('giaoDichDauTien null khi chưa có giao dịch nào', () async {
+      final tk = await lanDau();
+      expect(tk.giaoDichDauTien, isNull);
+    });
+  });
 }

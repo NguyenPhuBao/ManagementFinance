@@ -568,10 +568,25 @@ List<ViThieu> _viThieu(List<CamKet> camKet, Map<String, Wallet> viTheoId) {
   if (dai <= 0) dai = dinh.abs() * 0.02;
   if (dai <= 0) dai = 1;
 
-  // Bước phải **≥ dải/2**: sàn bị kéo xuống bội gần nhất của bước nên khoảng
-  // phải phủ được `dải + bước`, tức `3 × bước ≥ dải + bước`.
-  var buoc = _buocTron(dai / 2);
+  // Ba khoảng giữa bốn nhãn, nên bước khởi điểm là `dải / 3`; phần hụt do làm
+  // tròn sàn được bù ở vòng nới ngay dưới.
+  //
+  // ⚠️ Bản trước đặt `dải / 2` và **không** kiểm lại — nó trừ hao trọn một
+  // bước cho phép làm tròn sàn, kể cả khi sàn đã đúng bội và chẳng mất gì. Với
+  // dải rộng bắt đầu từ 0 thì nó nới trần lên hơn gấp đôi: đường tổng tài sản
+  // 13.590.000 nhận trần **30.000.000** và bị ép xuống 45% dưới của khung —
+  // đo trên máy ảo 2026-09-17. Dải hẹp quanh một số lớn (đúng ca khối Dự báo
+  // sinh ra hàm này) cho **cùng một bước** ở cả hai công thức, nên đây là
+  // siết lại chứ không phải đổi hành vi của khối ấy.
+  var buoc = _buocTron(dai / 3);
   var san = (day / buoc).floorToDouble() * buoc;
+
+  // Nới khi trần **thật sự** chưa phủ đỉnh — phép kiểm đúng, thay cho phép trừ
+  // hao ở trên. Trần 30 vòng, cùng lý do với vòng nhãn bên dưới.
+  for (var i = 0; i < 30 && san + buoc * 3 < dinh; i++) {
+    buoc = _buocTron(buoc * 1.5);
+    san = (day / buoc).floorToDouble() * buoc;
+  }
 
   // Nới cho tới khi bốn nhãn khác nhau — `rutGon` chỉ giữ một chữ số lẻ. Trần
   // 30 vòng: một vòng `while` không trần trong hàm được widget gọi là cách
