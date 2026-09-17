@@ -240,6 +240,22 @@ void main() {
           ],
           syncFailed: true,
           tuanQuaCoGiaoDich: true,
+          // Loại thứ 17 (#7, 2026-09-17). Ngưỡng phải > 0: nó VỪA là ngưỡng
+          // vừa là công tắc, nên quên nó là danh sách rỗng và phép canh ngay
+          // dưới đỏ với lý do trông như 'thiếu ánh xạ deeplink'.
+          nguongChiLon: 1000000,
+          chiLon: [
+            (
+              id: 'gd-lon',
+              soTien: 5000000,
+              ngay: DateTime(2026, 9, 15),
+              loai: 'chi',
+              categoryId: 'dm-mua-sam',
+              ghiChu: null,
+              walletId: 'vi-can',
+              tenDanhMuc: 'Mua sắm',
+            ),
+          ],
         ));
 
     /// Loại **không** do `NotificationScanner` sinh ra, nên không thể có mặt

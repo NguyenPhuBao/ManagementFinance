@@ -24,6 +24,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/core/notification/notification_rules.dart';
 import 'package:flowmoney/core/notification/notification_scanner.dart';
 import 'package:flowmoney/core/notification/os/os_notifier.dart';
 import 'package:flowmoney/core/notification/os/os_scheduled_id.dart';
@@ -154,6 +155,8 @@ void main() {
     OsNotifier? osNotifier,
     NotificationPrefsStore? prefs,
     Future<void> Function(int idaccount)? onResyncLich,
+    List<KhoanChiLon> chiLon = const [],
+    void Function()? onNapChiLon,
   }) {
     var soId = 0;
     return NotificationScanner(
@@ -169,6 +172,10 @@ void main() {
       appLifecycle: vongDoi.stream,
       osNotifier: osNotifier,
       prefsStore: prefs,
+      loadChiLon: (id, from) async {
+        onNapChiLon?.call();
+        return chiLon;
+      },
       resyncLich: onResyncLich,
       clock: () => now,
       idGenerator: () => 'id-${soId++}',
@@ -865,6 +872,92 @@ void main() {
       expect(moi, 1);
       expect((await db.notificationDao.getAll(accountId)).single.kind,
           'billOverdue');
+    });
+  });
+
+  group('khoản chi lớn — bộ quét chỉ HỎI khi người dùng đã bật', () {
+    KhoanChiLon khoanChi(double soTien) => (
+          id: 'gd-lon',
+          soTien: soTien,
+          ngay: now.subtract(const Duration(days: 1)),
+          loai: 'chi',
+          categoryId: 'dm1',
+          ghiChu: null,
+          walletId: 'vi1',
+          tenDanhMuc: 'Mua sắm',
+        );
+
+    test('⚠️ ngưỡng 0 thì KHÔNG gọi loader lần nào', () async {
+      // Đây là điều giữ cho phần lớn bản cài không phải trả giá một truy vấn
+      // mỗi lượt quét cho một tính năng họ chưa bật. Cùng khuôn với
+      // `loadWeekActivity`, và cũng là lý do luật này nhận danh sách rỗng chứ
+      // không phải `null`.
+      var soLan = 0;
+      final scanner = dungScanner(
+        chiLon: [khoanChi(50000000)],
+        onNapChiLon: () => soLan++,
+      );
+
+      await scanner.scan(accountId);
+
+      expect(soLan, 0);
+      final hang = await db.notificationDao.getAll(accountId);
+      expect(hang.where((h) => h.kind == 'largeExpense'), isEmpty);
+    });
+
+    test('ngưỡng bật thì nạp và ghi đúng một hàng', () async {
+      final kho = InMemoryNotificationPrefsStore();
+      await kho.write(
+          accountId, const NotificationPrefs(nguongChiLon: 1000000));
+
+      var soLan = 0;
+      final scanner = dungScanner(
+        prefs: kho,
+        chiLon: [khoanChi(5000000)],
+        onNapChiLon: () => soLan++,
+      );
+
+      await scanner.scan(accountId);
+
+      expect(soLan, 1);
+      final hang = await db.notificationDao.getAll(accountId);
+      expect(hang.where((h) => h.kind == 'largeExpense'), hasLength(1));
+    });
+
+    test('quét hai lần chỉ ghi MỘT hàng — khoá chống trùng làm việc', () async {
+      final kho = InMemoryNotificationPrefsStore();
+      await kho.write(
+          accountId, const NotificationPrefs(nguongChiLon: 1000000));
+      final scanner = dungScanner(prefs: kho, chiLon: [khoanChi(5000000)]);
+
+      await scanner.scan(accountId);
+      final lanHai = await scanner.scan(accountId);
+
+      expect(lanHai, 0,
+          reason: 'Thông báo là dữ liệu suy ra được: mỗi lượt quét nhìn thấy '
+              'lại đúng khoản chi cũ. Không có khoá trùng thì người dùng nhận '
+              'lại cùng một thông báo mỗi lần mở app.');
+      final hang = await db.notificationDao.getAll(accountId);
+      expect(hang.where((h) => h.kind == 'largeExpense'), hasLength(1));
+    });
+
+    test('tắt nhóm Ngân sách thì không ghi hàng nào', () async {
+      // Loại này CHỊU công tắc nhóm — nó không nằm trong `luonBao`. Bộ lọc
+      // chạy trước khi ghi, nên tắt nhóm là không có cả hàng trong app.
+      final kho = InMemoryNotificationPrefsStore();
+      await kho.write(
+        accountId,
+        const NotificationPrefs(
+          nguongChiLon: 1000000,
+          nhomTat: {NotificationGroup.budget},
+        ),
+      );
+      final scanner = dungScanner(prefs: kho, chiLon: [khoanChi(5000000)]);
+
+      await scanner.scan(accountId);
+
+      final hang = await db.notificationDao.getAll(accountId);
+      expect(hang.where((h) => h.kind == 'largeExpense'), isEmpty);
     });
   });
 }

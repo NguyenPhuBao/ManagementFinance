@@ -171,6 +171,29 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     return hang != null;
   }
 
+  /// Mọi khoản **chi** còn sống từ [from] trở đi — đầu vào của luật "Khoản chi
+  /// lớn" (#7, 2026-09-17).
+  ///
+  /// Không lọc theo số tiền ở đây: ngưỡng là tuỳ chọn của người dùng và luật
+  /// sống ở tầng thuần, nên đưa nó xuống SQL là chẻ một luật ra làm hai nơi.
+  /// Cửa sổ [from] mới là thứ giữ cho câu này rẻ — nơi gọi truyền đúng
+  /// `cuaSoSuKien` 30 ngày.
+  ///
+  /// `type = 'chi'` lọc sẵn được vì nó là cột; ba luật loại trừ còn lại (khoản
+  /// chuyển, điều chỉnh số dư, mở sổ) **cố ý để bộ luật lo** qua
+  /// `khoanVaoThongKe` — chúng có một định nghĩa duy nhất và nó không nằm ở
+  /// tầng này.
+  Future<List<Transaction>> getChiTuNgay(int idaccount, DateTime from) {
+    return (select(transactions)
+          ..where((t) =>
+              t.idaccount.equals(idaccount) &
+              t.deletedAt.isNull() &
+              t.type.equals('chi') &
+              t.date.isBiggerOrEqualValue(from))
+          ..orderBy([(t) => OrderingTerm.desc(t.date)]))
+        .get();
+  }
+
   /// Tổng thu/chi theo tháng
   Future<Map<String, double>> getSummaryByMonth(
     int idaccount,

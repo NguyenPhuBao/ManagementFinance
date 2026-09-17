@@ -1,6 +1,6 @@
 # Trang Phân tích — thiết kế, lý do, và những cái bẫy
 
-**Cập nhật:** **2026-09-17** (mục **3.30** — **tổng tài sản theo thời gian**, mục #5 của khảo sát lần hai, và **đổi tên** khỏi "tài sản ròng" vì app không có mô hình công nợ; kèm vế **thứ ba** của bẫy **4.21** — `daiTrucDuBao` quá rộng với dải bắt đầu từ 0) · 2026-09-15 (mục **3.20** — **P1: phạm vi thời gian**; mục **3.21** — **P2**: bốn khối mượn từ trang Xuất báo cáo; mục **3.22** — **A8 #4 và #5**: hai biểu đồ cột vay/nợ; **G40 đóng** — trang Xem trước báo cáo lệch cột số tiền ở **sáu** chỗ, đo được 93px, xem bẫy **4.19**; **nhãn quý rút thành `Q3 2026`** để ô header thôi cụt, xem mục **3.20**; mục **3.23** — **A8 #10**: thác nước "Tiền đi đâu", kèm vạch trung bình trên từng cột chi; mục **3.24** — **A8 #8**: dòng tiền tự do, và bẫy **4.20** — `rutGon` từng in `-0` ở nhãn trục; mục **3.25** — **khảo sát app thị trường lần hai**, chốt làm tỷ lệ tiết kiệm và dự báo dòng tiền, bỏ hai mục thiếu trường đối tác; mục **3.26** — **tỉ lệ tiết kiệm**) · **2026-09-16** (mục **3.27** — **dự báo dòng tiền 30 ngày tới**, mục #4 của khảo sát; kèm bẫy **4.21** — khi nào trục từ 0, khi nào co, và vì sao bước phải tròn) · bản trước 2026-09-14 (mục **3.19** — A8 #3, #7: cơ cấu theo danh mục với ba chip nhóm, và xu hướng tới 5 danh mục cùng lúc; bản thi công **lần hai**, #2 đã bỏ)
+**Cập nhật:** **2026-09-17** (bảng khảo sát lần hai ở mục **3.25** nay **ĐÓNG** — mục cuối là **#7 cảnh báo bất thường**, làm xong cùng ngày nhưng nằm ở `NOTIFICATION_FEATURE.md` mục **5f** chứ không ở trang này; mục **3.30** — **tổng tài sản theo thời gian**, mục #5 của khảo sát lần hai, và **đổi tên** khỏi "tài sản ròng" vì app không có mô hình công nợ; kèm vế **thứ ba** của bẫy **4.21** — `daiTrucDuBao` quá rộng với dải bắt đầu từ 0) · 2026-09-15 (mục **3.20** — **P1: phạm vi thời gian**; mục **3.21** — **P2**: bốn khối mượn từ trang Xuất báo cáo; mục **3.22** — **A8 #4 và #5**: hai biểu đồ cột vay/nợ; **G40 đóng** — trang Xem trước báo cáo lệch cột số tiền ở **sáu** chỗ, đo được 93px, xem bẫy **4.19**; **nhãn quý rút thành `Q3 2026`** để ô header thôi cụt, xem mục **3.20**; mục **3.23** — **A8 #10**: thác nước "Tiền đi đâu", kèm vạch trung bình trên từng cột chi; mục **3.24** — **A8 #8**: dòng tiền tự do, và bẫy **4.20** — `rutGon` từng in `-0` ở nhãn trục; mục **3.25** — **khảo sát app thị trường lần hai**, chốt làm tỷ lệ tiết kiệm và dự báo dòng tiền, bỏ hai mục thiếu trường đối tác; mục **3.26** — **tỉ lệ tiết kiệm**) · **2026-09-16** (mục **3.27** — **dự báo dòng tiền 30 ngày tới**, mục #4 của khảo sát; kèm bẫy **4.21** — khi nào trục từ 0, khi nào co, và vì sao bước phải tròn) · bản trước 2026-09-14 (mục **3.19** — A8 #3, #7: cơ cấu theo danh mục với ba chip nhóm, và xu hướng tới 5 danh mục cùng lúc; bản thi công **lần hai**, #2 đã bỏ)
 **Trạng thái:** **mảng Phân tích đã xong cả 2a, 2b, 2c** (2026-09-09). Lát **2a** xong — mọi con số trên trang là số thật từ SQLite —
 lát **2b** xong (khối "Xu hướng 6 tháng" vẽ bằng `fl_chart`), lát **2c‑1** xong
 (trang Xuất báo cáo đọc ví/danh mục/thời gian thật rồi mở màn **Xem trước báo
@@ -1062,7 +1062,7 @@ nước "Tiền đi đâu", dòng tiền tự do, và hai biểu đồ vay/nợ;
 | 4 | **Dự báo dòng tiền** | PocketSmith — chiếu số dư tới từng ngày, 30–60 năm | ✅ nguyên liệu hiếm: hoá đơn lặp có `anchorDay`+`recurrence`+`autoPay`, ngân sách có kỳ, mục tiêu có trích tự động | ✅ **XONG 2026-09-16**, mục **3.27** |
 | 5 | Tài sản ròng theo thời gian | Monarch, PocketSmith | ⚠️ làm được nhưng lệch có điều kiện — xem dưới | ✅ **XONG 2026-09-17**, mục **3.30** — và đổi tên thành **"Tổng tài sản"**: app không có mô hình công nợ |
 | 6 | Lịch chi tiêu (heatmap) | PocketSmith, Money Lover | ✅ đủ | ✅ **XONG 2026-09-16**, mục **3.29** |
-| 7 | Cảnh báo bất thường | Rocket Money | ✅ đủ, đã có hạ tầng thông báo | chưa |
+| 7 | Cảnh báo bất thường | Rocket Money | ✅ đủ, đã có hạ tầng thông báo | ✅ **XONG 2026-09-17** — loại thông báo **thứ 17**, mục **5f** `NOTIFICATION_FEATURE.md`. "Bất thường" là **ngưỡng người dùng đặt**, không phải thống kê theo danh mục |
 | 8 | Phát hiện chi định kỳ tự động | Rocket Money | ⚠️ thiếu trường đối tác → phải đoán | 🛑 **bỏ** |
 | 9 | Chi theo đối tác (merchant) | Monarch, Copilot | ⛔ chặn thật — không có cột `payee` | 🛑 **bỏ** |
 
@@ -1078,9 +1078,10 @@ nữa"*.
 #7". Cùng ngày **#2 xong** (mục 3.28) và **#6 xong** (mục 3.29); **#5 xong** ngày
 2026-09-17 (mục 3.30). Còn **#7**.)* *(Ảnh chụp 2026-09-16, nay đã lỗi thời: "Còn lại **hai** ô trống thật … **#5**
 tài sản ròng theo thời gian và **#7** cảnh báo bất thường." **#5 xong
-2026-09-17** — mục **3.30**.)* Còn lại **một** ô trống thật, **chưa bị bỏ**, chỉ
-là chưa ai chốt làm: **#7** cảnh báo bất thường. ⚠️ **#7 không nằm ở trang Phân
-tích** — nó là loại thông báo thứ **17**, đụng `docs/NOTIFICATION_FEATURE.md` và
+2026-09-17** — mục **3.30**.)* *(Ảnh chụp 2026-09-17 sáng, nay đã lỗi thời: "Còn lại **một** ô trống thật … **#7** cảnh báo bất
+thường." **#7 xong** chiều cùng ngày.)* Bảng khảo sát lần hai nay **ĐÓNG**: **sáu** mục đã
+làm (#1, #2, #4, #5, #6, #7) và **ba** mục bỏ hẳn (#3, #8, #9) — vừa đủ chín. ⚠️ **#7 không nằm ở trang Phân
+tích** — nó là loại thông báo thứ **18**, đụng `docs/NOTIFICATION_FEATURE.md` và
 mười ba cái bẫy của tệp ấy.
 
 #### ⚠️ Mục 5 lật một giả định, và cũng tự đặt ra giới hạn của nó

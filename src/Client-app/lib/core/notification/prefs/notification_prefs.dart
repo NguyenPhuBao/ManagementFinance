@@ -22,6 +22,11 @@ NotificationGroup nhomCua(NotificationKind kind) {
       return NotificationGroup.bill;
     case NotificationKind.budgetNearLimit:
     case NotificationKind.budgetOverspent:
+    // Cùng bản chất "chi tiêu vượt một mức" với hai loại trên, nên dùng chung
+    // công tắc: ai tắt nhóm Ngân sách vì thấy nhắc chi tiêu phiền thì cũng
+    // không muốn bị nhắc từng khoản chi lớn. Nhóm riêng sẽ là chip thứ tám
+    // trên một dải đã phải cuộn ngang, đổi lấy một phân biệt không ai cần.
+    case NotificationKind.largeExpense:
       return NotificationGroup.budget;
     case NotificationKind.goalCompleted:
     case NotificationKind.goalCycleReady:
@@ -83,6 +88,11 @@ bool luonBao(NotificationKind kind) {
     case NotificationKind.billOverdue:
     case NotificationKind.budgetNearLimit:
     case NotificationKind.budgetOverspent:
+    // Chịu công tắc nhóm. Nó báo một khoản chi người dùng **tự biết** — hoặc
+    // tự gõ, hoặc thấy trên sao kê — chứ không phải việc app rút tiền hộ họ
+    // lúc vắng mặt. Đó mới là ranh giới của `luonBao`; nới nó ra là làm công
+    // tắc nhóm Ngân sách mất tác dụng một nửa.
+    case NotificationKind.largeExpense:
     case NotificationKind.goalCompleted:
     case NotificationKind.goalCycleReady:
     case NotificationKind.goalBehind:
@@ -120,6 +130,7 @@ class NotificationPrefs {
     this.imLangTuPhut = _imLangTuMacDinh,
     this.imLangDenPhut = _imLangDenMacDinh,
     this.nguongSoDuThap = _nguongSoDuMacDinh,
+    this.nguongChiLon = _nguongChiLonMacDinh,
     this.nhacGhiChepBat = false,
     this.gioNhacGhiChep = _gioGhiChepMacDinh,
     this.phutNhacGhiChep = _phutGhiChepMacDinh,
@@ -173,6 +184,20 @@ class NotificationPrefs {
   /// này — bật sẵn là lặng lẽ đổi hành vi của mọi bản đã cài, cùng lý lẽ với
   /// giờ im lặng.
   final int nguongSoDuThap;
+
+  /// Báo khi một **khoản chi** đạt tới mức này, đơn vị đồng (#7 khảo sát
+  /// lần hai, 2026-09-17).
+  ///
+  /// Cùng khuôn và cùng lý lẽ với [nguongSoDuThap] đến từng chi tiết: `0`
+  /// là **tắt** chứ không phải "báo mọi khoản", và đó là mặc định — mọi
+  /// bản ghi đang nằm trên máy người dùng đều thiếu trường này, nên bật
+  /// sẵn là lặng lẽ bắn thông báo cho những khoản chính họ đã gõ từ mấy
+  /// tháng trước.
+  ///
+  /// Một con số thay vì một cặp công tắc-cộng-số: cặp ấy biểu diễn được
+  /// trạng thái vô nghĩa "bật nhưng ngưỡng bằng 0", còn một con số thì
+  /// không.
+  final int nguongChiLon;
 
   /// Có nhắc người dùng ghi chép vào cuối ngày không.
   ///
@@ -263,6 +288,14 @@ class NotificationPrefs {
   /// chặn ở phía ngân sách.
   static const int _nguongSoDuToiDa = 1000000000;
 
+  static const int _nguongChiLonMacDinh = 0;
+
+  /// Trần của [nguongChiLon] — một tỉ đồng, cùng con số và cùng lý lẽ với
+  /// [_nguongSoDuToiDa]: lưới chắn dữ liệu hỏng, không phải hạn chế sản
+  /// phẩm. Một ngưỡng vô nghĩa lớn biến cảnh báo thành luôn-tắt, thứ người
+  /// dùng đọc thành "tính năng không chạy".
+  static const int _nguongChiLonToiDa = 1000000000;
+
   static const NotificationPrefs macDinh = NotificationPrefs();
 
   bool batNhom(NotificationGroup nhom) => !nhomTat.contains(nhom);
@@ -307,6 +340,7 @@ class NotificationPrefs {
     int? imLangTuPhut,
     int? imLangDenPhut,
     int? nguongSoDuThap,
+    int? nguongChiLon,
     bool? nhacGhiChepBat,
     int? gioNhacGhiChep,
     int? phutNhacGhiChep,
@@ -325,6 +359,7 @@ class NotificationPrefs {
       imLangTuPhut: imLangTuPhut ?? this.imLangTuPhut,
       imLangDenPhut: imLangDenPhut ?? this.imLangDenPhut,
       nguongSoDuThap: nguongSoDuThap ?? this.nguongSoDuThap,
+      nguongChiLon: nguongChiLon ?? this.nguongChiLon,
       nhacGhiChepBat: nhacGhiChepBat ?? this.nhacGhiChepBat,
       gioNhacGhiChep: gioNhacGhiChep ?? this.gioNhacGhiChep,
       phutNhacGhiChep: phutNhacGhiChep ?? this.phutNhacGhiChep,
@@ -345,6 +380,7 @@ class NotificationPrefs {
         'imLangTuPhut': imLangTuPhut,
         'imLangDenPhut': imLangDenPhut,
         'nguongSoDuThap': nguongSoDuThap,
+        'nguongChiLon': nguongChiLon,
         'nhacGhiChepBat': nhacGhiChepBat,
         'gioNhacGhiChep': gioNhacGhiChep,
         'phutNhacGhiChep': phutNhacGhiChep,
@@ -375,6 +411,8 @@ class NotificationPrefs {
           json['imLangDenPhut'], 0, _phutTrongNgay - 1, _imLangDenMacDinh),
       nguongSoDuThap: _docSo(json['nguongSoDuThap'], 0, _nguongSoDuToiDa,
           _nguongSoDuMacDinh),
+      nguongChiLon: _docSo(json['nguongChiLon'], 0, _nguongChiLonToiDa,
+          _nguongChiLonMacDinh),
       nhacGhiChepBat: json['nhacGhiChepBat'] is bool
           ? json['nhacGhiChepBat']! as bool
           : false,
@@ -422,6 +460,7 @@ class NotificationPrefs {
       other.imLangTuPhut == imLangTuPhut &&
       other.imLangDenPhut == imLangDenPhut &&
       other.nguongSoDuThap == nguongSoDuThap &&
+      other.nguongChiLon == nguongChiLon &&
       other.nhacGhiChepBat == nhacGhiChepBat &&
       other.gioNhacGhiChep == gioNhacGhiChep &&
       other.phutNhacGhiChep == phutNhacGhiChep &&
@@ -438,6 +477,7 @@ class NotificationPrefs {
         imLangTuPhut,
         imLangDenPhut,
         nguongSoDuThap,
+        nguongChiLon,
         nhacGhiChepBat,
         gioNhacGhiChep,
         phutNhacGhiChep,

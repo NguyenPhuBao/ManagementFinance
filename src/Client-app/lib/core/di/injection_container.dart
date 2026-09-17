@@ -365,6 +365,33 @@ Future<void> setupDependencies() async {
       loadWeekActivity: (idaccount, from, to) => sl<AppDatabase>()
           .transactionDao
           .coGiaoDichTrongKhoang(idaccount, from, to),
+      // Khoản chi lớn (#7). Tên danh mục tra bằng `getBangTraTen` — bảng tra
+      // dùng chung, GIỮ cả hàng đã xoá mềm và hàng mặc định toàn cục
+      // (`idaccount = 0`). Viết truy vấn riêng ở đây là bản chép tay thứ ba của
+      // cùng một luật, và thiếu vế `isDefault` thì mọi khoản trỏ vào danh mục
+      // mặc định mất tên — đúng G41.
+      loadChiLon: (idaccount, from) async {
+        final db = sl<AppDatabase>();
+        final rows = await db.transactionDao.getChiTuNgay(idaccount, from);
+        if (rows.isEmpty) return const [];
+        final ten = {
+          for (final c in await db.categoryDao.getBangTraTen(idaccount))
+            c.id: c.name,
+        };
+        return [
+          for (final t in rows)
+            (
+              id: t.id,
+              soTien: t.amount,
+              ngay: t.date,
+              loai: t.type,
+              categoryId: t.categoryId,
+              ghiChu: t.note,
+              walletId: t.walletId,
+              tenDanhMuc: t.categoryId == null ? null : ten[t.categoryId],
+            ),
+        ];
+      },
       markOverdue: (idaccount, now) =>
           sl<AppDatabase>().billDao.markOverdue(idaccount, now),
       syncStatus: sl<SyncEngine>().statusStream,

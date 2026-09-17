@@ -595,6 +595,34 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-17)
 
+### 🔔 Khoản chi lớn — loại thông báo thứ 18 (2026-09-17)
+
+Mục **#7** của khảo sát app thị trường lần hai, và là mục **cuối cùng** của bảng
+ấy — khảo sát nay **đóng**. Bàn giao đầy đủ ở mục **5f**
+`docs/NOTIFICATION_FEATURE.md`.
+
+⚠️ **"Bất thường" ở đây là NGƯỠNG người dùng đặt, không phải thống kê theo danh
+mục** như Rocket Money. Phép đo quyết định lối này: tài khoản thật có **8 ngày**
+dữ liệu và danh mục đông nhất chỉ **5** giao dịch (đo 2026-09-17), nên một luật
+thống kê sẽ im hàng tháng rồi bắt đầu nổ bừa ngay khi vừa đủ mẫu. Một con số do
+người dùng đặt thì chạy từ ngày đầu và **không thể báo động giả** — điều đáng
+giữ nhất, vì ai tắt thông báo vì phiền sẽ mất luôn 17 loại kia.
+
+`nguongChiLon` mặc định **0 = tắt**, bản sao đúng khuôn `nguongSoDuThap`. Xếp
+vào **nhóm Ngân sách** nên không thêm chip, không đụng ca canh
+`NotificationGroup.values.length + 2`.
+
+**Ba chốt hỏng im lặng:** "chi" đi qua `khoanVaoThongKe` (loại khoản chuyển,
+điều chỉnh số dư và **mở sổ**); khoá `bigSpend:<idGiaoDich>` **không chở
+`walletId`** — chở nó thì đổi ví của một khoản chi đẻ thông báo thứ hai, nên
+deeplink là `/transactions` trần; và `createdAt` là **ngày giao dịch**, nếu
+không thì `silenceBefore` mất tác dụng ở lần bật đầu tiên.
+
+Nghiệm thu máy ảo: đặt 500.000 → **một** hàng đúng ngày giao dịch, lượt quét thứ
+hai **0 hàng mới**, chạm mở Sổ giao dịch, đặt lại Tắt thì im. Không đổi schema
+(vẫn **v22**), không thêm trường đồng bộ. `flutter test` **2774/2774**,
+`flutter analyze` **25 issue, 0 error**.
+
 ### 💰 Tổng tài sản theo thời gian (2026-09-17)
 
 Mục **#5** của khảo sát app thị trường lần hai — đường thứ **ba** của bộ sáu kỳ

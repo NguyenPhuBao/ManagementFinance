@@ -123,6 +123,14 @@ String deeplinkTuDedupeKey(String key) {
     case 'walletLow':
       return '/wallets';
 
+    // Khoản chi lớn (#7, 2026-09-17). Khoá là `bigSpend:<idGiaoDich>` và **cố
+    // ý không chở theo `walletId`**: chở nó thì hàm này dựng được
+    // `/transactions?wallet=…`, nhưng đổi ví của một khoản chi sẽ đổi luôn
+    // khoá, tức một thông báo THỨ HAI cho cùng một khoản — im lặng. Một cú
+    // chạm kém chính xác hơn rẻ hơn hẳn một bản sao.
+    case 'bigSpend':
+      return '/transactions';
+
     // Tổng kết tuần. Khoá là `weekly:<nam>-W<tuan>:<thứ Hai yyyy-MM-dd>`, và
     // đoạn thứ ba tồn tại **chính vì hàm này**: ở cold start không tra được
     // CSDL, còn phép nghịch đảo của số tuần ISO là một hàm dễ sai mà không ai
