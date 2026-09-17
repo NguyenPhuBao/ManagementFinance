@@ -1593,9 +1593,29 @@ và trông y như test không canh gì. Neo bản sai bằng **cả dòng chú t
 nhận *timeout không phải thất bại, đừng gọi lại*. ⚠️ Vẫn mang
 `deviceType: DESKTOP` dù lượt gọi truyền `MOBILE`.
 
-Lần này màn Stitch **khớp bản thi công**, khác hai lần trước: prompt nói rõ
-đường dùng màu trung tính `#1a1a19` và màu xanh lá chỉ dành cho con số thay
-đổi, nên không lặp lại chỗ lệch màu của mục 3.27 và 3.29.
+**Màu thì khớp** — khác hai lần trước: prompt nói rõ đường dùng màu trung tính
+`#1a1a19` và màu xanh lá chỉ dành cho con số thay đổi, nên không lặp lại chỗ
+lệch màu của mục 3.27 và 3.29.
+
+⚠️ **Nhưng bố cục thì lệch một chỗ, và nó là lỗi của chính prompt:** màn vẽ
+**đồng thời** dòng thay đổi *"+2.350.000 đ trong 6 tháng"* **và** câu cảnh báo
+*"Trước 02/09/2026 chưa có giao dịch nào…"*. Bản thi công **không bao giờ**
+dựng ra trạng thái ấy: hai thứ loại trừ nhau theo đúng thiết kế, vì
+`thayDoiTaiSan` trả `null` chính xác khi `mocThieuDuLieu` có giá trị. Màn còn
+tự mâu thuẫn theo một cách thứ hai đi kèm: đường của nó lên đều suốt sáu tháng
+(11,24M → 13,59M), tức có đủ lịch sử — trong khi câu ngay dưới nói trước
+02/09 không có giao dịch nào.
+
+Prompt liệt kê cả hai phần tử mà **không nói chúng loại trừ nhau**, nên Stitch
+vẽ cả hai; không phải công cụ hiểu sai. Bài học cho lần sau: *mô tả một khối
+cho Stitch thì phải nói rõ phần tử nào không thể cùng xuất hiện* — nếu không,
+màn thiết kế sẽ mô tả một trạng thái không tồn tại và người đọc nó sau này sẽ
+tưởng bản thi công thiếu mất một dòng.
+
+⚠️ Và một bài học về **cách nghiệm thu**: lượt kiểm đầu chỉ đọc **văn bản HTML**
+cùng bảng màu rồi kết luận "khớp bản thi công". Chỗ lệch này chỉ lộ ra khi
+**xem ảnh render** — trong dòng chữ thì hai câu ấy chỉ là hai chuỗi nằm cạnh
+nhau, không có gì nói rằng chúng đang hiện cùng lúc.
 
 **Không đổi schema** (vẫn v22), **không thêm trường đồng bộ**, không nguồn
 stream mới.
