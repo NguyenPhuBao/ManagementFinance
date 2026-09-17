@@ -1099,8 +1099,9 @@ chặn bởi mô hình dữ liệu.
 
 Cái chặn nó là chỗ khác, và nhỏ hơn: khoản neo "Số dư ban đầu" được ghi với
 `date: now` (`so_du_vi_service.dart:119`) — tức **ngày vá**, không phải ngày tạo
-ví. Nên đường tài sản ròng **đúng từ 2026-09-13 trở đi**, còn trước mốc ấy thì
-thiếu số dư khởi điểm của những ví có trước G37. Cùng họ giới hạn với mục 3.16,
+ví. Nên đường **tổng tài sản** *(tên chốt khi làm mục 3.30; khối này viết trước đó
+nên còn gọi là "tài sản ròng")* **đúng từ 2026-09-13 trở đi**, còn trước mốc
+ấy thì thiếu số dư khởi điểm của những ví có trước G37. Cùng họ giới hạn với mục 3.16,
 và nếu làm thì **phải nói ra trên giao diện** chứ không giấu.
 
 Đây là lần thứ ba bài học ấy trả tiền: **một mục bị xếp "chặn bởi mô hình dữ
@@ -1617,6 +1618,29 @@ cùng bảng màu rồi kết luận "khớp bản thi công". Chỗ lệch này
 **xem ảnh render** — trong dòng chữ thì hai câu ấy chỉ là hai chuỗi nằm cạnh
 nhau, không có gì nói rằng chúng đang hiện cùng lúc.
 
+#### Nghiệm thu
+
+`flutter test` **2743/2743** · `flutter analyze` **25 issue, 0 error** — đếm
+bằng máy 2026-09-17. Analytics có **21** tệp / **548** test (đếm bằng chính
+`flutter test test/features/analytics`). ⚠️ Mốc **2742** đo cùng ngày là ảnh
+chụp **trước** lượt siết `daiTrucDuBao` — đừng dùng.
+
+Máy ảo `emulator-5554`, tài khoản thật: ba chỗ cùng nói `13.590.000 đ`; câu
+cảnh báo đúng ngày `02/09/2026`; đổi sang đơn vị **Quý** thì tiêu đề thành
+*"Tổng tài sản 6 quý gần đây"* và sáu nhãn `Q2/25 … Q3/26` đôi một khác nhau,
+không nhãn nào chồng; trục sau khi siết là `0 / 5M / 10M / 15M`.
+
+**Bản sai có chủ ý: chín lượt** (11 lần chạy bộ test) — bốn ở tầng thuần (kẹp
+mốc, lọc `viTinhVaoTong`, khoản chuyển thiếu ví đích, guard `null` của
+`thayDoiTaiSan`), một ở chỗ nối repository (dùng `trongKy` thay `txs` → **2**
+ca đỏ), ba ở widget (dòng thay đổi, câu cảnh báo, và chốt hai lớp — riêng chốt
+hai lớp là **3** lần chạy), và một ở `daiTrucDuBao` (trả về luật `dải/2` → **2**
+ca đỏ).
+
+⚠️ Con số này **đếm lại ngày 2026-09-17 trong lượt soát tài liệu**; commit
+`0622b8c` và bản đầu của mục này ghi **tám** vì quên chính lượt `daiTrucDuBao`.
+Đúng bài học đã ghi nhiều lần: *đếm bằng máy, kể cả con số vừa viết.*
+
 **Không đổi schema** (vẫn v22), **không thêm trường đồng bộ**, không nguồn
 stream mới.
 
@@ -1918,8 +1942,11 @@ AnalyticsPage ──watch AuthBloc──▶ idaccount
 
 `ThongKeKy` mang: tổng kỳ này, tổng kỳ trước, chi theo danh mục (thô,
 cho donut), cùng danh sách ấy đã tra tên/biểu tượng/màu/ngân sách (cho bảng),
-và **`chuoi`** — sáu điểm `DiemThoiGian` cho biểu đồ xu hướng. Widget **không
-cộng gì cả**.
+**`chuoi`** — sáu điểm `DiemThoiGian` cho biểu đồ xu hướng, và **`taiSan`** —
+sáu điểm `DiemTaiSan` cho đường tổng tài sản, kèm `giaoDichDauTien` để khối ấy
+biết đoạn đầu đường có đứng vững không. Widget **không cộng gì cả**: con số
+lớn của khối tổng tài sản là `taiSan.last.tong`, không phải một phép cộng ví
+riêng — cộng lại ở tầng vẽ là bản chép tay thứ **sáu** của `viTinhVaoTong`.
 
 Trang **Xuất báo cáo** đi đường riêng, không qua cubit nào:
 
