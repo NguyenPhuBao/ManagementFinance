@@ -595,6 +595,39 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-17)
 
+### 📄 Ba khối cuối vào tệp xuất báo cáo — và một lỗi glyph có từ 2026-09-09 (2026-09-17)
+
+Tệp PDF/CSV nay mang **so với kỳ trước**, **số liệu nhanh** và **top 5 khoản
+chi** — ba khối mà màn Xem trước đã hiện từ 2026-09-09 còn tệp thì không. Cả ba
+đã nằm sẵn trong `BaoCao`, nên cả hạng mục gói trong **một** tệp `lib`:
+`features/analytics/domain/xuat_tep.dart`. **Schema không đổi** (vẫn v23),
+**không thêm trường đồng bộ**, không đụng repository. Lý do đầy đủ ở mục
+**3.31 `docs/ANALYTICS_FEATURE.md`**. 16 test mới.
+
+> ⚠️ **Lượt này bắt được một lỗi đã chạy trong app từ 2026-09-09.** Bản Roboto
+> nhúng cho PDF **không có** khối Mũi tên (U+2190…) lẫn khối Hình học
+> (U+25A0…), và gói `pdf` **bỏ ký tự thiếu glyph đi** rồi chỉ in một dòng ra
+> console. Nên dòng dòng tiền của **mọi tệp PDF app từng xuất** đều mất dấu
+> `→`, im lặng — đúng họ với lỗi "rơi về Helvetica" mà mục 3.17 đã dựng hàng
+> rào, chỉ khác là bản font **đúng** vẫn dính. Nay là `»`.
+> Nó lộ ra vì bản thiết kế đầu định dùng `▲`/`▼` cho dòng phần trăm của PDF —
+> hai ký tự ấy **cũng** thiếu. Phần trăm nay là `+12,5%` / `-3,0%`, màu vẫn nói
+> tốt/xấu.
+> Phép canh là một ca test quét **chuỗi hằng của chính `xuat_tep.dart`** rồi
+> đòi mọi ký tự ngoài ASCII có mặt trong `charToGlyphIndexMap` của cả hai tệp
+> Roboto (`TtfParser` là API công khai của gói `pdf`). Chữ của *người dùng* thì
+> không chặn trước được — giới hạn cố ý.
+> ⚠️ Hai bẫy im lặng nữa, đều có ca test riêng: `_tiLe` nhân 100 còn
+> `phanTramSoVoi` đã nhân rồi (dùng nhầm là in `1250.0`), và ô phần trăm của
+> CSV phải **rỗng** chứ không `—` vì đó là cột số Excel sắp cộng.
+> **Đã kiểm trên `emulator-5554`** (tài khoản 10, dữ liệu thật): xuất CSV và
+> PDF tháng 9, cộng một khoảng **rỗng** có kỳ trước **không** rỗng (08–17/09)
+> để chạm cả hai nhánh phần trăm; kéo tệp về đọc bằng `adb pull` + `pypdf`.
+> ⚠️ Bố cục PDF chỉ kiểm được qua **thứ tự văn bản** — máy này không có
+> poppler/ghostscript để dựng ảnh raster.
+> ⚠️ Một chỗ lệch **có sẵn**, không phải do hạng mục này: kỳ rỗng thì màn Xem
+> trước giấu mọi khối, còn tệp vẫn in khối **Ngân sách kỳ này**. Chưa sửa.
+
 ### 💳 Ví được phép âm — G27 đóng (2026-09-17)
 
 Lỗ hổng cuối cùng còn mở mà **không** phải "hoãn có chủ ý". Ví đánh dấu cho
@@ -789,9 +822,12 @@ cho đầy bảng.
 trên nút "Tải xuống" đang hiện — % so với kỳ trước (`tongTruoc`), số liệu nhanh
 (`soLieu`), và top 5 khoản chi (`topChi`). Cả ba trường **đã nằm sẵn** trong
 `BaoCao` nhưng `analytics/domain/xuat_tep.dart` không đọc (grep ba tên trường
-trong tệp ấy: **0** kết quả). Và **16 khối** của trang Phân tích *(đếm lại bằng máy 2026-09-17, sau khi thêm Tổng tài sản theo thời gian; mốc **15** là của cuối ngày 2026-09-16, sau khi thêm Lịch chi tiêu; con số **14** viết sáng cùng ngày là ảnh chụp trước đó — `_KhoiDuBao` xuất hiện hai lần trong mã nhưng là **một** khối người dùng thấy, còn `_KhoiVayNo` hai lần là **hai** khối thật)* thì không có
+trong tệp ấy: **0** kết quả). ✅ **Khoảng lệch thứ nhất đã đóng ngày
+2026-09-17** — mục **3.31 `docs/ANALYTICS_FEATURE.md`**, và lượt ấy còn lôi ra
+một lỗi glyph đã chạy từ 2026-09-09 (khối 📄 ở đầu mục 14). **Khoảng lệch thứ
+hai vẫn còn.** Và **16 khối** của trang Phân tích *(đếm lại bằng máy 2026-09-17, sau khi thêm Tổng tài sản theo thời gian; mốc **15** là của cuối ngày 2026-09-16, sau khi thêm Lịch chi tiêu; con số **14** viết sáng cùng ngày là ảnh chụp trước đó — `_KhoiDuBao` xuất hiện hai lần trong mã nhưng là **một** khối người dùng thấy, còn `_KhoiVayNo` hai lần là **hai** khối thật)* thì không có
 đường xuất tệp nào — `pdfBaoCao`/`csvBaoCao` chỉ có **một** chỗ gọi, ở
-`report_preview_page.dart`. Chưa ai chốt làm gì với hai khoảng lệch ấy.
+`report_preview_page.dart`. Chưa ai chốt làm gì với khoảng lệch **thứ hai** ấy.
 
 ### 🔮 Dự báo dòng tiền 30 ngày tới (2026-09-16)
 
@@ -1310,7 +1346,7 @@ hiện cũng không chứng minh lời gọi của mình tạo ra nó. Hỏi ng�
   > **Đã kiểm trên `emulator-5554`** (tài khoản 10): ngân sách hiện *"Di chuyển 285.000/50.000 — Vượt 235.000 đ"* và *"Giáo dục 45.000/50.000 — Còn 5.000 đ"*; phân bổ ba ví thật; số dư đầu kỳ ra **âm** và đó là số thật (thu tháng 9 nhiều hơn tổng số dư hiện có). 0 pixel vàng ở khổ 411dp trên bốn ảnh chụp.
 - **Phân tích: lát 2c‑2 — nút "Tải xuống" sinh tệp PDF/CSV thật** (2026-09-09, **schema không đổi**). Giao diện đã bày hai ô định dạng nên làm **cả hai**; bày một ô rồi không làm là đúng cái kiểu "lời hứa suông" mà 2c‑1 vừa dọn. Thêm hai phụ thuộc: `pdf` dựng tài liệu, `share_plus` đưa tệp ra sheet chia sẻ/lưu của hệ điều hành (**nay chỉ còn là đường lùi** — xem mục ngay dưới). CSV tự viết chuỗi, không cần thư viện. Lý do đầy đủ ở **mục 3.17 và 3.18 `docs/ANALYTICS_FEATURE.md`**. 19 test mới.
   > ⚠️ **Quyết định về NƠI LƯU của mục này đã bị mục ngay dưới thay thế trong cùng ngày** — đọc tiếp trước khi tin. Bản đầu ghi tệp vào thư mục tạm rồi mở sheet chia sẻ, vì ghi vào bộ nhớ chung cần `WRITE_EXTERNAL_STORAGE` (Android ≤ 9) hoặc `MediaStore` qua kênh nền tảng (Android 10+); nay chính `MediaStore` ấy đã được làm, và sheet chia sẻ chỉ còn là đường lùi.
-  > ⚠️ **Font PDF phải nhúng.** Font mặc định của gói `pdf` là Helvetica — không có glyph tiếng Việt và **mất dấu im lặng** (tệp vẫn mở được, chỉ là "Ăn uống" thành ô trống). Nay nhúng `Roboto` (Apache 2.0) ở `assets/fonts/`, **thư mục assets đầu tiên của dự án**. Test canh bằng cách cấm chuỗi "Helvetica" xuất hiện trong tệp sinh ra.
+  > ⚠️ **Font PDF phải nhúng.** Font mặc định của gói `pdf` là Helvetica — không có glyph tiếng Việt và **mất dấu im lặng** (tệp vẫn mở được, chỉ là "Ăn uống" thành ô trống). Nay nhúng `Roboto` (Apache 2.0) ở `assets/fonts/`, **thư mục assets đầu tiên của dự án**. Test canh bằng cách cấm chuỗi "Helvetica" xuất hiện trong tệp sinh ra. ⚠️ **Đính chính 2026-09-17:** nhúng đúng font vẫn **chưa đủ** — bản Roboto ấy không có khối Mũi tên lẫn khối Hình học, nên `→` ở chính dòng dòng tiền của mục này bị gói `pdf` bỏ đi **im lặng** suốt từ hôm ấy tới 2026-09-17. Nay là `»`, và có ca test quét glyph canh; xem mục **3.31 `docs/ANALYTICS_FEATURE.md`**.
   > ⚠️ **CSV cho Excel tiếng Việt có ba luật, cả ba hỏng im lặng:** BOM UTF-8, dòng `sep=;` (Excel dùng dấu phân cách theo locale máy), và số tiền là **số nguyên thô mang dấu** (Excel vi-VN đọc `1.045.000` thành một phẩy không bốn năm). PDF thì ngược lại — là tài liệu để đọc nên có phân cách nghìn và ký hiệu `₫`.
   > Một test **suýt không canh gì cả**: phép kiểm "chi mang dấu âm" tìm `;-50000` trong cả tệp, nhưng con số ấy cũng nằm ở dòng "Tổng chi" và bảng danh mục nên bản sai có chủ ý **đi lọt**. Đã siết lại thành khẳng định trên trọn dòng — bẫy **4.15**.
   > **Đã kiểm trên `emulator-5554`** (ở bản đầu, khi tệp còn đi qua sheet chia sẻ): bấm Tải xuống mở đúng sheet với tên `BaoCao_01-09-2026_30-09-2026.pdf`; kéo tệp về bằng `adb exec-out` (⚠️ `adb shell cat` chèn `

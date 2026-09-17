@@ -1,6 +1,6 @@
 # Trang Phân tích — thiết kế, lý do, và những cái bẫy
 
-**Cập nhật:** **2026-09-17** (bảng khảo sát lần hai ở mục **3.25** nay **ĐÓNG** — mục cuối là **#7 cảnh báo bất thường**, làm xong cùng ngày nhưng nằm ở `NOTIFICATION_FEATURE.md` mục **5f** chứ không ở trang này; mục **3.30** — **tổng tài sản theo thời gian**, mục #5 của khảo sát lần hai, và **đổi tên** khỏi "tài sản ròng" vì app không có mô hình công nợ; kèm vế **thứ ba** của bẫy **4.21** — `daiTrucDuBao` quá rộng với dải bắt đầu từ 0) · 2026-09-15 (mục **3.20** — **P1: phạm vi thời gian**; mục **3.21** — **P2**: bốn khối mượn từ trang Xuất báo cáo; mục **3.22** — **A8 #4 và #5**: hai biểu đồ cột vay/nợ; **G40 đóng** — trang Xem trước báo cáo lệch cột số tiền ở **sáu** chỗ, đo được 93px, xem bẫy **4.19**; **nhãn quý rút thành `Q3 2026`** để ô header thôi cụt, xem mục **3.20**; mục **3.23** — **A8 #10**: thác nước "Tiền đi đâu", kèm vạch trung bình trên từng cột chi; mục **3.24** — **A8 #8**: dòng tiền tự do, và bẫy **4.20** — `rutGon` từng in `-0` ở nhãn trục; mục **3.25** — **khảo sát app thị trường lần hai**, chốt làm tỷ lệ tiết kiệm và dự báo dòng tiền, bỏ hai mục thiếu trường đối tác; mục **3.26** — **tỉ lệ tiết kiệm**) · **2026-09-16** (mục **3.27** — **dự báo dòng tiền 30 ngày tới**, mục #4 của khảo sát; kèm bẫy **4.21** — khi nào trục từ 0, khi nào co, và vì sao bước phải tròn) · bản trước 2026-09-14 (mục **3.19** — A8 #3, #7: cơ cấu theo danh mục với ba chip nhóm, và xu hướng tới 5 danh mục cùng lúc; bản thi công **lần hai**, #2 đã bỏ)
+**Cập nhật:** **2026-09-17** (mục **3.31** — **ba khối cuối vào tệp xuất**: so với kỳ trước, số liệu nhanh, top 5 khoản chi; kèm ⚠️ một lỗi glyph **có từ 2026-09-09** mà lượt này mới bắt được — Roboto nhúng không có `→` `▲` `▼`, gói `pdf` bỏ chúng đi **im lặng**, nên mọi tệp PDF app từng xuất đều mất mũi tên ở dòng dòng tiền; nay có ca test quét glyph canh, và mục **3.17** đã được đính chính; bảng khảo sát lần hai ở mục **3.25** nay **ĐÓNG** — mục cuối là **#7 cảnh báo bất thường**, làm xong cùng ngày nhưng nằm ở `NOTIFICATION_FEATURE.md` mục **5f** chứ không ở trang này; mục **3.30** — **tổng tài sản theo thời gian**, mục #5 của khảo sát lần hai, và **đổi tên** khỏi "tài sản ròng" vì app không có mô hình công nợ; kèm vế **thứ ba** của bẫy **4.21** — `daiTrucDuBao` quá rộng với dải bắt đầu từ 0) · 2026-09-15 (mục **3.20** — **P1: phạm vi thời gian**; mục **3.21** — **P2**: bốn khối mượn từ trang Xuất báo cáo; mục **3.22** — **A8 #4 và #5**: hai biểu đồ cột vay/nợ; **G40 đóng** — trang Xem trước báo cáo lệch cột số tiền ở **sáu** chỗ, đo được 93px, xem bẫy **4.19**; **nhãn quý rút thành `Q3 2026`** để ô header thôi cụt, xem mục **3.20**; mục **3.23** — **A8 #10**: thác nước "Tiền đi đâu", kèm vạch trung bình trên từng cột chi; mục **3.24** — **A8 #8**: dòng tiền tự do, và bẫy **4.20** — `rutGon` từng in `-0` ở nhãn trục; mục **3.25** — **khảo sát app thị trường lần hai**, chốt làm tỷ lệ tiết kiệm và dự báo dòng tiền, bỏ hai mục thiếu trường đối tác; mục **3.26** — **tỉ lệ tiết kiệm**) · **2026-09-16** (mục **3.27** — **dự báo dòng tiền 30 ngày tới**, mục #4 của khảo sát; kèm bẫy **4.21** — khi nào trục từ 0, khi nào co, và vì sao bước phải tròn) · bản trước 2026-09-14 (mục **3.19** — A8 #3, #7: cơ cấu theo danh mục với ba chip nhóm, và xu hướng tới 5 danh mục cùng lúc; bản thi công **lần hai**, #2 đã bỏ)
 **Trạng thái:** **mảng Phân tích đã xong cả 2a, 2b, 2c** (2026-09-09). Lát **2a** xong — mọi con số trên trang là số thật từ SQLite —
 lát **2b** xong (khối "Xu hướng 6 tháng" vẽ bằng `fl_chart`), lát **2c‑1** xong
 (trang Xuất báo cáo đọc ví/danh mục/thời gian thật rồi mở màn **Xem trước báo
@@ -23,7 +23,7 @@ thẳng vào thư mục Tải về** của máy. Xem mục 7.
 | Sửa cách gộp dữ liệu | Mục 3.3 (mốc tra ngân sách) trước, rồi `data/analytics_repository_impl.dart` |
 | Đụng giao diện | **Chín** màn Stitch còn dùng được (đếm lại 2026-09-17, sau khi thêm **`b0a3344924d246f9b6322fb75a3309e4`** *"Thống kê - Tổng tài sản 6 tháng gần đây"* cho mục **3.30** — lượt gọi ấy cũng **trả về `timeout`** mà màn vẫn được tạo, **lần thứ ba** xác nhận; mốc **Tám** là của 2026-09-16, sau khi thêm **`9020ff8b5c5d49c4914442dcd02fa540`** *"Thống kê - Lịch chi tiêu Heatmap"* cho mục **3.29** — lượt gọi ấy **trả về `timeout`** mà màn vẫn được tạo, và ⚠️ nó vẽ lưới **xanh lá** trong khi bản thi công dùng **đỏ**; và trước đó **`6333b8e24aab4f92bd73b1282c56b17c`** *"Thống kê - Mốc so sánh kỳ"* cho hàng chip của mục **3.28** — ⚠️ màn ấy cũng mang `deviceType: DESKTOP` dù lượt gọi truyền `MOBILE`, và lượt gọi **không** timeout; mốc "Sáu" là của 2026-09-15, đừng cộng dồn mà hãy đếm lại): `c8567243…` *"Thống kê - Cơ cấu danh mục & Xu hướng 6 tháng"* (2026-09-14) cho thân trang, **`83993fc9f5de4c5f8fba6940480c164a`** *"Thống kê - Chọn phạm vi thời gian"* (2026-09-15) cho bộ chọn phạm vi, **`6e9007f7653749a893c88e3de535afa5`** *"Thống kê - Biểu đồ Cho vay & Đi vay"* (đo được 2026-09-15) cho hai biểu đồ vay/nợ, và **`afe1c3fdee43464c90ddadc508eaa599`** *"Thống kê - 4 Thẻ Dòng Tiền & Kế Toán"* (đo được 2026-09-15) cho bốn khối của P2, **`52450ac549df42aea9f31d5ee1347ceb`** *"Thống kê - Biểu đồ thác nước Tiền đi đâu"* (đo được 2026-09-15) cho khối A8 #10, và **`212befc8f9a24d25ab027c7302e2e122`** *"Thống kê - Biểu đồ Dòng tiền tự do"* (đo được 2026-09-15) cho khối A8 #8 — ⚠️ màn thứ tư mang `deviceType: DESKTOP` dù lượt gọi truyền `MOBILE`, xem mục **3.21** — ⚠️ màn thứ ba vẽ thêm **hai thẻ tổng** mà bản thi công **cố ý không có**, xem mục 3.22 — ⚠️ **hai** màn cũ đã lỗi thời và vẫn còn trong dự án: `c2a2b615…` (tả A8 #2 đã bỏ: mức gốc ba lát + dropdown) và `a228fa69…` "FlowMoney Analytics Dashboard"; và mục 4.4 về font của bộ test |
 | Đụng biểu đồ | Mục **3.11** (vì sao `fl_chart`, vì sao ghim phiên bản), **3.12** (khối xu hướng từng lệch Stitch, nay hết), **3.19** (đường một danh mục), **3.30** (trục co theo dữ liệu — và vì sao `daiTrucDuBao` phải kiểm điều kiện thật thay vì trừ hao), bẫy **4.21** (khi nào trục từ 0, khi nào co, và bước phải tròn), và bẫy **4.9** (tooltip tràn — thứ duy nhất phải kiểm bằng mắt) |
-| Sinh tệp PDF/CSV | Mục **3.17** (vì sao nhúng font, vì sao `MediaStore` chứ không phải quyền ghi bộ nhớ), **3.18** (ba luật của CSV cho Excel tiếng Việt), bẫy **4.15**–**4.16** |
+| Sinh tệp PDF/CSV | Mục **3.17** (vì sao nhúng font, vì sao `MediaStore` chứ không phải quyền ghi bộ nhớ), **3.18** (ba luật của CSV cho Excel tiếng Việt), **3.31** (ba khối cuối vào tệp — và ⚠️ **Roboto nhúng không có mũi tên lẫn hình học**, nên `→ ▲ ▼` bị bỏ đi im lặng), bẫy **4.15**–**4.16** |
 | Đụng trang Xuất báo cáo / màn Xem trước | Mục **3.13** (vì sao xem trước rồi mới tải), **3.14** (ảnh chụp, không phải luồng sống; và màn Stitch mới), **3.15** (mười khối lấy chuẩn từ app thị trường), **3.16** (dòng tiền là số suy ngược, hai giới hạn), bẫy **4.11**–**4.14** |
 | Làm tiếp 2c‑2 (sinh tệp) | Mục 7 |
 
@@ -353,6 +353,12 @@ hàm ấy tải font qua mạng lúc chạy, mà app này offline-first.
 
 Có một test canh đúng chỗ ấy: tệp sinh ra **không được chứa chuỗi "Helvetica"**
 và **phải chứa "Roboto"**. Đó là cách duy nhất bắt được lỗi mất dấu bằng máy.
+
+⚠️ **Câu "đã kiểm cmap có đủ dấu" ở trên đúng nhưng CHƯA ĐỦ** — thêm
+2026-09-17. Bản Roboto nhúng **không có** khối Mũi tên (U+2190…) lẫn khối Hình
+học (U+25A0…), nên `→` `↑` `↓` `▲` `▼` bị gói `pdf` **bỏ đi im lặng**. Lỗi ấy
+đã nằm trong mã từ chính lát 2c‑2 này: dòng dòng tiền dùng `→`. Xem mục
+**3.31** — ở đó có phép canh bằng máy, và danh sách ký tự dùng được.
 
 ### 3.18 CSV cho Excel tiếng Việt — ba thứ nhỏ, cả ba đều hỏng im lặng
 
@@ -1646,6 +1652,84 @@ ca đỏ).
 stream mới.
 
 
+### 3.31 Ba khối cuối vào tệp xuất — và một lỗi glyph có từ 2026-09-09
+
+**Xong 2026-09-17.** Đường **bounded** (brainstorming → thiết kế trong chat →
+duyệt → thi công), **không có tệp spec** — đừng đi tìm.
+
+Màn Xem trước có mười khối; tệp thiếu đúng **ba** trong số đó — **so với kỳ
+trước**, **số liệu nhanh** và **top 5 khoản chi**. (Số khối *còn lại* của hai
+định dạng không bằng nhau: CSV không có biểu đồ, PDF có.) Cả ba đã nằm sẵn
+trong `BaoCao` —
+`dungBaoCao` vốn dựng đủ từ lát 2c‑1b — nên việc chỉ là `xuat_tep.dart` chịu
+đọc chúng. **Không đụng repository, không đổi schema, không thêm trường đồng
+bộ.** Thứ tự khối trong tệp chép đúng màn Xem trước; CSV khuyết biểu đồ nên
+"Số liệu nhanh" của nó đứng ngay sau "Tổng quan".
+
+**Hai định dạng cố ý khác nhau, đúng chỗ mục 3.18 đã đặt ra.** CSV nhận **số
+thô của kỳ trước** — ba dòng thu/chi/còn lại — cộng hai ô phần trăm, vì người
+mở bảng tính phải tự kiểm lại được con số. PDF chỉ mang một dòng phần trăm dưới
+hai ô tổng, giống hệt màn Xem trước.
+
+⚠️ **`_tiLe` và `_phanTramCsv` KHÔNG thay nhau được.** `phanTramSoVoi` trả sẵn
+thang 0–100 còn `_tiLe` nhận `[0,1]` rồi nhân 100 — dùng lại `_tiLe` ở đây là
+in `1250.0` cho một mức tăng 12,5%, và **không exception nào báo**.
+
+⚠️ **Ô phần trăm để RỖNG, không phải `—`.** Kỳ trước bằng 0 thì `phanTramSoVoi`
+trả `null`; đây là cột **số** mà Excel sắp cộng, nên nhét một chuỗi chữ vào là
+hỏng cột, còn ghi `0` là bịa ra "không đổi". PDF thì ngược lại — nó là tài liệu
+để đọc nên `—` mới đúng.
+
+**Số liệu nhanh trong tệp chỉ có BA chỉ số, không phải bốn.** Ô "Số giao dịch"
+của màn Xem trước đã nằm ở khối "Tổng quan" của tệp, và hai bản của cùng một
+con số là hai thứ phải khớp nhau mãi mãi.
+
+**Hai khối mới bỏ hẳn khi không có gì để nói** — số liệu nhanh khi kỳ rỗng, top
+5 khi kỳ không có khoản chi nào. ⚠️ Hai ca test cho chuyện ấy **xanh ngay từ
+đầu** (khối chưa tồn tại thì tất nhiên là vắng mặt), nên chúng chỉ đáng tin sau
+khi bản sai có chủ ý làm chúng đỏ — làm rồi, cả hai đỏ đúng chỗ.
+
+#### ⚠️ Roboto nhúng không có mũi tên — lỗi có từ chính lát 2c‑2
+
+Bản thiết kế đầu của mục này định dùng `▲`/`▼` cho dòng phần trăm của PDF, y
+như màn Xem trước. **Ca test quét glyph lật nó**: Roboto nhúng không có khối
+Hình học, nên tệp sẽ in `" 12,5%"` **cụt đầu** — mũi tên biến mất, tệp vẫn mở
+được. Nay là `+12,5%` / `-3,0%`, còn **màu** vẫn nói tốt/xấu như cũ.
+
+Cùng lượt ấy lộ ra một lỗi **đã có từ 2026-09-09**: dòng dòng tiền của PDF dùng
+`→`, nên **mọi tệp PDF app từng xuất** đều mất mũi tên ở đó mà không ai hay.
+Nay là `»`.
+
+Gói `pdf` **bỏ ký tự thiếu glyph đi** và chỉ in một dòng
+`Unable to find a font to draw …` ra console — cùng họ với lỗi "rơi về
+Helvetica" của mục 3.17, chỉ khác là bản Roboto **đúng** vẫn dính.
+
+**Phép canh bằng máy:** `xuat_tep_test.dart` quét **chuỗi hằng của chính
+`xuat_tep.dart`** (bỏ dòng chú thích, vì chú thích mang `⚠️` và những ký tự chỉ
+con người đọc) rồi đòi mọi ký tự ngoài ASCII phải có trong
+`charToGlyphIndexMap` của **cả hai** tệp Roboto. `TtfParser` là API công khai
+của gói `pdf` nên phép kiểm chạy ở tầng thuần, không cần dựng tài liệu. Giới
+hạn **cố ý**: chữ của *người dùng* — tên ví, ghi chú — thì không chặn trước
+được.
+
+Đo bằng máy 2026-09-17: Roboto **có** `»` `›` `•` `±` `−` `·` `—`; **không có**
+`→` `↑` `↓` `▲` `▼` `▴` `▾`.
+
+**Nghiệm thu máy ảo** (2026-09-17, tài khoản 10, dữ liệu thật): xuất CSV và PDF
+tháng 9 rồi kéo tệp về đọc — ba khối mới đúng vị trí, ô phần trăm rỗng khi kỳ
+trước bằng 0, `»` hiện ra trong PDF. Xuất thêm một khoảng **rỗng** có kỳ trước
+**không** rỗng (08–17/09) để bắt cả hai nhánh: PDF ca ấy in `-100,0%` và bỏ hẳn
+hai khối mới. ⚠️ **Phần bố cục PDF chỉ kiểm được qua thứ tự văn bản**, không
+qua ảnh — máy này không có poppler/ghostscript để dựng ảnh raster.
+
+⚠️ **Một chỗ lệch có sẵn, KHÔNG phải do mục này**: kỳ rỗng thì màn Xem trước
+giấu mọi khối và chỉ hiện thẻ "không có giao dịch", còn tệp vẫn in khối **Ngân
+sách kỳ này** (ngân sách tồn tại độc lập với giao dịch). Chưa sửa, và không rõ
+bên nào mới đúng.
+
+**Không đổi schema** (vẫn v23), **không thêm trường đồng bộ**, không nguồn
+stream mới.
+
 
 ## 4. Bẫy
 
@@ -1995,7 +2079,7 @@ Test `sáu điểm, cũ nhất trước, mang số thật của cả tháng ở 
 | `bao_cao_xuat_test.dart` | Tầng thuần của lát 2c: bốn phạm vi thời gian (**tháng 1 lùi sang năm trước**, quý IV, tuỳ chỉnh cộng một ngày, năm nhuận), lọc theo ví/danh mục, `'transfer'` bị loại khỏi **cả** tổng lẫn danh sách, gom danh mục, nhóm theo ngày mới-nhất-trước, báo cáo rỗng. Lát 2c‑1b thêm: `khoangKyTruoc` (**tháng lùi theo tháng, không trừ N ngày**; quý; tuỳ chỉnh), dòng tiền (trừ phần sau kỳ, `transfer` không làm lệch, lọc ví thì `null`), thu theo danh mục, phân bổ theo ví, số liệu nhanh (**chia cho số ngày CỦA KỲ**), top 5, và độ chia của biểu đồ đổi theo độ dài kỳ |
 | `bao_cao_repository_impl_test.dart` | Tra tên ví/danh mục **kể cả hàng đã xoá mềm** và **kể cả hàng mặc định toàn cục** (G41 — trang này mang bản chép tay thứ hai của cùng truy vấn), ba chữ cho ba ca danh mục, tiêu đề lấy ghi chú rồi mới tới tên danh mục, cách ly `idaccount`, giao dịch đã xoá mềm không vào báo cáo, danh sách cho bộ lọc chỉ lấy hàng còn sống; **dòng tiền dùng tổng số dư ví còn sống**, và ngân sách hết hạn không lên báo cáo |
 | `luu_tep_platform_test.dart` | **Hợp đồng gọi** xuống Kotlin: đúng tên phương thức và đủ ba tham số (`ten`, `mime`, `bytes`); `khong_ho_tro` và `MissingPluginException` trả `null` để bên gọi lùi phương án; còn lỗi ghi **thật** thì ném lên chứ không nuốt |
-| `xuat_tep_test.dart` | Nội dung tệp: CSV có **BOM**, dòng `sep=;`, CRLF, số nguyên thô mang dấu, thoát ngoặc kép và dấu phân cách, không có `transfer`, không bịa dòng tiền; PDF hợp lệ, **không rơi về Helvetica**, và báo cáo rỗng vẫn ra tệp. Tên tệp không mang ký tự cấm |
+| `xuat_tep_test.dart` | Nội dung tệp: CSV có **BOM**, dòng `sep=;`, CRLF, số nguyên thô mang dấu, thoát ngoặc kép và dấu phân cách, không có `transfer`, không bịa dòng tiền; PDF hợp lệ, **không rơi về Helvetica**, và báo cáo rỗng vẫn ra tệp. Tên tệp không mang ký tự cấm. Từ 2026-09-17 (mục **3.31**) canh thêm ba khối mới — số thô của kỳ trước, phần trăm **đúng thang** (chống bẫy `_tiLe`), ô rỗng khi nền bằng 0, ba chỉ số của Số liệu nhanh, top 5 mang dấu âm, và **hai khối biến mất khi không có gì để nói** — cộng một ca quét **glyph**: mọi ký tự hằng của `xuat_tep.dart` phải có trong cmap của cả hai tệp Roboto |
 | `report_preview_page_test.dart` | Ba thẻ tổng, **khoảng hiện ngày cuối thật** (biên `to` mở), nhãn bộ lọc, bảng danh mục có %, nhóm ngày kèm tên ví, dấu +/−, trạng thái rỗng, **nút Tải xuống phải TẮT**, 411dp; và tám khối của 2c‑1b: dòng tiền (kèm dòng "suy ngược", và **biến mất khi lọc ví**), `▲ %` so kỳ trước, thu theo danh mục, ngân sách có nhãn "Vượt", phân bổ theo ví (**số 0 không mang dấu**), top 5, số liệu nhanh, và có `LineChart` |
 | `export_report_page_test.dart` | Ví lấy từ CSDL (không còn "Techcombank"), không còn lịch sử xuất bịa, bộ lọc đi **nguyên vẹn** xuống repository (khoảng theo đồng hồ, id ví, id danh mục), mở đúng màn Xem trước, 411dp |
 | `khoan_vao_thong_ke_test.dart` | **Luật loại khoản** dùng chung cho mọi phép đếm tiền (G37, 2026-09-13): khoản **chuyển ví**, khoản **điều chỉnh số dư** và khoản **mở sổ** đều không vào thống kê — nhưng khoản *chưa phân loại thật* và khoản thu thật thì vẫn vào, và ghi chú trùng khuôn mà **có** danh mục cũng vẫn vào (nhận dạng bằng **cặp** điều kiện, không phải một) |
@@ -2091,7 +2175,8 @@ mười khối, nút Tải xuống sinh PDF/CSV và lưu thẳng vào thư mục
   là đường lùi cho Android ≤ 9) — mục **3.17** và **3.18**. Biểu
   đồ trong PDF vẽ bằng `pw.Chart` của chính gói `pdf` chứ **không** chụp widget:
   chụp đòi widget đang nằm trong khung nhìn, mà `ListView` thì tháo widget ngoài
-  màn hình.
+  màn hình. ⚠️ **Tệp khi ấy vẫn thiếu ba khối** mà màn Xem trước đang hiện —
+  đóng nốt 2026-09-17, mục **3.31**.
 - ✅ ~~**A8 #3, #7 — cơ cấu theo danh mục và xu hướng nhiều danh mục.**~~ **Xong
   2026-09-14**, mục **3.19**. Mục **#2** (tròn theo phân loại) làm xong rồi **bỏ**
   cùng ngày: nó bắt thêm một cú chạm mới tới được thứ người dùng thật sự tìm. Bốn
