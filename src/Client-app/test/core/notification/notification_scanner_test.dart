@@ -657,6 +657,8 @@ void main() {
           includeInTotal: true,
           syncStatus: 'synced',
           updatedAt: DateTime(2026, 9, 1),
+        
+          allowNegative: false,
         );
 
     test('quét sinh cả thông báo mục tiêu lẫn ví', () async {

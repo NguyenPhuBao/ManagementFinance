@@ -169,4 +169,44 @@ void main() {
             'Lưu, trang đóng lại, và ví vẫn nguyên như cũ — không lời giải '
             'thích nào.');
   });
+
+  testWidgets('G27 — màn Sửa ví có công tắc "Cho phép số dư âm"', (tester) async {
+    final repo = _RepoGhiLai(_vi());
+    await _moTrang(tester, repo);
+
+    expect(find.text('Cho phép số dư âm'), findsOneWidget);
+    expect(
+      find.textContaining('không bị cảnh báo số dư'),
+      findsOneWidget,
+      reason: 'Công tắc không tự giải thích được nó làm gì — "cho phép âm" có '
+          'thể đọc thành "chặn không cho âm". Dòng phụ là chỗ nói ra.',
+    );
+  });
+
+  testWidgets('G27 — bật công tắc rồi Lưu thì cờ đi qua updateWallet',
+      (tester) async {
+    final repo = _RepoGhiLai(_vi());
+    await _moTrang(tester, repo);
+
+    await _chamSauKhiCuon(
+        tester, find.byType(Switch).at(2));
+    await _chamSauKhiCuon(tester, find.text('Lưu & Cập Nhật Ví'));
+
+    expect(repo.luoiGoiUpdate, hasLength(1));
+    expect(repo.luoiGoiUpdate.single.allowNegative, isTrue,
+        reason: 'Khác `status` — cờ này KHÔNG có chốt chặn nào ở datasource, '
+            'nên nó đi đúng đường `copyWith` + `updateWallet`.');
+    expect(repo.luoiGoiSetArchived, isEmpty,
+        reason: 'Gạt công tắc mới không được kéo theo thao tác lưu trữ.');
+  });
+
+  testWidgets('G27 — cờ đã lưu được nạp lại đúng khi mở màn', (tester) async {
+    final repo = _RepoGhiLai(_vi().copyWith(allowNegative: true));
+    await _moTrang(tester, repo);
+
+    final congTac = tester.widgetList<Switch>(find.byType(Switch)).toList();
+    expect(congTac[2].value, isTrue,
+        reason: 'Quên nạp cờ vào state là người dùng mở màn Sửa thấy công tắc '
+            'TẮT, rồi bấm Lưu và vô tình tắt thật — im lặng.');
+  });
 }

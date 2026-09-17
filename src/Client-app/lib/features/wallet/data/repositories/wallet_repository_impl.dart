@@ -50,6 +50,7 @@ class WalletRepositoryImpl implements WalletRepository {
     String colour = '#4CAF50',
     bool isDefault = false,
     bool includeInTotal = true,
+    bool allowNegative = false,
   }) async {
     final wallet = WalletEntity(
       id:             _uuid.v4(),
@@ -62,6 +63,7 @@ class WalletRepositoryImpl implements WalletRepository {
       colour:         colour,
       isDefault:      isDefault,
       includeInTotal: includeInTotal,
+      allowNegative:  allowNegative,
       syncStatus:     'pending',
       updatedAt:      DateTime.now(),
     );

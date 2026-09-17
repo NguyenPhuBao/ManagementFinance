@@ -27,6 +27,8 @@ void main() {
         syncStatus: 'synced',
         syncRetryCount: 0,
         updatedAt: DateTime(2026, 9, 1),
+      
+        allowNegative: false,
       );
 
   Bill hoaDon({

@@ -572,10 +572,17 @@ class _WalletItem extends StatelessWidget {
 
   bool get _daLuuTru => !WalletStatus.laHoatDong(wallet.status);
 
+  /// Ví âm **ngoài ý muốn** — thứ duy nhất đáng tô đỏ.
+  ///
+  /// `wallet.type == 'debt'` đã bỏ từ 2026-09-09: loại ấy không còn tồn
+  /// tại (xem `WalletType`). Chỗ bám mới là cờ `allowNegative` (G27,
+  /// 2026-09-17) — đỏ là màu báo **có gì đó sai**, nên để đỏ một ví mà
+  /// người dùng đã nói là được phép âm là app tự mâu thuẫn với chính
+  /// cảnh báo nó vừa tắt.
+  bool get _amNgoaiYMuon => wallet.balance < 0 && !wallet.allowNegative;
+
   Color get _iconColor {
-    // `wallet.type == 'debt'` đã bỏ: loại ấy không còn tồn tại (xem
-    // `WalletType`), và số dư âm vốn đã là điều kiện thật sự cần bắt.
-    if (wallet.balance < 0) {
+    if (_amNgoaiYMuon) {
       return const Color(0xFFD32F2F);
     }
     if (wallet.isDefault || wallet.type == 'cash') {
@@ -585,7 +592,7 @@ class _WalletItem extends StatelessWidget {
   }
 
   Color get _iconBg {
-    if (wallet.balance < 0) {
+    if (_amNgoaiYMuon) {
       return const Color(0xFFFFEBEE);
     }
     if (wallet.isDefault || wallet.type == 'cash') {
@@ -598,7 +605,12 @@ class _WalletItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isNegative = wallet.balance < 0;
+    // Dùng `_amNgoaiYMuon` chứ không phải `balance < 0`: màu ở đây là
+    // `AppColors.error` — màu **cảnh báo**, không phải quy ước dấu của số
+    // âm. Lý lẽ y hệt dòng ngay dưới đã ghi cho ví lưu trữ: một con số đỏ
+    // chói đọc như một việc cần xử lý, trong khi người dùng vừa nói rằng ví
+    // này được phép âm (G27).
+    final isNegative = _amNgoaiYMuon;
 
     return InkWell(
       onTap: onTap,

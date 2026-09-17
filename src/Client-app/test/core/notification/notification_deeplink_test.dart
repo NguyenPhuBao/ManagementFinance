@@ -175,6 +175,8 @@ void main() {
           includeInTotal: true,
           syncStatus: 'synced',
           updatedAt: DateTime(2026, 9, 1),
+        
+          allowNegative: false,
         );
 
     /// Một đầu vào cố tình dựng đủ rộng để bộ luật sinh ra **cả 15 loại**.

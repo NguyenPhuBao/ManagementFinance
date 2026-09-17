@@ -767,6 +767,16 @@ List<NotificationCandidate> _walletCandidates(NotificationRuleInput input) {
   for (final v in input.wallets) {
     if (v.isDeleted) continue;
 
+    // G27 (2026-09-17): ví được người dùng đánh dấu **cho phép âm** — thẻ tín
+    // dụng, ví theo dõi nợ — không sinh cảnh báo số dư nào cả.
+    //
+    // ⚠️ `continue` ở ĐÂY, trước cả hai nhánh, chứ không phải chỉ trong nhánh
+    // ví âm: một ví cho phép âm **luôn** nằm dưới mọi ngưỡng "sắp cạn", nên
+    // chặn mỗi `walletNegative` là đổi một dòng nhiễu lấy một dòng nhiễu khác.
+    // Chốt `debt` cũ (2026-09-07, chết ngày 2026-09-09) vốn đã loại cả hai —
+    // xem docstring cột `Wallets.allowNegative`.
+    if (v.allowNegative) continue;
+
     // ⚠️ Ở đây từng có một chốt: ví loại `debt` mang số dư âm là ĐÚNG bản chất
     // của nó, nên không nhắc. Chốt ấy **đã gỡ ngày 2026-09-09** cùng lúc với
     // việc thu loại ví về ba (`WalletType`) — không còn loại `debt` thì không

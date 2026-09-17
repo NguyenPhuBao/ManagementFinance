@@ -26,6 +26,7 @@ abstract class WalletRepository {
     String colour,
     bool isDefault,
     bool includeInTotal,
+    bool allowNegative,
   });
 
   /// Cập nhật ví

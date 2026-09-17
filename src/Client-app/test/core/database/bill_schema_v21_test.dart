@@ -99,10 +99,10 @@ void main() {
     expect(hang.anchorDay, 20, reason: 'Cột v18 không được đụng tới.');
   });
 
-  test('schemaVersion là 22', () {
+  test('schemaVersion là 23', () {
     // Tệp này canh bước v20→v21, nhưng con số ở đây là **phiên bản hiện tại**
     // của lược đồ — nó tăng theo mỗi migration mới. v22 thêm ngày 2026-09-14
     // cho G28 (lưu trữ ví qua đồng bộ), không đụng cột nào của `bills`.
-    expect(db.schemaVersion, 22);
+    expect(db.schemaVersion, 23);
   });
 }

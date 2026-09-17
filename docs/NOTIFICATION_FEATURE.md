@@ -106,7 +106,15 @@ mọi bản ghi có sẵn trên máy người dùng đều thiếu trường nà
 lẽ đổi hành vi của mọi bản đã cài — cùng lý lẽ với giờ im lặng.
 
 ⚠️ ~~**Ví loại `debt` không sinh cảnh báo ví nào cả**, kể cả `walletNegative`.~~
-**Chốt này ĐÃ GỠ ngày 2026-09-09 — nay KHÔNG loại ví nào được miễn trừ.**
+**Chốt này ĐÃ GỠ ngày 2026-09-09 — LOẠI ví không miễn trừ gì cả.**
+
+✅ **Nhưng từ 2026-09-17 có chỗ bám mới: cờ `Wallets.allowNegative`** (G27,
+schema v23). Ví đánh dấu "cho phép âm" không sinh cảnh báo số dư nào cả —
+**cả** `walletNegative` **lẫn** `walletLowBalance`, đúng luật mà chốt `debt`
+cũ đã có. Chốt nằm ở **đầu** vòng lặp `_walletCandidates`, trước cả hai nhánh;
+dời nó vào trong nhánh ví âm là đổi một dòng nhiễu lấy một dòng nhiễu khác —
+và bản sai có chủ ý đầu tiên của hạng mục ấy **đi lọt** vì ca test dựng một ví
+số dư âm, mà nhánh "sắp cạn" chỉ chạy khi `balance >= 0`.
 
 Lý lẽ cũ vẫn đúng ở chỗ nó đúng: ví nợ mang số dư âm là đúng bản chất của nó,
 và trước 2026-09-07 nó bị nhắc **mỗi ngày** cho tới khi trả hết nợ. Nhưng loại
@@ -116,9 +124,10 @@ và trước 2026-09-07 nó bị nhắc **mỗi ngày** cho tới khi trả hế
 chuyển thành `bank`, và không còn tín hiệu nào để nhận ra "âm là cố ý".
 
 **Hệ quả có thật:** ai từng theo dõi thẻ tín dụng bằng ví `debt` nay sẽ được
-nhắc "ví âm" mỗi ngày trở lại. Chữa đúng thì cần một khái niệm **mới** — "ví
-được phép âm" — chứ không phải khôi phục chuỗi `'debt'` đã chết. Xem **G27**
-`docs/CLIENT_APP_KNOWN_GAPS.md`.
+nhắc "ví âm" mỗi ngày trở lại. ✅ **Đã chữa 2026-09-17** bằng đúng khái niệm mới ấy — một **cờ** trên bảng
+`wallets`, không phải khôi phục chuỗi `'debt'` đã chết (khôi phục nó là tái
+hiện chính sự cố `chk_wallet_type`). **G27 đóng**; xem
+`docs/CLIENT_APP_KNOWN_GAPS.md` và docstring `Wallets.allowNegative`.
 
 Thứ tự loại trừ trong `_walletCandidates` là thứ giữ cho mỗi ví ra **một**
 thông báo: số dư âm cũng thoả điều kiện "dưới ngưỡng", nên thiếu `continue` ở

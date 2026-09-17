@@ -62,6 +62,8 @@ Wallet makeWallet({
       syncStatus: 'pending',
       syncRetryCount: 0,
       updatedAt: DateTime(2026, 8, 21),
+    
+      allowNegative: false,
     );
 
 class FakeCategoryRepository implements CategoryManagementRepository {

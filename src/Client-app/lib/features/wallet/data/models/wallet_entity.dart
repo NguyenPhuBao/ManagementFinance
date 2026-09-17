@@ -27,6 +27,14 @@ class WalletEntity extends Equatable {
   /// thái này qua `WalletStatus.laHoatDong` chứ đừng so chuỗi tại chỗ — hàng
   /// kéo về từ server mang chữ hoa cho tới khi nhánh pull chuẩn hoá.
   final String status;
+  /// Ví này được phép mang số dư **âm** — thẻ tín dụng, ví theo dõi nợ.
+  ///
+  /// Bật thì ví không sinh cảnh báo số dư nào cả, và màn Quản lý ví thôi
+  /// tô đỏ nó. **Cột cục bộ, không đi qua đồng bộ** — xem docstring
+  /// `Wallets.allowNegative` để biết vì sao là một cờ chứ không phải một
+  /// loại ví, và vì sao không có hàm thuần dùng chung.
+  final bool allowNegative;
+
   final String syncStatus;
   final DateTime updatedAt;
 
@@ -43,6 +51,7 @@ class WalletEntity extends Equatable {
     this.isDeleted = false,
     this.includeInTotal = true,
     this.status = 'active',
+    this.allowNegative = false,
     this.syncStatus = 'pending',
     required this.updatedAt,
   });
@@ -63,6 +72,7 @@ class WalletEntity extends Equatable {
     bool? isDeleted,
     bool? includeInTotal,
     String? status,
+    bool? allowNegative,
     String? syncStatus,
     DateTime? updatedAt,
   }) {
@@ -79,6 +89,7 @@ class WalletEntity extends Equatable {
       isDeleted: isDeleted ?? this.isDeleted,
       includeInTotal: includeInTotal ?? this.includeInTotal,
       status: status ?? this.status,
+      allowNegative: allowNegative ?? this.allowNegative,
       syncStatus: syncStatus ?? this.syncStatus,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -98,6 +109,7 @@ class WalletEntity extends Equatable {
         isDeleted,
         includeInTotal,
         status,
+        allowNegative,
         syncStatus,
         updatedAt
       ];

@@ -181,4 +181,59 @@ void main() {
           'active');
     });
   });
+
+  group('G27 — cờ "cho phép âm" đi qua đường ghi của datasource', () {
+    test('⚠️ GẠT được cờ qua đường update — cả bật lẫn tắt', () async {
+      // ⚠️ Triệu chứng thật của việc quên cột trong `_toCompanion` **không**
+      // phải "cờ tự tắt": `update_` gọi `write(companion)`, mà companion thiếu
+      // cột thì Drift **không ghi** cột ấy — giá trị cũ ở lại. Nên bug là cờ
+      // **không đổi được**: người dùng gạt công tắc, bấm Lưu, màn hình báo
+      // thành công, và cờ đứng nguyên.
+      //
+      // Bản đầu của ca này khẳng định điều ngược lại (sửa tên thì cờ tự tắt) và
+      // vì thế **xanh với cả bản sai** — bản sai có chủ ý bắt được, đúng bài
+      // học "ca test phải đòi KẾT QUẢ".
+      //
+      // ⚠️ Chú thích của `status` ngay cạnh trong `_toCompanion` mang đúng nhận
+      // định sai ấy (*"sửa tên ví là ví tự bỏ lưu trữ"*). Chưa sửa vì nó thuộc
+      // hạng mục khác; ghi lại đây để người sau không chép lại.
+      await db.walletDao.insert(WalletsCompanion.insert(
+        id: 'w-the',
+        idaccount: 1,
+        name: 'Thẻ tín dụng',
+        allowNegative: const Value(true),
+        updatedAt: DateTime(2026, 9, 17),
+      ));
+
+      final truoc = await dataSource.getById('w-the');
+      expect(truoc!.allowNegative, isTrue);
+
+      // TẮT cờ, kèm đổi tên để chắc rằng lượt ghi đi đúng đường thường.
+      await dataSource
+          .update(truoc.copyWith(name: 'Thẻ VISA', allowNegative: false));
+      final sauKhiTat = await dataSource.getById('w-the');
+      expect(sauKhiTat!.name, 'Thẻ VISA');
+      expect(sauKhiTat.allowNegative, isFalse,
+          reason: 'Thiếu cột trong `_toCompanion` thì Drift bỏ qua nó và cờ '
+              'đứng nguyên — công tắc trông như hỏng, không một lỗi nào báo.');
+
+      // BẬT lại, để ca này canh cả hai chiều.
+      await dataSource.update(sauKhiTat.copyWith(allowNegative: true));
+      expect((await dataSource.getById('w-the'))!.allowNegative, isTrue);
+    });
+
+    test('cờ mặc định TẮT với ví tạo bình thường', () async {
+      await db.walletDao.insert(WalletsCompanion.insert(
+        id: 'w-thuong',
+        idaccount: 1,
+        name: 'Tiền mặt',
+        updatedAt: DateTime(2026, 9, 17),
+      ));
+
+      final vi = await dataSource.getById('w-thuong');
+      expect(vi!.allowNegative, isFalse,
+          reason: 'Mặc định `false` chính là hành vi trước bản này — mọi ví '
+              'đang nằm trên máy người dùng phải giữ nguyên cách hành xử.');
+    });
+  });
 }

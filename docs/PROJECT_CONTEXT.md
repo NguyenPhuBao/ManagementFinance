@@ -595,6 +595,36 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-17)
 
+### 💳 Ví được phép âm — G27 đóng (2026-09-17)
+
+Lỗ hổng cuối cùng còn mở mà **không** phải "hoãn có chủ ý". Ví đánh dấu cho
+phép âm — thẻ tín dụng, ví theo dõi nợ — thôi bị nhắc "ví âm" mỗi ngày, và màn
+Quản lý ví thôi tô đỏ nó. Bàn giao ở **G27** `docs/CLIENT_APP_KNOWN_GAPS.md`.
+
+Chỗ bám là một **cờ** (`Wallets.allowNegative`, **schema v23**) chứ không phải
+một loại ví: chuỗi `'debt'` chết ngày 2026-09-09 vì nó vỡ `chk_wallet_type` của
+PostgreSQL và làm ví kẹt hàng đợi đẩy vĩnh viễn — khôi phục nó là tái hiện đúng
+sự cố ấy. Migration chỉ `addColumn`; mặc định `false` **chính là** hành vi trước
+bản này, nên không bản cài nào đổi hành vi lặng lẽ.
+
+⚠️ **Cột CỤC BỘ** — payload ví vẫn **13 trường**, và có **test quét `lib/` thứ
+bảy** canh cờ không lọt vào đường đồng bộ. Đó là bài học ngược chiều của G28:
+khi `wallet.status` còn cục bộ, **ba** chú thích ở ba tệp khác vẫn nói nó đi ra
+máy khác. Chữ thì trôi, test quét thì không.
+
+**Hai bẫy chỉ bản sai và máy ảo mới lộ, và cả hai là lỗ hổng trong chính bộ
+test vừa viết:** ca "cờ cũng tắt cảnh báo sắp cạn" dựng ví số dư **âm**, mà
+nhánh ấy chỉ chạy khi `balance >= 0` — nó **không canh gì** (họ G43); và ca
+datasource đặt **sai tiền đề** — quên cột trong `_toCompanion` không làm cờ tự
+tắt mà làm cờ **không đổi được**, vì `write(companion)` chỉ ghi cột có mặt.
+
+Máy ảo còn bắt được một chỗ **nửa việc**: bản đầu chỉ đổi màu biểu tượng, con
+số `-100.000 đ` vẫn đỏ chói — mà đó mới là thứ mắt đọc trước.
+
+Nghiệm thu: migration v23 chạy sạch trên CSDL đang có (33 giao dịch nguyên
+vẹn), cờ sống sót qua `force-stop` + khởi động lại. `flutter test` **2794/2794**,
+`flutter analyze` **25 issue, 0 error**.
+
 ### 🔔 Khoản chi lớn — loại thông báo thứ 18 (2026-09-17)
 
 Mục **#7** của khảo sát app thị trường lần hai, và là mục **cuối cùng** của bảng
@@ -1600,6 +1630,20 @@ hiện cũng không chứng minh lời gọi của mình tạo ra nó. Hỏi ng�
 ### 🔄 Việc còn dang dở
 
 Xem đầy đủ tại **`docs/CLIENT_APP_KNOWN_GAPS.md`**. Phiên 2026-09-03 đã đóng 9/10 mục còn mở; **G10 đóng ngày 2026-09-07**, và cùng ngày mở thêm **G23** (bản sao danh mục chỉ đầy đủ khi bộ mặc định *cục bộ* đầy đủ — tự khỏi ở lượt pull sau) và **G24** (màu danh mục không có cột trên server, chặn ở backend — ⚠️ 2026-09-11: thành lỗi phía client rồi đóng cùng ngày, xem dưới). **G15 đóng 2026-09-07** (dòng này từng còn liệt kê nó — soát lại 2026-09-09 từ chính `CLIENT_APP_KNOWN_GAPS.md`). Đếm lại từ chính `CLIENT_APP_KNOWN_GAPS.md` ngày 2026-09-10, cập nhật 2026-09-11 sau khi gộp `main` @ `cc65f4f` và áp `database/12` — dòng cũ ở đây chỉ liệt kê ba mục và đã bỏ sót bốn: mục **chưa đóng** nay là **G18** (⏸️ thu hẹp dần), **G23** (⏸️ chấp nhận được), **G26** (✅ cố ý — chờ màn duyệt giao dịch ngân hàng), **G27** (⏸️ hoãn có chủ ý — "ví được phép âm"), **G28** (⏸️ hết chặn phía server, chờ client mở lại — lưu trữ ví chỉ sống trên máy đã bấm, mở 2026-09-10; tệp `database/7` đã áp lên CSDL dev tối cùng ngày, cột nay `varchar(20)`; người dùng chốt mở lại **để sau**) và **G34** (⏸️ chưa làm, việc client — backend đã phát `sync.completed` ra socket sau mỗi `/sync/push`, nhưng client chưa nghe sự kiện ấy (`realtime_event.dart` chỉ khai ba sự kiện), và hôm nay nó cũng chưa tới được client vì bắt tay socket từ chối mọi tài khoản — CAN-LAM 17 A; mở 2026-09-11) — đếm lại bằng script 2026-09-11 sau khi đóng G33: **6** mục (loại ba mục *không phải lỗi*). **Đóng 2026-09-11**: **G24** (client đổi khoá màu danh mục sang `color`; kiểm trên máy ảo), **G35** (ba màn quản lý danh mục lấy tài khoản với dự phòng `?? 1` — mở và gỡ cùng ngày theo khuôn G4, kèm test quét `lib/`), **G30** (client gỡ chốt một ví Tiết kiệm sau khi `database/12` bỏ index; kiểm trên máy ảo), **G33** (trang Xoá tài khoản thôi hứa "đăng nhập lại là tự khôi phục", tài khoản chờ xoá dùng tiếp 30 ngày với thẻ nhắc đóng được ở Trang chủ và nút huỷ ở Cài đặt — chín commit `ca44dd8` → `866b870` (đếm bằng máy 2026-09-11), kiểm trên máy ảo với tài khoản 11 — khối "Sửa G33 — tài khoản chờ xoá dùng tiếp 30 ngày" trên), và theo mã backend sau gộp (chưa chạy đầu-cuối): **G29** (bộ lọc ghi chú mới chạy đúng 15/15 ca), **G31** (`22001`/`23502` thành `CONSTRAINT_VIOLATION`; bộ lọc bảy ô tên phía client vẫn giữ để bản ghi không kẹt vĩnh viễn) và **G32** (backend giữ `null`, tệp 12 dọn `<= 0` trên CSDL dev; client vẫn đọc `<= 0` là chưa sắp làm lớp phòng thủ). **G19**, **G22** và **G25** ghi *không phải lỗi*, giữ lại để người sau không "sửa" nhầm:
+
+> ⚠️ **Đính chính 2026-09-17 — đoạn trên là ảnh chụp ngày 2026-09-11 và nay
+> sai ở BA chỗ.** `G28` đóng 2026-09-14 (`wallet.status` đi qua đồng bộ hai
+> chiều), `G34` đóng tối 2026-09-12 (client nghe `sync.completed`), và `G27`
+> đóng 2026-09-17 (cờ `wallets.allow_negative`, schema v23 — khối "Ví được
+> phép âm" đầu mục này).
+>
+> **Đếm lại bằng máy 2026-09-17 từ chính `CLIENT_APP_KNOWN_GAPS.md`: 43 mục
+> G, 41 đã đóng, còn HAI** — `G18` (⏸️ thu hẹp dần) và `G23` (⏸️ chấp nhận
+> được). Cả hai đều là hoãn có chủ ý, không phải lỗi đang chờ sửa. ⚠️ Con số
+> **ba** đo cùng ngày là ảnh chụp buổi sáng, trước khi G27 đóng.
+>
+> Giữ nguyên đoạn cũ thay vì viết lại: nó ghi lại *đường đã đi*, và mỗi lần
+> sửa tại chỗ là mất dấu vết vì sao danh sách từng có hình dạng ấy.
 
 - **G15 — Bản ghi vừa hết hạn vừa hỏng đồng bộ thì không sửa được.** ⏸️ **Hoãn có chủ ý** (2026-09-04): tab "Đã hết hạn" khoá sửa/xoá, nên một ngân sách vừa quá hạn vừa bị backend từ chối vĩnh viễn sẽ nằm lại mãi — hàng đợi đồng bộ vẫn thông vì `SyncEngine` chặn nó theo thời gian, nhưng người dùng không chữa được. Giữ nguyên vì tab đó là nền cho phần thống kê/báo cáo sẽ làm sau. Bán kính rủi ro hẹp: nguồn gây lỗi chính (form tạo ra `end ≤ start`) đã bịt cùng ngày.
 - ~~**G10 — `CategoryGroupMemberships` không bao giờ được đồng bộ.**~~ ✅ **Đóng 2026-09-07, và không phải bằng cách xin backend thêm entity.** Bảng phụ ấy tồn tại chỉ vì danh mục mặc định là hàng toàn cục nên không ghi `Idgroup` riêng cho từng tài khoản được. Nay mỗi tài khoản có **bản sao riêng** của bộ mặc định, nên việc gán nhóm nằm gọn trong `Idgroup` của chính hàng họ sở hữu — cột đã có sẵn và đã đồng bộ.

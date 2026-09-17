@@ -66,6 +66,9 @@ class _WalletAddFormState extends State<_WalletAddForm> {
   bool _isDefault = true;
   bool _includeInTotal = true;
 
+  /// G27 — mặc định TẮT: `false` chính là hành vi trước bản này.
+  bool _choPhepAm = false;
+
   /// Ví đang có của tài khoản, để báo sớm ràng buộc trùng tên của server (xem
   /// `domain/rang_buoc_vi.dart`). Chốt chặn thật nằm ở datasource; ở đây chỉ
   /// để người dùng không phải điền xong rồi mới biết.
@@ -133,6 +136,7 @@ class _WalletAddFormState extends State<_WalletAddForm> {
         colour:    colour,
         isDefault: _isDefault,
         includeInTotal: _includeInTotal,
+        allowNegative: _choPhepAm,
       );
       if (!mounted) return;
       // Cubit của trang này là bản RIÊNG (`BlocProvider` ở trên), không ai
@@ -490,6 +494,13 @@ class _WalletAddFormState extends State<_WalletAddForm> {
             title: 'Tính vào tổng số dư tài sản',
             value: _includeInTotal,
             onChanged: (val) => setState(() => _includeInTotal = val),
+          ),
+          const Divider(height: 1, color: AppColors.borderSubtle, indent: 20, endIndent: 20),
+          _buildSwitchTile(
+            title: 'Cho phép số dư âm',
+            subtitle: 'Dùng cho thẻ tín dụng hoặc ví theo dõi nợ. Ví này sẽ không bị cảnh báo số dư.',
+            value: _choPhepAm,
+            onChanged: (val) => setState(() => _choPhepAm = val),
           ),
         ],
       ),

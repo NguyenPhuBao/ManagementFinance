@@ -1,6 +1,6 @@
 # Client-app — Việc còn dang dở & rủi ro đã biết
 
-**Cập nhật:** **2026-09-17** (**khoản chi lớn** — loại thông báo thứ **18**, mục #7 khảo sát lần hai, mục 5f `NOTIFICATION_FEATURE.md` — **không mở lỗ hổng nào**; khảo sát lần hai nay **đóng**. Cùng ngày, trước đó: **tổng tài sản theo thời gian** — mục #5 khảo sát lần hai, mục 3.30 `ANALYTICS_FEATURE.md` — **không mở lỗ hổng nào**. Nó *đóng* một chỗ chưa ai gọi tên: `daiTrucDuBao` dựng trần rộng gấp đôi mức cần với dải bắt đầu từ 0, thứ **không test nào bắt được** vì mọi tính chất vẫn đúng — chỉ máy ảo thấy; nay siết tại chính hàm ấy, xem bẫy **4.21** vế ba. Cũng lượt này, giả định của mục 3.25 về "vách khoản neo 2026-09-13" bị **phép đo lật**: vách ấy không tồn tại trên dữ liệu thật) · trước đó 2026-09-16 (cuối ngày: **lịch chi tiêu** — mục #6 khảo sát lần hai, mục 3.29 `ANALYTICS_FEATURE.md` — **không mở lỗ hổng nào**; hai chỗ nó suýt để lọt đều bị bản sai có chủ ý và máy ảo bắt tại chỗ, ghi ở mục 3.29 chứ không thành lỗ hổng. Trước đó cùng ngày: mở rồi **đóng G43** — nút "Tuỳ chọn" của bộ chọn phạm vi ném assertion và chết **im lặng** ở đúng trạng thái mặc định của trang, **có sẵn từ P1**; tìm được khi nghiệm thu máy ảo cho **so cùng kỳ năm trước** (mục #2 khảo sát lần hai), thứ **không** mở lỗ hổng nào. Trước đó cùng ngày: mở rồi **đóng G42** trong cùng ngày — ví đã xoá mềm vẫn phình "số dư cuối kỳ" của trang Phân tích; tìm được khi soát tài liệu sau tính năng **dự báo dòng tiền 30 ngày**, thứ **không** mở lỗ hổng nào) · trước đó 2026-09-15 (mở rồi **đóng G41** trong cùng ngày — giao dịch trỏ vào danh mục mặc định toàn cục mất tên, máy ảo lộ ra bằng **hai chip cùng tên**; cùng ngày: **tỉ lệ tiết kiệm** và **A8 #8 dòng tiền tự do** — không mở lỗ hổng nào. Trước đó cùng ngày: mở rồi **đóng G40** — trang Xem trước báo cáo lệch cột số tiền thật, và lệch **93px**, nặng hơn chỗ đã sửa ở trang Phân tích; không phải hai khối mà **sáu**. Cùng ngày: P1 phạm vi thời gian và P2 bốn khối mượn từ trang Báo cáo — **không mở lỗ hổng nào**, schema giữ v22) · trước đó 2026-09-14 (mở rồi **đóng G39** ngay trong ngày — nhãn trục tung khối "Xu hướng 6 tháng" in đè lên nhau, tìm được khi nghiệm thu máy ảo lát A8 #3/#7; mở rồi **đóng G38** ngay trong ngày — ba trang giao dịch rơi về tài khoản admin; **đóng G28** — `wallet.status` đi qua đồng bộ hai chiều, schema v22) · trước đó 2026-09-13 (mở rồi **đóng G37** ngay trong ngày — số dư ví nay suy từ sổ giao dịch; đóng G36) · trước đó 2026-09-11 (sau khi nhánh gộp `main` @ `cc65f4f` và CSDL dev áp `database/12`: đóng G29, G31, G32; G24 thành lỗi phía client rồi đóng cùng ngày; thêm G34; G35 mở rồi đóng cùng ngày; đóng G30; đóng G33); 2026-09-12: gộp `main` @ `cbbeeb4` — CAN-LAM 17 A đóng, kênh thời gian thực nối được trên máy ảo, G34 hết bị chặn rồi **đóng tối cùng ngày** (client nghe `sync.completed`, im lặng, kiểm máy ảo hai máy); chiều muộn thêm **G36** — chờ backend; tối muộn gộp `main` @ `7779999` — backend làm xong CAN-LAM 20 (chốt trả hai lần ở `upsertTransaction`, client đo thật 4 ca; G36 sửa ở mã, **chưa đo đầu-cuối** ca khoá/xoá vì cần API admin — chờ đo rồi đóng); **2026-09-13: đo đầu-cuối ba ca G36 qua API admin — cả ba đúng, G36 ✅ ĐÓNG** (kéo theo: đường `lamMoi` **có** mang `daXoa`, nên ngoại lệ §3.6b không còn vô nghĩa — người dùng chốt **giữ** cùng ngày); cùng ngày, nghiệm thu bước 12 trên hai máy ảo đóng bốn lỗi im lặng của luồng tự động trả hoá đơn và mở **G37** — số dư ví không phản ánh giao dịch sau một lần đẩy bị xung đột
+**Cập nhật:** **2026-09-17** (**đóng G27** — cờ `wallets.allow_negative`, schema **v23**: ví thẻ tín dụng / theo dõi nợ thôi bị nhắc "ví âm" mỗi ngày. ⚠️ Hai bản sai có chủ ý đi lọt ở vòng đầu, **cả hai là lỗ hổng trong chính bộ test vừa viết** — chi tiết ở mục G27. Đếm lại bằng máy cùng ngày: **43** mục G, **41** đã đóng, còn **hai** (G18, G23), cả hai hoãn có chủ ý. Cùng ngày, trước đó: **khoản chi lớn** — loại thông báo thứ **18**, mục #7 khảo sát lần hai, mục 5f `NOTIFICATION_FEATURE.md` — **không mở lỗ hổng nào**; khảo sát lần hai nay **đóng**. Cùng ngày, trước đó: **tổng tài sản theo thời gian** — mục #5 khảo sát lần hai, mục 3.30 `ANALYTICS_FEATURE.md` — **không mở lỗ hổng nào**. Nó *đóng* một chỗ chưa ai gọi tên: `daiTrucDuBao` dựng trần rộng gấp đôi mức cần với dải bắt đầu từ 0, thứ **không test nào bắt được** vì mọi tính chất vẫn đúng — chỉ máy ảo thấy; nay siết tại chính hàm ấy, xem bẫy **4.21** vế ba. Cũng lượt này, giả định của mục 3.25 về "vách khoản neo 2026-09-13" bị **phép đo lật**: vách ấy không tồn tại trên dữ liệu thật) · trước đó 2026-09-16 (cuối ngày: **lịch chi tiêu** — mục #6 khảo sát lần hai, mục 3.29 `ANALYTICS_FEATURE.md` — **không mở lỗ hổng nào**; hai chỗ nó suýt để lọt đều bị bản sai có chủ ý và máy ảo bắt tại chỗ, ghi ở mục 3.29 chứ không thành lỗ hổng. Trước đó cùng ngày: mở rồi **đóng G43** — nút "Tuỳ chọn" của bộ chọn phạm vi ném assertion và chết **im lặng** ở đúng trạng thái mặc định của trang, **có sẵn từ P1**; tìm được khi nghiệm thu máy ảo cho **so cùng kỳ năm trước** (mục #2 khảo sát lần hai), thứ **không** mở lỗ hổng nào. Trước đó cùng ngày: mở rồi **đóng G42** trong cùng ngày — ví đã xoá mềm vẫn phình "số dư cuối kỳ" của trang Phân tích; tìm được khi soát tài liệu sau tính năng **dự báo dòng tiền 30 ngày**, thứ **không** mở lỗ hổng nào) · trước đó 2026-09-15 (mở rồi **đóng G41** trong cùng ngày — giao dịch trỏ vào danh mục mặc định toàn cục mất tên, máy ảo lộ ra bằng **hai chip cùng tên**; cùng ngày: **tỉ lệ tiết kiệm** và **A8 #8 dòng tiền tự do** — không mở lỗ hổng nào. Trước đó cùng ngày: mở rồi **đóng G40** — trang Xem trước báo cáo lệch cột số tiền thật, và lệch **93px**, nặng hơn chỗ đã sửa ở trang Phân tích; không phải hai khối mà **sáu**. Cùng ngày: P1 phạm vi thời gian và P2 bốn khối mượn từ trang Báo cáo — **không mở lỗ hổng nào**, schema giữ v22) · trước đó 2026-09-14 (mở rồi **đóng G39** ngay trong ngày — nhãn trục tung khối "Xu hướng 6 tháng" in đè lên nhau, tìm được khi nghiệm thu máy ảo lát A8 #3/#7; mở rồi **đóng G38** ngay trong ngày — ba trang giao dịch rơi về tài khoản admin; **đóng G28** — `wallet.status` đi qua đồng bộ hai chiều, schema v22) · trước đó 2026-09-13 (mở rồi **đóng G37** ngay trong ngày — số dư ví nay suy từ sổ giao dịch; đóng G36) · trước đó 2026-09-11 (sau khi nhánh gộp `main` @ `cc65f4f` và CSDL dev áp `database/12`: đóng G29, G31, G32; G24 thành lỗi phía client rồi đóng cùng ngày; thêm G34; G35 mở rồi đóng cùng ngày; đóng G30; đóng G33); 2026-09-12: gộp `main` @ `cbbeeb4` — CAN-LAM 17 A đóng, kênh thời gian thực nối được trên máy ảo, G34 hết bị chặn rồi **đóng tối cùng ngày** (client nghe `sync.completed`, im lặng, kiểm máy ảo hai máy); chiều muộn thêm **G36** — chờ backend; tối muộn gộp `main` @ `7779999` — backend làm xong CAN-LAM 20 (chốt trả hai lần ở `upsertTransaction`, client đo thật 4 ca; G36 sửa ở mã, **chưa đo đầu-cuối** ca khoá/xoá vì cần API admin — chờ đo rồi đóng); **2026-09-13: đo đầu-cuối ba ca G36 qua API admin — cả ba đúng, G36 ✅ ĐÓNG** (kéo theo: đường `lamMoi` **có** mang `daXoa`, nên ngoại lệ §3.6b không còn vô nghĩa — người dùng chốt **giữ** cùng ngày); cùng ngày, nghiệm thu bước 12 trên hai máy ảo đóng bốn lỗi im lặng của luồng tự động trả hoá đơn và mở **G37** — số dư ví không phản ánh giao dịch sau một lần đẩy bị xung đột
 **Mục đích:** ghi lại những hạng mục đã được **cân nhắc và cố ý hoãn**, kèm lý do và bán kính ảnh hưởng. Không có tài liệu này thì người tiếp theo sẽ hoặc bỏ sót, hoặc làm lại từ đầu việc phân tích rủi ro.
 
 Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nhất.
@@ -32,7 +32,7 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > | **G22** | **Không phải lỗi** — giờ trong mốc neo chỉ giữ được một chiều |
 > | **G25** | **Không phải lỗi** — hai máy cùng sắp lại thứ tự ưu tiên khi ngoại tuyến thì được một thứ tự trộn (2026-09-08) |
 > | **G26** | Hoãn có chủ ý — chưa có màn **duyệt giao dịch ngân hàng** cho sự kiện realtime trỏ tới; đây là một tính năng riêng, không phải phần còn thiếu của việc nối socket (2026-09-09) |
-> | **G27** | Hoãn có chủ ý — không còn cách nói "ví này **được phép âm**" sau khi loại `debt` bị bỏ; cần một cột mới ở cả hai đầu cho một tình huống CSDL hiện không có hàng nào (2026-09-09) |
+> | ~~**G27**~~ ✅ **ĐÓNG 2026-09-17** (cờ `allowNegative`, schema v23) — trước đó: không còn cách nói "ví này **được phép âm**" sau khi loại `debt` bị bỏ; cần một cột mới ở cả hai đầu cho một tình huống CSDL hiện không có hàng nào (2026-09-09) |
 > | ~~**G28**~~ | ✅ **ĐÓNG 2026-09-14** — `wallet.status` đi qua đồng bộ **hai chiều**: lưu trữ ví trên máy A nay có hiệu lực trên máy B. Ba mảnh khớp nhau (payload **13 trường**, `walletForPush` dịch sang `'Active'`/`'Inactive'`, nhánh kéo về đọc về chữ thường) cộng **migration v22** đánh dấu ví lưu trữ cũ để đẩy lại — bốn thứ vào **cùng một commit** vì bước cứu chỉ chạy một lần trong đời mỗi máy. ⚠️ Máy chủ chưa áp `database/7` vẫn `varchar(7)` và ví lưu trữ sẽ kẹt hàng đợi đẩy vĩnh viễn, im lặng. Dòng cũ ghi *chờ client mở lại* — đúng tới trước bản này |
 > | ~~**G29**~~ | ✅ **Đóng 2026-09-11** — bộ lọc ghi chú mới của `7675b35` (Luhn + hình dạng số thẻ; mật khẩu phải có `:`/`=`; bỏ "pin") chạy đúng **15/15** ca của tài liệu xin, đo bằng chính hàm `filterSensitiveNote` — **chưa** đo đầu-cuối. Còn một hở nhỏ chấp nhận được và một việc cùng gốc ở backend (khoá mã hoá, mục 18 §2.6), không giữ mục này mở. Dòng cũ ghi *chặn ở backend* — đúng tới trước khi gộp `main` |
 > | ~~**G30**~~ | ✅ **Đóng 2026-09-11** — `database/12` bỏ `uq_wallet_saving_active` và client gỡ chốt tạm: màn Thêm ví cho chọn "Tiết kiệm" dù đã có một ví Tiết kiệm, datasource không còn từ chối. ⚠️ Máy chủ nào chưa áp tệp 12 vẫn từ chối ví Tiết kiệm thứ hai. Chốt **trùng tên ví** ở lại vĩnh viễn |
@@ -768,7 +768,44 @@ sau vài giây thay vì sau 15 phút.
 
 ---
 
-### G27 — Không còn cách nào nói "ví này được phép âm" · ⏸️ HOÃN CÓ CHỦ Ý (2026-09-09)
+### ~~G27 — Không còn cách nào nói "ví này được phép âm"~~ · ✅ ĐÓNG (2026-09-17)
+
+> ✅ **Đóng 2026-09-17 — cờ `Wallets.allowNegative`, schema v23.** Ví đánh dấu
+> "cho phép âm" không sinh cảnh báo số dư nào cả (**cả** `walletNegative` lẫn
+> `walletLowBalance`, đúng luật mà chốt `debt` cũ đã có), và màn Quản lý ví thôi
+> tô đỏ **cả biểu tượng lẫn số tiền**. Công tắc ở màn Thêm ví và Sửa ví.
+>
+> ⚠️ **Cột CỤC BỘ, không đi qua đồng bộ** — payload ví vẫn **13 trường**. Bật cờ
+> trên máy A thì máy B không biết. Mở đồng bộ cần một cột PostgreSQL và một tài
+> liệu `CAN-LAM`; người dùng chốt **không** mở lại hàng đợi ấy. Có **test quét
+> `lib/` thứ bảy** canh cờ không lọt vào `sync_engine` / `sync_payload_normalizer`
+> / hợp đồng payload — đúng bài học `wallet.status`, nơi ba chú thích ở ba tệp
+> khác từng nói một cột cục bộ là "đi ra máy khác".
+>
+> **Bản sai có chủ ý: bảy lượt**, và **hai** trong bảy đi lọt ở vòng đầu — cả hai
+> đều là lỗ hổng trong chính bộ test vừa viết, không phải trong mã:
+>
+> 1. Ca *"cờ cũng tắt cảnh báo SẮP CẠN"* dựng ví số dư **−5.000.000**, mà nhánh
+>    sắp cạn chỉ chạy khi `balance >= 0` — nên nó **không canh gì**, y hệt G43.
+>    Số dư phải **dương** và dưới ngưỡng thì ca mới có nghĩa.
+> 2. Ca datasource đặt **sai tiền đề**: quên cột trong `_toCompanion` **không**
+>    làm cờ tự tắt — `write(companion)` chỉ ghi cột có mặt, nên giá trị cũ ở
+>    lại và triệu chứng thật là **cờ không đổi được**. ⚠️ Chú thích của `status`
+>    ngay cạnh trong `_toCompanion` mang đúng nhận định sai ấy; chưa sửa, đã ghi
+>    lại trong ca test.
+>
+> ⚠️ Máy ảo bắt được một chỗ **nửa việc**: bản đầu chỉ đổi màu **biểu tượng**,
+>  còn con số `-100.000 đ` vẫn đỏ chói — mà đó mới là thứ mắt đọc trước. Màu ấy
+>  là `AppColors.error`, tức màu **cảnh báo** chứ không phải quy ước dấu; ví lưu
+>  trữ đã có sẵn tiền lệ chuyển số âm sang xám vì đúng lý do đó.
+>
+> Nghiệm thu máy ảo 2026-09-17 với ví `test` (−100.000): migration v23 chạy sạch
+> trên CSDL đang có (33 giao dịch nguyên vẹn), bật cờ → ví trung tính hoàn toàn,
+> và cờ **sống sót qua `force-stop` + khởi động lại**. ⚠️ Vế thông báo thì lượt
+> quét trả `0 hàng mới` **không chứng minh được gì** — khoá chống trùng của ngày
+> hôm ấy đã tồn tại từ trước khi bật cờ; vế ấy do bộ test canh.
+
+*Các đoạn dưới giữ nguyên — chúng ghi lại vì sao lỗ hổng này từng tồn tại.*
 
 Từ 2026-09-07, ví loại `debt` mang số dư âm **không** sinh cảnh báo: âm là đúng
 bản chất của nó, và trước đó nó bị nhắc mỗi ngày cho tới khi trả hết nợ — đúng

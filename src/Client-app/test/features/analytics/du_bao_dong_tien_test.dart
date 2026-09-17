@@ -45,6 +45,8 @@ Wallet vi(
       syncStatus: 'synced',
       syncRetryCount: 0,
       updatedAt: DateTime(2026, 1, 1),
+    
+      allowNegative: false,
     );
 
 Bill hoaDon(

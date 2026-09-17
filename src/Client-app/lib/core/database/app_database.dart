@@ -56,7 +56,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 22;
+  int get schemaVersion => 23;
 
   @override
   MigrationStrategy get migration {
@@ -453,6 +453,16 @@ class AppDatabase extends _$AppDatabase {
             "updated_at = CAST(strftime('%s','now') AS INTEGER) "
             "WHERE status = 'inactive' AND is_deleted = 0",
           );
+        }
+        if (from < 23) {
+          // G27: cờ "ví được phép âm" (thẻ tín dụng, ví theo dõi nợ).
+          //
+          // KHÔNG điền dữ liệu cho hàng cũ. Mặc định `false` **chính là** hành
+          // vi trước bản này — mọi ví âm đều bị cảnh báo — nên không bản cài
+          // nào đổi hành vi lặng lẽ. Khác hẳn v22, nơi phải đánh dấu ví lưu trữ
+          // cũ để đẩy lại: cờ này **không đi qua đồng bộ**, nên không có bản
+          // nào của server để giành nhau.
+          await m.addColumn(wallets, wallets.allowNegative);
         }
       },
       beforeOpen: (details) async {

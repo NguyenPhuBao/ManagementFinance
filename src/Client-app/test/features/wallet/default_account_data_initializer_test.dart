@@ -24,6 +24,7 @@ class _WalletRepositoryStub implements WalletRepository {
     String colour = '#4CAF50',
     bool isDefault = false,
     bool includeInTotal = true,
+    bool allowNegative = false,
   }) async {
     created.add((name: name, type: type, isDefault: isDefault));
     final wallet = WalletEntity(
