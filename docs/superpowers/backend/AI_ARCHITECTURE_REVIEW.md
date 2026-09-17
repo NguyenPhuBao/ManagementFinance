@@ -35,7 +35,7 @@ Bản vẽ lại khớp mã (mục 8) xem được ở đây:
    tĩnh, nút gửi chỉ xoá ô nhập).
 5. Hai phương án đi tiếp được trình bày đầy đủ ở mục 5 và 6. Client **đề xuất
    phương án A** (giữ lõi tất định làm nguồn số, mượn Gateway/guardrail và tầng
-   diễn giải của sơ đồ mẫu). Phương án B (khớp nguyên bản) làm được, nhưng ba ô
+   diễn giải của sơ đồ mẫu) — lý do chi tiết ở mục 9.1. Phương án B (khớp nguyên bản) làm được, nhưng ba ô
    sẽ là mã chạy mà cho kết quả **kém hơn thứ đang có**.
 6. **Ba quyết định cần hai phía chốt** — mục 9.
 
@@ -450,14 +450,100 @@ flowchart TB
 | 2 | Phát hiện chi tiêu bất thường bằng gì? | Ngưỡng người dùng đặt (đã chốt 2026-09-17), thêm luật subscription tất định | Mở lại thống kê (Welford/z-score) — cần dữ liệu ≥ 6 tháng để không nổ bừa |
 | 3 | SLM on-device là bắt buộc hay tuỳ chọn? | Template chuỗi trước; SLM là thử nghiệm sau khi đo APK/RAM | Bắt buộc — chấp nhận ≈ 550 MB tải về, RAM ≥ 3 GB, chưa kiểm iOS |
 
-**Đề xuất của client:** phương án A cho cả ba, với lý do ở mục 4.4. Nếu mục tiêu
-bảo vệ đồ án đòi đúng hình sơ đồ mẫu thì phương án B vẫn làm được theo mục 6 —
-chỉ cần biết trước ba ô (Spending Behavior thống kê, Forecast trên server, RAG
-trên dữ liệu người dùng) sẽ là mã chạy mà cho kết quả kém hơn thứ đang có.
+**Đề xuất của client:** phương án A cho cả ba — lý do chi tiết ở mục 9.1 ngay
+dưới. Nếu mục tiêu bảo vệ đồ án đòi đúng hình sơ đồ mẫu thì phương án B vẫn làm
+được theo mục 6 — chỉ cần biết trước ba ô (Spending Behavior thống kê, Forecast
+trên server, RAG trên dữ liệu người dùng) sẽ là mã chạy mà cho kết quả kém hơn
+thứ đang có.
 
-Việc **không phụ thuộc quyết định nào** và nên làm ngay: giai đoạn 0 của phương
-án A (bốn việc backend nhỏ, trong đó 2.2 #3 là lỗi đang chạy) và nối client vào
-Pipeline A.
+### 9.1. Phương án đề xuất: A — và vì sao
+
+Phương án A là lối **"tất định làm số, LLM diễn giải"** (mục 5): giữ nguyên
+khung ba tầng của sơ đồ mẫu, giữ nguyên Gateway / masking / guardrail / Pipeline
+A, và chỉ phân vai lại **ba ô** — Pipeline B nhận JSON client đã tính thay vì
+tính lại trên server; chatbot dùng function-calling trên hàm domain thay vì RAG
+vector trên dữ liệu người dùng; khối 2 diễn giải bằng template trước, SLM
+on-device là thử nghiệm sau. Client đề xuất nó **cho cả hiện tại lẫn tương
+lai**, không chỉ vì rẻ hơn hôm nay.
+
+#### a. Cho hiện tại — đến lúc bảo vệ đồ án
+
+1. **Là phương án duy nhất có thứ chạy được để trình diễn trong thời gian còn
+   lại.** Giai đoạn 0 + 1 biến 2 487 dòng backend đã viết (Pipeline A) thành
+   tính năng người dùng chạm được — quét hoá đơn, gợi ý danh mục, tự học — chỉ
+   tốn công phía client và bốn việc nhỏ phía backend. Phương án B phải xong hai
+   khối XL (Edge SLM, RAG) mới có gì để xem, và cái xem được sẽ nổ bừa hoặc im
+   lặng vì dữ liệu thật mới có 8 ngày (mục 7 #1).
+
+2. **Không bắt lật quyết định nào đã trả giá bằng lỗi thật.** Ba quyết định ở
+   bảng trên — ngưỡng thay thống kê, một định nghĩa cho mỗi phép tính, không bịa
+   thu nhập — đều sinh ra từ lỗi im lặng đã vấp (`docs/ANALYTICS_FEATURE.md`
+   3.24/3.27, `docs/NOTIFICATION_FEATURE.md` 5f). Phương án B lật cả ba; A giữ
+   cả ba.
+
+3. **Với hội đồng, A vẫn đầy đủ từ khoá và lập luận kỹ thuật đúng hơn.** Kiến
+   trúc vẫn là "phân tầng hybrid: Gateway chung → pipeline chuyên biệt →
+   storage", vẫn có guardrail, quota, masking, grounding, OCR multimodal, phân
+   loại ba tầng. Câu *"số liệu từ tầng tất định có test, LLM chỉ diễn giải; hỏi
+   đáp bằng function-calling vì dữ liệu người dùng là bảng có cấu trúc"* là lập
+   luận **đúng hơn** "RAG vector trên vài trăm hàng SQL" — và là câu một hội
+   đồng có kinh nghiệm sẽ hỏi nếu chọn B. Nguyên tắc ấy cũng chính là dòng
+   *"SLM ở Tầng 3 không bao giờ tự tính toán số học"* trong tài liệu Edge SLM
+   của backend — A chỉ áp nó lên toàn bộ sơ đồ.
+
+4. **Chi phí và phụ thuộc thấp.** A cần Gemini (đã có) và tuỳ chọn OpenAI qua
+   Gateway; B cần thêm Chroma, dịch vụ reranker Python, Supabase, và ≈ 550 MB
+   mô hình trên máy — sáu dịch vụ ngoài cho một app cá nhân, chưa kể chi phí
+   token cho mỗi lượt tính lại trên server.
+
+5. **Không tạo mâu thuẫn riêng tư mới.** JSON tóm tắt gửi lên không chứa giao
+   dịch thô nên riêng tư *theo cấu trúc*; B nhúng ghi chú giao dịch (đang mã
+   hoá AES) thành vector không mã hoá trong Chroma — tự mâu thuẫn với hộp 3.1
+   của chính sơ đồ.
+
+#### b. Cho tương lai — nếu app đi tiếp sau đồ án
+
+A **không đóng cửa** đường lên B; nó chỉ đổi thứ tự để mỗi mảnh được xây khi có
+dữ liệu và lý do thật:
+
+- **Gateway của giai đoạn 2 là cùng một Gateway B cần.** Thêm nhà cung cấp,
+  thêm pipeline sau này là thêm adapter, không đập gì.
+- **Chatbot function-calling mở rộng tự nhiên sang RAG.** Khi có kho văn bản
+  thật (điều khoản ngân hàng, kiến thức tài chính, FAQ), thêm một công cụ
+  `tra_cuu_kien_thuc()` chạy RAG — Pipeline C xuất hiện đúng chỗ nó có nghĩa,
+  nằm *cạnh* truy vấn có cấu trúc chứ không thay thế nó.
+- **Luật thống kê thêm vào cạnh ngưỡng, không thay ngưỡng.** Khi người dùng có
+  6–12 tháng lịch sử, Welford / subscription là hàm thuần thêm vào cùng tầng
+  domain đã có test; ngưỡng người dùng đặt vẫn là lớp không thể báo động giả.
+- **SLM on-device cắm vào Tầng 3 đã có template.** Nguyên tắc "SLM không tính
+  toán" giữ nguyên, nên khi mô hình nhỏ đủ để phát hành, chỉ đổi bộ sinh câu,
+  không đổi số liệu.
+
+Ngược lại, xây B trước rồi mới có dữ liệu thì phải **gỡ** ba ô sau khi thấy
+chúng kém hơn thứ đang có — trả chi phí hai lần.
+
+#### c. Rủi ro của A và cách giảm
+
+| Rủi ro | Cách giảm |
+|---|---|
+| Hội đồng thấy "ít AI" hơn sơ đồ mẫu | Trình bày đúng: LLM ở ba chỗ (OCR multimodal, phân loại tầng 3, diễn giải/hội thoại) cộng function-calling; kèm chương RAG cho kiến thức tĩnh nếu cần (mục d) |
+| JSON tóm tắt từ client thành **hợp đồng thứ hai** cạnh payload đồng bộ, dễ lệch tên trường im lặng (quy tắc 4 `CLAUDE.md`) | Một tệp test hợp đồng riêng theo đúng khuôn `sync_payload_contract_test.dart`; server validate bằng Zod ở Gateway |
+| Admin-web không có phép tính nào để dùng lại (server không tính) | Chấp nhận có chủ ý; dashboard admin dùng số tổng hợp đã đồng bộ, không cần dự báo/tư vấn |
+| Client phải thêm mã cho mỗi công cụ của chatbot | Mỗi công cụ bọc một hàm domain đã có, không viết luật mới; số công cụ cố định và nhỏ |
+
+#### d. Điều giữ lại từ phương án B
+
+Nếu báo cáo đồ án **cần chương RAG có Ragas**, làm Pipeline C **chỉ cho kiến
+thức tài chính tĩnh** (bộ tài liệu 50/30/20, lãi kép, thuế TNCN, điều khoản
+thẻ…) — kho văn bản thật, chấm điểm được, không đụng dữ liệu người dùng, không
+vướng mã hoá `Note`. Đó là cách có chương RAG mà không phá kiến trúc.
+
+#### e. Bắt đầu từ đâu
+
+Việc **không phụ thuộc quyết định nào** và nên làm ngay, song song hai đầu:
+giai đoạn 0 của phương án A (bốn việc backend nhỏ, trong đó 2.2 #3 là lỗi đang
+chạy) và giai đoạn 1 — nối client vào Pipeline A. Hai giai đoạn ấy là phần chung
+của **cả A lẫn B**, nên làm trước không phí dù sau đó chọn hướng nào.
 
 ---
 
