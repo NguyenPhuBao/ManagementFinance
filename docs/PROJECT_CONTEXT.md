@@ -602,7 +602,9 @@ chi** — ba khối mà màn Xem trước đã hiện từ 2026-09-09 còn tệp
 đã nằm sẵn trong `BaoCao`, nên cả hạng mục gói trong **một** tệp `lib`:
 `features/analytics/domain/xuat_tep.dart`. **Schema không đổi** (vẫn v23),
 **không thêm trường đồng bộ**, không đụng repository. Lý do đầy đủ ở mục
-**3.31 `docs/ANALYTICS_FEATURE.md`**. 16 test mới.
+**3.31 `docs/ANALYTICS_FEATURE.md`**. 16 test mới, tất cả ở `xuat_tep_test.dart`
+(**không** thêm tệp). `flutter test` **2810/2810** · `flutter analyze`
+**25 issue, 0 error**.
 
 > ⚠️ **Lượt này bắt được một lỗi đã chạy trong app từ 2026-09-09.** Bản Roboto
 > nhúng cho PDF **không có** khối Mũi tên (U+2190…) lẫn khối Hình học
@@ -626,7 +628,9 @@ chi** — ba khối mà màn Xem trước đã hiện từ 2026-09-09 còn tệp
 > ⚠️ Bố cục PDF chỉ kiểm được qua **thứ tự văn bản** — máy này không có
 > poppler/ghostscript để dựng ảnh raster.
 > ⚠️ Một chỗ lệch **có sẵn**, không phải do hạng mục này: kỳ rỗng thì màn Xem
-> trước giấu mọi khối, còn tệp vẫn in khối **Ngân sách kỳ này**. Chưa sửa.
+> trước giấu mọi khối, còn tệp vẫn in khối **Ngân sách kỳ này** (ngân sách tồn
+> tại độc lập với giao dịch). Chưa rõ bên nào đúng — mở thành **G44**
+> `docs/CLIENT_APP_KNOWN_GAPS.md`, hoãn có chủ ý.
 
 ### 💳 Ví được phép âm — G27 đóng (2026-09-17)
 
@@ -1673,10 +1677,13 @@ Xem đầy đủ tại **`docs/CLIENT_APP_KNOWN_GAPS.md`**. Phiên 2026-09-03 đ
 > đóng 2026-09-17 (cờ `wallets.allow_negative`, schema v23 — khối "Ví được
 > phép âm" đầu mục này).
 >
-> **Đếm lại bằng máy 2026-09-17 từ chính `CLIENT_APP_KNOWN_GAPS.md`: 43 mục
-> G, 41 đã đóng, còn HAI** — `G18` (⏸️ thu hẹp dần) và `G23` (⏸️ chấp nhận
-> được). Cả hai đều là hoãn có chủ ý, không phải lỗi đang chờ sửa. ⚠️ Con số
-> **ba** đo cùng ngày là ảnh chụp buổi sáng, trước khi G27 đóng.
+> **Đếm lại bằng máy 2026-09-17 từ chính `CLIENT_APP_KNOWN_GAPS.md`: 44 mục
+> G, 41 đã đóng, còn BA** — `G18` (⏸️ thu hẹp dần), `G23` (⏸️ chấp nhận được)
+> và `G44` (⏸️ kỳ rỗng: màn Xem trước giấu mọi khối còn tệp vẫn in khối Ngân
+> sách — mở cuối ngày, khi nghiệm thu mục 3.31). Cả ba đều là hoãn có chủ ý,
+> không phải lỗi đang chờ sửa. ⚠️ Hai ảnh chụp cũ **cùng ngày** đừng dùng:
+> **43 mục / còn HAI** là trước khi G44 mở, và **còn ba (G18, G23, G27)** là
+> buổi sáng, trước khi G27 đóng — trùng con số "ba" nhưng **khác danh sách**.
 >
 > Giữ nguyên đoạn cũ thay vì viết lại: nó ghi lại *đường đã đi*, và mỗi lần
 > sửa tại chỗ là mất dấu vết vì sao danh sách từng có hình dạng ấy.

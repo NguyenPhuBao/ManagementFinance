@@ -1630,7 +1630,9 @@ nhau, không có gì nói rằng chúng đang hiện cùng lúc.
 `flutter test` **2743/2743** · `flutter analyze` **25 issue, 0 error** — đếm
 bằng máy 2026-09-17. Analytics có **21** tệp / **548** test (đếm bằng chính
 `flutter test test/features/analytics`). ⚠️ Mốc **2742** đo cùng ngày là ảnh
-chụp **trước** lượt siết `daiTrucDuBao` — đừng dùng.
+chụp **trước** lượt siết `daiTrucDuBao` — đừng dùng. ⚠️ Và cả hai con số ở đoạn
+này là **ảnh chụp trước mục 3.31**, thứ cũng mang ngày 2026-09-17: mốc đang
+đúng là **2810** và **564**, ở khối Nghiệm thu của mục ấy.
 
 Máy ảo `emulator-5554`, tài khoản thật: ba chỗ cùng nói `13.590.000 đ`; câu
 cảnh báo đúng ngày `02/09/2026`; đổi sang đơn vị **Quý** thì tiêu đề thành
@@ -1715,7 +1717,23 @@ hạn **cố ý**: chữ của *người dùng* — tên ví, ghi chú — thì 
 Đo bằng máy 2026-09-17: Roboto **có** `»` `›` `•` `±` `−` `·` `—`; **không có**
 `→` `↑` `↓` `▲` `▼` `▴` `▾`.
 
-**Nghiệm thu máy ảo** (2026-09-17, tài khoản 10, dữ liệu thật): xuất CSV và PDF
+⚠️ **Ca quét glyph KHÔNG phải "test quét `lib/`" thứ tám** — nó chỉ đọc **một**
+tệp, còn bảy ca kia quét toàn bộ `lib/`. Con số ấy vẫn là **bảy**; đừng cộng
+nhầm.
+
+#### Nghiệm thu
+
+`flutter test` **2810/2810** · `flutter analyze` **25 issue, 0 error** — đếm
+bằng máy 2026-09-17. **16** ca mới, tất cả ở `xuat_tep_test.dart`, **không**
+thêm tệp; analytics có **21** tệp / **564** test (đếm bằng chính
+`flutter test test/features/analytics`).
+
+**Bản sai có chủ ý: tám lượt, tất cả bị bắt** — bỏ chốt `!bc.rong`, bỏ chốt
+`topChi.isNotEmpty`, dùng lại `_tiLe`, bỏ dấu âm ở cột tiền của top 5, ghi `—`
+thay ô rỗng, lặp lại dòng "Số giao dịch", trả `→` về dòng dòng tiền, và đổi
+`+`/`-` thành `▲`/`▼`. Hai lượt đầu chính là hai ca **xanh ngay từ đầu**.
+
+**Máy ảo** (2026-09-17, tài khoản 10, dữ liệu thật): xuất CSV và PDF
 tháng 9 rồi kéo tệp về đọc — ba khối mới đúng vị trí, ô phần trăm rỗng khi kỳ
 trước bằng 0, `»` hiện ra trong PDF. Xuất thêm một khoảng **rỗng** có kỳ trước
 **không** rỗng (08–17/09) để bắt cả hai nhánh: PDF ca ấy in `-100,0%` và bỏ hẳn
