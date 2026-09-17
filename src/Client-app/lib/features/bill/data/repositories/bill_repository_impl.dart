@@ -1,11 +1,12 @@
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/database/app_database.dart';
-import '../../domain/bill_an_han.dart';
+import '../../domain/bill_ky_ke_tiep.dart';
 import '../../domain/bill_pay_status.dart';
 import '../../../../core/sync/sync_engine.dart';
 import '../../../../core/bill/bill_recurrence.dart';
 import '../../domain/bill_note.dart';
+import '../../../wallet/data/services/so_du_vi_service.dart';
 import '../datasources/bill_local_datasource.dart';
 import 'bill_repository.dart';
 
@@ -14,11 +15,18 @@ class BillRepositoryImpl implements BillRepository {
   final AppDatabase db;
   final SyncEngine? syncEngine;
 
+  /// Nơi duy nhất ghi số dư. Bỏ trống thì repository tự dựng một cái từ [db] —
+  /// giữ cho hàng chục test đang dựng lớp này bằng hai tham số không phải sửa.
+  late final SoDuViService soDuVi;
+
   BillRepositoryImpl({
     required this.dataSource,
     required this.db,
     this.syncEngine,
-  });
+    SoDuViService? soDuVi,
+  }) {
+    this.soDuVi = soDuVi ?? SoDuViService(db: db);
+  }
 
   @override
   Stream<List<Bill>> watchBills(int idaccount) {
@@ -94,8 +102,12 @@ class BillRepositoryImpl implements BillRepository {
           occurredAt, 'occurredAt', 'Ngày giao dịch không được ở tương lai');
     }
 
-    // Cả bốn bước nằm trong một transaction: hỏng giữa chừng mà vẫn giữ lại
-    // phần đã ghi thì ví bị trừ nhưng hoá đơn chưa đánh dấu (hoặc ngược lại).
+    // ⚠️ Đặt neo TRƯỚC khi ghi sổ — xem `SoDuViService.datNeoNhieuVi`.
+    await soDuVi.datNeoNhieuVi({walletId});
+
+    // Cả ba bước nằm trong một transaction: hỏng giữa chừng mà vẫn giữ lại
+    // phần đã ghi thì sổ có khoản chi nhưng hoá đơn chưa đánh dấu (hoặc ngược
+    // lại).
     await db.transaction(() async {
       // 1. Đánh dấu đã thanh toán (đặt cả isPaid lẫn payStatus), và ghi lại
       //    số tiền THẬT đã trả — tab "Đã thanh toán" là lịch sử, nó phải nói
@@ -134,13 +146,7 @@ class BillRepositoryImpl implements BillRepository {
         ),
       );
 
-      // 3. Trừ số dư ví.
-      final wallet = await db.walletDao.getById(walletId);
-      if (wallet != null) {
-        await db.walletDao.updateBalance(walletId, wallet.balance - soTien);
-      }
-
-      // 4. Sinh hoá đơn kỳ kế tiếp.
+      // 3. Sinh hoá đơn kỳ kế tiếp.
       //
       // Nguồn sự thật là cặp `isRecurrence` + `timeRecurrence`. Cột
       // `recurrence` dạng chuỗi cũ KHÔNG đáng tin: nhánh pull không ghi nó,
@@ -152,6 +158,13 @@ class BillRepositoryImpl implements BillRepository {
         );
       }
     });
+
+    // Số dư suy từ sổ, nên ghi khoản chi CHÍNH LÀ trừ ví — chỉ cần tính lại.
+    //
+    // ⚠️ NGOÀI `db.transaction`: `tinhLaiSoDu` đọc lại chính bảng vừa ghi, và
+    // gọi nó bên trong transaction của Drift là đọc trạng thái chưa commit —
+    // dễ đúng trên SQLite nhưng là một phụ thuộc ngầm không ai thấy.
+    await soDuVi.tinhLaiSoDu(walletId);
 
     syncEngine?.scheduleSync();
   }
@@ -195,29 +208,25 @@ class BillRepositoryImpl implements BillRepository {
 
     final now = DateTime.now();
 
+    // ⚠️ Đặt neo TRƯỚC khi ghi sổ, cùng lý do với `payBill`.
+    await soDuVi.datNeoNhieuVi({khoanChi.walletId});
+
     // Ba bước phải nguyên tử, cùng lý do với `payBill`: hỏng giữa chừng mà
     // giữ lại phần đã ghi thì tiền về ví nhưng hoá đơn vẫn "đã trả".
     await db.transaction(() async {
-      // 1. Hoàn tiền vào ĐÚNG ví đã bị trừ, ĐÚNG số đã trừ. Đọc từ giao dịch
-      //    chứ không từ hoá đơn: người dùng có thể đã trả bằng ví khác, và
-      //    với số tiền khác số ghi trên hoá đơn.
-      final wallet = await db.walletDao.getById(khoanChi.walletId);
-      if (wallet != null) {
-        await db.walletDao
-            .updateBalance(khoanChi.walletId, wallet.balance + khoanChi.amount);
-      }
-
-      // 2. Xoá mềm khoản chi (quy tắc 5 trong CLAUDE.md).
+      // 1. Xoá mềm khoản chi (quy tắc 5 trong CLAUDE.md). Tiền tự quay về ví
+      //    khi số dư được tính lại sau transaction — số dư nay là tổng sổ, nên
+      //    bỏ một khoản chi khỏi sổ CHÍNH LÀ hoàn nó.
       await db.transactionDao.softDelete(khoanChi.id);
 
-      // 3. Gỡ kỳ kế tiếp mà lần trả đã sinh ra. Để lại thì người dùng có hai
+      // 2. Gỡ kỳ kế tiếp mà lần trả đã sinh ra. Để lại thì người dùng có hai
       //    kỳ cùng mở, và trả lại lần nữa sẽ đẻ thêm một kỳ trùng.
       final kySau = await db.billDao.getGeneratedFrom(billId);
       if (kySau != null) {
         await dataSource.softDeleteBill(kySau.id);
       }
 
-      // 4. Đưa hoá đơn về chưa thanh toán. Đặt CẢ HAI cột, cùng lý do với
+      // 3. Đưa hoá đơn về chưa thanh toán. Đặt CẢ HAI cột, cùng lý do với
       //    `markPaid`: nhánh đẩy gửi `pay_status` chứ không gửi `isPaid`.
       await dataSource.updateBill(BillsCompanion(
         id: Value(billId),
@@ -227,6 +236,11 @@ class BillRepositoryImpl implements BillRepository {
         updatedAt: Value(now),
       ));
     });
+
+    // Bỏ khoản chi khỏi sổ chính là hoàn tiền — chỉ cần tính lại. Ví lấy từ
+    // GIAO DỊCH chứ không từ hoá đơn: người dùng có thể đã trả bằng ví khác.
+    // ⚠️ Ngoài `db.transaction`, cùng lý do với `payBill`.
+    await soDuVi.tinhLaiSoDu(khoanChi.walletId);
 
     syncEngine?.scheduleSync();
   }
@@ -335,29 +349,13 @@ class BillRepositoryImpl implements BillRepository {
   /// đẩy: hai cột đó NOT NULL phía backend. Bỏ sót `isRecurrence` thì chuỗi
   /// hoá đơn định kỳ dừng lại sau đúng một kỳ.
   ///
-  /// Kỳ sau bắt đầu **đúng tại ngày kết thúc kỳ trước** (`periodEnd`; hàng cũ
-  /// chưa có cột thì là ngày đến hạn), nên các kỳ nối đuôi nhau không hở và
-  /// luôn giữ được `startDate < dueDate`. Vì chuỗi mất mốc gốc theo cách ấy,
-  /// `anchorDay` được **chép sang từng kỳ** để mốc không tụt dần — xem
-  /// `core/bill/bill_recurrence.dart`. Quên chép là hoá đơn "ngày 31 hàng
-  /// tháng" tụt về 28 vĩnh viễn ngay sau tháng Hai đầu tiên.
+  /// Phép tính NGÀY (kỳ sau nối từ `periodEnd`, giữ `anchorDay`, cộng ân hạn)
+  /// có **một định nghĩa duy nhất** ở `bill_ky_ke_tiep.dart` — dự báo 30 ngày
+  /// của trang Phân tích chiếu kỳ tương lai bằng đúng hàm ấy, nên hàng thật
+  /// sinh ra ở đây không bao giờ lệch với kỳ đã dự báo. Đọc docstring của tệp
+  /// ấy để biết hai bẫy nó giữ.
   BillsCompanion _nextPeriodOf(Bill current, DateTime now, double soTien) {
-    // Kỳ sau bắt đầu tại NGÀY KẾT THÚC KỲ, không phải hạn trả: với hoá đơn có
-    // ân hạn (kỳ 01–30/09, hạn 15/10) nối từ hạn trả là hở nửa tháng và mỗi kỳ
-    // trôi thêm — bẫy §4.4 tài liệu xin backend. Hàng cũ (periodEnd NULL) thì
-    // hai mốc trùng nhau, kết quả y hệt trước v21.
-    final batDauSau = current.periodEnd ?? current.dueDate;
-    // Ngày gốc đi theo cả chuỗi — đây là chỗ duy nhất giữ được nó. Kỳ cũ chưa
-    // có (hoá đơn tạo trước v18, hoặc kéo từ server) thì neo vào mốc hiện tại,
-    // tức giữ nguyên hành vi cũ thay vì đoán.
-    final goc = current.anchorDay ?? batDauSau.day;
-    final ketThucSau = nextBillDueDate(
-      batDauSau,
-      current.timeRecurrence,
-      anchorDay: goc,
-    );
-    // Ân hạn đi theo chuỗi mà không cần cột riêng: suy từ kỳ hiện tại.
-    final anHan = anHanCua(current);
+    final ky = kyKeTiepCua(current);
     return BillsCompanion.insert(
       id: const Uuid().v4(),
       idaccount: current.idaccount,
@@ -369,11 +367,11 @@ class BillRepositoryImpl implements BillRepository {
       // Kỳ sau bắt đầu từ số VỪA TRẢ, không phải số cũ: một quy tắc duy nhất,
       // không có "số mẫu" ẩn, và số vừa trả là ước lượng sát hơn.
       amount: soTien,
-      startDate: Value(batDauSau),
+      startDate: Value(ky.batDau),
       // LUÔN ghi — NULL chỉ dành cho hàng cũ (xem `Bills.periodEnd`).
-      periodEnd: Value(ketThucSau),
-      anchorDay: Value(goc),
-      dueDate: hanTraTu(ketThucSau, anHan),
+      periodEnd: Value(ky.ketThuc),
+      anchorDay: Value(ky.anchorDay),
+      dueDate: ky.hanTra,
       payStatus: const Value('Pending'),
       isPaid: const Value(false),
       timeNotification: Value(current.timeNotification),

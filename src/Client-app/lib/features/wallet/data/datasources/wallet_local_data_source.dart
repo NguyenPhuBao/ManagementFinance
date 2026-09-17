@@ -41,6 +41,7 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
     isDeleted:      w.isDeleted,
     includeInTotal: w.includeInTotal,
     status:         w.status,
+    allowNegative:  w.allowNegative,
     syncStatus:     w.syncStatus,
     updatedAt:      w.updatedAt,
   );
@@ -60,6 +61,9 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
     // Thiếu cột này thì mỗi lần người dùng sửa tên ví là ví tự bỏ lưu trữ —
     // im lặng, vì `update_` chỉ ghi những cột companion có mang.
     status:         Value(e.status),
+    // Cùng lý do với `status` ngay trên: thiếu cột này thì mỗi lần người
+    // dùng sửa tên ví là cờ 'cho phép âm' tự tắt — im lặng.
+    allowNegative:  Value(e.allowNegative),
     syncStatus:     Value(e.syncStatus),
     updatedAt:      Value(e.updatedAt),
   );

@@ -36,6 +36,32 @@ void _createV20Bills(dynamic database) {
   ''');
 }
 
+/// Bảng `wallets` của một CSDL v20 — dựng ở đây chỉ để chuỗi migration chạy
+/// tới cuối.
+///
+/// Tệp này canh phần **hoá đơn**, nhưng migration v22 chạy
+/// `UPDATE wallets SET sync_status = 'pending' WHERE status = 'inactive'`, và
+/// một câu lệnh trên bảng không tồn tại thì cả chuỗi dừng ngay ở đó. Một CSDL
+/// thật luôn có bảng này — thiếu nó ở đây là thiếu ở phía **bản dựng thử**,
+/// không phải ở phía mã nguồn. (Cùng lý do `wallet_schema_v20_test.dart` phải
+/// dựng bảng `bills` mà nó không hề canh.)
+void _createV20Wallets(dynamic database) {
+  database.execute('''
+    CREATE TABLE wallets (
+      id TEXT NOT NULL PRIMARY KEY, idaccount INTEGER NOT NULL,
+      name TEXT NOT NULL, type TEXT NOT NULL DEFAULT 'cash',
+      balance REAL NOT NULL DEFAULT 0, currency TEXT NOT NULL DEFAULT 'VND',
+      icon TEXT NOT NULL DEFAULT 'wallet', colour TEXT NOT NULL DEFAULT '#4CAF50',
+      is_default INTEGER NOT NULL DEFAULT 0, is_deleted INTEGER NOT NULL DEFAULT 0,
+      include_in_total INTEGER NOT NULL DEFAULT 1, bank_casso_id TEXT,
+      status TEXT NOT NULL DEFAULT 'active',
+      sync_status TEXT NOT NULL DEFAULT 'pending',
+      sync_retry_count INTEGER NOT NULL DEFAULT 0, sync_error TEXT,
+      sync_blocked_until INTEGER, updated_at INTEGER NOT NULL, deleted_at INTEGER
+    )
+  ''');
+}
+
 void main() {
   late AppDatabase db;
 
@@ -43,6 +69,7 @@ void main() {
     db = AppDatabase.forTesting(NativeDatabase.memory(
       setup: (database) {
         _createV20Bills(database);
+        _createV20Wallets(database);
         database.execute('''
           INSERT INTO bills (id, idaccount, name, amount, start_date, due_date,
             is_recurrence, anchor_day, sync_status, updated_at)
@@ -72,7 +99,10 @@ void main() {
     expect(hang.anchorDay, 20, reason: 'Cột v18 không được đụng tới.');
   });
 
-  test('schemaVersion là 21', () {
-    expect(db.schemaVersion, 21);
+  test('schemaVersion là 23', () {
+    // Tệp này canh bước v20→v21, nhưng con số ở đây là **phiên bản hiện tại**
+    // của lược đồ — nó tăng theo mỗi migration mới. v22 thêm ngày 2026-09-14
+    // cho G28 (lưu trữ ví qua đồng bộ), không đụng cột nào của `bills`.
+    expect(db.schemaVersion, 23);
   });
 }

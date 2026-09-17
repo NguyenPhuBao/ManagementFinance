@@ -1,6 +1,6 @@
 # Client-app — Việc còn dang dở & rủi ro đã biết
 
-**Cập nhật:** 2026-09-13 (mở **G37** — số dư ví không phản ánh giao dịch sau một lần đẩy bị xung đột; đóng G36) · trước đó 2026-09-11 (sau khi nhánh gộp `main` @ `cc65f4f` và CSDL dev áp `database/12`: đóng G29, G31, G32; G24 thành lỗi phía client rồi đóng cùng ngày; thêm G34; G35 mở rồi đóng cùng ngày; đóng G30; đóng G33); 2026-09-12: gộp `main` @ `cbbeeb4` — CAN-LAM 17 A đóng, kênh thời gian thực nối được trên máy ảo, G34 hết bị chặn rồi **đóng tối cùng ngày** (client nghe `sync.completed`, im lặng, kiểm máy ảo hai máy); chiều muộn thêm **G36** — chờ backend; tối muộn gộp `main` @ `7779999` — backend làm xong CAN-LAM 20 (chốt trả hai lần ở `upsertTransaction`, client đo thật 4 ca; G36 sửa ở mã, **chưa đo đầu-cuối** ca khoá/xoá vì cần API admin — chờ đo rồi đóng); **2026-09-13: đo đầu-cuối ba ca G36 qua API admin — cả ba đúng, G36 ✅ ĐÓNG** (kéo theo: đường `lamMoi` **có** mang `daXoa`, nên ngoại lệ §3.6b không còn vô nghĩa — người dùng chốt **giữ** cùng ngày); cùng ngày, nghiệm thu bước 12 trên hai máy ảo đóng bốn lỗi im lặng của luồng tự động trả hoá đơn và mở **G37** — số dư ví không phản ánh giao dịch sau một lần đẩy bị xung đột
+**Cập nhật:** **2026-09-17** (**ba khối cuối vào tệp xuất báo cáo** — mục **3.31** `ANALYTICS_FEATURE.md`: PDF/CSV nay có so-với-kỳ-trước, số liệu nhanh, top 5 khoản chi. Lượt này **đóng một lỗi đã chạy từ 2026-09-09** mà không phép đo nào trước đây bắt được — Roboto nhúng cho PDF không có khối Mũi tên lẫn khối Hình học, nên `→` ở dòng dòng tiền bị gói `pdf` bỏ đi **im lặng** trong mọi tệp app từng xuất; nó lộ ra vì bản thiết kế đầu định dùng `▲`/`▼` và **một ca test đỏ đã lật chính bản thiết kế vừa được duyệt**. Và nó **mở G44** — kỳ rỗng thì màn Xem trước giấu mọi khối còn tệp vẫn in khối Ngân sách, chưa rõ bên nào đúng nên hoãn có chủ ý. Đếm lại bằng máy cùng ngày: **44** mục G, **41** đã đóng, còn **ba** (G18, G23, G44), cả ba hoãn có chủ ý. Cùng ngày, trước đó: **đóng G27** — cờ `wallets.allow_negative`, schema **v23**: ví thẻ tín dụng / theo dõi nợ thôi bị nhắc "ví âm" mỗi ngày. ⚠️ Hai bản sai có chủ ý đi lọt ở vòng đầu, **cả hai là lỗ hổng trong chính bộ test vừa viết** — chi tiết ở mục G27. ⚠️ Phép đếm ghi ở đây khi ấy — **43** mục G, **41** đã đóng, còn **hai** (G18, G23) — là **ảnh chụp trước G44** cùng ngày; con số đang đúng nằm ở đầu banner. Cùng ngày, trước đó: **khoản chi lớn** — loại thông báo thứ **18**, mục #7 khảo sát lần hai, mục 5f `NOTIFICATION_FEATURE.md` — **không mở lỗ hổng nào**; khảo sát lần hai nay **đóng**. Cùng ngày, trước đó: **tổng tài sản theo thời gian** — mục #5 khảo sát lần hai, mục 3.30 `ANALYTICS_FEATURE.md` — **không mở lỗ hổng nào**. Nó *đóng* một chỗ chưa ai gọi tên: `daiTrucDuBao` dựng trần rộng gấp đôi mức cần với dải bắt đầu từ 0, thứ **không test nào bắt được** vì mọi tính chất vẫn đúng — chỉ máy ảo thấy; nay siết tại chính hàm ấy, xem bẫy **4.21** vế ba. Cũng lượt này, giả định của mục 3.25 về "vách khoản neo 2026-09-13" bị **phép đo lật**: vách ấy không tồn tại trên dữ liệu thật) · trước đó 2026-09-16 (cuối ngày: **lịch chi tiêu** — mục #6 khảo sát lần hai, mục 3.29 `ANALYTICS_FEATURE.md` — **không mở lỗ hổng nào**; hai chỗ nó suýt để lọt đều bị bản sai có chủ ý và máy ảo bắt tại chỗ, ghi ở mục 3.29 chứ không thành lỗ hổng. Trước đó cùng ngày: mở rồi **đóng G43** — nút "Tuỳ chọn" của bộ chọn phạm vi ném assertion và chết **im lặng** ở đúng trạng thái mặc định của trang, **có sẵn từ P1**; tìm được khi nghiệm thu máy ảo cho **so cùng kỳ năm trước** (mục #2 khảo sát lần hai), thứ **không** mở lỗ hổng nào. Trước đó cùng ngày: mở rồi **đóng G42** trong cùng ngày — ví đã xoá mềm vẫn phình "số dư cuối kỳ" của trang Phân tích; tìm được khi soát tài liệu sau tính năng **dự báo dòng tiền 30 ngày**, thứ **không** mở lỗ hổng nào) · trước đó 2026-09-15 (mở rồi **đóng G41** trong cùng ngày — giao dịch trỏ vào danh mục mặc định toàn cục mất tên, máy ảo lộ ra bằng **hai chip cùng tên**; cùng ngày: **tỉ lệ tiết kiệm** và **A8 #8 dòng tiền tự do** — không mở lỗ hổng nào. Trước đó cùng ngày: mở rồi **đóng G40** — trang Xem trước báo cáo lệch cột số tiền thật, và lệch **93px**, nặng hơn chỗ đã sửa ở trang Phân tích; không phải hai khối mà **sáu**. Cùng ngày: P1 phạm vi thời gian và P2 bốn khối mượn từ trang Báo cáo — **không mở lỗ hổng nào**, schema giữ v22) · trước đó 2026-09-14 (mở rồi **đóng G39** ngay trong ngày — nhãn trục tung khối "Xu hướng 6 tháng" in đè lên nhau, tìm được khi nghiệm thu máy ảo lát A8 #3/#7; mở rồi **đóng G38** ngay trong ngày — ba trang giao dịch rơi về tài khoản admin; **đóng G28** — `wallet.status` đi qua đồng bộ hai chiều, schema v22) · trước đó 2026-09-13 (mở rồi **đóng G37** ngay trong ngày — số dư ví nay suy từ sổ giao dịch; đóng G36) · trước đó 2026-09-11 (sau khi nhánh gộp `main` @ `cc65f4f` và CSDL dev áp `database/12`: đóng G29, G31, G32; G24 thành lỗi phía client rồi đóng cùng ngày; thêm G34; G35 mở rồi đóng cùng ngày; đóng G30; đóng G33); 2026-09-12: gộp `main` @ `cbbeeb4` — CAN-LAM 17 A đóng, kênh thời gian thực nối được trên máy ảo, G34 hết bị chặn rồi **đóng tối cùng ngày** (client nghe `sync.completed`, im lặng, kiểm máy ảo hai máy); chiều muộn thêm **G36** — chờ backend; tối muộn gộp `main` @ `7779999` — backend làm xong CAN-LAM 20 (chốt trả hai lần ở `upsertTransaction`, client đo thật 4 ca; G36 sửa ở mã, **chưa đo đầu-cuối** ca khoá/xoá vì cần API admin — chờ đo rồi đóng); **2026-09-13: đo đầu-cuối ba ca G36 qua API admin — cả ba đúng, G36 ✅ ĐÓNG** (kéo theo: đường `lamMoi` **có** mang `daXoa`, nên ngoại lệ §3.6b không còn vô nghĩa — người dùng chốt **giữ** cùng ngày); cùng ngày, nghiệm thu bước 12 trên hai máy ảo đóng bốn lỗi im lặng của luồng tự động trả hoá đơn và mở **G37** — số dư ví không phản ánh giao dịch sau một lần đẩy bị xung đột
 **Mục đích:** ghi lại những hạng mục đã được **cân nhắc và cố ý hoãn**, kèm lý do và bán kính ảnh hưởng. Không có tài liệu này thì người tiếp theo sẽ hoặc bỏ sót, hoặc làm lại từ đầu việc phân tích rủi ro.
 
 Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nhất.
@@ -10,7 +10,7 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > nguyên (kể cả phần *vì sao hoãn*) vì nó ghi lại bối cảnh và bán kính ảnh
 > hưởng — thứ vẫn cần khi ai đó đọc lại đoạn mã tương ứng.
 >
-> **Đang mở tính tới 2026-09-13.** Mục đã đóng vẫn nằm lại trong bảng, gạch
+> **Đang mở tính tới 2026-09-16.** Mục đã đóng vẫn nằm lại trong bảng, gạch
 > ngang tên — xoá đi thì người sau lại mở ra làm lần nữa.
 >
 > ⚠️ **Bảng này trôi khỏi thân tài liệu năm lần rồi** (G16, G17, G21, G18, G15 — cả năm đều
@@ -32,17 +32,23 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > | **G22** | **Không phải lỗi** — giờ trong mốc neo chỉ giữ được một chiều |
 > | **G25** | **Không phải lỗi** — hai máy cùng sắp lại thứ tự ưu tiên khi ngoại tuyến thì được một thứ tự trộn (2026-09-08) |
 > | **G26** | Hoãn có chủ ý — chưa có màn **duyệt giao dịch ngân hàng** cho sự kiện realtime trỏ tới; đây là một tính năng riêng, không phải phần còn thiếu của việc nối socket (2026-09-09) |
-> | **G27** | Hoãn có chủ ý — không còn cách nói "ví này **được phép âm**" sau khi loại `debt` bị bỏ; cần một cột mới ở cả hai đầu cho một tình huống CSDL hiện không có hàng nào (2026-09-09) |
-> | **G28** | ⏸️ **Hết chặn phía server, chờ client mở lại** — CSDL dev đã áp `database/7` tối 2026-09-10 nên `wallet."Status"` nay `varchar(20)`, chứa được `'Inactive'`. Client vẫn để cột cục bộ, nên **lưu trữ ví chỉ sống trên máy đã bấm** cho tới khi mở lại ba chỗ. Người dùng chốt **để sau** |
+> | ~~**G27**~~ ✅ **ĐÓNG 2026-09-17** (cờ `allowNegative`, schema v23) — trước đó: không còn cách nói "ví này **được phép âm**" sau khi loại `debt` bị bỏ; cần một cột mới ở cả hai đầu cho một tình huống CSDL hiện không có hàng nào (2026-09-09) |
+> | ~~**G28**~~ | ✅ **ĐÓNG 2026-09-14** — `wallet.status` đi qua đồng bộ **hai chiều**: lưu trữ ví trên máy A nay có hiệu lực trên máy B. Ba mảnh khớp nhau (payload **13 trường**, `walletForPush` dịch sang `'Active'`/`'Inactive'`, nhánh kéo về đọc về chữ thường) cộng **migration v22** đánh dấu ví lưu trữ cũ để đẩy lại — bốn thứ vào **cùng một commit** vì bước cứu chỉ chạy một lần trong đời mỗi máy. ⚠️ Máy chủ chưa áp `database/7` vẫn `varchar(7)` và ví lưu trữ sẽ kẹt hàng đợi đẩy vĩnh viễn, im lặng. Dòng cũ ghi *chờ client mở lại* — đúng tới trước bản này |
 > | ~~**G29**~~ | ✅ **Đóng 2026-09-11** — bộ lọc ghi chú mới của `7675b35` (Luhn + hình dạng số thẻ; mật khẩu phải có `:`/`=`; bỏ "pin") chạy đúng **15/15** ca của tài liệu xin, đo bằng chính hàm `filterSensitiveNote` — **chưa** đo đầu-cuối. Còn một hở nhỏ chấp nhận được và một việc cùng gốc ở backend (khoá mã hoá, mục 18 §2.6), không giữ mục này mở. Dòng cũ ghi *chặn ở backend* — đúng tới trước khi gộp `main` |
 > | ~~**G30**~~ | ✅ **Đóng 2026-09-11** — `database/12` bỏ `uq_wallet_saving_active` và client gỡ chốt tạm: màn Thêm ví cho chọn "Tiết kiệm" dù đã có một ví Tiết kiệm, datasource không còn từ chối. ⚠️ Máy chủ nào chưa áp tệp 12 vẫn từ chối ví Tiết kiệm thứ hai. Chốt **trùng tên ví** ở lại vĩnh viễn |
 > | ~~**G31**~~ | ✅ **Đóng 2026-09-11** — backend nay ánh xạ `22001`/`P2000` (dài quá cột) và `23502` về `CONSTRAINT_VIOLATION`, mã client đã xếp **vĩnh viễn**, nên bản ghi bị chặn theo thời gian thay vì gửi lại mãi; và một thao tác hỏng không còn làm **cả lô** 400. Bộ lọc bảy ô tên của client (2026-09-10) **vẫn giữ** — nó chặn trước để bản ghi không kẹt ngay từ đầu. Đo trên mã HEAD, chưa chạy đầu-cuối. Dòng cũ ghi *chặn ở backend* — đúng tới trước khi gộp `main` |
 > | ~~**G32**~~ | ✅ **Đóng 2026-09-11** — backend giữ `priority: null` khi đẩy (hết `Number(null)` → `0`), nhánh tạo mặc định `null`, và `database/12` đã đưa các hàng `<= 0` về `NULL` trên CSDL dev. Lớp đọc `<= 0` là chưa sắp phía client **vẫn giữ** cho dữ liệu cũ và bản backend/client cũ. Dòng cũ ghi *chặn ở backend* — đúng tới trước khi gộp `main` |
 > | ~~**G33**~~ | ✅ **Đóng 2026-09-11** — tài khoản chờ xoá nay dùng tiếp app trong 30 ngày thay vì bị đăng xuất ngay: `UserModel` mang `status`/`countdown`, trang Xoá tài khoản thôi hứa *"đăng nhập lại là tự khôi phục"*, hai thẻ (Trang chủ, "Vùng nguy hiểm" ở Cài đặt) hiện số ngày còn lại và nút huỷ. Kiểm trên máy ảo với tài khoản 11. Dòng cũ ghi *lỗi đang chạy, chưa sửa* — đúng tới trước bản sửa |
 > | ~~**G34**~~ | ✅ **ĐÓNG 2026-09-12 tối** — client dịch `sync.completed` → `RealtimeEvent.dongBoXong`, đánh thức `syncNow()`, **im lặng** (không toast: máy vừa đẩy cũng nhận lại sự kiện của mình và payload là hộp đen nên toast sẽ nói sai). Kiểm máy ảo hai máy cùng tài khoản: máy kia kéo về **cùng giây** backend phát. Trước đó: mở 2026-09-11, chặn bởi 17 A tới sáng 2026-09-12 |
-> | **G36** | ✅ **ĐÓNG 2026-09-13 — đo đầu-cuối ba ca qua API admin, cả ba đúng; client không đổi mã.** `Active` → 200; admin khoá → **401 + `ACCOUNT_INACTIVE`** kèm `idaccount` + `reason_inactive` ở cấp gốc; admin xoá mềm → **401 + `ACCOUNT_DELETED`** kèm `idaccount`, **dù 4/4 refresh token đã bị thu hồi** — đúng thứ CAN-LAM 20 §2.7 sửa (nhánh token thu hồi gọi `getAccountValidity` trước khi ném). Mô tả gốc: tài khoản bị xoá qua admin trong lúc app giữ token hết hạn và không có socket → `/auth/refresh` trả 401 **không mã** → app đăng xuất **trơn, không hộp thoại** (đo thật 2026-09-12 chiều). ⚠️ Kéo theo: đường `lamMoi` **CÓ** mang `daXoa`, nên ngoại lệ §3.6b không còn vô nghĩa — xem mục G36 |
+> | ~~**G36**~~ | ✅ **ĐÓNG 2026-09-13 — đo đầu-cuối ba ca qua API admin, cả ba đúng; client không đổi mã.** `Active` → 200; admin khoá → **401 + `ACCOUNT_INACTIVE`** kèm `idaccount` + `reason_inactive` ở cấp gốc; admin xoá mềm → **401 + `ACCOUNT_DELETED`** kèm `idaccount`, **dù 4/4 refresh token đã bị thu hồi** — đúng thứ CAN-LAM 20 §2.7 sửa (nhánh token thu hồi gọi `getAccountValidity` trước khi ném). Mô tả gốc: tài khoản bị xoá qua admin trong lúc app giữ token hết hạn và không có socket → `/auth/refresh` trả 401 **không mã** → app đăng xuất **trơn, không hộp thoại** (đo thật 2026-09-12 chiều). ⚠️ Kéo theo: đường `lamMoi` **CÓ** mang `daXoa`, nên ngoại lệ §3.6b không còn vô nghĩa — xem mục G36 |
 > | ~~**G35**~~ | ✅ **Đóng 2026-09-11** — ba màn quản lý danh mục nay lấy tài khoản qua `currentAccountIdOrNull`: chưa có phiên thì không đọc gì (kể cả tài khoản 0 — bộ khuôn toàn cục), và nút lưu/xoá báo "Chưa xác định được tài khoản đăng nhập". Test quét `lib/` cấm `?? 1` nhiều dòng. ⚠️ Dòng này từng ghi *lỗi đang chạy, chưa sửa* — đúng tới trước bản sửa |
-> | **G37** | ⏸️ **Mới 2026-09-13, hoãn có chủ ý.** Sau một lần đẩy bị xung đột, số dư ví trên máy **thắng** không phản ánh khoản chi của chính nó: pull ghi đè `wallets.balance` bằng con số server, mà server **không** tính số dư từ giao dịch. Đo thật trên hai máy ảo — máy thắng giữ khoản chi 350.000 nhưng ví vẫn 2.000.000. Không riêng hoá đơn: **mọi** thay đổi số dư cục bộ thua một lần xung đột đều biến mất như vậy |
+> | ~~**G38**~~ | ✅ **Mở rồi ĐÓNG 2026-09-14** — ba trang giao dịch (`transaction_page`, `choose_category_page`, `add_transaction_page`) khai `this.idaccount = 1` rồi dùng `?? widget.idaccount`, nên khi phiên chưa sẵn sàng chúng **đọc** ví/danh mục của admin và — nặng nhất — **GHI** giao dịch dưới danh nghĩa admin. Cùng họ G4/G35 nhưng khác hình dạng nên lọt cả hai lượt đóng ấy. Nay dùng `int?` không mặc định + `null` thì chặn; lưới quét `khong_du_phong_admin_test.dart` thêm ca thứ hai bắt đúng dạng này. Nghiệm thu máy ảo: giao dịch ghi vào `Idaccount = 25`, tài khoản 1 không có hàng nào |
+> | ~~**G39**~~ | ✅ **Mở rồi ĐÓNG 2026-09-14** — nhãn trục tung của khối "Xu hướng 6 tháng" in **đè lên nhau** ở một số dải giá trị: đo trên máy ảo thấy "63.2K" và "63.3K" chồng khít. Gốc rễ là `3 * (maxY / 3) != maxY` trong dấu phẩy động rơi đúng ranh giới làm tròn của `rutGon`, nên **cùng một vị trí** ra hai chuỗi. Sửa: tính `buoc` trước rồi đặt `maxY = buoc * 3`. **Có sẵn từ lát 2b (2026-09-08)**; lát A8 #3/#7 chỉ làm dễ gặp hơn. Ca test tái hiện được **ngay trong widget test**, không cần máy thật |
+> | ~~**G37**~~ | ✅ **ĐÓNG 2026-09-13** — số dư ví nay là **cache của tổng sổ giao dịch**, không còn là giá trị tuyệt đối đồng bộ theo LWW. Điểm neo là một giao dịch "Số dư ban đầu" (id suy **tất định** từ `walletId` nên hai máy sinh ra một hàng), `SoDuViService` là nơi duy nhất ghi `balance`, nhánh kéo về thôi đọc cột ấy và tính lại sau mỗi lần pull. Nghiệm thu hai máy ảo: sau một cuộc đua tự trả, **hai máy đều 1.650.000 và bằng tổng sổ** — trước đó máy thắng giữ 2.000.000. Spec: `2026-09-13-so-du-vi-suy-tu-so-giao-dich-design.md` |
+> | ~~**G40**~~ | ✅ **ĐÓNG 2026-09-15** — trang **Xem trước báo cáo** lệch cột số tiền thật, và **nặng hơn** chỗ đã sửa ở trang Phân tích: đo trên máy ảo thấy khối "Chi theo danh mục" lệch **93px** (trang Phân tích chỉ 26,5px). Và không phải **hai** khối như dòng này từng đoán mà **sáu** — thêm ngân sách, thu/chi theo danh mục, danh sách giao dịch, và hàng "Thay đổi trong kỳ" của khối dòng tiền. Sáu `Flexible` đổi thành `Expanded`; đo lại trên máy ảo: lệch **0px** ở mọi khối. Sáu ca test mới, và chúng chỉ canh được gì khi chạy ở **khổ gấp đôi** — xem bẫy 4.19 |
+> | ~~**G43**~~ | ✅ **Mở rồi ĐÓNG 2026-09-16** — nút **"Tuỳ chọn"** của bộ chọn phạm vi **không làm gì cả, hoàn toàn im lặng**, ở đúng trạng thái **mặc định** của trang. `showDateRangePicker` ném assertion vì `initialDateRange` thò ra ngoài `[firstDate, lastDate]`: kỳ "Tháng này" kết thúc 30/09 trong khi `lastDate` là hôm nay 16/09. Đó là exception **bất đồng bộ không ai bắt** — không toast, không màn đỏ, chỉ một dòng logcat người dùng không bao giờ thấy. **Có sẵn từ P1 (2026-09-15)**; lượt nghiệm thu máy ảo của mục #2 mới chạm vào nút ấy. Phép kẹp nay là hàm thuần `khoangKhoiTaoBoChonNgay` có test riêng |
+> | ~~**G42**~~ | ✅ **Mở rồi ĐÓNG 2026-09-16** — ví **đã xoá mềm** vẫn được cộng vào "số dư cuối kỳ" của khối Dòng tiền và thác nước (đo được **7.000.000** trên một ví thử). `AnalyticsRepositoryImpl` đọc ví bằng truy vấn thẳng **không lọc `deletedAt`** — cố ý, vì bảng tra tên cần hàng đã xoá — rồi cộng `balance` qua `viTinhVaoTong`, hàm khi ấy chỉ kiểm `includeInTotal` và trạng thái lưu trữ. Đây là **bản chép tay thứ năm** của đúng luật mà `vi_tinh_vao_tong_test.dart` sinh ra để chặn, chỉ khác vế. Sửa bằng cách đưa vế `isDeleted` **vào chính hàm** (mặc định `false`), không vá ở chỗ gọi |
+> | ~~**G41**~~ | ✅ **Mở rồi ĐÓNG 2026-09-15** — giao dịch trỏ vào **danh mục mặc định toàn cục** mất tên, hiện thành "Danh mục đã xoá". `sync_engine` quy `is_default = true` thành **`idaccount = 0`**, nhưng cả hai repository tra danh mục lọc đúng một `idaccount` — mỗi nơi một bản chép tay của cùng truy vấn. Máy ảo lộ ra vì khối Xu hướng hiện **hai chip cùng một tên**; truy vấn PostgreSQL xác nhận tài khoản 10 có đúng hai danh mục như thế (`Chi khác`, `Làm thêm`, cùng bị backend xoá mềm hôm 2026-09-07). Nay có **một** định nghĩa `categoryDao.getBangTraTen` lọc theo **cờ `isDefault`**, cả hai repository dùng chung. Ảnh hưởng rộng hơn chip: donut, thác nước và danh sách danh mục đều mất tên |
 >
 > **G20 đã đóng ngày 2026-09-05** — `depositToGoal` nhận `occurredAt` chặn hai
 > đầu; đã kiểm cả bằng test lẫn trên máy ảo Android.
@@ -762,7 +768,44 @@ sau vài giây thay vì sau 15 phút.
 
 ---
 
-### G27 — Không còn cách nào nói "ví này được phép âm" · ⏸️ HOÃN CÓ CHỦ Ý (2026-09-09)
+### ~~G27 — Không còn cách nào nói "ví này được phép âm"~~ · ✅ ĐÓNG (2026-09-17)
+
+> ✅ **Đóng 2026-09-17 — cờ `Wallets.allowNegative`, schema v23.** Ví đánh dấu
+> "cho phép âm" không sinh cảnh báo số dư nào cả (**cả** `walletNegative` lẫn
+> `walletLowBalance`, đúng luật mà chốt `debt` cũ đã có), và màn Quản lý ví thôi
+> tô đỏ **cả biểu tượng lẫn số tiền**. Công tắc ở màn Thêm ví và Sửa ví.
+>
+> ⚠️ **Cột CỤC BỘ, không đi qua đồng bộ** — payload ví vẫn **13 trường**. Bật cờ
+> trên máy A thì máy B không biết. Mở đồng bộ cần một cột PostgreSQL và một tài
+> liệu `CAN-LAM`; người dùng chốt **không** mở lại hàng đợi ấy. Có **test quét
+> `lib/` thứ bảy** canh cờ không lọt vào `sync_engine` / `sync_payload_normalizer`
+> / hợp đồng payload — đúng bài học `wallet.status`, nơi ba chú thích ở ba tệp
+> khác từng nói một cột cục bộ là "đi ra máy khác".
+>
+> **Bản sai có chủ ý: bảy lượt**, và **hai** trong bảy đi lọt ở vòng đầu — cả hai
+> đều là lỗ hổng trong chính bộ test vừa viết, không phải trong mã:
+>
+> 1. Ca *"cờ cũng tắt cảnh báo SẮP CẠN"* dựng ví số dư **−5.000.000**, mà nhánh
+>    sắp cạn chỉ chạy khi `balance >= 0` — nên nó **không canh gì**, y hệt G43.
+>    Số dư phải **dương** và dưới ngưỡng thì ca mới có nghĩa.
+> 2. Ca datasource đặt **sai tiền đề**: quên cột trong `_toCompanion` **không**
+>    làm cờ tự tắt — `write(companion)` chỉ ghi cột có mặt, nên giá trị cũ ở
+>    lại và triệu chứng thật là **cờ không đổi được**. ⚠️ Chú thích của `status`
+>    ngay cạnh trong `_toCompanion` mang đúng nhận định sai ấy; chưa sửa, đã ghi
+>    lại trong ca test.
+>
+> ⚠️ Máy ảo bắt được một chỗ **nửa việc**: bản đầu chỉ đổi màu **biểu tượng**,
+>  còn con số `-100.000 đ` vẫn đỏ chói — mà đó mới là thứ mắt đọc trước. Màu ấy
+>  là `AppColors.error`, tức màu **cảnh báo** chứ không phải quy ước dấu; ví lưu
+>  trữ đã có sẵn tiền lệ chuyển số âm sang xám vì đúng lý do đó.
+>
+> Nghiệm thu máy ảo 2026-09-17 với ví `test` (−100.000): migration v23 chạy sạch
+> trên CSDL đang có (33 giao dịch nguyên vẹn), bật cờ → ví trung tính hoàn toàn,
+> và cờ **sống sót qua `force-stop` + khởi động lại**. ⚠️ Vế thông báo thì lượt
+> quét trả `0 hàng mới` **không chứng minh được gì** — khoá chống trùng của ngày
+> hôm ấy đã tồn tại từ trước khi bật cờ; vế ấy do bộ test canh.
+
+*Các đoạn dưới giữ nguyên — chúng ghi lại vì sao lỗ hổng này từng tồn tại.*
 
 Từ 2026-09-07, ví loại `debt` mang số dư âm **không** sinh cảnh báo: âm là đúng
 bản chất của nó, và trước đó nó bị nhắc mỗi ngày cho tới khi trả hết nợ — đúng
@@ -790,14 +833,28 @@ hai nhánh loại trừ trong `_walletCandidates`. Hai test ở
 
 ---
 
-### G28 — Lưu trữ ví chỉ sống trên máy đã bấm · ⏸️ HẾT CHẶN PHÍA SERVER, CHỜ CLIENT MỞ LẠI (2026-09-10; tiêu đề trước ghi "chặn ở CSDL — tệp `database/7` chưa áp", trước nữa "chặn ở backend")
+### ~~G28 — Lưu trữ ví chỉ sống trên máy đã bấm~~ · ✅ ĐÓNG (2026-09-14; tiêu đề trước ghi "⏸️ hết chặn phía server, chờ client mở lại" 2026-09-10, trước nữa "chặn ở CSDL — tệp `database/7` chưa áp", trước nữa "chặn ở backend")
 
-> **Trạng thái đúng hôm nay (đo 2026-09-11, sau khi gộp `main` @ `cc65f4f` và áp
-> `database/12`):** `wallet."Status"` là `varchar(20)` trên CSDL dev, và `upsertWallet`
-> ghi thẳng `status` ở cả hai nhánh — phía server **không còn chặn gì**. Client vẫn cố
-> ý không gửi, không đọc cột này (người dùng chốt **để sau**). Đoạn "Lược đồ tự mâu
-> thuẫn…" ngay dưới đúng với CSDL **trước** khi áp tệp 7; ba đoạn cập nhật cuối mục
-> ghi theo thứ tự thời gian.
+> ✅ **Đóng 2026-09-14 — `wallet.status` đi qua đồng bộ hai chiều.** Lưu trữ ví trên
+> máy A nay có hiệu lực trên máy B của cùng tài khoản. Ba mảnh khớp nhau, thiếu mảnh
+> nào cũng vô hiệu cả ba: payload đẩy mang `status` (**13 trường**), `walletForPush`
+> dịch sang `'Active'`/`'Inactive'` qua `WalletStatus.khoaGuiLen`, nhánh kéo về đọc
+> ngược lại về **chữ thường**. Cộng **migration schema v22** đánh dấu ví lưu trữ cũ
+> để đẩy lại — chúng đang ở `synced` nên không ai gửi lại chúng, trong khi cột
+> `Status` của server là `NOT NULL DEFAULT 'Active'`; thiếu bước ấy thì lượt pull
+> **đầu tiên** sau khi cập nhật app lặng lẽ bỏ lưu trữ chúng. Bốn mảnh vào **cùng một
+> commit** (`268eb50`) vì bước cứu chỉ chạy **một lần trong đời** mỗi máy.
+> Spec: `docs/superpowers/specs/2026-09-14-g28-luu-tru-vi-qua-dong-bo-design.md`.
+>
+> ⚠️ **Thứ duy nhất còn có thể làm G28 hỏng, và client không chặn trước được:** máy
+> chủ nào **chưa áp `database/7`** vẫn giữ `Status` ở `varchar(7)` và sẽ từ chối
+> `'Inactive'` (8 ký tự) — ví lưu trữ **kẹt hàng đợi đẩy vĩnh viễn, im lặng**. CSDL
+> dev đã áp (đo 2026-09-14: `varchar(20)`, `NOT NULL`, `DEFAULT 'Active'`); **chưa đo
+> môi trường nào khác**.
+>
+> *Các đoạn dưới giữ nguyên theo thứ tự thời gian — chúng ghi lại vì sao cột này từng
+> là cột cục bộ, không phải trạng thái hôm nay.* Dòng cũ ghi *chờ client mở lại* —
+> đúng tới trước bản này.
 
 Tính năng **lưu trữ ví** (2026-09-10) ghi trạng thái vào cột `wallets.status`
 của SQLite. Cột cùng tên đã có sẵn ở PostgreSQL và `upsertWallet` phía backend
@@ -1244,7 +1301,7 @@ cộng một test quét `lib/` cấm mẫu `?? 1` nhiều dòng — hai test qu�
 
 ---
 
-### G36 — Tài khoản bị xoá lúc app giữ token hết hạn: đăng xuất không hộp thoại · ✅ ĐÓNG 2026-09-13 (đo đầu-cuối ba ca)
+### ~~G36 — Tài khoản bị xoá lúc app giữ token hết hạn: đăng xuất không hộp thoại~~ · ✅ ĐÓNG 2026-09-13 (đo đầu-cuối ba ca)
 
 **Đo thật** (spec cưỡng chế đăng xuất, khối ✅ thứ hai đầu §7.3): tạo tài khoản thử `kiemthu_xoa`
 (idaccount 12), đăng nhập giữ refresh token, admin `DELETE /api/admin/deleteuser/12`, rồi gọi
@@ -1300,7 +1357,353 @@ là mất thật; còn nếu xoá là đúng thì `purgeDataForOtherAccounts` v�
 đăng nhập vào máy — tức chỉ **hoãn** việc dọn chứ không bỏ. Không đổi mã: hành vi hiện tại đã
 đúng quyết định ấy, chỉ hai chú thích Dart được ghi lại cho khớp.
 
-### G37 — Số dư ví không phản ánh giao dịch sau một lần đẩy bị xung đột · ⏸️ MỞ (2026-09-13)
+### ~~G38 — Ba trang giao dịch rơi về tài khoản admin khi chưa có phiên~~ · ✅ ĐÓNG (2026-09-14, mở và đóng trong cùng ngày)
+
+> ✅ **Đóng ngay khi tìm ra.** Ghi lại vì **cách nó sống sót** đáng nhớ hơn bản
+> thân lỗi: nó đi qua cả hai lượt đóng cùng chủ đề — G4 (bốn trang bill/goal)
+> và G35 (ba màn quản lý danh mục) — mà không lượt nào thấy.
+
+**Hiện trạng (trước bản sửa).** Ba trang khai tham số mặc định `1`:
+
+```dart
+const TransactionPage({super.key, this.idaccount = 1});
+...
+currentUserId = int.tryParse(authState.user!.id) ?? widget.idaccount;
+```
+
+Vế `??` trỏ tới một **biến**, không tới hằng `1` — nên mọi lượt `grep '?? 1'`
+đều sạch, kể cả lưới quét `khong_du_phong_admin_test.dart` dựng ra sau G35.
+Nhưng route dựng `const TransactionPage()` không truyền gì, nên giá trị thật
+sự dùng vẫn là `1`, tức **tài khoản admin thật** (quy tắc 2 `CLAUDE.md`).
+
+| Trang | `idaccount` dùng làm gì | Hậu quả |
+|---|---|---|
+| `transaction_page.dart` | mở stream ví + danh mục | **đọc** dữ liệu admin |
+| `choose_category_page.dart` | đọc danh mục | **đọc** dữ liệu admin |
+| `add_transaction_page.dart` | `idaccount:` khi **lưu** giao dịch | **ghi** dưới danh nghĩa admin, rồi đẩy lên và vỡ "Ownership mismatch" |
+
+Chỗ thứ ba đúng kịch bản mà docstring `core/auth/current_account.dart` mô tả
+khi G4 được đóng — chỉ khác là nó xảy ra trên đường đi nhiều nhất của app.
+
+**Đã sửa.** Ba trang để tham số `int?` **không mặc định** (widget test vẫn tiêm
+được), suy tài khoản trả `null` khi chưa có phiên, và tự xử lý `null`: đường
+đọc không mở stream, đường ghi chặn lưu kèm thông báo — cùng khuôn G35.
+
+**Lưới quét nới thêm một ca**, bắt đúng hình dạng vừa lọt. ⚠️ Lượt khảo sát tự
+nó suýt kết luận sai: phép `grep -E` đầu tiên dùng `\s`, mà POSIX ERE **không
+có** `\s`, nên nó trả rỗng và suýt chốt "chỉ một chỗ" — thật ra có ba.
+
+**Nghiệm thu máy ảo** (tài khoản thử 25, PostgreSQL chỉ đọc): mốc nền cả tài
+khoản 1 lẫn 25 đều **0 giao dịch**; thêm một khoản chi 55đ qua giao diện →
+`Idtran c045dc60…` với `Idaccount = 25`, `Amount = -55`; tài khoản 1 vẫn **0
+hàng**. Màn chọn danh mục và trang Sổ giao dịch vẫn mở đầy đủ.
+
+**Hai ca hành vi** ở `test/features/transaction/presentation/khong_du_phong_admin_trang_giao_dich_test.dart`
+canh đường ghi, và chúng ghi thẳng một điều bản đầu của chính chúng làm sai:
+trong luồng thường, thiếu phiên thì màn chọn danh mục **cũng rỗng** nên chốt
+"Vui lòng chọn danh mục" chặn trước — chốt tài khoản là **lớp phòng thủ thứ
+hai**, và phải tiêm lệch mới dựng lại được trạng thái ấy trong widget test.
+
+---
+
+### G44 — Kỳ rỗng: màn Xem trước giấu mọi khối, còn tệp vẫn in khối Ngân sách · ⏸️ HOÃN CÓ CHỦ Ý (2026-09-17)
+
+**Tìm được khi nghiệm thu máy ảo** cho mục **3.31** `ANALYTICS_FEATURE.md` (ba
+khối cuối vào tệp xuất). Tôi xuất một khoảng **rỗng** — 08–17/09 — để chạm
+nhánh "kỳ không có giao dịch nào", và thấy tệp PDF ca ấy vẫn in bảng *Ngân sách
+kỳ này* với dòng `Giáo dục 45.000đ / 50.000đ / 5.000đ`.
+
+**Triệu chứng.** Kỳ rỗng thì `report_preview_page.dart` đi nhánh
+`if (baoCao.rong)` và dựng **duy nhất** thẻ *"Không có giao dịch nào trong
+khoảng đã chọn"* — mọi khối khác nằm ở nhánh `else`. Còn `xuat_tep.dart` gác
+từng khối theo **độ rỗng của chính khối ấy** (`if (bc.nganSach.isNotEmpty)`,
+`if (bc.theoVi.isNotEmpty)`, …). Với kỳ rỗng thì mọi khối khác cũng rỗng theo
+nên trùng khớp — **trừ ngân sách**, thứ tồn tại độc lập với giao dịch.
+
+**Bán kính ảnh hưởng: hẹp.** Chỉ hiện ra khi (a) kỳ không có giao dịch nào
+**và** (b) tài khoản có ít nhất một ngân sách đang chạy. Con số in ra **không
+sai** — ngân sách ấy có thật, "đã chi" của nó đếm theo kỳ của chính nó chứ
+không theo kỳ báo cáo. Không hàng nào kẹt, không lỗi, không đồng bộ.
+
+**Vì sao hoãn.** Chưa rõ **bên nào mới đúng**, và đó là câu hỏi sản phẩm chứ
+không phải câu hỏi kỹ thuật:
+
+- Tệp đúng → màn Xem trước đang **giấu** một thông tin có thật chỉ vì kỳ rỗng.
+- Màn đúng → tệp đang chở một bảng mà người đọc sẽ hiểu là "của kỳ này", trong
+  khi kỳ này chẳng có gì.
+
+Sửa theo chiều nào cũng là một dòng, nhưng chọn sai chiều thì **không ai phát
+hiện được** — cả hai bản đều trông hợp lý. Nằm ngoài phạm vi người dùng đã
+duyệt cho mục 3.31 (đúng ba khối), nên ghi lại thay vì tự quyết.
+
+**Nếu làm:** chốt một luật duy nhất cho "kỳ rỗng thì tệp chở gì", đặt nó ở tầng
+thuần để **cả** màn Xem trước lẫn `xuat_tep.dart` cùng đọc — đây chính là khuôn
+mà `khoanVaoThongKe`, `viTinhVaoTong` và `billPayStatus` đã dùng để dập tắt các
+bản chép tay.
+
+---
+
+### ~~G43 — Nút "Tuỳ chọn" của bộ chọn phạm vi chết im lặng~~ · ✅ ĐÓNG (2026-09-16, mở và đóng trong cùng ngày)
+
+**Tìm được khi nghiệm thu máy ảo** cho mục #2 (so cùng kỳ năm trước) — tôi cần
+một kỳ **tuỳ chọn** để xem nhãn dài nhất, và nút ấy không chịu mở.
+
+**Triệu chứng.** Chạm "Tuỳ chọn" trong bộ chọn phạm vi: **không có gì xảy ra**.
+Không bộ chọn ngày, không toast, không màn đỏ, sheet vẫn nguyên đó. Bốn chip
+kia (`Tuần`, `Tháng`, `Quý`, `Năm`) đều ăn bình thường ở **cùng một hàng**, nên
+thoạt nhìn rất giống lỗi toạ độ chạm của chính mình.
+
+**Bằng chứng.** `adb logcat`:
+
+```
+E flutter : Unhandled Exception: 'package:flutter/src/material/date_picker.dart':
+  Failed assertion: line 1218 pos 5:
+  'initialDateRange == null || !initialDateRange.end.isAfter(lastDate)':
+  initialDateRange's end date must be on or before lastDate 2026-09-16 00:00:00.000.
+  #2  showDateRangePicker (package:flutter/src/material/date_picker.dart:1218:5)
+```
+
+**Gốc rễ.** `_chonKhoangTuyY` truyền thẳng kỳ đang xem làm khoảng khởi tạo:
+
+```dart
+lastDate: nay,
+initialDateRange: DateTimeRange(
+  start: widget.kyHienTai.from,
+  end: widget.kyHienTai.to.subtract(const Duration(days: 1)),
+),
+```
+
+`lastDate` là **hôm nay**, còn kỳ đang xem thì kết thúc ở **cuối kỳ**. Nên bất
+cứ khi nào kỳ chứa hôm nay — tức *Tháng này*, *Quý này*, *Năm nay*, *Tuần này*,
+**đúng trạng thái mặc định của trang** — mốc cuối nằm ở tương lai và assertion
+nổ.
+
+⚠️ **Vì sao nó sống được lâu và im lặng đến thế:** đây là exception trong một
+hàm `async` mà **không ai `await` có `catch`**, nên Flutter chỉ in ra console.
+Trên bản release người dùng còn không có console. Nút trông như một nút chết.
+
+**Vì sao bộ test mù.** `chon_pham_vi_sheet_test.dart` có **10** ca, nhưng **không
+ca nào chạm vào chip "Tuỳ chọn"** — chúng kiểm nhãn, kiểm đổi chip đổi danh sách,
+kiểm khổ 411dp. Lỗi nằm sau một cú chạm mà không ai thực hiện. Có sẵn từ **P1
+(2026-09-15)**, qua cả lượt nghiệm thu máy ảo hôm ấy.
+
+**Sửa.** Phép kẹp tách thành hàm thuần `khoangKhoiTaoBoChonNgay` ở
+`analytics/domain/pham_vi_ky.dart`: kẹp `from` vào `somNhat`, kẹp mốc cuối vào
+`muonNhat`, và trả **`null`** khi kỳ không giao với dải cho phép — chỗ gọi mở bộ
+chọn mà không đặt khoảng sẵn. Trả một khoảng đảo đầu-cuối chỉ là đổi sang một
+assertion khác.
+
+**Bốn ca widget mới** chạm thật vào nút, từ bốn kỳ khác nhau, và **không** chỉ
+kiểm "không ném" mà còn đòi `DateRangePickerDialog` thật sự hiện — "không ném"
+một mình vẫn xanh với một nút chết. ⚠️ Chúng phải gọi `ensureVisible` trước khi
+chạm: font bộ test rộng gấp đôi nên năm chip **không vừa** 411dp ở đó, dù trên
+máy thật thì vừa (bẫy 4.4). Nới khổ test là bỏ luôn phép đo chặt mà tệp ấy cố ý
+giữ, nên kéo hàng chip — vốn cuộn ngang được — vào tầm nhìn.
+
+**Nghiệm thu máy ảo.** Bộ chọn mở được từ "Tháng này", khoảng khởi tạo hiện
+`Sep 1 – Sep 16` và mọi ngày sau 16/09 bị khoá; chọn xong trang đổi sang kỳ
+`01/09 – 16/09`; `logcat` **0** dòng `Unhandled Exception`.
+
+**Bài học.** Một hàng nút mà chỉ **một** nút hỏng thì rất dễ bị đổ cho toạ độ
+chạm. Cách rẻ để phân biệt: bấm một nút **khác trong cùng hàng** — nếu nó ăn
+thì toạ độ đúng, và vấn đề nằm trong mã.
+
+### ~~G42 — Ví đã xoá mềm vẫn phình "số dư cuối kỳ"~~ · ✅ ĐÓNG (2026-09-16, mở và đóng trong cùng ngày)
+
+**Tìm được khi soát tài liệu**, không phải khi chạy app: viết mục 3.27 cho tính
+năng dự báo dòng tiền thì phải đọc lại mọi chỗ cộng số dư ví, và một chỗ không
+khớp những chỗ còn lại.
+
+**Triệu chứng.** "Số dư cuối kỳ" của khối **Dòng tiền** và của **thác nước
+"Tiền đi đâu"** cộng cả số dư những ví người dùng đã xoá. Ca test tái hiện đo
+được **17.000.000 thay vì 10.000.000** với một ví xoá mềm còn 7.000.000. Không
+exception, không log — chỉ một con số người dùng không có.
+
+**Gốc rễ.** `AnalyticsRepositoryImpl` đọc ví bằng truy vấn thẳng
+`db.select(db.wallets)..where(idaccount)`, **không lọc `deletedAt`**. Điều đó
+**có chủ ý và vẫn đúng**: giao dịch cũ vẫn trỏ vào ví đã xoá, và bảng tra tên ví
+cần hàng ấy để dòng "Phân bổ theo ví" không hiện "Ví đã xoá" thay cho tên thật.
+Cái sai là hàng ấy rồi được cộng `balance` qua `viTinhVaoTong`, mà hàm khi ấy
+chỉ hỏi hai vế — `includeInTotal` và trạng thái lưu trữ.
+
+⚠️ **Phạm vi hẹp hơn lần báo đầu.** Lượt soát ban đầu ghi
+`bao_cao_repository_impl.dart:84` "cần soát cùng"; đọc kỹ thì nó **không sai** —
+nó đi qua `walletDao.getAll`, và hàm ấy **có** lọc `deletedAt.isNull()`.
+`wallet_repository_impl.dart:115` cũng vậy. Chỉ **một** chỗ hỏng.
+
+**Vì sao sửa trong hàm, không vá ở chỗ gọi.** `vi_tinh_vao_tong_test.dart` mở
+đầu bằng câu *"tệp này tồn tại để không có bản thứ năm"* — và đây đúng là bản
+thứ năm, chỉ quên một vế khác. Vá tại chỗ gọi là để nguyên cái bẫy cho chỗ gọi
+thứ sáu. Nay `viTinhVaoTong` nhận `isDeleted` (mặc định `false`, nên bốn chỗ đọc
+qua `walletDao` không phải sửa gì), và `du_bao_dong_tien.dart` bỏ phép kiểm
+`isDeleted` riêng nó từng tự làm — đó cũng là một bản chép tay.
+
+**Kiểm:** hai ca mới (một ở tầng thuần, một ở repository); bản sai có chủ ý bỏ
+vế `!isDeleted` làm **cả hai** đỏ đúng con số. `flutter test` **2643/2643**,
+`flutter analyze` **25 issue, 0 error**.
+
+### ~~G41 — Giao dịch trỏ vào danh mục mặc định toàn cục bị mất tên~~ · ✅ ĐÓNG (2026-09-15, mở và đóng trong cùng ngày)
+
+**Vì sao thấy.** Nghiệm thu máy ảo cho hạng mục *tỉ lệ tiết kiệm*, khối "Xu
+hướng 6 tháng" hiện **hai chip cùng mang tên "Danh mục đã xoá"** — hai danh mục
+khác nhau đội một cái tên, không cách nào phân biệt. Lỗi không thuộc hạng mục
+đang làm; nó có sẵn từ trước.
+
+**Bằng chứng trước, không đoán.** Truy vấn PostgreSQL gom giao dịch theo chủ sở
+hữu danh mục cho ra **đúng hai** hàng bất thường ở tài khoản đang đăng nhập:
+
+| Danh mục | `Create_by` | `Is_default` | `Delete_at` | Số giao dịch |
+|---|---|---|---|---|
+| `Chi khác` | **1** | true | đã xoá mềm | 2 |
+| `Làm thêm` | **1** | true | đã xoá mềm | 1 |
+
+Đúng **hai** — khớp số chip trên màn hình. Cả hai là **danh mục mặc định toàn
+cục**, nằm trong nhóm năm hàng backend xoá mềm ngày 2026-09-07 khi thu bộ khuôn
+về 13 stable UUID.
+
+**Gốc rễ.** `sync_engine` quy `is_default = true` thành **`idaccount = 0`**
+(`sync_engine.dart:733`), nên hàng mặc định toàn cục **không mang mã tài khoản
+nào**. Nhưng cả hai repository tra danh mục đều lọc `t.idaccount.equals(idaccount)`:
+
+- `analytics_repository_impl.dart` — trang Thống kê
+- `bao_cao_repository_impl.dart` — trang Xuất báo cáo và màn Xem trước
+
+Hai bản chép tay của cùng một truy vấn, và **cả hai cùng thiếu** vế `isDefault`.
+Giao dịch trỏ vào hàng ấy tra không ra tên → rơi vào nhánh `?? 'Danh mục đã xoá'`.
+
+⚠️ **Ảnh hưởng rộng hơn cái chip đã lộ ra.** Cùng bảng tra ấy nuôi donut "Cơ cấu
+theo danh mục", cột thác nước, và danh sách danh mục cuối trang — tất cả đều mất
+tên. Chip chỉ tình cờ là chỗ **hai** cái trùng nhau nằm cạnh nhau nên mắt bắt
+được; những chỗ kia chỉ hiện *một* nhãn "Danh mục đã xoá" trông hợp lý.
+
+**Vì sao lọt qua mọi lượt trước.** Chú thích ở cả hai chỗ nói rất đúng về vế thứ
+nhất — *"kể cả hàng đã xoá mềm, vì tên thật còn nằm trong hàng"* — và có test
+canh hẳn hoi. Vế thứ hai thì không ai viết ra: hàng mặc định **cũng** không
+thuộc `idaccount` nào. Test cũ dựng danh mục đã xoá mềm với `idaccount: 1`, tức
+một hình dạng **không tồn tại trên máy thật** cho danh mục mặc định.
+
+**Bản sửa.** Một định nghĩa duy nhất ở `CategoryDao.getBangTraTen` /
+`watchBangTraTen`, lọc theo **cờ** `isDefault` bên cạnh tài khoản — cùng khuôn
+với `getNamesInUse` vốn đã làm đúng từ trước. Hai repository nay gọi nó thay vì
+tự viết truy vấn. Hai ca test mới, mỗi repository một ca, dựng đúng hình dạng
+thật (`idaccount: 0`, `isDefault: true`, đã xoá mềm); cả hai đỏ trước khi sửa.
+
+**Nghiệm thu.** Máy ảo, cùng tài khoản: chip nay là **"Chi khác"**, "Di chuyển",
+"Giáo dục" — không còn chip "Danh mục đã xoá" nào; cột thác nước đổi từ
+`Danh mục đ…` sang **"Chi khác"**. `flutter test` **2573/2573**, `flutter
+analyze` **25 issue, 0 error**.
+
+**Bài học.** Hai bản chép tay của một truy vấn là chỗ lỗi sống lâu nhất: sửa một
+bên thì bên kia vẫn sai, và chú thích đúng ở cả hai chỗ khiến không ai nghi. Khi
+một luật có hai nơi thi hành, đưa nó về DAO trước rồi mới sửa.
+
+### ~~G40 — Trang Xem trước báo cáo lệch cột số tiền~~ · ✅ ĐÓNG (2026-09-15, mở và đóng trong cùng ngày)
+
+**Vì sao nghi.** Ngày 2026-09-15, người dùng bắt được trên máy ảo rằng cột số
+tiền ở hai khối mới của trang Phân tích — "Phân bổ theo ví" và "Top 5 khoản chi"
+— **không thẳng mép phải**; đo trong widget test thấy lệch **26,5px**. Gốc rễ là
+`Flexible`: nó và `Expanded` đều mang `flex: 1` nên chia đôi chỗ trống như nhau,
+nhưng `Flexible` để con giữ **bề rộng tự nhiên** và `MainAxisAlignment.start`
+đẩy phần thừa về **cuối hàng**, nên `alignment: centerRight` của `FittedBox`
+đang canh phải bên trong một cái hộp đang trôi. Bẫy **4.19**
+`ANALYTICS_FEATURE.md`.
+
+Hai khối ấy của trang Phân tích **chép khuôn từ `report_preview_page.dart`**, và
+tệp gốc vẫn còn nguyên `Flexible(child: FittedBox(…))`. Cùng khuôn, cùng dạng dữ
+liệu (số tiền dài ngắn khác nhau theo hàng), nên nhiều khả năng cùng lệch.
+
+Hạng mục ấy **không sửa ngay**, vì hai lý do cố ý: chưa nhìn tận mắt (suy từ mã
+sang kết luận "chắc chắn lệch" là đúng loại sai lầm phiên 12 đã trả giá với
+Stitch), và người dùng báo về trang Phân tích chứ không phải trang này.
+
+**Đo được gì khi mở lại.** Mở trang trên máy ảo `emulator-5554` với dữ liệu thật
+ngày 2026-09-15, rồi đếm pixel chữ trên từng hàng. Lỗi có thật, và **nặng hơn**
+chỗ đã sửa:
+
+| Khối | Mép phải chữ (px, ảnh 1080) | Lệch |
+|---|---|---|
+| Chi theo danh mục | 856 … 949 | **93px** |
+| Phân bổ theo ví | 727 … 783 | **56px** |
+| Top 5 khoản chi | 771 … 776 | 5px, nhưng cách mép thẻ hơn 200px |
+
+⚠️ **Và không phải hai khối mà SÁU.** Dòng đầu của lỗ hổng này đoán theo tên hai
+khối mà người dùng báo; đếm bằng máy thì `report_preview_page.dart` mang **sáu**
+chỗ cùng khuôn `Expanded(tên) + Flexible(FittedBox centerRight)` — thêm khối
+ngân sách, thu/chi theo danh mục, danh sách giao dịch, và hàng "Thay đổi trong
+kỳ" của khối dòng tiền. Bài học: khi một lỗ hổng mô tả lỗi bằng **tên khối**
+người dùng nhìn thấy, hãy `grep` khuôn mã trước khi tin vào con số ấy.
+
+**Sửa.** Sáu `Flexible` → `Expanded`. Cột trái **không mất chỗ nào**: tỉ lệ chia
+vẫn 1:1, chỉ khác ai giữ phần thừa. Đo lại trên máy ảo sau khi sửa: **0px** lệch
+ở mọi khối, mọi cột kết thúc ở 979–982 — tức sát mép trong của thẻ.
+
+⚠️ **Sáu ca test mới suýt vô dụng vì font của bộ test.** Viết ở khổ 411dp thì ba
+trong sáu ca **xanh ngay từ đầu** dù máy ảo đo được lệch 93px: font "Ahem" rộng
+gấp đôi ngoài đời (bẫy 4.4) nên mọi chuỗi đều **tràn** suất, `FittedBox` thu nhỏ
+chúng cho vừa, và hộp nào cũng lấp đầy suất của nó — đúng thứ mà `Expanded` lẽ
+ra mới làm được. Lỗi chỉ lộ khi chữ **ngắn hơn** suất. Phải cho khung rộng **gấp
+đôi** (822dp) để trả lại đúng tỷ lệ chữ trên suất của điện thoại thật.
+
+⚠️ **Đừng dựa vào mẹo đếm pixel vàng** để tìm lỗi này: nó không phải lỗi tràn,
+không có sọc cảnh báo, không exception và không một dòng log nào.
+
+---
+
+### ~~G39 — Nhãn trục tung của "Xu hướng 6 tháng" in đè lên nhau~~ · ✅ ĐÓNG (2026-09-14, mở và đóng trong cùng ngày)
+
+**Triệu chứng đo được** trên `emulator-5554` ngày 2026-09-14, tài khoản có dữ
+liệu thật: bật **ba** danh mục ở khối "Xu hướng 6 tháng" thì nhãn trên cùng của
+trục tung là **hai chuỗi đè lên nhau** — "63.2K" và "63.3K" chồng khít, chữ số
+thứ ba thành một vệt không đọc được. Phóng to ảnh chụp mới thấy; ở cỡ thật nó
+trông như một nhãn in lỗi font.
+
+**Gốc rễ.** `_KhoiXuHuong` tính `maxY` rồi `buoc = maxY / 3`, và `leftTitles`
+dùng `interval: buoc`. `fl_chart` vẽ nhãn cho các mốc theo `interval` **và** cho
+biên trên. Hai thứ ấy ở **cùng một vị trí** — nhưng `3 * (maxY / 3)` không bằng
+`maxY` trong dấu phẩy động, và khi giá trị rơi đúng ranh giới làm tròn của
+`toStringAsFixed(1)` (đuôi `…x5`), `rutGon` trả **hai chuỗi khác nhau** cho hai
+số chênh nhau chừng `1e-14`. Hai nhãn ấy vẽ chồng.
+
+⚠️ **Cùng họ, khác mặt: bẫy 4.20** (`ANALYTICS_FEATURE.md`, 2026-09-15). Vẫn là
+sai số dấu phẩy động ở nhãn trục do `rutGon`, nhưng lần này biểu đồ có **phần
+âm** nên biên trên là `san + 3 * buoc` và ra chừng `-1e-16` ngay tại vị trí lẽ ra
+là 0 — nhãn in **`-0`**. Đóng G39 (tính `buoc` trước) **không** đóng luôn ca ấy;
+nó phải sửa trong chính `rutGon`. Gặp một trong hai thì nhớ kiểm cái kia.
+
+**Không phải lỗi của lát A8 #3/#7.** Khối "Xu hướng 6 tháng" có từ lát **2b**
+(2026-09-08) và đã mang sẵn hình dạng này. Lát A8 chỉ làm nó **dễ gặp hơn**:
+trước đây `maxY` chỉ nhận đúng một dải (Thu/Chi toàn tháng), nay mỗi tổ hợp chip
+được bật là một dải khác. Đo cùng ngày, ba dải **không** lỗi — 16.8M (hai đường
+Thu/Chi), 51.7K (một danh mục), 350.8K (năm danh mục) — chỉ dải 63.2K lỗi.
+
+**Đã sửa thế nào.** Dự án có sẵn **một định nghĩa duy nhất** của luật lọc nhãn
+trục — `hienNhanTruc` ở `goal/domain/goal_progress_series.dart`, kèm test riêng —
+nhưng nó giải bài toán *mốc nằm gần biên*, còn đây là *hai mốc trùng vị trí mà
+khác chuỗi*, nên nó **không** cứu được ca này: cả hai đều là biên nên nó giữ cả
+hai. Bản sửa đi vào gốc rễ thay vì thêm luật lọc thứ hai — tính `buoc` **trước**,
+rồi đặt `maxY = buoc * 3`, để biên trên **chính xác** bằng mốc cuối của
+`interval`. Một dòng, không đổi thang đo (`buoc` vẫn là `đỉnh × 1,15 ÷ 3`).
+
+**Ca test tái hiện** — `nhãn trục tung không in HAI chuỗi khác nhau ở cùng một
+mốc` ở `analytics_page_test.dart`. Nó dùng đỉnh **43.000**, một trong **tám**
+giá trị tìm được khi quét dải 1.000–300.000 (bước 500) bằng máy. Điểm đáng nhớ:
+bẫy đồ hoạ này **tái hiện được ngay trong widget test** — fl_chart dựng nhãn
+bằng widget thật, nên `find.text` thấy chúng; đây là ngoại lệ hiếm của luật "lỗi
+biểu đồ chỉ lộ trên máy thật" (bẫy 4.9). Ca ấy assert theo cách bền với **cả
+hai** hướng sửa: không được có đồng thời hai chuỗi ở biên trên, và phải còn đúng
+một — chữa bằng cách bỏ luôn nhãn biên là mất mốc cao nhất của thang đo.
+
+**Nghiệm thu máy ảo** `emulator-5554` cùng ngày, đúng dải đã phát hiện lỗi: nhãn
+trên cùng nay là **"63.3K" sạch**, một chuỗi duy nhất — trước đó cùng chỗ ấy là
+"63.2K" và "63.3K" chồng khít, chữ số thứ ba thành một vệt. Ảnh ghép trước/sau ở
+scratchpad phiên: `so_sanh_g39.png`.
+
+**Mức độ:** không hỏng dữ liệu, không hỏng im lặng ở chỗ khác — chỉ một nhãn khó
+đọc.
+
+---
+
+### G37 — Số dư ví không phản ánh giao dịch sau một lần đẩy bị xung đột · ✅ ĐÓNG 2026-09-13
 
 **Triệu chứng đo được**, hai máy ảo cùng tài khoản, hoá đơn tự động trả (nghiệm thu bước 12):
 máy **thắng** giữ khoản chi hợp lệ −350.000 mà ví vẫn là **2.000.000** thay vì 1.650.000. Máy
@@ -1315,8 +1718,28 @@ dư từ giao dịch. Chuỗi:
 3. pull ghi đè `balance` bằng con số server — **lần trừ biến mất không dấu vết**, và vì hàng vừa
    bị đánh dấu `synced` nên không còn gì để đẩy lại.
 
-**Vì sao hoãn.** Sửa tận gốc là đổi *cách số dư ví được quyết định giữa hai phía*. Bán kính ảnh
-hưởng rộng hơn hẳn bước 12: **mọi** đường ghi ví đều đi qua chỗ này, không riêng hoá đơn.
+**Đã đóng cùng ngày.** Sửa tận gốc là đổi *cách số dư ví được quyết định*: `wallets.balance` thôi là
+dữ liệu gốc và trở thành **cache của tổng sổ giao dịch**. Vì sổ đã đồng bộ đúng, hai máy có cùng tập
+giao dịch tính ra cùng một số — xung đột LWW không phá được nữa, vì không còn gì để mất.
+
+**Nghiệm thu hai máy ảo, tài khoản thử sạch 24:** máy A tự trả hoá đơn (2.000.000 → 1.650.000), máy
+B nhận `BILL_ALREADY_PAID` rồi gỡ (→ 1.650.000). **Hai máy bằng nhau và bằng tổng sổ.** Server: hoá
+đơn `Payed`, đúng một khoản chi sống, một kỳ kế tiếp.
+
+**⚠️ Ba cái bẫy của cùng một sai lầm, cả ba chỉ lộ ra khi chạy thật** — ai sửa tiếp vùng này phải
+biết: neo tính bằng `balance − Σ sổ`, nên **thời điểm** đặt nó quyết định đúng sai.
+
+1. **Đặt neo SAU khi ghi sổ** → neo hấp thụ luôn giao dịch vừa ghi; ví 1.000.000 trả hoá đơn 350.000
+   có neo 1.350.000 và số dư đứng im. 53 ca test đỏ vì điều này.
+2. **"Lưới đỡ" tự đặt neo trong `tinhLaiSoDu`** → ví số dư 0 nhận 1.000.000 thì neo thành
+   `0 − 1.000.000`, một khoản **chi** triệt tiêu đúng khoản vừa nhận.
+3. **Đặt neo cho ví vừa kéo về** → nó mang `balance = 0` (nhánh pull thôi đọc cột ấy) trong khi sổ
+   đã đầy đủ; neo âm bằng cả tổng sổ. Đo thật: ví 2.000.000 hiện `0đ`.
+
+Chốt rút ra: **số dư 0 nghĩa là "chưa biết", không phải "ví rỗng"**.
+
+**Bán kính** rộng hơn hẳn bước 12 — **mọi** đường ghi ví đi qua đây, không riêng hoá đơn — nên có
+test quét `lib/` (thứ **năm** của dự án) cấm mọi nơi khác gọi `updateBalance`.
 
 **✅ Hướng đóng đã chốt 2026-09-13: LÀM Ở CLIENT, không xin backend.** Hai lối đã cân nhắc:
 
@@ -1334,15 +1757,20 @@ hưởng rộng hơn hẳn bước 12: **mọi** đường ghi ví đều đi qu
   hàng (giá trị lấy từ `bank_account`). Nên hai loại ví hiện ngầm theo **hai** hợp đồng khác nhau:
   ví ngân hàng do server ghi, ví thường do client ghi. Ai làm tiếp phải giữ nguyên vế đầu.
 
-**Không lẫn với lỗi đã sửa cùng ngày.** Ví **phình thêm** 350.000 sau xung đột là chuyện khác và
+**Không lẫn với lỗi đã sửa trước đó cùng ngày.** Ví **phình thêm** 350.000 sau xung đột là chuyện khác và
 **đã đóng**: `SyncEngine` nay phát kết quả đẩy **trước** bước Pull, nên phép hoàn tiền của
 `BillPaymentConflictResolver` không còn cộng vào một con số đã bị server đè lên (ca test
 `test/core/sync/sync_push_result_truoc_pull_test.dart`). G37 là phần **còn lại** của cùng một gốc,
 ở nhánh mà client không bù được.
 
-**Trong lúc chờ.** Người dùng đối soát được bằng ô số dư ở màn Sửa ví — nó sinh một khoản bù qua
-`wallet/data/services/dieu_chinh_so_du_service.dart` chứ không ghi đè, nên sổ và ví khớp lại mà
-không mất lịch sử.
+**Ô đối soát số dư ở màn Sửa ví vẫn giữ nguyên vai trò** — nó sinh một khoản bù qua
+`wallet/data/services/dieu_chinh_so_du_service.dart` chứ không ghi đè. Nay nó càng đúng khuôn: mọi
+thứ ảnh hưởng số dư đều là một hàng trong sổ.
+
+**Giới hạn còn lại, chấp nhận có chủ ý:** máy chưa pull đủ giao dịch sẽ thấy số dư tạm thấp cho tới
+khi pull xong — khác hẳn trước đây, nơi sai là *vĩnh viễn*. Và ví loại `banking` **bị loại khỏi mọi
+phép tính lại**: server tự ghi số dư ví ngân hàng từ SePay (`workers/bank.worker.js:213`), và số dư
+ngân hàng thật có thể khác tổng sổ (phí, lãi, giao dịch chưa về).
 
 ## 2. Vấn đề đã biết nhưng thuộc về Backend
 

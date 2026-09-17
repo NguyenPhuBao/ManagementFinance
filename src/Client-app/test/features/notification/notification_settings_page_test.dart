@@ -338,6 +338,58 @@ void main() {
     });
   });
 
+  group('ngưỡng khoản chi lớn', () {
+    testWidgets('mặc định hiện "Tắt"', (tester) async {
+      await moTrang(tester);
+
+      expect(
+        tester
+            .widget<DropdownButton<int>>(
+                find.byKey(NotificationSettingsPage.khoaNguongChiLon))
+            .value,
+        0,
+        reason: 'Ngưỡng VỪA là ngưỡng vừa là công tắc. Hiện một số tiền nào đó '
+            'khi người dùng chưa đặt gì là nói dối về trạng thái thật.',
+      );
+    });
+
+    testWidgets('đổi ngưỡng thì ghi ngay vào kho', (tester) async {
+      await moTrang(tester);
+
+      await tester
+          .ensureVisible(find.byKey(NotificationSettingsPage.khoaNguongChiLon));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(NotificationSettingsPage.khoaNguongChiLon));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('2.000.000 đ').last);
+      await tester.pumpAndSettle();
+
+      expect((await store.read(accountId)).nguongChiLon, 2000000);
+    });
+
+    testWidgets('⚠️ đổi ngưỡng chi lớn KHÔNG đụng ngưỡng số dư', (tester) async {
+      // Hai ô cùng khuôn, cùng kiểu, nằm cạnh nhau — đúng điều kiện để một lần
+      // chép nhầm `_ghi(_prefs.copyWith(nguongSoDuThap: v))` ở ô dưới trôi qua
+      // mọi ca test khác.
+      await store.write(
+          accountId, const NotificationPrefs(nguongSoDuThap: 200000));
+      await moTrang(tester);
+
+      await tester
+          .ensureVisible(find.byKey(NotificationSettingsPage.khoaNguongChiLon));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(NotificationSettingsPage.khoaNguongChiLon));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('1.000.000 đ').last);
+      await tester.pumpAndSettle();
+
+      final sau = await store.read(accountId);
+      expect(sau.nguongChiLon, 1000000);
+      expect(sau.nguongSoDuThap, 200000);
+    });
+  });
+
   group('xin quyền', () {
     testWidgets('BẬT công tắc tổng thì xin quyền hệ điều hành', (tester) async {
       await store.write(accountId, const NotificationPrefs(osBat: false));

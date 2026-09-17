@@ -53,6 +53,7 @@ class WalletCubit extends Cubit<WalletState> {
     String colour = '#4CAF50',
     bool isDefault = false,
     bool includeInTotal = true,
+    bool allowNegative = false,
   }) async {
     final currentState = state;
     final currentWallets = switch (currentState) {
@@ -78,6 +79,7 @@ class WalletCubit extends Cubit<WalletState> {
         colour:    colour,
         isDefault: isDefault,
         includeInTotal: includeInTotal,
+        allowNegative: allowNegative,
       );
 
       final updated = [...currentWallets, wallet];

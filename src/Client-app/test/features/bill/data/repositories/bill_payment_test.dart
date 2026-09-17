@@ -21,6 +21,7 @@ import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/bill/data/datasources/bill_local_datasource.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository_impl.dart';
+import 'package:flowmoney/features/wallet/domain/so_du_mo_so.dart';
 
 void main() {
   late AppDatabase db;
@@ -81,9 +82,17 @@ void main() {
   Future<double> soDu(String id) async =>
       (await db.walletDao.getById(id))!.balance;
 
+  /// Khoản chi còn sống của tài khoản, **không tính khoản mở sổ**.
+  ///
+  /// Từ 2026-09-13 số dư ví suy từ sổ, nên mỗi ví có thêm một khoản "Số dư ban
+  /// đầu" làm điểm neo (`wallet/domain/so_du_mo_so.dart`). Nó là hàng thật
+  /// trong bảng nhưng không phải khoản chi tiêu nào — đếm nó vào đây là mọi ca
+  /// `single` bên dưới thành "Too many elements".
   Future<List<Transaction>> khoanChi() async =>
       (await db.transactionDao.getAll(accountId))
           .where((t) => !t.isDeleted)
+          .where((t) => !laKhoanMoSo(
+              loai: t.type, categoryId: t.categoryId, ghiChu: t.note))
           .toList();
 
   group('trả với số tiền của kỳ này', () {
@@ -211,7 +220,10 @@ void main() {
       expect(await khoanChi(), isEmpty);
       // Đọc thẳng bảng: `getAll` đã lọc bỏ hàng xoá mềm, nên nó không phân
       // biệt được "đã xoá mềm" với "xoá cứng mất luôn".
-      final tatCa = await db.select(db.transactions).get();
+      final tatCa = (await db.select(db.transactions).get())
+          .where((t) => !laKhoanMoSo(
+              loai: t.type, categoryId: t.categoryId, ghiChu: t.note))
+          .toList();
       expect(tatCa.single.isDeleted, isTrue,
           reason: 'Xoá MỀM, không xoá cứng — quy tắc 5 trong CLAUDE.md.');
       expect(tatCa.single.syncStatus, 'pending');

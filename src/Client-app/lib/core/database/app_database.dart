@@ -56,7 +56,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 21;
+  int get schemaVersion => 23;
 
   @override
   MigrationStrategy get migration {
@@ -412,6 +412,57 @@ class AppDatabase extends _$AppDatabase {
           // liệu cho hàng cũ — NULL nghĩa là "kết thúc kỳ trùng hạn trả", đúng
           // hành vi trước đó. Xem chú thích `Bills.periodEnd`.
           await m.addColumn(bills, bills.periodEnd);
+        }
+        if (from < 22) {
+          // G28: `status` (lưu trữ ví) bắt đầu đi qua đồng bộ từ 2026-09-14.
+          //
+          // Ví đã lưu trữ TRƯỚC bản này đang ở `synced`, nên nhánh đẩy không
+          // bao giờ gửi lại chúng — trong khi cột `Status` của PostgreSQL là
+          // `NOT NULL DEFAULT 'Active'`, tức server đang giữ `'Active'` cho
+          // đúng những ví ấy. Không có bước này thì lượt pull ĐẦU TIÊN sau khi
+          // cập nhật app lặng lẽ bỏ lưu trữ chúng: ví quay lại mọi bộ chọn,
+          // quay lại tổng tài sản, và hai bộ chạy tự động dùng lại nó.
+          //
+          // Đủ, vì Push chạy TRƯỚC Pull trong cùng chu kỳ (`_sendBatch` rồi
+          // `_pullFromBackend`): ví lên tới server trước khi pull đọc về.
+          //
+          // Chỉ đụng ví đang lưu trữ và chưa xoá — quét cả bảng là ép đẩy lại
+          // mọi ví ở lần mở app kế tiếp, cùng lập luận với v20.
+          //
+          // ⚠️ **Phải đẩy cả `updated_at` lên mốc hiện tại**, không chỉ
+          // `sync_status`. Ví lưu trữ cũ ĐÃ từng được đẩy lên (chỉ thiếu cột
+          // `status`), nên mốc của nó **bằng đúng** mốc trên server; mà
+          // `upsertWallet` phía server chỉ ghi khi
+          // `new Date(mapped.update_at) > new Date(existing.update_at)`. Đẩy
+          // lại nguyên mốc cũ là **không lớn hơn** → server trả `conflict`,
+          // giữ bản của nó, và client `markSynced` để thoát vòng lặp (luật
+          // G9). Bước cứu khi ấy tự hỏng theo đúng cách nó sinh ra để ngăn,
+          // và **im lặng**.
+          //
+          // Đo thật trên máy ảo 2026-09-14, bản migration đầu tiên:
+          // `Sending batch 1 operations` → `Push conflict (bản server mới hơn,
+          // lấy theo server)` → `0/1 synced`. Không ca test nào trong 12 ca của
+          // hạng mục thấy điều này, vì hợp đồng payload dựng hàng với
+          // `DateTime.now()` (luôn mới hơn) còn ca migration chỉ đọc cột
+          // `sync_status`.
+          //
+          // `strftime('%s','now')` vì Drift lưu `DateTime` theo **giây** Unix,
+          // không phải mili-giây.
+          await customStatement(
+            "UPDATE wallets SET sync_status = 'pending', "
+            "updated_at = CAST(strftime('%s','now') AS INTEGER) "
+            "WHERE status = 'inactive' AND is_deleted = 0",
+          );
+        }
+        if (from < 23) {
+          // G27: cờ "ví được phép âm" (thẻ tín dụng, ví theo dõi nợ).
+          //
+          // KHÔNG điền dữ liệu cho hàng cũ. Mặc định `false` **chính là** hành
+          // vi trước bản này — mọi ví âm đều bị cảnh báo — nên không bản cài
+          // nào đổi hành vi lặng lẽ. Khác hẳn v22, nơi phải đánh dấu ví lưu trữ
+          // cũ để đẩy lại: cờ này **không đi qua đồng bộ**, nên không có bản
+          // nào của server để giành nhau.
+          await m.addColumn(wallets, wallets.allowNegative);
         }
       },
       beforeOpen: (details) async {

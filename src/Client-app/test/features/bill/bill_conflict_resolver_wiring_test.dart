@@ -9,7 +9,7 @@
 ///    hai lần, nhưng đó là may chứ không phải thiết kế.
 ///
 /// Cùng khuôn với `test/core/sync/sync_engine_start_owner_test.dart` — test
-/// quét `lib/` thứ tư của dự án.
+/// quét `lib/` thứ **năm** của dự án.
 library;
 
 import 'dart:io';

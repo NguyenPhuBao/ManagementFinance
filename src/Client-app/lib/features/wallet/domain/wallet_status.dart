@@ -11,26 +11,31 @@
 /// chk_wallet_status CHECK (Status = ANY (ARRAY['Active','Inactive']))
 /// ```
 ///
-/// ⚠️ **Nhưng [khoaGuiLen] hiện KHÔNG được dùng ở đâu ngoài test.** Lý do ban
-/// đầu, đo ngày 2026-09-10: lược đồ PostgreSQL tự mâu thuẫn ở đúng cột này —
-/// CHECK cho phép `'Inactive'` trong khi kiểu cột là `varchar(7)`, chuỗi ấy
-/// dài **8 ký tự** — nên ví lưu trữ đẩy lên là **kẹt hàng đợi đẩy**, đo được
-/// trên máy ảo. Vì thế `status` là cột **cục bộ**:
-/// `sync_payload_normalizer.dart` **không** đi qua tệp này, và nhánh kéo về
-/// cũng không đọc cột ấy.
+/// Cột đi qua đồng bộ **hai chiều** từ 2026-09-14 (G28 đóng): [khoaGuiLen] là
+/// thứ `sync_payload_normalizer.dart` gửi lên, [tuKhoa] + [khoa] là thứ nhánh
+/// kéo về lưu xuống. Hai từ vựng phải dịch qua lại ở đúng hai chỗ ấy và không
+/// đâu khác.
 ///
-/// Tối cùng ngày CSDL dev đã nới cột lên `varchar(20)` (áp `database/7`), nên
-/// chỗ chặn phía server đã hết; `status` vẫn cục bộ vì việc nối lại (G28)
-/// người dùng chốt để sau. [khoaGuiLen] vẫn ở lại và vẫn được test canh, để
-/// ngày nối lại chỉ là một dòng. Xem G28 `docs/CLIENT_APP_KNOWN_GAPS.md` và
-/// `docs/superpowers/backend/DA-XONG/WALLET_STATUS_COLUMN_WIDTH.md`.
+/// ⚠️ **Lý do lịch sử, giữ vì nó giải thích hình dạng hôm nay:** trước ngày ấy
+/// `status` là cột **cục bộ** và [khoaGuiLen] không được dùng ở đâu ngoài
+/// test. Lược đồ PostgreSQL khi ấy tự mâu thuẫn ở đúng cột này — CHECK cho
+/// phép `'Inactive'` trong khi kiểu cột là `varchar(7)`, chuỗi ấy dài **8 ký
+/// tự** — nên ví lưu trữ đẩy lên là **kẹt hàng đợi đẩy**, đo được trên máy ảo
+/// ngày 2026-09-10. Tối cùng ngày CSDL dev áp `database/7` và cột nới lên
+/// `varchar(20)`; việc nối lại người dùng chốt để sau, và làm ngày 2026-09-14.
+/// Đo lại hôm ấy: `varchar(20)`, `NOT NULL`, `DEFAULT 'Active'`.
+///
+/// ⚠️ Máy chủ nào **chưa áp `database/7`** vẫn `varchar(7)` và sẽ từ chối
+/// `'Inactive'` — ví lưu trữ kẹt hàng đợi đẩy vĩnh viễn, im lặng. Đó là thứ
+/// duy nhất còn có thể làm G28 hỏng, và client không chặn trước được.
+/// Xem `docs/superpowers/backend/DA-XONG/WALLET_STATUS_COLUMN_WIDTH.md`.
 ///
 /// ## Vì sao tệp này KHÔNG import Flutter
 ///
 /// Cùng lý do với `wallet_type.dart`: nó được `wallet_dao.dart` và tầng đồng
-/// bộ dùng tới, và khi nối lại G28 thì `sync_payload_normalizer.dart` — tầng
-/// hợp đồng giữa client và server, không import gì cả — sẽ dùng nó. Giữ Dart
-/// thuần là giữ khả năng ấy.
+/// bộ dùng tới — trong đó có `sync_payload_normalizer.dart`, tầng hợp đồng
+/// giữa client và server, thứ không import gì cả. Giữ Dart thuần là giữ khả
+/// năng ấy, và từ G28 thì đó không còn là dự phòng mà là chỗ dùng thật.
 ///
 /// ## Lưu trữ nghĩa là gì
 ///

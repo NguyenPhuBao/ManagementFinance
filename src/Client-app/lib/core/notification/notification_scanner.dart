@@ -48,6 +48,16 @@ typedef WeekActivityLoader = Future<bool> Function(
   DateTime to,
 );
 
+/// Nạp các giao dịch từ [from] trở đi để soi "khoản chi lớn" (#7,
+/// 2026-09-17).
+///
+/// Trả [KhoanChiLon] chứ không phải hàng Drift, cùng kỷ luật thu hẹp phụ
+/// thuộc với [WeekActivityLoader]: bộ luật không nhận kiểu của tầng CSDL.
+typedef LargeExpenseLoader = Future<List<KhoanChiLon>> Function(
+  int idaccount,
+  DateTime from,
+);
+
 /// Nạp mục tiêu của một tài khoản. Cùng lý do closure như trên.
 typedef GoalsLoader = Future<List<GoalEntity>> Function(
     int idaccount, DateTime now);
@@ -81,6 +91,10 @@ class NotificationScanner {
   /// Bỏ trống thì Tổng kết tuần **tắt hẳn** — cùng khuôn với `loadGoals` và
   /// `loadWallets`.
   final WeekActivityLoader? loadWeekActivity;
+
+  /// Bỏ trống thì luật **Khoản chi lớn** tắt hẳn — cùng khuôn với
+  /// `loadWeekActivity`.
+  final LargeExpenseLoader? loadChiLon;
 
   /// Tuỳ chọn: bỏ trống thì scanner chỉ đọc, không ghi gì ngoài bảng thông báo.
   final OverdueMarker? markOverdue;
@@ -174,6 +188,7 @@ class NotificationScanner {
     this.loadGoals,
     this.loadWallets,
     this.loadWeekActivity,
+    this.loadChiLon,
     required this.syncStatus,
     this.appLifecycle,
     this.markOverdue,
@@ -339,6 +354,20 @@ class NotificationScanner {
         tuanQuaCoGiaoDich = await docTuan(idaccount, tuan.from, tuan.to);
       }
 
+      // Cùng khuôn với Tổng kết tuần ngay trên: chỉ HỎI khi người dùng đã
+      // bật. Ngưỡng mặc định là 0, nên với phần lớn bản cài đây là một truy vấn
+      // không bao giờ chạy — và bộ luật nhận danh sách rỗng, đúng nghĩa "không
+      // có căn cứ để báo".
+      //
+      // Cửa sổ đọc dùng lại **đúng** `cuaSoSuKien` mà `silenceBefore` dùng: đọc
+      // rộng hơn là tốn công cho những hàng bộ luật chắc chắn lọc bỏ, còn đọc
+      // hẹp hơn là bỏ sót đúng những khoản vẫn còn nằm trong cửa sổ ấy.
+      var chiLon = const <KhoanChiLon>[];
+      final docChi = loadChiLon;
+      if (docChi != null && prefs.nguongChiLon > 0) {
+        chiLon = await docChi(idaccount, at.subtract(cuaSoSuKien));
+      }
+
       final ungVien = buildNotificationCandidates(
         NotificationRuleInput(
           now: at,
@@ -353,6 +382,8 @@ class NotificationScanner {
           defaultBillLeadDays: prefs.soNgayNhacHoaDon,
           lowBalanceThreshold: prefs.nguongSoDuThap,
           tuanQuaCoGiaoDich: tuanQuaCoGiaoDich,
+          chiLon: chiLon,
+          nguongChiLon: prefs.nguongChiLon,
         ),
         // Lọc ở đây chứ không ở bước bắn: tắt một nhóm nghĩa là không sinh
         // thông báo nhóm ấy CẢ trong app. Chỉ chặn lúc bắn thì trung tâm thông

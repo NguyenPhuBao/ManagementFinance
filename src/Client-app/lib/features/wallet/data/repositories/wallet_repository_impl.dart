@@ -5,18 +5,24 @@ import '../datasources/wallet_local_data_source.dart';
 import '../models/wallet_entity.dart';
 import '../../domain/vi_tinh_vao_tong.dart';
 import 'wallet_repository.dart';
+import '../services/so_du_vi_service.dart';
 
 class WalletRepositoryImpl implements WalletRepository {
   final WalletLocalDataSource _localDataSource;
   final SyncEngine _syncEngine;
+
+  /// Nơi duy nhất ghi số dư; ở đây chỉ dùng để đặt **khoản mở sổ** cho ví mới.
+  final SoDuViService _soDuVi;
 
   static const _uuid = Uuid();
 
   WalletRepositoryImpl({
     required WalletLocalDataSource localDataSource,
     required SyncEngine syncEngine,
+    required SoDuViService soDuVi,
   })  : _localDataSource = localDataSource,
-        _syncEngine = syncEngine;
+        _syncEngine = syncEngine,
+        _soDuVi = soDuVi;
 
   @override
   Future<List<WalletEntity>> getAll(int idaccount) =>
@@ -44,6 +50,7 @@ class WalletRepositoryImpl implements WalletRepository {
     String colour = '#4CAF50',
     bool isDefault = false,
     bool includeInTotal = true,
+    bool allowNegative = false,
   }) async {
     final wallet = WalletEntity(
       id:             _uuid.v4(),
@@ -56,6 +63,7 @@ class WalletRepositoryImpl implements WalletRepository {
       colour:         colour,
       isDefault:      isDefault,
       includeInTotal: includeInTotal,
+      allowNegative:  allowNegative,
       syncStatus:     'pending',
       updatedAt:      DateTime.now(),
     );
@@ -65,6 +73,13 @@ class WalletRepositoryImpl implements WalletRepository {
     // che mất việc đường sửa không được bảo vệ gì cả.
 
     await _localDataSource.insert(wallet);
+
+    // Sinh khoản mở sổ NGAY, thay vì đợi bộ vá chạy sau lần pull kế tiếp: ngày
+    // của nó khớp ngày tạo ví, và máy khác thấy nó ở chu kỳ đồng bộ đầu tiên.
+    //
+    // Số dư ban đầu bằng 0 thì không sinh gì — xem `SoDuViService`.
+    await _soDuVi.datNeoNhieuVi({wallet.id});
+
     _syncEngine.scheduleSync();   // Trigger background sync
     return wallet;
   }

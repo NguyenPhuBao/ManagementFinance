@@ -99,10 +99,19 @@ void main() {
     expect(truoc.payments, isEmpty);
 
     final bill = (await db.billDao.getById('b-tra'))!;
+    // ⚠️ Đăng ký chờ TRƯỚC khi gọi `payBill`, không phải sau.
+    //
+    // `watchBills` có thể phát trạng thái mới **trước khi** `payBill` trả về —
+    // nó ghi xong bảng `bills` rồi mới tính lại số dư ví. Bản cũ của test này
+    // gọi `payBill` xong mới `firstWhere`, nên nó bỏ lỡ đúng trạng thái đang
+    // chờ và treo tới hết giờ. Race ấy vốn có; nó chỉ lộ ra khi `payBill` chậm
+    // thêm một nhịp (2026-09-13, số dư chuyển sang suy từ sổ).
+    final cho = bloc.stream
+        .firstWhere((s) => s is BillLoaded && s.payments.isNotEmpty);
+
     await repository.payBill(bill: bill, walletId: 'w1', idaccount: accountId);
 
-    final sau = await bloc.stream
-        .firstWhere((s) => s is BillLoaded && s.payments.isNotEmpty) as BillLoaded;
+    final sau = await cho as BillLoaded;
     expect(sau.payments.containsKey('b-tra'), isTrue,
         reason: 'Trả xong trên chính trang này thì ngày trả phải hiện ngay, '
             'không đợi mở lại trang.');

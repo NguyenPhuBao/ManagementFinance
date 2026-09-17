@@ -66,6 +66,11 @@ void _createV12Schema(dynamic database) {
       name TEXT NOT NULL, balance REAL NOT NULL DEFAULT 0,
       type TEXT NOT NULL DEFAULT 'cash', deleted_at INTEGER,
       is_deleted INTEGER NOT NULL DEFAULT 0,
+      -- Cột `status` (lưu trữ ví) do migration `from < 6` thêm, nên một CSDL
+      -- thật ở phiên bản này LUÔN có nó. Dựng thiếu ở đây là migration v22
+      -- (`UPDATE wallets SET sync_status … WHERE status = 'inactive'`) vỡ với
+      -- "no such column: status" — thiếu ở phía bản dựng thử, không phải mã.
+      status TEXT NOT NULL DEFAULT 'active',
       sync_status TEXT NOT NULL DEFAULT 'pending',
       sync_retry_count INTEGER NOT NULL DEFAULT 0, sync_error TEXT,
       sync_blocked_until INTEGER, updated_at INTEGER NOT NULL

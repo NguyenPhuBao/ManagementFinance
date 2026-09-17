@@ -73,13 +73,16 @@ uống"*, *"Nhắc nhở: Hóa đơn tiền điện sắp đến hạn"*, *"Ti�
 
 ## 3. Danh mục thông báo
 
-**Mười sáu loại**, xếp vào **năm nhóm** công tắc. Cột cuối đánh dấu những loại
+**Mười bảy loại** trong bảng dưới, xếp vào **năm nhóm** công tắc.
+
+⚠️ **`enum NotificationKind` có MƯỜI TÁM giá trị, không phải mười bảy** — đếm bằng máy 2026-09-17. Chênh lệch là `billPaidOnOtherDevice`: nó không do `NotificationScanner` sinh ra nên chưa bao giờ nằm trong bảng này (xem mục 5e). Hai con số ấy **cố ý** khác nhau, và đó là lý do phải nói rõ mỗi chỗ đang đếm cái nào — mốc *mười sáu* của 2026-09-09 là con số của bảng, còn *mười bảy* mà mục 5e dùng năm 2026-09-13 là con số của enum. Cột cuối đánh dấu những loại
 **không chịu công tắc nhóm** — xem `luonBao()` trong `notification_prefs.dart`.
 
 | Nhóm | Loại | `kind` | Luôn báo |
 |---|---|---|---|
 | Ngân sách | Chạm ngưỡng | `budgetNearLimit` | |
 | | Vượt hạn mức | `budgetOverspent` | |
+| | **Khoản chi lớn** | `largeExpense` | |
 | Hoá đơn | Sắp đến hạn | `billDueSoon` | |
 | | Quá hạn | `billOverdue` | |
 | | **Đã tự thanh toán** | `billAutoPaid` | ⚠️ có |
@@ -95,7 +98,7 @@ uống"*, *"Nhắc nhở: Hóa đơn tiền điện sắp đến hạn"*, *"Ti�
 | | Số dư ví sắp cạn | `walletLowBalance` | |
 | Tổng kết | **Tổng kết tuần** | `weeklySummary` | |
 
-**`walletLowBalance`** (2026-09-07) là loại duy nhất **tắt sẵn**: nó chỉ sinh
+**`walletLowBalance`** (2026-09-07) và **`largeExpense`** (2026-09-17) là hai loại **tắt sẵn**, và cả hai tắt theo cùng một cách — bằng chính con số ngưỡng. Với `walletLowBalance`: nó chỉ sinh
 khi `NotificationPrefs.nguongSoDuThap > 0`, mà mặc định là `0`. Con số ấy vừa
 là ngưỡng vừa là công tắc — một cặp công tắc-cộng-số biểu diễn được trạng thái
 vô nghĩa "bật nhưng ngưỡng bằng 0", còn một con số thì không. Mặc định tắt vì
@@ -103,7 +106,15 @@ mọi bản ghi có sẵn trên máy người dùng đều thiếu trường nà
 lẽ đổi hành vi của mọi bản đã cài — cùng lý lẽ với giờ im lặng.
 
 ⚠️ ~~**Ví loại `debt` không sinh cảnh báo ví nào cả**, kể cả `walletNegative`.~~
-**Chốt này ĐÃ GỠ ngày 2026-09-09 — nay KHÔNG loại ví nào được miễn trừ.**
+**Chốt này ĐÃ GỠ ngày 2026-09-09 — LOẠI ví không miễn trừ gì cả.**
+
+✅ **Nhưng từ 2026-09-17 có chỗ bám mới: cờ `Wallets.allowNegative`** (G27,
+schema v23). Ví đánh dấu "cho phép âm" không sinh cảnh báo số dư nào cả —
+**cả** `walletNegative` **lẫn** `walletLowBalance`, đúng luật mà chốt `debt`
+cũ đã có. Chốt nằm ở **đầu** vòng lặp `_walletCandidates`, trước cả hai nhánh;
+dời nó vào trong nhánh ví âm là đổi một dòng nhiễu lấy một dòng nhiễu khác —
+và bản sai có chủ ý đầu tiên của hạng mục ấy **đi lọt** vì ca test dựng một ví
+số dư âm, mà nhánh "sắp cạn" chỉ chạy khi `balance >= 0`.
 
 Lý lẽ cũ vẫn đúng ở chỗ nó đúng: ví nợ mang số dư âm là đúng bản chất của nó,
 và trước 2026-09-07 nó bị nhắc **mỗi ngày** cho tới khi trả hết nợ. Nhưng loại
@@ -113,9 +124,10 @@ và trước 2026-09-07 nó bị nhắc **mỗi ngày** cho tới khi trả hế
 chuyển thành `bank`, và không còn tín hiệu nào để nhận ra "âm là cố ý".
 
 **Hệ quả có thật:** ai từng theo dõi thẻ tín dụng bằng ví `debt` nay sẽ được
-nhắc "ví âm" mỗi ngày trở lại. Chữa đúng thì cần một khái niệm **mới** — "ví
-được phép âm" — chứ không phải khôi phục chuỗi `'debt'` đã chết. Xem **G27**
-`docs/CLIENT_APP_KNOWN_GAPS.md`.
+nhắc "ví âm" mỗi ngày trở lại. ✅ **Đã chữa 2026-09-17** bằng đúng khái niệm mới ấy — một **cờ** trên bảng
+`wallets`, không phải khôi phục chuỗi `'debt'` đã chết (khôi phục nó là tái
+hiện chính sự cố `chk_wallet_type`). **G27 đóng**; xem
+`docs/CLIENT_APP_KNOWN_GAPS.md` và docstring `Wallets.allowNegative`.
 
 Thứ tự loại trừ trong `_walletCandidates` là thứ giữ cho mỗi ví ra **một**
 thông báo: số dư âm cũng thoả điều kiện "dưới ngưỡng", nên thiếu `continue` ở
@@ -226,6 +238,7 @@ bắn lại thông báo cũ.
 | `billDueSoon` | `billDue:<id>:<hạn>:<số ngày nhắc>` | 1 lần/hạn |
 | `billOverdue` | `billOverdue:<id>:<hạn>` | 1 lần/hạn |
 | `billPaidOnOtherDevice` | `billConflict:<id>` | 1 lần/kỳ hoá đơn |
+| `largeExpense` | `bigSpend:<idGiaoDich>` | 1 lần/giao dịch, **trọn đời** |
 
 - `<đầu kỳ>` lấy từ **`BudgetEntity.currentPeriod(now).from`** — hàm đã xử lý
   ngân sách hết hạn, ngân sách không chu kỳ, và chống trôi ngày 31 → 28.
@@ -338,8 +351,8 @@ tránh.
 
 Vẫn **không** là một `NotificationKind`. Lời nhắc này cố ý đứng ngoài bảng ấy,
 và đó là quyết định trung tâm của nó. (Lúc viết dòng này bảng có mười bốn loại;
-nay là **mười sáu** — `goalMilestone` thêm 2026-09-08, `weeklySummary` thêm
-2026-09-09. Con số thì đổi, còn lý lẽ dưới đây thì không.)
+nay là **mười bảy** — `goalMilestone` thêm 2026-09-08, `weeklySummary` thêm
+2026-09-09, `largeExpense` thêm 2026-09-17. Con số thì đổi, còn lý lẽ dưới đây thì không.)
 
 **Vì sao đứng ngoài bộ luật.** Mọi loại trong bảng đều là *bản ghi* một việc đã
 xảy ra, và người dùng đọc lại chúng trong trung tâm thông báo. Lời nhắc này
@@ -614,8 +627,9 @@ ca *chính* của lịch đặt trước — hàng tương ứng còn chưa tồ
 vòng quét mới sinh ra nó *sau khi* app khởi động xong. Tra cột `deeplink` ở đó
 là một cuộc đua, và thua cuộc đua ấy nghĩa là cú chạm không đi đâu cả.
 
-Bản sao ấy được canh bằng một test duyệt **cả 17 loại** (đếm bằng máy từ chính
-`enum NotificationKind`, 2026-09-13): nó dựng ứng viên thật từ bộ luật rồi khẳng
+Bản sao ấy được canh bằng một test duyệt **cả 18 loại** (đếm lại bằng máy từ chính
+`enum NotificationKind` ngày 2026-09-17; mốc **17** là của 2026-09-13,
+trước khi `largeExpense` vào): nó dựng ứng viên thật từ bộ luật rồi khẳng
 định hàm suy ra đúng cột `deeplink`. Thêm một loại mà quên ánh xạ là test đỏ ngay.
 
 ⚠️ **Kể cả loại KHÔNG do bộ quét sinh ra.** `billPaidOnOtherDevice` (loại thứ 17)
@@ -763,6 +777,12 @@ một trong số chúng.
 của chính tuần ấy** nên năm ISO đúng ở cả hai chiều: 31/12/2025 là `2026-W01`,
 01/01/2021 là `2020-W53`.
 
+⚠️ **Từ 2026-09-15 tệp ấy có HAI chủ.** Bộ chọn phạm vi của trang Phân tích
+(`Ky.tuan`) mượn đúng phép "thứ Hai của tuần chứa ngày này", nên phép ấy đã được
+tách khỏi thân `tuanTruoc` thành `bienTuan` và `tuanTruoc` gọi lại nó. Sửa gì ở
+đây thì **đổi cả hai tính năng**; có một ca test canh việc hai hàm không trôi
+khỏi nhau (`tuanTruoc(now).to == bienTuan(now).from`).
+
 **Khoá `weekly:<nam>-W<tuan>:<thứ Hai>`.** Đoạn thứ ba tồn tại vì
 `deeplinkTuDedupeKey` chạy ở **cold start**: nó không tra được CSDL, và phép
 nghịch đảo của số tuần ISO là hàm dễ sai mà không ai kiểm lại.
@@ -777,6 +797,95 @@ qua `extra`, vì `extra` không sống qua một tiến trình mới. Trang tự
 > không báo" vẫn giữ ở tầng bộ luật. Chờ tới lúc biết chắc thì cửa sổ giữa "tuần
 > khép" và "mốc nổ" chỉ vài giờ, và đúng những người cần được kéo lại là những
 > người không mở app trong vài giờ ấy.
+
+---
+
+## 5f. Khoản chi lớn (2026-09-17)
+
+Loại thông báo **thứ 18** *(đếm theo `enum NotificationKind`, đo bằng máy 2026-09-17 — hàng thứ **17** của bảng mục 3; xem cảnh báo ở đó về vì sao hai con số khác nhau)*, và là mục **#7** của khảo sát app thị trường lần hai
+(`ANALYTICS_FEATURE.md` mục 3.25) — thứ Rocket Money gọi là *cảnh báo bất
+thường*.
+
+### ⚠️ "Bất thường" ở đây là NGƯỠNG, không phải thống kê
+
+Rocket Money và Copilot so một khoản với **mức thường** của danh mục ấy. Người
+dùng chốt lối khác, và phép đo ủng hộ: tài khoản thật có **8 ngày** dữ liệu và
+danh mục đông nhất chỉ **5** giao dịch (đo 2026-09-17), nên một luật thống kê sẽ
+**im hàng tháng** rồi bắt đầu nổ bừa ngay khi vừa đủ mẫu. Một con số do người
+dùng đặt thì chạy từ ngày đầu, không đoán, và **không thể báo động giả** — vì
+chính họ định nghĩa "lớn".
+
+Đây là điều đáng giữ nhất ở tính năng này: rủi ro lớn nhất của nó không phải sai
+số mà là **báo động giả**, và ai tắt thông báo vì phiền thì mất luôn 17 loại kia.
+
+### Ngưỡng LÀ công tắc
+
+`NotificationPrefs.nguongChiLon`, mặc định **0 = tắt**, trần một tỉ, kẹp trong
+`fromJson` — bản sao đúng khuôn `nguongSoDuThap` đến từng dòng, kể cả lý do:
+mọi bản ghi đang nằm trên máy người dùng đều thiếu trường này, nên bật sẵn là
+lặng lẽ bắn thông báo cho những khoản chính họ đã gõ từ mấy tháng trước.
+
+Trang Cài đặt có thẻ **"KHOẢN CHI LỚN"** với một danh sách rời
+(`Tắt · 500.000 · 1.000.000 · 2.000.000 · 5.000.000 · 10.000.000 · 20.000.000`).
+Mức thấp nhất là **500.000** chứ không phải 50.000 như ngưỡng số dư: đây là
+ngưỡng của *một* khoản chi, và một mức quá thấp biến tính năng thành một thông
+báo cho gần như mọi giao dịch.
+
+### ⚠️ "Chi" đi qua `khoanVaoThongKe`, không phải `type == 'chi'`
+
+Ba loại hàng rời ví mà **không** phải chi tiêu: khoản **chuyển** (mỗi kỳ trích
+mục tiêu sẽ thành một cảnh báo), khoản **điều chỉnh số dư** (phép sửa sổ), và
+khoản **mở sổ** — tạo ví với số dư ban đầu 20 triệu không phải là vừa chi 20
+triệu. Cả ba đã có một định nghĩa duy nhất để loại; viết lại luật ở tầng này là
+bản chép tay thứ hai. Khoản **chưa phân loại** thì vẫn tính.
+
+### Nhóm Ngân sách, không phải nhóm mới
+
+Cùng bản chất "chi tiêu vượt một mức" với hai loại sẵn có, nên dùng chung công
+tắc. Một nhóm riêng sẽ là **chip thứ tám** trên một dải đã phải cuộn ngang, đổi
+lấy một phân biệt không ai cần — và sẽ phải sửa ca canh `NotificationGroup.values.length + 2`
+(bẫy 7.12). Nó **chịu** công tắc nhóm: `luonBao` dành cho những loại báo việc
+app tự rút tiền lúc người dùng vắng mặt, còn đây là một khoản họ tự biết.
+
+### Khoá `bigSpend:<idGiaoDich>` — và vì sao không có gì khác trong đó
+
+Không số tiền (bẫy 7.1: sửa khoản chi sẽ đẻ thông báo mới), không mốc quét, và
+**không cả `walletId`**. Chở ví theo khoá thì `deeplinkTuDedupeKey` dựng được
+`/transactions?wallet=…` ở cold start — nhưng đổi ví của một khoản chi khi ấy
+đổi luôn khoá, tức **một thông báo thứ hai cho cùng một khoản**, im lặng. Một cú
+chạm kém chính xác hơn rẻ hơn hẳn một bản sao, nên deeplink là `/transactions`
+trần.
+
+### Mốc sự kiện là NGÀY GIAO DỊCH
+
+Nhờ vậy cửa sổ `silenceBefore` 30 ngày chặn được cơn lũ ở lần **bật đầu tiên**.
+Lấy mốc quét là vứt bỏ đúng phép chặn ấy — và không test nào khác bắt được, vì
+mọi ca còn lại vẫn xanh.
+
+### Chỉ HỎI CSDL khi người dùng đã bật
+
+`loadChiLon` chỉ chạy khi `prefs.nguongChiLon > 0`, cùng khuôn `loadWeekActivity`
+— với phần lớn bản cài đây là một truy vấn không bao giờ chạy. Cửa sổ đọc dùng
+lại **đúng** `cuaSoSuKien` mà `silenceBefore` dùng. Tên danh mục tra bằng
+`categoryDao.getBangTraTen` (giữ hàng đã xoá mềm **và** hàng mặc định toàn cục)
+— viết truy vấn riêng ở đây là tái hiện **G41**.
+
+### Nghiệm thu máy ảo (2026-09-17, tài khoản thật)
+
+Đặt mức 500.000 → lượt quét kế ghi **đúng một** hàng: *"Khoản chi lớn — Bạn vừa
+chi 500 nghìn. — 05/09/2026"*, hiện dưới chip **Ngân sách** cạnh thông báo ngân
+sách sẵn có. Ngày trên thẻ là **ngày giao dịch**, không phải ngày quét. Chạm mở
+đúng Sổ giao dịch. Lượt quét thứ hai: **0 hàng mới**. Đặt lại **Tắt** → im.
+
+⚠️ Hàng kích hoạt nó là một khoản **trích mục tiêu** được ghi thành `chi` thường
+(không danh mục) chứ không phải `transfer` như các khoản trích khác của cùng mục
+tiêu. Đó **không** phải báo động giả của luật này mà là hình dạng sẵn có của dữ
+liệu: app đã tính hàng ấy là chi tiêu ở **mọi** nơi khác — nó chính là "KHOẢN CHI
+LỚN NHẤT" của khối Số liệu nhanh. Sửa thì phải sửa ở chỗ ghi khoản trích, không
+phải ở đây.
+
+**Không đổi schema**, không thêm trường đồng bộ, bảng `AppNotifications` vẫn
+hoàn toàn cục bộ.
 
 ---
 
@@ -1215,6 +1324,7 @@ lượt RED, vì `expect` ném sớm nên chưa chạm tới bước dọn dẹp
 
 | Tệp | Canh gì |
 |---|---|
+| `test/core/notification/notification_rules_large_expense_test.dart` (2026-09-17) | Luật **Khoản chi lớn** (mục 5f): ngưỡng `0` và ngưỡng âm đều IM; biên **đóng** ở đúng ngưỡng; khoản chuyển / điều chỉnh số dư / **mở sổ** không báo còn khoản chưa phân loại vẫn báo; khoá `bigSpend:<id>` không chứa số tiền và không đổi giữa hai lượt quét; `createdAt` là **ngày giao dịch** nên `silenceBefore` chặn được khoản cũ; câu chữ có và không có tên danh mục |
 | `test/core/notification/notification_rules_test.dart` | Ngưỡng ngân sách; `dedupeKey` không đổi khi `spent` tăng trong cùng bậc nhưng đổi khi sang kỳ; hoá đơn so theo NGÀY; `silenceBefore` |
 | `test/core/notification/badge_updater_test.dart` | Badge mang đúng số chưa đọc và lọc theo `idaccount`; **huỷ CHỌN LỌC** trên khay — hàng đã đọc bị huỷ, hàng chưa đọc giữ nguyên, và **thông báo mà bảng không biết thì không bị đụng tới** (nhắc ghi chép, lịch nổ lúc app đóng); **KHÔNG BAO GIỜ gọi `cancelAll()`** vì nó cuốn theo cả lịch đang chờ; `start()` luỹ đẳng, `stop()` cắt đứt hẳn |
 | `test/core/notification/notification_scanner_test.dart` | Ngưỡng số dư ví thấp đi được **từ kho tuỳ chọn tới bộ luật** (và không đặt thì im) — cùng phép canh đã có cho số ngày nhắc hoá đơn; quét lại không đẻ hàng; **`start()` quét ngay không chờ sự kiện đồng bộ nào**; **`resumed` kích hoạt quét còn `paused`/`detached` thì không**; `stop()` cắt đứt hẳn **cả hai nhánh** và gọi `cancelAll()`; `start()` hai lần không nhân đôi listener nào; bắn ra hệ điều hành đúng một lần cho mỗi hàng mới, và lỗi nền tảng không làm hỏng lượt quét |
@@ -1227,7 +1337,7 @@ lượt RED, vì `expect` ném sớm nên chưa chạm tới bước dọn dẹp
 | `test/core/utils/relative_time_test.dart` | Biên 59 giây / 60 phút / qua nửa đêm |
 | `test/shared/widgets/notification_bell_test.dart` | Chấm đỏ khớp số chưa đọc, bám dòng dữ liệu |
 | `test/features/notification/notification_panel_test.dart` | Rỗng → biến mất hoàn toàn; >3 mục chỉ hiện 3 |
-| `test/core/notification/prefs/notification_prefs_test.dart` | Mặc định là **bật hết**; JSON hỏng/sai kiểu/ngoài dải quy về mặc định chứ không ném; ánh xạ **mười sáu** `kind` sang **năm** nhóm; **ngưỡng số dư ví thấp** mặc định `0` và mọi dữ liệu hỏng (thiếu / sai kiểu / âm / vượt trần) đều về `0` — tức là **tắt**. Từ 2026-09-07 canh thêm ba trường **nhắc ghi chép**: mặc định TẮT và 20:00, bản ghi cũ thiếu trường thì rơi về tắt, giờ/phút ngoài dải quy về mặc định mà **không** kéo cả bản ghi theo, và hai bản chỉ khác ba trường ấy thì **không bằng nhau** (phép so `==`/`hashCode` — đây là chỗ test đi-một-vòng KHÔNG canh được) |
+| `test/core/notification/prefs/notification_prefs_test.dart` | Mặc định là **bật hết**; JSON hỏng/sai kiểu/ngoài dải quy về mặc định chứ không ném; ánh xạ **mười tám** `kind` sang **năm** nhóm; **ngưỡng số dư ví thấp** mặc định `0` và mọi dữ liệu hỏng (thiếu / sai kiểu / âm / vượt trần) đều về `0` — tức là **tắt**. Từ 2026-09-07 canh thêm ba trường **nhắc ghi chép**: mặc định TẮT và 20:00, bản ghi cũ thiếu trường thì rơi về tắt, giờ/phút ngoài dải quy về mặc định mà **không** kéo cả bản ghi theo, và hai bản chỉ khác ba trường ấy thì **không bằng nhau** (phép so `==`/`hashCode` — đây là chỗ test đi-một-vòng KHÔNG canh được) |
 | `test/core/notification/prefs/notification_prefs_store_test.dart` | **Tách khoá theo tài khoản**; JSON hỏng trên đĩa; `clear()` không đụng tài khoản khác |
 | `test/features/notification/notification_settings_page_test.dart` | Ngưỡng số dư ví hiện đúng thứ đã lưu và ghi ngay khi đổi (⚠️ thẻ ấy nằm cuối trang cuộn, ở 800px của môi trường test nó dưới mép màn hình nên phải `ensureVisible` trước khi `tap`, nếu không cú chạm trượt ra nền); công tắc phản ánh đúng thứ đã lưu; ghi ngay không cần nút Lưu; **bật công tắc OS thì xin quyền, tắt thì không**; bị từ chối thì công tắc quay về tắt; chưa đăng nhập thì không ghi gì. Từ 2026-09-07 canh thêm thẻ **NHẮC GHI CHÉP**: công tắc tắt sẵn, bật thì ghi ngay, hàng chọn giờ **chỉ hiện khi công tắc bật**, và giờ hiển thị là 20:00 chứ không phải 08:00 của hoá đơn. ⚠️ Thẻ này cũng nằm cuối trang cuộn nên vẫn phải `ensureVisible` |
 | `test/core/notification/reminder_scheduler_test.dart` | **Luỹ đẳng** (chạy lại không đặt lại lịch nào); trần 50 và cắt bỏ mốc **xa** nhất; giờ nhắc từ tuỳ chọn; mốc quá khứ và ngoài cửa sổ 30 ngày bị bỏ; hoá đơn trả/xoá thì huỷ lịch cũ; tắt công tắc thì dọn sạch. Từ 2026-09-07 canh thêm **nhắc ghi chép hằng ngày** (mục 4.7): tắt sẵn; bật thì đúng **ba** lịch; giờ lấy từ tuỳ chọn **riêng** chứ không phải `gioNhac`; hôm nay đã có giao dịch thì bỏ lịch hôm nay còn giữ hai lịch sau; giao dịch **hôm qua** không cứu được hôm nay (so theo NGÀY, không theo 24 giờ); `null` = chưa từng ghi = **vẫn nhắc**; giờ đã trôi qua thì bỏ hôm nay; và ca quan trọng nhất — **ghi giao dịch xong thì lượt sau HUỶ lịch hôm nay**, chính là lý do chọn ba lịch rời thay vì một lịch lặp |
@@ -1237,7 +1347,7 @@ lượt RED, vì `expect` ném sớm nên chưa chạm tới bước dọn dẹp
 | `test/core/database/transaction_last_date_test.dart` | `getLastTransactionDate` — đầu vào **duy nhất** của lời nhắc ghi chép, và cả ba cách hỏng đều im lặng: đọc cả hàng đã xoá mềm, đọc lẫn tài khoản khác, hoặc trả `null` sai. ⚠️ `forTesting` bật `PRAGMA foreign_keys = ON` nên phải dựng hàng `wallets` trước, nếu không mọi lệnh chèn nổ `SqliteException(787)` |
 | `test/core/notification/notification_rules_goal_wallet_test.dart` | Bốn luật của lát 6, trọng tâm là **đơn vị lặp lại trong `dedupeKey`**: chúc mừng một lần trong đời, trễ tiến độ mỗi tháng, ví âm và đồng bộ hỏng mỗi ngày. Từ 2026-09-07 canh thêm **ví sắp cạn**: biên **đóng** ở đúng ngưỡng, ngưỡng `0` im hoàn toàn, ví âm chỉ ra **một** thông báo chứ không ra cả hai, và ~~ví loại `debt` im ở **cả hai** luật~~ — **hai test ấy đã đảo chiều 2026-09-09**: loại `debt` không còn tồn tại nên KHÔNG loại ví nào được miễn trừ nữa. Chúng vẫn ở đó, viết lại kèm lý do, để người sau không "sửa" về như cũ |
 | `test/features/goal/goal_entity_progress_test.dart` | `progress` kẹp [0,1] và không ra `Infinity` khi `targetAmount = 0`; `daysLeft` so theo NGÀY; `isBehindSchedule` có biên dung sai, im lặng khi thiếu `startDate`, không NaN khi kỳ dài 0 ngày |
-| `test/core/notification/notification_deeplink_test.dart` | Route nào kéo theo thanh tab; **không được so khớp bằng `startsWith` trần** (`/budgets` ≠ `/budget`); và phép canh **cả 16 loại**: `deeplinkTuDedupeKey()` phải trả đúng cột `deeplink` mà bộ luật đặt — bản sao duy nhất trong vùng này, tồn tại vì cold start không tra CSDL được. Từ 2026-09-07 thêm nhánh `ghiChep` → **`/add`**: nó KHÔNG phải một `NotificationKind` nên phép canh 16 loại không chạm tới, phải có test riêng, và test ấy khẳng định luôn `/add` nằm ngoài thanh tab (bẫy 7.8) |
+| `test/core/notification/notification_deeplink_test.dart` | Route nào kéo theo thanh tab; **không được so khớp bằng `startsWith` trần** (`/budgets` ≠ `/budget`); và phép canh **cả 18 loại**: `deeplinkTuDedupeKey()` phải trả đúng cột `deeplink` mà bộ luật đặt — bản sao duy nhất trong vùng này, tồn tại vì cold start không tra CSDL được. Từ 2026-09-07 thêm nhánh `ghiChep` → **`/add`**: nó KHÔNG phải một `NotificationKind` nên phép canh 18 loại không chạm tới, phải có test riêng, và test ấy khẳng định luôn `/add` nằm ngoài thanh tab (bẫy 7.8) |
 | `test/features/notification/notification_center_page_test.dart` | Vuốt xoá là xoá **mềm**; SnackBar có nút Hoàn tác; bấm vào thì hàng quay lại **và danh sách tự vẽ lại** qua `watchFeed`; chưa đăng nhập thì không đọc gì. Từ 2026-09-07 canh thêm: chip nhóm thu hẹp danh sách, chip "Chưa đọc" bỏ mục đã đọc, **quay lại "Tất cả" thì danh sách đầy đủ trở lại** (canh chỗ `null` bị hiểu nhầm thành danh sách rỗng), nút "Tải thêm" hiện/biến mất đúng lúc, nhấn giữ đảo được cả hai chiều, và **hàng chip không tràn ở 411dp**. Đọc bẫy **7.10** trước khi sửa file này — nay có **bốn** mục, mục 4 nói vì sao một test nhấn giữ có thể xanh giả |
 | `test/core/notification/notification_tap_router_test.dart` | Cold start điều hướng được; **cùng payload đến bằng cả hai đường chỉ điều hướng một lần**, nhưng lần chạm sau vẫn chạy; chưa đăng nhập thì giữ lại và xả sau `AuthSuccess`, chỉ giữ **cái mới nhất**; `stop()` cắt hẳn |
 | `test/core/network/connection_monitor_test.dart` | **Ngưỡng ổn định**: mất mạng chớp nhoáng và chuỗi nhấp nháy đều không sinh sự kiện; đang online lúc khởi động thì không báo "khôi phục" |

@@ -9,6 +9,7 @@
 library;
 
 import 'khoan_vao_thong_ke.dart';
+import 'pham_vi_ky.dart';
 
 /// Một giao dịch rút gọn khỏi hàng Drift: chỉ bốn thứ phép thống kê cần.
 class KhoanThuChi {
@@ -28,12 +29,30 @@ class KhoanThuChi {
   /// được TÍNH: mặc định an toàn, vì giấu nhầm một khoản chi thật tệ hơn.
   final String? ghiChu;
 
+  /// `classify` của danh mục mà khoản này gắn: `'thu'`, `'chi'` hoặc
+  /// `'vay_no'`. `null` là "nơi gọi chưa điền" hoặc "không tra được danh mục";
+  /// khi ấy `phanLoaiCua()` rơi về [loai]. Mặc định an toàn, vì đoán bừa một
+  /// phân loại là báo cáo sai mà không ai biết.
+  final String? classify;
+
+  /// **Tên** danh mục mà khoản này gắn. Thêm 2026-09-15 cho hai biểu đồ vay/nợ.
+  ///
+  /// Vì sao tầng thuần lại cần một cái tên: bốn vai *cho vay · thu nợ · đi vay ·
+  /// trả nợ* **không có chỗ nào lưu**, và chiều tiền chỉ tách được hai nhóm —
+  /// thứ duy nhất tách được bốn là tên. Xem `vai_vay_no.dart`.
+  ///
+  /// `null` là "nơi gọi chưa điền"; khi ấy vai rơi về `VaiVayNo.khac`, tức
+  /// khoản vẫn được đếm nhưng không bị xếp bừa vào một vai.
+  final String? tenDanhMuc;
+
   const KhoanThuChi({
     required this.ngay,
     required this.soTien,
     required this.loai,
     required this.categoryId,
     this.ghiChu,
+    this.classify,
+    this.tenDanhMuc,
   });
 }
 
@@ -187,62 +206,133 @@ String rutGon(double x) {
   if (a >= 1e9) return '$dau${mot(a / 1e9, 'B')}';
   if (a >= 1e6) return '$dau${mot(a / 1e6, 'M')}';
   if (a >= 1e3) return '$dau${mot(a / 1e3, 'K')}';
-  return '$dau${a.round()}';
+  final nguyen = a.round();
+  // ⚠️ Làm tròn ra 0 thì **bỏ dấu**: "-0" là một con số không tồn tại. Cùng
+  // luật với `CurrencyFormatter.formatCoDau`.
+  //
+  // Không phải ca hiếm: biểu đồ nào có phần âm thì biên trên tính bằng
+  // `san + 3 * buoc`, và sai số dấu phẩy động cho ra chừng -1e-16 ngay tại vị
+  // trí lẽ ra là 0 — nhãn trục tung in "-0". Thấy trên máy ảo 2026-09-15 ở
+  // khối "Dòng tiền tự do"; `flutter test` mù hẳn vì nhãn trục vẽ trong canvas
+  // của fl_chart.
+  return nguyen == 0 ? '0' : '$dau$nguyen';
 }
 
-/// [soThang] tháng gần nhất tính từ [now], **mới nhất trước**, cho bộ chọn tháng.
+/// Một điểm trên biểu đồ xu hướng: tổng thu và tổng chi của **trọn một kỳ**.
 ///
-/// Lùi bằng `DateTime(nam, thang - i, 1)` để tháng 0, -1… tự cuộn về năm
-/// trước; tự trừ rồi cộng 12 là chỗ đã sinh lỗi ở nhiều app khác.
-List<({int nam, int thang})> cacThangGanNhat(DateTime now, {int soThang = 12}) =>
-    [
-      for (var i = 0; i < soThang; i++)
-        () {
-          final d = DateTime(now.year, now.month - i, 1);
-          return (nam: d.year, thang: d.month);
-        }(),
-    ];
-
-/// Một điểm trên biểu đồ xu hướng: tổng thu và tổng chi của trọn một tháng.
+/// Mang thẳng [Ky] chứ không mang `(nam, thang)`: từ 2026-09-15 điểm có thể là
+/// một tuần, một quý hay một năm, và nhãn trục lấy từ `ky.nhanTruc` nên trang
+/// không phải đoán đơn vị từ hai con số.
 class DiemThoiGian {
-  final int nam;
-  final int thang;
+  final Ky ky;
   final TongThuChi tong;
 
-  const DiemThoiGian({
-    required this.nam,
-    required this.thang,
-    required this.tong,
-  });
+  const DiemThoiGian({required this.ky, required this.tong});
 }
 
-/// [soThang] tháng liên tiếp kết thúc ở ([nam], [thang]), **cũ nhất trước**.
+/// [soKy] kỳ liên tiếp kết thúc ở [ky], **cũ nhất trước**.
 ///
-/// Thứ tự **ngược** với `cacThangGanNhat`: hàm kia phục vụ bộ chọn tháng nên
-/// xếp mới nhất trước, còn trục thời gian thì đọc từ trái sang phải. Lấy nhầm
-/// hàm là biểu đồ chạy lùi mà không lỗi nào báo.
+/// Thứ tự **ngược** với `cacKyGanNhat`: hàm kia phục vụ bộ chọn nên xếp mới
+/// nhất trước, còn trục thời gian thì đọc từ trái sang phải. Lấy nhầm hàm là
+/// biểu đồ chạy lùi mà không lỗi nào báo.
 ///
-/// Tháng không có giao dịch vẫn là một điểm mang số 0 chứ không bị bỏ: bỏ đi
-/// là trục co lại, hai tháng cách nhau nửa năm hiện ra như liền kề.
+/// Kỳ không có giao dịch vẫn là một điểm mang số 0 chứ không bị bỏ: bỏ đi là
+/// trục co lại, hai kỳ cách nhau nửa năm hiện ra như liền kề.
 ///
 /// Mọi luật đếm mượn nguyên `tongThuChi` — biên `[from, to)`, `'transfer'`
-/// không phải thu cũng không phải chi — nên ở đây không có luật mới nào.
-List<DiemThoiGian> chuoiTheoThang(
+/// không phải thu cũng không phải chi — và việc lùi kỳ mượn nguyên `lui`, nên
+/// tháng ngắn, năm nhuận và mốc năm đã đúng sẵn. Ở đây không có luật mới nào.
+List<DiemThoiGian> chuoiTheoKy(
   List<KhoanThuChi> ds, {
-  required int nam,
-  required int thang,
-  int soThang = 6,
+  required Ky ky,
+  int soKy = kSoKyXuHuong,
 }) =>
     [
-      for (var i = soThang - 1; i >= 0; i--)
+      for (var i = soKy - 1; i >= 0; i--)
         () {
-          // `thang - i` bằng 0 hay âm tự cuộn về năm trước nhờ `DateTime`.
-          final d = DateTime(nam, thang - i, 1);
-          final b = bienThang(d.year, d.month);
+          final k = lui(ky, i);
           return DiemThoiGian(
-            nam: d.year,
-            thang: d.month,
-            tong: tongThuChi(ds, from: b.from, to: b.to),
+            ky: k,
+            tong: tongThuChi(ds, from: k.from, to: k.to),
           );
         }(),
     ];
+
+/// Số đường tối đa trên khối xu hướng khi người dùng chọn danh mục.
+///
+/// Ở 411dp, quá năm đường trên một ô cao 180px là một búi chỉ không đọc được
+/// — và màu danh mục có thể trùng nhau. Chip thứ sáu bị **khoá nhìn thấy
+/// được**, không phải bấm mà không có gì xảy ra. Định nghĩa ở tầng domain để
+/// cubit (chốt) và trang (chữ hướng dẫn, khoá chip) cùng đọc một con số.
+const int kToiDaDuongXuHuong = 5;
+
+/// Chuỗi [soKy] kỳ cho **từng** danh mục có phát sinh, khoá là `categoryId`
+/// (`null` = chưa phân loại). Mỗi chuỗi **cũ nhất trước**, cùng quy ước với
+/// [chuoiTheoKy].
+///
+/// ## Vì sao một lượt duyệt
+///
+/// Gọi [chuoiTheoKy] một lần cho mỗi danh mục là `số danh mục × soKy` lượt quét
+/// toàn bộ giao dịch: với 30 danh mục và 5.000 giao dịch đó là 900.000 phép so
+/// ngày **mỗi lần stream phát**, mà stream này phát lại sau **mọi** chu kỳ đồng
+/// bộ nền. Ở đây chỉ duyệt một lần, phân thẳng vào ô `(categoryId, kỳ)`.
+///
+/// Danh mục **không** có khoản nào trong khoảng thì không có khoá — bộ chọn
+/// trên khối xu hướng chỉ nên liệt kê thứ vẽ ra được một đường có nội dung.
+/// Nhưng danh mục **có** khoản thì chuỗi của nó **đủ** [soKy] điểm, kỳ rỗng
+/// mang số 0: bỏ điểm rỗng là trục co lại và hai kỳ cách nhau nửa năm hiện ra
+/// như liền kề.
+///
+/// Luật đếm mượn nguyên [tongThuChi] — biên `[from, to)` và
+/// `khoanVaoThongKe()` — nên ở đây không có luật mới nào.
+Map<String?, List<DiemThoiGian>> chuoiTheoDanhMuc(
+  List<KhoanThuChi> ds, {
+  required Ky ky,
+  int soKy = kSoKyXuHuong,
+}) {
+  // Kỳ của từng cột, cũ nhất trước. Việc lùi mượn nguyên `lui`, nên tháng ngắn,
+  // năm nhuận và mốc năm đã đúng sẵn.
+  final cot = [for (var i = soKy - 1; i >= 0; i--) lui(ky, i)];
+
+  final thu = <String?, List<double>>{};
+  final chi = <String?, List<double>>{};
+
+  for (final k in ds) {
+    if (!khoanVaoThongKe(
+      loai: k.loai,
+      categoryId: k.categoryId,
+      ghiChu: k.ghiChu,
+    )) {
+      continue;
+    }
+    if (k.loai != 'thu' && k.loai != 'chi') continue;
+    // Tìm cột chứa khoản này. Số cột nhỏ (6) nên quét thẳng rẻ hơn dựng khoá.
+    var i = -1;
+    for (var j = 0; j < cot.length; j++) {
+      if (_trongKhoang(k.ngay, cot[j].from, cot[j].to)) {
+        i = j;
+        break;
+      }
+    }
+    if (i < 0) continue;
+
+    thu.putIfAbsent(k.categoryId, () => List<double>.filled(soKy, 0));
+    chi.putIfAbsent(k.categoryId, () => List<double>.filled(soKy, 0));
+    if (k.loai == 'thu') {
+      thu[k.categoryId]![i] += k.soTien;
+    } else {
+      chi[k.categoryId]![i] += k.soTien;
+    }
+  }
+
+  return {
+    for (final id in thu.keys)
+      id: [
+        for (var i = 0; i < soKy; i++)
+          DiemThoiGian(
+            ky: cot[i],
+            tong: TongThuChi(thu: thu[id]![i], chi: chi[id]![i]),
+          ),
+      ],
+  };
+}

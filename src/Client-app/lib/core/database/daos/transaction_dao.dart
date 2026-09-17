@@ -171,6 +171,29 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     return hang != null;
   }
 
+  /// Mọi khoản **chi** còn sống từ [from] trở đi — đầu vào của luật "Khoản chi
+  /// lớn" (#7, 2026-09-17).
+  ///
+  /// Không lọc theo số tiền ở đây: ngưỡng là tuỳ chọn của người dùng và luật
+  /// sống ở tầng thuần, nên đưa nó xuống SQL là chẻ một luật ra làm hai nơi.
+  /// Cửa sổ [from] mới là thứ giữ cho câu này rẻ — nơi gọi truyền đúng
+  /// `cuaSoSuKien` 30 ngày.
+  ///
+  /// `type = 'chi'` lọc sẵn được vì nó là cột; ba luật loại trừ còn lại (khoản
+  /// chuyển, điều chỉnh số dư, mở sổ) **cố ý để bộ luật lo** qua
+  /// `khoanVaoThongKe` — chúng có một định nghĩa duy nhất và nó không nằm ở
+  /// tầng này.
+  Future<List<Transaction>> getChiTuNgay(int idaccount, DateTime from) {
+    return (select(transactions)
+          ..where((t) =>
+              t.idaccount.equals(idaccount) &
+              t.deletedAt.isNull() &
+              t.type.equals('chi') &
+              t.date.isBiggerOrEqualValue(from))
+          ..orderBy([(t) => OrderingTerm.desc(t.date)]))
+        .get();
+  }
+
   /// Tổng thu/chi theo tháng
   Future<Map<String, double>> getSummaryByMonth(
     int idaccount,
@@ -243,6 +266,49 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
               t.deletedAt.isNull()))
         .get();
     return {for (final t in rows) t.billId!: t};
+  }
+
+  /// Tổng mọi giao dịch còn sống của ví [walletId] — **công thức số dư**.
+  ///
+  /// ```
+  /// balance(w) = Σ thu(w) − Σ chi(w) − Σ transfer TỪ w + Σ transfer ĐẾN w
+  /// ```
+  ///
+  /// Luật lấy **nguyên văn** từ `TransactionRepository._applyBalances`, kể cả
+  /// ngoại lệ của nó: khoản `transfer` **không có ví đích** thì không tính bên
+  /// nào — *"đừng trừ một nửa"*. Lệch khỏi luật ấy là số dư tính lại khác số dư
+  /// từng cộng dồn, và không gì báo ra.
+  ///
+  /// Khoản **mở sổ** nằm trong tổng này như một giao dịch bình thường — đó
+  /// chính là vai trò của nó; xem `wallet/domain/so_du_mo_so.dart`.
+  ///
+  /// Vì sao gom trong Dart chứ không `SUM` bằng SQL: ba vế trên có ba điều kiện
+  /// khác nhau trên cùng một hàng (`walletId` với `thu`/`chi`, cả `walletId` lẫn
+  /// `walletTransfer` với `transfer`), nên một câu `SUM` phải là ba câu con cộng
+  /// lại — dài hơn, và chỗ nào sai thì im lặng. Cỡ dữ liệu của app này là vài
+  /// chục tới vài nghìn hàng mỗi ví.
+  Future<double> tongTheoVi(String walletId) async {
+    final rows = await (select(transactions)
+          ..where((t) =>
+              t.deletedAt.isNull() &
+              (t.walletId.equals(walletId) |
+                  t.walletTransfer.equals(walletId))))
+        .get();
+
+    var tong = 0.0;
+    for (final t in rows) {
+      switch (t.type) {
+        case 'thu':
+          if (t.walletId == walletId) tong += t.amount;
+        case 'chi':
+          if (t.walletId == walletId) tong -= t.amount;
+        case 'transfer':
+          if (t.walletTransfer == null) continue;
+          if (t.walletId == walletId) tong -= t.amount;
+          if (t.walletTransfer == walletId) tong += t.amount;
+      }
+    }
+    return tong;
   }
 
   Future<void> insert(TransactionsCompanion entry) async {

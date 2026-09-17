@@ -7,6 +7,7 @@ import '../../features/bill/domain/bill_auto_pay.dart';
 import '../../features/bill/domain/bill_pay_status.dart';
 import '../../features/bill/domain/bill_auto_pay_runner.dart';
 import '../../features/budget/presentation/widgets/budget_visuals.dart';
+import '../../features/analytics/domain/khoan_vao_thong_ke.dart';
 import 'tuan_iso.dart';
 
 /// Loại thông báo. Giá trị `.name` được ghi thẳng vào cột `kind`.
@@ -36,6 +37,14 @@ enum NotificationKind {
   walletNegative,
   walletLowBalance,
   weeklySummary,
+
+  /// Một khoản chi vượt ngưỡng người dùng đặt (#7 khảo sát lần hai,
+  /// 2026-09-17).
+  ///
+  /// Loại **duy nhất** nhìn thẳng vào một giao dịch chứ vào trạng thái tổng
+  /// hợp, nên nó thừa hưởng mọi cái bẫy của việc phân biệt *tiền thật đi ra*
+  /// với *tiền đổi chỗ* — xem `_largeExpenseCandidates`.
+  largeExpense,
 }
 
 enum NotificationSeverity { info, warning, critical }
@@ -69,6 +78,27 @@ class NotificationCandidate {
     this.deeplink,
   });
 }
+
+/// Một giao dịch đủ để hỏi câu "có phải khoản chi lớn không" — và **không
+/// hơn**.
+///
+/// Cùng kỷ luật thu hẹp đầu vào với [NotificationRuleInput.syncFailed] và
+/// `tuanQuaCoGiaoDich`: bộ luật không nhận hàng Drift, nên test dựng được đầu
+/// vào bằng một dòng và không phải kéo cả CSDL vào.
+///
+/// [soTien] luôn **dương** — chiều nằm ở [loai], đúng quy ước bảng
+/// `transactions` của client. [categoryId] và [ghiChu] có mặt **chỉ** để
+/// `khoanVaoThongKe` đọc; đừng lọc theo chúng bằng luật tự viết.
+typedef KhoanChiLon = ({
+  String id,
+  double soTien,
+  DateTime ngay,
+  String loai,
+  String? categoryId,
+  String? ghiChu,
+  String walletId,
+  String? tenDanhMuc,
+});
 
 /// Dữ liệu vào cho một lượt quét.
 ///
@@ -133,6 +163,22 @@ class NotificationRuleInput {
   /// liệu mà câu thông báo không bao giờ đọc tới.
   final bool tuanQuaCoGiaoDich;
 
+  /// Các giao dịch cần soi cho luật **Khoản chi lớn**.
+  ///
+  /// Rỗng khi [nguongChiLon] bằng 0 — bộ quét không hỏi CSDL, nên với phần lớn
+  /// bản cài đây là một truy vấn không bao giờ chạy.
+  final List<KhoanChiLon> chiLon;
+
+  /// Báo khi một khoản chi đạt tới mức này, đơn vị **đồng**.
+  ///
+  /// `0` = **tắt**, và đó là mặc định — cùng khuôn và cùng lý lẽ với
+  /// [lowBalanceThreshold]: một con số vừa là ngưỡng vừa là công tắc, còn một
+  /// cặp công tắc-cộng-số thì biểu diễn được trạng thái vô nghĩa "bật nhưng
+  /// ngưỡng bằng 0".
+  ///
+  /// Đến từ `NotificationPrefs.nguongChiLon`.
+  final int nguongChiLon;
+
   const NotificationRuleInput({
     required this.now,
     this.budgets = const [],
@@ -146,6 +192,8 @@ class NotificationRuleInput {
     this.defaultBillLeadDays = mocNhacMacDinh,
     this.lowBalanceThreshold = 0,
     this.tuanQuaCoGiaoDich = false,
+    this.chiLon = const [],
+    this.nguongChiLon = 0,
   });
 }
 
@@ -158,6 +206,7 @@ List<NotificationCandidate> buildNotificationCandidates(
 ) {
   final ra = [
     ..._budgetCandidates(input),
+    ..._largeExpenseCandidates(input),
     ..._billCandidates(input),
     ..._goalCandidates(input),
     ..._autoDepositCandidates(input),
@@ -278,6 +327,86 @@ List<NotificationCandidate> _budgetCandidates(NotificationRuleInput input) {
     ));
   }
 
+  return ra;
+}
+
+// ── Khoản chi lớn ────────────────────────────────────────────────────────────
+
+/// Mỗi khoản chi đạt tới [NotificationRuleInput.nguongChiLon] cho **một** thông
+/// báo, một lần trong đời khoản ấy.
+///
+/// ## Ngưỡng LÀ công tắc
+///
+/// `0` không phải "báo mọi khoản" mà là **tắt** — và đó là mặc định. Hiểu nó
+/// thành một ngưỡng thật là bật tính năng cho mọi bản đã cài mà người dùng
+/// chưa hề đặt gì; đúng lỗi mà `nguongSoDuThap` đã chặn từ 2026-09-07. Ngưỡng
+/// âm cũng tắt: không có nghĩa nào khác cho một ngưỡng tiền âm.
+///
+/// ## ⚠️ "Chi" ở đây đi qua `khoanVaoThongKe`, không phải `loai == 'chi'`
+///
+/// Ba loại hàng mang `loai` là `'chi'` hoặc rời ví mà **không** phải chi tiêu:
+/// khoản chuyển (tiền đổi chỗ — mỗi kỳ trích mục tiêu sẽ thành một cảnh báo),
+/// khoản điều chỉnh số dư (phép sửa sổ), và khoản **mở sổ** (tạo ví với số dư
+/// ban đầu 20 triệu không phải là vừa chi 20 triệu). Cả ba đã có **một định
+/// nghĩa duy nhất** để loại; viết lại luật ở đây là bản chép tay thứ hai.
+///
+/// Khoản **chưa phân loại** thì vẫn tính: giao dịch kéo về từ server có thể
+/// trống danh mục, và loại theo mỗi cột ấy là giấu mất chi tiêu thật.
+///
+/// ## Khoá `bigSpend:<idGiaoDich>` — và vì sao không có gì khác trong đó
+///
+/// Không số tiền (bẫy 7.1: sửa khoản chi sẽ đẻ thông báo mới), không mốc quét,
+/// và **không cả `walletId`**. Chở ví theo khoá sẽ cho `deeplinkTuDedupeKey`
+/// dựng được `/transactions?wallet=…` ở cold start — nhưng đổi ví của một
+/// khoản chi khi ấy đổi luôn khoá, tức **một thông báo thứ hai cho cùng một
+/// khoản**, im lặng. Một cú chạm kém chính xác hơn rẻ hơn hẳn một bản sao.
+///
+/// ## Mốc sự kiện là NGÀY GIAO DỊCH
+///
+/// Nhờ vậy cửa sổ `silenceBefore` 30 ngày chặn được cơn lũ ở lần **bật đầu
+/// tiên**: người dùng đặt ngưỡng hôm nay không bị bắn hàng chục thông báo cho
+/// những khoản chính họ đã gõ từ mấy tháng trước. Lấy mốc quét là vứt bỏ đúng
+/// phép chặn ấy.
+List<NotificationCandidate> _largeExpenseCandidates(
+  NotificationRuleInput input,
+) {
+  final nguong = input.nguongChiLon;
+  if (nguong <= 0) return const [];
+
+  final ra = <NotificationCandidate>[];
+  for (final k in input.chiLon) {
+    if (k.loai != 'chi') continue;
+    if (!khoanVaoThongKe(
+      loai: k.loai,
+      categoryId: k.categoryId,
+      ghiChu: k.ghiChu,
+    )) {
+      continue;
+    }
+    // Biên ĐÓNG: "vượt 1 triệu" mà im ở đúng 1 triệu là thứ người dùng đọc
+    // thành lỗi, và không có lý lẽ nào để chọn biên mở ở đây.
+    if (k.soTien < nguong) continue;
+
+    final ten = k.tenDanhMuc;
+    ra.add(NotificationCandidate(
+      kind: NotificationKind.largeExpense,
+      dedupeKey: 'bigSpend:${k.id}',
+      title: 'Khoản chi lớn',
+      // Có nêu số — khác Tổng kết tuần, nơi câu chữ cố ý không nêu. Con số ở
+      // đây là số người dùng đã gõ hoặc đã về từ ngân hàng, không phải một bản
+      // tổng hợp app tự dựng.
+      body: ten == null
+          ? 'Bạn vừa chi ${_tien(k.soTien)}.'
+          : 'Bạn vừa chi ${_tien(k.soTien)} cho $ten.',
+      // Đáng nhìn lại, không phải dấu hiệu có gì đó đã sai — `critical` dành
+      // cho ví âm.
+      severity: NotificationSeverity.warning,
+      subjectType: 'transaction',
+      subjectId: k.id,
+      deeplink: '/transactions',
+      createdAt: k.ngay,
+    ));
+  }
   return ra;
 }
 
@@ -637,6 +766,16 @@ List<NotificationCandidate> _walletCandidates(NotificationRuleInput input) {
 
   for (final v in input.wallets) {
     if (v.isDeleted) continue;
+
+    // G27 (2026-09-17): ví được người dùng đánh dấu **cho phép âm** — thẻ tín
+    // dụng, ví theo dõi nợ — không sinh cảnh báo số dư nào cả.
+    //
+    // ⚠️ `continue` ở ĐÂY, trước cả hai nhánh, chứ không phải chỉ trong nhánh
+    // ví âm: một ví cho phép âm **luôn** nằm dưới mọi ngưỡng "sắp cạn", nên
+    // chặn mỗi `walletNegative` là đổi một dòng nhiễu lấy một dòng nhiễu khác.
+    // Chốt `debt` cũ (2026-09-07, chết ngày 2026-09-09) vốn đã loại cả hai —
+    // xem docstring cột `Wallets.allowNegative`.
+    if (v.allowNegative) continue;
 
     // ⚠️ Ở đây từng có một chốt: ví loại `debt` mang số dư âm là ĐÚNG bản chất
     // của nó, nên không nhắc. Chốt ấy **đã gỡ ngày 2026-09-09** cùng lúc với

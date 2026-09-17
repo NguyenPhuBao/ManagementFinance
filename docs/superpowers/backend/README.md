@@ -17,7 +17,7 @@ vì trước đó cùng một bảng trạng thái tồn tại ở hai nơi và 
 
 ---
 
-## Bốn tệp bối cảnh, nằm ngay thư mục này
+## Năm tệp bối cảnh, nằm ngay thư mục này
 
 Không phải việc cần làm, nhưng cần để hiểu hai thư mục con:
 
@@ -27,6 +27,7 @@ Không phải việc cần làm, nhưng cần để hiểu hai thư mục con:
 | [2026-08-10-backend-sync-spec.md](./2026-08-10-backend-sync-spec.md) | Hợp đồng `/sync/push` và `/sync/pull` |
 | [PROGRESS-BACKEND.md](./PROGRESS-BACKEND.md) | Checklist B1→B7 và tiến độ backend |
 | [TRANSACTION_NOTE_ENCODING.md](./TRANSACTION_NOTE_ENCODING.md) | Client mã hoá chiều tiền và nguồn gốc của khoản tích luỹ vào `transaction.Note`. **Không xin gì** — chỉ để backend biết mà đừng vô tình phá |
+| [AI_ARCHITECTURE_REVIEW.md](./AI_ARCHITECTURE_REVIEW.md) | Đối chiếu sơ đồ "Kiến trúc AI phân tầng hybrid" với mã thật (2026-09-17): cái gì đã chạy, cái gì chưa, sáu chỗ sơ đồ nói ngược mã, so sánh ưu/nhược hai lối, hai phương án đi tiếp và ba quyết định cần chốt. **Không xin gì** — tài liệu để hai phía thảo luận |
 
 ---
 

@@ -13,6 +13,7 @@ library;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/features/analytics/domain/khoan_vao_thong_ke.dart';
+import 'package:flowmoney/features/wallet/domain/so_du_mo_so.dart';
 
 void main() {
   test('thu và chi bình thường thì được tính', () {
@@ -71,5 +72,21 @@ void main() {
       reason: 'Người dùng gõ đúng câu ấy vào một khoản chi thật là chuyện xảy '
           'ra được; chân danh mục giữ cho khoản ấy không bị giấu đi.',
     );
+  });
+
+  test('khoản MỞ SỔ không vào thống kê', () {
+    expect(khoanVaoThongKe(loai: 'thu', categoryId: null, ghiChu: ghiChuMoSo()),
+        isFalse,
+        reason: 'Nó là phép MỞ SỔ, không phải thu nhập. Đếm nó là mỗi ví người '
+            'dùng tạo ra lại làm thu nhập tháng ấy tăng vọt — cùng lý do đã '
+            'loại khoản điều chỉnh số dư.');
+  });
+
+  test('khoản thu THẬT vẫn vào thống kê', () {
+    expect(
+        khoanVaoThongKe(
+            loai: 'thu', categoryId: 'cat-luong', ghiChu: 'Lương tháng 9'),
+        isTrue,
+        reason: 'Loại nhầm khoản thu thật là giấu mất thu nhập của người dùng.');
   });
 }

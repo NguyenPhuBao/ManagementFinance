@@ -54,6 +54,7 @@ void main() {
     double soDu = 100000,
     bool daXoa = false,
     String loai = 'cash',
+    bool choPhepAm = false,
   }) {
     return Wallet(
       id: id,
@@ -69,6 +70,7 @@ void main() {
       isDeleted: daXoa,
       syncRetryCount: 0,
       includeInTotal: true,
+      allowNegative: choPhepAm,
       syncStatus: 'synced',
       updatedAt: DateTime(2026, 9, 1),
     );
@@ -432,23 +434,74 @@ void main() {
       expect(chay(wallets: [vi(soDu: -50000, daXoa: true)]), isEmpty);
     });
 
-    test('KHÔNG còn loại ví nào được miễn trừ cảnh báo âm', () {
-      // ⚠️ Test này từng khẳng định điều NGƯỢC LẠI, và việc nó đảo chiều là có
-      // chủ đích — ghi lại đây để người sau không "sửa" nó về như cũ.
+    test('LOẠI ví không miễn trừ gì cả — chỉ CỜ mới miễn trừ', () {
+      // ⚠️ Ca này đã đảo chiều **hai lần**; đọc hết trước khi sửa, vì mỗi lần
+      // đảo đều có chủ đích và lần nào cũng trông như một lỗi từ phía bên kia.
       //
-      // Từ 2026-09-07 ví loại `debt` mang số dư âm được bỏ qua, vì âm là đúng
-      // bản chất của nó; trước đó nó bị nhắc mỗi ngày cho tới khi trả hết nợ.
-      // Ngày 2026-09-09 loại ví thu về ba (`WalletType`) theo yêu cầu người
-      // dùng, và `debt` biến mất — ví cũ chuyển thành `bank`. Không còn tín
-      // hiệu nào để nhận ra "âm là cố ý", nên chốt kia không còn chỗ bám.
-      //
-      // Hệ quả có thật: ai từng theo dõi thẻ tín dụng bằng ví `debt` nay sẽ
-      // được nhắc "ví âm" mỗi ngày. Muốn chữa thì cần một khái niệm MỚI — "ví
-      // được phép âm" — chứ không phải khôi phục chuỗi `'debt'` đã chết.
+      // 2026-09-07: ví loại `debt` mang số dư âm được bỏ qua — âm là đúng bản
+      // chất của nó, và trước đó nó bị nhắc mỗi ngày cho tới khi trả hết nợ.
+      // 2026-09-09: loại ví thu về ba (`WalletType`) vì `debt` và `ewallet` vỡ
+      // `chk_wallet_type` của PostgreSQL; `debt` biến mất, ví cũ thành `bank`,
+      // và chốt kia mất chỗ bám — mọi ví âm bị nhắc trở lại (G27).
+      // 2026-09-17: chỗ bám mới là **cờ `allowNegative`**, không phải một
+      // chuỗi loại ví. Loại ví lại **không** miễn trừ gì — đó là điều ca này
+      // canh, và là lý do nó vẫn dựng một ví `bank`.
       final ra = chay(wallets: [vi(soDu: -5000000, loai: 'bank')]);
 
       expect(ra, hasLength(1));
       expect(ra.single.kind, NotificationKind.walletNegative);
+    });
+
+    test('ví CHO PHÉP ÂM thì im — đây là chỗ bám mới của G27', () {
+      final ra = chay(wallets: [vi(soDu: -5000000, choPhepAm: true)]);
+
+      expect(ra, isEmpty,
+          reason: 'Thẻ tín dụng âm 5 triệu là đúng bản chất của nó. Nhắc mỗi '
+              'ngày cho tới khi trả hết nợ đúng là loại nhiễu khiến người dùng '
+              'tắt cả nhóm thông báo — và khi ấy họ mất mọi thứ.');
+    });
+
+    test('⚠️ cờ cũng tắt luôn cảnh báo SẮP CẠN, không riêng cảnh báo ÂM', () {
+      // ⚠️ Số dư phải **DƯƠNG** ở đây. Bản đầu của ca này dùng −5.000.000 và
+      // **không canh được gì**: nhánh "sắp cạn" chỉ chạy khi `balance >= 0`,
+      // nên một ví âm không bao giờ đi qua nó và ca vẫn xanh kể cả khi chốt bị
+      // dời xuống chỉ chặn `walletNegative`. Bản sai có chủ ý bắt được điều đó
+      // — cùng họ bài học G43: **ca test phải đòi KẾT QUẢ, không chỉ đòi vắng
+      // mặt thứ mình nghĩ tới**.
+      //
+      // Vế này là thật: chốt `debt` cũ loại **cả hai** loại cảnh báo, và một
+      // ví theo dõi nợ có số dư dương nhỏ cũng không cần bị nhắc "sắp cạn".
+      final ra = chay(
+        wallets: [vi(soDu: 50000, choPhepAm: true)],
+        nguongSoDuThap: 100000,
+      );
+
+      expect(ra, isEmpty,
+          reason: 'Chốt phải đứng TRƯỚC cả hai nhánh. Dời nó vào trong nhánh ví '
+              'âm là ví cho phép âm vẫn bị nhắc "sắp cạn" mỗi ngày — đổi một '
+              'dòng nhiễu lấy một dòng nhiễu khác.');
+    });
+
+    test('cờ TẮT thì ví âm vẫn báo như cũ', () {
+      // Mặc định của cột là `false`, nên mọi ví đang có trên máy người dùng
+      // phải hành xử y hệt trước bản này.
+      final ra = chay(wallets: [vi(soDu: -50000, choPhepAm: false)]);
+
+      expect(ra.map((c) => c.kind), [NotificationKind.walletNegative]);
+    });
+
+    test('cờ KHÔNG che cảnh báo sắp cạn của ví dương bình thường', () {
+      // Chốt ngược chiều: bật cờ cho ví này không được làm im ví khác.
+      final ra = chay(
+        wallets: [
+          vi(id: 'v-am', soDu: -5000000, choPhepAm: true),
+          vi(id: 'v-can', ten: 'Ví tiêu vặt', soDu: 50000),
+        ],
+        nguongSoDuThap: 100000,
+      );
+
+      expect(ra.map((c) => c.kind), [NotificationKind.walletLowBalance]);
+      expect(ra.single.subjectId, 'v-can');
     });
   });
 

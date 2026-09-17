@@ -104,7 +104,7 @@ void main() {
     expect(await tenHoatDong(), ['Cua toi']);
   });
 
-  test('setStatus vẫn đánh dấu pending, dù status không đi qua đồng bộ',
+  test('setStatus đánh dấu pending — và từ G28 thì đó là chốt chặn thật sự',
       () async {
     await them('The cu');
     await db.walletDao.markSynced('w_The cu');
@@ -114,10 +114,11 @@ void main() {
     final w = await db.walletDao.getById('w_The cu');
     expect(w!.status, 'inactive');
     expect(w.syncStatus, 'pending',
-        reason: 'Cột `status` không đi qua đồng bộ (G28), nhưng `setStatus` có '
-            'đổi `updatedAt` — và mốc ấy PHẢI tới được server như mọi thay đổi '
-            'khác. Bỏ pending ở đây là hàng vừa bị chạm nằm ngoài hàng đợi cho '
-            'tới lần sửa sau.');
+        reason: 'Trước 2026-09-14 lý do là: `status` không đi qua đồng bộ, '
+            'nhưng `setStatus` có đổi `updatedAt` và mốc ấy phải tới được '
+            'server. Từ khi G28 mở cột này (cùng ngày), đánh dấu `pending` còn '
+            'là chốt chặn THẬT SỰ: thiếu nó thì chính trạng thái lưu trữ vừa '
+            'đặt nằm ngoài hàng đợi và không bao giờ tới server.');
   });
 
   test('setStatus bỏ lưu trữ đưa ví về lại danh sách hoạt động', () async {

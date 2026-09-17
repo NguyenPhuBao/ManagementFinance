@@ -40,6 +40,7 @@ class _RepoGia implements WalletRepository {
     String colour = '#4CAF50',
     bool isDefault = false,
     bool includeInTotal = true,
+    bool allowNegative = false,
   }) async {
     final w = WalletEntity(
       id: 'w_$name',

@@ -15,8 +15,9 @@
 /// (`add_transaction_page.dart:496`). Một khoản thu/chi không danh mục là thứ
 /// giao diện không tạo ra được, nên nó là dấu hiệu thật.
 ///
-/// Hai chân đều **đồng bộ được** — không cột cục bộ nào, khác hẳn cột `status`
-/// của lưu trữ ví (G28).
+/// Hai chân đều **đồng bộ được** — không cột cục bộ nào. Cột `status` của lưu
+/// trữ ví từng là ngoại lệ duy nhất của nhóm này, nhưng nó cũng đi qua đồng bộ
+/// từ 2026-09-14 (G28 đóng) — nay bảng `wallets` không còn cột cục bộ nào.
 library;
 
 import 'package:flutter_test/flutter_test.dart';

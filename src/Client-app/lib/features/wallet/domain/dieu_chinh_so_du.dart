@@ -32,8 +32,9 @@
 /// mục — 17 hàng như thế đã có trên CSDL, đo 2026-09-10 — nên chỉ nhìn danh mục
 /// rỗng mà loại khỏi thống kê là giấu mất thu chi thật của người dùng.
 ///
-/// Cả hai chân đều **đồng bộ được**: không cột cục bộ nào, khác hẳn cột `status`
-/// của lưu trữ ví (G28).
+/// Cả hai chân đều **đồng bộ được**: không cột cục bộ nào. Cột `status` của lưu
+/// trữ ví từng là ngoại lệ duy nhất của nhóm này, nhưng nó cũng đi qua đồng bộ
+/// từ 2026-09-14 (G28 đóng) — nay bảng `wallets` không còn cột cục bộ nào.
 library;
 
 /// Tiền tố của mọi ghi chú khoản điều chỉnh. Nơi ghi và nơi đọc dùng chung

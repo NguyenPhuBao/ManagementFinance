@@ -16,6 +16,19 @@ import 'package:flutter_test/flutter_test.dart';
 /// dạng ấy lọt qua mọi lượt `grep` một dòng. Test này quét cả `lib/` bằng regex
 /// nhiều dòng, như `currency_formatter_test` và `wallet_picker_sources_test`,
 /// để lần sau không phải trông vào trí nhớ.
+///
+/// ## Biến thể thứ hai, tìm ra 2026-09-14
+///
+/// Ca đầu chỉ bắt `?? 1`. Nhưng ba trang giao dịch né được nó bằng cách khai
+/// **giá trị mặc định của tham số**:
+///
+///     const TransactionPage({super.key, this.idaccount = 1});
+///     ...
+///     currentUserId = int.tryParse(authState.user!.id) ?? widget.idaccount;
+///
+/// Biểu thức cuối là `?? widget.idaccount`, không phải `?? 1` — khác hình
+/// dạng, **cùng hậu quả**: route dựng `const TransactionPage()` nên giá trị
+/// thật sự dùng là `1`. Ca thứ hai bên dưới bắt đúng dạng ấy.
 void main() {
   test('không chỗ nào trong lib/ lấy mã tài khoản với dự phòng `?? 1`', () {
     final duPhong1 = RegExp(r'\?\?\s*1\s*[;,)\]]');
@@ -40,5 +53,31 @@ void main() {
         reason: 'Mã tài khoản rơi về 1 là đọc và ghi dưới danh nghĩa admin '
             'thật. Dùng `currentAccountIdOrNull` '
             '(`core/auth/current_account.dart`) và tự xử lý `null`.');
+  });
+
+  test('không chỗ nào trong lib/ khai mã tài khoản mặc định là `1`', () {
+    // ⚠️ Dùng `[ \t]` chứ không `\s`: `\s` khớp cả xuống dòng, nên một tham
+    // số tên `idaccount` ở dòng này và một hằng `= 1` ở dòng sau sẽ dính nhau
+    // thành dương tính giả.
+    final macDinh1 = RegExp(
+        r'(account|user)[A-Za-z]*[ \t]*=[ \t]*1[ \t]*[,;)]',
+        caseSensitive: false);
+
+    final viPham = <String>[];
+    for (final f in Directory('lib').listSync(recursive: true)) {
+      if (f is! File || !f.path.endsWith('.dart')) continue;
+      if (f.path.endsWith('.g.dart')) continue;
+      final noiDung = f.readAsStringSync();
+      for (final m in macDinh1.allMatches(noiDung)) {
+        final dong = '\n'.allMatches(noiDung.substring(0, m.start)).length + 1;
+        viPham.add('${f.path.replaceAll(r'\', '/')}:$dong');
+      }
+    }
+
+    expect(viPham, isEmpty,
+        reason: 'Một tham số mã tài khoản mặc định `1` là `?? 1` viết vòng: '
+            'nơi dựng widget không truyền gì thì giá trị thật sự dùng là mã '
+            'admin. Để tham số không có mặc định (hoặc `int?`) và suy tài '
+            'khoản bằng `currentAccountIdOrNull`.');
   });
 }

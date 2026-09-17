@@ -7,6 +7,8 @@ import 'package:drift/drift.dart';
 import '../api/dio_client.dart';
 import '../bill/bill_recurrence.dart';
 import '../database/app_database.dart';
+import '../../features/wallet/data/services/so_du_vi_service.dart';
+import '../../features/wallet/domain/wallet_status.dart';
 import '../../features/bill/domain/bill_pay_status.dart';
 import 'backend_bool.dart';
 import 'sync_models.dart';
@@ -45,6 +47,9 @@ String? _ngayCucBoUtcIso(DateTime? d) =>
 class SyncEngine {
   // ignore: unused_field — sẽ dùng ở Plan 6 khi backend có sync API
   final DioClient _dioClient;
+
+  /// Nơi duy nhất ghi `wallets.balance`. Dùng ở cuối mỗi lần kéo về.
+  final SoDuViService _soDuVi;
   final AppDatabase _db;
   final Connectivity _connectivity;
 
@@ -238,7 +243,9 @@ class SyncEngine {
     Connectivity? connectivity,
     SyncCheckpointStore? checkpointStore,
     DateTime Function()? now,
-  })  : _dioClient = dioClient,
+    SoDuViService? soDuVi,
+  })  : _soDuVi = soDuVi ?? SoDuViService(db: db),
+        _dioClient = dioClient,
         _db = db,
         _checkpointStore = checkpointStore,
         _now = now ?? DateTime.now,
@@ -520,6 +527,12 @@ class SyncEngine {
           final wallets = (payloadData['wallets'] ?? payloadData['wallet'])
                   as List<dynamic>? ??
               [];
+
+          // Ví đã có TRƯỚC lượt kéo về này. Chỉ chúng mới được vá neo ở cuối
+          // hàm — xem lý do ở đó.
+          final viDaCoTruocPull = {
+            for (final w in await _db.walletDao.getAll(accountId)) w.id,
+          };
           if (wallets.isNotEmpty) {
             final companions = wallets.map((w) {
               return WalletsCompanion(
@@ -529,8 +542,22 @@ class SyncEngine {
                 name: Value(w['name'].toString()),
                 type: Value(SyncPayloadNormalizer.walletTypeFromBackend(
                     w['type']?.toString() ?? 'Cash')),
-                balance: Value(
-                    (num.tryParse(w['balance'].toString()) ?? 0.0).toDouble()),
+                // ⚠️ **KHÔNG đọc số dư của server.**
+                //
+                // `balance` nay là **cache của tổng sổ giao dịch**
+                // (`SoDuViService`), và sổ thì đã đồng bộ đúng. Con số của
+                // server chỉ là ảnh chụp cũ, nên đọc nó về là nuốt mọi thay đổi
+                // cục bộ chưa kịp đẩy — đúng cơ chế của **G37**, đo thật trên
+                // hai máy ảo ngày 2026-09-13: ví bị trừ còn 1.650.000 → push ví
+                // xung đột → pull ghi đè về 2.000.000 → lần trừ biến mất, mà
+                // hàng vừa bị `_markSyncedById` nên cũng không còn gì để đẩy
+                // lại.
+                //
+                // Ví MỚI về từ máy khác không cần cột này để đúng: lần INSERT
+                // đầu lấy mặc định `0`, nhưng **neo là một giao dịch** nên nó
+                // cũng được pull về cùng lượt, và bước tính lại cuối hàm này
+                // cho ra đúng số.
+                balance: const Value.absent(),
                 currency: Value(w['currency']?.toString() ?? 'VND'),
                 icon: Value(w['icon']?.toString() ?? 'wallet'),
                 colour: Value(
@@ -543,33 +570,28 @@ class SyncEngine {
                 includeInTotal: w['include_in_total'] != null
                     ? Value(doiSangBool(w['include_in_total']))
                     : const Value.absent(),
-                // ⚠️ `status` (lưu trữ ví) là cột CỤC BỘ, cố ý không đi
-                // theo chiều nào của đồng bộ — cùng diện với
-                // `bills.autoPayEnabled`. (`bills.anchorDay` từng cùng diện
-                // nhưng đã mở đường đồng bộ ngày 2026-09-12.)
+                // `status` (lưu trữ ví) đi qua đồng bộ **hai chiều** từ
+                // 2026-09-14 — G28. Trước đó nó là cột cục bộ vì lược đồ
+                // PostgreSQL tự mâu thuẫn ở đúng đây: `chk_wallet_status` cho
+                // phép `'Inactive'` trong khi kiểu cột là `varchar(7)` còn
+                // chuỗi ấy dài 8 ký tự, nên ví lưu trữ đẩy lên là **kẹt hàng
+                // đợi đẩy vĩnh viễn, im lặng** (vấp thật trên máy ảo
+                // 2026-09-10). Đo lại 2026-09-14: `varchar(20)`, `NOT NULL`,
+                // `DEFAULT 'Active'`.
                 //
-                // Lý do ban đầu là một con số, đo thẳng trên PostgreSQL ngày
-                // 2026-09-10: `chk_wallet_status` CHO PHÉP `'Inactive'`,
-                // nhưng kiểu cột `Status` khi ấy là **varchar(7)** còn chuỗi
-                // ấy dài **8 ký tự** — lược đồ tự mâu thuẫn. Đẩy lên là hàng
-                // ví vỡ ở tầng CSDL và kẹt hàng đợi đẩy, thử lại ở MỌI chu
-                // kỳ, kéo chậm cả hàng đợi. Đã vấp thật trên máy ảo, và đó là
-                // cách phát hiện ra con số ấy. Tối cùng ngày CSDL dev đã nới
-                // cột lên `varchar(20)` (áp `database/7`), nhưng cả hai chiều
-                // vẫn **cố ý** tắt cho tới khi mở lại G28 — người dùng chốt
-                // để sau.
+                // Lưu **chữ thường**: cột SQLite mặc định `'active'` và hợp
+                // đồng ghi ở `wallet_entity.dart` là `'active' | 'inactive'`.
+                // Trộn hai cách viết thì mọi câu SQL thô so chuỗi trực tiếp
+                // lọc lệch — `WalletDao.getActive` cố ý lọc ở tầng Dart chính
+                // vì chờ đúng nhánh này.
                 //
-                // Nhánh KÉO VỀ phải im lặng cùng lúc với nhánh đẩy: client
-                // không bao giờ đẩy cột này, nên server giữ `'Active'` cho
-                // mọi ví của tài khoản còn dùng (chỉ ví của tài khoản đã bị
-                // xoá hẳn mới bị `scheduler.service.js` đặt `'Inactive'`).
-                // Đọc cột về là ví vừa lưu trữ lặng lẽ sống lại ở lượt pull
-                // kế tiếp.
-                //
-                // Mở lại cả hai chiều cùng lúc, kèm cập nhật
-                // `sync_payload_contract_test.dart` — G28 ở
-                // `docs/CLIENT_APP_KNOWN_GAPS.md`, và
-                // `docs/superpowers/backend/DA-XONG/WALLET_STATUS_COLUMN_WIDTH.md`.
+                // Thiếu khoá nghĩa là **chưa biết**, không phải "hãy đánh
+                // thức": cột của server hiện `NOT NULL` nên nó luôn trả giá
+                // trị, nhưng `absent` là lớp phòng thủ trước một bản backend
+                // không trả khoá ấy — cùng bài học với `include_in_total`.
+                status: w['status'] != null
+                    ? Value(WalletStatus.tuKhoa(w['status'].toString()).khoa)
+                    : const Value.absent(),
                 isDeleted: Value(w['delete_at'] != null),
                 deletedAt: Value(_deletedAtFrom(w['delete_at'])),
                 syncStatus: const Value('synced'),
@@ -1028,6 +1050,40 @@ class SyncEngine {
             _lastPullTime = newest;
             await _checkpointStore?.write(accountId, newest);
           }
+
+          // Tính lại số dư cho ví có giao dịch vừa về — **mốc đóng G37**.
+          //
+          // Nhánh pull chỉ ghi giao dịch vào bảng, **không đụng `balance`**
+          // (trước bản này là 0 dòng), nên giao dịch của máy khác về tới nơi mà
+          // số dư máy này không đổi. Số dư khi ấy chỉ đúng nhờ đồng bộ chính cột
+          // `balance` theo LWW — đúng thứ nhánh ví ở trên vừa thôi đọc.
+          //
+          // Gồm cả ví MỚI về: neo của chúng cũng là một giao dịch, cũng vừa
+          // được kéo về, nên tổng sổ ra đúng số dù cột `balance` khởi tạo bằng 0.
+          final viCanTinhLai = <String>{
+            for (final t in transactions)
+              if (t is Map && t['idwallet'] != null) t['idwallet'].toString(),
+            for (final w in wallets)
+              if (w is Map && (w['idwallet'] ?? w['id']) != null)
+                (w['idwallet'] ?? w['id']).toString(),
+          };
+          if (viCanTinhLai.isNotEmpty) {
+            // Vá neo cho ví tạo bằng bản app trước 2026-09-13 — và **chỉ**
+            // cho ví đã có trên máy này TRƯỚC lượt kéo về.
+            //
+            // ⚠️ Ví VỪA về không được vá, và đây là chốt chặn bắt buộc. Neo
+            // tính bằng `balance − Σ sổ`, mà ví vừa INSERT mang `balance = 0`
+            // (nhánh trên thôi đọc cột ấy) trong khi sổ của nó đã đầy đủ. Vá
+            // nó là sinh một khoản **chi** đúng bằng cả tổng sổ, và số dư về
+            // 0. Đo thật trên hai máy ảo ngày 2026-09-13: ví 2.000.000 hiện
+            // thành `Total balance: 0đ` ngay sau lần pull đầu.
+            //
+            // Ví vừa về **không cần vá**: neo của nó là một giao dịch, do máy
+            // tạo ví sinh ra, nên nó cũng vừa được kéo về cùng lượt.
+            await _soDuVi
+                .datNeoNhieuVi(viCanTinhLai.intersection(viDaCoTruocPull));
+            await _soDuVi.tinhLaiNhieuVi(viCanTinhLai);
+          }
           // Cờ RIÊNG, không suy ra từ `_lastPullTime`: mốc đó chỉ được đặt khi
           // có dữ liệu trả về, nên một tài khoản mới toanh (chưa có gì trên
           // server) sẽ mãi mãi trông như "chưa pull lần nào".
@@ -1162,7 +1218,10 @@ class SyncEngine {
           'is_default': w.isDefault,
           'is_deleted': w.isDeleted,
           'include_in_total': w.includeInTotal,
-          // ⚠️ `status` CỐ Ý KHÔNG có mặt — xem chú thích ở nhánh kéo về.
+          // Chuỗi thô của SQLite ('active'/'inactive'); `walletForPush` dịch
+          // sang từ vựng của server. Engine dựng payload thô, normalizer là
+          // tầng hợp đồng — cùng khuôn `type` ngay trên. (G28, 2026-09-14.)
+          'status': w.status,
           'updated_at': w.updatedAt.toUtc().toIso8601String(),
           'idaccount': w.idaccount > 0 ? w.idaccount : idaccount,
         },

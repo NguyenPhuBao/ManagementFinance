@@ -13,12 +13,14 @@ import '../../../../shared/theme/app_colors.dart';
 class ChooseCategoryPage extends StatefulWidget {
   const ChooseCategoryPage({
     super.key,
-    this.idaccount = 1,
+    this.idaccount,
     this.classify = 'chi',
     this.repository,
   });
 
-  final int idaccount;
+  /// Mã tài khoản **tiêm vào** — chỉ widget test dùng. Đường chạy thật để
+  /// `null` và suy từ phiên đăng nhập; xem [_accountId].
+  final int? idaccount;
   final String classify;
   final CategoryManagementRepository? repository;
 
@@ -47,22 +49,41 @@ class _ChooseCategoryPageState extends State<ChooseCategoryPage> {
     _loadTree();
   }
 
-  int _accountId() {
+  /// Mã tài khoản của phiên, hoặc `null` khi CHƯA có phiên dùng được.
+  ///
+  /// ⚠️ Trước 2026-09-14 hàm này rơi về `widget.idaccount`, vốn mặc định `1` —
+  /// tức **tài khoản admin thật**, đúng lỗ hổng G4/G35 mà dự án đã đóng ở bốn
+  /// trang bill/goal và ba màn danh mục. Nó lọt qua lưới quét `?? 1` vì biểu
+  /// thức viết là `?? widget.idaccount`: khác hình dạng, cùng hậu quả.
+  int? _accountId() {
     try {
       final authState = context.read<AuthBloc>().state;
       if (authState is AuthSuccess) {
-        return int.tryParse(authState.user?.id ?? '') ?? widget.idaccount;
+        final parsed = int.tryParse(authState.user?.id ?? '');
+        if (parsed != null && parsed > 0) return parsed;
       }
     } catch (_) {
-      // Widget tests and route previews may not provide the auth bloc.
+      // Widget test và bản xem trước route có thể không có AuthBloc.
     }
     return widget.idaccount;
   }
 
   Future<void> _loadTree() async {
+    final accountId = _accountId();
+    if (accountId == null) {
+      // Không có phiên thì không đọc gì cả — đọc bằng mã admin là hiện danh
+      // mục của người khác. Màn hình rỗng là đúng, và nó tự đầy khi phiên sẵn
+      // sàng (route này chỉ tới được từ trong shell đã đăng nhập).
+      if (!mounted) return;
+      setState(() {
+        _tree = null;
+        _isLoading = false;
+      });
+      return;
+    }
     setState(() => _isLoading = true);
     final tree = await _repository.loadTree(
-      accountId: _accountId(),
+      accountId: accountId,
       classify: _classify,
     );
     if (!mounted) return;

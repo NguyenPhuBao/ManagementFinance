@@ -70,6 +70,7 @@ class _RepoGia implements WalletRepository {
     String colour = '#4CAF50',
     bool isDefault = false,
     bool includeInTotal = true,
+    bool allowNegative = false,
   }) async {
     if (loiKhiThem != null) throw loiKhiThem!;
     luoiGoiThem.add((name: name, type: type));

@@ -270,28 +270,30 @@ void main() {
           'id', 'name', 'type', 'balance', 'currency', 'icon',
           'color', // normalizer đổi colour → color
           'is_default', 'is_deleted', 'include_in_total',
-          // ⚠️ `status` (lưu trữ ví) CỐ Ý vắng mặt — nhóm PUSH ngay dưới
-          // canh riêng điều đó, kèm con số đo được.
+          // `status` (lưu trữ ví) đi qua đồng bộ từ 2026-09-14 — G28. Nhóm
+          // PUSH ngay dưới canh CHUỖI gửi lên, vì SQLite lưu chữ thường còn
+          // `chk_wallet_status` của PostgreSQL chỉ nhận chữ hoa đầu.
+          'status',
           'update_at', // normalizer đổi updated_at → update_at
           'idaccount',
         },
       );
     });
 
-    test('ví lưu trữ KHÔNG được mang `status` lên server', () async {
-      // Lý do ban đầu, đo thẳng trên CSDL ngày 2026-09-10
-      // (`information_schema.columns`): cột `Status` của PostgreSQL là
-      // **varchar(7)**, còn giá trị cần gửi lên là `'Inactive'` — **8 ký tự**.
-      // Đẩy lên là hàng ví vỡ ở tầng CSDL, backend trả về lỗi ràng buộc, và ví
-      // kẹt hàng đợi đẩy: thử lại ở MỌI chu kỳ, kéo chậm cả hàng đợi. Đã vấp
-      // thật trên máy ảo.
+    test('ví lưu trữ mang `status: Inactive` lên server — G28', () async {
+      // Trước 2026-09-14 ca này canh điều NGƯỢC LẠI: `status` cố ý vắng mặt,
+      // vì cột `Status` của PostgreSQL khi ấy là **varchar(7)** còn chuỗi cần
+      // gửi là `'Inactive'` — **8 ký tự**. Ví lưu trữ đẩy lên là vỡ ở tầng
+      // CSDL và kẹt hàng đợi đẩy, thử lại ở MỌI chu kỳ. Đã vấp thật trên máy
+      // ảo 2026-09-10.
       //
-      // Tối cùng ngày CSDL dev đã nới cột lên `varchar(20)` (áp `database/7`),
-      // nhưng `status` vẫn là cột CỤC BỘ cho tới khi mở lại G28 — người dùng
-      // chốt để sau; mở lại thì test này đổi sang canh chiều ngược lại. Cùng
-      // diện với `bills.autoPayEnabled` và `bills.anchorDay`. Xem G28
-      // `docs/CLIENT_APP_KNOWN_GAPS.md` và
-      // `docs/superpowers/backend/DA-XONG/WALLET_STATUS_COLUMN_WIDTH.md`.
+      // Đo lại 2026-09-14 (`information_schema.columns`): cột nay
+      // **varchar(20)**, `NOT NULL`, `DEFAULT 'Active'`, và
+      // `chk_wallet_status` nhận `Active|Inactive`. Chỗ chặn đã hết.
+      //
+      // ⚠️ Canh CHUỖI chứ không chỉ canh sự có mặt: SQLite lưu `'inactive'`
+      // (chữ thường, mặc định cột) còn CHECK chỉ nhận `'Inactive'`. Gửi thẳng
+      // chuỗi cục bộ là vỡ CHECK — đúng cái bẫy cũ, chỉ đổi nguyên nhân.
       const viLuuTru = '22222222-2222-4222-8222-222222222222';
       await db.walletDao.insert(WalletsCompanion(
         id: const Value(viLuuTru),
@@ -310,17 +312,23 @@ void main() {
           .map((op) => op['payload'] as Map<String, dynamic>)
           .toList();
 
-      for (final p in payloads) {
-        expect(p.containsKey('status'), isFalse,
-            reason: 'Ví ${p['id']} mang `status` lên server, trong khi `status` '
-                'là cột cục bộ cho tới khi mở lại G28. Ở CSDL nào chưa nới cột '
-                '(varchar(7)), ví lưu trữ gửi chuỗi 8 ký tự — bản ghi kẹt hàng '
-                'đợi đẩy và thử lại vĩnh viễn.');
-      }
       expect(payloads.any((p) => p['id'] == viLuuTru), isTrue,
           reason: 'Ví lưu trữ VẪN phải được đẩy lên — tên, số dư, cờ mặc định '
-              'của nó vẫn phải tới được máy khác. Chỉ riêng trạng thái lưu trữ '
-              'là ở lại máy này.');
+              'của nó vẫn phải tới được máy khác, và từ G28 thì cả trạng thái '
+              'lưu trữ nữa.');
+
+      final cuaViLuuTru = payloads.firstWhere((p) => p['id'] == viLuuTru);
+      expect(cuaViLuuTru['status'], 'Inactive',
+          reason: 'Lưu trữ ví trên máy này phải tới được máy khác — đó là cả '
+              'mục đích của G28. Và phải đúng chữ hoa đầu: `chk_wallet_status` '
+              'chỉ nhận Active|Inactive, gửi "inactive" là ví kẹt hàng đợi đẩy '
+              'vĩnh viễn, im lặng.');
+
+      for (final p in payloads.where((p) => p['id'] != viLuuTru)) {
+        expect(p['status'], 'Active',
+            reason: 'Ví ${p['id']} không lưu trữ thì phải gửi Active — hai '
+                'chuỗi ấy là TOÀN BỘ những gì `chk_wallet_status` cho phép.');
+      }
     });
 
     test('mục tiêu mang priority 0 cũ thì đẩy lên null — G32', () async {
@@ -767,7 +775,14 @@ void main() {
       await runSync();
 
       final wallet = await db.walletDao.getById(walletId);
-      expect(wallet?.balance, 5000, reason: 'đọc "balance"');
+      expect(wallet?.balance, isNot(5000),
+          reason: 'Nhánh kéo về **KHÔNG** đọc `balance` của server nữa (đổi '
+              '2026-09-13, đóng G37). Số dư nay là cache của tổng sổ giao dịch '
+              '— con số server chỉ là ảnh chụp cũ, và đọc nó về là nuốt mọi '
+              'thay đổi cục bộ chưa kịp đẩy. Nhánh ĐẨY vẫn gửi `balance` như '
+              'cũ — hợp đồng một chiều cho riêng cột này, cố ý. (Payload ví là '
+              '13 trường từ 2026-09-14, khi `status` vào — G28; con số ấy '
+              'không liên quan tới luật một chiều của `balance`.)');
       expect(wallet?.colour, '#123456', reason: 'backend dùng "color"');
       expect(wallet?.includeInTotal, false,
           reason: 'Nửa còn lại của cờ này: nó NẰM trong payload đẩy lên nhưng '
@@ -902,19 +917,18 @@ void main() {
               'HAY XOA. Ghi đè null vào đây là mất liên kết mà không có lỗi '
               'nào báo ra.');
     });
-    test('server KHÔNG bỏ được lưu trữ của ví — kể cả khi nó gửi status',
+    test('server bỏ lưu trữ ví được — khoá `status` của payload pull',
         () async {
-      // Đây là nửa thứ hai của việc `status` là cột cục bộ, và là nửa dễ
-      // quên: client không đẩy cột này lên, nên server giữ `'Active'` cho MỌI
-      // ví của tài khoản còn dùng (chỉ ví của tài khoản đã bị xoá hẳn mới bị
-      // `scheduler.service.js` đặt `'Inactive'`). Lý do ban đầu của việc không
-      // đẩy: cột `Status` là varchar(7) còn `'Inactive'` dài 8 ký tự; CSDL dev
-      // đã nới lên varchar(20) tối 2026-09-10, nhưng việc nối lại — G28 —
-      // người dùng chốt để sau. Đọc cột ấy về là ví vừa lưu trữ lặng lẽ sống
-      // lại ở đúng lượt pull kế tiếp.
+      // Ca này canh **tên khoá** mà nhánh kéo về đọc, đúng vai trò của tệp hợp
+      // đồng; năm ca hành vi đầy đủ (Inactive, Active, thiếu khoá, null tường
+      // minh, giá trị lạ) nằm ở `sync_pull_wallet_status_test.dart`.
       //
-      // Payload dưới đây cố ý mang `'status': 'Active'` — dạng KHÓ nhất, vì
-      // một bản đọc thẳng sẽ vượt qua ca 'server im lặng' mà vỡ ở đây.
+      // Trước 2026-09-14 ca này canh điều NGƯỢC LẠI — `status` là cột cục bộ,
+      // và đọc nó về là ví vừa lưu trữ lặng lẽ sống lại. Lý do khi ấy: cột
+      // `Status` là varchar(7) còn `'Inactive'` dài 8 ký tự, nên client không
+      // đẩy cột này và server giữ `'Active'` cho mọi ví. Đo lại 2026-09-14:
+      // varchar(20), NOT NULL, DEFAULT 'Active' — chỗ chặn hết, G28 mở cả hai
+      // chiều, nên `'Active'` từ server nay là một khẳng định đáng tin.
       await db.walletDao.insert(WalletsCompanion(
         id: const Value(walletId),
         idaccount: const Value(accountId),
@@ -941,10 +955,11 @@ void main() {
 
       await runSync();
 
-      expect((await db.walletDao.getById(walletId))?.status, 'inactive',
-          reason: 'Lưu trữ ví sống hoàn toàn trên máy này. Đọc `status` từ '
-              'payload là mọi ví lưu trữ tự bỏ lưu trữ sau đúng một chu kỳ '
-              'đồng bộ — im lặng, không thông báo nào.');
+      expect((await db.walletDao.getById(walletId))?.status, 'active',
+          reason: 'Bỏ lưu trữ trên máy A phải lan sang máy B — nếu không, ví '
+              'đóng băng được ở mọi máy nhưng chỉ mở lại được ở đúng máy đã '
+              'bấm. Khoá payload là `status` (không đổi tên qua '
+              '`mapEntityFields`), và giá trị lưu xuống SQLite là chữ thường.');
     });
     test('hàng server KHÔNG có include_in_total thì cờ cục bộ phải còn nguyên',
         () async {

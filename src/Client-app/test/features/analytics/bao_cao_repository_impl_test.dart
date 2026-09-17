@@ -121,6 +121,29 @@ void main() {
               'cả một trang báo cáo mất tên.');
     });
 
+    test('⚠️ danh mục MẶC ĐỊNH TOÀN CỤC vẫn giữ tên thật', () async {
+      // `sync_engine` quy `is_default = true` thành **`idaccount = 0`**, nên
+      // hàng mặc định toàn cục không mang mã tài khoản nào. Truy vấn lọc đúng
+      // một `idaccount` bỏ sót chúng, và giao dịch cũ trỏ vào đó mất tên —
+      // đúng lỗi máy ảo bắt được 2026-09-15 ở trang Thống kê, và trang này
+      // mang **bản chép tay thứ hai** của cùng truy vấn ấy.
+      await db.categoryDao.insert(CategoriesCompanion.insert(
+        id: 'c_global',
+        idaccount: 0,
+        name: 'Chi khác',
+        classify: 'chi',
+        isDefault: const Value(true),
+        deletedAt: Value(DateTime(2026, 9, 7)),
+        updatedAt: DateTime(2026, 9, 7),
+      ));
+      await giaoDich(id: 't1', ngay: DateTime(2026, 9, 5), danhMuc: 'c_global');
+
+      final bc = await repo.layBaoCao(1, loc: locThang9);
+      expect(bc.nhom.single.dong.single.tenDanhMuc, 'Chi khác',
+          reason: 'Bảng tra tên phải lọc theo CỜ `isDefault`, không chỉ theo '
+              'tài khoản — `categoryDao.getBangTraTen` là định nghĩa duy nhất.');
+    });
+
     test('ví đã xoá mềm vẫn giữ TÊN THẬT', () async {
       await giaoDich(id: 't1', ngay: DateTime(2026, 9, 5));
       await db.walletDao.softDelete('w1');

@@ -28,6 +28,43 @@ class Wallets extends Table {
   TextColumn get colour   => text().withDefault(const Constant('#4CAF50'))();
   BoolColumn get isDefault       => boolean().withDefault(const Constant(false))();
   BoolColumn get isDeleted       => boolean().withDefault(const Constant(false))();
+  /// Ví này được phép mang số dư **âm** — thẻ tín dụng, ví theo dõi nợ.
+  ///
+  /// Bật thì ví **không sinh cảnh báo số dư nào cả**: cả `walletNegative` lẫn
+  /// `walletLowBalance`. Vế thứ hai dễ quên nhất và hỏng im lặng — một ví cho
+  /// phép âm **luôn** nằm dưới mọi ngưỡng "sắp cạn", nên tắt mỗi cảnh báo âm
+  /// là đổi một dòng nhiễu lấy một dòng nhiễu khác.
+  ///
+  /// ## Vì sao là một CỜ, không phải một loại ví
+  ///
+  /// Tới 2026-09-09 chỗ bám là `type == 'debt'`. Loại ấy **chết** cùng ngày:
+  /// `debt` và `ewallet` vỡ `chk_wallet_type` của PostgreSQL và làm ví kẹt
+  /// hàng đợi đẩy vĩnh viễn, nên `WalletType` thu về ba giá trị và ví cũ
+  /// chuyển thành `bank`. Từ đó mọi ví âm bị nhắc mỗi ngày trở lại — **G27**.
+  /// Khôi phục chuỗi `'debt'` là tái hiện đúng sự cố ấy; cờ riêng thì không
+  /// đụng `chk_wallet_type` nào.
+  ///
+  /// ## ⚠️ CỘT CỤC BỘ — KHÔNG đi qua đồng bộ
+  ///
+  /// PostgreSQL **không có** cột tương ứng, nên cờ này **không** nằm trong
+  /// payload đẩy (ví vẫn **13 trường**) và nhánh kéo về không đọc nó. Bật cờ
+  /// trên máy A thì máy B không biết.
+  ///
+  /// Nói ra ở đây vì một bài học đã trả giá đúng trong bảng này: `status` từng
+  /// là cột cục bộ và để lại **ba** chú thích ở ba tệp khác nói nó "đi ra máy
+  /// khác qua `/sync/push`" (G28, mở lại 2026-09-14). Muốn mở đồng bộ thì cần
+  /// một cột PostgreSQL mới và một tài liệu `docs/superpowers/backend/CAN-LAM/`
+  /// — **không** tự thêm khoá vào payload.
+  ///
+  /// ## Vì sao KHÔNG có hàm thuần dùng chung
+  ///
+  /// Hai nơi đọc cờ này làm **hai việc khác nhau**: bộ luật thông báo bỏ qua
+  /// hai loại cảnh báo, còn danh sách ví bỏ màu đỏ. Một vị từ chung sẽ phải
+  /// mang hai nghĩa, nên ở đây cố ý đọc thẳng cột — khác `viTinhVaoTong`, nơi
+  /// ba chỗ gọi hỏi đúng **một** câu.
+  BoolColumn get allowNegative =>
+      boolean().named('allow_negative').withDefault(const Constant(false))();
+
   /// Nếu true: số dư ví được cộng vào tổng tài sản trên dashboard
   BoolColumn get includeInTotal  => boolean().withDefault(const Constant(true))();
   

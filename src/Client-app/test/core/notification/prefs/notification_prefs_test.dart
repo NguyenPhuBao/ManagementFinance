@@ -435,6 +435,56 @@ void main() {
     });
   });
 
+  group('ngưỡng khoản chi lớn', () {
+    test('mặc định là 0, nghĩa là TẮT', () {
+      expect(NotificationPrefs.macDinh.nguongChiLon, 0,
+          reason: 'Cùng lý lẽ với ngưỡng số dư: mọi bản ghi đang nằm trên máy '
+              'người dùng đều thiếu trường này, nên bật sẵn là lặng lẽ bắn '
+              'thông báo cho những khoản chính họ đã gõ từ mấy tháng trước.');
+    });
+
+    test('đi trọn vòng qua JSON', () {
+      const goc = NotificationPrefs(nguongChiLon: 2000000);
+
+      expect(NotificationPrefs.fromJson(goc.toJson()), goc,
+          reason: 'Quên trường trong toJson/fromJson thì ngưỡng người dùng đặt '
+              'biến mất sau mỗi lần mở app, mà không có lỗi nào báo ra.');
+    });
+
+    test('thiếu trường, sai kiểu, số âm và số vượt trần đều quy về 0', () {
+      expect(NotificationPrefs.fromJson(const {}).nguongChiLon, 0);
+      expect(
+          NotificationPrefs.fromJson(const {'nguongChiLon': '2000000'})
+              .nguongChiLon,
+          0);
+      expect(NotificationPrefs.fromJson(const {'nguongChiLon': -1}).nguongChiLon,
+          0);
+      expect(
+          NotificationPrefs.fromJson(const {'nguongChiLon': 1000000000000})
+              .nguongChiLon,
+          0,
+          reason: 'Một ngưỡng vô nghĩa lớn biến cảnh báo thành luôn-TẮT, thứ '
+              'người dùng đọc thành "tính năng không chạy".');
+    });
+
+    test('copyWith đổi được ngưỡng', () {
+      expect(
+        NotificationPrefs.macDinh.copyWith(nguongChiLon: 1000000).nguongChiLon,
+        1000000,
+      );
+    });
+
+    test('⚠️ hai ngưỡng tiền là HAI trường độc lập', () {
+      // Cùng kiểu, cùng khuôn, cùng trần — đúng điều kiện để một lần sửa nhầm
+      // làm chúng dùng chung một ô nhớ mà không test nào khác bắt được.
+      const p = NotificationPrefs(nguongSoDuThap: 200000, nguongChiLon: 5000000);
+
+      expect(p.nguongSoDuThap, 200000);
+      expect(p.nguongChiLon, 5000000);
+      expect(NotificationPrefs.fromJson(p.toJson()), p);
+    });
+  });
+
   test('copyWith chỉ đổi thứ được nêu', () {
     const goc = NotificationPrefs.macDinh;
     final moi = goc.copyWith(gioNhac: 20);

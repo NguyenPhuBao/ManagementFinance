@@ -17,6 +17,7 @@ import 'package:flowmoney/features/goal/data/repositories/goal_repository_impl.d
 import 'package:flowmoney/features/goal/domain/goal_auto_deposit.dart';
 import 'package:flowmoney/features/goal/domain/goal_auto_deposit_runner.dart';
 import 'package:flowmoney/features/goal/domain/goal_history_direction.dart';
+import 'package:flowmoney/features/wallet/domain/so_du_mo_so.dart';
 
 void main() {
   late AppDatabase db;
@@ -106,7 +107,7 @@ void main() {
       expect((await db.walletDao.getById('w_nguon'))!.balance, 4500000);
       expect((await db.walletDao.getById('w_nhan'))!.balance, 500000);
 
-      final txs = await db.transactionDao.getAll(1);
+      final txs = await giaoDichThat(db, 1);
       expect(txs.length, 1);
       expect(txs.single.type, 'transfer');
       expect(txs.single.goalId, 'g1');
@@ -122,7 +123,7 @@ void main() {
 
       await runner.chay(1, now: DateTime(2025, 10, 6));
 
-      final tx = (await db.transactionDao.getAll(1)).single;
+      final tx = (await giaoDichThat(db, 1)).single;
       expect(tx.note, 'Tích lũy mục tiêu: MuaXe$kHauToTuDong',
           reason: 'Đây là chỗ DUY NHẤT trong app ghi ra hậu tố. Bộ chạy quên '
               'bật cờ thì khoản do app tự chuyển tiền trông y hệt khoản người '
@@ -148,7 +149,7 @@ void main() {
 
       expect(events, isEmpty);
       expect((await db.goalDao.getAll(1)).single.currentAmount, 0);
-      expect(await db.transactionDao.getAll(1), isEmpty);
+      expect(await giaoDichThat(db, 1), isEmpty);
     });
   });
 
@@ -162,7 +163,7 @@ void main() {
       final goal = (await db.goalDao.getAll(1)).single;
       expect(goal.currentAmount, 1500000);
       expect(goal.autoDepositLastRun, DateTime(2025, 12, 5, 9));
-      expect((await db.transactionDao.getAll(1)).length, 3,
+      expect((await giaoDichThat(db, 1)).length, 3,
           reason: 'Gộp ba kỳ thành một giao dịch làm lịch sử nói dối về nhịp '
               'tích luỹ, và bộ dự báo đọc chính lịch sử ấy.');
     });
@@ -174,7 +175,7 @@ void main() {
       // Mở app lúc 14:28 ngày 06/12 sau khi bỏ ba kỳ.
       await runner.chay(1, now: DateTime(2025, 12, 6, 14, 28));
 
-      final moc = (await db.transactionDao.getAll(1))
+      final moc = (await giaoDichThat(db, 1))
           .map((t) => t.date)
           .toList()
         ..sort();
@@ -220,7 +221,7 @@ void main() {
     test('mục tiêu chưa bật trích tự động', () async {
       await themMucTieu(soTien: null, viNguon: null, mocChay: null);
       expect(await runner.chay(1, now: DateTime(2026, 1, 1)), isEmpty);
-      expect(await db.transactionDao.getAll(1), isEmpty);
+      expect(await giaoDichThat(db, 1), isEmpty);
     });
 
     test('mục tiêu đã hoàn thành', () async {
@@ -229,7 +230,7 @@ void main() {
       expect(events, isEmpty,
           reason: 'Mục tiêu xong rồi thì không còn gì để trích, và một thông '
               'báo "đã trích 0 đồng" mỗi tháng là rác.');
-      expect(await db.transactionDao.getAll(1), isEmpty);
+      expect(await giaoDichThat(db, 1), isEmpty);
     });
 
     test('mục tiêu đã xoá mềm', () async {
@@ -243,7 +244,7 @@ void main() {
       expect(await runner.chay(999, now: DateTime(2025, 12, 6)), isEmpty,
           reason: 'Máy dùng chung: trích tiền của tài khoản khác là hỏng nặng '
               'nhất trong mọi cách hỏng ở đây.');
-      expect(await db.transactionDao.getAll(1), isEmpty);
+      expect(await giaoDichThat(db, 1), isEmpty);
     });
   });
 
@@ -257,7 +258,7 @@ void main() {
           reason: 'Ví nguồn KHÔNG được bảo vệ khỏi việc xoá như ví tích luỹ, '
               'nên ca này xảy ra thật. Ném ra ở đây sẽ giết cả vòng quét thông '
               'báo đang gọi nó.');
-      expect(await db.transactionDao.getAll(1), isEmpty);
+      expect(await giaoDichThat(db, 1), isEmpty);
     });
 
     test('ví nguồn ĐÃ LƯU TRỮ thì dừng, không rút tiền', () async {
@@ -270,7 +271,7 @@ void main() {
           reason: 'Lưu trữ ví là ĐÓNG BĂNG nó. Rút tiền im lặng khỏi một ví mà '
               'người dùng đã cất đi là đúng cách hỏng tệ nhất ở đây: họ không '
               'nhìn ví ấy nữa nên sẽ không thấy gì cả.');
-      expect(await db.transactionDao.getAll(1), isEmpty);
+      expect(await giaoDichThat(db, 1), isEmpty);
       expect((await db.walletDao.getById('w_nguon'))!.balance, 5000000.0);
       expect((await db.goalDao.getAll(1)).single.currentAmount, 0);
     });
@@ -316,3 +317,15 @@ void main() {
     });
   });
 }
+
+/// Giao dịch thật của tài khoản — **bỏ khoản mở sổ**.
+///
+/// Từ 2026-09-13 số dư ví suy từ sổ, nên mỗi ví có thêm một khoản "Số dư ban
+/// đầu" làm điểm neo (`wallet/domain/so_du_mo_so.dart`). Nó là hàng thật trong
+/// bảng nhưng không phải thu chi nào — đếm nó vào đây là mọi phép `single`
+/// thành "Too many elements".
+Future<List<Transaction>> giaoDichThat(AppDatabase db, int idaccount) async =>
+    (await db.transactionDao.getAll(idaccount))
+        .where((t) => !laKhoanMoSo(
+            loai: t.type, categoryId: t.categoryId, ghiChu: t.note))
+        .toList();

@@ -35,6 +35,7 @@ import '../../features/budget/presentation/bloc/budget_detail_cubit.dart';
 import '../../features/wallet/data/datasources/wallet_local_data_source.dart';
 import '../../features/wallet/data/repositories/wallet_repository.dart';
 import '../../features/wallet/data/services/dieu_chinh_so_du_service.dart';
+import '../../features/wallet/data/services/so_du_vi_service.dart';
 import '../../features/wallet/data/repositories/wallet_repository_impl.dart';
 import '../../features/wallet/data/services/default_account_data_initializer.dart';
 import '../../features/wallet/presentation/bloc/wallet_cubit.dart';
@@ -128,11 +129,15 @@ Future<void> setupDependencies() async {
     () => WalletLocalDataSourceImpl(db: sl()),
   );
   sl.registerLazySingleton<WalletRepository>(
-    () => WalletRepositoryImpl(localDataSource: sl(), syncEngine: sl()),
+    () => WalletRepositoryImpl(
+        localDataSource: sl(), syncEngine: sl(), soDuVi: sl()),
   );
   // Năm danh mục mà bộ mặc định của backend không có được tạo riêng cho từng
   // tài khoản (xem PersonalDefaultCategories) — danh mục người dùng thì đồng bộ
   // được, còn danh mục mặc định thì không.
+  // Nơi DUY NHẤT ghi `wallets.balance`: số dư nay là cache của tổng sổ giao
+  // dịch, không còn là giá trị tuyệt đối đồng bộ theo LWW (G37).
+  sl.registerLazySingleton<SoDuViService>(() => SoDuViService(db: sl()));
   sl.registerLazySingleton<DefaultCategorySeeder>(
     () => DefaultCategorySeeder(db: sl()),
   );
@@ -171,6 +176,7 @@ Future<void> setupDependencies() async {
       localDataSource: sl(),
       walletDao: sl<AppDatabase>().walletDao,
       syncEngine: sl(),
+      soDuVi: sl(),
     ),
   );
   // Điều chỉnh số dư ví (đối soát). Đăng ký SAU TransactionRepository vì nó
@@ -359,6 +365,33 @@ Future<void> setupDependencies() async {
       loadWeekActivity: (idaccount, from, to) => sl<AppDatabase>()
           .transactionDao
           .coGiaoDichTrongKhoang(idaccount, from, to),
+      // Khoản chi lớn (#7). Tên danh mục tra bằng `getBangTraTen` — bảng tra
+      // dùng chung, GIỮ cả hàng đã xoá mềm và hàng mặc định toàn cục
+      // (`idaccount = 0`). Viết truy vấn riêng ở đây là bản chép tay thứ ba của
+      // cùng một luật, và thiếu vế `isDefault` thì mọi khoản trỏ vào danh mục
+      // mặc định mất tên — đúng G41.
+      loadChiLon: (idaccount, from) async {
+        final db = sl<AppDatabase>();
+        final rows = await db.transactionDao.getChiTuNgay(idaccount, from);
+        if (rows.isEmpty) return const [];
+        final ten = {
+          for (final c in await db.categoryDao.getBangTraTen(idaccount))
+            c.id: c.name,
+        };
+        return [
+          for (final t in rows)
+            (
+              id: t.id,
+              soTien: t.amount,
+              ngay: t.date,
+              loai: t.type,
+              categoryId: t.categoryId,
+              ghiChu: t.note,
+              walletId: t.walletId,
+              tenDanhMuc: t.categoryId == null ? null : ten[t.categoryId],
+            ),
+        ];
+      },
       markOverdue: (idaccount, now) =>
           sl<AppDatabase>().billDao.markOverdue(idaccount, now),
       syncStatus: sl<SyncEngine>().statusStream,

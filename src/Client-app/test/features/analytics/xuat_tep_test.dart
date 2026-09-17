@@ -10,6 +10,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:intl/date_symbol_data_local.dart';
 
@@ -54,6 +55,45 @@ void main() {
         nhanDanhMuc: 'Tất cả danh mục',
         lapNgay: DateTime(2026, 9, 9),
       );
+
+  /// Các dòng của **một khối** CSV: từ ngay sau dòng tiêu đề tới dòng trống kế
+  /// tiếp.
+  ///
+  /// Cần nó vì `contains` trên cả tệp khớp nhầm khối khác — nhiều khối dùng
+  /// chung một nhãn cột ("Số tiền", "Danh mục"), và một khẳng định khớp nhầm
+  /// chỗ là một ca test **không canh gì cả**.
+  List<String> khoi(String s, String ten) {
+    final dong = s.split('\r\n');
+    final i = dong.indexOf(ten);
+    if (i < 0) return const [];
+    final r = <String>[];
+    for (var j = i + 1; j < dong.length; j++) {
+      if (dong[j].isEmpty) break;
+      r.add(dong[j]);
+    }
+    return r;
+  }
+
+  /// Kỳ tháng 9 có thu 9.000.000 và chi 300.000; kỳ trước (tháng 8) có thu
+  /// 8.000.000 và chi 250.000 — tức +12,5% thu và +20,0% chi.
+  BaoCao hasoSanh() => baoCao([
+        g(
+            ngay: DateTime(2026, 8, 10),
+            loai: 'thu',
+            soTien: 8000000,
+            tieuDe: 'Lương tháng 8',
+            tenDanhMuc: 'Lương',
+            danhMuc: 'c_luong'),
+        g(ngay: DateTime(2026, 8, 12), soTien: 250000, tieuDe: 'Chợ tháng 8'),
+        g(
+            ngay: DateTime(2026, 9, 4),
+            loai: 'thu',
+            soTien: 9000000,
+            tieuDe: 'Lương tháng 9',
+            tenDanhMuc: 'Lương',
+            danhMuc: 'c_luong'),
+        g(ngay: DateTime(2026, 9, 5), soTien: 300000, tieuDe: 'Ăn trưa'),
+      ]);
 
   group('csvBaoCao — mở được bằng Excel tiếng Việt', () {
     test('bắt đầu bằng BOM UTF-8', () {
@@ -170,6 +210,128 @@ void main() {
     });
   });
 
+  group('csvBaoCao — so với kỳ trước', () {
+    test('ghi tổng của KỲ TRƯỚC bằng số thô, chi mang dấu âm', () {
+      final s = csv(hasoSanh());
+      expect(s, contains('Kỳ trước - tổng thu;8000000'));
+      expect(s, contains('Kỳ trước - tổng chi;-250000'),
+          reason: 'Cùng luật dấu với mọi số chi khác của tệp — cột phải cộng '
+              'được.');
+      expect(s, contains('Kỳ trước - còn lại;7750000'));
+    });
+
+    test('phần trăm KHÔNG bị nhân 100 lần thứ hai', () {
+      final s = csv(hasoSanh());
+      expect(s, contains('Thu so với kỳ trước (%);12.5'),
+          reason: '`phanTramSoVoi` đã trả sẵn thang 0–100, còn `_tiLe` trong '
+              'chính tệp này lại nhân thêm 100. Dùng lại `_tiLe` ở đây là in ra '
+              '1250.0 mà không exception nào báo.');
+      expect(s, contains('Chi so với kỳ trước (%);20.0'));
+      expect(s, isNot(contains('1250')));
+    });
+
+    test('ô phần trăm để TRỐNG khi kỳ trước bằng 0', () {
+      // Không giao dịch nào của tháng 8 → nền bằng 0 → `phanTramSoVoi` trả null.
+      final s = csv(baoCao([g(ngay: DateTime(2026, 9, 5))]));
+      expect(s, contains('Thu so với kỳ trước (%);\r\n'),
+          reason: 'Đây là ô SỐ. Ghi "—" vào đó là nhét một chuỗi chữ vào cột '
+              'Excel sắp cộng, và ghi "0" là bịa ra "không đổi".');
+      expect(khoi(s, 'TỔNG QUAN'), isNot(contains('Thu so với kỳ trước (%);—')));
+    });
+  });
+
+  group('csvBaoCao — số liệu nhanh', () {
+    test('có đúng ba chỉ số, không lặp lại Số giao dịch', () {
+      final s = csv(hasoSanh());
+      expect(khoi(s, 'SỐ LIỆU NHANH'), [
+        'Chi mỗi ngày;10000',
+        'Ngày chi nhiều nhất;05/09/2026;300000',
+        'Khoản chi lớn nhất;Ăn trưa;300000',
+      ], reason: 'Màn Xem trước có bốn ô, nhưng ô "Số giao dịch" đã nằm ở khối '
+          'TỔNG QUAN của tệp — lặp lại là hai con số phải khớp nhau mãi mãi.');
+    });
+
+    test('chi mỗi ngày chia cho số ngày CỦA KỲ, không phải số ngày có chi', () {
+      final s = csv(hasoSanh());
+      expect(khoi(s, 'SỐ LIỆU NHANH').first, 'Chi mỗi ngày;10000',
+          reason: '300.000 chia 30 ngày của tháng 9 là 10.000. Chia cho một '
+              'ngày có phát sinh là ra 300.000 — con số ấy vẫn "hợp lý".');
+    });
+
+    test('kỳ chỉ có thu thì hai chỉ số về chi để trống', () {
+      final s = csv(baoCao([
+        g(ngay: DateTime(2026, 9, 5), loai: 'thu', soTien: 900000,
+            tieuDe: 'Lương', tenDanhMuc: 'Lương', danhMuc: 'c_luong'),
+      ]));
+      expect(khoi(s, 'SỐ LIỆU NHANH'), [
+        'Chi mỗi ngày;0',
+        'Ngày chi nhiều nhất;;',
+        'Khoản chi lớn nhất;;',
+      ]);
+    });
+
+    test('bỏ hẳn khối khi kỳ rỗng', () {
+      final s = csv(baoCao([]));
+      expect(s, isNot(contains('SỐ LIỆU NHANH')),
+          reason: 'Cùng luật với màn Xem trước, nơi khối này chỉ dựng ở nhánh '
+              'không rỗng. In ra toàn số 0 là vẽ một kỳ có thật.');
+    });
+  });
+
+  group('csvBaoCao — top 5 khoản chi', () {
+    test('bảng mang số thứ tự, và số tiền có dấu âm', () {
+      final s = csv(hasoSanh());
+      expect(khoi(s, 'TOP 5 KHOẢN CHI'), [
+        '#;Nội dung;Danh mục;Ngày;Số tiền',
+        '1;Ăn trưa;Ăn uống;05/09/2026;-300000',
+      ]);
+    });
+
+    test('chỉ lấy năm khoản, giảm dần theo số tiền', () {
+      final s = csv(baoCao([
+        for (var i = 1; i <= 7; i++)
+          g(ngay: DateTime(2026, 9, i), soTien: i * 10000, tieuDe: 'Chi $i'),
+      ]));
+      final k = khoi(s, 'TOP 5 KHOẢN CHI').skip(1).toList();
+      expect(k.length, 5);
+      expect(k.first, startsWith('1;Chi 7;'));
+      expect(k.last, startsWith('5;Chi 3;'));
+    });
+
+    test('bỏ hẳn khối khi kỳ không có khoản chi nào', () {
+      final s = csv(baoCao([
+        g(ngay: DateTime(2026, 9, 5), loai: 'thu', soTien: 900000,
+            tieuDe: 'Lương', tenDanhMuc: 'Lương', danhMuc: 'c_luong'),
+      ]));
+      expect(s, isNot(contains('TOP 5 KHOẢN CHI')));
+    });
+  });
+
+  group('nhanPhanTramSoVoi', () {
+    // Tầng vẽ PDF không kiểm được bằng máy (tệp nén, font subset), nên luật
+    // định dạng duy nhất có rủi ro của nó nằm ở hàm thuần này.
+    test('không so được thì trả dấu gạch', () {
+      expect(nhanPhanTramSoVoi(null), '—');
+    });
+
+    test('tăng thì mang dấu cộng, và dấu PHẨY thập phân', () {
+      expect(nhanPhanTramSoVoi(12.5), '+12,5%',
+          reason: 'PDF là tài liệu để ĐỌC nên theo thông lệ Việt Nam — ngược '
+              'với CSV, nơi cùng con số ấy phải mang dấu chấm.');
+    });
+
+    test('giảm thì mang dấu trừ', () {
+      expect(nhanPhanTramSoVoi(-3), '-3,0%',
+          reason: 'Bản thiết kế đầu dùng ▲/▼ như màn Xem trước; ca test quét '
+              'glyph đã lật nó — Roboto nhúng không có hai hình tam giác ấy và '
+              'gói `pdf` bỏ chúng đi im lặng.');
+    });
+
+    test('không đổi thì vẫn mang dấu cộng, 0,0%', () {
+      expect(nhanPhanTramSoVoi(0), '+0,0%');
+    });
+  });
+
   group('pdfBaoCao', () {
     // Đọc thẳng tệp font trong `assets/` — test chạy ở gốc package nên đường
     // dẫn này đúng, và như vậy phép kiểm không cần tới `rootBundle`.
@@ -213,6 +375,64 @@ void main() {
 
     test('báo cáo rỗng vẫn ra tệp, không nổ', () async {
       final b = await pdf(baoCao([]));
+      expect(String.fromCharCodes(b.take(5)), '%PDF-');
+    });
+
+    test('mọi ký tự HẰNG mà PDF in ra đều có glyph trong font nhúng', () {
+      // Canh chừng điều gì: font thiếu glyph thì gói `pdf` **bỏ ký tự đi** và
+      // chỉ in một dòng cảnh báo ra console — tệp vẫn mở được, chỉ là mũi tên
+      // hoặc dấu biến mất. Cùng loại lỗi với "rơi về Helvetica", nhưng bản
+      // Roboto nhúng vẫn dính: nó **không có** khối Mũi tên (U+2190…) lẫn khối
+      // Hình học (U+25A0…). Đã bắt được ba ca thật: → ▲ ▼.
+      final cmap = {
+        'Roboto-Regular.ttf': TtfParser(ByteData.view(
+            File('assets/fonts/Roboto-Regular.ttf').readAsBytesSync().buffer)),
+        'Roboto-Bold.ttf': TtfParser(ByteData.view(
+            File('assets/fonts/Roboto-Bold.ttf').readAsBytesSync().buffer)),
+      };
+
+      // Chỉ quét chuỗi HẰNG của chính tệp dựng PDF. Chú thích bị loại vì chúng
+      // mang ⚠️ và những ký tự chỉ con người đọc, không bao giờ vào tệp; còn
+      // chữ của người dùng (tên ví, ghi chú) thì không ai chặn trước được.
+      final ma = File('lib/features/analytics/domain/xuat_tep.dart')
+          .readAsLinesSync()
+          .map((d) {
+            if (d.trimLeft().startsWith('//')) return '';
+            final i = d.indexOf('//');
+            return i < 0 ? d : d.substring(0, i);
+          })
+          .join('\n');
+
+      final la = <int>{};
+      for (final m in RegExp("'([^'\\\\\\n]*)'").allMatches(ma)) {
+        for (final r in m.group(1)!.runes) {
+          if (r > 0x7F) la.add(r);
+        }
+      }
+      expect(la.length, greaterThan(20),
+          reason: 'Gom được quá ít ký tự thì phép quét đã hỏng và ca này rỗng '
+              'ruột — tệp nguồn có hàng chục chữ tiếng Việt có dấu.');
+
+      for (final e in cmap.entries) {
+        final thieu = [
+          for (final r in la)
+            if (!e.value.charToGlyphIndexMap.containsKey(r))
+              '${String.fromCharCode(r)} (U+${r.toRadixString(16).toUpperCase()})',
+        ];
+        expect(thieu, isEmpty,
+            reason: '${e.key} không có glyph cho những ký tự này, nên PDF in ra '
+                'sẽ THIẾU chúng mà không báo lỗi nào.');
+      }
+    });
+
+    test('kỳ chỉ có thu vẫn ra tệp hợp lệ', () async {
+      // Ba giá trị `null` cùng lúc trong khối Số liệu nhanh —
+      // `ngayChiNhieuNhat`, `khoanChiLonNhat`, và `topChi` rỗng. Kỳ **rỗng**
+      // không đi qua đường này vì khối bị bỏ hẳn.
+      final b = await pdf(baoCao([
+        g(ngay: DateTime(2026, 9, 5), loai: 'thu', soTien: 900000,
+            tieuDe: 'Lương', tenDanhMuc: 'Lương', danhMuc: 'c_luong'),
+      ]));
       expect(String.fromCharCodes(b.take(5)), '%PDF-');
     });
   });

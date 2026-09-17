@@ -7,6 +7,7 @@ import 'package:flowmoney/features/bill/data/repositories/bill_repository.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository_impl.dart';
 import 'package:flowmoney/features/bill/domain/bill_note.dart';
 import 'package:flowmoney/core/bill/bill_recurrence.dart';
+import 'package:flowmoney/features/wallet/domain/so_du_mo_so.dart';
 
 void main() {
   late AppDatabase db;
@@ -163,7 +164,7 @@ void main() {
       await repository.payBill(
           bill: bill, walletId: walletId, idaccount: accountId);
 
-      final tx = (await db.transactionDao.getAll(accountId)).single;
+      final tx = (await giaoDichThat(db, accountId)).single;
       expect(tx.amount, 200000.0);
       expect(tx.type, 'chi');
       expect(tx.walletId, walletId);
@@ -190,7 +191,7 @@ void main() {
         note: 'Kỳ 8, số công tơ 1234',
       );
 
-      final tx = (await db.transactionDao.getAll(accountId)).single;
+      final tx = (await giaoDichThat(db, accountId)).single;
       expect(tx.note, '${kGhiChuTraHoaDon}Tiền điện — Kỳ 8, số công tơ 1234',
           reason: 'Sổ giao dịch nhận diện khoản của hoá đơn bằng tiền tố '
               '(`transactionOwnerOf` dùng startsWith). Ghi chú người dùng '
@@ -202,7 +203,7 @@ void main() {
       await repository.payBill(
           bill: bill, walletId: walletId, idaccount: accountId, note: '   ');
 
-      final tx = (await db.transactionDao.getAll(accountId)).single;
+      final tx = (await giaoDichThat(db, accountId)).single;
       expect(tx.note, '${kGhiChuTraHoaDon}Tiền điện');
     });
 
@@ -293,10 +294,22 @@ void main() {
       final wallet = await db.walletDao.getById(walletId);
       expect(wallet?.balance, 800000.0,
           reason: 'Trừ ví hai lần là mất tiền thật của người dùng.');
-      expect((await db.transactionDao.getAll(accountId)).length, 1,
+      expect((await giaoDichThat(db, accountId)).length, 1,
           reason: 'Giao dịch trùng làm sai toàn bộ báo cáo chi tiêu.');
       expect((await db.billDao.getAll(accountId)).length, 2,
           reason: 'Chỉ được sinh đúng một hoá đơn kỳ sau.');
     });
   });
 }
+
+/// Giao dịch thật của tài khoản — **bỏ khoản mở sổ**.
+///
+/// Từ 2026-09-13 số dư ví suy từ sổ, nên mỗi ví có thêm một khoản "Số dư ban
+/// đầu" làm điểm neo (`wallet/domain/so_du_mo_so.dart`). Nó là hàng thật trong
+/// bảng nhưng không phải thu chi nào — đếm nó vào đây là mọi phép `single`
+/// thành "Too many elements".
+Future<List<Transaction>> giaoDichThat(AppDatabase db, int idaccount) async =>
+    (await db.transactionDao.getAll(idaccount))
+        .where((t) => !laKhoanMoSo(
+            loai: t.type, categoryId: t.categoryId, ghiChu: t.note))
+        .toList();

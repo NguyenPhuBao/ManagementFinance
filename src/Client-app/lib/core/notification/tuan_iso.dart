@@ -42,6 +42,18 @@ String khoaTuan(DateTime d) {
   return '${t.nam}-W${t.tuan.toString().padLeft(2, '0')}';
 }
 
+/// Biên `[from, to)` của **tuần chứa** [d] — thứ Hai 00:00 tới thứ Hai kế tiếp.
+///
+/// Tách riêng ngày 2026-09-15 vì hai chỗ cần đúng phép này: [tuanTruoc] (thông
+/// báo Tổng kết tuần) và `Ky.tuan` của bộ chọn phạm vi trang Phân tích. Hai bản
+/// chép tay sẽ trôi khỏi nhau, và lệch một ngày ở đây **im lặng** — nó chỉ lộ ra
+/// bằng một con số sai mà không ai lần được từ đâu.
+({DateTime from, DateTime to}) bienTuan(DateTime d) {
+  final ngay = _ngayGon(d);
+  final thuHai = ngay.subtract(Duration(days: _thuISO(ngay) - 1));
+  return (from: thuHai, to: thuHai.add(const Duration(days: 7)));
+}
+
 /// Tuần **đã khép lại** ngay trước tuần chứa [now], biên `[from, to)`.
 ///
 /// Biên `to` là **mở**, cùng quy ước với mọi phép cắt khoảng khác trong app
@@ -51,10 +63,9 @@ String khoaTuan(DateTime d) {
 /// Đứng ở Chủ nhật vẫn trả về tuần trước đó, vì Chủ nhật còn nằm **trong** tuần
 /// hiện tại — tổng kết một tuần chưa kết thúc là nói về việc chưa xảy ra xong.
 ({DateTime from, DateTime to}) tuanTruoc(DateTime now) {
-  final homNay = _ngayGon(now);
-  final thuHaiTuanNay = homNay.subtract(Duration(days: _thuISO(homNay) - 1));
+  final tuanNay = bienTuan(now);
   return (
-    from: thuHaiTuanNay.subtract(const Duration(days: 7)),
-    to: thuHaiTuanNay,
+    from: tuanNay.from.subtract(const Duration(days: 7)),
+    to: tuanNay.from,
   );
 }

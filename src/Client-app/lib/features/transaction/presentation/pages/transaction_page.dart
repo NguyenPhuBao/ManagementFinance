@@ -21,11 +21,22 @@ import '../widgets/transaction_list_row.dart';
 import 'add_transaction_page.dart';
 
 class TransactionPage extends StatefulWidget {
-  final int idaccount;
+  /// Mã tài khoản **tiêm vào** — chỉ widget test dùng. Đường chạy thật để
+  /// `null`: route dựng `const TransactionPage()` và trang tự suy từ phiên.
+  final int? idaccount;
+
+  /// Lọc sẵn theo một ví khi mở trang — đường tắt từ màn Quản lý ví.
+  ///
+  /// Bộ lọc theo ví vốn đã có ở `TransactionFilterBar`; đây chỉ là giá trị
+  /// khởi tạo. Chíp "Ví" của thanh lọc đổi nhãn thành tên ví khi nó khác
+  /// `null`, nên bộ lọc đang áp luôn **nhìn thấy được** — một bộ lọc âm thầm
+  /// là người dùng tưởng ví trống.
+  final String? initialWalletId;
 
   const TransactionPage({
     super.key,
-    this.idaccount = 1,
+    this.idaccount,
+    this.initialWalletId,
   });
 
   @override
@@ -37,7 +48,13 @@ class _TransactionPageState extends State<TransactionPage> {
 
   /// Điều kiện lọc hiện tại; giữ nguyên khi đổi tháng — người dùng đang xem
   /// "chi ở ví Tiết kiệm" thì lật sang tháng trước vẫn muốn xem đúng thứ đó.
-  TransactionFilter _filter = const TransactionFilter();
+  ///
+  /// Khởi tạo từ [TransactionPage.initialWalletId] khi trang được mở bằng
+  /// đường tắt từ màn Quản lý ví. Đặt ở `initState` chứ không ở `build`: gán
+  /// trong `build` là mỗi lần dựng lại sẽ giật bộ lọc về ví ban đầu, nên người
+  /// dùng không bỏ lọc ra được.
+  late TransactionFilter _filter =
+      TransactionFilter(walletId: widget.initialWalletId);
 
   // Hai stream tra tên ví/danh mục cho từng dòng. Tạo MỘT lần cho mỗi tài
   // khoản và giữ lại: tạo trong build là mỗi lần đổi tháng lại đăng ký lại,
@@ -79,15 +96,36 @@ class _TransactionPageState extends State<TransactionPage> {
   @override
   Widget build(BuildContext context) {
     final authState = context.watch<AuthBloc>().state;
-    int currentUserId = widget.idaccount;
+    // ⚠️ Trước 2026-09-14 khối này rơi về `widget.idaccount`, vốn mặc định `1`
+    // — **tài khoản admin thật**. Route dựng `const TransactionPage()` nên giá
+    // trị thật sự dùng khi phiên chưa sẵn sàng chính là 1, và trang mở stream
+    // đọc ví + danh mục của admin. Đúng lỗ hổng G4/G35, lọt lưới quét `?? 1`
+    // vì biểu thức viết là `?? widget.idaccount`.
+    int? currentUserId = widget.idaccount;
     if (authState is AuthSuccess && authState.user != null) {
-      currentUserId = int.tryParse(authState.user!.id) ?? widget.idaccount;
+      final parsed = int.tryParse(authState.user!.id);
+      if (parsed != null && parsed > 0) currentUserId = parsed;
     }
-    _ensureLookupStreams(currentUserId);
+
+    if (currentUserId == null) {
+      // Chưa có phiên dùng được: không mở stream, không nạp gì. Trang này chỉ
+      // tới được từ trong shell đã đăng nhập, nên đây là trạng thái thoáng qua
+      // — nó tự đầy ngay khi `AuthBloc` phát `AuthSuccess`.
+      return const Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(
+          child: Text('Chưa xác định được tài khoản đăng nhập'),
+        ),
+      );
+    }
+    // Biến `final` riêng: phép thu hẹp `int?` → `int` ở nhánh trên KHÔNG theo
+    // được vào closure `create:` bên dưới.
+    final int accountId = currentUserId;
+    _ensureLookupStreams(accountId);
 
     return BlocProvider<TransactionBloc>(
       create: (context) => sl<TransactionBloc>()
-        ..add(LoadTransactionsEvent(idaccount: currentUserId)),
+        ..add(LoadTransactionsEvent(idaccount: accountId)),
       child: Builder(
         builder: (blocContext) {
           return Scaffold(

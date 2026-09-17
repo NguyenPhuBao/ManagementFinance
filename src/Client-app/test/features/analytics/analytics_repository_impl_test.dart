@@ -14,6 +14,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/analytics/data/analytics_repository.dart';
+import 'package:flowmoney/features/analytics/domain/pham_vi_ky.dart';
 import 'package:flowmoney/features/analytics/data/analytics_repository_impl.dart';
 import 'package:flowmoney/features/budget/data/datasources/budget_local_data_source.dart';
 import 'package:flowmoney/features/budget/data/repositories/budget_repository.dart';
@@ -69,11 +70,12 @@ void main() {
     String loai = 'chi',
     String? danhMuc = 'c_an',
     int idaccount = 1,
+    String vi = 'w1',
   }) {
     return db.transactionDao.insert(TransactionsCompanion.insert(
       id: id,
       idaccount: idaccount,
-      walletId: 'w1',
+      walletId: vi,
       categoryId: Value(danhMuc),
       amount: soTien,
       type: loai,
@@ -82,8 +84,12 @@ void main() {
     ));
   }
 
-  Future<ThongKeThang> lanDau({int nam = 2026, int thang = 9}) =>
-      repo.watchThang(1, nam: nam, thang: thang, now: now).first;
+  Future<ThongKeKy> lanDau({int nam = 2026, int thang = 9}) =>
+      repo.watchKy(1, ky: Ky.thang(nam, thang), now: now).first;
+
+  /// Cùng đường với [lanDau] nhưng cho **kỳ bất kỳ** — dùng cho các ca đơn vị
+  /// khác tháng, nơi luật ngân sách đổi (mục 7 spec P1).
+  Future<ThongKeKy> lanDauKy(Ky ky) => repo.watchKy(1, ky: ky, now: now).first;
 
   group('đổi hàng Drift sang thống kê', () {
     test('tổng thu/chi, tháng trước, và phần trăm so sánh', () async {
@@ -94,14 +100,98 @@ void main() {
 
       final tk = await lanDau();
 
-      expect(tk.nam, 2026);
-      expect(tk.thang, 9);
+      expect(tk.ky, Ky.thang(2026, 9));
       expect(tk.tong.thu, 5000000);
       expect(tk.tong.chi, 300000);
       expect(tk.tongTruoc.thu, 4000000);
       expect(tk.tongTruoc.chi, 200000);
       expect(tk.thuSoVoiTruoc, closeTo(25, 0.001));
       expect(tk.chiSoVoiTruoc, closeTo(50, 0.001));
+    });
+
+    // Mốc so sánh thứ hai (#2 khảo sát, 2026-09-16). Không có nguồn stream mới:
+    // `watchKy` vốn nạp TOÀN BỘ giao dịch của tài khoản, nên kỳ năm trước chỉ
+    // là một lời gọi `tongThuChi` nữa trên đúng danh sách ấy.
+    test('tổng cùng kỳ năm trước lấy đúng tháng 9 của năm ngoái', () async {
+      await giaoDich(id: 't1', ngay: DateTime(2026, 9, 2), soTien: 5000000, loai: 'thu', danhMuc: null);
+      await giaoDich(id: 't2', ngay: DateTime(2026, 9, 3), soTien: 300000);
+      // Tháng 8 năm ngoái và tháng 10 năm ngoái — hai hàng xóm của kỳ nền, ở
+      // đây để bắt lỗi lệch biên một tháng.
+      await giaoDich(id: 't3', ngay: DateTime(2025, 8, 31), soTien: 111);
+      await giaoDich(id: 't4', ngay: DateTime(2025, 10, 1), soTien: 222);
+      await giaoDich(id: 't5', ngay: DateTime(2025, 9, 1), soTien: 2000000, loai: 'thu', danhMuc: null);
+      await giaoDich(id: 't6', ngay: DateTime(2025, 9, 30), soTien: 150000);
+
+      final tk = await lanDau();
+
+      expect(tk.tongNamTruoc.thu, 2000000);
+      expect(
+        tk.tongNamTruoc.chi,
+        150000,
+        reason: 'chỉ tháng 9/2025; 31/08 và 01/10 nằm ngoài biên [from, to)',
+      );
+      expect(tk.thuSoVoiNamTruoc, closeTo(150, 0.001));
+      expect(tk.chiSoVoiNamTruoc, closeTo(100, 0.001));
+      expect(
+        tk.tongTruoc.thu,
+        0,
+        reason: 'kỳ liền trước là tháng 8/2026 — vẫn là một con số RIÊNG, '
+            'không được cùng chỗ với kỳ năm trước',
+      );
+    });
+
+    test('tài khoản chưa có dữ liệu năm trước thì không có phần trăm', () async {
+      await giaoDich(id: 't1', ngay: DateTime(2026, 9, 2), soTien: 5000000, loai: 'thu', danhMuc: null);
+      final tk = await lanDau();
+      expect(tk.tongNamTruoc.thu, 0);
+      expect(
+        tk.thuSoVoiNamTruoc,
+        isNull,
+        reason: 'đây là ca THƯỜNG của mọi tài khoản chưa đủ một năm tuổi; in '
+            '"tăng 100%" ở đó là bịa một con số',
+      );
+    });
+
+    // Lịch chi tiêu (#6 khảo sát, 2026-09-16). Cũng không có nguồn stream mới:
+    // `trongKy` đã có sẵn trong `_dung` cho ba khối mượn từ trang Báo cáo.
+    test('lịch chi tiêu gom đúng theo ngày và chỉ đếm khoản chi', () async {
+      await giaoDich(id: 't1', ngay: DateTime(2026, 9, 11, 8), soTien: 100000);
+      await giaoDich(id: 't2', ngay: DateTime(2026, 9, 11, 20), soTien: 250000);
+      await giaoDich(id: 't3', ngay: DateTime(2026, 9, 12), soTien: 70000);
+      await giaoDich(id: 't4', ngay: DateTime(2026, 9, 12), soTien: 900000, loai: 'thu', danhMuc: null);
+      // Ngoài kỳ — bắt lỗi lệch biên.
+      await giaoDich(id: 't5', ngay: DateTime(2026, 8, 31), soTien: 500000);
+
+      final tk = await lanDau();
+
+      expect(tk.lichChiTieu.keys.toSet(),
+          {DateTime(2026, 9, 11), DateTime(2026, 9, 12)});
+      expect(tk.lichChiTieu[DateTime(2026, 9, 11)]!.tongChi, 350000);
+      expect(tk.lichChiTieu[DateTime(2026, 9, 11)]!.soKhoan, 2);
+      expect(
+        tk.lichChiTieu[DateTime(2026, 9, 12)]!.soKhoan,
+        1,
+        reason: 'khoản THU cùng ngày không được lên lịch chi tiêu',
+      );
+    });
+
+    test('ngày chi nhiều nhất của Số liệu nhanh KHỚP ô đậm nhất của lịch',
+        () async {
+      await giaoDich(id: 't1', ngay: DateTime(2026, 9, 3), soTien: 100000);
+      await giaoDich(id: 't2', ngay: DateTime(2026, 9, 7, 9), soTien: 400000);
+      await giaoDich(id: 't3', ngay: DateTime(2026, 9, 7, 18), soTien: 300000);
+
+      final tk = await lanDau();
+
+      final dinh = tk.lichChiTieu.entries
+          .reduce((a, b) => a.value.tongChi >= b.value.tongChi ? a : b);
+      expect(
+        tk.soLieu.ngayChiNhieuNhat,
+        dinh.key,
+        reason: 'hai khối đọc chung một phép gom; hai vòng lặp song song cho '
+            'cùng khái niệm là cách chắc nhất để chúng trôi khỏi nhau',
+      );
+      expect(tk.soLieu.chiNgayNhieuNhat, dinh.value.tongChi);
     });
 
     test('transfer không vào thu lẫn chi, kể cả khi mang danh mục', () async {
@@ -161,6 +251,36 @@ void main() {
               'lọc `deletedAt` nên repository phải tự truy vấn.');
     });
 
+    test('⚠️ danh mục MẶC ĐỊNH TOÀN CỤC vẫn giữ tên thật', () async {
+      // Hình dạng thật trên máy: `sync_engine` quy `is_default = true` thành
+      // **`idaccount = 0`** (sync_engine.dart:733), nên hàng mặc định toàn cục
+      // KHÔNG mang mã tài khoản của người dùng. Truy vấn lọc đúng một
+      // `idaccount` sẽ bỏ sót chúng, và giao dịch cũ trỏ vào đó mất tên.
+      //
+      // Đo trên CSDL dev 2026-09-15: tài khoản 10 có đúng **hai** danh mục
+      // như thế — `Chi khác` và `Làm thêm`, cả hai `Create_by = 1`,
+      // `is_default = true`, đã xoá mềm hôm 2026-09-07 khi backend thu bộ
+      // khuôn về 13 UUID. Trên máy ảo, khối Xu hướng hiện **hai chip cùng
+      // mang tên "Danh mục đã xoá"** — hai danh mục khác nhau, một cái tên.
+      await db.categoryDao.insert(CategoriesCompanion.insert(
+        id: 'c_global',
+        idaccount: 0,
+        name: 'Chi khác',
+        classify: 'chi',
+        isDefault: const Value(true),
+        deletedAt: Value(now),
+        updatedAt: now,
+      ));
+      await giaoDich(
+          id: 't1', ngay: DateTime(2026, 9, 2), soTien: 100000, danhMuc: 'c_global');
+
+      final tk = await lanDau();
+
+      expect(tk.danhMuc.single.ten, 'Chi khác',
+          reason: 'Lọc theo CỜ `isDefault`, không theo tài khoản — cùng khuôn '
+              'với `categoryDao.getNamesInUse`. Tên thật còn nguyên trong hàng.');
+    });
+
     test('khoản không danh mục thành "Chưa phân loại", danh mục lạ thành "Danh mục đã xoá"',
         () async {
       await giaoDich(id: 't1', ngay: DateTime(2026, 9, 2), soTien: 100000, danhMuc: null);
@@ -202,6 +322,67 @@ void main() {
               'nhãn sang "% tổng chi" khi thấy null.');
     });
 
+    // ⚠️ Luật thêm 2026-09-15 (P1, mục 7 spec). `BudgetView.spent` đếm theo kỳ
+    // của CHÍNH ngân sách ấy, không theo kỳ đang xem. Xem một tuần mà thanh vẽ
+    // mức chi cả tháng là đặt hai kỳ khác nhau lên cùng một tỉ lệ — sai IM
+    // LẶNG, con số trông rất hợp lý.
+    test('kỳ TUẦN thì không gắn ngân sách vào dòng nào', () async {
+      await budgets.addBudget(
+        idaccount: 1,
+        categoryId: 'c_an',
+        amount: 1000000,
+        startDate: DateTime(2026, 9, 1),
+        endDate: null,
+        recurrence: true,
+        timeRecurrence: 'Month',
+      );
+      await giaoDich(id: 't1', ngay: DateTime(2026, 9, 15), soTien: 320000, danhMuc: 'c_an');
+
+      final tk = await lanDauKy(Ky.tuan(DateTime(2026, 9, 17)));
+
+      expect(tk.danhMuc, isNotEmpty, reason: 'tuần này có khoản chi thật');
+      expect(
+        tk.danhMuc.every((d) => d.nganSachHanMuc == null),
+        isTrue,
+        reason: 'hạn mức tháng cạnh số liệu một tuần là so hai kỳ khác nhau; '
+            'dòng phải rơi về nhãn "% tổng chi"',
+      );
+    });
+
+    test('kỳ NĂM cũng không gắn ngân sách', () async {
+      await budgets.addBudget(
+        idaccount: 1,
+        categoryId: 'c_an',
+        amount: 1000000,
+        startDate: DateTime(2026, 1, 1),
+        endDate: null,
+        recurrence: true,
+        timeRecurrence: 'Month',
+      );
+      await giaoDich(id: 't1', ngay: DateTime(2026, 9, 2), soTien: 320000, danhMuc: 'c_an');
+
+      final tk = await lanDauKy(Ky.nam(2026));
+
+      expect(tk.danhMuc.every((d) => d.nganSachHanMuc == null), isTrue);
+    });
+
+    test('kỳ THÁNG vẫn gắn ngân sách như cũ — luật chỉ siết đơn vị khác', () async {
+      await budgets.addBudget(
+        idaccount: 1,
+        categoryId: 'c_an',
+        amount: 1000000,
+        startDate: DateTime(2026, 9, 1),
+        endDate: null,
+        recurrence: true,
+        timeRecurrence: 'Month',
+      );
+      await giaoDich(id: 't1', ngay: DateTime(2026, 9, 2), soTien: 320000, danhMuc: 'c_an');
+
+      final tk = await lanDauKy(Ky.thang(2026, 9));
+
+      expect(tk.danhMuc.single.nganSachHanMuc, 1000000);
+    });
+
     test('ngân sách ĐÃ HẾT HẠN trước tháng đang xem thì không tính', () async {
       await budgets.addBudget(
         idaccount: 1,
@@ -230,8 +411,8 @@ void main() {
       final tk = await lanDau();
 
       expect(tk.chuoi.length, 6);
-      expect((tk.chuoi.first.nam, tk.chuoi.first.thang), (2026, 4));
-      expect((tk.chuoi.last.nam, tk.chuoi.last.thang), (2026, 9));
+      expect(tk.chuoi.first.ky, Ky.thang(2026, 4));
+      expect(tk.chuoi.last.ky, Ky.thang(2026, 9));
       expect(tk.chuoi.first.tong.chi, 800000,
           reason: 'Chuỗi nhìn xa hơn hai tháng mà `tong`/`tongTruoc` cần. Lọc '
               '`txs` theo tháng đang xem trước khi dựng chuỗi là điểm đầu '
@@ -253,8 +434,8 @@ void main() {
 
   group('stream', () {
     test('ghi thêm giao dịch thì phát lại số mới', () async {
-      final ds = <ThongKeThang>[];
-      final sub = repo.watchThang(1, nam: 2026, thang: 9, now: now).listen(ds.add);
+      final ds = <ThongKeKy>[];
+      final sub = repo.watchKy(1, ky: Ky.thang(2026, 9), now: now).listen(ds.add);
       addTearDown(sub.cancel);
 
       await Future<void>.delayed(const Duration(milliseconds: 50));
@@ -265,6 +446,489 @@ void main() {
           reason: 'Trang chủ nghe stream nên ghi một khoản là số nhúc nhích '
               'ngay; trang Phân tích đứng im tới khi mở lại là hai màn hình '
               'nói hai con số về cùng một tháng.');
+    });
+  });
+
+  group('phân loại dòng tiền', () {
+    /// Danh mục vay/nợ, mặc định **đã xoá mềm** — đó là ca đáng canh: giao
+    /// dịch cũ vẫn trỏ vào nó, và repository cố ý đọc cả hàng đã xoá mềm.
+    Future<void> danhMucVayNo({bool daXoa = true}) =>
+        db.categoryDao.insert(CategoriesCompanion.insert(
+          id: 'c_no',
+          idaccount: 1,
+          name: 'Trả nợ',
+          classify: 'vay_no',
+          isDeleted: Value(daXoa),
+          deletedAt: daXoa ? Value(DateTime(2026, 9, 1)) : const Value.absent(),
+          updatedAt: now,
+        ));
+
+    test('classify lấy từ danh mục, kể cả danh mục đã xoá mềm', () async {
+      await danhMucVayNo();
+      await giaoDich(
+          id: 't1', ngay: DateTime(2026, 9, 15), soTien: 1000, danhMuc: 'c_no');
+
+      final tk = await lanDau();
+
+      expect(tk.latPhanLoai.single.phanLoai, 'vay_no',
+          reason: 'Giao dịch cũ trỏ vào danh mục đã xoá vẫn phải giữ đúng '
+              'phân loại — cùng lý do repository đọc cả hàng đã xoá mềm để '
+              'giữ TÊN. Rơi về "chi" là vòng tròn nói sai tỷ trọng.');
+    });
+
+    test('lát chi KHÔNG gộp khoản chi gắn danh mục vay/nợ', () async {
+      await danhMucVayNo();
+      await giaoDich(
+          id: 't1', ngay: DateTime(2026, 9, 2), soTien: 300000, danhMuc: 'c_an');
+      await giaoDich(
+          id: 't2', ngay: DateTime(2026, 9, 3), soTien: 100000, danhMuc: 'c_no');
+
+      final tk = await lanDau();
+
+      expect(tk.tong.chi, 400000, reason: 'Thẻ đầu trang vẫn tính theo type');
+      expect(tk.latPhanLoai.firstWhere((l) => l.phanLoai == 'chi').soTien,
+          300000,
+          reason: 'Lát Chi cố ý khác Tổng chi — §2.1 spec');
+      expect(tk.latPhanLoai.firstWhere((l) => l.phanLoai == 'vay_no').soTien,
+          100000);
+    });
+
+    test('danhMucCua trả danh mục của đúng lát, đã tra tên và biểu tượng',
+        () async {
+      await giaoDich(
+          id: 't1', ngay: DateTime(2026, 9, 2), soTien: 300000, danhMuc: 'c_an');
+      await giaoDich(
+          id: 't2',
+          ngay: DateTime(2026, 9, 3),
+          soTien: 900000,
+          loai: 'thu',
+          danhMuc: null);
+
+      final tk = await lanDau();
+
+      expect(tk.danhMucCua('chi').single.ten, 'Ăn uống');
+      expect(tk.danhMucCua('chi').single.icon, 'restaurant');
+      expect(tk.danhMucCua('thu').single.ten, 'Chưa phân loại');
+      expect(tk.danhMucCua('vay_no'), isEmpty);
+    });
+
+    test('ngân sách chỉ gắn vào lát chi', () async {
+      await giaoDich(
+          id: 't1', ngay: DateTime(2026, 9, 2), soTien: 300000, danhMuc: 'c_an');
+      await giaoDich(
+          id: 't2',
+          ngay: DateTime(2026, 9, 3),
+          soTien: 900000,
+          loai: 'thu',
+          danhMuc: null);
+
+      final tk = await lanDau();
+
+      expect(tk.danhMucCua('thu').single.coNganSach, isFalse,
+          reason: 'BudgetRepository không có khái niệm ngân sách thu — gắn vào '
+              'lát thu là hiện một hạn mức không tồn tại');
+    });
+
+    test('chuoiDanhMuc có khoá cho mỗi danh mục phát sinh trong 6 tháng',
+        () async {
+      await giaoDich(
+          id: 't1', ngay: DateTime(2026, 7, 10), soTien: 100000, danhMuc: 'c_an');
+      await giaoDich(
+          id: 't2', ngay: DateTime(2026, 9, 10), soTien: 300000, danhMuc: 'c_an');
+
+      final tk = await lanDau();
+
+      expect(tk.chuoiDanhMuc.keys, contains('c_an'));
+      expect(tk.chuoiDanhMuc['c_an']!.length, 6);
+      expect(tk.chuoiDanhMuc['c_an']!.last.tong.chi, 300000);
+      expect(tk.chuoiDanhMuc.keys, isNot(contains('c_xe')),
+          reason: 'Danh mục không phát sinh thì không có chip xu hướng');
+    });
+  });
+
+  // ── Bốn khối mượn từ trang Báo cáo (P2, 2026-09-15) ──────────────────────
+  //
+  // Trang Phân tích vốn nghèo hơn trang Báo cáo một cách vô lý: cùng dữ liệu,
+  // cùng tầng domain, mà không có số liệu nhanh, phân bổ theo ví, top 5 hay
+  // dòng tiền. Bốn phép tính nay là hàm thuần dùng chung ở `bao_cao_xuat.dart`
+  // — bộ ca này canh việc repository **nối đúng** vào chúng.
+  group('bốn khối mượn từ trang Báo cáo', () {
+    test('số liệu nhanh: chi mỗi ngày chia cho số ngày CỦA KỲ', () async {
+      await giaoDich(id: 't1', ngay: DateTime(2026, 9, 2), soTien: 300000, danhMuc: 'c_an');
+      await giaoDich(id: 't2', ngay: DateTime(2026, 9, 10), soTien: 600000, danhMuc: 'c_an');
+
+      final tk = await lanDau();
+
+      expect(tk.soLieu.chiMoiNgay, 900000 / 30,
+          reason: 'tháng 9 có 30 ngày, không phải 2 ngày có giao dịch');
+      expect(tk.soLieu.ngayChiNhieuNhat, DateTime(2026, 9, 10));
+      expect(tk.soLieu.chiNgayNhieuNhat, 600000);
+      expect(tk.soLieu.khoanChiLonNhat?.id, 't2');
+    });
+
+    test('phân bổ theo ví mang tên ví, giảm dần theo chi', () async {
+      await db.walletDao.insert(WalletsCompanion.insert(
+        id: 'w2',
+        idaccount: 1,
+        name: 'Ngân hàng',
+        balance: const Value(5000000.0),
+        updatedAt: now,
+      ));
+      await giaoDich(id: 't1', ngay: DateTime(2026, 9, 2), soTien: 300000, danhMuc: 'c_an');
+      await giaoDich(id: 't2', ngay: DateTime(2026, 9, 3), soTien: 900000, danhMuc: 'c_an', vi: 'w2');
+
+      final tk = await lanDau();
+
+      expect(tk.theoVi.length, 2);
+      expect(tk.theoVi.first.ten, 'Ngân hàng', reason: 'ví chi nhiều đứng trước');
+      expect(tk.theoVi.first.chi, 900000);
+      expect(tk.theoVi.last.ten, 'Tiền mặt');
+      expect(tk.theoVi.last.soGiaoDich, 1);
+    });
+
+    test('top khoản chi cắt 5 và sắp giảm dần', () async {
+      for (var i = 1; i <= 7; i++) {
+        await giaoDich(
+            id: 't$i', ngay: DateTime(2026, 9, i), soTien: 100000.0 * i, danhMuc: 'c_an');
+      }
+
+      final tk = await lanDau();
+
+      expect(tk.topChi.length, 5);
+      expect(tk.topChi.first.soTien, 700000);
+      expect(tk.topChi.first.tenDanhMuc, 'Ăn uống',
+          reason: 'tên danh mục phải được tra sẵn ở repository');
+    });
+
+    test('dòng tiền suy ngược từ tổng số dư ví', () async {
+      await giaoDich(id: 't1', ngay: DateTime(2026, 9, 2), soTien: 300000, danhMuc: 'c_an');
+      await giaoDich(id: 't2', ngay: DateTime(2026, 10, 5), soTien: 200000, danhMuc: 'c_an');
+
+      final tk = await lanDau();
+
+      // Ví w1 có 10.000.000. Sau kỳ có một khoản chi 200.000, nên cuối kỳ
+      // phải là 10.200.000; trong kỳ chi 300.000 nên đầu kỳ là 10.500.000.
+      expect(tk.dongTien!.cuoiKy, 10200000);
+      expect(tk.dongTien!.dauKy, 10500000);
+      expect(tk.dongTien!.thayDoi, -300000);
+    });
+
+    test('ví KHÔNG tính vào tổng thì không vào số dư cuối kỳ', () async {
+      // Cùng luật với trang chủ và trang Báo cáo: `viTinhVaoTong`.
+      await db.walletDao.insert(WalletsCompanion.insert(
+        id: 'w_ngoai',
+        idaccount: 1,
+        name: 'Ví không tính',
+        balance: const Value(7000000.0),
+        includeInTotal: const Value(false),
+        updatedAt: now,
+      ));
+
+      final tk = await lanDau();
+
+      expect(tk.dongTien!.cuoiKy, 10000000,
+          reason: 'ví người dùng đã loại khỏi tổng không được phình con số');
+    });
+  });
+
+  // ── Hai biểu đồ vay/nợ — A8 #4 và #5 (2026-09-15) ────────────────────────
+  group('chuỗi vay/nợ', () {
+    setUp(() async {
+      await db.categoryDao.insert(CategoriesCompanion.insert(
+        id: 'c_chovay',
+        idaccount: 1,
+        name: 'Cho vay',
+        classify: 'vay_no',
+        updatedAt: now,
+      ));
+      await db.categoryDao.insert(CategoriesCompanion.insert(
+        id: 'c_thuno',
+        idaccount: 1,
+        name: 'Thu nợ',
+        classify: 'vay_no',
+        updatedAt: now,
+      ));
+      await db.categoryDao.insert(CategoriesCompanion.insert(
+        id: 'c_tuydat',
+        idaccount: 1,
+        name: 'Nợ Bảo',
+        classify: 'vay_no',
+        updatedAt: now,
+      ));
+    });
+
+    test('repository tra TÊN danh mục để đọc vai', () async {
+      await giaoDich(id: 'v1', ngay: DateTime(2026, 9, 2), soTien: 500000, danhMuc: 'c_chovay');
+      await giaoDich(id: 'v2', ngay: DateTime(2026, 9, 3), soTien: 200000, loai: 'thu', danhMuc: 'c_thuno');
+
+      final tk = await lanDau();
+
+      expect(tk.chuoiVayNo.length, 6);
+      expect(tk.chuoiVayNo.last.choVay, 500000,
+          reason: 'vai đọc từ tên, mà tên chỉ repository mới tra được');
+      expect(tk.chuoiVayNo.last.thuNo, 200000);
+    });
+
+    test('danh mục tự đặt tên rơi vào "khác", tách theo chiều tiền', () async {
+      await giaoDich(id: 'v1', ngay: DateTime(2026, 9, 2), soTien: 111000, danhMuc: 'c_tuydat');
+
+      final tk = await lanDau();
+
+      expect(tk.chuoiVayNo.last.khacRa, 111000);
+      expect(tk.chuoiVayNo.last.choVay, 0);
+    });
+
+    test('khoản chi thường không lọt vào chuỗi vay/nợ', () async {
+      await giaoDich(id: 't1', ngay: DateTime(2026, 9, 2), soTien: 300000, danhMuc: 'c_an');
+
+      final tk = await lanDau();
+
+      expect(tk.chuoiVayNo.every((d) => d.rong), isTrue);
+    });
+  });
+
+  // ── Dự báo 30 ngày (2026-09-16) ──────────────────────────────────────────
+  //
+  // Phép tính đã test ở `du_bao_dong_tien_test.dart`; ở đây chỉ kiểm phần
+  // NỐI: ba nguồn mới có được đăng ký không, tên ví có tra được không, và
+  // nguồn ngân sách có đúng là nguồn tra tại `now` chứ không phải tại mốc kỳ
+  // đang xem không.
+  group('dự báo 30 ngày', () {
+    Future<void> hoaDon({
+      String id = 'b1',
+      required DateTime han,
+      double soTien = 800000,
+      String? danhMuc = 'c_an',
+    }) =>
+        db.billDao.insert(BillsCompanion.insert(
+          id: id,
+          idaccount: 1,
+          walletId: const Value('w1'),
+          categoryId: Value(danhMuc),
+          name: 'Tiền điện',
+          amount: soTien,
+          startDate: Value(DateTime(han.year, han.month - 1, han.day)),
+          periodEnd: Value(han),
+          dueDate: han,
+          isRecurrence: const Value(true),
+          timeRecurrence: const Value('Month'),
+          recurrence: const Value('monthly'),
+          anchorDay: Value(han.day),
+          syncStatus: const Value('synced'),
+          updatedAt: now,
+        ));
+
+    test('hoá đơn, mục tiêu và ví nối vào duBaoCua; số dư là tổng ví hiện tại',
+        () async {
+      await hoaDon(han: DateTime(2026, 9, 20));
+      await db.walletDao.insert(WalletsCompanion.insert(
+        id: 'w_tk',
+        idaccount: 1,
+        name: 'Tiết kiệm',
+        type: const Value('saving'),
+        balance: const Value(0.0),
+        updatedAt: now,
+      ));
+      await db.goalDao.insert(GoalsCompanion.insert(
+        id: 'g1',
+        idaccount: 1,
+        name: 'Mua xe',
+        targetAmount: 50000000,
+        targetDate: DateTime(2028, 1, 1),
+        walletId: const Value('w_tk'),
+        cycleTakeMoney: const Value('Month'),
+        timeCycleTakeMoney: Value(DateTime(2026, 9, 15, 8)),
+        autoDepositAmount: const Value(500000.0),
+        autoDepositWalletId: const Value('w1'),
+        autoDepositLastRun: Value(DateTime(2026, 9, 1)),
+        updatedAt: now,
+      ));
+
+      final d = (await lanDau()).duBao!;
+
+      expect(d.soDuHienTai, 10000000);
+      expect(d.camKet.map((c) => c.ten).toList(), ['Mua xe', 'Tiền điện']);
+      expect(d.camKet.first.ngay, DateTime(2026, 9, 15));
+      expect(d.camKet.first.tenVi, 'Tiền mặt', reason: 'tên ví tra được');
+      expect(d.conTieuDuoc, 9200000,
+          reason: 'trích vào ví tính vào tổng → 0 ròng; hoá đơn trừ 800k');
+    });
+
+    test('⚠️ xem THÁNG CŨ: dự báo vẫn từ hôm nay, ngân sách lấy số đã chi HIỆN TẠI',
+        () async {
+      await hoaDon(han: DateTime(2026, 9, 20));
+      await db.budgetDao.insert(BudgetsCompanion.insert(
+        id: 'ns1',
+        idaccount: 1,
+        categoryId: const Value('c_an'),
+        amount: 3000000,
+        startDate: DateTime(2026, 9, 1),
+        recurrence: const Value(true),
+        timeRecurrence: const Value('Month'),
+        updatedAt: now,
+      ));
+      await giaoDich(id: 't1', ngay: DateTime(2026, 9, 5), soTien: 1000000);
+
+      final thangNay = (await lanDau()).duBao!;
+      final thangCu = (await lanDauKy(Ky.thang(2026, 6))).duBao!;
+
+      expect(thangNay.nganSachConLai, 1200000,
+          reason:
+              '3.000.000 − đã chi 1.000.000 − hoá đơn 800.000 cùng danh mục');
+      expect(thangCu.camKet.map((c) => c.ten).toList(),
+          thangNay.camKet.map((c) => c.ten).toList());
+      expect(thangCu.nganSachConLai, thangNay.nganSachConLai,
+          reason: 'Bẫy 1 spec: nguồn ngân sách của kỳ đang xem tra `spent` tại '
+              'cuối tháng 6 → 0 đã chi → 2.200.000. Dự báo phải có nguồn riêng '
+              'tại `now`.');
+    });
+
+    test(
+        '⚠️ ví ĐÃ XOÁ MỀM không phình "số dư cuối kỳ" — nhưng tên nó vẫn tra được',
+        () async {
+      // Repository đọc ví bằng truy vấn thẳng KHÔNG lọc `deletedAt`, có chủ ý:
+      // giao dịch cũ vẫn trỏ vào ví đã xoá và bảng tra tên cần hàng ấy. Nhưng
+      // `balance` của nó thì KHÔNG phải tiền của người dùng nữa.
+      await db.walletDao.insert(WalletsCompanion.insert(
+        id: 'w_xoa',
+        idaccount: 1,
+        name: 'Ví đã xoá',
+        balance: const Value(7000000.0),
+        updatedAt: now,
+      ));
+      await giaoDich(
+          id: 't_cu', ngay: DateTime(2026, 9, 3), soTien: 100000, vi: 'w_xoa');
+      await db.walletDao.softDelete('w_xoa');
+
+      final tk = await lanDau();
+
+      expect(tk.duBao!.soDuHienTai, 10000000,
+          reason: 'chỉ ví w1; 7.000.000 của ví đã xoá không được cộng');
+      expect(tk.dongTien!.cuoiKy, 10000000,
+          reason: 'Khối Dòng tiền và thác nước cùng đọc con số này. Cộng cả ví '
+              'đã xoá là "số dư cuối kỳ" nói một con số người dùng không có.');
+      expect(tk.theoVi.map((v) => v.ten), contains('Ví đã xoá'),
+          reason: 'Tên vẫn phải tra được — đó là lý do truy vấn không lọc.');
+    });
+
+    test('không có ví thì duBao null', () async {
+      await db.walletDao.softDelete('w1');
+      final tk = await lanDau();
+      expect(tk.duBao, isNull);
+    });
+
+    test('ghi thêm hoá đơn thì stream phát lại với cam kết mới', () async {
+      final ds = <int>[];
+      final sub = repo
+          .watchKy(1, ky: Ky.thang(2026, 9), now: now)
+          .listen((tk) => ds.add(tk.duBao?.camKet.length ?? -1));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await hoaDon(han: DateTime(2026, 9, 20));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await sub.cancel();
+      expect(ds.first, 0);
+      expect(ds.last, 1);
+    });
+  });
+
+  group('Tổng tài sản theo thời gian (#5)', () {
+    test('sáu điểm, điểm cuối bằng đúng tổng số dư ví', () async {
+      final tk = await lanDau();
+
+      expect(tk.taiSan.length, kSoKyXuHuong);
+      expect(tk.taiSan.last.tong, 10000000.0,
+          reason: 'Điểm cuối phải khớp con số Trang chủ — đó là mốc để người '
+              'dùng tin cả đường.');
+    });
+
+    test('suy ngược: khoản thu trong kỳ hạ điểm của kỳ trước', () async {
+      await giaoDich(
+          id: 't1',
+          ngay: DateTime(2026, 9, 5),
+          soTien: 300000,
+          loai: 'thu',
+          danhMuc: 'c_an');
+      final tk = await lanDau();
+
+      expect(tk.taiSan.last.tong, 10000000.0);
+      expect(tk.taiSan[kSoKyXuHuong - 2].tong, 9700000.0);
+    });
+
+    test('⚠️ khoản CHUYỂN vẫn vào đường dù khoanVaoThongKe loại nó', () async {
+      // Ví đích nằm NGOÀI tổng, nên khoản chuyển làm tài sản giảm thật. Bản
+      // sai dựng đường từ `trongKy` (đã lọc qua `khoanVaoThongKe`) sẽ bỏ qua
+      // nó và vẽ một đường phẳng — im lặng.
+      await db.walletDao.insert(WalletsCompanion.insert(
+        id: 'wNgoai',
+        idaccount: 1,
+        name: 'Ví ngoài tổng',
+        balance: const Value(400000.0),
+        includeInTotal: const Value(false),
+        updatedAt: now,
+      ));
+      await db.transactionDao.insert(TransactionsCompanion.insert(
+        id: 'tChuyen',
+        idaccount: 1,
+        walletId: 'w1',
+        walletTransfer: const Value('wNgoai'),
+        amount: 400000,
+        type: 'transfer',
+        date: DateTime(2026, 9, 5),
+        updatedAt: now,
+      ));
+      final tk = await lanDau();
+
+      expect(tk.taiSan.last.tong, 10000000.0);
+      expect(tk.taiSan[kSoKyXuHuong - 2].tong, 10400000.0,
+          reason: 'Trước khi chuyển ra ví ngoài tổng, 400.000 ấy vẫn nằm '
+              'trong tài sản.');
+    });
+
+    test('⚠️ khoản ĐIỀU CHỈNH SỐ DƯ vẫn vào đường', () async {
+      // `khoanVaoThongKe` loại nó khỏi thu/chi vì nó là phép sửa sổ — nhưng nó
+      // làm đổi số dư ví thật, nên đường tài sản phải thấy nó.
+      await db.transactionDao.insert(TransactionsCompanion.insert(
+        id: 'tDieuChinh',
+        idaccount: 1,
+        walletId: 'w1',
+        amount: 250000,
+        type: 'thu',
+        note: const Value('Điều chỉnh số dư'),
+        date: DateTime(2026, 9, 5),
+        updatedAt: now,
+      ));
+      final tk = await lanDau();
+
+      expect(tk.taiSan[kSoKyXuHuong - 2].tong, 9750000.0);
+    });
+
+    test('ví đã xoá mềm không cộng vào đường', () async {
+      await db.walletDao.insert(WalletsCompanion.insert(
+        id: 'wXoa',
+        idaccount: 1,
+        name: 'Ví đã xoá',
+        balance: const Value(7000000.0),
+        updatedAt: now,
+      ));
+      await db.walletDao.softDelete('wXoa');
+      final tk = await lanDau();
+
+      expect(tk.taiSan.last.tong, 10000000.0,
+          reason: 'Truy vấn ví của repository cố ý KHÔNG lọc `deletedAt` — '
+              'đúng cái bẫy G42. Vế lọc nằm trong `viTinhVaoTong`.');
+    });
+
+    test('giaoDichDauTien là ngày của giao dịch cũ nhất', () async {
+      await giaoDich(id: 't1', ngay: DateTime(2026, 9, 5), soTien: 1000);
+      await giaoDich(id: 't2', ngay: DateTime(2026, 7, 2), soTien: 1000);
+      final tk = await lanDau();
+
+      expect(tk.giaoDichDauTien, DateTime(2026, 7, 2));
+    });
+
+    test('giaoDichDauTien null khi chưa có giao dịch nào', () async {
+      final tk = await lanDau();
+      expect(tk.giaoDichDauTien, isNull);
     });
   });
 }

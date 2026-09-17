@@ -34,6 +34,12 @@ void _createLegacyNonCategoryTables(dynamic database, {int atVersion = 2}) {
       ? ', sync_retry_count INTEGER NOT NULL DEFAULT 0, sync_error TEXT, '
           'sync_blocked_until INTEGER'
       : '';
+  // Cùng lý do, cột khác: `status` (lưu trữ ví) được thêm ở bước `from < 6`.
+  // Fixture khai `user_version >= 6` mà thiếu nó là một trạng thái KHÔNG tồn
+  // tại trên máy người dùng, và chuyện đó không lộ ra cho tới khi v22 chạy
+  // `UPDATE wallets SET sync_status = 'pending' WHERE status = 'inactive'`.
+  final walletsStatusCol =
+      atVersion >= 6 ? ", status TEXT NOT NULL DEFAULT 'active'" : '';
   database.execute('''
     CREATE TABLE wallets (
       id TEXT NOT NULL PRIMARY KEY,
@@ -46,7 +52,7 @@ void _createLegacyNonCategoryTables(dynamic database, {int atVersion = 2}) {
       colour TEXT NOT NULL DEFAULT '#4CAF50',
       is_default INTEGER NOT NULL DEFAULT 0,
       is_deleted INTEGER NOT NULL DEFAULT 0,
-      sync_status TEXT NOT NULL DEFAULT 'pending'$walletsSyncFailureCols,
+      sync_status TEXT NOT NULL DEFAULT 'pending'$walletsStatusCol$walletsSyncFailureCols,
       updated_at INTEGER NOT NULL
     )
   ''');

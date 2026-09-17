@@ -1,3 +1,4 @@
+import '../../features/wallet/domain/wallet_status.dart';
 import '../../features/wallet/domain/wallet_type.dart';
 
 /// Chuẩn hóa enum nội bộ của Client trước khi gửi sang Sync API.
@@ -88,13 +89,17 @@ class SyncPayloadNormalizer {
     // đợi vĩnh viễn — im lặng, không log, không gì trên màn hình.
     normalized['type'] =
         WalletType.tuKhoa(normalized['type']?.toString()).khoaGuiLen;
-    // ⚠️ KHÔNG chuẩn hoá `status` ở đây, vì nó cố ý không có mặt trong
-    // payload (G28). Lý do ban đầu: cột `Status` của PostgreSQL là varchar(7)
-    // còn giá trị cần gửi là 'Inactive' — 8 ký tự. CSDL dev đã nới lên
-    // varchar(20) tối 2026-09-10, nhưng việc nối lại người dùng chốt để sau.
-    // Xem chú thích dài ở nhánh kéo về ví trong `sync_engine.dart`.
-    // `WalletStatus.khoaGuiLen` vẫn giữ nguyên và vẫn được test canh, để ngày
-    // mở lại thì chỉ cần một dòng ở đây.
+    // `chk_wallet_status` chỉ nhận đúng hai chuỗi `'Active'` và `'Inactive'`.
+    // Mọi giá trị lạ, `null` và chuỗi rỗng đều về `'Active'` qua `tuKhoa` —
+    // giữ nguyên là để chúng đi thẳng lên server rồi vỡ CHECK, và ví **kẹt
+    // hàng đợi đẩy vĩnh viễn, im lặng**. Cùng khuôn `type` ngay trên (bài học
+    // `ewallet`/`debt`, migration v20).
+    //
+    // Mở lại ngày 2026-09-14 (G28). Cột `Status` từng là `varchar(7)` trong
+    // khi `'Inactive'` dài 8 ký tự, nên trước đó client cố ý không gửi cột
+    // này; đo lại cùng ngày: `varchar(20)`, `NOT NULL`, `DEFAULT 'Active'`.
+    normalized['status'] =
+        WalletStatus.tuKhoa(normalized['status']?.toString()).khoaGuiLen;
     return normalized;
   }
 

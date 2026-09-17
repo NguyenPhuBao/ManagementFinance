@@ -1,6 +1,6 @@
 # Mục tiêu tiết kiệm — thiết kế, lý do, và những cái bẫy
 
-**Cập nhật:** 2026-09-11 (mục 3.22 và mục 8 — G32 đóng sau khi gộp `main` @ `cc65f4f`)
+**Cập nhật:** 2026-09-13 (G37: đường nạp/rút mục tiêu thôi ghi thẳng số dư ví — nó suy từ sổ giao dịch, `SoDuViService` là nơi duy nhất ghi) · bản trước 2026-09-11 (mục 3.22 và mục 8 — G32 đóng sau khi gộp `main` @ `cc65f4f`)
 **Trạng thái:** hoạt động đầy đủ trên client. **Không còn việc nào chờ backend**
 (đo lại 2026-09-11 — xem mục 8; từ 2026-09-10 tới lúc ấy câu này mâu thuẫn với
 G32 ghi ở chính mục 8).
@@ -484,7 +484,7 @@ tức không phải chỗ giữ bất biến. Hai trần nay nằm trong `db.tra
 | Trần | Không có nó thì |
 |---|---|
 | `depositAmount > 0` | Nạp 0 đồng đẻ ra một hàng giao dịch rỗng; nạp **số âm** chạy trót lọt tới cuối — ví nguồn được **CỘNG** tiền trong khi tiến độ mục tiêu tụt xuống |
-| `depositAmount ≤ số dư ví nguồn` | Repository trừ thẳng và ví nguồn xuống **âm**: mục tiêu tích được một số tiền chưa từng tồn tại |
+| `depositAmount ≤ số dư ví nguồn` | Ví nguồn xuống **âm**: mục tiêu tích được một số tiền chưa từng tồn tại |
 
 Trần thứ hai là bản đối xứng của trần "tiền THẬT trong ví" mà `withdrawFromGoal`
 đã có (mục 3.5). Trần là **vượt quá**, không phải **bằng** — dồn sạch một ví vào

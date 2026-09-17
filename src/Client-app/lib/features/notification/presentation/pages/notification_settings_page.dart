@@ -45,6 +45,9 @@ class NotificationSettingsPage extends StatefulWidget {
 
   static const Key khoaNguongSoDu = Key('notification_settings_nguong_so_du');
 
+  static const Key khoaNguongChiLon =
+      Key('notification_settings_nguong_chi_lon');
+
   static const Key khoaCongTacGhiChep =
       Key('notification_settings_ghi_chep');
 
@@ -364,6 +367,11 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                       ),
                       const SizedBox(height: 24),
                       _the(
+                        tieuDe: 'KHOẢN CHI LỚN',
+                        children: [_hangNguongChiLon()],
+                      ),
+                      const SizedBox(height: 24),
+                      _the(
                         tieuDe: 'NHẮC GHI CHÉP',
                         children: [
                           _hangCongTac(
@@ -606,6 +614,57 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
         onChanged: (v) {
           if (v == null) return;
           _ghi(_prefs.copyWith(soNgayNhacHoaDon: v));
+        },
+      ),
+    );
+  }
+
+  /// Ngưỡng "khoản chi lớn" — bản sao có chủ ý của [_hangNguongSoDu].
+  ///
+  /// Danh sách rời chứ không phải ô nhập tiền, cùng lý lẽ: gõ tay mở đường cho
+  /// những giá trị mà `NotificationPrefs` sẽ lặng lẽ kẹp về 0 hoặc về trần, và
+  /// người dùng chỉ thấy con số của mình biến mất.
+  ///
+  /// Các mức bắt đầu từ 500.000 chứ không từ 50.000 như ngưỡng số dư: đây là
+  /// ngưỡng của **một** khoản chi, và một mức quá thấp biến tính năng thành
+  /// một thông báo cho gần như mọi giao dịch — đúng kiểu báo động giả làm
+  /// người dùng tắt sạch thông báo rồi không bật lại.
+  Widget _hangNguongChiLon() {
+    const luaChon = [
+      0,
+      500000,
+      1000000,
+      2000000,
+      5000000,
+      10000000,
+      20000000,
+    ];
+
+    return _khung(
+      icon: Icons.trending_up_outlined,
+      nhan: 'Cảnh báo khoản chi lớn',
+      phu: 'Báo khi một khoản chi đạt tới mức này.',
+      trailing: DropdownButton<int>(
+        key: NotificationSettingsPage.khoaNguongChiLon,
+        // Giá trị lạ rơi về `null` kèm `hint` thay vì ném giữa `build` — cùng
+        // lý do với ô ngưỡng số dư.
+        value: luaChon.contains(_prefs.nguongChiLon)
+            ? _prefs.nguongChiLon
+            : null,
+        hint: Text(CurrencyFormatter.format(_prefs.nguongChiLon)),
+        underline: const SizedBox.shrink(),
+        items: [
+          for (final n in luaChon)
+            DropdownMenuItem(
+              value: n,
+              // `0` đọc thành "Tắt": một ngưỡng bằng không đọc như "báo mọi
+              // khoản chi", trong khi nó tắt hẳn tính năng.
+              child: Text(n == 0 ? 'Tắt' : CurrencyFormatter.format(n)),
+            ),
+        ],
+        onChanged: (v) {
+          if (v == null) return;
+          _ghi(_prefs.copyWith(nguongChiLon: v));
         },
       ),
     );

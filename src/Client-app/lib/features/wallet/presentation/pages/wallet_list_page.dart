@@ -251,6 +251,7 @@ class _WalletListView extends StatelessWidget {
               },
               onDelete: () => _confirmDelete(context, w),
               onArchive: () => doiLuuTru(context, w, idaccount),
+              onXemGiaoDich: () => context.push('/transactions?wallet=${w.id}'),
             ),
           );
         }),
@@ -536,6 +537,8 @@ class _MucLuuTruState extends State<_MucLuuTru> {
                   }
                 },
                 onArchive: () => doiLuuTru(context, w, widget.idaccount),
+                onXemGiaoDich: () =>
+                    context.push('/transactions?wallet=${w.id}'),
               ),
             ),
           ),
@@ -551,19 +554,35 @@ class _WalletItem extends StatelessWidget {
   final VoidCallback? onDelete;
   final VoidCallback? onArchive;
 
+  /// Mở sổ giao dịch đã lọc sẵn theo ví này.
+  ///
+  /// Là một mục menu chứ không phải cú tap lên thẻ: tap đã mở màn **Sửa ví**
+  /// từ trước, và đổi ý nghĩa của nó là lấy mất một thao tác người dùng đã
+  /// quen. Truyền cho **cả** ví lưu trữ — đóng băng nói về việc ghi chép mới,
+  /// không phải về quyền đọc lịch sử cũ.
+  final VoidCallback? onXemGiaoDich;
+
   const _WalletItem({
     required this.wallet,
     this.onTap,
     this.onDelete,
     this.onArchive,
+    this.onXemGiaoDich,
   });
 
   bool get _daLuuTru => !WalletStatus.laHoatDong(wallet.status);
 
+  /// Ví âm **ngoài ý muốn** — thứ duy nhất đáng tô đỏ.
+  ///
+  /// `wallet.type == 'debt'` đã bỏ từ 2026-09-09: loại ấy không còn tồn
+  /// tại (xem `WalletType`). Chỗ bám mới là cờ `allowNegative` (G27,
+  /// 2026-09-17) — đỏ là màu báo **có gì đó sai**, nên để đỏ một ví mà
+  /// người dùng đã nói là được phép âm là app tự mâu thuẫn với chính
+  /// cảnh báo nó vừa tắt.
+  bool get _amNgoaiYMuon => wallet.balance < 0 && !wallet.allowNegative;
+
   Color get _iconColor {
-    // `wallet.type == 'debt'` đã bỏ: loại ấy không còn tồn tại (xem
-    // `WalletType`), và số dư âm vốn đã là điều kiện thật sự cần bắt.
-    if (wallet.balance < 0) {
+    if (_amNgoaiYMuon) {
       return const Color(0xFFD32F2F);
     }
     if (wallet.isDefault || wallet.type == 'cash') {
@@ -573,7 +592,7 @@ class _WalletItem extends StatelessWidget {
   }
 
   Color get _iconBg {
-    if (wallet.balance < 0) {
+    if (_amNgoaiYMuon) {
       return const Color(0xFFFFEBEE);
     }
     if (wallet.isDefault || wallet.type == 'cash') {
@@ -586,7 +605,12 @@ class _WalletItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isNegative = wallet.balance < 0;
+    // Dùng `_amNgoaiYMuon` chứ không phải `balance < 0`: màu ở đây là
+    // `AppColors.error` — màu **cảnh báo**, không phải quy ước dấu của số
+    // âm. Lý lẽ y hệt dòng ngay dưới đã ghi cho ví lưu trữ: một con số đỏ
+    // chói đọc như một việc cần xử lý, trong khi người dùng vừa nói rằng ví
+    // này được phép âm (G27).
+    final isNegative = _amNgoaiYMuon;
 
     return InkWell(
       onTap: onTap,
@@ -705,11 +729,17 @@ class _WalletItem extends StatelessWidget {
               icon: const Icon(Icons.more_vert,
                   color: AppColors.textSecondary, size: 20),
               onSelected: (value) {
+                if (value == 'transactions') onXemGiaoDich?.call();
                 if (value == 'edit') onTap?.call();
                 if (value == 'delete') onDelete?.call();
                 if (value == 'archive') onArchive?.call();
               },
               itemBuilder: (_) => [
+                // Đứng ĐẦU: xem là việc làm thường xuyên hơn sửa, và hành
+                // động không hoàn tác được ("Xóa ví") vẫn ở cuối cùng.
+                if (onXemGiaoDich != null)
+                  const PopupMenuItem(
+                      value: 'transactions', child: Text('Xem giao dịch')),
                 const PopupMenuItem(
                     value: 'edit', child: Text('Chỉnh sửa')),
                 // Chữ đổi theo trạng thái của CHÍNH ví này. Một nhãn cố

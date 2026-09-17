@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/goal/data/datasources/goal_local_data_source.dart';
 import 'package:flowmoney/features/goal/data/repositories/goal_repository_impl.dart';
+import 'package:flowmoney/features/wallet/domain/so_du_mo_so.dart';
 
 void main() {
   late AppDatabase db;
@@ -176,7 +177,7 @@ void main() {
     expect(walletA?.balance, 5000000.0);
 
     // 6. ĐÚNG MỘT hàng, kiểu chuyển khoản, mang cả hai đầu ví.
-    final tatCa = await db.transactionDao.getAll(1);
+    final tatCa = await giaoDichThat(db, 1);
     expect(tatCa.length, 1,
         reason: 'Một lần chuyển tiền giữa hai ví của cùng người dùng là MỘT '
             'giao dịch, không phải một cặp chi/thu rời.');
@@ -186,7 +187,32 @@ void main() {
     expect(tatCa.single.amount, 3000000.0);
 
     // Hàng nằm ở ví nguồn; ví đích tra được qua walletTransfer.
-    expect((await db.transactionDao.getByWallet('w_B')).length, 1);
-    expect((await db.transactionDao.getByWallet('w_A')), isEmpty);
+    expect(
+        (await db.transactionDao.getByWallet('w_B'))
+            .where((t) => !laKhoanMoSo(
+                loai: t.type, categoryId: t.categoryId, ghiChu: t.note))
+            .length,
+        1,
+        reason: 'Ví B còn một khoản mở sổ nữa — hàng thật trong bảng nhưng '
+            'không phải giao dịch nào của người dùng.');
+    expect(
+        (await db.transactionDao.getByWallet('w_A'))
+            .where((t) => !laKhoanMoSo(
+                loai: t.type, categoryId: t.categoryId, ghiChu: t.note)),
+        isEmpty,
+        reason: 'Hàng chuyển khoản nằm ở ví NGUỒN; ví đích tra được qua '
+            '`walletTransfer`. Khoản mở sổ của chính ví A thì không tính.');
   });
 }
+
+/// Giao dịch thật của tài khoản — **bỏ khoản mở sổ**.
+///
+/// Từ 2026-09-13 số dư ví suy từ sổ, nên mỗi ví có thêm một khoản "Số dư ban
+/// đầu" làm điểm neo (`wallet/domain/so_du_mo_so.dart`). Nó là hàng thật trong
+/// bảng nhưng không phải thu chi nào — đếm nó vào đây là mọi phép `single`
+/// thành "Too many elements".
+Future<List<Transaction>> giaoDichThat(AppDatabase db, int idaccount) async =>
+    (await db.transactionDao.getAll(idaccount))
+        .where((t) => !laKhoanMoSo(
+            loai: t.type, categoryId: t.categoryId, ghiChu: t.note))
+        .toList();

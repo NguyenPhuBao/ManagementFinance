@@ -376,7 +376,7 @@ class ReportPreviewPage extends StatelessWidget {
                           fontSize: 12, color: AppColors.textSecondary),
                     ),
                   ),
-                  Flexible(
+                  Expanded(
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.centerRight,
@@ -713,7 +713,7 @@ class ReportPreviewPage extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Flexible(
+                        Expanded(
                           child: FittedBox(
                             fit: BoxFit.scaleDown,
                             alignment: Alignment.centerRight,
@@ -798,7 +798,7 @@ class ReportPreviewPage extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Flexible(
+                    Expanded(
                       child: FittedBox(
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.centerRight,
@@ -889,7 +889,7 @@ class ReportPreviewPage extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Flexible(
+                    Expanded(
                       child: FittedBox(
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.centerRight,
@@ -943,7 +943,7 @@ class ReportPreviewPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Flexible(
+              Expanded(
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerRight,
@@ -989,12 +989,11 @@ class ReportPreviewPage extends StatelessWidget {
   /// Số tiền kèm dấu, nhưng **số 0 thì không mang dấu**: một ví không phát
   /// sinh khoản thu nào hiện "+0 đ" trông như lỗi định dạng (thấy trên máy ảo
   /// 2026-09-09).
-  static String _coDau(double soTien, {required bool thu}) {
-    if (soTien == 0) return CurrencyFormatter.format(0);
-    return thu
-        ? CurrencyFormatter.formatIncome(soTien)
-        : CurrencyFormatter.formatExpense(soTien);
-  }
+  /// Chuyển sang `CurrencyFormatter.formatCoDau` ngày 2026-09-15: luật "số 0
+  /// không mang dấu" nay dùng chung với trang Phân tích, và mọi luật hiển thị
+  /// tiền phải nằm ở một chỗ duy nhất.
+  static String _coDau(double soTien, {required bool thu}) =>
+      CurrencyFormatter.formatCoDau(soTien, thu: thu);
 
   /// `0.75` → `(75,0%)`. Dấu phẩy thập phân theo kiểu Việt, đồng bộ với phần
   /// còn lại của app.
@@ -1084,7 +1083,7 @@ class ReportPreviewPage extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          Flexible(
+          Expanded(
             child: FittedBox(
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerRight,

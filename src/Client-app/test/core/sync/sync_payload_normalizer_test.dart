@@ -138,4 +138,32 @@ void main() {
             'vẫn phải đẩy lại đúng loại — đổi nó sang Bank là vỡ '
             'chk_wallet_banking_link vì Id_bank_casso vẫn còn.');
   });
+
+  test('trạng thái ví đổi sang từ vựng của server', () {
+    expect(SyncPayloadNormalizer.walletForPush({'status': 'inactive'})['status'],
+        'Inactive');
+    expect(SyncPayloadNormalizer.walletForPush({'status': 'active'})['status'],
+        'Active',
+        reason: 'SQLite lưu chữ thường, chk_wallet_status đòi chữ hoa đầu — '
+            'đây là chỗ DUY NHẤT dịch giữa hai từ vựng.');
+  });
+
+  test('trạng thái lạ KHÔNG được gửi nguyên si lên server', () {
+    // Cùng bài học với `type`: chk_wallet_status chỉ nhận đúng hai chuỗi, nên
+    // một giá trị lạ lọt lên là ví kẹt hàng đợi đẩy VĨNH VIỄN, im lặng.
+    const choPhep = {'Active', 'Inactive'};
+    for (final la in ['archived', 'INACTIVE ', 'linh tinh', '']) {
+      final payload = SyncPayloadNormalizer.walletForPush({'status': la});
+      expect(choPhep.contains(payload['status']), isTrue,
+          reason: 'Trạng thái "$la" bị đẩy lên nguyên si là vỡ '
+              'chk_wallet_status.');
+    }
+  });
+
+  test('thiếu khoá status thì đẩy lên Active', () {
+    expect(SyncPayloadNormalizer.walletForPush({'type': 'cash'})['status'],
+        'Active',
+        reason: 'Cột Status của server là NOT NULL DEFAULT Active. Vắng mặt '
+            'nghĩa là ví còn dùng, không phải "hãy lưu trữ".');
+  });
 }

@@ -55,6 +55,12 @@ class _WalletEditPageState extends State<WalletEditPage> {
   bool _isDefault = false;
   bool _includeInTotal = true;
 
+  /// G27 — ví được phép âm (thẻ tín dụng, ví theo dõi nợ).
+  ///
+  /// Ghi qua `copyWith` được, khác `status`: cờ này KHÔNG có chốt chặn nào
+  /// ở datasource, nên không có đường nào để đi vòng qua.
+  bool _choPhepAm = false;
+
   /// Công tắc "Kích hoạt hoạt động" — mặt trái của lưu trữ ví.
   ///
   /// ⚠️ KHÔNG ghi qua `copyWith(status: ...)` như hai cờ trên. Hai chốt
@@ -98,6 +104,7 @@ class _WalletEditPageState extends State<WalletEditPage> {
 
           _isDefault = wallet.isDefault;
           _includeInTotal = wallet.includeInTotal;
+          _choPhepAm = wallet.allowNegative;
           _dangHoatDong = WalletStatus.laHoatDong(wallet.status);
           _isLoading = false;
         });
@@ -152,6 +159,7 @@ class _WalletEditPageState extends State<WalletEditPage> {
         colour:         colour,
         isDefault:      _isDefault,
         includeInTotal: _includeInTotal,
+        allowNegative:  _choPhepAm,
         // Trạng thái lưu trữ cố ý GIỮ NGUYÊN ở đây — nó đi đường riêng
         // ngay dưới, đường duy nhất có chốt chặn.
         status:         _wallet!.status,
@@ -550,6 +558,14 @@ class _WalletEditPageState extends State<WalletEditPage> {
           ),
           const Divider(height: 1, color: AppColors.borderSubtle),
           _buildSwitchTile(
+            title: 'Cho phép số dư âm',
+            subtitle:
+                'Dùng cho thẻ tín dụng hoặc ví theo dõi nợ. Ví này sẽ không bị cảnh báo số dư.',
+            value: _choPhepAm,
+            onChanged: (val) => setState(() => _choPhepAm = val),
+          ),
+          const Divider(height: 1, color: AppColors.borderSubtle),
+          _buildSwitchTile(
             title: 'Kích hoạt hoạt động',
             value: _dangHoatDong,
             onChanged: (val) => setState(() => _dangHoatDong = val),
@@ -563,6 +579,7 @@ class _WalletEditPageState extends State<WalletEditPage> {
     required String title,
     required bool value,
     required ValueChanged<bool> onChanged,
+    String? subtitle,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
@@ -574,13 +591,32 @@ class _WalletEditPageState extends State<WalletEditPage> {
           // chứ không ném ra chỗ gọi — nên nó chỉ hiện thành sọc vàng trên
           // máy thật, im lặng với mọi test chỉ `pumpWidget` + `expect`.
           Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w400,
-                color: AppColors.onSurface,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w400,
+                    color: AppColors.onSurface,
+                  ),
+                ),
+                // Dòng phụ chỉ có ở hàng cần giải thích; hàng không truyền thì
+                // bố cục y hệt trước bản này.
+                if (subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
           Switch(

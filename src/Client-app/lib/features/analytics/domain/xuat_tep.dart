@@ -77,7 +77,38 @@ String csvBaoCao(
     dong(['Số dư đầu kỳ', _tien(dt.dauKy)]);
     dong(['Số dư cuối kỳ', _tien(dt.cuoiKy)]);
   }
+  // Kỳ liền trước, cùng bộ lọc. CSV được **số thô** chứ không chỉ phần trăm:
+  // người mở bảng tính phải tự kiểm lại được con số, và ô phần trăm rỗng khi
+  // nền bằng 0 thì ba dòng này vẫn nói đủ chuyện.
+  dong(['Kỳ trước - tổng thu', _tien(bc.tongTruoc.thu)]);
+  dong(['Kỳ trước - tổng chi', _tien(-bc.tongTruoc.chi)]);
+  dong(['Kỳ trước - còn lại', _tien(bc.tongTruoc.conLai)]);
+  dong(['Thu so với kỳ trước (%)', _phanTramCsv(bc.thuSoVoiTruoc)]);
+  dong(['Chi so với kỳ trước (%)', _phanTramCsv(bc.chiSoVoiTruoc)]);
   dong([]);
+
+  // Khối này bỏ hẳn khi kỳ rỗng — cùng luật với màn Xem trước, nơi nó chỉ dựng
+  // ở nhánh không rỗng. In ra toàn số 0 là vẽ ra một kỳ có thật.
+  if (!bc.rong) {
+    final sl = bc.soLieu;
+    final coNgay = sl.ngayChiNhieuNhat != null;
+    final coKhoan = sl.khoanChiLonNhat != null;
+    dong(['SỐ LIỆU NHANH']);
+    dong(['Chi mỗi ngày', _tien(sl.chiMoiNgay)]);
+    // Cố ý KHÔNG lặp lại "Số giao dịch" của màn Xem trước: nó đã nằm ở khối
+    // TỔNG QUAN, và hai bản của cùng một con số là hai thứ phải khớp nhau mãi.
+    dong([
+      'Ngày chi nhiều nhất',
+      coNgay ? DateFormatter.formatDate(sl.ngayChiNhieuNhat!) : '',
+      coNgay ? _tien(sl.chiNgayNhieuNhat) : '',
+    ]);
+    dong([
+      'Khoản chi lớn nhất',
+      coKhoan ? sl.khoanChiLonNhat!.tieuDe : '',
+      coKhoan ? _tien(sl.khoanChiLonNhat!.soTien) : '',
+    ]);
+    dong([]);
+  }
 
   if (bc.theoDanhMuc.isNotEmpty) {
     dong(['CHI THEO DANH MỤC']);
@@ -115,6 +146,22 @@ String csvBaoCao(
     dong([]);
   }
 
+  if (bc.topChi.isNotEmpty) {
+    dong(['TOP 5 KHOẢN CHI']);
+    dong(['#', 'Nội dung', 'Danh mục', 'Ngày', 'Số tiền']);
+    for (var i = 0; i < bc.topChi.length; i++) {
+      final d = bc.topChi[i];
+      dong([
+        i + 1,
+        d.tieuDe,
+        d.tenDanhMuc,
+        DateFormatter.formatDate(d.ngay),
+        _tien(-d.soTien),
+      ]);
+    }
+    dong([]);
+  }
+
   dong(['DANH SÁCH GIAO DỊCH']);
   dong(['Ngày', 'Nội dung', 'Danh mục', 'Ví', 'Số tiền']);
   for (final n in bc.nhom) {
@@ -145,6 +192,16 @@ String _tien(double x) => x.round().toString();
 /// Tỉ lệ `[0,1]` → phần trăm một chữ số thập phân, dùng **dấu chấm**: đây là ô
 /// số, và dấu phẩy thập phân sẽ đụng dấu phân cách cột.
 String _tiLe(double x) => (x * 100).toStringAsFixed(1);
+
+/// Mức đổi so với kỳ trước cho một ô CSV — `null` thành ô **rỗng**.
+///
+/// ⚠️ Không dùng lại [_tiLe] ở đây: `phanTramSoVoi` đã trả sẵn thang 0–100, nên
+/// nhân thêm lần nữa là in ra `1250.0` mà không exception nào báo.
+///
+/// Ô rỗng chứ không phải `—`: đây là cột SỐ mà Excel sắp cộng, và `0` thì bịa
+/// ra "không đổi" cho một kỳ trước vốn không có gì để so.
+String _phanTramCsv(double? phanTram) =>
+    phanTram == null ? '' : phanTram.toStringAsFixed(1);
 
 /// Một ô CSV, đã thoát theo RFC 4180.
 String _o(Object? v) {
@@ -205,6 +262,7 @@ Future<Uint8List> pdfBaoCao(
         pw.Divider(height: 20),
         ..._pdfTongQuan(bc),
         ..._pdfBieuDo(bc),
+        ..._pdfSoLieuNhanh(bc),
         ..._pdfBang('CHI THEO DANH MỤC', ['Danh mục', 'Số tiền', 'Tỉ lệ'], [
           for (final d in bc.theoDanhMuc)
             [d.ten, _vnd(d.soTien), '${_tiLe(d.tiLe)}%'],
@@ -222,6 +280,18 @@ Future<Uint8List> pdfBaoCao(
           for (final v in bc.theoVi)
             [v.ten, _vnd(v.thu), _vnd(v.chi), '${v.soGiaoDich}'],
         ]),
+        ..._pdfBang(
+            'TOP 5 KHOẢN CHI', ['#', 'Nội dung', 'Danh mục', 'Ngày', 'Số tiền'],
+            [
+              for (var i = 0; i < bc.topChi.length; i++)
+                [
+                  '${i + 1}',
+                  bc.topChi[i].tieuDe,
+                  bc.topChi[i].tenDanhMuc,
+                  DateFormatter.formatDate(bc.topChi[i].ngay),
+                  _vnd(bc.topChi[i].soTien),
+                ],
+            ]),
         ..._pdfBang('DANH SÁCH GIAO DỊCH',
             ['Ngày', 'Nội dung', 'Danh mục', 'Ví', 'Số tiền'], [
           for (final n in bc.nhom)
@@ -247,8 +317,12 @@ List<pw.Widget> _pdfTongQuan(BaoCao bc) {
     pw.Row(
       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
       children: [
-        _pdfO('TỔNG THU', _vnd(bc.tong.thu)),
-        _pdfO('TỔNG CHI', _vnd(bc.tong.chi)),
+        _pdfO('TỔNG THU', _vnd(bc.tong.thu),
+            phu: nhanPhanTramSoVoi(bc.thuSoVoiTruoc),
+            phuMau: _mauSoVoi(bc.thuSoVoiTruoc, tangLaTot: true)),
+        _pdfO('TỔNG CHI', _vnd(bc.tong.chi),
+            phu: nhanPhanTramSoVoi(bc.chiSoVoiTruoc),
+            phuMau: _mauSoVoi(bc.chiSoVoiTruoc, tangLaTot: false)),
         _pdfO('CÒN LẠI', _vnd(bc.tong.conLai)),
         _pdfO('SỐ GIAO DỊCH', '${bc.soGiaoDich}'),
       ],
@@ -260,7 +334,9 @@ List<pw.Widget> _pdfTongQuan(BaoCao bc) {
         padding: const pw.EdgeInsets.all(8),
         decoration: const pw.BoxDecoration(color: PdfColors.grey100),
         child: pw.Text(
-          'Số dư đầu kỳ ${_vnd(dt.dauKy)}   →   số dư cuối kỳ '
+          // `»` chứ không phải `→`: Roboto nhúng không có khối Mũi tên, nên
+          // mọi PDF app từng xuất đều mất dấu mũi tên ở đây mà không ai hay.
+          'Số dư đầu kỳ ${_vnd(dt.dauKy)}   »   số dư cuối kỳ '
           '${_vnd(dt.cuoiKy)}   (suy ngược từ số dư hiện tại của các ví)',
           style: const pw.TextStyle(fontSize: 10),
         ),
@@ -270,7 +346,9 @@ List<pw.Widget> _pdfTongQuan(BaoCao bc) {
   ];
 }
 
-pw.Widget _pdfO(String nhan, String giaTri) => pw.Column(
+/// Một ô của hàng tổng. [phu] là dòng nhỏ bên dưới — mức đổi so với kỳ trước.
+pw.Widget _pdfO(String nhan, String giaTri, {String? phu, PdfColor? phuMau}) =>
+    pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
         pw.Text(nhan,
@@ -278,6 +356,14 @@ pw.Widget _pdfO(String nhan, String giaTri) => pw.Column(
         pw.SizedBox(height: 2),
         pw.Text(giaTri,
             style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+        if (phu != null) ...[
+          pw.SizedBox(height: 2),
+          pw.Text(phu,
+              style: pw.TextStyle(
+                  fontSize: 8,
+                  fontWeight: pw.FontWeight.bold,
+                  color: phuMau ?? PdfColors.grey600)),
+        ],
       ],
     );
 
@@ -379,3 +465,55 @@ List<pw.Widget> _pdfBang(
 /// Số tiền có phân cách nghìn cho tài liệu ĐỌC — ngược với CSV, nơi số phải
 /// thô để Excel cộng được.
 String _vnd(double x) => CurrencyFormatter.format(x);
+
+/// Mức đổi so với kỳ trước cho tài liệu **để ĐỌC**: `+12,5%`, `-3,0%`, hoặc
+/// `—` khi kỳ trước bằng 0.
+///
+/// Tách thành hàm thuần vì tầng vẽ PDF không kiểm được bằng máy — tệp nén và
+/// font subset nên không `grep` được chuỗi nào trong đó. Đây là luật định dạng
+/// duy nhất của phần PDF có chỗ để sai, nên nó phải nằm ngoài tầng ấy.
+///
+/// Dấu **phẩy** thập phân (thông lệ Việt Nam), ngược với [_phanTramCsv] nơi
+/// cùng con số phải mang dấu chấm để khỏi đụng dấu phân cách cột.
+///
+/// ⚠️ Dấu cộng/trừ chứ **không** phải `▲`/`▼` như màn Xem trước: Roboto nhúng
+/// trong app không có khối Hình học (U+25A0…), nên hai hình tam giác ấy bị gói
+/// `pdf` **bỏ đi im lặng** và tệp in ra `" 12,5%"` cụt đầu. Có ca test quét
+/// chuỗi hằng của chính tệp này canh chừng.
+String nhanPhanTramSoVoi(double? phanTram) {
+  if (phanTram == null) return '—';
+  final dau = phanTram >= 0 ? '+' : '-';
+  return '$dau${phanTram.abs().toStringAsFixed(1).replaceAll('.', ',')}%';
+}
+
+/// Màu của dòng mức đổi. [tangLaTot] quyết định màu chứ không quyết định mũi
+/// tên: thu tăng là tin tốt, chi tăng thì không.
+PdfColor _mauSoVoi(double? phanTram, {required bool tangLaTot}) =>
+    phanTram == null
+        ? PdfColors.grey600
+        : ((phanTram >= 0) == tangLaTot
+            ? PdfColors.green700
+            : PdfColors.red400);
+
+/// Khối "Số liệu nhanh" của PDF; bỏ hẳn khi kỳ rỗng, cùng luật với CSV và với
+/// màn Xem trước.
+List<pw.Widget> _pdfSoLieuNhanh(BaoCao bc) {
+  if (bc.rong) return [];
+  final sl = bc.soLieu;
+  final ngay = sl.ngayChiNhieuNhat;
+  final khoan = sl.khoanChiLonNhat;
+  return _pdfBang('SỐ LIỆU NHANH', ['Chỉ số', 'Giá trị'], [
+    ['Chi mỗi ngày', _vnd(sl.chiMoiNgay)],
+    [
+      'Ngày chi nhiều nhất',
+      ngay == null
+          ? '—'
+          : '${DateFormatter.formatDate(ngay)}  ·  '
+              '${_vnd(sl.chiNgayNhieuNhat)}',
+    ],
+    [
+      'Khoản chi lớn nhất',
+      khoan == null ? '—' : '${khoan.tieuDe}  ·  ${_vnd(khoan.soTien)}',
+    ],
+  ]);
+}
