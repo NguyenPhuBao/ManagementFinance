@@ -475,6 +475,36 @@ chứ không phải `ArgumentError`, vì nó ra thẳng snackbar qua `e.toString
 
 ---
 
+### 3.16b Ô nhập tiền phải có **trần số chữ số** (2026-09-18, G46)
+
+Khác hẳn mục 3.16 ngay dưới: đó là trần về **giá trị** (dương, không vượt số dư
+ví), còn đây là trần về **độ dài**.
+
+`goal."Target_amount"` và `goal."Current_amount"` là **`numeric(15,2)`**, tức
+nhiều nhất **13 chữ số phần nguyên**. Cả hai ô tiền của màn Thêm mục tiêu — số
+tiền mục tiêu và số tiền trích — **không giới hạn gì** tới 2026-09-18; nay có
+`GioiHanSoChuSo(kSoChuSoToiDaSoTien)` (`core/utils/gioi_han_do_dai.dart`), và
+một **test quét `lib/`** canh việc ấy cho mọi ô tiền trong app.
+
+⚠️ **Vì sao phải chặn ở ô nhập chứ không đợi lỗi**: tràn cho SQLSTATE `22003`,
+mà `sync.service.js` **không có nhánh** cho mã ấy nên nó rơi về `DB_ERROR`; và
+`_permanentCodes` của `SyncEngine` là **danh sách trắng**, `DB_ERROR` không nằm
+trong đó. Mục tiêu bị **gửi lại ở mọi chu kỳ đồng bộ** — không lỗi, không log,
+chỉ một hàng đợi càng lúc càng chậm. Cùng vòng lặp mà G31 và G14 sinh ra để
+chặn.
+
+⚠️ Thiếu trần **không gây lỗi nào lúc gõ**: ô vẫn nhận, màn vẫn lưu, SQLite vẫn
+ghi. Chỉ hàng đợi đẩy là hỏng, và nó hỏng ở nơi không ai nhìn — đó là lý do lỗ
+hổng này sống được từ đầu dự án tới lượt soát ngày 2026-09-18.
+
+⚠️ `goal.auto_deposit_amount` rộng hơn (**`numeric(18,2)`**, 16 chữ số) nhưng ô
+trích vẫn dùng chung trần 13 — siết hơn cột, có chủ ý, vì không số tiền trích
+nào cần tới đó và một trần duy nhất thì không ai phải nhớ hai con số.
+
+Bàn giao đầy đủ ở **G46** `docs/CLIENT_APP_KNOWN_GAPS.md`.
+
+---
+
 ### 3.16 `depositToGoal` kiểm số tiền ở **tầng repository**, không chỉ ở form
 
 Ô nhập của trang chi tiết đã chặn từ lâu, nhưng phép kiểm nằm một mình trên giao

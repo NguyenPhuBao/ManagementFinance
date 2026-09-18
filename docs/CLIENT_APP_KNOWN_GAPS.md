@@ -567,7 +567,8 @@ ví lẽ ra phải nhận, và không có gì báo lỗi.
 hai lần. Ai đó "dọn dẹp" payload và bỏ nó ra thì mỗi máy giữ một mốc riêng và
 **cả hai cùng chuyển tiền** — tệ hơn hẳn hiện trạng cũ, nơi máy thứ hai đơn
 giản là không trích gì. `sync_payload_contract_test.dart` khoá bộ khoá của
-payload mục tiêu (21 trường) nên nó bắt được ngay.
+payload mục tiêu (21 trường **lúc ấy** — đếm lại bằng máy 2026-09-18 từ chính
+tệp test: **22**, sau khi `priority` vào ngày 2026-09-08) nên nó bắt được ngay.
 
 **Khe hở còn lại, chấp nhận được:** hai máy cùng mở, cùng tới kỳ, cùng chưa kịp
 kéo `last_run` của nhau thì vẫn trích hai lần. Hẹp vì trích chỉ chạy khi app mở,

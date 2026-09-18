@@ -1638,7 +1638,11 @@ này là **ảnh chụp trước mục 3.31**, thứ cũng mang ngày 2026-09-17
 đúng là **2810** và **564**, ở khối Nghiệm thu của mục ấy. ⚠️ Và **cả câu vừa
 rồi cũng đã là ảnh chụp**: G44 đóng ngày 2026-09-18 đưa nó lên 2815/569, rồi
 mục 3.33 cùng ngày lên nữa. **Đừng chép con số từ đây** — mốc đang đúng luôn
-nằm ở khối *Nghiệm thu* của **mục 3 cuối cùng**, và cách chắc chắn nhất là
+nằm ở khối *Nghiệm thu* của **mục 3 cuối cùng** — nhưng ⚠️ **chỉ khi lượt gần
+nhất thuộc mảng Phân tích**. Từ 2026-09-18 điều ấy thôi đúng: G45 và G46 cùng
+ngày đụng ví, giao dịch, hoá đơn, mục tiêu và ngân sách, nên mốc toàn cục
+(**2854**) nằm ở mục 14 `PROJECT_CONTEXT.md` chứ không ở đây. Cách chắc chắn
+nhất vẫn là
 `flutter test` rồi đếm lại.
 
 Máy ảo `emulator-5554`, tài khoản thật: ba chỗ cùng nói `13.590.000 đ`; câu
@@ -2225,7 +2229,7 @@ Trang **Xuất báo cáo** đi đường riêng, không qua cubit nào:
 ```
 ExportReportPage ──watch AuthBloc──▶ idaccount
    ├─ BaoCaoRepository.watchVi / watchDanhMuc ─▶ chip ví, sheet danh mục
-   └─ [Xem trước báo cáo] ─▶ khoangCuaPhamVi(phạm vi, now, tuỳ chọn)
+   └─ [Xem trước báo cáo] ─▶ Ky đang chọn (moChonPhamVi, chung trang Phân tích)
          └─ BaoCaoRepository.layBaoCao(idaccount, loc)   (Future, một ảnh chụp)
                ├─ transactionDao.getAll ─┐   (TOÀN BỘ, không lọc kỳ)
                ├─ wallets (KỂ CẢ đã xoá) ┤
