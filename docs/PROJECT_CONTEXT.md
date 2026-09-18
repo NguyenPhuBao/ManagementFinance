@@ -208,7 +208,7 @@ Base URL: `http://localhost:3000/api`
 | `GET /api/sync/pull` | Client pull dữ liệu từ backend |
 | `GET /api/admin/*` | Các route admin |
 | `POST /api/ai/*` | AI chat |
-| `GET/POST /api/bank/*` | Tích hợp ngân hàng SePay (thay Casso từ 2026-09-07) |
+| `GET/POST /api/bank/*` | Tích hợp ngân hàng SePay (thay Casso từ 2026-09-07). ⚠️ **Client không gọi route nào trong nhóm này** — nhóm bỏ liên kết ngân hàng ngày 2026-09-18 |
 
 ### Sync API — quan trọng nhất
 

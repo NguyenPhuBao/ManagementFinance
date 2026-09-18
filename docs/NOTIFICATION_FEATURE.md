@@ -1120,7 +1120,7 @@ client đọc lại khi pull (`sync_engine.dart:741`). Không có việc gì ph�
 Đính chính được ghi lại trong tài liệu backend thay vì xoá lặng lẽ, vì nhận
 định sai ấy đã đi qua ít nhất hai bản tài liệu.
 
-Ba việc còn lại là thật nhưng **không chặn gì hôm nay**. ⚠️ Cập nhật 2026-09-07: **socket đã được xác thực** (JWT ở handshake, 0 `io.emit`), nên vế "chưa xác thực" trong đoạn dưới đã hết đúng. ⚠️ Cập nhật 2026-09-09: vế "client cố ý chưa nối socket" **cũng đã hết đúng** — client nối rồi; phần còn thiếu là màn duyệt giao dịch (G26), không phải kênh.
+Ba việc còn lại là thật nhưng **không chặn gì hôm nay**. ⚠️ Cập nhật 2026-09-07: **socket đã được xác thực** (JWT ở handshake, 0 `io.emit`), nên vế "chưa xác thực" trong đoạn dưới đã hết đúng. ⚠️ Cập nhật 2026-09-09: vế "client cố ý chưa nối socket" **cũng đã hết đúng** — client nối rồi; phần còn thiếu là màn duyệt giao dịch (G26), không phải kênh. ⚠️ Cập nhật 2026-09-18: **vế "phần còn thiếu" ấy nay cũng hết đúng** — nhóm bỏ liên kết ngân hàng, G26 đóng bằng quyết định sản phẩm, và client thôi dịch `bank_transaction.incoming`. Không còn gì thiếu ở hướng này.
 (đã là bước 1 vì lý do khác), backend không
 có scheduler, queue `send-notification` rỗng cả ba phía — không ai đẩy việc
 vào, worker 0 byte, và `index.js` cũng không nạp worker ấy.
