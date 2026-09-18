@@ -165,9 +165,15 @@ toast, và mỗi sự kiện đều đánh thức đồng bộ *(trừ `ocr.dupl
 `AppNotifications` — đó là quyết định có chủ ý, không phải việc còn sót: thông
 báo trong bảng ấy là dữ liệu **suy ra được** từ ngân sách/hoá đơn/mục tiêu trên
 từng máy, còn tin từ server thì không. Chi tiết ở mục 2 của
-`docs/superpowers/specs/2026-09-09-socket-io-realtime-channel-design.md`. Phần
-còn thiếu là **màn duyệt giao dịch** (G26 `CLIENT_APP_KNOWN_GAPS.md`), không
-phải kênh truyền.
+`docs/superpowers/specs/2026-09-09-socket-io-realtime-channel-design.md`.
+
+⚠️ **Cập nhật 2026-09-18 — client nay dịch ĐÚNG BA sự kiện, và một trong ba tên
+đã đổi.** Nhóm bỏ liên kết ngân hàng, nên `bank_transaction.incoming` **thôi
+được dịch** và toast *"Vừa có giao dịch mới từ ngân hàng"* không còn. Ba tên
+hiện nay: `ocr.completed`, `ocr.duplicate`, `sync.completed`. Câu "phần còn
+thiếu là **màn duyệt giao dịch** (G26)" đứng ở đây tới hôm ấy **không còn
+đúng** — G26 đóng bằng quyết định sản phẩm, màn ấy không thiếu mà không còn
+nằm trong sản phẩm.
 
 ---
 

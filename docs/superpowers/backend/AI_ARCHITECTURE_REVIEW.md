@@ -224,7 +224,8 @@ dung ba ô để mỗi tầng làm việc nó giỏi.
 - Màn chụp/chọn ảnh hoá đơn → `POST /api/ai/ocr/parse` → màn xác nhận dựng từ DTO (`option_single` / `option_grouped` / cặp `options` chuyển khoản) → ghi SQLite qua `TransactionRepository.addTransaction` để `_applyBalances` và `SoDuViService` dùng lại.
 - Gợi ý danh mục khi nhập tay qua `/classify/single` — gợi ý một chạm, không tự ghi; nút "học" gọi `/classify/feedback`.
 - Offline: theo `ORC.md` §7.2 nhưng **cắt** OCR cục bộ ML Kit ở lát đầu — chỉ khử trùng cục bộ và keyword matcher trên `CategoryKeywords` (bảng đã có).
-- ⚠️ **Điều kiện tiên quyết**: `provider` và `bank_tran_id` hiện **không nằm trong hợp đồng payload đồng bộ** (quy tắc 4 `CLAUDE.md`). Phải vào `_collectPendingOps` + nhánh kéo về + `sync_payload_contract_test.dart` **cùng lúc**. `uq_transaction_external` đã theo tài khoản từ 2026-09-07 nên không còn vòng lặp đẩy — nhưng đo lại trước khi mở.
+- 🛑 **Điều kiện tiên quyết ĐÃ BỎ (2026-09-18).** Câu cũ ở đây đòi mở `provider` và `bank_tran_id` vào hợp đồng payload đồng bộ. **Không còn đúng**: nhóm bỏ liên kết ngân hàng, hai cột ấy chỉ có nghĩa cho giao dịch do SePay bắn về, và giai đoạn này **không cần chúng** — người dùng chụp ảnh hoá đơn thì khử trùng theo ảnh và theo nội dung, không theo mã giao dịch ngân hàng. Giai đoạn 1 nay **không có điều kiện tiên quyết nào về đồng bộ**, và **không được** nhân cơ hội này mở hai cột ấy ra (quy tắc 4 `CLAUDE.md`).
+- ⚠️ **Hệ quả nhỏ cần chốt khi làm**: `dedup.service.js` có ba cấp, cấp một là `bank_tran_id` **strict**. Ảnh hoá đơn do người dùng chụp không mang mã ấy nên rơi vào hai cấp fuzzy — đủ dùng, nhưng đừng trông chờ cấp một bắt được gì.
 - Cần màn Stitch cho quét/xác nhận trước khi dựng.
 
 ### Giai đoạn 2 — Gateway & guardrail *(backend · nhỏ, cơ học)*

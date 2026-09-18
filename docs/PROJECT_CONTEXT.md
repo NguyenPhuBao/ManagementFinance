@@ -19,7 +19,8 @@
 - Theo dõi thu/chi, ngân sách, hóa đơn, mục tiêu tiết kiệm
 - Đồng bộ dữ liệu giữa client (SQLite local) ↔ backend (PostgreSQL)
 - Hỗ trợ offline-first: dùng được khi không có mạng, sync khi online
-- Tích hợp AI chat, kết nối ngân hàng (SePay — backend thay Casso từ 2026-09-07; tên cột `Id_casso_account`/`Id_bank_casso` còn giữ)
+- Tích hợp AI chat
+- ⚠️ **Kết nối ngân hàng đã BỎ khỏi sản phẩm ngày 2026-09-18** (quyết định của nhóm). Backend vẫn còn module `bank/` cùng tích hợp SePay (thay Casso từ 2026-09-07) và CSDL vẫn còn các cột `Id_casso_account`/`Id_bank_casso`, nhưng **client đã gỡ toàn bộ phần của mình** — xem khối "🏦 Gỡ phần client của liên kết ngân hàng" ở mục 14
 
 ---
 
@@ -585,7 +586,7 @@ src/Backend/
 | `src/Client-app/lib/core/database/daos/transaction_dao.dart` | Transaction queries + repair |
 | `src/Client-app/lib/core/sync/sync_payload_normalizer.dart` | Field name mapping |
 | `src/Client-app/lib/core/realtime/realtime_channel.dart` | Kênh thời gian thực: bắt tay JWT, backoff nối lại, nghe cả `onConnectivityChanged` |
-| `src/Client-app/lib/core/realtime/realtime_event.dart` | Bốn sự kiện backend phát (`sync.completed` từ 2026-09-12 — im lặng, `loiNhan == null`), và **lý do client không đọc payload** |
+| `src/Client-app/lib/core/realtime/realtime_event.dart` | **Ba** sự kiện client dịch — `ocr.completed`, `ocr.duplicate`, `sync.completed` (từ 2026-09-12, im lặng, `loiNhan == null`) — và **lý do client không đọc payload**. ⚠️ `bank_transaction.incoming` **cố ý không nằm ở đây** từ 2026-09-18: backend vẫn phát, client bỏ qua như mọi tên lạ |
 | `src/Backend/modules/sync/sync.repository.js` | Prisma queries cho sync |
 | `src/Backend/modules/sync/sync.service.js` | Business logic sync |
 | `src/Backend/prisma/schema.prisma` | DB schema (Prisma) |
@@ -594,6 +595,58 @@ src/Backend/
 ---
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-18)
+
+### 🏦 Gỡ phần client của liên kết ngân hàng (2026-09-18)
+
+**Nhóm chốt bỏ tính năng liên kết ngân hàng.** Đây là quyết định sản phẩm, không
+phải hoãn: đừng lên kế hoạch lại cho nó, và đừng coi các cột phục vụ nó là điều
+kiện tiên quyết của việc khác.
+
+Phần client của nó **chưa bao giờ chạy thật**. `bank_link_page.dart` là một màn
+mockup tĩnh: số điện thoại `0912345678` và sáu ô OTP điền sẵn **ghi cứng trong
+`initState`**, nút "Xác nhận" không gọi một endpoint nào. Nhưng nó vẫn nối vào
+router và vẫn có một thẻ "LIÊN KẾT NGÂN HÀNG" dẫn tới nó ở màn Quản lý ví, nên
+người dùng chạm vào là gặp một biểu mẫu giả vờ đăng nhập ngân hàng.
+
+**Đã gỡ:** hai tệp (`bank_link_page.dart` 448 dòng, `bank_header_row.dart` 114
+dòng), hai route `/wallets/bank-link` và `/bank-link` cùng import, khối
+`_buildBankIntegrationSection` ở màn Quản lý ví, và
+`RealtimeEvent.giaoDichNganHang` cùng nhánh `'bank_transaction.incoming'` của
+`realtimeEventFromName`. Backend **vẫn phát** sự kiện ấy (SePay webhook →
+`bank.worker.js`), nhưng tên không dịch được đã trả `null` từ trước nên client
+chỉ bỏ qua nó êm thấm — nay nó rơi vào đúng nhánh ấy như mọi tên lạ.
+
+⚠️ **Ba thứ GIỮ NGUYÊN, cố ý:** enum `WalletType.banking` (server có thể trả về
+nó cho tài khoản từng liên kết, và `tuKhoa` phải đọc được), ba cột SQLite
+`provider`/`bank_tran_id`/`bank_casso_id`, và phép loại ví `banking` khỏi
+`tinhLaiSoDu`. Cả ba bảo vệ **hàng cũ kéo về**, không phải tính năng. **Schema
+không đổi** (vẫn v23), **hợp đồng payload đồng bộ không đổi**.
+
+⚠️ **Chú thích "hộp đen" phải viết lại, ở hai tệp.** Lý lẽ cũ của nó dựa vào
+việc `bank_transaction.incoming` được phát từ hai chỗ với hai hình dạng — ví dụ
+ấy nay không còn. Cam kết thì **giữ nguyên**: một tên sự kiện đi qua EventBus
+vẫn không bảo đảm một hình dạng payload. Mất ví dụ không phải mất lý lẽ.
+
+**Test:** tệp mới `lien_ket_ngan_hang_da_bo_test.dart`, ba ca. Ca đáng giá nhất
+là ca **quét `lib/`** cấm mọi tham chiếu tới đường `bank-link`: route và lời
+`context.push` là **hai chuỗi rời nhau**, gỡ một bên mà quên bên kia thì
+`flutter analyze` không nói gì và lỗi chỉ hiện ra khi người dùng chạm đúng nút.
+Ca thứ hai đòi trang **còn dựng được**, vì ca thứ nhất chỉ đòi vắng mặt một
+chuỗi nên nó cũng xanh khi cả trang chết — cùng bài học **G43**. Bản sai có chủ
+ý đã làm ca `bank_transaction.incoming` đỏ đúng chỗ.
+
+Nhóm test `BankHeaderRow` của `no_overflow_test.dart` **mất theo widget** — đó
+là chỗ tràn nặng nhất từng đo được trên máy thật (21px), nên tệp ấy nay canh hai
+hàng chứ không ba.
+
+⚠️ **Màn Stitch của Quản lý ví vẫn vẽ thẻ liên kết** — bản thi công nay lệch
+Stitch đúng một thẻ, và đó là lệch **có chủ ý**.
+
+**Nghiệm thu máy ảo 411dp:** màn Quản lý ví dựng sạch, danh sách ví kết thúc ở
+nút "Thêm ví mới", không còn thẻ liên kết, không sọc tràn.
+
+**Mức nền:** `flutter test` **2853/2853**, `flutter analyze` **25 issue / 0
+error**.
 
 ### 🔢 Trần số chữ số thiếu ở bốn mảng còn lại — G46 (2026-09-18)
 
@@ -1814,7 +1867,7 @@ hiện cũng không chứng minh lời gọi của mình tạo ra nó. Hỏi ng�
   > ⚠️ **BA cái bẫy của cùng một sai lầm, cả ba chỉ lộ ra khi chạy thật** — neo tính bằng `balance − Σ sổ` nên **thời điểm** đặt nó quyết định đúng sai: (1) đặt SAU khi ghi sổ thì neo hấp thụ luôn giao dịch vừa ghi — **53 ca test đỏ**; (2) "lưới đỡ" tự đặt neo trong `tinhLaiSoDu` khiến ví số dư 0 nhận 1.000.000 sinh ra một khoản **chi** triệt tiêu đúng khoản ấy; (3) đặt neo cho ví **vừa kéo về** — nó mang `balance = 0` trong khi sổ đã đầy đủ, neo âm bằng cả tổng sổ, ví 2.000.000 hiện `0đ`. Chốt rút ra: **số dư 0 nghĩa là "chưa biết", không phải "ví rỗng"**.
   > **Hai phát hiện khác khi thi công:** ví đích của khoản chuyển phải được **ghi vào hàng** chứ không chỉ truyền qua `destinationWalletId` (bản cũ cộng dồn nên che được; nay thứ gì không nằm trong hàng thì không tồn tại); và `updateTransaction` phải **ghi sổ trước** rồi mới tính lại.
   > **Nghiệm thu hai máy ảo** (tài khoản thử sạch 24, cài mới hoàn toàn): máy A tự trả hoá đơn 2.000.000 → **1.650.000**; máy B nhận `BILL_ALREADY_PAID`, resolver gỡ → **1.650.000**. **Hai máy bằng nhau và bằng tổng sổ** — phép đếm quyết định của G37; trước đó máy thắng giữ 2.000.000 trong khi sổ nó có khoản chi 350.000. Server: hoá đơn `Payed`, đúng **một** khoản chi sống, **một** kỳ kế tiếp.
-  > ⚠️ Ví loại **`banking` bị loại khỏi mọi phép tính lại**: server tự ghi số dư ví ngân hàng từ SePay (`workers/bank.worker.js:213`), và số dư ngân hàng thật có thể khác tổng sổ. Hiện 0 ví loại ấy, nhưng không chặn là để sẵn một hồi quy im lặng.
+  > ⚠️ Ví loại **`banking` bị loại khỏi mọi phép tính lại**: server tự ghi số dư ví ngân hàng từ SePay (`workers/bank.worker.js:213`), và số dư ngân hàng thật có thể khác tổng sổ. Hiện 0 ví loại ấy, nhưng không chặn là để sẵn một hồi quy im lặng. *(Cập nhật 2026-09-18: nhóm đã bỏ liên kết ngân hàng, nên client không tạo được ví loại ấy nữa. Phép loại trừ **giữ nguyên** — nó bảo vệ hàng cũ kéo về từ một tài khoản từng liên kết.)*
   > **Mức nền:** `flutter test` **2339/2339**, `flutter analyze` **25 issue / 0 error**.
 
 - **Bước 12 — `Auto_pay` qua đồng bộ, và bốn lỗi im lặng mà nghiệm thu hai máy ảo bắt được** (2026-09-13, **schema không đổi**). Bước cuối của chuỗi hoá đơn. Spec: `docs/superpowers/specs/2026-09-13-auto-pay-dong-bo-design.md`; chi tiết: mục **6.5** và **6.8** `docs/bill/BILL_DOCUMENTATION.md`. Payload hoá đơn **20 → 21 trường**; công tắc tự trả nay là thuộc tính của *hoá đơn* chứ không của *máy*, nên dòng phụ "chỉ nên bật trên một thiết bị" đã bỏ.
@@ -2080,9 +2133,14 @@ spec đã chốt với người dùng, bàn giao ở mục **5d** `NOTIFICATION_
 > **Ba điều dễ vấp nhất**, đọc trước khi đụng vào:
 >
 > 1. **Payload là hộp đen — client không đọc trường nào.** Chỉ dùng *tên sự
->    kiện*. Vì `bank_transaction.incoming` được backend phát từ hai chỗ với hai
->    hình dạng khác nhau, và trường `type` mang hai nghĩa. Có test cấm chữ số
->    xuất hiện trong lời nhắn để canh chừng ai đó bắt đầu đọc payload.
+>    kiện*: một tên đi qua EventBus của backend không bảo đảm một hình dạng
+>    payload, và client không biết bản backend đang chạy dựng nó bằng khoá gì.
+>    Có test cấm chữ số xuất hiện trong lời nhắn để canh chừng ai đó bắt đầu
+>    đọc payload. ⚠️ Lý lẽ **ban đầu** của cam kết này là
+>    `bank_transaction.incoming` được phát từ hai chỗ với hai hình dạng và
+>    trường `type` mang hai nghĩa. Sự kiện ấy **không còn được client dịch** từ
+>    2026-09-18 (nhóm bỏ liên kết ngân hàng), nhưng cam kết **giữ nguyên** — ví
+>    dụ mất đi không làm lý lẽ mất đi.
 >    ⚠️ **Một ngoại lệ, từ 2026-09-12:** `account.force_logout` **có** đọc
 >    payload (`idaccount`, `reason`, `message`) — nó chỉ được phát từ **một**
 >    hàm, `core/socket.js:175-191`, nên hình dạng là duy nhất. Chính vì thế nó
@@ -2098,7 +2156,9 @@ spec đã chốt với người dùng, bàn giao ở mục **5d** `NOTIFICATION_
 >
 > **Phạm vi thật hẹp hơn tài liệu kế hoạch mô tả:** chỉ có kênh + đánh thức
 > đồng bộ + toast. Không có màn "Giao dịch chờ duyệt" (G26
-> `CLIENT_APP_KNOWN_GAPS.md`), không badge đếm. Ba sự kiện backend đang phát
+> `CLIENT_APP_KNOWN_GAPS.md` — ⚠️ mục ấy **đóng 2026-09-18** bằng quyết định bỏ
+> hẳn liên kết ngân hàng, nên màn ấy không thiếu mà không còn trong sản phẩm),
+> không badge đếm. Ba sự kiện backend đang phát
 > đều thuộc tính năng client chưa có, nên **giá trị thật của kênh nằm ở việc
 > backend bắc `sync.completed` ra socket** — mục 7 cũ của
 > `docs/superpowers/backend/CAN-LAM/README.md`, nay `DA-XONG/SOCKET_SYNC_COMPLETED.md`.
@@ -2148,7 +2208,10 @@ phía client vẫn cục bộ, và chốt ở `upsertBill` đặt sai chỗ (CAN
    backend sau gộp `main`, bắt tay socket từ chối mọi tài khoản nên hôm nay không
    sự kiện nào tới — CAN-LAM 17 A; ✅ hết 2026-09-12 sau gộp `cbbeeb4`, kênh nối lại được). Chỗ còn thiếu là
    tính năng phía client để *làm gì đó* với chúng (G26), chứ không phải kênh
-   truyền.
+   truyền. ⚠️ **Cập nhật 2026-09-18:** vế "cảnh báo giao dịch ngân hàng" **bỏ
+   hẳn** cùng tính năng liên kết ngân hàng — client thôi dịch
+   `bank_transaction.incoming`, và G26 đóng bằng quyết định sản phẩm. Chỉ còn
+   vế OCR.
 
    ⚠️ Danh sách đầy đủ kèm ghi chú kỹ thuật nằm ở
    `docs/superpowers/plans/2026-09-06-thong-bao-viec-con-lai.md` — thư mục ấy
@@ -2450,7 +2513,7 @@ Hoá đơn tạo từ app trước đây **không bao giờ lên tới backend**
 ### ❌ Chưa làm / Tiếp theo
 - Analytics: lát **2a và 2b xong 2026-09-08** (số thật, rồi biểu đồ xu hướng 6 tháng bằng `fl_chart`), **2c‑1, 2c‑1b và 2c‑2 xong 2026-09-09** (trang Xuất báo cáo đọc số thật; màn Xem trước mười khối theo chuẩn app thị trường; nút Tải xuống sinh tệp PDF/CSV thật và lưu vào thư mục Tải về; 10 tệp test, **170** test) — mảng Phân tích **đã xong**, `docs/ANALYTICS_FEATURE.md` mục 7
 - AI chat integration hoàn chỉnh
-- Tích hợp ngân hàng phía client (backend dùng SePay thay Casso từ 2026-09-07; màn duyệt giao dịch ngân hàng chưa có — G26)
+- ~~Tích hợp ngân hàng phía client~~ — **BỎ ngày 2026-09-18** theo quyết định của nhóm. Phần client đã gỡ (G26 chuyển từ "hoãn" sang "bỏ"); backend vẫn giữ module `bank/` của mình
 - Build production / deploy
 
 ---

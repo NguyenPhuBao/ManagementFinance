@@ -7,6 +7,20 @@
 > git nằm ở `docs/PROJECT_CONTEXT.md` mục 14 và ở hai tệp `SOCKET_*` (nay ở
 > `docs/superpowers/backend/DA-XONG/`).
 
+> 🛑 **2026-09-18 — `bank_transaction.incoming` KHÔNG CÒN ĐƯỢC CLIENT DỊCH.**
+> Nhóm bỏ tính năng liên kết ngân hàng, và client gỡ phần của mình cùng ngày.
+> `RealtimeEvent` nay có **ba** giá trị (`ocrXong`, `ocrTrung`, `dongBoXong`) chứ
+> không bốn, dòng `giaoDichNganHang` ở bảng mục 3 và ở đoạn mã mục 3 là **ảnh
+> chụp**, và toast *"Vừa có giao dịch mới từ ngân hàng"* không còn. Backend **vẫn
+> phát** sự kiện ấy, nên nó rơi vào nhánh `null` sẵn có cho mọi tên lạ — đúng cơ
+> chế mà mục 2 thiết kế ra. ⚠️ **Cam kết "payload là hộp đen" GIỮ NGUYÊN**, dù ví
+> dụ nêu ở mục 1 điểm 3 (phát từ hai đường với hai hình dạng) không còn kiểm
+> chứng được: một tên sự kiện đi qua EventBus vẫn không bảo đảm một hình dạng
+> payload. Việc số 2 ở mục 8 ("thống nhất một hình dạng payload cho
+> `bank_transaction.incoming`") **bỏ theo** — đừng viết tài liệu xin backend cho
+> nó. Xem khối "🏦 Gỡ phần client của liên kết ngân hàng" mục 14
+> `docs/PROJECT_CONTEXT.md`.
+
 > ✅ **2026-09-12:** kênh **nối được** sau gộp `main` @ `cbbeeb4` — máy ảo `[RealtimeChannel] Đã nối
 > (idaccount=11)` sau 51 lần bị từ chối, nối lại sau 2 giây khi mạng về; `bank_transaction.incoming`
 > chỉ còn **một** chỗ phát (18 §2.5 xong). G34 ✅ **đóng tối cùng ngày**: `sync.completed` →
@@ -162,11 +176,12 @@ Cụ thể: chữ hiện ra là **hằng số tiếng Việt do client chọn**,
 ```dart
 enum RealtimeEvent { giaoDichNganHang, ocrXong, ocrTrung, dongBoXong }
 // dongBoXong thêm 2026-09-12 (G34); loiNhan của nó là null = im lặng
+// ⚠️ 2026-09-18: giaoDichNganHang ĐÃ BỎ — enum nay còn ba giá trị
 ```
 
 | Tên sự kiện server | `RealtimeEvent` | Đánh thức đồng bộ | Toast |
 |---|---|---|---|
-| `bank_transaction.incoming` | `giaoDichNganHang` | ✅ | xanh — *"Vừa có giao dịch mới từ ngân hàng"* |
+| ~~`bank_transaction.incoming`~~ | ~~`giaoDichNganHang`~~ | — | 🛑 **bỏ 2026-09-18** — client thôi dịch tên này, nó rơi vào nhánh `null` như mọi tên lạ |
 | `ocr.completed` | `ocrXong` | ✅ | xanh — *"Đã bóc tách xong hoá đơn"* |
 | `ocr.duplicate` | `ocrTrung` | ❌ | hổ phách — *"Hoá đơn này đã được ghi nhận trước đó"* |
 | `sync.completed` *(2026-09-12)* | `dongBoXong` | ✅ | ❌ **im lặng** — `loiNhan == null` |

@@ -1,10 +1,10 @@
 /// Sự kiện `account.force_logout` đi ra đường riêng, không lẫn vào `events`.
 ///
 /// Vì sao tách luồng: `events` mang cam kết "client không đọc trường nào của
-/// payload" (xem chú thích đầu `realtime_event.dart`), vì
-/// `bank_transaction.incoming` được backend phát từ hai chỗ với hai hình dạng.
-/// Sự kiện này thì BẮT BUỘC đọc payload — nó phải có cửa riêng để cam kết kia
-/// không bị nới lỏng theo. Spec cưỡng chế đăng xuất §3.2.
+/// payload" (xem chú thích đầu `realtime_event.dart`), vì một tên sự kiện đi
+/// qua EventBus của backend không bảo đảm một hình dạng payload. Sự kiện này
+/// thì BẮT BUỘC đọc payload — nó phải có cửa riêng để cam kết kia không bị nới
+/// lỏng theo. Spec cưỡng chế đăng xuất §3.2.
 library;
 
 import 'dart:async';

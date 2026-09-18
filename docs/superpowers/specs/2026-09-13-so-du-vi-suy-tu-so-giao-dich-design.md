@@ -192,6 +192,10 @@ Server tự ghi `wallet.balance` cho ví ngân hàng từ SePay (`workers/bank.w
 ngân hàng thật có thể khác tổng sổ (phí, lãi, giao dịch chưa về). Nếu client tính lại và ghi đè thì
 nó xoá đúng con số server vừa ghi.
 
+*(2026-09-18: nhóm bỏ liên kết ngân hàng, nên client không tạo được ví loại ấy
+nữa. Phép bỏ qua này **giữ nguyên** — nó bảo vệ hàng cũ kéo về từ một tài khoản
+từng liên kết, không bảo vệ một tính năng.)*
+
 Hiện **0 ví `Banking` và 0 `bank_account`** trên CSDL (đo 2026-09-13; 45 giao dịch đều `Manual`), nên
 chưa hỏng được — nhưng không chặn là để sẵn một hồi quy im lặng cho ngày luồng ngân hàng chạy thật.
 

@@ -1539,7 +1539,9 @@ sửa gì. Ghi lại để khỏi phải tìm lại.
 
 ⚠️ Ví `banking` do server tự ghi số dư từ SePay (`tinhLaiSoDu` cố ý bỏ qua
 chúng), nên các điểm **quá khứ** của ví ấy là xấp xỉ; điểm cuối vẫn đúng vì nó
-đọc thẳng `balance`.
+đọc thẳng `balance`. *(Từ 2026-09-18 nhóm đã bỏ liên kết ngân hàng nên client
+không tạo được ví loại ấy nữa; đoạn này chỉ còn áp cho hàng cũ kéo về từ một
+tài khoản từng liên kết.)*
 
 #### Ba mốc để tin cả đường
 

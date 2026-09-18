@@ -104,7 +104,9 @@ class ThongBaoBuocDangXuat {
 /// Backend phát sự kiện này từ **một** hàm duy nhất (`core/socket.js:175-191`,
 /// gọi từ `admin.service.js:140`, `:199` và `scheduler.service.js:116`) với
 /// hình dạng `{ idaccount, reason, message }` — nên đọc payload ở đây an toàn,
-/// khác hẳn `bank_transaction.incoming` (xem chú thích đầu `realtime_event.dart`).
+/// khác hẳn các sự kiện đi qua EventBus của backend, thứ mà client không biết
+/// bản đang chạy dựng payload bằng khoá gì (xem chú thích đầu
+/// `realtime_event.dart`).
 ///
 /// **Không bao giờ trả `null`.** Bản thân sự kiện đã là lời đẩy người dùng ra;
 /// payload dị dạng chỉ làm ta mất *chi tiết*, không làm mất *lời* ấy. Trả `null`
