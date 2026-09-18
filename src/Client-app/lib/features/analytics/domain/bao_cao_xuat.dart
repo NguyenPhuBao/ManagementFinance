@@ -317,6 +317,29 @@ class BaoCao {
   double? get chiSoVoiTruoc => phanTramSoVoi(tong.chi, tongTruoc.chi);
 }
 
+/// "Kỳ này có in các khối THEO KỲ không" — **định nghĩa duy nhất**, dùng chung
+/// cho màn Xem trước và cho tệp xuất (PDF lẫn CSV).
+///
+/// ## Vì sao là một hàm chứ không phải `!bc.rong` viết thẳng
+///
+/// Phần lớn khối tự rỗng theo một kỳ rỗng, nên chúng gác bằng `isNotEmpty` và
+/// trùng khớp với màn Xem trước mà không ai phải nghĩ. **Ngân sách thì không**:
+/// nó tồn tại độc lập với giao dịch, nên `bc.nganSach` vẫn đầy khi kỳ chẳng có
+/// gì — và tệp xuất đã in bảng *Ngân sách kỳ này* cho một kỳ rỗng suốt từ
+/// 2026-09-09 tới khi G44 đóng, trong khi màn Xem trước giấu nó.
+///
+/// Con số in ra **không sai** (ngân sách ấy có thật), nên không ai đọc tệp mà
+/// phát hiện được — đó mới là chỗ nguy. Chỗ này là một luật sản phẩm: *người
+/// đọc hiểu mọi bảng trong tệp là "của kỳ này", mà "đã chi" của ngân sách đếm
+/// theo kỳ của **chính nó**.* Đặt nó thành một hàm có tên là để chỗ gọi thứ tư
+/// hỏi đúng câu ấy thay vì phát minh lại một điều kiện `isNotEmpty` trần —
+/// cùng khuôn với `khoanVaoThongKe`, `viTinhVaoTong` và `billPayStatus`.
+///
+/// ⚠️ Không phải mọi thứ trong tệp đều theo kỳ. Đầu báo cáo, ba thẻ tổng, ba
+/// dòng kỳ trước và khối Dòng tiền **vẫn in** khi kỳ rỗng, và cả hai bên đã
+/// khớp nhau sẵn ở đó — số dư đầu kỳ bằng cuối kỳ là một câu trả lời có nghĩa.
+bool inKhoiTheoKy(BaoCao bc) => !bc.rong;
+
 /// Dựng báo cáo từ [ds] theo [loc].
 ///
 /// [ds] là **toàn bộ** giao dịch của tài khoản, không phải danh sách đã lọc

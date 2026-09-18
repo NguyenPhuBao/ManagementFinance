@@ -593,7 +593,62 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-17)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-18)
+
+### 🧾 Kỳ rỗng thì tệp xuất thôi in khối Ngân sách — G44 đóng (2026-09-18)
+
+Lỗ hổng cuối cùng còn mở mà **không** phải "hoãn có chủ ý" — nay chỉ còn G18 và
+G23, cả hai đều là quyết định chứ không phải việc. Bàn giao đầy đủ ở **G44**
+`docs/CLIENT_APP_KNOWN_GAPS.md`.
+
+**Chiều đã chốt (người dùng): tệp theo màn.** Kỳ không có giao dịch nào thì tệp
+PDF/CSV bỏ hẳn bảng *Ngân sách kỳ này*, đúng như màn Xem trước vẫn làm. Lý lẽ:
+"đã chi" của một ngân sách đếm theo kỳ của **chính nó**, nên đặt bảng ấy trong
+tệp báo cáo của một kỳ rỗng là chở một con số thuộc khoảng thời gian khác — và
+người cầm tờ PDF không có chỗ hỏi lại.
+
+**Luật nay có một chỗ:** vị từ thuần `inKhoiTheoKy(BaoCao)` ở
+`analytics/domain/bao_cao_xuat.dart`, **ba** chỗ cùng đọc — `csvBaoCao`,
+`pdfBaoCao`, và nhánh rỗng của `report_preview_page.dart`. Khối *Số liệu nhanh*
+vốn gác bằng `!bc.rong` kèm chú thích *"cùng luật với màn Xem trước"*; nay chú
+thích ấy thành mã. Cùng khuôn `khoanVaoThongKe` / `viTinhVaoTong` /
+`billPayStatus`. **Không đổi schema** (vẫn v23), **không thêm trường đồng bộ**,
+không đụng repository.
+
+⚠️ **Ngân sách là khối duy nhất cần vế ấy** — mọi khối khác tự rỗng theo một kỳ
+rỗng, nên `isNotEmpty` của chúng đã trùng khớp sẵn với màn. Vế `inKhoiTheoKy`
+đứng **cạnh** `isNotEmpty` chứ không thay nó.
+
+⚠️ **Ở nhánh PDF phải chặn tại nguồn hàng**, không bọc quanh `_pdfBang`: hàm ấy
+tự bỏ cả bảng khi danh sách hàng rỗng, nên truyền danh sách rỗng là đủ và tránh
+một nhánh `if` thứ hai phải giữ đồng bộ.
+
+⚠️ **Lượt sửa đính chính chính tiêu đề cũ của G44.** Câu *"màn Xem trước giấu
+**mọi** khối"* sai: kỳ rỗng thì màn vẫn hiện đầu báo cáo, khối **Dòng tiền** và
+**ba thẻ tổng** — và tệp cũng in đúng ba thứ ấy, nên hai bên lệch **đúng một
+khối**. Chỗ này đáng nhớ vì nó quyết định chiều sửa: nếu màn thật sự giấu mọi
+thứ thì "tệp theo màn" sẽ cắt cả số dư đầu/cuối kỳ, một thông tin có nghĩa
+ngay cả với kỳ rỗng.
+
+⚠️ **Ca test cho nhánh PDF phải so ĐỘ DÀI tệp, không tìm chuỗi** — PDF nén luồng
+nội dung nên `String.fromCharCodes(bytes).contains('NGÂN SÁCH KỲ NÀY')` không
+bao giờ khớp, và một ca như thế sẽ **xanh trên cả bản sai**. Phép đo dùng được:
+hai tệp của cùng một kỳ rỗng, một bản có ngân sách một bản không, độ dài phải
+bằng nhau. Bản sai có chủ ý làm nó đỏ với chênh lệch **2 847 byte**.
+
+**Năm ca test mới**, `flutter test` **2815/2815**, `flutter analyze` 25 issue /
+0 error.
+
+> ⚠️ **Ngoài phạm vi G44, nhưng cùng lượt:** ba ca của
+> `test/core/notification/os/os_notifier_native_test.dart` ghi **cứng** mốc
+> `DateTime(2026, 9, 17, 21, 30)` (hai ca) và `DateTime(2026, 9, 20, 8)` (một
+> ca). `flutter_local_notifications` gọi `validateDateIsInTheFuture` và **ném**
+> với mốc đã qua, nên hai ca đầu **đỏ từ sáng 18/09** — một quả mìn hẹn giờ ở
+> vùng chẳng ai vừa đụng vào, và nó làm cả bộ test đỏ trong khi lỗi chẳng liên
+> quan gì tới thứ vừa sửa. Nay cả ba dùng mốc **tương đối** (`DateTime.now()`
+> cộng một/hai ngày). Giờ **21:30 giữ nguyên**: đó là thứ ca đầu dùng để bắt
+> lỗi neo `TZDateTime` vào UTC — lệch 7 tiếng ở Việt Nam, không lỗi nào báo ra
+> (bẫy 7.3) — nên một mốc tròn giờ sẽ làm ca ấy yếu đi.
 
 ### 📄 Ba khối cuối vào tệp xuất báo cáo — và một lỗi glyph có từ 2026-09-09 (2026-09-17)
 
@@ -631,6 +686,9 @@ chi** — ba khối mà màn Xem trước đã hiện từ 2026-09-09 còn tệp
 > trước giấu mọi khối, còn tệp vẫn in khối **Ngân sách kỳ này** (ngân sách tồn
 > tại độc lập với giao dịch). Chưa rõ bên nào đúng — mở thành **G44**
 > `docs/CLIENT_APP_KNOWN_GAPS.md`, hoãn có chủ ý.
+> ✅ **G44 đã đóng 2026-09-18** theo chiều *"tệp theo màn"* — xem khối 🧾 ở đầu
+> mục 14. ⚠️ Và câu "màn Xem trước giấu **mọi** khối" ngay trên là **sai**, đo
+> lại khi sửa: màn vẫn hiện đầu báo cáo, khối Dòng tiền và ba thẻ tổng.
 
 ### 💳 Ví được phép âm — G27 đóng (2026-09-17)
 
@@ -1684,6 +1742,12 @@ Xem đầy đủ tại **`docs/CLIENT_APP_KNOWN_GAPS.md`**. Phiên 2026-09-03 đ
 > không phải lỗi đang chờ sửa. ⚠️ Hai ảnh chụp cũ **cùng ngày** đừng dùng:
 > **43 mục / còn HAI** là trước khi G44 mở, và **còn ba (G18, G23, G27)** là
 > buổi sáng, trước khi G27 đóng — trùng con số "ba" nhưng **khác danh sách**.
+>
+> ⚠️ **Đoạn ngay trên là ảnh chụp ngày 2026-09-17.** Đếm lại bằng máy
+> **2026-09-18**, sau khi G44 đóng: **44 mục G, 42 đã đóng, còn HAI** — `G18`
+> và `G23`, cả hai hoãn có chủ ý. Con số "còn HAI" nay **trùng** với ảnh chụp
+> "43 mục / còn HAI" của hôm trước nhưng **tổng thì khác** (44 chứ không 43) —
+> đúng cái bẫy mà chính đoạn này cảnh báo, nên đếm lại thay vì so con số lẻ.
 >
 > Giữ nguyên đoạn cũ thay vì viết lại: nó ghi lại *đường đã đi*, và mỗi lần
 > sửa tại chỗ là mất dấu vết vì sao danh sách từng có hình dạng ấy.

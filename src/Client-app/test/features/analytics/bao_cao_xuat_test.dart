@@ -237,6 +237,33 @@ void main() {
     });
   });
 
+  group('inKhoiTheoKy — G44', () {
+    final ky = LocBaoCao(from: DateTime(2026, 9, 1), to: DateTime(2026, 10, 1));
+    const ns = DongNganSach(
+      categoryId: 'c_gd',
+      ten: 'Giáo dục',
+      hanMuc: 50000,
+      daChi: 45000,
+    );
+
+    test('kỳ rỗng thì không in khối theo kỳ, dù ngân sách vẫn còn dữ liệu', () {
+      final bc = dungBaoCao([], loc: ky, nganSach: const [ns]);
+      expect(bc.nganSach, isNotEmpty,
+          reason: 'Chính chỗ này là G44: ngân sách KHÔNG tự rỗng theo một kỳ '
+              'rỗng, nên không khối nào khác tái hiện được lỗi ấy.');
+      expect(inKhoiTheoKy(bc), isFalse);
+    });
+
+    test('kỳ có giao dịch thì in khối theo kỳ', () {
+      final bc = dungBaoCao(
+        [g(ngay: DateTime(2026, 9, 5))],
+        loc: ky,
+        nganSach: const [ns],
+      );
+      expect(inKhoiTheoKy(bc), isTrue);
+    });
+  });
+
   group('khoangKyTruoc — kỳ liền trước phải cùng "loại", không phải trừ N ngày',
       () {
     test('một tháng dương lịch lùi về ĐÚNG tháng trước', () {

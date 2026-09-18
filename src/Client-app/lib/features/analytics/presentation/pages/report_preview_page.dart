@@ -71,7 +71,9 @@ class ReportPreviewPage extends StatelessWidget {
           ],
           const SizedBox(height: 16),
           _baThe(),
-          if (baoCao.rong) ...[
+          // Cùng vị từ với tệp xuất (`xuat_tep.dart`) — hai bên từng nói khác
+          // nhau đúng ở khối Ngân sách, G44.
+          if (!inKhoiTheoKy(baoCao)) ...[
             const SizedBox(height: 16),
             _khiRong(),
           ] else ...[

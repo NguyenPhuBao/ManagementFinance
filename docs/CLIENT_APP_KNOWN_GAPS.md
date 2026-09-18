@@ -1,6 +1,6 @@
 # Client-app — Việc còn dang dở & rủi ro đã biết
 
-**Cập nhật:** **2026-09-17** (**ba khối cuối vào tệp xuất báo cáo** — mục **3.31** `ANALYTICS_FEATURE.md`: PDF/CSV nay có so-với-kỳ-trước, số liệu nhanh, top 5 khoản chi. Lượt này **đóng một lỗi đã chạy từ 2026-09-09** mà không phép đo nào trước đây bắt được — Roboto nhúng cho PDF không có khối Mũi tên lẫn khối Hình học, nên `→` ở dòng dòng tiền bị gói `pdf` bỏ đi **im lặng** trong mọi tệp app từng xuất; nó lộ ra vì bản thiết kế đầu định dùng `▲`/`▼` và **một ca test đỏ đã lật chính bản thiết kế vừa được duyệt**. Và nó **mở G44** — kỳ rỗng thì màn Xem trước giấu mọi khối còn tệp vẫn in khối Ngân sách, chưa rõ bên nào đúng nên hoãn có chủ ý. Đếm lại bằng máy cùng ngày: **44** mục G, **41** đã đóng, còn **ba** (G18, G23, G44), cả ba hoãn có chủ ý. Cùng ngày, trước đó: **đóng G27** — cờ `wallets.allow_negative`, schema **v23**: ví thẻ tín dụng / theo dõi nợ thôi bị nhắc "ví âm" mỗi ngày. ⚠️ Hai bản sai có chủ ý đi lọt ở vòng đầu, **cả hai là lỗ hổng trong chính bộ test vừa viết** — chi tiết ở mục G27. ⚠️ Phép đếm ghi ở đây khi ấy — **43** mục G, **41** đã đóng, còn **hai** (G18, G23) — là **ảnh chụp trước G44** cùng ngày; con số đang đúng nằm ở đầu banner. Cùng ngày, trước đó: **khoản chi lớn** — loại thông báo thứ **18**, mục #7 khảo sát lần hai, mục 5f `NOTIFICATION_FEATURE.md` — **không mở lỗ hổng nào**; khảo sát lần hai nay **đóng**. Cùng ngày, trước đó: **tổng tài sản theo thời gian** — mục #5 khảo sát lần hai, mục 3.30 `ANALYTICS_FEATURE.md` — **không mở lỗ hổng nào**. Nó *đóng* một chỗ chưa ai gọi tên: `daiTrucDuBao` dựng trần rộng gấp đôi mức cần với dải bắt đầu từ 0, thứ **không test nào bắt được** vì mọi tính chất vẫn đúng — chỉ máy ảo thấy; nay siết tại chính hàm ấy, xem bẫy **4.21** vế ba. Cũng lượt này, giả định của mục 3.25 về "vách khoản neo 2026-09-13" bị **phép đo lật**: vách ấy không tồn tại trên dữ liệu thật) · trước đó 2026-09-16 (cuối ngày: **lịch chi tiêu** — mục #6 khảo sát lần hai, mục 3.29 `ANALYTICS_FEATURE.md` — **không mở lỗ hổng nào**; hai chỗ nó suýt để lọt đều bị bản sai có chủ ý và máy ảo bắt tại chỗ, ghi ở mục 3.29 chứ không thành lỗ hổng. Trước đó cùng ngày: mở rồi **đóng G43** — nút "Tuỳ chọn" của bộ chọn phạm vi ném assertion và chết **im lặng** ở đúng trạng thái mặc định của trang, **có sẵn từ P1**; tìm được khi nghiệm thu máy ảo cho **so cùng kỳ năm trước** (mục #2 khảo sát lần hai), thứ **không** mở lỗ hổng nào. Trước đó cùng ngày: mở rồi **đóng G42** trong cùng ngày — ví đã xoá mềm vẫn phình "số dư cuối kỳ" của trang Phân tích; tìm được khi soát tài liệu sau tính năng **dự báo dòng tiền 30 ngày**, thứ **không** mở lỗ hổng nào) · trước đó 2026-09-15 (mở rồi **đóng G41** trong cùng ngày — giao dịch trỏ vào danh mục mặc định toàn cục mất tên, máy ảo lộ ra bằng **hai chip cùng tên**; cùng ngày: **tỉ lệ tiết kiệm** và **A8 #8 dòng tiền tự do** — không mở lỗ hổng nào. Trước đó cùng ngày: mở rồi **đóng G40** — trang Xem trước báo cáo lệch cột số tiền thật, và lệch **93px**, nặng hơn chỗ đã sửa ở trang Phân tích; không phải hai khối mà **sáu**. Cùng ngày: P1 phạm vi thời gian và P2 bốn khối mượn từ trang Báo cáo — **không mở lỗ hổng nào**, schema giữ v22) · trước đó 2026-09-14 (mở rồi **đóng G39** ngay trong ngày — nhãn trục tung khối "Xu hướng 6 tháng" in đè lên nhau, tìm được khi nghiệm thu máy ảo lát A8 #3/#7; mở rồi **đóng G38** ngay trong ngày — ba trang giao dịch rơi về tài khoản admin; **đóng G28** — `wallet.status` đi qua đồng bộ hai chiều, schema v22) · trước đó 2026-09-13 (mở rồi **đóng G37** ngay trong ngày — số dư ví nay suy từ sổ giao dịch; đóng G36) · trước đó 2026-09-11 (sau khi nhánh gộp `main` @ `cc65f4f` và CSDL dev áp `database/12`: đóng G29, G31, G32; G24 thành lỗi phía client rồi đóng cùng ngày; thêm G34; G35 mở rồi đóng cùng ngày; đóng G30; đóng G33); 2026-09-12: gộp `main` @ `cbbeeb4` — CAN-LAM 17 A đóng, kênh thời gian thực nối được trên máy ảo, G34 hết bị chặn rồi **đóng tối cùng ngày** (client nghe `sync.completed`, im lặng, kiểm máy ảo hai máy); chiều muộn thêm **G36** — chờ backend; tối muộn gộp `main` @ `7779999` — backend làm xong CAN-LAM 20 (chốt trả hai lần ở `upsertTransaction`, client đo thật 4 ca; G36 sửa ở mã, **chưa đo đầu-cuối** ca khoá/xoá vì cần API admin — chờ đo rồi đóng); **2026-09-13: đo đầu-cuối ba ca G36 qua API admin — cả ba đúng, G36 ✅ ĐÓNG** (kéo theo: đường `lamMoi` **có** mang `daXoa`, nên ngoại lệ §3.6b không còn vô nghĩa — người dùng chốt **giữ** cùng ngày); cùng ngày, nghiệm thu bước 12 trên hai máy ảo đóng bốn lỗi im lặng của luồng tự động trả hoá đơn và mở **G37** — số dư ví không phản ánh giao dịch sau một lần đẩy bị xung đột
+**Cập nhật:** **2026-09-18** (**đóng G44** — kỳ rỗng thì tệp xuất thôi in khối Ngân sách, theo đúng màn Xem trước. Người dùng chốt chiều *"tệp theo màn"*: người cầm tờ PDF không có chỗ hỏi lại rằng con số ấy thuộc kỳ nào. Luật nay là một vị từ thuần **`inKhoiTheoKy`** mà **cả ba** chỗ cùng đọc — CSV, PDF, và màn Xem trước. ⚠️ Lượt sửa **đính chính chính tiêu đề cũ của G44**: màn Xem trước **không** giấu "mọi khối" khi kỳ rỗng, nó vẫn hiện đầu báo cáo, khối Dòng tiền và ba thẻ tổng — hai bên lệch **đúng một khối**. ⚠️ Ca test cho nhánh **PDF** phải so **độ dài tệp** chứ không tìm chuỗi, vì PDF nén luồng nội dung; bản sai có chủ ý làm nó đỏ với chênh lệch **2 847 byte**. Đếm lại bằng máy cùng ngày: **44** mục G, **42** đã đóng, còn **hai** (G18, G23), cả hai hoãn có chủ ý. Cùng lượt, **ngoài phạm vi G44**: ba ca của `os_notifier_native_test.dart` ghi cứng mốc `DateTime(2026, 9, 17, 21, 30)` và `DateTime(2026, 9, 20, 8)` — `flutter_local_notifications` gọi `validateDateIsInTheFuture` và **ném** với mốc đã qua, nên hai ca **đỏ từ sáng 18/09** ở một vùng chẳng ai vừa đụng vào. Nay dùng mốc tương đối; giờ **21:30 giữ nguyên** vì nó là thứ bắt lỗi neo vào UTC) · trước đó **2026-09-17** (**ba khối cuối vào tệp xuất báo cáo** — mục **3.31** `ANALYTICS_FEATURE.md`: PDF/CSV nay có so-với-kỳ-trước, số liệu nhanh, top 5 khoản chi. Lượt này **đóng một lỗi đã chạy từ 2026-09-09** mà không phép đo nào trước đây bắt được — Roboto nhúng cho PDF không có khối Mũi tên lẫn khối Hình học, nên `→` ở dòng dòng tiền bị gói `pdf` bỏ đi **im lặng** trong mọi tệp app từng xuất; nó lộ ra vì bản thiết kế đầu định dùng `▲`/`▼` và **một ca test đỏ đã lật chính bản thiết kế vừa được duyệt**. Và nó **mở G44** — kỳ rỗng thì màn Xem trước giấu mọi khối còn tệp vẫn in khối Ngân sách, chưa rõ bên nào đúng nên hoãn có chủ ý. Đếm lại bằng máy cùng ngày: **44** mục G, **41** đã đóng, còn **ba** (G18, G23, G44), cả ba hoãn có chủ ý. Cùng ngày, trước đó: **đóng G27** — cờ `wallets.allow_negative`, schema **v23**: ví thẻ tín dụng / theo dõi nợ thôi bị nhắc "ví âm" mỗi ngày. ⚠️ Hai bản sai có chủ ý đi lọt ở vòng đầu, **cả hai là lỗ hổng trong chính bộ test vừa viết** — chi tiết ở mục G27. ⚠️ Phép đếm ghi ở đây khi ấy — **43** mục G, **41** đã đóng, còn **hai** (G18, G23) — là **ảnh chụp trước G44** cùng ngày; con số đang đúng nằm ở đầu banner. Cùng ngày, trước đó: **khoản chi lớn** — loại thông báo thứ **18**, mục #7 khảo sát lần hai, mục 5f `NOTIFICATION_FEATURE.md` — **không mở lỗ hổng nào**; khảo sát lần hai nay **đóng**. Cùng ngày, trước đó: **tổng tài sản theo thời gian** — mục #5 khảo sát lần hai, mục 3.30 `ANALYTICS_FEATURE.md` — **không mở lỗ hổng nào**. Nó *đóng* một chỗ chưa ai gọi tên: `daiTrucDuBao` dựng trần rộng gấp đôi mức cần với dải bắt đầu từ 0, thứ **không test nào bắt được** vì mọi tính chất vẫn đúng — chỉ máy ảo thấy; nay siết tại chính hàm ấy, xem bẫy **4.21** vế ba. Cũng lượt này, giả định của mục 3.25 về "vách khoản neo 2026-09-13" bị **phép đo lật**: vách ấy không tồn tại trên dữ liệu thật) · trước đó 2026-09-16 (cuối ngày: **lịch chi tiêu** — mục #6 khảo sát lần hai, mục 3.29 `ANALYTICS_FEATURE.md` — **không mở lỗ hổng nào**; hai chỗ nó suýt để lọt đều bị bản sai có chủ ý và máy ảo bắt tại chỗ, ghi ở mục 3.29 chứ không thành lỗ hổng. Trước đó cùng ngày: mở rồi **đóng G43** — nút "Tuỳ chọn" của bộ chọn phạm vi ném assertion và chết **im lặng** ở đúng trạng thái mặc định của trang, **có sẵn từ P1**; tìm được khi nghiệm thu máy ảo cho **so cùng kỳ năm trước** (mục #2 khảo sát lần hai), thứ **không** mở lỗ hổng nào. Trước đó cùng ngày: mở rồi **đóng G42** trong cùng ngày — ví đã xoá mềm vẫn phình "số dư cuối kỳ" của trang Phân tích; tìm được khi soát tài liệu sau tính năng **dự báo dòng tiền 30 ngày**, thứ **không** mở lỗ hổng nào) · trước đó 2026-09-15 (mở rồi **đóng G41** trong cùng ngày — giao dịch trỏ vào danh mục mặc định toàn cục mất tên, máy ảo lộ ra bằng **hai chip cùng tên**; cùng ngày: **tỉ lệ tiết kiệm** và **A8 #8 dòng tiền tự do** — không mở lỗ hổng nào. Trước đó cùng ngày: mở rồi **đóng G40** — trang Xem trước báo cáo lệch cột số tiền thật, và lệch **93px**, nặng hơn chỗ đã sửa ở trang Phân tích; không phải hai khối mà **sáu**. Cùng ngày: P1 phạm vi thời gian và P2 bốn khối mượn từ trang Báo cáo — **không mở lỗ hổng nào**, schema giữ v22) · trước đó 2026-09-14 (mở rồi **đóng G39** ngay trong ngày — nhãn trục tung khối "Xu hướng 6 tháng" in đè lên nhau, tìm được khi nghiệm thu máy ảo lát A8 #3/#7; mở rồi **đóng G38** ngay trong ngày — ba trang giao dịch rơi về tài khoản admin; **đóng G28** — `wallet.status` đi qua đồng bộ hai chiều, schema v22) · trước đó 2026-09-13 (mở rồi **đóng G37** ngay trong ngày — số dư ví nay suy từ sổ giao dịch; đóng G36) · trước đó 2026-09-11 (sau khi nhánh gộp `main` @ `cc65f4f` và CSDL dev áp `database/12`: đóng G29, G31, G32; G24 thành lỗi phía client rồi đóng cùng ngày; thêm G34; G35 mở rồi đóng cùng ngày; đóng G30; đóng G33); 2026-09-12: gộp `main` @ `cbbeeb4` — CAN-LAM 17 A đóng, kênh thời gian thực nối được trên máy ảo, G34 hết bị chặn rồi **đóng tối cùng ngày** (client nghe `sync.completed`, im lặng, kiểm máy ảo hai máy); chiều muộn thêm **G36** — chờ backend; tối muộn gộp `main` @ `7779999` — backend làm xong CAN-LAM 20 (chốt trả hai lần ở `upsertTransaction`, client đo thật 4 ca; G36 sửa ở mã, **chưa đo đầu-cuối** ca khoá/xoá vì cần API admin — chờ đo rồi đóng); **2026-09-13: đo đầu-cuối ba ca G36 qua API admin — cả ba đúng, G36 ✅ ĐÓNG** (kéo theo: đường `lamMoi` **có** mang `daXoa`, nên ngoại lệ §3.6b không còn vô nghĩa — người dùng chốt **giữ** cùng ngày); cùng ngày, nghiệm thu bước 12 trên hai máy ảo đóng bốn lỗi im lặng của luồng tự động trả hoá đơn và mở **G37** — số dư ví không phản ánh giao dịch sau một lần đẩy bị xung đột
 **Mục đích:** ghi lại những hạng mục đã được **cân nhắc và cố ý hoãn**, kèm lý do và bán kính ảnh hưởng. Không có tài liệu này thì người tiếp theo sẽ hoặc bỏ sót, hoặc làm lại từ đầu việc phân tích rủi ro.
 
 Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nhất.
@@ -49,6 +49,7 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > | ~~**G43**~~ | ✅ **Mở rồi ĐÓNG 2026-09-16** — nút **"Tuỳ chọn"** của bộ chọn phạm vi **không làm gì cả, hoàn toàn im lặng**, ở đúng trạng thái **mặc định** của trang. `showDateRangePicker` ném assertion vì `initialDateRange` thò ra ngoài `[firstDate, lastDate]`: kỳ "Tháng này" kết thúc 30/09 trong khi `lastDate` là hôm nay 16/09. Đó là exception **bất đồng bộ không ai bắt** — không toast, không màn đỏ, chỉ một dòng logcat người dùng không bao giờ thấy. **Có sẵn từ P1 (2026-09-15)**; lượt nghiệm thu máy ảo của mục #2 mới chạm vào nút ấy. Phép kẹp nay là hàm thuần `khoangKhoiTaoBoChonNgay` có test riêng |
 > | ~~**G42**~~ | ✅ **Mở rồi ĐÓNG 2026-09-16** — ví **đã xoá mềm** vẫn được cộng vào "số dư cuối kỳ" của khối Dòng tiền và thác nước (đo được **7.000.000** trên một ví thử). `AnalyticsRepositoryImpl` đọc ví bằng truy vấn thẳng **không lọc `deletedAt`** — cố ý, vì bảng tra tên cần hàng đã xoá — rồi cộng `balance` qua `viTinhVaoTong`, hàm khi ấy chỉ kiểm `includeInTotal` và trạng thái lưu trữ. Đây là **bản chép tay thứ năm** của đúng luật mà `vi_tinh_vao_tong_test.dart` sinh ra để chặn, chỉ khác vế. Sửa bằng cách đưa vế `isDeleted` **vào chính hàm** (mặc định `false`), không vá ở chỗ gọi |
 > | ~~**G41**~~ | ✅ **Mở rồi ĐÓNG 2026-09-15** — giao dịch trỏ vào **danh mục mặc định toàn cục** mất tên, hiện thành "Danh mục đã xoá". `sync_engine` quy `is_default = true` thành **`idaccount = 0`**, nhưng cả hai repository tra danh mục lọc đúng một `idaccount` — mỗi nơi một bản chép tay của cùng truy vấn. Máy ảo lộ ra vì khối Xu hướng hiện **hai chip cùng một tên**; truy vấn PostgreSQL xác nhận tài khoản 10 có đúng hai danh mục như thế (`Chi khác`, `Làm thêm`, cùng bị backend xoá mềm hôm 2026-09-07). Nay có **một** định nghĩa `categoryDao.getBangTraTen` lọc theo **cờ `isDefault`**, cả hai repository dùng chung. Ảnh hưởng rộng hơn chip: donut, thác nước và danh sách danh mục đều mất tên |
+> | ~~**G44**~~ | ✅ **ĐÓNG 2026-09-18** — kỳ rỗng thì tệp xuất in bảng *Ngân sách kỳ này* mà màn Xem trước giấu, vì ngân sách là khối **duy nhất** không tự rỗng theo một kỳ rỗng. Người dùng chốt chiều **"tệp theo màn"**; luật nay là vị từ thuần `inKhoiTheoKy` mà cả CSV, PDF lẫn màn Xem trước cùng đọc. ⚠️ Lượt sửa đính chính chính tiêu đề cũ: màn **không** giấu "mọi khối" — đầu báo cáo, khối Dòng tiền và ba thẻ tổng vẫn hiện, nên hai bên lệch **đúng một khối**. ⚠️ Ca PDF so **độ dài tệp** chứ không tìm chuỗi (PDF nén luồng nội dung); bản sai làm nó đỏ với **2 847 byte** chênh lệch |
 >
 > **G20 đã đóng ngày 2026-09-05** — `depositToGoal` nhận `occurredAt` chặn hai
 > đầu; đã kiểm cả bằng test lẫn trên máy ảo Android.
@@ -1406,7 +1407,7 @@ hai**, và phải tiêm lệch mới dựng lại được trạng thái ấy tr
 
 ---
 
-### G44 — Kỳ rỗng: màn Xem trước giấu mọi khối, còn tệp vẫn in khối Ngân sách · ⏸️ HOÃN CÓ CHỦ Ý (2026-09-17)
+### ~~G44 — Kỳ rỗng: tệp xuất in khối Ngân sách mà màn Xem trước giấu~~ · ✅ ĐÓNG (2026-09-18)
 
 **Tìm được khi nghiệm thu máy ảo** cho mục **3.31** `ANALYTICS_FEATURE.md` (ba
 khối cuối vào tệp xuất). Tôi xuất một khoảng **rỗng** — 08–17/09 — để chạm
@@ -1414,19 +1415,26 @@ nhánh "kỳ không có giao dịch nào", và thấy tệp PDF ca ấy vẫn in
 kỳ này* với dòng `Giáo dục 45.000đ / 50.000đ / 5.000đ`.
 
 **Triệu chứng.** Kỳ rỗng thì `report_preview_page.dart` đi nhánh
-`if (baoCao.rong)` và dựng **duy nhất** thẻ *"Không có giao dịch nào trong
-khoảng đã chọn"* — mọi khối khác nằm ở nhánh `else`. Còn `xuat_tep.dart` gác
-từng khối theo **độ rỗng của chính khối ấy** (`if (bc.nganSach.isNotEmpty)`,
-`if (bc.theoVi.isNotEmpty)`, …). Với kỳ rỗng thì mọi khối khác cũng rỗng theo
-nên trùng khớp — **trừ ngân sách**, thứ tồn tại độc lập với giao dịch.
+`if (baoCao.rong)` và dựng thẻ *"Không có giao dịch nào trong khoảng đã chọn"*
+thay cho cả nhánh `else`. Còn `xuat_tep.dart` gác từng khối theo **độ rỗng của
+chính khối ấy** (`if (bc.nganSach.isNotEmpty)`, `if (bc.theoVi.isNotEmpty)`, …).
+Với kỳ rỗng thì mọi khối khác cũng rỗng theo nên trùng khớp — **trừ ngân sách**,
+thứ tồn tại độc lập với giao dịch.
+
+> ⚠️ **Đính chính, đo lại 2026-09-18 khi sửa.** Tiêu đề cũ của mục này ghi *"màn
+> Xem trước giấu **mọi** khối"* — **không đúng**. Kỳ rỗng thì màn vẫn hiện đầu
+> báo cáo, khối **Dòng tiền** và **ba thẻ tổng**; chỉ nhóm khối nằm trong nhánh
+> `else` mới bị giấu. Điều ấy quan trọng khi chọn chiều sửa: tệp xuất **cũng**
+> in đúng ba thứ đó khi kỳ rỗng (số dư đầu/cuối kỳ, ba dòng kỳ trước, tổng bằng
+> 0), nên hai bên đã khớp nhau sẵn ở đấy và lệch **đúng một khối**.
 
 **Bán kính ảnh hưởng: hẹp.** Chỉ hiện ra khi (a) kỳ không có giao dịch nào
 **và** (b) tài khoản có ít nhất một ngân sách đang chạy. Con số in ra **không
 sai** — ngân sách ấy có thật, "đã chi" của nó đếm theo kỳ của chính nó chứ
 không theo kỳ báo cáo. Không hàng nào kẹt, không lỗi, không đồng bộ.
 
-**Vì sao hoãn.** Chưa rõ **bên nào mới đúng**, và đó là câu hỏi sản phẩm chứ
-không phải câu hỏi kỹ thuật:
+**Vì sao từng hoãn.** Chưa rõ **bên nào mới đúng**, và đó là câu hỏi sản phẩm
+chứ không phải câu hỏi kỹ thuật:
 
 - Tệp đúng → màn Xem trước đang **giấu** một thông tin có thật chỉ vì kỳ rỗng.
 - Màn đúng → tệp đang chở một bảng mà người đọc sẽ hiểu là "của kỳ này", trong
@@ -1436,10 +1444,31 @@ Sửa theo chiều nào cũng là một dòng, nhưng chọn sai chiều thì **
 hiện được** — cả hai bản đều trông hợp lý. Nằm ngoài phạm vi người dùng đã
 duyệt cho mục 3.31 (đúng ba khối), nên ghi lại thay vì tự quyết.
 
-**Nếu làm:** chốt một luật duy nhất cho "kỳ rỗng thì tệp chở gì", đặt nó ở tầng
-thuần để **cả** màn Xem trước lẫn `xuat_tep.dart` cùng đọc — đây chính là khuôn
-mà `khoanVaoThongKe`, `viTinhVaoTong` và `billPayStatus` đã dùng để dập tắt các
-bản chép tay.
+**Chiều đã chốt (người dùng, 2026-09-18): tệp theo màn.** Kỳ rỗng thì tệp bỏ
+hẳn khối Ngân sách. Lý lẽ: người đọc hiểu mọi bảng trong tệp là "của kỳ này",
+mà "đã chi" của ngân sách đếm theo kỳ của **chính nó** — và người cầm tờ PDF
+không có chỗ hỏi lại, khác hẳn người đang đứng trước màn hình.
+
+**Đã làm thế nào.** Một vị từ thuần **`inKhoiTheoKy(BaoCao)`** ở
+`analytics/domain/bao_cao_xuat.dart`, cạnh `rong`; **ba** chỗ gọi cùng đọc nó:
+`csvBaoCao`, `pdfBaoCao`, và nhánh rỗng của `report_preview_page.dart`. Khối
+*Số liệu nhanh* vốn đã gác bằng `!bc.rong` kèm chú thích *"cùng luật với màn
+Xem trước"* — nay chú thích ấy thành **mã**.
+
+⚠️ **Vế `inKhoiTheoKy` phải đứng cạnh `isNotEmpty` ở khối ngân sách chứ không
+thay nó**, và chỉ ở **khối ấy**: mọi khối khác tự rỗng theo kỳ rỗng nên vế thừa,
+còn ngân sách thì không.
+
+⚠️ **Ở nhánh PDF phải chặn tại NGUỒN HÀNG, không bọc quanh `_pdfBang`** — hàm ấy
+tự bỏ cả bảng khi không còn hàng nào, nên truyền danh sách rỗng là đủ và không
+sinh thêm một nhánh `if` thứ hai phải giữ đồng bộ.
+
+**Năm ca test.** Hai ca ở `bao_cao_xuat_test.dart` canh vị từ hai chiều; hai ca
+CSV ở `xuat_tep_test.dart` (kỳ rỗng bỏ hẳn bảng · kỳ thường in y như cũ); một ca
+PDF. ⚠️ **PDF nén luồng nội dung nên không tìm chuỗi trong byte được** — phép đo
+thay thế là so **độ dài** hai tệp của cùng một kỳ rỗng, một bản có ngân sách một
+bản không. Bản sai có chủ ý làm ca ấy đỏ với chênh lệch **2 847 byte**, nên nó
+canh thật chứ không xanh sẵn.
 
 ---
 
