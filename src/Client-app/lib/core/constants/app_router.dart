@@ -28,7 +28,6 @@ import '../../features/profile/presentation/pages/edit_profile_page.dart';
 import '../../features/wallet/presentation/pages/wallet_list_page.dart';
 import '../../features/wallet/presentation/pages/wallet_add_page.dart';
 import '../../features/wallet/presentation/pages/wallet_edit_page.dart';
-import '../../features/wallet/presentation/pages/bank_link_page.dart';
 import '../../features/category/presentation/pages/category_page.dart';
 import '../../features/category/presentation/pages/category_group_page.dart';
 import '../../features/category/presentation/pages/category_add_page.dart';
@@ -210,17 +209,9 @@ class AppRouter {
           GoRoute(
             path: '/wallets',
             builder: (_, __) => const WalletListPage(),
-            routes: [
-              GoRoute(
-                path: 'bank-link',
-                parentNavigatorKey: _rootNavigatorKey,
-                builder: (_, __) => const BankLinkPage(),
-              ),
-            ],
           ),
           GoRoute(
               path: '/wallets/add', builder: (_, __) => const WalletAddPage()),
-          GoRoute(path: '/bank-link', builder: (_, __) => const BankLinkPage()),
           GoRoute(
             path: '/wallets/:id/edit',
             builder: (_, s) => WalletEditPage(id: s.pathParameters['id']!),

@@ -148,8 +148,6 @@ class _WalletListView extends StatelessWidget {
                     idaccount: idaccount,
                   ),
                 ],
-                const SizedBox(height: 24),
-                _buildBankIntegrationSection(context),
                 const SizedBox(height: 32),
               ],
             ),
@@ -326,89 +324,6 @@ class _WalletListView extends StatelessWidget {
             idaccount: idaccount,
           );
     }
-  }
-
-  Widget _buildBankIntegrationSection(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'LIÊN KẾT NGÂN HÀNG',
-          style: TextStyle(
-            fontSize: 12,
-            letterSpacing: 0.6,
-            fontWeight: FontWeight.w700,
-            color: AppColors.textSecondary,
-          ),
-        ),
-        const SizedBox(height: 12),
-        InkWell(
-          onTap: () => context.push('/wallets/bank-link'),
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.03),
-                  blurRadius: 16,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceContainerHigh,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        width: 10,
-                        height: 10,
-                        decoration: const BoxDecoration(
-                          color: Colors.redAccent,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Container(
-                        width: 10,
-                        height: 10,
-                        decoration: const BoxDecoration(
-                          color: Colors.blueAccent,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 16),
-                const Expanded(
-                  child: Text(
-                    'Liên kết tài khoản ngân hàng',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ),
-                const Icon(Icons.chevron_right,
-                    color: AppColors.textSecondary, size: 20),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
   }
 }
 

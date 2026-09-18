@@ -72,8 +72,8 @@ class RealtimeChannel {
 
   /// Sự kiện cưỡng chế đăng xuất — **luồng riêng**, cố ý không trộn vào [events].
   ///
-  /// [events] mang cam kết "client không đọc trường nào của payload", vì
-  /// `bank_transaction.incoming` được backend phát từ hai chỗ với hai hình dạng.
+  /// [events] mang cam kết "client không đọc trường nào của payload", vì một
+  /// tên sự kiện đi qua EventBus không bảo đảm một hình dạng payload.
   /// `account.force_logout` thì chỉ phát từ MỘT hàm (`core/socket.js:175-191`),
   /// nên đọc payload ở đây an toàn — và để cam kết kia không bị nới theo, nó đi
   /// cửa riêng (spec cưỡng chế đăng xuất §3.2).

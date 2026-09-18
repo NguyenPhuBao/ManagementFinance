@@ -244,13 +244,21 @@ void main() {
   });
 
   group('sự kiện thời gian thực', () {
-    testWidgets('giao dịch ngân hàng hiện đúng câu, không kèm số',
-        (tester) async {
+    testWidgets('mỗi sự kiện hiện đúng câu hằng, không kèm số', (tester) async {
       await dung(tester);
-      realtime.add(RealtimeEvent.giaoDichNganHang);
-      await nhip(tester);
 
-      expect(find.text('Vừa có giao dịch mới từ ngân hàng'), findsOneWidget);
+      for (final e in RealtimeEvent.values) {
+        final chu = e.loiNhan;
+        if (chu == null) continue;
+        expect(RegExp(r'\d').hasMatch(chu), isFalse,
+            reason: 'Câu toast là hằng số client chọn, không lấy từ payload. '
+                'Một con số ở đây nghĩa là ai đó đã bắt đầu đọc payload — thứ '
+                'RealtimeChannel cố ý không làm.');
+      }
+
+      realtime.add(RealtimeEvent.ocrXong);
+      await nhip(tester);
+      expect(find.text('Đã bóc tách xong hoá đơn'), findsOneWidget);
     });
 
     testWidgets('hoá đơn trùng hiện câu cảnh báo', (tester) async {
@@ -289,10 +297,10 @@ void main() {
       await dung(tester);
       ketNoi.add(ConnectionEvent.khoiPhuc);
       await nhip(tester);
-      realtime.add(RealtimeEvent.giaoDichNganHang);
+      realtime.add(RealtimeEvent.ocrXong);
       await nhip(tester);
 
-      expect(find.text('Vừa có giao dịch mới từ ngân hàng'), findsOneWidget,
+      expect(find.text('Đã bóc tách xong hoá đơn'), findsOneWidget,
           reason: 'Realtime xếp trên trạng thái kết nối: nó nói về một việc vừa '
               'xảy ra với tiền của người dùng.');
       expect(find.textContaining('Đã kết nối lại'), findsNothing);
@@ -303,27 +311,27 @@ void main() {
       await dung(tester);
       dayLen.add(ketQua(thanhCong: 2));
       await nhip(tester);
-      realtime.add(RealtimeEvent.giaoDichNganHang);
+      realtime.add(RealtimeEvent.ocrXong);
       await nhip(tester);
 
       expect(find.textContaining('Đã đồng bộ'), findsOneWidget,
           reason: 'Thứ tự ưu tiên: đồng bộ > realtime > kết nối. Toast đồng bộ '
               'trả lời câu người dùng thật sự lo — dữ liệu vừa ghi đã an toàn '
               'chưa.');
-      expect(find.text('Vừa có giao dịch mới từ ngân hàng'), findsNothing);
+      expect(find.text('Đã bóc tách xong hoá đơn'), findsNothing);
     });
 
     testWidgets('sự kiện bị nuốt KHÔNG được xếp hàng hiện sau', (tester) async {
       await dung(tester);
       dayLen.add(ketQua(thanhCong: 2));
       await nhip(tester);
-      realtime.add(RealtimeEvent.giaoDichNganHang);
+      realtime.add(RealtimeEvent.ocrXong);
       await nhip(tester);
 
       // Toast đồng bộ hết hạn và biến mất.
       await choTanHan(tester);
 
-      expect(find.text('Vừa có giao dịch mới từ ngân hàng'), findsNothing,
+      expect(find.text('Đã bóc tách xong hoá đơn'), findsNothing,
           reason: 'Thông báo tạm thời trễ vài giây là thông báo sai ngữ cảnh: '
               'người dùng đã chuyển sang việc khác. Bỏ hẳn, không xếp hàng.');
     });
@@ -346,7 +354,7 @@ void main() {
 
     testWidgets('mất kết nối vẫn thắng realtime', (tester) async {
       await dung(tester);
-      realtime.add(RealtimeEvent.giaoDichNganHang);
+      realtime.add(RealtimeEvent.ocrXong);
       await nhip(tester);
       ketNoi.add(ConnectionEvent.mat);
       await nhip(tester);
