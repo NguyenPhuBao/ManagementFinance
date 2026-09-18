@@ -292,6 +292,12 @@ class _BillEditPageState extends State<BillEditPage> {
                   TextField(
                     controller: _amountController,
                     keyboardType: TextInputType.number,
+                    // `bill."Amount"` là `numeric(15,2)` — chữ số thứ 14 làm
+                    // hoá đơn kẹt hàng đợi đẩy vĩnh viễn, im lặng. Xem
+                    // `kSoChuSoToiDaSoTien`.
+                    inputFormatters: const [
+                      GioiHanSoChuSo(kSoChuSoToiDaSoTien),
+                    ],
                     decoration: const InputDecoration(
                       labelText: 'Số tiền (VNĐ)',
                       border: OutlineInputBorder(),

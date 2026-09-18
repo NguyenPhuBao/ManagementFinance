@@ -12,6 +12,8 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../budget/data/models/budget_entity.dart';
 import '../../../budget/data/repositories/budget_repository.dart';
+import '../../domain/ban_phim_so_tien.dart';
+import '../widgets/so_tien_lon.dart';
 import '../../../budget/domain/budget_impact.dart';
 import '../../../wallet/domain/wallet_type.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
@@ -444,32 +446,14 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     );
   }
 
+  /// Phép gõ nằm ở `domain/ban_phim_so_tien.dart` — hàm thuần, có test riêng.
+  ///
+  /// Tách ra vì màn này **tự vẽ bàn phím** thay vì dùng `TextField`, nên
+  /// `inputFormatters` không với tới đây và trần số chữ số phải chặn ngay trong
+  /// phép gõ. `transaction."Amount"` là `numeric(15,2)`: chữ số thứ 14 làm giao
+  /// dịch **kẹt hàng đợi đẩy vĩnh viễn**, im lặng.
   void _onKeyPress(String key) {
-    setState(() {
-      if (key == 'backspace') {
-        if (_amountString.length > 1) {
-          _amountString = _amountString.substring(0, _amountString.length - 1);
-        } else {
-          _amountString = "0";
-        }
-      } else if (key == '000') {
-        if (_amountString != "0") {
-          _amountString += '000';
-        }
-      } else if (key == '.') {
-        if (!_amountString.contains('.')) {
-          _amountString += '.';
-        }
-      } else if (key == 'done' || key == '+' || key == '-') {
-        // Handled or ignorable
-      } else {
-        if (_amountString == "0") {
-          _amountString = key;
-        } else {
-          _amountString += key;
-        }
-      }
-    });
+    setState(() => _amountString = themPhimSoTien(_amountString, key));
   }
 
   String _getFormattedAmount() {
@@ -800,15 +784,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   Widget _buildAmountDisplay() {
     return Column(
       children: [
-        Text(
-          _getFormattedAmount(),
-          style: TextStyle(
-            fontSize: 48,
-            fontWeight: FontWeight.bold,
-            letterSpacing: -1,
-            color: _getAmountColor(),
-          ),
-        ),
+        // ⚠️ Không dựng `Text` trần ở đây. Ở cỡ 48 trên 411dp, con số dài nhất
+        // mà bàn phím cho gõ (`9.999.999.999.999đ`) NGẮT THÀNH HAI DÒNG và đẩy
+        // cả màn xuống — không sọc vàng, không exception, chỉ là bố cục xấu
+        // mà widget test dựng-ở-1280px không thấy. Xem `SoTienLon`.
+        SoTienLon(chu: _getFormattedAmount(), mau: _getAmountColor()),
         const SizedBox(height: 8),
         const Text(
           'VNĐ - VIỆT NAM ĐỒNG',

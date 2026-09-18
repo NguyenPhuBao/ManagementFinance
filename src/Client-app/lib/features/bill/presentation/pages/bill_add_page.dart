@@ -292,6 +292,8 @@ class _BillAddPageState extends State<BillAddPage> {
             icon: Icons.monetization_on_outlined,
             placeholder: '0đ',
             keyboardType: TextInputType.number,
+            // bill."Amount" là numeric(15,2). Xem kSoChuSoToiDaSoTien.
+            inputFormatters: const [GioiHanSoChuSo(kSoChuSoToiDaSoTien)],
           ),
           const SizedBox(height: 16),
 

@@ -898,6 +898,8 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                                       textColor: AppColors.income,
                                       isBold: true,
                                       keyboardType: TextInputType.number,
+                                      // numeric(15,2) — xem kSoChuSoToiDaSoTien.
+                                      inputFormatters: const [GioiHanSoChuSo(kSoChuSoToiDaSoTien)],
                                     ),
                                   ],
                                 ),
@@ -1067,6 +1069,8 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                               textColor: AppColors.income,
                               isBold: true,
                               keyboardType: TextInputType.number,
+                              // numeric(15,2) — xem kSoChuSoToiDaSoTien.
+                              inputFormatters: const [GioiHanSoChuSo(kSoChuSoToiDaSoTien)],
                             ),
                             const SizedBox(height: 16),
                             _buildLabel('CHU KỲ TRÍCH'),

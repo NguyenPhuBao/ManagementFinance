@@ -1724,9 +1724,13 @@ hạn **cố ý**: chữ của *người dùng* — tên ví, ghi chú — thì 
 Đo bằng máy 2026-09-17: Roboto **có** `»` `›` `•` `±` `−` `·` `—`; **không có**
 `→` `↑` `↓` `▲` `▼` `▴` `▾`.
 
-⚠️ **Ca quét glyph KHÔNG phải "test quét `lib/`" thứ tám** — nó chỉ đọc **một**
-tệp, còn bảy ca kia quét toàn bộ `lib/`. Con số ấy vẫn là **bảy**; đừng cộng
-nhầm.
+⚠️ **Ca quét glyph KHÔNG phải một "test quét `lib/`"** — nó chỉ đọc **một** tệp,
+còn những ca kia quét toàn bộ `lib/`; đừng cộng nhầm.
+
+> Câu này nguyên văn là *"Con số ấy vẫn là **bảy**"* và đúng tới 2026-09-17.
+> Nay là **tám**: `o_nhap_tien_co_tran_test.dart` thêm ngày 2026-09-18 cùng
+> **G46**, canh mọi ô nhập tiền đều có trần số chữ số. Ca quét glyph vẫn không
+> nằm trong số ấy.
 
 #### Nghiệm thu
 

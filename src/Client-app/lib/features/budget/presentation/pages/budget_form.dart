@@ -7,6 +7,7 @@ import '../../../../shared/widgets/segmented_choice.dart';
 import '../../data/models/budget_entity.dart';
 import '../../data/models/budget_period.dart';
 import '../widgets/budget_visuals.dart';
+import '../../../../core/utils/gioi_han_do_dai.dart';
 
 /// Dữ liệu form đã chuẩn hoá, sẵn sàng ghi xuống.
 ///
@@ -568,6 +569,8 @@ class _BudgetFormState extends State<BudgetForm> {
       key: const ValueKey('budget-amount'),
       controller: _amountController,
       keyboardType: TextInputType.number,
+      // budget."TotalAmount" là numeric(15,2) — xem kSoChuSoToiDaSoTien.
+      inputFormatters: const [GioiHanSoChuSo(kSoChuSoToiDaSoTien)],
       style: const TextStyle(
         fontSize: 16,
         color: AppColors.primary,
@@ -587,6 +590,8 @@ class _BudgetFormState extends State<BudgetForm> {
     return TextFormField(
       controller: _thresholdController,
       keyboardType: TextInputType.number,
+      // budget."Threshold_Warning_Amount" là numeric(15,2) — xem kSoChuSoToiDaSoTien.
+      inputFormatters: const [GioiHanSoChuSo(kSoChuSoToiDaSoTien)],
       style: const TextStyle(fontSize: 16, color: AppColors.primary),
       decoration: _inputDecoration('Ví dụ: 500000'),
       validator: (value) {

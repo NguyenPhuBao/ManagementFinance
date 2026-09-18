@@ -595,6 +595,48 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-18)
 
+### 🔢 Trần số chữ số thiếu ở bốn mảng còn lại — G46 (2026-09-18)
+
+Lượt soát nối tiếp G45, lần này quét **cả app**. Kết quả: lỗ hổng vừa vá ở ô số
+dư ví **không phải chuyện riêng của ví**. Đo trên CSDL cùng ngày, **tám** cột
+tiền đều là `numeric(15,2)`, và **bốn mảng còn lại** đều không giới hạn số chữ
+số: giao dịch, hoá đơn, mục tiêu, ngân sách. Bàn giao ở **G46**
+`docs/CLIENT_APP_KNOWN_GAPS.md`.
+
+**Nặng nhất là màn Thêm giao dịch**: người dùng ghi giao dịch **hàng ngày**, bàn
+phím ở đó là **tự vẽ** chứ không phải `TextField` nên `inputFormatters` không
+với tới, và nó có phím **`000`** — ba chữ số vào một lúc. Nay phép gõ tách thành
+hàm thuần **`themPhimSoTien`**, và ⚠️ phím `000` **cắt bớt cho vừa trần** thay
+vì bỏ cả cụm: bỏ cả cụm thì người dùng bấm mà không thấy gì xảy ra.
+
+**Thêm test quét `lib/` thứ tám** (`o_nhap_tien_co_tran_test.dart`). Lý do cần
+nó: thiếu trần **không gây lỗi nào** lúc gõ — ô vẫn nhận, màn vẫn lưu, SQLite
+vẫn ghi. Chỉ hàng đợi đẩy là hỏng, và nó hỏng ở nơi không ai nhìn.
+
+⚠️ **Lần thứ BA trong cùng một ngày** một trần số chữ số biến giá trị lớn nhất
+thành **hợp lệ đạt tới được** rồi lộ ra một bố cục chưa từng được thử với giá
+trị ấy. Ở cỡ chữ 48 trên 411dp, `9.999.999.999.999đ` **ngắt thành hai dòng**,
+chữ "đ" rơi xuống dòng dưới và đẩy cả màn xuống. Đây **không phải tràn**: không
+sọc vàng, không `FlutterError`, `takeException()` trả `null` — `Text` chỉ lặng
+lẽ ngắt dòng. Nên ca test phải đo **chiều cao thật**; bản sai cho 207px so với
+ngưỡng 80. Sửa bằng widget `SoTienLon`.
+
+⚠️ **`FittedBox` dùng được ở đây mà không dùng được ở ô số dư ví**: nó đo con ở
+ràng buộc **vô hạn** rồi mới thu nhỏ, mà `Text` có bề rộng tự nhiên xác định
+dưới ràng buộc ấy còn `TextField` thì không. Đó là lý do `OSoDuVi` phải đi đường
+khác (`Flexible` + bậc thang cỡ chữ).
+
+**Mọi ràng buộc khác đã kiểm và an toàn, không phải sửa gì**: số tiền phải dương
+ở bốn mảng; ngưỡng phần trăm 1–100; ngày kết thúc sau ngày bắt đầu; tiến độ mục
+tiêu không âm được; loại giao dịch và phân loại danh mục đều được normalizer
+dịch; bảy ô nhập tên đều có giới hạn độ dài.
+
+**Nghiệm thu máy ảo:** bấm phím số 20 lần ở màn Thêm giao dịch thì dừng đúng 13
+chữ số, hiện **một dòng**, cỡ chữ đã co.
+
+**16 ca test mới**, `flutter test` **2854/2854**, `flutter analyze` 25 issue / 0
+error. **Không đổi schema** (vẫn v23), **không thêm trường đồng bộ**.
+
 ### 👛 Sáu lỗ hổng của mảng ví — G45, mở và đóng cùng ngày (2026-09-18)
 
 Không đến từ báo lỗi nào. Người dùng hỏi mảng ví *đã đầy đủ chưa, có lỗ hổng gì,
@@ -1857,11 +1899,12 @@ Xem đầy đủ tại **`docs/CLIENT_APP_KNOWN_GAPS.md`**. Phiên 2026-09-03 đ
 > buổi sáng, trước khi G27 đóng — trùng con số "ba" nhưng **khác danh sách**.
 >
 > ⚠️ **Đoạn ngay trên là ảnh chụp ngày 2026-09-17.** Đếm lại bằng máy
-> **2026-09-18**, sau khi G44 **và** G45 đóng: **45 mục G, 43 đã đóng, còn
+> **2026-09-18**, sau khi G44, G45 **và** G46 đóng: **46 mục G, 44 đã đóng, còn
 > HAI** — `G18` và `G23`, cả hai hoãn có chủ ý. Con số "còn HAI" nay **trùng**
 > với ảnh chụp "43 mục / còn HAI" của hôm trước nhưng **tổng thì khác**, và
-> trong cùng ngày 2026-09-18 nó đã qua hai mốc (44 sau G44, rồi 45 sau G45) —
-> đúng cái bẫy mà chính đoạn này cảnh báo, nên đếm lại thay vì so con số lẻ.
+> trong cùng ngày 2026-09-18 nó đã qua **ba** mốc (44 sau G44, 45 sau G45, 46
+> sau G46) — đúng cái bẫy mà chính đoạn này cảnh báo, nên đếm lại thay vì so
+> con số lẻ.
 >
 > Giữ nguyên đoạn cũ thay vì viết lại: nó ghi lại *đường đã đi*, và mỗi lần
 > sửa tại chỗ là mất dấu vết vì sao danh sách từng có hình dạng ấy.
