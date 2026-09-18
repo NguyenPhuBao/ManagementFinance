@@ -168,15 +168,37 @@ void main() {
       tz.setLocalLocation(tz.getLocation('Asia/Ho_Chi_Minh'));
     });
 
+    /// Ngày mai lúc 21:30 **giờ địa phương**.
+    ///
+    /// ⚠️ Mốc phải là một ngày **tương lai** tính từ lúc chạy, không phải một
+    /// hằng số: `flutter_local_notifications` gọi `validateDateIsInTheFuture`
+    /// và **ném** với mốc đã qua. Ba ca của nhóm này từng ghi cứng
+    /// `DateTime(2026, 9, 17, 21, 30)` và `DateTime(2026, 9, 20, 8)`; chúng
+    /// xanh tới hết ngày 17/09/2026 rồi đỏ từ sáng 18/09 — một quả mìn hẹn giờ
+    /// làm cả bộ test đỏ ở một vùng chẳng ai vừa đụng vào.
+    ///
+    /// Giờ 21:30 thì **giữ nguyên**: nó là thứ ca đầu dùng để bắt lỗi neo vào
+    /// UTC (lệch 7 tiếng ở Việt Nam), nên một mốc tròn giờ sẽ làm ca ấy yếu đi.
+    DateTime maiLuc2130() {
+      final mai = DateTime.now().add(const Duration(days: 1));
+      return DateTime(mai.year, mai.month, mai.day, 21, 30);
+    }
+
+    /// `2026-09-19T21:30` — tiền tố mà `TZDateTime.toString()` phải mở đầu.
+    String tienTo(DateTime d) => '${d.year.toString().padLeft(4, '0')}-'
+        '${d.month.toString().padLeft(2, '0')}-'
+        '${d.day.toString().padLeft(2, '0')}T21:30';
+
     test('zonedSchedule() đẩy xuống nền tảng đúng mốc theo giờ ĐỊA PHƯƠNG',
         () async {
       final os = LocalOsNotifier();
       await os.init();
+      final when = maiLuc2130();
       await os.zonedSchedule(
         id: 42,
         title: 'Hoá đơn sắp đến hạn',
         body: 'Tiền điện còn 3 ngày tới hạn.',
-        when: DateTime(2026, 9, 17, 21, 30),
+        when: when,
         payload: 'billDue:hd1:2026-09-20:3',
       );
 
@@ -184,7 +206,7 @@ void main() {
           (goiTen('zonedSchedule').arguments as Map).cast<String, Object?>();
       expect(args['id'], 42);
       expect(args['payload'], 'billDue:hd1:2026-09-20:3');
-      expect(args['scheduledDateTime'].toString(), startsWith('2026-09-17T21:30'),
+      expect(args['scheduledDateTime'].toString(), startsWith(tienTo(when)),
           reason: 'Quên setLocalLocation thì TZDateTime neo vào UTC và nhắc '
               'lệch 7 tiếng ở Việt Nam — không có lỗi nào báo ra (bẫy 7.3).');
     });
@@ -196,7 +218,7 @@ void main() {
         id: 42,
         title: 't',
         body: 'b',
-        when: DateTime(2026, 9, 17, 21, 30),
+        when: maiLuc2130(),
       );
 
       final args =
@@ -352,7 +374,10 @@ void main() {
         id: 2,
         title: 't',
         body: 'b',
-        when: DateTime(2026, 9, 20, 8),
+        // ⚠️ Tương đối, không phải hằng số: `validateDateIsInTheFuture` ném
+        // với mốc đã qua. Ca này ghi cứng `DateTime(2026, 9, 20, 8)` và sẽ đỏ
+        // từ 21/09/2026 — cùng quả mìn hẹn giờ đã nổ ở nhóm "đặt lịch trước".
+        when: DateTime.now().add(const Duration(days: 2)),
       );
 
       expect(androidCua(goiTen('zonedSchedule'))['groupKey'],
