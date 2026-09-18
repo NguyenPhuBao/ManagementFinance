@@ -595,6 +595,56 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-18)
 
+### 👛 Sáu lỗ hổng của mảng ví — G45, mở và đóng cùng ngày (2026-09-18)
+
+Không đến từ báo lỗi nào. Người dùng hỏi mảng ví *đã đầy đủ chưa, có lỗ hổng gì,
+có ràng buộc nào cần bổ sung*, và lượt soát đối chiếu **từng ràng buộc
+PostgreSQL với chốt tương ứng phía client**. Sáu chỗ hở, tất cả hỏng **im
+lặng**. Bảng đầy đủ ở **G45** `docs/CLIENT_APP_KNOWN_GAPS.md`.
+
+**Nặng nhất là số dư không giới hạn chữ số.** `wallet."Balance"` là
+`numeric(15,2)`, tức 13 chữ số phần nguyên. Tràn cho SQLSTATE **`22003`**, mà
+`sync.service.js` **không có nhánh nào** cho mã ấy nên nó rơi về `DB_ERROR`; và
+`_permanentCodes` của `SyncEngine` là **danh sách trắng**, `DB_ERROR` không nằm
+trong đó. Kết quả: ví bị **gửi lại ở mọi chu kỳ đồng bộ**, không lỗi, không log,
+chỉ một hàng đợi càng lúc càng chậm. Đúng vòng lặp mà G31 và G14 sinh ra để
+chặn, chỉ khác cột.
+
+**Năm cái còn lại:** `softDelete` không chặn ví đang gắn **hoá đơn** (server để
+`fk_bill_wallet` là `ON DELETE RESTRICT`, và đo trên dữ liệu thật thấy **một ví
+xoá được ngay lúc ấy** trong 26 hoá đơn đang gắn ví); phép đếm giao dịch bỏ sót
+**khoản chuyển đến** vì `getByWallet` chỉ lọc cột `walletId`; thông báo "điều
+chuyển số dư về 0đ trước khi xóa" **dẫn tới ngõ cụt** từ sau G37; `currency` là
+cột CHECK **duy nhất** chưa được `walletForPush` che; và thiếu chốt cấm đặt ví
+**đã lưu trữ** làm ví mặc định.
+
+⚠️ **Hai lỗi NỮA do chính lượt vá sinh ra, cả hai chỉ máy ảo thấy.** Giới hạn 13
+chữ số biến một trạng thái vốn vô nghĩa thành **hợp lệ đạt tới được**, và ở cỡ
+chữ 40 trên 411dp thì `9.999.999.999.999` tràn bố cục **70px**. Sửa bằng widget
+mới `OSoDuVi` — rồi widget ấy lộ lỗi thứ hai: nó là `StatelessWidget` đọc
+`controller.text` **một lần** lúc dựng, nên cỡ chữ không co khi người dùng gõ và
+số dài bị **cuộn khuất mất chữ số đầu**. Bố cục vẫn lành nhờ `Flexible` nên
+**không có sọc vàng nào để nhìn thấy**.
+
+⚠️ **Một bản sai lật kết luận, đáng nhớ nhất của lượt này.** Thứ chặn tràn là
+**`Flexible`** bọc `IntrinsicWidth`, **không phải** bậc thang cỡ chữ: ép cỡ chữ
+về 40 cố định mà hai ca bố cục **vẫn xanh**. Hai thứ làm hai việc — `Flexible`
+giữ bố cục không vỡ, `coChuSoDu` giữ con số đọc được hết — nên ca test của bậc
+thang đo **thẳng giá trị trả về**, không đo bề rộng. Cùng họ bài học G43: một ca
+xanh chỉ đáng tin sau khi bản sai làm nó đỏ.
+
+**Nghiệm thu máy ảo:** gõ 18 chữ số chỉ nhận `9.999.999.999.999`, hiện trọn vẹn,
+cỡ chữ đã co; xoá ví "test" hiện đúng thông báo mới và ví không bị xoá.
+
+**21 ca test mới**, `flutter test` **2838/2838**, `flutter analyze` 25 issue / 0
+error. **Không đổi schema** (vẫn v23), **không thêm trường đồng bộ** (payload ví
+vẫn 13 trường), **không xin backend gì**.
+
+**Ba chỗ cố ý không làm:** không thêm nút "đưa số dư về 0 rồi lưu trữ" (tính
+năng mới); không ép màn Sửa ví dùng `OSoDuVi` (bố cục riêng, `Expanded` nên vốn
+không tràn — nhưng khối `onChanged` chèn dấu chấm vẫn còn **hai bản**); không
+xoá `bienThang` dù nó đã 0 chỗ gọi.
+
 ### 🗓️ Trang Xuất báo cáo dùng chung bộ chọn kỳ với trang Phân tích (2026-09-18)
 
 Trang Xuất báo cáo nay xuất được theo **tuần** và **năm** — thứ bốn chip cứng cũ
@@ -1513,6 +1563,7 @@ hiện cũng không chứng minh lời gọi của mình tạo ra nó. Hỏi ng�
 - **Lưu trữ ví (archive)** (2026-09-10, **schema không đổi** — cột `status` đã có sẵn trong SQLite từ trước, mặc định `'active'`). Tính năng đầu tiên của đợt "thêm phần mới" sau khi đóng sáu lỗi vùng ví. Lưu trữ là **đóng băng**, không phải xoá: ví lưu trữ biến khỏi mọi bộ chọn ví, thôi cộng vào tổng tài sản, và hai bộ chạy tự động bỏ qua nó — nhưng lịch sử giao dịch cũ không đụng tới, và **mọi con số cũ quay lại nguyên vẹn** khi bỏ lưu trữ, vì phép loại khỏi tổng là *suy ra* chứ không ghi đè `includeInTotal`. Đây là lối thoát cho ba ràng buộc xoá ví (còn số dư / đã có giao dịch / đang gắn mục tiêu) khiến ví dùng thật gần như không bao giờ xoá được.
   > **Hai tệp thuần mới.** `wallet_status.dart` giữ ba phép ánh xạ phải khớp nhau (khoá cục bộ chữ thường, khoá gửi lên chữ hoa, phép đọc ngược), cùng khuôn với `wallet_type.dart`. `vi_tinh_vao_tong.dart` là **định nghĩa duy nhất** của "ví nào được cộng vào tổng tài sản" — luật ấy vốn có **bốn** bản chép tay không khớp nhau, và **ba** trong số đó quên hẳn phép lọc `includeInTotal`: trang chủ và "số dư cuối kỳ" của báo cáo đều cộng `fold` trần trên mọi ví (bản thứ tư, `WalletCubit.addWallet`, đã đóng ở `6fd2ce9`). Cả ba nay đi qua một hàm; đó là lỗi có sẵn, sửa kèm vì nó nằm đúng trên dòng phải đụng.
   > **Hai phép đọc danh sách ví, không còn một.** `getActive`/`watchActive` cho **bộ chọn ví**; `getAll`/`watchAll` giữ nguyên nghĩa cũ cho những chỗ phải thấy ví lưu trữ (màn Quản lý ví, bảng tra tên ví của sổ giao dịch và báo cáo, đường đồng bộ). Chọn nhầm **không gây lỗi nào**: bộ chọn gọi `getAll` thì ví lưu trữ hiện lại như chưa cất đi, còn bảng tra tên gọi `getActive` thì dòng giao dịch cũ hiện "Ví đã xoá". `wallet_picker_sources_test.dart` quét cả `lib/` và bắt mọi chỗ gọi phải được phân loại **tay** kèm lý do — chính nó bắt được ba tệp đổi nhầm ở lượt đầu (`bill_page`, `bill_detail_page`, `budget_local_data_source` dựng `TransactionLookup` chứ không phải bộ chọn).
+  > *(⚠️ "ba ràng buộc của xoá" là ảnh chụp 2026-09-10. Nay là **bốn** — G45 thêm chốt cho hoá đơn ngày 2026-09-18. Và chốt "không lưu trữ ví mặc định" cùng ngày có thêm **chiều ngược lại**: không đặt ví đã lưu trữ làm mặc định.)*
   > **Hai chốt chặn, khác hẳn ba ràng buộc của xoá:** không lưu trữ ví **mặc định** (nó được chọn sẵn mỗi lần ghi giao dịch), và không lưu trữ **ví hoạt động cuối cùng**. Hai chốt **độc lập** nhau — một tài khoản có thể không có ví nào mang cờ mặc định, vì trạng thái ấy đến được từ server. Cả hai chỉ canh chiều lưu trữ. Ví còn số dư, đã có giao dịch, hay đang gắn mục tiêu thì **vẫn lưu trữ được**; hộp thoại xác nhận nói thẳng rằng trả hoá đơn và nạp mục tiêu tự động sẽ dừng.
   > ✅ **CẬP NHẬT 2026-09-14 — `status` nay ĐI QUA ĐỒNG BỘ hai chiều** (G28 đóng, schema **v22**, payload ví **13 trường**; khối "Lưu trữ ví qua đồng bộ" ở dưới). Hai dòng ⚠️ ngay sau đây ghi trạng thái **khi tính năng được làm**, giữ vì chúng giải thích vì sao mã có hình dạng hôm nay.
   >
@@ -1806,9 +1857,10 @@ Xem đầy đủ tại **`docs/CLIENT_APP_KNOWN_GAPS.md`**. Phiên 2026-09-03 đ
 > buổi sáng, trước khi G27 đóng — trùng con số "ba" nhưng **khác danh sách**.
 >
 > ⚠️ **Đoạn ngay trên là ảnh chụp ngày 2026-09-17.** Đếm lại bằng máy
-> **2026-09-18**, sau khi G44 đóng: **44 mục G, 42 đã đóng, còn HAI** — `G18`
-> và `G23`, cả hai hoãn có chủ ý. Con số "còn HAI" nay **trùng** với ảnh chụp
-> "43 mục / còn HAI" của hôm trước nhưng **tổng thì khác** (44 chứ không 43) —
+> **2026-09-18**, sau khi G44 **và** G45 đóng: **45 mục G, 43 đã đóng, còn
+> HAI** — `G18` và `G23`, cả hai hoãn có chủ ý. Con số "còn HAI" nay **trùng**
+> với ảnh chụp "43 mục / còn HAI" của hôm trước nhưng **tổng thì khác**, và
+> trong cùng ngày 2026-09-18 nó đã qua hai mốc (44 sau G44, rồi 45 sau G45) —
 > đúng cái bẫy mà chính đoạn này cảnh báo, nên đếm lại thay vì so con số lẻ.
 >
 > Giữ nguyên đoạn cũ thay vì viết lại: nó ghi lại *đường đã đi*, và mỗi lần

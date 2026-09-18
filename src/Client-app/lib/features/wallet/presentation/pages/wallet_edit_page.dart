@@ -409,6 +409,10 @@ class _WalletEditPageState extends State<WalletEditPage> {
                       keyboardType: TextInputType.number,
                       inputFormatters: [
                         FilteringTextInputFormatter.digitsOnly,
+                        // Ô này sinh khoản ĐIỀU CHỈNH số dư, nên con số gõ vào
+                        // đi thẳng vào `wallet."Balance"` — `numeric(15,2)`.
+                        // Xem `kSoChuSoToiDaSoTien`.
+                        const GioiHanSoChuSo(kSoChuSoToiDaSoTien),
                       ],
                       onChanged: (value) {
                         final digitsOnly = value.replaceAll('.', '');

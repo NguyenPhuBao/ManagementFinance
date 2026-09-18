@@ -182,6 +182,58 @@ void main() {
     });
   });
 
+  // ── Chốt đối xứng: chiều NGƯỢC LẠI của "không lưu trữ ví mặc định" ────────
+  //
+  // Nhóm trên chặn *lưu trữ một ví đang mặc định*. Tới 2026-09-18 chiều kia
+  // vẫn bỏ ngỏ: **đặt một ví đã lưu trữ làm mặc định**. Kết quả giống hệt nhau
+  // — cờ mặc định trỏ vào một ví không nằm trong bộ chọn nào — nhưng đường đi
+  // khác nên chốt cũ không bắt được.
+  //
+  // Hỏng **im lặng**: `chonViChonSan` tìm ví mặc định trong danh sách đã lọc
+  // (`getActive`), không thấy thì lặng lẽ rơi về ví đầu. Không lỗi, không
+  // cảnh báo — người dùng chỉ thấy cờ mình vừa bật chẳng làm gì cả.
+  group('chốt chặn khi đặt ví mặc định', () {
+    test('KHÔNG cho đặt ví ĐANG LƯU TRỮ làm ví mặc định', () async {
+      await them('luu_tru', status: 'inactive');
+      await them('dang_dung');
+
+      final vi = (await dataSource.getById('luu_tru'))!;
+
+      await expectLater(
+        () => dataSource.update(vi.copyWith(isDefault: true)),
+        throwsA(isA<CacheException>().having(
+          (e) => e.message,
+          'message',
+          contains('lưu trữ'),
+        )),
+        reason: 'Cờ mặc định chỉ có MỘT tác dụng: chọn sẵn ví khi ghi giao '
+            'dịch. Ví lưu trữ không nằm trong bộ chọn, nên đặt cờ cho nó là '
+            'bật một công tắc không nối vào đâu.',
+      );
+      expect((await db.walletDao.getById('luu_tru'))!.isDefault, isFalse);
+    });
+
+    test('vẫn cho đặt mặc định cho ví đang hoạt động', () async {
+      await them('dang_dung');
+      final vi = (await dataSource.getById('dang_dung'))!;
+
+      await dataSource.update(vi.copyWith(isDefault: true));
+
+      expect((await db.walletDao.getById('dang_dung'))!.isDefault, isTrue);
+    });
+
+    test('nhánh kéo về KHÔNG bị chốt này cản', () async {
+      // Máy khác đặt cờ mặc định cho một ví mà máy này đã lưu trữ. Đường pull
+      // ghi thẳng qua DAO, không qua datasource — chốt trên chỉ canh đường
+      // người dùng chủ động bật. Chặn cả chiều này là ví kẹt hàng đợi kéo về.
+      await them('tu_server', isDefault: true, status: 'inactive');
+
+      final row = await db.walletDao.getById('tu_server');
+      expect(row!.isDefault, isTrue);
+      expect(row.status, 'inactive');
+    });
+  });
+
   group('G27 — cờ "cho phép âm" đi qua đường ghi của datasource', () {
     test('⚠️ GẠT được cờ qua đường update — cả bật lẫn tắt', () async {
       // ⚠️ Triệu chứng thật của việc quên cột trong `_toCompanion` **không**

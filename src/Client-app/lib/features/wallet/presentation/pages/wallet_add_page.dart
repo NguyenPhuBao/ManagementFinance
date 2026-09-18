@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../../core/utils/currency_formatter.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -12,6 +10,7 @@ import '../../../../core/di/injection_container.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../bloc/wallet_cubit.dart';
+import '../widgets/o_so_du_vi.dart';
 import '../../../../core/utils/gioi_han_do_dai.dart';
 
 class WalletAddPage extends StatelessWidget {
@@ -246,60 +245,7 @@ class _WalletAddFormState extends State<_WalletAddForm> {
             ),
           ),
           const SizedBox(height: 8.0),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              IntrinsicWidth(
-                child: TextField(
-                  controller: _balanceController,
-                  style: const TextStyle(
-                    fontSize: 40,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
-                  ),
-                  decoration: const InputDecoration(
-                    hintText: '0',
-                    hintStyle: TextStyle(color: AppColors.outlineVariant),
-                    border: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    isDense: true,
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                  ],
-                  onChanged: (value) {
-                    // value ở đây là raw digits-only (nhờ FilteringTextInputFormatter)
-                    // nhưng sau khi set lại text thì lần sau value là formatted → cần strip
-                    final digitsOnly = value.replaceAll('.', '');
-                    if (digitsOnly.isNotEmpty) {
-                      final number = int.tryParse(digitsOnly) ?? 0;
-                      final formatted = CurrencyFormatter.formatSoThoi(number);
-                      if (_balanceController.text != formatted) {
-                        _balanceController.value = TextEditingValue(
-                          text: formatted,
-                          selection: TextSelection.collapsed(offset: formatted.length),
-                        );
-                      }
-                    }
-                  },
-                ),
-              ),
-              const SizedBox(width: 4),
-              const Text(
-                'đ',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primary,
-                ),
-              ),
-            ],
-          ),
+          OSoDuVi(controller: _balanceController),
           const SizedBox(height: 24.0),
           _buildFormSection(
             title: 'TÊN VÍ TÀI CHÍNH',
