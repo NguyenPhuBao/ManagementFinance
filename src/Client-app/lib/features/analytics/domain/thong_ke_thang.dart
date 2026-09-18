@@ -64,6 +64,12 @@ class KhoanThuChi {
 ///
 /// Tháng 12 tự cuộn sang năm sau nhờ `DateTime` chuẩn hoá tháng 13; năm nhuận
 /// và tháng ngắn cũng do đó mà đúng, không tự cộng "30 ngày".
+///
+/// ⚠️ **Không còn chỗ gọi nào trong `lib` từ 2026-09-18** (đếm bằng máy). Chỗ
+/// gọi cuối cùng là `khoangCuaPhamVi`, bỏ cùng ngày khi trang Xuất báo cáo
+/// chuyển sang `Ky`; `Ky.thang(nam, thang)` nay làm đúng việc này và trả về một
+/// `Ky` thay vì một record. Giữ lại vì nó nằm ngoài phạm vi lượt ấy và vẫn có
+/// bốn ca test riêng — nhưng ai đụng tới tệp này nên coi nó là ứng viên dọn.
 ({DateTime from, DateTime to}) bienThang(int nam, int thang) =>
     (from: DateTime(nam, thang, 1), to: DateTime(nam, thang + 1, 1));
 

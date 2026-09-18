@@ -25,44 +25,27 @@ export 'thong_ke_thang.dart' show TongThuChi, rutGon;
 // test của trang Xuất báo cáo không phải đổi.
 export 'pham_vi_ky.dart' show khoangKyTruoc;
 
-/// Phạm vi thời gian trên trang Xuất báo cáo — đúng bốn nút của màn Stitch.
-enum PhamViThoiGian { thangNay, thangTruoc, quyNay, tuyChinh }
-
-/// Biên `[from, to)` ứng với [pv].
-///
-/// [tuyChon] là khoảng người dùng chọn từ bộ chọn ngày, **cả hai đầu là ngày**
-/// (00:00). Biên `to` trả về đã cộng thêm một ngày để ngày cuối cùng người dùng
-/// chọn nằm TRONG báo cáo — lấy thẳng `tuyChon.to` là mất trọn ngày ấy.
-///
-/// [tuyChon] `null` khi người dùng bấm "Tuỳ chỉnh" rồi thoát bộ chọn; khi ấy
-/// lùi về tháng này thay vì nổ.
-({DateTime from, DateTime to}) khoangCuaPhamVi(
-  PhamViThoiGian pv, {
-  required DateTime now,
-  ({DateTime from, DateTime to})? tuyChon,
-}) {
-  switch (pv) {
-    case PhamViThoiGian.thangNay:
-      return bienThang(now.year, now.month);
-    case PhamViThoiGian.thangTruoc:
-      // `month - 1` bằng 0 tự cuộn về tháng 12 năm trước nhờ `DateTime`.
-      return bienThang(now.year, now.month - 1);
-    case PhamViThoiGian.quyNay:
-      final thangDauQuy = ((now.month - 1) ~/ 3) * 3 + 1;
-      return (
-        from: DateTime(now.year, thangDauQuy, 1),
-        to: DateTime(now.year, thangDauQuy + 3, 1),
-      );
-    case PhamViThoiGian.tuyChinh:
-      if (tuyChon == null) return bienThang(now.year, now.month);
-      final t = tuyChon.to;
-      return (
-        from: DateTime(tuyChon.from.year, tuyChon.from.month, tuyChon.from.day),
-        // `day + 1` tự cuộn qua cuối tháng, cuối năm và 29/02 năm nhuận.
-        to: DateTime(t.year, t.month, t.day + 1),
-      );
-  }
-}
+// ── `PhamViThoiGian` và `khoangCuaPhamVi` đã BỎ ngày 2026-09-18 ─────────────
+//
+// Chúng là bộ chọn kỳ **riêng** của trang Xuất báo cáo: bốn giá trị cứng
+// *Tháng này · Tháng trước · Quý này · Tùy chỉnh*, lấy đúng bốn nút của màn
+// Stitch. Từ P1 (2026-09-15) trang Phân tích đã có `Ky` với năm đơn vị, nên
+// app mang **hai** bộ luật song song cho cùng khái niệm "kỳ" — đúng khuôn "bản
+// chép tay thứ N" mà dự án đã trả giá nhiều lần.
+//
+// Cái giá cụ thể ở đây không phải là lỗi mà là **thứ không làm được**: trang
+// Xuất báo cáo không xuất nổi theo tuần hay theo năm, dù `tongThuChi` và
+// `getExpenses` bên dưới vốn nhận khoảng bất kỳ. Nay trang dùng thẳng `Ky` và
+// `moChonPhamVi`, nên hai trang chọn kỳ bằng cùng một widget và cùng một luật.
+//
+// Thứ thay thế từng phần:
+//   • `khoangCuaPhamVi(thangNay)`   → `Ky.thang(nam, thang)`
+//   • `khoangCuaPhamVi(quyNay)`     → `Ky.quy(nam, quy)`
+//   • `khoangCuaPhamVi(tuyChinh)`   → `Ky.tuyChon(from:, to:)`
+//
+// ⚠️ Một khác biệt **im lặng** khi chuyển: `khoangCuaPhamVi` TỰ cộng một ngày
+// vào biên phải của khoảng tuỳ chọn, còn `Ky.tuyChon` bắt người gọi tự cộng.
+// Quên vế ấy là báo cáo hụt đúng ngày cuối cùng người dùng chọn.
 
 
 /// Số dư ví ở hai đầu của kỳ báo cáo.

@@ -1,6 +1,6 @@
 # Trang Phân tích — thiết kế, lý do, và những cái bẫy
 
-**Cập nhật:** **2026-09-18** (mục **3.32** — **kỳ rỗng thì tệp xuất thôi in khối Ngân sách**, đóng **G44**: người dùng chốt chiều *"tệp theo màn"*, và luật nay là vị từ thuần `inKhoiTheoKy` mà **ba** chỗ cùng đọc — CSV, PDF, màn Xem trước. ⚠️ Lượt sửa **đính chính** điều lượt nghiệm thu 3.31 tưởng là đúng: màn Xem trước **không** giấu "mọi khối" khi kỳ rỗng, nó vẫn hiện đầu báo cáo, khối Dòng tiền và ba thẻ tổng — hai bên lệch **đúng một khối**. ⚠️ Và ca test cho nhánh **PDF** phải so **độ dài tệp** chứ không tìm chuỗi, vì PDF **nén** luồng nội dung; một ca `contains(...)` sẽ xanh trên cả bản sai) · **2026-09-17** (mục **3.31** — **ba khối cuối vào tệp xuất**: so với kỳ trước, số liệu nhanh, top 5 khoản chi; kèm ⚠️ một lỗi glyph **có từ 2026-09-09** mà lượt này mới bắt được — Roboto nhúng không có `→` `▲` `▼`, gói `pdf` bỏ chúng đi **im lặng**, nên mọi tệp PDF app từng xuất đều mất mũi tên ở dòng dòng tiền; nay có ca test quét glyph canh, và mục **3.17** đã được đính chính; bảng khảo sát lần hai ở mục **3.25** nay **ĐÓNG** — mục cuối là **#7 cảnh báo bất thường**, làm xong cùng ngày nhưng nằm ở `NOTIFICATION_FEATURE.md` mục **5f** chứ không ở trang này; mục **3.30** — **tổng tài sản theo thời gian**, mục #5 của khảo sát lần hai, và **đổi tên** khỏi "tài sản ròng" vì app không có mô hình công nợ; kèm vế **thứ ba** của bẫy **4.21** — `daiTrucDuBao` quá rộng với dải bắt đầu từ 0) · 2026-09-15 (mục **3.20** — **P1: phạm vi thời gian**; mục **3.21** — **P2**: bốn khối mượn từ trang Xuất báo cáo; mục **3.22** — **A8 #4 và #5**: hai biểu đồ cột vay/nợ; **G40 đóng** — trang Xem trước báo cáo lệch cột số tiền ở **sáu** chỗ, đo được 93px, xem bẫy **4.19**; **nhãn quý rút thành `Q3 2026`** để ô header thôi cụt, xem mục **3.20**; mục **3.23** — **A8 #10**: thác nước "Tiền đi đâu", kèm vạch trung bình trên từng cột chi; mục **3.24** — **A8 #8**: dòng tiền tự do, và bẫy **4.20** — `rutGon` từng in `-0` ở nhãn trục; mục **3.25** — **khảo sát app thị trường lần hai**, chốt làm tỷ lệ tiết kiệm và dự báo dòng tiền, bỏ hai mục thiếu trường đối tác; mục **3.26** — **tỉ lệ tiết kiệm**) · **2026-09-16** (mục **3.27** — **dự báo dòng tiền 30 ngày tới**, mục #4 của khảo sát; kèm bẫy **4.21** — khi nào trục từ 0, khi nào co, và vì sao bước phải tròn) · bản trước 2026-09-14 (mục **3.19** — A8 #3, #7: cơ cấu theo danh mục với ba chip nhóm, và xu hướng tới 5 danh mục cùng lúc; bản thi công **lần hai**, #2 đã bỏ)
+**Cập nhật:** **2026-09-18** (mục **3.33** — **trang Xuất báo cáo dùng chung bộ chọn kỳ với trang Phân tích**: nay xuất được theo **tuần** và **năm**, thứ bốn chip cứng cũ không làm được; `PhamViThoiGian` và `khoangCuaPhamVi` **bỏ hẳn**. Người dùng chốt **không** đưa khối nào của trang Phân tích vào tệp, sau khảo sát bảy app thị trường: **0/7** app xuất cả màn phân tích ra tệp, và **6/7** chỉ xuất CSV thuần dữ liệu. ⚠️ Kèm **`nhanRong`** — hàm nhãn **thứ hai** cho chỗ không chật, sinh ra từ một lỗi **chỉ máy ảo thấy**: nút hiện "Tuần 37" trần trong khi dòng vừa chạm nói "Tuần 37 (07/09 – 13/09)". Nó cũng thay một bản chép tay trong `ChonPhamViSheet`; mục **3.32** — **kỳ rỗng thì tệp xuất thôi in khối Ngân sách**, đóng **G44**: người dùng chốt chiều *"tệp theo màn"*, và luật nay là vị từ thuần `inKhoiTheoKy` mà **ba** chỗ cùng đọc — CSV, PDF, màn Xem trước. ⚠️ Lượt sửa **đính chính** điều lượt nghiệm thu 3.31 tưởng là đúng: màn Xem trước **không** giấu "mọi khối" khi kỳ rỗng, nó vẫn hiện đầu báo cáo, khối Dòng tiền và ba thẻ tổng — hai bên lệch **đúng một khối**. ⚠️ Và ca test cho nhánh **PDF** phải so **độ dài tệp** chứ không tìm chuỗi, vì PDF **nén** luồng nội dung; một ca `contains(...)` sẽ xanh trên cả bản sai) · **2026-09-17** (mục **3.31** — **ba khối cuối vào tệp xuất**: so với kỳ trước, số liệu nhanh, top 5 khoản chi; kèm ⚠️ một lỗi glyph **có từ 2026-09-09** mà lượt này mới bắt được — Roboto nhúng không có `→` `▲` `▼`, gói `pdf` bỏ chúng đi **im lặng**, nên mọi tệp PDF app từng xuất đều mất mũi tên ở dòng dòng tiền; nay có ca test quét glyph canh, và mục **3.17** đã được đính chính; bảng khảo sát lần hai ở mục **3.25** nay **ĐÓNG** — mục cuối là **#7 cảnh báo bất thường**, làm xong cùng ngày nhưng nằm ở `NOTIFICATION_FEATURE.md` mục **5f** chứ không ở trang này; mục **3.30** — **tổng tài sản theo thời gian**, mục #5 của khảo sát lần hai, và **đổi tên** khỏi "tài sản ròng" vì app không có mô hình công nợ; kèm vế **thứ ba** của bẫy **4.21** — `daiTrucDuBao` quá rộng với dải bắt đầu từ 0) · 2026-09-15 (mục **3.20** — **P1: phạm vi thời gian**; mục **3.21** — **P2**: bốn khối mượn từ trang Xuất báo cáo; mục **3.22** — **A8 #4 và #5**: hai biểu đồ cột vay/nợ; **G40 đóng** — trang Xem trước báo cáo lệch cột số tiền ở **sáu** chỗ, đo được 93px, xem bẫy **4.19**; **nhãn quý rút thành `Q3 2026`** để ô header thôi cụt, xem mục **3.20**; mục **3.23** — **A8 #10**: thác nước "Tiền đi đâu", kèm vạch trung bình trên từng cột chi; mục **3.24** — **A8 #8**: dòng tiền tự do, và bẫy **4.20** — `rutGon` từng in `-0` ở nhãn trục; mục **3.25** — **khảo sát app thị trường lần hai**, chốt làm tỷ lệ tiết kiệm và dự báo dòng tiền, bỏ hai mục thiếu trường đối tác; mục **3.26** — **tỉ lệ tiết kiệm**) · **2026-09-16** (mục **3.27** — **dự báo dòng tiền 30 ngày tới**, mục #4 của khảo sát; kèm bẫy **4.21** — khi nào trục từ 0, khi nào co, và vì sao bước phải tròn) · bản trước 2026-09-14 (mục **3.19** — A8 #3, #7: cơ cấu theo danh mục với ba chip nhóm, và xu hướng tới 5 danh mục cùng lúc; bản thi công **lần hai**, #2 đã bỏ)
 **Trạng thái:** **mảng Phân tích đã xong cả 2a, 2b, 2c** (2026-09-09). Lát **2a** xong — mọi con số trên trang là số thật từ SQLite —
 lát **2b** xong (khối "Xu hướng 6 tháng" vẽ bằng `fl_chart`), lát **2c‑1** xong
 (trang Xuất báo cáo đọc ví/danh mục/thời gian thật rồi mở màn **Xem trước báo
@@ -24,7 +24,7 @@ thẳng vào thư mục Tải về** của máy. Xem mục 7.
 | Đụng giao diện | **Chín** màn Stitch còn dùng được (đếm lại 2026-09-17, sau khi thêm **`b0a3344924d246f9b6322fb75a3309e4`** *"Thống kê - Tổng tài sản 6 tháng gần đây"* cho mục **3.30** — lượt gọi ấy cũng **trả về `timeout`** mà màn vẫn được tạo, **lần thứ ba** xác nhận; mốc **Tám** là của 2026-09-16, sau khi thêm **`9020ff8b5c5d49c4914442dcd02fa540`** *"Thống kê - Lịch chi tiêu Heatmap"* cho mục **3.29** — lượt gọi ấy **trả về `timeout`** mà màn vẫn được tạo, và ⚠️ nó vẽ lưới **xanh lá** trong khi bản thi công dùng **đỏ**; và trước đó **`6333b8e24aab4f92bd73b1282c56b17c`** *"Thống kê - Mốc so sánh kỳ"* cho hàng chip của mục **3.28** — ⚠️ màn ấy cũng mang `deviceType: DESKTOP` dù lượt gọi truyền `MOBILE`, và lượt gọi **không** timeout; mốc "Sáu" là của 2026-09-15, đừng cộng dồn mà hãy đếm lại): `c8567243…` *"Thống kê - Cơ cấu danh mục & Xu hướng 6 tháng"* (2026-09-14) cho thân trang, **`83993fc9f5de4c5f8fba6940480c164a`** *"Thống kê - Chọn phạm vi thời gian"* (2026-09-15) cho bộ chọn phạm vi, **`6e9007f7653749a893c88e3de535afa5`** *"Thống kê - Biểu đồ Cho vay & Đi vay"* (đo được 2026-09-15) cho hai biểu đồ vay/nợ, và **`afe1c3fdee43464c90ddadc508eaa599`** *"Thống kê - 4 Thẻ Dòng Tiền & Kế Toán"* (đo được 2026-09-15) cho bốn khối của P2, **`52450ac549df42aea9f31d5ee1347ceb`** *"Thống kê - Biểu đồ thác nước Tiền đi đâu"* (đo được 2026-09-15) cho khối A8 #10, và **`212befc8f9a24d25ab027c7302e2e122`** *"Thống kê - Biểu đồ Dòng tiền tự do"* (đo được 2026-09-15) cho khối A8 #8 — ⚠️ màn thứ tư mang `deviceType: DESKTOP` dù lượt gọi truyền `MOBILE`, xem mục **3.21** — ⚠️ màn thứ ba vẽ thêm **hai thẻ tổng** mà bản thi công **cố ý không có**, xem mục 3.22 — ⚠️ **hai** màn cũ đã lỗi thời và vẫn còn trong dự án: `c2a2b615…` (tả A8 #2 đã bỏ: mức gốc ba lát + dropdown) và `a228fa69…` "FlowMoney Analytics Dashboard"; và mục 4.4 về font của bộ test |
 | Đụng biểu đồ | Mục **3.11** (vì sao `fl_chart`, vì sao ghim phiên bản), **3.12** (khối xu hướng từng lệch Stitch, nay hết), **3.19** (đường một danh mục), **3.30** (trục co theo dữ liệu — và vì sao `daiTrucDuBao` phải kiểm điều kiện thật thay vì trừ hao), bẫy **4.21** (khi nào trục từ 0, khi nào co, và bước phải tròn), và bẫy **4.9** (tooltip tràn — thứ duy nhất phải kiểm bằng mắt) |
 | Sinh tệp PDF/CSV | Mục **3.17** (vì sao nhúng font, vì sao `MediaStore` chứ không phải quyền ghi bộ nhớ), **3.18** (ba luật của CSV cho Excel tiếng Việt), **3.31** (ba khối cuối vào tệp — và ⚠️ **Roboto nhúng không có mũi tên lẫn hình học**, nên `→ ▲ ▼` bị bỏ đi im lặng), **3.32** (⚠️ kỳ rỗng chở gì — `inKhoiTheoKy` là định nghĩa duy nhất, và ca test cho PDF phải so **độ dài tệp** vì PDF nén luồng nội dung), bẫy **4.15**–**4.16** |
-| Đụng trang Xuất báo cáo / màn Xem trước | Mục **3.13** (vì sao xem trước rồi mới tải), **3.14** (ảnh chụp, không phải luồng sống; và màn Stitch mới), **3.15** (mười khối lấy chuẩn từ app thị trường), **3.16** (dòng tiền là số suy ngược, hai giới hạn), **3.32** (⚠️ **kỳ rỗng**: màn và tệp phải nói giống nhau, và `inKhoiTheoKy` là nơi duy nhất ghi luật ấy — ngân sách là khối **duy nhất** không tự rỗng theo kỳ rỗng), bẫy **4.11**–**4.14** |
+| Đụng trang Xuất báo cáo / màn Xem trước | Mục **3.13** (vì sao xem trước rồi mới tải), **3.14** (ảnh chụp, không phải luồng sống; và màn Stitch mới), **3.15** (mười khối lấy chuẩn từ app thị trường), **3.16** (dòng tiền là số suy ngược, hai giới hạn), **3.32** (⚠️ **kỳ rỗng**: màn và tệp phải nói giống nhau, và `inKhoiTheoKy` là nơi duy nhất ghi luật ấy — ngân sách là khối **duy nhất** không tự rỗng theo kỳ rỗng), **3.33** (⚠️ trang này nay dùng **chung** bộ chọn kỳ với trang Phân tích; `PhamViThoiGian` đã bỏ, và `Ky.tuyChon` **không** tự cộng một ngày như `khoangCuaPhamVi` cũ — cộng thêm phép khảo sát vì sao tệp **không** chở khối nào của trang Phân tích), bẫy **4.11**–**4.14** |
 | Làm tiếp 2c‑2 (sinh tệp) | Mục 7 |
 
 ---
@@ -614,7 +614,10 @@ lướt qua bốn đơn vị không phải đi một vòng cubit.
 4. ⚠️ **Thoát bộ chọn ngày thì giữ nguyên kỳ đang xem.** Rơi về tháng này là tự
    đổi thứ người dùng đang xem chỉ vì họ bấm nhầm rồi thoát ra. Khác
    `khoangCuaPhamVi` của trang Báo cáo, nơi `null` buộc phải có một chỗ rơi vì
-   nó là hàm thuần.
+   nó là hàm thuần. *(Câu so sánh ấy nay chỉ còn là lịch sử:
+   `khoangCuaPhamVi` **đã bỏ** ngày 2026-09-18 — mục **3.33** — và trang Báo
+   cáo dùng chính bộ chọn này, nên luật "thoát thì giữ nguyên" áp cho **cả
+   hai** trang.)*
 5. ⚠️ **Lùi kỳ theo đơn vị lịch, không trừ số ngày.** `lui` là chỗ duy nhất làm
    việc ấy; bản sai có chủ ý dùng `subtract(Duration(days: 30))` cho ra
    `2026-01-01` thay vì `2026-02-01`.
@@ -1633,8 +1636,10 @@ bằng máy 2026-09-17. Analytics có **21** tệp / **548** test (đếm bằng
 chụp **trước** lượt siết `daiTrucDuBao` — đừng dùng. ⚠️ Và cả hai con số ở đoạn
 này là **ảnh chụp trước mục 3.31**, thứ cũng mang ngày 2026-09-17: mốc đang
 đúng là **2810** và **564**, ở khối Nghiệm thu của mục ấy. ⚠️ Và **cả câu vừa
-rồi cũng đã là ảnh chụp** — sau khi G44 đóng ngày 2026-09-18 (mục **3.32**) thì
-mốc đang đúng là **2815** và **569**. Đừng cộng dồn, hãy đếm lại.
+rồi cũng đã là ảnh chụp**: G44 đóng ngày 2026-09-18 đưa nó lên 2815/569, rồi
+mục 3.33 cùng ngày lên nữa. **Đừng chép con số từ đây** — mốc đang đúng luôn
+nằm ở khối *Nghiệm thu* của **mục 3 cuối cùng**, và cách chắc chắn nhất là
+`flutter test` rồi đếm lại.
 
 Máy ảo `emulator-5554`, tài khoản thật: ba chỗ cùng nói `13.590.000 đ`; câu
 cảnh báo đúng ngày `02/09/2026`; đổi sang đơn vị **Quý** thì tiêu đề thành
@@ -1812,6 +1817,101 @@ bằng nhau.
 `pdfBaoCao` → ca PDF đỏ với `Expected: <10403> / Actual: <13250>`, chênh **2 847
 byte**. Ca CSV thì đã đỏ sẵn trước khi sửa, với đúng dòng
 `Giáo dục;45000;50000;5000` mà máy ảo từng thấy trong PDF.
+
+---
+
+### 3.33 Trang Xuất báo cáo dùng chung bộ chọn kỳ với trang Phân tích
+
+**Không phải tính năng mới, mà là gộp hai bộ luật làm một.** Từ P1 (mục 3.20)
+app có `Ky` với năm đơn vị, nhưng trang Xuất báo cáo vẫn giữ bộ chọn **riêng**
+của nó: `enum PhamViThoiGian` bốn giá trị cứng — *Tháng này · Tháng trước · Quý
+này · Tùy chỉnh* — lấy đúng bốn nút của màn Stitch cũ.
+
+Cái giá không phải một lỗi mà là **thứ không làm được**: trang ấy không xuất nổi
+báo cáo theo **tuần** hay theo **năm**, dù `tongThuChi` và `getExpenses` bên
+dưới vốn nhận khoảng bất kỳ. Nay nút chọn kỳ mở thẳng `moChonPhamVi` — cùng
+bottom sheet của trang Phân tích — và `PhamViThoiGian` cùng `khoangCuaPhamVi`
+**bỏ hẳn**.
+
+#### Vì sao chỉ đến đây, không xa hơn
+
+Người dùng chốt sau một lượt khảo sát bảy app thị trường (2026-09-18): **không
+đưa khối nào của trang Phân tích vào tệp xuất.** Kết quả khảo sát:
+
+| | |
+|---|---|
+| Xuất CSV thuần dữ liệu | **6/7** app — YNAB, Monarch, Copilot, Rocket Money, Money Lover, PocketSmith |
+| Xuất cả màn phân tích ra một tệp | **0/7**. Không ngoại lệ |
+| Có PDF native | Chỉ MISA, và không tài liệu công khai nào nói tệp ấy chứa gì |
+
+Bốn chỗ gần nhất đều **cố ý nhỏ hơn màn hình**: PocketSmith ghi thẳng là họ
+không làm nút in trong app (và riêng trang **Calendar** của họ được ghi chú *in
+ra không đọc được* — đúng khối Lịch chi tiêu của mục 3.29); Monarch tải **PNG
+một biểu đồ** một lần; Copilot chia sẻ **từng slide**. Luật chung: khi app muốn
+cho mang hình đi, họ cho **một** biểu đồ, không gói cả trang — vì màn hình là
+nơi *tương tác*, còn tệp là nơi *chốt số*.
+
+⚠️ Cộng một lý do kỹ thuật: gói `pdf` **không dùng lại được `fl_chart`**, nên
+mỗi biểu đồ đưa vào PDF là một **bản thi công thứ hai** của cùng phép vẽ, phải
+giữ đồng bộ vĩnh viễn với bản trên màn hình.
+
+#### Bốn chỗ dễ vấp
+
+1. ⚠️ **`Ky.tuyChon` không tự cộng một ngày vào biên phải, `khoangCuaPhamVi`
+   thì có.** `denNgay` của route là ngày **cuối cùng được tính vào**, nên thiếu
+   vế `+ 1` là báo cáo hụt đúng ngày ấy — không exception, không dòng log. Đường
+   vào của thông báo **Tổng kết tuần** đi qua đúng chỗ này; ca test canh nó nằm
+   ở `export_report_page_test.dart` chứ không còn ở `bao_cao_xuat_test.dart`.
+2. ⚠️ **Nhãn nút phải đi qua `nhanRong`, không phải `nhanOChon`** — xem mục con
+   ngay dưới. Đây là lỗi **chỉ máy ảo thấy**.
+3. **Mất khả năng xuất kỳ chứa ngày tương lai.** Bộ chọn cũ cho tới cuối năm
+   sau; sheet dùng chung chặn ở **hôm nay** (luật của G43). Chấp nhận có chủ ý
+   để hai trang nói cùng một luật. Giao dịch ghi ngày tương lai vẫn vào báo cáo
+   bình thường khi kỳ đang xem chứa chúng.
+4. **"Tháng trước" và "Quý này" không mất đi** dù enum bỏ: bộ chọn liệt kê 12
+   tháng và 8 quý gần nhất (`soKyTrongBoChon`).
+
+#### `nhanRong` — một hàm nữa, và vì sao không sửa `nhanOChon`
+
+Nghiệm thu máy ảo bắt được: sau khi chạm dòng *"Tuần 37 (07/09 – 13/09)"* trong
+bộ chọn, **nút hiện "Tuần 37" trần** — mất khoảng ngày, tức không cho biết đó là
+khoảng nào, ngay trước lúc người dùng xuất một tờ báo cáo theo đúng khoảng ấy.
+
+Gốc rễ: `nhanOChon` rơi về `nhanNgan` khi kỳ **không chứa hôm nay**, vì nó sinh
+ra cho **ô header hẹp** của trang Phân tích — chỗ đã tràn 53px một lần.
+
+Hai chỗ có bề ngang khác hẳn nhau và **cả hai lựa chọn đều đúng ở chỗ của nó**,
+nên câu trả lời là một hàm **thứ hai** chứ không phải sửa hàm cũ:
+`nhanRong(ky, moc)` = `ky.chua(moc) ? nhanOChon(...) : ky.nhan`. Nó **thay một
+bản chép tay**: `ChonPhamViSheet._dong` vốn tự viết lại đúng biểu thức ấy, nên
+nay dòng vừa chạm và nút sau đó không thể trôi xa nhau.
+
+⚠️ Bộ test mù trước lỗi này vì **cả hai chuỗi đều hợp lý**. Và ca tái hiện phải
+dùng **tuần 36**, không phải 37: đồng hồ của tệp test đứng ở 08/09/2026 nên tuần
+37 chính là tuần hiện tại, tức nhánh "… này" vốn đã đúng từ trước.
+
+#### Nghiệm thu
+
+`flutter test` **2817/2817** · `flutter analyze` **25 issue, 0 error** — đếm
+bằng máy 2026-09-18. Analytics có **21** tệp / **571** test. Bảy ca của
+`khoangCuaPhamVi` bỏ theo hàm; **chín** ca mới (4 widget cho bộ chọn, 1 widget
+cho nhãn nút, 1 widget cho `nhanRong`, 3 ca thuần cho `nhanRong`). **Không đổi
+schema** (vẫn v23), **không thêm trường đồng bộ**, không đụng repository.
+
+**Máy ảo** `emulator-5554`, tài khoản thật: nút hiện *"Tháng này (T9 2026)"*;
+mở sheet thấy đủ năm chip; chọn Tuần 37 thì nút đổi thành *"Tuần 37 (07/09 –
+13/09)"* và màn Xem trước ghi kỳ **07/09/2026 – 13/09/2026** — ngày cuối nằm
+trong báo cáo, tức bẫy `+ 1` không tái diễn.
+
+**Màn Stitch `4a12791ff0eb49abb627be187eb6ba85`** *"Xuất báo cáo - FlowMoney"*
+(2026-09-18, lượt gọi **không** timeout). Nó khớp bản thi công ở mọi điểm —
+nút full-width nền `#F4F4F0` bo 12px, icon lịch trái, `expand_more` phải — và
+chính nó chỉ ra nhãn phải là *"Tháng này (T9 2026)"* chứ không *"T9 2026"*,
+tức khớp header trang Phân tích.
+
+⚠️ **`bienThang` nay 0 chỗ gọi trong `lib`** (đếm bằng máy): chỗ gọi cuối cùng
+là `khoangCuaPhamVi`. `Ky.thang` làm đúng việc ấy. Giữ lại vì ngoài phạm vi
+lượt này và vẫn có bốn ca test riêng — ứng viên dọn cho lần sau.
 
 
 ## 4. Bẫy

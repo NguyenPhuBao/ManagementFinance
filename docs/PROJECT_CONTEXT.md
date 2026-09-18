@@ -595,6 +595,55 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-18)
 
+### 🗓️ Trang Xuất báo cáo dùng chung bộ chọn kỳ với trang Phân tích (2026-09-18)
+
+Trang Xuất báo cáo nay xuất được theo **tuần** và **năm** — thứ bốn chip cứng cũ
+(*Tháng này · Tháng trước · Quý này · Tùy chỉnh*) không làm được, dù
+`tongThuChi` và `getExpenses` bên dưới vốn nhận khoảng bất kỳ. Nút chọn kỳ mở
+thẳng `moChonPhamVi`, cùng bottom sheet của trang Phân tích. `PhamViThoiGian`
+và `khoangCuaPhamVi` **bỏ hẳn**. Bàn giao ở mục **3.33**
+`docs/ANALYTICS_FEATURE.md`.
+
+**Người dùng chốt KHÔNG đưa khối nào của trang Phân tích vào tệp xuất**, sau một
+lượt khảo sát bảy app thị trường: **0/7** app xuất cả màn phân tích ra một tệp,
+**6/7** chỉ xuất CSV thuần dữ liệu. PocketSmith ghi thẳng là họ không làm nút in
+trong app, và riêng trang Calendar của họ in ra không đọc được — đúng khối Lịch
+chi tiêu của mục 3.29. Khi app muốn cho mang hình đi, họ cho **một** biểu đồ
+(Monarch: PNG; Copilot: slide), không gói cả trang.
+
+⚠️ Cộng một lý do kỹ thuật: gói `pdf` **không dùng lại được `fl_chart`**, nên
+mỗi biểu đồ đưa vào PDF là bản thi công **thứ hai** của cùng phép vẽ.
+
+**Bốn chỗ dễ vấp:** (1) `Ky.tuyChon` **không** tự cộng một ngày vào biên phải
+còn `khoangCuaPhamVi` thì có — thiếu vế ấy là báo cáo hụt đúng ngày cuối cùng
+người dùng chọn, im lặng, và đường vào của thông báo **Tổng kết tuần** đi qua
+đúng chỗ này; (2) nhãn nút phải đi qua **`nhanRong`** chứ không `nhanOChon`;
+(3) **mất khả năng xuất kỳ chứa ngày tương lai** — sheet chặn ở hôm nay theo
+luật G43, chấp nhận có chủ ý để hai trang nói cùng một luật; (4) "Tháng trước"
+và "Quý này" **không** mất đi vì bộ chọn liệt kê 12 tháng và 8 quý gần nhất.
+
+⚠️ **`nhanRong` là hàm nhãn THỨ HAI, và nó sinh ra từ một lỗi chỉ máy ảo thấy.**
+Sau khi chạm dòng *"Tuần 37 (07/09 – 13/09)"*, nút hiện **"Tuần 37" trần** —
+mất khoảng ngày, ngay trước lúc người dùng xuất báo cáo theo đúng khoảng ấy.
+`nhanOChon` rơi về nhãn ngắn khi kỳ không chứa hôm nay, vì nó sinh ra cho **ô
+header hẹp** của trang Phân tích (chỗ đã tràn 53px một lần). Hai chỗ có bề ngang
+khác hẳn nhau và **cả hai lựa chọn đều đúng ở chỗ của nó**, nên câu trả lời là
+một hàm thứ hai chứ không phải sửa hàm cũ. Nó cũng **thay một bản chép tay**:
+`ChonPhamViSheet._dong` vốn tự viết lại đúng biểu thức ấy. Bộ test mù trước lỗi
+này vì **cả hai chuỗi đều hợp lý**.
+
+**Chín ca test mới**, bảy ca của `khoangCuaPhamVi` bỏ theo hàm. `flutter test`
+**2817/2817**, `flutter analyze` 25 issue / 0 error. Không đổi schema (vẫn v23),
+không thêm trường đồng bộ, không đụng repository.
+
+Màn Stitch **`4a12791ff0eb49abb627be187eb6ba85`** *"Xuất báo cáo - FlowMoney"*
+(lượt gọi **không** timeout) — nó khớp bản thi công ở mọi điểm, và chính nó chỉ
+ra nhãn phải là *"Tháng này (T9 2026)"* chứ không *"T9 2026"*.
+
+⚠️ **`bienThang` nay 0 chỗ gọi trong `lib`** — chỗ gọi cuối cùng là
+`khoangCuaPhamVi`. `Ky.thang` làm đúng việc ấy. Giữ lại vì ngoài phạm vi lượt
+này và vẫn có bốn ca test riêng; ứng viên dọn cho lần sau.
+
 ### 🧾 Kỳ rỗng thì tệp xuất thôi in khối Ngân sách — G44 đóng (2026-09-18)
 
 Lỗ hổng cuối cùng còn mở mà **không** phải "hoãn có chủ ý" — nay chỉ còn G18 và
@@ -890,6 +939,19 @@ một lỗi glyph đã chạy từ 2026-09-09 (khối 📄 ở đầu mục 14).
 hai vẫn còn.** Và **16 khối** của trang Phân tích *(đếm lại bằng máy 2026-09-17, sau khi thêm Tổng tài sản theo thời gian; mốc **15** là của cuối ngày 2026-09-16, sau khi thêm Lịch chi tiêu; con số **14** viết sáng cùng ngày là ảnh chụp trước đó — `_KhoiDuBao` xuất hiện hai lần trong mã nhưng là **một** khối người dùng thấy, còn `_KhoiVayNo` hai lần là **hai** khối thật)* thì không có
 đường xuất tệp nào — `pdfBaoCao`/`csvBaoCao` chỉ có **một** chỗ gọi, ở
 `report_preview_page.dart`. Chưa ai chốt làm gì với khoảng lệch **thứ hai** ấy.
+
+> ✅ **Đã chốt 2026-09-18: KHÔNG lấp khoảng lệch ấy** — người dùng quyết định
+> sau một lượt khảo sát bảy app thị trường (**0/7** app xuất cả màn phân tích ra
+> một tệp; **6/7** chỉ xuất CSV thuần dữ liệu). Tệp cố ý gọn hơn màn hình: màn
+> là nơi *tương tác*, tệp là nơi *chốt số*. Thay vào đó, trang Xuất báo cáo nhận
+> **kỳ linh hoạt** dùng chung với trang Phân tích — xem khối 🗓️ đầu mục 14 và
+> mục **3.33** `ANALYTICS_FEATURE.md`.
+>
+> ⚠️ Con số **16 khối** ở trên **đếm sai**. Đếm lại bằng máy 2026-09-18 từ chính
+> `analytics_page.dart`: **14 tên khối**, trong đó `_KhoiDuBao` dựng hai lần mà
+> chỉ **một** khối hiện, còn `_KhoiVayNo` dựng hai lần và hiện **cả hai** — tức
+> **15** khối người dùng thấy. Cách đếm ấy đúng như chú thích trong ngoặc mô tả,
+> nên chỗ sai nằm ở phép cộng chứ không ở luật đếm.
 
 ### 🔮 Dự báo dòng tiền 30 ngày tới (2026-09-16)
 

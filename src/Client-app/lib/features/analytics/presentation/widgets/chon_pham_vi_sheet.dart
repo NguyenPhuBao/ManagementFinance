@@ -199,9 +199,11 @@ class _ChonPhamViSheetState extends State<ChonPhamViSheet> {
 
   Widget _dong(Ky k) {
     final dangXem = k == widget.kyHienTai;
-    // Dòng của kỳ chứa hôm nay mang tiền tố "… này" — cùng luật với ô trên
-    // header, và `nhanOChon` là chỗ duy nhất định nghĩa nó.
-    final nhan = k.chua(widget.moc) ? nhanOChon(k, widget.moc) : k.nhan;
+    // Dòng của kỳ chứa hôm nay mang tiền tố "… này", kỳ đã qua thì giữ khoảng
+    // ngày. Cả hai vế nằm trong `nhanRong` — cùng hàm mà nút chọn kỳ của trang
+    // Xuất báo cáo dùng, nên dòng vừa chạm và nút sau đó nói **cùng một chuỗi**.
+    // Trước 2026-09-18 biểu thức này viết tay ở đây và hai chỗ đã lệch nhau.
+    final nhan = nhanRong(k, widget.moc);
 
     return InkWell(
       onTap: () => widget.onChon(k),

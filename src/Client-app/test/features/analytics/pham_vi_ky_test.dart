@@ -282,6 +282,44 @@ void main() {
     });
   });
 
+  // ── `nhanRong` — nhãn cho chỗ KHÔNG chật ───────────────────────────────────
+  //
+  // Canh chừng điều gì: `nhanOChon` sinh ra cho **ô header** của trang Phân
+  // tích, chỗ đã tràn 53px một lần, nên khi kỳ không chứa hôm nay nó rơi về
+  // `nhanNgan` — "Tuần 37" trần, không kèm khoảng ngày.
+  //
+  // Chỗ **rộng** thì cần ngược lại. Nghiệm thu máy ảo 2026-09-18 bắt được: nút
+  // chọn kỳ của trang Xuất báo cáo (chiếm trọn chiều ngang) hiện "Tuần 37"
+  // trong khi dòng người dùng vừa chạm trong bộ chọn nói "Tuần 37 (07/09 –
+  // 13/09)" — hai cách gọi tên cho cùng một kỳ, và cái ngắn hơn thì **không
+  // cho biết đó là khoảng nào**. Bộ test không thấy vì cả hai chuỗi đều "hợp
+  // lý".
+  group('nhanRong — nhãn cho chỗ rộng (nút, dòng danh sách)', () {
+    final moc = DateTime(2026, 9, 18, 12);
+
+    test('kỳ CHỨA hôm nay: mang tiền tố "… này", giống hệt nhanOChon', () {
+      final k = Ky.thang(2026, 9);
+      expect(nhanRong(k, moc), 'Tháng này (T9 2026)');
+      expect(nhanRong(k, moc), nhanOChon(k, moc),
+          reason: 'Hai hàm chỉ được khác nhau ở nhánh KHÔNG chứa hôm nay.');
+    });
+
+    test('kỳ ĐÃ QUA: giữ khoảng ngày, khác nhanOChon', () {
+      final k = Ky.tuan(DateTime(2026, 9, 8));
+      expect(nhanRong(k, moc), 'Tuần 37 (07/09 – 13/09)');
+      expect(nhanOChon(k, moc), 'Tuần 37',
+          reason: 'Ghi lại chính chỗ lệch mà máy ảo bắt được: ô header hẹp thì '
+              'rơi về nhãn ngắn, còn nút rộng thì không được mất khoảng ngày.');
+    });
+
+    test('kỳ tháng đã qua thì nhãn đầy đủ vốn đã bằng nhãn ngắn', () {
+      final k = Ky.thang(2026, 7);
+      expect(nhanRong(k, moc), 'T7 2026',
+          reason: 'Chỉ tuần và khoảng tuỳ chọn mới có phần trong ngoặc, nên ba '
+              'đơn vị còn lại không dài thêm chút nào.');
+    });
+  });
+
   group('nhanKyTruoc — câu "so với …" ở thẻ tổng', () {
     test('cùng năm thì bỏ năm cho thẻ đỡ chật', () {
       expect(nhanKyTruoc(Ky.thang(2026, 9)), 'T8');
