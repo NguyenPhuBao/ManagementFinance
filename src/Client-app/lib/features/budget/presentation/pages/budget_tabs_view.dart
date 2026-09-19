@@ -72,8 +72,8 @@ class BudgetTabsView extends StatelessWidget {
             unselectedLabelColor: AppColors.textSecondary,
             indicatorColor: AppColors.primary,
             indicatorSize: TabBarIndicatorSize.tab,
-            labelStyle: const TextStyle(
-                fontSize: 14, fontWeight: FontWeight.w600),
+            labelStyle:
+                const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
             tabs: [
               Tab(text: 'Đang hoạt động (${state.active.length})'),
               Tab(text: 'Đã hết hạn (${state.expired.length})'),
@@ -282,8 +282,8 @@ class _ReadOnlyNotice extends StatelessWidget {
                   ? 'Ngân sách đã hết hạn chỉ xem được. Thẻ chưa đồng bộ được '
                       'thì vẫn sửa hoặc xoá được.'
                   : 'Ngân sách đã hết hạn chỉ xem được, không sửa hay xoá.',
-              style: const TextStyle(
-                  fontSize: 13, color: AppColors.textSecondary),
+              style:
+                  const TextStyle(fontSize: 13, color: AppColors.textSecondary),
             ),
           ),
         ],
@@ -657,13 +657,14 @@ class _InlineEmpty extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 24),
       child: Column(
         children: [
-          const Icon(Icons.savings_outlined, size: 48, color: AppColors.outline),
+          const Icon(Icons.savings_outlined,
+              size: 48, color: AppColors.outline),
           const SizedBox(height: 12),
           Text(
             message,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-                fontSize: 14, color: AppColors.textSecondary),
+            style:
+                const TextStyle(fontSize: 14, color: AppColors.textSecondary),
           ),
         ],
       ),

@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../data/models/budget_entity.dart';
+import '../../../ai_edge/domain/tai_phan_bo.dart';
 import '../../data/repositories/budget_repository.dart';
+import '../../data/tai_phan_bo_nguon.dart';
 import 'budget_state.dart';
 
 export 'budget_state.dart';
@@ -19,10 +21,22 @@ class BudgetCubit extends Cubit<BudgetState> {
   /// máy chạy nó: "hết hạn chưa" là câu hỏi về thời điểm.
   final DateTime Function() clock;
 
+  /// Nguồn dữ liệu Tầng 2 tái phân bổ (Edge-SLM). `null` = không tính kế
+  /// hoạch — đường của test cũ và của trang không cần; khi ấy state phát
+  /// **đồng bộ** như trước, không thêm một microtask nào.
+  final TaiPhanBoNguon? taiPhanBoNguon;
+
   StreamSubscription<List<BudgetView>>? _subscription;
 
-  BudgetCubit({required this.repository, DateTime Function()? clock})
-      : clock = clock ?? DateTime.now,
+  /// Số thứ tự lượt phát — lượt `nap` chậm về sau lượt mới hơn thì bỏ, không
+  /// để dữ liệu cũ đè dữ liệu mới.
+  int _lan = 0;
+
+  BudgetCubit({
+    required this.repository,
+    DateTime Function()? clock,
+    this.taiPhanBoNguon,
+  })  : clock = clock ?? DateTime.now,
         super(const BudgetInitial());
 
   /// Theo dõi danh sách ngân sách. Phát lại cả khi có giao dịch mới.
@@ -38,7 +52,7 @@ class BudgetCubit extends Cubit<BudgetState> {
     emit(const BudgetLoading());
     _subscription?.cancel();
     _subscription = repository.watchBudgets(idaccount).listen(
-          (views) => emit(_loadedFrom(views)),
+          (views) => _phat(views, idaccount),
           onError: (Object e) => emit(BudgetError(e.toString())),
         );
   }
@@ -50,9 +64,45 @@ class BudgetCubit extends Cubit<BudgetState> {
     }
     emit(const BudgetLoading());
     try {
-      emit(_loadedFrom(await repository.getBudgets(idaccount)));
+      await _phat(await repository.getBudgets(idaccount), idaccount);
     } catch (e) {
       emit(BudgetError(e.toString()));
+    }
+  }
+
+  /// Phát `BudgetLoaded`: đồng bộ khi không có nguồn Tầng 2; có nguồn thì nạp
+  /// dữ liệu rồi tính kế hoạch, và chỉ phát nếu vẫn là lượt mới nhất.
+  Future<void> _phat(List<BudgetView> views, int idaccount) async {
+    final n = ++_lan;
+    final loaded = _loadedFrom(views);
+    final nguon = taiPhanBoNguon;
+    if (nguon == null) {
+      emit(loaded);
+      return;
+    }
+    try {
+      final now = clock();
+      final d = await nguon.nap(idaccount, loaded.active, now);
+      final kh = taiPhanBoCua(
+        dangChay: loaded.active,
+        now: now,
+        coDinh: d.coDinh,
+        thuNhap3Thang: d.thuNhap3Thang,
+        tb3ThangTheoNganSach: d.tb3ThangTheoNganSach,
+        phanHoi: d.phanHoi,
+      );
+      if (n != _lan || isClosed) return;
+      emit(BudgetLoaded(
+        active: loaded.active,
+        expired: loaded.expired,
+        totalAmount: loaded.totalAmount,
+        totalSpent: loaded.totalSpent,
+        keHoach: kh,
+      ));
+    } catch (e) {
+      // Kế hoạch là phần phụ: nguồn hỏng thì trang vẫn hiện ngân sách.
+      if (n != _lan || isClosed) return;
+      emit(loaded);
     }
   }
 
@@ -178,8 +228,9 @@ class BudgetCubit extends Cubit<BudgetState> {
 
   /// `ArgumentError.toString()` in ra cả tên tham số và giá trị — không phải
   /// thứ để đưa thẳng cho người dùng đọc.
-  String _readable(Object e) =>
-      e is ArgumentError ? (e.message?.toString() ?? e.toString()) : e.toString();
+  String _readable(Object e) => e is ArgumentError
+      ? (e.message?.toString() ?? e.toString())
+      : e.toString();
 
   @override
   Future<void> close() {

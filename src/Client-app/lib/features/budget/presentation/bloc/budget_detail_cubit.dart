@@ -75,7 +75,8 @@ class BudgetDetailCubit extends Cubit<BudgetDetailState> {
 
   void watch({required int? idaccount, required String budgetId}) {
     if (idaccount == null || idaccount <= 0) {
-      emit(const BudgetDetailError('Chưa đăng nhập — không mở được ngân sách.'));
+      emit(
+          const BudgetDetailError('Chưa đăng nhập — không mở được ngân sách.'));
       return;
     }
     emit(const BudgetDetailLoading());

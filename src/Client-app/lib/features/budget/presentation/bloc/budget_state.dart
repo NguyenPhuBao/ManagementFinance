@@ -1,3 +1,4 @@
+import '../../../ai_edge/domain/tai_phan_bo.dart';
 import 'package:equatable/equatable.dart';
 
 import '../../../../core/database/app_database.dart';
@@ -38,11 +39,17 @@ class BudgetLoaded extends BudgetState {
   /// Tổng đã chi của các ngân sách đang hoạt động, tính từ bảng giao dịch.
   final double totalSpent;
 
+  /// Kế hoạch tái phân bổ cho ngân sách thâm hụt lớn nhất (Edge-SLM Tầng 2),
+  /// hoặc `null` khi không ngân sách nào thâm hụt — hoặc khi cubit được dựng
+  /// không có `TaiPhanBoNguon` (test cũ, trang không cần).
+  final KeHoachTaiPhanBo? keHoach;
+
   const BudgetLoaded({
     required this.active,
     required this.expired,
     required this.totalAmount,
     required this.totalSpent,
+    this.keHoach,
   });
 
   double get totalRemaining => totalAmount - totalSpent;
@@ -60,7 +67,8 @@ class BudgetLoaded extends BudgetState {
   bool get isEmpty => active.isEmpty && expired.isEmpty;
 
   @override
-  List<Object?> get props => [active, expired, totalAmount, totalSpent];
+  List<Object?> get props =>
+      [active, expired, totalAmount, totalSpent, keHoach];
 }
 
 /// Trang cấu hình đã có đủ thứ cần để dựng form.

@@ -105,7 +105,6 @@ AppBar _thanhTieuDe() => AppBar(
       ),
     );
 
-
 class _ErrorScaffold extends StatelessWidget {
   final String message;
   const _ErrorScaffold({required this.message});
@@ -183,8 +182,7 @@ class _EmptyScaffold extends StatelessWidget {
                   ),
                   child: const Text(
                     'Tạo ngân sách mới',
-                    style:
-                        TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                   ),
                 ),
               ],

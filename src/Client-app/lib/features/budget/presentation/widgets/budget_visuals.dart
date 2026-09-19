@@ -33,7 +33,8 @@ BudgetHealth budgetHealthOf(BudgetEntity budget) =>
     // Hỏi `isOverBudget` trước khi tính tỉ lệ: hạn mức 0 (không tạo được từ
     // form nhưng kéo về từ backend thì có) cho ra Infinity/NaN, mà NaN so với
     // mọi mốc đều false nên sẽ lặng lẽ rơi vào nhánh "an toàn".
-    budgetHealthOfRatio(ratio: budget.rawPercentSpent, over: budget.isOverBudget);
+    budgetHealthOfRatio(
+        ratio: budget.rawPercentSpent, over: budget.isOverBudget);
 
 /// Cùng thang cho một TỈ LỆ bất kỳ — thẻ tổng của tab Ngân sách dùng nó với
 /// tổng đã chi / tổng hạn mức (UX 2026-09-19, E5: thẻ tổng từng chỉ biết hai
@@ -63,5 +64,6 @@ IconData budgetIconFor(String? icon) => categoryIconFor(icon);
 
 /// Mã màu dạng `#RRGGBB` → [Color]. Chuỗi hỏng thì trả [fallback] chứ không ném
 /// lỗi: một danh mục có màu sai không được làm trắng cả trang.
-Color budgetColorFrom(String? hex, {Color fallback = const Color(0xFF1A1A19)}) =>
+Color budgetColorFrom(String? hex,
+        {Color fallback = const Color(0xFF1A1A19)}) =>
     categoryColorFrom(hex, fallback: fallback);

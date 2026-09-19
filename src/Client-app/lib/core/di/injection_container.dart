@@ -29,6 +29,7 @@ import '../../features/goal/data/repositories/goal_repository_impl.dart';
 import '../../features/goal/presentation/bloc/goal_cubit.dart';
 import '../../features/budget/data/datasources/budget_local_data_source.dart';
 import '../../features/budget/data/repositories/budget_repository.dart';
+import '../../features/budget/data/tai_phan_bo_nguon.dart';
 import '../../features/budget/data/repositories/budget_repository_impl.dart';
 import '../../features/budget/presentation/bloc/budget_cubit.dart';
 import '../../features/budget/presentation/bloc/budget_detail_cubit.dart';
@@ -238,8 +239,19 @@ Future<void> setupDependencies() async {
     ),
   );
   // Factory: mỗi trang một cubit, tự huỷ khi trang đóng.
+  // Nguồn dữ liệu Tầng 2 tái phân bổ (Edge-SLM P2) — trang Ngân sách và bộ quét
+  // thông báo dùng chung, để thẻ trên màn và thông báo không nói hai chuyện.
+  sl.registerLazySingleton<TaiPhanBoNguon>(
+    () => TaiPhanBoNguonImpl(
+      db: sl<AppDatabase>(),
+      budgets: sl<BudgetRepository>(),
+    ),
+  );
   sl.registerFactory<BudgetCubit>(
-    () => BudgetCubit(repository: sl<BudgetRepository>()),
+    () => BudgetCubit(
+      repository: sl<BudgetRepository>(),
+      taiPhanBoNguon: sl<TaiPhanBoNguon>(),
+    ),
   );
   sl.registerFactory<BudgetDetailCubit>(
     () => BudgetDetailCubit(repository: sl<BudgetRepository>()),

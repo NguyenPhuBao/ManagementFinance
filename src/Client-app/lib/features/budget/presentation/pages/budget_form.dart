@@ -131,7 +131,8 @@ class _BudgetFormState extends State<BudgetForm> {
     // `BudgetEntity.warningRatio`.
     final percent = b?.thresholdWarningPercent;
     _thresholdPercentController = TextEditingController(
-        text: percent == null || percent <= 0 ? '' : percent.round().toString());
+        text:
+            percent == null || percent <= 0 ? '' : percent.round().toString());
     _noteController = TextEditingController(text: b?.note ?? '');
     _categoryId = b?.categoryId;
     // Ngân sách đang sửa giữ nguyên chu kỳ đã lưu, kể cả khi nó là null
@@ -173,8 +174,7 @@ class _BudgetFormState extends State<BudgetForm> {
   ///
   /// Theo chu kỳ thì đây là cuối kỳ đầu, tính lại ngay khi đổi chu kỳ hoặc đổi
   /// ngày bắt đầu. "Ngày cụ thể" thì là ngày người dùng chọn.
-  DateTime? get _ngayKetThucHienThi =>
-      _theoChuKy ? _cuoiKyDau : _endDate;
+  DateTime? get _ngayKetThucHienThi => _theoChuKy ? _cuoiKyDau : _endDate;
 
   /// Ngày kết thúc thật sự **ghi xuống**.
   ///
@@ -528,7 +528,8 @@ class _BudgetFormState extends State<BudgetForm> {
       // Một ngân sách thuộc về đúng MỘT danh mục — "Ngân sách tổng" đã bỏ ngày
       // 2026-09-04. Repository cũng chặn, nhưng để nó chặn thì người dùng chỉ
       // nhận một snackbar đỏ chứ không thấy ô nào còn thiếu.
-      validator: (v) => v == null ? 'Hãy chọn danh mục cho ngân sách này' : null,
+      validator: (v) =>
+          v == null ? 'Hãy chọn danh mục cho ngân sách này' : null,
       onChanged: (v) {
         setState(() => _categoryId = v);
         _loadSuggestion(v);
@@ -550,8 +551,8 @@ class _BudgetFormState extends State<BudgetForm> {
             child: Text(
               '3 tháng gần nhất bạn chi trung bình '
               '${CurrencyFormatter.format(s)}',
-              style: const TextStyle(
-                  fontSize: 12, color: AppColors.textSecondary),
+              style:
+                  const TextStyle(fontSize: 12, color: AppColors.textSecondary),
             ),
           ),
           TextButton(
@@ -702,8 +703,8 @@ class _BudgetFormState extends State<BudgetForm> {
             const SizedBox(width: 12),
             Text(
               _formatDay(_startDate),
-              style: const TextStyle(
-                  fontSize: 16, color: AppColors.textPrimary),
+              style:
+                  const TextStyle(fontSize: 16, color: AppColors.textPrimary),
             ),
           ],
         ),
@@ -774,8 +775,7 @@ class _BudgetFormState extends State<BudgetForm> {
 
   // ── Mảnh dùng lại ───────────────────────────────────────────────────────────
 
-  String _formatDay(DateTime d) =>
-      '${d.day.toString().padLeft(2, '0')}/'
+  String _formatDay(DateTime d) => '${d.day.toString().padLeft(2, '0')}/'
       '${d.month.toString().padLeft(2, '0')}/${d.year}';
 
   Widget _sectionTitle(String title) => Padding(
