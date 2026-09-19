@@ -76,7 +76,8 @@ class _BillPageState extends State<BillPage> {
   Future<void> _napTenGoi(int accountId) async {
     final db = sl<AppDatabase>();
     final vi = await db.walletDao.getAll(accountId);
-    final dm = await db.categoryDao.getAll(accountId);
+    // Bảng TRA TÊN — giữ hàng mặc định toàn cục và hàng đã xoá mềm (G41/E8).
+    final dm = await db.categoryDao.getBangTraTen(accountId);
     if (!mounted) return;
     setState(() => _lookup = TransactionLookup(wallets: vi, categories: dm));
   }

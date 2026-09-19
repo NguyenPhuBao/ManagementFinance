@@ -295,7 +295,13 @@ class _OverviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final vuot = state.totalRemaining < 0;
-    final mau = vuot ? AppColors.error : AppColors.income;
+    // Cùng thang bốn màu với thẻ danh mục (`budgetHealthOfRatio`): bản trước
+    // chỉ có hai màu vượt / chưa vượt nên tô xanh ở 90% (UX 2026-09-19, E5).
+    // Tỉ lệ THÔ, không lấy `percentSpent` (đã cắt trần 1.0 cho thanh).
+    final mau = budgetHealthColour(budgetHealthOfRatio(
+      ratio: state.totalAmount <= 0 ? 0 : state.totalSpent / state.totalAmount,
+      over: vuot,
+    ));
     // Bản dựng hình ghi "% ngân sách CÒN LẠI", không phải "đã dùng".
     final conLai = ((1 - state.percentSpent) * 100).round().clamp(0, 100);
 

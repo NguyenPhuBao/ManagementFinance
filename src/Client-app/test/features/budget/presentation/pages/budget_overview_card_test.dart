@@ -13,6 +13,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
 import 'package:flowmoney/features/budget/presentation/bloc/budget_state.dart';
 import 'package:flowmoney/features/budget/presentation/pages/budget_tabs_view.dart';
+import 'package:flowmoney/features/budget/presentation/widgets/budget_visuals.dart';
 
 void main() {
   BudgetView view({required String id, required double amount, double spent = 0}) {
@@ -80,5 +81,28 @@ void main() {
 
     await dung(tester, [view(id: 'b1', amount: 50000, spent: 5000)]);
     expect(find.text('CÒN LẠI KỲ NÀY'), findsOneWidget);
+  });
+
+  group('màu thẻ tổng theo cùng thang bốn màu với thẻ danh mục (UX E5)', () {
+    // Máy ảo 2026-09-19: thẻ tổng tô thanh XANH ở mức đã dùng 90% trong khi
+    // thẻ danh mục ngay dưới tô ĐỎ cho cùng con số — thẻ tổng chỉ biết hai
+    // màu (vượt / chưa vượt), thẻ danh mục đi qua `budgetHealthOf`.
+    Color mauTheTong(WidgetTester tester) =>
+        tester.widget<BudgetProgressBar>(find.byType(BudgetProgressBar).first).color;
+
+    testWidgets('90% đã dùng → đỏ tươi như thẻ danh mục', (tester) async {
+      await dung(tester, [view(id: 'b1', amount: 100000, spent: 90000)]);
+      expect(mauTheTong(tester), budgetHealthColour(BudgetHealth.critical));
+    });
+
+    testWidgets('75% đã dùng → vàng', (tester) async {
+      await dung(tester, [view(id: 'b1', amount: 100000, spent: 75000)]);
+      expect(mauTheTong(tester), budgetHealthColour(BudgetHealth.caution));
+    });
+
+    testWidgets('vượt hạn mức → đỏ sẫm', (tester) async {
+      await dung(tester, [view(id: 'b1', amount: 100000, spent: 120000)]);
+      expect(mauTheTong(tester), budgetHealthColour(BudgetHealth.over));
+    });
   });
 }

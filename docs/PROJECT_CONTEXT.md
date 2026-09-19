@@ -742,6 +742,31 @@ tap `Icons.check`, key `transaction-type-transfer`, và **`ensureVisible`
 trước khi chạm "Danh mục"** vì thẻ form nay nằm trong vùng cuộn hẹp ở khung
 test 600dp. **Schema không đổi, payload không đổi.**
 
+**E5 · E7 · E8 — ba việc nhỏ (xong 2026-09-19).** (E5) Thẻ tổng của tab Ngân
+sách tô thanh **xanh** ở mức đã dùng 90% trong khi thẻ danh mục ngay dưới tô
+**đỏ** cùng con số: thẻ tổng chỉ biết hai màu vượt / chưa vượt, thẻ danh mục đi
+qua `budgetHealthOf`. Nay thang bốn màu tách thành **`budgetHealthOfRatio`**
+(`budget_visuals.dart`) cho một tỉ lệ bất kỳ, `budgetHealthOf` gọi lại nó, và
+thẻ tổng dùng **tỉ lệ thô** `totalSpent / totalAmount` chứ không `percentSpent`
+(đã cắt trần 1.0). 3 ca ở `budget_overview_card_test.dart`. (E7) Trang Danh
+mục in "Danh mục" ở thanh trên rồi "Quản lý danh mục" ngay dưới — màn Stitch
+`583f8232…` chỉ có tiêu đề ở thanh; bỏ dòng lặp. ⚠️ FAB "+" **vẫn** đè lên nút
+⋯ của hàng cuối khi danh sách vừa chớm dài hơn khung — Stitch cũng đặt FAB
+nổi, và `padding` đáy 96 chỉ có tác dụng khi cuộn tới cuối; **để nguyên**, ghi
+lại là giới hạn của khuôn FAB nổi. (E8) **Lỗi thật, cùng họ G41 → G47, mở và
+đóng cùng ngày**: 2/3 thẻ hoá đơn hiện "Danh mục đã xoá" vì `BillPage`,
+`BillDetailPage` và `BudgetLocalDataSourceImpl.getAllCategories` (nuôi
+`lookupFor` của ngân sách) dựng bảng tra tên từ `categoryDao.getAll` — hàm lọc
+`idaccount = accountId` và `deletedAt IS NULL`, nên hàng mặc định toàn cục
+(`idaccount = 0`) và hàng đã xoá mềm đều mất tên. Cả ba về
+**`getBangTraTen`**, định nghĩa duy nhất từ G41. Test mới
+`bill_page_ten_danh_muc_mac_dinh_test.dart` (2 ca, CSDL trong bộ nhớ: một danh
+mục `idaccount = 0` + `isDefault`, một danh mục xoá mềm; thẻ phải hiện tên cả
+hai, và `getAllCategories` phải trả cả hai). ⚠️ Ca đầu viết với tên "Hóa đơn"
+**xanh oan** vì `textContaining` bắt trúng **tiêu đề trang** — đổi tên mẫu sang
+"Nhà cửa" và đòi cả thẻ "Tiền điện" dựng được (họ G43). **Schema không đổi,
+payload không đổi.**
+
 **E3 — Back không thoát app ngay (xong 2026-09-19).** Máy ảo: Back ở tab Trang
 chủ đưa thẳng ra launcher, không cảnh báo — app không có `PopScope` nào (trong
 lượt đánh giá tôi cũng mất app hai lần vì thế). Nay `MainShell` bọc thân bằng

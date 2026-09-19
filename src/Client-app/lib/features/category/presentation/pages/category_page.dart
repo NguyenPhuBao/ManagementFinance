@@ -90,11 +90,10 @@ class _CategoryPageState extends State<CategoryPage> {
             return ListView(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
               children: [
-                const Text(
-                  'Quản lý danh mục',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 16),
+                // Không lặp tiêu đề trong thân trang: màn Stitch "Quản lý danh
+                // mục" (`583f8232…`) chỉ có tiêu đề ở thanh trên. Bản trước
+                // in "Danh mục" ở thanh rồi "Quản lý danh mục" ngay dưới
+                // (UX 2026-09-19, E7).
                 _TypeFilters(
                   selected: _classify,
                   onChanged: (value) => setState(() => _classify = value),
