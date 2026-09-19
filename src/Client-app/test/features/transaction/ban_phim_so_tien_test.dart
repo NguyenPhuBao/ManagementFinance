@@ -109,7 +109,10 @@ void main() {
     });
 
     test('phím điều khiển không đổi gì', () {
-      for (final phim in ['done', '+', '-']) {
+      // ⚠️ `'+'` và `'-'` KHÔNG còn nằm trong danh sách này từ 2026-09-19 —
+      // chúng dựng biểu thức thật, xem `bieu_thuc_so_tien_test.dart`. Ca này
+      // từng ghi cả hai, và chính nó là bằng chứng hai phím ấy là nút chết.
+      for (final phim in ['done', '.']) {
         expect(themPhimSoTien('12', phim), '12');
       }
     });

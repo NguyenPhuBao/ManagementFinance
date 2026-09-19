@@ -493,6 +493,9 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   }
 
   String _getFormattedAmount() {
+    // Đang gõ một phép tính thì dòng số là BIỂU THỨC, không kèm ký hiệu tiền
+    // — một biểu thức chưa phải một số tiền. Tổng hiện ở dòng ngay dưới.
+    if (coToanTu(_amountString)) return nhanBieuThuc(_amountString);
     if (_amountString == "0") return CurrencyFormatter.format(0);
     // Chuỗi có dấu chấm chỉ tới từ chế độ sửa (`initState` đọc
     // `editing.amount.toString()`); bàn phím hết phím `.` từ 2026-09-19.
@@ -537,7 +540,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     // dấu chấm vẫn vào được qua chế độ sửa (`initState` đọc
     // `editing.amount.toString()`) — và số lẻ có thật, `transaction."Amount"`
     // là `numeric(15,2)`. Nên chốt phải nằm ở ĐÂY, không chỉ ở bàn phím.
-    final amount = double.tryParse(_amountString) ?? 0;
+    // ⚠️ Phải RÚT GỌN, không `double.tryParse` thẳng: từ 2026-09-19 bàn phím
+    // dựng được biểu thức (`"50000+30000"`), mà parse thẳng chuỗi ấy trả
+    // `null` rồi rơi về 0 — chốt `amount <= 0` ngay dưới sẽ báo "Vui lòng nhập
+    // số tiền hợp lệ" cho một con số người dùng vừa gõ đúng.
+    final amount = ketQuaBieuThuc(_amountString);
     if (amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Vui lòng nhập số tiền hợp lệ')),
@@ -853,9 +860,15 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         // mà widget test dựng-ở-1280px không thấy. Xem `SoTienLon`.
         SoTienLon(chu: _getFormattedAmount(), mau: _getAmountColor()),
         const SizedBox(height: 8),
-        const Text(
-          'VNĐ - VIỆT NAM ĐỒNG',
-          style: TextStyle(
+        // ⚠️ Lưới Stitch KHÔNG có phím `=`, nên ✓ vừa rút gọn vừa lưu trong
+        // một nhịp. Dòng này là chỗ DUY NHẤT tổng hiện ra được trước khi giao
+        // dịch được ghi — thiếu nó là người dùng bấm lưu một con số chưa từng
+        // nhìn thấy. Toán tử lẻ ở cuối thì chưa có gì để rút gọn, giữ nhãn cũ.
+        Text(
+          coPhepToanDangCho(_amountString)
+              ? '= ${CurrencyFormatter.format(ketQuaBieuThuc(_amountString))}'
+              : 'VNĐ - VIỆT NAM ĐỒNG',
+          style: const TextStyle(
             fontSize: 12,
             letterSpacing: 1.2,
             fontWeight: FontWeight.w600,
@@ -1266,9 +1279,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     if (keyStr == 'done') {
       return const Icon(Icons.check, size: 28, color: Colors.white);
     }
-    if (keyStr == '+' || keyStr == '-') {
+    if (keyStr == kToanTuCong || keyStr == kToanTuTru) {
       return Text(
-        keyStr,
+        // Dấu trừ THẬT (U+2212), cùng ký hiệu với dòng số; gạch nối ASCII ở
+        // ngay trước một con số đọc như dấu âm. Giá trị nội bộ vẫn là '-'.
+        keyStr == kToanTuTru ? '−' : keyStr,
         style: const TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.normal,

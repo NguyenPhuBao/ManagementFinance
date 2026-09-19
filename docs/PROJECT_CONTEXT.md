@@ -883,6 +883,51 @@ dựng trong `GoRouter` **thật** vì lưu xong trang gọi `context.pop()`) c�
 ca `'00'` ở `ban_phim_so_tien_test.dart`. **Schema không đổi, payload không
 đổi.**
 
+**A11 phím `+` `−` — bàn phím làm phép tính thật (xong 2026-09-19).** Hai phím
+ấy có trên **cả hai** màn Stitch và vẽ như phím sống, nhưng `themPhimSoTien`
+trả nguyên chuỗi cho cả hai — nút chết, đúng như `done` từng bị trước nhóm C.
+⚠️ **Test quét `khong_co_nut_chet_test.dart` KHÔNG thấy chúng**: `onTap` trỏ
+tới `_onKeyPress`, một hàm thật; chỉ đọc hàm thuần mới lộ ra. Bài học: **một
+nút có thể chết ở tầng dưới nút**, và test quét chỉ bắt được cái chết ở đúng
+tầng nó quét. Người dùng chốt làm phép tính thật (Money Lover và MISA đều có).
+
+**Văn phạm cố ý hẹp**: chuỗi giữ nhiều nhất **một** phép toán đang chờ —
+`"50000"`, `"50000+"`, `"50000+30000"`. Bấm toán tử khi đã đủ hai vế thì **rút
+gọn trước** rồi mới nối toán tử mới (nếp máy tính bỏ túi). Nhờ vậy không cần bộ
+phân tích biểu thức và không có thứ tự ưu tiên toán tử để hiểu sai. Bốn hàm
+thuần mới ở `domain/ban_phim_so_tien.dart`: `ketQuaBieuThuc`, `coToanTu`,
+`coPhepToanDangCho`, `nhanBieuThuc`.
+
+⚠️ **Năm chỗ hỏng im lặng:** (1) **trần số chữ số đếm theo TỪNG VẾ** — đếm cả
+chuỗi thì vế trước đã ăn hết suất và vế sau bị chặn sớm hơn thật tới 12 chữ số;
+(2) **kết quả cũng phải kẹp trần** — hai vế 13 chữ số cộng lại ra **14**, vượt
+`numeric(15,2)`, đúng vòng lặp G31/G14/G46; trần suy thẳng từ
+`kSoChuSoToiDaSoTien` chứ không ghi cứng; (3) **hiệu được phép ÂM**, không kẹp
+về 0 — `_saveTransaction` đã có chốt `amount <= 0` báo ra màn hình, kẹp ở đây
+thì lời nhắn ấy chẳng ăn nhập với thứ người dùng vừa gõ (phía âm **không** cần
+kẹp: hai vế đều không âm nên hiệu nhỏ nhất đúng bằng âm trần — ghi lại để đừng
+ai thêm phép kẹp thứ hai chẳng chặn được gì); (4) `_saveTransaction` phải **rút
+gọn**, vì `double.tryParse("50000+30000")` trả `null` rồi rơi về 0 và chốt
+`amount <= 0` từ chối một con số vừa gõ đúng; (5) **`coToanTu` và
+`coPhepToanDangCho` không thay nhau được** — với `"50000+"` thì cái đầu đúng,
+cái sau sai: một cái quyết định dòng số hiện dạng biểu thức hay dạng số tiền,
+cái kia quyết định có hiện dòng kết quả không.
+
+⚠️ **Lưới Stitch không có phím `=`**, nên ✓ vừa rút gọn vừa lưu trong một nhịp.
+Để người dùng không bấm lưu một con số chưa từng nhìn thấy, dòng dưới con số
+đổi từ nhãn `VNĐ - VIỆT NAM ĐỒNG` sang **`= 80.000 đ`** khi có phép toán đủ hai
+vế — đây là chỗ duy nhất tổng hiện ra được trước khi ghi. Dòng số chính hiện
+**biểu thức, không kèm ký hiệu tiền** (một biểu thức chưa phải một số tiền), và
+phép trừ hiện bằng **dấu trừ thật `−` (U+2212)** ở cả lưới lẫn dòng số — gạch
+nối ASCII đứng ngay trước một con số đọc như dấu âm. Giá trị nội bộ vẫn là
+`'-'`. Nghiệm thu máy ảo: `50.000 +` giữ nhãn tiền tệ, `50.000 + 30.000` cho
+`= 80.000 đ`, bấm `−` rút gọn thành `80.000 − 5.000` → `= 75.000 đ`.
+
+Một ca cũ ở `ban_phim_so_tien_test.dart` phải sửa: *"phím điều khiển không đổi
+gì"* từng liệt kê cả `'+'` và `'-'` — chính nó là bằng chứng hai phím ấy là nút
+chết. Nay ca ấy chỉ còn `'done'` và `'.'`. 26 ca mới ở hai tệp mới. **Schema
+không đổi, payload không đổi.**
+
 **A3 — gỡ công tắc sáng/tối (xong 2026-09-19).** Mục "Giao diện" ở tab Cá nhân
 vẽ một công tắc hai ô trông như đang chọn được, nhưng `onTap` rỗng và
 `AppTheme` chỉ có `lightTheme` — không có `darkTheme` nào để chuyển sang. Người
