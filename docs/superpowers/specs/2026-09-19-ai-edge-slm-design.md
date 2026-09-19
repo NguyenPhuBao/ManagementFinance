@@ -65,7 +65,6 @@ lib/features/ai_edge/
     tai_phan_bo.dart       # Tầng 2 — mục 3
     kiem_so.dart           # bộ kiểm số — mục 4.4 (dùng chung cho mẫu và SLM)
   data/
-    ai_feedback_dao.dart   # bảng AiRebalancingFeedback (cục bộ)
     slm_runtime.dart       # P3 — tệp DUY NHẤT import flutter_gemma
     slm_dien_giai.dart     # P3 — Slm implements BoDienGiai, bọc runtime + kiểm số + cache + rơi về mẫu
     slm_cache.dart         # P3
@@ -78,6 +77,12 @@ lib/features/ai_edge/
 ```
 
 Màn Trợ lý AI giữ nguyên chỗ `lib/features/ai_chat/`, đọc `ai_edge`.
+
+Hai thứ **cố ý nằm ngoài** `ai_edge/` (chốt khi viết kế hoạch P2, 2026-09-19): DAO bảng phản hồi ở
+`lib/core/database/daos/ai_feedback_dao.dart` theo nếp mọi DAO của dự án; và nguồn dữ liệu Tầng 2
+`lib/features/budget/data/tai_phan_bo_nguon.dart` (cờ Cố định, TB 3 tháng, thu nhập 3 tháng, phản
+hồi cũ) — nó đọc bảng giao dịch để tính thu nhập, mà test quét 14 cấm `ai_edge/` chạm bảng ấy. Lớp AI
+chỉ nhận gói `DuLieuTaiPhanBo` đã dựng xong.
 
 ### 2.2. Gói số
 
@@ -173,8 +178,9 @@ cấm `aiCoDinh`/`ai_co_dinh`/`AiRebalancingFeedback` xuất hiện trong `sync_
 ### 3.4. Thông báo
 
 Một `NotificationKind.budgetRebalance` thêm vào `notification_rules.dart`, sinh bởi luật mới
-`_rebalanceCandidates` đọc cùng `NotificationRuleInput.budgets` (thêm trường `coDinh: Set<String>`
-và `thuNhap3Thang`). Khoá **`budgetRebalance:<năm-ISO>-W<tuần-ISO>`** → tối đa **một** thông báo đẩy
+`_rebalanceCandidates` đọc trường mới `NotificationRuleInput.keHoachTaiPhanBo` (`KeHoachTaiPhanBo?`,
+do bộ quét nạp qua hook `loadKeHoach`, cùng khuôn `loadChiLon`) — kế hoạch tính bằng **đúng** hàm và
+nguồn dữ liệu mà trang Ngân sách dùng, nên thông báo và thẻ trên màn không thể nói hai chuyện. Khoá **`budgetRebalance:<năm-ISO>-W<tuần-ISO>`** → tối đa **một** thông báo đẩy
 mỗi tuần (B6), bất kể bao nhiêu ngân sách thâm hụt; câu chữ **không nêu số**; deeplink `/budget`
 (route gốc ngoài shell → `push`, đúng `nhanhThanhTab`). Xếp nhóm **Ngân sách**, tôn trọng
 `silenceBefore`. Thẻ trên màn thì luôn hiện (thụ động), không qua bộ luật.
