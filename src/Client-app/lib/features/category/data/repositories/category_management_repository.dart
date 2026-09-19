@@ -150,6 +150,9 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
       // Danh mục người dùng được đồng bộ lên backend (backend lưu cả
       // Is_group lẫn Idgroup), nên không còn là dữ liệu chỉ-có-ở-client.
       isLocalOnly: const Value(false),
+      // ⚠️ `categoryDao.insert` là `insertOrReplace`: cột nào không gán thì về
+      // mặc định. Bỏ dòng này là mỗi lần SỬA danh mục lặng lẽ tắt cờ Cố định.
+      aiCoDinh: Value(draft.aiCoDinh),
       syncStatus: const Value('pending'),
       updatedAt: now,
     ));

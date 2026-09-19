@@ -58,6 +58,9 @@ class _CategoryAddPageState extends State<CategoryAddPage> {
   String? _parentId;
   String _icon = 'restaurant';
   String _colour = '#10B981';
+
+  /// Cờ "Cố định — AI không đề xuất cắt" (Edge-SLM, cục bộ). Mặc định tắt.
+  bool _aiCoDinh = false;
   bool _showKeywordOnly = false;
   bool _loading = true;
   bool _saving = false;
@@ -139,6 +142,7 @@ class _CategoryAddPageState extends State<CategoryAddPage> {
       _parentId = current.parentId;
       _icon = current.icon;
       _colour = current.colour;
+      _aiCoDinh = current.aiCoDinh;
       _keywords.addAll(await _repository.loadKeywords(
         accountId: accountId,
         categoryId: current.id,
@@ -237,6 +241,7 @@ class _CategoryAddPageState extends State<CategoryAddPage> {
           icon: _icon,
           colour: _colour,
           keywords: _keywords,
+          aiCoDinh: _aiCoDinh,
         ));
       }
       if (mounted && context.canPop()) context.pop();
@@ -372,6 +377,14 @@ class _CategoryAddPageState extends State<CategoryAddPage> {
                   _ColourPicker(
                       selected: _colour,
                       onChanged: (value) => setState(() => _colour = value)),
+                  const SizedBox(height: 24),
+                  // Cờ Cố định (Edge-SLM luật C2) — theo màn Stitch
+                  // `a5a6ecb3…`: thẻ trắng giữa khối màu và khối từ khoá, chip
+                  // "Chỉ lưu trên máy này" vì cột không đi qua đồng bộ.
+                  _TheCoDinh(
+                    giaTri: _aiCoDinh,
+                    onChanged: (v) => setState(() => _aiCoDinh = v),
+                  ),
                 ],
               ),
             ),
@@ -398,6 +411,62 @@ class _CategoryAddPageState extends State<CategoryAddPage> {
                     ),
                   ),
                 ],
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+/// Thẻ công tắc "Cố định — AI không đề xuất cắt".
+class _TheCoDinh extends StatelessWidget {
+  final bool giaTri;
+  final ValueChanged<bool> onChanged;
+  const _TheCoDinh({required this.giaTri, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.outlineVariant),
+        ),
+        padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Cố định — AI không đề xuất cắt',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+                Switch(
+                  key: const ValueKey('cong-tac-ai-co-dinh'),
+                  value: giaTri,
+                  activeThumbColor: Colors.white,
+                  activeTrackColor: AppColors.income,
+                  onChanged: onChanged,
+                ),
+              ],
+            ),
+            const Text(
+              'Bật cho tiền nhà, học phí, điện nước, bảo hiểm. Trợ lý sẽ không '
+              'bao giờ chọn danh mục này làm nguồn bù.',
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceContainer,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Text(
+                'Chỉ lưu trên máy này',
+                style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
               ),
             ),
           ],
