@@ -79,7 +79,11 @@ quét thứ 15 canh không lọt vào `sync_engine` / normalizer / hợp đồng
 
 ## 7. Kiểm thử
 
-(điền theo task: tệp test, ba test quét mới 14–16, con số đếm bằng máy kèm ngày, ảnh máy ảo)
+| Tệp | Ca | Canh gì | Ngày |
+|---|---|---|---|
+| `test/features/ai_edge/domain/goi_so_test.dart` | 3 | định dạng số liệu: `đ` có cách, phần trăm 1 chữ số thập phân (G2), số âm giữ dấu | 2026-09-19 |
+| `test/features/ai_edge/domain/dau_van_test.dart` | 4 | dấu vân đổi theo số và màn, **không** đổi theo thứ tự | 2026-09-19 |
+| `test/features/ai_edge/ai_edge_khong_tinh_test.dart` | 1 | **test quét `lib/` thứ 14** — `ai_edge/` không chứa `'thu'`/`'chi'`/`'transfer'`/`walletId`/`transactionDao`/`.type ==`/`amount <`/`amount >`; bỏ dòng chú thích. Bản sai có chủ ý (`final String banSaiCoChuY = 'thu';` ở `goi_so.dart:81`) làm nó đỏ đúng dòng ngày 2026-09-19, gỡ → xanh | 2026-09-19 |
 
 ## 8. Bảng đo P1 / P3
 
