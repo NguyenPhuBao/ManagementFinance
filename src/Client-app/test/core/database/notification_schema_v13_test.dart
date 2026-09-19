@@ -25,6 +25,22 @@ import 'package:flowmoney/core/database/app_database.dart';
 /// Bảng ở hình dạng **v12** — `budgets.time_recurrence` đã nullable, và chưa
 /// có `app_notifications`.
 void _createV12Schema(dynamic database) {
+  // Schema v24 (Edge-SLM P2) thêm cột `ai_co_dinh` vào `categories` bằng
+  // ALTER TABLE, nên fixture phải CÓ bảng ấy — như `wallets` phải có sẵn cho
+  // v20/v22/v23. Hình dạng tối thiểu trước v24 (không có ai_co_dinh).
+  database.execute('''
+    CREATE TABLE categories (
+      id TEXT NOT NULL PRIMARY KEY, idaccount INTEGER NOT NULL,
+      name TEXT NOT NULL, classify TEXT NOT NULL,
+      icon TEXT NOT NULL DEFAULT 'category', colour TEXT NOT NULL DEFAULT '#4CAF50',
+      is_default INTEGER NOT NULL DEFAULT 0, is_deleted INTEGER NOT NULL DEFAULT 0,
+      parent_id TEXT, is_group INTEGER NOT NULL DEFAULT 0,
+      is_local_only INTEGER NOT NULL DEFAULT 0, deleted_at INTEGER,
+      sync_status TEXT NOT NULL DEFAULT 'pending',
+      sync_retry_count INTEGER NOT NULL DEFAULT 0, sync_error TEXT,
+      sync_blocked_until INTEGER, updated_at INTEGER NOT NULL
+    )
+  ''');
   database.execute('''
     CREATE TABLE budgets (
       id TEXT NOT NULL PRIMARY KEY, idaccount INTEGER NOT NULL,
