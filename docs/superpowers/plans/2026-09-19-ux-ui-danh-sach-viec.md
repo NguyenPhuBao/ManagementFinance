@@ -124,3 +124,35 @@ mục 14 `PROJECT_CONTEXT.md`.
 4. Nhóm D theo lối đã chốt — cần Stitch trước.
 5. E1, E4, E5, E6, E7, E8.
 6. Nhóm G, rồi A3/E2 nếu chốt làm.
+
+## ⏸ Để làm sau — người dùng chốt hoãn 2026-09-19 (phiên UX thứ ba)
+
+Người dùng bảo *"lưu lại các phần đó để làm sau"* cho toàn bộ việc còn mở ở
+bàn giao `flowmoney-handoff-2026-09-19-ux-2.md`. **Không làm gì trong số này
+cho tới khi người dùng gọi tên lại.** Trạng thái từng dòng vẫn ở bảng trên;
+đây chỉ là mục lục để lần sau mở đúng chỗ.
+
+Cần người dùng chốt trước (đừng tự quyết):
+
+1. **A5** nút "Quét" ở Trang chủ (stub SnackBar) — giữ và làm thật, hay gỡ.
+2. **A6** thẻ "Insight AI" (chữ tĩnh, lỗi chính tả "Thêm thêm") — gỡ hay nối
+   vào Trợ lý AI.
+3. **A11 còn lại** — handler rỗng: `ai_chat_page` 5, `login_page` Google/Apple 2,
+   `forgot_password_page` "Liên hệ hỗ trợ" 1, `add_transaction_page` menu ⋮ 1.
+   Danh sách sống trong `test/core/ui/khong_co_nut_chet_test.dart` (đỏ nếu lệch mã).
+4. **E6** nhắc "ví âm" hằng ngày — giữ hằng ngày / đổi hằng tuần / chỉ báo khi
+   *chuyển* sang âm. Khoá chống trùng sống 90 ngày, nên bỏ ngày khỏi khoá là im
+   90 ngày kể cả khi ví âm lại.
+5. **E2** mục lục hoặc tab con cho trang Phân tích (13 khối) — đụng bố cục,
+   **vẽ Stitch trước** (màn `c8567243…`), brainstorming trước.
+
+Không bị chặn, chỉ chưa làm:
+
+6. **E1** skeleton tải cho tab Phân tích — vẽ Stitch trước.
+7. **E4** thay 176 `SnackBar` bằng toast — kênh `ThongBaoNhanh → AppToast` đã có
+   từ E3; phần thay dần đụng hàng trăm khẳng định test.
+8. **G2** kiểm bố cục với `textScaler` 1.3.
+
+Việc của người dùng, không phải của agent: ẩn/xoá màn Stitch cũ
+`20700200afbc4d5f98962bc9be79b780` *"Thêm giao dịch - Gợi ý danh mục AI"* —
+MCP Stitch không có lệnh xoá/ẩn màn.
