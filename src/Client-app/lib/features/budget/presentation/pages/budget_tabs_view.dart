@@ -52,7 +52,13 @@ class BudgetTabsView extends StatelessWidget {
           backgroundColor: AppColors.surface,
           elevation: 0,
           scrolledUnderElevation: 0,
-          automaticallyImplyLeading: false,
+          // ⚠️ KHÔNG đặt `automaticallyImplyLeading: false`. Cờ ấy đúng hồi
+          // trang này là một **tab** (tab thì không có gì để pop), nhưng
+          // `/budget` đã rời `StatefulShellRoute` ngày 2026-09-19 và nay được
+          // `push` từ drawer — để cờ lại là biến trang thành **ngõ cụt**:
+          // không mũi tên quay lại, và cũng không còn thanh tab bên dưới vì
+          // route chồng lên toàn màn. Để mặc định thì Flutter tự hiện mũi tên
+          // khi có thứ để pop và tự giấu khi không — đúng ở cả hai vai.
           title: const Text(
             'Ngân sách',
             style: TextStyle(

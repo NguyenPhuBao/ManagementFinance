@@ -85,6 +85,27 @@ class _BudgetPageContent extends StatelessWidget {
 
 // ─── Các trạng thái ──────────────────────────────────────────────────────────
 
+/// `AppBar` tối giản cho hai trạng thái không có header riêng.
+///
+/// ⚠️ Trước 2026-09-19 cả hai **không có `AppBar` nào** — không sao, vì trang
+/// khi ấy là một tab và thanh dưới luôn ở đó. Từ khi `/budget` rời shell và
+/// được `push` từ drawer, thiếu nó là một màn trắng không lối ra, và đó đúng
+/// là màn mà **tài khoản mới gặp trước tiên**.
+AppBar _thanhTieuDe() => AppBar(
+      backgroundColor: AppColors.surface,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      title: const Text(
+        'Ngân sách',
+        style: TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+          color: AppColors.primary,
+        ),
+      ),
+    );
+
+
 class _ErrorScaffold extends StatelessWidget {
   final String message;
   const _ErrorScaffold({required this.message});
@@ -93,6 +114,7 @@ class _ErrorScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: _thanhTieuDe(),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
@@ -122,6 +144,7 @@ class _EmptyScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: _thanhTieuDe(),
       body: SafeArea(
         child: Center(
           child: Padding(
