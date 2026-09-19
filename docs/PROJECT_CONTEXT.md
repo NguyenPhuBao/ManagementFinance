@@ -883,6 +883,80 @@ dựng trong `GoRouter` **thật** vì lưu xong trang gọi `context.pop()`) c�
 ca `'00'` ở `ban_phim_so_tien_test.dart`. **Schema không đổi, payload không
 đổi.**
 
+### 🧭 Nhóm D — cấu trúc menu theo lối B (xong 2026-09-19)
+
+Spec: `docs/superpowers/specs/2026-09-19-nhom-d-cau-truc-menu-design.md`. Kế
+hoạch thi công: `docs/superpowers/plans/2026-09-19-nhom-d-cau-truc-menu.md`.
+
+App có **hai hệ điều hướng chồng nhau** — drawer mở từ Trang chủ và thanh tab ở
+đáy — với bốn trên chín mục drawer lặp lại đúng thứ thanh tab đã có, và tab Cá
+nhân chứa thêm một nhóm module lặp drawer lần nữa. Người dùng chốt **lối B**
+(giữ drawer làm menu) vì màn drawer đã có sẵn trên Stitch. Nguyên tắc:
+**thanh dưới = việc hằng ngày, drawer = mọi thứ còn lại, không đích nào xuất
+hiện ở cả hai chỗ.**
+
+Kết quả: thanh dưới thành **Trang chủ · Phân tích · [+] · Giao dịch · Cá nhân**;
+`/budget` rời shell về drawer; drawer còn **sáu** mục; tab Cá nhân gộp trang
+Cài đặt; Trang chủ bỏ slogan, nút hero và "Xem báo cáo" (còn **bốn** lối vào
+màn Thêm giao dịch thay vì năm). **D4, D8, D9 tự tan** theo — không còn hai tên
+cho một đích, không còn glyph heo đất mang hai nghĩa, và "Trợ lý AI chỉ vào từ
+drawer" đúng là thiết kế mong muốn khi drawer *là* menu.
+
+⚠️ **Hai quả mìn tìm được trong lúc THIẾT KẾ, cả hai `flutter test` mù:**
+
+1. `/transactions` thành nhánh shell làm hai lời gọi `push` sẵn có ở
+   `wallet_list_page` — một trang **ngoài** shell — chết màn đỏ
+   (`!keyReservation.contains(key)`). Chốt: một route duy nhất, bốn chỗ gọi đổi
+   động từ. Đánh đổi đã chấp nhận: Back từ sổ đã lọc theo ví về **Trang chủ**
+   chứ không về màn Ví (luật E3).
+2. Hằng **`nhanhThanhTab`** giữ đồng bộ **tay** với router và đang liệt kê
+   `/budget`. Quên đổi thì thông báo *khoản chi lớn* (deeplink `/transactions`)
+   **chết màn đỏ**, còn thông báo ngân sách `go` tới một route ngoài shell làm
+   **thanh tab biến mất**. Sửa một dòng là cả hai tự đúng.
+
+⚠️ **Và nghiệm thu máy ảo bắt được BA lỗi hồi quy nữa, cả ba do chính lượt này
+sinh ra, cả ba đi lọt qua toàn bộ bộ test:**
+
+1. **Hai nút `+` chồng nhau** ở trang Sổ giao dịch — trang có FAB riêng, mà
+   shell cũng có FAB tròn ở giữa; trước đây trang nằm ngoài shell nên không
+   đụng. Gỡ FAB của trang an toàn vì danh sách là **stream**.
+2. **Trang Ngân sách thành ngõ cụt.** `automaticallyImplyLeading: false` **đúng**
+   hồi nó là một tab (tab không có gì để pop) và sai ngay khi nó thành route
+   chồng. Tệ hơn: `_EmptyScaffold` và `_ErrorScaffold` **không có `AppBar` nào
+   cả** — tài khoản chưa có ngân sách nào rơi vào một màn trắng không lối ra, và
+   đó đúng là màn người dùng mới gặp trước tiên.
+3. **"Vùng nguy hiểm" rơi vào giữa** trang Cá nhân vì `NoiDungCaiDat` gói sẵn
+   nó — nút xoá tài khoản nằm ngay trên một dòng cài đặt vô hại. Nay widget ấy
+   có khe `giua` để mỗi trang tự xếp thứ tự.
+
+**Bài học chung của cả ba:** một cờ hay một widget có thể **đúng ở vai này và
+sai ở vai kia**, và đổi vai của một route là đổi ngữ cảnh của mọi thứ nó mang
+theo. `flutter test` không dựng cây route thật nên ở đó cả ba đều vô hại.
+
+⚠️ **Phép canh chia ba lớp** sau khi bản đầu thất bại: dựng router thật kéo theo
+cả `GetIt` (`AppDatabase`, `WalletCubit`, `AnalyticsCubit`…), và một ca test
+phải dựng nửa cái app là ca giòn. Theo khuôn `main_shell_back_test.dart`:
+**cấu hình** (`nhanhThanhTab` khớp router, đọc thẳng tệp nguồn) + **chỗ gọi**
+(quét động từ điều hướng) + **thanh dưới** (`MainShell` thật trong một shell
+cùng hình dạng, trang giả). Lớp thứ tư là máy ảo. ⚠️ Bẫy **4.4** lại vấp một
+lần nữa: ca đo `size.height` của nhãn đỏ ngay ở **"Trang chủ"** — nhãn đang chạy
+tốt trên máy thật — vì font Ahem của bộ test rộng gấp đôi nên **mọi** nhãn ngắt
+hai dòng; đổi sang bất đẳng thức ở **tầng thuần**, cùng lối nhãn quý `Q3 2026`.
+
+⚠️ **Nhãn tab là "Giao dịch" (9 ký tự), không phải "Sổ giao dịch" (12):** ô nhãn
+rộng **cố định 72dp** và mọi nhãn đang chạy được đều ≤ 9 ký tự. Icon
+`list_alt_outlined` chứ không `receipt_long` — `receipt_long` đã là "Hóa đơn &
+Dịch vụ" ở drawer, và một glyph hai nghĩa đúng là lỗi D8 vừa gỡ cùng ngày.
+
+Stitch (gửi **trước** khi chạm mã): drawer `250229e651a74a83a85c6e9e7091f321`,
+Cá nhân `580ee88c6e81472297b523618137ba6a`, Trang chủ
+`93501c8554934d15a773bd456a0160ba`. ⚠️ Lượt gọi màn thứ ba trả về **`timeout`**
+và `list_screens` ngay sau đó không thấy màn nào mới — rồi chừng một tiếng sau
+**cả ba đều có**. Timeout **không phải thất bại**; gọi lại là lãnh thêm một màn
+trùng.
+
+**Schema không đổi (v23), payload không đổi.**
+
 **A11 phím `+` `−` — bàn phím làm phép tính thật (xong 2026-09-19).** Hai phím
 ấy có trên **cả hai** màn Stitch và vẽ như phím sống, nhưng `themPhimSoTien`
 trả nguyên chuỗi cho cả hai — nút chết, đúng như `done` từng bị trước nhóm C.

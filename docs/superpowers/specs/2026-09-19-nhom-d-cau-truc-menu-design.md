@@ -210,12 +210,14 @@ Ba màn đã gửi ngày 2026-09-19, trước khi chạm mã:
 |---|---|---|
 | Drawer 6 mục | `250229e651a74a83a85c6e9e7091f321` | ✅ tạo xong |
 | Cá nhân - gộp Cài đặt | `580ee88c6e81472297b523618137ba6a` | ✅ tạo xong |
-| Trang chủ - thanh dưới 5 mục | — | ⏳ lượt gọi **timeout** |
+| Trang chủ - thanh dưới 5 mục | `93501c8554934d15a773bd456a0160ba` | ✅ **hiện ra sau** lượt gọi timeout |
 
-⚠️ **Timeout không phải thất bại và tuyệt đối không gọi lại** — tài liệu công cụ
-dặn *"DO NOT RETRY"*, và ngày 2026-09-15 một màn đã hiện ra hơn một tiếng sau
-lượt gọi timeout. Kiểm lại bằng `list_screens` sau, và hỏi người dùng nhìn giúp
-trên canvas nếu còn nghi ngờ — đó là phép đo duy nhất đáng tin.
+✅ **Xác nhận lại lần nữa ngay trong lượt này:** lượt gọi màn Trang chủ trả về
+`timeout`, `list_screens` ngay sau đó **không thấy** nó (và cũng chưa thấy cả
+hai màn mà API đã trả về ID đầy đủ), rồi chừng một tiếng sau **cả ba đều có**.
+Tài liệu công cụ dặn *"DO NOT RETRY"* và điều đó đúng — gọi lại là dự án lãnh
+thêm một màn trùng. Kiểm lại bằng `list_screens` sau, và hỏi người dùng nhìn
+giúp trên canvas nếu còn nghi ngờ; đó là phép đo duy nhất đáng tin.
 
 ⚠️ Hai màn đã tạo trả về `deviceType: DESKTOP` dù lượt gọi truyền `MOBILE`. Đây
 là nếp đã gặp nhiều lần; thân trang vẫn dựng trong khung một cột cỡ điện thoại
