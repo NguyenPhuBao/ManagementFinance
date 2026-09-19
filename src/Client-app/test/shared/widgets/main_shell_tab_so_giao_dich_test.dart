@@ -85,6 +85,23 @@ void main() {
               'chỗ quên chỗ kia là app chỉ chết ở nửa số ví.');
     });
 
+    test('⚠️ trang Sổ giao dịch KHÔNG tự vẽ FAB — shell đã có một cái', () {
+      // Máy ảo bắt được ngày 2026-09-19, trong khi 2945 ca test đều xanh:
+      // `/transactions` vào shell thì FAB tròn ở giữa thanh dưới luôn hiện
+      // trên trang này, mà trang lại có FAB vuông riêng ở góc phải — HAI nút
+      // cách nhau chừng 40px làm đúng một việc (`push('/add')`).
+      //
+      // Gỡ FAB của trang an toàn vì danh sách là **stream**
+      // (`watchTransactionsByMonth`): phép `FilterMonthEvent` mà FAB ấy phát
+      // sau khi quay lại chỉ đặt lại đúng tháng đang xem, tức thừa.
+      final nguon =
+          doc('lib/features/transaction/presentation/pages/transaction_page.dart');
+      expect(nguon.contains('floatingActionButton'), isFalse,
+          reason: 'Trang này nay là một tab. FAB của shell là nút "thêm giao '
+              'dịch" của cả app — vẽ thêm một cái nữa là hai nút giống hệt '
+              'nhau trên cùng một màn.');
+    });
+
     test('Trang chủ mở sổ bằng `go` và mở ngân sách bằng `push`', () {
       final nguon =
           doc('lib/features/home/presentation/pages/home_page.dart');

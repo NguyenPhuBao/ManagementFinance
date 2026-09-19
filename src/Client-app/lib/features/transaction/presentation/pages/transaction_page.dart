@@ -143,21 +143,15 @@ class _TransactionPageState extends State<TransactionPage> {
               ),
               centerTitle: true,
             ),
-            floatingActionButton: FloatingActionButton(
-              backgroundColor: AppColors.primary,
-              onPressed: () async {
-                final result = await context.push('/add');
-                if (result == true && blocContext.mounted) {
-                  blocContext.read<TransactionBloc>().add(
-                        FilterMonthEvent(
-                          year: _selectedMonthDate.year,
-                          month: _selectedMonthDate.month,
-                        ),
-                      );
-                }
-              },
-              child: const Icon(Icons.add, color: Colors.white, size: 28),
-            ),
+            // ⚠️ KHÔNG có FAB ở đây. Từ 2026-09-19 (nhóm D) trang này là một
+            // **tab**, nên FAB tròn ở giữa thanh dưới luôn hiện trên nó — vẽ
+            // thêm một cái nữa là hai nút cách nhau chừng 40px làm đúng một
+            // việc (`push('/add')`). Máy ảo bắt được trong khi 2945 ca test
+            // đều xanh.
+            //
+            // Gỡ an toàn vì danh sách là **stream** (`watchTransactionsByMonth`):
+            // `FilterMonthEvent` mà FAB cũ phát sau khi quay lại chỉ đặt lại
+            // đúng tháng đang xem, tức thừa.
             body: SafeArea(
               child: Column(
                 children: [
