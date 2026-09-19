@@ -61,6 +61,11 @@ class AddTransactionPage extends StatefulWidget {
   /// phải dựng DI.
   final BudgetLookup? budgetLookup;
 
+  /// Đoạn chọn sẵn khi mở trang: `'chi'` | `'thu'` | `'transfer'`. Ba nút tắt
+  /// ở Trang chủ đi qua đây (UX 2026-09-19, C4); `null` = Chi tiêu. Bị bỏ qua
+  /// ở chế độ sửa vì khi ấy đoạn lấy từ `type` của giao dịch.
+  final String? huongBanDau;
+
   const AddTransactionPage({
     super.key,
     this.idaccount,
@@ -70,6 +75,7 @@ class AddTransactionPage extends StatefulWidget {
     this.transactionBloc,
     this.initial,
     this.budgetLookup,
+    this.huongBanDau,
   });
 
   @override
@@ -77,10 +83,17 @@ class AddTransactionPage extends StatefulWidget {
 }
 
 class _AddTransactionPageState extends State<AddTransactionPage> {
-  /// Hai loại giao dịch (từ 2026-09-05): 0 = Giao dịch (biến động số dư, có
-  /// danh mục), 1 = Chuyển khoản (giữa hai ví, không danh mục). Chiều tiền
-  /// không còn là một segment — nó suy từ danh mục, xem [_resolvedType].
-  int _selectedSegment = 0;
+  /// Đoạn đang chọn trên thanh đầu màn: `'chi'` | `'thu'` | `'transfer'` —
+  /// theo màn Stitch "Chi tiêu · Thu nhập · Chuyển khoản" (UX 2026-09-19, C3).
+  ///
+  /// ⚠️ Đây là **lối vào**, không phải sự thật. `type` ghi xuống SQLite vẫn suy
+  /// từ danh mục ([_resolvedType], luật 2026-09-05): chọn Chi/Thu chỉ đặt tab
+  /// mà bảng danh mục mở và bỏ danh mục đang chọn nếu nó thuộc chiều kia; chọn
+  /// một danh mục thì đoạn **nhảy theo** danh mục. Với danh mục vay/nợ (gom cả
+  /// hai chiều), đoạn Chi/Thu chính là công tắc "Chiều tiền" — hai chỗ ấy luôn
+  /// cùng một giá trị. Từ 2026-09-05 tới 2026-09-19 thanh này chỉ có "Giao
+  /// dịch / Chuyển khoản" — đi lệch Stitch.
+  String _huong = 'chi';
   String _amountString = "0";
 
   List<Wallet> _wallets = [];
@@ -115,7 +128,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     if (editing != null) {
       // Điền sẵn TRƯỚC khi gắn listener ghi chú, để lần gán text đầu không
       // kích hoạt tra cứu gợi ý.
-      _selectedSegment = editing.type == 'transfer' ? 1 : 0;
+      _huong = editing.type;
       _amountString = editing.amount == editing.amount.roundToDouble()
           ? editing.amount.toInt().toString()
           : editing.amount.toString();
@@ -128,6 +141,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         _debtDirection =
             isDebtClassify(category.classify) ? editing.type : null;
       }
+    } else if (const {'chi', 'thu', 'transfer'}.contains(widget.huongBanDau)) {
+      _huong = widget.huongBanDau!;
     }
     _noteController.addListener(_onNoteChanged);
     _loadWallets();
@@ -223,7 +238,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     return widget.idaccount;
   }
 
-  bool get _isTransfer => _selectedSegment == 1;
+  bool get _isTransfer => _huong == 'transfer';
 
   /// Giá trị `type` sẽ ghi xuống SQLite (`chi` | `thu` | `transfer`), suy từ
   /// loại giao dịch và danh mục đã chọn. `null` khi chưa đủ dữ kiện.
@@ -245,9 +260,29 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     setState(() {
       _selectedCategory = category;
       _suggestion = null;
-      _debtDirection = isDebtClassify(category.classify)
-          ? suggestDebtDirection(category.name)
-          : null;
+      final laVayNo = isDebtClassify(category.classify);
+      _debtDirection = laVayNo ? suggestDebtDirection(category.name) : null;
+      // Danh mục là sự thật, đoạn đầu màn phản ánh nó — không được nói ngược.
+      _huong = laVayNo
+          ? (_debtDirection ?? 'chi')
+          : (category.classify == 'thu' ? 'thu' : 'chi');
+    });
+  }
+
+  /// Chạm một đoạn Chi tiêu / Thu nhập / Chuyển khoản.
+  void _chonHuong(String huong) {
+    setState(() {
+      _huong = huong;
+      _suggestion = null;
+      final cat = _selectedCategory;
+      if (huong == 'transfer' || cat == null) return;
+      if (isDebtClassify(cat.classify)) {
+        // Vay/nợ gom cả hai chiều: đoạn chính là công tắc chiều tiền.
+        _debtDirection = huong;
+      } else if ((cat.classify == 'thu' ? 'thu' : 'chi') != huong) {
+        // Giữ danh mục chi dưới đoạn Thu là hai sự thật trái nhau.
+        _selectedCategory = null;
+      }
     });
   }
 
@@ -283,9 +318,9 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     // Chưa có phiên thì không gợi ý gì — đọc danh mục bằng mã admin là gợi ý
     // danh mục của người khác.
     if (accountId == null) return;
-    final requestedSegment = _selectedSegment;
-    // Không còn segment chi/thu để khoanh vùng, nên tìm trên cả ba phân loại:
-    // chiều tiền suy từ danh mục được chọn, không phải ngược lại.
+    final requestedHuong = _huong;
+    // Đoạn Chi/Thu chỉ là lối vào, không khoanh vùng gợi ý: tìm trên cả ba
+    // phân loại vì chiều tiền suy từ danh mục được chọn, không phải ngược lại.
     final categories = await _categoryRepository.selectableChildrenAll(
       accountId: accountId,
     );
@@ -308,7 +343,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       candidates: candidates,
     );
     if (!mounted ||
-        _selectedSegment != requestedSegment ||
+        _huong != requestedHuong ||
         _isTransfer ||
         _selectedCategory != null ||
         _noteController.text.trim() != note) {
@@ -692,27 +727,36 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
               ),
             ],
           ),
+          // Thanh chọn và con số CỐ ĐỊNH ở trên, bàn phím NEO ĐÁY, chỉ thẻ form
+          // ở giữa cuộn — theo màn Stitch "Thêm giao dịch - Bàn phím neo đáy"
+          // (`acf6f17e…`, 2026-09-19; UX C1/C2). Bản trước đặt cả bàn phím
+          // trong vùng cuộn: ở 411dp phải cuộn mới thấy 1-2-3 / 0 / 000 / ✓, và
+          // cuộn tới thì con số đang gõ trôi khỏi màn. Phím ✓ là nút lưu; nút
+          // "Lưu giao dịch" riêng đã bỏ.
           body: SafeArea(
             child: Column(
               children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: _buildSegmentControl(),
+                ),
+                const SizedBox(height: 16),
+                _buildAmountDisplay(),
+                const SizedBox(height: 8),
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 16),
-                    child: Column(
-                      children: [
-                        _buildSegmentControl(),
-                        const SizedBox(height: 32),
-                        _buildAmountDisplay(),
-                        const SizedBox(height: 32),
-                        _buildFormCard(context),
-                        const SizedBox(height: 16),
-                        _buildNumericKeyboard(),
-                      ],
-                    ),
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                    child: _buildFormCard(context),
                   ),
                 ),
-                _buildSaveButton(context, state),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                  child: _buildNumericKeyboard(
+                    context,
+                    isSubmitting: state is TransactionLoadedState &&
+                        state.isSubmitting,
+                  ),
+                ),
               ],
             ),
           ),
@@ -740,28 +784,28 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       ),
       child: Row(
         children: [
-          Expanded(child: _buildSegmentButton(0, 'Giao dịch')),
-          Expanded(child: _buildSegmentButton(1, 'Chuyển khoản')),
+          Expanded(
+              child: _buildSegmentButton('chi', 'Chi tiêu', AppColors.expense)),
+          Expanded(
+              child: _buildSegmentButton('thu', 'Thu nhập', AppColors.income)),
+          Expanded(
+              child: _buildSegmentButton(
+                  'transfer', 'Chuyển khoản', AppColors.primary)),
         ],
       ),
     );
   }
 
-  Widget _buildSegmentButton(int index, String title) {
-    final isSelected = _selectedSegment == index;
-    // Cả hai loại đều tô `primary` khi chọn: màu xanh/đỏ của thu/chi nay theo
-    // danh mục (ô số tiền), không còn gắn vào segment.
-    final bgColor = isSelected ? AppColors.primary : Colors.transparent;
+  /// Màu đoạn đang chọn theo màn Stitch: Chi tiêu đỏ, Thu nhập xanh, Chuyển
+  /// khoản đen.
+  Widget _buildSegmentButton(String huong, String title, Color mau) {
+    final isSelected = _huong == huong;
+    final bgColor = isSelected ? mau : Colors.transparent;
     final textColor = isSelected ? Colors.white : AppColors.textSecondary;
 
     return GestureDetector(
-      key: Key('transaction-type-$index'),
-      onTap: () {
-        setState(() {
-          _selectedSegment = index;
-          _suggestion = null;
-        });
-      },
+      key: Key('transaction-type-$huong'),
+      onTap: () => _chonHuong(huong),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
@@ -875,7 +919,9 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                 // Mở đúng tab của danh mục đang chọn; lần đầu thì tab chi.
                 final selected = await context.push<Category>(
                   '/add/category',
-                  extra: selectedCategory?.classify ?? kCategoryClassifies.first,
+                  // Chưa có danh mục thì mở tab của đoạn đang chọn (C3).
+                  extra: selectedCategory?.classify ??
+                      (_huong == 'thu' ? 'thu' : kCategoryClassifies.first),
                 );
                 if (selected != null) _chonDanhMuc(selected);
               },
@@ -1055,7 +1101,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         fontWeight: FontWeight.w600,
         color: selected ? Colors.white : AppColors.primary,
       ),
-      onSelected: (_) => setState(() => _debtDirection = direction),
+      // Cùng giá trị với đoạn đầu màn — xem chú thích ở `_huong`.
+      onSelected: (_) => setState(() {
+        _debtDirection = direction;
+        _huong = direction;
+      }),
     );
   }
 
@@ -1110,7 +1160,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     );
   }
 
-  Widget _buildNumericKeyboard() {
+  Widget _buildNumericKeyboard(BuildContext context,
+      {required bool isSubmitting}) {
     final keys = [
       '7',
       '8',
@@ -1134,11 +1185,14 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: 16,
+      // `mainAxisExtent` CỐ ĐỊNH thay vì `childAspectRatio`: bàn phím neo đáy
+      // phải cao như nhau ở mọi bề rộng — tỉ lệ ở khung test 800dp cho phím
+      // cao gấp đôi và nuốt hết chỗ của thẻ form.
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 4,
         crossAxisSpacing: 8,
         mainAxisSpacing: 8,
-        childAspectRatio: 1.2,
+        mainAxisExtent: 50,
       ),
       itemBuilder: (context, index) {
         final keyStr = keys[index];
@@ -1154,7 +1208,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                   : Colors.white,
           borderRadius: BorderRadius.circular(12),
           child: InkWell(
-            onTap: () => _onKeyPress(keyStr),
+            // ✓ là nút lưu (từng là phím chết: `themPhimSoTien` trả nguyên
+            // chuỗi với 'done').
+            onTap: isDone
+                ? (isSubmitting ? null : () => _saveTransaction(context))
+                : () => _onKeyPress(keyStr),
             borderRadius: BorderRadius.circular(12),
             child: Container(
               decoration: BoxDecoration(
@@ -1199,47 +1257,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       keyStr,
       style: const TextStyle(
           fontSize: 20, fontWeight: FontWeight.w600, color: AppColors.primary),
-    );
-  }
-
-  Widget _buildSaveButton(BuildContext context, TransactionState state) {
-    final isSubmitting = state is TransactionLoadedState && state.isSubmitting;
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.background.withValues(alpha: 0.9),
-            blurRadius: 20,
-            spreadRadius: 10,
-            offset: const Offset(0, -20),
-          )
-        ],
-      ),
-      child: ElevatedButton(
-        onPressed: isSubmitting ? null : () => _saveTransaction(context),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
-          minimumSize: const Size(double.infinity, 56),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          elevation: 4,
-          shadowColor: AppColors.primary.withValues(alpha: 0.3),
-        ),
-        child: isSubmitting
-            ? const CircularProgressIndicator(color: Colors.white)
-            : const Text(
-                'Lưu giao dịch',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-      ),
     );
   }
 }

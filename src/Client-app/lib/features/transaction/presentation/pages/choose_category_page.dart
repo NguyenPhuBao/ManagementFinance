@@ -296,12 +296,13 @@ class _ChooseCategoryPageState extends State<ChooseCategoryPage> {
         ),
       );
 
+  // Hàng lá trần theo màn Stitch "Chọn danh mục": không chevron (chevron nói
+  // "còn cấp con" mà lá thì không), không icon tag xanh chung cho mọi danh
+  // mục (UX 2026-09-19, C5).
   Widget _buildChildTile(Category child) => ListTile(
         key: Key('category-child-${child.id}'),
         contentPadding: const EdgeInsets.only(left: 32, right: 16),
-        leading: const Icon(Icons.label_outline, color: AppColors.secondary),
         title: Text(child.name),
-        trailing: const Icon(Icons.chevron_right, color: AppColors.outline),
         onTap: () => context.pop<Category>(child),
       );
 }

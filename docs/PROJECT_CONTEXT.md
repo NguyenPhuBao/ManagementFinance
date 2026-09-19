@@ -709,6 +709,39 @@ là lý do gom về một chỗ. **Schema không đổi, payload không đổi.*
 > `double.tryParse(_amountString.replaceAll('.', ''))` — tức **12.5 thành 125**,
 > im lặng.
 
+**C1–C5 — màn Thêm giao dịch theo Stitch (xong 2026-09-19).** Máy ảo 411dp:
+màn đầu chỉ thấy hai hàng phím 7-8-9 / 4-5-6, phải cuộn mới tới 1-2-3, 0, 000,
+✓, và cuộn tới thì con số đang gõ trôi khỏi màn. Lượt đối chiếu Stitch lộ ra
+**hai chỗ bản Flutter đi lệch thiết kế** chứ không phải thiếu thiết kế: màn gốc
+`20700200…` vẽ thanh **"Chi tiêu · Thu nhập · Chuyển khoản"** (bản chạy chỉ có
+"Giao dịch / Chuyển khoản" từ 2026-09-05), và màn "Chọn danh mục" `acab2a45…`
+vẽ **hàng lá trần** (bản chạy có chevron ">" và icon tag xanh chung). Chỉ bố cục
+bàn phím là chưa có, nên đưa lên Stitch trước: `edit_screens` trả về **màn
+mới** `acf6f17e65b84132ae6b18bba16a606a` *"Thêm giao dịch - Bàn phím neo đáy"*
+(tạo màn mới thay vì sửa tại chỗ; ảnh trả về đúng yêu cầu — thanh chọn, số tiền
+cố định, thẻ form cuộn ở giữa, 16 phím neo đáy, ✓ là nút lưu, không còn nút
+"Lưu giao dịch"). Bản Flutter: (1) `body` là `Column` — thanh chọn + số tiền
+**cố định**, `Expanded(SingleChildScrollView(thẻ form))`, bàn phím **neo đáy**
+với `mainAxisExtent: 50` (không `childAspectRatio`: ở khung test 800dp tỉ lệ
+cho phím cao gấp đôi, nuốt hết chỗ thẻ form); (2) phím ✓ gọi `_saveTransaction`
+— **từng là phím chết**, `themPhimSoTien` trả nguyên chuỗi với `'done'`; nút
+"Lưu giao dịch" bỏ; (3) `_selectedSegment` (0/1) thành **`_huong`**
+`'chi'|'thu'|'transfer'`, key `transaction-type-<huong>`, màu đoạn theo Stitch
+(đỏ/xanh/đen). ⚠️ **Luật 2026-09-05 giữ nguyên**: `type` vẫn suy từ danh mục;
+đoạn Chi/Thu chỉ là **lối vào** — đặt tab bảng danh mục mở, bỏ danh mục đang
+chọn nếu thuộc chiều kia, và **nhảy theo** khi chọn danh mục; với vay/nợ đoạn
+chính là công tắc "Chiều tiền" (hai chỗ luôn cùng giá trị). Phép kiểm "quyết
+định có chủ ý" đã làm: lý lẽ 2026-09-05 là *sự thật nằm ở danh mục* — thanh
+mới không đụng vào đó. (4) `AddTransactionPage.huongBanDau` + route `/add`
+nhận `extra` là `String` → ba nút tắt Trang chủ đặt sẵn `'thu'|'chi'|'transfer'`
+(trước đó cả ba đều `push('/add')` trần). (5) `_buildChildTile` của bảng chọn
+bỏ chevron và icon. Test: tệp mới `add_transaction_bo_cuc_test.dart` (7 ca, đo
+ở **411×914**: mọi phím và con số nằm trong màn, ✓ lưu thật, ba đoạn, đoạn
+nhảy theo danh mục, `huongBanDau`, hàng lá trần); 4 tệp cũ đổi theo — `luu()`
+tap `Icons.check`, key `transaction-type-transfer`, và **`ensureVisible`
+trước khi chạm "Danh mục"** vì thẻ form nay nằm trong vùng cuộn hẹp ở khung
+test 600dp. **Schema không đổi, payload không đổi.**
+
 **E3 — Back không thoát app ngay (xong 2026-09-19).** Máy ảo: Back ở tab Trang
 chủ đưa thẳng ra launcher, không cảnh báo — app không có `PopScope` nào (trong
 lượt đánh giá tôi cũng mất app hai lần vì thế). Nay `MainShell` bọc thân bằng
@@ -1705,7 +1738,7 @@ hiện cũng không chứng minh lời gọi của mình tạo ra nó. Hỏi ng�
 - **Bộ gợi ý danh mục so khớp được tiếng Việt không dấu** (2026-09-04) — NFC + vòng dự phòng bỏ dấu, khớp còn dấu luôn thắng
 - **Vi phạm ràng buộc UNIQUE (23505) là lỗi vĩnh viễn** (2026-09-04) *(G16)* — trước đây rơi vào `transient` và đẩy lại ở mọi chu kỳ
 - **Ô ghi chú có debounce 300ms và đọc từ khoá bằng một truy vấn gộp** (2026-09-04) — trước đây mỗi ký tự gõ sinh 1+N truy vấn SQLite
-- **Hai loại giao dịch (Giao dịch / Chuyển khoản) + tab Vay/nợ ở bảng chọn danh mục** (2026-09-05) — chiều tiền suy từ `classify` của danh mục thay vì từ segment; danh mục vay/nợ có hàng "Chiều tiền" trên form, gợi sẵn theo tên (`suggestDebtDirection`). SQLite **vẫn** lưu `type = chi/thu/transfer` nên hợp đồng đồng bộ, DAO và thống kê không đổi; vay/nợ tính vào tổng thu/chi như thu/chi thường (quyết định có chủ ý, tách ra để dành cho Analytics). Danh sách classify gom về `core/category/category_classify.dart` thay cho 5 bản chép tay. Kèm sửa 11.11
+- **Hai loại giao dịch (Giao dịch / Chuyển khoản) + tab Vay/nợ ở bảng chọn danh mục** (2026-09-05; ⚠️ thanh đầu màn trở lại **ba đoạn Chi tiêu · Thu nhập · Chuyển khoản** ngày 2026-09-19 theo Stitch — nhưng chỉ là lối vào, luật "chiều tiền suy từ danh mục" dưới đây **giữ nguyên**, xem mục C1–C5 đầu mục 14) — chiều tiền suy từ `classify` của danh mục thay vì từ segment; danh mục vay/nợ có hàng "Chiều tiền" trên form, gợi sẵn theo tên (`suggestDebtDirection`). SQLite **vẫn** lưu `type = chi/thu/transfer` nên hợp đồng đồng bộ, DAO và thống kê không đổi; vay/nợ tính vào tổng thu/chi như thu/chi thường (quyết định có chủ ý, tách ra để dành cho Analytics). Danh sách classify gom về `core/category/category_classify.dart` thay cho 5 bản chép tay. Kèm sửa 11.11
 - **Sổ giao dịch chặn vuốt xoá khoản của mục tiêu và hoá đơn** (2026-09-06) — nguyên tắc: chỉ xoá được ở sổ khi giao dịch là nguồn sự thật duy nhất của hệ quả nó gây ra; khoản nạp/rút mục tiêu còn `current_amount`, khoản trả hoá đơn còn cờ Payed + kỳ kế tiếp, xoá rời chỉ hoàn ví (đã thấy tiến độ MuaXe đứng nguyên sau khi xoá hai khoản nạp). Nhận diện ở `features/transaction/domain/transaction_owner.dart` (`goalId` cục bộ, hoặc tiền tố ghi chú vì hàng kéo từ server không có `goalId`; kể cả dạng cũ "Tích lũy nhận từ …"); hàng tách thành `TransactionListRow` với `confirmDismiss` + SnackBar chỉ đường. Hoá đơn chưa có luồng hoàn tác thanh toán — muốn cho xoá thì phải làm luồng ấy trước
 - **Sổ giao dịch hiện danh mục + tên ví** (2026-09-06) — theo bố cục Stitch màn Home: tiêu đề = ghi chú (không có thì tên danh mục), dòng phụ "Danh mục • Ví" hoặc "Ví nguồn → Ví đích" với khoản chuyển, icon/màu của danh mục. Trước đó dòng phụ in thẳng UUID ví và không có danh mục ở đâu. Nội dung dòng tính ở hàm thuần `buildTransactionRowContent()` (`transaction_row_content.dart`), tên tra qua `TransactionLookup` dựng từ `walletDao.watchAll` + `categoryDao.watchAll`. **Phát hiện kèm:** seed backend lưu tên icon ngữ nghĩa (`food`, `bill`, `lend`…) còn ba mapper client chỉ hiểu tên Material → danh mục mặc định kéo về toàn rơi về icon mặc định; nay gom về **một** mapper `core/category/category_visuals.dart` hiểu cả hai bộ tên, `budget_visuals` và `category_page` uỷ quyền về đó (`category_add_page` còn bản riêng cho bộ chọn icon, chưa gộp)
 - **Sổ giao dịch: chi tiết + sửa + lọc/tìm** (2026-09-06). Bấm dòng → `TransactionDetailSheet` (đọc đủ; Sửa/Xoá chỉ với giao dịch thường, khoản mục tiêu/hoá đơn chỉ đọc theo cùng quy tắc `transactionOwnerOf`). Sửa dùng lại `AddTransactionPage` với `initial: EditTransactionArgs` qua `extra` của route `/add` (cùng `id`, `UpdateTransactionEvent`); `TransactionRepositoryImpl.updateTransaction` = hoàn trọn hệ quả cũ rồi áp trọn hệ quả mới lên ví (một đường `_applyBalances(sign)` dùng chung cho thêm/xoá/sửa), ghi đè hàng và đặt lại `pending` + `updatedAt` (LWW server). Lọc: `TransactionFilter` + `applyTransactionFilter` thuần Dart trên danh sách tháng của bloc (loại, ví — khoản chuyển khớp cả nguồn lẫn đích —, danh mục, tìm ghi chú bỏ dấu); `TransactionFilterBar` chỉ phát filter, trang giữ trạng thái; thẻ tổng tính trên tập đã lọc. Trang chủ "Giao dịch gần đây" dùng chung `buildTransactionRowContent`

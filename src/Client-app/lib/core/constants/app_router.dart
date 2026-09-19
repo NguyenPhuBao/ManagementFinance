@@ -194,6 +194,9 @@ class AppRouter {
               initial: state.extra is EditTransactionArgs
                   ? state.extra as EditTransactionArgs
                   : null,
+              // `extra` là `String` 'chi' | 'thu' | 'transfer' → chiều đặt
+              // sẵn cho ba nút tắt ở Trang chủ (UX 2026-09-19, C4).
+              huongBanDau: state.extra is String ? state.extra as String : null,
             ),
             routes: [
               GoRoute(
