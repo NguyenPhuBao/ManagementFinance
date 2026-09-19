@@ -62,12 +62,51 @@ void main() {
     }
   });
 
-  test('drawer còn đúng sáu mục, giữ nguyên thứ tự đã chốt', () {
+  test('⚠️ MỌI trang tính năng đều vào được từ menu', () {
+    // Người dùng báo ngày 2026-09-19: "vài chức năng ở phần cài đặt đã chuyển
+    // đi nhưng không thấy chuyển qua chỗ nào". Đúng — nhóm D bỏ nhóm "QUẢN LÝ
+    // TÀI KHOẢN" khỏi tab Cá nhân, ba trong bốn mục đã có sẵn ở drawer, nhưng
+    // **"Danh mục tùy chỉnh" thì chưa bao giờ**: drawer cũ không cần nó vì tab
+    // Cá nhân đang giữ. Bản spec sáu mục thừa hưởng đúng chỗ thiếu ấy, nên
+    // trang Quản lý danh mục mất hẳn lối vào qua menu — chỉ còn một nút chôn
+    // trong bảng chọn danh mục của màn Thêm giao dịch.
+    //
+    // Ca này canh **luật**, không canh một danh sách: mỗi trang tính năng phải
+    // vào được từ drawer HOẶC từ thanh dưới. Chuyển một mục đi đâu cũng được,
+    // miễn nó còn một cửa.
+    const trangTinhNang = {
+      '/wallets': 'Quản lý ví',
+      '/goals': 'Mục tiêu tiết kiệm',
+      '/budget': 'Ngân sách',
+      '/bills': 'Hoá đơn',
+      '/categories': 'Quản lý danh mục',
+      '/export-report': 'Xuất báo cáo',
+      '/ai-chat': 'Trợ lý AI',
+      '/analytics': 'Phân tích',
+      '/transactions': 'Sổ giao dịch',
+      '/profile': 'Cá nhân',
+      '/home': 'Trang chủ',
+    };
+    final coTrongMenu = {
+      ...kMucDrawer.map((m) => m.duong),
+      ...nhanhThanhTab,
+    };
+    for (final e in trangTinhNang.entries) {
+      expect(coTrongMenu.contains(e.key), isTrue,
+          reason: 'Trang "${e.value}" (${e.key}) không có lối vào nào từ menu '
+              '— không ở drawer, không ở thanh dưới. Một trang không tới được '
+              'là một tính năng đã biến mất, và `flutter analyze` không nói '
+              'gì vì route vẫn tồn tại.');
+    }
+  });
+
+  test('drawer còn đúng bảy mục, giữ nguyên thứ tự đã chốt', () {
     expect(kMucDrawer.map((m) => m.nhan).toList(), [
       'Quản lý ví',
       'Mục tiêu tiết kiệm',
       'Ngân sách',
       'Hóa đơn & Dịch vụ',
+      'Danh mục',
       'Xuất báo cáo',
       'Trợ lý AI',
     ]);

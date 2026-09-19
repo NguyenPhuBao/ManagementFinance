@@ -365,7 +365,7 @@ git commit -m "feat(nav): thanh dưới mang tab Sổ giao dịch, /budget rời
 
 ---
 
-### Task 2: Drawer còn sáu mục, và tên "Phân tích"
+### Task 2: Drawer còn bảy mục, và tên "Phân tích"
 
 **Files:**
 - Modify: `lib/features/home/presentation/widgets/drawer_trang_chu.dart:24-34`
@@ -436,6 +436,9 @@ const List<MucDrawer> kMucDrawer = [
   MucDrawer('Mục tiêu tiết kiệm', Icons.track_changes, '/goals'),
   MucDrawer('Ngân sách', Icons.savings, '/budget'),
   MucDrawer('Hóa đơn & Dịch vụ', Icons.receipt_long, '/bills'),
+  // ⚠️ Mục này CHƯA BAO GIỜ có trong drawer cũ — nó sống ở tab Cá nhân. Bỏ
+  // sót nó là trang Quản lý danh mục mất hẳn lối vào qua menu.
+  MucDrawer('Danh mục', Icons.category_outlined, '/categories'),
   MucDrawer('Xuất báo cáo', Icons.description, '/export-report'),
   MucDrawer('Trợ lý AI', Icons.smart_toy, '/ai-chat'),
 ];

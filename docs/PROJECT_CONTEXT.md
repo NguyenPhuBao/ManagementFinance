@@ -896,7 +896,7 @@ nhân chứa thêm một nhóm module lặp drawer lần nữa. Người dùng c
 hiện ở cả hai chỗ.**
 
 Kết quả: thanh dưới thành **Trang chủ · Phân tích · [+] · Giao dịch · Cá nhân**;
-`/budget` rời shell về drawer; drawer còn **sáu** mục; tab Cá nhân gộp trang
+`/budget` rời shell về drawer; drawer còn **bảy** mục; tab Cá nhân gộp trang
 Cài đặt; Trang chủ bỏ slogan, nút hero và "Xem báo cáo" (còn **bốn** lối vào
 màn Thêm giao dịch thay vì năm). **D4, D8, D9 tự tan** theo — không còn hai tên
 cho một đích, không còn glyph heo đất mang hai nghĩa, và "Trợ lý AI chỉ vào từ
@@ -932,6 +932,20 @@ sinh ra, cả ba đi lọt qua toàn bộ bộ test:**
 **Bài học chung của cả ba:** một cờ hay một widget có thể **đúng ở vai này và
 sai ở vai kia**, và đổi vai của một route là đổi ngữ cảnh của mọi thứ nó mang
 theo. `flutter test` không dựng cây route thật nên ở đó cả ba đều vô hại.
+
+⚠️ **Lỗi thứ tư, và người dùng là người tìm ra — trang Quản lý danh mục mất
+hẳn lối vào.** Bỏ nhóm "QUẢN LÝ TÀI KHOẢN" khỏi tab Cá nhân đưa ba trong bốn
+mục về drawer, nhưng **"Danh mục tùy chỉnh" thì chưa bao giờ có ở drawer**: nó
+sống ở tab Cá nhân nên drawer cũ không cần, và danh sách sáu mục của spec —
+dựng bằng cách lấy drawer cũ trừ ba mục trùng thanh dưới — **thừa hưởng đúng
+chỗ thiếu ấy**. Lối vào duy nhất còn lại là một nút chôn trong bảng chọn danh
+mục của màn Thêm giao dịch, tức phải mở màn thêm giao dịch mới quản lý được
+danh mục. Drawer nay **bảy** mục. **Bài học: chuyển một nhóm menu đi thì phải
+soát TỪNG MỤC xem đích đến đã có cửa nào chưa**, đừng suy từ việc danh sách
+nhận "đã có sẵn phần lớn"; và `flutter analyze` im lặng vì route vẫn tồn tại,
+chỉ là không ai trỏ tới. Ca test `MỌI trang tính năng đều vào được từ menu` nay
+canh bằng **luật** (`kMucDrawer ∪ nhanhThanhTab`) chứ không bằng danh sách chép
+tay.
 
 ⚠️ **Phép canh chia ba lớp** sau khi bản đầu thất bại: dựng router thật kéo theo
 cả `GetIt` (`AppDatabase`, `WalletCubit`, `AnalyticsCubit`…), và một ca test

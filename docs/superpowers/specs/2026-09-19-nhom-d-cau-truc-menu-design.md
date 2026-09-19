@@ -117,18 +117,34 @@ trí 2. **Số nhánh không đổi** (vẫn bốn) nên phép lệch giữ nguy
 (chỉ số 2, hiện UI ở vị trí 3) đổi **route** từ `/budget` sang `/transactions`,
 cùng với nhãn và icon.
 
-## 4. Drawer — còn sáu mục
+## 4. Drawer — còn bảy mục
 
 ```
 Quản lý ví           /wallets
 Mục tiêu tiết kiệm   /goals
 Ngân sách            /budget        ◀ rời shell về đây
 Hóa đơn & Dịch vụ    /bills
+Danh mục             /categories    ◀ từ tab Cá nhân về đây
 Xuất báo cáo         /export-report
 Trợ lý AI            /ai-chat
 ─────────────────────
 Đăng xuất
 ```
+
+⚠️ **Mục "Danh mục" là một bản vá sau khi người dùng báo lỗi.** Bản spec đầu
+ghi **sáu** mục và bỏ sót nó: `/categories` sống ở nhóm "QUẢN LÝ TÀI KHOẢN" của
+tab Cá nhân, nên drawer **cũ chưa bao giờ cần** nó — và danh sách sáu mục,
+dựng bằng cách lấy drawer cũ trừ đi ba mục trùng thanh dưới, **thừa hưởng đúng
+chỗ thiếu ấy**. Hậu quả: bỏ nhóm module ở mục 5 làm trang Quản lý danh mục
+**mất hẳn lối vào qua menu**; lối duy nhất còn lại là một nút chôn trong bảng
+chọn danh mục của màn Thêm giao dịch, tức phải mở màn thêm giao dịch mới quản
+lý được danh mục.
+
+**Bài học:** chuyển một nhóm menu đi thì phải soát **từng mục** xem đích đến đã
+có cửa nào chưa — đừng suy từ việc "danh sách nhận đã có sẵn phần lớn". Ca test
+`MỌI trang tính năng đều vào được từ menu` nay canh chỗ đó bằng **luật** (mỗi
+trang phải nằm trong `kMucDrawer ∪ nhanhThanhTab`), không bằng một danh sách
+chép tay.
 
 Bỏ ba mục **Thống kê**, **Cá nhân**, **Cài đặt** vì cả ba đã có ở thanh dưới.
 

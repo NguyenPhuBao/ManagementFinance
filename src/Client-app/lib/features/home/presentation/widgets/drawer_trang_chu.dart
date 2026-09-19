@@ -32,6 +32,16 @@ const List<MucDrawer> kMucDrawer = [
   MucDrawer('Mục tiêu tiết kiệm', Icons.track_changes, '/goals'),
   MucDrawer('Ngân sách', Icons.savings, '/budget'),
   MucDrawer('Hóa đơn & Dịch vụ', Icons.receipt_long, '/bills'),
+  // ⚠️ Mục này **chưa bao giờ** có trong drawer cũ — nó sống ở nhóm "QUẢN LÝ
+  // TÀI KHOẢN" của tab Cá nhân, nên drawer không cần. Nhóm D bỏ nhóm ấy đi và
+  // bản spec sáu mục thừa hưởng đúng chỗ thiếu, nên trang Quản lý danh mục
+  // **mất hẳn lối vào qua menu** — chỉ còn một nút chôn trong bảng chọn danh
+  // mục của màn Thêm giao dịch. Người dùng báo ngay trong ngày.
+  //
+  // Bài học: chuyển một nhóm menu đi thì phải soát **từng mục** xem đích đến
+  // đã có cửa nào chưa, đừng cho rằng danh sách nhận là đủ. Ca
+  // "MỌI trang tính năng đều vào được từ menu" nay canh chỗ đó.
+  MucDrawer('Danh mục', Icons.category_outlined, '/categories'),
   MucDrawer('Xuất báo cáo', Icons.description, '/export-report'),
   MucDrawer('Trợ lý AI', Icons.smart_toy, '/ai-chat'),
 ];
