@@ -266,10 +266,11 @@ class _Header extends StatelessWidget {
     // Trái co, phải giữ: ở 411dp thì "Thống kê" + nút xuất + ô chọn tháng
     // không đủ chỗ (tràn 53px trên máy ảo). Tiêu đề nhường trước vì nó là
     // thứ người dùng đã biết; ô chọn tháng mới là thứ họ cần đọc được.
+    // Không có icon menu: bản trước vẽ một `Icon` trần trông hệt hamburger mở
+    // drawer của Trang chủ, mà trang này không có drawer và icon không bọc nút
+    // nào — bấm không xảy ra gì (UX 2026-09-19, A2).
     return Row(
       children: [
-        const Icon(Icons.menu, color: AppColors.textSecondary, size: 28),
-        const SizedBox(width: 12),
         // Tỉ lệ 1:2, KHÔNG phải Expanded + Flexible bằng nhau: flex chia chỗ
         // trống theo hệ số bất kể con cần bao nhiêu, nên bản đầu cho tiêu đề
         // một nửa trong khi nó chỉ cần ~95px — và ô tháng bị cắt thành

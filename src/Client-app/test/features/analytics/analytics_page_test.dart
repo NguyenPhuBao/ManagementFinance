@@ -271,6 +271,16 @@ void main() {
     await tester.pump();
   }
 
+  testWidgets('header không vẽ icon menu chết', (tester) async {
+    await moTrang(tester);
+    await phat(tester, _tk());
+
+    expect(find.byIcon(Icons.menu), findsNothing,
+        reason: 'Icon menu ở header từng là `Icon` trần, không bọc nút — vẽ '
+            'giống hamburger mở drawer của Trang chủ nhưng bấm không làm gì. '
+            'Trang này không có drawer, nên không vẽ icon ấy (UX 2026-09-19, A2).');
+  });
+
   testWidgets('tháng lấy từ ĐỒNG HỒ, không phải hằng số', (tester) async {
     await moTrang(tester);
     await phat(tester, _tk());

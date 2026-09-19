@@ -23,10 +23,9 @@ class ProfilePage extends StatelessWidget {
         centerTitle: true,
         backgroundColor: AppColors.background,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.menu, color: AppColors.primary),
-          onPressed: () {},
-        ),
+        // Không có hamburger: tab này không có drawer. Bản trước vẽ nút với
+        // `onPressed: () {}` — vẽ như sống mà bấm không làm gì (UX 2026-09-19).
+        automaticallyImplyLeading: false,
         actions: [
           NotificationBell(
             unreadCount: currentAccountIdOrNull(context) == null

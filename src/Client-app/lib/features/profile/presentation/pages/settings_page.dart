@@ -25,12 +25,8 @@ class SettingsPage extends StatelessWidget {
           icon: const Icon(Icons.arrow_back, color: AppColors.primary),
           onPressed: () => context.pop(),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.support_agent, color: AppColors.primary),
-            onPressed: () {},
-          ),
-        ],
+        // Nút "hỗ trợ" đã gỡ 2026-09-19: `onPressed: () {}`, và dự án chưa có
+        // kênh hỗ trợ nào để trỏ tới.
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
@@ -197,25 +193,10 @@ class SettingsPage extends StatelessWidget {
             trailing: const Icon(Icons.chevron_right, color: AppColors.textSecondary),
             onTap: () => context.push('/settings/change-password'),
           ),
-          const Divider(height: 1, color: AppColors.outlineVariant),
-          _buildActionItem(
-            icon: Icons.verified_user_outlined,
-            title: 'Bảo mật 2 yếu tố (MFA)',
-            trailing: Switch(
-              value: true,
-              onChanged: (val) {},
-              activeThumbColor: Colors.white,
-              activeTrackColor: const Color(0xFF006E1C),
-            ),
-            onTap: () {},
-          ),
-          const Divider(height: 1, color: AppColors.outlineVariant),
-          _buildActionItem(
-            icon: Icons.cloud_sync_outlined,
-            title: 'Đồng bộ dữ liệu Cloud',
-            trailing: const Icon(Icons.check_circle, color: Color(0xFF006E1C)),
-            onTap: () {},
-          ),
+          // Hai mục "Bảo mật 2 yếu tố (MFA)" và "Đồng bộ dữ liệu Cloud" đã gỡ
+          // 2026-09-19: cả hai là `onTap: () {}` với công tắc luôn bật và dấu
+          // tick luôn xanh — hứa hai tính năng không tồn tại. Đồng bộ thì app
+          // vẫn làm, nhưng tự động và không có gì để cài đặt ở đây.
         ],
       ),
     );

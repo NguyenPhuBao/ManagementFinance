@@ -594,7 +594,38 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-18)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-19)
+
+### 🎨 Lượt sửa UX/UI theo đánh giá 2026-09-19
+
+Ngày 2026-09-19 người dùng hỏi đánh giá UX/UI. Lượt đánh giá đo trên **máy ảo
+411dp với dữ liệu thật** (khoảng 30 ảnh chụp) cộng quét mã, ra **42 việc** trong
+bảy nhóm — danh sách đầy đủ kèm bằng chứng ở
+`docs/superpowers/plans/2026-09-19-ux-ui-danh-sach-viec.md` (gitignore, chỉ có
+trên máy đã dựng). Người dùng chốt **làm theo thứ tự đề nghị**: nút chết trước,
+rồi bản địa hoá và số tiền, rồi luồng nhập liệu và menu (hai nhóm sau cần Stitch
+trước). Từng hạng mục ghi ở đây khi xong.
+
+**A1 · A2 · A7 — nút chết (xong 2026-09-19).** Ba chỗ vẽ như nút sống mà bấm
+không làm gì: hamburger ở tab Cá nhân (`onPressed: () {}`), icon menu ở header
+Phân tích (một `Icon` trần, không bọc nút — trông hệt hamburger mở drawer của
+Trang chủ), và hai mục "Bảo mật 2 yếu tố (MFA)" / "Đồng bộ dữ liệu Cloud" ở Cài
+đặt với công tắc luôn bật và dấu tick luôn xanh — hứa hai tính năng không tồn
+tại. Cả ba **gỡ**; cùng trang Cài đặt gỡ luôn nút "hỗ trợ" `support_agent` cũng
+rỗng. **Test quét `lib/` thứ MƯỜI** — `test/core/ui/khong_co_nut_chet_test.dart`
+— cấm mọi handler rỗng (`onPressed/onTap/onChanged…: () {}`, kể cả `(val) {}` và
+`async {}` trải nhiều dòng; bỏ dòng chú thích vì hai tệp mục tiêu nhắc tới khuôn
+ấy trong lời giải thích). Chỗ còn giữ phải **liệt kê tay kèm số chỗ và lý do**,
+và mỗi mục là một quyết định **chờ chốt** chứ không phải ngoại lệ vĩnh viễn:
+`ai_chat_page` 5 (D9), `login_page` 2 (Google/Apple, chưa có OAuth),
+`forgot_password_page` 1 ("Liên hệ hỗ trợ"), `add_transaction_page` 1 (menu ⋮),
+`profile_page` 1 (công tắc Giao diện, A3). ⚠️ Test quét lộ thêm **một nút chết
+không có trong danh sách 42 việc**: "Gửi lại mã OTP" ở màn OTP quên mật khẩu là
+`onPressed: () { // Resend OTP logic }` — người lỡ mất mã không có lối nào ngoài
+quay lại nhập email. Nay gọi lại chính `forgotPassword(email)`, xoá sáu ô, và
+hiện "Đã gửi lại mã tới …" (3 ca ở `otp_gui_lai_ma_test.dart`). Hai widget test
+canh icon menu ở Cá nhân và Phân tích không quay lại. **Schema không đổi, payload
+không đổi.**
 
 ### 🏦 Gỡ phần client của liên kết ngân hàng (2026-09-18)
 
