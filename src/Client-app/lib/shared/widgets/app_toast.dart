@@ -67,6 +67,7 @@ class AppToast extends StatefulWidget {
     required this.connectionEvents,
     required this.pushResults,
     required this.realtimeEvents,
+    this.thongBaoNhanh = const Stream<String>.empty(),
     this.tuAnSau = const Duration(seconds: 4),
   });
 
@@ -74,6 +75,10 @@ class AppToast extends StatefulWidget {
   final Stream<ConnectionEvent> connectionEvents;
   final Stream<SyncResult> pushResults;
   final Stream<RealtimeEvent> realtimeEvents;
+
+  /// Câu tự do một dòng từ `ThongBaoNhanh` (2026-09-19) — ví dụ "Nhấn lần nữa
+  /// để thoát". Bậc thấp nhất: không được đè lên tin về dữ liệu.
+  final Stream<String> thongBaoNhanh;
 
   /// Bao lâu thì toast tự biến mất. Áp dụng cho **mọi** toast, kể cả mất kết nối.
   final Duration tuAnSau;
@@ -86,6 +91,7 @@ class _AppToastState extends State<AppToast> {
   StreamSubscription<ConnectionEvent>? _subKetNoi;
   StreamSubscription<SyncResult>? _subDay;
   StreamSubscription<RealtimeEvent>? _subRealtime;
+  StreamSubscription<String>? _subNhanh;
   Timer? _dongHoAn;
   Timer? _dongHoDon;
 
@@ -103,6 +109,7 @@ class _AppToastState extends State<AppToast> {
     _subKetNoi = widget.connectionEvents.listen(_khiDoiKetNoi);
     _subDay = widget.pushResults.listen(_khiDayXong);
     _subRealtime = widget.realtimeEvents.listen(_khiCoRealtime);
+    _subNhanh = widget.thongBaoNhanh.listen(_khiCoNhanh);
   }
 
   @override
@@ -110,6 +117,7 @@ class _AppToastState extends State<AppToast> {
     _subKetNoi?.cancel();
     _subDay?.cancel();
     _subRealtime?.cancel();
+    _subNhanh?.cancel();
     _dongHoAn?.cancel();
     _dongHoDon?.cancel();
     super.dispose();
@@ -188,6 +196,19 @@ class _AppToastState extends State<AppToast> {
             : Icons.notifications_active_outlined,
         bac: _Bac.realtime,
         nguon: _Nguon.realtime,
+      ),
+    );
+  }
+
+  /// Câu tự do: bậc thấp nhất, nguồn riêng — nó chỉ thay thế chính nó.
+  void _khiCoNhanh(String cau) {
+    _hien(
+      _NoiDungToast(
+        chu: cau,
+        mau: AppColors.primary,
+        icon: Icons.info_outline,
+        bac: _Bac.ketNoi,
+        nguon: _Nguon.nhanh,
       ),
     );
   }
@@ -349,7 +370,7 @@ enum _Bac {
 
 /// Ai phát ra thông báo. Dùng để cho một nguồn được cập nhật chính nó bất kể
 /// bậc — xem `_hien`.
-enum _Nguon { ketNoi, realtime, dongBo }
+enum _Nguon { ketNoi, realtime, dongBo, nhanh }
 
 class _NoiDungToast {
   const _NoiDungToast({

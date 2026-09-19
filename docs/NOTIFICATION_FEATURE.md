@@ -1358,7 +1358,7 @@ lượt RED, vì `expect` ném sớm nên chưa chạm tới bước dọn dẹp
 | `test/core/notification/notification_tap_router_test.dart` | Cold start điều hướng được; **cùng payload đến bằng cả hai đường chỉ điều hướng một lần**, nhưng lần chạm sau vẫn chạy; chưa đăng nhập thì giữ lại và xả sau `AuthSuccess`, chỉ giữ **cái mới nhất**; `stop()` cắt hẳn |
 | `test/core/network/connection_monitor_test.dart` | **Ngưỡng ổn định**: mất mạng chớp nhoáng và chuỗi nhấp nháy đều không sinh sự kiện; đang online lúc khởi động thì không báo "khôi phục" |
 | `test/core/sync/sync_push_result_test.dart` | `pushResultStream` phát số thao tác đã lên; **không phát khi không có gì để đẩy**; server từ chối thì vẫn phát kèm số thất bại |
-| `test/shared/app_toast_test.dart` | Ba nguồn toast và thứ tự ưu tiên giữa chúng. ⚠️ **Luật bố cục đã ĐẢO NGƯỢC ngày 2026-09-09**: bản dải cũ **không được đè lên** nội dung (phải đẩy trang xuống), toast mới thì **phải đè** và **không được** chạm vào bố cục trang. Lý lẽ cũ — che thanh tiêu đề và nút chuông — chỉ đúng với dải nổi **ở đỉnh**; toast nằm ở **đáy** |
+| `test/shared/app_toast_test.dart` | Ba nguồn toast gốc và thứ tự ưu tiên giữa chúng; nguồn chữ tự do `ThongBaoNhanh` (2026-09-19) có tệp riêng `app_toast_thong_bao_nhanh_test.dart`. ⚠️ **Luật bố cục đã ĐẢO NGƯỢC ngày 2026-09-09**: bản dải cũ **không được đè lên** nội dung (phải đẩy trang xuống), toast mới thì **phải đè** và **không được** chạm vào bố cục trang. Lý lẽ cũ — che thanh tiêu đề và nút chuông — chỉ đúng với dải nổi **ở đỉnh**; toast nằm ở **đáy** |
 | `test/features/layout/no_overflow_test.dart` | Ba hàng từng tràn, dựng ở **320/360/411dp** — bắt bằng `tester.takeException()` |
 
 ⚠️ `.gitignore` có `test/` (dòng 78, đo 2026-09-10 — từng ghi 77) → file test mới bị bỏ qua **âm thầm**. Phải
@@ -1509,8 +1509,12 @@ thì một trong hai phải chịu thiệt.
 | Mất kết nối | Sau ngưỡng ổn định | "Không có kết nối — thay đổi vẫn được lưu trên máy" |
 | Đã kết nối lại | Sau ngưỡng ổn định | "Đã kết nối lại" |
 | Kết quả đồng bộ | `SyncEngine.pushResultStream` | "Đã đồng bộ xong" / "Một số thay đổi chưa lên được máy chủ" |
+| Chữ tự do (từ 2026-09-19) | `ThongBaoNhanh.stream` (`core/ui/thong_bao_nhanh.dart`, đăng ký ở `sl`) | Bất kỳ câu một dòng nào — hiện dùng cho "Nhấn lần nữa để thoát" (E3 của lượt UX). Bậc **thấp nhất**, nguồn riêng; tham số `thongBaoNhanh` mặc định rỗng nên chỗ dựng `AppToast` cũ không phải đổi |
 
-**Cả ba đều tự ẩn sau vài giây.** Bản đầu giữ dải mất kết nối cho tới khi có
+(Sự kiện thời gian thực là nguồn thứ tư về mặt mã — xem mục 5 và
+`realtime_event.dart` — nhưng nội dung của nó suy từ enum, không phải chữ tự do.)
+
+**Cả ba dải đầu đều tự ẩn sau vài giây, dải chữ tự do cũng vậy.** Bản đầu giữ dải mất kết nối cho tới khi có
 mạng, với lập luận "trạng thái kéo dài thì phải hiển thị kéo dài". Người dùng
 thử trên máy thật và yêu cầu đổi: một dải đứng mãi trên đầu màn hình gây khó
 chịu hơn là hữu ích.

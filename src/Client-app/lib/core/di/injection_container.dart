@@ -52,6 +52,7 @@ import '../../features/category/data/services/default_category_seeder.dart';
 import '../../features/category/data/services/personal_default_categories.dart';
 import '../../features/category/data/services/category_suggestion_engine.dart';
 import '../network/connection_monitor.dart';
+import '../ui/thong_bao_nhanh.dart';
 import '../notification/reminder_scheduler.dart';
 import '../notification/app_lifecycle_watcher.dart';
 import '../notification/badge_updater.dart';
@@ -275,6 +276,9 @@ Future<void> setupDependencies() async {
   // phản ứng ngay với cú nhấp nháy đầu tiên; dải báo hỏi "có đáng nói với
   // người dùng không" và phải chờ trạng thái ổn định.
   sl.registerLazySingleton<ConnectionMonitor>(() => ConnectionMonitor());
+
+  // Kênh thông báo tự do một dòng cho AppToast (2026-09-19, E3 của lượt UX).
+  sl.registerLazySingleton<ThongBaoNhanh>(() => ThongBaoNhanh());
 
   // Kênh thời gian thực. Cũng tách khỏi SyncEngine, và cũng vì hai câu hỏi
   // khác nhau: SyncEngine hỏi "khi nào thì đồng bộ", kênh này chỉ thuật lại

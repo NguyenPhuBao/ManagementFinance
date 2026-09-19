@@ -19,6 +19,7 @@ import 'core/notification/os/os_notifier.dart';
 import 'core/realtime/realtime_channel.dart';
 import 'core/realtime/realtime_wakeup.dart';
 import 'core/sync/sync_engine.dart';
+import 'core/ui/thong_bao_nhanh.dart';
 import 'features/bill/data/services/bill_payment_conflict_resolver.dart';
 import 'shared/widgets/app_toast.dart';
 import 'shared/theme/app_theme.dart';
@@ -164,6 +165,7 @@ class _FlowMoneyAppState extends State<FlowMoneyApp> {
           connectionEvents: sl<ConnectionMonitor>().events,
           pushResults: sl<SyncEngine>().pushResultStream,
           realtimeEvents: sl<RealtimeChannel>().events,
+          thongBaoNhanh: sl<ThongBaoNhanh>().stream,
           child: child ?? const SizedBox.shrink(),
         ),
       ),

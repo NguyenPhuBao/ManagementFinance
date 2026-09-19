@@ -1,6 +1,9 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/di/injection_container.dart';
+import '../../core/ui/thong_bao_nhanh.dart';
 import '../theme/app_colors.dart';
+import 'thoat_hai_lan.dart';
 
 class MainShell extends StatelessWidget {
   final StatefulNavigationShell navigationShell;
@@ -36,7 +39,16 @@ class MainShell extends StatelessWidget {
     final uiIndex = _getUIIndex(navigationShell.currentIndex);
 
     return Scaffold(
-      body: navigationShell,
+      // Back ở tab khác thì về Trang chủ; ở Trang chủ thì "Nhấn lần nữa để
+      // thoát" (UX 2026-09-19, E3). Bản trước không có PopScope: Back là ra
+      // launcher ngay.
+      body: ThoatHaiLan(
+        laTabDau: () => navigationShell.currentIndex == 0,
+        veTabDau: () => navigationShell.goBranch(0),
+        baoNhanLanNua: () =>
+            sl<ThongBaoNhanh>().hien('Nhấn lần nữa để thoát'),
+        child: navigationShell,
+      ),
       backgroundColor: AppColors.background,
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       floatingActionButton: FloatingActionButton(

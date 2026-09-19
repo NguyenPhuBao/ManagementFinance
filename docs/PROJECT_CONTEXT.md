@@ -678,6 +678,26 @@ mang dấu) thay vì nối `'đ'` tay — Trang chủ từng là chỗ duy nhấ
 được thử với giá trị lớn nhất. 3 ca ở `the_so_lieu_thang_test.dart`. **Schema
 không đổi, payload không đổi.**
 
+**E3 — Back không thoát app ngay (xong 2026-09-19).** Máy ảo: Back ở tab Trang
+chủ đưa thẳng ra launcher, không cảnh báo — app không có `PopScope` nào (trong
+lượt đánh giá tôi cũng mất app hai lần vì thế). Nay `MainShell` bọc thân bằng
+**`ThoatHaiLan`** (`shared/widgets/thoat_hai_lan.dart`): Back ở tab khác thì
+**về Trang chủ**; ở Trang chủ thì toast *"Nhấn lần nữa để thoát"*, nhấn lại
+trong **2 giây** mới `SystemNavigator.pop()`. Luật là lớp thuần
+`LuatThoatHaiLan` (test bằng đồng hồ giả; về tab đầu **không mồi** cho lần
+thoát kế); widget test giả kênh `SystemChannels.platform` để bắt lời gọi thoát.
+Chỉ can thiệp khi route của shell ở trên cùng — trang đẩy lên root navigator
+(Thêm giao dịch, Sổ giao dịch…) Back vẫn pop như thường. Câu báo đi qua
+**`ThongBaoNhanh`** (`core/ui/thong_bao_nhanh.dart`, đăng ký ở
+`injection_container`): kênh chữ tự do một dòng, và `AppToast` nhận nó làm
+**nguồn thứ tư** (`thongBaoNhanh`, mặc định rỗng nên ba tệp test cũ không đổi;
+bậc thấp nhất, nguồn riêng). Lý do không dùng `SnackBar`: nếp đã chốt là
+thông báo tạm thời phải là **viên nhỏ** chứ không phải dải kín ngang màn — app
+đã có đúng viên ấy, chỉ thiếu lối đẩy chữ tự do vào; kênh này cũng là nền cho
+E4 (thay 176 `SnackBar`) về sau. 7 ca ở `thoat_hai_lan_test.dart` (1 ca đọc
+`main_shell.dart` canh việc bọc), 1 ca ở `app_toast_thong_bao_nhanh_test.dart`.
+**Schema không đổi, payload không đổi.**
+
 ### 🏦 Gỡ phần client của liên kết ngân hàng (2026-09-18)
 
 **Nhóm chốt bỏ tính năng liên kết ngân hàng.** Đây là quyết định sản phẩm, không
