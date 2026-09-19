@@ -11,6 +11,7 @@ import '../widgets/home_budget_card.dart';
 import '../widgets/home_goal_card.dart';
 import '../widgets/the_cho_xoa_trang_chu.dart';
 import '../widgets/drawer_trang_chu.dart';
+import '../widgets/the_so_lieu_thang.dart';
 import '../../../auth/presentation/xac_nhan_dang_xuat.dart';
 import '../../../budget/data/models/budget_entity.dart';
 import '../../../budget/data/repositories/budget_repository.dart';
@@ -163,7 +164,7 @@ class HomePage extends StatelessWidget {
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildStatsGrid(monthlyIncome, monthlyExpense),
+                          TheSoLieuThang(thu: monthlyIncome, chi: monthlyExpense),
                           const SizedBox(height: 32),
                           StreamBuilder<List<Wallet>>(
                             stream: walletStream,
@@ -446,62 +447,6 @@ class HomePage extends StatelessWidget {
               fontWeight: FontWeight.w500,
               color: AppColors.primary,
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatsGrid(double income, double expense) {
-    final net = income - expense;
-    return Row(
-      children: [
-        Expanded(child: _buildStatCard('Thu nhập', '${CurrencyFormatter.formatSoThoi(income)}đ', income > 0 ? 0.8 : 0.0, AppColors.income)),
-        const SizedBox(width: 12),
-        Expanded(child: _buildStatCard('Chi tiêu', '${CurrencyFormatter.formatSoThoi(expense)}đ', expense > 0 ? 0.4 : 0.0, AppColors.error)),
-        const SizedBox(width: 12),
-        Expanded(
-            child: _buildStatCard('Thu net', '${net >= 0 ? '+' : ''}${CurrencyFormatter.formatSoThoi(net)}đ', net != 0 ? 0.6 : 0.0, const Color(0xFF3B82F6))),
-      ],
-    );
-  }
-
-  Widget _buildStatCard(String label, String amount, double progress, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 13,
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            amount,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: AppColors.primary,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 12),
-          LinearProgressIndicator(
-            value: progress,
-            backgroundColor: color.withValues(alpha: 0.1),
-            valueColor: AlwaysStoppedAnimation<Color>(color),
-            borderRadius: BorderRadius.circular(4),
-            minHeight: 4,
           ),
         ],
       ),

@@ -664,6 +664,20 @@ canh: thiếu một là "Select date" trở lại, im lặng). Kéo theo
 app đang viết ở hộp thoại đăng xuất — ca test đầu đoán "Hủy" và đỏ vì thế.
 3 ca ở `app_localization_test.dart`. **Schema không đổi, payload không đổi.**
 
+**B2 — ba thẻ Thu nhập / Chi tiêu / Thu net ở Trang chủ (xong 2026-09-19).**
+Máy ảo 411dp với dữ liệu thật hiện *"14.635.0…"*, *"1.045.00…"*, *"+13.590…"*:
+`TextOverflow.ellipsis` cắt con số chính của trang ngay từ 8 chữ số, và không
+test nào bắt được vì `find.text` so `data` chứ không so thứ vẽ ra (bẫy 4.4).
+Ba thẻ tách thành `home/presentation/widgets/the_so_lieu_thang.dart`; con số
+nằm trong `FittedBox(scaleDown)` bọc bởi `SizedBox(width: infinity)` — co chữ
+cho vừa ô thay vì cắt; ca test đo **`RenderParagraph.didExceedMaxLines`**, tức
+thứ thật sự bị cắt, và bản giữ `ellipsis` đã làm nó đỏ đúng chỗ. Cùng lượt con
+số đi qua `CurrencyFormatter.format`/`formatCoDau` ("14.635.000 đ", số 0 không
+mang dấu) thay vì nối `'đ'` tay — Trang chủ từng là chỗ duy nhất viết
+"13.590.000đ" không cách. Có ca thử với **13 chữ số** (trần G45/G46) để bố cục
+được thử với giá trị lớn nhất. 3 ca ở `the_so_lieu_thang_test.dart`. **Schema
+không đổi, payload không đổi.**
+
 ### 🏦 Gỡ phần client của liên kết ngân hàng (2026-09-18)
 
 **Nhóm chốt bỏ tính năng liên kết ngân hàng.** Đây là quyết định sản phẩm, không
