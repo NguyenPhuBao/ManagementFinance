@@ -596,6 +596,50 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-19)
 
+### ⬆️ Nâng Flutter 3.41.5 → 3.47.5 — P0 của AI Edge-SLM (2026-09-19)
+
+Người dùng gỡ lệnh hoãn mảng Edge-SLM ngày 2026-09-19 và chốt **nâng Flutter** để
+dùng `flutter_gemma` 1.8.3 (đòi Flutter ≥ 3.44, Dart ≥ 3.12; bản 0.13.6 hợp 3.41
+thì thiếu API mới và Gemma 4). Thiết kế đã duyệt:
+`docs/superpowers/specs/2026-09-19-ai-edge-slm-design.md`; kế hoạch
+`docs/superpowers/plans/2026-09-19-ai-edge-p0-nang-flutter.md` (P0) và
+`…-p2-tang-edge-mau-cau.md` (P2); bản đánh giá 18/09 có banner đính chính (gói
+không chạy Gemma 3 4B — bậc thang mới là Gemma 4 E4B/E2B).
+
+P0 là **một commit, không mã tính năng**. Kết quả đo sau nâng: Flutter `3.47.5`,
+Dart `3.13.4`, SDK git `6a19cca564`; `pubspec.lock` đổi **5** gói gián tiếp
+(`intl` 0.20.2→0.20.3, `matcher`, `meta` 1.17→1.19, `test_api`, `vector_math`
+2.2→2.4.3 — không gói nào nhảy major, `fl_chart` vẫn 1.2.0, `pubspec.yaml` không
+đổi); tool tự thêm khối `analyzer: exclude` vào `analysis_options.yaml` và hai cờ
+`android.builtInKotlin=false` / `android.newDsl=false` vào `android/gradle.properties`
+(Flutter migrator, giữ nguyên); `android/.kotlin/` mới sinh → vào `.gitignore`; mã
+Drift sinh lại **không đổi**; `flutter analyze` **26 issue, 0 error** (+1 so mức
+nền: `onReorder` của `ReorderableListView` deprecated từ 3.47, `goal_page.dart:233`
+— cố ý chưa sửa); `flutter build apk --debug` xanh sau 727 s, không phải nâng
+Gradle/AGP/Kotlin (log có một stack trace Kotlin incremental-cache nhưng build
+thành công); máy ảo `FlowMoney_16G` mở Trang chủ, Phân tích, Giao dịch, Ngân sách
+(nút Back về Trang chủ), Hoá đơn, Sửa hoá đơn — **0 pixel vàng**, logcat 0
+exception.
+
+⚠️ **Một hành vi framework đổi, lượt test đầu đỏ 10 ca ở 3 tệp** —
+`bill_edit_page_test` (8), `bill_auto_pay_ui_test` (1), `bill_payment_sheet_test`
+(1): Flutter 3.47 thêm assertion *"ListTile background color or ink splashes may
+be invisible"* khi `ListTile` nằm trong `Container` có màu mà không có `Material`
+riêng ở giữa; nó báo qua `FlutterError.reportError` nên `takeException()` bắt
+được, và một ca "No GoRouter found" chỉ là hệ quả dây chuyền. Sửa **tối thiểu**:
+bọc cột chứa tile trong `Material(type: MaterialType.transparency)` ở
+`bill_edit_page.dart` (Container trắng bo 16, ba `ListTile` ngày) và
+`bill_payment_sheet.dart` (`_danhSachVi`). Không đổi gì nhìn thấy được; máy ảo
+mở màn Sửa hoá đơn xác nhận. `dart format` bẻ lại vài dòng dài và tách một
+`if` một dòng thành hai — phải thêm ngoặc nhọn kẻo analyze lên 27. Lượt test thứ
+hai: **2960/2960 pass, 1 skip, 3 phút 2 giây**. Quét thô `lib/` bằng script không
+thấy chỗ nào khác cùng khuôn trong cửa sổ 25 dòng; nhưng cửa sổ ấy hụt với
+Container bao cả form (chính ca này), nên **mọi màn có `ListTile` trong thẻ màu
+đều phải nghiệm thu máy ảo và đọc logcat** khi đụng tới.
+
+Bước tiếp: **P1 spike** khi người dùng cắm máy Snapdragon 8 Gen 3; **P2** (tầng
+Edge + mẫu câu) không chờ P1.
+
 ### 🎨 Lượt sửa UX/UI theo đánh giá 2026-09-19
 
 Ngày 2026-09-19 người dùng hỏi đánh giá UX/UI. Lượt đánh giá đo trên **máy ảo

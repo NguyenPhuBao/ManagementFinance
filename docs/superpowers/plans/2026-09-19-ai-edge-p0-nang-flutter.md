@@ -40,7 +40,7 @@ nguyên trừ khi flutter tool đòi), drift 2.x + build_runner, máy ảo `Flow
 **Interfaces:**
 - Produces: mốc SDK cũ (`2c9eb20739`, tag `3.41.5`) và lệnh hoàn tác dùng ở mọi task sau.
 
-- [ ] **Step 1: Xác nhận cây làm việc sạch và SDK đang ở 3.41.5**
+- [x] **Step 1: Xác nhận cây làm việc sạch và SDK đang ở 3.41.5**
 
 Run (từ gốc repo):
 ```bash
@@ -51,7 +51,7 @@ Expected: `git status` không in gì; `Flutter 3.41.5 • channel stable`; SDK �
 
 Nếu cây làm việc không sạch: dừng, hỏi người dùng — P0 phải là một commit riêng.
 
-- [ ] **Step 2: Ghi lệnh hoàn tác vào Nhật ký cuối tệp này**
+- [x] **Step 2: Ghi lệnh hoàn tác vào Nhật ký cuối tệp này**
 
 Lệnh hoàn tác SDK (dùng khi bất kỳ task nào sau thất bại không sửa được):
 ```bash
@@ -60,7 +60,7 @@ git -C "$HOME/flutter" checkout 3.41.5 && cd src/Client-app && flutter --version
 `flutter --version` sau checkout tự dựng lại tool cho đúng bản (mất 1–3 phút). `pubspec.lock` hoàn
 tác bằng `git checkout -- pubspec.lock pubspec.yaml`.
 
-- [ ] **Step 3: Xác nhận máy ảo và máy thật không cắm (P0 chỉ cần máy ảo)**
+- [x] **Step 3: Xác nhận máy ảo và máy thật không cắm (P0 chỉ cần máy ảo)**
 
 Run:
 ```bash
@@ -78,7 +78,7 @@ Expected: danh sách rỗng hoặc chỉ `emulator-5554`. Không cần máy th�
 **Interfaces:**
 - Produces: `flutter --version` ≥ 3.44 (kỳ vọng 3.47.x), Dart ≥ 3.12.
 
-- [ ] **Step 1: Nâng kênh stable**
+- [x] **Step 1: Nâng kênh stable**
 
 Run (timeout 600000 ms — tải engine và dựng lại tool):
 ```bash
@@ -88,7 +88,7 @@ Expected: kết thúc bằng dòng `Flutter 3.47.x • channel stable` (hoặc b
 `Dart 3.1x.x`. Nếu in `Upgrading Flutter to ... requires a newer version of git` hoặc lỗi mạng:
 chạy lại một lần; vẫn lỗi thì dừng và báo.
 
-- [ ] **Step 2: Xác nhận bản mới đủ điều kiện của `flutter_gemma` 1.8.3**
+- [x] **Step 2: Xác nhận bản mới đủ điều kiện của `flutter_gemma` 1.8.3**
 
 Run:
 ```bash
@@ -97,7 +97,7 @@ flutter --version 2>&1 | head -3; dart --version 2>&1
 Expected: Flutter **≥ 3.44.0**, Dart **≥ 3.12.0**. Nếu stable mới nhất < 3.44 (không thể theo
 lịch phát hành, nhưng phải kiểm): dừng, báo người dùng, hoàn tác theo Task 1 Step 2.
 
-- [ ] **Step 3: Kiểm `flutter doctor` không có lỗi mới ở Android toolchain**
+- [x] **Step 3: Kiểm `flutter doctor` không có lỗi mới ở Android toolchain**
 
 Run:
 ```bash
@@ -120,7 +120,7 @@ Ghi vào Nhật ký: bản Flutter/Dart thật sự nhận được, và mã git
 **Interfaces:**
 - Produces: `pubspec.lock` giải được với SDK mới; `fl_chart` vẫn `1.2.0`.
 
-- [ ] **Step 1: Chạy pub get**
+- [x] **Step 1: Chạy pub get**
 
 Run (từ `src/Client-app`):
 ```bash
@@ -128,7 +128,7 @@ flutter pub get 2>&1 | tail -25
 ```
 Expected: `Got dependencies!` (hoặc `Changed N dependencies!`).
 
-- [ ] **Step 2: Nếu lỗi xung đột `intl`** (và chỉ khi ấy)
+- [x] **Step 2: Nếu lỗi xung đột `intl`** (và chỉ khi ấy)
 
 Lỗi có dạng: `Because flowmoney depends on flutter_localizations from sdk which depends on intl
 0.2X.Y, intl 0.2X.Y is required.` Sửa **đúng một dòng** trong `pubspec.yaml`:
@@ -141,7 +141,7 @@ Rồi chạy lại Step 1. **Không** đổi dòng nào khác của `pubspec.yam
 `flutter pub upgrade <tên gói>` **cho riêng gói ấy**; vẫn lỗi thì dừng và báo người dùng — không
 tự nới ràng buộc hàng loạt.
 
-- [ ] **Step 3: Soát diff của pubspec.lock**
+- [x] **Step 3: Soát diff của pubspec.lock**
 
 Run:
 ```bash
@@ -152,7 +152,7 @@ minor/patch trong dải `^` đã khai. Nếu một gói nhảy **major** (ví d�
 `go_router 14 → 15`): hoàn tác `git checkout -- pubspec.lock`, chạy `flutter pub get` lại — nếu
 vẫn nhảy thì đó là do gói cũ không hợp SDK mới; ghi Nhật ký và báo người dùng trước khi tiếp.
 
-- [ ] **Step 4: Commit tạm (sẽ gộp ở Task 9)**
+- [x] **Step 4: Commit tạm (sẽ gộp ở Task 9)**
 
 Không commit ở bước này — P0 là **một** commit. Chỉ xác nhận `git status --short` liệt kê đúng
 `pubspec.lock` (và `pubspec.yaml` nếu có sửa `intl`).
@@ -167,7 +167,7 @@ Không commit ở bước này — P0 là **một** commit. Chỉ xác nhận `g
 **Interfaces:**
 - Produces: mã sinh khớp `drift_dev` đã giải ở Task 3.
 
-- [ ] **Step 1: Chạy build_runner**
+- [x] **Step 1: Chạy build_runner**
 
 Run (timeout 600000 ms):
 ```bash
@@ -175,7 +175,7 @@ dart run build_runner build --delete-conflicting-outputs 2>&1 | tail -8
 ```
 Expected: `Succeeded after Xs with N outputs`. Không có dòng `[SEVERE]`.
 
-- [ ] **Step 2: Soát diff mã sinh**
+- [x] **Step 2: Soát diff mã sinh**
 
 Run:
 ```bash
@@ -194,7 +194,7 @@ hay số lượng bảng**: dừng — đó không phải việc của P0. Ghi N
 **Interfaces:**
 - Produces: con số issue mới cho `CLAUDE.md` (Task 9).
 
-- [ ] **Step 1: Chạy analyze và đếm**
+- [x] **Step 1: Chạy analyze và đếm**
 
 Run:
 ```bash
@@ -203,7 +203,7 @@ flutter analyze 2>&1 | tail -3; flutter analyze 2>&1 | grep -cE "^\s*(error|warn
 Expected: `25 issues found` hoặc nhiều hơn **chỉ vì cảnh báo deprecation mới**; dòng nào
 `error •` là **0**.
 
-- [ ] **Step 2: Nếu có `error •`**
+- [x] **Step 2: Nếu có `error •`**
 
 Run:
 ```bash
@@ -212,7 +212,7 @@ flutter analyze 2>&1 | grep -E "^\s*error •"
 Sửa **đúng chỗ báo**, tối thiểu (thường là API bị gỡ: ví dụ `MaterialStateProperty` → `WidgetStateProperty`,
 `Color.value` → `toARGB32()`). Mỗi chỗ sửa ghi vào Nhật ký kèm tên API cũ/mới. Chạy lại Step 1.
 
-- [ ] **Step 3: Nếu số issue tăng chỉ vì `info • ... deprecated`**
+- [x] **Step 3: Nếu số issue tăng chỉ vì `info • ... deprecated`**
 
 **Không sửa.** Ghi con số mới và nhóm cảnh báo (ví dụ "+12 `withOpacity` deprecated") vào Nhật ký để
 Task 9 cập nhật mức nền trong `CLAUDE.md`. Sửa deprecation là hạng mục riêng, không phải P0.
@@ -227,7 +227,7 @@ Task 9 cập nhật mức nền trong `CLAUDE.md`. Sửa deprecation là hạng 
 **Interfaces:**
 - Produces: mốc test mới cho `CLAUDE.md`.
 
-- [ ] **Step 1: Chạy nền, ghi log, timeout mỗi test**
+- [x] **Step 1: Chạy nền, ghi log, timeout mỗi test**
 
 Run (từ `src/Client-app`, `run_in_background: true`; log ở scratchpad phiên):
 ```bash
@@ -236,7 +236,7 @@ flutter test --timeout 60s > "$SCRATCH/p0_flutter_test.log" 2>&1; echo "EXIT=$?"
 (`$SCRATCH` = thư mục scratchpad của phiên.) Chờ thông báo hoàn tất — **không** chạy lệnh test thứ
 hai trong lúc chờ.
 
-- [ ] **Step 2: Đọc kết quả**
+- [x] **Step 2: Đọc kết quả**
 
 Run:
 ```bash
@@ -244,7 +244,7 @@ tail -5 "$SCRATCH/p0_flutter_test.log"; grep -cE "^\s*✗|\[E\]" "$SCRATCH/p0_fl
 ```
 Expected: dòng cuối dạng `+2960 ~1: All tests passed!`, `EXIT=0`.
 
-- [ ] **Step 3: Nếu có ca đỏ**
+- [x] **Step 3: Nếu có ca đỏ**
 
 Run:
 ```bash
@@ -270,7 +270,7 @@ Sau khi sửa, chạy lại **chỉ tệp ấy** (`flutter test test/<đường 
 **Interfaces:**
 - Produces: `build/app/outputs/flutter-apk/app-debug.apk` cho Task 8.
 
-- [ ] **Step 1: Build**
+- [x] **Step 1: Build**
 
 Run (timeout 600000 ms):
 ```bash
@@ -279,7 +279,7 @@ flutter build apk --debug 2>&1 | tail -12
 Expected: `√ Built build/app/outputs/flutter-apk/app-debug.apk`. Lần đầu sau nâng có thể tải NDK/
 Gradle — chờ.
 
-- [ ] **Step 2: Nếu tool đòi nâng Gradle/AGP/Kotlin**
+- [x] **Step 2: Nếu tool đòi nâng Gradle/AGP/Kotlin**
 
 Thông báo có dạng `Your project's Gradle version is incompatible...` hoặc `requires Android Gradle
 Plugin ≥ X.Y`. Sửa **đúng con số tool nêu**, ở đúng tệp:
@@ -289,7 +289,7 @@ Plugin ≥ X.Y`. Sửa **đúng con số tool nêu**, ở đúng tệp:
 
 Ghi Nhật ký. Chạy lại Step 1. Cảnh báo (warning) về Gradle **không** bắt buộc sửa ở P0.
 
-- [ ] **Step 3: Xác nhận `AndroidManifest.xml` không bị tool ghi đè**
+- [x] **Step 3: Xác nhận `AndroidManifest.xml` không bị tool ghi đè**
 
 Run:
 ```bash
@@ -308,7 +308,7 @@ các khai báo thông báo (7.11 `NOTIFICATION_FEATURE.md`). Nếu đổi: hoàn
 **Interfaces:**
 - Consumes: `app-debug.apk` từ Task 7.
 
-- [ ] **Step 1: Khởi động máy ảo nếu chưa chạy**
+- [x] **Step 1: Khởi động máy ảo nếu chưa chạy**
 
 Run (`run_in_background: true`):
 ```bash
@@ -321,7 +321,7 @@ Rồi chờ tới khi:
 in `1` (thường 60–90 giây). Cờ `-gpu swangle` bắt buộc (máy ảo chết SIGSEGV với cờ khác khi
 người dùng bấm vào cửa sổ — `CLAUDE.md` "Chạy máy ảo").
 
-- [ ] **Step 2: Cài và mở app**
+- [x] **Step 2: Cài và mở app**
 
 Run:
 ```bash
@@ -330,7 +330,7 @@ ADB="$LOCALAPPDATA/Android/Sdk/platform-tools/adb.exe"
 ```
 Expected: `Success` và `Starting: Intent {...}`. **Chờ 25 giây** (bàn giao: 10 giây còn ở splash).
 
-- [ ] **Step 3: Chụp màn hình và kiểm**
+- [x] **Step 3: Chụp màn hình và kiểm**
 
 Run:
 ```bash
@@ -347,7 +347,7 @@ Rồi mở `p0_home.png` bằng công cụ Read. Expected: Trang chủ (hoặc m
 ```
 và xử lý như Task 6 Step 3 (lỗi framework → sửa tối thiểu; lỗi lạ → báo người dùng).
 
-- [ ] **Step 4: Đi ba màn dễ vỡ nhất**
+- [x] **Step 4: Đi ba màn dễ vỡ nhất**
 
 Chạm lần lượt tab **Phân tích** (nhiều `fl_chart`), tab **Giao dịch**, rồi mở drawer → **Ngân sách**
 (route ngoài shell, nút Back). Mỗi màn chụp một ảnh, đếm pixel vàng, mở xem. Expected: không tràn,
@@ -365,7 +365,7 @@ không màn đỏ, nút Back ở Ngân sách quay về Trang chủ. Ghi Nhật k
 **Interfaces:**
 - Produces: mốc mới cho mọi phiên sau.
 
-- [ ] **Step 1: Cập nhật `CLAUDE.md`**
+- [x] **Step 1: Cập nhật `CLAUDE.md`**
 
 Ở đầu khối "Lệnh hay dùng", thêm một đoạn trước dòng `# Test (chạy từ src/Client-app)`:
 
@@ -380,7 +380,7 @@ không màn đỏ, nút Back ở Ngân sách quay về Trang chủ. Ghi Nhật k
 `25 issue` thành con số mới kèm cụm "(đo 2026-09-19 sau nâng Flutter 3.47; +N cảnh báo deprecation
 `<tên API>`)".
 
-- [ ] **Step 2: Thêm khối vào mục 14 `PROJECT_CONTEXT.md`**
+- [x] **Step 2: Thêm khối vào mục 14 `PROJECT_CONTEXT.md`**
 
 Chèn ngay sau dòng 597:
 
@@ -407,7 +407,7 @@ Edge + mẫu câu) không chờ P1 — kế hoạch riêng ở `docs/superpowers
 ```
 Điền mọi `<...>` bằng con số thật từ Nhật ký. **Không để lại dấu `<>`** nào.
 
-- [ ] **Step 3: Kiểm lại toàn bộ diff trước khi commit**
+- [x] **Step 3: Kiểm lại toàn bộ diff trước khi commit**
 
 Run (từ gốc repo):
 ```bash
@@ -417,7 +417,7 @@ Expected: chỉ `pubspec.lock` (± `pubspec.yaml`, `*.g.dart`, tệp Gradle nế
 sửa ở Task 5–6), `CLAUDE.md`, `docs/PROJECT_CONTEXT.md`, và tệp kế hoạch này. Không có tệp lạ
 (`build/`, `.dart_tool/` đã gitignore).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/Client-app/pubspec.yaml src/Client-app/pubspec.lock CLAUDE.md docs/PROJECT_CONTEXT.md
@@ -441,11 +441,11 @@ EOF
 | Mục | Giá trị |
 |---|---|
 | SDK trước | `2c9eb20739` · 3.41.5 · Dart 3.11.3 |
-| SDK sau | |
-| `pubspec` đổi | |
-| Mã Drift | |
-| analyze | |
-| test | |
-| build apk | |
-| máy ảo | |
-| Ca/API phải sửa | |
+| SDK sau | `6a19cca564` · 3.47.5 · Dart 3.13.4 (`flutter upgrade`, 2026-09-19) |
+| `pubspec` đổi | lock: 5 gói gián tiếp (intl 0.20.3, matcher 0.12.20, meta 1.19.0, test_api 0.7.12, vector_math 2.4.3); yaml không đổi; tool thêm `analyzer: exclude` vào analysis_options.yaml; migrator thêm 2 cờ vào android/gradle.properties; `.kotlin/` vào android/.gitignore |
+| Mã Drift | build_runner 95 s, 1068 output, **diff .g.dart rỗng** |
+| analyze | 26 issue, 0 error (+1 `onReorder` deprecated goal_page.dart:233) |
+| test | lượt 1: 2950 pass / 10 fail (assertion ListTile mới); lượt 2 sau sửa: 2960/2960 ~1, 3:02 |
+| build apk | xanh, 727 s, không nâng Gradle/AGP/Kotlin; stack trace Kotlin incremental-cache không hỏng build |
+| máy ảo | FlowMoney_16G: p0_home, p0_analytics, p0_transactions, p0_drawer, p0_budget, p0_back_home, p0_bills, p0_bill_edit — 0 pixel vàng, logcat 0 exception |
+| Ca/API phải sửa | `Material(type: MaterialType.transparency)` bọc cột ListTile ở bill_edit_page.dart và bill_payment_sheet.dart; thêm ngoặc nhọn cho `if` bị dart format tách dòng |
