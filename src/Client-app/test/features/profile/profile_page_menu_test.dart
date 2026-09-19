@@ -73,6 +73,30 @@ void main() {
             'cái avatar này lần nữa. Nay nội dung nằm ngay đây.');
   });
 
+  testWidgets('⚠️ nút bút chì trên avatar bấm được, không phải hình vẽ',
+      (tester) async {
+    await moTrang(tester);
+
+    // Nút này là `Container` + `Icon` **trần**: không `InkWell`, không
+    // `GestureDetector`, không handler nào cả — vẽ như nút mà chưa bao giờ
+    // bấm được. ⚠️ Test quét `khong_co_nut_chet_test.dart` KHÔNG thấy nó vì
+    // nó tìm *handler rỗng* (`onPressed: () {}`), còn đây là nút **không có
+    // handler**. Cùng trang Cài đặt cũ thì đúng nút ấy có nối vào
+    // `/settings/edit-profile`, nên lượt gộp của nhóm D làm chỗ lệch này lộ ra.
+    final butChi = find.byIcon(Icons.edit);
+    expect(butChi, findsOneWidget);
+
+    final boc = find.ancestor(
+      of: butChi,
+      matching: find.byWidgetPredicate(
+          (w) => w is InkWell || w is GestureDetector),
+    );
+    expect(boc, findsAtLeastNWidgets(1),
+        reason: 'Một hình tròn đen có icon bút chì đè lên avatar là lời hứa '
+            'rõ ràng rằng chạm vào sẽ sửa được hồ sơ. Không bọc gì thì cú '
+            'chạm rơi xuống nền và app trông như đơ.');
+  });
+
   testWidgets('⚠️ "Vùng nguy hiểm" nằm CUỐI, dưới nhóm CÀI ĐẶT',
       (tester) async {
     await moTrang(tester);

@@ -673,7 +673,16 @@ nằm trong `FittedBox(scaleDown)` bọc bởi `SizedBox(width: infinity)` — c
 cho vừa ô thay vì cắt; ca test đo **`RenderParagraph.didExceedMaxLines`**, tức
 thứ thật sự bị cắt, và bản giữ `ellipsis` đã làm nó đỏ đúng chỗ. Cùng lượt con
 số đi qua `CurrencyFormatter.format`/`formatCoDau` ("14.635.000 đ", số 0 không
-mang dấu) thay vì nối `'đ'` tay. *(Câu "Trang chủ từng là chỗ duy nhất viết
+mang dấu) thay vì nối `'đ'` tay.
+
+⚠️ **Lỗi thứ năm, tìm được khi soát lại sau báo cáo của người dùng:** nút bút
+chì trên avatar tab Cá nhân là `Container` + `Icon` **trần** — không `InkWell`,
+không `GestureDetector`, **không handler nào cả**. Nó vẽ như nút mà chưa bao
+giờ bấm được, và trang Cài đặt cũ thì đúng nút ấy có nối vào
+`/settings/edit-profile`. ⚠️ **Test quét `khong_co_nut_chet_test.dart` KHÔNG
+bắt được kiểu này**: lưới của nó tìm *handler rỗng* (`onPressed: () {}`), còn
+đây là nút **không có handler** — hai hình dạng khác nhau, và hình dạng thứ hai
+khó thấy hơn vì mã trông hoàn toàn bình thường. *(Câu "Trang chủ từng là chỗ duy nhất viết
 không cách" ghi ở đây lúc đầu là **sai** — B3 cùng ngày đếm được 20 chỗ ở 7
 tệp, xem đoạn B3/B4 dưới.)* Có ca thử với **13 chữ số** (trần G45/G46) để bố cục
 được thử với giá trị lớn nhất. 3 ca ở `the_so_lieu_thang_test.dart`. **Schema

@@ -143,20 +143,31 @@ class ProfilePage extends StatelessWidget {
                   Positioned(
                     bottom: 4,
                     right: 4,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
+                    // ⚠️ Trước 2026-09-19 đây là `Container` + `Icon` **trần**:
+                    // không `InkWell`, không handler nào cả — vẽ như nút mà
+                    // chưa bao giờ bấm được. Test quét `khong_co_nut_chet_test`
+                    // không thấy vì nó tìm *handler rỗng*, còn đây là nút
+                    // **không có handler**; trang Cài đặt cũ thì đúng nút ấy
+                    // có nối vào `/settings/edit-profile`.
+                    child: InkWell(
+                      onTap: () => context.push('/settings/edit-profile'),
+                      customBorder: const CircleBorder(),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.1),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(Icons.edit,
+                            color: Colors.white, size: 18),
                       ),
-                      child: const Icon(Icons.edit, color: Colors.white, size: 18),
                     ),
                   ),
                 ],
