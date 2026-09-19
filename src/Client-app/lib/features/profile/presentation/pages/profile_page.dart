@@ -80,48 +80,6 @@ class ProfilePage extends StatelessWidget {
                   onTap: () => context.push('/settings/notifications'),
                 ),
                 _ProfileItem(
-                  icon: Icons.dark_mode_outlined,
-                  title: 'Giao diện',
-                  trailing: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 40,
-                          height: 24,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.05),
-                                blurRadius: 4,
-                              ),
-                            ],
-                          ),
-                          child: const Center(
-                            child: Icon(Icons.light_mode, size: 14, color: AppColors.primary),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        const SizedBox(
-                          width: 40,
-                          height: 24,
-                          child: Center(
-                            child: Icon(Icons.dark_mode_outlined, size: 14, color: AppColors.textSecondary),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  onTap: () {},
-                ),
-                _ProfileItem(
                   icon: Icons.shield_outlined,
                   title: 'Thông tin và bảo mật',
                   onTap: () => context.push('/settings'),
@@ -293,8 +251,7 @@ class ProfilePage extends StatelessWidget {
                                 ),
                               ),
                             ),
-                            items[index].trailing ??
-                                const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 24),
+                            const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 24),
                           ],
                         ),
                       ),
@@ -344,12 +301,10 @@ class _ProfileItem {
   final IconData icon;
   final String title;
   final VoidCallback onTap;
-  final Widget? trailing;
 
   _ProfileItem({
     required this.icon,
     required this.title,
     required this.onTap,
-    this.trailing,
   });
 }

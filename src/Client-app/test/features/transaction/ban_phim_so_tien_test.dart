@@ -65,6 +65,32 @@ void main() {
     });
   });
 
+  group('phím 00 — thay chỗ phím `.` trên lưới 4x4 (A12)', () {
+    test('thêm trọn hai chữ số khi còn đủ chỗ', () {
+      expect(themPhimSoTien('1', '00'), '100');
+    });
+
+    test('KHÔNG làm gì khi số 0 đang đứng một mình', () {
+      expect(themPhimSoTien('0', '00'), '0',
+          reason: 'Cùng luật với phím 000: "00" đứng đầu là con số vô nghĩa.');
+    });
+
+    test('⚠️ CẮT BỚT cho vừa trần thay vì vượt trần', () {
+      // 12 chữ số + '00' = 14, vượt một.
+      expect(themPhimSoTien('123456789012', '00'), '1234567890120');
+      expect(themPhimSoTien('123456789012', '00').length,
+          kSoChuSoToiDaSoTien,
+          reason: 'Nhánh cụm số 0 phải kẹp theo `conCho` như phím 000; thiếu '
+              'phép kẹp thì chữ số thứ 14 lọt qua và giao dịch kẹt hàng đợi '
+              'đẩy VĨNH VIỄN, im lặng.');
+    });
+
+    test('đã đầy thì phím 00 không đổi gì', () {
+      const day = '1234567890123';
+      expect(themPhimSoTien(day, '00'), day);
+    });
+  });
+
   group('những phím KHÔNG phải chữ số vẫn như cũ', () {
     test('xoá lùi bỏ một ký tự, về "0" khi hết', () {
       expect(themPhimSoTien('123', 'backspace'), '12');
@@ -72,8 +98,13 @@ void main() {
       expect(themPhimSoTien('0', 'backspace'), '0');
     });
 
-    test('dấu thập phân chỉ vào được một lần', () {
-      expect(themPhimSoTien('12', '.'), '12.');
+    test('⚠️ phím `.` KHÔNG sinh dấu thập phân nữa (A12)', () {
+      expect(themPhimSoTien('12', '.'), '12',
+          reason: 'Màn hiện "12.5 đ" nhưng `_saveTransaction` strip dấu chấm '
+              'nên lưu thành 125 — sai gấp mười, im lặng. App làm tròn về '
+              'đồng chẵn ở mọi chỗ hiển thị, nên phím này bị bỏ khỏi bàn '
+              'phím; hàm giữ nhánh vô hiệu để phím có quay lại cũng không '
+              'phá được.');
       expect(themPhimSoTien('12.', '.'), '12.');
     });
 

@@ -494,7 +494,15 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
 
   String _getFormattedAmount() {
     if (_amountString == "0") return CurrencyFormatter.format(0);
-    if (_amountString.contains('.')) return '$_amountString ${CurrencyFormatter.kyHieu}';
+    // Chuỗi có dấu chấm chỉ tới từ chế độ sửa (`initState` đọc
+    // `editing.amount.toString()`); bàn phím hết phím `.` từ 2026-09-19.
+    // ⚠️ In thẳng chuỗi thô là hiện "12.5 đ", mà khắp app dấu chấm là dấu
+    // NGĂN NGHÌN — người dùng đọc ra một con số khác, ngay cạnh nút lưu.
+    // `formatCoLe` ngăn phần lẻ bằng dấu phẩy, đúng thông lệ Việt Nam.
+    final coLe = double.tryParse(_amountString);
+    if (_amountString.contains('.') && coLe != null) {
+      return CurrencyFormatter.formatCoLe(coLe);
+    }
     try {
       final number = int.parse(_amountString);
       return CurrencyFormatter.format(number);
@@ -521,7 +529,15 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   }
 
   Future<void> _saveTransaction(BuildContext context) async {
-    final amount = double.tryParse(_amountString.replaceAll('.', '')) ?? 0;
+    // ⚠️ KHÔNG `replaceAll('.', '')` (A12, 2026-09-19). `_amountString` là
+    // chuỗi **thô** đang gõ, không phải chuỗi đã ngăn nghìn — phép ngăn nghìn
+    // chỉ áp ở `_getFormattedAmount`. Coi dấu chấm là dấu ngăn nghìn thì một
+    // số lẻ bị mất dấu rồi đọc tiếp: `12.5` lưu thành **125**, sai gấp mười,
+    // không exception, không log. Bàn phím nay hết phím `.`, nhưng chuỗi có
+    // dấu chấm vẫn vào được qua chế độ sửa (`initState` đọc
+    // `editing.amount.toString()`) — và số lẻ có thật, `transaction."Amount"`
+    // là `numeric(15,2)`. Nên chốt phải nằm ở ĐÂY, không chỉ ở bàn phím.
+    final amount = double.tryParse(_amountString) ?? 0;
     if (amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Vui lòng nhập số tiền hợp lệ')),
@@ -1178,7 +1194,10 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       '2',
       '3',
       '-',
-      '.',
+      // Ô này từng là phím `.` — bỏ vì nó sinh số lẻ mà đường lưu đọc sai gấp
+      // mười, và app làm tròn về đồng chẵn ở mọi chỗ hiển thị. Thay bằng `00`
+      // chứ không để trống: lưới là 4×4, thiếu một ô thì hàng cuối lệch cột.
+      '00',
       '0',
       '000',
       'done'

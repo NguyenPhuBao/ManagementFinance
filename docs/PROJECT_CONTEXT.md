@@ -703,11 +703,12 @@ nối tay. ⚠️ **Chọn quy ước có cách ("13.590.000 đ")** vì đó là
 nay mọi chỗ đi qua một hàm nên đổi ý là **sửa một dòng** ở `format()`, đó chính
 là lý do gom về một chỗ. **Schema không đổi, payload không đổi.**
 
-> ⚠️ Lộ ra ngoài phạm vi, **chưa sửa** (ghi vào danh sách UX là **A12**): bàn
-> phím tự vẽ của màn Thêm giao dịch có phím `.` sinh dấu thập phân
-> (`themPhimSoTien`), màn hiện *"12.5 đ"*, nhưng `_saveTransaction` lưu bằng
+> ⚠️ Lộ ra ngoài phạm vi khi làm B3 — ✅ **đã sửa 2026-09-19**, xem khối
+> **"A12"** bên dưới. (Ảnh chụp lúc phát hiện: bàn phím tự vẽ của màn Thêm giao
+> dịch có phím `.` sinh dấu thập phân, màn hiện *"12.5 đ"*, nhưng
+> `_saveTransaction` lưu bằng
 > `double.tryParse(_amountString.replaceAll('.', ''))` — tức **12.5 thành 125**,
-> im lặng.
+> im lặng.)
 
 **C1–C5 — màn Thêm giao dịch theo Stitch (xong 2026-09-19).** Máy ảo 411dp:
 màn đầu chỉ thấy hai hàng phím 7-8-9 / 4-5-6, phải cuộn mới tới 1-2-3, 0, 000,
@@ -845,6 +846,53 @@ font Ahem), nên bản đầu dùng `Icon(Icons.account_balance_wallet)` sinh ra
 `flutter create`, có `mipmap-anydpi-v26`, `launch_background.xml` trỏ
 `@drawable/splash`, ba ảnh nguồn tồn tại. Hai gói vào `dev_dependencies`.
 **Schema không đổi, payload không đổi.**
+
+**A12 — số tiền có phần lẻ bị nhân mười (xong 2026-09-19).** Lỗi lộ ra khi làm
+B3, sửa ở lượt sau. `_amountString` là chuỗi **thô** đang gõ — phép ngăn nghìn
+chỉ áp ở `_getFormattedAmount` — nhưng `_saveTransaction` đọc nó bằng
+`double.tryParse(_amountString.replaceAll('.', ''))`, tức **coi dấu chấm là dấu
+ngăn nghìn** theo thói quen Việt Nam. Một chuỗi có dấu thập phân mất dấu chấm
+rồi đọc tiếp: `12.5` lưu xuống thành **125**, không exception, không log.
+
+⚠️ **Lỗi này có HAI cửa, và quyết định "bỏ phím `.`" chỉ đóng một.** Cửa thứ
+hai là **chế độ sửa**: `initState` điền `_amountString` bằng
+`editing.amount.toString()` khi số tiền không tròn đồng, nên chuỗi có dấu chấm
+vào được **dù bàn phím đã hết phím `.`** — và số lẻ có thật, `transaction."Amount"`
+là `numeric(15,2)` còn `dieu_chinh_so_du_service` sinh khoản bù với ngưỡng nửa
+đồng. Cửa ấy **nặng hơn** vì nó nhân mười một khoản **đã có trong sổ**: người
+dùng mở một giao dịch cũ ra xem rồi bấm lưu là số tiền tự đổi. Nên chốt nằm ở
+**`_saveTransaction`** (`double.tryParse(_amountString)`, thôi strip), còn bỏ
+phím là lớp thứ hai.
+
+Ba chỗ đổi: (1) `themPhimSoTien` giữ nhánh **vô hiệu** cho `'.'` cùng họ với
+`'done'`/`'+'`/`'-'` — phím có quay lại lưới cũng không phá được; (2) lưới 4×4
+thay `'.'` bằng **`'00'`** chứ không để trống, vì thiếu một ô thì hàng cuối còn
+ba ô và cả bàn phím lệch cột — nhánh cụm số 0 nay nhận cả `'00'` lẫn `'000'` và
+**kẹp theo `conCho`**, thiếu phép kẹp thì `'00'` đẩy chữ số thứ 14 qua trần và
+giao dịch kẹt hàng đợi đẩy vĩnh viễn (cùng vòng lặp G31/G14/G46); (3)
+`_getFormattedAmount` thôi in chuỗi thô cho số lẻ mà đi qua
+**`CurrencyFormatter.formatCoLe`** — nửa *hiển thị* của cùng một lỗi, vì "12.5 đ"
+đọc theo quy ước Việt Nam là một con số khác hẳn, ngay cạnh nút lưu.
+
+Người dùng chốt **bỏ phím** (2026-09-19) thay vì đọc đúng thập phân: app làm
+tròn về đồng chẵn ở mọi chỗ hiển thị (`CurrencyFormatter.format`), nên phím ấy
+không có việc gì để làm. Lệch màn Stitch đúng một phím — cả hai màn Thêm giao
+dịch đều vẽ `.`. Bốn ca ở tệp mới
+`test/features/transaction/presentation/so_tien_thap_phan_test.dart` (⚠️ phải
+dựng trong `GoRouter` **thật** vì lưu xong trang gọi `context.pop()`) cộng bốn
+ca `'00'` ở `ban_phim_so_tien_test.dart`. **Schema không đổi, payload không
+đổi.**
+
+**A3 — gỡ công tắc sáng/tối (xong 2026-09-19).** Mục "Giao diện" ở tab Cá nhân
+vẽ một công tắc hai ô trông như đang chọn được, nhưng `onTap` rỗng và
+`AppTheme` chỉ có `lightTheme` — không có `darkTheme` nào để chuyển sang. Người
+dùng chốt **gỡ** thay vì làm dark mode (việc cỡ L). Mục này rút khỏi danh sách
+chờ chốt của `khong_co_nut_chet_test.dart` — test quét ấy **hai chiều**, nên để
+lại mục thừa cũng đỏ. ⚠️ Gỡ xong thì `_ProfileItem.trailing` không còn ai dùng
+và `flutter analyze` lên **26** issue (`unused_element_parameter`) — mức nền là
+**25**, nên tham số ấy gỡ theo; đây đúng nếp "quét API có 0 chỗ gọi trước khi
+commit". 2 ca ở `profile_page_menu_test.dart`. **Schema không đổi, payload không
+đổi.**
 
 ### 🏦 Gỡ phần client của liên kết ngân hàng (2026-09-18)
 

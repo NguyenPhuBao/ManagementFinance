@@ -36,11 +36,6 @@ void main() {
       1,
       'Menu ⋮ ở màn Thêm giao dịch chưa có mục nào. Chờ chốt gỡ hay làm.',
     ),
-    'features/profile/presentation/pages/profile_page.dart': (
-      1,
-      'Công tắc "Giao diện" sáng/tối: app chưa có dark theme — mục A3 của '
-          'danh sách UX 2026-09-19, chờ chốt làm hay gỡ.',
-    ),
   };
 
   final khuon = RegExp(

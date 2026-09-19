@@ -106,7 +106,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final man = tester.getRect(find.byType(Scaffold).first);
-    for (final phim in ['7', '1', '0', '000', '.']) {
+    for (final phim in ['7', '1', '0', '000', '00']) {
       final r = tester.getRect(find.text(phim));
       expect(r.bottom, lessThanOrEqualTo(man.bottom + 0.5),
           reason: 'Phím "$phim" nằm dưới mép màn — máy ảo phải cuộn mới thấy '

@@ -25,34 +25,38 @@ import '../../../core/utils/gioi_han_do_dai.dart';
 
 /// Chuỗi số mới sau khi bấm [phim] trên chuỗi [hienTai].
 ///
-/// [phim] là một chữ số, `'000'`, `'.'`, `'backspace'`, hoặc một phím điều
-/// khiển (`'done'`, `'+'`, `'-'`) — những phím cuối không đổi gì.
+/// [phim] là một chữ số, `'00'`, `'000'`, `'backspace'`, hoặc một phím không
+/// đổi gì (`'done'`, `'+'`, `'-'`, `'.'`).
 ///
 /// ⚠️ Trần đếm **chữ số**, không đếm ký tự: một chuỗi có dấu thập phân dài hơn
-/// số chữ số của nó, và đếm cả dấu chấm là chặn sớm hơn thật.
+/// số chữ số của nó, và đếm cả dấu chấm là chặn sớm hơn thật. Chuỗi có dấu
+/// chấm vẫn **vào được** qua chế độ sửa — `transaction."Amount"` là
+/// `numeric(15,2)` nên số lẻ tồn tại thật — chỉ là không gõ mới ra được.
 String themPhimSoTien(String hienTai, String phim) {
   if (phim == 'backspace') {
     if (hienTai.length > 1) return hienTai.substring(0, hienTai.length - 1);
     return '0';
   }
 
-  if (phim == '.') {
-    if (hienTai.contains('.')) return hienTai;
-    return '$hienTai.';
+  // ⚠️ `'.'` KHÔNG đổi gì (A12, 2026-09-19). Phím ấy đã bị bỏ khỏi lưới, nhưng
+  // nhánh vô hiệu thì giữ: nó từng sinh ra một chuỗi mà `_saveTransaction`
+  // strip dấu chấm rồi đọc tiếp, nên `12.5` lưu thành **125** — sai gấp mười,
+  // im lặng. Giữ nhánh ở đây để phím có quay lại lưới cũng không phá được.
+  if (phim == 'done' || phim == '+' || phim == '-' || phim == '.') {
+    return hienTai;
   }
-
-  if (phim == 'done' || phim == '+' || phim == '-') return hienTai;
 
   final daDung = _demChuSo(hienTai);
   final conCho = kSoChuSoToiDaSoTien - daDung;
   if (conCho <= 0) return hienTai;
 
-  if (phim == '000') {
+  if (phim == '00' || phim == '000') {
     // Số 0 đứng một mình thì "000" là một con số vô nghĩa — hành vi cũ, giữ.
     if (hienTai == '0') return hienTai;
     // ⚠️ CẮT BỚT cho vừa trần thay vì bỏ cả cụm: bỏ cả cụm thì người dùng bấm
     // mà không thấy gì xảy ra, còn cắt bớt thì họ được đúng phần còn chỗ.
-    return hienTai + '0' * (conCho < 3 ? conCho : 3);
+    final them = conCho < phim.length ? conCho : phim.length;
+    return hienTai + '0' * them;
   }
 
   if (hienTai == '0') return phim;
