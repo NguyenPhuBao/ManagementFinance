@@ -698,6 +698,30 @@ E4 (thay 176 `SnackBar`) về sau. 7 ca ở `thoat_hai_lan_test.dart` (1 ca đ�
 `main_shell.dart` canh việc bọc), 1 ca ở `app_toast_thong_bao_nhanh_test.dart`.
 **Schema không đổi, payload không đổi.**
 
+> ⚠️ **Nghiệm thu máy ảo lật một lỗi mà 8 ca trên đều mù** (cùng ngày): Back
+> ở tab **Phân tích thoát app ra launcher** thay vì về Trang chủ. Cơ chế, đọc từ
+> `navigator.dart`/`app.dart`: máy ảo Android 16, app `targetSdk 36` nên
+> **predictive back bật mặc định**; khi bật, Android chỉ giao Back cho Flutter
+> nếu lời gọi `SystemNavigator.setFrameworkHandlesBack` **cuối cùng** là
+> `true`. `Navigator` gốc phát đúng (`navigatorCanPop || routeBlocksPop`, có
+> tính `PopScope`), nhưng **navigator của nhánh** `StatefulShellRoute` mới dựng
+> phát `canHandlePop: false`, và listener của navigator gốc chỉ hỏi `canPop()`
+> — không hỏi `PopScope` — nên **cho qua nguyên vẹn** → `WidgetsApp` gọi
+> `setFrameworkHandlesBack(false)` → logcat `setTopOnBackInvokedCallback: null`
+> đúng lúc chuyển tab → lần Back kế Android tự đóng activity. Test bằng
+> `MaterialApp` trần không thấy vì nó đi đường `Navigator.maybePop`.
+> **Sửa:** `android:enableOnBackInvokedCallback="false"` trong
+> `AndroidManifest.xml` — Back đi đường `KEYCODE_BACK → popRoute →
+> GoRouterDelegate.popRoute → root.maybePop → PopScope`, đúng đường mà test
+> mới `shared/widgets/main_shell_back_test.dart` (6 ca) canh: dựng **`MainShell`
+> trong một `GoRouter` thật** với `StatefulShellRoute` hai nhánh và một trang
+> đẩy lên root, giả `SystemChannels.platform` để bắt `SystemNavigator.pop`;
+> một ca đọc thẳng manifest (vùng mù 7.11). Bản tái hiện đầu (ghi lời gọi
+> `setFrameworkHandlesBack`, phải đặt app `resumed` vì `WidgetsApp` bỏ
+> notification khi chưa gắn) đỏ đúng chỗ máy ảo đỏ, rồi thay bằng ca manifest
+> khi chốt lối sửa. Đây là ví dụ **thứ hai** của *loại lỗi thứ hai* mà
+> `flutter test` không bắt được.
+
 **F1 · F2 · F3 — nhận diện app (xong 2026-09-19).** Máy ảo: nhãn dưới icon và
 trong khay thông báo là *"flowmoney"* chữ thường, icon là logo Flutter mặc
 định, splash là nền trắng với logo Flutter — thứ đầu tiên người chấm nhìn thấy,

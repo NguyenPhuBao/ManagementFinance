@@ -1281,6 +1281,10 @@ gom hết output tới khi tiến trình kết thúc, nên một lượt treo tr
 lượt đang chạy. Ghi thẳng ra file rồi đọc file.
 
 **7.11 `AndroidManifest.xml` là vùng mù của mọi công cụ trong dự án này.**
+*(Ví dụ thứ hai, 2026-09-19, ngoài thông báo: `android:enableOnBackInvokedCallback="false"`
+tắt predictive back để nút Back tới được `PopScope` của shell — thiếu nó, Back ở
+tab Phân tích đóng thẳng activity trên Android 16; test đọc manifest ở
+`test/shared/widgets/main_shell_back_test.dart`, chi tiết ở mục 14 `PROJECT_CONTEXT.md`.)*
 `flutter test` không đọc nó, `flutter analyze` không đọc nó, `flutter build apk`
 vẫn thành công. `flutter_local_notifications` cần **ba** receiver được khai báo
 tay và **không tự khai báo cái nào**:
