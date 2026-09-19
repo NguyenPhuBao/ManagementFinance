@@ -698,6 +698,27 @@ E4 (thay 176 `SnackBar`) về sau. 7 ca ở `thoat_hai_lan_test.dart` (1 ca đ�
 `main_shell.dart` canh việc bọc), 1 ca ở `app_toast_thong_bao_nhanh_test.dart`.
 **Schema không đổi, payload không đổi.**
 
+**F1 · F2 · F3 — nhận diện app (xong 2026-09-19).** Máy ảo: nhãn dưới icon và
+trong khay thông báo là *"flowmoney"* chữ thường, icon là logo Flutter mặc
+định, splash là nền trắng với logo Flutter — thứ đầu tiên người chấm nhìn thấy,
+và không lệnh nào của Flutter nói gì về nó. Nay: nhãn **"FlowMoney"** ở
+`AndroidManifest.xml` và `Info.plist` (cả `CFBundleName`); icon là **ô đen
+#1A1A19 bo góc với glyph ví trắng** — dáng `Icons.account_balance_wallet` mà màn
+Đăng nhập dùng làm nhãn hiệu — sinh bằng `flutter_launcher_icons` (kèm adaptive
+icon `mipmap-anydpi-v26`, iOS bỏ alpha); splash **nền ấm #EDEDE9 với ô icon ở
+giữa** sinh bằng `flutter_native_splash` (Android ≤ 11, Android 12+, iOS
+storyboard, và cả `web/index.html`). Ảnh nguồn ở `assets/icon/` (**không** đưa
+vào `flutter.assets`, chỉ để sinh lại) do **`test/tool/tao_icon_app_test.dart`**
+vẽ ra — một widget test `skip: true`, chạy tay với `--run-skipped` — vì máy
+không có Python/ImageMagick còn `flutter test` thì có Skia. ⚠️ **Glyph phải vẽ
+bằng `CustomPainter`**: `flutter test` không nạp font MaterialIcons (và chữ là
+font Ahem), nên bản đầu dùng `Icon(Icons.account_balance_wallet)` sinh ra một
+**ô vuông rỗng**, chỉ lộ khi mở ảnh ra xem. `test/core/nhan_dien_app_test.dart`
+(4 ca) đọc thẳng tệp Android: nhãn, MD5 của `ic_launcher.png` khác bản
+`flutter create`, có `mipmap-anydpi-v26`, `launch_background.xml` trỏ
+`@drawable/splash`, ba ảnh nguồn tồn tại. Hai gói vào `dev_dependencies`.
+**Schema không đổi, payload không đổi.**
+
 ### 🏦 Gỡ phần client của liên kết ngân hàng (2026-09-18)
 
 **Nhóm chốt bỏ tính năng liên kết ngân hàng.** Đây là quyết định sản phẩm, không
