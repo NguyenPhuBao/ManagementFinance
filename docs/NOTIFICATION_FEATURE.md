@@ -1196,13 +1196,25 @@ xanh** nên không ai biết cho tới lúc phát hành. Từ lát 4 trở đi, 
 → app chết màn đỏ.** go_router phải dựng thêm một bản shell thứ hai chồng lên
 bản đang có, hai bản trùng page key, và `Navigator` ném
 `!keyReservation.contains(key)`. Đây là chuyện đã xảy ra: bấm vào thông báo
-ngân sách từ `/notifications` (ngoài shell) sang `/budget` (trong shell).
+ngân sách từ `/notifications` (ngoài shell) sang `/budget` — **khi ấy** `/budget`
+còn nằm trong shell. ⚠️ Câu trên là **lịch sử**: từ 2026-09-19 `/budget` đã rời
+shell thành route gốc, nên chính deeplink ấy nay đi đường `push` và an toàn.
+Cái bẫy thì vẫn nguyên — chỉ là route rơi vào nó nay là `/transactions`.
 
 Dùng `thuocThanhTab()` trong `notification_deeplink.dart` để chọn `go` hay
-`push`. Bốn nhánh tab là `/home`, `/analytics`, `/budget`, `/profile` — danh
-sách ấy giữ đồng bộ **tay** với `app_router.dart`.
+`push`. Bốn nhánh tab là `/home`, `/analytics`, **`/transactions`**, `/profile`
+— danh sách ấy giữ đồng bộ **tay** với `app_router.dart`.
 
-⚠️ Ba deeplink còn lại (`/bills`, `/goals/<id>`, `/wallets`) đều **ngoài** shell
+⚠️ **Hai route đã ĐỔI VAI ngày 2026-09-19 (nhóm D), và đổi theo hai chiều khác
+nhau:** `/budget` **rời** shell thành route gốc (nó nhường chỗ ở thanh dưới cho
+Sổ giao dịch), còn `/transactions` **vào** shell thành nhánh thứ ba. Bộ luật
+sinh deeplink tới **cả hai** — ngân sách (mục 5c) và khoản chi lớn (mục 5f) —
+nên quên cập nhật `nhanhThanhTab` là hỏng theo hai chiều: `/transactions` bị bỏ
+sót → `push` từ `/notifications` → **chết màn đỏ**; `/budget` bị để lại → `go`
+tới một route ngoài shell → thay cả stack, **thanh tab biến mất**, không còn
+đường quay lại. Sửa đúng một dòng hằng ấy thì cả hai tự đúng.
+
+⚠️ Ba deeplink còn lại (`/bills`, `/goals/<id>`, `/wallets`) vẫn **ngoài** shell
 nên `push` chạy tốt. Ba phần tư đường đi đúng chính là lý do lỗi này lọt qua mọi
 vòng kiểm trước đó.
 

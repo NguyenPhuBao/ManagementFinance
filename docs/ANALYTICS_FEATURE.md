@@ -2397,5 +2397,10 @@ mười khối, nút Tải xuống sinh PDF/CSV và lưu thẳng vào thư mục
   chụp của một ngày trước đó**; đọc tiếp xuống là thấy khối "✅ Đã đủ". P1 vẫn
   có giá trị riêng — nó cho **chính trang Phân tích** một phạm vi tuần — nhưng
   đừng ghi nó là thứ gỡ chặn cho Tổng kết tuần.
-- Tiêu đề trang là "Thống kê", tab dưới là "Phân tích" — hai tên cho một chỗ,
-  lấy từ Stitch. Chưa đổi vì chưa ai nói tên nào đúng.
+- ~~Tiêu đề trang là "Thống kê", tab dưới là "Phân tích" — hai tên cho một
+  chỗ~~ — ✅ **đóng 2026-09-19** (D4 của lượt UX). Tên còn lại là **"Phân
+  tích"** ở cả tab lẫn tiêu đề trang (`analytics_page.dart:282`). Nó tự tan
+  cùng nhóm D: drawer thôi có mục "Thống kê" nên không còn chỗ thứ hai nào gọi
+  trang này bằng tên khác. ⚠️ Ba chỗ "Thống kê" còn lại trong
+  `analytics_page.dart` (`:33`, `:266`, `:1435`) là **chú thích** nhắc tên màn
+  Stitch — giữ nguyên, đổi chúng là làm hỏng đường lần về bản thiết kế.
