@@ -90,9 +90,7 @@ class GoiSoMucTieu extends GoiSo {
     return NhanXet(
       cau: '$ten: ${s['Tiến độ']}, còn thiếu ${s['Còn thiếu']}$veNgay; $duoi.',
       theSoLieu: soLieu,
-      muc: (quaHan || chamKeHoach)
-          ? MucNhanXet.canhBao
-          : MucNhanXet.binhThuong,
+      muc: (quaHan || chamKeHoach) ? MucNhanXet.canhBao : MucNhanXet.binhThuong,
     );
   }
 }

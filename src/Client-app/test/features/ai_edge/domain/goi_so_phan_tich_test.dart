@@ -49,7 +49,8 @@ ThongKeKy _tk({
     lichChiTieu: const {},
     dongTien: null,
     duBao: duBao,
-    taiSan: tongTaiSanCua(const [], const [], ky: ky, now: DateTime(2026, 9, 8)),
+    taiSan:
+        tongTaiSanCua(const [], const [], ky: ky, now: DateTime(2026, 9, 8)),
     giaoDichDauTien: null,
     chuoiVayNo: chuoiVayNo ?? [for (final d in chuoi) DiemVayNo(ky: d.ky)],
   );
@@ -84,7 +85,8 @@ void main() {
     final pt = phanTramSoVoi(tk.tong.chi, tk.tongTruoc.chi)!;
     final nx = g.mauCau();
     expect(nx.muc, MucNhanXet.binhThuong);
-    expect(nx.cau, startsWith('Kỳ này chi 8.200.000 đ, tăng 12,5% so với kỳ trước'));
+    expect(nx.cau,
+        startsWith('Kỳ này chi 8.200.000 đ, tăng 12,5% so với kỳ trước'));
     expect(pt, closeTo(12.5, 0.01));
     expect(nx.cau, contains('để dành 35,0% thu nhập'));
     expect(g.man, 'phan_tich');

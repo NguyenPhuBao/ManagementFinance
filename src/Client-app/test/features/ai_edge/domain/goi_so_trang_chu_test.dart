@@ -38,7 +38,11 @@ void main() {
 
   test('thu > chi → câu thu / chi / còn lại, mức bình thường', () {
     final g = GoiSoTrangChu.tu(
-        thu: 15000000, chi: 8200000, tongSoDu: 13054000, nganSach: const [], now: now);
+        thu: 15000000,
+        chi: 8200000,
+        tongSoDu: 13054000,
+        nganSach: const [],
+        now: now);
     final nx = g.mauCau();
     expect(nx.muc, MucNhanXet.binhThuong);
     expect(nx.cau,
@@ -51,16 +55,25 @@ void main() {
   test('chi > thu → cảnh báo, câu "chi vượt thu X" (số dương, không dấu trừ)',
       () {
     final nx = GoiSoTrangChu.tu(
-            thu: 7000000, chi: 8200000, tongSoDu: 100, nganSach: const [], now: now)
+            thu: 7000000,
+            chi: 8200000,
+            tongSoDu: 100,
+            nganSach: const [],
+            now: now)
         .mauCau();
     expect(nx.muc, MucNhanXet.canhBao);
-    expect(nx.cau, 'Tháng này thu 7.000.000 đ, chi 8.200.000 đ, chi vượt thu 1.200.000 đ.');
+    expect(nx.cau,
+        'Tháng này thu 7.000.000 đ, chi 8.200.000 đ, chi vượt thu 1.200.000 đ.');
     expect(nx.cau, isNot(contains('-')));
   });
 
   test('thu == chi → còn lại 0 đ, KHÔNG mang dấu', () {
     final nx = GoiSoTrangChu.tu(
-            thu: 5000000, chi: 5000000, tongSoDu: 100, nganSach: const [], now: now)
+            thu: 5000000,
+            chi: 5000000,
+            tongSoDu: 100,
+            nganSach: const [],
+            now: now)
         .mauCau();
     expect(nx.cau, contains('còn lại 0 đ'));
     expect(nx.cau, isNot(contains('-0')));
@@ -71,7 +84,10 @@ void main() {
       thu: 15000000,
       chi: 8200000,
       tongSoDu: 13054000,
-      nganSach: [_ns('Ăn uống', 3000000, 2100000), _ns('Đi lại', 1000000, 300000)],
+      nganSach: [
+        _ns('Ăn uống', 3000000, 2100000),
+        _ns('Đi lại', 1000000, 300000)
+      ],
       now: now,
     ).mauCau();
     expect(nx.cau, endsWith(' Ngân sách Ăn uống đã dùng 70,0%.'));
@@ -80,11 +96,32 @@ void main() {
 
   test('mẫu câu tự qua bộ kiểm số ở mọi nhánh', () {
     for (final g in [
-      GoiSoTrangChu.tu(thu: 15000000, chi: 8200000, tongSoDu: 13054000, nganSach: const [], now: now),
-      GoiSoTrangChu.tu(thu: 7000000, chi: 8200000, tongSoDu: 100, nganSach: const [], now: now),
-      GoiSoTrangChu.tu(thu: 5000000, chi: 5000000, tongSoDu: 100, nganSach: const [], now: now),
-      GoiSoTrangChu.tu(thu: 1, chi: 1, tongSoDu: 0, nganSach: [_ns('A', 3000000, 2100000)], now: now),
-      GoiSoTrangChu.tu(thu: 0, chi: 0, tongSoDu: 0, nganSach: const [], now: now),
+      GoiSoTrangChu.tu(
+          thu: 15000000,
+          chi: 8200000,
+          tongSoDu: 13054000,
+          nganSach: const [],
+          now: now),
+      GoiSoTrangChu.tu(
+          thu: 7000000,
+          chi: 8200000,
+          tongSoDu: 100,
+          nganSach: const [],
+          now: now),
+      GoiSoTrangChu.tu(
+          thu: 5000000,
+          chi: 5000000,
+          tongSoDu: 100,
+          nganSach: const [],
+          now: now),
+      GoiSoTrangChu.tu(
+          thu: 1,
+          chi: 1,
+          tongSoDu: 0,
+          nganSach: [_ns('A', 3000000, 2100000)],
+          now: now),
+      GoiSoTrangChu.tu(
+          thu: 0, chi: 0, tongSoDu: 0, nganSach: const [], now: now),
     ]) {
       expect(kiemSo(g.mauCau().cau, g), isTrue, reason: g.mauCau().cau);
     }

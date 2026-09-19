@@ -37,7 +37,8 @@ void main() {
     'amount >',
   ];
 
-  test('ai_edge/ không chứa phép so chiều tiền hay truy cập bảng giao dịch', () {
+  test('ai_edge/ không chứa phép so chiều tiền hay truy cập bảng giao dịch',
+      () {
     final loi = <String>[];
     final goc = Directory('lib/features/ai_edge');
     expect(goc.existsSync(), isTrue, reason: 'thư mục ai_edge phải tồn tại');
