@@ -644,6 +644,26 @@ xuất" ở đáy dù màn Stitch *"Home with Side Menu Drawer"* có — nay có
 xác nhận tách từ tab Cá nhân để hai chỗ dùng chung một định nghĩa. 5 ca ở
 `drawer_trang_chu_test.dart`. **Schema không đổi, payload không đổi.**
 
+**A8 (xong 2026-09-19).** Xoá `shared/widgets/bottom_nav_bar.dart` — bản thanh
+điều hướng song song **0 chỗ gọi**, mang nhãn "Thống kê"/"Hồ sơ" khác bản đang
+chạy trong `main_shell.dart` ("Phân tích"/"Cá nhân").
+
+**B1 — bản địa hoá Flutter (xong 2026-09-19).** Máy ảo đo được hộp chọn ngày ở
+màn Thêm giao dịch hiện *"Select date · Sat, Sep 19 · Cancel / OK"*, tuần bắt
+đầu Chủ nhật, giữa giao diện tiếng Việt: `MaterialApp` không khai
+`localizationsDelegates`/`locale` nên mọi chữ **do Flutter vẽ** (date/time
+picker, nút hộp thoại, tooltip của back/menu) rơi về `en_US`. Nay có
+`core/constants/app_localization.dart` — ba hằng `kNgonNguApp` (`vi`, **ghim**
+chứ không theo máy vì app chỉ có một ngôn ngữ), `kSupportedLocales`,
+`kLocalizationsDelegates` — và `main.dart` nối đủ cả ba (test đọc `main.dart`
+canh: thiếu một là "Select date" trở lại, im lặng). Kéo theo
+`flutter_localizations` (SDK) và **`intl` lên `^0.20.2`** vì gói ấy ghim
+`intl 0.20.2`; 0 chỗ trong `lib/` dựng `NumberFormat`/`DateFormat` ngoài
+`CurrencyFormatter` và các `DateFormat` đã có nên bộ test không đổi kết quả.
+⚠️ Chuỗi tiếng Việt của Flutter viết **"Huỷ"** (dấu hỏi trên *y*), trùng cách
+app đang viết ở hộp thoại đăng xuất — ca test đầu đoán "Hủy" và đỏ vì thế.
+3 ca ở `app_localization_test.dart`. **Schema không đổi, payload không đổi.**
+
 ### 🏦 Gỡ phần client của liên kết ngân hàng (2026-09-18)
 
 **Nhóm chốt bỏ tính năng liên kết ngân hàng.** Đây là quyết định sản phẩm, không

@@ -18,7 +18,9 @@ class MucDrawer {
 /// trước trỏ "Xuất báo cáo" vào `/reports` — một route không tồn tại — rồi
 /// che bằng SnackBar "đang phát triển" trong khi trang ấy đã có từ 2026-09-09
 /// ở `/export-report`. Route và lời gọi là hai chuỗi rời nhau nên
-/// `flutter analyze` không nói gì (cùng loại lỗi với test quét `bank-link`).
+/// `flutter analyze` không nói gì (cùng loại lỗi với test quét đường liên kết
+/// ngân hàng đã gỡ — và test ấy quét cả chú thích, nên đừng viết nguyên văn
+/// chuỗi ấy ở đây).
 const List<MucDrawer> kMucDrawer = [
   MucDrawer('Quản lý ví', Icons.account_balance_wallet, '/wallets'),
   MucDrawer('Mục tiêu tiết kiệm', Icons.track_changes, '/goals'),

@@ -9,6 +9,7 @@ import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 import 'core/constants/app_constants.dart';
+import 'core/constants/app_localization.dart';
 import 'core/constants/app_router.dart';
 import 'core/di/injection_container.dart';
 import 'core/network/connection_monitor.dart';
@@ -150,6 +151,11 @@ class _FlowMoneyAppState extends State<FlowMoneyApp> {
       child: MaterialApp.router(
         title: 'FlowMoney',
         theme: AppTheme.lightTheme,
+        // Ba hằng ở `core/constants/app_localization.dart`; thiếu một là hộp
+        // chọn ngày lại "Select date" (có test canh).
+        locale: kNgonNguApp,
+        localizationsDelegates: kLocalizationsDelegates,
+        supportedLocales: kSupportedLocales,
         routerConfig: _router,
         debugShowCheckedModeBanner: false,
         // Toast bọc NGOÀI router nên phủ mọi trang mà không trang nào phải
