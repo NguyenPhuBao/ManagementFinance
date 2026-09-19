@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../../ai_edge/domain/goi_so_ngan_sach.dart';
+import '../../../ai_edge/presentation/widgets/khoi_nhan_xet.dart';
 import '../../data/models/budget_entity.dart';
 import '../../domain/budget_pace.dart';
 import '../../domain/budget_locking.dart';
@@ -138,6 +140,19 @@ class _ActiveTab extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _OverviewCard(state: state),
+          // Khối Nhận xét (Edge-SLM P2, A6): nói về ngân sách CĂNG NHẤT — cùng
+          // `pickHomeBudget` với thẻ Trang chủ. Không dựng khi chưa có ngân
+          // sách: `_InlineEmpty` bên dưới đã nói đúng câu ấy.
+          if (state.active.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            KhoiNhanXet(
+              goi: GoiSoNganSach.tu(
+                state.active,
+                now: now ?? DateTime.now(),
+                keHoach: state.keHoach,
+              ),
+            ),
+          ],
           const SizedBox(height: 24),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,

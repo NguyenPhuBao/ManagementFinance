@@ -16,6 +16,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 import 'package:flowmoney/core/di/injection_container.dart';
+import 'package:flowmoney/features/ai_edge/presentation/widgets/khoi_nhan_xet.dart';
 import 'package:flowmoney/features/analytics/data/analytics_repository.dart';
 import 'package:flowmoney/features/analytics/domain/bao_cao_xuat.dart';
 import 'package:flowmoney/features/analytics/domain/du_bao_dong_tien.dart';
@@ -289,6 +290,47 @@ void main() {
         reason: 'Trang cũ hiện "T6 2026" cứng suốt nhiều tuần trong khi đang '
             'là tháng 9 — sai ngay trên màn hình.');
     expect(find.textContaining('T6 2026'), findsNothing);
+  });
+
+  // ── Khối Nhận xét (Edge-SLM P2, Task 14 — đóng A6) ────────────────────
+  //
+  // Đặt ở đây thay vì tệp riêng để dùng lại helper `_tk` (100 dòng dựng đúng
+  // cấu trúc `ThongKeKy`); chép nó sang tệp khác là hai bản phải giữ đồng bộ.
+  testWidgets('khối Nhận xét đứng sau ba thẻ tổng, câu đúng số của stream',
+      (tester) async {
+    await moTrang(tester);
+    await phat(tester, _tk());
+
+    expect(find.byType(KhoiNhanXet), findsOneWidget,
+        reason: 'A6: trang Phân tích phải có khối Nhận xét (Stitch b396533b…).');
+    // chi 1.250.000 so với 1.000.000 kỳ trước = +25,0 % — đúng `phanTramSoVoi`
+    // mà thẻ "Tổng chi" ngay trên đang in.
+    expect(
+      find.textContaining(
+          'Kỳ này chi 1.250.000 đ, tăng 25,0% so với kỳ trước'),
+      findsOneWidget,
+      reason: 'Gói số đọc `ThongKeKy` qua đúng hàm trang đang dùng; câu phải '
+          'khớp con số của thẻ ngay trên nó.',
+    );
+    // Khối nằm NGAY SAU thẻ "Số dư còn lại", trước khối Xu hướng.
+    final yConLai = tester.getBottomLeft(find.text('Số dư còn lại')).dy;
+    final yNhanXet = tester.getTopLeft(find.byType(KhoiNhanXet)).dy;
+    final yXuHuong =
+        tester.getTopLeft(find.textContaining('Xu hướng 6 tháng')).dy;
+    expect(yNhanXet, greaterThan(yConLai));
+    expect(yNhanXet, lessThan(yXuHuong),
+        reason: 'Vị trí theo kế hoạch: sau `_TheConLai`, trước Xu hướng.');
+  });
+
+  testWidgets('kỳ rỗng → không khối Nhận xét (trang đã hiện `_Rong`)',
+      (tester) async {
+    await moTrang(tester);
+    await phat(tester, _tk(thu: 0, chi: 0, chiTruoc: 0));
+
+    expect(find.byType(KhoiNhanXet), findsNothing,
+        reason: 'Nhánh rỗng của trang không dựng `_KhoiTong`, nên khối đi '
+            'theo nó cũng không dựng — không hai thẻ cùng nói "chưa có giao '
+            'dịch".');
   });
 
   testWidgets('ba thẻ tổng hiện số từ stream', (tester) async {
@@ -1045,6 +1087,9 @@ void main() {
         ),
       );
 
+      // Khối Nhận xét (2026-09-19) đẩy hàng chip xuống dưới mép khung 600dp;
+      // chạm vào chỗ không hiện thì không trúng gì mà test vẫn xanh nửa chừng.
+      await tester.ensureVisible(find.byKey(const Key('chip-xu-huong-c_an')));
       await tester.tap(find.byKey(const Key('chip-xu-huong-c_an')));
       await tester.pumpAndSettle();
 

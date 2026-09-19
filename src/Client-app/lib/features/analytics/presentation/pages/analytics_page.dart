@@ -8,6 +8,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/auth/current_account.dart';
+import '../../../ai_edge/domain/goi_so_phan_tich.dart';
+import '../../../ai_edge/presentation/widgets/khoi_nhan_xet.dart';
 import '../../../../core/category/category_classify.dart';
 import '../../../../core/category/category_visuals.dart';
 import '../../../../core/di/injection_container.dart';
@@ -464,6 +466,10 @@ class _KhoiTong extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         _TheConLai(tk: tk),
+        // Khối Nhận xét (Edge-SLM P2, A6): gói số đọc `tk` qua đúng các hàm
+        // ba thẻ trên đang dùng, nên câu khớp con số của thẻ.
+        const SizedBox(height: 16),
+        KhoiNhanXet(goi: GoiSoPhanTich.tu(tk)),
       ],
     );
   }

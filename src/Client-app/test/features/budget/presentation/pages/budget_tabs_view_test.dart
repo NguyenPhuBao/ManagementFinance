@@ -78,14 +78,22 @@ void main() {
       now: DateTime(2026, 9, 15, 12),
     );
 
+    // Trong THẺ ngân sách (bọc `Dismissible`) — khối Nhận xét phía trên cũng
+    // in con số này (cùng `budgetPaceOf`), nên không đếm trên cả trang.
     expect(
-      find.textContaining('125.000'),
+      find.descendant(
+          of: find.byType(Dismissible),
+          matching: find.textContaining('125.000')),
       findsOneWidget,
       reason: 'Còn 2.000.000 cho 16 ngày (15/9 trưa → 1/10) = 125.000/ngày. '
           'Đây là con số mọi app cùng loại đều hiện; thiếu nó thì "Còn X" '
           'không nói được phải kéo dài bao lâu.',
     );
-    expect(find.textContaining('còn 16 ngày'), findsOneWidget);
+    expect(
+        find.descendant(
+            of: find.byType(Dismissible),
+            matching: find.textContaining('còn 16 ngày')),
+        findsOneWidget);
   });
 
   testWidgets('thẻ đã hết hạn không có dòng nên chi', (tester) async {

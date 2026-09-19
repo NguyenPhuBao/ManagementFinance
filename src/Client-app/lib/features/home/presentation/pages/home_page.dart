@@ -11,6 +11,9 @@ import '../widgets/home_goal_card.dart';
 import '../widgets/the_cho_xoa_trang_chu.dart';
 import '../widgets/drawer_trang_chu.dart';
 import '../widgets/the_so_lieu_thang.dart';
+import '../../domain/thu_chi_thang.dart';
+import '../../../ai_edge/domain/goi_so_trang_chu.dart';
+import '../../../ai_edge/presentation/widgets/khoi_nhan_xet.dart';
 import '../../../auth/presentation/xac_nhan_dang_xuat.dart';
 import '../../../budget/data/models/budget_entity.dart';
 import '../../../budget/data/repositories/budget_repository.dart';
@@ -101,10 +104,7 @@ class HomePage extends StatelessWidget {
                       // tắt "Tính vào tổng tài sản", nên con số trang chủ lệch
                       // với chính con số trên màn Quản lý ví — im lặng, không màn
                       // nào nói ra. Cùng loại lỗi đã đóng ở `6fd2ce9`.
-                      final totalBalance = wallets
-                          .where((w) => viTinhVaoTong(
-                              includeInTotal: w.includeInTotal, status: w.status))
-                          .fold<double>(0.0, (sum, w) => sum + w.balance);
+                      final totalBalance = _tongTaiSan(wallets);
                       if (snapshot.hasData) {
                         debugPrint('📊 [SQLite DB Log] Wallets count: ${wallets.length} | Total balance: ${CurrencyFormatter.formatSoThoi(totalBalance)}đ');
                         for (final w in wallets) {
@@ -155,20 +155,14 @@ class HomePage extends StatelessWidget {
                         }
                       }
 
-                      double monthlyIncome = 0;
-                      double monthlyExpense = 0;
-
-                      for (final t in transactions) {
-                        if (t.date.year == now.year && t.date.month == now.month) {
-                          if (t.type == 'thu') monthlyIncome += t.amount;
-                          if (t.type == 'chi') monthlyExpense += t.amount;
-                        }
-                      }
+                      // Một định nghĩa cho thu/chi tháng — khối Nhận xét cuối
+                      // trang đọc cùng hàm này (`_buildNhanXet`).
+                      final thang = thuChiThangCua(transactions, now);
 
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          TheSoLieuThang(thu: monthlyIncome, chi: monthlyExpense),
+                          TheSoLieuThang(thu: thang.thu, chi: thang.chi),
                           const SizedBox(height: 32),
                           StreamBuilder<List<Wallet>>(
                             stream: walletStream,
@@ -198,7 +192,7 @@ class HomePage extends StatelessWidget {
               const SizedBox(height: 32),
               _buildBudgetSection(context, currentUserId),
               const SizedBox(height: 32),
-              _buildInsightCard(),
+              _buildNhanXet(context, currentUserId),
               const SizedBox(height: 100), // padding for bottom nav
             ],
           ),
@@ -599,44 +593,57 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildInsightCard() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1c1c1b),
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.lightbulb, color: Color(0xFFFDE047), size: 24),
-              const SizedBox(width: 12),
-              const Text('Insight AI',
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white)),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child:
-                    const Text('Mới', style: TextStyle(color: Colors.white, fontSize: 12)),
+  /// Tổng tài sản — phép lọc ở `viTinhVaoTong`, định nghĩa DUY NHẤT của "ví
+  /// nào được cộng vào tổng". Bản trước là `fold` trần trên mọi ví (cộng cả ví
+  /// đã tắt "Tính vào tổng tài sản"), lệch với màn Quản lý ví — im lặng.
+  /// Tách thành hàm vì thẻ tài sản và khối Nhận xét cùng đọc nó.
+  static double _tongTaiSan(List<Wallet> wallets) => wallets
+      .where((w) => viTinhVaoTong(
+          includeInTotal: w.includeInTotal, status: w.status))
+      .fold<double>(0.0, (sum, w) => sum + w.balance);
+
+  /// Khối Nhận xét nền tối (Edge-SLM P2, A6) — thay thẻ gợi ý tĩnh cũ (chữ cứng,
+  /// không đọc dữ liệu nào).
+  ///
+  /// Gói số nhận **đúng các con số trang đang hiện**: thu/chi tháng qua
+  /// `thuChiThangCua` (cùng hàm với `TheSoLieuThang`), tổng số dư qua
+  /// `_tongTaiSan` (cùng hàm với thẻ tài sản), ngân sách qua cùng stream của
+  /// `_buildBudgetSection`. Ba stream bọc nhau ở đây thay vì kéo khối vào
+  /// trong `StreamBuilder` giao dịch phía trên: khối đứng cuối trang, sau thẻ
+  /// Mục tiêu và Ngân sách, mà hai thẻ ấy không nên dựng lại theo mỗi giao
+  /// dịch.
+  Widget _buildNhanXet(BuildContext context, int? idaccount) {
+    final db = sl<AppDatabase>();
+    final txStream = idaccount != null
+        ? db.transactionDao.watchAll(idaccount)
+        : Stream<List<Transaction>>.value(const []);
+    final walletStream = idaccount != null
+        ? db.walletDao.watchAll(idaccount)
+        : Stream<List<Wallet>>.value(const []);
+    final budgetStream = idaccount != null
+        ? sl<BudgetRepository>().watchBudgets(idaccount)
+        : Stream<List<BudgetView>>.value(const []);
+    return StreamBuilder<List<Transaction>>(
+      stream: txStream,
+      builder: (_, tx) => StreamBuilder<List<Wallet>>(
+        stream: walletStream,
+        builder: (_, wallets) => StreamBuilder<List<BudgetView>>(
+          stream: budgetStream,
+          builder: (_, budgets) {
+            final now = DateTime.now();
+            final thang = thuChiThangCua(tx.data ?? const [], now);
+            return KhoiNhanXet(
+              goi: GoiSoTrangChu.tu(
+                thu: thang.thu,
+                chi: thang.chi,
+                tongSoDu: _tongTaiSan(wallets.data ?? const []),
+                nganSach: budgets.data ?? const [],
+                now: now,
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Thêm thêm giao dịch thu/chi hàng ngày để trợ lý AI phân tích và đưa ra lời khuyên tài chính cá nhân hóa.',
-            style: TextStyle(
-                fontSize: 14, color: Colors.white70, height: 1.5, letterSpacing: 0),
-          ),
-        ],
+              nenToi: true,
+            );
+          },
+        ),
       ),
     );
   }

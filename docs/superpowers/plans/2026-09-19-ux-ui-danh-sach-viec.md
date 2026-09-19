@@ -23,7 +23,7 @@ phải đưa lên Stitch trước rồi mới sửa Flutter. ❓ = cần ngườ
 | A3 ✅ | Công tắc "Giao diện" sáng/tối chỉ là hình vẽ, app không có `darkTheme` — người dùng chốt **gỡ** (2026-09-19). Rút khỏi danh sách chờ chốt của `khong_co_nut_chet_test.dart`; `_ProfileItem.trailing` gỡ theo vì hết chỗ gọi (analyze lên 26, mức nền 25) | 2 ca `profile_page_menu_test.dart` | S |
 | A4 ✅ | Drawer "Xuất báo cáo" báo "đang phát triển" dù trang đã có từ 2026-09-09 — nay trỏ `/export-report`; drawer tách thành `DrawerTrangChu`, test đối chiếu mọi đường với router thật | `home_page.dart:344` | S |
 | A5 | Nút "Quét" ở Trang chủ là stub SnackBar | `home_page.dart:471-475` | ❓ giữ (làm OCR/QR) hoặc gỡ |
-| A6 | Thẻ "Insight AI · Mới" là chữ tĩnh, lỗi chính tả "Thêm thêm" | `home_page.dart:750-791` | ❓ gỡ hoặc nối vào Trợ lý AI |
+| A6 ✅ | Thẻ "Insight AI · Mới" là chữ tĩnh, lỗi chính tả "Thêm thêm" — **thay bằng khối Nhận xét** nền tối đọc `GoiSoTrangChu` (Edge-SLM P2 Task 14, 2026-09-19); thẻ cũ xoá hẳn, có test quét nguồn `home_khoi_nhan_xet_test.dart` | `home_page.dart` `_buildNhanXet` | S |
 | A7 ✅ | Hai mục "Bảo mật 2 yếu tố (MFA)" và "Đồng bộ dữ liệu Cloud" `onTap` rỗng — đã gỡ, cùng nút "hỗ trợ" rỗng trên cùng trang | `settings_page.dart:210`, `:217` | S (gỡ) |
 | A8 ✅ | Widget `AppBottomNavBar` chết — đã xoá (0 chỗ gọi), mang nhãn khác bản chạy | `shared/widgets/bottom_nav_bar.dart` | S (xoá) |
 | A9 ✅ | Drawer thiếu "Đăng xuất" ở đáy và avatar là vòng đen trống (chữ `primary` trên nền `primaryContainer`, hai màu là một) — đã sửa, hộp thoại xác nhận dùng chung `xacNhanDangXuat` | ảnh Stitch `6c692ef1…` vs `home_page.dart:246-334` | S |
@@ -105,7 +105,7 @@ mục 14 `PROJECT_CONTEXT.md`.
 ## Cần người dùng chốt trước khi làm
 
 1. ~~A3 dark mode~~ — ✅ chốt **gỡ** 2026-09-19.
-2. A5 Quét, A6 Insight AI, D9 Trợ lý AI: giữ (và làm thật) hay gỡ khỏi giao diện.
+2. A5 Quét, ~~A6 Insight AI~~ (✅ thay bằng khối Nhận xét, P2 Task 14 2026-09-19), D9 Trợ lý AI: giữ (và làm thật) hay gỡ khỏi giao diện.
    (A11 Google/Apple ở màn Đăng nhập cũng còn chờ.)
 3. ~~D: lối A hay lối B~~ — ✅ chốt **lối B**, và **D1–D11 đã thi công xong**
    2026-09-19. Ba màn Stitch: `250229e6…` (drawer), `580ee88c…` (Cá nhân),
@@ -135,8 +135,8 @@ cho tới khi người dùng gọi tên lại.** Trạng thái từng dòng vẫ
 Cần người dùng chốt trước (đừng tự quyết):
 
 1. **A5** nút "Quét" ở Trang chủ (stub SnackBar) — giữ và làm thật, hay gỡ.
-2. **A6** thẻ "Insight AI" (chữ tĩnh, lỗi chính tả "Thêm thêm") — gỡ hay nối
-   vào Trợ lý AI.
+2. ~~**A6** thẻ "Insight AI" (chữ tĩnh, lỗi chính tả "Thêm thêm") — gỡ hay nối
+   vào Trợ lý AI.~~ ✅ **đóng 2026-09-19** — thay bằng khối Nhận xét (P2 Task 14).
 3. **A11 còn lại** — handler rỗng: `ai_chat_page` 5, `login_page` Google/Apple 2,
    `forgot_password_page` "Liên hệ hỗ trợ" 1, `add_transaction_page` menu ⋮ 1.
    Danh sách sống trong `test/core/ui/khong_co_nut_chet_test.dart` (đỏ nếu lệch mã).
