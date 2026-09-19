@@ -94,6 +94,7 @@ void main() {
 
   /// Chọn Ăn uống và gõ 5.000.
   Future<void> dienForm(WidgetTester tester) async {
+    await tester.ensureVisible(find.text('Danh mục'));
     await tester.tap(find.text('Danh mục'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Khoản chi'));
@@ -108,7 +109,7 @@ void main() {
   }
 
   Future<void> luu(WidgetTester tester) async {
-    await tester.tap(find.text('Lưu giao dịch'));
+    await tester.tap(find.byIcon(Icons.check)); // ✓ là nút lưu từ 2026-09-19
     await tester.pumpAndSettle();
   }
 

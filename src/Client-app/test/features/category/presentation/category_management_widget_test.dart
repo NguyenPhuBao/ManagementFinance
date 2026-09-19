@@ -461,6 +461,7 @@ void main() {
     expect(find.text('Ăn uống'), findsOneWidget);
     expect(find.text('Chọn danh mục'), findsOneWidget);
 
+    await tester.ensureVisible(find.text('Chọn danh mục này'));
     await tester.tap(find.text('Chọn danh mục này'));
     await tester.pump();
     expect(find.text('Gợi ý danh mục'), findsNothing);
@@ -498,7 +499,7 @@ void main() {
     // test này canh: một kết quả về muộn sau khi người dùng đã đổi loại giao dịch.
     await tester.pump(const Duration(milliseconds: 350));
     tester
-        .widget<GestureDetector>(find.byKey(const Key('transaction-type-1')))
+        .widget<GestureDetector>(find.byKey(const Key('transaction-type-transfer')))
         .onTap!();
     await tester.pump();
 
