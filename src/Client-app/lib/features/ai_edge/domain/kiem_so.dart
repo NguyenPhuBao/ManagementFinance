@@ -19,20 +19,24 @@ class SoTrich {
   const SoTrich(this.giaTri, {required this.laPhanTram});
 }
 
-/// Nhóm 1: phần nguyên có chấm nghìn (`2.100.000`) hoặc số trần; nhóm 2: phần
-/// thập phân sau **phẩy**; nhóm 3: hậu tố `%`. Không bắt `đ` — có hay không thì
+/// Nhóm 1: dấu âm (`-` hoặc `−`); nhóm 2: phần nguyên có chấm nghìn
+/// (`2.100.000`) hoặc số trần; nhóm 3: phần thập phân sau **phẩy**; nhóm 4: hậu
+/// tố `%`. Dấu âm phải bắt được vì `soPhanTram` giữ dấu (`-8,3%`): mất dấu là
+/// đảo nghĩa tăng/giảm mà bộ kiểm vẫn cho qua. Không bắt `đ` — có hay không thì
 /// cũng là một con số, và `9 đ` với `9 ngày` khác nhau ở **loại** của số liệu
 /// chứ không ở cách trích.
-final RegExp _mau = RegExp(r'(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d+))?\s*(%)?');
+final RegExp _mau =
+    RegExp(r'(-|−)?(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d+))?\s*(%)?');
 
 /// Mọi chuỗi số trong [cau], đã chuẩn hoá về `double`.
 List<SoTrich> trichSo(String cau) => [
       for (final m in _mau.allMatches(cau))
         SoTrich(
-          double.parse(
-            '${m.group(1)!.replaceAll('.', '')}.${m.group(2) ?? '0'}',
-          ),
-          laPhanTram: m.group(3) != null,
+          (m.group(1) == null ? 1 : -1) *
+              double.parse(
+                '${m.group(2)!.replaceAll('.', '')}.${m.group(3) ?? '0'}',
+              ),
+          laPhanTram: m.group(4) != null,
         ),
     ];
 

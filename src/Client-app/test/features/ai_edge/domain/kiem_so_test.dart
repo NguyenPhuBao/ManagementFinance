@@ -59,6 +59,14 @@ void main() {
     expect(kiemSo('Bạn đã dùng 2.100.001 đ.', goi), isFalse);
   });
 
+  test('trichSo giữ dấu âm — soPhanTram in -8,3% khi giảm', () {
+    final g = _Gia([soPhanTram('So kỳ trước', -8.3)]);
+    expect(trichSo('giảm -8,3%').single.giaTri, closeTo(-8.3, 1e-9));
+    expect(kiemSo('Kỳ này -8,3% so với kỳ trước.', g), isTrue);
+    expect(kiemSo('Kỳ này 8,3% so với kỳ trước.', g), isFalse,
+        reason: 'mất dấu là đảo nghĩa tăng/giảm — phải chặn');
+  });
+
   test('số có % không được khớp với số liệu TIỀN cùng giá trị', () {
     final g = _Gia([soTien('Đã chi', 70)]);
     expect(kiemSo('Bạn đã dùng 70%.', g), isFalse,
