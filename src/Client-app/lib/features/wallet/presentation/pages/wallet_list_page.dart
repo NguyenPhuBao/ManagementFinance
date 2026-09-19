@@ -250,7 +250,12 @@ class _WalletListView extends StatelessWidget {
               },
               onDelete: () => _confirmDelete(context, w),
               onArchive: () => doiLuuTru(context, w, idaccount),
-              onXemGiaoDich: () => context.push('/transactions?wallet=${w.id}'),
+              // ⚠️ `go` chứ KHÔNG `push`: từ 2026-09-19 `/transactions` là một
+              // nhánh shell, còn màn này nằm NGOÀI shell (drawer push nó).
+              // `push` một route trong shell từ ngoài shell bắt go_router dựng
+              // bản shell thứ hai và Navigator ném
+              // `!keyReservation.contains(key)` — app chết màn đỏ.
+              onXemGiaoDich: () => context.go('/transactions?wallet=${w.id}'),
             ),
           );
         }),
@@ -453,8 +458,10 @@ class _MucLuuTruState extends State<_MucLuuTru> {
                   }
                 },
                 onArchive: () => doiLuuTru(context, w, widget.idaccount),
+                // `go` chứ không `push` — cùng lý do với chỗ gọi kia trong
+                // tệp này: màn Ví ngoài shell, `/transactions` trong shell.
                 onXemGiaoDich: () =>
-                    context.push('/transactions?wallet=${w.id}'),
+                    context.go('/transactions?wallet=${w.id}'),
               ),
             ),
           ),

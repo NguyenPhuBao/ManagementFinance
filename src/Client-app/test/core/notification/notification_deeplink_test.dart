@@ -35,11 +35,23 @@ import 'package:flowmoney/features/goal/domain/goal_auto_deposit_runner.dart';
 void main() {
   group('deeplink nằm trong thanh tab', () {
     test('nhận ra các route thuộc StatefulShellRoute', () {
-      expect(thuocThanhTab('/budget'), isTrue,
-          reason: 'Đây chính là route làm app chết màn đỏ khi dùng push().');
+      expect(thuocThanhTab('/transactions'), isTrue,
+          reason: 'Từ 2026-09-19 (nhóm D) nhánh thứ ba là Sổ giao dịch. Luật '
+              '"khoản chi lớn" deeplink thẳng vào đây; để `thuocThanhTab` trả '
+              'false thì nơi gọi dùng `push` từ `/notifications` — một trang '
+              'NGOÀI shell — và app chết màn đỏ.');
       expect(thuocThanhTab('/home'), isTrue);
       expect(thuocThanhTab('/analytics'), isTrue);
       expect(thuocThanhTab('/profile'), isTrue);
+    });
+
+    test('⚠️ `/budget` KHÔNG còn thuộc thanh tab', () {
+      expect(thuocThanhTab('/budget'), isFalse,
+          reason: 'Nó rời shell thành route gốc ngày 2026-09-19. Để sót `true` '
+              'thì thông báo ngân sách `go` tới một route ngoài shell: thay cả '
+              'stack, thanh tab biến mất, không còn đường quay lại. Đây từng '
+              'là route làm app chết màn đỏ khi dùng push() — nay ngược lại.');
+      expect(thuocThanhTab('/budget/detail/abc'), isFalse);
     });
 
     test('route con của một nhánh tab cũng thuộc thanh tab', () {

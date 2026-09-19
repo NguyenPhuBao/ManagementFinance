@@ -475,7 +475,9 @@ class HomePage extends StatelessWidget {
               ),
             ),
             TextButton(
-              onPressed: () => context.push('/transactions'),
+              // `go` để CHUYỂN sang tab Sổ giao dịch, thay vì chồng một trang
+              // mới lên tab Trang chủ — từ 2026-09-19 sổ có tab riêng.
+              onPressed: () => context.go('/transactions'),
               child: const Text('Xem tất cả',
                   style: TextStyle(
                       color: AppColors.primary,
@@ -614,7 +616,10 @@ class HomePage extends StatelessWidget {
       stream: stream,
       builder: (_, snapshot) => HomeBudgetCard(
         budgets: snapshot.data ?? const [],
-        onTap: () => context.go('/budget'),
+        // ⚠️ `push` chứ không `go`: `/budget` rời shell ngày 2026-09-19 nên
+        // nó chồng lên Trang chủ và cần nút Back. `go` ở đây là thay cả
+        // stack — thanh tab biến mất, không còn đường quay lại.
+        onTap: () => context.push('/budget'),
       ),
     );
   }

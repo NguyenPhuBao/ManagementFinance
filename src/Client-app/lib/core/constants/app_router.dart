@@ -151,8 +151,23 @@ class AppRouter {
                 ),
               ]),
               StatefulShellBranch(routes: [
+                // ⚠️ Nhánh này từng là `/budget`. Đổi sang Sổ giao dịch ngày
+                // 2026-09-19 (nhóm D): sổ là thứ mở nhiều lần mỗi ngày mà
+                // trước đó không có lối vào cố định, còn ngân sách là thứ đặt
+                // một lần rồi xem lại thỉnh thoảng — đúng chỗ cho drawer.
+                //
+                // Đổi ở đây thì PHẢI đổi `nhanhThanhTab` cùng lúc
+                // (`core/notification/notification_deeplink.dart`), nếu không
+                // thông báo chọn nhầm `go`/`push` và một chiều là màn đỏ.
                 GoRoute(
-                    path: '/budget', builder: (_, __) => const BudgetPage()),
+                  // `?wallet=<id>` lọc sẵn theo một ví — đường tắt từ màn Quản
+                  // lý ví. Query param chứ không `extra`: `extra` mất khi
+                  // GoRouter dựng lại route, còn tham số trên URL thì sống sót.
+                  path: '/transactions',
+                  builder: (_, state) => TransactionPage(
+                    initialWalletId: state.uri.queryParameters['wallet'],
+                  ),
+                ),
               ]),
               StatefulShellBranch(routes: [
                 GoRoute(
@@ -177,16 +192,8 @@ class AppRouter {
             ),
           ),
 
-          // Transactions
-          GoRoute(
-            path: '/transactions',
-            // `?wallet=<id>` lọc sẵn theo một ví — đường tắt từ màn Quản lý ví.
-            // Query param chứ không `extra`: `extra` mất khi GoRouter dựng lại
-            // route, còn tham số trên URL thì sống sót.
-            builder: (_, state) => TransactionPage(
-              initialWalletId: state.uri.queryParameters['wallet'],
-            ),
-          ),
+          // `/transactions` đã chuyển vào nhánh shell thứ ba ngày 2026-09-19
+          // (nhóm D) — xem khối `StatefulShellRoute` phía trên.
           GoRoute(
             path: '/add',
             // `extra` là EditTransactionArgs → trang mở ở chế độ sửa.
@@ -219,6 +226,15 @@ class AppRouter {
             path: '/wallets/:id/edit',
             builder: (_, s) => WalletEditPage(id: s.pathParameters['id']!),
           ),
+
+          // Ngân sách rời `StatefulShellRoute` ngày 2026-09-19 (nhóm D): nó
+          // nhường chỗ ở thanh dưới cho Sổ giao dịch và về sống trong drawer.
+          // Chỗ này chỉ là đưa cha về đứng cùng hai con — `/budget/rules` và
+          // `/budget/detail/:id` vốn đã là route gốc từ trước.
+          //
+          // ⚠️ Chỗ gọi phải dùng `push` chứ không `go`, nếu không nó thay cả
+          // stack và thanh tab biến mất.
+          GoRoute(path: '/budget', builder: (_, __) => const BudgetPage()),
 
           // Budget rules
           // `?id=<uuid>` = sửa ngân sách đã có; không có tham số = tạo mới.

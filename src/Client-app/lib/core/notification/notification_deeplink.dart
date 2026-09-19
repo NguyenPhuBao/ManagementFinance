@@ -8,10 +8,17 @@ import 'notification_rules.dart' show goalDeeplink;
 /// Giữ đồng bộ tay với `app_router.dart`. Đáng lẽ suy ra được từ cây route,
 /// nhưng go_router không phơi ra danh sách ấy, và một hằng số có test canh thì
 /// đọc rõ hơn hẳn một phép dò cây.
+///
+/// ⚠️ **`/budget` đã RỜI danh sách này ngày 2026-09-19 (nhóm D)**: nó thành
+/// route gốc, còn nhánh thứ ba nay là `/transactions`. Bộ luật thông báo sinh
+/// deeplink tới **cả hai**, nên sai một dòng ở đây hỏng theo hai chiều khác
+/// nhau: `/transactions` bị bỏ sót → `push` từ `/notifications` → **chết màn
+/// đỏ**; `/budget` bị để lại → `go` tới một route ngoài shell → thay cả stack,
+/// **thanh tab biến mất**, không còn đường quay lại.
 const Set<String> nhanhThanhTab = {
   '/home',
   '/analytics',
-  '/budget',
+  '/transactions',
   '/profile',
 };
 

@@ -78,7 +78,15 @@ class MainShell extends StatelessWidget {
             _buildNavItem(context, 'Trang chủ', Icons.home_outlined, 0, uiIndex),
             _buildNavItem(context, 'Phân tích', Icons.analytics_outlined, 1, uiIndex),
             const SizedBox(width: 72), // Space for FAB
-            _buildNavItem(context, 'Ngân sách', Icons.account_balance_wallet_outlined, 3, uiIndex),
+            // ⚠️ Nhãn "Giao dịch" chứ KHÔNG "Sổ giao dịch": ô nhãn rộng CỐ
+            // ĐỊNH 72dp (xem `_buildNavItem`) và mọi nhãn vừa được đều ≤ 9 ký
+            // tự — "Sổ giao dịch" là 12. Tên đầy đủ vẫn ở tiêu đề trang.
+            //
+            // Icon `list_alt` chứ không `receipt_long`: `receipt_long` đã là
+            // "Hóa đơn & Dịch vụ" trong drawer, và một glyph mang hai nghĩa
+            // đúng là lỗi D8 vừa gỡ cùng ngày (heo đất từng vừa là Ngân sách
+            // vừa là Mục tiêu tiết kiệm).
+            _buildNavItem(context, 'Giao dịch', Icons.list_alt_outlined, 3, uiIndex),
             _buildNavItem(context, 'Cá nhân', Icons.person_outline, 4, uiIndex),
           ],
         ),
