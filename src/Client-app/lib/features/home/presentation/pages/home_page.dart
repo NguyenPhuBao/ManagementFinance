@@ -6,7 +6,6 @@ import 'package:intl/intl.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
-import '../widgets/home_action_buttons.dart';
 import '../widgets/home_budget_card.dart';
 import '../widgets/home_goal_card.dart';
 import '../widgets/the_cho_xoa_trang_chu.dart';
@@ -57,8 +56,13 @@ class HomePage extends StatelessWidget {
                   authState.user != null &&
                   authState.user!.dangChoXoa)
                 TheChoXoaTrangChu(user: authState.user!),
-              const SizedBox(height: 32),
-              _buildHeroSection(context),
+              // Slogan hai dòng và nút hero "Thêm giao dịch" đã bỏ ngày
+              // 2026-09-19 (nhóm D, D10+D11): slogan chiếm ~120dp đầu màn mà
+              // không nói gì về tiền của người dùng, còn hero là lối vào thứ
+              // NĂM tới cùng màn Thêm giao dịch — và là lối duy nhất không
+              // thêm được gì, trong khi ba nút tròn đã đặt sẵn chiều từ C4.
+              // "Xem báo cáo" bỏ theo: drawer có "Xuất báo cáo", tab Phân
+              // tích có nút riêng.
               const SizedBox(height: 32),
 
               // Khối thông báo đã được GỠ khỏi trang chủ ngày 2026-09-08 theo
@@ -275,35 +279,6 @@ class HomePage extends StatelessWidget {
           },
         );
       },
-    );
-  }
-
-  Widget _buildHeroSection(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ShaderMask(
-          shaderCallback: (bounds) => const LinearGradient(
-            colors: [Color(0xFF111827), Color(0xFF4B5563)],
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-          ).createShader(bounds),
-          child: const Text(
-            'Kiểm soát tiền bạc.\nLàm chủ tương lai.',
-            style: TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-              height: 1.2,
-              color: Colors.white, // required for ShaderMask
-            ),
-          ),
-        ),
-        const SizedBox(height: 24),
-        HomeActionButtons(
-          onAdd: () => context.push('/add'),
-          onReport: () => context.go('/analytics'),
-        ),
-      ],
     );
   }
 

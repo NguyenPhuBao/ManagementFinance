@@ -22,7 +22,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/features/bill/presentation/widgets/bill_status_header.dart';
-import 'package:flowmoney/features/home/presentation/widgets/home_action_buttons.dart';
 
 /// Các bề rộng logic cần chịu được.
 const beRong = <double>[320, 360, 411];
@@ -117,19 +116,4 @@ void main() {
     });
   });
 
-  group('hai nút trang chủ', () {
-    for (final w in beRong) {
-      testWidgets('rộng ${w.toInt()}dp', (tester) async {
-        final loi = await dungTrongKhung(
-          tester,
-          HomeActionButtons(onAdd: () {}, onReport: () {}),
-          w,
-        );
-
-        expect(loi, isNull,
-            reason: 'Tràn ở ${w.toInt()}dp. Hai nút chia đôi màn hình, và nhãn '
-                '"Thêm giao dịch" cộng icon vượt phần của nó ở màn hẹp.');
-      });
-    }
-  });
 }
