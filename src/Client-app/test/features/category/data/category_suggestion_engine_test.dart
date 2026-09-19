@@ -23,6 +23,7 @@ void main() {
         isDeleted: isDeleted,
         isGroup: isGroup,
         isLocalOnly: true,
+        aiCoDinh: false,
         syncStatus: 'pending',
         syncRetryCount: 0,
         updatedAt: now,

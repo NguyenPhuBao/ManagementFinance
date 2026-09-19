@@ -6,11 +6,13 @@ import 'tables/transactions_table.dart';
 import 'tables/categories_table.dart';
 import 'tables/other_tables.dart';
 import 'tables/notification_table.dart';
+import 'tables/ai_feedback_table.dart';
 import 'daos/wallet_dao.dart';
 import 'daos/transaction_dao.dart';
 import 'daos/category_dao.dart';
 import 'daos/other_daos.dart';
 import 'daos/notification_dao.dart';
+import 'daos/ai_feedback_dao.dart';
 
 // ── Code generation ──────────────────────────────────────────────────────────
 // File này cần chạy build_runner để sinh ra:
@@ -40,6 +42,7 @@ part 'app_database.g.dart';
     Bills,
     Goals,
     AppNotifications,
+    AiRebalancingFeedbacks,
   ],
   daos: [
     WalletDao,
@@ -49,6 +52,7 @@ part 'app_database.g.dart';
     BillDao,
     GoalDao,
     NotificationDao,
+    AiFeedbackDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -56,7 +60,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 23;
+  int get schemaVersion => 24;
 
   @override
   MigrationStrategy get migration {
@@ -464,6 +468,14 @@ class AppDatabase extends _$AppDatabase {
           // nào của server để giành nhau.
           await m.addColumn(wallets, wallets.allowNegative);
         }
+        if (from < 24) {
+          // Edge-SLM P2 (spec 2026-09-19): cờ "Cố định — AI không đề xuất cắt"
+          // trên danh mục và bảng phản hồi tái phân bổ — CẢ HAI cục bộ, không
+          // đi qua đồng bộ (test quét thứ 15 canh). KHÔNG điền dữ liệu hàng
+          // cũ: mặc định `false` chính là hành vi trước bản này.
+          await m.addColumn(categories, categories.aiCoDinh);
+          await m.createTable(aiRebalancingFeedbacks);
+        }
       },
       beforeOpen: (details) async {
         // Bật foreign key constraints (SQLite tắt mặc định)
@@ -541,11 +553,15 @@ class AppDatabase extends _$AppDatabase {
       removed += await (delete(appNotifications)
             ..where((t) => t.idaccount.equals(keepIdaccount).not()))
           .go();
+      // Phản hồi tái phân bổ (v24) cũng cục bộ, cùng lý lẽ với thông báo.
+      removed += await (delete(aiRebalancingFeedbacks)
+            ..where((t) => t.idaccount.equals(keepIdaccount).not()))
+          .go();
     });
     return removed;
   }
 
-  /// Xoá **bản sao cục bộ** của [idaccount] trong đúng chín bảng mà
+  /// Xoá **bản sao cục bộ** của [idaccount] trong đúng mười bảng mà
   /// [purgeDataForOtherAccounts] đụng tới, cùng thứ tự con → cha.
   ///
   /// Dùng khi server nói tài khoản này **đã bị xoá**: bên kia đã ẩn danh hoá
@@ -591,6 +607,9 @@ class AppDatabase extends _$AppDatabase {
       // đã bị xoá còn nằm lại trên máy. Bảng này không có khoá ngoại nên vị trí
       // trong chuỗi xoá không quan trọng.
       removed += await (delete(appNotifications)
+            ..where((t) => t.idaccount.equals(idaccount)))
+          .go();
+      removed += await (delete(aiRebalancingFeedbacks)
             ..where((t) => t.idaccount.equals(idaccount)))
           .go();
     });

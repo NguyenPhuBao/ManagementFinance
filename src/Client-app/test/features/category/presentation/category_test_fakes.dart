@@ -34,6 +34,7 @@ Category makeCategory({
       isDefault: isDefault,
       isDeleted: false,
       isLocalOnly: !isDefault,
+      aiCoDinh: false,
       syncStatus: 'pending',
       syncRetryCount: 0,
       updatedAt: updatedAt ?? DateTime(2026, 8, 21),

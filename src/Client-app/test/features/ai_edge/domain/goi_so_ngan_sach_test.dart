@@ -3,7 +3,6 @@
 /// thành bản định nghĩa thứ hai của nhịp chi.
 library;
 
-import 'package:flowmoney/features/ai_edge/domain/goi_so.dart';
 import 'package:flowmoney/features/ai_edge/domain/goi_so_ngan_sach.dart';
 import 'package:flowmoney/features/ai_edge/domain/kiem_so.dart';
 import 'package:flowmoney/features/ai_edge/domain/nhan_xet.dart';

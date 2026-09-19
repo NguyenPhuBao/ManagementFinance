@@ -39,6 +39,7 @@ void main() {
         isDefault: isDefault,
         isDeleted: false,
         isLocalOnly: !isDefault,
+        aiCoDinh: false,
         syncStatus: 'pending',
         syncRetryCount: 0,
         updatedAt: now,

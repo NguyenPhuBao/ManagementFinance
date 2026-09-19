@@ -2161,6 +2161,16 @@ class $CategoriesTable extends Categories
       defaultConstraints: GeneratedColumn.constraintIsAlways(
           'CHECK ("is_local_only" IN (0, 1))'),
       defaultValue: const Constant(false));
+  static const VerificationMeta _aiCoDinhMeta =
+      const VerificationMeta('aiCoDinh');
+  @override
+  late final GeneratedColumn<bool> aiCoDinh = GeneratedColumn<bool>(
+      'ai_co_dinh', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("ai_co_dinh" IN (0, 1))'),
+      defaultValue: const Constant(false));
   static const VerificationMeta _deletedAtMeta =
       const VerificationMeta('deletedAt');
   @override
@@ -2214,6 +2224,7 @@ class $CategoriesTable extends Categories
         parentId,
         isGroup,
         isLocalOnly,
+        aiCoDinh,
         deletedAt,
         syncStatus,
         syncRetryCount,
@@ -2284,6 +2295,10 @@ class $CategoriesTable extends Categories
           isLocalOnly.isAcceptableOrUnknown(
               data['is_local_only']!, _isLocalOnlyMeta));
     }
+    if (data.containsKey('ai_co_dinh')) {
+      context.handle(_aiCoDinhMeta,
+          aiCoDinh.isAcceptableOrUnknown(data['ai_co_dinh']!, _aiCoDinhMeta));
+    }
     if (data.containsKey('deleted_at')) {
       context.handle(_deletedAtMeta,
           deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta));
@@ -2347,6 +2362,8 @@ class $CategoriesTable extends Categories
           .read(DriftSqlType.bool, data['${effectivePrefix}is_group'])!,
       isLocalOnly: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}is_local_only'])!,
+      aiCoDinh: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}ai_co_dinh'])!,
       deletedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}deleted_at']),
       syncStatus: attachedDatabase.typeMapping
@@ -2381,6 +2398,14 @@ class Category extends DataClass implements Insertable<Category> {
   final bool isGroup;
   final bool isLocalOnly;
 
+  /// **Cục bộ, KHÔNG đi qua đồng bộ.** Cờ "Cố định — AI không đề xuất cắt"
+  /// (luật C2 đặc tả Edge-SLM): danh mục có cờ không bao giờ được chọn làm
+  /// nguồn bù khi tái phân bổ ngân sách. Cùng khuôn `wallets.allow_negative`
+  /// (v23): server không có cột tương ứng, `categoryForPush` không đọc nó,
+  /// nhánh kéo về không chạm nó. Thêm ở v24 (2026-09-19). Test quét thứ 15
+  /// canh nó không lọt vào đường đồng bộ.
+  final bool aiCoDinh;
+
   /// deletedAt: NULL = đang dùng, có giá trị = đã xóa mềm (đồng bộ với backend)
   final DateTime? deletedAt;
   final String syncStatus;
@@ -2400,6 +2425,7 @@ class Category extends DataClass implements Insertable<Category> {
       this.parentId,
       required this.isGroup,
       required this.isLocalOnly,
+      required this.aiCoDinh,
       this.deletedAt,
       required this.syncStatus,
       required this.syncRetryCount,
@@ -2422,6 +2448,7 @@ class Category extends DataClass implements Insertable<Category> {
     }
     map['is_group'] = Variable<bool>(isGroup);
     map['is_local_only'] = Variable<bool>(isLocalOnly);
+    map['ai_co_dinh'] = Variable<bool>(aiCoDinh);
     if (!nullToAbsent || deletedAt != null) {
       map['deleted_at'] = Variable<DateTime>(deletedAt);
     }
@@ -2452,6 +2479,7 @@ class Category extends DataClass implements Insertable<Category> {
           : Value(parentId),
       isGroup: Value(isGroup),
       isLocalOnly: Value(isLocalOnly),
+      aiCoDinh: Value(aiCoDinh),
       deletedAt: deletedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(deletedAt),
@@ -2482,6 +2510,7 @@ class Category extends DataClass implements Insertable<Category> {
       parentId: serializer.fromJson<String?>(json['parentId']),
       isGroup: serializer.fromJson<bool>(json['isGroup']),
       isLocalOnly: serializer.fromJson<bool>(json['isLocalOnly']),
+      aiCoDinh: serializer.fromJson<bool>(json['aiCoDinh']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
       syncStatus: serializer.fromJson<String>(json['syncStatus']),
       syncRetryCount: serializer.fromJson<int>(json['syncRetryCount']),
@@ -2506,6 +2535,7 @@ class Category extends DataClass implements Insertable<Category> {
       'parentId': serializer.toJson<String?>(parentId),
       'isGroup': serializer.toJson<bool>(isGroup),
       'isLocalOnly': serializer.toJson<bool>(isLocalOnly),
+      'aiCoDinh': serializer.toJson<bool>(aiCoDinh),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
       'syncStatus': serializer.toJson<String>(syncStatus),
       'syncRetryCount': serializer.toJson<int>(syncRetryCount),
@@ -2527,6 +2557,7 @@ class Category extends DataClass implements Insertable<Category> {
           Value<String?> parentId = const Value.absent(),
           bool? isGroup,
           bool? isLocalOnly,
+          bool? aiCoDinh,
           Value<DateTime?> deletedAt = const Value.absent(),
           String? syncStatus,
           int? syncRetryCount,
@@ -2545,6 +2576,7 @@ class Category extends DataClass implements Insertable<Category> {
         parentId: parentId.present ? parentId.value : this.parentId,
         isGroup: isGroup ?? this.isGroup,
         isLocalOnly: isLocalOnly ?? this.isLocalOnly,
+        aiCoDinh: aiCoDinh ?? this.aiCoDinh,
         deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
         syncStatus: syncStatus ?? this.syncStatus,
         syncRetryCount: syncRetryCount ?? this.syncRetryCount,
@@ -2568,6 +2600,7 @@ class Category extends DataClass implements Insertable<Category> {
       isGroup: data.isGroup.present ? data.isGroup.value : this.isGroup,
       isLocalOnly:
           data.isLocalOnly.present ? data.isLocalOnly.value : this.isLocalOnly,
+      aiCoDinh: data.aiCoDinh.present ? data.aiCoDinh.value : this.aiCoDinh,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
       syncStatus:
           data.syncStatus.present ? data.syncStatus.value : this.syncStatus,
@@ -2596,6 +2629,7 @@ class Category extends DataClass implements Insertable<Category> {
           ..write('parentId: $parentId, ')
           ..write('isGroup: $isGroup, ')
           ..write('isLocalOnly: $isLocalOnly, ')
+          ..write('aiCoDinh: $aiCoDinh, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('syncStatus: $syncStatus, ')
           ..write('syncRetryCount: $syncRetryCount, ')
@@ -2619,6 +2653,7 @@ class Category extends DataClass implements Insertable<Category> {
       parentId,
       isGroup,
       isLocalOnly,
+      aiCoDinh,
       deletedAt,
       syncStatus,
       syncRetryCount,
@@ -2640,6 +2675,7 @@ class Category extends DataClass implements Insertable<Category> {
           other.parentId == this.parentId &&
           other.isGroup == this.isGroup &&
           other.isLocalOnly == this.isLocalOnly &&
+          other.aiCoDinh == this.aiCoDinh &&
           other.deletedAt == this.deletedAt &&
           other.syncStatus == this.syncStatus &&
           other.syncRetryCount == this.syncRetryCount &&
@@ -2660,6 +2696,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
   final Value<String?> parentId;
   final Value<bool> isGroup;
   final Value<bool> isLocalOnly;
+  final Value<bool> aiCoDinh;
   final Value<DateTime?> deletedAt;
   final Value<String> syncStatus;
   final Value<int> syncRetryCount;
@@ -2679,6 +2716,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     this.parentId = const Value.absent(),
     this.isGroup = const Value.absent(),
     this.isLocalOnly = const Value.absent(),
+    this.aiCoDinh = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.syncStatus = const Value.absent(),
     this.syncRetryCount = const Value.absent(),
@@ -2699,6 +2737,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     this.parentId = const Value.absent(),
     this.isGroup = const Value.absent(),
     this.isLocalOnly = const Value.absent(),
+    this.aiCoDinh = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.syncStatus = const Value.absent(),
     this.syncRetryCount = const Value.absent(),
@@ -2723,6 +2762,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     Expression<String>? parentId,
     Expression<bool>? isGroup,
     Expression<bool>? isLocalOnly,
+    Expression<bool>? aiCoDinh,
     Expression<DateTime>? deletedAt,
     Expression<String>? syncStatus,
     Expression<int>? syncRetryCount,
@@ -2743,6 +2783,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       if (parentId != null) 'parent_id': parentId,
       if (isGroup != null) 'is_group': isGroup,
       if (isLocalOnly != null) 'is_local_only': isLocalOnly,
+      if (aiCoDinh != null) 'ai_co_dinh': aiCoDinh,
       if (deletedAt != null) 'deleted_at': deletedAt,
       if (syncStatus != null) 'sync_status': syncStatus,
       if (syncRetryCount != null) 'sync_retry_count': syncRetryCount,
@@ -2765,6 +2806,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       Value<String?>? parentId,
       Value<bool>? isGroup,
       Value<bool>? isLocalOnly,
+      Value<bool>? aiCoDinh,
       Value<DateTime?>? deletedAt,
       Value<String>? syncStatus,
       Value<int>? syncRetryCount,
@@ -2784,6 +2826,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       parentId: parentId ?? this.parentId,
       isGroup: isGroup ?? this.isGroup,
       isLocalOnly: isLocalOnly ?? this.isLocalOnly,
+      aiCoDinh: aiCoDinh ?? this.aiCoDinh,
       deletedAt: deletedAt ?? this.deletedAt,
       syncStatus: syncStatus ?? this.syncStatus,
       syncRetryCount: syncRetryCount ?? this.syncRetryCount,
@@ -2830,6 +2873,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     if (isLocalOnly.present) {
       map['is_local_only'] = Variable<bool>(isLocalOnly.value);
     }
+    if (aiCoDinh.present) {
+      map['ai_co_dinh'] = Variable<bool>(aiCoDinh.value);
+    }
     if (deletedAt.present) {
       map['deleted_at'] = Variable<DateTime>(deletedAt.value);
     }
@@ -2868,6 +2914,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
           ..write('parentId: $parentId, ')
           ..write('isGroup: $isGroup, ')
           ..write('isLocalOnly: $isLocalOnly, ')
+          ..write('aiCoDinh: $aiCoDinh, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('syncStatus: $syncStatus, ')
           ..write('syncRetryCount: $syncRetryCount, ')
@@ -8177,6 +8224,600 @@ class AppNotificationsCompanion extends UpdateCompanion<AppNotification> {
   }
 }
 
+class $AiRebalancingFeedbacksTable extends AiRebalancingFeedbacks
+    with TableInfo<$AiRebalancingFeedbacksTable, AiRebalancingFeedback> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AiRebalancingFeedbacksTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _idaccountMeta =
+      const VerificationMeta('idaccount');
+  @override
+  late final GeneratedColumn<int> idaccount = GeneratedColumn<int>(
+      'idaccount', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _deficitBudgetIdMeta =
+      const VerificationMeta('deficitBudgetId');
+  @override
+  late final GeneratedColumn<String> deficitBudgetId = GeneratedColumn<String>(
+      'deficit_budget_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _donorBudgetIdMeta =
+      const VerificationMeta('donorBudgetId');
+  @override
+  late final GeneratedColumn<String> donorBudgetId = GeneratedColumn<String>(
+      'donor_budget_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _donorCategoryIdMeta =
+      const VerificationMeta('donorCategoryId');
+  @override
+  late final GeneratedColumn<String> donorCategoryId = GeneratedColumn<String>(
+      'donor_category_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _suggestedAmountMeta =
+      const VerificationMeta('suggestedAmount');
+  @override
+  late final GeneratedColumn<double> suggestedAmount = GeneratedColumn<double>(
+      'suggested_amount', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _actualAmountMeta =
+      const VerificationMeta('actualAmount');
+  @override
+  late final GeneratedColumn<double> actualAmount = GeneratedColumn<double>(
+      'actual_amount', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _actionMeta = const VerificationMeta('action');
+  @override
+  late final GeneratedColumn<String> action = GeneratedColumn<String>(
+      'action', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _periodFromMeta =
+      const VerificationMeta('periodFrom');
+  @override
+  late final GeneratedColumn<DateTime> periodFrom = GeneratedColumn<DateTime>(
+      'period_from', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _periodToMeta =
+      const VerificationMeta('periodTo');
+  @override
+  late final GeneratedColumn<DateTime> periodTo = GeneratedColumn<DateTime>(
+      'period_to', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        idaccount,
+        createdAt,
+        deficitBudgetId,
+        donorBudgetId,
+        donorCategoryId,
+        suggestedAmount,
+        actualAmount,
+        action,
+        periodFrom,
+        periodTo
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'ai_rebalancing_feedbacks';
+  @override
+  VerificationContext validateIntegrity(
+      Insertable<AiRebalancingFeedback> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('idaccount')) {
+      context.handle(_idaccountMeta,
+          idaccount.isAcceptableOrUnknown(data['idaccount']!, _idaccountMeta));
+    } else if (isInserting) {
+      context.missing(_idaccountMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('deficit_budget_id')) {
+      context.handle(
+          _deficitBudgetIdMeta,
+          deficitBudgetId.isAcceptableOrUnknown(
+              data['deficit_budget_id']!, _deficitBudgetIdMeta));
+    } else if (isInserting) {
+      context.missing(_deficitBudgetIdMeta);
+    }
+    if (data.containsKey('donor_budget_id')) {
+      context.handle(
+          _donorBudgetIdMeta,
+          donorBudgetId.isAcceptableOrUnknown(
+              data['donor_budget_id']!, _donorBudgetIdMeta));
+    } else if (isInserting) {
+      context.missing(_donorBudgetIdMeta);
+    }
+    if (data.containsKey('donor_category_id')) {
+      context.handle(
+          _donorCategoryIdMeta,
+          donorCategoryId.isAcceptableOrUnknown(
+              data['donor_category_id']!, _donorCategoryIdMeta));
+    } else if (isInserting) {
+      context.missing(_donorCategoryIdMeta);
+    }
+    if (data.containsKey('suggested_amount')) {
+      context.handle(
+          _suggestedAmountMeta,
+          suggestedAmount.isAcceptableOrUnknown(
+              data['suggested_amount']!, _suggestedAmountMeta));
+    } else if (isInserting) {
+      context.missing(_suggestedAmountMeta);
+    }
+    if (data.containsKey('actual_amount')) {
+      context.handle(
+          _actualAmountMeta,
+          actualAmount.isAcceptableOrUnknown(
+              data['actual_amount']!, _actualAmountMeta));
+    } else if (isInserting) {
+      context.missing(_actualAmountMeta);
+    }
+    if (data.containsKey('action')) {
+      context.handle(_actionMeta,
+          action.isAcceptableOrUnknown(data['action']!, _actionMeta));
+    } else if (isInserting) {
+      context.missing(_actionMeta);
+    }
+    if (data.containsKey('period_from')) {
+      context.handle(
+          _periodFromMeta,
+          periodFrom.isAcceptableOrUnknown(
+              data['period_from']!, _periodFromMeta));
+    } else if (isInserting) {
+      context.missing(_periodFromMeta);
+    }
+    if (data.containsKey('period_to')) {
+      context.handle(_periodToMeta,
+          periodTo.isAcceptableOrUnknown(data['period_to']!, _periodToMeta));
+    } else if (isInserting) {
+      context.missing(_periodToMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AiRebalancingFeedback map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AiRebalancingFeedback(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      idaccount: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}idaccount'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      deficitBudgetId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}deficit_budget_id'])!,
+      donorBudgetId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}donor_budget_id'])!,
+      donorCategoryId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}donor_category_id'])!,
+      suggestedAmount: attachedDatabase.typeMapping.read(
+          DriftSqlType.double, data['${effectivePrefix}suggested_amount'])!,
+      actualAmount: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}actual_amount'])!,
+      action: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}action'])!,
+      periodFrom: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}period_from'])!,
+      periodTo: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}period_to'])!,
+    );
+  }
+
+  @override
+  $AiRebalancingFeedbacksTable createAlias(String alias) {
+    return $AiRebalancingFeedbacksTable(attachedDatabase, alias);
+  }
+}
+
+class AiRebalancingFeedback extends DataClass
+    implements Insertable<AiRebalancingFeedback> {
+  final String id;
+
+  /// Mọi truy vấn đọc **bắt buộc** lọc theo cột này.
+  final int idaccount;
+
+  /// Lúc người dùng quyết, không phải lúc kế hoạch được tính.
+  final DateTime createdAt;
+  final String deficitBudgetId;
+  final String donorBudgetId;
+
+  /// Giữ cả danh mục của nguồn bù: ngân sách có thể bị xoá, danh mục thì
+  /// xoá mềm nên id còn.
+  final String donorCategoryId;
+  final double suggestedAmount;
+
+  /// Số người dùng chốt: bằng [suggestedAmount] khi `accepted`, số họ sửa khi
+  /// `modified`, `0` khi `rejected`.
+  final double actualAmount;
+
+  /// `accepted` | `rejected` | `modified`.
+  final String action;
+
+  /// Kỳ của ngân sách **nguồn bù** lúc bị cắt, biên `[from, to)` — luật C3 đếm
+  /// "hai kỳ liền trước" bằng cặp này.
+  final DateTime periodFrom;
+  final DateTime periodTo;
+  const AiRebalancingFeedback(
+      {required this.id,
+      required this.idaccount,
+      required this.createdAt,
+      required this.deficitBudgetId,
+      required this.donorBudgetId,
+      required this.donorCategoryId,
+      required this.suggestedAmount,
+      required this.actualAmount,
+      required this.action,
+      required this.periodFrom,
+      required this.periodTo});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['idaccount'] = Variable<int>(idaccount);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['deficit_budget_id'] = Variable<String>(deficitBudgetId);
+    map['donor_budget_id'] = Variable<String>(donorBudgetId);
+    map['donor_category_id'] = Variable<String>(donorCategoryId);
+    map['suggested_amount'] = Variable<double>(suggestedAmount);
+    map['actual_amount'] = Variable<double>(actualAmount);
+    map['action'] = Variable<String>(action);
+    map['period_from'] = Variable<DateTime>(periodFrom);
+    map['period_to'] = Variable<DateTime>(periodTo);
+    return map;
+  }
+
+  AiRebalancingFeedbacksCompanion toCompanion(bool nullToAbsent) {
+    return AiRebalancingFeedbacksCompanion(
+      id: Value(id),
+      idaccount: Value(idaccount),
+      createdAt: Value(createdAt),
+      deficitBudgetId: Value(deficitBudgetId),
+      donorBudgetId: Value(donorBudgetId),
+      donorCategoryId: Value(donorCategoryId),
+      suggestedAmount: Value(suggestedAmount),
+      actualAmount: Value(actualAmount),
+      action: Value(action),
+      periodFrom: Value(periodFrom),
+      periodTo: Value(periodTo),
+    );
+  }
+
+  factory AiRebalancingFeedback.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AiRebalancingFeedback(
+      id: serializer.fromJson<String>(json['id']),
+      idaccount: serializer.fromJson<int>(json['idaccount']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      deficitBudgetId: serializer.fromJson<String>(json['deficitBudgetId']),
+      donorBudgetId: serializer.fromJson<String>(json['donorBudgetId']),
+      donorCategoryId: serializer.fromJson<String>(json['donorCategoryId']),
+      suggestedAmount: serializer.fromJson<double>(json['suggestedAmount']),
+      actualAmount: serializer.fromJson<double>(json['actualAmount']),
+      action: serializer.fromJson<String>(json['action']),
+      periodFrom: serializer.fromJson<DateTime>(json['periodFrom']),
+      periodTo: serializer.fromJson<DateTime>(json['periodTo']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'idaccount': serializer.toJson<int>(idaccount),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'deficitBudgetId': serializer.toJson<String>(deficitBudgetId),
+      'donorBudgetId': serializer.toJson<String>(donorBudgetId),
+      'donorCategoryId': serializer.toJson<String>(donorCategoryId),
+      'suggestedAmount': serializer.toJson<double>(suggestedAmount),
+      'actualAmount': serializer.toJson<double>(actualAmount),
+      'action': serializer.toJson<String>(action),
+      'periodFrom': serializer.toJson<DateTime>(periodFrom),
+      'periodTo': serializer.toJson<DateTime>(periodTo),
+    };
+  }
+
+  AiRebalancingFeedback copyWith(
+          {String? id,
+          int? idaccount,
+          DateTime? createdAt,
+          String? deficitBudgetId,
+          String? donorBudgetId,
+          String? donorCategoryId,
+          double? suggestedAmount,
+          double? actualAmount,
+          String? action,
+          DateTime? periodFrom,
+          DateTime? periodTo}) =>
+      AiRebalancingFeedback(
+        id: id ?? this.id,
+        idaccount: idaccount ?? this.idaccount,
+        createdAt: createdAt ?? this.createdAt,
+        deficitBudgetId: deficitBudgetId ?? this.deficitBudgetId,
+        donorBudgetId: donorBudgetId ?? this.donorBudgetId,
+        donorCategoryId: donorCategoryId ?? this.donorCategoryId,
+        suggestedAmount: suggestedAmount ?? this.suggestedAmount,
+        actualAmount: actualAmount ?? this.actualAmount,
+        action: action ?? this.action,
+        periodFrom: periodFrom ?? this.periodFrom,
+        periodTo: periodTo ?? this.periodTo,
+      );
+  AiRebalancingFeedback copyWithCompanion(
+      AiRebalancingFeedbacksCompanion data) {
+    return AiRebalancingFeedback(
+      id: data.id.present ? data.id.value : this.id,
+      idaccount: data.idaccount.present ? data.idaccount.value : this.idaccount,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      deficitBudgetId: data.deficitBudgetId.present
+          ? data.deficitBudgetId.value
+          : this.deficitBudgetId,
+      donorBudgetId: data.donorBudgetId.present
+          ? data.donorBudgetId.value
+          : this.donorBudgetId,
+      donorCategoryId: data.donorCategoryId.present
+          ? data.donorCategoryId.value
+          : this.donorCategoryId,
+      suggestedAmount: data.suggestedAmount.present
+          ? data.suggestedAmount.value
+          : this.suggestedAmount,
+      actualAmount: data.actualAmount.present
+          ? data.actualAmount.value
+          : this.actualAmount,
+      action: data.action.present ? data.action.value : this.action,
+      periodFrom:
+          data.periodFrom.present ? data.periodFrom.value : this.periodFrom,
+      periodTo: data.periodTo.present ? data.periodTo.value : this.periodTo,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AiRebalancingFeedback(')
+          ..write('id: $id, ')
+          ..write('idaccount: $idaccount, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('deficitBudgetId: $deficitBudgetId, ')
+          ..write('donorBudgetId: $donorBudgetId, ')
+          ..write('donorCategoryId: $donorCategoryId, ')
+          ..write('suggestedAmount: $suggestedAmount, ')
+          ..write('actualAmount: $actualAmount, ')
+          ..write('action: $action, ')
+          ..write('periodFrom: $periodFrom, ')
+          ..write('periodTo: $periodTo')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id,
+      idaccount,
+      createdAt,
+      deficitBudgetId,
+      donorBudgetId,
+      donorCategoryId,
+      suggestedAmount,
+      actualAmount,
+      action,
+      periodFrom,
+      periodTo);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AiRebalancingFeedback &&
+          other.id == this.id &&
+          other.idaccount == this.idaccount &&
+          other.createdAt == this.createdAt &&
+          other.deficitBudgetId == this.deficitBudgetId &&
+          other.donorBudgetId == this.donorBudgetId &&
+          other.donorCategoryId == this.donorCategoryId &&
+          other.suggestedAmount == this.suggestedAmount &&
+          other.actualAmount == this.actualAmount &&
+          other.action == this.action &&
+          other.periodFrom == this.periodFrom &&
+          other.periodTo == this.periodTo);
+}
+
+class AiRebalancingFeedbacksCompanion
+    extends UpdateCompanion<AiRebalancingFeedback> {
+  final Value<String> id;
+  final Value<int> idaccount;
+  final Value<DateTime> createdAt;
+  final Value<String> deficitBudgetId;
+  final Value<String> donorBudgetId;
+  final Value<String> donorCategoryId;
+  final Value<double> suggestedAmount;
+  final Value<double> actualAmount;
+  final Value<String> action;
+  final Value<DateTime> periodFrom;
+  final Value<DateTime> periodTo;
+  final Value<int> rowid;
+  const AiRebalancingFeedbacksCompanion({
+    this.id = const Value.absent(),
+    this.idaccount = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.deficitBudgetId = const Value.absent(),
+    this.donorBudgetId = const Value.absent(),
+    this.donorCategoryId = const Value.absent(),
+    this.suggestedAmount = const Value.absent(),
+    this.actualAmount = const Value.absent(),
+    this.action = const Value.absent(),
+    this.periodFrom = const Value.absent(),
+    this.periodTo = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AiRebalancingFeedbacksCompanion.insert({
+    required String id,
+    required int idaccount,
+    required DateTime createdAt,
+    required String deficitBudgetId,
+    required String donorBudgetId,
+    required String donorCategoryId,
+    required double suggestedAmount,
+    required double actualAmount,
+    required String action,
+    required DateTime periodFrom,
+    required DateTime periodTo,
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        idaccount = Value(idaccount),
+        createdAt = Value(createdAt),
+        deficitBudgetId = Value(deficitBudgetId),
+        donorBudgetId = Value(donorBudgetId),
+        donorCategoryId = Value(donorCategoryId),
+        suggestedAmount = Value(suggestedAmount),
+        actualAmount = Value(actualAmount),
+        action = Value(action),
+        periodFrom = Value(periodFrom),
+        periodTo = Value(periodTo);
+  static Insertable<AiRebalancingFeedback> custom({
+    Expression<String>? id,
+    Expression<int>? idaccount,
+    Expression<DateTime>? createdAt,
+    Expression<String>? deficitBudgetId,
+    Expression<String>? donorBudgetId,
+    Expression<String>? donorCategoryId,
+    Expression<double>? suggestedAmount,
+    Expression<double>? actualAmount,
+    Expression<String>? action,
+    Expression<DateTime>? periodFrom,
+    Expression<DateTime>? periodTo,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (idaccount != null) 'idaccount': idaccount,
+      if (createdAt != null) 'created_at': createdAt,
+      if (deficitBudgetId != null) 'deficit_budget_id': deficitBudgetId,
+      if (donorBudgetId != null) 'donor_budget_id': donorBudgetId,
+      if (donorCategoryId != null) 'donor_category_id': donorCategoryId,
+      if (suggestedAmount != null) 'suggested_amount': suggestedAmount,
+      if (actualAmount != null) 'actual_amount': actualAmount,
+      if (action != null) 'action': action,
+      if (periodFrom != null) 'period_from': periodFrom,
+      if (periodTo != null) 'period_to': periodTo,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AiRebalancingFeedbacksCompanion copyWith(
+      {Value<String>? id,
+      Value<int>? idaccount,
+      Value<DateTime>? createdAt,
+      Value<String>? deficitBudgetId,
+      Value<String>? donorBudgetId,
+      Value<String>? donorCategoryId,
+      Value<double>? suggestedAmount,
+      Value<double>? actualAmount,
+      Value<String>? action,
+      Value<DateTime>? periodFrom,
+      Value<DateTime>? periodTo,
+      Value<int>? rowid}) {
+    return AiRebalancingFeedbacksCompanion(
+      id: id ?? this.id,
+      idaccount: idaccount ?? this.idaccount,
+      createdAt: createdAt ?? this.createdAt,
+      deficitBudgetId: deficitBudgetId ?? this.deficitBudgetId,
+      donorBudgetId: donorBudgetId ?? this.donorBudgetId,
+      donorCategoryId: donorCategoryId ?? this.donorCategoryId,
+      suggestedAmount: suggestedAmount ?? this.suggestedAmount,
+      actualAmount: actualAmount ?? this.actualAmount,
+      action: action ?? this.action,
+      periodFrom: periodFrom ?? this.periodFrom,
+      periodTo: periodTo ?? this.periodTo,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (idaccount.present) {
+      map['idaccount'] = Variable<int>(idaccount.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (deficitBudgetId.present) {
+      map['deficit_budget_id'] = Variable<String>(deficitBudgetId.value);
+    }
+    if (donorBudgetId.present) {
+      map['donor_budget_id'] = Variable<String>(donorBudgetId.value);
+    }
+    if (donorCategoryId.present) {
+      map['donor_category_id'] = Variable<String>(donorCategoryId.value);
+    }
+    if (suggestedAmount.present) {
+      map['suggested_amount'] = Variable<double>(suggestedAmount.value);
+    }
+    if (actualAmount.present) {
+      map['actual_amount'] = Variable<double>(actualAmount.value);
+    }
+    if (action.present) {
+      map['action'] = Variable<String>(action.value);
+    }
+    if (periodFrom.present) {
+      map['period_from'] = Variable<DateTime>(periodFrom.value);
+    }
+    if (periodTo.present) {
+      map['period_to'] = Variable<DateTime>(periodTo.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AiRebalancingFeedbacksCompanion(')
+          ..write('id: $id, ')
+          ..write('idaccount: $idaccount, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('deficitBudgetId: $deficitBudgetId, ')
+          ..write('donorBudgetId: $donorBudgetId, ')
+          ..write('donorCategoryId: $donorCategoryId, ')
+          ..write('suggestedAmount: $suggestedAmount, ')
+          ..write('actualAmount: $actualAmount, ')
+          ..write('action: $action, ')
+          ..write('periodFrom: $periodFrom, ')
+          ..write('periodTo: $periodTo, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -8192,6 +8833,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $GoalsTable goals = $GoalsTable(this);
   late final $AppNotificationsTable appNotifications =
       $AppNotificationsTable(this);
+  late final $AiRebalancingFeedbacksTable aiRebalancingFeedbacks =
+      $AiRebalancingFeedbacksTable(this);
   late final Index idxAppnotifFeed = Index('idx_appnotif_feed',
       'CREATE INDEX idx_appnotif_feed ON app_notifications (idaccount, created_at)');
   late final WalletDao walletDao = WalletDao(this as AppDatabase);
@@ -8203,6 +8846,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final GoalDao goalDao = GoalDao(this as AppDatabase);
   late final NotificationDao notificationDao =
       NotificationDao(this as AppDatabase);
+  late final AiFeedbackDao aiFeedbackDao = AiFeedbackDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -8217,6 +8861,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         bills,
         goals,
         appNotifications,
+        aiRebalancingFeedbacks,
         idxAppnotifFeed
       ];
 }
@@ -9250,6 +9895,7 @@ typedef $$CategoriesTableCreateCompanionBuilder = CategoriesCompanion Function({
   Value<String?> parentId,
   Value<bool> isGroup,
   Value<bool> isLocalOnly,
+  Value<bool> aiCoDinh,
   Value<DateTime?> deletedAt,
   Value<String> syncStatus,
   Value<int> syncRetryCount,
@@ -9270,6 +9916,7 @@ typedef $$CategoriesTableUpdateCompanionBuilder = CategoriesCompanion Function({
   Value<String?> parentId,
   Value<bool> isGroup,
   Value<bool> isLocalOnly,
+  Value<bool> aiCoDinh,
   Value<DateTime?> deletedAt,
   Value<String> syncStatus,
   Value<int> syncRetryCount,
@@ -9320,6 +9967,9 @@ class $$CategoriesTableFilterComposer
 
   ColumnFilters<bool> get isLocalOnly => $composableBuilder(
       column: $table.isLocalOnly, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get aiCoDinh => $composableBuilder(
+      column: $table.aiCoDinh, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get deletedAt => $composableBuilder(
       column: $table.deletedAt, builder: (column) => ColumnFilters(column));
@@ -9384,6 +10034,9 @@ class $$CategoriesTableOrderingComposer
   ColumnOrderings<bool> get isLocalOnly => $composableBuilder(
       column: $table.isLocalOnly, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<bool> get aiCoDinh => $composableBuilder(
+      column: $table.aiCoDinh, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
       column: $table.deletedAt, builder: (column) => ColumnOrderings(column));
 
@@ -9447,6 +10100,9 @@ class $$CategoriesTableAnnotationComposer
   GeneratedColumn<bool> get isLocalOnly => $composableBuilder(
       column: $table.isLocalOnly, builder: (column) => column);
 
+  GeneratedColumn<bool> get aiCoDinh =>
+      $composableBuilder(column: $table.aiCoDinh, builder: (column) => column);
+
   GeneratedColumn<DateTime> get deletedAt =>
       $composableBuilder(column: $table.deletedAt, builder: (column) => column);
 
@@ -9500,6 +10156,7 @@ class $$CategoriesTableTableManager extends RootTableManager<
             Value<String?> parentId = const Value.absent(),
             Value<bool> isGroup = const Value.absent(),
             Value<bool> isLocalOnly = const Value.absent(),
+            Value<bool> aiCoDinh = const Value.absent(),
             Value<DateTime?> deletedAt = const Value.absent(),
             Value<String> syncStatus = const Value.absent(),
             Value<int> syncRetryCount = const Value.absent(),
@@ -9520,6 +10177,7 @@ class $$CategoriesTableTableManager extends RootTableManager<
             parentId: parentId,
             isGroup: isGroup,
             isLocalOnly: isLocalOnly,
+            aiCoDinh: aiCoDinh,
             deletedAt: deletedAt,
             syncStatus: syncStatus,
             syncRetryCount: syncRetryCount,
@@ -9540,6 +10198,7 @@ class $$CategoriesTableTableManager extends RootTableManager<
             Value<String?> parentId = const Value.absent(),
             Value<bool> isGroup = const Value.absent(),
             Value<bool> isLocalOnly = const Value.absent(),
+            Value<bool> aiCoDinh = const Value.absent(),
             Value<DateTime?> deletedAt = const Value.absent(),
             Value<String> syncStatus = const Value.absent(),
             Value<int> syncRetryCount = const Value.absent(),
@@ -9560,6 +10219,7 @@ class $$CategoriesTableTableManager extends RootTableManager<
             parentId: parentId,
             isGroup: isGroup,
             isLocalOnly: isLocalOnly,
+            aiCoDinh: aiCoDinh,
             deletedAt: deletedAt,
             syncStatus: syncStatus,
             syncRetryCount: syncRetryCount,
@@ -11781,6 +12441,284 @@ typedef $$AppNotificationsTableProcessedTableManager = ProcessedTableManager<
     ),
     AppNotification,
     PrefetchHooks Function()>;
+typedef $$AiRebalancingFeedbacksTableCreateCompanionBuilder
+    = AiRebalancingFeedbacksCompanion Function({
+  required String id,
+  required int idaccount,
+  required DateTime createdAt,
+  required String deficitBudgetId,
+  required String donorBudgetId,
+  required String donorCategoryId,
+  required double suggestedAmount,
+  required double actualAmount,
+  required String action,
+  required DateTime periodFrom,
+  required DateTime periodTo,
+  Value<int> rowid,
+});
+typedef $$AiRebalancingFeedbacksTableUpdateCompanionBuilder
+    = AiRebalancingFeedbacksCompanion Function({
+  Value<String> id,
+  Value<int> idaccount,
+  Value<DateTime> createdAt,
+  Value<String> deficitBudgetId,
+  Value<String> donorBudgetId,
+  Value<String> donorCategoryId,
+  Value<double> suggestedAmount,
+  Value<double> actualAmount,
+  Value<String> action,
+  Value<DateTime> periodFrom,
+  Value<DateTime> periodTo,
+  Value<int> rowid,
+});
+
+class $$AiRebalancingFeedbacksTableFilterComposer
+    extends Composer<_$AppDatabase, $AiRebalancingFeedbacksTable> {
+  $$AiRebalancingFeedbacksTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get idaccount => $composableBuilder(
+      column: $table.idaccount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get deficitBudgetId => $composableBuilder(
+      column: $table.deficitBudgetId,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get donorBudgetId => $composableBuilder(
+      column: $table.donorBudgetId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get donorCategoryId => $composableBuilder(
+      column: $table.donorCategoryId,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get suggestedAmount => $composableBuilder(
+      column: $table.suggestedAmount,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get actualAmount => $composableBuilder(
+      column: $table.actualAmount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get action => $composableBuilder(
+      column: $table.action, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get periodFrom => $composableBuilder(
+      column: $table.periodFrom, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get periodTo => $composableBuilder(
+      column: $table.periodTo, builder: (column) => ColumnFilters(column));
+}
+
+class $$AiRebalancingFeedbacksTableOrderingComposer
+    extends Composer<_$AppDatabase, $AiRebalancingFeedbacksTable> {
+  $$AiRebalancingFeedbacksTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get idaccount => $composableBuilder(
+      column: $table.idaccount, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get deficitBudgetId => $composableBuilder(
+      column: $table.deficitBudgetId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get donorBudgetId => $composableBuilder(
+      column: $table.donorBudgetId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get donorCategoryId => $composableBuilder(
+      column: $table.donorCategoryId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get suggestedAmount => $composableBuilder(
+      column: $table.suggestedAmount,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get actualAmount => $composableBuilder(
+      column: $table.actualAmount,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get action => $composableBuilder(
+      column: $table.action, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get periodFrom => $composableBuilder(
+      column: $table.periodFrom, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get periodTo => $composableBuilder(
+      column: $table.periodTo, builder: (column) => ColumnOrderings(column));
+}
+
+class $$AiRebalancingFeedbacksTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AiRebalancingFeedbacksTable> {
+  $$AiRebalancingFeedbacksTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get idaccount =>
+      $composableBuilder(column: $table.idaccount, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get deficitBudgetId => $composableBuilder(
+      column: $table.deficitBudgetId, builder: (column) => column);
+
+  GeneratedColumn<String> get donorBudgetId => $composableBuilder(
+      column: $table.donorBudgetId, builder: (column) => column);
+
+  GeneratedColumn<String> get donorCategoryId => $composableBuilder(
+      column: $table.donorCategoryId, builder: (column) => column);
+
+  GeneratedColumn<double> get suggestedAmount => $composableBuilder(
+      column: $table.suggestedAmount, builder: (column) => column);
+
+  GeneratedColumn<double> get actualAmount => $composableBuilder(
+      column: $table.actualAmount, builder: (column) => column);
+
+  GeneratedColumn<String> get action =>
+      $composableBuilder(column: $table.action, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get periodFrom => $composableBuilder(
+      column: $table.periodFrom, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get periodTo =>
+      $composableBuilder(column: $table.periodTo, builder: (column) => column);
+}
+
+class $$AiRebalancingFeedbacksTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $AiRebalancingFeedbacksTable,
+    AiRebalancingFeedback,
+    $$AiRebalancingFeedbacksTableFilterComposer,
+    $$AiRebalancingFeedbacksTableOrderingComposer,
+    $$AiRebalancingFeedbacksTableAnnotationComposer,
+    $$AiRebalancingFeedbacksTableCreateCompanionBuilder,
+    $$AiRebalancingFeedbacksTableUpdateCompanionBuilder,
+    (
+      AiRebalancingFeedback,
+      BaseReferences<_$AppDatabase, $AiRebalancingFeedbacksTable,
+          AiRebalancingFeedback>
+    ),
+    AiRebalancingFeedback,
+    PrefetchHooks Function()> {
+  $$AiRebalancingFeedbacksTableTableManager(
+      _$AppDatabase db, $AiRebalancingFeedbacksTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AiRebalancingFeedbacksTableFilterComposer(
+                  $db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AiRebalancingFeedbacksTableOrderingComposer(
+                  $db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AiRebalancingFeedbacksTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<int> idaccount = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<String> deficitBudgetId = const Value.absent(),
+            Value<String> donorBudgetId = const Value.absent(),
+            Value<String> donorCategoryId = const Value.absent(),
+            Value<double> suggestedAmount = const Value.absent(),
+            Value<double> actualAmount = const Value.absent(),
+            Value<String> action = const Value.absent(),
+            Value<DateTime> periodFrom = const Value.absent(),
+            Value<DateTime> periodTo = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              AiRebalancingFeedbacksCompanion(
+            id: id,
+            idaccount: idaccount,
+            createdAt: createdAt,
+            deficitBudgetId: deficitBudgetId,
+            donorBudgetId: donorBudgetId,
+            donorCategoryId: donorCategoryId,
+            suggestedAmount: suggestedAmount,
+            actualAmount: actualAmount,
+            action: action,
+            periodFrom: periodFrom,
+            periodTo: periodTo,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required int idaccount,
+            required DateTime createdAt,
+            required String deficitBudgetId,
+            required String donorBudgetId,
+            required String donorCategoryId,
+            required double suggestedAmount,
+            required double actualAmount,
+            required String action,
+            required DateTime periodFrom,
+            required DateTime periodTo,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              AiRebalancingFeedbacksCompanion.insert(
+            id: id,
+            idaccount: idaccount,
+            createdAt: createdAt,
+            deficitBudgetId: deficitBudgetId,
+            donorBudgetId: donorBudgetId,
+            donorCategoryId: donorCategoryId,
+            suggestedAmount: suggestedAmount,
+            actualAmount: actualAmount,
+            action: action,
+            periodFrom: periodFrom,
+            periodTo: periodTo,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$AiRebalancingFeedbacksTableProcessedTableManager
+    = ProcessedTableManager<
+        _$AppDatabase,
+        $AiRebalancingFeedbacksTable,
+        AiRebalancingFeedback,
+        $$AiRebalancingFeedbacksTableFilterComposer,
+        $$AiRebalancingFeedbacksTableOrderingComposer,
+        $$AiRebalancingFeedbacksTableAnnotationComposer,
+        $$AiRebalancingFeedbacksTableCreateCompanionBuilder,
+        $$AiRebalancingFeedbacksTableUpdateCompanionBuilder,
+        (
+          AiRebalancingFeedback,
+          BaseReferences<_$AppDatabase, $AiRebalancingFeedbacksTable,
+              AiRebalancingFeedback>
+        ),
+        AiRebalancingFeedback,
+        PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -11804,4 +12742,7 @@ class $AppDatabaseManager {
       $$GoalsTableTableManager(_db, _db.goals);
   $$AppNotificationsTableTableManager get appNotifications =>
       $$AppNotificationsTableTableManager(_db, _db.appNotifications);
+  $$AiRebalancingFeedbacksTableTableManager get aiRebalancingFeedbacks =>
+      $$AiRebalancingFeedbacksTableTableManager(
+          _db, _db.aiRebalancingFeedbacks);
 }

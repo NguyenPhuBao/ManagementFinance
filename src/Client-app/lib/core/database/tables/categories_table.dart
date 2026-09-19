@@ -26,6 +26,14 @@ class Categories extends Table {
   BoolColumn get isGroup => boolean().withDefault(const Constant(false))();
   BoolColumn get isLocalOnly => boolean().withDefault(const Constant(false))();
 
+  /// **Cục bộ, KHÔNG đi qua đồng bộ.** Cờ "Cố định — AI không đề xuất cắt"
+  /// (luật C2 đặc tả Edge-SLM): danh mục có cờ không bao giờ được chọn làm
+  /// nguồn bù khi tái phân bổ ngân sách. Cùng khuôn `wallets.allow_negative`
+  /// (v23): server không có cột tương ứng, `categoryForPush` không đọc nó,
+  /// nhánh kéo về không chạm nó. Thêm ở v24 (2026-09-19). Test quét thứ 15
+  /// canh nó không lọt vào đường đồng bộ.
+  BoolColumn get aiCoDinh => boolean().withDefault(const Constant(false))();
+
   // ── Soft delete (DB v2) ───────────────────────────────────────────────────
   /// deletedAt: NULL = đang dùng, có giá trị = đã xóa mềm (đồng bộ với backend)
   DateTimeColumn get deletedAt => dateTime().nullable()();

@@ -104,7 +104,7 @@
 flutter test
 flutter analyze          # mức nền: 26 issue (25 cũ + 1 `deprecated_member_use` `onReorder` ở goal_page.dart:233 do Flutter 3.47 — cố ý chưa sửa, đo 2026-09-19), KHÔNG có error
 
-# Sau khi sửa Drift tables/DAOs (schema hiện tại: v23)
+# Sau khi sửa Drift tables/DAOs (schema hiện tại: v24 — 2026-09-19, Edge-SLM P2: cột `categories.ai_co_dinh` + bảng `AiRebalancingFeedbacks`, cả hai cục bộ)
 dart run build_runner build --delete-conflicting-outputs
 
 # Chạy app
