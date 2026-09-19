@@ -87,7 +87,10 @@ class SettingsPage extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
+                      // `onPrimaryContainer`, KHÔNG phải `primary`: hai hằng
+                      // ấy cùng là #1A1A19 nên chữ chìm hẳn vào nền — cùng
+                      // lỗi A9 đã sửa ở drawer.
+                      color: AppColors.onPrimaryContainer,
                     ),
                   ),
                 ),

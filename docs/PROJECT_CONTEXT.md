@@ -682,7 +682,18 @@ giờ bấm được, và trang Cài đặt cũ thì đúng nút ấy có nối 
 `/settings/edit-profile`. ⚠️ **Test quét `khong_co_nut_chet_test.dart` KHÔNG
 bắt được kiểu này**: lưới của nó tìm *handler rỗng* (`onPressed: () {}`), còn
 đây là nút **không có handler** — hai hình dạng khác nhau, và hình dạng thứ hai
-khó thấy hơn vì mã trông hoàn toàn bình thường. *(Câu "Trang chủ từng là chỗ duy nhất viết
+khó thấy hơn vì mã trông hoàn toàn bình thường.
+
+⚠️ **Lỗi thứ sáu, lộ ra ngay khi nút bút chì ấy mở được trang Thông tin cá
+nhân:** avatar ở trang đó là một **vòng đen trống**. `AppColors.primaryContainer`
+**chính là** `AppColors.primary` (cùng `#1A1A19`, `app_colors.dart:50`), nên
+viết chữ `primary` lên nền `primaryContainer` là chữ đen trên nền đen. A9 đã
+sửa đúng lỗi này ở **drawer** sáng cùng ngày nhưng **bỏ sót hai chỗ khác**:
+`edit_profile_page.dart` và `settings_page.dart`. Nay có
+`profile/avatar_chu_khac_mau_nen_test.dart` quét `lib/` bằng **cửa sổ 20 dòng**
+sau mỗi khai báo nền `primaryContainer` — nó bắt đúng hai chỗ ấy và không dương
+tính giả. **Bài học: sửa một lỗi màu thì grep cả cặp hằng, đừng sửa mỗi chỗ vừa
+nhìn thấy** — và một ca quét rẻ hơn hẳn việc nhớ. *(Câu "Trang chủ từng là chỗ duy nhất viết
 không cách" ghi ở đây lúc đầu là **sai** — B3 cùng ngày đếm được 20 chỗ ở 7
 tệp, xem đoạn B3/B4 dưới.)* Có ca thử với **13 chữ số** (trần G45/G46) để bố cục
 được thử với giá trị lớn nhất. 3 ca ở `the_so_lieu_thang_test.dart`. **Schema

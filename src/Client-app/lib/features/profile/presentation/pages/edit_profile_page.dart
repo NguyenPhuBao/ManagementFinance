@@ -164,7 +164,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
                               style: const TextStyle(
                                 fontSize: 36,
                                 fontWeight: FontWeight.bold,
-                                color: AppColors.primary,
+                                // `onPrimaryContainer`, KHÔNG phải `primary`:
+                                // hai hằng `primary` và `primaryContainer`
+                                // cùng là #1A1A19, nên chữ `primary` trên nền
+                                // ấy là chữ đen trên nền đen — một vòng tròn
+                                // trống. Cùng lỗi A9 đã sửa ở drawer.
+                                color: AppColors.onPrimaryContainer,
                               ),
                             ),
                           ),
