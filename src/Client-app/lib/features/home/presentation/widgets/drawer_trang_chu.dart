@@ -1,0 +1,171 @@
+import 'package:flutter/material.dart';
+
+import '../../../../shared/theme/app_colors.dart';
+
+/// Một mục trong drawer: nhãn, icon, và route đích.
+class MucDrawer {
+  const MucDrawer(this.nhan, this.icon, this.duong);
+
+  final String nhan;
+  final IconData icon;
+  final String duong;
+}
+
+/// Danh sách mục của drawer Trang chủ, theo màn Stitch *"FlowMoney Home with
+/// Side Menu Drawer"* (9 mục, chia hai nhóm bằng một vạch).
+///
+/// Là hằng công khai để test đối chiếu **từng đường với router thật**: bản
+/// trước trỏ "Xuất báo cáo" vào `/reports` — một route không tồn tại — rồi
+/// che bằng SnackBar "đang phát triển" trong khi trang ấy đã có từ 2026-09-09
+/// ở `/export-report`. Route và lời gọi là hai chuỗi rời nhau nên
+/// `flutter analyze` không nói gì (cùng loại lỗi với test quét `bank-link`).
+const List<MucDrawer> kMucDrawer = [
+  MucDrawer('Quản lý ví', Icons.account_balance_wallet, '/wallets'),
+  MucDrawer('Mục tiêu tiết kiệm', Icons.track_changes, '/goals'),
+  MucDrawer('Ngân sách', Icons.savings, '/budget'),
+  MucDrawer('Hóa đơn & Dịch vụ', Icons.receipt_long, '/bills'),
+  MucDrawer('Thống kê', Icons.analytics, '/analytics'),
+  MucDrawer('Xuất báo cáo', Icons.description, '/export-report'),
+  MucDrawer('Trợ lý AI', Icons.smart_toy, '/ai-chat'),
+  MucDrawer('Cá nhân', Icons.person, '/profile'),
+  MucDrawer('Cài đặt', Icons.settings, '/settings'),
+];
+
+/// Vạch ngăn đứng **trước** mục có nhãn này (nhóm tài khoản ở dưới).
+const String _mucDauNhomDuoi = 'Cá nhân';
+
+/// Drawer của Trang chủ. Chỉ nhận dữ liệu và callback — không đọc bloc, không
+/// điều hướng — để test dựng được một mình.
+///
+/// Tách khỏi `HomePage` ngày 2026-09-19 sau lượt đánh giá UX. Ba lỗi đo trên
+/// máy ảo, cả ba nằm ở đây: đường `/reports` sai (xem [kMucDrawer]); avatar là
+/// vòng đen trống vì chữ cái đầu tô `AppColors.primary` trên nền
+/// `AppColors.primaryContainer` mà hai màu ấy là **một**; và thiếu "Đăng xuất"
+/// ở đáy dù màn Stitch có.
+class DrawerTrangChu extends StatelessWidget {
+  const DrawerTrangChu({
+    super.key,
+    required this.ten,
+    required this.email,
+    required this.onChon,
+    required this.onDangXuat,
+  });
+
+  /// Tên hiển thị; rỗng thì avatar hiện "U" như bản cũ.
+  final String ten;
+  final String email;
+
+  /// Người dùng chạm một mục; nhận [MucDrawer.duong].
+  final void Function(String duong) onChon;
+  final VoidCallback onDangXuat;
+
+  @override
+  Widget build(BuildContext context) {
+    return Drawer(
+      backgroundColor: AppColors.background,
+      child: SafeArea(
+        child: Column(
+          children: [
+            _dauDrawer(),
+            const Divider(color: AppColors.outlineVariant),
+            Expanded(
+              child: ListView(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                children: [
+                  for (final m in kMucDrawer) ...[
+                    if (m.nhan == _mucDauNhomDuoi) ...[
+                      const SizedBox(height: 16),
+                      const Divider(color: AppColors.outlineVariant),
+                      const SizedBox(height: 16),
+                    ],
+                    _muc(m),
+                  ],
+                ],
+              ),
+            ),
+            const Divider(color: AppColors.outlineVariant),
+            ListTile(
+              leading: const Icon(Icons.logout, color: AppColors.expense),
+              title: const Text(
+                'Đăng xuất',
+                style: TextStyle(
+                    fontWeight: FontWeight.w600, color: AppColors.expense),
+              ),
+              dense: true,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 32),
+              onTap: onDangXuat,
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _dauDrawer() {
+    final chuCai = ten.isNotEmpty ? ten[0].toUpperCase() : 'U';
+    return Container(
+      padding: const EdgeInsets.all(24),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 30,
+            backgroundColor: AppColors.primaryContainer,
+            child: Text(
+              chuCai,
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                // `onPrimaryContainer`, KHÔNG phải `primary`: `primary` và
+                // `primaryContainer` cùng là #1A1A19, chữ đen trên nền đen.
+                color: AppColors.onPrimaryContainer,
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  ten.isNotEmpty ? ten : 'Người dùng',
+                  style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (email.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    email,
+                    style: const TextStyle(
+                        fontSize: 12, color: AppColors.textSecondary),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _muc(MucDrawer m) {
+    return ListTile(
+      leading: Icon(m.icon, color: AppColors.primary),
+      title: Text(m.nhan,
+          style: const TextStyle(
+              fontWeight: FontWeight.w600, color: AppColors.primary)),
+      dense: true,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      onTap: () => onChon(m.duong),
+    );
+  }
+}

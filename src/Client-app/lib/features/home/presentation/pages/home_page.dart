@@ -10,6 +10,8 @@ import '../widgets/home_action_buttons.dart';
 import '../widgets/home_budget_card.dart';
 import '../widgets/home_goal_card.dart';
 import '../widgets/the_cho_xoa_trang_chu.dart';
+import '../widgets/drawer_trang_chu.dart';
+import '../../../auth/presentation/xac_nhan_dang_xuat.dart';
 import '../../../budget/data/models/budget_entity.dart';
 import '../../../budget/data/repositories/budget_repository.dart';
 import '../../../goal/data/models/goal_entity.dart';
@@ -243,109 +245,33 @@ class HomePage extends StatelessWidget {
     );
   }
 
+  /// Drawer là widget riêng (`DrawerTrangChu`) từ 2026-09-19 để test được mà
+  /// không dựng cả trang; ở đây chỉ còn đọc tên/email từ bloc và nối callback.
   Widget _buildDrawer(BuildContext context) {
-    return Drawer(
-      backgroundColor: AppColors.background,
-      child: SafeArea(
-        child: Column(
-          children: [
-            BlocBuilder<AuthBloc, AuthState>(
-              builder: (context, state) {
-                final user = (state is AuthSuccess) ? state.user : null;
-                final name = (user?.name != null && user!.name.isNotEmpty)
-                    ? user.name
-                    : ((user?.username != null && user!.username.isNotEmpty)
-                        ? user.username
-                        : 'Người dùng');
-                final email = user?.email ?? '';
-
-                return Container(
-                  padding: const EdgeInsets.all(24),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 30,
-                        backgroundColor: AppColors.primaryContainer,
-                        child: Text(
-                          name.isNotEmpty ? name[0].toUpperCase() : 'U',
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              name,
-                              style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.primary),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            if (email.isNotEmpty) ...[
-                              const SizedBox(height: 4),
-                              Text(
-                                email,
-                                style: const TextStyle(
-                                    fontSize: 12, color: AppColors.textSecondary),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-            const Divider(color: AppColors.outlineVariant),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                children: [
-                  _buildDrawerItem(context, 'Quản lý ví', Icons.account_balance_wallet, '/wallets'),
-                  _buildDrawerItem(context, 'Mục tiêu tiết kiệm', Icons.track_changes, '/goals'),
-                  _buildDrawerItem(context, 'Ngân sách', Icons.savings, '/budget'),
-                  _buildDrawerItem(context, 'Hóa đơn & Dịch vụ', Icons.receipt_long, '/bills'),
-                  _buildDrawerItem(context, 'Thống kê', Icons.analytics, '/analytics'),
-                  _buildDrawerItem(context, 'Xuất báo cáo', Icons.description, '/reports'),
-                  _buildDrawerItem(context, 'Trợ lý AI', Icons.smart_toy, '/ai-chat'),
-                  const SizedBox(height: 16),
-                  const Divider(color: AppColors.outlineVariant),
-                  const SizedBox(height: 16),
-                  _buildDrawerItem(context, 'Cá nhân', Icons.person, '/profile'),
-                  _buildDrawerItem(context, 'Cài đặt', Icons.settings, '/settings'),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDrawerItem(BuildContext context, String title, IconData icon, String route) {
-    return ListTile(
-      leading: Icon(icon, color: AppColors.primary),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.primary)),
-      dense: true,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      onTap: () {
-        context.pop(); // close drawer
-        if (route == '/reports') {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tính năng Xuất báo cáo đang phát triển')));
-        } else {
-          context.push(route);
-        }
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, state) {
+        final user = (state is AuthSuccess) ? state.user : null;
+        final name = (user?.name != null && user!.name.isNotEmpty)
+            ? user.name
+            : ((user?.username != null && user!.username.isNotEmpty)
+                ? user.username
+                : '');
+        return DrawerTrangChu(
+          ten: name,
+          email: user?.email ?? '',
+          onChon: (duong) {
+            context.pop(); // đóng drawer
+            context.push(duong);
+          },
+          onDangXuat: () async {
+            context.pop(); // đóng drawer trước, hộp thoại mở trên trang
+            final dongY = await xacNhanDangXuat(context);
+            if (dongY == true && context.mounted) {
+              context.read<AuthBloc>().add(LogoutRequested());
+              context.go('/login');
+            }
+          },
+        );
       },
     );
   }

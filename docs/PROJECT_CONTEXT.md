@@ -627,6 +627,23 @@ hiện "Đã gửi lại mã tới …" (3 ca ở `otp_gui_lai_ma_test.dart`). H
 canh icon menu ở Cá nhân và Phân tích không quay lại. **Schema không đổi, payload
 không đổi.**
 
+**A4 · A9 — drawer Trang chủ (xong 2026-09-19).** Drawer tách thành widget riêng
+`home/presentation/widgets/drawer_trang_chu.dart` nhận dữ liệu và callback,
+không đọc bloc, để test dựng được một mình; `HomePage._buildDrawer` chỉ còn đọc
+tên/email và nối callback. Ba lỗi máy ảo đo được, cả ba ở đây: (1) mục "Xuất
+báo cáo" trỏ `/reports` — **route không tồn tại** — rồi che bằng SnackBar "đang
+phát triển" dù trang ấy có từ 2026-09-09 ở `/export-report`; nay danh sách mục
+là hằng công khai `kMucDrawer` và có ca test **đối chiếu từng đường với router
+thật** (`router.configuration.findMatch(...).isError`), cùng họ với test quét
+`bank-link`: route và lời gọi là hai chuỗi rời nhau nên `flutter analyze` im
+lặng. (2) Avatar là **vòng đen trống**: chữ cái đầu tô `AppColors.primary` trên
+nền `AppColors.primaryContainer` mà hai hằng ấy cùng là `#1A1A19` — nay
+`onPrimaryContainer`, có ca test đòi màu chữ **khác** màu nền. (3) Thiếu "Đăng
+xuất" ở đáy dù màn Stitch *"Home with Side Menu Drawer"* có — nay có, đi qua
+**`xacNhanDangXuat`** (`auth/presentation/xac_nhan_dang_xuat.dart`), hộp thoại
+xác nhận tách từ tab Cá nhân để hai chỗ dùng chung một định nghĩa. 5 ca ở
+`drawer_trang_chu_test.dart`. **Schema không đổi, payload không đổi.**
+
 ### 🏦 Gỡ phần client của liên kết ngân hàng (2026-09-18)
 
 **Nhóm chốt bỏ tính năng liên kết ngân hàng.** Đây là quyết định sản phẩm, không

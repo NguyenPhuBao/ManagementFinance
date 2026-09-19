@@ -7,6 +7,7 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/widgets/notification_bell.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/xac_nhan_dang_xuat.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -314,32 +315,7 @@ class ProfilePage extends StatelessWidget {
     return OutlinedButton.icon(
       icon: const Icon(Icons.logout, size: 20),
       onPressed: () async {
-        // Hiện dialog xác nhận
-        final confirmed = await showDialog<bool>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
-            title: const Text('Đăng xuất',
-                style: TextStyle(fontWeight: FontWeight.bold)),
-            content: const Text(
-                'Bạn có chắc muốn đăng xuất không?\nBạn vẫn có thể đăng nhập offline sau khi đăng xuất.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Huỷ'),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.error,
-                    foregroundColor: Colors.white),
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Đăng xuất'),
-              ),
-            ],
-          ),
-        );
-
+        final confirmed = await xacNhanDangXuat(context);
         if (confirmed == true && context.mounted) {
           context.read<AuthBloc>().add(LogoutRequested());
           context.go('/login');
