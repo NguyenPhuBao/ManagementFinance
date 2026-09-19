@@ -28,7 +28,17 @@ import 'vung_nguy_hiem_card.dart';
 /// Cả bốn nằm **ngoài** shell, nên tab Cá nhân (trong shell) `push` chúng là
 /// an toàn — bẫy `!keyReservation.contains(key)` chỉ nổ theo chiều ngược lại.
 class NoiDungCaiDat extends StatelessWidget {
-  const NoiDungCaiDat({super.key});
+  const NoiDungCaiDat({super.key, this.giua});
+
+  /// Khối chèn **giữa** thẻ bảo mật và khối Vùng nguy hiểm.
+  ///
+  /// ⚠️ Có khe này vì thứ tự quan trọng: khối xoá tài khoản là hành động phá
+  /// huỷ nhất của cả app và phải nằm **cuối cùng**. Bản gộp đầu tiên không có
+  /// khe, nên tab Cá nhân phải đặt nhóm "CÀI ĐẶT" *sau* widget này và Vùng
+  /// nguy hiểm rơi vào **giữa trang**, ngay trên một dòng cài đặt vô hại —
+  /// mời người dùng chạm nhầm trên đường cuộn xuống. Máy ảo bắt được
+  /// 2026-09-19.
+  final Widget? giua;
 
   @override
   Widget build(BuildContext context) {
@@ -36,6 +46,7 @@ class NoiDungCaiDat extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _theBaoMat(context),
+        if (giua != null) ...[const SizedBox(height: 24), giua!],
         const SizedBox(height: 24),
         BlocBuilder<AuthBloc, AuthState>(
           builder: (context, state) => VungNguyHiemCard(

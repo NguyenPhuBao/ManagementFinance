@@ -53,20 +53,25 @@ class ProfilePage extends StatelessWidget {
             //
             // Thân trang `/settings` nay nằm ngay tại đây thay vì sau một cú
             // nhảy tới một trang vẽ ĐÚNG cái avatar phía trên lần nữa.
-            const NoiDungCaiDat(),
-            const SizedBox(height: 24),
-            _buildSection(
-              title: 'CÀI ĐẶT',
-              items: [
-                _ProfileItem(
-                  icon: Icons.notifications_none,
-                  // D7: tên cũ "Thông báo" lẫn với TRUNG TÂM thông báo, thứ
-                  // vào bằng chuông ở Trang chủ — hai chỗ khác hẳn nhau. Đây
-                  // là trang CÀI ĐẶT thông báo.
-                  title: 'Cài đặt thông báo',
-                  onTap: () => context.push('/settings/notifications'),
-                ),
-              ],
+            //
+            // ⚠️ Nhóm "CÀI ĐẶT" đi qua khe `giua` chứ không đặt SAU widget
+            // này: khối Vùng nguy hiểm nằm bên trong `NoiDungCaiDat` và phải
+            // ở **cuối trang**. Đặt sau là đẩy nút xoá tài khoản vào giữa,
+            // ngay trên một dòng cài đặt vô hại.
+            NoiDungCaiDat(
+              giua: _buildSection(
+                title: 'CÀI ĐẶT',
+                items: [
+                  _ProfileItem(
+                    icon: Icons.notifications_none,
+                    // D7: tên cũ "Thông báo" lẫn với TRUNG TÂM thông báo, thứ
+                    // vào bằng chuông ở Trang chủ — hai chỗ khác hẳn nhau.
+                    // Đây là trang CÀI ĐẶT thông báo.
+                    title: 'Cài đặt thông báo',
+                    onTap: () => context.push('/settings/notifications'),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 32),
             _buildLogoutButton(context),

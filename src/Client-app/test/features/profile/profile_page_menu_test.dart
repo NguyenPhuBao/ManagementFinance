@@ -73,6 +73,20 @@ void main() {
             'cái avatar này lần nữa. Nay nội dung nằm ngay đây.');
   });
 
+  testWidgets('⚠️ "Vùng nguy hiểm" nằm CUỐI, dưới nhóm CÀI ĐẶT',
+      (tester) async {
+    await moTrang(tester);
+
+    final caiDat = tester.getTopLeft(find.text('CÀI ĐẶT')).dy;
+    final nguyHiem =
+        tester.getTopLeft(find.textContaining('Vùng nguy hiểm')).dy;
+    expect(nguyHiem, greaterThan(caiDat),
+        reason: 'Khối xoá tài khoản là hành động PHÁ HUỶ NHẤT của cả app; '
+            'đặt nó trên một dòng cài đặt vô hại là mời người dùng chạm nhầm '
+            'trên đường cuộn xuống. Lượt gộp đầu đặt nó giữa trang vì '
+            '`NoiDungCaiDat` gói sẵn nó — máy ảo bắt được.');
+  });
+
   testWidgets('không còn mục "Giao diện" sáng/tối (A3)', (tester) async {
     await moTrang(tester);
 
