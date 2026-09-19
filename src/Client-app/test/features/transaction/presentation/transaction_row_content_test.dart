@@ -47,7 +47,7 @@ void main() {
 
     expect(c.title, 'Cà phê sáng');
     expect(c.subtitle, 'Ăn uống • Tiền mặt');
-    expect(c.amountText, '-25.000đ');
+    expect(c.amountText, '-25.000 đ');
   });
 
   test('không ghi chú: tên danh mục lên làm tiêu đề, dòng phụ chỉ còn ví', () {
@@ -73,7 +73,7 @@ void main() {
 
     expect(c.title, 'Khoản thu');
     expect(c.subtitle, 'Tiền mặt');
-    expect(c.amountText, '+25.000đ');
+    expect(c.amountText, '+25.000 đ');
   });
 
   test('chuyển khoản: tiêu đề "Chuyển khoản", dòng phụ Ví nguồn → Ví đích, không dấu',
@@ -83,7 +83,7 @@ void main() {
 
     expect(c.title, 'Chuyển khoản');
     expect(c.subtitle, 'Tiền mặt → Tiết kiệm');
-    expect(c.amountText, '25.000đ',
+    expect(c.amountText, '25.000 đ',
         reason: 'Chuyển ví không phải thu hay chi; gắn dấu là gợi sai rằng '
             'nó nằm trong tổng tháng.');
     expect(c.icon, Icons.swap_horiz);

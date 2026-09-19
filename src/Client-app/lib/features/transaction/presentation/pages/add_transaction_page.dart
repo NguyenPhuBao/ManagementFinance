@@ -422,7 +422,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                             ),
                           ),
                           Text(
-                            "${CurrencyFormatter.formatSoThoi(wallet.balance)}đ",
+                            CurrencyFormatter.format(wallet.balance),
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
@@ -457,13 +457,13 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   }
 
   String _getFormattedAmount() {
-    if (_amountString == "0") return "0đ";
-    if (_amountString.contains('.')) return "$_amountStringđ";
+    if (_amountString == "0") return CurrencyFormatter.format(0);
+    if (_amountString.contains('.')) return '$_amountString ${CurrencyFormatter.kyHieu}';
     try {
       final number = int.parse(_amountString);
-      return "${CurrencyFormatter.formatSoThoi(number)}đ";
+      return CurrencyFormatter.format(number);
     } catch (_) {
-      return "$_amountStringđ";
+      return '$_amountString ${CurrencyFormatter.kyHieu}';
     }
   }
 
@@ -811,13 +811,13 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     final walletDisplay = _isLoadingWallets
         ? 'Đang tải ví...'
         : (_selectedWallet != null
-            ? '${_selectedWallet!.name} • ${CurrencyFormatter.formatSoThoi(_selectedWallet!.balance)}đ'
+            ? '${_selectedWallet!.name} • ${CurrencyFormatter.format(_selectedWallet!.balance)}'
             : 'Chọn ví');
 
     final destWalletDisplay = _isLoadingWallets
         ? 'Đang tải ví...'
         : (_destinationWallet != null
-            ? '${_destinationWallet!.name} • ${CurrencyFormatter.formatSoThoi(_destinationWallet!.balance)}đ'
+            ? '${_destinationWallet!.name} • ${CurrencyFormatter.format(_destinationWallet!.balance)}'
             : 'Chọn ví đích');
 
     return Container(

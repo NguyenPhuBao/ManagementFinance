@@ -348,13 +348,13 @@ class _TransactionPageState extends State<TransactionPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildSummaryColumn('Thu nhập', '+${CurrencyFormatter.formatSoThoi(totalIncome)}đ', AppColors.income),
+          _buildSummaryColumn('Thu nhập', CurrencyFormatter.formatIncome(totalIncome), AppColors.income),
           Container(width: 1, height: 36, color: AppColors.outlineVariant.withValues(alpha: 0.4)),
-          _buildSummaryColumn('Chi tiêu', '-${CurrencyFormatter.formatSoThoi(totalExpense)}đ', AppColors.error),
+          _buildSummaryColumn('Chi tiêu', CurrencyFormatter.formatExpense(totalExpense), AppColors.error),
           Container(width: 1, height: 36, color: AppColors.outlineVariant.withValues(alpha: 0.4)),
           _buildSummaryColumn(
             'Thu net',
-            '${net >= 0 ? '+' : ''}${CurrencyFormatter.formatSoThoi(net)}đ',
+            CurrencyFormatter.formatCoDau(net, thu: net >= 0),
             net >= 0 ? AppColors.income : AppColors.error,
           ),
         ],
@@ -493,7 +493,7 @@ class _TransactionPageState extends State<TransactionPage> {
                       ),
                     ),
                     Text(
-                      '${dayNet >= 0 ? '+' : ''}${CurrencyFormatter.formatSoThoi(dayNet)}đ',
+                      CurrencyFormatter.formatCoDau(dayNet, thu: dayNet >= 0),
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.bold,

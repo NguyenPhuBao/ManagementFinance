@@ -894,7 +894,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                                     const SizedBox(height: 4),
                                     _buildTextField(
                                       controller: _targetAmountController,
-                                      hint: '40.000.000đ',
+                                      hint: CurrencyFormatter.format(40000000),
                                       textColor: AppColors.income,
                                       isBold: true,
                                       keyboardType: TextInputType.number,
@@ -1065,7 +1065,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                             const SizedBox(height: 4),
                             _buildTextField(
                               controller: _depositAmountController,
-                              hint: '5.000.000đ',
+                              hint: CurrencyFormatter.format(5000000),
                               textColor: AppColors.income,
                               isBold: true,
                               keyboardType: TextInputType.number,
@@ -1268,7 +1268,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                                       style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.income)),
                                   TextSpan(
                                       text:
-                                          ' với mức trích ${_depositAmountController.text.isNotEmpty ? _depositAmountController.text : "0"}đ / $_frequencyLabel.'),
+                                          ' với mức trích ${CurrencyFormatter.format(CurrencyFormatter.parse(_depositAmountController.text) ?? 0)} / $_frequencyLabel.'),
                                 ],
                               ),
                             ),

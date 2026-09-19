@@ -295,9 +295,9 @@ void main() {
     await moTrang(tester);
     await phat(tester, _tk());
 
-    expect(find.text('+5.000.000đ'), findsOneWidget);
-    expect(find.text('-1.250.000đ'), findsOneWidget);
-    expect(find.text('3.750.000đ'), findsOneWidget,
+    expect(find.text('+5.000.000 đ'), findsOneWidget);
+    expect(find.text('-1.250.000 đ'), findsOneWidget);
+    expect(find.text('3.750.000 đ'), findsOneWidget,
         reason: 'Số dư còn lại = thu − chi của tháng đang xem.');
   });
 
@@ -316,7 +316,7 @@ void main() {
     await moTrang(tester);
     await phat(tester, _tk(thu: 1000000, chi: 1500000));
 
-    expect(find.text('-500.000đ'), findsOneWidget,
+    expect(find.text('-500.000 đ'), findsOneWidget,
         reason: 'Kẹp về 0 là giấu đi việc tháng này đã âm. Người dùng mở trang '
             'này chính là để biết điều đó.');
   });
@@ -343,7 +343,7 @@ void main() {
     expect(find.text('36% tổng chi'), findsOneWidget,
         reason: 'Không bịa ngân sách cho danh mục chưa đặt: nhãn phải đổi, '
             'không được hiện "0% ngân sách".');
-    expect(find.text('800.000đ'), findsOneWidget);
+    expect(find.text('800.000 đ'), findsOneWidget);
   });
 
   testWidgets('mức danh mục: 4 lát đầu + "Khác", tâm hiện tổng của lát',
@@ -384,7 +384,7 @@ void main() {
 
     expect(find.textContaining('Chưa có giao dịch nào trong T9 2026'),
         findsOneWidget);
-    expect(find.text('+0đ'), findsNothing);
+    expect(find.text('+0 đ'), findsNothing);
     expect(find.text('Chi tiêu theo hạng mục'), findsNothing,
         reason: 'Donut của một tháng rỗng là một vòng tròn xám với chữ "0" ở '
             'giữa — trông như lỗi tải dữ liệu.');
@@ -973,7 +973,7 @@ void main() {
               'tháng làm mẫu số là các lát cộng lại không ra 100% mà không '
               'một dòng log nào báo (§2.1 spec).');
       expect(find.text('6.5M'), findsNothing);
-      expect(find.text('-6.500.000đ'), findsOneWidget,
+      expect(find.text('-6.500.000 đ'), findsOneWidget,
           reason: 'Thẻ đầu trang thì vẫn là tổng chi thật của tháng — hai con '
               'số khác nhau là đúng, và đó chính là chỗ dễ "sửa" nhầm.');
     });
@@ -1278,7 +1278,11 @@ void main() {
       await moCao(tester);
       await phat(tester, tkDayDu());
 
-      double mepPhai(String chu) => tester.getRect(find.text(chu)).right;
+      // `.last`: từ B3 (2026-09-19) thẻ "Tổng thu" (18px, đứng trên) và dòng
+      // ví trong bảng (13px) đọc cùng một chuỗi "+5.000.000 đ" — trước đó thẻ
+      // tổng nối `đ` tay không cách nên hai chuỗi tình cờ khác nhau. Cột cần
+      // đo là cột của BẢNG, tức widget đứng sau trong cây.
+      double mepPhai(String chu) => tester.getRect(find.text(chu).last).right;
 
       expect(
         mepPhai('-900.000 đ'),
@@ -1594,10 +1598,10 @@ void main() {
       final b = boSoLieu(thu: 20000000, diVay: 5000000, traNo: 3000000);
       await moCaoVaPhat(tester, _tk(chuoi: b.chuoi, chuoiVayNo: b.vayNo));
 
-      expect(find.text('12.000.000đ'), findsOneWidget,
+      expect(find.text('12.000.000 đ'), findsOneWidget,
           reason: '(20tr − 5tr vay) − 3tr trả nợ. Đây là ca lật thiết kế: lấy '
               'nguyên tong.thu thì tháng đi vay lại trông đẹp lên.');
-      expect(find.text('17.000.000đ'), findsNothing,
+      expect(find.text('17.000.000 đ'), findsNothing,
           reason: '17tr là con số của công thức sai — tong.thu − traNo.');
     });
 
@@ -1606,7 +1610,7 @@ void main() {
       final b = boSoLieu(thu: 20000000, thuNo: 6000000, khacVao: 2000000);
       await moCaoVaPhat(tester, _tk(chuoi: b.chuoi, chuoiVayNo: b.vayNo));
 
-      expect(find.text('12.000.000đ'), findsOneWidget,
+      expect(find.text('12.000.000 đ'), findsOneWidget,
           reason: 'thu hồi vốn là tiền cũ quay về; khoản vay/nợ tiền vào không '
               'rõ vai chỉ có thể là đi vay hoặc thu nợ — không lối nào là thu nhập');
     });
@@ -1616,7 +1620,7 @@ void main() {
       final b = boSoLieu(thu: 4000000, traNo: 6500000);
       await moCaoVaPhat(tester, _tk(chuoi: b.chuoi, chuoiVayNo: b.vayNo));
 
-      expect(find.text('-2.500.000đ'), findsOneWidget,
+      expect(find.text('-2.500.000 đ'), findsOneWidget,
           reason: 'kẹp về 0 là giấu đúng kỳ người dùng cần thấy nhất');
     });
 
@@ -1660,11 +1664,11 @@ void main() {
       expect(find.text('Dự báo 30 ngày tới'), findsOneWidget);
       expect(find.text('Còn tiêu được'), findsOneWidget);
       // 10.000.000 − (800 + 250 + 500 + 120 + 400 + 800)k = 7.130.000
-      expect(find.text('7.130.000đ'), findsOneWidget);
+      expect(find.text('7.130.000 đ'), findsOneWidget);
       expect(find.text('Số dư hiện tại'), findsOneWidget);
-      expect(find.text('10.000.000đ'), findsOneWidget);
+      expect(find.text('10.000.000 đ'), findsOneWidget);
       expect(find.text('Nếu tiêu đúng ngân sách'), findsOneWidget);
-      expect(find.text('5.930.000đ'), findsOneWidget);
+      expect(find.text('5.930.000 đ'), findsOneWidget);
       expect(find.byType(LineChart), findsWidgets);
     });
 
@@ -1694,7 +1698,7 @@ void main() {
                 ngay: DateTime(2026, 9, 25))
           ])));
       expect(
-          find.text('Ví Tiền mặt thiếu 1.500.000đ để trả cam kết ngày 25/09'),
+          find.text('Ví Tiền mặt thiếu 1.500.000 đ để trả cam kết ngày 25/09'),
           findsOneWidget);
     });
 
@@ -1724,7 +1728,7 @@ void main() {
       expect(
           find.text('Không có hoá đơn hay trích tự động nào trong 30 ngày tới'),
           findsOneWidget);
-      expect(find.text('10.000.000đ'), findsWidgets);
+      expect(find.text('10.000.000 đ'), findsWidgets);
     });
 
     testWidgets('kỳ đang xem RỖNG vẫn hiện dự báo — nó không nói về kỳ',

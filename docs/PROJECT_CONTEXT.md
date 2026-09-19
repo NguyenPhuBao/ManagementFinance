@@ -673,10 +673,41 @@ nằm trong `FittedBox(scaleDown)` bọc bởi `SizedBox(width: infinity)` — c
 cho vừa ô thay vì cắt; ca test đo **`RenderParagraph.didExceedMaxLines`**, tức
 thứ thật sự bị cắt, và bản giữ `ellipsis` đã làm nó đỏ đúng chỗ. Cùng lượt con
 số đi qua `CurrencyFormatter.format`/`formatCoDau` ("14.635.000 đ", số 0 không
-mang dấu) thay vì nối `'đ'` tay — Trang chủ từng là chỗ duy nhất viết
-"13.590.000đ" không cách. Có ca thử với **13 chữ số** (trần G45/G46) để bố cục
+mang dấu) thay vì nối `'đ'` tay. *(Câu "Trang chủ từng là chỗ duy nhất viết
+không cách" ghi ở đây lúc đầu là **sai** — B3 cùng ngày đếm được 20 chỗ ở 7
+tệp, xem đoạn B3/B4 dưới.)* Có ca thử với **13 chữ số** (trần G45/G46) để bố cục
 được thử với giá trị lớn nhất. 3 ca ở `the_so_lieu_thang_test.dart`. **Schema
 không đổi, payload không đổi.**
+
+**B3 · B4 — một quy ước cho ký hiệu `đ` (xong 2026-09-19).** Máy ảo cho thấy
+**hai** quy ước sống chung: Trang chủ, Sổ giao dịch, Thêm giao dịch và Phân tích
+viết *"13.590.000đ"* (gọi `formatSoThoi()` rồi nối `'đ'` tay), còn Ví, Ngân
+sách, Mục tiêu, Hoá đơn và tệp xuất viết *"13.590.000 đ"* (`format()`). Test
+quét cũ chỉ cấm dựng `NumberFormat`, nên lối "số thô + `đ` tay" đi vòng được.
+Nay **test quét `lib/` thứ MƯỜI MỘT** — `core/utils/ky_hieu_tien_mot_noi_test.dart`
+— cấm `đ` đứng ngay sau chữ số, sau `}` nội suy, hoặc sau nội suy trần `$ten`
+(Dart chỉ nhận ASCII trong định danh nên `'$moneyđ'` là `$money` rồi `đ` — và
+`transaction_row_content.dart` viết đúng thế, lọt mọi `grep` `}đ`). Bản đầu đỏ ở
+**20 chỗ / 7 tệp**: `analytics_page` (`_dong`), `home_page`, `transaction_page`
+(4), `transaction_row_content` (2), `add_transaction_page` (7), `bill_add_page`
+(2, kể cả `placeholder: '0đ'`), `goal_add_page` (3, hai `hint` mẫu và câu tóm tắt
+trích). Tất cả về `CurrencyFormatter.format` / `formatIncome` / `formatExpense`
+/ `formatCoDau`; nhánh chuỗi có dấu chấm ở bàn phím tự vẽ nối bằng hằng
+`CurrencyFormatter.kyHieu`. Hai chuỗi cố định của màn mockup (`ai_chat_page`
+"3.200.000đ", `bill_delete_page` "260.000đ") nằm ở danh sách chờ chốt của test,
+kèm số chỗ. **25 khẳng định** ở 6 tệp test đổi theo ("…000đ" → "…000 đ"); một
+ca đo mép phải của Phân tích phải đổi finder sang `.last` vì thẻ "Tổng thu" và
+dòng ví nay đọc **cùng một chuỗi** — trước đó chúng khác nhau chỉ vì thẻ tổng
+nối tay. ⚠️ **Chọn quy ước có cách ("13.590.000 đ")** vì đó là thứ `format()`
+đã in ở 2/3 app và trong PDF; màn Stitch Home vẽ *không* cách ("-55.000đ") —
+nay mọi chỗ đi qua một hàm nên đổi ý là **sửa một dòng** ở `format()`, đó chính
+là lý do gom về một chỗ. **Schema không đổi, payload không đổi.**
+
+> ⚠️ Lộ ra ngoài phạm vi, **chưa sửa** (ghi vào danh sách UX là **A12**): bàn
+> phím tự vẽ của màn Thêm giao dịch có phím `.` sinh dấu thập phân
+> (`themPhimSoTien`), màn hiện *"12.5 đ"*, nhưng `_saveTransaction` lưu bằng
+> `double.tryParse(_amountString.replaceAll('.', ''))` — tức **12.5 thành 125**,
+> im lặng.
 
 **E3 — Back không thoát app ngay (xong 2026-09-19).** Máy ảo: Back ở tab Trang
 chủ đưa thẳng ra launcher, không cảnh báo — app không có `PopScope` nào (trong

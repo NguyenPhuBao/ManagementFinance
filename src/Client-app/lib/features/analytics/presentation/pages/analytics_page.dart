@@ -238,7 +238,7 @@ class _NoiDung extends StatelessWidget {
 
 // ── Định dạng dùng chung ──────────────────────────────────────────────────
 
-String _dong(double x) => '${CurrencyFormatter.formatSoThoi(x.round())}đ';
+String _dong(double x) => CurrencyFormatter.format(x);
 
 /// "Tăng 25% so với T8" / "Giảm 5% so với Tuần 37" / "Không có dữ liệu T9 2025".
 ///

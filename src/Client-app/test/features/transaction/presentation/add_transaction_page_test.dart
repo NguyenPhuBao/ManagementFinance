@@ -349,7 +349,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Sửa giao dịch'), findsOneWidget);
-      expect(find.text('25.000đ'), findsOneWidget);
+      expect(find.text('25.000 đ'), findsOneWidget);
       expect(find.text('Ăn uống'), findsOneWidget);
       expect(find.textContaining('Ngân hàng'), findsOneWidget,
           reason: 'Ví phải là ví của giao dịch, không phải ví đầu danh sách.');

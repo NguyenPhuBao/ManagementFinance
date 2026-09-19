@@ -7,8 +7,9 @@
 /// ở đây đo `RenderParagraph.didExceedMaxLines`, tức thứ **thật sự bị cắt**.
 ///
 /// Cùng lượt, con số đi qua `CurrencyFormatter.format` ("14.635.000 đ") thay
-/// vì nối `'đ'` tay như bản cũ — Trang chủ từng là chỗ duy nhất viết "13.590.000đ"
-/// không cách trong khi mọi màn khác viết có cách.
+/// vì nối `đ` tay như bản cũ — Trang chủ, Sổ giao dịch, Thêm giao dịch và Phân
+/// tích từng viết "13.590.000đ" không cách trong khi Ví, Ngân sách, Mục tiêu,
+/// Hoá đơn và tệp xuất viết có cách (B3 gom về một quy ước cùng ngày).
 library;
 
 import 'package:flowmoney/core/utils/currency_formatter.dart';

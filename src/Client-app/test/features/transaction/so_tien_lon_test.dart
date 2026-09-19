@@ -40,7 +40,7 @@ void main() {
 
   testWidgets('số dài nhất mà bàn phím cho gõ vẫn nằm trên MỘT dòng',
       (t) async {
-    await t.pumpWidget(dung('9.999.999.999.999đ'));
+    await t.pumpWidget(dung('9.999.999.999.999 đ'));
     await t.pumpAndSettle();
 
     expect(cao(t), lessThan(80),
@@ -52,7 +52,7 @@ void main() {
   });
 
   testWidgets('số ngắn vẫn giữ cỡ chữ lớn, không bị co vô cớ', (t) async {
-    await t.pumpWidget(dung('50.000đ'));
+    await t.pumpWidget(dung('50.000 đ'));
     await t.pumpAndSettle();
 
     final para = t.renderObject<RenderParagraph>(
@@ -65,8 +65,8 @@ void main() {
     expect(cao(t), lessThan(80));
   });
 
-  testWidgets('"0đ" không làm nổ gì', (t) async {
-    await t.pumpWidget(dung('0đ'));
+  testWidgets('"0 đ" không làm nổ gì', (t) async {
+    await t.pumpWidget(dung('0 đ'));
     await t.pumpAndSettle();
     expect(t.takeException(), isNull);
     expect(cao(t), lessThan(80));

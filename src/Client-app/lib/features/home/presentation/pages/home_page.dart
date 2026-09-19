@@ -354,7 +354,7 @@ class HomePage extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            '${CurrencyFormatter.formatSoThoi(totalBalance)}đ',
+            CurrencyFormatter.format(totalBalance),
             style: const TextStyle(
               fontSize: 34,
               fontWeight: FontWeight.bold,
