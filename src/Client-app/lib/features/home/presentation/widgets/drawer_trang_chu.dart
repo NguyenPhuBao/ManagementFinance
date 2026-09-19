@@ -11,8 +11,14 @@ class MucDrawer {
   final String duong;
 }
 
-/// Danh sách mục của drawer Trang chủ, theo màn Stitch *"FlowMoney Home with
-/// Side Menu Drawer"* (9 mục, chia hai nhóm bằng một vạch).
+/// Danh sách mục của drawer Trang chủ.
+///
+/// ⚠️ **Nguyên tắc từ 2026-09-19 (nhóm D, lối B):** thanh dưới giữ việc hằng
+/// ngày, drawer giữ **mọi thứ còn lại**, và không đích nào xuất hiện ở cả hai
+/// chỗ. Ba mục "Thống kê", "Cá nhân", "Cài đặt" đã rút khỏi đây vì chúng có
+/// tab riêng; "Ngân sách" thì đi ngược chiều — rời thanh dưới về đây. Bản
+/// trước theo màn Stitch *"FlowMoney Home with Side Menu Drawer"* có 9 mục
+/// chia hai nhóm, trong đó **bốn** mục lặp lại đúng thứ thanh dưới đã có.
 ///
 /// Là hằng công khai để test đối chiếu **từng đường với router thật**: bản
 /// trước trỏ "Xuất báo cáo" vào `/reports` — một route không tồn tại — rồi
@@ -26,15 +32,9 @@ const List<MucDrawer> kMucDrawer = [
   MucDrawer('Mục tiêu tiết kiệm', Icons.track_changes, '/goals'),
   MucDrawer('Ngân sách', Icons.savings, '/budget'),
   MucDrawer('Hóa đơn & Dịch vụ', Icons.receipt_long, '/bills'),
-  MucDrawer('Thống kê', Icons.analytics, '/analytics'),
   MucDrawer('Xuất báo cáo', Icons.description, '/export-report'),
   MucDrawer('Trợ lý AI', Icons.smart_toy, '/ai-chat'),
-  MucDrawer('Cá nhân', Icons.person, '/profile'),
-  MucDrawer('Cài đặt', Icons.settings, '/settings'),
 ];
-
-/// Vạch ngăn đứng **trước** mục có nhãn này (nhóm tài khoản ở dưới).
-const String _mucDauNhomDuoi = 'Cá nhân';
 
 /// Drawer của Trang chủ. Chỉ nhận dữ liệu và callback — không đọc bloc, không
 /// điều hướng — để test dựng được một mình.
@@ -74,16 +74,10 @@ class DrawerTrangChu extends StatelessWidget {
               child: ListView(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                children: [
-                  for (final m in kMucDrawer) ...[
-                    if (m.nhan == _mucDauNhomDuoi) ...[
-                      const SizedBox(height: 16),
-                      const Divider(color: AppColors.outlineVariant),
-                      const SizedBox(height: 16),
-                    ],
-                    _muc(m),
-                  ],
-                ],
+                // Vạch ngăn giữa danh sách đã bỏ cùng nhóm tài khoản
+                // (2026-09-19): sáu mục còn lại là một nhóm duy nhất — "mọi
+                // thứ không có ở thanh dưới".
+                children: [for (final m in kMucDrawer) _muc(m)],
               ),
             ),
             const Divider(color: AppColors.outlineVariant),

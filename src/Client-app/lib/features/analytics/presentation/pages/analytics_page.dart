@@ -279,7 +279,12 @@ class _Header extends StatelessWidget {
         const Flexible(
           flex: 2,
           child: Text(
-            'Thống kê',
+            // Một đích một tên (D4, 2026-09-19): tab gọi là "Phân tích" nên
+            // tiêu đề trang cũng thế. Drawer đã thôi có mục "Thống kê", nên
+            // không còn chỗ thứ hai nào gọi trang này bằng tên khác.
+            // Đúng 9 ký tự như tên cũ, nên phép đo bề rộng ở chú thích ngay
+            // trên không đổi.
+            'Phân tích',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
