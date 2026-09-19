@@ -83,6 +83,16 @@ class GoiSoNganSach extends GoiSo {
         soNgay('Còn', nhip.daysLeft),
         // Đã vượt thì "nên chi mỗi ngày" là 0 — một con số vô nghĩa, bỏ.
         if (!b.isOverBudget) soTien('Mỗi ngày', nhip.suggestedPerDay),
+        // Số của câu tóm tắt kế hoạch — phải có trong gói thì bộ kiểm số mới
+        // cho câu mẫu đi qua (`KeHoachTaiPhanBo.cauTomTat`).
+        if (keHoach != null) ...[
+          soTien('Thâm hụt', keHoach.thamHut),
+          soDem('Nguồn bù', keHoach.dong.length),
+          if (keHoach.trangThai == TrangThaiKeHoach.thieuNguonBu) ...[
+            soTien('Bù được', keHoach.tongCat),
+            soTien('Còn thiếu', keHoach.soThieu),
+          ],
+        ],
       ],
     );
   }
