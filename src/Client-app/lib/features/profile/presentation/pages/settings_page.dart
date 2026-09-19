@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
-import '../widgets/vung_nguy_hiem_card.dart';
+import '../widgets/noi_dung_cai_dat.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -36,13 +36,10 @@ class SettingsPage extends StatelessWidget {
           children: [
             _buildUserSummaryCard(),
             const SizedBox(height: 24),
-            _buildSecurityPreferencesCard(context),
-            const SizedBox(height: 24),
-            BlocBuilder<AuthBloc, AuthState>(
-              builder: (context, state) => VungNguyHiemCard(
-                user: state is AuthSuccess ? state.user : null,
-              ),
-            ),
+            // Thân trang nay là widget dùng chung với tab Cá nhân (nhóm D,
+            // 2026-09-19). Route này GIỮ NGUYÊN vì bốn route con khai báo
+            // bên trong nó — xem `NoiDungCaiDat`.
+            const NoiDungCaiDat(),
           ],
         ),
       ),
@@ -153,85 +150,4 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  Widget _buildSecurityPreferencesCard(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.5)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(20, 20, 20, 8),
-            child: Text(
-              'BẢO MẬT & TÙY CHỌN',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ),
-          _buildActionItem(
-            icon: Icons.person_outline,
-            title: 'Thông tin cá nhân',
-            trailing: const Icon(Icons.chevron_right, color: AppColors.textSecondary),
-            onTap: () => context.push('/settings/edit-profile'),
-          ),
-          const Divider(height: 1, color: AppColors.outlineVariant),
-          _buildActionItem(
-            icon: Icons.lock_outline,
-            title: 'Đổi mật khẩu',
-            trailing: const Icon(Icons.chevron_right, color: AppColors.textSecondary),
-            onTap: () => context.push('/settings/change-password'),
-          ),
-          // Hai mục "Bảo mật 2 yếu tố (MFA)" và "Đồng bộ dữ liệu Cloud" đã gỡ
-          // 2026-09-19: cả hai là `onTap: () {}` với công tắc luôn bật và dấu
-          // tick luôn xanh — hứa hai tính năng không tồn tại. Đồng bộ thì app
-          // vẫn làm, nhưng tự động và không có gì để cài đặt ở đây.
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionItem({
-    required IconData icon,
-    required String title,
-    required Widget trailing,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        child: Row(
-          children: [
-            Icon(icon, color: AppColors.textSecondary, size: 24),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: AppColors.primary,
-                ),
-              ),
-            ),
-            trailing,
-          ],
-        ),
-      ),
-    );
-  }
 }
-

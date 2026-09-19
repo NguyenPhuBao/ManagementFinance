@@ -8,6 +8,7 @@ import '../../../../core/di/injection_container.dart';
 import '../../../../shared/widgets/notification_bell.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/xac_nhan_dang_xuat.dart';
+import '../widgets/noi_dung_cai_dat.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -43,46 +44,27 @@ class ProfilePage extends StatelessWidget {
           children: [
             _buildProfileHeader(),
             const SizedBox(height: 32),
-            _buildSection(
-              title: 'QUẢN LÝ TÀI KHOẢN',
-              items: [
-                _ProfileItem(
-                  icon: Icons.account_balance,
-                  title: 'Hóa đơn',
-                  onTap: () => context.push('/bills'),
-                ),
-                _ProfileItem(
-                  icon: Icons.savings_outlined,
-                  title: 'Mục tiêu tiết kiệm',
-                  onTap: () => context.push('/goals'),
-                ),
-                _ProfileItem(
-                  icon: Icons.account_balance_wallet_outlined,
-                  title: 'Ví',
-                  onTap: () => context.push('/wallets'),
-                ),
-                _ProfileItem(
-                  icon: Icons.category_outlined,
-                  title: 'Danh mục tùy chỉnh',
-                  onTap: () => context.push('/categories'),
-                ),
-              ],
-            ),
+            // Nhóm "QUẢN LÝ TÀI KHOẢN" (Hóa đơn, Mục tiêu, Ví, Danh mục) đã
+            // bỏ hẳn ngày 2026-09-19 (nhóm D): bốn mục ấy lặp lại đúng drawer,
+            // và lối B cho drawer giữ module còn tab này giữ hồ sơ + cài đặt.
+            // Cùng lúc, xung đột icon heo đất biến mất — `Icons.savings` là
+            // Ngân sách ở drawer, `Icons.savings_outlined` từng là Mục tiêu
+            // tiết kiệm ở đây (D8).
+            //
+            // Thân trang `/settings` nay nằm ngay tại đây thay vì sau một cú
+            // nhảy tới một trang vẽ ĐÚNG cái avatar phía trên lần nữa.
+            const NoiDungCaiDat(),
             const SizedBox(height: 24),
             _buildSection(
               title: 'CÀI ĐẶT',
               items: [
                 _ProfileItem(
                   icon: Icons.notifications_none,
-                  title: 'Thông báo',
-                  // Mục này dẫn tới trang CÀI ĐẶT thông báo, không phải trung
-                  // tâm thông báo — lối vào trung tâm là chuông ở trang chủ.
+                  // D7: tên cũ "Thông báo" lẫn với TRUNG TÂM thông báo, thứ
+                  // vào bằng chuông ở Trang chủ — hai chỗ khác hẳn nhau. Đây
+                  // là trang CÀI ĐẶT thông báo.
+                  title: 'Cài đặt thông báo',
                   onTap: () => context.push('/settings/notifications'),
-                ),
-                _ProfileItem(
-                  icon: Icons.shield_outlined,
-                  title: 'Thông tin và bảo mật',
-                  onTap: () => context.push('/settings'),
                 ),
               ],
             ),
