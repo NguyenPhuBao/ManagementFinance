@@ -185,6 +185,7 @@ class _WalletAddFormState extends State<_WalletAddForm> {
       elevation: 0,
       centerTitle: true,
       leading: IconButton(
+        tooltip: 'Quay lại',
         icon: const Icon(Icons.arrow_back, color: AppColors.onBackground),
         onPressed: () => context.pop(),
       ),

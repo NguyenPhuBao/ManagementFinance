@@ -359,6 +359,7 @@ class _RegisterPageState extends State<RegisterPage> {
         prefixIcon: Icon(icon, color: AppColors.outline),
         suffixIcon: onToggleObscure != null
             ? IconButton(
+              tooltip: 'Hiện / ẩn mật khẩu',
                 icon: Icon(
                   obscureText ? Icons.visibility : Icons.visibility_off,
                   color: AppColors.outline,

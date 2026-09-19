@@ -379,6 +379,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                     ),
                   ),
                   IconButton(
+                    tooltip: 'Đóng',
                     icon:
                         const Icon(Icons.close, color: AppColors.textSecondary),
                     onPressed: () => Navigator.pop(ctx),
@@ -708,6 +709,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
             backgroundColor: Colors.white,
             elevation: 0,
             leading: IconButton(
+              tooltip: 'Quay lại',
               icon: const Icon(Icons.arrow_back,
                   color: AppColors.primary, size: 28),
               onPressed: () => context.pop(),
@@ -722,6 +724,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
             ),
             actions: [
               IconButton(
+                tooltip: 'Thêm tuỳ chọn',
                 icon: const Icon(Icons.more_vert, color: AppColors.primary),
                 onPressed: () {},
               ),

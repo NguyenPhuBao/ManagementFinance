@@ -22,6 +22,7 @@ class SettingsPage extends StatelessWidget {
         backgroundColor: AppColors.surface,
         elevation: 0,
         leading: IconButton(
+          tooltip: 'Quay lại',
           icon: const Icon(Icons.arrow_back, color: AppColors.primary),
           onPressed: () => context.pop(),
         ),
@@ -141,6 +142,7 @@ class SettingsPage extends StatelessWidget {
                 ),
               ),
               IconButton(
+                tooltip: 'Sửa',
                 icon: const Icon(Icons.edit, color: AppColors.textSecondary),
                 onPressed: () => context.push('/settings/edit-profile'),
               ),

@@ -62,6 +62,7 @@ class _WalletListView extends StatelessWidget {
         backgroundColor: AppColors.background,
         elevation: 0,
         leading: IconButton(
+          tooltip: 'Quay lại',
           icon: const Icon(Icons.arrow_back, color: AppColors.primary),
           onPressed: () => context.pop(),
         ),

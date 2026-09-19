@@ -211,6 +211,7 @@ class HomePage extends StatelessWidget {
           children: [
             Builder(
               builder: (context) => IconButton(
+                tooltip: 'Mở menu',
                 icon: const Icon(Icons.menu, color: AppColors.primary, size: 28),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),

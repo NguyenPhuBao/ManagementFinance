@@ -121,6 +121,7 @@ class _TransactionFilterBarState extends State<TransactionFilterBar> {
               suffixIcon: _filter.query.isEmpty
                   ? null
                   : IconButton(
+                    tooltip: 'Đóng',
                       icon: const Icon(Icons.close, size: 18),
                       onPressed: () =>
                           widget.onChanged(_filter.copyWith(query: '')),

@@ -767,6 +767,20 @@ hai, và `getAllCategories` phải trả cả hai). ⚠️ Ca đầu viết vớ
 "Nhà cửa" và đòi cả thẻ "Tiền điện" dựng được (họ G43). **Schema không đổi,
 payload không đổi.**
 
+**G1 — tooltip cho nút chỉ có icon (xong 2026-09-19).** Đếm được **45**
+`IconButton` không có `tooltip` (28 nút Quay lại, 7 mắt ẩn mật khẩu, 2 Đóng,
+⋮, lịch tháng trước/sau, Sửa, Xoá, Gửi, Ghi âm, Cài đặt…) — không nhãn nào cho
+TalkBack/VoiceOver và không nhãn nào hiện khi nhấn giữ. `tooltip` của
+`IconButton` cho cả hai thứ cùng lúc, nên đây là phần rẻ nhất của G. **Test
+quét `lib/` thứ MƯỜI HAI** — `test/core/ui/icon_button_co_tooltip_test.dart` —
+đòi `tooltip:` trong 8 dòng sau mỗi `IconButton(`; chèn bằng script Perl theo
+tên icon. ⚠️ Bản chèn đầu **hỏng mã hoá** ("Quay láº¡i"): script Perl đọc
+nguồn không `use utf8` rồi ghi qua lớp `:encoding(UTF-8)` → mã hoá hai lần;
+sửa bằng `decode(encode(latin1))` trên đúng các dòng vừa chèn. Nút dựng qua
+widget khác (`NotificationBell`, `GestureDetector` của thanh dưới) **không**
+nằm trong phép quét — G2 (cỡ chữ lớn) cũng chưa làm. **Schema không đổi,
+payload không đổi.**
+
 **E3 — Back không thoát app ngay (xong 2026-09-19).** Máy ảo: Back ở tab Trang
 chủ đưa thẳng ra launcher, không cảnh báo — app không có `PopScope` nào (trong
 lượt đánh giá tôi cũng mất app hai lần vì thế). Nay `MainShell` bọc thân bằng

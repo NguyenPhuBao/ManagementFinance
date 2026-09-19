@@ -888,6 +888,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
         elevation: 0,
         centerTitle: false,
         leading: IconButton(
+          tooltip: 'Quay lại',
           icon: const Icon(Icons.arrow_back, color: AppColors.primary),
           onPressed: () => context.pop(),
         ),
@@ -915,6 +916,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
               ),
             ),
           IconButton(
+            tooltip: 'Xoá',
             icon: const Icon(Icons.delete_outline, color: AppColors.error),
             onPressed: _xacNhanXoaMucTieu,
           ),

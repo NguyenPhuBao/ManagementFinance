@@ -300,6 +300,7 @@ class _TransactionPageState extends State<TransactionPage> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           IconButton(
+            tooltip: 'Tháng trước',
             icon: const Icon(Icons.chevron_left, color: AppColors.primary),
             onPressed: () => _changeMonth(0, -1, blocContext),
           ),
@@ -318,6 +319,7 @@ class _TransactionPageState extends State<TransactionPage> {
             ],
           ),
           IconButton(
+            tooltip: 'Tháng sau',
             icon: const Icon(Icons.chevron_right, color: AppColors.primary),
             onPressed: () => _changeMonth(0, 1, blocContext),
           ),

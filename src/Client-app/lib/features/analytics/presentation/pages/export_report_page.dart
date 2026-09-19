@@ -106,6 +106,7 @@ class _ExportReportPageState extends State<ExportReportPage> {
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
+          tooltip: 'Quay lại',
           icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
           onPressed: () => context.pop(),
         ),
