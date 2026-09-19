@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../ai_edge/domain/goi_so_ngan_sach.dart';
+import '../../../ai_edge/domain/tai_phan_bo.dart';
 import '../../../ai_edge/presentation/widgets/khoi_nhan_xet.dart';
+import '../../../ai_edge/presentation/widgets/the_ke_hoach.dart';
 import '../../data/models/budget_entity.dart';
 import '../../domain/budget_pace.dart';
 import '../../domain/budget_locking.dart';
@@ -29,6 +31,10 @@ class BudgetTabsView extends StatelessWidget {
   /// link không hiện — thà thiếu còn hơn có một link không đi đâu cả.
   final VoidCallback? onOpenAnalytics;
 
+  /// Mở sheet kế hoạch tái phân bổ (Edge-SLM P2). Bỏ trống thì thẻ kế hoạch
+  /// không có nút "Xem kế hoạch" — cùng lối với [onOpenAnalytics].
+  final void Function(KeHoachTaiPhanBo)? onXemKeHoach;
+
   /// Mốc thời gian cho dòng "nên chi/ngày". `null` = đồng hồ máy; test truyền
   /// mốc cố định để số ngày còn lại không đổi theo ngày chạy.
   final DateTime? now;
@@ -41,6 +47,7 @@ class BudgetTabsView extends StatelessWidget {
     required this.onDelete,
     required this.onShowDetail,
     this.onOpenAnalytics,
+    this.onXemKeHoach,
     this.now,
   });
 
@@ -92,6 +99,7 @@ class BudgetTabsView extends StatelessWidget {
                 onDelete: onDelete,
                 onShowDetail: onShowDetail,
                 onOpenAnalytics: onOpenAnalytics,
+                onXemKeHoach: onXemKeHoach,
                 now: now,
               ),
               _ExpiredTab(
@@ -117,6 +125,7 @@ class _ActiveTab extends StatelessWidget {
   final Future<bool> Function(BudgetView) onDelete;
   final void Function(BudgetView) onShowDetail;
   final VoidCallback? onOpenAnalytics;
+  final void Function(KeHoachTaiPhanBo)? onXemKeHoach;
 
   /// Mốc thời gian cho dòng "nên chi/ngày". `null` = đồng hồ máy; test truyền
   /// mốc cố định để số ngày còn lại không đổi theo ngày chạy.
@@ -129,6 +138,7 @@ class _ActiveTab extends StatelessWidget {
     required this.onDelete,
     required this.onShowDetail,
     this.onOpenAnalytics,
+    this.onXemKeHoach,
     this.now,
   });
 
@@ -152,6 +162,16 @@ class _ActiveTab extends StatelessWidget {
                 keHoach: state.keHoach,
               ),
             ),
+            // Thẻ kế hoạch tái phân bổ (Tầng 2) — đứng ngay dưới câu nhận xét
+            // đã nhắc tới nó. `keHoach` chỉ khác null khi có thâm hụt.
+            if (state.keHoach case final kh?) ...[
+              const SizedBox(height: 12),
+              TheKeHoach(
+                keHoach: kh,
+                onXem: onXemKeHoach == null ? null : () => onXemKeHoach!(kh),
+                onXemPhanTich: onOpenAnalytics,
+              ),
+            ],
           ],
           const SizedBox(height: 24),
           Row(

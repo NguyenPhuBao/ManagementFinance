@@ -11,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/features/ai_edge/domain/tai_phan_bo.dart';
 import 'package:flowmoney/features/ai_edge/presentation/widgets/khoi_nhan_xet.dart';
+import 'package:flowmoney/features/ai_edge/presentation/widgets/the_ke_hoach.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
 import 'package:flowmoney/features/budget/presentation/bloc/budget_state.dart';
 import 'package:flowmoney/features/budget/presentation/pages/budget_tabs_view.dart';
@@ -116,14 +117,89 @@ void main() {
       ),
     );
 
+    // Trong KHỐI Nhận xét — thẻ kế hoạch ngay dưới cũng in đúng câu này (cùng
+    // `cauTomTat`, cố ý), nên không đếm trên cả trang.
     expect(
-      find.textContaining('Ăn uống dự kiến vượt 1.200.000 đ. Bớt từ 1 ngân '
-          'sách khác?'),
+      find.descendant(
+        of: find.byType(KhoiNhanXet),
+        matching: find.textContaining(
+            'Ăn uống dự kiến vượt 1.200.000 đ. Bớt từ 1 ngân sách khác?'),
+      ),
       findsOneWidget,
       reason: 'Kế hoạch của state phải đi vào gói số (`keHoach:`), nếu không '
           'câu nhận xét im lặng về thâm hụt trong khi thẻ kế hoạch (Task 15) '
           'lại nói có — hai khối cạnh nhau nói hai chuyện.',
     );
+  });
+
+  testWidgets('có kế hoạch → thẻ kế hoạch ngay dưới khối; chạm "Xem kế hoạch" '
+      'gọi onXemKeHoach với đúng kế hoạch', (tester) async {
+    final thieu = _view(id: 'b1', amount: 3000000, spent: 2800000);
+    final nguon = _view(id: 'b2', amount: 2000000, spent: 200000,
+        tenDanhMuc: 'Mua sắm');
+    final kh = KeHoachTaiPhanBo(
+      thieu: thieu,
+      duPhong: 4200000,
+      thamHut: 1200000,
+      dong: [DongTaiPhanBo(nguon: nguon, duDia: 1800000, soTien: 500000)],
+      trangThai: TrangThaiKeHoach.duNguonBu,
+      soThieu: 0,
+    );
+    KeHoachTaiPhanBo? nhan;
+    tester.view.physicalSize = const Size(411, 914);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(MaterialApp(
+      theme: AppTheme.lightTheme,
+      home: BudgetTabsView(
+        now: DateTime(2026, 9, 15, 12),
+        state: BudgetLoaded(
+          active: [thieu, nguon],
+          expired: const [],
+          totalAmount: 5000000,
+          totalSpent: 3000000,
+          keHoach: kh,
+        ),
+        onCreate: () {},
+        onEdit: (_) {},
+        onDelete: (_) async => false,
+        onShowDetail: (_) {},
+        onXemKeHoach: (k) => nhan = k,
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TheKeHoach), findsOneWidget);
+    final yKhoi = tester.getBottomLeft(find.byType(KhoiNhanXet)).dy;
+    final yThe = tester.getTopLeft(find.byType(TheKeHoach)).dy;
+    expect(yThe, greaterThan(yKhoi),
+        reason: 'Thẻ đứng NGAY DƯỚI câu nhận xét đã nhắc tới nó.');
+    await tester.tap(find.text('Xem kế hoạch'));
+    expect(identical(nhan, kh), isTrue,
+        reason: 'Trang mở sheet với ĐÚNG kế hoạch của state, không tính lại.');
+    expect(tester.takeException(), isNull, reason: 'Không tràn ở 411dp.');
+  });
+
+  testWidgets('không có onXemKeHoach → thẻ không có nút Xem kế hoạch',
+      (tester) async {
+    final thieu = _view(id: 'b1', amount: 3000000, spent: 2800000);
+    final nguon = _view(id: 'b2', amount: 2000000, spent: 200000);
+    await _dung(
+      tester,
+      active: [thieu, nguon],
+      keHoach: KeHoachTaiPhanBo(
+        thieu: thieu,
+        duPhong: 4200000,
+        thamHut: 1200000,
+        dong: [DongTaiPhanBo(nguon: nguon, duDia: 1800000, soTien: 500000)],
+        trangThai: TrangThaiKeHoach.duNguonBu,
+        soThieu: 0,
+      ),
+    );
+    expect(find.byType(TheKeHoach), findsOneWidget);
+    expect(find.text('Xem kế hoạch'), findsNothing,
+        reason: 'Cùng lối `onOpenAnalytics`: thà thiếu còn hơn một nút chết.');
   });
 
   testWidgets('chưa có ngân sách nào → KHÔNG dựng khối', (tester) async {

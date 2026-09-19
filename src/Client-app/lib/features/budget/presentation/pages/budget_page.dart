@@ -6,7 +6,10 @@ import '../../../../core/auth/current_account.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../../../core/database/app_database.dart';
+import '../../../ai_edge/presentation/pages/ke_hoach_tai_phan_bo_sheet.dart';
 import '../../data/models/budget_entity.dart';
+import '../../data/repositories/budget_repository.dart';
 import '../bloc/budget_cubit.dart';
 import 'budget_tabs_view.dart';
 
@@ -72,6 +75,18 @@ class _BudgetPageContent extends StatelessWidget {
             onDelete: (v) => _confirmDelete(context, v),
             onShowDetail: (v) => _showDetail(context, v),
             onOpenAnalytics: () => context.go('/analytics'),
+            onXemKeHoach: (kh) {
+              // Mã tài khoản đọc từ phiên, không từ kế hoạch (quy tắc 2).
+              final idaccount = currentAccountIdOrNull(context);
+              if (idaccount == null) return;
+              moKeHoachTaiPhanBoSheet(
+                context,
+                keHoach: kh,
+                idaccount: idaccount,
+                budgets: sl<BudgetRepository>(),
+                ghiPhanHoi: sl<AppDatabase>().aiFeedbackDao.ghi,
+              );
+            },
           ),
         BudgetError(:final message) => _ErrorScaffold(message: message),
         _ => const Scaffold(
