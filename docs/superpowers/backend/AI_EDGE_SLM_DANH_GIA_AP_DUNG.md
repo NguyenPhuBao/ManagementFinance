@@ -6,6 +6,23 @@
 **Loại:** tài liệu tham khảo cho người dùng, **không phải** yêu cầu làm việc. Người dùng chốt
 *"hiện tại chưa cần làm"* cùng ngày; mọi lộ trình dưới đây là phương án để cân nhắc.
 
+> ⚠️ **Đính chính 2026-09-19 — người dùng đã gỡ lệnh hoãn và duyệt thiết kế thi công.** Thiết kế
+> đã chốt ở [`../specs/2026-09-19-ai-edge-slm-design.md`](../specs/2026-09-19-ai-edge-slm-design.md);
+> tệp này giữ nguyên làm bản đánh giá gốc. Hai điều **đo được** ngày 2026-09-19 làm lệch mục 3.4,
+> 15 và 16 bên dưới:
+>
+> 1. Gói `flutter_gemma` (bọc MediaPipe LLM Inference) **không hỗ trợ Gemma 3 4B**. Danh sách mô
+>    hình văn bản của gói: Gemma 3 1B / 270M, Gemma 3n E2B / E4B, **Gemma 4 E2B (≈2,4 GB) / E4B
+>    (≈4,3 GB)**. Khuyến nghị "Gemma 3 4B int4 kèm Gemma 3 1B dự phòng" ở mục 16 vì thế **không
+>    dùng được**; bậc thang mới là **Gemma 4 E4B (≥ 8 GB RAM) → E2B (4–8 GB) → mẫu câu**. Hai bản
+>    Gemma 4 ở kho `litert-community` **công khai**; Gemma 3 1B **gated** (cần token HuggingFace) nên
+>    bị bỏ khỏi bậc thang. Cỡ Gemma 3n E4B ở bảng mục 15 (4,5 GB) cũng sai — gói ghi **6,5 GB**.
+> 2. Bản `flutter_gemma` 1.8.3 đòi **Flutter ≥ 3.44, Dart ≥ 3.12**; dự án ở 3.41.5 / 3.11.3.
+>    Người dùng chốt **nâng Flutter** (stable mới nhất 3.47) thay vì dùng bản 0.13.6.
+>
+> Và một ràng buộc: tệp `.litertlm` **chỉ chạy arm64-v8a**, nên máy ảo x86_64 không bao giờ nạp
+> được mô hình — nhánh rơi về mẫu câu là đường mặc định ở máy ảo.
+
 > **Cách đo.** Đọc mã client trên nhánh `TranQuangDat` sau khi gỡ phần client của liên kết
 > ngân hàng (`4685271`); đo lược đồ Drift thật (`app_database.dart`, `tables/`); đo dữ liệu thật
 > trên PostgreSQL dev bằng Prisma (chỉ đọc); đối chiếu với phương án A ở mục 9.1
