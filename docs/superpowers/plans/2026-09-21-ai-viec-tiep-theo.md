@@ -1,8 +1,9 @@
-# AI — việc tiếp theo, chi tiết đủ để bắt tay làm
+# Việc tiếp theo — chi tiết đủ để bắt tay làm
 
-> **Cho người thi công:** tệp này gom **toàn bộ** việc AI còn mở, sắp theo thứ tự, và ghi
-> đủ tên tệp / tên hàm / chữ ký để không phải khảo sát lại. Chặng 1 chi tiết nhất vì nó
-> làm được ngay; các chặng sau phác thảo dần.
+> **Cho người thi công:** tệp này gom **toàn bộ việc còn mở của dự án** — mảng AI (chặng
+> 0–5) **và việc ngoài mảng AI** (hai mục lỗ hổng, bảy việc UX) — sắp theo thứ tự, ghi đủ
+> tên tệp / tên hàm / chữ ký để không phải khảo sát lại. Chặng 1 chi tiết nhất vì nó làm
+> được ngay; các chặng sau phác thảo dần.
 >
 > **Nguồn:** `docs/AI_EDGE_FEATURE.md` mục **10** (bản chất mảng AI, mười tiêu chí, bốn
 > tầng chiều ghi) và mục **11** (bản đồ khảo sát). Đọc hai mục ấy **trước** khi bắt đầu.
@@ -27,6 +28,43 @@ từng việc:
 7. Trước khi báo xong: `flutter test` **trọn bộ** (mức nền **3106/3106, 1 skip**) và
    `flutter analyze` (**26 issue, 0 error**). Đụng giao diện → **nghiệm thu máy ảo 411dp**.
 8. Tệp test mới phải `git add -f` (`.gitignore` có `test/`).
+
+---
+
+# CHẶNG 0 — Hai phép đo, mỗi cái ~15 phút
+
+⚠️ **Tách riêng vì chúng KHÔNG phụ thuộc gì và không chặn ai** — điều kiện duy nhất là
+người dùng cắm máy thật. Bản đầu của tệp này chôn chúng ở cuối chặng 5, lẫn trong một
+bảng 12 dòng, nên người dùng phải hỏi lại mới thấy.
+
+Hạ tầng còn nguyên: app spike ở `D:/flowmoney-spike` (ngoài repo), bốn tệp mô hình ở
+`D:/flowmoney-models` (11 GB). Đẩy lại một tệp 2,41 GB mất ~2 phút qua USB, theo đúng
+đường ở mục **8.6** `AI_EDGE_FEATURE.md` (push vào `/sdcard/Download` rồi
+`cat … | run-as ‹pkg› sh -c 'cat > files/…'`).
+
+## 0.1 Đo NPU
+
+P1 **chỉ đo GPU và CPU**. Máy là Snapdragon 8 Gen 3 có NPU Hexagon; gói có
+`PreferredBackend.npu` và README ghi *"NPU Acceleration: Hardware NPU inference for
+`.litertlm` models on Qualcomm Snapdragon"*.
+
+**Lấy được chỉ bằng đổi một tham số** trong `_chay()` của spike. Nếu NPU nhanh hơn hoặc
+tốn ít pin hơn GPU thì đó là cải thiện thật cho P3; nếu không chạy được thì cũng là một
+dòng đáng giá trong bảng đo của đồ án.
+
+**Điền vào:** mục **8.1** `AI_EDGE_FEATURE.md`, thêm hàng thứ năm.
+
+## 0.2 Đo vision / audio
+
+P1 **chỉ đo văn bản**. E2B đa phương thức (ảnh + âm thanh), nhưng ba câu hỏi chưa có
+đáp án, và chúng quyết định nhánh **đọc hoá đơn** có khả thi không:
+
+- Ảnh mất bao lâu, tốn thêm bao nhiêu RAM (nhiều khả năng hơn 0,96 GB đáng kể)?
+- Chất lượng đọc **tiếng Việt có dấu** trên hoá đơn in nhiệt mờ — mô hình 2,3 tỉ tham số
+  không phải OCR chuyên dụng.
+- Âm thanh cần gói `flutter_gemma_speech` riêng hay đi thẳng qua Gemma?
+
+**Điền vào:** mục **8** — một tiểu mục mới **8.7**.
 
 ---
 
@@ -271,17 +309,68 @@ Task 0 cần người dùng nghiệm thu màn Stitch.
 | **Bất thường theo danh mục** | 20–30 giao dịch/danh mục | xa nhất; danh mục đông nhất hiện có **6** |
 | **Chọn khối Phân tích đáng xem** | không (mức rẻ) | soát khối nào chưa tự ẩn khi rỗng |
 | **Tần suất thông báo theo phản ứng** | dữ liệu phản ứng | ⚠️ **không đụng `dedupeKey`**; giữ nguyên `luonBao` |
-| **Đo NPU** · **vision/audio** | cắm máy thật | ~15 phút mỗi cái; spike còn ở `D:/flowmoney-spike`, mô hình ở `D:/flowmoney-models` |
-| **Tám việc UX hoãn** | **E6** chờ chốt | `2026-09-19-ux-ui-danh-sach-viec.md` |
+*(Đo NPU và vision/audio đã tách lên **chặng 0** — chúng không phụ thuộc gì.)*
 
 ---
 
-# Hai thứ người dùng phải quyết
+# VIỆC NGOÀI MẢNG AI — gom ngày 2026-09-21
 
-1. **Ưu tiên nào?** Thứ tự trên tối ưu **giá trị người dùng trên mỗi giờ công**. Nếu ưu
-   tiên là **phần demo cho hội đồng**: đưa **P3 lên trước chặng 2–3**, và **giải thích
-   biểu đồ lên chặng 2**.
-2. **Lối A hay B cho P3** — chặn ở đầu chặng 4, hỏi sớm được.
+⚠️ Mọi thứ trên đây là **việc của mảng AI**. Dự án còn những việc khác đang mở, và bản
+đầu của tệp này không gom chúng — người dùng phải hỏi lại mới thấy. Danh sách đầy đủ ở
+đây; **không cái nào chặn mảng AI**.
+
+## Hai mục lỗ hổng còn mở — cả hai HOÃN CÓ CHỦ Ý
+
+Đếm bằng máy: **47 mục G, 45 đã đóng.** Hai mục còn lại đều đã cân nhắc và chấp nhận:
+
+| Mục | Nội dung | Trạng thái |
+|---|---|---|
+| **G18** | `TransactionDao.watchByGoal` có nhánh dự phòng so bằng **TÊN** mục tiêu (`note LIKE '%Tích lũy mục tiêu: <tên>%'`) cho hàng không có `goal_id` — mang đúng khuyết điểm mà `goal_id` sinh ra để chữa: mục tiêu tên `"Mua"` nuốt cả `"MuaXe"` | ⏸️ **THU HẸP DẦN** — hàng mới đều có `goal_id`, nên nhánh này teo dần theo thời gian |
+| **G23** | `DefaultCategorySeeder` sao chép từ hàng mặc định **đã có trên máy này**, mà pull là tăng dần theo `since` — máy chỉ biết một phần bộ mặc định của server | ⏸️ **CHẤP NHẬN ĐƯỢC** |
+
+Đừng "dọn dẹp" hai mục này nếu không có lý do mới — chúng đã được quyết một lần.
+
+## Bảy việc UX hoãn *(A6 đã đóng ở P2 Task 14)*
+
+Nguồn: mục "⏸ Để làm sau" `docs/superpowers/plans/2026-09-19-ux-ui-danh-sach-viec.md`.
+⚠️ Người dùng chốt *"lưu lại các phần đó để làm sau"* — **không làm cái nào cho tới khi
+họ gọi tên lại.**
+
+**Cần người dùng chốt trước (đừng tự quyết):**
+
+1. **A5** — nút "Quét" ở Trang chủ hiện là stub `SnackBar`: giữ và làm thật, hay gỡ.
+2. **A11 còn lại** — **9 handler rỗng** ở 4 tệp: `ai_chat_page` (5 → **đóng ở P3 Task
+   8**), `login_page` Google/Apple (2, backend chưa có OAuth), `forgot_password_page`
+   "Liên hệ hỗ trợ" (1, chưa có kênh hỗ trợ), `add_transaction_page` menu ⋮ (1). Danh
+   sách sống trong `test/core/ui/khong_co_nut_chet_test.dart` — **đỏ nếu lệch mã**.
+3. **E6** — nhắc "ví âm" hằng ngày: giữ / đổi hằng tuần / chỉ báo khi **chuyển** sang âm.
+   ⚠️ Khoá chống trùng sống **90 ngày**, nên bỏ ngày khỏi khoá là **im 90 ngày** kể cả
+   khi ví âm lại.
+4. **E2** — mục lục hoặc tab con cho trang Phân tích (13 khối). Đụng bố cục → **vẽ Stitch
+   trước**, brainstorming trước.
+
+**Không bị chặn, chỉ chưa làm:**
+
+5. **E1** — skeleton tải cho tab Phân tích; vẽ Stitch trước.
+6. **E4** — thay **176** `SnackBar` bằng toast. Kênh `ThongBaoNhanh → AppToast` đã có từ
+   E3; phần thay dần đụng **hàng trăm** khẳng định test.
+7. **G2 (UX)** — kiểm bố cục với `textScaler` 1.3.
+
+## Việc của người dùng, không phải của agent
+
+Ẩn hoặc xoá màn Stitch cũ `20700200afbc4d5f98962bc9be79b780` *"Thêm giao dịch - Gợi ý
+danh mục AI"* — MCP Stitch **không có lệnh xoá/ẩn màn**.
+
+---
+
+# Quyết định đã chốt, và thứ còn lại
+
+✅ **Ưu tiên: GIÁ TRỊ NGƯỜI DÙNG, không phải phần demo** — người dùng chốt 2026-09-21.
+Nên thứ tự trên **giữ nguyên**: không đưa P3 hay "giải thích biểu đồ" lên sớm dù chúng
+dễ gây ấn tượng khi trình bày.
+
+⏳ **Còn phải chốt: lối A hay B cho P3** — chặn ở đầu chặng 4, hỏi sớm được. Task 1–6
+giống nhau ở cả hai lối nên chưa gấp.
 
 # Hai chỗ cố ý KHÔNG có trong danh sách
 
