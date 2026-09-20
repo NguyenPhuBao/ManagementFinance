@@ -189,7 +189,16 @@ mỗi tuần (B6), bất kể bao nhiêu ngân sách thâm hụt; câu chữ **k
 
 ## 4. Tầng 3 — SLM trên máy (P3)
 
-### 4.1. Bậc thang mô hình ⚠️
+> 🛑 **BẢNG 4.1 DƯỚI ĐÂY ĐÃ LỖI THỜI TỪ 2026-09-20.** P1 spike đo trên máy thật
+> (OnePlus 13R / Snapdragon 8 Gen 3) và người dùng chốt **E2B cho MỌI máy, bỏ hẳn
+> E4B** — bảng đo và bậc thang mới ở **mục 8** `docs/AI_EDGE_FEATURE.md`.
+> Chính mục 4.1 này đã dự liệu điều đó: *"P1 có thể đổi con số ngưỡng; bảng này là
+> điểm xuất phát"*. Giữ nguyên văn ở đây làm ảnh chụp của giả định trước khi đo —
+> **đừng thi công theo nó**. Hai số sai rõ nhất: cỡ tệp thật là E4B **3,41 GB** /
+> E2B **2,41 GB**, và trên GPU **cả hai** chỉ tốn ~**0,96 GB** RAM đỉnh chứ không
+> phải vài GB — tức ngưỡng "RAM thiết bị" không phân biệt được hai mô hình.
+
+### 4.1. Bậc thang mô hình ⚠️ — ĐÃ THAY, xem banner trên
 
 | RAM thiết bị | Mô hình | Cỡ |
 |---|---|---|

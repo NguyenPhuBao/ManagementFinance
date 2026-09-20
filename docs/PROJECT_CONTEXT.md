@@ -596,6 +596,57 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-20)
 
+### 📏 AI Edge-SLM — P1 spike trên máy thật (2026-09-20)
+
+**P1 XONG.** Người dùng cắm **OnePlus 13R** (`CPH2691`, SoC **SM8650 = Snapdragon
+8 Gen 3**, arm64-v8a, RAM 10,95 GB, Android 16). Bảng đo đầy đủ — bốn tổ hợp
+mô hình × backend, 52 câu sinh ra, RAM đỉnh, nhiệt — ở **mục 8**
+`docs/AI_EDGE_FEATURE.md`. Mã spike nằm **ngoài repo** (`D:/flowmoney-spike`),
+không commit, đúng như spec yêu cầu.
+
+**Kết quả lật bản thiết kế, và người dùng đã chốt:** dùng **Gemma 4 E2B cho MỌI
+máy**, bỏ hẳn E4B. Bậc thang mới: arm64 + GPU → E2B/GPU · GPU hỏng → E2B/CPU ·
+còn lại → mẫu câu.
+
+Con số đứng sau quyết định ấy:
+
+| | E4B/GPU | E4B/CPU | **E2B/GPU** | E2B/CPU |
+|---|---|---|---|---|
+| Sinh một câu (TB 10 lượt) | 4.668 ms | 12.675 ms | **2.329 ms** | 3.313 ms |
+| RAM đỉnh | 0,97 GB | 3,27 GB | **0,96 GB** | 1,73 GB |
+| Cỡ tệp | 3,41 GB | — | **2,41 GB** | — |
+
+Tức **trên GPU hai mô hình tốn RAM bằng nhau** — nên ngưỡng "RAM thiết bị ≥ 8 GB"
+của spec không phân biệt được gì, trong khi E2B nhanh gấp đôi và nhẹ hơn 1 GB.
+Chất lượng tiếng Việt của E2B **không thua** (câu còn đọc trôi hơn), vì việc của
+mô hình ở kiến trúc này chỉ là *diễn giải một gói số đã tính sẵn*.
+
+⚠️ **Spec mục 4.1 vẫn ghi bậc thang cũ** — nay có banner 🛑 ở đầu. Chính spec ấy
+nói *"P1 có thể đổi con số ngưỡng"*, và P1 đã đổi.
+
+**Ba thứ nữa P1 lật, đều ảnh hưởng thẳng tới P3:**
+
+1. `flutter_gemma` core **không kèm engine nào** — `.litertlm` đòi thêm
+   **`flutter_gemma_litertlm`**.
+2. **Chỉ dùng tệp `‹model›.litertlm` chuẩn.** Biến thể `-gpu.litertlm` nhẹ hơn
+   0,6 GB nhưng **không nạp được** trên engine FFI Android, dù tệp nguyên vẹn
+   từng byte — và lỗi nó ném (*"Model may be invalid"*) dẫn người đọc đi kiểm tra
+   tải hỏng, sai hướng hoàn toàn.
+3. Máy không chạy được thì bắt bằng **`try/catch` quanh `getActiveModel`**, không
+   cần tự đọc ABI: gói tự nêu *"require an arm64-v8a Android device (got
+   android_x64)"*. Lỗi ném ở bước **nạp**, sau khi `install()` đã thành công.
+
+**Nhiệt không thành vấn đề:** 13 câu liên tiếp đưa CPU từ 35,2 °C lên 37,1 °C, và
+ba trong bốn tổ hợp có câu thứ 10 nhanh **bằng hoặc hơn** câu đầu.
+
+⚠️ **Bốn cái bẫy khi đưa mô hình lên máy** (mục 8.6) — đắt nhất là cái thứ hai:
+`adb push` vào `/sdcard/Android/data/‹pkg›/files/` in *"1 file pushed, 0 skipped"*
+kèm tốc độ và **exit 0**, mà thư mục vẫn **rỗng**. Scoped storage nuốt sạch, không
+một dòng lỗi. Đường đi được là push vào `/sdcard/Download` rồi
+`cat … | run-as ‹pkg› sh -c 'cat > files/…'` — 2 GB mất 12 giây.
+
+**Bước tiếp: viết kế hoạch P3** (điều kiện "P1 đạt, P2 xong" nay đã đủ).
+
 ### 🤖 AI Edge-SLM — P2 tầng Edge tất định + mẫu câu (2026-09-19 → 2026-09-20)
 
 **P2 XONG.** Spec đã duyệt `docs/superpowers/specs/2026-09-19-ai-edge-slm-design.md`,
