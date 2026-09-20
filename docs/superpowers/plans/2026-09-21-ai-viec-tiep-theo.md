@@ -284,11 +284,18 @@ Việc **duy nhất** trong bốn việc mục 11.4 dùng được **dữ liệu
 
 # CHẶNG 4 — P3
 
-⚠️ **Chốt lối A hay B trước khi bắt đầu Task 7** (Task 1–6 giống nhau ở cả hai lối):
+✅ **NGƯỜI DÙNG CHỐT LỐI B ngày 2026-09-21** — kế hoạch P3 đã sửa theo (banner đầu tệp,
+Task 7 Step 4, Task 8 Interfaces).
 
-- **A** (kế hoạch đang viết theo): mô hình viết câu ở **cả bốn khối Nhận xét** + Trợ lý AI.
-- **B** (khuyến nghị): giữ mẫu câu ở bốn khối, mô hình **chỉ** phục vụ Trợ lý AI. Đổi sang
-  B = **không đăng ký `BoDienGiai` vào DI**; không sửa màn nào.
+Mô hình phục vụ **một chỗ duy nhất**: màn Trợ lý AI. Bốn khối Nhận xét **giữ mẫu câu** —
+hiện tức thì, không chờ 2,3 giây, không "nhảy" từ mẫu sang câu mô hình.
+
+**Lý lẽ:** P1 đo được câu mô hình ở khối Nhận xét **gần bằng mẫu câu** (khác giọng văn,
+không khác thông tin — mẫu câu còn gọn hơn), mà giá là 2,3 s mỗi khối + 2,41 GB tải. Mô
+hình chỉ hơn hẳn ở **hỏi đáp tự do**, thứ mẫu câu không làm được.
+
+⚠️ **Đảo ngược được bằng một commit** — bỏ dấu chú thích khối đăng ký DI ở Task 7. Đừng
+làm nếu người dùng chưa đổi ý.
 
 Task 0 cần người dùng nghiệm thu màn Stitch.
 **Kế hoạch:** `2026-09-20-ai-edge-p3-cam-slm.md`, 10 task.
@@ -369,8 +376,10 @@ danh mục AI"* — MCP Stitch **không có lệnh xoá/ẩn màn**.
 Nên thứ tự trên **giữ nguyên**: không đưa P3 hay "giải thích biểu đồ" lên sớm dù chúng
 dễ gây ấn tượng khi trình bày.
 
-⏳ **Còn phải chốt: lối A hay B cho P3** — chặn ở đầu chặng 4, hỏi sớm được. Task 1–6
-giống nhau ở cả hai lối nên chưa gấp.
+✅ **Lối B cho P3** — người dùng chốt 2026-09-21. Kế hoạch P3 đã sửa theo.
+
+**Không còn quyết định nào chờ người dùng.** Mọi việc trong tệp này làm được ngay khi
+tới lượt, trừ bốn việc UX ghi rõ "cần người dùng chốt trước" ở mục việc ngoài mảng AI.
 
 # Hai chỗ cố ý KHÔNG có trong danh sách
 

@@ -6,6 +6,11 @@
 **Goal:** Câu ở khối Nhận xét và màn Trợ lý AI do **mô hình trên máy** viết thay vì
 mẫu câu — chạy offline, mọi con số vẫn từ tầng tất định, sai một số là rơi về mẫu câu.
 
+> ✅ **NGƯỜI DÙNG CHỐT LỐI B ngày 2026-09-21.** Mô hình phục vụ **một chỗ duy nhất**:
+> màn Trợ lý AI (Task 8). Bốn khối Nhận xét **giữ mẫu câu** — Task 7 **không** đăng ký
+> `BoDienGiai` vào DI. Lý lẽ và cách đảo ngược ghi ngay tại Task 7 Step 4.
+> ⚠️ Task 1–6 **không đổi gì** so với bản viết theo lối A.
+
 **Architecture:** `BoDienGiai` đã là khe cắm sẵn từ P2 (`KhoiNhanXet` đọc
 `sl<BoDienGiai>()`, không có thì dùng `const MauCau()`). P3 thêm một bản thi công thứ
 hai — `SlmDienGiai` — bọc runtime `flutter_gemma`, đi qua `kiemSo`, và **rơi về
@@ -1467,18 +1472,35 @@ Trong `injection_container.dart`, sau khối `NotificationScanner`:
   sl.registerLazySingleton<SlmCache>(
       () => SlmCache(thuMuc: getApplicationSupportDirectory));
 
-  // ⚠️ Đăng ký BoDienGiai là việc CÓ ĐIỀU KIỆN: công tắc "Dùng AI trên máy"
-  // phải bật. Không đăng ký thì `KhoiNhanXet` tự dùng `const MauCau()` — đó là
-  // toàn bộ cơ chế tắt, không cần cờ nào ở tầng widget.
-  if ((await SharedPreferences.getInstance()).getBool('ai_tren_may_bat') ??
-      true) {
-    sl.registerLazySingleton<BoDienGiai>(() => SlmDienGiai(
-          runtime: sl<SlmRuntime>(),
-          cache: sl<SlmCache>(),
-          moHinh: sl<MoHinhTaiVe>(),
-        ));
-  }
+  // 🛑 CỐ Ý KHÔNG đăng ký `BoDienGiai` — người dùng chốt LỐI B ngày 2026-09-21.
+  //
+  // Không đăng ký thì `KhoiNhanXet` tự dùng `const MauCau()`, nên bốn khối Nhận
+  // xét (Ngân sách · Phân tích · Mục tiêu · Trang chủ) **giữ mẫu câu**: hiện
+  // tức thì, không chờ 2,3 giây, không "nhảy" từ mẫu sang câu mô hình.
+  //
+  // Vì sao: P1 đo được câu mô hình ở khối Nhận xét **gần bằng mẫu câu** — khác
+  // nhau ở giọng văn, không ở thông tin, và mẫu câu còn gọn hơn. Cái giá là
+  // 2,3 s mỗi khối cộng 2,41 GB tải. Mô hình chỉ hơn hẳn ở **hỏi đáp tự do**,
+  // nên nó phục vụ **một chỗ duy nhất**: màn Trợ lý AI (Task 8), nơi tự dựng
+  // `SlmDienGiai` lấy từ `sl<SlmRuntime>()` / `sl<SlmCache>()` / `sl<MoHinhTaiVe>()`.
+  //
+  // ⚠️ Đổi sang LỐI A (mô hình viết câu ở cả bốn khối) chỉ là bỏ dấu chú thích
+  // của khối dưới — một commit, không sửa màn nào. Đừng làm nếu người dùng chưa
+  // đổi ý.
+  //
+  // if ((await SharedPreferences.getInstance()).getBool('ai_tren_may_bat') ??
+  //     true) {
+  //   sl.registerLazySingleton<BoDienGiai>(() => SlmDienGiai(
+  //         runtime: sl<SlmRuntime>(),
+  //         cache: sl<SlmCache>(),
+  //         moHinh: sl<MoHinhTaiVe>(),
+  //       ));
+  // }
 ```
+
+⚠️ **Công tắc "Dùng AI trên máy" ở màn Cài đặt AI vẫn còn nguyên ý nghĩa** — nó gác
+việc màn Trợ lý AI có gọi mô hình hay không. Ở lối B, màn ấy đọc khoá
+`ai_tren_may_bat` trực tiếp (Task 8) thay vì để DI gác hộ.
 
 - [ ] **Step 5: Thêm route**
 
@@ -1530,8 +1552,11 @@ git commit -m "feat(ai-edge): màn Cài đặt AI — tải, xoá, công tắc d
 - Test: `test/features/ai_chat/ai_chat_page_test.dart`
 
 **Interfaces:**
-- Consumes: `promptHoiDap`, `chuDeBiChan`, `kCauTuChoi`, `SlmDienGiai`, bốn `GoiSo`
-  của P2.
+- Consumes: `promptHoiDap`, `chuDeBiChan`, `kCauTuChoi`, bốn `GoiSo` của P2.
+- ⚠️ **Lối B**: màn này **tự dựng** `SlmDienGiai` từ `sl<SlmRuntime>()`,
+  `sl<SlmCache>()`, `sl<MoHinhTaiVe>()` — **không** đọc `sl<BoDienGiai>()`, vì Task 7 cố
+  ý không đăng ký nó. Và màn tự đọc khoá `ai_tren_may_bat`: tắt công tắc thì ô nhập khoá
+  y như khi chưa tải mô hình.
 
 - [ ] **Step 1: Test đỏ**
 
