@@ -720,10 +720,12 @@ chép đúng số của trang ấy; và "để dành **86%**" trên thẻ cạnh
 khối (làm tròn nguyên vs luật G2). Muốn khớp thì đổi `thuChiThangCua` — **hỏi
 người dùng trước**.
 
-**Bước tiếp:** **P1 spike** khi người dùng cắm máy Snapdragon 8 Gen 3 qua USB,
-rồi viết kế hoạch **P3** (mô hình Gemma 4 qua `flutter_gemma`; bậc thang E4B
-≥ 8 GB → E2B 4–8 GB → mẫu câu, `.litertlm` chỉ arm64 nên **máy ảo luôn đi nhánh
-mẫu câu**). **A11** của lượt UX (năm handler rỗng của `ai_chat_page`) đóng ở P3.
+**Bước tiếp:** ✅ cả hai đã xong trong ngày — **P1 spike** (khối 📏 ở trên) và
+**kế hoạch P3** (`docs/superpowers/plans/2026-09-20-ai-edge-p3-cam-slm.md`, 10
+task). ⚠️ Câu *"bậc thang E4B ≥ 8 GB → E2B 4–8 GB"* từng đứng ở đây là **ảnh
+chụp trước khi đo**: P1 lật nó, và người dùng chốt **E2B cho mọi máy**. Vế
+`.litertlm` chỉ arm64 thì vẫn đúng — **máy ảo luôn đi nhánh mẫu câu**.
+**A11** của lượt UX (năm handler rỗng của `ai_chat_page`) đóng ở P3, Task 8.
 
 
 

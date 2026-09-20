@@ -14,7 +14,10 @@
 > 1. Gói `flutter_gemma` (bọc MediaPipe LLM Inference) **không hỗ trợ Gemma 3 4B**. Danh sách mô
 >    hình văn bản của gói: Gemma 3 1B / 270M, Gemma 3n E2B / E4B, **Gemma 4 E2B (≈2,4 GB) / E4B
 >    (≈4,3 GB)**. Khuyến nghị "Gemma 3 4B int4 kèm Gemma 3 1B dự phòng" ở mục 16 vì thế **không
->    dùng được**; bậc thang mới là **Gemma 4 E4B (≥ 8 GB RAM) → E2B (4–8 GB) → mẫu câu**. Hai bản
+>    dùng được**; bậc thang mới là ~~**Gemma 4 E4B (≥ 8 GB RAM) → E2B (4–8 GB) → mẫu câu**~~
+>    🛑 **đính chính lần hai 2026-09-20**: spike P1 đo trên máy thật cho thấy **ngưỡng RAM không
+>    phân biệt được hai mô hình** — trên GPU cả hai chỉ tốn ~0,96 GB — nên người dùng chốt
+>    **Gemma 4 E2B cho MỌI máy, bỏ hẳn E4B**. Bảng đo: `docs/AI_EDGE_FEATURE.md` mục 8. Hai bản
 >    Gemma 4 ở kho `litert-community` **công khai**; Gemma 3 1B **gated** (cần token HuggingFace) nên
 >    bị bỏ khỏi bậc thang. Cỡ Gemma 3n E4B ở bảng mục 15 (4,5 GB) cũng sai — gói ghi **6,5 GB**.
 > 2. Bản `flutter_gemma` 1.8.3 đòi **Flutter ≥ 3.44, Dart ≥ 3.12**; dự án ở 3.41.5 / 3.11.3.

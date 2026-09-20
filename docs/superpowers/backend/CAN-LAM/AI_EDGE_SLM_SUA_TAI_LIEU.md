@@ -35,9 +35,26 @@ trên pub.dev, gói `flutter_gemma` 1.8.3 (2026-09-15, bọc MediaPipe LLM Infer
 - Bản 1.8.3 đòi **Flutter ≥ 3.44, Dart ≥ 3.12** — client đã nâng lên 3.47.5 ngày 2026-09-19.
 - Tệp `.litertlm` **chỉ chạy arm64-v8a**: máy ảo x86_64 không nạp được mô hình.
 
-Xin sửa khuyến nghị thành: *"MediaPipe LLM Inference qua `flutter_gemma`; mô hình chọn theo RAM lúc
-chạy — Gemma 4 E4B (≥ 8 GB), Gemma 4 E2B (4–8 GB), dưới đó hoặc không arm64 thì mẫu câu. Máy demo
-Snapdragon 8 Gen 3 / 12 GB chạy E4B."* Con số ngưỡng có thể đổi sau spike đo trên máy thật.
+- ⚠️ Gói `flutter_gemma` **không kèm engine nào**: `.litertlm` đòi thêm gói
+  **`flutter_gemma_litertlm`**. Thiếu nó thì `getActiveModel()` ném *"add the engine package"*.
+- ⚠️ Chỉ dùng tệp `‹model›.litertlm` **chuẩn**. Biến thể `-gpu.litertlm` nhẹ hơn 0,6 GB nhưng
+  **không nạp được** trên engine FFI Android dù tệp nguyên vẹn từng byte — lỗi nó ném là
+  *"Model may be invalid"*, dẫn người đọc đi kiểm tra tải hỏng, sai hướng hoàn toàn.
+
+> 🛑 **Đoạn xin sửa dưới đây ĐÃ ĐƯỢC CẬP NHẬT ngày 2026-09-20 sau spike P1.** Bản trước xin ghi
+> *"mô hình chọn theo RAM lúc chạy — E4B (≥ 8 GB), E2B (4–8 GB) … máy demo chạy E4B"*, và chính
+> nó đã nói *"con số ngưỡng có thể đổi sau spike"*. Spike đã đo, và **ngưỡng RAM không còn là
+> tiêu chí**: trên GPU hai mô hình tốn RAM **bằng nhau** (E2B 0,96 GB, E4B 0,97 GB — đo trên
+> OnePlus 13R / Snapdragon 8 Gen 3, Android 16), trong khi E2B sinh câu **nhanh gấp đôi**
+> (2,3 s so với 4,7 s) và tệp nhẹ hơn **1 GB** (2,41 so với 3,41 GB). Chất lượng tiếng Việt
+> không thua trên đúng việc mà kiến trúc giao cho mô hình — diễn giải một gói số **đã tính sẵn**.
+> Bảng đo đầy đủ: `docs/AI_EDGE_FEATURE.md` mục 8.
+
+Xin sửa khuyến nghị thành: *"MediaPipe LLM Inference qua `flutter_gemma` + `flutter_gemma_litertlm`;
+mô hình là **Gemma 4 E2B cho mọi máy** (tệp `gemma-4-E2B-it.litertlm`, 2,41 GB). Backend ưu tiên
+GPU, lùi về CPU khi GPU hỏng; máy không phải arm64-v8a, chưa tải mô hình, hoặc runtime lỗi thì rơi
+về mẫu câu. **Không** chọn mô hình theo RAM thiết bị: phép đo cho thấy RAM đỉnh phụ thuộc
+**backend** (GPU ~0,96 GB, CPU 1,7–3,3 GB) chứ không phụ thuộc cỡ mô hình."*
 
 ## 3. 39 luật sau khi điều chỉnh (bảng mục 11 bản đánh giá)
 
