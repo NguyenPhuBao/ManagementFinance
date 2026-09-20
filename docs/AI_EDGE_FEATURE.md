@@ -585,3 +585,73 @@ bừa ngay khi vừa đủ mẫu" — đúng sai lầm mà mục 5f `NOTIFICATIO
 lần. Chỗ trống rõ nhất để cắm: **essentiality đang để cứng 0,5** cho mọi danh mục
 (`tai_phan_bo.dart`), khiến phép xếp hạng C6 quy về xếp theo dư địa — mà bảng
 `AiRebalancingFeedbacks` **đã ghi sẵn** dữ liệu để học.
+
+### 11.5 Năm chỗ cá nhân hoá được nữa — tìm bằng cách quét HẰNG SỐ
+
+Cách tìm: **mỗi hằng số cứng trong `lib/` là một câu nói "mọi người dùng giống nhau"**.
+Quét bằng máy ngày 2026-09-20. ⚠️ **Bốn trong năm nhóm dưới không cần mô hình gì cả** —
+chúng là đếm tần suất và neo theo một con số đã có, đúng kết luận mục 10.3: *cá nhân hoá
+nằm ở tầng số, không ở mô hình*.
+
+#### ⭐ (1) App đã cá nhân hoá MỘT ngưỡng, năm cái kia thì cứng
+
+Luật tái phân bổ có sáu ngưỡng; đúng **một** cái neo theo người dùng:
+
+```dart
+nguongCoNghia = max(1% thuNhap3Thang, 50.000)   // ← đã cá nhân hoá
+```
+
+Năm cái còn lại là số tuyệt đối cho mọi người (`tai_phan_bo.dart`):
+
+| Hằng | Giá trị | Vấn đề |
+|---|---|---|
+| `kNguongThamHutTuyetDoi` | 50.000 đ | người thu nhập 5 triệu và người 50 triệu **dùng chung một con số** |
+| `kDuDiaToiThieu` | 100.000 đ | nt |
+| `kBuocLamTron` | 10.000 đ | người tiêu lớn thấy đề xuất lẻ tẻ |
+| `kNguongThamHutTiLe` | 10 % | tỉ lệ — có thể hợp lý cho mọi người |
+| `kTranCat` / `kTranCatDaBiCat` | 25 % / 15 % | nt |
+
+Với người thu nhập 50 triệu, thâm hụt 50.000 đ là tiền lẻ — mà app vẫn dựng cả một kế
+hoạch cắt giảm cho nó. Đây là **sự không nhất quán app đã tự tạo ra**, và nó lộ ra chính
+vì `nguongCoNghia` làm đúng.
+
+**Sửa rẻ nhất trong cả mục 11:** cho ba hằng đầu đi qua cùng phép neo. Không cần AI,
+không cần dữ liệu mới — `thuNhap3Thang` đã có sẵn trong `DuLieuTaiPhanBo`. Hai hằng cuối
+là **tỉ lệ** nên giữ nguyên là hợp lý.
+
+#### ⭐ (2) Ví chọn sẵn theo ngữ cảnh
+
+`chonViChonSan` (`transaction/domain/vi_chon_san.dart`) chọn **ví mặc định**, rơi về ví
+đầu danh sách — **giống nhau mọi lúc**, không theo danh mục, không theo giờ.
+
+Thói quen thật thì có mẫu: ăn uống trả tiền mặt, mua sắm online trả ví ngân hàng. Học
+bằng **đếm tần suất** (*"danh mục Ăn uống → 9/10 lần dùng ví Tiền mặt"*), cùng loại phép
+tính với `suggestAmount`. Giảm **một cú chạm mỗi lần nhập giao dịch** — mà nhập giao dịch
+là việc làm nhiều nhất trong app.
+
+#### (3) Ngưỡng cảnh báo ngân sách 70 % / 90 %
+
+`budget_visuals.dart`: `_cautionAt = 0.70`, `_criticalAt = 0.90` — cứng cho mọi người.
+Nhưng 70 % vào ngày 20 là bình thường, còn 70 % vào ngày 5 là báo động.
+
+⭐ **Ghép thẳng với việc #3 của mục 11.4** (học nhịp chi theo ngày trong tháng): nhịp chi
+không chỉ dùng để dự phóng cuối kỳ mà còn để **dịch ngưỡng cảnh báo** theo từng người.
+Một phép học, hai chỗ dùng.
+
+#### (4) Thứ tự khối trang Phân tích
+
+Trang có **10 khối mang tiêu đề** (đếm `_tieuDeKhoi` ngày 2026-09-20), thứ tự giống nhau
+với mọi người. Người không có mục tiêu tiết kiệm vẫn cuộn qua khối mục tiêu.
+
+Hai mức: **rẻ** — soát lại khối nào chưa tự ẩn khi không có dữ liệu (nhiều khối đã ẩn);
+**học** — đếm khối nào người dùng hay cuộn tới rồi dừng, đưa lên trên. Trang chủ đã làm
+một phần: `pickHomeBudget` chọn ngân sách **căng nhất** thay vì ngân sách đầu tiên.
+
+#### (5) Tần suất thông báo theo phản ứng
+
+19 loại, hiện đối xử như nhau. Nhưng người dùng **đã nói cho ta biết** họ nghĩ gì: loại
+nào hay bị vuốt bỏ ngay, loại nào hay được chạm vào.
+
+⚠️ **Không đụng `dedupeKey`** — chống trùng phải giữ nguyên; chỉ đổi việc *có bắn ra hệ
+điều hành hay không*. Và giữ nguyên `luonBao`: bốn loại báo "app vừa rút tiền của bạn"
+không bao giờ được giảm tần suất.
