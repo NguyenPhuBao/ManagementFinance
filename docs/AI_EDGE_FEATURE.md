@@ -361,3 +361,223 @@ chết với *"Error parsing"*), và **logcat trôi nhanh hơn một lượt đo
 ## 9. Bảng đo P3
 
 (để trống; P3 điền: khung hình khi sinh câu, cache, tỉ lệ rơi về mẫu câu do bộ kiểm số)
+
+---
+
+## 10. Mảng này THỰC CHẤT là gì (2026-09-20)
+
+Viết sau một lượt trao đổi dài với người dùng, khi họ hỏi thẳng *"AI Edge + SLM có
+tác dụng gì"* và *"sao không huấn luyện để nó hiểu người dùng"*. Mục này trả lời sẵn
+những câu ấy cho người đọc sau — kể cả chính người viết lúc làm báo cáo.
+
+### 10.1 Gọi đúng tên từng phần
+
+**"AI Edge" ở đây là một hệ luật, không phải học máy.** Bóc ra có hai thứ: tầng 1 là
+thống kê mô tả (trung bình 3 tháng, dự phóng tuyến tính `spent × daysTotal / daysElapsed`,
+tổng theo danh mục), tầng 2 là 39 luật A–H viết tay. Không mạng nơ-ron, không huấn
+luyện, không suy luận xác suất — đây là **hệ chuyên gia**, công nghệ thập niên 1980,
+chạy trên máy người dùng. Chữ "Edge" chỉ nói nó chạy ở client chứ không ở server.
+
+**"SLM" là một bộ sinh câu.** Gemma 4 E2B nhận một bảng số **đã tính xong** và viết
+lại thành câu tiếng Việt — ngành gọi là *data-to-text*. Nó không đọc giao dịch, không
+tính, không được tạo ra con số nào; `kiemSo` chặn.
+
+⚠️ **Cái tên "AI" gánh hai nghĩa**, và đó là gốc của mọi hiểu nhầm: nếu "AI" nghĩa là
+*máy học từ dữ liệu* thì mảng này **không phải** AI; nếu nghĩa là *máy làm việc vốn
+cần người* (đọc bảng số rồi viết nhận xét) thì nó **là**. Đặc tả gốc dùng nghĩa thứ hai.
+
+**Nó không phải gì:** không tự khám phá ra điều gì mới — mọi thứ nó "biết" là do người
+viết luật đặt vào. Và nó không giỏi lên theo thời gian, trừ đúng hai chỗ đã cài cơ chế
+học: `suggestAmount` (TB 3 tháng) và luật C3 (đã cắt hai kỳ liền thì cắt nhẹ hơn).
+
+**Chỗ đáng giá nhất của thiết kế** là lõi *máy tính số, mô hình kể chuyện* cộng với
+`kiemSo` thi hành nó: **mô hình không bao giờ nói ra một con số mà hệ luật chưa tính**.
+Nhiều sản phẩm AI tài chính để mô hình đọc thẳng dữ liệu rồi tự tính — nó bịa, người
+dùng tin. Ở đây điều đó không xảy ra được **về mặt cấu trúc**, chứ không phải nhờ mô
+hình ngoan. Nói gọn: *nó không thông minh, nhưng nó đúng — và với một app quản lý tiền,
+đúng đáng giá hơn thông minh.*
+
+### 10.2 Vì sao đặt trên client chứ không gọi API server
+
+| | |
+|---|---|
+| **Pháp lý (cứng nhất)** | F1 đặc tả gốc: dữ liệu giao dịch **không được rời thiết bị**; Nghị định 13/2023/NĐ-CP. Gọi API ngoài là gửi sổ chi tiêu của người dùng cho bên thứ ba |
+| **Kiến trúc** | app offline-first, SQLite trên máy là bản gốc. Tính năng cần mạng sẽ là thứ **duy nhất** chết khi mất mạng |
+| **Thực tế của dự án** | backend là **vùng chỉ đọc**. Toàn bộ P2 không đụng một dòng nào ở `src/Backend` |
+| **Vận hành** | API LLM tính tiền theo token; mô hình trên máy tốn 0 đồng sau khi tải |
+
+Cái giá: mô hình yếu hơn hẳn server, tốn 2,41 GB máy người dùng, chỉ chạy arm64.
+Chấp nhận được **vì ba dòng đầu là ràng buộc, không phải sở thích**.
+
+### 10.3 ⚠️ Vì sao KHÔNG huấn luyện mô hình để cá nhân hoá
+
+Người dùng hỏi hai lần, nên ghi lại lý lẽ:
+
+**Trọng số không phải nơi chứa hiểu biết về người dùng.** Fine-tune đổi *cách mô hình
+viết*, không đổi *những gì nó biết về bạn* — cái đó đến từ **context bơm vào prompt**.
+Fine-tune trên 39 giao dịch của một người thì mô hình không nhớ nổi chúng một cách đáng
+tin, lại có nguy cơ quên khả năng tiếng Việt chung. Bơm gói số vào prompt thì chính xác
+100%, tức thì, và **kiểm được** bằng `kiemSo`.
+
+Ba rào cản nữa: **pháp lý** (huấn luyện tập trung = gửi dữ liệu đi = phạm F1); **kỹ
+thuật** (`flutter_gemma` nạp được trọng số LoRA có sẵn qua `loraPath` nhưng **không có
+API huấn luyện nào** — quét cả `lib/` của gói ngày 2026-09-20); **quy mô** (fine-tune
+per-user = mỗi người một lượt GPU và một file trọng số).
+
+✅ **Thứ khả thi và nên làm**: mô hình **nhỏ** (naive Bayes, hồi quy, đếm tần suất) học
+trên máy — vài chục KB, huấn luyện vài trăm mẫu trong mili giây, viết Dart thuần. Chúng
+cho ra **con số**, rồi con số đi vào gói, rồi mô hình kể lại. Chỗ cắm đã đúng sẵn:
+`GoiSo` không quan tâm số đến từ hệ luật hay từ mô hình đã học.
+
+Chỗ duy nhất fine-tune đáng giá: **một lần cho cả app, không per-user** — dạy giọng văn
+để giảm tỉ lệ bị `kiemSo` chặn. Điều kiện (mục 3.5 đặc tả gốc) là *prompt-only đã lộ
+giới hạn*, mà P1 đo được **52 câu, không câu nào bịa số** → **chưa tới lúc**.
+
+### 10.4 Mười tiêu chí cho AI chạy trên client
+
+Rút từ chính thiết kế này; cột cuối là hiện trạng đo ngày 2026-09-20.
+
+| Nhóm | Tiêu chí | Hiện trạng |
+|---|---|---|
+| **Không làm hỏng thứ đang chạy** | Chạy được khi **không có mô hình** — bản không-mô-hình là bản *chính* | ✅ `MauCau` mặc định; không đăng ký `BoDienGiai` thì app chạy y nguyên |
+| | Rơi về bản thấp hơn **im lặng** — không toast, không dialog | ✅ năm nhánh, chỉ `debugPrint` |
+| | Không chặn giao diện — hiện mẫu câu ngay, thay khi mô hình xong | ✅ kế hoạch P3; spec cấm `Isolate.run` |
+| | Cache — cùng dữ liệu không gọi mô hình lần hai | ✅ P3 Task 3, LRU 200 mục theo dấu vân |
+| **Không nói sai** | Bộ chắn giữa mô hình và người dùng | ✅ `kiemSo` |
+| | Luôn hiện nguồn số cạnh câu | ✅ thẻ số liệu luôn của gói |
+| | Nhãn "AI" chỉ khi câu thật từ mô hình | ✅ `NhanXet.tuMoHinh` |
+| **Người dùng làm chủ** | Tải hay không, xoá được, tắt được | ✅ màn Cài đặt AI (P3) |
+| | **Chiều GHI phải có xác nhận** | ❌ chưa có — chỉ cần khi mở chiều ghi |
+| **Đo được** | Số liệu trên máy thật | ✅ bảng đo P1 |
+
+> **Một câu:** *AI trên client phải là lớp trang trí trên một hệ thống vốn đã chạy đúng
+> khi không có nó — và không bao giờ được nói ra một con số mà hệ thống ấy chưa tính.*
+
+### 10.5 ⚠️ Chiều GHI — bốn tầng hậu quả
+
+Chiều ghi **đã tồn tại**: sheet kế hoạch tái phân bổ (P2 Task 15) sửa hạn mức ngân sách
+rồi đẩy lên PostgreSQL. Chỉ là quyết định đến từ hệ luật chứ không từ mô hình — và nó
+đã có đúng khuôn xác nhận để bắt chước (tick từng dòng, sửa được số, ba lối ra).
+
+Ranh giới nên vẽ theo **hậu quả nếu AI sai**, không theo độ khó kỹ thuật:
+
+| Tầng | Việc | Sai thì sao | Xác nhận |
+|---|---|---|---|
+| 1 | sửa phân loại (danh mục, từ khoá) | số liệu lệch, sửa lại được | duyệt **cả lô** |
+| 2 | tạo mốc theo dõi (ngân sách, mục tiêu, hoá đơn) | nhiễu, không mất tiền | một hộp thoại có số |
+| 3 | tạo bản ghi tiền (giao dịch, trả hoá đơn) | **số dư ví sai**, kéo theo mọi thứ | **từng cái**, hiện rõ số |
+| 4 | bật `auto_pay` / trích tự động | **tiền thật rời ví lúc người dùng vắng mặt** | 🛑 **AI không chạm** — chỉ dẫn tới công tắc |
+
+⚠️ **`kiemSo` KHÔNG dùng được ở chiều ghi.** Nó chặn mô hình bịa số nhờ có gói số để
+đối chiếu; ở chiều ghi không có gói nào — số đến từ câu người dùng. Bộ chắn thay thế
+chỉ có một dạng đúng: **không bao giờ ghi thẳng, luôn hiện form điền sẵn.**
+
+⚠️ **Form xác nhận phải hiện LỆNH, không hiện LỜI.** Mô hình có thể nói một đằng gọi
+một nẻo — viết *"tạo hoá đơn tiền điện 500 nghìn"* trong khi tham số thật là
+`soTien: 5000000`. Form phải dựng từ **tham số hàm**, không từ câu mô hình viết.
+
+Ba thứ **không có hàm nào cả**: bật công tắc tự chuyển tiền, **xoá bất cứ gì**, và
+đụng vào đồng bộ / xác thực.
+
+---
+
+## 11. Bản đồ năng lực — AI làm được gì trong hệ thống (khảo sát 2026-09-20)
+
+Quét bằng máy, không theo trí nhớ.
+
+| Đo | Số |
+|---|---|
+| Mảng tính năng (`lib/features/`) | **13** |
+| Route khai trong `app_router.dart` | **35** (33 tuyệt đối + 2 tương đối) |
+| Bảng Drift | **10** |
+| **Hàm domain thuần** (`*/domain/*.dart`) | **66** |
+| Gói số AI đang dùng | **4** |
+| Lời gọi biểu đồ `fl_chart` | 8 (→ **9** khối người dùng thấy) |
+
+### ⭐ Phát hiện chính: app đã tính sẵn 66 thứ, AI mới nói ra 4
+
+Tỉ lệ khai thác **dưới 10%**. Mỗi hàm trong `*/domain/` là một phép tính **đã xong, đã
+có test, đã đúng** — AI chỉ cần gói lại thành `GoiSo` là nói ra được, không phải tính
+lại gì. Phần lớn việc phía trước **không phải "thêm AI", mà là "gói lại thứ đã tính"**.
+
+Hai mảng lớn nhất app đang trống:
+
+- **`goal` — 31 tệp, 14 hàm domain, AI mới dùng 1.** Bỏ qua `goal_forecast`,
+  `goal_stats`, `goal_progress_series`, `goal_wallet_shortfall`, `goal_deposit_warning`.
+- **`bill` — 27 tệp, 10 hàm domain, AI chưa chạm gì.** Không một gói số nào cho hoá đơn,
+  dù đã có `bill_ky_ke_tiep`, `bill_status` (năm trạng thái), `bill_chain`, `bill_an_han`.
+
+### Bảng theo mảng
+
+| Mảng | Số đã có sẵn | AI làm được | Chiều | Ưu tiên |
+|---|---|---|---|---|
+| **transaction** | `transaction_filter`, `transaction_lookup` | nhập bằng câu · tìm kiếm bằng câu · gắn danh mục hàng loạt | ghi 3 / đọc / ghi 1 | ⭐⭐⭐ |
+| **category** | `CategorySuggestionEngine`, cột `keyword` | học từ khoá từ lịch sử · phân loại tự động | ghi 1 | ⭐⭐⭐ |
+| **bill** | 10 hàm domain, **chưa dùng** | gói số hoá đơn · phát hiện hoá đơn định kỳ · dự đoán số tiền kỳ tới · tạo hoá đơn bằng lệnh | đọc + ghi 2 | ⭐⭐⭐ |
+| **goal** | 14 hàm domain, **mới dùng 1** | giải thích vì sao trễ · ví thiếu tiền trích · dự báo ngày đạt · tạo mục tiêu bằng lệnh | đọc + ghi 2 | ⭐⭐ |
+| **analytics** | `thac_nuoc`, `tong_tai_san`, `lich_chi_tieu`, `moc_so_sanh`, `dong_tien_tu_do`… | **giải thích 9 biểu đồ** · chọn khối đáng xem | đọc | ⭐⭐ |
+| **analytics / vay-nợ** | `vai_vay_no` | **dư nợ theo người** — đọc tên từ ghi chú | đọc | ⭐⭐ |
+| **budget** | `budget_pace`, `budget_impact`, `budget_history` | đã có nhận xét + kế hoạch; thêm: đề xuất tạo ngân sách | đọc + ghi 2 | ⭐ |
+| **wallet** | `vi_tinh_vao_tong`, `dieu_chinh_so_du` | giải thích vì sao số dư lệch | đọc | ⭐ |
+| **notification** | 19 loại | chọn loại nào đáng bắn ra hệ điều hành | đọc | ⭐ |
+| **analytics / báo cáo** | `bao_cao_xuat`, `xuat_tep` | tóm tắt đầu PDF — ⚠️ xem 11.2 | đọc | cân nhắc |
+| **home** | `thu_chi_thang` | đã có | — | — |
+| **auth · profile · sync** | — | **không có đất** | — | 🛑 |
+
+### 11.1 ⚠️ "AI hiểu biểu đồ" — đừng dùng vision
+
+Biểu đồ được vẽ **từ dữ liệu đang nằm sẵn trong máy**. Cho mô hình nhìn ảnh biểu đồ là
+bắt nó đọc ngược lại thứ mình vừa vẽ: chậm hơn, tốn RAM hơn, và **đoán số từ pixel thì
+sai được** — trong khi đưa thẳng dữ liệu thì chính xác 100% và `kiemSo` kiểm được.
+
+Vision dành cho ảnh **không có dữ liệu đi kèm** (hoá đơn giấy, ảnh chụp app khác), không
+phải cho biểu đồ của chính mình.
+
+⚠️ **Điều kiện bắt buộc:** gói số của biểu đồ phải **tính sẵn mọi thứ đáng nói** — kỳ
+cao nhất, kỳ thấp nhất, % thay đổi kỳ cuối, trung bình, xu hướng. Đưa chuỗi giá trị trần
+thì mô hình sẽ **tự tính** ("tăng 25%"), con số ấy không có trong gói, `kiemSo` chặn, câu
+rơi về mẫu — hỏng **im lặng**, trông như mô hình không hoạt động.
+
+### 11.2 Hai chỗ khuyên cân nhắc kỹ
+
+**Tóm tắt đầu báo cáo PDF.** Nghe hợp lý (PDF có 10 khối số mà không câu tổng kết) nhưng
+rủi ro hơn mọi chỗ khác: PDF **đi ra ngoài**, gửi cho người khác — câu sai ở đó không ai
+kiểm lại được. Và font Roboto nhúng **thiếu glyph**: `→ ▲ ▼` từng bị gói `pdf` bỏ đi im
+lặng suốt từ 2026-09-09. Câu do mô hình sinh có thể chứa ký tự ngoài ASCII không lường
+trước. Nếu làm thì **bắt buộc** chạy câu qua bộ quét glyph đã có ở `xuat_tep_test.dart`.
+
+**AI viết câu thông báo.** Không nên: thông báo cần ngắn, đoán được, và `dedupeKey` phải
+ổn định — câu mô hình sinh mỗi lần một khác thì chống trùng hỏng. Nhưng AI **chọn loại
+nào đáng bắn ra hệ điều hành** thì hợp lý.
+
+### 11.3 Năm việc đáng nhất, theo thứ tự
+
+1. **Gắn danh mục hàng loạt** — vá 38% dữ liệu đang mù (15/39 giao dịch của tài khoản
+   thật chưa gắn danh mục, đo 2026-09-20), rủi ro thấp nhất (sửa, không tạo; không đụng
+   tiền), và **tự sinh dữ liệu huấn luyện cho chính nó**: mỗi lần người dùng duyệt hay
+   sửa một đề xuất là một mẫu có nhãn.
+2. **Nhập bằng câu** (*"hôm nay tôi đã ăn sáng 40k"*) — việc người dùng làm nhiều nhất;
+   bản luật (regex + `CategorySuggestionEngine` đã có) chạy được **không cần mô hình**,
+   mô hình chỉ làm nó hiểu câu lạ. ⚠️ Chốt bảng quy đổi `k` / `củ` / `chai` và **hiện rõ
+   số đã hiểu** trên form.
+3. **Gói số cho hoá đơn** — mảng 27 tệp mà AI chưa chạm; chỉ cần gói lại 10 hàm đã có.
+4. **Trợ lý ra lệnh** (tầng 0 + 2) — tạo hoá đơn, mục tiêu, ngân sách bằng câu nói, qua
+   function calling. ⚠️ Đo **tỉ lệ chọn đúng hàm** trước khi mở tầng 3: mô hình 2,3 tỉ
+   tham số chọn sai thường xuyên hơn mô hình lớn, và *"tạo tiết kiệm 5 triệu"* có thể là
+   ba hàm khác nhau. Phép đo ấy cũng là một bảng số cho báo cáo.
+5. **Giải thích biểu đồ** — chín lần cùng một việc (mỗi khối một hàm dựng gói số), nhưng
+   mạnh nhất khi demo.
+
+### 11.4 Việc đã chốt nhưng chưa làm
+
+Bốn việc cá nhân hoá ở tầng số, người dùng chọn cả bốn ngày 2026-09-20 (xem memory
+`ai-ca-nhan-hoa-cho-tung-nguoi-dung`): học mức thiết yếu từ phản hồi · tự đề xuất bật cờ
+Cố định · học nhịp chi theo ngày trong tháng · phát hiện khoản chi bất thường theo danh
+mục.
+
+⚠️ **Luật chung cho cả bốn:** mỗi luật có **ngưỡng mẫu tối thiểu, dưới ngưỡng thì im
+lặng hoàn toàn**, rồi tự bật khi đủ. Không có ngưỡng thì luật sẽ "im hàng tháng rồi nổ
+bừa ngay khi vừa đủ mẫu" — đúng sai lầm mà mục 5f `NOTIFICATION_FEATURE.md` đã loại một
+lần. Chỗ trống rõ nhất để cắm: **essentiality đang để cứng 0,5** cho mọi danh mục
+(`tai_phan_bo.dart`), khiến phép xếp hạng C6 quy về xếp theo dư địa — mà bảng
+`AiRebalancingFeedbacks` **đã ghi sẵn** dữ liệu để học.
