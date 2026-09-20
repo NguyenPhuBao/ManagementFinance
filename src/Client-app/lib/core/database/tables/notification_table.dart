@@ -24,14 +24,14 @@ class AppNotifications extends Table {
   /// chính của tài khoản khác hiện ra trên máy dùng chung.
   IntColumn get idaccount => integer()();
 
-  /// Giá trị `.name` của `NotificationKind` — **16 loại**, xem enum ấy để có
-  /// danh sách chính xác thay vì tin vào chú thích này:
+  /// Giá trị `.name` của `NotificationKind`.
   ///
-  /// `budgetNearLimit` | `budgetOverspent` | `billDueSoon` | `billOverdue`
-  /// | `billAutoPaid` | `billAutoPayFailed` | `goalCompleted` |
-  /// `goalCycleReady` | `goalBehind` | `goalMilestone` | `goalAutoDeposited` |
-  /// `goalAutoDepositFailed` | `syncFailed` | `walletNegative` |
-  /// `walletLowBalance` | `weeklySummary`
+  /// ⚠️ **Danh sách đầy đủ nằm ở chính enum ấy, không ở đây.** Chú thích này
+  /// từng chép cả danh sách kèm một con số ("16 loại"), và cả hai đã trôi — tới
+  /// 2026-09-20 nó thiếu hẳn `billPaidOnOtherDevice`, `largeExpense` và
+  /// `budgetRebalance` mà không gì báo. Một bản chép tay của một enum luôn lạc
+  /// hậu, nên đừng dựng lại nó: cột này lưu `‹một giá trị bất kỳ của
+  /// NotificationKind›.name`, và đó là toàn bộ hợp đồng.
   TextColumn get kind => text()();
 
   /// Khoá chống trùng — **trái tim của bảng này**.

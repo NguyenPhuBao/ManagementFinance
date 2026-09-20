@@ -31,6 +31,7 @@ import 'package:flowmoney/core/notification/os/os_scheduled_id.dart';
 import 'package:flowmoney/core/notification/prefs/notification_prefs.dart';
 import 'package:flowmoney/core/notification/prefs/notification_prefs_store.dart';
 import 'package:flowmoney/core/sync/sync_models.dart';
+import 'package:flowmoney/features/ai_edge/domain/tai_phan_bo.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
 import 'package:flowmoney/features/goal/data/models/goal_entity.dart';
 
@@ -157,6 +158,8 @@ void main() {
     Future<void> Function(int idaccount)? onResyncLich,
     List<KhoanChiLon> chiLon = const [],
     void Function()? onNapChiLon,
+    KeHoachTaiPhanBo? keHoach,
+    void Function()? onNapKeHoach,
   }) {
     var soId = 0;
     return NotificationScanner(
@@ -175,6 +178,10 @@ void main() {
       loadChiLon: (id, from) async {
         onNapChiLon?.call();
         return chiLon;
+      },
+      loadKeHoach: (id, ds, at) async {
+        onNapKeHoach?.call();
+        return keHoach;
       },
       resyncLich: onResyncLich,
       clock: () => now,
@@ -960,6 +967,90 @@ void main() {
 
       final hang = await db.notificationDao.getAll(accountId);
       expect(hang.where((h) => h.kind == 'largeExpense'), isEmpty);
+    });
+  });
+
+  group('đề xuất cân đối — chỗ nối tầng 2 vào vòng quét', () {
+    KeHoachTaiPhanBo keHoachMau() => KeHoachTaiPhanBo(
+          thieu: nganSach(id: 'b-hut'),
+          duPhong: 6000000,
+          thamHut: 1000000,
+          dong: [
+            DongTaiPhanBo(
+              nguon: nganSach(id: 'b-du', spent: 500000),
+              duDia: 2000000,
+              soTien: 500000,
+            ),
+          ],
+          trangThai: TrangThaiKeHoach.duNguonBu,
+          soThieu: 0,
+        );
+
+    test('có kế hoạch thì ghi đúng một hàng', () async {
+      var soLan = 0;
+      final scanner =
+          dungScanner(keHoach: keHoachMau(), onNapKeHoach: () => soLan++);
+
+      await scanner.scan(accountId);
+
+      expect(soLan, 1);
+      final hang = await db.notificationDao.getAll(accountId);
+      expect(hang.where((h) => h.kind == 'budgetRebalance'), hasLength(1));
+    });
+
+    test('quét hai lần trong cùng tuần chỉ ghi MỘT hàng', () async {
+      // Phép chặn thật sự của loại này: một lượt quét nổ sau mỗi chu kỳ đồng
+      // bộ và mỗi lần app quay lại từ nền, tức vài lần mỗi ngày.
+      final scanner = dungScanner(keHoach: keHoachMau());
+
+      await scanner.scan(accountId);
+      final lanHai = await scanner.scan(accountId);
+
+      expect(lanHai, 0);
+      final hang = await db.notificationDao.getAll(accountId);
+      expect(hang.where((h) => h.kind == 'budgetRebalance'), hasLength(1));
+    });
+
+    test('⚠️ tắt nhóm Ngân sách thì KHÔNG gọi loader lần nào', () async {
+      // Loại này không có ngưỡng riêng làm công tắc như `largeExpense`, nên
+      // công tắc **nhóm** phải chặn từ trước bước đọc. Dựng kế hoạch là đọc
+      // toàn bộ sổ giao dịch để tính thu nhập ba tháng, cộng một `suggestAmount`
+      // cho từng ngân sách — trả giá chừng ấy cho một kết quả bị lọc bỏ ngay sau
+      // đó là lãng phí **im lặng**: không hàng nào, không lỗi nào, chỉ một lượt
+      // quét chậm hơn.
+      final kho = InMemoryNotificationPrefsStore();
+      await kho.write(
+        accountId,
+        const NotificationPrefs(nhomTat: {NotificationGroup.budget}),
+      );
+
+      var soLan = 0;
+      final scanner = dungScanner(
+        prefs: kho,
+        keHoach: keHoachMau(),
+        onNapKeHoach: () => soLan++,
+      );
+
+      await scanner.scan(accountId);
+
+      expect(soLan, 0);
+      final hang = await db.notificationDao.getAll(accountId);
+      expect(hang.where((h) => h.kind == 'budgetRebalance'), isEmpty);
+    });
+
+    test('không ngân sách nào thì KHÔNG gọi loader lần nào', () async {
+      // `taiPhanBoCua` sẽ trả `null` cho danh sách rỗng, nhưng nguồn dữ liệu thì
+      // đã kịp đọc cả bảng giao dịch trước khi biết điều đó.
+      var soLan = 0;
+      final scanner = dungScanner(
+        budgets: const [],
+        keHoach: keHoachMau(),
+        onNapKeHoach: () => soLan++,
+      );
+
+      await scanner.scan(accountId);
+
+      expect(soLan, 0);
     });
   });
 }

@@ -29,6 +29,7 @@ import '../../features/goal/data/repositories/goal_repository_impl.dart';
 import '../../features/goal/presentation/bloc/goal_cubit.dart';
 import '../../features/budget/data/datasources/budget_local_data_source.dart';
 import '../../features/budget/data/repositories/budget_repository.dart';
+import '../../features/ai_edge/domain/tai_phan_bo.dart';
 import '../../features/budget/data/tai_phan_bo_nguon.dart';
 import '../../features/budget/data/repositories/budget_repository_impl.dart';
 import '../../features/budget/presentation/bloc/budget_cubit.dart';
@@ -407,6 +408,30 @@ Future<void> setupDependencies() async {
               tenDanhMuc: t.categoryId == null ? null : ten[t.categoryId],
             ),
         ];
+      },
+      // Đề xuất cân đối ngân sách (Edge-SLM P2). Dùng **đúng** `TaiPhanBoNguon`
+      // + `taiPhanBoCua` mà `BudgetCubit` dùng — một định nghĩa duy nhất. Một
+      // phép tính riêng ở đây là bản thứ hai của luật 39 điều, và hai bản sẽ nói
+      // hai chuyện khác nhau: thông báo bảo "Ăn uống dự kiến vượt" còn thẻ trên
+      // trang lại nói về "Mua sắm", im lặng.
+      //
+      // `budgets` đến từ chính lượt quét đang chạy chứ không đọc lại — xem
+      // `KeHoachTaiPhanBoLoader`.
+      loadKeHoach: (idaccount, budgets, now) async {
+        final dangChay = [
+          for (final v in budgets)
+            if (!v.budget.isExpired(now)) v,
+        ];
+        if (dangChay.isEmpty) return null;
+        final d = await sl<TaiPhanBoNguon>().nap(idaccount, dangChay, now);
+        return taiPhanBoCua(
+          dangChay: dangChay,
+          now: now,
+          coDinh: d.coDinh,
+          thuNhap3Thang: d.thuNhap3Thang,
+          tb3ThangTheoNganSach: d.tb3ThangTheoNganSach,
+          phanHoi: d.phanHoi,
+        );
       },
       markOverdue: (idaccount, now) =>
           sl<AppDatabase>().billDao.markOverdue(idaccount, now),

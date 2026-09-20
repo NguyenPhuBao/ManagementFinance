@@ -68,15 +68,17 @@ const String routeThongBao = '/notifications';
 ///
 /// Thông tin này đã có sẵn ở `NotificationCandidate.deeplink`. Nhân bản là
 /// điều dự án này vốn tránh, nên đi kèm một phép canh trong
-/// `notification_deeplink_test.dart`: nó dựng ứng viên thật cho **cả 16 loại**
-/// rồi khẳng định hàm này trả về đúng cột `deeplink` bộ luật đã đặt. Thêm loại
-/// thứ 17 mà quên ánh xạ là test đỏ ngay.
+/// `notification_deeplink_test.dart`: nó dựng ứng viên thật cho **mọi loại bộ
+/// quét sinh ra** — danh sách suy từ `NotificationKind.values`, không chép tay —
+/// rồi khẳng định hàm này trả về đúng cột `deeplink` bộ luật đã đặt. Thêm một loại
+/// mà quên ánh xạ là test đỏ ngay. (⚠️ Đừng ghi số loại vào đây: con số ấy đã
+/// trôi ba lần — 15 → 16 → 18 — và mỗi lần lại để lại một chú thích nói sai.)
 ///
 /// ⚠️ **Hai nhánh KHÔNG nằm trong phép canh ấy**, vì chúng không ứng với
 /// `NotificationKind` nào: `ghiChep` (lời nhắc ghi chép hằng ngày, mục 4.7 —
 /// chỉ sống ở tầng hệ điều hành, không có hàng trong `AppNotifications`) và
 /// `billOpen` (payload của nút "Trả ngay", xem `notification_actions.dart`).
-/// Cả hai có test riêng. Sửa chúng thì phép canh 16 loại **không** đỏ.
+/// Cả hai có test riêng. Sửa chúng thì phép canh mọi loại **không** đỏ.
 ///
 /// **Không bao giờ ném và không bao giờ trả `null`.** Khoá đến từ payload của
 /// hệ điều hành: nó có thể là lịch do một bản app cũ đặt và vẫn còn nằm trong
@@ -87,6 +89,11 @@ String deeplinkTuDedupeKey(String key) {
   switch (phan.first) {
     case 'budgetNear':
     case 'budgetOver':
+    // Đề xuất cân đối (Edge-SLM P2). Khoá là `budgetRebalance:<nam>-W<tuan>`:
+    // chỉ có tuần, không ngân sách nào — nên khác hai nhánh trên, hàm này
+    // không suy được ngân sách cụ thể, mà cũng không cần: trang Ngân sách hiện
+    // thẻ "Đề xuất cân đối" ngay đầu danh sách.
+    case 'budgetRebalance':
       return '/budget';
 
     case 'billDue':
@@ -95,7 +102,7 @@ String deeplinkTuDedupeKey(String key) {
     case 'billAutoFail':
     // `billConflict:<billId>` — `BillPaymentConflictResolver` ghi khi hoá đơn
     // đã được trả trên máy khác. Loại này **không** do `NotificationScanner`
-    // sinh, nên nó không có mặt trong phép canh "đủ 16 loại" ngay dưới; nhưng
+    // sinh, nên nó không có mặt trong phép canh "đủ mọi loại" ngay dưới; nhưng
     // nó vẫn bắn ra hệ điều hành (nằm trong `luonBao`), nên cú chạm vẫn phải
     // suy ra đúng route — thiếu nhánh này là rơi về trung tâm thông báo.
     case 'billConflict':
@@ -115,7 +122,7 @@ String deeplinkTuDedupeKey(String key) {
 
     // Payload của nút "Trả ngay" — xem `notification_actions.dart`. Khác nhánh
     // `billDue` ở trên đúng một điểm: cú **chạm** thường mở danh sách hoá đơn
-    // (đúng cột `deeplink` mà bộ luật đặt, và có phép canh cả 16 loại), còn cái
+    // (đúng cột `deeplink` mà bộ luật đặt, và có phép canh đủ mọi loại), còn cái
     // nút thì đã biết chính xác hoá đơn nào — đổ người dùng về danh sách là vứt
     // đi thông tin mình đang cầm.
     //
@@ -155,7 +162,7 @@ String deeplinkTuDedupeKey(String key) {
 
     // Lời nhắc ghi chép hằng ngày — khoá do `ghiChepDedupeKey()` sinh. Khác
     // mọi nhánh còn lại: nó **không** ứng với hàng nào trong
-    // `AppNotifications`, nên phép canh 16 loại ở test không chạm tới nó và
+    // `AppNotifications`, nên phép canh mọi loại ở test không chạm tới nó và
     // nhánh này có test riêng.
     //
     // Đây là loại nhắc duy nhất bảo người dùng đi làm một việc cụ thể, nên nó

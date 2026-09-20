@@ -27,6 +27,11 @@ NotificationGroup nhomCua(NotificationKind kind) {
     // không muốn bị nhắc từng khoản chi lớn. Nhóm riêng sẽ là chip thứ tám
     // trên một dải đã phải cuộn ngang, đổi lấy một phân biệt không ai cần.
     case NotificationKind.largeExpense:
+    // Cùng nhóm và cùng lý lẽ: ai tắt nhóm Ngân sách vì thấy nhắc chi tiêu
+    // phiền thì cũng không muốn nhận một lời đề xuất cắt bớt ngân sách. Nhóm
+    // riêng cho nó sẽ phải sửa ca canh `NotificationGroup.values.length + 2`
+    // (bẫy 7.12) để đổi lấy một phân biệt không ai cần.
+    case NotificationKind.budgetRebalance:
       return NotificationGroup.budget;
     case NotificationKind.goalCompleted:
     case NotificationKind.goalCycleReady:
@@ -93,6 +98,10 @@ bool luonBao(NotificationKind kind) {
     // lúc vắng mặt. Đó mới là ranh giới của `luonBao`; nới nó ra là làm công
     // tắc nhóm Ngân sách mất tác dụng một nửa.
     case NotificationKind.largeExpense:
+    // Cùng vế ấy, thậm chí rõ hơn: đây là một lời **đề xuất** chứ không phải
+    // một việc đã xảy ra. Loại thông báo mà người dùng phải tắt được, nếu
+    // không họ sẽ tắt công tắc tổng và mất mọi thứ.
+    case NotificationKind.budgetRebalance:
     case NotificationKind.goalCompleted:
     case NotificationKind.goalCycleReady:
     case NotificationKind.goalBehind:

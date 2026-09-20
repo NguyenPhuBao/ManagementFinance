@@ -27,6 +27,7 @@ import 'package:flowmoney/core/notification/notification_rules.dart';
 import 'package:flowmoney/core/notification/reminder_scheduler.dart';
 import 'package:flowmoney/features/bill/domain/bill_auto_pay.dart';
 import 'package:flowmoney/features/bill/domain/bill_auto_pay_runner.dart';
+import 'package:flowmoney/features/ai_edge/domain/tai_phan_bo.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
 import 'package:flowmoney/features/goal/data/models/goal_entity.dart';
 import 'package:flowmoney/features/goal/domain/goal_auto_deposit.dart';
@@ -191,7 +192,10 @@ void main() {
           allowNegative: false,
         );
 
-    /// Một đầu vào cố tình dựng đủ rộng để bộ luật sinh ra **cả 15 loại**.
+    /// Một đầu vào cố tình dựng đủ rộng để bộ luật sinh ra **mọi loại nó có thể
+    /// sinh** — ca ngay dưới đối chiếu với `NotificationKind.values` nên thiếu một
+    /// loại là đỏ, không phải im lặng bỏ sót. Đừng ghi số loại vào đây: nó đã trôi
+    /// ba lần.
     List<NotificationCandidate> tatCaUngVien() =>
         buildNotificationCandidates(NotificationRuleInput(
           now: now,
@@ -270,6 +274,23 @@ void main() {
               tenDanhMuc: 'Mua sắm',
             ),
           ],
+          // Loại thứ 19 của enum (Edge-SLM P2, 2026-09-20). Bộ luật **nhận** kế
+          // hoạch đã dựng chứ không tự tính, nên đầu vào ở đây là một
+          // `KeHoachTaiPhanBo` chứ không phải một trạng thái ngân sách thâm hụt.
+          keHoachTaiPhanBo: KeHoachTaiPhanBo(
+            thieu: nganSach(id: 'ns-hut', spent: 4600000),
+            duPhong: 6000000,
+            thamHut: 1000000,
+            dong: [
+              DongTaiPhanBo(
+                nguon: nganSach(id: 'ns-du', spent: 500000),
+                duDia: 2000000,
+                soTien: 500000,
+              ),
+            ],
+            trangThai: TrangThaiKeHoach.duNguonBu,
+            soThieu: 0,
+          ),
         ));
 
     /// Loại **không** do `NotificationScanner` sinh ra, nên không thể có mặt
@@ -365,7 +386,7 @@ void main() {
       expect(payload, 'billOpen:hd1');
       expect(deeplinkTuDedupeKey(payload!), '/bills/hd1',
           reason: 'Cú CHẠM thường vẫn mở /bills — đó là cột deeplink bộ luật '
-              'đặt và có phép canh cả 15 loại. Nhưng cái NÚT đã biết chính xác '
+              'đặt và có phép canh đủ mọi loại. Nhưng cái NÚT đã biết chính xác '
               'hoá đơn nào, nên đổ về danh sách là vứt đi thông tin đang cầm.');
       expect(thuocThanhTab('/bills/hd1'), false,
           reason: '/bills/<id> nằm ngoài StatefulShellRoute nên phải `push`. '

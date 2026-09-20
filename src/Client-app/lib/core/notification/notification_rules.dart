@@ -8,6 +8,7 @@ import '../../features/bill/domain/bill_pay_status.dart';
 import '../../features/bill/domain/bill_auto_pay_runner.dart';
 import '../../features/budget/presentation/widgets/budget_visuals.dart';
 import '../../features/analytics/domain/khoan_vao_thong_ke.dart';
+import '../../features/ai_edge/domain/tai_phan_bo.dart';
 import 'tuan_iso.dart';
 
 /// Loại thông báo. Giá trị `.name` được ghi thẳng vào cột `kind`.
@@ -45,6 +46,16 @@ enum NotificationKind {
   /// hợp, nên nó thừa hưởng mọi cái bẫy của việc phân biệt *tiền thật đi ra*
   /// với *tiền đổi chỗ* — xem `_largeExpenseCandidates`.
   largeExpense,
+
+  /// Một ngân sách **dự kiến** vượt hạn mức, và tầng 2 của Edge-SLM đã dựng
+  /// được một kế hoạch san sẻ từ các ngân sách khác (Task 16, 2026-09-20).
+  ///
+  /// Loại duy nhất nói về **tương lai**: `budgetNearLimit` và `budgetOverspent`
+  /// đọc `spent` đã có, còn đây đọc *dự phóng cuối kỳ*. Vì thế trần của nó là
+  /// **một tuần một lần** chứ không phải một lần mỗi kỳ — dự phóng đổi mỗi lần
+  /// người dùng tiêu thêm, nên một khoá bám vào con số nào đó sẽ đẻ thông báo
+  /// mới sau mỗi giao dịch.
+  budgetRebalance,
 }
 
 enum NotificationSeverity { info, warning, critical }
@@ -179,6 +190,21 @@ class NotificationRuleInput {
   /// Đến từ `NotificationPrefs.nguongChiLon`.
   final int nguongChiLon;
 
+  /// Kế hoạch tái phân bổ của tầng 2 Edge-SLM, hoặc `null` khi không ngân sách
+  /// nào thâm hụt đủ ngưỡng.
+  ///
+  /// Bộ luật **nhận** kế hoạch đã dựng chứ không tự tính: `taiPhanBoCua` là
+  /// định nghĩa duy nhất, và trang Ngân sách đang hiển thị đúng kết quả của
+  /// nó. Tính lại ở đây là bản thứ hai của một luật 39 điều — hai bản sẽ nói
+  /// hai chuyện khác nhau trên cùng một màn hình, im lặng.
+  ///
+  /// Đây cũng là lý do trường này là cả một `KeHoachTaiPhanBo` chứ không phải
+  /// vài con số rút gọn như [syncFailed] hay [tuanQuaCoGiaoDich]: câu chữ chỉ
+  /// cần tên và việc *có dòng nguồn bù hay không*, nhưng thu hẹp ở đây nghĩa là
+  /// nơi gọi phải quyết định rút gọn thế nào — tức một mẩu luật rơi ra ngoài
+  /// bộ luật.
+  final KeHoachTaiPhanBo? keHoachTaiPhanBo;
+
   const NotificationRuleInput({
     required this.now,
     this.budgets = const [],
@@ -194,6 +220,7 @@ class NotificationRuleInput {
     this.tuanQuaCoGiaoDich = false,
     this.chiLon = const [],
     this.nguongChiLon = 0,
+    this.keHoachTaiPhanBo,
   });
 }
 
@@ -206,6 +233,7 @@ List<NotificationCandidate> buildNotificationCandidates(
 ) {
   final ra = [
     ..._budgetCandidates(input),
+    ..._rebalanceCandidates(input),
     ..._largeExpenseCandidates(input),
     ..._billCandidates(input),
     ..._goalCandidates(input),
@@ -219,6 +247,57 @@ List<NotificationCandidate> buildNotificationCandidates(
   final chan = input.silenceBefore;
   if (chan == null) return ra;
   return ra.where((c) => !c.createdAt.isBefore(chan)).toList();
+}
+
+// ── Đề xuất cân đối ngân sách ────────────────────────────────────────────────
+
+/// Một thông báo cho kế hoạch tái phân bổ, **tối đa một lần mỗi tuần ISO**.
+///
+/// ## Vì sao khoá chỉ có tuần
+///
+/// Kế hoạch là một hàm của *dự phóng cuối kỳ*, mà dự phóng là một hàm của
+/// `spent`: nó đổi sau mỗi giao dịch. Nhét `budget.id`, số tiền thâm hụt hay
+/// danh sách nguồn bù vào khoá là biến mỗi lượt quét thành một thông báo mới —
+/// đúng cái bẫy mà cột `dedupeKey` sinh ra để chặn.
+///
+/// Hệ quả **cố ý**: ngân sách A được báo hôm thứ Hai, người dùng cân đối xong,
+/// rồi B thâm hụt hôm thứ Tư → **không báo lại** trong tuần ấy. Đó là trần chứ
+/// không phải lỗi: thẻ "Đề xuất cân đối" vẫn hiện trên trang Ngân sách ngay khi
+/// mở, và đây là một lời *đề xuất*, không phải cảnh báo tiền đã rời ví.
+List<NotificationCandidate> _rebalanceCandidates(NotificationRuleInput input) {
+  final kh = input.keHoachTaiPhanBo;
+  if (kh == null) return const [];
+
+  final ten = kh.thieu.displayName;
+
+  return [
+    NotificationCandidate(
+      kind: NotificationKind.budgetRebalance,
+      dedupeKey: 'budgetRebalance:${khoaTuan(input.now)}',
+      title: 'Đề xuất cân đối ngân sách',
+      // Cố ý KHÔNG nêu số — cùng lý lẽ Tổng kết tuần, và ở đây còn chặt hơn:
+      // con số duy nhất đúng là con số tại lúc mở trang, nên in nó vào đây là
+      // hứa một điều sẽ sai ngay khi người dùng tiêu tiếp.
+      //
+      // Hai câu chứ không một: kế hoạch không còn dòng nguồn bù nào thì không
+      // có gì để xem (`TheKeHoach` cũng giấu nút "Xem kế hoạch", sheet rỗng là
+      // ngõ cụt). Mời người dùng xem một thứ không tồn tại là lời hứa suông.
+      body: kh.dong.isEmpty
+          ? '$ten dự kiến vượt hạn mức, và không ngân sách nào còn dư địa '
+              'để bù.'
+          : '$ten dự kiến vượt hạn mức. Xem kế hoạch bớt từ ngân sách khác.',
+      // Đáng nhìn lại, không phải dấu hiệu có gì đó đã sai — `critical` dành
+      // cho ví âm và cho ngân sách **đã** vượt.
+      severity: NotificationSeverity.warning,
+      subjectType: 'budget',
+      subjectId: kh.thieu.budget.id,
+      deeplink: '/budget',
+      // "Dự kiến vượt" là trạng thái tại lúc quét: không có mốc sự kiện nào
+      // khác để lấy, khác hẳn `largeExpense` (ngày giao dịch) hay
+      // `weeklySummary` (lúc tuần khép).
+      createdAt: input.now,
+    ),
+  ];
 }
 
 // ── Tổng kết tuần ────────────────────────────────────────────────────────────
