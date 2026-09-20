@@ -594,7 +594,87 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-19)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-20)
+
+### 🤖 AI Edge-SLM — P2 tầng Edge tất định + mẫu câu (2026-09-19 → 2026-09-20)
+
+**P2 XONG.** Spec đã duyệt `docs/superpowers/specs/2026-09-19-ai-edge-slm-design.md`,
+kế hoạch `docs/superpowers/plans/2026-09-19-ai-edge-p2-tang-edge-mau-cau.md`
+(17 task). Tài liệu tính năng đầy đủ — quyết định kèm lý do, bẫy, bảng test,
+nghiệm thu — ở **`docs/AI_EDGE_FEATURE.md`**; đây chỉ là bản tóm tắt để người
+đọc mục 14 biết chuyện gì đã xảy ra.
+
+Đo bằng máy 2026-09-20: **20 commit** kể từ P0 (`03fe03a`), **45** tệp `lib/`
+đổi (+3615 / −106 dòng), `lib/features/ai_edge/` có **16** tệp,
+`test/features/ai_edge/` có **14** tệp / **94** ca. Trọn bộ **3106/3106 pass,
+1 skip**; `flutter analyze` **26 issue, 0 error** (mức nền).
+
+**Một câu:** *máy tính số, mô hình kể chuyện về số.* P2 làm xong nửa đầu — tầng
+tất định; P3 (mô hình trên máy) chờ P1 spike.
+
+**Cái gì người dùng thấy:**
+
+- **Khối "Nhận xét"** ở bốn màn — Ngân sách, Phân tích, Mục tiêu, Trang chủ:
+  một câu mẫu dựng từ gói số typed, cộng dải thẻ số liệu. Đóng **A6** của lượt
+  UX (thẻ "Insight AI" chữ tĩnh, hứa một tính năng không tồn tại).
+- **Thẻ "Đề xuất cân đối"** trên trang Ngân sách + **sheet kế hoạch chờ duyệt**:
+  phát hiện ngân sách dự kiến vượt, tìm nguồn bù từ ngân sách khác, người dùng
+  tick từng dòng rồi Áp dụng. Hạn mức mới đi đúng đường đồng bộ như mọi lần sửa
+  tay — nghiệm thu đo tới tận PostgreSQL.
+- **Công tắc "Cố định"** ở màn Thêm/Sửa danh mục: danh mục đánh dấu thì AI không
+  bao giờ đề xuất cắt.
+- **Thông báo `budgetRebalance`** (2026-09-20) — loại thứ **19** của enum, mục
+  **5g** `NOTIFICATION_FEATURE.md`.
+
+**Bốn luật cốt lõi, phá cái nào cũng hỏng im lặng:**
+
+1. **Lớp `ai_edge` KHÔNG tính.** Mọi con số đến từ hàm domain đã có
+   (`budgetPaceOf`, `thuNhapCua`, `tyLeTietKiem`, `phanTramSoVoi`, `duBaoCua`,
+   `topKhoanChi`, `pickHomeBudget`). **Test quét `lib/` thứ 14** cấm `ai_edge/`
+   chứa `'thu'`/`'chi'`/`'transfer'`/`walletId`/`transactionDao`/`.type ==`.
+   Lý do: một bản định nghĩa thứ hai của "thu nhập" chính là thứ đã sinh bẫy
+   A8 #8 (thu nhập gồm cả tiền đi vay — tháng nào vay tiền, con số vọt lên,
+   không exception nào báo).
+2. **Hai thứ của schema v24 là CỤC BỘ** — cột `categories.ai_co_dinh` và bảng
+   `AiRebalancingFeedbacks`. **Không** vào `SyncEntityType`, **test quét thứ
+   15** canh. Payload đồng bộ **không đổi** suốt P2.
+3. **Nguồn dữ liệu Tầng 2 đặt ở `budget/data/`, không ở `ai_edge/`** — nó đọc
+   bảng giao dịch để tính thu nhập 3 tháng, mà test quét 14 cấm `ai_edge/` chạm
+   bảng ấy. Lớp AI chỉ nhận `DuLieuTaiPhanBo` đã dựng xong.
+4. **Một kế hoạch, một định nghĩa.** Thẻ trên trang và thông báo cùng gọi
+   `TaiPhanBoNguon` + `taiPhanBoCua`; bộ luật thông báo **nhận** kế hoạch chứ
+   không tự tính. Hai phép tính là hai ngân sách khác nhau trên cùng màn hình.
+
+**Mấy cái bẫy đắt nhất của P2** (đầy đủ ở mục 4 `AI_EDGE_FEATURE.md`):
+
+- **Câu mẫu không được chứa chữ số ngoài gói số** — nhãn kỳ `T9 2026`, tiêu đề
+  khoản chi, hằng "30 ngày" đều bị bộ kiểm số chặn. Ở P2 câu mẫu vẫn hiện bình
+  thường nên **không ai thấy**, cho tới khi P3 rơi về nó và bị chặn.
+- **Sheet có ba lối ra ba nghĩa**: Áp dụng và Bỏ qua ghi phản hồi, vuốt tắt
+  **không ghi gì** — "chưa quyết" không phải "từ chối".
+- **Đọc SQLite máy ảo phải chép cả `-wal` và `-shm`**, nếu không mọi hàng mới
+  (kể cả bảng v24) vô hình và trông như migration chưa chạy.
+- **Thông báo `budgetRebalance` khoá theo TUẦN**, không theo ngân sách: dự phóng
+  đổi sau mỗi giao dịch, nên khoá bám vào số nào đó là mỗi lượt quét một thông
+  báo mới — mà quét nổ vài lần mỗi ngày.
+- ⚠️ **Thêm một giá trị vào `NotificationKind` làm hai `switch` không `default`
+  ở `notification_prefs.dart` thành lỗi biên dịch, và làm ca quét "đủ mọi loại"
+  của `notification_deeplink_test.dart` đỏ.** Cả hai **đúng thiết kế** — đừng
+  thêm `default` để làm chúng im.
+
+**Hai chỗ lệch có từ trước, cố ý chưa vá** (mục 7.1 `AI_EDGE_FEATURE.md`): Trang
+chủ nói thu **15.145.000** còn Phân tích **15.135.000** (thẻ Trang chủ cộng thô
+theo `type`, Phân tích qua `khoanVaoThongKe`) — khối Nhận xét mỗi trang cố ý
+chép đúng số của trang ấy; và "để dành **86%**" trên thẻ cạnh "**85,7%**" trong
+khối (làm tròn nguyên vs luật G2). Muốn khớp thì đổi `thuChiThangCua` — **hỏi
+người dùng trước**.
+
+**Bước tiếp:** **P1 spike** khi người dùng cắm máy Snapdragon 8 Gen 3 qua USB,
+rồi viết kế hoạch **P3** (mô hình Gemma 4 qua `flutter_gemma`; bậc thang E4B
+≥ 8 GB → E2B 4–8 GB → mẫu câu, `.litertlm` chỉ arm64 nên **máy ảo luôn đi nhánh
+mẫu câu**). **A11** của lượt UX (năm handler rỗng của `ai_chat_page`) đóng ở P3.
+
+
 
 ### ⬆️ Nâng Flutter 3.41.5 → 3.47.5 — P0 của AI Edge-SLM (2026-09-19)
 

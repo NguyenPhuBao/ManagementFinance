@@ -1161,8 +1161,35 @@ Bước tiếp: **P1 spike** (khi cắm máy) → viết kế hoạch **P3**.
 
 ## Nhật ký thi công (điền khi làm)
 
-| Task | Commit | Ca test mới | Ghi chú |
-|---|---|---|---|
-| 0 | | | |
-| 1 | | | id Stitch: |
-| … | | | |
+**P2 XONG ngày 2026-09-20** — trọn 17 task. Tài liệu tính năng:
+`docs/AI_EDGE_FEATURE.md`; tường thuật ở mục 14 `docs/PROJECT_CONTEXT.md`.
+
+| Task | Commit | Ghi chú |
+|---|---|---|
+| 0 | `ee9256b` | khung `AI_EDGE_FEATURE.md` + tài liệu CAN-LAM xin sửa đặc tả |
+| 1 | `762733e` | ba màn Stitch, người dùng nghiệm thu cùng ngày |
+| 2 | `1636e62` | kiểu lõi: `SoLieu`, `GoiSo`, `NhanXet`, `BoDienGiai` |
+| 3 | `00867ee` | **test quét `lib/` thứ 14** — lớp AI không tính |
+| 4 | `32951c2` | bộ kiểm số |
+| 5 | `9015d9f` | gói số + mẫu câu Ngân sách |
+| 6 | `d59354f` | gói số Phân tích; bộ kiểm số bắt **dấu âm** |
+| 7 | `0ffe31a` | gói số Mục tiêu |
+| 8 | `2ca9c32` | gói số Trang chủ |
+| 9 | `0dc0ba5` | Tầng 2 — thâm hụt, nguồn bù, kế hoạch |
+| 10 | `cedd4f9`, `e9267b9` | schema **v24** (hai thứ cục bộ) + fixture sáu test migration |
+| 11 | `88586da` | cờ **Cố định** ở màn Thêm/Sửa danh mục |
+| 12 | `b8b2b45` | khối Nhận xét + thẻ số liệu dùng chung |
+| 13 | `8cf4255` | `BudgetCubit` sinh kế hoạch từ `TaiPhanBoNguon` |
+| 14 | `817ee2f` | khối Nhận xét gắn vào **bốn** màn — đóng **A6** |
+| 15 | `30547d6` | thẻ + sheet kế hoạch chờ duyệt; nghiệm thu tới PostgreSQL |
+| 16 | `e49c301` | thông báo `budgetRebalance` — loại thứ **19** của enum, mục **5g** `NOTIFICATION_FEATURE.md` |
+| 17 | *(commit này)* | nghiệm thu tổng sáu màn + tài liệu bàn giao; mục **7.4** |
+
+**Đo bằng máy 2026-09-20:** 20 commit kể từ P0 (`03fe03a`), **45** tệp `lib/` đổi
+(+3615 / −106), `lib/features/ai_edge/` **16** tệp, `test/features/ai_edge/`
+**14** tệp / **94** ca. Trọn bộ **3106/3106 pass, 1 skip**; `flutter analyze`
+**26 issue, 0 error** (mức nền). Schema **v24**, **payload không đổi**.
+
+**Không mở lỗ hổng G nào trong cả P2.**
+
+**Bước tiếp:** P1 spike (khi người dùng cắm máy Snapdragon 8 Gen 3) → kế hoạch P3.
