@@ -29,6 +29,10 @@ banner đính chính ngày 19). **Đặc tả gốc** do backend viết: `docs/A
   chưa tải mô hình → mẫu câu, không toast lỗi.
 - **KHÔNG phải:** không học thống kê (CV, elasticity, EMA) vì dữ liệu thật chưa đủ; không bảng cache
   đặc trưng; không gửi giao dịch thô đi đâu; **không đổi schema đồng bộ, không thêm trường payload**.
+  ⚠️ **Vế "không học thống kê" là ảnh chụp của P0–P3, và người dùng đã chốt ngược lại ngày
+  2026-09-20**: bốn việc học ở **tầng số** sẽ làm (mục **11.4**), với điều kiện mỗi luật có **ngưỡng
+  mẫu tối thiểu, dưới ngưỡng thì im**. Vế **không huấn luyện mô hình ngôn ngữ** thì vẫn đứng nguyên và
+  có lý lẽ đầy đủ ở mục **10.3** — hai chuyện khác hẳn nhau, đừng gộp.
 
 ## 2. Quyết định kèm lý do
 
@@ -488,7 +492,7 @@ Quét bằng máy, không theo trí nhớ.
 | Đo | Số |
 |---|---|
 | Mảng tính năng (`lib/features/`) | **13** |
-| Route khai trong `app_router.dart` | **35** (33 tuyệt đối + 2 tương đối) |
+| Route khai trong `app_router.dart` | **43** (41 tuyệt đối + 2 tương đối) |
 | Bảng Drift | **10** |
 | **Hàm domain thuần** (`*/domain/*.dart`) | **66** |
 | Gói số AI đang dùng | **4** |

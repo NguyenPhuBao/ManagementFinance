@@ -645,7 +645,28 @@ kèm tốc độ và **exit 0**, mà thư mục vẫn **rỗng**. Scoped storage
 một dòng lỗi. Đường đi được là push vào `/sdcard/Download` rồi
 `cat … | run-as ‹pkg› sh -c 'cat > files/…'` — 2 GB mất 12 giây.
 
-**Bước tiếp: viết kế hoạch P3** (điều kiện "P1 đạt, P2 xong" nay đã đủ).
+**Bước tiếp:** ✅ **kế hoạch P3 đã viết cùng ngày** —
+`docs/superpowers/plans/2026-09-20-ai-edge-p3-cam-slm.md`, 10 task, **chưa thi
+công**.
+
+⭐ **Cùng ngày còn một lượt trao đổi dài về bản chất và tương lai của mảng AI,
+kết quả ghi ở mục 10 và 11 `docs/AI_EDGE_FEATURE.md`** — đọc trước khi lên kế
+hoạch bất cứ việc AI nào:
+
+- **Mục 10** gọi đúng tên mảng này: AI Edge là **hệ luật + thống kê mô tả**
+  (không phải học máy), SLM là **bộ sinh câu**. Kèm lý lẽ vì sao **không huấn
+  luyện mô hình để cá nhân hoá** (trọng số không phải nơi chứa hiểu biết về
+  người dùng; gói **không có API huấn luyện**), **mười tiêu chí cho AI chạy
+  trên client** (hiện đạt 9/10), và **bốn tầng hậu quả của chiều ghi** — tầng 4
+  (`auto_pay`, trích tự động) thì **AI không chạm**.
+- **Mục 11** là **bản đồ khảo sát toàn hệ thống**, đếm bằng máy: 13 mảng · 43
+  route · 10 bảng Drift · **66 hàm domain thuần mà AI mới dùng 4 gói số**. Tức
+  phần lớn việc phía trước là **gói lại thứ đã tính**, không phải thêm năng lực
+  mới — `bill` 27 tệp AI chưa chạm gì, `goal` 14 hàm domain mới dùng 1.
+- **Mục 11.4** ghi bốn việc **người dùng đã chốt làm** (học mức thiết yếu từ
+  phản hồi · tự đề xuất cờ Cố định · nhịp chi theo ngày · bất thường theo danh
+  mục), kèm luật chung: **mỗi luật có ngưỡng mẫu tối thiểu, dưới ngưỡng thì
+  im**.
 
 ### 🤖 AI Edge-SLM — P2 tầng Edge tất định + mẫu câu (2026-09-19 → 2026-09-20)
 
