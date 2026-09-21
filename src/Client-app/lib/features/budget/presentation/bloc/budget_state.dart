@@ -3,6 +3,7 @@ import 'package:equatable/equatable.dart';
 
 import '../../../../core/database/app_database.dart';
 import '../../data/models/budget_entity.dart';
+import '../../domain/de_xuat_ngan_sach.dart';
 
 abstract class BudgetState extends Equatable {
   const BudgetState();
@@ -44,13 +45,36 @@ class BudgetLoaded extends BudgetState {
   /// không có `TaiPhanBoNguon` (test cũ, trang không cần).
   final KeHoachTaiPhanBo? keHoach;
 
+  /// Danh mục chi đáng đặt ngân sách mà chưa có, kèm độ dài cửa sổ đã dùng để
+  /// suy ra chúng. `null` = không có gì để gợi ý → thẻ ẩn hẳn.
+  ///
+  /// ⚠️ Tính **độc lập** với [keHoach]: `_phat` thoát sớm khi không có nguồn
+  /// Tầng 2, nên đặt phép tính này sau phép rẽ nhánh ấy là để thẻ **không bao
+  /// giờ hiện** ở mọi chỗ không nối nguồn tái phân bổ — im lặng.
+  final GoiDeXuat? deXuat;
+
   const BudgetLoaded({
     required this.active,
     required this.expired,
     required this.totalAmount,
     required this.totalSpent,
     this.keHoach,
+    this.deXuat,
   });
+
+  /// Chỉ gắn thêm [deXuat], giữ nguyên mọi thứ khác.
+  ///
+  /// Cố ý **không** phải một `copyWith` đầy đủ: chỗ duy nhất cần nó là đường
+  /// phát của cubit, và một `copyWith` tổng quát mời gọi việc dựng state bằng
+  /// cách vá từng mảnh — thứ làm trạng thái khó lần.
+  BudgetLoaded copyWithDeXuat(GoiDeXuat? deXuat) => BudgetLoaded(
+        active: active,
+        expired: expired,
+        totalAmount: totalAmount,
+        totalSpent: totalSpent,
+        keHoach: keHoach,
+        deXuat: deXuat,
+      );
 
   double get totalRemaining => totalAmount - totalSpent;
 
@@ -68,7 +92,7 @@ class BudgetLoaded extends BudgetState {
 
   @override
   List<Object?> get props =>
-      [active, expired, totalAmount, totalSpent, keHoach];
+      [active, expired, totalAmount, totalSpent, keHoach, deXuat];
 }
 
 /// Trang cấu hình đã có đủ thứ cần để dựng form.

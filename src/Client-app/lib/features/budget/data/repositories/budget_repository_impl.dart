@@ -192,6 +192,15 @@ class BudgetRepositoryImpl implements BudgetRepository {
     return (mucThang / step).ceil() * step.toDouble();
   }
 
+  @override
+  Future<int?> soNgayCuaSoNhinLai(int idaccount, {DateTime? now}) async {
+    final cuaSo = cuaSoNhinLai(
+      now ?? clock(),
+      await localDataSource.mocGiaoDichDauTien(idaccount),
+    );
+    return cuaSo?.soNgay;
+  }
+
   /// Tính số đã chi và gắn tên/biểu tượng danh mục.
   Future<List<BudgetView>> _decorate(
     int idaccount,

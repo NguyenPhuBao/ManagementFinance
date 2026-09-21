@@ -6,6 +6,7 @@ import '../../data/models/budget_entity.dart';
 import '../../../ai_edge/domain/tai_phan_bo.dart';
 import '../../data/repositories/budget_repository.dart';
 import '../../data/tai_phan_bo_nguon.dart';
+import '../../domain/de_xuat_ngan_sach.dart';
 import 'budget_state.dart';
 
 export 'budget_state.dart';
@@ -74,7 +75,16 @@ class BudgetCubit extends Cubit<BudgetState> {
   /// dữ liệu rồi tính kế hoạch, và chỉ phát nếu vẫn là lượt mới nhất.
   Future<void> _phat(List<BudgetView> views, int idaccount) async {
     final n = ++_lan;
-    final loaded = _loadedFrom(views);
+    var loaded = _loadedFrom(views);
+    // ⚠️ Đề xuất tạo ngân sách tính TRƯỚC phép rẽ nhánh dưới đây, và đi vào cả
+    // hai đường phát. Nó **không** phụ thuộc nguồn Tầng 2; đặt nó sau `return`
+    // là để thẻ không bao giờ hiện ở mọi chỗ không nối `TaiPhanBoNguon` — và
+    // hỏng im lặng, vì một thẻ không hiện trông y hệt một thẻ không có gì để
+    // nói.
+    final deXuat = await _deXuat(idaccount, loaded.active);
+    if (n != _lan || isClosed) return;
+    loaded = loaded.copyWithDeXuat(deXuat);
+
     final nguon = taiPhanBoNguon;
     if (nguon == null) {
       emit(loaded);
@@ -98,11 +108,49 @@ class BudgetCubit extends Cubit<BudgetState> {
         totalAmount: loaded.totalAmount,
         totalSpent: loaded.totalSpent,
         keHoach: kh,
+        deXuat: loaded.deXuat,
       ));
     } catch (e) {
       // Kế hoạch là phần phụ: nguồn hỏng thì trang vẫn hiện ngân sách.
       if (n != _lan || isClosed) return;
       emit(loaded);
+    }
+  }
+
+  /// Danh mục chi đáng đặt ngân sách mà chưa có.
+  ///
+  /// Mỗi ứng viên một lời gọi `suggestAmount`, tức mỗi ứng viên một truy vấn.
+  /// Danh mục chi của một tài khoản là con số nhỏ nên chấp nhận được; nếu có
+  /// ngày nó chậm thấy rõ thì chỗ sửa là ở repository, không phải ở đây.
+  ///
+  /// Nuốt mọi lỗi: đây là một gợi ý phụ, không đáng để thay cả trang bằng
+  /// `BudgetError`. Cùng lối với `suggestAmount` của form.
+  Future<GoiDeXuat?> _deXuat(int idaccount, List<BudgetView> dangChay) async {
+    try {
+      final soNgay = await repository.soNgayCuaSoNhinLai(idaccount);
+      if (soNgay == null) return null;
+
+      final daCo = {
+        for (final v in dangChay)
+          if (v.budget.categoryId case final id?) id,
+      };
+      // `getExpenseCategories` ĐÃ lọc `classify = 'chi'` — đừng lọc lần nữa.
+      final cats = await repository.getExpenseCategories(idaccount);
+
+      final muc = <String, double?>{};
+      for (final c in cats) {
+        if (daCo.contains(c.id)) continue;
+        muc[c.id] = await repository.suggestAmount(idaccount, c.id);
+      }
+
+      return chonDeXuat(
+        danhMucChi: [for (final c in cats) (id: c.id, ten: c.name)],
+        daCoNganSach: daCo,
+        mucThangTheoDanhMuc: muc,
+        soNgayCuaSo: soNgay,
+      );
+    } catch (_) {
+      return null;
     }
   }
 
