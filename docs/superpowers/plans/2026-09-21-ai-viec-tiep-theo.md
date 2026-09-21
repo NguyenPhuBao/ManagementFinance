@@ -295,7 +295,7 @@ không phải dữ liệu gốc. Gói số đọc `balance` thì đọc qua `viT
 
 # CHẶNG 2 — Function calling, bắt đầu từ việc AN TOÀN NHẤT
 
-## 2.1 ⭐ Tìm kiếm bằng câu — *"tháng trước tôi tiêu gì trên 500k"*
+## 2.1 ⭐ Tìm kiếm bằng câu — *"tháng trước tôi tiêu gì trên 500k"* — ⚠️ NỬA ĐẦU XONG 2026-09-21
 
 **Vì sao đây là việc đầu của hạ tầng C, không phải nhập bằng câu:**
 
@@ -303,18 +303,30 @@ không phải dữ liệu gốc. Gói số đọc `balance` thì đọc qua `viT
 - Đầu ra mô hình là một **bộ lọc**, kiểm được bằng schema chứ không cần `kiemSo`.
 - Nó cho **phép đo tỉ lệ chọn đúng hàm** mà 2.2 và 2.3 cần trước khi mở chiều ghi.
 
-**Nó lấp một lỗ hổng thật.** `TransactionFilter` hiện chỉ có:
+### ✅ Nửa đầu — mở rộng bộ lọc (xong 2026-09-21)
+
+Spec `docs/superpowers/specs/2026-09-21-so-giao-dich-pham-vi-ky-va-loc-tien-design.md`,
+kế hoạch thi công `…/2026-09-21-so-giao-dich-pham-vi-ky-va-loc-tien.md`. Bốn commit,
+31 ca mới, `flutter test` **3200/3200, 1 skip**.
+
+⚠️ **Mục này từng gộp "khoảng tiền" và "khoảng ngày" làm một việc — khảo sát lật
+điều đó.** Trang Sổ giao dịch nạp dữ liệu **theo từng tháng**, nên hai vế không cùng
+độ khó: khoảng tiền có nghĩa trọn vẹn, còn khoảng ngày bị kẹp trong tháng đang xem và
+tạo **hai bộ điều khiển thời gian triệt tiêu nhau** trên cùng một trang. Người dùng
+chốt **lối B**: khoảng ngày **thay luôn** phép buộc-theo-tháng, mượn `Ky` và
+`ChonPhamViSheet` của trang Phân tích.
+
+Nên `TransactionFilter` nay là:
 
 ```dart
 TransactionTypeFilter type;  String? walletId;  String? categoryId;  String query;
+KhoangTien? khoangTien;   // ← mới; khoảng NGÀY không nằm ở đây mà là nguồn dữ liệu
 ```
 
-→ **không lọc được theo khoảng tiền, cũng không theo khoảng ngày.** Phần mở rộng bộ lọc
-là việc có ích **kể cả khi không có AI**.
+### ⬜ Nửa sau — bộ hàm cho function calling (chưa làm)
 
-**Tệp:** `transaction/domain/transaction_filter.dart` (thêm trường + `applyTransactionFilter`) ·
-`transaction/presentation/widgets/transaction_filter_bar.dart` · một hàm khai `Tool` cho
-function calling.
+**Tệp:** một hàm khai `Tool` ánh xạ sang `TransactionFilter` + `Ky`. Hai thứ ấy nay
+đã đủ trường để mô hình chọn, nên phần còn lại thuần là lớp dịch câu → tham số.
 
 **Phép đo phải ghi lại:** 20 câu lệnh mẫu → đếm bao nhiêu lần **chọn đúng hàm** và
 **đúng tham số**. Con số ấy quyết định có mở 2.2/2.3 hay không, và là một bảng cho báo cáo.

@@ -1,6 +1,8 @@
 # Trang Sổ giao dịch — phạm vi kỳ và bộ lọc theo số tiền
 
-**Viết:** 2026-09-21 · **Trạng thái:** đã duyệt, chưa thi công
+**Viết:** 2026-09-21 · **Trạng thái:** ✅ **đã thi công 2026-09-21** — Task 1–4 xong
+(4 commit, 31 ca mới, `flutter test` **3200/3200, 1 skip**, analyze **26/0**);
+⚠️ **Task 5 còn mở**: chưa nghiệm thu máy ảo 411dp.
 **Thuộc:** nửa đầu của việc **2.1** trong `docs/superpowers/plans/2026-09-21-ai-viec-tiep-theo.md`
 
 ---
@@ -295,10 +297,13 @@ Cộng **hai** tệp test hiện dùng `watchTransactionsByMonth` phải đổi 
 
 ## 9. Xong khi
 
-- `flutter test` **trọn bộ** xanh, đối chiếu mức nền **3169/3169, 1 skip** cộng số ca mới.
-- `flutter analyze` **26 issue, 0 error**.
-- Mọi ca test mới **đỏ với bản sai có chủ ý** — ca xanh ngay từ đầu chỉ đáng tin sau khi
-  thử bản sai (bẫy G43; phiên 2026-09-21 bắt được **ba** ca canh nhầm chỗ theo cách này).
+- ✅ `flutter test` **trọn bộ** xanh — **3200/3200, 1 skip** (mức nền trước lát này là
+  3169, cộng **31** ca mới).
+- ✅ `flutter analyze` **26 issue, 0 error**.
+- ✅ Mọi ca test mới **đỏ với bản sai có chủ ý** — đã thử **năm** bản sai: bỏ dung sai
+  nửa đồng · bỏ vế `khoangTien` khỏi `isActive` · đổi biên nửa mở thành biên đóng ·
+  đảo chiều mũi tên trái · bỏ `GioiHanSoChuSo` khỏi ô tiền (test quét thứ tám bắt, và
+  gọi đúng tên tệp). Mỗi bản sai làm **đúng** ca tương ứng đỏ.
 - Nghiệm thu máy ảo 411dp: đổi kỳ bằng cả ‹ › lẫn sheet, lọc tiền ba dạng (chỉ "từ",
   chỉ "đến", cả hai), và đường tắt từ màn Quản lý ví.
 - Màn Stitch cho header và sheet lọc tiền đã vẽ.

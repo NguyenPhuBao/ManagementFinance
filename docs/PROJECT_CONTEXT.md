@@ -596,6 +596,56 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-21)
 
+### ✅ Sổ giao dịch — phạm vi kỳ và lọc theo số tiền (2026-09-21)
+
+Nửa đầu việc **2.1** của `docs/superpowers/plans/2026-09-21-ai-viec-tiep-theo.md`.
+Spec: `docs/superpowers/specs/2026-09-21-so-giao-dich-pham-vi-ky-va-loc-tien-design.md`.
+
+Trang Sổ giao dịch thôi khoá theo tháng: nó xem được **tuần · tháng · quý · năm ·
+khoảng tuỳ chọn** bằng chính `Ky` và `ChonPhamViSheet` mà trang Phân tích và Xuất
+báo cáo đã dùng — **ba** trang nay chung một bộ chọn. Header là ba phần: ‹ lùi một
+kỳ · nhãn giữa bấm được để mở sheet · › tiến một kỳ. Cộng một chip **"Số tiền"**
+trên thanh lọc, mở sheet hai ô *từ … đến …*.
+
+⚠️ **Kế hoạch gộp "lọc theo tiền" và "lọc theo ngày" làm một việc — khảo sát lật
+điều đó.** Trang nạp dữ liệu **theo từng tháng**, nên khoảng tiền có nghĩa trọn vẹn
+còn khoảng ngày thì không: thêm nó vào bộ lọc mà giữ bộ chọn tháng là đặt **hai bộ
+điều khiển thời gian triệt tiêu nhau** trên cùng một trang (đặt khoảng 01/08–15/08
+trong khi đang xem tháng 9 cho danh sách rỗng mà không nói vì sao). Người dùng chốt
+lối B: khoảng ngày **thay luôn** phép buộc-theo-tháng.
+
+**Năm thứ dễ vấp, cả năm hỏng im lặng:**
+
+1. **Biên đổi từ đóng sang nửa mở.** `watchByMonth` cũ dùng `[ngày 1 00:00, ngày
+   cuối 23:59:59]`; `watchKhoang` dùng `[from, to)` — đúng quy ước đã ghi trong
+   **chính tệp DAO ấy** cho `tuanTruoc`/`tongThuChi`. Thay hẳn chứ không thêm hàm:
+   giữ cả hai là để hai quy ước biên sống chung trong một DAO, và khi ấy khoản ghi
+   đúng mốc giao giữa hai kỳ bị đếm vào **cả hai**.
+2. **Bỏ phép lọc lần hai trong bloc.** `_emitLoadedState` từng lọc lại theo
+   `(year, month)` — thừa, vì DAO đã trả đúng kỳ. State nay còn **một** danh sách
+   `giaoDich` (đo trước khi gộp: không nơi nào đọc `state.transactions`).
+3. **Ngưỡng nửa đồng khi so tiền.** `amount` là `double` và khoản điều chỉnh số dư
+   mang đuôi lẻ có thật, nên một khoản đúng `500.000` mà máy giữ là
+   `499999.99999994` sẽ rơi khỏi bộ lọc "từ 500.000" — không exception, không log.
+4. **Sheet trả BA nghĩa khác nhau**: `null` = đóng không chọn (giữ nguyên bộ lọc) ·
+   `KhoangTien()` rỗng = bấm Xoá (bỏ điều kiện) · có giá trị = bấm Áp dụng. Gộp hai
+   cái đầu là bấm ra ngoài sheet cũng xoá mất bộ lọc đang có.
+5. **Ô tiền phải vào lưới quét bằng TÊN CONTROLLER.** Test quét thứ tám nhận diện ô
+   tiền theo tên, nên đặt tên lạ thì nó **im lặng không canh gì** — hai tên mới vào
+   danh sách **trước** khi dựng widget.
+
+`KhoangTien` (`transaction/domain/khoang_tien.dart`) mang **cả phép so**, nên
+`applyTransactionFilter` chỉ gọi `kt.chua(t.amount)`. Hai vế đều được phép trống:
+để trống vế trên là *lớn hơn*, vế dưới là *nhỏ hơn*, cả hai là *khoảng giữa* — ba
+dạng ấy phủ trọn bốn toán tử mà Monarch Money bày thành dropdown riêng. **Không**
+chip gợi ý nhanh: ba mức ấy là hằng cứng cho mọi mức thu nhập.
+
+31 ca mới ở 3 tệp mới; `flutter test` **3200/3200, 1 skip**; analyze **26/0**.
+**Schema không đổi** (v24), **payload không đổi**, không đụng đồng bộ.
+
+⚠️ **Chưa nghiệm thu máy ảo 411dp** — Task 5 của kế hoạch thi công, còn mở. Lát này
+đụng cả ba vùng mù của `flutter test`.
+
 ### ✅ AI Edge-SLM — chặng 0 và trọn chặng 1 (2026-09-21)
 
 Theo `docs/superpowers/plans/2026-09-21-ai-viec-tiep-theo.md`.
@@ -626,9 +676,11 @@ quyết định về **trùng lặp**, không phải về năng lực.
 
 ⚠️ **Khối Nhận xét nay ở SÁU màn**, không phải bốn.
 
-**Bước tiếp:** chặng 2, bắt đầu bằng **2.1 tìm kiếm bằng câu** — chiều đọc, không
-ghi gì, và nó lấp một lỗ hổng thật: `TransactionFilter` hiện **không lọc được
-theo khoảng tiền lẫn khoảng ngày**.
+**Bước tiếp:** chặng 2, **2.1 tìm kiếm bằng câu** — ✅ **nửa đầu xong 2026-09-21**
+(xem khối ngay trên đầu mục 14): `TransactionFilter` nay lọc được theo **khoảng
+tiền**, và khoảng ngày thành **nguồn dữ liệu** của trang chứ không phải một trường
+của bộ lọc. Còn lại nửa sau — bộ hàm cho function calling và phép đo tỉ lệ chọn
+đúng hàm trên 20 câu mẫu, thứ quyết định có mở 2.2/2.3 hay không.
 
 
 ### 📏 AI Edge-SLM — P1 spike trên máy thật (2026-09-20)
@@ -2218,7 +2270,7 @@ hiện cũng không chứng minh lời gọi của mình tạo ra nó. Hỏi ng�
 - **Hai loại giao dịch (Giao dịch / Chuyển khoản) + tab Vay/nợ ở bảng chọn danh mục** (2026-09-05; ⚠️ thanh đầu màn trở lại **ba đoạn Chi tiêu · Thu nhập · Chuyển khoản** ngày 2026-09-19 theo Stitch — nhưng chỉ là lối vào, luật "chiều tiền suy từ danh mục" dưới đây **giữ nguyên**, xem mục C1–C5 đầu mục 14) — chiều tiền suy từ `classify` của danh mục thay vì từ segment; danh mục vay/nợ có hàng "Chiều tiền" trên form, gợi sẵn theo tên (`suggestDebtDirection`). SQLite **vẫn** lưu `type = chi/thu/transfer` nên hợp đồng đồng bộ, DAO và thống kê không đổi; vay/nợ tính vào tổng thu/chi như thu/chi thường (quyết định có chủ ý, tách ra để dành cho Analytics). Danh sách classify gom về `core/category/category_classify.dart` thay cho 5 bản chép tay. Kèm sửa 11.11
 - **Sổ giao dịch chặn vuốt xoá khoản của mục tiêu và hoá đơn** (2026-09-06) — nguyên tắc: chỉ xoá được ở sổ khi giao dịch là nguồn sự thật duy nhất của hệ quả nó gây ra; khoản nạp/rút mục tiêu còn `current_amount`, khoản trả hoá đơn còn cờ Payed + kỳ kế tiếp, xoá rời chỉ hoàn ví (đã thấy tiến độ MuaXe đứng nguyên sau khi xoá hai khoản nạp). Nhận diện ở `features/transaction/domain/transaction_owner.dart` (`goalId` cục bộ, hoặc tiền tố ghi chú vì hàng kéo từ server không có `goalId`; kể cả dạng cũ "Tích lũy nhận từ …"); hàng tách thành `TransactionListRow` với `confirmDismiss` + SnackBar chỉ đường. Hoá đơn chưa có luồng hoàn tác thanh toán — muốn cho xoá thì phải làm luồng ấy trước
 - **Sổ giao dịch hiện danh mục + tên ví** (2026-09-06) — theo bố cục Stitch màn Home: tiêu đề = ghi chú (không có thì tên danh mục), dòng phụ "Danh mục • Ví" hoặc "Ví nguồn → Ví đích" với khoản chuyển, icon/màu của danh mục. Trước đó dòng phụ in thẳng UUID ví và không có danh mục ở đâu. Nội dung dòng tính ở hàm thuần `buildTransactionRowContent()` (`transaction_row_content.dart`), tên tra qua `TransactionLookup` dựng từ `walletDao.watchAll` + `categoryDao.watchAll`. **Phát hiện kèm:** seed backend lưu tên icon ngữ nghĩa (`food`, `bill`, `lend`…) còn ba mapper client chỉ hiểu tên Material → danh mục mặc định kéo về toàn rơi về icon mặc định; nay gom về **một** mapper `core/category/category_visuals.dart` hiểu cả hai bộ tên, `budget_visuals` và `category_page` uỷ quyền về đó (`category_add_page` còn bản riêng cho bộ chọn icon, chưa gộp)
-- **Sổ giao dịch: chi tiết + sửa + lọc/tìm** (2026-09-06). Bấm dòng → `TransactionDetailSheet` (đọc đủ; Sửa/Xoá chỉ với giao dịch thường, khoản mục tiêu/hoá đơn chỉ đọc theo cùng quy tắc `transactionOwnerOf`). Sửa dùng lại `AddTransactionPage` với `initial: EditTransactionArgs` qua `extra` của route `/add` (cùng `id`, `UpdateTransactionEvent`); `TransactionRepositoryImpl.updateTransaction` = hoàn trọn hệ quả cũ rồi áp trọn hệ quả mới lên ví (một đường `_applyBalances(sign)` dùng chung cho thêm/xoá/sửa), ghi đè hàng và đặt lại `pending` + `updatedAt` (LWW server). Lọc: `TransactionFilter` + `applyTransactionFilter` thuần Dart trên danh sách tháng của bloc (loại, ví — khoản chuyển khớp cả nguồn lẫn đích —, danh mục, tìm ghi chú bỏ dấu); `TransactionFilterBar` chỉ phát filter, trang giữ trạng thái; thẻ tổng tính trên tập đã lọc. Trang chủ "Giao dịch gần đây" dùng chung `buildTransactionRowContent`
+- **Sổ giao dịch: chi tiết + sửa + lọc/tìm** (2026-09-06). Bấm dòng → `TransactionDetailSheet` (đọc đủ; Sửa/Xoá chỉ với giao dịch thường, khoản mục tiêu/hoá đơn chỉ đọc theo cùng quy tắc `transactionOwnerOf`). Sửa dùng lại `AddTransactionPage` với `initial: EditTransactionArgs` qua `extra` của route `/add` (cùng `id`, `UpdateTransactionEvent`); `TransactionRepositoryImpl.updateTransaction` = hoàn trọn hệ quả cũ rồi áp trọn hệ quả mới lên ví (một đường `_applyBalances(sign)` dùng chung cho thêm/xoá/sửa), ghi đè hàng và đặt lại `pending` + `updatedAt` (LWW server). Lọc: `TransactionFilter` + `applyTransactionFilter` thuần Dart trên danh sách **của kỳ đang xem** (loại, ví — khoản chuyển khớp cả nguồn lẫn đích —, danh mục, tìm ghi chú bỏ dấu, và **khoảng số tiền** từ 2026-09-21); `TransactionFilterBar` chỉ phát filter, trang giữ trạng thái; thẻ tổng tính trên tập đã lọc. ⚠️ Câu này từng ghi *"danh sách tháng của bloc"* — đúng tới 2026-09-21, khi trang bỏ phép buộc-theo-tháng và nguồn dữ liệu thành `watchKhoang(from, to)` với biên `[from, to)`; xem khối đầu mục 14. Trang chủ "Giao dịch gần đây" dùng chung `buildTransactionRowContent`
 - **Ngân sách: nhịp chi, trang chi tiết riêng, lịch sử sáu kỳ** (2026-09-06, `0467ffd`). Thẻ trong danh sách thêm dòng "Nên chi X/ngày · còn N ngày" (`domain/budget_pace.dart`: ngày còn lại làm tròn **lên**, tối thiểu 1 khi còn trong kỳ; nhịp chi so với thời gian đã trôi, biên ±5 điểm phần trăm; mọi mốc lấy từ `currentPeriod` nên tháng ngắn và năm nhuận đúng theo). Trang **`/budget/detail/:id`** thay bottom sheet cũ: nhịp chi, sáu cột lịch sử (`domain/budget_history.dart` — `recentPeriods` đi lại đúng phép cắt của `currentPeriod`, kỳ cuối trùng kỳ hiện tại, các kỳ liền nhau không hở), và các khoản chi của kỳ dùng lại `buildTransactionRowContent` + `TransactionDetailSheet` của sổ (Sửa/Xoá đi qua `TransactionBloc`, **không** có đường xoá thứ hai). Đường dẫn là `/budget/detail/` chứ không phải `/budget/:id` vì `/budget/rules` sẽ bị tham số nuốt; đặt **ngoài** shell như trang cấu hình. Kèm sửa lỗi biên: `getExpenses` cắt `date < to` (biên **mở**) dù DAO lấy `<= to`, vì bộ chọn ngày trả 00:00 và khoản ghi ngày đầu kỳ sau từng bị đếm vào cả kỳ trước — đừng "tối ưu" bằng cách gọi DAO trực tiếp
 - **Thẻ ngân sách trang chủ đọc dữ liệu thật** (2026-09-06, `13bbd9f`) — trước là placeholder cứng "Ăn uống · Chưa thiết lập". Theo Stitch màn Home: **một** ngân sách, đã dùng / hạn mức, phần trăm, thanh bốn màu, dòng nên chi/ngày. `pickHomeBudget` (hàm thuần, test riêng) chọn ngân sách **đang chạy** có **tỉ lệ** đã chi cao nhất — so tỉ lệ chứ không so số tiền, và bỏ qua ngân sách hết hạn. Bấm thẻ `go('/budget')` vì cùng shell. `home_budget_card_test.dart` là test **đầu tiên** của feature `home`, dựng ở 411dp và bắt tràn bằng `takeException`
 - **Lựa chọn "Chặn" (`OverSpending = Stop`) có tác dụng thật** (2026-09-06, `91bde24`) — tồn tại trên form từ 03/09 nhưng không nơi nào đọc. Người dùng chốt: "Chặn" = **hỏi xác nhận** trước khi ghi khoản làm vượt, **không bao giờ từ chối ghi** (tiền đã tiêu thật, không ghi thì ví lệch); "Cảnh báo" = ghi luôn rồi báo. `domain/budget_impact.dart` là nơi **duy nhất** đọc `OverSpending`; ở chế độ sửa trừ số cũ ra trước, không thì báo vượt oan; khoản ngoài kỳ hiện tại không tính. `_saveTransaction` của form thêm giao dịch nay **async** (tra `budgetLookup` tiêm được, DI chưa có hoặc tra hỏng thì vẫn ghi) — widget test phải `pumpAndSettle`. Hộp thoại xác nhận nêu số vượt; snackbar sau lưu **không có con số** (banner tối giản)
