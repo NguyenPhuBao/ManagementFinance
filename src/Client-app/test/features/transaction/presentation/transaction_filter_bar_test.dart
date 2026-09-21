@@ -95,6 +95,12 @@ void main() {
     final emitted = await pump(tester,
         filter: const TransactionFilter(
             type: TransactionTypeFilter.chi, query: 'xăng'));
+    // ⚠️ `ensureVisible` bắt buộc từ 2026-09-21: chip "Số tiền" thêm vào hàng
+    // làm "Xoá lọc" nằm ngoài khung ở khổ test, và `tap` khi ấy **trượt** — nó
+    // chỉ cảnh báo chứ không đỏ, nên ca này đỏ ở dòng `emitted.single` với
+    // "Bad state: No element", một chỗ chẳng liên quan gì tới nguyên nhân.
+    await tester.ensureVisible(find.text('Xoá lọc'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Xoá lọc'));
     await tester.pump();
 

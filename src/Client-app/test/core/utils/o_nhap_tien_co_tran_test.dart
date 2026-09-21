@@ -35,6 +35,13 @@ void main() {
     '_depositAmountController',
     '_thresholdController',
     '_balanceController',
+    // Hai ô của sheet "Lọc theo số tiền" ở sổ giao dịch (2026-09-21). Chúng
+    // **không ghi gì xuống CSDL** — chỉ lọc danh sách đang hiện — nhưng vẫn
+    // phải có trần: một chuỗi 20 chữ số làm `double.tryParse` ra số vô nghĩa và
+    // ô nhập phình ra khỏi sheet. Thêm vào đây để lưới quét bắt được, vì phép
+    // nhận diện là **tên controller**: đặt tên lạ thì ca này im lặng.
+    '_soTienTuController',
+    '_soTienDenController',
   ];
 
   /// Tệp cố ý KHÔNG có trần, kèm lý do. Danh sách này phải **ngắn** và mỗi
