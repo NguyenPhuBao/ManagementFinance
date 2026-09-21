@@ -77,6 +77,37 @@ class _TransactionPageState extends State<TransactionPage> {
     _ky = Ky.thang(now.year, now.month);
   }
 
+  /// Đường tắt "Xem giao dịch" của màn Quản lý ví phải lọc sẵn ví **kể cả khi
+  /// trang đã sống từ trước** — G48.
+  ///
+  /// `/transactions` nằm trong một `StatefulShellBranch`, và Navigator của
+  /// nhánh **giữ State sống**. Lần `go('/transactions?wallet=…')` thứ hai dựng
+  /// một `TransactionPage` mới cùng kiểu ở cùng vị trí, nên Flutter **cập nhật**
+  /// State cũ thay vì tạo State mới: `initState` không chạy lại và
+  /// [TransactionPage.initialWalletId] mới bị bỏ qua **im lặng**. Người dùng
+  /// thấy sổ đầy đủ và tưởng chừng ấy khoản đều thuộc ví họ vừa bấm.
+  ///
+  /// Hai chốt, phá cái nào cũng hỏng im lặng:
+  ///
+  /// - Chỉ đổi khi ví **thật sự khác lần trước**. Áp lại ở mọi lần dựng lại là
+  ///   quay về đúng cái bẫy mà chú thích của [_filter] cảnh báo: người dùng bỏ
+  ///   lọc ra rồi nó tự giành lại.
+  /// - `null` **không** có nghĩa "hãy xem mọi ví". Trang được dựng lại mà không
+  ///   nêu ví nào thì giữ nguyên thứ đang xem; coi `null` là lệnh bỏ lọc thì bộ
+  ///   lọc tự bay mất mỗi lần cây widget dựng lại.
+  ///
+  /// Phép này **không** trả lời câu hỏi rộng hơn — bộ lọc có nên sống sót qua
+  /// một lần ghé tab hay không; nó chỉ chốt một điều hẹp và rõ: **một lệnh điều
+  /// hướng có nêu đích danh ví thì thắng bộ lọc đang có**.
+  @override
+  void didUpdateWidget(TransactionPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final viMoi = widget.initialWalletId;
+    if (viMoi != null && viMoi != oldWidget.initialWalletId) {
+      setState(() => _filter = _filter.copyWith(walletId: viMoi));
+    }
+  }
+
   void _ensureLookupStreams(int idaccount) {
     if (_lookupAccount == idaccount) return;
     _lookupAccount = idaccount;

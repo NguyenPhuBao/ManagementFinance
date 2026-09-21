@@ -632,11 +632,48 @@ trang xem được năm đơn vị:
    bảng "Phân bổ theo ví", cũng do máy ảo bắt. Phép sửa là cho hai cột kia đi qua
    cùng hàm ấy.
 
-Chỗ thứ ba là **G48**, còn **mở** — đường tắt *"Xem giao dịch"* thôi lọc sẵn ví
-nếu tab Giao dịch đã mở trước đó trong phiên. ⚠️ **Không phải hồi quy của lát
-này**: nó có từ khi `/transactions` vào shell (nhóm D, 2026-09-19). Đo được hai
-đường trên cùng một máy, cùng một ví — app mới khởi động thì **đúng**, ghé tab
-trước thì **sai và im lặng**. Chi tiết và ba lối sửa: `docs/CLIENT_APP_KNOWN_GAPS.md`.
+Chỗ thứ ba là **G48** — đường tắt *"Xem giao dịch"* thôi lọc sẵn ví nếu tab Giao
+dịch đã mở trước đó trong phiên. ⚠️ **Không phải hồi quy của lát này**: nó có từ
+khi `/transactions` vào shell (nhóm D, 2026-09-19). Đo được hai đường trên cùng
+một máy, cùng một ví — app mới khởi động thì **đúng**, ghé tab trước thì **sai và
+im lặng**. ✅ **Đã đóng cùng ngày** — xem khối ngay dưới.
+
+### ✅ G48 — đường tắt "Xem giao dịch" lọc sẵn ví kể cả khi trang đã sống (2026-09-21)
+
+`/transactions` nằm trong một `StatefulShellBranch`, và Navigator của nhánh
+**giữ State sống**. Lần `go('/transactions?wallet=…')` thứ hai dựng một
+`TransactionPage` mới cùng kiểu ở cùng vị trí, nên Flutter **cập nhật** State cũ
+thay vì tạo State mới: `initState` không chạy lại và ví mới bị bỏ qua.
+
+**Sửa:** `didUpdateWidget`, áp ví mới khi nó **thật sự khác** lần trước. Ba lối
+từng cân nhắc khác nhau ở chỗ *ai làm chủ bộ lọc*; lối đã chọn **cố ý không trả
+lời** câu rộng ấy mà chỉ chốt một điều hẹp và rõ: **một lệnh điều hướng có nêu
+đích danh ví thì thắng bộ lọc đang có**. Câu *"bộ lọc có nên sống sót qua một
+lần ghé tab"* vẫn để ngỏ, và lối "chuyển bộ lọc lên bloc" vẫn là đường đi nếu
+ngày nào cần trả lời nó.
+
+⚠️ **Hai chốt, hỏng im lặng theo hai chiều ngược nhau:** chỉ đổi khi ví **khác
+lần trước** (áp lại ở mọi lần dựng lại là người dùng bỏ lọc ra rồi nó tự giành
+lại — đúng cái bẫy mà chú thích `_filter` cảnh báo từ đầu, nên **không** gán
+trong `build`); và `null` **không** có nghĩa *"hãy xem mọi ví"* (coi vậy thì bộ
+lọc tự bay mất mỗi lần cây widget dựng lại).
+
+**Test:** `so_giao_dich_loc_vi_ban_dau_test.dart`, **3** ca. Ca giữa **tái hiện
+cơ chế của shell mà không cần cây route thật**: dựng trang với
+`initialWalletId = null` rồi dựng lại **cùng vị trí** với một ví — `pumpWidget`
+giữ State vì runtimeType và key không đổi. ⚠️ Cả ba **đỏ với dáng vẻ sai** ở lần
+chạy đầu (*"không tìm thấy chuỗi nào"*) vì tệp thiếu `initializeDateFormatting('vi')`:
+danh sách nhóm theo ngày dựng tiêu đề bằng `DateFormat` locale `vi`, thiếu nó
+thì `LocaleDataException` làm **cả cây dừng dựng** — một triệu chứng chẳng liên
+quan gì tới nguyên nhân. `so_giao_dich_chon_ky_test.dart` không vấp chỉ vì danh
+sách của nó rỗng.
+
+**Nghiệm thu máy ảo** (bắt buộc — widget test tái hiện *cơ chế*, không phải
+router thật): chạy đúng kịch bản từng hỏng, chip ví bật và danh sách chỉ còn ví
+ấy. Cùng ảnh chụp ấy xác nhận luôn thẻ Chi tiêu nay hiện `0 đ` chứ không `-0 đ`.
+
+`flutter test` **3205/3205, 1 skip**; analyze **26 issue, 0 error**. **Schema
+không đổi**, vẫn v24; **payload không đổi**.
 
 **Test:** `test/features/transaction/presentation/so_giao_dich_ky_rong_test.dart`
 — **2** ca cho hai lỗi đã sửa. Ca thứ hai **đòi kết quả chứ không chỉ đòi vắng
