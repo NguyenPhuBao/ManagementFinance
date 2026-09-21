@@ -13,6 +13,8 @@ import '../../../../features/auth/data/models/user_model.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../bloc/wallet_cubit.dart';
 import '../../data/models/wallet_entity.dart';
+import '../../../ai_edge/domain/goi_so_vi.dart';
+import '../../../ai_edge/presentation/widgets/khoi_nhan_xet.dart';
 
 /// WalletListPage — hiển thị danh sách ví thực từ DB local chuẩn thiết kế Stitch UI.
 class WalletListPage extends StatelessWidget {
@@ -138,6 +140,15 @@ class _WalletListView extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildOverviewCard(totalBalance, soViLuuTru),
+                const SizedBox(height: 16),
+                // Khối Nhận xét (Edge-SLM, chặng 1.5) — đứng NGAY DƯỚI thẻ
+                // tổng quan vì nó giải thích đúng con số vừa ở trên: vì sao
+                // tổng tài sản không bằng tổng các ví nhìn thấy.
+                //
+                // Truyền `wallets` (MỌI ví, kể cả lưu trữ) chứ không phải
+                // `viHoatDong`: chỗ tiền bị loại khỏi tổng chính là thứ khối
+                // này phải đếm được.
+                KhoiNhanXet(goi: GoiSoVi.tu(_choGoiSo(wallets))),
                 const SizedBox(height: 24),
                 _buildWalletListHeader(),
                 const SizedBox(height: 12),
@@ -162,6 +173,20 @@ class _WalletListView extends StatelessWidget {
       ],
     );
   }
+
+  /// Quy đổi sang kiểu của tầng thuần. Gói số cố ý không biết `WalletEntity`
+  /// — cùng lý do với `viTinhVaoTong`, vốn chạy trên hai kiểu dữ liệu.
+  List<ViChoGoiSo> _choGoiSo(List<WalletEntity> vis) => [
+        for (final w in vis)
+          ViChoGoiSo(
+            ten: w.name,
+            soDu: w.balance,
+            includeInTotal: w.includeInTotal,
+            status: w.status,
+            isDeleted: w.isDeleted,
+            allowNegative: w.allowNegative,
+          ),
+      ];
 
   Widget _buildOverviewCard(double totalBalance, int soViLuuTru) {
     return Container(

@@ -916,3 +916,45 @@ chứ không phải một vế trong câu.
 **Nghiệm thu máy ảo:** mục tiêu thật của tài khoản 10 (MuaXe, 55 %) đang **đúng kế hoạch**
 nên vế dự báo im — đúng thiết kế, và đó là tất cả những gì tài khoản ấy chứng minh được.
 Chiều dương chỉ có bộ test phủ.
+
+---
+
+## 14. Gói số ví và khối Nhận xét trang Quản lý ví (2026-09-21, chặng 1.5)
+
+Gói số **thứ sáu**. Câu hỏi nó trả lời là câu người dùng thật sự hay hỏi về ví: *"vì sao
+tổng tài sản không bằng tổng các ví tôi nhìn thấy?"* — và đáp án nằm ở hai chỗ tiền **cố
+ý** bị loại: ví tắt cờ `includeInTotal`, và ví đã **lưu trữ**. Cả hai là lựa chọn của
+chính người dùng, nhưng họ chỉ thấy **hệ quả** (một con số nhỏ hơn) chứ không thấy nguyên
+nhân.
+
+**Tệp:** `ai_edge/domain/goi_so_vi.dart` · khối nối ở `wallet_list_page.dart` **ngay dưới**
+thẻ tổng quan, theo màn Stitch **`6adf2ad12af246cb87bb1bcc52ddb2b2`**
+*"Quản lý ví - Khối Nhận xét AI"*.
+
+⚠️ **Luật "ví nào cộng vào tổng" gọi lại `viTinhVaoTong`, không viết lại.** Chính hàm ấy
+sinh ra để dẹp **bốn** bản chép tay không khớp nhau; thêm bản thứ năm trong gói số là tái
+hiện đúng lỗi nó đã chữa.
+
+⚠️ **Truyền MỌI ví vào gói, kể cả ví lưu trữ.** Trang chia sẵn `viHoatDong` / `viLuuTru`
+để hiển thị, nhưng đưa `viHoatDong` vào gói thì chỗ tiền bị loại khỏi tổng — đúng thứ khối
+này sinh ra để nói — biến mất khỏi phép đếm.
+
+⚠️ **Ví đã xoá mềm bị loại khỏi CẢ HAI vế**, kể cả vế "ngoài tổng". Đó là G42 ở dạng khác:
+cộng ví đã xoá vào một con số hiển thị.
+
+⚠️ **Ví bật cờ cho phép âm KHÔNG đếm vào "ví đang âm"** — đúng luật G27. Nghiệm thu máy ảo
+chạy đúng vào nhánh này: tài khoản 10 có ví `test` đang **−100.000 đ** với
+`allow_negative = 1`, và khối **im lặng** về nó, đúng thiết kế.
+
+**Nghiệm thu máy ảo:** câu *"Tổng tài sản 13.004.000 đ từ 4 ví."*, con số **khớp đúng** thẻ
+tổng quan ngay trên nó, **0 dòng tràn bố cục**.
+
+⚠️ **Lượt nối khối làm đỏ hai ca test cũ của mảng ví**, và lần này **không** phải lỗi thật:
+khối thêm ~100 px vào đầu trang, đẩy mục "Đã lưu trữ" xuống dưới mép khung **600 px** của
+bộ test, nên `tap` trượt. Nay bốn chỗ `tap` nút ba chấm đều `ensureVisible` trước. Bài học
+chung với mục 12: **thêm một khối vào đầu trang là đổi ngữ cảnh của mọi ca test cuộn tới
+cuối trang ấy**.
+
+⚠️ **Lời gọi Stitch trả về `timeout` nhưng màn VẪN được tạo** (`6adf2ad1…`) — lần thứ ba
+xác nhận bài học ở mục "Ghi chú vận hành" `CLAUDE.md`: **timeout không phải thất bại, và
+đừng gọi lại**.

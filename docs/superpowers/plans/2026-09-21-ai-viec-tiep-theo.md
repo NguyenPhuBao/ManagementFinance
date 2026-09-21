@@ -8,7 +8,7 @@
 > **Nguồn:** `docs/AI_EDGE_FEATURE.md` mục **10** (bản chất mảng AI, mười tiêu chí, bốn
 > tầng chiều ghi) và mục **11** (bản đồ khảo sát). Đọc hai mục ấy **trước** khi bắt đầu.
 
-**Viết:** 2026-09-21. **Trạng thái:** chặng 0 ✅, việc 1.1 · 1.2 · 1.3 ✅ xong và 1.4 ⚠️ **một phần** (2026-09-21); 1.5 trở đi chưa bắt đầu.
+**Viết:** 2026-09-21. **Trạng thái:** chặng 0 ✅ và **trọn chặng 1** xong (2026-09-21) — riêng 1.4 ⚠️ **một phần**, hai hàm còn lại là việc về trùng lặp chứ không về năng lực. Chặng 2 trở đi chưa bắt đầu.
 
 ---
 
@@ -275,7 +275,7 @@ cứ*, và khi ấy câu **không được nhắc tới** nó. Đừng `?? 0` ha
 đúng là lỗi mà mục 3.30 `ANALYTICS_FEATURE.md` đã chặn (`thayDoiTaiSan` trả `null` thay
 vì in một khoản tăng bịa).
 
-## 1.5 Gói số cho VÍ
+## 1.5 Gói số cho VÍ — ✅ XONG 2026-09-21
 
 **Việc:** *"giải thích vì sao số dư lệch"*.
 **Tệp mới:** `lib/features/ai_edge/domain/goi_so_vi.dart`
@@ -465,3 +465,14 @@ tới lượt, trừ bốn việc UX ghi rõ "cần người dùng chốt trư�
   (`→ ▲ ▼` bị bỏ im lặng từ 2026-09-09). Nếu làm thì bắt buộc chạy câu qua bộ quét glyph
   ở `xuat_tep_test.dart`. Mục 11.2.
 - **AI viết câu thông báo** — cần ngắn, đoán được, `dedupeKey` ổn định. Mục 11.2.
+
+> ✅ **1.5 xong 2026-09-21.** `GoiSoVi` + khối Nhận xét trên trang Quản lý ví, màn Stitch
+> `6adf2ad12af246cb87bb1bcc52ddb2b2`. Câu trả lời đúng câu *"vì sao tổng không khớp"*:
+> ví tắt cờ `includeInTotal` và ví lưu trữ. 18 ca mới ở 2 tệp mới; bộ đầy đủ
+> **3169/3169, 1 skip**. Chi tiết ở **mục 14** `AI_EDGE_FEATURE.md`.
+>
+> ⚠️ Kế hoạch ghi 1.5 là *"giải thích vì sao số dư lệch"* và trỏ vào
+> `dieu_chinh_so_du.dart`. **Bản thi công đi hướng khác**: từ G37 (2026-09-13) số dư ví
+> suy từ sổ giao dịch nên nó không còn "lệch" nữa — khoản điều chỉnh là giao dịch tường
+> minh. Thứ người dùng thật sự thấy lệch là **tổng tài sản so với tổng các ví nhìn thấy**,
+> và đó là thứ khối này giải thích.
