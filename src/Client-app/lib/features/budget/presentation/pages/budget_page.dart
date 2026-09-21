@@ -75,6 +75,11 @@ class _BudgetPageContent extends StatelessWidget {
             onDelete: (v) => _confirmDelete(context, v),
             onShowDetail: (v) => _showDetail(context, v),
             onOpenAnalytics: () => context.go('/analytics'),
+            onTaoTuDeXuat: (d) => _openEditor(
+              context,
+              danhMuc: d.categoryId,
+              soTien: d.mucThang,
+            ),
             onXemKeHoach: (kh) {
               // Mã tài khoản đọc từ phiên, không từ kế hoạch (quy tắc 2).
               final idaccount = currentAccountIdOrNull(context);
@@ -211,8 +216,31 @@ class _EmptyScaffold extends StatelessWidget {
 
 // ─── Điều hướng và hộp thoại ─────────────────────────────────────────────────
 
-void _openEditor(BuildContext context, {String? id}) {
-  context.push(id == null ? '/budget/rules' : '/budget/rules?id=$id');
+void _openEditor(
+  BuildContext context, {
+  String? id,
+  String? danhMuc,
+  double? soTien,
+}) {
+  if (id != null) {
+    context.push('/budget/rules?id=$id');
+    return;
+  }
+  if (danhMuc == null) {
+    context.push('/budget/rules');
+    return;
+  }
+  // `Uri` dựng bằng `queryParameters` chứ không nối chuỗi tay: mã danh mục
+  // là UUID hôm nay, nhưng một ký tự cần thoát lọt vào thì đường dẫn hỏng
+  // **im lặng** — form mở ra trống trơn, không lỗi nào.
+  final uri = Uri(
+    path: '/budget/rules',
+    queryParameters: {
+      'category': danhMuc,
+      if (soTien != null) 'amount': soTien.round().toString(),
+    },
+  );
+  context.push(uri.toString());
 }
 
 Future<bool> _confirmDelete(BuildContext context, BudgetView view) async {

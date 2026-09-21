@@ -430,6 +430,28 @@ void main() {
               'đổi đó không gắn vào bản ghi nào.');
     });
 
+    test('mang theo độ dài cửa sổ để nhãn gợi ý nói ra được', () async {
+      repo.soNgayCuaSo = 20;
+
+      await cubit.loadEditor(7);
+
+      expect((cubit.state as BudgetEditorReady).soNgayCuaSo, 20,
+          reason: 'thiếu vế này thì nhãn form im vế "suy từ N ngày" trên mọi '
+              'tài khoản, **im lặng** — trông y hặt một cửa sổ đã đủ 90 ngày');
+    });
+
+    test('phép đo độ dài cửa sổ im thì form vẫn mở', () async {
+      repo.soNgayCuaSo = null;
+
+      await cubit.loadEditor(7);
+
+      final state = cubit.state as BudgetEditorReady;
+      expect(state.soNgayCuaSo, isNull);
+      expect(state.isCreating, isTrue,
+          reason: 'ĐÒI KẾT QUẢ: số ngày là phần phụ của nhãn, không được '
+              'phép đổi cả form thành một màn lỗi');
+    });
+
     test('mở ngân sách có thật thì nạp đúng bản ghi', () async {
       repo.budgets = [_view(id: 'b1', amount: 750000)];
 

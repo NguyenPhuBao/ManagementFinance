@@ -12,10 +12,10 @@ import 'package:flowmoney/features/budget/domain/de_xuat_ngan_sach.dart';
 
 void main() {
   const danhMuc = [
-    (id: 'an', ten: 'Ăn uống'),
-    (id: 'giaitri', ten: 'Giải trí'),
-    (id: 'yte', ten: 'Y tế'),
-    (id: 'nhacua', ten: 'Nhà cửa'),
+    (id: 'an', ten: 'Ăn uống', icon: 'food', colour: '#FF5722'),
+    (id: 'giaitri', ten: 'Giải trí', icon: 'movie', colour: null),
+    (id: 'yte', ten: 'Y tế', icon: null, colour: null),
+    (id: 'nhacua', ten: 'Nhà cửa', icon: null, colour: null),
   ];
 
   GoiDeXuat? chon({
@@ -68,11 +68,11 @@ void main() {
   test('lấy tối đa $kToiDaDeXuat', () {
     final g = chonDeXuat(
       danhMucChi: const [
-        (id: 'a', ten: 'A'),
-        (id: 'b', ten: 'B'),
-        (id: 'c', ten: 'C'),
-        (id: 'd', ten: 'D'),
-        (id: 'e', ten: 'E'),
+        (id: 'a', ten: 'A', icon: null, colour: null),
+        (id: 'b', ten: 'B', icon: null, colour: null),
+        (id: 'c', ten: 'C', icon: null, colour: null),
+        (id: 'd', ten: 'D', icon: null, colour: null),
+        (id: 'e', ten: 'E', icon: null, colour: null),
       ],
       daCoNganSach: const {},
       mucThangTheoDanhMuc: const {

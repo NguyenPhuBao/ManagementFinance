@@ -1,4 +1,4 @@
-/// Nguồn dữ liệu Tầng 2: thu nhập 3 tháng phải là `thuNhapCua` (không đếm tiền
+/// Nguồn dữ liệu Tầng 2: thu nhập mỗi tháng phải là `thuNhapCua` (không đếm tiền
 /// đi vay), cờ Cố định đọc từ bảng danh mục, phản hồi cũ từ bảng v24.
 library;
 

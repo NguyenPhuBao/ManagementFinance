@@ -106,12 +106,22 @@ class BudgetEditorReady extends BudgetState {
   /// null = đang tạo mới.
   final BudgetEntity? editing;
 
-  const BudgetEditorReady({required this.categories, this.editing});
+  /// Độ dài cửa sổ nhìn lại đã sinh ra con số gợi ý hạn mức. `null` = chưa
+  /// biết (tài khoản quá trẻ, hoặc phép đo hỏng) — nhãn của form im vế
+  /// "suy từ N ngày" chứ không đoán một con số.
+  final int? soNgayCuaSo;
+
+  const BudgetEditorReady({
+    required this.categories,
+    this.editing,
+    this.soNgayCuaSo,
+  });
 
   bool get isCreating => editing == null;
 
   @override
-  List<Object?> get props => [categories, editing?.id, editing?.updatedAt];
+  List<Object?> get props =>
+      [categories, editing?.id, editing?.updatedAt, soNgayCuaSo];
 }
 
 /// Đã ghi xong một thay đổi. Mang theo lời nhắn để giao diện hiện snackbar.

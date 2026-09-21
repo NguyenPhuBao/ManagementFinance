@@ -1,4 +1,5 @@
-/// Form ngân sách gợi ý hạn mức từ chi tiêu ba tháng trước của danh mục.
+/// Form ngân sách gợi ý hạn mức từ chi tiêu gần đây của danh mục — cửa sổ
+/// **cuộn** ≤ 90 ngày kể từ 2026-09-21, không còn là ba tháng lịch đã đóng.
 ///
 /// Vì sao cần: người mới đặt hạn mức thường đoán một con số tròn, rồi thấy
 /// ngân sách vượt ngay tháng đầu. Spendee và Money Lover đều nhắc "tháng
@@ -55,7 +56,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('chọn danh mục thì hiện gợi ý theo chi tiêu ba tháng trước',
+  testWidgets('chọn danh mục thì hiện gợi ý theo chi tiêu gần đây',
       (tester) async {
     final hoi = <String>[];
     await dung(tester, suggestFor: (id) async {

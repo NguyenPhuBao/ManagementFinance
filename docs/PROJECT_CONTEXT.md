@@ -596,14 +596,14 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-21)
 
-### ⚠️ Cửa sổ nhìn lại — DỞ DANG, còn Task 6 (2026-09-21)
+### ✅ Cửa sổ nhìn lại, và thẻ "Chưa đặt ngân sách" (2026-09-21)
 
 Spec: `docs/superpowers/specs/2026-09-21-cua-so-nhin-lai-va-de-xuat-tao-ngan-sach-design.md`
 Kế hoạch: `docs/superpowers/plans/2026-09-21-cua-so-nhin-lai-va-de-xuat-tao-ngan-sach.md`
 
-**Task 1–5 xong, Task 6 chưa làm.** Phần *"thẻ Chưa đặt ngân sách"* — thứ người
-dùng nhìn thấy — **chưa dựng**; những gì đã xong là cái nền cho nó, cộng hai
-phép sửa cho thứ đang chạy.
+**Trọn sáu Task xong ngày 2026-09-21.** Task 1–5 là cái nền cộng hai phép
+sửa cho thứ đang chạy; Task 6 là thứ người dùng nhìn thấy — thẻ *"Chưa
+đặt ngân sách"*.
 
 #### Vì sao việc này tồn tại: một giả định bị phép đo lật
 
@@ -633,6 +633,7 @@ chết.** Quét `lib/features/` cho thấy **đúng hai** thành viên, không h
 | — | `8569efe` | Nhãn gợi ý thôi nói dối về cửa sổ (1 ca) |
 | 4 | `238eb29` | `_thuNhapMoiThang` đổi cửa sổ + đổi tên lan sang DI, mảng AI, tài liệu |
 | 5 | `05ea6c4` | `chonDeXuat` + trường state + nối cubit (10 ca) |
+| 6 | — | Thẻ trên trang Ngân sách, form điền sẵn, nhãn nêu số ngày (13 ca) |
 
 **Luật:** cửa sổ `[from, now)` với `from = max(now − 90 ngày, giao dịch đầu
 tiên)`; dưới **14** ngày thì trả `null` và người gọi **im hẳn**; quy về mức tháng
@@ -665,19 +666,51 @@ tròn lên. **Lần đầu con số ấy hiện ra trên dữ liệu thật kể
 Câu ấy **đúng trước** Task 3 và thành lời nói dối ngay sau — và không ca test nào
 canh nó. Đã sửa (`8569efe`).
 
-#### Còn lại — Task 6
+#### Task 6 — thẻ "Chưa đặt ngân sách"
 
-Dựng **thẻ "Chưa đặt ngân sách"** trên trang Ngân sách: tối đa 3 dòng, ẩn hẳn khi
-rỗng, kèm dòng phụ *"suy từ N ngày"* khi cửa sổ < 90 ngày. Màn Stitch **đã tạo**:
-`eb872aa9a0ba44ca8bf1c92d8d53186c` *"Ngân sách - Thẻ Chưa đặt ngân sách"* — ⚠️
-lượt gọi trả **`timeout`** nhưng màn vẫn có, **lần thứ năm** dự án xác nhận điều
-đó.
+Thẻ đứng **dưới** khối Nhận xét / thẻ kế hoạch và **trên** tiêu đề *"Danh mục chi
+tiêu"*: tối đa **3** dòng (biểu tượng danh mục · tên · *"khoảng X mỗi tháng"* ·
+nút **Tạo**), một chip *"N nhóm"*, và dòng phụ *"Suy từ N ngày gần nhất"* **chỉ**
+khi cửa sổ ngắn hơn 90 ngày. Màn Stitch `eb872aa9a0ba44ca8bf1c92d8d53186c`.
 
-Nghiệm thu Task 6 đáng mong chờ: tài khoản thật có **Giải trí** và **Chi khác**
-chưa đặt ngân sách, nên thẻ **phải hiện hai dòng thật**.
+Nút **Tạo** mở `/budget/rules?category=<id>&amount=<số>` — form tạo mới đã điền
+sẵn danh mục và số tiền. **Người dùng chốt cùng ngày**: nhãn gợi ý của form cũng
+**nói ra số ngày** — *"Bạn chi trung bình 50.000 đ mỗi tháng, suy từ 19 ngày gần
+nhất"* — vì thẻ đã hứa như thế thì form mở ra từ nó không được lùi về một lời hứa
+mơ hồ hơn. Độ dài cửa sổ đi qua `BudgetEditorReady.soNgayCuaSo`.
 
-`flutter test` **3236/3236, 1 skip**; analyze **26 issue, 0 error**; bộ `budget`
-**26 tệp / 221 test**. **Schema không đổi**, vẫn v24; **payload không đổi**.
+⚠️ **Bốn chỗ dễ vấp:**
+
+1. **Widget không quyết định ẩn hay hiện.** `chonDeXuat` trả `null` khi không có
+   gì để gợi ý, và `BudgetTabsView` không dựng thẻ. Cho widget tự nhận một danh
+   sách rỗng rồi tự trả `SizedBox.shrink()` là chép luật ẩn ra chỗ thứ hai.
+2. **Giá trị điền sẵn chỉ có hiệu lực ở đường TẠO MỚI.** `editing != null` thì
+   ngân sách đang sửa thắng — đè lên nó là lặng lẽ đổi hạn mức đã đặt.
+3. **`null` của `soNgayCuaSo` là *chưa biết*, không phải một con số để đoán** —
+   nhãn im vế ấy. Phép đo độ dài cửa sổ hỏng thì form **vẫn mở**, không thành
+   `BudgetError`: nó là phần phụ của một nhãn.
+4. `_openEditor` dựng đường dẫn bằng **`Uri(queryParameters:)`**, không nối chuỗi
+   tay — một ký tự cần thoát lọt vào thì form mở ra trống trơn, không lỗi nào.
+
+#### Nghiệm thu máy ảo 411dp — và một phép đếm sai của chính kế hoạch
+
+Đạt đủ năm điểm: thẻ **hiện thật**; dòng phụ nói *"Suy từ 19 ngày gần nhất"*; bấm
+**Tạo** mở form đã điền *Giải trí* + `50000` kèm nhãn có số ngày; lưu xong thì
+danh mục **rời khỏi thẻ** — và vì nó là ứng viên duy nhất, cả thẻ **ẩn hẳn**, đúng
+luật ở mục 3.34 `ANALYTICS_FEATURE.md`; **0** sọc tràn (logcat không một dòng
+`RenderFlex overflowed`). Xoá ngân sách thử thì danh mục **quay lại thẻ** — dữ
+liệu thật đã trả nguyên trạng (xoá mềm, quy tắc 5; bản ghi mang `Delete_at` trên
+server).
+
+🛑 **Kế hoạch đoán thẻ sẽ có HAI dòng — sai, và một dòng mới là đúng.** *Chi khác*
+đã bị **xoá mềm** từ 05/09/2026 (cả bản sao của tài khoản lẫn hàng mặc định toàn
+cục), nên `getExpenseCategories` loại nó — **đúng**, không ai đặt được ngân sách
+cho một danh mục đã xoá. Phép đếm của kế hoạch cộng tiền theo danh mục mà **không
+hỏi danh mục ấy còn sống không**. Bài học cũ: một kỳ vọng không khớp thì phải **đo
+bằng đường thứ hai** trước khi kể tên một lỗi.
+
+`flutter test` **3249/3249, 1 skip**; analyze **26 issue, 0 error**; bộ `budget`
+**28 tệp / 234 test**. **Schema không đổi**, vẫn v24; **payload không đổi**.
 
 ### ✅ Soát "khối Phân tích nào chưa tự ẩn khi rỗng" (2026-09-21)
 
@@ -2482,7 +2515,7 @@ hiện cũng không chứng minh lời gọi của mình tạo ra nó. Hỏi ng�
 - **Ngân sách: nhịp chi, trang chi tiết riêng, lịch sử sáu kỳ** (2026-09-06, `0467ffd`). Thẻ trong danh sách thêm dòng "Nên chi X/ngày · còn N ngày" (`domain/budget_pace.dart`: ngày còn lại làm tròn **lên**, tối thiểu 1 khi còn trong kỳ; nhịp chi so với thời gian đã trôi, biên ±5 điểm phần trăm; mọi mốc lấy từ `currentPeriod` nên tháng ngắn và năm nhuận đúng theo). Trang **`/budget/detail/:id`** thay bottom sheet cũ: nhịp chi, sáu cột lịch sử (`domain/budget_history.dart` — `recentPeriods` đi lại đúng phép cắt của `currentPeriod`, kỳ cuối trùng kỳ hiện tại, các kỳ liền nhau không hở), và các khoản chi của kỳ dùng lại `buildTransactionRowContent` + `TransactionDetailSheet` của sổ (Sửa/Xoá đi qua `TransactionBloc`, **không** có đường xoá thứ hai). Đường dẫn là `/budget/detail/` chứ không phải `/budget/:id` vì `/budget/rules` sẽ bị tham số nuốt; đặt **ngoài** shell như trang cấu hình. Kèm sửa lỗi biên: `getExpenses` cắt `date < to` (biên **mở**) dù DAO lấy `<= to`, vì bộ chọn ngày trả 00:00 và khoản ghi ngày đầu kỳ sau từng bị đếm vào cả kỳ trước — đừng "tối ưu" bằng cách gọi DAO trực tiếp
 - **Thẻ ngân sách trang chủ đọc dữ liệu thật** (2026-09-06, `13bbd9f`) — trước là placeholder cứng "Ăn uống · Chưa thiết lập". Theo Stitch màn Home: **một** ngân sách, đã dùng / hạn mức, phần trăm, thanh bốn màu, dòng nên chi/ngày. `pickHomeBudget` (hàm thuần, test riêng) chọn ngân sách **đang chạy** có **tỉ lệ** đã chi cao nhất — so tỉ lệ chứ không so số tiền, và bỏ qua ngân sách hết hạn. Bấm thẻ `go('/budget')` vì cùng shell. `home_budget_card_test.dart` là test **đầu tiên** của feature `home`, dựng ở 411dp và bắt tràn bằng `takeException`
 - **Lựa chọn "Chặn" (`OverSpending = Stop`) có tác dụng thật** (2026-09-06, `91bde24`) — tồn tại trên form từ 03/09 nhưng không nơi nào đọc. Người dùng chốt: "Chặn" = **hỏi xác nhận** trước khi ghi khoản làm vượt, **không bao giờ từ chối ghi** (tiền đã tiêu thật, không ghi thì ví lệch); "Cảnh báo" = ghi luôn rồi báo. `domain/budget_impact.dart` là nơi **duy nhất** đọc `OverSpending`; ở chế độ sửa trừ số cũ ra trước, không thì báo vượt oan; khoản ngoài kỳ hiện tại không tính. `_saveTransaction` của form thêm giao dịch nay **async** (tra `budgetLookup` tiêm được, DI chưa có hoặc tra hỏng thì vẫn ghi) — widget test phải `pumpAndSettle`. Hộp thoại xác nhận nêu số vượt; snackbar sau lưu **không có con số** (banner tối giản)
-- **Gợi ý hạn mức** (2026-09-06, `f746a32`; **đổi cửa sổ 2026-09-21**) — form hiện "Bạn chi trung bình X mỗi tháng" dưới ô hạn mức sau khi chọn danh mục, nút "Dùng số này" điền số thô. `BudgetRepository.suggestAmount`: mức chi trung bình **mỗi tháng** của danh mục, suy từ `cuaSoNhinLai` (cửa sổ **cuộn** ≤ 90 ngày, ngắn lại theo tuổi dữ liệu), làm tròn lên bội 10.000; `null` khi cửa sổ không có khoản chi nào **hoặc** tài khoản trẻ hơn 14 ngày — và `null` thì **không hiện gì** vì "trung bình 0 đ" tệ hơn không gợi ý. 🛑 **Bản đầu cắt ba tháng dương lịch đã đóng, và nó CHƯA TỪNG hiện một con số nào trên dữ liệu thật**: giao dịch sớm nhất trong toàn bộ CSDL là 02/09/2026, nên cửa sổ ấy rỗng trên mọi tài khoản suốt từ 2026-09-06. ⚠️ Nhãn cũng đổi theo — nó từng nói *"3 tháng gần nhất"*, câu ấy **đúng trước** lượt sửa và thành lời nói dối ngay sau, và **không ca test nào canh** (chỉ có một ca canh vắng mặt); máy ảo bắt được trên một tài khoản 20 ngày tuổi. Nay nhãn không nêu cửa sổ cố định nào, và có ca canh đúng điều đó. Form nhận `suggestFor` là callback (form không đọc cubit), có số thứ tự `_generation` chống hai lần tra chồng nhau; `BudgetCubit.suggestAmount` không đổi state để lỗi nhỏ không thay cả trang bằng `BudgetError`
+- **Gợi ý hạn mức** (2026-09-06, `f746a32`; **đổi cửa sổ 2026-09-21**) — form hiện "Bạn chi trung bình X mỗi tháng" dưới ô hạn mức sau khi chọn danh mục, nút "Dùng số này" điền số thô. `BudgetRepository.suggestAmount`: mức chi trung bình **mỗi tháng** của danh mục, suy từ `cuaSoNhinLai` (cửa sổ **cuộn** ≤ 90 ngày, ngắn lại theo tuổi dữ liệu), làm tròn lên bội 10.000; `null` khi cửa sổ không có khoản chi nào **hoặc** tài khoản trẻ hơn 14 ngày — và `null` thì **không hiện gì** vì "trung bình 0 đ" tệ hơn không gợi ý. 🛑 **Bản đầu cắt ba tháng dương lịch đã đóng, và nó CHƯA TỪNG hiện một con số nào trên dữ liệu thật**: giao dịch sớm nhất trong toàn bộ CSDL là 02/09/2026, nên cửa sổ ấy rỗng trên mọi tài khoản suốt từ 2026-09-06. ⚠️ Nhãn cũng đổi theo — nó từng nói *"3 tháng gần nhất"*, câu ấy **đúng trước** lượt sửa và thành lời nói dối ngay sau, và **không ca test nào canh** (chỉ có một ca canh vắng mặt); máy ảo bắt được trên một tài khoản 20 ngày tuổi. Nay nhãn không nêu cửa sổ cố định nào — và từ Task 6 nó còn **nói ra số ngày thật** khi cửa sổ ngắn hơn 90 ngày (*"…mỗi tháng, suy từ 19 ngày gần nhất"*), vì thẻ "Chưa đặt ngân sách" đã hứa đúng câu ấy; cả hai vế đều có ca canh. Form nhận `suggestFor` là callback (form không đọc cubit), có số thứ tự `_generation` chống hai lần tra chồng nhau; `BudgetCubit.suggestAmount` không đổi state để lỗi nhỏ không thay cả trang bằng `BudgetError`
 - **Hai giới hạn có chủ ý của đợt ngân sách 06/09:** (1) **Lịch sử kỳ dùng hạn mức HIỆN TẠI cho cả kỳ cũ** (`BudgetPeriodSummary.amount`) — không có nơi nào lưu hạn mức cũ, muốn đúng phải có bảng lịch sử hạn mức ở backend; đổi hạn mức là các cột cũ đổi vạch theo. (2) **Stitch chưa có** màn chi tiết ngân sách, và màn Home lẫn màn danh sách cũng chưa vẽ dòng "nên chi/ngày" — người dùng chọn làm theo design system trước, vẽ Stitch sau; không tạo màn Stitch bằng MCP
 - **Hoá đơn: gỡ lời hứa suông, bốn nhãn trạng thái đúng nghĩa, hai tab** (2026-09-06). Form Thêm có công tắc "Tự động tạo giao dịch — Thanh toán khi đến hạn" **bật sẵn** gắn vào một biến không lưu ở đâu: không cột, không bộ chạy nền — đã gỡ hẳn (làm thật là quyết định sản phẩm, không phải việc dọn lỗi). Danh sách sai bốn chỗ cùng lúc: hoá đơn **đã quá hạn** mang nhãn "SẮP ĐẾN HẠN" với vạch màu **xanh lá của khoản thu**, hoá đơn thật sự sắp đến hạn không có nhãn nào, thanh tiến độ là hằng số `0.66`, và tổng tiền gộp cả kỳ tháng sau (máy thật hiện 183.000 đ trong khi tháng này chỉ nợ 60.000 đ). Bốn trạng thái suy ở `domain/bill_status.dart`, ngưỡng "sắp đến hạn" **dùng lại `billLeadDays`** của bộ luật thông báo (⚠️ từ 2026-09-12 là **năm** — thêm `skipped`; xem khối "Bỏ qua kỳ hoá đơn" bên dưới). Thêm hai tab (mỗi kỳ là một hàng mới nên lịch sử đã trả trôi lẫn vào giữa hoá đơn đang chờ), dòng "Danh mục • Ví" kèm icon danh mục, và ví của hoá đơn được gợi sẵn khi trả
 - **Hoá đơn: `payStatus = 'Overdue'` gỡ được** (2026-09-06). `markOverdue` chỉ có chiều Pending → Overdue; form Sửa đẩy hạn ra tương lai thì cờ ở lại vĩnh viễn, và cột này **có đi đồng bộ** nên Admin-web đọc sai — dữ liệu thật 06/09 có hai hoá đơn mang 'Overdue' với hạn ở tương lai. Nay đi cả hai chiều, mỗi chiều vẫn có điều kiện trạng thái để không tạo vòng lặp đẩy

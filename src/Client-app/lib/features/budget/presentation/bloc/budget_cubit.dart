@@ -144,7 +144,10 @@ class BudgetCubit extends Cubit<BudgetState> {
       }
 
       return chonDeXuat(
-        danhMucChi: [for (final c in cats) (id: c.id, ten: c.name)],
+        danhMucChi: [
+          for (final c in cats)
+            (id: c.id, ten: c.name, icon: c.icon, colour: c.colour),
+        ],
         daCoNganSach: daCo,
         mucThangTheoDanhMuc: muc,
         soNgayCuaSo: soNgay,
@@ -200,7 +203,19 @@ class BudgetCubit extends Cubit<BudgetState> {
         emit(const BudgetError('Ngân sách này không còn tồn tại.'));
         return;
       }
-      emit(BudgetEditorReady(categories: categories, editing: editing));
+      // Số ngày của cửa sổ là phần **phụ** của nhãn gợi ý: nó hỏng thì nhãn
+      // im vế ấy, chứ không đổi cả form thành một màn lỗi.
+      int? soNgay;
+      try {
+        soNgay = await repository.soNgayCuaSoNhinLai(idaccount);
+      } catch (_) {
+        soNgay = null;
+      }
+      emit(BudgetEditorReady(
+        categories: categories,
+        editing: editing,
+        soNgayCuaSo: soNgay,
+      ));
     } catch (e) {
       emit(BudgetError(e.toString()));
     }

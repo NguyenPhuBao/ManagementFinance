@@ -59,13 +59,13 @@ void main() {
       final v = _v('a', amount: 3000000, spent: 2000000);
       expect(duPhongCua(v, now: _now, mucThang: null), closeTo(3000000, 1));
     });
-    test('dưới 5 ngày và có TB 3 tháng: spent + TB × phần kỳ còn lại', () {
+    test('dưới 5 ngày và có mức tháng: spent + mức × phần kỳ còn lại', () {
       final v = _v('a', amount: 3000000, spent: 500000);
       final now = DateTime(2026, 9, 4); // đã qua 3 ngày, còn 27
       expect(duPhongCua(v, now: now, mucThang: 3000000),
           closeTo(500000 + 3000000 * 27 / 30, 1));
     });
-    test('dưới 5 ngày và KHÔNG có TB 3 tháng → null (chỉ báo khi đã vượt)', () {
+    test('dưới 5 ngày và KHÔNG có mức tháng → null (chỉ báo khi đã vượt)', () {
       final v = _v('a', amount: 3000000, spent: 500000);
       expect(duPhongCua(v, now: DateTime(2026, 9, 4), mucThang: null), isNull);
     });

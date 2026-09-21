@@ -430,7 +430,7 @@ Task 0 cần người dùng nghiệm thu màn Stitch.
 | Việc | Điều kiện | Ghi chú |
 |---|---|---|
 | **Giải thích 9 biểu đồ** | không | 9 khối × một hàm gói số. ⚠️ **đừng dùng vision** (11.1); gói phải **tính sẵn** kỳ cao/thấp nhất, % thay đổi, xu hướng — nếu không mô hình tự tính và `kiemSo` chặn |
-| **Đề xuất tạo ngân sách** | không | ⚠️ **ĐANG LÀM DỞ** — Task 1–5 xong 2026-09-21, còn Task 6 dựng thẻ. 🛑 Câu *"`suggestAmount` đã có sẵn con số"* từng đứng ở ô này là **SAI**, và nó suýt làm cả tính năng được xây trên một hàm luôn trả `null`: cửa sổ cũ là ba tháng lịch đã đóng, mà CSDL không có hàng nào trước 02/09/2026. Đo trước, đừng tin ô ghi chú |
+| **Đề xuất tạo ngân sách** | không | ✅ **XONG 2026-09-21** — trọn sáu Task; thẻ "Chưa đặt ngân sách" đã nghiệm thu trên máy ảo với dữ liệu thật. 🛑 Câu *"`suggestAmount` đã có sẵn con số"* từng đứng ở ô này là **SAI**, và nó suýt làm cả tính năng được xây trên một hàm luôn trả `null`: cửa sổ cũ là ba tháng lịch đã đóng, mà CSDL không có hàng nào trước 02/09/2026. Đo trước, đừng tin ô ghi chú |
 | **Nhịp chi theo ngày** + **ngưỡng 70/90 %** | 3 kỳ | ⭐ **làm chung** — một phép học, hai chỗ dùng (`budget_visuals.dart`: `_cautionAt`, `_criticalAt`) |
 | **Tự đề xuất cờ Cố định** | vài lượt từ chối | dùng chung dữ liệu với 3.3 |
 | **Phát hiện hoá đơn định kỳ** | ~3 kỳ lặp | ⚠️ tuyệt đối **không tự bật `auto_pay`** |

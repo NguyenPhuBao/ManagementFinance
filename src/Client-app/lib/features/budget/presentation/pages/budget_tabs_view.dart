@@ -7,11 +7,13 @@ import '../../../ai_edge/domain/tai_phan_bo.dart';
 import '../../../ai_edge/presentation/widgets/khoi_nhan_xet.dart';
 import '../../../ai_edge/presentation/widgets/the_ke_hoach.dart';
 import '../../data/models/budget_entity.dart';
-import '../../domain/budget_pace.dart';
 import '../../domain/budget_locking.dart';
+import '../../domain/budget_pace.dart';
+import '../../domain/de_xuat_ngan_sach.dart';
 import '../bloc/budget_state.dart';
 import '../widgets/budget_pace_text.dart';
 import '../widgets/budget_visuals.dart';
+import '../widgets/the_de_xuat_ngan_sach.dart';
 
 /// Phần hiển thị của trang ngân sách: hai tab, thẻ tổng quan, danh sách.
 ///
@@ -35,6 +37,11 @@ class BudgetTabsView extends StatelessWidget {
   /// không có nút "Xem kế hoạch" — cùng lối với [onOpenAnalytics].
   final void Function(KeHoachTaiPhanBo)? onXemKeHoach;
 
+  /// Mở form tạo ngân sách đã điền sẵn từ một dòng của thẻ "Chưa đặt ngân
+  /// sách". Bỏ trống thì thẻ không dựng — cùng lối [onXemKeHoach]: một nút
+  /// không đi đâu là nút chết (`khong_co_nut_chet_test`).
+  final void Function(DeXuatNganSach)? onTaoTuDeXuat;
+
   /// Mốc thời gian cho dòng "nên chi/ngày". `null` = đồng hồ máy; test truyền
   /// mốc cố định để số ngày còn lại không đổi theo ngày chạy.
   final DateTime? now;
@@ -48,6 +55,7 @@ class BudgetTabsView extends StatelessWidget {
     required this.onShowDetail,
     this.onOpenAnalytics,
     this.onXemKeHoach,
+    this.onTaoTuDeXuat,
     this.now,
   });
 
@@ -100,6 +108,7 @@ class BudgetTabsView extends StatelessWidget {
                 onShowDetail: onShowDetail,
                 onOpenAnalytics: onOpenAnalytics,
                 onXemKeHoach: onXemKeHoach,
+                onTaoTuDeXuat: onTaoTuDeXuat,
                 now: now,
               ),
               _ExpiredTab(
@@ -126,6 +135,7 @@ class _ActiveTab extends StatelessWidget {
   final void Function(BudgetView) onShowDetail;
   final VoidCallback? onOpenAnalytics;
   final void Function(KeHoachTaiPhanBo)? onXemKeHoach;
+  final void Function(DeXuatNganSach)? onTaoTuDeXuat;
 
   /// Mốc thời gian cho dòng "nên chi/ngày". `null` = đồng hồ máy; test truyền
   /// mốc cố định để số ngày còn lại không đổi theo ngày chạy.
@@ -139,6 +149,7 @@ class _ActiveTab extends StatelessWidget {
     required this.onShowDetail,
     this.onOpenAnalytics,
     this.onXemKeHoach,
+    this.onTaoTuDeXuat,
     this.now,
   });
 
@@ -172,6 +183,14 @@ class _ActiveTab extends StatelessWidget {
                 onXemPhanTich: onOpenAnalytics,
               ),
             ],
+          ],
+          // Thẻ "Chưa đặt ngân sách" (mục ④) — **dưới** khối Nhận xét và thẻ
+          // kế hoạch, **trên** tiêu đề "Danh mục chi tiêu": nó là gợi ý cho
+          // chính danh sách ngay dưới. Không dựng khi `deXuat` là `null` —
+          // luật ẩn nằm ở `chonDeXuat`, widget không giữ bản thứ hai.
+          if (state.deXuat case final g? when onTaoTuDeXuat != null) ...[
+            const SizedBox(height: 16),
+            TheDeXuatNganSach(goi: g, onTao: onTaoTuDeXuat!),
           ],
           const SizedBox(height: 24),
           Row(

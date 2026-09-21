@@ -621,7 +621,7 @@ Hai mảng lớn nhất app đang trống:
 | **goal** | 14 hàm domain, **dùng 2** (`goal_forecast`, `goal_grouping`) | ~~dự báo ngày đạt~~ ✅ xong 2026-09-21 · giải thích vì sao trễ · ví thiếu tiền trích · tạo mục tiêu bằng lệnh | đọc + ghi 2 | ⭐⭐ |
 | **analytics** | `thac_nuoc`, `tong_tai_san`, `lich_chi_tieu`, `moc_so_sanh`, `dong_tien_tu_do`… | **giải thích 9 biểu đồ** · chọn khối đáng xem | đọc | ⭐⭐ |
 | **analytics / vay-nợ** | `vai_vay_no` | **dư nợ theo người** — đọc tên từ ghi chú | đọc | ⭐⭐ |
-| **budget** | `budget_pace`, `budget_impact`, `budget_history`, `cua_so_nhin_lai`, `de_xuat_ngan_sach` | đã có nhận xét + kế hoạch; **đề xuất tạo ngân sách đang làm dở** (Task 1–5 xong 2026-09-21, còn Task 6 dựng thẻ) | đọc + ghi 2 | ⭐ |
+| **budget** | `budget_pace`, `budget_impact`, `budget_history`, `cua_so_nhin_lai`, `de_xuat_ngan_sach` | đã có nhận xét + kế hoạch; **đề xuất tạo ngân sách xong 2026-09-21** (thẻ "Chưa đặt ngân sách", trọn sáu Task) | đọc + ghi 2 | ⭐ |
 | **wallet** | `vi_tinh_vao_tong`, ✅ **đã có gói số** | ~~giải thích tổng tài sản vs tổng các ví~~ ✅ xong 2026-09-21 | đọc | ⭐ |
 | **notification** | 19 loại | chọn loại nào đáng bắn ra hệ điều hành | đọc | ⭐ |
 | **analytics / báo cáo** | `bao_cao_xuat`, `xuat_tep` | tóm tắt đầu PDF — ⚠️ xem 11.2 | đọc | cân nhắc |

@@ -238,10 +238,16 @@ class AppRouter {
 
           // Budget rules
           // `?id=<uuid>` = sửa ngân sách đã có; không có tham số = tạo mới.
+          // `?category=<id>&amount=<số>` = tạo mới đã điền sẵn, từ thẻ "Chưa
+          // đặt ngân sách". `amount` hỏng thì `tryParse` trả `null` và ô hạn mức
+          // để trống — một đường dẫn bị sửa tay không được làm đổ cả trang.
           GoRoute(
               path: '/budget/rules',
               builder: (_, state) => BudgetRulesPage(
                     budgetId: state.uri.queryParameters['id'],
+                    danhMucChonSan: state.uri.queryParameters['category'],
+                    soTienChonSan: double.tryParse(
+                        state.uri.queryParameters['amount'] ?? ''),
                   )),
           // Chi tiết một ngân sách. Đặt dưới `/budget/detail/` chứ không phải
           // `/budget/:id` vì `/budget/rules` đã tồn tại và sẽ bị tham số nuốt.

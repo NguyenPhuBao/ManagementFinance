@@ -9,7 +9,8 @@
 /// Thêm một bộ lọc thứ hai là dựng bản chép tay của một luật đã có chỗ đúng
 /// duy nhất — và hai bản ấy sẽ lệch nhau vào ngày một bên đổi.
 ///
-/// Spec: `docs/superpowers/specs/2026-09-21-cua-so-nhin-lai-va-de-xuat-tao-ngan-sach-design.md`
+/// Spec:
+/// `docs/superpowers/specs/2026-09-21-cua-so-nhin-lai-va-de-xuat-tao-ngan-sach-design.md`
 library;
 
 /// Nhiều nhất ba dòng. Thẻ này là một gợi ý nhẹ, không phải một danh sách việc:
@@ -24,10 +25,19 @@ class DeXuatNganSach {
   /// Mức chi trung bình mỗi tháng, đã làm tròn — chính là `suggestAmount`.
   final double mucThang;
 
+  /// Tên biểu tượng và mã màu của danh mục, **nguyên văn cột** — phép đổi
+  /// sang thứ vẽ được nằm ở `core/category/category_visuals.dart`, nơi duy
+  /// nhất hiểu cả tên Material lẫn tên seed backend. Mang chuỗi thô lên
+  /// đây giữ tệp này là Dart thuần, test được mà không cần `flutter_test`.
+  final String? icon;
+  final String? colour;
+
   const DeXuatNganSach({
     required this.categoryId,
     required this.tenDanhMuc,
     required this.mucThang,
+    this.icon,
+    this.colour,
   });
 }
 
@@ -53,7 +63,8 @@ class GoiDeXuat {
 /// mọi con số trong [mucThangTheoDanhMuc] cũng phải là `null`, nhưng hàm vẫn
 /// kiểm tường minh: một lời gọi sai thứ tự không được phép lọt thành gợi ý.
 GoiDeXuat? chonDeXuat({
-  required List<({String id, String ten})> danhMucChi,
+  required List<({String id, String ten, String? icon, String? colour})>
+      danhMucChi,
   required Set<String> daCoNganSach,
   required Map<String, double?> mucThangTheoDanhMuc,
   required int? soNgayCuaSo,
@@ -66,7 +77,13 @@ GoiDeXuat? chonDeXuat({
     final muc = mucThangTheoDanhMuc[c.id];
     if (muc == null || muc <= 0) continue;
     ungVien.add(
-      DeXuatNganSach(categoryId: c.id, tenDanhMuc: c.ten, mucThang: muc),
+      DeXuatNganSach(
+        categoryId: c.id,
+        tenDanhMuc: c.ten,
+        mucThang: muc,
+        icon: c.icon,
+        colour: c.colour,
+      ),
     );
   }
   if (ungVien.isEmpty) return null;
