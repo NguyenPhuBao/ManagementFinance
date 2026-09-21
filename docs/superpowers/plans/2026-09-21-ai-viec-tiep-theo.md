@@ -385,7 +385,6 @@ Task 0 cần người dùng nghiệm thu màn Stitch.
 
 | Việc | Điều kiện | Ghi chú |
 |---|---|---|
-| **Dư nợ theo người** | không | ⭐ **mở lại A8 #9 đã bỏ** vì thiếu mô hình khoản vay — tên người nằm trong **ghi chú**, thứ hệ luật không đọc nổi. Chiều đọc, rủi ro thấp |
 | **Giải thích 9 biểu đồ** | không | 9 khối × một hàm gói số. ⚠️ **đừng dùng vision** (11.1); gói phải **tính sẵn** kỳ cao/thấp nhất, % thay đổi, xu hướng — nếu không mô hình tự tính và `kiemSo` chặn |
 | **Đề xuất tạo ngân sách** | không | `suggestAmount` đã có sẵn con số |
 | **Nhịp chi theo ngày** + **ngưỡng 70/90 %** | 3 kỳ | ⭐ **làm chung** — một phép học, hai chỗ dùng (`budget_visuals.dart`: `_cautionAt`, `_criticalAt`) |
@@ -460,8 +459,15 @@ dễ gây ấn tượng khi trình bày.
 **Không còn quyết định nào chờ người dùng.** Mọi việc trong tệp này làm được ngay khi
 tới lượt, trừ bốn việc UX ghi rõ "cần người dùng chốt trước" ở mục việc ngoài mảng AI.
 
-# Hai chỗ cố ý KHÔNG có trong danh sách
+# Ba chỗ cố ý KHÔNG có trong danh sách
 
+- 🛑 **Dư nợ theo người** — **người dùng gạch khỏi kế hoạch ngày 2026-09-21.** Bản đầu của
+  tệp này xếp nó vào chặng 5 và tự mô tả là *"mở lại A8 #9 đã bỏ"*, trong khi người dùng
+  đã chốt **bỏ hẳn** A8 #9 (biến động khoản vay) và #11 (Sankey) ngày 2026-09-16 kèm lời
+  dặn đừng đề xuất lại — xem banner mục **7.1** `docs/ANALYTICS_FEATURE.md`. Một dòng kế
+  hoạch tự xưng là mở lại một mục đã đóng thì **chính nó là lời đề xuất lại**, bất kể lý
+  lẽ kỹ thuật bên trong có khác hay không. **Đừng dựng lại dòng ấy**, và đừng mở hàng đợi
+  `CAN-LAM/` để xin dư nợ gốc / lãi suất / kỳ hạn.
 - **Tóm tắt đầu báo cáo PDF** — PDF **đi ra ngoài** và font nhúng **thiếu glyph**
   (`→ ▲ ▼` bị bỏ im lặng từ 2026-09-09). Nếu làm thì bắt buộc chạy câu qua bộ quét glyph
   ở `xuat_tep_test.dart`. Mục 11.2.
