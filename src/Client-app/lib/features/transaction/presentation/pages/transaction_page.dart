@@ -9,6 +9,7 @@ import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/widgets/confirm_dialog.dart';
 import '../../../analytics/domain/pham_vi_ky.dart';
+import '../../../analytics/presentation/widgets/chon_pham_vi_sheet.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../data/models/transaction_entity.dart';
 import '../../domain/transaction_filter.dart';
@@ -94,6 +95,26 @@ class _TransactionPageState extends State<TransactionPage> {
     blocContext.read<TransactionBloc>().add(ChonKyEvent(_ky));
   }
 
+  /// Mở bộ chọn phạm vi — **cùng** sheet hai tầng mà trang Phân tích và trang
+  /// Xuất báo cáo dùng.
+  ///
+  /// Không dựng bộ chọn riêng ở đây: `moChonPhamVi` đã mang sẵn năm đơn vị và
+  /// luật "12 kỳ / 8 quý / 5 năm", và một bản thứ hai là hai luật phải giữ đồng
+  /// bộ bằng tay.
+  Future<void> _chonKy(BuildContext blocContext) async {
+    final chon = await moChonPhamVi(
+      context,
+      kyHienTai: _ky,
+      moc: DateTime.now(),
+    );
+    // ⚠️ Sau `await`, widget có thể đã rời cây — dùng context khi ấy là lỗi.
+    if (chon == null || !mounted) return;
+    setState(() => _ky = chon);
+    if (blocContext.mounted) {
+      blocContext.read<TransactionBloc>().add(ChonKyEvent(chon));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final authState = context.watch<AuthBloc>().state;
@@ -150,7 +171,7 @@ class _TransactionPageState extends State<TransactionPage> {
             // việc (`push('/add')`). Máy ảo bắt được trong khi 2945 ca test
             // đều xanh.
             //
-            // Gỡ an toàn vì danh sách là **stream** (`watchTransactionsByMonth`):
+            // Gỡ an toàn vì danh sách là **stream** (`watchKhoang`):
             // `ChonKyEvent` mà FAB cũ phát sau khi quay lại chỉ đặt lại
             // đúng tháng đang xem, tức thừa.
             body: SafeArea(
@@ -287,27 +308,46 @@ class _TransactionPageState extends State<TransactionPage> {
       color: Colors.white,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           IconButton(
             tooltip: 'Kỳ trước',
             icon: const Icon(Icons.chevron_left, color: AppColors.primary),
             onPressed: () => _doiKy(1, blocContext),
           ),
-          Row(
-            children: [
-              const Icon(Icons.calendar_month,
-                  color: AppColors.primary, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                nhanRong(_ky, DateTime.now()),
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primary,
+          // ⚠️ `Expanded` chứ không để `Row` tự co: nhãn kỳ tuỳ chọn
+          // ("26/08 – 11/09") dài hơn hẳn nhãn tháng, và ở 411dp hai mũi tên đã
+          // ăn mất chỗ hai bên. Cho nó chiếm trọn khoảng giữa thì phép căn giữa
+          // mới có mốc, và chuỗi dài cắt bằng dấu ba chấm thay vì đẩy mũi tên
+          // ra khỏi màn hình.
+          Expanded(
+            child: InkWell(
+              key: const Key('so-giao-dich-chon-ky'),
+              onTap: () => _chonKy(blocContext),
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.calendar_month,
+                        color: AppColors.primary, size: 20),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        nhanRong(_ky, DateTime.now()),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
+            ),
           ),
           IconButton(
             tooltip: 'Kỳ sau',
