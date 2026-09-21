@@ -74,7 +74,7 @@ Hệ thống gồm **3 phần tách biệt nhưng liên kết** với nhau:
 
 | Nguyên tắc | Mô tả |
 |------------|-------|
-| **Modularity** | Hệ thống phân thành 13 module theo 3 nhóm (xem Section 6). Backend đảm nhận 6 module cần internet (Auth, Admin, Sync, Bank, AI, Notification); các module nghiệp vụ còn lại chạy trên Mobile — Backend chỉ đồng bộ/lưu trữ. |
+| **Modularity** | Hệ thống phân thành 13 module theo 3 nhóm (xem Section 6). Backend đảm nhận 5 module hoạt động chính (Auth, Admin, Sync, AI, Notification). **Riêng Module Bank tạm dừng hoàn toàn vì lý do chính sách** (giữ nguyên mã nguồn đã xây dựng nhưng đóng băng, không nằm trong phạm vi xây dựng sắp tới). Các module nghiệp vụ còn lại chạy trên Mobile — Backend chỉ đồng bộ/lưu trữ. |
 | **Event-Driven** | Các module kết nối lỏng lẻo qua event bus (Redis Pub/Sub + BullMQ). Tác vụ nặng (AI, OCR, thông báo) đẩy vào queue xử lý bất đồng bộ → API phản hồi nhanh. |
 | **Offline-First** | Client-app (Flutter) lưu dữ liệu cục bộ SQLite, cho phép CRUD ngay cả khi không có mạng. Khi có kết nối → đồng bộ hai chiều với backend qua conflict resolution. |
 | **Separation of Concerns** | Backend là trung tâm dữ liệu tập trung (source of truth). Client tự xử lý validation, tính toán tạm thời, không giữ logic nghiệp vụ phức tạp trên backend cho client. |
@@ -1066,14 +1066,16 @@ Real-time Socket.IO:
 | 1 | Đồng bộ dữ liệu Mobile → Backend (push, LWW) | Backend + Mobile | User |
 | 2 | Đồng bộ dữ liệu Backend → Mobile (pull — xóa app tải lại) | Backend + Mobile | User |
 
-#### B12. Bank
-| STT | Chức năng | Location | Actor |
-|-----|-----------|----------|-------|
-| 1 | Liên kết ngân hàng (OAuth Casso) | Backend + Mobile | User |
-| 2 | Quản lý liên kết ngân hàng (xem/hủy) | Backend + Mobile | User + Admin |
-| 3 | Lấy danh sách Ngân hàng + số dư | Backend | User |
-| 4 | Lấy lịch sử giao dịch | Backend | User |
-| 5 | Nhận giao dịch realtime (webhook) | Backend | User |
+#### B12. Bank ⏸️ [TẠM DỪNG HOÀN TOÀN — NGOÀI PHẠM VI SẮP TỚI DO CHÍNH SÁCH]
+> ⚠️ **Thông báo chính sách:** Vì lý do chính sách (chính sách bảo mật dữ liệu ngân hàng và phạm vi đồ án), **Module Bank được tạm dừng hoàn toàn**. Hệ thống **không xóa bỏ** chức năng/mã nguồn đã xây dựng, nhưng trong phạm vi xây dựng và hoàn thiện dự án sắp tới sẽ **không còn Module Bank**.
+
+| STT | Chức năng | Location | Actor | Trạng thái phạm vi |
+|-----|-----------|----------|-------|-------------------|
+| 1 | Liên kết ngân hàng (OAuth Casso / SePay) | Backend + Mobile | User | ⏸️ Tạm dừng do chính sách |
+| 2 | Quản lý liên kết ngân hàng (xem/hủy) | Backend + Mobile | User + Admin | ⏸️ Tạm dừng do chính sách |
+| 3 | Lấy danh sách Ngân hàng + số dư | Backend | User | ⏸️ Tạm dừng do chính sách |
+| 4 | Lấy lịch sử giao dịch | Backend | User | ⏸️ Tạm dừng do chính sách |
+| 5 | Nhận giao dịch realtime (webhook) | Backend | User | ⏸️ Tạm dừng do chính sách |
 
 ### Nhóm C — Platform (Quản trị hệ thống)
 
@@ -1566,7 +1568,12 @@ Nếu record tồn tại:
 
 > ⚠️ Sync module dùng hardcoded registry — KHÔNG tự động nhận diện bảng mới. Thêm entity mới cần sửa 3 file: `sync.validation.js` (VALID_ENTITIES), `sync.service.js` (UPSERT_MAP/PULL_MAP/ENTITY_KEYS), `sync.repository.js` (4 methods).
 
-### 8.4. Module Bank — ✅ Hoàn thành (Casso)
+### 8.4. Module Bank — ⏸️ TẠM DỪNG HOÀN TOÀN (Lý do chính sách)
+
+> ⚠️ **QUYẾT ĐỊNH ĐÓNG BĂNG PHẠM VI (2026-09-21):**
+> Vì lý do chính sách (pháp lý, bảo mật dữ liệu mở ngân hàng Open Banking và định hướng tối ưu hóa đồ án), **Module Bank được tạm dừng hoàn toàn**.
+> - **Nguyên tắc bảo tồn:** Toàn bộ chức năng, mã nguồn và CSDL đã xây dựng trước đây (Casso/SePay, `bank.service.js`, `bank.worker.js`, bảng `bank_account`...) **KHÔNG BỊ XÓA BỎ**, được lưu giữ làm tài liệu kỹ thuật tham chiếu.
+> - **Phạm vi sắp tới:** Trong phạm vi xây dựng và hoàn thiện dự án sắp tới, hệ thống **sẽ không còn Module Bank**. Các luồng tự động hóa tập trung 100% vào **OCR Hóa đơn / Biên lai** và **Nhập liệu qua SMS / Manual**.
 
 > **Lưu ý:** Kiến trúc và kiểm thử của Module Bank được đồng bộ theo CSDL mới (13 bảng v2).
 
@@ -2713,6 +2720,14 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - *Nhóm F (Bảo mật on-device):* F1 (không đưa dữ liệu thô/feature ra ngoài thiết bị), F2 (ranh giới mã hóa: ghi chú thô trên client, bảo vệ at-rest phía server), F3 (cô lập mạng zero network access).
   - *Nhóm G (Định dạng & Làm tròn):* G1 (làm tròn tiền đến bội số 10.000đ), G2 (làm tròn % 1 chữ số thập phân), G3 (luôn hiển thị Data Card số liệu thô song song).
   - *Nhóm H (Hiệu năng mobile):* H1 (chạy 100% trong Dart Background Isolate giữ 60/120 FPS), H2 (quản lý pin & nhiệt độ), H3 (graceful degradation fallback), H4 (3 bảng SQLite cục bộ `local_category_features`, `local_rebalancing_feedback`, `local_ai_alert_history`).
+
+### 11.40. Quyết Định Đóng Băng & Tạm Dừng Hoàn Toàn Module Bank Do Lý Do Chính Sách (2026-09-21)
+- **Bối cảnh & Nguyên nhân:** Xuất phát từ lý do chính sách (các quy định bảo mật thông tin tài khoản ngân hàng, hạn chế về giấy phép kết nối bên thứ 3 và việc đảm bảo an toàn dữ liệu người dùng cá nhân theo Nghị định 13/2023/NĐ-CP), dự án đã ra quyết định **tạm dừng hoàn toàn Module Bank**.
+- **Nguyên tắc thực thi:**
+  1. **Không xóa bỏ chức năng/code đã có:** Giữ nguyên trạng toàn bộ mã nguồn `src/Backend/modules/bank/`, `src/Backend/workers/bank.worker.js`, các bảng migration CSDL liên quan đến `bank_account`, và tài liệu kỹ thuật đã viết.
+  2. **Loại khỏi phạm vi sắp tới:** Trong phạm vi xây dựng và hoàn thiện hệ thống sắp tới, Module Bank sẽ **không còn nằm trong lộ trình triển khai, kiểm thử hay đánh giá nghiệm thu**.
+  3. **Tập trung luồng tự động hóa thay thế:** Luồng thu thập và tạo giao dịch tự động của ứng dụng sẽ tập trung tối đa vào **Module OCR (Gemini 2.0 Flash đọc hóa đơn/biên lai chuyển khoản)** và **Cơ chế ghi nhận giao dịch từ SMS / Nhập tay**.
+
 
 
 
