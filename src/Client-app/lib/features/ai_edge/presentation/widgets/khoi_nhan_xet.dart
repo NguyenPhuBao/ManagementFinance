@@ -8,8 +8,12 @@ import '../../domain/mau_cau.dart';
 import '../../domain/nhan_xet.dart';
 import 'the_so_lieu.dart';
 
-/// Khối "Nhận xét" dùng chung cho Ngân sách · Phân tích · Trang chủ · Mục tiêu
-/// — theo màn Stitch `b396533b…`.
+/// Khối "Nhận xét" dùng chung cho **sáu** màn — Ngân sách · Phân tích · Trang
+/// chủ · Mục tiêu · Hoá đơn · Quản lý ví — theo màn Stitch `b396533b…`.
+///
+/// ⚠️ Bốn màn đầu là của P2 Task 14 (2026-09-19); Hoá đơn và Quản lý ví thêm
+/// ngày 2026-09-21 (chặng 1.3 và 1.5, mục 12 và 14 `AI_EDGE_FEATURE.md`). Đếm
+/// lại bằng máy thay vì tin con số này: `grep -rl 'KhoiNhanXet(' lib/`.
 ///
 /// Nhận **gói số**, không nhận câu: hiện `goi.mauCau()` ngay lập tức, rồi hỏi
 /// bộ diễn giải và thay câu khi xong (P3: SLM chậm vài giây, người dùng không

@@ -594,7 +594,42 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-20)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-21)
+
+### ✅ AI Edge-SLM — chặng 0 và trọn chặng 1 (2026-09-21)
+
+Theo `docs/superpowers/plans/2026-09-21-ai-viec-tiep-theo.md`.
+
+**Chặng 0 — hai phép đo trên máy thật.** **NPU KHÔNG dùng**: chậm hơn GPU 3,6 lần
+và tốn RAM gấp 3,4 lần, tức tệ hơn **cả CPU** — bậc thang mục 8.5 **giữ nguyên**
+(hàng thứ năm ở mục **8.1**). **Ảnh và âm thanh đều chạy được** (mục **8.7**): ba
+lượt ảnh đều đọc đúng tổng tiền hoá đơn, âm thanh đi thẳng qua `supportAudio`
+không cần mô hình STT thứ hai. ⚠️ Cả hai đo bằng dữ liệu **dựng bằng máy**, tức
+**cận trên** — chưa phải ảnh chụp thật và giọng người thật. 🛑 Không phép đo nào
+mở một hạng mục.
+
+**Chặng 1 — năm việc:**
+
+| Việc | Kết quả |
+|---|---|
+| 1.1 neo ba ngưỡng tái phân bổ theo thu nhập | ✅ mục **11.5 (1)**; cả ba xoay quanh mốc **5 triệu/tháng** |
+| 1.2 ví chọn sẵn theo danh mục | ✅ `transaction/domain/vi_hay_dung.dart`, mục **11.5 (2)** |
+| 1.3 gói số hoá đơn + khối Nhận xét | ✅ mục **12** |
+| 1.4 gói số mục tiêu mở rộng | ⚠️ **một phần** — mục **13** |
+| 1.5 gói số ví + khối Nhận xét | ✅ mục **14** |
+
+⚠️ **1.4 dừng ở một phần vì kế hoạch gộp sai ba dòng thành một việc.** Chỉ
+`duBaoHoanThanh` chạy được bằng dữ liệu trang danh sách đang có; `thongKeMucTieu`
+và `canhBaoViKhongDu` đòi mở thêm nguồn dữ liệu cho trang — **và cả ba đã là tính
+năng sống trên trang Chi tiết mục tiêu**, nên đưa chúng sang trang danh sách là
+quyết định về **trùng lặp**, không phải về năng lực.
+
+⚠️ **Khối Nhận xét nay ở SÁU màn**, không phải bốn.
+
+**Bước tiếp:** chặng 2, bắt đầu bằng **2.1 tìm kiếm bằng câu** — chiều đọc, không
+ghi gì, và nó lấp một lỗ hổng thật: `TransactionFilter` hiện **không lọc được
+theo khoảng tiền lẫn khoảng ngày**.
+
 
 ### 📏 AI Edge-SLM — P1 spike trên máy thật (2026-09-20)
 
@@ -660,9 +695,12 @@ hoạch bất cứ việc AI nào:
   trên client** (hiện đạt 9/10), và **bốn tầng hậu quả của chiều ghi** — tầng 4
   (`auto_pay`, trích tự động) thì **AI không chạm**.
 - **Mục 11** là **bản đồ khảo sát toàn hệ thống**, đếm bằng máy: 13 mảng · 43
-  route · 10 bảng Drift · **66 hàm domain thuần mà AI mới dùng 4 gói số**. Tức
+  route · 10 bảng Drift · **66 hàm domain thuần mà AI mới dùng 4 gói số** *(con số của
+  2026-09-20; từ 2026-09-21 là **6** — thêm `goi_so_hoa_don` và `goi_so_vi`)*. Tức
   phần lớn việc phía trước là **gói lại thứ đã tính**, không phải thêm năng lực
-  mới — `bill` 27 tệp AI chưa chạm gì, `goal` 14 hàm domain mới dùng 1.
+  mới. ⚠️ Hai vế cuối của câu ấy — *"`bill` 27 tệp AI chưa chạm gì, `goal` 14 hàm
+  domain mới dùng 1"* — **đã lỗi thời từ 2026-09-21**: `bill` có gói số (mục 12
+  `AI_EDGE_FEATURE.md`) và `goal` dùng 2 hàm (mục 13).
 - **Mục 11.4** ghi bốn việc **người dùng đã chốt làm** (học mức thiết yếu từ
   phản hồi · tự đề xuất cờ Cố định · nhịp chi theo ngày · bất thường theo danh
   mục), kèm luật chung: **mỗi luật có ngưỡng mẫu tối thiểu, dưới ngưỡng thì
@@ -686,7 +724,8 @@ tất định; P3 (mô hình trên máy) chờ P1 spike.
 
 **Cái gì người dùng thấy:**
 
-- **Khối "Nhận xét"** ở bốn màn — Ngân sách, Phân tích, Mục tiêu, Trang chủ:
+- **Khối "Nhận xét"** ở **sáu** màn — Ngân sách, Phân tích, Mục tiêu, Trang chủ (P2 Task 14,
+  2026-09-19), **Hoá đơn và Quản lý ví** (2026-09-21, mục 12 và 14 `AI_EDGE_FEATURE.md`):
   một câu mẫu dựng từ gói số typed, cộng dải thẻ số liệu. Đóng **A6** của lượt
   UX (thẻ "Insight AI" chữ tĩnh, hứa một tính năng không tồn tại).
 - **Thẻ "Đề xuất cân đối"** trên trang Ngân sách + **sheet kế hoạch chờ duyệt**:

@@ -235,7 +235,7 @@ ngày đạt"* — là MỘT việc.** `goal` có 14 hàm domain mà gói số h
 
 **Tệp:** `lib/features/ai_edge/domain/goi_so_muc_tieu.dart` (**đã có**, mở rộng)
 
-**Ba hàm đã tính sẵn và đang im lặng:**
+**Ba hàm đã tính sẵn** — ⚠️ câu gốc ở đây viết *"và đang im lặng"*, **SAI**, xem đính chính bên dưới:
 
 ```dart
 DateTime? duBaoHoanThanh(GoalEntity goal, DateTime now)  // goal_forecast.dart
