@@ -8,7 +8,7 @@
 > **Nguồn:** `docs/AI_EDGE_FEATURE.md` mục **10** (bản chất mảng AI, mười tiêu chí, bốn
 > tầng chiều ghi) và mục **11** (bản đồ khảo sát). Đọc hai mục ấy **trước** khi bắt đầu.
 
-**Viết:** 2026-09-21. **Trạng thái:** chặng 0 ✅, việc 1.1 · 1.2 · 1.3 ✅ xong (2026-09-21); từ 1.4 trở đi chưa bắt đầu.
+**Viết:** 2026-09-21. **Trạng thái:** chặng 0 ✅, việc 1.1 · 1.2 · 1.3 ✅ xong và 1.4 ⚠️ **một phần** (2026-09-21); 1.5 trở đi chưa bắt đầu.
 
 ---
 
@@ -228,7 +228,7 @@ có 0 chỗ gọi" ở `CLAUDE.md`). 18 ca mới ở **2 tệp mới**; bộ đ�
 `AI_EDGE_FEATURE.md` — đáng nhớ nhất: khối lấy bớt chiều cao `Expanded` làm **trạng thái
 rỗng tràn 73 px** ở khổ màn thấp, thứ chỉ lộ ra vì một ca test cũ chạy ở khổ 600.
 
-## 1.4 Gói số cho MỤC TIÊU (mở rộng)
+## 1.4 Gói số cho MỤC TIÊU (mở rộng) — ⚠️ MỘT PHẦN, 2026-09-21
 
 ⭐ **Ba dòng riêng trong bảng mục 11 — *"vì sao trễ"*, *"ví thiếu tiền trích"*, *"dự báo
 ngày đạt"* — là MỘT việc.** `goal` có 14 hàm domain mà gói số hiện tại mới dùng 1.
@@ -245,6 +245,30 @@ String? canhBaoViKhongDu(...)     // goal_wallet_shortfall.dart
 ThongKeMucTieu? thongKeMucTieu(...) // goal_stats.dart — số lần nạp, TB mỗi lần
 String tenDonViKy(String? chuKy)    // goal_stats.dart — nhãn đơn vị kỳ
 ```
+
+✅ **`duBaoHoanThanh` đã vào gói số 2026-09-21** — câu thêm vế *"Theo nhịp hiện tại cần
+thêm N ngày"*, chỉ hiện khi **chậm kế hoạch hoặc quá hạn**. 5 ca mới, bộ đầy đủ
+**3151/3151, 1 skip**. Chi tiết ở mục **13** `AI_EDGE_FEATURE.md`.
+
+🛑 **Hai hàm kia KHÔNG làm được ở lượt này, và lý do đáng ghi: ba dòng ấy KHÔNG phải một
+việc.** Đo bằng mã: `GoalLoaded` chỉ mang `goals` + hai con số tổng.
+
+| Hàm | Cần gì | Trang **danh sách** có chưa | App đã dùng ở đâu |
+|---|---|---|---|
+| `duBaoHoanThanh` | chính `GoalEntity` | ✅ → đã làm | `goal_detail_page.dart:1082` |
+| `thongKeMucTieu` | danh sách `KhoanTichLuy` | ❌ phải nghe thêm `watchGoalTransactions` | `goal_stats_card.dart:34` |
+| `canhBaoViKhongDu` | tên ví, số dư ví, tổng mục tiêu trỏ vào ví | ❌ state không mang ví nào | `goal_detail_page.dart:221` |
+
+⚠️ **ĐÍNH CHÍNH 2026-09-21:** câu *"ba hàm đã tính sẵn và đang im lặng"* ở đầu mục 1.4 là
+**SAI** — cả ba đang chạy thật trên trang **Chi tiết mục tiêu**. Thứ im lặng là **gói số
+của AI**, không phải app. Nên việc còn lại của 1.4 không phải "bật một hàm nằm im" mà là
+**nhắc lại trên trang danh sách** — một quyết định về trùng lặp. Sai lầm đến từ một lệnh
+`grep` trả về rỗng mà không kiểm lại bằng đường thứ hai.
+
+Hai cái sau đòi **mở thêm nguồn dữ liệu cho trang** (state + repository) — một hạng mục
+riêng, chưa làm. ⚠️ Và nên cân nhắc trước khi làm: `canhBaoViKhongDu` cảnh báo một **mâu
+thuẫn dữ liệu thật** (tiền tích luỹ bị tiêu mất), có lẽ xứng một **thông báo** chứ không
+phải một vế trong câu nhận xét.
 
 ⚠️ `duBaoHoanThanh` và `canhBaoViKhongDu` trả **nullable** — `null` nghĩa là *chưa đủ căn
 cứ*, và khi ấy câu **không được nhắc tới** nó. Đừng `?? 0` hay `?? DateTime.now()`: đó

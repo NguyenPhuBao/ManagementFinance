@@ -592,8 +592,10 @@ lại gì. Phần lớn việc phía trước **không phải "thêm AI", mà l�
 
 Hai mảng lớn nhất app đang trống:
 
-- **`goal` — 31 tệp, 14 hàm domain, AI mới dùng 1.** Bỏ qua `goal_forecast`,
-  `goal_stats`, `goal_progress_series`, `goal_wallet_shortfall`, `goal_deposit_warning`.
+- **`goal` — 31 tệp, 14 hàm domain, AI mới dùng 2.** ✅ `goal_forecast.duBaoHoanThanh`
+  vào gói số ngày 2026-09-21 (chặng 1.4, mục **13**). Còn bỏ qua: `goal_stats`,
+  `goal_progress_series`, `goal_wallet_shortfall`, `goal_deposit_warning` — ⚠️ **hai cái
+  đầu không phải "chưa làm" mà là "chưa có dữ liệu ở trang"**, xem mục 13.
 - **`bill` — 27 tệp, 10 hàm domain.** ✅ **Đã có gói số từ 2026-09-21** (chặng 1.3):
   `GoiSoHoaDon` gói `summarizeBills` + `billDisplayStatusOf`, và trang Hoá đơn có khối
   Nhận xét như bốn màn kia. Còn chưa chạm: `bill_ky_ke_tiep`, `bill_chain`, `bill_an_han`.
@@ -854,3 +856,63 @@ số khớp thẻ tổng ngay trên nó.
 — thẻ và khối nói về **kỳ này** (chặn ở cuối tháng), tab liệt kê **mọi hoá đơn chưa
 đóng** kể cả kỳ sau. Đừng "sửa" cho khớp mà chưa quyết xem con số nào mới là con số người
 dùng cần.
+
+---
+
+## 13. Dự báo theo nhịp thật vào gói số Mục tiêu (2026-09-21, chặng 1.4)
+
+`duBaoHoanThanh` nay vào `GoiSoMucTieu`: câu thêm một vế *"Theo nhịp hiện tại cần thêm N
+ngày."* và một thẻ số liệu cùng tên.
+
+⚠️ **ĐÍNH CHÍNH (cùng ngày, trước khi push):** bản đầu của mục này — và commit đầu của
+chặng 1.4 — viết rằng hàm ấy *"không có một chỗ gọi nào trong `lib/`"*. **Sai.** Nó đang
+chạy ở `goal_detail_page.dart:1082`, dựng hộp *"DỰ BÁO HOÀN THÀNH: THÁNG MM/yyyy"*. Câu
+đúng là: **gói số của AI** chưa dùng nó, chứ không phải app chưa dùng. Nguồn của sai lầm:
+một lệnh `grep` trả về **rỗng** và tôi tin vào cái rỗng ấy — đúng cái bẫy mục "Ghi chú vận
+hành" `CLAUDE.md` đã ghi (*"lần trước là `grep` qua rtk"*). Bài học lặp lại: **một phép đo
+trả về rỗng phải được kiểm bằng đường thứ hai** trước khi thành một câu khẳng định.
+
+**Vì sao nó đáng thêm dù đã có `isBehindSchedule`:** cờ ấy trả lời *có chậm không*, còn
+dự báo trả lời *chậm bao nhiêu*. Mục tiêu thử của bộ test còn **120 ngày** tới hạn nhưng
+theo nhịp thật cần **323 ngày** — hai con số ấy mới nói ra mức độ.
+
+⚠️ **Chỉ hiện khi chậm kế hoạch hoặc đã quá hạn.** Mục tiêu đang ổn mà vẫn in "cần thêm N
+ngày" là tiếng ồn: người dùng đã biết mình ổn, và một con số thừa làm câu khó đọc hơn.
+
+⚠️ **`null` là *chưa biết*, không phải 0.** Bốn đường cho `null`: thiếu mốc gốc (mục tiêu
+do bản app cũ tạo), chưa qua đủ nửa chu kỳ, chưa tích đồng nào (tốc độ 0 → ngày ở vô cực),
+và nhịp chậm tới mức ngày đạt vượt 100 năm. Lấp bằng `?? 0` là bịa ra một lời hứa — cùng
+lỗi mà `thayDoiTaiSan` (mục 3.30 `ANALYTICS_FEATURE.md`) đã chặn. Ba ca test canh việc im
+lặng ấy đều **xanh ngay từ đầu**, chỉ chứng minh được bằng một bản sai cố ý.
+
+⚠️ **Một kỳ vọng cũ phải sửa, và nó là bài học về phép đo gián tiếp:** ca "quá hạn" trước
+đây đòi `isNot(contains(' ngày'))` để nói rằng câu *không in vế "còn N ngày"*. Từ lượt này
+câu kết thúc bằng "cần thêm 323 ngày" — một con số khác hẳn về nghĩa — nên kỳ vọng ấy đỏ
+dù hành vi vẫn đúng. Nay nó đòi thẳng điều nó muốn: `isNot(matches(RegExp(r'còn -?\d+
+ngày')))`.
+
+### ⚠️ Hai việc còn lại của chặng 1.4 KHÔNG làm được ở đây — thiếu dữ liệu, không phải thiếu công
+
+Kế hoạch xếp ba dòng *"vì sao mục tiêu trễ"*, *"ví thiếu tiền trích"*, *"dự báo ngày đạt"*
+thành **một** việc là "gói số cho `goal`". Đo bằng mã thì chúng **không cùng một việc**:
+
+| Hàm | Cần gì | Trang **danh sách** có chưa | App đã dùng ở đâu |
+|---|---|---|---|
+| `duBaoHoanThanh` | chính `GoalEntity` | ✅ → **đã làm** | `goal_detail_page.dart:1082` |
+| `thongKeMucTieu` | danh sách `KhoanTichLuy` | ❌ phải nghe thêm `watchGoalTransactions` | `goal_stats_card.dart:34` |
+| `canhBaoViKhongDu` | tên ví, số dư ví, tổng mọi mục tiêu trỏ vào ví ấy | ❌ `GoalLoaded` không mang ví nào | `goal_detail_page.dart:221` |
+
+⚠️ **Cột cuối đổi hẳn ý nghĩa của việc này.** Cả ba hàm **đã là tính năng sống** trên
+trang **Chi tiết mục tiêu**. Đưa chúng vào khối Nhận xét của trang **danh sách** không
+phải "bật một hàm đang nằm im" mà là **nhắc lại trên màn khác** — có thể vẫn đáng (xem mà
+không phải mở chi tiết), nhưng đó là một quyết định về trùng lặp, không phải về năng lực.
+
+`GoalLoaded` hiện chỉ có `goals`, `totalTargetAmount`, `totalCurrentAmount`. Hai hàm kia
+đòi **mở thêm nguồn dữ liệu cho trang** (state + repository), không phải viết thêm một
+mẫu câu — đó là một hạng mục riêng, và nên cân nhắc là `canhBaoViKhongDu` cảnh báo về một
+**mâu thuẫn dữ liệu thật** (tiền tích luỹ bị tiêu mất), thứ có lẽ xứng đáng một thông báo
+chứ không phải một vế trong câu.
+
+**Nghiệm thu máy ảo:** mục tiêu thật của tài khoản 10 (MuaXe, 55 %) đang **đúng kế hoạch**
+nên vế dự báo im — đúng thiết kế, và đó là tất cả những gì tài khoản ấy chứng minh được.
+Chiều dương chỉ có bộ test phủ.
