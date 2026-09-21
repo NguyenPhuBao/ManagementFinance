@@ -27,7 +27,8 @@ từng việc:
 6. **TDD**: test đỏ trước; ca xanh ngay từ đầu **phải thử bản sai có chủ ý**.
 7. Trước khi báo xong: `flutter test` **trọn bộ** (mức nền **3106/3106, 1 skip**) và
    `flutter analyze` (**26 issue, 0 error**). Đụng giao diện → **nghiệm thu máy ảo 411dp**.
-8. Tệp test mới phải `git add -f` (`.gitignore` có `test/`).
+8. ✅ Tệp test mới **không cần `git add -f` nữa** — luật `test/` bỏ khỏi `.gitignore`
+   ngày 2026-09-21 (quy tắc 6 `CLAUDE.md`).
 
 ---
 
