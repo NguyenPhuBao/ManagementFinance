@@ -46,25 +46,30 @@ double lamTronBuoc(double x, double buoc) => (x / buoc).round() * buoc;
 /// thu nhập (hoặc thu nhập thấp) giữ nguyên hành vi hôm nay, còn thu nhập cao
 /// thì mọi ngưỡng giãn ra cùng nhau.
 ///
-/// ⚠️ [thuNhap3Thang] là thu nhập **trung bình MỘT THÁNG** của ba tháng gần
-/// nhất (`_thuNhap3Thang` chia cho số kỳ), không phải tổng ba tháng. Đọc nhầm
-/// là mọi tỉ lệ dưới đây lệch ba lần, **im lặng**.
-double _neo(double thuNhap3Thang, double tiLe, double san) {
-  final theoThuNhap = thuNhap3Thang * tiLe;
+/// ⚠️ [thuNhapMoiThang] là thu nhập **trung bình MỘT THÁNG**, không phải tổng
+/// cả cửa sổ: nguồn của nó quy về mức tháng bằng `tổng / số ngày × 30`. Đọc
+/// nhầm là mọi tỉ lệ dưới đây lệch hẳn một bậc, **im lặng**.
+///
+/// ⚠️ Cửa sổ ấy **cuộn theo ngày** (`cuaSoNhinLai`, tối đa 90 ngày, ngắn lại
+/// theo tuổi dữ liệu). Trước 2026-09-21 nó là ba tháng lịch liền trước, và con
+/// số ấy bằng **0** trên mọi dữ liệu thật — nên phép neo dưới đây luôn rơi về
+/// sàn, tức nó đúng về mã nhưng chưa từng có hiệu lực.
+double _neo(double thuNhapMoiThang, double tiLe, double san) {
+  final theoThuNhap = thuNhapMoiThang * tiLe;
   return theoThuNhap > san ? theoThuNhap : san;
 }
 
 /// C5: `max(1 % thu nhập, 50.000)`.
-double nguongCoNghia(double thuNhap3Thang) =>
-    _neo(thuNhap3Thang, 0.01, kNguongThamHutTuyetDoi);
+double nguongCoNghia(double thuNhapMoiThang) =>
+    _neo(thuNhapMoiThang, 0.01, kNguongThamHutTuyetDoi);
 
 /// B2 vế tuyệt đối, neo theo thu nhập: `max(1 % thu nhập, 50.000)`.
 ///
 /// Cùng công thức với [nguongCoNghia] nhưng là **luật khác** (B2 lọc ngân sách
 /// thâm hụt, C5 lọc dòng cắt quá nhỏ) — giữ hai tên để đổi một cái không kéo
 /// theo cái kia.
-double nguongThamHutTuyetDoi(double thuNhap3Thang) =>
-    _neo(thuNhap3Thang, 0.01, kNguongThamHutTuyetDoi);
+double nguongThamHutTuyetDoi(double thuNhapMoiThang) =>
+    _neo(thuNhapMoiThang, 0.01, kNguongThamHutTuyetDoi);
 
 /// C4 neo theo thu nhập: `max(2 % thu nhập, 100.000)`.
 ///
@@ -73,8 +78,8 @@ double nguongThamHutTuyetDoi(double thuNhap3Thang) =>
 /// có nghĩa 1 % mà C5 đã chặn trước. Giữ lại vì nó là một luật của đặc tả và vì
 /// nới `kTranCat` hay hạ C5 sẽ làm nó sống lại — nhưng **đừng viết ca test hành
 /// vi cho nó**, ca ấy sẽ xanh vì lý do khác (ghi rõ ở tệp test).
-double duDiaToiThieu(double thuNhap3Thang) =>
-    _neo(thuNhap3Thang, 0.02, kDuDiaToiThieu);
+double duDiaToiThieu(double thuNhapMoiThang) =>
+    _neo(thuNhapMoiThang, 0.02, kDuDiaToiThieu);
 
 /// G1 neo theo thu nhập: `max(0,2 % thu nhập, 10.000)`, rồi **kéo lên họ
 /// 1·2·2,5·5**.
@@ -83,24 +88,24 @@ double duDiaToiThieu(double thuNhap3Thang) =>
 /// **so sánh** nên số lẻ vô hại, còn bước làm tròn quyết định **con số người
 /// dùng đọc**. Bỏ nó thì thu nhập 12 triệu cho bước 24.000 và màn hình đầy
 /// 24.000 / 48.000 / 72.000 — tròn về mặt số học, xấu về mặt người đọc.
-double buocLamTron(double thuNhap3Thang) =>
-    buocTron(_neo(thuNhap3Thang, 0.002, kBuocLamTron.toDouble()));
+double buocLamTron(double thuNhapMoiThang) =>
+    buocTron(_neo(thuNhapMoiThang, 0.002, kBuocLamTron.toDouble()));
 
 /// Dự phóng chi cuối kỳ (B4 + B5). `null` khi kỳ rỗng hoặc dưới
-/// [kNgayKhoaDuPhong] ngày mà không có [tb3Thang] — khi ấy người gọi chỉ được
+/// [kNgayKhoaDuPhong] ngày mà không có [mucThang] — khi ấy người gọi chỉ được
 /// dùng số đã chi, tức chỉ báo khi **đã** vượt.
 double? duPhongCua(
   BudgetView v, {
   required DateTime now,
-  required double? tb3Thang,
+  required double? mucThang,
 }) {
   final b = v.budget;
   final nhip = budgetPaceOf(b, now);
   if (nhip.daysTotal <= 0) return null;
   final daQua = nhip.daysTotal - nhip.daysLeft;
   if (daQua >= kNgayKhoaDuPhong) return b.spent * nhip.daysTotal / daQua;
-  if (tb3Thang == null) return null;
-  return b.spent + tb3Thang * nhip.daysLeft / nhip.daysTotal;
+  if (mucThang == null) return null;
+  return b.spent + mucThang * nhip.daysLeft / nhip.daysTotal;
 }
 
 class DongTaiPhanBo {
@@ -188,8 +193,8 @@ KeHoachTaiPhanBo? taiPhanBoCua({
   required List<BudgetView> dangChay,
   required DateTime now,
   required Set<String> coDinh,
-  required double thuNhap3Thang,
-  required Map<String, double?> tb3ThangTheoNganSach,
+  required double thuNhapMoiThang,
+  required Map<String, double?> mucThangTheoNganSach,
   required List<PhanHoiCu> phanHoi,
 }) {
   final ungVien = [
@@ -199,12 +204,12 @@ KeHoachTaiPhanBo? taiPhanBoCua({
   if (ungVien.isEmpty) return null;
 
   // Bốn ngưỡng neo theo thu nhập, tính MỘT lần cho cả lượt dựng kế hoạch.
-  final nguongHut = nguongThamHutTuyetDoi(thuNhap3Thang);
-  final sanDuDia = duDiaToiThieu(thuNhap3Thang);
-  final buoc = buocLamTron(thuNhap3Thang);
+  final nguongHut = nguongThamHutTuyetDoi(thuNhapMoiThang);
+  final sanDuDia = duDiaToiThieu(thuNhapMoiThang);
+  final buoc = buocLamTron(thuNhapMoiThang);
 
   double duPhong(BudgetView v) =>
-      duPhongCua(v, now: now, tb3Thang: tb3ThangTheoNganSach[v.budget.id]) ??
+      duPhongCua(v, now: now, mucThang: mucThangTheoNganSach[v.budget.id]) ??
       v.budget.spent;
 
   // ── Thâm hụt lớn nhất ────────────────────────────────────────────────────
@@ -247,7 +252,7 @@ KeHoachTaiPhanBo? taiPhanBoCua({
     return c != 0 ? c : a.nguon.budget.id.compareTo(b.nguon.budget.id);
   });
 
-  final nguong = nguongCoNghia(thuNhap3Thang);
+  final nguong = nguongCoNghia(thuNhapMoiThang);
   final dong = <DongTaiPhanBo>[];
   var conThieu = thamHut;
   for (final n in nguon) {

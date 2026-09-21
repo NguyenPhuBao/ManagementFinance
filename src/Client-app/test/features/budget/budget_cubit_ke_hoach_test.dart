@@ -99,8 +99,8 @@ void main() {
     final nguon = _Nguon(
         du: const DuLieuTaiPhanBo(
             coDinh: {'c-ms'},
-            thuNhap3Thang: 0,
-            tb3ThangTheoNganSach: {},
+            thuNhapMoiThang: 0,
+            mucThangTheoNganSach: {},
             phanHoi: []));
     final cubit =
         BudgetCubit(repository: repo, clock: () => _now, taiPhanBoNguon: nguon);

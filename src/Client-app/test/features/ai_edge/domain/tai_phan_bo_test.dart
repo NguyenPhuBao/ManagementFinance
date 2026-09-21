@@ -40,7 +40,7 @@ BudgetView _duPhong(String id,
 KeHoachTaiPhanBo? _kh(
   List<BudgetView> ds, {
   Set<String> coDinh = const {},
-  double thuNhap3Thang = 0,
+  double thuNhapMoiThang = 0,
   Map<String, double?> tb = const {},
   List<PhanHoiCu> phanHoi = const [],
 }) =>
@@ -48,8 +48,8 @@ KeHoachTaiPhanBo? _kh(
       dangChay: ds,
       now: _now,
       coDinh: coDinh,
-      thuNhap3Thang: thuNhap3Thang,
-      tb3ThangTheoNganSach: tb,
+      thuNhapMoiThang: thuNhapMoiThang,
+      mucThangTheoNganSach: tb,
       phanHoi: phanHoi,
     );
 
@@ -57,17 +57,17 @@ void main() {
   group('duPhongCua', () {
     test('đã qua ≥ 5 ngày: spent × daysTotal / daysElapsed', () {
       final v = _v('a', amount: 3000000, spent: 2000000);
-      expect(duPhongCua(v, now: _now, tb3Thang: null), closeTo(3000000, 1));
+      expect(duPhongCua(v, now: _now, mucThang: null), closeTo(3000000, 1));
     });
     test('dưới 5 ngày và có TB 3 tháng: spent + TB × phần kỳ còn lại', () {
       final v = _v('a', amount: 3000000, spent: 500000);
       final now = DateTime(2026, 9, 4); // đã qua 3 ngày, còn 27
-      expect(duPhongCua(v, now: now, tb3Thang: 3000000),
+      expect(duPhongCua(v, now: now, mucThang: 3000000),
           closeTo(500000 + 3000000 * 27 / 30, 1));
     });
     test('dưới 5 ngày và KHÔNG có TB 3 tháng → null (chỉ báo khi đã vượt)', () {
       final v = _v('a', amount: 3000000, spent: 500000);
-      expect(duPhongCua(v, now: DateTime(2026, 9, 4), tb3Thang: null), isNull);
+      expect(duPhongCua(v, now: DateTime(2026, 9, 4), mucThang: null), isNull);
     });
   });
 
@@ -175,7 +175,7 @@ void main() {
       expect(nguongCoNghia(0), 50000);
       final nho = _duPhong('nho',
           amount: 1000000, duPhong: 600000); // dư 400k → cắt 100k
-      final kh = _kh([anUong, nho], thuNhap3Thang: 20000000)!;
+      final kh = _kh([anUong, nho], thuNhapMoiThang: 20000000)!;
       expect(kh.dong, isEmpty, reason: '100.000 < ngưỡng 200.000');
     });
 
@@ -262,9 +262,9 @@ void main() {
       final hut = _duPhong('an', amount: 500000, duPhong: 600000); // hụt 100k
       final nguon = _duPhong('ng', amount: 5000000, duPhong: 1000000);
 
-      expect(_kh([hut, nguon], thuNhap3Thang: 0), isNotNull,
+      expect(_kh([hut, nguon], thuNhapMoiThang: 0), isNotNull,
           reason: '100.000 ≥ sàn 50.000');
-      expect(_kh([hut, nguon], thuNhap3Thang: 50000000), isNull,
+      expect(_kh([hut, nguon], thuNhapMoiThang: 50000000), isNull,
           reason: '100.000 < ngưỡng 500.000 của thu nhập 50 triệu');
     });
 
@@ -272,9 +272,9 @@ void main() {
       final hut = _duPhong('an', amount: 3000000, duPhong: 8000000);
       final le = _duPhong('le', amount: 2234567, duPhong: 1000000); // dư 1.234.567
 
-      expect(_kh([hut, le], thuNhap3Thang: 0)!.dong.single.soTien, 310000,
+      expect(_kh([hut, le], thuNhapMoiThang: 0)!.dong.single.soTien, 310000,
           reason: '25 % = 308.641,75, bước 10.000');
-      expect(_kh([hut, le], thuNhap3Thang: 12000000)!.dong.single.soTien, 300000,
+      expect(_kh([hut, le], thuNhapMoiThang: 12000000)!.dong.single.soTien, 300000,
           reason: 'cùng 308.641,75 nhưng bước 25.000');
     });
   });

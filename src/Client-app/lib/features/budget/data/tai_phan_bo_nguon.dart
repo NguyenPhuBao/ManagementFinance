@@ -1,5 +1,5 @@
-/// Nguồn dữ liệu của Tầng 2 tái phân bổ (Edge-SLM P2): cờ Cố định, TB 3
-/// tháng của từng ngân sách, thu nhập 3 tháng, phản hồi cũ.
+/// Nguồn dữ liệu của Tầng 2 tái phân bổ (Edge-SLM P2): cờ Cố định, mức mỗi
+/// tháng của từng ngân sách, thu nhập mỗi tháng, phản hồi cũ.
 ///
 /// ⚠️ Đặt ở `budget/data/`, **không** ở `ai_edge/`: tệp này đọc bảng giao dịch
 /// để tính thu nhập, mà test quét thứ 14 cấm `ai_edge/` chạm bảng ấy. Nó là
@@ -14,32 +14,39 @@ import '../../analytics/domain/pham_vi_ky.dart';
 import '../../analytics/domain/thong_ke_thang.dart';
 import '../../analytics/domain/vai_vay_no.dart';
 import '../data/models/budget_entity.dart';
+import '../domain/cua_so_nhin_lai.dart';
 import 'repositories/budget_repository.dart';
 
 class DuLieuTaiPhanBo {
   /// Tập **categoryId** có cờ Cố định.
   final Set<String> coDinh;
 
-  /// Trung bình `thuNhapCua` của ba tháng liền trước; `0` khi chưa có gì.
-  final double thuNhap3Thang;
+  /// Thu nhập trung bình **mỗi tháng**, suy từ `cuaSoNhinLai`; `0` khi chưa đủ
+  /// dữ liệu để nói.
+  ///
+  /// ⚠️ Tên cũ là `thuNhap3Thang`, đổi ngày 2026-09-21: cửa sổ nay **cuộn**
+  /// theo ngày (tối đa 90, ngắn lại theo tuổi dữ liệu) chứ không còn là ba
+  /// tháng lịch liền trước — và cửa sổ cũ rỗng trên mọi dữ liệu thật, nên con
+  /// số này luôn bằng 0 cho tới khi đổi.
+  final double thuNhapMoiThang;
 
-  /// `BudgetRepository.suggestAmount` của từng ngân sách (TB 3 tháng làm tròn
-  /// lên 10k, `null` khi không có lịch sử) — khoá là `budget.id`.
-  final Map<String, double?> tb3ThangTheoNganSach;
+  /// `BudgetRepository.suggestAmount` của từng ngân sách (mức mỗi tháng, làm
+  /// tròn lên 10k, `null` khi không có lịch sử) — khoá là `budget.id`.
+  final Map<String, double?> mucThangTheoNganSach;
 
   final List<PhanHoiCu> phanHoi;
 
   const DuLieuTaiPhanBo({
     required this.coDinh,
-    required this.thuNhap3Thang,
-    required this.tb3ThangTheoNganSach,
+    required this.thuNhapMoiThang,
+    required this.mucThangTheoNganSach,
     required this.phanHoi,
   });
 
   static const DuLieuTaiPhanBo rong = DuLieuTaiPhanBo(
     coDinh: {},
-    thuNhap3Thang: 0,
-    tb3ThangTheoNganSach: {},
+    thuNhapMoiThang: 0,
+    mucThangTheoNganSach: {},
     phanHoi: [],
   );
 }
@@ -90,21 +97,34 @@ class TaiPhanBoNguonImpl implements TaiPhanBoNguon {
 
     return DuLieuTaiPhanBo(
       coDinh: coDinh,
-      thuNhap3Thang: await _thuNhap3Thang(idaccount, cats, now),
-      tb3ThangTheoNganSach: tb,
+      thuNhapMoiThang: await _thuNhapMoiThang(idaccount, cats, now),
+      mucThangTheoNganSach: tb,
       phanHoi: phanHoi,
     );
   }
 
-  /// Trung bình thu nhập ba tháng liền trước, bằng **đúng** `thuNhapCua` (tổng
-  /// thu trừ tiền đi vay / thu nợ / khoản vay-nợ tiền vào) — không phải
-  /// `type = 'thu'` trần (bẫy A8 #8). Chép khối dựng `KhoanThuChi` của
-  /// `analytics_repository_impl.dart` (`_dung`, khoản `khoan`).
-  Future<double> _thuNhap3Thang(
+  /// Thu nhập trung bình **mỗi tháng**, suy từ [cuaSoNhinLai].
+  ///
+  /// Vẫn đi qua **đúng** `thuNhapCua` (tổng thu trừ tiền đi vay / thu nợ /
+  /// khoản vay-nợ tiền vào) — không phải `type = 'thu'` trần (bẫy A8 #8). Chép
+  /// khối dựng `KhoanThuChi` của `analytics_repository_impl.dart` (`_dung`,
+  /// khoản `khoan`).
+  ///
+  /// ⚠️ Chỉ **cửa sổ** đổi, luật thu nhập giữ nguyên. Trước 2026-09-21 hàm này
+  /// cắt ba tháng lịch liền trước và trả 0 trên mọi dữ liệu thật, nên phép neo
+  /// ngưỡng theo thu nhập luôn rơi về sàn.
+  Future<double> _thuNhapMoiThang(
     int idaccount,
     List<Category> cats,
     DateTime now,
   ) async {
+    final cuaSo = cuaSoNhinLai(
+      now,
+      await db.transactionDao.getFirstTransactionDate(idaccount),
+    );
+    // Chưa đủ dữ liệu để nói — trả 0 chứ không suy một mức tháng từ vài ngày.
+    if (cuaSo == null) return 0;
+
     final txs = await db.transactionDao.getAll(idaccount);
     final classifyTheoId = {for (final c in cats) c.id: c.classify};
     final tenTheoId = {for (final c in cats) c.id: c.name};
@@ -120,16 +140,14 @@ class TaiPhanBoNguonImpl implements TaiPhanBoNguon {
           tenDanhMuc: t.categoryId == null ? null : tenTheoId[t.categoryId],
         ),
     ];
-    // Bốn kỳ kết thúc ở tháng hiện tại, cũ nhất trước → ba phần tử đầu là ba
-    // tháng liền trước.
-    final ky = Ky.thang(now.year, now.month);
-    final vayNo = chuoiVayNo(khoan, ky: ky, soKy: 4).take(3).toList();
+    // MỘT kỳ đúng bằng cửa sổ, thay cho bốn kỳ tháng rồi `take(3)`.
+    // `chuoiVayNo` cần một `Ky`; `Ky.tuyChon` nhận đúng biên `[from, to)`.
+    final ky = Ky.tuyChon(from: cuaSo.from, to: cuaSo.to);
+    final vayNo = chuoiVayNo(khoan, ky: ky, soKy: 1);
     if (vayNo.isEmpty) return 0;
-    var tong = 0.0;
-    for (final d in vayNo) {
-      final t = tongThuChi(khoan, from: d.ky.from, to: d.ky.to);
-      tong += thuNhapCua(tong: t, vayNo: d);
-    }
-    return tong / vayNo.length;
+
+    final tong = tongThuChi(khoan, from: cuaSo.from, to: cuaSo.to);
+    final thuNhapCuaSo = thuNhapCua(tong: tong, vayNo: vayNo.first);
+    return thuNhapCuaSo / cuaSo.soNgay * kSoNgayMotThang;
   }
 }

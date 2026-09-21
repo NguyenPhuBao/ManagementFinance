@@ -89,42 +89,73 @@ void main() {
     expect(d.coDinh, {'nha'});
   });
 
-  test(
-      'thu nhập 3 tháng = TB thuNhapCua ba tháng liền trước; tiền ĐI VAY không tính',
-      () async {
+  // ⚠️ Nhóm ca thu nhập viết lại ngày 2026-09-21. Bản cũ mã hoá cửa sổ "ba
+  // tháng lịch liền trước", và cửa sổ ấy RỖNG trên mọi dữ liệu thật (giao dịch
+  // sớm nhất trong CSDL là 02/09/2026), nên `thuNhapMoiThang` luôn bằng 0 —
+  // phép neo ngưỡng theo thu nhập vì thế chưa từng có hiệu lực.
+
+  test('thu nhập suy từ cửa sổ cuộn; tiền ĐI VAY không tính', () async {
     await _vi(db);
     await _cat(db, 'luong', 'Lương', classify: 'thu');
     await _cat(db, 'divay', 'Đi vay', classify: 'vay_no');
-    await _tx(db, 't6', DateTime(2026, 6, 5), 10000000,
+    // Giao dịch sớm nhất 01/09 → cửa sổ 20 ngày tính tới 21/09.
+    await _tx(db, 'moc', DateTime(2026, 9, 1), 10000000,
         loai: 'thu', cat: 'luong');
-    await _tx(db, 't7', DateTime(2026, 7, 5), 10000000,
-        loai: 'thu', cat: 'luong');
-    await _tx(db, 't8', DateTime(2026, 8, 5), 10000000,
-        loai: 'thu', cat: 'luong');
-    await _tx(db, 'vay', DateTime(2026, 8, 10), 5000000,
+    await _tx(db, 'vay', DateTime(2026, 9, 10), 5000000,
         loai: 'thu', cat: 'divay');
-    // Tháng hiện tại KHÔNG tính (kỳ chưa khép).
-    await _tx(db, 't9', DateTime(2026, 9, 5), 99000000,
-        loai: 'thu', cat: 'luong');
+
     final d = await TaiPhanBoNguonImpl(db: db, budgets: _Repo({}))
         .nap(7, const [], now);
-    expect(d.thuNhap3Thang, closeTo(10000000, 1),
-        reason: 'đi vay 5.000.000 tháng 8 phải bị loại — bẫy A8 #8');
+
+    expect(d.thuNhapMoiThang, closeTo(15000000, 1),
+        reason: '10.000.000 trong 20 ngày → 10tr / 20 × 30 = 15tr. Khoản đi '
+            'vay 5.000.000 phải bị loại — bẫy A8 #8; tính cả nó sẽ ra 22,5tr');
   });
 
   test('không giao dịch → thu nhập 0, không lỗi', () async {
     final d = await TaiPhanBoNguonImpl(db: db, budgets: _Repo({}))
         .nap(7, const [], now);
-    expect(d.thuNhap3Thang, 0);
+    expect(d.thuNhapMoiThang, 0);
+  });
+
+  test('tài khoản trẻ hơn 14 ngày → thu nhập 0, không phải số bịa', () async {
+    await _vi(db);
+    await _cat(db, 'luong', 'Lương', classify: 'thu');
+    await _tx(db, 'moi', DateTime(2026, 9, 18), 10000000,
+        loai: 'thu', cat: 'luong');
+
+    final d = await TaiPhanBoNguonImpl(db: db, budgets: _Repo({}))
+        .nap(7, const [], now);
+
+    expect(d.thuNhapMoiThang, 0,
+        reason: 'ba ngày dữ liệu mà suy ra một mức tháng thì ra 100 triệu — '
+            'và phép neo ngưỡng sẽ tin con số ấy');
+  });
+
+  test('thu nhập cũ hơn 90 ngày không được đếm, mẫu số kẹp ở 90', () async {
+    await _vi(db);
+    await _cat(db, 'luong', 'Lương', classify: 'thu');
+    await _tx(db, 'xua', DateTime(2026, 1, 1), 90000000,
+        loai: 'thu', cat: 'luong');
+    await _tx(db, 'trong', DateTime(2026, 9, 5), 10000000,
+        loai: 'thu', cat: 'luong');
+
+    final d = await TaiPhanBoNguonImpl(db: db, budgets: _Repo({}))
+        .nap(7, const [], now);
+
+    expect(d.thuNhapMoiThang, closeTo(3333333, 1),
+        reason: 'chỉ 10tr nằm trong 90 ngày → 10tr / 90 × 30. Khoản 90tr của '
+            'tháng 1 nằm ngoài cửa sổ, và mẫu số bị kẹp ở 90 chứ không kéo dài '
+            'tới tận mốc ấy');
   });
 
   test(
-      'tb3ThangTheoNganSach hỏi suggestAmount theo categoryId, khoá là budget.id',
+      'mucThangTheoNganSach hỏi suggestAmount theo categoryId, khoá là budget.id',
       () async {
     final d =
         await TaiPhanBoNguonImpl(db: db, budgets: _Repo({'c-an': 2000000}))
             .nap(7, [_ns('b1', 'c-an'), _ns('b2', 'c-gt')], now);
-    expect(d.tb3ThangTheoNganSach, {'b1': 2000000, 'b2': null});
+    expect(d.mucThangTheoNganSach, {'b1': 2000000, 'b2': null});
   });
 
   test('phản hồi cũ đọc từ bảng v24', () async {

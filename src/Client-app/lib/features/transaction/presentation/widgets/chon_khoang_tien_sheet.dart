@@ -12,7 +12,7 @@
 /// Đã cân nhắc hàng chip *"trên 100k · trên 500k · trên 1 triệu"* và bỏ: ba con
 /// số ấy là **hằng cứng**, mà người thu nhập 5 triệu và người 50 triệu không có
 /// cùng ngưỡng "khoản lớn" — đúng thứ mục 11.5 `AI_EDGE_FEATURE.md` vừa đi sửa ở
-/// chỗ khác. Bản neo theo `thuNhap3Thang` thì đúng, nhưng giá là mở thêm một
+/// chỗ khác. Bản neo theo thu nhập thì đúng, nhưng giá là mở thêm một
 /// nguồn dữ liệu cho trang chỉ để vẽ ba cái chip.
 ///
 /// ## Ba nghĩa của giá trị trả về

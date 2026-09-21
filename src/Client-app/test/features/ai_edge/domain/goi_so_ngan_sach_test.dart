@@ -114,8 +114,8 @@ void main() {
         dangChay: ds,
         now: now21,
         coDinh: const {},
-        thuNhap3Thang: 0,
-        tb3ThangTheoNganSach: const {},
+        thuNhapMoiThang: 0,
+        mucThangTheoNganSach: const {},
         phanHoi: const [],
       );
       expect(kh, isNotNull);

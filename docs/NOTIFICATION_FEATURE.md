@@ -983,7 +983,7 @@ dùng vắng mặt.
 làm cửa chặn phép đọc, nên điều kiện ấy là chính công tắc nhóm:
 `loadKeHoach` chỉ chạy khi `prefs.chapNhan(NotificationKind.budgetRebalance)`
 **và** có ít nhất một ngân sách. Dựng kế hoạch là đọc toàn bộ sổ giao dịch để
-tính thu nhập ba tháng, cộng một `suggestAmount` cho từng ngân sách — trả giá
+tính thu nhập mỗi tháng, cộng một `suggestAmount` cho từng ngân sách — trả giá
 chừng ấy cho một kết quả bị lọc bỏ ngay sau đó là lãng phí **im lặng**: không
 hàng nào, không lỗi nào, chỉ một lượt quét chậm hơn. Cả hai vế có ca test riêng,
 và cả hai đã được kiểm bằng bản sai có chủ ý.

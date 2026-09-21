@@ -428,8 +428,8 @@ Future<void> setupDependencies() async {
           dangChay: dangChay,
           now: now,
           coDinh: d.coDinh,
-          thuNhap3Thang: d.thuNhap3Thang,
-          tb3ThangTheoNganSach: d.tb3ThangTheoNganSach,
+          thuNhapMoiThang: d.thuNhapMoiThang,
+          mucThangTheoNganSach: d.mucThangTheoNganSach,
           phanHoi: d.phanHoi,
         );
       },

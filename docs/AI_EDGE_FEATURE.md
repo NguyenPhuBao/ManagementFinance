@@ -41,7 +41,7 @@ banner đính chính ngày 19). **Đặc tả gốc** do backend viết: `docs/A
 | Nâng Flutter 3.41.5 → 3.47.5 trước mọi việc AI | `flutter_gemma` 1.8.3 đòi ≥ 3.44; bản cũ 0.13.6 thiếu Gemma 4 | 2026-09-19 |
 | ~~Bậc thang mô hình Gemma 4 E4B (≥ 8 GB RAM) → E2B (4–8 GB) → mẫu câu~~ 🛑 **ĐÃ THAY 2026-09-20**, xem hàng dưới | Gói không chạy Gemma 3 4B; Gemma 3 1B gated (cần token HuggingFace nhúng app) nên bỏ; hai bản Gemma 4 ở `litert-community` công khai. ⚠️ Vế *"hai bản Gemma 4 công khai"* vẫn đúng; vế **bậc thang theo RAM** thì P1 lật (mục 8.5) | 2026-09-19 |
 | Lớp `ai_edge` **không tính**, chỉ nhận số | Bản định nghĩa thứ hai là thứ sinh bẫy A8 #8 (thu nhập gồm tiền đi vay); test quét 14 canh | 2026-09-19 |
-| Nguồn dữ liệu Tầng 2 đặt ở `budget/data/`, không ở `ai_edge/` | Nó đọc bảng giao dịch để tính thu nhập 3 tháng, mà test quét 14 cấm `ai_edge/` chạm bảng ấy | 2026-09-19 |
+| Nguồn dữ liệu Tầng 2 đặt ở `budget/data/`, không ở `ai_edge/` | Nó đọc bảng giao dịch để tính thu nhập mỗi tháng, mà test quét 14 cấm `ai_edge/` chạm bảng ấy | 2026-09-19 |
 | Thông báo tái phân bổ nhận **cả kế hoạch** đã tính | Thẻ trên màn và thông báo dùng đúng một phép tính, không thể nói hai chuyện | 2026-09-19 |
 | Nguồn bù xếp theo **dư địa** | essentiality = 0,5 cho mọi danh mục (chưa có thống kê) nên C6 quy về dư địa; cờ Cố định là lớp bảo vệ duy nhất và thắng tuyệt đối | 2026-09-19 |
 | Bỏ D5 (trần Σ hạn mức ≤ thu nhập × (1 − tỉ lệ tiết kiệm)) | tái phân bổ giữ tổng hạn mức không đổi nên không thể vi phạm | 2026-09-19 |
@@ -78,7 +78,7 @@ lib/features/ai_edge/
   data/     (P3) slm_runtime.dart — tệp DUY NHẤT import flutter_gemma · slm_dien_giai.dart · slm_cache.dart · mo_hinh_tai_ve.dart
   presentation/widgets/ khoi_nhan_xet.dart · the_so_lieu.dart · the_ke_hoach.dart
   presentation/pages/   ke_hoach_tai_phan_bo_sheet.dart · (P3) cai_dat_ai_page.dart
-lib/features/budget/data/tai_phan_bo_nguon.dart   — nguồn dữ liệu Tầng 2 (cờ Cố định, TB 3 tháng, thu nhập 3 tháng, phản hồi cũ)
+lib/features/budget/data/tai_phan_bo_nguon.dart   — nguồn dữ liệu Tầng 2 (cờ Cố định, mức mỗi tháng, thu nhập mỗi tháng, phản hồi cũ)
 lib/core/database/tables/ai_feedback_table.dart   — bảng AiRebalancingFeedbacks (cục bộ)
 lib/core/database/daos/ai_feedback_dao.dart
 lib/features/ai_chat/                             — màn Trợ lý AI (P3), đọc ai_edge
@@ -146,7 +146,7 @@ sửa tên danh mục lặng lẽ **tắt cờ**; có ca test canh (*"sửa tên
 | `test/features/ai_edge/ai_edge_cuc_bo_khong_dong_bo_test.dart` | 2 | **test quét thứ 15** — hai thứ v24 không lọt vào ba tệp đồng bộ và hợp đồng payload; bản sai có chủ ý đỏ đúng dòng | 2026-09-19 |
 | `test/features/category/category_ai_co_dinh_test.dart` | 7 | cờ Cố định: `saveChild` ghi/giữ cờ (`insertOrReplace`), công tắc ở màn Sửa danh mục (cuộn tới bằng `scrollUntilVisible` — ListView lười dựng), ẩn ở màn chỉ-từ-khoá, 411dp không tràn | 2026-09-19 |
 | `test/features/ai_edge/presentation/khoi_nhan_xet_test.dart` | 7 | khối Nhận xét: mẫu câu hiện ngay, câu mô hình thay sau + nhãn AI, thiếu dữ liệu không thẻ, 200 ký tự không tràn, lỗi bộ diễn giải giữ mẫu, viền cảnh báo, nền tối | 2026-09-19 |
-| `test/features/budget/data/tai_phan_bo_nguon_test.dart` | 5 | nguồn Tầng 2: cờ Cố định bỏ hàng xoá mềm, thu nhập 3 tháng **không đếm đi vay**, TB 3 tháng theo `budget.id`, phản hồi cũ | 2026-09-19 |
+| `test/features/budget/data/tai_phan_bo_nguon_test.dart` | 7 | nguồn Tầng 2: cờ Cố định bỏ hàng xoá mềm, thu nhập mỗi tháng **không đếm đi vay**, cửa sổ cuộn (tài khoản quá trẻ → 0; chi cũ hơn 90 ngày không đếm), mức mỗi tháng theo `budget.id`, phản hồi cũ | 2026-09-19 |
 | `test/features/budget/budget_cubit_ke_hoach_test.dart` | 5 | `BudgetCubit`: không nguồn → đồng bộ như cũ; có nguồn → kế hoạch; cờ Cố định; nguồn lỗi vẫn `BudgetLoaded`; lượt nạp chậm không đè lượt mới | 2026-09-19 |
 | `test/features/budget/budget_khoi_nhan_xet_test.dart` | 6 | Task 14 — trang Ngân sách: một khối, câu đúng số của state (33,3 %, còn 16 ngày), nói về ngân sách **căng nhất**, có `keHoach` thì nối câu tóm tắt (tìm **trong khối**, vì thẻ cũng in câu ấy), rỗng thì không dựng. Task 15: +2 ca — thẻ đứng dưới khối và chạm "Xem kế hoạch" gọi `onXemKeHoach` với **đúng** kế hoạch của state; không có callback thì không nút | 2026-09-19 |
 | `test/features/analytics/analytics_page_test.dart` (+2) | 2 | Task 14 — trang Phân tích: khối sau "Số dư còn lại" trước Xu hướng, câu "tăng 25,0% so với kỳ trước"; kỳ rỗng không dựng. Đặt trong tệp có sẵn để dùng lại helper `_tk` | 2026-09-19 |
@@ -463,7 +463,7 @@ những câu ấy cho người đọc sau — kể cả chính người viết l
 ### 10.1 Gọi đúng tên từng phần
 
 **"AI Edge" ở đây là một hệ luật, không phải học máy.** Bóc ra có hai thứ: tầng 1 là
-thống kê mô tả (trung bình 3 tháng, dự phóng tuyến tính `spent × daysTotal / daysElapsed`,
+thống kê mô tả (trung bình mỗi tháng suy từ cửa sổ cuộn ≤ 90 ngày, dự phóng tuyến tính `spent × daysTotal / daysElapsed`,
 tổng theo danh mục), tầng 2 là 39 luật A–H viết tay. Không mạng nơ-ron, không huấn
 luyện, không suy luận xác suất — đây là **hệ chuyên gia**, công nghệ thập niên 1980,
 chạy trên máy người dùng. Chữ "Edge" chỉ nói nó chạy ở client chứ không ở server.
@@ -478,7 +478,7 @@ cần người* (đọc bảng số rồi viết nhận xét) thì nó **là**. 
 
 **Nó không phải gì:** không tự khám phá ra điều gì mới — mọi thứ nó "biết" là do người
 viết luật đặt vào. Và nó không giỏi lên theo thời gian, trừ đúng hai chỗ đã cài cơ chế
-học: `suggestAmount` (TB 3 tháng) và luật C3 (đã cắt hai kỳ liền thì cắt nhẹ hơn).
+học: `suggestAmount` (mức mỗi tháng, cửa sổ cuộn) và luật C3 (đã cắt hai kỳ liền thì cắt nhẹ hơn).
 
 **Chỗ đáng giá nhất của thiết kế** là lõi *máy tính số, mô hình kể chuyện* cộng với
 `kiemSo` thi hành nó: **mô hình không bao giờ nói ra một con số mà hệ luật chưa tính**.
@@ -718,7 +718,7 @@ nằm ở tầng số, không ở mô hình*.
 Luật tái phân bổ có sáu ngưỡng; đúng **một** cái neo theo người dùng:
 
 ```dart
-nguongCoNghia = max(1% thuNhap3Thang, 50.000)   // ← đã cá nhân hoá
+nguongCoNghia = max(1% thuNhapMoiThang, 50.000)   // ← đã cá nhân hoá
 ```
 
 Năm cái còn lại là số tuyệt đối cho mọi người (`tai_phan_bo.dart`):
@@ -736,7 +736,7 @@ hoạch cắt giảm cho nó. Đây là **sự không nhất quán app đã tự
 vì `nguongCoNghia` làm đúng.
 
 **Sửa rẻ nhất trong cả mục 11:** cho ba hằng đầu đi qua cùng phép neo. Không cần AI,
-không cần dữ liệu mới — `thuNhap3Thang` đã có sẵn trong `DuLieuTaiPhanBo`. Hai hằng cuối
+không cần dữ liệu mới — `thuNhapMoiThang` đã có sẵn trong `DuLieuTaiPhanBo`. Hai hằng cuối
 là **tỉ lệ** nên giữ nguyên là hợp lý.
 
 ✅ **Đã làm 2026-09-21.** Ba hằng đầu nay đi qua **một** phép neo duy nhất `_neo(thu
@@ -752,8 +752,26 @@ Tỉ lệ chọn sao cho **cả ba xoay quanh cùng một mốc: thu nhập 5 tr
 không gì đổi, đúng tại mốc thì cả ba bằng đúng hằng cũ, trên mốc thì cả ba giãn ra mà
 **giữ nguyên tỉ lệ với nhau** — tức luật vẫn là luật cũ, chỉ đổi đơn vị đo.
 
-⚠️ **`thuNhap3Thang` là trung bình MỘT THÁNG**, không phải tổng ba tháng (`_thuNhap3Thang`
-chia cho số kỳ). Đọc nhầm là mọi tỉ lệ trên lệch ba lần, **im lặng**.
+⚠️ **`thuNhapMoiThang` là trung bình MỘT THÁNG**, không phải tổng cả cửa sổ
+(`_thuNhapMoiThang` quy về mức tháng bằng `tổng / số ngày × 30`). Đọc nhầm là mọi tỉ lệ
+trên lệch hẳn một bậc, **im lặng**.
+
+🛑 **Và cho tới 2026-09-21, phép neo này CHƯA TỪNG CÓ HIỆU LỰC.** `thuNhapMoiThang` khi ấy
+tên là `thuNhap3Thang` và cắt **ba tháng lịch liền trước**; đo trên CSDL dev ngày
+2026-09-21 thì giao dịch sớm nhất trong **toàn bộ** CSDL là **02/09/2026** và không có hàng
+nào trước tháng 9 — nên cửa sổ ấy rỗng trên **mọi** tài khoản, con số luôn bằng **0**, và
+`max(1% × 0, 50.000)` luôn trả đúng cái sàn mà việc neo sinh ra để thay thế. Mã đúng, đầu
+vào chết.
+
+Cửa sổ nay **cuộn theo ngày** — `cuaSoNhinLai` ở `features/budget/domain/cua_so_nhin_lai.dart`,
+tối đa **90** ngày, ngắn lại theo tuổi dữ liệu của tài khoản, và **im hẳn** (trả `null`,
+người gọi hiểu là 0) khi tài khoản trẻ hơn **14** ngày. Cùng cửa sổ ấy nuôi `suggestAmount`.
+Spec: `docs/superpowers/specs/2026-09-21-cua-so-nhin-lai-va-de-xuat-tao-ngan-sach-design.md`.
+
+⚠️ Bài học chung, không riêng chỗ này: **một luật có thể đúng hoàn toàn về mã mà vẫn chưa
+bao giờ chạy**, nếu đầu vào của nó đến từ một cửa sổ mà dữ liệu thật không lấp đầy. Bộ test
+không bắt được — nó dựng sẵn ba tháng dữ liệu. Thứ bắt được là một phép đo trên **CSDL
+thật**.
 
 ⚠️ **`buocLamTron` có thêm một vế mà hai cái kia không có**: nó phải kéo lên họ
 **1·2·2,5·5** (`buocTron`, nay công khai từ `du_bao_dong_tien.dart` — chép sang là bản thứ
