@@ -8,7 +8,7 @@
 > **Nguồn:** `docs/AI_EDGE_FEATURE.md` mục **10** (bản chất mảng AI, mười tiêu chí, bốn
 > tầng chiều ghi) và mục **11** (bản đồ khảo sát). Đọc hai mục ấy **trước** khi bắt đầu.
 
-**Viết:** 2026-09-21. **Trạng thái:** chặng 0 ✅ và việc 1.1 ✅ xong (2026-09-21); từ 1.2 trở đi chưa bắt đầu.
+**Viết:** 2026-09-21. **Trạng thái:** chặng 0 ✅, việc 1.1 ✅ và 1.2 ✅ xong (2026-09-21); từ 1.3 trở đi chưa bắt đầu.
 
 ---
 
@@ -145,7 +145,7 @@ không đụng giao diện. Ba điều lượt này học được, ghi đủ �
   Bản sai có chủ ý lộ ra điều đó — ca hành vi đầu tiên viết cho C4 **vẫn xanh** khi chưa
   neo gì. Đừng viết ca hành vi cho C4.
 
-## 1.2 Ví chọn sẵn theo danh mục
+## 1.2 Ví chọn sẵn theo danh mục — ✅ XONG 2026-09-21
 
 **Vấn đề:** `chonViChonSan` chọn **ví mặc định**, giống nhau mọi lúc — không theo danh
 mục, không theo giờ. Thói quen thật có mẫu (ăn uống → tiền mặt, mua sắm → ví ngân hàng).
@@ -175,6 +175,20 @@ giao dịch lẻ cũng đổi ví chọn sẵn, và người dùng thấy ví nh
 **Ca test bắt buộc:** 9/10 giao dịch Ăn uống dùng ví Tiền mặt → chọn Tiền mặt; 3 giao
 dịch → dưới ngưỡng, giữ ví mặc định; 5 giao dịch chia 3–2 → dưới tỉ lệ áp đảo, giữ mặc
 định; `viHayDung == null` → **y hệt hành vi hôm nay**.
+
+✅ **Làm xong 2026-09-21.** 15 ca mới ở **2 tệp mới** (`domain/vi_hay_dung_test.dart` 10 ca,
+`presentation/vi_theo_danh_muc_test.dart` 5 ca); bộ đầy đủ **3128/3128, 1 skip**;
+`flutter analyze` **26 issue, 0 error**; nghiệm thu máy ảo trên dữ liệu thật. Không đổi
+schema, không đổi payload. Chi tiết ở mục **11.5 (2)** `AI_EDGE_FEATURE.md`.
+
+⚠️ **Chữ ký kế hoạch phác ở trên là SAI và tôi đã không theo.** `chonViChonSan` chạy lúc
+**mở trang**, khi chưa có danh mục nào để tra — nhét `viHayDung` vào đó thì tham số không
+bao giờ dùng được. Luật mới nằm ở tệp riêng `domain/vi_hay_dung.dart` và trang gọi nó
+trong `_chonDanhMuc`. `chonViChonSan` **giữ nguyên không sửa một dòng**.
+
+⚠️ Hai con số "đề nghị" của kế hoạch giữ nguyên (**5** giao dịch, **60 %**), nhưng tỉ lệ
+là **vượt** chứ không **chạm** — chính ví dụ của kế hoạch đòi thế: 3 trên 5 đúng bằng 0,6
+mà kế hoạch xếp nó vào nhóm "giữ mặc định".
 
 ## 1.3 Gói số cho HOÁ ĐƠN ⭐ (tệp mẫu cho 1.4 và 1.5)
 

@@ -739,7 +739,7 @@ Biết được là nhờ **bản sai có chủ ý** — ca hành vi đầu tiê
 neo gì cả. Cùng họ bẫy **G43**: ca test phải đòi KẾT QUẢ, không chỉ đòi vắng mặt thứ mình
 nghĩ tới.
 
-#### ⭐ (2) Ví chọn sẵn theo ngữ cảnh
+#### ✅ (2) Ví chọn sẵn theo ngữ cảnh — **XONG 2026-09-21**
 
 `chonViChonSan` (`transaction/domain/vi_chon_san.dart`) chọn **ví mặc định**, rơi về ví
 đầu danh sách — **giống nhau mọi lúc**, không theo danh mục, không theo giờ.
@@ -748,6 +748,39 @@ Thói quen thật thì có mẫu: ăn uống trả tiền mặt, mua sắm onlin
 bằng **đếm tần suất** (*"danh mục Ăn uống → 9/10 lần dùng ví Tiền mặt"*), cùng loại phép
 tính với `suggestAmount`. Giảm **một cú chạm mỗi lần nhập giao dịch** — mà nhập giao dịch
 là việc làm nhiều nhất trong app.
+
+✅ **Đã làm 2026-09-21.** Luật thuần ở `transaction/domain/vi_hay_dung.dart`
+(`demViTheoDanhMuc` → `viHayDungCho` → `viHayDungTheoDanhMuc`), trang Thêm giao dịch nạp
+bảng một lần lúc mở rồi chỉ **tra bảng** khi người dùng chọn danh mục.
+
+⚠️ **Kế hoạch phác là thêm tham số `viHayDung` vào `chonViChonSan` — làm thế là SAI**, và
+lý do đáng nhớ: `chonViChonSan` chạy lúc **mở trang**, khi chưa có danh mục nào để tra.
+Luật mới phải chạy ở `_chonDanhMuc`, tức một câu hỏi khác (*"vừa chọn danh mục này thì ví
+nào?"*) nên là một hàm khác, không phải tham số của hàm cũ.
+
+**Ba cửa chặn, thiếu cửa nào cũng hỏng theo một kiểu riêng:**
+
+| Cửa | Vì sao |
+|---|---|
+| chưa đủ **5** giao dịch cùng danh mục | ví nhảy theo một giao dịch lẻ còn tệ hơn ví mặc định đứng yên |
+| ví dẫn đầu không **vượt 60 %** | 3–2 gần như tung đồng xu; đòi *vượt* chứ không *chạm*, vì 3/5 đúng bằng 0,6 |
+| người dùng **đã tự đặt ví**, hoặc đang **sửa** giao dịch | phép đoán không bao giờ đè lên lựa chọn cố ý; ở chế độ sửa, ví quyết định **ví nào bị trừ tiền** |
+
+⚠️ **Hai ca test xanh ngay từ đầu, và bản sai lộ ra MỘT trong hai canh nhầm chỗ:** ca
+"chế độ sửa" bản đầu chỉ mở trang rồi xem ví — nó xanh cả khi bỏ **sạch** hai cửa cuối,
+vì ở chế độ sửa danh mục đặt thẳng trong `initState` chứ không đi qua `_chonDanhMuc`. Ca
+đúng phải **đổi danh mục** khi đang sửa. Cùng họ bẫy **G43**.
+
+**Nghiệm thu máy ảo trên dữ liệu thật (tài khoản 10, 39 giao dịch):** bảng học được đúng
+**một** mục — `Di chuyển → Tiền mặt` (6/6). Mọi danh mục khác im vì chưa đủ mẫu, trong đó
+**Giáo dục** có 2 giao dịch **đều ở ví `test`** — chạm vào nó trên máy ảo, ví thanh toán
+**giữ nguyên Tiền mặt**, tức ngưỡng mẫu chạy đúng ngoài đời. ⚠️ **15/39 giao dịch bị bỏ**
+vì trống danh mục hoặc trống ví — cùng con số "38 % dữ liệu mù" mà chặng 3.1 nhắm tới.
+
+⚠️ **Điều KHÔNG nghiệm thu được, phải nói ra:** trên tài khoản ấy ví mặc định *cũng là*
+Tiền mặt, nên phép **đổi ví** không có cách nào hiện ra. Chiều dương chỉ được phủ bởi
+widget test; muốn thấy thật thì cần một tài khoản có ≥ 5 giao dịch cùng danh mục ở một ví
+**khác** ví mặc định.
 
 #### (3) Ngưỡng cảnh báo ngân sách 70 % / 90 %
 

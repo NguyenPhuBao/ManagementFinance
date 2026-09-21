@@ -22,6 +22,7 @@ import '../../../../features/category/data/repositories/category_management_repo
 import '../../../../features/category/data/services/category_suggestion_engine.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../domain/vi_chon_san.dart';
+import '../../domain/vi_hay_dung.dart';
 import '../../data/models/transaction_entity.dart';
 import '../bloc/transaction_bloc.dart';
 import '../bloc/transaction_event.dart';
@@ -49,6 +50,12 @@ class AddTransactionPage extends StatefulWidget {
   final int? idaccount;
   final CategoryManagementRepository? categoryRepository;
   final List<Wallet>? wallets;
+  /// Bảng `categoryId → walletId` học từ lịch sử (`domain/vi_hay_dung.dart`).
+  ///
+  /// `null` → trang tự đọc từ SQLite. Ca test tiêm thẳng bảng để khỏi dựng CSDL,
+  /// đúng khuôn [wallets].
+  final Map<String, String>? viHayDung;
+
   final CategorySuggestionEngine suggestionEngine;
   final TransactionBloc? transactionBloc;
 
@@ -76,6 +83,7 @@ class AddTransactionPage extends StatefulWidget {
     this.initial,
     this.budgetLookup,
     this.huongBanDau,
+    this.viHayDung,
   });
 
   @override
@@ -97,6 +105,17 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   String _amountString = "0";
 
   List<Wallet> _wallets = [];
+  /// Bảng ví hay dùng, rỗng khi chưa đủ căn cứ hoặc chưa nạp xong.
+  Map<String, String> _viHayDung = const {};
+
+  /// Người dùng đã tự tay đặt ví nguồn trong lượt này chưa.
+  ///
+  /// ⚠️ Chốt quan trọng nhất của chặng 1.2: một phép đoán từ lịch sử **không
+  /// bao giờ** được đè lên lựa chọn người dùng vừa làm. Thiếu cờ này thì chọn
+  /// ví rồi chọn danh mục sẽ thấy ví tự nhảy về chỗ khác — và người dùng thôi
+  /// tin ô chọn ví, phải kiểm nó mỗi lần ghi.
+  bool _nguoiDungDaChonVi = false;
+
   Wallet? _selectedWallet;
   Wallet? _destinationWallet;
   Category? _selectedCategory;
@@ -146,6 +165,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     }
     _noteController.addListener(_onNoteChanged);
     _loadWallets();
+    _loadViHayDung();
   }
 
   /// Chọn sẵn ví nguồn và ví đích theo cờ "Ví mặc định".
@@ -259,6 +279,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   void _chonDanhMuc(Category category) {
     setState(() {
       _selectedCategory = category;
+      _apDungViHayDung(category);
       _suggestion = null;
       final laVayNo = isDebtClassify(category.classify);
       _debtDirection = laVayNo ? suggestDebtDirection(category.name) : null;
@@ -267,6 +288,49 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
           ? (_debtDirection ?? 'chi')
           : (category.classify == 'thu' ? 'thu' : 'chi');
     });
+  }
+
+  /// Đổi ví chọn sẵn sang ví người dùng **hay dùng** cho [category].
+  ///
+  /// Ba cửa chặn, thiếu cửa nào cũng hỏng theo một kiểu riêng:
+  /// - **đang sửa** → ví của giao dịch đã ghi là sự thật, phép đoán không có
+  ///   quyền chen vào;
+  /// - **người dùng đã tự đặt ví** → lựa chọn cố ý thắng phép đoán;
+  /// - **tra không thấy** → `null` nghĩa là *chưa biết*, phải **giữ nguyên** ví
+  ///   đang có chứ không đổi sang ví mặc định hay ví đầu danh sách.
+  ///
+  /// Gọi trong `setState` của [_chonDanhMuc] nên tự nó không `setState`.
+  void _apDungViHayDung(Category category) {
+    if (_editing != null || _nguoiDungDaChonVi) return;
+    final viId = _viHayDung[category.id];
+    if (viId == null) return;
+    for (final w in _wallets) {
+      if (w.id == viId) {
+        _selectedWallet = w;
+        return;
+      }
+    }
+  }
+
+  /// Dựng bảng ví hay dùng từ lịch sử giao dịch của chính tài khoản này.
+  ///
+  /// Một lượt đọc lúc mở trang, rồi [_chonDanhMuc] chỉ tra bảng — nó chạy trong
+  /// `setState` nên không chờ được `await`.
+  Future<void> _loadViHayDung() async {
+    final tiem = widget.viHayDung;
+    if (tiem != null) {
+      _viHayDung = tiem;
+      return;
+    }
+    // Ca test tiêm sẵn `wallets`; khi ấy không đụng SQLite, đúng như đường ví.
+    if (widget.wallets != null) return;
+    final userIdAccount = _accountId();
+    if (userIdAccount == null) return;
+    final txs = await sl<AppDatabase>().transactionDao.getAll(userIdAccount);
+    final bang = viHayDungTheoDanhMuc(demViTheoDanhMuc([
+      for (final t in txs) (categoryId: t.categoryId, walletId: t.walletId),
+    ]));
+    if (mounted) setState(() => _viHayDung = bang);
   }
 
   /// Chạm một đoạn Chi tiêu / Thu nhập / Chuyển khoản.
@@ -406,6 +470,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                           _destinationWallet = wallet;
                         } else {
                           _selectedWallet = wallet;
+                          _nguoiDungDaChonVi = true;
                         }
                       });
                       Navigator.pop(ctx);
