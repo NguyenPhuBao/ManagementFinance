@@ -381,9 +381,12 @@ class _TransactionPageState extends State<TransactionPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildSummaryColumn('Thu nhập', CurrencyFormatter.formatIncome(totalIncome), AppColors.income),
+          // `formatCoDau` chứ không `formatIncome`/`formatExpense`: kỳ rỗng là
+          // ca THƯỜNG từ khi trang xem được năm đơn vị, và số 0 không mang dấu
+          // (cột "Thu net" ngay bên cạnh vốn đã theo luật ấy).
+          _buildSummaryColumn('Thu nhập', CurrencyFormatter.formatCoDau(totalIncome, thu: true), AppColors.income),
           Container(width: 1, height: 36, color: AppColors.outlineVariant.withValues(alpha: 0.4)),
-          _buildSummaryColumn('Chi tiêu', CurrencyFormatter.formatExpense(totalExpense), AppColors.error),
+          _buildSummaryColumn('Chi tiêu', CurrencyFormatter.formatCoDau(totalExpense, thu: false), AppColors.error),
           Container(width: 1, height: 36, color: AppColors.outlineVariant.withValues(alpha: 0.4)),
           _buildSummaryColumn(
             'Thu net',
@@ -441,7 +444,9 @@ class _TransactionPageState extends State<TransactionPage> {
           Text(
             filtered
                 ? 'Không có giao dịch nào khớp bộ lọc'
-                : 'Chưa có giao dịch nào trong tháng này',
+                // "kỳ này" chứ không "tháng này": trang thôi khoá theo tháng từ
+                // 2026-09-21, và header ngay trên đã nói kỳ nào.
+                : 'Chưa có giao dịch nào trong kỳ này',
             style: const TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w500,
