@@ -1260,6 +1260,96 @@ void main() {
       expect(find.text('Top 5 khoản chi'), findsOneWidget);
     });
 
+    // ── Khối Số liệu nhanh tự ẩn khi không có gì để nói ────────────────────
+    //
+    // Lượt soát 2026-09-21 ("khối nào chưa tự ẩn khi rỗng") tìm ra đây là khối
+    // **duy nhất** của trang không có chốt nào — không ở `_than`, cũng không
+    // trong chính widget. Mọi khối khác đều tự ẩn.
+    //
+    // Cả **ba** chỉ số của nó đều nói về CHI, nên một kỳ chỉ có thu cho ra một
+    // thẻ gồm `0 đ` và hai dấu `—`: chiếm chỗ, không mang tin nào. Kỳ như thế
+    // **không** rơi vào nhánh `thongKe.rong` (vốn đòi thu == 0 **và** chi == 0),
+    // nên nó đi thẳng vào thân trang.
+
+    testWidgets('kỳ chỉ có thu: khối Số liệu nhanh tự ẩn', (tester) async {
+      await moCao(tester);
+      await phat(
+        tester,
+        _tk(
+          thu: 5000000,
+          chi: 0,
+          soLieu: const SoLieuNhanh(
+            chiMoiNgay: 0,
+            ngayChiNhieuNhat: null,
+            chiNgayNhieuNhat: 0,
+            khoanChiLonNhat: null,
+          ),
+        ),
+      );
+
+      expect(
+        find.text('Số liệu nhanh'),
+        findsNothing,
+        reason: 'ba chỉ số đều về chi; kỳ không có khoản chi nào thì thẻ chỉ '
+            'còn "0 đ" và hai dấu "—"',
+      );
+      expect(
+        find.text('Tổng thu'),
+        findsOneWidget,
+        reason: 'ĐÒI KẾT QUẢ: phần còn lại của trang phải nguyên vẹn. Thiếu vế '
+            'này thì một bản sai ẩn nhầm cả thân trang cũng làm ca trên xanh',
+      );
+    });
+
+    // Cùng họ với hai lỗi đã sửa trước đó — bảng "Phân bổ theo ví"
+    // (2026-09-15) và thẻ tổng của trang Sổ giao dịch (2026-09-21). Đây là chỗ
+    // thứ BA: thẻ tổng của trang Phân tích **nối dấu bằng tay**
+    // (`'-${_dong(...)}'`) thay vì đi qua `formatCoDau`, nên kỳ không có khoản
+    // chi nào in ra `-0 đ` — một con số âm bằng không.
+    //
+    // Máy ảo bắt được ngày 2026-09-21, trong chính lượt nghiệm thu khối Số
+    // liệu nhanh: dựng được kỳ "chỉ có thu" thì cả hai lỗi cùng hiện ra một
+    // lúc. Bài học: một hàm sinh ra để dẹp một bẫy chỉ dẹp được những chỗ đã
+    // gọi nó.
+    testWidgets('kỳ không có khoản chi: thẻ tổng in "0 đ", không phải "-0 đ"',
+        (tester) async {
+      await moCao(tester);
+      await phat(tester, _tk(thu: 5000000, chi: 0));
+
+      expect(
+        find.text('-0 đ'),
+        findsNothing,
+        reason: 'số 0 không mang dấu — "-0 đ" đọc như một khoản chi',
+      );
+      expect(
+        find.text('0 đ'),
+        findsWidgets,
+        reason: 'ĐÒI KẾT QUẢ: thẻ Tổng chi vẫn phải hiện con số 0 trần; thiếu '
+            'vế này thì một bản sai giấu hẳn thẻ cũng làm kỳ vọng trên xanh',
+      );
+    });
+
+    testWidgets('chỉ cần MỘT chỉ số có gì để nói là khối vẫn hiện',
+        (tester) async {
+      await moCao(tester);
+      // `chiMoiNgay` khác 0 trong khi hai trường kia `null` — đúng hình dạng
+      // `tkDayDu()`. Chốt phải đòi **cả ba** cùng rỗng: đòi mỗi hai `null` là
+      // giấu mất một con số trung bình có thật.
+      await phat(
+        tester,
+        _tk(
+          soLieu: const SoLieuNhanh(
+            chiMoiNgay: 41666.67,
+            ngayChiNhieuNhat: null,
+            chiNgayNhieuNhat: 0,
+            khoanChiLonNhat: null,
+          ),
+        ),
+      );
+
+      expect(find.text('Số liệu nhanh'), findsOneWidget);
+    });
+
     testWidgets('⚠️ khối dòng tiền LUÔN kèm câu nói rõ nó là số suy ngược',
         (tester) async {
       await moCao(tester);

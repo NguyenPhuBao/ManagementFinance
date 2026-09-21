@@ -461,7 +461,7 @@ họ gọi tên lại.**
 3. **E6** — nhắc "ví âm" hằng ngày: giữ / đổi hằng tuần / chỉ báo khi **chuyển** sang âm.
    ⚠️ Khoá chống trùng sống **90 ngày**, nên bỏ ngày khỏi khoá là **im 90 ngày** kể cả
    khi ví âm lại.
-4. **E2** — mục lục hoặc tab con cho trang Phân tích (13 khối). Đụng bố cục → **vẽ Stitch
+4. **E2** — mục lục hoặc tab con cho trang Phân tích (15 loại khối — đếm bằng máy 2026-09-21). Đụng bố cục → **vẽ Stitch
    trước**, brainstorming trước.
 
 **Không bị chặn, chỉ chưa làm:**

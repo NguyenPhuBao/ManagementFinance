@@ -444,7 +444,12 @@ class _KhoiTong extends StatelessWidget {
             Expanded(
               child: _TheTong(
                 title: 'Tổng thu',
-                amount: '+${_dong(tk.tong.thu)}',
+                // `formatCoDau` chứ không nối dấu bằng tay: **số 0 không mang
+                // dấu**. Kỳ không có khoản thu (hoặc chi) nào là ca thường từ
+                // khi trang xem được năm đơn vị, và `-0 đ` đọc như một con số
+                // âm bằng không. Cùng luật đã áp cho bảng "Phân bổ theo ví"
+                // (2026-09-15) và thẻ tổng trang Sổ giao dịch (2026-09-21).
+                amount: CurrencyFormatter.formatCoDau(tk.tong.thu, thu: true),
                 diff: _soVoiNen(
                     phanTramSoVoi(tk.tong.thu, nen.nen.thu), nen.nhan),
                 icon: Icons.arrow_upward,
@@ -455,7 +460,7 @@ class _KhoiTong extends StatelessWidget {
             Expanded(
               child: _TheTong(
                 title: 'Tổng chi',
-                amount: '-${_dong(tk.tong.chi)}',
+                amount: CurrencyFormatter.formatCoDau(tk.tong.chi, thu: false),
                 diff: _soVoiNen(
                     phanTramSoVoi(tk.tong.chi, nen.nen.chi), nen.nhan),
                 icon: Icons.arrow_downward,
@@ -2047,9 +2052,8 @@ class _KhoiDongTien extends StatelessWidget {
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.centerRight,
                       child: Text(
-                        dt.thayDoi >= 0
-                            ? CurrencyFormatter.formatIncome(dt.thayDoi)
-                            : CurrencyFormatter.formatExpense(dt.thayDoi),
+                        CurrencyFormatter.formatCoDau(dt.thayDoi,
+                            thu: dt.thayDoi >= 0),
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
@@ -2334,6 +2338,25 @@ class _KhoiSoLieuNhanh extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = tk.soLieu;
+
+    // Cả BA chỉ số của khối này đều nói về **chi**, nên một kỳ không có khoản
+    // chi nào cho ra một thẻ gồm `0 đ` và hai dấu `—`: chiếm chỗ, không mang
+    // tin nào. Kỳ như thế **không** rơi vào nhánh `thongKe.rong` — nhánh ấy đòi
+    // `thu == 0` **và** `chi == 0` — nên nó đi thẳng vào thân trang.
+    //
+    // ⚠️ Phải đòi **cả ba** cùng rỗng, không chỉ hai trường `null`:
+    // `chiMoiNgay` khác 0 là một con số có thật và đáng nói, kể cả khi kỳ không
+    // xác định được ngày chi nhiều nhất.
+    //
+    // ⚠️ Và phép chốt đọc đúng `s` — chính thứ đang được vẽ — chứ không đọc
+    // `tk.tong.chi`: hai vế của cùng một câu mà lấy từ hai chỗ khác nhau thì có
+    // ngày chúng nói ngược nhau, im lặng.
+    if (s.chiMoiNgay == 0 &&
+        s.ngayChiNhieuNhat == null &&
+        s.khoanChiLonNhat == null) {
+      return const SizedBox.shrink();
+    }
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -2854,7 +2877,8 @@ class _KhoiTopChi extends StatelessWidget {
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.centerRight,
                         child: Text(
-                          CurrencyFormatter.formatExpense(-ds[i].soTien),
+                          CurrencyFormatter.formatCoDau(-ds[i].soTien,
+                              thu: false),
                           maxLines: 1,
                           style: const TextStyle(
                             fontSize: 14,

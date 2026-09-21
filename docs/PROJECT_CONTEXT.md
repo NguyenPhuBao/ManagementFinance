@@ -596,6 +596,42 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-21)
 
+### ✅ Soát "khối Phân tích nào chưa tự ẩn khi rỗng" (2026-09-21)
+
+Mục **3.34** `docs/ANALYTICS_FEATURE.md`. Đây là **bản rẻ tiền của "AI chọn khối
+đáng xem"** (bảng mục 11 `AI_EDGE_FEATURE.md`): trước khi xếp hạng khối nào đáng
+đọc, các khối phải tự biết im khi chẳng có gì để nói đã.
+
+**Kết quả: 15 loại khối (16 chỗ dựng — `_KhoiVayNo` dùng hai lần; đếm bằng máy 2026-09-21), đúng MỘT khối không có chốt nào** — `_KhoiSoLieuNhanh`. Mọi
+khối khác đều tự ẩn, bằng chốt ngoài ở `_than()` hoặc chốt trong chính widget.
+Cả **ba** chỉ số của khối ấy đều nói về **chi**, nên một kỳ không có khoản chi
+nào cho ra một thẻ gồm `0 đ` và **hai dấu `—`**.
+
+⚠️ **Ca ấy đạt tới được và KHÔNG rơi vào nhánh `thongKe.rong`** — nhánh ấy đòi
+`thu == 0` **và** `chi == 0`, nên một kỳ chỉ có thu đi thẳng vào thân trang.
+
+**Nghiệm thu máy ảo dựng đúng trạng thái ấy**: thêm một khoản `Lương` hôm nay,
+xem kỳ `21/09 – 21/09`, rồi **xoá khoản ấy qua giao diện** để cờ xoá đi đúng
+đường đồng bộ (toast *"Đã đồng bộ xong"*, số liệu trở về đúng mức trước khi
+thử). Thấy tận mắt: khối biến mất, và donut tự rơi về nhóm **Thu** vì nhóm Chi
+rỗng.
+
+**Và dựng được trạng thái ấy thì lỗi thứ hai cùng hiện ra**: thẻ *Tổng chi* của
+trang nối dấu **bằng tay** nên in `-0 đ` — chỗ **thứ ba** của bẫy **4.13**, sau
+bảng "Phân bổ theo ví" (2026-09-15) và thẻ tổng trang Sổ giao dịch (sáng cùng
+ngày). Cả ba đều do **máy ảo** bắt, không phải bộ test.
+
+**Rồi phép quét mà tài liệu vừa khuyên, khi chạy thật, ra BỐN chỗ nữa** — cùng
+đúng một khuôn `cond ? formatIncome(x) : formatExpense(x)`, vốn là nghĩa đen của
+`formatCoDau(x, thu: cond)` trừ ca 0. Nên luật nay **đóng bằng máy**:
+`test/core/utils/dau_tien_mot_noi_test.dart`, **test quét `lib/` thứ mười bốn**,
+cấm mọi lời gọi hai hàm ấy ngoài `currency_formatter.dart`. ⚠️ Nó **khác** test
+quét thứ mười một: cái kia canh **ký hiệu** `đ`, cái này canh **dấu**.
+
+`flutter test` **3210/3210, 1 skip**; analyze **26 issue, 0 error**; bộ
+`analytics` **21 tệp / 579 test**. **Schema không đổi**, vẫn v24; **payload
+không đổi**; **không đụng repository**.
+
 ### ✅ Nghiệm thu máy ảo 411dp cho lát sổ giao dịch (2026-09-21)
 
 **Task 5 Step 1** của `docs/superpowers/plans/2026-09-21-so-giao-dich-pham-vi-ky-va-loc-tien.md`

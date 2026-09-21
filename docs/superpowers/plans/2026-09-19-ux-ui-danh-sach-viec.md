@@ -78,7 +78,7 @@ mục 14 `PROJECT_CONTEXT.md`.
 | # | Việc | Bằng chứng | Cỡ |
 |---|---|---|---|
 | E1 ⏸ | Skeleton cho tab Phân tích — **chưa làm**: trạng thái tải là một khối giao diện mới, theo nếp phải vẽ vào Stitch (màn `c8567243…`) trước | ảnh `05_analytics.png`; trang 3874 dòng, 7 nguồn stream | M |
-| E2 | Mục lục / tab con hoặc thu gọn khối cho trang Phân tích (13 khối, cuộn rất dài) | `analytics_page.dart` | ⚑ ❓ L |
+| E2 | Mục lục / tab con hoặc thu gọn khối cho trang Phân tích (15 loại khối, cuộn rất dài — đếm bằng máy 2026-09-21; con số 13 ghi ban đầu là đếm bằng mắt) | `analytics_page.dart` | ⚑ ❓ L |
 | E3 ✅ | Chặn Back ở Trang chủ thoát app ngay: "Nhấn lần nữa để thoát" — `ThoatHaiLan` bọc `MainShell`, tab khác về Trang chủ; toast qua kênh mới `ThongBaoNhanh` (nguồn thứ tư của `AppToast`, nền cho E4). ⚠️ Máy ảo lật thêm: predictive back (targetSdk 36) làm Back ở tab Phân tích đóng activity — tắt bằng `enableOnBackInvokedCallback="false"`, test GoRouter thật `main_shell_back_test.dart` | `grep PopScope` = 0 | S |
 | E4 ⏸ | Thay 176 `SnackBar` bằng toast — **kênh đã có** (`ThongBaoNhanh` → `AppToast`, từ E3); phần thay dần chưa làm vì đụng hàng trăm khẳng định `find.byType(SnackBar)`/`find.text` trong test (goal 54, bill 36, transaction 22…) | `grep SnackBar` = 176 | M (một widget chung + thay dần) |
 | E5 ✅ | Thẻ tổng tab Ngân sách tô thanh **xanh** ở 90% trong khi thẻ danh mục ngay dưới tô **đỏ** cùng con số — nay cùng thang qua `budgetHealthOfRatio` | ảnh `08_budget.png`; `budget_tabs_view.dart` | S |
@@ -143,7 +143,7 @@ Cần người dùng chốt trước (đừng tự quyết):
 4. **E6** nhắc "ví âm" hằng ngày — giữ hằng ngày / đổi hằng tuần / chỉ báo khi
    *chuyển* sang âm. Khoá chống trùng sống 90 ngày, nên bỏ ngày khỏi khoá là im
    90 ngày kể cả khi ví âm lại.
-5. **E2** mục lục hoặc tab con cho trang Phân tích (13 khối) — đụng bố cục,
+5. **E2** mục lục hoặc tab con cho trang Phân tích (15 loại khối — đếm bằng máy 2026-09-21) — đụng bố cục,
    **vẽ Stitch trước** (màn `c8567243…`), brainstorming trước.
 
 Không bị chặn, chỉ chưa làm:

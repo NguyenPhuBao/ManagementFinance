@@ -1,6 +1,6 @@
 # Trang Phân tích — thiết kế, lý do, và những cái bẫy
 
-**Cập nhật:** **2026-09-18** (mục **3.33** — **trang Xuất báo cáo dùng chung bộ chọn kỳ với trang Phân tích**: nay xuất được theo **tuần** và **năm**, thứ bốn chip cứng cũ không làm được; `PhamViThoiGian` và `khoangCuaPhamVi` **bỏ hẳn**. Người dùng chốt **không** đưa khối nào của trang Phân tích vào tệp, sau khảo sát bảy app thị trường: **0/7** app xuất cả màn phân tích ra tệp, và **6/7** chỉ xuất CSV thuần dữ liệu. ⚠️ Kèm **`nhanRong`** — hàm nhãn **thứ hai** cho chỗ không chật, sinh ra từ một lỗi **chỉ máy ảo thấy**: nút hiện "Tuần 37" trần trong khi dòng vừa chạm nói "Tuần 37 (07/09 – 13/09)". Nó cũng thay một bản chép tay trong `ChonPhamViSheet`; mục **3.32** — **kỳ rỗng thì tệp xuất thôi in khối Ngân sách**, đóng **G44**: người dùng chốt chiều *"tệp theo màn"*, và luật nay là vị từ thuần `inKhoiTheoKy` mà **ba** chỗ cùng đọc — CSV, PDF, màn Xem trước. ⚠️ Lượt sửa **đính chính** điều lượt nghiệm thu 3.31 tưởng là đúng: màn Xem trước **không** giấu "mọi khối" khi kỳ rỗng, nó vẫn hiện đầu báo cáo, khối Dòng tiền và ba thẻ tổng — hai bên lệch **đúng một khối**. ⚠️ Và ca test cho nhánh **PDF** phải so **độ dài tệp** chứ không tìm chuỗi, vì PDF **nén** luồng nội dung; một ca `contains(...)` sẽ xanh trên cả bản sai) · **2026-09-17** (mục **3.31** — **ba khối cuối vào tệp xuất**: so với kỳ trước, số liệu nhanh, top 5 khoản chi; kèm ⚠️ một lỗi glyph **có từ 2026-09-09** mà lượt này mới bắt được — Roboto nhúng không có `→` `▲` `▼`, gói `pdf` bỏ chúng đi **im lặng**, nên mọi tệp PDF app từng xuất đều mất mũi tên ở dòng dòng tiền; nay có ca test quét glyph canh, và mục **3.17** đã được đính chính; bảng khảo sát lần hai ở mục **3.25** nay **ĐÓNG** — mục cuối là **#7 cảnh báo bất thường**, làm xong cùng ngày nhưng nằm ở `NOTIFICATION_FEATURE.md` mục **5f** chứ không ở trang này; mục **3.30** — **tổng tài sản theo thời gian**, mục #5 của khảo sát lần hai, và **đổi tên** khỏi "tài sản ròng" vì app không có mô hình công nợ; kèm vế **thứ ba** của bẫy **4.21** — `daiTrucDuBao` quá rộng với dải bắt đầu từ 0) · 2026-09-15 (mục **3.20** — **P1: phạm vi thời gian**; mục **3.21** — **P2**: bốn khối mượn từ trang Xuất báo cáo; mục **3.22** — **A8 #4 và #5**: hai biểu đồ cột vay/nợ; **G40 đóng** — trang Xem trước báo cáo lệch cột số tiền ở **sáu** chỗ, đo được 93px, xem bẫy **4.19**; **nhãn quý rút thành `Q3 2026`** để ô header thôi cụt, xem mục **3.20**; mục **3.23** — **A8 #10**: thác nước "Tiền đi đâu", kèm vạch trung bình trên từng cột chi; mục **3.24** — **A8 #8**: dòng tiền tự do, và bẫy **4.20** — `rutGon` từng in `-0` ở nhãn trục; mục **3.25** — **khảo sát app thị trường lần hai**, chốt làm tỷ lệ tiết kiệm và dự báo dòng tiền, bỏ hai mục thiếu trường đối tác; mục **3.26** — **tỉ lệ tiết kiệm**) · **2026-09-16** (mục **3.27** — **dự báo dòng tiền 30 ngày tới**, mục #4 của khảo sát; kèm bẫy **4.21** — khi nào trục từ 0, khi nào co, và vì sao bước phải tròn) · bản trước 2026-09-14 (mục **3.19** — A8 #3, #7: cơ cấu theo danh mục với ba chip nhóm, và xu hướng tới 5 danh mục cùng lúc; bản thi công **lần hai**, #2 đã bỏ)
+**Cập nhật:** **2026-09-21** (mục **3.34** — **soát "khối nào chưa tự ẩn khi rỗng"**, bản rẻ tiền của *"AI chọn khối đáng xem"*: 15 loại khối (16 chỗ dựng — `_KhoiVayNo` dùng hai lần; đếm bằng máy 2026-09-21), đúng **MỘT** khối không có chốt nào — `_KhoiSoLieuNhanh`, mà cả **ba** chỉ số của nó đều nói về **chi**, nên kỳ chỉ có thu cho ra một thẻ gồm `0 đ` và hai dấu `—`. ⚠️ Ca ấy **đạt tới được** và **không** rơi vào nhánh `thongKe.rong` (nhánh ấy đòi `thu == 0` **và** `chi == 0`). Dựng được trạng thái ấy trên máy ảo thì **lỗi thứ hai cùng hiện ra**: thẻ *Tổng chi* nối dấu bằng tay nên in `-0 đ` — chỗ **thứ ba** của bẫy **4.13**. Và phép quét mà chính tài liệu vừa khuyên, khi **chạy thật**, ra **bốn** chỗ nữa cùng một khuôn `cond ? formatIncome : formatExpense` — nên luật nay đóng bằng máy: **test quét `lib/` thứ mười bốn** `dau_tien_mot_noi_test.dart`) · **2026-09-18** (mục **3.33** — **trang Xuất báo cáo dùng chung bộ chọn kỳ với trang Phân tích**: nay xuất được theo **tuần** và **năm**, thứ bốn chip cứng cũ không làm được; `PhamViThoiGian` và `khoangCuaPhamVi` **bỏ hẳn**. Người dùng chốt **không** đưa khối nào của trang Phân tích vào tệp, sau khảo sát bảy app thị trường: **0/7** app xuất cả màn phân tích ra tệp, và **6/7** chỉ xuất CSV thuần dữ liệu. ⚠️ Kèm **`nhanRong`** — hàm nhãn **thứ hai** cho chỗ không chật, sinh ra từ một lỗi **chỉ máy ảo thấy**: nút hiện "Tuần 37" trần trong khi dòng vừa chạm nói "Tuần 37 (07/09 – 13/09)". Nó cũng thay một bản chép tay trong `ChonPhamViSheet`; mục **3.32** — **kỳ rỗng thì tệp xuất thôi in khối Ngân sách**, đóng **G44**: người dùng chốt chiều *"tệp theo màn"*, và luật nay là vị từ thuần `inKhoiTheoKy` mà **ba** chỗ cùng đọc — CSV, PDF, màn Xem trước. ⚠️ Lượt sửa **đính chính** điều lượt nghiệm thu 3.31 tưởng là đúng: màn Xem trước **không** giấu "mọi khối" khi kỳ rỗng, nó vẫn hiện đầu báo cáo, khối Dòng tiền và ba thẻ tổng — hai bên lệch **đúng một khối**. ⚠️ Và ca test cho nhánh **PDF** phải so **độ dài tệp** chứ không tìm chuỗi, vì PDF **nén** luồng nội dung; một ca `contains(...)` sẽ xanh trên cả bản sai) · **2026-09-17** (mục **3.31** — **ba khối cuối vào tệp xuất**: so với kỳ trước, số liệu nhanh, top 5 khoản chi; kèm ⚠️ một lỗi glyph **có từ 2026-09-09** mà lượt này mới bắt được — Roboto nhúng không có `→` `▲` `▼`, gói `pdf` bỏ chúng đi **im lặng**, nên mọi tệp PDF app từng xuất đều mất mũi tên ở dòng dòng tiền; nay có ca test quét glyph canh, và mục **3.17** đã được đính chính; bảng khảo sát lần hai ở mục **3.25** nay **ĐÓNG** — mục cuối là **#7 cảnh báo bất thường**, làm xong cùng ngày nhưng nằm ở `NOTIFICATION_FEATURE.md` mục **5f** chứ không ở trang này; mục **3.30** — **tổng tài sản theo thời gian**, mục #5 của khảo sát lần hai, và **đổi tên** khỏi "tài sản ròng" vì app không có mô hình công nợ; kèm vế **thứ ba** của bẫy **4.21** — `daiTrucDuBao` quá rộng với dải bắt đầu từ 0) · 2026-09-15 (mục **3.20** — **P1: phạm vi thời gian**; mục **3.21** — **P2**: bốn khối mượn từ trang Xuất báo cáo; mục **3.22** — **A8 #4 và #5**: hai biểu đồ cột vay/nợ; **G40 đóng** — trang Xem trước báo cáo lệch cột số tiền ở **sáu** chỗ, đo được 93px, xem bẫy **4.19**; **nhãn quý rút thành `Q3 2026`** để ô header thôi cụt, xem mục **3.20**; mục **3.23** — **A8 #10**: thác nước "Tiền đi đâu", kèm vạch trung bình trên từng cột chi; mục **3.24** — **A8 #8**: dòng tiền tự do, và bẫy **4.20** — `rutGon` từng in `-0` ở nhãn trục; mục **3.25** — **khảo sát app thị trường lần hai**, chốt làm tỷ lệ tiết kiệm và dự báo dòng tiền, bỏ hai mục thiếu trường đối tác; mục **3.26** — **tỉ lệ tiết kiệm**) · **2026-09-16** (mục **3.27** — **dự báo dòng tiền 30 ngày tới**, mục #4 của khảo sát; kèm bẫy **4.21** — khi nào trục từ 0, khi nào co, và vì sao bước phải tròn) · bản trước 2026-09-14 (mục **3.19** — A8 #3, #7: cơ cấu theo danh mục với ba chip nhóm, và xu hướng tới 5 danh mục cùng lúc; bản thi công **lần hai**, #2 đã bỏ)
 **Trạng thái:** **mảng Phân tích đã xong cả 2a, 2b, 2c** (2026-09-09). Lát **2a** xong — mọi con số trên trang là số thật từ SQLite —
 lát **2b** xong (khối "Xu hướng 6 tháng" vẽ bằng `fl_chart`), lát **2c‑1** xong
 (trang Xuất báo cáo đọc ví/danh mục/thời gian thật rồi mở màn **Xem trước báo
@@ -1830,6 +1830,102 @@ byte**. Ca CSV thì đã đỏ sẵn trước khi sửa, với đúng dòng
 
 ---
 
+### 3.34 Soát "khối nào chưa tự ẩn khi rỗng" — một khối, và một lỗi đi kèm
+
+**Việc này là bản rẻ tiền của "AI chọn khối Phân tích đáng xem"** (bảng mục 11
+`AI_EDGE_FEATURE.md`): trước khi xếp hạng khối nào đáng đọc, các khối phải tự
+biết im khi chẳng có gì để nói đã. Làm ngày 2026-09-21.
+
+#### Kết quả soát: 15 loại khối (16 chỗ dựng — `_KhoiVayNo` dùng hai lần; đếm bằng máy 2026-09-21), đúng MỘT khối không có chốt nào
+
+Mọi khối của thân trang đều tự ẩn được khi rỗng, bằng một trong hai cách —
+chốt **ngoài** ở `_than()` (`dongTien != null`, `taiSan.isNotEmpty`,
+`theoVi.isNotEmpty`, `topChi.isNotEmpty`, `coVayNo(...)`, `donVi == thang`)
+hoặc chốt **trong** chính widget (`_KhoiDonut`, `_DanhSachDanhMuc`,
+`_KhoiXuHuong`, `_KhoiDongTienTuDo`, `_KhoiTongTaiSan`, `_KhoiLich`).
+
+Ngoại lệ duy nhất là **`_KhoiSoLieuNhanh`** — không chốt ngoài, không chốt
+trong. Cả **ba** chỉ số của nó đều nói về **chi** (*chi mỗi ngày · ngày chi
+nhiều nhất · khoản chi lớn nhất*), nên một kỳ không có khoản chi nào cho ra một
+thẻ gồm `0 đ` và **hai dấu `—`**: chiếm chỗ, không mang tin nào.
+
+⚠️ **Ca ấy đạt tới được, và không rơi vào nhánh `thongKe.rong`.** `rong` đòi
+`thu == 0` **và** `chi == 0`; một kỳ chỉ có thu thì `rong == false` nên nó đi
+thẳng vào thân trang. Nghiệm thu máy ảo dựng đúng trạng thái ấy (một khoản
+`Lương` hôm nay, kỳ `21/09 – 21/09`) và thấy tận mắt: khối biến mất, donut tự
+rơi về nhóm **Thu** vì nhóm Chi rỗng.
+
+**Chốt đặt trong widget**, cùng lối với `_KhoiDonut` và `_DanhSachDanhMuc`:
+
+```dart
+if (s.chiMoiNgay == 0 &&
+    s.ngayChiNhieuNhat == null &&
+    s.khoanChiLonNhat == null) {
+  return const SizedBox.shrink();
+}
+```
+
+⚠️ **Hai điều dễ làm sai ở chính ba dòng ấy:**
+
+- **Phải đòi CẢ BA cùng rỗng**, không chỉ hai trường `null`. Fixture `tkDayDu()`
+  của bộ test mang `chiMoiNgay = 41666.67` trong khi hai trường kia `null` —
+  một trạng thái không gặp ngoài đời, nhưng nó nêu đúng câu hỏi: một con số
+  trung bình khác 0 **là** thứ đáng nói, giấu nó đi là mất tin. Có ca test canh.
+- **Phép chốt đọc `s`** — chính thứ đang được vẽ — chứ không đọc `tk.tong.chi`.
+  Hai vế của cùng một câu mà lấy từ hai chỗ khác nhau thì có ngày chúng nói
+  ngược nhau, im lặng; cùng bài học với phép đếm quá hạn của khối Nhận xét
+  trang Hoá đơn.
+
+#### Lỗi đi kèm: thẻ tổng in `-0 đ` — chỗ thứ BA của cùng một bẫy
+
+Dựng được kỳ "chỉ có thu" thì **hai** lỗi cùng hiện ra một lúc. Thẻ *Tổng chi*
+của trang này nối dấu **bằng tay** — `amount: '-${_dong(tk.tong.chi)}'` — thay
+vì đi qua `CurrencyFormatter.formatCoDau`, nên kỳ không có khoản chi nào in ra
+`-0 đ`, một con số âm bằng không.
+
+Đây là lần thứ **ba** của cùng một bẫy (**4.13**): bảng "Phân bổ theo ví"
+(2026-09-15, chỗ hàm `formatCoDau` ra đời), thẻ tổng trang **Sổ giao dịch**
+(2026-09-21, sáng), và thẻ tổng trang **Phân tích** (2026-09-21, chiều).
+
+⚠️ **Bài học không phải "nhớ sửa chỗ này".** Một hàm viết ra để dẹp một bẫy
+**chỉ dẹp được những chỗ đã gọi nó**; chỗ nào còn tự nối dấu thì bẫy vẫn nguyên
+ở đó, và nó chỉ lộ ra khi có dữ liệu bằng 0 — thứ hiếm gặp cho tới khi một lát
+sau làm nó thành thường. Ở cả hai lần của 2026-09-21, thứ làm nó thành thường
+là **trang thôi khoá theo tháng**: lùi vài kỳ là gặp kỳ rỗng.
+
+#### Và rồi phép quét ấy tìm ra BỐN chỗ nữa
+
+Tài liệu vừa khuyên *"grep `formatIncome\|formatExpense` rồi hỏi ở mỗi chỗ số 0
+có tới được không"* — nên phép quét ấy được **chạy thật**, chứ không để lại một
+lời khuyên chưa kiểm. Nó ra **bốn** chỗ, cả bốn cùng đúng một khuôn:
+
+```dart
+cond ? CurrencyFormatter.formatIncome(x) : CurrencyFormatter.formatExpense(x)
+```
+
+Khuôn ấy là **đúng nghĩa đen** của `formatCoDau(x, thu: cond)`, chỉ khác ở ca 0.
+Hai chỗ là dòng *"Thay đổi trong kỳ"* của khối Dòng tiền (trang này **và** màn
+Xem trước — cùng một khối, hai bản chép tay), một chỗ là cột số tiền của danh
+sách thác nước, một chỗ là dòng danh mục của màn Xem trước. Ca 0 của *"Thay đổi
+trong kỳ"* đạt tới được bất cứ khi nào **thu đúng bằng chi** trong kỳ.
+
+Nên thay vì sửa bốn chỗ trong im lặng, luật được **đóng lại bằng máy**:
+`test/core/utils/dau_tien_mot_noi_test.dart` — **test quét `lib/` thứ mười
+bốn** — cấm mọi lời gọi `formatIncome` / `formatExpense` ngoài chính
+`currency_formatter.dart`. Nó đỏ với cả bốn chỗ, rồi xanh khi cả bốn về
+`formatCoDau`. Tệp có **danh sách được phép** kèm lý do, và một ca thứ hai canh
+cho danh sách ấy **không phình ra trong im lặng**.
+
+⚠️ Test quét ký hiệu tiền (`ky_hieu_tien_mot_noi_test.dart`, thứ mười một)
+**không** bắt được họ lỗi này — nó canh ký hiệu `đ`, không canh **dấu**. Hai
+luật gần nhau nhưng khác hẳn.
+
+**Test:** 3 ca ở `analytics_page_test.dart`, cộng **2** ca của test quét mới.
+Cả ba ca đầu **đòi kết quả chứ không chỉ đòi vắng mặt** — ca ẩn khối còn đòi
+`Tổng thu` vẫn hiện, ca `-0 đ` còn đòi `0 đ` có mặt; thiếu vế ấy thì một bản sai
+giấu hẳn thân trang cũng làm chúng xanh. **Không đổi schema, không thêm trường
+đồng bộ, không đụng repository.**
+
 ### 3.33 Trang Xuất báo cáo dùng chung bộ chọn kỳ với trang Phân tích
 
 **Không phải tính năng mới, mà là gộp hai bộ luật làm một.** Từ P1 (mục 3.20)
@@ -2021,14 +2117,24 @@ Một ví không phát sinh khoản thu nào hiện ra như lỗi định dạng
 `CurrencyFormatter.formatCoDau(soTien, thu: …)` — **định nghĩa duy nhất**, dùng
 nó thay vì tự viết lại vế `== 0`.
 
-⚠️ **Bẫy này TÁI PHÁT ở một mảng khác ngày 2026-09-21**, cũng do máy ảo bắt: thẻ
-tổng của trang **Sổ giao dịch** in `+0 đ` / `-0 đ` ở kỳ rỗng, trong khi cột *Thu
-net* ngay cạnh đã dùng `formatCoDau` nên hiện `0 đ` trần — **một thẻ, hai quy
-ước**. Bài học không phải "nhớ sửa chỗ này" mà là: **một hàm được viết ra để dẹp
+⚠️ **Bẫy này đã TÁI PHÁT HAI LẦN, cả hai trong ngày 2026-09-21, cả hai do máy ảo
+bắt.** Lần đầu ở thẻ tổng trang **Sổ giao dịch** (`+0 đ` / `-0 đ` ở kỳ rỗng,
+trong khi cột *Thu net* ngay cạnh đã dùng `formatCoDau` nên hiện `0 đ` trần —
+**một thẻ, hai quy ước**). Lần thứ hai ở **chính trang này**: thẻ *Tổng chi* nối
+dấu **bằng tay** (`'-${_dong(tk.tong.chi)}'`) nên kỳ không có khoản chi nào in
+ra `-0 đ` — xem mục **3.34**. Tính cả chỗ gốc, đây là **ba** chỗ.
+
+⚠️ **Bài học không phải "nhớ sửa chỗ này"** mà là: **một hàm được viết ra để dẹp
 một bẫy chỉ dẹp được những chỗ đã gọi nó**. Chỗ nào còn gọi thẳng `formatIncome`
-/ `formatExpense` thì bẫy vẫn nguyên ở đó, và nó chỉ lộ ra khi có dữ liệu bằng
-0 — thứ hiếm gặp cho tới khi một lát sau làm nó thành thường (ở đây là trang
-thôi khoá theo tháng, nên lùi vài kỳ là gặp kỳ rỗng).
+/ `formatExpense`, hoặc tự nối dấu vào chuỗi, thì bẫy vẫn nguyên ở đó — và nó
+chỉ lộ ra khi có dữ liệu bằng 0, thứ hiếm gặp **cho tới khi một lát sau làm nó
+thành thường**. Cả hai lần của 2026-09-21 đều do cùng một nguyên nhân ấy: trang
+thôi khoá theo tháng, nên lùi vài kỳ là gặp kỳ rỗng.
+
+⚠️ **Phép quét rẻ nhất khi nghi ngờ:** `grep` `formatIncome\|formatExpense` và
+`'-${` / `'+${` trên `lib/`, rồi hỏi ở mỗi chỗ *"số 0 có tới được đây không"*.
+Test quét `lib/` **không** bắt được kiểu này — `ky_hieu_tien_mot_noi_test.dart`
+canh ký hiệu `đ`, không canh **dấu**.
 
 **4.14 Khoản nạp mục tiêu kiểu CŨ được đếm là thu và chi thật.** Trên tài khoản
 thử có một cặp hàng `Type = 'Transaction'` ±500.000 mang ghi chú *"Tích lũy mục

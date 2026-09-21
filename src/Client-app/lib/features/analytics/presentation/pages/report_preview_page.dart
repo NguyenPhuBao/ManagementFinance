@@ -384,9 +384,8 @@ class ReportPreviewPage extends StatelessWidget {
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.centerRight,
                       child: Text(
-                        dt.thayDoi >= 0
-                            ? CurrencyFormatter.formatIncome(dt.thayDoi)
-                            : CurrencyFormatter.formatExpense(dt.thayDoi),
+                        CurrencyFormatter.formatCoDau(dt.thayDoi,
+                            thu: dt.thayDoi >= 0),
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
@@ -1091,9 +1090,7 @@ class ReportPreviewPage extends StatelessWidget {
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerRight,
               child: Text(
-                laThu
-                    ? CurrencyFormatter.formatIncome(d.soTien)
-                    : CurrencyFormatter.formatExpense(d.soTien),
+                CurrencyFormatter.formatCoDau(d.soTien, thu: laThu),
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
