@@ -8,7 +8,7 @@
 > **Nguồn:** `docs/AI_EDGE_FEATURE.md` mục **10** (bản chất mảng AI, mười tiêu chí, bốn
 > tầng chiều ghi) và mục **11** (bản đồ khảo sát). Đọc hai mục ấy **trước** khi bắt đầu.
 
-**Viết:** 2026-09-21. **Trạng thái:** chặng 0 ✅ xong (2026-09-21); chặng 1–5 chưa bắt đầu.
+**Viết:** 2026-09-21. **Trạng thái:** chặng 0 ✅ và việc 1.1 ✅ xong (2026-09-21); từ 1.2 trở đi chưa bắt đầu.
 
 ---
 
@@ -91,7 +91,7 @@ P1 **chỉ đo văn bản**. E2B đa phương thức (ảnh + âm thanh), nhưng
 
 Không cần brainstorm, không cần spec, không chờ dữ liệu. Mỗi việc một commit.
 
-## 1.1 Neo ba ngưỡng tái phân bổ theo thu nhập
+## 1.1 Neo ba ngưỡng tái phân bổ theo thu nhập — ✅ XONG 2026-09-21
 
 **Vấn đề:** luật tái phân bổ có sáu ngưỡng, chỉ **một** cái neo theo người dùng. Người
 thu nhập 5 triệu và người 50 triệu dùng chung ngưỡng thâm hụt **50.000 đ** — với người
@@ -131,6 +131,19 @@ chọn nguồn bù. Đổi một chỗ mà quên chỗ kia thì tổng cắt l�
 
 **Xong khi:** `flutter test test/features/ai_edge/` xanh, ca mới đỏ với bản sai (bỏ phép
 neo). **Tài liệu:** mục 11.5 (1) — đổi ⭐ thành ✅ kèm ngày.
+
+✅ **Làm xong 2026-09-21.** 7 ca mới, **không** thêm tệp test; bộ đầy đủ **3113/3113,
+1 skip**; `flutter analyze` **26 issue, 0 error**. Không đổi schema, không đổi payload,
+không đụng giao diện. Ba điều lượt này học được, ghi đủ ở mục **11.5 (1)**
+`AI_EDGE_FEATURE.md`:
+- Tỉ lệ chọn sao cho cả ba **xoay quanh cùng mốc 5 triệu/tháng**, nên dưới mốc ấy hành vi
+  không đổi một li.
+- `buocLamTron` cần thêm vế **kéo lên họ 1·2·2,5·5** mà hai ngưỡng kia không cần — nó là
+  con số người dùng **đọc**, không phải con số đem đi so sánh. Dùng lại `buocTron` của
+  `du_bao_dong_tien.dart` (nay công khai) thay vì chép bản thứ hai.
+- ⭐ **Luật C4 (`kDuDiaToiThieu`) đã chết từ trước**, bị C5 nuốt trọn ở mọi mức thu nhập.
+  Bản sai có chủ ý lộ ra điều đó — ca hành vi đầu tiên viết cho C4 **vẫn xanh** khi chưa
+  neo gì. Đừng viết ca hành vi cho C4.
 
 ## 1.2 Ví chọn sẵn theo danh mục
 

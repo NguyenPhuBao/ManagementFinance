@@ -17,6 +17,7 @@ library;
 import '../../../core/utils/currency_formatter.dart';
 import '../../budget/data/models/budget_entity.dart';
 import '../../budget/domain/budget_history.dart';
+import '../../analytics/domain/du_bao_dong_tien.dart' show buocTron;
 import '../../budget/domain/budget_pace.dart';
 
 /// B2: thâm hụt phải ≥ 10 % hạn mức **và** ≥ 50.000 đ.
@@ -36,14 +37,54 @@ const int kBuocLamTron = 10000;
 /// B4: dưới chừng này ngày thì không nhân tỉ lệ tuyến tính.
 const int kNgayKhoaDuPhong = 5;
 
-double lamTron10k(double x) =>
-    (x / kBuocLamTron).round() * kBuocLamTron.toDouble();
+double lamTronBuoc(double x, double buoc) => (x / buoc).round() * buoc;
+
+/// Phép neo một ngưỡng tuyệt đối vào thu nhập — **một định nghĩa duy nhất** cho
+/// cả bốn ngưỡng dưới đây.
+///
+/// `max(tiLe × thu nhập, san)`: hằng cũ thành **sàn**, nên tài khoản chưa có
+/// thu nhập (hoặc thu nhập thấp) giữ nguyên hành vi hôm nay, còn thu nhập cao
+/// thì mọi ngưỡng giãn ra cùng nhau.
+///
+/// ⚠️ [thuNhap3Thang] là thu nhập **trung bình MỘT THÁNG** của ba tháng gần
+/// nhất (`_thuNhap3Thang` chia cho số kỳ), không phải tổng ba tháng. Đọc nhầm
+/// là mọi tỉ lệ dưới đây lệch ba lần, **im lặng**.
+double _neo(double thuNhap3Thang, double tiLe, double san) {
+  final theoThuNhap = thuNhap3Thang * tiLe;
+  return theoThuNhap > san ? theoThuNhap : san;
+}
 
 /// C5: `max(1 % thu nhập, 50.000)`.
-double nguongCoNghia(double thuNhap3Thang) {
-  final motPhanTram = thuNhap3Thang * 0.01;
-  return motPhanTram > 50000 ? motPhanTram : 50000;
-}
+double nguongCoNghia(double thuNhap3Thang) =>
+    _neo(thuNhap3Thang, 0.01, kNguongThamHutTuyetDoi);
+
+/// B2 vế tuyệt đối, neo theo thu nhập: `max(1 % thu nhập, 50.000)`.
+///
+/// Cùng công thức với [nguongCoNghia] nhưng là **luật khác** (B2 lọc ngân sách
+/// thâm hụt, C5 lọc dòng cắt quá nhỏ) — giữ hai tên để đổi một cái không kéo
+/// theo cái kia.
+double nguongThamHutTuyetDoi(double thuNhap3Thang) =>
+    _neo(thuNhap3Thang, 0.01, kNguongThamHutTuyetDoi);
+
+/// C4 neo theo thu nhập: `max(2 % thu nhập, 100.000)`.
+///
+/// ⚠️ Luật này **đã bị C5 nuốt trọn** và không còn tự loại được nguồn nào: dư
+/// địa dưới 2 % thu nhập cho phần cắt 25 % dưới 0,5 % thu nhập, tức dưới ngưỡng
+/// có nghĩa 1 % mà C5 đã chặn trước. Giữ lại vì nó là một luật của đặc tả và vì
+/// nới `kTranCat` hay hạ C5 sẽ làm nó sống lại — nhưng **đừng viết ca test hành
+/// vi cho nó**, ca ấy sẽ xanh vì lý do khác (ghi rõ ở tệp test).
+double duDiaToiThieu(double thuNhap3Thang) =>
+    _neo(thuNhap3Thang, 0.02, kDuDiaToiThieu);
+
+/// G1 neo theo thu nhập: `max(0,2 % thu nhập, 10.000)`, rồi **kéo lên họ
+/// 1·2·2,5·5**.
+///
+/// ⚠️ Vế thứ hai là bắt buộc, khác hai ngưỡng trên: hai cái kia chỉ đem đi
+/// **so sánh** nên số lẻ vô hại, còn bước làm tròn quyết định **con số người
+/// dùng đọc**. Bỏ nó thì thu nhập 12 triệu cho bước 24.000 và màn hình đầy
+/// 24.000 / 48.000 / 72.000 — tròn về mặt số học, xấu về mặt người đọc.
+double buocLamTron(double thuNhap3Thang) =>
+    buocTron(_neo(thuNhap3Thang, 0.002, kBuocLamTron.toDouble()));
 
 /// Dự phóng chi cuối kỳ (B4 + B5). `null` khi kỳ rỗng hoặc dưới
 /// [kNgayKhoaDuPhong] ngày mà không có [tb3Thang] — khi ấy người gọi chỉ được
@@ -157,6 +198,11 @@ KeHoachTaiPhanBo? taiPhanBoCua({
   ];
   if (ungVien.isEmpty) return null;
 
+  // Bốn ngưỡng neo theo thu nhập, tính MỘT lần cho cả lượt dựng kế hoạch.
+  final nguongHut = nguongThamHutTuyetDoi(thuNhap3Thang);
+  final sanDuDia = duDiaToiThieu(thuNhap3Thang);
+  final buoc = buocLamTron(thuNhap3Thang);
+
   double duPhong(BudgetView v) =>
       duPhongCua(v, now: now, tb3Thang: tb3ThangTheoNganSach[v.budget.id]) ??
       v.budget.spent;
@@ -169,7 +215,7 @@ KeHoachTaiPhanBo? taiPhanBoCua({
     final dp = duPhong(v);
     final hut = dp - v.budget.amount;
     if (hut < kNguongThamHutTiLe * v.budget.amount) continue;
-    if (hut < kNguongThamHutTuyetDoi) continue;
+    if (hut < nguongHut) continue;
     if (hut > thamHut) {
       thieu = v;
       thamHut = hut;
@@ -184,14 +230,14 @@ KeHoachTaiPhanBo? taiPhanBoCua({
     if (identical(v, thieu) || v.budget.id == thieu.budget.id) continue;
     if (coDinh.contains(v.budget.categoryId)) continue;
     final duDia = v.budget.amount - duPhong(v);
-    if (duDia < kDuDiaToiThieu) continue;
+    if (duDia < sanDuDia) continue;
     final tran = daBiCatHaiKyLienTruoc(v.budget, phanHoi, now)
         ? kTranCatDaBiCat
         : kTranCat;
     nguon.add(DongTaiPhanBo(
       nguon: v,
       duDia: duDia,
-      soTien: lamTron10k(tran * duDia),
+      soTien: lamTronBuoc(tran * duDia, buoc),
     ));
   }
   // Essentiality = 0,5 cho mọi danh mục → xếp theo dư địa. Hoà thì theo id để
@@ -207,7 +253,7 @@ KeHoachTaiPhanBo? taiPhanBoCua({
   for (final n in nguon) {
     if (conThieu <= 0) break;
     // Cắt vừa đủ phần còn thiếu, làm tròn LÊN 10k để không hụt vài đồng lẻ.
-    final can = (conThieu / kBuocLamTron).ceil() * kBuocLamTron.toDouble();
+    final can = (conThieu / buoc).ceil() * buoc;
     final cat = n.soTien < can ? n.soTien : can;
     if (cat < nguong) continue;
     dong.add(DongTaiPhanBo(nguon: n.nguon, duDia: n.duDia, soTien: cat));

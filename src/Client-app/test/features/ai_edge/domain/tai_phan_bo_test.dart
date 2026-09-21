@@ -162,7 +162,7 @@ void main() {
     });
 
     test('làm tròn 10.000: 25 % của 1.234.567 → 310.000', () {
-      expect(lamTron10k(308641.75), 310000);
+      expect(lamTronBuoc(308641.75, 10000), 310000);
       final le =
           _duPhong('le', amount: 2234567, duPhong: 1000000); // dư 1.234.567
       final hutLon = _duPhong('h', amount: 2000000, duPhong: 7000000); // hụt 5M
@@ -204,6 +204,78 @@ void main() {
     test('ngân sách thiếu không tự làm nguồn bù cho chính nó', () {
       final kh = _kh([anUong, giaiTri])!;
       expect(kh.dong.map((d) => d.nguon.budget.id), isNot(contains('an')));
+    });
+  });
+
+  // ── Neo ba ngưỡng tuyệt đối theo thu nhập (mục 11.5 (1)) ─────────────────
+  //
+  // Trước lượt này, luật tái phân bổ có sáu ngưỡng mà chỉ **một**
+  // (`nguongCoNghia`) neo theo người dùng. Người thu nhập 5 triệu và người 50
+  // triệu dùng chung ngưỡng thâm hụt 50.000 đ — với người thứ hai, app dựng cả
+  // một kế hoạch cắt giảm cho tiền lẻ.
+  //
+  // ⚠️ Hai hằng **tỉ lệ** (`kTranCat`, `kTranCatDaBiCat`) KHÔNG neo: chúng vốn
+  // không phụ thuộc quy mô thu nhập, neo chúng là làm hỏng thứ đang đúng.
+  group('neo ngưỡng theo thu nhập', () {
+    test('thu nhập 0: cả ba trả về đúng hằng cũ, tức hành vi hôm nay', () {
+      expect(nguongThamHutTuyetDoi(0), kNguongThamHutTuyetDoi);
+      expect(duDiaToiThieu(0), kDuDiaToiThieu);
+      expect(buocLamTron(0), kBuocLamTron);
+    });
+
+    test('5 triệu/tháng là điểm xoay — vẫn đúng bằng hằng cũ', () {
+      expect(nguongThamHutTuyetDoi(5000000), 50000);
+      expect(duDiaToiThieu(5000000), 100000);
+      expect(buocLamTron(5000000), 10000);
+    });
+
+    test('50 triệu/tháng: cả ba giãn ra, giữ nguyên tỉ lệ với nhau', () {
+      expect(nguongThamHutTuyetDoi(50000000), 500000);
+      expect(duDiaToiThieu(50000000), 1000000);
+      expect(buocLamTron(50000000), 100000);
+    });
+
+    test('bước làm tròn bám họ 1·2·2,5·5 nên số đề xuất vẫn TRÒN', () {
+      // 0,2 % của 12 triệu = 24.000 — một bội số xấu, người đọc sẽ thấy
+      // 24.000 / 48.000 / 72.000. Họ 1·2·2,5·5 kéo nó lên 25.000.
+      expect(buocLamTron(12000000), 25000);
+      expect(buocLamTron(8000000), 20000, reason: '16.000 → 20.000');
+    });
+
+    // ⚠️ `duDiaToiThieu` cố ý KHÔNG có ca hành vi, và đó là **phát hiện** chứ
+    // không phải thiếu sót: luật C4 đã bị C5 (`nguongCoNghia`) nuốt trọn. Nguồn
+    // bị C4 loại có dư địa < 2 % thu nhập, nên phần cắt 25 % của nó < 0,5 % thu
+    // nhập — dưới ngưỡng có nghĩa 1 %, tức C5 đã loại nó từ trước. Đúng cả ở
+    // thu nhập 0 (sàn 100.000 so với 50.000): dư địa 100.000 cho phần cắt
+    // 25.000, vẫn dưới 50.000.
+    //
+    // Biết được là nhờ **bản sai có chủ ý**: ca hành vi đầu tiên viết cho C4
+    // đòi "danh sách rỗng" và **vẫn xanh** khi chưa neo gì cả, vì C5 tự lo việc
+    // ấy. Cùng họ bẫy G43 — ca test phải đòi KẾT QUẢ, không chỉ đòi vắng mặt
+    // thứ mình nghĩ tới.
+    test('dư địa tối thiểu vẫn giãn theo thu nhập dù C5 đã nuốt luật C4', () {
+      expect(duDiaToiThieu(2500000), 100000, reason: '2 % = 50.000, sàn thắng');
+      expect(duDiaToiThieu(20000000), 400000);
+    });
+
+    test('thâm hụt tiền lẻ thôi được báo khi thu nhập cao', () {
+      final hut = _duPhong('an', amount: 500000, duPhong: 600000); // hụt 100k
+      final nguon = _duPhong('ng', amount: 5000000, duPhong: 1000000);
+
+      expect(_kh([hut, nguon], thuNhap3Thang: 0), isNotNull,
+          reason: '100.000 ≥ sàn 50.000');
+      expect(_kh([hut, nguon], thuNhap3Thang: 50000000), isNull,
+          reason: '100.000 < ngưỡng 500.000 của thu nhập 50 triệu');
+    });
+
+    test('bước làm tròn giãn theo thu nhập: cùng dư địa, hai số khác nhau', () {
+      final hut = _duPhong('an', amount: 3000000, duPhong: 8000000);
+      final le = _duPhong('le', amount: 2234567, duPhong: 1000000); // dư 1.234.567
+
+      expect(_kh([hut, le], thuNhap3Thang: 0)!.dong.single.soTien, 310000,
+          reason: '25 % = 308.641,75, bước 10.000');
+      expect(_kh([hut, le], thuNhap3Thang: 12000000)!.dong.single.soTien, 300000,
+          reason: 'cùng 308.641,75 nhưng bước 25.000');
     });
   });
 }

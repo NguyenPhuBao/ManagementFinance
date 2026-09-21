@@ -679,7 +679,7 @@ Quét bằng máy ngày 2026-09-20. ⚠️ **Bốn trong năm nhóm dưới khô
 chúng là đếm tần suất và neo theo một con số đã có, đúng kết luận mục 10.3: *cá nhân hoá
 nằm ở tầng số, không ở mô hình*.
 
-#### ⭐ (1) App đã cá nhân hoá MỘT ngưỡng, năm cái kia thì cứng
+#### ✅ (1) App đã cá nhân hoá MỘT ngưỡng, năm cái kia thì cứng — **XONG 2026-09-21**
 
 Luật tái phân bổ có sáu ngưỡng; đúng **một** cái neo theo người dùng:
 
@@ -704,6 +704,40 @@ vì `nguongCoNghia` làm đúng.
 **Sửa rẻ nhất trong cả mục 11:** cho ba hằng đầu đi qua cùng phép neo. Không cần AI,
 không cần dữ liệu mới — `thuNhap3Thang` đã có sẵn trong `DuLieuTaiPhanBo`. Hai hằng cuối
 là **tỉ lệ** nên giữ nguyên là hợp lý.
+
+✅ **Đã làm 2026-09-21.** Ba hằng đầu nay đi qua **một** phép neo duy nhất `_neo(thu
+nhập, tỉ lệ, sàn) = max(tỉ lệ × thu nhập, sàn)`, hằng cũ thành **sàn**:
+
+| Hàm mới | Công thức | Sàn |
+|---|---|---|
+| `nguongThamHutTuyetDoi` | 1 % thu nhập | 50.000 |
+| `duDiaToiThieu` | 2 % thu nhập | 100.000 |
+| `buocLamTron` | 0,2 % thu nhập, rồi kéo lên họ 1·2·2,5·5 | 10.000 |
+
+Tỉ lệ chọn sao cho **cả ba xoay quanh cùng một mốc: thu nhập 5 triệu/tháng**. Dưới mốc ấy
+không gì đổi, đúng tại mốc thì cả ba bằng đúng hằng cũ, trên mốc thì cả ba giãn ra mà
+**giữ nguyên tỉ lệ với nhau** — tức luật vẫn là luật cũ, chỉ đổi đơn vị đo.
+
+⚠️ **`thuNhap3Thang` là trung bình MỘT THÁNG**, không phải tổng ba tháng (`_thuNhap3Thang`
+chia cho số kỳ). Đọc nhầm là mọi tỉ lệ trên lệch ba lần, **im lặng**.
+
+⚠️ **`buocLamTron` có thêm một vế mà hai cái kia không có**: nó phải kéo lên họ
+**1·2·2,5·5** (`buocTron`, nay công khai từ `du_bao_dong_tien.dart` — chép sang là bản thứ
+hai của cùng một luật). Lý do: hai ngưỡng kia chỉ đem đi **so sánh** nên số lẻ vô hại, còn
+bước làm tròn quyết định **con số người dùng đọc** — thiếu vế ấy thì thu nhập 12 triệu cho
+bước 24.000 và màn hình đầy 24.000 / 48.000 / 72.000.
+
+⚠️ **`kBuocLamTron` dùng ở HAI chỗ** — `lamTron10k()` (nay là `lamTronBuoc(x, buoc)`, vì
+cái tên cũ thành lời nói dối khi bước biến thiên) và phép "làm tròn LÊN" trong vòng chọn
+nguồn bù. Sửa một chỗ quên chỗ kia thì tổng cắt lệch vài nghìn, **im lặng**.
+
+⭐ **Phát hiện ngoài dự kiến: luật C4 (`kDuDiaToiThieu`) đã CHẾT từ trước, bị C5 nuốt
+trọn.** Nguồn bù bị C4 loại có dư địa dưới ngưỡng, nên phần cắt 25 % của nó luôn dưới
+ngưỡng có nghĩa của C5 — C5 đã loại nó trước, ở **mọi** mức thu nhập kể cả 0. Vẫn neo C4
+cho nhất quán, nhưng **đừng viết ca test hành vi cho nó**: ca ấy sẽ xanh vì lý do khác.
+Biết được là nhờ **bản sai có chủ ý** — ca hành vi đầu tiên viết cho C4 vẫn xanh khi chưa
+neo gì cả. Cùng họ bẫy **G43**: ca test phải đòi KẾT QUẢ, không chỉ đòi vắng mặt thứ mình
+nghĩ tới.
 
 #### ⭐ (2) Ví chọn sẵn theo ngữ cảnh
 

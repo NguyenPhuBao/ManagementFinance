@@ -578,13 +578,13 @@ List<ViThieu> _viThieu(List<CamKet> camKet, Map<String, Wallet> viTheoId) {
   // đo trên máy ảo 2026-09-17. Dải hẹp quanh một số lớn (đúng ca khối Dự báo
   // sinh ra hàm này) cho **cùng một bước** ở cả hai công thức, nên đây là
   // siết lại chứ không phải đổi hành vi của khối ấy.
-  var buoc = _buocTron(dai / 3);
+  var buoc = buocTron(dai / 3);
   var san = (day / buoc).floorToDouble() * buoc;
 
   // Nới khi trần **thật sự** chưa phủ đỉnh — phép kiểm đúng, thay cho phép trừ
   // hao ở trên. Trần 30 vòng, cùng lý do với vòng nhãn bên dưới.
   for (var i = 0; i < 30 && san + buoc * 3 < dinh; i++) {
-    buoc = _buocTron(buoc * 1.5);
+    buoc = buocTron(buoc * 1.5);
     san = (day / buoc).floorToDouble() * buoc;
   }
 
@@ -596,7 +596,7 @@ List<ViThieu> _viThieu(List<CamKet> camKet, Map<String, Wallet> viTheoId) {
       for (var k = 0; k < 4; k++) rutGon(san + buoc * k),
     };
     if (nhan.length == 4) break;
-    buoc = _buocTron(buoc * 1.5);
+    buoc = buocTron(buoc * 1.5);
     san = (day / buoc).floorToDouble() * buoc;
   }
 
@@ -612,7 +612,10 @@ List<ViThieu> _viThieu(List<CamKet> camKet, Map<String, Wallet> viTheoId) {
 /// lên nhau. Đo được trên máy ảo 2026-09-16: bước 168.333 cho ra "13.6M" hai
 /// lần ở đỉnh trục. Cùng họ bẫy **4.18 / G39**; bước tròn làm mọi mốc rơi
 /// đúng vị trí và phép cộng không sinh sai số.
-double _buocTron(double x) {
+/// Công khai từ 2026-09-21: `tai_phan_bo.dart` cần đúng phép này cho bước làm
+/// tròn neo theo thu nhập. Chép sang đó là bản thứ hai của cùng một luật, mà
+/// hai bản sẽ lệch nhau lúc nào không biết.
+double buocTron(double x) {
   if (x <= 0) return 1;
   var bac = 1.0;
   while (bac * 10 <= x) {
