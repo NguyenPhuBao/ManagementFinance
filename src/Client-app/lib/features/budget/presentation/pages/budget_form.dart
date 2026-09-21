@@ -537,9 +537,18 @@ class _BudgetFormState extends State<BudgetForm> {
     );
   }
 
-  /// "3 tháng gần nhất bạn chi trung bình X" kèm nút điền thẳng vào ô hạn mức.
+  /// "Bạn chi trung bình X mỗi tháng" kèm nút điền thẳng vào ô hạn mức.
   /// Không hiện gì khi không có dữ liệu: một dòng "trung bình 0 đ" là gợi ý
   /// sai, tệ hơn không gợi ý.
+  ///
+  /// ⚠️ Câu này **không nêu một cửa sổ cố định**. Nó từng nói "3 tháng gần
+  /// nhất", và từ 2026-09-21 câu ấy thành lời nói dối: `suggestAmount` nay suy
+  /// từ `cuaSoNhinLai` — một cửa sổ **cuộn**, dài tối đa 90 ngày nhưng ngắn lại
+  /// theo tuổi dữ liệu của tài khoản. Máy ảo bắt được: tài khoản 20 ngày tuổi
+  /// vẫn hiện "3 tháng gần nhất".
+  ///
+  /// Một nhãn nêu số ngày thật ("20 ngày gần nhất…") thì tốt hơn nữa, nhưng nó
+  /// cần độ dài cửa sổ đi kèm con số — xem Task 6 của kế hoạch.
   Widget _suggestionHint() {
     final s = _suggestion;
     if (s == null) return const SizedBox.shrink();
@@ -549,8 +558,7 @@ class _BudgetFormState extends State<BudgetForm> {
         children: [
           Expanded(
             child: Text(
-              '3 tháng gần nhất bạn chi trung bình '
-              '${CurrencyFormatter.format(s)}',
+              'Bạn chi trung bình ${CurrencyFormatter.format(s)} mỗi tháng',
               style:
                   const TextStyle(fontSize: 12, color: AppColors.textSecondary),
             ),

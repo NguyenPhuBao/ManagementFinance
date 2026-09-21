@@ -84,13 +84,33 @@ void main() {
             '`CurrencyFormatter.parse` đọc được lúc lưu.');
   });
 
-  testWidgets('không có dữ liệu ba tháng trước thì không hiện gì', (tester) async {
+  testWidgets('không có lịch sử thì không hiện gì', (tester) async {
     await dung(tester, suggestFor: (_) async => null);
     await chonAnUong(tester);
 
     expect(find.text('Dùng số này'), findsNothing);
-    expect(find.textContaining('3 tháng gần nhất'), findsNothing,
+    expect(find.textContaining('trung bình'), findsNothing,
         reason: 'Một dòng "trung bình 0 đ" là gợi ý sai, tệ hơn không gợi ý.');
+  });
+
+  testWidgets('⚠️ nhãn KHÔNG nêu một cửa sổ cố định', (tester) async {
+    await dung(tester, suggestFor: (_) async => 1200000);
+    await chonAnUong(tester);
+
+    expect(
+      find.textContaining('trung bình'),
+      findsOneWidget,
+      reason: 'ĐÒI KẾT QUẢ: nhãn vẫn phải có mặt. Thiếu vế này thì một bản sai '
+          'xoá hẳn nhãn cũng làm kỳ vọng dưới xanh',
+    );
+    expect(
+      find.textContaining('3 tháng'),
+      findsNothing,
+      reason: '`suggestAmount` nay suy từ `cuaSoNhinLai` — cửa sổ CUỘN, ngắn '
+          'lại theo tuổi dữ liệu của tài khoản. Nhãn nêu "3 tháng gần nhất" là '
+          'nói dối về chính cửa sổ của nó, và máy ảo bắt được đúng điều đó '
+          'ngày 2026-09-21 trên một tài khoản 20 ngày tuổi',
+    );
   });
 
   testWidgets('không tiêm callback thì form vẫn như cũ', (tester) async {
