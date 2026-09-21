@@ -1,5 +1,11 @@
 # Tổng Quan Cơ Chế & Cấu Trúc Dữ Liệu SePay Cá Nhân (SePay Personal — my.sepay.vn)
 
+> [!WARNING]
+> **THÔNG BÁO TẠM DỪNG HOÀN TOÀN DO CHÍNH SÁCH (2026-09-21):**
+> Vì lý do chính sách (chính sách bảo mật dữ liệu ngân hàng, bảo vệ quyền riêng tư người dùng theo Nghị định 13/2023/NĐ-CP và định hướng phạm vi đồ án), **Module Bank được tạm dừng hoàn toàn**. 
+> - **Chức năng & mã nguồn:** KHÔNG bị xóa bỏ; tài liệu này và toàn bộ mã nguồn được lưu giữ nguyên trạng để làm tài liệu kỹ thuật tham chiếu.
+> - **Phạm vi sắp tới:** Trong phạm vi xây dựng và hoàn thiện dự án sắp tới sẽ **không còn Module Bank**. Luồng tự động hóa tập trung vào OCR Hóa đơn / Biên lai và Nhập tay / SMS.
+
 Tài liệu này tổng hợp toàn bộ các **cơ chế vận hành, kiến trúc bảo mật, luồng mapping danh tính và cấu trúc dữ liệu** của nền tảng **SePay Cá Nhân (`my.sepay.vn`)** áp dụng trực tiếp cho hệ sinh thái quản lý tài chính cá nhân **FlowMoney**.
 
 ---

@@ -1,5 +1,9 @@
 # Đặc Tả Kỹ Thuật Module Admin-web — Theo Dõi & Giám Sát SePay Cá Nhân
 
+> [!WARNING]
+> **THÔNG BÁO TẠM DỪNG HOÀN TOÀN DO CHÍNH SÁCH (2026-09-21):**
+> Vì lý do chính sách, **Module Bank được tạm dừng hoàn toàn**. Chức năng giám sát ngân hàng trên Admin-web không xóa bỏ nhưng tạm thời đóng băng, nằm ngoài phạm vi xây dựng và hoàn thiện dự án sắp tới.
+
 Tài liệu này quy định chi tiết toàn bộ các hạng mục công việc, kiến trúc mã nguồn, quy chuẩn API, giao diện người dùng và các lưu ý vận hành trên môi trường **Cloud** để Module **Admin-web** theo dõi, giám sát và quản trị hệ thống giao dịch ngân hàng tích hợp qua **SePay Cá Nhân (`my.sepay.vn`)** đồng bộ với Module Backend.
 
 ---
