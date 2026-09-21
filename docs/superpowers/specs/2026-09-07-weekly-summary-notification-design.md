@@ -253,5 +253,5 @@ Ba việc kiểm trên máy ảo của cùng phiên (`khoaNhom`, thông báo khi
 hoàn toàn, giờ im lặng) nằm ở `docs/NOTIFICATION_FEATURE.md` mục 5c và mục 8,
 không liên quan tới tài liệu này.
 
-⚠️ Thư mục `docs/superpowers/specs/` bị `.gitignore` **dòng 67** chặn — tệp này
-phải `git add -f`, nếu không nó biến mất âm thầm.
+✅ **HẾT HIỆU LỰC 2026-09-21** — luật `docs/superpowers/specs/` đã bỏ khỏi
+`.gitignore`, mọi spec nay đi theo repo như tài liệu bình thường.

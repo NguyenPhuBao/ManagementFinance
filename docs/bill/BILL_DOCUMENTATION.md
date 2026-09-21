@@ -10,8 +10,9 @@
 > mục tiêu, không đụng bảng `Bills`)
 > **Phạm vi:** `src/Client-app/lib/features/bill` + phần bill của `core/sync`, `core/database`, `core/bill`
 
-> ⚠️ **Thư mục `docs/bill/` bị `.gitignore:61` chặn.** Tài liệu này không nằm
-> trong repo. Muốn nó theo repo thì phải `git add -f`.
+> ✅ **Tài liệu này ĐÃ nằm trong repo từ 2026-09-21.** Trước đó thư mục
+> `docs/bill/` bị `.gitignore` chặn và tệp chỉ có trên máy đã dựng — trong khi
+> `CLAUDE.md` vẫn trỏ vào nó như **nguồn** cho mọi việc hoá đơn. Luật chặn đã bỏ.
 
 > ⚠️ **Tài liệu là ảnh chụp, không phải nguồn sự thật.** Bản 1.0.0 (12/08/2026)
 > của file này từng mô tả hai thứ **đã bị gỡ có chủ đích** như thể chúng là
@@ -1058,8 +1059,9 @@ tràn chưa ai từng thấy vì bộ test và skill `chay-app` đều chạy Ch
 | `test/features/bill/bill_conflict_resolver_wiring_test.dart` | Resolver được **bắt đầu nghe** chứ không chỉ được dựng; `pushResultStream` chịu được hai người nghe |
 | `test/core/sync/sync_push_result_truoc_pull_test.dart` | *(ngoài thư mục bill)* `SyncEngine` phát kết quả đẩy **TRƯỚC** bước Pull — nếu không, phép hoàn tiền cộng vào số dư đã bị server đè lên |
 
-⚠️ `.gitignore:77` có `test/` nên file test mới bị git bỏ qua **âm thầm** —
-nhớ `git add -f` từng đường dẫn (thêm cả thư mục thì git từ chối nguyên lệnh).
+✅ **Từ 2026-09-21 `test/` không còn bị `.gitignore` chặn** — tệp test mới hiện
+bình thường trong `git status`, `git add` cả thư mục chạy được, và công cụ Grep
+nhìn thấy bộ test. Câu cũ ở đây dặn `git add -f`; nay không cần nữa.
 
 ⚠️ Chạy **hai tiến trình `flutter test` cùng lúc** — hoặc để lại
 `flutter_tester.exe` mồ côi sau khi ngắt một lần chạy — làm công cụ Flutter

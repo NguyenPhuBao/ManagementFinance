@@ -31,9 +31,12 @@
 > `docs/ANALYTICS_FEATURE.md`, kế hoạch thi công ở
 > `plans/2026-09-15-p1-pham-vi-thoi-gian-phan-tich.md`.
 >
-> ⚠️ Thư mục `docs/superpowers/specs/` bị `.gitignore` chặn (dòng 67) — tệp này
-> **không lên git**, giống mọi spec trước nó. Đừng `git add -f` để "sửa" điều đó:
-> đó là quy ước sẵn có của repo, không phải sơ suất.
+> ✅ **HẾT HIỆU LỰC 2026-09-21** — luật `docs/superpowers/specs/` đã bỏ khỏi
+> `.gitignore` và tệp này nay đi theo repo. ⚠️ Câu cũ ở đây còn dặn *"đừng
+> `git add -f` để sửa điều đó"* — hoá ra chính quy ước ấy mới là chỗ sai:
+> **13/24 spec đã phải `add -f`**, và hai spec mà `CLAUDE.md` gọi là "đã duyệt"
+> thì chỉ tồn tại trên một máy. Một luật mà người ta phải phá đều đặn là một
+> luật sai.
 
 ---
 

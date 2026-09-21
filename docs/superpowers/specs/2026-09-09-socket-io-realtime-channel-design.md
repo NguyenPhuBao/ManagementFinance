@@ -2,8 +2,10 @@
 
 **Ngày:** 2026-09-09 · **Soát lại:** 2026-09-11 (sau khi gộp `main` @ `cc65f4f`) · **Nhánh:** `TranQuangDat` · **Phạm vi:** chỉ `src/Client-app`
 
-> Tệp này nằm trong `docs/superpowers/specs/`, **bị `.gitignore` chặn** (dòng 67)
-> nên không commit được — đúng như mọi spec khác của dự án. Bản tóm tắt đi vào
+> ✅ **HẾT HIỆU LỰC 2026-09-21** — luật `docs/superpowers/specs/` đã bỏ khỏi
+> `.gitignore`, mọi spec nay đi theo repo như tài liệu bình thường.
+>
+> *(Câu cũ, giữ làm ảnh chụp: tệp này bị `.gitignore` chặn nên không commit được.)* Bản tóm tắt đi vào
 > git nằm ở `docs/PROJECT_CONTEXT.md` mục 14 và ở hai tệp `SOCKET_*` (nay ở
 > `docs/superpowers/backend/DA-XONG/`).
 
