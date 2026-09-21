@@ -8,7 +8,7 @@
 > **Nguồn:** `docs/AI_EDGE_FEATURE.md` mục **10** (bản chất mảng AI, mười tiêu chí, bốn
 > tầng chiều ghi) và mục **11** (bản đồ khảo sát). Đọc hai mục ấy **trước** khi bắt đầu.
 
-**Viết:** 2026-09-21. **Trạng thái:** chưa bắt đầu việc nào.
+**Viết:** 2026-09-21. **Trạng thái:** chặng 0 ✅ xong (2026-09-21); chặng 1–5 chưa bắt đầu.
 
 ---
 
@@ -31,7 +31,26 @@ từng việc:
 
 ---
 
-# CHẶNG 0 — Hai phép đo, mỗi cái ~15 phút
+# CHẶNG 0 — Hai phép đo ✅ **XONG 2026-09-21**
+
+> **Kết quả đã vào `AI_EDGE_FEATURE.md`** — hàng NPU ở mục **8.1**, ảnh và âm thanh ở
+> tiểu mục **8.7** mới. Tóm tắt: **NPU tệ hơn cả GPU lẫn CPU** (chậm 3,6 lần, RAM gấp
+> 3,4 lần) nên bậc thang **giữ nguyên**; còn **ảnh và âm thanh đều chạy được**, đọc đúng
+> tổng tiền hoá đơn và rút đúng ý định từ câu nói — nhưng cả hai đo bằng dữ liệu **dựng
+> bằng máy**, tức cận trên, chưa phải ảnh chụp thật và giọng người thật.
+>
+> ⚠️ **Không phép đo nào mở một hạng mục.** Thứ tự việc bên dưới **không đổi**.
+>
+> Hai cái bẫy của lượt đo, ghi lại vì chúng sẽ cắn lần sau:
+> **(1)** `adb devices` im lặng hoàn toàn dù Device Manager báo OK — driver WinUSB generic
+> **không công bố** GUID giao diện Android mà adb đi tìm; sửa bằng cách thêm
+> `DeviceInterfaceGUIDs = {F72FE0D4-CBCB-407D-8814-9ED673D0DD6B}` vào khoá
+> `Device Parameters` của thiết bị (cần quyền admin, gỡ ra là xoá đúng giá trị ấy).
+> Cài Google USB Driver **không** giải quyết được vì INF của Google không chứa `VID_22D9`
+> của OnePlus, mà sửa INF là hỏng chữ ký số.
+> **(2)** Git Bash đổi `/sdcard/Download/x` thành `C:/Program Files/Git/sdcard/...`; adb
+> khi ấy báo `secure_mkdirs() failed` **nhưng vẫn in "1 file pushed" kèm tốc độ** — mất 84
+> giây đẩy 2,4 GB đi đâu không rõ. Đặt `MSYS_NO_PATHCONV=1` trước mọi lệnh adb.
 
 ⚠️ **Tách riêng vì chúng KHÔNG phụ thuộc gì và không chặn ai** — điều kiện duy nhất là
 người dùng cắm máy thật. Bản đầu của tệp này chôn chúng ở cuối chặng 5, lẫn trong một
@@ -42,7 +61,7 @@ Hạ tầng còn nguyên: app spike ở `D:/flowmoney-spike` (ngoài repo), bố
 đường ở mục **8.6** `AI_EDGE_FEATURE.md` (push vào `/sdcard/Download` rồi
 `cat … | run-as ‹pkg› sh -c 'cat > files/…'`).
 
-## 0.1 Đo NPU
+## 0.1 Đo NPU — ✅ XONG, kết quả: KHÔNG dùng NPU
 
 P1 **chỉ đo GPU và CPU**. Máy là Snapdragon 8 Gen 3 có NPU Hexagon; gói có
 `PreferredBackend.npu` và README ghi *"NPU Acceleration: Hardware NPU inference for
@@ -52,9 +71,9 @@ P1 **chỉ đo GPU và CPU**. Máy là Snapdragon 8 Gen 3 có NPU Hexagon; gói 
 tốn ít pin hơn GPU thì đó là cải thiện thật cho P3; nếu không chạy được thì cũng là một
 dòng đáng giá trong bảng đo của đồ án.
 
-**Điền vào:** mục **8.1** `AI_EDGE_FEATURE.md`, thêm hàng thứ năm.
+**Đã điền:** mục **8.1** `AI_EDGE_FEATURE.md`, hàng thứ năm + ba ghi chú.
 
-## 0.2 Đo vision / audio
+## 0.2 Đo vision / audio — ✅ XONG, cả hai chạy được
 
 P1 **chỉ đo văn bản**. E2B đa phương thức (ảnh + âm thanh), nhưng ba câu hỏi chưa có
 đáp án, và chúng quyết định nhánh **đọc hoá đơn** có khả thi không:
@@ -64,7 +83,7 @@ P1 **chỉ đo văn bản**. E2B đa phương thức (ảnh + âm thanh), nhưng
   không phải OCR chuyên dụng.
 - Âm thanh cần gói `flutter_gemma_speech` riêng hay đi thẳng qua Gemma?
 
-**Điền vào:** mục **8** — một tiểu mục mới **8.7**.
+**Đã điền:** mục **8.7** `AI_EDGE_FEATURE.md` (tiểu mục mới).
 
 ---
 

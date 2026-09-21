@@ -265,6 +265,27 @@ mẫu 3 s/lần trong suốt lượt chạy.
 | E4B | nt | CPU | 10.499 ms | 8.226 / 7.968 / 5.848 | 12.675 ms | 12.704 → 8.943 (−29,6 %) | **3,27 GB** |
 | **E2B** | `gemma-4-E2B-it.litertlm` 2,41 GB | **GPU** | 9.131 ms | 3.486 / 2.293 / 1.383 | **2.329 ms** | 2.335 → 2.279 (**−2,4 %**) | **0,96 GB** |
 | E2B | nt | CPU | **4.516 ms** | 3.839 / 3.420 / 2.336 | 3.313 ms | 3.288 → 3.355 (+2,0 %) | 1,73 GB |
+| E2B | nt | **NPU** | 8.626 ms | 14.542 / 8.821 / 6.049 | 8.430 ms | 8.837 → 8.438 (−4,5 %) | **3,24 GB** |
+
+⚠️ **Hàng NPU đo ngày 2026-09-21 (chặng 0.1), và nó KHÔNG phải một cải thiện** — NPU
+**chậm hơn GPU 3,6 lần** (8.430 ms so với 2.329 ms) và tốn RAM **gấp 3,4 lần** (3,24 GB so
+với 0,96 GB), tức tệ hơn **cả CPU** ở cả hai mặt. Đây là hàng đo để **đóng một câu hỏi**,
+không phải để đổi bậc thang: bậc thang mục 8.5 **giữ nguyên**, không thêm nhánh NPU.
+
+Ba điều đi kèm, đọc trước khi có ai định thử lại NPU:
+
+1. **Nó CHẠY THẬT, không phải rơi về CPU.** Nhật ký cho thấy gói tự giải nén bộ thư viện
+   Qualcomm (`libQnnHtp.so`, `libQnnHtpV73/V75/V79/V81*`) vào `code_cache/npu_libs` rồi
+   đăng ký `NpuAccelerator`. Nên con số chậm là con số **của NPU**, không phải của một
+   lần rơi nhánh âm thầm.
+2. ⚠️ **Lần đăng ký ĐẦU thất bại, lần thứ hai mới được** —
+   `npu_registry.cc:34] NPU accelerator could not be loaded and registered:
+   kLiteRtStatusErrorInvalidArgument`, rồi ngay sau đó `npu_registry.cc:30] NPU
+   accelerator registered.` Ai đọc logcat mà dừng ở dòng cảnh báo đầu sẽ kết luận nhầm là
+   NPU không chạy được.
+3. ⚠️ **NPU bỏ qua tham số lấy mẫu.** Chính gói in ra: *"the NPU executor samples greedily
+   and never reads them — output is deterministic argmax"*. Tức `temperature` của spec
+   **không có tác dụng** trên nhánh này — một lý do nữa để không dùng nó.
 
 **Nhiệt: không thành vấn đề.** Sau 13 câu liên tiếp, CPU đi từ 35,2 °C lên **37,1 °C**, pin
 giữ 30,4 °C. Ba trong bốn tổ hợp có câu 10 **nhanh bằng hoặc hơn** câu 1 — không thấy
@@ -362,6 +383,70 @@ Cộng hai cái bẫy của chính lượt dựng spike: chú thích XML trong `
 **không được chứa hai dấu gạch ngang** (`--uid` trong một ví dụ lệnh làm manifest merger
 chết với *"Error parsing"*), và **logcat trôi nhanh hơn một lượt đo** — số liệu đọc trên
 **màn hình app** mới đủ, `adb logcat -d` chỉ còn vài dòng cuối.
+
+### 8.7 Ảnh và âm thanh (chặng 0.2, đo 2026-09-21) — ✅ CẢ HAI CHẠY ĐƯỢC
+
+P1 chỉ đo **văn bản**. Ba câu hỏi của chặng 0.2 nay có đáp án, và đáp án **tốt hơn dự
+đoán**: nhánh đọc hoá đơn là **khả thi về mặt kỹ thuật**.
+
+Cùng máy, cùng tệp `gemma-4-E2B-it.litertlm`, `maxTokens: 2048` (ảnh ăn token, 1024 chật).
+Pin 85–86 % **đang sạc**; nhiệt pin đi từ **33,1 °C** lúc bắt đầu tới **34,8 °C** sau trọn
+cả chặng 0 (NPU + bốn lượt đa phương thức) — **nhiệt vẫn không thành vấn đề**, đúng như 8.1.
+Ảnh bơm bằng `Message.withImage`, âm thanh bằng `Message.withAudio`, bật qua
+`getActiveModel(supportImage:/supportAudio:)`.
+
+| Lượt | Backend | Nạp | Ba/hai câu hỏi (ms) | **RAM đỉnh** |
+|---|---|---|---|---|
+| Ảnh **sạch** 73,6 KB | GPU | 9.352 ms | 6.263 / 4.858 / 11.574 | **1,66 GB** |
+| Ảnh **mờ** 50,0 KB | GPU | 4.431 ms | 5.787 / 4.631 / 11.744 | *(không lấy mẫu)* |
+| Ảnh **sạch** | CPU | 4.423 ms | 6.946 / 5.719 / 14.513 | **2,64 GB** |
+| Âm thanh 2,89 s | GPU | 4.235 ms | 2.086 / 943 | **1,05 GB** |
+
+**Giá của đa phương thức, tính theo RAM:** ảnh **+0,70 GB** so với văn bản (1,66 so với
+0,96 GB trên GPU), âm thanh chỉ **+0,09 GB**. Cả hai vẫn **dưới** mức CPU-văn bản
+(1,73 GB), nên không mở ra ngưỡng RAM mới nào.
+
+**Chất lượng đọc hoá đơn — số thì đúng, chữ thì sai dấu.** Cả **ba** lượt ảnh đều trả về
+tổng tiền **`191.862`** chính xác, và **mọi** con số dòng hàng đều đúng. Chỗ sai chỉ nằm ở
+**chữ có dấu**: `sầu riêng` đọc thành *"sả riêng"* (GPU) và *"sáu riêng"* (ảnh mờ),
+`thối lại` thành *"thống lại"* / *"thôi lại"*.
+
+⚠️ **Ảnh mờ KHÔNG tệ hơn ảnh sạch** — cùng đọc đúng `191.862`, cùng đúng mọi dòng hàng,
+thời gian chênh không đáng kể. Phép đo dựng hai ảnh để kẹp lấy khả năng thật, và kết quả
+là hai đầu kẹp **trùng nhau**; mức nhoè này chưa chạm tới giới hạn của mô hình.
+
+⚠️ **Nhưng đây là cận trên, đừng đọc thành lời hứa.** Ảnh là ảnh **dựng bằng máy** (PIL,
+phông Roboto, chữ thẳng hàng, nền đều) chứ không phải ảnh **chụp** một tờ in nhiệt thật —
+không có nếp gấp, loá đèn, nghiêng phối cảnh, mực phai không đều hay phông chữ máy in
+nhiệt. Con số ở đây trả lời *"mô hình có đọc nổi tiếng Việt có dấu không"* (có), **không**
+trả lời *"đọc nổi hoá đơn trong túi người dùng không"*. Muốn biết vế sau thì phải đo lại
+bằng ảnh chụp thật.
+
+**Âm thanh: đi thẳng qua Gemma, không cần mô hình thứ hai.** `supportAudio: true` nhận
+thẳng WAV 16 kHz mono. Câu thử *"Hôm nay tôi ăn trưa hết bốn mươi nghìn đồng"* (giọng tổng
+hợp `Microsoft An`, vi-VN):
+
+- Chép lại: *"Hôm nay tôi ăn chưa hết 40.000đ."* — sai **một** chữ (`trưa` → `chưa`), và
+  tự đổi *"bốn mươi nghìn đồng"* thành **`40.000đ`**.
+- Rút ý định: **`40000đ | ăn trưa`** — **đúng cả hai vế**.
+
+⚠️ Chỗ đáng chú ý nhất: câu thứ hai trả về `ăn trưa` **đúng**, trong khi bản chép lại của
+chính nó nói `ăn chưa`. Tức **đừng bắt mô hình chép lại rồi mới phân tích bản chép** — hỏi
+thẳng thứ mình cần thì nó dùng chính âm thanh, còn đi qua bản chép là tự chuốc thêm một
+nguồn sai. Điều này áp thẳng cho chặng 2.2 (nhập giao dịch bằng câu).
+
+⚠️ **Giọng tổng hợp sạch hơn giọng người** — cùng lối "cận trên" như ảnh dựng. Chưa đo với
+giọng thật, chưa đo trong tiếng ồn.
+
+⚠️ **Đọc mã gói 1.8.3 thì thấy HAI đường âm thanh khác nhau, đừng lẫn:** `supportAudio`
+bơm byte thẳng vào Gemma (đường vừa đo), còn `FlutterGemma.installStt()` cài một mô hình
+**riêng** (`.tflite` + tokenizer, ví dụ Moonshine) qua `SttInstallationBuilder`. Đường thứ
+hai **chưa đo**. Chú thích của gói ở `getActiveModel` còn ghi `supportAudio` là *"for
+Gemma 3n E4B"* — **câu ấy đã cũ**, phép đo này cho thấy nó chạy trên Gemma 4 E2B.
+
+🛑 **Không phép đo nào ở đây mở một hạng mục.** Đọc hoá đơn và nhập bằng giọng nói đều
+**chưa có trong kế hoạch**; mục này chỉ đóng hai câu hỏi để khi nào tới lượt thì không
+phải đo lại. Riêng "đọc hoá đơn" còn vướng chiều **ghi** (mục 10.5) và cần ảnh chụp thật.
 
 ## 9. Bảng đo P3
 
