@@ -158,16 +158,28 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     return getByDateRange(idaccount, from, to);
   }
 
-  /// Stream lọc theo tháng realtime
-  Stream<List<Transaction>> watchByMonth(int idaccount, int year, int month) {
-    final from = DateTime(year, month, 1);
-    final to = DateTime(year, month + 1, 0, 23, 59, 59);
+  /// Stream giao dịch của một tài khoản trong khoảng `[from, to)`, mới nhất
+  /// trước.
+  ///
+  /// ⚠️ Biên `to` **MỞ**, cùng quy ước với `tuanTruoc` và `tongThuChi` ngay dưới
+  /// đây. Hàm này **thay** `watchByMonth` ngày 2026-09-21, khi trang Sổ giao
+  /// dịch bỏ phép buộc-theo-tháng để xem được theo tuần/quý/năm/khoảng tuỳ chọn.
+  ///
+  /// Bản cũ dùng biên ĐÓNG (`isSmallerOrEqualValue` với `to` đặt ở 23:59:59
+  /// ngày cuối tháng). Giữ lại cả hai là để **hai quy ước biên** sống chung
+  /// trong một DAO, và khi ấy một khoản ghi đúng mốc giao giữa hai kỳ bị đếm
+  /// vào **cả hai** — không exception, chỉ là một con số lớn hơn thực tế.
+  Stream<List<Transaction>> watchKhoang(
+    int idaccount,
+    DateTime from,
+    DateTime to,
+  ) {
     return (select(transactions)
           ..where((t) =>
               t.idaccount.equals(idaccount) &
               t.deletedAt.isNull() &
               t.date.isBiggerOrEqualValue(from) &
-              t.date.isSmallerOrEqualValue(to))
+              t.date.isSmallerThanValue(to))
           ..orderBy([(t) => OrderingTerm.desc(t.date)]))
         .watch();
   }

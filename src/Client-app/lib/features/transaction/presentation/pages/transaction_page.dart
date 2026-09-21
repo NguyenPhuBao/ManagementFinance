@@ -8,6 +8,7 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/widgets/confirm_dialog.dart';
+import '../../../analytics/domain/pham_vi_ky.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../data/models/transaction_entity.dart';
 import '../../domain/transaction_filter.dart';
@@ -44,7 +45,10 @@ class TransactionPage extends StatefulWidget {
 }
 
 class _TransactionPageState extends State<TransactionPage> {
-  late DateTime _selectedMonthDate;
+  /// Kỳ đang xem. Thay `_selectedMonthDate` ngày 2026-09-21: trang này không
+  /// còn khoá theo tháng, nó xem được tuần / tháng / quý / năm / khoảng tuỳ
+  /// chọn bằng chính `Ky` mà trang Phân tích và Xuất báo cáo dùng.
+  late Ky _ky;
 
   /// Điều kiện lọc hiện tại; giữ nguyên khi đổi tháng — người dùng đang xem
   /// "chi ở ví Tiết kiệm" thì lật sang tháng trước vẫn muốn xem đúng thứ đó.
@@ -66,7 +70,10 @@ class _TransactionPageState extends State<TransactionPage> {
   @override
   void initState() {
     super.initState();
-    _selectedMonthDate = DateTime.now();
+    // Mở trang ở tháng hiện tại — giữ đúng nếp cũ, và khớp với kỳ mà bloc tự
+    // đăng ký ở `LoadTransactionsEvent`.
+    final now = DateTime.now();
+    _ky = Ky.thang(now.year, now.month);
   }
 
   void _ensureLookupStreams(int idaccount) {
@@ -77,20 +84,14 @@ class _TransactionPageState extends State<TransactionPage> {
     _categories = db.categoryDao.watchAll(idaccount);
   }
 
-  void _changeMonth(int deltaYears, int deltaMonths, BuildContext blocContext) {
-    setState(() {
-      _selectedMonthDate = DateTime(
-        _selectedMonthDate.year + deltaYears,
-        _selectedMonthDate.month + deltaMonths,
-        1,
-      );
-    });
-    blocContext.read<TransactionBloc>().add(
-          FilterMonthEvent(
-            year: _selectedMonthDate.year,
-            month: _selectedMonthDate.month,
-          ),
-        );
+  /// Đổi kỳ đang xem. [soKy] **dương là lùi**, âm là tiến — cùng chiều với
+  /// `lui()`, để không đẻ ra quy ước dấu thứ hai.
+  ///
+  /// `lui` lùi theo **đơn vị lịch** chứ không trừ số ngày, và với kỳ tuỳ chọn
+  /// thì lùi đúng bằng độ dài khoảng.
+  void _doiKy(int soKy, BuildContext blocContext) {
+    setState(() => _ky = lui(_ky, soKy));
+    blocContext.read<TransactionBloc>().add(ChonKyEvent(_ky));
   }
 
   @override
@@ -150,12 +151,12 @@ class _TransactionPageState extends State<TransactionPage> {
             // đều xanh.
             //
             // Gỡ an toàn vì danh sách là **stream** (`watchTransactionsByMonth`):
-            // `FilterMonthEvent` mà FAB cũ phát sau khi quay lại chỉ đặt lại
+            // `ChonKyEvent` mà FAB cũ phát sau khi quay lại chỉ đặt lại
             // đúng tháng đang xem, tức thừa.
             body: SafeArea(
               child: Column(
                 children: [
-                  _buildMonthSelector(blocContext),
+                  _buildKySelector(blocContext),
                   Expanded(
                     child: BlocBuilder<TransactionBloc, TransactionState>(
                       builder: (context, state) {
@@ -167,8 +168,8 @@ class _TransactionPageState extends State<TransactionPage> {
                           // Bộ lọc chạy trên danh sách tháng đã có trong bloc;
                           // thẻ tổng và danh sách cùng tính trên tập đã lọc để
                           // hai thứ luôn nói cùng một chuyện.
-                          final txs = applyTransactionFilter(
-                              state.monthlyTransactions, _filter);
+                          final txs =
+                              applyTransactionFilter(state.giaoDich, _filter);
                           final summary = summarizeTransactions(txs);
 
                           return StreamBuilder<List<Wallet>>(
@@ -261,10 +262,7 @@ class _TransactionPageState extends State<TransactionPage> {
             ),
           );
           if (result == true && blocContext.mounted) {
-            blocContext.read<TransactionBloc>().add(FilterMonthEvent(
-                  year: _selectedMonthDate.year,
-                  month: _selectedMonthDate.month,
-                ));
+            blocContext.read<TransactionBloc>().add(ChonKyEvent(_ky));
           }
         },
         onDelete: () async {
@@ -284,9 +282,7 @@ class _TransactionPageState extends State<TransactionPage> {
     );
   }
 
-  Widget _buildMonthSelector(BuildContext blocContext) {
-    final monthStr = DateFormat('MM/yyyy').format(_selectedMonthDate);
-
+  Widget _buildKySelector(BuildContext blocContext) {
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -294,16 +290,17 @@ class _TransactionPageState extends State<TransactionPage> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           IconButton(
-            tooltip: 'Tháng trước',
+            tooltip: 'Kỳ trước',
             icon: const Icon(Icons.chevron_left, color: AppColors.primary),
-            onPressed: () => _changeMonth(0, -1, blocContext),
+            onPressed: () => _doiKy(1, blocContext),
           ),
           Row(
             children: [
-              const Icon(Icons.calendar_month, color: AppColors.primary, size: 20),
+              const Icon(Icons.calendar_month,
+                  color: AppColors.primary, size: 20),
               const SizedBox(width: 8),
               Text(
-                'Tháng $monthStr',
+                nhanRong(_ky, DateTime.now()),
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -313,9 +310,9 @@ class _TransactionPageState extends State<TransactionPage> {
             ],
           ),
           IconButton(
-            tooltip: 'Tháng sau',
+            tooltip: 'Kỳ sau',
             icon: const Icon(Icons.chevron_right, color: AppColors.primary),
-            onPressed: () => _changeMonth(0, 1, blocContext),
+            onPressed: () => _doiKy(-1, blocContext),
           ),
         ],
       ),

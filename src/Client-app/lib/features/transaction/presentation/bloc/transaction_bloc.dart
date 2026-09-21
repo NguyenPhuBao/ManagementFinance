@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/sync/sync_engine.dart';
+import '../../../analytics/domain/pham_vi_ky.dart';
 import '../../data/models/transaction_entity.dart';
 import '../../data/repositories/transaction_repository.dart';
 import 'transaction_event.dart';
@@ -20,7 +21,7 @@ class TransactionBloc extends Bloc<TransactionEvent, TransactionState> {
     on<AddTransactionEvent>(_onAddTransaction);
     on<UpdateTransactionEvent>(_onUpdateTransaction);
     on<DeleteTransactionEvent>(_onDeleteTransaction);
-    on<FilterMonthEvent>(_onFilterMonth);
+    on<ChonKyEvent>(_onChonKy);
   }
 
   int? _currentIdAccount;
@@ -32,15 +33,17 @@ class TransactionBloc extends Bloc<TransactionEvent, TransactionState> {
     _currentIdAccount = event.idaccount;
     emit(TransactionLoadingState());
     final now = DateTime.now();
-    _subscribeMonth(event.idaccount, now.year, now.month);
+    // Mở trang ở tháng hiện tại — giữ nguyên nếp cũ, chỉ khác là nay nó là một
+    // kỳ chứ không phải một cặp (năm, tháng).
+    _subscribeKy(event.idaccount, Ky.thang(now.year, now.month));
   }
 
-  void _subscribeMonth(int idaccount, int year, int month) {
+  void _subscribeKy(int idaccount, Ky ky) {
     _subscription?.cancel();
     _subscription = transactionRepository
-        .watchTransactionsByMonth(idaccount, year, month)
+        .watchKhoang(idaccount, ky.from, ky.to)
         .listen((list) {
-      add(TransactionsUpdatedEvent(list, year: year, month: month));
+      add(TransactionsUpdatedEvent(list, ky: ky));
     });
   }
 
@@ -48,15 +51,15 @@ class TransactionBloc extends Bloc<TransactionEvent, TransactionState> {
     TransactionsUpdatedEvent event,
     Emitter<TransactionState> emit,
   ) {
-    _emitLoadedState(event.transactions, event.year, event.month, emit);
+    _emitLoadedState(event.transactions, event.ky, emit);
   }
 
-  void _onFilterMonth(
-    FilterMonthEvent event,
+  void _onChonKy(
+    ChonKyEvent event,
     Emitter<TransactionState> emit,
   ) {
     if (_currentIdAccount != null) {
-      _subscribeMonth(_currentIdAccount!, event.year, event.month);
+      _subscribeKy(_currentIdAccount!, event.ky);
     }
   }
 
@@ -82,12 +85,10 @@ class TransactionBloc extends Bloc<TransactionEvent, TransactionState> {
       } else {
         final now = DateTime.now();
         emit(TransactionLoadedState(
-          transactions: const [],
-          monthlyTransactions: const [],
+          giaoDich: const [],
           totalIncome: 0,
           totalExpense: 0,
-          selectedYear: now.year,
-          selectedMonth: now.month,
+          ky: Ky.thang(now.year, now.month),
           isSubmitting: false,
           actionSuccess: true,
         ));
@@ -103,12 +104,10 @@ class TransactionBloc extends Bloc<TransactionEvent, TransactionState> {
       } else {
         final now = DateTime.now();
         emit(TransactionLoadedState(
-          transactions: const [],
-          monthlyTransactions: const [],
+          giaoDich: const [],
           totalIncome: 0,
           totalExpense: 0,
-          selectedYear: now.year,
-          selectedMonth: now.month,
+          ky: Ky.thang(now.year, now.month),
           isSubmitting: false,
           actionSuccess: false,
           errorMessage: e.toString(),
@@ -153,12 +152,10 @@ class TransactionBloc extends Bloc<TransactionEvent, TransactionState> {
     }
     final now = DateTime.now();
     emit(TransactionLoadedState(
-      transactions: const [],
-      monthlyTransactions: const [],
+      giaoDich: const [],
       totalIncome: 0,
       totalExpense: 0,
-      selectedYear: now.year,
-      selectedMonth: now.month,
+      ky: Ky.thang(now.year, now.month),
       isSubmitting: false,
       actionSuccess: success,
       errorMessage: error,
@@ -180,19 +177,18 @@ class TransactionBloc extends Bloc<TransactionEvent, TransactionState> {
     }
   }
 
+  /// ⚠️ **Không** lọc lại danh sách theo kỳ ở đây. `watchKhoang` đã trả đúng
+  /// `[ky.from, ky.to)`, nên lọc thêm một lần nữa là chép luật biên ra chỗ thứ
+  /// hai — và hai bản chép sẽ trôi xa nhau. Bản cũ có phép lọc ấy vì nó nhận
+  /// `(year, month)` rời nhau và không có gì bảo đảm chúng khớp truy vấn.
   void _emitLoadedState(
-    List<TransactionEntity> allTx,
-    int year,
-    int month,
+    List<TransactionEntity> giaoDich,
+    Ky ky,
     Emitter<TransactionState> emit,
   ) {
-    final monthly = allTx.where((t) {
-      return t.date.year == year && t.date.month == month;
-    }).toList();
-
     double income = 0;
     double expense = 0;
-    for (final t in monthly) {
+    for (final t in giaoDich) {
       if (t.type == 'thu') {
         income += t.amount;
       } else if (t.type == 'chi') {
@@ -201,12 +197,10 @@ class TransactionBloc extends Bloc<TransactionEvent, TransactionState> {
     }
 
     emit(TransactionLoadedState(
-      transactions: allTx,
-      monthlyTransactions: monthly,
+      giaoDich: giaoDich,
       totalIncome: income,
       totalExpense: expense,
-      selectedYear: year,
-      selectedMonth: month,
+      ky: ky,
     ));
   }
 

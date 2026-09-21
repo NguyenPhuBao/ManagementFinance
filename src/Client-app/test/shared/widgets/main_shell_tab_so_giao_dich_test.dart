@@ -92,8 +92,8 @@ void main() {
       // cách nhau chừng 40px làm đúng một việc (`push('/add')`).
       //
       // Gỡ FAB của trang an toàn vì danh sách là **stream**
-      // (`watchTransactionsByMonth`): phép `FilterMonthEvent` mà FAB ấy phát
-      // sau khi quay lại chỉ đặt lại đúng tháng đang xem, tức thừa.
+      // (`watchKhoang`): phép `ChonKyEvent` mà FAB ấy phát sau khi quay lại chỉ
+      // đặt lại đúng kỳ đang xem, tức thừa.
       final nguon =
           doc('lib/features/transaction/presentation/pages/transaction_page.dart');
       expect(nguon.contains('floatingActionButton'), isFalse,

@@ -5,10 +5,12 @@ import '../datasources/transaction_local_data_source.dart';
 import '../models/transaction_entity.dart';
 
 abstract class TransactionRepository {
-  Stream<List<TransactionEntity>> watchTransactionsByMonth(
+  /// Giao dịch trong khoảng `[from, to)`. Biên `to` **mở** — xem
+  /// `TransactionDao.watchKhoang`.
+  Stream<List<TransactionEntity>> watchKhoang(
     int idaccount,
-    int year,
-    int month,
+    DateTime from,
+    DateTime to,
   );
   Future<void> addTransaction(
     TransactionEntity transaction, {
@@ -43,12 +45,12 @@ class TransactionRepositoryImpl implements TransactionRepository {
   });
 
   @override
-  Stream<List<TransactionEntity>> watchTransactionsByMonth(
+  Stream<List<TransactionEntity>> watchKhoang(
     int idaccount,
-    int year,
-    int month,
+    DateTime from,
+    DateTime to,
   ) {
-    return localDataSource.watchTransactionsByMonth(idaccount, year, month);
+    return localDataSource.watchKhoang(idaccount, from, to);
   }
 
   @override

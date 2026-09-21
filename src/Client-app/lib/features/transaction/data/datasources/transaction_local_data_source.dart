@@ -2,10 +2,12 @@ import '../../../../core/database/app_database.dart';
 import '../models/transaction_entity.dart';
 
 abstract class TransactionLocalDataSource {
-  Stream<List<TransactionEntity>> watchTransactionsByMonth(
+  /// Giao dịch trong khoảng `[from, to)`. Biên `to` **mở** — xem
+  /// `TransactionDao.watchKhoang`.
+  Stream<List<TransactionEntity>> watchKhoang(
     int idaccount,
-    int year,
-    int month,
+    DateTime from,
+    DateTime to,
   );
   Future<void> addTransaction(TransactionEntity entity);
   Future<void> updateTransaction(TransactionEntity entity);
@@ -18,14 +20,12 @@ class TransactionLocalDataSourceImpl implements TransactionLocalDataSource {
   TransactionLocalDataSourceImpl(this.db);
 
   @override
-  Stream<List<TransactionEntity>> watchTransactionsByMonth(
+  Stream<List<TransactionEntity>> watchKhoang(
     int idaccount,
-    int year,
-    int month,
+    DateTime from,
+    DateTime to,
   ) {
-    return db.transactionDao
-        .watchByMonth(idaccount, year, month)
-        .map(
+    return db.transactionDao.watchKhoang(idaccount, from, to).map(
           (list) => list.map((t) => TransactionEntity.fromDrift(t)).toList(),
         );
   }

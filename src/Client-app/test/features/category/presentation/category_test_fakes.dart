@@ -244,10 +244,10 @@ class FakeTransactionRepository implements TransactionRepository {
   }
 
   @override
-  Stream<List<TransactionEntity>> watchTransactionsByMonth(
+  Stream<List<TransactionEntity>> watchKhoang(
     int idaccount,
-    int year,
-    int month,
+    DateTime from,
+    DateTime to,
   ) =>
       const Stream.empty();
 }
