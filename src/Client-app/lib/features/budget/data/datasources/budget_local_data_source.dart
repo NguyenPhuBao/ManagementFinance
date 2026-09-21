@@ -51,6 +51,10 @@ abstract class BudgetLocalDataSource {
 
   /// Ví của tài khoản, để tra tên ví cho dòng giao dịch.
   Future<List<Wallet>> getWallets(int idaccount);
+
+  /// Mốc giao dịch **sớm nhất** của tài khoản — tuổi dữ liệu, làm mẫu số cho
+  /// `cuaSoNhinLai`. `null` = chưa có giao dịch nào.
+  Future<DateTime?> mocGiaoDichDauTien(int idaccount);
 }
 
 class BudgetLocalDataSourceImpl implements BudgetLocalDataSource {
@@ -173,4 +177,8 @@ class BudgetLocalDataSourceImpl implements BudgetLocalDataSource {
   Future<List<Wallet>> getWallets(int idaccount) {
     return db.walletDao.getAll(idaccount);
   }
+
+  @override
+  Future<DateTime?> mocGiaoDichDauTien(int idaccount) =>
+      db.transactionDao.getFirstTransactionDate(idaccount);
 }

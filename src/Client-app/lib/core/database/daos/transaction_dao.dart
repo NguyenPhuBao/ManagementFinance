@@ -43,6 +43,27 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     return (await q.getSingle()).read(moc);
   }
 
+  /// Mốc giao dịch **sớm nhất** của tài khoản — tức **tuổi dữ liệu**.
+  ///
+  /// Là mẫu số của `cuaSoNhinLai` (`features/budget/domain/cua_so_nhin_lai.dart`):
+  /// mọi con số "trung bình mỗi tháng" trong app chia cho số ngày mà cửa sổ ấy
+  /// trả về. `null` = tài khoản chưa có giao dịch nào, và bên kia đọc nó là
+  /// *chưa đủ để nói*.
+  ///
+  /// ⚠️ Chỉ khác [getLastTransactionDate] đúng một chữ `min`/`max`, nên rất dễ
+  /// lẫn — mà lấy nhầm đầu kia thì mẫu số teo lại và mọi mức tháng phồng lên.
+  ///
+  /// ⚠️ Bỏ hàng đã xoá mềm: để chúng làm mốc là kéo dài mẫu số bằng dữ liệu
+  /// người dùng đã bỏ đi, và mọi mức tháng nhỏ đi một cách im lặng.
+  Future<DateTime?> getFirstTransactionDate(int idaccount) async {
+    final moc = transactions.date.min();
+    final q = selectOnly(transactions)
+      ..addColumns([moc])
+      ..where(transactions.idaccount.equals(idaccount) &
+          transactions.deletedAt.isNull());
+    return (await q.getSingle()).read(moc);
+  }
+
   /// Stream theo dõi realtime theo idaccount
   Stream<List<Transaction>> watchAll(int idaccount) {
     return (select(transactions)
