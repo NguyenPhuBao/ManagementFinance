@@ -581,12 +581,23 @@ Quét bằng máy, không theo trí nhớ.
 | Route khai trong `app_router.dart` | **43** (41 tuyệt đối + 2 tương đối) |
 | Bảng Drift | **10** |
 | **Hàm domain thuần** (`*/domain/*.dart`) | **66** |
-| Gói số AI đang dùng | **4** |
+| Gói số AI đang dùng | **6** (đo lại 2026-09-21) |
+| Màn có khối Nhận xét | **6** (đo lại 2026-09-21) |
 | Lời gọi biểu đồ `fl_chart` | 8 (→ **9** khối người dùng thấy) |
 
-### ⭐ Phát hiện chính: app đã tính sẵn 66 thứ, AI mới nói ra 4
+⚠️ **Hai con số trên là của 2026-09-21, phần còn lại của mục 11 là khảo sát
+2026-09-20.** Lúc khảo sát là **4** gói số và **4** màn; chặng 1 thêm hoá đơn,
+mục tiêu và ví. Con số **66 hàm domain thuần** thì **giữ nguyên của ngày
+2026-09-20** — không phải vì nó còn đúng (thư mục `*/domain/` nay có **70 tệp**,
+`vi_hay_dung.dart` và `khoang_tien.dart` thêm sau đó), mà vì **cách đếm cũ không
+tái hiện được**, nên thay bằng một con số đếm kiểu khác là làm hỏng chính phép
+so sánh mà nó sinh ra để phục vụ. Cần con số mới thì **đếm lại cả hai vế cùng
+một cách**, đừng sửa một vế.
 
-Tỉ lệ khai thác **dưới 10%**. Mỗi hàm trong `*/domain/` là một phép tính **đã xong, đã
+### ⭐ Phát hiện chính: app đã tính sẵn 66 thứ, AI mới nói ra 4 (nay là 6)
+
+Tỉ lệ khai thác **dưới 10%** lúc khảo sát — chặng 1 nâng nó lên, nhưng **kết
+luận không đổi**: phần lớn việc phía trước vẫn là *gói lại thứ đã tính*. Mỗi hàm trong `*/domain/` là một phép tính **đã xong, đã
 có test, đã đúng** — AI chỉ cần gói lại thành `GoiSo` là nói ra được, không phải tính
 lại gì. Phần lớn việc phía trước **không phải "thêm AI", mà là "gói lại thứ đã tính"**.
 
@@ -604,18 +615,38 @@ Hai mảng lớn nhất app đang trống:
 
 | Mảng | Số đã có sẵn | AI làm được | Chiều | Ưu tiên |
 |---|---|---|---|---|
-| **transaction** | `transaction_filter`, `transaction_lookup` | nhập bằng câu · tìm kiếm bằng câu · gắn danh mục hàng loạt | ghi 3 / đọc / ghi 1 | ⭐⭐⭐ |
+| **transaction** | `transaction_filter`, `transaction_lookup`, `khoang_tien`, `vi_hay_dung` | nhập bằng câu · tìm kiếm bằng câu · gắn danh mục hàng loạt | ghi 3 / đọc / ghi 1 | ⭐⭐⭐ |
 | **category** | `CategorySuggestionEngine`, cột `keyword` | học từ khoá từ lịch sử · phân loại tự động | ghi 1 | ⭐⭐⭐ |
-| **bill** | 10 hàm domain, **chưa dùng** | gói số hoá đơn · phát hiện hoá đơn định kỳ · dự đoán số tiền kỳ tới · tạo hoá đơn bằng lệnh | đọc + ghi 2 | ⭐⭐⭐ |
-| **goal** | 14 hàm domain, **mới dùng 1** | giải thích vì sao trễ · ví thiếu tiền trích · dự báo ngày đạt · tạo mục tiêu bằng lệnh | đọc + ghi 2 | ⭐⭐ |
+| **bill** | 10 hàm domain, ✅ **đã có gói số** (`bill_status`) | ~~gói số hoá đơn~~ ✅ xong 2026-09-21 · phát hiện hoá đơn định kỳ · dự đoán số tiền kỳ tới · tạo hoá đơn bằng lệnh | đọc + ghi 2 | ⭐⭐⭐ |
+| **goal** | 14 hàm domain, **dùng 2** (`goal_forecast`, `goal_grouping`) | ~~dự báo ngày đạt~~ ✅ xong 2026-09-21 · giải thích vì sao trễ · ví thiếu tiền trích · tạo mục tiêu bằng lệnh | đọc + ghi 2 | ⭐⭐ |
 | **analytics** | `thac_nuoc`, `tong_tai_san`, `lich_chi_tieu`, `moc_so_sanh`, `dong_tien_tu_do`… | **giải thích 9 biểu đồ** · chọn khối đáng xem | đọc | ⭐⭐ |
 | **analytics / vay-nợ** | `vai_vay_no` | **dư nợ theo người** — đọc tên từ ghi chú | đọc | ⭐⭐ |
 | **budget** | `budget_pace`, `budget_impact`, `budget_history` | đã có nhận xét + kế hoạch; thêm: đề xuất tạo ngân sách | đọc + ghi 2 | ⭐ |
-| **wallet** | `vi_tinh_vao_tong`, `dieu_chinh_so_du` | giải thích vì sao số dư lệch | đọc | ⭐ |
+| **wallet** | `vi_tinh_vao_tong`, ✅ **đã có gói số** | ~~giải thích tổng tài sản vs tổng các ví~~ ✅ xong 2026-09-21 | đọc | ⭐ |
 | **notification** | 19 loại | chọn loại nào đáng bắn ra hệ điều hành | đọc | ⭐ |
 | **analytics / báo cáo** | `bao_cao_xuat`, `xuat_tep` | tóm tắt đầu PDF — ⚠️ xem 11.2 | đọc | cân nhắc |
 | **home** | `thu_chi_thang` | đã có | — | — |
 | **auth · profile · sync** | — | **không có đất** | — | 🛑 |
+
+⚠️ **Hai điều lượt soát 2026-09-21 tìm ra, đáng nhớ hơn bản thân các con số.**
+
+**(1) Dòng `wallet` sai TỪ GỐC, không phải mới lỗi thời.** Nó ghi việc cần làm là
+*"giải thích vì sao số dư lệch"* và trỏ vào `dieu_chinh_so_du` — nhưng từ **G37**
+(2026-09-13) số dư ví **suy từ sổ giao dịch**, nên nó **không còn lệch** được
+nữa; bảng viết ngày 2026-09-20, tức bảy ngày *sau* khi câu ấy hết đúng. Thứ
+người dùng thật sự thấy lệch là **tổng tài sản so với tổng các ví nhìn thấy**
+(ví tắt `includeInTotal` và ví lưu trữ bị loại khỏi tổng), và đó mới là thứ khối
+Nhận xét trang Quản lý ví giải thích — mục **14**. Việc đã làm, chỉ là **không
+đúng việc bảng mô tả**. Bài học: một bảng khảo sát có thể chép lại một câu đã
+chết từ trước khi nó được viết ra; đối chiếu với **mã**, đừng đối chiếu với bảng.
+
+**(2) `transaction` là mảng DUY NHẤT chưa có gói số, và đúng ra phải thế.** Cả
+ba việc của nó — nhập bằng câu · tìm kiếm bằng câu · gắn danh mục hàng loạt —
+đều là **function calling**, tức cần một mô hình chứ không cần gói số. Chúng
+nằm ở chặng 2 của `docs/superpowers/plans/2026-09-21-ai-viec-tiep-theo.md`, mà
+chặng ấy **đứng sau P3** dù kế hoạch xếp nó trước: nửa sau của 2.1 đòi *"20 câu
+lệnh mẫu → đếm bao nhiêu lần chọn đúng hàm"*, và phép đo ấy **cần mô hình mới
+đo được**. Đừng đọc ô trống của dòng này như một việc gói số còn sót.
 
 ### 11.1 ⚠️ "AI hiểu biểu đồ" — đừng dùng vision
 
