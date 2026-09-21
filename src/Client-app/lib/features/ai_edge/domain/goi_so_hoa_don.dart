@@ -1,0 +1,112 @@
+/// Gói số của trang Hoá đơn — nhận xét **kỳ này**, đúng phạm vi mà thẻ tổng
+/// đầu trang đang nói tới.
+///
+/// Mọi con số đến từ `summarizeBills` và `billDisplayStatusOf`; lớp này không
+/// tính gì (test quét thứ 14). Riêng phép đếm quá hạn phải lặp lại **cùng hai
+/// bộ lọc** của `summarizeBills` — xem chú thích ở [GoiSoHoaDon.tu].
+library;
+
+import '../../../core/database/app_database.dart';
+import '../../bill/domain/bill_status.dart';
+import 'goi_so.dart';
+import 'nhan_xet.dart';
+
+class GoiSoHoaDon extends GoiSo {
+  @override
+  String get man => 'hoa_don';
+
+  final BillSummary tom;
+
+  /// Số hoá đơn **của kỳ này** đang quá hạn.
+  final int quaHan;
+
+  @override
+  final List<SoLieu> soLieu;
+
+  GoiSoHoaDon._({
+    required this.tom,
+    required this.quaHan,
+    required this.soLieu,
+  });
+
+  factory GoiSoHoaDon.tu(List<Bill> bills, {required DateTime now}) {
+    final tom = summarizeBills(bills, now);
+
+    // ⚠️ Phải lọc đúng như `summarizeBills`, nếu không con số quá hạn nói về
+    // một tập hoá đơn khác với con số tiền ngay cạnh nó — hai vế của cùng một
+    // câu, đếm trên hai tập khác nhau, và không có gì báo.
+    //
+    // `billDisplayStatusOf` tự trả `skipped` cho kỳ bỏ qua nên vế ấy không cần
+    // lặp lại; vế còn phải lặp là **chặn ở cuối tháng** (hoá đơn kỳ sau không
+    // thuộc kỳ này).
+    final cuoiKy = DateTime(now.year, now.month + 1, 1);
+    var quaHan = 0;
+    for (final b in bills) {
+      if (!b.dueDate.isBefore(cuoiKy)) continue;
+      if (billDisplayStatusOf(b, now) == BillDisplayStatus.overdue) quaHan++;
+    }
+
+    // Kỳ không có hoá đơn nào đáng nói: không thẻ số liệu nào, chỉ một câu.
+    // Thẻ "Quá hạn: 0" hay "Tiến độ: 0,0%" ở đây là ô trống đội lốt số liệu.
+    final rong = tom.unpaidCount == 0 && tom.paidCount == 0;
+
+    return GoiSoHoaDon._(
+      tom: tom,
+      quaHan: quaHan,
+      soLieu: rong
+          ? const []
+          : [
+              soTien('Còn phải trả', tom.unpaidAmount),
+              soTien('Đã trả', tom.paidAmount),
+              soPhanTram('Tiến độ', tom.progress * 100),
+              if (tom.unpaidCount > 0) soDem('Chưa trả', tom.unpaidCount),
+              if (quaHan > 0) soDem('Quá hạn', quaHan),
+            ],
+    );
+  }
+
+  @override
+  bool get thieuDuLieu => tom.unpaidCount == 0 && tom.paidCount == 0;
+
+  @override
+  NhanXet mauCau() {
+    if (thieuDuLieu) {
+      return const NhanXet(
+        cau: 'Kỳ này chưa có hoá đơn nào.',
+        theSoLieu: [],
+        muc: MucNhanXet.thieuDuLieu,
+      );
+    }
+    final s = {for (final x in soLieu) x.nhan: x.chuoi};
+
+    // Quá hạn nói trước mọi thứ khác: đó là thứ duy nhất ở đây cần làm ngay.
+    if (quaHan > 0) {
+      return NhanXet(
+        cau: 'Có ${s['Quá hạn']} hoá đơn quá hạn; kỳ này còn phải trả '
+            '${s['Còn phải trả']}.',
+        theSoLieu: soLieu,
+        muc: MucNhanXet.canhBao,
+      );
+    }
+
+    if (tom.unpaidCount > 0) {
+      // Vế "đã trả" chỉ thêm vào khi có tiền đã trả thật — "đã trả 0 đ (0,0%)"
+      // làm câu dài ra mà không nói thêm gì.
+      final veDaTra = tom.paidAmount > 0
+          ? '; đã trả ${s['Đã trả']} (${s['Tiến độ']})'
+          : '';
+      return NhanXet(
+        cau: 'Kỳ này còn ${s['Chưa trả']} hoá đơn chưa trả, tổng '
+            '${s['Còn phải trả']}$veDaTra.',
+        theSoLieu: soLieu,
+        muc: MucNhanXet.binhThuong,
+      );
+    }
+
+    return NhanXet(
+      cau: 'Đã trả xong toàn bộ hoá đơn kỳ này, tổng ${s['Đã trả']}.',
+      theSoLieu: soLieu,
+      muc: MucNhanXet.binhThuong,
+    );
+  }
+}

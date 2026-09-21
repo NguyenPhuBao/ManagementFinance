@@ -594,8 +594,9 @@ Hai mảng lớn nhất app đang trống:
 
 - **`goal` — 31 tệp, 14 hàm domain, AI mới dùng 1.** Bỏ qua `goal_forecast`,
   `goal_stats`, `goal_progress_series`, `goal_wallet_shortfall`, `goal_deposit_warning`.
-- **`bill` — 27 tệp, 10 hàm domain, AI chưa chạm gì.** Không một gói số nào cho hoá đơn,
-  dù đã có `bill_ky_ke_tiep`, `bill_status` (năm trạng thái), `bill_chain`, `bill_an_han`.
+- **`bill` — 27 tệp, 10 hàm domain.** ✅ **Đã có gói số từ 2026-09-21** (chặng 1.3):
+  `GoiSoHoaDon` gói `summarizeBills` + `billDisplayStatusOf`, và trang Hoá đơn có khối
+  Nhận xét như bốn màn kia. Còn chưa chạm: `bill_ky_ke_tiep`, `bill_chain`, `bill_an_han`.
 
 ### Bảng theo mảng
 
@@ -650,7 +651,7 @@ nào đáng bắn ra hệ điều hành** thì hợp lý.
    bản luật (regex + `CategorySuggestionEngine` đã có) chạy được **không cần mô hình**,
    mô hình chỉ làm nó hiểu câu lạ. ⚠️ Chốt bảng quy đổi `k` / `củ` / `chai` và **hiện rõ
    số đã hiểu** trên form.
-3. **Gói số cho hoá đơn** — mảng 27 tệp mà AI chưa chạm; chỉ cần gói lại 10 hàm đã có.
+3. ✅ **Gói số cho hoá đơn** — **xong 2026-09-21**, xem mục 12.
 4. **Trợ lý ra lệnh** (tầng 0 + 2) — tạo hoá đơn, mục tiêu, ngân sách bằng câu nói, qua
    function calling. ⚠️ Đo **tỉ lệ chọn đúng hàm** trước khi mở tầng 3: mô hình 2,3 tỉ
    tham số chọn sai thường xuyên hơn mô hình lớn, và *"tạo tiết kiệm 5 triệu"* có thể là
@@ -808,3 +809,48 @@ nào hay bị vuốt bỏ ngay, loại nào hay được chạm vào.
 ⚠️ **Không đụng `dedupeKey`** — chống trùng phải giữ nguyên; chỉ đổi việc *có bắn ra hệ
 điều hành hay không*. Và giữ nguyên `luonBao`: bốn loại báo "app vừa rút tiền của bạn"
 không bao giờ được giảm tần suất.
+
+---
+
+## 12. Gói số hoá đơn và khối Nhận xét trang Hoá đơn (2026-09-21, chặng 1.3)
+
+Gói số **thứ năm**, và là tệp mẫu cho gói mục tiêu mở rộng (1.4) lẫn gói ví (1.5).
+Trước lượt này mảng `bill` — 27 tệp, 10 hàm domain — không có gói số nào.
+
+**Tệp:** `ai_edge/domain/goi_so_hoa_don.dart` · khối nối ở `bill_page.dart` giữa thẻ tổng
+quan và hàng tab, theo màn Stitch **`179dbd70b0fd4b6a97df6b7d2c38d0e2`**
+*"Hoá đơn - Khối Nhận xét AI"*.
+
+**Số lấy từ đâu** (lớp này không tính — test quét thứ 14): `summarizeBills` cho tiền và
+số hoá đơn của **kỳ này**, `billDisplayStatusOf` cho phép đếm quá hạn.
+
+Bốn nhánh mẫu câu: kỳ rỗng · **có quá hạn** (mức cảnh báo, nói trước mọi thứ khác vì đó
+là điều duy nhất cần làm ngay) · còn nợ · đã trả xong cả kỳ.
+
+⚠️ **Phép đếm quá hạn phải lặp lại bộ lọc "chặn ở cuối tháng" của `summarizeBills`.**
+Thiếu nó thì con số quá hạn nói về một tập hoá đơn khác với con số tiền đứng ngay cạnh
+trong cùng một câu, và không có gì báo. (Vế "bỏ kỳ đã bỏ qua" thì không cần lặp —
+`billDisplayStatusOf` tự trả `skipped`.)
+
+⚠️ **Kỳ rỗng thì `soLieu` rỗng, không phải "Quá hạn: 0".** Một thẻ số liệu bằng 0 ở đây
+là ô trống đội lốt số liệu; nhánh thiếu dữ liệu vẫn là **một câu thật** (mục 1).
+
+⚠️ **Vế "đã trả" chỉ thêm khi có tiền đã trả thật** — "đã trả 0 đ (0,0%)" làm câu dài ra
+mà không nói thêm gì.
+
+⚠️ **Lượt nối khối làm đỏ hai ca test cũ, và một trong hai là lỗi THẬT.** Ca thứ nhất chỉ
+là `find.textContaining('60.000')` nay tìm ra ba chỗ vì câu nhận xét nhắc lại cùng con số
+— thẻ tổng nay mang khoá `bill-tong-con-phai-tra` để ca cũ trỏ đúng nó. Ca thứ hai nghiêm
+trọng hơn: khối lấy bớt chiều cao của `Expanded`, mà **trạng thái rỗng của danh sách là
+`Column` cao cố định**, nên nó **tràn 73 px** ở khổ màn thấp. Máy cao không thấy gì đổi —
+đúng vùng mù số 1 của `flutter test`. Nay nó cuộn được, và có ca canh ở khổ 411×600.
+
+**Nghiệm thu máy ảo (tài khoản 10):** câu *"Có 1 hoá đơn quá hạn; kỳ này còn phải trả
+155.000 đ."* với viền cảnh báo, năm thẻ số liệu, **0 dòng tràn bố cục** trong logcat, con
+số khớp thẻ tổng ngay trên nó.
+
+⚠️ **Một chỗ lệch CÓ TỪ TRƯỚC, không phải do lượt này:** thẻ tổng và khối Nhận xét nói
+*"3 hoá đơn"* trong khi tab nói *"Cần thanh toán (4)"*. Hai con số đếm hai thứ khác nhau
+— thẻ và khối nói về **kỳ này** (chặn ở cuối tháng), tab liệt kê **mọi hoá đơn chưa
+đóng** kể cả kỳ sau. Đừng "sửa" cho khớp mà chưa quyết xem con số nào mới là con số người
+dùng cần.

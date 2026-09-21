@@ -8,7 +8,7 @@
 > **Nguồn:** `docs/AI_EDGE_FEATURE.md` mục **10** (bản chất mảng AI, mười tiêu chí, bốn
 > tầng chiều ghi) và mục **11** (bản đồ khảo sát). Đọc hai mục ấy **trước** khi bắt đầu.
 
-**Viết:** 2026-09-21. **Trạng thái:** chặng 0 ✅, việc 1.1 ✅ và 1.2 ✅ xong (2026-09-21); từ 1.3 trở đi chưa bắt đầu.
+**Viết:** 2026-09-21. **Trạng thái:** chặng 0 ✅, việc 1.1 · 1.2 · 1.3 ✅ xong (2026-09-21); từ 1.4 trở đi chưa bắt đầu.
 
 ---
 
@@ -190,7 +190,7 @@ trong `_chonDanhMuc`. `chonViChonSan` **giữ nguyên không sửa một dòng**
 là **vượt** chứ không **chạm** — chính ví dụ của kế hoạch đòi thế: 3 trên 5 đúng bằng 0,6
 mà kế hoạch xếp nó vào nhóm "giữ mặc định".
 
-## 1.3 Gói số cho HOÁ ĐƠN ⭐ (tệp mẫu cho 1.4 và 1.5)
+## 1.3 Gói số cho HOÁ ĐƠN — ✅ XONG 2026-09-21 (tệp mẫu cho 1.4 và 1.5)
 
 **Vấn đề:** `bill` có **27 tệp, 10 hàm domain** mà AI **chưa chạm gì** — không một gói số
 nào cho hoá đơn.
@@ -219,6 +219,14 @@ hai** (*còn phải trả* vs *đã có khoản chi*) và có **một** định 
 
 **Ca test bắt buộc:** *"mẫu câu tự qua bộ kiểm số ở mọi nhánh"* — **mọi** gói số đều phải
 có ca này (bẫy 4.1); thiếu nó thì P3 sẽ rơi về một câu mà `kiemSo` cũng chặn.
+
+✅ **Làm xong 2026-09-21, kèm KHỐI NHẬN XÉT trên trang Hoá đơn** — người dùng chốt làm
+trọn thay vì chỉ gói số, vì một gói số không có nơi gọi là mã chết (lệ "quét API mới thêm
+có 0 chỗ gọi" ở `CLAUDE.md`). 18 ca mới ở **2 tệp mới**; bộ đầy đủ **3146/3146, 1 skip**;
+`flutter analyze` **26 issue, 0 error**; nghiệm thu máy ảo xong. Màn Stitch
+**`179dbd70b0fd4b6a97df6b7d2c38d0e2`**. Chi tiết và bốn cái bẫy ở **mục 12**
+`AI_EDGE_FEATURE.md` — đáng nhớ nhất: khối lấy bớt chiều cao `Expanded` làm **trạng thái
+rỗng tràn 73 px** ở khổ màn thấp, thứ chỉ lộ ra vì một ca test cũ chạy ở khổ 600.
 
 ## 1.4 Gói số cho MỤC TIÊU (mở rộng)
 
