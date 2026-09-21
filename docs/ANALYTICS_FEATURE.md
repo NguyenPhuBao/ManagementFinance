@@ -2017,7 +2017,18 @@ không hoặc là xanh oan, hoặc là đỏ vì "tìm được hai".
 **4.13 Số 0 vẫn mang dấu.** `CurrencyFormatter.formatIncome(0)` trả `"+0 đ"`
 (ký hiệu đổi từ `₫` sang `đ` ngày 2026-09-09 khi gộp định dạng tiền về một chỗ).
 Một ví không phát sinh khoản thu nào hiện ra như lỗi định dạng — thấy trên máy
-ảo. Bảng "Phân bổ theo ví" bỏ dấu khi số bằng 0.
+ảo. Bảng "Phân bổ theo ví" bỏ dấu khi số bằng 0. Phép ấy nay là
+`CurrencyFormatter.formatCoDau(soTien, thu: …)` — **định nghĩa duy nhất**, dùng
+nó thay vì tự viết lại vế `== 0`.
+
+⚠️ **Bẫy này TÁI PHÁT ở một mảng khác ngày 2026-09-21**, cũng do máy ảo bắt: thẻ
+tổng của trang **Sổ giao dịch** in `+0 đ` / `-0 đ` ở kỳ rỗng, trong khi cột *Thu
+net* ngay cạnh đã dùng `formatCoDau` nên hiện `0 đ` trần — **một thẻ, hai quy
+ước**. Bài học không phải "nhớ sửa chỗ này" mà là: **một hàm được viết ra để dẹp
+một bẫy chỉ dẹp được những chỗ đã gọi nó**. Chỗ nào còn gọi thẳng `formatIncome`
+/ `formatExpense` thì bẫy vẫn nguyên ở đó, và nó chỉ lộ ra khi có dữ liệu bằng
+0 — thứ hiếm gặp cho tới khi một lát sau làm nó thành thường (ở đây là trang
+thôi khoá theo tháng, nên lùi vài kỳ là gặp kỳ rỗng).
 
 **4.14 Khoản nạp mục tiêu kiểu CŨ được đếm là thu và chi thật.** Trên tài khoản
 thử có một cặp hàng `Type = 'Transaction'` ±500.000 mang ghi chú *"Tích lũy mục

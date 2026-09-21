@@ -596,6 +596,55 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-21)
 
+### ✅ Nghiệm thu máy ảo 411dp cho lát sổ giao dịch (2026-09-21)
+
+**Task 5 Step 1** của `docs/superpowers/plans/2026-09-21-so-giao-dich-pham-vi-ky-va-loc-tien.md`
+— việc dở dang cuối cùng của kế hoạch ấy, nay đóng. Lát vừa rồi đụng **cả ba**
+vùng mù của `flutter test` (tràn bố cục · điều hướng qua `StatefulShellRoute` ·
+thứ tự giữa hai luồng bất đồng bộ), nên 3200 ca xanh không nói gì về nó.
+
+Máy đo được `1080×2400 / density 420` = đúng **411dp**. Sáu việc phải thấy tận
+mắt: lùi/tiến kỳ bằng ‹ › ✅ · nhãn **Quý** (`Quý này (Q3 2026)`) và **Năm**
+(`Năm nay (2026)`) không cụt ✅ · khoảng tuỳ chọn `10/09 – 12/09` bấm ‹ ra
+`07/09 – 09/09`, **đúng độ dài 3 ngày** ✅ · lọc tiền cả ba dạng
+(`500.000 – 1.000.000 đ` · `Từ 500.000 đ` · `Đến 100.000 đ`) với thẻ tổng đổi
+theo ✅ · gõ ngược hai ô thì nút Áp dụng **xám** kèm câu lỗi ✅ · đường tắt "Xem
+giao dịch" ⚠️ (xem G48). Sheet chọn phạm vi giữ **chiều cao cố định** khi đổi
+đơn vị — đúng bất biến đã chốt. Không một sọc tràn vàng nào trên hơn hai mươi
+ảnh chụp.
+
+**Một xác nhận ngoài danh sách: G43 đóng thật trên máy.** Kỳ đang xem là *Năm
+nay (2026)*, tức **vượt quá hôm nay** — đúng trạng thái từng làm nút "Tuỳ chọn"
+chết im lặng — và bộ chọn mở được với khoảng khởi tạo **bị kẹp** thành
+`1 thg 7 – 21 thg 9`, ngày 22 trở đi vô hiệu.
+
+**Ba chỗ lệch, chỉ hai là của lát này.** Cả hai nằm ở **kỳ rỗng**, một trạng
+thái hiếm gặp khi trang còn khoá theo tháng nhưng thành ca **thường** ngay khi
+trang xem được năm đơn vị:
+
+1. Câu trạng thái rỗng vẫn nói *"Chưa có giao dịch nào trong tháng này"* — chữ
+   sót lại từ thời khoá theo tháng. Người xem một quý rỗng đọc được một câu nói
+   về **một khoảng thời gian khác** thứ header đang chỉ. Nay là *"trong kỳ này"*;
+   không nhắc lại tên kỳ vì header ngay trên đã nói.
+2. Thẻ tổng in `+0 đ` và `-0 đ`, trong khi cột *Thu net* ngay cạnh vốn đã dùng
+   `CurrencyFormatter.formatCoDau` nên hiện `0 đ` trần — tức **một thẻ đang hiện
+   hai quy ước**. Luật *số 0 không mang dấu* ra đời 2026-09-15 từ một lỗi y hệt ở
+   bảng "Phân bổ theo ví", cũng do máy ảo bắt. Phép sửa là cho hai cột kia đi qua
+   cùng hàm ấy.
+
+Chỗ thứ ba là **G48**, còn **mở** — đường tắt *"Xem giao dịch"* thôi lọc sẵn ví
+nếu tab Giao dịch đã mở trước đó trong phiên. ⚠️ **Không phải hồi quy của lát
+này**: nó có từ khi `/transactions` vào shell (nhóm D, 2026-09-19). Đo được hai
+đường trên cùng một máy, cùng một ví — app mới khởi động thì **đúng**, ghé tab
+trước thì **sai và im lặng**. Chi tiết và ba lối sửa: `docs/CLIENT_APP_KNOWN_GAPS.md`.
+
+**Test:** `test/features/transaction/presentation/so_giao_dich_ky_rong_test.dart`
+— **2** ca cho hai lỗi đã sửa. Ca thứ hai **đòi kết quả chứ không chỉ đòi vắng
+mặt** (`findsNWidgets(3)` cho `0 đ`): thiếu vế ấy thì một bản sai xoá hẳn thẻ
+tổng cũng làm hai kỳ vọng kia xanh — cùng bài học G43. Toàn bộ: **3202/3202
+pass, 1 skip**; `flutter analyze` **26 issue, 0 error**. **Schema không đổi**,
+vẫn v24; **payload không đổi**.
+
 ### ✅ Sổ giao dịch — phạm vi kỳ và lọc theo số tiền (2026-09-21)
 
 Nửa đầu việc **2.1** của `docs/superpowers/plans/2026-09-21-ai-viec-tiep-theo.md`.
@@ -643,8 +692,11 @@ chip gợi ý nhanh: ba mức ấy là hằng cứng cho mọi mức thu nhập.
 31 ca mới ở 3 tệp mới; `flutter test` **3200/3200, 1 skip**; analyze **26/0**.
 **Schema không đổi** (v24), **payload không đổi**, không đụng đồng bộ.
 
-⚠️ **Chưa nghiệm thu máy ảo 411dp** — Task 5 của kế hoạch thi công, còn mở. Lát này
-đụng cả ba vùng mù của `flutter test`.
+✅ **Đã nghiệm thu máy ảo 411dp ngày 2026-09-21** — Task 5 Step 1, xong muộn hơn
+một phiên; xem khối đầu mục 14. Lát này đụng cả ba vùng mù của `flutter test`, và
+lượt nghiệm thu chứng minh điều đó: nó bắt được **hai** lỗi của chính lát này mà
+3200 ca đều xanh — cả hai ở **kỳ rỗng**, cả hai **im lặng** — cộng một lỗi cũ hơn
+(**G48**) không thuộc lát này.
 
 ### ✅ AI Edge-SLM — chặng 0 và trọn chặng 1 (2026-09-21)
 

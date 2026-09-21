@@ -2,7 +2,12 @@
 
 **Viết:** 2026-09-21 · **Trạng thái:** ✅ **đã thi công 2026-09-21** — Task 1–4 xong
 (4 commit, 31 ca mới, `flutter test` **3200/3200, 1 skip**, analyze **26/0**);
-⚠️ **Task 5 còn mở**: chưa nghiệm thu máy ảo 411dp.
+✅ **Task 5 cũng xong** — nghiệm thu máy ảo 411dp
+cùng ngày, muộn hơn một phiên: **năm trong sáu** việc phải thấy tận mắt là đạt,
+việc thứ sáu lộ ra **G48** (một lỗi **không thuộc lát này**, có từ nhóm D). Lượt
+ấy bắt thêm **hai** lỗi của chính lát này, cả hai ở **kỳ rỗng** và cả hai đã sửa
+— nên mốc test cuối cùng của lát là **3202/3202, 1 skip**. Tường thuật: mục **14**
+`docs/PROJECT_CONTEXT.md`, khối đầu.
 **Thuộc:** nửa đầu của việc **2.1** trong `docs/superpowers/plans/2026-09-21-ai-viec-tiep-theo.md`
 
 ---
