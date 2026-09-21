@@ -295,6 +295,24 @@ không phải dữ liệu gốc. Gói số đọc `balance` thì đọc qua `viT
 
 # CHẶNG 2 — Function calling, bắt đầu từ việc AN TOÀN NHẤT
 
+> 🛑 **NÚT THẮT — cả chặng 2 đứng SAU P3, dù tệp này xếp nó trước** (ghi
+> 2026-09-21, sau khi nửa đầu 2.1 xong).
+>
+> Thứ tự trong tệp này gợi ý chặng 2 và chặng 4 (P3 — cài mô hình) độc lập nhau.
+> **Không.** Nửa sau của 2.1 đòi *"20 câu lệnh mẫu → đếm bao nhiêu lần chọn đúng
+> hàm"*, mà phép đo ấy **cần một mô hình thật mới đo được**; 2.2 và 2.3 cũng vậy,
+> và 3.1 thì cần chính lớp dịch câu mà 2.1 dựng ra. Tức **P3 chặn bốn việc**.
+>
+> ⚠️ Điều này kéo ngược với một quyết định khác đang có hiệu lực: P3 đang được
+> xếp **hoãn có chủ ý** vì nó thiên về phần demo, trong khi người dùng đã chốt
+> **ưu tiên giá trị người dùng**. Hai điều ấy không tự hoà giải được — **chỉ
+> người dùng quyết**. Giữ P3 hoãn thì mọi việc còn lại dồn hết về nhóm *"cần
+> chốt phạm vi"*, và những việc **không** cần mô hình là: 3.1 (gắn danh mục hàng
+> loạt — bản luật), 3.2, 3.3, đề xuất tạo ngân sách, cùng bốn chỗ cá nhân hoá ở
+> mục 11.5 `AI_EDGE_FEATURE.md`.
+>
+> Đừng lặng lẽ bắt đầu nửa sau 2.1 rồi phát hiện không nghiệm thu được.
+
 ## 2.1 ⭐ Tìm kiếm bằng câu — *"tháng trước tôi tiêu gì trên 500k"* — ⚠️ NỬA ĐẦU XONG 2026-09-21
 
 **Vì sao đây là việc đầu của hạ tầng C, không phải nhập bằng câu:**
