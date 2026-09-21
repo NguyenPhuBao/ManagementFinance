@@ -181,33 +181,112 @@ void main() {
   });
 
   group('suggestAmount', () {
-    test('trung bình chi của 3 tháng dương lịch trước, bỏ tháng này', () async {
-      await ghiGiaoDich(id: 'feb', amount: 5000000, date: DateTime(2026, 2, 20));
-      await ghiGiaoDich(id: 'mar', amount: 1200000, date: DateTime(2026, 3, 10));
-      await ghiGiaoDich(id: 'apr', amount: 900000, date: DateTime(2026, 4, 10));
-      await ghiGiaoDich(id: 'may', amount: 1500000, date: DateTime(2026, 5, 10));
-      await ghiGiaoDich(id: 'jun', amount: 300000, date: DateTime(2026, 6, 10));
+    // ⚠️ Nhóm này viết lại ngày 2026-09-21. Bản cũ mã hoá cửa sổ "ba tháng
+    // dương lịch trước", và phép đo cho thấy cửa sổ ấy **rỗng trên mọi dữ liệu
+    // thật**: giao dịch sớm nhất trong toàn bộ CSDL là 02/09/2026, nên hàm trả
+    // `null` cho mọi danh mục, mọi tài khoản — gợi ý hạn mức trong form tạo
+    // ngân sách chưa từng hiện một con số nào kể từ 2026-09-06.
+    //
+    // Cửa sổ nay cuộn theo ngày (`cuaSoNhinLai`), và mức tháng suy ra bằng
+    // `tổng / số ngày × 30`.
 
-      final goiY = await repo.suggestAmount(idaccount, anUong, now: now);
+    test('tài khoản trẻ hơn 14 ngày thì chưa gợi ý gì', () async {
+      await ghiGiaoDich(
+          id: 'moi', amount: 500000, date: DateTime(2026, 6, 10, 12));
 
-      expect(goiY, 1200000,
-          reason: '(1,2 + 0,9 + 1,5) / 3 = 1,2 triệu. Tháng 2 nằm ngoài cửa sổ; '
-              'tháng 6 chưa hết nên không đại diện.');
+      expect(
+        await repo.suggestAmount(idaccount, anUong, now: now),
+        isNull,
+        reason: 'năm ngày dữ liệu không đủ để hứa một mức "mỗi tháng"',
+      );
+    });
+
+    test('suy mức tháng từ cửa sổ thật', () async {
+      await ghiGiaoDich(
+          id: 'moc', amount: 100000, date: DateTime(2026, 5, 26, 12));
+      await ghiGiaoDich(
+          id: 'sau', amount: 100000, date: DateTime(2026, 6, 10, 12));
+
+      expect(
+        await repo.suggestAmount(idaccount, anUong, now: now),
+        300000,
+        reason: '200.000 trong cửa sổ 20 ngày → 200.000 / 20 × 30 = 300.000',
+      );
     });
 
     test('làm tròn LÊN bội 10.000', () async {
-      await ghiGiaoDich(id: 'mar', amount: 1000001, date: DateTime(2026, 3, 10));
+      await ghiGiaoDich(
+          id: 'moc', amount: 1000, date: DateTime(2026, 5, 26, 12));
+      await ghiGiaoDich(
+          id: 'sau', amount: 200000, date: DateTime(2026, 6, 10, 12));
 
-      final goiY = await repo.suggestAmount(idaccount, anUong, now: now);
-
-      expect(goiY, 340000,
-          reason: '1.000.001 / 3 = 333.333,67 → 340.000. Làm tròn xuống thì '
-              'gợi ý thấp hơn thực chi.');
+      expect(
+        await repo.suggestAmount(idaccount, anUong, now: now),
+        310000,
+        reason: '201.000 / 20 × 30 = 301.500 → 310.000. Làm tròn xuống thì gợi '
+            'ý thấp hơn thực chi.',
+      );
     });
 
-    test('không có khoản chi nào trong 3 tháng thì null', () async {
-      await ghiGiaoDich(id: 'jun', amount: 300000, date: DateTime(2026, 6, 10));
-      expect(await repo.suggestAmount(idaccount, anUong, now: now), isNull);
+    test('⚠️ mẫu số là tuổi TÀI KHOẢN, không phải tuổi danh mục', () async {
+      // Tài khoản có dữ liệu từ 20 ngày trước, nhưng danh mục này mới phát
+      // sinh HÔM QUA.
+      await ghiGiaoDich(
+          id: 'khac',
+          amount: 50000,
+          date: DateTime(2026, 5, 26, 12),
+          categoryId: muaSam);
+      await ghiGiaoDich(
+          id: 'hom-qua', amount: 300000, date: DateTime(2026, 6, 14, 12));
+
+      expect(
+        await repo.suggestAmount(idaccount, anUong, now: now),
+        450000,
+        reason: '300.000 / 20 ngày × 30 = 450.000. Lấy tuổi của DANH MỤC làm '
+            'mẫu số (1 ngày) sẽ ra 9.000.000 — phồng 20 lần, và con số ấy '
+            'trông hoàn toàn hợp lý',
+      );
+    });
+
+    test('cửa sổ kẹp ở 90 ngày: chi cũ hơn thế không được đếm', () async {
+      await ghiGiaoDich(
+          id: 'xua', amount: 9000000, date: DateTime(2026, 1, 1, 12));
+      await ghiGiaoDich(
+          id: 'trong', amount: 300000, date: DateTime(2026, 6, 10, 12));
+
+      expect(
+        await repo.suggestAmount(idaccount, anUong, now: now),
+        100000,
+        reason: 'chỉ 300.000 nằm trong 90 ngày → 300.000 / 90 × 30 = 100.000. '
+            'Khoản 9 triệu của tháng 1 nằm ngoài cửa sổ, và mẫu số bị kẹp ở 90 '
+            'chứ không kéo dài tới tận mốc ấy',
+      );
+    });
+
+    test('⚠️ giao dịch ghi ngày TƯƠNG LAI không được đếm', () async {
+      await ghiGiaoDich(
+          id: 'moc', amount: 200000, date: DateTime(2026, 5, 26, 12));
+      await ghiGiaoDich(
+          id: 'mai-sau', amount: 9000000, date: DateTime(2026, 7, 1, 12));
+
+      expect(
+        await repo.suggestAmount(idaccount, anUong, now: now),
+        300000,
+        reason: 'CSDL thật có khoản trích mục tiêu ghi ngày tương lai. Cửa sổ '
+            'hở đầu sau sẽ nuốt tiền CHƯA TIÊU vào một con số nói về quá khứ',
+      );
+    });
+
+    test('danh mục không chi đồng nào thì null, không phải 0', () async {
+      await ghiGiaoDich(
+          id: 'moc', amount: 200000, date: DateTime(2026, 5, 26, 12));
+
+      expect(
+        await repo.suggestAmount(idaccount, muaSam, now: now),
+        isNull,
+        reason: '`null` là "không có gì để gợi ý"; một số 0 ở ô hạn mức là một '
+            'gợi ý sai',
+      );
     });
   });
 }
