@@ -81,7 +81,7 @@ và spec mục 3.1):
 | **B1** | Cold-start không phải công tắc: dưới 2 tháng dùng prior theo nhóm danh mục; luật thống kê **hoãn** tới khi có ≥ 6 tháng dữ liệu, trình diễn bằng dữ liệu mô phỏng có ghi rõ |
 | **B2** | Giữ ngưỡng kép (≥ 10 % hạn mức **và** ≥ 50.000 đ); thi hành trong **bộ luật thông báo hiện hành** (`notification_rules.dart`), không dựng bộ cảnh báo thứ hai |
 | **B3** | Cửa sổ 48 giờ thay bằng **khoá chống trùng theo kỳ ngân sách** đã có của bảng `AppNotifications` |
-| **B5** | Dự phóng: ≥ 5 ngày → `spent × daysTotal / daysElapsed`; < 5 ngày → `spent + TB 3 tháng × phần kỳ còn lại`, TB 3 tháng mượn `BudgetRepository.suggestAmount`; không có lịch sử thì **chỉ báo khi đã vượt** |
+| **B5** | Dự phóng: ≥ 5 ngày → `spent × daysTotal / daysElapsed`; < 5 ngày → `spent + mức chi mỗi tháng × phần kỳ còn lại`, mức ấy mượn `BudgetRepository.suggestAmount`; không có lịch sử thì **chỉ báo khi đã vượt**. ⚠️ **Sửa 2026-09-21:** ô này từng ghi *"TB 3 tháng"*; client đã đổi `suggestAmount` sang **cửa sổ cuộn ≤ 90 ngày** (ngắn lại theo tuổi dữ liệu, im hẳn dưới 14 ngày), vì cửa sổ ba-tháng-lịch cũ **rỗng trên mọi dữ liệu thật** và hàm luôn trả `null`. Đừng chép cụm "3 tháng" vào tài liệu đặc tả |
 | **B6** | Trần "1 đề xuất/tuần" thi hành bằng khoá `budgetRebalance:<tuần ISO>` — cùng cơ chế Tổng kết tuần |
 | **D1** | Thu nhập = `thuNhapCua()` (xem mục 1 #2), trung bình 3 tháng liền trước, tính tại chỗ |
 | **D3** | `saving_goal_ratio` **suy từ mục tiêu còn hạn** (phương án (b) của chính tài liệu); câu D3 sửa thành *"AI không sửa số tiền đích hay hạn của mục tiêu"* |

@@ -94,6 +94,18 @@ Không cần brainstorm, không cần spec, không chờ dữ liệu. Mỗi vi�
 
 ## 1.1 Neo ba ngưỡng tái phân bổ theo thu nhập — ✅ XONG 2026-09-21
 
+> 🛑 **Và nó CHƯA TỪNG CÓ HIỆU LỰC cho tới cuối cùng ngày ấy.** Đầu vào
+> `thuNhapMoiThang` khi đó tên `thuNhap3Thang` và cắt **ba tháng lịch liền
+> trước**; đo trên CSDL dev thì giao dịch sớm nhất trong **toàn bộ** CSDL là
+> **02/09/2026** — nên nó luôn bằng **0**, và `max(1% × 0, 50.000)` luôn trả
+> đúng cái sàn mà việc neo sinh ra để thay thế. **Mã đúng, đầu vào chết.** Bộ
+> test mù vì nó dựng sẵn ba tháng dữ liệu; thứ bắt được là một phép đo trên CSDL
+> thật. Cửa sổ đã đổi sang **cuộn theo ngày** cùng ngày (`cuaSoNhinLai`) — xem
+> mục **14** `PROJECT_CONTEXT.md`.
+>
+> ⚠️ Bài học chung: **một luật có thể đúng hoàn toàn về mã mà chưa bao giờ
+> chạy**, nếu đầu vào của nó đến từ một cửa sổ mà dữ liệu thật không lấp đầy.
+
 **Vấn đề:** luật tái phân bổ có sáu ngưỡng, chỉ **một** cái neo theo người dùng. Người
 thu nhập 5 triệu và người 50 triệu dùng chung ngưỡng thâm hụt **50.000 đ** — với người
 thứ hai, app dựng cả một kế hoạch cắt giảm cho tiền lẻ.
@@ -111,15 +123,15 @@ const double kTranCat              = 0.25;      // tỉ lệ  → GIỮ NGUYÊN
 const double kTranCatDaBiCat       = 0.15;      // tỉ lệ  → GIỮ NGUYÊN
 const int    kBuocLamTron          = 10000;     // tuyệt đối → NEO
 
-double nguongCoNghia(double thuNhap3Thang) {    // ← mẫu đã đúng
-  final motPhanTram = thuNhap3Thang * 0.01;
+double nguongCoNghia(double thuNhapMoiThang) {    // ← mẫu đã đúng
+  final motPhanTram = thuNhapMoiThang * 0.01;
   return motPhanTram > 50000 ? motPhanTram : 50000;
 }
 ```
 
-**Làm:** ba hàm mới cùng khuôn `nguongCoNghia`, nhận `thuNhap3Thang`, trả về `max(tỉ lệ ×
+**Làm:** ba hàm mới cùng khuôn `nguongCoNghia`, nhận `thuNhapMoiThang`, trả về `max(tỉ lệ ×
 thu nhập, hằng cũ)` — **hằng cũ thành sàn**, nên tài khoản chưa có thu nhập giữ nguyên
-hành vi hôm nay. `taiPhanBoCua` đã nhận `thuNhap3Thang`, không đổi chữ ký.
+hành vi hôm nay. `taiPhanBoCua` đã nhận `thuNhapMoiThang`, không đổi chữ ký.
 
 ⚠️ **Giữ nguyên hai hằng tỉ lệ.** Chúng vốn không phụ thuộc quy mô thu nhập — neo chúng
 là làm hỏng một thứ đang đúng.
@@ -127,8 +139,8 @@ là làm hỏng một thứ đang đúng.
 ⚠️ `kBuocLamTron` dùng ở **hai** chỗ: `lamTron10k()` và phép "làm tròn LÊN" trong vòng
 chọn nguồn bù. Đổi một chỗ mà quên chỗ kia thì tổng cắt lệch vài nghìn — im lặng.
 
-**Ca test bắt buộc:** cùng một trạng thái ngân sách, hai mức `thuNhap3Thang` (5 triệu và
-50 triệu) → hai kết quả khác nhau; `thuNhap3Thang = 0` → **y hệt hành vi hôm nay** (sàn).
+**Ca test bắt buộc:** cùng một trạng thái ngân sách, hai mức `thuNhapMoiThang` (5 triệu và
+50 triệu) → hai kết quả khác nhau; `thuNhapMoiThang = 0` → **y hệt hành vi hôm nay** (sàn).
 
 **Xong khi:** `flutter test test/features/ai_edge/` xanh, ca mới đỏ với bản sai (bỏ phép
 neo). **Tài liệu:** mục 11.5 (1) — đổi ⭐ thành ✅ kèm ngày.
@@ -308,7 +320,9 @@ không phải dữ liệu gốc. Gói số đọc `balance` thì đọc qua `viT
 > **ưu tiên giá trị người dùng**. Hai điều ấy không tự hoà giải được — **chỉ
 > người dùng quyết**. Giữ P3 hoãn thì mọi việc còn lại dồn hết về nhóm *"cần
 > chốt phạm vi"*, và những việc **không** cần mô hình là: 3.1 (gắn danh mục hàng
-> loạt — bản luật), 3.2, 3.3, đề xuất tạo ngân sách, cùng bốn chỗ cá nhân hoá ở
+> loạt — bản luật), 3.2, 3.3, ~~đề xuất tạo ngân sách~~ (⚠️ **đang làm dở**: Task 1–5
+> xong 2026-09-21, còn **Task 6** dựng thẻ — kế hoạch
+> `2026-09-21-cua-so-nhin-lai-va-de-xuat-tao-ngan-sach.md`), cùng bốn chỗ cá nhân hoá ở
 > mục 11.5 `AI_EDGE_FEATURE.md`.
 >
 > Đừng lặng lẽ bắt đầu nửa sau 2.1 rồi phát hiện không nghiệm thu được.
@@ -416,7 +430,7 @@ Task 0 cần người dùng nghiệm thu màn Stitch.
 | Việc | Điều kiện | Ghi chú |
 |---|---|---|
 | **Giải thích 9 biểu đồ** | không | 9 khối × một hàm gói số. ⚠️ **đừng dùng vision** (11.1); gói phải **tính sẵn** kỳ cao/thấp nhất, % thay đổi, xu hướng — nếu không mô hình tự tính và `kiemSo` chặn |
-| **Đề xuất tạo ngân sách** | không | `suggestAmount` đã có sẵn con số |
+| **Đề xuất tạo ngân sách** | không | ⚠️ **ĐANG LÀM DỞ** — Task 1–5 xong 2026-09-21, còn Task 6 dựng thẻ. 🛑 Câu *"`suggestAmount` đã có sẵn con số"* từng đứng ở ô này là **SAI**, và nó suýt làm cả tính năng được xây trên một hàm luôn trả `null`: cửa sổ cũ là ba tháng lịch đã đóng, mà CSDL không có hàng nào trước 02/09/2026. Đo trước, đừng tin ô ghi chú |
 | **Nhịp chi theo ngày** + **ngưỡng 70/90 %** | 3 kỳ | ⭐ **làm chung** — một phép học, hai chỗ dùng (`budget_visuals.dart`: `_cautionAt`, `_criticalAt`) |
 | **Tự đề xuất cờ Cố định** | vài lượt từ chối | dùng chung dữ liệu với 3.3 |
 | **Phát hiện hoá đơn định kỳ** | ~3 kỳ lặp | ⚠️ tuyệt đối **không tự bật `auto_pay`** |

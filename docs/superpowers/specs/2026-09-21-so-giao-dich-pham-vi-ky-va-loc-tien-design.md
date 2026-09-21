@@ -65,7 +65,7 @@ của ô đã nói rồi.
 Đã cân nhắc hàng chip *"trên 100k · trên 500k · trên 1 triệu"*. Bỏ vì ba con số ấy là
 **hằng cứng** — đúng thứ mục **11.5** `AI_EDGE_FEATURE.md` vừa đi sửa ở chỗ khác: người
 thu nhập 5 triệu và người 50 triệu không có cùng ngưỡng "khoản lớn". Bản neo theo
-`thuNhap3Thang` thì đúng, nhưng giá là mở thêm một nguồn dữ liệu cho trang **chỉ để vẽ
+`thuNhapMoiThang` thì đúng, nhưng giá là mở thêm một nguồn dữ liệu cho trang **chỉ để vẽ
 ba cái chip**. Để dành; hai ô đã dùng được.
 
 ### 2.3 Vì sao `Ky` không chuyển lên `core/`

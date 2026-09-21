@@ -1,6 +1,6 @@
 # Cửa sổ nhìn lại, và thẻ "Chưa đặt ngân sách"
 
-**Viết:** 2026-09-21 · **Trạng thái:** ⬜ đã duyệt thiết kế, **chưa thi công**
+**Viết:** 2026-09-21 · **Trạng thái:** ⚠️ **Task 1–5 XONG, Task 6 chưa làm** — phần nền (cửa sổ nhìn lại, hai chỗ gọi, luật chọn đề xuất, trường state) đã vào repo; **thẻ "Chưa đặt ngân sách" chưa dựng**. Tường thuật ở mục **14** `docs/PROJECT_CONTEXT.md`
 **Thuộc:** mục ④ *"đề xuất tạo ngân sách"* của
 `docs/superpowers/plans/2026-09-21-ai-viec-tiep-theo.md`
 
