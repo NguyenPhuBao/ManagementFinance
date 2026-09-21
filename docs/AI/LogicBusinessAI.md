@@ -10,7 +10,7 @@ Module AI trong hệ thống **WealthCommand (Personal Finance Management)** đ�
 
 ### Danh mục các chức năng của Module AI:
 1. **Receipt OCR (Bóc tách hóa đơn)**: Tự động nhận diện và trích xuất thông tin từ ảnh chụp hóa đơn.
-2. **Transaction Classification (Phân loại giao dịch)**: Tự động gán danh mục thu/chi cho các giao dịch từ OCR, Ngân hàng (Casso), SMS, và Nhập tay.
+2. **Transaction Classification (Phân loại giao dịch)**: Tự động gán danh mục thu/chi cho các giao dịch từ OCR, SMS, và Nhập tay. *(Lưu ý: Kênh tích hợp Ngân hàng Casso/SePay tạm dừng hoàn toàn vì lý do chính sách, không nằm trong phạm vi xây dựng sắp tới).*
 3. **Financial Advice (Tư vấn tài chính)** *(Lộ trình tiếp theo)*: Đưa ra lời khuyên cắt giảm chi tiêu, phân bổ thu nhập.
 4. **Smart Budget (Ngân sách thông minh)** *(Lộ trình tiếp theo)*: Gợi ý hạn mức ngân sách tự động theo quy tắc 50/30/20 hoặc lịch sử chi tiêu.
 5. **Financial Chatbot (Trợ lý ảo hỏi đáp)** *(Lộ trình tiếp theo)*: Tra cứu số dư, thống kê chi tiêu bằng ngôn ngữ tự nhiên.

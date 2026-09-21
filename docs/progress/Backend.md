@@ -43,7 +43,9 @@ Backend đã hoàn thành đồng bộ **13 bảng CSDL** theo đặc tả chu�
 
 ---
 
-## 3. Module Bank & Casso Webhook
+## 3. Module Bank & Casso/SePay Webhook ⏸️ [TẠM DỪNG HOÀN TOÀN — NGOÀI PHẠM VI SẮP TỚI DO CHÍNH SÁCH]
+
+> ⚠️ **Thông báo (2026-09-21):** Vì lý do chính sách, **Module Bank được tạm dừng hoàn toàn**. Toàn bộ mã nguồn và chức năng đã phát triển bên dưới được lưu giữ nguyên trạng để tham chiếu, nhưng trong phạm vi xây dựng và hoàn thiện dự án sắp tới sẽ không còn triển khai hay kiểm thử Module Bank. Luồng tự động hóa chuyển trọng tâm sang OCR và SMS/Nhập tay.
 
 * **`GET /api/bank/accounts`:**
   * Gọi Casso Open Banking API, tự động upsert vào bảng `bank_account` (`Connect_status = 'Active'`) và trả về danh sách tài khoản ngân hàng liên kết.

@@ -2,15 +2,14 @@
 
 **Thêm 2026-09-17.** Đây **không phải một việc cần backend làm** và không nằm
 trong hàng đợi `CAN-LAM/`. Tài liệu này tồn tại để hai phía (client và backend)
-thảo luận trên **cùng một bộ số đo** trước khi chốt phương án cho phần AI. Mọi
-con số bên dưới đều đo bằng mã ngày 2026-09-17 trên nhánh `TranQuangDat` @
+thảo luận trên **cùng một bộ số đo** trước khi chốt phương án cho phần AI. Mọi con số bên dưới đều đo bằng mã ngày 2026-09-17 trên nhánh `TranQuangDat` @
 `d1fc05d` (đã gộp `main` @ `fcc20b5`), không chép từ tài liệu nào.
+
+> ⚠️ **CẬP NHẬT 2026-09-21:** Vì lý do chính sách (bảo mật dữ liệu ngân hàng và phạm vi đồ án), **Module Bank được tạm dừng hoàn toàn**. Hệ thống không xóa bỏ chức năng/mã nguồn đã làm, nhưng trong phạm vi xây dựng sắp tới sẽ không còn Module Bank. Nhánh SePay Webhook / Bank Worker đóng băng; luồng nhận diện và phân loại tập trung vào Receipt OCR và Nhập tay / SMS.
 
 Sơ đồ được đối chiếu là **"KIẾN TRÚC AI PHÂN TẦNG HYBRID (Nền tảng Quản trị
 Chung + Các Pipeline Thực thi Chuyên biệt)"** — bản Mermaid do phía backend
-gửi, gồm ba tầng: *1. Application Clients → 2. On-device Edge AI Pipeline +
-3. Cloud Backend AI Platform (3.1 Shared Gateway & Security → 3.2 ba pipeline
-A/B/C → 3.3 Storage & External Services)*. Bên dưới gọi nó là **sơ đồ mẫu**.
+gửi, gồm ba tầng: *1. Application Clients → 2. On-device Edge AI Pipeline + 3. Cloud Backend AI Platform (3.1 Shared Gateway & Security → 3.2 ba pipeline A/B/C → 3.3 Storage & External Services)*. Bên dưới gọi nó là **sơ đồ mẫu**.
 
 Bản vẽ lại khớp mã (mục 8) xem được ở đây:
 <https://claude.ai/code/artifact/31fa9ece-9889-4400-a996-371df10a62c4>
@@ -70,7 +69,7 @@ Ký hiệu: ✅ đã chạy thật · ⚠️ một phần · ❌ chưa có (0 d�
 | **3.1 Data Masking & Privacy** | `utils/masking.util.js` (email, phone, STK, họ tên, địa chỉ), `utils/content-filter.util.js` (PII/thẻ tín dụng trong note), `utils/crypto.util.js` AES-256-GCM + blind index HMAC. Mọi route `/api/ai/*` qua `authenticate` (`api/ai.routes.js:12`); danh mục lấy theo `idaccount` | ⚠️ Có, nhưng **không nằm trên đường tới LLM** — xem 2.2 #1 |
 | **3.1 Unified Model Provider & Gateway** | Không có thành phần nào như vậy. Hai chỗ gọi Gemini REST trực tiếp bằng `axios`, mỗi chỗ tự đọc `GEMINI_API_KEY`: `modules/ai/features/classify/pipeline/llm.classifier.js:106` và `modules/ai/features/ocr/pipeline/vision.extractor.js:110`. Rate-limit chỉ là `generalLimiter` chung cho `/api/` (`app.js:38`; 1000 req/15 phút, dev nâng lên 10 000) — không quota theo người dùng, không limiter riêng cho AI. Mock: ✅ `ALLOW_MOCK_INPUT` + `_mockExtraction`/`_mockUser` | ❌ Gateway |
 | **3.1 Output Schema & Guardrails — JSON Schema / Zod** | `package.json` backend không có `zod`/`ajv`. `middleware/validator.js` là bộ kiểm tay (required/type/length), **chỉ gắn vào route cũ** `POST /ai/classify` (`api/ai.routes.js:20`). Bốn route `/classify/single|batch|feedback|transaction` (`classify.routes.js`) và `/ocr/*` (`ocr.routes.js`) không gắn validator nào; `ocr.controller.js:27` tự kiểm `image_base64` rỗng | ⚠️ Chỉ có `responseMimeType: 'application/json'` của Gemini + lược đồ ghi trong prompt |
-| **Pipeline A** — OCR → Dedup → Classifier | `ocr.service.js` (168 dòng): Gemini 2.0 Flash multimodal, phân `RECEIPT`/`BANK_TRANSFER`/`SMS_BANKING`, self-healing tổng tiền từ items, 422 khi ảnh mờ, 409 khi trùng, phát `ocr.completed`/`ocr.duplicate` qua EventBus. `dedup.service.js` (109 dòng): đúng 3 cấp — strict `bank_tran_id` (kể cả hậu tố `_grp_`), fuzzy invoice (merchant + tiền + ngày), fuzzy transfer/SMS. `classify.service.js` (500 dòng): Type detector (Transfer vs Transaction) → T1 keyword (≥ 0.90) → T2 token overlap (≥ 0.60) → T3 Gemini (temp 0.1, U-shape) + `recordFeedback` ghi vào `Category.Keyword`. Được gọi từ **SePay webhook** (`workers/bank.worker.js:156`) | ✅ Khớp nhất, và **hoàn chỉnh hơn** sơ đồ vẽ |
+| **Pipeline A** — OCR → Dedup → Classifier | `ocr.service.js` (168 dòng): Gemini 2.0 Flash multimodal, phân `RECEIPT`/`BANK_TRANSFER`/`SMS_BANKING`, self-healing tổng tiền từ items, 422 khi ảnh mờ, 409 khi trùng, phát `ocr.completed`/`ocr.duplicate` qua EventBus. `dedup.service.js` (109 dòng): đúng 3 cấp — strict `bank_tran_id` (kể cả hậu tố `_grp_`), fuzzy invoice (merchant + tiền + ngày), fuzzy transfer/SMS. `classify.service.js` (500 dòng): Type detector (Transfer vs Transaction) → T1 keyword (≥ 0.90) → T2 token overlap (≥ 0.60) → T3 Gemini (temp 0.1, U-shape) + `recordFeedback` ghi vào `Category.Keyword`. Nối **SePay webhook** (`workers/bank.worker.js:156` — *hiện tạm dừng hoàn toàn do lý do chính sách*) | ✅ Khớp nhất, và **hoàn chỉnh hơn** sơ đồ vẽ |
 | **Pipeline B** — Spending Behavior, Advisory, Forecast | Backend: `grep -rniE "forecast|advis|50/30|subscription"` ngoài `node_modules` chỉ ra `modules/ai/config.js:19-20` (`maxTokens`/`temperature` giữ chỗ cho `advice`/`budget`/`chatbot`). `docs/AI/LogicBusinessAI.md` §1 tự đánh dấu cả ba là *"Lộ trình tiếp theo"* | ❌ Và **đặt sai chỗ** — xem 2.2 #2 |
 | **Pipeline C** — Advanced RAG | `grep -rniE "embedding|vector|chroma|bm25|rerank"` → **0** trên backend. Chatbot chỉ là chú thích `(future)` ở `modules/ai/ai.controller.js:9`. Thứ duy nhất mượn từ `Standard_RAG.md` là `_reorderCategoriesUshape` + temperature 0.1 trong classifier | ❌ |
 | **3.3 External LLMs** — OpenAI + Gemini | Chỉ Gemini 2.0 Flash được gọi. `OPENAI_API_KEY` được đọc ở `llm.classifier.js:16` nhưng **không bao giờ dùng**; `config.js:18` ghi `defaultProvider: 'openai'` mà không có mã nào đọc; không có gói `openai` | ❌ OpenAI |
@@ -109,7 +108,7 @@ Ngoài ra: `modules/ai/config.js:8-9` trỏ tới `model.v1.bin` / `labels.json`
 ### 2.3. Thứ có thật nhưng sơ đồ bỏ sót
 
 - **Redis + BullMQ** (`index.js:22-27`): `ai.worker.js` shell mode; `bank.worker.js` chạy thật.
-- **SePay webhook → `bank.worker.js:156` → `classifySingle`** — nguồn dữ liệu quan trọng nhất của classifier.
+- **SePay webhook → `bank.worker.js:156` → `classifySingle`** — nguồn dữ liệu quan trọng của classifier *(tạm dừng hoàn toàn từ 2026-09-21 do lý do chính sách)*.
 - **EventBus → Socket.io**: `ocr.completed` / `ocr.duplicate` phát về client — đường trả kết quả của Pipeline A không phải chỉ HTTPS response.
 - **Đồng bộ hai chiều offline-first** (`/sync/push`, `/sync/pull`), cưỡng chế đăng xuất, blind index — nền mà mọi pipeline tựa vào.
 
@@ -413,7 +412,7 @@ flowchart TB
       PG[("PostgreSQL — Prisma + pg<br/>13 model · dev cục bộ<br/>Supabase: tuỳ chọn triển khai")]:::run
       RD[("Redis + BullMQ<br/>bank.worker chạy · ai.worker shell")]:::part
       IO["Socket.io — phòng theo tài khoản<br/>sync.completed · ocr.completed · force_logout"]:::run
-      SP["SePay Bank Hub webhook"]:::run
+      SP["SePay Bank Hub webhook<br/>(⏸️ Tạm dừng do chính sách)"]:::part
       GM["Google Gemini 2.0 Flash"]:::run
       OA["OpenAI GPT-4o-mini<br/>qua Gateway, tuỳ chọn"]:::plan
       VS[("Vector store<br/>chỉ nếu làm RAG")]:::plan

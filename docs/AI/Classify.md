@@ -10,7 +10,7 @@ Chức năng **AI Phân Loại Giao Dịch (AI Transaction Classification)** tro
 
 ### 1.1. Phạm vi áp dụng đa kênh:
 1. **Receipt OCR**: Phân loại từng món hàng bóc tách từ hóa đơn và phân loại danh mục tổng.
-2. **BankSync (Casso)**: Phân loại giao dịch biến động số dư từ ngân hàng (chuỗi chuyển khoản không dấu).
+2. **BankSync (Casso / SePay)**: *(Tạm dừng hoàn toàn vì lý do chính sách, không nằm trong phạm vi xây dựng sắp tới)*.
 3. **SMS Banking**: Phân loại tin nhắn biến động số dư từ SMS.
 4. **Nhập tay (Manual Entry)**: Gợi ý tức thì danh mục khi người dùng gõ vào ô ghi chú.
 
