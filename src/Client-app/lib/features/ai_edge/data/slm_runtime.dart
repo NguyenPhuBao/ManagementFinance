@@ -11,6 +11,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
 import 'package:flutter_gemma_litertlm/flutter_gemma_litertlm.dart';
 
+import '../domain/canary_gpu.dart';
+
 /// Runtime mô hình. Ba trạng thái: chưa nạp, đang sẵn, đã đóng.
 abstract class SlmRuntime {
   bool get dangSan;
@@ -34,6 +36,11 @@ abstract class SlmRuntime {
 }
 
 class SlmRuntimeThat implements SlmRuntime {
+  /// Dấu canary GPU — `null` chỉ trong test; đường thật luôn có (DI).
+  final CanaryGpu? canary;
+
+  SlmRuntimeThat({this.canary});
+
   InferenceModel? _model;
   bool _daKhoiTao = false;
 
@@ -64,14 +71,24 @@ class SlmRuntimeThat implements SlmRuntime {
     // nêu tên ABI, nên không cần tự đọc ABI ở tầng nào cả.
     //
     // GPU trước, CPU sau: P1 đo GPU nhanh gấp rưỡi và tốn 1,73 → 0,96 GB RAM.
-    // Gói tự lùi về backend khác khi một backend hỏng, nhưng nêu rõ ý định thì
-    // đọc mã ra được vì sao.
+    // Gói tự lùi về backend khác khi một backend ném lỗi — nhưng ⚠️ trên
+    // Mali (Dimensity 1100, đo 2026-09-22) delegate OpenCL **sập native**, thứ
+    // không ném gì cả; canary là cách duy nhất biết được điều ấy ở lần sau.
+    final dungCpu = await canary?.nenDungCpu() ?? false;
     final dongHo = Stopwatch()..start();
-    _model = await FlutterGemma.getActiveModel(
-      maxTokens: 1024,
-      preferredBackend: PreferredBackend.gpu,
-    );
-    debugPrint('[SLM] nạp mô hình xong sau ${dongHo.elapsedMilliseconds} ms');
+    await canary?.batDauThu();
+    try {
+      _model = await FlutterGemma.getActiveModel(
+        maxTokens: 1024,
+        preferredBackend: dungCpu ? PreferredBackend.cpu : PreferredBackend.gpu,
+      );
+    } finally {
+      // Exception thường cũng dọn dấu: chỉ crash native (không chạy tới đây)
+      // mới để dấu lại.
+      await canary?.thuXong();
+    }
+    debugPrint('[SLM] nạp mô hình xong sau ${dongHo.elapsedMilliseconds} ms '
+        '(${dungCpu ? 'CPU — GPU máy này từng sập' : 'GPU'})');
   }
 
   @override

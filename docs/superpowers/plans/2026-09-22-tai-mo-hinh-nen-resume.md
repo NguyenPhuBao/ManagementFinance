@@ -1325,6 +1325,41 @@ git commit -m "docs(ai-edge): tải nền + resume xong — bảng đo máy th�
 
 ---
 
+## Nhật ký thi công (2026-09-22 tối muộn) — ✅ XONG 7/7, và tám chỗ kế hoạch LỆCH mã thật
+
+Thi công inline trong một phiên; Task 2–6 gộp một commit vì chỉ biên dịch được cùng nhau (Task 3
+đổi chữ ký hàm dựng, Task 4 nối DI, Task 5 phải phủ đủ sáu trạng thái ở màn — `switch` không bao
+quát là lỗi biên dịch). Nghiệm thu Task 7 trên **Realme RMX2205 / Dimensity 1100** (người dùng đổi
+máy giữa chừng), bảng đo mục **9.10** `docs/AI_EDGE_FEATURE.md`.
+
+1. **`slm_dien_giai_test` đóng vai "đã có mô hình" bằng tệp 3 byte** — `daCo()` mới đòi đúng
+   `kCoTepByte` nên cả nhóm đỏ oan. Kế hoạch không thấy. Giải: `MoHinhTaiVe(coTepByte:)` tiêm được,
+   mặc định hằng thật; **không** nới `daCo()`.
+2. **DI phải bọc `kIsWeb`** — app còn chạy `flutter run -d chrome`; `background_downloader` trên
+   web không có service nền, dựng lúc mở app là ném. Trên web bản giả đứng thay.
+3. **Hộp thoại pop bằng `c.pop()` của go_router** (kế hoạch chép nguyên khuôn hộp thoại Xoá có
+   sẵn) → ngoài `GoRouter` ném *"No GoRouter found in context"*, hai ca Task 6 đỏ với dáng vẻ
+   "chưa tải". `Navigator.of(c).pop`, sửa cả hộp thoại Xoá.
+4. **Tiến độ âm của gói là mã trạng thái** (−4 = chờ thử lại) — kế hoạch đưa `u.progress` thẳng lên
+   màn; máy thật in *"Đang tải… −400 %"*. Hai hàm thuần `tinTuTienDo` / `dichTrangThai` tách ra để
+   test được (9 ca).
+5. **`waitingToRetry` KHÔNG dịch thành `dangCho`** như kế hoạch — `dangCho` là "Đang chờ Wi-Fi", mà
+   lượt đang thử lại sau lỗi mạng thì máy vẫn ở Wi-Fi.
+6. **`canceled` của WorkManager ≠ huỷ của người dùng** — mất Wi-Fi thì worker bị dừng vì ràng
+   buộc, gói báo `canceled` rồi tự xếp lại; màn nói "Chưa tải". Nay cờ `_huyDoNguoiDung` + xoá bản
+   ghi khi huỷ tay; `canceled` không cờ → `dangCho`.
+7. **Cleartext bị chặn ở worker native** — server đo cục bộ `http://127.0.0.1:8099` chạy được
+   với Dio nhưng gói *"Cleartext HTTP traffic … not permitted"*; phải thêm `usesCleartextTraffic`
+   **tạm** (đã hoàn tác). Kế hoạch Task 7 không lường.
+8. **Nạp mô hình bằng GPU sập NATIVE trên Mali** — ngoài phạm vi lát này, nhưng phép đo 6 ("hỏi
+   đáp trả lời") không thể đạt nếu không chữa: thêm **canary GPU** (`domain/canary_gpu.dart`, 5 ca).
+
+Và hai điều kế hoạch **đúng nhưng chưa đủ**: (a) *"resume giữ tệp dở"* chỉ đúng với Tạm dừng/Tiếp
+tục (`Range: bytes=1895276544-` đo được); sau force-stop OEM hay dừng vì ràng buộc thì gói tải lại
+từ 0 — câu *"phần đã tải được giữ lại"* ở khối chờ Wi-Fi vì thế bị bỏ; (b) phép đo 1 *"vuốt app
+khỏi recents → thông báo vẫn chạy"* **không đạt trên Realme UI** vì OEM force-stop — không phải lỗi
+mã, và không có máy Android gốc để đo lại.
+
 ## Ghi chú cho người thi công
 
 **Ba thứ lát này KHÔNG làm** (spec mục 9): không checksum · không hàng đợi nhiều mô hình · không đụng `SlmRuntime`, khối Nhận xét, schema, payload.

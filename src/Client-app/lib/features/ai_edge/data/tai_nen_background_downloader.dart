@@ -35,18 +35,26 @@ TinLuot? tinTuTienDo(double progress) {
 
 /// `null` = trạng thái không đáng phát lên giao diện.
 ///
+/// ⚠️ `canceled` chỉ là **huỷ** khi chính người dùng bấm Huỷ ([huyDoNguoiDung]).
+/// Đo trên Realme 2026-09-22: tắt Wi-Fi giữa lượt thì WorkManager dừng worker
+/// vì ràng buộc và gói báo `canceled`, rồi **tự xếp lại** và chạy tiếp khi
+/// Wi-Fi về — dịch mù thành huỷ là màn nói "Chưa tải mô hình" cho một lượt
+/// vẫn đang xếp hàng. Khi ấy đúng nghĩa là **chờ** (`dangCho`).
+///
 /// ⚠️ `enqueued` → `dangCho` chứ không `dangChay`: khi `requiresWiFi` bật mà
 /// máy chỉ có 4G, lượt **nằm ở `enqueued` vô thời hạn** và không có lỗi nào
 /// được phát — đó chính là "chờ Wi-Fi" mà màn phải nói ra. Nhưng
 /// `waitingToRetry` thì **không** phải dangCho: đó là lỗi mạng đang được thử
 /// lại (máy vẫn ở Wi-Fi), nói "Đang chờ Wi-Fi" là chỉ sai nguyên nhân — giữ
 /// `dangChay` với tiến độ cuối, hết ba lần thử thì gói phát `failed`.
-TrangThaiLuot? dichTrangThai(TaskStatus s) => switch (s) {
+TrangThaiLuot? dichTrangThai(TaskStatus s, {bool huyDoNguoiDung = false}) =>
+    switch (s) {
       TaskStatus.enqueued => TrangThaiLuot.dangCho,
       TaskStatus.running || TaskStatus.waitingToRetry => TrangThaiLuot.dangChay,
       TaskStatus.paused => TrangThaiLuot.tamDung,
       TaskStatus.complete => TrangThaiLuot.xong,
-      TaskStatus.canceled => TrangThaiLuot.huy,
+      TaskStatus.canceled =>
+        huyDoNguoiDung ? TrangThaiLuot.huy : TrangThaiLuot.dangCho,
       TaskStatus.failed || TaskStatus.notFound => TrangThaiLuot.hong,
     };
 
@@ -56,6 +64,9 @@ class BackgroundDownloaderTaiNen implements NguonTaiNen {
 
   StreamSubscription<TaskUpdate>? _nghe;
   double _phanTramCuoi = 0;
+
+  /// Đặt trong [huy] và xoá khi bắt đầu/tiếp tục — xem `dichTrangThai`.
+  bool _huyDoNguoiDung = false;
 
   BackgroundDownloaderTaiNen() {
     _nghe = _tai.updates.listen(_nhan);
@@ -88,6 +99,7 @@ class BackgroundDownloaderTaiNen implements NguonTaiNen {
     required String tenTep,
     required bool chiWifi,
   }) async {
+    _huyDoNguoiDung = false;
     final ok = await _tai.enqueue(DownloadTask(
       taskId: kTaskId,
       url: url,
@@ -109,11 +121,10 @@ class BackgroundDownloaderTaiNen implements NguonTaiNen {
     if (t == null) return null;
     final ghi = await _tai.database.recordForId(kTaskId);
     if (ghi == null) return null;
+    // Bản ghi `canceled` ở đây là của WorkManager (dừng vì ràng buộc, đã xếp
+    // lại): người dùng huỷ thì [huy] đã xoá bản ghi nên không tới được đây.
     final tt = dichTrangThai(ghi.status);
-    // Lượt ĐÃ HUỶ là trạng thái cuối, không phải "đang sống": trả nó về là
-    // `khoiPhuc()` phát một tin thừa và `tiepTuc()` đi tìm một lượt để nối
-    // thay vì bắt đầu lượt mới. Lượt hỏng thì GIỮ — nó nối lại được.
-    if (tt == null || tt == TrangThaiLuot.huy) return null;
+    if (tt == null) return null;
     // Bản ghi cũng mang tiến độ âm làm mã (xem `tinTuTienDo`).
     return (
       trangThai: tt,
@@ -130,6 +141,7 @@ class BackgroundDownloaderTaiNen implements NguonTaiNen {
 
   @override
   Future<void> tiepTuc() async {
+    _huyDoNguoiDung = false;
     final t = await _tai.taskForId(kTaskId);
     if (t is! DownloadTask) return;
     // `resume` nối lại từ chỗ đứt (tạm dừng, hoặc hỏng mà server có `Range`).
@@ -141,7 +153,11 @@ class BackgroundDownloaderTaiNen implements NguonTaiNen {
 
   @override
   Future<void> huy() async {
+    _huyDoNguoiDung = true;
     await _tai.cancelTaskWithId(kTaskId);
+    // Xoá bản ghi để `luotDangSong()` ở lần chạy sau không đọc `canceled`
+    // thành "chờ ràng buộc" — lượt huỷ tay là trạng thái cuối, không sống.
+    await _tai.database.deleteRecordWithId(kTaskId);
   }
 
   void _nhan(TaskUpdate u) {
@@ -154,8 +170,10 @@ class BackgroundDownloaderTaiNen implements NguonTaiNen {
       return;
     }
     if (u is TaskStatusUpdate) {
-      final tt = dichTrangThai(u.status);
+      final tt = dichTrangThai(u.status, huyDoNguoiDung: _huyDoNguoiDung);
       if (tt == null) return;
+      debugPrint('[SLM] tải: ${u.status.name} → ${tt.name} '
+          '(${(_phanTramCuoi * 100).round()}%)');
       _phat.add((
         trangThai: tt,
         phanTram: tt == TrangThaiLuot.xong ? 1 : _phanTramCuoi,

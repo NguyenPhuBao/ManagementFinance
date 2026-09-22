@@ -404,8 +404,10 @@ class _CaiDatAiPageState extends State<CaiDatAiPage> {
           _dongTieuDe(
             icon: Icons.wifi_off_outlined,
             tieuDe: 'Đang chờ Wi-Fi',
-            phu: 'Lượt tải sẽ tự tiếp tục khi máy vào Wi-Fi. '
-                'Phần đã tải được giữ lại.',
+            // ⚠️ KHÔNG hứa "phần đã tải được giữ lại": đo Realme 2026-09-22,
+            // mất Wi-Fi thì WorkManager dừng worker và gói tải lại từ 0 khi
+            // Wi-Fi về — chỉ Tạm dừng mới nối tiếp bằng `Range`.
+            phu: 'Lượt tải sẽ tự tiếp tục khi máy vào Wi-Fi.',
           ),
           const SizedBox(height: 14),
           TextButton(onPressed: _huy, child: const Text('Huỷ tải')),
@@ -454,8 +456,9 @@ class _CaiDatAiPageState extends State<CaiDatAiPage> {
             // Tệp dở ĐƯỢC GIỮ (resume, 2026-09-22): Thử lại là tiếp tục từ
             // chỗ đứt, không tải lại từ đầu — nói ra để người dùng không
             // tưởng mình mất nửa gói dữ liệu.
-            phu: '${_loi ?? 'Kết nối đứt giữa chừng.'} '
-                'Phần đã tải được giữ lại.',
+            // Không hứa giữ phần đã tải: sau lỗi, `tiepTuc` nối được thì
+            // nối, không thì tải lại — người dùng không cần biết trước.
+            phu: '${_loi ?? 'Kết nối đứt giữa chừng.'} Bấm Thử lại để tải tiếp.',
           ),
           const SizedBox(height: 14),
           ElevatedButton.icon(

@@ -596,6 +596,29 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-22)
 
+### ✅ Edge AI — việc số 2 của lộ trình: tải mô hình chạy nền + resume (2026-09-22 tối muộn)
+
+Kế hoạch `docs/superpowers/plans/2026-09-22-tai-mo-hinh-nen-resume.md` (7 task), spec cùng ngày; chi
+tiết đo ở mục **9.10** `AI_EDGE_FEATURE.md`. `MoHinhTaiVe` thôi cầm một `Future` sống trong tiến
+trình mà đứng trên **`NguonTaiNen`** — lượt tải có danh tính do hệ thống giữ (`background_downloader`,
+taskId cố định), nên thoát app thì lượt vẫn chạy và mở lại thì `khoiPhuc()` hỏi được. `daCo()` kiểm
+**kích thước** vì tệp dở nay được giữ; sáu trạng thái, Tạm dừng/Tiếp tục/Huỷ, hộp thoại 4G. Không
+đổi schema (v24), không đổi payload; `pubspec` thêm `background_downloader` (vốn transitive), manifest
+thêm `FOREGROUND_SERVICE_DATA_SYNC`. Test **3424/3424**, 3 skip, analyze 26.
+
+⚠️ **Nghiệm thu trên máy MỚI — Realme RMX2205 (Dimensity 1100, Mali-G77, Android 13)**, người dùng
+đổi máy giữa chừng. Sáu lỗi thật lộ ra, 3411 ca test mù; nặng nhất: **nạp mô hình bằng GPU sập
+native** — `try/catch` quanh `getActiveModel` không bắt được gì, mỗi lần hỏi là một lần văng app.
+Chữa bằng **canary** (`domain/canary_gpu.dart`): dấu ghi trước khi thử GPU, xoá trong `finally`,
+mở lại thấy dấu → CPU vĩnh viễn (nạp 27 s, 7–10 s/câu trên máy ấy). Năm lỗi kia: tiến độ **âm**
+của gói là mã trạng thái (màn in −400 %); `canceled` của WorkManager khi mất Wi-Fi không phải huỷ;
+cleartext bị chặn ở worker native (chỉ chuyện đo qua server cục bộ); `waitingToRetry` ≠ chờ Wi-Fi;
+câu "phần đã tải được giữ lại" sai ở khối chờ Wi-Fi. ⚠️ **Hai giới hạn nói ra, không vá:** Realme
+UI **force-stop** app khi vuốt Recents (giết cả service nền — OEM), và sau force-stop hay dừng vì
+ràng buộc thì gói **tải lại từ 0** — chỉ Tạm dừng/Tiếp tục mới giữ byte (đo: `Range: bytes=1895276544-`).
+**Bước tiếp theo thứ tự đã duyệt: chặng 3 của lộ trình kiến trúc** — đo bậc 1 hỏng ở đâu (một buổi,
+máy thật, 20 câu; không phải task mã).
+
 ### ✅ Edge AI — việc số 1 của lộ trình: chất lượng câu trả lời + CỔNG A QUA (2026-09-22 tối)
 
 Thứ tự việc ở đầu `docs/superpowers/plans/2026-09-21-ai-viec-tiep-theo.md`; chi tiết ở mục **9.8**
@@ -621,7 +644,7 @@ khi ngân sách 90 % → không trấn an. ⚠️ **Lượt đo bắt hai lỗi 
 tiên trên máy bị chặn vì token cắt con số **ngay sau dấu chấm** (`…là 2.` + `141.000`) và regex
 kết câu coi cuối bộ đệm là kết câu (bẫy 4.18); thẻ số liệu so **chuỗi con** in *Số cam kết 15* cho
 câu chỉ nhắc *15.135.000 đ* (bẫy 4.19, có từ P3 Task 8). Cả hai sửa + test + đo lại cùng tối.
-**Bước tiếp theo thứ tự đã duyệt: việc số 2 — tải nền + resume** (spec `2026-09-22-tai-mo-hinh-nen-resume-design.md`, kế hoạch 7 task đã lên git; lối B đã duyệt, thi công inline, **không** brainstorm lại), rồi **chặng 3** của lộ trình kiến trúc (đo bậc 1 hỏng ở đâu, không phải task mã).
+*(Việc số 2 đã xong tối cùng ngày — khối ngay trên.)*
 
 
 ### ✅ Edge AI chặng 2 — P3 cắm SLM, XONG TRỌN 10 TASK (2026-09-22)
@@ -749,6 +772,8 @@ phép dọn → ca "đổi tài khoản" đỏ; dọn vô điều kiện → ca 
 → thoát trang → vào lại **vẫn tắt** (đo đầu-cuối `CongTacAi` trên kho thật). ⚠️ Lối vào lúc nghiệm
 thu là **nối tạm** nút bánh răng của màn Trợ lý AI, **không commit** — nút ấy là việc của Task 8,
 nên tới khi ấy `/ai-settings` mới có lối vào thật.
+
+*(⚠️ Đoạn dưới là lịch sử của bản Dio — **đã thay** bằng `NguonTaiNen` / `background_downloader` tối 2026-09-22 (lát tải nền + resume): `DauHuy`, `taiTep` và `tai_tep_dio.dart` **không còn**; huỷ nay là `nguon.huy()` và tệp dở được **giữ** cho lượt sau. Giữ đoạn vì nó giải thích vì sao phép huỷ phải là lệnh tới engine chứ không phải một cờ.)*
 
 ✅ **Nút "Huỷ" cắt thật lượt tải — sửa cùng ngày, sau Task 7** (`f51e2d6`). Lỗi: `huy()` chỉ đặt
 một cờ `bool`, còn `taiTep` vẫn được `await` tới khi tải xong **trọn 2,41 GB** rồi mới ném và xoá

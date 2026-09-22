@@ -88,9 +88,15 @@ hôm nay (bỏ điểm 2 của cổng A); hoặc hiện chỉ báo "đang viết
 > bảng cổng A là sai chữ), `NguonGoiSo` **sáu** gói, bốn chip mới, few-shot hỏi đáp riêng.
 > Chi tiết và cách đo: mục **9.8** `AI_EDGE_FEATURE.md`. 3392/3392 · analyze 26.
 > ⚠️ Người dùng hỏi *"vậy chỉ hỏi được thứ có sẵn thôi à"* — đúng, và chốt **giữ thứ tự**:
-> việc này trước, rồi mới function calling. **Bước tiếp theo thứ tự này: việc số 2 (tải nền + resume).**
+> việc này trước, rồi mới function calling.
 
 ## 2 · Tải nền + resume
+
+> ✅ **XONG 2026-09-22 tối muộn** — 7 task, nghiệm thu trên **Realme RMX2205 / Dimensity 1100**
+> (máy thứ hai của dự án), bảng đo mục **9.10** `AI_EDGE_FEATURE.md`. Lượt đo bắt sáu lỗi thật,
+> nặng nhất là **nạp GPU sập native trên Mali** → thêm canary GPU (ngoài kế hoạch, nhưng là lỗi
+> chặn). Hai giới hạn không vá: Realme force-stop khi vuốt Recents; sau force-stop / dừng vì ràng
+> buộc thì gói tải lại từ 0 (chỉ Tạm dừng mới giữ byte). **Bước tiếp: chặng 3 (mục 3 dưới).**
 
 **Spec và kế hoạch ĐÃ VIẾT XONG** — chi phí khởi động bằng không:
 

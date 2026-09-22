@@ -140,6 +140,11 @@ void main() {
         reason: 'requiresWiFi làm lượt đứng im vô thời hạn mà không báo lỗi; '
             'im lặng ở đây là một thanh 0% đứng yên mãi mãi.');
     expect(find.textContaining('Đang tải'), findsNothing);
+    // Đo Realme 2026-09-22: mất Wi-Fi thì WorkManager dừng worker và gói TẢI
+    // LẠI TỪ 0 khi Wi-Fi về ("Partially downloaded file not available") —
+    // chỉ Tạm dừng mới giữ được phần đã tải. Khối này không được hứa điều ấy.
+    expect(find.textContaining('giữ lại'), findsNothing,
+        reason: 'lời hứa "phần đã tải được giữ lại" sai trên đường mất mạng');
   });
 
   testWidgets('đang tải thì có nút Tạm dừng; tạm dừng thì có Tiếp tục',

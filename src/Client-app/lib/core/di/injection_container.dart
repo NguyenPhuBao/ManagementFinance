@@ -32,6 +32,7 @@ import '../../features/goal/presentation/bloc/goal_cubit.dart';
 import '../../features/budget/data/datasources/budget_local_data_source.dart';
 import '../../features/budget/data/repositories/budget_repository.dart';
 import '../../features/ai_edge/domain/tai_phan_bo.dart';
+import '../../features/ai_edge/domain/canary_gpu.dart';
 import '../../features/ai_edge/data/cong_tac_ai.dart';
 import '../../features/ai_edge/data/mo_hinh_tai_ve.dart';
 import '../../features/ai_edge/data/slm_cache.dart';
@@ -467,7 +468,13 @@ Future<void> setupDependencies() async {
   // Cả ba đều `registerLazySingleton`: không cái nào được dựng cho tới khi màn
   // Cài đặt AI hoặc màn Trợ lý AI chạm vào. Quan trọng với `SlmRuntime` —
   // dựng nó là nạp engine native, thứ không được xảy ra lúc mở app.
-  sl.registerLazySingleton<SlmRuntime>(SlmRuntimeThat.new);
+  // Canary GPU: Mali (Dimensity 1100) sập native khi gắn delegate OpenCL —
+  // xem `domain/canary_gpu.dart`. Dấu nằm cùng thư mục với tệp mô hình.
+  sl.registerLazySingleton<SlmRuntime>(
+    () => SlmRuntimeThat(
+      canary: const CanaryGpu(thuMuc: getApplicationSupportDirectory),
+    ),
+  );
 
   // Lượt tải mô hình sống lâu hơn tiến trình (tải nền + resume, 2026-09-22).
   // ⚠️ `registerSingleton` chứ không lazy: `chuanBi()` phải chạy TRƯỚC khi màn

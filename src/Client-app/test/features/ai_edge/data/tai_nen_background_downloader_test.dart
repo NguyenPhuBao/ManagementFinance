@@ -37,6 +37,20 @@ void main() {
     });
   });
 
+  group('canceled — của NGƯỜI DÙNG hay của WorkManager?', () {
+    // Realme 2026-09-22: tắt Wi-Fi giữa lượt → WorkManager dừng worker vì
+    // ràng buộc và báo `canceled`, rồi tự chạy lại khi Wi-Fi về. Dịch mù thành
+    // "huỷ" là màn nói "Chưa tải mô hình" cho một lượt vẫn đang xếp hàng.
+    test('người dùng bấm Huỷ → huy', () {
+      expect(dichTrangThai(TaskStatus.canceled, huyDoNguoiDung: true),
+          TrangThaiLuot.huy);
+    });
+    test('⭐ không ai bấm Huỷ mà canceled → dangCho (chờ ràng buộc)', () {
+      expect(dichTrangThai(TaskStatus.canceled, huyDoNguoiDung: false),
+          TrangThaiLuot.dangCho);
+    });
+  });
+
   group('dichTrangThai', () {
     test('enqueued → dangCho (chờ Wi-Fi / tài nguyên)', () {
       expect(dichTrangThai(TaskStatus.enqueued), TrangThaiLuot.dangCho);
@@ -52,7 +66,8 @@ void main() {
       expect(dichTrangThai(TaskStatus.running), TrangThaiLuot.dangChay);
       expect(dichTrangThai(TaskStatus.paused), TrangThaiLuot.tamDung);
       expect(dichTrangThai(TaskStatus.complete), TrangThaiLuot.xong);
-      expect(dichTrangThai(TaskStatus.canceled), TrangThaiLuot.huy);
+      expect(dichTrangThai(TaskStatus.canceled, huyDoNguoiDung: true),
+          TrangThaiLuot.huy);
       expect(dichTrangThai(TaskStatus.failed), TrangThaiLuot.hong);
       expect(dichTrangThai(TaskStatus.notFound), TrangThaiLuot.hong);
     });
