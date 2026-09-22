@@ -6,6 +6,7 @@ import '../../data/models/budget_entity.dart';
 import '../../../ai_edge/domain/tai_phan_bo.dart';
 import '../../data/repositories/budget_repository.dart';
 import '../../data/tai_phan_bo_nguon.dart';
+import '../../domain/cua_so_nhin_lai.dart';
 import '../../domain/de_xuat_ngan_sach.dart';
 import 'budget_state.dart';
 
@@ -82,8 +83,18 @@ class BudgetCubit extends Cubit<BudgetState> {
     // hỏng im lặng, vì một thẻ không hiện trông y hệt một thẻ không có gì để
     // nói.
     final deXuat = await _deXuat(idaccount, loaded.active);
+    // "Cần thêm N ngày" chỉ có nghĩa khi không có đề xuất nào; và phép đo này
+    // là phần phụ — hỏng thì im, không đổi cả trang thành lỗi.
+    int? thieu;
+    if (deXuat == null) {
+      try {
+        thieu = soNgayConThieu(await repository.soNgayCoDuLieu(idaccount));
+      } catch (_) {
+        thieu = null;
+      }
+    }
     if (n != _lan || isClosed) return;
-    loaded = loaded.copyWithDeXuat(deXuat);
+    loaded = loaded.copyWithDeXuat(deXuat, soNgayConThieu: thieu);
 
     final nguon = taiPhanBoNguon;
     if (nguon == null) {
@@ -109,6 +120,7 @@ class BudgetCubit extends Cubit<BudgetState> {
         totalSpent: loaded.totalSpent,
         keHoach: kh,
         deXuat: loaded.deXuat,
+        soNgayConThieu: loaded.soNgayConThieu,
       ));
     } catch (e) {
       // Kế hoạch là phần phụ: nguồn hỏng thì trang vẫn hiện ngân sách.
@@ -211,10 +223,21 @@ class BudgetCubit extends Cubit<BudgetState> {
       } catch (_) {
         soNgay = null;
       }
+      // Cửa sổ chưa mở thì nhãn form NÓI RA còn thiếu bao nhiêu ngày, thay vì
+      // im — cùng lý lẽ với thẻ ở trang danh sách.
+      int? thieu;
+      if (soNgay == null) {
+        try {
+          thieu = soNgayConThieu(await repository.soNgayCoDuLieu(idaccount));
+        } catch (_) {
+          thieu = null;
+        }
+      }
       emit(BudgetEditorReady(
         categories: categories,
         editing: editing,
         soNgayCuaSo: soNgay,
+        soNgayConThieu: thieu,
       ));
     } catch (e) {
       emit(BudgetError(e.toString()));

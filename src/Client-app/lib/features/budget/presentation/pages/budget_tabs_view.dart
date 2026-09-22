@@ -13,6 +13,7 @@ import '../../domain/de_xuat_ngan_sach.dart';
 import '../bloc/budget_state.dart';
 import '../widgets/budget_pace_text.dart';
 import '../widgets/budget_visuals.dart';
+import '../widgets/the_chua_du_du_lieu.dart';
 import '../widgets/the_de_xuat_ngan_sach.dart';
 
 /// Phần hiển thị của trang ngân sách: hai tab, thẻ tổng quan, danh sách.
@@ -191,6 +192,13 @@ class _ActiveTab extends StatelessWidget {
           if (state.deXuat case final g? when onTaoTuDeXuat != null) ...[
             const SizedBox(height: 16),
             TheDeXuatNganSach(goi: g, onTao: onTaoTuDeXuat!),
+          ],
+          // Tài khoản còn trẻ: nói ra thay vì im. Chỉ khi KHÔNG có đề xuất —
+          // `soNgayConThieu` chỉ khác null trong đúng trường hợp ấy (cubit lo).
+          if (state.soNgayConThieu case final thieu?
+              when state.deXuat == null) ...[
+            const SizedBox(height: 16),
+            TheChuaDuDuLieu(soNgayConThieu: thieu),
           ],
           const SizedBox(height: 24),
           Row(

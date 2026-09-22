@@ -144,6 +144,15 @@ class _FakeRepository implements BudgetRepository {
   /// Độ dài cửa sổ nhìn lại mà lớp giả này trả về. `null` = tài khoản chưa đủ
   /// dữ liệu, và khi ấy thẻ đề xuất phải im hẳn.
   int? soNgayCuaSo;
+
+  @override
+  Future<int?> soNgayCoDuLieu(int idaccount, {DateTime? now}) async {
+    calls.add('soNgayCoDuLieu($idaccount)');
+    return soNgayCoDuLieuTra;
+  }
+
+  /// Tuổi dữ liệu mà lớp giả trả về. `null` = chưa có giao dịch.
+  int? soNgayCoDuLieuTra;
 }
 
 /// Đồng hồ đóng băng của bộ test này. Việc phân tab hỏi "hết hạn chưa", nên để
@@ -253,6 +262,30 @@ void main() {
             'gì để nói',
       );
       expect(s.deXuat?.soNgayCuaSo, 20);
+    });
+
+    test('tài khoản 10 ngày tuổi: không đề xuất, nhưng NÓI thiếu 4 ngày',
+        () async {
+      repo.soNgayCuaSo = null; // cửa sổ chưa mở
+      repo.soNgayCoDuLieuTra = 10;
+
+      await cubit.loadBudgets(7);
+
+      final s = cubit.state as BudgetLoaded;
+      expect(s.deXuat, isNull);
+      expect(s.soNgayConThieu, 4,
+          reason: 'im lặng ở đây chính là thứ đã che suggestAmount chết hai tuần');
+    });
+
+    test('có đề xuất thì KHÔNG hỏi tuổi dữ liệu', () async {
+      dungDuLieu();
+      repo.soNgayCoDuLieuTra = 20;
+
+      await cubit.loadBudgets(7);
+
+      expect(repo.calls, isNot(contains('soNgayCoDuLieu(7)')),
+          reason: 'một phép đọc thừa ở mỗi lần phát lại stream');
+      expect((cubit.state as BudgetLoaded).soNgayConThieu, isNull);
     });
 
     test('danh mục đã có ngân sách thì không được gợi ý lại', () async {

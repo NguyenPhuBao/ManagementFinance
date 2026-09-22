@@ -100,7 +100,8 @@ class _BudgetRulesContent extends StatelessWidget {
         BudgetEditorReady(
           :final categories,
           :final editing,
-          :final soNgayCuaSo
+          :final soNgayCuaSo,
+          :final soNgayConThieu
         ) =>
           BudgetForm(
             categories: categories,
@@ -110,6 +111,7 @@ class _BudgetRulesContent extends StatelessWidget {
             danhMucChonSan: danhMucChonSan,
             soTienChonSan: soTienChonSan,
             soNgayCuaSo: soNgayCuaSo,
+            soNgayConThieu: soNgayConThieu,
             onSubmit: (draft) => _submit(context, draft),
           ),
         BudgetError(:final message) => _ErrorScaffold(message: message),

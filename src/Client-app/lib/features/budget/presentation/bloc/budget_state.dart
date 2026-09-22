@@ -53,6 +53,11 @@ class BudgetLoaded extends BudgetState {
   /// giờ hiện** ở mọi chỗ không nối nguồn tái phân bổ — im lặng.
   final GoiDeXuat? deXuat;
 
+  /// Số ngày còn thiếu để cửa sổ nhìn lại đủ 14 ngày; `null` = không cần nói.
+  /// Chỉ khác `null` khi [deXuat] là `null` vì tài khoản còn trẻ — thẻ đề xuất
+  /// khi ấy nhường chỗ cho câu "cần thêm N ngày dữ liệu".
+  final int? soNgayConThieu;
+
   const BudgetLoaded({
     required this.active,
     required this.expired,
@@ -60,6 +65,7 @@ class BudgetLoaded extends BudgetState {
     required this.totalSpent,
     this.keHoach,
     this.deXuat,
+    this.soNgayConThieu,
   });
 
   /// Chỉ gắn thêm [deXuat], giữ nguyên mọi thứ khác.
@@ -67,13 +73,15 @@ class BudgetLoaded extends BudgetState {
   /// Cố ý **không** phải một `copyWith` đầy đủ: chỗ duy nhất cần nó là đường
   /// phát của cubit, và một `copyWith` tổng quát mời gọi việc dựng state bằng
   /// cách vá từng mảnh — thứ làm trạng thái khó lần.
-  BudgetLoaded copyWithDeXuat(GoiDeXuat? deXuat) => BudgetLoaded(
+  BudgetLoaded copyWithDeXuat(GoiDeXuat? deXuat, {int? soNgayConThieu}) =>
+      BudgetLoaded(
         active: active,
         expired: expired,
         totalAmount: totalAmount,
         totalSpent: totalSpent,
         keHoach: keHoach,
         deXuat: deXuat,
+        soNgayConThieu: soNgayConThieu,
       );
 
   double get totalRemaining => totalAmount - totalSpent;
@@ -92,7 +100,7 @@ class BudgetLoaded extends BudgetState {
 
   @override
   List<Object?> get props =>
-      [active, expired, totalAmount, totalSpent, keHoach, deXuat];
+      [active, expired, totalAmount, totalSpent, keHoach, deXuat, soNgayConThieu];
 }
 
 /// Trang cấu hình đã có đủ thứ cần để dựng form.
@@ -111,17 +119,27 @@ class BudgetEditorReady extends BudgetState {
   /// "suy từ N ngày" chứ không đoán một con số.
   final int? soNgayCuaSo;
 
+  /// Số ngày còn thiếu để gợi ý được; `null` = không cần nói. Xem
+  /// `soNgayConThieu` ở `cua_so_nhin_lai.dart`.
+  final int? soNgayConThieu;
+
   const BudgetEditorReady({
     required this.categories,
     this.editing,
     this.soNgayCuaSo,
+    this.soNgayConThieu,
   });
 
   bool get isCreating => editing == null;
 
   @override
-  List<Object?> get props =>
-      [categories, editing?.id, editing?.updatedAt, soNgayCuaSo];
+  List<Object?> get props => [
+        categories,
+        editing?.id,
+        editing?.updatedAt,
+        soNgayCuaSo,
+        soNgayConThieu,
+      ];
 }
 
 /// Đã ghi xong một thay đổi. Mang theo lời nhắn để giao diện hiện snackbar.

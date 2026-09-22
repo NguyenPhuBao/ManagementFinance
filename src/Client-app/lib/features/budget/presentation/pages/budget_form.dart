@@ -75,6 +75,10 @@ class BudgetForm extends StatefulWidget {
   /// không đoán.
   final int? soNgayCuaSo;
 
+  /// Số ngày còn thiếu để gợi ý được; `null` = không cần nói. Xem
+  /// `soNgayConThieu` ở `cua_so_nhin_lai.dart`.
+  final int? soNgayConThieu;
+
   const BudgetForm({
     super.key,
     required this.categories,
@@ -84,6 +88,7 @@ class BudgetForm extends StatefulWidget {
     this.danhMucChonSan,
     this.soTienChonSan,
     this.soNgayCuaSo,
+    this.soNgayConThieu,
   });
 
   @override
@@ -574,7 +579,19 @@ class _BudgetFormState extends State<BudgetForm> {
   /// đoán, và cửa sổ đủ 90 ngày thì câu ấy chỉ còn là tiếng ồn.
   Widget _suggestionHint() {
     final s = _suggestion;
-    if (s == null) return const SizedBox.shrink();
+    if (s == null) {
+      // Không có số vì tài khoản còn trẻ → nói ra. Không có số vì danh mục
+      // không có khoản chi → im như cũ ("trung bình 0 đ" tệ hơn không gợi ý).
+      final thieu = widget.soNgayConThieu;
+      if (thieu == null || _categoryId == null) return const SizedBox.shrink();
+      return Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Text(
+          'Cần thêm $thieu ngày dữ liệu để gợi ý hạn mức.',
+          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+        ),
+      );
+    }
     final soNgay = widget.soNgayCuaSo;
     final veCuaSo = soNgay == null || soNgay >= kSoNgayNhinLai
         ? ''

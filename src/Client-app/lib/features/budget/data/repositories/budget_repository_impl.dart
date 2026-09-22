@@ -201,6 +201,14 @@ class BudgetRepositoryImpl implements BudgetRepository {
     return cuaSo?.soNgay;
   }
 
+  @override
+  Future<int?> soNgayCoDuLieu(int idaccount, {DateTime? now}) async {
+    final moc = await localDataSource.mocGiaoDichDauTien(idaccount);
+    if (moc == null) return null;
+    // Ngày trọn, không làm tròn lên — cùng phép đếm với `cuaSoNhinLai`.
+    return (now ?? clock()).difference(moc).inDays;
+  }
+
   /// Tính số đã chi và gắn tên/biểu tượng danh mục.
   Future<List<BudgetView>> _decorate(
     int idaccount,

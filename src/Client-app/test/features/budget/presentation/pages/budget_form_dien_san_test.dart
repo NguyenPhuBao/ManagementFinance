@@ -42,6 +42,7 @@ Future<void> _dung(
   String? danhMucChonSan,
   double? soTienChonSan,
   int? soNgayCuaSo,
+  int? soNgayConThieu,
   BudgetEntity? editing,
   Future<double?> Function(String)? suggestFor,
 }) async {
@@ -54,6 +55,7 @@ Future<void> _dung(
       danhMucChonSan: danhMucChonSan,
       soTienChonSan: soTienChonSan,
       soNgayCuaSo: soNgayCuaSo,
+      soNgayConThieu: soNgayConThieu,
     ),
   ));
   await tester.pumpAndSettle();
@@ -134,5 +136,33 @@ void main() {
     expect(find.textContaining('trung bình'), findsOneWidget);
     expect(find.textContaining('suy từ'), findsNothing,
         reason: '`null` là "chưa biết", không phải một con số để đoán ra');
+  });
+
+  testWidgets('tài khoản trẻ: nhãn nói "cần thêm N ngày" thay vì im',
+      (tester) async {
+    await _dung(
+      tester,
+      danhMucChonSan: 'c-giai-tri',
+      soNgayCuaSo: null,
+      soNgayConThieu: 4,
+      suggestFor: (_) async => null, // cửa sổ chưa mở → không có con số
+    );
+    expect(find.textContaining('Cần thêm 4 ngày'), findsOneWidget);
+    expect(find.text('Dùng số này'), findsNothing,
+        reason: 'không có số nào để dùng');
+  });
+
+  testWidgets('đủ dữ liệu nhưng danh mục không có khoản chi: vẫn im như cũ',
+      (tester) async {
+    await _dung(
+      tester,
+      danhMucChonSan: 'c-giai-tri',
+      soNgayCuaSo: 20,
+      soNgayConThieu: null,
+      suggestFor: (_) async => null,
+    );
+    expect(find.textContaining('Cần thêm'), findsNothing);
+    expect(find.textContaining('trung bình'), findsNothing,
+        reason: '"trung bình 0 đ" tệ hơn không gợi ý — luật cũ giữ nguyên');
   });
 }

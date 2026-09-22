@@ -78,3 +78,19 @@ CuaSoNhinLai? cuaSoNhinLai(DateTime now, DateTime? mocDauTien) {
   // đầu sau sẽ nuốt tiền chưa tiêu vào một con số nói về quá khứ.
   return CuaSoNhinLai(from: from, to: now, soNgay: soNgay);
 }
+
+/// Số ngày còn thiếu để cửa sổ nhìn lại đủ [kSoNgayToiThieu] — để giao diện
+/// **nói ra** thay vì im.
+///
+/// `null` khi không có gì để đếm ngược: chưa có giao dịch nào ([soNgayCoDuLieu]
+/// là `null`), hoặc đã đủ ngày. Hai ca `null` ấy cố ý gộp: chỗ gọi chỉ cần biết
+/// *có cần nói "cần thêm N ngày" không*, và cả hai đều là "không cần".
+///
+/// ⚠️ Đây là ngoại lệ có chủ ý với luật "khối rỗng thì ẩn hẳn": "cần thêm 5
+/// ngày dữ liệu" **là** tin, không phải khối rỗng. Im lặng ở đây chính là thứ
+/// đã che `suggestAmount` chết suốt hai tuần.
+int? soNgayConThieu(int? soNgayCoDuLieu) {
+  if (soNgayCoDuLieu == null) return null;
+  final thieu = kSoNgayToiThieu - soNgayCoDuLieu;
+  return thieu > 0 ? thieu : null;
+}

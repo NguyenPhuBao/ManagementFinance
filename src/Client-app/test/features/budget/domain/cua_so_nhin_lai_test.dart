@@ -68,4 +68,18 @@ void main() {
           'quy về mức tháng, nên làm tròn lên ở đây là làm mọi mức tháng nhỏ đi',
     );
   });
+
+  group('soNgayConThieu', () {
+    test('chưa có giao dịch nào thì null — không có gì để đếm ngược', () {
+      expect(soNgayConThieu(null), isNull);
+    });
+    test('13 ngày dữ liệu thì thiếu 1; 0 ngày thì thiếu 14', () {
+      expect(soNgayConThieu(13), 1);
+      expect(soNgayConThieu(0), kSoNgayToiThieu);
+    });
+    test('đủ 14 ngày trở lên thì null — cửa sổ đã mở, không còn thiếu', () {
+      expect(soNgayConThieu(14), isNull);
+      expect(soNgayConThieu(90), isNull);
+    });
+  });
 }

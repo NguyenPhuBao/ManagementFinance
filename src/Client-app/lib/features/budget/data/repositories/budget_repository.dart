@@ -59,6 +59,11 @@ abstract class BudgetRepository {
   /// tuổi dữ liệu của **tài khoản**.
   Future<int?> soNgayCuaSoNhinLai(int idaccount, {DateTime? now});
 
+  /// Tuổi dữ liệu của tài khoản tính bằng ngày trọn — từ giao dịch sớm nhất
+  /// tới [now]. `null` khi chưa có giao dịch nào. Nuôi `soNgayConThieu` để giao
+  /// diện nói "cần thêm N ngày" thay vì im.
+  Future<int?> soNgayCoDuLieu(int idaccount, {DateTime? now});
+
   /// [categoryId] là **bắt buộc**: một ngân sách thuộc về đúng một danh mục.
   /// Truyền null sẽ bị từ chối — "ngân sách tổng" đã bỏ từ 2026-09-04. Hàng cũ
   /// mang giá trị null vẫn đọc và sửa được, chỉ không tạo mới được nữa.
