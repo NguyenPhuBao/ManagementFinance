@@ -596,9 +596,9 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-22)
 
-### 🚧 Edge AI chặng 2 — P3 cắm SLM, xong Task 1–6 / 10 (2026-09-22)
+### 🚧 Edge AI chặng 2 — P3 cắm SLM, xong Task 1–7 / 10 (2026-09-22)
 
-Kế hoạch `docs/superpowers/plans/2026-09-20-ai-edge-p3-cam-slm.md`. Sáu tệp mã đã vào, **mô hình
+Kế hoạch `docs/superpowers/plans/2026-09-20-ai-edge-p3-cam-slm.md`. Tám tệp mã đã vào, **mô hình
 chưa tải về máy nào** nên mọi đường vẫn rơi về mẫu câu — đó là hành vi đúng, không phải lỗi.
 
 | Task | Tệp | Việc |
@@ -609,6 +609,7 @@ chưa tải về máy nào** nên mọi đường vẫn rơi về mẫu câu —
 | 4 | `data/slm_runtime.dart` | Tệp **duy nhất** chạm `flutter_gemma`; **test quét thứ 16** canh |
 | 5 | `data/mo_hinh_tai_ve.dart` | Bốn trạng thái, tiến độ, huỷ, xoá. Gọi `tai()` hai lần chồng nhau chỉ chạy **một** lượt |
 | 6 | `data/slm_dien_giai.dart` | Bản `BoDienGiai` **thứ hai**, **sáu** nhánh lùi về mẫu câu; nạp lười, đúng một lần mỗi phiên |
+| 7 | `presentation/pages/cai_dat_ai_page.dart` · `data/cong_tac_ai.dart` | Màn Cài đặt AI + route `/ai-settings` + nối DI. Bốn đăng ký **lazy** (`SlmRuntime`/`MoHinhTaiVe`/`SlmCache`/`CongTacAi`), **cố ý không đăng ký `BoDienGiai`** — lối B |
 
 ⚠️ **`pubspec` thêm HAI gói, không phải một**: `flutter_gemma: 1.8.3` (ghim **cứng** như `fl_chart`)
 và `flutter_gemma_litertlm: ^1.7.0`. Core **không kèm engine nào** — thiếu gói thứ hai thì
@@ -628,13 +629,40 @@ Ngân sách')`, mà chuỗi ấy nằm **trong chính ví dụ
 ✅ **Hai chốt quan trọng nhất đã chứng minh canh thật**: tắt `kiemSo` thì ca *"câu BỊA SỐ"* đỏ; tắt
 `kiemGiong` thì ca *"câu ĐỦ SỐ nhưng SAI GIỌNG"* đỏ. Bộ kiểm giọng dựng ở chặng 1 nay có chỗ dùng.
 
-**Màn Stitch Cài đặt AI:** `1da347e753964e15a91b10c473975923` (2026-09-22), ⏳ **chờ người dùng
-xem** — Task 7 không dựng Flutter trước khi có xác nhận. ⚠️ API lại ghi `DESKTOP` dù truyền
-`MOBILE` (lần thứ ba), và ba trạng thái xếp dọc trong màn là để **so sánh khi thiết kế**, không
-phải bố cục thật.
+**Màn Stitch Cài đặt AI:** `1da347e753964e15a91b10c473975923` (2026-09-22), ✅ **người dùng đã xem
+và xác nhận cùng ngày**, Task 7 dựng theo nó. ⚠️ API lại ghi `DESKTOP` dù truyền `MOBILE` (lần thứ
+ba), và ba trạng thái xếp dọc trong màn là để **so sánh khi thiết kế**, không phải bố cục thật —
+bản Flutter dựng **một** trạng thái tại một thời điểm.
 
-**Mức nền:** `flutter test` **3310/3310, 2 skip**; `flutter analyze` **26**; schema **v24** không
-đổi; payload không đổi; bộ `ai_edge` **23** tệp / **184** test.
+⚠️ **Ba chỗ kế hoạch P3 lệch mã thật, lộ ra khi thi công Task 7** — hai chỗ đầu sẽ tái phát ở
+Task 8, nên đọc trước khi làm tiếp:
+
+1. Kế hoạch lưu công tắc bằng `SharedPreferences`; **dự án không có gói ấy** (`pubspec.yaml`, đo
+   2026-09-22). Nơi lưu tuỳ chọn của dự án là `flutter_secure_storage` — `CongTacAi` theo đúng
+   khuôn `SecureStorageNotificationPrefsStore`, giữ nguyên tên khoá `ai_tren_may_bat`, **một khoá
+   cho cả máy** (thứ nó gác là tệp mô hình, tài sản của *máy* chứ không của *tài khoản*).
+2. Kế hoạch tải mô hình bằng `sl<Dio>()`. `AuthInterceptor.onRequest` gắn `Authorization: Bearer`
+   vào **mọi** request và **không lọc host**, mà đích là `huggingface.co` — dùng chung Dio của dự
+   án là **gửi access token của người dùng cho một bên thứ ba, im lặng**. Bản thi công dùng
+   `Dio()` trần: tải một tệp công khai không cần thứ gì của phiên đăng nhập.
+3. Ca test thứ ba của kế hoạch (`find.textContaining('không')`) **đỏ trên cả bản đúng** —
+   `textContaining` phân biệt hoa thường, còn câu hứa bắt đầu bằng *"Không"*. Ca nay đòi thẳng
+   câu hứa và đòi ở **cả hai** trạng thái.
+
+**Dọn cache SLM khi đổi tài khoản** (Step 5b) nằm ở `AuthBloc._donDuLieuTaiKhoanKhac`, dùng chung
+cho **cả hai** chỗ gọi `purgeDataForOtherAccounts`. ⚠️ Điều kiện là **chính số hàng hàm ấy vừa
+xoá** (`removed > 0`), không phải một phép so `idaccount` thứ hai — hệ quả **cố ý**: đăng xuất rồi
+đăng nhập lại **cùng** tài khoản thì cache được **giữ**, vì vứt nó là vứt tới 200 câu mà mỗi câu
+đã trả 2,3 giây chạy mô hình để có. Hai ca canh hai chiều, và **cả hai đã thử bằng bản sai**: bỏ
+phép dọn → ca "đổi tài khoản" đỏ; dọn vô điều kiện → ca "cùng tài khoản" đỏ.
+
+✅ **Nghiệm thu máy ảo 411dp ngày 2026-09-22**: màn dựng đúng Stitch, **0 sọc tràn**; công tắc tắt
+→ thoát trang → vào lại **vẫn tắt** (đo đầu-cuối `CongTacAi` trên kho thật). ⚠️ Lối vào lúc nghiệm
+thu là **nối tạm** nút bánh răng của màn Trợ lý AI, **không commit** — nút ấy là việc của Task 8,
+nên tới khi ấy `/ai-settings` mới có lối vào thật.
+
+**Mức nền:** `flutter test` **3318/3318, 2 skip**; `flutter analyze` **26**; schema **v24** không
+đổi; payload không đổi; bộ `ai_edge` **24** tệp / **190** test.
 
 ### ✅ Edge AI chặng 1 — chặn lỗi và tài liệu trước P3 (2026-09-22) — XONG TRỌN 6 TASK
 
@@ -742,7 +770,7 @@ clean` không cứu được** — chỉ khỏi khi đặt `kotlin.incremental=f
 **Mức nền sau trọn chặng:** `flutter test` **3268/3268, 2 skip**; `flutter analyze` **26**;
 schema **v24** không đổi; payload không đổi. Máy thật **OnePlus 13R `CPH2691` đã nối `adb`**
 (kiểm 2026-09-22) — điều kiện vào chặng 2 (P3) đã thoả, bẫy driver `DeviceInterfaceGUIDs`
-không tái phát. ✅ **Chặng 2 đã bắt đầu cùng ngày và xong Task 1–6/10** — xem khối *"Edge AI chặng 2"* ở đầu mục 14.
+không tái phát. ✅ **Chặng 2 đã bắt đầu cùng ngày và xong Task 1–7/10** — xem khối *"Edge AI chặng 2"* ở đầu mục 14.
 
 ### ✅ Cửa sổ nhìn lại, và thẻ "Chưa đặt ngân sách" (2026-09-21)
 
@@ -1122,8 +1150,7 @@ một dòng lỗi. Đường đi được là push vào `/sdcard/Download` rồi
 `cat … | run-as ‹pkg› sh -c 'cat > files/…'` — 2 GB mất 12 giây.
 
 **Bước tiếp:** ✅ **kế hoạch P3 đã viết cùng ngày** —
-`docs/superpowers/plans/2026-09-20-ai-edge-p3-cam-slm.md`, 10 task. *(Ảnh chụp 2026-09-20; thi công bắt đầu **2026-09-22**, xong Task 1–6 — xem đầu mục 14.)* **chưa thi
-công**.
+`docs/superpowers/plans/2026-09-20-ai-edge-p3-cam-slm.md`, 10 task. *(Ảnh chụp 2026-09-20; thi công bắt đầu **2026-09-22**, xong Task 1–7 — xem đầu mục 14. Câu "chưa thi công" ngay sau đây là của ngày viết kế hoạch.)*
 
 ⭐ **Cùng ngày còn một lượt trao đổi dài về bản chất và tương lai của mảng AI,
 kết quả ghi ở mục 10 và 11 `docs/AI_EDGE_FEATURE.md`** — đọc trước khi lên kế

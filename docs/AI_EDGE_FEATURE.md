@@ -8,7 +8,17 @@
 > **SLM on-device** (P3, **đang thi công từ 2026-09-22**) — chỉ tầng sau mới là Edge AI theo nghĩa ngành.
 
 **Trạng thái:** P0 xong (`03fe03a`) · **P1 spike XONG 2026-09-20** (đo trên OnePlus 13R / Snapdragon 8 Gen 3 — bảng đo mục **8**; người dùng chốt **E2B cho mọi máy**) · **P2 XONG — trọn 17 task** (Task 14 gắn khối Nhận xét vào bốn màn, đóng A6 — ⚠️ **nay là SÁU màn**, Hoá đơn và Quản lý ví thêm 2026-09-21, mục **12** và **14**; Task 15 thẻ + sheet kế hoạch tái phân bổ, nghiệm thu máy ảo đầu-cuối tới PostgreSQL — cả hai 2026-09-19; **Task 16** thông báo `budgetRebalance` 2026-09-20, mục **5g** `NOTIFICATION_FEATURE.md`; **Task 17** nghiệm thu tổng + tài liệu bàn giao 2026-09-20, mục **7.4**) ·
-**P3: ĐANG THI CÔNG từ 2026-09-22 — xong Task 1–6 / 10.** Sáu tệp mã đã vào: `slm_prompt.dart` và `chu_de_chan.dart` (hàm thuần), `slm_cache.dart`, `slm_runtime.dart` (tệp **duy nhất** import `flutter_gemma`, có test quét thứ **16** canh), `mo_hinh_tai_ve.dart`, `slm_dien_giai.dart` (bản `BoDienGiai` thứ hai, **sáu** nhánh lùi về mẫu câu). `pubspec` thêm `flutter_gemma: 1.8.3` và `flutter_gemma_litertlm: ^1.7.0`. ⏳ **Còn Task 7–9**: màn Cài đặt AI + nối DI (chờ người dùng xem màn Stitch), màn Trợ lý AI, nghiệm thu máy thật. ⚠️ Mô hình **chưa** tải về máy nào, nên mọi đường vẫn rơi về mẫu câu — đó là hành vi đúng, không phải lỗi.
+**P3: ĐANG THI CÔNG từ 2026-09-22 — xong Task 1–7 / 10.** Tám tệp mã đã vào: `slm_prompt.dart` và `chu_de_chan.dart` (hàm thuần), `slm_cache.dart`, `slm_runtime.dart` (tệp **duy nhất** import `flutter_gemma`, có test quét thứ **16** canh), `mo_hinh_tai_ve.dart`, `slm_dien_giai.dart` (bản `BoDienGiai` thứ hai, **sáu** nhánh lùi về mẫu câu), cộng **Task 7** ngày 2026-09-22: `cai_dat_ai_page.dart` (màn Cài đặt AI, route `/ai-settings`, nghiệm thu máy ảo 411dp) và `cong_tac_ai.dart`. DI nay đăng ký `SlmRuntime` / `MoHinhTaiVe` / `SlmCache` / `CongTacAi`, **cả bốn đều lazy** và **cố ý không đăng ký `BoDienGiai`** (lối B). `pubspec` thêm `flutter_gemma: 1.8.3` và `flutter_gemma_litertlm: ^1.7.0`. ⏳ **Còn Task 8–9**: màn Trợ lý AI (nối 5 handler rỗng, đóng A11 — trong đó nút bánh răng đi `/ai-settings` là **lối vào duy nhất** của màn Cài đặt AI, nên tới khi ấy route mới có người dùng thật), nghiệm thu máy thật. ⚠️ Mô hình **chưa** tải về máy nào, nên mọi đường vẫn rơi về mẫu câu — đó là hành vi đúng, không phải lỗi.
+
+> ⚠️ **Ba chỗ kế hoạch P3 lệch mã thật, phát hiện khi thi công Task 7** (2026-09-22) — ghi ở đây
+> vì hai chỗ đầu sẽ tái phát ở Task 8: **(1)** kế hoạch lưu công tắc bằng `SharedPreferences`, mà
+> **dự án không có gói ấy**; nơi lưu tuỳ chọn là `flutter_secure_storage`, và `CongTacAi` theo
+> đúng khuôn `SecureStorageNotificationPrefsStore` (tên khoá giữ nguyên `ai_tren_may_bat`).
+> **(2)** kế hoạch tải mô hình bằng `sl<Dio>()`; `AuthInterceptor.onRequest` gắn
+> `Authorization: Bearer` vào **mọi** request **không lọc host**, mà đích là `huggingface.co` —
+> dùng chung Dio của dự án là gửi access token của người dùng cho một bên thứ ba, im lặng. Bản
+> thi công dùng `Dio()` trần. **(3)** ca test `find.textContaining('không')` của kế hoạch **đỏ
+> trên cả bản đúng**: `textContaining` phân biệt hoa thường còn câu hứa bắt đầu bằng *"Không"*.
 **Spec đã duyệt:** `docs/superpowers/specs/2026-09-19-ai-edge-slm-design.md` — ⚠️ đọc **mục 8
 dưới đây trước mục 4.1 của spec**: P1 đã lật bậc thang ở đó, và spec mục 4.1 nay mang banner 🛑.
 **Kế hoạch:** `docs/superpowers/plans/2026-09-19-ai-edge-p0-nang-flutter.md`,
@@ -79,11 +89,11 @@ Theo spec mục 2.1 — cập nhật ở đây khi lệch:
 
 ```
 lib/features/ai_edge/
-  domain/   goi_so.dart · goi_so_{ngan_sach,phan_tich,muc_tieu,trang_chu}.dart · nhan_xet.dart
+  domain/   goi_so.dart · goi_so_{ngan_sach,phan_tich,muc_tieu,trang_chu,hoa_don,vi}.dart · nhan_xet.dart
             bo_dien_giai.dart · mau_cau.dart · dau_van.dart · tai_phan_bo.dart · kiem_so.dart
             ap_dung_ke_hoach.dart · kiem_giong.dart
             (P3) slm_prompt.dart · chu_de_chan.dart
-  data/     (P3) slm_runtime.dart — tệp DUY NHẤT import flutter_gemma · slm_dien_giai.dart · slm_cache.dart · mo_hinh_tai_ve.dart
+  data/     (P3) slm_runtime.dart — tệp DUY NHẤT import flutter_gemma · slm_dien_giai.dart · slm_cache.dart · mo_hinh_tai_ve.dart · cong_tac_ai.dart
   presentation/widgets/ khoi_nhan_xet.dart · the_so_lieu.dart · the_ke_hoach.dart
   presentation/pages/   ke_hoach_tai_phan_bo_sheet.dart · (P3) cai_dat_ai_page.dart
 lib/features/budget/data/tai_phan_bo_nguon.dart   — nguồn dữ liệu Tầng 2 (cờ Cố định, mức mỗi tháng, thu nhập mỗi tháng, phản hồi cũ)

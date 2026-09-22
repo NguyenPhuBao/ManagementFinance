@@ -1434,7 +1434,10 @@ git commit -m "feat(ai-edge): SlmDienGiai — câu từ mô hình, năm nhánh r
 
 **Interfaces:**
 - Consumes: `MoHinhTaiVe` (Task 5).
-- Produces: route `/ai-settings`; khoá `SharedPreferences` `ai_tren_may_bat`.
+- Produces: route `/ai-settings`; khoá `ai_tren_may_bat`. ⚠️ **Đã thi công 2026-09-22 và
+  dòng này sai ở một chữ**: khoá nằm trong `flutter_secure_storage` (`data/cong_tac_ai.dart`),
+  **không** phải `SharedPreferences` — gói ấy không có trong dự án. Xem mục *"Ba chỗ kế hoạch
+  này lệch mã thật"* ở cuối tệp.
 
 - [ ] **Step 1: Test đỏ**
 
@@ -1608,6 +1611,10 @@ git commit -m "feat(ai-edge): màn Cài đặt AI — tải, xoá, công tắc d
   `sl<SlmCache>()`, `sl<MoHinhTaiVe>()` — **không** đọc `sl<BoDienGiai>()`, vì Task 7 cố
   ý không đăng ký nó. Và màn tự đọc khoá `ai_tren_may_bat`: tắt công tắc thì ô nhập khoá
   y như khi chưa tải mô hình.
+- ⚠️ **Đọc khoá ấy qua `sl<CongTacAi>().doc()`, KHÔNG qua `SharedPreferences`** — dự án
+  không có gói đó; xem mục *"Ba chỗ kế hoạch này lệch mã thật"* ở cuối tệp. Và nút bánh
+  răng của màn này (`ai_chat_page.dart:97`) là **lối vào duy nhất** của `/ai-settings`,
+  nên nó phải `context.push('/ai-settings')` — route nằm ngoài shell.
 
 - [ ] **Step 1: Test đỏ**
 
@@ -1817,5 +1824,48 @@ git commit -m "docs(ai-edge): P3 xong — bảng đo máy thật, A11 đóng"
 
 | Task | Commit | Ghi chú |
 |---|---|---|
-| 0 | | id Stitch: |
-| … | | |
+| 0 | `4827124` → `91f0d8e` | id Stitch: `1da347e753964e15a91b10c473975923`. Người dùng xem và xác nhận 2026-09-22 |
+| 1 | `a00671b` | `slm_prompt.dart` |
+| 2 | `0166ea7` | `chu_de_chan.dart` |
+| 3 | `a701f28` | `slm_cache.dart` |
+| 4 | `1ab4cf9` | `slm_runtime.dart` + test quét thứ **16** |
+| 5 | `cfe2c95` | `mo_hinh_tai_ve.dart` |
+| 6 | `075ef8d` | `slm_dien_giai.dart`, sáu nhánh lùi |
+| 7 | `4f80f02` | Màn Cài đặt AI + DI + route. **Ba chỗ kế hoạch lệch mã thật** — xem ngay dưới |
+| 8 | | |
+| 9 | | |
+
+### ⚠️ Ba chỗ kế hoạch này LỆCH MÃ THẬT (đo khi thi công Task 7, 2026-09-22)
+
+Hai chỗ đầu **sẽ tái phát ở Task 8** — đọc trước khi làm tiếp.
+
+1. **`SharedPreferences` không tồn tại trong dự án.** Step 4 và dòng *Produces* của Task 7 đều
+   giả định nó có; `pubspec.yaml` không có gói ấy, và dự án **cố ý** không thêm — nơi lưu tuỳ
+   chọn là `flutter_secure_storage`, đúng lý lẽ đã ghi ở `SecureStorageNotificationPrefsStore`.
+   Bản thi công: `data/cong_tac_ai.dart`, **giữ nguyên tên khoá `ai_tren_may_bat`**, một khoá cho
+   cả máy (thứ công tắc gác là *tệp mô hình*, tài sản của máy chứ không của tài khoản). Task 8
+   đọc công tắc **qua `CongTacAi`**, không qua `SharedPreferences`.
+2. **`sl<Dio>()` là lựa chọn SAI, không chỉ là tên sai.** Dự án không đăng ký `Dio` trần; cái có
+   là `sl<DioClient>().dio`, và `AuthInterceptor.onRequest` gắn `Authorization: Bearer <token>`
+   vào **mọi** request **không lọc host**. Đích tải là `huggingface.co` — dùng Dio của dự án là
+   gửi access token của người dùng cho một bên thứ ba, **im lặng**. Bản thi công dùng `Dio()`
+   trần trong closure `taiTep`.
+3. **Ca test thứ ba của Step 1 đỏ trên cả bản đúng.** `find.textContaining('không')` phân biệt
+   hoa thường, còn câu hứa bắt đầu bằng *"Không có số liệu nào rời khỏi thiết bị."* Ca nay đòi
+   thẳng câu hứa (`'rời khỏi thiết bị'`) và đòi ở **cả hai** trạng thái.
+
+**Đã kiểm bằng bản sai có chủ ý** (bẫy *"ca test xanh mà không canh gì"*): bỏ `Expanded` ở khối
+riêng tư → ca 411dp đỏ; bỏ phép dọn cache → ca *"đổi tài khoản"* đỏ; dọn vô điều kiện → ca *"cùng
+tài khoản"* đỏ.
+
+**Nghiệm thu máy ảo 411dp** (`emulator-5554`, `-gpu swangle`): màn đúng Stitch, **0 sọc tràn**;
+công tắc tắt → thoát → vào lại **vẫn tắt**. ⚠️ Lối vào lúc nghiệm thu là **nối tạm** nút bánh răng
+của màn Trợ lý AI rồi **gỡ ra, không commit** — nút ấy là việc của Task 8.
+
+### 🔎 Một việc Task 7 tìm ra mà kế hoạch không có chỗ nào ghi
+
+**Nút "Huỷ" không dừng được lượt tải.** `MoHinhTaiVe.huy()` chỉ đặt cờ `_huy`; `taiTep` vẫn được
+`await` tới khi **xong toàn bộ 2,41 GB**, rồi mới ném `_HuyTai` và xoá tệp. Tức người dùng bấm
+Huỷ thì giao diện quay về *"Chưa tải"* trong khi máy **vẫn tải hết** nền — trên dữ liệu di động
+thì đó là 2,41 GB họ tưởng đã chặn. Sửa là thêm một `CancelToken` (Dio có sẵn) đi qua chữ ký
+`taiTep`, tức **đổi API của Task 5**; chưa làm vì nằm ngoài phạm vi Task 7.
