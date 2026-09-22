@@ -371,6 +371,11 @@ clean` không cứu được** — chỉ khỏi khi thêm `kotlin.incremental=fa
 
 ### 5.6 Bảng đo chặng 3 — bậc 1 hỏng ở đâu ✅ **ĐO XONG 2026-09-22 (tối muộn)**
 
+> 🛑 **Đọc cả mục "Đo lại sau chặng 4a" ở cuối mục này trước khi dùng bảng.** Lát 4a đã chữa
+> được **một** trong bốn câu nhóm A và chứng minh ba câu còn lại **không** chữa được bằng gói số
+> — chúng cần tool. Đơn đặt hàng sáu tool bên dưới vì thế **vẫn đứng**, nhưng hình dạng của nó đã
+> rõ hơn: tool phải trả **một hàng đầy đủ** (tên + số + trạng thái), không phải nhiều mục rời.
+
 **Máy:** Realme RMX2205 (Dimensity 1100, Mali-G77, Android 13, 360 dp), APK **release**, nạp
 **CPU** (canary đã ghi dấu GPU sập từ lượt trước). **Tài khoản:** 10 (`tadd1632004@gmail.com`),
 dữ liệu thật. **Nạp mô hình:** 9.196 ms (XNNPack cache đã có sẵn). **Sinh câu:** 4,8–8,9 s mỗi
@@ -458,6 +463,55 @@ Xếp theo số câu mỗi tool cứu được:
 sách có tên"** — một hình dạng mà mục 5.1 không hề dự đoán (nó nghĩ theo hướng "mỗi hàm domain
 một tool"). Đây đúng là lý do lộ trình bắt đo trước khi dựng: ba tool của 5.1 (`traCuuKienThuc`
 và hai tool phái sinh) **không câu nào trong 20 câu cần tới**.
+
+#### Đo lại sau chặng 4a (2026-09-23) — 🛑 CỔNG CHƯA ĐẠT, nhóm A **1/4**
+
+Lát 4a (spec `specs/2026-09-22-chang-4a-ten-doi-tuong-goi-so-design.md`) cho mỗi con số mang
+**tên đối tượng**, rồi đo lại **bốn câu nhóm A** trên cùng máy, cùng tài khoản. Không đo lại trọn
+20 câu vì cổng đã trượt ngay ở nhóm A.
+
+| # | Câu hỏi | Trước 4a | Sau 4a |
+|---|---|---|---|
+| 3 | Ngân sách **nào** sắp hết | "Ngân sách căng nhất là 90,0%" | ⭐ **"…là Giáo dục với tỉ lệ 90,0%"** ✅ |
+| 8 | Chi nhiều nhất vào **danh mục nào** | "Khoản lớn nhất là 800.000 đ" | **LỆCH** — vẫn trả lời về ngân sách |
+| 13 | **Hoá đơn nào** quá hạn | trả lời về *ngân sách* | **LỆCH** — đúng chủ đề, nhưng lấy mục đếm ("là 1") |
+| 15 | **Ví nào** đang âm | LỆCH + thẻ sai nhãn | **MẪU** — bị chặn, an toàn |
+
+**Điều kiện 3 của cổng (SAI = 0) đạt** sau khi đóng một hồi quy; điều kiện 1 (≥ 3/4) **trượt**.
+
+⭐ **Bài học trung tâm: danh sách có tên là CẦN nhưng CHƯA ĐỦ.** Một lượt log gói số thật chứng
+minh cả bốn gói mang tên **đúng như thiết kế**:
+
+```
+phan_tich > Cho vay / Chi = 800.000 đ          ngan_sach > Giáo dục / Tỉ lệ = 90,0%
+hoa_don   > Kiem / Phải trả = 45.000 đ         vi        > test / Số dư = -100.000 đ
+```
+
+Nhưng gói nói `Quá hạn: 1` ở một dòng và `Kiem · Phải trả: 45.000 đ` ở dòng khác — **không chỗ
+nào nói Kiem LÀ cái quá hạn**. Mô hình phải **nối hai mục rời bằng suy luận**, và E2B không làm
+được: nó trả lời bằng con số tổng. Ví y hệt (`Ví đang âm: 1` vs `test · Số dư: -100.000 đ`).
+
+Gắn trạng thái vào nhãn (`Đã quá hạn`, `Đang âm`) **không cứu được** câu 13 — nhưng nó lộ ra một
+hồi quy đáng giá hơn, xem dưới.
+
+🛑 **Hệ quả cho chặng 4:** ba câu còn hỏng **không** chữa được bằng cách làm gói số giàu thêm. Mô
+hình đã chứng minh là không nối được hai mục rời, nên thứ cần là **tool trả về một hàng đầy đủ**
+(tên + số + trạng thái trong cùng một kết quả), tức đúng hình dạng mà bảng 5.6 đặt hàng. Đừng
+tinh chỉnh gói số thêm nữa.
+
+#### Hồi quy mà lát 4a suýt để lại — và luật siết ra từ nó
+
+Nhãn `Đang âm` làm câu **"Số ví đang âm: −100.000 đ"** *lọt qua* `kiemNhan`, trong khi bản **trước
+chặng 4a vẫn chặn được**. Câu ấy **sai nghĩa** — số ví là 1, không phải −100.000 đ — nhưng nhãn có
+từ khoá "đang"/"âm" và câu chứa đủ cả hai.
+
+Gốc: lát 4a bản đầu cho một số hợp lệ khi câu khớp **nhãn HOẶC tên**. Gói nay mang nhiều mục cùng
+nhãn (bốn ngân sách cùng `Tỉ lệ`, các ví cùng `Số dư`), nên một câu chỉ nhắc nhãn **không nói được
+nó đang nói về cái nào**.
+
+**Luật sau khi siết:** mục **có tên** thì đòi câu nêu **tên**; mục không tên giữ luật cũ. Câu 3 vẫn
+lọt vì 90,0% cũng là `Ngân sách căng nhất` của gói trang chủ — một mục **không tên** — nên vế nhãn
+vẫn dùng được. Đo lại: câu sai bị chặn trở lại.
 
 #### Hai lỗi thật lượt đo bắt được — ngoài phạm vi chặng 3
 

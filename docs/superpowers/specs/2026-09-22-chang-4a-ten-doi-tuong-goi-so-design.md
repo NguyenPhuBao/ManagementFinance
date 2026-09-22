@@ -1,5 +1,27 @@
 # Chặng 4a — tên đối tượng trong gói số (thiết kế)
 
+> 🛑 **THI CÔNG XONG 2026-09-23, CỔNG §5 CHƯA ĐẠT — nhóm A 1/4, cần ≥ 3/4.**
+> Bảng đo lại ở mục **5.6** `docs/AI_AGENT_ARCHITECTURE.md`; tường thuật ở **9.12**
+> `docs/AI_EDGE_FEATURE.md`. Điều kiện 3 (SAI = 0) **đạt** sau khi đóng một hồi quy.
+>
+> **Ba chỗ spec này đoán sai, ghi lại để lát sau đừng lặp:**
+>
+> 1. 🛑 **Giả định gốc sai một nửa.** Spec cho rằng gói thiếu **định danh** là đủ giải thích bốn
+>    câu nhóm A. Log gói số thật cho thấy tên đã vào đủ mà ba câu vẫn hỏng: gói nói `Quá hạn: 1`
+>    ở một dòng và `Kiem · Phải trả: 45.000 đ` ở dòng khác, **không chỗ nào nói Kiem LÀ cái quá
+>    hạn**. Mô hình phải nối hai mục rời bằng suy luận — E2B không làm được. **Danh sách có tên
+>    là CẦN nhưng CHƯA ĐỦ.**
+> 2. ⚠️ **§3.2 lường sai kiểu hỏng của prompt phình.** Spec viết "token đầu tăng"; thực tế gói ném
+>    `INVALID_ARGUMENT: 1084 >= 1024` và câu trả lời **rỗng**. `maxTokens` hoá ra là hằng của
+>    client chứ không phải giới hạn của Gemma.
+> 3. ⚠️ **§3.3 gọi phép nới là "an toàn" — nó không an toàn.** Luật "khớp nhãn HOẶC tên" để lọt
+>    câu *"Số ví đang âm: −100.000 đ"* mà bản **trước** lát này vẫn chặn được. Luật đúng: mục
+>    **có tên** đòi câu nêu **tên**.
+>
+> ✅ Phần spec đúng và đã đem lại kết quả: `SoLieu.ten` tách khỏi `nhan` (§3.1 — và cảnh báo
+> "đừng ghép vào nhãn" là đúng), `theCuaCau` chọn nhãn theo câu (§3.4 — chữa xong bẫy 4.27), và
+> chính cổng §5 điều kiện 3 là thứ bắt được hồi quy ở điểm 3 trên.
+
 **Ngày:** 2026-09-22 (tối muộn) · **Nhánh:** `TranQuangDat` @ `3a477b3` · **Trạng thái:** đã duyệt
 **Đầu vào:** bảng đo 20 câu, mục **5.6** `docs/AI_AGENT_ARCHITECTURE.md` (chặng 3, cổng B qua)
 **Lối đã chốt:** **C** — làm phần rẻ trước, đo lại, rồi mới dựng tool-calling (lát 4b)

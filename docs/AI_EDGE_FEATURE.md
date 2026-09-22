@@ -186,6 +186,9 @@ lib/features/ai_chat/                             — màn Trợ lý AI (P3), đ
 | 4.26 | **`daCo()` phải kiểm KÍCH THƯỚC, và test không dựng nổi tệp 2,4 GB** | tệp dở giữ cho resume mà `existsSync()` đọc thành "đã có" → engine ném "Model may be invalid" ở nơi không ai ngờ; `coTepByte` tiêm được để `slm_dien_giai_test` đóng vai "đã có" bằng tệp 3 byte | `mo_hinh_tai_ve_test.dart` nhóm *"daCo() kiểm KÍCH THƯỚC"* |
 | 4.27 | ⚠️ **Thẻ số liệu gán nhãn của GÓI KHÁC khi hai nhãn trùng GIÁ TRỊ** — chưa sửa (bắt được ở chặng 3, 2026-09-22) | câu trả lời *"Ví đang âm: 1"* hiện thẻ **"Quá hạn 1"** — nhãn của *hoá đơn quá hạn*, vì cả hai cùng bằng **1** và `theCuaCau` khớp theo **giá trị**. Cùng họ 4.19 nhưng nguyên nhân khác hẳn: **trùng giá trị**, không phải chuỗi con. Số nhỏ (`1`, `2`, `3`, `0`) trùng nhau giữa các gói là chuyện **thường**, nên đây không phải ca hiếm | *(chưa có ca — cần dựng hai gói cùng mang một giá trị với hai nhãn khác nhau)* |
 | 4.28 | ⚠️ **`adb shell input text` làm hỏng chữ hoa giữa từ** — bẫy của phép ĐO, không phải của app | gõ `MuaXe` ra **`Mũae`** trên màn hình; câu hỏi chứa tên riêng vì thế không tới được mô hình, và kết quả đo trông như "mô hình không hiểu tên". Câu hỏi có tên riêng phải **chụp màn kiểm lại chữ đã vào** trước khi tin kết quả | *(bẫy thao tác — ghi ở mục 5.6 `AI_AGENT_ARCHITECTURE.md`)* |
+| 4.29 | ⭐ **Prompt vượt trần token là lỗi CỨNG, không phải chậm** (chặng 4a, 2026-09-23) | gói ném `INVALID_ARGUMENT: Input token ids are too long: 1084 >= 1024` và câu trả lời **RỖNG** — kế hoạch chỉ lường "prompt phình thì token đầu tăng". ⚠️ `maxTokens` là hằng của **client** (`slm_runtime.dart`), không phải giới hạn của Gemma, và là trần cho **tổng** input + output: prompt 1.084 token + `tranToken: 300` đều phải lọt. Nới 1024 → 2048. **Mỗi lát làm gói số giàu thêm phải đo lại độ dài prompt** | *(đo máy thật — `flutter test` không thấy)* |
+| 4.30 | ⭐ **Mẫu câu in số của đối tượng KHÁC khi gói có nhiều mục trùng nhãn** | `{for (final x in soLieu) x.nhan: x.chuoi}` lấy giá trị **cuối**. Bốn ngân sách cùng nhãn `Tỉ lệ` → câu nhận xét về Giáo dục in *"(7,1%)"* của Mua sắm — sai **im lặng**, và khối Nhận xét hiện đúng câu ấy. ⚠️ Ca `contains('Giáo dục')` viết cùng lát **xanh suốt**: cùng bài học G43, ca test phải đòi **kết quả**. Chữa bằng `putIfAbsent` (lấy mục đầu); năm gói kia còn khuôn cũ và sẽ vấp khi thêm danh sách | `goi_so_ngan_sach_test.dart` *"⭐ mẫu câu nêu tỉ lệ của CHÍNH ngân sách nó nói tới"* |
+| 4.31 | ⭐ **Nhãn giàu hơn có thể làm câu SAI lọt qua `kiemNhan`** | nhãn `Đang âm` (ví âm) có từ khoá "đang"/"âm", nên câu *"Số ví đang âm: −100.000 đ"* — **sai nghĩa**, số ví là 1 — lọt qua, trong khi bản **trước** chặng 4a chặn được. Gốc: luật "khớp nhãn **HOẶC** tên" quá lỏng khi gói mang nhiều mục cùng nhãn. Luật nay: mục **có tên** đòi câu nêu **tên**; mục không tên giữ luật cũ | `kiem_nhan_test.dart` *"⭐ mục CÓ TÊN đòi câu nêu TÊN"* |
 | 4.4 | **Luật "đã bị cắt hai kỳ liền trước" (C3) chỉ kích hoạt khi ngân sách đã tồn tại ≥ 3 kỳ** — `recentPeriods` trả một kỳ cho ngân sách tạo tháng này, và luật im lặng | không lỗi; chỉ là trần 25 % thay vì 15 % | `tai_phan_bo_test.dart` *"đã bị cắt hai kỳ liền trước → trần 15 %"* có cả hai fixture |
 
 ## 5. Màn Stitch
@@ -837,6 +840,44 @@ câu cũ nên đọc là *"không đáng tin cậy"* chứ không phải *"khôn
 **Hai lỗi của mô-đun này lượt đo bắt được, chưa sửa:** thẻ số liệu gán nhãn của gói khác khi hai
 nhãn **trùng giá trị** (bẫy **4.27**) và **tổng thu lệch 10.000 đ** giữa Trang chủ (15.145.000)
 và gói số (15.135.000) — ⚠️ đừng sửa bên nào trước khi chốt con số nào mới đúng.
+
+---
+
+### 9.12 Chặng 4a — tên đối tượng trong gói số (2026-09-23) — 🛑 CỔNG CHƯA ĐẠT
+
+Spec `superpowers/specs/2026-09-22-chang-4a-ten-doi-tuong-goi-so-design.md`; bảng đo lại ở mục
+**5.6** `AI_AGENT_ARCHITECTURE.md`. Chín task, 3468/3468 pass, analyze 26 issue, schema **không
+đổi** (v24), payload **không đổi**.
+
+**Làm gì:** `SoLieu` thêm một trường `ten` (`String?`) — tên đối tượng, tách khỏi `nhan` vốn là
+tên chỉ số; bốn gói (ngân sách · ví · hoá đơn · phân tích) nhồi **danh sách** thay vì một mục,
+trần `kToiDaMucMoiGoi = 4`; `kiemNhan` và `theCuaCau` đọc `ten`; prompt nêu tên.
+
+**Kết quả: nhóm A 1/4** — câu *"ngân sách nào sắp hết"* nay đáp **"…là Giáo dục với tỉ lệ 90,0%"**
+thay vì một con số trần. Ba câu còn lại vẫn hỏng.
+
+⭐ **Bài học trung tâm — danh sách có tên là CẦN nhưng CHƯA ĐỦ.** Log gói số thật chứng minh cả
+bốn gói mang tên đúng thiết kế. Nhưng gói nói `Quá hạn: 1` ở một dòng và `Kiem · Phải trả:
+45.000 đ` ở dòng khác — **không chỗ nào nói Kiem LÀ cái quá hạn**. Mô hình phải nối hai mục rời
+bằng suy luận, và E2B không làm được. 🛑 Vậy ba câu còn hỏng **không** chữa được bằng cách làm gói
+giàu thêm; thứ cần là **tool trả một hàng đầy đủ** — việc của lát 4b.
+
+**Bốn lỗi thật lượt đo bắt được, 3462 ca test đều mù:**
+
+1. ⭐ **Prompt vượt trần token là lỗi CỨNG, không phải chậm** — bẫy **4.29**. Kế hoạch chỉ lường
+   "prompt phình thì token đầu tăng"; thực tế gói ném `INVALID_ARGUMENT: Input token ids are too
+   long: 1084 >= 1024` và câu trả lời **rỗng**.
+2. ⭐ **Mẫu câu ngân sách in tỉ lệ của ngân sách KHÁC** — bẫy **4.30**, sai **im lặng**, và ca
+   `contains('Giáo dục')` viết cùng lát ấy **xanh suốt**.
+3. ⭐ **Nhãn mới làm một câu SAI lọt qua `kiemNhan`** — bẫy **4.31**; bản trước chặng 4a chặn được
+   câu ấy. Luật siết ra từ đây: mục **có tên** đòi câu nêu **tên**.
+4. `debugPrint` bị **tiết lưu** nên sáu dòng log gói số bị nuốt sạch — phải dùng `print` và mỗi
+   mục một dòng ngắn. Vế thứ ba của bẫy **8.6**, và là thứ đã chặn phép chẩn đoán mất một lượt
+   build.
+
+**Đo được kèm:** prompt hỏi đáp **1.704 → ~2.280** ký tự; token đầu trên CPU Realme **4,6 s →
+8,4–11,1 s**. Trần `maxTokens` nới **1024 → 2048** (nó là hằng của client, không phải giới hạn
+của Gemma, và là trần cho **tổng** input + output).
 
 ---
 

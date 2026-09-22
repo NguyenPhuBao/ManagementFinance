@@ -114,7 +114,14 @@ chặn việc số 1. Làm xong việc 1 thì cái được mở khoá ở việ
 > 12**. Đơn đặt hàng **sáu** tool, bốn cái đứng đầu đều là *"danh sách có **tên**"* — mười tool
 > ứng viên ở mục 5.1 không dự đoán hình dạng ấy, và ba trong số chúng không câu nào cần tới.
 > ⚠️ Ba câu hỏng **không cần tool nào** (số đã có sẵn trong gói, mô hình chọn nhầm) — sửa ở
-> **prompt/nhãn**, và nên làm **trước** khi dựng tool. Việc tiếp theo là **chặng 4**.
+> **prompt/nhãn**, và nên làm **trước** khi dựng tool.
+>
+> ✅ **Phần "làm trước" ấy chính là lát 4a, xong mã 2026-09-23** (spec + plan ngày 2026-09-22),
+> 🛑 **cổng của nó chưa đạt**: nhóm A **1/4**, cần ≥ 3/4. ⭐ Và nó lật một phần kết luận ở trên —
+> **danh sách có tên là CẦN nhưng CHƯA ĐỦ**: gói nói `Quá hạn: 1` ở một dòng và `Kiem · Phải trả:
+> 45.000 đ` ở dòng khác, không chỗ nào nói Kiem **LÀ** cái quá hạn, và E2B không nối được hai mục
+> rời. Nên ba câu còn hỏng **không** chữa được bằng gói số; chúng cần tool trả **một hàng đầy
+> đủ**. Việc tiếp theo là **lát 4b**.
 
 🛑 **Bước này từng BỊ BỎ SÓT trong bản thứ tự đầu tiên viết cùng ngày** — bản ấy để
 "function calling" ngay sau tải nền. Sai, và lộ trình đã ghi sẵn lý do: danh sách tool phải

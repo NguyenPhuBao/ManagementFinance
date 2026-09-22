@@ -594,7 +594,50 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-22)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-23)
+
+### 🛑 Edge AI — chặng 4a: tên đối tượng trong gói số — CỔNG CHƯA ĐẠT (2026-09-23)
+
+Spec `superpowers/specs/2026-09-22-chang-4a-ten-doi-tuong-goi-so-design.md`, chín task, thi công
+inline. **3468/3468** pass · analyze **26** issue, 0 error · schema **không đổi** (v24) · payload
+**không đổi**. Bảng đo lại ở mục **5.6** `docs/AI_AGENT_ARCHITECTURE.md`; tường thuật ở mục
+**9.12** `docs/AI_EDGE_FEATURE.md`.
+
+**Làm gì:** `SoLieu` thêm **một** trường `ten` (`String?`) — tên đối tượng, tách khỏi `nhan` vốn
+là tên chỉ số. Bốn gói (ngân sách · ví · hoá đơn · phân tích) nhồi **danh sách** thay vì một mục,
+trần `kToiDaMucMoiGoi = 4`. `kiemNhan` và `theCuaCau` đọc `ten`; prompt nêu tên; few-shot thêm ví
+dụ dạng *"cái nào"*.
+
+**Kết quả đo trên Realme: nhóm A 1/4** — câu *"ngân sách nào sắp hết"* nay đáp **"…là Giáo dục
+với tỉ lệ 90,0%"** kèm thẻ *"Giáo dục · Tỉ lệ 90,0%"*, thay vì một con số trần. Ba câu còn lại
+(danh mục nào · hoá đơn nào · ví nào) vẫn hỏng. Điều kiện 3 của cổng (SAI = 0) **đạt** sau khi
+đóng một hồi quy; điều kiện 1 (≥ 3/4) **trượt**.
+
+⭐ **Bài học trung tâm: danh sách có tên là CẦN nhưng CHƯA ĐỦ.** Một lượt log gói số thật chứng
+minh cả bốn gói mang tên **đúng thiết kế**. Nhưng gói nói `Quá hạn: 1` ở một dòng và `Kiem · Phải
+trả: 45.000 đ` ở dòng khác — **không chỗ nào nói Kiem LÀ cái quá hạn**. Mô hình phải **nối hai
+mục rời bằng suy luận**, và E2B không làm được: nó trả lời bằng con số tổng. Ví y hệt. 🛑 Vậy ba
+câu còn hỏng **không** chữa được bằng cách làm gói giàu thêm — thứ cần là **tool trả một hàng đầy
+đủ** (tên + số + trạng thái trong cùng kết quả), tức việc của lát **4b**. Đừng tinh chỉnh gói số
+thêm nữa.
+
+⚠️ **Bốn lỗi thật lượt đo bắt được, 3462 ca test đều mù** — chi tiết ở bẫy **4.29–4.31** và vế
+thứ ba của **8.6** trong `AI_EDGE_FEATURE.md`:
+
+1. **Prompt vượt trần token là lỗi CỨNG, không phải chậm** — câu trả lời **rỗng**, không phải
+   chậm đi như kế hoạch lường. `maxTokens` là hằng của *client* và là trần cho **tổng** input +
+   output; nới 1024 → 2048. Prompt đi từ 1.704 lên ~2.280 ký tự, token đầu 4,6 s → 8,4–11,1 s.
+2. **Mẫu câu ngân sách in tỉ lệ của ngân sách KHÁC** — `{x.nhan: x.chuoi}` lấy giá trị cuối, nên
+   câu về Giáo dục in *"(7,1%)"* của Mua sắm. Sai **im lặng**, và ca `contains('Giáo dục')` viết
+   cùng lát **xanh suốt** — cùng bài học G43.
+3. **Nhãn giàu hơn làm một câu SAI lọt qua `kiemNhan`**: *"Số ví đang âm: −100.000 đ"* (số ví là
+   1) lọt, trong khi bản **trước** chặng 4a chặn được. Luật siết ra từ đây: mục **có tên** đòi câu
+   nêu **tên**; mục không tên giữ luật cũ.
+4. `debugPrint` **bị tiết lưu** nên sáu dòng log gói số bị nuốt sạch — phải `print` và mỗi mục một
+   dòng ngắn. Nó đã chặn phép chẩn đoán mất trọn một lượt build.
+
+**Việc tiếp theo:** lát **4b** — tool-calling + vòng lặp, kế hoạch viết dựa trên đơn đặt hàng sáu
+tool ở mục 5.6, với hình dạng nay đã rõ hơn: **một hàng đầy đủ**, không phải nhiều mục rời.
 
 ### ✅ Edge AI — chặng 3 của lộ trình: đo bậc 1 hỏng ở đâu — CỔNG B QUA (2026-09-22 tối muộn)
 

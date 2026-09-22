@@ -21,7 +21,13 @@
 > ✅ **Chặng 3 XONG cùng tối — CỔNG B QUA.** Đo 20 câu trên **Realme RMX2205** (CPU), tài khoản
 > thật: **✅ 5 · rơi mẫu 3 · sai 0 · lệch câu hỏi 12**. Bảng đầy đủ + đơn đặt hàng **sáu** tool
 > ở mục **5.6** `docs/AI_AGENT_ARCHITECTURE.md`.
-> **Việc tiếp theo: chặng 4** (tool-calling + vòng lặp) — kế hoạch viết tại cổng B, tức bây giờ.
+> **Chặng 4 tách làm hai lát.** ✅ **4a xong mã 2026-09-23** (tên đối tượng vào gói số — spec và
+> plan cùng ngày 2026-09-22) nhưng 🛑 **cổng của nó chưa đạt**: nhóm A **1/4**. Bảng đo lại ở mục
+> **5.6** `docs/AI_AGENT_ARCHITECTURE.md`. ⭐ Lát ấy chứng minh **danh sách có tên là CẦN nhưng
+> CHƯA ĐỦ** — mô hình không nối được hai mục rời (`Quá hạn: 1` và `Kiem · Phải trả: 45.000 đ`),
+> nên ba câu còn hỏng **không** chữa được bằng gói số.
+> **Việc tiếp theo: lát 4b** — tool-calling + vòng lặp, với hình dạng nay đã rõ: tool trả **một
+> hàng đầy đủ** (tên + số + trạng thái), không phải nhiều mục rời.
 > Chặng 5 🛑 **bỏ** (M4 trả lời KHÔNG, 2026-09-22).
 > Chặng 6 ✅ NPBao đã chốt lối ① cùng ngày.
 >
