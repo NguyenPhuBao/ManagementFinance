@@ -67,6 +67,32 @@ class GoiSoNganSach extends GoiSo {
     final b = v.budget;
     final nhip = budgetPaceOf(b, now);
     final pt = b.rawPercentSpent * 100;
+    // Chặng 4a: mỗi ngân sách góp một mục mang TÊN của nó, để câu hỏi "ngân
+    // sách nào sắp hết" trả lời được bằng tên thay vì bằng con số trần (câu 3
+    // bảng đo, mục 5.6 `docs/AI_AGENT_ARCHITECTURE.md`).
+    //
+    // ⚠️ Ngân sách được nhận xét (`v`) **không** vào danh sách này: mục `Tỉ lệ`
+    // của nó ở dưới đã mang `ten`. Thêm một mục trùng vừa phí prompt vừa tự
+    // dựng ra đúng tình huống "hai mục cùng giá trị" mà thẻ số liệu phải gỡ.
+    //
+    // ⚠️ Căng nhất trước: mô hình đọc từ trên xuống và hay lấy mục đầu khi
+    // phải chọn một. Thứ tự ở đây là thứ tự *đáng chú ý*, không phải thứ tự
+    // CSDL.
+    final conLai = [
+      for (final w in dangChay)
+        if (w.budget.id != b.id) w,
+    ]..sort((x, y) => y.budget.rawPercentSpent.compareTo(
+        x.budget.rawPercentSpent,
+      ));
+    final theoTen = <SoLieu>[
+      // Trần tính cả `v`, nên danh sách còn lại lấy bớt một suất.
+      for (final w in conLai.take(kToiDaMucMoiGoi - 1))
+        soPhanTram(
+          'Tỉ lệ',
+          w.budget.rawPercentSpent * 100,
+          ten: w.displayName,
+        ),
+    ];
     return GoiSoNganSach._(
       ten: v.displayName,
       hanMuc: b.amount,
@@ -79,7 +105,8 @@ class GoiSoNganSach extends GoiSo {
       soLieu: [
         soTien('Đã chi', b.spent),
         soTien('Hạn mức', b.amount),
-        soPhanTram('Tỉ lệ', pt),
+        // `ten` để câu hỏi "ngân sách nào sắp hết" đáp được bằng tên.
+        soPhanTram('Tỉ lệ', pt, ten: v.displayName),
         soNgay('Còn', nhip.daysLeft),
         // Đã vượt thì "nên chi mỗi ngày" là 0 — một con số vô nghĩa, bỏ.
         if (!b.isOverBudget) soTien('Mỗi ngày', nhip.suggestedPerDay),
@@ -93,6 +120,10 @@ class GoiSoNganSach extends GoiSo {
             soTien('Còn thiếu', keHoach.soThieu),
           ],
         ],
+        // Đặt CUỐI: các mục trên là của ngân sách căng nhất và mẫu câu tra
+        // chúng theo nhãn (`{for … x.nhan: x.chuoi}`), nên chúng phải gặp
+        // trước để không bị mục cùng nhãn của ngân sách khác đè mất.
+        ...theoTen,
       ],
     );
   }
