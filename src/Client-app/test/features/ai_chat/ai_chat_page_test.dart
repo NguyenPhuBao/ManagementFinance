@@ -7,11 +7,14 @@
 /// kiểm tầng dữ liệu.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:flowmoney/features/ai_chat/presentation/pages/ai_chat_page.dart';
+import 'package:flowmoney/features/ai_edge/domain/gac_cau.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
 
 void main() {
@@ -43,10 +46,10 @@ void main() {
   testWidgets('bốn chip gợi ý đúng tên spec', (t) async {
     await t.pumpWidget(boc(const AiChatPage(coMoHinh: true)));
     for (final s in const [
+      'Chi tiêu tháng này',
       'Tình hình ngân sách',
-      'Phân tích chi tiêu tháng này',
-      'Dự báo tiết kiệm',
-      'Gợi ý cắt giảm chi phí',
+      'Tiến độ mục tiêu',
+      'Hoá đơn sắp tới',
     ]) {
       expect(find.text(s), findsOneWidget, reason: s);
     }
@@ -81,9 +84,9 @@ void main() {
     var soLanGoi = 0;
     await t.pumpWidget(boc(AiChatPage(
       coMoHinh: true,
-      onHoi: (_) async {
+      onHoi: (_) {
         soLanGoi++;
-        return 'không tới đây';
+        return Stream.value(const CauQua('không tới đây'));
       },
     )));
     await t.enterText(find.byType(TextField), 'Tôi nên đầu tư vào đâu?');
@@ -102,9 +105,9 @@ void main() {
     var daHoi = '';
     await t.pumpWidget(boc(AiChatPage(
       coMoHinh: true,
-      onHoi: (c) async {
+      onHoi: (c) {
         daHoi = c;
-        return 'Tháng này bạn chi 1.200.000 đ.';
+        return Stream.value(const CauQua('Tháng này bạn chi 1.200.000 đ.'));
       },
     )));
     await t.enterText(find.byType(TextField), 'Tháng này tôi chi bao nhiêu?');
@@ -118,30 +121,111 @@ void main() {
     var daHoi = '';
     await t.pumpWidget(boc(AiChatPage(
       coMoHinh: true,
-      onHoi: (c) async {
+      onHoi: (c) {
         daHoi = c;
-        return 'xong';
+        return Stream.value(const CauQua('xong'));
       },
     )));
-    await t.tap(find.text('Dự báo tiết kiệm'));
+    await t.tap(find.text('Tiến độ mục tiêu'));
     await t.pumpAndSettle();
-    expect(daHoi, 'Dự báo tiết kiệm');
+    expect(daHoi, 'Tiến độ mục tiêu');
   });
 
   testWidgets('chưa có mô hình thì chip KHÔNG hỏi gì', (t) async {
     var soLanGoi = 0;
     await t.pumpWidget(boc(AiChatPage(
       coMoHinh: false,
-      onHoi: (_) async {
+      onHoi: (_) {
         soLanGoi++;
-        return '';
+        return const Stream<SuKienGac>.empty();
       },
     )));
-    await t.tap(find.text('Dự báo tiết kiệm'));
+    await t.tap(find.text('Tiến độ mục tiêu'));
     await t.pumpAndSettle();
     expect(soLanGoi, 0,
         reason: 'Ô nhập đã khoá thì chip cũng phải khoá — nếu không thì có một '
             'đường vòng quanh chính cái khoá ấy.');
+  });
+
+  group('streaming CHẶN THEO CÂU (việc số 1, người dùng chốt 2026-09-22)', () {
+    // Điểm 2 cổng A đòi chữ hiện dần; `kiemSo` chỉ chạy trên câu đầy đủ. Lối
+    // chọn: mỗi câu qua kiểm thì hiện ngay, câu trượt thì không bao giờ hiện.
+    // Gác theo câu đã có test riêng (`gac_cau_test`); ở đây canh màn phản ứng
+    // đúng với từng sự kiện.
+    Future<void> hoi(WidgetTester t) async {
+      await t.enterText(find.byType(TextField), 'Tháng này sao?');
+      await t.testTextInput.receiveAction(TextInputAction.send);
+      await t.pump();
+    }
+
+    testWidgets('câu qua kiểm hiện NGAY, khi luồng còn mở', (t) async {
+      final c = StreamController<SuKienGac>();
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: true,
+        onHoi: (_) => c.stream,
+      )));
+      await hoi(t);
+
+      c.add(const CauQua('Tổng chi 1.200.000 đ.'));
+      await t.pump();
+      expect(find.textContaining('1.200.000'), findsOneWidget,
+          reason: 'Câu đầu phải hiện trong khi mô hình còn viết — đó mới là '
+              '"chữ hiện dần", không phải bật ra nguyên khối lúc xong.');
+
+      c.add(const CauQua('Để dành 86,7%.'));
+      await t.pump();
+      expect(find.text('Tổng chi 1.200.000 đ. Để dành 86,7%.'), findsOneWidget);
+
+      await c.close();
+      await t.pumpAndSettle();
+      expect(find.text('Tổng chi 1.200.000 đ. Để dành 86,7%.'), findsOneWidget);
+      expect(t.widget<TextField>(find.byType(TextField)).enabled, isTrue,
+          reason: 'luồng đóng thì hỏi tiếp được');
+    });
+
+    testWidgets('bị chặn khi CHƯA câu nào hiện → câu lùi, không lộ câu hỏng',
+        (t) async {
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: true,
+        onHoi: (_) => Stream.value(const BiChan('Tỉ lệ phân bổ 85,4%.')),
+      )));
+      await hoi(t);
+      await t.pumpAndSettle();
+      expect(find.textContaining('85,4'), findsNothing,
+          reason: 'câu trượt bộ kiểm không được hiện dưới bất kỳ dạng nào');
+      expect(find.textContaining('chưa chắc'), findsOneWidget);
+    });
+
+    testWidgets('bị chặn SAU một câu → giữ câu ấy, không câu lùi, không câu hỏng',
+        (t) async {
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: true,
+        onHoi: (_) => Stream.fromIterable(const [
+          CauQua('Tổng chi 2.141.000 đ.'),
+          BiChan('Tỉ lệ phân bổ 85,4%.'),
+        ]),
+      )));
+      await hoi(t);
+      await t.pumpAndSettle();
+      expect(find.text('Tổng chi 2.141.000 đ.'), findsOneWidget,
+          reason: 'câu đã qua kiểm là câu đúng — thay nó bằng câu lùi là vứt '
+              'một câu trả lời đúng vì một câu sau nó');
+      expect(find.textContaining('85,4'), findsNothing);
+      expect(find.textContaining('chưa chắc'), findsNothing);
+      expect(t.widget<TextField>(find.byType(TextField)).enabled, isTrue);
+    });
+
+    testWidgets('luồng lỗi giữa chừng → câu "không chạy được", ô nhập mở lại',
+        (t) async {
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: true,
+        onHoi: (_) => Stream.error(Exception('engine chết')),
+      )));
+      await hoi(t);
+      await t.pumpAndSettle();
+      expect(find.textContaining('không chạy được'), findsOneWidget);
+      expect(t.widget<TextField>(find.byType(TextField)).enabled, isTrue);
+    });
   });
 
   testWidgets('411dp không tràn', (t) async {

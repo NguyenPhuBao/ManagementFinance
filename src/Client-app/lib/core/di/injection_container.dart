@@ -495,6 +495,7 @@ Future<void> setupDependencies() async {
       nganSach: sl<BudgetRepository>(),
       mucTieu: sl<GoalRepository>(),
       vi: sl<WalletRepository>(),
+      hoaDon: sl<BillRepository>(),
     ),
   );
 

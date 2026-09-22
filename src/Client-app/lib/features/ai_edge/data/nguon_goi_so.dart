@@ -1,7 +1,10 @@
 // lib/features/ai_edge/data/nguon_goi_so.dart
-/// Gom **bốn gói số** của P2 cho màn Trợ lý AI (P3 Task 8).
+/// Gom **sáu gói số** cho màn Trợ lý AI (P3 Task 8: bốn; việc số 1 ngày
+/// 2026-09-22 thêm hoá đơn và ví — hai gói đã có cho khối Nhận xét mà màn
+/// Trợ lý AI không thấy, nên hỏi về hoá đơn là mô hình lấy số của gói khác
+/// trả lời thay).
 ///
-/// Khác mọi chỗ dùng gói số khác: bốn khối Nhận xét đều dựng gói từ state mà
+/// Khác mọi chỗ dùng gói số khác: sáu khối Nhận xét đều dựng gói từ state mà
 /// *trang của chúng* đã nạp sẵn, còn màn Trợ lý AI không thuộc màn nào — nó
 /// phải tự hỏi dữ liệu. Đây là chỗ duy nhất làm việc ấy.
 ///
@@ -16,15 +19,18 @@ library;
 
 import '../../analytics/data/analytics_repository.dart';
 import '../../analytics/domain/pham_vi_ky.dart';
+import '../../bill/data/repositories/bill_repository.dart';
 import '../../budget/data/repositories/budget_repository.dart';
 import '../../goal/data/repositories/goal_repository.dart';
 import '../../wallet/data/repositories/wallet_repository.dart';
 import '../../wallet/domain/vi_tinh_vao_tong.dart';
 import '../domain/goi_so.dart';
+import '../domain/goi_so_hoa_don.dart';
 import '../domain/goi_so_muc_tieu.dart';
 import '../domain/goi_so_ngan_sach.dart';
 import '../domain/goi_so_phan_tich.dart';
 import '../domain/goi_so_trang_chu.dart';
+import '../domain/goi_so_vi.dart';
 
 class NguonGoiSo {
   NguonGoiSo({
@@ -32,14 +38,17 @@ class NguonGoiSo {
     required this.nganSach,
     required this.mucTieu,
     required this.vi,
+    required this.hoaDon,
   });
 
   final AnalyticsRepository phanTich;
   final BudgetRepository nganSach;
   final GoalRepository mucTieu;
   final WalletRepository vi;
+  final BillRepository hoaDon;
 
-  /// Bốn gói, theo thứ tự: phân tích · ngân sách · mục tiêu · trang chủ.
+  /// Sáu gói, theo thứ tự: phân tích · ngân sách · mục tiêu · hoá đơn · ví ·
+  /// trang chủ.
   ///
   /// Kỳ là **tháng hiện tại** — cùng kỳ mà khối Nhận xét trang Phân tích dùng
   /// mặc định, nên hai chỗ không nói hai con số khác nhau cho cùng một câu.
@@ -60,6 +69,10 @@ class NguonGoiSo {
 
     final goals = await mucTieu.watchGoals(idaccount).first;
 
+    final bills = await hoaDon.watchBills(idaccount).first;
+
+    // Đọc ví MỘT lần cho cả gói ví lẫn tổng số dư của trang chủ — đọc hai lần
+    // là hai ảnh chụp khác nhau của cùng dữ liệu.
     final vis = await vi.watchAll(idaccount).first;
     var tongSoDu = 0.0;
     for (final w in vis) {
@@ -71,11 +84,26 @@ class NguonGoiSo {
         tongSoDu += w.balance;
       }
     }
+    // Cùng phép quy đổi với `_choGoiSo` của trang Quản lý ví: gói số cố ý
+    // không biết `WalletEntity`.
+    final viChoGoi = [
+      for (final w in vis)
+        ViChoGoiSo(
+          ten: w.name,
+          soDu: w.balance,
+          includeInTotal: w.includeInTotal,
+          status: w.status,
+          isDeleted: w.isDeleted,
+          allowNegative: w.allowNegative,
+        ),
+    ];
 
     return [
       GoiSoPhanTich.tu(tk),
       GoiSoNganSach.tu(dangChay, now: moc),
       GoiSoMucTieu.tu(goals, now: moc),
+      GoiSoHoaDon.tu(bills, now: moc),
+      GoiSoVi.tu(viChoGoi),
       GoiSoTrangChu.tu(
         thu: tk.tong.thu,
         chi: tk.tong.chi,

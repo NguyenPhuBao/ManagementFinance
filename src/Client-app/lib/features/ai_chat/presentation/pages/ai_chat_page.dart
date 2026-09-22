@@ -13,6 +13,12 @@
 /// "Insight AI" (A6) đã phải gỡ: hứa một tính năng không tồn tại.
 ///
 /// Không lưu lịch sử qua phiên (spec mục 4.6).
+///
+/// **Chữ hiện dần theo CÂU** (việc số 1, người dùng chốt 2026-09-22): token
+/// của mô hình đi qua `gacTheoCau` — đủ một câu thì `kiemCauTraLoi` (số +
+/// nhãn + giọng) rồi mới hiện; câu trượt thì huỷ sinh và **không bao giờ
+/// hiện**. Đã có câu hiện rồi mới trượt thì giữ nguyên các câu ấy (chúng đều
+/// đã kiểm) và dừng; chưa câu nào thì hiện câu lùi "chưa chắc".
 library;
 
 import 'package:flutter/material.dart';
@@ -26,17 +32,25 @@ import '../../../ai_edge/data/mo_hinh_tai_ve.dart';
 import '../../../ai_edge/data/nguon_goi_so.dart';
 import '../../../ai_edge/data/slm_runtime.dart';
 import '../../../ai_edge/domain/chu_de_chan.dart';
+import '../../../ai_edge/domain/gac_cau.dart';
 import '../../../ai_edge/domain/goi_so.dart';
-import '../../../ai_edge/domain/kiem_so.dart';
+import '../../../ai_edge/domain/kiem_cau_tra_loi.dart';
 import '../../../ai_edge/domain/slm_prompt.dart';
 
 /// Bốn câu mở sẵn (spec mục 4.6). Chúng là **câu hỏi thật**, gửi đi y như khi
 /// người dùng tự gõ — không phải bốn nhánh mã riêng.
+///
+/// ⚠️ Mỗi chip hỏi đúng thứ **một gói số có** (phân tích · ngân sách · mục
+/// tiêu · hoá đơn). Bộ cũ có *"Dự báo tiết kiệm"* và *"Gợi ý cắt giảm chi
+/// phí"* — hai thứ không gói nào mang — và mô hình trả lời bằng cách lấy con
+/// số gần nghĩa nhất rồi gắn nhãn của câu hỏi vào (mục 9.5
+/// `AI_EDGE_FEATURE.md`). Chip là thứ người dùng bấm đầu tiên; nó không được
+/// dẫn vào đúng lỗi mà bộ kiểm sinh ra để chặn.
 const List<String> kChipGoiY = [
-  'Phân tích chi tiêu tháng này',
-  'Dự báo tiết kiệm',
-  'Gợi ý cắt giảm chi phí',
+  'Chi tiêu tháng này',
   'Tình hình ngân sách',
+  'Tiến độ mục tiêu',
+  'Hoá đơn sắp tới',
 ];
 
 const String kChuaCoMoHinh =
@@ -108,8 +122,10 @@ class AiChatPage extends StatefulWidget {
   /// **không chạm DI**, để widget test dựng được cả hai trạng thái.
   final bool? coMoHinh;
 
-  /// Khe tiêm cho test: thay cả đường sinh câu. `null` = đường thật.
-  final Future<String> Function(String cauHoi)? onHoi;
+  /// Khe tiêm cho test: thay cả đường sinh câu bằng một luồng sự kiện **đã
+  /// gác** (`CauQua` / `BiChan`). `null` = đường thật. Gác theo câu có test
+  /// riêng (`gac_cau_test`); ở đây test chỉ canh màn phản ứng với sự kiện.
+  final Stream<SuKienGac> Function(String cauHoi)? onHoi;
 
   /// Khe tiêm cho test: hội thoại dựng sẵn.
   final List<String>? traLoiMau;
@@ -131,6 +147,10 @@ class _AiChatPageState extends State<AiChatPage> {
   bool _coTep = false;
   bool _batCongTac = true;
   bool _dangHoi = false;
+
+  /// Các câu đã qua kiểm của lượt trả lời **đang đến**, nối bằng khoảng
+  /// trắng. `null` = chưa câu nào (đang hiện "Đang nghĩ…").
+  String? _traLoiDangDen;
 
   bool get _coMoHinh => _coTep && _batCongTac;
 
@@ -211,10 +231,13 @@ class _AiChatPageState extends State<AiChatPage> {
     }
 
     try {
-      final kq = widget.onHoi != null
-          ? _TinNhan.cuaAi(await widget.onHoi!(c))
-          : await _hoiThat(c);
-      _themCuaAi(kq);
+      final (luong, goi) = widget.onHoi != null
+          ? (widget.onHoi!(c), const <GoiSo>[])
+          : await _luongThat(c) ?? (null, const <GoiSo>[]);
+      // `null`: `_luongThat` đã tự trả một câu cố định (chưa có phiên, chưa
+      // có mô hình) và xong lượt.
+      if (luong == null) return;
+      await _nhanTungCau(luong, goi);
     } catch (e, st) {
       // ⚠️ PHẢI log. Người dùng chỉ thấy một câu chung chung ("Mô hình trên
       // máy không chạy được lúc này"), và nếu chỗ này im thì **không còn dấu
@@ -230,34 +253,66 @@ class _AiChatPageState extends State<AiChatPage> {
     if (!mounted) return;
     setState(() {
       _tinNhan.add(t);
+      _traLoiDangDen = null;
       _dangHoi = false;
     });
     _cuonXuong();
   }
 
-  Future<_TinNhan> _hoiThat(String cauHoi) async {
+  /// Luồng sự kiện đã gác của đường thật, kèm gói số để dựng thẻ. `null` khi
+  /// lượt này kết thúc bằng một câu cố định (đã thêm vào hội thoại).
+  Future<(Stream<SuKienGac>, List<GoiSo>)?> _luongThat(String cauHoi) async {
     final id = currentAccountIdOrNull(context);
     if (id == null || id <= 0) {
       debugPrint('[SLM] chưa hỏi được: AuthBloc chưa ở AuthSuccess (id=$id)');
-      return const _TinNhan.cuaAi(kChuaSanSangPhien);
+      _themCuaAi(const _TinNhan.cuaAi(kChuaSanSangPhien));
+      return null;
     }
 
     final moHinh = sl<MoHinhTaiVe>();
-    if (!await moHinh.daCo()) return const _TinNhan.cuaAi(kChuaCoMoHinh);
+    if (!await moHinh.daCo()) {
+      _themCuaAi(const _TinNhan.cuaAi(kChuaCoMoHinh));
+      return null;
+    }
 
     final goi = await sl<NguonGoiSo>().tatCa(id);
     final runtime = sl<SlmRuntime>();
     if (!runtime.dangSan) await runtime.moHinhSan(await moHinh.duongTep());
 
-    final cau = await runtime.sinh(promptHoiDap(cauHoi, goi), tranToken: 300);
+    // `kiemCauTraLoi` là định nghĩa duy nhất của "một câu được phép hiện":
+    // số của nhiều gói (`kiemSoNhieuGoi`) + nhãn + giọng theo mức tổng hợp.
+    return (
+      gacTheoCau(
+        runtime.sinhDan(promptHoiDap(cauHoi, goi), tranToken: 300),
+        kiem: (cau) => kiemCauTraLoi(cau, goi),
+        huy: runtime.huy,
+      ),
+      goi,
+    );
+  }
 
-    // ⚠️ `kiemSoNhieuGoi`, không phải `goi.any(kiemSo)`: câu trả lời ở đây
-    // được phép rút số từ nhiều màn cùng lúc.
-    if (!kiemSoNhieuGoi(cau, goi)) {
-      debugPrintCauHong(cau);
-      return const _TinNhan.cuaAi(_kKhongChacChan);
+  /// Hiện từng câu qua kiểm ngay khi nó tới; hết luồng thì chốt thành một tin
+  /// nhắn kèm thẻ. Câu bị chặn chỉ đi vào log — `gacTheoCau` bảo đảm sau nó
+  /// không còn sự kiện nào.
+  Future<void> _nhanTungCau(Stream<SuKienGac> luong, List<GoiSo> goi) async {
+    final cauDaQua = <String>[];
+    await for (final sk in luong) {
+      switch (sk) {
+        case CauQua(:final cau):
+          cauDaQua.add(cau);
+          if (!mounted) return;
+          setState(() => _traLoiDangDen = cauDaQua.join(' '));
+          _cuonXuong();
+        case BiChan(:final cau):
+          debugPrintCauHong(cau);
+      }
     }
-    return _TinNhan.cuaAi(cau, the: _theChoCau(cau, goi));
+    if (cauDaQua.isEmpty) {
+      _themCuaAi(const _TinNhan.cuaAi(_kKhongChacChan));
+      return;
+    }
+    final vanBan = cauDaQua.join(' ');
+    _themCuaAi(_TinNhan.cuaAi(vanBan, the: _theChoCau(vanBan, goi)));
   }
 
   /// Thẻ số liệu = **những con số câu ấy thật sự nhắc tới**, lấy từ gói. Không
@@ -297,7 +352,12 @@ class _AiChatPageState extends State<AiChatPage> {
               itemCount: _tinNhan.length + (_dangHoi ? 1 : 0),
               separatorBuilder: (_, __) => const SizedBox(height: 16),
               itemBuilder: (_, i) {
-                if (i >= _tinNhan.length) return _dangSoan();
+                if (i >= _tinNhan.length) {
+                  final dangDen = _traLoiDangDen;
+                  return dangDen == null
+                      ? _dangSoan()
+                      : _boCuaAi(_TinNhan.cuaAi(dangDen));
+                }
                 final t = _tinNhan[i];
                 return t.cuaToi ? _boCuaToi(t) : _boCuaAi(t);
               },

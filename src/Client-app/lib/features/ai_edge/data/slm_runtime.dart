@@ -21,12 +21,24 @@ abstract class SlmRuntime {
 
   Future<String> sinh(String prompt, {int tranToken});
 
+  /// Sinh **dần**: phát từng token khi mô hình viết. Dùng cho màn Trợ lý AI
+  /// (việc số 1, 2026-09-22) — người gọi gác theo câu (`gacTheoCau`) chứ
+  /// không hiện thẳng token: bộ kiểm chỉ có nghĩa trên câu đầy đủ.
+  Stream<String> sinhDan(String prompt, {int tranToken});
+
+  /// Dừng lượt sinh đang chạy (engine native thôi giải mã). Không có lượt nào
+  /// đang chạy thì im lặng.
+  Future<void> huy();
+
   Future<void> dong();
 }
 
 class SlmRuntimeThat implements SlmRuntime {
   InferenceModel? _model;
   bool _daKhoiTao = false;
+
+  /// Phiên chat của lượt `sinhDan` đang chạy — để `huy()` có chỗ để dừng.
+  InferenceChat? _chatDangSinh;
 
   @override
   bool get dangSan => _model != null;
@@ -80,6 +92,50 @@ class SlmRuntimeThat implements SlmRuntime {
     debugPrint('[SLM] sinh câu xong sau ${dongHo.elapsedMilliseconds} ms '
         '(prompt ${prompt.length} ký tự → câu ${cau.length} ký tự)');
     return cau;
+  }
+
+  @override
+  Stream<String> sinhDan(String prompt, {int tranToken = 300}) async* {
+    final m = _model;
+    if (m == null) throw StateError('Mô hình chưa nạp');
+
+    // Cùng khuôn `sinh`: mỗi câu một phiên chat mới, và đồng hồ là chỗ duy
+    // nhất đo được giá thật. Thêm mốc **token đầu** — với streaming đó mới là
+    // con số người dùng cảm nhận, không phải tổng thời gian.
+    final dongHo = Stopwatch()..start();
+    final chat = await m.createChat(temperature: 0.2);
+    _chatDangSinh = chat;
+    await chat.addQueryChunk(Message.text(text: prompt, isUser: true));
+    var tokenDau = -1;
+    var soKyTu = 0;
+    try {
+      // ⚠️ `stopGeneration()` chứ không `cancel()` subscription: gói ghi rõ
+      // chỉ `stopGeneration` mới tới được engine native trên mọi engine;
+      // huỷ subscription thì engine vẫn giải mã tiếp cho hết.
+      await for (final r in chat.generateChatResponseAsync()) {
+        if (r is! TextResponse) continue;
+        if (tokenDau < 0) tokenDau = dongHo.elapsedMilliseconds;
+        soKyTu += r.token.length;
+        yield r.token;
+      }
+    } finally {
+      _chatDangSinh = null;
+      debugPrint('[SLM] sinh dần xong sau ${dongHo.elapsedMilliseconds} ms '
+          '(token đầu $tokenDau ms; prompt ${prompt.length} ký tự → '
+          '$soKyTu ký tự)');
+    }
+  }
+
+  @override
+  Future<void> huy() async {
+    final chat = _chatDangSinh;
+    if (chat == null) return;
+    try {
+      await chat.stopGeneration();
+      debugPrint('[SLM] đã huỷ lượt sinh giữa chừng');
+    } catch (e) {
+      debugPrint('[SLM] huỷ lượt sinh hỏng: $e');
+    }
   }
 
   @override

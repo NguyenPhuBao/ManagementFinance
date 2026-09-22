@@ -26,6 +26,8 @@ là *thứ tự*.
    (`2026-09-21-lo-trinh-edge-ai-agent-rag.md:100`) với bảng đo: điểm 1, 3, 6 ✅; điểm
    **2 (chữ hiện dần) chưa có**; điểm **4 (hỏi thứ gói số không có → rơi về mẫu câu)
    ĐANG HỎNG**; điểm 5 chưa đo. Đừng ghi "P3 xong nên cổng A xong" — hai thứ khác nhau.
+   *(Cập nhật tối cùng ngày: việc số 1 **mã xong** cho cả ba điểm — xem khung ở mục 1 —
+   nhưng **chưa đo máy thật**, nên ba điểm vẫn chưa ✅.)*
 3. ✅ **Backend đóng cả hai tài liệu `CAN-LAM`** (gộp `main` @ `1428918`, client gộp về ở
    `92dd5cc`): năm điểm sai đặc tả đã sửa trong `docs/AI/AI_Edge-SLM.md/Client-app.md`
    (90 dòng), thuật ngữ đổi sang **Edge AI**, và **hai mâu thuẫn được chốt** — ① dữ liệu
@@ -78,6 +80,15 @@ hôm nay (bỏ điểm 2 của cổng A); hoặc hiện chỉ báo "đang viết
 **Cần brainstorm trước khi làm.**
 
 **Đo lại cả ba điểm còn thiếu của cổng A** (2, 4, 5) trên máy thật sau khi sửa.
+
+> 🔧 **MÃ XONG 2026-09-22 tối — CHƯA ĐO MÁY THẬT.** Brainstorm chốt trong chat (bounded):
+> streaming **chặn theo câu** (`gacTheoCau`, `SlmRuntime.sinhDan`/`huy`), **`kiemNhan`** lớp chắn
+> thứ ba, `kiemGiong` nối vào hỏi đáp qua `kiemCauTraLoi` (trước đó **chưa nối** — "chưa đo" ở
+> bảng cổng A là sai chữ), `NguonGoiSo` **sáu** gói, bốn chip mới, few-shot hỏi đáp riêng.
+> Chi tiết và cách đo: mục **9.8** `AI_EDGE_FEATURE.md`. 3392/3392 · analyze 26.
+> ⚠️ Người dùng hỏi *"vậy chỉ hỏi được thứ có sẵn thôi à"* — đúng, và chốt **giữ thứ tự**:
+> việc này trước, đo chặng 3, rồi function calling. **Còn lại của việc số 1: cắm OnePlus 13R
+> và đo ba điểm 2/4/5.**
 
 ## 2 · Tải nền + resume
 

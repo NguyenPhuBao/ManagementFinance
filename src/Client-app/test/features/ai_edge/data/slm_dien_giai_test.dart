@@ -33,6 +33,13 @@ class _RuntimeGia implements SlmRuntime {
   }
 
   @override
+  Stream<String> sinhDan(String prompt, {int tranToken = 300}) =>
+      Stream.value(traLoi(prompt));
+
+  @override
+  Future<void> huy() async {}
+
+  @override
   Future<void> dong() async => _san = false;
 }
 

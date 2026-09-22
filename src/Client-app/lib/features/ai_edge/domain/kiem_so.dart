@@ -51,6 +51,15 @@ bool _khop(SoTrich x, SoLieu s) {
   };
 }
 
+/// Mọi [SoLieu] của mọi gói trong [goi] khớp con số [x] — cùng phép khớp với
+/// `kiemSo`, mở ra cho `kiemNhan` (kiểm **nhãn** của số) dùng lại thay vì
+/// chép phép khớp thành bản thứ hai. Rỗng nghĩa là số bịa.
+List<SoLieu> soLieuKhop(SoTrich x, List<GoiSo> goi) => [
+      for (final g in goi)
+        for (final s in g.soLieu)
+          if (_khop(x, s)) s,
+    ];
+
 /// `true` khi MỌI số trong [cau] khớp một [SoLieu] của [goi]. Câu không có số
 /// nào thì lọt — không có gì để bịa.
 bool kiemSo(String cau, GoiSo goi) =>

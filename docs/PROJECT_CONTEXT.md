@@ -596,6 +596,28 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-22)
 
+### 🔧 Edge AI — việc số 1 của lộ trình: chất lượng câu trả lời + mã cho cổng A (2026-09-22 tối) — MÃ XONG, CHƯA ĐO MÁY THẬT
+
+Thứ tự việc ở đầu `docs/superpowers/plans/2026-09-21-ai-viec-tiep-theo.md`; chi tiết ở mục **9.8**
+`docs/AI_EDGE_FEATURE.md`. Sáu thay đổi, **không đổi schema** (v24), **không đổi payload**, không
+thêm gói: màn Trợ lý AI **hiện chữ dần theo CÂU** (`SlmRuntime.sinhDan`/`huy` + `gacTheoCau` —
+đủ câu thì kiểm rồi mới hiện, trượt thì `stopGeneration()` và không hiện; đã hiện ≥ 1 câu rồi mới
+trượt thì **giữ** các câu ấy); **`kiemNhan`** lớp chắn thứ ba (số thật gán **tên** sai — chính câu
+*"Tỉ lệ phân bổ là 85,4%"* đo trên máy thật là ca test); **`kiemCauTraLoi`** định nghĩa duy nhất
+của "một câu được hiện" = số + nhãn + giọng, và đây là chỗ **nối `kiemGiong` vào hỏi đáp** (trước
+đó chưa nối — bảng cổng A ghi "chưa đo" là sai chữ); `NguonGoiSo` gom **sáu** gói (thêm hoá đơn,
+ví); bốn chip **chỉ hỏi thứ một gói có**; `promptHoiDap` có few-shot riêng, một ví dụ *không có số
+liệu → không chữ số*. Test **3392/3392** (+44, bốn tệp mới), analyze 26.
+
+⚠️ Người dùng hỏi *"vậy là chỉ hỏi được thứ có sẵn thôi à"* — **đúng**: bậc này mô hình chỉ thấy gói
+số (~30 con số của sáu màn). Thứ gỡ giới hạn là **function calling** (việc số 3); người dùng chốt
+**giữ thứ tự** (việc này → đo chặng 3 → function calling), vì ba lớp chắn dùng lại nguyên vẹn cho
+bậc sau và đo chặng 3 trên một bậc còn bịa nhãn là đo vô nghĩa.
+
+🛑 **Còn lại của việc số 1: đo ba điểm 2/4/5 cổng A trên OnePlus 13R** (máy ảo x86_64 rơi về mẫu
+câu). Cách đo ở cuối mục 9.8.
+
+
 ### ✅ Edge AI chặng 2 — P3 cắm SLM, XONG TRỌN 10 TASK (2026-09-22)
 
 Kế hoạch `docs/superpowers/plans/2026-09-20-ai-edge-p3-cam-slm.md`. Tám tệp mã, và từ Task 9
@@ -641,7 +663,7 @@ nút không có handler. Đúng loại lỗi mà thẻ "Insight AI" (A6) đã ph
 Nay bốn chip là **câu hỏi thật**, gửi đi y như khi người dùng tự gõ (một đường, không bốn nhánh
 mã); hỏi tự do đi qua `chuDeBiChan` **trước** khi gọi mô hình; câu trả lời hiện **kèm thẻ số liệu**
 (điều kiện 12), và thẻ chỉ gồm những con số câu ấy **thật sự nhắc tới** — không phải mọi số của cả
-bốn gói, kẻo thẻ thành tiếng ồn thay vì nguồn kiểm chứng. Ô nhập **và chip** khoá theo cùng một
+mọi gói (bốn lúc Task 8, **sáu** từ việc số 1 tối cùng ngày), kẻo thẻ thành tiếng ồn thay vì nguồn kiểm chứng. Ô nhập **và chip** khoá theo cùng một
 điều kiện; khoá ô mà để chip hỏi được là mở một đường vòng quanh chính cái khoá ấy.
 
 Hai thứ mới ở tầng dưới. **`ai_edge/data/nguon_goi_so.dart`** là chỗ **duy nhất** dựng gói số mà
@@ -650,7 +672,7 @@ AI không thuộc trang nào. ⚠️ Nó đọc **`.first`** chứ không nghe l
 chụp tại lúc hỏi*; nghe tiếp thì câu đã hiện nói một đằng còn số liệu sau lưng nó đổi một nẻo, mà
 người dùng không có cách nào biết. Và **`kiemSoNhieuGoi`** — ⚠️ **không phải `goi.any(kiemSo)`**:
 viết thế là đòi cả câu nằm gọn trong **một** gói, nên một câu hoàn toàn đúng kiểu *"tháng này chi
-X, mục tiêu còn thiếu Y"* bị chặn, im lặng.
+X, mục tiêu còn thiếu Y"* bị chặn, im lặng. *(Từ tối 2026-09-22 nó là vế đầu của `kiemCauTraLoi`, cùng `kiemNhan` và `kiemGiong`.)*
 
 ⚠️ **Ba nhãn nói dối, cả ba chỉ máy ảo thấy** (sửa cùng ngày, `66b6a09`) — cùng một họ: một câu chữ
 khẳng định điều không đúng với trạng thái thật, và `flutter test` mù vì mỗi ca chỉ dựng một nhánh.
