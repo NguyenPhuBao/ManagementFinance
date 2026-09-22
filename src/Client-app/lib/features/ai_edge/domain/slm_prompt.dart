@@ -36,8 +36,15 @@ Tổng thu: 9.000.000 đ
 Câu: Kỳ này chi 1.200.000 đ trên 9.000.000 đ thu.
 ''';
 
-String _dongSoLieu(GoiSo g) =>
-    [for (final s in g.soLieu) '${s.nhan}: ${s.chuoi}'].join('\n');
+/// Có tên đối tượng thì nêu tên trước — mô hình chỉ nói được tên nếu tên có
+/// ở đây. Không có thì giữ nguyên dạng cũ, vì `ten == null` là ca **thường**
+/// (tổng thu, tổng chi) chứ không phải dấu hiệu thiếu dữ liệu.
+String _dongSoLieu(GoiSo g) => [
+      for (final s in g.soLieu)
+        s.ten == null
+            ? '${s.nhan}: ${s.chuoi}'
+            : '${s.ten} · ${s.nhan}: ${s.chuoi}',
+    ].join('\n');
 
 /// Dòng MỨC: hệ luật đã kết luận, mô hình chỉ diễn đạt. Không có dòng này thì
 /// mô hình tự "đánh giá" từ số và có thể nói ngược (kiemGiong là lớp chắn sau).
@@ -91,6 +98,14 @@ Số liệu:
 Tổng chi: 1.200.000 đ
 Câu hỏi: Tháng trước tôi chi cho ăn uống bao nhiêu?
 Trả lời: Mình không có số liệu về chi tiêu tháng trước theo danh mục, nên không trả lời được.
+
+Ví dụ 4.
+Số liệu:
+== Ngân sách ==
+Giáo dục · Tỉ lệ: 90,0%
+Mua sắm · Tỉ lệ: 7,1%
+Câu hỏi: Ngân sách nào sắp hết?
+Trả lời: Giáo dục căng nhất, đã dùng 90,0%; Mua sắm mới dùng 7,1%.
 ''';
 
 /// Tên màn in làm tiêu đề khối số liệu. Hai nhãn trùng tên ở hai gói (`Còn

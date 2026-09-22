@@ -96,11 +96,25 @@ void main() {
     // liệu" nào — một trong bốn nguyên nhân đo được của "AI trả lời sai".
     final p = promptHoiDap('Tháng này tôi tiêu nhiều không?', [goi]);
 
-    test('BA ví dụ, mỗi ví dụ có Câu hỏi và Trả lời', () {
-      expect('Ví dụ'.allMatches(p).length, 3);
-      expect('Câu hỏi:'.allMatches(p).length, 4,
-          reason: 'ba của ví dụ + một của câu hỏi thật');
-      expect('Trả lời:'.allMatches(p).length, 4);
+    test('BỐN ví dụ, mỗi ví dụ có Câu hỏi và Trả lời', () {
+      // Ví dụ thứ tư thêm ở chặng 4a: dạng "cái nào", đáp bằng TÊN. Bốn câu
+      // nhóm A của bảng đo (mục 5.6 `AI_AGENT_ARCHITECTURE.md`) đều là dạng
+      // ấy, và E2B không tự suy ra được từ chỉ dẫn suông.
+      expect('Ví dụ'.allMatches(p).length, 4);
+      expect('Câu hỏi:'.allMatches(p).length, 5,
+          reason: 'bốn của ví dụ + một của câu hỏi thật');
+      expect('Trả lời:'.allMatches(p).length, 5);
+    });
+
+    test('⭐ có ví dụ dạng "cái NÀO" — đáp bằng tên, không bằng con số trần',
+        () {
+      final viDu = p.substring(p.indexOf('Ví dụ 1'), p.lastIndexOf('Số liệu:'));
+      expect(viDu.toLowerCase(), contains('nào'),
+          reason: 'Câu 3, 8, 13, 15 của bảng đo đều hỏi "cái nào" và đều nhận '
+              'về một con số trần — "Ngân sách căng nhất là 90,0%" thay vì '
+              '"Giáo dục".');
+      expect(viDu, contains('Giáo dục'),
+          reason: 'câu trả lời mẫu phải NÊU TÊN, đó là cả điểm của ví dụ này');
     });
 
     test('⭐ có ví dụ hỏi thứ KHÔNG CÓ số liệu → trả lời không con số nào', () {
@@ -111,7 +125,7 @@ void main() {
           .allMatches(viDu)
           .map((m) => m.group(1)!)
           .toList();
-      expect(traLoi, hasLength(3));
+      expect(traLoi, hasLength(4));
       expect(
         traLoi.where((c) => !RegExp(r'\d').hasMatch(c)),
         isNotEmpty,
@@ -132,6 +146,24 @@ void main() {
             reason: 'Số "${m.group(0)}" phải có ở cả số liệu lẫn câu trả lời '
                 'của chính ví dụ ấy');
       }
+    });
+
+    test('dòng số liệu nêu TÊN đối tượng khi có (chặng 4a)', () {
+      final pTen = promptHoiDap('ngan sach nao sap het', [
+        _GoiGia('ngan_sach', [soPhanTram('Tỉ lệ', 90.0, ten: 'Giáo dục')]),
+      ]);
+      expect(pTen, contains('Giáo dục · Tỉ lệ: 90,0%'),
+          reason: 'Mô hình chỉ nói được tên nếu tên có trong prompt.');
+    });
+
+    test('không có tên thì dòng số liệu giữ nguyên dạng cũ', () {
+      final pKhongTen = promptHoiDap('thang nay chi bao nhieu', [
+        _GoiGia('phan_tich', [soTien('Tổng chi', 2141000)]),
+      ]);
+      expect(pKhongTen, contains('Tổng chi: 2.141.000 đ'));
+      expect(pKhongTen, isNot(contains('null')),
+          reason: '`ten` null là ca THƯỜNG — không được rò chữ "null" ra '
+              'prompt, thứ mô hình sẽ chép lại nguyên vào câu trả lời.');
     });
 
     test('câu trả lời trong ví dụ CHÉP NGUYÊN NHÃN — dạy mô hình gọi đúng tên số',
