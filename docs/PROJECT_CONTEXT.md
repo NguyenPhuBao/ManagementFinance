@@ -596,6 +596,63 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-22)
 
+### ✅ Edge AI — chặng 3 của lộ trình: đo bậc 1 hỏng ở đâu — CỔNG B QUA (2026-09-22 tối muộn)
+
+**Không phải task mã** — một buổi đo có biểu mẫu. Bảng 20 hàng đầy đủ ở mục **5.6**
+`docs/AI_AGENT_ARCHITECTURE.md`; đây chỉ là bản tóm.
+
+**Đo trên Realme RMX2205** (Dimensity 1100, CPU — canary đã ghi dấu GPU sập), APK **release**,
+tài khoản 10 với dữ liệu thật. Nạp mô hình **9.196 ms**, sinh câu **4,8–8,9 s**. Backend **không
+cần chạy** — mọi thứ đọc từ SQLite cục bộ.
+
+**Kết quả: ✅ 5 · rơi mẫu 3 · SAI 0 · LỆCH CÂU HỎI 12.**
+
+⭐ **Bậc 1 không bịa — nó lệch.** Ba lớp chắn (`kiemSo`, `kiemNhan`, `kiemGiong`) giữ đúng bất
+biến: **không một con số sai nào lọt ra** trong 20 câu. Nhưng hơn **một nửa** câu trả lời đúng
+số, đúng nhãn, mà **không trả lời điều được hỏi**. Nếu chấm bằng hai ô *trả lời được / rơi mẫu*
+như bản kế hoạch đầu, bảng này đọc thành *"8/20 hỏng"* và **bốn tool quan trọng nhất sẽ không
+được đặt hàng** — cột thứ tư là thứ giữ lại kết luận đúng.
+
+⭐ **Thứ thiếu nhất không phải con số, mà là CÁI TÊN.** Bốn câu hỏi *"cái nào"* — ngân sách nào
+sắp hết · danh mục nào chi nhiều nhất · hoá đơn nào quá hạn · ví nào đang âm — hỏng theo **cùng
+một kiểu**: gói số mang **giá trị** mà không mang **định danh**. Hỏi *"ngân sách nào sắp hết"*
+thì nhận *"Ngân sách căng nhất là 90,0%"* thay vì *"Giáo dục"*. Và nó **rẻ để chữa**: hàm domain
+vốn trả entity có tên sẵn, chỉ là `NguonGoiSo` rút lấy con số rồi bỏ tên lại.
+
+**Đơn đặt hàng: sáu tool** (mục 5.1 đoán **mười**, trong đó **ba cái không câu nào cần tới**) —
+`danhSachNganSach` · `danhSachHoaDon` · `danhSachVi` · `chiTieuTheoKy` · `duBaoMucTieu` ·
+`goiYHanMuc`. Bốn cái đầu đều hình dạng *"trả về danh sách **có tên**"*, thứ mục 5.1 không dự
+đoán vì nó nghĩ theo hướng "mỗi hàm domain một tool". Đây đúng là lý do lộ trình bắt **đo trước
+khi dựng**.
+
+⚠️ **Ba câu hỏng mà KHÔNG cần tool nào** (12, 14, 20): con số cần trả lời **đã nằm sẵn trong
+gói**, mô hình vẫn chọn nhầm. Chữa bằng tool là chữa nhầm bệnh — thứ cần sửa là **nhãn trong
+prompt** và cách chọn gói, và nên làm **trước** khi dựng tool. Nguy hiểm nhất là câu 14: hỏi tiền
+trong ví (**13.004.000 đ**), nhận *"Còn lại là 12.994.000 đ"* (= thu − chi của kỳ) — hai số khác
+nghĩa mà **chênh đúng 10.000 đ**, người dùng không có cách nào nhận ra.
+
+⚠️ **Hai câu đòi vòng lặp chứ không đòi tool** (16, 17): *"có đủ trả hoá đơn không"* và *"trả hết
+thì còn bao nhiêu"* cần **so sánh** và **trừ** giữa hai gói. Đúng bất biến đã khoá — **lớp AI
+không tính** — nên chúng chỉ giải được ở vòng 3 bằng cách gọi hai tool rồi để **hàm domain** làm
+phép tính.
+
+⚠️ **Hai lỗi thật lượt đo bắt được, ngoài phạm vi chặng 3, chưa sửa:**
+
+1. **Thẻ số liệu gán nhãn của một gói khác khi hai nhãn trùng GIÁ TRỊ.** Câu 15 trả lời *"Ví đang
+   âm: 1"* nhưng thẻ bên dưới hiện **"Quá hạn 1"** — nhãn của *hoá đơn quá hạn*. Cả hai cùng bằng
+   **1** và `theCuaCau` khớp theo **giá trị**. Cùng họ bẫy **4.19** nhưng nguyên nhân khác hẳn:
+   trùng giá trị, không phải chuỗi con.
+2. **Tổng thu lệch 10.000 đ giữa Trang chủ và gói số** — Trang chủ *Thu nhập 15.145.000*, gói
+   phân tích *Tổng thu 15.135.000*, đo cùng lúc cùng tài khoản. Chênh ấy lan sang mọi câu trả lời
+   dùng tổng thu. **Đừng sửa bên nào trước khi chốt con số nào mới đúng** — cùng lối đã xử lý chỗ
+   lệch *"3 hoá đơn"* / *"Cần thanh toán (4)"*.
+
+⚠️ **Một bẫy đo sẽ tái phát:** `adb shell input text` **làm hỏng chữ hoa giữa từ** — gõ `MuaXe`
+ra **`Mũae`** trên màn hình. Câu hỏi chứa tên riêng phải **chụp màn kiểm lại chữ đã vào** trước
+khi tin kết quả.
+
+**Việc tiếp theo: chặng 4** — tool-calling + vòng lặp; kế hoạch viết tại cổng B, tức bây giờ.
+
 ### ✅ Edge AI — việc số 2 của lộ trình: tải mô hình chạy nền + resume (2026-09-22 tối muộn)
 
 Kế hoạch `docs/superpowers/plans/2026-09-22-tai-mo-hinh-nen-resume.md` (7 task), spec cùng ngày; chi

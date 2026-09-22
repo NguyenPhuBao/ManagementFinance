@@ -107,7 +107,14 @@ hôm nay (bỏ điểm 2 của cổng A); hoặc hiện chỉ báo "đang viết
 (97 KB/s → ~7 giờ, đứt là mất hết), nhưng máy nghiệm thu **đã có mô hình** nên nó không
 chặn việc số 1. Làm xong việc 1 thì cái được mở khoá ở việc 2 mới đáng dùng.
 
-## 3 · Chặng 3 của lộ trình — đo: bậc 1 hỏng ở đâu
+## 3 · Chặng 3 của lộ trình — đo: bậc 1 hỏng ở đâu ✅ **XONG 2026-09-22 (tối muộn)**
+
+> ✅ **Đã đo, cổng B qua.** Bảng 20 hàng ở mục **5.6** `docs/AI_AGENT_ARCHITECTURE.md` — đo trên
+> **Realme RMX2205** (CPU), tài khoản thật. Kết quả: **✅ 5 · rơi mẫu 3 · sai 0 · lệch câu hỏi
+> 12**. Đơn đặt hàng **sáu** tool, bốn cái đứng đầu đều là *"danh sách có **tên**"* — mười tool
+> ứng viên ở mục 5.1 không dự đoán hình dạng ấy, và ba trong số chúng không câu nào cần tới.
+> ⚠️ Ba câu hỏng **không cần tool nào** (số đã có sẵn trong gói, mô hình chọn nhầm) — sửa ở
+> **prompt/nhãn**, và nên làm **trước** khi dựng tool. Việc tiếp theo là **chặng 4**.
 
 🛑 **Bước này từng BỊ BỎ SÓT trong bản thứ tự đầu tiên viết cùng ngày** — bản ấy để
 "function calling" ngay sau tải nền. Sai, và lộ trình đã ghi sẵn lý do: danh sách tool phải

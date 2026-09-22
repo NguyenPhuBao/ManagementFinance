@@ -18,7 +18,10 @@
 > bốn chip theo gói) xong tối 2026-09-22, đo trên máy thật: bảng ở mục **9.9**
 > `docs/AI_EDGE_FEATURE.md`. ✅ Việc số 2 (**tải nền + resume**, 7 task) cũng xong cùng tối,
 > nghiệm thu trên máy thứ hai — Realme RMX2205, mục **9.10**.
-> **Việc tiếp theo: chặng 3** (đo bậc 1 hỏng ở đâu), chưa bắt đầu.
+> ✅ **Chặng 3 XONG cùng tối — CỔNG B QUA.** Đo 20 câu trên **Realme RMX2205** (CPU), tài khoản
+> thật: **✅ 5 · rơi mẫu 3 · sai 0 · lệch câu hỏi 12**. Bảng đầy đủ + đơn đặt hàng **sáu** tool
+> ở mục **5.6** `docs/AI_AGENT_ARCHITECTURE.md`.
+> **Việc tiếp theo: chặng 4** (tool-calling + vòng lặp) — kế hoạch viết tại cổng B, tức bây giờ.
 > Chặng 5 🛑 **bỏ** (M4 trả lời KHÔNG, 2026-09-22).
 > Chặng 6 ✅ NPBao đã chốt lối ① cùng ngày.
 >

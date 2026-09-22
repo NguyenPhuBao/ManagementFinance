@@ -184,6 +184,8 @@ lib/features/ai_chat/                             — màn Trợ lý AI (P3), đ
 | 4.24 | **Nạp mô hình bằng GPU sập NATIVE trên Mali** (Dimensity 1100 / Mali-G77: SIGSEGV null-pointer trong `libLiteRtOpenClAccelerator.so` lúc `ModifyGraphWithDelegate`) — `try/catch` quanh `getActiveModel` không bắt được gì | app văng về màn chính mỗi lần hỏi, không log Dart nào; bậc thang "GPU hỏng → CPU" của P1 chỉ tới được khi gói **ném**. Nay **canary**: ghi dấu trước khi thử GPU, xoá trong `finally`; mở lại thấy dấu → ghi nhớ "GPU hỏng" và dùng CPU (27 s nạp, 7–10 s/câu trên máy ấy) | `canary_gpu_test.dart` *"⭐ dấu còn sót (lần trước sập) → CPU, và ghi nhớ GPU hỏng"* |
 | 4.25 | **Hộp thoại phải pop bằng `Navigator.of(c)`, không `c.pop()` của go_router** | ngoài `GoRouter` (widget test) nút ném *"No GoRouter found in context"* và hộp thoại không đóng — bản đầu của hộp thoại Xoá đã thế mà không ca nào chạm tới | `cai_dat_ai_page_test.dart` *"đồng ý dùng 4G thì tải với chiWifi = false"* |
 | 4.26 | **`daCo()` phải kiểm KÍCH THƯỚC, và test không dựng nổi tệp 2,4 GB** | tệp dở giữ cho resume mà `existsSync()` đọc thành "đã có" → engine ném "Model may be invalid" ở nơi không ai ngờ; `coTepByte` tiêm được để `slm_dien_giai_test` đóng vai "đã có" bằng tệp 3 byte | `mo_hinh_tai_ve_test.dart` nhóm *"daCo() kiểm KÍCH THƯỚC"* |
+| 4.27 | ⚠️ **Thẻ số liệu gán nhãn của GÓI KHÁC khi hai nhãn trùng GIÁ TRỊ** — chưa sửa (bắt được ở chặng 3, 2026-09-22) | câu trả lời *"Ví đang âm: 1"* hiện thẻ **"Quá hạn 1"** — nhãn của *hoá đơn quá hạn*, vì cả hai cùng bằng **1** và `theCuaCau` khớp theo **giá trị**. Cùng họ 4.19 nhưng nguyên nhân khác hẳn: **trùng giá trị**, không phải chuỗi con. Số nhỏ (`1`, `2`, `3`, `0`) trùng nhau giữa các gói là chuyện **thường**, nên đây không phải ca hiếm | *(chưa có ca — cần dựng hai gói cùng mang một giá trị với hai nhãn khác nhau)* |
+| 4.28 | ⚠️ **`adb shell input text` làm hỏng chữ hoa giữa từ** — bẫy của phép ĐO, không phải của app | gõ `MuaXe` ra **`Mũae`** trên màn hình; câu hỏi chứa tên riêng vì thế không tới được mô hình, và kết quả đo trông như "mô hình không hiểu tên". Câu hỏi có tên riêng phải **chụp màn kiểm lại chữ đã vào** trước khi tin kết quả | *(bẫy thao tác — ghi ở mục 5.6 `AI_AGENT_ARCHITECTURE.md`)* |
 | 4.4 | **Luật "đã bị cắt hai kỳ liền trước" (C3) chỉ kích hoạt khi ngân sách đã tồn tại ≥ 3 kỳ** — `recentPeriods` trả một kỳ cho ngân sách tạo tháng này, và luật im lặng | không lỗi; chỉ là trần 25 % thay vì 15 % | `tai_phan_bo_test.dart` *"đã bị cắt hai kỳ liền trước → trần 15 %"* có cả hai fixture |
 
 ## 5. Màn Stitch
@@ -736,7 +738,7 @@ tự do gõ bằng `adb shell input text` nên **không dấu** — mô hình v�
 | Nạp | — | — | 3.729–4.523 ms (bốn lần; Task 9 đo 8.654 ms) |
 | Chip 1 *"Chi tiêu tháng này"* | 61 ký tự, **một** câu | qua cả ba lớp; thẻ đúng hai số câu nhắc | 1.596–2.869 ms; token đầu 549 ms (ấm) / 1.766 ms (sau nạp) |
 | Chip 2 *"Tình hình ngân sách"* | 56 ký tự | qua | 1.565 ms; token đầu 942 ms |
-| **Điểm 4** — *"Du bao tiet kiem cua toi la bao nhieu?"* | *"Tổng thu là 15.135.000 đ, tổng chi là 2.141.000 đ, còn lại là 12.994.000 đ."* | **không bịa**, ba nhãn đúng; không nói "không có dữ liệu" | 3.135 ms; token đầu 1.682 ms |
+| **Điểm 4** — *"Du bao tiet kiem cua toi la bao nhieu?"* | *"Tổng thu là 15.135.000 đ, tổng chi là 2.141.000 đ, còn lại là 12.994.000 đ."* | **không bịa**, ba nhãn đúng; không nói "không có dữ liệu" *(⚠️ câu ấy đúng cho **lượt này**, không phải luôn luôn — chặng 3 ngày 2026-09-22 đo được **hai** câu mô hình nói thẳng là không có dữ liệu; xem **9.11**)* | 3.135 ms; token đầu 1.682 ms |
 | **Điểm 5** — *"Toi co dang on khong? Ngan sach the nao?"* (Giáo dục 90,0 % → gói cảnh báo) | *"Thu là 15.135.000 đ, Chi là 2.141.000 đ, còn lại là 12.994.000 đ. Ngân sách căng nhất là 90,0%."* | **không trấn an**, không phải chặn | 3.371 ms |
 | **Điểm 2** — *"Tom tat tinh hinh tai chinh thang nay…"* | **429 ký tự, 4 câu** (chi tiêu · ngân sách · mục tiêu · hoá đơn), mọi số đúng nhãn | bong bóng **1 → 3 → 4 câu** ở ≈ 3,8 / 5,9 / 7,6 s sau khi bắt đầu sinh, chip xám suốt; xong ở 8.672 ms | token đầu 1.674 ms |
 
@@ -800,6 +802,41 @@ tải *chịu được gián đoạn* (không mất lượt, không phải ngồ
 trong mọi trường hợp — chỉ Tạm dừng/Tiếp tục mới giữ được byte. Và ⚠️ `_doTrangThai()` của màn
 Cài đặt AI vẫn ghi đè trạng thái `loi` khôi phục từ lần chạy trước bằng "Chưa tải" (nó chỉ gác
 `dangTai`/`tamDung`/`choMang`) — chưa sửa, hậu quả nhẹ (bấm Tải là xếp lượt mới cùng `taskId`).
+
+---
+
+### 9.11 Chặng 3 — đo bậc 1 hỏng ở đâu (2026-09-22 tối muộn, Realme RMX2205) — ✅ CỔNG B QUA
+
+**Bảng 20 hàng đầy đủ nằm ở mục 5.6 `docs/AI_AGENT_ARCHITECTURE.md`** — chỗ ấy là nơi lộ trình
+chỉ định, và nó cũng là chỗ chặng 4 sẽ đọc để lấy đơn đặt hàng. Ở đây chỉ ghi phần thuộc về
+*tính năng*, tức những gì lượt đo nói về chính mô-đun này.
+
+**Kết quả: ✅ 5 · rơi mẫu 3 · SAI 0 · lệch câu hỏi 12** (nạp 9.196 ms trên CPU; sinh 4,8–8,9 s
+mỗi câu; tài khoản thật, backend không chạy).
+
+**Ba lớp chắn làm đúng việc.** `SAI = 0` trên 20 câu là con số đáng giữ: không một số sai nào
+lọt ra. Hai ca thấy rõ nhất:
+
+- Câu 1 — mô hình sinh *"Ngân sách của bạn đang ở mức 90,0%"*; số **thật**, nhưng nhãn gói là
+  *Tỉ lệ* nên `kiemNhan` **chặn**. Hậu quả với người dùng: câu ngân sách cơ bản nhất rơi về mẫu
+  câu. Chốt đúng, trải nghiệm dở — và đó là đánh đổi đã chọn có chủ ý.
+- Câu 7 — mô hình sinh *"Hôm nay bạn đã chi 556 đ"*, mà **556** là *mức nên chi mỗi ngày* của
+  ngân sách Giáo dục. Số thật, nhãn sai hẳn. `kiemNhan` chặn. ⭐ Đây là **bằng chứng sống** cho
+  lý do `kiemNhan` ra đời ở việc số 1: không có nó, câu này đã hiện ra và người dùng sẽ tin.
+
+⚠️ **Nhưng mô hình KHÔNG phải lúc nào cũng im khi thiếu dữ liệu** — nó **lệch**. Câu 13 hỏi
+*"hoá đơn nào quá hạn"* và nhận *"Ngân sách căng nhất là 90,0%"*: sang **hẳn chủ đề khác**, mọi
+số đều thật nên mọi chốt đều cho qua. Ba lớp chắn bảo vệ *tính đúng của con số*, **không** bảo vệ
+*tính liên quan của câu trả lời* — đó là ranh giới thật của bậc 1, và bảng 5.6 đo đúng nó.
+
+✅ **Ghi nhận ngược lại một câu của lượt đo cổng A.** Mục 9.9 kết luận *mô hình không nói "không
+có dữ liệu"*. Lượt này **hai câu nói thẳng** — câu 4 (*"Không có dữ liệu để trả lời câu hỏi của
+bạn"*) và câu 11 (*"…không có thông tin cụ thể trong dữ liệu"*). Vậy few-shot **có** tác dụng;
+câu cũ nên đọc là *"không đáng tin cậy"* chứ không phải *"không bao giờ"*.
+
+**Hai lỗi của mô-đun này lượt đo bắt được, chưa sửa:** thẻ số liệu gán nhãn của gói khác khi hai
+nhãn **trùng giá trị** (bẫy **4.27**) và **tổng thu lệch 10.000 đ** giữa Trang chủ (15.145.000)
+và gói số (15.135.000) — ⚠️ đừng sửa bên nào trước khi chốt con số nào mới đúng.
 
 ---
 

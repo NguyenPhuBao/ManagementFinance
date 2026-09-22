@@ -369,22 +369,112 @@ active embedder nên không cần bước đặt riêng.
 clean` không cứu được** — chỉ khỏi khi thêm `kotlin.incremental=false` cùng
 `kotlin.compiler.execution.strategy=in-process` vào `android/gradle.properties`.
 
-### 5.6 Bảng đo chặng 3 — bậc 1 hỏng ở đâu ⬜ **CHƯA ĐO**
+### 5.6 Bảng đo chặng 3 — bậc 1 hỏng ở đâu ✅ **ĐO XONG 2026-09-22 (tối muộn)**
 
-Mục này là **chỗ đặt kết quả chặng 3**, và nó được tạo sẵn khung ngày 2026-09-22 vì
-`plans/2026-09-21-ai-viec-tiep-theo.md:128` đã trỏ tới *"bảng 20 hàng ở mục 5.6"* trong khi mục
-ấy **chưa tồn tại** — một con trỏ chết sống qua hai phiên.
+**Máy:** Realme RMX2205 (Dimensity 1100, Mali-G77, Android 13, 360 dp), APK **release**, nạp
+**CPU** (canary đã ghi dấu GPU sập từ lượt trước). **Tài khoản:** 10 (`tadd1632004@gmail.com`),
+dữ liệu thật. **Nạp mô hình:** 9.196 ms (XNNPack cache đã có sẵn). **Sinh câu:** 4,8–8,9 s mỗi
+câu, token đầu 4,5–8,2 s.
 
-**Điều kiện vào:** cổng A đã đóng ✅ (2026-09-22 tối, mục **9.9** `docs/AI_EDGE_FEATURE.md`). Đo
-một mô hình còn bịa nhãn thì bảng đo nói dối.
+**Điều kiện vào đã thoả:** cổng A đóng ✅ (mục **9.9** `docs/AI_EDGE_FEATURE.md`).
 
-**Cách đo:** 20 câu người dùng thật sẽ hỏi — 5 ngân sách · 5 chi tiêu theo kỳ tuỳ ý · 5 mục
-tiêu/hoá đơn · 5 cần **ghép nhiều nguồn** — hỏi từng câu ở màn Trợ lý AI trên máy thật, tài khoản
-thật.
+**Dữ liệu nền lúc đo** (đọc từ chính app, để chấm được đúng/sai):
 
-| # | Câu hỏi | Kết quả | Con số nào THIẾU trong sáu gói | Tool đặt hàng |
+- Trang chủ: tổng số dư **13.004.000**, thu nhập **15.145.000**, chi tiêu **2.141.000**
+- Ngân sách (4 đang chạy): còn **1.340.000** (72 %), đã dùng 510.000/1.850.000 —
+  Giáo dục 45k/50k (**90,0 %**), Ăn uống 50k/500k, Di chuyển 355k/450k, Mua sắm 60k/850k
+- Mục tiêu (2): MuaXe **55,0 %** (thiếu 899.000, còn 583 ngày, đúng kế hoạch), MuaDT 13,3 %
+- Hoá đơn: còn phải trả **155.000**, đã trả 65.000, chưa trả **3**, quá hạn **1** ("Kiem")
+- Ví (4): Tiền mặt 9.903.000 · test **−100.000** · Tiết kiệm 3.201.000 · mua nhà 0
+
+#### Bảng 20 hàng
+
+Ký hiệu cột *Kết quả*: **✅** trả lời được · **MẪU** rơi về mẫu câu · **SAI** số/nhãn sai lọt qua ·
+**LỆCH** trả lời được nhưng không trả lời điều được hỏi.
+
+| # | Câu hỏi (gõ không dấu) | Mô hình trả lời | Kết quả | Thiếu gì trong sáu gói |
 |---|---|---|---|---|
-| | *(chặng 3 điền)* | | | |
+| 1 | Ngân sách của tôi thế nào | *(bị chặn)* "Ngân sách của bạn đang ở mức 90,0%" | **MẪU** | — nhãn "Tỉ lệ" không khớp câu |
+| 2 | Còn bao nhiêu **tiền** ngân sách tháng này | "Ngân sách căng nhất là 90,0%" | **LỆCH** | tổng còn lại 1.340.000 |
+| 3 | Ngân sách **nào** sắp hết | "Ngân sách căng nhất là 90,0%" | **LỆCH** | **tên** ngân sách |
+| 4 | % ngân sách **Ăn uống** | "Không có dữ liệu để trả lời câu hỏi của bạn" | **MẪU** ✓ | ngân sách tra theo tên |
+| 5 | Tháng sau nên đặt ngân sách bao nhiêu | "Ngân sách căng nhất là 90,0%" | **LỆCH** | gợi ý hạn mức |
+| 6 | Tháng này tôi chi bao nhiêu | "Chi tiêu tháng này là 2.141.000 đ trên tổng thu 15.135.000 đ" | **✅** | — |
+| 7 | **Tuần này** tiêu bao nhiêu | *(bị chặn)* "Hôm nay bạn đã chi 556 đ" | **MẪU** | chi theo kỳ tuỳ ý |
+| 8 | Chi nhiều nhất vào **danh mục nào** | "Khoản lớn nhất là 800.000 đ" | **LỆCH** | **tên** danh mục |
+| 9 | **Tháng trước** chi bao nhiêu | "**Tháng này** tổng chi là 2.141.000 đ…" | **LỆCH** | kỳ trước |
+| 10 | Mục tiêu MuaXe thế nào rồi | "đạt tiến độ 55,0%, còn thiếu 899.000 đ và còn 583 ngày" | **✅** | — |
+| 11 | **Khi nào** đạt mục tiêu tiết kiệm | "…không có thông tin cụ thể trong dữ liệu" | **✅** | dự báo ngày đạt |
+| 12 | Còn bao nhiêu **hoá đơn chưa trả** | "Đã trả: 65.000 đ" | **LỆCH** | 🛑 **không thiếu** — chọn nhầm |
+| 13 | **Hoá đơn nào** quá hạn | "Ngân sách căng nhất là 90,0%" | **LỆCH** | **tên** hoá đơn *(sang hẳn chủ đề khác)* |
+| 14 | Tiền trong **ví** còn bao nhiêu | "Còn lại là 12.994.000 đ" | **LỆCH** | 🛑 **không thiếu** — nhầm thu−chi với số dư |
+| 15 | **Ví nào** đang âm | "Ví đang âm: 1" *(thẻ hiện sai: "Quá hạn 1")* | **LỆCH** | **tên** ví |
+| 16 | Tiền trong ví **có đủ** trả hoá đơn không | "Còn phải trả 155.000 đ cho hóa đơn" | **LỆCH** | phép **so sánh** hai gói |
+| 17 | Trả hết hoá đơn thì **còn** bao nhiêu | "Tổng số tiền còn phải trả cho hóa đơn là 155.000 đ" | **LỆCH** | phép **trừ** |
+| 18 | Chi tiêu **có vượt** thu nhập không | "Chi tiêu của bạn là 2.141.000 đ trên tổng thu 15.135.000 đ" | **✅** | — |
+| 19 | Tháng này để dành bao nhiêu % | "Để dành được 85,4% thu nhập" | **✅** | — |
+| 20 | Có tất cả **bao nhiêu ví** | đổ **năm** con số của cả gói, không nêu "4 ví" | **LỆCH** | 🛑 **không thiếu** — "Số ví 4" có sẵn |
+
+**Tổng: ✅ 5 · MẪU 3 · SAI 0 · LỆCH 12.**
+
+#### Bốn điều bảng này nói ra
+
+**1. Bậc 1 không bịa — nó lệch.** `SAI = 0` trên 20 câu: ba lớp chắn làm đúng việc. Nhưng **12/20
+lệch câu hỏi**, tức hơn một nửa. Nếu chỉ đếm hai ô "trả lời được / rơi mẫu" như bản kế hoạch đầu
+thì bảng này sẽ đọc thành *"8/20 hỏng"*, và **bốn tool quan trọng nhất sẽ không được đặt hàng**.
+Cột thứ tư là thứ giữ lại kết luận đúng.
+
+**2. Thứ thiếu nhất không phải con số — là CÁI TÊN.** Bốn câu (3, 8, 13, 15) hỏi *"cái nào"* và
+cả bốn đều hỏng theo cùng một kiểu: gói số mang **giá trị** mà không mang **định danh**. Người
+dùng hỏi *"ngân sách nào sắp hết"* thì muốn nghe **"Giáo dục"**, không phải **"90,0%"**. Đây là
+đơn đặt hàng rõ nhất của cả bảng, và nó **rẻ**: các hàm domain đã trả về entity có tên sẵn, chỉ
+là `NguonGoiSo` rút lấy con số rồi bỏ tên lại.
+
+**3. Ba câu hỏng mà KHÔNG cần tool nào** (12, 14, 20): số cần trả lời **đã có trong gói** và mô
+hình vẫn chọn nhầm. Câu 14 nguy hiểm nhất — hỏi tiền trong ví (13.004.000), trả lời *"Còn lại
+12.994.000 đ"* (= thu − chi của kỳ); hai số **khác nghĩa mà chênh đúng 10.000 đ**, người dùng
+không có cách nào nhận ra. Chữa bằng tool là chữa nhầm bệnh: thứ cần sửa là **nhãn trong prompt**
+và cách chọn gói, không phải thêm nguồn dữ liệu.
+
+**4. Hai câu đòi vòng lặp chứ không đòi tool** (16, 17): *"có đủ không"* và *"trả xong còn bao
+nhiêu"* cần **so sánh** và **trừ** giữa hai gói. Đúng như bất biến đã khoá — **lớp AI không tính**
+— nên chúng chỉ giải được ở vòng 3 bằng cách gọi hai tool rồi để **hàm domain** làm phép tính,
+không phải để mô hình tự trừ.
+
+#### Đơn đặt hàng tool — rút TỪ BẢNG, không từ mục 5.1
+
+Xếp theo số câu mỗi tool cứu được:
+
+| # | Tool | Cứu câu | Ghi chú |
+|---|---|---|---|
+| 1 | `danhSachNganSach()` → tên · đã chi · hạn mức · % · còn lại | 2, 3, 4, 5 | **đắt giá nhất**; mang cả tên lẫn tổng |
+| 2 | `danhSachHoaDon()` → tên · hạn · số tiền · trạng thái | 12, 13, 16, 17 | gồm cả "hoá đơn nào quá hạn" |
+| 3 | `danhSachVi()` → tên · số dư · cờ âm | 14, 15, 20 | chữa luôn cú nhầm 12.994.000 / 13.004.000 |
+| 4 | `chiTieuTheoKy(tu, den)` → tổng thu · tổng chi · theo danh mục **có tên** | 7, 8, 9 | kỳ tuỳ ý + tên danh mục |
+| 5 | `duBaoMucTieu(id)` | 11 | chỉ có nghĩa khi mục tiêu chậm kế hoạch |
+| 6 | `goiYHanMuc(danhMuc)` | 5 | đã có `suggestAmount`, chỉ cần khai |
+
+🛑 **Mục 5.1 đoán MƯỜI tool; bảng đo đặt hàng SÁU**, và **bốn cái đứng đầu đều là "trả về danh
+sách có tên"** — một hình dạng mà mục 5.1 không hề dự đoán (nó nghĩ theo hướng "mỗi hàm domain
+một tool"). Đây đúng là lý do lộ trình bắt đo trước khi dựng: ba tool của 5.1 (`traCuuKienThuc`
+và hai tool phái sinh) **không câu nào trong 20 câu cần tới**.
+
+#### Hai lỗi thật lượt đo bắt được — ngoài phạm vi chặng 3
+
+- ⚠️ **Thẻ số liệu gán nhãn của một gói khác khi hai nhãn cùng giá trị.** Câu 15: câu trả lời là
+  *"Ví đang âm: 1"* nhưng thẻ bên dưới hiện **"Quá hạn 1"** — nhãn của *hoá đơn quá hạn*. Cả hai
+  cùng bằng **1**, và `theCuaCau` khớp theo **giá trị** nên lấy nhầm nhãn. Cùng họ bẫy **4.19**
+  (thẻ so chuỗi con) nhưng nguyên nhân khác: **trùng giá trị**, không phải chuỗi con. Chưa sửa.
+- ⚠️ **Tổng thu lệch 10.000 đ giữa Trang chủ và gói số.** Trang chủ hiện *Thu nhập 15.145.000*,
+  gói phân tích trả *Tổng thu 15.135.000* (đo cùng lúc, cùng tài khoản). Chênh ấy lan sang mọi
+  câu trả lời dùng tổng thu. Chưa rõ bên nào đúng — **đừng sửa bên nào trước khi chốt con số nào
+  mới đúng**, cùng lối đã xử lý chỗ lệch "3 hoá đơn / Cần thanh toán (4)".
+
+#### Một bẫy đo, sẽ tái phát
+
+⚠️ **`adb shell input text` làm hỏng chữ hoa giữa từ**: gõ `MuaXe` ra **`Mũae`** trên màn hình
+(đã chụp lại). Câu hỏi chứa tên riêng phải **chụp màn kiểm lại chữ đã vào** trước khi tin kết quả;
+lượt này câu 10 vẫn hợp lệ chỉ vì gói mục tiêu chỉ mang một mục tiêu nên tên không ảnh hưởng.
 
 **Bốn cột, không phải ba.** Cột *Kết quả* nhận một trong **bốn** giá trị, và giá trị thứ tư là
 thứ lượt đo cổng A phát hiện nên phải có chỗ riêng:
@@ -608,11 +698,13 @@ người dùng.
 1. ✅ **P3 XONG 2026-09-22** (trọn 10 task) — mô hình đã cắm và chạy trong app thật trên hai
    máy; ba lớp chắn `kiemSo` / `kiemNhan` / `kiemGiong` bắt được câu sai trên máy thật.
    **Cổng A qua** tối cùng ngày.
-2. ⬜ **Đo trước, rồi mới tool layer.** Bước đo — *"bậc 1 hỏng ở đâu"*, mục **5.6** — là việc
-   **tiếp theo** và là điều kiện vào của tool layer: danh sách tool phải **rút từ bảng đo**,
-   không phải từ mười tool ứng viên ở mục 5.1. Sau đó mới khai báo tool trỏ vào hàm domain đã
-   có, mỗi tool trả `List<SoLieu>`.
-3. ⬜ **Vòng lặp + trần** — trần 3 lượt gọi tool, không tool ghi.
+2. ✅ **Đo xong 2026-09-22 (tối muộn)** — *"bậc 1 hỏng ở đâu"*, bảng 20 hàng ở mục **5.6**, đo
+   trên Realme RMX2205 với tài khoản thật. Kết quả: **✅ 5 · rơi mẫu 3 · sai 0 · lệch câu hỏi
+   12**. Đơn đặt hàng là **sáu** tool, bốn cái đứng đầu đều có hình dạng *"trả về danh sách có
+   **tên**"* — thứ mười tool ứng viên ở mục 5.1 không hề dự đoán. **Cổng B qua.**
+3. ⬜ **Tool layer + vòng lặp** — khai sáu tool ấy, mỗi tool trả `List<SoLieu>`; trần 3 lượt gọi,
+   không tool ghi. Ba câu trong bảng (12, 14, 20) **không cần tool nào** — chúng hỏng vì mô hình
+   chọn nhầm số đã có sẵn, nên sửa ở **prompt và nhãn**, và nên làm **trước** khi dựng tool.
 
 *(Bản cũ của mục này ghi bước 3 là "cộng **vector index tĩnh** cho kiến thức chung" và bước 2 là
 "9 tool + `traCuuKienThuc`". Cả hai đã đổi ngày 2026-09-22: RAG phía client **bỏ hẳn** — mục
