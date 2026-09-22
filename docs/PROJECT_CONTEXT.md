@@ -596,10 +596,9 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-22)
 
-### ✅ Edge AI chặng 1 — chặn lỗi và tài liệu trước P3 (2026-09-22)
+### ✅ Edge AI chặng 1 — chặn lỗi và tài liệu trước P3 (2026-09-22) — XONG TRỌN 6 TASK
 
 Chặng 1 của lộ trình `docs/superpowers/plans/2026-09-21-lo-trinh-edge-ai-agent-rag.md`.
-**Ba task đầu xong**; Task 4–6 còn lại (thuật ngữ · tài liệu backend · spike RAG).
 
 **Task 1 — `kiemGiong`, bộ kiểm GIỌNG đứng cạnh `kiemSo`.** `kiemSo` chỉ hỏi *"mọi con số
 trong câu có trong gói không?"*, **không** hỏi *"câu có diễn giải đúng những con số ấy
@@ -663,10 +662,45 @@ uống 80k). ⭐ Trước lát *"cửa sổ nhìn lại"* con số ấy là **0/
 lặng — nên đây là **bằng chứng lát hôm qua sống thật trên dữ liệu thật**, không chỉ trong
 fixture.
 
-**Mức nền sau ba task:** `flutter test` **3268/3268, 2 skip**; `flutter analyze` **26**;
+**Task 4 — thuật ngữ Edge AI.** Đổi ở **văn bản**, giữ tên thư mục mã `lib/features/ai_edge/`
+(đổi là sửa 36 tệp import + 3 test quét để không ai ngoài nhóm thấy khác biệt). Banner đầu
+`AI_EDGE_FEATURE.md`, mục 10.1 viết lại, mục **1.2** mới ở `AI_AGENT_ARCHITECTURE.md`. Câu
+*"công nghệ thập niên 1980"* đã bỏ: nó đúng về kỹ thuật nhưng mời gọi cách đọc sai về cả mảng,
+và người dùng đã vấp thật. ⚠️ **`grep` BỎ SÓT một dòng tiếng Việt** trong lượt soát (cụm *"hệ
+chuyên gia"*), Python đọc tệp thì bắt đúng — đây là lần thứ ba công cụ lọc dòng làm sai một
+kết luận trong dự án này.
+
+**Task 5 — tài liệu cho backend.** `CAN-LAM/EDGE_AI_THUAT_NGU_VA_HAI_MAU_THUAN.md`: tên gọi,
+mâu thuẫn ① (F1 *"không rời thiết bị"* vs `Standard_RAG.md:169` *"toàn bộ dữ liệu tài chính của
+User"*), mâu thuẫn ② (tầng 3 classifier gửi mô tả giao dịch sang Gemini trong khi backend mã hoá
+`Note` at-rest). ⚠️ Đo hôm nay **chặt hơn** bản đo 2026-09-21: `.env` **không khai** hai khoá API
+ấy (16 biến), nên tầng 3 **chưa từng chạy một lần nào** — đó là lý do nó là *quyết định*, không
+phải *sự cố*. ⚠️ `CAN-LAM/` nay có **ba** tệp xin, đừng tin mục 0 của README.
+
+**Task 6 — spike RAG on-device, đo trên máy thật.** Bảng đo đầy đủ ở mục **5.5**
+`AI_AGENT_ARCHITECTURE.md`. Ẩn số 1 **đạt**: `flutter_gemma_rag_sqlite` **1.3.2** tương thích
+`flutter_gemma` 1.8.3, và KNN chạy **trong SQLite** qua `sqlite-vec` chứ không brute-force Dart.
+Ẩn số 2 **chặn**, và đó là câu trả lời:
+
+🛑 **M4 = KHÔNG làm RAG phía client.** Kiến thức chung chuyển sang **backend RAG** (chặng 6);
+client gọi một endpoint, và câu *"có áp dụng RAG"* vẫn đúng, chỉ là đúng ở phía server. Ba con số
+quyết định: mô hình embedding **tải tự do duy nhất là Gecko 110M English-only** → top-3 đúng
+**3/5** trên câu hỏi tiếng Việt; **mọi** bản EmbeddingGemma đa ngữ trả **401** (gated), kể cả
+`litert-community/embeddinggemma-300m`; truy vấn **251 ms** và index **253 ms/đoạn**, trên ngưỡng
+200 ms đặt trước. RAM đỉnh 533 MB PSS, chiều vector 768, tổng tải nếu ship ~2,52 GB.
+
+⚠️ **Ba lỗi đáng nhớ nếu ai đó mở lại hướng này.** URL Gecko trong `embedding_models.dart` của gói
+trả **404** (tệp thật tên `Gecko_<seqlen>_{quant,f32}.tflite`); bảng cùng tệp khai
+`needsAuth: true` cho **cả năm** mục, đúng với EmbeddingGemma nhưng **sai với Gecko**; và chữ ký
+API thật khác kế hoạch spike ở ba chỗ (`RetrievalResult` mang `id`/`similarity` chứ không
+`document`/`score`, entry point là `FlutterGemmaPlugin.instance`, và `install()` **đã** tự đặt
+active embedder). Build app spike còn vấp `Could not close incremental caches` mà **`flutter
+clean` không cứu được** — chỉ khỏi khi đặt `kotlin.incremental=false`.
+
+**Mức nền sau trọn chặng:** `flutter test` **3268/3268, 2 skip**; `flutter analyze` **26**;
 schema **v24** không đổi; payload không đổi. Máy thật **OnePlus 13R `CPH2691` đã nối `adb`**
 (kiểm 2026-09-22) — điều kiện vào chặng 2 (P3) đã thoả, bẫy driver `DeviceInterfaceGUIDs`
-không tái phát.
+không tái phát. **Bước tiếp: chặng 2 — thi công P3 (cắm SLM), 10 task.**
 
 ### ✅ Cửa sổ nhìn lại, và thẻ "Chưa đặt ngân sách" (2026-09-21)
 
