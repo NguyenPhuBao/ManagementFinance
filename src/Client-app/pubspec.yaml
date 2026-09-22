@@ -22,6 +22,14 @@ dependencies:
   # Dependency injection
   get_it: ^7.7.0
 
+  # Edge AI — mô hình chạy trên máy (P3).
+  # ⚠️ HAI gói, không phải một: core `flutter_gemma` KHÔNG kèm engine nào, thiếu
+  # `flutter_gemma_litertlm` thì `getActiveModel()` ném "add the engine package"
+  # (P1 mục 8.5 `AI_EDGE_FEATURE.md`). Ghim CỨNG như `fl_chart`: nâng gói chạy
+  # mô hình là việc phải đo lại trên máy thật, không phải việc `pub upgrade` tự làm.
+  flutter_gemma: 1.8.3
+  flutter_gemma_litertlm: ^1.7.0
+
   # Local database
   drift: ^2.21.0
   sqlite3_flutter_libs: ^0.5.24
