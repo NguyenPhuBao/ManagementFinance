@@ -594,7 +594,79 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-21)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-22)
+
+### ✅ Edge AI chặng 1 — chặn lỗi và tài liệu trước P3 (2026-09-22)
+
+Chặng 1 của lộ trình `docs/superpowers/plans/2026-09-21-lo-trinh-edge-ai-agent-rag.md`.
+**Ba task đầu xong**; Task 4–6 còn lại (thuật ngữ · tài liệu backend · spike RAG).
+
+**Task 1 — `kiemGiong`, bộ kiểm GIỌNG đứng cạnh `kiemSo`.** `kiemSo` chỉ hỏi *"mọi con số
+trong câu có trong gói không?"*, **không** hỏi *"câu có diễn giải đúng những con số ấy
+không?"*. Câu *"Bạn đang kiểm soát tốt — mới dùng 45.000 đ trên hạn mức 50.000 đ (90,0%),
+còn 11 ngày"* qua được bộ kiểm số dù 90 % trong 11 ngày là **sắp vượt**. Hệ luật **đã biết**
+mức (`MucNhanXet`), chỉ là chưa ai đối chiếu câu với mức. Hàm thuần ở
+`ai_edge/domain/kiem_giong.dart`, 8 ca test. ⚠️ **Blocklist theo CỤM, không theo từ**, kèm
+kiểm phủ định trong **ba từ** trước cụm: *"chưa kiểm soát tốt"* là cảnh báo, không phải trấn
+an — blocklist theo từ đơn sẽ vứt nhầm câu đúng ấy. Bản sai (cửa sổ phủ định = cả câu) làm
+đúng một ca đỏ. Bẫy **4.3b** `AI_EDGE_FEATURE.md`.
+
+⚠️ Lỗ hổng này **chưa cắn** vì P3 chưa chạy, nên phần nối nằm ở **kế hoạch P3** chứ không ở
+mã: Task 1 của nó nay có `_dongMuc` (prompt chở dòng **MỨC** xuống, để mô hình thôi tự "đánh
+giá" từ số), Task 6 gọi `kiemGiong` ngay sau `kiemSo`. **Sửa kế hoạch rẻ hơn sửa mã.**
+⚠️ Hai lớp giả của kế hoạch ấy (`_GoiGia`, `_Goi`) cố định `MucNhanXet.binhThuong` nên phải
+nhận thêm tham số `muc` — không có nó thì ca "sai giọng" **không dựng được**.
+
+**Task 2 — giao diện NÓI RA "cần thêm N ngày dữ liệu" thay vì im.** `cuaSoNhinLai` trả `null`
+dưới 14 ngày — đúng luật — nhưng giao diện gộp *"không có gì để gợi ý"* và *"chưa đủ dữ liệu
+để gợi ý"* thành cùng **một sự im lặng**, và chính sự im lặng ấy đã che `suggestAmount` chết
+suốt hai tuần. Hàm thuần `soNgayConThieu` + `BudgetRepository.soNgayCoDuLieu` + thẻ
+`TheChuaDuDuLieu` trên trang danh sách + nhãn form. **Ngoại lệ có chủ ý** với luật *"khối rỗng
+thì ẩn hẳn"* (mục 3.34 `ANALYTICS_FEATURE.md`): *"cần thêm 6 ngày"* **là** tin.
+
+⚠️ **Bốn chỗ dễ vấp.** (1) Cubit chỉ hỏi tuổi dữ liệu khi **không** có đề xuất — bản sai
+`if (true)` làm đúng một ca đỏ, và một phép đọc thừa ở mỗi lần phát lại stream là giá thật.
+(2) Trường mới phải đi vào **cả hai** đường phát của `_phat` — đúng bẫy *"`_phat` thoát sớm"*.
+(3) Kế hoạch viết `if (state.deXuat == null && state.soNgayConThieu case final thieu?)` —
+**không biên dịch được**, `case` không kết hợp với `&&` như thế; dạng đúng là
+`if (state.soNgayConThieu case final thieu? when state.deXuat == null)`. (4) Ca *"có đề xuất
+thì thẻ đề xuất thắng"* dựng `thieu: null` nên **không canh** được vế `when` ấy — bỏ vế đi mà
+ca vẫn xanh; nay có ca thứ tư dựng **cả hai** khác `null` (trạng thái cubit không bao giờ tạo
+ra, nhưng đó chính là lớp phòng thủ thứ hai), và bản sai làm nó đỏ.
+
+⚠️ Kế hoạch đoán **bảy** lớp giả `implements BudgetRepository` cần thêm phương thức; thực tế
+**một** — sáu tệp kia dùng `noSuchMethod`. Đo bằng `flutter analyze`, đừng sửa mù theo danh
+sách trong kế hoạch.
+
+**✅ Nghiệm thu máy ảo 411dp (2026-09-22, `emulator-5554`, tài khoản 10).** Trạng thái "tài
+khoản trẻ" **không tồn tại** trên máy ảo (tài khoản 10 có 19 ngày dữ liệu), nên nó được dựng
+bằng cách **tạm nâng `kSoNgayToiThieu` lên 25** rồi build — không tạo tài khoản rác, không
+sửa dữ liệu người dùng, và đo đúng thứ `flutter test` mù. Kết quả: thẻ nói *"Cần thêm 6 ngày
+dữ liệu để gợi ý ngân sách."* đứng **dưới** thẻ "Đề xuất cân đối" và **trên** tiêu đề "Danh
+mục chi tiêu"; nhãn form nói *"Cần thêm 6 ngày dữ liệu để gợi ý hạn mức."* và **không** có
+nút "Dùng số này" (không có số nào để dùng); `RenderFlex overflowed` = **0** suốt phiên. Hằng
+đã trả về 14 và máy ảo đã cài lại bản thật.
+
+**Task 3 — phép kiểm chạy trên CSDL THẬT.** Bộ test **mù** với đầu vào chết: nó dựng sẵn dữ
+liệu. `test/tool/kiem_csdl_that_test.dart` là một `flutter test` `skip: true` (chạy tay bằng
+`--run-skipped`, cùng nếp `tao_icon_app_test.dart`) đọc một tệp SQLite **chép từ máy**, in
+bảng đo rồi **thất bại có tên** khi một gói số đáng ra phải nuôi được lại rỗng.
+
+⚠️ Đường tệp thật là **`app_flutter/flowmoney.db`** (không phải `.sqlite`), và phải chép cả
+`-wal` lẫn `-shm`: đo 2026-09-22 thấy tệp chính mốc **19/09** còn WAL mốc **21/09**, tức mọi
+giao dịch gần đây nằm trong WAL — chép mỗi tệp chính là phép đo báo *"thiếu dữ liệu"* **sai**
+(bẫy 4.9). Lệnh đầy đủ ở mục "Lệnh hay dùng" `CLAUDE.md`.
+
+**Phép đo đầu tiên, tài khoản 10:** tuổi dữ liệu **19** ngày · cửa sổ **19** ngày · **5/11**
+danh mục chi gợi ý được (Di chuyển 570k · Giáo dục 80k · Giải trí 50k · Mua sắm 100k · Ăn
+uống 80k). ⭐ Trước lát *"cửa sổ nhìn lại"* con số ấy là **0/11** trên **mọi** tài khoản, im
+lặng — nên đây là **bằng chứng lát hôm qua sống thật trên dữ liệu thật**, không chỉ trong
+fixture.
+
+**Mức nền sau ba task:** `flutter test` **3268/3268, 2 skip**; `flutter analyze` **26**;
+schema **v24** không đổi; payload không đổi. Máy thật **OnePlus 13R `CPH2691` đã nối `adb`**
+(kiểm 2026-09-22) — điều kiện vào chặng 2 (P3) đã thoả, bẫy driver `DeviceInterfaceGUIDs`
+không tái phát.
 
 ### ✅ Cửa sổ nhìn lại, và thẻ "Chưa đặt ngân sách" (2026-09-21)
 
