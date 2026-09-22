@@ -148,22 +148,41 @@ void main() {
           _vi('tiết kiệm mua nhà', 0),
         ];
 
-    test('mỗi ví góp một mục Số dư mang TÊN ví', () {
+    test('mỗi ví góp một mục mang TÊN ví', () {
       final g = GoiSoVi.tu(bonVi());
-      final ten = [
-        for (final s in g.soLieu)
-          if (s.nhan == 'Số dư') s.ten,
-      ];
+      // Lọc theo `ten`, không theo nhãn: nhãn đổi theo trạng thái ví
+      // (`Đang âm` / `Số dư`), và đó chính là điểm của lát này.
+      final ten = g.soLieu.where((s) => s.ten != null).map((s) => s.ten);
       expect(ten, containsAll(<String>['Tiền mặt', 'test', 'Tiết kiệm']),
           reason: 'Câu 15 của bảng đo — "ví nào đang âm" — nhận về "Ví đang '
               'âm: 1" vì gói chỉ có số đếm, không có tên.');
     });
 
-    test('ví ÂM đứng đầu — đó là ví người dùng hỏi tới', () {
+    test('⭐ ví ÂM mang nhãn nói rõ là đang âm', () {
       final g = GoiSoVi.tu(bonVi());
-      final soDu = g.soLieu.where((s) => s.nhan == 'Số dư').toList();
-      expect(soDu.first.ten, 'test');
-      expect(soDu.first.soTho, -100000);
+      final am = g.soLieu.where((s) => s.nhan == 'Đang âm').toList();
+      expect(am.map((s) => s.ten), ['test'],
+          reason: 'Đo máy thật 2026-09-23: gói nói "Ví đang âm = 1" và riêng '
+              'rẽ "test · Số dư = -100.000 đ", không chỗ nào nói test LÀ ví '
+              'âm. Mô hình sinh "Số ví đang âm là -100.000 đ" — nối hai mục '
+              'bằng cách bịa nhãn, và bị chặn.');
+      expect(am.single.soTho, -100000);
+      expect(g.soLieu.where((s) => s.nhan == 'Số dư').map((s) => s.ten),
+          isNot(contains('test')),
+          reason: 'Một ví chỉ có MỘT mục — hai mục cùng số dư là tự dựng lại '
+              'tình huống trùng giá trị mà thẻ số liệu phải gỡ.');
+    });
+
+    test('ví âm ĐỨNG ĐẦU danh sách', () {
+      final g = GoiSoVi.tu(bonVi());
+      final coTen = g.soLieu.where((s) => s.ten != null).toList();
+      expect(coTen.first.ten, 'test');
+    });
+
+    test('nhãn mới KHÁC nhãn của mục đếm, để mẫu câu không bị đè', () {
+      final g = GoiSoVi.tu(bonVi());
+      expect(g.soLieu.where((s) => s.nhan == 'Ví đang âm').single.chuoi, '1',
+          reason: 'Mẫu câu tra `s[\'Ví đang âm\']` và phải nhận SỐ ĐẾM.');
     });
 
     test('ví đã XOÁ MỀM không vào danh sách', () {

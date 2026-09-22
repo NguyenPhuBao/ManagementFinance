@@ -61,9 +61,24 @@ class GoiSoHoaDon extends GoiSo {
       for (final b in bills)
         if (b.dueDate.isBefore(cuoiKy) && conPhaiTra(b)) b,
     ]..sort((x, y) => x.dueDate.compareTo(y.dueDate));
+    // ⚠️ Hoá đơn quá hạn mang nhãn NÓI RÕ là quá hạn, không dùng chung nhãn
+    // `Phải trả`. Đo máy thật 2026-09-23: gói nói `Quá hạn: 1` và riêng rẽ
+    // `Kiem · Phải trả: 45.000 đ`, **không chỗ nào nói Kiem LÀ cái quá hạn** —
+    // mô hình phải nối hai mục bằng suy luận, và E2B trả lời bằng con số tổng
+    // thay vì bằng tên. Danh sách có tên là **cần nhưng chưa đủ**: nhãn phải
+    // mang chính trạng thái mà câu hỏi hỏi.
+    //
+    // ⚠️ Nhãn là `Đã quá hạn`, KHÁC `Quá hạn` của mục đếm: mẫu câu tra
+    // `s['Quá hạn']` và phải nhận số đếm, mà map lấy giá trị cuối khi trùng.
     final theoHoaDon = <SoLieu>[
       for (final b in conTra.take(kToiDaMucMoiGoi))
-        soTien('Phải trả', b.amount, ten: b.name),
+        soTien(
+          billDisplayStatusOf(b, now) == BillDisplayStatus.overdue
+              ? 'Đã quá hạn'
+              : 'Phải trả',
+          b.amount,
+          ten: b.name,
+        ),
     ];
 
     // Kỳ không có hoá đơn nào đáng nói: không thẻ số liệu nào, chỉ một câu.

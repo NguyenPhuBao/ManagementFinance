@@ -188,20 +188,40 @@ void main() {
         _bill(id: 'h1', ten: 'Kiem', dueDate: DateTime(2026, 9, 18)),
         _bill(id: 'h2', ten: 'di h0c', dueDate: DateTime(2026, 9, 25)),
       ], now: now);
-      final ten = g.soLieu.where((s) => s.nhan == 'Phải trả').map((s) => s.ten);
+      // Lọc theo `ten`, không theo nhãn: nhãn đổi theo trạng thái hoá đơn
+      // (`Đã quá hạn` / `Phải trả`), và đó chính là điểm của lát này.
+      final ten = g.soLieu.where((s) => s.ten != null).map((s) => s.ten);
       expect(ten, containsAll(<String>['Kiem', 'di h0c']),
           reason: 'Câu 13 của bảng đo — "hoá đơn nào quá hạn" — trả lời sang '
               'hẳn chủ đề khác ("Ngân sách căng nhất là 90,0%") vì gói hoá '
               'đơn không mang tên nào.');
     });
 
-    test('hoá đơn QUÁ HẠN đứng đầu', () {
+    test('⭐ hoá đơn QUÁ HẠN mang nhãn nói rõ là quá hạn', () {
       final g = GoiSoHoaDon.tu([
         _bill(id: 'h2', ten: 'di h0c', dueDate: DateTime(2026, 9, 25)),
         _bill(id: 'h1', ten: 'Kiem', dueDate: DateTime(2026, 9, 18)),
       ], now: now);
-      final muc = g.soLieu.where((s) => s.nhan == 'Phải trả').toList();
-      expect(muc.first.ten, 'Kiem');
+      final quaHan =
+          g.soLieu.where((s) => s.nhan == 'Đã quá hạn').map((s) => s.ten);
+      expect(quaHan, ['Kiem'],
+          reason: 'Đo máy thật 2026-09-23: gói nói "Quá hạn = 1" và riêng rẽ '
+              '"Kiem · Phải trả = 45.000 đ", KHÔNG chỗ nào nói Kiem LÀ cái '
+              'quá hạn. Mô hình phải suy luận để nối hai mục, và E2B không '
+              'làm được — nó trả lời bằng con số tổng. Nhãn phải mang chính '
+              'trạng thái mà câu hỏi hỏi.');
+      final chuaToiHan =
+          g.soLieu.where((s) => s.nhan == 'Phải trả').map((s) => s.ten);
+      expect(chuaToiHan, ['di h0c']);
+    });
+
+    test('nhãn mới KHÁC nhãn của mục đếm, để mẫu câu không bị đè', () {
+      final g = GoiSoHoaDon.tu([
+        _bill(id: 'h1', ten: 'Kiem', dueDate: DateTime(2026, 9, 18)),
+      ], now: now);
+      expect(g.soLieu.where((s) => s.nhan == 'Quá hạn').single.chuoi, '1',
+          reason: 'Mẫu câu tra `s[\'Quá hạn\']` và phải nhận SỐ ĐẾM. Dùng lại '
+              'đúng nhãn ấy cho mục có tên là map lấy 45.000 đ thay vì 1.');
     });
 
     test('hoá đơn ĐÃ TRẢ không vào danh sách', () {

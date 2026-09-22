@@ -113,9 +113,21 @@ class GoiSoVi extends GoiSo {
       for (final v in vis)
         if (!v.isDeleted) v,
     ]..sort((x, y) => x.soDu.compareTo(y.soDu));
+    // ⚠️ Ví âm mang nhãn NÓI RÕ là đang âm. Đo máy thật 2026-09-23: gói nói
+    // `Ví đang âm: 1` và riêng rẽ `test · Số dư: -100.000 đ`, không chỗ nào
+    // nói test LÀ ví âm — mô hình sinh *"Số ví đang âm là -100.000 đ"*, tức
+    // nối hai mục bằng cách **bịa nhãn**, và `kiemNhan` chặn. Nhãn phải mang
+    // chính trạng thái mà câu hỏi hỏi.
+    //
+    // ⚠️ Nhãn là `Đang âm`, KHÁC `Ví đang âm` của mục đếm: mẫu câu tra
+    // `s['Ví đang âm']` và phải nhận số đếm.
     final theoVi = <SoLieu>[
       for (final v in conSong.take(kToiDaMucMoiGoi))
-        soTien('Số dư', v.soDu, ten: v.ten),
+        soTien(
+          v.soDu < _nguongAm && !v.allowNegative ? 'Đang âm' : 'Số dư',
+          v.soDu,
+          ten: v.ten,
+        ),
     ];
 
     final rong = soTrong == 0 && soNgoai == 0;

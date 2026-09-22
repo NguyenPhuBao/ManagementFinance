@@ -136,8 +136,17 @@ void main() {
       );
     });
 
-    test('câu nêu đúng NHÃN vẫn lọt — đây là NỚI, không phải thay', () {
-      expect(kiemNhan('Tỉ lệ là 90,0%.', [nganSach]), isTrue);
+    test('câu chỉ nêu NHÃN của một mục CÓ TÊN thì bị chặn', () {
+      expect(
+        kiemNhan('Tỉ lệ là 90,0%.', [nganSach]),
+        isFalse,
+        reason: 'Ca này từng kỳ vọng `true` (lát 4a bản đầu chấp nhận nhãn '
+            'HOẶC tên). Phép đo máy thật 2026-09-23 lật nó: gói mang nhiều '
+            'mục cùng nhãn — bốn ngân sách cùng `Tỉ lệ`, các ví cùng `Số dư` '
+            '— nên một câu chỉ nhắc nhãn KHÔNG nói được nó đang nói về cái '
+            'nào. Chính lỗ ấy để lọt "Số ví đang âm: -100.000 đ", câu mà bản '
+            'trước lát 4a vẫn chặn được.',
+      );
     });
 
     test('câu bịa nhãn VẪN bị chặn — vế tên không mở toang lớp chắn', () {
@@ -162,6 +171,35 @@ void main() {
     test('ten null thì luật cũ nguyên vẹn', () {
       expect(kiemNhan('Tổng chi là 2.141.000 đ.', [phanTich]), isTrue);
       expect(kiemNhan('Tổng thu là 2.141.000 đ.', [phanTich]), isFalse);
+    });
+
+    test('⭐ mục CÓ TÊN đòi câu nêu TÊN — nhãn đúng thôi chưa đủ', () {
+      // Hồi quy đo được trên máy thật 2026-09-23: gói ví mang
+      // `test · Đang âm: -100.000 đ`, và mô hình sinh *"Số ví đang âm:
+      // -100.000 đ"* — chứa đủ từ khoá của nhãn ("đang", "âm") nên lọt, dù
+      // câu SAI NGHĨA: số ví là 1, không phải -100.000 đ. Trước lát 4a câu
+      // ấy bị chặn; nhãn mới làm nó lọt.
+      final vi = _Gia('vi', [soTien('Đang âm', -100000, ten: 'test')]);
+      expect(
+        kiemNhan('Số ví đang âm: -100.000 đ.', [vi]),
+        isFalse,
+        reason: 'Con số thuộc về MỘT ví có tên; câu không nêu tên ấy thì '
+            'không có gì buộc nó nói về đúng ví đó.',
+      );
+      expect(kiemNhan('Ví test đang âm -100.000 đ.', [vi]), isTrue);
+    });
+
+    test('mục có tên vẫn lọt khi một mục KHÔNG tên cùng giá trị khớp nhãn',
+        () {
+      // Câu 3 của bảng đo: 90,0% vừa là `Giáo dục · Tỉ lệ` của gói ngân sách,
+      // vừa là `Ngân sách căng nhất` của gói trang chủ — mục sau không có tên
+      // nên vế nhãn vẫn dùng được, và câu đúng không bị siết oan.
+      final ns = _Gia('ngan_sach', [soPhanTram('Tỉ lệ', 90.0, ten: 'Giáo dục')]);
+      final tc = _Gia('trang_chu', [soPhanTram('Ngân sách căng nhất', 90.0)]);
+      expect(
+        kiemNhan('Ngân sách căng nhất là 90,0%.', [ns, tc]),
+        isTrue,
+      );
     });
   });
 }

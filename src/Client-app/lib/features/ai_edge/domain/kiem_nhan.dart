@@ -62,9 +62,14 @@ bool kiemNhan(String cau, List<GoiSo> goi) {
     final nhans = soLieuKhop(x, goi);
     if (nhans.isEmpty) return false;
     final coNhanDung = nhans.any(
-      (s) =>
-          tuKhoaNhan(s.nhan).every(amTiet.contains) ||
-          (s.ten != null && tuKhoaNhan(s.ten!).every(amTiet.contains)),
+      (s) => s.ten == null
+          // Không thuộc đối tượng nào → nhãn là tất cả những gì có.
+          ? tuKhoaNhan(s.nhan).every(amTiet.contains)
+          // Thuộc một đối tượng → câu phải NÊU TÊN đối tượng ấy. Nhãn đúng
+          // thôi chưa đủ: gói mang nhiều mục cùng nhãn (bốn ngân sách cùng
+          // `Tỉ lệ`), nên một câu chỉ nhắc nhãn không nói được nó đang nói
+          // về cái nào.
+          : tuKhoaNhan(s.ten!).every(amTiet.contains),
     );
     if (!coNhanDung) return false;
   }
