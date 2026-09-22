@@ -876,7 +876,13 @@ mâu thuẫn ① (F1 *"không rời thiết bị"* vs `Standard_RAG.md:169` *"to
 User"*), mâu thuẫn ② (tầng 3 classifier gửi mô tả giao dịch sang Gemini trong khi backend mã hoá
 `Note` at-rest). ⚠️ Đo hôm nay **chặt hơn** bản đo 2026-09-21: `.env` **không khai** hai khoá API
 ấy (16 biến), nên tầng 3 **chưa từng chạy một lần nào** — đó là lý do nó là *quyết định*, không
-phải *sự cố*. ⚠️ `CAN-LAM/` nay có **ba** tệp xin, đừng tin mục 0 của README.
+phải *sự cố*. ⚠️ `CAN-LAM/` khi ấy có **ba** tệp xin, đừng tin mục 0 của README. *(Cập nhật
+2026-09-22 tối muộn: backend đóng **cả hai** tệp AI ở `b147fee` — tệp này và
+`AI_EDGE_SLM_SUA_TAI_LIEU.md` — client kiểm lại bằng máy rồi chuyển sang `DA-XONG/`. Hai việc của
+tệp này đo được là xong thật: `grep "AI Edge"` trong `docs/AI/` ra **0** dòng, và `Standard_RAG.md`
+§6 đã chốt lối ① — số liệu cá nhân đi bằng function-calling, không index lên vector DB server. Nay
+`CAN-LAM/` có **hai** tệp: `CLIENT_BO_LIEN_KET_NGAN_HANG.md` và đơn vòng **hai**
+`AI_EDGE_SLM_SOAT_SAU_B147FEE.md` — **`ls` lại, đừng chép con số này**.)*
 
 **Task 6 — spike RAG on-device, đo trên máy thật.** Bảng đo đầy đủ ở mục **5.5**
 `AI_AGENT_ARCHITECTURE.md`. Ẩn số 1 **đạt**: `flutter_gemma_rag_sqlite` **1.3.2** tương thích
@@ -2350,8 +2356,11 @@ Sankey) cũng bỏ.
 Đây là quyết định về **phạm vi sản phẩm**, không phải hoãn. Hệ quả cần nhớ:
 
 - **Đừng lên kế hoạch cho hai mục ấy nữa**, kể cả khi thấy bảng A8 còn ô trống.
-- **Đừng mở lại hàng đợi `docs/superpowers/backend/CAN-LAM/`** (đang rỗng) để
-  xin dư nợ gốc / lãi suất / kỳ hạn — mục duy nhất cần những cột ấy đã bị bỏ.
+- **Đừng mở lại hàng đợi `docs/superpowers/backend/CAN-LAM/`** để xin dư nợ gốc
+  / lãi suất / kỳ hạn — mục duy nhất cần những cột ấy đã bị bỏ. *(Chữ "đang
+  rỗng" đứng ở đây tới 2026-09-22 là ảnh chụp của 2026-09-16 và đã sai từ
+  2026-09-18; thư mục ấy nay có **hai** tệp xin. Lời dặn thì vẫn nguyên: đừng
+  mở lại hàng đợi **cho việc này**.)*
 - Kế hoạch `docs/superpowers/plans/2026-09-15-con-lai-mang-phan-tich.md` và
   `2026-09-15-ke-hoach.md` (cả hai gitignore) nay **không còn hạng mục nào**.
 

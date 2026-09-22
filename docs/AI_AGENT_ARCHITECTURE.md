@@ -596,5 +596,5 @@ Thứ bắt được là một phép đo trên **CSDL thật**. Quyết định 
 | Tính năng, bẫy, bảng đo P1 | `docs/AI_EDGE_FEATURE.md` — mục **8** (đo), **10** (mảng này thực chất là gì), **11** (bản đồ năng lực) |
 | Kế hoạch cắm mô hình | `docs/superpowers/plans/2026-09-20-ai-edge-p3-cam-slm.md` |
 | Đặc tả gốc (backend quản) | `docs/AI/AI_Edge-SLM.md/Client-app.md` · `docs/AI/Standard_RAG.md` |
-| Chỗ sai của đặc tả gốc | `docs/superpowers/backend/CAN-LAM/AI_EDGE_SLM_SUA_TAI_LIEU.md` |
+| Chỗ sai của đặc tả gốc | Vòng **hai** (đang mở): `docs/superpowers/backend/CAN-LAM/AI_EDGE_SLM_SOAT_SAU_B147FEE.md`. Vòng **một** đã đóng ở `b147fee` (2026-09-22): `DA-XONG/AI_EDGE_SLM_SUA_TAI_LIEU.md` và `DA-XONG/EDGE_AI_THUAT_NGU_VA_HAI_MAU_THUAN.md` |
 | Việc còn mở của cả dự án | `docs/superpowers/plans/2026-09-21-ai-viec-tiep-theo.md` |

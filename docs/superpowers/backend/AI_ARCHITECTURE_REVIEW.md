@@ -285,6 +285,18 @@ Zod từ đầu), **3.3 Chroma trước C**; khối 2 và A-client độc lập.
 
 ### Khối 2 — On-device Edge AI *(client, XL)*
 
+> ⚠️ **Bảng này là kế hoạch của ngày 2026-09-17, giữ nguyên làm ảnh chụp — nó đã
+> lệch hiện trạng ở bốn chỗ.** P2 xong 2026-09-20, P3 xong 2026-09-22, mô hình đã
+> chạy thật trên hai máy. Khác biệt: (1) client dựng **một** bảng cục bộ
+> `ai_rebalancing_feedbacks` cộng cột `categories.ai_co_dinh`, **không** ba bảng —
+> đặc tả cũng đã sửa theo ở `b147fee`; (2) mô hình là **Gemma 4 E2B, 2,41 GB**,
+> không phải ≈ 550 MB; (3) **không dùng ngưỡng RAM** làm điều kiện rơi bậc — phép
+> đo P1 cho thấy RAM đỉnh phụ thuộc backend suy luận (GPU ~0,96 GB, CPU 1,7–3,3 GB)
+> chứ không phụ thuộc cỡ mô hình, nên bậc thang thật là canary GPU + `try/catch`;
+> (4) **Tầng 1 chưa thi công** — `saving_goal_ratio` vẫn chưa chốt nguồn (đơn vòng
+> hai `CAN-LAM/AI_EDGE_SLM_SOAT_SAU_B147FEE.md` §1.2). Trạng thái thật ở mục **9**
+> `docs/AI_EDGE_FEATURE.md`.
+
 | Việc | Chi tiết | Vướng |
 |---|---|---|
 | 3 bảng Drift — schema v24 | `local_category_features`, `local_rebalancing_feedback`, `local_ai_alert_history`; cục bộ, không vào `SyncEntityType` | Tài liệu đòi 3 cột `is_outlier`/`is_one_time`/`is_recurring_hint` vào `transactions` — cột cục bộ, phải quyết trước |

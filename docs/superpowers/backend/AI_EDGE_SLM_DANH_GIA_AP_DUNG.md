@@ -209,6 +209,11 @@ Mô hình **tải về lần đầu**, không đóng vào APK. Ngưỡng RAM ở
 
 Tài liệu định ba bảng. **Chỉ cần một**:
 
+> ✅ **Backend đã sửa đặc tả theo đúng kết luận này ở `b147fee` (2026-09-22):** H4 và Phần IV nay
+> khai **một** bảng `ai_rebalancing_feedbacks` (tên Drift thật của client, khác tên
+> `local_rebalancing_feedback` mà bảng dưới đây dùng), bỏ hẳn hai bảng kia. Client thi công đúng
+> thế ở schema **v24**, cộng cột cục bộ `categories.ai_co_dinh`.
+
 | Bảng | Kết luận | Lý do |
 |---|---|---|
 | `local_category_features` | **Bỏ** | Với vài trăm hàng, tính tại chỗ từ `watchKy` rẻ hơn cache. Và bảng **tự mâu thuẫn**: khoá chính là `category_id` nhưng có cột `month`, tức mỗi danh mục chỉ giữ được **một** tháng, trong khi `avg_spend_6m` và `CV` cần lịch sử theo tháng. Nếu giữ, khoá phải là cặp `(category_id, month)` |

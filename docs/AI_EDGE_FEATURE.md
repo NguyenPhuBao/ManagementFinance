@@ -54,7 +54,14 @@ dưới đây trước mục 4.1 của spec**: P1 đã lật bậc thang ở đ�
 `…-p2-tang-edge-mau-cau.md`, `…/2026-09-20-ai-edge-p3-cam-slm.md` (10 task).
 **Bản đánh giá gốc:** `docs/superpowers/backend/AI_EDGE_SLM_DANH_GIA_AP_DUNG.md` (2026-09-18, có
 banner đính chính ngày 19). **Đặc tả gốc** do backend viết: `docs/AI/AI_Edge-SLM.md/Client-app.md`
-(chỉ đọc; chỗ sai xin sửa qua `docs/superpowers/backend/CAN-LAM/AI_EDGE_SLM_SUA_TAI_LIEU.md`).
+(chỉ đọc; chỗ sai xin sửa qua `docs/superpowers/backend/CAN-LAM/`). ⚠️ Vòng **một** của việc soát ấy
+— `AI_EDGE_SLM_SUA_TAI_LIEU.md` và `EDGE_AI_THUAT_NGU_VA_HAI_MAU_THUAN.md` — backend **đóng ở
+`b147fee` ngày 2026-09-22** và client đã chuyển sang `DA-XONG/`; đơn đang mở là vòng **hai**,
+`CAN-LAM/AI_EDGE_SLM_SOAT_SAU_B147FEE.md` (11 chỗ, trong đó **bốn cặp tài liệu tự nói ngược chính
+nó** do chính lượt sửa ấy sinh ra). 🛑 Một trong số đó — **D1**, cửa sổ thu nhập — **sai vì lỗi của
+client**: đơn vòng một nộp ngày 19/09 đề nghị *"ba tháng liền trước"*, mã đổi sang `cuaSoNhinLai`
+ngày 21/09, backend thi hành ngày 22/09 đúng câu đã nộp. **Một đơn xin nằm trong hàng đợi cũng lạc
+hậu theo mã** — đổi mã vùng nào thì `grep` vùng ấy trong cả `CAN-LAM/`.
 
 > Tài liệu này là **nguồn sự thật phía client** cho mảng AI. Mỗi task của kế hoạch điền vào đây
 > ngay trong task, không dồn cuối. Mọi con số ghi kèm ngày đếm.
