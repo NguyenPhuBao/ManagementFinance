@@ -1,6 +1,6 @@
-# 🧠 ĐẶC TẢ KIẾN TRÚC & QUY TẮC NGHIỆP VỤ AI ĐIỀU PHỐI NGÂN SÁCH (ON-DEVICE EDGE SLM) — CLIENT-APP
+# 🧠 ĐẶC TẢ KIẾN TRÚC & QUY TẮC NGHIỆP VỤ EDGE AI ĐIỀU PHỐI NGÂN SÁCH (ON-DEVICE EDGE SLM) — CLIENT-APP
 
-Tài liệu này là **Nguồn sự thật (Source of Truth)** toàn diện về kiến trúc, bản phác thảo thiết kế và toàn bộ hệ thống quy tắc nghiệp vụ vận hành (Business Rules) của hệ thống AI thông minh cục bộ trên thiết bị di động (**On-device Edge AI / "AI Điên"**) cho ứng dụng **Client-app (ManagementFinance)**.
+Tài liệu này là **Nguồn sự thật (Source of Truth)** toàn diện về kiến trúc, bản phác thảo thiết kế và toàn bộ hệ thống quy tắc nghiệp vụ vận hành (Business Rules) của hệ thống AI thông minh cục bộ trên thiết bị di động (**On-device Edge AI**) cho ứng dụng **Client-app (ManagementFinance)**.
 
 ---
 
@@ -19,9 +19,10 @@ Dự định phát triển một mô hình AI tích hợp trực tiếp tại m�
 ### 3. Kiến Trúc 3 Tầng Sơ Bộ & Lý Do Thiết Kế
 
 #### Sơ bộ 3 tầng:
-- **Tầng 1 — Feature Engineering (không cần AI):** Biến raw transactions thành các đặc trưng có ý nghĩa (tỷ trọng từng danh mục, độ biến động variance, tần suất, tính chu kỳ tuần/tháng, so sánh baseline cá nhân, tín hiệu bất thường). Đây là dữ liệu thống kê "sự thật" (ground truth) mà AI không được phép bịa.
+> ⚠️ **Làm rõ ranh giới kỹ thuật:** Tầng 1 và Tầng 2 là **hệ chuyên gia luật & giải thuật thống kê tất định** (không phải Machine Learning, kiểm toán được 100%). Tầng 3 (On-device SLM) mới là **Edge AI** theo đúng nghĩa chuẩn ngành.
+- **Tầng 1 — Feature Engineering (hàm thuần Dart, không cần AI):** Biến raw transactions thành các đặc trưng có ý nghĩa (tỷ trọng từng danh mục, độ biến động variance, tần suất, tính chu kỳ tuần/tháng, so sánh baseline cá nhân, tín hiệu bất thường). Đây là dữ liệu thống kê "sự thật" (ground truth) mà AI không được phép bịa.
 - **Tầng 2 — Suy luận & Tối ưu (Rule-engine + Optimization):** Nhìn mối quan hệ giữa các danh mục (correlation matrix), phân loại essential/flexible theo hành vi thực tế. Giải bài toán tối ưu phân bổ lại với ràng buộc "tổng chi $\le$ thu nhập, mục tiêu tiết kiệm $X\%$".
-- **Tầng 3 — SLM Diễn giải & Tương tác:** SLM nhận feature đã tính sẵn làm input để sinh phân tích bằng ngôn ngữ tự nhiên có ngữ cảnh cá nhân hóa, trả lời câu hỏi tự do và đề xuất kèm giải thích lý do.
+- **Tầng 3 — SLM Diễn giải & Tương tác (Edge AI):** SLM nhận feature đã tính sẵn làm input để sinh phân tích bằng ngôn ngữ tự nhiên có ngữ cảnh cá nhân hóa, trả lời câu hỏi tự do và đề xuất kèm giải thích lý do.
 
 #### Vì sao không để SLM tự "học" trực tiếp từ raw transactions:
 1. **SLM (1–4B params) rất yếu ở suy luận số học nhiều bước:** Dễ tính sai phần trăm hoặc sai tổng nếu để mô hình tự tính toán từ dữ liệu thô.
@@ -80,7 +81,7 @@ Transaction = {
 }
 ```
 
-> ⚠️ `is_recurring_hint`, `is_outlier` (A1) và `is_one_time` (A2) **chưa tồn tại** trong bảng `Transactions` của client (đo 2026-09-13). Ba cột này phải được thêm bằng một migration Drift (schema hiện tại **v21**) trước khi nhóm A chạy được; `is_outlier` là giá trị **suy ra** nên có thể đặt ở bảng cache `local_category_features` thay vì bảng giao dịch, còn `is_one_time` là cờ **do người dùng bấm** nên bắt buộc nằm ở hàng giao dịch.
+> ⚠️ **Lưu ý lược đồ Drift Client (schema v24, 2026-09-19):** Xem `docs/AI_EDGE_FEATURE.md` mục 6. Khoản vượt ngưỡng chi lớn (`nguongChiLon`) được tự động coi là "một lần" cho baseline mà **không thêm cột `is_one_time`** vào bảng giao dịch; `is_recurring_hint` được suy trực tiếp từ bảng `Bills` và lịch trích tự động của `Goals`. Cột `categories.ai_co_dinh` và bảng `ai_rebalancing_feedbacks` là các thực thể cục bộ trên client.
 
 #### 1.3. Đặc trưng tính cho mỗi danh mục (category-level features)
 
@@ -269,12 +270,12 @@ User query: "Tại sao tháng này tôi vượt ngân sách ăn uống?"
 
 | Lựa chọn | Ghi chú |
 |---|---|
-| **Gemma 3n / Gemma Nano** qua Google AI Edge | Tối ưu cho Android, có quantization sẵn (int4/int8) |
+| **Gemma 3n / Gemma Nano** qua Google LiteRT | Tối ưu cho Android, có quantization sẵn (int4/int8) |
 | **MediaPipe LLM Inference API** | Dễ tích hợp nhất, hỗ trợ nhiều model nhỏ (1-4B) |
-| **Apple Foundation Models** (iOS 18+) | Nếu build iOS, tận dụng model hệ thống có sẵn, không cần bundle riêng |
+| **Apple Foundation Models** (iOS 26+) | Nếu build iOS, tận dụng model hệ thống có sẵn, không cần bundle riêng |
 | **llama.cpp + GGUF** | Linh hoạt nhất nếu cần custom fine-tune, nhưng tốn công tích hợp hơn |
 
-Khuyến nghị: bắt đầu với **MediaPipe LLM Inference + Gemma nhỏ (2B, quantized 4-bit)** để có tooling ổn định, đo hiệu năng trên máy tầm trung trước khi quyết định custom fine-tune.
+Khuyến nghị: MediaPipe LLM Inference qua `flutter_gemma` + `flutter_gemma_litertlm`; mô hình là **Gemma 4 E2B cho mọi máy** (tệp `gemma-4-E2B-it.litertlm`, 2,41 GB). Backend ưu tiên GPU, lùi về CPU khi GPU hỏng; máy không phải arm64-v8a, chưa tải mô hình, hoặc runtime lỗi thì rơi về mẫu câu. **Không** chọn mô hình theo RAM thiết bị: phép đo cho thấy RAM đỉnh phụ thuộc **backend** (GPU ~0,96 GB, CPU 1,7–3,3 GB) chứ không phụ thuộc cỡ mô hình. Bảng đo thực nghiệm chi tiết xem tại `docs/AI_EDGE_FEATURE.md` mục 8.
 
 #### 3.5. Fine-tune hay Prompt-only?
 - Giai đoạn đầu: **không cần fine-tune**, dùng few-shot prompting với vài ví dụ mẫu (input JSON $\rightarrow$ output câu giải thích chuẩn) nạp trong system prompt.
@@ -300,12 +301,12 @@ Phần này chốt lại toàn bộ các quy tắc nghiệp vụ thực chiến 
 
 | Mã Quy Tắc | Tên Quy Tắc | Nội Dung Chi Tiết & Giải Thuật Thực Hiện | Lý Do Kỹ Thuật & Nghiệp Vụ |
 |:---:|---|---|---|
-| **A1** | **Xử lý Outlier Chi Tiêu Đột Biến** | Nếu một giao dịch có giá trị: `amount > 3 * avg_spend` của danh mục đó (hoặc vượt ngưỡng tuyệt đối do người dùng cấu hình), giao dịch sẽ được gắn cờ `is_outlier = true`.<br>• Giao dịch bị **loại trừ hoàn toàn** khỏi phép tính `avg_spend_3m`, `avg_spend_6m`, `CV`, `trend_slope`.<br>• Giao dịch **vẫn được tính 100%** vào `current_spend` và `projected_spend` của tháng hiện tại. | Tránh trường hợp 1 giao dịch mua xe máy hay đồ điện tử đắt tiền trong mục "Mua sắm" làm méo mó baseline dài hạn, nhưng vẫn phải phản ánh đúng nguy cơ thủng ngân sách trong tháng hiện tại. |
-| **A2** | **Loại Trừ Giao Dịch Một Lần (One-Time Event)** | Giao dịch được người dùng gắn cờ thủ công `is_one_time = true` (viện phí, tai nạn, sửa nhà, mua đồ công nghệ) luôn bị loại khỏi tính toán `regularity` và `essentiality`. | Tránh việc hệ thống học nhầm các sự kiện hy hữu mang tính bất khả kháng thành nhu cầu lặp lại định kỳ. |
+| **A1** | **Xử lý Outlier Chi Tiêu Đột Biến** | Giữ nguyên ý "loại khỏi baseline, vẫn tính vào tháng này"; nguồn ngưỡng là **ngưỡng người dùng đặt** (`nguongChiLon` — thông báo Khoản chi lớn, 2026-09-17), đã thay thế hoàn toàn cho công thức $3 \times \text{avg\_spend}$.<br>• Giao dịch bị **loại trừ hoàn toàn** khỏi phép tính baseline dài hạn (`avg_spend_3m`, `avg_spend_6m`, `CV`, `trend_slope`).<br>• Giao dịch **vẫn được tính 100%** vào `current_spend` và `projected_spend` của tháng hiện tại. | Tránh trường hợp 1 giao dịch mua xe máy hay đồ điện tử đắt tiền trong mục "Mua sắm" làm méo mó baseline dài hạn, nhưng vẫn phải phản ánh đúng nguy cơ thủng ngân sách trong tháng hiện tại. |
+| **A2** | **Loại Trừ Giao Dịch Một Lần (One-Time Event)** | **Không thêm cột `is_one_time`** vào CSDL giao dịch (tránh làm lệch schema giữa các máy). Khoản chi vượt ngưỡng chi lớn (`nguongChiLon`) tự động được coi là "một lần" cho baseline khi tính `regularity` và `essentiality`. | Loại trừ sự kiện hy hữu mang tính bất khả kháng thành nhu cầu lặp lại định kỳ mà không làm phức tạp hóa CSDL. |
 | **A3** | **Xử Lý Hoàn Tiền (Refund / Reversal)** | Khi phát sinh giao dịch hoàn tiền — ở SQLite cục bộ là một hàng `type = 'thu'` gắn danh mục chi tiêu, **không phải** `amount < 0`, vì `amount` ở SQLite luôn dương và chiều tiền nằm ở `type` — số tiền hoàn được **trừ** khỏi `current_spend` của **tháng ghi nhận refund**. Tuyệt đối không trừ lùi vào tháng gốc trong quá khứ. | Bảo toàn nguyên tắc thiết kế: Giữ tính đơn giản, không phải kích hoạt recompute lại lịch sử các tháng trước. |
 | **A4** | **Chặn Giao Dịch Chưa Phân Loại (Uncategorized Guard)** | Các giao dịch chưa được gán danh mục (`category_id IS NULL`) tuyệt đối không được đưa vào Tầng 2 để tính tái phân bổ ngân sách (Reallocation) cho đến khi được gán danh mục hợp lệ (tự động qua Keyword/Merchant matching hoặc người dùng tự chọn). | Tránh đưa ra đề xuất tái phân bổ sai lệch do thiếu ngữ cảnh phân loại. |
-| **A5** | **Bảo Vệ Outlier Trên Danh Mục Baseline Nhỏ** | Ngưỡng xác định `outlier` ở quy tắc A1 áp dụng hệ số $3\times$, nhưng nếu danh mục có `avg_spend < 100.000đ`, hệ thống chuyển sang dùng ngưỡng tuyệt đối tối thiểu (mặc định: `> 500.000đ`) mới tính là outlier. | Tránh tình trạng dương tính giả (False Positive) trên số nhỏ (Ví dụ: Danh mục gửi xe tháng trước chi 20.000đ, tháng này phát sinh 80.000đ là gấp 4 lần nhưng không phải outlier bất thường). |
-| **A6** *(Góc khuất 2)* | **Phân Tách Chi Phí Một Lần (Lump-sum) vs Liên Tục (Continuous)** | Hệ thống phân loại bản chất danh mục dựa trên tần suất:<br>• **Khoản chi một lần / Cố định (Lump-sum Fixed):** Danh mục có `txn_frequency <= 2` và `regularity >= 0.8` (Tiền nhà, tiền điện, tiền mạng, học phí).<br>• **Khoản chi liên tục (Continuous):** Danh mục có `txn_frequency > 5` (Ăn uống, cafe, đi chợ, đổ xăng). | Khoản chi một lần phát sinh tập trung vào 1 ngày duy nhất trong tháng, không thể nhân tỷ lệ theo ngày trôi qua vì sẽ làm sai lệch dự phóng. |
+| **A5** | **Bảo Vệ Outlier Trên Danh Mục Baseline Nhỏ** | *(Hoãn — giai đoạn sau đồ án)*: Do dữ liệu ban đầu chưa có baseline ổn định nên tạm hoãn quy tắc này, tránh phức tạp hóa code khi chưa có dữ liệu dày. | Tránh tình trạng dương tính giả (False Positive) trên số nhỏ khi chưa đủ lịch sử chi tiêu. |
+| **A6** *(Góc khuất 2)* | **Phân Tách Chi Phí Một Lần (Lump-sum) vs Liên Tục (Continuous)** | Chi phí cố định / một lần lấy trực tiếp từ **bảng hóa đơn (`Bills`: `anchorDay`, `periodEnd`)** và **lịch trích tự động của mục tiêu tiết kiệm (`Goals`)** — nguồn tin cậy đã có sẵn — thay vì suy diễn từ `txn_frequency` hay `regularity`. Các danh mục còn lại coi là chi liên tục (Continuous). | Khoản chi một lần phát sinh tập trung vào 1 ngày duy nhất trong tháng, không thể nhân tỷ lệ theo ngày trôi qua vì sẽ làm sai lệch dự phóng. |
 
 ---
 
@@ -313,12 +314,12 @@ Phần này chốt lại toàn bộ các quy tắc nghiệp vụ thực chiến 
 
 | Mã Quy Tắc | Tên Quy Tắc | Nội Dung Chi Tiết & Công Thức Chuẩn Hóa | Lý Do Kỹ Thuật & Nghiệp Vụ |
 |:---:|---|---|---|
-| **B1** | **Ngưỡng Dữ Liệu Tối Thiểu (Cold-start Guard)** | Chỉ kích hoạt tính năng phát hiện thâm hụt và đề xuất nguồn bù cho danh mục khi danh mục đó đã tích lũy **$\ge 2$ tháng dữ liệu thực tế**. Dưới 2 tháng chỉ hiển thị theo dõi cơ bản. | Tránh việc đưa ra cảnh báo và đề xuất sai lệch khi mẫu dữ liệu chưa đủ độ tin cậy thống kê. |
-| **B2** | **Bộ Lọc Thâm Hụt Kép (Dual Deficit Threshold)** | Cảnh báo thâm hụt danh mục chỉ được kích hoạt khi thỏa mãn **ĐỒNG THỜI 2 ĐIỀU KIỆN**:<br>1. Điều kiện tỷ lệ: $\frac{\text{deficit}[i]}{\text{budget\_limit}[i]} \ge 10\%$<br>2. Điều kiện giá trị tuyệt đối: $\text{deficit}[i] \ge 50.000đ$. | Triệt tiêu hoàn toàn các cảnh báo spam khi người dùng chỉ vượt ngân sách vài nghìn hoặc vài chục nghìn đồng không đáng kể. |
-| **B3** | **Cửa Sổ Giảm Tải Cảnh Báo (48-Hour Cooldown Window)** | Không kích hoạt cảnh báo mới cho cùng một danh mục trong vòng **48 giờ** kể từ lần cảnh báo gần nhất, **TRỪ KHI** mức độ thâm hụt tăng thêm $\ge 20\%$ so với lần cảnh báo trước đó. | Tránh gây phiền hà, làm người dùng mệt mỏi khi nhận thông báo liên tục trong ngày. |
+| **B1** | **Ngưỡng Dữ Liệu Tối Thiểu (Cold-start Guard)** | Cold-start không phải công tắc bật/tắt: Dưới 2 tháng dùng prior theo nhóm danh mục; luật thống kê **hoãn** tới khi có $\ge 6$ tháng dữ liệu, trình diễn đồ án bằng dữ liệu mô phỏng có ghi rõ. | Tránh việc đưa ra cảnh báo và đề xuất sai lệch khi mẫu dữ liệu chưa đủ độ tin cậy thống kê. |
+| **B2** | **Bộ Lọc Thâm Hụt Kép (Dual Deficit Threshold)** | Cảnh báo thâm hụt danh mục chỉ kích hoạt khi thỏa mãn đồng thời 2 điều kiện: $\frac{\text{deficit}[i]}{\text{budget\_limit}[i]} \ge 10\%$ và $\text{deficit}[i] \ge 50.000đ$. Thi hành trực tiếp trong **bộ luật thông báo hiện hành (`notification_rules.dart`)**, không dựng thêm bộ cảnh báo thứ hai. | Triệt tiêu hoàn toàn các cảnh báo spam khi người dùng chỉ vượt ngân sách vài nghìn hoặc vài chục nghìn đồng không đáng kể. |
+| **B3** | **Cửa Sổ Giảm Tải Cảnh Báo (Cooldown Window)** | Cửa sổ 48 giờ thay bằng **khóa chống trùng theo kỳ ngân sách** đã có sẵn của bảng `AppNotifications`. | Tránh gây phiền hà, làm người dùng mệt mỏi khi nhận thông báo liên tục trong ngày. |
 | **B4** *(Góc khuất 1)* | **Khóa Dự Phóng Đầu Tháng (Early-Month Spike Lock)** | Trong **5 ngày đầu tiên của tháng** (`days_elapsed < 5`), hệ thống **CẤM HOÀN TOÀN** việc áp dụng công thức nhân tỷ lệ tuyến tính (`current_spend * days_in_month / days_elapsed`) để cảnh báo thâm hụt. | Khắc phục triệt để lỗi chia cho số nhỏ (Small Sample Trap): Người dùng đóng tiền nhà 5 triệu vào ngày mùng 2 sẽ không bị hệ thống tính thành 75 triệu/tháng. |
-| **B5** *(Góc khuất 1)* | **Công Thức Dự Phóng Nội Suy Bayesian (Bayesian Projection)** | Quy tắc tính `projected_spend` chuẩn theo từng mốc thời gian và loại chi phí:<br>• **Với danh mục Lump-sum Fixed (Quy tắc A6):**<br>  $$\text{projected\_spend} = \max(\text{current\_spend}, \text{avg\_spend\_3m})$$<br>• **Với danh mục Continuous:**<br>  - Nếu `days_elapsed < 5`: $\text{projected\_spend} = \text{current\_spend} + \text{avg\_spend\_3m} \times \frac{\text{days\_in\_month} - \text{days\_elapsed}}{\text{days\_in\_month}}$<br>  - Nếu `days_elapsed >= 5`: $\text{projected\_spend} = \text{current\_spend} \times \frac{\text{days\_in\_month}}{\text{days\_elapsed}}$. | Phản ánh chính xác tốc độ chi tiêu thực tế, dung hòa giữa lịch sử quá khứ và diễn biến thực tế đầu tháng. |
-| **B6** | **Chống Quá Tải Thông Báo (AI Fatigue Prevention)** | Tối đa **1 đề xuất tái phân bổ chủ động/tuần** được phép hiển thị dưới dạng Thông báo đẩy (Push Notification) hoặc Pop-up. Toàn bộ các cảnh báo khác chỉ được hiển thị thụ động (Passive) trên màn hình Dashboard/Báo cáo khi người dùng tự mở app. | Giữ sự tôn trọng không gian riêng tư của người dùng; tránh biến AI thành "kẻ làm phiền" khiến người dùng tắt thông báo. |
+| **B5** *(Góc khuất 1)* | **Công Thức Dự Phóng (Projection Engine)** | Quy tắc tính `projected_spend`: Nếu `days_elapsed >= 5`: $\text{projected\_spend} = \text{current\_spend} \times \frac{\text{days\_in\_month}}{\text{days\_elapsed}}$. Nếu `days_elapsed < 5`: $\text{projected\_spend} = \text{current\_spend} + \text{mức chi mỗi tháng} \times \frac{\text{days\_in\_month} - \text{days\_elapsed}}{\text{days\_in\_month}}$, trong đó mức chi mượn từ `BudgetRepository.suggestAmount` (cửa sổ cuộn $\le 90$ ngày); nếu chưa có lịch sử thì **chỉ cảnh báo khi đã vượt thật**. *(Lưu ý: Không dùng cửa sổ 3 tháng lịch cố định vì dễ bị rỗng trên dữ liệu thật).* | Phản ánh chính xác tốc độ chi tiêu thực tế, dung hòa giữa lịch sử quá khứ và diễn biến thực tế đầu tháng. |
+| **B6** | **Chống Quá Tải Thông Báo (AI Fatigue Prevention)** | Tối đa **1 đề xuất tái phân bổ chủ động/tuần**, thi hành bằng khóa `budgetRebalance:<tuần ISO>` — cùng cơ chế với tính năng Tổng kết tuần. Toàn bộ các cảnh báo khác chỉ được hiển thị thụ động trên màn hình Dashboard/Báo cáo. | Giữ sự tôn trọng không gian riêng tư của người dùng; tránh biến AI thành "kẻ làm phiền" khiến người dùng tắt thông báo. |
 
 ---
 
@@ -331,7 +332,7 @@ Phần này chốt lại toàn bộ các quy tắc nghiệp vụ thực chiến 
 | **C3** | **Giới Hạn Tỷ Lệ Cắt Giảm Động (Adaptive Max Cut Ratio)** | Tỷ lệ cắt giảm tối đa `max_cut_ratio` mặc định là **$25\%$** trên phần dư địa (`slack`) của donor trong một lần đề xuất.<br>• Nếu danh mục donor đó **đã bị cắt trong 2 tháng liên tiếp gần nhất**, hạ tỷ lệ xuống tối đa **$15\%$** cho lần tiếp theo. | Tránh việc "bóp nghẹt" liên tục một danh mục yêu thích của người dùng qua nhiều tháng gây cảm giác bức bối, ức chế. |
 | **C4** *(Góc khuất 4)* | **Vùng Đệm An Toàn Của Donor (Donor Safety Buffer)** | Một danh mục chỉ đủ điều kiện làm Donor khi thỏa mãn: `slack[j] >= MIN_DONOR_SLACK` (mặc định: **100.000đ**). Nếu dư địa dưới 100.000đ $\rightarrow$ Bỏ qua không chọn làm nguồn bù. | Tránh rút cạn ngân sách của donor về mức 0 đồng, luôn giữ một khoản đệm an toàn cho các nhu cầu bất ngờ của chính danh mục đó. |
 | **C5** *(Góc khuất 4)* | **Ngưỡng Điều Chuyển Có Ý Nghĩa (Min Meaningful Amount)** | Không bao giờ sinh đề xuất điều chuyển nếu số tiền cắt giảm nhỏ hơn `MIN_MEANINGFUL_AMOUNT` (được tính bằng $\max(1\%\ \text{thu nhập}, 50.000đ)$). | Loại bỏ các đề xuất vụn vặt, vô nghĩa (như bớt 5.000đ hay 12.000đ) làm giảm uy tín và tính chuyên nghiệp của trợ lý AI. |
-| **C6** | **Chỉ Số Ưu Tiên Tuyển Chọn Nguồn Bù** | Các donor hợp lệ được xếp hạng theo công thức: `donor_score[j] = slack[j] * (1 - essentiality[j])`. Ưu tiên chọn danh mục có dư địa nhiều nhất và ít thiết yếu nhất trước. | Tối ưu hóa việc phân bổ: Lấy từ nơi có khả năng chi trả cao nhất với mức độ ảnh hưởng đến chất lượng sống thấp nhất. |
+| **C6** | **Chỉ Số Ưu Tiên Tuyển Chọn Nguồn Bù** | Các donor hợp lệ được xếp hạng theo công thức: `donor_score[j] = slack[j] * (1 - essentiality[j])`. Ưu tiên chọn danh mục có dư địa nhiều nhất và ít thiết yếu nhất trước. *(Lưu ý: Khi chưa có thống kê lịch sử dày, essentiality = 0.5 cho mọi danh mục nên việc xếp hạng quy về mức dư địa slack).* | Tối ưu hóa việc phân bổ: Lấy từ nơi có khả năng chi trả cao nhất với mức độ ảnh hưởng đến chất lượng sống thấp nhất. |
 | **C7** | **Xử Lý Cạn Kiệt Nguồn Bù (Insufficient Slack Handling)** | Nếu tất cả các donor khả dụng đều đã ở trạng thái Protected hoặc tổng `slack` không đủ bù đắp $\rightarrow$ Hàm `reallocate` trả về trạng thái `status: 'insufficient_slack'`, báo rõ số tiền thiếu hụt (`shortfall`). Tuyệt đối không cố ép tính toán để sinh ra con số vô căn cứ. | Đảm bảo tính trung thực: Giúp người dùng nhận thức rõ tổng thu nhập không đủ gánh tổng mức sống, chuyển từ "tái phân bổ nội bộ" sang "cắt giảm chi tiêu toàn diện". |
 
 ---
@@ -340,10 +341,10 @@ Phần này chốt lại toàn bộ các quy tắc nghiệp vụ thực chiến 
 
 | Mã Quy Tắc | Tên Quy Tắc | Nội Dung Chi Tiết & Quy Chuẩn Áp Dụng | Lý Do Kỹ Thuật & Nghiệp Vụ |
 |:---:|---|---|---|
-| **D1** | **Xử Lý Thu Nhập Không Cố Định (Freelance / Kinh Doanh)** | Với người dùng có thu nhập biến động, giá trị `income` đưa vào Tầng 2 để tính toán là **Trung bình trượt 3 tháng gần nhất** (`avg_income_3m`), không dùng số thu nhập thực nhận của tháng hiện tại.<br><br>⚠️ *Lưu ý dữ liệu client:* Client **không lưu** thu nhập ở đâu cả (đo 2026-09-13) — con số ở Trang chủ được cộng tại chỗ cho tháng hiện tại rồi bỏ. `avg_income_3m` phải do Tầng 1 tự tính bằng cách cộng các giao dịch `type = 'thu'` theo tháng và lưu vào `local_category_features` (hoặc một bảng `local_income_stats` riêng), chứ không đọc được từ trường nào có sẵn. | Tránh tính sai margin và mục tiêu khi tháng hiện tại tiền lương/doanh thu chưa về đủ tài khoản. |
-| **D2** | **Chế Độ Thận Trọng Tức Thì (Precautionary Mode)** | Khi phát hiện thu nhập thực tế của tháng hiện tại bị sụt giảm $> 30\%$ so với mức trung bình 3 tháng $\rightarrow$ Hệ thống lập tức kích hoạt Chế độ Thận trọng: Tự động hạ toàn bộ `budget_limit` của các danh mục linh hoạt theo tỷ lệ tương ứng trước khi tính thâm hụt. | Chủ động phòng ngừa rủi ro tài chính sớm thay vì chờ thâm hụt xảy ra rồi mới đi tìm nguồn bù. |
-| **D3** | **Bất Khả Xâm Phạm Mục Tiêu Tiết Kiệm (Goal Sovereign)** | Tỷ lệ mục tiêu tiết kiệm (`saving_goal_ratio`) do người dùng toàn quyền thiết lập. AI **tuyệt đối không tự ý tăng giảm mục tiêu này** mà chỉ đưa ra khuyến nghị phân tích để người dùng tự xác nhận. | Mục tiêu tiết kiệm là quyết định tài chính cá nhân mang tính chiến lược, AI không được phép áp đặt. |
-| **D4** | **Cảnh Báo Thâm Hụt Cấu Trúc Dài Hạn** | Nếu tình trạng mục tiêu tiết kiệm rơi vào trạng thái nguy cấp (`goal_status = 'at_risk'`) trong **3 tháng liên tiếp** $\rightarrow$ Hệ thống chuyển đổi chiến lược: Ngừng đề xuất tái phân bổ vụn vặt hàng tuần, chuyển sang khuyến nghị xem xét lại cơ cấu mục tiêu hoặc kế hoạch tài chính vĩ mô. | Khi vấn đề mang tính cơ cấu (thu không đủ bù chi dài hạn), việc tái phân bổ vi mô giữa các danh mục không còn giải quyết được tận gốc vấn đề. |
+| **D1** | **Xử Lý Thu Nhập (Income Calculation)** | Giá trị `income` đưa vào Tầng 2 để tính toán là **trung bình ba tháng liền trước của thu nhập** theo đúng định nghĩa duy nhất của client (`thuNhapCua`: tổng thu trừ tiền đi vay, thu nợ và các khoản vay/nợ tiền vào; định nghĩa tại `features/analytics/domain/dong_tien_tu_do.dart`). Không lưu vào bảng riêng; tính toán trực tiếp tại chỗ. | Tránh tính sai margin và mục tiêu khi tháng hiện tại tiền lương/doanh thu chưa về đủ tài khoản, không bịa thêm bảng thừa. |
+| **D2** | **Chế Độ Thận Trọng Tức Thì (Precautionary Mode)** | *(Hoãn — giai đoạn sau đồ án)*: Đòi hỏi dữ liệu thu nhập 3 tháng ổn định để phát hiện sụt giảm $> 30\%$. | Dành cho giai đoạn người dùng đã có lịch sử tài chính dài hạn. |
+| **D3** | **Bất Khả Xâm Phạm Mục Tiêu Tiết Kiệm (Goal Sovereign)** | Tỷ lệ mục tiêu tiết kiệm (`saving_goal_ratio`) được suy trực tiếp từ các mục tiêu còn hạn trong bảng `Goals`. AI **tuyệt đối không sửa số tiền đích hay thời hạn của mục tiêu**. | Mục tiêu tiết kiệm là quyết định tài chính cá nhân mang tính chiến lược, AI không được phép áp đặt. |
+| **D4** | **Cảnh Báo Thâm Hụt Cấu Trúc Dài Hạn** | *(Hoãn — giai đoạn sau đồ án)*: Cần theo dõi liên tục trạng thái `at_risk` trong 3 tháng liên tiếp. | Khi dữ liệu thực tế ban đầu còn mỏng, quy tắc này chưa kích hoạt. |
 | **D5** | **Ràng Buộc Trần Ngân Sách Tuyệt Đối** | Tổng ngân sách sau khi điều phối lại bắt buộc thỏa mãn: $\sum \text{new\_budget}[j] \le \text{income} \times (1 - \text{saving\_goal\_ratio})$. Nếu vi phạm, phần vượt (`excess`) sẽ bị trừ dần vào các danh mục có `essentiality < 0.5`. | Đảm bảo nguyên tắc kế toán vàng: Không bao giờ chi vượt quá khả năng thu nhập trừ đi khoản tiết kiệm bắt buộc. |
 
 ---
@@ -355,16 +356,16 @@ Phần này chốt lại toàn bộ các quy tắc nghiệp vụ thực chiến 
 | **E1** | **Trạng Thái Chờ Duyệt (Pending Confirmation)** | Mọi kế hoạch điều chỉnh ngân sách do AI đề xuất đều ở trạng thái `status: 'pending'`. **Tuyệt đối không tự động cập nhật CSDL ngân sách** nếu người dùng chưa bấm nút "Xác nhận áp dụng". | Nguyên tắc đạo đức nghề nghiệp Fintech: AI chỉ giữ vai trò cố vấn, người dùng nắm 100% quyền quyết định đồng tiền của mình. |
 | **E2** | **Chấp Nhận Từng Phần (Partial Plan Acceptance)** | Giao diện cho phép người dùng tick chọn chấp nhận từng hạng mục trong kế hoạch (Ví dụ: Đồng ý trích 400k từ "Tiệc tùng" nhưng bỏ chọn trích 200k từ "Giải trí"). Hệ thống chỉ thực thi những điều chỉnh được tick chọn. | Tôn trọng tự do ý chí của người dùng, không ép buộc theo kiểu "chấp nhận tất cả hoặc không gì cả". |
 | **E3** | **Thu Thập Tín Hiệu Học Ngầm (Implicit Feedback Event)** | Mỗi hành động của người dùng sinh ra một bản ghi sự kiện:<br>`feedback_event = { category_id, proposed_change, user_final_change, action: 'accepted' | 'rejected' | 'modified' }`.<br>Nếu người dùng tự sửa số tiền, `user_final_change` được lưu lại làm cơ sở học tập cho các lần sau. | Học từ hành vi thực tế một cách tự nhiên, không cần làm phiền người dùng bằng các câu hỏi khảo sát. |
-| **E4** | **Cập Nhật Điểm Co Giãn & Thiết Yếu Qua Phản Hồi** | Nếu một danh mục bị `rejected` liên tiếp 2 lần khi được đề xuất làm donor:<br>• Hệ số co giãn ước tính giảm: $\text{elasticity} = \text{elasticity} \times 0.7$.<br>• Điểm thiết yếu mới được cập nhật qua EMA: $\text{essentiality}_{\text{new}} = 0.25 \times \text{essentiality}_{\text{computed}} + 0.75 \times \text{essentiality}_{\text{old}}$. | Nhận diện danh mục này thực chất rất quan trọng với người dùng (dù chi tiêu có vẻ biến động), lần sau AI sẽ tự động tránh chọn danh mục này làm nguồn cắt. |
+| **E4** | **Cập Nhật Điểm Co Giãn & Thiết Yếu Qua Phản Hồi** | *(Hoãn — giai đoạn sau đồ án)*: Cập nhật điểm thiết yếu qua EMA khi có phản hồi `rejected` liên tiếp 2 lần. | Kích hoạt khi người dùng đã tích lũy đủ các tương tác phản hồi với đề xuất AI. |
 | **E5** | **Phân Biệt Trực Quan Giao Diện (UI Status Distinction)** | Đề xuất ở trạng thái `resolved` (cân đối thành công) hiển thị thẻ màu Xanh dương/Xanh lá với icon gợi ý nhẹ nhàng. Đề xuất ở trạng thái `insufficient_slack` (thiếu hụt thực sự) hiển thị thẻ màu Cam/Đỏ cảnh báo kèm icon nguy cấp. | Giúp người dùng phân biệt rạch ròi giữa một "gợi ý tối ưu hóa chi tiêu bình thường" và một "cảnh báo nguy cơ khủng hoảng ngân sách". |
 
 ---
 
-### 🛡️ NHÓM F: Quy Tắc Bảo Mật & Quyền Riêng Tư Cục Bộ (100% On-Device Privacy)
+### 🛡️ NHÓM F: Quy Tắc Bảo Mật & Quyền Riêng Tư Cục Bộ (On-Device Privacy)
 
 | Mã Quy Tắc | Tên Quy Tắc | Nội Dung Chi Tiết & Ràng Buộc Kỹ Thuật | Căn Cứ Pháp Lý & An Toàn |
 |:---:|---|---|---|
-| **F1** | **Bảo Mật Cục Bộ Tuyệt Đối (Air-Gapped Processing)** | Toàn bộ dữ liệu giao dịch thô, bảng đặc trưng Feature JSON (Tầng 1) và kế hoạch tái phân bổ Reallocation JSON (Tầng 2) **hoàn toàn không được phép rời khỏi thiết bị di động**. Không gửi dữ liệu này lên bất kỳ API phân tích nào của bên thứ ba. | Tuân thủ 100% Nghị định 13/2023/NĐ-CP, Luật Bảo vệ dữ liệu cá nhân 2025 và chuẩn PCI-DSS. |
+| **F1** | **Bảo Mật Cục Bộ (Edge Privacy)** | Gói số đặc trưng (Tầng 1), kế hoạch tái phân bổ (Tầng 2) và bảng phản hồi cục bộ **không rời khỏi thiết bị** và không gửi tới bất kỳ API phân tích nào của bên thứ ba. Giao dịch thô vẫn đồng bộ với backend của chính hệ thống theo kiến trúc offline-first. | Căn cứ: Nghị định 13/2023/NĐ-CP và Luật Bảo vệ dữ liệu cá nhân. |
 | **F2** | **Ranh Giới Mã Hóa (Encryption Boundaries)** | Ghi chú giao dịch nằm **dạng thô** trong SQLite của client và đi qua `/sync/push` / `/sync/pull` cũng ở dạng thô (`sync_engine.dart:1222`, `:562`); client **không** mã hoá và **không** giải mã trường này. Việc mã hoá AES-256 theo `Data_Security.md` là lớp **at-rest phía server**, không thay đổi gì trên máy người dùng. Vì vậy quyền riêng tư của Tầng 1–2 dựa hoàn toàn vào F1 (dữ liệu không rời thiết bị) và F3 (SLM không có mạng), chứ không dựa vào mã hoá. Nếu sau này cần mã hoá dữ liệu cục bộ, đó là một hạng mục riêng chưa có trong lộ trình. | Minh bạch ranh giới bảo mật: Tránh giả định sai về lớp mã hoá cục bộ trên client. |
 | **F3** | **Cô Lập Mạng Cho SLM On-Device (Zero Network Access)** | Thư viện suy luận mô hình SLM (MediaPipe / llama.cpp) được cấu hình chạy ở chế độ Offline 100%, không cấp quyền mở Socket hay HTTP Request ra Internet. Nếu trong tương lai có tùy chọn fallback sang Cloud LLM cho các câu hỏi phức tạp, bắt buộc phải có màn hình xin phép đồng ý rõ ràng (Consent Dialog) từ người dùng. | Triệt tiêu hoàn toàn nguy cơ lộ lọt dữ liệu thói quen chi tiêu cá nhân qua các truy vấn AI. |
 
@@ -390,38 +391,20 @@ Phần này chốt lại toàn bộ các quy tắc nghiệp vụ thực chiến 
 |:---:|---|---|---|
 | **H1** | **Cách Ly Tiến Trình Nền (Background Isolate Separation)** | Toàn bộ các tác vụ tính toán Tầng 1 (Full recompute), Tầng 2 (Tối ưu hóa phân bổ) và Tầng 3 (Chạy suy luận SLM + Regex Validator) **BẮT BUỘC PHẢI CHẠY TRONG DART ISOLATE / `compute()`**. Tuyệt đối không chạy trên Main UI Thread. | Đảm bảo giao diện người dùng trên Flutter luôn duy trì mượt mà 60 FPS / 120 FPS, không bị giật lag hay đơ màn hình khi AI đang suy luận. |
 | **H2** | **Quản Lý Mức Pin & Nhiệt Độ (Thermal & Battery Throttling)** | Nếu pin thiết bị $< 15\%$ hoặc hệ điều hành báo trạng thái thiết bị quá nhiệt (Thermal Throttling):<br>• Tạm hoãn việc khởi chạy mô hình SLM Tầng 3.<br>• Tự động chuyển sang sử dụng bộ sinh câu mẫu **Template String** ở Tầng 3. | Bảo vệ phần cứng điện thoại, tiết kiệm pin tối đa và phòng ngừa ứng dụng bị hệ điều hành tắt ngang. |
-| **H3** | **Cơ Chế Suy Thoái Mềm (Graceful Degradation Fallback)** | Với các thiết bị đời cũ có RAM khả dụng $< 1.0\text{GB}$, hoặc khi thư viện suy luận SLM gặp lỗi khởi tạo runtime $\rightarrow$ Tầng 1 và Tầng 2 vẫn chạy 100% bình thường, Tầng 3 chuyển 100% sang Template String Engine mà không hiển thị thông báo lỗi kỹ thuật nào ra UI. | Đảm bảo trải nghiệm người dùng không bao giờ bị đứt gãy hay crash app trên mọi dòng máy từ yếu đến mạnh. |
-| **H4** | **Cấu Trúc Bảng Dữ Liệu SQLite Cục Bộ Của AI Điên** | Thiết lập 3 bảng SQLite nội bộ trên Client-app để lưu trữ trạng thái hoạt động (không đồng bộ lên Backend để bảo đảm tốc độ và quyền riêng tư):<br>1. `local_category_features`: Lưu các chỉ số đặc trưng đã tính toán (Tầng 1 cache).<br>2. `local_rebalancing_feedback`: Lưu trữ nhật ký phản hồi ngầm phục vụ vòng lặp học tập của Tầng 2.<br>3. `local_ai_alert_history`: Lưu trữ nhật ký cảnh báo phục vụ điều tiết tần suất (Quy tắc B3 & B6). | Đạt tốc độ truy vấn tức thì $O(1)$, không phụ thuộc vào kết nối mạng hay server. |
+| **H3** | **Cơ Chế Suy Thoái Mềm (Graceful Degradation Fallback)** | Với các thiết bị có **RAM khả dụng < 4.0 GB**, thiết bị không phải kiến trúc `arm64-v8a`, hoặc khi thư viện suy luận SLM gặp lỗi runtime $\rightarrow$ Tầng 1 và Tầng 2 vẫn chạy bình thường, Tầng 3 tự động chuyển sang bộ sinh câu mẫu **Template String Engine** mà không gây crash app hay báo lỗi kỹ thuật. | Đảm bảo app chạy ổn định trên mọi dòng máy từ yếu đến mạnh. |
+| **H4** | **Cấu Trúc Bảng Dữ Liệu SQLite Cục Bộ Của Edge AI** | Thiết lập **01 bảng SQLite nội bộ duy nhất** `ai_rebalancing_feedbacks` trên Client-app để lưu trữ nhật ký phản hồi phục vụ học ngầm (không đồng bộ lên Backend). Tính toán đặc trưng trực tiếp tại chỗ từ các hàng giao dịch thay vì dựng bảng cache; điều tiết tần suất cảnh báo tận dụng bảng `AppNotifications` sẵn có. | Tối ưu hóa bộ nhớ và tốc độ, không lưu cache thừa thãi. |
 
 ---
 
 ## 🏗️ PHẦN IV: CẤU TRÚC BẢNG DỮ LIỆU SQLITE CỤC BỘ CHO CLIENT-APP
 
-Để hiện thực hóa toàn bộ các quy tắc trên mà không làm ảnh hưởng đến cấu trúc CSDL đồng bộ với Backend, Client-app sẽ tạo thêm 3 bảng nội bộ trên SQLite cục bộ (`local_only`):
+Để hiện thực hóa toàn bộ các quy tắc trên mà không làm ảnh hưởng đến cấu trúc CSDL đồng bộ với Backend, Client-app sẽ tạo thêm 1 bảng nội bộ trên SQLite cục bộ (`local_only`):
 
-> 💡 *Lưu ý triển khai Drift:* Client không chạy SQL raw thủ công mà định nghĩa bảng qua Dart trong `lib/core/database/tables/`, sinh mã bằng `dart run build_runner build --delete-conflicting-outputs` và mỗi lần đổi phải tăng `schemaVersion` (hiện tại v21) kèm migration tương ứng. Ba bảng dưới đây là đặc tả cấu trúc cột dữ liệu.
+> 💡 *Lưu ý triển khai Drift (schema v24, 2026-09-19):* Client không chạy SQL raw thủ công mà định nghĩa bảng qua Dart trong `lib/core/database/tables/`, sinh mã bằng `dart run build_runner build --delete-conflicting-outputs`. Không dựng thêm bảng cache đặc trưng (tính tại chỗ từ vài trăm hàng rẻ hơn cache) và bảng lịch sử cảnh báo (tận dụng bảng `AppNotifications`). Client chỉ dựng duy nhất 1 bảng cục bộ `ai_rebalancing_feedbacks` (kèm cột cục bộ `categories.ai_co_dinh`):
 
 ```sql
--- 1. Bảng lưu trữ đặc trưng danh mục đã tính toán (Tầng 1 Cache)
-CREATE TABLE IF NOT EXISTS local_category_features (
-    category_id VARCHAR(36) PRIMARY KEY,
-    month VARCHAR(7) NOT NULL,               -- Định dạng 'YYYY-MM'
-    avg_spend_3m REAL DEFAULT 0,
-    avg_spend_6m REAL DEFAULT 0,
-    current_spend REAL DEFAULT 0,
-    projected_spend REAL DEFAULT 0,
-    budget_limit REAL DEFAULT 0,
-    cv REAL DEFAULT 0,                       -- Hệ số biến thiên (Std / Mean)
-    regularity REAL DEFAULT 0,               -- Tính chu kỳ (0.0 -> 1.0)
-    elasticity REAL DEFAULT 0.5,             -- Độ co giãn chi tiêu
-    essentiality REAL DEFAULT 0.5,           -- Điểm thiết yếu tổng hợp
-    is_protected BOOLEAN DEFAULT FALSE,      -- Cờ bảo vệ tuyệt đối (Quy tắc C1, C2)
-    category_nature VARCHAR(20) DEFAULT 'continuous', -- 'lump_sum' hoặc 'continuous' (A6)
-    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- 2. Bảng ghi nhận phản hồi người dùng để học ngầm hành vi (Tầng 2 Feedback Loop)
-CREATE TABLE IF NOT EXISTS local_rebalancing_feedback (
+-- Bảng ghi nhận phản hồi người dùng để học ngầm hành vi (Tầng 2 Feedback Loop — Cục bộ trên Client)
+CREATE TABLE IF NOT EXISTS ai_rebalancing_feedbacks (
     id VARCHAR(36) PRIMARY KEY,
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deficit_category_id VARCHAR(36) NOT NULL,
@@ -430,15 +413,6 @@ CREATE TABLE IF NOT EXISTS local_rebalancing_feedback (
     actual_amount REAL NOT NULL,
     action VARCHAR(20) NOT NULL,             -- 'accepted', 'rejected', 'modified'
     applied BOOLEAN DEFAULT FALSE
-);
-
--- 3. Bảng ghi nhận nhật ký cảnh báo để chống spam (Quy tắc B3 & B6)
-CREATE TABLE IF NOT EXISTS local_ai_alert_history (
-    id VARCHAR(36) PRIMARY KEY,
-    category_id VARCHAR(36) NOT NULL,
-    alert_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    deficit_amount REAL NOT NULL,
-    alert_type VARCHAR(20) NOT NULL          -- 'active_popup', 'passive_dashboard'
 );
 ```
 

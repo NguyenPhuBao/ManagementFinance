@@ -1,5 +1,5 @@
 const { encrypt, decrypt, isEncrypted, hashBlindIndex } = require('../src/Backend/utils/crypto.util');
-const { maskEmail, maskPhone, maskAccountNumber, maskFullname, maskAddress } = require('../src/Backend/utils/masking.util');
+const { maskEmail, maskPhone, maskAccountNumber, maskFullname, maskAddress, maskTransactionDescription } = require('../src/Backend/utils/masking.util');
 const { validateReasonInactive, filterSensitiveNote } = require('../src/Backend/utils/content-filter.util');
 const assert = require('assert');
 
@@ -25,6 +25,15 @@ assert.strictEqual(maskPhone(encryptedPhone), '098****321', 'Masking phone phả
 assert.strictEqual(maskAccountNumber('123456789012'), '**** **** **** 9012');
 assert.strictEqual(maskFullname('Nguyễn Phú Bảo'), 'Nguyễn P. B.');
 assert.strictEqual(maskAddress('123 Đường Lê Lợi, Phường Bến Nghé, Quận 1, TP.HCM'), '***, Phường Bến Nghé, Quận 1, TP.HCM');
+
+// Test maskTransactionDescription (dùng cho LLM Classifier Tier 3)
+const maskedTxn = maskTransactionDescription('CK tien an cho 0987654321 stk 123456789012 email test@gmail.com the 4532015896321478 cvv: 999');
+assert(!maskedTxn.includes('0987654321'), 'Phải che số điện thoại');
+assert(!maskedTxn.includes('123456789012'), 'Phải che số tài khoản');
+assert(!maskedTxn.includes('test@gmail.com'), 'Phải che email');
+assert(!maskedTxn.includes('4532015896321478'), 'Phải lược bỏ thẻ tín dụng');
+assert(!maskedTxn.includes('999'), 'Phải lược bỏ CVV');
+assert(maskedTxn.includes('[SĐT]') && maskedTxn.includes('[STK]') && maskedTxn.includes('[EMAIL]'), 'Phải có các nhãn che PII');
 console.log('Masking tests PASS!');
 
 console.log('=== TEST 3: Content Filter Util ===');
@@ -46,11 +55,11 @@ const r4 = validateReasonInactive('Vi phạm điều khoản đăng nhập bất
 assert.strictEqual(r4.valid, true, 'Lý do hợp lệ phải PASS');
 
 // Filter Note
-const rawNote = 'Mua hàng online số thẻ 4532015896321478 và cvv: 123 mật khẩu: abcxyz';
+const rawNote = 'Mua hàng online số thẻ 4111111111111111 và cvv: 123 mật khẩu: abcxyz';
 const cleanedNote = filterSensitiveNote(rawNote);
 console.log('Raw Note:', rawNote);
 console.log('Cleaned Note:', cleanedNote);
-assert(!cleanedNote.includes('4532015896321478'), 'Phải lược bỏ số thẻ');
+assert(!cleanedNote.includes('4111111111111111'), 'Phải lược bỏ số thẻ');
 assert(!cleanedNote.includes('123'), 'Phải lược bỏ CVV');
 assert(!cleanedNote.includes('abcxyz'), 'Phải lược bỏ mật khẩu');
 

@@ -112,10 +112,37 @@ function maskAddress(address) {
   return `***, ${publicParts}`;
 }
 
+const { filterSensitiveNote } = require('./content-filter.util');
+
+/**
+ * Che bớt PII và dữ liệu nhạy cảm trong mô tả giao dịch trước khi gửi sang Cloud LLM
+ * Tuân thủ Data_Security.md & Nghị định 13/2023/NĐ-CP
+ * 1. Lọc thẻ tín dụng (Luhn check), CVV, mật khẩu qua filterSensitiveNote
+ * 2. Che email
+ * 3. Che số điện thoại
+ * 4. Che số tài khoản ngân hàng (dãy 9-16 chữ số)
+ * @param {string} text 
+ * @returns {string}
+ */
+function maskTransactionDescription(text) {
+  if (!text || typeof text !== 'string') return '';
+  // 1. Loại bỏ số thẻ tín dụng (Luhn check), CVV, mật khẩu
+  let safe = filterSensitiveNote(text);
+  // 2. Che email
+  safe = safe.replace(/[\w.-]+@[\w.-]+\.\w+/g, '[EMAIL]');
+  // 3. Che số điện thoại (VN format)
+  safe = safe.replace(/(?:\+84|0)[1-9][0-9]{8,9}\b/g, '[SĐT]');
+  // 4. Che số tài khoản ngân hàng (dãy số 9-16 chữ số)
+  safe = safe.replace(/\b\d{9,16}\b/g, '[STK]');
+  return safe;
+}
+
 module.exports = {
   maskEmail,
   maskPhone,
   maskAccountNumber,
   maskFullname,
   maskAddress,
+  maskTransactionDescription,
 };
+

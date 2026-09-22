@@ -9,6 +9,7 @@
 
 const axios = require('axios');
 const logger = require('../../../../../core/logger');
+const { maskTransactionDescription } = require('../../../../../utils/masking.util');
 
 class LLMClassifier {
   constructor() {
@@ -42,6 +43,16 @@ class LLMClassifier {
     const secondHalf = primary.slice(half);
 
     return [...firstHalf, ...secondary, ...secondHalf];
+  }
+
+  /**
+   * Che bớt PII và dữ liệu nhạy cảm trước khi gửi sang Cloud LLM
+   * Tuân thủ Data_Security.md & Nghị định 13/2023/NĐ-CP
+   * @param {string} rawText 
+   * @returns {string}
+   */
+  _maskPIIForLLM(rawText) {
+    return maskTransactionDescription(rawText);
   }
 
   /**
@@ -82,9 +93,13 @@ Quy tắc bắt buộc:
 Danh mục hợp lệ của người dùng:
 ${JSON.stringify(categoryCatalog, null, 2)}`;
 
+    // Áp dụng bộ lọc masking PII bảo vệ dữ liệu cá nhân trước khi gửi LLM
+    const safeText = this._maskPIIForLLM(text);
+    const safeMerchant = this._maskPIIForLLM(context.merchant || '');
+
     const prompt = `Giao dịch cần phân loại:
-- Nội dung: "${text}"
-- Đơn vị bán/Merchant: "${context.merchant || 'Không có'}"
+- Nội dung: "${safeText}"
+- Đơn vị bán/Merchant: "${safeMerchant || 'Không có'}"
 - Số tiền: ${context.amount || 0} VND
 
 Trả về JSON Schema:
@@ -121,11 +136,18 @@ Trả về JSON Schema:
       const parsed = JSON.parse(rawResponse.replace(/```json|```/g, '').trim());
       if (parsed && parsed.category_id) {
         const matchedCat = categories.find((c) => c.idcategory === parsed.category_id);
+        // Strict Grounding: Từ chối tuyệt đối category_id bịa đặt không thuộc danh mục của user
+        if (!matchedCat) {
+          logger.warn('LLM Classifier: Hallucinated category_id rejected by strict grounding', {
+            hallucinatedId: parsed.category_id,
+          });
+          return null;
+        }
         return {
-          category_id: parsed.category_id,
-          category_name: matchedCat ? matchedCat.namecategory : parsed.category_name,
-          category_icon: matchedCat ? matchedCat.icon : 'category',
-          classify: matchedCat ? matchedCat.classify : parsed.classify || 'Chi',
+          category_id: matchedCat.idcategory,
+          category_name: matchedCat.namecategory,
+          category_icon: matchedCat.icon || 'category',
+          classify: matchedCat.classify || 'Chi',
           confidence: Number(parsed.confidence) || 0.85,
           tier_used: 'tier3_llm',
         };
