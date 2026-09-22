@@ -661,8 +661,25 @@ phép dọn → ca "đổi tài khoản" đỏ; dọn vô điều kiện → ca 
 thu là **nối tạm** nút bánh răng của màn Trợ lý AI, **không commit** — nút ấy là việc của Task 8,
 nên tới khi ấy `/ai-settings` mới có lối vào thật.
 
-**Mức nền:** `flutter test` **3318/3318, 2 skip**; `flutter analyze` **26**; schema **v24** không
-đổi; payload không đổi; bộ `ai_edge` **24** tệp / **190** test.
+✅ **Nút "Huỷ" cắt thật lượt tải — sửa cùng ngày, sau Task 7** (`f51e2d6`). Lỗi: `huy()` chỉ đặt
+một cờ `bool`, còn `taiTep` vẫn được `await` tới khi tải xong **trọn 2,41 GB** rồi mới ném và xoá
+tệp — người dùng bấm Huỷ thì màn quay về *"Chưa tải"* trong khi máy vẫn tải hết ở nền. Cờ chỉ trả
+lời được khi **có ai hỏi**, mà `Dio.download` không hỏi: nó cần được **báo**. Nay là `DauHuy` — một
+`Completer` **cho mỗi lượt tải** — và `CancelToken` ở đầu Dio. Huỷ về trạng thái `chuaTai` chứ
+không `loi`: người dùng vừa chủ ý bấm nút. Phép tải thật tách sang `data/tai_tep_dio.dart` **để đo
+được** — bản đầu viết inline trong `injection_container.dart`, và đó đúng là lý do không ca test
+nào với tới nó suốt hai task.
+
+⚠️ **Bài học của lượt đo ấy, dùng được cho mọi phép đo mạng: `HttpResponse.flush()` của `dart:io`
+về TRƠN TRU trên cả một kết nối đã chết.** Server dựng bằng `HttpServer` để đếm *"còn gửi thêm bao
+nhiêu byte sau khi huỷ"* báo **vẫn đang chảy** — 194 gói ≈ 13 MB trong 2,4 giây — và suýt nữa làm
+kết luận ngược hẳn: rằng phép huỷ hỏng. Dựng lại bằng **`ServerSocket` thô**, nơi `onDone` của
+luồng đọc báo đúng lúc đầu kia gửi FIN, thì con số thật là **thêm 0 gói**. Ba mức đo, hai mức đầu
+nói sai. Cũng nhờ nó mà `dio.close(force: true)` bị **loại**: đo được nó chỉ bớt đúng một gói đang
+bay (64 KB trên 2,41 GB).
+
+**Mức nền:** `flutter test` **3325/3325, 2 skip**; `flutter analyze` **26**; schema **v24** không
+đổi; payload không đổi; bộ `ai_edge` **25** tệp / **197** test.
 
 ### ✅ Edge AI chặng 1 — chặn lỗi và tài liệu trước P3 (2026-09-22) — XONG TRỌN 6 TASK
 

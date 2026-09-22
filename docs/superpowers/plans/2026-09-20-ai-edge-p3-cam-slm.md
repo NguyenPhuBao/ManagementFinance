@@ -1862,10 +1862,27 @@ tài khoản"* đỏ.
 công tắc tắt → thoát → vào lại **vẫn tắt**. ⚠️ Lối vào lúc nghiệm thu là **nối tạm** nút bánh răng
 của màn Trợ lý AI rồi **gỡ ra, không commit** — nút ấy là việc của Task 8.
 
-### 🔎 Một việc Task 7 tìm ra mà kế hoạch không có chỗ nào ghi
+### ✅ Một việc Task 7 tìm ra mà kế hoạch không có chỗ nào ghi — ĐÃ SỬA (`f51e2d6`)
 
 **Nút "Huỷ" không dừng được lượt tải.** `MoHinhTaiVe.huy()` chỉ đặt cờ `_huy`; `taiTep` vẫn được
 `await` tới khi **xong toàn bộ 2,41 GB**, rồi mới ném `_HuyTai` và xoá tệp. Tức người dùng bấm
 Huỷ thì giao diện quay về *"Chưa tải"* trong khi máy **vẫn tải hết** nền — trên dữ liệu di động
-thì đó là 2,41 GB họ tưởng đã chặn. Sửa là thêm một `CancelToken` (Dio có sẵn) đi qua chữ ký
-`taiTep`, tức **đổi API của Task 5**; chưa làm vì nằm ngoài phạm vi Task 7.
+thì đó là 2,41 GB họ tưởng đã chặn.
+
+**Đã sửa 2026-09-22** theo yêu cầu của người dùng, và nó **đổi API của Task 5**:
+
+- `DauHuy` — tín hiệu huỷ của **từng lượt** tải (một `Completer`, không phải cờ). Cờ chỉ trả lời
+  được khi *có ai hỏi*; `Dio.download` không hỏi, nó cần được **báo**.
+- `taiTep` nhận thêm tham số thứ tư `DauHuy`. Mọi chỗ dựng `MoHinhTaiVe` phải sửa theo — gồm cả
+  `slm_dien_giai_test.dart`.
+- Huỷ nay phát `chuaTai` chứ không `loi`, và **không ném ra ngoài**.
+- Phép tải thật tách sang `data/tai_tep_dio.dart` (dùng `CancelToken`) — **để đo được**: bản đầu
+  là một closure trong `injection_container.dart`, và đó đúng là lý do không ca test nào với tới
+  nó suốt hai task.
+
+⚠️ **Bài học của lượt đo, dùng được cho mọi phép đo mạng:** `HttpResponse.flush()` của `dart:io`
+**về trơn tru trên cả kết nối đã chết**, nên một server dựng bằng `HttpServer` để đếm *"còn gửi
+thêm bao nhiêu"* báo **vẫn đang chảy** (194 gói ≈ 13 MB trong 2,4 giây) và suýt cho kết luận
+ngược hẳn. Phải dùng **`ServerSocket` thô**, nơi `onDone` báo đúng lúc đầu kia gửi FIN — con số
+thật là **thêm 0 gói**. Cũng nhờ đó mà `dio.close(force: true)` bị loại: nó chỉ bớt một gói đang
+bay (64 KB trên 2,41 GB).
