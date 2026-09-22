@@ -683,8 +683,11 @@ tới sáng hôm ấy.)*
 > 6 màn, offline, tức thì. Phần **mô hình** (Gemma 4 E2B, 2,41 GB) **đã cắm vào app và chạy
 > thật trên máy thật** — trả lời hoàn toàn trong máy, đo được **0 request đi ra** khi cắt
 > mạng, chữ hiện dần theo từng câu, và mọi con số trong câu trả lời đều bị ba lớp chắn
-> (`kiemSo`, `kiemNhan`, `kiemGiong`) đối chiếu với gói số trước khi hiện. Phần **agent**
-> (tool-calling) thì **chưa có** — bước đo để quyết định cần những tool nào là việc tiếp theo.
+> (`kiemSo`, `kiemNhan`, `kiemGiong`) đối chiếu với gói số trước khi hiện. Đã **đo trên máy
+> thật bằng 20 câu hỏi người dùng thật**: không một con số sai nào lọt ra, nhưng hơn một nửa
+> câu trả lời đúng số mà **lệch câu hỏi** — chủ yếu vì gói số mang giá trị chứ không mang tên.
+> Phần **agent** (tool-calling) thì **chưa có**; bảng đo ấy chính là thứ nói ra cần **sáu** tool
+> nào, và đó là việc tiếp theo.
 
 Vẫn **không nên nói *"đã có AI Agent"*** — vế "agent" chưa đúng. Hai vế kia thì nay nói được:
 *"Edge AI"* đúng từ khi mô hình chạy on-device, và *"RAG"* thì **cố ý không làm ở client** (mục
@@ -736,13 +739,19 @@ tool.
 trả lời không nổi, rồi mới quyết vòng 3 bằng **danh sách câu hỏi hỏng thật** chứ
 không bằng phỏng đoán.
 
-✅ **Đề xuất này đã được chấp nhận, và nửa đầu đã làm xong** (2026-09-22): P3 trọn 10 task, cổng A
-qua. **Nửa sau — phép đo — là việc tiếp theo**, khung bảng ở mục **5.6**. Câu hỏi của mục 13 vì
-thế vẫn **còn mở**, nhưng nay nó có một đường trả lời cụ thể thay vì phải cân nhắc lại từ đầu.
-⚠️ Một dữ kiện lượt đo cổng A đã bổ sung sẵn cho nó: mô hình **không nói "không có dữ liệu"** —
-hỏi thứ gói số không có thì nó chọn con số liên quan thật gần nghĩa nhất rồi trả lời. Đó chính là
-loại câu bậc 1 "trả lời không nổi" mà bảng 5.6 phải đếm, và nó **không** hiện ra dưới dạng câu
-mẫu hay câu sai, nên đừng chỉ đếm hai ô ấy.
+✅ **Đề xuất này đã làm TRỌN VẸN trong ngày 2026-09-22** — P3 trọn 10 task và cổng A qua (nửa
+đầu), rồi phép đo 20 câu và cổng B qua (nửa sau, bảng ở mục **5.6**). **Câu hỏi của mục 13 nay
+ĐÃ TRẢ LỜI ĐƯỢC bằng số đo, không còn phải cân nhắc**: bậc 1 để lọt **12/20** câu *"trả lời được
+nhưng lệch câu hỏi"* — quá nửa — nên đi tiếp bậc 2 là **có cơ sở**, và bảng đo còn nói luôn cần
+**sáu** tool nào. ⚠️ Nhưng bảng cũng nói ba câu trong số ấy **không cần tool** (mô hình chọn nhầm
+số đã có sẵn) — nên bậc 2 **không** phải là toàn bộ câu trả lời, và phần rẻ nhất là sửa
+prompt/nhãn trước.
+
+⚠️ Dữ kiện mà lượt đo cổng A bổ sung cho mục này — *"mô hình không nói không có dữ liệu, nó chọn
+số liên quan thật gần nghĩa nhất"* — **đúng một nửa**: chặng 3 đo được **hai** câu mô hình nói
+thẳng là không có (câu 4 và 11), nên nó là **không đáng tin cậy** chứ không phải **không bao
+giờ**. Phần còn lại của câu ấy thì đúng và là lý do bảng 5.6 có **bốn** cột: loại câu này
+**không** hiện ra dưới dạng câu mẫu hay câu sai, nên đếm hai ô ấy là bỏ sót quá nửa kết quả.
 
 🛑 Đúng bài học lát *"cửa sổ nhìn lại"* vừa trả giá ngày 2026-09-21: `suggestAmount`
 đúng từng dòng suốt từ 2026-09-06 nhưng đầu vào là một cửa sổ mà dữ liệu thật không
