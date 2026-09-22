@@ -72,7 +72,7 @@ void main() {
       cache: cache,
       moHinh: MoHinhTaiVe(
         thuMuc: () async => tmp,
-        taiTep: (u, d, b) async {},
+        taiTep: (u, d, b, dauHuy) async {},
       ),
     );
   }

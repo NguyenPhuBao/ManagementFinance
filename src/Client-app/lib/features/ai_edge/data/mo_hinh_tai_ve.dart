@@ -35,17 +35,44 @@ const String kTenTep = 'gemma-4-E2B-it.litertlm';
 /// Cỡ tệp thật, đo 2026-09-20. Dùng để hiện dung lượng trước khi tải.
 const int kCoTepByte = 2588147712;
 
+/// Tín hiệu huỷ của **một lượt** tải.
+///
+/// ⚠️ Vì sao là một đối tượng chứ không phải một cờ `bool`: một cờ chỉ trả lời
+/// được câu *"đã huỷ chưa"* khi có ai đó hỏi, mà `Dio.download` thì không hỏi —
+/// nó cần được **báo** để cắt kết nối. Bản đầu dùng cờ, và hậu quả là `huy()`
+/// chỉ thôi vẽ tiến độ trong khi máy **vẫn tải hết 2,41 GB ở nền**: người dùng
+/// bấm Huỷ trên dữ liệu di động vẫn mất chừng ấy dung lượng, im lặng.
+///
+/// [khiHuy] là chỗ bên tải gắn phép cắt của mình vào (`CancelToken.cancel()`
+/// với Dio); [daHuy] cho bên tải nào chỉ hỏi được một lần lúc vào.
+///
+/// **Một đối tượng cho mỗi lượt tải** — xem `_tai()`. Dùng chung cho cả đời
+/// `MoHinhTaiVe` thì lượt sau bị huỷ ngay khi vừa bắt đầu, và người dùng thấy
+/// nút Tải bấm mãi không lên gì.
+class DauHuy {
+  final _xong = Completer<void>();
+
+  bool get daHuy => _xong.isCompleted;
+
+  Future<void> get khiHuy => _xong.future;
+
+  void huy() {
+    if (!_xong.isCompleted) _xong.complete();
+  }
+}
+
 class MoHinhTaiVe {
   final Future<Directory> Function() thuMuc;
   final Future<void> Function(
     String url,
     File dich,
     void Function(double phanTram) bao,
+    DauHuy dauHuy,
   ) taiTep;
 
   final _phat = StreamController<TienDoTai>.broadcast();
   Future<void>? _dangChay;
-  bool _huy = false;
+  DauHuy? _dauHuy;
 
   MoHinhTaiVe({required this.thuMuc, required this.taiTep});
 
@@ -62,17 +89,21 @@ class MoHinhTaiVe {
   }
 
   Future<void> _tai() async {
-    _huy = false;
+    // Tín hiệu MỚI cho mỗi lượt: xem chú thích đầu [DauHuy].
+    final dauHuy = _dauHuy = DauHuy();
     final dich = File(await duongTep());
     _phat.add((trangThai: TrangThaiMoHinh.dangTai, phanTram: 0, loi: null));
     try {
       await taiTep(kUrlMoHinh, dich, (p) {
-        if (_huy) return;
+        if (dauHuy.daHuy) return;
         _phat.add(
           (trangThai: TrangThaiMoHinh.dangTai, phanTram: p, loi: null),
         );
-      });
-      if (_huy) throw const _HuyTai();
+      }, dauHuy);
+      // Bên tải có thể **về bình thường** dù đã bị báo huỷ (bản giả trong test,
+      // hoặc một thư viện nuốt lỗi huỷ). Chốt này giữ cho hai đường ra cùng
+      // một kết cục.
+      if (dauHuy.daHuy) throw const _HuyTai();
       _phat.add((trangThai: TrangThaiMoHinh.daTai, phanTram: 1, loi: null));
     } catch (e) {
       // ⚠️ Xoá tệp dở NGAY. Một tệp cụt trông y hệt tệp đủ với `existsSync()`,
@@ -82,6 +113,15 @@ class MoHinhTaiVe {
           dich.deleteSync();
         } catch (_) {}
       }
+      // ⚠️ Huỷ **không phải lỗi**: người dùng vừa chủ ý bấm nút. Dựng khối lỗi
+      // đỏ cho một thao tác thành công là nói với họ rằng có gì đó hỏng — và
+      // cũng không ném ra ngoài, vì không ai cần xử lý "việc đã làm xong".
+      if (dauHuy.daHuy) {
+        _phat.add(
+          (trangThai: TrangThaiMoHinh.chuaTai, phanTram: 0, loi: null),
+        );
+        return;
+      }
       _phat.add(
         (trangThai: TrangThaiMoHinh.loi, phanTram: 0, loi: e.toString()),
       );
@@ -90,7 +130,8 @@ class MoHinhTaiVe {
     }
   }
 
-  void huy() => _huy = true;
+  /// Cắt lượt tải đang chạy. Không có lượt nào thì không làm gì.
+  void huy() => _dauHuy?.huy();
 
   Future<void> xoa() async {
     final f = File(await duongTep());

@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -36,6 +35,7 @@ import '../../features/ai_edge/data/cong_tac_ai.dart';
 import '../../features/ai_edge/data/mo_hinh_tai_ve.dart';
 import '../../features/ai_edge/data/slm_cache.dart';
 import '../../features/ai_edge/data/slm_runtime.dart';
+import '../../features/ai_edge/data/tai_tep_dio.dart';
 import '../../features/budget/data/tai_phan_bo_nguon.dart';
 import '../../features/budget/data/repositories/budget_repository_impl.dart';
 import '../../features/budget/presentation/bloc/budget_cubit.dart';
@@ -469,23 +469,13 @@ Future<void> setupDependencies() async {
   sl.registerLazySingleton<MoHinhTaiVe>(
     () => MoHinhTaiVe(
       thuMuc: getApplicationSupportDirectory,
-      // ⚠️ `Dio()` TRẦN, cố ý KHÔNG phải `sl<DioClient>().dio`.
-      //
-      // `AuthInterceptor.onRequest` gắn `Authorization: Bearer <token>` vào
-      // **mọi** request đi qua Dio của dự án, không lọc theo host — mà đích ở
-      // đây là `huggingface.co`. Dùng chung Dio là gửi access token của người
-      // dùng cho một bên thứ ba, im lặng. Tải mô hình là một lượt GET tệp
-      // công khai, không cần thứ gì của phiên đăng nhập.
-      //
-      // (Kế hoạch P3 Step 4 viết `sl<Dio>()`; dự án không đăng ký `Dio` trần
-      // nào, và nếu đăng ký thì cũng không được lấy cái có interceptor.)
-      taiTep: (url, dich, bao) async {
-        await Dio().download(
-          url,
-          dich.path,
-          onReceiveProgress: (n, t) => bao(t > 0 ? n / t : 0),
-        );
-      },
+      // Phép tải thật ở `data/tai_tep_dio.dart`, **không** viết inline ở đây:
+      // một closure nằm giữa hàng trăm dòng đăng ký DI thì không ca test nào
+      // với tới, và chính vì thế lỗi "nút Huỷ không dừng được lượt tải" sống
+      // qua hai task liền. Hai quyết định của nó — `Dio()` trần (không phải
+      // Dio của dự án, vì interceptor gắn Bearer token cho **mọi** host) và
+      // `CancelToken` — ghi ngay trong tệp ấy.
+      taiTep: taiTepQuaDio,
     ),
   );
 
