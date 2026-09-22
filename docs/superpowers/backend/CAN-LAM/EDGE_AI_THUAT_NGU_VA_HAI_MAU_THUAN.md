@@ -1,5 +1,10 @@
 # Edge AI — xin thống nhất tên gọi, và hai mâu thuẫn cần backend chốt
 
+> ✅ **ĐÃ XỬ LÝ XONG (2026-09-22):**
+> 1. **Thuật ngữ:** Đã đổi đồng bộ "AI Edge" thành "Edge AI" trong toàn bộ tài liệu `docs/AI/`, làm rõ ranh giới hệ chuyên gia (luật/thống kê tất định) vs Edge AI (SLM on-device).
+> 2. **Mâu thuẫn ① (Chốt lối A):** Dữ liệu tài chính của User **KHÔNG** index lên vector DB server (tuân thủ F1 & Nghị định 13/2023/NĐ-CP). Chatbot server chỉ RAG trên kho kiến thức tài chính chung/tĩnh; số liệu cá nhân dùng Function-Calling. Đã cập nhật `docs/AI/Standard_RAG.md` §6.
+> 3. **Mâu thuẫn ②:** Giữ Cloud AI (Backend quản lý API Key, không đưa API Key lên Mobile). Đã bổ sung tầng lọc dữ liệu nhạy cảm `maskTransactionDescription` trong `src/Backend/utils/masking.util.js` (lọc thẻ tín dụng/CVV/mật khẩu, che SĐT, STK, Email) trước khi gửi prompt sang Cloud LLM, đồng thời kích hoạt Strict Grounding chống ảo giác danh mục trong `llm.classifier.js`. PO sẽ cấu hình `GEMINI_API_KEY` trong `.env` sau.
+
 **Ngày:** 2026-09-22 · **Người viết:** phía Client-app · **Nhánh:** `TranQuangDat`
 **Việc xin:** (1) **sửa chữ** — một tên gọi; (2) **hai quyết định** — không xin đổi mã ngay, nhưng
 quyết định nào cũng kéo theo một chỗ mã phải đổi, ghi rõ bên dưới. **Không** xin migration,

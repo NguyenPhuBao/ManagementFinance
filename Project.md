@@ -2704,22 +2704,21 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - Cửa hậu Mock Input: khóa 100% trên production, bắt buộc qua AI xử lý thật.
 - **Quy định chiến lược của PO (Giai đoạn hiện tại):** Toàn bộ các môi trường (kể cả Render Cloud) thống nhất triển khai theo chế độ `DEVELOPMENT` (`NODE_ENV=development`) để thuận tiện debug, test liên thông và theo dõi log. Chỉ chuyển đổi sang `PRODUCTION` sau khi hoàn thiện toàn bộ dự án và có yêu cầu/phê duyệt bằng văn bản từ PO.
 
-### 11.39. Nghiên Cứu & Thiết Kế Kiến Trúc Edge SLM Cân Đối Ngân Sách Trên Mobile App (Client-app) (2026-09-13)
-- **Tài liệu nguồn sự thật:** [`docs/AI/AI_Edge-SLM.md/Client-app.md`](docs/AI/AI_Edge-SLM.md/Client-app.md).
-- **Mô hình kiến trúc 3 tầng (On-device Edge AI / SLM):**
-  1. **Tầng 1 (Feature Engineering - Thống kê định kỳ & chạy nền):** Biến đổi raw transactions từ SQLite cục bộ thành các đặc trưng toán học (tỷ trọng chi tiêu, hệ số biến thiên $CV$, tính chu kỳ regularity, độ dốc xu hướng, tần suất). Ứng dụng thuật toán Welford $O(1)$ cho thống kê online.
-  2. **Tầng 2 (Reasoning & Optimization Engine - Thuật toán cân đối có trọng số):** Tính Essentiality score (học theo hành vi), đo độ co giãn elasticity, tự động phát hiện thâm hụt và chọn nguồn bù từ các donor có độ linh hoạt cao; cơ chế học ngầm (implicit feedback) từ phản hồi người dùng; ràng buộc mục tiêu tiết kiệm.
-  3. **Tầng 3 (On-Device SLM - Diễn giải & Hội thoại):** Mô hình ngôn ngữ nhỏ (Gemma Nano, MediaPipe LLM Inference) nhận JSON từ Tầng 2 làm grounding context để diễn giải tự nhiên và trả lời câu hỏi; thiết lập cơ chế Guardrails chống hallucination số học bằng validator đối soát và fallback 2 lớp an toàn.
-- **Roadmap triển khai:** MVP (Tầng 1 + Tầng 2 + Template string) $\rightarrow$ V2 (Tích hợp On-device SLM + Guardrail) $\rightarrow$ V3 (Conflict handling học ngầm) $\rightarrow$ V4 (Tối ưu hóa tuyến tính Linear Programming).
-- **Hệ thống quy tắc nghiệp vụ toàn diện (Business Rules A-H):**
-  - *Nhóm A (Làm sạch & Nhận diện):* A1 (lọc outlier $> 3\times$), A2 (loại trừ một lần), A3 (hoàn tiền không trừ lùi), A4 (chặn uncategorized), A5 (bảo vệ baseline nhỏ), A6 (phân tách Lump-sum vs Continuous).
-  - *Nhóm B (Cảnh báo & Dự phóng):* B1 ($\ge 2$ tháng dữ liệu), B2 (ngưỡng thâm hụt kép $\ge 10\%$ và $\ge 50.000đ$), B3 (cooldown 48h chống spam), B4-B5 (chống bẫy đầu tháng, dự phóng Bayesian nội suy), B6 (tối đa 1 đề xuất chủ động/tuần chống AI fatigue).
-  - *Nhóm C (Nguồn bù & Giới hạn):* C1 (essentiality $\ge 0.75 \rightarrow$ Protected cấm cắt), C2 (manual override tối cao), C3 (max cut ratio $25\% \rightarrow 15\%$), C4 (vùng đệm donor $\ge 100.000đ$), C5 (ngưỡng điều chuyển có ý nghĩa), C6 (xếp hạng donor theo slack $\times (1 - \text{essentiality})$), C7 (xử lý cạn kiệt nguồn bù `insufficient_slack`).
-  - *Nhóm D (Mục tiêu & Thu nhập biến động):* D1 (thu nhập trượt 3 tháng), D2 (chế độ thận trọng khi thu nhập giảm $> 30\%$), D3 (không tự ý nâng saving goal), D4 (chuyển đổi tư vấn khi thâm hụt cơ cấu 3 tháng), D5 (ràng buộc trần ngân sách tuyệt đối).
-  - *Nhóm E (Tương tác & Học ngầm):* E1 (trạng thái pending bắt buộc, người dùng quyết định 100%), E2 (chấp nhận từng phần), E3 (ghi nhận `user_final_change`), E4 (học ngầm giảm elasticity qua EMA $\alpha=0.25$), E5 (phân biệt trực quan resolved vs insufficient slack).
-  - *Nhóm F (Bảo mật on-device):* F1 (không đưa dữ liệu thô/feature ra ngoài thiết bị), F2 (ranh giới mã hóa: ghi chú thô trên client, bảo vệ at-rest phía server), F3 (cô lập mạng zero network access).
+### 11.39. Nghiên Cứu & Thiết Kế Kiến Trúc Edge AI Cân Đối Ngân Sách Trên Mobile App (Client-app) (Cập nhật 2026-09-22)
+- **Tài liệu nguồn sự thật:** [`docs/AI/AI_Edge-SLM.md/Client-app.md`](docs/AI/AI_Edge-SLM.md/Client-app.md), [`docs/AI_EDGE_FEATURE.md`](docs/AI_EDGE_FEATURE.md).
+- **Mô hình kiến trúc phân tầng:**
+  1. **Tầng 1 (Feature Engineering - Hệ chuyên gia thống kê định kỳ & chạy nền):** Biến đổi raw transactions từ SQLite cục bộ (Drift v24) thành các đặc trưng toán học (tỷ trọng chi tiêu, hệ số biến thiên $CV$, regularity, độ dốc xu hướng). Tính toán tại chỗ, không cần bảng cache riêng.
+  2. **Tầng 2 (Reasoning & Optimization Engine - Hệ chuyên gia luật cân đối có trọng số):** Tính Essentiality score (học theo hành vi), đo độ co giãn elasticity, tự động phát hiện thâm hụt và chọn nguồn bù từ các donor có độ linh hoạt cao; ràng buộc mục tiêu tiết kiệm.
+  3. **Tầng 3 (On-Device Edge AI / SLM - Diễn giải & Hội thoại):** Mô hình ngôn ngữ nhỏ **Gemma 4 E2B** (`gemma-4-E2B-it.litertlm`, 2,41 GB qua `flutter_gemma` + `flutter_gemma_litertlm`) nhận JSON từ Tầng 2 làm grounding context để diễn giải tự nhiên; fallback 2 lớp sang template string khi runtime lỗi hoặc máy không hỗ trợ arm64-v8a.
+- **Hệ thống quy tắc nghiệp vụ điều chỉnh theo thực tế thi công (Business Rules A-H):**
+  - *Nhóm A (Làm sạch & Nhận diện):* A1 (ngưỡng chi lớn `nguongChiLon` người dùng đặt), A2 (không thêm cột `is_one_time`), A3 (hoàn tiền `type = 'thu'`), A4 (chặn uncategorized), A5 (hoãn sang giai đoạn sau), A6 (chi cố định lấy từ `Bills` và auto-deposit của `Goals`).
+  - *Nhóm B (Cảnh báo & Dự phóng):* B1 (cold-start dùng prior nhóm, luật thống kê hoãn tới khi $\ge 6$ tháng dữ liệu), B2 (ngưỡng kép $\ge 10\%$ và $\ge 50.000đ$, thi hành trong `notification_rules.dart`), B3 (khóa chống trùng theo kỳ ngân sách của `AppNotifications`), B4-B5 (dự phóng theo cửa sổ cuộn $\le 90$ ngày mượn `suggestAmount`), B6 (tối đa 1 đề xuất/tuần qua khóa `budgetRebalance:<tuần ISO>`).
+  - *Nhóm C (Nguồn bù & Giới hạn):* C1 (essentiality $\ge 0.75 \rightarrow$ Protected cấm cắt), C2 (manual override tối cao), C3 (max cut ratio $25\% \rightarrow 15\%$), C4 (vùng đệm donor $\ge 100.000đ$), C5 (ngưỡng điều chuyển có ý nghĩa), C6 (khi chưa có thống kê, essentiality $= 0.5$ cho mọi danh mục nên xếp hạng quy về dư địa), C7 (xử lý cạn kiệt nguồn bù `insufficient_slack`).
+  - *Nhóm D (Mục tiêu & Thu nhập biến động):* D1 (thu nhập theo `thuNhapCua()`, TB 3 tháng liền trước, tính tại chỗ), D2 & D4 (hoãn sang giai đoạn sau), D3 (suy từ `Goals` còn hạn; AI không sửa số tiền đích hay hạn mục tiêu), D5 (ràng buộc trần ngân sách tuyệt đối).
+  - *Nhóm E (Tương tác & Phản hồi):* E1 (trạng thái pending bắt buộc), E2 (chấp nhận từng phần), E3 (ghi nhận `user_final_change`), E4 (hoãn sang giai đoạn sau), E5 (phân biệt trực quan resolved vs insufficient slack).
+  - *Nhóm F (Bảo mật on-device):* F1 (gói số đặc trưng, kế hoạch tái phân bổ và bảng phản hồi không rời khỏi máy; giao dịch thô đồng bộ với backend theo kiến trúc offline-first; căn cứ Nghị định 13/2023/NĐ-CP), F2 (ranh giới mã hóa), F3 (cô lập mạng zero network access cho SLM on-device).
   - *Nhóm G (Định dạng & Làm tròn):* G1 (làm tròn tiền đến bội số 10.000đ), G2 (làm tròn % 1 chữ số thập phân), G3 (luôn hiển thị Data Card số liệu thô song song).
-  - *Nhóm H (Hiệu năng mobile):* H1 (chạy 100% trong Dart Background Isolate giữ 60/120 FPS), H2 (quản lý pin & nhiệt độ), H3 (graceful degradation fallback), H4 (3 bảng SQLite cục bộ `local_category_features`, `local_rebalancing_feedback`, `local_ai_alert_history`).
+  - *Nhóm H (Hiệu năng mobile):* H1 (chạy trong Dart Background Isolate giữ 60/120 FPS), H2 (quản lý pin & nhiệt độ), H3 (ngưỡng rơi về mẫu câu là RAM $< 4\text{GB}$ hoặc không phải arm64-v8a), H4 (chỉ 1 bảng SQLite cục bộ `ai_rebalancing_feedbacks` kèm cột `categories.ai_co_dinh`).
 
 ### 11.40. Quyết Định Đóng Băng & Tạm Dừng Hoàn Toàn Module Bank Do Lý Do Chính Sách (2026-09-21)
 - **Bối cảnh & Nguyên nhân:** Xuất phát từ lý do chính sách (các quy định bảo mật thông tin tài khoản ngân hàng, hạn chế về giấy phép kết nối bên thứ 3 và việc đảm bảo an toàn dữ liệu người dùng cá nhân theo Nghị định 13/2023/NĐ-CP), dự án đã ra quyết định **tạm dừng hoàn toàn Module Bank**.
@@ -2727,6 +2726,24 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   1. **Không xóa bỏ chức năng/code đã có:** Giữ nguyên trạng toàn bộ mã nguồn `src/Backend/modules/bank/`, `src/Backend/workers/bank.worker.js`, các bảng migration CSDL liên quan đến `bank_account`, và tài liệu kỹ thuật đã viết.
   2. **Loại khỏi phạm vi sắp tới:** Trong phạm vi xây dựng và hoàn thiện hệ thống sắp tới, Module Bank sẽ **không còn nằm trong lộ trình triển khai, kiểm thử hay đánh giá nghiệm thu**.
   3. **Tập trung luồng tự động hóa thay thế:** Luồng thu thập và tạo giao dịch tự động của ứng dụng sẽ tập trung tối đa vào **Module OCR (Gemini 2.0 Flash đọc hóa đơn/biên lai chuyển khoản)** và **Cơ chế ghi nhận giao dịch từ SMS / Nhập tay**.
+
+### 11.41. Chuẩn Hóa Thuật Ngữ Edge AI, Kiến Trúc Cloud AI & Bảo Mật Dữ Liệu Phân Tầng (2026-09-22)
+- **Thống nhất tên gọi Edge AI:**
+  - Đồng bộ thuật ngữ chuẩn ngành **Edge AI** (thay vì "AI Edge") trên toàn bộ hệ thống tài liệu.
+  - Làm rõ phân định kỹ thuật: Tầng 1 (Feature engineering) và Tầng 2 (Rule-engine) là **hệ chuyên gia toán học & thống kê tất định**; Tầng 3 (On-device SLM chạy mô hình ngôn ngữ Gemma 4 E2B qua LiteRT/MediaPipe) mới là **Edge AI**.
+- **Giải quyết Mâu thuẫn ① (Quyền riêng tư dữ liệu tài chính & Server RAG):**
+  - Chốt vững cam kết **F1** và tuân thủ tuyệt đối Nghị định 13/2023/NĐ-CP: Toàn bộ dữ liệu tài chính người dùng (`Transaction`, `Wallet`, `Bill`, `Goal`, `Budget`) **TUYỆT ĐỐI KHÔNG index lên Vector DB phía server**.
+  - Pipeline RAG phía Backend chỉ áp dụng duy nhất cho **Kiến thức tài chính chung/tĩnh** (mẹo tiết kiệm, quy tắc 50/30/20, thuế TNCN).
+  - Khi Trợ lý ảo (Chatbot) cần thông tin tài chính cá nhân của người dùng, hệ thống sử dụng cơ chế **Function-Calling** truy vấn cấu trúc an toàn qua API backend được bọc bởi JWT token xác thực chủ sở hữu (`idaccount`).
+- **Giải quyết Mâu thuẫn ② (Kiến trúc Cloud AI & Tầng bảo mật PII cho Classifier Tầng 3):**
+  - **Giữ kiến trúc Cloud AI:** Backend đóng vai trò AI Gateway quản lý API Key an toàn tại server; **tuyệt đối không đưa API Key lên Client Mobile**.
+  - **Xây dựng tầng lọc PII Masking trước khi gửi Cloud LLM:** Bổ sung hàm tiện ích `maskTransactionDescription` tại [`src/Backend/utils/masking.util.js`](src/Backend/utils/masking.util.js). Trước khi văn bản giao dịch và merchant được chuyển tiếp tới Google Gemini, bộ lọc tự động:
+    1. Lọc và loại bỏ số thẻ tín dụng (thuật toán Luhn), mã CVV/CVC, mật khẩu bằng `filterSensitiveNote`.
+    2. Che số điện thoại: định dạng `[SĐT]`.
+    3. Che số tài khoản ngân hàng: định dạng `[STK]`.
+    4. Che địa chỉ email: định dạng `[EMAIL]`.
+  - **Thi hành Strict Grounding chống ảo giác danh mục:** Bộ phân loại `llm.classifier.js` kiểm tra nghiêm ngặt kết quả trả về từ LLM; nếu model trả về `category_id` không thuộc danh sách danh mục hợp lệ của người dùng, hệ thống lập tức từ chối (`return null`), ngăn chặn triệt để UUID lạ ghi vào CSDL.
+
 
 
 

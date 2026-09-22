@@ -1,5 +1,7 @@
 # Xin sửa chữ đặc tả `docs/AI/AI_Edge-SLM.md/Client-app.md` — không xin đổi mã, không xin schema
 
+> ✅ **ĐÃ XỬ LÝ XONG (2026-09-22):** Toàn bộ 5 điểm sai đặc tả, đính chính runtime/mô hình Gemma 4 E2B, và cập nhật 39 quy tắc A–H đã được sửa đổi chuẩn xác trong `docs/AI/AI_Edge-SLM.md/Client-app.md`. Lệnh kiểm thử `grep` đạt 0 dòng lỗi.
+
 **Ngày:** 2026-09-19 · **Người viết:** phía Client-app · **Nhánh:** `TranQuangDat` @ `03fe03a`
 **Tệp xin sửa:** `docs/AI/AI_Edge-SLM.md/Client-app.md` (NPBao, bản `fcc20b5` ngày 2026-09-13) —
 tệp do backend quản nên client **không tự sửa**, kể cả một dòng.
