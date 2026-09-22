@@ -596,7 +596,7 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-22)
 
-### 🚧 Edge AI chặng 2 — P3 cắm SLM, xong Task 1–7 / 10 (2026-09-22)
+### 🚧 Edge AI chặng 2 — P3 cắm SLM, xong Task 1–8 / 10 (2026-09-22)
 
 Kế hoạch `docs/superpowers/plans/2026-09-20-ai-edge-p3-cam-slm.md`. Tám tệp mã đã vào, **mô hình
 chưa tải về máy nào** nên mọi đường vẫn rơi về mẫu câu — đó là hành vi đúng, không phải lỗi.
@@ -610,6 +610,45 @@ chưa tải về máy nào** nên mọi đường vẫn rơi về mẫu câu —
 | 5 | `data/mo_hinh_tai_ve.dart` | Bốn trạng thái, tiến độ, huỷ, xoá. Gọi `tai()` hai lần chồng nhau chỉ chạy **một** lượt |
 | 6 | `data/slm_dien_giai.dart` | Bản `BoDienGiai` **thứ hai**, **sáu** nhánh lùi về mẫu câu; nạp lười, đúng một lần mỗi phiên |
 | 7 | `presentation/pages/cai_dat_ai_page.dart` · `data/cong_tac_ai.dart` | Màn Cài đặt AI + route `/ai-settings` + nối DI. Bốn đăng ký **lazy** (`SlmRuntime`/`MoHinhTaiVe`/`SlmCache`/`CongTacAi`), **cố ý không đăng ký `BoDienGiai`** — lối B |
+| 8 | `ai_chat/…/ai_chat_page.dart` · `ai_edge/data/nguon_goi_so.dart` · `kiemSoNhieuGoi` | Màn Trợ lý AI chạy thật, **đóng A11** |
+
+**Task 8 — màn Trợ lý AI.** Bản cũ là **mockup tĩnh**: in *"Bạn đã chi 3.200.000đ"* và *"Ăn uống
+tăng 35% (chủ yếu là Cafe & ShopeeFood)"* — những con số không đến từ dữ liệu nào — cộng **năm**
+nút không có handler. Đúng loại lỗi mà thẻ "Insight AI" (A6) đã phải gỡ.
+
+Nay bốn chip là **câu hỏi thật**, gửi đi y như khi người dùng tự gõ (một đường, không bốn nhánh
+mã); hỏi tự do đi qua `chuDeBiChan` **trước** khi gọi mô hình; câu trả lời hiện **kèm thẻ số liệu**
+(điều kiện 12), và thẻ chỉ gồm những con số câu ấy **thật sự nhắc tới** — không phải mọi số của cả
+bốn gói, kẻo thẻ thành tiếng ồn thay vì nguồn kiểm chứng. Ô nhập **và chip** khoá theo cùng một
+điều kiện; khoá ô mà để chip hỏi được là mở một đường vòng quanh chính cái khoá ấy.
+
+Hai thứ mới ở tầng dưới. **`ai_edge/data/nguon_goi_so.dart`** là chỗ **duy nhất** dựng gói số mà
+không đứng trên state của một trang — sáu khối Nhận xét đều lấy từ trang của chúng, còn màn Trợ lý
+AI không thuộc trang nào. ⚠️ Nó đọc **`.first`** chứ không nghe lâu dài: một câu trả lời là *ảnh
+chụp tại lúc hỏi*; nghe tiếp thì câu đã hiện nói một đằng còn số liệu sau lưng nó đổi một nẻo, mà
+người dùng không có cách nào biết. Và **`kiemSoNhieuGoi`** — ⚠️ **không phải `goi.any(kiemSo)`**:
+viết thế là đòi cả câu nằm gọn trong **một** gói, nên một câu hoàn toàn đúng kiểu *"tháng này chi
+X, mục tiêu còn thiếu Y"* bị chặn, im lặng.
+
+⚠️ **Ba nhãn nói dối, cả ba chỉ máy ảo thấy** (sửa cùng ngày, `66b6a09`) — cùng một họ: một câu chữ
+khẳng định điều không đúng với trạng thái thật, và `flutter test` mù vì mỗi ca chỉ dựng một nhánh.
+
+1. **Băng nhắc gộp hai lý do làm một.** Ô nhập khoá vì *chưa tải mô hình* **hoặc** vì *công tắc
+   đang tắt*, mà câu chỉ có một — người đã tải xong 2,41 GB rồi tự tắt công tắc sẽ đọc *"chưa có
+   mô hình trên máy"* và đi tải lại thứ đang nằm sẵn trong máy. Nay là hàm thuần
+   `cauKhoaHoiDap(coTep:)`.
+2. **Quay lại từ Cài đặt AI thì màn Trợ lý không đọc lại trạng thái** — `initState` chỉ chạy một
+   lần, `pop` không dựng lại State, nên tắt công tắc ở màn kia rồi quay về vẫn thấy chip xanh và ô
+   nhập mở; bấm vào mới biết là không. **Cùng họ G48.** Nay `_moCaiDatAi()` `await` lời `push` rồi
+   đọc lại; ca test phải dựng **`GoRouter` thật** vì `push`/`pop` chính là thứ cần tái hiện.
+3. **Chip "Hoạt động" ở màn Cài đặt AI** vẫn xanh khi công tắc đã tắt — một lời khẳng định đặt
+   ngay trên chính cái công tắc đang nói ngược lại, và người dùng tin cái chip.
+
+⭐ **Mẹo nghiệm thu đáng giữ:** dựng trạng thái *"đã có mô hình"* bằng một **tệp giả**
+(`adb shell run-as com.flowmoney.flowmoney cp <tệp bất kỳ> files/gemma-4-E2B-it.litertlm`, **xoá
+sau khi đo**). Nhờ nó đo được cả những nhánh mà không tải 2,41 GB thì không bao giờ tới — và gói
+`flutter_gemma` tự từ chối tệp ấy (*"too small: 354 bytes (minimum: 1048576)"*) nên **nhánh lỗi
+cũng chạy thật**: chip → gói số nạp được → nạp mô hình hỏng → câu lỗi, **không màn đỏ**.
 
 ⚠️ **`pubspec` thêm HAI gói, không phải một**: `flutter_gemma: 1.8.3` (ghim **cứng** như `fl_chart`)
 và `flutter_gemma_litertlm: ^1.7.0`. Core **không kèm engine nào** — thiếu gói thứ hai thì
@@ -678,8 +717,8 @@ luồng đọc báo đúng lúc đầu kia gửi FIN, thì con số thật là *
 nói sai. Cũng nhờ nó mà `dio.close(force: true)` bị **loại**: đo được nó chỉ bớt đúng một gói đang
 bay (64 KB trên 2,41 GB).
 
-**Mức nền:** `flutter test` **3325/3325, 2 skip**; `flutter analyze` **26**; schema **v24** không
-đổi; payload không đổi; bộ `ai_edge` **25** tệp / **197** test.
+**Mức nền:** `flutter test` **3341/3341, 2 skip**; `flutter analyze` **26**; schema **v24** không
+đổi; payload không đổi; bộ `ai_edge` **25** tệp / **199** test, bộ `ai_chat` **1** tệp / **14** test.
 
 ### ✅ Edge AI chặng 1 — chặn lỗi và tài liệu trước P3 (2026-09-22) — XONG TRỌN 6 TASK
 

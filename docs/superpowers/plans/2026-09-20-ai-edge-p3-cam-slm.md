@@ -1832,7 +1832,7 @@ git commit -m "docs(ai-edge): P3 xong — bảng đo máy thật, A11 đóng"
 | 5 | `cfe2c95` | `mo_hinh_tai_ve.dart` |
 | 6 | `075ef8d` | `slm_dien_giai.dart`, sáu nhánh lùi |
 | 7 | `4f80f02` | Màn Cài đặt AI + DI + route. **Ba chỗ kế hoạch lệch mã thật** — xem ngay dưới |
-| 8 | | |
+| 8 | `daa7aa2` → `66b6a09` | Màn Trợ lý AI, **đóng A11**. Thêm `nguon_goi_so.dart` và `kiemSoNhieuGoi`. Nghiệm thu máy ảo lộ **ba nhãn nói dối** — sửa ở `66b6a09` |
 | 9 | | |
 
 ### ⚠️ Ba chỗ kế hoạch này LỆCH MÃ THẬT (đo khi thi công Task 7, 2026-09-22)
