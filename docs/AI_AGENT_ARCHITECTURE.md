@@ -759,9 +759,16 @@ người dùng.
    trên Realme RMX2205 với tài khoản thật. Kết quả: **✅ 5 · rơi mẫu 3 · sai 0 · lệch câu hỏi
    12**. Đơn đặt hàng là **sáu** tool, bốn cái đứng đầu đều có hình dạng *"trả về danh sách có
    **tên**"* — thứ mười tool ứng viên ở mục 5.1 không hề dự đoán. **Cổng B qua.**
-3. ⬜ **Tool layer + vòng lặp** — khai sáu tool ấy, mỗi tool trả `List<SoLieu>`; trần 3 lượt gọi,
-   không tool ghi. Ba câu trong bảng (12, 14, 20) **không cần tool nào** — chúng hỏng vì mô hình
-   chọn nhầm số đã có sẵn, nên sửa ở **prompt và nhãn**, và nên làm **trước** khi dựng tool.
+3. 🛑 **Lát 4a — phần "sửa prompt và nhãn" — XONG MÃ 2026-09-23, cổng chưa đạt** (nhóm A **1/4**).
+   Nó chữa được câu 3 và sửa hai lỗi đang chạy, nhưng chứng minh **danh sách có tên là CẦN nhưng
+   CHƯA ĐỦ**: mô hình không nối được hai mục rời. Xem "Đo lại sau chặng 4a" ở mục **5.6**.
+4. ⬜ **Lát 4b — tool layer + vòng lặp.** Khai sáu tool, trần 3 lượt gọi, không tool ghi.
+   ⚠️ Hình dạng đã đổi sau 4a: tool phải trả **một hàng đầy đủ** (tên + số + trạng thái trong
+   cùng kết quả), **không** phải nhiều `SoLieu` rời — đó chính là thứ 4a đo được là không đủ.
+
+*(Bản cũ của bước 3 ghi ba câu 12, 14, 20 "không cần tool nào, sửa ở prompt và nhãn, nên làm
+trước khi dựng tool". Vế "làm trước" đã làm — đó là lát 4a. Vế "không cần tool nào" thì **chỉ
+đúng một phần**: sửa nhãn cứu được câu 3, còn 8, 13, 15 vẫn cần tool.)*
 
 *(Bản cũ của mục này ghi bước 3 là "cộng **vector index tĩnh** cho kiến thức chung" và bước 2 là
 "9 tool + `traCuuKienThuc`". Cả hai đã đổi ngày 2026-09-22: RAG phía client **bỏ hẳn** — mục
