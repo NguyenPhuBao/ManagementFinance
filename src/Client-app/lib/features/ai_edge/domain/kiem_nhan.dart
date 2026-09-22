@@ -48,7 +48,7 @@ List<String> tuKhoaNhan(String nhan) {
 /// Tập âm tiết của [cau] — chữ thường, tách ở mọi ký tự không phải chữ.
 /// ⚠️ So theo **âm tiết**, không theo chuỗi con: "chiều" chứa "chi" mà không
 /// phải chữ "chi".
-Set<String> _amTietCua(String cau) => cau
+Set<String> amTietCua(String cau) => cau
     .toLowerCase()
     .split(RegExp(r'[^\p{L}]+', unicode: true))
     .where((t) => t.isNotEmpty)
@@ -57,7 +57,7 @@ Set<String> _amTietCua(String cau) => cau
 /// `true` khi mọi số trong [cau] đứng cùng câu với đủ từ khoá của một nhãn
 /// gói khớp nó. Câu không có số thì lọt — không có nhãn nào để gán sai.
 bool kiemNhan(String cau, List<GoiSo> goi) {
-  final amTiet = _amTietCua(cau);
+  final amTiet = amTietCua(cau);
   for (final x in trichSo(cau)) {
     final nhans = soLieuKhop(x, goi);
     if (nhans.isEmpty) return false;

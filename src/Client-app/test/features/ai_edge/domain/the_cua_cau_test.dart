@@ -68,4 +68,50 @@ void main() {
   test('câu không có số thì không thẻ', () {
     expect(theCuaCau('Bạn đang chi tiêu đúng nhịp.', [phanTich]), isEmpty);
   });
+
+  group('trùng GIÁ TRỊ giữa hai gói — bẫy 4.27 (chặng 4a)', () {
+    // Đúng ca máy thật bắt được ở chặng 3: gói hoá đơn có `Quá hạn 1`, gói ví
+    // có `Ví đang âm 1`. Cùng giá trị 1, và gói hoá đơn xếp TRƯỚC gói ví.
+    final viAm = _Gia('vi', [soDem('Ví đang âm', 1)]);
+
+    test('⭐ câu nói về VÍ thì thẻ lấy nhãn của ví, không phải của hoá đơn', () {
+      expect(
+        theCuaCau('Ví đang âm: 1', [hoaDon, viAm]),
+        ['Ví đang âm 1'],
+        reason: 'Khử trùng theo GIÁ TRỊ thì nhãn của gói đứng trước thắng, và '
+            'thẻ nói "Quá hạn 1" dưới một câu về ví — đúng thứ máy thật in ra '
+            'ngày 2026-09-22. Thẻ sinh ra để làm nguồn kiểm chứng, không phải '
+            'để nói về một đại lượng khác.',
+      );
+    });
+
+    test('câu nói về hoá đơn thì vẫn lấy nhãn hoá đơn', () {
+      expect(theCuaCau('Có 1 hoá đơn quá hạn.', [hoaDon, viAm]), ['Quá hạn 1']);
+    });
+
+    test('câu không nhắc nhãn nào → giữ hành vi cũ, cái đầu theo thứ tự gói',
+        () {
+      expect(
+        theCuaCau('Con số là 1.', [hoaDon, viAm]),
+        ['Quá hạn 1'],
+        reason: 'Không có căn cứ nào để chọn thì đừng đoán.',
+      );
+    });
+
+    test('thẻ nêu TÊN đối tượng khi có', () {
+      final nganSach =
+          _Gia('ngan_sach', [soPhanTram('Tỉ lệ', 90.0, ten: 'Giáo dục')]);
+      expect(theCuaCau('Giáo dục đã dùng 90,0%.', [nganSach]),
+          ['Giáo dục · Tỉ lệ 90,0%']);
+    });
+
+    test('tên cũng dùng được làm căn cứ chọn nhãn', () {
+      final a = _Gia('ngan_sach', [soPhanTram('Tỉ lệ', 90.0, ten: 'Giáo dục')]);
+      final b = _Gia('vi', [soPhanTram('Tỉ lệ', 90.0, ten: 'Ăn uống')]);
+      expect(theCuaCau('Ăn uống đã dùng 90,0%.', [a, b]),
+          ['Ăn uống · Tỉ lệ 90,0%'],
+          reason: 'Hai mục cùng nhãn VÀ cùng giá trị, chỉ khác tên — nếu '
+              'không xét tên thì thẻ nói về Giáo dục dưới một câu về Ăn uống.');
+    });
+  });
 }
