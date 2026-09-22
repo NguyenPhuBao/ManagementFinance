@@ -5,10 +5,10 @@
 > (`docs/AI/AI_Edge-SLM.md/`) dùng tên ấy — **đừng đổi tên thư mục mã**, nó không mua được gì
 > và làm ba test quét phải sửa theo. Trong văn bản, từ 2026-09-22 dùng **Edge AI**.
 > ⚠️ Và phân biệt hai tầng: tầng **luật + thống kê** (đang chạy, không phải học máy) và tầng
-> **SLM on-device** (P3, **đang thi công từ 2026-09-22**) — chỉ tầng sau mới là Edge AI theo nghĩa ngành.
+> **SLM on-device** (P3, ✅ **XONG 2026-09-22**) — chỉ tầng sau mới là Edge AI theo nghĩa ngành.
 
 **Trạng thái:** P0 xong (`03fe03a`) · **P1 spike XONG 2026-09-20** (đo trên OnePlus 13R / Snapdragon 8 Gen 3 — bảng đo mục **8**; người dùng chốt **E2B cho mọi máy**) · **P2 XONG — trọn 17 task** (Task 14 gắn khối Nhận xét vào bốn màn, đóng A6 — ⚠️ **nay là SÁU màn**, Hoá đơn và Quản lý ví thêm 2026-09-21, mục **12** và **14**; Task 15 thẻ + sheet kế hoạch tái phân bổ, nghiệm thu máy ảo đầu-cuối tới PostgreSQL — cả hai 2026-09-19; **Task 16** thông báo `budgetRebalance` 2026-09-20, mục **5g** `NOTIFICATION_FEATURE.md`; **Task 17** nghiệm thu tổng + tài liệu bàn giao 2026-09-20, mục **7.4**) ·
-**P3: ĐANG THI CÔNG từ 2026-09-22 — xong Task 1–8 / 10.** Tám tệp mã đã vào: `slm_prompt.dart` và `chu_de_chan.dart` (hàm thuần), `slm_cache.dart`, `slm_runtime.dart` (tệp **duy nhất** import `flutter_gemma`, có test quét thứ **16** canh), `mo_hinh_tai_ve.dart`, `slm_dien_giai.dart` (bản `BoDienGiai` thứ hai, **sáu** nhánh lùi về mẫu câu), cộng **Task 7** ngày 2026-09-22: `cai_dat_ai_page.dart` (màn Cài đặt AI, route `/ai-settings`, nghiệm thu máy ảo 411dp) và `cong_tac_ai.dart`. DI nay đăng ký `SlmRuntime` / `MoHinhTaiVe` / `SlmCache` / `CongTacAi`, **cả bốn đều lazy** và **cố ý không đăng ký `BoDienGiai`** (lối B). `pubspec` thêm `flutter_gemma: 1.8.3` và `flutter_gemma_litertlm: ^1.7.0`. **Task 8** cùng ngày: màn **Trợ lý AI** chạy thật (đóng **A11**) — bốn chip là câu hỏi thật, hỏi tự do qua `chuDeBiChan` **trước** khi gọi mô hình, câu trả lời kèm **thẻ số liệu**, ô nhập khoá khi chưa có mô hình *hoặc* công tắc tắt; thêm `data/nguon_goi_so.dart` và `kiemSoNhieuGoi`. ⏳ **Còn Task 9**: nghiệm thu máy thật + bảng đo P3 → **cổng A**. ⚠️ Mô hình **chưa** tải về máy nào, nên mọi đường vẫn rơi về mẫu câu — đó là hành vi đúng, không phải lỗi.
+**P3: ĐANG THI CÔNG từ 2026-09-22 — xong Task 1–8 / 10.** Tám tệp mã đã vào: `slm_prompt.dart` và `chu_de_chan.dart` (hàm thuần), `slm_cache.dart`, `slm_runtime.dart` (tệp **duy nhất** import `flutter_gemma`, có test quét thứ **16** canh), `mo_hinh_tai_ve.dart`, `slm_dien_giai.dart` (bản `BoDienGiai` thứ hai, **sáu** nhánh lùi về mẫu câu), cộng **Task 7** ngày 2026-09-22: `cai_dat_ai_page.dart` (màn Cài đặt AI, route `/ai-settings`, nghiệm thu máy ảo 411dp) và `cong_tac_ai.dart`. DI nay đăng ký `SlmRuntime` / `MoHinhTaiVe` / `SlmCache` / `CongTacAi`, **cả bốn đều lazy** và **cố ý không đăng ký `BoDienGiai`** (lối B). `pubspec` thêm `flutter_gemma: 1.8.3` và `flutter_gemma_litertlm: ^1.7.0`. **Task 8** cùng ngày: màn **Trợ lý AI** chạy thật (đóng **A11**) — bốn chip là câu hỏi thật, hỏi tự do qua `chuDeBiChan` **trước** khi gọi mô hình, câu trả lời kèm **thẻ số liệu**, ô nhập khoá khi chưa có mô hình *hoặc* công tắc tắt; thêm `data/nguon_goi_so.dart` và `kiemSoNhieuGoi`. ✅ **Task 9 XONG 2026-09-22** — nghiệm thu máy thật, bảng đo ở **mục 9**: mô hình **đã chạy thật trong app** trên OnePlus 13R (nạp 8.654 ms, câu đầu 3.291 ms, câu sau ~1–2 s, RAM đỉnh 0,85 GB), và ⭐ **cắt sạch mạng vẫn trả lời trong 1.898 ms với 0 request đi ra**. Lượt ấy bắt được **bốn lỗi thật** mà cả 3.348 ca test đều mù (mục **9.7**) — nặng nhất là **APK release thiếu quyền `INTERNET`**, thứ mọi bản debug che mất từ trước tới nay. **P3 đến đây là xong 10/10 task** → **cổng A**.
 
 > ⚠️ **Ba chỗ kế hoạch P3 lệch mã thật, phát hiện khi thi công Task 7** (2026-09-22) — ghi ở đây
 > vì hai chỗ đầu sẽ tái phát ở Task 8: **(1)** kế hoạch lưu công tắc bằng `SharedPreferences`, mà
@@ -116,6 +116,9 @@ lib/features/ai_chat/                             — màn Trợ lý AI (P3), đ
 | 4.8 | **Tổng bù cộng cả số vượt dư địa** (để người dùng thấy con số mình vừa gõ) nhưng nút Áp dụng tắt riêng bằng `_hopLe`; bỏ vế `_hopLe` là nút bật với một dòng vượt dư địa, rồi `hanMucMoi` ném `ArgumentError` và sheet chỉ hiện dòng lỗi đỏ | bản sai có chủ ý làm đúng một ca đỏ | `ke_hoach_sheet_test` "số vượt dư địa → báo lỗi và nút Áp dụng tắt" |
 | 4.9 | **Đọc SQLite máy ảo phải chép cả `-wal` và `-shm`** — tệp `flowmoney.db` chính có mốc sửa cũ hàng giờ, mọi hàng mới (kể cả bảng v24) nằm trong WAL; chép mỗi tệp chính thì `no such table: ai_rebalancing_feedbacks` trông như migration chưa chạy | cách đo: `adb exec-out "run-as com.flowmoney.flowmoney cat app_flutter/flowmoney.db"` ba lần cho ba đuôi, rồi `sqlite3` của Python | — |
 | 4.10 | **Đếm "pixel vàng" để tìm tràn bố cục phải bắt VÀNG THUẦN `#FFFF00`, không phải một dải vàng** — sọc cảnh báo của Flutter đúng màu ấy, còn một dải rộng sẽ bắt luôn emoji 💡 của khối Nhận xét (529 px), biểu tượng ⚠ của khối Dự báo (1030 px) và **ô cam trong bảng chọn màu danh mục** (4111 px, màu `(245,158,11)`) | hỏng theo **hai chiều**: dải rộng cho dương tính giả nên người đo đi tìm một cái tràn không tồn tại; mà nếu quen với những con số ấy thì một sọc tràn thật cũng chìm vào chúng. Đo 2026-09-20: 21 ảnh, dải rộng cho 6305 px, vàng thuần cho **0** | — |
+| 4.11 | **`dumpsys gfxinfo … framestats` KHÔNG đo được app Flutter** — trả `Total frames rendered: 0` dù màn đang vẽ liên tục, vì Flutter không dựng khung qua View system của Android | không báo lỗi; người đo đọc "0 khung, 0 jank" thành "mượt tuyệt đối" hoặc thành "đo hỏng" mà không biết đằng nào. Thay bằng phép đo trực tiếp: chụp 10 ảnh liên tiếp trong lúc inference chạy rồi so hash — khung đổi 7/10 lần là UI vẫn dựng | — (mục 9.4) |
+| 4.12 | **Câu "mô hình không chạy được" còn che một nguyên nhân KHÁC HẲN: chưa có `idaccount`** — `AuthBloc` chỉ vào `AuthSuccess` sau `verifySession()`, một lời gọi **mạng**; mở app lúc mất mạng thì phải đợi hết timeout 30 s | hai nguyên nhân dùng chung một câu, và `catch` của `_hoi` trước đây **nuốt lỗi không log gì** — nên trên màn hình lẫn trong logcat chúng y hệt nhau. Trớ trêu: nó rơi đúng vào ca mất mạng, ca mà AI trên máy sinh ra để phục vụ | `ai_chat_page_test.dart` nhóm *"câu phiên chưa sẵn sàng tách khỏi câu mô hình hỏng"*; cộng `debugPrint` ở **cả hai** nhánh |
+| 4.13 | **Quyền `INTERNET` chỉ có trong `debug/AndroidManifest.xml`** (Flutter tạo sẵn), nên bản release không gọi được backend nào | mọi lượt nghiệm thu máy ảo dùng bản debug → không bao giờ lộ; bản release báo *"Không có kết nối mạng"*, đúng câu dùng cho lúc rớt sóng, nên dẫn người đọc đi kiểm Wi-Fi thay vì manifest | `test/core/nhan_dien_app_test.dart` *"manifest chính khai quyền INTERNET"* |
 | 4.4 | **Luật "đã bị cắt hai kỳ liền trước" (C3) chỉ kích hoạt khi ngân sách đã tồn tại ≥ 3 kỳ** — `recentPeriods` trả một kỳ cho ngân sách tạo tháng này, và luật im lặng | không lỗi; chỉ là trần 25 % thay vì 15 % | `tai_phan_bo_test.dart` *"đã bị cắt hai kỳ liền trước → trần 15 %"* có cả hai fixture |
 
 ## 5. Màn Stitch
@@ -467,9 +470,152 @@ Gemma 3n E4B"* — **câu ấy đã cũ**, phép đo này cho thấy nó chạy 
 **chưa có trong kế hoạch**; mục này chỉ đóng hai câu hỏi để khi nào tới lượt thì không
 phải đo lại. Riêng "đọc hoá đơn" còn vướng chiều **ghi** (mục 10.5) và cần ảnh chụp thật.
 
-## 9. Bảng đo P3
+## 9. Bảng đo P3 (2026-09-22) — ✅ ĐÃ ĐO TRÊN MÁY THẬT, TRONG CHÍNH APP
 
-(để trống; P3 điền: khung hình khi sinh câu, cache, tỉ lệ rơi về mẫu câu do bộ kiểm số)
+Khác mục 8: P1 đo bằng **app spike vứt đi**, còn đây là **FlowMoney thật** — bản
+`--release`, mô hình tải qua chính màn Cài đặt AI, câu hỏi đi qua chính màn Trợ lý AI,
+số liệu là dữ liệu thật của tài khoản 10.
+
+**Máy:** OnePlus 13R `CPH2691`, Snapdragon 8 Gen 3, `arm64-v8a`, Android 16 / SDK 36,
+màn 1264×2780 @ 560dpi (**361dp** — hẹp hơn khổ 411dp mà bộ test dùng). Pin 86–88 %,
+**đang sạc**. Backend dev nối qua `adb reverse tcp:3000` (cáp USB).
+
+### 9.1 Thời gian
+
+| Lượt | Prompt | Câu ra | Thời gian |
+|---|---|---|---|
+| **Nạp mô hình** (`getActiveModel`, GPU) | — | — | **8.654 ms** |
+| Câu 1 — chip *"Phân tích chi tiêu tháng này"* | 988 ký tự | 85 ký tự | **3.291 ms** |
+| Câu 2 — chip *"Dự báo tiết kiệm"* | 976 | 26 | **874 ms** |
+| Câu 3 — hỏi tự do | 1.010 | 29 | **971 ms** |
+| Câu 4 — **chip 1 lại, KHÔNG CÓ MẠNG** | 988 | 85 | **1.898 ms** |
+
+⚠️ **Câu 1 và câu 4 là CÙNG một prompt cho ra CÙNG một câu 85 ký tự, nhưng lệch
+1,4 giây** — 3.291 ms so với 1.898 ms. Chênh lệch ấy **không phải** do mạng (câu 4 là
+lượt *không có mạng*): nó là cái giá của lượt chạy **đầu tiên** sau khi nạp. Đọc con số
+"3,3 giây" như giá thường trực của một câu là sai; giá thường trực là **~1 đến 2 giây**.
+Nạp 8,65 s chỉ trả **một lần mỗi phiên**, và trả **trước** câu đầu.
+
+Đối chiếu P1 (mục 8.1, cùng máy, app spike): E2B/GPU nạp 9.131 ms, ba gói số
+3.486 / 2.293 / 1.383 ms. Cùng bậc — **app thật không chậm hơn spike**.
+
+### 9.2 RAM
+
+`TOTAL PSS` của `dumpsys meminfo`, lấy mẫu 3 s/lần quanh lượt sinh câu đầu:
+
+| Mốc | TOTAL PSS |
+|---|---|
+| Trước khi nạp | 235.728 KB (0,22 GB) |
+| Đang nạp | 434.429 KB |
+| **Đỉnh** (ngay sau nạp, đang sinh câu) | **889.899 KB ≈ 0,85 GB** |
+| Sau 30 s nghỉ | 785.708 KB (0,75 GB) |
+
+P1 đo 0,96 GB cho E2B/GPU — **khớp**, và app thật còn thấp hơn chút.
+
+### 9.3 ⭐ Không có mạng vẫn trả lời — phép đo chính của cả mảng
+
+Đây là **lý do mảng này tồn tại** (mục 10.2): người dùng chốt làm AI trên máy để app
+**dùng được khi mất mạng**. Phép đo dựng đúng trạng thái ấy:
+
+- `svc wifi disable` **và** `svc data disable` (máy có 2 SIM — tắt mỗi Wi-Fi **không**
+  cắt mạng), cộng `adb reverse --remove-all` để **cắt luôn cầu USB** tới backend.
+- Kiểm trước khi hỏi: `curl huggingface.co` → **HTTP 000**, `curl 127.0.0.1:3000` →
+  **HTTP 000**. Không còn đường nào ra.
+- Hỏi lại chip 1: mô hình trả lời sau **1.898 ms**, câu **y hệt** lượt online, đủ **6**
+  thẻ số liệu.
+- `logcat` lọc `dio|httpclient|okhttp|SocketException|ConnectException` trong suốt lượt:
+  **0 dòng**.
+
+### 9.4 Hai ô kế hoạch đòi mà KHÔNG đo được — và vì sao
+
+1. **`dumpsys gfxinfo … framestats` trả "Total frames rendered: 0".** Không phải lỗi đo:
+   Flutter **không vẽ qua View system của Android**, nên bộ đếm khung hình của
+   `gfxinfo` không thấy gì cả. Mọi kế hoạch sau dựa vào framestats cho một màn Flutter
+   sẽ vấp lại đúng chỗ này. Thay thế bằng một phép đo trực tiếp: chụp **10 ảnh liên
+   tiếp** trong lúc mô hình sinh câu và so hash — khung **đổi 7 lần trên 10 ảnh**, tức
+   UI vẫn dựng khung mới trong khi inference chạy. Lượt câu 1 (3,3 giây) còn vuốt cuộn
+   được suốt thời gian sinh. Kết luận: **inference không chặn UI thread** — đúng điều
+   kiện 7, chỉ bằng chứng cứ khác loại.
+2. **"Câu thứ hai cùng gói phải 0 ms nhờ cache" — không áp dụng.** Đường hỏi đáp
+   (`ai_chat_page._hoiThat`) gọi thẳng `SlmRuntime.sinh`, **không đi qua `SlmCache`**.
+   Cache chỉ nằm trong `SlmDienGiai`, mà lối B **cố ý không đăng ký** lớp ấy vào DI —
+   nên hôm nay `SlmCache` được đăng ký nhưng **không nằm trên đường chạy nào**; nó vẫn
+   được dọn khi đổi tài khoản, và sẽ sống lại nguyên vẹn nếu ai đó bật lối A. Đây là hệ
+   quả cố ý của lối B, không phải thiếu sót — nhưng chú thích trong `injection_container`
+   từng mô tả sai (nói màn Trợ lý AI *"tự dựng `SlmDienGiai`"*), đã sửa cùng lượt này.
+
+### 9.5 Chất lượng câu — và giới hạn `kiemSo` không bắt được
+
+Câu 1 và 4 (cùng prompt):
+
+> *"Chi tiêu tháng này là 2.141.000 đ trên tổng thu 15.135.000 đ. Tỉ lệ phân bổ là 85,4%."*
+
+Ba con số **đều đúng** và đều có trong gói số, nên `kiemSoNhieuGoi` cho qua. Nhưng
+**nhãn thì sai**: 85,4 % là tỉ lệ *để dành*, không phải *"tỉ lệ phân bổ"* — gói số gọi
+nó là `Để dành 85,4%`. ⚠️ Đây là giới hạn **thật** của thiết kế, đáng nhớ: `kiemSo` canh
+**con số**, không canh **cái tên người ta gán cho con số**. Một câu có thể qua hết mọi
+chốt mà vẫn gọi sai tên đại lượng. Thẻ số liệu bên dưới chính là thứ chữa cháy cho việc
+này — người đọc thấy `Để dành 85,4%` ngay cạnh câu — nhưng nó không thay được một bộ
+kiểm nhãn, thứ **chưa có** và chưa lên kế hoạch.
+
+Câu 2 (*"Dự báo tiết kiệm là 85,4%."*) và câu 3 đều ngắn và đúng số.
+
+### 9.6 Tải mô hình — ba đường, chênh nhau 274 lần
+
+| Đường | Tốc độ | 2,41 GB mất |
+|---|---|---|
+| Máy thật → HuggingFace (Wi-Fi 2.4 GHz) | **97 KB/s** | ~7 giờ (và **đứt giữa chừng**) |
+| Máy tính → HuggingFace | 7,6 MB/s | 5 phút 30 |
+| Máy thật → máy tính qua **cáp USB** (`adb reverse`) | **25,4 MB/s** | **97 giây** |
+
+Lượt đo này tải bằng đường thứ ba: tệp tải sẵn trên máy tính, phục vụ qua một HTTP
+server cục bộ, `kUrlMoHinh` trỏ tạm vào `127.0.0.1:8099`. Đường tải **trong app** không
+đổi một dòng nào — chỉ đổi nguồn. Tệp về máy đủ **2.588.147.712 byte**, đúng
+`kCoTepByte` từng byte, và app nạp được ngay.
+
+⚠️ **Lượt tải thẳng đầu tiên đã hỏng thật** với `HttpException: Connection closed while
+receiving data` sau chừng 650 MB, và mất trắng chừng ấy vì **đường tải không resume**.
+Việc này mở hạng mục *"tải nền + resume"* — người dùng chốt làm **sau** khi đóng P3, và
+`flutter_gemma` đã kéo sẵn `background_downloader` vào dự án (phụ thuộc transitive) nên
+lối đi có sẵn.
+
+### 9.7 Bốn lỗi THẬT mà lượt nghiệm thu này bắt được
+
+Cả bốn đều **im lặng** với `flutter test`, `flutter analyze` và `flutter build apk`; cả
+bốn chỉ lộ khi **chạy một bản `--release` trên máy thật**. Ba cái đầu đã sửa trong cùng
+lượt, cái thứ tư mở một hạng mục.
+
+1. ⭐ **APK release KHÔNG có quyền `INTERNET`.** `android/app/src/debug/AndroidManifest.xml`
+   khai quyền ấy (Flutter tạo sẵn cho hot reload) còn `main/` thì **không** — nên mọi
+   bản debug, tức **mọi lượt nghiệm thu máy ảo của dự án từ trước tới nay**, gọi backend
+   bình thường, và thiếu sót ở manifest chính chưa từng lộ ra. Bản release đầu tiên của
+   dự án không đăng nhập được, chỉ hiện *"Không có kết nối mạng"* — đúng câu app dùng
+   cho lúc rớt sóng, nên nó còn dẫn người đọc đi kiểm Wi-Fi. Bằng chứng phân biệt:
+   `adb shell curl` tới cùng URL **từ chính máy ấy** trả về HTTP 200. Nay có ca test đọc
+   thẳng manifest (`test/core/nhan_dien_app_test.dart`).
+2. **Thông báo lỗi tải in nguyên URL ký hàng nghìn ký tự.** `DioException.toString()` nhét
+   trọn đường ký của CDN (chữ ký + policy base64 + hạn dùng) vào màn hình; câu duy nhất
+   có ích nằm lọt ở dòng thứ hai của một bức tường base64. Nay có hàm thuần `cauLoiTai`
+   — *"Mất kết nối giữa chừng…"*, *"Máy không đủ dung lượng…"* — còn chi tiết đi vào
+   `debugPrint`. 4 ca test, một ca dùng **chuỗi lỗi thật chép từ máy**.
+3. ⭐ **"Mô hình trên máy không chạy được" khi mô hình hoàn toàn bình thường.** Mở app
+   trong điều kiện backend không tới được rồi hỏi ngay → câu ấy. Nguyên nhân thật:
+   `currentAccountIdOrNull` trả `null` vì `AuthBloc` chưa vào `AuthSuccess` —
+   `verifySession()` là lời gọi **mạng** và phải đợi hết timeout 30 s trước khi giữ lại
+   phiên cũ. Đo: chờ 45 giây rồi hỏi **cùng câu ấy** → mô hình nạp trong **4.103 ms** và
+   trả lời bình thường. ⚠️ Trớ trêu nhất là nó rơi đúng vào ca **mất mạng** — ca mà AI
+   trên máy sinh ra để phục vụ (mục 10.2). Nay nhánh ấy có câu riêng
+   `kChuaSanSangPhien` (*"Đang mở lại phiên đăng nhập trên máy…"*), cộng `debugPrint`
+   cho **cả hai** nhánh: trước lượt này `catch` của `_hoi` nuốt lỗi **không log gì**,
+   nên hai nguyên nhân khác hẳn nhau nhìn y hệt nhau cả trên màn hình lẫn trong logcat.
+4. **Tải 2,41 GB không resume và không chạy nền** — xem 9.6. Hạng mục riêng, người dùng
+   chốt làm sau P3.
+
+⚠️ **Bài học chung, đáng nhớ hơn cả bốn lỗi:** ba trong bốn cái trên không phải lỗi của
+mã mới viết ở P3 — chúng đã nằm sẵn trong dự án, và cái đầu tiên có thể đã nằm đó từ
+ngày `flutter create`. Thứ bắt được chúng không phải một ca test nào, mà là **lần đầu
+tiên chạy một bản release trên một máy thật**. Cả hai vế đều cần: bản debug che mất lỗi
+số 1, còn máy ảo che mất lỗi số 3 (ở đó backend `10.0.2.2` luôn tới được).
 
 ---
 

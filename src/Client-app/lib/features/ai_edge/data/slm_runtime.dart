@@ -54,10 +54,12 @@ class SlmRuntimeThat implements SlmRuntime {
     // GPU trước, CPU sau: P1 đo GPU nhanh gấp rưỡi và tốn 1,73 → 0,96 GB RAM.
     // Gói tự lùi về backend khác khi một backend hỏng, nhưng nêu rõ ý định thì
     // đọc mã ra được vì sao.
+    final dongHo = Stopwatch()..start();
     _model = await FlutterGemma.getActiveModel(
       maxTokens: 1024,
       preferredBackend: PreferredBackend.gpu,
     );
+    debugPrint('[SLM] nạp mô hình xong sau ${dongHo.elapsedMilliseconds} ms');
   }
 
   @override
@@ -67,10 +69,17 @@ class SlmRuntimeThat implements SlmRuntime {
 
     // Mỗi câu một phiên chat mới: khối Nhận xét không có hội thoại, và giữ
     // phiên cũ là để câu trước ảnh hưởng câu sau — thứ làm bộ kiểm số khó lần.
+    // Đồng hồ: chỗ DUY NHẤT đo được giá thật của một câu. Giữ lại sau P3 —
+    // mọi phép đo sau này (máy khác, mô hình khác, bậc thang khác) đều cần
+    // đúng con số này, và không có nó thì phải sửa mã mới đo lại được.
+    final dongHo = Stopwatch()..start();
     final chat = await m.createChat(temperature: 0.2);
     await chat.addQueryChunk(Message.text(text: prompt, isUser: true));
     final r = await chat.generateChatResponse();
-    return (r is TextResponse ? r.token : r.toString()).trim();
+    final cau = (r is TextResponse ? r.token : r.toString()).trim();
+    debugPrint('[SLM] sinh câu xong sau ${dongHo.elapsedMilliseconds} ms '
+        '(prompt ${prompt.length} ký tự → câu ${cau.length} ký tự)');
+    return cau;
   }
 
   @override

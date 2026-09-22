@@ -12,6 +12,17 @@
          ảnh hưởng gì, nên lịch dùng AndroidScheduleMode.inexactAllowWhileIdle.
          "Nhắc hoá đơn thì nên chính xác" nghe rất hợp lý — đừng đổi, sẽ bị Play
          từ chối lúc phát hành. -->
+    <!-- ⚠️ INTERNET phải khai Ở ĐÂY, không chỉ ở debug/AndroidManifest.xml.
+         Flutter tạo sẵn quyền này trong manifest của bản debug (để hot reload
+         nối được), nên mọi bản debug gọi backend bình thường và thiếu sót ở
+         main KHÔNG lộ ra ở đâu cả: `flutter test`, `flutter analyze` và cả
+         `flutter build apk` đều xanh. Nó chỉ hiện khi CHẠY một bản release —
+         và khi ấy app không gọi được bất cứ đâu, chỉ hiện "Không có kết nối
+         mạng" y như lúc rớt sóng. Đo thật 2026-09-22 trên OnePlus 13R: bản
+         release đầu tiên của dự án không đăng nhập được, trong khi `curl` từ
+         shell của chính máy ấy tới cùng URL trả về 200. Có test đọc tệp này
+         canh (`test/core/nhan_dien_app_test.dart`). -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
 

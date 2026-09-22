@@ -509,7 +509,15 @@ Future<void> setupDependencies() async {
   // nhau ở giọng văn, không ở thông tin, và mẫu câu còn gọn hơn. Cái giá là
   // 2,3 s mỗi khối cộng 2,41 GB tải. Mô hình chỉ hơn hẳn ở **hỏi đáp tự do**,
   // nên nó phục vụ **một chỗ duy nhất**: màn Trợ lý AI (Task 8), nơi tự dựng
-  // `SlmDienGiai` lấy từ `sl<SlmRuntime>()` / `sl<SlmCache>()` / `sl<MoHinhTaiVe>()`.
+  // đường sinh câu của mình từ `sl<SlmRuntime>()` và `sl<MoHinhTaiVe>()`.
+  //
+  // ⚠️ Màn ấy **KHÔNG** đi qua `SlmDienGiai`, và **không** qua `SlmCache` —
+  // nó gọi thẳng `SlmRuntime.sinh`. Hệ quả: `SlmCache` dưới đây được đăng ký
+  // nhưng hôm nay **không nằm trên đường chạy nào**; nó vẫn được dọn khi đổi
+  // tài khoản (`AuthBloc`), và sống lại nguyên vẹn nếu ai bật lối A. Câu cũ ở
+  // đây nói màn Trợ lý AI "tự dựng `SlmDienGiai`" — sai, và cái sai ấy lộ ra
+  // khi P3 Task 9 đi đo ô *"câu thứ hai phải 0 ms nhờ cache"* rồi phát hiện
+  // không có cache nào trên đường ấy cả (mục 9.4 `docs/AI_EDGE_FEATURE.md`).
   //
   // ⚠️ Đổi sang LỐI A (mô hình viết câu ở cả sáu khối) chỉ là bỏ dấu chú thích
   // của khối dưới — một commit, không sửa màn nào. Đừng làm nếu người dùng chưa

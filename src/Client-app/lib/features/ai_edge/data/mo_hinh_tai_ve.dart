@@ -123,8 +123,9 @@ class MoHinhTaiVe {
         return;
       }
       _phat.add(
-        (trangThai: TrangThaiMoHinh.loi, phanTram: 0, loi: e.toString()),
+        (trangThai: TrangThaiMoHinh.loi, phanTram: 0, loi: cauLoiTai(e)),
       );
+      // Chi tiết đầy đủ chỉ đi vào log, không lên màn hình — xem `cauLoiTai`.
       debugPrint('[SLM] tải mô hình hỏng: $e');
       rethrow;
     }
@@ -140,6 +141,55 @@ class MoHinhTaiVe {
   }
 
   Future<void> dong() async => _phat.close();
+}
+
+/// Câu lỗi NGẮN cho người dùng đọc, từ một exception bất kỳ của đường tải.
+///
+/// ⚠️ Vì sao cần hàm này thay vì `e.toString()`: URL tải là một đường ký của
+/// CDN HuggingFace, dài **hàng nghìn ký tự** (chữ ký, policy base64, hạn dùng)
+/// và `DioException.toString()` nhét trọn nó vào thông báo. Nghiệm thu máy
+/// thật 2026-09-22 (P3 Task 9) dựng đúng trạng thái ấy — kết nối đứt giữa
+/// chừng — và màn Cài đặt AI hiện **một bức tường base64** phủ kín màn hình,
+/// trong đó câu duy nhất có ích (*"Connection closed while receiving data"*)
+/// nằm lọt ở dòng thứ hai. Người dùng không rút ra được gì, còn người sửa lỗi
+/// thì vẫn phải xem logcat — nên màn hình chẳng phục vụ ai.
+///
+/// Chi tiết đầy đủ vẫn đi vào `debugPrint`, chỗ nó thuộc về.
+///
+/// Hàm thuần, không phụ thuộc Dio: nhận diện theo **chuỗi** để không phải
+/// import một kiểu lỗi nào — tầng này đã cố ý không biết bên tải là ai
+/// (`taiTep` được tiêm vào).
+String cauLoiTai(Object loi) {
+  final thap = loi.toString().toLowerCase();
+
+  // Hết dung lượng đứng TRƯỚC nhánh mạng: tệp 2,41 GB làm đầy máy là ca thật,
+  // và bảo người dùng "kiểm tra mạng" khi máy hết chỗ là chỉ sai hướng hẳn.
+  if (thap.contains('no space left') ||
+      thap.contains('enospc') ||
+      thap.contains('not enough space')) {
+    return 'Máy không đủ dung lượng trống. Mô hình cần 2,41 GB.';
+  }
+  if (thap.contains('connection closed') ||
+      thap.contains('connection reset') ||
+      thap.contains('connection refused') ||
+      thap.contains('socketexception') ||
+      thap.contains('httpexception') ||
+      thap.contains('failed host lookup') ||
+      thap.contains('timeout') ||
+      thap.contains('network is unreachable')) {
+    return 'Mất kết nối giữa chừng. Kiểm tra mạng rồi tải lại.';
+  }
+
+  // Lỗi lạ: giữ lại phần đầu, nhưng cắt sạch từ chỗ URL xuất hiện. Một dòng
+  // ngắn còn đọc được; nguyên `toString()` thì không.
+  var s = loi.toString().replaceAll('\n', ' ').trim();
+  for (final moc in ['uri =', 'http://', 'https://']) {
+    final i = s.indexOf(moc);
+    if (i > 0) s = s.substring(0, i).trim();
+  }
+  s = s.replaceAll(RegExp(r'[,:\s]+$'), '');
+  if (s.length > 120) s = '${s.substring(0, 117)}…';
+  return s.isEmpty ? 'Tải hỏng. Thử lại sau.' : s;
 }
 
 class _HuyTai implements Exception {

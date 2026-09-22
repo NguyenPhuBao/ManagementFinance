@@ -63,6 +63,23 @@ const String _kKhongChacChan =
 const String _kHong =
     'Mô hình trên máy không chạy được lúc này. Bạn thử lại sau nhé.';
 
+/// Phiên đăng nhập **chưa sẵn sàng** — khác hẳn "mô hình hỏng".
+///
+/// ⚠️ Vì sao phải là câu riêng: `AuthBloc` chỉ vào `AuthSuccess` sau khi
+/// `verifySession()` trả lời, mà lời gọi ấy là **mạng**. Mở app lúc không có
+/// mạng thì nó phải đợi hết timeout (30 s) rồi mới giữ phiên cũ — và trong
+/// suốt quãng ấy `currentAccountIdOrNull` trả `null`.
+///
+/// Dùng chung câu với `_kHong` là nói với người dùng rằng **mô hình** hỏng,
+/// trong khi mô hình hoàn toàn bình thường và thứ duy nhất thiếu là mã tài
+/// khoản. Đo thật 2026-09-22 (P3 Task 9): hỏi ngay sau khi mở app trong điều
+/// kiện backend không tới được → câu "mô hình không chạy được"; chờ 45 giây
+/// rồi hỏi lại **cùng câu hỏi ấy** → mô hình nạp trong 4.103 ms và trả lời
+/// bình thường. Trớ trêu nhất là nó rơi đúng vào ca **mất mạng**, ca mà AI
+/// trên máy sinh ra để phục vụ (mục 10.2 `docs/AI_EDGE_FEATURE.md`).
+const String kChuaSanSangPhien =
+    'Đang mở lại phiên đăng nhập trên máy. Bạn đợi vài giây rồi hỏi lại nhé.';
+
 class _TinNhan {
   const _TinNhan.cuaToi(this.cau)
       : cuaToi = true,
@@ -198,7 +215,13 @@ class _AiChatPageState extends State<AiChatPage> {
           ? _TinNhan.cuaAi(await widget.onHoi!(c))
           : await _hoiThat(c);
       _themCuaAi(kq);
-    } catch (e) {
+    } catch (e, st) {
+      // ⚠️ PHẢI log. Người dùng chỉ thấy một câu chung chung ("Mô hình trên
+      // máy không chạy được lúc này"), và nếu chỗ này im thì **không còn dấu
+      // vết nào** để lần ra vì sao — nghiệm thu máy thật 2026-09-22 (P3 Task
+      // 9) vấp đúng thế: câu ấy hiện lên sau khi cài đè APK, logcat sạch
+      // trơn, và phải sửa mã rồi cài lại mới biết chuyện gì xảy ra.
+      debugPrint('[SLM] hỏi đáp hỏng: $e\n$st');
       _themCuaAi(const _TinNhan.cuaAi(_kHong));
     }
   }
@@ -214,7 +237,10 @@ class _AiChatPageState extends State<AiChatPage> {
 
   Future<_TinNhan> _hoiThat(String cauHoi) async {
     final id = currentAccountIdOrNull(context);
-    if (id == null || id <= 0) return const _TinNhan.cuaAi(_kHong);
+    if (id == null || id <= 0) {
+      debugPrint('[SLM] chưa hỏi được: AuthBloc chưa ở AuthSuccess (id=$id)');
+      return const _TinNhan.cuaAi(kChuaSanSangPhien);
+    }
 
     final moHinh = sl<MoHinhTaiVe>();
     if (!await moHinh.daCo()) return const _TinNhan.cuaAi(kChuaCoMoHinh);

@@ -214,4 +214,32 @@ void main() {
         reason: 'Quay về mà không đọc lại thì màn này nói một đằng còn công '
             'tắc ở màn kia đã một nẻo.');
   });
+
+  // Nghiệm thu máy thật 2026-09-22 (P3 Task 9): mở app trong điều kiện backend
+  // không tới được rồi hỏi ngay → màn trả lời *"Mô hình trên máy không chạy
+  // được lúc này"*. Mô hình **hoàn toàn bình thường** — chờ 45 giây rồi hỏi
+  // lại cùng câu ấy thì nó nạp trong 4.103 ms và trả lời. Thứ thiếu là
+  // `AuthBloc` chưa kịp vào `AuthSuccess`, vì `verifySession()` là lời gọi
+  // MẠNG và phải đợi hết timeout 30 s trước khi giữ lại phiên cũ.
+  //
+  // ⚠️ Ca dưới đây canh **hằng câu**, không dựng cả `AuthBloc` — nhánh ấy nằm
+  // sau `context.read<AuthBloc>()` nên muốn chạm tới phải dựng đủ chuỗi phụ
+  // thuộc của bloc, tức một test giao diện hoá ra đi kiểm tầng xác thực. Cái
+  // sai thật sự là **hai nguyên nhân khác hẳn nhau dùng chung một câu**, và
+  // chừng đó thì kiểm được thẳng.
+  group('câu "phiên chưa sẵn sàng" tách khỏi câu "mô hình hỏng"', () {
+    test('không đổ lỗi cho mô hình', () {
+      expect(kChuaSanSangPhien.toLowerCase(), isNot(contains('mô hình')),
+          reason: 'Mô hình vẫn chạy tốt; nói nó hỏng là chỉ sai hướng hẳn — '
+              'người dùng sẽ đi tải lại 2,41 GB cho một việc chỉ cần đợi.');
+    });
+
+    test('nói đúng việc cần làm: đợi rồi hỏi lại', () {
+      final c = kChuaSanSangPhien.toLowerCase();
+      expect(c, contains('phiên'));
+      expect(c.contains('đợi') || c.contains('chờ'), isTrue,
+          reason: 'Trạng thái này tự hết sau vài giây — câu phải nói ra điều '
+              'đó, kẻo người dùng tưởng hỏng vĩnh viễn.');
+    });
+  });
 }

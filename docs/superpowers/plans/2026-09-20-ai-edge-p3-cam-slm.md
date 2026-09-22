@@ -1777,10 +1777,21 @@ Run: `flutter analyze` (mức nền 26/0) rồi `flutter test --timeout 60s` (n�
 
 - [ ] **Step 2: Máy ảo x86_64 — nhánh mẫu câu**
 
-Cài APK lên `emulator-5554`, bật công tắc AI, mở bốn màn có khối Nhận xét.
-Expected: câu **mẫu**, **không** nhãn "AI", **không** toast lỗi nào; logcat có đúng một
-dòng `[SLM] sinh câu hỏng` mỗi màn. Đếm pixel vàng **thuần `#FFFF00`** = 0 (bẫy 4.10 —
-dải vàng rộng cho dương tính giả với emoji và ô chọn màu).
+Cài APK lên `emulator-5554`, bật công tắc AI, mở **sáu** màn có khối Nhận xét.
+Expected: câu **mẫu**, **không** nhãn "AI", **không** toast lỗi nào. Đếm pixel vàng
+**thuần `#FFFF00`** = 0 (bẫy 4.10 — dải vàng rộng cho dương tính giả với emoji và ô
+chọn màu).
+
+⚠️ **Hai chỗ bản đầu của Step này viết SAI, sửa 2026-09-22 trước khi chạy:**
+
+1. Bản đầu đòi *"logcat có đúng một dòng `[SLM] sinh câu hỏng` mỗi màn"*. Sai với **lối
+   B** mà người dùng chốt ngày 2026-09-21: `BoDienGiai` **cố ý không đăng ký vào DI**
+   (Task 7 Step 4), nên `KhoiNhanXet` dùng thẳng `const MauCau()` và **không chạm mô
+   hình lần nào**. Kỳ vọng đúng là **KHÔNG có dòng nào**; thấy dòng ấy mới là lỗi —
+   nghĩa là ai đó đã đăng ký `BoDienGiai`. Chạy theo nguyên văn bản đầu sẽ báo hỏng một
+   hành vi đang đúng.
+2. Bản đầu ghi *"bốn màn có khối Nhận xét"* — nay là **sáu** (Hoá đơn và Quản lý ví thêm
+   ngày 2026-09-21).
 
 - [ ] **Step 3: Máy thật — bảng đo P3**
 
@@ -1833,7 +1844,31 @@ git commit -m "docs(ai-edge): P3 xong — bảng đo máy thật, A11 đóng"
 | 6 | `075ef8d` | `slm_dien_giai.dart`, sáu nhánh lùi |
 | 7 | `4f80f02` | Màn Cài đặt AI + DI + route. **Ba chỗ kế hoạch lệch mã thật** — xem ngay dưới |
 | 8 | `daa7aa2` → `66b6a09` | Màn Trợ lý AI, **đóng A11**. Thêm `nguon_goi_so.dart` và `kiemSoNhieuGoi`. Nghiệm thu máy ảo lộ **ba nhãn nói dối** — sửa ở `66b6a09` |
-| 9 | | |
+| 9 | (lượt này) | Nghiệm thu **máy thật** + bảng đo mục **9** `AI_EDGE_FEATURE.md`. Mô hình chạy thật; **offline 1.898 ms, 0 request**. Bắt **bốn lỗi thật**, ba trong đó **có sẵn từ trước P3** — xem ngay dưới |
+
+### ⚠️ Task 9 — bốn chỗ kế hoạch SAI hoặc không đo được (2026-09-22)
+
+Hai chỗ đầu đã sửa thẳng vào Step 2 ở trên; hai chỗ sau chỉ lộ khi chạy.
+
+1. **Step 2 đòi *"logcat có đúng một dòng `[SLM] sinh câu hỏng` mỗi màn"*** — sai với lối B,
+   `BoDienGiai` không đăng ký nên khối Nhận xét **không chạm mô hình**. Đúng là **0 dòng**.
+2. **Step 2 ghi "bốn màn"** — nay **sáu**.
+3. **Step 3 đòi `dumpsys gfxinfo … framestats`** — **không đo được app Flutter**, trả
+   `Total frames rendered: 0` dù màn đang vẽ. Flutter không dựng khung qua View system của
+   Android. Thay bằng: chụp 10 ảnh liên tiếp trong lúc inference rồi so hash (đổi **7/10**).
+4. **Step 3 đòi *"câu thứ hai cùng gói phải 0 ms nhờ cache"*** — đường hỏi đáp **không đi qua
+   `SlmCache`**; nó gọi thẳng `SlmRuntime.sinh`. Cache chỉ nằm trong `SlmDienGiai`, mà lối B cố
+   ý không đăng ký lớp ấy — nên hôm nay `SlmCache` **không nằm trên đường chạy nào**. Chú thích
+   trong `injection_container` từng mô tả sai chỗ này, đã sửa.
+
+### 🛑 Một hạng mục MỚI mở ra từ Task 9 — tải nền + resume
+
+Lượt tải thẳng từ HuggingFace **hỏng thật** ở ~650 MB (`HttpException: Connection closed while
+receiving data`) và mất trắng chừng ấy vì đường tải không resume; tốc độ đo được trên máy thật
+chỉ **97 KB/s** (≈ 7 giờ cho 2,41 GB). Người dùng yêu cầu **tải tiếp được khi app ở nền hoặc bị
+thoát**, và chốt làm **sau** khi đóng P3. Lối đi có sẵn: `flutter_gemma` đã kéo
+`background_downloader ^9.5.6` vào dự án (phụ thuộc transitive) và dùng chính nó cho đường tải
+mô hình của gói, có **resume sau gián đoạn**.
 
 ### ⚠️ Ba chỗ kế hoạch này LỆCH MÃ THẬT (đo khi thi công Task 7, 2026-09-22)
 

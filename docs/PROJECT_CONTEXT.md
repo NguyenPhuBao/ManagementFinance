@@ -596,10 +596,32 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-22)
 
-### 🚧 Edge AI chặng 2 — P3 cắm SLM, xong Task 1–8 / 10 (2026-09-22)
+### ✅ Edge AI chặng 2 — P3 cắm SLM, XONG TRỌN 10 TASK (2026-09-22)
 
-Kế hoạch `docs/superpowers/plans/2026-09-20-ai-edge-p3-cam-slm.md`. Tám tệp mã đã vào, **mô hình
-chưa tải về máy nào** nên mọi đường vẫn rơi về mẫu câu — đó là hành vi đúng, không phải lỗi.
+Kế hoạch `docs/superpowers/plans/2026-09-20-ai-edge-p3-cam-slm.md`. Tám tệp mã, và từ Task 9
+thì **mô hình đã chạy thật trong app trên máy thật** — bảng đo ở **mục 9** `AI_EDGE_FEATURE.md`.
+
+⭐ **Con số đáng nhớ nhất của cả mảng:** cắt sạch mạng (Wi-Fi tắt, dữ liệu di động tắt, cầu USB
+gỡ; `curl` ra ngoài trả HTTP 000) rồi hỏi lại — mô hình trả lời sau **1.898 ms**, câu y hệt lượt
+online, **0 dòng** log mạng. Đó đúng là lý do người dùng chọn AI trên máy.
+
+⚠️ **Lượt nghiệm thu ấy bắt được BỐN lỗi thật mà 3.348 ca test đều mù**, và **ba trong bốn không
+phải lỗi của mã P3** — chúng nằm sẵn trong dự án từ trước (mục **9.7**):
+
+1. ⭐ **APK release không có quyền `INTERNET`** — quyền ấy chỉ khai ở `debug/AndroidManifest.xml`
+   (Flutter tạo sẵn cho hot reload), nên **mọi lượt nghiệm thu máy ảo của dự án từ trước tới nay**
+   dùng bản debug và che mất thiếu sót. Bản release đầu tiên không gọi được backend nào, chỉ hiện
+   *"Không có kết nối mạng"* — đúng câu dùng cho lúc rớt sóng. Nay có ca test đọc thẳng manifest.
+2. Thông báo lỗi tải in **nguyên URL ký hàng nghìn ký tự** → hàm thuần `cauLoiTai`.
+3. ⭐ Câu *"Mô hình trên máy không chạy được"* hiện ra **khi mô hình hoàn toàn bình thường** —
+   nguyên nhân thật là `AuthBloc` chưa vào `AuthSuccess` (vì `verifySession()` là lời gọi mạng,
+   phải đợi hết timeout 30 s). Trớ trêu: nó rơi đúng vào ca **mất mạng**. Nay có câu riêng
+   `kChuaSanSangPhien` và `debugPrint` ở cả hai nhánh — trước đó `catch` nuốt lỗi **không log gì**.
+4. Tải 2,41 GB **không resume, không chạy nền** — hạng mục riêng, người dùng chốt làm sau P3.
+
+**Bài học chung:** thứ bắt được chúng không phải một ca test nào, mà là **lần đầu chạy một bản
+`--release` trên một máy thật**. Cả hai vế đều cần — bản debug che lỗi 1, máy ảo che lỗi 3 (ở đó
+`10.0.2.2` luôn tới được).
 
 | Task | Tệp | Việc |
 |---|---|---|

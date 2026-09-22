@@ -181,4 +181,58 @@ void main() {
           reason: 'Lượt tải thứ hai phải có tín hiệu huỷ MỚI, chưa bị bật.');
     });
   });
+
+  // Nghiệm thu máy thật 2026-09-22 (P3 Task 9, OnePlus 13R) dựng đúng ca này:
+  // kết nối tới CDN HuggingFace đứt giữa chừng, và màn Cài đặt AI hiện nguyên
+  // `DioException.toString()` — một bức tường base64 phủ kín màn hình, vì URL
+  // tải là đường ký có chữ ký + policy + hạn dùng, dài hàng nghìn ký tự.
+  group('cauLoiTai — câu ngắn cho người đọc, chi tiết để lại cho log', () {
+    // Chuỗi THẬT, chép từ máy lúc nghiệm thu (đã rút gọn phần đuôi chữ ký).
+    const loiThat = 'DioException [unknown]: null\n'
+        'Error: HttpException: Connection closed while receiving data, '
+        'uri = https://us.aws.cdn.hf.co/xet-bridge-us/69c476dababacb9018e97cfa/'
+        'ee3c29acd58e68bea04006a144cd2e40b3b34dcf5c08200a013744c518b15115'
+        '?response-content-disposition=inline%3B+filename%2A%3DUTF-8%27%27'
+        'gemma-4-E2B-it.litertlm&Expires=1790070305&Policy=eyJTdGF0ZW1lbnQi'
+        'Olt7IlJlc291cmNlIjoiaHR0cHM6Ly91cy5hd3MuY2RuLmhmLmNvL3hldC1icmlkZ2Ut'
+        'dXMvNjljNDc2ZGFiYWJhY2I5MDE4ZTk3Y2ZhLyoifV19&Signature=MEUCIE2R9OO';
+
+    test('lỗi mạng thật: không còn URL, và ngắn hơn một dòng', () {
+      final cau = cauLoiTai(loiThat);
+
+      expect(cau, isNot(contains('http')),
+          reason: 'URL ký là thứ đã phủ kín màn hình khi đo trên máy thật.');
+      expect(cau, isNot(contains('Policy')));
+      expect(cau.length, lessThan(80),
+          reason: 'Chuỗi gốc dài ${loiThat.length} ký tự.');
+      expect(cau, contains('Mất kết nối'));
+    });
+
+    test('hết dung lượng KHÔNG bị gộp vào nhánh mạng', () {
+      // Ca thật với tệp 2,41 GB. Bảo người dùng "kiểm tra mạng" khi máy hết
+      // chỗ là chỉ họ đi sai hướng hẳn — nên nhánh này phải đứng trước.
+      final cau = cauLoiTai(
+        const FileSystemException('write failed', '/data/x',
+            OSError('No space left on device', 28)),
+      );
+      expect(cau, contains('dung lượng'));
+      expect(cau, isNot(contains('Kiểm tra mạng')));
+    });
+
+    test('lỗi lạ: giữ phần đầu, cắt sạch từ chỗ URL trở đi', () {
+      final cau = cauLoiTai(
+        'Chuyện gì đó chưa gặp bao giờ, uri = https://example.com/${'a' * 500}',
+      );
+      expect(cau, startsWith('Chuyện gì đó chưa gặp bao giờ'));
+      expect(cau, isNot(contains('http')));
+      expect(cau.length, lessThanOrEqualTo(120));
+    });
+
+    test('lỗi lạ rất dài mà KHÔNG có URL vẫn bị cắt về 120 ký tự', () {
+      final cau = cauLoiTai('x' * 500);
+      expect(cau.length, lessThanOrEqualTo(120));
+      expect(cau, endsWith('…'),
+          reason: 'Cắt ngang mà không có dấu hiệu thì đọc như một câu cụt.');
+    });
+  });
 }
