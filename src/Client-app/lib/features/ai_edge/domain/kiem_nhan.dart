@@ -9,6 +9,13 @@
 /// khớp của `kiemSo` qua `soLieuKhop`), rồi đòi câu chứa **mọi âm tiết có
 /// nghĩa** của **ít nhất một** nhãn ấy — thứ tự tự do, chen chữ tự do.
 ///
+/// Từ **chặng 4a**, một số cũng hợp lệ khi câu chứa đủ từ khoá của **tên đối
+/// tượng** (`SoLieu.ten`) thay vì của nhãn: *"Giáo dục đã dùng 90,0%"* nêu
+/// đúng thứ mang con số ấy, và đó là câu tự nhiên nhất cho câu hỏi *"ngân
+/// sách nào sắp hết"*. Đây là **nới**, không phải thay — mọi câu từng lọt vẫn
+/// lọt, và câu bịa nhãn vẫn bị chặn vì không khớp vế nào. Tên so theo **âm
+/// tiết** như nhãn, nên *"vía"* không khớp ví tên *"Ví A"*.
+///
 /// ⚠️ Từ khoá suy **từ nhãn lúc chạy**, không ghi cứng chữ nào ở đây: test
 /// quét thứ 14 cấm `ai_edge/` chứa chuỗi chiều tiền, và một danh sách từ khoá
 /// chép tay sẽ lệch với gói ngay khi ai đó đổi một nhãn.
@@ -55,7 +62,9 @@ bool kiemNhan(String cau, List<GoiSo> goi) {
     final nhans = soLieuKhop(x, goi);
     if (nhans.isEmpty) return false;
     final coNhanDung = nhans.any(
-      (s) => tuKhoaNhan(s.nhan).every(amTiet.contains),
+      (s) =>
+          tuKhoaNhan(s.nhan).every(amTiet.contains) ||
+          (s.ten != null && tuKhoaNhan(s.ten!).every(amTiet.contains)),
     );
     if (!coNhanDung) return false;
   }

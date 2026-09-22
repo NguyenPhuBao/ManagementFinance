@@ -118,4 +118,50 @@ void main() {
       isFalse,
     );
   });
+
+  group('vế TÊN đối tượng (chặng 4a)', () {
+    // Đúng gói ngân sách của tài khoản 10: ngân sách căng nhất là Giáo dục,
+    // 90,0% (bảng đo mục 5.6 `AI_AGENT_ARCHITECTURE.md`).
+    final nganSach = _Gia('ngan_sach', [
+      soPhanTram('Tỉ lệ', 90.0, ten: 'Giáo dục'),
+    ]);
+
+    test('câu nêu đúng TÊN thì lọt, dù không có từ khoá của nhãn', () {
+      expect(
+        kiemNhan('Giáo dục đã dùng 90,0%.', [nganSach]),
+        isTrue,
+        reason: 'Đây là câu tự nhiên nhất cho câu hỏi "ngân sách nào sắp '
+            'hết" — câu 3 của bảng đo. Trước chặng 4a nó bị chặn vì thiếu '
+            '"tỉ" và "lệ", nên mô hình phải trả lời bằng con số trần.',
+      );
+    });
+
+    test('câu nêu đúng NHÃN vẫn lọt — đây là NỚI, không phải thay', () {
+      expect(kiemNhan('Tỉ lệ là 90,0%.', [nganSach]), isTrue);
+    });
+
+    test('câu bịa nhãn VẪN bị chặn — vế tên không mở toang lớp chắn', () {
+      expect(
+        kiemNhan('Dự báo tiết kiệm là 90,0%.', [nganSach]),
+        isFalse,
+        reason: 'Không chứa đủ từ khoá của "Tỉ lệ" lẫn của "Giáo dục". Đây '
+            'chính là lớp chắn việc số 1 dựng ra; nới quá tay là phá nó.',
+      );
+    });
+
+    test('tên cũng so theo ÂM TIẾT, không theo chuỗi con', () {
+      final g = _Gia('vi', [soTien('Số dư', 100000, ten: 'Ví A')]);
+      expect(
+        kiemNhan('Vía của bạn là 100.000 đ.', [g]),
+        isFalse,
+        reason: '"vía" chứa "ví" nhưng không phải chữ "ví" — cùng luật đã '
+            'chặn "chiều"/"chi" ở nhóm trên.',
+      );
+    });
+
+    test('ten null thì luật cũ nguyên vẹn', () {
+      expect(kiemNhan('Tổng chi là 2.141.000 đ.', [phanTich]), isTrue);
+      expect(kiemNhan('Tổng thu là 2.141.000 đ.', [phanTich]), isFalse);
+    });
+  });
 }
