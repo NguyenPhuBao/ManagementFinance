@@ -90,10 +90,23 @@ Xin chốt một trong ba:
 - **②:** `grep -n "classifyWithLLM" modules/ai/features/classify/classify.service.js` → 0 dòng
   (nếu chọn "bỏ"); hoặc có cờ bật/tắt và F1 mang ngoại lệ có tên (nếu chọn "giữ").
 
-## 5. Việc này KHÔNG chặn client
+## 5. Việc này KHÔNG chặn client — nhưng ① nay có thêm một dữ kiện đo được
 
 Client vẫn đi tiếp theo F1 (dữ liệu cá nhân ở lại máy). Quyết định ① chỉ đổi **ai làm RAG cho
-kiến thức chung** — client hay server; câu *"hệ thống có áp dụng RAG"* đúng ở cả hai lối. Nếu
-backend chọn (A) và nhận phần kiến thức chung, client sẽ gọi **một** endpoint thay vì nhúng
-corpus vào ứng dụng — và đó là lối client thích hơn, vì corpus kiến thức chung cần cập nhật được
-mà không phải phát hành lại bản mới.
+kiến thức chung** — client hay server; câu *"hệ thống có áp dụng RAG"* đúng ở cả hai lối.
+
+⚠️ **Cập nhật cùng ngày, sau một phép đo trên máy thật:** client đã chạy spike RAG on-device
+(OnePlus 13R / Snapdragon 8 Gen 3) và kết luận **không làm RAG phía client**. Bảng đo đầy đủ ở
+`docs/AI_AGENT_ARCHITECTURE.md` mục **5.5**; ba con số quyết định:
+
+| Đo được | Ý nghĩa |
+|---|---|
+| Mô hình embedding **tải tự do** duy nhất là Gecko 110M **English-only** → top-3 đúng **3/5** trên câu hỏi tiếng Việt | Corpus của dự án là tiếng Việt, nên đây là hạn chế trúng đích |
+| Mọi bản **EmbeddingGemma đa ngữ** trả **401** (gated), kể cả `litert-community/embeddinggemma-300m` | Không ship được nếu mỗi máy phải có token HuggingFace |
+| Truy vấn **251 ms**, index **253 ms/đoạn** | Trên ngưỡng client đặt trước (200 ms) |
+
+Hệ quả cho backend: nếu chọn **(A)** thì phần **RAG kiến thức tài chính chung nằm hoàn toàn ở
+server**, và client chỉ gọi một endpoint — không có bản RAG thứ hai ở client để phải giữ đồng bộ.
+Đó cũng là lối client thích hơn, vì corpus kiến thức chung cần cập nhật được mà không phải phát
+hành lại ứng dụng. Client **không** xin backend làm việc này gấp; đây là dữ kiện để ① được chốt
+trên nền đầy đủ, không phải một yêu cầu mới.
