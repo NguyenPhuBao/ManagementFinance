@@ -23,6 +23,14 @@
          shell của chính máy ấy tới cùng URL trả về 200. Có test đọc tệp này
          canh (`test/core/nhan_dien_app_test.dart`). -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- ⚠️ Tải mô hình chạy nền. `background_downloader` khai service của nó
+         với android:foregroundServiceType="dataSync", và từ Android 14 (API 34)
+         mỗi loại foreground service đòi một quyền riêng — dự án targetSdk 36
+         nên đây là bắt buộc. Thiếu nó thì `flutter test`, `flutter analyze` và
+         `flutter build apk` ĐỀU XANH; lỗi chỉ hiện khi lượt tải thật cố lên
+         foreground trên máy Android 14+. Cùng vùng mù đã cho lỗi "APK release
+         thiếu INTERNET" ngày 2026-09-22. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
 

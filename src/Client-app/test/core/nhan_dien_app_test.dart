@@ -66,4 +66,15 @@ void main() {
         reason: 'Thiếu ở main/ thì chỉ bản debug gọi được backend; bản release '
             'im lặng báo "Không có kết nối mạng" ở mọi màn cần server.');
   });
+
+  test('manifest khai FOREGROUND_SERVICE_DATA_SYNC (Android 14+ đòi)', () {
+    final manifest =
+        File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
+    expect(
+        manifest,
+        contains(
+            'android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"'),
+        reason: 'background_downloader chạy foreground service loại dataSync; '
+            'thiếu quyền thì build vẫn xanh và lượt tải chết trên máy thật.');
+  });
 }

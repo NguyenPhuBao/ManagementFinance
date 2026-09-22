@@ -13,6 +13,7 @@ library;
 
 import 'dart:async';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -20,6 +21,7 @@ import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../data/cong_tac_ai.dart';
 import '../../data/mo_hinh_tai_ve.dart';
+import '../../domain/hoi_dung_4g.dart';
 
 /// Dung lượng theo GiB, dấu **phẩy** thập phân.
 ///
@@ -41,6 +43,7 @@ class CaiDatAiPage extends StatefulWidget {
     this.daCoMoHinh,
     this.moHinh,
     this.congTac,
+    this.coWifi,
   });
 
   /// Ép sẵn trạng thái *đã có mô hình hay chưa*.
@@ -54,6 +57,10 @@ class CaiDatAiPage extends StatefulWidget {
   final MoHinhTaiVe? moHinh;
 
   final CongTacAi? congTac;
+
+  /// Máy có đang ở Wi-Fi không. Tiêm để test dựng được cả hai nhánh mà không
+  /// chạm nền tảng; đường chạy thật đọc `Connectivity()`.
+  final Future<bool> Function()? coWifi;
 
   @override
   State<CaiDatAiPage> createState() => _CaiDatAiPageState();
@@ -91,6 +98,10 @@ class _CaiDatAiPageState extends State<CaiDatAiPage> {
         });
       });
       unawaited(_doTrangThai());
+      // ⚠️ Lượt tải có thể đã chạy từ LẦN MỞ APP TRƯỚC — stream chỉ phát những
+      // gì xảy ra từ lúc nghe trở đi, nên không hỏi lại là màn hiện "Chưa tải"
+      // cho một lượt đang chạy. Cùng họ G48.
+      unawaited(_moHinh?.khoiPhuc() ?? Future<void>.value());
     }
 
     unawaited(_docCongTac());
@@ -99,9 +110,13 @@ class _CaiDatAiPageState extends State<CaiDatAiPage> {
   Future<void> _doTrangThai() async {
     final co = await _moHinh?.daCo() ?? false;
     if (!mounted) return;
-    // ⚠️ Chỉ đặt lại khi đang KHÔNG tải: lượt dò này là bất đồng bộ, về muộn
-    // hơn một sự kiện `dangTai` là thanh tiến độ biến mất giữa chừng.
-    if (_tt == TrangThaiMoHinh.dangTai) return;
+    // ⚠️ Chỉ đặt lại khi KHÔNG có lượt nào sống: lượt dò này là bất đồng bộ,
+    // về muộn hơn một sự kiện của nguồn là thanh tiến độ biến mất giữa chừng.
+    if (_tt == TrangThaiMoHinh.dangTai ||
+        _tt == TrangThaiMoHinh.tamDung ||
+        _tt == TrangThaiMoHinh.choMang) {
+      return;
+    }
     setState(() {
       _tt = co ? TrangThaiMoHinh.daTai : TrangThaiMoHinh.chuaTai;
     });
@@ -118,19 +133,60 @@ class _CaiDatAiPageState extends State<CaiDatAiPage> {
     await _congTac.ghi(v);
   }
 
+  /// ⚠️ KHÔNG `setState` đặt `dangTai` như bản cũ — trạng thái đến từ stream
+  /// của nguồn. Đặt tay ở đây là vẽ "đang tải" cho một lượt có thể chưa bắt
+  /// đầu (người dùng bấm "Để sau", hoặc lượt đang chờ Wi-Fi).
   Future<void> _tai() async {
-    setState(() {
-      _tt = TrangThaiMoHinh.dangTai;
-      _phanTram = 0;
-      _loi = null;
-    });
+    final wifi = await (widget.coWifi?.call() ?? _doWifiThat());
+    if (!mounted) return;
+
+    var chiWifi = true;
+    if (!wifi) {
+      final dongY = await showDialog<bool>(
+            context: context,
+            builder: (c) => AlertDialog(
+              title: const Text(kCauHoi4G),
+              content: const Text(kCauMoTa4G),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(c).pop(false),
+                  child: const Text(kCauTuChoi4G),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(c).pop(true),
+                  child: const Text(kCauDongY4G),
+                ),
+              ],
+            ),
+          ) ??
+          false;
+      if (!dongY) return;
+      chiWifi = false;
+    }
+
+    await _moHinh?.tai(chiWifi: chiWifi);
+  }
+
+  Future<bool> _doWifiThat() async {
     try {
-      await _moHinh?.tai();
+      final kq = await Connectivity().checkConnectivity();
+      return kq.contains(ConnectivityResult.wifi);
     } catch (_) {
-      // `MoHinhTaiVe` đã phát trạng thái `loi` qua stream và đã xoá tệp dở —
-      // bắt ở đây chỉ để lời gọi không ném ra khỏi handler của nút.
+      // Không đọc được (nền tảng lạ) thì coi như có Wi-Fi: lượt tải vẫn bị
+      // `requiresWiFi` gác ở tầng dưới, và màn sẽ nói "Đang chờ Wi-Fi".
+      return true;
     }
   }
+
+  // ⚠️ Ba handler dưới KHÔNG gọi `setState`: trạng thái đến từ stream của
+  // nguồn. Bấm Tạm dừng trên THÔNG BÁO hệ thống cũng phải làm màn đổi theo,
+  // nên nguồn là sự thật duy nhất — màn tự đặt là mở đường cho hai nơi nói
+  // hai điều khác nhau.
+  Future<void> _tamDung() async => _moHinh?.tamDung();
+
+  Future<void> _tiepTuc() async => _moHinh?.tiepTuc();
+
+  Future<void> _huy() async => _moHinh?.huy();
 
   Future<void> _xoa() async {
     final chac = await showDialog<bool>(
@@ -143,11 +199,11 @@ class _CaiDatAiPageState extends State<CaiDatAiPage> {
             ),
             actions: [
               TextButton(
-                onPressed: () => c.pop(false),
+                onPressed: () => Navigator.of(c).pop(false),
                 child: const Text('Huỷ'),
               ),
               TextButton(
-                onPressed: () => c.pop(true),
+                onPressed: () => Navigator.of(c).pop(true),
                 style: TextButton.styleFrom(
                     foregroundColor: AppColors.error),
                 child: const Text('Xoá'),
@@ -239,6 +295,10 @@ class _CaiDatAiPageState extends State<CaiDatAiPage> {
     switch (_tt) {
       case TrangThaiMoHinh.dangTai:
         return _khoiDangTai();
+      case TrangThaiMoHinh.tamDung:
+        return _khoiTamDung();
+      case TrangThaiMoHinh.choMang:
+        return _khoiChoMang();
       case TrangThaiMoHinh.daTai:
         return _khoiDaTai();
       case TrangThaiMoHinh.loi:
@@ -292,16 +352,65 @@ class _CaiDatAiPageState extends State<CaiDatAiPage> {
                 ),
               ),
             ),
-            const SizedBox(width: 12),
-            TextButton(
-              onPressed: () => _moHinh?.huy(),
-              child: const Text('Huỷ'),
-            ),
+            const SizedBox(width: 8),
+            TextButton(onPressed: _tamDung, child: const Text('Tạm dừng')),
+            TextButton(onPressed: _huy, child: const Text('Huỷ')),
           ],
         ),
       ],
     );
   }
+
+  Widget _khoiTamDung() => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _dongTieuDe(
+            icon: Icons.pause_circle_outline,
+            tieuDe: 'Đã tạm dừng · ${(_phanTram * 100).round()}%',
+            phu: 'Phần đã tải được giữ lại, bấm Tiếp tục để tải nốt.',
+          ),
+          const SizedBox(height: 14),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: _phanTram.clamp(0.0, 1.0),
+              minHeight: 8,
+              backgroundColor: AppColors.surfaceContainerHigh,
+              valueColor: const AlwaysStoppedAnimation(AppColors.primary),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _tiepTuc,
+                  icon: const Icon(Icons.play_arrow, size: 18),
+                  label: const Text('Tiếp tục'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              TextButton(onPressed: _huy, child: const Text('Huỷ')),
+            ],
+          ),
+        ],
+      );
+
+  /// `requiresWiFi` làm lượt đứng im VÔ THỜI HẠN mà gói không báo lỗi nào —
+  /// gộp vào "đang tải" là một thanh 0 % đứng yên mãi mãi.
+  Widget _khoiChoMang() => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _dongTieuDe(
+            icon: Icons.wifi_off_outlined,
+            tieuDe: 'Đang chờ Wi-Fi',
+            phu: 'Lượt tải sẽ tự tiếp tục khi máy vào Wi-Fi. '
+                'Phần đã tải được giữ lại.',
+          ),
+          const SizedBox(height: 14),
+          TextButton(onPressed: _huy, child: const Text('Huỷ tải')),
+        ],
+      );
 
   Widget _khoiDaTai() => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -342,13 +451,15 @@ class _CaiDatAiPageState extends State<CaiDatAiPage> {
             icon: Icons.error_outline,
             mauIcon: AppColors.error,
             tieuDe: 'Tải không xong',
-            // Tệp dở đã bị `MoHinhTaiVe` xoá, nên lần sau là tải lại từ đầu —
-            // nói ra để người dùng không tưởng mình mất nửa gói dữ liệu.
-            phu: _loi ?? 'Kết nối đứt giữa chừng. Tải lại từ đầu.',
+            // Tệp dở ĐƯỢC GIỮ (resume, 2026-09-22): Thử lại là tiếp tục từ
+            // chỗ đứt, không tải lại từ đầu — nói ra để người dùng không
+            // tưởng mình mất nửa gói dữ liệu.
+            phu: '${_loi ?? 'Kết nối đứt giữa chừng.'} '
+                'Phần đã tải được giữ lại.',
           ),
           const SizedBox(height: 14),
           ElevatedButton.icon(
-            onPressed: _tai,
+            onPressed: _tiepTuc,
             icon: const Icon(Icons.refresh, size: 18),
             label: const Text('Thử lại'),
           ),

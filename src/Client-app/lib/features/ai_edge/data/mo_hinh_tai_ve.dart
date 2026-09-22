@@ -1,19 +1,23 @@
 // lib/features/ai_edge/data/mo_hinh_tai_ve.dart
-/// Trạng thái và vòng đời tệp mô hình trên máy (spec mục 4.2).
+/// Trạng thái và vòng đời tệp mô hình trên máy (spec mục 4.2; tải nền + resume
+/// theo spec `2026-09-22-tai-mo-hinh-nen-resume-design.md`).
 ///
 /// Mô hình **không** đóng vào APK: 2,41 GB, và người không dùng AI thì không
 /// nên trả dung lượng ấy. Tải chỉ khi người dùng bấm ở màn Cài đặt AI.
 ///
-/// Phép tải tiêm qua [taiTep] để test không chạm mạng — bản thật ở
-/// `injection_container.dart` dùng `Dio` đã có sẵn của dự án.
+/// Lượt tải là **một đối tượng có danh tính do hệ thống giữ** ([NguonTaiNen]),
+/// không phải một `Future` sống trong tiến trình này: người dùng thoát app thì
+/// lượt vẫn chạy, và lúc app mở lại thì [khoiPhuc] hỏi hệ thống *"còn lượt
+/// nào không"*. Bản thật ở `tai_nen_background_downloader.dart`; test dùng
+/// `NguonTaiNenGia`.
 library;
 
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
+import 'nguon_tai_nen.dart';
 
-enum TrangThaiMoHinh { chuaTai, dangTai, daTai, loi }
+enum TrangThaiMoHinh { chuaTai, dangTai, tamDung, choMang, daTai, loi }
 
 typedef TienDoTai = ({
   TrangThaiMoHinh trangThai,
@@ -32,107 +36,93 @@ const String kUrlMoHinh = 'https://huggingface.co/litert-community/'
 
 const String kTenTep = 'gemma-4-E2B-it.litertlm';
 
-/// Cỡ tệp thật, đo 2026-09-20. Dùng để hiện dung lượng trước khi tải.
+/// Cỡ tệp thật, đo 2026-09-20. Dùng để hiện dung lượng trước khi tải **và**
+/// để [MoHinhTaiVe.daCo] phân biệt tệp đủ với tệp dở.
 const int kCoTepByte = 2588147712;
-
-/// Tín hiệu huỷ của **một lượt** tải.
-///
-/// ⚠️ Vì sao là một đối tượng chứ không phải một cờ `bool`: một cờ chỉ trả lời
-/// được câu *"đã huỷ chưa"* khi có ai đó hỏi, mà `Dio.download` thì không hỏi —
-/// nó cần được **báo** để cắt kết nối. Bản đầu dùng cờ, và hậu quả là `huy()`
-/// chỉ thôi vẽ tiến độ trong khi máy **vẫn tải hết 2,41 GB ở nền**: người dùng
-/// bấm Huỷ trên dữ liệu di động vẫn mất chừng ấy dung lượng, im lặng.
-///
-/// [khiHuy] là chỗ bên tải gắn phép cắt của mình vào (`CancelToken.cancel()`
-/// với Dio); [daHuy] cho bên tải nào chỉ hỏi được một lần lúc vào.
-///
-/// **Một đối tượng cho mỗi lượt tải** — xem `_tai()`. Dùng chung cho cả đời
-/// `MoHinhTaiVe` thì lượt sau bị huỷ ngay khi vừa bắt đầu, và người dùng thấy
-/// nút Tải bấm mãi không lên gì.
-class DauHuy {
-  final _xong = Completer<void>();
-
-  bool get daHuy => _xong.isCompleted;
-
-  Future<void> get khiHuy => _xong.future;
-
-  void huy() {
-    if (!_xong.isCompleted) _xong.complete();
-  }
-}
 
 class MoHinhTaiVe {
   final Future<Directory> Function() thuMuc;
-  final Future<void> Function(
-    String url,
-    File dich,
-    void Function(double phanTram) bao,
-    DauHuy dauHuy,
-  ) taiTep;
+  final NguonTaiNen nguon;
+
+  /// Cỡ tệp coi là **đủ**. Mặc định [kCoTepByte]; chỉ test tiêm số khác, vì
+  /// không ai dựng nổi tệp 2,4 GB trong `flutter test` để đóng vai "đã có".
+  final int coTepByte;
 
   final _phat = StreamController<TienDoTai>.broadcast();
-  Future<void>? _dangChay;
-  DauHuy? _dauHuy;
+  StreamSubscription<TinLuot>? _nghe;
 
-  MoHinhTaiVe({required this.thuMuc, required this.taiTep});
+  MoHinhTaiVe({
+    required this.thuMuc,
+    required this.nguon,
+    this.coTepByte = kCoTepByte,
+  }) {
+    _nghe = nguon.tin.listen(_dich);
+  }
 
   Stream<TienDoTai> get tienDo => _phat.stream;
 
   Future<String> duongTep() async => '${(await thuMuc()).path}/$kTenTep';
 
-  Future<bool> daCo() async => File(await duongTep()).existsSync();
-
-  /// Tải mô hình. Gọi lần hai khi lượt đầu chưa xong thì **dùng chung** lượt
-  /// đang chạy — hai lượt ghi vào cùng một tệp là hỏng tệp.
-  Future<void> tai() {
-    return _dangChay ??= _tai().whenComplete(() => _dangChay = null);
+  /// Tệp mô hình đã **đủ** trên máy chưa.
+  ///
+  /// ⚠️ Kiểm **kích thước**, không chỉ kiểm tồn tại. Từ khi có resume, một tệp
+  /// tải dở được **giữ lại** để lượt sau tiếp tục — mà `existsSync()` đúng với
+  /// cả tệp 650 MB lẫn tệp đủ 2,41 GB. Đọc nhầm thì engine ném *"Model may be
+  /// invalid"* ở một chỗ chẳng liên quan gì tới việc tải, và người sửa lỗi đi
+  /// tìm nguyên nhân trong `SlmRuntime`.
+  ///
+  /// Không dùng checksum: phải đọc trọn 2,41 GB mỗi lần mở màn Cài đặt AI.
+  Future<bool> daCo() async {
+    final f = File(await duongTep());
+    if (!f.existsSync()) return false;
+    return f.lengthSync() == coTepByte;
   }
 
-  Future<void> _tai() async {
-    // Tín hiệu MỚI cho mỗi lượt: xem chú thích đầu [DauHuy].
-    final dauHuy = _dauHuy = DauHuy();
-    final dich = File(await duongTep());
-    _phat.add((trangThai: TrangThaiMoHinh.dangTai, phanTram: 0, loi: null));
-    try {
-      await taiTep(kUrlMoHinh, dich, (p) {
-        if (dauHuy.daHuy) return;
-        _phat.add(
-          (trangThai: TrangThaiMoHinh.dangTai, phanTram: p, loi: null),
-        );
-      }, dauHuy);
-      // Bên tải có thể **về bình thường** dù đã bị báo huỷ (bản giả trong test,
-      // hoặc một thư viện nuốt lỗi huỷ). Chốt này giữ cho hai đường ra cùng
-      // một kết cục.
-      if (dauHuy.daHuy) throw const _HuyTai();
-      _phat.add((trangThai: TrangThaiMoHinh.daTai, phanTram: 1, loi: null));
-    } catch (e) {
-      // ⚠️ Xoá tệp dở NGAY. Một tệp cụt trông y hệt tệp đủ với `existsSync()`,
-      // và lần mở app sau sẽ nạp nó rồi ném "Model may be invalid".
-      if (dich.existsSync()) {
-        try {
-          dich.deleteSync();
-        } catch (_) {}
-      }
-      // ⚠️ Huỷ **không phải lỗi**: người dùng vừa chủ ý bấm nút. Dựng khối lỗi
-      // đỏ cho một thao tác thành công là nói với họ rằng có gì đó hỏng — và
-      // cũng không ném ra ngoài, vì không ai cần xử lý "việc đã làm xong".
-      if (dauHuy.daHuy) {
-        _phat.add(
-          (trangThai: TrangThaiMoHinh.chuaTai, phanTram: 0, loi: null),
-        );
-        return;
-      }
-      _phat.add(
-        (trangThai: TrangThaiMoHinh.loi, phanTram: 0, loi: cauLoiTai(e)),
-      );
-      // Chi tiết đầy đủ chỉ đi vào log, không lên màn hình — xem `cauLoiTai`.
-      debugPrint('[SLM] tải mô hình hỏng: $e');
-      rethrow;
+  /// Bắt đầu tải. [chiWifi] `false` = người dùng đã đồng ý dùng dữ liệu di động.
+  ///
+  /// Gọi hai lần chồng nhau thì bản thật **từ chối lượt thứ hai** vì cùng
+  /// `taskId` — hai lượt ghi vào cùng một tệp là hỏng tệp.
+  Future<void> tai({bool chiWifi = true}) async {
+    await nguon.batDau(url: kUrlMoHinh, tenTep: kTenTep, chiWifi: chiWifi);
+  }
+
+  /// Hỏi lại lượt tải của **lần chạy trước** và phát lại trạng thái của nó.
+  ///
+  /// ⚠️ Màn Cài đặt AI phải gọi hàm này khi mở, không chỉ nghe stream: lượt
+  /// tải có thể đã chạy từ lần mở app trước, mà stream chỉ phát những gì xảy
+  /// ra **từ lúc nghe trở đi**. Cùng họ lỗi G48.
+  Future<void> khoiPhuc() async {
+    final l = await nguon.luotDangSong();
+    if (l == null) return;
+    _dich(l);
+  }
+
+  Future<void> tamDung() => nguon.tamDung();
+
+  /// Tiếp tục lượt đang sống (tạm dừng, hoặc **hỏng** — bản thật nối lại từ
+  /// chỗ đứt nhờ `Range`). Không còn lượt nào (bản ghi đã bị dọn) thì bắt đầu
+  /// lượt mới — nút "Thử lại" ở màn lỗi đi qua đây, để người dùng không bao
+  /// giờ gặp một nút bấm mà không có gì xảy ra.
+  Future<void> tiepTuc() async {
+    if (await nguon.luotDangSong() == null) return tai();
+    await nguon.tiepTuc();
+  }
+
+  /// Dừng HẲN: cắt lượt tải và xoá tệp dở.
+  ///
+  /// ⚠️ Tệp dở chỉ bị xoá ở đây và ở [xoa] — **không** xoá khi lượt hỏng
+  /// giữa chừng nữa: nó là thứ lượt sau sẽ tiếp tục. Phép chặn "tệp cụt trông
+  /// như tệp đủ" nay nằm ở [daCo], chỗ nó thuộc về.
+  Future<void> huy() async {
+    await nguon.huy();
+    final f = File(await duongTep());
+    if (f.existsSync()) {
+      try {
+        f.deleteSync();
+      } catch (_) {}
     }
+    _phat.add((trangThai: TrangThaiMoHinh.chuaTai, phanTram: 0, loi: null));
   }
-
-  /// Cắt lượt tải đang chạy. Không có lượt nào thì không làm gì.
-  void huy() => _dauHuy?.huy();
 
   Future<void> xoa() async {
     final f = File(await duongTep());
@@ -140,25 +130,47 @@ class MoHinhTaiVe {
     _phat.add((trangThai: TrangThaiMoHinh.chuaTai, phanTram: 0, loi: null));
   }
 
-  Future<void> dong() async => _phat.close();
+  Future<void> dong() async {
+    await _nghe?.cancel();
+    await _phat.close();
+  }
+
+  void _dich(TinLuot l) {
+    final tt = switch (l.trangThai) {
+      // ⚠️ `dangCho` → `choMang`, KHÔNG phải `dangTai`: `requiresWiFi` làm lượt
+      // đứng im vô thời hạn mà gói không báo lỗi gì; gộp vào "đang tải" là
+      // hiện 0 % đứng yên mãi mãi.
+      TrangThaiLuot.dangCho => TrangThaiMoHinh.choMang,
+      TrangThaiLuot.dangChay => TrangThaiMoHinh.dangTai,
+      TrangThaiLuot.tamDung => TrangThaiMoHinh.tamDung,
+      TrangThaiLuot.xong => TrangThaiMoHinh.daTai,
+      TrangThaiLuot.hong => TrangThaiMoHinh.loi,
+      TrangThaiLuot.huy => TrangThaiMoHinh.chuaTai,
+    };
+    final loi = l.loi;
+    _phat.add((
+      trangThai: tt,
+      phanTram: l.phanTram,
+      loi: loi == null ? null : cauLoiTai(loi),
+    ));
+  }
 }
 
 /// Câu lỗi NGẮN cho người dùng đọc, từ một exception bất kỳ của đường tải.
 ///
 /// ⚠️ Vì sao cần hàm này thay vì `e.toString()`: URL tải là một đường ký của
 /// CDN HuggingFace, dài **hàng nghìn ký tự** (chữ ký, policy base64, hạn dùng)
-/// và `DioException.toString()` nhét trọn nó vào thông báo. Nghiệm thu máy
-/// thật 2026-09-22 (P3 Task 9) dựng đúng trạng thái ấy — kết nối đứt giữa
-/// chừng — và màn Cài đặt AI hiện **một bức tường base64** phủ kín màn hình,
-/// trong đó câu duy nhất có ích (*"Connection closed while receiving data"*)
-/// nằm lọt ở dòng thứ hai. Người dùng không rút ra được gì, còn người sửa lỗi
-/// thì vẫn phải xem logcat — nên màn hình chẳng phục vụ ai.
+/// và thông báo lỗi của thư viện tải nhét trọn nó vào. Nghiệm thu máy thật
+/// 2026-09-22 (P3 Task 9) dựng đúng trạng thái ấy — kết nối đứt giữa chừng —
+/// và màn Cài đặt AI hiện **một bức tường base64** phủ kín màn hình, trong đó
+/// câu duy nhất có ích (*"Connection closed while receiving data"*) nằm lọt ở
+/// dòng thứ hai. Người dùng không rút ra được gì, còn người sửa lỗi thì vẫn
+/// phải xem logcat — nên màn hình chẳng phục vụ ai.
 ///
 /// Chi tiết đầy đủ vẫn đi vào `debugPrint`, chỗ nó thuộc về.
 ///
-/// Hàm thuần, không phụ thuộc Dio: nhận diện theo **chuỗi** để không phải
-/// import một kiểu lỗi nào — tầng này đã cố ý không biết bên tải là ai
-/// (`taiTep` được tiêm vào).
+/// Hàm thuần, không phụ thuộc thư viện tải: nhận diện theo **chuỗi** để không
+/// phải import một kiểu lỗi nào — tầng này đã cố ý không biết bên tải là ai.
 String cauLoiTai(Object loi) {
   final thap = loi.toString().toLowerCase();
 
@@ -190,10 +202,4 @@ String cauLoiTai(Object loi) {
   s = s.replaceAll(RegExp(r'[,:\s]+$'), '');
   if (s.length > 120) s = '${s.substring(0, 117)}…';
   return s.isEmpty ? 'Tải hỏng. Thử lại sau.' : s;
-}
-
-class _HuyTai implements Exception {
-  const _HuyTai();
-  @override
-  String toString() => 'Đã huỷ tải';
 }

@@ -1,5 +1,6 @@
 import 'package:get_it/get_it.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../core/api/interceptors/auth_interceptor.dart';
@@ -36,7 +37,8 @@ import '../../features/ai_edge/data/mo_hinh_tai_ve.dart';
 import '../../features/ai_edge/data/slm_cache.dart';
 import '../../features/ai_edge/data/nguon_goi_so.dart';
 import '../../features/ai_edge/data/slm_runtime.dart';
-import '../../features/ai_edge/data/tai_tep_dio.dart';
+import '../../features/ai_edge/data/nguon_tai_nen.dart';
+import '../../features/ai_edge/data/tai_nen_background_downloader.dart';
 import '../../features/budget/data/tai_phan_bo_nguon.dart';
 import '../../features/budget/data/repositories/budget_repository_impl.dart';
 import '../../features/budget/presentation/bloc/budget_cubit.dart';
@@ -467,16 +469,25 @@ Future<void> setupDependencies() async {
   // dựng nó là nạp engine native, thứ không được xảy ra lúc mở app.
   sl.registerLazySingleton<SlmRuntime>(SlmRuntimeThat.new);
 
+  // Lượt tải mô hình sống lâu hơn tiến trình (tải nền + resume, 2026-09-22).
+  // ⚠️ `registerSingleton` chứ không lazy: `chuanBi()` phải chạy TRƯỚC khi màn
+  // nào hỏi `luotDangSong()` — lazy nghĩa là nó chỉ chạy lúc ai đó hỏi lần
+  // đầu, tức sau khi màn đã dựng xong và đã kết luận "không có lượt nào".
+  // ⚠️ Bọc `kIsWeb`: app còn chạy được trên Chrome (`flutter run -d chrome`),
+  // mà `background_downloader` ở đó không có service nền — dựng nó là ném
+  // ngay lúc mở app. Trên web bản giả đứng thay, coi như "không có lượt".
+  if (kIsWeb) {
+    sl.registerSingleton<NguonTaiNen>(NguonTaiNenGia());
+  } else {
+    final taiNen = BackgroundDownloaderTaiNen();
+    await taiNen.chuanBi();
+    sl.registerSingleton<NguonTaiNen>(taiNen);
+  }
+
   sl.registerLazySingleton<MoHinhTaiVe>(
     () => MoHinhTaiVe(
       thuMuc: getApplicationSupportDirectory,
-      // Phép tải thật ở `data/tai_tep_dio.dart`, **không** viết inline ở đây:
-      // một closure nằm giữa hàng trăm dòng đăng ký DI thì không ca test nào
-      // với tới, và chính vì thế lỗi "nút Huỷ không dừng được lượt tải" sống
-      // qua hai task liền. Hai quyết định của nó — `Dio()` trần (không phải
-      // Dio của dự án, vì interceptor gắn Bearer token cho **mọi** host) và
-      // `CancelToken` — ghi ngay trong tệp ấy.
-      taiTep: taiTepQuaDio,
+      nguon: sl<NguonTaiNen>(),
     ),
   );
 

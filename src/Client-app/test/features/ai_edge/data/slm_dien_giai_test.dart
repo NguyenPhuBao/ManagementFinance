@@ -5,6 +5,7 @@ import 'package:flowmoney/features/ai_edge/data/slm_dien_giai.dart';
 import 'package:flowmoney/features/ai_edge/data/slm_runtime.dart';
 import 'package:flowmoney/features/ai_edge/data/slm_cache.dart';
 import 'package:flowmoney/features/ai_edge/data/mo_hinh_tai_ve.dart';
+import 'package:flowmoney/features/ai_edge/data/nguon_tai_nen.dart';
 import 'package:flowmoney/features/ai_edge/domain/goi_so.dart';
 import 'package:flowmoney/features/ai_edge/domain/nhan_xet.dart';
 
@@ -77,9 +78,12 @@ void main() {
     return SlmDienGiai(
       runtime: rt,
       cache: cache,
+      // `coTepByte: 3` — `daCo()` nay kiểm kích thước, và tệp giả ở trên
+      // dài đúng 3 byte.
       moHinh: MoHinhTaiVe(
         thuMuc: () async => tmp,
-        taiTep: (u, d, b, dauHuy) async {},
+        nguon: NguonTaiNenGia(),
+        coTepByte: 3,
       ),
     );
   }
