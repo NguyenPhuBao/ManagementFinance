@@ -34,6 +34,7 @@ import '../../features/ai_edge/domain/tai_phan_bo.dart';
 import '../../features/ai_edge/data/cong_tac_ai.dart';
 import '../../features/ai_edge/data/mo_hinh_tai_ve.dart';
 import '../../features/ai_edge/data/slm_cache.dart';
+import '../../features/ai_edge/data/nguon_goi_so.dart';
 import '../../features/ai_edge/data/slm_runtime.dart';
 import '../../features/ai_edge/data/tai_tep_dio.dart';
 import '../../features/budget/data/tai_phan_bo_nguon.dart';
@@ -484,6 +485,18 @@ Future<void> setupDependencies() async {
   );
 
   sl.registerLazySingleton<CongTacAi>(CongTacAi.new);
+
+  // Nguồn gói số cho màn Trợ lý AI. Đây là chỗ DUY NHẤT dựng gói số mà không
+  // đứng trên state của một trang — sáu khối Nhận xét đều lấy từ trang của
+  // chúng; màn Trợ lý AI không thuộc trang nào nên phải tự hỏi dữ liệu.
+  sl.registerLazySingleton<NguonGoiSo>(
+    () => NguonGoiSo(
+      phanTich: sl<AnalyticsRepository>(),
+      nganSach: sl<BudgetRepository>(),
+      mucTieu: sl<GoalRepository>(),
+      vi: sl<WalletRepository>(),
+    ),
+  );
 
   // 🛑 CỐ Ý KHÔNG đăng ký `BoDienGiai` — người dùng chốt LỐI B ngày 2026-09-21.
   //

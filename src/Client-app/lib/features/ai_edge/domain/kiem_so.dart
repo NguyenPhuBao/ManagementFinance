@@ -55,3 +55,14 @@ bool _khop(SoTrich x, SoLieu s) {
 /// nào thì lọt — không có gì để bịa.
 bool kiemSo(String cau, GoiSo goi) =>
     trichSo(cau).every((x) => goi.soLieu.any((s) => _khop(x, s)));
+
+/// Bản cho **hỏi đáp tự do** (P3 Task 8), nơi câu trả lời được phép rút số từ
+/// nhiều màn cùng lúc: mỗi số phải khớp một [SoLieu] của **một gói bất kỳ**.
+///
+/// ⚠️ Đây **không** phải `goi.any(kiemSo)`. Viết như thế là đòi cả câu nằm gọn
+/// trong một gói, nên một câu hoàn toàn đúng kiểu *"tháng này chi 1.200.000 đ,
+/// mục tiêu còn thiếu 3.000.000 đ"* sẽ bị chặn — im lặng, vì người gọi chỉ
+/// thấy câu rơi về mẫu.
+bool kiemSoNhieuGoi(String cau, List<GoiSo> goi) => trichSo(cau).every(
+      (x) => goi.any((g) => g.soLieu.any((s) => _khop(x, s))),
+    );
