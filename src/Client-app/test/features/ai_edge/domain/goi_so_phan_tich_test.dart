@@ -3,6 +3,7 @@
 /// các hàm ấy chứ không ghi cứng.
 library;
 
+import 'package:flowmoney/features/ai_edge/domain/goi_so.dart';
 import 'package:flowmoney/features/ai_edge/domain/goi_so_phan_tich.dart';
 import 'package:flowmoney/features/ai_edge/domain/kiem_so.dart';
 import 'package:flowmoney/features/ai_edge/domain/nhan_xet.dart';
@@ -24,6 +25,7 @@ ThongKeKy _tk({
   List<DiemVayNo>? chuoiVayNo,
   List<DongGiaoDich> topChi = const [],
   DuBaoDongTien? duBao,
+  List<DongDanhMuc> danhMuc = const [],
 }) {
   final ky = Ky.thang(2026, 9);
   final chuoi = chuoiTheoKy(const [], ky: ky);
@@ -33,7 +35,7 @@ ThongKeKy _tk({
     tongTruoc: TongThuChi(thu: 0, chi: chiTruoc),
     tongNamTruoc: const TongThuChi(thu: 0, chi: 0),
     chiTheoDanhMuc: const [],
-    danhMuc: const [],
+    danhMuc: danhMuc,
     chuoi: chuoi,
     latPhanLoai: const [],
     danhMucTheoLat: const {},
@@ -169,5 +171,53 @@ void main() {
       final g = GoiSoPhanTich.tu(tk);
       expect(kiemSo(g.mauCau().cau, g), isTrue, reason: g.mauCau().cau);
     }
+  });
+
+  group('top danh mục có TÊN (chặng 4a)', () {
+    DongDanhMuc dm(String ten, double soTien) => DongDanhMuc(
+          categoryId: 'c-$ten',
+          ten: ten,
+          icon: null,
+          mauHex: null,
+          soTien: soTien,
+          tiLeTongChi: 0,
+        );
+
+    test('mỗi danh mục chi góp một mục mang TÊN', () {
+      final g = GoiSoPhanTich.tu(_tk(danhMuc: [
+        dm('Ăn uống', 800000),
+        dm('Di chuyển', 355000),
+      ]));
+      final ten = g.soLieu.where((s) => s.nhan == 'Chi').map((s) => s.ten);
+      expect(ten, containsAll(<String>['Ăn uống', 'Di chuyển']),
+          reason: 'Câu 8 của bảng đo — "chi nhiều nhất vào danh mục nào" — '
+              'nhận về "Khoản lớn nhất là 800.000 đ": một con số của GIAO '
+              'DỊCH, không phải tên danh mục.');
+    });
+
+    test('danh mục chi nhiều nhất đứng đầu', () {
+      final g = GoiSoPhanTich.tu(_tk(danhMuc: [
+        dm('Ăn uống', 800000),
+        dm('Di chuyển', 355000),
+      ]));
+      final chi = g.soLieu.where((s) => s.nhan == 'Chi').toList();
+      expect(chi.first.ten, 'Ăn uống');
+      expect(chi.first.soTho, 800000);
+    });
+
+    test('không vượt trần kToiDaMucMoiGoi danh mục', () {
+      final g = GoiSoPhanTich.tu(_tk(danhMuc: [
+        for (var i = 0; i < 6; i++) dm('DM $i', 100000 - i * 1000),
+      ]));
+      expect(g.soLieu.where((s) => s.nhan == 'Chi').length,
+          lessThanOrEqualTo(kToiDaMucMoiGoi));
+    });
+
+    test('không có danh mục nào thì không mục Chi nào', () {
+      final g = GoiSoPhanTich.tu(_tk());
+      expect(g.soLieu.where((s) => s.nhan == 'Chi'), isEmpty,
+          reason: 'Mục rỗng là ô trống đội lốt số liệu — cùng luật đã bỏ thẻ '
+              '"Quá hạn: 0" ở gói hoá đơn.');
+    });
   });
 }

@@ -100,6 +100,24 @@ class GoiSoVi extends GoiSo {
       if (v.soDu < _nguongAm && !v.allowNegative) am++;
     }
 
+    // Chặng 4a: mỗi ví góp một mục mang TÊN của nó, để câu hỏi "ví nào đang
+    // âm" đáp được bằng tên thay vì bằng số đếm (câu 15 bảng đo, mục 5.6
+    // `docs/AI_AGENT_ARCHITECTURE.md`).
+    //
+    // ⚠️ Ví đã xoá mềm bị loại — cùng luật đã loại nó khỏi mọi phép đếm ở
+    // trên. Ví **ngoài tổng** thì GIỮ: nó bị loại khỏi *tổng*, không bị loại
+    // khỏi *danh sách ví*, và chính nó là thứ gói này sinh ra để giải thích.
+    //
+    // ⚠️ Số dư tăng dần nên ví âm đứng đầu — mô hình đọc từ trên xuống.
+    final conSong = [
+      for (final v in vis)
+        if (!v.isDeleted) v,
+    ]..sort((x, y) => x.soDu.compareTo(y.soDu));
+    final theoVi = <SoLieu>[
+      for (final v in conSong.take(kToiDaMucMoiGoi))
+        soTien('Số dư', v.soDu, ten: v.ten),
+    ];
+
     final rong = soTrong == 0 && soNgoai == 0;
     return GoiSoVi._(
       tongTaiSan: tong,
@@ -117,6 +135,9 @@ class GoiSoVi extends GoiSo {
               if (soNgoai > 0) soDem('Ví ngoài tổng', soNgoai),
               if (soNgoai > 0) soTien('Không tính vào tổng', ngoai),
               if (am > 0) soDem('Ví đang âm', am),
+              // Đặt CUỐI: mẫu câu tra mục theo nhãn, nên các mục tổng hợp ở
+              // trên phải gặp trước.
+              ...theoVi,
             ],
     );
   }

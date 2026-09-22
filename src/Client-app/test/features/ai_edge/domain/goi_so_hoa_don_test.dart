@@ -6,6 +6,7 @@
 library;
 
 import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/ai_edge/domain/goi_so.dart';
 import 'package:flowmoney/features/ai_edge/domain/goi_so_hoa_don.dart';
 import 'package:flowmoney/features/ai_edge/domain/kiem_so.dart';
 import 'package:flowmoney/features/ai_edge/domain/nhan_xet.dart';
@@ -18,13 +19,14 @@ Bill _bill({
   double amount = 100000,
   bool isPaid = false,
   String payStatus = 'Pending',
+  String ten = 'Tiền điện',
 }) =>
     Bill(
       id: id,
       idaccount: 10,
       walletId: 'w1',
       categoryId: 'c1',
-      name: 'Tiền điện',
+      name: ten,
       amount: amount,
       startDate: dueDate.subtract(const Duration(days: 30)),
       dueDate: dueDate,
@@ -176,5 +178,69 @@ void main() {
         expect(kiemSo(cau, g), isTrue, reason: cau);
       });
     }
+  });
+
+  group('danh sách hoá đơn có TÊN (chặng 4a)', () {
+    final now = DateTime(2026, 9, 22);
+
+    test('mỗi hoá đơn còn phải trả góp một mục mang TÊN', () {
+      final g = GoiSoHoaDon.tu([
+        _bill(id: 'h1', ten: 'Kiem', dueDate: DateTime(2026, 9, 18)),
+        _bill(id: 'h2', ten: 'di h0c', dueDate: DateTime(2026, 9, 25)),
+      ], now: now);
+      final ten = g.soLieu.where((s) => s.nhan == 'Phải trả').map((s) => s.ten);
+      expect(ten, containsAll(<String>['Kiem', 'di h0c']),
+          reason: 'Câu 13 của bảng đo — "hoá đơn nào quá hạn" — trả lời sang '
+              'hẳn chủ đề khác ("Ngân sách căng nhất là 90,0%") vì gói hoá '
+              'đơn không mang tên nào.');
+    });
+
+    test('hoá đơn QUÁ HẠN đứng đầu', () {
+      final g = GoiSoHoaDon.tu([
+        _bill(id: 'h2', ten: 'di h0c', dueDate: DateTime(2026, 9, 25)),
+        _bill(id: 'h1', ten: 'Kiem', dueDate: DateTime(2026, 9, 18)),
+      ], now: now);
+      final muc = g.soLieu.where((s) => s.nhan == 'Phải trả').toList();
+      expect(muc.first.ten, 'Kiem');
+    });
+
+    test('hoá đơn ĐÃ TRẢ không vào danh sách', () {
+      final g = GoiSoHoaDon.tu([
+        _bill(id: 'h1', ten: 'Kiem', dueDate: DateTime(2026, 9, 18)),
+        _bill(
+          id: 'h3',
+          ten: 'Đã đóng',
+          dueDate: DateTime(2026, 9, 10),
+          isPaid: true,
+          payStatus: 'Payed',
+        ),
+      ], now: now);
+      final ten = g.soLieu.where((s) => s.nhan == 'Phải trả').map((s) => s.ten);
+      expect(ten, isNot(contains('Đã đóng')),
+          reason: 'Vị từ "còn phải trả" có MỘT định nghĩa duy nhất ở '
+              '`bill/domain/bill_pay_status.dart` — `conPhaiTra`.');
+    });
+
+    test('⚠️ hoá đơn KỲ SAU không vào danh sách — cùng bộ lọc summarizeBills',
+        () {
+      final g = GoiSoHoaDon.tu([
+        _bill(id: 'h1', ten: 'Kiem', dueDate: DateTime(2026, 9, 18)),
+        _bill(id: 'h9', ten: 'Kỳ sau', dueDate: DateTime(2026, 10, 5)),
+      ], now: now);
+      final ten = g.soLieu.where((s) => s.nhan == 'Phải trả').map((s) => s.ten);
+      expect(ten, isNot(contains('Kỳ sau')),
+          reason: 'Không lặp phép chặn ở cuối tháng thì danh sách nói về một '
+              'tập hoá đơn khác với các con số tổng ngay cạnh nó — hai vế của '
+              'cùng một câu, đếm trên hai tập, và không có gì báo.');
+    });
+
+    test('không vượt trần kToiDaMucMoiGoi hoá đơn', () {
+      final g = GoiSoHoaDon.tu([
+        for (var i = 0; i < 6; i++)
+          _bill(id: 'h$i', ten: 'HĐ $i', dueDate: DateTime(2026, 9, 10 + i)),
+      ], now: now);
+      expect(g.soLieu.where((s) => s.nhan == 'Phải trả').length,
+          lessThanOrEqualTo(kToiDaMucMoiGoi));
+    });
   });
 }
