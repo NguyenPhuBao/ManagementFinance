@@ -871,7 +871,8 @@ và người dùng đã vấp thật. ⚠️ **`grep` BỎ SÓT một dòng ti�
 chuyên gia"*), Python đọc tệp thì bắt đúng — đây là lần thứ ba công cụ lọc dòng làm sai một
 kết luận trong dự án này.
 
-**Task 5 — tài liệu cho backend.** `CAN-LAM/EDGE_AI_THUAT_NGU_VA_HAI_MAU_THUAN.md`: tên gọi,
+**Task 5 — tài liệu cho backend.** `EDGE_AI_THUAT_NGU_VA_HAI_MAU_THUAN.md` (đặt vào `CAN-LAM/`
+ngày ấy; **nay ở `DA-XONG/`** — backend đóng ở `b147fee` 2026-09-22): tên gọi,
 mâu thuẫn ① (F1 *"không rời thiết bị"* vs `Standard_RAG.md:169` *"toàn bộ dữ liệu tài chính của
 User"*), mâu thuẫn ② (tầng 3 classifier gửi mô tả giao dịch sang Gemini trong khi backend mã hoá
 `Note` at-rest). ⚠️ Đo hôm nay **chặt hơn** bản đo 2026-09-21: `.env` **không khai** hai khoá API

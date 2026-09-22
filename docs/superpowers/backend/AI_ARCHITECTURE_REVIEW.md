@@ -21,7 +21,9 @@ Bản vẽ lại khớp mã (mục 8) xem được ở đây:
 1. **Sơ đồ mẫu là kiến trúc ĐÍCH, không phải kiến trúc hiện có.** Khoảng một
    phần ba đã chạy thật (Pipeline A trên backend; xác thực, mã hoá theo trường,
    hạ tầng Redis/Socket.io); phần còn lại (Edge SLM, Gateway, Zod, Pipeline B/C,
-   ChromaDB, OpenAI) là **0 dòng mã**.
+   ChromaDB, OpenAI) là **0 dòng mã**. ⚠️ *(Câu này đo ngày 2026-09-17. **Edge SLM
+   không còn nằm trong danh sách ấy** — P3 xong 2026-09-22, mô hình chạy thật trên
+   hai máy; xem mục **9** `docs/AI_EDGE_FEATURE.md`. Các mục còn lại chưa đo lại.)*
 2. **Có sáu chỗ sơ đồ nói ngược với mã** (mục 2.2), trong đó một chỗ là **lỗi
    mã thật** đang chạy: grounding của LLM classifier không được thi hành —
    `category_id` bịa vẫn lọt xuống (`llm.classifier.js:123-133`).

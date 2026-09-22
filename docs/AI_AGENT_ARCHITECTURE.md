@@ -90,13 +90,15 @@ tải sinh token, **GPU nhanh hơn NPU 3,6 lần** (2.329 vs 8.430 ms) và tốn
                      │
                      │  abstract class BoDienGiai { Future<NhanXet> dienGiai(GoiSo); }
                      │
-┌─ VÒNG 2 — KỂ CHUYỆN ───────────────────── 📝 P3, 0 DÒNG MÃ ────────┐
+┌─ VÒNG 2 — KỂ CHUYỆN ──────────────── ✅ P3 XONG 22/09, CỔNG A QUA ─┐
 │                                                                     │
-│   Gemma 4 E2B   (GPU → CPU → mẫu câu)                               │
-│        nhận GoiSo ĐÃ TÍNH  ──► sinh câu  ──► kiemSo()               │
-│                                     │                                │
+│   Gemma 4 E2B   (GPU → canary → CPU → mẫu câu)                      │
+│        nhận GoiSo ĐÃ TÍNH  ──► sinh câu ──► kiemCauTraLoi()         │
+│                                     │      = kiemSo + kiemNhan      │
+│                                     │        + kiemGiong            │
 │                              qua ───┴─── trượt ──► goi.mauCau()     │
 │                                                                      │
+│   ↳ chặn THEO CÂU: đủ một câu mới kiểm, trượt thì huỷ sinh          │
 │   ↳ CHỈ màn Trợ lý AI (lối B — BoDienGiai KHÔNG đăng ký vào DI)     │
 └──────────────────────────────────────────────────────────────────────┘
 
@@ -108,8 +110,8 @@ tải sinh token, **GPU nhanh hơn NPU 3,6 lần** (2.329 vs 8.430 ms) và tốn
 │        ▼                                                             │
 │   mỗi tool TRẢ List<SoLieu>  ──►  gói số TÍCH LUỸ  ──►  kiemSo      │
 │                                                                      │
-│   + vector index TĨNH cho kiến thức tài chính chung                 │
-│     (asset đóng gói lúc build — không database, không server)       │
+│   🛑 vector index phía CLIENT: BỎ (đo 22/09, mục 5.5)               │
+│      kiến thức chung → backend RAG; số cá nhân → function-calling   │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -367,6 +369,50 @@ active embedder nên không cần bước đặt riêng.
 clean` không cứu được** — chỉ khỏi khi thêm `kotlin.incremental=false` cùng
 `kotlin.compiler.execution.strategy=in-process` vào `android/gradle.properties`.
 
+### 5.6 Bảng đo chặng 3 — bậc 1 hỏng ở đâu ⬜ **CHƯA ĐO**
+
+Mục này là **chỗ đặt kết quả chặng 3**, và nó được tạo sẵn khung ngày 2026-09-22 vì
+`plans/2026-09-21-ai-viec-tiep-theo.md:128` đã trỏ tới *"bảng 20 hàng ở mục 5.6"* trong khi mục
+ấy **chưa tồn tại** — một con trỏ chết sống qua hai phiên.
+
+**Điều kiện vào:** cổng A đã đóng ✅ (2026-09-22 tối, mục **9.9** `docs/AI_EDGE_FEATURE.md`). Đo
+một mô hình còn bịa nhãn thì bảng đo nói dối.
+
+**Cách đo:** 20 câu người dùng thật sẽ hỏi — 5 ngân sách · 5 chi tiêu theo kỳ tuỳ ý · 5 mục
+tiêu/hoá đơn · 5 cần **ghép nhiều nguồn** — hỏi từng câu ở màn Trợ lý AI trên máy thật, tài khoản
+thật.
+
+| # | Câu hỏi | Kết quả | Con số nào THIẾU trong sáu gói | Tool đặt hàng |
+|---|---|---|---|---|
+| | *(chặng 3 điền)* | | | |
+
+**Bốn cột, không phải ba.** Cột *Kết quả* nhận một trong **bốn** giá trị, và giá trị thứ tư là
+thứ lượt đo cổng A phát hiện nên phải có chỗ riêng:
+
+1. **Trả lời được** — đúng câu hỏi, số thật.
+2. **Rơi về mẫu câu** — một chốt chặn, người dùng nhận câu mẫu.
+3. **Trả lời sai** — số sai hoặc nhãn sai lọt qua mọi chốt.
+4. ⚠️ **Trả lời được nhưng lệch câu hỏi** — mô hình **không nói "không có dữ liệu"** dù few-shot
+   có ví dụ ấy; nó chọn con số liên quan thật gần nghĩa nhất rồi trả lời. Mọi số đều đúng, mọi
+   chốt đều cho qua, nhưng nó không trả lời điều được hỏi. Đây **chính là tín hiệu đặt hàng
+   tool** rõ nhất — đừng gộp nó vào ô "trả lời được".
+
+**Ba điều người đo cần biết trước:**
+
+- **Bậc 1 chỉ thấy ~30 con số của sáu gói** (`NguonGoiSo.tatCa`): phân tích · ngân sách · mục tiêu
+  · hoá đơn · ví · trang chủ. Mọi câu hỏi ngoài các nhãn ấy là "hỏng" **theo định nghĩa của
+  bảng** — đó là điều muốn đo, không phải lỗi cần sửa tại chỗ.
+- Câu hỏi gõ bằng `adb shell input text` **không có dấu**; mô hình vẫn hiểu. Ghi rõ trong bảng.
+- `debugPrint` bị tiết lưu nên logcat mất dòng — **số trên màn hình mới là số đủ** (bẫy 8.6
+  `AI_EDGE_FEATURE.md`).
+
+🛑 **Nếu 0 câu hỏng thì vòng 3 không có việc** — dừng lộ trình và báo; đó cũng là một kết quả.
+Với những gì đo được ngày 2026-09-22, khả năng ấy thấp.
+
+**Ra cổng B:** bảng trên điền đủ 20 hàng + danh sách tool **rút từ bảng**, không phải từ mười tool
+ứng viên ở mục 5.1. Dựng 10 tool rồi thấy 7 cái không ai gọi là cùng một lớp lãng phí với lát
+"cửa sổ nhìn lại": một hàm đúng từng dòng mà đầu vào chết thì vẫn vô dụng.
+
 ---
 
 ## 6. Bốn bất biến — đây mới *là* kiến trúc
@@ -528,35 +574,52 @@ Chốt F1 thì phải sửa tầng 3; chốt ma trận §6 thì phải sửa F1.
 | Bậc | Là gì | Trạng thái | Bằng chứng |
 |---|---|---|---|
 | **0** | Hệ luật + mẫu câu | ✅ **đang chạy**, 6 màn | `grep -rl 'KhoiNhanXet(' lib/` → 7 tệp (trừ 1 định nghĩa) |
-| **1** | SLM kể chuyện | 📝 kế hoạch 10 task, **0 dòng mã** | `grep flutter_gemma pubspec.yaml` → 0; sáu tệp `slm_*` chưa có; `git log -S` cho thấy gói **chưa từng** vào pubspec |
+| **1** | SLM kể chuyện | ✅ **đang chạy** từ 2026-09-22 (P3 xong 10/10 task, cổng A qua) | `grep flutter_gemma pubspec.yaml` → **5**; **4** tệp `slm_*` trong `lib/` (`slm_prompt`, `slm_cache`, `slm_runtime`, `slm_dien_giai`); mô hình chạy thật trên OnePlus 13R và Realme RMX2205 — mục **9**, **9.9**, **9.10** `AI_EDGE_FEATURE.md`. *(Ô này ghi "📝 kế hoạch 10 task, 0 dòng mã" cho tới 2026-09-22, với bằng chứng "`grep flutter_gemma pubspec.yaml` → 0; sáu tệp `slm_*` chưa có" — đếm lại bằng máy cùng ngày thì cả hai vế đã đổi. Và lưu ý **bốn** chứ không phải sáu tệp `slm_*`: `slm_dien_giai.dart` cố ý **không** được đăng ký vào DI theo lối B.)* |
 | **2** | Agent | ⬜ **chưa có kế hoạch** | `grep -E 'Tool\(\|ToolChoice\|embedding\|cosine'` trong `lib/` → 0 |
 
-⚠️ Gói `flutter_gemma` **có trong pub cache** nhưng đến từ **app spike P1** ở
-`D:/flowmoney-spike` — tài liệu ghi rõ *"mã vứt đi, không commit"*. Mô hình đã chứng
-minh chạy thật trên OnePlus 13R, nhưng **không một dòng nào của phép đo ấy nằm trong
-repo**.
+✅ **Hết từ 2026-09-22.** *(Câu cũ ở đây: "Gói `flutter_gemma` **có trong pub cache** nhưng đến từ
+**app spike P1** ở `D:/flowmoney-spike` … **không một dòng nào của phép đo ấy nằm trong repo**.")*
+P3 đã cắm mô hình vào chính app: `pubspec.yaml` khai `flutter_gemma: 1.8.3` và
+`flutter_gemma_litertlm: ^1.7.0`, `lib/features/ai_edge/` có **33** tệp test / **294** ca, và mô
+hình đã chạy thật **trong app** trên **hai** máy — OnePlus 13R (GPU) và Realme RMX2205 (CPU, sau
+khi canary bắt được cú sập native trên Mali).
 
 ### 11.1 Câu trung thực nếu được hỏi "đã làm tới đâu"
 
-> Hiện có một **hệ luật chạy on-device** (tầng số + luật + guardrail `kiemSo`), phủ
-> 6 màn, offline, tức thì. Phần **mô hình** đã đo thật trên Snapdragon 8 Gen 3 và có
-> bảng số liệu, nhưng **chưa cắm vào app** — kế hoạch thi công đã viết, chưa chạy.
-> Phần **agent** thì chưa có kế hoạch, mới ở mức đánh giá khả thi.
+*(Cập nhật 2026-09-22 — câu dưới đây đã viết lại; bản cũ nói mô hình "**chưa cắm vào app**", đúng
+tới sáng hôm ấy.)*
 
-Không nên nói *"đã có AI Agent"* — hiện tại không đúng ở cả ba vế của cụm từ ấy.
+> Hiện có một **hệ luật chạy on-device** (tầng số + luật + guardrail `kiemSo`), phủ
+> 6 màn, offline, tức thì. Phần **mô hình** (Gemma 4 E2B, 2,41 GB) **đã cắm vào app và chạy
+> thật trên máy thật** — trả lời hoàn toàn trong máy, đo được **0 request đi ra** khi cắt
+> mạng, chữ hiện dần theo từng câu, và mọi con số trong câu trả lời đều bị ba lớp chắn
+> (`kiemSo`, `kiemNhan`, `kiemGiong`) đối chiếu với gói số trước khi hiện. Phần **agent**
+> (tool-calling) thì **chưa có** — bước đo để quyết định cần những tool nào là việc tiếp theo.
+
+Vẫn **không nên nói *"đã có AI Agent"*** — vế "agent" chưa đúng. Hai vế kia thì nay nói được:
+*"Edge AI"* đúng từ khi mô hình chạy on-device, và *"RAG"* thì **cố ý không làm ở client** (mục
+**5.5** đo được là không khả thi) — nó thuộc backend, cho kiến thức chung, không cho số của
+người dùng.
 
 ---
 
 ## 12. Lộ trình — ba bước, theo đúng thứ tự phụ thuộc
 
-1. **P3** (10 task đã viết) — cắm mô hình, chứng minh nó chạy trong app thật,
-   `kiemSo` bắt được câu sai trên máy thật.
-2. **Tool layer** — khai báo 9 tool trỏ vào hàm domain đã có + `traCuuKienThuc`, mỗi
-   tool trả `List<SoLieu>`.
-3. **Vòng lặp + trần** — cộng vector index tĩnh cho kiến thức chung.
+1. ✅ **P3 XONG 2026-09-22** (trọn 10 task) — mô hình đã cắm và chạy trong app thật trên hai
+   máy; ba lớp chắn `kiemSo` / `kiemNhan` / `kiemGiong` bắt được câu sai trên máy thật.
+   **Cổng A qua** tối cùng ngày.
+2. ⬜ **Đo trước, rồi mới tool layer.** Bước đo — *"bậc 1 hỏng ở đâu"*, mục **5.6** — là việc
+   **tiếp theo** và là điều kiện vào của tool layer: danh sách tool phải **rút từ bảng đo**,
+   không phải từ mười tool ứng viên ở mục 5.1. Sau đó mới khai báo tool trỏ vào hàm domain đã
+   có, mỗi tool trả `List<SoLieu>`.
+3. ⬜ **Vòng lặp + trần** — trần 3 lượt gọi tool, không tool ghi.
 
-Bước 1 là **điều kiện của cả hai bước sau**, nên bất kể chốt vòng 3 hay không, nó vẫn
-là việc kế tiếp.
+*(Bản cũ của mục này ghi bước 3 là "cộng **vector index tĩnh** cho kiến thức chung" và bước 2 là
+"9 tool + `traCuuKienThuc`". Cả hai đã đổi ngày 2026-09-22: RAG phía client **bỏ hẳn** — mục
+**5.5** đo được mô hình embedding tải tự do duy nhất là English-only, top-3 đúng 3/5 trên câu
+tiếng Việt, truy vấn 251 ms trên ngưỡng 200 ms — nên kiến thức chung chuyển sang **backend RAG**,
+và NPBao đã chốt lối ① cùng ngày. Câu "Bước 1 là điều kiện của cả hai bước sau, nên nó vẫn là
+việc kế tiếp" cũng đã hết hiệu lực: bước 1 xong rồi.)*
 
 ---
 
@@ -580,6 +643,14 @@ tool.
 **Đề xuất**: thi công **P3 trọn vẹn trước**, đo trên máy thật xem câu hỏi nào bậc 1
 trả lời không nổi, rồi mới quyết vòng 3 bằng **danh sách câu hỏi hỏng thật** chứ
 không bằng phỏng đoán.
+
+✅ **Đề xuất này đã được chấp nhận, và nửa đầu đã làm xong** (2026-09-22): P3 trọn 10 task, cổng A
+qua. **Nửa sau — phép đo — là việc tiếp theo**, khung bảng ở mục **5.6**. Câu hỏi của mục 13 vì
+thế vẫn **còn mở**, nhưng nay nó có một đường trả lời cụ thể thay vì phải cân nhắc lại từ đầu.
+⚠️ Một dữ kiện lượt đo cổng A đã bổ sung sẵn cho nó: mô hình **không nói "không có dữ liệu"** —
+hỏi thứ gói số không có thì nó chọn con số liên quan thật gần nghĩa nhất rồi trả lời. Đó chính là
+loại câu bậc 1 "trả lời không nổi" mà bảng 5.6 phải đếm, và nó **không** hiện ra dưới dạng câu
+mẫu hay câu sai, nên đừng chỉ đếm hai ô ấy.
 
 🛑 Đúng bài học lát *"cửa sổ nhìn lại"* vừa trả giá ngày 2026-09-21: `suggestAmount`
 đúng từng dòng suốt từ 2026-09-06 nhưng đầu vào là một cửa sổ mà dữ liệu thật không

@@ -11,7 +11,7 @@ vì trước đó cùng một bảng trạng thái tồn tại ở hai nơi và 
 | Bạn cần gì | Mở cái này |
 |---|---|
 | **Việc backend còn phải làm** | 👉 [`CAN-LAM/README.md`](./CAN-LAM/README.md) — **cửa vào duy nhất**. Đếm theo **mục 2** của chính tệp ấy, đừng đếm ở đây: bảng này từng ghi "bốn" trong khi mục 2 đã có sáu |
-| Lý lẽ đằng sau một quyết định đã đi vào lược đồ | [`DA-XONG/README.md`](./DA-XONG/README.md) — **31** tài liệu đã đóng (đếm bằng máy 2026-09-11; dòng này từng ghi "16" từ trước khi backend chuyển mười lăm tệp sang), kèm ghi chú *đóng bằng cách nào* |
+| Lý lẽ đằng sau một quyết định đã đi vào lược đồ | [`DA-XONG/README.md`](./DA-XONG/README.md) — **38** tài liệu đã đóng (đếm bằng máy 2026-09-22, sau khi hai tệp Edge AI đóng ở `b147fee`; mốc **31** là của 2026-09-11 và dòng này từng ghi "16" trước khi backend chuyển mười lăm tệp sang — **đừng cộng dồn, hãy đếm lại**), kèm ghi chú *đóng bằng cách nào* |
 | Client-app còn nợ gì | `docs/CLIENT_APP_KNOWN_GAPS.md` |
 | Bức tranh toàn cục | Mục 14 `docs/PROJECT_CONTEXT.md` |
 
@@ -19,7 +19,12 @@ vì trước đó cùng một bảng trạng thái tồn tại ở hai nơi và 
 
 ## Năm tệp bối cảnh, nằm ngay thư mục này
 
-Không phải việc cần làm, nhưng cần để hiểu hai thư mục con:
+Không phải việc cần làm, nhưng cần để hiểu hai thư mục con. *(Đếm lại bằng máy
+2026-09-22: đúng **năm** tệp `.md` nằm ngay thư mục này ngoài mục lục. ⚠️ Bảng
+dưới đây từng liệt kê năm dòng mà **thành phần sai** — nó kể cả
+`New_Database.md`, thứ đã chuyển sang `docs/Rule_Project/` từ 2026-09-10, và
+**bỏ sót** `AI_EDGE_SLM_DANH_GIA_AP_DUNG.md` thêm ngày 2026-09-18. Con số đúng
+không có nghĩa là danh sách đúng.)*
 
 | Tệp | Nội dung |
 |---|---|
@@ -27,7 +32,8 @@ Không phải việc cần làm, nhưng cần để hiểu hai thư mục con:
 | [2026-08-10-backend-sync-spec.md](./2026-08-10-backend-sync-spec.md) | Hợp đồng `/sync/push` và `/sync/pull` |
 | [PROGRESS-BACKEND.md](./PROGRESS-BACKEND.md) | Checklist B1→B7 và tiến độ backend |
 | [TRANSACTION_NOTE_ENCODING.md](./TRANSACTION_NOTE_ENCODING.md) | Client mã hoá chiều tiền và nguồn gốc của khoản tích luỹ vào `transaction.Note`. **Không xin gì** — chỉ để backend biết mà đừng vô tình phá |
-| [AI_ARCHITECTURE_REVIEW.md](./AI_ARCHITECTURE_REVIEW.md) | Đối chiếu sơ đồ "Kiến trúc AI phân tầng hybrid" với mã thật (2026-09-17): cái gì đã chạy, cái gì chưa, sáu chỗ sơ đồ nói ngược mã, so sánh ưu/nhược hai lối, hai phương án đi tiếp và ba quyết định cần chốt. **Không xin gì** — tài liệu để hai phía thảo luận |
+| [AI_ARCHITECTURE_REVIEW.md](./AI_ARCHITECTURE_REVIEW.md) | Đối chiếu sơ đồ "Kiến trúc AI phân tầng hybrid" với mã thật (2026-09-17): cái gì đã chạy, cái gì chưa, sáu chỗ sơ đồ nói ngược mã, so sánh ưu/nhược hai lối, hai phương án đi tiếp và ba quyết định cần chốt. **Không xin gì** — tài liệu để hai phía thảo luận. ⚠️ Bảng "Khối 2" của nó là kế hoạch ngày 2026-09-17 và đã lệch hiện trạng ở bốn chỗ — có banner đính chính tại chỗ |
+| [AI_EDGE_SLM_DANH_GIA_AP_DUNG.md](./AI_EDGE_SLM_DANH_GIA_AP_DUNG.md) | Đánh giá áp dụng đặc tả `docs/AI/AI_Edge-SLM.md/Client-app.md` vào Client-app (2026-09-18): 39 luật A–H cái nào dùng được, cái nào phải sửa, và vì sao ba bảng SQLite đặc tả đòi chỉ cần **một**. **Không xin gì** — chỗ xin nằm ở `CAN-LAM/`. Backend đã sửa đặc tả theo đúng kết luận ấy ở `b147fee` (2026-09-22) |
 
 ---
 

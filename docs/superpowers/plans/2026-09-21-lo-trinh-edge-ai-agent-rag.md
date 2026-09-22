@@ -13,11 +13,17 @@
 > *"Chặng 2"* ở đây là **P3**, ở tệp kia là **function calling**; *"chặng 4"* ở đây là
 > **tool-calling**, ở tệp kia là **P3**. Bảng đối chiếu đầy đủ nằm ở đầu tệp kia.
 >
-> **Trạng thái 2026-09-22:** chặng 1 ✅ · chặng 2 ✅ (P3 xong 10/10 task) — nhưng
-> 🛑 **CỔNG A CHƯA QUA**: điểm 2 (chữ hiện dần) chưa có, điểm 4 (hỏi thứ gói số không có →
-> rơi về mẫu) **đang hỏng**, điểm 5 chưa đo. Bảng đối chiếu sáu điểm ở đầu mục 2
-> `docs/AI_EDGE_FEATURE.md`. Chặng 5 🛑 **bỏ** (M4 trả lời KHÔNG, 2026-09-22).
+> **Trạng thái 2026-09-22 (tối muộn):** chặng 1 ✅ · chặng 2 ✅ (P3 xong 10/10 task) ·
+> ✅ **CỔNG A ĐÃ QUA** — việc số 1 của thứ tự thi công (chặn theo câu, `kiemNhan`, sáu gói số,
+> bốn chip theo gói) xong tối 2026-09-22, đo trên máy thật: bảng ở mục **9.9**
+> `docs/AI_EDGE_FEATURE.md`. ✅ Việc số 2 (**tải nền + resume**, 7 task) cũng xong cùng tối,
+> nghiệm thu trên máy thứ hai — Realme RMX2205, mục **9.10**.
+> **Việc tiếp theo: chặng 3** (đo bậc 1 hỏng ở đâu), chưa bắt đầu.
+> Chặng 5 🛑 **bỏ** (M4 trả lời KHÔNG, 2026-09-22).
 > Chặng 6 ✅ NPBao đã chốt lối ① cùng ngày.
+>
+> *(Câu cũ ở đây — "🛑 CỔNG A CHƯA QUA: điểm 2 chưa có, điểm 4 đang hỏng, điểm 5 chưa đo" — là
+> ảnh chụp buổi chiều cùng ngày, trước khi việc số 1 đóng cả ba điểm ấy.)*
 
 **Goal:** Từ hệ luật đang chạy, đi tới một hệ thống mà ba câu sau **đều đúng và kiểm được**:
 *"dùng Edge AI"*, *"là AI Agent"*, *"có áp dụng RAG"* — mà không phá bất biến *mô hình không bịa số*.
@@ -33,7 +39,7 @@ bốn bất biến, ranh giới **văn bản vs số** giữa backend và client
 | **Lối B**: mô hình chỉ ở màn Trợ lý AI; sáu khối Nhận xét giữ mẫu câu | người dùng, 2026-09-20 |
 | Ưu tiên **giá trị người dùng** hơn phần demo — nhưng RAG/Agent là **yêu cầu của môn**, nên làm, theo thứ tự de-risk dưới đây | người dùng, 2026-09-21 |
 | Client **vẫn làm P3** (cách hiểu (b)); RAG phía client làm nếu spike cho phép | suy từ câu *"làm cả hai bước"* 2026-09-21 — ⚠️ chưa chốt tường minh, xem "Còn mở" |
-| Backend làm RAG cho **văn bản không thuộc về một người**; client giữ **số của người dùng** | đề xuất 2026-09-21, chờ NPBao qua CAN-LAM |
+| Backend làm RAG cho **văn bản không thuộc về một người**; client giữ **số của người dùng** | ✅ **NPBao đã chốt lối ① ngày 2026-09-22** (`b147fee`): dữ liệu tài chính người dùng **không** index lên vector DB server — `Standard_RAG.md` §6 đã sửa; số liệu cá nhân đi bằng **function-calling**. Tài liệu xin nay ở `DA-XONG/EDGE_AI_THUAT_NGU_VA_HAI_MAU_THUAN.md` |
 
 ## Còn mở — trả lời trước khi tới chặng tương ứng
 
@@ -74,7 +80,7 @@ Chặng 5 ── RAG client: traCuuKienThuc ────────────
    └─► CỔNG D: "có áp dụng RAG" thành ĐÚNG
 
 Song song, ngoài tay client:
-Chặng 6 ── backend RAG (NPBao) ── đầu vào: CAN-LAM/EDGE_AI_THUAT_NGU_VA_HAI_MAU_THUAN.md
+Chặng 6 ── backend RAG (NPBao) ── đầu vào: DA-XONG/EDGE_AI_THUAT_NGU_VA_HAI_MAU_THUAN.md ✅ chốt ①
 ```
 
 ---
@@ -202,9 +208,12 @@ nhân**, số qua `kiemSo`.
 
 ## Chặng 6 — Backend RAG (NPBao, ngoài tay client)
 
-Đầu vào duy nhất từ client: `CAN-LAM/EDGE_AI_THUAT_NGU_VA_HAI_MAU_THUAN.md` (chặng 1 Task 5).
-Client **không** viết kế hoạch cho phần này. Khi NPBao chốt (A)/(B) ở mâu thuẫn ①, cập nhật mục
-"Quyết định đã có" ở đây.
+Đầu vào duy nhất từ client: `DA-XONG/EDGE_AI_THUAT_NGU_VA_HAI_MAU_THUAN.md` (chặng 1 Task 5;
+tệp đặt vào `CAN-LAM/` ngày 2026-09-22 và **đóng cùng ngày**, nên nay nằm ở `DA-XONG/`).
+Client **không** viết kế hoạch cho phần này.
+
+✅ **NPBao đã chốt lối ① ngày 2026-09-22** — mục "Quyết định đã có" ở trên đã cập nhật theo.
+Không còn gì phải chờ ở mâu thuẫn ①.
 
 ---
 
