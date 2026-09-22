@@ -79,7 +79,16 @@ class SlmRuntimeThat implements SlmRuntime {
     await canary?.batDauThu();
     try {
       _model = await FlutterGemma.getActiveModel(
-        maxTokens: 1024,
+        // ⚠️ Đây là trần cho **tổng** input + output, và nó là hằng của
+        // CLIENT chứ không phải giới hạn của Gemma 4 E2B.
+        //
+        // 1024 đủ cho tới chặng 4a, rồi vỡ ngay lượt đo đầu: gói số mang thêm
+        // danh sách có tên nên prompt hỏi đáp lên 2.276 ký tự = **1.084**
+        // token, và gói ném `INVALID_ARGUMENT: Input token ids are too long`
+        // — lỗi **cứng**, câu trả lời rỗng, không phải chỉ chậm đi. Cắt bớt
+        // dữ liệu để vừa trần cũ là cắt đúng thứ lát 4a thêm vào, nên trần
+        // được nới thay vì gói bị xén.
+        maxTokens: 2048,
         preferredBackend: dungCpu ? PreferredBackend.cpu : PreferredBackend.gpu,
       );
     } finally {

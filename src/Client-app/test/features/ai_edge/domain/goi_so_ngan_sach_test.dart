@@ -189,6 +189,20 @@ void main() {
               'chỉ mở rộng gói cho HỎI ĐÁP, không đụng sáu khối ấy.');
     });
 
+    test('⭐ mẫu câu nêu tỉ lệ của CHÍNH ngân sách nó nói tới', () {
+      final g = GoiSoNganSach.tu(bonNganSach(), now: now);
+      expect(
+        g.mauCau().cau,
+        contains('90,0%'),
+        reason: 'Mẫu câu tra mục theo nhãn bằng `{for … x.nhan: x.chuoi}`, và '
+            'map ấy lấy giá trị CUỐI khi trùng khoá. Bốn ngân sách cùng mang '
+            'nhãn "Tỉ lệ", nên đặt danh sách ở cuối là câu nhận xét về Giáo '
+            'dục lại in tỉ lệ của Mua sắm (7,1%) — sai im lặng, và ca '
+            '"contains(Giáo dục)" ở trên vẫn xanh.',
+      );
+      expect(g.mauCau().cau, isNot(contains('7,1%')));
+    });
+
     test('mục của ngân sách căng nhất vẫn giữ nguyên, không mất nhãn nào', () {
       final g = GoiSoNganSach.tu(bonNganSach(), now: now);
       final nhan = g.soLieu.map((s) => s.nhan).toSet();
