@@ -1053,7 +1053,7 @@ công**.
 kết quả ghi ở mục 10 và 11 `docs/AI_EDGE_FEATURE.md`** — đọc trước khi lên kế
 hoạch bất cứ việc AI nào:
 
-- **Mục 10** gọi đúng tên mảng này: AI Edge là **hệ luật + thống kê mô tả**
+- **Mục 10** gọi đúng tên mảng này: mô-đun `ai_edge` là **hệ luật + thống kê mô tả**
   (không phải học máy), SLM là **bộ sinh câu**. Kèm lý lẽ vì sao **không huấn
   luyện mô hình để cá nhân hoá** (trọng số không phải nơi chứa hiểu biết về
   người dùng; gói **không có API huấn luyện**), **mười tiêu chí cho AI chạy

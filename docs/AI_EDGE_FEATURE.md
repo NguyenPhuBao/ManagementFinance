@@ -1,5 +1,12 @@
 # AI Edge-SLM trên Client-app — tài liệu tính năng
 
+> **Thuật ngữ.** Tên đúng của ngành là **Edge AI** (học sâu chạy trên thiết bị). Tài liệu này
+> và thư mục mã dùng "AI Edge" / `ai_edge` vì lịch sử và vì đặc tả gốc do backend quản
+> (`docs/AI/AI_Edge-SLM.md/`) dùng tên ấy — **đừng đổi tên thư mục mã**, nó không mua được gì
+> và làm ba test quét phải sửa theo. Trong văn bản, từ 2026-09-22 dùng **Edge AI**.
+> ⚠️ Và phân biệt hai tầng: tầng **luật + thống kê** (đang chạy, không phải học máy) và tầng
+> **SLM on-device** (P3, chưa thi công) — chỉ tầng sau mới là Edge AI theo nghĩa ngành.
+
 **Trạng thái:** P0 xong (`03fe03a`) · **P1 spike XONG 2026-09-20** (đo trên OnePlus 13R / Snapdragon 8 Gen 3 — bảng đo mục **8**; người dùng chốt **E2B cho mọi máy**) · **P2 XONG — trọn 17 task** (Task 14 gắn khối Nhận xét vào bốn màn, đóng A6 — ⚠️ **nay là SÁU màn**, Hoá đơn và Quản lý ví thêm 2026-09-21, mục **12** và **14**; Task 15 thẻ + sheet kế hoạch tái phân bổ, nghiệm thu máy ảo đầu-cuối tới PostgreSQL — cả hai 2026-09-19; **Task 16** thông báo `budgetRebalance` 2026-09-20, mục **5g** `NOTIFICATION_FEATURE.md`; **Task 17** nghiệm thu tổng + tài liệu bàn giao 2026-09-20, mục **7.4**) ·
 **P3: kế hoạch đã viết, CHƯA thi công** — điều kiện của nó (P1 đạt, P2 xong) nay đã đủ.
 **Spec đã duyệt:** `docs/superpowers/specs/2026-09-19-ai-edge-slm-design.md` — ⚠️ đọc **mục 8
@@ -463,11 +470,13 @@ những câu ấy cho người đọc sau — kể cả chính người viết l
 
 ### 10.1 Gọi đúng tên từng phần
 
-**"AI Edge" ở đây là một hệ luật, không phải học máy.** Bóc ra có hai thứ: tầng 1 là
-thống kê mô tả (trung bình mỗi tháng suy từ cửa sổ cuộn ≤ 90 ngày, dự phóng tuyến tính `spent × daysTotal / daysElapsed`,
-tổng theo danh mục), tầng 2 là 39 luật A–H viết tay. Không mạng nơ-ron, không huấn
-luyện, không suy luận xác suất — đây là **hệ chuyên gia**, công nghệ thập niên 1980,
-chạy trên máy người dùng. Chữ "Edge" chỉ nói nó chạy ở client chứ không ở server.
+**Tầng đang chạy là một hệ luật, không phải học máy.** Bóc ra có hai thứ: tầng 1 là
+thống kê mô tả (trung bình mỗi tháng suy từ cửa sổ cuộn ≤ 90 ngày, dự phóng tuyến tính
+`spent × daysTotal / daysElapsed`, tổng theo danh mục), tầng 2 là 39 luật A–H viết tay. Không
+mạng nơ-ron, không huấn luyện, không suy luận xác suất — kỹ thuật ở tầng này **cùng họ với hệ
+chuyên gia**, chưa phải học máy. ⚠️ Đừng đọc câu này thành một phát biểu về **Edge AI nói
+chung**: thuật ngữ ngành ấy nghĩa là học sâu chạy trên thiết bị, và tầng SLM (P3) mới là phần
+đúng nghĩa ấy. Chữ "Edge" nói về **chỗ chạy**, không nói về **loại mô hình**.
 
 **"SLM" là một bộ sinh câu.** Gemma 4 E2B nhận một bảng số **đã tính xong** và viết
 lại thành câu tiếng Việt — ngành gọi là *data-to-text*. Nó không đọc giao dịch, không

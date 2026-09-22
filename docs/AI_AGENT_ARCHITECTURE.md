@@ -51,6 +51,23 @@ quyết định mô hình được cắm vào **đâu**.
 | `flutter_gemma_embeddings` 2.1.1 tồn tại — tokenizer, isolate worker, pooling, normalization | RAG **chạy được on-device**, không cần server |
 | Backend **mã hoá `transaction.Note` at-rest** (AES-256-GCM, `sync.repository.js:9` và `:14`) | Vector index trên ghi chú **chỉ làm được ở client**; làm ở server là vô hiệu hoá chính lớp mã hoá ấy |
 
+### 1.2 Edge AI — thuật ngữ ngành vs mô-đun của dự án
+
+| Câu | Đúng? |
+|---|---|
+| "**Thuật ngữ** Edge AI = học sâu chạy trên thiết bị (LiteRT, CoreML, NPU/GPU), từ thập niên 2010" | ✅ |
+| "**Mô-đun** dự án đặt tên `ai_edge` hiện là hệ luật + thống kê mô tả, 0 mạng nơ-ron" | ✅ (đo 2026-09-21: 0 gói mô hình trong pubspec, 0 tệp `slm_*`, 1 bản `BoDienGiai` là `MauCau`) |
+
+Hai câu cùng đúng vì **tên đi trước ruột**. Sau P3, tầng SLM là Edge AI đúng nghĩa; tầng luật
+thì vẫn không, và không cần là. **Edge AI ≠ SLM**: Edge AI trả lời *chạy ở đâu*, SLM trả lời
+*mô hình loại gì*; SLM on-device ⊂ Edge AI. Và ở FlowMoney, Edge AI **có điều kiện**: chỉ trên
+arm64 đã tải mô hình; máy khác rơi về tầng luật (năm nhánh lùi).
+
+⚠️ Một điểm đo được ngược với kỳ vọng phổ biến "Edge AI = NPU": trên Snapdragon 8 Gen 3, cho
+tải sinh token, **GPU nhanh hơn NPU 3,6 lần** (2.329 vs 8.430 ms) và tốn RAM ít hơn 3,4 lần.
+Đó là một tải công việc trên một con chip — không bác bỏ NPU nói chung — nhưng là số đo riêng
+đáng mang vào báo cáo.
+
 ---
 
 ## 2. Ba vòng
