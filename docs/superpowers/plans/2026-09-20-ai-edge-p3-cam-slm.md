@@ -152,12 +152,15 @@ class _GoiGia implements GoiSo {
   final String man;
   @override
   final List<SoLieu> soLieu;
-  _GoiGia(this.man, this.soLieu);
+
+  /// Mức của hệ luật — prompt phải chở nó xuống (dòng MỨC), nên lớp giả phải
+  /// đặt được. Mặc định `binhThuong` để mọi ca cũ dựng không đổi.
+  final MucNhanXet muc;
+  _GoiGia(this.man, this.soLieu, [this.muc = MucNhanXet.binhThuong]);
   @override
   bool get thieuDuLieu => false;
   @override
-  NhanXet mauCau() =>
-      NhanXet(cau: 'mẫu', theSoLieu: soLieu, muc: MucNhanXet.binhThuong);
+  NhanXet mauCau() => NhanXet(cau: 'mẫu', theSoLieu: soLieu, muc: muc);
   @override
   String get dauVan => 'gia';
 }
@@ -194,13 +197,26 @@ void main() {
     // dạy mô hình nói một con số không có trong gói thật, mọi câu sinh ra đều
     // bị `kiemSo` chặn và P3 rơi về mẫu câu — im lặng, trông như mô hình kém.
     final p = promptCauTheoMan(goi);
-    final khoiViDu = p.substring(p.indexOf('Ví dụ 1'), p.indexOf('Số liệu:\nNgân sách'));
+    // ⚠️ Mốc cắt phải là `lastIndexOf` — chuỗi 'Số liệu:' xuất hiện TRONG chính
+    // hai ví dụ, nên `indexOf` cắt ngay giữa ví dụ 1 và khối còn lại chỉ là cái
+    // nhãn "Ví dụ 1.". Và bỏ dòng nhãn: số thứ tự của ví dụ không phải số liệu.
+    final khoiViDu = p
+        .substring(p.indexOf('Ví dụ 1'), p.lastIndexOf('Số liệu:'))
+        .split('\n')
+        .where((l) => !l.startsWith('Ví dụ '))
+        .join('\n');
     for (final m in RegExp(r'\d[\d.,]*').allMatches(khoiViDu)) {
       expect(khoiViDu.split(m.group(0)!).length - 1, greaterThanOrEqualTo(2),
           reason: 'Số "${m.group(0)}" trong ví dụ phải xuất hiện ở CẢ phần số '
               'liệu lẫn phần câu của chính ví dụ ấy — nếu không, ví dụ đang '
               'dạy mô hình bịa.');
     }
+  });
+
+  test('prompt mang dòng MỨC đúng với mức của hệ luật', () {
+    final canh = _GoiGia('ngan_sach', [soPhanTram('Tỉ lệ', 90)], MucNhanXet.canhBao);
+    expect(promptCauTheoMan(canh), contains('MỨC: CẢNH BÁO'));
+    expect(promptCauTheoMan(goi), contains('MỨC: BÌNH THƯỜNG'));
   });
 
   test('hỏi đáp: chở câu hỏi và gói của MỌI màn', () {
@@ -238,6 +254,7 @@ Expected: FAIL — `Error: Not found: 'package:flowmoney/features/ai_edge/domain
 library;
 
 import 'goi_so.dart';
+import 'nhan_xet.dart'; // ⚠️ _dongMuc cần MucNhanXet
 
 /// Chép **nguyên văn** mục 3.2 đặc tả gốc của backend (`docs/AI/AI_Edge-SLM.md/
 /// Client-app.md`) — đừng sửa chữ ở đây mà không sửa tài liệu ấy trước.
@@ -268,7 +285,18 @@ Câu: Kỳ này chi 1.200.000 đ trên 9.000.000 đ thu.
 String _dongSoLieu(GoiSo g) =>
     [for (final s in g.soLieu) '${s.nhan}: ${s.chuoi}'].join('\n');
 
+/// Dòng MỨC: hệ luật đã kết luận, mô hình chỉ diễn đạt. Không có dòng này thì
+/// mô hình tự "đánh giá" từ số và có thể nói ngược (kiemGiong là lớp chắn sau).
+String _dongMuc(GoiSo goi) => switch (goi.mauCau().muc) {
+      MucNhanXet.canhBao =>
+        'MỨC: CẢNH BÁO. Câu phải mang giọng cảnh báo, không được trấn an.',
+      MucNhanXet.binhThuong =>
+        'MỨC: BÌNH THƯỜNG. Câu mang giọng trung tính, không hù doạ.',
+      MucNhanXet.thieuDuLieu => 'MỨC: THIẾU DỮ LIỆU.',
+    };
+
 String promptCauTheoMan(GoiSo goi) => '$kPromptHeThong\n\n$_viDu\n'
+    '${_dongMuc(goi)}\n'
     'Viết MỘT câu tiếng Việt nhận xét, dưới 40 từ, chỉ dùng số dưới đây. '
     'Bỏ qua dòng nào không đáng nhắc với người đọc.\n'
     'Số liệu:\n${_dongSoLieu(goi)}\nCâu:';
@@ -346,7 +374,11 @@ void main() {
     // nguy hiểm hơn chỗ khác: "đấu tố", "đầu tuần", "dấu tích" đều về cùng một
     // chuỗi với "đầu tư" nếu bỏ dấu, và người dùng bị từ chối một câu hỏi
     // hoàn toàn hợp lệ mà không hiểu vì sao.
-    expect(chuDeBiChan('Tuần đầu tháng tôi tiêu bao nhiêu'), isFalse);
+    // ⚠️ Câu thử phải là câu mà việc bỏ dấu THỬC SỰ làm nó trùng từ khoá:
+    // "đầu tuần" → "dau tuan", chứa "dau tu". Câu "Tuần đầu tháng" →
+    // "tuan dau thang" KHÔNG chứa "dau tu", nên nó xanh cả trên bản bỏ dấu
+    // — tức không canh được gì (đo bằng bản sai 2026-09-22).
+    expect(chuDeBiChan('Đầu tuần này tôi tiêu bao nhiêu'), isFalse);
   });
 
   test('chặn không phân biệt hoa thường', () {
@@ -1141,13 +1173,18 @@ class _Goi implements GoiSo {
   final String man = 'ngan_sach';
   @override
   final List<SoLieu> soLieu = [soTien('Đã chi', 45000), soPhanTram('Tỉ lệ', 90)];
+
+  /// Mức của hệ luật — `kiemGiong` đối chiếu câu với nó, nên ca "sai giọng"
+  /// phải đặt được. Mặc định `binhThuong` để mọi ca cũ dựng không đổi.
+  final MucNhanXet muc;
+  _Goi([this.muc = MucNhanXet.binhThuong]);
   @override
   bool get thieuDuLieu => false;
   @override
   NhanXet mauCau() => NhanXet(
         cau: 'Câu mẫu 45.000 đ.',
         theSoLieu: soLieu,
-        muc: MucNhanXet.binhThuong,
+        muc: muc,
       );
   @override
   String get dauVan => 'van-co-dinh';
@@ -1188,6 +1225,15 @@ void main() {
     expect(nx.tuMoHinh, isFalse,
         reason: 'Không gắn nhãn AI cho câu mẫu — nhãn ấy là lời hứa rằng câu '
             'do mô hình viết.');
+  });
+
+  test('⚠️ câu ĐỦ SỐ nhưng SAI GIỌNG thì rơi về mẫu câu', () async {
+    // Gói ở mức cảnh báo; runtime giả trả một câu trấn an mang đúng mọi số —
+    // `kiemSo` cho qua, `kiemGiong` phải chặn.
+    final rt = _RuntimeGia((_) => 'Bạn đang kiểm soát tốt: đã dùng 90,0%.');
+    final nx = await (await dung(rt)).dienGiai(_Goi(MucNhanXet.canhBao));
+    expect(nx.tuMoHinh, isFalse, reason: 'sai giọng phải rơi về mẫu, không hiện');
+    expect(nx.cau, 'Câu mẫu 45.000 đ.');
   });
 
   test('nạp hỏng (máy x86_64, RAM thấp) thì rơi về mẫu câu, KHÔNG ném',
@@ -1281,6 +1327,7 @@ import 'package:flutter/foundation.dart';
 
 import '../domain/bo_dien_giai.dart';
 import '../domain/goi_so.dart';
+import '../domain/kiem_giong.dart';
 import '../domain/kiem_so.dart';
 import '../domain/nhan_xet.dart';
 import '../domain/slm_prompt.dart';
@@ -1330,6 +1377,10 @@ class SlmDienGiai implements BoDienGiai {
       final cau = await runtime.sinh(promptCauTheoMan(goi), tranToken: 120);
       if (!kiemSo(cau, goi)) {
         debugPrint('[SLM] câu không qua bộ kiểm số, rơi về mẫu: $cau');
+        return null;
+      }
+      if (!kiemGiong(cau, goi.mauCau().muc)) {
+        debugPrint('[SLM] câu sai giọng so với mức của hệ luật, rơi về mẫu: $cau');
         return null;
       }
       return cau;

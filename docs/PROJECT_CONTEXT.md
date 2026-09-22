@@ -596,6 +596,46 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-09-22)
 
+### 🚧 Edge AI chặng 2 — P3 cắm SLM, xong Task 1–6 / 10 (2026-09-22)
+
+Kế hoạch `docs/superpowers/plans/2026-09-20-ai-edge-p3-cam-slm.md`. Sáu tệp mã đã vào, **mô hình
+chưa tải về máy nào** nên mọi đường vẫn rơi về mẫu câu — đó là hành vi đúng, không phải lỗi.
+
+| Task | Tệp | Việc |
+|---|---|---|
+| 1 | `domain/slm_prompt.dart` | Dựng prompt từ gói số. Bơm `SoLieu.chuoi` chứ **không** `soTho`, để câu và thẻ số liệu nói cùng con số. Mang **dòng MỨC** của hệ luật xuống prompt |
+| 2 | `domain/chu_de_chan.dart` | Chặn đầu tư / chứng khoán / tiền mã hoá / vay ngân hàng / thuế. So **có dấu** (quy tắc 7) |
+| 3 | `data/slm_cache.dart` | Cache theo dấu vân gói, LRU **200** mục, hai tầng bộ nhớ + JSON. Tệp hỏng thì nạp thành rỗng, không ném |
+| 4 | `data/slm_runtime.dart` | Tệp **duy nhất** chạm `flutter_gemma`; **test quét thứ 16** canh |
+| 5 | `data/mo_hinh_tai_ve.dart` | Bốn trạng thái, tiến độ, huỷ, xoá. Gọi `tai()` hai lần chồng nhau chỉ chạy **một** lượt |
+| 6 | `data/slm_dien_giai.dart` | Bản `BoDienGiai` **thứ hai**, **sáu** nhánh lùi về mẫu câu; nạp lười, đúng một lần mỗi phiên |
+
+⚠️ **`pubspec` thêm HAI gói, không phải một**: `flutter_gemma: 1.8.3` (ghim **cứng** như `fl_chart`)
+và `flutter_gemma_litertlm: ^1.7.0`. Core **không kèm engine nào** — thiếu gói thứ hai thì
+`getActiveModel()` ném *"add the engine package"*, điều P1 đã đo (mục 8.5 `AI_EDGE_FEATURE.md`).
+
+⚠️ **Ba lỗi của kế hoạch, cả ba bắt được bằng bản sai có chủ ý** — ghi lại vì chúng cùng một họ
+*"ca test xanh mà không canh gì"*:
+
+1. Bản vá `_dongMuc` (viết ở chặng 1) thiếu `import 'nhan_xet.dart'` → không biên dịch được.
+2. Ca few-shot cắt khối bằng `indexOf('Số liệu:
+Ngân sách')`, mà chuỗi ấy nằm **trong chính ví dụ
+   1** → khối cắt ra chỉ còn cái nhãn `"Ví dụ 1."`. Nay dùng `lastIndexOf` và bỏ dòng nhãn.
+3. Ca canh luật *"không bỏ dấu khi so"* dùng câu thử *"Tuần đầu tháng"* — bỏ dấu ra `tuan dau thang`,
+   **không** chứa `dau tu`, nên ca **xanh cả trên bản bỏ dấu**. Chính chú thích của ca nêu ví dụ
+   đúng là *"đầu tuần"* (`dau tuan` **có** chứa `dau tu`). Đã sửa, và bản sai nay làm nó đỏ.
+
+✅ **Hai chốt quan trọng nhất đã chứng minh canh thật**: tắt `kiemSo` thì ca *"câu BỊA SỐ"* đỏ; tắt
+`kiemGiong` thì ca *"câu ĐỦ SỐ nhưng SAI GIỌNG"* đỏ. Bộ kiểm giọng dựng ở chặng 1 nay có chỗ dùng.
+
+**Màn Stitch Cài đặt AI:** `1da347e753964e15a91b10c473975923` (2026-09-22), ⏳ **chờ người dùng
+xem** — Task 7 không dựng Flutter trước khi có xác nhận. ⚠️ API lại ghi `DESKTOP` dù truyền
+`MOBILE` (lần thứ ba), và ba trạng thái xếp dọc trong màn là để **so sánh khi thiết kế**, không
+phải bố cục thật.
+
+**Mức nền:** `flutter test` **3310/3310, 2 skip**; `flutter analyze` **26**; schema **v24** không
+đổi; payload không đổi; bộ `ai_edge` **23** tệp / **184** test.
+
 ### ✅ Edge AI chặng 1 — chặn lỗi và tài liệu trước P3 (2026-09-22) — XONG TRỌN 6 TASK
 
 Chặng 1 của lộ trình `docs/superpowers/plans/2026-09-21-lo-trinh-edge-ai-agent-rag.md`.
@@ -610,8 +650,10 @@ kiểm phủ định trong **ba từ** trước cụm: *"chưa kiểm soát tố
 an — blocklist theo từ đơn sẽ vứt nhầm câu đúng ấy. Bản sai (cửa sổ phủ định = cả câu) làm
 đúng một ca đỏ. Bẫy **4.3b** `AI_EDGE_FEATURE.md`.
 
-⚠️ Lỗ hổng này **chưa cắn** vì P3 chưa chạy, nên phần nối nằm ở **kế hoạch P3** chứ không ở
-mã: Task 1 của nó nay có `_dongMuc` (prompt chở dòng **MỨC** xuống, để mô hình thôi tự "đánh
+⚠️ Lỗ hổng này **chưa cắn** khi viết (P3 chưa chạy), nên phần nối khi ấy nằm ở **kế hoạch P3**
+chứ không ở mã — ✅ **và đã nối thật vào mã ngày 2026-09-22**, P3 Task 6: `SlmDienGiai` gọi
+`kiemGiong` ngay sau `kiemSo`, có ca canh và bản sai chứng minh. Phần dưới giữ nguyên làm hồ sơ
+của quyết định: Task 1 của nó nay có `_dongMuc` (prompt chở dòng **MỨC** xuống, để mô hình thôi tự "đánh
 giá" từ số), Task 6 gọi `kiemGiong` ngay sau `kiemSo`. **Sửa kế hoạch rẻ hơn sửa mã.**
 ⚠️ Hai lớp giả của kế hoạch ấy (`_GoiGia`, `_Goi`) cố định `MucNhanXet.binhThuong` nên phải
 nhận thêm tham số `muc` — không có nó thì ca "sai giọng" **không dựng được**.
@@ -700,7 +742,7 @@ clean` không cứu được** — chỉ khỏi khi đặt `kotlin.incremental=f
 **Mức nền sau trọn chặng:** `flutter test` **3268/3268, 2 skip**; `flutter analyze` **26**;
 schema **v24** không đổi; payload không đổi. Máy thật **OnePlus 13R `CPH2691` đã nối `adb`**
 (kiểm 2026-09-22) — điều kiện vào chặng 2 (P3) đã thoả, bẫy driver `DeviceInterfaceGUIDs`
-không tái phát. **Bước tiếp: chặng 2 — thi công P3 (cắm SLM), 10 task.**
+không tái phát. ✅ **Chặng 2 đã bắt đầu cùng ngày và xong Task 1–6/10** — xem khối *"Edge AI chặng 2"* ở đầu mục 14.
 
 ### ✅ Cửa sổ nhìn lại, và thẻ "Chưa đặt ngân sách" (2026-09-21)
 
@@ -1080,7 +1122,7 @@ một dòng lỗi. Đường đi được là push vào `/sdcard/Download` rồi
 `cat … | run-as ‹pkg› sh -c 'cat > files/…'` — 2 GB mất 12 giây.
 
 **Bước tiếp:** ✅ **kế hoạch P3 đã viết cùng ngày** —
-`docs/superpowers/plans/2026-09-20-ai-edge-p3-cam-slm.md`, 10 task, **chưa thi
+`docs/superpowers/plans/2026-09-20-ai-edge-p3-cam-slm.md`, 10 task. *(Ảnh chụp 2026-09-20; thi công bắt đầu **2026-09-22**, xong Task 1–6 — xem đầu mục 14.)* **chưa thi
 công**.
 
 ⭐ **Cùng ngày còn một lượt trao đổi dài về bản chất và tương lai của mảng AI,
