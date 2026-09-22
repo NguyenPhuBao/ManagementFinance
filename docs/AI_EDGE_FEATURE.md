@@ -8,7 +8,32 @@
 > **SLM on-device** (P3, ✅ **XONG 2026-09-22**) — chỉ tầng sau mới là Edge AI theo nghĩa ngành.
 
 **Trạng thái:** P0 xong (`03fe03a`) · **P1 spike XONG 2026-09-20** (đo trên OnePlus 13R / Snapdragon 8 Gen 3 — bảng đo mục **8**; người dùng chốt **E2B cho mọi máy**) · **P2 XONG — trọn 17 task** (Task 14 gắn khối Nhận xét vào bốn màn, đóng A6 — ⚠️ **nay là SÁU màn**, Hoá đơn và Quản lý ví thêm 2026-09-21, mục **12** và **14**; Task 15 thẻ + sheet kế hoạch tái phân bổ, nghiệm thu máy ảo đầu-cuối tới PostgreSQL — cả hai 2026-09-19; **Task 16** thông báo `budgetRebalance` 2026-09-20, mục **5g** `NOTIFICATION_FEATURE.md`; **Task 17** nghiệm thu tổng + tài liệu bàn giao 2026-09-20, mục **7.4**) ·
-**P3: ĐANG THI CÔNG từ 2026-09-22 — xong Task 1–8 / 10.** Tám tệp mã đã vào: `slm_prompt.dart` và `chu_de_chan.dart` (hàm thuần), `slm_cache.dart`, `slm_runtime.dart` (tệp **duy nhất** import `flutter_gemma`, có test quét thứ **16** canh), `mo_hinh_tai_ve.dart`, `slm_dien_giai.dart` (bản `BoDienGiai` thứ hai, **sáu** nhánh lùi về mẫu câu), cộng **Task 7** ngày 2026-09-22: `cai_dat_ai_page.dart` (màn Cài đặt AI, route `/ai-settings`, nghiệm thu máy ảo 411dp) và `cong_tac_ai.dart`. DI nay đăng ký `SlmRuntime` / `MoHinhTaiVe` / `SlmCache` / `CongTacAi`, **cả bốn đều lazy** và **cố ý không đăng ký `BoDienGiai`** (lối B). `pubspec` thêm `flutter_gemma: 1.8.3` và `flutter_gemma_litertlm: ^1.7.0`. **Task 8** cùng ngày: màn **Trợ lý AI** chạy thật (đóng **A11**) — bốn chip là câu hỏi thật, hỏi tự do qua `chuDeBiChan` **trước** khi gọi mô hình, câu trả lời kèm **thẻ số liệu**, ô nhập khoá khi chưa có mô hình *hoặc* công tắc tắt; thêm `data/nguon_goi_so.dart` và `kiemSoNhieuGoi`. ✅ **Task 9 XONG 2026-09-22** — nghiệm thu máy thật, bảng đo ở **mục 9**: mô hình **đã chạy thật trong app** trên OnePlus 13R (nạp 8.654 ms, câu đầu 3.291 ms, câu sau ~1–2 s, RAM đỉnh 0,85 GB), và ⭐ **cắt sạch mạng vẫn trả lời trong 1.898 ms với 0 request đi ra**. Lượt ấy bắt được **bốn lỗi thật** mà cả 3.348 ca test đều mù (mục **9.7**) — nặng nhất là **APK release thiếu quyền `INTERNET`**, thứ mọi bản debug che mất từ trước tới nay. **P3 đến đây là xong 10/10 task** → **cổng A**.
+**P3: ĐANG THI CÔNG từ 2026-09-22 — xong Task 1–8 / 10.** Tám tệp mã đã vào: `slm_prompt.dart` và `chu_de_chan.dart` (hàm thuần), `slm_cache.dart`, `slm_runtime.dart` (tệp **duy nhất** import `flutter_gemma`, có test quét thứ **16** canh), `mo_hinh_tai_ve.dart`, `slm_dien_giai.dart` (bản `BoDienGiai` thứ hai, **sáu** nhánh lùi về mẫu câu), cộng **Task 7** ngày 2026-09-22: `cai_dat_ai_page.dart` (màn Cài đặt AI, route `/ai-settings`, nghiệm thu máy ảo 411dp) và `cong_tac_ai.dart`. DI nay đăng ký `SlmRuntime` / `MoHinhTaiVe` / `SlmCache` / `CongTacAi`, **cả bốn đều lazy** và **cố ý không đăng ký `BoDienGiai`** (lối B). `pubspec` thêm `flutter_gemma: 1.8.3` và `flutter_gemma_litertlm: ^1.7.0`. **Task 8** cùng ngày: màn **Trợ lý AI** chạy thật (đóng **A11**) — bốn chip là câu hỏi thật, hỏi tự do qua `chuDeBiChan` **trước** khi gọi mô hình, câu trả lời kèm **thẻ số liệu**, ô nhập khoá khi chưa có mô hình *hoặc* công tắc tắt; thêm `data/nguon_goi_so.dart` và `kiemSoNhieuGoi`. ✅ **Task 9 XONG 2026-09-22** — nghiệm thu máy thật, bảng đo ở **mục 9**: mô hình **đã chạy thật trong app** trên OnePlus 13R (nạp 8.654 ms, câu đầu 3.291 ms, câu sau ~1–2 s, RAM đỉnh 0,85 GB), và ⭐ **cắt sạch mạng vẫn trả lời trong 1.898 ms với 0 request đi ra**. Lượt ấy bắt được **bốn lỗi thật** mà cả 3.348 ca test đều mù (mục **9.7**) — nặng nhất là **APK release thiếu quyền `INTERNET`**, thứ mọi bản debug che mất từ trước tới nay. **P3 đến đây là xong 10/10 task.**
+
+🛑 **NHƯNG CỔNG A CHƯA QUA — đừng đọc "P3 xong" thành "cổng A xong".** Đối chiếu sáu điểm
+của cổng (`docs/superpowers/plans/2026-09-21-lo-trinh-edge-ai-agent-rag.md:100`) với chính
+bảng đo mục 9, làm cuối ngày 2026-09-22:
+
+| # | Điểm cổng A | Trạng thái |
+|---|---|---|
+| 1 | Màn Cài đặt AI báo mô hình đã tải, đúng dung lượng | ✅ |
+| 2 | Chữ **hiện dần** (streaming) khi trả lời | ❌ **chưa có** — câu bật ra nguyên khối |
+| 3 | Logcat có dòng nạp mô hình và thời gian sinh | ✅ 8.654 ms / 0,9–3,3 s |
+| 4 | Hỏi câu mà gói số **không có** số → rơi về mẫu câu, không bịa | ⚠️ **đang hỏng** — xem 9.5 và ô dưới |
+| 5 | Mô hình trấn an sai mức → rơi về mẫu câu (`kiemGiong`) | ⚠️ chưa đo |
+| 6 | Chế độ máy bay → vẫn trả lời | ✅ 1.898 ms, 0 request |
+
+⚠️ **Điểm 4 hỏng theo một đường không ai lường:** nó không bịa **con số** (`kiemSo` chặn
+được), nó bịa **cái tên của con số**. Chip *"Dự báo tiết kiệm"* hỏi một thứ **không có
+trong gói nào** — gói mục tiêu chỉ mang `Tiến độ`, `Còn thiếu`, `Còn`, `Theo nhịp hiện
+tại` — nên mô hình lấy con số gần nghĩa nhất (`Để dành 85,4%`) rồi gắn nhãn của câu hỏi
+vào: *"Dự báo tiết kiệm là 85,4%."* Mọi con số đều thật, nên mọi chốt đều cho qua.
+
+Thứ tự việc để đóng cổng A nằm ở đầu `docs/superpowers/plans/2026-09-21-ai-viec-tiep-theo.md`.
+✅ Streaming (điểm 2) **không phải viết mới**: gói có sẵn `Chat.generateChatResponseAsync()`
+trả `Stream<ModelResponse>` — nhưng ⚠️ nó **va chạm với `kiemSo`**, thứ chỉ chạy được trên
+câu đã đầy đủ; hiện chữ dần là để người đọc thấy câu **trước khi** nó bị chặn. Cần chốt
+thiết kế trước khi viết mã.
 
 > ⚠️ **Ba chỗ kế hoạch P3 lệch mã thật, phát hiện khi thi công Task 7** (2026-09-22) — ghi ở đây
 > vì hai chỗ đầu sẽ tái phát ở Task 8: **(1)** kế hoạch lưu công tắc bằng `SharedPreferences`, mà
